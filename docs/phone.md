@@ -195,7 +195,16 @@ time, Android asks once whether Ducter may install its own updates: turn on **Al
 source** and come back. Ducter checks the download against the release before anything changes,
 and only installs a copy signed the same way as the one you have. Android closes the app to put
 the new one in; open it again and it says **Back, now on** the new version. To check yourself,
-touch and hold the Ducter icon and choose **Check for updates**.
+open **Settings › This phone** and tap **Check for updates** beside the app's version (it is on
+your phone's card in **Settings › Devices** too), or touch and hold the Ducter icon and choose
+**Check for updates**.
+
+**If the download breaks off.** The card says so, and nothing on your phone changes. Tap **Try
+again**, or **Download in the browser**: it opens Ducter's download page, where your browser
+fetches the same file (it can pick up where it stopped, and uses your browser's connection);
+installing it over the app keeps everything. Some networks can't reach GitHub at all; there is no
+other place to download from yet, so try another connection. Close the card and the update is
+offered again the next time you open Ducter.
 
 **On a foldable.** Open it like a book and the conversation sits on one side of the fold and
 **On hand**, or the task you open, on the other. Stand it half-open on a table and the

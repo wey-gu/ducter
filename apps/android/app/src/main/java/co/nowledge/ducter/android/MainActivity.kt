@@ -750,9 +750,16 @@ window.ducterNative=Object.freeze($info);})();"""
     // MARK: updates (D181)
 
     private fun quietCheck() {
-        if (System.currentTimeMillis() - store.lastCheck < Updater.EVERY_MS) return
-        if (Updater.state.value !is UpdateState.Idle && Updater.state.value !is UpdateState.Current) return
+        val now = System.currentTimeMillis()
+        // D341: a version offered and not yet installed (a download that failed, the app closed
+        // mid-way) is asked about again at once on opening, not an hour after the check that found it.
+        val waiting = UpdatePace.waiting(store.offered, Updater.current(this), store.laterVersion, store.laterAt, now)
+        if (!UpdatePace.due(now, store.lastCheck, !Updater.heardThisRun, waiting)) return
+        val s = Updater.state.value
+        if (!UpdatePace.free(s, now, Updater.changedAt)) return
         if (!quietBusy.compareAndSet(false, true)) return
+        // A step silent for minutes is stuck: start over, so the offer can come back.
+        if (UpdatePace.busy(s)) Updater.startOver()
         // Quiet: only a newer version that wasn't put off is shown; nothing else says a word.
         lifecycleScope.launch {
             try {
@@ -766,6 +773,9 @@ window.ducterNative=Object.freeze($info);})();"""
     private var asked = false
     private fun checkNow() {
         asked = true
+        // A download or install still moving: its card is the answer (D341); a stuck one starts over.
+        val s = Updater.state.value
+        if (UpdatePace.busy(s) && s !is UpdateState.Checking && !UpdatePace.free(s, System.currentTimeMillis(), Updater.changedAt)) return render(s)
         lifecycleScope.launch { Updater.check(this@MainActivity, store) }
     }
 
@@ -836,8 +846,14 @@ window.ducterNative=Object.freeze($info);})();"""
                         Why.INSTALL -> R.string.update_failed
                     },
                 )
-                c.show(str(R.string.update_failed), emptyList(), why, str(R.string.retry), str(R.string.update_later))
+                // D341: which version it was, why in plain words, 再试一次, and the browser instead.
+                val title = if (s.r != null) str(R.string.update_failed_v, s.r.version) else str(R.string.update_failed)
+                val reason = if (s.r != null && s.why == Why.NETWORK) str(R.string.update_why_download) else why
+                c.show(title, emptyList(), reason, str(R.string.retry), str(R.string.update_later))
+                c.alt(if (UpdatePace.browserHelps(s.why)) str(R.string.update_in_browser) else null)
                 c.go.setOnClickListener { if (s.r != null) lifecycleScope.launch { Updater.download(this@MainActivity, s.r) } else checkNow() }
+                c.altButton.setOnClickListener { openOutside(Uri.parse(UpdatePace.BROWSER_URL)) }
+                // Not a "Later" on the version: closing a failure puts nothing off, so it is offered again (D341).
                 c.later.setOnClickListener { asked = false; Updater.set(UpdateState.Idle) }
             }
         }

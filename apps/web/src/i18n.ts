@@ -1817,6 +1817,9 @@ const devup: Record<Lang, Record<string, string>> = {
     "devup.checked.now": "刚检查过",
     "devup.checknow": "检查更新",
     "devup.checking": "正在检查…",
+    // D341: the Android app's own version on this phone, with a check of its own.
+    "app.this": "这个 App",
+    "app.check": "检查更新",
     "devup.button": "更新",
     "devup.retry": "再试一次",
     "devup.phase.downloading": "在下载 %s…",
@@ -1962,6 +1965,9 @@ const devup: Record<Lang, Record<string, string>> = {
     "devup.checked.now": "Checked just now",
     "devup.checknow": "Check now",
     "devup.checking": "Checking…",
+    // D341: the Android app's own version on this phone, with a check of its own.
+    "app.this": "This app",
+    "app.check": "Check for updates",
     "devup.button": "Update",
     "devup.retry": "Try again",
     "devup.phase.downloading": "Downloading %s…",

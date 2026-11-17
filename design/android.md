@@ -56,6 +56,27 @@ card. **检查更新** in the icon's long-press menu asks now. Words are the dev
 {v} · 更新 · 在下载 {v}… n% · 在核对 {v}… · 在安装 {v}… · 回来了，现在是 {v} · 没更新成 with the reason
 (连不上 GitHub / 校验值对不上 / 这个版本里没有给安卓的文件 / 这份 Ducter 是从别处装的).
 
+**A failed download, and asking again (D341).** The author's phone was offered a version, the
+download from GitHub broke off, and opening the app again never offered it: the hour was counted
+from the check that found it, a step stuck mid-way (a hung connection, Android's dialog left
+behind) blocked every quiet check, and the only manual check hid in the icon's long-press menu.
+Now:
+
+- The version offered is kept (`update.offered`) until it is installed. While it waits and wasn't
+  put off with **以后再说** on the offer, opening the app asks GitHub again at once, and back in
+  front after 10 minutes (`UpdatePace` in `Core.kt`, tested). Closing a failure puts nothing off.
+- A step that has said nothing for 3 minutes is stuck; the next quiet check starts over, and the
+  stuck one can no longer speak or install (each check and download is one run).
+- A download that stops short is the connection's fault (连不上), not a wrong checksum.
+- The failure card says the version (**没能更新到 {v}**) and why in one sentence: **从 GitHub 下载断了：网络断了，或者这个网络连不上 GitHub。什么都没动。再试一次，或者在浏览器里下载。** with
+  **再试一次**, **以后再说**, and, for a broken download or GitHub unreachable, a third full-width
+  **在浏览器里下载** that opens `https://ducter.ai/download#android` (the same file; the browser
+  resumes and uses its own connection; installing over the app keeps everything). There is no
+  mirror off GitHub (the download page says so); the app still downloads only from GitHub's hosts.
+- Settings › **这台手机** and this phone's card in **你的设备** show **这个 App** with
+  **版本 {v}** and **检查更新** (only inside the Android app; `apps/web/src/app-update.tsx`). It sends
+  `update.check`; the app's own card answers (在检查… / 已经是最新的 / 有新版本 {v}).
+
 ## Is it a foldable (D317)
 
 Said by the hardware, not the name. The app reports `foldable` in its handset hello, and

@@ -1168,9 +1168,21 @@ Codex first, once OAR is near 1.0. See `research/17`.
       of `co.nowledge.ducter.android`; install and update on a real phone and on a Chinese ROM
       (Xiaomi asks on every update); one update between two release-key builds; the QR scanner
       with a real camera. Trigger: tagging 0.0.10.
-- [ ] **Android app, later:** a share target (send a link or text to the partner); the page's
-      Settings showing this app's version with Check now (the bridge has `update.check`); a
-      download link on the website once the first APK is out. Trigger: the author's ask.
+- [ ] **Android app, later:** a share target (send a link or text to the partner); a
+      download link on the website once the first APK is out. Trigger: the author's ask. (The
+      page's Settings showing this app's version with 检查更新 is built, D341.)
+- [ ] **D341 live check on the author's Android phone** (built with unit tests only). Install the
+      release before the one carrying D341 and update to the D341 build by hand first. Then, when
+      the next release is out: (1) open the app; the card offers it. (2) Tap **更新**, and while it
+      reads 在下载 turn on airplane mode: within about 20 s the card says **没能更新到 {v}** with
+      the download sentence, **再试一次**, **以后再说** and **在浏览器里下载**. (3) Airplane mode
+      off, **再试一次**: it downloads and installs. Repeat (2), then tap **以后再说**, swipe Ducter
+      away and open it again: the offer comes back at once. (4) Repeat (2), tap **在浏览器里下载**:
+      the browser opens ducter.ai/download at Android; the APK from there installs over the app and
+      the conversation is still there. (5) Settings › 这台手机: **这个 App**, **版本 {v}**,
+      **检查更新**; tap it: the card says 在检查… then 已经是最新的 (or offers). The same row on this
+      phone's card in 你的设备. (6) On the offer, **以后再说**, reopen: no card (3 days). Trigger:
+      the first release after D341.
 
 - [ ] First tagged release end to end (notarized DMG, Linux tarballs, TestFlight). Trigger: the
       author's checklist at the top of `design/release/README.md` is done.

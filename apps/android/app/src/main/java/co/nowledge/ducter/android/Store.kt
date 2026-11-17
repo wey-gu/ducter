@@ -87,6 +87,11 @@ class Store(context: Context) {
         get() = p.getString("update.later", null)
         set(v) = p.edit().putString("update.later", v).apply()
 
+    /** D341: the newer version GitHub last offered; until it is installed or put off, opening the app asks again. */
+    var offered: String?
+        get() = p.getString("update.offered", null)
+        set(v) = p.edit().putString("update.offered", v).apply()
+
     /** The version handed to Android to install: the next launch on it says so once. */
     var installing: String?
         get() = p.getString("update.installing", null)

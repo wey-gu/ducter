@@ -387,6 +387,10 @@ It installs the next time you quit Ducter, or right away with **Restart Now**: t
 **Putting the new version in, back in a moment**, closes, and Ducter opens again on the new
 version with a quiet **Updated to 0.2.0**. Your tasks carry on.
 
+The Android app updates itself the same way, from a card at the bottom; if its download breaks off,
+the card offers **Try again** and **Download in the browser**, and the next time you open the app
+it offers the update again ([more](phone.md#the-android-app)).
+
 ### Updating a server, and the computers that do tasks for Ducter
 
 Every device's card under **Your devices** shows its version. When it's the newest, the card says

@@ -35,6 +35,9 @@
     <string name="update_allow_go">Open the setting</string>
     <string name="update_failed">Didn\'t update</string>
     <string name="update_why_network">Couldn\'t reach GitHub. Try again when online.</string>
+    <string name="update_failed_v">Didn\'t update to %1$s</string>
+    <string name="update_why_download">The download from GitHub broke off: the connection dropped, or this network can\'t reach GitHub. Nothing was changed. Try again, or download it in the browser.</string>
+    <string name="update_in_browser">Download in the browser</string>
     <string name="update_why_checksum">The download didn\'t match its checksum, so nothing was changed.</string>
     <string name="update_why_no_asset">This release has no file for Android.</string>
     <string name="update_why_signature">This copy of Ducter was installed from somewhere else, so Android won\'t update it from the release. Uninstall it and install the APK from the release once.</string>

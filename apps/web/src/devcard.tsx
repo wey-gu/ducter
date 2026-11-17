@@ -9,6 +9,7 @@ import { ComputerBlock, ComputerInfo } from "./computer-use.tsx";
 import { HandsetChip } from "./handset.tsx";
 import type { DeviceHarness, DeviceUpdate, DeviceVia, DeviceView, ReachWay } from "@ducter/protocol";
 import { inApp } from "./native.ts";
+import { AppUpdateRow, androidAppVersion } from "./app-update.tsx";
 import { clientShape, computerKey, computerName, TRY_LIVE } from "@ducter/protocol";
 import { Fragment, type ComponentChildren } from "preact";
 import { useEffect, useState } from "preact/hooks";
@@ -245,6 +246,12 @@ function ClientSheet({ cl, folded }: { cl: Client; folded: Client[] }) {
       </div>
       <div class="dc-status">{line}</div>
       {mine && <NotifyChip />}
+      {/* D341: this phone, in the Android app: the app's own version and 检查更新. */}
+      {mine && androidAppVersion() && (
+        <div class="set-card">
+          <AppUpdateRow />
+        </div>
+      )}
       <HandsetChip cl={cl} />
       {cl.connected && <HowConnected via={cl.via} />}
       <Via card={`cl:${cl.id}`} list={[cl, ...folded]} computer={clientComputer(cl)} />

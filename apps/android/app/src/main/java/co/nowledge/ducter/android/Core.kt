@@ -241,3 +241,53 @@ object HomeVersion {
     fun shouldShow(app: String, home: String?, base: String, dismissed: String?) =
         older(app, home) && dismissed != key(base, home, app)
 }
+
+/**
+ * D341: when a quiet check (the app opened, back in front) asks GitHub again, and which update
+ * states it may replace. A version GitHub offered that this app hasn't installed or put off with
+ * "Later" stays offered: opening the app again asks at once, and back in front after 10 minutes,
+ * instead of waiting out the hour since the check that found it. A download, check or install
+ * that has said nothing for 3 minutes is stuck (a connection that hung, Android's own dialog left
+ * behind), and a quiet check starts over.
+ */
+object UpdatePace {
+    /** At most every hour without asking (6 h before 2026-11-13); "Check for updates" asks now. */
+    const val EVERY_MS = 60 * 60_000L
+    /** "Later" puts that version off for 3 days; a newer one is offered at once. */
+    const val LATER_MS = 3 * 24 * 60 * 60_000L
+    /** A version still waiting is asked about again this often while the app stays open. */
+    const val AGAIN_MS = 10 * 60_000L
+    /** A step that has said nothing this long is stuck. */
+    const val STALL_MS = 3 * 60_000L
+
+    /** A newer version was offered, isn't installed yet, and wasn't put off with "Later". */
+    fun waiting(offered: String?, current: String, laterVersion: String?, laterAt: Long, now: Long): Boolean =
+        offered != null && Versions.isVersion(offered) && Versions.compare(offered, current) > 0 &&
+            !(laterVersion == offered && now - laterAt < LATER_MS)
+
+    /** firstThisRun: the app hasn't heard from GitHub since it was started. */
+    fun due(now: Long, lastCheck: Long, firstThisRun: Boolean, waiting: Boolean): Boolean =
+        now - lastCheck >= EVERY_MS || (waiting && (firstThisRun || now - lastCheck >= AGAIN_MS))
+
+    /** A step under way: asking, downloading, checking the file, installing. */
+    fun busy(s: UpdateState): Boolean =
+        s is UpdateState.Checking || s is UpdateState.Downloading || s is UpdateState.Verifying || s is UpdateState.Installing
+
+    /**
+     * May a quiet check go ahead from this state? Never over a card waiting for the person (an
+     * offer, the one-time switch, a failure with its Try again, "Back, now on"), nor over a step
+     * still moving; yes when nothing shows, or when a step is stuck.
+     */
+    fun free(s: UpdateState, now: Long, changedAt: Long): Boolean = when {
+        s is UpdateState.Idle || s is UpdateState.Current -> true
+        s is UpdateState.Failed -> s.r == null
+        busy(s) -> now - changedAt >= STALL_MS
+        else -> false
+    }
+
+    /** "Download in the browser": the website's download page, at the Android app. */
+    const val BROWSER_URL = "https://ducter.ai/download#android"
+
+    /** A failure the browser can get past: GitHub unreachable from the app, or a download that broke. */
+    fun browserHelps(why: Why): Boolean = why == Why.NETWORK || why == Why.CHECKSUM
+}

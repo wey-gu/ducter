@@ -810,6 +810,8 @@ func (a *App) decisionButtons(c *ui.Context, d *store.DecisionState, st decision
 // (等它醒) or the closing card (先不搬) (D157).
 func (a *App) holdLabel(d *store.DecisionState) string {
 	switch {
+	case d.HoldLabel != "":
+		return d.HoldLabel // D334: 不理 / Ignore, as the card's code said it
 	case d.Where != nil:
 		return a.whereAskHold(d.Where)
 	case d.Closing != nil:
@@ -858,6 +860,9 @@ func (a *App) goLabel(d *store.DecisionState) string {
 	}
 	if d.Asker != nil {
 		return d.GoLabel // X1: the asking agent's own option, as it named it
+	}
+	if d.Sender != nil {
+		return d.GoLabel // D334: 答应 / Let it, as the card's code said it
 	}
 	if d.Computer != nil && d.Computer.Kind == "user" {
 		return a.L.T("computeruse.user.done") // D235: their own turn in an app: 好了 / Done

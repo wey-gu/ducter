@@ -308,6 +308,10 @@ export interface Bodies {
     findId?: string;
     asker?: PeerAsk; // D170: asked for one of the user's own agents; the answer goes back to it
     trust?: { agent: string }; // D170 (X2): 以后你的 <agent> 发来的活，直接接？ Go keeps the rule
+    // D334: a teammate's agent wrote for the first time: Go (答应 / Let it) lets this sender's messages
+    // through as questions, Hold (不理 / Ignore, the default) mutes it. Remembered per sender.
+    sender?: { from: string; space?: string; messageId: string };
+    holdLabel?: string; // D334: Hold's own words when the card's code names them (不理 / Ignore)
     // D189/D193: a phone call. kind "go": the call's Go card (打给 X？ / Call X?), never a default,
     // never "don't ask next time". kind "question": a question from the line, pushed at once even
     // in quiet hours; its choices are buttons that answer with option "reply" and that text.
@@ -514,10 +518,15 @@ export interface Bodies {
     // in: "early" = in the mailbox before Bridge was on for this persona (B14), "set_aside" = over
     // the sender's daily quota (D170), "muted" = a sender the user stopped listening to, or one
     // Settings doesn't let reach the partner; none wakes the partner. Absent = a message to read.
+    // D334, in: "held" = a teammate's agent's message kept while the person answers its sender card
+    // (答应 logs it again without a state, so it wakes the partner; 不理 leaves it held).
     state?: "pending" | "held" | "sending" | "sent" | "failed" | "unknown" | "unconfirmed" | "followed" | "early" | "set_aside" | "muted";
     opId?: string;
     contact?: string;
     operation?: string;
+    // D334: the Space it came in (in), or goes out in (out): a reply goes back in its message's Space.
+    space?: string;
+    spaceLabel?: string;
   };
   // The partner's own harness session, on the "partner" stream (never shown; clients skip it).
   // "recut": Ducter started a fresh session from the projection because the live context grew
@@ -2122,6 +2131,12 @@ export interface PeersSettings {
   reach: "own" | "team" | "off";
   trusted: string[];
   muted: string[];
+  /**
+   * D334: teammates' agents the person said 答应 / Let it to on their first message's card (by the
+   * sender as Ducter names it, "reviewer (dev team)"): their messages come through as questions,
+   * under the teammate rules. 不理 / Ignore puts the sender in muted instead. Absent: none yet.
+   */
+  allowed?: string[];
 }
 
 /**
@@ -2279,6 +2294,12 @@ export interface BridgeView {
   done?: "installed" | "updated" | "moved";
   /** D229: with detail: it didn't work, and the copy that was there still is and works. */
   kept?: true;
+  /**
+   * D334: on connected, the Spaces where Mem refused the home a reader for the partner's mailbox
+   * (`agents context select` said no): messages sent to the partner there aren't read. One quiet
+   * problem row names them; Spaces are never listed otherwise. code: Mem's registered code, as said.
+   */
+  unread?: { label: string; code?: string }[];
 }
 
 /** The choices offered for defaultAfterMin, in minutes. */

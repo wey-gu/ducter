@@ -15,6 +15,13 @@ const W = {
     sendQuestion: "发给{who}？\n「{gist}」{whose}",
     sendWhose: "\n（就是发来「{theirs}」的那个）",
     sendGo: "发送",
+    // D334: a teammate's agent writes for the first time (答应 / 不理, default 不理).
+    senderAsk: "{team} 里{who}想找{name}：\n「{gist}」",
+    senderAskNoTeam: "{who}想找{name}：\n「{gist}」",
+    senderMemberAgent: "{member} 的 {agent}",
+    senderSomeone: "有个 AI agent",
+    senderGo: "答应",
+    senderHold: "不理",
   },
   en: {
     ack: "On it: {title}",
@@ -25,6 +32,12 @@ const W = {
     sendQuestion: 'Send this to {who}?\n"{gist}"{whose}',
     sendWhose: '\n(the one that wrote "{theirs}")',
     sendGo: "Send",
+    senderAsk: '{who} in {team} wants to reach {name}:\n"{gist}"',
+    senderAskNoTeam: '{who} wants to reach {name}:\n"{gist}"',
+    senderMemberAgent: "{member}'s {agent}",
+    senderSomeone: "An AI agent",
+    senderGo: "Let it",
+    senderHold: "Ignore",
   },
 };
 export type PartnerWord = keyof typeof W.en;

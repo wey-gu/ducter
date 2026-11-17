@@ -160,7 +160,7 @@ export function openSettings(opts: {
       ...(data.limitHandoff ? { limitHandoff: true } : {}),
       // D250: never chosen is the default (proactive with a morning note), said as such.
       ...(data.proactive ? { proactive: data.proactive, ...(data.proactiveBy ? { proactiveBy: data.proactiveBy } : {}) } : { proactive: DEFAULT_PROACTIVE, proactiveBy: "default" as const }),
-      peers: { reach: data.peers?.reach ?? "own", trusted: data.peers?.trusted ?? [], muted: data.peers?.muted ?? [] },
+      peers: { reach: data.peers?.reach ?? "own", trusted: data.peers?.trusted ?? [], muted: data.peers?.muted ?? [], ...(data.peers?.allowed?.length ? { allowed: data.peers.allowed } : {}) },
     };
   };
   /** D170: a change to who may reach the partner, from a client or from the partner itself. */
@@ -172,6 +172,9 @@ export function openSettings(opts: {
       trusted: agentList(p.trusted) ?? cur.trusted,
       muted: agentList(p.muted) ?? cur.muted,
     };
+    // D334: teammates' agents let through on their first message's card (kept only while there is one).
+    const allowed = agentList(p.allowed) ?? cur.allowed ?? [];
+    if (allowed.length) next.allowed = allowed;
     if (JSON.stringify(next) === JSON.stringify(cur)) return false;
     data.peers = next;
     return true;

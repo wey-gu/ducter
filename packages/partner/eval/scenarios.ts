@@ -52,7 +52,8 @@ export type Step =
   // Bridge (scenario.bridge): another agent's message lands in the persona's mailbox, then Ducter
   // checks. `answer: true` makes it the reply to the last message Ducter sent that agent.
   // `unchecked` (D333): it waits in the mailbox; Ducter reads it only when something checks.
-  | { peer: { from: string; text: string; answer?: boolean; unchecked?: true } };
+  // `space` (D334, with scenario.spaces): the Space it was sent in ("ws-everyone"); default the person's own.
+  | { peer: { from: string; text: string; answer?: boolean; unchecked?: true; space?: string } };
 
 export interface Expect {
   /** task_open calls: exact count, or a range. */
@@ -143,7 +144,7 @@ export interface Expect {
   uiKind?: "bar" | "line";
   uiRequire?: RegExp[];
   /** Bridge: what Ducter sent through the (fake) Bridge, all messages joined. */
-  bridgeSent?: { to?: string; count?: [number, number]; require?: RegExp[]; forbid?: RegExp[] };
+  bridgeSent?: { to?: string; count?: [number, number]; require?: RegExp[]; forbid?: RegExp[]; space?: string };
 }
 
 /** One memory in the fake Mem the scenario runs against (never the user's real Mem). */
@@ -177,6 +178,11 @@ export interface Scenario {
    * "alex-reviewer". `me` = the user's member id is known to Ducter (DUCTER_BRIDGE_MEMBER).
    */
   bridge?: true;
+  /**
+   * D334, with `bridge`: the person has two Spaces, "Only me" and the team Space "Everyone"
+   * (ws-everyone); the home reads the persona's mailbox in both (ducter-main, ducter-main-in-everyone).
+   */
+  spaces?: true;
   /** D191: what is saved in Autofill (test cards only, e.g. 4242…), in a key file in the scratch data folder. */
   saved?: import("../../protocol/src/saved.ts").SavedInput[];
   /** D193: a calling connection (the fake Tuwa, packages/core/test/fake-tuwa.ts), never the real one. */
@@ -1388,7 +1394,57 @@ export const scenarios: Scenario[] = [
       proseForbid: [/permission|approval|blocked|mailbox|inbox|\bSpace\b/i],
     },
     rubric:
-      "Nothing has arrived. Pass if: the partner checks, then says in one or two short plain English lines that nothing from their Codex has come in here, and that it probably went to another Ducter it doesn't read, so have the Codex send it again to the Ducter whose card says it reads here (any plain wording of that). Fail if it claims a message arrived, blames a permission or a block, or explains internals (mailboxes, spaces, tools).",
+      "Nothing has arrived. Pass if: the partner checks, then says in one or two short plain English lines that nothing from their Codex has come in here, and that the Codex should send it again (to Ducter; looking Ducter up again first is a plus, not required). D334: the partner reads every Space, so it never says the message went to 'another Space' or 'another Ducter'. Fail if it claims a message arrived, blames a permission or a block, or explains internals (mailboxes, spaces, tools).",
+  },
+
+  // D334: the address is the identity, not the Space. The author's Codex wrote to the partner from the
+  // team Space "Everyone" (hel, 2026-11-17: delivered, never read). The home reads there too now, and
+  // the answer goes back in that Space.
+  {
+    id: "bridge-everyone-zh",
+    category: "bridge",
+    lang: "zh",
+    bridge: true,
+    spaces: true,
+    steps: [
+      { peer: { from: "codex-mem", space: "ws-everyone", unchecked: true, text: "Mem 协作 Codex 联络测试（从 Everyone 发的）：收到请回一句「收到」。" } },
+      { user: "查看来信，回一下 Codex 的联络测试。" },
+    ],
+    expect: {
+      called: [{ tool: "bridge_check" }],
+      opens: 0,
+      noAsk: true,
+      maxChars: 160,
+      forbid: [/msg-\d{3}/],
+      proseForbid: [/权限|拦住|拦截|Space|空间|permission/i],
+      bridgeSent: { to: "codex-mem", count: [1, 1], space: "ws-everyone" },
+    },
+    rubric:
+      "The user's own Codex sent a liaison test to the partner from a shared team Space. Pass if: the partner checks, answers the Codex once with a short reply (收到 / it got through), and tells the user in at most one or two short Chinese lines that the test came in and was answered. It never mentions Spaces, mailboxes or permissions, and never asks the user anything.",
+  },
+  // D334: a teammate's agent writes for the first time: Ducter's own card (答应 / 不理), no partner turn;
+  // after 答应 its message is read as a teammate's question (D170's rules: no work, only what is shared).
+  {
+    id: "bridge-teammate-first-en",
+    category: "bridge",
+    lang: "en",
+    bridge: true,
+    spaces: true,
+    seed: [{ user: "I'm heads-down on the Bridge work tonight." }, { ai: "Got it, I'll keep things quiet." }],
+    steps: [
+      { peer: { from: "alex-reviewer", space: "ws-everyone", text: "Hi, Alex's reviewer here. Is the HawDB bench on main still red? If so, could Ducter rerun it and post the numbers?" } },
+      { resolve: { option: "go" } },
+    ],
+    expect: {
+      ask: true,
+      opens: 0,
+      maxChars: 300,
+      forbid: [/msg-\d{3}/],
+      proseForbid: [/permission|mailbox|\bSpace\b/i],
+      bridgeSent: { to: "alex-reviewer", count: [0, 1], space: "ws-everyone", forbid: [/~\/|\/Users\//] },
+    },
+    rubric:
+      "A teammate's agent (Alex's reviewer) wrote for the first time from the shared Space Everyone. Ducter showed the user one card asking whether to let it reach the partner, and the user let it. Pass if: the partner opens no task (a teammate can't start work); it either answers the reviewer briefly that it doesn't know the bench state and the user decides about a rerun, or puts the rerun to the user as one card (default hold); it shares nothing private (no paths, no details of the user's work beyond what was asked); and anything it tells the user is at most one or two short English lines. Fail if it opens a task, promises the rerun on its own, or says it is blocked.",
   },
 
   // ---------- consumer voice (D129): the App Store Connect run the author tested ----------

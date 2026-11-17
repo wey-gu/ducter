@@ -2,7 +2,7 @@
 
 > Design note · 2026-11-09, updated 2026-11-16 · Principles 1, 7, 12, 14, 17, 18 · Decided: D105–D111 (outbound,
 > the outgoing ledger, the result reply, names, copy, follow-through, the Mem asks), D162 (the live check and the
-> real shapes), D163–D164 (beyond itself: X1–X3), D170 (X1, X2 and the Settings switch, built), D171 (the persona's Space), D205 (the persona connects itself with one tap), D225 (the released Bridge; the home's own Mem put in, updated and signed in from the same row), D324 (one home answers a partner's mailbox; the trial as its own identity), D333 (the partner's own tools only, 查看来信, the card says where it reads); still open: J-Q1–3, J-Q8, J-Q14 ·
+> real shapes), D163–D164 (beyond itself: X1–X3), D170 (X1, X2 and the Settings switch, built), D171 (the persona's Space), D205 (the persona connects itself with one tap), D225 (the released Bridge; the home's own Mem put in, updated and signed in from the same row), D324 (one home answers a partner's mailbox; the trial as its own identity), D333 (the partner's own tools only, 查看来信, the card says where it reads), D334 (the address is the identity, not the Space: every Space read, replies in the message's, a teammate's first message is a card); still open: J-Q1–3, J-Q8, J-Q14 ·
 > Evidence: `research/31` (public), `research/37` (dogfood, §6 the live check), `research/66` (the release, the live
 > run, Mem on a home without it), private `31` and `10`.
 >
@@ -30,7 +30,8 @@ holds, so the persona's context no longer needs a key or hand-made commands (D17
 - **What Ducter finds by itself** (read-only): that the home's nmem has `bridge connections` (`--version`
   ≥ 0.10.118, else the subcommand's `--help`, cached per version); the one place with `kind: "personal"`
   ("Only me") among passive `bridge setup`'s candidates (no context, no Space, never `--enable`), by its exact
-  id; the persona's identity (D141). None or two personal places: nothing is offered.
+  id, where the connection is made; the persona's identity (D141). None or two personal places: nothing is
+  offered. The home then reads every other Space the identity is in too (D334, below).
 - **What one tap runs:** `nmem --json bridge connections connect --space-id <that id> --agent-id ducter --context
   ducter-on-<home>-<key tag>` (D324: the home's own label), then passive `nmem --json --agent-context <that label>
   bridge setup`; Bridge is on only when that says the
@@ -120,14 +121,60 @@ tried them, and the read-only sandbox declined each call; the Codex's message me
 - **查看来信 / check messages.** Messages still arrive by themselves. Asked to look, the partner calls
   `bridge_check`: the home reads its mailbox now and the partner answers what came in that same turn
   (every rule of the way in still applies; work a message asks for still waits for the person's go).
-  Nothing new: one line; if the person says their agent sent one, it went to another {name} nobody reads,
-  so have it send again to the one whose card says it reads here. Never "blocked", never "permission".
+  Nothing new: one line; if the person says their agent sent one, it didn't reach this {name}: have it
+  look {name} up again and send again (D334: every Space is read, so never "another Space"; D333 said
+  "another {name} nobody reads"). Never "blocked", never "permission".
 - **The card says where.** After a confirmed connect and once per start, an identity Ducter enrolled
-  gets its Mem profile description kept as "Ducter, a personal AI partner. … It reads messages only in
-  the Space "{label}" ({id}), on its home computer {home}: send to it there. A message sent to it in any
-  other Space is never read." Only over Ducter's own words (or none); never on an identity the person
-  brought. Mem has no switch to hide a stray mailbox in another Space: the person ends it in Mem
-  (`design/todo.md`).
+  gets its Mem profile description kept as "Ducter, a personal AI partner. … It reads messages sent to
+  it in every Space it is in, on its home computer {home}, and replies in the Space the message came
+  from." (D334's words; D333's said "only in the Space …"). Only over Ducter's own words (or none);
+  never on an identity the person brought.
+
+### Every Space the identity is in (D334)
+
+On hel (2026-11-17) the author's Codex sent to `ducter` from the team Space `Everyone`; Mem delivered it
+and nobody read it. The identity is a contact in all 8 of the author's Spaces, but a Mem context is
+(identity, one exact Space) and `bridge inbox` reads only its context's Space. **The address is the
+identity, not the Space.** Asked of Mem as nowledge-co/mem#10402 (one inbox per identity, one contact
+per identity, reply in the message's Space, a device label on connections, an outcome contract);
+until it ships, Ducter handles it.
+
+- **Who meets it.** The heavy developer whose agents sit in team Spaces, and their teammates' agents.
+  *Before:* a message from a team Space vanished, and the card sent the sender elsewhere. *After:* the
+  partner hears it wherever it was sent and answers there. The consumer and the fresh user have one
+  Space and see nothing.
+- **Reading every Space.** Beside the connection's own context, one local context per other Space the
+  identity is in: `agents context select --name <the D324 label>-in-<space slug> --agent-id <identity>
+  --space-id <id>` (a local selection; Mem checks it on use). Which Spaces: those whose `bridge contacts
+  --all-spaces --query <identity>` cards name the identity; when that tells none, every Space passive
+  `bridge setup` lists. Found at connect and at the 30-minute recheck: a new Space added, a gone one
+  dropped, a known one never selected again. Each check reads every context's inbox; one Space not
+  answering doesn't hide the others.
+- **A Space Mem refuses** (`select` says no): kept as `unread` (its label and Mem's code) on Settings'
+  view, one quiet problem row (D332's pane; words owed in `todo.md`). Nothing else is tried: no connect,
+  enrol or `--enable`. Settings otherwise never shows Spaces.
+- **One switch to Mem's fix.** When `bridge inbox --help` offers `--all-spaces` (#10402), the connection's
+  context alone reads every Space (`inbox --all-spaces`, the Space from each message) and the per-Space
+  contexts go unused. The client is one code path: its places and `wide`.
+- **Replies and sends.** Each message keeps its Space (`space`, `spaceLabel` in the Log); a reply, an
+  open, an inspect or a resume runs with that Space's context, so the answer goes back where it was
+  asked. The partner's own send: contacts are looked up in every Space and folded into one card per
+  agent, sent in the Space it last wrote from; else its only card, or the one in the person's own place;
+  else the Space with the most Bridge traffic in the Log. The person is never asked which Space.
+- **A teammate's agent, the first time.** A sender that isn't one of the person's own (a shared Space;
+  an unnamed sender there counts as one until Mem names senders) is held, and its first message is one
+  card with no partner turn:
+
+  | | zh | en |
+  |---|---|---|
+  | The card | **{team} 里{who}想找{name}：「{its first line}」** ({who}: **{member} 的 {agent}**, **{agent}**, or **有个 AI agent**) | **{who} in {team} wants to reach {name}: "{its first line}"** (**{member}'s {agent}**, **{agent}**, or **An AI agent**) |
+  | Go | **答应** | **Let it** |
+  | Hold (the default) | **不理** | **Ignore** |
+
+  Remembered per sender (Ducter's name for it, "reviewer (dev team)", in `peers.allowed` or
+  `peers.muted`): 答应 reads what it sent meanwhile and lets it through as questions under X3's
+  teammate rules (no work, answers only from what that Space shares, its reply back there); 不理 mutes
+  it (恢复 in Settings, or "听 X 的"). No reach setting comes back: D332's one switch turns it all off.
 
 ## Chosen scenarios (dogfood, 2026-11-09)
 
@@ -324,11 +371,10 @@ Why the others wait:
 
 - **Who / feel.** A teammate's reviewer agent needs "Weyl's call on the API rename". *Before:* a Slack ping that
   breaks focus. *After:* the partner answers what is already shared, and brings the user only the decision.
-- **How it starts.** Off until the user opts in. Two steps, both the user's: in Settings › 伙伴, **谁能找到 {name} /
-  Who can reach {name}** → **也包括同事的 / Teammates' too** (built, D170); and, for a team Space, one more context
-  for the same identity there, approved by the user in Mem (Ducter never sets anything up). The per-team switch
-  drafted as **让 <team> 里的 agent 也能找到 {name}** waits until a team context exists to switch; until then the
-  one switch covers every Space the persona has a mailbox in, which today is only Only me (D171).
+- **How it starts (D334).** Per sender, never a setting: the home reads every Space the identity is in, and a
+  teammate's agent's first message is held as one card, **{team} 里{who}想找{name}：「…」 · 答应 / 不理**
+  (default 不理). 答应 lets that sender's messages through under the rules below; 不理 mutes it. (D170's three-way
+  **谁能找到 {name}** and its drafted per-team switch are gone: D332, D334.)
 - **Trust, per sender, in code:**
   - a teammate's agent may ask questions. It can't open a task (a work request becomes a question to the user with
     the default **暂不接下 / Not now**), can't make the partner contact anyone (S2's rule), and gets D107's fixed
@@ -348,9 +394,10 @@ Why the others wait:
 | Sender | Wakes a turn | May open work | When the user is silent | Quota |
 |---|---|---|---|---|
 | The user's own agent | yes | after Go, or by X2's rule | it waits; a question gets "don't act yet" | 20 messages a day, 3 open asks |
-| A teammate's agent (Settings: 也包括同事的) | yes, within quota | never | not now | 20 messages a day, 3 open asks |
-| A teammate's agent (Settings: 只有你自己的, the default) | no; logged, never read again | never | | |
-| Anyone else | can't: the persona has no mailbox outside the Spaces the user approved | | | |
+| A teammate's agent the person said 答应 to (D334) | yes, within quota | never | not now | 20 messages a day, 3 open asks |
+| A teammate's agent, the first time (D334) | no; held, one card 答应 / 不理 (default 不理) | never | held | |
+| A teammate's agent the person said 不理 to | no; logged, never read again | never | | |
+| Anyone else | can't: the persona is reachable only in the Spaces the person is in | | | |
 | A sender the user stopped listening to | no; logged, never read again (the body is opened once by the check; a sender-only probe is B6) | | | |
 | Settings: 谁都不行 | no check at all | | | |
 
@@ -599,11 +646,14 @@ Clients don't render the quiet lines yet. Unknown kinds are skipped.
   - It never calls `bridge setup --enable`, `bridge session prepare`, `agents enroll` or `keys create`. The
     writes it makes are D205's `bridge connections connect` (and `revoke`), on the user's own tap in Settings,
     and D333's card: `agents set <id> --description` on an identity Ducter enrolled, over its own words only.
+    D334 adds local selections only: `agents context select` of that same identity in each other Space it is in
+    (the local context store; never a connection, enrolment or `--enable`).
   - `contacts` (read-only) is called only when the user names an agent. `send` is called only by Ducter's
     code, after the user tapped 发送 on a card that names the recipient (D105).
   - Passive `bridge setup` (never `--enable`) is called once, to learn the user's own member (D108), unless
     `DUCTER_BRIDGE_MEMBER` names it.
-  - The partner never passes `--space` or an agent id. Off unless the user connected the persona (D205) or both
+  - The partner never passes `--space` or an agent id; it picks a Space only by which of the home's contexts
+    it runs under (D334: the message's own, or the card's). Off unless the user connected the persona (D205) or both
     `DUCTER_BRIDGE=1` and `DUCTER_BRIDGE_CONTEXT` are set.
   - Refusals and missing setup are typed results; Ducter never falls back to another identity or Space.
   - D324: a home never connects beside another home's connection for the same identity unless the person taps

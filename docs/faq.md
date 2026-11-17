@@ -241,7 +241,7 @@ your memory works as usual.
 
 ### My other agent says it sent my partner a message. Where is it?
 
-Messages from your other agents come in by themselves within a few minutes. To look now, just
+Messages from your other agents come in by themselves within about a minute. To look now, just
 say so: "check my messages" or "查看来信". Your partner looks right away, answers what you asked
 it to, and tells you what came. Your partner reads its messages in every place you share in
 Nowledge Mem, and answers in the place a message came from. If nothing came although your agent

@@ -96,6 +96,21 @@ export interface BridgeClient {
    */
   inboxIds?(): Promise<BridgeResult<{ ids: string[] }>>;
   /**
+   * D335: whether this CLI's `bridge inbox` takes `--wait` (a long-poll; asked of Mem in
+   * nowledge-co/mem#10402). Read from `inbox --help` once per nmem version, like D205's checks.
+   */
+  canWait?(): Promise<boolean>;
+  /**
+   * D335: one long-poll, `inbox --wait <seconds>` with that context (the home's when none is given):
+   * the inbox's handles once something is there or the wait ends. Opens nothing; the caller checks when a handle is new to it.
+   */
+  waitInbox?(seconds: number, context?: string): Promise<BridgeResult<{ ids: string[] }>>;
+  /**
+   * D335 with D334: the contexts to long-poll, one loop each: every place's own, or (wide) the
+   * home's one, whose `inbox --all-spaces --wait` covers every Space. None given: one, the home's.
+   */
+  waitContexts?(): string[];
+  /**
    * Reply to a received message; the CLI derives the recipient from that original.
    * A failure with reason "unavailable" means the outcome is UNKNOWN (D106): recover it, never resend.
    */
@@ -343,7 +358,9 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
   /** The context that reads (and answers in) a Space; the home's own when it isn't one the home reads. */
   const ctxFor = (space?: string): string => (wide || !space ? home.context : (places.find((p) => p.spaceId === space)?.context ?? home.context));
   // `whole`: the arguments are a whole nmem command (not a `bridge` one under the context).
-  const run = async (args: string[], input?: string, whole = false, ctx = home.context): Promise<{ code: number; out: string; err: string } | { missing: true }> => {
+  // D335: `limitMs` for a long-poll, which holds the read open longer than any other call.
+  const run = async (args: string[], o: { input?: string; whole?: boolean; ctx?: string; limitMs?: number } = {}): Promise<{ code: number; out: string; err: string } | { missing: true }> => {
+    const { input, whole = false, ctx = home.context, limitMs = timeoutMs } = o;
     let proc: ReturnType<typeof Bun.spawn>;
     try {
       // Argument vector, never a shell string: message text can't become a flag or a command.
@@ -356,7 +373,7 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
     } catch {
       return { missing: true };
     }
-    const timer = setTimeout(() => proc.kill(), timeoutMs);
+    const timer = setTimeout(() => proc.kill(), limitMs);
     try {
       const [out, err, code] = await Promise.all([new Response(proc.stdout as ReadableStream).text(), new Response(proc.stderr as ReadableStream).text(), proc.exited]);
       return { code, out, err };
@@ -382,8 +399,8 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
     }
     return r;
   };
-  const read = (args: string[], ctx = home.context) => retried(() => run(args, undefined, false, ctx), false);
-  const write = (args: string[], input: string, ctx = home.context) => retried(() => run(args, input, false, ctx), true);
+  const read = (args: string[], ctx = home.context) => retried(() => run(args, { ctx }), false);
+  const write = (args: string[], input: string, ctx = home.context) => retried(() => run(args, { input, ctx }), true);
   const failure = (r: Ran): BridgeFailure => {
     if ("missing" in r) return { ok: false, reason: "not_configured", message: "Nowledge Mem isn't installed on this machine." };
     const text = `${r.err}\n${r.out}`;
@@ -415,7 +432,7 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
     let p = where.get(ctx);
     if (!p) {
       p = (async () => {
-        const c = await run(["agents", "context", "show", "--name", ctx], undefined, true);
+        const c = await run(["agents", "context", "show", "--name", ctx], { whole: true });
         if ("missing" in c || c.code !== 0) return { personal: false };
         const sel = parse(c.out)?.selection;
         const custodian = str(sel?.address?.custodian_id);
@@ -448,6 +465,7 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
       // and `agents context show`, but `bridge setup` says it was "not found".
       return (await placeOf(home.context)).custodian;
     })());
+  const waitBy = new Map<string, boolean>(); // D335: per nmem version, whether `inbox --wait` exists
   const sent = (r: { code: number; out: string; err: string } | { missing: true }): BridgeResult<{ messageId?: string; operation?: string }> => {
     if ("missing" in r || r.code !== 0) return failure(r);
     const j = parse(r.out);
@@ -549,6 +567,33 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
       }
       return { ok: true, ids };
     },
+    // D335: a long-poll when the CLI offers one, asked once per nmem version.
+    async canWait() {
+      const v = await run(["--version"], { whole: true });
+      if ("missing" in v || v.code !== 0) return false;
+      const version = (v.out || v.err).trim();
+      let can = waitBy.get(version);
+      if (can === undefined) {
+        const h = await run(["inbox", "--help"]);
+        const help = "missing" in h ? "" : `${h.out}\n${h.err}`;
+        // Wide (D334): the one read covers every Space, so the wait must take --all-spaces too.
+        can = !("missing" in h) && h.code === 0 && /--wait\b/.test(help) && (!wide || /--all-spaces\b/.test(help));
+        waitBy.set(version, can);
+      }
+      return can;
+    },
+    // D335 with D334: one long-poll per place's context, or (wide) one on the home's for every Space.
+    waitContexts() {
+      return inboxes().map(({ pl }) => pl.context);
+    },
+    async waitInbox(seconds, context) {
+      const at = inboxes().find(({ pl }) => pl.context === context) ?? inboxes()[0]!;
+      const r = await run([...at.args, "--wait", String(seconds)], { ctx: at.pl.context, limitMs: seconds * 1000 + timeoutMs });
+      if ("missing" in r || r.code !== 0) return failure(r);
+      const j = parse(r.out);
+      if (j === undefined) return { ok: false, reason: "unavailable", message: "Bridge gave no answer." };
+      return { ok: true, ids: inboxIds(j) };
+    },
     async reply(messageId, text, space) {
       // Body through stdin (--body-file -): text starting with "-" can't parse as a flag.
       // D334: in the Space the message came in, with that Space's context.
@@ -597,7 +642,7 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
       return op ? { ok: true, op: { ...op, ...(space ? { space } : {}) } } : { ok: false, reason: "unavailable", message: "Bridge gave no answer." };
     },
     async resume(operation, space) {
-      const r = await run(["resume", operation], undefined, false, ctxFor(space));
+      const r = await run(["resume", operation], { ctx: ctxFor(space) });
       return sent(r);
     },
   };

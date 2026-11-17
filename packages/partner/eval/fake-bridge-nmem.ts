@@ -35,6 +35,9 @@
 // `send_args_prefix: null`). NMEM_FAKE_SENDER_MEMBER=<label> replaces `sender.member` (a display name).
 //   NMEM_FAKE_BUSY=<verb>[:n][:unknown]  the first n (default 1) calls of that verb answer Mem's 503
 //   (`retryable: true`, `outcome_unknown: false`, or true with ":unknown"), exit 1, nothing done.
+// D335: NMEM_FAKE_INBOX_WAIT=1 lists `--wait <SECONDS>` in `bridge inbox --help` and holds `inbox --wait`
+// until an unread message is there for that context (its Space; every Space with --all-spaces);
+// =error answers every wait with a 503-like failure, =error:<ctx>[,<ctx>] only those contexts'.
 //
 // Lost responses (J-Q6 tests): NMEM_FAKE_BRIDGE_LOSE="send" (or "reply", or "send,reply") makes the
 // next such call keep its operation but answer like a dropped connection (exit 1, no JSON).
@@ -206,8 +209,11 @@ if (!verb || verb === "--help" || verb === "help") {
   console.log("fake nmem bridge: setup | contacts [--query Q] | send --to CONTACT (--body TEXT | --body-file -) | inbox | open MESSAGE | reply (--body TEXT | --body-file -) MESSAGE | outbox | inspect OP | resume OP");
   process.exit(0);
 }
+// D335: an nmem whose `inbox` takes `--wait` (NMEM_FAKE_INBOX_WAIT=1; =error: every wait fails;
+// =error:<context>[,<context>]: only those contexts' waits fail, the others hold as with =1).
+const WAITS = process.env.NMEM_FAKE_INBOX_WAIT;
 if (verb === "inbox" && (argv.includes("--help") || argv.includes("-h"))) {
-  console.log(`List incoming messages and automatically refresh outgoing read status\n\nUsage: nmem bridge inbox [OPTIONS]\n\nOptions:\n      --cursor <CURSOR>\n${process.env.NMEM_FAKE_WIDE === "1" ? "      --all-spaces            Read this identity's messages in every Space\n" : ""}  -j, --json\n      --agent-context <NAME>`);
+  console.log(`List incoming messages and automatically refresh outgoing read status\n\nUsage: nmem bridge inbox [OPTIONS]\n\nOptions:\n      --cursor <CURSOR>\n${process.env.NMEM_FAKE_WIDE === "1" ? "      --all-spaces            Read this identity's messages in every Space\n" : ""}${WAITS ? "      --wait <SECONDS>        Hold until a message arrives, at most this long\n" : ""}  -j, --json\n      --agent-context <NAME>`);
   process.exit(0);
 }
 if (!existsSync(statePath)) fail("not_configured", "no fake Bridge state");
@@ -456,6 +462,19 @@ switch (verb) {
     break;
   }
   case "inbox": {
+    // D335: `inbox --wait <s>` (asked of Mem in nowledge-co/mem#10402): holds until an unread
+    // message is there for this context (D334: its Space, or every Space with --all-spaces) or the
+    // wait ends, then answers as `inbox` does.
+    const wait = take("--wait");
+    if (wait !== undefined) {
+      if (!WAITS) fail("bad_arguments", "error: unexpected argument '--wait' found", 2);
+      const failing = WAITS === "error" || (WAITS!.startsWith("error:") && WAITS!.slice(6).split(",").includes(me));
+      if (failing) fail("cloud_agent_im_backend_unavailable", "fake nmem: the wait failed", 1);
+      const until = Date.now() + Number(wait) * 1000;
+      const unread = () => load().messages.some((m) => forMe(m) && !m.pending && !m.read_at);
+      while (!unread() && Date.now() < until) await Bun.sleep(50);
+      Object.assign(s, load());
+    }
     const mine = s.messages.filter((m) => forMe(m) && !m.pending);
     if (NAMED) {
       const messages = mine.map((m) => ({ message: m.id, ...card(m.from), created_at: m.created_at, read: !!m.read_at, ...(m.in_reply_to ? { in_reply_to: m.in_reply_to } : {}) }));

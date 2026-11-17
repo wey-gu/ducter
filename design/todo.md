@@ -1346,6 +1346,15 @@ Codex first, once OAR is near 1.0. See `research/17`.
       hyphenated server). Trigger: the first task on a home with the plugin after D333.
 - [ ] D333: whether a description set with `agents set` shows on the identity's `bridge contacts` cards in every
       Space (research/121 §3, INFERRED). Trigger: the same live run.
+- [ ] D335: the long-poll live. Once an nmem's `bridge inbox --help` lists `--wait` (asked on nowledge-co/mem#10402),
+      check on hel that it holds and returns as the fake does (a handle in the JSON `inbox` shape, back within a second
+      of a send; at the end of the wait, the same shape, exit 0), that a held call never marks anything read, and that
+      a dropped network errors rather than hangs past `--wait` + 20 s. If its shape or exit differ, adjust
+      `waitInbox` and the fake. Until then the timer (1 min, 15 s live, +10 s… after a send) carries it. Trigger: the
+      first nmem with `inbox --wait`.
+- [ ] D335: watch the cost of the minute period on hel (nmem's process start plus one Mem request a minute, about
+      60 an hour): if Mem asks for less, or a laptop's battery shows it, go to 2 min idle and keep the reads after a
+      send. Trigger: a word from the Nowledge team, or the energy report naming nmem.
 - [ ] D324: show a home's display name (not its slug) for another home's connection, once the homes' names are
       known across homes or Mem carries a device label (research/66 §9.3). Trigger: Mem's connection label field.
 - [ ] D324: two homes that each want their own address (a work server and a family Mac) are two partners (D312);

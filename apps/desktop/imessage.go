@@ -9,6 +9,7 @@ import (
 	"github.com/egoist/mygo"
 
 	"github.com/wey-gu/ducter/apps/desktop/internal/client"
+	"github.com/wey-gu/ducter/apps/desktop/internal/computer"
 	"github.com/wey-gu/ducter/apps/desktop/internal/imessage"
 	"github.com/wey-gu/ducter/apps/desktop/internal/media"
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
@@ -18,7 +19,7 @@ import (
 // startIMessage wires this Mac's iMessage bridge (D277) to the app and its
 // connection to the home: the person's words in iMessage go to the home as
 // theirs (via "imessage"), and what answers them comes back. It reads
-// nothing until the person connects it in Settings › Notifications, and
+// nothing until the person connects it in Settings › Chat apps, and
 // never on anything but a Mac. DUCTER_IMESSAGE=off leaves it out.
 func startIMessage(app *views.App, win *mygo.Window, c *client.Client) *imessage.Bridge {
 	if runtime.GOOS != "darwin" || os.Getenv("DUCTER_IMESSAGE") == "off" {
@@ -67,6 +68,8 @@ func startIMessage(app *views.App, win *mygo.Window, c *client.Client) *imessage
 			return
 		},
 		Foreground: func() (f bool) { onMain(func() { f = win.IsVisible() && win.IsFocused() }); return },
+		Host:       imessage.MacHost{}, // D323: the setup's checks
+		Computer:   computer.This,      // D323: which Mac carries iMessage, for the home
 	})
 	app.IMessage = b
 	go b.Run(context.Background())

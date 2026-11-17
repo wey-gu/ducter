@@ -70,3 +70,26 @@ test("channel_status on says a chat app reaches the person, until the socket goe
   for (let i = 0; i < 100 && core.channelUp("imessage"); i++) await Bun.sleep(10);
   expect(core.channelUp("imessage")).toBe(false);
 });
+
+test("D323: every Chat apps page hears which Mac carries iMessage, and that it stops when its socket goes", async () => {
+  const t = tempDir();
+  stops.push(t.cleanup);
+  const core = startCore({ dataDir: t.dir, port: 0, batchMs: 5 });
+  core.setPartner({ onTrigger: () => {} });
+  stops.push(() => core.stop());
+  type Channels = Extract<ServerFrame, { t: "channels" }>;
+  const web = await client(core, "web");
+  web.send({ t: "channels" });
+  const first = (await web.until((f) => f.t === "channels")) as Channels;
+  expect(first.imessage).toBeUndefined();
+  const mini = await client(core, "desktop");
+  mini.send({ t: "channel_status", channel: "imessage", state: "on", computer: "Mac mini\u0007" });
+  const on = (await web.until((f) => f.t === "channels" && !!f.imessage)) as Channels;
+  expect(on.imessage).toEqual([{ computer: "Mac mini", state: "on" }]);
+  mini.send({ t: "channels" });
+  const own = (await mini.until((f) => f.t === "channels" && !!f.imessage)) as Channels;
+  expect(own.imessage).toEqual([{ computer: "Mac mini", state: "on", here: true }]);
+  mini.close();
+  const gone = (await web.until((f) => f.t === "channels" && f !== first && !f.imessage)) as Channels;
+  expect(gone.imessage).toBeUndefined();
+});

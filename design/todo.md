@@ -121,11 +121,10 @@ Built against a fake iLink and CDN only.
   or two.
 - **Pictures and files out** (trigger: the live check passes): AppleScript sends a file to the
   same buddy; D206 media from the partner as attachments.
-- **One Mac per persona** (trigger: a second Mac turns it on): the home should know which socket
-  carries iMessage and tell the other Mac's Settings that another Mac answers there.
-- **iMessage's state on the web's Chat apps page** (trigger: a person sets it up from a phone):
-  the home already hears `channel_status`; show it in the web's iMessage group instead of only
-  "set up on a Mac" (D283).
+- **D323's live check** (trigger: an Apple ID made for a test partner, on a Mac that isn't the
+  author's own Messages): what **检查** reads from Messages' account `description`, whether the code's
+  row carries `destination_caller_id` on macOS 26, whether a brand-new Apple ID gets iMessage on a
+  Mac at the first try, and the background-user row on a real Fast User Switching session.
 - **The Chat apps clay with human raters** (trigger: the next rater round; LLM raters only so far,
   D283; the letter pebbles are gone, D314).
 - **D314's marks still owed** (trigger: the first person who uses one): GitHub Copilot, OpenClaw,

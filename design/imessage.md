@@ -7,7 +7,8 @@ bridge lives in the **Mac app**, which is a client of the home like any other. I
 whether that Mac is the home or a laptop connected to a home on a server.
 
 Evidence: research/88 §4 (the path open-source gateways converged on, identity), research/79 §3
-(why identity is the real constraint), the reference notes in `research/private/` (how one
+(why identity is the real constraint), research/114 (how a person gives the partner an Apple ID of
+its own, D323), the reference notes in `research/private/` (how one
 gateway reads `chat.db`, decodes `attributedBody`, sends with AppleScript and maps tapbacks).
 
 ## The person first
@@ -21,7 +22,8 @@ gateway reads `chat.db`, decodes `attributedBody`, sends with AppleScript and ma
   as them; 顺滑: no new app; 惊喜: the partner is a contact with a face).
 - **First time.** Settings › 聊天软件 / Chat apps › **iMessage**, the third group after Telegram
   and Slack (D283; it was under Notifications). Two choices (whose Apple ID this Mac's Messages is
-  signed in to), **连上 / Connect**, then a six-digit code to text from the phone. The two macOS
+  signed in to) with an honest line about each, the partner's own Apple ID as four steps with a
+  check (D323), **连上 / Connect**, then a six-digit code to text from the phone. The two macOS
   permissions show as two rows that say what they allow, each with **允许 / Allow** until given.
 
 ## What goes where
@@ -88,13 +90,63 @@ D206 media (uploaded to the home from the attachment file); other files are not 
 Two modes, chosen before connecting, both labelled in words:
 
 1. **{name} 自己的 Apple ID（推荐） / {name}'s own Apple ID (recommended).** This Mac's Messages is
-   signed in to an Apple ID made for the partner (best on a Mac that is Ducter's, or a macOS user
-   of its own). The person texts it like a contact; it answers as itself. Full Disk Access then
-   covers only the partner's own Messages.
+   signed in to an Apple ID made for the partner, on a Mac where the person doesn't use Messages
+   themselves (below). The person texts it like a contact; it answers as itself, one to one.
 2. **给自己发信息 / Message yourself.** This Mac's Messages is the person's own Apple ID. The
    partner talks only in the thread the person keeps with themselves; every line starts with
    **{name}：**, so nothing it says can pass for the person's words. The same words seen twice in
    that thread within 30 s are one message; lines starting with the partner's name are its own.
+   Messages itself shows every line of that thread twice (sent and received); Ducter can't change
+   that (research/114 §5), and the card says so.
+
+Under the choice, one line each, what it is like (D323): **一对一的对话，像在跟朋友发消息。要给{name}注册一个
+Apple ID，还要一台你自己不用「信息」的 Mac。** and **现在就能用。但每句话在对话里都会出现两遍，一遍是发出的，一遍是收到的：这是
+「信息」自己的样子，Ducter 改不了。**
+
+## Its own Apple ID, step by step (D323)
+
+**Where it can live** (research/114). One Apple ID in Messages per macOS user, and it may differ from
+the user's iCloud Apple ID.
+
+- **One Mac, where the person doesn't use Messages themselves:** sign only Messages in to the
+  partner's Apple ID. iCloud stays theirs; their own iMessages stay on their phone.
+- **One Mac where they do:** Message yourself. A second macOS user is not offered: AppleScript
+  sending fails while that user is in the background, it must be logged in by hand after every
+  restart, and FileVault rules out automatic login.
+- **A spare Mac (an old MacBook, a Mac mini) or a server home with a Mac:** Ducter on that Mac,
+  connected to the home like any Mac (a D293 worker Mac is the same app), Messages there signed in to
+  the partner's Apple ID, plugged in, awake, logged in. Connect iMessage on that Mac.
+
+**The steps** (partner mode, before Connect), each a step mark and a sentence saying what to do and
+where:
+
+1. **给{name}注册一个 Apple ID。** A new email, on any device; the codes go to the person's own phone
+   number. **打开 account.apple.com**.
+2. **在这台 Mac 上，让「信息」登录{name}的 Apple ID。** Messages › Settings › iMessage: sign out, sign in
+   with the partner's. **检查 / Check** asks Messages (the first time macOS asks for Automation) and
+   says what it found: **「信息」登录的是 {address}。** (done ink); not signed in (failed ink); or, when
+   that address is also this macOS user's iCloud Apple ID, **…和这台 Mac 的 iCloud 是同一个 Apple ID。如果它是你自己的，
+   先在「信息」里换成{name}的。** The address is Messages' account `description` (taken to be its address
+   and dropped when not shaped like one; unverified); iCloud's is the user's `MobileMeAccounts`
+   preferences, read only.
+3. **让这台 Mac 一直开着，Ducter 也开着。** Plugged in, awake, someone logs in after a restart; on a Mac
+   where the person uses Messages, use another Mac. When this macOS user isn't the one in front
+   (it doesn't own the console), the step says so in the failed ink, and so does a row once
+   connected: **从后台的用户发不出 iMessage。…**
+4. **点「连上」，再用你的手机给{name}的 Apple ID 发一串数字。**
+
+**The code tells the truth.** Each row read carries the address of this Messages it came in at
+(`destination_caller_id`, else `account`, else nothing). In partner mode a code arriving in the thread
+of an address with itself means this Messages is the person's own: nobody is linked, nothing is sent,
+and the card says **你发的数字出现在你和自己的对话里：…** with **改成给自己发信息**, which starts over in
+Message yourself. A code that links learns the partner's address, so the code line says
+**用你的手机给 {address} 发这串数字：** and the linked row **{name}用 {address} 和你一对一地聊。…**
+
+**Which Mac carries it.** The bridge's `channel_status` names its Mac (its Computer Name). The home
+puts the Macs carrying iMessage on the Chat apps frame (`imessage: [{computer, state, here}]`),
+again whenever one changes or its socket goes. Another Mac's card says **开着，在「{Mac}」上** and
+**在「{Mac}」上收发**, without Connect (two Macs on one Apple ID would both answer); the web's iMessage
+group says the same.
 
 Structurally it can't impersonate anyone: it only ever sends to the one linked handle, and a
 handle is linked only by sending the code from it. **Seen as the person's own:** in partner mode,
@@ -140,6 +192,11 @@ iMessage。**; **这台 Mac 还没用过「信息」。**; **iMessage 暂时连�
   why not.
 
 ## Built and not
+
+D323 (2026-11-17, fakes only): the steps and the check, the comparison, the receiving address and the
+own-Apple-ID code, the background user, which Mac carries it (Mac, core, web). Not seen live: what
+Messages' `description` returns, `destination_caller_id` on macOS 26, a new Apple ID's first iMessage
+sign-in on a Mac.
 
 Built 2026-11-16 with fakes (a fixture `chat.db` in a temp directory, a fake sender): the package
 `apps/desktop/internal/imessage`, Settings › Chat apps › iMessage (D283)

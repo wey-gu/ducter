@@ -58,12 +58,24 @@ export function ChatAppsSettings() {
     <>
       <p class="af-lede">{t("chats.lede", A.S.personaName)}</p>
       {f.channels.map((v) => (v.kind === "wechat" ? <WechatCard key={v.kind} v={v} /> : <ChannelCard key={v.kind} v={v} manifest={f.slackManifest} />))}
-      <section class="set-card chat-app" aria-label="iMessage">
-        <Head kind="imessage" name="iMessage" line={t("chats.im.mac")} />
-        <Foot note={t("chats.im.mac.note")} />
-      </section>
+      <IMessageCard frame={f} />
       <p class="small chats-goes">{t("chats.goes")}</p>
     </>
+  );
+}
+
+/**
+ * iMessage goes through a Mac. D323: the home says which Mac carries it now; then it is on there,
+ * else this page only says where to set it up (the steps and their checks are on the Mac).
+ */
+export function IMessageCard(p: { frame: Frame }) {
+  const at = p.frame.imessage?.find((m) => m.state === "on");
+  const mac = at ? at.computer || t("chats.im.another") : "";
+  return (
+    <section class="set-card chat-app" aria-label="iMessage">
+      <Head kind="imessage" name="iMessage" line={at ? t("chats.im.on", mac) : t("chats.im.mac")} tone={at ? "done" : undefined} />
+      <Foot note={at ? t("chats.im.on.note", mac) : t("chats.im.mac.note")} />
+    </section>
   );
 }
 

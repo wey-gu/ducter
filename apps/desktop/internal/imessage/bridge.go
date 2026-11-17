@@ -85,6 +85,21 @@ type Status struct {
 	Automation bool
 	// Disk is false while Full Disk Access is missing.
 	Disk bool
+
+	// D323: the setup's checks.
+	// Account is the address this Messages is signed in to iMessage with:
+	// what Messages said when checked, else the address the code came in
+	// at (partner mode). "" until known.
+	Account string
+	// Checked: Messages answered a check (signed in, Automation given).
+	Checked bool
+	// ICloud is this macOS user's iCloud Apple ID, when it said; the same
+	// as Account hints that this Messages is the person's own.
+	ICloud string
+	// Background: this macOS user isn't the one in front, so Messages
+	// can't be driven from here (research/114 §2). User is its name.
+	Background bool
+	User       string
 }
 
 // Wire is the channel_status state the home is told.
@@ -110,6 +125,8 @@ type saved struct {
 	Cursor  int64  `json:"cursor"`
 	LastSeq int64  `json:"lastSeq"`
 	LastVia string `json:"lastVia,omitempty"`
+	// Account is the partner's address the code came in at (D323).
+	Account string `json:"account,omitempty"`
 }
 
 // Options wire a bridge to the app.
@@ -139,6 +156,12 @@ type Options struct {
 	// Ducter starts itself stays there.
 	Foreground func() bool
 	Poll       time.Duration
+	// Host is this Mac and macOS user, for the setup's checks (D323); nil
+	// checks nothing.
+	Host Host
+	// Computer is this Mac's name, told to the home with how the bridge
+	// stands, so the person's other devices can say which Mac carries it.
+	Computer func() string
 }
 
 type card struct {
@@ -202,7 +225,7 @@ func New(o Options) *Bridge {
 	}
 	b := &Bridge{o: o, turns: map[int64]bool{}, done: map[int64]bool{}, seenGUID: map[string]bool{}, out: make(chan outMsg, 64), kick: make(chan struct{}, 1)}
 	b.load()
-	b.status = Status{State: StateOff, Mode: b.st.Mode, Handle: b.st.Handle, Automation: true, Disk: true}
+	b.status = Status{State: StateOff, Mode: b.st.Mode, Handle: b.st.Handle, Automation: true, Disk: true, Account: b.st.Account}
 	if b.st.On {
 		b.status.State = StateOn
 	}
@@ -258,6 +281,12 @@ func (b *Bridge) Status() Status {
 	if b.code != "" {
 		s.Code, s.CodeUntil = b.code, b.codeAt.Add(codeLife)
 	}
+	if s.Account == "" && b.st.Mode == ModePartner {
+		s.Account = b.st.Account
+	}
+	if b.o.Host != nil {
+		s.Background, s.User = !b.o.Host.Front(), b.o.Host.User()
+	}
 	return s
 }
 
@@ -285,7 +314,11 @@ func (b *Bridge) report(always bool) {
 	b.lastWire = w
 	b.mu.Unlock()
 	if (!same || always) && b.o.Report != nil {
-		b.o.Report(protocol.ChannelStatus{T: "channel_status", Channel: chanState, State: w})
+		computer := ""
+		if b.o.Computer != nil {
+			computer = b.o.Computer()
+		}
+		b.o.Report(protocol.ChannelStatus{T: "channel_status", Channel: chanState, State: w, Computer: computer})
 	}
 }
 
@@ -367,18 +400,68 @@ func (b *Bridge) Kick() {
 }
 
 // Probe asks Messages (and, the first time, macOS) for the Automation
-// permission and a signed-in iMessage account.
+// permission and a signed-in iMessage account. D323: it is the setup's
+// check too: which address Messages is signed in with, and this macOS
+// user's iCloud Apple ID beside it.
 func (b *Bridge) Probe(ctx context.Context) error {
 	err := b.o.Sender.Probe(ctx)
 	b.mu.Lock()
 	b.status.Automation = !errors.Is(err, ErrNoAutomation)
 	b.mu.Unlock()
 	if err != nil {
+		b.mu.Lock()
+		b.status.Checked = false
+		off := b.status.State == StateOff
+		b.mu.Unlock()
+		if off {
+			// Before connecting, a check says why in the setup; the bridge
+			// isn't on, so nothing backs off and the home hears nothing.
+			b.mu.Lock()
+			b.status.Err = probeWhy(err)
+			b.mu.Unlock()
+			if b.o.Changed != nil {
+				b.o.Changed()
+			}
+			return err
+		}
 		b.fail(err)
 		return err
 	}
+	account := ""
+	if a, ok := b.o.Sender.(Accounter); ok {
+		account, _ = a.Account(ctx)
+		account = Address(account)
+	}
+	icloud := ""
+	if b.o.Host != nil {
+		icloud = b.o.Host.ICloud(ctx)
+	}
+	b.mu.Lock()
+	b.status.Checked = true
+	if b.status.State == StateOff {
+		b.status.Err = ""
+	}
+	if account != "" {
+		b.status.Account = account
+	}
+	b.status.ICloud = icloud
+	b.mu.Unlock()
+	if b.o.Changed != nil {
+		b.o.Changed()
+	}
 	b.Kick()
 	return nil
+}
+
+// Why a check before connecting failed, as a state word for Settings.
+func probeWhy(err error) string {
+	switch {
+	case errors.Is(err, ErrNoAutomation):
+		return StateNeedsAuto
+	case errors.Is(err, ErrNotSignedIn):
+		return StateNotSigned
+	}
+	return StateError
 }
 
 func newCode() (string, error) {
@@ -531,8 +614,24 @@ func (b *Bridge) handle(r Row) {
 	// Pairing: a received message carrying the code links its sender. Only
 	// received ones: the person texting the code to a friend links no one.
 	if !b.st.On && b.code != "" {
+		// D323: in partner mode the code tells whose Messages this is. The
+		// code in the thread of this Messages' own address with itself (sent
+		// or received) means it is the person's own Apple ID: link no one,
+		// and say so. A code sent to a friend still links no one, silently.
+		own := b.st.Mode == ModePartner && hasCode(r.Text, b.code) && sameHandle(Address(r.Dest), r.Handle)
+		if own {
+			b.code = ""
+			b.save()
+			b.mu.Unlock()
+			b.setState(StateOwnID, "")
+			return
+		}
 		if !r.FromMe && r.Handle != "" && hasCode(r.Text, b.code) {
 			b.st.On, b.st.Handle, b.code = true, r.Handle, ""
+			if dest := Address(r.Dest); b.st.Mode == ModePartner && dest != "" {
+				b.st.Account = dest
+				b.status.Account = dest
+			}
 			b.save()
 			b.mu.Unlock()
 			b.setState(StateOn, "")

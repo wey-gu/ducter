@@ -67,6 +67,8 @@ export interface WsData {
   handset?: import("./handset/index.ts").HandsetSocket;
   /** D277: this Mac app's iMessage bridge, as it last said (channel_status). */
   imessage?: "on" | "needs_permission" | "not_signed_in" | "off" | "error";
+  /** D323: the Mac that bridge runs on, as the Mac app named it (its Computer Name). */
+  imessageOn?: string;
   /** D293: how this socket reached the home (core reads it off the upgrade request). */
   via?: import("@ducter/protocol").DeviceVia & { url?: string };
 }
@@ -308,10 +310,36 @@ export function createWsHandler(deps: WsDeps) {
       for (const ws of sockets) if (ws.data.connections) send(ws, connectionsFrame());
     });
   };
+  // D323: which Macs carry iMessage now (a Mac app's bridge that isn't off), for every Chat apps
+  // page: the person's own Mac and the web say "on, at the Mac mini" instead of offering a setup.
+  const imessageCarriers = (me: ServerWebSocket<WsData>) => {
+    const out: { computer: string; state: Exclude<NonNullable<WsData["imessage"]>, "off">; here?: true }[] = [];
+    for (const s of sockets) {
+      const st = s.data.imessage;
+      if (!st || st === "off") continue;
+      const computer = s.data.imessageOn ?? "";
+      const here = s === me;
+      const same = computer ? out.find((c) => c.computer === computer) : undefined;
+      if (same) {
+        if (here) same.here = true;
+        if (st === "on") same.state = "on";
+        continue;
+      }
+      out.push({ computer, state: st, ...(here ? { here: true as const } : {}) });
+    }
+    return out;
+  };
+  const channelsFrame = (ws: ServerWebSocket<WsData>) => {
+    const f = deps.channels!.frame();
+    const im = imessageCarriers(ws);
+    return im.length ? { ...f, imessage: im } : f;
+  };
+  const channelsChanged = () => {
+    if (!deps.channels) return;
+    for (const ws of sockets) if (ws.data.channels) send(ws, channelsFrame(ws));
+  };
   // D276: 聊天软件 / Chat apps: every subscriber gets a fresh frame on every change.
-  const offChannels = deps.channels?.onChange(() => {
-    for (const ws of sockets) if (ws.data.channels) send(ws, deps.channels!.frame());
-  });
+  const offChannels = deps.channels?.onChange(channelsChanged);
   // D218: the own-number card follows the phone (plugged in, allowed, the test call, a live call).
   let ownTimer: ReturnType<typeof setTimeout> | undefined;
   const offOwn = deps.ownNumber?.onChange(() => {
@@ -628,7 +656,13 @@ export function createWsHandler(deps: WsDeps) {
       }
       case "channel_status": {
         // D277: how this Mac app's iMessage bridge stands; gone with the socket.
-        if (f.channel === "imessage") ws.data.imessage = f.state;
+        // D323: and on which Mac, so every Chat apps page can say where it is on.
+        if (f.channel !== "imessage") return;
+        const on = typeof f.computer === "string" ? f.computer.replace(/[\p{Cc}\p{Cf}]/gu, " ").trim().slice(0, 64) : "";
+        const changed = ws.data.imessage !== f.state || (!!on && ws.data.imessageOn !== on);
+        ws.data.imessage = f.state;
+        if (on) ws.data.imessageOn = on;
+        if (changed) channelsChanged();
         return;
       }
       case "decide": {
@@ -1572,7 +1606,7 @@ export function createWsHandler(deps: WsDeps) {
         if (!ch) throw new Error("chat apps aren't available here");
         if (f.t === "channels") {
           ws.data.channels = true;
-          return send(ws, ch.frame());
+          return send(ws, channelsFrame(ws));
         }
         const kind = f.kind === "slack" ? "slack" : f.kind === "telegram" ? "telegram" : f.kind === "wechat" ? "wechat" : undefined;
         if (!kind) throw new Error("which chat app?");
@@ -1749,6 +1783,7 @@ export function createWsHandler(deps: WsDeps) {
         if (ws.data.phoneSink) void deps.ownPhone?.drop(ws.data.phoneSink);
         if (ws.data.handset && ws.data.device) deps.handsets?.gone(ws.data.device.id, ws.data.handset);
         if (ws.data.device) devicesView()?.changed();
+        if (ws.data.imessage && ws.data.imessage !== "off") channelsChanged(); // D323: that Mac no longer carries it
         deps.home?.socketsChanged?.();
       },
       async message(ws: ServerWebSocket<WsData>, raw: string | Buffer) {

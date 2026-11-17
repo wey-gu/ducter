@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -27,6 +28,10 @@ type Row struct {
 	// Handle is the other side's address (+8613…, someone@icloud.com):
 	// the sender of a received message, the recipient of a sent one.
 	Handle string
+	// Dest is this Messages' own address the message came in at or went
+	// out from (D323: destination_caller_id, else account, without its
+	// "e:" / "p:"); "" when the database doesn't say.
+	Dest string
 	// Chat is the chat's identifier; Group is a group chat (never read).
 	Chat  string
 	Group bool
@@ -171,7 +176,7 @@ func (s SQLiteStore) MaxRowID(ctx context.Context) (int64, error) {
 }
 
 // The columns are those macOS 14 and later have; a group chat is style 43.
-const sinceSQL = `SELECT m.ROWID AS rowid, COALESCE(m.guid,'') AS guid, COALESCE(m.text,'') AS text,
+const sinceSQL = `SELECT m.ROWID AS rowid, COALESCE(m.guid,'') AS guid, COALESCE(m.text,'') AS text, %s AS dest,
  COALESCE(hex(m.attributedBody),'') AS body, COALESCE(m.is_from_me,0) AS from_me,
  COALESCE(h.id,'') AS handle, COALESCE(c.chat_identifier,'') AS chat, COALESCE(c.style,0) AS style,
  COALESCE(m.date,0) AS date, COALESCE(m.associated_message_type,0) AS assoc_type,
@@ -193,7 +198,19 @@ func (s SQLiteStore) Since(ctx context.Context, after int64, limit int) ([]Row, 
 	if limit <= 0 {
 		limit = 200
 	}
-	rows, err := s.query(ctx, fmt.Sprintf(sinceSQL, after, limit))
+	var rows []map[string]any
+	var err error
+	for {
+		i := destCol(s.Path)
+		rows, err = s.query(ctx, fmt.Sprintf(sinceSQL, destCols[i], after, limit))
+		if err != nil && i < len(destCols)-1 && strings.Contains(err.Error(), "no such column") {
+			destMu.Lock()
+			destTry[s.Path] = i + 1
+			destMu.Unlock()
+			continue
+		}
+		break
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -210,6 +227,7 @@ func (s SQLiteStore) Since(ctx context.Context, after int64, limit int) ([]Row, 
 			Date:      appleTime(num(m["date"])),
 			AssocType: int(num(m["assoc_type"])),
 			AssocGUID: str(m["assoc_guid"]),
+			Dest:      plainAddress(str(m["dest"])),
 		}
 		if r.Text == "" {
 			if b, err := hex.DecodeString(str(m["body"])); err == nil {
@@ -231,6 +249,31 @@ func (s SQLiteStore) Since(ctx context.Context, after int64, limit int) ([]Row, 
 		out = append(out, r)
 	}
 	return out, nil
+}
+
+// D323: where a message says which of this Messages' addresses it came in
+// at: destination_caller_id on recent macOS, account ("e:me@icloud.com")
+// before it, nothing on a database that has neither. The first that the
+// database has is remembered per database.
+var (
+	destCols = []string{"COALESCE(m.destination_caller_id,'')", "COALESCE(m.account,'')", "''"}
+	destMu   sync.Mutex
+	destTry  = map[string]int{}
+)
+
+func destCol(path string) int {
+	destMu.Lock()
+	defer destMu.Unlock()
+	return destTry[path]
+}
+
+// plainAddress takes the service mark off an address ("e:", "E:", "p:").
+func plainAddress(a string) string {
+	a = strings.TrimSpace(a)
+	if len(a) > 2 && a[1] == ':' && strings.ContainsRune("eEpP", rune(a[0])) {
+		a = a[2:]
+	}
+	return a
 }
 
 // Stamp implements Store.

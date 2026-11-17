@@ -53,6 +53,9 @@ func (a *App) appUpdateSection(c *ui.Context) {
 		return // the version is in the About card
 	}
 	ss := &a.settings
+	// The home's answer to this page's Check ends its 在检查… here too: the
+	// Devices card isn't drawn, so nothing else reads it (research/124).
+	a.drainDeviceResults()
 	st := u.Status()
 	line, why := a.L.T("settings.update.version", firstNonEmpty(st.Current, a.versionText())), ""
 	switch st.State {

@@ -238,8 +238,11 @@ const clip = (s: string, n = 160) => {
   const one = s.replace(/\s+/g, " ").trim();
   return one.length <= n ? one : one.slice(0, n - 1) + "…";
 };
-const detailIn = (out: string, err: string): string => {
+export const detailIn = (out: string, err: string): string => {
   for (const j of jsonIn(out, err)) if (typeof j?.detail === "string" && j.detail.trim()) return clip(j.detail);
+  // research/124: `nmem --json` says `{"error": "not_found", …}` or `{"message": …}`; the row shows those words, never the braces.
+  for (const j of jsonIn(out, err))
+    for (const w of [j?.message, j?.error?.message, j?.error]) if (typeof w === "string" && w.trim()) return clip(w.replace(/_/g, " "));
   return clip(err || out || "no answer");
 };
 

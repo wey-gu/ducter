@@ -98,6 +98,8 @@ interface Table {
   /** Today, yesterday, {n} days ago, last week. */
   when: [string, string, string, string];
   and: string;
+  /** Between the names before the last one (research/124: three agents read "A and B and C"). */
+  sep: string;
   looked: string;
   lookedOne: string;
   /** Where the records were read: this computer, or the home by its name (D327). */
@@ -127,6 +129,7 @@ const T: { en: Table } & Partial<Record<LangTag, Table>> = {
     hello: ["早上好，我是{name}。", "中午好，我是{name}。", "下午好，我是{name}。", "晚上好，我是{name}。", "这么晚还没睡？我是{name}。"],
     when: ["今天", "昨天", "{n} 天前", "上周"],
     and: " 和 ",
+    sep: "、",
     looked: "我看了看{where}你的 {who} 最近在做的事，这几件要不要接着来？",
     lookedOne: "我看了看{where}你的 {who} 最近在做的事，这件要不要接着来？",
     here: "这台电脑上",
@@ -149,6 +152,7 @@ const T: { en: Table } & Partial<Record<LangTag, Table>> = {
     hello: ["Good morning, I'm {name}.", "Hi there, I'm {name}.", "Good afternoon, I'm {name}.", "Good evening, I'm {name}.", "Up late? I'm {name}."],
     when: ["Today", "Yesterday", "{n} days ago", "Last week"],
     and: " and ",
+    sep: ", ",
     looked: "I had a look at what your {who} worked on lately {where}. Want to pick one of these up?",
     lookedOne: "I had a look at what your {who} worked on lately {where}. Want to pick this up?",
     here: "on this computer",
@@ -220,6 +224,10 @@ const tilde = (p: string, home: string) => (p === home ? "~" : p.startsWith(home
 
 const AGENT: Record<LocalAgent, string> = { "claude-code": "Claude Code", codex: "Codex", pi: "pi" };
 
+/** "Claude Code, Codex and pi" / "Claude Code、Codex 和 pi": the last two by "and", the rest by the list mark. */
+export const namesOf = (t: Pick<Table, "and" | "sep">, names: string[]): string =>
+  names.length < 3 ? names.join(t.and) : names.slice(0, -1).join(t.sep) + t.and + names.at(-1);
+
 /** One offer for one folder: its newest session with something to say. */
 function offer(p: FirstFolder, i: FirstWordsInput, home: string): FirstStart {
   const t = words(T, i.lang);
@@ -251,13 +259,13 @@ export function firstWords(i: FirstWordsInput): FirstWordsOut {
   const parts = [greet(i.lang, i.name, i.now, i.tz)];
   if (i.mem) parts.push(space(t.mem));
   const where = i.computer ? fill(t.on, { computer: i.computer }) : t.here;
-  if (offers.length) parts.push(space(fill(offers.length > 1 ? t.looked : t.lookedOne, { who: looked.map((a) => AGENT[a]).join(t.and), where })));
+  if (offers.length) parts.push(space(fill(offers.length > 1 ? t.looked : t.lookedOne, { who: namesOf(t, looked.map((a) => AGENT[a])), where })));
   else parts.push(t.plain);
   if (i.noBrain) parts.push(t.noBrain);
   const starts: FirstStart[] = [...offers];
   // D327: nothing read yet, but their agents kept records here: the first start asks to look.
   if (!offers.length && i.canLook?.length) {
-    const look = space(fill(t.look, { who: i.canLook.map((a) => AGENT[a]).join(t.and) }));
+    const look = space(fill(t.look, { who: namesOf(t, i.canLook.map((a) => AGENT[a])) }));
     starts.push({ id: "look", from: "look", words: look, draft: look });
   }
   // D329: with Mem there, one start asks what it remembers (an everyday start: no record was read).
@@ -292,11 +300,14 @@ export function forgetFirstWords(body: { text: string; first?: FirstWords }, o: 
     // An answer to the person's look says that it forgot; the first words say the everyday line.
     for (const t of Object.values(T) as Table[]) {
       const where = fw.computer ? fill(t.on, { computer: fw.computer }) : t.here;
-      const who = fw.looked.map((a) => AGENT[a]).join(t.and);
-      for (const pat of [t.looked, t.lookedOne, t.none]) {
-        const said = space(fill(pat, { who, where }));
-        if (text.includes(said)) text = fw.look ? space(fill(t.forgotten, { who })) : text.replace(said, t.plain);
-      }
+      const names = fw.looked.map((a) => AGENT[a]);
+      const who = namesOf(t, names);
+      // Words said before research/124 joined three names by "and" alone.
+      for (const was of [who, names.join(t.and)])
+        for (const pat of [t.looked, t.lookedOne, t.none]) {
+          const said = space(fill(pat, { who: was, where }));
+          if (text.includes(said)) text = fw.look ? space(fill(t.forgotten, { who })) : text.replace(said, t.plain);
+        }
     }
   }
   return { text, first: { ...fw, starts, ...(o.folder ? {} : { forgot: true as const }) } };
@@ -314,7 +325,7 @@ export function lookWords(i: Omit<FirstWordsInput, "name" | "everyday" | "noBrai
   const found = [...new Set(i.projects.slice(0, FIRST_OFFERS).flatMap((p) => p.sessions.map((s) => s.agent)))].sort() as LocalAgent[];
   const looked = found.length ? found : [...i.agents].sort();
   const where = i.computer ? fill(t.on, { computer: i.computer }) : t.here;
-  const who = looked.map((a) => AGENT[a]).join(t.and);
+  const who = namesOf(t, looked.map((a) => AGENT[a]));
   const text = space(fill(offers.length ? (offers.length > 1 ? t.looked : t.lookedOne) : t.none, { who, where }));
   return { text, first: { starts: offers, ...(looked.length ? { looked } : {}), ...(i.computer ? { computer: i.computer } : {}), look: true } };
 }

@@ -34,6 +34,7 @@ func (a *App) onHand(c *ui.Context) {
 	groups := a.lensGroups(b)
 	lens := a.currentLens(groups)
 	a.oh.lens, a.oh.showProj = lens, lensOn(groups) && lens == ""
+	a.oh.usual = usualComputer(b)
 	w := a.winW
 	if w <= 0 {
 		w = 1280
@@ -71,7 +72,10 @@ func (a *App) onHand(c *ui.Context) {
 							a.lensTabs(c, groups, lens)
 						}
 						find = a.boardTop(c, lb, groups, lens)
-						if a.oh.filter == 0 && !day {
+						// D315: only while something needs you: otherwise the line
+						// under the partner already says when the first is back, and
+						// each card says its own.
+						if a.oh.filter == 0 && !day && a.stateCounts(lb, lens)[0] > 0 {
 							a.forecastBand(c, lb)
 						}
 						if loose(lens) && (a.oh.filter == 0 || a.oh.filter == 2) {
@@ -308,13 +312,15 @@ func (a *App) forecastBand(c *ui.Context, b store.Board) {
 	}
 	for _, task := range b.Lanes[store.LaneWaiting] {
 		if w := a.S.WaiterFor(task.ID); w != nil {
-			if at := store.ParseTime(firstNonEmpty(w.Until, w.At)); !at.IsZero() {
+			// D315: when it comes back is its next look, as its card and the
+			// head say, never the end of its watch.
+			if at := nextAt(w); at.After(a.Now()) {
 				items = append(items, coming{a.when(at), shortTitle(task.Title())})
 			}
 		}
 	}
 	for _, w := range a.looseWaiters() {
-		if at := store.ParseTime(w.At); !at.IsZero() {
+		if at := nextAt(w); at.After(a.Now()) {
 			items = append(items, coming{a.when(at), w.Reason})
 		}
 	}

@@ -1676,4 +1676,10 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - **The iPhone and Android apps** open the web's sheet; a native view when those apps get Past tasks natively.
 
 ## D313: On hand's cheer (2026-11-17)
-- [ ] **The web's cheer matches the Mac's** (`oh-cheer`: wait for the view transition to finish, swell from rest to ~1.02 and back). Trigger: the next On hand pass.
+- [x] **The web's cheer matches the Mac's**: it swells from rest to ~1.02 and back (D315). Waiting for the view transition to finish is still open. Trigger: the next On hand pass.
+
+## D315: On hand after the review (2026-11-17)
+- [ ] **The conversation's header in one word order** (「1 件等你　在做 2 件」 → 「1 件等你　2 件在做」), both clients and their tests. Trigger: the next header change.
+- [ ] **今天做完's section and the strip count the same** (a done only claimed is listed but not counted, D310). Trigger: the author sees 「今天做完 1」 over a strip without it.
+- [ ] **A demo with two computers** in `demo-onhand.ts`, so the shots show where on the one card that runs elsewhere. Trigger: the next On hand shots.
+- [ ] **On hand in front of people**: the author, then a consumer who has never heard "agent" (research/95). Trigger: D315 reviewed.

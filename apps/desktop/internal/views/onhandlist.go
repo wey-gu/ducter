@@ -57,6 +57,9 @@ type onHandState struct {
 	// results whose card has had its little moment.
 	listW   float32
 	cheered map[string]bool
+	// D315: the computer most of the board's tasks run on; a card names
+	// its computer only when it is another.
+	usual string
 }
 
 // latestStep is the task's latest step or words: the newest one this Mac
@@ -407,7 +410,7 @@ func (a *App) onHandList(c *ui.Context, b store.Board) {
 					a.oh.quietOn = !a.oh.quietOn
 				}
 				if quietOpen {
-					a.taskRows(c.Key("quiet"), quiet, false)
+					a.compactCards(c.Key("quiet"), quiet, true)
 				}
 			}
 		})
@@ -432,7 +435,7 @@ func (a *App) onHandList(c *ui.Context, b store.Board) {
 				for _, w := range missed {
 					a.missedRow(c.Key("m:"+w.WaiterID), w)
 				}
-				a.taskRows(c.Key("seen"), seen, false)
+				a.compactCards(c.Key("seen"), seen, false)
 			}
 		})
 	}
@@ -466,10 +469,20 @@ func (a *App) listSection(c *ui.Context, key, name string, n int, body func()) {
 		padX = t.S3
 	}
 	ui.Column(c.Key("sec:" + key)).Gap(t.S1).Children(func() {
-		ui.Row(c).Gap(t.S2).AlignItems(ui.Center).MinHeight(28).Padding(0, padX).Children(func() {
-			ui.Text(c, name).FontSize(t.XS).FontWeight(600).TextColor(t.InkMuted)
-			if n > 0 {
-				ui.Text(c, fmt.Sprint(n)).FontSize(t.XS).FontWeight(500).TextColor(t.Faint).FontFeatures("tnum")
+		ui.Row(c).Gap(t.S2).AlignItems(ui.Baseline).MinHeight(28).Padding(0, padX).Children(func() {
+			if a.oh.room == "rail" {
+				ui.Text(c, name).FontSize(t.XS).FontWeight(600).TextColor(t.InkMuted)
+				if n > 0 {
+					ui.Text(c, fmt.Sprint(n)).FontSize(t.XS).FontWeight(500).TextColor(t.Faint).FontFeatures("tnum")
+				}
+			} else {
+				// D315: on the board a section's name is a heading in the
+				// display face, its count beside it in muted figures, as
+				// the board's first drawings had it.
+				ui.Text(c, name).Font(t.Display).FontSize(t.LG).FontWeight(700).TextColor(t.Ink)
+				if n > 0 {
+					ui.Text(c, fmt.Sprint(n)).Font(t.Display).FontSize(t.LG).FontWeight(600).TextColor(t.InkMuted).FontFeatures("tnum")
+				}
 			}
 			if key == "needs" && a.oh.room != "rail" {
 				ui.Spacer(c)
@@ -502,7 +515,6 @@ func (a *App) taskRows(c *ui.Context, tasks []*store.Task, state bool) {
 func (a *App) taskRow(c *ui.Context, task *store.Task, state bool) {
 	t := a.T
 	att := task.Attention()
-	p := task.Place()
 	s := a.storyOf(task)
 	focus := a.oh.focus == task.ID
 	// D244: one status place; beside an opened task an active row says
@@ -531,7 +543,7 @@ func (a *App) taskRow(c *ui.Context, task *store.Task, state bool) {
 		row.Background(t.Ink.Alpha(0.04))
 	}
 	row.Children(func() {
-		if att == protocol.Blocked {
+		if att == protocol.Blocked && !rail { // D315: beside a task the row says only its title and its face, never a second sign
 			if w := a.S.WaiterFor(task.ID); w != nil {
 				a.waitBubble(c, waitGlyph(w.Check, w.Event), 32)
 			}
@@ -632,14 +644,7 @@ func (a *App) taskRow(c *ui.Context, task *store.Task, state bool) {
 				// Where, quietly: its project when the board shows all of them,
 				// and its computer when there are two or more. Who does it and
 				// its branch are in the task.
-				meta := []string{}
-				if a.oh.showProj {
-					meta = append(meta, a.lensName(lensOf(task)))
-				}
-				if a.manyComputers() && p.Kind != "none" && p.Device != "" {
-					meta = append(meta, a.computerName(p.Device))
-				}
-				for _, m := range meta {
+				for _, m := range a.whereMeta(task) {
 					ui.Text(c.Key("meta:"+m), m).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(0).MaxWidth(200)
 				}
 			})

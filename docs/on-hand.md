@@ -11,13 +11,15 @@ in the conversation's header, or press ⌘2.
 
 ## What you see
 
-At the top is your partner, and one sentence that sums everything up: "Nothing needs you. 4
-waiting: the first back at 22:40, 2 quiet for over a day; 1 done today." Its pose tells you the
-same at a glance: a little flag when something needs you, reading while work is under way,
-resting on its bench while everything waits, smiling when the day's work came back done.
+At the top is your partner, with one short line: whether anything needs you, and if not, what
+comes next: "Nothing needs you. I'm on it." while work is under way, or "Nothing needs you. The
+first is back at 22:40." when everything waits. Its pose tells you the same at a glance: a little
+flag when something needs you, reading while work is under way, resting on its bench while
+everything waits, smiling when the day's work came back done.
 
-Under it are four numbers: **Needs you**, **Working**, **Waiting** and **Done today**. Tap
-one to see only those tasks; tap it again (or press **Esc**) to see everything.
+Under the line are the numbers of what's there, such as **4 Waiting** and **1 Done today** (a
+state with nothing in it isn't shown, and with only one kind there the section says it). Tap one to see only those tasks; tap it again (or press
+**Esc**) to see everything.
 
 What needs you comes first, and each one is the question itself, answered right there. Below
 that, the rest:
@@ -38,7 +40,11 @@ at the bottom a live sign:
   you to do until then;
 - done: when it finished, with its result right on the card.
 
-Older waits and results you've already seen are plain rows, with the same words.
+Waits that haven't changed for over a day, and results you've already seen, are lower cards with
+the same words. A quiet wait offers what to do right there: **Check now** (it looks again now) or
+**Continue** (it carries on), and **Put down** (it stops; you'll still find it in Past tasks).
+
+A card says which computer it runs on only when that isn't the one most of your tasks use.
 
 On a wide window, a column on the right shows your day: what comes back next, now, and what came
 back today with its result. Click any of them to open the task.

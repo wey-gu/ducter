@@ -399,6 +399,21 @@ export function headSay(lens: string, n = stateCounts(lens), now = Date.now()): 
   return `${first}${A.L.style.spaced ? " " : ""}${A.L.style.cased ? rest[0]!.toUpperCase() + rest.slice(1) : rest}`;
 }
 
+/** On hand's own line under the partner (D315): one short sentence in its voice that says what the
+ *  strip can't, whether anything needs you and, when nothing does, what comes next. The counts are
+ *  the strip's; the full sentence (headSay) stays the bar's. The Mac's headLine says the same. */
+export function headLine(lens: string, n = stateCounts(lens), now = Date.now()): string {
+  if (n[0]) return n[0] === 1 ? t("onhand.say.needs.one") : t("onhand.say.needs", n[0]);
+  if (n[1]) return t("onhand.line.working");
+  if (n[2]) {
+    const w = waitsAhead(lens, now);
+    if (!Number.isFinite(w.first)) return t("onhand.line.quiet");
+    const at = soon(new Date(w.first).toISOString(), now);
+    return n[2] - w.quiet <= 1 ? t("onhand.line.one", at) : t("onhand.line.first", at);
+  }
+  return n[3] ? t("onhand.line.done") : t("onhand.line.idle");
+}
+
 /** The head sentence's marks, per language (D292). */
 const SAY_MARKS: Record<TableLang, { colon: string; comma: string; semi: string; stop: string }> = {
   zh: { colon: "：", comma: "，", semi: "；", stop: "。" },
@@ -420,44 +435,45 @@ function BoardTop({ lens, groups, findable, room }: { lens: string; groups: Lens
   const names = ["lane.needs_you", "lane.working", "lane.waiting", "lane.done"];
   const g = groups.find((x) => x.key === lens && x.key !== OTHER);
   const mood = moodOf(n);
+  const live = n.filter((c) => c > 0).length;
   return (
     <div class="board-top">
       <div class={`oh-head m-${mood}`}>
         <span class="oh-face">
           <Avatar size={room === "full" ? 76 : 56} state={mood} />
         </span>
-        <p class="oh-say" aria-live="polite">
-          {headSay(lens, n)}
-        </p>
-      </div>
-      <div class="strip-row">
-        <div class="strip" role="group" aria-label={t("onhand.strip")}>
-          {names.map((k, i) => {
-            const c = n[i]!;
-            const on = L.filter === i + 1;
-            return (
-              <button
-                key={k}
-                class={`cell${on ? " on" : ""}${!c ? " none" : ""}${i === 0 && c ? " needs" : ""}`}
-                disabled={!c}
-                aria-pressed={on}
-                aria-label={`${t(k)} ${c}`}
-                onClick={() => ((L.filter = on ? 0 : i + 1), (L.focus = ""), A.changed())}
-              >
-                <b>{c}</b>
-                <span>{t(k)}</span>
-              </button>
-            );
-          })}
+        <div class="oh-says">
+          <p class="oh-say" aria-live="polite">
+            {headLine(lens, n)}
+          </p>
+          {(live >= 2 || L.filter > 0) && (
+            <div class="strip" role="group" aria-label={t("onhand.strip")}>
+              {names.map((k, i) => {
+                const c = n[i]!;
+                if (!c) return null; // D315: only the states there are
+                const on = L.filter === i + 1;
+                return (
+                  <button key={k} class={`cell${on ? " on" : ""}${i === 0 ? " needs" : ""}`} aria-pressed={on} aria-label={`${t(k)} ${c}`} onClick={() => ((L.filter = on ? 0 : i + 1), (L.focus = ""), A.changed())}>
+                    <b>{c}</b>
+                    <span>{t(k)}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
-        <span class="grow" />
-        {g && (
-          <button class="plus" aria-label={`${t("onhand.newhere")} ${g.name}`} title={t("onhand.newhere")} onClick={() => A.openNewTask(g.place && g.place.kind !== "none" ? g.place : { kind: "none" })}>
-            <PlusSm />
-          </button>
-        )}
-        {findable && <Find />}
       </div>
+      {(g || findable) && (
+        <div class="strip-row">
+          {g && (
+            <button class="plus" aria-label={`${t("onhand.newhere")} ${g.name}`} title={t("onhand.newhere")} onClick={() => A.openNewTask(g.place && g.place.kind !== "none" ? g.place : { kind: "none" })}>
+              <PlusSm />
+            </button>
+          )}
+          <span class="grow" />
+          {findable && <Find />}
+        </div>
+      )}
     </div>
   );
 }
@@ -481,7 +497,29 @@ export function matches(task: Task, q: string): boolean {
 // ---------- the keys, the focus and the selection ----------
 
 /** The list's state that outlives a render: the row the keys are on, what is selected, Find. */
-export const L = { focus: "", sel: new Set<string>(), anchor: "", find: "", order: [] as string[], dropAsk: false, filter: 0, quietOn: false, showProj: false };
+export const L = { focus: "", sel: new Set<string>(), anchor: "", find: "", order: [] as string[], dropAsk: false, filter: 0, quietOn: false, showProj: false, usual: "" };
+
+/** D315: where a card says its task is, each its own element (D291): its project when the board
+ *  shows them all, never 其他 / Other, which says nothing; its computer only when it isn't the one
+ *  most of the board runs on (the usual needs no saying on every card). The Mac's whereMeta. */
+export function whereMeta(task: Task): string[] {
+  const p = placeOf(task);
+  const k = lensOf(task);
+  return [L.showProj && k !== OTHER ? lensName(k) : "", manyComputers() && p.kind !== "none" && p.device && p.device !== L.usual ? computerName(p.device) : ""].filter(Boolean);
+}
+
+/** The computer most of these tasks run on. */
+export function usualComputer(tasks: Task[]): string {
+  const n = new Map<string, number>();
+  let best = "";
+  for (const x of tasks) {
+    const p = placeOf(x);
+    if (p.kind === "none" || !p.device) continue;
+    n.set(p.device, (n.get(p.device) ?? 0) + 1);
+    if (n.get(p.device)! > (n.get(best) ?? 0)) best = p.device;
+  }
+  return best;
+}
 
 const typing = () => {
   const el = document.activeElement;
@@ -605,7 +643,7 @@ const TaskRow = memo(function TaskRow({ task, room, state, focus, sel, opened }:
   const wide = room !== "phone";
   // D261: where, quietly: its project when the board shows all of them, its computer with two or
   // more. Who does it and its branch are in the task.
-  const meta = room !== "rail" ? [L.showProj ? lensName(lensOf(task)) : "", wide && manyComputers() && p.kind !== "none" ? computerName(p.device) : ""] : [];
+  const meta = room !== "rail" ? (wide ? whereMeta(task) : whereMeta(task).slice(0, L.showProj && lensOf(task) !== OTHER ? 1 : 0)) : [];
   const quiet = a === "blocked" && room !== "rail" && quietWait(task);
   const next = a === "blocked" && room !== "rail" && !quiet ? waitNext(w) : undefined;
   const acts = wide ? <RowActs task={task} /> : null;
@@ -655,6 +693,53 @@ const TaskRow = memo(function TaskRow({ task, room, state, focus, sel, opened }:
   );
 });
 
+/** D315: the quiet waits and the results you have seen: the cards' own language, one line lower,
+ *  never greyed (a grey card read as failed, research/95). A quiet wait offers its calm next step at
+ *  once: look again now (or carry on, when it said nothing of what it waits for), or put it down. */
+const CompactCard = memo(function CompactCard({ task, room, focus, sel, quiet }: RowProps & { quiet: boolean }) {
+  const a = attention(task);
+  const s = storyOf(task);
+  const w = a === "blocked" ? A.S.waiterFor(task.id) : undefined;
+  const meta = whereMeta(task);
+  const onClick = (e: MouseEvent) => {
+    if (room === "full" && (e.metaKey || e.ctrlKey)) return void (e.preventDefault(), toggle(task.id));
+    if (room === "full" && e.shiftKey) return void (e.preventDefault(), extend(task.id));
+    L.focus = task.id;
+    A.go({ name: "task", id: task.id, full: room === "full" });
+  };
+  return (
+    <div class={`tcompact a-${a}${focus ? " kfocus" : ""}${sel ? " sel" : ""}`} data-row={task.id}>
+      <button class="kmain" onClick={onClick} title={title(task)}>
+        <Coin harness={harnessOf(task)} size={22} motion="still" />
+        <span class="ktx">
+          <span class="k1">
+            <PartnerMark persona={task.card?.persona} />
+            <span class="t">{shortTitle(title(task)) || t("task.unknown")}</span>
+          </span>
+          <span class={`k2${s.tone ? ` ${s.tone}` : ""}`}>
+            <span class="w">{s.words}</span>
+            {quiet && <span class="since">{t("onhand.wait.since", ago(A.L, task.card?.updatedAt))}</span>}
+            <Facts class="meta" items={meta} />
+          </span>
+        </span>
+        {!quiet && <span class="time">{timeOf(task)}</span>}
+      </button>
+      {quiet ? (
+        <span class="tacts on">
+          {w && (w.check || w.event) ? (
+            <Btn kind="secondary" size="sm" label={t("onhand.quiet.look")} about={title(task)} onClick={() => A.waiterAction(w.waiterId, "look")} />
+          ) : (
+            <Btn kind="secondary" size="sm" label={t("onhand.quiet.go")} about={title(task)} onClick={() => A.send({ t: "past_continue", taskId: task.id, words: t("onhand.quiet.go") })} />
+          )}
+          <Btn kind="text" size="sm" label={t("onhand.quiet.drop")} about={title(task)} onClick={() => A.taskAction(task.id, "drop")} />
+        </span>
+      ) : (
+        room !== "phone" && <RowActs task={task} />
+      )}
+    </div>
+  );
+});
+
 /** D287: results already celebrated this session, so a done card's little moment plays once. */
 const cheered = new Map<string, number>();
 
@@ -678,7 +763,7 @@ const TaskCard = memo(function TaskCard({ task, room, focus, sel }: RowProps) {
   const next = w ? waitNext(w) : undefined;
   const working = a === "working" || a === "queued";
   const finishedNow = a === "done" || a === "done_claimed" || a === "failed";
-  const meta = [L.showProj ? lensName(lensOf(task)) : "", manyComputers() && p.kind !== "none" ? computerName(p.device) : ""];
+  const meta = whereMeta(task);
   const onClick = (e: MouseEvent) => {
     if (room === "full" && (e.metaKey || e.ctrlKey)) return void (e.preventDefault(), toggle(task.id));
     if (room === "full" && e.shiftKey) return void (e.preventDefault(), extend(task.id));
@@ -775,10 +860,18 @@ function RowActs({ task }: { task: Task }) {
 
 // ---------- groups ----------
 
-function Rows({ tasks, room, state, cards }: { tasks: Task[]; room: Room; state?: boolean; cards?: boolean }) {
+function Rows({ tasks, room, state, cards, compact }: { tasks: Task[]; room: Room; state?: boolean; cards?: boolean; compact?: "quiet" | "seen" }) {
   if (!tasks.length) return null;
   const r = A.route;
   const openId = r.name === "task" ? r.id : "";
+  if (compact && room !== "rail")
+    return (
+      <div class="tcompacts">
+        {tasks.map((task) => (
+          <CompactCard key={task.id} task={task} room={room} v={ver(task)} focus={L.focus === task.id && room !== "phone"} sel={L.sel.has(task.id)} opened={false} quiet={compact === "quiet"} />
+        ))}
+      </div>
+    );
   // D287: on the board what is alive (at work, freshly waiting, new results) stands as cards; the
   // rail beside an opened task, and what is folded, stay rows.
   if (cards && room !== "rail")
@@ -900,6 +993,7 @@ export function OnHandList({ room }: { room: Room }) {
   L.showProj = lensOn(groups) && !lens;
   const lanes = lensLanes(lens);
   const all = lanes.flat();
+  L.usual = usualComputer(all);
   const q = L.find.trim();
   const rail = room === "rail";
   const f = rail ? 0 : L.filter;
@@ -983,7 +1077,7 @@ export function OnHandList({ room }: { room: Room }) {
           {!rail && looseWs.map((w) => <LooseWait key={w.waiterId} w={w} />)}
           {quietFolds && f !== 3 && !q && <FoldLine words={t("onhand.wait.quiet", quiet.length)} open={quietOpen} onToggle={() => ((L.quietOn = !L.quietOn), A.changed())} />}
           {quiet.length > 0 && !quietFolds && !rail && fresh.length + looseWs.length > 0 && <p class="sub-h">{t("onhand.wait.quiet.head")}</p>}
-          {quiet.length > 0 && quietOpen && <Rows tasks={quiet} room={room} />}
+          {quiet.length > 0 && quietOpen && <Rows tasks={quiet} room={room} compact="quiet" />}
         </Section>
       )}
       {done.length + missed.length + endedCalls.length > 0 && show(4) && (
@@ -1013,7 +1107,7 @@ export function OnHandList({ room }: { room: Room }) {
                     </span>
                   </div>
                 ))}
-              <Rows tasks={seen} room={room} />
+              <Rows tasks={seen} room={room} compact="seen" />
             </>
           )}
         </Section>

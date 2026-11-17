@@ -37,8 +37,22 @@ export interface HandsetState {
    * D253 (bridge 2): the screen is on (Android's interactive state). Absent: an app from before D253.
    */
   awake?: boolean;
-  /** D253: the lock screen is up. A loan never runs on a locked phone: locking gives it back. */
+  /**
+   * D253: the lock screen is up. Nothing runs on a locked phone. D331 (bridge 4): locking pauses a loan
+   * (paused) instead of giving it back; an app before bridge 4 still ends it.
+   */
   locked?: boolean;
+  /**
+   * D331 (bridge 4): the loan is paused because the person locked the phone: locked (still locked), or
+   * asking (unlocked, and the phone asks in a notification whether to keep lending it: 继续借给它 /
+   * Keep lending · 不借了 / Not now). Nothing runs; it never resumes by itself.
+   */
+  paused?: "locked" | "asking";
+  /**
+   * D331 (bridge 4): a Go reached this locked phone: the loan for that task (its session) starts when the
+   * person unlocks it, and the phone says so in a notification.
+   */
+  waiting?: string;
   /**
    * D280: the screen went off by itself while lent (a screen timeout, never the person's own lock):
    * the loan holds, nothing runs until the screen is on again, and the app wakes it. Told apart from a
@@ -59,7 +73,10 @@ export interface HandsetState {
    * boot that holds no loan means the app was closed or killed since: said as such.
    */
   boot?: string;
-  /** D255: which connection says this: the app's own link (a foreground service) or its page. */
+  /**
+   * D255: which connection says this: the app's own link (a foreground service) or its page. D331
+   * (bridge 4): the app's own link stays up while Android's switch is on, lent or not.
+   */
   link?: "native" | "page";
   /** D255: the app's own link's generation in this boot (each reconnect is one more). */
   gen?: number;
@@ -103,8 +120,25 @@ export interface HandsetRecording {
  * closed or paused, or it lost its network); done: the task stopped working. After stop, service and
  * removed the task never has the phone again; after locked and lost a new loan is a new card. D280,
  * given: the task gave it back itself (phone_give_back); its next phone tool asks with a new card.
+ * D331: locked is now an older app's end only (bridge 4 pauses instead); taken: the person chose
+ * 不借了 / Not now on the phone (a paused loan after unlocking, or a Go waiting for the unlock);
+ * expired: a paused loan stayed paused for 30 minutes. After taken and expired a new loan is a new card.
  */
-export type HandsetEnd = "stop" | "service" | "removed" | "locked" | "lost" | "done" | "given";
+export type HandsetEnd = "stop" | "service" | "removed" | "locked" | "lost" | "done" | "given" | "taken" | "expired";
+
+/**
+ * D331: where a task's loan of the person's phone stands, so every window says it truthfully. asking:
+ * the card is asking; unlock: Go given, the phone is locked, and the loan starts when it is unlocked;
+ * away: Go given, the home can't reach the phone (why); starting: Go given, the loan is starting now.
+ * A lent loan is the task card's handset without wait (paused when the person locked it).
+ */
+export type HandsetWait = "asking" | "unlock" | "away" | "starting";
+/**
+ * D331: why the home can't reach the phone, as far as it knows: limited (Android restricts Ducter in the
+ * background there: Battery › Unrestricted fixes it); old (its Ducter has no link of its own: it must be
+ * open); offline (its own link dropped: no network, or Android closed Ducter); unknown (never heard).
+ */
+export type HandsetAway = "limited" | "old" | "offline" | "unknown";
 
 /** On a phone's card (reach.clients): 用这台手机 there, as the home holds it. */
 export interface HandsetView {
@@ -119,7 +153,7 @@ export interface HandsetView {
   /** D278: its app is connected now and can dial a call sheet's number (在 Pixel Fold 上拨打). */
   dial?: boolean;
   /** A task using it now. quiet (D253): the phone hasn't answered for a few seconds (nothing reaches it). */
-  using?: { taskId: string; title: string; app?: string; quiet?: boolean };
+  using?: { taskId: string; title: string; app?: string; quiet?: boolean; paused?: "locked" | "asking" };
 }
 
 /** The phone's methods the home may call, a small fixed set (never a shell). */
@@ -153,7 +187,7 @@ export type HandsetClientFrame =
   // The page's answer to one handset_req, relayed from its app.
   | { t: "handset_res"; id: string; ok: boolean; result?: unknown; error?: string }
   // 停下 / Stop from any window (taskId), or from the phone's own indicator (the page relays it, from: "phone").
-  | { t: "handset_stop"; taskId?: string; from?: "phone"; why?: "stop" | "locked" | "service" | "lost" | "network" }
+  | { t: "handset_stop"; taskId?: string; from?: "phone"; why?: "stop" | "locked" | "service" | "lost" | "network" | "taken" | "expired" }
   // D278: 在 Pixel Fold 上拨打 / Call on Pixel Fold: a call sheet's number, dialled by the Ducter app on
   // that phone (device; absent: the phone that last said hello). Answered with handset_dial_result.
   | { t: "handset_dial"; callId: string; device?: string }

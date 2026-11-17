@@ -39,7 +39,7 @@ class HandsetPill(private val c: Context) {
     /** Ducter's language from the home ("zh" / "en"): the pill speaks it, one language with the
      *  lines the home sends; unset (auto), the phone's own. */
     var lang: String = ""
-    private val loc: Context
+    internal val loc: Context
         get() = if (lang.isEmpty()) c else c.createConfigurationContext(Configuration(c.resources.configuration).apply { setLocale(java.util.Locale.forLanguageTag(lang)) })
     private val still get() = Settings.Global.getFloat(c.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
 

@@ -1731,8 +1731,11 @@ export function createWsHandler(deps: WsDeps) {
           ...(typeof s.awake === "boolean" ? { awake: s.awake } : {}),
           ...(typeof s.locked === "boolean" ? { locked: s.locked } : {}),
           ...(s.asleep === true ? { asleep: true } : {}),
+          // D331: a loan paused by the person's lock, and a Go waiting for the unlock.
+          ...(s.paused === "locked" || s.paused === "asking" ? { paused: s.paused } : {}),
+          ...(typeof s.waiting === "string" && s.waiting ? { waiting: s.waiting.slice(0, 64) } : {}),
           ...(typeof s.limited === "boolean" ? { limited: s.limited } : {}),
-          ...(s.ended && typeof s.ended === "object" && typeof s.ended.session === "string" && ["stop", "service", "locked", "lost", "network"].includes(String(s.ended.why)) ? { ended: { session: s.ended.session, why: s.ended.why } } : {}),
+          ...(s.ended && typeof s.ended === "object" && typeof s.ended.session === "string" && ["stop", "service", "locked", "lost", "network", "taken", "expired"].includes(String(s.ended.why)) ? { ended: { session: s.ended.session, why: s.ended.why } } : {}),
           // D255: the app's run and link, and a recording asked for in a loan.
           ...(typeof s.boot === "string" && s.boot ? { boot: s.boot.slice(0, 40) } : {}),
           ...(s.link === "native" || s.link === "page" ? { link: s.link } : {}),
@@ -1774,7 +1777,7 @@ export function createWsHandler(deps: WsDeps) {
         const fromPhone = f.from === "phone" ? ws.data.device?.id : undefined;
         // D253: the phone says why it ended a loan by itself (locked, its switch went off, the home went quiet).
         // D255: network (its own link couldn't reach the home).
-        const why = fromPhone && (f.why === "locked" || f.why === "service" || f.why === "lost" || f.why === "network" || f.why === "stop") ? f.why : undefined;
+        const why = fromPhone && (f.why === "locked" || f.why === "service" || f.why === "lost" || f.why === "network" || f.why === "stop" || f.why === "taken" || f.why === "expired") ? f.why : undefined;
         const ok = deps.handsets ? await deps.handsets.stop(typeof f.taskId === "string" && f.taskId ? f.taskId : undefined, fromPhone, why) : false;
         send(ws, { t: "handset_stop_result", ...(f.taskId ? { taskId: f.taskId } : {}), ok });
         if (ws.data.client !== "handset") send(ws, { t: "on_hand", onHand: tasks.onHand() });

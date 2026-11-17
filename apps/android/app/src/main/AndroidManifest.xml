@@ -111,14 +111,15 @@
                 android:resource="@xml/handset_service" />
         </service>
 
-        <!-- D255: the lent phone's own link to the home (HandsetLink.kt), and the recorder's consent. -->
+        <!-- D255: the lent phone's own link to the home (HandsetLink.kt), and the recorder's consent.
+             D331: up while Android's switch for Ducter is on, lent or not (a Go reaches the phone with Ducter closed). -->
         <service
             android:name=".HandsetLinkService"
             android:exported="false"
             android:foregroundServiceType="specialUse|mediaProjection">
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="While the person lends this phone to a task (they said yes on a card), the home drives it through Ducter's accessibility service: this keeps that connection, shows the loan with Stop, and ends when the loan does." />
+                android:value="While the person has turned on Ducter's accessibility service to lend this phone to tasks, this keeps the connection to their own self-hosted Ducter, so that when they say yes on a card (from any of their devices) the loan can start even with Ducter closed; while lent, the home drives the phone through the accessibility service and the notification shows the loan with Stop. Ends when they turn the switch off." />
         </service>
         <activity
             android:name=".RecordActivity"
@@ -131,6 +132,11 @@
         <receiver
             android:name=".HandsetStopReceiver"
             android:exported="false" />
+        <!-- D331: 不借了 / 继续借给它 in the phone's own notifications (a Go waiting for the unlock, a paused loan). -->
+        <receiver
+            android:name=".HandsetAskReceiver"
+            android:exported="false" />
+
 
         <!-- Where Android reports how an update's install went (PackageInstaller). -->
         <receiver

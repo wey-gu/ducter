@@ -31,6 +31,16 @@ object Notify {
     const val LOAN = "handset"
     const val LOAN_ID = 238
     private const val ACTION_STOP = "co.nowledge.ducter.HANDSET_STOP"
+    /** D331: the link's quiet standby notification (Android's switch on, not lent), on a channel of its own the person may hide. */
+    const val READY = "handset_ready"
+    const val READY_ID = 239
+    /** D331: a Go waiting for the unlock, and the question after unlocking a paused loan: one tap on the phone. */
+    const val ASK = "handset_ask"
+    const val WAIT_ID = 240
+    const val RESUME_ID = 241
+    const val ACTION_WAIT_NO = "co.nowledge.ducter.HANDSET_WAIT_NO"
+    const val ACTION_RESUME_GO = "co.nowledge.ducter.HANDSET_RESUME_GO"
+    const val ACTION_RESUME_NO = "co.nowledge.ducter.HANDSET_RESUME_NO"
 
     /** The channels, named in the phone's language (made again when it changes: same id, new name). */
     fun channels(c: Context) {
@@ -40,6 +50,21 @@ object Notify {
             NotificationChannel(LOAN, c.getString(R.string.notify_loan_channel), NotificationManager.IMPORTANCE_LOW).apply {
                 description = c.getString(R.string.notify_loan_channel_about)
                 setShowBadge(false)
+            },
+        )
+        // D331: quiet (no sound, no icon in the status bar); the person can hide it in Android's settings.
+        nm.createNotificationChannel(
+            NotificationChannel(READY, c.getString(R.string.notify_ready_channel), NotificationManager.IMPORTANCE_MIN).apply {
+                description = c.getString(R.string.notify_ready_channel_about)
+                setShowBadge(false)
+            },
+        )
+        // D331: the person's own next step on this phone (unlock to start; keep lending after unlocking): seen at once.
+        nm.createNotificationChannel(
+            NotificationChannel(ASK, c.getString(R.string.notify_ask_channel), NotificationManager.IMPORTANCE_HIGH).apply {
+                description = c.getString(R.string.notify_ask_channel_about)
+                setShowBadge(false)
+                lockscreenVisibility = android.app.Notification.VISIBILITY_PRIVATE
             },
         )
     }
@@ -134,6 +159,78 @@ object Notify {
             .build()
     }
 
+    fun cancel(c: Context, id: Int) = try {
+        NotificationManagerCompat.from(c).cancel(id)
+    } catch (_: Exception) {
+    }
+
+    /** D331: Android's switch is on and the phone isn't lent: the link's quiet notification. */
+    fun readyNotification(c: Context): android.app.Notification {
+        if (Build.VERSION.SDK_INT >= 26 && c.getSystemService(NotificationManager::class.java)?.getNotificationChannel(READY) == null) channels(c)
+        val open = PendingIntent.getActivity(c, 2, Intent(c, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+        return NotificationCompat.Builder(c, READY)
+            .setSmallIcon(R.drawable.ic_note_handset)
+            .setColor(Pebble.color(c, R.color.accent))
+            .setContentTitle(Handset.words(c, R.string.notify_ready_channel))
+            .setContentText(Handset.words(c, R.string.handset_ready_line))
+            .setOngoing(true)
+            .setSilent(true)
+            .setShowWhen(false)
+            .setCategory(NotificationCompat.CATEGORY_SERVICE)
+            .setPriority(NotificationCompat.PRIORITY_MIN)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setContentIntent(open)
+            .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
+            .build()
+    }
+
+    private fun ask(c: Context, id: Int, title: String, line: String, public: String, actions: List<Pair<String, String>>) {
+        if (!allowed(c)) return
+        if (Build.VERSION.SDK_INT >= 26 && c.getSystemService(NotificationManager::class.java)?.getNotificationChannel(ASK) == null) channels(c)
+        val open = PendingIntent.getActivity(c, id, Intent(c, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+        // On the lock screen only what it is, never the task's title (D331: the person's work stays theirs).
+        val shown = NotificationCompat.Builder(c, ASK).setSmallIcon(R.drawable.ic_note_handset).setContentTitle(public).build()
+        val b = NotificationCompat.Builder(c, ASK)
+            .setSmallIcon(R.drawable.ic_note_handset)
+            .setColor(Pebble.color(c, R.color.accent))
+            .setContentTitle(title)
+            .setContentText(line)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(line))
+            .setOnlyAlertOnce(true)
+            .setAutoCancel(false)
+            .setCategory(NotificationCompat.CATEGORY_STATUS)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+            .setPublicVersion(shown)
+            .setContentIntent(open)
+        for ((i, a) in actions.withIndex()) {
+            val pi = PendingIntent.getBroadcast(c, id * 10 + i, Intent(c, HandsetAskReceiver::class.java).setAction(a.second), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+            b.addAction(0, a.first, pi)
+        }
+        try {
+            NotificationManagerCompat.from(c).notify(id, b.build())
+        } catch (_: SecurityException) {
+        }
+    }
+
+    /** D331: a Go reached this phone while it was locked: unlocking starts the loan (it never goes through the lock). */
+    fun waiting(c: Context, task: String) = ask(
+        c, WAIT_ID,
+        Handset.words(c, R.string.handset_wait_title, task),
+        Handset.words(c, R.string.handset_wait_line),
+        Handset.words(c, R.string.handset_wait_public),
+        listOf(Handset.words(c, R.string.handset_not_now) to ACTION_WAIT_NO),
+    )
+
+    /** D331: unlocked after the person's lock paused a loan: keep lending it, or not now. Never resumes by itself. */
+    fun resume(c: Context, task: String) = ask(
+        c, RESUME_ID,
+        Handset.words(c, R.string.handset_resume_title, task),
+        Handset.words(c, R.string.handset_resume_line),
+        Handset.words(c, R.string.handset_resume_title, task),
+        listOf(Handset.words(c, R.string.handset_not_now) to ACTION_RESUME_NO, Handset.words(c, R.string.handset_resume_go) to ACTION_RESUME_GO),
+    )
+
     fun loanOver(c: Context) {
         last = null
         rec = null
@@ -141,7 +238,19 @@ object Notify {
     }
 }
 
+/** D331: the phone's own answers: 不借了 on a Go waiting for the unlock; 继续借给它 / 不借了 after unlocking a paused loan. */
+class HandsetAskReceiver : BroadcastReceiver() {
+    override fun onReceive(c: Context, i: Intent) {
+        when (i.action) {
+            Notify.ACTION_WAIT_NO -> Handset.declineWaiting(c)
+            Notify.ACTION_RESUME_GO -> Handset.resume(c)
+            Notify.ACTION_RESUME_NO -> if (Handset.session != null) Handset.stopTapped(c, "taken") else Notify.cancel(c, Notify.RESUME_ID)
+        }
+    }
+}
+
 /** 停下 / Stop in the loan's notification: the same as Stop on the pill. */
+
 class HandsetStopReceiver : BroadcastReceiver() {
     override fun onReceive(c: Context, i: Intent) {
         if (Handset.session != null) Handset.stopTapped(c, "stop") else Notify.loanOver(c)

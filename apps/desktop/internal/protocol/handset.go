@@ -27,11 +27,30 @@ type HandsetOn struct {
 	Name   string `json:"name"`
 }
 
-// HandsetUsing is the task using a phone now.
+// HandsetUsing is the task using a phone now. Quiet (D253): it hasn't
+// answered for a few seconds; Paused (D331): the person locked it
+// ("locked"), or unlocked it and the phone asks whether to keep lending it
+// ("asking").
 type HandsetUsing struct {
 	TaskID string `json:"taskId"`
 	Title  string `json:"title"`
 	App    string `json:"app,omitempty"`
+	Quiet  bool   `json:"quiet,omitempty"`
+	Paused string `json:"paused,omitempty"`
+}
+
+// HandsetCard is, on a task's card, the person's own phone it uses (D238):
+// lent (Quiet when it isn't answering), paused by their lock (D331), or a Go
+// given and the loan not on yet: Wait "unlock" (the phone is locked),
+// "away" (the home can't reach it; Away says why: limited, old, offline,
+// unknown) or "starting".
+type HandsetCard struct {
+	Device string `json:"device"`
+	App    string `json:"app,omitempty"`
+	Quiet  bool   `json:"quiet,omitempty"`
+	Paused string `json:"paused,omitempty"`
+	Wait   string `json:"wait,omitempty"`
+	Away   string `json:"away,omitempty"`
 }
 
 // HandsetView is 用这台手机 on a phone's card.

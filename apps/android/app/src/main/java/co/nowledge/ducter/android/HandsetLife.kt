@@ -29,8 +29,38 @@ object HandsetLife {
     /** The home has said nothing for too long: the loan ends on this side. */
     fun silent(lastHeard: Long, localNow: Long): Boolean = lastHeard > 0 && localNow - lastHeard > QUIET_END_MS
 
-    /** Why a loan ended, as the home reads it (protocol HandsetEnd). */
-    val WHYS = setOf("stop", "locked", "service", "lost", "network")
+    /**
+     * Why a loan ended, as the home reads it (protocol HandsetEnd). D331: taken (不借了 / Not now on the
+     * phone), expired (paused by the person's lock for [PAUSE_MAX_MS]); locked only from older apps now.
+     */
+    val WHYS = setOf("stop", "locked", "service", "lost", "network", "taken", "expired")
+
+    /**
+     * D331: a loan paused by the person's lock ends after this long. The yes was for a while: past half an
+     * hour the person has moved on, and a new card is one tap. The home holds the same cap (PAUSE_MAX_MS).
+     */
+    const val PAUSE_MAX_MS = 30 * 60_000L
+
+    fun pauseOver(pausedAt: Long, now: Long): Boolean = pausedAt > 0 && now - pausedAt > PAUSE_MAX_MS
+
+    /**
+     * D331: a start from the home. [same]: it is the loan this phone holds (a refresh: the person's turn,
+     * Done). "wait": a new loan on a locked phone waits for the unlock (never through the lock); "quiet": a
+     * refresh while the loan is paused or the phone locked (it stays paused, the pill stays away); "show".
+     */
+    fun startOn(locked: Boolean, same: Boolean, paused: Boolean): String = when {
+        same && (paused || locked) -> "quiet"
+        !same && locked -> "wait"
+        else -> "show"
+    }
+
+    /**
+     * D331: the phone was unlocked: a loan paused by the lock asks in a notification whether to keep lending
+     * it ("ask"; it never resumes by itself); a Go waiting for the unlock is said to the home, which starts
+     * the loan ("hello"); otherwise only the home hears the phone is unlocked ("hello").
+     */
+    fun onUnlock(paused: String?): String = if (paused == "locked") "ask" else "hello"
+
 
     /**
      * D255: a loan this phone heard nothing about for 15 s: the network when the app's own link had

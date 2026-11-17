@@ -44,4 +44,31 @@ class HandsetLifeTest {
         assertEquals("timeout", HandsetLife.offWhy(keyguardLocked = false, sinceWoke = HandsetLife.WOKE_RECENTLY_MS))
         assertTrue(HandsetLife.OFF_SETTLE_MS < 5_000) // read before the default lock delay
     }
+
+    // D331: locking pauses a loan; a Go on a locked phone waits for the unlock; never through the lock.
+    @Test fun aGoOnALockedPhoneWaitsForTheUnlock() {
+        assertEquals("wait", HandsetLife.startOn(locked = true, same = false, paused = false))
+        assertEquals("show", HandsetLife.startOn(locked = false, same = false, paused = false))
+    }
+
+    @Test fun aRefreshOfAPausedLoanStaysPaused() {
+        assertEquals("quiet", HandsetLife.startOn(locked = true, same = true, paused = true))
+        assertEquals("quiet", HandsetLife.startOn(locked = false, same = true, paused = true)) // unlocked, still asking
+        assertEquals("quiet", HandsetLife.startOn(locked = true, same = true, paused = false)) // locked, the watch not yet paused
+        assertEquals("show", HandsetLife.startOn(locked = false, same = true, paused = false))
+    }
+
+    @Test fun unlockingAPausedLoanAsksAndNeverResumesByItself() {
+        assertEquals("ask", HandsetLife.onUnlock("locked"))
+        assertEquals("hello", HandsetLife.onUnlock("asking")) // already asked: the notification stays
+        assertEquals("hello", HandsetLife.onUnlock(null))
+    }
+
+    @Test fun aPauseEndsAfterHalfAnHour() {
+        assertEquals(30 * 60_000L, HandsetLife.PAUSE_MAX_MS)
+        assertFalse(HandsetLife.pauseOver(0, 99_000_000)) // not paused
+        assertFalse(HandsetLife.pauseOver(1_000, 1_000 + HandsetLife.PAUSE_MAX_MS))
+        assertTrue(HandsetLife.pauseOver(1_000, 1_001 + HandsetLife.PAUSE_MAX_MS))
+        assertTrue("taken" in HandsetLife.WHYS && "expired" in HandsetLife.WHYS)
+    }
 }

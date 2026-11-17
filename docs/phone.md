@@ -203,7 +203,7 @@ conversation is above the fold, On hand below. Folded, it is one column as on an
 unfolding and turning keep what you were reading and typing.
 
 Notifications from your Ducter in the Android app are coming soon; until then, Ducter in Chrome
-notifies you as above. The app's one notification today is **Using this phone**, below.
+notifies you as above. The app's notifications today are about **Use this phone**, below.
 
 ## Let tasks borrow your Android phone
 
@@ -243,7 +243,22 @@ own phone would do, and never switches by itself. Ask to try your team's app on 
 install an app on a clean phone, and it uses Ducter's own phone, never yours.
 
 **When a task wants it**, you get a card: **"Order lunch" wants to borrow your Pixel**, with
-**Not now** and **Lend it**. Nothing happens until you say. While it's lent:
+**Not now** and **Lend it**. Nothing happens until you say.
+
+**You don't need to open Ducter on the phone.** While Use this phone is on, the Ducter app keeps a
+quiet connection to your Ducter (a notification, **Use this phone is on**, which you can hide), so
+when you tap **Lend it** on your Mac or anywhere else, the task starts on the phone with Ducter
+closed or in the background.
+
+- **If the phone is locked**, nothing happens through the lock. The phone shows **"Order lunch"
+  starts when you unlock** (on the lock screen it doesn't name the task), with **Not now**. Unlock
+  it and the task starts by itself.
+- **If your Ducter can't reach the phone** (it's offline, or Android closed Ducter), the task's
+  page says **Lent: can't reach your Pixel right now; starts when it connects**, and why, as far as
+  Ducter knows. If Android limits Ducter in the background on your phone, set Ducter's **Battery**
+  to **Unrestricted** in App info.
+
+While it's lent:
 
 - A small pill sits at the top of the screen over every app: **Ducter is using this phone**, what
   it's doing right now, and **Stop**. Each tap shows as a soft ring where it lands.
@@ -253,14 +268,17 @@ install an app on a clean phone, and it uses Ducter's own phone, never yours.
   task sees nothing until you tap **Done**.
 - Tap **Stop** on the pill, or **Stop** on the task from any of your devices, and the phone is
   yours again at once.
-- **Locking the phone gives it back.** The screen stays on while a task is using it; press the
-  power key and the task stops using it right away. If it still needs the phone, you get a new card.
-  If the screen ever turns off by itself, that isn't a lock: the phone stays lent and the screen
-  comes back on.
-- However it ends (you tap **Stop**, lock the phone, the task finishes or gives it back), the task
+- **Locking the phone pauses it.** The screen stays on while a task is using it; press the power
+  key and the task stops doing anything at once. When you unlock, it doesn't carry on by itself:
+  the phone asks **Keep lending this phone to "Order lunch"?** with **Keep lending** and **Not
+  now**. Keep lending, and it picks up where it was; Not now, and the phone is yours again. A
+  pause that lasts half an hour gives the phone back, and **Stop** always does at once. If the
+  screen ever turns off by itself, that isn't a lock: the phone stays lent and the screen comes back
+  on.
+- However it ends (you tap **Stop** or **Not now**, the task finishes or gives it back), the task
   knows at once, and the task's page says so in a thin line: **You took back your Pixel · 20:14**.
-- If the phone stops answering (it lost its network, or Android closed Ducter), the task says so
-  at once instead of waiting, and gives it back after a few seconds. On the task you see
+- If the phone stops answering while lent (it lost its network, or Android closed Ducter), the task
+  says so at once instead of waiting, and gives it back after a few seconds. On the task you see
   **Pixel isn't answering right now**.
 - When a step is yours (signing in, a code), the card says exactly what to do. After you tap
   **Done**, the task checks the phone before it goes on.
@@ -270,9 +288,9 @@ install an app on a clean phone, and it uses Ducter's own phone, never yours.
 - Switches that cut your phone off, like Wi-Fi, Bluetooth or airplane mode, wait for your Go too.
 
 Between tasks it reads nothing. To turn it off, tap **Use this phone** on the phone's card and
-**Remove**: that also turns Ducter's switch off in Android. While a task is borrowing the phone,
-Ducter keeps its own connection to your Ducter (you see it in the notification, with **Stop**), so
-the task can work in other apps with Ducter in the background.
+**Remove**: that also turns Ducter's switch off in Android, and the quiet connection with it. The
+connection is what lets a task start and work with Ducter in the background; while a task is
+borrowing the phone, its notification says so, with **Stop**.
 
 **Screen recordings.** Ask a task to record what it does ("record it and send me the video") and
 Ducter records the phone's screen itself. Android asks you once, with its own dialog on the phone
@@ -282,8 +300,9 @@ Pixel so it can record the screen**, with the two minutes left and **Skip record
 says **Your turn: tap Start now**, and you get a notification if you're not looking.
 While it records, the pill shows a small red dot and **Recording the screen**. When the task stops
 it, the video is saved on your phone (Movies › Ducter, in Photos) and sent to your Ducter, which
-checks it before the task says it's done; you can play it in the conversation. Stopping the task or
-locking the phone stops the recording too, and what was recorded is kept.
+checks it before the task says it's done; you can play it in the conversation. Stopping the task
+stops the recording too, and what was recorded is kept.
+
 
 **iPhone:** not available. iOS doesn't let one app use other apps, and the ways around it need
 Xcode and a Mac next to the phone. On an iPhone, tasks use apps on your Mac or Ducter's own phone

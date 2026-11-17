@@ -886,3 +886,57 @@ describe("memberOf: the user's own member in passive setup", () => {
     expect(memberOf({ state: "enable_needed", endpoint: { address: { custodian_id: "m-9", agent_id: "ducter" } } })).toEqual({ id: "m-9" });
   });
 });
+
+describe("D333: 查看来信 / check messages: the home reads its mailbox now and the partner says what came", () => {
+  test("nothing new: says so, with what to tell an agent that sent elsewhere; something new: answered in the same turn, its work still waits for the user", async () => {
+    const w = world([]);
+    const inputs: string[] = [];
+    const r: any[] = [];
+    const t = setup(async (input, s, n) => {
+      inputs.push(input);
+      if (n === 0 || n === 1) r.push(await t.fc.callTool("bridge_check", {}));
+      if (n === 1) r.push(await t.fc.callTool("task_open", { title: "修 runner 测试", brief: "只动 runner 测试", forMessage: "bm-1" }));
+      if (n === 1) r.push(await t.fc.callTool("bridge_reply", { messageId: "bm-1", text: "收到，先问一下。" }));
+      s.end();
+    }, w);
+    await t.partner.idle();
+    t.user("查看来信");
+    await t.partner.idle();
+    expect(r[0]).toMatchObject({ ok: true, arrived: [] });
+    expect(r[0].note).toContain("Nothing new");
+    expect(r[0].note).toContain("Never say it is blocked or needs a permission");
+    w.deliver(REQUEST);
+    t.user("再看看，我的 Claude 说发了");
+    await t.partner.idle();
+    expect(r[1].arrived).toEqual([expect.objectContaining({ messageId: "bm-1", from: expect.stringContaining("terminal-claude") })]);
+    expect(r[1].earlier).toBeUndefined(); // the new one is not "earlier"
+    expect(r[2].ok).toBe(false); // a request it carried is not the user's go
+    expect(r[2].error).toContain("Ask the user first");
+    expect(t.fr.opened.length).toBe(0);
+    expect(r[3].ok).toBe(true);
+    expect(w.replies).toEqual([{ messageId: "bm-1", text: "收到，先问一下。" }]);
+    // Answered in that turn: it wakes no turn of its own.
+    await t.partner.idle();
+    expect(inputs.length).toBe(2);
+  }, 20_000);
+
+  test("what came lately is listed (answered or not); Mem not answering is said plainly", async () => {
+    const w = world([REQUEST]);
+    const r: any[] = [];
+    const t = setup(async (_i, s, n) => {
+      if (n >= 1) r.push(await t.fc.callTool("bridge_check", {}));
+      s.end();
+    }, w);
+    await t.partner.checkBridge();
+    await t.partner.idle();
+    t.user("我的 Claude 刚才发了什么？");
+    await t.partner.idle();
+    expect(r[0].arrived).toEqual([]);
+    expect(r[0].earlier).toEqual([expect.objectContaining({ messageId: "bm-1", from: expect.stringContaining("terminal-claude") })]);
+    w.bridge.check = async () => ({ ok: false, reason: "unavailable", message: "503" });
+    t.user("再查一次");
+    await t.partner.idle();
+    expect(r[1]).toMatchObject({ ok: false });
+    expect(r[1].note).toContain("Nowledge Mem didn't answer");
+  }, 20_000);
+});

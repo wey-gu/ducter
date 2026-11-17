@@ -237,6 +237,14 @@ What it needs, and what you can do today from that same section:
 If Nowledge Mem isn't ready on its side yet, the section says so; nothing is wrong on yours, and
 your memory works as usual.
 
+### My other agent says it sent my partner a message. Where is it?
+
+Messages from your other agents come in by themselves within a few minutes. To look now, just
+say so: "check my messages" or "查看来信". Your partner looks right away, answers what you asked
+it to, and tells you what came. If nothing came although your agent says it sent something, it
+went to your partner's name in another place in Nowledge Mem, where no computer of yours reads.
+Your partner's card in Nowledge Mem says where it reads; have your agent send it again there.
+
 ### Can it use my other apps, my phone, or make calls?
 
 Yes, on a Mac: it can use your Mac's apps, apps on a phone of its own, and make calls.

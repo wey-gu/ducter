@@ -99,6 +99,41 @@ describe("adaptSpec: the partner's clean setup per harness", () => {
     expect(a.options.disallowedTools).toEqual(["mcp__x__y"]); // codex denies MCP tools only
   });
 
+  test("D333: a server Codex still lists under the clean setup (not in config.toml) is turned off by name too, Ducter's kept", async () => {
+    const { codexLeftoverServers, codexServersOff } = await import("../src/oar.ts");
+    let calls = 0;
+    const list = (_c: string, args: string[]) => {
+      calls++;
+      return [{ name: "nowledge-mem", enabled: !args.includes("mcp_servers.nowledge-mem.enabled=false") }, { name: "context7", enabled: false }, { name: "ducter", enabled: true }];
+    };
+    const home = join(dir, "codex-leftover");
+    mkdirSync(home, { recursive: true });
+    writeFileSync(join(home, "config.toml"), 'model = "x"\n');
+    const args = ["-c", "features.plugins=false"];
+    expect(codexLeftoverServers("/bin/codex", args, { CODEX_HOME: home }, ["ducter"], list)).toEqual(["nowledge-mem"]);
+    expect(codexLeftoverServers("/bin/codex", args, { CODEX_HOME: home }, ["ducter"], list)).toEqual(["nowledge-mem"]);
+    expect(calls).toBe(1); // once per command, args and config file
+    expect(codexServersOff(["nowledge-mem", "my.server"])).toEqual(["-c", "mcp_servers.nowledge-mem.enabled=false", "-c", 'mcp_servers."my.server".enabled=false']);
+    // Codex didn't answer: the args as they were.
+    expect(codexLeftoverServers("/bin/codex", ["-c", "x=1"], { CODEX_HOME: home }, ["ducter"], () => undefined)).toEqual([]);
+  });
+
+  test("D333: the port adds those overrides to a clean Codex session's launch, and only to a clean one", async () => {
+    const seen: string[][] = [];
+    const rt = {
+      installation: async () => ({ kind: "available", via: "executable", command: "/bin/codex" }),
+      session: async (_i: unknown, o: { launchArgs?: string[] }) => {
+        seen.push(o.launchArgs ?? []);
+        throw new Error("stop here");
+      },
+    };
+    const port = createOarHarnessPort({ loadRuntime: async () => rt as any, dataDir: dir, env: { CODEX_HOME: join(dir, "none") }, codexMcpList: () => [{ name: "nowledge-mem", enabled: true }] });
+    await port.start(spec("codex", { isolateUserConfig: true })).catch(() => {});
+    await port.start(spec("codex", { isolateUserConfig: false })).catch(() => {});
+    expect(seen[0]!.join(" ")).toContain("mcp_servers.nowledge-mem.enabled=false");
+    expect((seen[1] ?? []).join(" ")).not.toContain("nowledge-mem");
+  });
+
   test("principle 6: a read-only (partner) session can't write or run; a task keeps its tools", () => {
     const claude = adaptSpec(spec("claude-code", { readOnly: true }), { dataDir: dir });
     for (const t of ["Bash", "Edit", "Write", "MultiEdit", "NotebookEdit", "Task"]) expect(claude.options.disallowedTools).toContain(t);

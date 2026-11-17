@@ -45,7 +45,7 @@ import { appendFileSync, existsSync, readFileSync, writeFileSync } from "node:fs
 interface Msg { id: string; op: string; from: string; to: string; body: string; in_reply_to?: string; created_at: string; read_at?: string; pending?: boolean }
 interface Ident { agent: string; member: string; member_id?: string; description: string }
 interface Conn { connection_id: string; agent_id: string; identity_birth: string; client_label: string; state: "active" | "revoked"; space_id: string }
-interface State { identities: Record<string, Ident>; messages: Msg[]; seq: number; lost?: string[]; connections?: Conn[]; retained?: Record<string, { to: string; body: string }>; busy?: Record<string, number>; agents?: Record<string, { name: string; source_app: string }> }
+interface State { identities: Record<string, Ident>; messages: Msg[]; seq: number; lost?: string[]; connections?: Conn[]; retained?: Record<string, { to: string; body: string }>; busy?: Record<string, number>; agents?: Record<string, { name: string; source_app: string; description?: string }> }
 
 if (process.env.NMEM_FAKE_ARGV_LOG) appendFileSync(process.env.NMEM_FAKE_ARGV_LOG, JSON.stringify(process.argv.slice(2)) + "\n");
 const VERSION = process.env.NMEM_FAKE_VERSION ?? "0.10.118";
@@ -149,6 +149,21 @@ if (argv[0] === "agents" && (argv[1] === "enroll" || argv[1] === "delete" || (ar
     save(st);
     out({ cleared: true, name });
   }
+  process.exit(0);
+}
+// D333: an Agent's public profile (`agents show <ID>`, `agents set <ID> --description …`, nmem
+// 0.10.119's help); the answers' shape follows mem-identity.ts's reader (`{agent: {…}}`), a GUESS.
+if (argv[0] === "agents" && (argv[1] === "show" || argv[1] === "set")) {
+  const st: State = existsSync(statePath) ? load() : { identities: {}, messages: [], seq: 0 };
+  const id = argv[2] ?? "";
+  const a = st.agents?.[id];
+  if (!a) fail("not_found", `Agent ${id} not found`);
+  if (argv[1] === "set") {
+    const i = argv.indexOf("--description");
+    if (i >= 0) a!.description = argv[i + 1] ?? "";
+    save(st);
+  }
+  out({ agent: { id, display_name: a!.name, source_app: a!.source_app, ...(a!.description !== undefined ? { description: a!.description } : {}) } });
   process.exit(0);
 }
 if (argv[0] !== "bridge") fail("bad_arguments", "fake nmem: only `bridge` is implemented", 2);

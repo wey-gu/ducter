@@ -1284,6 +1284,24 @@ Codex first, once OAR is near 1.0. See `research/17`.
       Mac's own nmem login) so hel alone reads the mailbox: hel's Settings › 连上的 AI agent › 只留这台, or on the
       Mac `nmem bridge connections revoke <the id that isn't hel's>` and `nmem agents context clear --name ducter`.
       Trigger: hel runs a Ducter with D324; the author's Go.
+- [ ] D333 on the author's real Mem (the author runs these; Ducter never does): find every `ducter` card your other
+      agents can see, read-only: `nmem --json bridge contacts --query ducter --all-spaces`. For each Space that
+      isn't hel's "Only me": `nmem --json bridge connections list --space-id <that id> --agent-id ducter`, then
+      `nmem bridge connections revoke <its connection id>` for each active one (that mailbox then has no reader
+      and likely shows `mailbox_available: false` once nmem carries #10278, INFERRED). On the
+      Mac, the 2026-11-13 trial's leftover the same way (the item above). Then, after hel runs D333 for a minute,
+      `nmem --json agents show ducter` should show the description naming "Only me" and hel; ask the Codex in the
+      other app to look up Ducter again and send its test. Trigger: hel on a build with D333; the author's go.
+- [ ] D333: on hel, see which Mem server the partner's clean Codex session had (`codex <the partner's args> mcp list
+      --json` under hel's CODEX_HOME, read-only) and whether D333's check turns it off (the partner's tool list
+      without `mcp__nowledge_mem__*`). Trigger: hel on a build with D333.
+- [ ] D333: check live that a task's Mem plugin Bridge tools act as that session's own mailbox, never the
+      partner's (a task with the plugin, `bridge_im contacts` and an inbox read, then hel's inbox still lists the
+      partner's messages unread). If they can reach the partner's mailbox, turn the plugin's Bridge tools off in
+      tasks (Claude Code `--disallowedTools` by its server's tool names; Codex has no per-tool switch for a
+      hyphenated server). Trigger: the first task on a home with the plugin after D333.
+- [ ] D333: whether a description set with `agents set` shows on the identity's `bridge contacts` cards in every
+      Space (research/121 §3, INFERRED). Trigger: the same live run.
 - [ ] D324: show a home's display name (not its slug) for another home's connection, once the homes' names are
       known across homes or Mem carries a device label (research/66 §9.3). Trigger: Mem's connection label field.
 - [ ] D324: two homes that each want their own address (a work server and a family Mac) are two partners (D312);

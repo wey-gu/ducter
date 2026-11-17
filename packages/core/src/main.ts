@@ -182,6 +182,8 @@ export async function main(mods: BootModules = {}) {
   });
   // D324: every 30 minutes, whether another home ended this home's Bridge connection (read-only).
   setInterval(() => void core.bridgeLink.recheck().catch(() => {}), 30 * 60_000).unref?.();
+  // D333: and a minute after start, so a connection made before D333 gets its card (where it reads) without waiting.
+  setTimeout(() => void core.bridgeLink.recheck().catch(() => {}), 60_000).unref?.();
   const identityOrTimeout = Promise.race([identity, Bun.sleep(IDENTITY_WAIT_MS).then(() => "timeout")]);
   await Promise.race([identity, Bun.sleep(BANNER_WAIT_MS)]); // usually lost: the banner says "loading"
 

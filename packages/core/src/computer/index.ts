@@ -87,11 +87,12 @@ export function createComputerUse(o: ComputerUseOptions): ComputerUse {
     return !!link?.online() && computerReady(o.workers?.()?.ability(link.id));
   };
 
+  // The task's latest task_open says its needs (kept until the next one), as for the phone.
   const needs = new Map<string, boolean>();
   const wantsApp = (taskId: string) => {
     let v = needs.get(taskId);
     if (v === undefined) {
-      const open = o.log.read({ stream: `task:${taskId}`, fromSeq: 0, limit: 1, kinds: ["task_open"] })[0]?.body as Bodies["task_open"] | undefined;
+      const open = o.log.read({ stream: `task:${taskId}`, limit: 1, kinds: ["task_open"] })[0]?.body as Bodies["task_open"] | undefined;
       v = !!open?.needs?.app;
       needs.set(taskId, v);
     }
@@ -128,6 +129,7 @@ export function createComputerUse(o: ComputerUseOptions): ComputerUse {
 
   const goFor = new Map<string, string>(); // decisionId -> taskId
   const unsubscribe = o.log.subscribe((e) => {
+    if (e.kind === "task_open") return void needs.delete((e.body as Bodies["task_open"]).taskId);
     if (e.kind === "decision") {
       const b = e.body as Bodies["decision"];
       if (b.taskId && b.computer?.kind === "go") goFor.set(b.decisionId, b.taskId);

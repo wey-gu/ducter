@@ -37,6 +37,8 @@ export interface PhoneToolsDeps {
   tasks: TaskRegistry & { get(id: string): { persona?: string; residency?: string; title?: string } | undefined };
   /** The task may use the phone now (it needs it, and the phone is installed here). */
   attached(taskId: string): boolean;
+  /** Why `attached` says no, in one plain clause the task can report (never a stack trace). */
+  whyNot?(taskId: string): string | undefined;
   /**
    * D260: the task's work uses a phone at all, whatever its state now. The tools are listed by
    * this (a harness lists tools once, as a turn starts: a done task woken by a message was still
@@ -106,7 +108,7 @@ export function registerPhoneTools(d: PhoneToolsDeps): PhoneTools {
   };
 
   const ready = async (taskId: string) => {
-    if (!d.attached(taskId)) throw new Error("the phone isn't this task's to use right now (it isn't working, or no phone is ready here). Report blocked in one line; don't retry.");
+    if (!d.attached(taskId)) throw new Error(`${d.whyNot?.(taskId) ?? "the phone isn't this task's to use right now (it isn't working, or no phone is ready here)"}. Report blocked in one line saying so; don't retry.`);
     if (d.blind(taskId)) {
       d.tried?.(taskId);
       note(taskId, { kind: "waiting" });
@@ -142,6 +144,14 @@ export function registerPhoneTools(d: PhoneToolsDeps): PhoneTools {
         d.acting?.(ctx.taskId!, true);
         try {
           return await fn(args ?? {}, ctx.taskId!);
+        } catch (err) {
+          // A fault in Ducter itself (a TypeError, an undefined) reaches the task as words it can
+          // report, never as a bare "Cannot read properties of undefined".
+          if (err instanceof TypeError || err instanceof ReferenceError) {
+            console.warn(`[phone] ${name} failed for ${ctx.taskId}:`, err);
+            throw new Error(`${name} failed inside Ducter (a fault on Ducter's side, not the phone's: ${err.message}). Nothing was done on the phone. Report blocked in one line saying so; don't retry.`);
+          }
+          throw err;
         } finally {
           d.acting?.(ctx.taskId!, false);
         }

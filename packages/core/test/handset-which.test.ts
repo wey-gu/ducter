@@ -234,3 +234,49 @@ describe("D260: a phone task woken from done lists its phone tools as the turn s
     expect(core.mcp.listed({ role: "task", taskId: plain } as any)).not.toContain("phone_look");
   });
 });
+
+// 2026-11-17, the author's "复测真机借用与外部录屏能力并更新复盘" (Codex, on the server home): "ALL_TOOLS
+// 没有任何 phone 工具；phone_look 分派 TypeError". The task was opened early from the partner's
+// streamed head (D120), before needs was written: its first task_open had no needs, and the phone
+// tools were listed by that first one for the task's whole life. Now the latest task_open says.
+describe("a task's latest task_open says whether it lists its phone tools", () => {
+  const open = (id: string, harness: string, needs?: object) =>
+    core.log.append({ stream: `task:${id}`, origin: "system", kind: "task_open", body: { taskId: id, title: id, project: "", place: { kind: "none" }, harness, brief: needs ? id : "", ...(needs ? { needs } : {}) } as any });
+  for (const harness of ["codex", "claude-code"]) {
+    test(`${harness}: opened early without needs, then briefed with needs.phone: listed`, () => {
+      const id = `early-${harness}`;
+      open(id, harness);
+      core.tasks.setState(id, "working", "hot");
+      expect(core.mcp.listed({ role: "task", taskId: id } as any)).not.toContain("phone_look"); // asked (and kept) before the brief
+      open(id, harness, { phone: "mine" });
+      expect(core.mcp.listed({ role: "task", taskId: id } as any)).toContain("phone_look");
+      core.tasks.setState(id, "done", "parked");
+    });
+    test(`${harness}: continued (moved, a task_open stated again with its needs): still listed`, () => {
+      const id = `moved-${harness}`;
+      open(id, harness, { phone: "mine" });
+      core.tasks.setState(id, "done", "cold");
+      expect(core.mcp.listed({ role: "task", taskId: id } as any)).toContain("phone_look");
+      open(id, harness === "codex" ? "claude-code" : "codex", { phone: "mine" });
+      core.tasks.setState(id, "working", "hot");
+      expect(core.mcp.listed({ role: "task", taskId: id } as any)).toContain("phone_look");
+      core.tasks.setState(id, "done", "parked");
+    });
+  }
+
+  test("a task with no phone that calls a phone tool anyway is told why in words, never a TypeError", async () => {
+    const id = "nophone";
+    open(id, "codex", { browse: true });
+    core.tasks.setState(id, "working", "hot");
+    expect(core.mcp.listed({ role: "task", taskId: id } as any)).not.toContain("phone_look");
+    const why = await rejection(call(id, "phone_look"));
+    expect(why).toMatch(/wasn't opened as phone work/);
+    expect(why).toMatch(/Report blocked in one line/);
+    expect(why).not.toMatch(/TypeError|undefined/);
+    core.tasks.setState(id, "done", "parked");
+    // Done: said as not working, again in words.
+    open("donephone", "codex", { phone: "mine" });
+    core.tasks.setState("donephone", "done", "parked");
+    expect(await rejection(call("donephone", "phone_look"))).toMatch(/isn't working right now/);
+  });
+});

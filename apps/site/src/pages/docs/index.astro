@@ -12,7 +12,7 @@ const rest = docs.filter((d) => d.id !== "readme");
 <DocsLayout doc={home} docs={docs}>
   {Content ? <Content /> : (
     <div>
-      <p>The guides are being written. Until they land, the <a href="/#install">install steps</a> are on the home page.</p>
+      <p>The guides are on their way. Until then, <a href="/start">Get started</a> walks you through setting Ducter up.</p>
       {rest.length > 0 && <ul>{rest.map((d) => <li><a href={docHref(d)}>{d.data.title}</a></li>)}</ul>}
     </div>
   )}

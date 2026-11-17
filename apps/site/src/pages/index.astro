@@ -50,7 +50,7 @@ const ld = {
         <a class="btn lg" href="/start">Get started</a>
         <a class="btn secondary lg" href="#what">See what it does</a>
       </div>
-      <p class="facts">Free and open source. It lives on your Mac or your own server and works with the AI you already pay for, through {agentsToday}.{facts.version ? ` Latest: ${dl.note}.` : ""}</p>
+      <p class="facts">Free and open source. It lives on your Mac or your own server, and works with the AI you already pay for, through {agentsToday}.</p>
     </div>
     <figure class="hero-shot">
       <Shot name="hero" width={1080} height={1350} eager sizes="(min-width: 1280px) 520px, (min-width: 1040px) 480px, 92vw"
@@ -83,7 +83,7 @@ const ld = {
       <li class="card reveal">
         <div class="card-art"><Art name="ab_call" alt="" sizes="120px" /></div>
         <h3>It runs errands</h3>
-        <p>It looks things up in its own browser, fills in forms with your saved details, books, and even makes a phone call for you. You see exactly what it will do, and tap Go.</p>
+        <p>It looks things up in its own browser, fills in forms with your saved details, makes bookings, and can even phone a restaurant for you. You see exactly what it will do, and tap Go.</p>
         <p class="eg">“Book a table for two on Friday.”</p>
       </li>
     </ul>
@@ -126,9 +126,9 @@ const ld = {
         <h3>You can also add</h3>
         <div class="stickers">
           <button class="sticker live" id="sticker-web" type="button" aria-describedby="web-detail"><Art name="ab_web" alt="" sizes="(min-width: 1040px) 96px, (min-width: 560px) 15vw, 19vw" /><b>Browse the web</b><small id="web-small">Drag onto this Mac, or tap</small></button>
-          <div class="sticker"><Art name="ab_computer" alt="" sizes="(min-width: 1040px) 96px, (min-width: 560px) 15vw, 19vw" /><b>Use the computer</b><small>Tasks in a Mac's apps</small></div>
-          <div class="sticker"><Art name="ab_phone" alt="" sizes="(min-width: 1040px) 96px, (min-width: 560px) 15vw, 19vw" /><b>Use a phone</b><small>Its own Android phone, on a Mac</small></div>
-          <div class="sticker"><Art name="ab_call" alt="" sizes="(min-width: 1040px) 96px, (min-width: 560px) 15vw, 19vw" /><b>Make calls</b><small>Through Tuwa or your own number</small></div>
+          <div class="sticker"><Art name="ab_computer" alt="" sizes="(min-width: 1040px) 96px, (min-width: 560px) 15vw, 19vw" /><b>Use the computer</b><small>Works in your Mac's apps</small></div>
+          <div class="sticker"><Art name="ab_phone" alt="" sizes="(min-width: 1040px) 96px, (min-width: 560px) 15vw, 19vw" /><b>Use a phone</b><small>A phone of its own, on your Mac</small></div>
+          <div class="sticker"><Art name="ab_call" alt="" sizes="(min-width: 1040px) 96px, (min-width: 560px) 15vw, 19vw" /><b>Make calls</b><small>It phones for you once you say Call</small></div>
         </div>
         <div class="detail" id="web-detail">
           <h3>Browse the web</h3>
@@ -157,7 +157,7 @@ const ld = {
       <li class="where-card reveal">
         <div class="where-art"><Art name="laptop_awake" alt="" sizes="160px" /></div>
         <h3>Mac</h3>
-        <p>The desktop app, for Apple silicon. Ducter can live here and work here.</p>
+        <p>The desktop app, for a Mac with an Apple chip. Ducter can live here and work here.</p>
         <p class="where-state"><b>Ready</b><a href={dl.href}>Download</a></p>
       </li>
       <li class="where-card reveal">
@@ -170,7 +170,7 @@ const ld = {
         <li class="where-card reveal">
           <div class="where-art"><Art name="android" alt="" sizes="80px" /></div>
           <h3>Android</h3>
-          <p>The Ducter app, straight from GitHub; it updates itself.</p>
+          <p>Download the app here; it keeps itself up to date.</p>
           <p class="where-state"><b>Ready</b><a href="/download">Get the app</a></p>
         </li>
       ) : (
@@ -189,7 +189,7 @@ const ld = {
       </li>
     </ul>
     <div class="chats reveal">
-      <p><b>And in the chat apps you already use.</b> Message your partner in <b>iMessage</b>, <b>WeChat</b>, <b>Telegram</b> or <b>Slack</b>, It's the same conversation, and only you can talk to it there.</p>
+      <p><b>And in the chat apps you already use.</b> Message your partner in <b>iMessage</b>, <b>WeChat</b>, <b>Telegram</b> or <b>Slack</b>. It's the same conversation, and only you can talk to it there.</p>
       <p class="links"><a href="/docs/chat-apps">Chat apps</a><a href="/docs/imessage">iMessage</a><a href="/docs/phone">Your phone</a></p>
     </div>
   </div>
@@ -235,7 +235,7 @@ const ld = {
         <li><b>Your conversation stays with you.</b><span>It's kept on your own computer. It reaches an AI only through your own account, and a chat app only if you connect one.</span></li>
       </ul>
     </div>
-    <p class="body more"><a href="/docs/privacy-and-safety">Privacy and safety</a>, in full.</p>
+    <p class="body more">The whole story is in <a href="/docs/privacy-and-safety">Privacy and safety</a>.</p>
   </div>
 </section>
 
@@ -246,7 +246,7 @@ const ld = {
       <h2>Open source, and yours.</h2>
     </div>
     <div class="cards3">
-      <div class="card reveal"><div class="card-art"><Art name="ducter_done" alt="" sizes="120px" /></div><h3>Free and open source</h3><p>Apache 2.0. Every line, and every word Ducter tells an AI on your behalf, is there to read.</p></div>
+      <div class="card reveal"><div class="card-art"><Art name="ducter_done" alt="" sizes="120px" /></div><h3>Free and open source</h3><p>Under the Apache 2.0 license. Every line, and every word Ducter tells an AI on your behalf, is there to read.</p></div>
       <div class="card reveal"><div class="card-art"><Art name="server_awake" alt="" sizes="140px" /></div><h3>Runs where you put it</h3><p>Your Mac, or a Linux server you own. Nobody can switch it off for you or change the deal.</p></div>
       <div class="card reveal"><div class="card-art coins"><Art name="coin_claude_code" alt="" sizes="64px" /><Art name="coin_codex" alt="" sizes="64px" /><Art name="coin_pi" alt="" sizes="64px" /><Art name="coin_deepseek_harness" alt="" sizes="64px" /></div><h3>No lock-in</h3><p>It works through whichever AI agent you have, on your own plan. Change your mind any time; your partner and its memory come along.</p></div>
     </div>
@@ -271,11 +271,10 @@ const ld = {
     <p class="lede">Then get on with your day. It tells you when it's done, and asks only when it matters.</p>
     <figure class="film">
       {film.src ? (
-        <video src={film.src} poster={film.poster} width="960" height="540" controls preload="none" playsinline aria-label={`The launch film, ${film.seconds} seconds`}></video>
+        <video src={film.src} poster={film.poster} width="960" height="540" controls preload="none" playsinline aria-label="A one-minute film about Ducter"></video>
       ) : (
-        <a class="film-poster" href={film.release} rel="noopener"><img src={film.poster} width="960" height="540" alt={`The launch film, ${film.seconds} seconds: opens on GitHub`} loading="lazy" decoding="async" /></a>
+        <a class="film-poster" href={film.release} rel="noopener"><img src={film.poster} width="960" height="540" alt="A one-minute film about Ducter. Opens on GitHub." loading="lazy" decoding="async" /></a>
       )}
-      <figcaption>The launch film · {film.seconds} s · <a href={film.release} rel="noopener">also in Chinese and square</a></figcaption>
     </figure>
     <div class="cta-row">
       <a class="btn secondary lg gh" href={gh.href} rel="noopener"><GitHubMark />Star on GitHub</a>

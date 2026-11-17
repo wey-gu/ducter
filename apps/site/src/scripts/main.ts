@@ -65,22 +65,6 @@ function scene(root: HTMLElement, threshold = 0.35) {
 }
 const quiet = (p: Promise<unknown>) => p.catch((e) => { if (e !== CANCEL) console.error(e); });
 
-/** Replace a small piece of text with a soft lift. */
-function swapText(el: HTMLElement, text: string) {
-  if (reduced) { el.textContent = text; return; }
-  const span = document.createElement("span");
-  span.textContent = text;
-  const old = el.firstElementChild as HTMLElement | null;
-  if (!old) { el.replaceChildren(span); return; }
-  old.classList.add("swap-out");
-  setTimeout(() => { span.classList.add("swap-in"); el.replaceChildren(span); }, 170);
-}
-
-function press(btn: HTMLElement) {
-  btn.classList.add("is-pressed");
-  setTimeout(() => btn.classList.remove("is-pressed"), 140);
-}
-
 /* ---------------------------------------------------------------- nav */
 const nav = $("nav");
 const onScroll = () => nav.classList.toggle("scrolled", scrollY > 8);
@@ -93,219 +77,6 @@ const revealer = new IntersectionObserver(
   { threshold: 0.12, rootMargin: "0px 0px -8% 0px" },
 );
 document.querySelectorAll(".reveal").forEach((el) => revealer.observe(el));
-
-/* ---------------------------------------------------------------- hero: ack → job → result */
-(() => {
-  const demo = $("demo");
-  if (!demo) return;
-  const track = $("track");
-  const steps = Object.fromEntries([...track.querySelectorAll<HTMLElement>("[data-step]")].map((s) => [s.dataset.step!, s]));
-  const face = $("hero-face");
-  const presence = $("presence");
-  const typed = $("typed");
-  const send = $("send");
-  const chip = $("hero-chip");
-  const st = $("hero-st");
-  const quietText = $("quiet-text");
-  const replay = $<HTMLButtonElement>("replay");
-  const sc = scene(demo, 0.3);
-  const ASK = "Fix the flaky checkpoint test in ~/dev/hawdb, then tell me.";
-
-  function showAll() {
-    Object.values(steps).forEach((s) => s.classList.toggle("in", s !== steps.chip));
-    chip.dataset.state = "done";
-    st.innerHTML = "<span>· Done</span>";
-    quietText.textContent = "14 min later";
-    presence.innerHTML = "<span>just finished something</span>";
-    setFace(face, "done");
-  }
-
-  function reveal(el: HTMLElement, before?: () => void) {
-    const first = track.getBoundingClientRect().top;
-    before?.();
-    el.classList.add("in", "fresh");
-    el.addEventListener("animationend", () => el.classList.remove("fresh"), { once: true });
-    if (reduced) return;
-    const delta = first - track.getBoundingClientRect().top;
-    if (delta > 0) {
-      track.animate([{ transform: `translateY(${delta}px)` }, { transform: "translateY(0)" }], {
-        duration: 420,
-        easing: "cubic-bezier(.2,.8,.2,1)",
-      });
-    }
-  }
-
-  function reset() {
-    Object.values(steps).forEach((s) => s.classList.remove("in", "fresh"));
-    typed.textContent = "";
-    chip.dataset.state = "working";
-    st.innerHTML = "<span>· Reading the last 30 CI runs</span>";
-    quietText.textContent = "Quiet means it's going fine";
-    presence.innerHTML = "<span>is here</span>";
-    setFace(face, "idle");
-  }
-
-  async function play() {
-    const g = sc.restart();
-    replay.hidden = true;
-    track.classList.add("fading");
-    await sc.wait(reduced ? 0 : 450, g);
-    reset();
-    track.classList.remove("fading");
-    await sc.wait(700, g);
-    typed.classList.add("caret");
-    for (const ch of ASK) {
-      typed.textContent += ch;
-      await sc.wait(reduced ? 0 : 24 + Math.random() * 30, g);
-    }
-    await sc.wait(320, g);
-    press(send);
-    typed.classList.remove("caret");
-    typed.textContent = "";
-    reveal(steps.user);
-    // the ack comes at once: it names the action, never the outcome
-    await sc.wait(520, g);
-    setFace(face, "working");
-    swapText(presence, "is working");
-    reveal(steps.ack);
-    await sc.wait(560, g);
-    reveal(steps.chip);
-    await sc.wait(1700, g);
-    swapText(st, "· Reproduced it: 1 failure in 40 runs");
-    await sc.wait(1700, g);
-    swapText(st, "· Running all 412 tests");
-    await sc.wait(1100, g);
-    reveal(steps.quiet);
-    await sc.wait(2600, g);
-    swapText(quietText, "14 min later");
-    await sc.wait(500, g);
-    chip.dataset.state = "done";
-    swapText(st, "· Done");
-    setFace(face, "done");
-    swapText(presence, "just finished something");
-    // the status line hands over to the result's proof line
-    reveal(steps.result, () => steps.chip.classList.remove("in"));
-    await sc.wait(1200, g);
-    replay.hidden = false;
-    await sc.wait(9000, g);
-    quiet(play());
-  }
-
-  replay.addEventListener("click", () => quiet(play()));
-  if (reduced) {
-    showAll();
-    replay.hidden = false;
-    return;
-  }
-  reset();
-  let started = false;
-  sc.onVisible((v) => { if (v && !started) { started = true; quiet(play()); } });
-})();
-
-/* ---------------------------------------------------------------- attention: one raises the flag */
-(() => {
-  const board = $("board");
-  if (!board) return;
-  const sc = scene(board, 0.45);
-  const slot = $("ask-slot");
-  const ask = $("ask");
-  const face = $("board-face");
-  const go = $<HTMLButtonElement>("ask-go");
-  const hold = $<HTMLButtonElement>("ask-hold");
-  const hint = $("ask-hint");
-  const bar = $("ask-bar");
-  const time = $("ask-time");
-  const sum = $("board-sum");
-  const resolved = ask.querySelector<HTMLElement>("#ask-resolved span")!;
-  const rows = Object.fromEntries([...board.querySelectorAll<HTMLElement>("[data-row]")].map((r) => [r.dataset.row!, r]));
-  const asks = [
-    {
-      row: "oar",
-      from: "Port the runner to OAR 0.96 ›",
-      q: "OAR 0.96 changed the steer API; 3 calls in the runner need to follow. Change them now?",
-      def: "If you don't answer, I'll change them in 30 min. It can be undone.",
-      go: "Change them",
-      goDone: "Changing them now",
-      goStatus: "Changing the 3 calls · Claude Code · cloud-1",
-      before: "Reading the changelog · Claude Code · cloud-1",
-    },
-    {
-      row: "prs",
-      from: "Review this week's 3 open PRs ›",
-      q: "The rerun passes. But the branch is 23 commits behind main: rebase before merging?",
-      def: "If you don't answer, I'll rebase in 30 min. It can be undone.",
-      go: "Rebase",
-      goDone: "Rebasing now",
-      goStatus: "Rebasing onto main · Codex · MacBook",
-      before: "Read 2; the third is waiting on CI · Codex · MacBook",
-    },
-  ];
-  let answer: "go" | "hold" | null = null;
-  let open = false;
-  go.addEventListener("click", () => { if (open) answer = "go"; });
-  hold.addEventListener("click", () => { if (open) answer = "hold"; });
-  const status = (r: HTMLElement) => r.querySelector<HTMLElement>(".t span")!;
-
-  async function cycle(i: number) {
-    const g = sc.restart();
-    const a = asks[i % asks.length];
-    const row = rows[a.row];
-    await sc.wait(reduced ? 300 : 1100, g);
-    // fill and raise the flag
-    ask.classList.remove("settled");
-    $("ask-from").textContent = a.from;
-    $("ask-q").textContent = a.q;
-    $("ask-def").textContent = a.def;
-    go.textContent = a.go;
-    hint.textContent = `Try it: press ${a.go}`;
-    hint.hidden = false;
-    time.textContent = "30 min";
-    bar.getAnimations().forEach((x) => x.cancel());
-    row.dataset.state = "decide";
-    setFace(face, "needsyou");
-    sum.textContent = "1 needs you · 2 working · 1 waiting";
-    slot.classList.add("open");
-    open = true;
-    answer = null;
-    if (!reduced) bar.animate([{ transform: "scaleX(1)" }, { transform: "scaleX(0.94)" }], { duration: 14000, fill: "forwards" });
-    const t0 = performance.now();
-    let ticked = false;
-    let autoAt = 11000;
-    // wait for a real answer; if nobody answers, show what Go looks like
-    while (!answer) {
-      await sc.wait(100, g);
-      if (!ticked && performance.now() - t0 > 6000) { ticked = true; time.textContent = "29 min"; }
-      autoAt -= 100;
-      if (autoAt <= 0 && !reduced) { press(go); answer = "go"; }
-    }
-    open = false;
-    hint.hidden = true;
-    ask.classList.add("settled");
-    $("ask-from").textContent = a.from;
-    if (answer === "go") {
-      resolved.textContent = a.goDone;
-      row.dataset.state = "working";
-      status(row).textContent = a.goStatus;
-      setFace(face, "done");
-      sum.textContent = "3 working · 1 waiting";
-    } else {
-      resolved.textContent = "Holding. It'll wait for you.";
-      row.dataset.state = "waiting";
-      status(row).textContent = "Waiting for you · " + a.before.split(" · ").pop();
-      setFace(face, "working");
-      sum.textContent = "2 working · 2 waiting";
-    }
-    await sc.wait(1700, g);
-    slot.classList.remove("open");
-    setFace(face, "working");
-    await sc.wait(3200, g);
-    row.dataset.state = "working";
-    status(row).textContent = a.before;
-    quiet(cycle(i + 1));
-  }
-  let started = false;
-  sc.onVisible((v) => { if (v && !started) { started = true; quiet(cycle(0)); } });
-})();
 
 /* ---------------------------------------------------------------- devices: the Isles (D81) */
 (() => {
@@ -363,7 +134,8 @@ document.querySelectorAll(".reveal").forEach((el) => revealer.observe(el));
     tokens.forEach((t) => t.setAttribute("aria-pressed", String(!!lit && t.dataset.acc === lit)));
     if (!lit) { toast.classList.remove("show"); return; }
     const n = on.size;
-    say(`${names[lit]} · Signed in${n > 1 ? ` · shared by ${n} devices` : ""}`, false);
+    const where = n > 1 ? `${n} devices` : stage.querySelector(`.name[data-isle="${[...on][0]}"] b`)?.textContent?.replace(/^This /, "this ") ?? "this device";
+    say(`${names[lit]} is signed in on ${where}`, false);
   }
   for (const t of tokens) {
     names[t.dataset.acc!] = t.querySelector(".mini-tag")!.textContent!;
@@ -411,7 +183,7 @@ document.querySelectorAll(".reveal").forEach((el) => revealer.observe(el));
     stickerImg.style.visibility = "";
     slot.classList.remove("open");
     slot.classList.add("filled");
-    slot.setAttribute("aria-label", "Browse the web · added");
+    slot.setAttribute("aria-label", "Browse the web, added to this Mac");
     slot.setAttribute("aria-disabled", "true");
     sticker.classList.add("used");
     sticker.setAttribute("aria-disabled", "true");
@@ -482,7 +254,7 @@ document.querySelectorAll(".reveal").forEach((el) => revealer.observe(el));
     if (state !== "done") return;
     toast.classList.remove("show");
     slot.classList.remove("filled");
-    slot.setAttribute("aria-label", "Browse the web · can add");
+    slot.setAttribute("aria-label", "Browse the web: add it to this Mac");
     slot.removeAttribute("aria-disabled");
     sticker.classList.remove("used");
     sticker.removeAttribute("aria-disabled");
@@ -588,77 +360,6 @@ document.querySelectorAll(".reveal").forEach((el) => revealer.observe(el));
       })(),
     );
   });
-})();
-
-/* ---------------------------------------------------------------- phone: one thumb */
-(() => {
-  const phone = $("phone");
-  if (!phone) return;
-  const sc = scene(phone, 0.5);
-  const notif = $("notif");
-  const go = $<HTMLButtonElement>("notif-go");
-  const hold = $<HTMLButtonElement>("notif-hold");
-  const done = $("notif-done");
-  const thumb = $("thumb");
-  let answer: "go" | "hold" | null = null;
-  go.addEventListener("click", () => { answer = "go"; });
-  hold.addEventListener("click", () => { answer = "hold"; });
-  notif.addEventListener("click", (e) => { if (!(e.target as HTMLElement).closest("button")) notif.classList.add("expanded"); });
-
-  async function tap(g: number) {
-    const screen = phone.querySelector<HTMLElement>(".screen")!.getBoundingClientRect();
-    const b = go.getBoundingClientRect();
-    const x = b.left - screen.left + b.width / 2 - 22, y = b.top - screen.top + b.height / 2 - 22;
-    thumb.style.opacity = "1";
-    await thumb.animate([{ transform: `translate(${x + 60}px, ${y + 220}px)` }, { transform: `translate(${x}px, ${y}px)` }], {
-      duration: 700, easing: "cubic-bezier(.2,.8,.2,1)", fill: "forwards",
-    }).finished;
-    if (sc.gen !== g) throw CANCEL;
-    thumb.animate([{ transform: `translate(${x}px, ${y}px) scale(1)` }, { transform: `translate(${x}px, ${y}px) scale(.82)` }, { transform: `translate(${x}px, ${y}px) scale(1)` }], { duration: 260, fill: "forwards" });
-    press(go);
-    answer ??= "go";
-    await sc.wait(240, g);
-    thumb.style.opacity = "0";
-  }
-
-  async function cycle() {
-    const g = sc.restart();
-    notif.classList.remove("in", "expanded", "answered");
-    answer = null;
-    await sc.wait(reduced ? 200 : 900, g);
-    notif.classList.add("in");
-    await sc.wait(reduced ? 0 : 1300, g);
-    notif.classList.add("expanded");
-    let left = 3200;
-    while (!answer) {
-      await sc.wait(100, g);
-      left -= 100;
-      if (left <= 0 && !reduced) await tap(g);
-    }
-    done.textContent = answer === "go" ? "Rebasing. I'll tell you if CI doesn't pass." : "Holding. It'll wait until you're back.";
-    notif.classList.add("answered");
-    if (reduced) return;
-    await sc.wait(4200, g);
-    notif.classList.remove("in");
-    await sc.wait(1600, g);
-    quiet(cycle());
-  }
-  let started = false;
-  sc.onVisible((v) => { if (v && !started) { started = true; quiet(cycle()); } });
-})();
-
-/* ---------------------------------------------------------------- trust: the day's record writes itself */
-(() => {
-  const ledger = $("ledger");
-  if (!ledger) return;
-  const items = [...ledger.querySelectorAll<HTMLElement>("li.step")];
-  if (reduced) { items.forEach((li) => li.classList.add("in")); return; }
-  const io = new IntersectionObserver((es) => {
-    if (!es.some((e) => e.isIntersecting)) return;
-    io.disconnect();
-    items.forEach((li, i) => setTimeout(() => li.classList.add("in"), 250 + i * 320));
-  }, { threshold: 0.3 });
-  io.observe(ledger);
 })();
 
 /* ---------------------------------------------------------------- final: it wakes up when you arrive */

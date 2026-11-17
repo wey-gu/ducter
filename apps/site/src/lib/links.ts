@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import film from "./film.json";
-import { formatDate, repoFacts, RELEASES_URL, REPO_URL } from "./github";
+import { repoFacts, RELEASES_URL, REPO_URL } from "./github";
 
 /**
  * The download and source links every page shows, decided once at build time. Every "Download"
@@ -9,10 +9,9 @@ import { formatDate, repoFacts, RELEASES_URL, REPO_URL } from "./github";
  */
 export async function siteLinks() {
   const facts = await repoFacts();
-  const date = formatDate(facts.publishedAt);
   const dl = facts.version
-    ? { href: "/download", label: "Download", note: date ? `${facts.version} · ${date}` : facts.version }
-    : { href: "/download", label: "Get Ducter", note: "No release yet. You can build it from source today." };
+    ? { href: "/download", label: "Download" }
+    : { href: "/download", label: "Get Ducter" };
   // Shown always: the repo opens with the first release, before a deploy with this link.
   const gh = { href: REPO_URL, label: "GitHub" };
   return { facts, dl, gh, releases: RELEASES_URL };

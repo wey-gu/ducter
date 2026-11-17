@@ -69,21 +69,9 @@ const card: Record<OS, string> = { mac: "mac", linux: "server", ios: "iphone", a
     date.textContent = new Date(r.published_at).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" });
   }
   document.querySelectorAll<HTMLAnchorElement>('[data-rel="notes"]').forEach((el) => r.html_url && (el.href = r.html_url));
-  // The files table: the new names and sizes; the checksums are in the new SHA256SUMS.txt.
-  const body = document.querySelector("#dl-table tbody");
-  if (body) {
-    body.replaceChildren(...["dmg", "linuxX64", "linuxArm64", "apk"].filter((k) => found[k]).map((k) => {
-      const a = found[k];
-      const tr = document.createElement("tr");
-      const link = document.createElement("a");
-      link.href = a.browser_download_url;
-      link.textContent = a.name;
-      const td = (child: Node | string) => { const c = document.createElement("td"); c.append(child); return c; };
-      const code = document.createElement("code");
-      code.className = "sha";
-      code.textContent = "in SHA256SUMS.txt";
-      tr.append(td(link), td(size(a.size)), td(code));
-      return tr;
-    }));
+  // The files line: the new names (links and sizes moved above); checksums are in SHA256SUMS.txt.
+  for (const [k, a] of Object.entries(found)) {
+    const name = a && document.querySelector<HTMLAnchorElement>(`[data-name="${k}"]`);
+    if (name && name.firstChild) name.firstChild.textContent = `${a.name} `;
   }
 })();

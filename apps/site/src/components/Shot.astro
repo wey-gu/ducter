@@ -1,0 +1,14 @@
+---
+/**
+ * A real screenshot of the app (D326), light and dark, from public/shots/<name>-{light,dark}.webp.
+ * Taken by headless Chrome against a demo core (apps/web/demo-site.ts and demo.ts); see
+ * design/site.md "Pictures". The dark one follows the visitor's system, like the rest of the site.
+ */
+interface Props { name: string; alt: string; width: number; height: number; sizes?: string; eager?: boolean }
+const { name, alt, width, height, sizes = "100vw", eager = false } = Astro.props;
+---
+<picture class="appshot">
+  <source media="(prefers-color-scheme: dark)" srcset={`/shots/${name}-dark.webp`} />
+  <img src={`/shots/${name}-light.webp`} alt={alt} width={width} height={height}
+    loading={eager ? "eager" : "lazy"} fetchpriority={eager ? "high" : undefined} decoding="async" />
+</picture>

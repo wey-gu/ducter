@@ -1,32 +1,30 @@
 ---
 import "../styles/site.css";
 import Art from "../components/Art.astro";
-import Blink from "../components/Blink.astro";
 import Face from "../components/Face.astro";
 import Head from "../components/Head.astro";
 import Nav from "../components/Nav.astro";
 import Footer from "../components/Footer.astro";
 import Isles from "../components/Isles.astro";
 import GitHubMark from "../components/GitHubMark.astro";
+import Shot from "../components/Shot.astro";
 import { launchFilm, siteLinks } from "../lib/links";
-import { RELEASES_URL } from "../lib/github";
-import { agentsLine, agentsToday, agentsTodayAnd } from "../lib/agents";
+import { agentsToday } from "../lib/agents";
 
+// D326: the page answers a visitor's questions in their order: what is it, what does it do for me,
+// will it bother me, does it work with what I have, can I reach it, does it know me, can I trust
+// it, is it mine. How it's built lives in the README ("Under the hood"), linked from the footer.
 const { facts, dl, gh } = await siteLinks();
 const film = launchFilm();
-const title = "Ducter: say it once, hear back when it's done";
+const title = "Ducter: your own personal AI. It does the work, and asks only when it matters";
 const description =
-  `Ducter is an open-source personal AI on your own Mac or server. Tell one partner what you want. It hands the work to AI agents like ${agentsTodayAnd} and tells you when it's done.`;
+  "Ducter is a free, open-source personal AI. Talk to it from your phone, your computer or the chat apps you already use. It does the work on your own Mac or server, with the AI you already pay for, and asks you only when it matters.";
 const check = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5l3.2 3L13 4.5"/></svg>`;
-const arrow = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 8h10M9 4.5L12.5 8 9 11.5"/></svg>`;
-const out = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12l8-8M6 4h6v6"/></svg>`;
-const cross = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/></svg>`;
-const lock = `<svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M5 7V5a3 3 0 016 0v2h.5A1.5 1.5 0 0113 8.5v4a1.5 1.5 0 01-1.5 1.5h-7A1.5 1.5 0 013 12.5v-4A1.5 1.5 0 014.5 7H5zm1.6 0h2.8V5a1.4 1.4 0 00-2.8 0v2z"/></svg>`;
 const ld = {
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
   name: "Ducter",
-  applicationCategory: "DeveloperApplication",
+  applicationCategory: "LifestyleApplication",
   operatingSystem: "macOS, Linux, iOS, iPadOS, Android",
   description,
   url: "https://ducter.ai",
@@ -38,128 +36,87 @@ const ld = {
 <html lang="en">
 <Head title={title} description={description} ld={ld} />
 <body>
-<a class="skip" href="#main">Skip to content</a>
-
 <Nav dl={dl} gh={gh} />
 
 <main id="main">
 
-<!-- ============ HERO: ack → job → result, playing itself ============ -->
+<!-- ============ HERO: what it is, in one breath, and a real screen ============ -->
 <section class="hero">
   <div class="wrap hero-grid">
     <div class="hero-copy">
-      <h1>Say it once. <span class="line">Hear back when it's&nbsp;done.</span></h1>
-      <p class="lede">Ducter is a personal AI that runs on your own Mac or server. You tell <b>one partner</b> what you want. It hands the work to <b>the AI agents you already use</b>, on the plans you already pay for, and comes back when the work is done or a decision is yours to make.</p>
+      <h1>Your own personal AI. <span class="line quiet">It does the work, and asks only when it matters.</span></h1>
+      <p class="lede">Tell it what you need from your phone, your computer or the chat app you already use. It gets it done, and anything that spends your money or reaches other people waits for your OK.</p>
       <div class="cta-row">
-        <a class="btn secondary lg" href="#how">See how it works</a>
-        <a class="btn lg" href={dl.href}>{dl.label}</a>
+        <a class="btn lg" href="/start">Get started</a>
+        <a class="btn secondary lg" href="#what">See what it does</a>
       </div>
-      <p class="cta-note">{dl.note}</p>
-      <p class="facts">Free and open source under Apache 2.0. {agentsLine}</p>
-      <ul class="platforms" aria-label="Where you use it">
-        <li><Art name="laptop_awake" alt="" sizes="40px" />Mac</li>
-        <li><Art name="server_awake" alt="" sizes="40px" />Linux server</li>
-        <li><Art name="phone" alt="" sizes="24px" />iPhone and iPad</li>
-        {facts.apkUrl
-          ? <li><Art name="android" alt="" sizes="40px" />Android</li>
-          : <li class="soon"><Art name="android" alt="" sizes="40px" />Android <small>coming soon</small></li>}
-      </ul>
+      <p class="facts">Free and open source. It lives on your Mac or your own server and works with the AI you already pay for, through {agentsToday}.{facts.version ? ` Latest: ${dl.note}.` : ""}</p>
     </div>
-
-    <div class="demo" id="demo" aria-label="A short example conversation with Ducter">
-      <Face id="hero-face" faces={["idle", "working", "done"]} start="done" sizes="132px" eager />
-      <div class="win">
-        <div class="win-bar">
-          <span class="avatar mascot" data-face="idle"><span class="clay"><Art class="f-idle" name="ducter_idle" alt="" sizes="52px" eager /><Blink sizes="52px" /></span></span>
-          <div class="who"><b>Ducter</b><span class="presence" id="presence"><span>just finished something</span></span></div>
-        </div>
-        <div class="convo">
-          <div class="track" id="track">
-            <div class="msg user step" data-step="user">Fix the flaky checkpoint test in <code>~/dev/hawdb</code>, then tell me.</div>
-            <div class="msg ducter step" data-step="ack">I'll find out why <code>checkpoint_recovery</code> flakes, and fix it on its own branch.</div>
-            <div class="step pop" data-step="chip"><span class="taskline" id="hero-chip" data-state="done"><span class="ic"><span class="i-work"><Fragment set:html={arrow} /></span><span class="i-done"><Fragment set:html={check} /></span></span><b>Fix CI</b><span class="st" id="hero-st"><span>· Done</span></span> ›</span></div>
-            <div class="quiet step" data-step="quiet"><span class="clock"></span><span id="quiet-text">14 min later</span></div>
-            <div class="msg ducter step" data-step="result">
-              <p>CI is fixed. <code>checkpoint_recovery</code> slept a fixed 50&nbsp;ms for the flush, too short on a busy machine. It now waits for <code>wal.wait_durable(seq)</code>.</p>
-              <div class="proof">
-                <span class="mk"><Fragment set:html={check} />412 tests pass</span>
-                <span class="mk"><Fragment set:html={check} />CI run #48219 · green</span>
-                <span class="qlink">1 file changed ›</span>
-                <span class="qlink">Fix CI ›</span>
-              </div>
-              <div class="proof"><span class="mk out"><Fragment set:html={out} />git push -u origin ducter/fix-ci</span></div>
-              <div class="actions">
-                <button class="btn secondary md" type="button" tabindex="-1">Open draft PR</button>
-                <button class="btn md" type="button" tabindex="-1">Merge into main</button>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="composer" aria-hidden="true">
-          <span class="typed" id="typed" data-ph="Say something to Ducter…"></span>
-          <span class="btn accent send" id="send"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M10 16V4M4.5 9.5L10 4l5.5 5.5"/></svg></span>
-        </div>
-      </div>
-      <div class="demo-ctl">
-        <button class="textbtn sm" id="replay" type="button" hidden>
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M2.5 8a5.5 5.5 0 109.6-3.6M12.5 1.8v2.8H9.7"/></svg>
-          Play it again
-        </button>
-      </div>
-    </div>
+    <figure class="hero-shot">
+      <Shot name="hero" width={1080} height={1350} eager sizes="(min-width: 1280px) 520px, (min-width: 1040px) 480px, 92vw"
+        alt="Ducter's conversation. Its morning note: ducter.dev expires on Nov 16 and isn't renewed yet, with Open the renewal page and Hold; you land in Tokyo on Nov 21 but the hotel starts on the 22nd, with Find a place to stay and Hold. Below, you asked it to fix a flaky test in a code project; it says it's fixed, 50 runs in a row pass, with Merge into main." />
+      <figcaption>A morning in Ducter: two things it noticed in your mail, and a job you handed it, done.</figcaption>
+    </figure>
   </div>
 </section>
 
-<!-- ============ ONLY WHEN IT MATTERS ============ -->
-<section class="sec deep" id="how">
+<!-- ============ WHAT IT DOES FOR YOU ============ -->
+<section class="sec deep" id="what">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2>What it does for you in a day.</h2>
+      <p class="lede">One partner, one conversation. You say what you want in plain words; it works out the rest and comes back with the result.</p>
+    </div>
+    <ul class="does">
+      <li class="card reveal">
+        <div class="card-art"><Art name="ducter_needsyou" alt="" sizes="120px" /></div>
+        <h3>It looks out for you</h3>
+        <p>Say yes once, and it keeps an eye on your mail, calendar and chats. Each morning it brings you <b>at most three things</b> that need you, each with a next step. On a quiet day, nothing.</p>
+        <p class="eg">“Your flight lands the night before your hotel starts.”</p>
+      </li>
+      <li class="card reveal">
+        <div class="card-art"><Art name="ducter_working" alt="" sizes="120px" /></div>
+        <h3>It does the work</h3>
+        <p>Code, research, documents, a pile of invoices to sort. It hands each job to an AI agent on your computer and comes back with what it did and how it checked. Open any job to see every step, and steer it yourself.</p>
+        <p class="eg">“Fix the flaky test, then tell me.”</p>
+      </li>
+      <li class="card reveal">
+        <div class="card-art"><Art name="ab_call" alt="" sizes="120px" /></div>
+        <h3>It runs errands</h3>
+        <p>It looks things up in its own browser, fills in forms with your saved details, books, and even makes a phone call for you. You see exactly what it will do, and tap Go.</p>
+        <p class="eg">“Book a table for two on Friday.”</p>
+      </li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============ IT ONLY ASKS WHEN IT MATTERS ============ -->
+<section class="sec" id="asks">
   <div class="wrap split">
     <div>
       <div class="sec-head">
-        <h2>Silence means it's going fine.</h2>
+        <h2>It only asks when it matters.</h2>
       </div>
-      <p class="lede">Tasks run in the background. You hear back when one is done, or when it needs you to decide something. Every decision comes with a suggested default.</p>
+      <p class="lede">No stream of pings. Work happens in the background, and you hear back when something is done or a decision is yours to make. Every question comes with what it would do.</p>
       <ul class="points">
-        <li><span><b>Go, Hold or Reply…</b> Take the default, say "not yet", or answer in your own words.</span></li>
-        <li><span><b>Or don't answer at all.</b> After 30 minutes it goes with the default, but only if that can be undone. Anything else waits for you.</span></li>
-        <li><span><b>Done comes with proof:</b> what changed and how it checked.</span></li>
+        <li><span><b>Go or Hold, in one tap.</b> Or reply in your own words.</span></li>
+        <li><span><b>Or don't answer at all.</b> If its suggestion can be undone, it goes ahead after 30 minutes. Anything else waits for you.</span></li>
+        <li><span><b>Quiet hours are quiet.</b> Your phone stays still from 23:00 to 08:00 unless you say otherwise.</span></li>
       </ul>
     </div>
-
-    <div class="board-wrap" style="position:relative">
-      <Face id="board-face" faces={["needsyou", "working", "done"]} start="working" sizes="118px" class="peek" />
-      <div class="board" id="board" aria-label="On hand: every task at a glance">
-        <div class="board-head"><b>On hand</b><small id="board-sum">3 working · 1 waiting</small></div>
-        <div class="ask-slot" id="ask-slot">
-          <div>
-            <div class="ask" id="ask" role="group" aria-labelledby="ask-q">
-              <div class="ask-top"><span id="ask-from">Port the runner to OAR 0.96 ›</span><span id="ask-time">30 min</span></div>
-              <p class="q" id="ask-q">OAR 0.96 changed the steer API; 3 calls in the runner need to follow. Change them now?</p>
-              <p class="def" id="ask-def">If you don't answer, I'll change them in 30 min. It can be undone.</p>
-              <div class="bar"><i id="ask-bar"></i></div>
-              <div class="actions">
-                <button class="btn secondary md" type="button" id="ask-hold">Hold</button>
-                <button class="btn md" type="button" id="ask-go">Change them</button>
-                <span class="hint" id="ask-hint">Try it: press Change them</span>
-              </div>
-              <div class="resolved" id="ask-resolved"><Fragment set:html={check} /><span>Changing them now</span></div>
-            </div>
-          </div>
-        </div>
-        <div class="row" data-state="working" data-row="oar"><span class="glyph token"><Art name="coin_claude_code" alt="" sizes="36px" /></span><span class="t"><b>Port the runner to OAR 0.96</b><span id="oar-st">Reading the changelog · Claude Code · cloud-1</span></span></div>
-        <div class="row" data-state="working" data-row="prs"><span class="glyph token"><Art name="coin_codex" alt="" sizes="36px" /></span><span class="t"><b>Review this week's 3 open PRs</b><span>Read 2; the third is waiting on CI · Codex · MacBook</span></span></div>
-        <div class="row" data-state="waiting" data-row="notes"><span class="glyph bubble"><Art name="wait_ci" alt="" sizes="30px" /></span><span class="t"><b>Write the v0.4 release notes</b><span>Waiting for the v0.4 CI run · cloud-1</span></span></div>
-        <div class="row" data-state="done" data-row="mem"><span class="glyph check"><Fragment set:html={check} /></span><span class="t"><b>Mem #8762 health check</b><span>Passed 3 times in a row; the issue can close · MacBook</span></span></div>
-      </div>
+    <div class="phone-shot reveal">
+      <Shot name="onhand-phone" width={780} height={1688} sizes="(min-width: 980px) 320px, 72vw"
+        alt="On hand on a phone: 2 things need you. ducter.dev expires on Nov 16 and isn't renewed yet, I'll do it once you say so, with Reply, Hold and Go. You land in Tokyo on Nov 21 but the hotel starts on the 22nd, with Reply, Hold and Go. Done today: Fix the flaky compaction test." />
     </div>
   </div>
 </section>
 
-<!-- ============ YOUR COMPUTERS, YOUR PLANS ============ -->
-<section class="sec" id="devices">
+<!-- ============ YOUR COMPUTERS, YOUR AI ============ -->
+<section class="sec deep" id="devices">
   <div class="wrap">
     <div class="sec-head">
-        <h2>Your computers. Your plans.</h2>
-      <p class="lede">Ducter lives on your Mac or on a server you own, and its tasks run on your computers, signed in to your AI agents with your own accounts. A coding task works in its own copy of your project, on its own branch, so your checkout stays as you left it. There's no Ducter account to make and no Ducter server in between.</p>
+      <h2>On your computers, with the AI you already pay for.</h2>
+      <p class="lede">Ducter lives on your Mac or on a server you own. Its work runs there too, signed in to your own AI agent, on the plan you already have. There's no Ducter account to make and nothing to pay us.</p>
     </div>
 
     <div class="stage-wrap reveal">
@@ -182,340 +139,126 @@ const ld = {
     </div>
 
     <ul class="points three">
-      <li><span><b>Each task says where it runs.</b> Your partner picks the computer and the AI agent for what the task needs; tap the line to see why.</span></li>
-      <li><span><b>Lend it more computers.</b> A server keeps working while your Mac sleeps; closing your laptop moves what can move to one that stays on.</span></li>
-      <li><span><b>It asks only when it matters:</b> a sleeping computer, or more access, like your own Chrome.</span></li>
+      <li><span><b>Use the AI you have.</b> {agentsToday}, signed in as you. Switch for any job.</span></li>
+      <li><span><b>Lend it more computers.</b> A server keeps working while your laptop sleeps.</span></li>
+      <li><span><b>Your project stays as you left it.</b> Code work happens in its own copy, on its own branch.</span></li>
     </ul>
   </div>
 </section>
 
-<!-- ============ PHONE ============ -->
-<section class="sec deep" id="phone">
-  <div class="wrap split flip">
-    <div>
-      <div class="sec-head">
-        <h2>One thumb is enough.</h2>
-      </div>
-      <p class="lede">Your phone buzzes only when a decision is waiting for you, and never during your quiet hours. Answer it in one tap, or let the default happen and read about it in the morning.</p>
-      <p class="body note">Quiet hours are 23:00 to 08:00 until you change them. With two decisions waiting, Go on all defaults answers both.</p>
-    </div>
-    <div class="phone-scene">
-      <div class="phone" id="phone">
-        <div class="screen">
-          <div class="wall" aria-hidden="true">
-            <i style="width:120%;aspect-ratio:1;left:-55%;top:52%;background:#ffb27a"></i>
-            <i style="width:90%;aspect-ratio:1;right:-40%;top:-10%;background:#ffe9a8"></i>
-            <i style="width:60%;aspect-ratio:1;right:-12%;bottom:-14%;background:#bfe0ff"></i>
-          </div>
-          <span class="island" aria-hidden="true"></span>
-          <div class="clock" aria-hidden="true"><small>Monday, November 9</small><b>7:06</b></div>
-          <div class="notif" id="notif" role="group" aria-label="A notification from Ducter">
-            <div class="nh">
-              <Art class="icon" name="ducter_idle" alt="" sizes="34px" />
-              <div><b>Ducter</b><p id="notif-text">The rerun passes, but the branch is 23 commits behind main. Rebase before merging? Default: rebase, in 30 min.</p></div>
-              <time>now</time>
-            </div>
-            <div class="nacts">
-              <button class="btn secondary md" type="button" id="notif-hold">Hold</button>
-              <button class="btn md" type="button" id="notif-go">Rebase</button>
-            </div>
-            <div class="done"><i><Fragment set:html={check} /></i><span id="notif-done">Rebasing. I'll tell you if CI doesn't pass.</span></div>
-          </div>
-          <span class="thumb" id="thumb" aria-hidden="true"></span>
-          <span class="home" aria-hidden="true"></span>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ============ WHERE YOU USE IT: Mac, server, iPhone and iPad, Android ============ -->
+<!-- ============ REACH IT ANYWHERE ============ -->
 <section class="sec" id="where">
   <div class="wrap">
     <div class="sec-head">
-      <h2>Wherever you are.</h2>
-      <p class="lede">Ducter lives on one computer, your Mac or a server. Every other screen opens the same conversation: start a task at your desk, answer its question from your phone, read the result on your iPad.</p>
+      <h2>Reach it from anywhere.</h2>
+      <p class="lede">It's one conversation wherever you open it. Start something at your desk, answer its question from your phone, read the result on your iPad, or just message it from the chat app you already live in.</p>
     </div>
     <ul class="where">
       <li class="where-card reveal">
         <div class="where-art"><Art name="laptop_awake" alt="" sizes="160px" /></div>
         <h3>Mac</h3>
-        <p>The desktop app, for Apple silicon. Ducter can live here and run tasks here, with its own Chrome window for the web and, once you say so, in your Mac's apps.</p>
-        <p class="where-state"><b>Ready</b><a href={dl.href}>{dl.href.startsWith("#") ? "Get it" : "Download"}</a></p>
-      </li>
-      <li class="where-card reveal">
-        <div class="where-art"><Art name="server_awake" alt="" sizes="150px" /></div>
-        <h3>A Linux server</h3>
-        <p>x64 or arm64, at home or in the cloud. Your partner keeps working while your Mac sleeps, and your Mac can still do tasks for it.</p>
-        <p class="where-state"><b>Ready</b><a href="/docs/install#a-linux-server-that-stays-on">Set one up</a></p>
+        <p>The desktop app, for Apple silicon. Ducter can live here and work here.</p>
+        <p class="where-state"><b>Ready</b><a href={dl.href}>Download</a></p>
       </li>
       <li class="where-card reveal">
         <div class="where-art"><Art name="phone" alt="" sizes="80px" /></div>
         <h3>iPhone and iPad</h3>
-        <p>One app for both. On an iPad held across, On hand stands beside the conversation, and with a keyboard ⌘N starts a task.</p>
+        <p>One app for both, with a nudge only when something waits for you.</p>
         <p class="where-state"><b>Public beta</b><a href="https://testflight.apple.com/join/Z4GvWt7t" rel="noopener">Join on TestFlight</a></p>
       </li>
       {facts.apkUrl ? (
         <li class="where-card reveal">
           <div class="where-art"><Art name="android" alt="" sizes="80px" /></div>
           <h3>Android</h3>
-          <p>The Ducter app, straight from GitHub; it updates itself. Open a foldable like a book and the conversation and On hand meet at the fold.</p>
-          <p class="where-state"><b>Ready</b><a href={facts.apkUrl}>Download the app</a></p>
+          <p>The Ducter app, straight from GitHub; it updates itself.</p>
+          <p class="where-state"><b>Ready</b><a href="/download">Get the app</a></p>
         </li>
       ) : (
         <li class="where-card soon reveal">
           <div class="where-art"><Art name="android" alt="" sizes="80px" /></div>
           <h3>Android</h3>
-          <p>Today Ducter opens in your phone's browser, and you answer Go or Hold right from the notification.</p>
+          <p>Today Ducter opens in your phone's browser.</p>
           <p class="where-state"><b>App coming soon</b><a href="/docs/phone">Use the browser</a></p>
         </li>
       )}
+      <li class="where-card reveal">
+        <div class="where-art"><Art name="server_awake" alt="" sizes="150px" /></div>
+        <h3>A Linux server</h3>
+        <p>At home or in the cloud, so your partner keeps working while your Mac sleeps.</p>
+        <p class="where-state"><b>Ready</b><a href="/docs/install#a-linux-server-that-stays-on">Set one up</a></p>
+      </li>
     </ul>
-    <p class="body where-note">A phone or iPad needs an address it can reach: Ducter on a server in your Tailscale network (private to your devices, with the Tailscale app on the phone), on a server with your own domain, or on a Mac at home set up From outside with your domain on Cloudflare. <a href="/docs/phone">Connect your phone</a></p>
-  </div>
-</section>
-
-<!-- ============ CONNECTED: memory, accounts, other AI agents ============ -->
-<section class="sec deep" id="connected">
-  <div class="wrap split">
-    <div>
-      <div class="sec-head">
-        <h2>It doesn't start from zero.</h2>
-      </div>
-      <p class="lede">What your partner needs to know is often somewhere else: your mail, your calendar, last week's sessions with other AI tools. It reads them without your passwords.</p>
-      <ul class="points">
-        <li><span><b>One memory for all your AIs.</b> <a href="https://mem.nowledge.co" rel="noopener">Nowledge Mem</a> keeps what you've decided, from every AI tool you connect. Your partner reads and adds to it, and says Noted when it does. <span class="when">Optional and free to download.</span></span></li>
-        <li><span><b>Your mail, calendar and chat.</b> One tap with OOMOL's oo, or an address and key from <a href="https://github.com/oomol-lab/open-connector" rel="noopener">OpenConnector</a>. Reading is fine; anything that sends waits for your Go.</span></li>
-        <li><span><b>Your AI agents, reaching each other.</b> With Nowledge Bridge, a Claude Code session in your terminal can hand your partner a job, with your OK. <span class="when">Coming soon.</span></span></li>
-      </ul>
-    </div>
-    <div class="memory-card reveal" aria-label="Example">
-      <div class="msg user" style="align-self:end;justify-self:end">Rebase, never merge commits. Remember that for every repo.</div>
-      <div class="msg ducter" style="margin-top:4px">Will do. From now on I'll rebase before merging, in every repo.
-        <div class="noted"><i><Fragment set:html={check} /></i>Noted · Rebase before merging, every repo</div>
-      </div>
-      <div class="quiet" style="justify-self:center"><span class="clock"></span>9 days later</div>
-      <div class="msg user" style="align-self:end;justify-self:end">Get the docs branch in <code>~/dev/hawdb</code> ready to merge.</div>
-      <div class="msg ducter" style="margin-top:4px">It's rebased onto main, the way you like, and CI is green. It's ready for you to merge.</div>
+    <div class="chats reveal">
+      <p><b>And in the chat apps you already use.</b> Message your partner in <b>iMessage</b>, <b>WeChat</b>, <b>Telegram</b> or <b>Slack</b>, It's the same conversation, and only you can talk to it there.</p>
+      <p class="links"><a href="/docs/chat-apps">Chat apps</a><a href="/docs/imessage">iMessage</a><a href="/docs/phone">Your phone</a></p>
     </div>
   </div>
 </section>
 
-<!-- ============ HEADS-UP: restraint (D165, D173) ============ -->
-<section class="sec" id="heads-up">
+<!-- ============ IT REMEMBERS YOU ============ -->
+<section class="sec deep" id="memory">
   <div class="wrap split flip">
     <div>
       <div class="sec-head">
-        <h2>It looks out for you, quietly.</h2>
+        <h2>It remembers you.</h2>
       </div>
-      <p class="lede">Say yes once when you add your accounts, and your partner keeps an eye on your mail, calendar, GitHub and chat. It speaks up only when something needs you: one morning message with <b>at most three things</b>, and on a quiet day, nothing at all. The first time, it looks back over the last two weeks and picks out what needs you.</p>
+      <p class="lede">Tell it once how you like things, and it keeps to it next week, in every job. It doesn't start from zero, and you can always see what it knows.</p>
       <ul class="points">
-        <li><span><b>Each one comes with a next step.</b> Open the renewal page, look for somewhere to stay. Go does it, Hold leaves it, and How I know shows the mails behind it.</span></li>
-        <li><span><b>Right away only when it can't wait:</b> someone who asked you again, or has waited three working days, or a promise due today. Never in your quiet hours unless you asked for that kind.</span></li>
-        <li><span><b>It never sends, replies, pays or deletes</b> on its own, and it doesn't tell you how much it read. Tap Useful, or Don't tell me this kind, and it learns.</span></li>
+        <li><span><b>Every line says where it came from:</b> you told it, it picked it up from your conversations, or another AI tool you use saved it.</span></li>
+        <li><span><b>Fix it or have it forgotten,</b> one line at a time, or turn memory off.</span></li>
+        <li><span><b>One memory for all your AIs.</b> With <a href="https://mem.nowledge.co" rel="noopener">Nowledge Mem</a>, what you decided in one AI tool is known in the others too. <span class="when">Optional, and free to download.</span></span></li>
       </ul>
     </div>
-    <div class="note-card reveal" aria-label="Example: a morning message">
-      <div class="quiet" style="justify-self:center"><span class="clock"></span>08:00</div>
-      <div class="msg ducter">Morning.</div>
-      <div class="find">
-        <p>ducter.dev expires on Nov 16, and it isn't renewed yet.</p>
-        <div class="actions"><button class="btn md" type="button" tabindex="-1">Open the renewal page</button><button class="btn secondary md" type="button" tabindex="-1">Hold</button><span class="qlink">How I know ›</span></div>
-      </div>
-      <div class="find">
-        <p>You land in Tokyo on Nov 21, and nothing is booked for that night.</p>
-        <div class="actions"><button class="btn md" type="button" tabindex="-1">Find a place to stay</button><button class="btn secondary md" type="button" tabindex="-1">Hold</button><span class="qlink">How I know ›</span></div>
-      </div>
+    <div class="sheet-shot reveal">
+      <Shot name="memory" width={960} height={1056} sizes="(min-width: 980px) 480px, 92vw"
+        alt="Settings, Memory: Ducter remembers you, 5 new this week. What it knows about you, How you like things: Likes the conclusion first, details after (you told it); Chat in Chinese, docs and code in the repo in English (saved by Codex); English mail short and plain (Nowledge Mem drew it from your conversations)." />
     </div>
   </div>
 </section>
 
-<!-- ============ TRUST ============ -->
-<!-- ============ ERRANDS: calls, Autofill, taking a turn ============ -->
-<section class="sec deep" id="errands">
-  <div class="wrap">
-    <div class="sec-head">
-      <h2>It runs errands, with your OK.</h2>
-    </div>
-    <p class="lede">Booking, buying, calling, working in your Mac's apps: every step that spends money, sends something or reaches a person shows you exactly what will happen, and waits for you.</p>
-    <ul class="points three">
-      <li><span><b>It calls for you.</b> A restaurant, a clinic, a shop, in its voice or yours, through <a href="https://tuwa.ai" rel="noopener">Tuwa</a> or from your own Android phone. You see who, what it may say and the likely cost, then tap Call. <span class="when">Needs a Tuwa account, or your own phone with a small cable kit and a live-voice API key.</span></span></li>
-      <li><span><b>It fills in without seeing.</b> Save a sign-in, a card or your travel details once. Your partner fills them in on the right site; every payment asks you first. A task that needs a key asks you with a card, never in the chat.</span></li>
-      <li><span><b>You can take a turn.</b> Watch its browser from your phone or iPad. Tap My turn to sign in or check a page yourself, then Hand it back.</span></li>
-    </ul>
-  </div>
-</section>
-
+<!-- ============ TRUST AND PRIVACY ============ -->
 <section class="sec ink-band" id="trust">
-  <div class="wrap split">
-    <div>
-      <div class="sec-head">
-        <h2>It asks before anything reaches other people.</h2>
-      </div>
-      <p class="lede">A task doesn't stop you for every command. Emails, posts, PR comments, payments, calls and pushes to shared branches wait for your Go, and every one is written down. A few things it never does at all.</p>
-      <ul class="nevers">
-        <li><b>It never merges into main.</b><span>A finished task offers Merge into main or Open draft PR, and waits for you.</span></li>
-        <li><b>It never sees your passwords.</b><span>It fills a saved one only on its own site, or you sign in yourself with My turn.</span></li>
-        <li><b>It never pays on its own.</b><span>Every payment shows the shop, the amount and the card, and waits for your OK and the security code.</span></li>
-      </ul>
-    </div>
-    <div class="ledger reveal" id="ledger">
-      <div class="ledger-head"><b>Sent out today</b><small>Monday</small></div>
-      <ol>
-        <li class="step"><code>git push -u origin ducter/fix-ci</code><span class="verdict ran"><Fragment set:html={check} />Ran: its own branch</span></li>
-        <li class="step"><code>gh pr create --draft "Fix flaky checkpoint_recovery"</code><span class="verdict asked"><Fragment set:html={check} />Asked you; you said Go</span></li>
-        <li class="step"><code>git push origin main</code><span class="verdict waits"><Fragment set:html={lock} />Waits for you, always</span></li>
-        <li class="step"><code>email: load-test numbers → a HawDB contributor</code><span class="verdict asked"><Fragment set:html={out} />Asks you first</span></li>
-        <li class="step"><code>sign in to github.com</code><span class="verdict yours"><Fragment set:html={lock} />Filled in; it never saw it</span></li>
-        <li class="step"><code>pay: renew a domain, $10.44</code><span class="verdict waits"><Fragment set:html={lock} />Waits for your OK</span></li>
-        <li class="step"><code>call: a table for two, Friday 19:00</code><span class="verdict asked"><Fragment set:html={out} />Asks you first</span></li>
-      </ol>
-    </div>
-  </div>
-</section>
-
-<!-- ============ DEPTH ============ -->
-<section class="sec" id="depth">
   <div class="wrap">
     <div class="sec-head">
-        <h2>Open anything. Any time.</h2>
-      <p class="lede">Most days you stay in the conversation. When you want a closer look, <b>On hand</b> shows every task at a glance. Open one to read what it did, step by step, and the diff of every file it changed, and write to it while it works. Or just reply to its result in the conversation, and it carries on. On an iPad or a foldable, On hand can take the whole screen.</p>
+      <h2>Nothing goes out without your OK.</h2>
+      <p class="lede">Reading and drafting are fine. Anything that sends, pays, calls or can't be taken back shows you exactly what will happen, and waits for you. Afterwards, <b>Done for you</b> lists all of it, day by day.</p>
     </div>
-    <div class="task-win reveal" aria-label="An opened task">
-      <div class="tw-bar">
-        <span class="crumbs"><span>Conversation</span><span aria-hidden="true">/</span><span>On hand</span><span aria-hidden="true">/</span><b>Fix CI · #1592</b></span>
+    <div class="trust-grid">
+      <div class="wide-shot reveal">
+        <Shot name="done-for-you" width={1380} height={1056} sizes="(min-width: 1040px) 640px, 92vw"
+          alt="Done for you: today, sent, paid, called, filled in, changed and looked at. Rows: changed 14 files in the task Sort the invoices folder, with Undo until Nov 24; merged a branch after you said Go; added a Dentist event after you said Go; called Sushi Saito to book Saturday 7 pm for two." />
       </div>
-      <div class="tw-page">
-        <div class="tw-head">
-          <Face id="task-face" faces={["done"]} start="done" sizes="116px" />
-          <div>
-            <div class="standing"><b>Done</b><span>· started 14 min ago</span></div>
-            <p class="outcome">The flaky checkpoint test is fixed.</p>
-            <p class="said">Rebased; all 412 tests pass and CI is green. The cause was a fixed 50&nbsp;ms sleep in the test, now a wait for durability.</p>
-            <div class="proof">
-              <span class="mk"><Fragment set:html={check} />20 local reruns</span>
-              <span class="mk"><Fragment set:html={check} />CI run #48219 · green</span>
-              <span class="qlink">1 file changed ›</span>
-            </div>
-            <div class="proof"><span class="mk out"><Fragment set:html={out} />git push -u origin ducter/fix-ci</span></div>
-            <div class="actions"><button class="btn secondary md" type="button" tabindex="-1">Open draft PR</button><button class="btn md" type="button" tabindex="-1">Merge into main</button></div>
-          </div>
-        </div>
-
-        <h3 class="tw-h">What it did</h3>
-        <ol class="steps">
-          <li class="said-small"><small>What Ducter asked for</small>Find out why HawDB #1592's CI fails, and fix it.</li>
-          <li class="fold">› Ran 3 commands</li>
-          <li>All three failures are in <code>checkpoint_recovery</code>: it sleeps a fixed 50&nbsp;ms for the flush.</li>
-          <li class="fold">› Edited 1 file</li>
-          <li class="note">Progress saved · Confirmed flaky; wait for durability</li>
-          <li class="said-small"><small>Told Ducter · needs you to decide</small>The rerun passes. But the branch is 23 commits behind main: rebase before merging?</li>
-          <li class="fold">› Ran 3 commands</li>
-        </ol>
-
-        <div class="tw-changes">
-          <h3 class="tw-h">Changes <small>1 file <span class="add">+3</span> <span class="del">−3</span></small></h3>
-          <div class="diff" aria-label="Diff of crates/storage/tests/checkpoint_recovery.rs">
-            <div class="file"><span>▾ crates/storage/tests/checkpoint_recovery.rs</span> <span class="n"><span class="add">+3</span> <span class="del">−3</span></span></div>
-<pre><span>    let wal = Wal::open(&amp;dir, WalOptions::fsync_each())?;</span><span>    let seq = wal.append(b"hello")?;</span><span class="del">-   std::thread::sleep(Duration::from_millis(50));</span><span class="add">+   // wait for the flusher instead of a fixed sleep</span><span class="add">+   wal.wait_durable(seq)?;</span><span>    crash_and_reopen(&amp;dir)?;</span><span>    assert_eq!(recovered.last_seq(), seq);</span></pre>
-          </div>
-        </div>
-        <div class="tw-details">Details ›</div>
-        <div class="talk">Talk to this task</div>
-      </div>
+      <ul class="nevers">
+        <li><b>It never sees your passwords.</b><span>It fills a saved sign-in only on its own site, or you sign in yourself.</span></li>
+        <li><b>It never pays on its own.</b><span>Every payment shows the shop, the amount and the card, and waits for your OK.</span></li>
+        <li><b>It never merges your code.</b><span>A finished job offers Merge into main, and waits for you.</span></li>
+        <li><b>Your conversation stays with you.</b><span>It's kept on your own computer. It reaches an AI only through your own account, and a chat app only if you connect one.</span></li>
+      </ul>
     </div>
+    <p class="body more"><a href="/docs/privacy-and-safety">Privacy and safety</a>, in full.</p>
   </div>
 </section>
 
-<!-- ============ OPEN ============ -->
+<!-- ============ OPEN AND YOURS ============ -->
 <section class="sec deep" id="open">
   <div class="wrap">
     <div class="sec-head">
-        <h2>Yours to read and run.</h2>
+      <h2>Open source, and yours.</h2>
     </div>
     <div class="cards3">
-      <div class="card reveal"><div class="card-art"><Art name="ducter_working" alt="" sizes="120px" /></div><h3>Open source</h3><p>Apache 2.0. Every prompt Ducter writes and every line of code that touches your work is in the source.</p></div>
-      <div class="card reveal"><div class="card-art"><Art name="server_awake" alt="" sizes="140px" /></div><h3>Self-hosted</h3><p>Your Mac, or a Linux server you own. Your conversation and tasks stay in one folder there that only your account can read.</p></div>
-      <div class="card reveal"><div class="card-art coins"><Art name="coin_claude_code" alt="" sizes="64px" /><Art name="coin_codex" alt="" sizes="64px" /><Art name="coin_pi" alt="" sizes="64px" /><Art name="coin_deepseek_harness" alt="" sizes="64px" /></div><h3>No lock-in</h3><p>Ducter works through each AI agent's own app, signed in as you, on your existing plan. Use whichever one you have, and switch for any task.</p></div>
+      <div class="card reveal"><div class="card-art"><Art name="ducter_done" alt="" sizes="120px" /></div><h3>Free and open source</h3><p>Apache 2.0. Every line, and every word Ducter tells an AI on your behalf, is there to read.</p></div>
+      <div class="card reveal"><div class="card-art"><Art name="server_awake" alt="" sizes="140px" /></div><h3>Runs where you put it</h3><p>Your Mac, or a Linux server you own. Nobody can switch it off for you or change the deal.</p></div>
+      <div class="card reveal"><div class="card-art coins"><Art name="coin_claude_code" alt="" sizes="64px" /><Art name="coin_codex" alt="" sizes="64px" /><Art name="coin_pi" alt="" sizes="64px" /><Art name="coin_deepseek_harness" alt="" sizes="64px" /></div><h3>No lock-in</h3><p>It works through whichever AI agent you have, on your own plan. Change your mind any time; your partner and its memory come along.</p></div>
     </div>
 
-    <div class="under reveal" id="under">
+    <div class="get" id="install">
       <div>
-        <h3>Built on the agents you have</h3>
-        <p class="body">For people who already run several AI agents at once: what Ducter does so they hold up as one partner.</p>
+        <h3>Ready when you are</h3>
+        <p class="body"><b>Get started</b> asks one question, where Ducter should live, and shows you just that path. Let the AI agent you already use set it up with one sentence, or do it yourself in a few minutes.</p>
       </div>
-      <ul class="points">
-        <li><span><b>One adapter, four agents.</b> Claude Code, Codex, pi and DeepSeek Harness, started through <a href="https://github.com/botiverse/oar" rel="noopener">OAR</a> in clean sessions that still carry your own skills and settings.</span></li>
-        <li><span><b>Small windows on purpose.</b> Your partner and its tasks work in about 200K tokens. A long conversation stays coherent through short digests and recall, not by replaying everything.</span></li>
-        <li><span><b>The facts about each agent, in one place.</b> Context windows, compaction points and versions are checked against the real programs, and <code>ducter doctor</code> warns when yours is outside what was checked.</span></li>
-        <li><span><b>Each agent's own browser first.</b> Ducter's own Chrome is the fallback, on your Mac or your server. In a Mac's apps, Ducter's own app tools check every click before it happens, and never open a password manager, a bank or System Settings.</span></li>
-        <li><span><b>Keys stay out of the conversation.</b> A task that needs one asks on a card; it's kept encrypted on the computer Ducter lives on and handed only to the command that uses it. A key you paste is taken out of what a task is told, and hidden everywhere Ducter shows one.</span></li>
-        <li><span><b>Budgets are tests.</b> Every prompt and tool list has a size limit that fails the build, and updates are rehearsed end to end on a Linux VM before a release.</span></li>
-      </ul>
-    </div>
-
-    <div class="install" id="install">
-      <div>
-        <h3 style="font-size:28px">Get Ducter</h3>
-        <p class="body" style="margin-top:10px">You need {agentsToday} installed and signed in on the computer that does the work. Ducter checks everything else and tells you the one thing to fix, if there is one.</p>
-        <p class="body" style="margin-top:10px"><a href="/download">Every download</a>, with its size, checksum and what it needs.</p>
-        {!facts.isPublic && <p class="body" style="margin-top:10px">The repository opens to the public soon. Until then, these are the exact steps it will take.</p>}
-      </div>
-      <div class="panel-box">
-        <div class="tabs" role="tablist" aria-label="Ways to install">
-          <button role="tab" id="tab-mac" aria-controls="p-mac" aria-selected="true">Mac app</button>
-          <button role="tab" id="tab-cli" aria-controls="p-cli" aria-selected="false" tabindex="-1">Command line</button>
-          <button role="tab" id="tab-srv" aria-controls="p-srv" aria-selected="false" tabindex="-1">Server</button>
-          <button role="tab" id="tab-ios" aria-controls="p-ios" aria-selected="false" tabindex="-1">iPhone and iPad</button>
-          <button role="tab" id="tab-android" aria-controls="p-android" aria-selected="false" tabindex="-1">Android</button>
-          <button role="tab" id="tab-agent" aria-controls="p-agent" aria-selected="false" tabindex="-1">Your AI agent</button>
-        </div>
-        <div class="panel" id="p-mac" role="tabpanel" aria-labelledby="tab-mac" style="margin-top:14px">
-          <p>Paste this into Terminal. It downloads the signed app, checks it, puts it in Applications and opens it:</p>
-          <div class="term"><button class="btn sm copy" type="button" data-copy="curl -fsSL https://ducter.ai/install.sh | sh">Copy</button><pre><span class="p">$ </span>curl -fsSL https://ducter.ai/install.sh | sh</pre></div>
-          <p>Ducter checks your Mac, then opens the conversation. Closing the window doesn't stop it. It needs a Mac with Apple silicon.</p>
-          <p>Or <a href={facts.dmgUrl ?? RELEASES_URL}>download the .dmg</a> and drag Ducter to Applications, or <a href="/docs/install#build-it-from-the-source-instead">build it from the source</a>. On iPhone and iPad: <a href="https://testflight.apple.com/join/Z4GvWt7t" rel="noopener">join the beta</a>.</p>
-        </div>
-        <div class="panel" id="p-cli" role="tabpanel" aria-labelledby="tab-cli" style="margin-top:14px" hidden>
-          <p>The same line installs the <code>ducter</code> command in <code>~/.local/bin</code>. On a Mac it comes with the app; on Linux it's the <code>ducter</code> bundle:</p>
-          <div class="term"><button class="btn sm copy" type="button" data-copy="curl -fsSL https://ducter.ai/install.sh | sh">Copy</button><pre><span class="p">$ </span>curl -fsSL https://ducter.ai/install.sh | sh</pre></div>
-          <p>Then check this computer, and start your partner (on a Mac, the app opens too):</p>
-          <div class="term"><button class="btn sm copy" type="button" data-copy="ducter doctor&#10;ducter up">Copy</button><pre><span class="c"># every missing piece comes with its fix</span>
-<span class="p">$ </span>ducter doctor
-<span class="c"># starts your partner</span>
-<span class="p">$ </span>ducter up</pre></div>
-          <p><code>ducter status</code> shows your tasks and the decisions waiting for you. Or <a href="/docs/install#the-ducter-command">build it from the source</a>.</p>
-        </div>
-        <div class="panel" id="p-srv" role="tabpanel" aria-labelledby="tab-srv" style="margin-top:14px" hidden>
-          <div class="term"><button class="btn sm copy" type="button" data-copy="curl -fsSL https://ducter.ai/install.sh | sh -s -- --service">Copy</button><pre><span class="c"># on the server (x64 or arm64 Linux): runs as a service</span>
-<span class="p">$ </span>curl -fsSL https://ducter.ai/install.sh | sh -s -- --service</pre></div>
-          <p>Then choose how your Mac and phone reach it. Either one sets up HTTPS and gives you a code.</p>
-          <div class="term"><button class="btn sm copy" type="button" data-copy="ducter tailscale">Copy</button><pre><span class="c"># private: only your devices in your Tailscale network, no domain, no open ports</span>
-<span class="p">$ </span>ducter tailscale</pre></div>
-          <div class="term" style="margin-top:10px"><button class="btn sm copy" type="button" data-copy="ducter domain ducter.example.com">Copy</button><pre><span class="c"># or your own domain: point an A record at the server, then</span>
-<span class="p">$ </span>ducter domain ducter.example.com</pre></div>
-          <p>Your partner keeps working while your Mac sleeps. It only listens on the server itself (127.0.0.1). With Tailscale, turn on MagicDNS and HTTPS Certificates in Tailscale's admin console once, and keep the Tailscale app on your phone and Mac; <code>ducter tailscale</code> says which switch is missing. <code>ducter domain</code> checks your DNS and sets up HTTPS with Caddy. <a href="/docs/install#a-linux-server-that-stays-on">A server that stays on</a> has the steps.</p>
-        </div>
-        <div class="panel" id="p-ios" role="tabpanel" aria-labelledby="tab-ios" style="margin-top:14px" hidden>
-          <p>One app for iPhone and iPad, in public beta through Apple's TestFlight. It connects to Ducter on your server with the address and code from <code>ducter pair</code>.</p>
-          <p><a class="btn" href="https://testflight.apple.com/join/Z4GvWt7t" rel="noopener">Join the beta</a></p>
-          <p>Any other phone opens the same address in its browser. <a href="/docs/phone">Your phone</a> has the details.</p>
-        </div>
-        <div class="panel" id="p-android" role="tabpanel" aria-labelledby="tab-android" style="margin-top:14px" hidden>
-          {facts.apkUrl ? (
-            <>
-              <p>The Ducter app for Android comes with each release on GitHub and updates itself. Allow your browser to install it when Android asks, then scan the code from <code>ducter pair</code>. On a foldable, open it like a book: the conversation and On hand meet at the fold.</p>
-              <p><a class="btn" href={facts.apkUrl}>Download the app</a></p>
-            </>
-          ) : (
-            <p>Open the address from <code>ducter pair</code> in your phone's browser; the Android app is coming soon.</p>
-          )}
-        </div>
-        <div class="panel" id="p-agent" role="tabpanel" aria-labelledby="tab-agent" style="margin-top:14px" hidden>
-          <p>Let Claude Code, Codex or another agent set Ducter up for you. Ask it:</p>
-          <div class="term"><button class="btn sm copy" type="button" data-copy="Install the ducter-deploy skill from github.com/wey-gu/ducter/tree/main/skills and deploy Ducter on my server.">Copy</button><pre>Install the ducter-deploy skill from github.com/wey-gu/ducter/tree/main/skills and deploy Ducter on my server.</pre></div>
-          <p>The skills are also at <code>https://ducter.ai/skills/ducter-deploy/SKILL.md</code> (and <code>ducter-operate</code>, <code>ducter-troubleshoot</code>). <a href="/docs/for-agents">For AI agents</a> says what they do.</p>
-        </div>
+      <div class="cta-row">
+        <a class="btn lg" href="/start">Get started</a>
+        <a class="btn secondary lg" href="/download">Every download</a>
       </div>
     </div>
   </div>
@@ -524,8 +267,8 @@ const ld = {
 <section class="final" id="final">
   <div class="wrap">
     <Face id="final-face" faces={["napping", "idle"]} start="napping" sizes="168px" />
-    <h2>Say it once.</h2>
-    <p class="lede">Then get on with your day. Ducter tells you when it's done.</p>
+    <h2>Hand it something today.</h2>
+    <p class="lede">Then get on with your day. It tells you when it's done, and asks only when it matters.</p>
     <figure class="film">
       {film.src ? (
         <video src={film.src} poster={film.poster} width="960" height="540" controls preload="none" playsinline aria-label={`The launch film, ${film.seconds} seconds`}></video>
@@ -536,7 +279,7 @@ const ld = {
     </figure>
     <div class="cta-row">
       <a class="btn secondary lg gh" href={gh.href} rel="noopener"><GitHubMark />Star on GitHub</a>
-      <a class="btn lg" href={dl.href}>{dl.label}</a>
+      <a class="btn lg" href="/start">Get started</a>
     </div>
   </div>
 </section>

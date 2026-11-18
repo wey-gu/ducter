@@ -439,6 +439,10 @@ func (a *App) onHandList(c *ui.Context, b store.Board) {
 			}
 		})
 	}
+	// D357: the person's to-dos in their own apps: a few, the rest folded.
+	if q == "" && f == 0 {
+		a.todoGroup(c, a.oh.lens)
+	}
 }
 
 // doneOpenKey is how this Mac remembers that 今天做完's seen results are

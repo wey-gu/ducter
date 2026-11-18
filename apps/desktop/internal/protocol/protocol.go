@@ -2708,6 +2708,9 @@ type TaskNew struct {
 	From     string       `json:"from,omitempty"`  // D285: New task from this: that task's id
 	// Item (D341): the to-do picked from 待办来源, bound to the task.
 	Item *SourceItemRef `json:"item,omitempty"`
+	// Handed (D357): handed over from On hand (交给{name}): no place was
+	// picked, so the home finds the repository's own folder.
+	Handed bool `json:"handed,omitempty"`
 }
 
 // OpenTask asks the apps to show a task (`ducter open <task>`).

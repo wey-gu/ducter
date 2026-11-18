@@ -49,12 +49,13 @@ function scriptGh(dir: string) {
   chmodSync(join(bin, "gh"), 0o755);
   writeFileSync(page, assignedResponse(50));
   writeFileSync(join(dir, "total"), "50\tfalse\n");
-  writeFileSync(join(dir, "review"), "0\tfalse\n");
+  writeFileSync(join(dir, "review"), '{"total_count":0,"items":[]}\n');
   return {
     bin,
     page,
     fail,
-    totals: (open: string, review: string) => (writeFileSync(join(dir, "total"), `${open}\n`), writeFileSync(join(dir, "review"), `${review}\n`)),
+    // The review search reads JSON (D357: its newest three come with it); given as "4\tfalse" here.
+    totals: (open: string, review: string) => (writeFileSync(join(dir, "total"), `${open}\n`), writeFileSync(join(dir, "review"), /^\d+\t/.test(review) ? `{"total_count":${review.split("\t")[0]},"items":[]}\n` : `${review}\n`)),
     queries: () => { try { return readFileSync(join(dir, "queries"), "utf8").trim().split("\n"); } catch { return []; } },
     env: (o: { home?: boolean } = {}) => ({ PATH: `${bin}:/usr/bin:/bin`, ...(o.home === false ? {} : { HOME: dir }) }) };
 }
@@ -193,12 +194,14 @@ test("the count is GitHub's true total, not the page of 50; PRs waiting for revi
   const qs = gh.queries();
   expect(qs).toContain("q=assignee:lin-dev is:open archived:false");
   expect(qs).toContain("q=review-requested:lin-dev is:open is:pr archived:false");
+  expect(qs).toContain("q=assignee:lin-dev mentions:lin-dev is:open archived:false");
   // A filter: both searches carry it.
   ts.set(v.id, { repos: ["acme/web", "acme/infra"], label: "type/bug" });
   await ts.look();
-  expect(gh.queries().slice(-2)).toEqual([
+  expect(gh.queries().slice(-3)).toEqual([
     'q=assignee:lin-dev is:open archived:false repo:acme/web repo:acme/infra label:"type/bug"',
     'q=review-requested:lin-dev is:open is:pr archived:false repo:acme/web repo:acme/infra label:"type/bug"',
+    'q=assignee:lin-dev mentions:lin-dev is:open archived:false repo:acme/web repo:acme/infra label:"type/bug"',
   ]);
   // GitHub says its total is partial: only "at least".
   gh.totals("1000\ttrue", "0\tfalse");

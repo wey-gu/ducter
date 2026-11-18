@@ -4,14 +4,16 @@
 // how it gets done. Here: what is added, what happens when a new one comes and when a task is done,
 // and what could be added without a step. Also the pieces other views use: the chip a bound task
 // shows (its app's mark and "#12" or the note's name) and New task's pick.
-import type { SourceItem, SourceItemRef, SourcesServerFrame, SourceView, TaskCard, WhenDone, WhenNew } from "@ducter/protocol";
-import { WHEN_DONE } from "@ducter/protocol";
+import type { ServerFrame, SourceGlance, SourceItem, SourceItemRef, SourcesServerFrame, SourceView, TaskCard, WhenDone, WhenNew } from "@ducter/protocol";
+import { BROWSE_PAGE, WHEN_DONE } from "@ducter/protocol";
+import { ago, spoken } from "./format.ts";
 import { useEffect, useState } from "preact/hooks";
 import { A } from "./app.ts";
 import { BrandMark, BrandTile } from "./brand.tsx";
-import { Btn, DangerButton, Facts, Seg } from "./controls.tsx";
+import { Btn, Chev, DangerButton, Facts, Seg } from "./controls.tsx";
 import { SecHead, Tag } from "./set-grid.tsx";
 import { GhSignIn } from "./gh-signin.tsx";
+
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
@@ -19,6 +21,255 @@ type Frame = Extract<SourcesServerFrame, { t: "sources" }>;
 
 /** What this page knows; the home's frames keep it current. */
 export const TS: { frame?: Frame; items?: SourceItem[]; itemsFor?: string; busy: Record<string, boolean>; said?: string } = { busy: {} };
+
+/**
+ * D357: On hand's fold of the person's to-dos: open or not, what narrows it, and the pages read so
+ * far. The home answers a page at a time (source_items with page).
+ */
+export interface TodoFoldState {
+  open: boolean;
+  q: string;
+  /** Only this source (two or more). */
+  source?: string;
+  /** A repository (GitHub) or a top folder (a vault). */
+  where?: string;
+  /** A vault's tag. */
+  tag?: string;
+  /** The PRs waiting for the person's review. */
+  review?: boolean;
+  page: number;
+  items: SourceItem[];
+  more: boolean;
+  wheres: string[];
+  tags: string[];
+  loading: boolean;
+  limited?: boolean;
+  failed?: boolean;
+  cid: string;
+  /** Bring the group into view once (a tap on Settings' count). */
+  scroll?: boolean;
+}
+export const TF: TodoFoldState = { open: false, q: "", page: 0, items: [], more: false, wheres: [], tags: [], loading: false, cid: "" };
+/** Hand-overs in flight (by ref: the clientId), and the last one that failed (its words). */
+export const HAND: { sending: Record<string, string>; failed: Record<string, string> } = { sending: {}, failed: {} };
+
+/** D357: the first page again (the fold opened, or what narrows it changed). */
+export function askFold(page = 1) {
+  TF.cid = `fold-${Date.now()}-${page}`;
+  TF.loading = true;
+  if (page === 1) TF.items = [];
+  A.send({ t: "source_items", page, clientId: TF.cid, ...(TF.q.trim() ? { query: TF.q.trim() } : {}), ...(TF.source ? { id: TF.source } : {}), ...(TF.where !== undefined ? { where: TF.where } : {}), ...(TF.tag ? { tag: TF.tag } : {}), ...(TF.review ? { review: true } : {}) });
+  A.changed();
+}
+
+/** D357: opens On hand at the to-dos (Settings' counts): the fold open, the review list if asked. */
+export function seeTodos(o: { source?: string; review?: boolean } = {}) {
+  Object.assign(TF, { open: true, q: "", source: (TS.frame?.sources.length ?? 0) > 1 ? o.source : undefined, where: undefined, tag: undefined, review: !!o.review, scroll: true });
+  askFold(1);
+  A.sheet = null;
+  A.go({ name: "onhand" });
+}
+
+/** D357: 交给{name} / Hand to {name}: the same path as New task's pick, without the card; the home finds the folder. */
+export function handOver(i: SourceItem) {
+  if (i.taskId) return A.go({ name: "task", id: i.taskId });
+  const cid = `hand-${Date.now()}`;
+  HAND.sending[i.ref] = cid;
+  delete HAND.failed[i.ref];
+  const item: SourceItemRef = { source: i.source, kind: i.kind, ref: i.ref, label: i.label, title: i.title, ...(i.where ? { where: i.where } : {}), ...(i.url ? { url: i.url } : {}), ...(i.pr ? { pr: true } : {}) };
+  A.send({ t: "task_new", words: i.title, item, handed: true, clientId: cid });
+  A.changed();
+}
+
+/** The home's answer to a hand-over: the card moves to the board by itself; a failure says why on the card. */
+A.onHanded = (f: Extract<ServerFrame, { t: "task_new_result" }>) => {
+  const ref = Object.keys(HAND.sending).find((r) => HAND.sending[r] === f.clientId);
+  if (!ref) return false;
+  delete HAND.sending[ref];
+  if (!f.ok) HAND.failed[ref] = f.reason && ["no_agent", "offline", "not_repo", "ducter_data"].includes(f.reason) ? t(`newtask.err.${f.reason}`) : (f.message ?? t("newtask.err.failed"));
+  else TF.items = TF.items.map((x) => (x.ref === ref && f.taskId ? { ...x, taskId: f.taskId } : x));
+  A.changed();
+  return true;
+};
+
+/** D357: the group's name: GitHub's or the vault's own when there is one source, else 你的待办 / Your to-dos. */
+export function todoGroupName(sources: SourceView[]): string {
+  if (sources.length !== 1) return t("onhand.todos.all");
+  const s = sources[0]!;
+  return s.kind === "github" ? t("onhand.todos.github") : t("onhand.todos.vault", s.name);
+}
+
+/** D357: what the group counts: the open ones in every source that reads (none counted before a look). */
+export function todoCounts(sources: SourceView[], glance: SourceGlance[] = []): { open: number; atLeast: boolean; review: number; rest: number } {
+  const ok = sources.filter((s) => countOf(s) === "counted");
+  const open = ok.reduce((n, s) => n + (s.open ?? 0), 0);
+  const review = ok.reduce((n, s) => n + (s.review ?? 0), 0);
+  const shown = glance.filter((g) => !g.review).length;
+  return { open, atLeast: ok.some((s) => s.openAtLeast), review, rest: Math.max(0, open - shown) };
+}
+
+/** D357: one card's second line, each its own fact (D291): why it stands here, where it is, its labels. */
+function whyOf(i: SourceItem & { why?: SourceGlance["why"] }): string | undefined {
+  if (i.review || i.why === "review") return t("onhand.todos.why.review");
+  if (i.why === "mentioned") return t("onhand.todos.why.mentioned");
+  if (i.due) return t("todos.pick.due", i.due);
+  return undefined;
+}
+
+/** D357: the action on a to-do: hand it over, see its task, or (a review request) open it. */
+function TodoAct({ i, small }: { i: SourceItem; small?: boolean }) {
+  const name = A.S.personaName;
+  const app = appOf(i.kind);
+  if (i.review) return <Btn kind="secondary" size="sm" label={t("todos.chip.open", app)} about={i.title} onClick={() => i.url && window.open(i.url, "_blank", "noreferrer")} />;
+  if (i.taskId) return <Btn kind="text" size="sm" label={t("onhand.todos.doing")} about={i.title} onClick={() => A.go({ name: "task", id: i.taskId! })} />;
+  const sending = !!HAND.sending[i.ref];
+  return <Btn kind={small ? "text" : "secondary"} size="sm" label={sending ? t("onhand.todos.handing", name) : t("onhand.todos.hand", name)} about={i.title} disabled={sending} onClick={() => handOver(i)} />;
+}
+
+/** D357: a to-do as On hand shows it first: a card of the board's own language, the app's mark where a task has its agent's coin. */
+export function TodoCard({ i }: { i: SourceGlance }) {
+  const why = whyOf(i);
+  const app = appOf(i.kind);
+  const failed = HAND.failed[i.ref];
+  return (
+    <div class={`tcard todo-card${i.review ? " review" : ""}`} data-todo={i.ref}>
+      <a class="cmain" href={i.url} target="_blank" rel="noreferrer" title={`${i.title}\n${t("todos.chip.open", app)}`}>
+        <span class="c1">
+          <span class="todo-mark">
+            <BrandMark name={i.kind} size={20} />
+          </span>
+          <span class="t">{i.title}</span>
+        </span>
+        <span class="c2 todo-c2">
+          {why && <span class={`todo-why why-${i.review ? "review" : i.why}`}>{why}</span>}
+          <SourceChip src={i} small states={false} plain />
+          {i.review && i.author && <span class="todo-by">{t("onhand.todos.by", i.author)}</span>}
+          {(i.labels ?? []).slice(0, 2).map((l) => (
+            <span key={l} class="todo-label">
+              {l}
+            </span>
+          ))}
+        </span>
+      </a>
+      <div class="c3 todo-foot">
+        {failed ? <span class="todo-failed">{failed}</span> : i.updatedAt && <span class="beat">{t("onhand.todos.updated", ago(A.L, i.updatedAt))}</span>}
+        <TodoAct i={i} />
+      </div>
+    </div>
+  );
+}
+
+/** D357: a to-do in the fold: the low card's language (one line lower), its action at once. */
+function TodoRow({ i }: { i: SourceItem }) {
+  const why = whyOf(i);
+  const failed = HAND.failed[i.ref];
+  return (
+    <div class="tcompact todo-row-card" data-todo={i.ref}>
+      <a class="kmain" href={i.url} target="_blank" rel="noreferrer" title={`${i.title}\n${t("todos.chip.open", appOf(i.kind))}`}>
+        <span class="todo-mark small">
+          <BrandMark name={i.kind} size={16} />
+        </span>
+        <span class="ktx">
+          <span class="k1">
+            <span class="t">{i.title}</span>
+          </span>
+          <span class="k2">
+            {why && <span class={`todo-why why-${i.review ? "review" : "due"}`}>{why}</span>}
+            <SourceChip src={i} small states={false} plain />
+            {i.review && i.author && <span class="todo-by">{t("onhand.todos.by", i.author)}</span>}
+            {(i.labels ?? []).slice(0, 2).map((l) => (
+              <span key={l} class="todo-label">
+                {l}
+              </span>
+            ))}
+            {failed ? <span class="todo-failed">{failed}</span> : i.updatedAt && <span class="since">{t("onhand.todos.updated", ago(A.L, i.updatedAt))}</span>}
+          </span>
+        </span>
+      </a>
+      <span class="tacts on">
+        <TodoAct i={i} small />
+      </span>
+    </div>
+  );
+}
+
+/** A chip of the fold: one choice of what narrows it, 44 tall to the touch. */
+function Chip({ on, label, mark, onPick }: { on: boolean; label: string; mark?: string; onPick: () => void }) {
+  return (
+    <button class={`pchip todo-chip${on ? " on" : ""}`} aria-pressed={on} onClick={onPick}>
+      {mark && <BrandMark name={mark} size={14} />}
+      <span>{label}</span>
+    </button>
+  );
+}
+
+/**
+ * D357: the fold under the few cards, opened in place: find by title or number, narrow by source,
+ * repository or folder, tag, or the PRs waiting for review; a page at a time, newest first.
+ */
+export function TodoFold({ sources, shown = [] }: { sources: SourceView[]; shown?: string[] }) {
+  const [q, setQ] = useState(TF.q);
+  useEffect(() => {
+    if (q === TF.q) return;
+    const h = setTimeout(() => ((TF.q = q), askFold(1)), 400);
+    return () => clearTimeout(h);
+  }, [q]);
+  const only = TF.source ? sources.filter((s) => s.id === TF.source) : sources;
+  const gh = only.some((s) => s.kind === "github");
+  const vault = only.some((s) => s.kind === "obsidian");
+  const review = only.reduce((n, s) => n + (s.review ?? 0), 0);
+  const pick = (patch: Partial<TodoFoldState>) => (Object.assign(TF, patch), askFold(1));
+  const plain = !TF.where && TF.where !== "" && !TF.tag && !TF.review;
+  // The cards above are not said twice while nothing narrows the fold.
+  const rows = plain && !TF.q.trim() ? TF.items.filter((i) => !shown.includes(i.ref)) : TF.items;
+  return (
+    <div class="todo-fold" role="group" aria-label={todoGroupName(sources)}>
+      <label class="find todo-find">
+        <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+          <circle cx="7" cy="7" r="4.4" />
+          <path d="M10.3 10.3 13.5 13.5" />
+        </svg>
+        <input
+          type="search"
+          dir="auto"
+          enterKeyHint="search"
+          autocomplete="off"
+          spellcheck={false}
+          value={q}
+          placeholder={t("onhand.todos.find")}
+          aria-label={t("onhand.todos.find")}
+          onInput={(e) => setQ((e.target as HTMLInputElement).value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.isComposing) (TF.q = q), askFold(1);
+            if (e.key === "Escape") e.stopPropagation(), setQ("");
+          }}
+        />
+      </label>
+      <div class="todo-chips" role="toolbar" aria-label={t("onhand.todos.filters")}>
+        <Chip on={plain && !TF.source} label={t("onhand.todos.chip.all")} onPick={() => pick({ source: undefined, where: undefined, tag: undefined, review: false })} />
+        {sources.length > 1 &&
+          sources.map((s) => <Chip key={s.id} on={TF.source === s.id && plain} mark={s.kind} label={s.kind === "github" ? "GitHub" : s.name} onPick={() => pick({ source: s.id, where: undefined, tag: undefined, review: false })} />)}
+        {gh && review > 0 && <Chip on={!!TF.review} label={t("onhand.todos.chip.review", review)} onPick={() => pick({ review: !TF.review, where: undefined, tag: undefined })} />}
+        {TF.wheres.map((w) => (
+          <Chip key={`w:${w}`} on={TF.where === w} label={w === "" ? t("onhand.todos.chip.top") : gh && !vault ? (w.split("/")[1] ?? w) : w} onPick={() => pick({ where: TF.where === w ? undefined : w, review: false })} />
+        ))}
+        {vault &&
+          TF.tags.map((g) => <Chip key={`t:${g}`} on={TF.tag === g} label={`#${g}`} onPick={() => pick({ tag: TF.tag === g ? undefined : g, review: false })} />)}
+      </div>
+      {TF.limited && <p class="small tone-bad">{t("onhand.todos.limited")}</p>}
+      {TF.failed && !TF.limited && <p class="small tone-bad">{t("todos.read.failed", only.length === 1 ? appOf(only[0]!.kind) : "GitHub")}</p>}
+      {rows.length > 0 && (
+        <div class="tcompacts">
+          {rows.map((i) => (
+            <TodoRow key={i.ref} i={i} />
+          ))}
+        </div>
+      )}
+      {TF.loading ? <p class="small muted todo-loading">{t("todos.looking")}</p> : !rows.length && !TF.limited && !TF.failed && <p class="small muted">{t("onhand.todos.none")}</p>}
+      {!TF.loading && TF.more && <Btn kind="text" size="sm" class="todo-page" label={t("onhand.todos.page", BROWSE_PAGE)} onClick={() => askFold(TF.page + 1)} />}
+    </div>
+  );
+}
 
 A.onSourcesFrame = (f) => {
   if (f.t === "sources") {
@@ -28,6 +279,15 @@ A.onSourcesFrame = (f) => {
   }
   else if (f.t === "source_items_result") {
     if (f.clientId === TS.itemsFor) TS.items = f.items;
+    // D357: a page of On hand's fold (only the latest asked counts).
+    else if (f.clientId === TF.cid) {
+      const page = f.page ?? 1;
+      const seen = new Set(page > 1 ? TF.items.map((i) => i.ref) : []);
+      TF.items = [...(page > 1 ? TF.items : []), ...f.items.filter((i) => !seen.has(i.ref))];
+      Object.assign(TF, { page, more: !!f.more, loading: false, limited: !!f.limited, failed: !!f.errors?.length && !f.items.length });
+      if (page === 1 && f.wheres) TF.wheres = f.wheres;
+      if (page === 1 && f.tags) TF.tags = f.tags;
+    }
   } else if (f.t === "source_result") {
     TS.busy = {};
     TS.said = f.ok ? undefined : f.reason === "missing" ? t("todos.add.missing", A.homeName ?? "") : f.reason === "exists" ? t("todos.add.exists") : f.reason ? t(`todos.state.${f.reason === "unknown" ? "error" : f.reason}`, A.homeName ?? "") : undefined;
@@ -65,6 +325,21 @@ export function countWords(v: Pick<SourceView, "open" | "openAtLeast" | "taken" 
   const open = v.openAtLeast ? t("todos.open.atleast", n) : n === 1 ? t("todos.open.one") : t("todos.open", n);
   const review = (v.review ?? 0) > 0 && (v.review === 1 ? t("todos.review.one") : t("todos.review", v.review));
   return [open, (v.taken ?? 0) > 0 && t("todos.taken", v.taken), review];
+}
+
+/**
+ * D357: the counts, each its own fact (D291); what can be seen is a link to it on On hand (the open
+ * ones, the PRs waiting for review), never a list here.
+ */
+function CountLinks({ v }: { v: SourceView }) {
+  const [open, taken, review] = countWords(v);
+  const link = (words: string, o: { review?: boolean }) => (
+    <button class="past-link todo-count-link" title={t("todos.see")} aria-label={spoken(A.L, words, t("todos.see"))} onClick={() => seeTodos({ source: v.id, ...o })}>
+      <span>{words}</span>
+      <Chev />
+    </button>
+  );
+  return <Facts class="todo-counts" items={[open && ((v.open ?? 0) > 0 ? link(open, {}) : open), taken, review && link(review, { review: true })]} />;
 }
 
 /** 再试一次 / Try again: asking for the sources again makes the home look now. */
@@ -192,9 +467,7 @@ function SourceCard({ v }: { v: SourceView }) {
         </div>
       )}
       {v.kind === "github" && bad && A.ghTodo && <GhSignIn which="todos" inline />}
-      {count === "counted" && (
-        <Facts class="todo-counts" items={countWords(v)} />
-      )}
+      {count === "counted" && <CountLinks v={v} />}
       <div class="chat-row">
         <span class="grow">
           <b>{t("todos.new")}</b>

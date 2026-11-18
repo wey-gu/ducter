@@ -14,6 +14,10 @@ export interface FakeIssue {
   assigned?: boolean;
   /** A PR whose review is requested of the person (not assigned). */
   review?: boolean;
+  /** D357: it mentions the person. */
+  mentions?: boolean;
+  /** D357: who opened it. */
+  author?: string;
   updated?: string;
 }
 
@@ -28,6 +32,8 @@ export interface FakeGh {
   /** Answer the next list with 304 when its ETag is sent (true by default). */
   etags: boolean;
   signedIn: boolean;
+  /** D357: answer searches as GitHub does over its rate limit. */
+  limited?: boolean;
   missing: boolean;
   touch(i: FakeIssue): void;
   /**
@@ -107,6 +113,7 @@ export function fakeGh(seed: FakeIssue[] = [], o: { login?: string } = {}): Fake
         updated_at: i.updated,
         labels: (i.labels ?? []).map((name) => ({ name })),
         repository: { full_name: i.repo },
+        ...(i.author ? { user: { login: i.author } } : {}),
         ...(i.pr ? { pull_request: {} } : {}),
       });
       if (args[0] !== "api") return { code: 1, out: "", err: `fake gh: ${args.join(" ")}` };
@@ -118,14 +125,32 @@ export function fakeGh(seed: FakeIssue[] = [], o: { login?: string } = {}): Fake
         const repos = [...q.matchAll(/repo:(\S+)/g)].map((m) => m[1]!.toLowerCase());
         const label = /label:"([^"]*)"/.exec(q)?.[1]?.toLowerCase();
         const review = q.includes("review-requested:");
-        const n = f.issues.filter((i) => i.state === "open" && (review ? i.review && i.pr : i.assigned) && (!repos.length || repos.includes(i.repo.toLowerCase())) && (!label || (i.labels ?? []).some((l) => l.toLowerCase() === label))).length;
-        return { code: 0, out: `${n}\tfalse\n`, err: "" };
+        const mentions = q.includes("mentions:");
+        // D357: free words (not qualifiers) match the title or the number.
+        const words = q.split(/\s+/).filter((w) => w && !/^[\w-]+:/.test(w) && !/^"/.test(w) && !/"$/.test(w));
+        const hits = f.issues
+          .filter((i) => i.state === "open" && (review ? i.review && i.pr : i.assigned) && (!mentions || i.mentions) && (!repos.length || repos.includes(i.repo.toLowerCase())) && (!label || (i.labels ?? []).some((l) => l.toLowerCase() === label)))
+          .filter((i) => words.every((w) => i.title.toLowerCase().includes(w.toLowerCase()) || String(i.number) === w))
+          .sort((a, b) => (b.updated ?? "").localeCompare(a.updated ?? ""));
+        if (f.limited) return { code: 1, out: "", err: "gh: API rate limit exceeded for user ID 1. (HTTP 403)" };
+        if (args.includes("--jq")) return { code: 0, out: `${hits.length}\tfalse\n`, err: "" };
+        const per = Number((args.find((a) => a.startsWith("per_page=")) ?? "per_page=30").slice(9));
+        const page = Number((args.find((a) => a.startsWith("page=")) ?? "page=1").slice(5));
+        return { code: 0, out: JSON.stringify({ total_count: hits.length, incomplete_results: false, items: hits.slice((page - 1) * per, page * per).map(raw) }), err: "" };
       }
       if (args.includes("/issues")) {
         const etag = `W/"v${version}"`;
         const sent = args.find((a) => a.startsWith("If-None-Match: "))?.slice(15);
         if (f.etags && sent === etag) return { code: 1, out: `HTTP/2.0 304 Not Modified\nEtag: ${etag}\n\n`, err: "gh: HTTP 304" };
         const list = f.issues.filter((i) => i.assigned && i.state === "open").sort((a, b) => (b.updated ?? "").localeCompare(a.updated ?? "")).map(raw);
+        // D357: a page of the fold (no -i, no ETag): the list's page, plain JSON.
+        if (!args.includes("-i")) {
+          const per = Number((args.find((a) => a.startsWith("per_page=")) ?? "per_page=30").slice(9));
+          const page = Number((args.find((a) => a.startsWith("page=")) ?? "page=1").slice(5));
+          return { code: 0, out: JSON.stringify(list.slice((page - 1) * per, page * per)), err: "" };
+        }
+        const per = Number((args.find((a) => a.startsWith("per_page=")) ?? "per_page=30").slice(9));
+        if (list.length > per) list.length = per;
         return { code: 0, out: `HTTP/2.0 200 OK\nEtag: ${etag}\nContent-Type: application/json\n\n${JSON.stringify(list)}`, err: "" };
       }
       const m = /^\/repos\/([^/]+\/[^/]+)\/issues\/(\d+)(\/comments)?$/.exec(args.find((a) => a.startsWith("/repos/")) ?? "");

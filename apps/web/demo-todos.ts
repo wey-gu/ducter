@@ -4,6 +4,8 @@
 // write-back card, and a vault Obsidian lists that isn't added yet.
 //   DUCTER_PORT=7999 DUCTER_DATA_DIR=$(mktemp -d) DEMO_LANG=zh bun apps/web/demo-todos.ts
 // then open http://127.0.0.1:7999/app and Settings › 待办来源.
+// D357: DEMO_TODOS=many: GitHub alone with a heavy developer's load (sixty-odd assigned across
+// repositories, two PRs waiting for review, one that mentions them): On hand's group and its fold.
 // D345: DEMO_GH=missing starts with no gh on the home and nothing added: 连上 GitHub puts a fake gh
 // in the demo's own folder (a slow fake download, never the network), shows the code, and the fake
 // GitHub approves it after DEMO_APPROVE_MS (default 6000; 0: never).
@@ -48,6 +50,34 @@ const gh = fakeGh(
   { login: "lin-dev" },
 );
 
+const many = process.env.DEMO_TODOS === "many";
+if (many) {
+  const titles = [
+    ["acme/web", "Settings page loses scroll position after saving"],
+    ["acme/web", "Dark mode: the date picker stays white"],
+    ["acme/api", "Webhook retries ignore Retry-After"],
+    ["acme/api", "Pagination cursor breaks on deleted rows"],
+    ["acme/infra", "Nightly backup job times out on the big shard"],
+    ["acme/web", "Upload progress jumps back to 0% on slow networks"],
+    ["acme/api", "Audit log misses role changes made by admins"],
+    ["acme/infra", "Bump the base image: openssl advisory"],
+    ["acme/web", "Search box keeps the old query after clearing"],
+    ["acme/mobile", "Push permission asked twice on first launch"],
+    ["acme/mobile", "Share sheet crashes with a long title"],
+    ["acme/api", "Export to CSV drops the time zone"],
+  ];
+  const base = Date.now() - 50 * 60_000;
+  const ago = (min: number) => new Date(Date.now() - min * 60_000).toISOString();
+  for (let i = 0; i < 60; i++) {
+    const [repo, title] = titles[i % titles.length]!;
+    gh.issues.push({ repo, number: 100 + i, title: i < titles.length ? title : `${title} (${Math.floor(i / titles.length) + 1})`, state: "open", assigned: true, labels: i % 4 === 0 ? ["bug"] : i % 5 === 0 ? ["p1"] : [], updated: new Date(base - (i + 3) * 47 * 60_000).toISOString() });
+  }
+  gh.issues.push(
+    { repo: "acme/web", number: 377, title: "Make the sign-in page keyboard friendly", pr: true, state: "open", assigned: false, review: true, author: "mei-chen", updated: ago(25) },
+    { repo: "acme/api", number: 381, title: "Cache the permission checks per request", pr: true, state: "open", assigned: false, review: true, author: "jonas", updated: ago(14 * 60) },
+    { repo: "acme/api", number: 352, title: "Token refresh races when two tabs are open", state: "open", assigned: true, mentions: true, labels: ["bug"], updated: ago(70) },
+  );
+}
 const missing = process.env.DEMO_GH === "missing";
 const dataDir = process.env.DUCTER_DATA_DIR || join(scratch, "data");
 let ghRun: GhRun = gh.run;
@@ -105,7 +135,7 @@ if (missing) {
   console.log(`[demo] up at http://127.0.0.1:${core.port}/app with no gh (data: ${core.dataDir}; scratch: ${scratch})`);
 } else {
   await ts.add("github");
-  await ts.add("obsidian", life);
+  if (!many) await ts.add("obsidian", life);
   await ts.look();
   const src = ts.view().sources;
   ts.set(src[0]!.id, { whenNew: "take" });
@@ -133,10 +163,12 @@ if (missing) {
   void card;
 
   // A vault line, done and ticked by itself.
-  const line = items.find((i) => i.kind === "obsidian" && /房东|landlord/.test(i.title))!;
-  open("tv", zh ? "给房东回邮件问暖气" : "Email the landlord about the heating", undefined, "Reply to the landlord");
-  ts.bind("tv", line, "you");
-  core.tasks.setState("tv", "done", "cold");
+  const line = items.find((i) => i.kind === "obsidian" && /房东|landlord/.test(i.title));
+  if (line) {
+    open("tv", zh ? "给房东回邮件问暖气" : "Email the landlord about the heating", undefined, "Reply to the landlord");
+    ts.bind("tv", line, "you");
+    core.tasks.setState("tv", "done", "cold");
+  }
 
   console.log(`[demo] up at http://127.0.0.1:${core.port}/app (data: ${core.dataDir}; scratch: ${scratch})`);
 }

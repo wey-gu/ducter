@@ -500,6 +500,8 @@ class AppState {
   onChannelFrame?: (f: import("@ducter/protocol").ChannelServerFrame) => void;
   /** D341: 待办来源 / To-do sources (todos.tsx keeps its own state). */
   onSourcesFrame?: (f: import("@ducter/protocol").SourcesServerFrame) => void;
+  /** D357: a to-do handed over from On hand (todos.tsx): true when the answer was its. */
+  onHanded?: (f: Extract<ServerFrame, { t: "task_new_result" }>) => boolean;
   /** D345: Settings › 待办来源's 连上 GitHub in flight, and the account it just connected as (said once on GitHub's card). */
   ghTodo?: GhPanel;
   ghConnected?: string;
@@ -787,7 +789,7 @@ class AppState {
     if (f.t === "project_clone_result") return this.cloneDone(f);
     if (f.t === "project_new_result") return this.newFolderDone(f);
     if (f.t === "git_login_state") return this.ghState(f);
-    if (f.t === "task_new_result") return this.newTaskResult(f);
+    if (f.t === "task_new_result") return void (this.onHanded?.(f) || this.newTaskResult(f));
     // D285: 做过的事 / Past tasks (past.tsx).
     // D300: 替你做过的 / Done for you (did.tsx).
     if (f.t === "did_result") return onDidFrame(f);

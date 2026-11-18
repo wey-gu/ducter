@@ -57,6 +57,8 @@ type todosState struct {
 	// 再试一次 / Try again on a source whose look failed, until the home
 	// says it is looking (or the look read).
 	retrying map[string]bool
+	// D357: On hand's fold of the to-dos (todos_onhand.go).
+	fold todoFold
 }
 
 // todosInit takes the answers to add, set and remove, once.
@@ -169,7 +171,14 @@ func (a *App) todoSourceGroup(c *ui.Context, s protocol.SourceView) {
 			case s.Open == 1:
 				open = a.L.T("todos.open.one")
 			}
-			ui.Text(c.Key("open"), open).FontSize(t.SM).FontWeight(600).TextColor(t.InkSoft).FontFeatures("tnum").SingleLine()
+			// D357: what can be seen is a link to it on On hand, never a list here.
+			if s.Open > 0 {
+				if a.quietButton(c, "open:"+s.ID, open, a.L.T("todos.see"), false, 1) {
+					a.SeeTodos(s.ID, false)
+				}
+			} else {
+				ui.Text(c.Key("open"), open).FontSize(t.SM).FontWeight(600).TextColor(t.InkSoft).FontFeatures("tnum").SingleLine()
+			}
 			if s.Taken > 0 {
 				ui.Text(c.Key("taken"), a.L.T("todos.taken", fmt.Sprint(s.Taken))).FontSize(t.SM).FontWeight(600).TextColor(t.Working.Ink).FontFeatures("tnum").SingleLine()
 			}
@@ -178,7 +187,9 @@ func (a *App) todoSourceGroup(c *ui.Context, s protocol.SourceView) {
 				if s.Review == 1 {
 					review = a.L.T("todos.review.one")
 				}
-				ui.Text(c.Key("review"), review).FontSize(t.SM).FontWeight(600).TextColor(t.InkSoft).FontFeatures("tnum").SingleLine()
+				if a.quietButton(c, "review:"+s.ID, review, a.L.T("todos.see"), false, 1) {
+					a.SeeTodos(s.ID, true)
+				}
 			}
 		})
 		if s.State != "ok" {

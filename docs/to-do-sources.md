@@ -56,6 +56,27 @@ the task remembers where it came from: its app's mark and number sit on the task
 
 A to-do that already has a task opens that task instead of starting a second one.
 
+## See them on On hand
+
+Once a source is added, **On hand** (**手头的事**) shows your to-dos after **Done today**, under
+**Assigned to you on GitHub** (or **To-dos in** your vault, or **Your to-dos** with more than one),
+with how many are open.
+
+Only a few stand there, so the list never takes over: a pull request waiting for your review, an
+issue where someone mentioned you, an Obsidian to-do due in the next couple of days, and the most
+recently updated. Each says why it's there. Tap one to open it in GitHub or Obsidian, or tap **Hand to**
+your partner's name and it becomes a task right there on On hand. If you've worked on that repository
+here before, the task works in that folder.
+
+The rest are folded under **{n} more**. Open it to find one by its title or number, narrow it to one
+repository, one folder or tag of your vault, or the pull requests waiting for your review, and see
+more a page at a time.
+
+In **Settings › To-do sources**, the counts (how many are open, how many pull requests wait for your
+review) take you straight there.
+
+Nothing shows on On hand until you add a source.
+
 ## When a new one comes
 
 Each source has **When a new one comes**:

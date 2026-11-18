@@ -52,7 +52,28 @@ export interface SourceItem extends SourceItemRef {
   repeats?: boolean;
   /** The live task already bound to it, so a pick opens that task instead of a second one. */
   taskId?: string;
+  /** github: who opened it (a review request's author). */
+  author?: string;
+  /**
+   * github: a pull request waiting for the person's review (review requested, not assigned). It is
+   * opened, never taken (D341 offers only what is assigned).
+   */
+  review?: boolean;
 }
+
+/**
+ * D357: one of the few to-dos On hand shows under its to-dos group (at most GLANCE_MAX), and why it
+ * is one of them: a PR waiting for the person's review, an assigned one that mentions them, an
+ * Obsidian line due soonest, else the most recently updated.
+ */
+export interface SourceGlance extends SourceItem {
+  why: "review" | "mentioned" | "due" | "recent";
+}
+
+/** D357: never more than this many to-dos stand on On hand; the rest are folded. */
+export const GLANCE_MAX = 3;
+/** D357: a page of the fold (more come with 再看 {n} 件 / Show {n} more). */
+export const BROWSE_PAGE = 30;
 
 /** 新的来了 / When a new one comes. tell: the partner offers it; take: it starts without asking (the standing go); quiet: only when asked. */
 export type WhenNew = "tell" | "take" | "quiet";
@@ -123,6 +144,8 @@ export interface SourcesFound {
 export interface SourcesView {
   sources: SourceView[];
   found: SourcesFound;
+  /** D357: the few On hand shows (≤ GLANCE_MAX), across the sources, none with a live task. */
+  glance?: SourceGlance[];
 }
 
 /** One write to an outside app on the person's behalf. tick/untick: obsidian; comment/close: github. */
@@ -156,11 +179,26 @@ export type SourcesClientFrame =
   // 移除 / Remove: the source is forgotten; tasks bound to its items keep their chip.
   | { t: "source_remove"; id: string }
   // The composer's 从待办里选 / Pick from your to-dos: open items, newest first (query matches words and labels).
-  | { t: "source_items"; id?: string; query?: string; clientId?: string };
+  // D357: On hand's fold pages through them too: page (1-based, BROWSE_PAGE each), a repository or
+  // an Obsidian folder (where), a tag or label, or the PRs waiting for the person's review.
+  | { t: "source_items"; id?: string; query?: string; clientId?: string; page?: number; where?: string; tag?: string; review?: boolean };
 
 export type SourcesServerFrame =
   | ({ t: "sources" } & SourcesView)
-  | { t: "source_items_result"; clientId?: string; items: SourceItem[]; errors?: { source: string; error: string }[] }
+  | {
+      t: "source_items_result";
+      clientId?: string;
+      items: SourceItem[];
+      errors?: { source: string; error: string }[];
+      /** D357: the page answered, and whether another follows. */
+      page?: number;
+      more?: boolean;
+      /** D357: the chips the fold offers: repositories or folders, and tags, most common first. */
+      wheres?: string[];
+      tags?: string[];
+      /** D357: GitHub asked to slow down (its rate limit): try again in a minute. */
+      limited?: boolean;
+    }
   | { t: "source_result"; op: "add" | "set" | "remove"; ok: boolean; id?: string; reason?: "no_tool" | "signed_out" | "missing" | "exists" | "unknown" };
 
 /** The chip's words on a task: "#123" (with the repo when asked), or the note's name. */

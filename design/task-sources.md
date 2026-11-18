@@ -90,6 +90,17 @@ place (the same inode: Obsidian and the syncs keep following the file):
   mark (D314) and `repo#12` or the note's name; it opens the to-do in its app (`obsidian://open…` for a
   vault line); beside it, apart (D291): **已留言 / Commented**, **已关掉 / Closed**, **已勾掉 / Ticked off**,
   **已不在 / Gone**.
+- **On hand (D357):** a group after 今天做完 / Done today, only while a source is on and something is
+  open, under All or that source's lens: **GitHub 上标给你的 / Assigned to you on GitHub** (a vault: **{vault}
+  里的待办**; several: **你的待办 / Your to-dos** with their marks) and its count as 在等 5 has it. At most
+  three stand as the board's cards, chosen by the home (`glanceOf`): the newest PR waiting for review
+  (**等你 review**, opened only), assigned ones that mention the person (**提到了你**, two at most), an
+  Obsidian line due by the day after tomorrow, then the newest a source at a time; none with a live
+  task. Each says why, its chip and labels apart (D291), when it changed, and **交给{name} / Hand to
+  {name}** (New task's pick without the card: `task_new` with `handed`, the home choosing the folder
+  whose origin is the repository). The rest fold under **还有 {n} 件 / {n} more**, opened in place: Find,
+  chips (sources, **等你 review {n}**, repositories, a vault's folders and tags), low cards, pages of 30.
+  Settings' **{n} 件没做完 ›** and **{n} 个 PR 等你 review ›** open it there; no list in Settings.
 - **On hand by source:** after the projects in the lens column (and the row of names on a phone), under
   **来自 / From**, one row per source with a bound task (its mark and name); it narrows the board the way a
   project does (`src:<id>`, kept per device).
@@ -100,11 +111,14 @@ place (the same inode: Obsidian and the syncs keep following the file):
   `WhenNew`/`WhenDone`, the frames. Log events: `task_bound`, `source_seen` (new, closed, reopened, edited,
   gone), `source_write`. `TaskCard.source` is projected from them.
 - `packages/core/src/task-sources/`: `adapter.ts` (the interface every app implements: `status`, `list`,
-  `get`, `write`, `ops`, optional `total`; consent is never an adapter's), `github.ts` (gh: `/issues?filter=assigned` with
+  `get`, `write`, `ops`, optional `total` and `browse`; consent is never an adapter's), `github.ts` (gh: `/issues?filter=assigned` with
   ETag, one page of the 50 most recent for offering and "new"; the count is `search/issues` `total_count`
   over the same scope (`assignee:{login} is:open archived:false`, plus `repo:`/`label:` for the filters),
   and PRs waiting for review apart (`review-requested:{login} is:open is:pr`), asked when the list changed
-  or every 10 min (D351); `/repos/{o}/{r}/issues/{n}`, comment and close through `--input -`), `obsidian.ts` (parser, the
+  or every 10 min (D351), with the newest three review requests and assigned mentions for On hand
+  (D357); the fold's pages (D357): `/issues?filter=assigned&page=n` while nothing narrows, else search
+  (`assignee:`/`review-requested:`, `repo:`, `label:`, the words), 30 a page, each kept 2 min, the
+  rate limit said as such; `/repos/{o}/{r}/issues/{n}`, comment and close through `--input -`), `obsidian.ts` (parser, the
   write above, Obsidian's own vault list), `index.ts` (the store `task-sources.json`, looks every 2 min
   and each bound to-do every 5 min while its task is live, bindings, the cards and their Go, the standing
   goes, the tick on done).

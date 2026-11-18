@@ -97,9 +97,21 @@ result shows its time, and on hover its one next step.
 | Quiet waits | A waiting task whose card and looks haven't changed for 24 h | 还有 n 件，一天多没有动静 / n more, quiet for over a day | Tap (this session), Find, or 在等 in the strip |
 | Seen results | Done today that isn't a new result, missed waits, ended calls | 还有 n 件，你都看过了 / n more you've seen | Tap (kept per device), Find, or 今天做完 in the strip |
 
+| Your to-dos (D357) | Open to-dos in the person's own apps beyond the three shown | 还有 n 件 / n more | Tap (this session), or a count in Settings › 待办来源 |
+
 What needs you never folds. Folded cards are not in the keys' walk. D287: a fold folds from three;
 one or two stay in sight under a quiet caption (**一天多没有动静 / Quiet for over a day**, **你看过的 /
 Seen**).
+
+D357: after 今天做完, while a to-do source is on and something is open there, **GitHub 上标给你的 /
+Assigned to you on GitHub** (a vault: **{vault} 里的待办**; several: **你的待办 / Your to-dos**), its count as a
+section's. At most three stand as cards of the same language, the app's mark where a task has its
+coin: a PR waiting for review, a mention, a line due soon, the newest (the home's choice, never a
+model; none with a live task). Each card opens the to-do in its app and offers **交给{name} / Hand to
+{name}** (a review request: **在 GitHub 里打开**); handed over, it comes back as a task on the board with
+its chip. The rest fold under **还有 n 件 / n more**: opened in place, On hand's Find, chips on a sunk
+track, low cards, pages of 30 (`task-sources.md` §6). Nothing shows for someone with no source, under
+a project's lens, with a filter on, or while finding.
 
 D285: under the sections, On hand's last line leads on: **一直在跑的 n 件 ›** (when something keeps
 going on its own) and **做过的事 ›**, where every finished task stays, findable and marked

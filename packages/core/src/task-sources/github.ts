@@ -4,7 +4,8 @@
 // (research/126 §1). Writes are one comment or one close, each with the gate's say (index.ts).
 import type { SourceItem, SourceOp } from "@ducter/protocol";
 import { ghRunEnv, realGhRun, type GhRun } from "@ducter/protocol/src/git-login.ts";
-import { SIGNATURE, type AdapterStatus, type SourceAdapter, type WriteResult } from "./adapter.ts";
+import { BROWSE_PAGE } from "@ducter/protocol";
+import { RateLimited, SIGNATURE, type AdapterStatus, type BrowseOpts, type SourceAdapter, type Totals, type WriteResult } from "./adapter.ts";
 
 export interface GitHubOpts {
   source: string;
@@ -23,6 +24,10 @@ const BODY_MAX = 1200;
 const PER_PAGE = 50;
 /** The search total is asked again at least this often while the list's ETag says nothing changed. */
 export const TOTAL_MS = 10 * 60_000;
+/** D357: a page of the fold is kept this long (the same page asked again costs nothing). */
+export const BROWSE_MS = 2 * 60_000;
+/** GitHub search answers at most the first 1000 results. */
+const SEARCH_CAP = 1000;
 const REF = /^([\w.-]+\/[\w.-]+)#(\d+)$/;
 
 interface Raw {
@@ -36,6 +41,7 @@ interface Raw {
   pull_request?: unknown;
   repository?: { full_name?: string };
   repository_url?: string;
+  user?: { login?: string };
 }
 
 const repoOf = (r: Raw): string => r.repository?.full_name ?? r.repository_url?.replace(/^.*\/repos\//, "") ?? "";
@@ -57,7 +63,23 @@ export function itemOf(source: string, r: Raw): SourceItem {
     ...(body ? { body: body.length > BODY_MAX ? `${body.slice(0, BODY_MAX - 1)}…` : body } : {}),
     ...(r.updated_at ? { updatedAt: r.updated_at } : {}),
     ...(labels.length ? { labels } : {}),
+    ...(r.user?.login ? { author: r.user.login } : {}),
   };
+}
+
+/** D357: GitHub's "slow down": its primary or secondary rate limit. */
+export const rateLimited = (text: string) => /rate limit|HTTP 429|abuse detection/i.test(text);
+
+/** D357: the words of a search: the person's text, a "#12" read as the number, no qualifiers of their own. */
+export function searchWords(q: string): string {
+  return q
+    .replace(/[<>"]/g, " ")
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((w) => w.replace(/^#(\d+)$/, "$1"))
+    .filter((w) => !/^[\w-]+:/.test(w))
+    .slice(0, 8)
+    .join(" ");
 }
 
 /** gh api -i prints the status line and headers, a blank line, then the body. */
@@ -78,7 +100,8 @@ export function createGitHub(o: GitHubOpts): SourceAdapter & { login(): string |
   const timeoutMs = o.timeoutMs ?? 30_000;
   let login: string | undefined;
   let cache: { etag?: string; items: SourceItem[]; whole?: boolean } | undefined;
-  let counted: { key: string; at: number; value: { open: number; atLeast?: boolean; review?: number } } | undefined;
+  let counted: { key: string; at: number; value: Totals } | undefined;
+  const pages = new Map<string, { at: number; value: { items: SourceItem[]; more: boolean } }>();
   const now = o.now ?? (() => Date.now());
 
   const gh = (args: string[], stdin?: string) => run(args, { env: env(), timeoutMs, ...(stdin !== undefined ? { stdin } : {}) });
@@ -125,6 +148,7 @@ export function createGitHub(o: GitHubOpts): SourceAdapter & { login(): string |
       const items = raw.map((x) => itemOf(o.source, x));
       cache = { ...(res.etag ? { etag: res.etag } : {}), items, ...(raw.length < PER_PAGE ? { whole: true } : {}) };
       counted = undefined; // the list changed: count again
+      pages.clear(); // and page again
       return items.filter(inScope);
     },
     // The list is the recent page (for offering and "new"); the count is GitHub's search total over
@@ -144,9 +168,66 @@ export function createGitHub(o: GitHubOpts): SourceAdapter & { login(): string |
       };
       // Fewer than a page assigned: the list is all of them, and is the count.
       const open = cache?.whole ? { n: cache.items.filter(inScope).length, partial: false } : await search([`assignee:${who}`, "is:open", "archived:false", ...scope].join(" "));
-      const review = await search([`review-requested:${who}`, "is:open", "is:pr", "archived:false", ...scope].join(" ")).catch(() => undefined);
-      const value = { open: open.n, ...(open.partial ? { atLeast: true } : {}), ...(review ? { review: review.n } : {}) };
+      // D357: the newest few of what On hand shows first: review requests and mentions (three each).
+      const few = async (q: string) => {
+        const r = await gh(["api", "-X", "GET", "search/issues", "-f", `q=${q}`, "-f", "sort=updated", "-f", "order=desc", "-f", "per_page=3"]);
+        if (r.code !== 0) throw new Error((r.err || r.out).trim().slice(0, 200) || `gh exited ${r.code}`);
+        const j = JSON.parse(r.out) as { total_count?: number; items?: Raw[] };
+        if (typeof j.total_count !== "number") throw new Error("GitHub's search total couldn't be read");
+        return { n: j.total_count, items: (j.items ?? []).map((x) => itemOf(o.source, x)) };
+      };
+      const review = await few([`review-requested:${who}`, "is:open", "is:pr", "archived:false", ...scope].join(" ")).catch(() => undefined);
+      const mentioned = await few([`assignee:${who}`, `mentions:${who}`, "is:open", "archived:false", ...scope].join(" ")).catch(() => undefined);
+      const value: Totals = {
+        open: open.n,
+        ...(open.partial ? { atLeast: true } : {}),
+        ...(review ? { review: review.n, reviewItems: review.items.map((i) => ({ ...i, review: true })) } : {}),
+        ...(mentioned?.items.length ? { mentioned: mentioned.items } : {}),
+      };
       counted = { key, at: now(), value };
+      return value;
+    },
+    // D357: On hand's fold. The plain list's pages (newest first) while nothing narrows it; GitHub's
+    // search for words, a repository, a label or the review requests. Each page is kept BROWSE_MS.
+    async browse(b: BrowseOpts) {
+      const page = Math.max(1, Math.min(Math.floor(b.page) || 1, SEARCH_CAP / BROWSE_PAGE));
+      const words = searchWords(b.query ?? "");
+      const repos = b.where ? [b.where] : (o.repos?.() ?? []);
+      const label = (b.tag ?? o.label?.() ?? "").trim().replace(/"/g, "");
+      const key = JSON.stringify([page, words, repos, label, !!b.review]);
+      const kept = pages.get(key);
+      if (kept && now() - kept.at < BROWSE_MS) return kept.value;
+      const who = login ?? "@me";
+      const fail = (r: { code: number; err: string; out: string }): never => {
+        const why = (r.err || r.out).trim().slice(0, 200) || `gh exited ${r.code}`;
+        throw rateLimited(why) ? new RateLimited(why) : new Error(why);
+      };
+      const parse = <T>(out: string): T => {
+        try {
+          return JSON.parse(out) as T;
+        } catch {
+          throw new Error("GitHub's answer couldn't be read (not JSON)");
+        }
+      };
+      let value: { items: SourceItem[]; more: boolean };
+      if (!words && !repos.length && !label && !b.review) {
+        const r = await gh(["api", "-X", "GET", "/issues", "-f", "filter=assigned", "-f", "state=open", "-f", "sort=updated", "-f", `per_page=${BROWSE_PAGE}`, "-f", `page=${page}`]);
+        if (r.missing) throw new Error("gh isn't on this computer");
+        if (r.code !== 0) fail(r);
+        const raw = parse<Raw[]>(r.out);
+        if (!Array.isArray(raw)) throw new Error("GitHub's answer couldn't be read (not a list)");
+        value = { items: raw.map((x) => itemOf(o.source, x)), more: raw.length >= BROWSE_PAGE };
+      } else {
+        const q = [b.review ? `review-requested:${who}` : `assignee:${who}`, "is:open", ...(b.review ? ["is:pr"] : []), "archived:false", ...repos.map((x) => `repo:${x}`), ...(label ? [`label:"${label}"`] : []), ...(words ? [words] : [])].join(" ");
+        const r = await gh(["api", "-X", "GET", "search/issues", "-f", `q=${q}`, "-f", "sort=updated", "-f", "order=desc", "-f", `per_page=${BROWSE_PAGE}`, "-f", `page=${page}`]);
+        if (r.missing) throw new Error("gh isn't on this computer");
+        if (r.code !== 0) fail(r);
+        const j = parse<{ total_count?: number; items?: Raw[] }>(r.out);
+        const items = (j.items ?? []).map((x) => ({ ...itemOf(o.source, x), ...(b.review ? { review: true } : {}) }));
+        value = { items, more: page * BROWSE_PAGE < Math.min(j.total_count ?? 0, SEARCH_CAP) };
+      }
+      pages.set(key, { at: now(), value });
+      if (pages.size > 60) pages.delete(pages.keys().next().value!);
       return value;
     },
     async get(ref) {

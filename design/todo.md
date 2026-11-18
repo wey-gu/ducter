@@ -1986,3 +1986,6 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] **D360: a group by hand on the Mac** (the web has the selection bar's **放进一个分组**; the Mac has no multi-select on On hand yet, so it is the partner's words there). Trigger: the Mac's On hand gets selection.
 - [ ] **D360: the keys walk a group's parts** (j/k skip the parts inside a group card on both clients; each opens by click). Trigger: the author walks On hand by keys past a group.
 - [ ] **D360: a group's parts on the phone apps** (iOS, Android draw the parts as their own cards). Trigger: the next phone On hand pass.
+- [ ] **D365: a contrast floor for faded "not set up" marks** (the resting own-number and Tuwa handsets white on white; Jira's navy mark on the dark tile; research/135 #12, #13). Trigger: the next Settings pass or a theme token change.
+- [ ] **D365: the server home's versions row** (version, state and 检查更新 stacked in a narrow right column; no hairline above 自动更新; research/135 #11). Trigger: the update work next touches `devupdate.go`'s `versionRow`.
+- [ ] **D365: the Settings pass in the real Mac app and the iOS Simulator** (this pass used the Mac's test renderer and headless Chrome at 390). Trigger: the next release's walk.

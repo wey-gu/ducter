@@ -54,6 +54,11 @@ func (a *App) wechatCard(c *ui.Context, v protocol.ChannelView) {
 	who := a.L.T("chats.wx.who")
 	a.chatGroup(c, "chat-wechat", name, func() {
 		line, tone := a.wechatLine(v)
+		if a.chatResting("wechat", v) {
+			a.chatHeadWith(c, "wechat", name, line, tone, a.chatSetUp(c, "wechat", name))
+			a.chatFoot(c, "rest:wechat", who, nil)
+			return
+		}
 		a.chatHead(c, "wechat", name, line, tone)
 		switch {
 		case v.State == "off" || (v.State == "cant_connect" && v.Reason == "token"):

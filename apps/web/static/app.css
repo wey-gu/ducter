@@ -15506,3 +15506,42 @@ svg .wave.w2.on {
     transform: scaleY(0.7);
   }
 }
+/* D365, the Settings pass: To-do sources' add rows are rows, not group heads (the title at the row
+   size, as the Mac's tileRow); who owns what sits close under the lede. */
+.todo-add .chat-head {
+  min-height: 64px;
+}
+.todo-add .chat-head b {
+  font-family: inherit;
+  font-size: var(--md);
+  font-weight: 700;
+  line-height: 1.4;
+}
+.todo-own {
+  margin: calc(-1 * var(--s2)) 0 var(--s1);
+  color: var(--ink-muted);
+}
+/* D365: 要不要先问's lists carry the Mac's drawn marks in their list's ink, on the text edge. */
+.trust ul {
+  padding: 0;
+  list-style: none;
+}
+.trust li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s3);
+}
+.trust li svg {
+  flex: none;
+  margin-top: 2px;
+  fill: none;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.trust.own li svg {
+  stroke: var(--done-ink);
+}
+.trust.asks li svg {
+  stroke: var(--needs-ink);
+}

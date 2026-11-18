@@ -45,7 +45,6 @@ var zhSettings = Table{
 	"settings.preview.reply": "好，明天 9:00 叫你。",
 	"settings.preview.noted": "记下了：明天 9:00 提醒看 PR",
 
-	"settings.where.group":          "在哪儿运行",
 	"settings.where.here":           "这台 Mac",
 	"settings.where.elsewhere.help": "比如装在服务器上的 Ducter，用一次性的连接码连上。",
 	"settings.where.useHere.help":   "忘掉这个连接，回到这台 Mac 上自己的 Ducter。",
@@ -106,7 +105,6 @@ var enSettings = Table{
 	"settings.preview.reply": "Sure, I'll ping you at 9:00 tomorrow.",
 	"settings.preview.noted": "Noted: PR reminder, tomorrow 9:00",
 
-	"settings.where.group":          "Where it runs",
 	"settings.where.here":           "This Mac",
 	"settings.where.elsewhere.help": "Like a Ducter on a server; you connect with a one-time pairing code.",
 	"settings.where.useHere.help":   "Forget this connection and go back to this Mac's own Ducter.",

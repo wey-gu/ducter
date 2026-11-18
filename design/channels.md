@@ -110,7 +110,9 @@ message. Telegram shows typing every 4 s while a turn started there waits for it
   with **让我的账号连上 / Link my account**, then **在 Telegram 里打开 / Open in Telegram** and the
   code, **和 {name} 连着 / Linked to {name}** with **解除连接 / Unlink**, **断开 {app} / Disconnect
   {app}**, the one line of who else can see it (**Telegram 会存一份你们的聊天记录。** · **这个工作区的
-  管理员可能看得到你在这儿说的话。**), and one line under the groups of what goes there.
+  管理员可能看得到你在这儿说的话。**), and one line under the groups of what goes there. An app never
+  connected rests as its first row with **设置 / Set up** and that one line until pressed; then its steps
+  open in place (D365, as D337's own number). A refused key or a connect on its way keeps them open.
 - **The page (D283).** D273's grid on the Mac and the web: the page's heading and a one-line lede;
   then one raised group per chat app, **Telegram**, **Slack**, **iMessage** (D277, the third; on
   the web it says it is set up on a Mac). A group's first row is the app: its mark (D314: the app's own

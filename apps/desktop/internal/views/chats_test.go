@@ -32,6 +32,14 @@ func TestChatsPanel(t *testing.T) {
 		{Kind: "telegram", State: "linked", Bot: &protocol.ChannelBot{Name: "Ducter", Handle: "my_ducter_bot"}, Linked: &protocol.ChannelLinked{Name: "Wey", At: at}},
 		{Kind: "slack", State: "off"},
 	})
+	// D365: Slack, never connected, rests as its row with Set up and its note; Set up opens the steps.
+	if tt.HasText("Copy the app manifest") || !tt.HasText("Set up") || !tt.HasText("This workspace's admins may be able to see what's said here.") {
+		t.Errorf("Slack isn't resting: %q", tt.Texts())
+	}
+	if err := tt.Click("Set up"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
 	for _, want := range []string{"Chat apps", "Waiting for you at @my_ducter_bot", "Linked to Wey", "Telegram keeps a copy of your chats.", "This workspace's admins may be able to see what's said here.", "Copy the app manifest", "View", "Unlink", "Disconnect Telegram"} {
 		if !tt.HasText(want) {
 			t.Errorf("missing %q in %q", want, tt.Texts())

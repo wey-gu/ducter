@@ -29,6 +29,8 @@ export const settingsMore: { zh: Record<string, string>; en: Record<string, stri
     "settings.look.mode.system": "跟随系统",
     "settings.look.mode.light": "浅色",
     "settings.look.mode.dark": "深色",
+    // D365: 这台电脑 / This phone says what each choice does, as the Mac's Look and sound.
+    "settings.look.mode.help": "跟随系统时，系统换成深色，这里也跟着换。",
   },
   en: {
     "key.settings.row": "Paste an API key",
@@ -56,5 +58,6 @@ export const settingsMore: { zh: Record<string, string>; en: Record<string, stri
     "settings.look.mode.system": "Follow the system",
     "settings.look.mode.light": "Light",
     "settings.look.mode.dark": "Dark",
+    "settings.look.mode.help": "Following the system, this turns dark when your device does.",
   },
 };

@@ -2526,7 +2526,13 @@ function TrustSettings() {
       <b>{t(head)}</b>
       <ul>
         {[1, 2, 3, 4].map((i) => (
-          <li key={i}>{t(`${prefix}.${i}`)}</li>
+          <li key={i}>
+            {/* D365: the Mac's drawn marks (a check for what it does itself, a bubble for what it asks), not bullets. */}
+            <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">
+              {cls === "own" ? <path d="M5 10.5l3.5 3.5L15 6.5" /> : <path d="M7 4.5h6q3 0 3 3V10q0 3-3 3H9l-3 3.5.2-3.5H7q-3 0-3-3V7.5q0-3 3-3z" />}
+            </svg>
+            <span>{t(`${prefix}.${i}`)}</span>
+          </li>
         ))}
       </ul>
     </div>
@@ -2914,10 +2920,12 @@ function PhoneSettings() {
         <PaperRow />
         <div class="set-item">
           <b>{t("settings.lang.title")}</b>
+          <small>{t("settings.lang.help")}</small>
           <Seg label={t("settings.lang.title")} value={A.uiLang} options={(["auto", "zh", "en"] as const).map((v) => ({ v, label: t(`settings.lang.${v}`) }))} onPick={(v) => A.setUiLang(v)} />
         </div>
         <div class="set-item">
           <b>{t("settings.details.title")}</b>
+          <small>{t("settings.details.note")}</small>
           <Seg label={t("settings.details.title")} value={A.details} options={(["folded", "shown"] as const).map((v) => ({ v, label: t(`settings.details.${v}`) }))} onPick={(v) => A.setDetails(v)} />
         </div>
         <VoiceSettings />

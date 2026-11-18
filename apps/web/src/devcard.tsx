@@ -171,9 +171,9 @@ export function DevicesSection({ open, setOpen }: { open: string | null; setOpen
       {/* D273: the version line and the night's updates, one group, the control at the right edge. */}
       <div class="set-card">
         <Versions />
-        {A.settings && <Toggle label={t("settings.versions.night")} checked={!!A.settings.autoUpdate} onChange={(v) => A.setSettings({ autoUpdate: v })} />}
+        {/* D365: what the night's updates do is the switch's own line, as on the Mac, not a stray note under the card. */}
+        {A.settings && <Toggle label={t("settings.versions.night")} help={t("settings.versions.night.note")} checked={!!A.settings.autoUpdate} onChange={(v) => A.setSettings({ autoUpdate: v })} />}
       </div>
-      {A.settings && <div class="small sub">{t("settings.versions.night.note")}</div>}
     </section>
   );
 }

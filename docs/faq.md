@@ -132,6 +132,27 @@ project, with each task's branch, what it waits for or which try it is on, and h
 changed; what starts later or repeats there sits in the same group. The **+** on a project
 starts a new task there.
 
+### How do I move a task to another model, like one that just came out?
+
+Three ways, all the same switch:
+
+- **Ask your partner** in the conversation: "这个任务换成 6.2 sol" or "use Opus for the login
+  task". It finds the model in that agent's own list, so the short name you'd say is enough;
+  when it could be more than one, it asks which.
+- **Open the task › Switch who does it**: the first row is the **Model** of the agent doing it,
+  then its **Effort**. Tap a model and it takes it at that model's own default effort.
+- **Type in the task's box**: `/model gpt-6.2-sol` or `/effort high`.
+
+The task keeps going in the same conversation, remembering everything said so far; nothing
+starts over. If it's in the middle of a step, that step finishes on the old model and the next
+one uses the new one.
+
+The list of models comes from the AI agent itself (Claude Code or Codex on that computer), so a
+model released last night is there as soon as you update the agent. You don't need a new
+version of Ducter for it. A new task you don't pick a model for runs on your agent's own
+default: for Codex, the `model` in your `~/.codex/config.toml`. Change that, or pick a model on
+**New task**, to use a newer one by default.
+
 ### Does a project have to be a Git repository?
 
 No. A project is any folder on the computer that does the work: your invoices, a trip plan, a

@@ -2,6 +2,19 @@
 
 Deferred work, grouped by area, each with its trigger where it has one.
 
+## Models an agent adds (D352, `harnesses.md`)
+
+- **Live: a real switch to gpt-6.2-sol mid-task.** A Codex task on the author's Mac, switched by
+  the chip and by "这个任务换成 6.2 sol" while a turn runs: the turn ends on the old model, the next
+  one reports gpt-6.2-sol (Codex's own model line), same thread id. Checked with fakes only.
+  *Trigger:* next release walk.
+- **Say once when an agent adds a model?** One quiet line ("Codex 有了 GPT-6.2-Sol…") when a
+  `fresh` model first appears, with a Go that moves new tasks to it. Held back: proactive
+  restraint, and the person's own agent default already decides. *Trigger:* the person asks for
+  it, or a fresh model is picked by hand twice.
+- **A `fresh` chip on the picker** (a small 新 / New mark) for a model newer than the registry.
+  Needs a glossary word first. *Trigger:* the same as above.
+
 ## Lend a computer (D347, `where.md` §17)
 
 - **Live check: a LAN Linux box joins hel.** On a Linux machine on the author's home network (no

@@ -8,7 +8,7 @@
 // facts (design/harnesses.md) and widens `verified`.
 import { readFileSync, realpathSync } from "node:fs";
 import { HARNESS_IDS, type HarnessId } from "../packages/protocol/src/harnesses.ts";
-import { CLAUDE_SWITCHES, HARNESS_FACTS, versionStanding } from "../packages/protocol/src/harness-facts.ts";
+import { CLAUDE_SWITCHES, HARNESS_FACTS, parseCodexCatalog, versionStanding } from "../packages/protocol/src/harness-facts.ts";
 
 type Line = { harness: HarnessId | "mem"; what: string; ok: boolean | null; detail: string };
 const lines: Line[] = [];
@@ -82,20 +82,16 @@ function probeCodex() {
     const r = run(["codex", "debug", "prompt-input", "-c", `${key}="probe"`, "hi"]);
     say("codex", `config key ${key}`, r.out.includes("expected i64") && r.out.includes(key), r.out.split("\n")[0] ?? "");
   }
-  const r = run(["codex", "debug", "models"]);
-  try {
-    const j = JSON.parse(r.out.slice(r.out.indexOf("{"))) as { models?: { slug?: string; context_window?: number; visibility?: string }[] };
-    const known = f.models.value;
-    for (const m of j.models ?? []) {
-      if (!m.slug || m.visibility === "hide") continue;
-      const k = known[m.slug];
-      if (!k) say("codex", `model ${m.slug}`, false, `not in the registry (window ${m.context_window})`);
-      else say("codex", `model ${m.slug}`, k.window === m.context_window, `window ${m.context_window} (registry ${k.window})`);
-    }
-    for (const slug of Object.keys(known)) if (!(j.models ?? []).some((m) => m.slug === slug)) say("codex", `model ${slug}`, false, "in the registry, gone from the catalog");
-  } catch {
-    say("codex", "model catalog", null, "codex debug models gave no JSON");
+  // D352: the same parse the home uses for a model the registry doesn't know (hidden ones left out).
+  const cat = parseCodexCatalog(run(["codex", "debug", "models"]).out);
+  if (!Object.keys(cat).length) return say("codex", "model catalog", null, "codex debug models gave no JSON");
+  const known = f.models.value;
+  for (const [slug, m] of Object.entries(cat)) {
+    const k = known[slug];
+    if (!k) say("codex", `model ${slug}`, false, `not in the registry (window ${m.window}; the home still lists it, marked fresh)`);
+    else say("codex", `model ${slug}`, k.window === m.window, `window ${m.window} (registry ${k.window})`);
   }
+  for (const slug of Object.keys(known)) if (!cat[slug]) say("codex", `model ${slug}`, false, "in the registry, gone from the catalog");
 }
 
 for (const h of HARNESS_IDS) {

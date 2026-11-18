@@ -2,6 +2,7 @@ package views
 
 import (
 	"math"
+	"slices"
 	"strings"
 	"time"
 
@@ -633,9 +634,14 @@ func (a *App) tuneInPlace(c *ui.Context, task *store.Task, device string) {
 	if row == nil || len(row.Models) == 0 || row.From != "live" {
 		return
 	}
+	// D352: the model it's on is always a chip, even one past the row's first few.
+	models := row.Models
+	if now := task.Model(); now != "" && !slices.ContainsFunc(models, func(m protocol.ModelChoice) bool { return m.ID == now }) {
+		models = append(slices.Clone(models), protocol.ModelChoice{ID: now, Label: modelLabel(a.trayHarness(h), now)})
+	}
 	var model *protocol.ModelChoice
-	for i := range row.Models {
-		if m := &row.Models[i]; (task.Model() != "" && m.ID == task.Model()) || (task.Model() == "" && m.Default) {
+	for i := range models {
+		if m := &models[i]; (task.Model() != "" && m.ID == task.Model()) || (task.Model() == "" && m.Default) {
 			model = m
 		}
 	}
@@ -655,7 +661,7 @@ func (a *App) tuneInPlace(c *ui.Context, task *store.Task, device string) {
 	}
 	ui.Column(c.Key("switch-tune")).Gap(t.S1 + 2).Children(func() {
 		line("sw-models", a.L.T("newtask.model"), func() {
-			for _, m := range row.Models {
+			for _, m := range models {
 				on := model != nil && m.ID == model.ID
 				if a.choice(c, "sw-model:"+m.ID, m.Label, on, "") && !on {
 					pick(m.ID, "")

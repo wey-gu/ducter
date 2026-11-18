@@ -2,7 +2,7 @@ import { randomBytes, randomUUID } from "node:crypto";
 import { HARNESS_IDS, HARNESSES as HARNESS_INFO, harnessName, isImage, kindWords, sizeWords, type MediaRef, type Attention, type Bodies, type BranchChanges, type Delivery, type EvidenceRef, type FolderChanges, type FolderSummary, type HeldMsg, type UndoConfirm, type LogEvent, type Place, type Question, type Residency, type TaskCard, type TaskNeeds, type WhereAsk } from "@ducter/protocol";
 import type { CoreApi, HarnessEvent, HarnessPort, HarnessSession, Runner, SendFile, SendImage, SessionSpec } from "@ducter/protocol/src/internal.ts";
 import { ADOPTED, outsideOver, NUDGE, PRECOMPACT_NOTE, REOPENED, RESUME_AFTER_RESTART, SAVE_BEFORE_COMPACT, afterCompaction, briefTurn, knownTurn, othersTurn, OTHERS_MAX, handedBack, handedOver, kickoff, movedOver, noCopyAnswer, seedThen, startedAfresh, taskBrief, type CarryOver } from "./brief.ts";
-import { resolveWindows, saveBeforeAt } from "@ducter/protocol/src/harness-facts.ts";
+import { resolveModel, resolveWindows, saveBeforeAt } from "@ducter/protocol/src/harness-facts.ts";
 import { createOarHarnessPort } from "./oar.ts";
 import { cwdOf, planPlace, provisionPlace, type ResolvedPlace } from "./places.ts";
 import { browserSidecar, codexComputerBrief, computerUseGuard, type BrowserGuardHit, type BrowserOptions, type BrowserSidecar, type BrowserTool, type SidecarInput } from "./browser.ts";
@@ -889,7 +889,9 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       const want = slash.arg.toLowerCase();
       const hits = listed?.filter((m) => m.id.toLowerCase() === want || m.label.toLowerCase() === want);
       const near = listed?.filter((m) => m.id.toLowerCase().includes(want) || m.label.toLowerCase().includes(want));
-      const pick = hits?.[0] ?? (near?.length === 1 ? near[0] : undefined);
+      // D352: as people say it too ("/model 6.2 sol"), the same match as the partner's task_switch.
+      const said = listed?.length ? resolveModel(h, slash.arg, listed) : undefined;
+      const pick = hits?.[0] ?? (said && "id" in said ? listed?.find((m) => m.id === said.id) : undefined) ?? (near?.length === 1 ? near[0] : undefined);
       if (listed?.length && !pick) {
         fail(`${harnessName(h)} here has no model "${slash.arg}" (${listed.map((m) => m.id).join(", ")})`);
         return { delivered: "prompted" };

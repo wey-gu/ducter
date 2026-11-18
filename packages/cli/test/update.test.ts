@@ -168,7 +168,7 @@ test("--agents --check --json: each AI agent's version, channel and latest; --ag
   const out: string[] = [];
   expect(await cmdUpdate({ t, style, args: args(["--agents", "--check", "--json"]), port: core.port, dataDir: core.dataDir, log: (s) => out.push(s) })).toBe(0);
   const j = JSON.parse(out.join("\n"));
-  expect(j.agents).toEqual([{ device: "local", deviceName: expect.any(String), harness: "codex", version: "0.167.0", how: "npm", latest: "0.168.0", available: true, standing: "verified", latestVerified: false }]);
+  expect(j.agents).toEqual([{ device: "local", deviceName: expect.any(String), harness: "codex", version: "0.167.0", how: "npm", latest: "0.168.0", available: true, standing: "verified", latestVerified: true }]); // D352: 0.168.0 is inside the verified range (to 0.169.1)
   out.length = 0;
   core.devicesView.refresh();
   expect(await cmdUpdate({ t, style, args: args(["--agents", "--yes", "--json"]), port: core.port, dataDir: core.dataDir, log: (s) => out.push(s) })).toBe(0);

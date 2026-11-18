@@ -228,7 +228,7 @@ test("the card: latest, behind, verified or not, then a tap runs the steps at a 
   const ag = createAgentUpdates({
     log,
     sys: { ...f.sys, sleep: async () => void (working = 0) },
-    latest: staticLatest({ codex: "0.168.0", "claude-code": "2.1.321" }),
+    latest: staticLatest({ codex: "0.170.0", "claude-code": "2.1.321" }),
     name: () => "hel",
     detect: async (h) => (h === "codex" ? f.detect() : { how: "app", version: "2.1.284" }),
     loggedIn: f.loggedIn,
@@ -243,7 +243,7 @@ test("the card: latest, behind, verified or not, then a tap runs the steps at a 
     { harness: "claude-code", installed: true, loggedIn: true, canBePartner: true, version: "2.1.284", how: "app" },
   ];
   const [cx, cc] = ag.view("local", list);
-  expect(cx).toMatchObject({ latest: "0.168.0", available: true, standing: "verified", latestVerified: false });
+  expect(cx).toMatchObject({ latest: "0.170.0", available: true, standing: "verified", latestVerified: false }); // D352: beyond the verified range (to 0.169.1)
   expect(cc).toMatchObject({ standing: "older" });
   expect(cc!.available).toBeFalsy(); // an app's copy: never offered
   expect(cc!.latest).toBeUndefined();
@@ -252,7 +252,7 @@ test("the card: latest, behind, verified or not, then a tap runs the steps at a 
   // The devices frame reads each copy again after an update: the view is judged against it.
   const now = () => [{ ...list[0]!, version: f.m.version! }, list[1]!];
   for (let i = 0; i < 50 && ag.view("local", now())[0]!.update?.phase !== "done"; i++) await Bun.sleep(5);
-  expect(ag.view("local", now())[0]!.update).toMatchObject({ phase: "done", from: "0.167.0", to: "0.168.0", by: "user" });
+  expect(ag.view("local", now())[0]!.update).toMatchObject({ phase: "done", from: "0.167.0", to: "0.170.0", by: "user" });
   // A stale list (still the old version) doesn't call it done.
   expect(ag.view("local", list)[0]!.update).toBeUndefined();
   expect(holds).toEqual(["codex:true", "codex:false"]);
@@ -411,7 +411,7 @@ test("over the socket: the devices frame carries each agent's version and latest
   ws.send(JSON.stringify({ t: "devices" }));
   const codexOf = (x: ServerFrame) => (x.t === "devices" ? x.devices.find((d) => d.home)?.harnesses.find((h) => h.harness === "codex") : undefined);
   await until((x) => codexOf(x)?.latest === "0.168.0");
-  expect(codexOf(frames.findLast((x) => codexOf(x)?.latest === "0.168.0")!)).toMatchObject({ version: "0.167.0", how: "npm", available: true, standing: "verified", latestVerified: false });
+  expect(codexOf(frames.findLast((x) => codexOf(x)?.latest === "0.168.0")!)).toMatchObject({ version: "0.167.0", how: "npm", available: true, standing: "verified", latestVerified: true }); // D352: 0.168.0 is inside the verified range
   ws.send(JSON.stringify({ t: "agent_update", device: "local", harness: "codex" }));
   expect(await until((x) => x.t === "agent_update_result" && x.harness === "codex")).toMatchObject({ ok: true, harness: "codex" });
   await until((x) => codexOf(x)?.update?.phase === "done");

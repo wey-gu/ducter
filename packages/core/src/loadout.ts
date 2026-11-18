@@ -2,7 +2,8 @@
 // (换谁来做 / Switch who does it), moves a task when the person switches it, keeps 你的规则 / Your
 // rules, and after two switches the same way asks the partner to offer a rule once.
 import type { Bodies, Candidate, DeviceHarness, LogEvent, Place, TaskNeeds } from "@ducter/protocol";
-import { harnessName, whichPhone } from "@ducter/protocol";
+import { harnessName, isHarnessId, whichPhone } from "@ducter/protocol";
+import { resolveModel } from "@ducter/protocol/src/harness-facts.ts";
 import type { BodyChoice, LogStore, Runner } from "@ducter/protocol/src/internal.ts";
 import { blockOf, chooseBody, computersOf, fwCandidates, type Computer, noPhoneLine } from "./candidates.ts";
 import { checkEffort, type ModelCatalog } from "./models.ts";
@@ -295,6 +296,76 @@ export function registerRuleTools(mcp: CoreMcpHub, rules: RulesStore) {
     },
   );
   mcp.register("partner", "rule_list", "The user's rules for who does which kind of work, oldest first.", { type: "object", properties: {} }, async () => rules.list());
+}
+
+/** How long task_switch waits for an agent's model list it doesn't have yet. */
+const SWITCH_LIST_MS = 8_000;
+
+/**
+ * D352: the partner's task_switch: "这个任务换成 6.2 sol", "use Opus for this one", "let Codex do
+ * it". The model is matched to the agent's own list as the person said it (the live list, else
+ * the registry): the same agent keeps its own session and runs the new model from its next turn
+ * (a running turn finishes on the old one, D282); another agent carries on from saved progress.
+ */
+export function registerSwitchTool(mcp: CoreMcpHub, o: { loadout: Loadout; tasks: CoreRegistry; models?: ModelCatalog; runner: () => Runner | undefined }) {
+  mcp.register(
+    "partner",
+    "task_switch",
+    "When the user asks to change a task's model, effort or AI agent (\"这个任务换成 6.2 sol\", \"use Opus for this\"). The same agent keeps its session and uses them from its next turn; another agent carries on from saved progress. model: as the user said it (matched to the agent's own list). Call it first, with no line before; after, at most one short line.",
+    {
+      type: "object",
+      properties: {
+        taskId: { type: "string" },
+        harness: { type: "string", enum: ["claude-code", "codex", "pi", "deepseek-harness"], description: "Only to change the agent" },
+        model: { type: "string" },
+        effort: { type: "string" },
+      },
+      required: ["taskId"],
+    },
+    async (a: { taskId?: unknown; harness?: unknown; model?: unknown; effort?: unknown }) => {
+      const taskId = String(a.taskId ?? "");
+      const card = o.tasks.get(taskId);
+      if (!card) return { ok: false, error: "I can't find that task." };
+      const harness = typeof a.harness === "string" && a.harness ? a.harness : card.harness;
+      if (!isHarnessId(harness)) return { ok: false, error: `${harness} isn't an AI agent Ducter runs.` };
+      const said = typeof a.model === "string" ? a.model.trim() : "";
+      const effort = typeof a.effort === "string" && a.effort.trim() ? a.effort.trim().toLowerCase() : undefined;
+      if (!said && !effort && harness === card.harness) return { ok: false, error: "Say which model, effort or AI agent." };
+      const on = (card.place as { device?: string }).device;
+      const device = on && on !== "local" ? on : "local";
+      const list = await o.models?.get(device, harness, SWITCH_LIST_MS);
+      let model: string | undefined;
+      if (said) {
+        const r = resolveModel(harness, said, list);
+        if ("ambiguous" in r) return { ok: false, error: `"${said}" could be ${r.ambiguous.join(", ")}. Ask the user which, in one line.` };
+        if ("none" in r) {
+          // Nothing to check it against (no list, an empty registry): as they said it; the agent refuses an unknown one.
+          if (!r.none.length) model = said;
+          else return { ok: false, error: `${harnessName(harness)} has no model "${said}" here. It offers: ${r.none.join(", ")}.` };
+        } else model = r.id;
+      } else if (harness === card.harness) model = card.model;
+      if (effort) {
+        const ok = checkEffort(harness, model, effort, list);
+        if (!ok.ok) return { ok: false, error: ok.why };
+      }
+      const r = await o.loadout.switchTask(taskId, harness, model, o.runner(), undefined, effort).catch((err) => ({ ok: false, message: (err as Error).message }));
+      if (!r.ok) return { ok: false, error: r.message ?? "That switch didn't go through." };
+      const entry = model ? list?.find((m) => m.id === model) : undefined;
+      const running = card.attention === "working" || card.attention === "queued";
+      const same = harness === card.harness;
+      return {
+        ok: true,
+        harness,
+        ...(model ? { model, label: entry?.label ?? model } : {}),
+        ...(effort ? { effort } : entry?.defaultEffort ? { effort: entry.defaultEffort } : {}),
+        note: same
+          ? running
+            ? "Done: the turn it is in finishes as it was; the next one uses the new choice. The task shows the change itself."
+            : "Done: its next turn uses the new choice. The task shows the change itself."
+          : "Done: it carries on there from saved progress. The task shows the change itself.",
+      };
+    },
+  );
 }
 
 /** A user-origin note that should wake the partner: the second switch the same way. */

@@ -177,7 +177,10 @@ says, never a silent fallback.
 **思考深度 / Effort** (D282): a pick changes them in place. The native session reopens by its id
 with them before the next turn (at once when idle, after the running turn otherwise): Claude
 Code `--resume <id> --model --effort`, Codex `thread/resume` with the model; lossless, logged as
-`raw.retuned {harness, model, effort}`. `/model` and `/effort` typed in the task do the same.
+`raw.retuned {harness, model, effort}`. `/model` and `/effort` typed in the task do the same, and
+so does asking the partner ("这个任务换成 6.2 sol": `task_switch`, the model matched to the agent's
+own list as said, D352). The row is the agent's live list; the model a task is on is always a
+chip in it, even past the row's first eight.
 Then the list: the top three others with why and the limit each, and the ones that can't, greyed
 with why. **换到 X 接着做 / Continue on X** closes the old session (kept by agent) and starts the
 new agent from the brief, the last six checkpoints and the carry-over (the last report and its

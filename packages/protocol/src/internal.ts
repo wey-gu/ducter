@@ -510,6 +510,10 @@ export interface ListedModel {
   defaultEffort?: string;
   /** What it runs when no model is named, where the agent says so. */
   default?: true;
+  /** D352: its context window: the registry's (harness-facts) when Ducter knows the model, else what the agent's own catalog says. */
+  window?: number;
+  /** D352: the agent lists it but Ducter's registry doesn't know it yet (a model newer than this Ducter): its facts are the agent's own. */
+  fresh?: true;
 }
 
 /** D299: what carrying on an outside session hands the runner. */

@@ -8,6 +8,7 @@
 // INFERRED (why). A new harness version is not trusted until the probe has run against it.
 import type { HarnessId } from "./harnesses.ts";
 import type { ContextWindows } from "./index.ts";
+import type { ListedModel } from "./internal.ts";
 
 export type Evidence =
   | { kind: "VERIFIED"; how: string; date: string; version: string }
@@ -318,9 +319,13 @@ export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
   codex: {
     harness: "codex",
     version: { command: ["codex", "--version"], pattern: /(\d+\.\d+\.\d+)/ },
-    verified: { from: "0.167.0", to: "0.167.0" },
+    // 0.169.1 re-checked 2026-11-18 (D352): `codex debug models` and OAR listModels list two new
+    // models (gpt-6.2-sol, gpt-6.2-astra); both knobs' keys are still typed i64.
+    verified: { from: "0.167.0", to: "0.169.1" },
     models: {
       value: {
+        "gpt-6.2-sol": { id: "gpt-6.2-sol", window: 500_000 },
+        "gpt-6.2-astra": { id: "gpt-6.2-astra", window: 272_000 },
         "gpt-6.1-sol": { id: "gpt-6.1-sol", window: 500_000 },
         "gpt-6.1-terra": { id: "gpt-6.1-terra", window: 500_000 },
         "gpt-6-astra": { id: "gpt-6-astra", window: 272_000 },
@@ -330,7 +335,12 @@ export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
         "gpt-5.6-terra": { id: "gpt-5.6-terra", window: 272_000 },
         "gpt-5.6-luna": { id: "gpt-5.6-luna", window: 272_000 },
       },
-      evidence: cx("`codex debug models`: context_window per listed model (max_context_window 872,000 for all)"),
+      evidence: {
+        kind: "VERIFIED",
+        how: "`codex debug models`: context_window per listed model (max_context_window 872,000 for all), the hidden ones (visibility hide: gpt-reserve, codex-auto-review) left out; the older eight on 0.167.0, gpt-6.2-sol (500,000) and gpt-6.2-astra (272,000) on 0.169.1. A model the installed Codex lists that isn't here takes the window that listing gives it (liveModels, D352)",
+        date: "2026-11-18",
+        version: "0.169.1",
+      },
     },
     effort: {
       value: {
@@ -341,9 +351,9 @@ export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
       },
       evidence: {
         kind: "VERIFIED",
-        how: "OAR listModels (app-server model/list): every model with its effortLevels and defaultEffort (gpt-6.1-sol, gpt-6.1-terra, gpt-5.6-sol: low..ultra, default low; gpt-6-astra, gpt-6-sol, gpt-5.6-terra: low..ultra, default medium; the luna models: low..max, default medium); how it is applied: OAR 0.95.1 SessionOptions.effort docs",
-        date: "2026-11-11",
-        version: "0.167.1",
+        how: "OAR 0.95.1 listModels (app-server model/list): every model with its effortLevels and defaultEffort (gpt-6.2-sol, gpt-6.2-astra, gpt-6.1-sol, gpt-6.1-terra, gpt-5.6-sol: low..ultra, default low; gpt-6-astra, gpt-6-sol, gpt-5.6-terra: low..ultra, default medium; the luna models: low..max, default medium), the same in `codex debug models`; how it is applied: OAR 0.95.1 SessionOptions.effort docs",
+        date: "2026-11-18",
+        version: "0.169.1",
       },
     },
     windowKnob: {
@@ -513,7 +523,7 @@ export function claudeCompactPct(window: number, compactAt: number): number | un
 }
 
 /** The flags and env that hold a session to its window and compaction point. */
-export function windowKnobs(h: HarnessId, plan: WindowPlan, model?: string): WindowKnobs {
+export function windowKnobs(h: HarnessId, plan: WindowPlan, model?: string, liveWindow?: number): WindowKnobs {
   const f = HARNESS_FACTS[h];
   const window = Math.round(plan.window);
   const compactAt = Math.round(Math.min(plan.compactAt, plan.window));
@@ -528,8 +538,13 @@ export function windowKnobs(h: HarnessId, plan: WindowPlan, model?: string): Win
       if (pct !== undefined) env[f.compactAtKnob.value.key] = String(pct);
       return { env, args: [], settings: { ...(f.compactSettings?.value ?? {}) } };
     }
-    case "codex":
-      return { env: {}, args: ["-c", `${f.windowKnob.value.key}=${window}`, "-c", `${f.compactAtKnob.value.key}=${compactAt}`], settings: {} };
+    case "codex": {
+      // D352: never more than the model's own window (the registry's, else what Codex listed):
+      // model_context_window above it would let a turn overflow before the compactor fires.
+      const cap = (model && f.models.value[model]?.window) || liveWindow;
+      const w = cap ? Math.min(window, cap) : window;
+      return { env: {}, args: ["-c", `${f.windowKnob.value.key}=${w}`, "-c", `${f.compactAtKnob.value.key}=${Math.min(compactAt, w)}`], settings: {} };
+    }
     case "deepseek-harness": {
       // The compactor fires at a fraction of the model's own window (research/50 §3): the plan's
       // compaction point over that window. The window itself can't be narrowed.
@@ -572,6 +587,90 @@ export function modelForWindow(h: HarnessId, model: string | undefined, window: 
 export function defaultsToOneMillion(h: HarnessId, model: string): boolean {
   const m = HARNESS_FACTS[h].models.value[model];
   return !!m && m.window > (m.standardWindow ?? m.window);
+}
+
+// ---------- the live model list (D352) ----------
+
+/** One model as the agent's own catalog describes it, beyond what its picker list says. */
+export interface CatalogEntry {
+  window?: number;
+  defaultEffort?: string;
+  efforts?: string[];
+}
+
+/**
+ * `codex debug models` (token-free, local): each visible model's window and effort menu, keyed by
+ * slug. Hidden models (visibility "hide": gpt-reserve, codex-auto-review on 0.169.1) are left out,
+ * as Codex's own picker leaves them out. Anything that isn't its JSON gives an empty catalog.
+ */
+export function parseCodexCatalog(out: string): Record<string, CatalogEntry> {
+  const at = out.indexOf("{");
+  if (at < 0) return {};
+  try {
+    const j = JSON.parse(out.slice(at)) as { models?: { slug?: unknown; context_window?: unknown; visibility?: unknown; default_reasoning_level?: unknown; supported_reasoning_levels?: { effort?: unknown }[] }[] };
+    const cat: Record<string, CatalogEntry> = {};
+    for (const m of j.models ?? []) {
+      if (typeof m.slug !== "string" || !m.slug || m.visibility === "hide") continue;
+      const efforts = (m.supported_reasoning_levels ?? []).map((l) => l?.effort).filter((e): e is string => typeof e === "string");
+      cat[m.slug] = {
+        ...(typeof m.context_window === "number" && m.context_window > 0 ? { window: m.context_window } : {}),
+        ...(typeof m.default_reasoning_level === "string" ? { defaultEffort: m.default_reasoning_level } : {}),
+        ...(efforts.length ? { efforts } : {}),
+      };
+    }
+    return cat;
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * D352: the agent's own list (OAR listModels, the live truth of what this account can run now)
+ * merged with the registry. The list decides which models there are and in what order; a model
+ * the registry knows takes its window; one it doesn't is marked `fresh` and takes what the
+ * agent's catalog says (its window, and its effort menu where the list gave none). A model the
+ * catalog hides never comes in through it: only the list adds models.
+ */
+export function liveModels(h: HarnessId, listed: readonly ListedModel[], catalog: Readonly<Record<string, CatalogEntry>> = {}): ListedModel[] {
+  const known = HARNESS_FACTS[h].models.value;
+  const registryKnows = Object.keys(known).length > 0;
+  return listed.map((m) => {
+    const k = known[m.id];
+    const c = catalog[m.id];
+    const window = k?.window ?? c?.window;
+    return {
+      ...m,
+      ...(!m.efforts?.length && c?.efforts?.length ? { efforts: c.efforts } : {}),
+      ...(!m.defaultEffort && c?.defaultEffort ? { defaultEffort: c.defaultEffort } : {}),
+      ...(window ? { window } : {}),
+      // pi and others whose registry is empty name every model by its own catalog: none is "new".
+      ...(registryKnows && !k ? { fresh: true as const } : {}),
+    };
+  });
+}
+
+/** What a user typed for a model, folded so "6.2 sol", "GPT-6.2-Sol" and "gpt 6.2 sol" compare alike. */
+const foldModel = (s: string) => s.toLowerCase().replace(/[\s_]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
+const bareModel = (s: string) => s.toLowerCase().replace(/[^a-z0-9.]/g, "");
+
+/**
+ * D352: the model a person named ("6.2 sol", "opus", "gpt-6.2-sol"), as one of the agent's ids:
+ * the list's (live) when there is one, else the registry's. Exact id first, then the label, then
+ * the one id that ends with the words they said. Several: which ones; none: what there is.
+ */
+export function resolveModel(h: HarnessId, said: string, list?: readonly { id: string; label?: string }[]): { id: string } | { ambiguous: string[] } | { none: string[] } {
+  const ids = list?.length ? list.map((m) => ({ id: m.id, label: m.label ?? m.id })) : Object.keys(HARNESS_FACTS[h].models.value).map((id) => ({ id, label: id }));
+  const s = foldModel(said);
+  const b = bareModel(said);
+  if (!s) return { none: ids.map((m) => m.id) };
+  const exact = ids.filter((m) => foldModel(m.id) === s || foldModel(m.label) === s || bareModel(m.id) === b || bareModel(m.label) === b);
+  if (exact.length === 1) return { id: exact[0]!.id };
+  // Word-bounded first ("6 sol" is gpt-6-sol, not gpt-5.6-sol), then run together ("6.2sol").
+  let tail = ids.filter((m) => foldModel(m.id).endsWith(`-${s}`));
+  if (!tail.length && b) tail = ids.filter((m) => bareModel(m.id).endsWith(b));
+  if (tail.length === 1) return { id: tail[0]!.id };
+  if (tail.length > 1) return { ambiguous: tail.map((m) => m.id) };
+  return { none: ids.map((m) => m.id) };
 }
 
 // ---------- versions ----------

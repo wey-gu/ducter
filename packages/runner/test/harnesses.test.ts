@@ -59,11 +59,39 @@ test("D202: the port lists an agent's models with their effort levels, disabled 
   let cwd = "";
   const rt = { installation: async () => ({ kind: "available", via: "executable", command: "x" }), listModels: async (_: unknown, o: { cwd: string }) => ((cwd = o.cwd), { kind: "ok", models: [{ id: "sonnet", displayName: "Sonnet 5.5", effortLevels: ["low"] }] }) };
   const port = createOarHarnessPort({ loadRuntime: async () => rt as any, dataDir: join(dir, "d") });
-  expect(await port.models!("claude-code")).toEqual([{ id: "sonnet", label: "Sonnet 5.5", efforts: ["low"] }]);
+  // D352: merged with the registry (its window for a name it knows).
+  expect(await port.models!("claude-code")).toEqual([{ id: "sonnet", label: "Sonnet 5.5", efforts: ["low"], window: 1_000_000 }]);
   expect(cwd).toBe(join(dir, "d"));
   expect(await port.models!("nope")).toBeUndefined();
   const signedOut = createOarHarnessPort({ loadRuntime: async () => ({ ...rt, listModels: async () => ({ kind: "unauthenticated" }) }) as any, dataDir: dir });
   expect(await signedOut.models!("codex")).toBeUndefined();
+});
+
+test("D352: Codex's list merged with the registry; a model newer than Ducter takes Codex's own window, and a task on it never asks for more", async () => {
+  const listed = [
+    { id: "gpt-7-nova", displayName: "GPT-7-Nova", effortLevels: ["low", "medium"], defaultEffort: "medium" },
+    { id: "gpt-6.2-sol", displayName: "GPT-6.2-Sol", effortLevels: ["low", "ultra"], defaultEffort: "low" },
+  ];
+  let catalogReads = 0;
+  const codexCatalog = async (command: string) => {
+    catalogReads++;
+    expect(command).toBe("/usr/local/bin/codex");
+    return `{"models":[{"slug":"gpt-7-nova","context_window":240000,"visibility":"list"},{"slug":"gpt-6.2-sol","context_window":500000,"visibility":"list"},{"slug":"gpt-reserve","context_window":272000,"visibility":"hide"}]}`;
+  };
+  const rt = { installation: async () => ({ kind: "available", via: "executable", command: "/usr/local/bin/codex" }), listModels: async () => ({ kind: "ok", models: listed }) };
+  const port = createOarHarnessPort({ loadRuntime: async () => rt as any, dataDir: join(dir, "d"), codexCatalog });
+  expect(await port.models!("codex")).toEqual([
+    { id: "gpt-7-nova", label: "GPT-7-Nova", efforts: ["low", "medium"], defaultEffort: "medium", window: 240_000, fresh: true },
+    { id: "gpt-6.2-sol", label: "GPT-6.2-Sol", efforts: ["low", "ultra"], defaultEffort: "low", window: 500_000 },
+  ]);
+  expect(catalogReads).toBe(1);
+  // Every model known: Codex's catalog isn't read at all.
+  const known = createOarHarnessPort({ loadRuntime: async () => ({ ...rt, listModels: async () => ({ kind: "ok", models: [listed[1]] }) }) as any, dataDir: join(dir, "d"), codexCatalog });
+  expect(await known.models!("codex")).toEqual([{ id: "gpt-6.2-sol", label: "GPT-6.2-Sol", efforts: ["low", "ultra"], defaultEffort: "low", window: 500_000 }]);
+  expect(catalogReads).toBe(1);
+  // The window it listed caps the task's (a 300K plan on a 240K model).
+  const a = adaptSpec(spec("codex", { model: "gpt-7-nova", contextWindow: 300_000, harnessCompactAt: 260_000 }), { dataDir: dir, liveWindow: 240_000 });
+  expect(a.options.launchArgs).toEqual(expect.arrayContaining(["model_context_window=240000", "model_auto_compact_token_limit=240000"]));
 });
 
 describe("adaptSpec: the partner's clean setup per harness", () => {

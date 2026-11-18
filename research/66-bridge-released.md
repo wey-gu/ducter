@@ -329,3 +329,19 @@ home without the person's tap; make the trial its own identity. **Summary.** Two
 Ducter and the Mac's hand-made trial connection; Mem's list can't tell them apart. D324 labels a home's own
 connection, shows a second reader calmly with one action, and gives the trial an identity it makes and removes, so
 the live rerun no longer depends on what the person has connected.
+
+## 10. Addendum 2026-11-18: which agents can talk over Bridge, and what a sender carries (feeds D350)
+
+| Fact | Tag |
+|---|---|
+| Mem's public SKILL (`mem.nowledge.co/SKILL.md`) lists some 40 hosts it connects (Claude Code, Grok Build, Grok Bot, Codex, …, Cursor, Gemini CLI, Copilot CLI, …, "any MCP-capable client"), but says nothing about Bridge. | DOCUMENTED (fetched 2026-11-18) |
+| `nowledge-co/community` `integrations.json` (main, 2026-11-18, 59 integrations): the `bridge` skill ships in exactly three plugins, **Claude Code**, **Grok Build** and **Codex**. Cursor's plugin has `distill-memory`, `read-working-memory`, `save-handoff`, `save-thread`, `search-memory`, no `bridge`. | VERIFIED (the file) |
+| The logical mailbox verbs (`bridge contacts/send/inbox/open/reply`) are plain `nmem` commands any agent with the CLI and an approved agent context can run; only native sessions are host-bound (`bridge session --host codex\|claude-code`). | VERIFIED (`nmem 0.10.119 bridge --help`, `bridge session --help`) |
+| No released shape is known to carry the sender's host on a logical-mailbox message: #10278's `sender` is `{actor_id, member?, agent?, agent_id?}` (§8). | DOCUMENTED (§8) |
+| A read-only `contacts --query` with the `ducter` context on 2026-11-18 answered `cloud_agent_context_authority_denied` ("not authorized to use Nowledge Bridge"), so whether `--query` matches an `agent_id` (to fetch a card's display name for an unnamed sender) couldn't be checked. | VERIFIED (the refusal) |
+
+**Implications for Ducter.** Say "any agent of yours connected to Nowledge Mem", with Claude Code, Codex and Grok Build
+as the examples (the ones whose plugin carries Bridge today; Cursor is not one). A sender is named by `sender.agent`
+(its Mem name) first; a host, if Mem ever sends one (`sender.host`, `source_app`), second, read tolerantly and only
+for a known host id; else unnamed. No contact-card lookup until a query by agent id is known to work.
+**Summary.** Three Mem plugins carry Bridge; the pane's words name them and the sender falls back name → tool → unnamed.

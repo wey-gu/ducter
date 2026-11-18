@@ -37,22 +37,97 @@ func peerHarness(agent string) string {
 	return "peer"
 }
 
-// peerWho is how the user hears of an agent Ducter didn't start (D273): by
-// what it is, its own name ("Claude Code"), never 你的 / other; when Mem
-// didn't say who sent it, 一个 AI agent / an AI agent.
-func (a *App) peerWho(agent string) string {
-	if agent == "" || agent == "another agent" {
-		return a.L.T("peer.someone")
+// peerCalled is what an agent Ducter didn't start is called, in this
+// order (web: mem-view.ts peerCalled): its own name in Mem (the sender's
+// agent, else the readable sender, or the recipient going out), else the
+// tool it runs in when Mem says (host), else nothing. nmem stores a sender
+// it can't name as "another agent"; that is no name.
+func peerCalled(b *protocol.BridgeMsg) (name, host string) {
+	other := b.From
+	if b.Direction != "in" {
+		other = b.To
 	}
-	return agent
+	for _, x := range []string{b.Agent, other} {
+		if strings.TrimSpace(x) != "" && x != "another agent" {
+			return x, ""
+		}
+	}
+	return "", b.Host
 }
 
-// capPeer starts a line "An AI agent …"; an agent's own name stays as it is.
+// peerWho is how the user hears of an agent Ducter didn't start (D273): by
+// what it is, its own name ("Claude Code"), never 你的 / other; when Mem
+// didn't name it, the tool it runs in (Claude Code 里的 agent / an agent in
+// Claude Code), else 一个没留名字的 agent / an unnamed agent.
+func (a *App) peerWho(agent string) string {
+	return a.peerCalledText(agent, "")
+}
+
+// peerWhoOf is peerWho for a message, with the tool it runs in.
+func (a *App) peerWhoOf(b *protocol.BridgeMsg) string {
+	return a.peerCalledText(peerCalled(b))
+}
+
+func (a *App) peerCalledText(name, host string) string {
+	switch {
+	case name != "" && name != "another agent":
+		return name
+	case host != "":
+		return a.L.T("peer.in.host", host)
+	}
+	return a.L.T("peer.someone")
+}
+
+// capPeer starts a line "An unnamed agent …" or "An agent in …"; an
+// agent's own name stays as it is.
 func capPeer(s string) string {
-	if strings.HasPrefix(s, "an AI agent") {
+	if strings.HasPrefix(s, "an unnamed agent") || strings.HasPrefix(s, "an agent in ") {
 		return "A" + s[1:]
 	}
 	return s
+}
+
+// peerTile is another agent's tile (最近, the first note): its tool's coin
+// or mark by its name or the tool it runs in, else the drawn agent on the
+// sunken pebble a letter sits on, never a minus or a remove button.
+func (a *App) peerTile(c *ui.Context, name, host string) func() {
+	if name != "" && name != "another agent" {
+		return a.toolTile(c, peerName(name))
+	}
+	if host != "" {
+		return a.toolTile(c, host)
+	}
+	t := a.T
+	return func() {
+		ui.Row(c.Key("peer-agent-tile")).Size(36, 36).Shrink(0).Radius(18).Background(t.Sunken).Shadow(0, 2, 0, 0, t.Line2).
+			Justify(ui.Center).AlignItems(ui.Center).AccessHidden(true).Children(func() {
+			a.glyph(c, 20, drawAgent(t.InkSoft))
+		})
+	}
+}
+
+// drawAgent is an agent with no name and no tool: a rounded head, two eyes
+// and a short antenna (web: memory.tsx AgentMark).
+func drawAgent(col ui.Color) func(p *ui.Painter, r ui.Rect) {
+	return func(p *ui.Painter, r ui.Rect) {
+		s := r.W / 20
+		x, y := r.X, r.Y
+		w := 1.7 * s
+		var ant ui.Path
+		ant.MoveTo(x+10*s, y+2.6*s).LineTo(x+10*s, y+5.2*s).Cap(ui.RoundCap)
+		p.StrokePath(&ant, w, col)
+		var tip ui.Path
+		tip.Circle(x+10*s, y+2.3*s, 0.9*s)
+		p.FillPath(&tip, col)
+		var head ui.Path
+		roundRect(&head, x+3.6*s, y+5.6*s, 12.8*s, 10.4*s, 4*s)
+		p.StrokePath(&head, w, col)
+		for _, ex := range []float32{7.6, 12.4} {
+			var eye ui.Path
+			eye.Circle(x+ex*s, y+10.6*s, 1.15*s)
+			p.FillPath(&eye, col)
+		}
+	}
 }
 
 // peerAskerRow stands where a task's title would on a card asked for one of
@@ -72,7 +147,7 @@ func (a *App) peerAskerRow(c *ui.Context, d *protocol.PeerAsk) {
 // peerLineText is the one quiet line about an agent Ducter didn't start
 // (J-Q5's strings): a request came in, or a reply or a message went out.
 func (a *App) peerLineText(b *protocol.BridgeMsg) string {
-	who := a.peerWho(firstNonEmpty(b.Agent, b.From, b.To))
+	who := a.peerWhoOf(b)
 	if b.Direction == "in" {
 		gist := strings.Join(strings.Fields(b.Text), " ")
 		if r := []rune(gist); len(r) > 40 {
@@ -168,7 +243,7 @@ func (a *App) peerLine(c *ui.Context, b *protocol.BridgeMsg, setAside int) {
 	t := a.T
 	text := a.peerLineText(b)
 	if b.State == "set_aside" {
-		text = capPeer(a.L.T("peer.set_aside", a.peerWho(firstNonEmpty(b.Agent, b.From)), itoa(int64(setAside))))
+		text = capPeer(a.L.T("peer.set_aside", a.peerWhoOf(b), itoa(int64(setAside))))
 	}
 	ui.Row(c).Justify(ui.Center).Children(func() {
 		ui.Row(c).Gap(t.S1+2).AlignItems(ui.Center).Padding(3, t.S3).Radius(999).Background(t.SurfaceSunken).Children(func() {

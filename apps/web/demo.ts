@@ -293,6 +293,11 @@ if (process.env.DEMO_PEER === "history" && memOn) {
   log.append({ stream: "channel", origin: "partner", kind: "bridge_msg", body: { direction: "out", messageId: "bm_h3", to: "Codex", agent: "Codex", decisionId: "d_h3", state: "sent", text: zh ? "那个 compaction 的 PR 今晚能提吗？" : "Can the compaction PR go up tonight?" } });
   at(31);
   log.append({ stream: "channel", origin: "peer", kind: "bridge_msg", body: { direction: "in", messageId: "bm_h4", from: "Codex", agent: "Codex", inReplyTo: "bm_h3", text: zh ? "能。测试都过了，还差 Weizhen 看一眼。" : "Yes. The tests pass; it just needs Weizhen to take a look." } });
+  // D350: two that left no name in Mem: one says the tool it runs in, one says nothing.
+  at(20);
+  log.append({ stream: "channel", origin: "peer", kind: "bridge_msg", body: { direction: "in", messageId: "bm_h5", from: "another agent", host: "Claude Code", mine: true, text: zh ? "帮我看看 hel 上 nightly 备份昨晚跑了没有。" : "Check whether last night's nightly backup ran on hel." } });
+  at(12);
+  log.append({ stream: "channel", origin: "peer", kind: "bridge_msg", body: { direction: "in", messageId: "bm_h6", from: "another agent", mine: true, text: zh ? "release notes 草稿写好了，放在 CHANGELOG.md，帮我顺一遍。" : "The release notes draft is in CHANGELOG.md; give it a read for me." } });
   skew = 0;
 }
 

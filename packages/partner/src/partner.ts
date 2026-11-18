@@ -55,7 +55,7 @@ import { callWakes, fileView, HARNESSES, HARNESS_IDS, isHarnessId, isImage, MEDI
 import type { CoreApi, HarnessEvent, HarnessSession, Partner, Runner, SendImage } from "../../protocol/src/internal.ts";
 import { resolveWindows, WINDOW_MAX, WINDOW_MIN } from "../../protocol/src/harness-facts.ts";
 import { bridgeFor, bridgeKeyFor, type BridgeClient, type BridgeContact, type BridgeOp, type BridgeResult } from "./bridge.ts";
-import { claimText, fixedOutcome, followCandidates, followLine, foldOut, inQuiet, langOfRequest, lostLine, mayHaveGone, overAsks, peerAnswer, whoForModel, whoForUser, UNNAMED_OWN, AFTER_SEND_MS, CHECK_EVERY_MS, DAY_MS, FOLLOW_ACTIVE_MS, LIVE_CHECK_MS, LIVE_MS, WAIT_RETRY_MS, WAIT_S, WAITING_EVERY_MS, PEER_ASKS_OPEN, PEER_NOT_YET_MS, SENDER_DAILY, TRUST_AFTER, TRUST_WINDOW_MS, TRUSTED_DAILY, type OutKind, type OutOp, type OutState } from "./bridge-out.ts";
+import { claimText, fixedOutcome, followCandidates, followLine, foldOut, inQuiet, langOfRequest, lostLine, mayHaveGone, overAsks, peerAnswer, whoForModel, whoForUser, AFTER_SEND_MS, CHECK_EVERY_MS, DAY_MS, FOLLOW_ACTIVE_MS, LIVE_CHECK_MS, LIVE_MS, WAIT_RETRY_MS, WAIT_S, WAITING_EVERY_MS, PEER_ASKS_OPEN, PEER_NOT_YET_MS, SENDER_DAILY, TRUST_AFTER, TRUST_WINDOW_MS, TRUSTED_DAILY, type OutKind, type OutOp, type OutState } from "./bridge-out.ts";
 import { createNmemClient, noMemory, type MemoryClient, type MemoryHit, type Replaced } from "./memory.ts";
 import { withOutbox } from "./outbox.ts";
 import { memSource } from "../../protocol/src/mem-source.ts";
@@ -1780,8 +1780,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         const m = bridgeIn(forMessage);
         if (!m) return { ok: false, error: "No Bridge message with that id. Use forMessage only with a [message from … via Bridge] id you received." };
         if (!m.mine) return { ok: false, error: "Only the user's own agents can ask for the user's call this way. Ask the user as usual (without forMessage), or answer with bridge_reply." };
-        // An own agent Mem doesn't name (D249) is "另一个 AI" / "other AI agent" on the card.
-        const agent = m.agent ?? (m.from && m.from !== "another agent" ? m.from : words(UNNAMED_OWN, userLang() ?? NO_WORDS_YET));
+        // An own agent Mem doesn't name (D249) is called by its tool, else unnamed, on the card.
+        const agent = whoForUser(m, userLang() ?? NO_WORDS_YET);
         if (openPeerAsks(agent).length >= PEER_ASKS_OPEN)
           return { ok: true, note: `The user already has ${PEER_ASKS_OPEN} open questions from ${agent}; this one waits until they answer one. End your turn without asking.` };
         const other = typeof args.other === "string" && args.other.trim() ? args.other.trim().slice(0, 60) : undefined;
@@ -2429,7 +2429,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     return (all.find((e) => !e.body.state) ?? all[0])?.body;
   }
   /** Who an outgoing message to the sender of `m` goes to, as logged on each of its events (D334: in its Space). */
-  const peerOf = (m: Bodies["bridge_msg"]) => ({ to: m.from, ...(m.agent ? { agent: m.agent } : {}), ...(m.mine ? { mine: true } : {}), ...(m.space ? { space: m.space } : {}), ...(m.spaceLabel ? { spaceLabel: m.spaceLabel } : {}) });
+  const peerOf = (m: Bodies["bridge_msg"]) => ({ to: m.from, ...(m.agent ? { agent: m.agent } : {}), ...(m.host ? { host: m.host } : {}), ...(m.mine ? { mine: true } : {}), ...(m.space ? { space: m.space } : {}), ...(m.spaceLabel ? { spaceLabel: m.spaceLabel } : {}) });
   /** The request a task was opened for, while its outcome hasn't been sent back (J-Q7). */
   function bridgeOwed(taskId: string): Bodies["bridge_msg"] | undefined {
     const ops = [...foldOut(loggedBridge()).values()];
@@ -2760,7 +2760,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     const lang = userLang() ?? NO_WORDS_YET;
     const first = m.text.split("\n").find((l) => l.trim())?.trim() ?? m.text;
     const gist = redactSecrets([...first].length > 80 ? [...first].slice(0, 79).join("") + "…" : first);
-    const who = m.member && m.agent ? said(lang, "senderMemberAgent", { member: m.member, agent: m.agent }) : m.agent ? m.agent : said(lang, "senderSomeone");
+    const who = m.member && m.agent ? said(lang, "senderMemberAgent", { member: m.member, agent: m.agent }) : m.agent ? m.agent : m.host ? said(lang, "senderHost", { host: m.host }) : said(lang, "senderSomeone");
     const body: Bodies["decision"] = {
       decisionId: newId("d"),
       question: said(lang, m.spaceLabel ? "senderAsk" : "senderAskNoTeam", { team: m.spaceLabel ?? "", who, name: core.persona.name || "Ducter", gist }),
@@ -2950,17 +2950,17 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         const where = { ...(m.space ? { space: m.space } : {}), ...(m.spaceLabel ? { spaceLabel: m.spaceLabel } : {}) };
         // D334: the one switch off, or a sender the person stopped listening to (不再听, or 不理 on its card).
         if (peers && !answersOurs && (peers.reach === "off" || peers.muted.includes(m.agent ?? m.from) || peers.muted.includes(m.from))) {
-          core.log.append({ stream: "channel", origin: "peer", kind: "bridge_msg", body: { direction: "in", messageId: m.messageId, from: m.from, ...(m.agent ? { agent: m.agent } : {}), ...(m.mine ? { mine: true } : {}), ...where, text: "", state: "muted" } });
+          core.log.append({ stream: "channel", origin: "peer", kind: "bridge_msg", body: { direction: "in", messageId: m.messageId, from: m.from, ...(m.agent ? { agent: m.agent } : {}), ...(m.host ? { host: m.host } : {}), ...(m.mine ? { mine: true } : {}), ...where, text: "", state: "muted" } });
           continue;
         }
         if (overQuota(m.from, now())) {
-          core.log.append({ stream: "channel", origin: "peer", kind: "bridge_msg", body: { direction: "in", messageId: m.messageId, from: m.from, ...(m.agent ? { agent: m.agent } : {}), ...(m.mine ? { mine: true } : {}), ...where, text: "", state: "set_aside" } });
+          core.log.append({ stream: "channel", origin: "peer", kind: "bridge_msg", body: { direction: "in", messageId: m.messageId, from: m.from, ...(m.agent ? { agent: m.agent } : {}), ...(m.host ? { host: m.host } : {}), ...(m.mine ? { mine: true } : {}), ...where, text: "", state: "set_aside" } });
           continue;
         }
         // D334: a teammate's agent (not one of the person's own) the person hasn't let through yet:
         // what it sends is kept, held, and its first message is one card (答应 / 不理, default 不理).
         if (peers && !answersOurs && !m.mine && !(peers.allowed ?? []).includes(m.from)) {
-          core.log.append({ stream: "channel", origin: "peer", kind: "bridge_msg", body: { direction: "in", messageId: m.messageId, from: m.from, ...(m.agent ? { agent: m.agent } : {}), ...where, text: redactSecrets(m.text), ...(m.sentAt ? { sentAt: m.sentAt } : {}), state: "held" } });
+          core.log.append({ stream: "channel", origin: "peer", kind: "bridge_msg", body: { direction: "in", messageId: m.messageId, from: m.from, ...(m.agent ? { agent: m.agent } : {}), ...(m.host ? { host: m.host } : {}), ...where, text: redactSecrets(m.text), ...(m.sentAt ? { sentAt: m.sentAt } : {}), state: "held" } });
           askSender(m);
           continue;
         }
@@ -2968,7 +2968,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           direction: "in",
           messageId: m.messageId,
           from: m.from,
-          ...(m.agent ? { agent: m.agent } : {}),
+          ...(m.agent ? { agent: m.agent } : {}), ...(m.host ? { host: m.host } : {}),
           ...(m.mine ? { mine: true } : {}),
           text: redactSecrets(m.text),
           ...(m.sentAt ? { sentAt: m.sentAt } : {}),

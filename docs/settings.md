@@ -159,14 +159,17 @@ in the last seven days. **Show me** opens **What it learned this week**: mark a 
 
 ## Talk with your other agents
 
-If you use Claude Code or Codex yourself (in a terminal, their desktop apps or your editor), **Talk
-with your other agents** lets them hand your partner work, or send it what needs your call, and
-lets your partner ask them things for you. It shows in Settings, as **Agent messaging**, once Ducter
-sees you use them; otherwise the end of the **Partner** page has one line, **Show me**, that opens it.
+Any agent of yours connected to Nowledge Mem, such as Claude Code, Codex or Grok Build (in a
+terminal, a desktop app or your editor), can message your partner through Nowledge Bridge, and
+your partner can message it back. **Talk with your other agents** is where that lives: your agents
+hand your partner work, or send it what needs your call, and your partner asks them things for you.
+It shows in Settings, as **Agent messaging**, once Ducter sees you use such an agent; otherwise the
+end of the **Partner** page has one line, **Show me**, that opens it.
 
-They find each other through Nowledge Mem, which is free. If it isn't on your computer yet, the page
-puts it in and signs you in, right there. After that there is nothing to tap: your partner connects
-by itself and tells you so once in the conversation.
+They find each other through Nowledge Mem, which is free; an agent joins in once Nowledge Mem's
+plugin is in it. If Nowledge Mem isn't on your computer yet, the page puts it in and signs you in,
+right there. After that there is nothing to tap: your partner connects by itself and tells you so
+once in the conversation.
 
 When it's on, the page shows **Recently**: what your agents handed over and what your partner asked
 or answered, newest first; tap one to open it. **Try it** shows two short examples, one each way:
@@ -174,7 +177,11 @@ what you'd say to Codex and what your partner then does, and what you'd say to y
 it brings back. The small copy button on each sentence copies it. Where Claude Code or Codex still
 needs the Nowledge Mem plugin to hear them, a row says so, with **Install**.
 
-One switch, **Let your other agents reach {name}**, turns it all on or off. If something is wrong
+Each row in **Recently** names the agent by the name it has in Nowledge Mem. One that has no name
+there is called by the app it runs in, for example **an agent in Claude Code**, or else **an
+unnamed agent**, with a small drawn agent in place of its app's mark.
+
+One switch, **Let agents connected to Nowledge Mem reach {name}**, turns it all on or off. If something is wrong
 (Nowledge Mem says no, or another computer is answering your agents), one row says what and offers
 the one fix. If you told your partner to stop listening to an agent, that agent has a row with
 **Undo**. In the conversation each agent is called by what it is and where it works, for example

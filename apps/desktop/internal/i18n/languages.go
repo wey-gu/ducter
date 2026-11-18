@@ -14,7 +14,8 @@ var zhLanguages = Table{
 	"words.paren":     "%s（%s）",
 	"words.and":       "%s、%s",
 
-	"peer.someone": "一个 AI agent",
+	"peer.someone": "一个没留名字的 agent",
+	"peer.in.host": "%s 里的 agent",
 
 	"cal.rel.date":   "%s %s",
 	"cal.when.sep":   " ",
@@ -33,7 +34,8 @@ var enLanguages = Table{
 	"words.paren":     "%s (%s)",
 	"words.and":       "%s and %s",
 
-	"peer.someone": "an AI agent",
+	"peer.someone": "an unnamed agent",
+	"peer.in.host": "an agent in %s",
 
 	"cal.rel.date":   "%s, %s",
 	"cal.when.sep":   ", ",

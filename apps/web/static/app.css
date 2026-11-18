@@ -12865,6 +12865,8 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 .g-tile .mem-dot { margin: 0; width: 10px; height: 10px; box-shadow: 0 2px 0 var(--press-accent); }
 .mem-tool-letter { display: grid; place-items: center; font-family: var(--head); font-weight: 800; line-height: 1; }
 .mem-tool-letter { width: 36px; height: 36px; border-radius: 50%; background: var(--surface-sunken); color: var(--ink-soft); font-size: var(--md); box-shadow: 0 2px 0 var(--line); }
+/* D332: an agent with no name and no tool: the drawn agent on the letter's pebble, never a minus. */
+.mem-agent svg { width: 20px; height: 20px; }
 .mem-coins { display: flex; align-items: center; }
 .mem-coins > * + * { margin-left: -8px; }
 .mem-glyph { display: grid; place-items: center; color: var(--accent); }

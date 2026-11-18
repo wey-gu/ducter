@@ -554,6 +554,8 @@ export interface Bodies {
     taskId?: string;
     decisionId?: string;
     agent?: string;
+    // The tool the sender runs in ("Claude Code"), when it has no name of its own: "an agent in Claude Code".
+    host?: string;
     mine?: boolean;
     // in: "early" = in the mailbox before Bridge was on for this persona (B14), "set_aside" = over
     // the sender's daily quota (D170), "muted" = a sender the user stopped listening to, or one

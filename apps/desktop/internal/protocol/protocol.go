@@ -804,6 +804,7 @@ type BridgeMsg struct {
 	TaskID     string `json:"taskId,omitempty"`
 	DecisionID string `json:"decisionId,omitempty"`
 	Agent      string `json:"agent,omitempty"`
+	Host       string `json:"host,omitempty"` // the tool it runs in ("Claude Code"), when it has no name of its own
 	Mine       bool   `json:"mine,omitempty"`
 	State      string `json:"state,omitempty"` // out: pending|held|sending|sent|failed|unknown|unconfirmed|followed; in: early|set_aside|muted; empty = sent / to read
 	OpID       string `json:"opId,omitempty"`

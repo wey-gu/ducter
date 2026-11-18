@@ -9,7 +9,8 @@ import { detect, fill, words, type LangTag } from "../../protocol/src/lang.ts";
 // with zhJoin at their placeholders, so a Latin name never runs into the Chinese round it.
 const W = {
   zh: {
-    unnamed: "一个 AI agent",
+    unnamed: "一个没留名字的 agent",
+    inHost: "{host} 里的 agent",
     claim: "接了：「{title}」。做完把结果回你。",
     outcome: "「{title}」：{state}。",
     done: "做完了",
@@ -28,7 +29,8 @@ const W = {
     busy: "{what}没发给{who}：Nowledge Mem 那边这会儿收不了，不是你这边的问题。这次什么都没发出去，过一会儿再跟我说一声，我重新发。",
   },
   en: {
-    unnamed: "an AI agent",
+    unnamed: "an unnamed agent",
+    inHost: "an agent in {host}",
     claim: 'Taken: "{title}". I\'ll send you the result when it\'s done.',
     outcome: '"{title}": {state}.',
     done: "done",
@@ -78,16 +80,19 @@ const unnamed = (b: { label?: string; from?: string; to?: string }) => {
 export const UNNAMED_OWN = { zh: W.zh.unnamed, en: W.en.unnamed } as const;
 
 /** What the user reads for another agent (D273): what it is, by its own name ("Claude Code"),
- *  never "你的 …"; one Mem doesn't name is "一个 AI agent" / "an AI agent". */
-export function whoForUser(b: { mine?: boolean; agent?: string; label?: string; from?: string; to?: string }, lang: LangTag): string {
+ *  never "你的 …"; one Mem doesn't name is called by the tool it runs in when Mem says ("Claude Code
+ *  里的 agent" / "an agent in Claude Code"), else "一个没留名字的 agent" / "an unnamed agent". */
+export function whoForUser(b: { mine?: boolean; agent?: string; host?: string; label?: string; from?: string; to?: string }, lang: LangTag): string {
   if (b.mine && b.agent) return b.agent;
-  if (b.mine && unnamed(b)) return words(W, lang).unnamed;
-  return (unnamed(b) ? "" : b.label || b.from || b.to) || words(W, lang).unnamed;
+  const nameless = b.host ? say(lang, "inHost", { host: b.host }) : words(W, lang).unnamed;
+  if (b.mine && unnamed(b)) return nameless;
+  return (unnamed(b) ? "" : b.label || b.from || b.to) || nameless;
 }
 
 /** The same agent in the partner's input, with how to call it when talking to the user. */
-export function whoForModel(b: { mine?: boolean; agent?: string; label?: string; from?: string; to?: string }): string {
+export function whoForModel(b: { mine?: boolean; agent?: string; host?: string; label?: string; from?: string; to?: string }): string {
   if (b.mine && b.agent) return `${b.agent} (the user's own agent: call it 你的 ${b.agent} / your ${b.agent}, never by the user's name)`;
+  if (b.mine && unnamed(b) && b.host) return `one of the user's own AI agents, in ${b.host} (unnamed: call it 你 ${b.host} 里的 agent / your agent in ${b.host}, never by the user's name)`;
   if (b.mine && unnamed(b))
     return "one of the user's own AI agents (Mem doesn't say which: call it by what its message says it is, e.g. 你终端里的 Claude, else 你的另一个 AI / your other AI agent; never by the user's name)";
   return b.label || b.from || b.to || "another agent";
@@ -278,7 +283,7 @@ export function followLine(op: OutOp, now: number, lang: LangTag, read?: boolean
   const gist = [...first].length > 36 ? [...first].slice(0, 35).join("") + "…" : first;
   const when = ago(now - Date.parse(op.sentTs!), lang);
   // D273: an agent's own name stays as it is; the unnamed one starts the sentence capitalised.
-  const Who = who === UNNAMED_OWN.en ? "An AI agent" : who;
+  const Who = who === UNNAMED_OWN.en || who.startsWith("an agent in ") ? "A" + who.slice(1) : who;
   return say(lang, read ? "followRead" : "followUnread", { who: Who, when, gist });
 }
 

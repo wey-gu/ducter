@@ -138,6 +138,10 @@ export interface Expect {
   harness?: string;
   /** D372: no opened task names this agent. */
   notHarness?: string;
+  /** D379: no task went to this agent (its body_selected), whoever decided it. */
+  notBody?: string;
+  /** D379: Ducter asked once to keep a saying as a rule (true), or never (false). */
+  saidAsk?: boolean;
   /** D372: some opened task is of this kind of work (said, or read from its needs and place). */
   workKind?: "code" | "errand" | "writing" | "research" | "other";
   /** Some opened task's place has this kind. */
@@ -2000,8 +2004,29 @@ export const scenarios: Scenario[] = [
     // As on hel: said earlier, answered, but no rule was saved then.
     seed: [{ user: "对了，请你记住，订酒店等生活相关的工作别用 claude code 哈" }, { ai: "好，以后查机票、订酒店这类生活上的事都不用 Claude Code。" }],
     steps: [{ user: "帮我算一下北京往返大阪 12 月 20 到 24 号、加上朗丽兹两晚的总价，准备好确认页，先别付" }],
-    expect: { opens: 1, ackFirst: true, notHarness: "claude-code", called: [{ tool: "task_open", args: { harness: /^(codex|pi|deepseek-harness)$/ } }], maxChars: 200 },
-    rubric: "Live (hel, 2026-11-18): the partner had promised not to use Claude Code for this but saved no rule, then wrote the preference into the next task's brief, and the task went to Claude Code anyway. Now the preference said in the conversation goes in harness on task_open (an agent other than Claude Code), never only in the brief; saving it as a never-rule now (rule_save) is right too. One short Chinese ack. No booking or payment.",
+    expect: { opens: 1, ackFirst: true, notHarness: "claude-code", notBody: "claude-code", saidAsk: true, msgs: [0, 0], maxChars: 200 },
+    rubric: "Live (hel, 2026-11-18): the partner had promised not to use Claude Code for this but saved no rule, and the next task went to Claude Code anyway. Now (D379) Ducter itself reads what the user said and gives the task to another agent (the transcript shows who it went to and why), and asks once with a card whether to keep it as a rule. The partner's part: one short Chinese ack naming the action, no other message, no booking or payment, and it never names Claude Code for the task.",
+  },
+  {
+    id: "said-never-memory-en",
+    category: "rules",
+    lang: "en",
+    // D379: said to another AI tool and kept in Mem only; the partner's recall brings it up.
+    memories: [ALICE, { title: "Who does bookings", content: "Weyl: never use Claude Code for hotel or flight bookings; it burns the Opus limit.", date: "2026-11-12", kind: "preference", source: "claude-code" }],
+    steps: [{ user: "Find me a hotel near Kyoto station for Dec 20-22 under ¥20k a night, set up like my usual bookings. Don't book." }],
+    expect: { recall: true, opens: 1, notBody: "claude-code", notHarness: "claude-code", saidAsk: true, maxChars: 260 },
+    rubric: "\"Like my usual bookings\" points at memory, which holds an explicit never (no Claude Code for bookings), said to another AI tool. Pass if the partner recalled it and opened one look-up task that did not go to Claude Code (Ducter reads the recalled memory, or the partner names another agent; the transcript shows who it went to), with a short English ack naming the action. It doesn't book, and doesn't say it searched memory.",
+  },
+  {
+    id: "said-vague-not-rule-zh",
+    category: "rules",
+    lang: "zh",
+    // D379: a taste is not a rule: never turned into one, never asked about, the default holds.
+    seed: [{ user: "说真的我挺喜欢 Codex 的，用着顺手" }, { ai: "嗯，它确实快。" }],
+    memories: [...MEM_BACKGROUND, { title: "Likes Codex", content: "Weyl likes Codex; says it feels quick.", date: "2026-11-10", kind: "preference" }],
+    steps: [{ user: "帮我查一下 12 月 20 号上海飞东京的直飞航班，看看价格，先别订" }],
+    expect: { opens: 1, ackFirst: true, saidAsk: false, notCalled: ["rule_save"], maxChars: 160 },
+    rubric: "The user once said they like Codex (a taste, not a rule) and now asks for a flight look-up. Pass if the partner opens one look-up task with one short Chinese ack, and does not save any rule or ask about making one from 'I like Codex'. Pinning Codex for this task is acceptable but not required; it must not claim a rule exists. No booking.",
   },
   {
     id: "kind-retry-failed-zh",

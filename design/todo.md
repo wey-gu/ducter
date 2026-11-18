@@ -2052,8 +2052,11 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] **D372: an errand run live on the fast tier** (Sonnet booking and comparing on real sites vs Opus; research/142 only infers it). Trigger: the author's next hotel or flight task on the home.
 - [ ] **D372: Codex's fast tier** (which of sol/terra/luna/astra is faster and lighter on the plan; nothing Ducter reads says). Trigger: Codex lists a tier, or a measured run.
 - [ ] **D372: limits by kind** (keep the smartest's limit for code by the limit left, not only by kind) waits on D133's reported limits. Trigger: D133 built.
-- [ ] **D372: a preference only in Mem** (said before rules existed) never reaches the ranking until said again; offer once to make it a rule when recall finds one. Trigger: a task goes to an agent a memory says not to use.
-- [ ] **D372: the unsaved-preference eval** (`kind-never-unsaved-zh`) passes 1 of 2 on haiku. Trigger: the next persona pass.
+- [x] **D372: a preference only in Mem.** Done in D379 (2026-11-19) for a memory the partner's recall returns: read by code, applied, asked once to keep.
+- [x] **D372: the unsaved-preference eval** (`kind-never-unsaved-zh`). Done in D379: Ducter applies it by code.
+- [ ] **D379: a Mem-only saying the partner never recalls** (said to another tool, never in this conversation) still waits for a recall; a quiet Mem search for agent sayings (one query per agent, a few times a day) would catch it. Trigger: a task goes to an agent a memory says not to use, with no recall in that turn.
+- [ ] **D379: the card and the who line's new reason in shots** (web 390/1400, the Mac, zh/en, light/dark; built and unit-checked only). Trigger: the next E3 shot pass.
+- [ ] **D379: sayings in other languages** (the parser knows zh and en words; a ko or ja saying is not read). Trigger: a person who says it in another language.
 
 ## Continuity first (D373, `conversation.md`, research/143)
 

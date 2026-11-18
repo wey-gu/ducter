@@ -414,6 +414,24 @@ longer without them doing anything.
   "done/failed" notification is withdrawn when the task is back at work. A second miss reaches
   the person as any failure does.
 - **Moving a task that waits on the person carries on at once** (it was idle until a message).
+- **Said and never saved still holds (D379).** On hel the never was said, answered 「好」, and never
+  saved; the partner's rule_save in the same turn (persona rule 17) failed in most haiku runs. So
+  Ducter reads it by code (`core/src/said.ts`): from the person's own messages in the Log (all of
+  them, forwarded ones excepted) and from the memories the partner's `memory_search` returned. Only
+  an explicit saying counts: an agent named, a directive right before it ("别用", "不要使用", "不用",
+  "never use", "prefers not to use"; or "以后/每次…都用", "always use", "from now on"), and a kind of
+  work in the same sentence. A taste ("我挺喜欢 Codex", "I like Codex"), a habit with no always or
+  never ("offload CI to Codex"), a one-off ("这次"), a question, or no kind is never read as one.
+  At choose, the sayings for the task's kind join the rules as provisional ones, unless a saved
+  rule for that kind is as new, or the saying was answered; newest per agent. When one changes who
+  does it (a never moved it off the default's pick, an always put it on the one named, or the
+  partner's pin follows it), `body_selected` says why `said` with the person's words (**你说过「…」 /
+  you said “…”**), and Ducter, not the model, puts one card under the ack: **你之前说过「{words}」，这件
+  就交给了 {agent}。记成一条规则吗？** with **记成规则** (Go: their words become a rule with its kind
+  and never) and **只这次** (Hold, the default, no time: nothing kept, and it no longer applies).
+  Unanswered, it keeps applying and is not asked again; answered, never again for that saying,
+  until the person says it anew. A pin in the moment passes it like a never-rule; the New task
+  card's own pick is never touched. Where it changes nothing, nothing is said.
 
 ## Summary
 

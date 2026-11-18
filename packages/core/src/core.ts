@@ -57,6 +57,7 @@ import { createMemHealth } from "./mem-health.ts";
 import { scrub as scrubMem } from "./worker-mem.ts";
 import { createWorkingMemory } from "./working-memory.ts";
 import { identityIdFor, readMemIdentity } from "./mem-identity.ts";
+import { keepSaidOnGo, openSaid, type SaidStore } from "./said.ts";
 import { openRules, type RulesStore } from "./rules.ts";
 import { createLoadout, isRuleHint, registerRuleTools, registerSwitchTool, type Loadout } from "./loadout.ts";
 import { createKindRetry, type KindRetry } from "./kind-retry.ts";
@@ -259,6 +260,8 @@ export interface Core extends CoreApi {
   bridgeLink: import("./bridge-link.ts").BridgeLink;
   /** 你的规则 / Your rules and who does the tasks (D89). */
   rules: RulesStore;
+  /** D379: who does which work, said and never saved as a rule. */
+  said: SaidStore;
   loadout: Loadout;
   /** The user's connections (D96). */
   connections: ConnectionsStore;
@@ -475,6 +478,9 @@ export function startCore(opts: CoreOptions = {}): Core {
   });
   const rules = openRules(dataDir);
   registerRuleTools(mcp, rules);
+  // D379: who does which work, said and never saved: read from the Log and recalled memories; Go keeps it.
+  const said = openSaid({ log, rules, dataDir });
+  keepSaidOnGo(log, rules);
   const connections = openConnections({ dataDir, log, linker: opts.connectionLinker, oo: opts.ooSource, fetcher: opts.work?.connectionFetch, oauthFetch: opts.oauthFetch, signInMsPerSec: opts.signInMsPerSec, clientName: "Ducter", knownName: (ts) => providerOf(ts)?.name });
   registerConnectionTools(mcp, connections);
   let workersRef: Workers | undefined;
@@ -804,7 +810,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       // D352: the home's agents' versions as last probed: an updated agent's list is read again at once.
       version: (device, harness) => (device === "local" ? devicesView?.harnessesNow()?.find((h) => h.harness === harness)?.version : undefined),
     });
-  const loadout = createLoadout({ log, tasks, settings, rules, devices: () => devicesView, sites: sitesOn, models: modelCatalog, handset: () => handsets.any(), handsetOffer: () => handsets.offer() });
+  const loadout = createLoadout({ log, tasks, settings, rules, said, devices: () => devicesView, sites: sitesOn, models: modelCatalog, handset: () => handsets.any(), handsetOffer: () => handsets.offer() });
   // D157: 我要合电脑了 / Move before closing: one decision for a computer.
   const closing = createClosing({ log, tasks, loadout, runner: () => runner });
   registerClosingTool(mcp, closing, langNow);
@@ -870,7 +876,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   const limitWaits = createLimitWaits({ log, tasks, waiters: work.waiters, loadout, settings, usage: accountUsage, runner: () => runner, clock });
   limitsDecorate = (o) => ({ ...o, waiters: o.waiters.map((w) => limitWaits.decorate(w)) });
   const workFrames: typeof work.frames = { ...work.frames, waiter: (id, action) => limitWaits.act(id, action) ?? (action === "handoff" ? Promise.resolve(false) : work.frames.waiter(id, action)) };
-  const api = { log, tasks, mcp, persona, dataDir, settings, connections, phone, bodies: loadout, spine: log.spine, bridgeLink, media, limits: accountUsage, workingMemory, ...(browser ? { browser: browser.port } : {}) } as CoreApi;
+  const api = { log, tasks, mcp, persona, dataDir, settings, connections, phone, bodies: loadout, said, spine: log.spine, bridgeLink, media, limits: accountUsage, workingMemory, ...(browser ? { browser: browser.port } : {}) } as CoreApi;
   // D312: with more than one partner, the default partner keeps to its own too, and a task's
   // brief and Mem identity are those of the partner it is for.
   const memOf = new Map<string, MemIdentity | undefined>();
@@ -1694,6 +1700,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     settings,
     bridgeLink,
     rules,
+    said,
     loadout,
     connections,
     phone,

@@ -159,7 +159,9 @@ overrides a choice, Ducter proposes a rule and the user confirms it.
   two views of one rule set.
 - **Precedence:** window pin > the most specific rule (words over a kind; newest wins a tie) >
   Ducter's default by kind. A rule may say never (D372): that agent is filtered out for that kind
-  unless the window is pinned to it.
+  unless the window is pinned to it. D379: a saying never saved as a rule (explicit: an agent, a
+  never or always, a kind) counts as a rule below the saved ones; when it changes who does it, the
+  task says so in the person's words and Ducter asks once to keep it (`ai-loadout.md`).
 - **Safety net (D372):** an errand on a fast tier that fails or stalls carries on on the smartest,
   once, by itself, said on the task; only a second miss reaches the person.
 - **When a rule can't be satisfied** (no quota, logged out), Ducter never falls back silently.

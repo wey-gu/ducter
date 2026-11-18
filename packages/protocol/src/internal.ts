@@ -131,6 +131,8 @@ export interface CoreApi {
   partnerFallback?(): { harness: HarnessId; model?: string } | undefined;
   /** Who does a new task (D89, core/src/loadout.ts); absent in tests and stubs (then: the runner's default). */
   bodies?: BodyChooser;
+  /** D379: memories the partner's recall returned, read by code for who-does-which-work the person said. */
+  said?: { fromMemory(hits: { id?: string; title: string; content: string; date?: string }[]): void };
   /** The user's connections (D96, core/src/connections.ts); absent in tests and stubs. */
   connections?: ConnectionsApi;
   /** What the partner is doing while the user waits (D104); absent in tests and stubs. */

@@ -1897,6 +1897,7 @@ function whoSentence(task: Task): string {
   if (!who) return "";
   const w = whoOf(task)?.why;
   if (w?.kind === "rule" && w.text) return t("who.sentence.rule", who, w.text);
+  if (w?.kind === "said" && w.text) return t("who.sentence.said", who, w.text);
   if ((w?.kind === "limit" || w?.kind === "unavailable") && w.ruleId) return t("who.sentence.limit.rule", who, harnessName(w.from ?? ""));
   if (w?.kind === "limit" && w.from) return t("who.sentence.limit", who, harnessName(w.from));
   if (w?.kind === "unavailable" && w.from) return t("who.sentence.unavailable", who, harnessName(w.from));
@@ -1925,6 +1926,7 @@ function whoLine(task: Task): [string[], string] {
   const w = whoOf(task)?.why;
   if (!w) return [who, ""];
   if (w.kind === "rule" && w.text) return [who, t("who.why.rule", w.text)];
+  if (w.kind === "said" && w.text) return [who, t("who.why.said", w.text)];
   if (w.kind === "limit" || w.kind === "unavailable") {
     const plain = w.kind === "limit" ? "who.why.limit" : "who.why.unavailable";
     return [who, w.ruleId ? t("who.why.limit.rule", harnessName(w.from ?? "")) : w.from ? t(plain, harnessName(w.from)) : ""];

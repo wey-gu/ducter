@@ -313,6 +313,10 @@ export interface Bodies {
     findId?: string;
     asker?: PeerAsk; // D170: asked for one of the user's own agents; the answer goes back to it
     trust?: { agent: string }; // D170 (X2): 以后你的 <agent> 发来的活，直接接？ Go keeps the rule
+    // D379: who does which work, said by the person and never saved; it just decided a task. Go
+    // (记成规则 / Keep as a rule) saves their words as a rule; Hold (只这次 / Just this once, the
+    // default) keeps nothing. Asked once per saying; core keeps it, no partner turn.
+    said?: { key: string; harness: string; never?: true; kinds: import("./loadout.ts").WorkKind[]; quote: string };
     // D334: a teammate's agent wrote for the first time: Go (答应 / Let it) lets this sender's messages
     // through as questions, Hold (不理 / Ignore, the default) mutes it. Remembered per sender.
     sender?: { from: string; space?: string; messageId: string };

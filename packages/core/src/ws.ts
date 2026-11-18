@@ -794,6 +794,12 @@ export function createWsHandler(deps: WsDeps) {
         decisions.decide(f.decisionId, f.option, f.text);
         return;
       }
+      case "later": {
+        // D382: 晚点再问我 / Ask me later (until), or 现在就定 / Decide now (null).
+        const until = f.until === null ? null : Date.parse(String(f.until ?? ""));
+        decisions.later(f.decisionId, until);
+        return;
+      }
       case "key_add": {
         // D298: the one frame that carries a pasted key. Never logged; the answer never carries it.
         const k = deps.keys;

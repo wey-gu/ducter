@@ -153,6 +153,10 @@ func (a *App) storyOf(task *store.Task) rowStory {
 		}
 		return rowStory{words: q, tone: "needs"}
 	case protocol.Blocked:
+		// D382: a question put off: when it asks again, and what.
+		if w, ok := a.laterRow(task); ok {
+			return rowStory{words: w}
+		}
 		// D261: a wait always says what it waits for. A waiter names it; else
 		// the state's reason; else what the task last reported; else that it
 		// stopped without saying (true, and worth a look).

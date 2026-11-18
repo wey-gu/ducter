@@ -508,6 +508,8 @@ export function createPusher(opts: {
   /** D277: the chat app the person last wrote from carries Ducter's own items now (its bridge is
    * on), so the push stays quiet for them: each thing reaches the person once. */
   channelUp?: (via: string) => boolean;
+  /** D382: a question by its id (one back from Ask me later is pushed again). */
+  decisionOf?: (id: string) => Bodies["decision"] | undefined;
   /** D276: a chat app already carried this item (d:<decisionId>): it is not pushed too. */
   claimed?: (key: string) => boolean;
 }): Pusher {
@@ -516,6 +518,8 @@ export function createPusher(opts: {
   const coalesce = opts.coalesceMs ?? PUSH_COALESCE_MS;
   const enabled = opts.enabled ?? true;
   const items = new Map<string, Item>();
+  // D382: the questions asked, so one back from Ask me later can be pushed again.
+  const asked = new Map<string, Bodies["decision"]>();
   const pushed = new Set<string>(); // one push per item, ever
   let maxRead = 0;
   let lastVia: string | undefined; // D277: where the person's last words came from (absent: an app)
@@ -610,6 +614,7 @@ export function createPusher(opts: {
     switch (e.kind) {
       case "decision": {
         const d = e.body as Bodies["decision"];
+        asked.set(d.decisionId, d);
         // D165: a find's next step rides in its note, which is the one notification.
         if (d.findId) return;
         // D189 (5): a question from a live call goes out at once, also in quiet hours and inside
@@ -631,7 +636,26 @@ export function createPusher(opts: {
         return;
       case "decision_resolved": {
         const r = e.body as Bodies["decision_resolved"];
-        items.delete(`d:${r.decisionId}`);
+        for (const k of items.keys()) if (k === `d:${r.decisionId}` || k.startsWith(`d:${r.decisionId}:`)) items.delete(k);
+        return;
+      }
+      case "decision_later": {
+        // D382: put off: nothing about it goes out until it is back.
+        const id = (e.body as Bodies["decision_later"]).decisionId;
+        for (const k of items.keys()) if (k === `d:${id}` || k.startsWith(`d:${id}:`)) items.delete(k);
+        return;
+      }
+      case "decision_back": {
+        // Its countdown waits until it is seen, so the notice names no time.
+        const untimed = ({ defaultAt: _, ...rest }: Bodies["decision"]) => rest;
+        // D382: back at its time: one notice, by the usual rules (unseen after the hold; quiet hours
+        // hold it to their end, where it joins the morning's one). Brought back by the person: no push.
+        const b = e.body as Bodies["decision_back"];
+        if (b.by !== "time") return;
+        const d = asked.get(b.decisionId) ?? opts.decisionOf?.(b.decisionId);
+        if (!d || d.findId) return;
+        const who = opts.partnerOf?.(e);
+        add({ key: `d:${b.decisionId}:${e.seq}`, seq: e.seq, kind: "decision", decision: untimed(d), ...(who ? { who } : {}) });
         return;
       }
       case "read_receipt":

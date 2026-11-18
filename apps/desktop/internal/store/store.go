@@ -1050,6 +1050,12 @@ func (s *Store) applyOnHand(o *protocol.OnHand) {
 			if d.Question == "" {
 				d.Decision = pd.Decision
 			}
+			// D382: whether it is put off is the card's.
+			d.Later = pd.Later
+			if pd.BackAt != "" {
+				d.BackAt = pd.BackAt
+				d.DefaultAt = pd.DefaultAt // back, not seen yet: no countdown
+			}
 		}
 		// A snapshot is newer than every task_state that arrived before it;
 		// later task_state events override it again.
@@ -1216,6 +1222,15 @@ func (s *Store) ApplyEvent(ev protocol.LogEvent) {
 	case *protocol.DecisionResolved:
 		s.resolve(b)
 		s.bySeq[ev.Seq] = nil
+	case *protocol.DecisionLater:
+		s.ApplyLater(ev.TS, b)
+		s.bySeq[ev.Seq] = nil
+	case *protocol.DecisionBack:
+		s.ApplyLater(ev.TS, b)
+		s.bySeq[ev.Seq] = nil
+	case *protocol.DecisionSeen:
+		s.ApplyLater(ev.TS, b)
+		s.bySeq[ev.Seq] = nil
 	case *protocol.ReadReceipt:
 		s.ReadUpTo = max(s.ReadUpTo, b.UpToSeq)
 		s.bySeq[ev.Seq] = nil
@@ -1327,7 +1342,7 @@ func (s *Store) addDecision(ev protocol.LogEvent, d *protocol.Decision) {
 func (s *Store) OpenDecisions() []*DecisionState {
 	var out []*DecisionState
 	for _, d := range s.Decisions {
-		if d.Resolved == nil && d.Pending == "" && d.Question != "" {
+		if d.Resolved == nil && d.Pending == "" && d.Later == "" && d.Question != "" {
 			if t := s.Tasks[d.TaskID]; t != nil && LaneOf(t.Attention()) == LaneHidden {
 				continue // its task was dropped or handed off
 			}
@@ -1586,6 +1601,31 @@ func (s *Store) DecisionShownInLiving(id string) bool {
 		}
 	}
 	return false
+}
+
+// ApplyLater is what 晚点再问我 / Ask me later's events do to a card (D382):
+// put off; back (its countdown paused until seen, or at once by Decide
+// now); seen. The phone does the same on the same fixture
+// (packages/protocol/fixtures/later-events.json).
+func (s *Store) ApplyLater(ts string, body any) {
+	switch b := body.(type) {
+	case *protocol.DecisionLater:
+		if d := s.Decisions[b.DecisionID]; d != nil {
+			d.Later, d.BackAt = b.Until, ""
+		}
+	case *protocol.DecisionBack:
+		if d := s.Decisions[b.DecisionID]; d != nil {
+			d.Later = ""
+			if b.By == "time" {
+				d.BackAt = ts
+			}
+			d.DefaultAt = b.DefaultAt // "" back at its time: no default on a card nobody saw
+		}
+	case *protocol.DecisionSeen:
+		if d := s.Decisions[b.DecisionID]; d != nil {
+			d.DefaultAt = b.DefaultAt
+		}
+	}
 }
 
 // PendingDecision is the unresolved decision of a task, or nil.

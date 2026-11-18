@@ -1,0 +1,11 @@
+{
+  "about": "D382: what Ask me later's events do to an open card on a client, step by step. defaultAt null = no countdown on the card. Read by apps/web/test/later-events.test.ts and apps/desktop/internal/store/later_test.go.",
+  "decision": { "decisionId": "d_fake1", "taskId": "t_fake1", "question": "Bump the example build number to 87?", "goLabel": "Bump", "defaultOption": "go", "defaultAt": "2026-11-19T15:30:00.000Z", "reversible": true },
+  "steps": [
+    { "kind": "decision_later", "ts": "2026-11-19T15:01:00.000Z", "body": { "decisionId": "d_fake1", "until": "2026-11-20T00:00:00.000Z", "by": "user" }, "want": { "later": "2026-11-20T00:00:00.000Z", "backAt": null, "defaultAt": "2026-11-19T15:30:00.000Z" } },
+    { "kind": "decision_back", "ts": "2026-11-20T00:00:00.000Z", "body": { "decisionId": "d_fake1", "by": "time" }, "want": { "later": null, "backAt": "2026-11-20T00:00:00.000Z", "defaultAt": null } },
+    { "kind": "decision_seen", "ts": "2026-11-20T01:12:00.000Z", "body": { "decisionId": "d_fake1", "defaultAt": "2026-11-20T01:42:00.000Z" }, "want": { "later": null, "backAt": "2026-11-20T00:00:00.000Z", "defaultAt": "2026-11-20T01:42:00.000Z" } },
+    { "kind": "decision_later", "ts": "2026-11-20T01:13:00.000Z", "body": { "decisionId": "d_fake1", "until": "2026-11-20T10:00:00.000Z", "by": "user" }, "want": { "later": "2026-11-20T10:00:00.000Z", "backAt": null, "defaultAt": "2026-11-20T01:42:00.000Z" } },
+    { "kind": "decision_back", "ts": "2026-11-20T02:00:00.000Z", "body": { "decisionId": "d_fake1", "by": "user", "defaultAt": "2026-11-20T02:30:00.000Z" }, "want": { "later": null, "backAt": null, "defaultAt": "2026-11-20T02:30:00.000Z" } }
+  ]
+}

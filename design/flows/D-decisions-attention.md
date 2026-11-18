@@ -70,6 +70,9 @@ W reports question (+ default, deadline, reversible) ──► M
              ├─ 好 / Go (or named action) ──► Working; press-and-settle; resolved row with 撤销 / Undo if reversible
              ├─ 先等等 / Hold ──► stays Needs you, countdown removed, default cancelled;
              │                   asks nothing more; card says "你说先等等 / You said hold" [I]
+             ├─ 晚点再问我 / Ask me later (D382) ──► a time chosen: out of Needs you into
+             │                   Waiting, countdown stopped; at that time back in Needs you,
+             │                   said once; its countdown (first length) starts when first seen
              ├─ 回复… / Reply… ──► free text to M; M turns it into an answer, a new
              │                   question, or a steer; countdown pauses while the reply is open
              ├─ deadline passes, reversible ──► C applies default ("按默认 / By default"), Working;
@@ -97,6 +100,10 @@ Surfaces (same decision object, four renderings):
 | Working | Needs you | M | W's blocking question M can't answer [doc] |
 | Needs you | Working | U | Go, or a Reply that M resolves into an answer |
 | Needs you | Needs you (held) | U | Hold. Default and deadline cleared |
+| Needs you | Waiting (put off) | U | 晚点再问我 / Ask me later with a time (D382). Countdown stopped |
+| Waiting (put off) | Needs you (unseen) | C | Its time came (said once). No countdown until it is seen |
+| Needs you (unseen) | Needs you | C | First read past its return on any client: countdown, its first length, from then |
+| Waiting (put off) | Needs you | U | 现在就定 / Decide now: countdown at once, its first length |
 | Needs you | Working | C | Deadline passes, default is reversible and policy-allowed [doc] |
 | Working (after default) | Needs you | U → M | Undo; M runs the inverse, re-asks without a deadline [I] |
 | Needs you | Dropped | U / M | "算了 / never mind" [doc] |
@@ -121,6 +128,11 @@ carries the version it was answered against (for two-device races).
 | `decision.resolved_go` | 好的，{action}了 · {time} | Done: {action} · {time} |
 | `decision.resolved_default` | 到点了，按默认 {action} · {time} | Time was up, so I went with {action} · {time} |
 | `decision.resolved_hold` | 你说先等等，我先放着 | You said hold, so it's on pause |
+| `later.ask` (D382) | 晚点再问我 | Ask me later |
+| `later.note` | 到时再问你。在那之前，什么都不做。 | I'll ask you again then. Nothing happens before that. |
+| `later.away` | {time} 再问你 | Asking again {time} |
+| `later.now` | 现在就定 | Decide now |
+| `later.back` | 你说晚点再问，现在来问你。 | You said to ask later, so here it is. |
 | `decision.undo` | 撤销 | Undo |
 | `decision.undone` | 撤回了，还按原来问你 | Undone. Same question, your call |
 | `decision.answered_elsewhere` | 你在 {device} 上已经选了「{answer}」 | You already chose "{answer}" on {device} |
@@ -634,7 +646,7 @@ See Q10 (breaker N and T_stall values), Q11 (retry default).
 |---|---|---|---|
 | Q1 | iOS Home-Screen web push most likely shows **no action buttons** on the lock screen [I, not verified]; Android Chrome can. Accept tap-to-open-sheet on iOS for v1? | Yes. Push body quotes the question + default line; tap opens `DDecisionSheet`; Go/Hold buttons on Android only. Native app (D35) adds lock-screen actions | Decides whether "act on a lock-screen notification" (H3) is v1 |
 | Q2 | Typing grace before a default fires | One extension of up to 2 min, shown in words | Prevents "it fired while I was answering" |
-| Q3 | Hold = cancel default and wait indefinitely, or snooze to a new time? | Cancel and wait; Reply can set a time ("明早再说") | Hold must never silently turn into Go later |
+| Q3 | Hold = cancel default and wait indefinitely, or snooze to a new time? | Cancel and wait. A time is its own action, 晚点再问我 / Ask me later (D382) | Hold must never silently turn into Go later |
 | Q4 | Re-ask an irreversible open item after 24 h? | Once, inside the next living message, never as a push | Avoids forgotten items without nagging |
 | Q5 | "Seen" per message or per item (an 8-item message only half scrolled)? | Per message for freezing; per item for pinning only via push | Simpler; revisit if users miss bottom items |
 | Q6 | New user-facing words not yet in the glossary: 按默认做了 / Went with the default · 停下了 / Stopped · 都按默认 / Go on all defaults · 撤销 / Undo · 免打扰 / Quiet hours · 检查没过 / Check didn't pass · 再试一次 / Try again · 放下 / Drop · 怎么知道的 chips | Add all via the change loop (D-entry + glossary) before any artboard is reviewed | AGENTS rule: every user-facing word in the glossary |

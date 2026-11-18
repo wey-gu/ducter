@@ -37,6 +37,9 @@ export type DecisionState = Bodies["decision"] & {
   pending?: "go" | "hold" | "reply" | "";
   /** A task's question in the partner's own words (D129); the task's wording stays in question. */
   said?: string;
+  /** D382: put off until this time (晚点再问我 / Ask me later); backAt: when it came back. */
+  later?: string;
+  backAt?: string;
 };
 
 export interface Send {
@@ -412,6 +415,14 @@ export class Store {
         if (!d) this.decisions.set(pd.decisionId, (d = { ...pd, seq: 0 }));
         d.askedAt ??= pd.askedAt;
         if (!d.question) Object.assign(d, pd, { seq: d.seq });
+        // D382: whether it is put off is the card's (a snapshot after the events agrees with them).
+        if (pd.later) d.later = pd.later;
+        else delete d.later;
+        if (pd.backAt) {
+          d.backAt = pd.backAt;
+          if (pd.defaultAt) d.defaultAt = pd.defaultAt;
+          else delete d.defaultAt; // back, not seen yet: no countdown
+        }
       }
       t.state = { taskId: card.taskId, attention: card.attention, residency: card.residency, reason: card.reason };
       if (card.lastReport) t.lastReport = card.lastReport;
@@ -454,6 +465,11 @@ export class Store {
         // D320: its index grows with every event of its own stream.
         if (t.index && ev.stream === `task:${taskId}`) indexAdd(t.index, ev);
       } else if (t.events[lowerBound(t.events, ev.seq)]?.seq !== ev.seq) this.insert(t, ev); // let go of before, back again
+    }
+    if (ev.kind === "decision_later" || ev.kind === "decision_back" || ev.kind === "decision_seen") {
+      // D382: put off; back (no countdown until it is seen, or at once by Decide now); seen.
+      this.applyLater(ev);
+      return;
     }
     if (ev.kind === "waiter") {
       const w = ev.body as Bodies["waiter"];
@@ -626,6 +642,22 @@ export class Store {
     return j;
   }
 
+  /** D382: what Ask me later's events do to a card (shared fixture: packages/protocol/fixtures/later-events.json). */
+  applyLater(ev: LogEvent) {
+    const id = (ev.body as { decisionId: string }).decisionId;
+    const d = this.decisions.get(id);
+    if (!d) return;
+    if (ev.kind === "decision_later") (d.later = (ev.body as Bodies["decision_later"]).until), delete d.backAt;
+    else if (ev.kind === "decision_seen") d.defaultAt = (ev.body as Bodies["decision_seen"]).defaultAt;
+    else if (ev.kind === "decision_back") {
+      const b = ev.body as Bodies["decision_back"];
+      delete d.later;
+      if (b.by === "time") d.backAt = ev.ts;
+      if (b.defaultAt) d.defaultAt = b.defaultAt;
+      else delete d.defaultAt; // its countdown waits until it is seen
+    }
+  }
+
   private addDecision(ev: Ev<"decision">) {
     const d = this.decisions.get(ev.body.decisionId);
     if (d) {
@@ -737,7 +769,7 @@ export class Store {
 
   openDecisions(): DecisionState[] {
     return [...this.decisions.values()]
-      .filter((d) => !d.resolved && !d.pending && d.question)
+      .filter((d) => !d.resolved && !d.pending && !d.later && d.question)
       .filter((d) => {
         const t = d.taskId ? this.tasks.get(d.taskId) : undefined;
         return !t || laneOf(attention(t)) !== LANE.hidden;

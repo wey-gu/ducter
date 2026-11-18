@@ -159,7 +159,9 @@ In our own runs, a small "fix the failing tests" task came back done in under a 
   you read it. Then it stays quiet until there is a result.
 - **Decisions come with a default.** When a task needs you, your partner asks, such as *"Rebase
   before merging?"*, and says what it will do if you don't answer. Press **Go** to take it,
-  **Hold** for "not yet", or **Reply…** in your own words. When several things are waiting, it
+  **Hold** for "not yet", or **Reply…** in your own words. Not a good moment? **Ask me later** and
+  pick a time (tonight, tomorrow morning, Monday, or your own): the question goes away, nothing
+  happens meanwhile, and it comes back once at that time. When several things are waiting, it
   asks one at a time; *"1 more waiting on you"* shows the rest, and **Go on all defaults** takes
   every suggested answer at once.
 - **Reply to one message.** When several things came back, answer the one you mean: on the phone,

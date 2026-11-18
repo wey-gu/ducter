@@ -15670,3 +15670,17 @@ textarea.wmem-paste { display: block; box-sizing: border-box; height: auto; widt
 @media (prefers-reduced-motion: reduce) {
   .pin-strip.settle { animation: none; }
 }
+/* D382: 晚点再问我 / Ask me later: the times as chips, each with its own time; one line under them. */
+.later { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; min-width: 0; }
+.later-times, .later-pick { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; min-width: 0; }
+.later-times .nt-chip { font-weight: 700; color: var(--ink); background: var(--surface); box-shadow: 0 0 0 1px var(--line-2), 0 2px 0 var(--line-2); }
+.later-times .nt-chip:hover { background: var(--surface-sunken); }
+.later-times .nt-chip.on { background: var(--surface-sunken); box-shadow: none; color: var(--ink-soft); font-weight: 500; }
+.later-clock { width: 72px; min-height: 30px; padding: 0 8px; border-radius: var(--r-sm); border: 1px solid var(--line-2); background: var(--surface); color: var(--ink); font: inherit; font-size: var(--sm); font-variant-numeric: tabular-nums; text-align: center; }
+.later-note { font-size: var(--sm); color: var(--ink-muted); line-height: 1.45; }
+/* Put off: when it asks again, Decide now beside it; back: said once above its buttons. */
+.later-away { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin-top: 6px; min-width: 0; }
+.later-away .dl { color: var(--ink-muted); font-size: var(--sm); }
+.later-back { font-size: var(--sm); font-weight: 700; color: var(--needs-ink); margin-bottom: 4px; }
+.askq .later, .askq .later-away { padding: 0 2px; }
+.askq .dflt .later-tb { font-weight: 700; color: var(--ink-soft); }

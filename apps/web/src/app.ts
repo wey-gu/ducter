@@ -480,6 +480,9 @@ class AppState {
   }
   taskDrafts = new Map<string, string>();
   replyOpen = new Set<string>();
+  /** D382: the cards whose 晚点再问我 / Ask me later times are open; and the one picking its own time. */
+  laterOpen = new Set<string>();
+  laterPick = new Map<string, { day: number; clock: string }>();
   replyDraft = new Map<string, string>();
   held?: { taskId?: string; text: string };
   /** Esc asked to pause this opened task (D210); a second Esc within 3 s pauses it. */
@@ -2962,6 +2965,21 @@ class AppState {
     haptic(option === "go" ? "success" : "light");
     this.markRead();
     this.send({ t: "decide", decisionId: id, option, ...(text ? { text } : {}) });
+    this.changed();
+  }
+
+  /** D382: 晚点再问我 / Ask me later (a time), or 现在就定 / Decide now (null). */
+  later(id: string, until: Date | null) {
+    const d = this.S.decisions.get(id);
+    if (d) {
+      if (until) (d.later = until.toISOString()), delete d.backAt;
+      else delete d.later;
+    }
+    this.laterOpen.delete(id);
+    this.replyOpen.delete(id);
+    haptic("light");
+    this.markRead();
+    this.send({ t: "later", decisionId: id, until: until ? until.toISOString() : null });
     this.changed();
   }
 

@@ -26,7 +26,8 @@ that, the rest:
 
 - **Working**: tasks under way.
 - **Waiting**: tasks waiting for something, such as a check to pass, an email, or a computer to
-  wake up.
+  wake up. A question you put off with **Ask me later** waits here too, saying when it
+  will ask you again; **Decide now** brings it back at once.
 - **Done today**: tasks that finished well today. A task that failed, or a wait that didn't happen, is
   listed there too with its own words, but isn't counted.
 

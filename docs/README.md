@@ -91,6 +91,7 @@ These pages are for using Ducter. If you want to build it or change it, start wi
 | **Routine** | Work that comes back on its own: every Monday at 9, or whenever something happens. You say yes to each one once, and can pause it any time. |
 | **Accounts it can read** | Your mail, calendar and other accounts your partner can look in when you ask, and, if you say yes, keep an eye on for you. Reading just happens; sending or changing anything waits for your Go. |
 | **Go, Hold and Reply…** | Your answers to a decision. Go takes the suggested default, Hold says "not yet", Reply lets you say it in your own words. |
+| **Ask me later** | Puts a decision off to a time you pick. It leaves what needs you, nothing happens meanwhile, and it asks you again once at that time. |
 | **How I know** | The proof under a finished result: tests that ran, checks, the changes. |
 | **Devices** | The computers (and phone) Ducter can use: **Awake**, **Asleep**, or **Can't reach**. |
 | **Partner and Settings** | Partner is about the one you talk to (name, language, notifications, memory); Settings is about the app. |

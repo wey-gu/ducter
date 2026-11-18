@@ -83,6 +83,9 @@ export function storyOf(task: Task): { mark?: string; words: string; code?: stri
     return { words: q || stateLabel(a), tone: "needs" };
   }
   if (a === "blocked") {
+    // D382: a question put off: when it asks again, and what.
+    const later = A.S.pendingDecision(task.id);
+    if (later?.later) return { words: t("later.row", soon(later.later), later.said || later.question) };
     // D261: a wait always says what it waits for: its waiter, the state's reason, what the task
     // last reported, or that it stopped without saying (true, and worth a look).
     const w = A.S.waiterFor(task.id);
@@ -893,6 +896,13 @@ function RowActs({ task }: { task: Task }) {
       <span class="tacts">
         <Btn kind="text" size="sm" label={t("result.merge", p.baseBranch ?? "main")} about={title(task)} onClick={() => A.taskAction(task.id, "merge")} />
         <Btn kind="text" size="sm" label={t("result.pr")} about={title(task)} onClick={() => A.taskAction(task.id, "open_pr")} />
+      </span>
+    );
+  const put = a === "blocked" ? A.S.pendingDecision(task.id) : undefined;
+  if (put?.later)
+    return (
+      <span class="tacts">
+        <Btn kind="text" size="sm" label={t("later.now")} about={title(task)} onClick={() => A.later(put.decisionId, null)} />
       </span>
     );
   if (a === "working")

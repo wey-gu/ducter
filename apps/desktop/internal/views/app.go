@@ -166,6 +166,10 @@ type App struct {
 	heldEditing *heldEdit
 	heldFocus   bool
 	replyOpen   map[string]bool
+	// D382: the asks whose 晚点再问我 / Ask me later times are open, and a
+	// time being picked.
+	laterOpen map[string]bool
+	laterPick map[string]*laterPick
 	replyDraft  map[string]string
 	diffs       map[string]*diffPane
 	// D214: the opened task's workbench (workbench.go).
@@ -374,6 +378,8 @@ func New(s *store.Store, t *theme.Tokens, l *i18n.Strings) *App {
 		Status:        client.Connecting,
 		taskDrafts:    map[string]string{},
 		replyOpen:     map[string]bool{},
+		laterOpen:     map[string]bool{},
+		laterPick:     map[string]*laterPick{},
 		replyDraft:    map[string]string{},
 		diffs:         map[string]*diffPane{},
 		folderAsked:   map[string]int{},

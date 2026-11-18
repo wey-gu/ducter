@@ -30,11 +30,61 @@ func TestEveryServerFrameDecodes(t *testing.T) {
 	if len(types) < 20 {
 		t.Fatalf("read only %d frame types from the union", len(types))
 	}
+	// Members named by type (`| LendFrame`) are read from their own definitions:
+	// D347's lend frame was one, so the Mac dropped it and Lend a computer sat at
+	// 正在拿一个码… forever (research/127).
+	for _, m := range regexp.MustCompile(`\n  \| ([A-Z][A-Za-z]+)`).FindAllStringSubmatch(body, -1) {
+		def := namedDef(t, m[1])
+		ts := regexp.MustCompile(`(?:\{ |\n  )t: "([a-z_]+)"`).FindAllStringSubmatch(def, -1)
+		if len(ts) == 0 {
+			t.Errorf("read no frame type from %s", m[1])
+		}
+		types = append(types, ts...)
+	}
+	// Frames only another client asks for: the Android app's own link and the web's
+	// Use this phone and 用电脑 switches (handset_*, computer_*).
+	notMac := map[string]bool{"computer_grant_result": true, "computer_stop_result": true, "handset_req": true, "handset_set_result": true, "handset_stop_result": true, "handset_guide": true, "handset_dial_req": true}
 	for _, m := range types {
+		if notMac[m[1]] {
+			continue
+		}
 		if _, err := DecodeServerFrame([]byte(`{"t":"` + m[1] + `"}`)); err != nil {
 			t.Errorf("the core sends %q but the app drops it: %v", m[1], err)
 		}
 	}
+}
+
+// namedDef is the source of `export interface name {…}` or `export type name = …`
+// in packages/protocol/src, up to its closing line or the first blank line.
+func namedDef(t *testing.T, name string) string {
+	t.Helper()
+	dir := filepath.Join("..", "..", "..", "..", "packages", "protocol", "src")
+	files, _ := filepath.Glob(filepath.Join(dir, "*.ts"))
+	for _, f := range files {
+		b, err := os.ReadFile(f)
+		if err != nil {
+			continue
+		}
+		s := string(b)
+		for _, head := range []string{"export interface " + name + " {", "export type " + name + " ="} {
+			i := strings.Index(s, head)
+			if i < 0 {
+				continue
+			}
+			rest := s[i:]
+			if strings.HasPrefix(head, "export interface") {
+				if end := strings.Index(rest, "\n}"); end > 0 {
+					return rest[:end]
+				}
+			}
+			if end := strings.Index(rest, "\n\n"); end > 0 {
+				return rest[:end]
+			}
+			return rest
+		}
+	}
+	t.Errorf("no definition of %s in packages/protocol/src", name)
+	return ""
 }
 
 // Frames as the TypeScript core writes them (packages/protocol/src/index.ts).

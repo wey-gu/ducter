@@ -6,7 +6,7 @@ import { existsSync, readFileSync } from "node:fs";
 import type { LendFrame } from "@ducter/protocol";
 import { strings } from "../src/i18n.ts";
 import { lendWords } from "../src/i18n-lend.ts";
-import { applyLend, arrived, lendStep, minutesLeft, type LendState } from "../src/lend-view.ts";
+import { applyLend, arrived, LEND_WAIT_MS, lendError, lendStep, minutesLeft, type LendState } from "../src/lend-view.ts";
 
 const src = (f: string) => readFileSync(new URL(`../src/${f}`, import.meta.url), "utf8");
 const NOW = Date.parse("2026-11-18T10:00:00Z");
@@ -72,6 +72,26 @@ describe("the sheet's steps", () => {
     const l: LendState = { kind: "mac" };
     expect(applyLend(l, waiting)).toBe(l);
     expect(applyLend(undefined, waiting)).toBeUndefined();
+  });
+
+  // research/127: the author's Mac sat at 正在拿一个码… forever. Never an endless wait here either.
+  test("no answer within the wait, or an error frame: failed, with Try again; a late code still lands", () => {
+    const asked: LendState = { kind: "linux", awaiting: true, askedAt: NOW };
+    expect(lendStep(asked, NOW + LEND_WAIT_MS - 1)).toBe("asking");
+    expect(lendStep(asked, NOW + LEND_WAIT_MS)).toBe("failed");
+    expect(lendStep(applyLend(asked, waiting)!, NOW + LEND_WAIT_MS)).toBe("line");
+    const err = lendError(asked, "lend_code: lending is not available")!;
+    expect(err).toMatchObject({ failed: true, awaiting: false });
+    expect(lendStep(err, NOW)).toBe("failed");
+    // Another frame's error, or nothing asked: untouched.
+    expect(lendError(asked, "task_send: gone")).toBe(asked);
+    expect(lendError({ kind: "linux" }, "lend_code: x")).toEqual({ kind: "linux" });
+    const app = src("app.ts");
+    expect(app).toContain('f.message.startsWith("lend_code:")');
+    expect(app).toContain("LEND_WAIT_MS + 50");
+    const sheet = src("lend.tsx");
+    expect(sheet).toContain('step === "failed"');
+    expect(sheet).toContain('"lend.retry"');
   });
 
   test("no address: the step that offers From outside", () => {

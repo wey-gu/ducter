@@ -187,6 +187,14 @@ export function LendSheet() {
       <h2 class="lend-title">{t("lend.title")}</h2>
       {step === "ask" && <Pick />}
       {step === "asking" && <Waiting say="lend.loading" />}
+      {step === "failed" && (
+        <div class="lend-body">
+          <p class="lend-bad" role="alert">{t(l.failed ? "lend.fail.error" : "lend.fail.timeout", home)}</p>
+          <div class="lend-acts">
+            <Btn kind="primary" label={t("lend.retry")} onClick={() => A.lendAsk(l.kind!)} />
+          </div>
+        </div>
+      )}
       {step === "noaddress" && (
         <div class="lend-body">
           <p>{t("lend.noaddress", home)}</p>

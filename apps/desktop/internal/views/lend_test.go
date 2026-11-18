@@ -88,7 +88,7 @@ func TestLendEntriesAndCopy(t *testing.T) {
 	zh, en := i18n.New(i18n.ZH), i18n.New(i18n.EN)
 	for _, k := range []string{"lend.entry", "lend.entry.why", "lend.empty", "lend.question", "lend.kind.mac", "lend.kind.linux", "lend.mac.app", "lend.linux.paste",
 		"lend.does", "lend.left", "lend.samenet", "lend.agent", "lend.agent.ask", "lend.waiting", "lend.joined", "lend.here", "lend.agents.none",
-		"lend.noaddress", "lend.expired", "lend.newcode", "lend.help", "lend.help.reach.do", "lend.help.curl.do", "lend.help.arch.do", "lend.card.go"} {
+		"lend.noaddress", "lend.expired", "lend.newcode", "lend.help", "lend.help.reach.do", "lend.help.curl.do", "lend.help.arch.do", "lend.card.go", "lend.fail.timeout", "lend.fail.error", "lend.retry"} {
 		for _, L := range []*i18n.Strings{zh, en} {
 			s := L.T(k)
 			if s == "" || s == k || strings.Contains(s, " · ") {
@@ -290,5 +290,66 @@ func TestLendShots(t *testing.T) {
 		save(tt, p+"12-settings-run.png")
 		_, tt, _ = lendAt(t, lang, 1280, 900, func(app *App) { lendAI(app); app.Route = RouteConversation })
 		save(tt, p+"13-partner-card.png")
+	}
+}
+
+// The author on 0.0.76 against hel: 正在拿一个码… forever. The core's lend frame,
+// as JSON off the socket, must reach the sheet (DecodeServerFrame dropped it);
+// and with no answer, or an error, the sheet says so within lendWait with
+// Try again, never an endless wait (research/127).
+func TestLendCodeArrivesOffTheWireOrSaysWhy(t *testing.T) {
+	app, tt, sent := lendApp(t, i18n.EN, 1440, 900)
+	if err := tt.Click("+ Lend a computer"); err != nil {
+		t.Fatal(err)
+	}
+	lendFrame(tt)
+	if err := tt.Click("A Linux server"); err != nil {
+		t.Fatal(err)
+	}
+	lendFrame(tt)
+	wire := `{"t":"lend","code":"K7QM-4XPA","expiresAt":"` + lendNow.Add(10*time.Minute).Format(time.RFC3339) + `","state":"waiting","address":"https://hel.example.com","line":"` + lendLineText + `","check":"curl -sS -m 10 https://hel.example.com/health"}`
+	f, err := protocol.DecodeServerFrame([]byte(wire))
+	if err != nil {
+		t.Fatalf("the lend frame is dropped: %v", err)
+	}
+	app.Receive(f)
+	lendFrame(tt)
+	if !tt.HasText(lendLineText) {
+		t.Fatalf("the line never showed: %q", tt.Texts())
+	}
+
+	// No answer: the loading line, then after lendWait the reason and Try again.
+	app.askLend()
+	lendFrame(tt)
+	if !tt.HasText("Getting a code…") {
+		t.Fatalf("not loading: %q", tt.Texts())
+	}
+	at := lendNow
+	app.Now = func() time.Time { return at }
+	at = lendNow.Add(lendWait + time.Second)
+	lendFrame(tt)
+	if !tt.HasText("hel didn't answer, so there's no code yet.") || tt.HasText("Getting a code…") {
+		t.Fatalf("still waiting after %s: %q", lendWait, tt.Texts())
+	}
+	n := len(*sent)
+	if err := tt.Click("Try again"); err != nil {
+		t.Fatal(err)
+	}
+	lendFrame(tt)
+	if _, ok := (*sent)[len(*sent)-1].(protocol.LendCodeReq); !ok || len(*sent) == n {
+		t.Fatalf("Try again asked nothing: %#v", (*sent)[len(*sent)-1])
+	}
+
+	// The home answers with an error: said at once.
+	app.Receive(protocol.ServerFrame{T: "error", Message: "lend_code: lending is not available"})
+	lendFrame(tt)
+	if !tt.HasText("hel couldn't make a code.") {
+		t.Fatalf("an error isn't said: %q", tt.Texts())
+	}
+	// An older error frame doesn't fail a fresh ask.
+	app.askLend()
+	lendFrame(tt)
+	if !tt.HasText("Getting a code…") {
+		t.Fatalf("a fresh ask isn't loading: %q", tt.Texts())
 	}
 }

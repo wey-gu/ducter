@@ -142,6 +142,7 @@ The partner may override the ranking with a reason, as today (principle 14).
 | The best computer sleeps, another could do it **with a visible difference**: other sign-ins, or the user must sign in there (W2b) | **one line, default wait** | **等它醒（默认）** · **现在在 hel 上做**; not answering waits; no countdown (waiting is free, A3) |
 | The other computer would **widen** access (your Chrome instead of Ducter's browser; a computer signed in as you) | **always** | never automatic, never by a rule-free fallback |
 | Your own pick can't run (the agent's computer can't be reached) | one line | **Claude Code 只在 MacBook 上，它现在连不上。等它，还是换个来做？** (D128's "never moves silently") |
+| The computer you named has no agent that can take it (a lent server with none signed in) | one line | no task opens; the partner says so and offers to sign one in there or do it elsewhere (D353) |
 | The repo isn't on the only awake computer | C1's clone ask, once per repo | — |
 | The picked computer drops before the task started | never | re-picked by the same ranking; the line says why (**MacBook 连不上，换到 hel 上了**) |
 | The picked computer drops while it works | A3 | wait by default; one decision per computer when it matters |

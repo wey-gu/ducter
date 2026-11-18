@@ -211,7 +211,8 @@ install_linux() {
   # With --service, the bundle's install.sh ends by running the service, whose last lines say
   # what's next (ducter tailscale first on a server in a tailnet, else ducter anywhere, a domain,
   # Tailscale, an SSH tunnel); without it, it says how to start.
-  sh "$TMP/$name/install.sh" "$@" </dev/null
+  # D347: in worker mode the bundle leaves out a home's next steps (this script joins next).
+  DUCTER_INSTALL_FOR="${INSTALL_FOR:-}" sh "$TMP/$name/install.sh" "$@" </dev/null
 }
 
 # worker_args worker <address> --code <code> [--name <name>]: sets W_URL, W_CODE, W_NAME.
@@ -256,7 +257,7 @@ worker_main() {
   elif [ "$os" = Darwin ]; then
     DUCTER_NO_OPEN=1 install_mac
   else
-    install_linux
+    INSTALL_FOR=worker install_linux
   fi
   [ -x "$cli" ] || fail "ducter isn't at $cli after installing."
   say ""

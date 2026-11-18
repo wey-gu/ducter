@@ -76,7 +76,8 @@ place (the same inode: Obsidian and the syncs keep following the file):
 ## 6. Where it shows
 
 - **Settings › 待办来源 / To-do sources** (after 账号 / Accounts): the lede; one card per source (its mark,
-  its name, whose or which folder, counts **{n} 件没做完** **{n} 件在做** as separate facts, **新的来了** and
+  its name, whose or which folder, counts **{n} 件没做完** **{n} 件在做** as separate facts (D349: only after a look
+  that read the list; before one **正在看…**; a failed look **没能读到 {app}。**, its reason apart, and **再试一次**), **新的来了** and
   **做完以后** as segments, which part it reads as labelled 44-tall fields saved on Return or leaving them (D348:
   GitHub **只看这些仓库** as owner/repo by commas, blank = every repository; a vault **看哪个文件夹** and **只看带这个标签的**,
   blank = the whole vault, any tag; `source_set`, read by the adapters from the next look), the standing line, a problem row, a quiet **移除** that asks in place:

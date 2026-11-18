@@ -71,7 +71,8 @@ type SourceView struct {
 	Standing  *SourceStandings `json:"standing,omitempty"`
 	Open      int              `json:"open,omitempty"`
 	Taken     int              `json:"taken,omitempty"`
-	CheckedAt string           `json:"checkedAt,omitempty"`
+	CheckedAt string           `json:"checkedAt,omitempty"` // counts are shown only once it is set
+	Looking   bool             `json:"looking,omitempty"`   // a look is running now
 }
 
 // SourceStandings are a source's standing goes: to take new ones, and to

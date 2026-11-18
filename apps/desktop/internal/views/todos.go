@@ -54,6 +54,9 @@ type todosState struct {
 	drafts    map[string]string
 	login     *ntLogin
 	connected string
+	// 再试一次 / Try again on a source whose look failed, until the home
+	// says it is looking (or the look read).
+	retrying map[string]bool
 }
 
 // todosInit takes the answers to add, set and remove, once.
@@ -61,6 +64,16 @@ func (a *App) todosInit() {
 	s := &a.todos
 	if s.adding == nil {
 		s.adding = map[string]bool{}
+	}
+	if s.retrying == nil {
+		s.retrying = map[string]bool{}
+	}
+	if v := a.S.Sources; v != nil {
+		for _, src := range v.Sources {
+			if src.Looking || src.State != "error" {
+				delete(s.retrying, src.ID)
+			}
+		}
 	}
 	for _, r := range a.S.SourceResults {
 		if r.Op != "add" {
@@ -144,7 +157,8 @@ func (a *App) todoSourceGroup(c *ui.Context, s protocol.SourceView) {
 			sub = a.L.T("todos.connected", a.todos.connected)
 		}
 		a.headRow(c, "src:"+s.ID, a.brandTile(c, s.Kind, s.State != "ok"), name, sub, sideMuted, func() {
-			if s.State != "ok" {
+			// Counted only after a look that read the list: never a 0 it didn't read.
+			if s.State != "ok" || s.CheckedAt == "" {
 				return
 			}
 			// D291: each count its own small fact.
@@ -162,9 +176,9 @@ func (a *App) todoSourceGroup(c *ui.Context, s protocol.SourceView) {
 			if s.Kind == "github" && a.todos.login != nil {
 				a.todoLoginBlock(c, "src-login:"+s.ID)
 			}
-		} else if s.Kind == "github" && s.CheckedAt == "" && s.Open == 0 {
+		} else if s.CheckedAt == "" {
 			a.textBlock(c, "src-reading:"+s.ID, func() {
-				ui.Text(c, a.L.T("todos.pick.loading")).FontSize(t.SM).TextColor(t.InkMuted)
+				ui.Text(c, a.L.T("todos.looking")).FontSize(t.SM).TextColor(t.InkMuted)
 			})
 		}
 		a.textBlock(c, "src-when:"+s.ID, func() { a.todoChoices(c, s) })
@@ -193,10 +207,30 @@ func (a *App) todoSourceGroup(c *ui.Context, s protocol.SourceView) {
 func (a *App) todoProblem(c *ui.Context, s protocol.SourceView) {
 	t := a.T
 	home := a.todoHome()
-	line := a.L.T("todos.state.error")
+	line := a.L.T("todos.read.failed", protocol.SourceKindName(s.Kind))
 	switch s.State {
 	case "no_tool", "signed_out", "missing":
 		line = a.L.T("todos.state."+s.State, home)
+	}
+	if s.State == "error" {
+		// A failed look says so, why (gh's own words), and 再试一次 / Try again.
+		a.textBlock(c, "src-problem:"+s.ID, func() {
+			ui.Column(c).Gap(t.S2).Grow(1).Children(func() {
+				ui.Text(c.Key("line"), line).FontSize(t.SM).FontWeight(600).LineHeight(a.leading(1.5)).TextColor(t.Failed.Ink).Role(ui.RoleStatus)
+				if s.Error != "" {
+					ui.Text(c.Key("why"), s.Error).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
+				}
+				ui.Row(c.Key("again")).Children(func() {
+					if s.Looking || a.todos.retrying[s.ID] {
+						ui.Text(c, a.L.T("todos.looking")).FontSize(t.SM).TextColor(t.InkMuted)
+					} else if a.buttonFor(c, a.L.T("todos.retry"), protocol.SourceKindName(s.Kind), btnSecondary, t.ControlSM, t.Surface) {
+						a.todos.retrying[s.ID] = true
+						a.send(protocol.SourcesReq{T: "sources"})
+					}
+				})
+			})
+		})
+		return
 	}
 	a.textBlock(c, "src-problem:"+s.ID, func() {
 		tx := ui.Text(c, line).FontSize(t.SM).FontWeight(600).LineHeight(a.leading(1.5)).TextColor(t.Failed.Ink).Role(ui.RoleStatus)

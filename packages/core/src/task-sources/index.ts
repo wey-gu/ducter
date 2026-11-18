@@ -56,6 +56,11 @@ interface State {
   offered: Record<string, { take?: string; write?: string }>;
   /** When each source last told the partner about new to-dos. */
   told: Record<string, string>;
+  /**
+   * When each source's first look learned what was there. A source seen empty without it (0.0.75
+   * read GitHub's long answers as empty lists) learns quietly on its next look, never 50 "new" at once.
+   */
+  learned?: Record<string, string>;
 }
 
 export interface TaskSourcesDeps {
@@ -190,11 +195,11 @@ export function createTaskSources(d: TaskSourcesDeps): TaskSources {
   const file = join(d.dataDir, SOURCES_FILE);
   const now = d.now ?? (() => Date.now());
   const home = d.home ?? homedir();
-  let st: State = { sources: [], seen: {}, offered: {}, told: {} };
+  let st: State = { sources: [], seen: {}, offered: {}, told: {}, learned: {} };
   if (existsSync(file))
     try {
       const raw = JSON.parse(readFileSync(file, "utf8")) as Partial<State>;
-      st = { sources: Array.isArray(raw.sources) ? raw.sources : [], seen: raw.seen ?? {}, offered: raw.offered ?? {}, told: raw.told ?? {} };
+      st = { sources: Array.isArray(raw.sources) ? raw.sources : [], seen: raw.seen ?? {}, offered: raw.offered ?? {}, told: raw.told ?? {}, learned: raw.learned ?? {} };
     } catch (err) {
       console.warn(`[task-sources] ${file} is unreadable; starting with none:`, (err as Error).message);
     }
@@ -256,6 +261,7 @@ export function createTaskSources(d: TaskSourcesDeps): TaskSources {
       ...(x?.open !== undefined ? { open: x.open } : {}),
       taken,
       ...(x?.at ? { checkedAt: x.at } : {}),
+      ...(looking ? { looking: true } : {}),
     };
   };
 
@@ -375,9 +381,10 @@ export function createTaskSources(d: TaskSourcesDeps): TaskSources {
       }
       status.set(s.id, { state: "ok", ...(x.account ? { account: x.account } : {}), at: new Date(now()).toISOString(), open: items.length });
       const seen = new Set(st.seen[s.id] ?? []);
-      const first = !st.seen[s.id];
+      const first = !st.learned?.[s.id] && !seen.size;
       const fresh = items.filter((i) => !seen.has(i.ref) && !taskOf(i.ref));
       st.seen[s.id] = [...new Set([...(st.seen[s.id] ?? []), ...items.map((i) => i.ref)])].slice(-2000);
+      if (!st.learned?.[s.id]) st.learned = { ...(st.learned ?? {}), [s.id]: new Date(now()).toISOString() };
       // The first look only learns what is there: nothing is "new" the moment a source is added.
       if (!first && fresh.length && s.whenNew !== "quiet") {
         const told = st.told[s.id] ? Date.parse(st.told[s.id]!) : 0;
@@ -449,11 +456,16 @@ export function createTaskSources(d: TaskSourcesDeps): TaskSources {
       return look();
     }));
     looking = (async () => {
+      await Promise.resolve();
+      changed(); // looking is set now: the clients say 正在看… while it runs
       await probeGh();
       await lookSources();
       await lookBound();
       changed();
-    })().finally(() => (looking = undefined));
+    })().finally(() => {
+      looking = undefined;
+      changed();
+    });
     return looking;
   }
 
@@ -586,6 +598,7 @@ export function createTaskSources(d: TaskSourcesDeps): TaskSources {
       adapters.delete(id);
       status.delete(id);
       delete st.seen[id];
+      if (st.learned) delete st.learned[id];
       save();
       return true;
     },

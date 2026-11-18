@@ -240,6 +240,50 @@ func TestTodosProblemsAndEmpty(t *testing.T) {
 	}
 }
 
+// 0 open is never a guess: before a look has read the list it says Looking…;
+// a failed look says it couldn't read GitHub, gh's reason, and Try again,
+// which asks for the sources again (the home looks then).
+func TestTodosCountOnlyAfterALook(t *testing.T) {
+	for _, lang := range []i18n.Lang{i18n.ZH, i18n.EN} {
+		w := todoWords(lang)
+		app, sent, tt := todoApp(t, lang, 1280, 1500)
+		app.Receive(protocol.ServerFrame{T: "sources", Sources: &protocol.SourcesFrame{View: &protocol.SourcesView{Sources: []protocol.SourceView{
+			{ID: "src_gh", Kind: "github", Name: "lin-dev", State: "ok", WhenNew: "tell", WhenDone: "ask"},
+			{ID: "src_life", Kind: "obsidian", Name: "Life", State: "error", Error: "gh: Server Error (HTTP 502)", WhenNew: "quiet", WhenDone: "tick"},
+		}}}})
+		app.openTab(TabTodos)
+		todoFrames(tt, 4)
+		for _, want := range []string{w("正在看…", "Looking…"), w("没能读到 Obsidian。", "Couldn't read Obsidian."), "gh: Server Error (HTTP 502)", w("再试一次", "Try again")} {
+			if !tt.HasText(want) {
+				t.Errorf("%s: no %q in %q", lang, want, tt.Texts())
+			}
+		}
+		if tt.HasText(w("0 件没做完", "0 open")) {
+			t.Errorf("%s: a count no look read: %q", lang, tt.Texts())
+		}
+		*sent = nil
+		if err := tt.Click(w("再试一次，Obsidian", "Try again, Obsidian")); err != nil {
+			t.Fatalf("%v in %q", err, tt.Texts())
+		}
+		if _, ok := lastSent[protocol.SourcesReq](*sent); !ok {
+			t.Fatal("Try again doesn't ask the home to look")
+		}
+		todoFrames(tt, 2)
+		if tt.HasText(w("再试一次", "Try again")) {
+			t.Error("Try again stays while the look runs")
+		}
+		// Read and empty: then 0 is true.
+		at := time.Now().UTC().Format(time.RFC3339)
+		app.Receive(protocol.ServerFrame{T: "sources", Sources: &protocol.SourcesFrame{View: &protocol.SourcesView{Sources: []protocol.SourceView{
+			{ID: "src_gh", Kind: "github", Name: "lin-dev", State: "ok", WhenNew: "tell", WhenDone: "ask", CheckedAt: at},
+		}}}})
+		todoFrames(tt, 2)
+		if !tt.HasText(w("0 件没做完", "0 open")) || tt.HasText(w("正在看…", "Looking…")) {
+			t.Errorf("%s: a look that read nothing: %q", lang, tt.Texts())
+		}
+	}
+}
+
 // The opened task's head: the chip and, as its own element, its state word.
 func TestTodoChipOnTask(t *testing.T) {
 	app, _, tt := todoApp(t, i18n.ZH, 1280, 900)

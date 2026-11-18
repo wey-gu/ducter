@@ -106,7 +106,15 @@ export function createGitHub(o: GitHubOpts): SourceAdapter & { login(): string |
       const res = splitResponse(r.out);
       if (res.status === 304 && cache) return cache.items.filter(inScope);
       if (r.code !== 0 || res.status >= 400) throw new Error((r.err || res.body).trim().slice(0, 200) || `gh exited ${r.code}`);
-      const raw = JSON.parse(res.body || "[]") as Raw[];
+      // Only a whole 200 answer is a list: anything else is "couldn't read", never "nothing assigned".
+      if (res.status !== 200) throw new Error(`GitHub's answer couldn't be read (${res.status ? `HTTP ${res.status}` : "no status line"})`);
+      let raw: Raw[];
+      try {
+        raw = JSON.parse(res.body) as Raw[];
+      } catch {
+        throw new Error("GitHub's answer couldn't be read (not JSON)");
+      }
+      if (!Array.isArray(raw)) throw new Error("GitHub's answer couldn't be read (not a list)");
       const items = raw.map((x) => itemOf(o.source, x));
       cache = { ...(res.etag ? { etag: res.etag } : {}), items };
       return items.filter(inScope);

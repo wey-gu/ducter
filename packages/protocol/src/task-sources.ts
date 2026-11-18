@@ -101,8 +101,10 @@ export interface SourceView {
   /** Open items in scope at the last look, and how many have a live task. */
   open?: number;
   taken?: number;
-  /** When it last looked. */
+  /** When it last looked. Counts are shown only after a look that read the list (checkedAt and open). */
   checkedAt?: string;
+  /** A look is running now (正在看… / Looking…). */
+  looking?: boolean;
 }
 
 /** What the home could add without asking anything: gh signed in, vaults Obsidian knows. */

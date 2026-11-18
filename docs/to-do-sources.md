@@ -27,6 +27,9 @@ Open **Settings › To-do sources** (**设置 › 待办来源**). Under **You c
 
 Tap **Add** (for GitHub, **Connect**). Nothing starts because you added it.
 
+Right after you add one it says **Looking…** until it has read the list, then how many are open. If it
+couldn't read it, it says **Couldn't read GitHub.** (or Obsidian) and why, with **Try again**.
+
 ## Only part of it
 
 Each source can read just part of what's there. Type in the field and press Return, or just move on:

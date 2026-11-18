@@ -5,7 +5,9 @@
 // the offer to keep everything up to date. The plan lives on the home; this only shows it. Every
 // control is a shared one (controls.tsx); the marks are drawn.
 import type { UpdateAllItem, UpdateAllPlan, UpdateAllView } from "@ducter/protocol";
+import { useEffect, useState } from "preact/hooks";
 import { A } from "./app.ts";
+import { isSlow, keepWaiting, updatingWords } from "./agent-progress.ts";
 import { Btn, Toggle } from "./controls.tsx";
 import { harnessName } from "./format.ts";
 import { nativeInfo } from "./native.ts";
@@ -41,8 +43,12 @@ function runningWords(i: UpdateAllItem): string {
     case "checking":
       return t("agentv.phase.checking", i.to);
   }
-  return t("agentv.phase.updating", i.to);
+  // D362: what it is doing now, in words that move.
+  return (i.kind === "agent" && updatingWords(i, i.to)) || t("agentv.phase.updating", i.to);
 }
+
+/** D362: a running agent step past its usual time on that computer (re-asked on every tick). */
+export const slowStep = (i: UpdateAllItem, now = Date.now()) => i.kind === "agent" && i.state === "running" && i.wait !== "reconnect" && isSlow(i.key, i, now);
 
 /** Where one step stands, in words. */
 export function stateWords(i: UpdateAllItem): string {
@@ -141,7 +147,20 @@ export function Mark({ state }: { state: UpdateAllItem["state"] }) {
   );
 }
 
-function Row({ i, words }: { i: UpdateAllItem; words?: boolean }) {
+/** D362: one quiet line under a slow step, and its two choices (停止 stops only this step). */
+function SlowLine({ i, onWait }: { i: UpdateAllItem; onWait: () => void }) {
+  return (
+    <div class="ua-slow">
+      <span class="ua-slow-line">{t("upall.slow")}</span>
+      <span class="ua-slow-act">
+        <Btn kind="text" size="sm" label={t("upall.slow.wait")} onClick={() => (keepWaiting(i.key, i), onWait())} />
+        <Btn kind="secondary" size="sm" label={t("upall.slow.stop")} onClick={() => A.send({ t: "update_all", stopItem: i.key })} />
+      </span>
+    </div>
+  );
+}
+
+function Row({ i, words, onWait }: { i: UpdateAllItem; words?: boolean; onWait?: () => void }) {
   const why = words ? whyWords(i) : "";
   return (
     <div class={`ua-row ${i.state}`} role="listitem" aria-label={`${itemName(i)}, ${versions(i)}${words ? `, ${stateWords(i)}` : ""}`}>
@@ -152,6 +171,7 @@ function Row({ i, words }: { i: UpdateAllItem; words?: boolean }) {
       </span>
       {words && <span class={`ua-state ${i.state}`}>{stateWords(i)}</span>}
       {why && <span class="ua-why">{why}</span>}
+      {words && onWait && slowStep(i) && <SlowLine i={i} onWait={onWait} />}
     </div>
   );
 }
@@ -165,6 +185,14 @@ function clientLine(v: UpdateAllView): string {
 
 export function UpdateAllCard() {
   const v = A.updateAll;
+  // D362: a running agent step's elapsed time and its slow line move on their own, once a second.
+  const live = !!v?.plan && !v.plan.finishedAt && v.plan.items.some((i) => i.kind === "agent" && i.state === "running");
+  const [, tick] = useState(0);
+  useEffect(() => {
+    if (!live) return;
+    const h = setInterval(() => tick((n) => n + 1), 1000);
+    return () => clearInterval(h);
+  }, [live]);
   if (!v) return null;
   const p = v.plan;
   if (!p && !v.offer.length) return null;
@@ -207,7 +235,7 @@ export function UpdateAllCard() {
       </div>
       <div class="ua-list" role="list">
         {p.items.map((i) => (
-          <Row key={i.key} i={i} words />
+          <Row key={i.key} i={i} words onWait={() => tick((n) => n + 1)} />
         ))}
       </div>
       {!over && foot && <div class="ua-note quiet">{foot}</div>}

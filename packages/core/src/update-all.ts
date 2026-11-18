@@ -89,6 +89,8 @@ export interface UpdateAll {
   start(by?: UpdateAllBy): Promise<{ ok: true; id: string } | { ok: false; reason: "nothing" | "running" | "failed"; detail?: string }>;
   /** 停止剩下的: what hasn't started is skipped; what runs finishes. */
   stop(): boolean;
+  /** D362: 停止 on one running AI agent step (by its key). */
+  stopItem(key: string): Promise<boolean>;
   /** Put a finished plan away. */
   dismiss(): boolean;
   /** Look at every step once (the timer and every change call it). */
@@ -244,6 +246,7 @@ export function createUpdateAll(d: UpdateAllDeps): UpdateAll {
     if (patch.state && patch.state !== "running") {
       delete next.phase;
       delete next.progress;
+      for (const f of ["step", "got", "size", "since", "slowMs"] as const) delete next[f];
     }
     if (patch.state && patch.state !== "waiting") delete next.busy;
     if (patch.state && patch.state !== i.state && !("wait" in patch)) delete next.wait;
@@ -304,6 +307,21 @@ export function createUpdateAll(d: UpdateAllDeps): UpdateAll {
     return true;
   }
 
+  /**
+   * D362: 停止 on one running AI agent step (its row said it is slower than usual). The download
+   * stops with the copy untouched; the step reads 已停止 and the rest of the plan goes on.
+   */
+  async function stopItem(key: string): Promise<boolean> {
+    const i = running() ? plan!.items.find((x) => x.key === key) : undefined;
+    if (!i || i.kind !== "agent" || i.state !== "running" || !i.harness) return false;
+    const ok = (await d.agents()?.cancel(i.device, i.harness).catch(() => false)) ?? false;
+    if (!ok) return false;
+    set(i, { state: "skipped", reason: "stopped" });
+    save();
+    void step();
+    return true;
+  }
+
   function dismiss(): boolean {
     if (!plan?.finishedAt) return false;
     dismissed = true;
@@ -328,11 +346,14 @@ export function createUpdateAll(d: UpdateAllDeps): UpdateAll {
     if (u?.phase === "failed" && (!u.to || u.to === i.to)) {
       // "Nothing newer" is never a failure (D172): it is already where it can go.
       if (u.reason === "no_update") return { state: "done" };
+      // D362: the person stopped it (停止 on a slow one): 已停止, never a failure.
+      if (u.reason === "stopped") return { state: "skipped", reason: "stopped" };
       return { state: "failed", reason: u.reason ?? "failed", ...(u.detail ? { detail: u.detail } : {}), ...(u.rolledBack !== undefined ? { rolledBack: u.rolledBack } : {}) };
     }
     if (u?.phase === "done" && (!u.to || u.to === i.to)) return { state: "done" };
     if (u?.phase === "waiting") return { phase: "waiting" as AgentPhase };
-    if (u?.phase) return { phase: u.phase };
+    // D362: the update's live part rides along (each field present or cleared).
+    if (u?.phase) return { phase: u.phase, step: u.step, got: u.got, size: u.size, since: u.since, slowMs: u.slowMs };
     return undefined;
   }
 
@@ -553,6 +574,7 @@ export function createUpdateAll(d: UpdateAllDeps): UpdateAll {
     view,
     start,
     stop,
+    stopItem,
     dismiss,
     step,
     nightly,

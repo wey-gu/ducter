@@ -196,6 +196,14 @@ work to settle…* first, then *Updating to 0.168.0…* and *Done, now on 0.168.
 doesn't start, or its sign-in stops working, Ducter puts the previous version back where it can
 and says so.
 
+Some updates are big: Codex installed with npm downloads about 155 MB each time. While it
+downloads you see how far it is, for example *Downloading (61 / 155 MB)*, then *Installing…*,
+which takes seconds; the version you have keeps working until then. Where the download can't be
+seen, the time it has taken shows instead (*Updating to 0.170.0… 2 min 5 s*). If it is taking much
+longer than usual on that computer, one line says *Slower than usual; the network may be slow*
+with **Keep waiting** and **Stop**. Stop leaves the version you have as it is; a download that
+stops moving for two minutes is stopped for you, and **Try again** starts it over.
+
 - **Ducter hasn't checked this version yet** means Ducter hasn't tried it with this version
   yet. It usually works fine; it is just said plainly.
 - **Updates with the Codex app** means this copy came with the Codex app, so the app updates it;

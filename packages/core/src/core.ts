@@ -1120,7 +1120,14 @@ export function startCore(opts: CoreOptions = {}): Core {
         if (!link) return { ok: false, reason: "offline" };
         return link.call<{ ok: boolean; reason?: import("@ducter/protocol").AgentReason; detail?: string }>("agent_update", args, 30_000);
       },
+      // D362: 停止; an older worker doesn't know the op (no).
+      stop: async (id, args) => {
+        const link = workers.link(id);
+        if (!link) return { ok: false };
+        return link.call<{ ok: boolean }>("agent_update_stop", args, 10_000).catch(() => ({ ok: false }));
+      },
     }),
+    dataDir,
     settings: () => settings.get(),
     devices: async () => ((await devicesView?.frame())?.devices ?? []).map((x) => ({ id: x.id, name: x.name, awake: x.state === "awake", harnesses: x.harnesses })),
     probed: () => devicesView?.refresh(),

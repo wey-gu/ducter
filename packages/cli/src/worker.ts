@@ -342,6 +342,8 @@ async function stayConnected(
         if (f.t === "req" && f.op === "update" && updater) return void updater.handle(f, up, host);
         // D156: updating one of this machine's AI agents, the same way.
         if (f.t === "req" && f.op === "agent_update" && agentUpdater) return void agentUpdater.handle(f, up, host);
+        // D362: 停止 on one of them (a slow download).
+        if (f.t === "req" && f.op === "agent_update_stop" && agentUpdater) return void agentUpdater.stop(f, up);
         if (f.t === "req") return void host.handle(f);
         // D293: the home's ways changed (a domain added, the tunnel turned off).
         if (f.t === "ways" && Array.isArray(f.ways)) return void ((s.ways = f.ways), persist());

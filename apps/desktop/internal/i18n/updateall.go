@@ -52,6 +52,19 @@ var zhUpdateAll = Table{
 	"upall.order.mem":           "先更新 %[1]s，再更新其他电脑，然后是各台电脑上的 AI，最后是 %[1]s 上的 Nowledge Mem。正在做的事不会被打断。",
 	"upall.order.solo.mem":      "正在做的事不会被打断：用到某个 AI 的事停下后，才更新那个 AI；Nowledge Mem 最后更新。",
 	"upall.state.updating.bare": "正在更新…",
+	// D362: a running AI agent update, live (views/agentprogress.go).
+	"upall.step.download":      "正在下载（%d / %d MB）",
+	"upall.step.download.got":  "正在下载（%d MB）",
+	"upall.step.download.time": "正在下载… %s",
+	"upall.step.install":       "正在装好…",
+	"upall.step.updating.time": "正在更新到 %s… %s",
+	"upall.elapsed.s":          "%d 秒",
+	"upall.elapsed.m":          "%d 分 %d 秒",
+	"upall.slow":               "比平常慢，可能是网络慢",
+	"upall.slow.stop":          "停止",
+	"upall.slow.wait":          "再等等",
+	"agentv.why.timeout":       "下载太久没完成，已经停下了，原来的版本照常能用。网络好些时再试一次。",
+	"agentv.why.stopped":       "你停下了它，原来的版本照常能用。",
 }
 
 var enUpdateAll = Table{
@@ -102,6 +115,18 @@ var enUpdateAll = Table{
 	"upall.order.mem":           "%[1]s first, then the other computers, then the AI agents on each, and Nowledge Mem on %[1]s last. Nothing running is cut off.",
 	"upall.order.solo.mem":      "Nothing running is cut off: an AI agent updates once the tasks using it pause, and Nowledge Mem goes last.",
 	"upall.state.updating.bare": "Updating…",
+	"upall.step.download":       "Downloading (%d / %d MB)",
+	"upall.step.download.got":   "Downloading (%d MB)",
+	"upall.step.download.time":  "Downloading… %s",
+	"upall.step.install":        "Installing…",
+	"upall.step.updating.time":  "Updating to %s… %s",
+	"upall.elapsed.s":           "%d s",
+	"upall.elapsed.m":           "%d min %d s",
+	"upall.slow":                "Slower than usual; the network may be slow",
+	"upall.slow.stop":           "Stop",
+	"upall.slow.wait":           "Keep waiting",
+	"agentv.why.timeout":        "The download took too long, so it stopped; the version you had still works. Try again when the network is better.",
+	"agentv.why.stopped":        "You stopped it; the version you had still works.",
 }
 
 func init() {

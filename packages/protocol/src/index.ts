@@ -1095,7 +1095,8 @@ export type ClientFrame =
   // runs it, kept on disk so it outlives its own restart. stop: 停止剩下的 / Stop the rest (what
   // hasn't started stays as it is); dismiss: put a finished plan away. Answered with
   // update_all_result; progress arrives as fresh devices frames (updateAll.plan).
-  | { t: "update_all"; stop?: boolean; dismiss?: boolean; by?: "user" | "cli" }
+  // D362: stopItem: 停止 on one running AI agent step that is slower than usual (its key).
+  | { t: "update_all"; stop?: boolean; dismiss?: boolean; by?: "user" | "cli"; stopItem?: string }
   // D169: mem_plugin_install: 装上 / Install Nowledge Mem into one AI agent on a device, by a task
   // there that follows Mem's own setup guide (the user tapped it, so it is their Go). Answered with
   // mem_plugin_result; the card then reads the check again when the task finishes.
@@ -1806,9 +1807,30 @@ export type AgentPhase = "waiting" | "updating" | "checking" | "done" | "failed"
  * restarted (or the home did) while the updater ran, and the copy is still on its old version
  * (D227); failed: anything else (detail).
  */
-export type AgentReason = "how" | "offline" | "running" | "busy" | "network" | "no_update" | "unverified" | "version" | "signed_out" | "unchanged" | "interrupted" | "failed";
+export type AgentReason = "how" | "offline" | "running" | "busy" | "network" | "no_update" | "unverified" | "version" | "signed_out" | "unchanged" | "interrupted" | "timeout" | "stopped" | "failed";
+// D362: timeout: the download or the updater ran past its limit (or the download stopped moving)
+// and was stopped, the old version still in place; stopped: the person tapped 停止 on a slow one.
 
-export interface AgentUpdate {
+/**
+ * D362: what an updater does now, inside phase "updating": downloading (Ducter fetches the new
+ * copy into the channel's own cache first, the installed one untouched; got/size in bytes, size
+ * absent when the source doesn't say) or installing (the channel's own updater puts it in place).
+ * Absent: a channel Ducter can't see inside (its updater downloads and installs in one go).
+ */
+export type AgentStep = "downloading" | "installing";
+
+/** D362: the live part of a running agent update, the same on a device card's row and an Update all step. */
+export interface AgentProgress {
+  step?: AgentStep;
+  got?: number;
+  size?: number;
+  /** ISO, when the updater began (the elapsed time counts from here). */
+  since?: string;
+  /** After this long since `since`, it is slower than usual there (3x its usual time, else 4 min). */
+  slowMs?: number;
+}
+
+export interface AgentUpdate extends AgentProgress {
   phase: AgentPhase;
   from: string;
   to?: string;
@@ -1928,7 +1950,7 @@ export type UpdateAllKind = "ducter" | "agent" | "mem";
 export type UpdateAllState = "queued" | "waiting" | "running" | "done" | "failed" | "skipped";
 export type UpdateAllBy = "user" | "cli" | "night";
 
-export interface UpdateAllItem {
+export interface UpdateAllItem extends AgentProgress {
   key: string; // "ducter:<device>" | "agent:<device>:<harness>" | "mem:local"
   kind: UpdateAllKind;
   device: string; // "local" for the home, else the paired device id

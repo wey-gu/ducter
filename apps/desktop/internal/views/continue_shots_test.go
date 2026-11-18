@@ -31,7 +31,12 @@ func TestContinueShots(t *testing.T) {
 	h.app.LocaleFixed = true
 	h.tt.SetScale(2)
 	s := h.app.S
-	h.until("the trip", func() bool { return s.Task("t_trip") != nil && len(s.Channel) > 0 })
+	// D376: the same shots of another demo task (DUCTER_CONTINUE_TASK, apps/web/demo-continue-more.ts).
+	task := os.Getenv("DUCTER_CONTINUE_TASK")
+	if task == "" {
+		task = "t_trip"
+	}
+	h.until("the task", func() bool { return s.Task(task) != nil && len(s.Channel) > 0 })
 	h.tt.Advance(time.Second)
 	for _, dark := range []bool{false, true} {
 		h.tt.SetDark(dark)

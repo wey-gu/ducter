@@ -272,6 +272,8 @@ export interface Core extends CoreApi {
   taskSources: TaskSources;
   /** D360: groups of tasks that are one piece of work, and the members held in line. */
   taskGroups: TaskGroups;
+  /** D299: the sessions the person ran in their own agents here; D376: found and carried on from the conversation. */
+  outside: import("./outside.ts").Outside;
   /** What each repo task changed so far (D128). */
   changes: Changes;
   /** D148: updating devices in place, and the newest release. */
@@ -932,7 +934,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   const outsideReader = opts.localAgents ?? (process.env.NODE_ENV === "test" || process.env.DUCTER_OUTSIDE === "0" ? createLocalAgents({ home: join(dataDir, "no-outside"), env: {} }) : createLocalAgents(process.env.DUCTER_OUTSIDE_HOME ? { home: process.env.DUCTER_OUTSIDE_HOME, env: {} } : {}));
   // D298: the first words read the same records (D299's reader), or a scratch home's in tests.
   const firstReader = opts.firstWords?.home ? createLocalAgents({ home: opts.firstWords.home, env: opts.firstWords.env ?? {} }) : outsideReader;
-  const outside = createOutside({ reader: outsideReader, dataDir, log, tasks, ducterFolder: homeFolder, language: () => languageOf("", settings), looks: () => settings.localAgents() });
+  const outside = createOutside({ reader: outsideReader, dataDir, log, tasks, ducterFolder: homeFolder, language: () => languageOf("", settings), looks: () => settings.localAgents(), computer: () => computers.homeName() });
   // D327: what the first words may say about the records: whether there are any (file times alone),
   // what they offer once the person asks, the home's name, and forgetting what was read.
   const firstWordsDeps = opts.firstWords
@@ -1655,6 +1657,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     calendar,
     taskSources,
     taskGroups,
+    outside,
     changes,
     updates,
     release,

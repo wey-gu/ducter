@@ -244,6 +244,16 @@ export interface Scenario {
    * own conversation); the seed goes into the default partner's conversation, which it never sees.
    */
   second?: { name: string };
+  /**
+   * D376: the person's other computers beside the home ("local"), as the [devices] line shows them;
+   * task_switch's move to one is recorded, never made.
+   */
+  computers?: { name: string; web: "chrome" | "ducter"; harnesses: string[] }[];
+  /**
+   * D376: the person's own sessions on the home, written in their agents' record shapes into a
+   * scratch home (never this machine's ~/.claude or ~/.codex). folder: under that home.
+   */
+  ownSessions?: { agent: "claude-code" | "codex" | "pi"; id: string; folder: string; title?: string; branch?: string; turns: [string, string][]; minutesAgo: number }[];
 }
 
 // Under a result message the app renders, from the task's typed report: the task chip, the
@@ -701,6 +711,90 @@ export const scenarios: Scenario[] = [
     steps: [{ user: "Does the first one take reservations? If it does, get a table for two at 3pm ready for me to confirm." }],
     expect: { opens: 0, sendTo: "cafe", maxChars: 160 },
     rubric: "A follow-up on the same errand (the café it just found): it continues that task with task_send even though it is done, not a new task. At most one short English line naming the action; nothing is booked without the user's confirmation.",
+  },
+  // D376: the author's trip again (2026-11-18, hel): the hotel was found in Ducter's browser on the
+  // home; the follow-up wants his Ctrip account, signed in only in the MacBook's Chrome. The same
+  // task moves there and carries on (it opened a new task on the Mac then, losing what it found).
+  {
+    id: "continue-trip-mac-zh",
+    category: "followup",
+    lang: "zh",
+    floor: true,
+    computers: [{ name: "Macbook Pro M3", web: "chrome", harnesses: ["claude-code", "codex"] }],
+    seed: [
+      { user: "我周六要去 agibar 北京参加晚上活动，当天过去晚上住一晚第二天回来，帮我看看住在哪里适合，活动现场是：北京市海淀区中关村创业大街2号楼A号底商" },
+      {
+        task: {
+          key: "trip",
+          title: "查北京 agibar 活动附近的酒店",
+          browser: true,
+          harness: "codex",
+          ack: "我去查 AGI Bar 附近适合住的酒店，查清楚告诉你。",
+          state: "done",
+          report: {
+            state: "done",
+            summary: "首选朗丽兹酒店（北京中关村苏州街店），从 AGI Bar 散场步行约 3–5 分钟，前台 24 小时。备选：汉庭（中关村苏州街地铁站店，步行约 10 分钟）。房价要登录携程才看得到。",
+            questions: [],
+            evidence: [{ kind: "url", label: "携程：朗丽兹", ref: "https://hotels.ctrip.com/hotels/94854579.html" }],
+          },
+        },
+      },
+      { ai: "住朗丽兹最省事：散场走 3–5 分钟就到，前台 24 小时。汉庭也在 10 分钟内。" },
+    ],
+    steps: [{ user: "这个酒店和旁边的汉庭差多少钱？然后也帮我看看机票吧，用浏览器登录我的携程账号看，要验证码就问我" }],
+    expect: { opens: 0, sendTo: "trip", called: [{ tool: "task_switch", args: { device: /macbook/i } }], noAsk: true, maxChars: 120 },
+    rubric: "The hotel task ran in Ducter's own browser on the home; the user now wants prices and flights through their own Ctrip account, which only the MacBook's Chrome is signed in to (the [devices] line says it browses in the user's own Chrome). The partner moves the SAME task to the MacBook (task_switch with that computer) and sends it the follow-up (task_send), opening no new task. One short Chinese line naming the action and where (e.g. 我到你 MacBook 的 Chrome 上用携程比一下价格，顺便看机票。), no talk of moving tasks or sessions, no outcome claimed.",
+  },
+  {
+    id: "continue-trip-stays-en",
+    category: "followup",
+    lang: "en",
+    computers: [{ name: "Macbook Pro M3", web: "chrome", harnesses: ["claude-code", "codex"] }],
+    seed: [
+      { user: "Find me a quiet café near Shibuya with good Wi-Fi where I can work on Saturday afternoon." },
+      {
+        task: {
+          key: "cafe",
+          title: "Quiet café near Shibuya with Wi-Fi",
+          browser: true,
+          harness: "codex",
+          ack: "I'll look for a quiet café near Shibuya with good Wi-Fi.",
+          state: "done",
+          report: { state: "done", summary: "Best fit: Streamer Coffee Company Shibuya, 6 min from the station, fast Wi-Fi, outlets at the counter, quiet after 2pm. Backup: About Life Coffee Brewers (small, no outlets).", questions: [], evidence: [{ kind: "url", label: "Streamer Coffee", ref: "https://streamer.coffee/shibuya" }] },
+        },
+      },
+      { ai: "Streamer Coffee Company in Shibuya fits best: 6 minutes from the station, fast Wi-Fi and outlets, quiet after 2pm." },
+    ],
+    steps: [{ user: "Any other quiet one within ten minutes' walk of the station, with outlets?" }],
+    expect: { opens: 0, sendTo: "cafe", notCalled: ["task_switch"], maxChars: 140 },
+    rubric: "A follow-up on the same errand that needs no sign-in: the partner continues the same café task where it is (task_send), without moving it to another computer and without a new task. At most one short English line naming the action.",
+  },
+  // D376: "接着我终端里那个 Claude 在做的": the person's own Claude Code session on the home (a
+  // scratch home with fake records), found and carried on as a task, the person's next words with it.
+  {
+    id: "own-session-zh",
+    category: "followup",
+    lang: "zh",
+    floor: true,
+    ownSessions: [
+      { agent: "claude-code", id: "fake0000-cc00-4000-8000-000000000001", folder: "dev/fakedb", title: "compaction 阈值做成可配置", branch: "compaction-cfg", turns: [["把 L0 compaction 的触发阈值做成可配置的，默认 8", "改好了：新增 compaction.l0_trigger 配置项，默认 8。测试还没补。"]], minutesAgo: 40 },
+      { agent: "codex", id: "0fa0e000-0000-7000-8000-000000000002", folder: "dev/fakecache", turns: [["修一下不稳定的 TTL 测试", "改用假时钟，20 次都过了。"]], minutesAgo: 26 * 60 },
+    ],
+    steps: [{ user: "接着我终端里那个 Claude 在做的，把剩下的测试补上" }],
+    expect: { opens: 1, called: [{ tool: "own_session_find" }, { tool: "own_session_continue", args: { id: /^fake0000-cc00/ } }], noAsk: true, msgs: [0, 1], maxChars: 100 },
+    rubric: "The user asks to carry on what their own Claude Code was doing in the terminal. The partner looks in their own sessions (own_session_find), finds the one Claude Code session from 40 minutes ago (compaction threshold in fakedb), and carries it on (own_session_continue) with the user's words (add the remaining tests). One short Chinese line naming the work (and, the first time, a few words on what it looked at: session names, folders and times on this computer), no outcome claimed, no question when one session clearly fits.",
+  },
+  {
+    id: "own-session-which-en",
+    category: "followup",
+    lang: "en",
+    ownSessions: [
+      { agent: "claude-code", id: "fake0000-cc00-4000-8000-000000000003", folder: "dev/fakedb", title: "WAL flush interval config", turns: [["Make the WAL flush interval configurable", "Added wal.flush_ms; tests pass."]], minutesAgo: 70 },
+      { agent: "claude-code", id: "fake0000-cc00-4000-8000-000000000004", folder: "dev/fakesite", title: "Landing page hero copy", turns: [["Rewrite the landing page hero in plainer words", "Drafted two versions in hero.md."]], minutesAgo: 80 },
+    ],
+    steps: [{ user: "Pick up what Claude was doing in my terminal earlier." }],
+    expect: { opens: 0, called: [{ tool: "own_session_find" }], notCalled: ["own_session_continue"], maxChars: 300 },
+    rubric: "Two of the user's own Claude Code sessions from about an hour ago fit equally (WAL flush config in fakedb, landing page copy in fakesite) and the user named neither. The partner looks (own_session_find), carries neither on, and asks which in one short English question naming both (a choice each is fine). No task is opened.",
   },
   {
     id: "continue-dev-yesterday-zh",

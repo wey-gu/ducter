@@ -32,7 +32,8 @@ export interface Loadout {
   computers(needs?: TaskNeeds): Promise<Computer[] | undefined>;
   /** 换到 X 接着做 / Continue on X; D157: on another computer (device: its id or name), the task moves there. */
   // effort (D282): the same agent with another model or effort keeps its native session.
-  switchTask(taskId: string, harness: string, model: string | undefined, runner: Runner | undefined, device?: string, effort?: string): Promise<{ ok: boolean; message?: string }>;
+  // by (D376): the partner moved it for the person's follow-up (the note says so); else the person did.
+  switchTask(taskId: string, harness: string, model: string | undefined, runner: Runner | undefined, device?: string, effort?: string, by?: "partner"): Promise<{ ok: boolean; message?: string }>;
   /** D372: the built-in default per kind of work on the home (the Partner page's rules list). */
   defaults(): Promise<KindDefault[]>;
   /**
@@ -245,7 +246,7 @@ export function createLoadout(o: {
       });
     },
 
-    async switchTask(taskId, harness, model, runner, device, effort) {
+    async switchTask(taskId, harness, model, runner, device, effort, by) {
       const card = o.tasks.get(taskId);
       if (!card) return { ok: false, message: "I can't find that task." };
       if (card.attention === "dropped") return { ok: false, message: "That task was dropped. Undo the drop first." };
@@ -268,7 +269,7 @@ export function createLoadout(o: {
             stream: "channel",
             origin: "user",
             kind: "job_status",
-            body: { jobId: `${BODY_NOTE_PREFIX}${taskId}_${Date.now().toString(36)}`, taskId, state: "done", text: `the user moved this task from ${here.name} to ${to.name} (${harnessName(harness)}); it continues there from its saved progress.` } as Bodies["job_status"],
+            body: { jobId: `${BODY_NOTE_PREFIX}${taskId}_${Date.now().toString(36)}`, taskId, state: "done", text: `${by === "partner" ? "you moved this task, for the user's follow-up," : "the user moved this task"} from ${here.name} to ${to.name} (${harnessName(harness)}); it continues there from its saved progress.` } as Bodies["job_status"],
           });
           return { ok: true };
         }
@@ -386,7 +387,7 @@ export function registerSwitchTool(mcp: CoreMcpHub, o: { loadout: Loadout; tasks
   mcp.register(
     "partner",
     "task_switch",
-    "When the user asks to change a task's model, effort or AI agent (\"这个任务换成 6.2 sol\", \"use Opus for this\"). The same agent keeps its session and uses them from its next turn; another agent carries on from saved progress. model: as the user said it (matched to the agent's own list). Call it first, with no line before; after, at most one short line.",
+    "When the user asks to change a task's model, effort or AI agent (\"这个任务换成 6.2 sol\", \"use Opus for this\"), or a follow-up needs another computer. The same agent keeps its session and uses them from its next turn; another agent carries on from saved progress. model: as the user said it (matched to the agent's own list). Call it first, with no line before; after, at most one short line.",
     {
       type: "object",
       properties: {
@@ -394,10 +395,16 @@ export function registerSwitchTool(mcp: CoreMcpHub, o: { loadout: Loadout; tasks
         harness: { type: "string", enum: ["claude-code", "codex", "pi", "deepseek-harness"], description: "Only to change the agent" },
         model: { type: "string" },
         effort: { type: "string" },
+        device: {
+          type: "string",
+          description:
+            "Move it to this computer (its [devices] name) with its brief, progress and last report, when the user names it or the follow-up needs what only it has (their signed-in Chrome, an app). Then task_send it the follow-up.",
+        },
+        confirmed: { type: "boolean", description: "Only after the user's go to pushing a code task's branch" },
       },
       required: ["taskId"],
     },
-    async (a: { taskId?: unknown; harness?: unknown; model?: unknown; effort?: unknown }) => {
+    async (a: { taskId?: unknown; harness?: unknown; model?: unknown; effort?: unknown; device?: unknown; confirmed?: unknown }) => {
       const taskId = String(a.taskId ?? "");
       const card = o.tasks.get(taskId);
       if (!card) return { ok: false, error: "I can't find that task." };
@@ -405,9 +412,27 @@ export function registerSwitchTool(mcp: CoreMcpHub, o: { loadout: Loadout; tasks
       if (!isHarnessId(harness)) return { ok: false, error: `${harness} isn't an AI agent Ducter runs.` };
       const said = typeof a.model === "string" ? a.model.trim() : "";
       const effort = typeof a.effort === "string" && a.effort.trim() ? a.effort.trim().toLowerCase() : undefined;
-      if (!said && !effort && harness === card.harness) return { ok: false, error: "Say which model, effort or AI agent." };
+      // D376: another computer, checked here so a name that isn't one never quietly does nothing.
+      const named = typeof a.device === "string" ? a.device.trim() : "";
+      let to: Computer | undefined;
+      if (named) {
+        const comps = await o.loadout.computers();
+        if (!comps || comps.length < 2) return { ok: false, error: "There is no other computer to move it to." };
+        const hit = computerNamed(comps, named);
+        if (!hit) return { ok: false, error: `No computer called "${named}". The [devices] line lists them: ${comps.map((c) => (c.home ? `${c.name} (local)` : c.name)).join(", ")}.` };
+        const dev = (card.place as { device?: string }).device;
+        const here = comps.find((c) => (dev && dev !== "local" ? c.id === dev || c.name === dev : c.home));
+        if (here?.id !== hit.id) {
+          if (card.place.kind === "folder") return { ok: false, error: `Its folder is on ${here?.name ?? "this computer"}; a folder task can't move. Say so in one line.` };
+          // E3: a code task moves through its pushed branch: something leaves the computer, so only on the user's go.
+          if (card.place.kind === "repo" && a.confirmed !== true) return { ok: false, error: `Moving a code task pushes its branch so ${hit.name} can check it out. Ask the user first (ask: Go = push its branch and carry on on ${hit.name}, default hold); on go, call task_switch again with confirmed: true.` };
+          if (hit.state !== "awake") return { ok: false, error: `${hit.name} is ${hit.state === "asleep" ? "asleep" : "out of reach"}; it can move once it's back. Say so in one line.` };
+          to = hit;
+        }
+      }
+      if (!to && !said && !effort && harness === card.harness) return { ok: false, error: named ? `It is already on ${named}: task_send it the follow-up.` : "Say which model, effort or AI agent." };
       const on = (card.place as { device?: string }).device;
-      const device = on && on !== "local" ? on : "local";
+      const device = to ? (to.home ? "local" : to.id) : on && on !== "local" ? on : "local";
       const list = await o.models?.get(device, harness, SWITCH_LIST_MS);
       let model: string | undefined;
       if (said) {
@@ -423,11 +448,24 @@ export function registerSwitchTool(mcp: CoreMcpHub, o: { loadout: Loadout; tasks
         const ok = checkEffort(harness, model, effort, list);
         if (!ok.ok) return { ok: false, error: ok.why };
       }
-      const r = await o.loadout.switchTask(taskId, harness, model, o.runner(), undefined, effort).catch((err) => ({ ok: false, message: (err as Error).message }));
+      const r = await o.loadout.switchTask(taskId, harness, model, o.runner(), to?.id, effort, to ? "partner" : undefined).catch((err) => ({ ok: false, message: (err as Error).message }));
       if (!r.ok) return { ok: false, error: r.message ?? "That switch didn't go through." };
       const entry = model ? list?.find((m) => m.id === model) : undefined;
       const running = card.attention === "working" || card.attention === "queued";
       const same = harness === card.harness;
+      if (to) {
+        // D376: where it browses there, so the line can say whose sign-ins it uses.
+        const web = card.place.kind === "browser" ? (to.web?.where === "chrome" ? " There it browses in the user's own Chrome, with their sign-ins." : " There it browses in Ducter's own browser.") : "";
+        return {
+          ok: true,
+          moved: to.name,
+          harness,
+          ...(model ? { model } : {}),
+          note: running
+            ? `Moved to ${to.name}: it carries on there now from its saved progress and last report.${web} The task shows the move itself.`
+            : `Moved to ${to.name} with its brief, saved progress and last report; not running yet.${web} Now task_send it the follow-up. Your one line names the action and where ("我到你 ${to.name} 上接着看机票。"), never the move.`,
+        };
+      }
       return {
         ok: true,
         harness,
@@ -444,6 +482,17 @@ export function registerSwitchTool(mcp: CoreMcpHub, o: { loadout: Loadout; tasks
       };
     },
   );
+}
+
+/** D376: a computer as the partner names it: its id, its name (any case), "local" for the home, else the one name it is part of. */
+export function computerNamed(comps: Computer[], named: string): Computer | undefined {
+  const want = named.trim().toLowerCase();
+  if (!want) return undefined;
+  const exact = comps.find((c) => c.id === named || c.name.toLowerCase() === want);
+  if (exact) return exact;
+  if (want === "local" || want === "home" || want.startsWith("local ")) return comps.find((c) => c.home);
+  const part = comps.filter((c) => c.name.toLowerCase().includes(want) || want.includes(c.name.toLowerCase()));
+  return part.length === 1 ? part[0] : undefined;
 }
 
 /** A user-origin note that should wake the partner: the second switch the same way. */

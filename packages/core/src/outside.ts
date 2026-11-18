@@ -3,7 +3,7 @@
 // and carried on in Ducter: the same agent resumes the very session in its own folder, or another
 // agent starts there from what it said.
 //
-// Shown by default, read lazily (only when Past tasks asks) and locally; one tap hides an agent's
+// Shown by default, read lazily (only when Past tasks asks, or the person asks the partner, D376) and locally; one tap hides an agent's
 // sessions for good (<dataDir>/outside.json). Ducter's own sessions are never listed (the Log
 // knows their ids; its folders and temporary folders are left out). Nothing leaves the home.
 import { existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from "node:fs";
@@ -28,9 +28,14 @@ export interface OutsideDeps {
   language?: () => LangTag;
   /** D327: whether the person lets Ducter read their agents' records at all (Settings, 别再看了). */
   looks?: () => boolean;
+  /** D327 (5): the home's name: whose records they are, said by name. */
+  computer?: () => string;
 }
 
 export interface Outside {
+  /** D376: whether looking is on (Settings › 读它们留下的记录), and the computer the records are on. */
+  looks(): boolean;
+  computer(): string | undefined;
   /** The sessions to show for this query, best first (at most `limit`, default 40), and each agent's count. */
   list(q: PastQuery, limit?: number): { items: OutsideItem[]; sources: OutsideSource[] };
   hide(agent: OutsideAgent, hidden: boolean): void;
@@ -43,16 +48,25 @@ export interface Outside {
   leftOut(cwd: string): boolean;
   /** `~/…` for a folder under the home folder. */
   tilde(path: string): string;
-  /** Carries one on as a Ducter task; the task's id. A session carried on before opens its task again. */
-  adopt(runner: Runner | undefined, persona: string, agent: OutsideAgent, id: string, harness?: string, model?: string): Promise<{ ok: boolean; taskId?: string; message?: string }>;
+  /**
+   * Carries one on as a Ducter task; the task's id. A session carried on before opens its task again.
+   * D376: never one still open where the person runs it (`open` says how it knows); a session only
+   * written in the last two minutes goes once the person says it is closed (`closed`). `ask`: what
+   * the person asks of it now, said with its first turn (from the conversation).
+   */
+  adopt(runner: Runner | undefined, persona: string, agent: OutsideAgent, id: string, harness?: string, model?: string, o?: { ask?: string; closed?: boolean }): Promise<{ ok: boolean; taskId?: string; message?: string; open?: "running" | "recent"; reused?: true }>;
+  /** D376: whether a session is still open where the person ran it (the reader's openNow). */
+  openNow(agent: OutsideAgent, id: string): "running" | "recent" | undefined;
+  /** D376: the first time the partner looks in these records for the person: true once, then false. */
+  firstLook(): boolean;
 }
 
 const DAY = 24 * 3600_000;
 
 /** What a refusal says, per language (D292). */
 const SAY = {
-  en: { noRunner: "Tasks can't run right now.", missing: "I can't find that session any more.", gone: "Its folder {path} isn't there any more." },
-  zh: { noRunner: "现在开不了任务。", missing: "找不到这段对话了。", gone: "它的文件夹 {path} 不在了。" },
+  en: { noRunner: "Tasks can't run right now.", missing: "I can't find that session any more.", gone: "Its folder {path} isn't there any more.", running: "It's still open in {agent}. Close it there first (/exit), then carry it on here.", recent: "{agent} wrote to it a moment ago. If it's closed there, try again." },
+  zh: { noRunner: "现在开不了任务。", missing: "找不到这段对话了。", gone: "它的文件夹 {path} 不在了。", running: "它还在 {agent} 里开着。先在那边退出（/exit），再在这里接着做。", recent: "{agent} 刚刚还在写它。那边关掉了的话，再试一次。" },
 };
 const WEIGHT: Record<OutsideField, number> = { title: 5, branch: 4, project: 4, words: 3, agent: 2.5 };
 
@@ -62,9 +76,14 @@ export function createOutside(d: OutsideDeps): Outside {
   const file = join(d.dataDir, "outside.json");
   let hidden = new Set<OutsideAgent>();
   let folders = new Set<string>();
+  // D376: the partner said once what it reads when it looks for the person's session.
+  let looked = false;
+  /** D376: a session refused as written a moment ago, and when: asked again within 10 min, it goes. */
+  const recentWarned = new Map<string, number>();
   try {
     if (existsSync(file)) {
-      const j = JSON.parse(readFileSync(file, "utf8")) as { hidden?: unknown; folders?: unknown };
+      const j = JSON.parse(readFileSync(file, "utf8")) as { hidden?: unknown; folders?: unknown; looked?: unknown };
+      looked = j.looked === true;
       if (Array.isArray(j.hidden)) hidden = new Set(j.hidden.filter((a): a is OutsideAgent => (OUTSIDE_AGENTS as readonly string[]).includes(a)));
       if (Array.isArray(j.folders)) folders = new Set(j.folders.filter((f): f is string => typeof f === "string" && f.startsWith("/")));
     }
@@ -73,7 +92,7 @@ export function createOutside(d: OutsideDeps): Outside {
   }
   const save = () => {
     mkdirSync(d.dataDir, { recursive: true });
-    writeFileSync(`${file}.tmp`, JSON.stringify({ version: 1, hidden: [...hidden], ...(folders.size ? { folders: [...folders] } : {}) }, null, 2));
+    writeFileSync(`${file}.tmp`, JSON.stringify({ version: 1, hidden: [...hidden], ...(folders.size ? { folders: [...folders] } : {}), ...(looked ? { looked: true } : {}) }, null, 2));
     renameSync(`${file}.tmp`, file);
   };
   const absolute = (p: string) => resolve(p === "~" ? home : p.startsWith("~/") ? join(home, p.slice(2)) : p);
@@ -230,16 +249,32 @@ export function createOutside(d: OutsideDeps): Outside {
     hiddenFolders: () => [...folders],
     leftOut,
     tilde,
-    async adopt(runner, persona, agent, id, harness, model) {
+    looks: () => !d.looks || d.looks(),
+    computer: () => d.computer?.(),
+    openNow: (agent, id) => d.reader.openNow(agent, id),
+    firstLook() {
+      if (looked) return false;
+      looked = true;
+      save();
+      return true;
+    },
+    async adopt(runner, persona, agent, id, harness, model, o = {}) {
       const lang = d.language?.() ?? "en";
       const say = words(SAY, lang);
       // Carried on before: that task is the one to open (the person continues it there).
       const had = d.tasks.list().find((c) => c.outside?.agent === agent && c.outside.sessionId === id);
-      if (had) return { ok: true, taskId: had.taskId };
+      if (had) return { ok: true, taskId: had.taskId, reused: true };
       if (!runner) return { ok: false, message: say.noRunner };
       const s = d.reader.summary(agent, id);
       if (!s) return { ok: false, message: say.missing };
       if (!existsSync(s.cwd)) return { ok: false, message: fill(say.gone, { path: tilde(s.cwd) }) };
+      // D376: two writers on one conversation (the terminal's and Ducter's) would garble it for both.
+      const open = d.reader.openNow(agent, id);
+      // A session written a moment ago: refused once; asked again (the person closed it, or a tap again) it goes.
+      const key = `${agent}:${id}`;
+      const warned = open === "recent" && !o.closed && !(now() - (recentWarned.get(key) ?? -Infinity) < 10 * 60_000);
+      if (warned) recentWarned.set(key, now());
+      if (open === "running" || warned) return { ok: false, open, message: fill(open === "running" ? say.running : say.recent, { agent: harnessName(agent) }) };
       const to = harness && harness !== agent ? harness : agent;
       const it = itemOf(s);
       const title = [...it.title].length > 80 ? `${[...it.title].slice(0, 79).join("")}…` : it.title || harnessName(agent);
@@ -258,7 +293,7 @@ export function createOutside(d: OutsideDeps): Outside {
           ...(model ? { model } : to === agent && s.model ? { model: s.model } : {}),
           language: lang,
           origin: "you",
-          adopt: { agent, sessionId: id, startedAt: s.startedAt, turns: d.reader.history(agent, id, { turns: 60 }) },
+          adopt: { agent, sessionId: id, startedAt: s.startedAt, turns: d.reader.history(agent, id, { turns: 60 }), ...(o.ask?.trim() ? { ask: o.ask.trim() } : {}) },
         });
         return { ok: true, taskId: card.taskId };
       } catch (err) {

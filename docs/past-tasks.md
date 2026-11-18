@@ -65,7 +65,10 @@ signed-in browser, the same branch and files, the same AI agent, and what it alr
 task shows under your new message, and On hand keeps one card for it. An earlier one works too:
 "接着昨天那个 compaction 的活" / "carry on with yesterday's compaction change". Something new
 gets a task of its own; if you want a fresh start on the same thing, say so ("开个新的" / "start a
-new one").
+new one"). If the next step needs another of your computers, say which ("在 MacBook 上接着"), or just ask
+for your own account ("用我的携程账号看"): when only that computer's Chrome is signed in, the same
+task moves there with what it found and carries on, and Ducter says where. Ducter never moves a
+code task to another computer without asking you first.
 
 Keys: `/` search, the arrow keys or j/k move, Enter opens, ⌘Enter continues, ⇧⌘Enter new task from this, `s`
 stars, `r` renames, Esc clears and then goes back.
@@ -87,7 +90,16 @@ agent, or the day.
 - **这个文件夹别看了 / Leave this folder out** (in ⋯): that folder, and the folders inside it, are
   never read again. Settings › Partner lists it with **Show again**.
 
-Ducter reads these only on your home computer and only when you open Past tasks: each
+You can also ask in the conversation: "接着我终端里那个 Claude 在做的，把测试补上" / "carry on what
+Claude was doing in my terminal". Ducter looks for it the same way (the newest one, unless your
+words point to another; if two could be it, it asks which) and carries it on, with what you asked
+for next. The first time, it tells you in one line what it looked at. It only looks when you ask.
+
+A conversation that is still open in your terminal is never carried on, since both would write to
+it at once: close it there first (`/exit`), then ask again. One your AI agent wrote to a moment ago
+gets the same reminder once; ask again once it is closed.
+
+Ducter reads these only on your home computer and only when you open Past tasks or ask for one: each
 conversation's name, folder and time and your first and last words, with any key you pasted hidden.
 They are never sent anywhere else. Turning off **Read what they keep** in Settings › Partner hides
 the section and nothing is read. It never changes them; when you continue one, the AI agent adds to it as it

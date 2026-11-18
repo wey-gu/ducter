@@ -139,6 +139,16 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
 - [ ] **Change when for every week picks the weekday** (today it keeps the routine's own day). Trigger: the first weekly routine moved to another day.
 - [ ] **On hand's rows draw the person's picture and name** (the name already is the title; the picture is not drawn on rows yet). Trigger: On hand's redesign settles.
 
+## Continue on another computer, and from the person's own terminal (D376, research/147)
+
+- [ ] **D376: the author's own case: terminal sessions on a worker** (hel is the home, his terminal Claude Code runs on the MacBook): D327's yes asked on that computer, a `localSessions` op over the worker link answering the same reader there, and `own_session_continue` adopting on that worker (place `folder` with its device). Trigger: the author asks for one from the conversation, as he will (his terminal is on the Mac).
+- [ ] **D376: the move, live** (the trip continued from hel's browser into the MacBook's Chrome, then booked up to payment). Trigger: the author's next errand that needs a sign-in only the Mac has.
+- [ ] **D376: Codex and pi say which sessions are open** (only the file's time today: written in the last 2 min). Trigger: Codex writes a running-thread file, or a person carries on one that was open.
+- [ ] **D376: Claude Code's `sessions/<pid>.json` shape** is undocumented (read on 2.1.32x): a change makes an open session look closed. Trigger: a Claude Code release that renames it; check on each agent update (`agents.ts`'s version).
+- [ ] **D376: a code task moved from the conversation after a go** (the ask, then `task_switch` with `confirmed`) is unit-tested only. Trigger: the first one.
+- [ ] **D376: the second look's words** (登录, 账号, 验证码, sign in, my account) miss other ways of asking for one's own account ("用我的淘宝买"). Trigger: a follow-up that needed the person's Chrome and stayed.
+- [ ] **D376: the first-look line forgets nothing when looking is turned off and on again** (`outside.json` `looked` stays). Trigger: someone asks why it didn't say it again.
+
 ## Earlier sessions from the person's own agents (D299, `past.md`, research/103)
 
 - A worker's own sessions: a `localSessions` op over the worker link answering the shared reader's
@@ -2042,7 +2052,7 @@ Codex first, once OAR is near 1.0. See `research/17`.
 
 ## Continuity first (D373, `conversation.md`, research/143)
 
-- [ ] **D373: a continued task moves to the computer its follow-up needs** (the errand on hel's browser, the follow-up needs the person's signed-in Chrome on the Mac: `task_switch` takes a computer, `loadout.switchTask` already moves, E3). Trigger: the author's first follow-up that needs another computer's sign-ins.
-- [ ] **D373: continue the person's own sessions from the conversation** ("接着我早上终端里那个 claude 会话": search D299's outside sessions under D327's consent and adopt one through the runner's `adopt`). Trigger: the author asks for it in the conversation, or the D299 reader is opened to the partner for another reason.
+- [x] **D373: a continued task moves to the computer its follow-up needs**: built by D376.
+- [x] **D373: continue the person's own sessions from the conversation**: built by D376 for the home's sessions.
 - [ ] **D373: watch it on the home** (how often the second look fires on separate work, and whether a long-lived continued session needs a fresh one sooner). Trigger: a week of the author's use after the release.
 - [ ] **D373: Claude Code resume days later, live** (Codex verified on hel; Claude Code only per research/03). Trigger: the first Claude Code task taken up again after its session was parked a day.

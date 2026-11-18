@@ -76,7 +76,7 @@ const TURNS = [
   { role: "assistant" as const, text: "Added the fence in snapshot.go; the new test passes 200 runs.", at: "2026-11-12T09:20:00.000Z" },
 ];
 
-async function adopt(harness: string, fake = new FakePort()) {
+async function adopt(harness: string, fake = new FakePort(), ask?: string) {
   const runner = createRunner(core, { harness: fake, newId: () => "tsk00001" });
   const card = await runner.openTask({
     persona: "p1",
@@ -86,7 +86,7 @@ async function adopt(harness: string, fake = new FakePort()) {
     project: "hawdb",
     harness,
     origin: "you",
-    adopt: { agent: "claude-code", sessionId: "942ecde2-b387-45c2-bbc6-75da83748a7f", startedAt: "2026-11-12T09:00:00.000Z", turns: TURNS },
+    adopt: { agent: "claude-code", sessionId: "942ecde2-b387-45c2-bbc6-75da83748a7f", startedAt: "2026-11-12T09:00:00.000Z", turns: TURNS, ...(ask ? { ask } : {}) },
   });
   await runner.whenStarted(card.taskId);
   return { fake, runner, card };
@@ -114,6 +114,19 @@ describe("carrying on an outside session", () => {
     expect(earlier).toMatchObject({ name: "Claude Code", at: "2026-11-12T09:00:00.000Z" });
     // No copy of the person's folder was kept: they worked there directly.
     expect(events().some((b) => (b.raw as { folder?: { direct?: boolean } })?.folder?.direct)).toBe(true);
+  });
+
+  test("D376: carried on from the conversation, the person's next words go with its first turn", async () => {
+    const { fake } = await adopt("claude-code", new FakePort(), "Add the missing tests too.");
+    await waitFor(() => fake.sessions[0]!.sent.length === 1);
+    const first = fake.sessions[0]!.sent[0]!;
+    expect(first.startsWith(ADOPTED)).toBe(true);
+    expect(first.endsWith("The latest message for you:\nAdd the missing tests too.")).toBe(true);
+    const blocks = blocksOf("claude-code", core.log.read({ stream: "task:tsk00001", kinds: ["task_event"] }) as never, false);
+    // Ducter's hairline (picked up in Ducter), then the ask as Ducter's words to it.
+    expect(blocks.at(-2)).toMatchObject({ k: "told", say: "adopted" });
+    expect(blocks.at(-1)).toMatchObject({ k: "partner" });
+    expect(JSON.stringify(blocks.at(-1))).toContain("Add the missing tests too.");
   });
 
   test("another agent starts there from what the session said, never resuming it", async () => {

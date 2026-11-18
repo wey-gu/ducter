@@ -554,6 +554,8 @@ export interface AdoptSession {
   sessionId: string;
   startedAt: string;
   turns: { role: "user" | "assistant"; text: string; at?: string }[];
+  /** D376: what the person asks of it now (carried on from the conversation), sent with its first turn. */
+  ask?: string;
 }
 
 export interface Runner {

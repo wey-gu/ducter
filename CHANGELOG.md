@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.0.76 - 2026-11-18
+
+<!-- whats-new
+zh: 待办来源数对了：557 件，等你 review 的另算
+en: To-do sources count right, with reviews apart
+zh: 任务的汇报写给人看；能换 6.2 新模型
+en: Task reports read plainly; switch to 6.2 models
+-->
+
+**To-do sources**
+- GitHub shows how many open issues and PRs are yours, and how many PRs wait for your
+  review. A look that didn't work says so, with Try again, instead of showing 0.
+
+**Tasks**
+- Reports are written for you: the result first, in plain words, only what changed. A task
+  watching for something that found nothing says it in one line. Saved progress is one quiet
+  line.
+- Codex's newest models are in the list as soon as Codex has them. Ask the partner to move a
+  task to another model, or pick it under Switch who does it.
+
+**Agent messaging**
+- It says what it is: any agent connected to Nowledge Mem, such as Claude Code, Codex or
+  Grok Build, can message Ducter through Nowledge Bridge. A sender without a name shows as
+  one, not as a blank.
+
 ## 0.0.75 - 2026-11-18
 
 <!-- whats-new

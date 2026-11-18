@@ -300,10 +300,12 @@ export function Chip(p: { label: string; art?: string; look: "on" | "off" | "add
  * doing (14 小时前在线 / Online 14 hours ago), or a state word in its color with its dot; 有更新 a
  * fact of its own beside it (D291: never "iPhone · 14 小时前"). Each line ellipsizes on its own.
  */
-export function ListRow(p: { art: string; name: string; word: string; tone?: string; update?: string; onClick: () => void; children?: ComponentChildren }) {
+export function ListRow(p: { art: string; name: string; word: string; tone?: string; update?: string; plus?: boolean; onClick: () => void; children?: ComponentChildren }) {
   return (
-    <button class="li-row" aria-label={spoken(A.L, p.name, p.word, p.update)} onClick={p.onClick}>
+    <button class={p.plus ? "li-row add" : "li-row"} aria-label={spoken(A.L, p.name, p.word, p.update)} onClick={p.onClick}>
       <img src={p.art} alt="" />
+      {/* D358: 加一台设备's row: a plus drawn on the empty slot (never a typed glyph). */}
+      {p.plus && <i class="li-plus" aria-hidden="true" />}
       <span class="t">
         <b>{p.name}</b>
         {(p.word || p.update) && (

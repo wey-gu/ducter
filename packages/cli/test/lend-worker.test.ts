@@ -97,11 +97,11 @@ test("a revoked join takes the new code; an expired code says so and installs no
   expect(existsSync(join(fresh, "worker.json"))).toBe(false);
 });
 
-test("the lend line with a code already used: back to Lend a computer for a new one, never `ducter pair`", async () => {
+test("the lend line with a code already used: back to Add a computer for tasks for a new one, never `ducter pair`", async () => {
   fakeHome();
   const x = await run(tmp(), ["worker", "https://hel.example.com", "--code", "USED-CODE", "--service"], async () => 0);
   expect(x.code).toBe(1);
-  expect(x.out).toContain("In Lend a computer, choose New code");
+  expect(x.out).toContain("In Add a computer for tasks, choose New code");
   expect(x.out).not.toContain("ducter pair");
   // The terminal's own `ducter worker` (no --service) still says the terminal way.
   fakeHome();

@@ -15,10 +15,14 @@ Deferred work, grouped by area, each with its trigger where it has one.
 - **A `fresh` chip on the picker** (a small 新 / New mark) for a model newer than the registry.
   Needs a glossary word first. *Trigger:* the same as above.
 
-## Lend a computer (D347, `where.md` §17)
+## Add a computer for tasks (D347, D358, `where.md` §17)
+
+- **The device words with people (D358).** research/128 used LLM raters only: show three people
+  (one of each kind) the devices page with 在这台上运行 / 帮 {name} 做事 and ask what turning each off
+  does. Trigger: the next real user session.
 
 - **Live check: a LAN Linux box joins hel.** On a Linux machine on the author's home network (no
-  public address, no Tailscale), paste the line from Lend a computer on hel's own address: the
+  public address, no Tailscale), paste the line from Add a computer for tasks on hel's own address: the
   reach check, install, join, the user service (and a root run: the system service), the app's
   waiting → joined → here with its agents, a second paste keeps it. Then one failure each: an
   expired code, a blocked network (the check line), no curl. Done on two VMs against a scratch

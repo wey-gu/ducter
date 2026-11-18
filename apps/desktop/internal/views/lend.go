@@ -9,9 +9,10 @@ import (
 
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 	"github.com/wey-gu/ducter/apps/desktop/internal/store"
+	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
 )
 
-// D347: 借一台电脑来干活 / Lend a computer. One sheet over the window, opened
+// D347: 加一台做事的电脑 / Add a computer for tasks. One sheet over the window, opened
 // from Your devices, Settings › Where it runs, or the partner's card: which
 // kind of computer, then the one line to paste there (it installs Ducter,
 // joins with a fresh code and keeps the worker running), a calm wait until
@@ -30,6 +31,12 @@ type lendState struct {
 	helpOpen  bool
 	copiedKey string
 	copiedAt  time.Time
+	// D358: add: the sheet is at 加一台设备's first step (what it is for);
+	// fromAdd: it came from there, so back goes there.
+	add, fromAdd bool
+	// seen is the phase last drawn and when it began, for the clay's arrival.
+	seen   string
+	seenAt time.Time
 	// errsAt: how many error frames had come when the code was asked for, so
 	// only a later "lend_code: …" one counts as the answer.
 	errsAt int
@@ -112,26 +119,37 @@ func (a *App) lendHomeName() string {
 	return a.personaName()
 }
 
-// lendEntry is the way in on Your devices: a clay button next to Connect a
-// phone or computer, and (why) the one line that says what it is for.
-func (a *App) lendEntry(c *ui.Context, why bool) {
+// addDeviceRow is the one way to add a device on Your devices (D358): a row
+// in the list's own shape, an empty clay slot where a device's clay would
+// stand, the words, and what can come. It opens the sheet at its first
+// step: what the device is for.
+func (a *App) addDeviceRow(c *ui.Context, width float32) {
 	t := a.T
-	ui.Column(c.Key("lend-entry")).Gap(t.S1).Children(func() {
-		if a.buttonFor(c, "+ "+a.L.T("lend.entry"), a.L.T("lend.entry"), btnSecondary, t.ControlMD, t.Bg) {
-			a.openLend()
-		}
-		if why {
-			ui.Text(c, a.L.T("lend.entry.why")).FontSize(t.XS).LineHeight(1.45).TextColor(t.InkMuted).Margin(0, t.S1, 0, t.S1)
-		}
-	})
+	if a.listRow(c, "add-device", a.L.T("add.row"), a.L.T("add.row.sub"), t.InkMuted, false, false, width, func() {
+		bmp := theme.Clay("slot_empty")
+		ui.Box(c.Key("add-slot")).Size(36, 32).Shrink(0).AccessHidden(true).Draw(func(p *ui.Painter, r ui.Rect) {
+			if bmp != nil {
+				p.Image(bmp, fitIn(bmp, r), ui.Contain)
+			}
+			// The plus on the slot, drawn (never a typed glyph).
+			// On the cream clay: a dark ink in both themes.
+			ink := t.InkSoft
+			if t.Dark {
+				ink = t.Bg
+			}
+			cx, cy := r.X+r.W/2, r.Y+r.H*0.46
+			p.Line(cx-5, cy, cx+5, cy, 2.2, ink)
+			p.Line(cx, cy-5, cx, cy+5, 2.2, ink)
+		})
+	}) {
+		a.openAdd()
+	}
 }
 
-// lendEmpty is the devices list's line while the home is the only computer.
-func (a *App) lendEmpty(c *ui.Context) {
-	if a.onlyHome() {
-		t := a.T
-		ui.Text(c.Key("lend-empty"), a.L.T("lend.empty")).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft).Margin(t.S1, t.S2, 0, t.S2)
-	}
+// openAdd opens the sheet at 加一台设备 / Add a device.
+func (a *App) openAdd() {
+	a.lend = lendState{open: true, add: true}
+	a.S.Lend = nil
 }
 
 // onlyHome: no other computer and no phone or window is connected yet.
@@ -144,7 +162,7 @@ func (a *App) onlyHome() bool {
 	return a.S.Reach == nil || len(a.S.Reach.Clients) == 0
 }
 
-// lendCard is the partner's 借一台电脑来干活 card (a rich lend block).
+// lendCard is the partner's 加一台做事的电脑 card (a rich lend block).
 func (a *App) lendCard(c *ui.Context, at richAt) {
 	t := a.T
 	a.richCard(c, at.key, a.L.T("lend.card")).Children(func() {
@@ -219,7 +237,8 @@ func (a *App) lendDots(c *ui.Context) {
 	}
 }
 
-// lendSheet draws the sheet while it is open.
+// lendSheet draws the sheet while it is open: a back arrow when there is a
+// step to go back to, the title, Close, then the step.
 func (a *App) lendSheet(c *ui.Context) {
 	if !a.lend.open {
 		return
@@ -230,19 +249,32 @@ func (a *App) lendSheet(c *ui.Context) {
 		w, h = 1040, 760
 	}
 	open := true
+	title := a.L.T("lend.title")
+	if a.lend.add {
+		title = a.L.T("add.title")
+	}
 	ui.DialogBase(c, &open, func(back, panel ui.Element) {
 		back.Background(t.Scrim)
-		panel.Width(min(w-2*t.S6, 560)).MaxHeight(h-2*t.S6).Radius(t.RadiusXL).
-			Background(t.Surface).Shadow(0, t.Floating.Y, t.Floating.Blur, 0, t.Floating.Color).Label(a.L.T("lend.title"))
+		panel.Width(min(w-2*t.S6, 600)).MaxHeight(h-2*t.S6).Radius(t.RadiusXL).
+			Background(t.Surface).Shadow(0, t.Floating.Y, t.Floating.Blur, 0, t.Floating.Color).Label(title)
 		a.enter(c, panel)
 		ui.Scroll(c.Key("lend-scroll")).Grow(1).MinHeight(0).Children(func() {
-			ui.Column(c).Padding(t.S5, t.S6, t.S5, t.S6).Gap(t.S3).Children(func() {
+			ui.Column(c).Padding(t.S5, t.S6, t.S6, t.S6).Gap(t.S3).Children(func() {
 				ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
-					a.heading(c, a.L.T("lend.title"), t.XL).Grow(1).MinWidth(0)
+					if back := a.lendBack(); back != "" {
+						if a.iconButton(c, back, t.ControlMD, btnText, drawBack) {
+							a.lendGoBack()
+						}
+					}
+					a.heading(c, title, t.XL).Grow(1).MinWidth(0)
 					if a.button(c, a.L.T("lend.close"), btnText, t.ControlMD, t.Surface) {
 						a.lend.open = false
 					}
 				})
+				if a.lend.add {
+					a.addBody(c)
+					return
+				}
 				a.lendBody(c)
 			})
 		})
@@ -252,19 +284,177 @@ func (a *App) lendSheet(c *ui.Context) {
 	}
 }
 
+// lendBack is the back arrow's name, or "" when the sheet is at its start.
+func (a *App) lendBack() string {
+	switch {
+	case a.lend.add:
+		return ""
+	case a.lend.kind != "" && lendPhase(a.S.Lend, a.Now()) != "joined" && lendPhase(a.S.Lend, a.Now()) != "here":
+		return a.L.T("lend.kind.other")
+	case a.lend.kind == "" && a.lend.fromAdd:
+		return a.L.T("add.back")
+	}
+	return ""
+}
+
+func (a *App) lendGoBack() {
+	if a.lend.kind != "" {
+		a.lend.kind, a.lend.agentOpen, a.lend.helpOpen = "", false, false
+		return
+	}
+	a.lend.add = true
+}
+
+// addBody is 加一台设备's first step (D358): what the device is for, as two
+// clay cards. To talk: a phone, a tablet or another computer, by the code
+// on the sign in the scene (D81). To do tasks: a Mac or a server, by the
+// one line (D347).
+func (a *App) addBody(c *ui.Context) {
+	t := a.T
+	name := a.personaName()
+	ui.Text(c, a.L.T("add.question")).FontSize(t.MD).FontWeight(700).TextColor(t.InkSoft)
+	ui.Row(c.Key("add-cards")).Gap(t.S3).AlignItems(ui.Stretch).Children(func() {
+		if a.clayCard(c, "talk", []string{"tablet", "phone"}, a.L.T("add.talk", name), a.L.T("add.talk.sub")) {
+			a.lend.open = false
+			a.devState().account = ""
+			a.openPair()
+		}
+		if a.clayCard(c, "work", []string{"laptop_awake", "server_awake"}, a.L.T("add.work", name), a.L.T("add.work.sub")) {
+			a.lend.add, a.lend.fromAdd = false, true
+		}
+	})
+}
+
+// clayCard is a big choice: the clay standing on its own light, the words
+// under it. A card on Raised that lifts under the pointer (never a ledge).
+func (a *App) clayCard(c *ui.Context, key string, arts []string, title, sub string) bool {
+	t := a.T
+	card := ui.Column(c.Key("claycard:"+key)).Grow(1).Basis(0).MinWidth(0).Gap(t.S2).Padding(t.S4, t.S4, t.S5, t.S4).
+		Radius(t.RadiusLG).Background(t.Bg).Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(title).Focusable()
+	a.selectable(c, card, false)
+	card.Children(func() {
+		a.clayStage(c, "claycard:"+key, arts, 120, idleFloat, 1, false)
+		ui.Text(c, title).FontSize(t.MD).FontWeight(800).TextColor(t.Ink).LineHeight(1.35)
+		if sub != "" {
+			ui.Text(c, sub).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft)
+		}
+	})
+	return card.Clicked()
+}
+
+// clayStage draws one or two pieces of clay side by side on a soft ground
+// shadow, moving by kind; pop (1 → more) swells it for an arrival; ring
+// draws the calm ripple of a wait under it.
+func (a *App) clayStage(c *ui.Context, key string, arts []string, height float32, kind idleKind, pop float32, ring bool) {
+	t := a.T
+	var bmps []*ui.Bitmap
+	for _, n := range arts {
+		if b := theme.Clay(n); b != nil {
+			bmps = append(bmps, b)
+		}
+	}
+	still := c.Preferences().ReduceMotion
+	ui.Box(c.Key("stage:" + key)).Height(height).AccessHidden(true).Draw(func(p *ui.Painter, r ui.Rect) {
+		gw := min(r.W*0.55, height*1.2)
+		ground := ui.Rect{X: r.X + (r.W-gw)/2, Y: r.Y + r.H - 14, W: gw, H: 10}
+		if ring && !still {
+			// The wait: a ring that widens from under the clay and fades, again and again.
+			k := float32(cycle(p.Now(), 2400*time.Millisecond, 0))
+			rw := gw * (0.7 + 0.5*k)
+			rr := ui.Rect{X: r.X + (r.W-rw)/2, Y: ground.Y + 6 - rw*0.09, W: rw, H: rw * 0.18}
+			p.Stroke(rr, t.Working.Ink.Alpha(0.45*(1-k)), rr.H/2, 2)
+		}
+		p.Fill(ground, t.Ink.Alpha(0.06), 5)
+		n := len(bmps)
+		if n == 0 {
+			return
+		}
+		cell := min(r.W/float32(n), height*1.25)
+		x0 := r.X + (r.W-cell*float32(n))/2
+		for i, b := range bmps {
+			box := ui.Rect{X: x0 + float32(i)*cell, Y: r.Y + 4, W: cell, H: r.H - 14}
+			if n > 1 {
+				// Two pieces lean in: the first a little smaller and behind.
+				s := float32(0.82)
+				if i == n-1 {
+					s = 1
+				}
+				box = ui.Rect{X: box.X + box.W*(1-s)/2 + float32(1-2*i)*cell*0.08, Y: box.Y + box.H*(1-s), W: box.W * s, H: box.H * s}
+			}
+			at := fitIn(b, box)
+			draw := func() { clayArt(p, at, b, kind, phaseOf(key)+float64(i)*0.37, nil) }
+			if pop != 1 {
+				p.Transform(ui.Scaling(pop, pop), at.X+at.W/2, at.Y+at.H, draw)
+			} else {
+				draw()
+			}
+		}
+		if ring && !still {
+			p.After(50 * time.Millisecond)
+		}
+	})
+}
+
+// lendHero is the computer being lent, in clay, telling the wait without
+// words: asleep under its blanket while nobody has run the line, a ripple
+// under it while it is waited for, awake and swelling once as it joins,
+// floating once it is here; greyed when the code ran out.
+func (a *App) lendHero(c *ui.Context, phase string) {
+	kind := "server"
+	if a.lend.kind == "mac" {
+		kind = "laptop"
+	}
+	if a.lend.seen != phase {
+		a.lend.seen, a.lend.seenAt = phase, a.Now()
+	}
+	art, idle, ring, pop := kind+"_asleep", idleBlanket, false, float32(1)
+	switch phase {
+	case "waiting":
+		ring = true
+	case "joined", "here":
+		art, idle = kind+"_awake", idleFloat
+		if kind == "server" {
+			idle = idleDrift
+		}
+		// One swell as it arrives: up and settle, 700 ms.
+		if since := a.Now().Sub(a.lend.seenAt); phase == "joined" && since < 700*time.Millisecond && !c.Preferences().ReduceMotion {
+			f := float64(since) / float64(700*time.Millisecond)
+			pop = 1 + float32(0.14*math.Sin(math.Pi*f)*(1-f*0.4))
+			c.After(16 * time.Millisecond)
+		}
+	case "expired", "noaddress":
+		idle = idleStill
+	}
+	box := ui.Column(c.Key("lend-hero")).Padding(0, 0, 0, 0)
+	if phase == "expired" || phase == "noaddress" {
+		box.Grayscale().Opacity(0.7)
+	}
+	box.Children(func() { a.clayStage(c, "lend-hero:"+kind, []string{art}, 132, idle, pop, ring) })
+}
+
+// lendCaption is the one line under the clay: the state, its live dots.
+func (a *App) lendCaption(c *ui.Context, key, text string, dots bool, ink ui.Color) {
+	t := a.T
+	ui.Row(c.Key("lend-cap:" + key)).Gap(t.S3).Justify(ui.Center).AlignItems(ui.Center).MinHeight(t.ControlSM).Role(ui.RoleStatus).Label(text).Children(func() {
+		if dots {
+			a.lendDots(c)
+		}
+		ui.Text(c, text).FontSize(t.MD).FontWeight(800).TextColor(ink).AccessHidden(true)
+	})
+}
+
 func (a *App) lendBody(c *ui.Context) {
 	t := a.T
 	if a.lend.kind == "" {
-		ui.Text(c, a.L.T("lend.question")).FontSize(t.MD).FontWeight(700).TextColor(t.Ink)
-		for _, k := range []string{"linux", "mac"} {
-			k := k
-			ui.Column(c.Key("lend-kind:" + k)).Children(func() {
-				if a.button(c, a.L.T("lend.kind."+k), btnSecondary, t.ControlLG, t.Surface) {
-					a.lend.kind = k
+		ui.Text(c, a.L.T("lend.question")).FontSize(t.MD).FontWeight(700).TextColor(t.InkSoft)
+		ui.Row(c.Key("lend-kinds")).Gap(t.S3).AlignItems(ui.Stretch).Children(func() {
+			for _, k := range []struct{ id, art string }{{"linux", "server_awake"}, {"mac", "laptop_awake"}} {
+				if a.clayCard(c, "kind:"+k.id, []string{k.art}, a.L.T("lend.kind."+k.id), a.L.T("lend.kind."+k.id+".sub")) {
+					a.lend.kind = k.id
 					a.askLend()
 				}
-			})
-		}
+			}
+		})
 		return
 	}
 	l := a.S.Lend
@@ -275,26 +465,33 @@ func (a *App) lendBody(c *ui.Context) {
 		phase = "loading"
 	}
 	home := a.lendHomeName()
+	if phase != "here" {
+		a.lendHero(c, phase)
+	}
 	switch phase {
 	case "loading":
 		if why := a.lendFailed(a.Now()); why != "" {
-			a.reasonLine(c, a.L.T("lend.fail."+why, home))
-			ui.Row(c).Children(func() {
+			// D353's words, said under the clay as one sentence and one way on.
+			ui.Text(c.Key("lend-failed"), a.L.T("lend.fail."+why, home)).FontSize(t.MD).FontWeight(700).LineHeight(1.5).TextColor(t.Ink).Role(ui.RoleAlert)
+			ui.Row(c).Justify(ui.Center).Children(func() {
 				if a.button(c, a.L.T("lend.retry"), btnPrimary, t.ControlMD, t.Surface) {
 					a.askLend()
 				}
 			})
 			break
 		}
-		ui.Text(c, a.L.T("lend.loading")).FontSize(t.SM).TextColor(t.InkMuted)
+		a.lendCaption(c, "loading", a.L.T("lend.loading"), true, t.InkSoft)
+		a.lendSteps(c)
+		// The line's place, kept while it is made, so nothing jumps when it comes.
+		ui.Box(c.Key("lend-line-wait")).Height(64).Radius(t.RadiusSM).Background(t.Sunken)
 		// Drawn again when the wait is over, to say so.
 		if left := lendWait - a.Now().Sub(a.lend.asked); left > 0 {
 			c.After(left + 50*time.Millisecond)
 		}
 	case "noaddress":
-		a.infoText(c, a.L.T("lend.noaddress", home))
+		ui.Text(c.Key("lend-noaddress"), a.L.T("lend.noaddress", home)).FontSize(t.MD).FontWeight(700).LineHeight(1.5).TextColor(t.Ink)
 		if hd := a.homeDevice(); hd != nil && hd.State == protocol.DeviceAwake {
-			ui.Row(c).Children(func() {
+			ui.Row(c).Justify(ui.Center).Children(func() {
 				if any := a.anywhere(); any != nil && any.State == "off" {
 					if a.button(c, a.L.T("anywhere.turnOnLong"), btnPrimary, t.ControlMD, t.Surface) {
 						a.send(protocol.AbilityReq{T: "ability", Device: hd.ID, Ability: protocol.AbilityRemote, On: true})
@@ -306,8 +503,8 @@ func (a *App) lendBody(c *ui.Context) {
 			})
 		}
 	case "expired":
-		a.reasonLine(c, a.L.T("lend.expired"))
-		ui.Row(c).Children(func() {
+		a.lendCaption(c, "expired", a.L.T("lend.expired"), false, t.Ink)
+		ui.Row(c).Justify(ui.Center).Children(func() {
 			if a.button(c, a.L.T("lend.newcode"), btnPrimary, t.ControlMD, t.Surface) {
 				a.askLend()
 			}
@@ -315,49 +512,53 @@ func (a *App) lendBody(c *ui.Context) {
 	case "waiting":
 		a.lendWaiting(c, l, home)
 	case "joined":
-		ui.Row(c.Key("lend-joined")).Gap(t.S3).AlignItems(ui.Center).MinHeight(t.ControlMD).Children(func() {
-			a.lendDots(c)
-			ui.Text(c, a.L.T("lend.joined")).FontSize(t.MD).FontWeight(700).TextColor(t.Ink)
-		})
+		a.lendCaption(c, "joined", a.L.T("lend.joined"), true, t.Working.Ink)
 	case "here":
 		a.lendHere(c, l)
-		return
 	}
-	if phase != "joined" {
-		ui.Row(c).Children(func() {
-			if a.button(c, a.L.T("lend.kind.other"), btnText, t.ControlMD, t.Surface) {
-				a.lend.kind = ""
-			}
-		})
-	}
+}
+
+// lendSteps is the short sequence: copy, paste there, it joins by itself.
+func (a *App) lendSteps(c *ui.Context) {
+	t := a.T
+	where := "lend.step.paste." + a.lend.kind
+	ui.Row(c.Key("lend-steps")).Gap(t.S2).AlignItems(ui.Start).Children(func() {
+		for i, k := range []string{"lend.step.copy", where, "lend.step.joins"} {
+			ui.Row(c.Key("lend-step:" + k)).Gap(t.S2).Grow(1).Basis(0).MinWidth(0).AlignItems(ui.Center).Children(func() {
+				n := string(rune('1' + i))
+				ui.Row(c).Size(26, 26).Shrink(0).Radius(13).Background(t.Sunken).Justify(ui.Center).AlignItems(ui.Center).AccessHidden(true).Children(func() {
+					ui.Text(c, n).FontSize(t.SM).FontWeight(800).TextColor(t.InkSoft)
+				})
+				ui.Text(c, a.L.T(k)).FontSize(t.SM).FontWeight(700).LineHeight(1.35).TextColor(t.Ink).Grow(1).MinWidth(0)
+			})
+		}
+	})
 }
 
 func (a *App) lendWaiting(c *ui.Context, l *protocol.ServerFrame, home string) {
 	t := a.T
+	a.lendCaption(c, "waiting", a.L.T("lend.waiting"), true, t.Working.Ink)
 	if a.lend.kind == "mac" {
 		ui.Text(c, a.L.T("lend.mac.app", home, a.L.T("work.mac.title", a.personaName()))).FontSize(t.SM).LineHeight(1.55).TextColor(t.InkSoft)
-		ui.Text(c, a.L.T("lend.mac.paste")).FontSize(t.SM).FontWeight(700).LineHeight(1.5).TextColor(t.Ink)
-	} else {
-		ui.Text(c, a.L.T("lend.linux.paste")).FontSize(t.SM).FontWeight(700).LineHeight(1.5).TextColor(t.Ink)
 	}
-	a.lendCopy(c, "line", l.LendLine, true)
-	ui.Text(c, a.L.T("lend.does")).FontSize(t.XS).LineHeight(1.5).TextColor(t.InkMuted)
-	if left := store.ParseTime(l.ExpiresAt).Sub(a.Now()); left > 0 {
-		ui.Text(c.Key("lend-left"), a.L.T("lend.left", int(math.Ceil(left.Minutes())))).FontSize(t.XS).LineHeight(1.5).TextColor(t.InkMuted)
-		c.After(min(left, time.Minute))
-	}
-	if l.SameNetwork {
-		ui.Text(c.Key("lend-samenet"), a.L.T("lend.samenet", home)).FontSize(t.SM).LineHeight(1.5).TextColor(t.Ink)
-	}
+	a.lendSteps(c)
+	a.commandBoxSized(c, l.LendLine, t.SM)
+	facts := ui.Column(c.Key("lend-facts")).Gap(t.S1)
+	facts.Children(func() {
+		if left := store.ParseTime(l.ExpiresAt).Sub(a.Now()); left > 0 {
+			ui.Text(c.Key("lend-left"), a.L.T("lend.left", int(math.Ceil(left.Minutes())))).FontSize(t.XS).LineHeight(1.5).TextColor(t.InkMuted)
+			c.After(min(left, time.Minute))
+		}
+		ui.Text(c, a.L.T("lend.does")).FontSize(t.XS).LineHeight(1.5).TextColor(t.InkMuted)
+		if l.SameNetwork {
+			ui.Text(c.Key("lend-samenet"), a.L.T("lend.samenet", home)).FontSize(t.SM).LineHeight(1.5).TextColor(t.Ink)
+		}
+	})
 	a.lendFold(c, "agent", a.L.T("lend.agent"), &a.lend.agentOpen)
 	if a.lend.agentOpen {
 		ui.Text(c, a.L.T("lend.agent.how")).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft)
 		a.lendCopy(c, "agent", a.L.T("lend.agent.ask", l.LendLine), false)
 	}
-	ui.Row(c.Key("lend-wait")).Gap(t.S3).AlignItems(ui.Center).MinHeight(t.ControlMD).Children(func() {
-		a.lendDots(c)
-		ui.Text(c, a.L.T("lend.waiting")).FontSize(t.MD).FontWeight(700).TextColor(t.Ink)
-	})
 	a.lendFold(c, "help", a.L.T("lend.help"), &a.lend.helpOpen)
 	if a.lend.helpOpen {
 		item := func(key, what, do string, more func()) {

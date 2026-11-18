@@ -16,9 +16,9 @@ var zhSettings = Table{
 	"settings.lede.notify":   "有事要你定的时候它怎么找你，什么时候别打扰你。",
 	"settings.lede.accounts": "%s 能看的邮件、日程和消息，还有替你打的电话。",
 	"settings.lede.look":     "这个窗口的外观、语言和声音。只影响这台 Mac。",
-	"settings.lede.run":      "Ducter 住在哪台电脑上，关掉窗口以后它怎样。",
+	"settings.lede.run":      "Ducter 在哪台电脑上运行，关掉窗口以后它怎样。",
 
-	"partner.header":           "住在 %s 上，用 %s 想事情",
+	"partner.header":           "在 %s 上运行，用 %s 想事情",
 	"loadout.brain.auto":       "自动选的：只有 %s 登录了",
 	"loadout.brain.auto_other": "自动选的：Claude Code 没登录",
 	"settings.talk.row":        "回你用的语言",
@@ -45,7 +45,7 @@ var zhSettings = Table{
 	"settings.preview.reply": "好，明天 9:00 叫你。",
 	"settings.preview.noted": "记下了：明天 9:00 提醒看 PR",
 
-	"settings.where.group":          "住在哪儿",
+	"settings.where.group":          "在哪儿运行",
 	"settings.where.here":           "这台 Mac",
 	"settings.where.elsewhere.help": "比如装在服务器上的 Ducter，用一次性的连接码连上。",
 	"settings.where.useHere.help":   "忘掉这个连接，回到这台 Mac 上自己的 Ducter。",
@@ -78,9 +78,9 @@ var enSettings = Table{
 	"settings.lede.notify":   "How it reaches you when something needs you, and when to leave you alone.",
 	"settings.lede.accounts": "The mail, calendars and messages %s can read, and the calls it makes for you.",
 	"settings.lede.look":     "How this window looks, which language it speaks, and whether it makes a sound. This Mac only.",
-	"settings.lede.run":      "Which computer Ducter lives on, and what happens when you close the window.",
+	"settings.lede.run":      "Which computer Ducter runs on, and what happens when you close the window.",
 
-	"partner.header":           "Lives on %s and thinks with %s",
+	"partner.header":           "Runs on %s and thinks with %s",
 	"loadout.brain.auto":       "Picked for you: only %s is signed in",
 	"loadout.brain.auto_other": "Picked for you: Claude Code isn't signed in",
 	"settings.talk.row":        "Replies in",
@@ -106,7 +106,7 @@ var enSettings = Table{
 	"settings.preview.reply": "Sure, I'll ping you at 9:00 tomorrow.",
 	"settings.preview.noted": "Noted: PR reminder, tomorrow 9:00",
 
-	"settings.where.group":          "Where it lives",
+	"settings.where.group":          "Where it runs",
 	"settings.where.here":           "This Mac",
 	"settings.where.elsewhere.help": "Like a Ducter on a server; you connect with a one-time pairing code.",
 	"settings.where.useHere.help":   "Forget this connection and go back to this Mac's own Ducter.",

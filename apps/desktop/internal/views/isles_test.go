@@ -111,7 +111,10 @@ func TestIslesPairingInScene(t *testing.T) {
 			h.hub.Scene("phone")
 			h.until("phone", func() bool { return h.app.S.Reach != nil && len(h.app.S.Reach.Clients) == 1 })
 			h.settle(300 * time.Millisecond)
-			h.click(L.T("devices.connect"))
+			// D358: 加一台设备 › 用它和 {name} 说话 puts the code's sign in the scene.
+			h.click(L.T("add.row"))
+			h.settle(300 * time.Millisecond)
+			h.click(L.T("add.talk", h.app.S.PersonaName))
 			h.until("code", func() bool { return h.app.S.PairCode != nil })
 			h.settle(700 * time.Millisecond)
 			if !h.tt.HasText("K7QM-4XPA") || !h.tt.HasText(L.T("pair.waiting")) {

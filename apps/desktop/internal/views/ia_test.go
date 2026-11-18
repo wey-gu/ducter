@@ -88,7 +88,7 @@ func TestPartnerTabShowsTheBrainInUse(t *testing.T) {
 	tt := ui.NewTesterWith(app.View, 1280, 1400, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
 	tt.Frame()
-	for _, want := range []string{"住在 hel 上，用 Codex 想事情", "现在每件事都由 Codex 来做。"} {
+	for _, want := range []string{"在 hel 上运行，用 Codex 想事情", "现在每件事都由 Codex 来做。"} {
 		if !tt.HasText(want) {
 			t.Errorf("no %q in %q", want, tt.Texts())
 		}
@@ -131,7 +131,7 @@ func TestPartnerTabDeepSeekFallback(t *testing.T) {
 	tt.Frame()
 	tt.Frame()
 	// D322: with pi signed in too, the switch is there; the 自动选的 lines are retired.
-	for _, want := range []string{"住在 hel 上，用 DeepSeek Harness 想事情", "换一个"} {
+	for _, want := range []string{"在 hel 上运行，用 DeepSeek Harness 想事情", "换一个"} {
 		if !tt.HasText(want) {
 			t.Errorf("no %q in %q", want, tt.Texts())
 		}
@@ -205,7 +205,7 @@ func TestSettingsPage(t *testing.T) {
 	tt.Frame()
 	for tab, wants := range map[string][]string{
 		"Look and sound": {"Look", "Pebble", "Language", "Follow the system", "Sound"},
-		"Where it runs":  {"Where it lives", "Your devices and AI accounts"},
+		"Where it runs":  {"Where it runs", "Your devices and AI accounts"},
 		"About":          {"Version 0.3.0 (abc1234)", "Credits", "Docs"},
 	} {
 		tt.Click(tab)

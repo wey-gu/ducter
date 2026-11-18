@@ -842,7 +842,7 @@ func (a *App) placePill(c *ui.Context, places []protocol.PlaceChoice, chosen pro
 		case "off":
 			// D197: the home is elsewhere and this Mac doesn't do tasks for it, so the
 			// folders here aren't reachable from it yet. Greyed, with the one step.
-			why := a.L.T("newtask.addfolder.off", a.workHome())
+			why := a.L.T("newtask.addfolder.off", a.personaName())
 			ui.Box(c.Key("nt-off-rule")).Height(1).Background(t.LineSoft).Margin(t.S1, t.S2)
 			a.menuRow(c, "nt-add-folder", spoken(a.L, a.L.T("newtask.addfolder"), why), false, true, func() {
 				a.glyph(c, 16, drawPlus(t.InkSoft))

@@ -1,4 +1,4 @@
-// D347: 借一台电脑来干活 / Lend a computer: the code and the one line, then the home says when the
+// D347: 加一台做事的电脑 / Add a computer for tasks: the code and the one line, then the home says when the
 // computer joined and when it is here, so the clients wait for it in place.
 import { afterEach, expect, test } from "bun:test";
 import type { LendFrame, ServerFrame } from "@ducter/protocol";

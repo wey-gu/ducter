@@ -1,4 +1,4 @@
-// Running one check (D112), on the device Ducter lives on or on a worker (worker-host "check").
+// Running one check (D112), on the device Ducter runs on or on a worker (worker-host "check").
 // The child gets a small allowlisted environment (D102: no key enters it wholesale): the basics,
 // proxies and CA bundles, and nothing secret-shaped. gh and git read their own config files.
 import { homedir } from "node:os";

@@ -19,21 +19,21 @@ export function statusLine(L: Words, dv: DeviceView, o: { persona: string; home:
   const n = o.running;
   if (dv.home) return { text: n === 1 ? L.t("card.status.home.working.one", o.persona) : n > 1 ? L.t("card.status.home.working", o.persona, n) : L.t("card.status.home", o.persona), tone: "" };
   if (dv.kind === "phone") return { text: L.t("device.client.now"), tone: "" };
-  if (n === 1) return { text: L.t("card.status.working.one", o.home), tone: "working" };
-  if (n > 1) return { text: L.t("card.status.working", o.home, n), tone: "working" };
-  return { text: L.t("card.status.does", o.home), tone: "" };
+  if (n === 1) return { text: L.t("card.status.working.one", o.persona), tone: "working" };
+  if (n > 1) return { text: L.t("card.status.working", o.persona, n), tone: "working" };
+  return { text: L.t("card.status.does", o.persona), tone: "" };
 }
 
 /** The list's one word of state: the status line shortened to its first idea. */
-export function listWord(L: Words, dv: DeviceView, o: { home: string; running: number }): { text: string; tone: Tone } {
+export function listWord(L: Words, dv: DeviceView, o: { persona: string; running: number }): { text: string; tone: Tone } {
   const ph = dv.update?.phase;
   if (ph === "downloading" || ph === "verifying" || ph === "waiting" || ph === "restarting") return { text: L.t("list.state.updating"), tone: "" };
   if (dv.state === "asleep") return { text: L.t("list.state.asleep"), tone: "asleep" };
   if (dv.state === "unreachable") return { text: L.t("list.state.away"), tone: "away" };
-  if (dv.home) return { text: L.t("list.state.home"), tone: "" };
+  if (dv.home) return { text: L.t("list.state.home", o.persona), tone: "" };
   if (dv.kind === "phone") return { text: L.t("list.state.now"), tone: "" };
   if (o.running > 0) return { text: o.running === 1 ? L.t("list.state.tasks.one") : L.t("list.state.tasks", o.running), tone: "working" };
-  return { text: L.t("list.state.does", o.home), tone: "" };
+  return { text: L.t("list.state.does", o.persona), tone: "" };
 }
 
 /** The Android app (D178): its platform says "android-app"; one paired before D291 still carries the app's old name suffix. */

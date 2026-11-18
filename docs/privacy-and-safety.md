@@ -61,7 +61,7 @@ exactly what it will and won't do. This page lists it.
 - **It never shows a key.** If a key, token or password turns up in what you asked a task or in
   what it ran or printed, every screen shows only its first few letters, then dots, with **A key
   is hidden** beside it. The task itself still gets the key, so it can do the work; the key stays
-  on the computer Ducter lives on.
+  on the computer Ducter runs on.
 - **It never decides silently for you.** When something is your call, it asks, with a
   suggested default you can take, hold, or change. If it goes with the default, it says so:
   **No answer, so I went ahead**. Anything that can't be undone waits: **I'll do it once you
@@ -78,7 +78,7 @@ exactly what it will and won't do. This page lists it.
   the relay and Apple only see **Ducter needs you**, when it was sent and roughly how big it was.
   The relay keeps no list of phones and stores nothing about what it passes on. Ducter in a
   browser, and its web notifications, never use it. More in [Your phone](phone.md#in-the-iphone-app).
-- **Your conversation, tasks and settings** stay in `~/.ducter` on the computer Ducter lives on.
+- **Your conversation, tasks and settings** stay in `~/.ducter` on the computer Ducter runs on.
   The folder and its files can only be read by your own user account.
 - **What does leave your computer** is what any AI agent sends: your messages and the work
   in a task go to the company behind your agent (Anthropic for Claude Code, OpenAI for Codex),
@@ -142,7 +142,7 @@ Sandboxed places that can't touch your files at all are coming later.
 - **A server is closed by default.** Ducter on a server only listens on the server itself. It
   becomes reachable only when you set up your own domain (with HTTPS) or an SSH tunnel.
 - **Programs on the same computer are trusted.** Anything running under any account on the
-  computer Ducter lives on can talk to it without a code, the same way the app and the
+  computer Ducter runs on can talk to it without a code, the same way the app and the
   `ducter` command do. On your own Mac that adds nothing: your tasks already run as you.
   **On a server shared with other people, don't run Ducter yet**: they could reach it too. A fix
   that makes every program show a key is planned.

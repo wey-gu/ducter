@@ -422,7 +422,7 @@ Shots: `.shots/where-built/` (Mac `mac-*-{zh,en}.png` from `TestWhereShots`; pho
 
 Copy as built: `apps/desktop/internal/i18n/where.go` (the web client's table is generated from it),
 with §8's keys and these added in the build: `where.reason.no_signin` (用不着你的登录，{device} 自己的
-浏览器就够了), `where.reason.home` (Ducter 就住在 {device} 上), `where.reason.you` / `.rule`,
+浏览器就够了), `where.reason.home` (Ducter 就在 {device} 上运行), `where.reason.you` / `.rule`,
 `where.ask.*` (the ask's question, Go, Hold, the default line), `where.waiting` ({device} 睡着了),
 `switch.cant.web`, `switch.waits.away`, `switch.move.plain` / `.signin`, `move.closing.*` (搬走 · 先不搬),
 `isles.tag.*` (在等 · 搬到 {device} 上了). `switch.move.explain` says "推上去" without the remote's name
@@ -433,10 +433,11 @@ computers says **换谁，也可以换一台电脑 / Someone else, or another co
 each group head is the device's mini card (its clay, name and state; asleep in dusk ink), on the
 Mac and the phone (`design/ui-devices-card.md` §6, §12).
 
-## 17. Lending a computer (D347)
+## 17. Adding a computer for tasks (D347; entry, look and name D358)
 
 Where a task can run is only as wide as the computers Ducter has. Adding one is its own moment:
-**借一台电脑来干活 / Lend a computer**.
+**加一台做事的电脑 / Add a computer for tasks** (was 借一台电脑来干活 / Lend a computer: 借 read as
+"handed over, no longer yours", research/128).
 
 **Who.** The author: the home is hel, a public server; a Linux box on the home network has no
 public address and no Tailscale. The consumer: a NAS, an old Mac. The fresh user never reads
@@ -451,7 +452,8 @@ network); else none, and the sheet asks for 从外面连 first. A Mac home liste
 default, so a Mac home without From outside has nothing to offer (todo: opening it to its network
 on demand).
 
-**The flow** (web and Mac, the same): entry → **是哪种电脑？/ What kind of computer?** (A Mac:
+**The flow** (web and Mac, the same): 你的设备 › **加一台设备 / Add a device** › **让 {name} 在上面做事 /
+For {name} to do tasks on** (D358), or Settings, or the partner's card → **是哪种电脑？/ What kind of computer?** (A Mac:
 the app's own switch on that Mac first, else the line; A Linux server: the line) → the line with
 Copy, what it does, the code's minutes left, the same-network note, **让你的 AI agent 来装 / Let
 your AI agent do it** → **在等它连上… / Waiting for it to connect…** (`lend` `waiting`) →
@@ -460,11 +462,23 @@ your AI agent do it** → **在等它连上… / Waiting for it to connect…** 
 folds the four failures. A code that lapses while waiting shows **这个码过期了。/ This code
 expired.** with **换一个新码 / New code**.
 
-**Where it starts.** 你的设备 beside 连上手机或电脑 (visible, never in a menu), Settings › 在哪儿运行,
-the devices list's empty state, and the partner's lend card (a ```ducter-ui `{"type":"lend"}`
+**Where it starts.** 你的设备's one **加一台设备** row (its sheet asks what the device is for, D358),
+Settings › 在哪儿运行, and the partner's lend card (a ```ducter-ui `{"type":"lend"}`
 block) when the person asks to add a computer. The partner says nothing as it arrives.
 
 **The line** (`apps/site/public/install.sh` `worker` mode → `ducter worker … --service`): reach
 check, install unless this version is there, join (kept if the saved one still works), the
 service (a system unit as root). Safe to paste twice.
 
+
+**The look (D358).** The sheet is clay, not a form: the kind question as two clay cards; the computer's
+own clay over every step, its pose the state (asleep under its blanket while the line is made, a ripple
+under it while it is waited for, awake with one swell as it joins, floating once here, grey when the code
+ran out or nothing outside reaches the home); the three steps **复制这一行 · 粘到它的终端里 · 它会自己连上来**
+as a numbered row; the line in the app's ink code block with Copy; the agent's way and 没连上？ as folds;
+each failure one sentence and one button under the clay (D353's 没有回应 / 没能给出一个码 with 再试一次).
+Back is an arrow, one step. Reduced motion keeps the clay still.
+
+**The words for the computers (D358, research/128).** The home: **{name} 在这台上运行 / {name} runs here**;
+a computer that does tasks: **帮 {name} 做事 / Helps {name} with tasks**, the partner's name, never a
+machine's. Where a computer is added or switched on, one line says it never sees the conversation.

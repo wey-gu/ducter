@@ -283,7 +283,7 @@ func (a *App) runPanel(c *ui.Context) {
 	a.removeEntry(c)
 }
 
-// placeRow is the computer Ducter lives on: its clay, its name, and in
+// placeRow is the computer Ducter runs on: its clay, its name, and in
 // words what happens when the window closes.
 func (a *App) placeRow(c *ui.Context, art, place, line string) {
 	// D296: the group's first row like every other one (D289): its clay

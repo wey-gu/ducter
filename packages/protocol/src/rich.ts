@@ -16,7 +16,7 @@ export type RichBlock =
   | { type: "chart"; kind: "bar" | "line"; title?: string; unit?: string; summary: string; points: { label: string; value: number }[] }
   | { type: "checklist"; title?: string; items: string[]; tell?: boolean }
   | { type: "choices"; options: string[] }
-  // D347: the 借一台电脑来干活 / Lend a computer card: one button that opens the guided sheet.
+  // D347: the 加一台做事的电脑 / Add a computer for tasks card: one button that opens the guided sheet.
   | { type: "lend" };
 
 /** A block as stored on an ai_msg: the block and the plain text that stands in for it in `text`. */
@@ -147,8 +147,8 @@ export function plainOf(b: RichBlock, lang: LangTag | undefined): string {
 
 /** D347: where the lend card's button leads, for a chat app, a push and an older client. */
 const LEND_PLAIN: { en: string } & Record<string, string> = {
-  en: "To lend a computer: Your devices › Lend a computer.",
-  zh: "借一台电脑：你的设备 › 借一台电脑来干活。",
+  en: "To add a computer for tasks: Your devices › Add a device.",
+  zh: "加一台做事的电脑：你的设备 › 加一台设备。",
 };
 
 const FENCE = /^[ \t]*```[ \t]*ducter-ui[ \t]*\r?\n([\s\S]*?)(?:\r?\n[ \t]*```[ \t]*(?=\r?\n|$)|$)/gm;
@@ -345,7 +345,7 @@ export function richModel(b: RichBlock): RichModel {
 
 /** What the partner reads of a message it sent with blocks (render.ts): which were shown. */
 export function richShownWords(ui: readonly RichUi[] | undefined, dropped?: number): string {
-  const kinds = (ui ?? []).map((b) => (b.type === "chart" ? `a ${b.kind} chart` : b.type === "choices" ? "choices the user can tap" : b.type === "lend" ? "the Lend a computer card" : `a ${b.type}`));
+  const kinds = (ui ?? []).map((b) => (b.type === "chart" ? `a ${b.kind} chart` : b.type === "choices" ? "choices the user can tap" : b.type === "lend" ? "the Add a computer for tasks card" : `a ${b.type}`));
   const shown = kinds.length ? ` [shown in the app as ${kinds.join(" and ")}, in place of its plain text above]` : "";
   const lost = dropped ? ` [${dropped === 1 ? "a ducter-ui block you wrote was" : `${dropped} ducter-ui blocks you wrote were`} not valid and not shown]` : "";
   return shown + lost;

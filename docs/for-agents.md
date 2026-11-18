@@ -47,7 +47,7 @@ Each one is also a single file your agent can read by address:
 Before it changes anything, the skill has your agent work out which of these you want, and
 asks you when it isn't clear:
 
-- **Your Ducter lives on one computer**, your Mac or a server. Your conversation, tasks and
+- **Your Ducter runs on one computer**, your Mac or a server. Your conversation, tasks and
   settings are there. You never have two.
 - **Your Mac app, your phone and the `ducter` command** connect to it. On a server they reach it
   over HTTPS, in one of two ways, and your agent asks you which first: **privately through
@@ -61,21 +61,21 @@ asks you when it isn't clear:
   server's Tailscale name, or [Caddy](https://caddyserver.com) at your domain, and passes
   requests to it.
 
-| You want | Ducter lives on | Your agent runs |
+| You want | Ducter runs on | Your agent runs |
 |---|---|---|
 | Just your Mac | your Mac | the one-line install |
 | A server that stays on, with your Mac and phone | the server | the install with `--service`, then `ducter tailscale` or `ducter domain` |
 | Your Mac, reached from your phone through Tailscale | your Mac | the one-line install, then `ducter tailscale` on your Mac |
 | A server that also does the tasks | the server | the same; nothing extra |
 | Your Mac's repos used by a Ducter on a server | the server | the above, then `ducter worker` on your Mac |
-| Another computer that does tasks (a server at home, a NAS) | where it already lives | on that computer: the line from **Lend a computer** |
+| Another computer that does tasks (a server at home, a NAS) | where it already lives | on that computer: the line from **Add a computer for tasks** |
 
-## Lend a computer
+## Add a computer for tasks
 
-In **Your devices › Lend a computer**, Ducter shows one line for the other computer and one
+In **Your devices › Add a device › For Ducter to do tasks on**, Ducter shows one line for the other computer and one
 sentence for your agent there:
 
-> Lend this computer to my Ducter: follow the "Lend a computer" section of
+> Add this computer to my Ducter: follow the "Add a computer for tasks" section of
 > https://ducter.ai/skills/ducter-deploy/SKILL.md and run `curl -fsSL https://ducter.ai/install.sh | sh -s -- worker <address> --code <code>`
 
 Paste the sentence into Claude Code or Codex on that computer. The agent checks that the

@@ -424,7 +424,7 @@ func TestNewTaskAddFolderOnThisMacForAHomeElsewhere(t *testing.T) {
 					t.Errorf("%s: no %q in Where's list: %q", lang, line, tt.Texts())
 				}
 			}
-			why := L.T("newtask.addfolder.off", "Hetzner Server")
+			why := L.T("newtask.addfolder.off", app.personaName())
 			if on {
 				if tt.HasText(why) {
 					t.Errorf("%s: the off line shows with the worker on", lang)

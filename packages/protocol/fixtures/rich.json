@@ -510,12 +510,12 @@
   {
    "name": "lend-zh",
    "lang": "zh",
-   "src": "可以，把它借过来就行，跟着这张卡片走：\n\n```ducter-ui\n{\"type\":\"lend\"}\n```",
-   "text": "可以，把它借过来就行，跟着这张卡片走：\n\n借一台电脑：你的设备 › 借一台电脑来干活。",
+   "src": "可以，把它加进来就行，跟着这张卡片走：\n\n```ducter-ui\n{\"type\":\"lend\"}\n```",
+   "text": "可以，把它加进来就行，跟着这张卡片走：\n\n加一台做事的电脑：你的设备 › 加一台设备。",
    "ui": [
     {
      "type": "lend",
-     "plain": "借一台电脑：你的设备 › 借一台电脑来干活。"
+     "plain": "加一台做事的电脑：你的设备 › 加一台设备。"
     }
    ],
    "dropped": []
@@ -524,11 +524,11 @@
    "name": "lend-en",
    "lang": "en",
    "src": "Sure. This walks you through it:\n\n```ducter-ui\n{\"type\":\"lend\"}\n```",
-   "text": "Sure. This walks you through it:\n\nTo lend a computer: Your devices › Lend a computer.",
+   "text": "Sure. This walks you through it:\n\nTo add a computer for tasks: Your devices › Add a device.",
    "ui": [
     {
      "type": "lend",
-     "plain": "To lend a computer: Your devices › Lend a computer."
+     "plain": "To add a computer for tasks: Your devices › Add a device."
     }
    ],
    "dropped": []
@@ -1060,16 +1060,16 @@
   },
   {
    "name": "lend-zh",
-   "text": "可以，把它借过来就行，跟着这张卡片走：\n\n借一台电脑：你的设备 › 借一台电脑来干活。",
+   "text": "可以，把它加进来就行，跟着这张卡片走：\n\n加一台做事的电脑：你的设备 › 加一台设备。",
    "ui": [
     {
      "type": "lend",
-     "plain": "借一台电脑：你的设备 › 借一台电脑来干活。"
+     "plain": "加一台做事的电脑：你的设备 › 加一台设备。"
     }
    ],
    "parts": [
     {
-     "words": "可以，把它借过来就行，跟着这张卡片走："
+     "words": "可以，把它加进来就行，跟着这张卡片走："
     },
     {
      "block": 0
@@ -1078,11 +1078,11 @@
   },
   {
    "name": "lend-en",
-   "text": "Sure. This walks you through it:\n\nTo lend a computer: Your devices › Lend a computer.",
+   "text": "Sure. This walks you through it:\n\nTo add a computer for tasks: Your devices › Add a device.",
    "ui": [
     {
      "type": "lend",
-     "plain": "To lend a computer: Your devices › Lend a computer."
+     "plain": "To add a computer for tasks: Your devices › Add a device."
     }
    ],
    "parts": [
@@ -2034,7 +2034,7 @@
    "name": "lend-zh#0",
    "block": {
     "type": "lend",
-    "plain": "借一台电脑：你的设备 › 借一台电脑来干活。"
+    "plain": "加一台做事的电脑：你的设备 › 加一台设备。"
    },
    "model": {
     "type": "lend"
@@ -2044,7 +2044,7 @@
    "name": "lend-en#0",
    "block": {
     "type": "lend",
-    "plain": "To lend a computer: Your devices › Lend a computer."
+    "plain": "To add a computer for tasks: Your devices › Add a device."
    },
    "model": {
     "type": "lend"

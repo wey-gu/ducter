@@ -465,7 +465,7 @@ describe("New task (D128)", () => {
 describe("D150: zh copy spaces a filled-in name (D78)", () => {
   test("Han against Latin gets a space; Han against Han stays flush", () => {
     const zh = strings("zh");
-    expect(zh.t("partner.header", "hel", "Codex")).toBe("住在 hel 上，用 Codex 想事情");
-    expect(zh.t("partner.header", "这台 Mac", "Codex")).toBe("住在这台 Mac 上，用 Codex 想事情");
+    expect(zh.t("partner.header", "hel", "Codex")).toBe("在 hel 上运行，用 Codex 想事情");
+    expect(zh.t("partner.header", "这台 Mac", "Codex")).toBe("在这台 Mac 上运行，用 Codex 想事情");
   });
 });

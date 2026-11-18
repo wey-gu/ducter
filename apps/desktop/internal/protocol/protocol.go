@@ -1107,7 +1107,7 @@ type PairCodeReq struct {
 	T string `json:"t"` // "pair_code"
 }
 
-// LendCodeReq asks for 借一台电脑来干活 / Lend a computer's code and line
+// LendCodeReq asks for 加一台做事的电脑 / Add a computer for tasks's code and line
 // (D347); the server answers a lend frame (waiting), then lend frames to
 // every client as the computer joins and arrives.
 type LendCodeReq struct {
@@ -1116,7 +1116,7 @@ type LendCodeReq struct {
 
 // RenameDeviceReq is 改名字 / Rename for a paired device (another
 // computer; D84). The server answers rename_result, then a fresh devices
-// frame. The machine Ducter lives on keeps its own name.
+// frame. The machine Ducter runs on keeps its own name.
 type RenameDeviceReq struct {
 	T      string `json:"t"` // "rename_device"
 	Device string `json:"device"`
@@ -1767,7 +1767,7 @@ const (
 )
 
 type DeviceView struct {
-	ID        string          `json:"id"` // "local" for the machine Ducter lives on
+	ID        string          `json:"id"` // "local" for the machine Ducter runs on
 	Name      string          `json:"name"`
 	Kind      string          `json:"kind"` // laptop | mini | server | phone
 	Home      bool            `json:"home"`
@@ -2116,7 +2116,7 @@ type ServerFrame struct {
 	Address   string   `json:"address,omitempty"`
 	Link      string   `json:"link,omitempty"`
 	QR        []string `json:"qr,omitempty"`
-	// lend (D347, 借一台电脑来干活 / Lend a computer): Code, ExpiresAt,
+	// lend (D347, 加一台做事的电脑 / Add a computer for tasks): Code, ExpiresAt,
 	// State (waiting | joined | here), Address, SameNetwork, LendLine (the
 	// one line to paste, only to the window that asked), Check (the
 	// reachability one-liner), Device and Name once a computer joined.

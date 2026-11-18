@@ -17,11 +17,11 @@ looks after getting it done.
 Open **Settings › To-do sources** (**设置 › 待办来源**). Under **You can add** you'll see:
 
 - **GitHub**: tap **Connect**. You'll see a link and a short code: open the link on any device, enter
-  the code, and confirm on GitHub. If the computer your partner lives on doesn't have GitHub's
+  the code, and confirm on GitHub. If the computer your partner runs on doesn't have GitHub's
   command-line tool (gh) yet, the same place offers **Install gh** first and says where it goes; no
   terminal, no administrator password. Once you confirm, GitHub shows up with how many issues are
   assigned to you. It reads the issues and pull requests assigned to you.
-- **Each Obsidian vault** Obsidian knows on the computer your partner lives on. You can also add one by
+- **Each Obsidian vault** Obsidian knows on the computer your partner runs on. You can also add one by
   its folder with **Add an Obsidian vault…**.
 - **Jira**: coming soon.
 

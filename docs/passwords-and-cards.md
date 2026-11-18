@@ -82,12 +82,12 @@ In **Settings › Passwords & cards › Keys** you can add a key yourself, see w
 the key), remove one, or turn off **Let tasks ask me for keys**. When it's off, a task only says
 in its report which key it needs.
 
-For now this works for tasks on the computer Ducter lives on; a task on another of your computers
+For now this works for tasks on the computer Ducter runs on; a task on another of your computers
 says in its report which key it needs (coming soon).
 
 ## Where it's kept
 
-Everything is kept on the computer Ducter lives on, locked. On a Mac the key is in that Mac's
+Everything is kept on the computer Ducter runs on, locked. On a Mac the key is in that Mac's
 keychain; on a Linux server it's in a file only Ducter can read. It's never copied to your phone
 or other computers. The bottom of the Passwords & cards page says which.
 

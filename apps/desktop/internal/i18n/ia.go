@@ -82,7 +82,7 @@ var zhIA = Table{
 	"acct.how.mcp":                "1. 地址填这个 MCP 服务的地址。\n2. 它要密钥的话，把它给的那串填在“密钥”里。\n3. 点“检查并添加”。",
 
 	// The Partner page: a character sheet.
-	"partner.lives":          "住在 %s 上",
+	"partner.lives":          "在 %s 上运行",
 	"partner.rename":         "改名字",
 	"partner.rename.cancel":  "取消",
 	"partner.face.idle":      "在呢",
@@ -296,7 +296,7 @@ var enIA = Table{
 	"nav.updating":      "Updating",
 	"nav.update.about":  "A new version is ready: update",
 
-	"partner.lives":          "Lives on %s",
+	"partner.lives":          "Runs on %s",
 	"partner.rename":         "Rename",
 	"partner.rename.cancel":  "Keep it",
 	"partner.face.idle":      "Here",
@@ -370,7 +370,7 @@ var enIA = Table{
 	"settings.run.child":          "%s runs with this app: it stops when you quit.",
 	"settings.run.blocked":        "macOS hasn't allowed %s to run in the background, so it stops when you quit.",
 	"settings.run.allow":          "Open Login Items",
-	"settings.run.remote":         "%s lives on %s, not in this computer. Close the window and it keeps working.",
+	"settings.run.remote":         "%s runs on %s, not on this computer. Close the window and it keeps working.",
 	"settings.run.apart":          "%s runs on its own on this computer, not inside the window. Close the window and it keeps working.",
 	"settings.run.resting":        "%s is resting until you wake it.",
 	"settings.home.elsewhere":     "Connect to a Ducter on another computer",

@@ -166,10 +166,10 @@ each of your computers, saying which). It offers three ways, on that computer:
   Ducter folder (`~/ducter/projects`) and the card starts there. No Git needed.
 - **Choose a folder on …**: look through that computer's folders one level at a time, starting
   from its home folder (repositories first); go in, then **Use this folder**. On your Mac, for the
-  Mac itself, this is Finder's own picker. If your Ducter lives on a server, the server's row
+  Mac itself, this is Finder's own picker. If your Ducter runs on a server, the server's row
   shows the server's folders, never your Mac's. To add a folder on your Mac for a Ducter on a
-  server, your Mac does tasks for it (Settings › Where it lives › **Let this Mac do tasks for
-  …**), and the Mac's own **Add a folder…** row appears.
+  server, your Mac does tasks for it (Settings › Where it runs › **Let this Mac help … with
+  tasks**), and the Mac's own **Add a folder…** row appears.
 - **Clone from a Git address**: below.
 
 Each becomes a project with the folder's name, before any task runs there. Ducter doesn't go
@@ -251,7 +251,7 @@ What it needs, and what you can do today from that same section:
 
 - [Nowledge Mem](https://mem.nowledge.co), the app on your computer or a cloud workspace, in a version that
   connects agents (free to download and sign up). If yours doesn't yet, the section says so.
-- Nowledge Mem's command-line tool, 0.10.118 or later, on the computer Ducter lives on. If it's
+- Nowledge Mem's command-line tool, 0.10.118 or later, on the computer Ducter runs on. If it's
   missing or older, the section shows **Install** or **Update**: one tap, done the way Nowledge
   Mem's own guide says (with pipx). On a Linux server where Ducter can't add pipx itself, it
   shows the one command to run there (**How**). If the tool came with the Nowledge Mem app,
@@ -288,7 +288,7 @@ Yes, on a Mac: it can use your Mac's apps, apps on a phone of its own, and make 
 - **Your Mac's apps:** **Use the computer** on a Mac's card lets a task use its apps in the
   background, once you turn on two macOS switches. Anything that sends, pays or deletes waits for
   your Go, and **Stop** ends it at once. See [Tasks in your Mac's apps](devices.md#tasks-in-your-macs-apps).
-- **Apps on a phone:** on an Apple silicon Mac (the one Ducter lives on, or one that does tasks
+- **Apps on a phone:** on an Apple silicon Mac (the one Ducter runs on, or one that does tasks
   for it), **Use a phone** gives Ducter an Android phone of its own, running on that Mac. You install the apps and sign in yourself; anything that sends,
   pays or deletes waits for your Go. See [Ducter's phone](devices.md#ducters-phone).
 - **Calls:** through Tuwa, or from your own Android phone and SIM (with a small cable kit and a

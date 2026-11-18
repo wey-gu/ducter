@@ -15,7 +15,7 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 )
 
-// D347: 借一台电脑来干活 / Lend a computer on the Mac: the entries, the
+// D347: 加一台做事的电脑 / Add a computer for tasks on the Mac: the entries, the
 // question, the line, the wait, and the computer once it is here.
 
 var lendNow = time.Date(2026, 11, 18, 9, 0, 0, 0, time.UTC)
@@ -75,18 +75,26 @@ func TestLendEntriesAndCopy(t *testing.T) {
 	for _, lang := range []i18n.Lang{i18n.ZH, i18n.EN} {
 		L := i18n.New(lang)
 		_, tt, _ := lendApp(t, lang, 1440, 900)
-		for _, k := range []string{"devices.connect", "lend.entry.why", "lend.empty"} {
+		// D358: one way in, a row in the list's shape; no pill for each flow.
+		for _, k := range []string{"add.row", "add.row.sub"} {
 			if !tt.HasText(L.T(k)) {
 				t.Errorf("%s: devices has no %s (%q): %q", lang, k, L.T(k), tt.Texts())
 			}
 		}
-		if !tt.HasText("+ " + L.T("lend.entry")) {
-			t.Errorf("%s: no + %s entry", lang, L.T("lend.entry"))
+		for _, k := range []string{"devices.connect", "lend.entry.why"} {
+			if tt.HasText(L.T(k)) {
+				t.Errorf("%s: devices still shows %s", lang, k)
+			}
+		}
+		if tt.HasText("+ " + L.T("lend.entry")) {
+			t.Errorf("%s: the old + %s pill is back", lang, L.T("lend.entry"))
 		}
 	}
 	// Every lend key is in both languages, and no text is joined with " · " (D291).
 	zh, en := i18n.New(i18n.ZH), i18n.New(i18n.EN)
-	for _, k := range []string{"lend.entry", "lend.entry.why", "lend.empty", "lend.question", "lend.kind.mac", "lend.kind.linux", "lend.mac.app", "lend.linux.paste",
+	for _, k := range []string{"add.row", "add.row.sub", "add.title", "add.question", "add.talk", "add.talk.sub", "add.work", "add.work.sub",
+		"lend.kind.linux.sub", "lend.kind.mac.sub", "lend.step.copy", "lend.step.paste.linux", "lend.step.paste.mac", "lend.step.joins", "lend.loading",
+		"lend.entry", "lend.entry.why", "lend.question", "lend.kind.mac", "lend.kind.linux", "lend.mac.app", "lend.linux.paste",
 		"lend.does", "lend.left", "lend.samenet", "lend.agent", "lend.agent.ask", "lend.waiting", "lend.joined", "lend.here", "lend.agents.none",
 		"lend.noaddress", "lend.expired", "lend.newcode", "lend.help", "lend.help.reach.do", "lend.help.curl.do", "lend.help.arch.do", "lend.card.go", "lend.fail.timeout", "lend.fail.error", "lend.retry"} {
 		for _, L := range []*i18n.Strings{zh, en} {
@@ -100,7 +108,15 @@ func TestLendEntriesAndCopy(t *testing.T) {
 
 func TestLendFlow(t *testing.T) {
 	app, tt, sent := lendApp(t, i18n.ZH, 1440, 900)
-	if err := tt.Click("+ 借一台电脑来干活"); err != nil {
+	// D358: 加一台设备 asks what it's for, then the lend flow.
+	if err := tt.Click("加一台设备"); err != nil {
+		t.Fatal(err)
+	}
+	lendFrame(tt)
+	if !tt.HasText("用来做什么？") || !tt.HasText("用它和 Ducter 说话") {
+		t.Fatalf("no what-for question: %q", tt.Texts())
+	}
+	if err := tt.Click("让 Ducter 在上面做事"); err != nil {
 		t.Fatal(err)
 	}
 	lendFrame(tt)
@@ -116,7 +132,7 @@ func TestLendFlow(t *testing.T) {
 	}
 	app.Receive(lendWaitingFrame(false))
 	lendFrame(tt)
-	for _, w := range []string{lendLineText, "在那台服务器的终端里粘贴这一行：", "这个码还能用 10 分钟，只能用一次。", "在等它连上…", "让你的 AI agent 来装", "没连上？"} {
+	for _, w := range []string{lendLineText, "复制这一行", "粘到它的终端里", "它会自己连上来", "这个码还能用 10 分钟，只能用一次。", "在等它连上…", "让你的 AI agent 来装", "没连上？"} {
 		if !tt.HasText(w) {
 			t.Errorf("waiting: no %q in %q", w, tt.Texts())
 		}
@@ -199,10 +215,10 @@ func TestLendExpiredAndNoAddress(t *testing.T) {
 
 func TestLendRichCardAndSettings(t *testing.T) {
 	app, tt, _ := lendAt(t, i18n.ZH, 1280, 900, func(app *App) { lendAI(app); app.Route = RouteConversation })
-	if tt.HasText("+ 借一台电脑来干活") {
+	if tt.HasText("+ 加一台做事的电脑") {
 		t.Fatal("not the conversation")
 	}
-	if err := tt.Click("借一台电脑"); err != nil {
+	if err := tt.Click("加一台电脑"); err != nil {
 		t.Fatalf("no card button: %v %q", err, tt.Texts())
 	}
 	lendFrame(tt)
@@ -210,10 +226,10 @@ func TestLendRichCardAndSettings(t *testing.T) {
 		t.Fatal("the card didn't open the sheet")
 	}
 	app, tt, _ = lendAt(t, i18n.ZH, 1280, 1400, func(app *App) { app.openTab(TabRun) })
-	if tt.HasText("+ 借一台电脑来干活") || !tt.HasText("借一台电脑来干活") || !tt.HasText("让任务在那台电脑上跑，比如家里的服务器。") {
+	if tt.HasText("+ 加一台做事的电脑") || !tt.HasText("加一台做事的电脑") || !tt.HasText("让任务在那台电脑上跑，比如家里的服务器。") {
 		t.Fatalf("settings: %q", tt.Texts())
 	}
-	if err := tt.Click("借一台电脑来干活"); err != nil {
+	if err := tt.Click("加一台做事的电脑"); err != nil {
 		t.Fatal(err)
 	}
 	lendFrame(tt)
@@ -227,10 +243,10 @@ func TestLendRichCardAndSettings(t *testing.T) {
 func lendAI(app *App) {
 	app.Status = client.Connected
 	ts := lendNow.Format(time.RFC3339Nano)
-	plain := "借一台电脑：你的设备 › 借一台电脑来干活。"
+	plain := "加一台做事的电脑：你的设备 › 加一台设备。"
 	evs := []protocol.LogEvent{
 		protocol.NewEvent(1, ts, "default", "channel", protocol.OriginUser, protocol.KindUserMsg, protocol.UserMsg{Text: "把我局域网的服务器加进来"}),
-		protocol.NewEvent(2, ts, "default", "channel", protocol.OriginPartner, protocol.KindAIMsg, protocol.AIMsg{Text: "可以，把它借过来就行，跟着这张卡片走：\n\n" + plain, UI: []protocol.RichUI{{Type: "lend", Plain: plain}}, ReplyTo: 1}),
+		protocol.NewEvent(2, ts, "default", "channel", protocol.OriginPartner, protocol.KindAIMsg, protocol.AIMsg{Text: "可以，把它加进来就行，跟着这张卡片走：\n\n" + plain, UI: []protocol.RichUI{{Type: "lend", Plain: plain}}, ReplyTo: 1}),
 	}
 	app.Receive(protocol.ServerFrame{T: "welcome", Persona: "default", PersonaName: "Ducter", HeadSeq: 2})
 	app.Receive(protocol.ServerFrame{T: "events", Events: evs})
@@ -299,7 +315,11 @@ func TestLendShots(t *testing.T) {
 // Try again, never an endless wait (research/127).
 func TestLendCodeArrivesOffTheWireOrSaysWhy(t *testing.T) {
 	app, tt, sent := lendApp(t, i18n.EN, 1440, 900)
-	if err := tt.Click("+ Lend a computer"); err != nil {
+	if err := tt.Click("Add a device"); err != nil {
+		t.Fatal(err)
+	}
+	lendFrame(tt)
+	if err := tt.Click("For Ducter to do tasks on"); err != nil {
 		t.Fatal(err)
 	}
 	lendFrame(tt)
@@ -321,14 +341,14 @@ func TestLendCodeArrivesOffTheWireOrSaysWhy(t *testing.T) {
 	// No answer: the loading line, then after lendWait the reason and Try again.
 	app.askLend()
 	lendFrame(tt)
-	if !tt.HasText("Getting a code…") {
+	if !tt.HasText("Your line is almost ready…") {
 		t.Fatalf("not loading: %q", tt.Texts())
 	}
 	at := lendNow
 	app.Now = func() time.Time { return at }
 	at = lendNow.Add(lendWait + time.Second)
 	lendFrame(tt)
-	if !tt.HasText("hel didn't answer, so there's no code yet.") || tt.HasText("Getting a code…") {
+	if !tt.HasText("hel didn't answer, so there's no code yet.") || tt.HasText("Your line is almost ready…") {
 		t.Fatalf("still waiting after %s: %q", lendWait, tt.Texts())
 	}
 	n := len(*sent)
@@ -349,7 +369,7 @@ func TestLendCodeArrivesOffTheWireOrSaysWhy(t *testing.T) {
 	// An older error frame doesn't fail a fresh ask.
 	app.askLend()
 	lendFrame(tt)
-	if !tt.HasText("Getting a code…") {
+	if !tt.HasText("Your line is almost ready…") {
 		t.Fatalf("a fresh ask isn't loading: %q", tt.Texts())
 	}
 }

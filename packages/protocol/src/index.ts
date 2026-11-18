@@ -1069,7 +1069,7 @@ export type ClientFrame =
   // cancel: stop setting up (the task stays as it is). Progress arrives in devices frames.
   | { t: "anywhere_setup"; op: "begin" | "step" | "cancel"; step?: AnywhereStepCmd; hostname?: string }
   | { t: "pair_code" }
-  // D347: 借一台电脑来干活 / Lend a computer: a fresh code and the one line the other computer
+  // D347: 加一台做事的电脑 / Add a computer for tasks: a fresh code and the one line the other computer
   // pastes; answered with a lend frame (state waiting), then lend frames as it joins and arrives.
   | { t: "lend_code" }
   // rename_device: 改名字 / Rename any device (another computer, a phone, a window; D84), and since
@@ -1694,7 +1694,7 @@ export type AbilityState = "on" | "off" | "unavailable" | "later";
 /**
  * Why an ability is unavailable (or why adding it failed). Clients word it; detail carries a
  * version or a path. cua_missing / cua_old: cua-driver isn't there or lacks the browser tools;
- * env_off: DUCTER_BROWSER=0 pins it off; home_only: only on the device Ducter lives on;
+ * env_off: DUCTER_BROWSER=0 pins it off; home_only: only on the device Ducter runs on;
  * no_address: nothing outside can reach this Ducter yet (remote). D151, Ducter's own browser on a
  * server: browser_deps = system libraries are missing and Ducter can't install them (not root):
  * detail is the one command to run; browser_sandbox = the system stops Chrome's sandbox for a
@@ -1842,7 +1842,7 @@ export interface DeviceAbility {
 }
 
 export interface DeviceView {
-  id: string; // "local" for the machine Ducter lives on; else the paired device id
+  id: string; // "local" for the machine Ducter runs on; else the paired device id
   name: string;
   kind: DeviceKind;
   home: boolean; // Ducter lives here
@@ -2432,7 +2432,7 @@ export interface ToolArgs {
 export const PROTOCOL_VERSION = 2;
 
 /**
- * D347: 借一台电脑来干活 / Lend a computer. waiting: the code is out (the asking window gets the
+ * D347: 加一台做事的电脑 / Add a computer for tasks. waiting: the code is out (the asking window gets the
  * line); joined: a computer traded the code (device, name), its worker is starting; here: it said
  * hello and is in Devices. No address: nothing outside the home reaches it yet (the clients offer
  * 从外面连). sameNetwork: the address is the home's own network one, so both must be on it.

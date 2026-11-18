@@ -1,4 +1,4 @@
-// D347: 借一台电脑来干活 / Lend a computer on the web: every word in both languages with no " · "
+// D347: 加一台做事的电脑 / Add a computer for tasks on the web: every word in both languages with no " · "
 // joins (D291), the sheet's steps from what the home says (waiting → joined → here, the code's
 // expiry, no address), and the entry in sight in 你的设备 and as the partner's card.
 import { describe, expect, test } from "bun:test";
@@ -24,8 +24,8 @@ describe("words", () => {
   test("zh and en, the same keys, never a dot join", () => {
     expect(Object.keys(lendWords.zh).sort()).toEqual(Object.keys(lendWords.en).sort());
     for (const v of [...Object.values(lendWords.zh), ...Object.values(lendWords.en)]) expect(v).not.toContain(" · ");
-    expect(strings("zh").t("lend.entry")).toBe("借一台电脑来干活");
-    expect(strings("en").t("lend.entry")).toBe("Lend a computer");
+    expect(strings("zh").t("lend.entry")).toBe("加一台做事的电脑");
+    expect(strings("en").t("lend.entry")).toBe("Add a computer for tasks");
     expect(strings("zh").t("lend.left", 9)).toBe("这个码还能用 9 分钟，只能用一次。");
     expect(strings("en").t("lend.here", "nas")).toBe("nas is here");
     expect(strings("en").t("lend.mac.app", "hel", "Let this Mac do tasks for Ducter")).toBe("Does that Mac have the Ducter app, connected to hel? On that Mac, open its own card and turn on “Let this Mac do tasks for Ducter”.");
@@ -39,7 +39,7 @@ describe("words", () => {
     const mac = readFileSync(f, "utf8");
     // The web's own: the Mac's switch, rename and From outside words live in its other tables.
     const webOnly = new Set(["lend.mac.toggle", "lend.rename", "lend.noaddress.go"]);
-    for (const lang of ["zh", "en"] as const) for (const k of Object.keys(lendWords[lang])) if (!webOnly.has(k)) expect(mac).toContain(`"${k}"`);
+    for (const lang of ["zh", "en"] as const) for (const k of Object.keys(lendWords[lang])) if (!webOnly.has(k) && !k.startsWith("add.pair.")) expect(mac).toContain(`"${k}"`);
   });
 });
 
@@ -119,12 +119,13 @@ describe("in the app", () => {
     A.lend = undefined;
   });
 
-  test("the entry is in 你的设备 in sight, the sheet replaces the list, the empty state says it, the card opens it", () => {
+  test("one 加一台设备 row in 你的设备's list, the sheet replaces the list, the card opens it (D358)", () => {
     const dev = src("devcard.tsx");
-    expect(dev).toContain("<LendEntry />");
+    expect(dev).toContain("<AddDeviceRow />");
+    expect(dev).not.toContain("<LendEntry />");
     expect(dev).toContain("if (A.lend) return <LendSheet />;");
     expect(dev.indexOf("if (A.lend) return <LendSheet />;")).toBeLessThan(dev.indexOf("if (!list?.length) return null;"));
-    expect(dev).toContain('t("lend.empty")');
+    expect(src("lend.tsx")).toContain("A.openAdd()");
     expect(src("rich.tsx")).toContain('case "lend":');
     expect(src("lend.tsx")).toContain("A.openLend()");
     // Controls only through the shared ones; no dot joins in the view.
@@ -133,7 +134,7 @@ describe("in the app", () => {
 
   test("the sheet's CSS uses tokens only and keeps 44-tall targets", () => {
     const css = readFileSync(new URL("../static/app.css", import.meta.url), "utf8");
-    const block = css.slice(css.indexOf("/* D347: 借一台电脑来干活"));
+    const block = css.slice(css.indexOf("/* D347: 加一台做事的电脑"));
     expect(block.length).toBeGreaterThan(100);
     expect(block).not.toMatch(/#[0-9a-fA-F]{3,8}\b|rgb\(/);
     expect(block).toContain(".lend-copy .btn { flex: none; min-height: 44px; }");

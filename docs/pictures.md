@@ -100,9 +100,9 @@ link to a file on that Mac opens in its own app, as before.
 
 ## Good to know
 
-- Pictures stay on the computer Ducter lives on. A picture is only reachable through a link that
+- Pictures stay on the computer Ducter runs on. A picture is only reachable through a link that
   your own devices get from Ducter, and that link stops working after about a day: one that ends
   up somewhere else (a browser's history, a message) soon opens nothing. Your devices get fresh
   links by themselves.
-- Files you send stay on the computer Ducter lives on, behind the same kind of link as pictures.
+- Files you send stay on the computer Ducter runs on, behind the same kind of link as pictures.
 - Sharing into Ducter from other apps, and video, are coming soon.

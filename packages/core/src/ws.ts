@@ -98,7 +98,7 @@ export interface WsDeps {
   runner: () => Runner | undefined;
   /** Your devices and abilities (devices.ts); absent in tests that don't need it. */
   devices?: () => DevicesView | undefined;
-  /** D347: 借一台电脑来干活 / Lend a computer (lend.ts); absent in tests that don't need it. */
+  /** D347: 加一台做事的电脑 / Add a computer for tasks (lend.ts); absent in tests that don't need it. */
   lend?: () => import("./lend.ts").Lend | undefined;
   /** D205: the persona's Bridge connection (bridge-link.ts); absent in tests that don't need it. */
   bridgeLink?: import("./bridge-link.ts").BridgeLink;
@@ -1114,7 +1114,7 @@ export function createWsHandler(deps: WsDeps) {
       case "settings_set": {
         if (!deps.settings) throw new Error("settings are not available");
         ws.data.settings = true;
-        // What it thinks with must be an AI agent signed in on the Mac Ducter lives on, and one
+        // What it thinks with must be an AI agent signed in on the Mac Ducter runs on, and one
         // that can be the partner (D89).
         const b = f.patch?.brain;
         if (b && devicesView()) {
@@ -1123,7 +1123,7 @@ export function createWsHandler(deps: WsDeps) {
           if (!h?.canBePartner) {
             // D150: never an agent the home doesn't have signed in (it would break the partner).
             const name = isHarnessId(b.harness) ? harnessName(b.harness) : b.harness;
-            send(ws, { t: "error", message: `${name} isn't signed in on ${home?.name ?? "the computer Ducter lives on"}, so it can't be what ${deps.core.persona.name} thinks with.` });
+            send(ws, { t: "error", message: `${name} isn't signed in on ${home?.name ?? "the computer Ducter runs on"}, so it can't be what ${deps.core.persona.name} thinks with.` });
             send(ws, await settingsFrame());
             return;
           }

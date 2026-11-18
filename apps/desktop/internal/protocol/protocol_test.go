@@ -31,7 +31,7 @@ func TestEveryServerFrameDecodes(t *testing.T) {
 		t.Fatalf("read only %d frame types from the union", len(types))
 	}
 	// Members named by type (`| LendFrame`) are read from their own definitions:
-	// D347's lend frame was one, so the Mac dropped it and Lend a computer sat at
+	// D347's lend frame was one, so the Mac dropped it and Add a computer for tasks sat at
 	// 正在拿一个码… forever (research/127).
 	for _, m := range regexp.MustCompile(`\n  \| ([A-Z][A-Za-z]+)`).FindAllStringSubmatch(body, -1) {
 		def := namedDef(t, m[1])

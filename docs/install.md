@@ -299,7 +299,7 @@ The address is then `http://127.0.0.1:7777`. This works for your Mac, not your p
 **3. Connect your Mac.** Open the Mac app and choose **My Ducter is on another computer**, then
 **Connect to your Ducter**. Type the **Address** and **Code** that `ducter tailscale` or
 `ducter domain` (or `ducter pair`) showed, or paste the whole link. Each code works once, for one device, for 10 minutes.
-For your phone or another computer, get a new one: `ducter pair` on the computer Ducter lives on, or **Devices › Connect a phone or computer** in the Mac app (it works when the app is connected to a Ducter on a server, too).
+For your phone or another computer, get a new one: `ducter pair` on the computer Ducter runs on, or **Devices › Add a device › To talk with Ducter** in the Mac app (it works when the app is connected to a Ducter on a server, too).
 
 Ducter's own messages on the server go to the system journal:
 `journalctl --user -u ducter`.
@@ -326,15 +326,15 @@ them over is on the roadmap).
    the link from `ducter pair` (or type the address and the code). The app now uses the server.
    It asks once whether to stop the Ducter on this Mac; its data in `~/.ducter` stays either way.
    `ducter` in Terminal now talks to the server too.
-3. Want tasks to use the repos on your Mac? In the app, turn on **Let this Mac do tasks for
-   …** on your Mac's card in **Devices** (or in **Settings › Where it runs**).
+3. Want tasks to use the repos on your Mac? In the app, turn on **Let this Mac help … with
+   tasks** on your Mac's card in **Devices** (or in **Settings › Where it runs**).
 
 To go back, **Settings › Use the Ducter on this Mac again**.
 
 ### Lend another computer
 
 A second server, a NAS or another Mac can do tasks for your Ducter: in **Your devices**, choose
-**Lend a computer** and paste the one line it shows on that computer. See
+**Add a device › For Ducter to do tasks on** and paste the one line it shows on that computer. See
 [Add a computer](add-a-computer.md). If that computer drops off, its task waits and carries on
 when it's back.
 
@@ -394,7 +394,7 @@ pause for the restart and carry on. If the new version doesn't come up within th
 Ducter switches back to the one you had, and the card says **Didn't update; back on 0.0.3**; tap
 it to see why.
 
-From a terminal, on the computer Ducter lives on:
+From a terminal, on the computer Ducter runs on:
 
 ```sh
 ducter update --check   # where every device stands (also from a Mac that does tasks for your server)
@@ -417,8 +417,8 @@ that does tasks for your server still runs the older version, its card says so w
 When more than one thing has an update, **Settings › Your devices** says how many, and the top of
 that page (on the Mac, the top of **Settings › Updates and about**) lists them, for example
 *Ducter on hel 0.0.30 → 0.0.31* and *Claude Code on MacBook 2.1.319 → 2.1.322*, with one button,
-**Update all**. Ducter takes care of the order: the computer Ducter lives on first, then your other
-computers, then the AI agents on each, then Nowledge Mem on the computer Ducter lives on when a newer
+**Update all**. Ducter takes care of the order: the computer Ducter runs on first, then your other
+computers, then the AI agents on each, then Nowledge Mem on the computer Ducter runs on when a newer
 one is out and Ducter can update it. Nothing running is cut off: an AI agent that a task is using
 waits until that task pauses, and the list says so. The list ticks itself off as each one is done;
 if one doesn't update, it says why, the others still go ahead, and **Try again** is there at the

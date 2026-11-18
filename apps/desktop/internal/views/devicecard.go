@@ -25,7 +25,7 @@ type sheetState struct {
 	coin      string               // "device|harness" whose detail is open ("device|+": the socket)
 	via       string               // the card whose connections are open
 	info      string               // "card|chip" whose ⓘ note is open
-	stopAsk   string               // the device whose 替 {home} 做事 chip asked before stopping
+	stopAsk   string               // the device whose 帮 {name} 做事 chip asked before stopping
 	stopAfter string               // the device that stops doing tasks once its tasks finish
 	log       bool                 // 看日志 asked: the log's path shows
 	squish    map[string]time.Time // a chip's key → when it was toggled
@@ -214,7 +214,8 @@ func (a *App) sheetStatus(dv *protocol.DeviceView) (state, line string, ink ui.C
 	if dv.Kind == "phone" {
 		return "", a.L.T("device.client.now"), t.InkMuted, false
 	}
-	home := a.workHome()
+	// D358: a computer helps the partner, never another machine.
+	home := a.personaName()
 	switch {
 	case n == 1:
 		return "", a.L.T("card.status.working.one", home), t.Working.Ink, true
@@ -752,7 +753,7 @@ func (a *App) infoText(c *ui.Context, s string) {
 	ui.Text(c, s).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(a.leading(1.55))
 }
 
-// chipSpecs are the chips a device gets, in order: 替 {home} 做事 first on
+// chipSpecs are the chips a device gets, in order: 帮 {name} 做事 first on
 // this Mac when it can do tasks for a home elsewhere, then 上网 · 用电脑 ·
 // 从外面连 as that device has them; on the home 打电话 (D199); 用手机 on a
 // Mac that can have it, the home or a worker (D234); then the home's
@@ -926,7 +927,7 @@ func (a *App) openCalls(add bool) {
 	}
 }
 
-// workerChip is D155's switch as the first chip: 替 {home} 做事.
+// workerChip is D155's switch as the first chip: 帮 {name} 做事.
 func (a *App) workerChip(c *ui.Context, card string, dv *protocol.DeviceView) chipSpec {
 	s := &a.devState().card.sheet
 	w := &a.work
@@ -936,7 +937,7 @@ func (a *App) workerChip(c *ui.Context, card string, dv *protocol.DeviceView) ch
 	if h := a.homeDevice(); h != nil {
 		art = deviceArt(h)
 	}
-	sp := chipSpec{id: "worker", label: a.L.T("chip.worker", home), art: art, look: chipOff, busy: w.busy != ""}
+	sp := chipSpec{id: "worker", label: a.L.T("chip.worker", a.personaName()), art: art, look: chipOff, busy: w.busy != ""}
 	switch {
 	case w.busy == "on":
 		sp.look = chipOn
@@ -1276,7 +1277,7 @@ func roundRect(m *ui.Path, x, y, w, h, r float32) {
 }
 
 // chipNotes are the lines under the chips that something needs: turning
-// 替 {home} 做事 off with tasks running asks with the safe default; a
+// 帮 {name} 做事 off with tasks running asks with the safe default; a
 // failure says why, the log's path only after 看日志; Ducter's browser in
 // the way; a refusal.
 func (a *App) chipNotes(c *ui.Context, card string, dv *protocol.DeviceView, cl *protocol.ReachClient) {
@@ -1359,7 +1360,7 @@ func (a *App) chipNotes(c *ui.Context, card string, dv *protocol.DeviceView, cl 
 	}
 }
 
-// watchStopAfter turns 替 {home} 做事 off once the device's tasks are done
+// watchStopAfter turns 帮 {name} 做事 off once the device's tasks are done
 // (做完再停), wherever the window is.
 func (a *App) watchStopAfter() {
 	s := &a.devState().card.sheet

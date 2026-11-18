@@ -200,6 +200,28 @@ describe("adaptSpec: the partner's clean setup per harness", () => {
     expect(adaptSpec(spec("codex", { isolateUserConfig: false }), { dataDir: dir }).options.launchArgs).toBeUndefined();
   });
 
+  test("D378: the partner (noWeb) has none of the harness's own web tools; read-only alone and tasks keep them", () => {
+    const claude = adaptSpec(spec("claude-code", { readOnly: true, noWeb: true }), { dataDir: dir });
+    for (const t of ["WebFetch", "WebSearch", "Bash", "Write"]) expect(claude.options.disallowedTools).toContain(t);
+    for (const t of ["Read", "Grep", "Glob"]) expect(claude.options.disallowedTools).not.toContain(t);
+    expect(new Set(claude.options.disallowedTools).size).toBe(claude.options.disallowedTools!.length);
+    const codex = adaptSpec(spec("codex", { readOnly: true, noWeb: true }), { dataDir: dir, env: { CODEX_HOME: join(dir, "none") } });
+    const args = codex.options.launchArgs!.join(" ");
+    expect(args).toContain('web_search="disabled"');
+    expect(args).toContain('sandbox_mode="read-only"');
+    const codexTask = adaptSpec(spec("codex", { isolateUserConfig: false }), { dataDir: dir });
+    expect((codexTask.options.launchArgs ?? []).join(" ")).not.toContain("web_search");
+    const pi = adaptSpec(spec("pi", { readOnly: true, noWeb: true }), { dataDir: dir });
+    expect(pi.options.disallowedTools).toEqual(["bash", "edit", "write"]);
+    const ds = adaptSpec(spec("deepseek-harness", { readOnly: true, noWeb: true }), { dataDir: dir, env: {} });
+    const rows = JSON.parse(readFileSync(join((ds.options.env as Record<string, string>).DSH_HOME!, "profiles", "acp", "cordis.patch.yml"), "utf8")) as { id: string; disabled?: boolean }[];
+    expect(rows.find((r) => r.id === "tool-web")?.disabled).toBe(true);
+    expect(rows.some((r) => r.id === "tool-fs-search" && r.disabled)).toBe(false); // reading stays
+    // A browser task keeps every web tool (D240).
+    const task = adaptSpec(spec("claude-code", { isolateUserConfig: false }), { dataDir: dir });
+    for (const t of ["WebFetch", "WebSearch"]) expect(task.options.disallowedTools ?? []).not.toContain(t);
+  });
+
   test("Claude Code: a clean session loads Ducter's tools up front; a task keeps the user's tool search", () => {
     const clean = adaptSpec(spec("claude-code", { isolateUserConfig: true }), { dataDir: dir });
     expect((clean.options.env as Record<string, string>)[CLAUDE_SWITCHES.toolSearchEnv]).toBe("false");

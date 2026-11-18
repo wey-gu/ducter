@@ -1914,7 +1914,7 @@ export const scenarios: Scenario[] = [
     lang: "zh",
     steps: [{ user: "帮我查一下 Hacker News 今天关于 OAR 的讨论，挑重点说" }],
     expect: { opens: 1, ackFirst: true, msgs: [0, 0], maxChars: 80, needs: { browse: true, signedIn: false }, forbid: [/Chrome|登录/] },
-    rubric: "W1: public pages. One short Chinese ack naming the look-up; a task that browses (needs.browse) without the user's sign-ins. The ack does not mention Chrome, signing in or which computer (it only says where when it matters). No findings claimed.",
+    rubric: "W1: public pages. One short Chinese ack naming the look-up; a task that browses (needs.browse) without the user's sign-ins. The ack does not mention Chrome, signing in or which computer (it only says where when it matters). No findings claimed. (Its place is {kind:\"browser\", profile:\"default\"}, the usual browser place: whether the user's sign-ins are used is said only by needs.signedIn, which must not be true here; Ducter picks the browser.)",
   },
   {
     id: "where-w2-signed-in-zh",
@@ -2293,8 +2293,44 @@ export const scenarios: Scenario[] = [
     category: "where",
     lang: "en",
     steps: [{ user: "Check bun.sh and tell me the latest Bun version." }],
-    expect: { opens: [0, 1], maxChars: 140, forbid: [/\b1\.\d+\.\d+\b(?![\s\S]*\?)/] },
-    rubric: "A look-up on a public page. Either it opens one browsing task with a one-line English ack naming the look-up (needs.browse, Ducter's own browser), or answers that it will check; it must NOT state a version number it hasn't seen (no guessing from training data), and claims no result yet.",
+    // D378: the partner has no web tools, so "I'll check" is a task or it is a promise nobody keeps.
+    expect: { opens: 1, ackFirst: true, msgs: [0, 0], maxChars: 140, needs: { browse: true, signedIn: false }, forbid: [/\b1\.\d+\.\d+\b(?![\s\S]*\?)/] },
+    rubric: "A look-up on a public page, even for one number (D378). It opens one browsing task (needs.browse, Ducter's own browser) with a one-line English ack naming the look-up; it does NOT state a version number (no guessing from training data), claims no result, and says nothing after the ack. (Its place is {kind:\"browser\", profile:\"default\"}, the usual browser place: whether the user's sign-ins are used is said only by needs.signedIn, which must not be true here; Ducter picks the browser.)",
+  },
+  {
+    // D378: what the web says now is a task even when it is one small fact.
+    id: "where-web-weather-zh",
+    category: "where",
+    lang: "zh",
+    steps: [{ user: "明天上海会下雨吗？" }],
+    expect: { opens: 1, ackFirst: true, msgs: [0, 0], maxChars: 60, needs: { browse: true, signedIn: false }, forbid: [/(不)?会下雨[。！!]|降水|概率|\d+\s*(°|度|%)/] },
+    rubric: "D378: tomorrow's weather is what the web says now, so it is a look-up task, never a guess. One short Chinese ack naming the look-up (e.g. 我去看一下明天上海的天气预报), a browsing task without the user's sign-ins, and no forecast claimed, no question asked first. (Its place is {kind:\"browser\", profile:\"default\"}, the usual browser place: whether the user's sign-ins are used is said only by needs.signedIn, which must not be true here; Ducter picks the browser.)",
+  },
+  {
+    // D378: a link is a page: a task reads it, the partner never fetches it itself.
+    id: "where-web-link-en",
+    category: "where",
+    lang: "en",
+    steps: [{ user: "What does this post say, in short? https://example.com/blog/fake-post-1234" }],
+    expect: { opens: 1, ackFirst: true, msgs: [0, 0], maxChars: 140, needs: { browse: true, signedIn: false } },
+    rubric: "D378: a link the user pastes is a page to read, so it is a browsing task (needs.browse, no sign-in) with a one-line English ack naming the reading. It claims nothing about what the post says and asks nothing first. (Its place is {kind:\"browser\", profile:\"default\"}, the usual browser place: whether the user's sign-ins are used is said only by needs.signedIn, which must not be true here; Ducter picks the browser.)",
+  },
+  {
+    // D378, the other side of the line: a stable fact it knows is answered in turn, no task.
+    id: "direct-stable-fact-zh",
+    category: "direct",
+    lang: "zh",
+    steps: [{ user: "Bun 是用什么语言写的？" }],
+    expect: { opens: 0, noSend: true, msgs: [1, 1], maxChars: 120, require: [/Zig/i] },
+    rubric: "D378, the other side: what Bun is written in (Zig, with some C++) is a stable fact, not what a site says now. It answers directly in one or two short Chinese sentences, with no task, no look-up and no 'let me check'.",
+  },
+  {
+    id: "direct-stable-fact-en",
+    category: "direct",
+    lang: "en",
+    steps: [{ user: "What's Postgres's default port?" }],
+    expect: { opens: 0, noSend: true, msgs: [1, 1], maxChars: 120, require: [/5432/] },
+    rubric: "D378, the other side: Postgres's default port (5432) is a stable fact. It answers directly in one short English line, with no task, no look-up and no 'let me check'.",
   },
   // ---------- pictures (D206) ----------
   {

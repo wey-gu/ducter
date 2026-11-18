@@ -1194,6 +1194,9 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       isolateUserConfig: true,
       // Principle 6: the partner reads and decides; writing and running belong to a task.
       readOnly: true,
+      // D378: and no web tools of the harness's own: what the web says is a task's look-up, so no
+      // page reaches the one that holds the conversation, and a turn never waits on the network.
+      noWeb: true,
       // Ducter's handful of tools load up front in an isolated session: the adapter sets each
       // harness's switch for it (runner/oar.ts, harness-facts CLAUDE_SWITCHES).
       // The harness's own compactor stays above the re-cut and never runs while idle, so the

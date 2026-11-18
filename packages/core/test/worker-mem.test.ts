@@ -184,3 +184,57 @@ describe("D366 on a computer for tasks", () => {
     expect(r.calls.find((x) => x.includes("connect"))).toEqual(["/usr/bin/nmem", "--json", "connect", "--tool", "codex-cli", "--tool", "claude-code"]);
   });
 });
+
+describe("D370 signing in with what Mem copies", () => {
+  // Made up: never a real token.
+  const TOKEN = `nmem_ct_${"fedcba9876543210".repeat(4)}`;
+  const PROMPT = `Connect Nowledge Mem for this AI tool.\n\nStep 1: Redeem the one-time connect link (single use, expires in 15 minutes):\nPOST https://cloud.nowledge.co/api/remote-access/redeem-connect-token\nContent-Type: application/json\nX-Nmem-Space-Protocol: exact-v1\nBody: {"token":"${TOKEN}"}\n\nStep 2: Store the credential (never print, quote, or echo the api_key):\nnmem config client set --url https://cloud.nowledge.co --api-key <api_key from step 1>\n`;
+  const quiet = () => {
+    const heard: string[] = [];
+    const keep = { log: console.log, error: console.error, warn: console.warn, info: console.info };
+    for (const k of Object.keys(keep) as (keyof typeof keep)[]) console[k] = (...a: unknown[]) => void heard.push(a.map(String).join(" "));
+    return { heard, done: () => Object.assign(console, keep) };
+  };
+
+  test("the whole prompt: nmem connect redeems the link made from it; the key never passes through Ducter", async () => {
+    const c = quiet();
+    const r = rig({ nmem: true });
+    r.m.connect(PROMPT);
+    await until(() => !r.m.busy());
+    c.done();
+    const call = r.calls.find((x) => x.includes("connect"))!;
+    expect(call).toEqual(["/usr/bin/nmem", "--json", "connect", `https://cloud.nowledge.co/app?nmem_connect=${TOKEN}`, "--tool", "codex-cli", "--tool", "claude-code"]);
+    expect(r.calls.flat().some((a) => /api[-_]key/i.test(a))).toBe(false);
+    expect(r.m.view().state).toBe("ready");
+    expect(JSON.stringify(r.m.view())).not.toContain(TOKEN);
+    expect(c.heard.join("\n")).not.toContain(TOKEN);
+  });
+
+  test("410 from Mem: used, and nothing shown carries the token", async () => {
+    const c = quiet();
+    const r = rig({ nmem: true, connect: { code: 1, out: `error: redeem https://cloud.nowledge.co/app?nmem_connect=${TOKEN} failed: 410 Gone (token ${TOKEN})` } });
+    r.m.connect(PROMPT);
+    await until(() => !r.m.busy());
+    c.done();
+    expect(r.m.view().step).toMatchObject({ phase: "failed", reason: "used" });
+    expect(JSON.stringify(r.m.view())).not.toContain(TOKEN);
+    expect(c.heard.join("\n")).not.toContain(TOKEN);
+  });
+
+  test("401 from Mem: refused, one honest line with no key in it", async () => {
+    const r = rig({ nmem: true, connect: { code: 1, out: `error: verifying credential: 401 Unauthorized ("api_key": "nmem_${"a1".repeat(16)}")` } });
+    r.m.connect(TOKEN);
+    await until(() => !r.m.busy());
+    const v = r.m.view();
+    expect(v.step).toMatchObject({ phase: "failed", reason: "refused" });
+    expect(JSON.stringify(v)).not.toContain("a1a1a1a1");
+  });
+
+  test("words with no token or link in them: refused before anything runs", async () => {
+    const r = rig({ nmem: true });
+    r.m.connect("Connect Nowledge Mem for this AI tool. Step 3: Read https://mem.nowledge.co/SKILL.md");
+    await until(() => !r.m.busy());
+    expect(r.calls.some((c) => c.includes("connect"))).toBe(false);
+    expect(r.m.view().step).toEqual({ phase: "failed", reason: "bad_link" });
+  });
+});

@@ -715,12 +715,13 @@ var zh = Table{
 	"bridge.mem.update.go":                 "更新",
 	"bridge.mem.updating":                  "正在更新 %s 上的 Nowledge Mem…",
 	"bridge.mem.update.failed":             "这次没更新成。",
-	"bridge.mem.signin":                    "Nowledge Mem 已经在 %s 上了，还要登录你的 Nowledge Mem。在 Nowledge Mem 网页的「Connectors › AI Tools」里拿一个连接链接，贴在这里。链接只能用一次，用完就不留。",
+	"bridge.mem.signin":                    "Nowledge Mem 已经在 %s 上了，还要登录你的 Nowledge Mem。在 Nowledge Mem 的 设置 › Connectors 里选 Any AI agent，点「生成连接链接并复制提示」，把复制下来的整段贴在这里。15 分钟内有效，只能用一次，用完就不留。",
 	"bridge.mem.signin.link":               "连接链接",
+	"bridge.mem.signin.ph":                 "把 Nowledge Mem 复制的整段贴在这里",
 	"bridge.mem.signin.go":                 "登录",
 	"bridge.mem.signin.busy":               "正在登录…",
-	"bridge.mem.signin.used":               "这个链接用过或过期了。再拿一个新的贴进来。",
-	"bridge.mem.signin.bad":                "这不像 Nowledge Mem 的连接链接，它应该以 https:// 开头，带着 nmem_connect。",
+	"bridge.mem.signin.used":               "这个链接过期了（15 分钟）或已经用过。在 Nowledge Mem 里再生成一个，把整段贴进来。",
+	"bridge.mem.signin.bad":                "这里面没找到 Nowledge Mem 的连接链接。在 Nowledge Mem 里再点一次「生成连接链接并复制提示」，把整段贴进来。",
 	"bridge.mem.signin.failed":             "没登录上：%s",
 	"bridge.mem.local":                     "%s 上的 Nowledge Mem 用的是这台电脑自己的记忆库，它还没提供和你的 AI agent 连上的地方。更新 Nowledge Mem，或者用云端工作区登录，就能连上。",
 }
@@ -1410,12 +1411,13 @@ var en = Table{
 	"bridge.mem.update.go":                 "Update",
 	"bridge.mem.updating":                  "Updating Nowledge Mem on %s…",
 	"bridge.mem.update.failed":             "It didn't update this time.",
-	"bridge.mem.signin":                    "Nowledge Mem is on %s; now sign it in to your Nowledge Mem. In Nowledge Mem on the web, get a connect link under Connectors › AI Tools and paste it here. A link works once and isn't kept.",
+	"bridge.mem.signin":                    "Nowledge Mem is on %s; now sign it in to your Nowledge Mem. In Nowledge Mem, open Settings › Connectors › Any AI agent, click “Generate connect link & copy prompt”, and paste everything it copied here. It works once, within 15 minutes, and isn't kept.",
 	"bridge.mem.signin.link":               "Connect link",
+	"bridge.mem.signin.ph":                 "Paste what Nowledge Mem copied",
 	"bridge.mem.signin.go":                 "Sign in",
 	"bridge.mem.signin.busy":               "Signing in…",
-	"bridge.mem.signin.used":               "That link was used or has expired. Get a new one and paste it here.",
-	"bridge.mem.signin.bad":                "That doesn't look like a Nowledge Mem connect link: it starts with https:// and carries nmem_connect.",
+	"bridge.mem.signin.used":               "This link has expired (15 minutes) or was already used. Make a new one in Nowledge Mem and paste everything it copied.",
+	"bridge.mem.signin.bad":                "There's no Nowledge Mem connect link in this. Click “Generate connect link & copy prompt” in Nowledge Mem again and paste everything it copied.",
 	"bridge.mem.signin.failed":             "Didn't sign in: %s",
 	"bridge.mem.local":                     "Nowledge Mem on %s uses this computer's own memory, and it doesn't offer a place to connect with your AI agents yet. Update Nowledge Mem, or sign in to a cloud workspace, to connect.",
 }
@@ -1435,6 +1437,34 @@ func tableLang(tag Lang) Lang {
 // OnEmptyArg, when set (tests), hears every placeholder filled with an empty
 // string: "这是  上的浏览器" must fail a test, not reach a person.
 var OnEmptyArg func(key string, arg int)
+
+// OnExtraArg, when set (tests), hears a call that passed more arguments than
+// the copy prints. T drops them either way, so "%!(EXTRA string=haswell)"
+// never reaches a person (D370); the hook makes the call site get fixed.
+var OnExtraArg func(key string, verbs, args int)
+
+// verbCount is how many arguments a format prints in order, or -1 when it
+// picks them by position (%[2]s), where Sprintf never reports extras.
+func verbCount(format string) int {
+	n := 0
+	for i := 0; i < len(format); i++ {
+		if format[i] != '%' {
+			continue
+		}
+		i++
+		if i >= len(format) {
+			break
+		}
+		if format[i] == '%' {
+			continue
+		}
+		if format[i] == '[' {
+			return -1
+		}
+		n++
+	}
+	return n
+}
 
 // usedArgs says which of n arguments a format's verbs print (%s in order,
 // %[2]s by position; %% prints none).
@@ -1502,6 +1532,20 @@ func (s *Strings) N(key string, n int, args ...any) string {
 	return s.T(key, args...)
 }
 
+// TFamily translates one key of a family picked at run time ("bridge.refused."
+// + reason) whose members don't all print the arguments: each gets only as
+// many as its copy prints (D370). For a single fixed key, use T.
+func (s *Strings) TFamily(key string, args ...any) string {
+	v, ok := s.table[key]
+	if !ok {
+		v = en[key]
+	}
+	if n := verbCount(v); n >= 0 && len(args) > n {
+		args = args[:n]
+	}
+	return s.T(key, args...)
+}
+
 // T translates key, formatting args into it. A missing key shows itself,
 // so it is seen and fixed.
 func (s *Strings) T(key string, args ...any) string {
@@ -1521,6 +1565,12 @@ func (s *Strings) T(key string, args ...any) string {
 				OnEmptyArg(key, i)
 			}
 		}
+	}
+	if n := verbCount(v); n >= 0 && len(args) > n {
+		if OnExtraArg != nil {
+			OnExtraArg(key, n, len(args))
+		}
+		args = args[:n]
 	}
 	out := fmt.Sprintf(v, args...)
 	if s.Han() {

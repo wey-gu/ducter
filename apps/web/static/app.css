@@ -15554,6 +15554,10 @@ svg .wave.w2.on {
 .wmem-why { margin: 0; font-size: var(--sm); line-height: 1.55; color: var(--ink-soft); }
 .wmem-why.soft { font-size: var(--xs); color: var(--ink-muted); }
 .wmem-signin p { color: var(--ink); }
+/* D370: Mem copies a whole prompt; the box takes a few lines and keeps it readable, never wider than the row. */
+.ag-paste:has(.wmem-paste) { align-items: flex-end; }
+textarea.wmem-paste { display: block; box-sizing: border-box; height: auto; width: 100%; min-width: 0; min-height: 72px; max-height: 140px; resize: vertical; padding: var(--s2) var(--s3); border: 1px solid var(--line-2); border-radius: var(--r-sm); background: var(--surface); color: var(--ink); font: inherit; font-size: var(--sm); line-height: 1.45; overflow-wrap: anywhere; }
+.ag-paste textarea.wmem-paste { flex: 1; background: var(--surface-sunken, var(--surface)); }
 .lend-setup .wmem { margin-top: var(--s2); border-top: 1px solid var(--line); padding-top: 12px; }
 @media (prefers-reduced-motion: reduce) {
   .wmem-icon .cring { animation: none; border-color: var(--accent); opacity: 0.5; }

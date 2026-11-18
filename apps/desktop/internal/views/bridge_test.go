@@ -142,7 +142,7 @@ func TestBridgeRow(t *testing.T) {
 		r := r
 		states = append(states, tc{"refused-" + r, TabPeers, protocol.BridgeView{State: "refused", Reason: r, Identity: "ducter", Space: space},
 			func(L *i18n.Strings) []string {
-				return []string{L.T("bridge.refused."+r, "ducter"), L.T("bridge.retry")}
+				return []string{L.TFamily("bridge.refused."+r, "ducter"), L.T("bridge.retry")}
 			}, nil})
 	}
 	for _, lang := range []i18n.Lang{i18n.ZH, i18n.EN} {

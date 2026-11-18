@@ -4,6 +4,7 @@ import (
 	"image/png"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -102,6 +103,40 @@ func TestMemOnDeviceCard(t *testing.T) {
 	}
 }
 
+// D370: every failure line reads clean (no "%!(EXTRA string=haswell)"), the
+// box says to paste what Mem copied, and a pasted prompt goes as pasted.
+func TestMemFailedWordsClean(t *testing.T) {
+	for _, lang := range []i18n.Lang{i18n.ZH, i18n.EN} {
+		app, sent := iaApp(t, lang)
+		app.Now = func() time.Time { return lendNow }
+		app.Route = RouteDevices
+		tt := ui.NewTesterWith(app.View, 1440, 900, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
+		for _, r := range []string{"network", "space", "unsupported", "bad_link", "used", "unreachable", "refused", "failed"} {
+			w := app.memFailedWords(r, "haswell")
+			if strings.Contains(w, "%!") || w == "wmem.failed."+r {
+				t.Errorf("%s %s: %q", lang, r, w)
+			}
+			app.Receive(protocol.ServerFrame{T: "devices", Devices: []protocol.DeviceView{entryHome(), haswellMem(&protocol.DeviceMemView{State: "sign_in", Step: &protocol.DeviceMemStep{Phase: "failed", Reason: r}})}})
+			app.devState().sel = "hw1"
+			tt.Frame()
+			tt.Frame()
+			if _, ok := tt.Find(w); !ok {
+				t.Errorf("%s %s: line not drawn", lang, r)
+			}
+		}
+		prompt := "Connect Nowledge Mem for this AI tool.\nPOST https://cloud.nowledge.co/api/remote-access/redeem-connect-token\nBody: {\"token\":\"nmem_ct_made_up_for_the_test\"}"
+		app.wm.link = map[string]string{"hw1": prompt}
+		tt.Frame()
+		if err := tt.Click(app.L.T("wmem.signin.go")); err != nil {
+			t.Fatal(err)
+		}
+		got := memSent(*sent)
+		if len(got) == 0 || got[len(got)-1].Link != prompt {
+			t.Fatalf("%s: sent %+v", lang, got)
+		}
+	}
+}
+
 // DUCTER_SHOTS=1 DUCTER_SHOTS_DIR=$PWD/../../.shots/mem-next go test ./internal/views -run WorkerMemShots
 func TestWorkerMemShots(t *testing.T) {
 	if os.Getenv("DUCTER_SHOTS") == "" {
@@ -130,6 +165,8 @@ func TestWorkerMemShots(t *testing.T) {
 		{"03-signin", &protocol.DeviceMemView{State: "sign_in", Version: "0.10.120"}},
 		{"04-used", &protocol.DeviceMemView{State: "sign_in", Version: "0.10.120", Step: &protocol.DeviceMemStep{Phase: "failed", Reason: "used"}}},
 		{"05-ready", &protocol.DeviceMemView{State: "ready", Version: "0.10.120", Agents: []string{"claude-code", "codex"}}},
+		{"06-bad-link", &protocol.DeviceMemView{State: "sign_in", Version: "0.10.120", Step: &protocol.DeviceMemStep{Phase: "failed", Reason: "bad_link"}}},
+		{"07-refused", &protocol.DeviceMemView{State: "sign_in", Version: "0.10.120", Step: &protocol.DeviceMemStep{Phase: "failed", Reason: "refused", Detail: "error: verifying credential: 401 Unauthorized"}}},
 	}
 	for _, dark := range []bool{false, true} {
 		mode := "light"

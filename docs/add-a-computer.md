@@ -53,11 +53,11 @@ then type `/login`.
 **Your memory there too.** If you use [Nowledge Mem](https://mem.nowledge.co) with Ducter, the
 computer's card (and the sheet, once an AI there is signed in) says **Tasks on nas don't remember
 you yet**. Tap **Install**: Ducter puts Nowledge Mem in its own folder on that computer, with no
-administrator password. Then get a connect link in Nowledge Mem on the web, under **Connectors ›
-AI Tools**, paste it, and tap **Sign in**. Nowledge Mem signs that computer in and connects its
+administrator password. Then, in Nowledge Mem, open **Settings › Connectors › Any AI agent**,
+click **Generate connect link & copy prompt**, paste everything it copied, and tap **Sign in**. Nowledge Mem signs that computer in and connects its
 Codex and Claude Code, and the card says **Remembers you**: tasks there know how you like things
-before they start, and what they do is kept in your one memory. A link works once and Ducter
-doesn't keep it. Without Nowledge Mem, nothing about it shows.
+before they start, and what they do is kept in your one memory. A link works once, within 15
+minutes, and Ducter doesn't keep it. Without Nowledge Mem, nothing about it shows.
 
 The code works once, for 10 minutes; the card shows how long it has left. Pasting the line
 again later is fine: what is already installed and connected stays as it is.

@@ -262,6 +262,38 @@ export function connectLinkOk(link: string): boolean {
   return !!(q.get("nmem_connect") || q.get("nmem_api_key") || (/\/connect\/?$/.test(u.pathname) && (q.get("token") || q.get("key"))));
 }
 
+/** Nowledge Mem Cloud, where a bare token from Mem's Connectors page is redeemed (research/141). */
+export const MEM_CLOUD = "https://cloud.nowledge.co";
+/** Mem's one-time connect token (`nmem_ct_` and 64 hex characters on Mem Cloud). */
+const CONNECT_TOKEN = /\bnmem_ct_[A-Za-z0-9_-]{8,}/;
+const URLS = /https?:\/\/[^\s"'<>`]+/g;
+const trimUrl = (u: string) => u.replace(/[.,;:!?)\]}>]+$/, "");
+const originOk = (o: string) => connectLinkOk(`${o}/app?nmem_connect=x`);
+
+/**
+ * D370: the link `nmem connect` takes, from whatever the person pasted out of Mem: the whole prompt
+ * Mem copies (Settings › Connectors › Any AI agent › "Generate connect link & copy prompt": a POST to
+ * `<origin>/api/remote-access/redeem-connect-token` with the token, then `nmem config client set
+ * --url <origin>`), a bare `nmem_ct_` token (Mem Cloud's), or a link in one of D225's shapes.
+ * Mem's own guide says to assemble `<origin>/app?nmem_connect=<token>` from an origin and a token
+ * (SKILL.md Path A), and `nmem connect` redeems it at that origin (research/141). Undefined: no
+ * token or link in it. The result is a secret: it goes to nmem's argv only.
+ */
+export function connectLinkFrom(text: string): string | undefined {
+  const s = String(text ?? "").trim();
+  if (!s) return undefined;
+  const urls = [...s.matchAll(URLS)].map((m) => trimUrl(m[0]));
+  const link = urls.find(connectLinkOk);
+  if (link) return link;
+  const token = CONNECT_TOKEN.exec(s)?.[0];
+  if (!token) return undefined;
+  const redeem = urls.map((u) => /^(.*?)\/api\/remote-access\/redeem-connect-token\/?$/.exec(u)?.[1]).find((o) => o && originOk(o));
+  const flag = /--url[=\s]+(https?:\/\/[^\s"'<>`]+)/.exec(s)?.[1];
+  const flagged = flag ? trimUrl(flag).replace(/\/+$/, "") : undefined;
+  const origin = redeem ?? (flagged && originOk(flagged) ? flagged : undefined) ?? MEM_CLOUD;
+  return `${origin.replace(/\/+$/, "")}/app?nmem_connect=${encodeURIComponent(token)}`;
+}
+
 /** Adds a folder to this process's PATH (front), once; later spawns find the new `nmem`. */
 export function joinPath(env: Record<string, string | undefined>, dir: string) {
   const parts = (env.PATH ?? "").split(delimiter).filter(Boolean);

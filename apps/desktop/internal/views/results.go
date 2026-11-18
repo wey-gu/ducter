@@ -185,7 +185,7 @@ func (a *App) resultActions(c *ui.Context, task *store.Task) {
 			a.TaskAction(task.ID, action)
 		}
 		if task.Acting != "" {
-			ui.Text(c.Key("acting"), a.L.T("result.acting."+task.Acting, base)).FontSize(t.SM).TextColor(t.InkMuted)
+			ui.Text(c.Key("acting"), a.L.TFamily("result.acting."+task.Acting, base)).FontSize(t.SM).TextColor(t.InkMuted)
 		} else if task.Unsure != "" {
 			// The result was lost with the connection and the Log doesn't
 			// show it done: say so, offer to try again, never claim a failure.

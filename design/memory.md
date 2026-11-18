@@ -483,10 +483,14 @@ share the one memory there. Evidence and the live install: `research/136`.
 - **装上 / Install:** the person's own `nmem` stays; else uv 0.13.7 (pinned, checked) into
   `<data>/tools/bin` and `uv tool install nmem-cli` with every uv folder inside `<data>/tools`.
   10 s and 57 MB on a bare Ubuntu 24.04 (VERIFIED).
-- **登录 / Sign in:** the person's one-time connect link, then Mem's own `nmem connect <link> --tool
+- **登录 / Sign in:** what the person pasted from Mem (D370: Settings › Connectors › Any AI agent copies
+  a whole prompt with a one-time `nmem_ct_` token and its Mem's redeem URL; a bare token or an older
+  link also works), made into `<origin>/app?nmem_connect=<token>` by code on the home and again there
+  (research/141), then Mem's own `nmem connect <link> --tool
   codex-cli --tool claude-code` for the agents there: the sign-in, a live check, and Mem's plugin
-  registered in those agents (DOCUMENTED). The link reaches only that computer's nmem; shown lines
-  are scrubbed. **接上 / Connect** runs the same without a link for an agent added later.
+  registered in those agents (DOCUMENTED). nmem redeems the token itself, so the API key never
+  passes through Ducter. The link reaches only that computer's nmem; shown lines are scrubbed. Mem's
+  410: expired (15 minutes) or used, with the box still there; 401/403: **refused**. **接上 / Connect** runs the same without a link for an agent added later.
 - **Then:** Mem turning ready makes the home read Mem's plugin check there at once; tasks there run
   with the plugin as the persona (D168), and the home's `NMEM_CLI_PATH` is never passed to them.
 

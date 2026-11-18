@@ -731,7 +731,7 @@ func (a *App) rowActs(c *ui.Context, task *store.Task, hover bool) bool {
 	att := task.Attention()
 	p := task.Place()
 	if task.Acting != "" {
-		ui.Text(c.Key("busy"), a.L.T("result.acting."+task.Acting, p.BaseBranch)).FontSize(t.XS).TextColor(t.InkMuted).Shrink(0)
+		ui.Text(c.Key("busy"), a.L.TFamily("result.acting."+task.Acting, p.BaseBranch)).FontSize(t.XS).TextColor(t.InkMuted).Shrink(0)
 		return true
 	}
 	finished := att == protocol.Done || att == protocol.DoneClaimed || att == protocol.Failed

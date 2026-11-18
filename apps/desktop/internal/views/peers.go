@@ -187,7 +187,7 @@ func (a *App) bridgeNote(b *protocol.BridgeView) string {
 		if r == "" {
 			r = "control_denied"
 		}
-		return a.L.T("bridge.refused."+r, b.Identity)
+		return a.L.TFamily("bridge.refused."+r, b.Identity)
 	case "unconfirmed":
 		return a.L.T("bridge.unconfirmed", b.Identity)
 	}

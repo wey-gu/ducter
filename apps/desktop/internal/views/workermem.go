@@ -130,7 +130,7 @@ func (a *App) memOnDevice(c *ui.Context, dv *protocol.DeviceView) {
 		if m.Step.Reason != "" {
 			reason = m.Step.Reason
 		}
-		word, ink = a.L.T("wmem.failed."+reason, name), t.Failed.Ink
+		word, ink = a.memFailedWords(reason, name), t.Failed.Ink
 	}
 	ui.Column(c.Key("wmem:"+dv.ID)).Gap(t.S2).Padding(t.S2, 0).Children(func() {
 		ui.Row(c).Gap(t.S3).AlignItems(ui.Center).MinHeight(t.ControlMD).Children(func() {
@@ -186,7 +186,15 @@ func (a *App) memOnDevice(c *ui.Context, dv *protocol.DeviceView) {
 	})
 }
 
-// memSignIn is where to get a connect link, the box to paste it, and 登录.
+// memFailedWords is why the last step didn't work. Only the lines about the
+// computer name it (D370: the others took no argument, and Go printed
+// "%!(EXTRA string=haswell)" after them).
+func (a *App) memFailedWords(reason, name string) string {
+	return a.L.TFamily("wmem.failed."+reason, name)
+}
+
+// memSignIn is where to get the connect link (Mem copies it as a whole
+// prompt, D370), the box to paste it in, and 登录.
 func (a *App) memSignIn(c *ui.Context, dv *protocol.DeviceView) {
 	t := a.T
 	if a.wm.link == nil {
@@ -205,9 +213,9 @@ func (a *App) memSignIn(c *ui.Context, dv *protocol.DeviceView) {
 			how = a.L.T("wmem.signin.local", home, a.deviceNameIn(dv))
 		}
 		ui.Text(c, how).FontSize(t.SM).TextColor(t.Ink).LineHeight(1.5)
-		ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
-			ui.TextInput(c.Key("wmem-link:"+dv.ID), &v).Placeholder("https://…?nmem_connect=…").Label(a.L.T("wmem.signin.link")).
-				FontSize(t.MD).Padding(t.S2, t.S3).Radius(t.RadiusSM).Background(t.SurfaceSunken).Border(1, t.LineSoft).Grow(1)
+		ui.Row(c).Gap(t.S2).AlignItems(ui.End).Children(func() {
+			ui.TextArea(c.Key("wmem-link:"+dv.ID), &v).Lines(2, 4).Placeholder(a.L.T("wmem.signin.ph")).Label(a.L.T("wmem.signin.link")).
+				FontSize(t.SM).Padding(t.S2, t.S3).Radius(t.RadiusSM).Background(t.SurfaceSunken).Border(1, t.LineSoft).Grow(1).MinWidth(0)
 			if a.buttonFor(c, a.L.T("wmem.signin.go"), "Nowledge Mem", btnPrimary, t.ControlSM, t.Bg) && strings.TrimSpace(v) != "" {
 				a.memSetupReq(dv, "connect", strings.TrimSpace(v))
 				v = ""

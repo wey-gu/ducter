@@ -36,6 +36,8 @@ const states: Record<string, Mem> = {
   installing: { state: "absent", installable: true, step: { phase: "installing", pct: 42 } },
   sign_in: { state: "sign_in", version: "0.10.120" },
   used: { state: "sign_in", version: "0.10.120", step: { phase: "failed", reason: "used" } },
+  bad_link: { state: "sign_in", version: "0.10.120", step: { phase: "failed", reason: "bad_link" } },
+  refused: { state: "sign_in", version: "0.10.120", step: { phase: "failed", reason: "refused", detail: "error: verifying credential: 401 Unauthorized" } },
   connecting: { state: "sign_in", version: "0.10.120", step: { phase: "connecting" } },
   ready: { state: "ready", version: "0.10.120", agents: ["claude-code", "codex"] },
   left: { state: "ready", version: "0.10.120", agents: ["codex"] },

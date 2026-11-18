@@ -36,3 +36,16 @@ test("every word in both languages, with the same blanks", () => {
   // Never Mem's plumbing words (D295): no CLI, Space, identity, key.
   for (const v of [...Object.values(zh), ...Object.values(en)]) expect(v).not.toMatch(/\bCLI\b|Space|identity|API key|nmem /);
 });
+
+test("D370: the sign-in says what Mem really gives (its button, the whole thing) and every reason has words", () => {
+  for (const L of [workerMemWords.zh, workerMemWords.en]) {
+    for (const r of ["network", "space", "unsupported", "bad_link", "used", "unreachable", "refused", "failed"]) expect(L[`wmem.failed.${r}`]).toBeTruthy();
+    expect(L["wmem.signin.ph"]).toBeTruthy();
+    expect(L["wmem.signin.ph"]).not.toContain("nmem_connect");
+    expect(L["wmem.failed.bad_link"]).not.toMatch(/https:\/\/|nmem_connect/);
+  }
+  expect(workerMemWords.zh["wmem.signin.how"]).toContain("生成连接链接并复制提示");
+  expect(workerMemWords.zh["wmem.signin.how"]).toContain("整段");
+  expect(workerMemWords.en["wmem.signin.how"]).toContain("Generate connect link & copy prompt");
+  expect(workerMemWords.zh["wmem.failed.used"]).toContain("15 分钟");
+});

@@ -694,7 +694,7 @@ func (a *App) memSteps(c *ui.Context, phase string, b *protocol.BridgeView) {
 			a.note(c, help)
 			ui.Row(c).Gap(t.S2).AlignItems(ui.End).Children(func() {
 				ui.Column(c).Grow(1).MinWidth(0).Children(func() {
-					a.field(c, "bridge-link", a.L.T("bridge.mem.signin.link"), &a.bridgeLink, "https://…?nmem_connect=…", "")
+					a.field(c, "bridge-link", a.L.T("bridge.mem.signin.link"), &a.bridgeLink, a.L.T("bridge.mem.signin.ph"), "")
 				})
 				label := a.L.T("bridge.mem.signin.go")
 				if busy {

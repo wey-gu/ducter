@@ -259,8 +259,9 @@ What it needs, and what you can do today from that same section:
   update the app. If your copy was installed in a way that bypasses the system's Python
   protection, the section offers **Move it**: one tap puts in Nowledge Mem's recommended
   install, and you stay signed in.
-- That tool signed in: paste a one-time connect link from Nowledge Mem on the web
-  (**Connectors › AI Tools**) and tap **Sign in**. The link works once and isn't kept.
+- That tool signed in: in Nowledge Mem, open **Settings › Connectors › Any AI agent**, click
+  **Generate connect link & copy prompt**, paste everything it copied and tap **Sign in**. The link
+  works once, within 15 minutes, and isn't kept.
 
 If Nowledge Mem isn't ready on its side yet, the section says so; nothing is wrong on yours, and
 your memory works as usual.

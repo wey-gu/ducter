@@ -84,8 +84,11 @@ test("the worker's Mem on its card; install and connect reach it; ready reads th
   c.send({ t: "mem_setup", device: deviceId, action: "install" });
   await c.until((f) => card(f, deviceId)?.mem?.step?.phase === "installing");
 
-  const link = "https://cloud.nowledge.co/app?nmem_connect=nmem_ct_000111";
-  c.send({ t: "mem_setup", device: deviceId, action: "connect", link });
+  // D370: the person pastes what Mem copies; the worker gets the link made from it (an older one takes it too).
+  const token = `nmem_ct_${"000111".repeat(8)}`; // made up
+  const pasted = `Connect Nowledge Mem for this AI tool.\nPOST https://cloud.nowledge.co/api/remote-access/redeem-connect-token\nBody: {"token":"${token}"}`;
+  const link = `https://cloud.nowledge.co/app?nmem_connect=${token}`;
+  c.send({ t: "mem_setup", device: deviceId, action: "connect", link: pasted });
   await c.until((f) => card(f, deviceId)?.mem?.state === "ready");
   // The home reads Mem's plugin check there once it turned ready: Codex's Mem line follows.
   const line = await c.until((f) => card(f, deviceId)?.harnesses.find((h) => h.harness === "codex")?.mem?.state === "installed");
@@ -93,7 +96,7 @@ test("the worker's Mem on its card; install and connect reach it; ready reads th
   const setups = ops.filter((o) => o.op === "mem_setup").map((o) => o.args);
   expect(setups).toEqual([{ action: "install" }, { action: "connect", link }]);
   // The link reached the worker and no client frame carries it back.
-  expect(JSON.stringify(c.frames)).not.toContain("nmem_ct_000111");
+  expect(JSON.stringify(c.frames)).not.toContain(token);
 });
 
 test("without Mem on the home, a worker's Mem never shows and mem_setup is refused", async () => {

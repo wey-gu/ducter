@@ -563,10 +563,8 @@
       ]
      },
      {
-      "k": "voice",
-      "seq": 114,
-      "text": "nmem 0.9.4 is installed and connected to the weyl space; doctor passes. Next: the Codex plugin.",
-      "saved": true
+      "k": "saved",
+      "seq": 114
      },
      {
       "k": "steps",
@@ -6885,12 +6883,7 @@
      {
       "k": "voice",
       "seq": 141,
-      "text": "#1612 看完了，整体可以合，有两处意见：\n\n1. `Batcher::push` 在满了之后直接 `flush`，但 `wait` 的计时没有重置，下一批会提前写出去。\n2. `queue.rs` 里 `max_batch` 默认 512，跟 `docs/embedding.md` 写的 256 不一致。\n\n意见草稿放在 `~/dev/nowledge/review-1612.md`，你看过再发。"
-     },
-     {
-      "k": "voice",
-      "seq": 142,
-      "text": "#1612 的意见草稿写好了：review-1612.md",
+      "text": "#1612 看完了，整体可以合，有两处意见：\n\n1. `Batcher::push` 在满了之后直接 `flush`，但 `wait` 的计时没有重置，下一批会提前写出去。\n2. `queue.rs` 里 `max_batch` 默认 512，跟 `docs/embedding.md` 写的 256 不一致。\n\n意见草稿放在 `~/dev/nowledge/review-1612.md`，你看过再发。",
       "saved": true
      },
      {
@@ -8284,6 +8277,197 @@
    "wakes": 1,
    "briefed": true,
    "lastWakeAt": "2026-11-10T19:01:20.000Z"
+  }
+ },
+ {
+  "name": "a watcher's own notes (zh)",
+  "harness": "codex",
+  "working": false,
+  "events": [
+   {
+    "seq": 100,
+    "ts": "2026-11-10T06:58:00.000Z",
+    "persona": "default",
+    "stream": "task:wat1",
+    "origin": "user",
+    "kind": "task_open",
+    "body": {
+     "taskId": "wat1",
+     "title": "盯着 nowledge-co 的待审 PR",
+     "project": "",
+     "place": {
+      "kind": "none"
+     },
+     "harness": "codex",
+     "origin": "partner",
+     "brief": "每 45 分钟看一次 nowledge-co 里请我 review 和提到我的 PR，有新的就告诉我。"
+    }
+   },
+   {
+    "seq": 101,
+    "ts": "2026-11-10T06:58:05.000Z",
+    "persona": "default",
+    "stream": "task:wat1",
+    "origin": "task",
+    "kind": "task_event",
+    "body": {
+     "taskId": "wat1",
+     "role": "tool",
+     "tool": {
+      "name": "mcp__codex_apps__github.search_prs",
+      "input": {
+       "query": "is:open review-requested:wey-gu"
+      },
+      "ok": true
+     }
+    }
+   },
+   {
+    "seq": 102,
+    "ts": "2026-11-10T06:58:09.000Z",
+    "persona": "default",
+    "stream": "task:wat1",
+    "origin": "task",
+    "kind": "checkpoint",
+    "body": {
+     "taskId": "wat1",
+     "text": "Round58入轮5requests4mentions去重7。10419新f098其余6heads不变。"
+    }
+   },
+   {
+    "seq": 103,
+    "ts": "2026-11-10T06:58:12.000Z",
+    "persona": "default",
+    "stream": "task:wat1",
+    "origin": "task",
+    "kind": "checkpoint",
+    "body": {
+     "taskId": "wat1",
+     "text": "Round58完成，round58/queue58/ledger保存。末扫无新增。"
+    }
+   },
+   {
+    "seq": 104,
+    "ts": "2026-11-10T06:58:15.000Z",
+    "persona": "default",
+    "stream": "task:wat1",
+    "origin": "task",
+    "kind": "task_event",
+    "body": {
+     "taskId": "wat1",
+     "role": "assistant",
+     "text": "nowledge-co 没有新的待审 PR。"
+    }
+   },
+   {
+    "seq": 105,
+    "ts": "2026-11-10T06:58:16.000Z",
+    "persona": "default",
+    "stream": "task:wat1",
+    "origin": "task",
+    "kind": "checkpoint",
+    "body": {
+     "taskId": "wat1",
+     "text": "nowledge-co 没有新的待审 PR。"
+    }
+   },
+   {
+    "seq": 106,
+    "ts": "2026-11-10T06:58:18.000Z",
+    "persona": "default",
+    "stream": "task:wat1",
+    "origin": "task",
+    "kind": "report",
+    "body": {
+     "taskId": "wat1",
+     "state": "progress",
+     "summary": "nowledge-co 没有新的待审 PR。",
+     "questions": [],
+     "evidence": []
+    }
+   }
+  ],
+  "inTurn": true,
+  "want": [
+   {
+    "seq": 100,
+    "prompt": {
+     "k": "brief",
+     "seq": 100,
+     "text": "每 45 分钟看一次 nowledge-co 里请我 review 和提到我的 PR，有新的就告诉我。",
+     "by": "partner"
+    },
+    "body": [
+     {
+      "k": "steps",
+      "seq": 101,
+      "lines": [
+       {
+        "k": "row",
+        "row": {
+         "seq": 101,
+         "step": {
+          "kind": "other",
+          "target": "github.search prs",
+          "via": "codex_apps"
+         },
+         "n": 1,
+         "outcome": "ok"
+        }
+       }
+      ]
+     },
+     {
+      "k": "saved",
+      "seq": 103
+     },
+     {
+      "k": "voice",
+      "seq": 104,
+      "text": "nowledge-co 没有新的待审 PR。",
+      "saved": true
+     },
+     {
+      "k": "report",
+      "seq": 106,
+      "state": "progress",
+      "text": "nowledge-co 没有新的待审 PR。"
+     }
+    ]
+   }
+  ],
+  "index": {
+   "turns": [
+    {
+     "seq": 100,
+     "end": 106,
+     "n": 7,
+     "at": "2026-11-10T06:58:00.000Z",
+     "endAt": "2026-11-10T06:58:18.000Z",
+     "p": {
+      "k": "brief",
+      "seq": 100,
+      "text": "每 45 分钟看一次 nowledge-co 里请我 review 和提到我的 PR，有新的就告诉我。",
+      "by": "partner"
+     },
+     "h": 13,
+     "s": 1,
+     "v": 22,
+     "marks": [
+      {
+       "seq": 106,
+       "k": "report",
+       "at": "2026-11-10T06:58:18.000Z",
+       "w": "nowledge-co 没有新的待审 PR。"
+      }
+     ]
+    }
+   ],
+   "n": 7,
+   "last": 106,
+   "wakes": 0,
+   "briefed": true,
+   "lastReport": 106
   }
  }
 ]

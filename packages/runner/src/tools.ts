@@ -19,7 +19,8 @@ export const reportToMainSchema = {
   type: "object",
   properties: {
     state: { type: "string", enum: STATES, description: "progress | needs_input | blocked | done | failed" },
-    summary: { type: "string", maxLength: SUMMARY_MAX, description: "At most 600 characters: what you did and what stands." },
+    // D349: the bar itself is in the brief (the task tools' budget is tight).
+    summary: { type: "string", maxLength: SUMMARY_MAX, description: "For the user, result first. At most 600 characters." },
     questions: {
       type: "array",
       items: {
@@ -86,7 +87,7 @@ export function normalizeRemember(v: unknown): RememberNote[] {
 export const checkpointSchema = {
   type: "object",
   properties: {
-    text: { type: "string", description: "Where the work stands, what is done, what comes next, open questions." },
+    text: { type: "string", description: "Your own note: where the work stands, what comes next, open questions." },
     gitRef: { type: "string" },
   },
   required: ["text"],
@@ -190,6 +191,28 @@ async function branchOf(opts: TaskToolOptions, taskId: string): Promise<BranchCh
   return opts.branchChanges ? inTime(opts.branchChanges(taskId)) : undefined;
 }
 
+/**
+ * D349: the runs in a summary that read as a task's own notes, not as words for a person: Latin
+ * letters and digits glued in turns ("5requests4mentions", "16checks15success1preuninstallrunning",
+ * "1307exec1304pass3skip"). Seen live on a Codex watcher whose checkpoints, then reports, became a
+ * ledger. A hash, a version, a path, a URL or an identifier (with _ - . / :) is never one, nor a
+ * short name like "Round58", "P2", "H264" or "iPhone15".
+ */
+export function gluedRuns(s: string): string[] {
+  const out: string[] = [];
+  for (const m of s.matchAll(/[A-Za-z0-9_./:#@+-]+/g)) {
+    const w = m[0];
+    if (w.length < 10 || /[_./:#@-]/.test(w)) continue;
+    if (/^[0-9a-f]+$/i.test(w)) continue; // a hash or a hex number
+    const groups = w.match(/[A-Za-z]+|[0-9]+/g) ?? [];
+    if (groups.length >= 4 || (groups.length === 3 && /^\d/.test(w))) out.push(w);
+  }
+  return out;
+}
+
+/** Notes, not words: two glued runs or more (one could be a model name). */
+export const crammed = (summary: string) => gluedRuns(summary).length >= 2;
+
 /** Words as compared for "the same report": no spacing, punctuation or case. */
 const flatWords = (s: string) => s.toLowerCase().replace(/[\s\p{P}\p{S}]+/gu, "");
 
@@ -233,6 +256,8 @@ export function sameWaitAgain(core: CoreApi, taskId: string, body: Bodies["repor
 }
 
 export function registerTaskTools(core: CoreApi, opts: TaskToolOptions = {}): void {
+  // D349: tasks already asked once to write a crammed summary again; the second one goes as it is.
+  const askedPlain = new Set<string>();
   core.mcp.register(
     "task",
     "report_to_main",
@@ -248,6 +273,12 @@ export function registerTaskTools(core: CoreApi, opts: TaskToolOptions = {}): vo
         throw new Error(
           `Your question "${open.question}" is still open: the user hasn't answered it. Don't report done yet. End your turn now; the answer will arrive as a message.`,
         );
+      }
+      // D349: a summary that reads as the task's own notes goes back once, before anything is kept.
+      if (crammed(body.summary) && !askedPlain.has(ctx.taskId)) {
+        askedPlain.add(ctx.taskId);
+        const runs = gluedRuns(body.summary).slice(0, 3).join(", ");
+        return `Not sent yet: this summary reads as your own notes (${runs}), and the user reads it as it is. Call report_to_main again with the same state, written for them in their language: the result in one plain sentence, then at most a few short lines, ordinary spacing, numbers with their units, and none of your own counters, round numbers or ids.`;
       }
       const persona = core.tasks.get(ctx.taskId)?.persona;
       if (body.state === "done" || body.state === "failed") {

@@ -46,7 +46,14 @@ read the whole Log.
 
 `report_to_main` has these fields:
 - `state`: `progress · needs_input · blocked · done · failed`
-- `summary`: at most 600 characters
+- `summary`: at most 600 characters, **written for the person** (D349): in their language, the
+  result first in one plain sentence, then at most a few short lines; ordinary spacing, numbers
+  with their units; none of the task's own bookkeeping (round numbers, counters, ledger or note
+  file names, ids, hashes) unless the person needs one to act; only what changed since the last
+  report. Work that repeats (a watcher) and found nothing new says so in one short line
+  ("nowledge-co 没有新的待审 PR"). A summary that reads as notes (two or more runs of letters
+  and digits glued in turns, such as `5requests4mentions`) is sent back once, unlogged, to be
+  written again; the second one goes as it is
 - `questions[]`: each has `blocking`, a `default`, and whether the default is reversible
 - `evidence[]`: refs such as CI run, artifact, diff, URL
 
@@ -65,7 +72,10 @@ The report is the only way a window wakes the main AI. Reads never wake anyone.
 
 The window writes a checkpoint after each meaningful step, while it is still healthy. It
 records where the work stands, what is done, what comes next, open questions, and any
-intents in flight.
+intents in flight. It is **the task's own note** (D349): what it carries on from after a
+compaction, never a report. The person never reads its words: the opened task shows only
+**保存了进度 / Progress saved** where it saved (under the words it just said, else alone, a
+run of them as one), and the On hand line never quotes it.
 
 **Small windows and compaction (D135).** A task runs on a 200K window with a standard-window
 model, and its harness compacts it at 160K (`Settings.windows.tasks`, env `DUCTER_TASK_WINDOW`
@@ -298,7 +308,9 @@ What the window writes is what the user reads when they open the task, in one co
   nobody has open keeps its newest 2,000. A text over 20,000 characters (an output over 8,000)
   is cut, with **显示全部（{n} 字）/ Show all ({n} characters)** opening the whole, read from its
   event, as plain text;
-- **checkpoints** are the window's words said once, marked saved (D152);
+- **checkpoints** are a quiet **保存了进度** where the window saved, never their words (D349;
+  was D152's "said once"); a progress report stays where it was said, even the latest (only
+  an outcome is said above the transcript);
 - **keys** in the brief, a command or its output never leave the home: the projection hides
   them in every frame and push it sends; the Log keeps them for the task (D152);
 - the diff of the worktree is a list of files; a diff shows only when the user opens a file.

@@ -805,8 +805,9 @@ it slides up once and goes with either button. Simulator shot: `.shots/d200/`.
       **展开 / Show all**, a hidden key saying **隐藏了一段密钥 / A key is hidden** with a small
       drawn key; your words as your bubble (the user's Go too); the partner's passed-on words
       on the same sunken card under **{name} 对它说**. Pictures in a turn stay small (about 15
-      rem / 240 pt). Then the agent's answer in order, items 12 apart (D268): its messages and
-      saved progress (said once, a small flag and **保存了进度 / Progress saved**) at 14, leading
+      rem / 240 pt). Then the agent's answer in order, items 12 apart (D268): its messages
+      (D349: a checkpoint is its own note and never shows; it is **保存了进度 / Progress saved**
+      under the words it just said, else that line alone at 11 muted) at 14, leading
       1.6, or 1.75 when the text holds Han, autospaced (paragraphs 10 apart, list items 4, h1/h2
       body+3/body+1 at 600, inline code a step down in mono on a faint fill, code blocks radius
       8), and between them **each run of steps as one summary line**: the tally in at most two

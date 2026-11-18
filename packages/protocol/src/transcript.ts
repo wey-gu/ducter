@@ -75,8 +75,13 @@ export type Block =
   // media (D206): the pictures that came with it (a brief, your words, the partner's) or that a report showed.
   // full (D320): the whole text's length when it was cut at TEXT_MAX (brief, voice, you, partner, report).
   | { k: "brief"; seq: number; text: string; full?: number; by: "you" | "partner"; media?: MediaRef[] }
-  /** The agent's own words: a message, or progress it saved (`saved`), said once. */
+  /** The agent's own words, said once; `saved` when its checkpoint said the same words. */
   | { k: "voice"; seq: number; text: string; full?: number; saved?: boolean }
+  /**
+   * D349: it saved its progress and the words were its own note (a checkpoint that isn't what it
+   * just said): one quiet line, 保存了进度, never the note. A run of them in a row is one, the latest.
+   */
+  | { k: "saved"; seq: number }
   /** A stretch of steps between two things said; `live` = the one under way. */
   | { k: "steps"; seq: number; lines: Line[]; live?: boolean }
   /** The person's own words to the task. */
@@ -536,13 +541,20 @@ export function build(harness: string, events: LogEvent[], working: boolean, ctx
         const w = words(raw);
         // Saved what it just said: the same words once, marked saved.
         const said = [...out].reverse().find((b) => b.k !== "steps");
+        const prev = out.at(-1);
         if (said?.k === "voice" && norm(said.text) === norm(w.text)) said.saved = true;
-        else out.push({ k: "voice", seq: ev.seq, ...w, saved: true });
+        // D349: else its own note, which the person doesn't read: only that it saved, under the
+        // words it just said when nothing came between, else one quiet line (a run of them is one).
+        else if (prev?.k === "voice") prev.saved = true;
+        else if (prev?.k === "saved") prev.seq = ev.seq;
+        else out.push({ k: "saved", seq: ev.seq });
         break;
       }
       case "report": {
-        if (ev.seq === lastReport) break;
         const r = ev.body as Bodies["report"];
+        // The latest is the outcome, said above the transcript; D349: a progress report is no
+        // outcome (a watcher's "nothing new"), so it stays where it was said.
+        if (ev.seq === lastReport && r.state !== "progress") break;
         out.push({ k: "report", seq: ev.seq, state: r.state, ...words(r.summary), ...(r.media?.length ? { media: r.media } : {}) });
         break;
       }

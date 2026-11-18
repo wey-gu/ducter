@@ -144,8 +144,9 @@ export function indexAdd(ix: SessionIndex, ev: LogEvent): boolean {
     const line = ((ev.body as Bodies["report"]).summary ?? "").split("\n").map((l) => l.trim()).find((l) => l) ?? "";
     mark("report", line ? redact(cut(line, MARK_MAX)) : undefined);
   } else if (ev.kind === "checkpoint") {
+    // D349: a saved note is one quiet line, not its words (unless it said them, already counted).
     const n = (ev.body as Bodies["checkpoint"]).text?.trim().length ?? 0;
-    if (n) t.v = n;
+    if (n && !t.v) t.v = 1;
   } else if (ev.kind === "task_event") {
     const b = ev.body as Bodies["task_event"];
     if (b.thinking?.length || b.tool) t.s = 1;

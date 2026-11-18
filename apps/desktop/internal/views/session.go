@@ -130,8 +130,9 @@ func indexAdd(ix *protocol.SessionIndex, ev *protocol.LogEvent) bool {
 			}
 		}
 	case *protocol.Checkpoint:
-		if n := u16len(strings.TrimSpace(b.Text)); n > 0 {
-			t.V = n
+		// D349: a saved note is one quiet line, not its words (unless it said them, already counted).
+		if n := u16len(strings.TrimSpace(b.Text)); n > 0 && t.V == 0 {
+			t.V = 1
 		}
 	case *protocol.TaskEvent:
 		if len(b.Thinking) > 0 || b.Tool != nil {

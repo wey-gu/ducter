@@ -345,6 +345,23 @@ export const cases = [
       [43_405, "task_event", "task", { role: "assistant", text: "接着跑第二轮。" }],
     ]),
   },
+  {
+    // D349: a watcher's checkpoints are its own notes: each is one quiet 保存了进度, never the note;
+    // two in a row are one line (the latest); one right after its words marks them saved; its
+    // last report, a progress one, stays in the transcript (it is no outcome).
+    name: "a watcher's own notes (zh)",
+    harness: "codex",
+    working: false,
+    events: stream("wat1", [
+      [0, "task_open", "user", { taskId: "wat1", title: "盯着 nowledge-co 的待审 PR", project: "", place: { kind: "none" }, harness: "codex", origin: "partner", brief: "每 45 分钟看一次 nowledge-co 里请我 review 和提到我的 PR，有新的就告诉我。" }],
+      [5, "task_event", "task", { role: "tool", tool: { name: "mcp__codex_apps__github.search_prs", input: { query: "is:open review-requested:wey-gu" }, ok: true } }],
+      [9, "checkpoint", "task", { taskId: "wat1", text: "Round58入轮5requests4mentions去重7。10419新f098其余6heads不变。" }],
+      [12, "checkpoint", "task", { taskId: "wat1", text: "Round58完成，round58/queue58/ledger保存。末扫无新增。" }],
+      [15, "task_event", "task", { role: "assistant", text: "nowledge-co 没有新的待审 PR。" }],
+      [16, "checkpoint", "task", { taskId: "wat1", text: "nowledge-co 没有新的待审 PR。" }],
+      [18, "report", "task", { taskId: "wat1", state: "progress", summary: "nowledge-co 没有新的待审 PR。", questions: [], evidence: [] }],
+    ]),
+  },
 ];
 
 if (import.meta.main) {

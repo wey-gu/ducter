@@ -169,7 +169,7 @@ describe("session spec", () => {
     // The summary is read as-is on On hand and the phone: the user's language, outcome first,
     // no "Branch ducter/x, commit abc." opener (live review 2026-11-09).
     expect(b).toContain("in the language of the user's own words in the brief");
-    expect(b).toContain("Open with the outcome in one sentence anyone could follow");
+    expect(b).toContain("Open with the result in one plain sentence anyone could follow"); // D349
     expect(b).not.toContain("plus the branch name in the summary");
     // Fresh-user QA: a haiku task with an English brief reported in Chinese. The language the
     // user reads is named when the partner knows it.

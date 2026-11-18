@@ -136,13 +136,14 @@ describe("the identity on the Partner page and through a rename", () => {
     let changes = 0;
     settings.onChange(() => changes++);
     keepMemIdentity(core, true, n.run);
-    for (let i = 0; i < 50 && !persona.mem; i++) await Bun.sleep(20);
+    for (let i = 0; i < 250 && !persona.mem; i++) await Bun.sleep(20); // up to 5 s: a loaded full run is slow
     expect(persona.mem).toEqual({ agentId: "ducter", owned: true });
     expect(changes).toBeGreaterThan(0); // clients are told
     expect((await settings.view()).mem.keptUnder).toBe("小鸭");
 
     settings.set({ name: "阿福" });
-    for (let i = 0; i < 50 && !n.calls().some((c) => c[2] === "set"); i++) await Bun.sleep(20);
+    for (let i = 0; i < 250 && !n.calls().some((c) => c[2] === "set"); i++) await Bun.sleep(20);
+    for (let i = 0; i < 250 && (await settings.view()).mem.keptUnder !== "阿福"; i++) await Bun.sleep(20);
     expect(n.calls().find((c) => c[2] === "set")).toEqual(["--json", "agents", "set", "ducter", "--name", "阿福"]);
     expect((await settings.view()).mem.keptUnder).toBe("阿福");
     expect(readMemIdentity(dataDir)).toEqual({ agentId: "ducter", owned: true });

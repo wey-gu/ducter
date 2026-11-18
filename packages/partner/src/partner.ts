@@ -1647,7 +1647,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     const asked = core.log
       .read({ kinds: ["decision"], limit: 5000 })
       .some((e) => {
-        const s = (e.body as Bodies["decision"]).said;
+        const s = (e.body as Bodies["decision"]).saying;
         return !!s && s.harness === w.said.harness && !!s.never === !!w.said.never && overlaps(s.kinds);
       });
     if (!asked) {
@@ -1659,7 +1659,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         holdLabel: said(lang, "saidHold"),
         defaultOption: "hold",
         reversible: false,
-        said: { ...w.said, quote },
+        saying: { ...w.said, quote },
       };
       core.log.append({ stream: "channel", origin: "partner", kind: "decision", body });
     }
@@ -3898,7 +3898,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         return;
       }
       // D379: the ask to keep a saying as a rule: core keeps it on Go; Ducter's own bookkeeping, no partner turn.
-      if (e.kind === "decision_resolved" && ctx.decision((e.body as Bodies["decision_resolved"]).decisionId)?.said) return;
+      if (e.kind === "decision_resolved" && ctx.decision((e.body as Bodies["decision_resolved"]).decisionId)?.saying) return;
       if (e.kind === "decision_resolved" && trustOf((e.body as Bodies["decision_resolved"]).decisionId)) {
         const b = e.body as Bodies["decision_resolved"];
         const agent = trustOf(b.decisionId)!.trust!.agent;

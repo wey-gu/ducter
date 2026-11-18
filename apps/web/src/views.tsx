@@ -262,6 +262,7 @@ function AutoText(p: { value: string; onInput: (v: string) => void; placeholder:
 
 function defaultInfo(d: DecisionState, now: number): { line: string; frac?: number } {
   if (d.asker) return { line: t("peer.default") }; // silence never answers for the user (D164)
+  if (d.saying) return { line: t("decision.saying.default") }; // D379: nothing waits on it; unanswered, it still goes by their words
   if (!d.reversible) return { line: t("decision.no_default") };
   const at = d.defaultAt ? Date.parse(d.defaultAt) : NaN;
   if (d.defaultOption !== "go" || Number.isNaN(at)) return { line: t("decision.default.hold") };

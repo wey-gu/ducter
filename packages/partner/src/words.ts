@@ -44,7 +44,7 @@ const W = {
     trustQuestion: "Take work from {agent} without asking from now on?",
     trustGo: "Take it directly",
     saidQuestion: "You said before: “{quote}”. So this one went to {agent}. Keep that as a rule?",
-    saidGo: "Keep as a rule",
+    saidGo: "Keep it",
     saidHold: "Just this once",
     sendQuestion: 'Send this to {who}?\n"{gist}"{whose}',
     sendWhose: '\n(the one that wrote "{theirs}")',

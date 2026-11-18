@@ -428,7 +428,7 @@ longer without them doing anything.
   partner's pin follows it), `body_selected` says why `said` with the person's words (**你说过「…」 /
   you said “…”**), and Ducter, not the model, puts one card under the ack: **你之前说过「{words}」，这件
   就交给了 {agent}。记成一条规则吗？** with **记成规则** (Go: their words become a rule with its kind
-  and never) and **只这次** (Hold, the default, no time: nothing kept, and it no longer applies).
+  and never) and **只这次** (Hold, the default, no time: nothing kept, and it no longer applies), with **不选也照你说的做，只是不记成规则。** under it.
   Unanswered, it keeps applying and is not asked again; answered, never again for that saying,
   until the person says it anew. A pin in the moment passes it like a never-rule; the New task
   card's own pick is never touched. Where it changes nothing, nothing is said.

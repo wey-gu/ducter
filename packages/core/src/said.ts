@@ -66,8 +66,15 @@ function quoteOf(sentence: string, at: number, kindAt: number): string {
   const from = spans.findIndex(([a, b]) => Math.min(at, kindAt) >= a && Math.min(at, kindAt) < b);
   const to = spans.findIndex(([a, b]) => Math.max(at, kindAt) >= a && Math.max(at, kindAt) < b);
   const q = sentence.slice(spans[Math.max(0, from)]![0], spans[Math.max(0, to)]![1]).replace(/^[，,、：:\s]+/, "").replace(PARTICLES, "").trim();
-  return [...q].length > 60 ? [...q].slice(0, 59).join("") + "…" : q;
+  const chars = [...q];
+  if (chars.length <= QUOTE_MAX) return q;
+  // Clipped at a word, never inside one ("everyday…", not "every…").
+  const cut = chars.slice(0, QUOTE_MAX - 1).join("");
+  const word = /[a-z0-9]$/i.test(cut) && /[a-z0-9]/i.test(chars[QUOTE_MAX - 1]!) ? cut.replace(/[a-z0-9'’-]+$/i, "") : cut;
+  return word.replace(/[\s,，、]+$/, "") + "…";
 }
+/** The longest quote the card and the task's line carry. */
+const QUOTE_MAX = 90;
 
 /** What a piece of the person's words says about who does which work, if anything (explicitly). */
 export function readSaid(text: string): Omit<SaidPref, "key" | "at">[] {
@@ -149,8 +156,8 @@ export function openSaid(o: { log: LogStore; rules: RulesStore; dataDir: string;
     const answered = new Map<string, string>();
     for (const e of evs) if (e.kind === "decision_resolved") answered.set((e.body as Bodies["decision_resolved"]).decisionId, (e.body as Bodies["decision_resolved"]).option);
     return evs
-      .filter((e): e is LogEvent<"decision"> => e.kind === "decision" && !!(e.body as Bodies["decision"]).said)
-      .map((e) => ({ ...e.body.said!, ts: e.ts, option: answered.get(e.body.decisionId) }));
+      .filter((e): e is LogEvent<"decision"> => e.kind === "decision" && !!(e.body as Bodies["decision"]).saying)
+      .map((e) => ({ ...e.body.saying!, ts: e.ts, option: answered.get(e.body.decisionId) }));
   };
 
   const all = () => [...memory, ...fromLog()].sort((a, b) => a.at.localeCompare(b.at));
@@ -211,7 +218,7 @@ export function keepSaidOnGo(log: LogStore, rules: RulesStore): () => void {
     const r = e.body as Bodies["decision_resolved"];
     if (r.option !== "go") return;
     const d = log.read({ stream: e.stream, kinds: ["decision"], limit: 2000 }).find((x) => (x.body as Bodies["decision"]).decisionId === r.decisionId)?.body as Bodies["decision"] | undefined;
-    const s = d?.said;
+    const s = d?.saying;
     if (!s || !isHarnessId(s.harness)) return;
     try {
       rules.add({ text: s.quote, harness: s.harness, match: [], kinds: s.kinds, ...(s.never ? { never: true } : {}) });

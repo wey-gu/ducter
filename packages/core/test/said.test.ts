@@ -42,6 +42,11 @@ test("readSaid: explicit never and always, with the kind of work, in the person'
   expect(readSaid("生活相关的事不用 Claude Code")).toMatchObject([{ harness: "claude-code", never: true, kinds: ["errand"] }]);
   // A routing habit with no always/never word stays a taste.
   expect(readSaid("Offload verification and CI log reading to Codex to save Claude credits")).toEqual([]);
+  // The whole clause, up to 90 characters; a longer one is clipped at a word, never inside one.
+  expect(readSaid("By the way, remember: don't use Claude Code for booking hotels and other everyday errands")[0]!.quote).toBe("don't use Claude Code for booking hotels and other everyday errands");
+  const long = readSaid("Never use Claude Code for booking hotels and flights and trains and restaurants and concert tickets and museum passes and the like")[0]!.quote;
+  expect([...long].length).toBeLessThanOrEqual(90);
+  expect(long).toMatch(/ [a-z]+…$/);
   // "Claude Code" alone is not code work.
   expect(readSaid("别用 Claude Code 订机票")[0]!.kinds).toEqual(["errand"]);
 });
@@ -87,7 +92,7 @@ test("answered once, never again: Go keeps it as a rule; 只这次 stops it; a n
   stops.push(keepSaidOnGo(h.log, h.rules));
   h.say("订酒店这类别用 Claude Code");
   const s = { key: "said:1", harness: "claude-code", never: true as const, kinds: ["errand" as const], quote: "订酒店这类别用 Claude Code" };
-  const ask = (id: string) => h.log.append({ stream: "channel", origin: "partner", kind: "decision", body: { decisionId: id, question: "?", goLabel: "记成规则", defaultOption: "hold", reversible: false, said: s } as Bodies["decision"] });
+  const ask = (id: string) => h.log.append({ stream: "channel", origin: "partner", kind: "decision", body: { decisionId: id, question: "?", goLabel: "记成规则", defaultOption: "hold", reversible: false, saying: s } as Bodies["decision"] });
   ask("d_1");
   expect(h.said.asked(s)).toBe(true);
   // Waiting for the answer: it still holds.
@@ -104,7 +109,7 @@ test("只这次 keeps nothing and stops it; a saved rule newer than the saying d
   const h = home();
   stops.push(keepSaidOnGo(h.log, h.rules));
   h.say("Don't use Claude Code for hotel bookings.");
-  h.log.append({ stream: "channel", origin: "partner", kind: "decision", body: { decisionId: "d_2", question: "?", goLabel: "Keep", defaultOption: "hold", reversible: false, said: { key: "said:1", harness: "claude-code", never: true, kinds: ["errand"], quote: "x" } } as Bodies["decision"] });
+  h.log.append({ stream: "channel", origin: "partner", kind: "decision", body: { decisionId: "d_2", question: "?", goLabel: "Keep", defaultOption: "hold", reversible: false, saying: { key: "said:1", harness: "claude-code", never: true, kinds: ["errand"], quote: "x" } } as Bodies["decision"] });
   h.log.append({ stream: "channel", origin: "user", kind: "decision_resolved", body: { decisionId: "d_2", option: "hold", by: "user" } as Bodies["decision_resolved"] });
   expect(h.rules.list()).toEqual([]);
   expect(h.said.rulesFor("errand")).toEqual([]);

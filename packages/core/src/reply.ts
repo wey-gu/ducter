@@ -21,7 +21,7 @@ export interface ReplyDecisions {
  *  rest (paying, a call, a sign-in, a calendar change, a find's step…) have their own buttons;
  *  a reply to them is words to the partner, who decides what they mean. */
 export function plainDecision(d: Bodies["decision"]): boolean {
-  return !(d.pay || d.fill || d.phone || d.where || d.closing || d.anywhere || d.signIn || d.cal || d.call || d.memPlugin || d.routineId || d.findId || d.asker || d.trust || d.said);
+  return !(d.pay || d.fill || d.phone || d.where || d.closing || d.anywhere || d.signIn || d.cal || d.call || d.memPlugin || d.routineId || d.findId || d.asker || d.trust || d.saying);
 }
 
 /** The tasks a user message started: the jobs whose ack answered it. */

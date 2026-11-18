@@ -668,7 +668,7 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   if (error) lines.push(`ERROR: ${error}`);
 
   const bodies = core.log.read({ kinds: ["body_selected"], fromSeq: startSeq + 1, limit: 1000 }).map((e) => e.body as Bodies["body_selected"]);
-  const saidAsks = core.log.read({ kinds: ["decision"], fromSeq: startSeq + 1, limit: 1000 }).filter((e) => (e.body as Bodies["decision"]).said).length;
+  const saidAsks = core.log.read({ kinds: ["decision"], fromSeq: startSeq + 1, limit: 1000 }).filter((e) => (e.body as Bodies["decision"]).saying).length;
   await partner.close().catch(() => {});
   await core.stop().catch(() => {});
   tuwa?.stop();

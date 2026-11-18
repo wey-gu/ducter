@@ -52,7 +52,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { callWakes, fileView, harnessName, HARNESSES, HARNESS_IDS, isHarnessId, isImage, isWorkKind, WORK_KINDS, type WorkKind, MEDIA_LIMITS, viewText, type MediaRef, type ActivityStep, type Bodies, type Brain, type CalEvent, type CalGlance, type EventKind, type HarnessId, type LogEvent, type Place, type TaskCard, type TaskGroupFrame, type TaskGroupView, type TaskNeeds } from "../../protocol/src/index.ts";
-import type { CoreApi, HarnessEvent, HarnessSession, Partner, Runner, SendImage, WorkingMemoryView } from "../../protocol/src/internal.ts";
+import type { CoreApi, HarnessEvent, HarnessSession, Partner, Runner, SendImage, WebLookPort, WorkingMemoryView } from "../../protocol/src/internal.ts";
 import { resolveWindows, WINDOW_MAX, WINDOW_MIN } from "../../protocol/src/harness-facts.ts";
 import { bridgeFor, bridgeKeyFor, type BridgeClient, type BridgeContact, type BridgeOp, type BridgeResult } from "./bridge.ts";
 import { claimText, fixedOutcome, followCandidates, followLine, foldOut, inQuiet, langOfRequest, lostLine, mayHaveGone, overAsks, peerAnswer, whoForModel, whoForUser, AFTER_SEND_MS, CHECK_EVERY_MS, DAY_MS, FOLLOW_ACTIVE_MS, LIVE_CHECK_MS, LIVE_MS, WAIT_RETRY_MS, WAIT_S, WAITING_EVERY_MS, STUCK_EVERY_MS, PEER_ASKS_OPEN, PEER_NOT_YET_MS, SENDER_DAILY, TRUST_AFTER, TRUST_WINDOW_MS, TRUSTED_DAILY, type OutKind, type OutOp, type OutState } from "./bridge-out.ts";
@@ -168,6 +168,7 @@ interface TurnState {
   opensSeen: number;
   opensHandled: number;
   acked?: boolean; // an ack went out this turn
+  looked?: boolean; // D379: a quick web look went out this turn (a short line after it is filler)
   asked?: boolean; // the partner made a decision card (ask) this turn
   askedId?: string; // the last decision it made this turn
   sheet?: boolean; // D215: that card is a call sheet: its one plain line ("I can't call there yet") is kept
@@ -289,6 +290,8 @@ export function activityStep(tool: string): ActivityStep | undefined {
       return "planning";
     case "wait_for": // D112: it takes a first look before it arms
       return "looking";
+    case "web_look": // D379: and it stays, after the turn, until the answer is said
+      return "web";
     case "routine_list":
     case "did_list": // D300
       return "recalling";
@@ -316,6 +319,7 @@ function isTrigger(e: LogEvent): boolean {
   // D236: a question answered by a reply wakes it through the reply, which says so.
   if (e.kind === "decision_resolved") return !(e.body as Bodies["decision_resolved"]).msgSeq;
   if (e.kind === "report") return (e.body as Bodies["report"]).state !== "progress";
+  if (e.kind === "web_look") return (e.body as Bodies["web_look"]).state !== "looking"; // D379
   if (e.kind === "waiter") {
     const w = e.body as Bodies["waiter"];
     if (w.routineId) return false;
@@ -482,6 +486,9 @@ type TaskGroupsPort = {
 /** D67 (2): when a reversible ask's default applies if the model names no time. */
 const ASK_DEFAULT_MINUTES = 10;
 const generatedAck = (lang: LangTag | undefined, title: string) => said(lang, "ack", { title });
+/** D379: the ack the code writes; a turn handing on a quick web look that didn't settle it says so. */
+const ackFor = (t: Pick<TurnState, "lang" | "triggers">, title: string): string =>
+  t.triggers.some((e) => e.kind === "web_look" && (e.body as Bodies["web_look"]).state === "unsettled") ? said(t.lang, "lookAck", { title }) : generatedAck(t.lang, title);
 
 let idCounter = 0;
 function newId(prefix: string): string {
@@ -1003,6 +1010,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     // Silence after the ack (live: "Task opened.", "任务已开。" right after it). With a
     // single ask in the turn, a short line after the ack that asks nothing is dropped.
     if (turn.acked && turn.userTexts.length <= 1 && p.trim().length < 200 && !/[?？]/.test(p)) return;
+    // D379: the same after a quick web look (live, haiku: "I'm still checking…"): its answer comes.
+    if (turn.looked && turn.userTexts.length <= 1 && p.trim().length < 200 && !/[?？]/.test(p)) return;
     // The card speaks for itself (eval: "Pending your answer.", "上面那张卡片等你点 Go 或 Hold"):
     // a short line after an ask only describes the card, so it is dropped.
     if (turn.asked && !turn.sheet && p.trim().length < 200) return;
@@ -1033,8 +1042,18 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   // Only a turn the user is waiting on (it answers their message) shows; each tool call becomes a
   // plain step; the tool's name never leaves this process.
   let shown: { since: string; step: ActivityStep } | null = null;
+  /** D379: quick web looks out now, by id: when each started, and the promise the eval and tests wait on. */
+  const looks = new Map<string, { since: string; done: Promise<void> }>();
   function endWaiting() {
     if (!shown) return;
+    // D379: a quick web look still out: the line says so until its answer is said.
+    if (looks.size) {
+      const since = [...looks.values()].map((l) => l.since).sort()[0]!;
+      if (shown.step === "web" && shown.since === since) return;
+      shown = { since, step: "web" };
+      core.activity?.set({ step: "web", since, stepSince: new Date(now()).toISOString() });
+      return;
+    }
     shown = null;
     core.activity?.set(null);
   }
@@ -1099,7 +1118,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           // A title written before its group, in a turn that already opened a split: wait for the head to say.
           const laterPart = gk ? !!turn.groupsSeen?.has(gk) : kind === "tool_call_title" && !!turn.groupsSeen?.size;
           if (gk) (turn.groupsSeen ??= new Set()).add(gk);
-          if (!ack && !laterPart && typeof title === "string" && title.trim()) turn.unboundAck = appendAck(turn, generatedAck(turn.lang, title.trim()));
+          if (!ack && !laterPart && typeof title === "string" && title.trim()) turn.unboundAck = appendAck(turn, ackFor(turn, title.trim()));
           // Title and place are written, the brief is still coming: start the task now (D120).
           const callId = (ev.raw as { callId?: string } | undefined)?.callId;
           if (kind === "tool_call_title" || kind === "tool_call_head") openEarly(turn, ev.tool.input as Record<string, unknown>, kind === "tool_call_head" ? "head" : "title", callId);
@@ -1144,7 +1163,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       prev.used = true;
       prev.brief.reject(new Error("the call names another place"));
     }
-    const jobId = prev?.jobId ?? (claimAck(t) ?? appendAck(t, generatedAck(t.lang, title))).jobId;
+    const jobId = prev?.jobId ?? (claimAck(t) ?? appendAck(t, ackFor(t, title))).jobId;
     let settle!: EarlyOpen["brief"];
     const brief = new Promise<string>((resolve, reject) => (settle = { resolve, reject }));
     brief.catch(() => {});
@@ -1379,7 +1398,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       return background ? `${background}\n\n${deltas.join("\n")}` : deltas.join("\n");
     }
     const batchSeqs = new Set([...batch, ...queue].map((e) => e.seq)); // D236: what waits for its own turn is not history yet
-    const kinds: EventKind[] = ["user_msg", "ai_msg", "ack", "job_status", "report", "decision", "decision_resolved", "waiter", "memory_noted", "bridge_msg"];
+    const kinds: EventKind[] = ["user_msg", "ai_msg", "ack", "job_status", "report", "decision", "decision_resolved", "waiter", "memory_noted", "bridge_msg", "web_look"];
     const history = core.log
       .read({ stream: "channel", beforeSeq: core.log.head() + 1, limit: historyLimit + batch.length, kinds })
       .filter((e) => !batchSeqs.has(e.seq))
@@ -1468,6 +1487,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     let replyTo: number | undefined = userEvents[userEvents.length - 1]?.seq;
     // D154: a result said again in the user's language answers what the first one did.
     for (const e of batch) if (replyTo === undefined && e.seq < 0 && e.kind === "ai_msg") replyTo = (e.body as Bodies["ai_msg"]).replyTo;
+    // D379: a quick web look's answer replies to the question it looked up.
+    for (const e of batch) if (replyTo === undefined && e.kind === "web_look") replyTo = (e.body as Bodies["web_look"]).replyTo;
     if (replyTo === undefined) {
       for (const e of batch) {
         if (e.kind === "report") {
@@ -1490,6 +1511,11 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       const at = new Date(now()).toISOString();
       shown = { since: at, step: "thinking" };
       core.activity.set({ step: "thinking", since: at, stepSince: at });
+    } else if (core.activity && !shown && batch.some((e) => e.kind === "web_look")) {
+      // D379: the person is still waiting on a quick web look: its line stays until the answer.
+      const at = new Date(now()).toISOString();
+      shown = { since: at, step: "web" };
+      core.activity.set({ step: "web", since: at, stepSince: at });
     }
     const fresh = await ensureSession();
     const redo = carried && batch.some((e) => carried!.seqs.has(e.seq)) ? carried : undefined;
@@ -1845,7 +1871,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         }
         const later = !!groupName && !!groups?.named(core.persona.id, groupName);
         if (!ack && later) ack = { jobId: newId("job") } as NonNullable<typeof ack>;
-        if (!ack) ack = appendAck(t, generatedAck(t.lang, args.title));
+        if (!ack) ack = appendAck(t, ackFor(t, args.title));
         t.unboundAck = null;
         t.opensHandled++;
         jobId = ack.jobId;
@@ -1973,6 +1999,46 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       }
     },
   );
+
+  // D379: one live fact from the public web, looked up beside the conversation by a session that
+  // holds only web tools (core/src/web-look.ts). The turn ends at once; the answer wakes a turn.
+  if (core.webLook) registerWebLook(core.webLook);
+  function registerWebLook(port: WebLookPort) {
+    core.mcp.register(
+      "partner",
+      "web_look",
+      "ONE live fact from the public web, back in seconds (the weather, the latest version of X, one price or score). Not for a page or link, comparing, several facts or anything signed in: those are a browsing task. At most one short line before it naming the look (never an answer); then end your turn: the answer comes back to you to say.",
+      {
+        type: "object",
+        properties: { question: { type: "string", description: "The one fact, whole on its own (what, where, when), in the user's language" } },
+        required: ["question"],
+      },
+      async (a: { question?: unknown }) => {
+        await Bun.sleep(5); // let the streamed line before it land first
+        const t = turn;
+        const question = typeof a.question === "string" ? a.question.replace(/\s+/g, " ").trim().slice(0, 300) : "";
+        if (!t || bridgeOnly(t) || !t.userTexts.length) return { ok: false, error: "Only for a question the user asked in this turn." };
+        if (!question) return { ok: false, error: "Say the one fact to look up in question." };
+        if (!port.can() || looks.size >= 2)
+          return { ok: false, task: true, error: "No quick web look here now: open a browsing task for it (task_open, needs.browse), with your one-line ack first." };
+        // The line before the look (if any) is said now; a short one after it is filler.
+        flushPending();
+        t.looked = true;
+        const lookId = newId("look");
+        const replyTo = replyToFor(t);
+        const lang = t.lang ?? userLang() ?? languageOfTexts(t.userTexts);
+        core.log.append({ stream: "channel", origin: "partner", kind: "web_look", body: { lookId, question, state: "looking", replyTo } });
+        const settle = (r: Omit<Bodies["web_look"], "lookId" | "question" | "replyTo">) => {
+          // Out of the waiting line first: the answer's own turn starts as this lands.
+          looks.delete(lookId);
+          core.log.append({ stream: "channel", origin: "system", kind: "web_look", body: { lookId, question, replyTo, ...r } });
+        };
+        const done = port.look({ question, lang: lang ?? "the language of the question" }).then(settle, () => settle({ state: "unsettled", why: "failed" }));
+        looks.set(lookId, { since: new Date(now()).toISOString(), done });
+        return { ok: true, note: "Looking it up now (at most about 30 s); the user sees that you're looking. End your turn now and say nothing more: the answer comes back to you as [web look] to say." };
+      },
+    );
+  }
 
   // D376: "接着我终端里那个 Claude 在做的": the person's own Claude Code, Codex or pi session on the
   // home (D299's reader, D327's switch), found and carried on as a task from the conversation.
@@ -3880,7 +3946,14 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       if (!requeuing) kick();
     },
     async idle() {
-      while (running) await running;
+      // D379: a quick web look out is work still to say: its answer wakes a turn when it lands.
+      while (running || looks.size) {
+        if (running) await running;
+        else {
+          await Promise.allSettled([...looks.values()].map((l) => l.done));
+          await new Promise((r) => setTimeout(r, 0));
+        }
+      }
     },
     async close() {
       outbox?.stop();
@@ -3935,7 +4008,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   if (persist && handledSeq !== undefined) {
     const from = handledSeq + 1;
     const missed = core.log
-      .read({ fromSeq: from, limit: 200, kinds: ["user_msg", "decision_resolved", "report", "waiter", "until", "routine", "bridge_msg"] })
+      .read({ fromSeq: from, limit: 200, kinds: ["user_msg", "decision_resolved", "report", "waiter", "until", "routine", "bridge_msg", "web_look"] })
       .filter((e) => isTrigger(e) && (!core.mine || core.mine.event(e)));
     const replied = new Set(
       core.log

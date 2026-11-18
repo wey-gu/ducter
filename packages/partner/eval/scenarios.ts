@@ -257,6 +257,12 @@ export interface Scenario {
   /** D377: the home's name, as the records' computer (default "Weyl's Mac"). */
   homeName?: string;
   /**
+   * D379: what a quick web look (web_look) comes back with in this scenario, from a fake (never the
+   * web): a found fact, or why it isn't settled. Absent: "page" (it needs a page read), which is
+   * what a real look says of a question that is a task's work.
+   */
+  webLook?: { answer: string; sources: string[]; confidence?: "high" | "medium" | "low" } | { unsettled: "time" | "conflict" | "page" | "sign_in" | "not_found" };
+  /**
    * D377: a computer for tasks with the person's own sessions, in a scratch home of its own, read
    * through its real records ops (core worker-records.ts) over a pretend link; allowed: the person's
    * yes there, else only its agents and their file times answer.
@@ -1913,7 +1919,7 @@ export const scenarios: Scenario[] = [
     category: "where",
     lang: "zh",
     steps: [{ user: "帮我查一下 Hacker News 今天关于 OAR 的讨论，挑重点说" }],
-    expect: { opens: 1, ackFirst: true, msgs: [0, 0], maxChars: 80, needs: { browse: true, signedIn: false }, forbid: [/Chrome|登录/] },
+    expect: { opens: 1, ackFirst: true, msgs: [0, 0], maxChars: 80, needs: { browse: true, signedIn: false }, forbid: [/Chrome|登录/], notCalled: ["web_look"] },
     rubric: "W1: public pages. One short Chinese ack naming the look-up; a task that browses (needs.browse) without the user's sign-ins. The ack does not mention Chrome, signing in or which computer (it only says where when it matters). No findings claimed. (Its place is {kind:\"browser\", profile:\"default\"}, the usual browser place: whether the user's sign-ins are used is said only by needs.signedIn, which must not be true here; Ducter picks the browser.)",
   },
   {
@@ -2293,9 +2299,10 @@ export const scenarios: Scenario[] = [
     category: "where",
     lang: "en",
     steps: [{ user: "Check bun.sh and tell me the latest Bun version." }],
-    // D378: the partner has no web tools, so "I'll check" is a task or it is a promise nobody keeps.
-    expect: { opens: 1, ackFirst: true, msgs: [0, 0], maxChars: 140, needs: { browse: true, signedIn: false }, forbid: [/\b1\.\d+\.\d+\b(?![\s\S]*\?)/] },
-    rubric: "A look-up on a public page, even for one number (D378). It opens one browsing task (needs.browse, Ducter's own browser) with a one-line English ack naming the look-up; it does NOT state a version number (no guessing from training data), claims no result, and says nothing after the ack. (Its place is {kind:\"browser\", profile:\"default\"}, the usual browser place: whether the user's sign-ins are used is said only by needs.signedIn, which must not be true here; Ducter picks the browser.)",
+    // D379: one live fact: a quick web look, no task; the number said is the look's, never one from memory.
+    webLook: { answer: "Bun v9.8.7 is the latest release, out on 2026-11-02.", sources: ["https://bun.sh/blog/bun-v9.8.7"], confidence: "high" },
+    expect: { opens: 0, msgs: [1, 2], maxChars: 140, called: [{ tool: "web_look" }], require: [/9\.8\.7/], forbid: [/\b1\.\d+\.\d+\b/] },
+    rubric: "D379: the latest version is ONE live fact from the web, so it is a quick web look (web_look), no task. At most one short line before the look naming it, never a version (the app shows 'Looking it up on the web…' while it runs); then one short English line giving the version the look found (9.8.7) and naming where it's from (Bun's blog or bun.sh). No version from memory, no offer, no question.",
   },
   {
     // D378: what the web says now is a task even when it is one small fact.
@@ -2303,8 +2310,10 @@ export const scenarios: Scenario[] = [
     category: "where",
     lang: "zh",
     steps: [{ user: "明天上海会下雨吗？" }],
-    expect: { opens: 1, ackFirst: true, msgs: [0, 0], maxChars: 60, needs: { browse: true, signedIn: false }, forbid: [/(不)?会下雨[。！!]|降水|概率|\d+\s*(°|度|%)/] },
-    rubric: "D378: tomorrow's weather is what the web says now, so it is a look-up task, never a guess. One short Chinese ack naming the look-up (e.g. 我去看一下明天上海的天气预报), a browsing task without the user's sign-ins, and no forecast claimed, no question asked first. (Its place is {kind:\"browser\", profile:\"default\"}, the usual browser place: whether the user's sign-ins are used is said only by needs.signedIn, which must not be true here; Ducter picks the browser.)",
+    // D379: one live fact: a quick web look answers it in seconds, with no task.
+    webLook: { answer: "明天上海小雨转阴，9 到 13 度，降水概率 80%", sources: ["https://www.weather.com.cn/weather/58362.shtml"], confidence: "high" },
+    expect: { opens: 0, msgs: [1, 2], maxChars: 80, called: [{ tool: "web_look", args: { question: /上海/ } }], require: [/雨/, /9|13/] },
+    rubric: "D379: tomorrow's weather is ONE live fact, so it is a quick web look (web_look), never a guess and no task. At most one short line before the look naming it, never a forecast (the app shows 在网上查… while it runs); then one short Chinese line with the forecast the look found (light rain, 9 to 13 degrees) naming where it's from (中国天气网 or weather.com.cn). No offer, no question, no forecast before the look came back.",
   },
   {
     // D378: a link is a page: a task reads it, the partner never fetches it itself.
@@ -2312,7 +2321,7 @@ export const scenarios: Scenario[] = [
     category: "where",
     lang: "en",
     steps: [{ user: "What does this post say, in short? https://example.com/blog/fake-post-1234" }],
-    expect: { opens: 1, ackFirst: true, msgs: [0, 0], maxChars: 140, needs: { browse: true, signedIn: false } },
+    expect: { opens: 1, ackFirst: true, msgs: [0, 0], maxChars: 140, needs: { browse: true, signedIn: false }, notCalled: ["web_look"] },
     rubric: "D378: a link the user pastes is a page to read, so it is a browsing task (needs.browse, no sign-in) with a one-line English ack naming the reading. It claims nothing about what the post says and asks nothing first. (Its place is {kind:\"browser\", profile:\"default\"}, the usual browser place: whether the user's sign-ins are used is said only by needs.signedIn, which must not be true here; Ducter picks the browser.)",
   },
   {
@@ -2331,6 +2340,34 @@ export const scenarios: Scenario[] = [
     steps: [{ user: "What's Postgres's default port?" }],
     expect: { opens: 0, noSend: true, msgs: [1, 1], maxChars: 120, require: [/5432/] },
     rubric: "D378, the other side: Postgres's default port (5432) is a stable fact. It answers directly in one short English line, with no task, no look-up and no 'let me check'.",
+  },
+  {
+    // D379, the line: comparing several things is a task's reading, never a quick look.
+    id: "where-web-compare-en",
+    category: "where",
+    lang: "en",
+    steps: [{ user: "Compare these three hotels for Dec 3 to 5 and tell me the best value: Hotel Fakealpha, Hotel Fakebeta and Hotel Fakegamma in Kyoto." }],
+    expect: { opens: 1, ackFirst: true, msgs: [0, 0], maxChars: 140, needs: { browse: true }, notCalled: ["web_look"] },
+    rubric: "D379, the other side of the line: comparing three hotels is several facts and pages, so it is a browsing task (needs.browse), not a quick web look. One short English ack naming the comparison; no prices or verdict claimed; nothing after the ack.",
+  },
+  {
+    // D379, the line: what's behind the person's sign-in is a task in their own browser.
+    id: "where-web-signin-zh",
+    category: "where",
+    lang: "zh",
+    steps: [{ user: "帮我看一下我在 fakebank.example.com 上这个月的信用卡账单是多少" }],
+    expect: { opens: 1, ackFirst: true, msgs: [0, 0], maxChars: 80, needs: { browse: true, signedIn: true }, notCalled: ["web_look"] },
+    rubric: "D379, the other side of the line: a figure behind the user's own sign-in is never a quick web look (it holds no sign-ins); it is a browsing task with the user's sign-ins (needs.signedIn). One short Chinese ack naming the look-up; no amount claimed, no password asked.",
+  },
+  {
+    // D379: a quick look that can't settle it hands the question to a browsing task, said in one line.
+    id: "where-web-escalate-zh",
+    category: "where",
+    lang: "zh",
+    steps: [{ user: "Fakecoin 现在多少钱一个？" }],
+    webLook: { unsettled: "conflict" },
+    expect: { opens: 1, msgs: [0, 1], maxChars: 80, called: [{ tool: "web_look" }], needs: { browse: true }, forbid: [/\d+(\.\d+)?\s*(美元|元|刀|USD|\$)/] },
+    rubric: "D379: one price is a quick web look first; this one came back not settled (sources disagree), so it opens a browsing task for it, and its ack says the quick look wasn't enough and a task is looking into it properly. At most one short line before the look naming it. No price guessed, no question, nothing more.",
   },
   // ---------- pictures (D206) ----------
   {

@@ -217,6 +217,8 @@ export function partnerView(o: PartnerViewOptions): CoreApi {
     ...(core.limits ? { limits: core.limits } : {}),
     // D368: the person's day's focus is theirs, whichever partner they talk to.
     ...(core.workingMemory ? { workingMemory: core.workingMemory } : {}),
+    // D379: a quick web look holds nothing of either partner's, so they share the one service.
+    ...(core.webLook ? { webLook: core.webLook } : {}),
     // Bridge is the default's own connection (D205): a second partner has none yet.
     // Events it is handed carry its own streams as "channel" and "partner".
     mine: { event: (e) => mine(e.stream === "channel" ? { ...e, stream: conv } : e.stream === "partner" ? { ...e, stream: own } : e), task: (c) => whose.ofTask(c.taskId) === id },

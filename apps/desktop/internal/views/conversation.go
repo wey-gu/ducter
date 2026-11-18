@@ -435,6 +435,11 @@ func (a *App) thinking() bool {
 			return true
 		}
 	}
+	// D379: a quick web look is out: its line stays under the words that
+	// named it, until the answer.
+	if act := a.S.Activity; act != nil && act.Step == "web" {
+		return true
+	}
 	for i := len(a.S.Channel) - 1; i >= 0; i-- {
 		e := a.S.Channel[i]
 		switch {

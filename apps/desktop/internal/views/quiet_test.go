@@ -1,6 +1,9 @@
 package views
 
 import (
+	"image/png"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -40,6 +43,77 @@ func TestPresenceWhileWaiting(t *testing.T) {
 	tt.Frame()
 	if tt.HasText("在翻之前聊过的…") || !tt.HasText("好，我去查。") {
 		t.Errorf("the line stays after the reply: %q", tt.Texts())
+	}
+}
+
+// D379: a quick web look keeps its line under the words that named it,
+// after that turn ended, until the answer lands.
+func TestPresenceWhileWebLook(t *testing.T) {
+	app, _ := iaApp(t, i18n.ZH)
+	tt := ui.NewTesterWith(app.View, 1280, 900, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
+	app.Receive(protocol.ServerFrame{T: "events", Events: []protocol.LogEvent{
+		chEv(1, protocol.OriginUser, protocol.KindUserMsg, protocol.UserMsg{Text: "明天上海会下雨吗？"}),
+		chEv(2, protocol.OriginPartner, protocol.KindAIMsg, protocol.AIMsg{Text: "我看一下明天上海的天气。", ReplyTo: 1}),
+	}})
+	now := time.Now().UTC().Format(time.RFC3339)
+	app.Receive(protocol.ServerFrame{T: "activity", Activity: &protocol.PartnerActivity{Step: "web", Since: now, StepSince: now}})
+	tt.Frame()
+	if !tt.HasText("在网上查…") || !tt.HasText("我看一下明天上海的天气。") {
+		t.Fatalf("no 在网上查… under the line that named the look: %q", tt.Texts())
+	}
+	app.Receive(protocol.ServerFrame{T: "events", Events: []protocol.LogEvent{chEv(4, protocol.OriginPartner, protocol.KindAIMsg, protocol.AIMsg{Text: "明天上海有小雨（中国天气网）。", ReplyTo: 1})}})
+	app.Receive(protocol.ServerFrame{T: "activity"})
+	tt.Frame()
+	if tt.HasText("在网上查…") || !tt.HasText("明天上海有小雨（中国天气网）。") {
+		t.Errorf("the line stays after the answer: %q", tt.Texts())
+	}
+}
+
+// DUCTER_SHOTS=1 DUCTER_SHOTS_DIR=$PWD/../../../../.shots/light-lookup go test ./internal/views -run WebLookShots
+func TestWebLookShots(t *testing.T) {
+	if os.Getenv("DUCTER_SHOTS") == "" {
+		t.Skip("DUCTER_SHOTS not set")
+	}
+	dir := shotsDir(t)
+	words := map[i18n.Lang][3]string{
+		i18n.ZH: {"明天上海会下雨吗？", "我看一下明天上海的天气。", "明天上海有小雨，之后转阴，9 到 13 度，记得带伞（中国天气网）。"},
+		i18n.EN: {"Will it rain in Shanghai tomorrow?", "Checking tomorrow's Shanghai forecast.", "Light rain in Shanghai tomorrow, then cloudy, 9 to 13 °C; take an umbrella (China Weather)."},
+	}
+	for _, lang := range []i18n.Lang{i18n.ZH, i18n.EN} {
+		for _, stage := range []string{"looking", "done"} {
+			for _, dark := range []bool{false, true} {
+				app, _ := iaApp(t, lang)
+				w := words[lang]
+				evs := []protocol.LogEvent{
+					chEv(1, protocol.OriginUser, protocol.KindUserMsg, protocol.UserMsg{Text: w[0]}),
+					chEv(2, protocol.OriginPartner, protocol.KindAIMsg, protocol.AIMsg{Text: w[1], ReplyTo: 1}),
+				}
+				if stage == "done" {
+					evs = append(evs, chEv(4, protocol.OriginPartner, protocol.KindAIMsg, protocol.AIMsg{Text: w[2], ReplyTo: 1}))
+				}
+				app.Receive(protocol.ServerFrame{T: "events", Events: evs})
+				if stage == "looking" {
+					now := time.Now().UTC().Format(time.RFC3339)
+					app.Receive(protocol.ServerFrame{T: "activity", Activity: &protocol.PartnerActivity{Step: "web", Since: now, StepSince: now}})
+				}
+				tt := ui.NewTesterWith(app.View, 1280, 900, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
+				tt.SetDark(dark)
+				tt.Frame()
+				tt.Frame()
+				mode := "light"
+				if dark {
+					mode = "dark"
+				}
+				f, err := os.Create(filepath.Join(dir, "mac-"+stage+"-1280-"+string(lang)+"-"+mode+".png"))
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := png.Encode(f, tt.Image()); err != nil {
+					t.Fatal(err)
+				}
+				f.Close()
+			}
+		}
 	}
 }
 

@@ -31,6 +31,7 @@ import { registerCoreTools } from "./tools.ts";
 import type { Waiters } from "./waiters.ts";
 import { createWork, type Work } from "./work.ts";
 import { createHarnessAsk, createHarnessJudge } from "./judge.ts";
+import { createWebLook } from "./web-look.ts";
 import { createProactive, type Proactive } from "./proactive/engine.ts";
 import { modelTriage, type Triage } from "./proactive/triage.ts";
 import { modelJudge, type FindJudge } from "./proactive/judge.ts";
@@ -203,6 +204,8 @@ export interface CoreOptions {
   bridgeLink?: { run?: NmemCall; env?: Record<string, string | undefined>; exec?: import("./bridge-link.ts").MemExec; sys?: import("./mem-cli.ts").MemSys };
   /** D368: Nowledge Mem's Working Memory, read-only: tests and the eval pass a fake nmem (else bridgeLink's, else none in tests). */
   workingMemory?: { run?: NmemCall; ttlMs?: number };
+  /** D379: the quick web look (tests, the eval and demos: a fake; else one on the agent the partner thinks with). */
+  webLook?: import("@ducter/protocol/src/internal.ts").WebLookPort;
   /** D218: seams for the own-number phone (tests and demos: a fake phone, a loopback cable, a fake voice engine). */
   ownNumber?: Partial<import("./phone-own/index.ts").OwnPhoneDeps>;
   update?: { fetch?: ReleaseFetch; sys?: UpdateSys; run?: UpdatesDeps["run"]; how?: import("@ducter/protocol").UpdateHow; version?: string; homeName?: string; execPath?: string; autoEveryMs?: number; graceMs?: number; criticalWaitMs?: number };
@@ -330,6 +333,8 @@ export const defaultDataDir = () => process.env.DUCTER_DATA_DIR || join(homedir(
 /** Events that wake the partner (principle 6): user messages, resolutions, non-progress reports, fired waiters. */
 export function triggersPartner(e: LogEvent): boolean {
   if (e.kind === "user_msg") return true;
+  // D379: a quick web look came back (its answer, or why a browsing task should take it).
+  if (e.kind === "web_look") return (e.body as Bodies["web_look"]).state !== "looking";
   // D236: a question answered by a reply wakes it through the reply, which says so.
   if (e.kind === "decision_resolved") return !(e.body as Bodies["decision_resolved"]).msgSeq;
   // D222: a calendar change the person said Go to that didn't go through (core ran it; success is the card's).
@@ -923,6 +928,8 @@ export function startCore(opts: CoreOptions = {}): Core {
   };
   /** D226: what the partner thinks with now: the fallback (D150) when it applies, else the setting. */
   const brainInUse = (): { harness: HarnessId; model?: string } => api.partnerFallback?.() ?? settings.get().brain;
+  // D379: a quick web look runs on the agent the partner thinks with, holding only its web tools.
+  api.webLook = opts.webLook ?? createWebLook({ harness: () => runner?.harness, pick: brainInUse, dataDir });
   // 开一件事 / New task (D128): the one opening path the card and `ducter task` share.
   // D204: the home's own Ducter folder (~/ducter, or <dataDir>/ducter for a Ducter with a data
   // folder of its own) and the projects in it; clones go there with this computer's own git.

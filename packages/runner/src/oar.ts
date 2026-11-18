@@ -139,12 +139,15 @@ export function piFlags(v: PiVariant | undefined): string[] {
  * session's prompt as the whole system-prompt opener, the tools a read-only or tool-less session
  * may not have dropped, the session-log upload off, and the compaction point.
  */
-export function dshLayer(o: { prompt?: string; readOnly?: boolean; noTools?: boolean; noWeb?: boolean; compaction?: Record<string, unknown>[]; credentials?: string }): Record<string, unknown>[] {
+export function dshLayer(o: { prompt?: string; readOnly?: boolean; noTools?: boolean; noWeb?: boolean; webOnly?: boolean; compaction?: Record<string, unknown>[]; credentials?: string }): Record<string, unknown>[] {
   const rows: Record<string, unknown>[] = [];
   // D371: the credential store reads the person's own file (the account's sign-in lives there).
   if (o.credentials) rows.push({ id: DSH_PROFILE.credentials, config: { path: o.credentials } });
   if (o.prompt) rows.push({ id: DSH_PROFILE.systemPrompt, config: { includeHarnessIdentity: false, personaPrefix: o.prompt } });
-  if (o.readOnly || o.noTools) {
+  if (o.webOnly) {
+    // D379: a quick web look keeps tool-web and drops every other tool row.
+    for (const id of [...DSH_PROFILE.readOnlyOff, ...HARNESS_FACTS["deepseek-harness"].webLook.value.rows]) rows.push({ id, disabled: true });
+  } else if (o.readOnly || o.noTools) {
     for (const id of DSH_PROFILE.readOnlyOff) rows.push({ id, disabled: true });
     if (o.noTools) for (const id of DSH_PROFILE.noToolsOff) rows.push({ id, disabled: true });
     else rows.push({ id: DSH_PROFILE.fs, config: { write: false, edit: false, applyPatch: false } });
@@ -633,7 +636,7 @@ export function adaptSpec(spec: SessionSpec, ctx: { env?: Record<string, string 
         // of Ducter's doesn't have: its credential store reads that file where it is (never copied;
         // DSH's own `credentials` row, research/140). A key still rides in the env, as before.
         const credentials = dshAccount ? dshCredentialsFile(dshEnv(ctx.env ?? {})) : undefined;
-        const layer = dshLayer({ prompt: asPrompt, readOnly: spec.readOnly, noTools: spec.noTools, noWeb: spec.noWeb, compaction: knobs?.profile, ...(credentials ? { credentials } : {}) });
+        const layer = dshLayer({ prompt: asPrompt, readOnly: spec.readOnly, noTools: spec.noTools, noWeb: spec.noWeb, webOnly: spec.webOnly, compaction: knobs?.profile, ...(credentials ? { credentials } : {}) });
         // One home per setup: sessions live in their home, so the same prompt and tools resume
         // where they were, and a one-shot starting beside the partner never rewrites its files.
         const key = createHash("sha256").update(JSON.stringify(layer)).update("\0").update(agentsMd).digest("hex").slice(0, 12);
@@ -651,7 +654,7 @@ export function adaptSpec(spec: SessionSpec, ctx: { env?: Record<string, string 
           if (own) env[DSH_KEY_ENV] = own;
         }
         // Underneath the dropped tools, DSH's own read-only sandbox preset (research/50 §2).
-        if (spec.readOnly || spec.noTools) env[DSH_PROFILE.permissionEnv] = "read-only";
+        if (spec.readOnly || spec.noTools || spec.webOnly) env[DSH_PROFILE.permissionEnv] = "read-only";
       } else if (instructions) {
         preamble = instructions;
       }
@@ -672,6 +675,15 @@ export function adaptSpec(spec: SessionSpec, ctx: { env?: Record<string, string 
     const off = HARNESS_FACTS[h].noWeb.value;
     disallowed = [...disallowed, ...off.deny.filter((t) => !disallowed.includes(t))];
     if (off.args.length) launchArgs = [...(launchArgs ?? []), ...off.args];
+  }
+
+  // D379: a quick web look holds the harness's web tools and nothing else (harness-facts webLook).
+  if (spec.webOnly) {
+    const w = HARNESS_FACTS[h].webLook.value;
+    if (!w.supported) throw new Error(`${h} can't run a quick web look (harness-facts webLook)`);
+    if (w.args.length) launchArgs = [...(launchArgs ?? []).filter((a, i, all) => a !== "--tools" && all[i - 1] !== "--tools"), ...w.args];
+    if (h === "claude-code") disallowed = []; // an allowlist: nothing else is there to deny
+    mcpServers = [];
   }
 
   // What the runtime says it cannot honor is never sent (OAR refuses by presence).

@@ -30,6 +30,7 @@ export * from "./did-glyphs.ts";
 export * from "./computer-name.ts";
 export * from "./done-today.ts";
 export * from "./rich.ts";
+export * from "./pins.ts";
 export * from "./reach.ts";
 export * from "./mem-source.ts";
 export * from "./mem-health.ts";
@@ -38,6 +39,7 @@ import type { DeviceVia, HomeKey, ReachWay } from "./reach.ts";
 import type { PastClientFrame, PastMark, PastServerFrame } from "./past.ts";
 import type { DidClientFrame, DidServerFrame } from "./did.ts";
 import type { RichUi } from "./rich.ts";
+import type { PinView } from "./pins.ts";
 import type { ChannelClientFrame, ChannelKind, ChannelServerFrame } from "./channels.ts";
 import type { SourceAsk, SourceItemRef, SourceOp, SourcesClientFrame, SourcesServerFrame } from "./task-sources.ts";
 import type { HandsetAsk, HandsetClientFrame, HandsetServerFrame, HandsetView } from "./handset.ts";
@@ -1189,6 +1191,12 @@ export type ClientFrame =
   // Rules are added only by saying them in the conversation (the partner's rule_save tool).
   | { t: "rules" }
   | { t: "rule_remove"; id: string }
+  // D381: 置顶 / Pin. pin: a block of a partner message (its seq, the block's index) goes to the top;
+  // unpin takes it off (the message keeps it); pin_tick ticks a pinned checklist's item, by its
+  // words, on the home. Every socket on the default conversation gets a fresh pins frame after each.
+  | { t: "pin"; seq: number; index: number }
+  | { t: "unpin"; id: string }
+  | { t: "pin_tick"; id: string; item: string; on: boolean }
   // candidates: who could do this task, best first (换谁来做 / Switch who does it); answered with
   // a candidates frame. task_switch moves the task to another AI agent (换到 X 接着做 / Continue
   // on X): a pin, and a handoff from saved progress if it is running; answered with action_result
@@ -1527,6 +1535,10 @@ export type ServerFrame =
   | { t: "mem_found"; q: string; ok: boolean; items: MemItem[] }
   // D372: defaults: the built-in default per kind of work, when it differs between kinds.
   | { t: "rules"; rules: RuleView[]; defaults?: KindDefault[] }
+  // D381: what is pinned in the default conversation, newest first; after the welcome and on every
+  // change. refused (to the asking socket only): why a pin didn't happen (full: PINS_MAX already;
+  // gone: no such block; kind: choices and the lend card aren't pinned).
+  | { t: "pins"; pins: PinView[]; refused?: "full" | "gone" | "kind" }
   // D309: every partner on the home, the default first; shown: the one this socket's conversation is.
   // error (to the asking socket only): why a partner_add or partner_set didn't happen.
   | { t: "partners"; partners: import("./partners.ts").PartnerInfo[]; shown: string; clientId?: string; error?: "empty" | "long" | "taken" | "full" | "unknown" }

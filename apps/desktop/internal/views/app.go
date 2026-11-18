@@ -289,6 +289,7 @@ type App struct {
 	chats      chatsState    // D276: 设置 › 聊天软件
 	todos      todosState    // D341: 设置 › 待办来源, and New task's pick
 	pile       pileState     // D359: the pile's sheet
+	pins       pinsState     // D381: 置顶 / Pinned's sheet (pins.go)
 	winW, winH float32
 	slid       map[string]float32 // D244: a sliding pane's width when open (onhandrail.go)
 	// partner and settings are the Partner page's and Settings' own state.
@@ -555,6 +556,7 @@ func (a *App) View(c *ui.Context) {
 		a.phoneInstallSheet(c) // D217
 		a.lendSheet(c)         // D347
 		a.pileSheet(c)         // D359
+		a.pinsSheet(c)         // D381
 		a.phoneView(c)
 	}
 	a.viewer(c)     // D206: a picture, over everything

@@ -5,6 +5,7 @@ import { onPastFrame, openPast } from "./past.tsx";
 import { onDidFrame, openDid } from "./did.tsx";
 import type { AgentModels, AgentReason, MemPluginReason, BrainNow, BridgeView, Candidate, ModelChoice, ClientFrame, Place, PlaceChoice, ConnectionReason, ConnectionView, DeviceHarness, DeviceView, DucterFolderView, GhInstallPlan, GitLoginState, MemItem, MemView, OoDetect, Reach, KindDefault, RuleView, ServerFrame, Settings, SettingsPatch, UpdateAllView, UpdateReason } from "@ducter/protocol";
 import { MEDIA_LIMITS, TUWA_MCP, WATCH_LIVE, type MediaRef, type FileOpenError } from "@ducter/protocol";
+import { PINS_MAX, type PinView } from "@ducter/protocol/src/pins.ts";
 import { keepLocal, noteFlights, prepare, tooBigWords, upload, type Pic, type ViewerState } from "./media-up.ts";
 import { picturesIn } from "./media-keys.ts";
 import { DUCTER_VERSION } from "@ducter/protocol/src/version.ts";
@@ -96,7 +97,7 @@ export function morph(apply: () => void) {
 }
 /** Settings (D150) is a list of sections; page is the one pushed ("" is the list). */
 export type SettingsPage = "" | "partner" | "memory" | "peers" | "notify" | "accounts" | "todos" | "chats" | "autofill" | "devices" | "phone";
-export type Sheet = { kind: "decision"; id: string } | { kind: "settings"; page?: SettingsPage } | { kind: "newtask" } | { kind: "switch" } | { kind: "past" } | { kind: "did" } | { kind: "recall"; seq: number } | { kind: "learned" } | { kind: "pile" } | null;
+export type Sheet = { kind: "decision"; id: string } | { kind: "settings"; page?: SettingsPage } | { kind: "newtask" } | { kind: "switch" } | { kind: "past" } | { kind: "did" } | { kind: "pins" } | { kind: "recall"; seq: number } | { kind: "learned" } | { kind: "pile" } | null;
 
 /** 开一件事 / New task's sheet (D128): what the user chose and typed, and how starting went. */
 export interface NewTaskDraft {
@@ -348,6 +349,8 @@ class AppState {
   /** Who does the tasks (D89): Your rules, this Mac's AI agents (from devices), and who could
    *  do the task whose Switch who does it is open. */
   rules?: RuleView[];
+  /** D381: 置顶 / Pinned, newest first, from the home (the default conversation only). */
+  pins: PinView[] = [];
   /** D372: the built-in default per kind of work, from the rules frame. */
   ruleDefaults: KindDefault[] = [];
   agents?: DeviceHarness[];
@@ -754,6 +757,11 @@ class AppState {
     if (f.t === "mem_found") return void (f.q === this.memQuery && ((this.memFound = { q: f.q, ok: f.ok, items: f.items }), this.changed()));
     if (f.t === "partners") return this.applyPartners(f);
     if (f.t === "rules") return void ((this.rules = f.rules), (this.ruleDefaults = f.defaults ?? []), this.changed());
+    if (f.t === "pins") {
+      this.pins = f.pins;
+      if (f.refused) this.toast(this.L.t(`pin.refused.${f.refused}`, PINS_MAX));
+      return void this.changed();
+    }
     if (f.t === "ways") {
       this.ways = f;
       if (inApp()) tellWays({ ways: f.ways, ...(f.key ? { key: f.key } : {}), ...(f.fp ? { fp: f.fp } : {}) });
@@ -867,6 +875,8 @@ class AppState {
     if (f.t === "error" && f.message.startsWith("lend_code:")) (this.lend = lendError(this.lend, f.message)), this.changed();
     if (f.t === "welcome") {
       if (typeof f.version === "string" && f.version !== DUCTER_VERSION) this.staleFor = f.version;
+      // D381: what is pinned comes right after, for the default conversation only.
+      this.pins = [];
       // D190: a new socket (the phone came back from the background, the link dropped): the old
       // socket's live view closed with it on the home, so the view that's still on screen opens
       // again, the same way (a watch stays a watch; the user's turn ended with the old socket).

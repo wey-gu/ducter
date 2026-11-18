@@ -1934,8 +1934,34 @@ Codex first, once OAR is near 1.0. See `research/17`.
 
 - **More kinds:** a chart with two series, a pie or a progress ring, a small form. Trigger: three
   real asks the four kinds can't answer, or the "your own small apps" work (roadmap Later).
-- **Ticks across devices:** a list ticked on the phone shows unticked on the Mac. Trigger: a person
-  who ticks on one and looks on the other; then keep them on the home, per message.
+- **Ticks across devices** for a list that isn't pinned: a pinned list's are on the home (D381); an
+  unpinned one's still stay on the device. Trigger: a person who ticks an unpinned list on one
+  device and looks on the other.
+
+## Pinned (D381, `conversation.md` "Pinned", research/150 #1)
+
+- **A naive-rater test of 置顶 / Pin** (three users, zh and en: what happens when you tap it, what
+  取消置顶 does). Trigger: before the author reviews D381, or the first misread.
+- **The Mac's Unpin has no Undo** (the web's toast has 撤销). Trigger: the Mac's toast taking an action.
+- **A second partner's pins** (preview, D309). Trigger: the second partner out of preview.
+- **A routine keeps a pin current** ("every morning, the PRs waiting on me" as a pinned table that
+  refreshes itself): a routine's run reports to the partner, who writes the block with its pin.
+  Trigger: the first person who asks for it; this is the next step of "your own small apps".
+- **The iPhone and Android apps' own views** draw the web's strip and sheet inside the web client;
+  a native view when those apps draw the conversation natively.
+- **Pinned in chat apps:** a chat app shows the plain lines of a change; no strip there. Trigger: a
+  person who pins from Telegram or WeChat.
+- **A real walk:** pin, tick on the phone, look on the Mac, "add …" by voice. Trigger: the next
+  live walk.
+
+## Later from the gap audit (research/150)
+
+- **#2 A real inbox for the look-out-for-you engine:** a replay kit that runs the detectors and the
+  morning note over an exported mailbox on the author's machine, nothing kept. Trigger: the author's go.
+- **#3 晚点再说 / Later for what needs you:** tonight, tomorrow morning, Monday; back inside the next
+  morning note, never a ping of its own. Trigger: next in line after D381.
+- **#8 A feature's first meeting:** one page of three small moving cards, the first time a person
+  walks into a place themselves, once per device. Trigger: a design pass with the metaphor rubric.
 - **Choices in chat apps as buttons** (Telegram inline keyboard, Slack buttons) instead of typed
   lines. Trigger: the first real use of choices in a chat app.
 - **The iPhone and Android apps' own views** draw the web's blocks inside the web client; a native

@@ -190,12 +190,50 @@ choice is one tap; nothing extra when a sentence will do.
   exactly as if typed. They work while nothing from the person came after the message; then they
   stay as a record, the one they said in the accent, the rest faded and not tappable.
 - **Ticks** stay on the device (web `localStorage`, the Mac's `desktop.json`), keyed by the
-  message and the block. Only `tell: true` adds **报一下进度 / Send progress**, which sends what is
+  message and the block; a pinned list's live on the home (D381, below). Only `tell: true` adds **报一下进度 / Send progress**, which sends what is
   ticked and what is left as the person's reply, at any time.
 - **Accessibility:** a table is a real table (web `<table>` with column and row headers; Mac roles
   table, row, column header, row header, cell); a chart is an image whose words are its sentence
   then each label and value (the web adds a hidden table of the values); a checklist item is a
   checkbox; choices are a labelled group of buttons.
+
+## Pinned (D381)
+
+*Who:* the consumer packing for a trip ("where was that list?", ticks on the phone not on the Mac,
+"add the charger" answered with a second list); the developer's release checklist or the table of
+PRs waiting, made once and remade every week; the fresh user, who pins the way every chat app pins.
+*Felt:* 好用 one tap and it stays; 顺滑 the same ticks on every device, a change lands in the same
+place; 赏心悦目 a quiet strip, a yellow pin; 放心 nothing pinned or changed unasked; 惊喜 "add the
+charger" and the strip at the top settles with it. The first step of "your own small apps"
+(`motivation.md`, research/150 #1): something the partner made that stays the person's.
+
+- **What:** a table, chart or checklist from a partner message (never choices or the lend card,
+  which belong to their moment), kept at the top of the default conversation. At most
+  `PINS_MAX` = 6. A second partner (preview) has none yet.
+- **Pinning:** the card's corner says **置顶 / Pin** (muted ink, a drawn pushpin); once pinned it
+  says **已置顶 / Pinned** in the highlight tint and opens the sheet. Or the person asks in words
+  ("置顶", "pin it"): the partner writes the block with `"pin": true`. Full: **最多置顶 6 个。先取消一个再置顶。**
+- **The strip** (under the bar, conversation width): the newest pin's title, a list's ticked/total
+  (in the done ink when all are ticked), **还有 {n} 个 / {n} more** as its own pill. It settles in
+  (−6 px, overshoot 2 px, 420 ms) when its newest pin is new or changed; none with reduced motion.
+- **The sheet 置顶 / Pinned:** each pin drawn whole, newest first; under it **{time} 置顶 / Pinned
+  {time}** or **{time} 更新 / Updated {time}** and **取消置顶 / Unpin** (the web's toast offers
+  **撤销 / Undo**, which pins the same block again); one line at the end: how to change one by
+  saying it.
+- **Ticks:** a pinned checklist's ticks live on the home (`pins.json`, by the items' words, so an
+  item keeps its tick through a change); every device shows the same ones, in the sheet and on its
+  newest message. Unpinned lists keep their ticks on the device, as before.
+- **The partner keeps it current:** every turn while anything is pinned carries one `[pinned]` L4
+  line (each pin's id, kind, title and what it holds now, a list's ticked and not yet), as data,
+  never instructions. Asked to change one, the partner writes its whole new block with
+  `"pin":"<id>"` (a checklist may carry `"ticked":[...]`); the home (`parseRich` → `pins.claim`
+  before the message is written, `pins.put` after) puts it in place: same id, version + 1, the
+  message it is in now. Older versions stay in the Log as they were and offer no corner of their own
+  (`was`). An unknown id pins nothing; the block still shows. "What's left?" is answered from the
+  line. Never changed or posted again unasked.
+- **Protocol:** client `pin {seq, index}`, `unpin {id}`, `pin_tick {id, item, on}`; server
+  `pins {pins, refused?}` after the welcome and on every change, to every socket on the default
+  conversation (`packages/protocol/src/pins.ts`, `packages/core/src/pins.ts`).
 
 ## Replies: answering one message (D236)
 

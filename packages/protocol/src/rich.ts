@@ -19,8 +19,37 @@ export type RichBlock =
   // D347: the 加一台做事的电脑 / Add a computer for tasks card: one button that opens the guided sheet.
   | { type: "lend" };
 
-/** A block as stored on an ai_msg: the block and the plain text that stands in for it in `text`. */
-export type RichUi = RichBlock & { plain: string };
+/**
+ * A block as stored on an ai_msg: the block and the plain text that stands in for it in `text`.
+ * `pin` (D381): this block is the pinned one with that id, as of this message (the home sets it).
+ */
+export type RichUi = RichBlock & { plain: string; pin?: string };
+
+/** D381: the kinds a person can pin (a question's choices and the lend card are of their moment). */
+export const PINNABLE: readonly RichBlock["type"][] = ["table", "chart", "checklist"];
+
+/**
+ * D381: what the partner asked of the home in a block's JSON: `"pin": true` pins this block (the
+ * person asked to), `"pin": "<id>"` puts it in place of that pinned one; a checklist's `"ticked"`
+ * (with a pin) names the items ticked now. The home checks the id and the kind.
+ */
+export interface RichPinAsk {
+  index: number;
+  want: true | string;
+  ticked?: string[];
+}
+export const PIN_ID = /^p[a-z0-9]{4,16}$/;
+
+/** D381: a block's pin request, if it carries a well-formed one for a kind that can be pinned. */
+export function pinAsk(raw: unknown, b: RichBlock, index: number): RichPinAsk | undefined {
+  const o = (raw ?? {}) as Record<string, unknown>;
+  const want = o.pin === true ? true : typeof o.pin === "string" && PIN_ID.test(o.pin) ? o.pin : undefined;
+  if (want === undefined || !PINNABLE.includes(b.type)) return undefined;
+  if (b.type !== "checklist" || !Array.isArray(o.ticked)) return { index, want };
+  const items = new Set(b.items);
+  const ticked = [...new Set(o.ticked.filter((x): x is string => typeof x === "string").map((x) => x.replace(/\s+/g, " ").trim()))].filter((x) => items.has(x));
+  return { index, want, ticked };
+}
 
 export const RICH_FENCE = "ducter-ui";
 
@@ -163,9 +192,10 @@ export interface RichDropped {
  * form. A block that fails is left out (and said in `dropped`); if nothing else is left, its JSON
  * stays as an ordinary code block, so a message never vanishes.
  */
-export function parseRich(src: string, lang: LangTag | undefined): { text: string; ui: RichUi[]; dropped: RichDropped[] } {
+export function parseRich(src: string, lang: LangTag | undefined): { text: string; ui: RichUi[]; dropped: RichDropped[]; pins: RichPinAsk[] } {
   const ui: RichUi[] = [];
   const dropped: RichDropped[] = [];
+  const pins: RichPinAsk[] = []; // D381
   let choices = 0;
   src = src.replace(/[\u0000\u0001]/g, "");
   let text = src.replace(FENCE, (_m, body: string) => {
@@ -182,6 +212,8 @@ export function parseRich(src: string, lang: LangTag | undefined): { text: strin
       const b = validateRich(raw);
       if (b.type === "choices" && choices++) throw new Error("one choices block per message");
       const plain = plainOf(b, lang);
+      const ask = pinAsk(raw, b, ui.length);
+      if (ask) pins.push(ask);
       ui.push({ ...b, plain });
       return `\u0000${plain}\u0000`;
     } catch (e) {
@@ -196,7 +228,7 @@ export function parseRich(src: string, lang: LangTag | undefined): { text: strin
     .replace(/\n{3,}/g, "\n\n")
     .trim();
   if (!text && dropped.length) text = "```\n" + [...src.matchAll(FENCE)].map((m) => m[1]!.trim()).join("\n\n") + "\n```";
-  return { text, ui, dropped };
+  return { text, ui, dropped, pins };
 }
 
 /** What a client draws: the words and the blocks, in order. A block whose plain text is missing goes last. */

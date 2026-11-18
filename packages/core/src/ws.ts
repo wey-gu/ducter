@@ -106,6 +106,8 @@ export interface WsDeps {
   settings?: SettingsStore;
   /** Your rules and who does the tasks (D89); absent in tests that don't need them. */
   rules?: RulesStore;
+  /** D381: 置顶 / Pinned (pins.ts); absent in tests that don't need it. */
+  pins?: import("./pins.ts").PinsStore;
   loadout?: Loadout;
   /** D288: each agent's account usage limits (account-usage.ts); absent in tests that don't need it. */
   accountUsage?: import("./account-usage.ts").AccountUsageBook;
@@ -308,6 +310,13 @@ export function createWsHandler(deps: WsDeps) {
     const defaults = (await deps.loadout?.defaults().catch(() => undefined)) ?? [];
     return { t: "rules", rules: deps.rules!.list(), ...(defaults.length ? { defaults } : {}) };
   };
+  // D381: the pinned blocks go to every socket on the default conversation, after the welcome and on
+  // each change (a tap on any device, the partner changing one, a tick).
+  const pinsFrame = (refused?: "full" | "gone" | "kind"): ServerFrame => ({ t: "pins", pins: deps.pins!.list(), ...(refused ? { refused } : {}) });
+  const offPins = deps.pins?.onChange(() => {
+    const f = pinsFrame();
+    for (const ws of sockets) if (ws.data.live && !ws.data.partner) send(ws, f);
+  });
   const offRules = deps.rules?.onChange(() => {
     void rulesFrame().then((f) => {
       for (const ws of sockets) if (ws.data.rules) send(ws, f);
@@ -685,6 +694,7 @@ export function createWsHandler(deps: WsDeps) {
             : log.read({ stream, limit: REPLAY_FRESH });
         send(ws, { t: "events", events: dropSuperseded(events).map((e) => (stream === "channel" ? e : { ...e, stream: "channel" })) });
         send(ws, { t: "on_hand", onHand: tasks.onHand() });
+        if (deps.pins && !ws.data.partner) send(ws, pinsFrame());
         const doing = activityOf(ws);
         if (doing) send(ws, { t: "activity", activity: doing });
         ws.data.live = true; // synchronous since the read: no event can be missed in between
@@ -1244,6 +1254,25 @@ export function createWsHandler(deps: WsDeps) {
         if (!deps.rules) throw new Error("rules are not available");
         ws.data.rules = true;
         send(ws, await rulesFrame());
+        return;
+      }
+      case "pin": {
+        if (!deps.pins) throw new Error("pins are not available");
+        if (ws.data.partner) throw new Error("pinning is only in the default conversation for now");
+        const r = deps.pins.pin(Number(f.seq), Number(f.index));
+        // A new pin reaches every socket through onChange; a refusal (or one already pinned) only this one.
+        if (!r.ok) send(ws, pinsFrame(r.error));
+        else if (r.already) send(ws, pinsFrame());
+        return;
+      }
+      case "unpin": {
+        if (!deps.pins) throw new Error("pins are not available");
+        if (!deps.pins.unpin(String(f.id ?? ""))) send(ws, pinsFrame("gone"));
+        return;
+      }
+      case "pin_tick": {
+        if (!deps.pins) throw new Error("pins are not available");
+        if (!deps.pins.tick(String(f.id ?? ""), String(f.item ?? ""), f.on === true)) send(ws, pinsFrame("gone"));
         return;
       }
       case "rule_remove": {
@@ -2179,6 +2208,7 @@ export function createWsHandler(deps: WsDeps) {
       return out;
     },
     stop() {
+      offPins?.();
       offDevices?.();
       offSettings?.();
       offRules?.();

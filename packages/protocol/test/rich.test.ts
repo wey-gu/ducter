@@ -47,7 +47,7 @@ describe("rich answers (D303)", () => {
 
   test("a bad block is left out and said; a message that would be empty keeps its JSON as code", () => {
     const r = parseRich("Before.\n```ducter-ui\n{nope\n```\nAfter.", "en");
-    expect(r).toEqual({ text: "Before.\n\nAfter.", ui: [], dropped: [{ error: "not valid JSON" }] });
+    expect(r).toEqual({ text: "Before.\n\nAfter.", ui: [], dropped: [{ error: "not valid JSON" }], pins: [] });
     const only = parseRich('```ducter-ui\n{"type":"x"}\n```', "en");
     expect(only.text).toBe('```\n{"type":"x"}\n```');
     // At most one choices block, at most three blocks.
@@ -58,7 +58,7 @@ describe("rich answers (D303)", () => {
 
   test("ordinary code fences are left alone", () => {
     const src = "Run this:\n\n```sh\nbun test\n```";
-    expect(parseRich(src, "en")).toEqual({ text: src, ui: [], dropped: [] });
+    expect(parseRich(src, "en")).toEqual({ text: src, ui: [], dropped: [], pins: [] });
   });
 
   test("an older home's message (no ui) is just words; a newer kind falls back to its plain text", () => {

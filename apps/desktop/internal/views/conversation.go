@@ -115,6 +115,7 @@ func (a *App) conversation(c *ui.Context) {
 	a.noteRows(rows)     // D236: for the jump and the answer tab
 	a.followBefore(rows) // D254: the divider, what is new since the reader left the end
 	a.header(c)
+	a.pinStrip(c) // D381: what is pinned, under the bar
 	a.list.Key = func(i int) any {
 		if i >= len(rows) {
 			return i

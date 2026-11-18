@@ -37,6 +37,8 @@ type RichUI struct {
 	Tell    bool        `json:"tell,omitempty"`
 	Options []string    `json:"options,omitempty"`
 	Plain   string      `json:"plain"`
+	// Pin (D381): this block is that pinned one, as of this message.
+	Pin string `json:"pin,omitempty"`
 }
 
 // The limits a block is held to (RICH_LIMITS).

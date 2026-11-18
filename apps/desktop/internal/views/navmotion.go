@@ -1,6 +1,8 @@
 package views
 
 import (
+	"math"
+	"sync"
 	"time"
 
 	"github.com/egoist/mygo/ui"
@@ -195,7 +197,7 @@ func (a *App) pagePose(c *ui.Context, e ui.Element, sign float32) {
 		}
 		*seen = a.nav.seq
 	}
-	e.AnimatePose(p, a.navAnim(d))
+	e.AnimatePose(p, wholeSteps(a.navAnim(d), enter.X))
 }
 
 // holdBar keeps the bar still while its page comes in (pagePose turned
@@ -292,3 +294,59 @@ func (a *App) taskSwitch() ui.ElementTransition {
 		Exit:         &ui.Motion{},
 	}
 }
+
+// wholeSteps returns an, a spring, as the curve it draws, its progress
+// rounded so that a pose moving dist points (either way) stands on whole
+// points every frame, and ending where it comes to stand on its end. A
+// page on its way so lands on whole pixels, at 1x and 2x alike, and MyGo
+// folds its translation into what it paints (scene.TranslationFolder):
+// its text, its pictures and the layer it fades in as are drawn as at
+// rest. Between pixels, every pixel of the page is resampled each frame:
+// on the CPU (the test renderer, a CI runner) the move in to On hand took
+// ~45 ms a frame so, against ~13 ms on whole points; a GPU takes its
+// general shader for the simple one. The way is the spring's; only its
+// last fractions of a point, as it settles, go in steps. The delay stays
+// an's.
+func wholeSteps(an ui.Animation, dist float32) ui.Animation {
+	dist = float32(math.Abs(float64(dist)))
+	if dist == 0 || an.Duration > 0 {
+		return an
+	}
+	sp := an.Spring
+	key := wholeKey{sp, dist}
+	wholeMu.Lock()
+	d, ok := wholeDur[key]
+	if !ok {
+		// The last moment its rounded place is not its end: from then on
+		// it stands still, and the curve ends there.
+		const step = time.Millisecond
+		for t := sp.SettleTime(); t > 0; t -= step {
+			if math.Round((1-sp.Progress(t))*float64(dist)) != 0 {
+				d = t + step
+				break
+			}
+		}
+		d = max(d, step)
+		wholeDur[key] = d
+	}
+	wholeMu.Unlock()
+	return ui.Animation{Duration: d, Delay: an.Delay, Ease: func(k float32) float32 {
+		if k >= 1 {
+			return 1
+		}
+		p := sp.Progress(time.Duration(float64(d) * float64(k)))
+		return float32(math.Round(p*float64(dist))) / dist
+	}}
+}
+
+// wholeDur keeps each spring's curve's length over a distance: pagePose
+// asks for it every build.
+type wholeKey struct {
+	sp   ui.SpringOptions
+	dist float32
+}
+
+var (
+	wholeMu  sync.Mutex
+	wholeDur = map[wholeKey]time.Duration{}
+)

@@ -1,4 +1,4 @@
-// D347: 借一台电脑来干活 / Lend a computer. The home mints a one-time code and the one line the
+// D347: 加一台做事的电脑 / Add a computer for tasks. The home mints a one-time code and the one line the
 // other computer pastes (it installs Ducter, joins with the code and keeps the worker running);
 // then it says when that computer joined and when it is here, so the clients can wait for it
 // in place instead of leaving the person to look. Pure but for the network interfaces it reads.

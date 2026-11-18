@@ -58,7 +58,7 @@ func (a *App) brain() protocol.Brain {
 	return protocol.Brain{Harness: "claude-code", Model: "opus"}
 }
 
-// BrainMark is the one mark on Devices (D89): on the Mac Ducter lives on,
+// BrainMark is the one mark on Devices (D89): on the Mac Ducter runs on,
 // the AI agent it thinks with says so ("Ducter 想事情用"); "" otherwise.
 // The Devices stage calls it for each token.
 func (a *App) BrainMark(dv *protocol.DeviceView, harness string) string {
@@ -86,7 +86,7 @@ func (a *App) BrainBadge(c *ui.Context, dv *protocol.DeviceView, harness string)
 	})
 }
 
-// homeName names the computer Ducter lives on inside a sentence: "this
+// homeName names the computer Ducter runs on inside a sentence: "this
 // Mac", or the home's own name ("hel") when it lives elsewhere.
 func (a *App) homeName() string {
 	if home := a.homeDevice(); home != nil {

@@ -175,7 +175,7 @@ describe("ducter pair without a public address", () => {
     expect(out).not.toContain("--join");
     const zhOut = await run(pub, { t: zh });
     expect(zhOut).toContain("手机或 Ducter 应用：打开这个地址，再输入连接码。");
-    expect(zhOut).toContain("另一台电脑：在它上面运行这一条命令，它就会替 Ducter 做事：");
+    expect(zhOut).toContain("另一台电脑：在它上面运行这一条命令，它就会帮 Ducter 做事：");
     // No public address: the computer's line keeps a placeholder and says why.
     const bare = await run({});
     expect(bare).toMatch(/ducter worker <address> --code [A-Z2-9]{4}-[A-Z2-9]{4}/);

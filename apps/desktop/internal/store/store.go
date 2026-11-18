@@ -465,7 +465,7 @@ type Store struct {
 	SourceResults []protocol.SourcesFrame
 	// PairCode is the newest pairing code the server minted for this app.
 	PairCode *protocol.ServerFrame
-	// Lend is 借一台电脑来干活 / Lend a computer's code as last said (D347):
+	// Lend is 加一台做事的电脑 / Add a computer for tasks's code as last said (D347):
 	// the waiting frame with its line, then joined and here for that code.
 	Lend *protocol.ServerFrame
 	// Renamed is the server's answer to the last 改名字 / Rename.

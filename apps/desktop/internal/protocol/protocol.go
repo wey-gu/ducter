@@ -1107,7 +1107,7 @@ type PairCodeReq struct {
 	T string `json:"t"` // "pair_code"
 }
 
-// LendCodeReq asks for 借一台电脑来干活 / Lend a computer's code and line
+// LendCodeReq asks for 加一台做事的电脑 / Add a computer for tasks's code and line
 // (D347); the server answers a lend frame (waiting), then lend frames to
 // every client as the computer joins and arrives.
 type LendCodeReq struct {
@@ -1116,7 +1116,7 @@ type LendCodeReq struct {
 
 // RenameDeviceReq is 改名字 / Rename for a paired device (another
 // computer; D84). The server answers rename_result, then a fresh devices
-// frame. The machine Ducter lives on keeps its own name.
+// frame. The machine Ducter runs on keeps its own name.
 type RenameDeviceReq struct {
 	T      string `json:"t"` // "rename_device"
 	Device string `json:"device"`
@@ -1767,7 +1767,7 @@ const (
 )
 
 type DeviceView struct {
-	ID        string          `json:"id"` // "local" for the machine Ducter lives on
+	ID        string          `json:"id"` // "local" for the machine Ducter runs on
 	Name      string          `json:"name"`
 	Kind      string          `json:"kind"` // laptop | mini | server | phone
 	Home      bool            `json:"home"`
@@ -2112,7 +2112,7 @@ type ServerFrame struct {
 	Address   string   `json:"address,omitempty"`
 	Link      string   `json:"link,omitempty"`
 	QR        []string `json:"qr,omitempty"`
-	// lend (D347, 借一台电脑来干活 / Lend a computer): Code, ExpiresAt,
+	// lend (D347, 加一台做事的电脑 / Add a computer for tasks): Code, ExpiresAt,
 	// State (waiting | joined | here), Address, SameNetwork, LendLine (the
 	// one line to paste, only to the window that asked), Check (the
 	// reachability one-liner), Device and Name once a computer joined.
@@ -2492,7 +2492,7 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 	// dropped here unseen (the live view's live / live_frame were, from D151 to
 	// D172: 试一下 sat at 正在打开 example.com…… forever).
 	case "welcome", "events", "on_hand", "task_history", "sent", "action_result", "error",
-		"devices", "ability_result", "pair_code", "rename_result", "disconnect_result", "update_result", "agent_update_result", "update_all_result", "mem_plugin_result", "anywhere_setup_result", "settings", "connections", "connection_result", "rules", "candidates", "account_usage", "activity",
+		"devices", "ability_result", "pair_code", "lend", "rename_result", "disconnect_result", "update_result", "agent_update_result", "update_all_result", "mem_plugin_result", "anywhere_setup_result", "settings", "connections", "connection_result", "rules", "candidates", "account_usage", "activity",
 		"task_new_options", "task_new_result", "open_task", "open_result", "project_add_result", "project_clone_result", "folder_browse_result",
 		"project_new_result", "git_login_state",
 		"first_screen", "folder_changes", "close_result", "live", "live_frame", "live_turn", "live_doing", "phone_terms", "phone_install_result", "phone_erase_result", "phone_view", "phone_frame", "phone_doing", "browser_sites", "browser_check", "connection_reads", "proactive_day", "media_keys", "saved", "phone_did",

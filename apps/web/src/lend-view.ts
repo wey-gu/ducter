@@ -1,4 +1,4 @@
-// D347: 借一台电脑来干活 / Lend a computer: which step the sheet is on, from what the person chose
+// D347: 加一台做事的电脑 / Add a computer for tasks: which step the sheet is on, from what the person chose
 // and what the home said (lend frames, packages/core/src/lend.ts). Pure, so tests drive it.
 import type { DeviceView, LendFrame, ServerFrame } from "@ducter/protocol";
 
@@ -21,16 +21,23 @@ export interface LendState {
   /** D355: connecting a phone, a tablet or a window: the code ("asking" until it comes), and how many were connected when it went out. */
   pair?: PairFrame | "asking";
   pairFrom?: number;
+  /** When it was asked (ms): no answer within LEND_WAIT_MS is said, never an endless wait. */
+  askedAt?: number;
+  /** The home answered the lend_code with an error frame. */
+  failed?: boolean;
 }
 
-export type LendStep = "add" | "pair" | "ask" | "asking" | "noaddress" | "line" | "expired" | "joined" | "here";
+/** How long the line waits for the home before it says it didn't answer (research/127). */
+export const LEND_WAIT_MS = 8_000;
+
+export type LendStep = "add" | "pair" | "ask" | "asking" | "failed" | "noaddress" | "line" | "expired" | "joined" | "here";
 
 export function lendStep(l: LendState, now: number): LendStep {
   if (l.add) return "add";
   if (l.pair) return "pair";
   if (!l.kind) return "ask";
   const f = l.frame;
-  if (!f) return "asking";
+  if (!f) return l.failed || (l.askedAt !== undefined && now - l.askedAt >= LEND_WAIT_MS) ? "failed" : "asking";
   if (f.state === "here") return "here";
   if (f.state === "joined") return "joined";
   if (!f.address || !f.line) return "noaddress";
@@ -52,6 +59,12 @@ export function applyLend(l: LendState | undefined, f: LendFrame): LendState | u
   if (f.state === "waiting") return l.awaiting ? { ...l, frame: f, awaiting: false } : l;
   if (!l.frame || l.frame.code !== f.code) return l;
   return { ...l, frame: { ...l.frame, ...f, ...(l.frame.line ? { line: l.frame.line } : {}) } };
+}
+
+/** The home answered a lend_code with an error ("lend_code: …"): the sheet says it couldn't make one. */
+export function lendError(l: LendState | undefined, message: string): LendState | undefined {
+  if (!l?.awaiting || !message.startsWith("lend_code:")) return l;
+  return { ...l, awaiting: false, failed: true };
 }
 
 /** The lent computer as Devices shows it now: its name, OS word key, and the agents signed in there. */

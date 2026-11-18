@@ -155,7 +155,7 @@ func TestDevicesHelFolding(t *testing.T) {
 			}
 			d.selClient = "app1"
 			h.settle(200 * time.Millisecond)
-			for _, want := range []string{L.T("card.status.this"), L.T("card.via", L.T("card.via.app")+L.T("card.via.and")+L.T("card.via.cli")), L.T("chip.worker", "hel")} {
+			for _, want := range []string{L.T("card.status.this"), L.T("card.via", L.T("card.via.app")+L.T("card.via.and")+L.T("card.via.cli")), L.T("chip.worker", "Ducter")} {
 				if !h.tt.HasText(want) {
 					t.Fatalf("this Mac's card: missing %q in %q", want, h.tt.Texts())
 				}
@@ -185,7 +185,7 @@ func TestDevicesHelFolding(t *testing.T) {
 				t.Fatal("the app window went with the command line")
 			}
 
-			// Let this Mac do tasks for hel: on, the Mac stands as a worker, the app folds into it.
+			// Let this Mac help Ducter with tasks: on, the Mac stands as a worker, the app folds into it.
 			h.app.setWork(true) // the switch's change (its label is the title's)
 			h.until("worker", func() bool { return h.app.S.Device("w-mac") != nil })
 			if w.starts != 1 {
@@ -193,7 +193,7 @@ func TestDevicesHelFolding(t *testing.T) {
 			}
 			d.selClient, d.sel = "", "w-mac"
 			h.settle(200 * time.Millisecond)
-			for _, want := range []string{L.T("card.via", L.T("card.via.app")), L.T("chip.worker", "hel")} {
+			for _, want := range []string{L.T("card.via", L.T("card.via.app")), L.T("chip.worker", "Ducter")} {
 				if !h.tt.HasText(want) {
 					t.Fatalf("worker card: missing %q in %q", want, h.tt.Texts())
 				}
@@ -207,7 +207,7 @@ func TestDevicesHelFolding(t *testing.T) {
 			}
 			d.sel, d.selClient = "", "app1"
 			h.settle(200 * time.Millisecond)
-			if !h.tt.HasText(L.T("chip.worker", "hel")) || h.tt.HasText(L.T("work.mac.note.off", "hel")) {
+			if !h.tt.HasText(L.T("chip.worker", "Ducter")) || h.tt.HasText(L.T("work.mac.note.off", "hel")) {
 				t.Fatalf("off: the chip, its helper behind ⓘ: %q", h.tt.Texts())
 			}
 			h.shotPage(fmt.Sprintf("mac-%s-work-off", lang))
@@ -215,7 +215,7 @@ func TestDevicesHelFolding(t *testing.T) {
 			// The same switch in Settings › Where it runs.
 			h.app.Route, h.app.settings.tab = RouteSettings, TabRun
 			h.settle(200 * time.Millisecond)
-			if !h.tt.HasText(L.T("work.mac.title", "hel")) {
+			if !h.tt.HasText(L.T("work.mac.title", "Ducter")) {
 				t.Fatalf("settings: %q", h.tt.Texts())
 			}
 			h.shotAs(fmt.Sprintf("settings-%s-where", lang))

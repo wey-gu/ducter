@@ -45,7 +45,7 @@ func TestThisMacsWorkerUpdatesHere(t *testing.T) {
 		if tt.HasText(L.T("devup.how.app", "MacBook")) {
 			t.Errorf("%s: this Mac told to open Ducter on itself: %q", lang, tt.Texts())
 		}
-		if !tt.HasText(L.T("devup.how.helper", "0.0.7", "hel")) {
+		if !tt.HasText(L.T("devup.how.helper", "0.0.7", "Ducter")) {
 			t.Fatalf("%s: no restart line in %q", lang, tt.Texts())
 		}
 		if err := tt.Click(spoken(L, L.T("devup.restart"), "MacBook")); err != nil {

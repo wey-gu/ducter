@@ -38,7 +38,7 @@ describe("worker", () => {
       rmSync(dir, { recursive: true, force: true });
     }
     expect(sent).toEqual([{ url: "https://d.example.com/pair", body: expect.objectContaining({ code: "K7QM-4XPA", name: "vps-2", role: "worker" }) }]);
-    expect(out.join("\n")).toContain("On the computer Ducter lives on, run: ducter pair");
+    expect(out.join("\n")).toContain("On the computer Ducter runs on, run: ducter pair");
   });
 
   test("a worker unit runs `ducter worker`, not the main process", () => {

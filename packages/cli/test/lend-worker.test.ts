@@ -97,6 +97,17 @@ test("a revoked join takes the new code; an expired code says so and installs no
   expect(existsSync(join(fresh, "worker.json"))).toBe(false);
 });
 
+test("the lend line with a code already used: back to Add a computer for tasks for a new one, never `ducter pair`", async () => {
+  fakeHome();
+  const x = await run(tmp(), ["worker", "https://hel.example.com", "--code", "USED-CODE", "--service"], async () => 0);
+  expect(x.code).toBe(1);
+  expect(x.out).toContain("In Add a computer for tasks, choose New code");
+  expect(x.out).not.toContain("ducter pair");
+  // The terminal's own `ducter worker` (no --service) still says the terminal way.
+  fakeHome();
+  expect((await run(tmp(), ["worker", "https://hel.example.com", "--code", "USED-CODE"], async () => 0)).out).toContain("ducter pair");
+});
+
 test("can't reach the home: one sentence, the outbound need, and the check to run", async () => {
   globalThis.fetch = (async () => {
     throw new Error("ECONNREFUSED");

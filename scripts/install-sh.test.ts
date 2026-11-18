@@ -207,6 +207,37 @@ describe("worker mode", () => {
     expect(r.called).toBe("");
   });
 
+  // Found live (research/127): the lend line printed the bundle's "Next: ducter service install …
+  // then ducter tailscale or ducter domain" on a computer that is about to become a worker.
+  test("a fresh install passes worker to the bundle, whose install.sh then leaves out a home's next steps", () => {
+    expect(installer).toContain('DUCTER_INSTALL_FOR="${INSTALL_FOR:-}" sh "$TMP/$name/install.sh"');
+    expect(installer).toContain("INSTALL_FOR=worker install_linux");
+    const bundle = (env: Record<string, string>) => {
+      const d = mkdtempSync(join(tmpdir(), "ducter-bundle-sh-"));
+      try {
+        mkdirSync(join(d, "from"), { recursive: true });
+        writeFileSync(join(d, "from/ducter"), "#!/bin/sh\nexit 0\n", { mode: 0o755 });
+        // The prefix's bin is on PATH: nothing is linked or written to a profile outside the folder.
+        const r = spawnSync("sh", [join(import.meta.dir, "install.sh"), "--from", join(d, "from"), "--prefix", join(d, "p")], {
+          env: { HOME: d, PATH: `${join(d, "p/bin")}:/usr/bin:/bin`, DUCTER_LOCALE: "en", ...env },
+          encoding: "utf8",
+        });
+        expect(r.status).toBe(0);
+        return r.stdout;
+      } finally {
+        rmSync(d, { recursive: true, force: true });
+      }
+    };
+    const home = bundle({});
+    expect(home).toContain("Ducter is installed");
+    expect(home).toContain("Next:"); // `ducter up` on a Mac, `ducter service install` on Linux
+    const worker = bundle({ DUCTER_INSTALL_FOR: "worker" });
+    expect(worker).toContain("Ducter is installed");
+    expect(worker).not.toContain("Next:");
+    expect(worker).not.toContain("service install");
+    expect(worker).not.toContain("tailscale");
+  });
+
   test("no code: says how", () => {
     const r = run(["worker", "https://hel.example.com"]);
     expect(r.status).not.toBe(0);

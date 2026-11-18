@@ -31,7 +31,7 @@ at home, say), you have two ways. With the Tailscale app on your Mac and your ph
 (your phone reaches it while the Mac is awake). Or set up **From outside** with your own domain
 on Cloudflare: see [From outside](#from-outside) below.
 
-1. On the computer Ducter lives on, run `ducter pair`, or choose **Devices › Connect a phone or
+1. On the computer Ducter runs on, run `ducter pair`, or choose **Devices › Connect a phone or
    computer** in the Mac app.
 2. Scan the QR code with your phone's camera, or open the link it shows. You can also go to the
    address and type the **Code**.
@@ -39,7 +39,7 @@ on Cloudflare: see [From outside](#from-outside) below.
 
 Each code works once, for one device, and expires after 10 minutes. After that your phone
 remembers the connection. For a second phone or another computer, get a new code the same way:
-`ducter pair` on the computer Ducter lives on, or **Devices › Connect a phone or computer** in the Mac app (it works when the app is connected to a Ducter on a server, too). A code that was already used or ran out says so; just get a
+`ducter pair` on the computer Ducter runs on, or **Devices › Add a device › To talk with Ducter** in the Mac app (it works when the app is connected to a Ducter on a server, too). A code that was already used or ran out says so; just get a
 new one. To disconnect it, run `ducter devices disconnect <name>` on the computer Ducter
 lives on.
 
@@ -54,13 +54,13 @@ the page was opened at.
 
 ### From outside
 
-**From outside** gives the computer Ducter lives on an address at your own domain, for example
+**From outside** gives the computer Ducter runs on an address at your own domain, for example
 `ducter.example.com`, through your own Cloudflare account. You need:
 
 - a free Cloudflare account, and
 - a domain on it. No domain yet? You can buy one right in Cloudflare; it's sold at cost.
 
-Then tap **+ From outside** on the card of the computer Ducter lives on and **Set it up for me**
+Then tap **+ From outside** on the card of the computer Ducter runs on and **Set it up for me**
 (or run `ducter anywhere on`). Ducter starts a task that does the steps with Cloudflare's own
 program, and the card ticks them off as it goes. It needs you twice:
 

@@ -210,8 +210,8 @@ func (a *App) cardName(c *ui.Context, id, name, real string, renamable bool) {
 	})
 }
 
-// kindLine says what a device is for, in one plain phrase: 小鸭住这儿 /
-// Ducter lives here, 替小鸭做事 / Does tasks for Ducter. What kind of
+// kindLine says what a device is for, in one plain phrase: 小鸭在这台上运行 /
+// Ducter runs here, 帮小鸭做事 / Helps Ducter with tasks. What kind of
 // computer it is, the clay and its name already say (D291: no kind joined on).
 func (a *App) kindLine(dv *protocol.DeviceView) string {
 	who := a.S.PersonaName
@@ -346,7 +346,7 @@ func (a *App) updateAction(c *ui.Context, dv *protocol.DeviceView) {
 				a.note(c, a.L.T("devup.phase.restarting"))
 				return
 			}
-			a.note(c, a.L.T("devup.how.helper", v, a.workHome()))
+			a.note(c, a.L.T("devup.how.helper", v, a.personaName()))
 			if r, ok := a.MacWorker.(workerRestarter); ok {
 				a.textRow(c, t.ControlSM).Children(func() {
 					if a.buttonFor(c, a.L.T("devup.restart"), dv.Name, btnSecondary, t.ControlSM, t.Surface) {
@@ -573,7 +573,7 @@ func (a *App) versionRow(c *ui.Context, dv *protocol.DeviceView, home bool) {
 }
 
 // versionSub is a computer's line in the versions card: what it is to the
-// partner, as a phrase under its name (D296), never "这台 Mac · Ducter 住这儿"
+// partner, as a phrase under its name (D296), never "这台 Mac · Ducter 在这台上运行"
 // under 这台 Mac.
 func (a *App) versionSub(dv *protocol.DeviceView) string {
 	if dv.Home {

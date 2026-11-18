@@ -16,7 +16,7 @@ to Tuwa once, and you pay Tuwa for the minutes, on Tuwa's own pages. Ducter neve
 ## Connect calling
 
 1. Open **Settings › Accounts** and tap **Connect Tuwa** beside **Make calls**, under **Phone calls**. (Or tap
-   **+ Calls** on the card of the computer Ducter lives on, under
+   **+ Calls** on the card of the computer Ducter runs on, under
    [Your devices](devices.md): it takes you to the same place and starts the same sign-in.)
 2. A short code and a link appear (on a Mac, a QR code too). On your phone, open the link or scan the
    code, check that the code matches, and sign in with your Chekusu account (Tuwa's sign-in).
@@ -149,11 +149,11 @@ use**, linked by a cable. The reason is the phone itself: a voice can only get i
 through the phone's own headset socket (or, later, Bluetooth). No app on the phone can put a voice
 into a call. So it can't be a server in a data center, or any computer away from you.
 
-If Ducter lives on a server, the **Call from your own number** group says exactly that, shows no
+If Ducter runs on a server, the **Call from your own number** group says exactly that, shows no
 setup steps, and offers **You call** instead. Live calls through a computer next to your phone
 (a Mac you use, by Bluetooth or a cable) are coming soon.
 
-If Ducter lives on a Mac beside your phone, the group starts as one line with **Set up**; press it
+If Ducter runs on a Mac beside your phone, the group starts as one line with **Set up**; press it
 (or plug the phone in) and it shows five steps, ticking each one off by itself. **Look again** always answers: it shows **Looking…**, then when it looked and what it saw
 (say, at 20:14, that there's no phone on MacBook yet).
 

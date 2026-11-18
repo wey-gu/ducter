@@ -124,7 +124,7 @@ var zhLoadout = Table{
 	"loadout.add.install.go":  "去装上",
 	"loadout.add.signin":      "装好了，在 %s 上登录就能用",
 	"loadout.add.signin.go":   "去登录",
-	"partner.header.none":     "住在 %s 上，还没有能用的 AI agent",
+	"partner.header.none":     "在 %s 上运行，还没有能用的 AI agent",
 	"handoff.one":             "现在只有一个 AI agent 能做事：额度用完时，等它恢复再接着做。",
 }
 
@@ -246,7 +246,7 @@ var enLoadout = Table{
 	"loadout.add.install.go":  "Install",
 	"loadout.add.signin":      "Installed; sign in on %s to use it",
 	"loadout.add.signin.go":   "Sign in",
-	"partner.header.none":     "Lives on %s, with no AI agent to use yet",
+	"partner.header.none":     "Runs on %s, with no AI agent to use yet",
 	"handoff.one":             "Only one AI agent does tasks now, so when its limit runs out the task waits for it to come back.",
 }
 

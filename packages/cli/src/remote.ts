@@ -302,7 +302,7 @@ export async function cmdDevices(o: { t: T; style: Style; dataDir: string; json:
     if (verb === "rename") {
       const name = o.rest.slice(2).join(" ").trim();
       if (!what || !name) return console.log(t("devices.renameUsage")), 2;
-      // The machine Ducter lives on answers to its own name and to "local" (tasks placed there).
+      // The machine Ducter runs on answers to its own name and to "local" (tasks placed there).
       // D310: by its name as a person reads it, or its host name (what older pairings called it).
       const r = name.toLowerCase() === "local" || sameComputer(name, thisComputer()) || sameComputer(name, thisHost()) ? ({ error: "name_taken" } as const) : auth.rename(what, name);
       if ("error" in r) return console.log(t(r.error === "name_taken" ? "devices.renameTaken" : r.error === "empty" ? "devices.renameUsage" : "devices.revokeNone", { what, name })), 1;

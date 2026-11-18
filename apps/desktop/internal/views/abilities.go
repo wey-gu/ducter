@@ -134,7 +134,7 @@ func (a *App) shownDevice() *protocol.DeviceView {
 	return nil
 }
 
-// deviceName names a device for people: the one Ducter lives on is "this
+// deviceName names a device for people: the one Ducter runs on is "this
 // Mac" when this app runs on it.
 func (a *App) deviceName(d *protocol.DeviceView) string {
 	if d.Home && a.onThisMac() && (d.Kind == "laptop" || d.Kind == "mini") {
@@ -395,7 +395,7 @@ func (a *App) listWord(dv *protocol.DeviceView) (string, ui.Color) {
 	case dv.State == protocol.DeviceUnreachable:
 		return a.L.T("list.state.away"), t.Failed.Ink
 	case dv.Home:
-		return a.L.T("list.state.home"), t.InkMuted
+		return a.L.T("list.state.home", a.personaName()), t.InkMuted
 	case dv.Kind == "phone":
 		return a.L.T("list.state.now"), t.InkMuted
 	}
@@ -404,7 +404,7 @@ func (a *App) listWord(dv *protocol.DeviceView) (string, ui.Color) {
 	} else if n > 1 {
 		return a.L.T("list.state.tasks", n), t.Working.Ink
 	}
-	return a.L.T("list.state.does", a.workHome()), t.InkMuted
+	return a.L.T("list.state.does", a.personaName()), t.InkMuted
 }
 
 // clientWord is a phone's or a window's line: connected now, or when it

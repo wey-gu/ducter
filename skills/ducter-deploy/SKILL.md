@@ -204,7 +204,7 @@ address and devices use the best one that answers.
 
 4. **Connect the user's devices.** `ducter pair --json` → `code`, `link`, `address`. **One code
    per device:** it works once, for 10 minutes; run `ducter pair --json` again for each next
-   device (or the user picks Devices › Connect a phone or computer / 设备 › 连上手机或另一台电脑
+   device (or the user picks Devices › Add a device › To talk with Ducter / 设备 › 加一台设备 › 用它和 Ducter 说话
    in the Mac app, also when it is connected to a server home). The code `ducter tailscale` or
    `ducter domain` printed is spent once the first device uses it. Mac app: Settings › Connect
    to a Ducter on another computer (or "My Ducter is on another computer" on first run), paste
@@ -254,10 +254,10 @@ For a user whose Mac is the home and who wants the phone to reach it privately:
 Tell the user plainly: the phone reaches Ducter only while the Mac is awake and online. For a
 partner that works while the Mac sleeps, put the home on a server instead.
 
-## Add a worker (Lend a computer)
+## Add a worker (Add a computer for tasks)
 
-The user usually hands you a line from the app's **Your devices › Lend a computer** ("Lend this
-computer to my Ducter: … run `curl -fsSL https://ducter.ai/install.sh | sh -s -- worker <address>
+The user usually hands you a line from the app's **Your devices › Add a device › For Ducter to do tasks
+on** ("Add this computer to my Ducter: … run `curl -fsSL https://ducter.ai/install.sh | sh -s -- worker <address>
 --code <code>`"). On the computer you run on (the one being lent):
 
 1. Check it reaches the home: `curl -sS -m 10 <address>/health` → `{"ok":true}`. A worker only
@@ -271,7 +271,7 @@ computer to my Ducter: … run `curl -fsSL https://ducter.ai/install.sh | sh -s 
    unit as root), a LaunchAgent on a Mac. It is safe to run again: a join that still works is
    kept and no code is spent.
 3. Failures, each one sentence and one next step for the user: `That code has expired` → ask
-   for a new code in **Lend a computer** (codes last 10 minutes, once); `curl: not found` →
+   for a new code in **Add a computer for tasks** (codes last 10 minutes, once); `curl: not found` →
    install curl (`sudo apt install curl`) and rerun; `runs on x64 and arm64 Linux` or `needs
    Apple silicon` → this computer can't be lent.
 4. The worker needs its own signed-in Claude Code or Codex for tasks to run there; if none is
@@ -280,7 +280,7 @@ computer to my Ducter: … run `curl -fsSL https://ducter.ai/install.sh | sh -s 
 
 Without the app's line: on the home, `ducter pair --json` → `code`, then on the worker
 `ducter worker <address> --code <code> --service` (the same three steps). A Mac with the Ducter
-app connected to the home can instead turn on "Let this Mac do tasks" on its card. Verify on the
+app connected to the home can instead turn on "Let this Mac help … with tasks" on its card. Verify on the
 home: `ducter devices --json` → the worker with `"awake": true`. A server that is the home does
 tasks itself: no worker needed there.
 

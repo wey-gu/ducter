@@ -28,7 +28,7 @@ On the left is a row of tabs; the one you pick shows on the right:
 | **Accounts** | The mail, calendars and other accounts it can read |
 | **Passwords & cards** | Sign-ins, cards, your details and keys, for signing in, paying and filling in addresses; locked on your computer |
 | **Look and sound** | The look, light or dark, the menu bar, the window's language, Details in the conversation, the intro's sound, voice |
-| **Where it runs** | Which computer Ducter lives on, stopping it, data and logs, and Remove Ducter |
+| **Where it runs** | Which computer Ducter runs on, stopping it, data and logs, and Remove Ducter |
 | **Updates and about** | The version, updates, help links and credits |
 
 On a phone, tap the gear at the top right (or your partner's face or name at the top of the conversation):
@@ -39,7 +39,7 @@ the language of its screens, Details in the conversation, and reading replies al
 ## Partner
 
 At the top is your partner, its name and one line: where it lives and what it thinks with
-("Lives on hel, thinks with Codex").
+("Runs on hel, thinks with Codex").
 
 - **Its name.** Click **Rename**, type a new name, and press Return. The new name shows at once
   in every window and on your phone.
@@ -129,7 +129,7 @@ What your partner remembers about you has its own section, **Memory**.
   and space, for when you need help.
 - Without [Nowledge Mem](https://mem.nowledge.co), your partner still remembers your
   conversation on its own. This section then says what Nowledge Mem adds and walks you through it
-  in two steps: **Install Nowledge Mem** (one tap puts it on the computer Ducter lives on) and
+  in two steps: **Install Nowledge Mem** (one tap puts it on the computer Ducter runs on) and
   **Sign in to your Nowledge Mem** with a one-time connect link. Already use the Nowledge Mem app?
   Open it on that computer and your partner finds it.
 - When the Nowledge Mem app on that computer is closed, the section says **Nowledge Mem isn't open**.
@@ -226,7 +226,7 @@ Reading just happens; sending or changing anything waits for your Go. All of it 
 ## Passwords & cards
 
 What Ducter uses to sign in, pay and fill in addresses for you: your sign-ins, your cards, your
-details and the keys tasks ask for, kept locked on the computer Ducter lives on. In Chinese it is
+details and the keys tasks ask for, kept locked on the computer Ducter runs on. In Chinese it is
 **密码和银行卡**. Ducter fills them in without the AI seeing them, and every payment waits for your
 Go. All of it is in [Passwords & cards](passwords-and-cards.md).
 
@@ -253,7 +253,7 @@ something.
 
 ## Where it runs
 
-- **Where it lives:** this Mac, or the computer the app is connected to (like a server), and in
+- **Where it runs:** this Mac, or the computer the app is connected to (like a server), and in
   words what happens when you close the window. On this Mac, **Stop** stops everything until
   you wake it.
 - **Connect to a Ducter on another computer** connects with a one-time pairing code; **Use the
@@ -267,7 +267,7 @@ something.
 ## Updates and about
 
 The version, then **Updates**: whether this version is the newest, **Check now**, and **Update
-automatically when quitting**. When Ducter lives on this Mac, that one line and button cover both the
+automatically when quitting**. When Ducter runs on this Mac, that one line and button cover both the
 app and Ducter itself. When a new version is ready, **Restart Now** installs it: the window says it's putting the new
 version in, and Ducter opens again on it. Under
 **Help** are the docs, **Report a problem…** and the licenses; **Credits** opens the recordings
@@ -290,5 +290,5 @@ In **Devices**, the AI accounts under this Mac (Claude Code, Codex; pi and DeepS
 they're set up) open when you click them.
 From there you can install the AI agent, sign in with its own sign-in in your browser, or sign out.
 Ducter never sees your password. No subscription? **Or paste an API key** under the AI agents of the
-computer Ducter lives on takes a key you pay for by use. To add your phone or another computer, click **Connect a phone
+computer Ducter runs on takes a key you pay for by use. To add your phone or another computer, click **Connect a phone
 or computer**. The app shows a one-time code for it (see [Your phone](phone.md)).

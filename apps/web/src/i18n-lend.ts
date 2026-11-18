@@ -1,4 +1,4 @@
-// D347, D355: 加一台做事的电脑 / Add a computer for tasks (was 借一台电脑来干活), and 加一台设备 / Add a device. The same words as the Mac's (apps/desktop/internal/i18n).
+// D347, D355: 加一台做事的电脑 / Add a computer for tasks (was 借一台电脑来干活 / Lend a computer), and 加一台设备 / Add a device. The same words as the Mac's (apps/desktop/internal/i18n).
 export const lendWords: { zh: Record<string, string>; en: Record<string, string> } = {
   zh: {
     // D355: 加一台设备 / Add a device, its first step, connecting a phone or a tablet here, the sheet's steps.
@@ -32,9 +32,12 @@ export const lendWords: { zh: Record<string, string>; en: Record<string, string>
     "lend.kind.mac": "一台 Mac",
     "lend.kind.linux": "一台 Linux 服务器",
     "lend.kind.other": "换一种电脑",
-    "lend.loading": "在准备要粘贴的那一行…",
+    "lend.loading": "那一行马上就好…",
+    "lend.fail.timeout": "%s 没有回应，没拿到码。",
+    "lend.fail.error": "%s 没能给出一个码。",
+    "lend.retry": "再试一次",
     "lend.mac.app": "那台 Mac 装了 Ducter app、已经连着 %[1]s？在那台 Mac 上打开它自己的卡片，打开「%[2]s」就行。",
-    "lend.mac.toggle": "让这台 Mac 也替 %s 做事",
+    "lend.mac.toggle": "让这台 Mac 也帮 %s 做事",
     "lend.mac.paste": "还没装的话，在它的终端里粘贴这一行：",
     "lend.linux.paste": "在那台服务器的终端里粘贴这一行：",
     "lend.copy": "复制",
@@ -44,7 +47,7 @@ export const lendWords: { zh: Record<string, string>; en: Record<string, string>
     "lend.samenet": "它要和 %s 在同一个网络里，比如家里同一个 Wi-Fi。",
     "lend.agent": "让你的 AI agent 来装",
     "lend.agent.how": "在那台电脑上，把这句话发给 Claude Code 或 Codex：",
-    "lend.agent.ask": "把这台电脑借给我的 Ducter：按 https://ducter.ai/skills/ducter-deploy/SKILL.md 里「借一台电脑」那一节，运行 %s",
+    "lend.agent.ask": "把这台电脑加进我的 Ducter：按 https://ducter.ai/skills/ducter-deploy/SKILL.md 里「加一台做事的电脑」那一节，运行 %s",
     "lend.waiting": "在等它连上…",
     "lend.joined": "连上了，正在开好…",
     "lend.here": "%s 来了",
@@ -99,9 +102,12 @@ export const lendWords: { zh: Record<string, string>; en: Record<string, string>
     "lend.kind.mac": "A Mac",
     "lend.kind.linux": "A Linux server",
     "lend.kind.other": "Another kind",
-    "lend.loading": "Preparing the line to paste…",
+    "lend.loading": "Your line is almost ready…",
+    "lend.fail.timeout": "%s didn't answer, so there's no code yet.",
+    "lend.fail.error": "%s couldn't make a code.",
+    "lend.retry": "Try again",
     "lend.mac.app": "Does that Mac have the Ducter app, connected to %[1]s? On that Mac, open its own card and turn on “%[2]s”.",
-    "lend.mac.toggle": "Let this Mac do tasks for %s",
+    "lend.mac.toggle": "Let this Mac help %s with tasks",
     "lend.mac.paste": "If it doesn't, paste this line in its Terminal:",
     "lend.linux.paste": "Paste this line in a terminal on that server:",
     "lend.copy": "Copy",
@@ -111,7 +117,7 @@ export const lendWords: { zh: Record<string, string>; en: Record<string, string>
     "lend.samenet": "It has to be on the same network as %s, like the same home Wi-Fi.",
     "lend.agent": "Let your AI agent do it",
     "lend.agent.how": "On that computer, send this to Claude Code or Codex:",
-    "lend.agent.ask": "Lend this computer to my Ducter: follow the “Lend a computer” section of https://ducter.ai/skills/ducter-deploy/SKILL.md and run %s",
+    "lend.agent.ask": "Add this computer to my Ducter: follow the “Add a computer for tasks” section of https://ducter.ai/skills/ducter-deploy/SKILL.md and run %s",
     "lend.waiting": "Waiting for it to connect…",
     "lend.joined": "Joined. Starting up…",
     "lend.here": "%s is here",

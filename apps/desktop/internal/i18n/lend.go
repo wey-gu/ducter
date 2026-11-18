@@ -1,6 +1,6 @@
 package i18n
 
-// D347, D355: 加一台做事的电脑 / Add a computer for tasks (was 借一台电脑来干活). The entry in Your devices and
+// D347, D355: 加一台做事的电脑 / Add a computer for tasks (was 借一台电脑来干活 / Lend a computer). The entry in Your devices and
 // Settings › Where it runs, the partner's card, and the sheet: which kind
 // of computer, the one line to paste, the wait until it is here, and what
 // to do when it doesn't come. Glossary: design/product-model.md.
@@ -39,7 +39,7 @@ var zhLend = Table{
 	"lend.samenet":          "它要和 %s 在同一个网络里，比如家里同一个 Wi-Fi。",
 	"lend.agent":            "让你的 AI agent 来装",
 	"lend.agent.how":        "在那台电脑上，把这句话发给 Claude Code 或 Codex：",
-	"lend.agent.ask":        "把这台电脑借给我的 Ducter：按 https://ducter.ai/skills/ducter-deploy/SKILL.md 里「借一台电脑」那一节，运行 %s",
+	"lend.agent.ask":        "把这台电脑加进我的 Ducter：按 https://ducter.ai/skills/ducter-deploy/SKILL.md 里「加一台做事的电脑」那一节，运行 %s",
 	"lend.waiting":          "在等它连上…",
 	"lend.joined":           "连上了，正在开好…",
 	"lend.here":             "%s 来了",
@@ -63,7 +63,10 @@ var zhLend = Table{
 	"lend.card.go":          "加一台电脑",
 	"lend.os.linux":         "Linux",
 	"lend.os.mac":           "macOS",
-	"lend.loading":          "在准备要粘贴的那一行…",
+	"lend.loading":          "那一行马上就好…",
+	"lend.fail.timeout":     "%s 没有回应，没拿到码。",
+	"lend.fail.error":       "%s 没能给出一个码。",
+	"lend.retry":            "再试一次",
 }
 
 var enLend = Table{
@@ -100,7 +103,7 @@ var enLend = Table{
 	"lend.samenet":          "It has to be on the same network as %s, like the same home Wi-Fi.",
 	"lend.agent":            "Let your AI agent do it",
 	"lend.agent.how":        "On that computer, send this to Claude Code or Codex:",
-	"lend.agent.ask":        "Lend this computer to my Ducter: follow the \"Lend a computer\" section of https://ducter.ai/skills/ducter-deploy/SKILL.md and run %s",
+	"lend.agent.ask":        "Add this computer to my Ducter: follow the \"Add a computer for tasks\" section of https://ducter.ai/skills/ducter-deploy/SKILL.md and run %s",
 	"lend.waiting":          "Waiting for it to connect…",
 	"lend.joined":           "Joined. Starting up…",
 	"lend.here":             "%s is here",
@@ -124,7 +127,10 @@ var enLend = Table{
 	"lend.card.go":          "Add a computer",
 	"lend.os.linux":         "Linux",
 	"lend.os.mac":           "macOS",
-	"lend.loading":          "Preparing the line to paste…",
+	"lend.loading":          "Your line is almost ready…",
+	"lend.fail.timeout":     "%s didn't answer, so there's no code yet.",
+	"lend.fail.error":       "%s couldn't make a code.",
+	"lend.retry":            "Try again",
 }
 
 func init() {

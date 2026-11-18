@@ -161,7 +161,8 @@ export async function cmdWorker(o: {
     if (res.status === 429) return console.log(t("worker.err.locked")), 1;
     if (res.status !== 200) {
       const why = await res.json().then((j: any) => j?.error).catch(() => undefined);
-      return console.log(t(why === "expired" ? "worker.err.expired" : "worker.err.code")), 1;
+      // D347: the lend line (--service) came from Add a computer for tasks: its next step is there, not `ducter pair`.
+      return console.log(t(why === "expired" ? "worker.err.expired" : args.service ? "worker.err.codeLend" : "worker.err.code")), 1;
     }
     const j: any = await res.json();
     // D293: the link named the home's key; a home that answers with another isn't that home.

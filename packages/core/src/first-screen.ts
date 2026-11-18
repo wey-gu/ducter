@@ -137,7 +137,7 @@ function personal(i: FirstScreenInput, day: number): { life: Candidate[]; code?:
     const name = basename(folder.place.path);
     life.push({ kind: "folder", key: `folder:${name}`, words: w(`再帮我把「${name}」理一理`, `Tidy up “${name}” again for me`) });
   } else if (i.computers.length && !i.computers[0]!.home) {
-    // Ducter lives on a server: the computer it can tidy is a paired one, named. (On a home
+    // Ducter runs on a server: the computer it can tidy is a paired one, named. (On a home
     // computer the everyday folder example says the same.)
     const c = i.computers[0]!;
     life.push({ kind: "folder", key: "downloads", words: w(`把 ${c.name} 上的下载文件夹理一理`, `Tidy up the Downloads folder on ${c.name}`) });

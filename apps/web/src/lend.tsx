@@ -312,6 +312,15 @@ export function LendSheet() {
           <div class="lend-copy line ghost" aria-hidden="true" />
         </div>
       )}
+      {step === "failed" && (
+        <div class="lend-body">
+          <Hero kind={kind} phase="stopped" />
+          <p class="lend-say" role="alert">{t(l.failed ? "lend.fail.error" : "lend.fail.timeout", home)}</p>
+          <div class="lend-acts center">
+            <Btn kind="primary" label={t("lend.retry")} onClick={() => A.lendAsk(l.kind!)} />
+          </div>
+        </div>
+      )}
       {step === "noaddress" && (
         <div class="lend-body">
           <Hero kind={kind} phase="stopped" />

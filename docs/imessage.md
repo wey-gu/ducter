@@ -12,7 +12,7 @@ iMessage shows there too, and what it answers shows in both places.
 
 This works through a **Mac**: only a Mac can send and receive iMessage, so the Ducter app on a
 Mac does it. That Mac has to stay on and signed in, with the Ducter app open or in the menu bar.
-It can be the Mac Ducter lives on, or a Mac connected to Ducter on a server.
+It can be the Mac Ducter runs on, or a Mac connected to Ducter on a server.
 
 ## Two ways to set it up
 

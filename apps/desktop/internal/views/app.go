@@ -277,7 +277,7 @@ type App struct {
 	live       liveState
 	liveNote   string
 	pu         phoneUseState    // D217: Ducter's phone
-	lend       lendState        // D347: 借一台电脑来干活 / Lend a computer
+	lend       lendState        // D347: 加一台做事的电脑 / Add a computer for tasks
 	cu         computerUseState // D235: 用电脑
 	sites      sitesState
 	af         autofillState // D191: 设置 › 密码和银行卡

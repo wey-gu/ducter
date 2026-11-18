@@ -12,7 +12,7 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
 )
 
-// D347: 借一台电脑来干活 / Lend a computer. One sheet over the window, opened
+// D347: 加一台做事的电脑 / Add a computer for tasks. One sheet over the window, opened
 // from Your devices, Settings › Where it runs, or the partner's card: which
 // kind of computer, then the one line to paste there (it installs Ducter,
 // joins with a fresh code and keeps the worker running), a calm wait until
@@ -37,7 +37,15 @@ type lendState struct {
 	// seen is the phase last drawn and when it began, for the clay's arrival.
 	seen   string
 	seenAt time.Time
+	// errsAt: how many error frames had come when the code was asked for, so
+	// only a later "lend_code: …" one counts as the answer.
+	errsAt int
 }
+
+// lendWait is how long 正在拿一个码… waits for the home before it says it
+// didn't answer: never an endless wait (research/127: the Mac dropped the
+// lend frame, and the sheet sat there forever).
+const lendWait = 8 * time.Second
 
 // openLend opens the sheet at its question.
 func (a *App) openLend() {
@@ -49,6 +57,7 @@ func (a *App) openLend() {
 func (a *App) askLend() {
 	a.lend.asked, a.lend.askedFor = a.Now(), a.reachAddress()
 	a.lend.helpOpen = false
+	a.lend.errsAt = len(a.S.Errors)
 	a.S.Lend = nil
 	a.send(protocol.LendCodeReq{T: "lend_code"})
 }
@@ -69,6 +78,25 @@ func lendPhase(l *protocol.ServerFrame, now time.Time) string {
 		return "expired"
 	}
 	return "waiting"
+}
+
+// lendFailed is why no code came: "error" (the home answered the lend_code
+// with an error frame), "timeout" (no answer within lendWait), or "".
+func (a *App) lendFailed(now time.Time) string {
+	if a.S.Lend != nil {
+		return ""
+	}
+	if a.lend.errsAt <= len(a.S.Errors) {
+		for _, e := range a.S.Errors[a.lend.errsAt:] {
+			if strings.HasPrefix(e, "lend_code:") {
+				return "error"
+			}
+		}
+	}
+	if !a.lend.asked.IsZero() && now.Sub(a.lend.asked) >= lendWait {
+		return "timeout"
+	}
+	return ""
 }
 
 // lendOS is a platform's system in words (linux-x64 → Linux), and its
@@ -104,9 +132,14 @@ func (a *App) addDeviceRow(c *ui.Context, width float32) {
 				p.Image(bmp, fitIn(bmp, r), ui.Contain)
 			}
 			// The plus on the slot, drawn (never a typed glyph).
+			// On the cream clay: a dark ink in both themes.
+			ink := t.InkSoft
+			if t.Dark {
+				ink = t.Bg
+			}
 			cx, cy := r.X+r.W/2, r.Y+r.H*0.46
-			p.Line(cx-5, cy, cx+5, cy, 2.2, t.InkSoft)
-			p.Line(cx, cy-5, cx, cy+5, 2.2, t.InkSoft)
+			p.Line(cx-5, cy, cx+5, cy, 2.2, ink)
+			p.Line(cx, cy-5, cx, cy+5, 2.2, ink)
 		})
 	}) {
 		a.openAdd()
@@ -129,7 +162,7 @@ func (a *App) onlyHome() bool {
 	return a.S.Reach == nil || len(a.S.Reach.Clients) == 0
 }
 
-// lendCard is the partner's 借一台电脑来干活 card (a rich lend block).
+// lendCard is the partner's 加一台做事的电脑 card (a rich lend block).
 func (a *App) lendCard(c *ui.Context, at richAt) {
 	t := a.T
 	a.richCard(c, at.key, a.L.T("lend.card")).Children(func() {
@@ -437,10 +470,24 @@ func (a *App) lendBody(c *ui.Context) {
 	}
 	switch phase {
 	case "loading":
+		if why := a.lendFailed(a.Now()); why != "" {
+			// D353's words, said under the clay as one sentence and one way on.
+			ui.Text(c.Key("lend-failed"), a.L.T("lend.fail."+why, home)).FontSize(t.MD).FontWeight(700).LineHeight(1.5).TextColor(t.Ink).Role(ui.RoleAlert)
+			ui.Row(c).Justify(ui.Center).Children(func() {
+				if a.button(c, a.L.T("lend.retry"), btnPrimary, t.ControlMD, t.Surface) {
+					a.askLend()
+				}
+			})
+			break
+		}
 		a.lendCaption(c, "loading", a.L.T("lend.loading"), true, t.InkSoft)
 		a.lendSteps(c)
 		// The line's place, kept while it is made, so nothing jumps when it comes.
 		ui.Box(c.Key("lend-line-wait")).Height(64).Radius(t.RadiusSM).Background(t.Sunken)
+		// Drawn again when the wait is over, to say so.
+		if left := lendWait - a.Now().Sub(a.lend.asked); left > 0 {
+			c.After(left + 50*time.Millisecond)
+		}
 	case "noaddress":
 		ui.Text(c.Key("lend-noaddress"), a.L.T("lend.noaddress", home)).FontSize(t.MD).FontWeight(700).LineHeight(1.5).TextColor(t.Ink)
 		if hd := a.homeDevice(); hd != nil && hd.State == protocol.DeviceAwake {

@@ -10,7 +10,7 @@ This page walks you from opening Ducter on your Mac to your first finished task.
 five minutes, and there is nothing to learn first: you write to your partner the way you would
 write to a colleague.
 
-Ducter lives on one computer: **this Mac**, or **a server** that stays on. This page follows the
+Ducter runs on one computer: **this Mac**, or **a server** that stays on. This page follows the
 Mac; for a server, see [Install](install.md#a-linux-server-that-stays-on).
 [Get started](https://ducter.ai/start) on the website asks the same question and shows one path.
 

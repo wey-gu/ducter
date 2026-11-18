@@ -1,20 +1,21 @@
 ---
 title: Add a computer
-description: Lend another computer to your Ducter, a server at home, a NAS or another Mac, so tasks can run on it. One line to paste.
+description: Add another computer to your Ducter, a server at home, a NAS or another Mac, so tasks can run on it. One line to paste.
 order: 3.1
 ---
 
 # Add a computer
 
-Your Ducter lives on one computer: your Mac, or a server. You can lend it more: a Linux server
+Your Ducter runs on one computer: your Mac, or a server. You can add more that do its tasks: a Linux server
 in the closet, a NAS, a cloud machine, another Mac. Tasks can then run there, with that
 computer's own files and its own AI agents, and you just say where: *"run it on the NAS"*.
 
-A lent computer only does tasks. It can't read your conversation or decide anything for you.
+A computer added this way only does tasks. It can't read your conversation or decide anything for you.
 
-## Lend one
+## Add one
 
-1. In Ducter, open **Your devices** and choose **Lend a computer**. (It's also in
+1. In Ducter, open **Your devices**, choose **Add a device** (the last line of the list), then
+   **For Ducter to do tasks on**. (**Add a computer for tasks** is also in
    **Settings › Where it runs**. Or just tell your partner, *"add my NAS"*, and it shows you
    the same card.)
 2. Say what kind of computer it is: **A Mac** or **A Linux server**.
@@ -31,11 +32,15 @@ A lent computer only does tasks. It can't read your conversation or decide anyth
 4. Ducter shows **Waiting for it to connect…** until it arrives, then **nas is here**, with
    its system and which AI agents are signed in on it. Rename it there if you like.
 
+Tasks run on that computer with its own AI agents, so sign one in there (Claude Code or Codex, in
+a terminal on that computer). Until one is, asking for a task there gets one line saying so; the
+task never quietly runs somewhere else.
+
 The code works once, for 10 minutes; the card shows how long it has left. Pasting the line
 again later is fine: what is already installed and connected stays as it is.
 
 **A Mac that already has the Ducter app**, connected to your Ducter: no line needed. On that
-Mac, open its own card in **Your devices** and turn on **Let this Mac do tasks for …**.
+Mac, open its own card in **Your devices** and turn on **Let this Mac help … with tasks**.
 
 **Let your AI agent do it.** Under the line there's one sentence to give Claude Code or Codex
 on that computer. It follows [Ducter's setup guide](for-agents.md) and runs the same line.
@@ -63,6 +68,7 @@ what to do:
 | What you see | What to do |
 |---|---|
 | The code expired | Choose **New code** and paste the new line. |
+| The code was already used | Choose **New code** and paste the new line. |
 | That computer can't reach your Ducter | It only needs to reach your Ducter's address, outbound. Run the check the card shows on that computer (`curl -sS -m 10 <address>/health`); if it fails, that computer's network or firewall is in the way. |
 | `curl: not found` | Install curl (on Debian or Ubuntu: `sudo apt install curl`) and paste the line again. |
 | This computer isn't supported | Ducter runs on Linux (Intel, AMD or ARM) and on a Mac with Apple silicon (M1 or later). |
@@ -71,7 +77,7 @@ To take a computer back, open its card in **Your devices** and choose **Disconne
 
 ## From the command line
 
-On the computer Ducter lives on, `ducter pair` prints a code and the command for another
+On the computer Ducter runs on, `ducter pair` prints a code and the command for another
 computer. On that computer, `ducter worker <address> --code <code> --service` joins and keeps
 it running; `ducter service status --worker` shows it, and `ducter service uninstall --worker`
 removes it. `ducter devices rename nas "Build box"` renames it.

@@ -14,7 +14,7 @@ import { languageOfTexts, normalizeTag } from "@ducter/protocol/src/lang.ts";
 import { pushState, type PushState } from "./push-client.ts";
 import { haptic, inApp, nativeCall, nativeInfo, tellReach, tellWays } from "./native.ts";
 import { copy } from "./conv-copy.ts";
-import { applyLend, type LendKind, type LendState } from "./lend-view.ts";
+import { applyLend, LEND_WAIT_MS, lendError, type LendKind, type LendState } from "./lend-view.ts";
 import { attention, doneTodayOf, finished, LANE, laneOf, looksSecret, olderPage, placeOf, Store, title, windowAsk, type DecisionState, type Entry } from "./store.ts";
 import { harnessName, modelName, shownDeviceName, spoken, withoutStaleAgentUpdate, withoutStaleFailure } from "./format.ts";
 import { canFillNow, wideNow } from "./fold.ts";
@@ -341,7 +341,7 @@ class AppState {
   ownAgents: ("claude-code" | "codex" | "pi")[] = [];
   /** D332: 和你的其他 agent 通信 was opened from the Partner page's one line, so Settings lists it for now. */
   peersAsked = false;
-  /** What the partner thinks with right now (D150), and the computer Ducter lives on. */
+  /** What the partner thinks with right now (D150), and the computer Ducter runs on. */
   brainNow?: BrainNow;
   homeName?: string;
   /** Who does the tasks (D89): Your rules, this Mac's AI agents (from devices), and who could
@@ -372,7 +372,7 @@ class AppState {
   memAnswer?: { device: string; harness: string; reason: MemPluginReason };
   /** D228: why 让 Ducter 帮我设好 didn't start (no agent signed in here, …). */
   anywhereAnswer?: string;
-  /** D347: 借一台电脑来干活 / Lend a computer, open in 你的设备 while defined. */
+  /** D347: 加一台做事的电脑 / Add a computer for tasks, open in 你的设备 while defined. */
   lend?: LendState;
   candidates = new Map<string, Candidate[]>();
   /** D288: each agent's account usage limits, as the home last answered (asked: when we asked). */
@@ -839,6 +839,7 @@ class AppState {
     if (f.t === "action_result") this.actSent.delete(f.taskId);
     // D325: a held message that already went (another window said it, or the turn ended first).
     if (f.t === "error" && f.message.startsWith("task_held:")) this.toast(this.L.t("held.gone"));
+    if (f.t === "error" && f.message.startsWith("lend_code:")) (this.lend = lendError(this.lend, f.message)), this.changed();
     if (f.t === "welcome") {
       if (typeof f.version === "string" && f.version !== DUCTER_VERSION) this.staleFor = f.version;
       // D190: a new socket (the phone came back from the background, the link dropped): the old
@@ -2017,7 +2018,7 @@ class AppState {
     this.send({ t: "bridge_disconnect" });
     this.changed();
   }
-  /** D347: 借一台电脑来干活 / Lend a computer: the sheet in 你的设备 (its entry, or the partner's card). */
+  /** D347: 加一台做事的电脑 / Add a computer for tasks: the sheet in 你的设备 (its entry, or the partner's card). */
   openLend() {
     this.openSettings("devices");
     this.lend = {};
@@ -2044,9 +2045,11 @@ class AppState {
     this.changed();
   }
   lendAsk(kind: LendKind) {
-    this.lend = { kind, awaiting: true, fromAdd: this.lend?.fromAdd };
+    this.lend = { kind, awaiting: true, askedAt: Date.now(), ...(this.lend?.fromAdd ? { fromAdd: true } : {}) };
     this.send({ t: "lend_code" });
     this.changed();
+    // No answer is said once the wait is over (the sheet reads the clock), never an endless wait.
+    setTimeout(() => this.lend?.awaiting && this.changed(), LEND_WAIT_MS + 50);
   }
   closeLend() {
     this.lend = undefined;
@@ -2132,7 +2135,7 @@ class AppState {
   }
   /**
    * For the devices stage (Isles, being rebuilt on the isles branch): the mailboxes that stand on
-   * the island of the computer Ducter lives on. Connections always live there (D96).
+   * the island of the computer Ducter runs on. Connections always live there (D96).
    */
   homeMailboxes(): { id: string; name: string; source: ConnectionView["source"]; trouble: boolean }[] {
     return (this.connections ?? []).map((c) => ({ id: c.id, name: c.name, source: c.source, trouble: c.state === "unreachable" || c.state === "unauthorized" }));

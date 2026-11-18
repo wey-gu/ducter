@@ -10,14 +10,16 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 )
 
-// D83: one code, both ways to use it, on the card 连上手机或电脑
-// opens; a computer that joins with it closes the card and is shown.
+// D83: one code, both ways to use it, on the sign 加一台设备 › 用它和 {name} 说话
+// opens (D355); a computer that joins with it closes the card and is shown.
 func TestPairCardBothWays(t *testing.T) {
 	for _, lang := range []i18n.Lang{i18n.ZH, i18n.EN} {
 		t.Run(string(lang), func(t *testing.T) {
 			h := openDevices(t, lang, false)
 			L := h.app.L
-			h.click(L.T("devices.connect"))
+			h.click(L.T("add.row")) // D355: 加一台设备 › 用它和 {name} 说话
+			h.settle(200 * time.Millisecond)
+			h.click(L.T("add.talk", h.app.S.PersonaName))
 			h.until("code", func() bool { return h.app.S.PairCode != nil })
 			h.app.Receive(protocol.ServerFrame{T: "pair_code", Code: "K7QM-4XPA", Address: "https://ducter.example.com", QR: []string{"1"}, ExpiresAt: time.Now().Add(10 * time.Minute).UTC().Format(time.RFC3339)})
 			h.settle(200 * time.Millisecond)
@@ -102,7 +104,7 @@ func TestOtherComputerCard(t *testing.T) {
 		t.Run(string(lang), func(t *testing.T) {
 			h := openDevices(t, lang, false)
 			L := h.app.L
-			does := L.T("list.state.does", h.app.workHome())
+			does := L.T("list.state.does", h.app.personaName())
 			if !h.tt.HasText(does) {
 				t.Fatalf("subtitle: %q", h.tt.Texts())
 			}

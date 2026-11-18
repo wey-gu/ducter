@@ -41,7 +41,7 @@ describe("Get started", () => {
     expect(start).toMatch(/<section class="dl-sec add-computer" id="add-computer"/);
     expect(start).not.toMatch(/class="path[^"]*" id="add-computer"/);
     expect(start).toContain('href="/docs/add-a-computer"');
-    expect(skill).toContain("## Add a worker (Lend a computer)");
+    expect(skill).toContain("## Add a worker (Add a computer for tasks)");
     expect(skill).toContain("sh -s -- worker <address>");
     expect(readFileSync(join(import.meta.dir, "..", "src", "pages", "download.astro"), "utf8")).toContain('href="/docs/add-a-computer"');
   });

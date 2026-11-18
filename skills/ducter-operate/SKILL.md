@@ -54,8 +54,8 @@ ducter undo <part of a task's title>                      # a folder task: put t
 ## Connect a device
 
 `ducter pair --json` → `{code, address, link, command}`: a code for one device, once, for 10
-minutes; run it again for each next device (in the Mac app: Devices › Connect a phone or computer
-/ 设备 › 连上手机或另一台电脑). The user
+minutes; run it again for each next device (in the Mac app: Devices › Add a device › To talk with Ducter
+/ 设备 › 加一台设备 › 用它和 Ducter 说话). The user
 opens `link` on a phone or pastes it into the Mac app; another computer runs `command` to do
 tasks for this Ducter. `reachable: false` means no address from outside yet: `tailnet` names
 the machine when it is in a Tailscale network (then `ducter tailscale`), and `steps` lists the
@@ -63,7 +63,7 @@ ways in order; see the ducter-deploy skill. With a `.ts.net` address the phone o
 the Tailscale app on, in the same tailnet. `ducter reach --json` lists every address the home
 has. Following a server, `pair --json` also carries `connect`:
 the line another computer's command line runs. `ducter devices disconnect` works only on the
-machine Ducter lives on.
+machine Ducter runs on.
 
 A task started with `ducter task` while following a server has no folder unless `--repo` names
 one, and that folder must be on a computer that does tasks for it.

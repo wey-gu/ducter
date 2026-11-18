@@ -1664,14 +1664,14 @@ export const scenarios: Scenario[] = [
     expect: { opens: 0, msgs: [1, 1], maxChars: 160, ui: "checklist", uiRequire: [/eval/i, /TestFlight/i, /tag/i, /release notes/i] },
     rubric: "The user asks for a list to tick off of the four things they named. The partner gives it as a checklist block with those four items (its own short wording is fine, nothing added that they didn't say) and one short English line. It opens no task and does nothing else.",
   },
-  // D347: the person wants another computer to do tasks: the Lend a computer card, never a how-to.
+  // D347: the person wants another computer to do tasks: the Add a computer for tasks card, never a how-to.
   {
     id: "lend-lan-zh",
     category: "rich",
     lang: "zh",
     steps: [{ user: "把我局域网的服务器加进来，让它也能跑任务" }],
     expect: { opens: 0, msgs: [1, 1], maxChars: 120, ui: "lend", forbid: [/curl|ducter worker|ducter pair|install\.sh|systemctl|--code|sudo/i] },
-    rubric: "The user wants a server on their home network to do tasks too. The partner answers in one short Chinese line and puts the Lend a computer card (a lend block) under it, which walks them through it. It opens no task, writes no terminal commands or install steps, and asks nothing technical (no IP, no port).",
+    rubric: "The user wants a server on their home network to do tasks too. The partner answers in one short Chinese line and puts the Add a computer for tasks card (a lend block) under it, which walks them through it. It opens no task, writes no terminal commands or install steps, and asks nothing technical (no IP, no port).",
   },
   {
     id: "lend-nas-en",
@@ -1679,7 +1679,7 @@ export const scenarios: Scenario[] = [
     lang: "en",
     steps: [{ user: "add my NAS so tasks can run there" }],
     expect: { opens: 0, msgs: [1, 1], maxChars: 160, ui: "lend", forbid: [/curl|ducter worker|ducter pair|install\.sh|systemctl|--code|sudo/i] },
-    rubric: "The user wants their NAS to run tasks. The partner answers in one short English line and puts the Lend a computer card (a lend block) under it. It opens no task, writes no terminal commands or install steps, and asks nothing technical.",
+    rubric: "The user wants their NAS to run tasks. The partner answers in one short English line and puts the Add a computer for tasks card (a lend block) under it. It opens no task, writes no terminal commands or install steps, and asks nothing technical.",
   },
   {
     id: "rich-plain-zh",

@@ -299,7 +299,7 @@ func (a *App) workBlock(c *ui.Context, key string) {
 		note, on = a.L.T("work.mac.stopping"), false
 	}
 	if key == "settings" { // a Settings row, as the others there
-		if v, ch := a.toggleRow(c, "work-"+key, a.L.T("work.mac.title", home), note, on); ch && w.busy == "" {
+		if v, ch := a.toggleRow(c, "work-"+key, a.L.T("work.mac.title", a.personaName()), note, on); ch && w.busy == "" {
 			a.setWork(v)
 		}
 		if w.failed != "" {
@@ -308,7 +308,7 @@ func (a *App) workBlock(c *ui.Context, key string) {
 		return
 	}
 	ui.Column(c.Key("work:"+key)).Gap(t.S2).Margin(t.S2, 0, 0, 0).Children(func() {
-		if v, ch := a.switchRow(c, "work-"+key, a.L.T("work.mac.title", home), note, on); ch && w.busy == "" {
+		if v, ch := a.switchRow(c, "work-"+key, a.L.T("work.mac.title", a.personaName()), note, on); ch && w.busy == "" {
 			a.setWork(v)
 		}
 		if w.failed != "" {

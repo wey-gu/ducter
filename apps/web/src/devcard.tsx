@@ -127,7 +127,6 @@ export function DevicesSection({ open, setOpen }: { open: string | null; setOpen
   const list = A.devices;
   if (!list?.length) return null;
   const f = foldClients(list, A.reach?.clients ?? []);
-  const home = homeName();
   for (const dv of list)
     for (const h of dv.harnesses) {
       const k = `${dv.id}|${h.harness}`;
@@ -150,7 +149,7 @@ export function DevicesSection({ open, setOpen }: { open: string | null; setOpen
       <UpdateAllCard />
       <div class="plist">
         {list.map((dv) => {
-          const w = listWord(A.L, dv, { home, running: runningOn(dv) });
+          const w = listWord(A.L, dv, { persona: A.S.personaName, running: runningOn(dv) });
           return <ListRow key={dv.id} art={deviceArt(dv)} name={dv.name} word={w.text} tone={w.tone} update={dv.update && behind(dv.update) ? t("devices.update_word") : undefined} onClick={() => setOpen(`dev:${dv.id}`)} />;
         })}
         {A.reach?.clients

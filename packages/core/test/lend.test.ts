@@ -1,4 +1,4 @@
-// D347: 借一台电脑来干活 / Lend a computer: the code and the one line, then the home says when the
+// D347: 加一台做事的电脑 / Add a computer for tasks: the code and the one line, then the home says when the
 // computer joined and when it is here, so the clients wait for it in place.
 import { afterEach, expect, test } from "bun:test";
 import type { LendFrame, ServerFrame } from "@ducter/protocol";
@@ -86,6 +86,29 @@ test("lend: the line to paste, then joined, then here with its name, OS and agen
   const d = await c.until<Extract<ServerFrame, { t: "devices" }>>((x) => x.t === "devices" && x.devices.some((v) => v.id === deviceId && v.state === "awake"));
   const nas = d.devices.find((v) => v.id === deviceId)!;
   expect(nas.harnesses.filter((x) => x.loggedIn).map((x) => x.harness)).toEqual(["claude-code"]);
+});
+
+// research/127: the author's Mac app, a paired window reaching hel over its domain, sat at
+// 正在拿一个码…. The home answers that window too, with the line (the drop was in the Mac's decoder).
+test("lend: a paired app window from outside gets the code and the line", async () => {
+  const core = boot("https://hel.example.com");
+  const c = await client(core.url);
+  c.send({ t: "pair_code" });
+  const p = await c.until<Extract<ServerFrame, { t: "pair_code" }>>((x) => x.t === "pair_code");
+  const res = await fetch(`http://127.0.0.1:${core.port}/pair`, { method: "POST", headers: REMOTE, body: JSON.stringify({ code: p.code, name: "MacBook", platform: "darwin-arm64" }) });
+  const { token } = (await res.json()) as { token: string };
+  const frames: ServerFrame[] = [];
+  const ws = new WebSocket(`ws://127.0.0.1:${core.port}/ws`, { headers: { ...REMOTE, authorization: `Bearer ${token}` } } as any);
+  stops.push(() => ws.close());
+  ws.onmessage = (m) => frames.push(JSON.parse(String(m.data)));
+  await new Promise<void>((r, x) => ((ws.onopen = () => r()), (ws.onerror = x)));
+  ws.send(JSON.stringify({ t: "hello", client: "desktop", locale: "zh" }));
+  ws.send(JSON.stringify({ t: "lend_code" }));
+  for (let i = 0; i < 300 && !frames.some((f) => f.t === "lend" || f.t === "error"); i++) await Bun.sleep(10);
+  const w = frames.find((f) => f.t === "lend") as LendFrame | undefined;
+  expect(frames.filter((f) => f.t === "error")).toEqual([]);
+  expect(w).toMatchObject({ state: "waiting", address: "https://hel.example.com" });
+  expect(w!.line).toContain(`worker https://hel.example.com --code ${w!.code}`);
 });
 
 test("lend: a code paired another way (pair_code) never reads as a lent computer", async () => {

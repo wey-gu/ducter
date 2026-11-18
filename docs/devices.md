@@ -7,16 +7,16 @@ order: 3
 # Your devices
 
 Ducter works on computers you own. The one it **lives on** (your Mac, or a server) holds your
-conversation and your partner. Tasks run there, or on another computer you lend it. Your phone
+conversation and your partner. Tasks run there, or on another computer you add for tasks. Your phone
 (iPhone, iPad or Android), and other Macs, can connect to it to talk and decide (see
 [Your phone](phone.md)).
 
 ## All your devices at a glance
 
 In the Mac app, **Your devices** shows all your devices as little clay islands
-on a calm sea. The computer Ducter lives on is the big one in the middle, with Ducter sitting
+on a calm sea. The computer Ducter runs on is the big one in the middle, with Ducter sitting
 beside it. Each other computer, and each phone you connected, has its own island with a bridge
-back to the middle one, because everything connects through the computer Ducter lives on.
+back to the middle one, because everything connects through the computer Ducter runs on.
 
 - **Little parcels cross a bridge** while a task is running on that computer. When it's done
   they stop; the bridge stays.
@@ -27,14 +27,15 @@ back to the middle one, because everything connects through the computer Ducter 
   and when it was last seen. Nothing needs fixing on your side; it shows up again when it's back.
 
 The list on the left has one line per device: its name and one word of how it is (*home*,
-*2 tasks*, *asleep*, *connected*). Under it, **Lend a computer** adds another computer that does
-tasks: a server at home, a NAS, another Mac ([Add a computer](add-a-computer.md)). Choose a line
+*2 tasks*, *asleep*, *connected*). The last line, **Add a device**, adds one: it asks what the
+device is for. **To talk with Ducter** is a phone, a tablet or another computer you chat from;
+**For Ducter to do tasks on** is a server at home, a NAS or another Mac ([Add a computer](add-a-computer.md)). Choose a line
 or an island to see that device's card. It reads
 top to bottom like a character in a game:
 
 - **Who:** the device itself, big, with its name under it. Click the name to **rename** it (the
-  one Ducter lives on too): type, then Enter to keep it or Esc to leave it as it was.
-- **How it is:** one line, such as *Ducter lives here*, *Doing 2 tasks for hel*, *Asleep*
+  one Ducter runs on too): type, then Enter to keep it or Esc to leave it as it was.
+- **How it is:** one line, such as *Ducter runs here*, *Doing 2 tasks for Ducter*, *Asleep*
   (it carries on when it wakes) or *Can't reach* (last seen 2 h ago).
 - **What it carries:** its AI agents, one coin each. A grey coin is signed out; a small dot means
   a newer version is out. Tap a coin to see its details right there: its version and how it was
@@ -42,23 +43,23 @@ top to bottom like a character in a game:
   of the row lists the agents not on that device yet.
 - **What it can do:** a few chips, such as **Browse**, **Use the computer** and **From outside**. One tap
   turns one on or off. The small **i** on a chip says what it does.
-  - **Calls** is on the card of the computer Ducter lives on, because a call doesn't run on any
+  - **Calls** is on the card of the computer Ducter runs on, because a call doesn't run on any
     one computer. **+ Calls** takes you to **Settings › Accounts** and starts connecting Tuwa,
     the phone line Ducter calls through; once it's connected, tapping **Calls** opens its card
     there. If your Tuwa sign-in runs out, the chip says **Sign in again**. See
     [Phone calls](calls.md).
-  - **From outside** on the card of the computer Ducter lives on lets your phone and other
+  - **From outside** on the card of the computer Ducter runs on lets your phone and other
     devices reach it from outside, at your own domain on Cloudflare. **+ From outside** says
     what you need and offers **Set it up for me**: a task does the steps, and the card ticks them
     off. Once on, its **i** shows the address, who can get in (only devices you connected) and
     **Turn off**. On a server with your own domain or a Tailscale address it's simply on. See
     [Your phone](phone.md#from-outside).
-  - **Use a phone** is on the card of a Mac with Apple silicon (M1 or later), the one Ducter lives on or one
+  - **Use a phone** is on the card of a Mac with Apple silicon (M1 or later), the one Ducter runs on or one
     that does tasks for it. It gives Ducter a phone of its own on that Mac: see
     [Ducter's phone](#ducters-phone) below.
   - **Use the computer** is on the card of a Mac. It lets tasks use that Mac's apps the way you
     do: see [Tasks in your Mac's apps](#tasks-in-your-macs-apps) below.
-  - When Ducter lives on a server and your Mac has **Use a phone** or **Use the computer** on, the
+  - When Ducter runs on a server and your Mac has **Use a phone** or **Use the computer** on, the
     server's card says so: *Use a phone*, with *On MacBook Pro* under it. Ducter can do it, on that Mac; tap the
     chip to open the Mac's card. (With several Macs, the card names one and adds *+1*.)
   - A faded **Use a phone** marked **coming later** on a server's card means no computer of yours
@@ -72,7 +73,7 @@ top to bottom like a character in a game:
   traffic at its edge, so the card says *Cloudflare can read it*. Below that, one quiet line such
   as *Connected via the app and command line*; the **⋯** beside it shows each connection with its
   own **Disconnect**.
-- **Addresses that reach it:** on the card of the computer Ducter lives on, every address it has
+- **Addresses that reach it:** on the card of the computer Ducter runs on, every address it has
   (your Tailscale network, your domain, your Cloudflare tunnel), each with **Reachable**,
   **Can't reach** or **Not checked yet**, and **In use** for the one this window uses. The Ducter
   apps on your phone and Mac know all of them and use the best one that works, so adding or
@@ -98,14 +99,14 @@ Some things only happen in an app on a phone. **Use a phone** gives Ducter its o
 (Android 16 with Google Play), running on your Mac and apart from your own phone. You put apps on
 it and sign in to them yourself; then Ducter can get things done in those apps for you.
 
-**Adding it.** Tap **+ Use a phone** on the card of your Mac: the Mac Ducter lives on, or a Mac
+**Adding it.** Tap **+ Use a phone** on the card of your Mac: the Mac Ducter runs on, or a Mac
 that does tasks for a Ducter on a server (the phone then lives on that Mac, and the tasks that need
 it run there). Ducter says what it downloads (about
 2.3 GB, once), how much space it takes (about 10 GB once the phone has been used), and when it
 runs. The phone comes from Google under Google's licenses: read them there (**Read**), turn on
 **I've read and agree to these licenses**, and tap **Add it**. The card shows the download; you
 can do something else meanwhile. You don't need Android Studio or anything else. For now this is
-for Apple silicon Macs. When Ducter lives on a server and one of your Macs has the phone, the
+for Apple silicon Macs. When Ducter runs on a server and one of your Macs has the phone, the
 server's card shows **Use a phone** with that Mac's name under it.
 
 **When it's awake.** The phone wakes by itself when a task needs it or you open it, and goes back
@@ -146,7 +147,7 @@ has no website. **Use the computer** lets a task use the apps on one of your Mac
 read a window, click, type. It works in the background, without taking your mouse or your screen;
 a second pointer shows where it acts.
 
-**Adding it.** Tap **+ Use the computer** on the card of your Mac (the one Ducter lives on, or one
+**Adding it.** Tap **+ Use the computer** on the card of your Mac (the one Ducter runs on, or one
 that does tasks for it). macOS then needs two switches for **CuaDriver**, the helper that does the
 clicking, in **System Settings › Privacy & Security**: **Accessibility** (to use the mouse and
 keyboard) and **Screen Recording** (to see what's on the screen). The chip's **i** shows which are
@@ -167,14 +168,14 @@ once, and tells you what it did.
 - Password managers, Keychain and Passwords, authenticator, banking, wallet and payment apps, and
   System Settings: tasks can't see or use them at all, and never type into a password field.
 
-For now this is for Macs. When Ducter lives on a server, it uses your Mac's apps through that Mac,
+For now this is for Macs. When Ducter runs on a server, it uses your Mac's apps through that Mac,
 and the server's card shows **Use the computer** with that Mac's name under it.
 
-## Let this Mac do tasks
+## Let this Mac help with tasks
 
 When the Ducter app on your Mac is connected to a Ducter on a server (say, *hel*), your Mac's
-card has a chip **Tasks for hel**, and **Settings › Where it runs** has the same switch: **Let this
-Mac do tasks for hel**. Turn it on and your Mac becomes one of hel's computers, with the AI agents signed in on it (Claude
+card has a chip **Helps Ducter with tasks**, and **Settings › Where it runs** has the same switch: **Let this
+Mac help Ducter with tasks**. Turn it on and your Mac becomes one of hel's computers, with the AI agents signed in on it (Claude
 Code and others), its repos and its browsers: *"run it on my Mac"* now works, and so do errands
 that need the sites you're signed in to in your Chrome. It keeps running in the background,
 starts when you log in, and starts again if it stops. It only does tasks: it never sees your
@@ -240,7 +241,7 @@ Each device is in one of three states:
   pause and pick up again. Nothing is lost.
 - **Can't reach:** Ducter can't get to it right now, with when it was last seen.
 
-Another computer you lent Ducter shows its own name and the line *Does tasks for hel* (or what it
+Another computer you added for tasks shows its own name and the line *Helps Ducter with tasks* (or what it
 is doing). When it is asleep or can't be reached, the line says that instead. To give it a name
 you'll recognise, click its name on its card; Ducter knows it by the new name from then
 on, and tasks you started there before keep going.
@@ -252,7 +253,7 @@ What a device can do:
 | **Browse the web** | The computer can get things done on the web: look things up, read pages, gather what it finds. In your Chrome when your AI agent has its own browser, otherwise in Ducter's own browser | Ready on every computer that does tasks (a Mac, or a server: see below) |
 | **Reach from outside** | Reach Ducter from your phone or another computer, with a one-time code | Ready (needs an address that works from outside: your own domain or Tailscale on a server, see [Install](install.md#a-linux-server-that-stays-on), or on Cloudflare, see [From outside](phone.md#from-outside)) |
 | **Use the computer** | Tasks use the apps on the computer the way you do, asking before anything that sends, pays or deletes ([above](#tasks-in-your-macs-apps)) | Ready on a Mac (it needs CuaDriver and two macOS switches); a server uses a Mac's |
-| **Use a phone** | Ducter gets things done in apps on a phone of its own, running on your Mac ([above](#ducters-phone)) | Ready on an Apple silicon Mac: the one Ducter lives on, or one that does tasks for it |
+| **Use a phone** | Ducter gets things done in apps on a phone of its own, running on your Mac ([above](#ducters-phone)) | Ready on an Apple silicon Mac: the one Ducter runs on, or one that does tasks for it |
 | **Make calls** | Ducter makes phone calls for you, through Tuwa or from your own Android phone | Ready (needs a Tuwa account, or your own phone with a cable kit and a live-voice key; see [Phone calls](calls.md)) |
 
 To give a device something, tap its dashed chip (**+ Browse**). When it's done you see, for
@@ -418,7 +419,7 @@ stops it for good.
 
 ## Connect another device
 
-On the computer Ducter lives on, choose **Connect a phone or computer** in the app, or run
+On the computer Ducter runs on, choose **Add a device › To talk with Ducter** in the app, or run
 `ducter pair` in Terminal. You get one **Code**, and it works for any kind of device, once, for
 10 minutes. In the app, a small jetty grows out of the middle island and the code stands on a
 sign beside it, with *"Waiting for it to connect…"*; when the device connects, its island rises
@@ -427,8 +428,8 @@ there and the device lands on it. The sign shows both ways to use the code:
 - **A phone or the Ducter app:** scan the QR code or open the **Address**, then type the code
   (in the app, choose **Connect to your Ducter** first).
 - **Another computer that should do tasks for Ducter:** run the one command shown there, for
-  example `ducter worker https://ducter.example.com --code K7QM-4XPA`. To lend a computer
-  for good, choose **Lend a computer** instead: [Add a computer](add-a-computer.md).
+  example `ducter worker https://ducter.example.com --code K7QM-4XPA`. To add a computer for tasks
+  for good, choose **Add a device › For Ducter to do tasks on** instead: [Add a computer](add-a-computer.md).
 
 A computer connected this way can only do tasks for Ducter: it can't read your conversation or
 decide anything for you.

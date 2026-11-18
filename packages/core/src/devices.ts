@@ -65,7 +65,7 @@ export interface DevicesOptions {
   self?: { version: string; how: import("@ducter/protocol").UpdateHow; platform: string };
   /** D151: Ducter's own browser (a server's 上网): whether it is installed, and installing it. */
   browser?: { setup(): BrowserSetup; install(): Promise<unknown>; onChange(fn: () => void): () => void };
-  /** The machine Ducter lives on (default: this one). */
+  /** The machine Ducter runs on (default: this one). */
   platform?: string;
   /** D156: each device's AI agents: latest per channel, standing, an update under way. */
   agents?: () => import("./agents.ts").AgentUpdates | undefined;
@@ -568,7 +568,7 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
       changed();
       return { t: "rename_result", device: "local", ok: true, name: next };
     }
-    // The machine Ducter lives on answers to its own name, its display name and "local": a task
+    // The machine Ducter runs on answers to its own name, its display name and "local": a task
     // placed there must never land on another computer by a rename.
     const shown = homeName(o.dataDir)?.toLowerCase();
     if (want === "local" || sameComputer(name, host) || sameComputer(name, hostAlias) || want === shown) return { t: "rename_result", device, ok: false, reason: "name_taken" };

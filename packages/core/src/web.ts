@@ -79,6 +79,7 @@ import artDevMiniAsleep from "../../../apps/web/static/art/dev_mini_asleep.webp"
 import artDevDeviceUnreachable from "../../../apps/web/static/art/dev_device_unreachable.webp" with { type: "file" };
 import artDevPhone from "../../../apps/web/static/art/dev_phone.webp" with { type: "file" };
 import artDevTablet from "../../../apps/web/static/art/dev_tablet.webp" with { type: "file" }; // D263
+import artSlotEmpty from "../../../apps/web/static/art/slot_empty.webp" with { type: "file" }; // D355
 import artDevFoldable from "../../../apps/web/static/art/dev_foldable.webp" with { type: "file" }; // D263
 import artAbWeb from "../../../apps/web/static/art/ab_web.webp" with { type: "file" };
 // D193: the 打电话 / Make calls coin (the clay phone; grey while not connected).
@@ -145,6 +146,7 @@ const ASSETS: Record<string, [string, string]> = {
   "art/dev_device_unreachable.webp": [artDevDeviceUnreachable, "image/webp"],
   "art/dev_phone.webp": [artDevPhone, "image/webp"],
   "art/dev_tablet.webp": [artDevTablet, "image/webp"],
+  "art/slot_empty.webp": [artSlotEmpty, "image/webp"],
   "art/dev_foldable.webp": [artDevFoldable, "image/webp"],
   "art/ab_web.webp": [artAbWeb, "image/webp"],
   "art/ab_call.webp": [artAbCall, "image/webp"],

@@ -587,8 +587,8 @@ One vocabulary on every tab:
 - **Actions:** a card's primary (clay) buttons sit at the right end of its last line; a quiet
   text button (Cancel, Add one with an address and key) at the left of the same line. Remove
   Ducter is a quiet text button after the last group, never centered.
-- **Partner:** one calm clay header (the partner at 112, its name 34 with Rename, one line "住在
-  hel 上，用 Codex 想事情"; with a model, "用 Claude Code 的 Opus 想事情", D296), then the tray titled **{device} 上的 AI agent**, What it thinks with
+- **Partner:** one calm clay header (the partner at 112, its name 34 with Rename, one line "在
+  hel 上运行，用 Codex 想事情" (D355); with a model, "用 Claude Code 的 Opus 想事情", D296), then the tray titled **{device} 上的 AI agent**, What it thinks with
   (the clay well holding the token; the token flies into it on Switch), Who does the tasks, How it
   talks, On its own or asks you first (two lists side by side in one card). Single column; the faces strip is gone.
 - **Memory** (D257; D295 on D289's grid; its mark the partner's own blue notebook, drawn in clay from `--notebook-*` / `Tokens.Notebook`):

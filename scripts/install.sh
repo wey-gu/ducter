@@ -221,6 +221,10 @@ if [ "$SERVICE" = 1 ]; then
     "--service is for Linux servers; on a Mac, ducter up keeps it running."
 fi
 
+# D347: the lend line (ducter.ai/install.sh's worker mode) joins and installs the worker service
+# right after this; a home's next steps (service install, Tailscale, a domain) would only mislead.
+[ "${DUCTER_INSTALL_FOR:-}" = worker ] && exit 0
+
 step "下一步：" "Next:"
 if [ "$(uname)" = "Darwin" ]; then
   printf '  %s up\n' "$DUCTER"

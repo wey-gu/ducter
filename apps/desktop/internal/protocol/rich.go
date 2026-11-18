@@ -127,7 +127,7 @@ func (b *RichUI) Known() bool {
 		}
 		return true
 	case "lend":
-		// D347: the Lend a computer card: one button that opens the guided sheet.
+		// D347: the Add a computer for tasks card: one button that opens the guided sheet.
 		return true
 	}
 	return false

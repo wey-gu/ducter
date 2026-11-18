@@ -131,6 +131,19 @@ export async function addKey(raw: string, o: KeyCheckOptions): Promise<KeyResult
   return candidates.length === 1 ? { ok: false, provider: candidates[0], name: keyName(candidates[0]!, o.lang), reason: "wrong" } : { ok: false, reason: "wrong" };
 }
 
+/**
+ * D371: a key pasted in DeepSeek Harness's own row: DeepSeek's or nothing. One balance read that
+ * spends nothing (the same check as a pasted key, D298); kept by the caller only when it's good.
+ */
+export async function checkDeepSeekKey(raw: string, o: Pick<KeyCheckOptions, "fetch" | "timeoutMs"> = {}): Promise<{ ok: true } | { ok: false; reason: "wrong_key" | "no_balance" | "offline" | "failed" }> {
+  const key = cleanKey(raw);
+  if (!recognizeKey(key).includes("deepseek")) return { ok: false, reason: "wrong_key" };
+  const one = await checkOne("deepseek", key, { dataDir: "", lang: "en", ...o });
+  if (one.kind === "ok") return { ok: true };
+  if (one.kind === "wrong") return { ok: false, reason: "wrong_key" };
+  return { ok: false, reason: one.reason === "no_balance" ? "no_balance" : one.reason === "blocked" ? "offline" : "failed" };
+}
+
 function troubled(p: KeyProvider, one: Extract<One, { kind: "trouble" }>, lang: LangTag): KeyResult {
   return { ok: false, provider: p, name: keyName(p, lang), reason: one.reason, ...(one.detail ? { detail: one.detail } : {}) };
 }

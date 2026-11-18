@@ -100,8 +100,8 @@ export const FIX = {
   cua: '/bin/bash -c "$(curl -fsSL https://cua.ai/driver/install.sh)" -- --no-connect --no-test --no-modify-path',
   cuaUpdate: "cua-driver update --apply",
   cuaGrant: "cua-driver permissions grant",
-  // DeepSeek Harness reads its key from the env; Ducter passes it from its key file (0600, D102).
-  dshKey: "DEEPSEEK_API_KEY=… in ~/.ducter/keys.env (chmod 600)",
+  // DeepSeek Harness: a key Ducter keeps (keys.env, 0600, D102), or (D371) its app's DeepSeek account.
+  dshKey: "ducter key add < a file holding a DeepSeek API key, or sign in to your DeepSeek account in the DeepSeek Harness app",
   port: (p: number) => `DUCTER_PORT=${p + 1} ducter up`,
   data: (d: string) => `mkdir -p "${d}" && chmod u+w "${d}"`,
 };

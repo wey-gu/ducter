@@ -165,4 +165,30 @@ describe("DeepSeek Harness: a browser task runs in a home of Ducter's", () => {
     expect(dshCredentialKey({ DSH_HOME: own })).toBe("sk-bare");
     expect(dshCredentialKey({ DSH_HOME: join(dir, "none") })).toBeUndefined();
   });
+
+  test("D371: signed in only with the DeepSeek account (its app's 登录): the account route, and a home of Ducter's reads the person's own credential file where it is", () => {
+    const own = join(dir, "own-dsh");
+    mkdirSync(own);
+    const creds = join(own, ".credentials.yaml");
+    writeFileSync(creds, "version: 1\nrecords:\n  deepseek-account-platform/default:\n    kind: grant\n    payload:\n      version: 1\n      token: not-a-real-token\n", { mode: 0o600 });
+    // A task on the person's own setup: their home already has the grant; only the route changes.
+    const plain = adaptSpec(task("deepseek-harness", { model: "deepseek-official/deepseek-flash" }), { dataDir: dir, env: { DSH_HOME: own } });
+    expect(plain.options.model).toBe("deepseek-account/deepseek-flash");
+    // No model named: the account route's own default model, not the key route's.
+    expect(adaptSpec(task("deepseek-harness"), { dataDir: dir, env: { DSH_HOME: own } }).options.model).toBe("deepseek-account/deepseek-flash");
+    // A home of Ducter's (a browser place): its credential row points at the person's file; nothing copied, no key in the env.
+    const a = adaptSpec(withBrowser(task("deepseek-harness", { model: "deepseek-v4-pro" }), sidecar(), "Ducter"), { dataDir: dir, env: { DSH_HOME: own } });
+    const env = a.options.env as Record<string, string>;
+    expect(a.options.model).toBe("deepseek-account/deepseek-v4-pro");
+    expect(layerOf(env.DSH_HOME).find((r) => r.id === "credentials")?.config).toEqual({ path: creds });
+    expect(existsSync(join(env.DSH_HOME, ".credentials.yaml"))).toBe(false);
+    expect(env.DEEPSEEK_API_KEY).toBeUndefined();
+    // With a key anywhere, the key route as before, and no credential row.
+    writeFileSync(join(dir, "keys.env"), 'DEEPSEEK_API_KEY="sk-ducter-not-real"\n', { mode: 0o600 });
+    const k = adaptSpec(withBrowser(task("deepseek-harness", { model: "deepseek-flash" }), sidecar(), "Ducter"), { dataDir: dir, env: { DSH_HOME: own } });
+    expect(k.options.model).toBe("deepseek-official/deepseek-flash");
+    expect(layerOf((k.options.env as Record<string, string>).DSH_HOME).some((r) => r.id === "credentials")).toBe(false);
+    // Another provider the person named is left alone.
+    expect(adaptSpec(task("deepseek-harness", { model: "openrouter/x" }), { dataDir: dir, env: { DSH_HOME: own } }).options.model).toBe("openrouter/x");
+  });
 });

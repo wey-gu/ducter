@@ -18,12 +18,12 @@ so it counts against that plan's limits like any other session.
 
 ### Which AI agents does it work with?
 
-Claude Code and Codex, signed in with your own account, and pi and DeepSeek Harness with your own
-key. You need at least one. Your partner thinks with Claude Code; when Claude Code isn't signed in,
+Claude Code and Codex, signed in with your own account, pi with your own key, and DeepSeek Harness with
+a DeepSeek key or your DeepSeek account (signed in in its Mac app). You need at least one. Your partner thinks with Claude Code; when Claude Code isn't signed in,
 it picks the first that is of Codex, DeepSeek Harness and pi, so a server with just one of them works.
 
 Ducter also works with **pi** and **DeepSeek Harness**, which run on an API key you pay for by
-use rather than a plan. If one of them is installed and has its key, ask your partner to use it
+use rather than a plan. If one of them is installed and signed in, ask your partner to use it
 for a task ("do this with DeepSeek Harness"), or make it what your partner thinks with in
 Settings › Partner (see [Your partner and settings](settings.md)). A server with only a DeepSeek
 key works as it is: your partner thinks with DeepSeek Harness.

@@ -104,7 +104,7 @@ import { CHALLENGE_PATH } from "@ducter/protocol/src/reach.ts";
 import { proveHome } from "@ducter/protocol/src/reach-verify.ts";
 import { whichNow } from "@ducter/protocol/src/which.ts";
 import { createAgentSetup, realAgentSetupSys } from "./agent-setup.ts";
-import { widenAgentPath } from "./agent-path.ts";
+import { agentSignature, widenAgentPath } from "./agent-path.ts";
 
 declare const DUCTER_COMMIT: string | undefined; // set by packages/cli/build.sh via --define
 /** The build this core runs ("dev" from a checkout): /health says it, so Ducter.app can tell a background
@@ -1196,6 +1196,21 @@ export function startCore(opts: CoreOptions = {}): Core {
   agentsRef = agents;
   // D363: the person's own agent folders and Ducter's tools folder on the home's PATH too.
   if (!agentTesting) widenAgentPath({ dataDir });
+  // D371: and the home looks again within seconds of a change made by hand, as a worker does (an
+  // app installed or signed in since: DeepSeek Harness.app's dsh, its 登录): a cheap fingerprint
+  // every 5 s (no process started), a real probe only when it moved.
+  if (!agentTesting) {
+    let seen = agentSignature({ dataDir, which: (c) => whichNow(c) });
+    const t = setInterval(() => {
+      widenAgentPath({ dataDir });
+      const now = agentSignature({ dataDir, which: (c) => whichNow(c) });
+      if (now === seen) return;
+      seen = now;
+      devicesView?.refresh();
+      devicesView?.changed();
+    }, 5000);
+    (t as any).unref?.();
+  }
   // D363: putting agents on the home itself and signing them in here (a worker has its own, the
   // agent_setup op). No network or npm in tests unless a sys is given.
   const homeSetup =

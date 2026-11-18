@@ -8,6 +8,7 @@
 // With a Ducter running here, the work goes through it (safe point, Log, the cards follow);
 // without one, this process detects, reads the channels and runs the updaters itself.
 import type { AgentReason, DeviceHarness, ServerFrame } from "@ducter/protocol";
+import { agentAppName } from "@ducter/protocol";
 import { harnessName, type HarnessId } from "@ducter/protocol/src/harnesses.ts";
 import { versionStanding } from "@ducter/protocol/src/harness-facts.ts";
 import { createAgentLatest, inVerified, updatable, updateAgent } from "@ducter/core/src/agents.ts";
@@ -35,7 +36,7 @@ function stateOf(h: DeviceHarness, t: T, style: Style): string {
   const u = h.update;
   if (u && (u.phase === "waiting" || u.phase === "updating" || u.phase === "checking")) return t(`agents.phase.${u.phase}` as any, { v: u.to ?? "" });
   if (!h.version) return style.dim(t("agents.row.unknown"));
-  if (h.how === "app") return style.dim(t("agents.how.app", { app: h.harness === "codex" ? "Codex" : "Claude" }));
+  if (h.how === "app") return style.dim(t("agents.how.app", { app: agentAppName(h.harness) }));
   if (h.how === "ducter") return style.dim(t("agents.how.ducter"));
   if (h.how === "unknown") return style.dim(t("agents.how.unknown"));
   const unverified = h.standing === "newer" || h.standing === "older" ? "  " + style.dim(t("agents.row.unverified")) : "";

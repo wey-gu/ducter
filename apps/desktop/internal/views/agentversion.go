@@ -48,10 +48,14 @@ func (a *App) agentWhy(reason string) string {
 	return a.L.T("agentv.why.failed")
 }
 
-// agentAppName names the app that carries a copy (Codex, Claude).
+// agentAppName names the app that carries a copy (Codex, Claude; D371:
+// DeepSeek Harness, whose app carries its own dsh).
 func agentAppName(harness string) string {
-	if harness == "claude-code" {
+	switch harness {
+	case "claude-code":
 		return "Claude"
+	case "deepseek-harness":
+		return "DeepSeek Harness"
 	}
 	return "Codex"
 }

@@ -46,17 +46,18 @@ func agentRowLook(h protocol.DeviceHarness) string {
 }
 
 // installOrder is the order the lend sheet offers them in.
-var installOrder = []string{"codex", "claude-code", "pi"}
+var installOrder = []string{"codex", "claude-code", "deepseek-harness", "pi"}
 
 // offerable is what the lend sheet offers to install, and whether it starts
-// checked (Codex and Claude Code; pi signs in from that computer's terminal).
+// checked (Codex and Claude Code; pi signs in from that computer's terminal,
+// and DeepSeek Harness, D371, is offered unchecked: it needs a key or its app).
 func offerable(hs []protocol.DeviceHarness) (ids []string, checked map[string]bool) {
 	checked = map[string]bool{}
 	for _, id := range installOrder {
 		for _, h := range hs {
 			if h.Harness == id && !h.Installed && h.Installable {
 				ids = append(ids, id)
-				checked[id] = id != "pi"
+				checked[id] = id == "codex" || id == "claude-code"
 			}
 		}
 	}
@@ -175,6 +176,10 @@ func (a *App) agentRow(c *ui.Context, dv *protocol.DeviceView, h protocol.Device
 		if look == "failed" && h.Setup != nil && h.Setup.Detail != "" {
 			ui.Text(c, h.Setup.Detail).FontSize(t.XS).TextColor(t.InkSoft).LineHeight(1.4)
 		}
+		// D371: its command line is big; say so before the tap.
+		if (look == "install" || look == "queued") && h.Harness == "deepseek-harness" {
+			ui.Text(c, a.L.T("ag.dsh.size")).FontSize(t.XS).TextColor(t.InkSoft).LineHeight(1.4)
+		}
 		if look == "login" {
 			a.agentLoginPanel(c, dv, h)
 		}
@@ -218,6 +223,10 @@ func (a *App) agentLoginPanel(c *ui.Context, dv *protocol.DeviceView, h protocol
 			}
 			line(a.L.T(k), t.Failed.Ink)
 			again()
+			return
+		}
+		if l.Key {
+			a.keyLogin(c, dv, h, key, line)
 			return
 		}
 		if h.Harness == "codex" {
@@ -265,6 +274,61 @@ func (a *App) agentLoginPanel(c *ui.Context, dv *protocol.DeviceView, h protocol
 				a.agentSetupReq(dv, "cancel", protocol.AgentSetupReq{Harness: h.Harness})
 			}
 		})
+	})
+}
+
+// keyLogin is DeepSeek Harness's sign-in in place (D371): its app opened on
+// that Mac when it has one, and a DeepSeek API key to paste, kept only on
+// that computer. The row turns ready by itself either way.
+func (a *App) keyLogin(c *ui.Context, dv *protocol.DeviceView, h protocol.DeviceHarness, key string, line func(string, ui.Color)) {
+	t := a.T
+	l := h.Login
+	name := harnessName(h.Harness)
+	where := a.deviceNameIn(dv)
+	checking := l.State == "checking"
+	if l.App != "" {
+		line(a.L.T("ag.dsh.app", where), t.Ink)
+	}
+	if l.App != "" {
+		line(a.L.T("ag.dsh.key.or", where), t.Ink)
+	} else {
+		line(a.L.T("ag.dsh.key", where), t.Ink)
+	}
+	if a.ag.code == nil {
+		a.ag.code = map[string]string{}
+	}
+	v := a.ag.code[key]
+	ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
+		in := ui.TextInput(c.Key("ag-key:"+key), &v).Placeholder("sk-…").Label(a.L.T("ag.dsh.field")).
+			FontSize(t.MD).Padding(t.S2, t.S3).Radius(t.RadiusSM).Background(t.SurfaceSunken).Border(1, t.LineSoft).Grow(1)
+		in.Password()
+		label := a.L.T("ag.dsh.check")
+		if checking {
+			label = a.L.T("ag.login.checking")
+		}
+		if a.buttonFor(c, label, name, btnPrimary, t.ControlSM, t.Bg) && v != "" && !checking {
+			a.agentSetupReq(dv, "code", protocol.AgentSetupReq{Harness: h.Harness, Code: v})
+			v = ""
+		}
+	})
+	a.ag.code[key] = v
+	if !checking {
+		switch l.Reason {
+		case "wrong_key", "no_balance":
+			line(a.L.T("ag.login."+l.Reason), t.Failed.Ink)
+		case "offline":
+			line(a.L.T("ag.login.offline", where), t.Failed.Ink)
+		case "failed":
+			line(a.L.T("ag.login.failed"), t.Failed.Ink)
+		}
+	}
+	ui.Row(c).Gap(t.S2).Wrap().Children(func() {
+		if l.URL != "" && a.buttonFor(c, a.L.T("ag.dsh.get"), name, btnSecondary, t.ControlSM, t.Bg) {
+			c.OpenURL(l.URL)
+		}
+		if a.buttonFor(c, a.L.T("ag.login.cancel"), name, btnText, t.ControlSM, t.Bg) {
+			a.agentSetupReq(dv, "cancel", protocol.AgentSetupReq{Harness: h.Harness})
+		}
 	})
 }
 

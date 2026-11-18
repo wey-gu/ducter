@@ -2,6 +2,7 @@
 // one word, how it is connected, how an agent was installed, and which chips it gets. The same
 // rules as the desktop's devicecard.go.
 import type { DeviceHarness, DeviceView, Reach } from "@ducter/protocol";
+import { agentAppName } from "@ducter/protocol";
 import { shownDeviceName } from "./format.ts";
 
 export type Client = Reach["clients"][number];
@@ -70,7 +71,7 @@ export function coinHow(L: Words, h: DeviceHarness): string {
     case "installer":
       return L.t(`coin.how.${h.how}`);
     case "app":
-      return L.t("agentv.how.app", h.harness === "claude-code" ? "Claude" : "Codex");
+      return L.t("agentv.how.app", agentAppName(h.harness));
     case "ducter":
       return L.t("agentv.how.ducter");
   }

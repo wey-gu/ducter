@@ -482,6 +482,15 @@ version it verified; no sudo), and finds the person's own copies: the worker's P
 the login shell's PATH and the usual per-user folders, and it looks again within seconds of a
 change (a fingerprint every 5 s, a real probe when it moves, and when a card opens).
 
+**DeepSeek Harness (D371, research/140).** Found inside its Mac app too (the `dsh` it carries, never
+on PATH; such a copy **随 DeepSeek Harness app 更新** and Ducter never updates it), and the home looks
+every 5 s like a worker, its fingerprint including DeepSeek Harness's own credential file. Signed in
+means a DeepSeek key or the DeepSeek account its app signed in with; with only the account its
+sessions run the account's model route, and a home of Ducter's reads the person's own credential file
+where it is. Its 登录 opens the app on that Mac (when there) and takes a pasted DeepSeek API key,
+checked and kept only on that computer; the row turns ready by itself either way. 安装 puts its
+command line in Ducter's folder (about 1.3 GB, said before the tap); the lend sheet offers it unchecked.
+
 **The look (D358).** The sheet is clay, not a form: the kind question as two clay cards; the computer's
 own clay over every step, its pose the state (asleep under its blanket while the line is made, a ripple
 under it while it is waited for, awake with one swell as it joins, floating once here, grey when the code

@@ -13,17 +13,26 @@
 // Sign in, with each agent's own sign-in, run on that computer and carried to the person:
 //   - Codex: `codex login --device-auth`: a link and a one-time code to open on any device;
 //   - Claude Code: `claude auth login`: a link; its page gives a code, pasted back here;
-//   - pi: no sign-in that runs without its own screen: the row says what to run there.
-// Secrets never pass through: the link and Codex's code are not secrets (they only work for the
+//   - pi: no sign-in that runs without its own screen: the row says what to run there;
+//   - DeepSeek Harness (D371): its Mac app opened there when it has one (its 登录: the DeepSeek
+//     account, or a key), and a DeepSeek API key pasted in the row, checked and kept in that
+//     computer's keys.env (0600) like any key (D102); the row turns signed in either way.
+// The pasted DeepSeek key is the one secret that passes: home to that computer over its own
+// socket, once, into its key file; never logged, never shown again, never in a frame back.
+// Otherwise secrets never pass through: the link and Codex's code are not secrets (they only work for the
 // person who signs in with them); Claude's pasted code is written to the sign-in's stdin, never kept.
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { AgentLoginState, AgentSetupReason, AgentSetupState } from "@ducter/protocol";
+import { cleanKey } from "@ducter/protocol/src/api-keys.ts";
+import { DSH_APP, DSH_KEY_PAGE, dshAppPaths, dshCredentialsFile, dshSignIns } from "@ducter/protocol/src/dsh.ts";
 import { HARNESS_FACTS } from "@ducter/protocol/src/harness-facts.ts";
-import type { HarnessId } from "@ducter/protocol/src/harnesses.ts";
+import { DSH_KEY_ENV, type HarnessId } from "@ducter/protocol/src/harnesses.ts";
+import { readKeys, writeKey } from "@ducter/protocol/src/keys.ts";
 import { toolEnv } from "@ducter/protocol/src/tool-env.ts";
 import { toolsNodeBin } from "./agent-path.ts";
+import { checkDeepSeekKey } from "./api-key.ts";
 
 /** Node.js Ducter puts in its tools folder for the agents' npm packages (an LTS line every agent supports). */
 export const NODE_RELEASE = {
@@ -37,16 +46,20 @@ export const NODE_RELEASE = {
   } as Record<string, { file: string; sha256: string }>,
 };
 
-/** The agents Ducter can put on a computer, in the order a sheet lists them. */
-export const INSTALLABLE: readonly HarnessId[] = ["codex", "claude-code", "pi"];
+/** The agents Ducter can put on a computer, in the order a sheet lists them (D371: DeepSeek Harness's command line too). */
+export const INSTALLABLE: readonly HarnessId[] = ["codex", "claude-code", "pi", "deepseek-harness"];
 /** Pre-checked on the lend sheet's 装上哪些 AI？ (pi's sign-in needs that computer's terminal). */
 export const SUGGESTED: readonly HarnessId[] = ["codex", "claude-code"];
 
 /** The npm package and version Ducter installs for an agent: the newest it verified. */
 export function agentPin(h: HarnessId): { pkg: string; version: string } | undefined {
-  const pkg = HARNESS_FACTS[h].channels.value.npm;
+  const pkg = HARNESS_FACTS[h]?.channels.value.npm;
   return pkg && (INSTALLABLE as readonly string[]).includes(h) ? { pkg, version: HARNESS_FACTS[h].verified.to } : undefined;
 }
+
+type Login = { view: AgentLoginState; proc?: LoginProc; timer?: unknown; out: string; mark?: number };
+/** D371: how often a DeepSeek Harness sign-in made elsewhere (its app, a key saved by hand) is looked for. */
+export const DSH_LOOK_MS = 3000;
 
 /** How long a sign-in waits for the person before it stops (Codex's device code lasts 15 min). */
 export const LOGIN_WAIT_MS = 15 * 60_000;
@@ -74,6 +87,11 @@ export interface AgentSetupSys {
   /** Tests: the file system. */
   writeFile?: (p: string, b: Uint8Array) => void;
   exists?: (p: string) => boolean;
+  read?: (p: string) => string | undefined;
+  /** D371: is a pasted DeepSeek key good (DeepSeek's own balance read, spending nothing)? Default: api-key.ts. */
+  checkKey?: (key: string) => Promise<{ ok: true } | { ok: false; reason: "wrong_key" | "no_balance" | "offline" | "failed" }>;
+  /** D371: where DeepSeek Harness.app may be (default: /Applications, ~/Applications). */
+  dshApps?: () => string[];
 }
 
 export interface AgentSetup {
@@ -134,12 +152,24 @@ export function createAgentSetup(o: {
   });
   const clearTimer = o.clearTimer ?? ((t) => clearTimeout(t as any));
   const exists = sys.exists ?? existsSync;
+  const read =
+    sys.read ??
+    ((p: string) => {
+      try {
+        return readFileSync(p, "utf8");
+      } catch {
+        return undefined;
+      }
+    });
+  const checkKey = sys.checkKey ?? ((key: string) => checkDeepSeekKey(key));
+  /** D371: DeepSeek Harness is signed in here (a key in Ducter's key file or its own, or the app's DeepSeek account): files only. */
+  const dshSignedIn = () => !!readKeys(o.dataDir, read)[DSH_KEY_ENV] || Object.values(dshSignIns(read(dshCredentialsFile(process.env)))).some(Boolean);
   const writeFile = sys.writeFile ?? ((p: string, b: Uint8Array) => writeFileSync(p, b));
   const tools = join(o.dataDir, "tools");
   const nodeDir = join(tools, "node");
   const nodeBin = toolsNodeBin(o.dataDir);
   const setups = new Map<string, AgentSetupState>();
-  const logins = new Map<string, { view: AgentLoginState; proc?: LoginProc; timer?: unknown; out: string; mark?: number }>();
+  const logins = new Map<string, Login>();
   const queue: HarnessId[] = [];
   let running = false;
 
@@ -231,6 +261,60 @@ export function createAgentSetup(o: {
     } else logins.set(h, { view, out: "" });
   };
 
+  /**
+   * D371: DeepSeek Harness has no sign-in that runs without its own screen. On a Mac with its app,
+   * the app opens there (its 登录 is the DeepSeek account, or a key); anywhere, a DeepSeek API key
+   * pasted in the row is checked and kept in Ducter's key file there. Either way the row turns
+   * signed in by itself: its sign-in files are looked at every few seconds, for 15 minutes.
+   */
+  const dshLogin = () => {
+    const h = "deepseek-harness";
+    const prev = logins.get(h);
+    if (prev?.timer) clearTimer(prev.timer);
+    const app = sys.platform === "darwin" ? (sys.dshApps?.() ?? dshAppPaths()).find((p) => exists(p)) : undefined;
+    if (app) void sys.run(["open", app], { env: sys.env("open"), timeoutMs: 15_000 }).catch(() => {});
+    const entry: Login = { view: { state: "waiting", key: true, url: DSH_KEY_PAGE, ...(app ? { app: DSH_APP } : {}) }, out: "" };
+    logins.set(h, entry);
+    const until = now() + LOGIN_WAIT_MS;
+    const tick = () => {
+      if (logins.get(h) !== entry) return;
+      if (entry.view.state !== "checking" && dshSignedIn()) {
+        endLogin(h, { state: "done" });
+        void o.probe().catch(() => {});
+        return o.changed();
+      }
+      if (now() >= until) {
+        endLogin(h, { state: "expired" });
+        return o.changed();
+      }
+      entry.timer = setTimer(tick, DSH_LOOK_MS);
+    };
+    entry.timer = setTimer(tick, DSH_LOOK_MS);
+    o.changed();
+  };
+  /** D371: a pasted DeepSeek key: checked (nothing spent), kept in this computer's key file, never shown again. */
+  const dshKey = async (h: string, l: Login, raw: string) => {
+    const key = cleanKey(raw);
+    const { reason: _, ...rest } = l.view;
+    l.view = { ...rest, state: "checking" };
+    o.changed();
+    const r = await checkKey(key).catch(() => ({ ok: false as const, reason: "failed" as const }));
+    if (logins.get(h) !== l) return;
+    if (!r.ok) {
+      l.view = { ...rest, state: "waiting", reason: r.reason };
+      return o.changed();
+    }
+    try {
+      writeKey(o.dataDir, DSH_KEY_ENV, key);
+    } catch {
+      l.view = { ...rest, state: "waiting", reason: "failed" };
+      return o.changed();
+    }
+    endLogin(h, { state: "done" });
+    await o.probe().catch(() => {});
+    o.changed();
+  };
+
   const api: AgentSetup = {
     install(hs) {
       for (const h of hs) {
@@ -248,6 +332,7 @@ export function createAgentSetup(o: {
         logins.set(h, { view: { state: "terminal", command: "pi" }, out: "" });
         return o.changed();
       }
+      if (h === "deepseek-harness") return dshLogin();
       const argv = h === "codex" ? ["codex", "login", "--device-auth"] : h === "claude-code" ? ["claude", "auth", "login"] : undefined;
       const bin = argv ? sys.which(argv[0]!) : null;
       if (!argv || !bin) {
@@ -301,6 +386,7 @@ export function createAgentSetup(o: {
     code(h, code) {
       const l = logins.get(h);
       const c = code.trim();
+      if (l?.view.key && l.view.state === "waiting" && c) return void dshKey(h, l, c);
       if (!l?.proc || l.view.state !== "waiting" || !c) return;
       l.mark = l.out.length;
       l.proc.write(c + "\n");

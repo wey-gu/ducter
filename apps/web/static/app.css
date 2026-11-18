@@ -5419,7 +5419,7 @@ button.dev-name {
 .coin-tile.sel .cdot { box-shadow: 0 0 0 2.5px var(--surface); }
 .coin-tile .cring { position: absolute; inset: -3px; border-radius: 50%; border: 2.5px solid transparent; border-top-color: var(--accent); animation: dc-spin 1.1s linear infinite; }
 @keyframes dc-spin { to { transform: rotate(360deg); } }
-.coin-tile .cn { font-size: var(--xs); font-weight: 700; color: var(--ink-soft); white-space: nowrap; }
+.coin-tile .cn { max-width: 100%; font-size: var(--xs); font-weight: 700; line-height: 1.2; color: var(--ink-soft); text-align: center; text-wrap: balance; } /* D371: a long name (DeepSeek Harness) takes two lines, never runs into its neighbour */
 .coin-tile.off .cn { color: var(--ink-muted); font-weight: 600; }
 .coin-tile.socket .c { border: 2px dashed var(--line-2); border-radius: 50%; color: var(--ink-muted); font-size: 22px; font-weight: 700; background: rgb(255 255 255 / 0.35); }
 .coin-tile.socket .cn { color: var(--ink-muted); font-weight: 600; }

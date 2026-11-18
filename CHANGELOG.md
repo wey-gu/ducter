@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.0.80 - 2026-11-18
+
+<!-- whats-new
+zh: 加的电脑也装上 Mem，在那儿做事也记得你
+en: Added computers get Nowledge Mem and remember you too
+zh: 设置页更清爽：聊天软件点了才展开
+en: Calmer Settings: chat apps open their steps when you ask
+-->
+
+**Devices**
+- A computer you add for tasks can have Nowledge Mem too: install it from the card, sign in with
+  a link, and the AI agents there work with the same memory as your partner. No admin rights
+  needed.
+
+**Settings**
+- Chat apps you haven't set up are one line each, with Set up; the steps open in place.
+- To-do sources, Your partner, This computer and Where it runs read more evenly: notes sit under
+  their headings, every choice says what it does, and rows line up.
+
 ## 0.0.79 - 2026-11-18
 
 <!-- whats-new

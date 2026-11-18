@@ -839,6 +839,10 @@ const zh: Record<string, string> = {
   "who.name": "%s（%s）",
   "spoken.sep": "，",
   "switch.tune.note": "换模型或思考深度，%s 还是接着这件事做，从下一轮开始。",
+  // D353: the chips under the task's composer, and the line after a choice (the Mac: i18n/loadout.go).
+  "tune.effort": "思考：%s",
+  "tune.next.model": "下一轮起用 %s",
+  "tune.next.effort": "下一轮起思考：%s",
   "who.done": "换到 %s 接着做了",
   "who.failed": "没能更换：%s",
   "who.loading": "在看谁能做…",
@@ -1659,6 +1663,10 @@ const en: Record<string, string> = {
   "who.name": "%s (%s)",
   "spoken.sep": ", ",
   "switch.tune.note": "A new model or effort: %s carries on with this task from its next turn.",
+  // D353: the chips under the task's composer, and the line after a choice.
+  "tune.effort": "Effort: %s",
+  "tune.next.model": "From its next turn: %s",
+  "tune.next.effort": "From its next turn: %s effort",
   "who.done": "Continued on %s",
   "who.failed": "Didn't switch: %s",
   "who.loading": "Looking at who can do it…",

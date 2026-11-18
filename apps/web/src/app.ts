@@ -935,6 +935,15 @@ class AppState {
     this.send({ t: "account_usage", harness, ...(fresh ? { fresh: true } : {}) });
   }
 
+  /** D353: the agents' own model lists, for the chips under an opened task's composer (once per task opened). */
+  private modelsAskedFor = "";
+  askTaskModels(taskId: string) {
+    // Painted from the glance before the socket opens, a frame would go nowhere: ask after welcome.
+    if (this.modelsAskedFor === taskId || !this.S.welcomed) return;
+    this.modelsAskedFor = taskId;
+    this.send({ t: "task_new_options" });
+  }
+
   openSwitch(taskId: string) {
     if (this.switchFor === taskId) this.switchFor = "";
     // D282: and the agents' own model lists, for the in-place model and effort picker.
@@ -2288,8 +2297,10 @@ class AppState {
       if (f.ok && f.action === "merge") this.toast(this.L.t("result.merged.toast", name, short(f.ref ?? "")));
       else if (f.ok && f.action === "open_pr") this.toast(this.L.t("result.pr.toast", f.ref ?? ""));
       else if (f.action === "switch") {
-        if (f.ok) (this.switchFor = ""), this.toast(this.L.t("who.done", this.switching));
-        else this.toast(this.L.t("who.failed", f.message ?? ""));
+        // D353: an in-place model or effort (nothing named as switching) is said by its own quiet line, not a toast.
+        if (f.ok) {
+          if (this.switching) (this.switchFor = ""), this.toast(this.L.t("who.done", this.switching));
+        } else this.toast(this.L.t("who.failed", f.message ?? ""));
         this.switching = "";
         // A draft PR that didn't open says why on the task itself (it stays), not in a toast.
       } else if (!f.ok && f.action !== "open_pr") this.toast(this.L.t("result.action.failed", f.message ?? ""));

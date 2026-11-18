@@ -24,6 +24,7 @@ func PebbleDark() *Tokens {
 	t.SurfaceSunken = hex("#1D1712")
 	t.Sunken = hex("#1D1712")
 	t.Faint = hex("#5A4C3E")
+	t.Faded = 0.85 // light grey clay reads as lit on the dark card: a little back
 	t.Line2 = hex("#0D0A07")
 	t.Ink = hex("#F6EBDD")
 	t.InkMuted = hex("#A8957E")

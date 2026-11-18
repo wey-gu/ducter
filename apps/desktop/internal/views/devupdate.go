@@ -481,11 +481,12 @@ func (a *App) disconnectConfirm(c *ui.Context, id, name, means string) {
 }
 
 // updateSection is Settings' list of every computer's Ducter version
-// (D148 (9)): a self-contained card, so the Settings page can place it.
+// (D148 (9)): a self-contained group, so the Settings page can place it.
 // It shows only when the server says versions. Built from shared pieces
-// only (sheetCard, note, valueRow, switchRow; the guard in
-// update_guard_test.go): every state of a computer, Check now and its
-// 在查… included, lives in that computer's row (D167).
+// only (group, stateRow, toggleRow; the guard in update_guard_test.go):
+// every state of a computer, Check now and its 在查… included, lives in
+// that computer's row (D167); each row and the switch under a hairline, as
+// every card's rows (D374).
 func (a *App) updateSection(c *ui.Context) {
 	var shown []*protocol.DeviceView
 	for i := range a.S.Devices {
@@ -496,23 +497,24 @@ func (a *App) updateSection(c *ui.Context) {
 	if len(shown) == 0 {
 		return
 	}
-	a.sheetCardNoted(c, "versions", a.L.T("settings.versions.title"), a.L.T("settings.versions.note", a.S.PersonaName), func() {
+	a.group(c, "versions", a.L.T("settings.versions.title"), a.L.T("settings.versions.note", a.S.PersonaName), func() {
 		home := homeDevice(shown)
 		for _, dv := range shown {
 			a.versionRow(c, dv, dv == home)
 		}
 		if auto := a.S.Settings; auto != nil {
-			if v, ch := a.switchRow(c, "autoupdate", a.L.T("settings.versions.night"), a.L.T("settings.versions.night.note"), auto.AutoUpdate); ch {
+			if v, ch := a.toggleRow(c, "autoupdate", a.L.T("settings.versions.night"), a.L.T("settings.versions.night.note"), auto.AutoUpdate); ch {
 				a.send(protocol.SettingsSet{T: "settings_set", Patch: protocol.SettingsPatch{AutoUpdate: &v}})
 			}
 		}
 	})
 }
 
-// versionRow is one computer in Settings' versions card: its name (the
-// quiet dot when it's behind) and what it is; its version and one status at
-// the right: the update's step, 有新版本 x, or 已经是最新的 with 现在检查
-// (the home's), which reads 在查… in the same place while it asks. 没更新成
+// versionRow is one computer in Settings' versions card: its name and what
+// it is, with its one state under them: the update's step, 有新版本 x, or
+// 已经是最新的 and when it was read; its version at the right end with the
+// home's 检查更新, which reads 在查… in the same place while it asks (D374:
+// a row like every other, not a column of three at the right edge). 没更新成
 // opens its why and the one next step under the row on a tap (D167).
 func (a *App) versionRow(c *ui.Context, dv *protocol.DeviceView, home bool) {
 	u := dv.Update
@@ -523,7 +525,9 @@ func (a *App) versionRow(c *ui.Context, dv *protocol.DeviceView, home bool) {
 	key := "ver:" + dv.ID
 	open := a.open[key]
 	failed := u != nil && u.Phase == "failed"
-	status := func() {
+	// D337: this Mac's app says the one check and has the one button.
+	current := u != nil && u.Latest != "" && u.Phase == "" && !behind(dv) && !(home && a.homeHere() == dv)
+	state := func() {
 		if u == nil {
 			return
 		}
@@ -543,21 +547,20 @@ func (a *App) versionRow(c *ui.Context, dv *protocol.DeviceView, home bool) {
 			}
 		case behind(dv):
 			a.sideStatus(c, a.L.T("devup.available", u.Latest), sideInk)
-		case u.Latest != "" && u.Phase == "":
-			if home && a.homeHere() == dv {
-				return // D337: this Mac's app says the one check and has the one button
-			}
+		case current:
+			words, _ := a.upToDate(u) // one phrase, 刚看过，已经是最新的 (D296)
+			a.sideStatus(c, words, sideMuted)
+		}
+	}
+	var action func()
+	if current && home {
+		action = func() {
 			d := a.devState()
-			if home && d.card.checking {
+			if d.card.checking {
 				a.sideStatus(c, a.L.T("devup.checking"), sideMuted)
 				return
 			}
-			current, checked := a.upToDate(u)
-			a.sideStatus(c, current, sideMuted)
-			if checked != "" {
-				a.sideStatus(c, checked, sideMuted)
-			}
-			if home && a.sideLink(c, "check:"+dv.ID, a.L.T("devup.checknow"), "", sideMuted, 0) {
+			if a.buttonFor(c, a.L.T("devup.checknow"), a.deviceName(dv), btnSecondary, a.T.ControlSM, a.T.Surface) {
 				d.card.checking = true
 				a.send(protocol.DeviceUpdateReq{T: "device_update", Device: dv.ID, Check: true})
 			}
@@ -580,8 +583,8 @@ func (a *App) versionRow(c *ui.Context, dv *protocol.DeviceView, home bool) {
 			}
 		}
 	}
-	// Behind: the status says so in words (devup.available); no dot (D213).
-	a.valueRow(c, key, a.deviceName(dv), a.versionSub(dv), nil, v, status, below)
+	// Behind: the state says so in words (devup.available); no dot (D213).
+	a.stateRow(c, key, a.deviceName(dv), a.versionSub(dv), state, v, action, below)
 }
 
 // versionSub is a computer's line in the versions card: what it is to the

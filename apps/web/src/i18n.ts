@@ -16,6 +16,7 @@ import { phoneuse } from "./i18n-phoneuse.ts";
 import { computeruse } from "./i18n-computeruse.ts";
 import { channelWords } from "./i18n-channels.ts";
 import { todoWords } from "./i18n-todos.ts";
+import { groupWords } from "./i18n-groups.ts";
 import { handset } from "./i18n-handset.ts";
 import { fileWords } from "./i18n-fileview.ts";
 import { calendarWords } from "./i18n-calendar.ts";
@@ -2984,6 +2985,9 @@ Object.assign(TABLES.en, channelWords.en);
 // D341: 待办来源 / To-do sources (i18n-todos.ts).
 Object.assign(TABLES.zh, todoWords.zh);
 Object.assign(TABLES.en, todoWords.en);
+// D360: 分组 / Groups on On hand (i18n-groups.ts).
+Object.assign(TABLES.zh, groupWords.zh);
+Object.assign(TABLES.en, groupWords.en);
 
 /** Drops a space between two Chinese characters (zh copy spaces around a name for Latin names). */
 /** D78: a space where a Chinese character touches a Latin letter or a digit ("住在%s 上" with "hel"). */

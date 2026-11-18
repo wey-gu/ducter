@@ -12,7 +12,7 @@ import { blocksOf, type Block } from "@ducter/protocol/src/transcript.ts";
 import { sayable, proofLabel } from "@ducter/protocol/src/say.ts";
 import { A } from "./app.ts";
 import type { TableLang } from "./i18n.ts";
-import { Btn, Chev, Facts } from "./controls.tsx";
+import { Btn, Chev, Facts, MoreButton } from "./controls.tsx";
 import { openPast } from "./past.tsx";
 import { openDid } from "./did.tsx";
 import { ago, clock, day, harnessName, spoken, when } from "./format.ts";
@@ -28,6 +28,7 @@ import { PileBlock } from "./pile.tsx";
 import { Goal, Groove, limitAt, limitState, untilLine, WaitBubble, waitCaption, waitLine } from "./work.tsx";
 import { handover, isNewResult, statusOf, urgentOf, type Status } from "./seen.ts";
 import { OtherAsk, PartnerMark } from "./partners.tsx";
+import { boardGroups, foldedRows, markOf, type BoardGroup, type MemberRow } from "./groups-view.ts";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
@@ -386,8 +387,11 @@ function stateCounts(lens: string): number[] {
   const l = lensLanes(lens);
   const loose = looseIn(lens);
   const calls = loose ? (A.S.onHand?.calls ?? []) : [];
+  // D360: a group whose line stopped waits for the person's word: it counts as one that needs them.
+  const lanes = l;
+  const stopped = boardGroups(A.S.onHand?.groups, (id) => lanes.findIndex((x) => x.some((t) => t.id === id)), (id) => (A.S.tasks.has(id) ? attention(A.S.tasks.get(id)!) : undefined)).filter((b) => b.stopped).length;
   return [
-    l[0]!.length + (loose ? A.S.partnerDecisions().length + A.otherAsks().length : 0),
+    l[0]!.length + stopped + (loose ? A.S.partnerDecisions().length + A.otherAsks().length : 0),
     l[1]!.length + calls.filter((c) => ["waiting", "calling", "talking", "question"].includes(c.state)).length,
     l[2]!.length + (loose ? A.S.armedWaiters().filter((w) => !w.taskId).length : 0),
     // D310: done today is tasks finished well today, the one count every surface says; a failed
@@ -535,7 +539,7 @@ export function matches(task: Task, q: string): boolean {
 // ---------- the keys, the focus and the selection ----------
 
 /** The list's state that outlives a render: the row the keys are on, what is selected, Find. */
-export const L = { focus: "", sel: new Set<string>(), anchor: "", find: "", order: [] as string[], dropAsk: false, filter: 0, quietOn: false, showProj: false, usual: "" };
+export const L = { focus: "", sel: new Set<string>(), anchor: "", find: "", order: [] as string[], dropAsk: false, filter: 0, quietOn: false, showProj: false, usual: "", groupAsk: null as string | null };
 
 /** D315: where a card says its task is, each its own element (D291): its project when the board
  *  shows them all, never 其他 / Other, which says nothing; its computer only when it isn't the one
@@ -1041,10 +1045,18 @@ export function OnHandList({ room }: { room: Room }) {
   const f = rail ? 0 : L.filter;
   const show = (i: number) => !f || f === i;
   const keep = (ts: Task[]) => (q ? ts.filter((x) => matches(x, q)) : ts);
-  const needs = keep(lanes[LANE.needs]!);
-  const working = keep(lanes[LANE.working]!);
-  const waiting = keep(lanes[LANE.waiting]!);
-  const done = keep(lanes[LANE.done]!);
+  // D360: a group stands as one card in its most urgent member's section (not while finding, nor
+  // in the rail: there every task is its own row; with a filter, only in its own section). Counts stay per task.
+  const laneOf = (id: string) => lanes.findIndex((l) => l.some((x) => x.id === id));
+  const bgs = (rail || q ? [] : boardGroups(A.S.onHand?.groups, laneOf, (id) => (A.S.tasks.has(id) ? attention(A.S.tasks.get(id)!) : undefined))).filter((b) => show(b.lane + 1));
+  const inGroup = new Set(bgs.flatMap((b) => [...b.ids]));
+  const ungrouped = (ts: Task[]) => (inGroup.size ? ts.filter((x) => !inGroup.has(x.id)) : ts);
+  const groupsIn = (lane: number) => bgs.filter((b) => b.lane === lane);
+  const nIn = (lane: number) => lanes[lane]!.length;
+  const needs = ungrouped(keep(lanes[LANE.needs]!));
+  const working = ungrouped(keep(lanes[LANE.working]!));
+  const waiting = ungrouped(keep(lanes[LANE.waiting]!));
+  const done = ungrouped(keep(lanes[LANE.done]!));
   const loose = !q && looseIn(lens);
   const partnerDs = loose ? A.S.partnerDecisions() : [];
   // D312: another partner's own questions are listed here too (answered in its conversation).
@@ -1067,10 +1079,14 @@ export function OnHandList({ room }: { room: Room }) {
   const quietOpen = !quietFolds || L.quietOn || f === 3 || !!q;
   const doneOpen = !seenFolds || doneOpenKept() || f === 4 || !!q;
   // The order the keys walk, as drawn.
-  L.order = [...(show(1) ? needs : []), ...(show(2) ? working : []), ...(show(3) ? fresh : []), ...(show(3) && quietOpen ? quiet : []), ...(show(4) ? newer : []), ...(show(4) && doneOpen ? seen : [])].map((x) => x.id);
+  const gIds = (lane: number) => groupsIn(lane).flatMap((b) => b.rows.flatMap((r) => (r.kind === "task" && b.ids.has(r.taskId) ? [r.taskId] : [])));
+  L.order = [...gIds(0), ...needs.map((x) => x.id), ...gIds(1), ...working.map((x) => x.id), ...gIds(2), ...fresh.map((x) => x.id), ...(quietOpen ? quiet : []).map((x) => x.id), ...gIds(3), ...newer.map((x) => x.id), ...(doneOpen ? seen : []).map((x) => x.id)].filter((id) => {
+    const lane = laneOf(id);
+    return show(lane + 1) || inGroup.has(id);
+  });
   for (const id of [...L.sel]) if (!all.some((x) => x.id === id)) L.sel.delete(id);
   const openN = A.defaultable().length;
-  const shown = needs.length + working.length + waiting.length + done.length;
+  const shown = needs.length + working.length + waiting.length + done.length + inGroup.size;
   return (
     <div class={`onhand-list room-${room}${entering && room !== "rail" ? " entering" : ""}`}>
       {!rail && (
@@ -1083,13 +1099,16 @@ export function OnHandList({ room }: { room: Room }) {
       {q && !shown && <p class="none">{t("onhand.find.none")}</p>}
       {/* D285: a Find that matches nothing here leads to every earlier task. */}
       {q && !rail && <PastLink words={t("past.find.in", q)} q={q} />}
-      {needs.length + partnerDs.length + otherAs.length > 0 && show(1) && (
-        <Section name={t("lane.needs_you")} n={needs.length + partnerDs.length + otherAs.length} end={openN >= 2 && !rail ? <Btn kind="text" size="sm" label={t("decision.goall", openN)} onClick={() => A.goOnAllDefaults()} /> : undefined}>
+      {needs.length + partnerDs.length + otherAs.length + groupsIn(0).length > 0 && show(1) && (
+        <Section name={t("lane.needs_you")} n={(bgs.length ? nIn(LANE.needs) : needs.length) + partnerDs.length + otherAs.length} end={openN >= 2 && !rail ? <Btn kind="text" size="sm" label={t("decision.goall", openN)} onClick={() => A.goOnAllDefaults()} /> : undefined}>
           {/* What needs you is answered in place: its card, not a row (beside a task, a row). */}
           {rail ? (
             <Rows tasks={needs} room={room} />
           ) : (
             <>
+              {groupsIn(0).map((b) => (
+                <GroupCard key={b.g.id} b={b} room={room} />
+              ))}
               {partnerDs.map((d) => (
                 <DecisionCard key={d.decisionId} d={d} />
               ))}
@@ -1104,14 +1123,20 @@ export function OnHandList({ room }: { room: Room }) {
           )}
         </Section>
       )}
-      {working.length + liveCalls.length > 0 && show(2) && (
-        <Section name={t("lane.working")} n={working.length + liveCalls.length}>
+      {working.length + liveCalls.length + groupsIn(1).length > 0 && show(2) && (
+        <Section name={t("lane.working")} n={(bgs.length ? nIn(LANE.working) : working.length) + liveCalls.length}>
+          {groupsIn(1).map((b) => (
+            <GroupCard key={b.g.id} b={b} room={room} />
+          ))}
           {!rail && liveCalls.map((c) => <CallRow key={c.callId} c={c} />)}
           <Rows tasks={working} room={room} cards />
         </Section>
       )}
-      {waiting.length + looseWs.length > 0 && show(3) && (
-        <Section name={t("lane.waiting")} n={waiting.length + looseWs.length}>
+      {waiting.length + looseWs.length + groupsIn(2).length > 0 && show(3) && (
+        <Section name={t("lane.waiting")} n={(bgs.length ? nIn(LANE.waiting) : waiting.length) + looseWs.length}>
+          {groupsIn(2).map((b) => (
+            <GroupCard key={b.g.id} b={b} room={room} />
+          ))}
           <Rows tasks={fresh.filter((x) => !grouped.has(x.id))} room={room} cards />
           {limitGroups.map((g) => (
             <LimitGroup key={g.harness} g={g} room={room} />
@@ -1122,8 +1147,11 @@ export function OnHandList({ room }: { room: Room }) {
           {quiet.length > 0 && quietOpen && <Rows tasks={quiet} room={room} compact="quiet" />}
         </Section>
       )}
-      {done.length + missed.length + endedCalls.length > 0 && show(4) && (
-        <Section name={t("lane.done")} n={done.length + missed.length + endedCalls.length}>
+      {done.length + missed.length + endedCalls.length + groupsIn(3).length > 0 && show(4) && (
+        <Section name={t("lane.done")} n={(bgs.length ? nIn(LANE.done) : done.length) + missed.length + endedCalls.length}>
+          {groupsIn(3).map((b) => (
+            <GroupCard key={b.g.id} b={b} room={room} />
+          ))}
           <Rows tasks={newer} room={room} cards />
           {seenFolds && f !== 4 && !q && (
             <FoldLine words={t("onhand.done.seen", seen.length + missed.length + endedCalls.length)} open={doneOpen} onToggle={() => keepDoneOpen(!doneOpenKept())} />
@@ -1172,6 +1200,172 @@ export function OnHandList({ room }: { room: Room }) {
     </div>
   );
 }
+
+// ---------- groups (D360) ----------
+
+/** Groups unfolded this session (a folded card shows what is live and the next in line). */
+const groupOpen = new Set<string>();
+
+/** One member's mark: the literal state, drawn (never a dot that means nothing, D69). */
+function MemberMark({ k }: { k: ReturnType<typeof markOf> }) {
+  if (k === "working")
+    return (
+      <span class="gmark k-working" aria-hidden="true">
+        <span class="pulse">
+          <i />
+          <i />
+          <i />
+        </span>
+      </span>
+    );
+  const path =
+    k === "done" ? "M5 10.5l3.2 3.2L15 7" : k === "failed" || k === "dropped" ? "M6.5 6.5l7 7M13.5 6.5l-7 7" : k === "needs" ? "M10 5.5v5.5M10 14.2v.3" : "";
+  return (
+    <span class={`gmark k-${k}`} aria-hidden="true">
+      <svg viewBox="0 0 20 20" width="20" height="20">
+        {k === "held" || k === "waiting" ? <circle cx="10" cy="10" r="6.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-dasharray={k === "held" ? "2.4 2.6" : undefined} /> : <circle cx="10" cy="10" r="8.4" />}
+        {path && <path d={path} fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />}
+      </svg>
+    </span>
+  );
+}
+
+/** What a member's row says at its right: how long it has worked, when it came back, or that it waits its turn. */
+function memberWhen(r: MemberRow, task: Task | undefined): string {
+  if (r.kind === "held") return r.device ? t("group.held.on", computerName(r.device)) : t("group.held");
+  if (!task) return "";
+  const a = attention(task);
+  if (a === "working" || a === "queued") return timeOf(task) === t("time.now") ? t("onhand.card.started") : t("onhand.card.working", timeOf(task));
+  if (a === "blocked") return waitNext(A.S.waiterFor(task.id)).text || stateLabel(a);
+  if (a === "done" || a === "done_claimed") return task.card?.updatedAt ? t("onhand.card.done", soon(task.card.updatedAt)) : stateLabel(a);
+  return stateLabel(a);
+}
+
+/**
+ * D360: a group of tasks that are one piece of work, as one card: its name, how far along (beads, one
+ * per part, and "3 件里做完 1 件"), its parts in order (each opens its task; one waiting its turn says
+ * 排着), how they run (一件做完接下一件), and, when a part didn't work out, the person's three ways on.
+ * A part that needs the person shows its question inside the card: what needs you never folds.
+ */
+function GroupCard({ b, room }: { b: BoardGroup; room: Room }) {
+  const [menu, setMenu] = useState(false);
+  const [draft, setDraft] = useState<string | null>(null);
+  const open = groupOpen.has(b.g.id);
+  const { shown, rest } = open ? { shown: b.rows, rest: 0 } : foldedRows(b);
+  const send = (op: "rename" | "dissolve" | "order" | "move" | "next" | "drop_rest" | "remove", extra: Record<string, unknown> = {}) => A.send({ t: "task_group", op, groupId: b.g.id, ...extra } as never);
+  const held = b.rows.filter((r): r is Extract<MemberRow, { kind: "held" }> => r.kind === "held");
+  const live = b.rows.some((r) => r.kind === "task" && (r.attention === "working" || r.attention === "queued"));
+  const save = () => {
+    const n = (draft ?? "").trim();
+    if (n && n !== b.g.name) send("rename", { name: n });
+    setDraft(null);
+  };
+  const toggle = () => (open ? groupOpen.delete(b.g.id) : groupOpen.add(b.g.id), A.changed());
+  return (
+    <div class={`tgroup${live ? " live" : ""}${b.stopped ? " stopped" : ""}`} data-group={b.g.id} role="group" aria-label={spoken(A.L, b.g.name, t("group.done", b.done, b.of))}>
+      <div class="ghead">
+        {draft === null ? (
+          <span class="gname">{b.g.name}</span>
+        ) : (
+          <input
+            class="gname-input"
+            value={draft}
+            aria-label={t("group.rename")}
+            title={t("group.rename.keys")}
+            autoFocus
+            onInput={(e) => setDraft((e.target as HTMLInputElement).value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") save();
+              if (e.key === "Escape") e.stopPropagation(), setDraft(null);
+            }}
+            onBlur={save}
+          />
+        )}
+        <span class="gbeads" aria-hidden="true">
+          {b.rows.map((r) => (
+            <i key={r.kind === "task" ? r.taskId : r.key} class={`gbead b-${markOf(r)}`} />
+          ))}
+        </span>
+        <span class="gcount">{t("group.done", b.done, b.of)}</span>
+        <MoreButton label={t("group.menu")} open={menu} onClick={() => setMenu(!menu)} />
+      </div>
+      {menu && (
+        <div class="gmenu" role="menu">
+          <Btn kind="text" size="sm" label={t("group.rename")} onClick={() => (setMenu(false), setDraft(b.g.name))} />
+          <Btn kind="text" size="sm" label={b.g.order === "one_by_one" ? t("group.toSide") : t("group.toLine")} onClick={() => (setMenu(false), send("order", { order: b.g.order === "one_by_one" ? "side_by_side" : "one_by_one" }))} />
+          <Btn kind="text" size="sm" label={t("group.ungroup")} onClick={() => (setMenu(false), send("dissolve"))} />
+        </div>
+      )}
+      <ol class="gparts">
+        {shown.map((r) => {
+          const task = r.kind === "task" ? A.S.tasks.get(r.taskId) : undefined;
+          const k = markOf(r);
+          const d = task && k === "needs" ? A.S.pendingDecision(task.id) : undefined;
+          const hi = r.kind === "held" ? held.indexOf(r) : -1;
+          return (
+            <li key={r.kind === "task" ? r.taskId : r.key} class={`gpart m-${k}${task && L.focus === task.id && room !== "phone" ? " kfocus" : ""}`} data-row={task?.id}>
+              <span class="gidx" aria-label={t("group.part", r.part)}>
+                {r.part}
+              </span>
+              <MemberMark k={k} />
+              {task ? (
+                <button class="gtitle" title={title(task)} onClick={() => ((L.focus = task.id), A.go({ name: "task", id: task.id, full: room === "full" }))}>
+                  {shortTitle(title(task)) || t("task.unknown")}
+                </button>
+              ) : (
+                <span class="gtitle is-held">{r.kind === "held" ? r.title : ""}</span>
+              )}
+              <span class="gwhen">{memberWhen(r, task)}</span>
+              {hi > 0 && room !== "phone" && <Btn kind="text" size="sm" label={t("group.up")} about={r.kind === "held" ? r.title : ""} onClick={() => send("move", { member: (r as { key: string }).key, to: hi - 1 })} />}
+              {d && (
+                <div class="gask">
+                  <DecisionCard d={d} taskId={task!.id} />
+                </div>
+              )}
+            </li>
+          );
+        })}
+      </ol>
+      {rest > 0 && <FoldLine words={t("group.more", rest)} open={false} onToggle={toggle} />}
+      {open && b.rows.length > 3 && <FoldLine words={t("onhand.fold.close")} open onToggle={toggle} />}
+      {b.stopped ? (
+        <div class="gstop">
+          <p>{t(`group.stopped.${b.stopped.why}${b.stopped.waiting > 1 ? ".many" : ""}`, b.stopped.part, b.stopped.waiting > 1 ? b.stopped.waiting : b.stopped.next)}</p>
+          <span class="gacts">
+            <Btn kind="secondary" size="sm" label={t("group.retry", b.stopped.part)} onClick={() => A.send({ t: "past_continue", taskId: b.stopped!.taskId, words: t("group.retry", b.stopped!.part) })} />
+            <Btn kind="secondary" size="sm" label={t("group.go", b.stopped.next)} onClick={() => send("next")} />
+            <Btn kind="text" size="sm" label={b.stopped.waiting > 1 ? t("group.drop.many") : t("group.drop", b.stopped.next)} onClick={() => send("drop_rest")} />
+          </span>
+        </div>
+      ) : (
+        held.length > 0 && (
+          <p class="gfoot">
+            <LineGlyph side={b.g.order === "side_by_side"} />
+            <span>{b.g.order === "side_by_side" ? t("group.side") : t("group.line")}</span>
+          </p>
+        )
+      )}
+    </div>
+  );
+}
+
+/** How the parts run, drawn: three beads on one thread (one after another) or side by side. */
+const LineGlyph = ({ side }: { side: boolean }) => (
+  <svg class="gline" viewBox="0 0 28 12" width="28" height="12" aria-hidden="true">
+    {side ? (
+      <>
+        <path d="M3 3h22M3 9h22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" opacity="0.55" />
+      </>
+    ) : (
+      <>
+        <path d="M4 6h20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" opacity="0.45" />
+        <circle cx="5" cy="6" r="2.6" fill="currentColor" />
+        <circle cx="14" cy="6" r="2.6" fill="currentColor" opacity="0.7" />
+        <path d="M21 3.4l3 2.6-3 2.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+      </>
+    )}
+  </svg>
+);
 
 /**
  * D357: 你的待办 / Your to-dos (GitHub 上标给你的 / Assigned to you on GitHub when it is the only
@@ -1320,6 +1514,13 @@ export function bulkOf(ids: Iterable<string>) {
   };
 }
 
+/** D360: the selected tasks into one group, by the name typed (none: the first one's title). */
+function makeGroup(ts: Task[], done: () => void) {
+  A.send({ t: "task_group", op: "make", taskIds: ts.map((x) => x.id), ...(L.groupAsk?.trim() ? { name: L.groupAsk.trim() } : {}) });
+  L.groupAsk = null;
+  done();
+}
+
 function BulkBar() {
   const k = bulkOf(L.sel);
   const done = () => (L.sel.clear(), (L.dropAsk = false), A.changed());
@@ -1342,6 +1543,25 @@ function BulkBar() {
           {k.pr.length > 0 && <Btn kind="text" size="sm" label={t("onhand.sel.pr", k.pr.length)} onClick={() => run(k.pr, "open_pr")} />}
           {k.pause.length > 0 && <Btn kind="text" size="sm" label={t("onhand.sel.pause", k.pause.length)} onClick={() => run(k.pause, "interrupt")} />}
           {k.drop.length > 0 && <Btn kind="text" size="sm" label={t("onhand.sel.drop", k.drop.length)} onClick={() => ((L.dropAsk = true), A.changed())} />}
+          {/* D360: 放进一个分组 / Put in a group: a name, then they stand as one card. */}
+          {k.all.length >= 2 && L.groupAsk === null && <Btn kind="text" size="sm" label={t("group.make")} onClick={() => ((L.groupAsk = ""), A.changed())} />}
+          {L.groupAsk !== null && (
+            <span class="gmake">
+              <input
+                class="gname-input"
+                value={L.groupAsk}
+                placeholder={t("group.make.name")}
+                aria-label={t("group.make.name")}
+                autoFocus
+                onInput={(e) => ((L.groupAsk = (e.target as HTMLInputElement).value), A.changed())}
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") e.stopPropagation(), (L.groupAsk = null), A.changed();
+                  if (e.key === "Enter") makeGroup(k.all, done);
+                }}
+              />
+              <Btn kind="secondary" size="sm" label={t("group.make.go")} onClick={() => makeGroup(k.all, done)} />
+            </span>
+          )}
           <span class="grow" />
           <Btn kind="text" size="sm" label={t("onhand.sel.clear")} about="Esc" onClick={done} />
         </>

@@ -146,6 +146,8 @@ export interface RenderCtx {
   taskBase?(taskId: string): string | undefined;
   /** The user merged this task's work (by button): new work after that is a new task. */
   merged?(taskId: string): boolean;
+  /** D360: the group a task is in: its name, which part it is, and the parts still held in line. */
+  taskGroup?(taskId: string): { name: string; part: number; of: number; held: string[] } | undefined;
   /** Spike: a Bridge message we sent, by its id (an incoming reply renders as its answer). */
   bridgeOut?(messageId: string | undefined): Bodies["bridge_msg"] | undefined;
   /** X2 (D170): the user lets this own agent's work start without asking. */
@@ -470,7 +472,7 @@ function took(c: TaskCard): string {
 /** Open tasks listed in a fresh session's seed; the rest are named by count (research/48 F2). */
 export const OPEN_TASKS_MAX = 20;
 
-export function renderTasks(all: TaskCard[], maxDone = 8, ctx?: Pick<RenderCtx, "merged" | "taskBase">): string {
+export function renderTasks(all: TaskCard[], maxDone = 8, ctx?: Pick<RenderCtx, "merged" | "taskBase" | "taskGroup">): string {
   // A task dropped before its brief arrived (D120) never did anything: not worth a line.
   const cards = all.filter((c) => !(c.attention === "dropped" && c.reason === "not started"));
   // Those that need the user first, then the most recently moved.
@@ -489,7 +491,10 @@ export function renderTasks(all: TaskCard[], maxDone = 8, ctx?: Pick<RenderCtx, 
     const merged = ctx?.merged?.(c.taskId) ? ` · merged into ${ctx.taskBase?.(c.taskId) ?? "its base branch"} by the user (new work = a new task)` : "";
     // D128: one the user opened themselves (their words are its brief); you report it like any task.
     const yours = c.openedBy === "you" ? " · the user opened this one themselves" : "";
-    return `- ${c.taskId} "${clip(c.title, 120)}" · ${c.attention}${yours}${took(c)}${merged}${where}${last}`;
+    // D360: a part of a group, and what is still held in line after it (not tasks yet).
+    const g = ctx?.taskGroup?.(c.taskId);
+    const group = g ? ` · group "${clip(g.name, 40)}" part ${g.part} of ${g.of}${g.held.length ? `; held in line: ${g.held.map((h) => `"${clip(h, 60)}"`).join(", ")}` : ""}` : "";
+    return `- ${c.taskId} "${clip(c.title, 120)}" · ${c.attention}${yours}${took(c)}${merged}${group}${where}${last}`;
   };
   const out: string[] = [];
   out.push("Open:");

@@ -60,6 +60,9 @@ type onHandState struct {
 	// D315: the computer most of the board's tasks run on; a card names
 	// its computer only when it is another.
 	usual string
+	// D360: the group being renamed in place, and its draft name; the
+	// selection's name for a new group (bulk 放进一个分组).
+	groupRename, groupDraft string
 }
 
 // latestStep is the task's latest step or words: the newest one this Mac
@@ -271,11 +274,48 @@ func (a *App) onHandList(c *ui.Context, b store.Board) {
 		}
 		return out
 	}
-	needs := keep(b.Lanes[store.LaneNeedsYou])
-	working := keep(b.Lanes[store.LaneWorking])
-	waiting := keep(b.Lanes[store.LaneWaiting])
-	done := keep(b.Lanes[store.LaneDone])
 	rail := a.oh.room == "rail"
+	// D360: a group stands as one card in its most urgent part's section
+	// (not while finding, nor in the rail; with a filter, only in its own
+	// section); its tasks leave their own. Counts stay per task.
+	var bgs []boardGroup
+	inGroup := map[string]bool{}
+	if !rail && q == "" {
+		for _, g := range a.boardGroups(b) {
+			if a.oh.filter == 0 || a.oh.filter == g.lane+1 {
+				bgs = append(bgs, g)
+				for id := range g.ids {
+					inGroup[id] = true
+				}
+			}
+		}
+	}
+	groupsIn := func(lane int) {
+		for _, g := range bgs {
+			if g.lane == lane {
+				a.groupCard(c, g)
+			}
+		}
+	}
+	nGroups := func(lane int) int {
+		n := 0
+		for _, g := range bgs {
+			if g.lane == lane {
+				n++
+			}
+		}
+		return n
+	}
+	nLane := func(l store.Lane, ts []*store.Task) int {
+		if len(bgs) == 0 {
+			return len(ts)
+		}
+		return len(b.Lanes[l])
+	}
+	needs := withoutGroups(keep(b.Lanes[store.LaneNeedsYou]), inGroup)
+	working := withoutGroups(keep(b.Lanes[store.LaneWorking]), inGroup)
+	waiting := withoutGroups(keep(b.Lanes[store.LaneWaiting]), inGroup)
+	done := withoutGroups(keep(b.Lanes[store.LaneDone]), inGroup)
 	a.nav.rows = 0
 	f := a.oh.filter
 	if rail {
@@ -345,7 +385,7 @@ func (a *App) onHandList(c *ui.Context, b store.Board) {
 	add(show(3) && quietOpen, quiet)
 	add(show(4), newer)
 	add(show(4) && doneOpen, seen)
-	if q != "" && len(needs)+len(working)+len(waiting)+len(done) == 0 {
+	if q != "" && len(needs)+len(working)+len(waiting)+len(done)+len(inGroup) == 0 {
 		ui.Text(c.Key("none"), a.L.T("onhand.find.none")).FontSize(t.MD).TextColor(t.InkMuted)
 		a.pastFindLink(c, q) // D285
 		return
@@ -372,8 +412,9 @@ func (a *App) onHandList(c *ui.Context, b store.Board) {
 	}
 	// What needs you comes first and takes no room when there is none (the
 	// board's head says so in one calm sentence).
-	if len(needs)+len(pds)+len(others) > 0 && show(1) {
-		a.listSection(c, "needs", a.L.T("lane.needs_you"), len(needs)+len(pds)+len(others), func() {
+	if len(needs)+len(pds)+len(others)+nGroups(0) > 0 && show(1) {
+		a.listSection(c, "needs", a.L.T("lane.needs_you"), nLane(store.LaneNeedsYou, needs)+len(pds)+len(others), func() {
+			groupsIn(0)
 			for _, d := range pds {
 				a.partnerDecisionCard(c.Key("pd:"+d.DecisionID), d)
 			}
@@ -389,11 +430,15 @@ func (a *App) onHandList(c *ui.Context, b store.Board) {
 			}
 		})
 	}
-	if len(working) > 0 && show(2) {
-		a.listSection(c, "working", a.L.T("lane.working"), len(working), func() { a.taskCards(c, working) })
+	if len(working)+nGroups(1) > 0 && show(2) {
+		a.listSection(c, "working", a.L.T("lane.working"), nLane(store.LaneWorking, working), func() {
+			groupsIn(1)
+			a.taskCards(c, working)
+		})
 	}
-	if len(waiting)+len(loose) > 0 && show(3) {
-		a.listSection(c, "waiting", a.L.T("lane.waiting"), len(waiting)+len(loose), func() {
+	if len(waiting)+len(loose)+nGroups(2) > 0 && show(3) {
+		a.listSection(c, "waiting", a.L.T("lane.waiting"), nLane(store.LaneWaiting, waiting)+len(loose), func() {
+			groupsIn(2)
 			a.taskCards(c.Key("fresh"), fresh)
 			for _, g := range groups {
 				a.limitGroupHead(c, g)
@@ -415,8 +460,9 @@ func (a *App) onHandList(c *ui.Context, b store.Board) {
 			}
 		})
 	}
-	if len(done)+len(missed) > 0 && show(4) {
-		a.listSection(c, "done", a.L.T("lane.done"), len(done)+len(missed), func() {
+	if len(done)+len(missed)+nGroups(3) > 0 && show(4) {
+		a.listSection(c, "done", a.L.T("lane.done"), nLane(store.LaneDone, done)+len(missed), func() {
+			groupsIn(3)
 			a.taskCards(c.Key("new"), newer)
 			if len(seen)+len(missed) == 0 {
 				return

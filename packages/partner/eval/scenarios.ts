@@ -136,6 +136,8 @@ export interface Expect {
   placeKind?: "repo" | "folder" | "browser" | "none";
   /** Partner tools that must be called (by name), each with these args (a RegExp matches a string arg). */
   called?: { tool: string; args?: Record<string, unknown> }[];
+  /** D360: this many task_open calls carry one and the same group (a split opened as its parts). */
+  groupParts?: number;
   /** Partner tools that must not be called. */
   notCalled?: string[];
   /** D341: a write-back card for a to-do (todos do=write) was made / none was; nothing went to GitHub without one. */
@@ -354,6 +356,27 @@ export const scenarios: Scenario[] = [
     rubric: "Answers directly in English, at most ~2-3 short lines, with a usable rule of thumb. No task opened, no headings, no filler.",
   },
 
+  // ---------- groups (D360): one piece of work in several tasks, one after another ----------
+  {
+    id: "group-split-zh",
+    category: "groups",
+    lang: "zh",
+    steps: [{ user: "~/dev/ducter 的登录页要重做：先把登录表单换成新的输入框组件，然后接上短信验证码，最后补登录页的端到端测试。一件做完再做下一件。" }],
+    expect: { opens: 1, groupParts: 3, msgs: [0, 1], maxChars: 120, called: [{ tool: "task_open", args: { group: /登录/ } }], noAsk: true },
+    rubric: "The user asks for one piece of work in three parts, one after another, in one repo. It opens three tasks with the same short group name (登录页…), in the order given, each with its own brief. Ducter holds the second and third until the one before is done; the partner says at most one short Chinese line that they go one after another. No card, no question, no outcome claimed.",
+  },
+  {
+    id: "group-words-zh",
+    category: "groups",
+    lang: "zh",
+    seed: [
+      { task: { key: "form", title: "登录表单换成新组件", repo: "~/dev/ducter", ack: "我来把登录表单换成新组件。", state: "working" } },
+      { task: { key: "sms", title: "登录页接短信验证码", repo: "~/dev/ducter", ack: "我来接上短信验证码。", state: "working" } },
+    ],
+    steps: [{ user: "这两件是一回事，放一起吧，叫「登录页重做」" }],
+    expect: { opens: 0, msgs: [1, 1], maxChars: 80, called: [{ tool: "task_group", args: { do: "group", name: /登录页重做/ } }], notCalled: ["task_open"], noSend: true, noAsk: true },
+    rubric: "The user asks to put two running tasks together under a name. It groups them (task_group do=group, both tasks, the name 登录页重做) and says so in one short Chinese line. It opens nothing, sends the tasks nothing, asks nothing.",
+  },
   // ---------- work over time (D112-D115) ----------
   {
     id: "wait-pr-zh",

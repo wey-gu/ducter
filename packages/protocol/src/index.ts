@@ -16,6 +16,7 @@ export * from "./phone.ts";
 export * from "./media.ts";
 export * from "./phone-use.ts";
 export * from "./calendar.ts";
+export * from "./task-groups.ts";
 export * from "./partners.ts";
 export * from "./computer-use.ts";
 import type { ComputerAsk, ComputerClientFrame, ComputerPerms, ComputerServerFrame } from "./computer-use.ts";
@@ -41,6 +42,7 @@ import type { SourceAsk, SourceItemRef, SourceOp, SourcesClientFrame, SourcesSer
 import type { HandsetAsk, HandsetClientFrame, HandsetServerFrame, HandsetView } from "./handset.ts";
 import type { PhoneAsk, PhoneClientFrame, PhoneInstallStep, PhoneServerFrame } from "./phone-use.ts";
 import type { MediaRef } from "./media.ts";
+import type { TaskGroupFrame, TaskGroupView } from "./task-groups.ts";
 import type { RecallBy } from "./mem-source.ts";
 import type { CalChange, CalGlance, CalToday } from "./calendar.ts";
 import type { CallBody, CallPlan, CallView, OwnPhoneAction, OwnPhoneView, PhoneView, SignInView } from "./phone.ts";
@@ -775,6 +777,8 @@ export interface OnHand {
    * hand lists another partner's too; a client leaves out the partner it shows (its conversation has them).
    */
   asks?: PartnerAsk[];
+  /** D360: groups of tasks that are one piece of work, with the members held in line (task-groups.ts). */
+  groups?: TaskGroupView[];
 }
 
 /** D312: one partner's own open question, as On hand lists it (a tap shows that partner). */
@@ -1291,6 +1295,8 @@ export type ClientFrame =
   | DidClientFrame
   // D341: 待办来源 / To-do sources (task-sources.ts).
   | SourcesClientFrame
+  // D360: a group of tasks that are one piece of work (task-groups.ts).
+  | TaskGroupFrame
   | HandsetClientFrame
   | { t: "browser_site_signout"; site: string }
   | { t: "browser_sites_clear" }

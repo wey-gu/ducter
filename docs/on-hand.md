@@ -118,3 +118,22 @@ You don't have to open Ducter to know how things stand.
 The same: the projects as a row of names you can swipe, the four numbers, and the list. Tap a
 row to open it: the row grows into the task's page. To go back, tap **‹** at the top left, or, in
 the app, swipe in from the left edge. A sheet (Settings, a new task) closes when you pull it down.
+
+## Groups
+
+When you ask for one piece of work in several parts ("redo the sign-in page: first the form, then
+the SMS code, then the tests, one after another"), your partner opens a task for each part and keeps
+them together as a **group**: one card with the group's name, how far along it is ("1 of 3 done"),
+and the parts in order.
+
+Parts that work in the same folder run **one after another**: the next one waits **In line** and
+starts by itself when the one before it is done, carrying on from its work. Parts that don't share
+a folder run side by side.
+
+- If a part needs you, its question is right inside the card.
+- If a part doesn't work out, the card says so and waits for you: **Try part 2 again**, **Skip it,
+  do part 3**, or **Drop the rest**.
+- To put tasks together yourself, tell your partner ("put these together"), or select them and
+  choose **Put in a group**.
+- From the card's menu you can **Rename** it, choose **Run side by side**, or **Ungroup** it. The
+  tasks always stay; anything still in line starts on its own.

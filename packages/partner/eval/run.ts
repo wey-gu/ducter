@@ -127,7 +127,7 @@ function teePort(real: HarnessPort, onEvent: (e: HarnessEvent, sessionIdx: numbe
 }
 
 // ---------- fake task runner ----------
-interface Opened { taskId: string; title: string; brief: string; place?: Place; step: number; needs?: Record<string, unknown>; harness?: string }
+interface Opened { taskId: string; title: string; brief: string; place?: Place; step: number; needs?: Record<string, unknown>; harness?: string; group?: string }
 function fakeRunner(core: Core, harness: HarnessPort, cur: { step: number }) {
   const opened: Opened[] = [];
   const sent: { taskId: string; text: string; step: number; from?: string }[] = [];
@@ -543,7 +543,15 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
     }
     for (const n of notedByStep.filter((x) => x.step === i)) lines.push(`  [the app shows a small line: "Noted · ${n.title}"]`);
     for (const s of sources.filter((x) => x.step === i)) lines.push(`  [the app shows a quiet source line under the reply: "Remembered from what ${s.by === "tool" ? `${s.from} saved` : s.by === "said" ? "you said" : "you saved"}${s.date ? ` on ${s.date}` : ""}" (the memory "${s.title}")]`);
-    for (const o of r_opened(fr.opened, i)) lines.push(`  [opened a task] title: ${o.title} | place: ${JSON.stringify(o.place ?? null)} | brief: ${o.brief.slice(0, 1200).replace(/\n/g, " ⏎ ")}`);
+    // D360: the group a task is in on On hand, when it is in one.
+    const groupOf = (id: string) => core.taskGroups.of(id)?.name;
+    for (const o of fr.opened) if (groupOf(o.taskId)) o.group = groupOf(o.taskId);
+    for (const o of r_opened(fr.opened, i)) lines.push(`  [opened a task] title: ${o.title}${groupOf(o.taskId) ? ` | group: ${groupOf(o.taskId)}` : ""} | place: ${JSON.stringify(o.place ?? null)} | brief: ${o.brief.slice(0, 1200).replace(/\n/g, " ⏎ ")}`);
+    // D360: a later part of a split is held by Ducter (not a task yet), shown so the judge sees all parts.
+    const openedTitles = new Set(r_opened(fr.opened, i).map((o) => o.title));
+    for (const x of tools.filter((x) => x.step === i && /(^|__)task_open$/.test(x.name)))
+      if ((x.input as { group?: unknown } | undefined)?.group && !openedTitles.has(String((x.input as { title?: unknown }).title ?? "")))
+        lines.push(`  [held in line by Ducter, opens when the part before it is done] title: ${String((x.input as { title?: unknown }).title ?? "")} | group: ${String((x.input as { group?: unknown }).group)}`);
     for (const x of fr.sent.filter((x) => x.step === i)) lines.push(`  [${x.from === "user" || x.from === "ducter" ? "Ducter passed the user's answer to task" : "sent to task"} ${keyOf.get(x.taskId) ?? "?"}] ${x.text.slice(0, 400)}`);
     for (const x of retitles.filter((x) => x.step === i)) lines.push(`  [retitled task ${x.key}] ${x.title}`);
     const other = [...new Set(tools.filter((x) => x.step === i).map((x) => x.name.replace(/^mcp__ducter__/, "")).filter((n) => !["task_open", "task_send", "task_retitle", "ask", "wait_until", "ToolSearch", "memory_search", "memory_add"].includes(n)))];
@@ -786,6 +794,22 @@ function check(r: RunResult): string[] {
     if (!hit) fails.push(`no ${c.tool}${c.args ? ` with ${Object.entries(c.args).map(([k, v]) => `${k}=${v}`).join(", ")}` : ""}`);
   }
   for (const n of e.notCalled ?? []) if (r.tools.some((t) => t.name === n || t.name.endsWith(`__${n}`))) fails.push(`called ${n}`);
+  // D360: a split opened as its parts, all under one group name.
+  if (e.groupParts !== undefined) {
+    // Each call once (a call can show as its stream events and its end), counted by title.
+    const calls = new Map<string, string>();
+    for (const t of r.tools.filter((t) => t.name === "task_open" || t.name.endsWith("__task_open"))) {
+      const inp = t.input as { group?: unknown; title?: unknown } | undefined;
+      const g = String(inp?.group ?? "").trim().toLowerCase();
+      if (g) calls.set(String(inp?.title ?? ""), g);
+    }
+    const groups = [...calls.values()];
+    const first = groups[0];
+    // A first part opened without its group joins it from the next (partner.ts): it counts.
+    const joined = r.opened.filter((o) => !calls.has(o.title) && o.group?.toLowerCase() === first).length;
+    const n = first ? groups.filter((g) => g === first).length + joined : 0;
+    if (n !== e.groupParts) fails.push(`task_open with one group ×${n} (want ${e.groupParts})`);
+  }
   // Bridge.
   if (e.bridgeSent) {
     const b = e.bridgeSent;

@@ -940,6 +940,52 @@ type OnHand struct {
 	// Asks (D312): with more than one partner, every partner's own open
 	// questions; a window lists the other partners' in On hand.
 	Asks []PartnerAsk `json:"asks,omitempty"`
+	// Groups (D360): tasks that are one piece of work, with the parts
+	// still held in line.
+	Groups []TaskGroup `json:"groups,omitempty"`
+}
+
+// TaskGroup (D360) is several tasks that are one piece of work: one card on
+// On hand; parts in one folder run one after another (the later ones held
+// by the home until the one before is done).
+type TaskGroup struct {
+	ID        string        `json:"id"`
+	Name      string        `json:"name"`
+	Order     string        `json:"order"` // "one_by_one" | "side_by_side"
+	By        string        `json:"by"`
+	Persona   string        `json:"persona"`
+	Members   []GroupMember `json:"members"`
+	Stopped   *GroupStopped `json:"stopped,omitempty"`
+	CreatedAt string        `json:"createdAt"`
+}
+
+// GroupMember is a task (TaskID) or a part held in line (Key, Title).
+type GroupMember struct {
+	TaskID string `json:"taskId,omitempty"`
+	Key    string `json:"key,omitempty"`
+	Title  string `json:"title,omitempty"`
+	At     string `json:"at,omitempty"`
+	Device string `json:"device,omitempty"`
+}
+
+// GroupStopped: a part ended without being done; what is held after it
+// waits for the person.
+type GroupStopped struct {
+	TaskID string `json:"taskId"`
+	Why    string `json:"why"` // "failed" | "dropped"
+}
+
+// TaskGroupFrame makes, renames, reorders or takes apart a group, or moves
+// a stopped line on (D360).
+type TaskGroupFrame struct {
+	T       string   `json:"t"` // "task_group"
+	Op      string   `json:"op"`
+	GroupID string   `json:"groupId,omitempty"`
+	Name    string   `json:"name,omitempty"`
+	TaskIDs []string `json:"taskIds,omitempty"`
+	Member  string   `json:"member,omitempty"`
+	To      *int     `json:"to,omitempty"`
+	Order   string   `json:"order,omitempty"`
 }
 
 // PartnerAsk (D312) is one partner's own open question, as On hand lists it.

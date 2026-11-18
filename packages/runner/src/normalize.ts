@@ -155,7 +155,13 @@ export class Normalizer {
           try {
             title = JSON.parse(`"${m[1]}"`);
           } catch {}
-          out.push({ role: "tool", tool: { name: t.name, input: { title } }, raw: { kind: "tool_call_title", callId: ev.callId } });
+          // D360: the group written before it, so a later part of a split isn't acked on its own.
+          const g = /"group"\s*:\s*"((?:[^"\\]|\\.)*)"/.exec(t.partial);
+          let group: string | undefined;
+          try {
+            group = g ? JSON.parse(`"${g[1]}"`) : undefined;
+          } catch {}
+          out.push({ role: "tool", tool: { name: t.name, input: { title, ...(group ? { group } : {}) } }, raw: { kind: "tool_call_title", callId: ev.callId } });
         }
         // Early head (D120): everything written before the "brief" key (title, place, …), so
         // the partner can open the task while the model is still writing its brief.

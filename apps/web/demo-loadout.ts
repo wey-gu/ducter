@@ -100,8 +100,8 @@ core.setPartner({
 });
 
 const repo = (repoPath: string, branch: string): Place => ({ kind: "repo", device: "local", repoPath, branch, baseBranch: "main" });
-async function task(id: string, title: string, place: Place, brief: string, harness: string, model: string | undefined, why: Bodies["body_selected"]["why"]) {
-  log.append({ stream: `task:${id}`, origin: "partner", kind: "task_open", body: { taskId: id, title, project: "HawDB", place, harness, ...(model ? { model } : {}), brief } });
+async function task(id: string, title: string, place: Place, brief: string, harness: string, model: string | undefined, why: Bodies["body_selected"]["why"], project = "HawDB") {
+  log.append({ stream: `task:${id}`, origin: "partner", kind: "task_open", body: { taskId: id, title, project, place, harness, ...(model ? { model } : {}), brief } });
   log.append({ stream: `task:${id}`, origin: "system", kind: "body_selected", body: { taskId: id, harness, ...(model ? { model } : {}), why } });
   core.tasks.setState(id, "working", "hot");
   await tick();
@@ -153,5 +153,37 @@ log.append({
   },
 });
 core.tasks.setState("t_done", "done", "warm");
+
+// 4. D372: kinds of work. DEMO_KIND=after (the default routing: an errand on Sonnet said once, one
+// that missed and moved to Opus by itself) | never (the author's "别用 Claude Code" as a never-rule) |
+// before (the same errand as it ran before D372, on Opus, and the word rule hel saved).
+const kindDemo = process.env.DEMO_KIND;
+if (kindDemo) {
+  const browser: Place = { kind: "browser", device: "local", profile: "default" };
+  const said = (text: string) => log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text } });
+  const hotelAsk = zh ? "帮我看看京都 12 月 20 号到 23 号住哪儿好，两个人，一晚 1500 以内" : "Find us somewhere to stay in Kyoto, Dec 20–23, two people, under ¥1500 a night";
+  const hotel = zh ? "京都 12/20–23 两人住宿" : "Kyoto stay, Dec 20–23, two people";
+  const um = said(hotelAsk);
+  log.append({ stream: "channel", origin: "partner", kind: "ack", body: { jobId: "j_hotel", text: zh ? "好，我去看京都那几天的住处，一晚 1500 以内，看好了告诉你。" : "On it: places in Kyoto for those nights under ¥1500; I'll tell you what I find.", replyTo: um.seq } });
+  if (kindDemo === "before") {
+    await task("t_hotel", hotel, browser, hotelAsk, "claude-code", "opus", { kind: "default" }, "");
+    log.append({ stream: "channel", origin: "partner", kind: "job_status", body: { jobId: "j_hotel", text: zh ? "在做" : "Working", state: "running", taskId: "t_hotel" } });
+    if (multi) core.rules.add({ text: "查机票和酒店 → Codex", harness: "codex", match: ["机票", "酒店", "携程", "航班", "flights", "hotels", "ctrip"] });
+  } else {
+    log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: zh ? "这类跑腿的事我先交给 Sonnet：更快，也给 Opus 留着额度。想换就说。" : "Errands like this go to Sonnet first: it's faster, and Opus's limit is kept for harder work. Say if you'd rather not." } });
+    await task("t_hotel", hotel, browser, hotelAsk, "claude-code", "sonnet", { kind: "kind", work: "errand", keeps: { harness: "claude-code", model: "opus" }, first: true }, "");
+    ev("t_hotel", { role: "assistant", text: zh ? "先在 Booking 和 Agoda 上按区域筛一遍。" : "Filtering by area on Booking and Agoda first." });
+    log.append({ stream: "channel", origin: "partner", kind: "job_status", body: { jobId: "j_hotel", text: zh ? "在做" : "Working", state: "running", taskId: "t_hotel" } });
+    // An errand Sonnet didn't get done: it moved to Opus by itself, once.
+    const flight = zh ? "北京往返大阪机票比价" : "Beijing–Osaka return fares";
+    const fm = said(zh ? "再比一下 12 月 20 号北京飞大阪、24 号回来的机票，两个人" : "And compare Beijing–Osaka fares, out Dec 20, back Dec 24, two people");
+    log.append({ stream: "channel", origin: "partner", kind: "ack", body: { jobId: "j_flight", text: zh ? "好，我去比那两天的往返票价。" : "On it: comparing return fares for those dates.", replyTo: fm.seq } });
+    log.append({ stream: "channel", origin: "partner", kind: "job_status", body: { jobId: "j_flight", text: zh ? "在做" : "Working", state: "running", taskId: "t_flight" } });
+    await task("t_flight", flight, browser, flight, "claude-code", "sonnet", { kind: "kind", work: "errand", keeps: { harness: "claude-code", model: "opus" } }, "");
+    log.append({ stream: "task:t_flight", origin: "system", kind: "body_selected", body: { taskId: "t_flight", harness: "claude-code", model: "opus", why: { kind: "retry", from: "claude-code", fromModel: "sonnet", work: "errand" } } });
+    ev("t_flight", { role: "user", from: "ducter", text: zh ? "Claude Code（sonnet）没做下来（携程页面一直超时）。Ducter 把这件事交给你接着做一次。" : "Claude Code (sonnet) didn't get this done (Ctrip kept timing out). Ducter moved the task to you once." });
+    if (kindDemo === "never" && multi) core.rules.add({ text: zh ? "跑腿的事 → 不用 Claude Code" : "Errands → not Claude Code", harness: "claude-code", match: [], kinds: ["errand"], never: true });
+  }
+}
 
 console.log(`demo-loadout on ${core.url} · ${zh ? "zh" : "en"} · ${multi ? "multi" : "one"} · ${low ? "low" : "plenty"}`);

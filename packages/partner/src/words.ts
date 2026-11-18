@@ -9,6 +9,8 @@ const W = {
   zh: {
     ack: "好，我去做：{title}",
     trustedBrief: "（你的 {agent} 让我做的；你说过它的活直接接。）",
+    // D372: the first errand Ducter's default put on a faster model, said once.
+    kindFirst: "这类跑腿的事我先交给 {fast}：更快，也给 {smart} 留着额度。想换就说。",
     yourAgent: "你的 {agent}",
     trustQuestion: "以后{agent}发来的事，直接接下？",
     trustGo: "直接接下",
@@ -27,6 +29,7 @@ const W = {
   en: {
     ack: "On it: {title}",
     trustedBrief: "(Your {agent} asked for this; you let its work start without asking.)",
+    kindFirst: "Errands like this go to {fast} first: it's faster, and {smart}'s limit is kept for harder work. Say if you'd rather not.",
     yourAgent: "your {agent}",
     trustQuestion: "Take work from {agent} without asking from now on?",
     trustGo: "Take it directly",

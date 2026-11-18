@@ -1628,8 +1628,10 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     // Who does it (D89): the person's rules, the limits and Use it for tasks, through core's
     // chooser; a pick this runner can't run (or no device info) keeps the old default.
     const you = input.origin === "you"; // D128: the user opened it; a harness given is their pick
-    const picked = await core.bodies?.choose({ title: input.title, brief: input.brief, place: input.place, harness: input.harness, model: input.model, ...(input.effort ? { effort: input.effort } : {}), ...(you ? { by: "you" as const } : {}), ...(input.needs ? { needs: input.needs } : {}) });
+    const picked = await core.bodies?.choose({ title: input.title, brief: input.brief, place: input.place, harness: input.harness, model: input.model, ...(input.effort ? { effort: input.effort } : {}), ...(you ? { by: "you" as const } : {}), ...(input.needs ? { needs: input.needs } : {}), ...(input.workKind ? { workKind: input.workKind } : {}) });
     if (picked && "none" in picked) throw new Error(picked.none);
+    // D372: the kind of work, as the partner said it or as Ducter read it from its needs and place.
+    const workKind = input.workKind ?? (picked && "workKind" in picked ? picked.workKind : undefined);
     const pick = picked && HARNESSES.includes(picked.harness as HarnessId) ? picked : undefined;
     // D202: an effort is sent only when the chosen model on its computer offers it (core checks
     // it against the agent's own list); else it is left out, with one line in the task.
@@ -1646,7 +1648,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       input = { ...rest, harness: pick.harness, ...(keep ? { model: keep } : {}) };
     }
     // A model from the tier table alone (no rule, no pin) gives way to DUCTER_TASK_MODEL below.
-    const ranked = !!pick && ["default", "limit", "unavailable"].includes(pick.why.kind);
+    const ranked = !!pick && ["default", "limit", "unavailable", "kind"].includes(pick.why.kind);
     // D85: the partner's choice; else the first account the user lets tasks use (Settings
     // taskAccounts; a missing entry is enabled), in first-wave order.
     const accounts = core.settings?.get().taskAccounts ?? {};
@@ -1680,7 +1682,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     const fixed = h === "claude-code" ? (opts.defaultModel ?? opts.taskModel ?? process.env.DUCTER_TASK_MODEL) || undefined : undefined;
     const model = (ranked && fixed) || input.model || fixed;
     const later = typeof briefIn !== "string";
-    const body: Bodies["task_open"] = { taskId: id, title, project, place: resolved.place, harness: h, model, ...(effort ? { effort } : {}), brief: later ? "" : briefIn, ...(!later && input.media?.length ? { media: input.media } : {}), ...(input.language ? { language: input.language } : {}), ...(you ? { origin: "you" as const } : {}), ...(input.from ? { from: input.from } : {}), ...(input.needs && Object.keys(input.needs).length ? { needs: input.needs } : {}), ...(input.adopt ? { outside: { agent: input.adopt.agent, sessionId: input.adopt.sessionId, startedAt: input.adopt.startedAt } } : {}) };
+    const body: Bodies["task_open"] = { taskId: id, title, project, place: resolved.place, harness: h, model, ...(effort ? { effort } : {}), brief: later ? "" : briefIn, ...(!later && input.media?.length ? { media: input.media } : {}), ...(input.language ? { language: input.language } : {}), ...(you ? { origin: "you" as const } : {}), ...(input.from ? { from: input.from } : {}), ...(input.needs && Object.keys(input.needs).length ? { needs: input.needs } : {}), ...(workKind ? { workKind } : {}), ...(input.adopt ? { outside: { agent: input.adopt.agent, sessionId: input.adopt.sessionId, startedAt: input.adopt.startedAt } } : {}) };
     const opened = core.log.append({ persona, stream: stream(id), origin: "system", kind: "task_open", body });
     core.log.append({ persona, stream: stream(id), origin: "system", kind: "body_selected", body: { taskId: id, harness: h, ...(model ? { model } : {}), ...(effort ? { effort } : {}), why: pick?.why ?? { kind: input.harness ? (you ? "you" : "partner") : "default" } } });
     const card: TaskCard = {
@@ -2316,10 +2318,12 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       // raw.switched: recovery ignores the session ids logged before it (the old agent's), or
       // resumes the new agent's own earlier one (back).
       logEvent(t, { role: "system", from: "runner", text: `moved from ${from} to ${harness}${model ? ` (${model})` : ""}`, raw: { switched: { from, to: harness, ...(model ? { model } : {}), ...(effort ? { effort } : {}), ...(back ? { back: true } : {}) } } });
-      // Something left to do: carry on there now, from the saved progress. A finished or waiting
-      // task keeps its state; the next message (an answer, a follow-up) starts the new session
-      // from the brief + saved progress (send -> resumeOrSeed).
-      if (!wasRunning && att !== "working" && att !== "queued") {
+      // Something left to do: carry on there now, from the saved progress. D372: a task waiting on
+      // the person (needs_you) carries on too: moving it is their answer (live, hel 2026-11-18: a
+      // task that asked to be moved off Claude Code sat idle after the move). A finished, failed or
+      // otherwise waiting task keeps its state; the next message (a follow-up) starts the new
+      // session from the brief + saved progress (send -> resumeOrSeed).
+      if (!wasRunning && att !== "working" && att !== "queued" && att !== "needs_you") {
         setState(t, att, "parked");
         return { ok: true };
       }

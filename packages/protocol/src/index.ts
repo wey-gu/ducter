@@ -47,7 +47,7 @@ import type { RecallBy } from "./mem-source.ts";
 import type { CalChange, CalGlance, CalToday } from "./calendar.ts";
 import type { CallBody, CallPlan, CallView, OwnPhoneAction, OwnPhoneView, PhoneView, SignInView } from "./phone.ts";
 import type { FindKind, FindRung, FindState, FindView, ProactiveAsk, ProactiveDay, ProactiveMode, ProactiveSource, ProactiveYesNo, ReadLine, SourceLook } from "./proactive.ts";
-import type { BodyWhy, Candidate, RuleView, TaskBody, TaskNeeds } from "./loadout.ts";
+import type { BodyWhy, Candidate, KindDefault, RuleView, TaskBody, TaskNeeds, WorkKind } from "./loadout.ts";
 
 // ---------- States (design/focus-window-states.md) ----------
 
@@ -361,6 +361,8 @@ export interface Bodies {
     outside?: { agent: string; sessionId: string; startedAt: string };
     // D157: what the task needs of its computer (kept so a move or a switch keeps them).
     needs?: TaskNeeds;
+    // D372: the kind of work it is (the partner's word at open, else inferred from its needs and place).
+    workKind?: WorkKind;
   };
   task_state: { taskId: string; attention: Attention; residency: Residency; reason?: string };
   // D325: the person's words held for after this turn (做完再说, or a steer its agent can't take
@@ -1499,7 +1501,8 @@ export type ServerFrame =
   | { t: "settings"; settings: Settings; mem: MemView; brainNow?: BrainNow; forgot?: { seq: number; how: "mem" | "hidden" }; corrected?: { seq: number; how: "mem" | "here" }; undid?: { seq: number; ok: false }; bridge?: BridgeView; ownAgents?: ("claude-code" | "codex" | "pi")[] }
   // D321: what Mem found for Settings › 记忆's search (ok false: Mem didn't answer).
   | { t: "mem_found"; q: string; ok: boolean; items: MemItem[] }
-  | { t: "rules"; rules: RuleView[] }
+  // D372: defaults: the built-in default per kind of work, when it differs between kinds.
+  | { t: "rules"; rules: RuleView[]; defaults?: KindDefault[] }
   // D309: every partner on the home, the default first; shown: the one this socket's conversation is.
   // error (to the asking socket only): why a partner_add or partner_set didn't happen.
   | { t: "partners"; partners: import("./partners.ts").PartnerInfo[]; shown: string; clientId?: string; error?: "empty" | "long" | "taken" | "full" | "unknown" }

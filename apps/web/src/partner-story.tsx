@@ -10,7 +10,7 @@ import { A } from "./app.ts";
 import { Coin } from "./coin.tsx";
 import { AddRow, Btn, DangerButton, Seg, Switch } from "./controls.tsx";
 import { KeyCard } from "./first-words.tsx";
-import { harnessName, when } from "./format.ts";
+import { harnessName, modelName, padEnd, when } from "./format.ts";
 import { GBlock, GFoot, GHead, GRow, Group, Said, say, Tile } from "./set-grid.tsx";
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 const pct = (f: number) => Math.round(f * 100);
@@ -131,8 +131,13 @@ export function TasksSection() {
   const title = t("loadout.tasks.title");
   const b = brainNow();
   const rules = A.rules ?? [];
+  // D372: the built-in default per kind of work, in literal words (errands, then the rest).
+  // A rule about errands (to an agent, or never one) speaks for them: its default row steps aside.
+  const defaults = A.ruleDefaults.filter((d) => d.work !== "errand" || !rules.some((r) => r.kinds?.includes("errand")));
+  const nameOf = (d: { harness: string; model?: string }) => (d.model ? t("who.name", harnessName(d.harness), modelName(d.model)) : harnessName(d.harness));
+  const rest = defaults.find((d) => d.work === "rest");
   const note = ready.length === 1 ? t("loadout.tasks.only", harnessName(ready[0]!.harness)) : t("loadout.tasks.how", name);
-  if (ready.length === 1 && ready[0]!.harness === b.harness && !rules.length)
+  if (ready.length === 1 && ready[0]!.harness === b.harness && !rules.length && !defaults.length)
     return (
       <section class="set">
         <h3>{title}</h3>
@@ -168,13 +173,20 @@ export function TasksSection() {
             </GRow>
           );
         })}
-        {(ready.length > 1 || rules.length > 0) && (
+        {(ready.length > 1 || rules.length > 0 || defaults.length > 0) && (
           <>
             {rules.map((r) => (
-              <GRow key={r.id} title={r.text} line={t("loadout.rule.line")}>
+              <GRow key={r.id} cls="one-line" tile={r.harness ? <AgentTile harness={r.harness} off={!!r.never} /> : undefined} title={r.text} line={t(r.never ? "loadout.rule.line.never" : "loadout.rule.line")}>
                 <DangerButton quiet label={t("loadout.rule.remove")} about={r.text} onClick={() => (A.send({ t: "rule_remove", id: r.id }), say("tasks", t("loadout.rule.removed", r.text)))} />
               </GRow>
             ))}
+            {defaults.map((d) =>
+              d.work === "errand" ? (
+                <GRow key="default:errand" tile={<AgentTile harness={d.harness} />} title={t("loadout.default.errand", nameOf(d))} line={t("loadout.default.errand.line", rest ? padEnd(A.L, nameOf(rest)) : "")} />
+              ) : (
+                <GRow key="default:rest" tile={<AgentTile harness={d.harness} />} title={t("loadout.default.rest", nameOf(d))} line={t("loadout.default.rest.line")} />
+              ),
+            )}
             <AddRow label={t("loadout.rule.add", name)} help={t("loadout.rule.add.line")} onClick={() => A.tellRule()} />
             <GFoot note={t("loadout.tasks.override")} />
           </>

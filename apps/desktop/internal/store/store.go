@@ -522,9 +522,11 @@ type Store struct {
 	// frame; RulesAt says one came). Candidates are who could do a task,
 	// by task id, as last asked; SwitchResults the switch answers not yet
 	// shown (D89).
-	Rules      []protocol.RuleView
-	RulesAt    time.Time
-	Candidates map[string][]protocol.Candidate
+	Rules []protocol.RuleView
+	// RuleDefaults: the built-in default per kind of work (D372).
+	RuleDefaults []protocol.KindDefault
+	RulesAt      time.Time
+	Candidates   map[string][]protocol.Candidate
 	// AccountUsage is each agent's account limits as the home last
 	// answered (D288), by harness.
 	AccountUsage  map[string]AccountAnswer
@@ -792,7 +794,7 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 			t.Folder = f.FolderChanges
 		}
 	case "rules":
-		s.Rules, s.RulesAt = f.Rules, time.Now()
+		s.Rules, s.RuleDefaults, s.RulesAt = f.Rules, f.Defaults, time.Now()
 	case "candidates":
 		if s.Candidates == nil {
 			s.Candidates = map[string][]protocol.Candidate{}

@@ -1,11 +1,11 @@
 // Who does the tasks (D89): picks who does a new task (fw_candidates v0), lists who else could
 // (换谁来做 / Switch who does it), moves a task when the person switches it, keeps 你的规则 / Your
 // rules, and after two switches the same way asks the partner to offer a rule once.
-import type { Bodies, Candidate, DeviceHarness, LogEvent, Place, TaskNeeds } from "@ducter/protocol";
-import { harnessName, isHarnessId, whichPhone } from "@ducter/protocol";
+import type { Bodies, Candidate, DeviceHarness, KindDefault, LogEvent, Place, TaskNeeds, WorkKind } from "@ducter/protocol";
+import { harnessName, isHarnessId, whichPhone, WORK_KINDS } from "@ducter/protocol";
 import { resolveModel } from "@ducter/protocol/src/harness-facts.ts";
 import type { BodyChoice, LogStore, Runner } from "@ducter/protocol/src/internal.ts";
-import { blockOf, chooseBody, computersOf, fwCandidates, type Computer, noPhoneLine } from "./candidates.ts";
+import { blockOf, chooseBody, computersOf, fwCandidates, kindDefaults, kindOf, smartestFor, type Computer, noPhoneLine } from "./candidates.ts";
 import { checkEffort, type ModelCatalog } from "./models.ts";
 
 /** D202: how long a task's open waits for the chosen model's effort levels it doesn't have yet. */
@@ -23,7 +23,7 @@ export const RULE_HINT_SUFFIX = "_rule_hint";
 
 export interface Loadout {
   /** Who does a new task: the pick and why, "none" with a reason when nobody can, undefined without device info. */
-  choose(work: { title: string; brief?: string; place?: Place; harness?: string; model?: string; effort?: string; by?: "you"; needs?: TaskNeeds }): Promise<BodyChoice | { none: string } | undefined>;
+  choose(work: { title: string; brief?: string; place?: Place; harness?: string; model?: string; effort?: string; by?: "you"; needs?: TaskNeeds; workKind?: WorkKind }): Promise<BodyChoice | { none: string } | undefined>;
   candidates(taskId: string): Promise<Candidate[]>;
   /** D128: who could do new work at this place, best first (the New task card's 谁来做 / Who does it).
    *  D157: with two or more computers, on every computer (anyComputer: a No folder card). */
@@ -33,6 +33,13 @@ export interface Loadout {
   /** 换到 X 接着做 / Continue on X; D157: on another computer (device: its id or name), the task moves there. */
   // effort (D282): the same agent with another model or effort keeps its native session.
   switchTask(taskId: string, harness: string, model: string | undefined, runner: Runner | undefined, device?: string, effort?: string): Promise<{ ok: boolean; message?: string }>;
+  /** D372: the built-in default per kind of work on the home (the Partner page's rules list). */
+  defaults(): Promise<KindDefault[]>;
+  /**
+   * D372 (the safety net): an errand on a fast tier failed or stalled: it carries on on the
+   * smartest, once, by itself (said in the task). False when there is no smarter one to take it.
+   */
+  retry(taskId: string, how: { stalled?: boolean; summary?: string }, runner: Runner | undefined): Promise<{ ok: boolean; message?: string }>;
 }
 
 export function createLoadout(o: {
@@ -98,8 +105,62 @@ export function createLoadout(o: {
     return r.ok ? { ...pick, effort } : { ...pick, effortDropped: `effort ${effort} was left out: ${r.why}` };
   };
 
+  /** D372: a task of this kind was put on a fast tier by the default before (the line was said). */
+  const routedBefore = (work: WorkKind | undefined) =>
+    o.log.read({ fromSeq: 0, limit: Number.MAX_SAFE_INTEGER, kinds: ["body_selected"] }).some((e) => {
+      const w = (e.body as Bodies["body_selected"]).why;
+      return w.kind === "kind" && w.work === work;
+    });
+
   const api: Loadout = {
     computers,
+
+    async defaults() {
+      const comps = await computers();
+      const multi = comps && comps.length > 1 && comps.some((c) => c.harnesses.length);
+      const hs = multi ? undefined : await harnessesFor();
+      if (!multi && !hs) return [];
+      return kindDefaults({ ...(multi ? { computers: comps!.filter((c) => c.home) } : { harnesses: hs! }), settings: o.settings.get() });
+    },
+
+    async retry(taskId, how, runner) {
+      const card = o.tasks.get(taskId);
+      if (!card || card.attention === "dropped") return { ok: false, message: "no such task" };
+      const sel = o.log.read({ stream: taskStream(taskId), kinds: ["body_selected"], limit: 1000 }).at(-1)?.body as Bodies["body_selected"] | undefined;
+      const open = o.log.read({ stream: taskStream(taskId), kinds: ["task_open"], limit: 1000 }).at(-1)?.body as Bodies["task_open"] | undefined;
+      const device = card.place.device || "local";
+      const comps = await computers(open?.needs);
+      const multi = comps && comps.length > 1;
+      const hs = multi ? undefined : await harnessesFor("device" in card.place ? card.place.device : undefined);
+      if (!multi && !hs) return { ok: false, message: "no device info" };
+      const to = smartestFor({
+        work: { title: card.title, ...(open?.brief ? { brief: open.brief } : {}), ...(sel?.why.work ? { kind: sel.why.work } : {}) },
+        ...(multi ? { computers: comps } : { harnesses: hs! }),
+        ...(open?.needs ? { needs: open.needs } : {}),
+        place: card.place,
+        settings: o.settings.get(),
+        rules: o.rules.list(),
+        current: { harness: card.harness, ...(card.model ? { model: card.model } : {}), device },
+      });
+      if (!to) return { ok: false, message: "no smarter AI agent can take it here" };
+      if (runner?.switchBody) {
+        const r = await runner.switchBody(taskId, to.harness, to.model);
+        if (!r.ok) return r;
+      }
+      o.log.append({
+        stream: taskStream(taskId),
+        origin: "system",
+        kind: "body_selected",
+        body: { taskId, harness: to.harness, ...(to.model ? { model: to.model } : {}), why: { kind: "retry", from: card.harness, ...(card.model ? { fromModel: card.model } : {}), ...(sel?.why.work ? { work: sel.why.work } : {}), ...(how.stalled ? { stalled: true as const } : {}) } },
+      });
+      // The task carries on there: the words say what happened, from Ducter (never the person's).
+      const was = `${harnessName(card.harness)}${card.model ? ` (${card.model})` : ""}`;
+      const text = `${was} ${how.stalled ? "stopped without a report" : "didn't get this done"}${how.summary ? ` ("${how.summary.slice(0, 300)}")` : ""}. Ducter moved the task to you (the strongest model here) once. Carry on from where it stopped; if it can't be done, report what is in the way.`;
+      // A move to another agent may have started it already from its saved progress (needs_you).
+      const now = o.tasks.get(taskId)?.attention;
+      if (now !== "working" && now !== "queued") await runner?.send(taskId, text, undefined, "ducter").catch((err) => console.warn(`[loadout] retry ${taskId}:`, (err as Error).message));
+      return { ok: true };
+    },
 
     async choose(work) {
       const comps = await computers(work.needs);
@@ -113,8 +174,10 @@ export function createLoadout(o: {
       const pinDevice = pinOf(work.place);
       // One computer: still the ranking's view of it (whether it can browse), with the agents on the place's device.
       const one = !multi && comps?.length === 1 && (comps[0]!.web || comps[0]!.phone) ? [{ ...comps[0]!, harnesses: hs! }] : undefined;
-      const pick = chooseBody({
-        work,
+      // D372: the kind of work, as the partner said it, else read from its needs and place.
+      const kind = kindOf(work.workKind, work.needs, work.place);
+      const pick0 = chooseBody({
+        work: { title: work.title, ...(work.brief ? { brief: work.brief } : {}), ...(kind ? { kind } : {}) },
         ...(multi ? { computers: comps } : one ? { computers: one } : { harnesses: hs }),
         ...(work.needs ? { needs: work.needs } : {}),
         ...(work.place ? { place: work.place } : {}),
@@ -125,7 +188,10 @@ export function createLoadout(o: {
         ...(work.by ? { pinnedBy: work.by } : {}),
       });
       // The person's own pick can't run: their one line, never a silent move.
-      if (pick && "problem" in pick) return { none: pick.problem };
+      if (pick0 && "problem" in pick0) return { none: pick0.problem };
+      // D372: the first errand the default puts on a fast tier is said once, by the partner.
+      const first = pick0?.why.kind === "kind" && !routedBefore(pick0.why.work);
+      const pick = pick0 && { ...pick0, why: first ? { ...pick0.why, first: true as const } : pick0.why, ...(kind ? { workKind: kind } : {}) };
       if (pick) return work.effort ? withEffort(pick, work.effort) : pick;
       const why = (multi ? comps!.flatMap((c) => c.harnesses.map((h) => ({ h, on: c.name }))) : (hs ?? []).map((h) => ({ h, on: "" })))
         .map(({ h, on }) => `${harnessName(h.harness)}${on ? ` on ${on}` : ""}: ${blockOf(h, o.settings.get()) ?? "can't do what this task needs there"}`)
@@ -133,8 +199,10 @@ export function createLoadout(o: {
       return { none: `no AI agent can take this task right now (${why}). Tell the user in one line and offer what would make one available.` };
     },
 
-    async candidatesFor(work, opts) {
-      const comps = await computers(work.needs);
+    async candidatesFor(work0, opts) {
+      const comps = await computers(work0.needs);
+      const kind = kindOf(undefined, work0.needs, work0.place);
+      const work = { ...work0, ...(kind ? { kind } : {}) };
       if (comps && comps.length > 1) {
         const pinDevice = pinOf(work.place);
         return fwCandidates({ work, computers: comps, ...(work.place ? { place: work.place } : {}), ...(work.needs ? { needs: work.needs } : {}), ...(pinDevice ? { pinDevice } : {}), settings: o.settings.get(), rules: o.rules.list(), ...(opts?.every ? { every: true as const } : {}) });
@@ -150,13 +218,15 @@ export function createLoadout(o: {
       const open = o.log.read({ stream: taskStream(taskId), kinds: ["task_open"], limit: 1000 }).at(-1)?.body as Bodies["task_open"] | undefined;
       const comps = await computers(open?.needs);
       const current = { harness: card.harness, ...(card.model ? { model: card.model } : {}) };
+      const kind = kindOf(open?.workKind, open?.needs, card.place);
+      const work = { title: card.title, ...(open?.brief ? { brief: open.brief } : {}), ...(kind ? { kind } : {}) };
       if (comps && comps.length > 1) {
         // D157: who and where together (the switch sheet groups by computer). The task keeps its
         // needs; a browser place needs a browser wherever it goes.
         const sel = o.log.read({ stream: taskStream(taskId), kinds: ["body_selected"], limit: 1000 }).at(-1)?.body as Bodies["body_selected"] | undefined;
         const device = card.place.device || "local";
         return fwCandidates({
-          work: { title: card.title, brief: open?.brief },
+          work,
           computers: comps,
           place: card.place,
           ...(open?.needs ? { needs: open.needs } : {}),
@@ -167,7 +237,7 @@ export function createLoadout(o: {
       }
       const hs = (await harnessesFor("device" in card.place ? card.place.device : undefined)) ?? [];
       return fwCandidates({
-        work: { title: card.title, brief: open?.brief },
+        work,
         harnesses: hs,
         settings: o.settings.get(),
         rules: o.rules.list(),
@@ -268,19 +338,21 @@ export function registerRuleTools(mcp: CoreMcpHub, rules: RulesStore) {
   mcp.register(
     "partner",
     "rule_save",
-    "Save one of the user's rules for who does which kind of work (shown on the Partner page as Your rules). Only after the user said it or agreed to it: restate it in one line first. Newest wins over an older rule for the same kind of work. The user removes rules on the Partner page; never remove one yourself.",
+    "Save one of the user's rules for who does which kind of work (shown on the Partner page as Your rules). Only after the user said it or agreed to it: restate it in one line first. Newest wins over an older rule for the same kind of work. \"别用 Claude Code 订酒店\": never, claude-code, kind errand. The user removes rules on the Partner page; never remove one yourself.",
     {
       type: "object",
       properties: {
-        text: { type: "string", description: 'The rule in one line, in the user\'s language, as "<kind of work> → <AI agent>", e.g. "后端的事 → Codex" or "Interface work → Claude Code"' },
+        text: { type: "string", description: 'The rule in one line, in the user\'s language, as "<kind of work> → <AI agent>", e.g. "后端的事 → Codex" or "跑腿的事 → 不用 Claude Code"' },
         harness: { type: "string", enum: ["claude-code", "codex", "pi", "deepseek-harness"] },
         model: { type: "string", description: "Only when the user named a model" },
         device: { type: "string", description: "D157: only when the rule names a computer (\"要登录的网页都在 MacBook 上做\"): its name from the [devices] line" },
         match: { type: "array", items: { type: "string" }, description: "3–10 words that mark this kind of work in a task title or brief, in both Chinese and English (e.g. [\"后端\", \"backend\", \"api\", \"server\"])" },
+        kind: { type: "array", items: { type: "string", enum: [...WORK_KINDS] }, description: "The task_open kinds it covers (订酒店、看机票这类: errand)" },
+        never: { type: "boolean", description: "NOT this agent (or model) for it" },
       },
-      required: ["text", "harness", "match"],
+      required: ["text", "harness"],
     },
-    async (a: { text?: unknown; harness?: unknown; model?: unknown; match?: unknown; device?: unknown }) => {
+    async (a: { text?: unknown; harness?: unknown; model?: unknown; match?: unknown; device?: unknown; kind?: unknown; never?: unknown }) => {
       try {
         const r = rules.add({
           text: String(a.text ?? ""),
@@ -288,6 +360,9 @@ export function registerRuleTools(mcp: CoreMcpHub, rules: RulesStore) {
           ...(typeof a.model === "string" && a.model.trim() ? { model: a.model.trim() } : {}),
           match: Array.isArray(a.match) ? a.match.map(String) : [],
           ...(typeof a.device === "string" && a.device.trim() ? { device: a.device.trim() } : {}),
+          // A kind said as one word, or as a list.
+          ...(Array.isArray(a.kind) ? { kinds: a.kind.map(String) } : typeof a.kind === "string" ? { kinds: [a.kind] } : {}),
+          ...(a.never === true ? { never: true } : {}),
         });
         return { ok: true, rule: r, note: "Saved. It shows on the Partner page under Your rules." };
       } catch (err) {
@@ -362,7 +437,10 @@ export function registerSwitchTool(mcp: CoreMcpHub, o: { loadout: Loadout; tasks
           ? running
             ? "Done: the turn it is in finishes as it was; the next one uses the new choice. The task shows the change itself."
             : "Done: its next turn uses the new choice. The task shows the change itself."
-          : "Done: it carries on there from saved progress. The task shows the change itself.",
+          : running || card.attention === "needs_you"
+            ? "Done: it carries on there from saved progress. The task shows the change itself."
+            : // D372: a failed or waiting task stays as it is until it hears something.
+              "Done. It is not running: if the user wants it to carry on now, task_send it one line to carry on.",
       };
     },
   );

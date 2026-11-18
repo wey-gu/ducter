@@ -4,7 +4,7 @@
 import { afterEach, expect, test } from "bun:test";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import type { DeviceHarness, LogEvent, RuleView, ServerFrame, Settings } from "@ducter/protocol";
+import type { BodyWhy, DeviceHarness, LogEvent, RuleView, ServerFrame, Settings } from "@ducter/protocol";
 import { brainModelRows, chooseBody, fwCandidates } from "../src/candidates.ts";
 import { startCore, triggersPartner, type Core } from "../src/core.ts";
 import { openRules, ruleFor } from "../src/rules.ts";
@@ -323,4 +323,23 @@ test("candidates (D206): a picture to make goes only to an agent that makes pict
   // The partner names Claude Code by mistake: it moves to Codex, never draws on an agent that can't.
   expect(chooseBody({ work: { title: "画一只猫" }, harnesses: [cc(), cx()], settings: settings(), rules: [], needs: { draw: true }, pinned: { harness: "claude-code" } })).toMatchObject({ harness: "codex" });
   expect(chooseBody({ work: { title: "画一只猫" }, harnesses: [cc()], settings: settings(), rules: [], needs: { draw: true } })).toBeUndefined();
+});
+
+test("D372: an errand opens on Sonnet with Opus kept, marked first once; the rules frame carries the defaults", async () => {
+  harnessesNow = [cc(0.64, { models: [{ id: "opus", label: "Opus" }, { id: "sonnet", label: "Sonnet" }] }), cx()];
+  const core = boot();
+  const first = await core.loadout.choose({ title: "京都住哪儿", needs: { browse: true } });
+  expect(first).toMatchObject({ harness: "claude-code", model: "sonnet", workKind: "errand", why: { kind: "kind", work: "errand", first: true, keeps: { harness: "claude-code", model: "opus" } } });
+  core.log.append({ stream: "task:t_e1", origin: "system", kind: "body_selected", body: { taskId: "t_e1", harness: "claude-code", model: "sonnet", why: (first as { why: BodyWhy }).why } });
+  const second = await core.loadout.choose({ title: "看机票", workKind: "errand" });
+  expect(second).toMatchObject({ model: "sonnet", why: { kind: "kind" } });
+  expect((second as { why: BodyWhy }).why.first).toBeUndefined();
+  expect(await core.loadout.choose({ title: "Fix CI", workKind: "code" })).toMatchObject({ model: "opus", why: { kind: "default" } });
+  const a = await client(core.url);
+  a.send({ t: "rules" });
+  const f = await a.until<Extract<ServerFrame, { t: "rules" }>>((x) => x.t === "rules");
+  expect(f.defaults).toEqual([
+    { work: "errand", harness: "claude-code", model: "sonnet" },
+    { work: "rest", harness: "claude-code", model: "opus" },
+  ]);
 });

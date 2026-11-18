@@ -38,6 +38,18 @@ type RuleView struct {
 	CreatedAt string   `json:"createdAt"`
 	// Device: the computer this kind of work runs on, when the rule names one (D157).
 	Device string `json:"device,omitempty"`
+	// Kinds: the kinds of work it covers (code, errand, writing, research,
+	// other); Never: never this agent (model) for that work (D372).
+	Kinds []string `json:"kinds,omitempty"`
+	Never bool     `json:"never,omitempty"`
+}
+
+// KindDefault is the built-in default for a kind of work when no rule
+// covers it (D372): Work is errand, or rest (every other kind).
+type KindDefault struct {
+	Work    string `json:"work"`
+	Harness string `json:"harness"`
+	Model   string `json:"model,omitempty"`
 }
 
 // BodyWhy is why a task is on the AI agent it is on: default | rule | limit
@@ -52,6 +64,14 @@ type BodyWhy struct {
 	// Where: the computer it runs on and why, when two or more computers
 	// run tasks (D157).
 	Where *WhereWhy `json:"where,omitempty"`
+	// D372: kind (the default for this kind of work put it on a fast
+	// tier; Keeps the smartest kept for harder work) and retry (the fast
+	// tier, From/FromModel, failed or Stalled; it carries on here).
+	Work      string       `json:"work,omitempty"`
+	Keeps     *KindDefault `json:"keeps,omitempty"`
+	First     bool         `json:"first,omitempty"`
+	FromModel string       `json:"fromModel,omitempty"`
+	Stalled   bool         `json:"stalled,omitempty"`
 }
 
 // WhereWhy is why a task runs on the computer it runs on (D157,

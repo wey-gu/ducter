@@ -59,9 +59,16 @@ At the top is your partner, its name and one line: where it lives and what it th
   only one, the line says every task goes to it.
 - **Your rules.** Say a rule in the conversation, like "backend work on Codex", and your
   partner repeats it back and keeps it. Your rules are listed under Who does the tasks;
-  **Remove** drops one. If you move the same kind of task to another AI agent twice, your partner
-  asks once whether to make it a rule. Any task can still be handed to another AI agent from the
-  task itself.
+  **Remove** drops one. A rule can also say what not to use ("don't use Claude Code for hotels and
+  flights"): that AI agent then never takes that kind of work unless you ask for it on one task.
+  If you move the same kind of task to another AI agent twice, your partner asks once whether to
+  make it a rule. Any task can still be handed to another AI agent from the task itself.
+- **Errands go to a faster one.** Booking a hotel, looking up flights, comparing prices or
+  filling a form goes first to a faster model (for example Claude Code's Sonnet), so the smartest
+  one and its limit are kept for code, writing and research. Your partner tells you once, the
+  first time. Under your rules, two lines show these defaults; a rule you say changes them. If the
+  faster one doesn't get an errand done, the task moves to the smartest by itself, once, and only
+  then do you hear about it.
 - **Add another AI agent.** One place for adding one, with a line on what it gives you (with a
   second one, your partner picks per task, and when one runs out of limit the other carries on).
   Claude Code or Codex not signed in yet has **Install** or **Sign in**, which take you to

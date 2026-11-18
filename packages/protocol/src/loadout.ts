@@ -5,6 +5,26 @@
 /** The share of the partner's own account kept for its answers; tasks can't use it (D89: fixed in v1). */
 export const PARTNER_RESERVE = 0.1;
 
+/**
+ * D372: the kind of work a task is, decided once by the partner at task_open (or inferred by
+ * Ducter when it didn't say): 写代码 / Code, 跑腿 / Errands (booking, comparing prices, forms,
+ * looking things up on the web, an app on a phone), 写东西 / Writing, 查资料 / Research, 其他 /
+ * Other. Rules can name a kind, and the built-in defaults route by it (errands to a fast tier).
+ */
+export type WorkKind = "code" | "errand" | "writing" | "research" | "other";
+export const WORK_KINDS: readonly WorkKind[] = ["code", "errand", "writing", "research", "other"];
+export const isWorkKind = (k: unknown): k is WorkKind => typeof k === "string" && (WORK_KINDS as readonly string[]).includes(k);
+
+/**
+ * D372: the built-in default for a kind of work when no rule of the person's covers it (shown on
+ * the Partner page under the rules, in literal words). work "rest": every other kind.
+ */
+export interface KindDefault {
+  work: WorkKind | "rest";
+  harness: string;
+  model?: string;
+}
+
 /** A rule the person said in the conversation: work of a kind goes to one AI agent. */
 export interface RuleView {
   id: string;
@@ -14,6 +34,10 @@ export interface RuleView {
   model?: string;
   /** Words that mark the kind of work, in any language; a task whose title or brief has one matches. */
   match: string[];
+  /** D372: the kinds of work it covers (a task of one of these kinds matches, whatever its words). */
+  kinds?: WorkKind[];
+  /** D372: "别用 Claude Code 订酒店": never this agent (and model, when named) for this kind of work. */
+  never?: true;
   createdAt: string; // ISO
   /** D157: the computer this kind of work runs on ("要登录的网页都在 MacBook 上做"), by name. */
   device?: string;
@@ -92,16 +116,30 @@ export interface WhereWhy {
  *  - unavailable: the first choice (the partner's pick or a rule's) can't take it for another
  *             reason (from, blocked: signed out, off, not installed, …);
  *  - you:     the person switched it, or picked it on New task;
- *  - partner: the partner picked it in the moment (text: its words, e.g. "you asked for Codex").
+ *  - partner: the partner picked it in the moment (text: its words, e.g. "you asked for Codex");
+ *  - kind (D372): the built-in default for this kind of work (work) put it on a fast tier, and the
+ *             smartest (keeps) is kept for harder work; first: the first time for this kind;
+ *  - retry (D372): the fast tier (from, fromModel) failed or stalled (stalled), so it carries on
+ *             here, on the smartest, once by itself.
  */
 export interface BodyWhy {
-  kind: "default" | "rule" | "limit" | "unavailable" | "you" | "partner";
+  kind: "default" | "rule" | "limit" | "unavailable" | "you" | "partner" | "kind" | "retry";
   ruleId?: string;
   text?: string;
   from?: string;
   blocked?: CandidateBlock;
   /** D157: where it runs and why, when two or more computers run tasks. */
   where?: WhereWhy;
+  /** D372: the kind of work (kind, retry). */
+  work?: WorkKind;
+  /** D372 (kind): the smartest, kept for harder work. */
+  keeps?: { harness: string; model?: string };
+  /** D372 (kind): the first task of this kind routed by the default (the partner says it once). */
+  first?: true;
+  /** D372 (retry): the model it was on. */
+  fromModel?: string;
+  /** D372 (retry): it stopped without a report (else it failed). */
+  stalled?: true;
 }
 
 export interface TaskBody {
@@ -114,9 +152,10 @@ export interface TaskBody {
 /**
  * Why an AI agent can't take a task: not_installed, signed_out, off (用它做事 / Use it for tasks
  * is off), reserve (only the part kept for the partner is left), no_model (pi before a model is
- * picked), offline (its device can't be reached).
+ * picked), offline (its device can't be reached), ruled_out (D372: the person's rule says never
+ * this one for this kind of work).
  */
-export type CandidateBlock = "not_installed" | "signed_out" | "off" | "reserve" | "no_model" | "offline" | WhereBlock;
+export type CandidateBlock = "not_installed" | "signed_out" | "off" | "reserve" | "no_model" | "offline" | "ruled_out" | WhereBlock;
 
 /**
  * D157: why a computer can't take a task (the switch sheet greys its rows with this). no_browser:

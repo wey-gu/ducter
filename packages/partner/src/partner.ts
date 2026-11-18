@@ -51,7 +51,7 @@
 //   that arrived while down) are queued again; user messages that already got a reply are not.
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { callWakes, fileView, HARNESSES, HARNESS_IDS, isHarnessId, isImage, MEDIA_LIMITS, viewText, type MediaRef, type ActivityStep, type Bodies, type Brain, type CalEvent, type CalGlance, type EventKind, type HarnessId, type LogEvent, type Place, type TaskCard, type TaskGroupFrame, type TaskGroupView, type TaskNeeds } from "../../protocol/src/index.ts";
+import { callWakes, fileView, harnessName, HARNESSES, HARNESS_IDS, isHarnessId, isImage, isWorkKind, WORK_KINDS, type WorkKind, MEDIA_LIMITS, viewText, type MediaRef, type ActivityStep, type Bodies, type Brain, type CalEvent, type CalGlance, type EventKind, type HarnessId, type LogEvent, type Place, type TaskCard, type TaskGroupFrame, type TaskGroupView, type TaskNeeds } from "../../protocol/src/index.ts";
 import type { CoreApi, HarnessEvent, HarnessSession, Partner, Runner, SendImage, WorkingMemoryView } from "../../protocol/src/internal.ts";
 import { resolveWindows, WINDOW_MAX, WINDOW_MIN } from "../../protocol/src/harness-facts.ts";
 import { bridgeFor, bridgeKeyFor, type BridgeClient, type BridgeContact, type BridgeOp, type BridgeResult } from "./bridge.ts";
@@ -186,7 +186,7 @@ interface EarlyOpen {
   jobId: string;
   title: string;
   place: Place;
-  who: { project?: string; harness?: string; model?: string; needs?: TaskNeeds };
+  who: { project?: string; harness?: string; model?: string; needs?: TaskNeeds; workKind?: WorkKind };
   callId?: string; // the streamed call it was opened from
   card: Promise<TaskCard | null>; // null: the early open failed; the call opens it the usual way
   brief: { resolve(text: string): void; reject(err: Error): void };
@@ -999,7 +999,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     if (!title) return;
     const s = (k: string) => (typeof head[k] === "string" && (head[k] as string).trim() ? { [k]: (head[k] as string).trim() } : {});
     const needs = parseNeeds(head.needs);
-    const who = { ...s("project"), ...s("harness"), ...s("model"), ...(needs ? { needs } : {}) };
+    const who = { ...s("project"), ...s("harness"), ...s("model"), ...(needs ? { needs } : {}), ...(isWorkKind(head.kind) ? { workKind: head.kind } : {}) };
     let place: Place;
     if (at === "title") {
       place = resolvePlace(undefined, [title, ...t.userTexts], myTasks(), fs);
@@ -1478,6 +1478,22 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
 
   // ---------- MCP tools (role "partner") ----------
   let groupChain: Promise<void> = Promise.resolve(); // D360: grouped task_opens, one at a time
+  /**
+   * D372: the first errand Ducter's default put on a faster model: the partner says so once, in
+   * one line after its ack (who took it, who is kept for harder work, and that it can change).
+   */
+  const kindNote = (taskId: string, note: string): string => {
+    const sel = core.log.read({ stream: `task:${taskId}`, kinds: ["body_selected"], limit: 50 }).at(-1)?.body as Bodies["body_selected"] | undefined;
+    const w = sel?.why;
+    if (!sel || w?.kind !== "kind" || !w.first || note !== OPENED_NOTE) return note;
+    const name = (h: string, m?: string) => (m ? modelWord(m) : harnessName(h));
+    const fast = name(sel.harness, sel.model);
+    const smart = w.keeps ? name(w.keeps.harness, w.keeps.model) : harnessName(sel.harness);
+    // Said by the code, once, in the user's language (eval: haiku ended its turn on the tool's
+    // note 1 of 1 times instead of writing the line it asked for).
+    tellUser(said(userLang() ?? NO_WORDS_YET, "kindFirst", { fast, smart }));
+    return `Task opened. Ducter already told the user in one line that errands like this go to ${fast} by default (faster, keeping ${smart} and its limit for harder work) and that they can say to change it. Your turn is done: write nothing more and call nothing else.`;
+  };
   const withVerbatim = (brief: string, userTexts: string[]) => {
     const missing = userTexts.map((t) => t.trim()).filter((t) => t && !brief.includes(t));
     if (!missing.length) return brief;
@@ -1487,7 +1503,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   core.mcp.register(
     "partner",
     "task_open",
-    "Open a task: a separate working session in its own place (repo, folder, browser) for anything that needs a place, writes, or takes more than ~10s. A follow-up on recent work (same repo, builds on what a task just did) is NOT a new task: task_send it to that task, even if it is done; it keeps its branch, worktree and session. Open a new task only for separate work; if it must build on an unmerged task branch, set place.baseBranch to that branch. Write the one-sentence ack BEFORE calling this. Fill the fields in this order: title, needs (only when it needs something of a computer), place ({\"kind\":\"none\"} when it has none), then brief last: the task starts as soon as its title and place are written. Ducter picks the computer a task runs on from its needs (and says where on the task); name a computer in place.device only when the user named one. The brief must quote the user's words verbatim and list decisions, done-criteria, out of scope, and the place. " +
+    "Open a task: a separate working session in its own place (repo, folder, browser) for anything that needs a place, writes, or takes more than ~10s. A follow-up on recent work (same repo, builds on what a task just did) is NOT a new task: task_send it to that task, even if it is done; it keeps its branch, worktree and session. Open a new task only for separate work; if it must build on an unmerged task branch, set place.baseBranch to that branch. Write the one-sentence ack BEFORE calling this. Fill the fields in this order: title, kind, needs (only when it needs something of a computer), place ({\"kind\":\"none\"} when it has none), then brief last: the task starts as soon as its title and place are written. Ducter picks the computer a task runs on from its needs (and says where on the task); name a computer in place.device only when the user named one. The brief must quote the user's words verbatim and list decisions, done-criteria, out of scope, and the place. " +
       'Choose place {"kind":"browser"} when the work happens on the web: looking something up, checking or reading a page or site, comparing products, filling a form. Codex and Claude Code tasks work in the user\'s own Chrome with their own browser tools (signed in as the user, in a window of their own) and never sign in, submit, post or pay without the user\'s Go; otherwise the task uses Ducter\'s own browser, which keeps its sign-ins between tasks. Any Codex task can also operate apps on this Mac with its Computer Use; say so when a task will. ' +
       "A browser task never signs in, submits, posts, buys, or pays by itself: it stops and asks the user with a question, so put that in the brief's out of scope. " +
       "Returns at once; the task reports back on its own. Never wait on it.",
@@ -1496,6 +1512,11 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       properties: {
         group: { type: "string", description: "When the user lists separate parts to do in turn (\"先…然后…最后…\", \"一件做完再做下一件\"): one task per part, one short name on every part, written first. Parts in the same repo or folder run one after another, each from the one before's branch (Ducter holds the later ones): open every part now, in order." },
         title: { type: "string", description: "Short title in the user's language" },
+        kind: {
+          type: "string",
+          enum: [...WORK_KINDS],
+          description: "errand: booking, comparing prices, a form, looking something up on the web or a phone (goes to a faster model); research: many sources to one answer",
+        },
         place: {
           type: "object",
           description:
@@ -1529,7 +1550,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         harness: {
           type: "string",
           enum: [...HARNESS_IDS],
-          description: `Which AI runs the task (${HARNESS_IDS.map((h) => `${h} = ${HARNESSES[h].name}`).join(", ")}). Omit it: the user's default runs it. Name one only when the user asks for it, or a [devices] line shows the device has only that one signed in.`,
+          description: `Which AI runs the task (${HARNESS_IDS.map((h) => `${h} = ${HARNESSES[h].name}`).join(", ")}). Omit it: the user's default runs it. Name one only when the user asks for it (now, or earlier in the conversation: \"别用 X\" means name another), or a [devices] line shows the device has only that one signed in.`,
         },
         model: { type: "string", description: "Only with harness, and only when the user names a model; written the way that harness names its models." },
         brief: { type: "string", description: "Last, after title and place: the user's verbatim words, decisions, done-criteria, out of scope, place" },
@@ -1541,7 +1562,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       },
       required: ["title", "brief"],
     }),
-    async (raw0: { title?: unknown; brief?: unknown; place?: Place; project?: string; harness?: string; model?: string; forMessage?: unknown; needs?: unknown; media?: unknown; group?: unknown }) => {
+    async (raw0: { title?: unknown; brief?: unknown; place?: Place; project?: string; harness?: string; model?: string; forMessage?: unknown; needs?: unknown; media?: unknown; group?: unknown; kind?: unknown }) => {
       // D360: the parts of a split open one at a time, in the order they were called, so a later
       // part sees the one before it in its group (parallel calls would all open at once).
       const grouped = typeof raw0?.group === "string" && raw0.group.trim() !== "";
@@ -1640,13 +1661,13 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         // The needs too: they pick the computer and the agent, and say which tools the session
         // lists from its start (a phone task opened from a head written before its needs had no
         // phone tools for its whole life: "当前任务没有任何 phone 工具").
-        if (card && samePlace(place, early.place) && (args.harness ?? "") === (early.who.harness ?? "") && (args.model ?? "") === (early.who.model ?? "") && JSON.stringify(parseNeeds(raw.needs) ?? null) === JSON.stringify(early.who.needs ?? null)) {
+        if (card && samePlace(place, early.place) && (args.harness ?? "") === (early.who.harness ?? "") && (args.model ?? "") === (early.who.model ?? "") && JSON.stringify(parseNeeds(raw.needs) ?? null) === JSON.stringify(early.who.needs ?? null) && (isWorkKind(raw.kind) ? raw.kind : undefined) === early.who.workKind) {
           early.media(handed);
           early.brief.resolve(brief);
           (core as { taskSources?: { bindStaged(id: string, texts?: string[]): unknown } }).taskSources?.bindStaged(card.taskId, [brief, args.title]);
           joinGroup(card.taskId);
           await claimFor(card);
-          return { ok: true, taskId: card.taskId, title: card.title, place: card.place, attention: card.attention, note };
+          return { ok: true, taskId: card.taskId, title: card.title, place: card.place, attention: card.attention, note: kindNote(card.taskId, note) };
         }
         early.brief.reject(new Error("the call names another place, agent or needs")); // dropped; opened below instead
       } else if (t) {
@@ -1678,6 +1699,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           ...(args.harness ? { harness: args.harness } : {}),
           ...(args.model ? { model: args.model } : {}),
           ...((n) => (n ? { needs: n } : {}))(parseNeeds(raw.needs)),
+          ...(isWorkKind(raw.kind) ? { workKind: raw.kind } : {}),
           language: taskLanguage(t),
           ...(handed.length ? { media: handed } : {}),
         };
@@ -1701,7 +1723,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         });
         (core as { taskSources?: { bindStaged(id: string, texts?: string[]): unknown } }).taskSources?.bindStaged(card.taskId, [brief, args.title]);
         await claimFor(card);
-        return { ok: true, taskId: card.taskId, title: card.title, place: card.place, attention: card.attention, note };
+        return { ok: true, taskId: card.taskId, title: card.title, place: card.place, attention: card.attention, note: kindNote(card.taskId, note) };
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         // The status line is the person's; the "Tell the user …" instruction is the partner's only (as newtask.ts).
@@ -3699,4 +3721,14 @@ export function renderDevices(workers: { name: string; online: boolean; asleep?:
     return `${name} (${state}${w.os ? `, ${w.os.slice(0, 30)}` : ""}${sleeps}${web}${ai.length ? `, signed in: ${ai.join(", ")}` : ", no AI signed in"})`;
   };
   return `[devices] local (Ducter's home) · ${shown.map(one).join(" · ")}${more ? ` · and ${more} more computers` : ""}. Say what a task needs (task_open needs) and Ducter picks the computer and says where; name one in place.device only when the user named it.`;
+}
+
+/** D372: a model in a word for the partner's line ("sonnet" → "Sonnet", "deepseek-official/deepseek-flash" → "Deepseek Flash"). */
+export function modelWord(id: string): string {
+  const last = id.split("/").pop() ?? id;
+  return last
+    .split(/[-_]/)
+    .filter(Boolean)
+    .map((w) => w[0]!.toUpperCase() + w.slice(1))
+    .join(" ");
 }

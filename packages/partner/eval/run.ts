@@ -14,9 +14,10 @@
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { HARNESSES, HARNESS_IDS, isHarnessId, type Bodies, type HarnessId, type LogEvent, type Place, type ReplyWant, type TaskCard } from "../../protocol/src/index.ts";
+import { HARNESSES, HARNESS_IDS, isHarnessId, type Bodies, type HarnessId, type LogEvent, type Place, type ReplyWant, type TaskCard, type TaskNeeds } from "../../protocol/src/index.ts";
 import type { HarnessEvent, HarnessPort, HarnessSession, Runner } from "../../protocol/src/internal.ts";
 import { startCore, type Core } from "../../core/src/index.ts";
+import { kindOf } from "../../core/src/candidates.ts";
 import { writeDotsFacts } from "./noticed-facts.ts";
 import { logUserMessage } from "../../core/src/reply.ts";
 import { createOarHarnessPort, shortId } from "../../runner/src/index.ts";
@@ -127,9 +128,23 @@ function teePort(real: HarnessPort, onEvent: (e: HarnessEvent, sessionIdx: numbe
 }
 
 // ---------- fake task runner ----------
-interface Opened { taskId: string; title: string; brief: string; place?: Place; step: number; needs?: Record<string, unknown>; harness?: string; group?: string }
-function fakeRunner(core: Core, harness: HarnessPort, cur: { step: number }) {
+interface Opened { taskId: string; title: string; brief: string; place?: Place; step: number; needs?: Record<string, unknown>; harness?: string; group?: string; workKind?: string }
+function fakeRunner(core: Core, harness: HarnessPort, cur: { step: number }, firstErrand = false) {
   const opened: Opened[] = [];
+  // D372: who does it, as core's ranking would pick on a home with Claude Code (Opus, Sonnet) and
+  // Codex: an errand on Sonnet by the default. The first one on a home is marked (Ducter then says
+  // one line) only where the scenario is about that moment: on a real home it happens once ever.
+  const routed = new Set<string>(firstErrand ? [] : ["errand"]);
+  const bodyFor = (taskId: string, input: { workKind?: string; needs?: unknown; place?: Place; harness?: string; model?: string }) => {
+    const kind = kindOf(input.workKind, input.needs as TaskNeeds | undefined, input.place);
+    const errand = kind === "errand" && !input.harness;
+    const first = errand && !routed.has("errand");
+    if (errand) routed.add("errand");
+    const body: Bodies["body_selected"] = errand
+      ? { taskId, harness: "claude-code", model: "sonnet", why: { kind: "kind", work: "errand", keeps: { harness: "claude-code", model: "opus" }, ...(first ? { first: true as const } : {}) } }
+      : { taskId, harness: input.harness ?? "claude-code", ...(input.harness ? (input.model ? { model: input.model } : {}) : { model: "opus" }), why: { kind: input.harness ? "partner" : "default" } };
+    core.log.append({ stream: `task:${taskId}`, origin: "system", kind: "body_selected", body });
+  };
   const sent: { taskId: string; text: string; step: number; from?: string }[] = [];
   const stopped: string[] = [];
   const openCard = (taskId: string, title: string, place: Place, brief: string, harness = "claude-code") => {
@@ -145,8 +160,9 @@ function fakeRunner(core: Core, harness: HarnessPort, cur: { step: number }) {
     async openTask(input) {
       const taskId = shortId();
       const place = placeFor(taskId, input.title, input.place);
-      opened.push({ taskId, title: input.title, brief: input.brief, place: input.place, step: cur.step, ...(input.needs ? { needs: input.needs as Record<string, unknown> } : {}), ...(input.harness ? { harness: input.harness } : {}) });
+      opened.push({ taskId, title: input.title, brief: input.brief, place: input.place, step: cur.step, ...(input.needs ? { needs: input.needs as Record<string, unknown> } : {}), ...(input.harness ? { harness: input.harness } : {}), ...(input.workKind ? { workKind: input.workKind } : {}) });
       openCard(taskId, input.title, place, input.brief);
+      bodyFor(taskId, input);
       return core.tasks.get(taskId) as TaskCard;
     },
     // D120: the partner opens from the call's head; the task counts as opened once briefed.
@@ -155,9 +171,10 @@ function fakeRunner(core: Core, harness: HarnessPort, cur: { step: number }) {
       const place = placeFor(taskId, input.title, input.place);
       const step = cur.step;
       openCard(taskId, input.title, place, "");
+      bodyFor(taskId, input);
       brief.then(
         (b) => {
-          opened.push({ taskId, title: input.title, brief: b, place: input.place, step, ...(input.needs ? { needs: input.needs as Record<string, unknown> } : {}), ...(input.harness ? { harness: input.harness } : {}) });
+          opened.push({ taskId, title: input.title, brief: b, place: input.place, step, ...(input.needs ? { needs: input.needs as Record<string, unknown> } : {}), ...(input.harness ? { harness: input.harness } : {}), ...(input.workKind ? { workKind: input.workKind } : {}) });
           core.log.append({ stream: `task:${taskId}`, origin: "system", kind: "task_open", body: { taskId, title: input.title, project: "", place, harness: "claude-code", brief: b } });
         },
         () => core.tasks.setState(taskId, "dropped", "archived", "not started"),
@@ -349,7 +366,7 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
       early.add(callId);
     } else if (!early.has(callId)) tools.push({ name: ev.tool.name, input: ev.tool.input, step: cur.step });
   });
-  const fr = fakeRunner(core, port, cur);
+  const fr = fakeRunner(core, port, cur, !!sc.firstErrand);
   const mem = fakeMemory(sc.memories ?? [], { down: sc.memoryDown, ...(sc.threads ? { threads: sc.threads } : {}) });
   const recalls: { query: string; step: number }[] = [];
   const threadSearches: { query: string; step: number }[] = [];
@@ -797,11 +814,15 @@ function check(r: RunResult): string[] {
   }
   if (e.harness && !r.opened.some((o) => o.harness === e.harness)) fails.push(`no task pinned to ${e.harness} (got ${r.opened.map((o) => o.harness ?? "default").join(", ") || "none"})`);
   if (e.placeKind && !r.opened.some((o) => (o.place?.kind ?? "none") === e.placeKind)) fails.push(`no task with place ${e.placeKind}`);
+  // D372: the kind of work, as the partner said it or as Ducter reads it from needs and place.
+  if (e.workKind && !r.opened.some((o) => kindOf(o.workKind, o.needs as TaskNeeds | undefined, o.place) === e.workKind)) fails.push(`no task of kind ${e.workKind} (got ${r.opened.map((o) => kindOf(o.workKind, o.needs as TaskNeeds | undefined, o.place) ?? "none").join(", ") || "none"})`);
+  if (e.notHarness && r.opened.some((o) => o.harness === e.notHarness)) fails.push(`a task pinned to ${e.notHarness}`);
   // A partner tool that must (or must not) be called, by its MCP name's tail, with these args.
   for (const c of e.called ?? []) {
     const hit = r.tools.some((t) => (t.name === c.tool || t.name.endsWith(`__${c.tool}`)) && Object.entries(c.args ?? {}).every(([k, v]) => {
       const got = (t.input as Record<string, unknown> | undefined)?.[k];
-      return v instanceof RegExp ? typeof got === "string" && v.test(got) : got === v;
+      // A RegExp matches a string arg, or a list's JSON (D372: rule_save kind ["errand"]).
+      return v instanceof RegExp ? (typeof got === "string" ? v.test(got) : got !== undefined && v.test(JSON.stringify(got))) : got === v;
     }));
     if (!hit) fails.push(`no ${c.tool}${c.args ? ` with ${Object.entries(c.args).map(([k, v]) => `${k}=${v}`).join(", ")}` : ""}`);
   }

@@ -640,6 +640,12 @@ export function createPusher(opts: {
         return;
       case "task_state": {
         const s = e.body as Bodies["task_state"];
+        // D372: back at work before its notice went out (an errand Ducter retried on the smartest):
+        // nothing ended, so nothing is said.
+        if (s.attention === "working" || s.attention === "queued") {
+          if (!pushed.has(`t:${s.taskId}`)) items.delete(`t:${s.taskId}`);
+          return;
+        }
         if ((s.attention !== "done" && s.attention !== "failed") || !opts.store.settings().done) return;
         const who = opts.partnerOf?.(e);
         add({

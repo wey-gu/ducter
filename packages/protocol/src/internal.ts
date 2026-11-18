@@ -5,7 +5,7 @@
 //   partner owns: the main AI (persona prompt, projection, turn loop) on any first-wave harness (D85) via runner's HarnessPort.
 import type { HarnessId } from "./harnesses.ts";
 import type { CallBody, DraftRequest, DraftResult } from "./phone.ts";
-import type { AccountUsage, Attention, Bodies, BodyWhy, BranchChanges, Delivery, FolderChanges, UndoConfirm, EventKind, LogEvent, OnHand, Origin, PartnerActivity, Place, Residency, PeersSettings, Settings, TaskCard, TaskNeeds } from "./index.ts";
+import type { AccountUsage, Attention, Bodies, BodyWhy, BranchChanges, Delivery, FolderChanges, UndoConfirm, EventKind, LogEvent, OnHand, Origin, PartnerActivity, Place, Residency, PeersSettings, Settings, TaskCard, TaskNeeds, WorkKind } from "./index.ts";
 import type { MediaRef } from "./media.ts";
 import type { LangTag } from "./lang.ts";
 
@@ -265,7 +265,7 @@ export interface BodyChooser {
   // D157: needs say what the task needs of its computer; the pick says which computer (device:
   // its name, "local" for the home), whether it waits there, and what it uses.
   // D202: effort, the user's pick, is checked against the chosen model's levels on its computer.
-  choose(work: { title: string; brief?: string; place?: Place; harness?: string; model?: string; effort?: string; by?: "you"; needs?: TaskNeeds }): Promise<BodyChoice | { none: string } | undefined>;
+  choose(work: { title: string; brief?: string; place?: Place; harness?: string; model?: string; effort?: string; by?: "you"; needs?: TaskNeeds; workKind?: WorkKind }): Promise<BodyChoice | { none: string } | undefined>;
 }
 
 /** D157: who does a new task, on which computer, and why. */
@@ -284,6 +284,8 @@ export interface BodyChoice {
   effort?: string;
   /** D202: the effort asked for was dropped (the model doesn't list it, or its list couldn't be read): why, in words. */
   effortDropped?: string;
+  /** D372: the kind of work the pick was ranked for (the partner's word, else read from its needs and place). */
+  workKind?: WorkKind;
 }
 
 /** Who is calling into a connection: the partner, or one task (which must have been granted it). */
@@ -564,12 +566,12 @@ export interface Runner {
   // adopt (D299): a session the person ran in their own agent outside Ducter, carried on as this
   // task in its own folder: its conversation (the person's words and the agent's) goes into the
   // task's history; the same agent resumes it by id, another agent starts from what it said.
-  openTask(input: { persona: string; title: string; brief: string; place?: Place; project?: string; harness?: string; model?: string; effort?: string; language?: LangTag; origin?: "you"; needs?: TaskNeeds; media?: MediaRef[]; from?: string; adopt?: AdoptSession }): Promise<TaskCard>;
+  openTask(input: { persona: string; title: string; brief: string; place?: Place; project?: string; harness?: string; model?: string; effort?: string; language?: LangTag; origin?: "you"; needs?: TaskNeeds; workKind?: WorkKind; media?: MediaRef[]; from?: string; adopt?: AdoptSession }): Promise<TaskCard>;
   // Optional (D120, ack and go): open a task while its brief is still being written. The card,
   // the place and the session start now; the brief becomes the session's first turn when it
   // settles. If it rejects, the task is dropped before it did anything.
   // media (D206): settles with the brief (the call's last part), the pictures the brief carries.
-  openTaskEarly?(input: { persona: string; title: string; place?: Place; project?: string; harness?: string; model?: string; language?: LangTag; needs?: TaskNeeds }, brief: Promise<string>, media?: Promise<MediaRef[]>): Promise<TaskCard>;
+  openTaskEarly?(input: { persona: string; title: string; place?: Place; project?: string; harness?: string; model?: string; language?: LangTag; needs?: TaskNeeds; workKind?: WorkKind }, brief: Promise<string>, media?: Promise<MediaRef[]>): Promise<TaskCard>;
   // Logs the text as task_event {role:"user", from, clientId} before delivering it.
   // media (D206): pictures that go with the text (an agent that can't see them gets a line saying so).
   send(taskId: string, text: string, mode?: "steer" | "queue", from?: "user" | "partner" | "ducter", clientId?: string, media?: MediaRef[]): Promise<{ delivered: Delivery }>;

@@ -129,7 +129,9 @@ partner is told only when no reset is known and nobody else can take it.
 `fw_candidates(TaskSpec)` is deterministic:
 - **Filter on hard constraints**: environment needs, installed and logged-in harnesses,
   machine availability, user pins.
-- **Rank**: tier fit for the task kind, cache continuity, quota pace (readable for Claude via
+- **Rank**: tier fit for the task kind (D372: the partner names the kind at `task_open`; errands
+  go to a fast tier the table knows, every other kind to the smartest; `ai-loadout.md` "Kinds of
+  work"), cache continuity, quota pace (readable for Claude via
   `get_usage` / `rate_limit_event`, Codex via `account/rateLimits/*`, Grok; estimated from
   Ducter's own ledger otherwise), wake cost, API spend, and outcome history.
 - **Return** the top 3 with reasons.
@@ -155,7 +157,11 @@ overrides a choice, Ducter proposes a rule and the user confirms it.
   this the rule?"
 - **Power users:** an optional rules file with the same schema. Conversation and file are
   two views of one rule set.
-- **Precedence:** window pin > the most specific rule (newest wins a tie) > Ducter's default.
+- **Precedence:** window pin > the most specific rule (words over a kind; newest wins a tie) >
+  Ducter's default by kind. A rule may say never (D372): that agent is filtered out for that kind
+  unless the window is pinned to it.
+- **Safety net (D372):** an errand on a fast tier that fails or stalls carries on on the smartest,
+  once, by itself, said on the task; only a second miss reaches the person.
 - **When a rule can't be satisfied** (no quota, logged out), Ducter never falls back silently.
   It posts one line with a default, e.g. "Your rule says Codex, but its quota resets in 40
   min — wait, or use Claude?"

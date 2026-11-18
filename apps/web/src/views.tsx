@@ -61,6 +61,7 @@ import { DidSheet } from "./did.tsx";
 import { RichBlock } from "./rich.tsx";
 import { splitRich } from "@ducter/protocol/src/rich.ts";
 import { ContextButton } from "./context-meter.tsx";
+import { ComposerTune, composerTune, tunable } from "./composer-tune.tsx";
 import { Goal, Groove, RoutineFacts, RoutineShelf, TryStrip, untilLine, backWords, WaitBubble, WatchCard } from "./work.tsx";
 import { Locator, safe, saidSince, shortGo, shortTitle, taskBlocks, TaskFoot, TaskMeta, TaskMore, TimerPie, wakesOf, WhatItDid } from "./transcript.tsx";
 import {
@@ -1522,10 +1523,12 @@ function Composer({ taskId }: { taskId?: string }) {
           <Arrow />
         </button>
       </div>
-      {busy && (
-        <div class="composer-hint">
-          {steers ? <span>{coarse() ? t("composer.steer.short") : t("composer.steer.hint")}</span> : <span>{t("composer.nosteer.hint", harnessName(agent))}</span>}
-          {steers && !coarse() && <span class="k">{t("composer.queue.hint")}</span>}
+      {/* D354: the model and effort, always in sight while it can be switched; while it works, the steer hints after them. */}
+      {(busy || (task && tunable(task))) && (
+        <div class={`composer-hint${task && composerTune(task) ? " tuned" : ""}`}>
+          {task && <ComposerTune task={task} />}
+          {busy && (steers ? <span>{coarse() ? t("composer.steer.short") : t("composer.steer.hint")}</span> : <span>{t("composer.nosteer.hint", harnessName(agent))}</span>)}
+          {busy && steers && !coarse() && <span class="k">{t("composer.queue.hint")}</span>}
         </div>
       )}
     </div>

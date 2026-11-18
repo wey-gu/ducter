@@ -190,7 +190,13 @@ Code `--resume <id> --model --effort`, Codex `thread/resume` with the model; los
 `raw.retuned {harness, model, effort}`. `/model` and `/effort` typed in the task do the same, and
 so does asking the partner ("这个任务换成 6.2 sol": `task_switch`, the model matched to the agent's
 own list as said, D352). The row is the agent's live list; the model a task is on is always a
-chip in it, even past the row's first eight.
+chip in it, even past the row's first eight. **Under the task's composer (D354)** the same two
+are always in sight while the task can switch: a quiet chip with the model in its own words
+(**GPT-6.1-Terra**) and, where the model has levels, **思考：低 / Effort: Low**; each opens a
+short menu anchored to it (the live list; that model's levels, **默认 / Default** marked). A
+choice is this in-place switch, said once in a quiet line for 8 s: **下一轮起用 {model} / From
+its next turn: {model}**, **下一轮起思考：{effort} / From its next turn: {effort} effort**. No
+live list, or a task that can't switch: no chips. The agent itself is switched only here.
 Then the list: the top three others with why and the limit each, and the ones that can't, greyed
 with why. **换到 X 接着做 / Continue on X** closes the old session (kept by agent) and starts the
 new agent from the brief, the last six checkpoints and the carry-over (the last report and its

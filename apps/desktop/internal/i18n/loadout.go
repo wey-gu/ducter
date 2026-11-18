@@ -126,6 +126,11 @@ var zhLoadout = Table{
 	"loadout.add.signin.go":   "去登录",
 	"partner.header.none":     "住在 %s 上，还没有能用的 AI agent",
 	"handoff.one":             "现在只有一个 AI agent 能做事：额度用完时，等它恢复再接着做。",
+
+	// D354: the chips under the task's composer, and the line after a choice.
+	"tune.effort":      "思考：%s",
+	"tune.next.model":  "下一轮起用 %s",
+	"tune.next.effort": "下一轮起思考：%s",
 }
 
 var enLoadout = Table{
@@ -248,6 +253,11 @@ var enLoadout = Table{
 	"loadout.add.signin.go":   "Sign in",
 	"partner.header.none":     "Lives on %s, with no AI agent to use yet",
 	"handoff.one":             "Only one AI agent does tasks now, so when its limit runs out the task waits for it to come back.",
+
+	// D354: the chips under the task's composer, and the line after a choice.
+	"tune.effort":      "Effort: %s",
+	"tune.next.model":  "From its next turn: %s",
+	"tune.next.effort": "From its next turn: %s effort",
 }
 
 func init() {

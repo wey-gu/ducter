@@ -134,8 +134,11 @@ starts a new task there.
 
 ### How do I move a task to another model, like one that just came out?
 
-Three ways, all the same switch:
+Four ways, all the same switch:
 
+- **Under the task's box**: the model it's on and its effort (**Effort: Low**) are always there
+  while it can be switched. Tap one for the list, pick, and it says from when: **From its next
+  turn: GPT-6.2-Sol**.
 - **Ask your partner** in the conversation: "这个任务换成 6.2 sol" or "use Opus for the login
   task". It finds the model in that agent's own list, so the short name you'd say is enough;
   when it could be more than one, it asks which.

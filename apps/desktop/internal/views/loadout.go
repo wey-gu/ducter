@@ -620,8 +620,23 @@ func (a *App) openSwitch(id string) {
 // in place (D282): a pick goes at once, and the agent's own session carries
 // on with it from its next turn. Only where the agent lists its own models.
 func (a *App) tuneInPlace(c *ui.Context, task *store.Task, device string) {
-	if a.S.NewTaskOptions == nil {
+	models, model, effort, ok := a.liveTune(task, device)
+	if !ok {
 		return
+	}
+	h := task.Harness()
+	a.switchTuneRows(c, h, models, model, effort, func(m, e string) {
+		a.send(protocol.TaskSwitch{T: "task_switch", TaskID: task.ID, Harness: h, Model: m, Effort: e})
+	})
+}
+
+// liveTune is the doing agent's own live model list on that computer (D282,
+// D352), the model it is on (always in the list, even past the row's first
+// few) and the effort it runs at (its own, else the model's default). ok is
+// false where the agent lists no models of its own: nothing to switch in place.
+func (a *App) liveTune(task *store.Task, device string) (models []protocol.ModelChoice, model *protocol.ModelChoice, effort string, ok bool) {
+	if a.S.NewTaskOptions == nil {
+		return nil, nil, "", false
 	}
 	h := task.Harness()
 	var row *protocol.AgentModels
@@ -632,27 +647,28 @@ func (a *App) tuneInPlace(c *ui.Context, task *store.Task, device string) {
 		}
 	}
 	if row == nil || len(row.Models) == 0 || row.From != "live" {
-		return
+		return nil, nil, "", false
 	}
 	// D352: the model it's on is always a chip, even one past the row's first few.
-	models := row.Models
+	models = row.Models
 	if now := task.Model(); now != "" && !slices.ContainsFunc(models, func(m protocol.ModelChoice) bool { return m.ID == now }) {
 		models = append(slices.Clone(models), protocol.ModelChoice{ID: now, Label: modelLabel(a.trayHarness(h), now)})
 	}
-	var model *protocol.ModelChoice
 	for i := range models {
 		if m := &models[i]; (task.Model() != "" && m.ID == task.Model()) || (task.Model() == "" && m.Default) {
 			model = m
 		}
 	}
-	effort := task.Effort()
+	effort = task.Effort()
 	if effort == "" && model != nil {
 		effort = model.DefaultEffort
 	}
+	return models, model, effort, true
+}
+
+// switchTuneRows is 换谁来做's in-place Model and Effort rows of chips.
+func (a *App) switchTuneRows(c *ui.Context, h string, models []protocol.ModelChoice, model *protocol.ModelChoice, effort string, pick func(m, e string)) {
 	t := a.T
-	pick := func(m, e string) {
-		a.send(protocol.TaskSwitch{T: "task_switch", TaskID: task.ID, Harness: h, Model: m, Effort: e})
-	}
 	line := func(key, name string, body func()) {
 		ui.Row(c.Key(key)).Gap(t.S2).AlignItems(ui.Start).Children(func() {
 			ui.Text(c, name).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).Width(64).Shrink(0).Padding(6, 0, 0, 0).SingleLine()
@@ -736,10 +752,15 @@ func (a *App) drainSwitch() {
 		if r.TaskID != lo.switchFor && lo.switchFor != "" {
 			continue
 		}
-		lo.switchAt = a.Now()
-		lo.switchOK = r.OK
 		to := lo.switching
 		lo.switching = ""
+		if r.OK && to == "" {
+			// D354: a model or effort in place, nothing named as switching: its
+			// own quiet line says it, never "Continued on" with no one.
+			continue
+		}
+		lo.switchAt = a.Now()
+		lo.switchOK = r.OK
 		if r.OK {
 			lo.switchMsg = a.L.T("who.done", to)
 			lo.switchFor = ""

@@ -344,7 +344,8 @@ type App struct {
 	openFailed string
 	// D220: 工作副本 / Working copy: its panel open, and when its path was copied.
 	infoOpen   bool
-	moreOpen   bool // D268: the opened task's ⋯
+	moreOpen   bool              // D268: the opened task's ⋯
+	ctune      composerTuneState // D354: the model and effort chips under the task's composer
 	infoCopied time.Time
 	past       pastState // D285: 做过的事 / Past tasks (past.go)
 	did        didState  // D300: 替你做过的 / Done for you (did.go)

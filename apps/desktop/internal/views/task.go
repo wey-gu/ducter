@@ -548,8 +548,18 @@ func (a *App) taskComposer(c *ui.Context, task *store.Task) {
 					}
 				})
 			})
-			if working {
-				ui.Row(c).Gap(t.S2).Padding(0, t.S4).Children(func() {
+			// D354: the model and effort under the box, always in sight while it
+			// can be switched; while it works, the steer hints after them.
+			if working || canSwitch(task) {
+				start := t.S4
+				if _, m, _, ok := a.liveTune(task, task.Place().Device); ok && m != nil && canSwitch(task) {
+					start = t.S2 // the chips' own padding lines their words up with the hints'
+				}
+				ui.Row(c.Key("composer-foot")).Gap(t.S2).Padding(0, t.S4, 0, start).AlignItems(ui.Center).Children(func() {
+					a.composerTune(c, task)
+					if !working {
+						return
+					}
 					if !steers {
 						ui.Text(c, a.L.T("composer.nosteer.hint", harnessName(agent))).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().MinWidth(0).Shrink(1)
 						return

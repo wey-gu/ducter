@@ -319,8 +319,11 @@ function LensEntry({ k, name, tasks, on, tab, brand }: { k: string; name: string
   return (
     <button class={`lens-row${on ? " on" : ""}${k === OTHER ? " other" : ""}`} aria-pressed={on} aria-label={spoken(A.L, name, counts)} title={counts || undefined} onClick={() => setLens(k)}>
       <span class="nm">
-        {brand && <BrandMark name={brand} size={14} />}
-        <b>{name}</b>
+        {/* The mark sits on the name's line, never above it (.nm stacks the name over its stat). */}
+        <span class="nm-line">
+          {brand && <BrandMark name={brand} size={14} />}
+          <b>{name}</b>
+        </span>
         {st.adds + st.dels > 0 && (
           <span class="stat">
             {st.adds > 0 && <i class="add">+{st.adds}</i>}

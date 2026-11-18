@@ -10023,6 +10023,12 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   flex-direction: column;
   gap: 1px;
 }
+.lens-row .nm-line {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
 .lens-row .nm b {
   font-size: var(--bar-text);
   font-weight: 600;
@@ -14260,8 +14266,12 @@ svg .wave.w2.on {
 }
 .lens-row .nm .brand-mark {
   flex: none;
-  margin-inline-end: 4px;
-  vertical-align: -2px;
+  display: block;
+}
+.lens-row .nm .brand-mark > svg {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 /* D347: 加一台做事的电脑 / Add a computer for tasks (D358; was Lend a computer): the entry in 你的设备, the sheet, the partner's card. */

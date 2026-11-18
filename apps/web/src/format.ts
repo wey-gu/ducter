@@ -139,9 +139,27 @@ export function harnessName(h: string): string {
   return { "claude-code": "Claude Code", codex: "Codex", pi: "pi", "deepseek-harness": "DeepSeek Harness" }[h] ?? h;
 }
 
-/** A model as people say it: Claude Code's aliases capitalized, other ids as they are. */
+/** The words each agent lists its models with, learned from its lists (the computers' accounts, the
+ *  New task lists), so a model is said as its agent says it ("GPT-6.2-Sol"), never its raw id. */
+const modelLabels = new Map<string, string>();
+
+/** Learns the labels in agents' model lists (a device's harnesses, the New task lists' rows). */
+export function learnModelLabels(lists: readonly { models?: readonly { id: string; label?: string }[] }[] | undefined): void {
+  for (const l of lists ?? []) for (const m of l.models ?? []) if (m.label && m.label !== m.id) modelLabels.set(m.id, m.label);
+}
+
+/** A model as people say it (D353): its agent's own word for it when a list said it; else Claude
+ *  Code's aliases capitalized, an OpenAI id in its own casing ("gpt-6.2-sol" is "GPT-6.2-Sol", as
+ *  Codex lists it), anything else as it is. */
 export function modelName(m: string): string {
-  return ["opus", "sonnet", "haiku"].includes(m) ? m[0]!.toUpperCase() + m.slice(1) : m;
+  const known = modelLabels.get(m);
+  if (known) return known;
+  if (["opus", "sonnet", "haiku"].includes(m)) return m[0]!.toUpperCase() + m.slice(1);
+  if (!m.startsWith("gpt-")) return m;
+  return m
+    .split("-")
+    .map((p, i) => (i === 0 ? "GPT" : /^[a-z]/.test(p) ? p[0]!.toUpperCase() + p.slice(1) : p))
+    .join("-");
 }
 
 /**

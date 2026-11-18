@@ -1707,6 +1707,9 @@ a {
 
 /* ---------- opened task: one column (D74) ---------- */
 .task-page {
+  /* D353: the title's left edge, the face's width and the head's gap in (the Mac's taskFaceW + S5). */
+  --head-gap: var(--s5);
+  --head-in: calc(96px + var(--head-gap));
   gap: 20px;
   /* D284: older pages land above; the page keeps the reader's place itself, in every engine. */
   overflow-anchor: none;
@@ -1714,12 +1717,19 @@ a {
 .task-head {
   display: grid;
   grid-template-columns: 96px minmax(0, 1fr);
-  gap: 6px 16px;
+  gap: 6px var(--head-gap, 16px);
   align-items: center;
 }
+@media (max-width: 600px) {
+  .task-page {
+    --head-gap: var(--s4);
+    --head-in: 0px;
+  }
+}
+/* D353: the face's top on the state line's, as on the Mac: its thought bubble clears the words. */
 .task-head .face {
   grid-row: span 2;
-  align-self: end;
+  align-self: start;
 }
 .task-head .head-words {
   display: flex;
@@ -2163,6 +2173,7 @@ a {
 }
 .wait-end .step .when {
   flex: none;
+  margin: 0; /* on the line's middle, never the conversation's time line's top margin */
   font-size: var(--xs);
   color: var(--ink-muted);
   font-variant-numeric: tabular-nums;
@@ -4146,15 +4157,17 @@ a.btn {
 .task-head .face {
   position: relative;
 }
+/* D353: the opened task's thought bubble, up on the face's top corner, clear of its eyes and of
+   the words, its tail toward the head (the Mac's waitBadge). */
 .wait-bub.lg {
   position: absolute;
-  right: -14px;
-  top: -10px;
-  width: 46px;
-  height: 40px;
+  right: -12px;
+  top: -8px;
+  width: 40px;
+  height: 36px;
 }
 .wait-bub.lg img {
-  width: 30px;
+  width: 26px;
   height: 30px;
 }
 .task-head .waitline {
@@ -11282,46 +11295,61 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 }
 
 /* ---------- D279: a task resting on its own wait: the ring, its looks, the moment ---------- */
+/* D353: it sits under the title, on the title's left edge (the face's width and the head's gap
+   in), so the head reads as one column; on a phone, the page's edge. */
 .watch {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: var(--s4);
   width: 100%;
-  max-width: 40rem;
-  margin: 0 auto;
+  max-width: calc(40rem + var(--head-in));
+  padding-left: var(--head-in);
+  margin: 0;
 }
 .watch-main {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: var(--s4);
 }
 .watch-words {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
   min-width: 0;
 }
 .watch-words p {
   margin: 0;
 }
+/* When it looks next, the one number; how often, apart and quieter. */
+.watch .watch-next {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: var(--s3);
+  font-variant-numeric: tabular-nums;
+}
 .watch .rhythm,
 .watch.met .back {
   font-size: var(--md);
   color: var(--ink);
-  font-weight: 600;
+  font-weight: 700;
+}
+.watch .often {
+  font-size: var(--sm);
+  color: var(--ink-soft);
 }
 .watch .tally {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 4px var(--s3);
   font-size: var(--sm);
   color: var(--ink-muted);
   font-variant-numeric: tabular-nums;
 }
 .watch .btns {
   display: flex;
-  gap: 8px;
+  gap: var(--s2);
   flex-wrap: wrap;
 }
 /* D297: a task resting on its agent's usage limit: whose limit, when it carries on; the choice
@@ -11388,8 +11416,8 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 }
 .lookring .track {
   fill: var(--surface);
-  stroke: var(--line-2);
-  stroke-opacity: 0.55;
+  stroke: var(--ink-muted); /* a groove that holds in both themes */
+  stroke-opacity: 0.16;
   stroke-width: 8;
   filter: drop-shadow(0 1px 0 var(--seam-quiet));
 }
@@ -11465,7 +11493,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  box-shadow: inset 0 0 0 1.5px var(--line-2);
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--ink-muted) 50%, transparent);
 }
 .pebbles i.came {
   background: var(--waiting-dot);

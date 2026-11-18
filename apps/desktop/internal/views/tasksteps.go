@@ -68,7 +68,7 @@ func (a *App) switchLine(task *store.Task, b *Block) string {
 	if b.Say == "retuned" {
 		m, e := "", ""
 		if b.Name != "" {
-			m = modelLabel(a.trayHarness(task.Harness()), b.Name)
+			m = a.modelWord(task.Harness(), task.Place().Device, b.Name)
 		}
 		if b.Effort != "" {
 			e = a.effortWord(b.Effort)
@@ -354,7 +354,7 @@ func (a *App) whereLine(p protocol.Place) []string {
 func (a *App) taskWhoParts(task *store.Task) []string {
 	parts := []string{harnessName(task.Harness())}
 	if m := task.Model(); m != "" {
-		parts = append(parts, modelLabel(a.trayHarness(task.Harness()), m))
+		parts = append(parts, a.modelWord(task.Harness(), task.Place().Device, m)) // the agent's own word for it, never its raw id
 	}
 	if e := task.Effort(); e != "" {
 		parts = append(parts, a.effortWord(e)) // D202

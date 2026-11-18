@@ -254,14 +254,18 @@ the clay thing awaited (PR, cloud, envelope, clock, file; `design/art/assets/alp
 
 **A task resting on its own wait (D279).** Its state in the head's meta line is when it comes
 back, **21:59 回来 / Back at 21:59**, in the waiting ink with the clock mark. Under the head, the
-**watch card**: a 56 ring (a clay disc, its groove `--line-2` at 55%, 8 wide) whose arc in
+**watch card**, under the title on its left edge (the face's 96 and the head's 24 in; a phone keeps
+the page's edge; D353): a 56 ring (a clay disc, its groove muted ink at 16%, 8 wide) whose arc in
 `--waiting-dot` fills clockwise from the last look (or the arming) to the next, redrawn each
 half minute, so it maps to time and nothing else; a bead at the arc's edge breathes once per
 `--t-breathe` (3.2 s, scale 1 → 1.3 on `--ease`; Mac `Breathe`), still under reduced motion;
-how long is left inside (**45 分 / 45 min**, `--xs` 700). Beside it the rhythm (`--md` 600), then
-the looks as pebbles (7, gap 3, at most 12: filled `--waiting-dot` for each wake, hollow
-`--line-2` for a look that found nothing yet) and **看了 24 次 · 上次 21:31**. Then **现在就去看一次**
-(secondary) and **不用再去看了** (text). When the wait comes true the card turns to the moment for
+for a watch, no number inside: beside it when it looks next, **20 分钟后再看 / Next look in 20 min**
+(`--md` 700), the one number, then the rhythm apart (`--sm`, soft ink); a timer keeps how long is
+left inside (**45 分 / 45 min**, `--xs` 700) and its rhythm. Under them the looks as pebbles (7,
+gap 3, at most 12: filled `--waiting-dot` for each wake, hollow in muted ink at 50% for a look
+that found nothing yet), then **看了 24 次**, **上次 21:31** and **还没有新的**, each its own element.
+Then **现在就去看一次** (secondary, small) and **不用再去看了** (text, small); gaps 16. What it waits
+for is a thought bubble (40 × 36, its tail toward the head) on the face's top corner. When the wait comes true the card turns to the moment for
 2.6 s: the ring closes in `--done-dot`, pops on `--spring` over `--t-pop` (560 ms; Mac `Pop`), a
 tick draws in `--done-ink`, **等到了，接着做**; under reduced motion it is simply there. A
 deadline keeps its groove inside the card. Rows never breathe (D244).

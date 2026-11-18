@@ -197,7 +197,7 @@ func (a *App) taskInfoBody(c *ui.Context, task *store.Task) {
 					a.coinBox(c, fmt.Sprintf("info-who:%d", i), w.Harness, 18, false, coinStill)
 					parts := []string{harnessName(w.Harness)}
 					if w.Model != "" {
-						parts = append(parts, modelLabel(a.trayHarness(w.Harness), w.Model))
+						parts = append(parts, a.modelWord(w.Harness, "", w.Model))
 					}
 					if w.Effort != "" {
 						parts = append(parts, a.effortWord(w.Effort))

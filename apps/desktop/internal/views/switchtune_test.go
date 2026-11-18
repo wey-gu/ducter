@@ -52,7 +52,7 @@ func TestSwitchInPlace(t *testing.T) {
 			protocol.NewEvent(901, at, "default", ts, protocol.OriginTask, protocol.KindTaskEvent, protocol.TaskEvent{TaskID: "t_newtask", Role: "system", From: "runner", Text: "moved from claude-code to codex", Raw: []byte(`{"switched":{"from":"claude-code","to":"codex"}}`)}),
 		}})
 		re, _ := noteBlock(app, `{"retuned":{"harness":"claude-code","model":"sonnet","effort":"high"}}`, 900)
-		if got, want := app.switchLine(task, &re), L.T("note.retuned", L.T("who.name", modelLabel(app.trayHarness("claude-code"), "sonnet"), L.T("effort.high"))); got != want {
+		if got, want := app.switchLine(task, &re), L.T("note.retuned", L.T("who.name", "Sonnet 5.5" /* D353: the agent's own word for it, as on its chip */, L.T("effort.high"))); got != want {
 			t.Errorf("%s: retuned: %q, want %q", lang, got, want)
 		}
 		sw2, _ := noteBlock(app, `{"switched":{"from":"claude-code","to":"codex"}}`, 901)

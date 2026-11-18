@@ -55,6 +55,30 @@ func (a *App) waitBubble(c *ui.Context, glyph string, size float32) ui.Element {
 	})
 }
 
+// waitBadgeW is the opened task's thought bubble's width (waitBadge).
+const waitBadgeW = 40
+
+// waitBadge is what an opened task waits for, a thought bubble by its
+// face's head (D112, D353): the cream bubble with its clay thing, a small
+// round tail at its lower left toward the head, so it reads as the face's
+// thought, never as a sticker on it. Still, like waitBubble.
+func (a *App) waitBadge(c *ui.Context, glyph string) ui.Element {
+	t := a.T
+	const w, h, tail = waitBadgeW, 36, 9
+	return ui.Box(c.Key("badge:"+glyph)).Size(w, h+tail/2).Shrink(0).AccessHidden(true).Draw(func(p *ui.Painter, r ui.Rect) {
+		// The tail first, under the bubble's lower left.
+		tx, ty := r.X-1, r.Y+h-tail+3
+		p.Fill(ui.Rect{X: tx, Y: ty + 1, W: tail, H: tail}, t.Line2, tail/2)
+		p.Fill(ui.Rect{X: tx, Y: ty, W: tail, H: tail}, t.SurfaceRaised, tail/2)
+	}).Children(func() {
+		ui.Box(c).Size(w, h).Radius(h).Background(t.SurfaceRaised).Shadow(0, 2, 0, 0, t.Line2).Justify(ui.Center).AlignItems(ui.Center).Children(func() {
+			if bmp := theme.Clay(glyph); bmp != nil {
+				ui.Image(c, bmp).Size(26, 26)
+			}
+		})
+	})
+}
+
 // waitCadence is how often it looks, for How it checks only ("每 5 分钟看一次"),
 // and apart, when it last looked ("上次是 11:40"), or "" (D291).
 func (a *App) waitCadence(w *protocol.Waiter) (often, last string) {
@@ -480,7 +504,7 @@ func (a *App) drawLookRing(frac, breath float32, met bool, tick float32) func(p 
 		p.FillPath(&top, t.Surface)
 		var track ui.Path
 		track.Circle(cx, cy, rad)
-		p.StrokePath(&track, 8, t.Line2.Alpha(0.55))
+		p.StrokePath(&track, 8, t.InkMuted.Alpha(0.16)) // a groove that holds in both themes
 		col := t.Waiting.Dot
 		f := frac
 		if met {
@@ -534,14 +558,18 @@ func (a *App) drawLookRing(frac, breath float32, met bool, tick float32) func(p 
 }
 
 // watchCard is an opened task resting on a wait of its own (D279): the
-// ring and how long until it comes back, how it comes back, every look so
-// far as a pebble, then 现在就去看一次 / Check now and 不用再去看了 / Stop
-// checking. A deadline keeps its groove. When the wait comes true it shows
-// the moment, then the task carries on. How it checks is under the end line.
+// ring filling toward the next look, when that is in words (one number,
+// D353), how often it looks, every look so far as a pebble with the count,
+// the last look and what it found (each its own fact, D291), then
+// 现在就去看一次 / Check now and 不用再去看了 / Stop checking. It sits under
+// the title, on its left edge. A deadline keeps its groove. When the wait
+// comes true it shows the moment, then the task carries on. How it checks
+// is under the end line.
 func (a *App) watchCard(c *ui.Context, task *store.Task, m *taskMemo) {
 	t := a.T
 	still := c.Preferences().ReduceMotion
 	const size = 56
+	indent := float32(taskFaceW) + t.S5 // the title's left edge (taskHead)
 	w := a.S.WaiterFor(task.ID)
 	if w == nil {
 		at, ok := a.S.Arrived[task.ID]
@@ -558,7 +586,7 @@ func (a *App) watchCard(c *ui.Context, task *store.Task, m *taskMemo) {
 			tick = q
 		}
 		label := a.L.T("watch.met")
-		ui.Row(c.Key("watch")).Gap(t.S3 + 2).AlignItems(ui.Center).MaxWidth(readMeasure).Role(ui.RoleStatus).Children(func() {
+		ui.Row(c.Key("watch")).Gap(t.S4).AlignItems(ui.Center).MaxWidth(readMeasure+indent).Padding(0, 0, 0, indent).Role(ui.RoleStatus).Children(func() {
 			ui.Box(c.Key("ring")).Size(size, size).Shrink(0).Role(ui.RoleImage).Label(label).Draw(func(p *ui.Painter, r ui.Rect) {
 				d := r.W * pop
 				a.drawLookRing(1, 1, true, tick)(p, ui.Rect{X: r.X + (r.W-d)/2, Y: r.Y + (r.H-d)/2, W: d, H: d})
@@ -571,15 +599,13 @@ func (a *App) watchCard(c *ui.Context, task *store.Task, m *taskMemo) {
 		return
 	}
 	if w.Limit != nil {
-		a.limitCard(c, w)
+		ui.Column(c.Key("watchlimit")).Padding(0, 0, 0, indent).MinWidth(0).Children(func() {
+			a.limitCard(c, w)
+		})
 		return
 	}
 	watches := w.Check != nil || w.Event != nil
 	_, frac, left, ok := a.backOf(w)
-	inside := ""
-	if ok {
-		inside = a.leftWords(left)
-	}
 	breath := float32(1)
 	if !still {
 		ph := float64(c.Now().UnixMilli()%t.Breathe.Milliseconds()) / float64(t.Breathe.Milliseconds())
@@ -595,6 +621,7 @@ func (a *App) watchCard(c *ui.Context, task *store.Task, m *taskMemo) {
 	if lastLook.After(last) {
 		last = lastLook
 	}
+	// D291: the count, the last look, and what it found: each its own fact.
 	var tally []string
 	if looks == 1 {
 		tally = append(tally, a.L.T("watch.tally.one"))
@@ -602,13 +629,12 @@ func (a *App) watchCard(c *ui.Context, task *store.Task, m *taskMemo) {
 		tally = append(tally, a.L.T("watch.tally", looks))
 	}
 	if !last.IsZero() {
-		key := "watch.last"
+		tally = append(tally, a.tp("watch.last", hhmm(last)))
 		if !lastLook.IsZero() && !lastLook.Before(woke) {
-			key = "watch.last.not"
+			tally = append(tally, a.L.T("watch.nothing"))
 		}
-		tally = append(tally, a.tp(key, hhmm(last)))
 	}
-	// How it comes back first, so a count reads as looks now and then.
+	// How it comes back.
 	rhythm := a.L.T("watch.timer")
 	if w.Check != nil {
 		every := w.EveryMs
@@ -619,8 +645,17 @@ func (a *App) watchCard(c *ui.Context, task *store.Task, m *taskMemo) {
 	} else if w.Event != nil {
 		rhythm = a.L.T("wait.each_new")
 	}
-	ui.Column(c.Key("watch")).Gap(t.S3 + 2).MaxWidth(readMeasure).Children(func() {
-		ui.Row(c.Key("watchmain")).Gap(t.S3 + 2).AlignItems(ui.Center).Children(func() {
+	// D353: one number. A watch says when it looks next in words, the ring
+	// only shows it filling; how often is said apart, quieter. A timer keeps
+	// how long is left inside its ring.
+	head, inside := rhythm, ""
+	if ok && watches {
+		head = a.nextWords(left)
+	} else if ok {
+		inside = a.leftWords(left)
+	}
+	ui.Column(c.Key("watch")).Gap(t.S4).MaxWidth(readMeasure+indent).Padding(0, 0, 0, indent).Children(func() {
+		ui.Row(c.Key("watchmain")).Gap(t.S4).AlignItems(ui.Center).Children(func() {
 			ui.Box(c.Key("ring")).Size(size, size).Shrink(0).Role(ui.RoleImage).Label(a.backWords(w)).Draw(a.drawLookRing(frac, breath, false, 0)).Children(func() {
 				if inside != "" {
 					ui.Column(c).Grow(1).Justify(ui.Center).AlignItems(ui.Center).Children(func() {
@@ -628,10 +663,15 @@ func (a *App) watchCard(c *ui.Context, task *store.Task, m *taskMemo) {
 					})
 				}
 			})
-			ui.Column(c.Key("words")).Gap(4).MinWidth(0).Children(func() {
-				ui.Text(c, rhythm).FontSize(t.MD).FontWeight(600).TextColor(t.Ink)
+			ui.Column(c.Key("words")).Gap(t.S1 + 2).MinWidth(0).Shrink(1).Children(func() {
+				ui.Row(c.Key("next")).Gap(t.S3).AlignItems(ui.Center).Wrap().Children(func() {
+					ui.Text(c, head).FontSize(t.MD).FontWeight(700).TextColor(t.Ink).FontFeatures("tnum")
+					if head != rhythm {
+						ui.Text(c.Key("often"), rhythm).FontSize(t.SM).TextColor(t.InkSoft).FontFeatures("tnum")
+					}
+				})
 				if len(tally) > 0 {
-					ui.Row(c.Key("tally")).Gap(t.S2).AlignItems(ui.Center).Children(func() {
+					ui.Row(c.Key("tally")).Gap(t.S3).AlignItems(ui.Center).Wrap().Children(func() {
 						if looks > 0 {
 							a.pebbles(c, wakes, w.Looks)
 						}
@@ -646,7 +686,7 @@ func (a *App) watchCard(c *ui.Context, task *store.Task, m *taskMemo) {
 			a.groove(c, w, true)
 		}
 		if watches {
-			ui.Row(c.Key("waitbtns")).Gap(t.S2).Children(func() {
+			ui.Row(c.Key("waitbtns")).Gap(t.S2).AlignItems(ui.Center).Children(func() {
 				if a.button(c, a.L.T("wait.look"), btnSecondary, t.ControlSM, t.Bg) {
 					a.send(protocol.WaiterAction{T: "waiter_action", WaiterID: w.WaiterID, Action: "look"})
 				}
@@ -656,6 +696,19 @@ func (a *App) watchCard(c *ui.Context, task *store.Task, m *taskMemo) {
 			})
 		}
 	})
+}
+
+// nextWords is when a watch looks next, in a few words (D353): "20 分钟后再看"
+// / "Next look in 20 min".
+func (a *App) nextWords(d time.Duration) string {
+	m := int(math.Ceil(d.Minutes()))
+	switch {
+	case m < 60:
+		return a.L.T("watch.next.min", max(1, m))
+	case m < 48*60:
+		return a.L.T("watch.next.hour", int(math.Round(float64(m)/60)))
+	}
+	return a.L.T("watch.next.day", int(math.Round(float64(m)/1440)))
 }
 
 // pebbles is every look so far (D279), the newest at the right: the ones
@@ -684,7 +737,7 @@ func (a *App) pebbles(c *ui.Context, came, empty int) {
 			}
 			var o ui.Path
 			o.Circle(b.X+d/2, b.Y+d/2, d/2-0.75)
-			p.StrokePath(&o, 1.5, t.Line2)
+			p.StrokePath(&o, 1.5, t.InkMuted.Alpha(0.5))
 		}
 	})
 }

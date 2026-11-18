@@ -29,8 +29,8 @@ Watching your email needs a connection to your mail ([Settings](settings.md)). W
 PR or a website needs nothing more than what Ducter already uses.
 
 A task that waits on its own, like a review it checks every 45 minutes, says when it comes
-back: **Back at 21:59**. Open it to see a ring fill toward that time, how often it looks, and
-how many times it has looked so far. **Check now** has it look right away instead of at
+back: **Back at 21:59**. Open it to see a ring fill toward that time, when it looks next, how
+often it looks, how many times it has looked so far, and what it found last. **Check now** has it look right away instead of at
 21:59; **Stop checking** ends the wait and keeps the task. When the wait comes true, the ring
 closes with a tick and the task carries on. To see how a wait checks, click the line at the end
 of the task, which says what it waits for and when it is back.

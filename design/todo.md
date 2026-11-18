@@ -1927,3 +1927,5 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] **Keep the pinned gh current:** a Ducter release moves `GH_RELEASE` (`packages/core/src/gh-install.ts`), and the home replaces its own copy. Trigger: the next gh security release.
 
 - [ ] **e2e flake (2026-11-18):** "all → done in order" (Update all finished by the restarted home) failed once at 16/17 during a network drop, passed 33/33 on rerun. Trigger: it fails again; then read the log for the plan step that stalled.
+
+- [ ] **iOS 27 SDK before April 2027 (ITMS-90725, Apple mail on 0.0.75):** App Store Connect will refuse uploads built with an SDK older than iOS 27. The TestFlight job now picks the newest Xcode 27.x on the runner (DUCTER_XCODE=27 is a minimum), else warns and uses the default (Xcode 26.6 / iOS 26.5 SDK on macos-26 today). Trigger: GitHub adds Xcode 27 to its macOS runner images, or March 2027 at the latest: then move the job to a runner with it (or self-host) and confirm the warning is gone; iPhone Duo also needs 27.1 for full screen (D176).

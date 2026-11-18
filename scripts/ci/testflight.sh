@@ -49,11 +49,26 @@ PROJECT="$IOS/$SCHEME.xcodeproj"
 # D176: iPhone Duo shows an app full-screen only when it is built with the iOS 27.1 SDK or later
 # (older SDKs run letterboxed there). DUCTER_XCODE=27.1 picks /Applications/Xcode_27.1.app when
 # the runner has it; a DEVELOPER_DIR set by the caller wins; otherwise the runner's default.
+# DUCTER_XCODE is a minimum: the newest installed Xcode at or above it wins (a release before a
+# beta), so a runner image that adds Xcode 27.x is used without editing this. App Store Connect
+# requires the iOS 27 SDK for uploads from April 2027 (ITMS-90725).
 if [ -z "${DEVELOPER_DIR:-}" ] && [ -n "${DUCTER_XCODE:-}" ]; then
-  if [ -d "/Applications/Xcode_$DUCTER_XCODE.app" ]; then
-    export DEVELOPER_DIR="/Applications/Xcode_$DUCTER_XCODE.app/Contents/Developer"
+  pick=""
+  for app in $(ls -d /Applications/Xcode_*.app 2>/dev/null | sort -V -r); do
+    v="${app#/Applications/Xcode_}"; v="${v%.app}"
+    case "$v" in *beta*|*Beta*|*RC*) continue ;; esac
+    if [ "$(printf '%s\n%s\n' "$DUCTER_XCODE" "$v" | sort -V | head -1)" = "$DUCTER_XCODE" ]; then pick="$app"; break; fi
+  done
+  if [ -z "$pick" ]; then
+    for app in $(ls -d /Applications/Xcode_*.app 2>/dev/null | sort -V -r); do
+      v="${app#/Applications/Xcode_}"; v="${v%.app}"; base="${v%%[-_ ]*}"
+      if [ "$(printf '%s\n%s\n' "$DUCTER_XCODE" "$base" | sort -V | head -1)" = "$DUCTER_XCODE" ]; then pick="$app"; break; fi
+    done
+  fi
+  if [ -n "$pick" ]; then
+    export DEVELOPER_DIR="$pick/Contents/Developer"
   else
-    echo "::warning::Xcode $DUCTER_XCODE isn't on this runner; building with the default Xcode."
+    echo "::warning::No Xcode $DUCTER_XCODE or later on this runner ($(ls -d /Applications/Xcode_*.app 2>/dev/null | xargs -n1 basename | tr '\n' ' ')); building with the default Xcode. App Store Connect needs the iOS 27 SDK from April 2027."
   fi
 fi
 xcodebuild -version

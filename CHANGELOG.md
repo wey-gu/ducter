@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.0.78 - 2026-11-18
+
+<!-- whats-new
+zh: 待办会理成一堆，看着它变小
+en: Your to-dos sorted into a pile you watch shrink
+zh: 加的电脑自己装好 AI；更新有进度
+en: Added computers install their AIs; updates show progress
+-->
+
+**On hand**
+- Your open to-dos are sorted for you: the ones your partner could do, the ones that need your
+  call, the ones you might close, and the ones that can wait. A clay pile shows how many are
+  still open and gets smaller as they go.
+- Hand several over at once; three run at a time. Decide the rest one question each, with a
+  suggestion marked.
+- Close a batch only after seeing every line that will be left on each; keep any open. Every
+  close is in Done for you and can be reopened on GitHub.
+- A pull request waiting for your review is read first: the card says what stood out, and the
+  comments go out only when you say so.
+- The morning note can offer three to-dos it can clear today.
+
+**Devices**
+- A computer you add asks which AIs it should have, installs them itself (no admin rights
+  needed), and signs them in from the card: Codex with a code, Claude Code with a paste.
+- An AI you install yourself on that computer shows up within seconds, wherever it was
+  installed (nvm, fnm, `~/.local/bin`, Homebrew…).
+- Updating an AI shows how far the download is, says when it's slower than usual, and can be
+  stopped. The installed version stays usable until the new one is in place.
+
 ## 0.0.77 - 2026-11-18
 
 <!-- whats-new

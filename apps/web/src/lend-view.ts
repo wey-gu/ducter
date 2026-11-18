@@ -11,14 +11,21 @@ export interface LendState {
   frame?: LendFrame;
   /** A lend_code is out and its answer not here yet. */
   awaiting?: boolean;
+  /** When it was asked (ms): no answer within LEND_WAIT_MS is said, never an endless wait. */
+  askedAt?: number;
+  /** The home answered the lend_code with an error frame. */
+  failed?: boolean;
 }
 
-export type LendStep = "ask" | "asking" | "noaddress" | "line" | "expired" | "joined" | "here";
+/** How long 正在拿一个码… waits for the home before it says it didn't answer (research/127). */
+export const LEND_WAIT_MS = 8_000;
+
+export type LendStep = "ask" | "asking" | "failed" | "noaddress" | "line" | "expired" | "joined" | "here";
 
 export function lendStep(l: LendState, now: number): LendStep {
   if (!l.kind) return "ask";
   const f = l.frame;
-  if (!f) return "asking";
+  if (!f) return l.failed || (l.askedAt !== undefined && now - l.askedAt >= LEND_WAIT_MS) ? "failed" : "asking";
   if (f.state === "here") return "here";
   if (f.state === "joined") return "joined";
   if (!f.address || !f.line) return "noaddress";
@@ -40,6 +47,12 @@ export function applyLend(l: LendState | undefined, f: LendFrame): LendState | u
   if (f.state === "waiting") return l.awaiting ? { ...l, frame: f, awaiting: false } : l;
   if (!l.frame || l.frame.code !== f.code) return l;
   return { ...l, frame: { ...l.frame, ...f, ...(l.frame.line ? { line: l.frame.line } : {}) } };
+}
+
+/** The home answered a lend_code with an error ("lend_code: …"): the sheet says it couldn't make one. */
+export function lendError(l: LendState | undefined, message: string): LendState | undefined {
+  if (!l?.awaiting || !message.startsWith("lend_code:")) return l;
+  return { ...l, awaiting: false, failed: true };
 }
 
 /** The lent computer as Devices shows it now: its name, OS word key, and the agents signed in there. */

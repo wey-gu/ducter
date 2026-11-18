@@ -49,6 +49,9 @@ var zhLend = Table{
 	"lend.os.linux":        "Linux",
 	"lend.os.mac":          "macOS",
 	"lend.loading":         "正在拿一个码…",
+	"lend.fail.timeout":    "%s 没有回应，没拿到码。",
+	"lend.fail.error":      "%s 没能给出一个码。",
+	"lend.retry":           "再试一次",
 }
 
 var enLend = Table{
@@ -96,6 +99,9 @@ var enLend = Table{
 	"lend.os.linux":        "Linux",
 	"lend.os.mac":          "macOS",
 	"lend.loading":         "Getting a code…",
+	"lend.fail.timeout":    "%s didn't answer, so there's no code yet.",
+	"lend.fail.error":      "%s couldn't make a code.",
+	"lend.retry":           "Try again",
 }
 
 func init() {

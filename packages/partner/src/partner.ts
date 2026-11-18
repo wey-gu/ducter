@@ -193,6 +193,14 @@ interface EarlyOpen {
 }
 
 /** Two resolved places name the same place (the early one vs. the call's). */
+/**
+ * A refusal's words for the person's status line: the instruction to the partner ("Tell the user in
+ * one line: …") left out, as newtask.ts does for the New task card (found live, research/127).
+ */
+export function forPerson(msg: string): string {
+  return msg.replace(/\s*Tell the user\b[\s\S]*$/, "").trim() || msg;
+}
+
 function samePlace(a: Place, b: Place): boolean {
   const k = (p: Place) => {
     const x = p as { kind: string; device?: string; repoPath?: string; path?: string; profile?: string; baseBranch?: string };
@@ -1605,7 +1613,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         return { ok: true, taskId: card.taskId, title: card.title, place: card.place, attention: card.attention, note };
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        core.log.append({ stream: "channel", origin: "partner", kind: "job_status", body: { jobId, text: `${args.title}: ${msg}`, state: "failed" } });
+        // The status line is the person's; the "Tell the user …" instruction is the partner's only (as newtask.ts).
+        core.log.append({ stream: "channel", origin: "partner", kind: "job_status", body: { jobId, text: `${args.title}: ${forPerson(msg)}`, state: "failed" } });
         return { ok: false, error: `task_open failed: ${msg}` };
       }
     },

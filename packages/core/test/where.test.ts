@@ -118,6 +118,23 @@ describe("the rules of where", () => {
     expect(q).toMatchObject({ device: "MacBook", harness: "claude-code", waits: "asleep" });
   });
 
+  test("D353: a named computer with no agent signed in (a freshly lent server): one line, never a silent move to the home", () => {
+    const comps: Computer[] = [...setup(), { id: "lab", name: "Lab box", home: false, state: "awake", alwaysOn: true, mac: false, harnesses: [h("claude-code", { installed: false, loggedIn: false }), h("codex", { installed: false, loggedIn: false })] }];
+    const p = chooseBody({ work, computers: comps, settings, rules: [], pinDevice: "Lab box" }) as { problem: string };
+    expect(p.problem).toContain("Lab box can't take this task: no AI agent is signed in there yet");
+    expect(p.problem).toContain("No task was opened");
+    // By id too, and with no agents listed at all.
+    const bare: Computer[] = [...setup(), { id: "lab", name: "Lab box", home: false, state: "awake", alwaysOn: true, mac: false, harnesses: [] }];
+    expect((chooseBody({ work, computers: bare, settings, rules: [], pinDevice: "lab" }) as { problem: string }).problem).toContain("no AI agent is signed in there yet");
+    // Signed in but turned off for tasks: says why, not "sign in".
+    const off: Computer[] = [...setup(), { id: "lab", name: "Lab box", home: false, state: "awake", alwaysOn: true, mac: false, harnesses: [h("codex")] }];
+    const q = chooseBody({ work, computers: off, settings: { ...settings, taskAccounts: { codex: { enabled: false } } }, rules: [], pinDevice: "Lab box" }) as { problem: string };
+    expect(q.problem).toContain("Codex: Use it for tasks is off for it");
+    expect(q.problem).not.toContain("sign in an AI agent");
+    // A name that isn't a computer here: no opinion (the ranking decides, as before).
+    expect(choose(setup(), { pinDevice: "nowhere" }).device).toBe("local");
+  });
+
   test("a rule can name a computer", () => {
     const rule: RuleView = { id: "r1", text: "要登录的网页都在 MacBook 上做", harness: "codex", match: ["订单"], createdAt: "2026-11-10T00:00:00Z", device: "MacBook" };
     const p = chooseBody({ work: { title: "看看订单" }, computers: setup(), settings, rules: [rule], needs: { browse: true } }) as BodyPick;

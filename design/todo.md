@@ -21,7 +21,13 @@ Deferred work, grouped by area, each with its trigger where it has one.
   public address, no Tailscale), paste the line from Lend a computer on hel's own address: the
   reach check, install, join, the user service (and a root run: the system service), the app's
   waiting → joined → here with its agents, a second paste keeps it. Then one failure each: an
-  expired code, a blocked network (the check line), no curl. *Trigger:* next release.
+  expired code, a blocked network (the check line), no curl. Done on two VMs against a scratch
+  Mac home (research/127); still owed against hel's public address, with D353's quieter install
+  (the next release's bundle) and a task that really runs there (an agent signed in on the box).
+  *Trigger:* next release.
+- **The partner's ack before a refused task_open** (research/127 F2): one haiku turn said "On it:
+  running … now" and, after the refusal, nothing. *Trigger:* the next persona change (run the eval
+  with a scenario for a named computer that can't take it).
 - **A Mac home opened to its network on demand**, so a LAN computer can join a Mac home without
   From outside. Device tokens would cross the network over plain http; needs its own decision.
   *Trigger:* someone asks to lend a computer to a Mac home and won't turn on From outside. Calls that are the

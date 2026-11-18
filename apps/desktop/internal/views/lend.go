@@ -30,7 +30,15 @@ type lendState struct {
 	helpOpen  bool
 	copiedKey string
 	copiedAt  time.Time
+	// errsAt: how many error frames had come when the code was asked for, so
+	// only a later "lend_code: …" one counts as the answer.
+	errsAt int
 }
+
+// lendWait is how long 正在拿一个码… waits for the home before it says it
+// didn't answer: never an endless wait (research/127: the Mac dropped the
+// lend frame, and the sheet sat there forever).
+const lendWait = 8 * time.Second
 
 // openLend opens the sheet at its question.
 func (a *App) openLend() {
@@ -42,6 +50,7 @@ func (a *App) openLend() {
 func (a *App) askLend() {
 	a.lend.asked, a.lend.askedFor = a.Now(), a.reachAddress()
 	a.lend.helpOpen = false
+	a.lend.errsAt = len(a.S.Errors)
 	a.S.Lend = nil
 	a.send(protocol.LendCodeReq{T: "lend_code"})
 }
@@ -62,6 +71,25 @@ func lendPhase(l *protocol.ServerFrame, now time.Time) string {
 		return "expired"
 	}
 	return "waiting"
+}
+
+// lendFailed is why no code came: "error" (the home answered the lend_code
+// with an error frame), "timeout" (no answer within lendWait), or "".
+func (a *App) lendFailed(now time.Time) string {
+	if a.S.Lend != nil {
+		return ""
+	}
+	if a.lend.errsAt <= len(a.S.Errors) {
+		for _, e := range a.S.Errors[a.lend.errsAt:] {
+			if strings.HasPrefix(e, "lend_code:") {
+				return "error"
+			}
+		}
+	}
+	if !a.lend.asked.IsZero() && now.Sub(a.lend.asked) >= lendWait {
+		return "timeout"
+	}
+	return ""
 }
 
 // lendOS is a platform's system in words (linux-x64 → Linux), and its
@@ -249,7 +277,20 @@ func (a *App) lendBody(c *ui.Context) {
 	home := a.lendHomeName()
 	switch phase {
 	case "loading":
+		if why := a.lendFailed(a.Now()); why != "" {
+			a.reasonLine(c, a.L.T("lend.fail."+why, home))
+			ui.Row(c).Children(func() {
+				if a.button(c, a.L.T("lend.retry"), btnPrimary, t.ControlMD, t.Surface) {
+					a.askLend()
+				}
+			})
+			break
+		}
 		ui.Text(c, a.L.T("lend.loading")).FontSize(t.SM).TextColor(t.InkMuted)
+		// Drawn again when the wait is over, to say so.
+		if left := lendWait - a.Now().Sub(a.lend.asked); left > 0 {
+			c.After(left + 50*time.Millisecond)
+		}
 	case "noaddress":
 		a.infoText(c, a.L.T("lend.noaddress", home))
 		if hd := a.homeDevice(); hd != nil && hd.State == protocol.DeviceAwake {

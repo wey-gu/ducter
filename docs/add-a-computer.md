@@ -31,6 +31,10 @@ A lent computer only does tasks. It can't read your conversation or decide anyth
 4. Ducter shows **Waiting for it to connect…** until it arrives, then **nas is here**, with
    its system and which AI agents are signed in on it. Rename it there if you like.
 
+Tasks run on that computer with its own AI agents, so sign one in there (Claude Code or Codex, in
+a terminal on that computer). Until one is, asking for a task there gets one line saying so; the
+task never quietly runs somewhere else.
+
 The code works once, for 10 minutes; the card shows how long it has left. Pasting the line
 again later is fine: what is already installed and connected stays as it is.
 
@@ -63,6 +67,7 @@ what to do:
 | What you see | What to do |
 |---|---|
 | The code expired | Choose **New code** and paste the new line. |
+| The code was already used | Choose **New code** and paste the new line. |
 | That computer can't reach your Ducter | It only needs to reach your Ducter's address, outbound. Run the check the card shows on that computer (`curl -sS -m 10 <address>/health`); if it fails, that computer's network or firewall is in the way. |
 | `curl: not found` | Install curl (on Debian or Ubuntu: `sudo apt install curl`) and paste the line again. |
 | This computer isn't supported | Ducter runs on Linux (Intel, AMD or ARM) and on a Mac with Apple silicon (M1 or later). |

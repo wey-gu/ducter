@@ -303,6 +303,16 @@ export function pinProblem(harness: string, b: CandidateBlock): string {
   return `${harnessName(harness)} can't take this task: ${BLOCK_WORDS[b]}. Pick another AI agent, or fix that first.`;
 }
 
+/** D353: the computer the user named has no agent that can take the task (none signed in there, or each one blocked). */
+export function devicePinProblem(c: Pick<Computer, "name">, rows: { harness: string; blocked?: CandidateBlock }[]): string {
+  const signedIn = rows.some((r) => r.blocked !== "not_installed" && r.blocked !== "signed_out" && r.blocked !== "no_model");
+  const why = signedIn
+    ? [...new Map(rows.map((r) => [r.harness, r.blocked])).entries()].map(([h, b]) => `${harnessName(h)}: ${b ? BLOCK_WORDS[b] : "can't do what this task needs there"}`).join(", ")
+    : "no AI agent is signed in there yet";
+  const fix = signedIn ? "fix that" : `sign in an AI agent on ${c.name} (for example run claude or codex in a terminal there)`;
+  return `${c.name} can't take this task: ${why}. No task was opened. Tell the user in one line: ${fix} and ask again, or say to do it on another computer.`;
+}
+
 /**
  * D157: the one reason the top row is on its computer: the first step of the ranking that set it
  * apart from the best row on another computer (design/where.md §4.3). Undefined with one computer.
@@ -375,6 +385,10 @@ export function chooseBody(inp: Omit<CandidateInput, "current"> & { pinned?: { h
   const { rows: all, multi } = rank(inp);
   // A computer the user named holds, even asleep: the task waits there (never moved silently).
   const named = inp.pinDevice ? all.filter((c) => !c.blocked && isComputer(c.comp, inp.pinDevice)) : [];
+  // D353: a computer the user named where no agent can take it (a lent server with none signed
+  // in): their one line, never a silent move to another computer.
+  const there = inp.pinDevice ? inp.computers?.find((c) => isComputer(c, inp.pinDevice)) : undefined;
+  if (there && !named.length) return { problem: devicePinProblem(there, all.filter((r) => r.comp.id === there.id)) };
   const ok = named.length ? named : all.filter((c) => !c.blocked);
   const rule = ruleFor(inp.rules, inp.work);
   const pick = (c: Row, why: BodyWhy): BodyPick => {

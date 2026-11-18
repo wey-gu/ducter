@@ -14,7 +14,7 @@ import { languageOfTexts, normalizeTag } from "@ducter/protocol/src/lang.ts";
 import { pushState, type PushState } from "./push-client.ts";
 import { haptic, inApp, nativeCall, nativeInfo, tellReach, tellWays } from "./native.ts";
 import { copy } from "./conv-copy.ts";
-import { applyLend, type LendKind, type LendState } from "./lend-view.ts";
+import { applyLend, LEND_WAIT_MS, lendError, type LendKind, type LendState } from "./lend-view.ts";
 import { attention, doneTodayOf, finished, LANE, laneOf, looksSecret, olderPage, placeOf, Store, title, windowAsk, type DecisionState, type Entry } from "./store.ts";
 import { harnessName, modelName, shownDeviceName, spoken, withoutStaleAgentUpdate, withoutStaleFailure } from "./format.ts";
 import { canFillNow, wideNow } from "./fold.ts";
@@ -837,6 +837,7 @@ class AppState {
     if (f.t === "action_result") this.actSent.delete(f.taskId);
     // D325: a held message that already went (another window said it, or the turn ended first).
     if (f.t === "error" && f.message.startsWith("task_held:")) this.toast(this.L.t("held.gone"));
+    if (f.t === "error" && f.message.startsWith("lend_code:")) (this.lend = lendError(this.lend, f.message)), this.changed();
     if (f.t === "welcome") {
       if (typeof f.version === "string" && f.version !== DUCTER_VERSION) this.staleFor = f.version;
       // D190: a new socket (the phone came back from the background, the link dropped): the old
@@ -2023,9 +2024,11 @@ class AppState {
   }
   /** D347: the kind chosen (or 换一个新码 / New code): a fresh code and its line. */
   lendAsk(kind: LendKind) {
-    this.lend = { kind, awaiting: true };
+    this.lend = { kind, awaiting: true, askedAt: Date.now() };
     this.send({ t: "lend_code" });
     this.changed();
+    // No answer is said once the wait is over (the sheet reads the clock), never an endless wait.
+    setTimeout(() => this.lend?.awaiting && this.changed(), LEND_WAIT_MS + 50);
   }
   closeLend() {
     this.lend = undefined;

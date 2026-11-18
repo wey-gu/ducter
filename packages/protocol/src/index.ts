@@ -1962,9 +1962,10 @@ export type DeviceMemAction = "install" | "connect";
  * D366: why the last step didn't work. network / space / unsupported: putting the command line
  * there (no internet, no room, no build for that computer); bad_link: not a connect link (refused
  * before anything ran); used: Mem says the link was used or expired (one uniform answer, 410);
- * unreachable: the link's Mem couldn't be reached from that computer; failed: anything else (detail).
+ * unreachable: the link's Mem couldn't be reached from that computer; refused: Mem turned the sign-in down
+ * (401/403, D371); failed: anything else (detail).
  */
-export type DeviceMemReason = "network" | "space" | "unsupported" | "bad_link" | "used" | "unreachable" | "failed";
+export type DeviceMemReason = "network" | "space" | "unsupported" | "bad_link" | "used" | "unreachable" | "refused" | "failed";
 /**
  * D366: absent: no Mem command line there; sign_in: it's there, not signed in to a Mem it can
  * reach (Mem's own `nmem doctor`); ready: signed in, its check passes. `agents`: the AI agents

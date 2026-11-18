@@ -76,20 +76,22 @@ export function MemOnDevice({ dv }: { dv: DeviceView }) {
         <div class="ag-login wmem-signin">
           <p>{A.bridge?.where === "local" ? t("wmem.signin.local", home, dv.name) : t("wmem.signin.how")}</p>
           <div class="ag-paste">
-            <input
-              class="dev-input"
-              type="url"
-              inputMode="url"
+            {/* D371: Mem copies a whole prompt (a token and its Mem's address), so the box takes lines. */}
+            <textarea
+              class="wmem-paste"
+              rows={3}
               autoComplete="off"
               autoCapitalize="off"
               autoCorrect="off"
               spellcheck={false}
-              enterKeyHint="go"
+              enterkeyhint="go"
               value={link}
-              placeholder="https://…?nmem_connect=…"
+              placeholder={t("wmem.signin.ph")}
               aria-label={t("wmem.signin.link")}
-              onInput={(e) => setLink((e.target as HTMLInputElement).value)}
-              onKeyDown={(e) => e.key === "Enter" && go()}
+              onInput={(e) => setLink((e.target as HTMLTextAreaElement).value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey && !e.isComposing) (e.preventDefault(), go());
+              }}
             />
             <Btn kind="primary" size="sm" label={t("wmem.signin.go")} about="Nowledge Mem" disabled={!link.trim()} onClick={go} />
           </div>

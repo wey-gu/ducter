@@ -51,6 +51,7 @@ import { createLend } from "./lend.ts";
 import { callAbility, createDevicesView, publicAddress, qrRows, homeName as savedHomeName, type DeviceProbes, type DevicesView } from "./devices.ts";
 import { openSettings, type SettingsStore } from "./settings.ts";
 import { createBridgeLink, nmemCall, type NmemCall } from "./bridge-link.ts";
+import { connectLinkFrom } from "./mem-cli.ts";
 import { createMemGlance } from "./mem-glance.ts";
 import { createWorkingMemory } from "./working-memory.ts";
 import { identityIdFor, readMemIdentity } from "./mem-identity.ts";
@@ -1070,7 +1071,10 @@ export function startCore(opts: CoreOptions = {}): Core {
     const link0 = workers.link(id);
     if (!link0) return { ok: false, reason: "away" };
     try {
-      await link0.call("mem_setup", { action, ...(link ? { link } : {}) }, 30_000);
+      // D371: the person pastes what Mem copies (a prompt with a token in it); the computer gets the
+      // link made from it, which a Ducter there from before D371 also takes. Not one: as pasted, refused there.
+      const sent = link ? (connectLinkFrom(link) ?? link) : undefined;
+      await link0.call("mem_setup", { action, ...(sent ? { link: sent } : {}) }, 30_000);
       return { ok: true };
     } catch {
       // A Ducter there from before D366 doesn't know the op.

@@ -48,7 +48,8 @@ import { dirname, join } from "node:path";
 import { createHash } from "node:crypto";
 import type { BridgeRefusal, BridgeView } from "@ducter/protocol";
 import type { BridgeLinkApi } from "@ducter/protocol/src/internal.ts";
-import { connectLinkOk, copyOf, copyPython, externallyManaged, extraBins, findNmem, installPlan, joinPath, MEM_INSTALL_MS, PY_PROBE, realSys, toolOf, updatePlan, type MemCopy, type MemFacts, type MemPlan, type MemStep, type MemSys } from "./mem-cli.ts";
+import { scrub } from "./worker-mem.ts";
+import { connectLinkFrom, copyOf, copyPython, externallyManaged, extraBins, findNmem, installPlan, joinPath, MEM_INSTALL_MS, PY_PROBE, realSys, toolOf, updatePlan, type MemCopy, type MemFacts, type MemPlan, type MemStep, type MemSys } from "./mem-cli.ts";
 import { nmemEnv, toolEnv } from "@ducter/protocol/src/tool-env.ts";
 
 export const BRIDGE_CONNECTION_FILE = "bridge-connection.json";
@@ -1035,20 +1036,23 @@ export function createBridgeLink(opts: {
     async signInMem(link) {
       if (busy || (opts.memoryOn && !opts.memoryOn())) return;
       signInDetail = undefined;
-      if (!connectLinkOk(link)) {
+      // D371: Mem copies a whole prompt (a token and its Mem's address); the link is made from it.
+      const made = connectLinkFrom(link);
+      if (!made) {
         signIn = "bad";
         return changed();
       }
+      link = made;
       busy = "signing_in";
       signIn = undefined;
       changed();
       try {
         // Saves the sign-in only: no AI tool's settings change (D169 does that, on its own tap).
-        const r = await run(["connect", "--skip-tools", link.trim()]);
+        const r = await run(["connect", "--skip-tools", link]);
         if (!r || r.code !== 0) {
           const text = r ? `${r.out}\n${r.err}` : "";
           signIn = /\b410\b|gone|already used|expired/i.test(text) ? "used" : "failed";
-          if (signIn === "failed") signInDetail = r ? lastLine(r.err || r.out).replaceAll(link.trim(), "<link>") : "nmem didn't start";
+          if (signIn === "failed") signInDetail = r ? scrub(lastLine(r.err || r.out), link) : "nmem didn't start";
           return;
         }
         const q = await look(true);

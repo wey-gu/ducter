@@ -130,7 +130,8 @@ What your partner remembers about you has its own section, **Memory**.
 - Without [Nowledge Mem](https://mem.nowledge.co), your partner still remembers your
   conversation on its own. This section then says what Nowledge Mem adds and walks you through it
   in two steps: **Install Nowledge Mem** (one tap puts it on the computer Ducter runs on) and
-  **Sign in to your Nowledge Mem** with a one-time connect link. Already use the Nowledge Mem app?
+  **Sign in to your Nowledge Mem**: paste what Nowledge Mem copies when you click **Generate
+  connect link & copy prompt** under its **Settings › Connectors › Any AI agent**. Already use the Nowledge Mem app?
   Open it on that computer and your partner finds it.
 - When the Nowledge Mem app on that computer is closed, the section says **Nowledge Mem isn't open**.
   On a Mac, **Open Nowledge Mem** opens it for you; anything your partner noted meanwhile waits and

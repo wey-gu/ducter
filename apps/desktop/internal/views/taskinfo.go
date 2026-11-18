@@ -274,7 +274,7 @@ func (a *App) infoActs(c *ui.Context, task *store.Task, base string) {
 		}
 		switch {
 		case task.Acting != "":
-			ui.Text(c, a.L.T("result.acting."+task.Acting, base)).FontSize(t.SM).TextColor(t.InkMuted)
+			ui.Text(c, a.L.TFamily("result.acting."+task.Acting, base)).FontSize(t.SM).TextColor(t.InkMuted)
 		case merged:
 			ui.Text(c, a.L.T("result.merged", base)).FontSize(t.SM).FontWeight(700).TextColor(t.Done.Ink)
 		default:

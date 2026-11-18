@@ -190,7 +190,7 @@ func (a *App) mergeAction(c *ui.Context, task *store.Task) {
 	}
 	switch {
 	case task.Acting != "":
-		ui.Text(c.Key("acting:"+task.ID), a.L.T("result.acting."+task.Acting, base)).FontSize(t.SM).TextColor(t.InkMuted)
+		ui.Text(c.Key("acting:"+task.ID), a.L.TFamily("result.acting."+task.Acting, base)).FontSize(t.SM).TextColor(t.InkMuted)
 	case task.Unsure != "":
 		if a.quietButton(c, "retry:"+task.ID, a.L.T("task.action.retry"), a.L.T("result.unsure"), true, 0) {
 			a.RetryAction(task)

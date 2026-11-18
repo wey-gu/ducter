@@ -93,7 +93,7 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
 
 ## Deep Nowledge Mem integration (D295, `memory.md`)
 
-- **D366 live:** a real connect link redeemed on a lent computer, `nmem doctor` passing there, and one task
+- **D366 live (and D371):** a real prompt from Mem's Settings › Connectors › Any AI agent pasted whole and redeemed on a lent computer and on a home, `nmem doctor` passing there, and one task
   run there with Mem's plugin (its Context Bundle in, its thread captured as the persona). Trigger: the
   author's haswell after the next release (his link, his Mem).
 - **D366: `nmem connect --tool` for D169's 装上 everywhere** (research/136 G5): Mem's own command registers

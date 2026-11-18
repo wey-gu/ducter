@@ -377,6 +377,17 @@ describe("the link over a fake nmem", () => {
     expect(JSON.stringify(await r.link.view())).not.toContain("nmem_ct_");
   });
 
+  test("D371: the whole prompt Mem copies signs the home in with the link made from it", async () => {
+    const r = rig({ NMEM_FAKE_SIGNED_OUT: "1" });
+    const token = `nmem_ct_${"5a".repeat(32)}`; // made up
+    const prompt = `Connect Nowledge Mem for this AI tool.\nStep 1: Redeem the one-time connect link (single use, expires in 15 minutes):\nPOST https://cloud.example/api/remote-access/redeem-connect-token\nBody: {"token":"${token}"}\nStep 2: nmem config client set --url https://cloud.example --api-key <api_key from step 1>`;
+    await r.link.view();
+    await r.link.signInMem(prompt);
+    expect(r.calls().find((c) => c.some((x) => x.includes(token)))).toEqual(["--json", "connect", "--skip-tools", `https://cloud.example/app?nmem_connect=${token}`]);
+    expect((await r.link.view())?.state).toBe("ready");
+    expect(JSON.stringify(await r.link.view())).not.toContain(token);
+  });
+
   test("D269: Mem on this computer that offers no place to connect: local_mem, after asking it", async () => {
     const r = rig({ NMEM_FAKE_BACKEND: "local", NMEM_FAKE_LOCAL_BRIDGE: "off" });
     expect(await r.link.view()).toEqual({ state: "local_mem", identity: "ducter", home: "hel", version: "0.10.118", where: "local" });

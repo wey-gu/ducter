@@ -15,7 +15,8 @@
 // managed), nothing outside Ducter's folder; deleting <data>/tools undoes it. A computer that
 // already has `nmem` (the person's own) keeps it.
 //
-// Signing in (the person's tap, with a one-time connect link they made in Mem): Mem's own
+// Signing in (the person's tap, with what Mem's Connectors page copies: a prompt carrying a one-time
+// token and its Mem's address, made into a connect link here, D371): Mem's own
 // `nmem connect <link> --tool <each agent there>`, which redeems the link, writes Mem's single
 // credential home (~/.nowledge-mem/config.json), verifies it live, and registers Mem's plugin in
 // Claude Code and Codex (DOCUMENTED, SKILL.md "What nmem connect does"). With no link and Mem
@@ -27,7 +28,7 @@ import { join } from "node:path";
 import type { DeviceMemReason, DeviceMemView } from "@ducter/protocol";
 import { toolsOwnBin } from "./agent-path.ts";
 import { realAgentSetupSys } from "./agent-setup.ts";
-import { connectLinkOk } from "./mem-cli.ts";
+import { connectLinkFrom } from "./mem-cli.ts";
 
 /** uv, the one tool Ducter brings to put Mem's command line in (a release at least two weeks old). */
 export const UV_RELEASE = {
@@ -79,6 +80,8 @@ export function scrub(text: string, link?: string): string {
   return s
     .replace(/https?:\/\/\S*(nmem_connect|nmem_api_key|[?&](token|key)=)\S*/gi, "<link>")
     .replace(/\bnmem_[a-z]{2}_[A-Za-z0-9_\-]+/g, "nmem_…")
+    .replace(/\bnmem_[A-Za-z0-9]{20,}/g, "nmem_…")
+    .replace(/("?api[_-]?key"?\s*[:=]\s*"?)[^\s",}]+/gi, "$1…")
     .replace(/\b(sk|key|token)[-_][A-Za-z0-9_\-]{12,}/gi, "…");
 }
 const lastLine = (text: string, link?: string) =>
@@ -92,6 +95,8 @@ const lastLine = (text: string, link?: string) =>
 /** What `nmem connect` said when it didn't (Mem answers a used or expired link with one 410). */
 export function connectReason(out: string): DeviceMemReason {
   if (/\b410\b|gone|already (been )?used|expired|redeem(ed)?.*(once|invalid)/i.test(out)) return "used";
+  // D371: Mem turned the sign-in down (a key it doesn't accept).
+  if (/\b40[13]\b|unauthori[sz]ed|forbidden|invalid api key/i.test(out)) return "refused";
   if (/dns error|failed to lookup|connection refused|tcp connect|timed? ?out|unreachable|error sending request|certificate/i.test(out)) return "unreachable";
   return "failed";
 }
@@ -213,15 +218,17 @@ export function createWorkerMem(o: {
     await look();
   }
 
-  async function connectNow(link?: string): Promise<void> {
+  async function connectNow(pasted?: string): Promise<void> {
     const nmem = sys.which("nmem");
     if (!nmem) return set({ phase: "failed", reason: "failed" });
-    if (link !== undefined && !connectLinkOk(link)) return set({ phase: "failed", reason: "bad_link" });
+    // D371: what Mem copies is a whole prompt (or its token, or a link): the link is made from it.
+    const link = pasted === undefined ? undefined : connectLinkFrom(pasted);
+    if (pasted !== undefined && !link) return set({ phase: "failed", reason: "bad_link" });
     set({ phase: "connecting" });
     const here = o.agents().filter((h) => MEM_CONNECT_TOOLS[h]);
     const toolArgs = here.length ? here.flatMap((h) => ["--tool", MEM_CONNECT_TOOLS[h]!]) : ["--skip-tools"];
     // Cloning a plugin's marketplace is most of it; a slow line gets five minutes.
-    const r = await sys.run([nmem, "--json", "connect", ...(link ? [link.trim()] : []), ...toolArgs], { env: sys.env(), timeoutMs: 5 * 60_000 });
+    const r = await sys.run([nmem, "--json", "connect", ...(link ? [link] : []), ...toolArgs], { env: sys.env(), timeoutMs: 5 * 60_000 });
     if (r.code !== 0) {
       const detail = lastLine(r.out, link);
       return set({ phase: "failed", reason: connectReason(r.out), ...(detail ? { detail } : {}) });

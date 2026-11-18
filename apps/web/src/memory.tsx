@@ -429,7 +429,7 @@ export function MemSteps({ phase, b }: { phase: "install" | "installing" | "sign
               {why && <small class="mem-why">{why}</small>}
               <label class="acct-field">
                 <span class="small">{t("bridge.mem.signin.link")}</span>
-                <input type="url" inputMode="url" autoComplete="off" autoCapitalize="off" autoCorrect="off" spellcheck={false} enterKeyHint="go" placeholder="https://…?nmem_connect=…" value={link} disabled={busySign} onInput={(e) => setLink((e.target as HTMLInputElement).value)} onKeyDown={(e) => e.key === "Enter" && go()} />
+                <textarea class="wmem-paste" rows={3} autoComplete="off" autoCapitalize="off" autoCorrect="off" spellcheck={false} enterkeyhint="go" placeholder={t("bridge.mem.signin.ph")} value={link} disabled={busySign} onInput={(e) => setLink((e.target as HTMLTextAreaElement).value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing) (e.preventDefault(), go()); }} />
               </label>
               <Btn kind="primary" size="sm" disabled={busySign || !link.trim()} label={busySign ? t("bridge.mem.signin.busy") : t("bridge.mem.signin.go")} about={home} onClick={go} />
             </>

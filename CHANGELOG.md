@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.0.82 - 2026-11-18
+
+<!-- whats-new
+zh: 连 Mem 直接贴整段；认得 DeepSeek Harness 应用
+en: Paste Mem's whole connect prompt; DeepSeek Harness app found
+-->
+
+**Devices**
+- Nowledge Mem on a computer for tasks: paste everything Mem's Connectors page copies (Any AI
+  agent, "Generate connect link & copy prompt"). An expired or used one says so, and you can
+  paste a fresh one right there.
+- DeepSeek Harness installed as the Mac app is found, with its sign-in.
+
+**Agent messaging**
+- When Nowledge Mem can't read a mailbox for now, Settings says so once, and Ducter checks less
+  often until it can.
+
+**Fixes**
+- A line on the Mac no longer shows stray text like "%!(EXTRA …)".
+
 ## 0.0.81 - 2026-11-18
 
 <!-- whats-new

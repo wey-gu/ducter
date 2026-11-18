@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.0.87 - 2026-11-19
+
+<!-- whats-new
+zh: 把清单、表格置顶，伙伴帮你一直改着
+en: Pin a list or table; your partner keeps it current
+zh: 要你定的事可以晚点再问
+en: Put a decision off: ask me later
+-->
+
+**Conversation**
+- Pin a table, chart or checklist from a reply: it stays at the top of the conversation, ticks
+  are kept on every device, and asking for a change updates it in place.
+
+**Decisions**
+- "Ask me later" on a card puts it off until tonight, tomorrow morning or a time you pick. Nothing
+  happens in between; when it comes back it waits for you to see it before any default runs.
+
+**Look**
+- An AI agent without its own mark reads clearly on dark cards.
+
 ## 0.0.86 - 2026-11-19
 
 <!-- whats-new

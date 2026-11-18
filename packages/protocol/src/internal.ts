@@ -158,6 +158,34 @@ export interface CoreApi {
   mine?: { event(e: LogEvent): boolean; task(c: TaskCard): boolean };
   /** D312: the partner a task is for, by its persona id: its name (the task's brief) and Mem identity (NMEM_AGENT_ID). */
   personaFor?(id: string | undefined): { name: string; mem?: MemIdentity };
+  /** D367: Nowledge Mem's Working Memory, read-only (core/src/working-memory.ts); absent in tests and stubs, or with memory off. */
+  workingMemory?: WorkingMemoryPort;
+}
+
+/**
+ * D367: the person's Working Memory in Nowledge Mem (their daily focus surface), as the partner may
+ * see it: their own notes kept by another app, so data, never instructions; one line each, clipped.
+ */
+export interface WorkingMemoryView {
+  /** The day Mem wrote it for (YYYY-MM-DD). */
+  date: string;
+  /** Changes when what is here changes: the partner is given it again then, and once per session. */
+  key: string;
+  focus: { name: string; about?: string }[];
+  briefing?: string;
+  /** What waits for the person's decision, in Mem's words (at most 3); awaitingMore counts the rest. */
+  awaiting: string[];
+  awaitingMore?: number;
+  flags: string[];
+}
+
+export interface WorkingMemoryPort {
+  /** What is known now (never older than a few days); a stale read is refreshed in the background. */
+  get(): WorkingMemoryView | undefined;
+  /** Read now (one read in flight at a time). */
+  refresh(): Promise<WorkingMemoryView | undefined>;
+  /** Fresh if a read is due, waiting at most ms for it; else what is known. */
+  ready(ms: number): Promise<WorkingMemoryView | undefined>;
 }
 
 /** D206: the home's media store as the runner and the partner use it. */

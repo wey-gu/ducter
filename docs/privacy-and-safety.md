@@ -110,6 +110,10 @@ If you use [Nowledge Mem](https://mem.nowledge.co), your partner starts out know
 and what you're working on, from the same memory the AI tools you use elsewhere share. When it saves
 something worth keeping, its reply's **Details** shows one quiet line: **Noted “<what it
 saved>”**, with **Forget**. **Settings › Memory** lists them under **What it noted**.
+It also reads, never writes, the day's focus your Nowledge Mem keeps for you, so it knows what
+you're on when it suggests what to do first or picks the morning's few things; it never repeats it
+back. Ask it how you did something in another AI tool ("how did I fix this in Codex last week?")
+and it looks through those past conversations Nowledge Mem keeps, a few lines at a time.
 Its tasks know you too. A task runs with your Nowledge Mem plugin, under your partner's name in
 Nowledge Mem, so it starts with what you and your partner know and its work is kept there the
 way your own sessions are. On a computer where the plugin isn't installed for that AI agent, your

@@ -113,6 +113,9 @@ export interface Expect {
   /** memory_search was called (at least once) / never called. */
   recall?: boolean;
   noRecall?: boolean;
+  /** D367 (G3): the person's past conversations were searched (memory_search read threads) / were not. */
+  threadSearch?: boolean;
+  noThreadSearch?: boolean;
   /** A memory was saved whose title + content matches this. */
   remember?: RegExp;
   /** Nothing was saved to memory. */
@@ -179,6 +182,10 @@ export interface Scenario {
   /** The fake Mem's contents. Omitted = an empty Mem; `memoryDown` = Mem not installed. */
   memories?: SeedMemory[];
   memoryDown?: boolean;
+  /** D367 (G3): the person's past conversations with other AI tools in the fake Mem (threads). */
+  threads?: import("../src/memory.ts").ThreadHit[];
+  /** D367 (G2): the person's Working Memory in the fake Mem (nmem's `parsed` fields); omitted = none. */
+  workingMemory?: { focus: { name: string; description?: string }[]; briefing?: string; rulings?: string[] };
   steps: Step[];
   expect: Expect;
   /** What the judge checks, specific to this scenario. */
@@ -274,6 +281,30 @@ const RELEASE_CC: SeedMemory = {
   date: "2026-11-15",
   kind: "procedure",
   source: "claude-code",
+};
+// D367: the author's day as Mem's Working Memory would hold it, and two past Codex conversations.
+const WM_RELEASE: NonNullable<Scenario["workingMemory"]> = {
+  focus: [
+    { name: "HawDB 0.9 release", description: "Cutting 0.9 this week: rerun the benchmarks on the bench machine, then tag." },
+    { name: "Ducter iPhone app", description: "TestFlight build for the phone client." },
+  ],
+  briefing: "Release week for HawDB 0.9: the benchmark rerun is the one open item before the tag.",
+  rulings: ["Tag 0.9 without an RC?"],
+};
+const FLAKY_THREAD: import("../src/memory.ts").ThreadHit = {
+  title: "recall test flaky on CI",
+  source: "codex",
+  date: "2026-11-12",
+  lines: [
+    { who: "user", text: "the recall test in packages/partner is flaky again on CI, fix it" },
+    { who: "assistant", text: "Found it: the recall test raced the index build. I made it await indexReady() before the first query; 50 runs green." },
+  ],
+};
+const OTHER_THREAD: import("../src/memory.ts").ThreadHit = {
+  title: "HawDB checkpoint interval",
+  source: "claude-code",
+  date: "2026-11-04",
+  lines: [{ who: "user", text: "make the checkpoint interval configurable" }],
 };
 // A message to another agent is one question plus background, never numbered sub-questions.
 const OVER_ASK = /(?:^|[\s：:，,])(?:1[.)、）]|\(1\)|（1）|①)[\s\S]*?(?:2[.)、）]|\(2\)|（2）|②)|(^|\n)\s*[-*•]\s[\s\S]*\n\s*[-*•]\s/;
@@ -1286,6 +1317,50 @@ export const scenarios: Scenario[] = [
     steps: [{ user: "In two sentences: what's a write-ahead log for?" }],
     expect: { opens: 0, msgs: [1, 1], maxChars: 400, require: [/log|durab|crash/i], forbid: [NO_MEM_TALK], sourceLines: 0 },
     rubric: "A general question memory has nothing to add to: answered directly in about two short English sentences (durability: changes are written to a log before the data files, so a crash can be recovered). No task, no talk about memory, and no source line under the reply.",
+  },
+
+  // D367 (G2): the person's Working Memory (their day's focus in Mem) is background: it shapes what the
+  // partner suggests first, and is never said as read. (G3): past conversations with other AI tools.
+  {
+    id: "wm-focus-first-zh",
+    category: "memory",
+    lang: "zh",
+    workingMemory: WM_RELEASE,
+    steps: [{ user: "今天先弄哪个？" }],
+    expect: { opens: [0, 1], msgs: [1, 2], maxChars: 160, require: [/HawDB|基准|benchmark|发布|0\.9/i], forbid: [NO_MEM_TALK, /工作记忆|Working Memory|你的笔记|你记下的|我看到你/] },
+    rubric:
+      "The user's own notes (given to the partner as background) say their focus today is the HawDB 0.9 release, with the benchmark rerun the one open item before the tag. Pass if the partner suggests starting with the HawDB benchmark rerun (or the 0.9 release) in a few short, natural Chinese sentences, as a partner who knows what they're on, optionally offering to start it ('which first' asks for an order: saying what can come after is fine). It must not say it read their notes, memory or working memory, and must not recite their briefing or list their focus areas.",
+  },
+  {
+    id: "wm-quiet-en",
+    category: "memory",
+    lang: "en",
+    workingMemory: WM_RELEASE,
+    steps: [{ user: "What's Postgres's default port?" }],
+    expect: { opens: 0, msgs: [1, 1], maxChars: 200, require: [/5432/], forbid: [NO_MEM_TALK, /HawDB|benchmark|release|focus/i] },
+    rubric: "A general question: answered directly in one short English line (5432). The user's focus (in the partner's background) has nothing to do with it and must not be brought up; no talk about memory or notes.",
+  },
+  {
+    id: "thread-recall-en",
+    category: "memory",
+    lang: "en",
+    memories: MEM_BACKGROUND,
+    threads: [FLAKY_THREAD, OTHER_THREAD],
+    steps: [{ user: "How did I fix that flaky recall test in Codex last week?" }],
+    expect: { recall: true, threadSearch: true, opens: [0, 1], maxChars: 320, require: [/index/i, /await|wait/i], forbid: [NO_MEM_TALK] },
+    rubric:
+      "Only a past Codex conversation (Nov 12) knows: the recall test raced the index build, and the fix was making the test await indexReady() before its first query. Pass if the partner says so briefly in English (naming Codex or the day is fine), as someone who remembers, without saying it searched, and without pasting the conversation.",
+  },
+  {
+    id: "thread-recall-zh",
+    category: "memory",
+    lang: "zh",
+    memories: MEM_BACKGROUND,
+    threads: [FLAKY_THREAD, OTHER_THREAD],
+    steps: [{ user: "我上次怎么修的那个 recall 测试老挂的问题？" }],
+    expect: { recall: true, threadSearch: true, opens: [0, 1], maxChars: 160, require: [/index|索引/i], forbid: [NO_MEM_TALK] },
+    rubric:
+      "Only a past Codex conversation (Nov 12) knows: the recall test raced the index build; the fix was making the test await indexReady() before its first query. Pass if the partner says so in a few short Chinese sentences as someone who remembers (naming Codex is fine), without saying it searched or pasting the conversation.",
   },
 
   // ---------- K. other agents, through Bridge (design/bridge.md S1, S2; D105–D111) ----------

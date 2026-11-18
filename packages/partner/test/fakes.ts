@@ -1,6 +1,6 @@
 // Test fakes: an in-memory core and a scripted HarnessPort / Runner.
 import type { EventKind, LogEvent, Place, TaskCard } from "../../protocol/src/index.ts";
-import type { MemoryAdd, MemoryClient } from "../src/memory.ts";
+import type { MemoryAdd, MemoryClient, ThreadHit } from "../src/memory.ts";
 import type {
   AppendInput,
   CoreApi,
@@ -206,8 +206,9 @@ export function fakeRunner(script: Script) {
 }
 
 /** In-memory stand-in for Nowledge Mem: tests never reach the user's real Mem. */
-export function fakeMemory(seed: { id?: string; title: string; content: string; date?: string; kind?: string; source?: string }[] = [], opts: { down?: boolean } = {}) {
+export function fakeMemory(seed: { id?: string; title: string; content: string; date?: string; kind?: string; source?: string }[] = [], opts: { down?: boolean; threads?: ThreadHit[] } = {}) {
   const searches: { query: string; limit: number }[] = [];
+  const threadSearches: { query: string; limit: number }[] = [];
   const added: MemoryAdd[] = [];
   // D304: every seeded memory has Mem's id and source (the person's words to Ducter by default).
   const all = seed.map((m, i) => ({ ...m, id: m.id ?? `mem-seed-${i + 1}`, source: m.source ?? "ducter" }));
@@ -220,11 +221,19 @@ export function fakeMemory(seed: { id?: string; title: string; content: string; 
       const hits = all.filter((m) => score(m) > 0).sort((a, b) => score(b) - score(a));
       return { ok: true, hits: (hits.length ? hits : all).slice(0, limit) };
     },
+    // D367 (G3): the person's past conversations with other tools, matched by any query word.
+    async threads(query, limit) {
+      threadSearches.push({ query, limit });
+      if (opts.down) return { ok: false, reason: "not_configured", message: "Nowledge Mem isn't installed on this machine." };
+      const words = query.toLowerCase().split(/[\s,，。]+/).filter(Boolean);
+      const ts = (opts.threads ?? []).filter((t) => words.some((w) => `${t.title} ${t.lines.map((l) => l.text).join(" ")}`.toLowerCase().includes(w)));
+      return { ok: true, threads: ts.slice(0, limit) };
+    },
     async add(m) {
       if (opts.down) return { ok: false, reason: "not_configured", message: "Nowledge Mem isn't installed on this machine." };
       added.push(m);
       return { ok: true, id: `mem-${added.length}` };
     },
   };
-  return { memory, searches, added };
+  return { memory, searches, added, threadSearches };
 }

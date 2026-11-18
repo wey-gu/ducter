@@ -32,6 +32,8 @@ export interface RigOptions {
   dir?: string;
   /** How the fake accounts answer (fakeAccounts' options). */
   accounts?: Parameters<typeof fakeAccounts>[1];
+  /** D367: the person's Working Memory (a fake Mem's): its focus ranks the morning's finds. */
+  workingMemory?: ProactiveOptions["workingMemory"];
 }
 
 export function rig(o: RigOptions = {}) {
@@ -82,6 +84,7 @@ export function rig(o: RigOptions = {}) {
     ...(o.agentName ? { agentName: () => o.agentName } : {}),
     ...(o.judge ? { judge: o.judge } : {}),
     ...(o.monthTokens ? { monthTokens: o.monthTokens } : {}),
+    ...(o.workingMemory ? { workingMemory: o.workingMemory } : {}),
     present: () => present,
     zone: () => ZONE,
   };

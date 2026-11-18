@@ -44,6 +44,8 @@ export interface WorkerHello {
   agentUpdates?: string[];
   /** D366: where Nowledge Mem stands there (absent from a worker before D366, or before it looked). */
   mem?: import("@ducter/protocol").DeviceMemView;
+  /** D377: the person's own agents' records there: their yes, and which agents wrote when (file times alone). */
+  records?: import("@ducter/protocol").DeviceRecordsView;
   /**
    * D293: the sessions this worker still holds after its socket dropped (its grace, 2 min): the
    * home reattaches these and ends the rest. Absent (a worker before D293): every session ended.
@@ -450,6 +452,11 @@ export function createWorkers(opts: {
         else if (f?.t === "mem") {
           const entry = live.get(ws.data.device.id);
           if (entry?.hello && f.mem && typeof f.mem === "object") (entry.hello.mem = f.mem), changed();
+        }
+        // D377: the yes for the person's own agents' records there was given or taken back.
+        else if (f?.t === "records") {
+          const entry = live.get(ws.data.device.id);
+          if (entry?.hello && f.records && typeof f.records === "object") (entry.hello.records = f.records), changed();
         }
         else if (f?.t === "agents") {
           const entry = live.get(ws.data.device.id);

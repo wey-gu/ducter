@@ -139,9 +139,16 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
 - [ ] **Change when for every week picks the weekday** (today it keeps the routine's own day). Trigger: the first weekly routine moved to another day.
 - [ ] **On hand's rows draw the person's picture and name** (the name already is the title; the picture is not drawn on rows yet). Trigger: On hand's redesign settles.
 
+## The person's own sessions on a computer for tasks (D377, research/148)
+
+- [ ] **D377: live on the author's MacBook** (hel the home, the yes on Macbook Pro M3's card, "接着我终端里那个 Claude 在做的" carried on there). Trigger: the next release on hel and the MacBook.
+- [ ] **D377: Past tasks' 也在这台电脑上 for a computer for tasks** (the conversation finds them; Past tasks still lists the home's only). Trigger: the person looks for one in Past tasks.
+- [ ] **D377: the yes as a card in the conversation** (today the line points to the computer's card). Trigger: the author or a rater finds the trip to Your devices a detour.
+- [ ] **D377: the file-times view refreshes at hello and reconnect only**; the find asks each computer afresh, so only the card's agents can be stale. Trigger: a card shows an agent the person removed.
+
 ## Continue on another computer, and from the person's own terminal (D376, research/147)
 
-- [ ] **D376: the author's own case: terminal sessions on a worker** (hel is the home, his terminal Claude Code runs on the MacBook): D327's yes asked on that computer, a `localSessions` op over the worker link answering the same reader there, and `own_session_continue` adopting on that worker (place `folder` with its device). Trigger: the author asks for one from the conversation, as he will (his terminal is on the Mac).
+- [x] **D376: the author's own case: terminal sessions on a worker** (built by D377) (hel is the home, his terminal Claude Code runs on the MacBook): D327's yes asked on that computer, a `localSessions` op over the worker link answering the same reader there, and `own_session_continue` adopting on that worker (place `folder` with its device). Trigger: the author asks for one from the conversation, as he will (his terminal is on the Mac).
 - [ ] **D376: the move, live** (the trip continued from hel's browser into the MacBook's Chrome, then booked up to payment). Trigger: the author's next errand that needs a sign-in only the Mac has.
 - [ ] **D376: Codex and pi say which sessions are open** (only the file's time today: written in the last 2 min). Trigger: Codex writes a running-thread file, or a person carries on one that was open.
 - [ ] **D376: Claude Code's `sessions/<pid>.json` shape** is undocumented (read on 2.1.32x): a change makes an open session look closed. Trigger: a Claude Code release that renames it; check on each agent update (`agents.ts`'s version).

@@ -40,6 +40,8 @@ export interface LocalAgents {
    * ran, so those under `skip` (Ducter's own, temporary folders) don't count; Codex's don't say.
    */
   active(o: { since: number; skip?: string[] }): LocalAgent[];
+  /** D377: when each agent last wrote a session here (ms), by file times and names alone, as active(). */
+  latest(o?: { skip?: string[] }): Partial<Record<LocalAgent, number>>;
   /**
    * D376: whether a session is still open where the person ran it: "running" when its agent says
    * so (Claude Code keeps one small file per running process, `sessions/<pid>.json`, with the
@@ -102,6 +104,17 @@ export function createLocalAgents(opts: { home?: string; env?: Record<string, st
     }
     return out.sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt));
   };
+  // Claude Code: projects/<cwd with every non-alphanumeric as "-">; pi: sessions/--<cwd with "/" as "-">--.
+  // Codex's folder names don't say where a session ran.
+  const skipper = (skip: string[]) => {
+    const slugs = skip.filter(Boolean).map((p) => p.replace(/[^A-Za-z0-9]/g, "-"));
+    return (agent: LocalAgent, path: string) => {
+      if (agent === "codex") return false;
+      const dir = basename(dirname(path)).replace(/^--|--$/g, "").replace(/[^A-Za-z0-9]/g, "-");
+      const d = agent === "pi" ? `-${dir}` : dir;
+      return slugs.some((s) => d === s || d.startsWith(`${s}-`));
+    };
+  };
   const find = (agent: LocalAgent, id: string) => filesOf(agent, roots[agent]).find((f) => f.id === id);
   return {
     roots: () => ({ ...roots }),
@@ -124,15 +137,19 @@ export function createLocalAgents(opts: { home?: string; env?: Record<string, st
     },
     forget: () => cache.clear(),
     active({ since, skip = [] }) {
-      // Claude Code: projects/<cwd with every non-alphanumeric as "-">; pi: sessions/--<cwd with "/" as "-">--.
-      const slugs = skip.filter(Boolean).map((p) => p.replace(/[^A-Za-z0-9]/g, "-"));
-      const skipped = (agent: LocalAgent, path: string) => {
-        if (agent === "codex") return false;
-        const dir = basename(dirname(path)).replace(/^--|--$/g, "").replace(/[^A-Za-z0-9]/g, "-");
-        const d = agent === "pi" ? `-${dir}` : dir;
-        return slugs.some((s) => d === s || d.startsWith(`${s}-`));
-      };
+      const skipped = skipper(skip);
       return LOCAL_AGENTS.filter((agent) => filesOf(agent, roots[agent]).some((f) => !skipped(agent, f.path) && (statOf(f.path)?.mtime ?? 0) >= since));
+    },
+    latest({ skip = [] } = {}) {
+      const skipped = skipper(skip);
+      const out: Partial<Record<LocalAgent, number>> = {};
+      for (const agent of LOCAL_AGENTS)
+        for (const f of filesOf(agent, roots[agent])) {
+          if (skipped(agent, f.path)) continue;
+          const t = statOf(f.path)?.mtime;
+          if (t !== undefined && t > (out[agent] ?? -Infinity)) out[agent] = t;
+        }
+      return out;
     },
     openNow(agent, id) {
       if (agent === "claude-code") {

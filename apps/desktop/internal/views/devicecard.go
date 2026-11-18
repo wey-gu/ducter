@@ -95,6 +95,10 @@ func (a *App) deviceDetail(c *ui.Context, dv *protocol.DeviceView) {
 		if !dv.Home && dv.Mem != nil {
 			a.memOnDeviceCard(c, dv)
 		}
+		// D377: the person's own agents' records there, read only after their yes on this card.
+		if !dv.Home && dv.Records != nil {
+			a.recordsOnDeviceCard(c, dv)
+		}
 		if dv.Home {
 			a.deviceKeyRow(c) // D307: a key instead of a subscription (D298), beside its AI agents
 		}

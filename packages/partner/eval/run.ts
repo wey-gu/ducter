@@ -19,6 +19,7 @@ import type { HarnessEvent, HarnessPort, HarnessSession, Runner } from "../../pr
 import { startCore, type Core } from "../../core/src/index.ts";
 import { kindOf, type Computer } from "../../core/src/candidates.ts";
 import { createLocalAgents } from "../../core/src/local-agents/index.ts";
+import { createWorkerRecords } from "../../core/src/worker-records.ts";
 import { writeSession } from "../../core/test/fixtures-agents.ts";
 import { writeDotsFacts } from "./noticed-facts.ts";
 import { logUserMessage } from "../../core/src/reply.ts";
@@ -351,7 +352,28 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   const core = startCore({ dataDir, port: 0, persona, localAgents: createLocalAgents({ home: ownHome, env: {}, uid: null }), workingMemory: { run: async () => ({ code: 0, out: wmOut, err: "" }) }, // D341: never the machine's own gh (the person's real issues) nor its Obsidian vault list.
     taskSources: { ghRun: todoGh?.run ?? (async () => ({ code: 127, out: "", err: "", missing: true as const })), ghEnv: {}, home: join(dataDir, "no-home"), pollMs: 3_600_000, ask: async () => ({ text: "[]", tokens: 1 }) }, ...(sc.second ? { partners: true } : {}), ownPhone: { platform: "darwin", arch: "arm64" }, ...(calOo ? { ooSource: calOo.source } : sc.phone ? { ooSource: { detect: () => ({ installed: false, account: false }), read: () => undefined } } : {}) });
   // D376: the home's name as the records' computer: a fixed fake one, never this machine's own name.
-  (core.outside as { computer: () => string | undefined }).computer = () => "Weyl's Mac";
+  (core.outside as { computer: () => string | undefined }).computer = () => sc.homeName ?? "Weyl's Mac";
+  // D377: a computer for tasks with the person's own sessions: its own scratch home and records ops,
+  // reached through a pretend link (never this machine's records).
+  if (sc.workerSessions) {
+    const ws = sc.workerSessions;
+    const macHome = mkdtempSync(join(root, `worker-home-${sc.id}-`));
+    for (const s of ws.sessions) {
+      const cwd = join(macHome, s.folder);
+      mkdirSync(cwd, { recursive: true });
+      const updatedAt = new Date(Date.now() - s.minutesAgo * 60_000);
+      writeSession(macHome, { agent: s.agent, id: s.id, cwd, turns: s.turns, ...(s.title ? { title: s.title } : {}), ...(s.branch ? { branch: s.branch } : {}), startedAt: new Date(updatedAt.getTime() - 3600_000), updatedAt });
+    }
+    const records = createWorkerRecords({ dataDir: join(macHome, ".ducter-worker"), reader: createLocalAgents({ home: macHome, env: {}, uid: null, alive: () => false }), home: macHome });
+    if (ws.allowed) records.set(true);
+    const ops = records.ops as Record<string, (a: unknown) => Promise<unknown>>;
+    const link = { id: "w-own", name: ws.name, online: () => true, call: async (op: string, a: unknown) => { const fn = ops[op]; if (!fn) throw new Error(`unknown op ${op}`); return JSON.parse(JSON.stringify(await fn(a ?? {}))); }, onSession: () => () => {}, onOnline: () => () => {} };
+    const w = core.workers as { list: () => unknown[]; link: (d: string) => unknown };
+    const list0 = w.list.bind(w);
+    const link0 = w.link.bind(w);
+    w.list = () => [...list0(), { id: "w-own", name: ws.name, online: true, os: "macOS", harnesses: [{ id: "claude-code", installed: true, loggedIn: true }, { id: "codex", installed: true, loggedIn: true }] }];
+    w.link = (d: string) => (d === "w-own" || d === ws.name ? link : link0(d));
+  }
   if (calOo && !(await core.connections.addFromOo()).ok) throw new Error("fake oo calendar: not added");
   if (todoGh && !(await core.taskSources.add("github")).ok) throw new Error("fake GitHub: not added");
   if (sc.second && !core.partners.add({ name: sc.second.name }).ok) throw new Error("second partner: not added");

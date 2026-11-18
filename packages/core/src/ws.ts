@@ -129,6 +129,8 @@ export interface WsDeps {
   agentSetup?: (device: string, f: { action: import("@ducter/protocol").AgentSetupAction; harnesses?: string[]; harness?: string; code?: string }) => Promise<{ ok: boolean; reason?: "away" | "unknown" | "failed" }>;
   /** D366: Nowledge Mem on a computer for tasks: put its command line there, or sign it in (core.ts routes it). */
   memSetup?: (device: string, action: import("@ducter/protocol").DeviceMemAction, link?: string) => Promise<{ ok: boolean; reason?: "away" | "unknown" | "failed" }>;
+  /** D377: 读它们留下的记录 / 别再看了 on a computer for tasks, saved on that computer (its records_allow op). */
+  recordsAllow?: (device: string, on: boolean) => Promise<{ ok: boolean; reason?: "away" | "unknown" | "failed" }>;
   /** D224: 全部更新 / Update all. */
   updateAll?: () => import("./update-all.ts").UpdateAll | undefined;
   /** D169: Nowledge Mem in each device's own agents (mem-plugins.ts); absent in tests that don't need it. */
@@ -1071,6 +1073,16 @@ export function createWsHandler(deps: WsDeps) {
         const link = typeof f.link === "string" && f.link.trim() ? f.link.trim() : undefined;
         const r = deps.memSetup ? await deps.memSetup(device, action, link) : { ok: false, reason: "failed" as const };
         if (!r.ok) send(ws, { t: "mem_setup_result", device, action, ok: false, ...(r.reason ? { reason: r.reason } : {}) });
+        return;
+      }
+      case "records_allow": {
+        // D377: the person's yes (or 别再看了) for their own agents' records on a computer for tasks.
+        const device = String(f.device ?? "");
+        const on = f.on === true;
+        watchDevices();
+        ws.data.devices = true;
+        const r = deps.recordsAllow ? await deps.recordsAllow(device, on) : { ok: false, reason: "failed" as const };
+        if (!r.ok) send(ws, { t: "records_allow_result", device, on, ok: false, ...(r.reason ? { reason: r.reason } : {}) });
         return;
       }
       case "update_all": {

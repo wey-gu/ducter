@@ -153,3 +153,54 @@ test("never unasked: a turn with no words from the person (a task's report) can'
   await partner.idle();
   if (found) expect(found.ok).toBe(false);
 });
+
+// D377: the author's case. The home is a server (fake-home); the terminal Claude Code ran on the
+// MacBook, a computer for tasks, whose records are read only after the person's yes there.
+const MAC_CC = { agent: "claude-code", id: "fake-cc-mac-01", title: "compaction 阈值做成可配置", cwd: "~/dev/fakedb", branch: "compaction-cfg", updatedAt: new Date(NOW - 5 * 60_000).toISOString(), device: "w-mac", computer: "Macbook Pro M3" };
+function onTwo(t: ReturnType<typeof setup>, allowed: boolean) {
+  const p = (t.fc.core as unknown as { outside: OwnSessionsPort }).outside;
+  const looked = new Set<string>();
+  p.firstLookAt = (ds) => ds.filter((d) => !looked.has(d) && (looked.add(d), true));
+  p.find = async (q) => ({
+    items: [...(allowed ? [MAC_CC] : []), ...SESSIONS.map((s) => ({ ...s, device: "local", computer: "fake-home" }))].filter((s) => !q.harness || s.agent === q.harness),
+    read: [{ device: "local", computer: "fake-home" }, ...(allowed ? [{ device: "w-mac", computer: "Macbook Pro M3" }] : [])],
+    notYet: allowed ? [] : [{ device: "w-mac", computer: "Macbook Pro M3", agents: [{ agent: "claude-code", lastAt: MAC_CC.updatedAt }] }],
+    off: [],
+    unread: [],
+  });
+  return t;
+}
+const aiTexts = (fc: ReturnType<typeof fakeCore>) => fc.events.filter((e) => e.kind === "ai_msg").map((e) => (e.body as Bodies["ai_msg"]).text);
+
+test("the MacBook's records wait for a yes there, and Claude Code wrote there last: the partner is given the one line asking for it, naming the computer, and no session to pick", async () => {
+  let found: R | undefined;
+  const t = setup(async (_i, s) => {
+    found = await call(t.fc, "own_session_find", { agent: "claude-code" });
+    s.end();
+  });
+  onTwo(t, false);
+  t.user("接着我终端里那个 Claude 在做的，把剩下的测试补上");
+  await t.partner.idle();
+  expect(aiTexts(t.fc)).toEqual(["我看了 fake-home 上你在 Claude Code 里的对话记录：只看名字、文件夹、时间和你说的头一句，不看代码和文件。"]);
+  expect(found!.sessions).toBeUndefined();
+  expect(found!.note).toContain("Carry nothing on");
+  expect((found as R & { say?: string }).say).toBe("你最近在 Macbook Pro M3 上用过 Claude Code，那台电脑上的记录我还没读过。在「你的设备」里打开 Macbook Pro M3，点「读它们留下的记录」，我就去找。");
+  expect(t.adopted).toEqual([]);
+});
+
+test("after the yes: the MacBook's session is found first, said by computer, and the first look names the MacBook", async () => {
+  let found: (R & { sessions?: { id: string; computer?: string }[] }) | undefined;
+  const t = setup(async (_i, s) => {
+    found = (await call(t.fc, "own_session_find", { agent: "claude-code" })) as typeof found;
+    s.end();
+  });
+  onTwo(t, true);
+  t.user("接着我终端里那个 Claude 在做的");
+  await t.partner.idle();
+  expect(found!.sessions!.map((x) => [x.id, x.computer])).toEqual([
+    ["fake-cc-mac-01", "Macbook Pro M3"],
+    ["fake-cc-0001", "fake-home"],
+  ]);
+  expect(aiTexts(t.fc)).toEqual(["我看了 Macbook Pro M3、fake-home 上你在 Claude Code 里的对话记录：只看名字、文件夹、时间和你说的头一句，不看代码和文件。"]);
+  expect(found!.note).toContain("own_session_continue it");
+});

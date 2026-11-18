@@ -187,5 +187,14 @@ same conversation in Ducter.** Where they live and what their records say: `rese
   {computer} 上你在 {agents} 里的对话记录：只看名字、文件夹、时间和你说的头一句，不看代码和文件。 / I
   looked at your {agents} conversations on {computer}: only their names, folders, times and your
   first words, no code or files.**
-- **Not here yet:** a worker's sessions (from Past tasks or the conversation: D327's yes on that
-  computer first), New task from an outside session.
+- **On a computer for tasks** (D377): the partner also looks on every awake computer for tasks
+  whose records the person said yes to on its card in 你的设备 (**读它们留下的记录 / Read what they
+  keep**, saved on that computer, which reads them itself and sends up only what D327 (4) names);
+  before the yes, that computer says only which agents wrote there and when (file times). Found
+  there, a session is carried on there: a folder task on that computer, the same agent resuming it,
+  the open check made there. When the person's agent wrote more lately on a computer not read yet,
+  the partner's whole answer is **你最近在 {computer} 上用过 {agents}，那台电脑上的记录我还没读过。在
+  「你的设备」里打开 {computer}，点「读它们留下的记录」，我就去找。** The first-look line names the
+  computers whose records it read, once per computer.
+- **Not here yet:** a computer for tasks' sessions in Past tasks' list (the conversation only, D377),
+  New task from an outside session.

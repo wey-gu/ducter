@@ -254,6 +254,14 @@ export interface Scenario {
    * scratch home (never this machine's ~/.claude or ~/.codex). folder: under that home.
    */
   ownSessions?: { agent: "claude-code" | "codex" | "pi"; id: string; folder: string; title?: string; branch?: string; turns: [string, string][]; minutesAgo: number }[];
+  /** D377: the home's name, as the records' computer (default "Weyl's Mac"). */
+  homeName?: string;
+  /**
+   * D377: a computer for tasks with the person's own sessions, in a scratch home of its own, read
+   * through its real records ops (core worker-records.ts) over a pretend link; allowed: the person's
+   * yes there, else only its agents and their file times answer.
+   */
+  workerSessions?: { name: string; allowed: boolean; sessions: NonNullable<Scenario["ownSessions"]> };
 }
 
 // Under a result message the app renders, from the task's typed report: the task chip, the
@@ -795,6 +803,40 @@ export const scenarios: Scenario[] = [
     steps: [{ user: "Pick up what Claude was doing in my terminal earlier." }],
     expect: { opens: 0, called: [{ tool: "own_session_find" }], notCalled: ["own_session_continue"], maxChars: 300 },
     rubric: "Two of the user's own Claude Code sessions from about an hour ago fit equally (WAL flush config in fakedb, landing page copy in fakesite) and the user named neither. The partner looks (own_session_find), carries neither on, and asks which in one short English question naming both (a choice each is fine). No task is opened.",
+  },
+  // D377, the author's case: the home is a Linux server (Hetzner Server, hel), and the terminal
+  // Claude Code he means ran on his MacBook, a computer for tasks. The server has an older session of
+  // its own; the MacBook's, read there after his yes, is the one.
+  {
+    id: "own-session-mac-zh",
+    category: "followup",
+    lang: "zh",
+    floor: true,
+    homeName: "Hetzner Server",
+    ownSessions: [{ agent: "claude-code", id: "fake0000-cc00-4000-8000-0000000000e1", folder: "src/fakenotes", title: "整理笔记索引", turns: [["把笔记索引按日期重排", "排好了。"]], minutesAgo: 3 * 24 * 60 }],
+    workerSessions: {
+      name: "Macbook Pro M3",
+      allowed: true,
+      sessions: [{ agent: "claude-code", id: "fake0000-cc00-4000-8000-0000000000e2", folder: "dev/fakedb", title: "compaction 阈值做成可配置", branch: "compaction-cfg", turns: [["把 L0 compaction 的触发阈值做成可配置的，默认 8", "改好了：新增 compaction.l0_trigger 配置项，默认 8。测试还没补。"]], minutesAgo: 25 }],
+    },
+    steps: [{ user: "接着我终端里那个 Claude 在做的，把剩下的测试补上" }],
+    expect: { opens: 1, called: [{ tool: "own_session_find" }, { tool: "own_session_continue", args: { id: /0000000000e2$/ } }], noAsk: true, msgs: [0, 2] },
+    rubric: "The user's home is a server; their terminal Claude Code ran on their MacBook (Macbook Pro M3), whose records they let Ducter read. The partner looks (own_session_find), picks the MacBook's Claude Code session from 25 minutes ago (compaction threshold in fakedb), not the server's 3-day-old one, and carries it on (own_session_continue) with the user's words. Ducter's own one line on what it read (names, folders, times, first words, naming the computers) is fine. The partner's own line is one short Chinese sentence naming the work (the MacBook may be named), no outcome claimed, no question.",
+  },
+  {
+    id: "own-session-mac-ask-en",
+    category: "followup",
+    lang: "en",
+    homeName: "Hetzner Server",
+    ownSessions: [{ agent: "claude-code", id: "fake0000-cc00-4000-8000-0000000000e3", folder: "src/fakenotes", title: "Tidy the notes index", turns: [["Sort the notes index by date", "Sorted."]], minutesAgo: 3 * 24 * 60 }],
+    workerSessions: {
+      name: "Macbook Pro M3",
+      allowed: false,
+      sessions: [{ agent: "claude-code", id: "fake0000-cc00-4000-8000-0000000000e4", folder: "dev/fakedb", title: "Make the compaction threshold configurable", turns: [["Make the L0 compaction trigger configurable", "Done; tests aren't written yet."]], minutesAgo: 25 }],
+    },
+    steps: [{ user: "Carry on what Claude was doing in my terminal and add the missing tests." }],
+    expect: { opens: 0, called: [{ tool: "own_session_find" }], notCalled: ["own_session_continue"], msgs: [2, 2] },
+    rubric: "The user's terminal Claude Code ran on their MacBook, whose records Ducter may not read yet; the server's only session is 3 days old and about something else. The first message (\"I looked at your Claude Code conversations on Hetzner Server: …\") is Ducter's own line, required and fine; the partner's whole reply after it is one short English line asking for the yes on the MacBook's card in Your devices (Read what they keep). It carries nothing on (not the server's old session), opens no task, offers no alternative and asks nothing else.",
   },
   {
     id: "continue-dev-yesterday-zh",

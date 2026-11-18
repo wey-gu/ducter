@@ -18,6 +18,9 @@ import { bundledPiVersion, detectAgent, probeHarnesses as probeLocalHarnesses } 
 import { agentSignature, captureLoginPath, saveLoginPath, widenAgentPath } from "@ducter/core/src/agent-path.ts";
 import { createAgentSetup, realAgentSetupSys, type AgentSetup } from "@ducter/core/src/agent-setup.ts";
 import { createWorkerMem, realWorkerMemSys } from "@ducter/core/src/worker-mem.ts";
+import { createWorkerRecords } from "@ducter/core/src/worker-records.ts";
+import { createLocalAgents } from "@ducter/core/src/local-agents/index.ts";
+import { ducterFolder } from "@ducter/protocol/src/ducter-folder.ts";
 import { whichNow } from "@ducter/protocol/src/which.ts";
 import { probeEnv } from "./doctor.ts";
 import { createWorkerAgentUpdater } from "@ducter/core/src/agents.ts";
@@ -239,9 +242,22 @@ export async function cmdWorker(o: {
       sendUp({ t: "mem", mem: v });
     },
   });
+  // D377: the person's own agents' records here (Claude Code, Codex, pi), for the partner at the
+  // home: read only after the person's yes for this computer, kept here (records.json).
+  const records = createWorkerRecords({
+    dataDir: o.dataDir,
+    reader: process.env.DUCTER_OUTSIDE === "0" ? createLocalAgents({ home: join(o.dataDir, "no-outside"), env: {} }) : createLocalAgents(process.env.DUCTER_OUTSIDE_HOME ? { home: process.env.DUCTER_OUTSIDE_HOME, env: {} } : {}),
+    ducterFolder: () => ducterFolder({ dataDir: o.dataDir }).path,
+    changed: () => {
+      const v = records.view();
+      (hello as { records?: unknown }).records = v;
+      sendUp({ t: "records", records: v });
+    },
+  });
   const hello = {
     t: "hello",
     name: saved.name,
+    records: records.view(),
     os: platform(),
     arch: arch(),
     kind,
@@ -271,7 +287,7 @@ export async function cmdWorker(o: {
     sendUp = send;
     // D293: one host for the life of this process; its sessions outlive a dropped socket for the
     // grace. mainBase follows the way in use, for the sessions started after a switch.
-    const host = runnerMod.createWorkerHost({ dataDir, harness, get mainBase() { return s.url; }, deviceToken: s.token, send, browser: { ducter: browse.ducter }, extraOps: { ...browse.ops, mem_plugins: async () => (await inspectMemPlugins(nmemInspectExec(process.env))) ?? null }, abilities: browse });
+    const host = runnerMod.createWorkerHost({ dataDir, harness, get mainBase() { return s.url; }, deviceToken: s.token, send, browser: { ducter: browse.ducter }, extraOps: { ...browse.ops, ...records.ops, mem_plugins: async () => (await inspectMemPlugins(nmemInspectExec(process.env))) ?? null }, abilities: browse });
     // Nobody to drive Ducter's browser here once the socket is gone: quit it (sign-ins saved).
     const closeAll = host.closeAll;
     host.closeAll = async () => {
@@ -324,6 +340,8 @@ export async function cmdWorker(o: {
     void browse.abilities().then((abilities) => sendUp({ t: "abilities", abilities }));
     // D366: and where Nowledge Mem stands here (Mem's own doctor; a sign-in may have changed).
     void mem.look();
+    // D377: and which of the person's agents wrote here since (file times alone).
+    sendUp({ t: "records", records: ((hello as { records?: unknown }).records = records.view()) });
     // The AI agents too: the hello was probed when this worker started, and an agent updated
     // since (by Ducter before a reconnect, or by hand) must not be offered again at its old
     // version (that update then "fails" with nothing newer). Fresh on every welcome, and every

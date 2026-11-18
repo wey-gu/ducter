@@ -47,6 +47,8 @@ export interface DevicesOptions {
   agentSetup?: () => import("./agent-setup.ts").AgentSetup | undefined;
   /** D366: memory is on and the home's Nowledge Mem is connected: a worker's own Mem shows on its card. */
   memOn?: () => boolean;
+  /** D377: looking at the person's agents' records is on (Settings, 读它们留下的记录): a worker's records row shows. */
+  recordsOn?: () => boolean;
   auth: DeviceAuth;
   workers: Workers;
   env?: Record<string, string | undefined>;
@@ -438,6 +440,8 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
           ...(on?.via ? { via: { kind: on.via.kind, sealed: on.via.sealed } } : {}),
           // D366: Nowledge Mem there, as it says it; only for someone whose home has Mem (never a reason to get it, D169 (6)).
           ...(hello?.mem && o.memOn?.() ? { mem: hello.mem } : {}),
+          // D377: the person's own agents' records there: only while looking is on, only with records there or a yes.
+          ...(hello?.records && o.recordsOn?.() && (hello.records.state === "on" || hello.records.agents?.length) ? { records: hello.records } : {}),
         } satisfies DeviceView;
       });
     const devices = [home, ...workers];

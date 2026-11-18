@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.0.84 - 2026-11-19
+
+<!-- whats-new
+zh: 看得到 Mem 好不好；插件一步装上
+en: See how Mem is doing; its plugin in one step
+zh: 要用你的登录就换到那台电脑接着做
+en: A follow-up moves to the computer with your sign-ins
+-->
+
+**Memory**
+- Settings › Memory says whether Nowledge Mem is well, and when it isn't, the one thing to do:
+  update, look again, sign in again, or connect an AI agent.
+- The Mem plugin goes into Claude Code and Codex with Mem's own command, no task needed; the
+  suggestion in the conversation closes itself once it's in.
+
+**Tasks**
+- A follow-up that needs your own sign-ins moves its task to the computer whose Chrome has them,
+  and carries on there with what it already found.
+- Ask your partner to carry on a Claude Code or Codex session you started yourself on the home;
+  it looks once, says what it read, and won't take one that's still open.
+
+**Mac**
+- Moving to On hand is smoother, and moving text stays sharp.
+
+**Settings**
+- Faded marks for things not set up stay readable in both themes; the versions row in About is
+  laid out like the others; the hold-to-talk key says what it does.
+
 ## 0.0.83 - 2026-11-19
 
 <!-- whats-new

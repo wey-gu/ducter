@@ -106,7 +106,8 @@ func (a *App) recordsGroup(c *ui.Context) {
 	if looks && len(f.OutsideHidden) == 0 && len(f.OutsideFolders) == 0 {
 		note = a.L.T("records.past.note")
 	}
-	a.group(c, "records", a.L.T("records.title"), "", func() {
+	// D364: the note under the heading, like every group's (D289), not stray under the card.
+	a.group(c, "records", a.L.T("records.title"), note, func() {
 		if v, ch := a.toggleRow(c, "records", a.L.T("records.look"), a.L.T("records.look.help", a.homeComputer()), looks); ch {
 			f.SetLooking(v)
 			a.send(protocol.LocalAgents{T: "local_agents", On: v})
@@ -142,7 +143,4 @@ func (a *App) recordsGroup(c *ui.Context) {
 		}
 	})
 	a.saidLine(c, "records")
-	if note != "" {
-		a.paperNote(c, note)
-	}
 }

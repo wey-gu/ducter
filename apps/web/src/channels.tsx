@@ -25,7 +25,24 @@ type Frame = Extract<ChannelServerFrame, { t: "channels" }>;
 type Result = Extract<ChannelServerFrame, { t: "channel_result" }>;
 
 /** What this page knows; the home's frames keep it current. */
-const S: { frame?: Frame; busy: Partial<Record<ChannelKind, boolean>>; bad: Partial<Record<ChannelKind, Result["reason"]>>; code: Partial<Record<ChannelKind, Result>> } = { busy: {}, bad: {}, code: {} };
+const S: { frame?: Frame; busy: Partial<Record<ChannelKind, boolean>>; bad: Partial<Record<ChannelKind, Result["reason"]>>; code: Partial<Record<ChannelKind, Result>>; open: Partial<Record<ChannelKind, boolean>> } = { busy: {}, bad: {}, code: {}, open: {} };
+
+/**
+ * D364 (as D337's own number): an app never connected rests as its first row with 设置 / Set up and
+ * its one note, until the person opens its steps. A refused key or a connect on its way keeps them.
+ */
+const resting = (v: ChannelView) => v.state === "off" && !v.reason && !S.open[v.kind] && !S.bad[v.kind] && !S.busy[v.kind];
+
+function Resting(p: { v: ChannelView; name: string; line: string; tone?: string; note: string }) {
+  return (
+    <section class="set-card chat-app" aria-label={p.name}>
+      <Head kind={p.v.kind} name={p.name} line={p.line} tone={p.tone}>
+        <Btn kind="secondary" size="sm" label={t("own.setup")} about={p.name} onClick={() => ((S.open[p.v.kind] = true), A.changed())} />
+      </Head>
+      <Foot note={p.note} />
+    </section>
+  );
+}
 
 A.onChannelFrame = (f) => {
   if (f.t === "channels") {
@@ -97,7 +114,7 @@ function botLine(v: ChannelView): string {
 }
 
 /** A chat app's first row: the app's own mark on the small white clay tile (D314), its name, how it stands. */
-function Head(p: { kind: string; name: string; line: string; tone?: string }) {
+function Head(p: { kind: string; name: string; line: string; tone?: string; children?: ComponentChildren }) {
   return (
     <div class="chat-head">
       <BrandTile name={p.kind} />
@@ -105,6 +122,7 @@ function Head(p: { kind: string; name: string; line: string; tone?: string }) {
         <b>{p.name}</b>
         <small class={p.tone ? `tone-${p.tone}` : undefined}>{p.line}</small>
       </span>
+      {p.children}
     </div>
   );
 }
@@ -153,6 +171,7 @@ function ChannelCard({ v, manifest }: { v: ChannelView; manifest: string }) {
   const stranger = v.strangerAt && Date.now() - Date.parse(v.strangerAt) < 24 * 3600_000;
   const [line, tone] = stateLine(v);
   const who = t(v.kind === "telegram" ? "chats.tg.who" : "chats.sl.who");
+  if (resting(v)) return <Resting v={v} name={name} line={line} tone={tone} note={who} />;
   return (
     <section class="set-card chat-app" aria-label={name}>
       <Head kind={v.kind} name={name} line={line} tone={tone} />
@@ -302,6 +321,7 @@ function WechatCard({ v }: { v: ChannelView }) {
     A.changed();
   };
   const open = v.openUntil ? Date.parse(v.openUntil) > Date.now() : false;
+  if (resting(v)) return <Resting v={v} name={name} line={line} tone={tone} note={t("chats.wx.who")} />;
   return (
     <section class="set-card chat-app" aria-label={name}>
       <Head kind="wechat" name={name} line={line} tone={tone} />

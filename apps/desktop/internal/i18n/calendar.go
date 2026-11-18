@@ -78,7 +78,7 @@ var zhCalendar = Table{
 	"cal.kind.holidays":      "节假日只显示节日的名字",
 	"cal.kind.birthdays":     "生日只显示是谁的生日",
 	"cal.kind.shared":        "共享",
-	"cal.first":              "日历已连接：可以问它“今天有什么安排”，也能帮你约时间；改日程前都会先问你。",
+	"cal.first":              "日历已连接：可以问它「今天有什么安排」，也能帮你约时间；改日程前都会先问你。",
 	"cal.first.try":          "试试",
 	"cal.first.prefill":      "我今天都有什么安排？",
 	"cal.nudge":              "加上 Google 日历，它就能看日程、帮你约时间。",

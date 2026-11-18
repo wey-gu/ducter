@@ -130,11 +130,6 @@ func (a *App) todosPanel(c *ui.Context) {
 		ui.Text(c, a.L.T("todos.pick.loading")).FontSize(t.MD).TextColor(t.InkMuted).Padding(0, t.S5)
 		return
 	}
-	if len(v.Sources) == 0 {
-		a.group(c, "todos-empty", "", "", func() {
-			a.tileRow(c, "todos-empty", a.clayTile(c, todosArt, true), "", a.L.T("todos.empty"), nil)
-		})
-	}
 	for _, s := range v.Sources {
 		a.todoSourceGroup(c, s)
 	}
@@ -433,7 +428,12 @@ func (a *App) todoAddGroup(c *ui.Context, v *protocol.SourcesView) {
 			}
 		}
 	}
-	a.group(c, "todos-add", a.L.T("todos.add.title"), "", func() {
+	// D364: with nothing added, the group says so under its heading (never a card holding one line).
+	note := ""
+	if len(v.Sources) == 0 {
+		note = a.L.T("todos.empty")
+	}
+	a.group(c, "todos-add", a.L.T("todos.add.title"), note, func() {
 		// D345: GitHub is always offered while it isn't added; 连上 signs the
 		// home in (putting gh there first when it isn't) in place, under it.
 		if !hasGitHub {

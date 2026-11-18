@@ -18,7 +18,7 @@ Slack app. It never writes as you, and nobody else can talk to it.
 
 ## Connect Telegram
 
-1. In Ducter, open **Settings › Chat apps**. The **Telegram** group walks you through three
+1. In Ducter, open **Settings › Chat apps** and press **Set up** on **Telegram**. It walks you through three
    steps.
 2. In Telegram, open **BotFather** (**Open BotFather** takes you there) and send it `/newbot`.
 3. Give your bot a name (your partner's name is a good one).
@@ -32,7 +32,7 @@ Your partner says **Linked. Talk to me here any time.** That's it.
 
 Slack needs an app of your own in your workspace. Ducter gives you everything to paste:
 
-1. Open **Settings › Chat apps**. The **Slack** group walks you through five steps.
+1. Open **Settings › Chat apps** and press **Set up** on **Slack**. It walks you through five steps.
 2. Press **Copy the app manifest** (**View** shows what's in it).
 3. **Open Slack** takes you to [api.slack.com/apps](https://api.slack.com/apps): create a new
    app **From a manifest**, pick your workspace, and paste it in.
@@ -51,7 +51,7 @@ and never sends anything as you; your account stays exactly as it was.
 
 1. Update WeChat on your phone. ClawBot is still reaching WeChat accounts, so yours may not have
    it yet.
-2. Open **Settings › Chat apps** and press **Connect** in the **WeChat** group. A QR code appears.
+2. Open **Settings › Chat apps**, press **Set up** on **WeChat**, then **Connect**. A QR code appears.
 3. Open **Scan** in WeChat on your phone, scan the code, and confirm on the phone. If WeChat shows
    a number, type it into **The number WeChat shows**. Only have the one phone? Take a
    screenshot and pick it from your photos in Scan.

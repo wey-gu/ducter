@@ -10,7 +10,7 @@ import { ago, spoken } from "./format.ts";
 import { useEffect, useState } from "preact/hooks";
 import { A } from "./app.ts";
 import { BrandMark, BrandTile } from "./brand.tsx";
-import { Btn, Chev, DangerButton, Facts, Seg } from "./controls.tsx";
+import { AddRow, Btn, Chev, DangerButton, Facts, Seg } from "./controls.tsx";
 import { SecHead, Tag } from "./set-grid.tsx";
 import { GhSignIn } from "./gh-signin.tsx";
 import { onPileFrame, ReadLine } from "./pile.tsx";
@@ -367,11 +367,14 @@ export function TodoSourcesSettings() {
   return (
     <>
       <p class="af-lede">{t("todos.lede", A.S.personaName)}</p>
-      {!f.sources.length && <p class="small">{t("todos.empty")}</p>}
+      {/* D364: who owns what, close under the lede, as on the Mac. */}
+      <p class="small todo-own">{t("todos.own", A.S.personaName)}</p>
       {f.sources.map((v) => (
         <SourceCard key={v.id} v={v} />
       ))}
       <SecHead title={t("todos.add.title")} />
+      {/* D364: with nothing added, the add group says so under its heading (never a card holding one line). */}
+      {!f.sources.length && <p class="g-note">{t("todos.empty")}</p>}
       <section class="set-card chat-app todo-add">
         {canGh && (
           <div class="chat-head">
@@ -414,7 +417,6 @@ export function TodoSourcesSettings() {
         </div>
       </section>
       {TS.said && <p class="small tone-bad">{TS.said}</p>}
-      <p class="small chats-goes">{t("todos.own", A.S.personaName)}</p>
     </>
   );
 }
@@ -423,15 +425,8 @@ export function TodoSourcesSettings() {
 function VaultPath() {
   const [open, setOpen] = useState(false);
   const [path, setPath] = useState("");
-  if (!open)
-    return (
-      <div class="chat-head">
-        <BrandTile name="obsidian" faded />
-        <span class="grow">
-          <Btn kind="text" label={t("todos.add.path")} onClick={() => setOpen(true)} />
-        </span>
-      </div>
-    );
+  // D364: the group's add row, as the Mac's (a plus in the tile column, the title on the text edge).
+  if (!open) return <AddRow label={t("todos.add.path")} onClick={() => setOpen(true)} />;
   const go = () => {
     if (!path.trim()) return;
     TS.busy.path = true;

@@ -39,6 +39,9 @@ type chatsState struct {
 	copied     bool
 	manifest   bool   // the manifest's View is open
 	forgetting string // D289: the app whose Disconnect asks in place
+	// open: the apps whose setup the person opened with 设置 / Set up (D364): an
+	// app never connected rests as its one row until then.
+	open map[string]bool
 }
 
 var chatNames = map[string]string{"telegram": "Telegram", "slack": "Slack"}
@@ -47,6 +50,9 @@ func (a *App) chatsInit() {
 	s := &a.chats
 	if s.token == nil {
 		s.token, s.app, s.busy, s.bad, s.code = map[string]string{}, map[string]string{}, map[string]bool{}, map[string]string{}, map[string]protocol.ServerFrame{}
+	}
+	if s.open == nil {
+		s.open = map[string]bool{}
 	}
 	// The answers to connect and code, read once.
 	for _, f := range a.S.ChannelResults {
@@ -134,6 +140,28 @@ func (a *App) chatGroup(c *ui.Context, key, name string, body func()) {
 // chatHead is a chat app's first row: the app's own mark in the tile
 // column (D314), its name, and one line of how it stands.
 func (a *App) chatHead(c *ui.Context, kind, name, line string, tone sideTone) {
+	a.chatHeadWith(c, kind, name, line, tone, nil)
+}
+
+// chatResting: an app never connected whose setup the person hasn't opened
+// rests as its first row with 设置 / Set up at the right edge (D364, as
+// D337's own number). A refused key or a connect on its way keeps the steps.
+func (a *App) chatResting(kind string, v protocol.ChannelView) bool {
+	s := &a.chats
+	return v.State == "off" && v.Reason == "" && !s.open[kind] && s.bad[kind] == "" && !s.busy[kind]
+}
+
+// chatSetUp is the resting row's one button: it opens the app's steps.
+func (a *App) chatSetUp(c *ui.Context, kind, name string) func() {
+	return func() {
+		if a.buttonFor(c, a.L.T("own.setup"), name, btnSecondary, a.T.ControlSM, a.T.Surface) {
+			a.chats.open[kind] = true
+		}
+	}
+}
+
+// chatHeadWith is chatHead with a control at the row's right edge.
+func (a *App) chatHeadWith(c *ui.Context, kind, name, line string, tone sideTone, control func()) {
 	t := a.T
 	a.sep(c)
 	ui.Row(c.Key("chat-head:"+kind)).Gap(t.S3).Padding(t.S4, t.S5).MinHeight(72).AlignItems(ui.Center).Children(func() {
@@ -146,6 +174,9 @@ func (a *App) chatHead(c *ui.Context, kind, name, line string, tone sideTone) {
 			}
 			ui.Text(c, line).FontSize(t.SM).FontWeight(w).LineHeight(a.leading(1.5)).TextColor(a.sideInk(tone))
 		})
+		if control != nil {
+			ui.Row(c).Shrink(0).Gap(t.S2).AlignItems(ui.Center).Children(control)
+		}
 	})
 }
 
@@ -253,6 +284,11 @@ func (a *App) chatCard(c *ui.Context, v protocol.ChannelView, manifest string) {
 	}
 	a.chatGroup(c, "chat-"+v.Kind, name, func() {
 		line, tone := a.chatState(v)
+		if a.chatResting(v.Kind, v) {
+			a.chatHeadWith(c, v.Kind, name, line, tone, a.chatSetUp(c, v.Kind, name))
+			a.chatFoot(c, "rest:"+v.Kind, a.L.T(who), nil)
+			return
+		}
 		a.chatHead(c, v.Kind, name, line, tone)
 		if v.StrangerAt != "" {
 			if at, err := time.Parse(time.RFC3339, v.StrangerAt); err == nil && a.Now().Sub(at) < 24*time.Hour {

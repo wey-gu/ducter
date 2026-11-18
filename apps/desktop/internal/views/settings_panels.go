@@ -205,7 +205,8 @@ func (a *App) runPanel(c *ui.Context) {
 	t := a.T
 	name := a.personaName()
 	a.panelHead(c, TabRun, a.L.T("settings.lede.run"))
-	a.group(c, "where", a.L.T("settings.where.group"), "", func() {
+	// D364: no group title: the page's title already says it, and the computer is the first row.
+	a.group(c, "where", "", "", func() {
 		if a.Backend == nil {
 			// The window talks to a Ducter it didn't start: say where it lives and that
 			// closing the window doesn't stop it (never a bare or empty address).
@@ -276,7 +277,8 @@ func (a *App) runPanel(c *ui.Context) {
 			a.OpenDevices()
 		}
 		// D347: the same way in as on Your devices.
-		if a.linkRow(c, "lend", a.L.T("lend.entry"), a.L.T("lend.entry.why"), false) {
+		// D364: on the text edge of the row above it, with its own clay (a server, as its line says).
+		if a.tileLinkRow(c, "lend", a.clayTile(c, "server_awake", false), a.L.T("lend.entry"), a.L.T("lend.entry.why"), false) {
 			a.openLend()
 		}
 	})

@@ -15,7 +15,7 @@ personal-AI user, **F** a fresh user who has never heard of a subagent.
 | 伙伴 / Partner | H (which AI agent, which model, who does tasks); C renames it | "Is it on the smart one? Is it using up my limit?" | It is itself, on the model they chose, and they can see what is left in plain sentences | The partner's face and name at the top; one line where it lives and what it thinks with, as a phrase (住在这台 Mac 上，用 Claude Code 的 Opus 想事情) |
 | 通知 / Notifications | C and F: "will it bother me at night?" | Unsure when it will interrupt | Quiet hours and the default wait are set, and the partner says in one line what that means | Notifications on, quiet hours 23:00–08:00 offered with one switch |
 | 账号 / Accounts | C most (what it may read; whether it may call); F next | A wall of rows each saying the same green word | Calm: the place says how it reads, a row speaks only when it differs; flipping a switch gets one word back from the partner | The one tap (oo) or the add row; nothing read until they say yes |
-| 聊天软件 / Chat apps | C (Telegram, Slack), H (Slack) | Connected, but to what? | "在 @bot 等你": it is waiting there, by name | One group per app with its steps as rows; nothing connected until they paste a key |
+| 聊天软件 / Chat apps | C (Telegram, Slack), H (Slack) | Connected, but to what? | "在 @bot 等你": it is waiting there, by name | One group per app, resting as its row with 设置 / Set up and its privacy line until pressed (D364); then its steps as rows; nothing connected until they paste a key |
 | 密码和银行卡 / Passwords & cards (D336) | C booking travel | Unsure what it can see, and what "autofill" even keeps | Each saved thing is a row with its mark; what it can and cannot read said once | Its list line says what it is for and where it is kept (登录、付款、填地址时用，锁着存在你的电脑上); three add rows, one per kind; the uses section says none yet |
 | 外观和声音 / Look and sound | Everyone, briefly | — | The preview smiles back at a choice (D150) | The preview stage and three groups |
 | 在哪儿运行 / Where it runs | H (a server home), F once ("does closing the window stop it?") | Afraid closing the window loses work | This Mac (or hel) as the group's first row, small clay in the tile column, and one sentence that it keeps working | The row and its sentence; Rest, data and Remove further down, quiet |
@@ -47,6 +47,8 @@ with the author's accounts laid over it (`.shots/d296/before`, `.shots/d296/afte
 | A switch alone at a row's right edge | `switchControl` in `tileRow` | `Switch` (`controls.tsx`, D295) | Use my voice; a service's 自己留意 |
 | The partner's one word after a change | `say` / `saidLine` (`settings_rows.go`) | `say` / `Said` (`set-grid.tsx`) | Quiet hours, the default wait, a service's watch switch |
 | A list of names of one kind | `listWords` (、 / , ) | `t("acct.sep")` | oo's accounts; your details |
+| A thing never set up, resting until chosen (D337, D364) | `chatHeadWith` + `chatSetUp` (`chats.go`); the own number's group | `Resting` (`channels.tsx`); `own-phone.tsx` | Chat apps (Telegram, Slack, WeChat); calls from your own number |
+| A group's note: under its heading, never under the card (D289, D364) | `group(…, note, …)` | `<p class="g-note">` after the heading | To-do sources' empty line; what your AI agents keep; the trust lists |
 | The rail's chosen tab | the knob under the tabs, sliding (`railKnob`, `Nav.Across`) | — (the phone's list pushes, D290) | Every move between panes |
 | A pane coming in | `paneEnter`: a short rise from the side the knob came from | the pushed page from the trailing side, the list back from the leading side (D290) | Every move between panes |
 
@@ -183,6 +185,27 @@ the fresh user sees what it is and nothing happens until something is added. Eac
 (its own mark, whose or which folder, counts apart), two segments (新的来了, 做完以后), the standing line,
 a quiet 移除 that asks in place; then 还能加上 (the home's gh, the vaults Obsidian lists there, a folder by
 path, Jira coming soon). Flows and words: `task-sources.md` §6.
+
+## The pass of 0.0.79 (research/134, D364)
+
+Every pane scored (hierarchy, alignment, contrast, states, words, flow, delight) on the Mac's test
+renderer and the web, both widths, zh and en, light and dark, the three users (`.shots/settings-pass`).
+The two weakest, and what changed:
+
+- **聊天软件 / Chat apps** (21/35): every app never connected showed its whole setup. Each now rests as
+  its first row with **设置 / Set up** and its privacy line; the steps open in place. A refused key or a
+  connect on its way keeps them open. `docs/chat-apps.md` says **Set up** first.
+- **待办来源 / To-do sources** (22/35): with nothing added the add group says
+  **还没有加上的。在下面挑一个。** under its heading (no card holding one line); the web's add rows are
+  rows at 15/700 and the vault path is the shared add row, as on the Mac; who owns a to-do sits under
+  the lede on both.
+- Smaller, one each: Where it runs has no group title repeating the page's and **加一台做事的电脑** has its
+  clay (a server) on the shared text edge; the records note sits under its heading; the web's trust lists
+  carry the Mac's drawn check and ask bubble; the web's 这台电脑 says what each choice does; the web's
+  night-update line is its switch's line; 「今天有什么安排」 in 「」.
+
+Left, with reasons in research/134: the server home's versions row (the update work's slot), a contrast
+floor for faded "not set up" marks, 按住说话的键 with no line.
 
 ## Not done
 

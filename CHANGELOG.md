@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.0.85 - 2026-11-19
+
+<!-- whats-new
+zh: 接着你在别的电脑上开的 Claude Code / Codex
+en: Carry on your own agent sessions on your other computers
+-->
+
+**Tasks**
+- Ask your partner to carry on a Claude Code or Codex session you started yourself on another of
+  your computers: say yes once on that computer's card ("Read what they leave"), and it finds the
+  session there and carries it on in its own folder.
+
+**Fixes**
+- Two checks that failed only on a busy machine now wait long enough.
+
 ## 0.0.84 - 2026-11-19
 
 <!-- whats-new

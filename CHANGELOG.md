@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.0.86 - 2026-11-19
+
+<!-- whats-new
+zh: 查天气、版本这类一个数，二十秒带出处
+en: One live fact in about twenty seconds, with its source
+zh: 你说过的偏好照着做，问一次要不要记成规则
+en: What you said before about who does what is followed
+-->
+
+**Conversation**
+- Ask for one live fact (the weather, a version, a price) and your partner looks it up on the
+  web beside the conversation: about twenty seconds, with where it found it, and no task.
+- Anything more on the web (reading a page, comparing, today's news, a sign-in) is a browsing
+  task. Your partner itself never reads a web page.
+
+**Tasks**
+- Something you already said about who does which kind of work ("don't use Claude Code for
+  bookings") is followed even if it was never saved as a rule; the task says so, and your partner
+  asks once whether to keep it as a rule.
+
 ## 0.0.85 - 2026-11-19
 
 <!-- whats-new

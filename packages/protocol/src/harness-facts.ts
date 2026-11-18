@@ -95,6 +95,13 @@ export interface HarnessFacts {
    */
   noWeb: Fact<{ how: string; deny: string[]; args: string[]; rows: string[] }>;
   /**
+   * D380: a quick web look (one live fact) runs as its own short session holding nothing but the
+   * agent's web tools: no files, no shell, no MCP, no memory, no accounts, so a page that speaks to
+   * it has nothing to reach. supported: the agent can be held to its web tools alone; args: launch
+   * arguments; rows: profile rows dropped; model: the fast model it runs on.
+   */
+  webLook: Fact<{ supported: boolean; how: string; args: string[]; rows: string[]; model?: string }>;
+  /**
    * D202: the reasoning effort a session can ask for. levels: every level the agent accepts (each
    * model lists its own, through OAR listModels: the New task card offers those); perModel: the
    * listing says which levels each model takes and its default. Absent: no effort is passed.
@@ -298,6 +305,10 @@ export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
       value: { how: "WebFetch and WebSearch denied by name, like the write and run tools", deny: ["WebFetch", "WebSearch"], args: [], rows: [] },
       evidence: { kind: "DOCUMENTED", source: "Claude Code settings docs: disallowedTools takes built-in tool names; the same mechanism the read-only partner and the judge already use (TOOLS_OFF)" },
     },
+    webLook: {
+      value: { supported: true, how: "--tools WebSearch,WebFetch (an allowlist of built-ins: nothing else exists in the session), no MCP, the clean setup", args: ["--tools", "WebSearch,WebFetch"], rows: [], model: "haiku" },
+      evidence: { kind: "VERIFIED", how: "research/149 §2: the init event of a session started so lists tools WebFetch and WebSearch only and no MCP server; §4: seven live looks through Ducter's own path", date: "2026-11-19", version: "2.1.327" },
+    },
     readOnly: {
       value: { how: "built-ins that write or run denied by name (Bash, Edit, Write, Task, …); a Read is capped", tools: ["Read", "Grep", "Glob", "WebFetch", "WebSearch"] },
       evidence: { kind: "VERIFIED", how: "the partner eval's readonly smoke (results/2026-11-09-haiku-readonly-smoke.md): no write or run tool call in any scenario", date: D, version: "2.1.319" },
@@ -401,6 +412,10 @@ export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
       value: { how: '-c web_search="disabled" (its hosted web_search tool; the read-only sandbox already keeps the shell off the network)', deny: [], args: ["-c", 'web_search="disabled"'], rows: [] },
       evidence: { kind: "VERIFIED", how: "`codex debug prompt-input -c web_search=\"bogus\"` -> unknown variant `bogus`, expected one of `disabled`, `cached`, `indexed`, `live` in `web_search`; \"disabled\" parses (the tool is hosted, so prompt-input doesn't list it: its absence in a session is DOCUMENTED by Codex's config docs, not measured)", date: "2026-11-19", version: "0.170.0" },
     },
+    webLook: {
+      value: { supported: false, how: "not offered: its shell can't be turned off for one session (noTools), so a look would hold files and a shell beside the page; a browsing task does it", args: [], rows: [] },
+      evidence: { kind: "INFERRED", why: "no per-session switch for Codex's own shell is known (noTools above); a page could steer a read-only shell into a search query" },
+    },
     readOnly: {
       value: { how: '-c sandbox_mode="read-only" after OAR\'s own override: shell commands still run, read-only and without network', tools: ["shell (read-only sandbox)"] },
       evidence: { kind: "VERIFIED", how: "app-server config/read shows read-only in the session-flags layer; results/2026-11-10-codex-gpt-6-luna-readonly-smoke.md", date: "2026-11-10", version: "0.167.0" },
@@ -456,6 +471,7 @@ export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
     browser: { value: "none (read, bash, edit, write; extensions only)", evidence: pi("`pi --help` (research/38)") },
     noTools: { value: { args: ["--no-tools"] }, evidence: { kind: "DOCUMENTED", source: "`pi --help` 1.5.1: --no-tools disables all tools by default (built-in and extension)" } },
     noWeb: { value: { how: "nothing to drop: its read-only allowlist (read, grep, find, ls) has no web tool", deny: [], args: [], rows: [] }, evidence: PI_LIVE },
+    webLook: { value: { supported: false, how: "not offered: pi has no web tool of its own", args: [], rows: [] }, evidence: pi("`pi --help` (research/38): read, bash, edit, write; extensions only") },
     readOnly: {
       value: { how: "an allowlist: `--tools read,grep,find,ls` on its RPC process, and bash, edit and write excluded by name (OAR excludeTools)", tools: [...PI_READ_ONLY_TOOLS] },
       evidence: PI_LIVE,
@@ -516,6 +532,10 @@ export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
     noWeb: {
       value: { how: "the partner's Ducter-owned home also drops the tool-web row (web_search, web_fetch)", deny: [], args: [], rows: ["tool-web"] },
       evidence: DSH_LIVE("research/50 §2: a one-shot's home drops tool-web among DSH_PROFILE.noToolsOff and its session's tool list was empty; the row alone for the partner is the same mechanism, not measured on its own"),
+    },
+    webLook: {
+      value: { supported: true, how: "a Ducter-owned home whose profile layer drops every tool row but tool-web (the read-only rows, tool-fs, tool-fs-search, mcp-resources), with DSH's read-only sandbox preset underneath", args: [], rows: ["tool-fs", "tool-fs-search", "mcp-resources"], model: "deepseek-official/deepseek-flash" },
+      evidence: { kind: "INFERRED", why: "research/50 §2: the same profile layer dropped every tool row for a one-shot (VERIFIED); keeping tool-web alone is that mechanism, not measured on its own (research/149 §2)" },
     },
     readOnly: {
       value: { how: "a Ducter-owned home whose profile layer drops every tool that runs, writes, delegates or plans (DSH_PROFILE.readOnlyOff), tool-fs keeps only read, and DSH_PERMISSION_MODE=read-only underneath", tools: ["read", "read_image", "glob", "grep", "web_search", "web_fetch"] },

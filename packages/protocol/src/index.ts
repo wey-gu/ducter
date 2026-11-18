@@ -284,6 +284,12 @@ export interface Bodies {
   // each standing in for its plain text in `text`; uiDropped: how many it wrote that weren't valid.
   ai_msg: { text: string; replyTo?: number; decisionId?: string; media?: MediaRef[]; cal?: CalGlance; first?: FirstWords; ui?: RichUi[]; uiDropped?: number };
   ack: { jobId: string; text: string; replyTo: number }; // names the action, never the outcome
+  // D380: a quick web look for one live fact (the weather, a version, one price), run beside the
+  // conversation by a session that holds only web tools. "looking" when the partner asks it (no
+  // row in On hand; the conversation's waiting line says it); then "found" with the typed result
+  // only (never page text), or "unsettled" with why, which the partner hands to a browsing task.
+  // The record answers "how did you know?".
+  web_look: WebLook;
   // act, ref (D216): the line a user's Merge or Open draft PR logs, with the merge's commit or the PR's address.
   job_status: { jobId: string; text: string; state: "running" | "done" | "failed"; taskId?: string; act?: "merge" | "open_pr"; ref?: string };
   living_msg: { items: LivingItem[] }; // supersedes the previous living_msg while unread
@@ -1712,9 +1718,10 @@ export interface FirstWords {
  * Mapped from the partner's own tool calls; tool names never reach a client.
  * thinking: no tool yet · recalling: reading the Log or memory · checking_task: reading a task ·
  * opening_task: starting one · messaging_task: passing something to one · planning: setting a
- * reminder or an ask · looking: any other lookup.
+ * reminder or an ask · looking: any other lookup · web (D380): a quick web look is out, after
+ * the turn that asked for it ended too, until its answer is said.
  */
-export type ActivityStep = "thinking" | "recalling" | "checking_task" | "opening_task" | "messaging_task" | "planning" | "looking";
+export type ActivityStep = "thinking" | "recalling" | "checking_task" | "opening_task" | "messaging_task" | "planning" | "looking" | "web";
 export interface PartnerActivity {
   step: ActivityStep;
   since: string; // ISO: when the turn started
@@ -1722,6 +1729,28 @@ export interface PartnerActivity {
 }
 
 export type Delivery = "steered" | "prompted" | "queued";
+
+/** D380: why a quick web look didn't settle its fact (the partner hands it to a browsing task). */
+export type WebLookWhy = "time" | "conflict" | "page" | "sign_in" | "not_found" | "unavailable" | "failed";
+/** D380: one quick web look, as the Log keeps it. Every field from the web is clipped and typed by Ducter. */
+export interface WebLook {
+  lookId: string;
+  question: string;
+  state: "looking" | "found" | "unsettled";
+  /** found: the fact, at most WEB_LOOK_MAX chars, in the person's language. */
+  answer?: string;
+  /** found: where it was read (http(s) addresses, at most 3). */
+  sources?: string[];
+  confidence?: "high" | "medium" | "low";
+  why?: WebLookWhy;
+  /** The user message it answers. */
+  replyTo?: number;
+  harness?: string;
+  model?: string;
+  /** How long it took, start to result. */
+  ms?: number;
+}
+export const WEB_LOOK_MAX = 200;
 
 // ---------- Devices and abilities (D43, D51, design/flows/A-setup-devices.md) ----------
 // What each device is and can do, for 你的设备和本事 / Your devices and abilities. Only what

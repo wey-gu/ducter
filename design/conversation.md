@@ -70,8 +70,8 @@ to where the person last spoke.
 
 **Executors.** All three return the same report, so they look the same to the human.
 
-*As built, only two executors run: the main AI in turn, and a task (Focus Window). Forks and
-promotion are not built.*
+*As built: the main AI in turn, a task (Focus Window), and one kind of fork, the quick web look
+(D380). General forks and promotion are not built.*
 
 | Executor | Use when (starting budget; logged and tuned) |
 |---|---|
@@ -95,9 +95,23 @@ promotion are not built.*
 - **No web in turn (D378).** The in-turn executor has none of its harness's own web tools on any
   harness (`SessionSpec.noWeb`: Claude Code denies WebFetch and WebSearch, Codex runs with
   `web_search="disabled"`, DeepSeek Harness's partner home drops `tool-web`, pi has none). What a
-  site or the web says now, even one fact or a pasted link, is a browsing task whose report comes
-  back: a page never reaches the one that holds the conversation, and no turn waits on the
-  network. Stable facts it knows, its own tools and the person's connected accounts stay in turn.
+  site or the web says now never reaches the one that holds the conversation, and no turn waits on
+  the network. Stable facts it knows, its own tools and the person's connected accounts stay in turn.
+- **The quick web look (D380), the first fork.** ONE live fact (the weather, the latest version,
+  one price or score) is `web_look`: the turn ends at once; beside it, a short session holding only
+  the agent's own web tools (`SessionSpec.webOnly`, harness-facts `webLook`: Claude Code
+  `--tools WebSearch,WebFetch`, no MCP, the clean setup; DeepSeek Harness a home with only
+  `tool-web`; Codex and pi not offered) runs on the fast model (Claude Code: haiku) under a hard
+  30 s budget and hands back one JSON line that Ducter checks and clips (an answer of at most 200
+  characters, up to 3 http(s) sources, a confidence, or why it isn't settled). No memory, no
+  accounts, no Go cards, nothing of the person's in its folder. The Log keeps `web_look` (looking,
+  then found or unsettled), which wakes the partner with the answer fenced as data; it says it in
+  one line naming the site. The waiting line **在网上查… / Looking it up on the web…** stays from
+  the ask to the answer; no card, no row in On hand. A look that can't settle it (time, sources
+  that disagree, a page to read, a sign-in, nothing found) is handed to a browsing task, whose
+  ack says so. Everything more than one fact (a page or link, comparing, today's discussion, a
+  sign-in, acting on a site) is a browsing task from the start. Measured on this Mac
+  (research/149): 18–25 s a look on haiku, about $0.04–0.07 each.
 - **Promotion.** A fork that outgrows its budget becomes a window seeded with a brief plus
   the fork's checkpoint. The fork itself does not continue, so a long job never carries the
   whole channel.

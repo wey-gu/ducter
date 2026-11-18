@@ -162,6 +162,17 @@ export interface CoreApi {
   personaFor?(id: string | undefined): { name: string; mem?: MemIdentity };
   /** D368: Nowledge Mem's Working Memory, read-only (core/src/working-memory.ts); absent in tests and stubs, or with memory off. */
   workingMemory?: WorkingMemoryPort;
+  /** D380: a quick web look for one live fact (core/src/web-look.ts); absent in tests and stubs (then a browsing task does it). */
+  webLook?: WebLookPort;
+}
+
+/** D380: what a quick web look came back with: typed and clipped by Ducter, never page text. */
+export type WebLookResult = { state: "found" | "unsettled" } & Pick<import("./index.ts").WebLook, "answer" | "sources" | "confidence" | "why" | "harness" | "model" | "ms">;
+export interface WebLookPort {
+  /** A look can run now: the agent the partner thinks with can hold a session to its web tools alone. */
+  can(): boolean;
+  /** One look, settled within its time budget; never throws (a failure is unsettled). */
+  look(q: { question: string; lang: string }): Promise<WebLookResult>;
 }
 
 /**
@@ -472,6 +483,9 @@ export interface SessionSpec {
   // the web says is read by a task, and only its report reaches the partner. Each harness maps it
   // by its own switch (harness-facts noWeb, runner/oar.ts).
   noWeb?: boolean;
+  // D380, a quick web look only: the harness's own web tools and nothing else (no files, shell, MCP
+  // or memory), mapped per harness from harness-facts webLook; never set where it isn't supported.
+  webOnly?: boolean;
   // D142, a folder place: writes stay inside cwd where the harness can enforce it (Codex: its
   // workspace-write sandbox, network on). Claude Code has no such switch under bypass; its brief
   // asks it, and the folder's copy makes what it changed there undoable.

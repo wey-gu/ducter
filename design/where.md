@@ -31,7 +31,7 @@ design.
 
 | # | Moment | What should happen |
 |---|---|---|
-| W1 | "帮我查一下 HN 今天关于 OAR 的讨论" (public pages) | Runs on hel in Ducter's own browser at once. No question. Line: **在 hel 上 · 用 Ducter 自己的浏览器**. Always a task, even for one fact: the partner has no web tools of its own (D378) |
+| W1 | "帮我查一下 HN 今天关于 OAR 的讨论" (public pages) | Runs on hel in Ducter's own browser at once. No question. Line: **在 hel 上 · 用 Ducter 自己的浏览器**. A task: a page to read and sum up. The partner has no web tools of its own (D378); only ONE live fact (the weather, a version) is a quick web look with no task (D380) |
 | W2 | "看看我淘宝上那单到哪了" (needs the user's sign-in) while the MacBook is awake | Runs on the MacBook in a window of the user's Chrome. No question; the line says **在 MacBook 上 · 用你的 Chrome** |
 | W2b | The same while the MacBook sleeps | One line with a default: **MacBook 睡着了。等它醒了用你的 Chrome 查（默认），还是现在在 hel 上查？hel 那边没登录淘宝，得你登一下。** |
 | W3 | "把这份周报做成 Keynote" while the MacBook sleeps | No alternative exists, so no question: it waits, said once in the partner's ack: **得用 MacBook 上的 Keynote，它醒了我就开始。** The task shows **在等 · MacBook 睡着了** |

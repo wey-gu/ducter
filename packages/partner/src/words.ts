@@ -8,6 +8,8 @@ import { zhJoin } from "./bridge-out.ts";
 const W = {
   zh: {
     ack: "好，我去做：{title}",
+    // D380: a quick web look didn't settle it, so a browsing task takes it (when the model wrote no line).
+    lookAck: "网上一下没查准，我开个任务仔细查：{title}",
     trustedBrief: "（你的 {agent} 让我做的；你说过它的活直接接。）",
     // D372: the first errand Ducter's default put on a faster model, said once.
     kindFirst: "这类跑腿的事我先交给 {fast}：更快，也给 {smart} 留着额度。想换就说。",
@@ -36,6 +38,7 @@ const W = {
   },
   en: {
     ack: "On it: {title}",
+    lookAck: "A quick look didn't settle it, so a task is checking properly: {title}",
     trustedBrief: "(Your {agent} asked for this; you let its work start without asking.)",
     kindFirst: "Errands like this go to {fast} first: it's faster, and {smart}'s limit is kept for harder work. Say if you'd rather not.",
     ownLook: "I looked at your {agents} conversations on {computer}: only their names, folders, times and your first words, no code or files.",

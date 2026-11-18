@@ -3012,6 +3012,8 @@ class AppState {
   thinking(): boolean {
     // A message held for a picture that didn't go up isn't with the partner yet (D206).
     if (this.pending.some((p) => !p.failed)) return true;
+    // D380: a quick web look is out: its line stays under the words that named it, until the answer.
+    if (this.S.activity?.step === "web") return true;
     for (let i = this.S.channel.length - 1; i >= 0; i--) {
       const e = this.S.channel[i]!;
       // A turn that ended after the message without a word (an ask, or nothing to say) answered it.

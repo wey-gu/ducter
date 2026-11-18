@@ -222,6 +222,23 @@ describe("adaptSpec: the partner's clean setup per harness", () => {
     for (const t of ["WebFetch", "WebSearch"]) expect(task.options.disallowedTools ?? []).not.toContain(t);
   });
 
+  test("D380: a quick web look holds the web tools and nothing else; refused where it can't be", () => {
+    const claude = adaptSpec(spec("claude-code", { webOnly: true, mcp: [{ name: "ducter", url: "http://127.0.0.1:1/mcp", headers: {} }] as never }), { dataDir: dir });
+    const args = claude.options.launchArgs!;
+    expect(args.slice(args.indexOf("--tools"), args.indexOf("--tools") + 2)).toEqual(["--tools", "WebSearch,WebFetch"]);
+    expect(args.filter((a) => a === "--tools").length).toBe(1);
+    expect(claude.options.mcpServers).toEqual([]);
+    expect(claude.options.disallowedTools).toBeUndefined();
+    const ds = adaptSpec(spec("deepseek-harness", { webOnly: true }), { dataDir: dir, env: {} });
+    const env = ds.options.env as Record<string, string>;
+    const rows = JSON.parse(readFileSync(join(env.DSH_HOME!, "profiles", "acp", "cordis.patch.yml"), "utf8")) as { id: string; disabled?: boolean }[];
+    for (const id of ["tool-bash", "tool-fs", "tool-fs-search", "mcp-resources", "tool-subagent"]) expect(rows.find((r) => r.id === id)?.disabled).toBe(true);
+    expect(rows.some((r) => r.id === "tool-web")).toBe(false); // the one row it keeps
+    expect(env.DSH_PERMISSION_MODE).toBe("read-only");
+    expect(() => adaptSpec(spec("codex", { webOnly: true }), { dataDir: dir })).toThrow(/quick web look/);
+    expect(() => adaptSpec(spec("pi", { webOnly: true }), { dataDir: dir })).toThrow(/quick web look/);
+  });
+
   test("Claude Code: a clean session loads Ducter's tools up front; a task keeps the user's tool search", () => {
     const clean = adaptSpec(spec("claude-code", { isolateUserConfig: true }), { dataDir: dir });
     expect((clean.options.env as Record<string, string>)[CLAUDE_SWITCHES.toolSearchEnv]).toBe("false");

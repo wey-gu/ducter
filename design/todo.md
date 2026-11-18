@@ -139,7 +139,14 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
 
 ## The partner reads no web page itself (D378)
 
-- [ ] **D378: a one-fact look-up without a row in On hand** (the weather, a version: today a whole browsing task, a minute instead of seconds). The fork executor (`conversation.md`: read-only, side context, its conclusion only returns) with web tools and no memory or accounts is the path. Trigger: forks are built, or the author or a rater finds a one-number look-up too slow.
+## The quick web look (D380, research/149)
+
+- [ ] **D380: live on a home** (hel: "明天上海会下雨吗" → the line, 在网上查…, the answer naming its site in about 20 s; nothing in On hand). Trigger: the next release on hel.
+- [ ] **D380: faster than ~20 s.** Each WebSearch round trip is ~8–10 s and haiku often makes two calls; a search API answered by code (no model call between) or a warm look session could halve it. Trigger: the author or a rater finds 20 s too slow.
+- [ ] **D380: a tappable source line under the answer** (like 想起了 / Remembered, D304), so the site is code's, not only the partner's words. Trigger: an answer that named the wrong site, or the author asks.
+- [ ] **D380: Codex and pi have no quick look** (a browsing task instead): Codex's shell can't be dropped for one session; pi has no web tool. Trigger: Codex gains a per-session tools switch, or a Codex-only home finds one-fact look-ups slow.
+- [ ] **D380: DeepSeek Harness's web-only home measured** (the profile layer keeps only `tool-web`; INFERRED from research/50). Trigger: the next DeepSeek Harness partner eval.
+- [ ] **D380: a look cut off by a restart** leaves its "looking" record and no answer (the person asks again). Trigger: one seen in a Log.
 - [ ] **D378: live on a home** (a web question on hel: the ack, the task in Ducter's own browser, the result with its source; the partner's session lists no web tool). Trigger: the next release on hel.
 - [ ] **D378: Codex's `web_search="disabled"` measured in a session** (parsed by 0.170.0; the tool is hosted, so its absence is documented, not seen). Trigger: the next Codex partner eval.
 - [ ] **D378: connected accounts' contents (mail) still reach the partner in turn**, untrusted text like a page. Kept: they are the person's own and the in-turn answers need them; Go cards gate every effect. Trigger: an injected instruction seen in a connector's result.

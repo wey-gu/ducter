@@ -55,9 +55,12 @@ exactly what it will and won't do. This page lists it.
   deletes, never reads or types a password, and can't see or open password managers, Keychain,
   banking and payment apps or System Settings. **Stop** on the task or the Mac's card ends it at
   once. See [Tasks in your Mac's apps](devices.md#tasks-in-your-macs-apps).
-- **Your partner doesn't read web pages itself.** Anything from the web, even one number or the
-  weather, is looked up by a task, and only what the task reports comes back. A page never talks
-  to the one that holds your conversation, your memory and your accounts.
+- **Your partner doesn't read web pages itself.** One quick fact, like tomorrow's weather or the
+  latest version of an app, is looked up in a few seconds by a helper that has nothing but a
+  browser's search: none of your memory, accounts or files. Only a short answer and where it came
+  from come back. Anything bigger (reading a page, comparing, anything you're signed in to) is a
+  task, and only what the task reports comes back. A page never talks to the one that holds your
+  conversation, your memory and your accounts.
 - **It never hides what went out.** When a result sent something out, a line marked ↗ says
   what, right under the message (never folded away). An opened task lists it again under
   **Sent out**, below what the task did.

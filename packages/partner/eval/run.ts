@@ -367,7 +367,18 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
     const updatedAt = new Date(Date.now() - s.minutesAgo * 60_000);
     writeSession(ownHome, { agent: s.agent, id: s.id, cwd, turns: s.turns, ...(s.title ? { title: s.title } : {}), ...(s.branch ? { branch: s.branch } : {}), startedAt: new Date(updatedAt.getTime() - 3600_000), updatedAt });
   }
-  const core = startCore({ dataDir, port: 0, persona, localAgents: createLocalAgents({ home: ownHome, env: {}, uid: null }), workingMemory: { run: async () => ({ code: 0, out: wmOut, err: "" }) }, // D341: never the machine's own gh (the person's real issues) nor its Obsidian vault list.
+  // D380: a quick web look answers from the scenario's fake (never the web), a beat later.
+  const look = sc.webLook;
+  const webLook = {
+    can: () => true,
+    look: async () => {
+      await Bun.sleep(40);
+      return !look || "unsettled" in look
+        ? { state: "unsettled" as const, why: look?.unsettled ?? ("page" as const), harness: "claude-code", model: "haiku", ms: 40 }
+        : { state: "found" as const, answer: look.answer, sources: look.sources, confidence: look.confidence ?? "high", harness: "claude-code", model: "haiku", ms: 40 };
+    },
+  };
+  const core = startCore({ dataDir, port: 0, persona, webLook, localAgents: createLocalAgents({ home: ownHome, env: {}, uid: null }), workingMemory: { run: async () => ({ code: 0, out: wmOut, err: "" }) }, // D341: never the machine's own gh (the person's real issues) nor its Obsidian vault list.
     taskSources: { ghRun: todoGh?.run ?? (async () => ({ code: 127, out: "", err: "", missing: true as const })), ghEnv: {}, home: join(dataDir, "no-home"), pollMs: 3_600_000, ask: async () => ({ text: "[]", tokens: 1 }) }, ...(sc.second ? { partners: true } : {}), ownPhone: { platform: "darwin", arch: "arm64" }, ...(calOo ? { ooSource: calOo.source } : sc.phone ? { ooSource: { detect: () => ({ installed: false, account: false }), read: () => undefined } } : {}) });
   // D376: the home's name as the records' computer: a fixed fake one, never this machine's own name.
   (core.outside as { computer: () => string | undefined }).computer = () => sc.homeName ?? "Weyl's Mac";
@@ -579,6 +590,10 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   const calKinds = decisions.map((e) => (e.body as Bodies["decision"]).cal?.kind).filter((k): k is NonNullable<typeof k> => !!k);
   const todoCards = decisions.filter((e) => (e.body as Bodies["decision"]).src?.kind === "write").length;
   const asks = decisions.map((e) => e.body as Bodies["decision"]).map((d) => ({ reversible: d.reversible, go: d.defaultOption === "go", timed: Boolean(d.defaultAt) }));
+  const looks = core.log
+    .read({ stream: conv, fromSeq: startSeq + 1, kinds: ["web_look"], limit: 100 })
+    .filter((e) => (e.body as Bodies["web_look"]).state !== "looking")
+    .map((e) => ({ b: e.body as Bodies["web_look"], seq: e.seq, step: stepOf(e.seq) }));
   const retitles = core.log
     .read({ fromSeq: startSeq + 1, kinds: ["task_open"], limit: 1000 })
     .filter((e) => e.origin === "partner")
@@ -613,7 +628,12 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
     lines.push(`(the earlier lines, if any, were the user's conversation with their other partner, ${persona.name}. The partner under test is a second partner named ${sc.second.name}, in its own conversation; it never sees ${persona.name}'s. Every step below is the user talking to ${sc.second.name}.)`);
   for (const [i, st] of sc.steps.entries()) {
     lines.push(`--- step ${i + 1}: ${describeStep(st)}`);
+    // D380: a quick web look's line goes where it landed among the messages (its answer comes after it).
+    const lookLine = (l: (typeof looks)[number]) =>
+      `  [Ducter's quick web look came back (not a task; the app showed "${sc.lang.startsWith("zh") ? "在网上查…" : "Looking it up on the web…"}" while it ran)] "${l.b.question}" → ${l.b.state === "found" ? `found: ${l.b.answer} (from ${(l.b.sources ?? []).join(", ")})` : `not settled: ${l.b.why}`}`;
+    const looksLeft = looks.filter((x) => x.step === i);
     for (const v of visible.filter((x) => x.step === i)) {
+      while (looksLeft.length && looksLeft[0]!.seq < v.seq) lines.push(lookLine(looksLeft.shift()!));
       if (v.kind === "decision") {
         const d = decisions.find((e) => e.seq === v.seq)!.body as Bodies["decision"];
         // Structured fields of the card (the app renders the buttons and the default line from them).
@@ -657,6 +677,7 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
         lines.push(`  [held in line by Ducter, opens when the part before it is done] title: ${String((x.input as { title?: unknown }).title ?? "")} | group: ${String((x.input as { group?: unknown }).group)}`);
     for (const x of fr.sent.filter((x) => x.step === i)) lines.push(`  [${x.from === "user" || x.from === "ducter" ? "Ducter passed the user's answer to task" : "sent to task"} ${keyOf.get(x.taskId) ?? "?"}] ${x.text.slice(0, 400)}`);
     for (const x of retitles.filter((x) => x.step === i)) lines.push(`  [retitled task ${x.key}] ${x.title}`);
+    for (const l of looksLeft) lines.push(lookLine(l));
     const other = [...new Set(tools.filter((x) => x.step === i).map((x) => x.name.replace(/^mcp__ducter__/, "")).filter((n) => !["task_open", "task_send", "task_retitle", "ask", "wait_until", "ToolSearch", "memory_search", "memory_add"].includes(n)))];
     if (other.length) lines.push(`  [also used tools] ${other.join(", ")}`);
   }
@@ -956,6 +977,7 @@ House rules the partner must follow:
 - Reply in the user's language (Chinese → 简体中文 with 你, never 您). Short, warm, direct; no headings, no filler, no apologies, no "as an AI".
 - Small questions: answer directly. Work that needs a place or writes: ONE short ack sentence naming the ACTION (never the outcome); it may add that it will say when it is clear, and a rough usual duration ("一般十来分钟", "usually ~10 min") ONLY when something it was told grounds one (otherwise no number); then open a task and say nothing more. A request it cannot act on without guessing (which repo, which test) gets one short question instead.
 - Follow-ups on a task's recent work go to that task. Never invent results of work still running.
+- ONE live fact from the public web (the weather, a version, one price) is a quick web look (the web_look tool), not a task: at most one short line before it naming the look (the app shows a waiting line while it runs), then one short line with what it found and where from. More than one fact, a page or link to read, comparing, or a sign-in is a browsing task with an ack. A look that comes back not settled is handed to a browsing task with one line saying so.
 - Results: the app renders evidence chips ("How I know"), an Outside line and a Merge button under a result message from the task's typed report. So the prose is the outcome in ≤2 lines in the user's terms, plus a "left out" line only if something wasn't done (with why); it does not repeat evidence, commit ids, branches, outside or merge. Unverified claims are called unverified. Failures are honest with one next step; naming the failing command or host and what was tried is fine there.
 - A task's question is already shown to the user with buttons: don't repeat it. Choices go through a decision card (ask), never prose like "reply Go" or a description of buttons/defaults. One suggested next step phrased as an offer ("want me to retry when the network is back?") is NOT a prose choice and is fine.
 - Never show task ids, internal worktree or data-directory paths, or session talk. Paths the user named themselves (e.g. ~/dev/foo), branch names and commit ids are fine.

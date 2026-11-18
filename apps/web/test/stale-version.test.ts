@@ -21,6 +21,12 @@ afterAll(async () => {
 
 test("a welcome from a newer home reloads, after the sheet closes and the words are sent, once", async () => {
   const { A } = await import("../src/app.ts");
+  // The app is one module for the whole run: another file may have left a live view, a sheet or a
+  // draft behind, each of which (rightly) holds the reload.
+  A.live = undefined;
+  A.sheet = null;
+  A.draft = "";
+  A.staleFor = "";
   A.send = () => {};
   A.receive({ t: "welcome", persona: "default", personaName: "Ducter", headSeq: 0, version: DUCTER_VERSION } as any);
   expect(A.staleFor).toBe("");

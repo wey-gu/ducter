@@ -30,7 +30,29 @@ const refuse = (detail: string) => {
 };
 
 // Flags that take a value: their value is never the message id.
-const VALUED = new Set(["--agent-context", "--body", "--body-file", "--cursor", "--to", "--query", "--wait", "--api-url", "--api", "--host", "--session-id", "--space-id"]);
+const VALUED = new Set(["--agent-context", "--body", "--body-file", "--cursor", "--to", "--query", "--wait", "--api-url", "--api", "--host", "--session-id", "--space-id", "--space", "--resolved-space-id"]);
+// A flag's value, as `--flag value` or `--flag=value` (Mem's `send_args_prefix` uses the second, D369).
+const flagIn = (list: string[], flag: string): string | undefined => {
+  const i = list.indexOf(flag);
+  if (i >= 0) return list[i + 1];
+  return list.find((x) => x.startsWith(`${flag}=`))?.slice(flag.length + 1);
+};
+// D369: the cards Mem gives for this run's Ducter (read-only), asked as the peer's own context. Mem's
+// side sometimes answers 503 `feature_policy_unavailable` (2026-11-18): asked up to three times.
+const cardsFor = (agent: string, ctx: string | undefined): string[] => {
+  for (let n = 0; n < 3; n++) {
+    const q = Bun.spawnSync([real!, "--json", ...(ctx ? ["--agent-context", ctx] : []), "bridge", "contacts", "--query", agent], { env: process.env });
+    try {
+      const j = JSON.parse(q.stdout.toString());
+      const list = [...(Array.isArray(j?.contacts) ? j.contacts : []), ...(Array.isArray(j?.cards) ? j.cards : [])];
+      if (list.length || q.exitCode === 0) return list.filter((x: any) => !x?.agent_id || x.agent_id === agent).map((x: any) => String(x?.contact ?? ""));
+    } catch {
+      /* not JSON: asked again */
+    }
+    Bun.sleepSync(500 * (n + 1));
+  }
+  return [];
+};
 const at = argv.indexOf("bridge");
 if (at >= 0) {
   const rest = argv.slice(at + 1);
@@ -51,19 +73,11 @@ if (at >= 0) {
   }
   const agent = process.env.BRIDGE_GUARD_TO;
   if (verb === "send" && agent) {
-    const i = rest.indexOf("--to");
-    const to = i >= 0 ? rest[i + 1] : rest.find((x) => x.startsWith("--to="))?.slice(5);
-    const c = argv.indexOf("--agent-context");
-    const ctx = c >= 0 ? argv[c + 1] : undefined;
-    // Read-only: the cards Mem gives for this run's Ducter, the only ones the peer may send to.
-    const q = Bun.spawnSync([real!, "--json", ...(ctx ? ["--agent-context", ctx] : []), "bridge", "contacts", "--query", agent], { env: process.env });
-    let cards: string[] = [];
-    try {
-      const j = JSON.parse(q.stdout.toString());
-      cards = [...(j?.contacts ?? []), ...(j?.cards ?? [])].filter((x: any) => !x?.agent_id || x.agent_id === agent).map((x: any) => String(x?.contact ?? ""));
-    } catch {
-      /* no answer: refused below */
-    }
+    const to = flagIn(rest, "--to");
+    // 2026-11-18: the peer sent with the card's own `send_args_prefix` (`--agent-context=<ctx>`), the
+    // guard asked contacts with no context, Mem asked which Space, and a right send was refused.
+    const ctx = flagIn(argv, "--agent-context") ?? process.env.NMEM_AGENT_CONTEXT;
+    const cards = cardsFor(agent, ctx);
     if (!to || !cards.includes(to)) refuse(`Send only to this run's Ducter (\`bridge contacts --query ${agent}\`), never to another agent.`);
   }
 }

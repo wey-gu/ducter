@@ -55,7 +55,7 @@ import { callWakes, fileView, HARNESSES, HARNESS_IDS, isHarnessId, isImage, MEDI
 import type { CoreApi, HarnessEvent, HarnessSession, Partner, Runner, SendImage, WorkingMemoryView } from "../../protocol/src/internal.ts";
 import { resolveWindows, WINDOW_MAX, WINDOW_MIN } from "../../protocol/src/harness-facts.ts";
 import { bridgeFor, bridgeKeyFor, type BridgeClient, type BridgeContact, type BridgeOp, type BridgeResult } from "./bridge.ts";
-import { claimText, fixedOutcome, followCandidates, followLine, foldOut, inQuiet, langOfRequest, lostLine, mayHaveGone, overAsks, peerAnswer, whoForModel, whoForUser, AFTER_SEND_MS, CHECK_EVERY_MS, DAY_MS, FOLLOW_ACTIVE_MS, LIVE_CHECK_MS, LIVE_MS, WAIT_RETRY_MS, WAIT_S, WAITING_EVERY_MS, PEER_ASKS_OPEN, PEER_NOT_YET_MS, SENDER_DAILY, TRUST_AFTER, TRUST_WINDOW_MS, TRUSTED_DAILY, type OutKind, type OutOp, type OutState } from "./bridge-out.ts";
+import { claimText, fixedOutcome, followCandidates, followLine, foldOut, inQuiet, langOfRequest, lostLine, mayHaveGone, overAsks, peerAnswer, whoForModel, whoForUser, AFTER_SEND_MS, CHECK_EVERY_MS, DAY_MS, FOLLOW_ACTIVE_MS, LIVE_CHECK_MS, LIVE_MS, WAIT_RETRY_MS, WAIT_S, WAITING_EVERY_MS, STUCK_EVERY_MS, PEER_ASKS_OPEN, PEER_NOT_YET_MS, SENDER_DAILY, TRUST_AFTER, TRUST_WINDOW_MS, TRUSTED_DAILY, type OutKind, type OutOp, type OutState } from "./bridge-out.ts";
 import { createNmemClient, noMemory, THREADS_MAX, type MemoryClient, type MemoryHit, type Replaced, type ThreadHit } from "./memory.ts";
 import { withOutbox } from "./outbox.ts";
 import { AI_TOOLS, memSource } from "../../protocol/src/mem-source.ts";
@@ -3038,6 +3038,14 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   let lastCheck = 0;
   /** D333: how the last check went, for bridge_check's words: "off" = nobody may reach the partner. */
   let lastOutcome: "ok" | "failed" | "off" = "ok";
+  // D369: Mem said the mailbox needs sorting out on its side (not retryable): Settings says so once,
+  // and the regular check slows to STUCK_EVERY_MS until a read works again (never a retry storm).
+  let stuck: string | undefined;
+  const setStuck = (code: string | undefined) => {
+    if (stuck === code) return;
+    stuck = code;
+    core.settings?.setBridgeTrouble?.(code ? { code } : undefined);
+  };
   /** D333: while bridge_check reads, what arrives is collected for that turn instead of waking one. */
   let absorbing: LogEvent[] | null = null;
   let bridgeChecking: Promise<number> | null = null;
@@ -3101,7 +3109,9 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       if (!start || closed) return 0;
       const known = new Set([...loggedBridge().filter((e) => e.body.direction === "in").map((e) => e.body.messageId), ...start.skip]);
       const r = await bridge.check(known);
+      if (!r.ok) setStuck(r.stuck ? r.code : undefined);
       if (!r.ok || closed) return 0;
+      setStuck(undefined);
       lastOutcome = "ok";
       if (r.reads) lastReads = { ...lastReads, ...r.reads };
       let n = 0;
@@ -3263,6 +3273,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           .map((e) => ({ messageId: e.body.messageId, from: whoForModel(e.body), ago: ago(t - Date.parse(e.ts)), text: clipTo(e.body.text, 200), ...(replied.has(e.body.messageId) ? { answered: true } : {}) }));
         const recent = earlier.length ? { earlier } : {};
         if (lastOutcome === "off") return { ok: false, ...recent, note: "The user set that no other agent may reach you, so nothing is checked. Say so in one short line; it changes in Settings." };
+        // D369: Mem's own state, not a hiccup: said as what it is, once, with nothing for the user to do.
+        if (lastOutcome === "failed" && stuck) return { ok: false, ...recent, note: "Nowledge Mem says this mailbox has to be sorted out on Mem's side before it can be read again; nothing the user can do here, and Settings › Talk with your other agents says the same. Say so in one short line." };
         if (lastOutcome === "failed") return { ok: false, ...recent, note: "Couldn't check right now: Nowledge Mem didn't answer. Say so in one short line, nothing wrong on the user's side; messages still come in by themselves." };
         const arrived = mine.map((e) => {
           const b = e.body as Bodies["bridge_msg"];
@@ -3392,7 +3404,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         bridgeTimer = null;
         if (closed) return;
         const t = now();
-        const gap = allWaiting() ? Math.max(every, WAITING_EVERY_MS) : liveWithOwn(t) ? Math.min(every, LIVE_CHECK_MS) : every;
+        const gap = stuck ? Math.max(every, STUCK_EVERY_MS) : allWaiting() ? Math.max(every, WAITING_EVERY_MS) : liveWithOwn(t) ? Math.min(every, LIVE_CHECK_MS) : every;
         if (t - lastCheck >= gap - 50) void checkBridge().catch(onError);
         if (!allWaiting() && waitFailedAt && t - waitFailedAt >= WAIT_RETRY_MS && bridge) {
           waitFailedAt = 0;

@@ -37,6 +37,8 @@ export const memoryWords: { zh: Record<string, string>; en: Record<string, strin
 
     "peers.mem.newer": "Nowledge Mem 有新版本。连不上的时候，先更新它，再试一次。",
     "peers.names.title": "更新 Nowledge Mem，%s 就能认出是哪个 agent 找它",
+    "peers.stuck.title": "Nowledge Mem 那边暂时读不了 %s 的来信",
+    "peers.stuck.line": "Mem 说这个信箱要先在它那边理顺，这边没有要做的。理顺以后，%s 会自己接着读。（%s）",
     "peers.names.line": "也知道哪条是在回它问的话。更新只换程序：登录不变，记忆不动。",
     "peers.mem.go": "去「记忆」",
     "mem.week.count": "这周新记了 %s 条",
@@ -208,6 +210,8 @@ export const memoryWords: { zh: Record<string, string>; en: Record<string, strin
 
     "peers.mem.newer": "A newer Nowledge Mem is out. If connecting doesn't work, update it first, then try again.",
     "peers.names.title": "Update Nowledge Mem so %s can tell which agent wrote",
+    "peers.stuck.title": "Nowledge Mem can't let %s read its messages for now",
+    "peers.stuck.line": "Mem says this mailbox needs sorting out on its side; there's nothing to do here. %s picks up again by itself once it is. (%s)",
     "peers.names.line": "and which message answers what it asked. An update only swaps the program: you stay signed in, and your memories don't move.",
     "peers.mem.go": "Go to Memory",
     "mem.week.count": "%s new this week",

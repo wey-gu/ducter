@@ -1615,6 +1615,14 @@ type BridgeView struct {
 	// identity: on "elsewhere" the home that answers now, on "connected" a
 	// second reader of the same mailbox.
 	Others []BridgeOther `json:"others,omitempty"`
+	// D369: Stuck, on "connected": Mem said the partner's mailbox can't be
+	// read until Mem sorts it out on its side; Code is Mem's own.
+	Stuck *BridgeStuck `json:"stuck,omitempty"`
+}
+
+// BridgeStuck is Mem's word that a mailbox needs sorting out on its side (D369).
+type BridgeStuck struct {
+	Code string `json:"code"`
 }
 
 // BridgeOther is another home's connection (D324): Label as Mem lists it,

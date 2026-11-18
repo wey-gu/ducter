@@ -89,7 +89,12 @@ export interface BridgeOp {
  * false`), after a short bounded retry (D294); nothing went out, so a later send is no replacement.
  * "unavailable": no answer, or Mem doesn't know; for a send or reply the outcome is UNKNOWN (D106).
  */
-export type BridgeFailure = { ok: false; reason: "not_configured" | "unavailable" | "busy" | "refused"; message: string; operation?: string };
+/**
+ * D369: `stuck`: Mem said this mailbox can't be read until something on Mem's side is sorted out
+ * (`cloud_mailbox_own_source_unreconciled`, VERIFIED 2026-11-18, research/139), not retryable and
+ * nothing the person or Ducter can do from here; `code` is Mem's registered code, as it said it.
+ */
+export type BridgeFailure = { ok: false; reason: "not_configured" | "unavailable" | "busy" | "refused"; message: string; operation?: string; code?: string; stuck?: true };
 export type BridgeResult<T> = ({ ok: true } & T) | BridgeFailure;
 
 export interface BridgeClient {
@@ -192,6 +197,12 @@ export function mailboxError(text: string): MailboxError {
   const http = /\b(?:HTTP|status)\s*(\d{3})\b/i.exec(text)?.[1];
   return http ? { http: Number(http) } : {};
 }
+/**
+ * D369: Mem's word that a mailbox needs sorting out on Mem's side before it can be read (nmem 0.10.120
+ * has no command for it): `cloud_mailbox_own_source_unreconciled`, 409, not retryable. Any other
+ * `cloud_mailbox_*_unreconciled` code is read the same way.
+ */
+export const mailboxStuck = (e: MailboxError) => /^cloud_mailbox_\w*_unreconciled$/.test(e.code ?? "") && e.retryable !== true;
 /** Mem's side can't take it right now: worth a short wait and one more try (D294). */
 export const transient = (e: MailboxError) => e.http === 503 || e.http === 429 || /_(unavailable|busy|capacity)$/.test(e.code ?? "") || e.retryable === true;
 
@@ -475,6 +486,8 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
     const operation = operationIn(r.out) ?? operationIn(r.err);
     const op = operation ? { operation } : {};
     const e = mailboxError(text);
+    // D369: before "outcome unknown": Mem says the mailbox itself needs sorting out (a read that changed nothing).
+    if (mailboxStuck(e)) return { ok: false, reason: "refused", stuck: true, code: e.code!, message: "Nowledge Mem has to sort out this mailbox on its side before it can be read; nothing to do here.", ...op };
     // Mem's own word on the outcome first: unknown is recovered, never called refused (D106).
     if (e.unknown === true) return { ok: false, reason: "unavailable", message: "Nowledge Mem didn't say whether it went out.", ...op };
     if (e.unknown === false && transient(e)) return { ok: false, reason: "busy", message: "Nowledge Mem can't take messages right now; nothing went out.", ...op };

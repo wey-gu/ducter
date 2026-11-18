@@ -128,6 +128,7 @@ export const CHECK_EVERY_MS = 60_000; // the inbox check's period otherwise (D33
 export const AFTER_SEND_MS = [10_000, 30_000, 60_000, 120_000]; // checks after a send or reply, until its answer (D335)
 export const WAIT_S = 25; // one long-poll, when the CLI has `inbox --wait` (D335)
 export const WAITING_EVERY_MS = 5 * 60_000; // while it long-polls, the check that keeps recovery and follow-through going
+export const STUCK_EVERY_MS = 30 * 60_000; // D369: a mailbox Mem must sort out on its side: looked at again every 30 min (and on 查看来信)
 export const WAIT_RETRY_MS = 10 * 60_000; // after a long-poll failed, the timer runs this long before it tries again
 export const DAY_MS = 24 * 60 * 60_000;
 export const TRUST_AFTER = 2; // X2: Go's to the same own agent before the rule is offered (D163)

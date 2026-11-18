@@ -20,7 +20,7 @@ that the main serves at `/app`, plus APNs notifications through the notification
 | Version | `MARKETING_VERSION` (default `0.1.0`), build `CURRENT_PROJECT_VERSION` (default `1`); override both on the command line |
 | Deployment target | iOS 17.0, universal (D176): iPhone in portrait and landscape, iPad in all four orientations with Split View, Slide Over and Stage Manager (`UIRequiresFullScreen` false, one scene); the extension too |
 | Icons | The one `AppIcon` 1024 source; Xcode makes every iPhone and iPad size (`AppIcon76x76` for iPad) |
-| SDK | Xcode 26 builds and uploads. iPhone Duo shows the app full-screen only from the iOS 27.1 SDK (research/49): CI sets `DUCTER_XCODE=27.1` and `testflight.sh` uses `/Applications/Xcode_27.1.app` when the runner has it, else the default Xcode with a warning |
+| SDK | Xcode 26 builds and uploads. iPhone Duo shows the app full-screen only from the iOS 27.1 SDK (research/49): CI sets `DUCTER_XCODE=27` as a minimum and `testflight.sh` uses the newest installed Xcode at or above it (a release before a beta), else the default Xcode with a warning. App Store Connect requires the iOS 27 SDK for uploads from April 2027 (ITMS-90725) |
 | Export options | `apps/ios/ExportOptions.plist` (`app-store-connect`, automatic signing, `destination = export`) |
 | Encryption | `ITSAppUsesNonExemptEncryption = NO` in Info.plist (no export-compliance question per build). D159's notification encryption uses only CryptoKit, encryption within the Apple OS, which Apple lists as exempt (INFERRED from Apple's export-compliance guidance; confirm if App Store review asks) |
 | Local overrides | `apps/ios/Local.xcconfig` (gitignored) for another team or bundle id |

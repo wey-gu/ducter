@@ -118,7 +118,7 @@ describe("D366 on a computer for tasks", () => {
     expect(r.calls[i]).toEqual([join(r.dataDir, "tools", "bin", "uv"), "tool", "install", "nmem-cli"]);
     const env = r.envs[i]!;
     for (const k of ["UV_TOOL_DIR", "UV_TOOL_BIN_DIR", "UV_PYTHON_INSTALL_DIR", "UV_CACHE_DIR"]) expect(env[k]!.startsWith(join(r.dataDir, "tools"))).toBe(true);
-    expect(r.m.view()).toEqual({ state: "sign_in", version: "0.10.120", ours: true }); // D374: Ducter's own copy
+    expect(r.m.view()).toEqual({ state: "sign_in", version: "0.10.120", ours: true }); // D375: Ducter's own copy
   });
 
   test("a download that doesn't match its checksum stops, nothing put there", async () => {

@@ -1,8 +1,8 @@
-# 144: Nowledge Mem's doctor and `connect --tool`, read for Mem's health and a one-step plugin (D374)
+# 144: Nowledge Mem's doctor and `connect --tool`, read for Mem's health and a one-step plugin (D375)
 
 research/136 left two small gaps: G4 (Mem's own health on Settings › 记忆) and G5 (D169 installs Mem's
 plugin into an agent by opening a model task, though Mem now has a command for it). This note records
-what `nmem doctor` and `nmem connect` say and accept, read-only, for D374.
+what `nmem doctor` and `nmem connect` say and accept, read-only, for D375.
 
 Tags: **VERIFIED** (run here and seen), **DOCUMENTED** (`--help`), **INFERRED** (strings in the binary,
 or reasoning). Read-only throughout: `--help`, `--json doctor`, `--json connect --detect-only` (which reads
@@ -35,7 +35,7 @@ install and redeems nothing); nothing was written to Mem or to any agent's setti
 - **F4 (INFERRED).** An nmem older than `doctor` answers clap's `unrecognized subcommand 'doctor'` with
   exit 2. No JSON: "too old to tell".
 
-So the classes D374 reads, in order of what blocks most: **old** (no doctor), **unreachable** (a saved
+So the classes D375 reads, in order of what blocks most: **old** (no doctor), **unreachable** (a saved
 address that doesn't answer; Mem's built-in local default not answering on a fresh computer is "never
 signed in", not unreachable), **signed_out** (answers, key `fail`; or a remote one with no key),
 **plugin** (signed in; an installed agent's tool check not `pass`, ignoring "not installed" / "not
@@ -59,7 +59,7 @@ unreachable shapes are from the strings (F3) and are what the tests use.
   binaryAvailable, action, competing, manualCommands, mcpCommand}`.
 - **F9 (NOT RUN).** A real `connect --tool` that registers a plugin, and `--on-conflict abort` meeting a
   competing integration, were not run: either would change the author's agents. How the abort is
-  reported (exit code, JSON) is unknown; D374 doesn't depend on it: success is Mem's own plugin check
+  reported (exit code, JSON) is unknown; D375 doesn't depend on it: success is Mem's own plugin check
   (`plugins inspect`) saying the plugin is there afterwards, and anything else falls back to the task.
 
 ## Implications for Ducter
@@ -77,5 +77,5 @@ unreachable shapes are from the strings (F3) and are what the tests use.
 carries a key's tail, so Ducter reads statuses and a few phrases, never forwards details. `nmem connect
 --tool` registers Claude Code and Codex by itself, with `--on-conflict abort` to leave another memory
 integration alone; pi and DeepSeek Harness are not among its tools. The real register and the abort path
-were not run (they would change the author's agents); D374 judges by Mem's plugin check afterwards and
+were not run (they would change the author's agents); D375 judges by Mem's plugin check afterwards and
 falls back to D169's task.

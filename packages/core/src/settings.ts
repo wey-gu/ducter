@@ -78,7 +78,7 @@ export interface SettingsStore extends SettingsApi {
   setProactive(mode: ProactiveMode, by: "chosen" | "keep_note"): void;
   /** D295: the glance at Mem itself (mem-glance.ts), read on each view. */
   setGlance(fn: () => MemView["glance"], ops?: GlanceOps): void;
-  /** D374: Mem's own health on the home (memory on and Mem connected), cached by its reader. */
+  /** D375: Mem's own health on the home (memory on and Mem connected), cached by its reader. */
   setHealth(fn: () => MemView["health"]): void;
   /** D321: Settings › 记忆's own rows, by Mem's id: forget one in Mem; fix its words in Mem. True when Mem did. */
   forgetMem(id: string): Promise<boolean>;

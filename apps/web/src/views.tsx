@@ -320,6 +320,8 @@ function useTick(ms: number) {
 /** How an ask was answered, in the user's own words (D129): "你说：好，rebase" / "You said: Rebase". */
 function answeredWords(d: DecisionState): string {
   const opt = d.resolved?.option ?? (d.pending || "go");
+  // D375: D169's offer closed by itself once the plugin was in.
+  if (d.resolved?.settled && d.memPlugin) return t("memp.card.done");
   if (d.resolved?.by === "default") return t("decision.resolved.default");
   if (opt === "reply") return t("decision.resolved.reply", d.resolved?.text ?? "");
   if (opt === "hold") return d.where ? t("where.ask.waited", d.where.device) : t("decision.resolved.hold");

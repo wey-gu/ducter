@@ -115,7 +115,7 @@ type memUpd struct {
 }
 
 // memHealthLook is what the Nowledge Mem head on Memory says about Mem's own
-// health (D374), the web's memHealthLook (mem-view.ts): Look unread (not read
+// health (D375), the web's memHealthLook (mem-view.ts): Look unread (not read
 // yet, or it can't tell: the plain "Connected") | ok | old (CanUpdate, and
 // not when the update row offers it) | unreachable | signed_out | plugin
 // (Agents not connected; Busy while Mem's own command runs).

@@ -43,7 +43,7 @@ export const UV_RELEASE = {
 };
 export const MEM_PACKAGE = "nmem-cli";
 
-/** Mem's own tool id for each agent `nmem connect` registers by itself (SKILL.md: Claude Code and Codex); D374 moved it to the protocol. */
+/** Mem's own tool id for each agent `nmem connect` registers by itself (SKILL.md: Claude Code and Codex); D375 moved it to the protocol. */
 export { MEM_CONNECT_TOOLS };
 
 export interface WorkerMemSys {
@@ -65,7 +65,7 @@ export interface WorkerMem {
   /** With a link: sign in and connect the agents; without one (already signed in): connect the agents. */
   connect(link?: string): void;
   /**
-   * D374: the home's 装上 for one agent's Mem plugin here (D169): Mem's own `nmem connect --tool`
+   * D375: the home's 装上 for one agent's Mem plugin here (D169): Mem's own `nmem connect --tool`
    * for those agents, no link (Mem must be signed in here). Answers when it ended; the home then
    * reads the plugin check again. unsupported: no nmem, or none of these agents is one Mem connects.
    */
@@ -167,7 +167,7 @@ export function createWorkerMem(o: {
     const version = /(\d+\.\d+\.\d+[\w.-]*)/.exec(v.out)?.[1];
     const d = await sys.run([nmem, "--json", "doctor"], { env: sys.env(), timeoutMs: 30_000 });
     const doc = readDoctor(d.out);
-    // D374: what Mem's own doctor says is wrong here, said on the row (a first sign-in and an agent
+    // D375: what Mem's own doctor says is wrong here, said on the row (a first sign-in and an agent
     // not connected yet are the row's own states already).
     const h = memHealthOf(d, o.agents());
     const health = h?.issue && h.issue !== "plugin" && !(h.issue === "signed_out" && h.fresh) ? { health: { issue: h.issue } } : {};
@@ -228,7 +228,7 @@ export function createWorkerMem(o: {
     await look();
   }
 
-  /** D374: an nmem too old to have a doctor: Ducter's own copy is upgraded in place; the person's own is theirs. */
+  /** D375: an nmem too old to have a doctor: Ducter's own copy is upgraded in place; the person's own is theirs. */
   async function upgradeNow(): Promise<void> {
     const nmem = sys.which("nmem");
     const uv = join(bin, "uv");

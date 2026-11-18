@@ -30,6 +30,7 @@ var zhMemPlugin = Table{
 	"memp.card.question":   "%[2]s 上的 %[1]s 还没装 Nowledge Mem。装上以后，我在那儿做事和你自己用 %[1]s 时都记得你；会改 %[1]s 自己的设置。",
 	"memp.card.go":         "安装",
 	"memp.card.hold":       "暂不安装",
+	"memp.card.done":       "已装好",
 }
 
 var enMemPlugin = Table{
@@ -59,6 +60,7 @@ var enMemPlugin = Table{
 	"memp.card.question":   "%[1]s on %[2]s doesn't have Nowledge Mem. With it, my work there and your own %[1]s sessions both remember you; it changes %[1]s's own settings.",
 	"memp.card.go":         "Install",
 	"memp.card.hold":       "Not now",
+	"memp.card.done":       "Installed",
 }
 
 func init() {

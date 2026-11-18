@@ -289,7 +289,7 @@ export async function cmdWorker(o: {
     if (f.op === "mem_setup") {
       if (a.action === "install") mem.install();
       else if (a.action === "connect") mem.connect(typeof a.link === "string" && a.link ? a.link : undefined);
-      else if (a.action === "look") void mem.look(); // D374: 再看一次 on its Mem row
+      else if (a.action === "look") void mem.look(); // D375: 再看一次 on its Mem row
       else return up({ t: "res", id: f.id, ok: false, error: `unknown action ${a.action}` });
       return up({ t: "res", id: f.id, ok: true, result: { ok: true } });
     }

@@ -334,7 +334,9 @@ export interface Bodies {
   // delivered (D233): the task already has the answer (it came back in the tool call it was waiting
   // in), so it is not forwarded again, now or after a restart.
   // msgSeq (D236): the reply message that answered it (its words show as that bubble, not on the card).
-  decision_resolved: { decisionId: string; option: "go" | "hold" | "reply"; text?: string; by: "user" | "default"; now?: boolean; delivered?: boolean; msgSeq?: number };
+  // settled (D375): closed by what happened, not by an answer (D169's offer once Mem's check sees the
+  // plugin in): it reads as done (已装好 / Installed), never as a default taken.
+  decision_resolved: { decisionId: string; option: "go" | "hold" | "reply"; text?: string; by: "user" | "default"; now?: boolean; delivered?: boolean; msgSeq?: number; settled?: true };
   read_receipt: { upToSeq: number };
   task_open: {
     taskId: string;
@@ -1120,11 +1122,11 @@ export type ClientFrame =
   // D362: stopItem: 停止 on one running AI agent step that is slower than usual (its key).
   | { t: "update_all"; stop?: boolean; dismiss?: boolean; by?: "user" | "cli"; stopItem?: string }
   // D169: mem_plugin_install: 装上 / Install Nowledge Mem into one AI agent on a device (the user
-  // tapped it, so it is their Go). D374: Mem's own `nmem connect --tool` there when Mem has one for
+  // tapped it, so it is their Go). D375: Mem's own `nmem connect --tool` there when Mem has one for
   // that agent and its plugin is absent; else, or when that didn't put it in, one task there that
   // follows Mem's own setup guide. Answered with mem_plugin_result; the card reads the check again after.
   | { t: "mem_plugin_install"; device: string; harness: string }
-  // D374: Settings › 记忆's 再看一次 / Check again: read Mem's own doctor on the home now (the settings frame follows).
+  // D375: Settings › 记忆's 再看一次 / Check again: read Mem's own doctor on the home now (the settings frame follows).
   | { t: "mem_health" }
   // D205: Settings › 伙伴's 接上 / Connect and 断开 / Disconnect for the persona's own Bridge
   // connection, run by the home's nmem on the user's tap. Answered by fresh settings frames (bridge).
@@ -1845,9 +1847,9 @@ export interface MemPluginView {
   why?: MemPluginWhy; // review
   /** A setup task for it is open right now (its id). */
   taskId?: string;
-  /** D374: Mem's own `nmem connect --tool` is putting it in right now (no task). */
+  /** D375: Mem's own `nmem connect --tool` is putting it in right now (no task). */
   busy?: true;
-  /** D374: just put in by Mem's own command: the agent uses it once restarted. */
+  /** D375: just put in by Mem's own command: the agent uses it once restarted. */
   fresh?: true;
   checkedAt?: string; // ISO
 }
@@ -1980,7 +1982,7 @@ export interface DeviceView {
 // ---------- Nowledge Mem on a computer for tasks (D366, design/memory.md "Mem on a computer for tasks") ----------
 
 /** D366: what a mem_setup asks of a computer. */
-export type DeviceMemAction = "install" | "connect" | "look"; // look: D374, read Mem's doctor there again
+export type DeviceMemAction = "install" | "connect" | "look"; // look: D375, read Mem's doctor there again
 /**
  * D366: why the last step didn't work. network / space / unsupported: putting the command line
  * there (no internet, no room, no build for that computer); bad_link: not a connect link (refused
@@ -2002,9 +2004,9 @@ export interface DeviceMemView {
   version?: string;
   agents?: string[];
   step?: { phase: "installing" | "connecting" | "failed"; pct?: number; reason?: DeviceMemReason; detail?: string };
-  /** D374: Mem's own health there (its doctor), when it says something is wrong; absent on an older worker. */
+  /** D375: Mem's own health there (its doctor), when it says something is wrong; absent on an older worker. */
   health?: MemHealth;
-  /** D374: Mem's command line there is Ducter's own copy (its tools folder), so Ducter can update it. */
+  /** D375: Mem's command line there is Ducter's own copy (its tools folder), so Ducter can update it. */
   ours?: true;
 }
 
@@ -2427,12 +2429,12 @@ export interface MemView {
    * person's other AI tools saved there (titles only; from: the tool's own name, "Claude Code").
    */
   glance?: MemGlance;
-  /** D374: Mem's own health on the home (its doctor), once read; {} = all well. */
+  /** D375: Mem's own health on the home (its doctor), once read; {} = all well. */
   health?: MemHealth;
 }
 
 /**
- * D374: what Nowledge Mem's own `nmem doctor` says is wrong on a computer, the one thing worth
+ * D375: what Nowledge Mem's own `nmem doctor` says is wrong on a computer, the one thing worth
  * saying, in order of what blocks most. old: this nmem has no doctor (too old to tell); unreachable:
  * Mem is set up there but doesn't answer; signed_out: it answers, the sign-in doesn't work (fresh:
  * never signed in there); plugin: signed in, these agents (harness ids) aren't connected to it.

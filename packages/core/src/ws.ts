@@ -133,7 +133,7 @@ export interface WsDeps {
   updateAll?: () => import("./update-all.ts").UpdateAll | undefined;
   /** D169: Nowledge Mem in each device's own agents (mem-plugins.ts); absent in tests that don't need it. */
   memPlugins?: () => import("./mem-plugins.ts").MemPlugins | undefined;
-  /** D374: Mem's own health on the home (Settings › 记忆). */
+  /** D375: Mem's own health on the home (Settings › 记忆). */
   memHealth?: { refresh(): Promise<void> };
   /** D228: 从外面连's guided setup (anywhere.ts). */
   anywhere?: () => import("./anywhere.ts").AnywhereCtl | undefined;
@@ -1144,12 +1144,12 @@ export function createWsHandler(deps: WsDeps) {
         if (!deps.settings || !deps.bridgeLink) throw new Error("settings are not available");
         ws.data.settings = true;
         await (f.t === "bridge_mem_install" ? deps.bridgeLink.installMem() : deps.bridgeLink.signInMem(typeof f.link === "string" ? f.link : ""));
-        // D374: what Mem's doctor says follows a new sign-in or a new nmem at once.
+        // D375: what Mem's doctor says follows a new sign-in or a new nmem at once.
         void deps.memHealth?.refresh();
         return;
       }
       case "mem_health": {
-        // D374: 再看一次 / Check again on Settings › 记忆: read-only; the settings frame follows when it changed.
+        // D375: 再看一次 / Check again on Settings › 记忆: read-only; the settings frame follows when it changed.
         ws.data.settings = true;
         await deps.memHealth?.refresh();
         return;

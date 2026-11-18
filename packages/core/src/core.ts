@@ -839,7 +839,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     changed: () => settings.bridgeChanged(),
   });
   settings.setGlance(() => memGlance.get(), memGlance);
-  // D374: Mem's own health on the home (its doctor) for the same page's Nowledge Mem head, gated like the glance.
+  // D375: Mem's own health on the home (its doctor) for the same page's Nowledge Mem head, gated like the glance.
   const memHealth = createMemHealth({
     run: opts.bridgeLink?.run ?? nmemCall({ env: opts.bridgeLink?.env }),
     on: () => settings.get().memory && process.env.DUCTER_MEMORY !== "off" && process.env.DUCTER_BRIDGE !== "0" && !settings.memMissing() && (process.env.NODE_ENV !== "test" || !!opts.bridgeLink?.run),
@@ -1391,7 +1391,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   const memConnected = mp.connected ?? (() => !!persona.mem && !settings.memMissing());
   const memOn = () => settings.get().memory && process.env.DUCTER_MEMORY !== "off" && memConnected();
   memOnRef = memOn;
-  // D374: the home's own nmem for Mem's `connect --tool` (a test passes a fake; a test without one never runs nmem).
+  // D375: the home's own nmem for Mem's `connect --tool` (a test passes a fake; a test without one never runs nmem).
   const connectNmem = agentTesting ? undefined : nmemCall({ env: opts.bridgeLink?.env, timeoutMs: 5 * 60_000 });
   const connectLocal = mp.connectLocal ?? (connectNmem ? (args: string[]) => connectNmem(["connect", ...args]) : undefined);
   const memPlugins = createMemPlugins({
@@ -1411,7 +1411,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       return link.call<Record<string, import("@ducter/protocol").MemPluginView> | null>("mem_plugins", {}, 30_000).then((r) => r ?? undefined).catch(() => undefined);
     },
     devices: async () => ((await devicesView?.frame())?.devices ?? []).map((x) => ({ id: x.id, name: x.name, home: x.home, awake: x.state === "awake", harnesses: x.harnesses })),
-    // D374: Mem's own `nmem connect --tool` (on the home here; on a worker its mem_connect op).
+    // D375: Mem's own `nmem connect --tool` (on the home here; on a worker its mem_connect op).
     ...(connectLocal || !agentTesting
       ? {
           connectTools: async (id: string, home: boolean, hs: string[]) => {

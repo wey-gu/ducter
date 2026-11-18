@@ -6,7 +6,7 @@
 // DEMO_MEM: newer (connected, Bridge on, Mem says 0.10.121 is out; pipx copy) · on (connected, up to
 //   date) · empty (connected, nothing noted yet) · off (switched off) · fresh (no nmem on the home) ·
 //   sign_in (nmem there, not signed in) · old (0.10.116 by pipx: too old for Bridge)
-// D374: DEMO_HEALTH: what Mem's own doctor answers (made-up details): ok · unreachable · signed_out ·
+// D375: DEMO_HEALTH: what Mem's own doctor answers (made-up details): ok · unreachable · signed_out ·
 //   plugin (Claude Code here isn't connected; 接上 runs a pretend `nmem connect` for 3 s) · old (no doctor)
 // then open http://127.0.0.1:7864/app#settings=memory (or #settings=peers)
 import { startCore, stubRunner } from "./demo-core.ts";

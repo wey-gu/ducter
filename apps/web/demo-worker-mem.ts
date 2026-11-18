@@ -4,7 +4,7 @@
 // socket (nothing is installed, no link is redeemed, no Mem is reached).
 //   DUCTER_PORT=7841 DUCTER_DATA_DIR=$(mktemp -d) DEMO_CTL_PORT=7842 bun apps/web/demo-worker-mem.ts
 // Then POST /mem?state=before | absent | installing | sign_in | used | connecting | ready | left
-// | unreachable | signed_out | old (D374) on
+// | unreachable | signed_out | old (D375) on
 // DEMO_CTL_PORT. The card's own taps step it too: 装上 → installing → sign_in; 登录 → connecting → ready.
 import { startCore, stubRunner } from "./demo-core.ts";
 import { noOo } from "./demo-oo.ts";
@@ -42,7 +42,7 @@ const states: Record<string, Mem> = {
   connecting: { state: "sign_in", version: "0.10.120", step: { phase: "connecting" } },
   ready: { state: "ready", version: "0.10.120", agents: ["claude-code", "codex"] },
   left: { state: "ready", version: "0.10.120", agents: ["codex"] },
-  // D374: what Mem's own doctor there says is wrong.
+  // D375: what Mem's own doctor there says is wrong.
   unreachable: { state: "sign_in", version: "0.10.120", health: { issue: "unreachable" } },
   signed_out: { state: "sign_in", version: "0.10.120", health: { issue: "signed_out" } },
   old: { state: "sign_in", version: "0.10.116", health: { issue: "old" }, ours: true },

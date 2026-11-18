@@ -61,7 +61,7 @@ export function memUpdate(b: BridgeView | undefined): MemUpdate | undefined {
 }
 
 /**
- * D374: what the Nowledge Mem head on Memory says about Mem's own health (its doctor on the home):
+ * D375: what the Nowledge Mem head on Memory says about Mem's own health (its doctor on the home):
  * unread (not read yet, or it can't tell: the plain "Connected"), ok (one calm line), or the one thing
  * wrong with its one action: old (this nmem has no doctor; Update when Ducter can run it, and not
  * when the update row already offers it), unreachable (Check again), signed_out (Sign in again: the

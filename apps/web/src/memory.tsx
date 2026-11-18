@@ -365,7 +365,7 @@ const agentWords = (ids: string[]) => {
 };
 
 /**
- * D374: Nowledge Mem's head, with what Mem's own doctor on the home says: one calm line when all is
+ * D375: Nowledge Mem's head, with what Mem's own doctor on the home says: one calm line when all is
  * well, else the one thing wrong in the failed ink and its one action (Update, Check again, Sign in
  * again with the link field in place, Connect by Mem's own command). Read in the background: until
  * the first answer it says "Connected" as before, and never holds the page.
@@ -411,7 +411,7 @@ function MemHealthHead({ b }: { b: BridgeView | undefined }) {
       {h.look === "plugin" && !h.busy && <GBlock><small class="mem-health-why">{t("mem.health.plugin.why")}</small></GBlock>}
       {h.look === "signed_out" && signing && (
         <GBlock>
-          <small class="mem-health-why">{t("bridge.mem.signin", home)}</small>
+          <small class="mem-health-why">{t("mem.health.resign.how")}</small>
           {why && <small class="mem-why">{why}</small>}
           <label class="acct-field">
             <span class="small">{t("bridge.mem.signin.link")}</span>

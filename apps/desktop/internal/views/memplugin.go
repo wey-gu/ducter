@@ -33,7 +33,7 @@ func (a *App) memPluginWords(m *protocol.MemPluginView, harness string) (line, a
 	if m.TaskID != "" {
 		return a.L.T("memp.setting"), ""
 	}
-	// D374: Mem's own command putting it in now; just put in (restart the agent to use it).
+	// D375: Mem's own command putting it in now; just put in (restart the agent to use it).
 	if m.Busy {
 		return a.L.T("memp.busy"), ""
 	}
@@ -85,7 +85,7 @@ func (a *App) memPluginAction(c *ui.Context, dv *protocol.DeviceView, h protocol
 		// The in-place ask (design/ui.md): one bold question, what changes and where, then the button and Cancel.
 		ui.Column(c.Key("mempask:" + key)).Gap(t.S2).Padding(t.S3).Radius(t.RadiusMD).Background(t.Bg).Children(func() {
 			ui.Text(c, a.L.T("memp.ask", agent, a.deviceNameIn(dv))).FontSize(t.SM).FontWeight(800).LineHeight(1.4)
-			// D374: Mem's own command first where it has one for this agent and the plugin isn't there.
+			// D375: Mem's own command first where it has one for this agent and the plugin isn't there.
 			means := "memp.means"
 			if memConnectTools[h.Harness] && h.Mem.State == "absent" {
 				means = "memp.means.direct"
@@ -107,7 +107,7 @@ func (a *App) memPluginAction(c *ui.Context, dv *protocol.DeviceView, h protocol
 }
 
 // memConnectTools is the agents Mem's own `nmem connect --tool` registers by
-// itself (D374; protocol/src/mem-health.ts MEM_CONNECT_TOOLS).
+// itself (D375; protocol/src/mem-health.ts MEM_CONNECT_TOOLS).
 var memConnectTools = map[string]bool{"claude-code": true, "codex": true}
 
 // memWhy is why 装上 didn't start, in plain words.

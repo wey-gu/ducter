@@ -1,4 +1,4 @@
-// D374: Nowledge Mem's own health (its `nmem --json doctor`) on Settings › 记忆 and on a lent
+// D375: Nowledge Mem's own health (its `nmem --json doctor`) on Settings › 记忆 and on a lent
 // computer's Mem row, and D169's 装上 through Mem's own `nmem connect --tool` before a task.
 // Doctor answers are in the shape nmem 0.10.119/0.10.120 prints (research/144), with made-up details.
 import { describe, expect, test } from "bun:test";
@@ -23,7 +23,7 @@ const CC = (s = "pass", d = "registered") => check("Claude Code", s, d, "claude-
 const CX = (s = "pass", d = "registered") => check("Codex", s, d, "codex-cli");
 const ok = (out: string, code = 0) => ({ code, out, err: "" });
 
-describe("D374 memHealthOf: the one thing worth saying, from Mem's doctor", () => {
+describe("D375 memHealthOf: the one thing worth saying, from Mem's doctor", () => {
   test("all well: nothing wrong, and never a detail line (the credential one carries a key's tail)", () => {
     const h = memHealthOf(ok(doctor(CRED, UP, KEY_OK, CC(), CX(), check("Cursor", "warn", "not installed", "cursor"))), ["claude-code", "codex"], "2026-11-19T08:00:00.000Z");
     expect(h).toEqual({ checkedAt: "2026-11-19T08:00:00.000Z" });
@@ -57,7 +57,7 @@ describe("D374 memHealthOf: the one thing worth saying, from Mem's doctor", () =
   });
 });
 
-describe("D374 the home's reader: cached, in the background, never blocking", () => {
+describe("D375 the home's reader: cached, in the background, never blocking", () => {
   test("the first look starts a read and says nothing yet; the answer follows; the TTL holds", async () => {
     let t = 0;
     let runs = 0;
@@ -122,9 +122,10 @@ function plugins(o: { connect?: (id: string, hs: string[]) => Promise<{ ok: bool
   const opened: any[] = [];
   const connects: { id: string; hs: string[] }[] = [];
   const devs = [{ id: "local", name: "hel", home: true, awake: true, harnesses: ["claude-code", "codex", "pi"].map((harness) => ({ harness, installed: true, loggedIn: o.signedIn ?? true })) }];
+  const log = fakeLog();
   const mp = createMemPlugins({
     dataDir: dir,
-    log: fakeLog() as any,
+    log: log as any,
     tasks: { get: () => undefined, list: () => [] } as any,
     persona: { id: "p" },
     runner: () => ({ openTask: async (i: any) => (opened.push(i), { taskId: `tsk${opened.length}` } as TaskCard) }) as any,
@@ -142,10 +143,10 @@ function plugins(o: { connect?: (id: string, hs: string[]) => Promise<{ ok: bool
     },
   });
   const line = (h: string) => mp.view("local", [{ harness: h, installed: true, loggedIn: true, canBePartner: false }])[0]!.mem;
-  return { mp, opened, connects, line, state, done: () => rmSync(dir, { recursive: true, force: true }) };
+  return { mp, log, opened, connects, line, state, done: () => rmSync(dir, { recursive: true, force: true }) };
 }
 
-describe("D374 装上: Mem's own command first, the task as the fallback", () => {
+describe("D375 装上: Mem's own command first, the task as the fallback", () => {
   test("Claude Code: `nmem connect --tool` puts it in, no task opens, the line says to restart it", async () => {
     const s = plugins();
     await s.mp.check();
@@ -223,6 +224,24 @@ describe("D374 装上: Mem's own command first, the task as the fallback", () =>
     expect(most).toBe(1);
     s.done();
   });
+  test("D375: D169's open offer closes itself once the check sees the plugin in, as done, and runs nothing", async () => {
+    const s = plugins();
+    await s.mp.check();
+    const offers = s.log.events.filter((e) => e.kind === "decision" && (e.body as any).memPlugin);
+    expect(offers.map((e) => (e.body as any).memPlugin.harness).sort()).toEqual(["claude-code", "codex", "pi"]);
+    // Claude Code goes in by hand (outside Ducter); the next check sees it.
+    s.state["claude-code"] = "installed";
+    await s.mp.check();
+    const closed = s.log.events.filter((e) => e.kind === "decision_resolved").map((e) => e.body as any);
+    const cc = offers.find((e) => (e.body as any).memPlugin.harness === "claude-code")!.body as any;
+    expect(closed).toEqual([{ decisionId: cc.decisionId, option: "hold", by: "default", settled: true }]);
+    // Once only, and nothing ran.
+    await s.mp.check();
+    expect(s.log.events.filter((e) => e.kind === "decision_resolved")).toHaveLength(1);
+    expect(s.opened).toHaveLength(0);
+    expect(s.connects).toHaveLength(0);
+    s.done();
+  });
   test("the brief without a try is D169's, unchanged", () => {
     expect(memSetupBrief({ agent: "Codex", host: "codex-cli", device: "hel", lang: "en" })).not.toContain("ran first");
   });
@@ -253,7 +272,7 @@ function workerRig(o: { doctor: () => { code: number; out: string }; nmemAt?: (d
   return { m, calls, dataDir, done: () => rmSync(dataDir, { recursive: true, force: true }) };
 }
 
-describe("D374 a lent computer's Mem row", () => {
+describe("D375 a lent computer's Mem row", () => {
   test("set up but its Mem doesn't answer: sign_in with health unreachable (not a paste box)", async () => {
     const w = workerRig({ doctor: () => ok(doctor(CRED, DOWN, KEY_SKIP), 1) });
     await w.m.look();
@@ -310,7 +329,7 @@ describe("D374 a lent computer's Mem row", () => {
 
 // ---------- over the socket ----------
 
-describe("D374 over the socket", () => {
+describe("D375 over the socket", () => {
   test("the settings frame carries Mem's health once read; 再看一次 reads it again; 装上 runs Mem's own command on the home", async () => {
     const { startCore } = await import("../src/core.ts");
     const { tempDir } = await import("./helpers.ts");

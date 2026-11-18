@@ -13,9 +13,10 @@ import (
 
 	"github.com/wey-gu/ducter/apps/desktop/internal/i18n"
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
+	"github.com/wey-gu/ducter/apps/desktop/internal/store"
 )
 
-// D374: Mem's own health on Settings › 记忆's Nowledge Mem head and on a lent
+// D375: Mem's own health on Settings › 记忆's Nowledge Mem head and on a lent
 // computer's Mem row, and D169's 装上 by Mem's own command.
 
 func TestMemHealthLookGo(t *testing.T) {
@@ -95,6 +96,9 @@ func TestMemHealthHead(t *testing.T) {
 		if _, ok := tt.Find(L.T("bridge.mem.signin.link")); !ok {
 			t.Fatalf("%s: no link field", lang)
 		}
+		if _, ok := tt.Find(L.T("mem.health.resign.how")); !ok {
+			t.Fatalf("%s: no re-sign-in line of its own", lang)
+		}
 		app.memReSign = false
 		// Plugin: 接上 sends D169's install for each agent on the home.
 		app2, sent2 := memHealthApp(t, lang, &protocol.MemHealth{Issue: "plugin", Agents: []string{"claude-code", "codex"}}, []protocol.DeviceHarness{
@@ -141,6 +145,55 @@ func TestMemPluginBusyFresh(t *testing.T) {
 	}
 }
 
+// D375: D169's offer closed by itself reads as done, never as a default taken.
+func TestMemOfferSettled(t *testing.T) {
+	for _, lang := range []i18n.Lang{i18n.ZH, i18n.EN} {
+		app, _ := iaApp(t, lang)
+		d := &store.DecisionState{DecisionID: "d_mem", MemPlugin: &protocol.MemPluginAsk{Device: "local", DeviceName: "hel", Harness: "claude-code"},
+			Resolved: &protocol.DecisionResolved{DecisionID: "d_mem", Option: "hold", By: "default", Settled: true}}
+		if got, want := app.answeredWords(d), app.L.T("memp.card.done"); got != want || want == "memp.card.done" {
+			t.Fatalf("%s: %q, want %q", lang, got, want)
+		}
+		d.Resolved.Settled = false
+		if got := app.answeredWords(d); got != app.L.T("decision.resolved.default") {
+			t.Fatalf("%s: a plain default: %q", lang, got)
+		}
+	}
+}
+
+// D375: the offer in the conversation, closed by itself, drawn as done
+// (DUCTER_MEMHEALTH_SHOTS writes its picture too).
+func TestMemOfferSettledCard(t *testing.T) {
+	for _, lang := range []i18n.Lang{i18n.ZH, i18n.EN} {
+		h := newHarness(t, lang)
+		L := h.app.L
+		now := time.Now().UTC()
+		h.app.Receive(protocol.ServerFrame{T: "events", Events: []protocol.LogEvent{
+			protocol.NewEvent(900, now.Add(-time.Minute).Format(time.RFC3339Nano), "default", "channel", protocol.OriginSystem, protocol.KindDecision, protocol.Decision{
+				DecisionID: "d_mem", Question: "raw", GoLabel: "装上", DefaultOption: "go", Reversible: true,
+				MemPlugin: &protocol.MemPluginAsk{Device: "local", DeviceName: "hel", Harness: "claude-code"},
+			}),
+			protocol.NewEvent(901, now.Format(time.RFC3339Nano), "default", "channel", protocol.OriginSystem, "decision_resolved", protocol.DecisionResolved{DecisionID: "d_mem", Option: "hold", By: "default", Settled: true}),
+		}})
+		h.app.Route = RouteConversation
+		done := L.T("memp.card.done")
+		h.until("settled", func() bool { return h.tt.HasText(done) })
+		if h.tt.HasText(L.T("decision.resolved.default")) {
+			t.Fatalf("%s: reads as a default taken", lang)
+		}
+		if dir := os.Getenv("DUCTER_MEMHEALTH_SHOTS"); dir != "" {
+			f, err := os.Create(filepath.Join(dir, fmt.Sprintf("mac-conv-offer-settled-%s.png", lang)))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := png.Encode(f, h.tt.Image()); err != nil {
+				t.Fatal(err)
+			}
+			f.Close()
+		}
+	}
+}
+
 func TestMemRowHealthCard(t *testing.T) {
 	app, sent := iaApp(t, i18n.ZH)
 	app.Now = func() time.Time { return lendNow }
@@ -182,7 +235,7 @@ func TestMemRowHealthCard(t *testing.T) {
 	}
 }
 
-// D374 pictures, offline (never anyone's real Mem):
+// D375 pictures, offline (never anyone's real Mem):
 //
 //	DUCTER_MEMHEALTH_SHOTS=/path/to/.shots/mem-health/after-mac go test ./internal/views -run MemHealthShots
 func TestMemHealthShots(t *testing.T) {

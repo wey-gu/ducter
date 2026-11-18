@@ -12,7 +12,7 @@ export function memRowLook(m: DeviceMemView): MemRowLook {
 }
 
 /**
- * D374: what Mem's own doctor there says is wrong, when the row would otherwise just ask to sign in:
+ * D375: what Mem's own doctor there says is wrong, when the row would otherwise just ask to sign in:
  * unreachable (set up, its Mem doesn't answer: Check again), signed_out (it signed in once, that
  * stopped working: the link field, as a first sign-in), old (that nmem has no doctor: Update when
  * it is Ducter's own copy, else how). Undefined: the row's own words.

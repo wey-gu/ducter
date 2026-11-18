@@ -1,4 +1,4 @@
-// D374: Nowledge Mem's own health on a computer, from Mem's own `nmem --json doctor` (research/144).
+// D375: Nowledge Mem's own health on a computer, from Mem's own `nmem --json doctor` (research/144).
 // Its answer is `{checks: [{name, status, detail, tool}], failed}`: "credential home", "server
 // reachable", "api key", then one line per AI tool Mem's `connect` knows (`tool`: claude-code,
 // codex-cli, cursor, gemini-cli, opencode). This turns it into the one thing worth saying about

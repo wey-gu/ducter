@@ -31,7 +31,7 @@ export function MemOnDevice({ dv }: { dv: DeviceView }) {
   const [link, setLink] = useState("");
   if (!m) return null;
   const look = memRowLook(m);
-  const health = memRowHealth(m); // D374
+  const health = memRowHealth(m); // D375
   const awake = dv.state === "awake";
   const home = A.devices?.find((d) => d.home)?.name ?? "";
   const left = unconnected(dv);

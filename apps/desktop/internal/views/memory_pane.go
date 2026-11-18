@@ -469,7 +469,7 @@ func (a *App) memLink(c *ui.Context, b *protocol.BridgeView) {
 }
 
 // memHealthHead is Nowledge Mem's head with what Mem's own doctor on the home
-// says (D374): one calm line when all is well, else the one thing wrong in the
+// says (D375): one calm line when all is well, else the one thing wrong in the
 // failed ink and its one action (更新, 再看一次, 重新登录 with the link field
 // in place, 接上 by Mem's own command). Until the first answer it says
 // "Connected" as before; the page never waits for it.
@@ -546,7 +546,7 @@ func (a *App) memHealthHead(c *ui.Context, b *protocol.BridgeView) {
 	}
 	if h.Look == "signed_out" && a.memReSign {
 		a.textBlock(c, "mem-resign", func() {
-			help := a.L.T("bridge.mem.signin", homeName)
+			help := a.L.T("mem.health.resign.how") // D375: its own line, not the first sign-in's
 			if b != nil {
 				switch b.SignIn {
 				case "used":

@@ -8,7 +8,7 @@
 //
 // Installing is never silent (D17: the agents' setup is the user's): 装上 / Install runs Mem's own
 // `nmem connect --tool <id>` on that computer when Mem has one for that agent (Claude Code, Codex)
-// and its plugin is absent (D374: no tokens, no signed-in agent, seconds); else, or when that didn't
+// and its plugin is absent (D375: no tokens, no signed-in agent, seconds); else, or when that didn't
 // put it in, it opens one task there, with that agent, that follows Mem's official setup guide.
 // Either way the check is read again after. Where a signed-in agent lacks it, Ducter recommends it once per computer and agent: one
 // card, Go 装上 suggested, nothing happens until the user taps.
@@ -38,8 +38,8 @@ export interface MemPluginsDeps {
   /** The devices now: id, name, home, awake, and which agents are installed and signed in. */
   devices: () => Promise<{ id: string; name: string; home: boolean; awake: boolean; harnesses: { harness: string; installed: boolean; loggedIn: boolean }[] }[]>;
   /**
-   * D374: Mem's own `nmem connect --tool` for these agents on that device, answered when it ended;
-   * undefined when it can't run there (no nmem, a Ducter there from before D374). Without it, a task.
+   * D375: Mem's own `nmem connect --tool` for these agents on that device, answered when it ended;
+   * undefined when it can't run there (no nmem, a Ducter there from before D375). Without it, a task.
    */
   connectTools?: (deviceId: string, home: boolean, harnesses: string[]) => Promise<{ ok: boolean; detail?: string } | undefined>;
   now?: () => number;
@@ -58,7 +58,7 @@ export interface MemPlugins {
   present(device: string | undefined, harness: string): boolean;
   /** Runs the check on one device (or every awake one) now. */
   check(deviceId?: string): Promise<void>;
-  /** 装上 / Install: Mem's own command there (D374), else the setup task on that device with that agent. */
+  /** 装上 / Install: Mem's own command there (D375), else the setup task on that device with that agent. */
   install(device: string, harness: string): Promise<{ ok: true; taskId?: string } | { ok: false; reason: MemPluginReason }>;
   onChange(fn: () => void): () => void;
   stop(): void;
@@ -95,7 +95,7 @@ const FINISHED = new Set(["done_claimed", "done", "failed", "dropped", "blocked"
 /** D169: the brief of the task that puts Nowledge Mem into one of the user's own agents on a computer. */
 export function memSetupBrief(o: { agent: string; host: string; device: string; lang: LangTag; tried?: { tool: string; said?: string } }): string {
   const lang = `Write your report in ${langName(o.lang)}.`;
-  // D374: Mem's own command went first and didn't put it in: say so, so the guide's other route is taken.
+  // D375: Mem's own command went first and didn't put it in: say so, so the guide's other route is taken.
   const tried = o.tried ? `\nNowledge Mem's own \`nmem connect --tool ${o.tried.tool} --on-conflict abort\` ran first and didn't put it in${o.tried.said ? ` (its last line: ${o.tried.said})` : ""}. If ${o.agent} already has another memory integration, say which and ask the user before changing anything.\n` : "";
   return `Set up Nowledge Mem for ${o.agent} on this computer (${o.device}), for the user's own use of ${o.agent} outside Ducter. The user tapped Install for this.
 ${tried}
@@ -133,7 +133,7 @@ export function createMemPlugins(d: MemPluginsDeps): MemPlugins {
   const seen = new Map<string, Plugins>(); // device -> its last check
   const names = new Map<string, string>(); // a device's name -> its id, from the last list
   const running = new Map<string, Promise<void>>();
-  // D374: device:harness pairs Mem's own command is putting in now; ones it just put in (restart the
+  // D375: device:harness pairs Mem's own command is putting in now; ones it just put in (restart the
   // agent to use it, said until the next check); ones it didn't, so the next tap goes to a task.
   const direct = new Set<string>();
   const fresh = new Set<string>();
@@ -156,6 +156,7 @@ export function createMemPlugins(d: MemPluginsDeps): MemPlugins {
     if (!got) return;
     seen.set(id, got);
     if (!keepFresh) for (const k of [...fresh]) if (k.startsWith(`${id}:`)) fresh.delete(k);
+    settleOffers(id, got);
     await offers(id, got);
     changed();
   }
@@ -192,6 +193,24 @@ export function createMemPlugins(d: MemPluginsDeps): MemPlugins {
     save();
   }
 
+  /**
+   * D375: an offer still open whose plugin Mem's check now sees there (put in by Mem's own command,
+   * a task, or by hand) closes itself and reads as done, never as a default taken: hold, so nothing runs.
+   */
+  function settleOffers(id: string, got: Plugins) {
+    const cards = d.log.read({ stream: "channel", kinds: ["decision", "decision_resolved"], limit: 500 });
+    const closed = new Set(cards.filter((e) => e.kind === "decision_resolved").map((e) => (e.body as Bodies["decision_resolved"]).decisionId));
+    for (const e of cards) {
+      if (e.kind !== "decision") continue;
+      const b = e.body as Bodies["decision"];
+      const ask = b.memPlugin;
+      if (!ask || ask.device !== id || closed.has(b.decisionId)) continue;
+      const s = got[ask.harness]?.state;
+      if (s === undefined || s === "absent") continue;
+      d.log.append({ stream: "channel", origin: "system", kind: "decision_resolved", body: { decisionId: b.decisionId, option: "hold", by: "default", settled: true } });
+    }
+  }
+
   function offer(device: string, deviceName: string, harness: string) {
     const w = words(W, d.lang());
     const agent = harnessName(harness);
@@ -217,7 +236,7 @@ export function createMemPlugins(d: MemPluginsDeps): MemPlugins {
     if (!dev.awake) return { ok: false, reason: "offline" };
     const key = `${dev.id}:${harness}`;
     if (setupOf(dev.id, harness) || direct.has(key)) return { ok: false, reason: "running" };
-    // D374: Mem's own command first, where Mem has one for this agent and its plugin isn't there at all
+    // D375: Mem's own command first, where Mem has one for this agent and its plugin isn't there at all
     // (an update or a review is the guide's, by a task). It needs no agent signed in and no tokens.
     const tool = MEM_CONNECT_TOOLS[harness];
     const was = seen.get(dev.id)?.[harness]?.state;

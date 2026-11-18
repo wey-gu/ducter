@@ -193,7 +193,7 @@ whether Mem forgets or the line only leaves the list; nothing another tool saved
 **Memory, on:** (1) one group: the notebook in the tile column, **{name} 记得你**, **这周新记了 N 条** in
 the done ink (or **这周还没有新记的**), the switch at the right edge; its foot says what the switch does.
 (2)–(3) are D321's now ("What it knows about you" below): the groups by kind, the search, the other tools as a
-count, each tool's own mark (D314). (4) **Nowledge Mem** as one group: Mem's own app icon as the tile (D314), its head saying Mem's own health (D374, "Mem's own health" below); **记在哪儿**,
+count, each tool's own mark (D314). (4) **Nowledge Mem** as one group: Mem's own app icon as the tile (D314), its head saying Mem's own health (D375, "Mem's own health" below); **记在哪儿**,
 **它的名字**, the one update worth a tap as a row (D229's words), the raw facts behind **详情**, the
 version as the foot's note. **Off:** only the first group, its foot what stays. **Before Mem:** the
 partner at 84–96 on the paper (an empty state, never inside a group), then one group: Mem's faded
@@ -457,7 +457,7 @@ on every computer, without owning it (D17):
   alone never makes a review; the check's own `review`, several copies, or an install it
   can't call enabled does. `update` shows only when the check says so.
 - **安装 / Install** asks in place what it changes. For Claude Code and Codex with the plugin
-  absent, Mem's own `nmem --json connect --tool <id> --on-conflict abort` runs first (D374: on the
+  absent, Mem's own `nmem --json connect --tool <id> --on-conflict abort` runs first (D375: on the
   home with its nmem, on a worker through its `mem_connect` op, one at a time per computer; no
   agent signed in needed, no tokens); the line says **正在用 Nowledge Mem 自己的命令安装…**, and when
   the check afterwards finds it, **Nowledge Mem 装好了，重开 {agent} 才用得上**. Otherwise (it didn't
@@ -469,10 +469,11 @@ on every computer, without owning it (D17):
   the command said.
 - **Ducter recommends it once** per computer and agent, ever, wherever the check finds a
   signed-in agent without it: one card, Go 装上 suggested, no timer (it changes the agent's
-  own settings, so it waits for the tap).
+  own settings, so it waits for the tap). Once the check sees it in, however it got there, an
+  open card closes itself and reads **已装好** (D375: `decision_resolved.settled`, hold, nothing runs).
 - **Memory off:** no line, no card, no install.
 
-## Mem's own health (D374, built 2026-11-19)
+## Mem's own health (D375, built 2026-11-19)
 
 *Who:* the developer whose Mem key was rotated or whose Cloud is down, while the page said **已连上**;
 the consumer whose sign-in expired. The fresh user never meets it (no Mem, nothing shows). Evidence:
@@ -487,7 +488,7 @@ the consumer whose sign-in expired. The fresh user never meets it (no Mem, nothi
   glance; again after a sign-in, an update or Mem's own `connect`; `MemView.health`. The head says
   **已连上** until the first answer, then **已连上，一切正常**, or the one thing wrong in the failed ink
   with its one action: 更新 (when Ducter can run it, and not twice with the update row), 再看一次
-  (`mem_health`), 重新登录 (D225's field in place), 接上 (D169's install for each agent, so Mem's own
+  (`mem_health`), 重新登录 (the link field in place under its own line: regenerate the connect prompt in Mem's Settings › Connectors), 接上 (D169's install for each agent, so Mem's own
   command).
 - **A lent computer** (`core/worker-mem.ts`): the same read rides on `DeviceMemView.health` (and
   `ours` when its nmem is Ducter's copy); while the row would ask to sign in it says unreachable

@@ -1,4 +1,4 @@
-// D374: Nowledge Mem's own health on the home, for Settings › 记忆 / Memory's Nowledge Mem head
+// D375: Nowledge Mem's own health on the home, for Settings › 记忆 / Memory's Nowledge Mem head
 // (research/144). Mem's own `nmem --json doctor`, read-only, at most once per TTL, in the
 // background: the page never waits for it (it shows "Connected" until the first answer, and nothing
 // at all when nmem can't tell). Gated like the glance (memory on, Mem connected, never a test

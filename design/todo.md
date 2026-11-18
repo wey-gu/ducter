@@ -96,7 +96,7 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
 - **D366 live (and D370):** a real prompt from Mem's Settings › Connectors › Any AI agent pasted whole and redeemed on a lent computer and on a home, `nmem doctor` passing there, and one task
   run there with Mem's plugin (its Context Bundle in, its thread captured as the persona). Trigger: the
   author's haswell after the next release (his link, his Mem).
-- **D374 live:** Mem's own `nmem connect --tool` for a Claude Code or Codex that lacks the plugin, on the
+- **D375 live:** Mem's own `nmem connect --tool` for a Claude Code or Codex that lacks the plugin, on the
   home and on a lent computer, and its `--on-conflict abort` against another memory integration (how it
   reports the clash; research/144 F9); an expired key seen on Memory's head. Trigger: the author's next
   agent without the plugin, or a key rotation.

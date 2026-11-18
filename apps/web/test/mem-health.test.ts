@@ -1,10 +1,11 @@
-// D374: what Memory's Nowledge Mem head and a lent computer's Mem row say about Mem's own health.
+// D375: what Memory's Nowledge Mem head and a lent computer's Mem row say about Mem's own health.
 import { expect, test } from "bun:test";
 import type { BridgeView, DeviceMemView } from "@ducter/protocol";
 import { memHealthLook } from "../src/mem-view.ts";
 import { memRowHealth } from "../src/worker-mem-view.ts";
 import { memoryWords } from "../src/i18n-memory.ts";
 import { workerMemWords } from "../src/i18n-workermem.ts";
+import { TABLES } from "../src/i18n.ts";
 
 const b = (x: Partial<BridgeView> = {}) => ({ state: "connected", ...x }) as BridgeView;
 
@@ -49,4 +50,11 @@ test("the words exist in both languages, the same keys", () => {
     expect(zh.length).toBeGreaterThan(0);
     for (const k of zh) expect(words.en[k]).toBeTruthy();
   }
+});
+
+test("D375: the offer closed by itself reads as done; re-signing in has its own line", () => {
+  expect(TABLES.zh["memp.card.done"]).toBe("已装好");
+  expect(TABLES.en["memp.card.done"]).toBe("Installed");
+  expect(TABLES.zh["mem.health.resign.how"]).toBe("在 Nowledge Mem 的 设置 › Connectors 里重新生成连接提示，把整段贴在这里。");
+  expect(TABLES.en["mem.health.resign.how"]).toContain("Settings › Connectors");
 });

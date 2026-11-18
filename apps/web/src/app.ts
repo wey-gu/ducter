@@ -2101,7 +2101,7 @@ class AppState {
     this.sheet = null;
     this.go({ name: "task", id: taskId });
   }
-  /** D169, D374: Mem's own command (else one task on that device) puts Nowledge Mem into that agent. */
+  /** D169, D375: Mem's own command (else one task on that device) puts Nowledge Mem into that agent. */
   installMem(device: string, harness: string) {
     this.memAnswer = undefined;
     this.send({ t: "mem_plugin_install", device, harness });
@@ -2119,7 +2119,7 @@ class AppState {
     this.send({ t: "mem_setup", device, action, ...(link ? { link } : {}) });
     this.changed();
   }
-  /** D374: 再看一次 / Check again: read Mem's own doctor on the home now (the settings frame follows). */
+  /** D375: 再看一次 / Check again: read Mem's own doctor on the home now (the settings frame follows). */
   checkMemHealth() {
     this.send({ t: "mem_health" });
   }

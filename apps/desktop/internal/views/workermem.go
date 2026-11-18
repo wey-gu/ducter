@@ -34,7 +34,7 @@ func memRowLook(m *protocol.DeviceMemView) string {
 }
 
 // memRowHealth is what Mem's own doctor there says is wrong when the row
-// would otherwise just ask to sign in (D374, the web's memRowHealth):
+// would otherwise just ask to sign in (D375, the web's memRowHealth):
 // unreachable | signed_out | old, or "".
 func memRowHealth(m *protocol.DeviceMemView) string {
 	if memRowLook(m) != "sign_in" || m.Health == nil {
@@ -120,7 +120,7 @@ func (a *App) memOnDevice(c *ui.Context, dv *protocol.DeviceView) {
 	a.drainDeviceResults()
 	m := dv.Mem
 	look := memRowLook(m)
-	health := memRowHealth(m) // D374
+	health := memRowHealth(m) // D375
 	awake := dv.State == protocol.DeviceAwake
 	name := a.deviceNameIn(dv)
 	if look == "installing" || look == "connecting" {

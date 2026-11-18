@@ -19,7 +19,7 @@ import { AmbientLine } from "./ambient.tsx";
 import { A, candKey, effortWord, HANDHELD, placeKey, type SettingsPage } from "./app.ts";
 import { HARNESSES, isHarnessId, TRY_LIVE, type HeldMsg } from "@ducter/protocol";
 import { closingWords, computerApart, computerOf, computers, computerState, manyComputers, whereAsk, watchesBrowser, whereCandReason } from "./where.ts";
-import { ago, behind, cjkPad, deviceLabel, duration, harnessName, modelName, phaseLine as phaseWords, sameWords, splitOutcome, spoken, when } from "./format.ts";
+import { ago, behind, cjkPad, deviceLabel, duration, harnessName, inPlaceTune, modelName, phaseLine as phaseWords, sameWords, splitOutcome, spoken, when } from "./format.ts";
 import { markdown } from "./markdown.ts";
 import { Coin } from "./coin.tsx";
 import { EyeShut, liveSize } from "./live.tsx";
@@ -2019,19 +2019,17 @@ function SwitchList({ task }: { task: Task }) {
  */
 function TuneInPlace({ task, device }: { task: Task; device?: string }) {
   const h = harnessOf(task);
-  const rows = A.newTaskOptions?.models ?? [];
-  const row = rows.find((m) => m.harness === h && (m.device ?? "") === (device ?? "")) ?? rows.find((m) => m.harness === h);
-  if (!row?.models.length || row.from !== "live") return null;
-  const now = modelOf(task);
-  const model = row.models.find((m) => m.id === now) ?? (now ? undefined : row.models.find((m) => m.default));
-  const effort = effortOf(task) || model?.defaultEffort || "";
+  // D352: the agent's live list (a model newer than this Ducter included), the one it's on always a chip.
+  const tune = inPlaceTune(A.newTaskOptions?.models ?? [], h, device, modelOf(task), effortOf(task));
+  if (!tune) return null;
+  const { models, model, effort } = tune;
   const pick = (m: string, e?: string) => A.retuneTask(task.id, h, m, e);
   return (
     <div class="nt-tune switch-tune">
       <div class="nt-chips">
         <small>{t("newtask.model")}</small>
         <div class="nt-chip-row" role="radiogroup" aria-label={t("newtask.model")}>
-          {row.models.map((m) => (
+          {models.map((m) => (
             <Choice key={m.id} label={m.label} on={m.id === model?.id} onClick={() => m.id !== model?.id && pick(m.id)}>
               {m.label}
             </Choice>

@@ -26,20 +26,33 @@ export const MODELS_TTL_MS = 10 * 60_000;
 /** How long the New task card waits for a list it doesn't have yet. */
 export const MODELS_WAIT_MS = 3_000;
 
-export function createModelCatalog(o: { read: ModelReader; now?: () => number; ttlMs?: number }): ModelCatalog {
+/**
+ * D352: version: the agent's installed version on that computer, when known. A list is kept per
+ * version: an agent updated to a build with new models is asked again at once, not after the TTL
+ * (the list read for the old version still stands in while the new one is read).
+ */
+export function createModelCatalog(o: { read: ModelReader; now?: () => number; ttlMs?: number; version?: (device: string, harness: string) => string | undefined }): ModelCatalog {
   const now = o.now ?? Date.now;
   const ttl = o.ttlMs ?? MODELS_TTL_MS;
-  const kept = new Map<string, { at: number; list: ListedModel[] }>();
+  const kept = new Map<string, { at: number; list: ListedModel[]; version?: string }>();
+  const versionOf = (device: string, harness: string) => {
+    try {
+      return o.version?.(device, harness);
+    } catch {
+      return undefined;
+    }
+  };
   const reading = new Map<string, Promise<ListedModel[] | undefined>>();
   const read = (device: string, harness: string) => {
     const k = `${device} ${harness}`;
     let p = reading.get(k);
     if (!p) {
+      const version = versionOf(device, harness);
       p = o
         .read(device, harness)
         .catch(() => undefined)
         .then((list) => {
-          if (list?.length) kept.set(k, { at: now(), list });
+          if (list?.length) kept.set(k, { at: now(), list, ...(version ? { version } : {}) });
           return list?.length ? list : kept.get(k)?.list;
         })
         .finally(() => reading.delete(k));
@@ -51,7 +64,8 @@ export function createModelCatalog(o: { read: ModelReader; now?: () => number; t
     async get(device, harness, ms) {
       const k = `${device || "local"} ${harness}`;
       const had = kept.get(k);
-      if (had && now() - had.at < ttl) return had.list;
+      const version = versionOf(device || "local", harness);
+      if (had && now() - had.at < ttl && (!version || !had.version || version === had.version)) return had.list;
       const p = read(device || "local", harness);
       let timer: ReturnType<typeof setTimeout> | undefined;
       const late = new Promise<undefined>((r) => (timer = setTimeout(() => r(undefined), ms)));

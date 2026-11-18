@@ -54,7 +54,7 @@ import { createBridgeLink, nmemCall, type NmemCall } from "./bridge-link.ts";
 import { createMemGlance } from "./mem-glance.ts";
 import { identityIdFor, readMemIdentity } from "./mem-identity.ts";
 import { openRules, type RulesStore } from "./rules.ts";
-import { createLoadout, isRuleHint, registerRuleTools, type Loadout } from "./loadout.ts";
+import { createLoadout, isRuleHint, registerRuleTools, registerSwitchTool, type Loadout } from "./loadout.ts";
 import { openConnections, type ConnectionsStore, type Linker, type OoSource } from "./connections.ts";
 import { callWakes, neverCall, openPhone, type Phone } from "./phone.ts";
 import { openOwnPhone } from "./phone-own/index.ts";
@@ -774,11 +774,15 @@ export function startCore(opts: CoreOptions = {}): Core {
         const r = await link.call<ListedModel[] | null>("models", { harness }, 20_000).catch(() => null);
         return Array.isArray(r) ? r : undefined;
       },
+      // D352: the home's agents' versions as last probed: an updated agent's list is read again at once.
+      version: (device, harness) => (device === "local" ? devicesView?.harnessesNow()?.find((h) => h.harness === harness)?.version : undefined),
     });
   const loadout = createLoadout({ log, tasks, settings, rules, devices: () => devicesView, sites: sitesOn, models: modelCatalog, handset: () => handsets.any(), handsetOffer: () => handsets.offer() });
   // D157: 我要合电脑了 / Move before closing: one decision for a computer.
   const closing = createClosing({ log, tasks, loadout, runner: () => runner });
   registerClosingTool(mcp, closing, langNow);
+  // D352: the partner's 换成 … / "use … for this": a task's model, effort or agent, as the person said it.
+  registerSwitchTool(mcp, { loadout, tasks, models: modelCatalog, runner: () => runner });
   // D293: the home's own key pair (made before the Bridge link: D324 names its connection with it).
   const identity = homeIdentity(dataDir);
   // D205: Settings › 伙伴's one-tap Bridge connection for the persona, run by the home's nmem.

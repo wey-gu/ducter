@@ -57,9 +57,12 @@ const lists: Record<string, ListedModel[]> = {
     { id: "haiku", label: "Haiku 5.5", efforts: E },
     { id: "claude-opus-4-8", label: "Opus 4.8", efforts: E },
   ],
+  // D352: Codex 0.169.1's, the two models it added on 2026-11-18 first.
   codex: [
-    { id: "gpt-6.1-sol", label: "GPT-6.1-Sol", efforts: [...E, "ultra"], defaultEffort: "low" },
+    { id: "gpt-6.2-sol", label: "GPT-6.2-Sol", efforts: [...E, "ultra"], defaultEffort: "low", window: 500_000 },
+    { id: "gpt-6.2-astra", label: "GPT-6.2-Astra", efforts: [...E, "ultra"], defaultEffort: "low", window: 272_000 },
     { id: "gpt-6.1-terra", label: "GPT-6.1 Terra", efforts: [...E, "ultra"], defaultEffort: "low", default: true },
+    { id: "gpt-6.1-sol", label: "GPT-6.1-Sol", efforts: [...E, "ultra"], defaultEffort: "low" },
     { id: "gpt-6-luna", label: "GPT-6-Luna", efforts: E, defaultEffort: "medium" },
   ],
 };

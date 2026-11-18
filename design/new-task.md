@@ -168,7 +168,10 @@ OAR `listModels`; Claude Code's named models, not its pinned versions), Ducter's
 also **极限**), its own default tagged **默认 / Default** (a model that names none starts the row
 with **默认**, which sends nothing); no row when the model takes none. Unread in 3 s (a worker away,
 an old worker): the tier table's models, no effort row. The last model and effort are remembered
-per agent on this client.
+per agent on this client. The list is the agent's own, so a model it added since this Ducter was
+built is offered (D352); it is read again as soon as the agent's version changes, else every 10
+minutes. With no model picked, a task runs on the agent's own default (Codex: the person's
+`model` in `~/.codex/config.toml`, else its catalog's).
 
 **This Mac's folders (D186, D197, D272).** Choose a folder on this Mac opens macOS's folder picker. Where the window's
 Ducter runs on this Mac, the folder is the home's own. Where it runs elsewhere (a server) and this

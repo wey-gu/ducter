@@ -132,8 +132,8 @@ function fakeRunner(core: Core, harness: HarnessPort, cur: { step: number }) {
   const opened: Opened[] = [];
   const sent: { taskId: string; text: string; step: number; from?: string }[] = [];
   const stopped: string[] = [];
-  const openCard = (taskId: string, title: string, place: Place, brief: string) => {
-    core.log.append({ stream: `task:${taskId}`, origin: "system", kind: "task_open", body: { taskId, title, project: "", place, harness: "claude-code", brief } });
+  const openCard = (taskId: string, title: string, place: Place, brief: string, harness = "claude-code") => {
+    core.log.append({ stream: `task:${taskId}`, origin: "system", kind: "task_open", body: { taskId, title, project: "", place, harness, brief } });
     core.tasks.setState(taskId, "working", "hot");
   };
   const placeFor = (taskId: string, title: string, p?: Place, branch?: string): Place =>
@@ -402,7 +402,7 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
       jobOf.set(taskId, jobId);
       core.log.append({ stream: "channel", origin: "partner", kind: "ack", body: { jobId, text: t.ack, replyTo: lastUser } });
       const place = fr.placeFor(taskId, t.title, t.repo ? { kind: "repo", device: "local", repoPath: expand(t.repo) } : undefined, t.branch);
-      fr.openCard(taskId, t.title, place, `User's words: (seeded)\nTitle: ${t.title}`);
+      fr.openCard(taskId, t.title, place, `User's words: (seeded)\nTitle: ${t.title}`, t.harness);
       core.log.append({ stream: "channel", origin: "partner", kind: "job_status", body: { jobId, text: t.title, state: "running", taskId } });
       if (t.report) {
         core.log.append({ stream: `task:${taskId}`, origin: "task", kind: "report", body: { taskId, ...t.report } });

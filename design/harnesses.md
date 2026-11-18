@@ -11,7 +11,7 @@
 | Harness | Verified | Window knob | Compaction point | 1M off |
 |---|---|---|---|---|
 | Claude Code | 2.1.319–2.1.322 | env `CLAUDE_CODE_AUTO_COMPACT_WINDOW` (100K–1M) | env `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE`: min(⌊(W − 20K) × pct⌋, W − 33K) | env `CLAUDE_CODE_DISABLE_1M_CONTEXT=1` |
-| Codex | 0.167.0 | `-c model_context_window` | `-c model_auto_compact_token_limit` (clamped to 90% of the window, INFERRED) | n/a |
+| Codex | 0.167.0–0.169.1 (D352) | `-c model_context_window` (never above the model's own window) | `-c model_auto_compact_token_limit` (clamped to 90% of the window, INFERRED) | n/a |
 | pi | 1.4.0–1.5.1 | none per session | settings.json `compaction.reserveTokens` only (DOCUMENTED) | n/a |
 | DeepSeek Harness | 0.2.2-rc.1 (D177) | none: the model's window (1M for both official models) | profile layer `compaction-basic.thresholdRatio` (+ `retainTokens`), in a Ducter-owned home only; VERIFIED live | n/a |
 
@@ -46,10 +46,18 @@
   2.1.319–2.1.322.
 - **Browser.** Claude in Chrome through `--chrome`; no computer use in `-p` (research/38).
 
-## Codex 0.167.0
+## Codex 0.167.0–0.169.1
 
-- **Models** (`codex debug models`): `gpt-6.1-sol` and `gpt-6.1-terra` 500K; `gpt-6-astra`,
-  `gpt-6-sol`, `gpt-6-luna`, `gpt-5.6-*` 272K.
+- **Models** (`codex debug models`): `gpt-6.2-sol` (0.169.1), `gpt-6.1-sol` and `gpt-6.1-terra`
+  500K; `gpt-6.2-astra` (0.169.1), `gpt-6-astra`, `gpt-6-sol`, `gpt-6-luna`, `gpt-5.6-*` 272K.
+  Hidden ones (`gpt-reserve`, `codex-auto-review`) are never offered. Effort: the 6.2 and 6.1
+  models and `gpt-5.6-sol` default to low, the rest to medium; the luna models stop at max, the
+  rest go to ultra (OAR listModels and `codex debug models` agree, 2026-11-18).
+- **The list is live (D352).** What the pickers offer is Codex's own `model/list` (OAR
+  `listModels`) on that computer, read again when its version changes. The registry above only
+  adds what Ducter has checked (the window); a model it doesn't know yet takes the window
+  `codex debug models` gives it and is marked `fresh`, so a model released overnight is offered
+  and switchable without a Ducter release. The probe reports it as drift to add here.
 - **Knobs.** `model_context_window` and `model_auto_compact_token_limit` are typed config keys
   (VERIFIED: `codex debug prompt-input -c key="x"` answers "expected i64 in `key`"). PreCompact
   and PostCompact hooks and `compact_prompt` exist (binary strings).

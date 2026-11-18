@@ -18,7 +18,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DSH_KEY_ENV, HARNESS_IDS, type AccountUsage, type HarnessId } from "@ducter/protocol";
 import { readEnvFile, readKeys } from "@ducter/protocol/src/keys.ts";
-import { CLAUDE_SWITCHES, DSH_PROFILE, HARNESS_FACTS, PI_READ_ONLY_TOOLS, modelForWindow, windowKnobs } from "@ducter/protocol/src/harness-facts.ts";
+import { CLAUDE_SWITCHES, DSH_PROFILE, HARNESS_FACTS, PI_READ_ONLY_TOOLS, liveModels, modelForWindow, parseCodexCatalog, windowKnobs } from "@ducter/protocol/src/harness-facts.ts";
 import type { HarnessEvent, HarnessPort, HarnessSession, ListedModel, SessionSpec } from "@ducter/protocol/src/internal.ts";
 import type { Runtime, Session, SessionOptions, McpServer } from "@botiverse/oar/browser";
 import { Normalizer } from "./normalize.ts";
@@ -428,6 +428,32 @@ export interface OarPortOptions {
   dataDir?: string;
   /** Test seam (D333): Codex's own list of the MCP servers a set of launch args leaves on. */
   codexMcpList?: CodexMcpList;
+  /** Test seam (D352): Codex's own catalog (`codex debug models`), for the windows of models the registry doesn't know. */
+  codexCatalog?: (command: string, env: Record<string, string>) => Promise<string>;
+}
+
+/** A harness env overlay (null: unset) over this process's env, as a child's whole env. */
+function fullEnv(overlay: Record<string, string | null>): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(process.env)) if (typeof v === "string") out[k] = v;
+  for (const [k, v] of Object.entries(overlay)) {
+    if (v === null) delete out[k];
+    else out[k] = v;
+  }
+  return out;
+}
+
+/** D352: `codex debug models` (token-free, local), its stdout; "" when it can't say in 10 s. */
+async function readCodexCatalog(command: string, env: Record<string, string>): Promise<string> {
+  try {
+    const p = Bun.spawn([command, "debug", "models"], { stdout: "pipe", stderr: "ignore", stdin: "ignore", env });
+    const timer = setTimeout(() => p.kill(), 10_000);
+    const [out] = await Promise.all([new Response(p.stdout).text(), p.exited]);
+    clearTimeout(timer);
+    return out;
+  } catch {
+    return "";
+  }
 }
 
 /** What one spec becomes for one harness: OAR options, plus what OAR cannot carry. */
@@ -478,7 +504,7 @@ function sandboxedMcp(servers: McpServer[]): McpServer[] {
 }
 
 /** Spec -> OAR options for one harness (exported for tests; no process is started). */
-export function adaptSpec(spec: SessionSpec, ctx: { env?: Record<string, string | null>; dataDir: string; refused?: Readonly<Record<string, string>>; inherited?: Record<string, string | undefined> }): Adapted {
+export function adaptSpec(spec: SessionSpec, ctx: { env?: Record<string, string | null>; dataDir: string; refused?: Readonly<Record<string, string>>; inherited?: Record<string, string | undefined>; liveWindow?: number }): Adapted {
   const h = spec.harness;
   const refused = ctx.refused ?? {};
   const clean = !!spec.isolateUserConfig;
@@ -497,7 +523,7 @@ export function adaptSpec(spec: SessionSpec, ctx: { env?: Record<string, string 
 
   // D135: the window and compaction point, as this harness takes them (harness-facts.ts).
   const window = spec.contextWindow ?? spec.harnessCompactAt;
-  const knobs = window ? windowKnobs(h, { window, compactAt: spec.harnessCompactAt ?? window }, modelFor(h, spec.model)) : undefined;
+  const knobs = window ? windowKnobs(h, { window, compactAt: spec.harnessCompactAt ?? window }, modelFor(h, spec.model), ctx.liveWindow) : undefined;
 
   switch (h) {
     case "claude-code":
@@ -671,13 +697,16 @@ function modelFor(h: HarnessId, model: string | undefined): string | undefined {
 export function createOarHarnessPort(opts: OarPortOptions = {}): HarnessPort {
   const load = opts.loadRuntime ?? defaultLoader;
   const dataDir = opts.dataDir ?? process.env.DUCTER_DATA_DIR ?? join(homedir(), ".ducter");
+  // D352: each listed model's window as the last listing gave it ("<harness> <model>").
+  const liveWindows = new Map<string, number>();
   return {
     async start(spec) {
       const rt = await load(spec.harness, piVariant(spec));
       if (!rt) throw new Error(`harness ${spec.harness} is not supported`);
       const inst = await rt.installation?.({ env: harnessEnv(spec.harness, { env: opts.env, dataDir }) });
       if (!inst || inst.kind !== "available") throw new Error(`harness ${spec.harness} is not installed`);
-      const a = adaptSpec(spec, { env: opts.env, dataDir, refused: (rt as { refusedSessionOptions?: Record<string, string> }).refusedSessionOptions });
+      const liveWindow = spec.model ? liveWindows.get(`${spec.harness} ${spec.model}`) : undefined;
+      const a = adaptSpec(spec, { env: opts.env, dataDir, refused: (rt as { refusedSessionOptions?: Record<string, string> }).refusedSessionOptions, ...(liveWindow ? { liveWindow } : {}) });
       // D333: a clean Codex session has no server of the person's that Codex itself still lists.
       let launchArgs = a.options.launchArgs;
       if (spec.harness === "codex" && a.clean && launchArgs) {
@@ -736,7 +765,15 @@ export function createOarHarnessPort(opts: OarPortOptions = {}): HarnessPort {
         if (!rt?.listModels || !inst || inst.kind !== "available") return undefined;
         mkdirSync(dataDir, { recursive: true });
         const r = await rt.listModels(inst, { env, cwd: dataDir, timeoutMs: 20_000 });
-        return r.kind === "ok" ? listedModels(r.models) : undefined;
+        if (r.kind !== "ok") return undefined;
+        // D352: merged with the registry; a model it doesn't know yet takes Codex's own window.
+        const listed = listedModels(r.models);
+        const command = (inst as { command?: unknown }).command;
+        const unknown = h === "codex" && listed.some((m) => !HARNESS_FACTS.codex.models.value[m.id]);
+        const catalog = unknown && typeof command === "string" ? parseCodexCatalog(await (opts.codexCatalog ?? readCodexCatalog)(command, fullEnv(env)).catch(() => "")) : {};
+        const live = liveModels(h, listed, catalog);
+        for (const m of live) if (m.window) liveWindows.set(`${h} ${m.id}`, m.window);
+        return live;
       } catch {
         return undefined;
       }

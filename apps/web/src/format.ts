@@ -1,5 +1,5 @@
 // Time and place wording, the same rules as the desktop (views/app.go formatting).
-import type { DeviceHarness, DeviceUpdate, MemPluginView } from "@ducter/protocol";
+import type { AgentModels, DeviceHarness, DeviceUpdate, MemPluginView, ModelChoice } from "@ducter/protocol";
 import { undomainedName } from "@ducter/protocol";
 import { compareVersions, isVersion } from "@ducter/protocol/src/version.ts";
 import type { Strings } from "./i18n.ts";
@@ -142,6 +142,20 @@ export function harnessName(h: string): string {
 /** A model as people say it: Claude Code's aliases capitalized, other ids as they are. */
 export function modelName(m: string): string {
   return ["opus", "sonnet", "haiku"].includes(m) ? m[0]!.toUpperCase() + m.slice(1) : m;
+}
+
+/**
+ * D282/D352: the in-place Model and Effort rows of 换谁来做 / Switch who does it, for the agent
+ * doing a task: its live row on that computer (the agent's own list, so a model it added since
+ * this Ducter was built is there), the model it's on always a chip even past the row's first
+ * few, and the effort it runs at (its own, else the model's default). Undefined: no live list.
+ */
+export function inPlaceTune(rows: readonly AgentModels[], harness: string, device: string | undefined, now: string | undefined, effortNow: string | undefined): { models: ModelChoice[]; model?: ModelChoice; effort: string } | undefined {
+  const row = rows.find((m) => m.harness === harness && (m.device ?? "") === (device ?? "")) ?? rows.find((m) => m.harness === harness);
+  if (!row?.models.length || row.from !== "live") return undefined;
+  const models = now && !row.models.some((m) => m.id === now) ? [...row.models, { id: now, label: modelName(now) }] : row.models;
+  const model = models.find((m) => m.id === now) ?? (now ? undefined : models.find((m) => m.default));
+  return { models, ...(model ? { model } : {}), effort: effortNow || model?.defaultEffort || "" };
 }
 
 /** A Latin word in Chinese text gets a space on each side ("在 MacBook 上"). */

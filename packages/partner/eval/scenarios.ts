@@ -18,6 +18,7 @@ export type Seed =
         branch?: string; // repo only; default ducter/<slug of title>
         state: "working" | "done";
         report?: Omit<Bodies["report"], "taskId">;
+        harness?: string; // D352: the AI agent doing it (default claude-code)
       };
     }
   | { waiterArmed: { reason: string; minutesAgo: number } }
@@ -2196,5 +2197,20 @@ export const scenarios: Scenario[] = [
     ],
     expect: { noAsk: true, opens: 0, noSend: true, msgs: [0, 2], maxChars: 120, forbid: [/不是你要的|没让|你没(有)?(让|要|说)|自己(加|决定|做)|删(掉|除)|不该|多余|unrequested|didn't ask/] },
     rubric: "The user typed each of these requests (README, the sleep command, NOTES.md) straight into the task's own box; each report shows them as 'the user told it directly'. The partner treats them as the user's own asks: at most a short Chinese line per report saying what was done (or silence), never that the task added things on its own or that they weren't asked for, never steering the task to stop, and never a card offering to delete README.md or NOTES.md.",
+  },
+  // D352: a model Codex added overnight, asked for in the conversation: the partner switches the
+  // task in place (task_switch), never a message to the task asking it to change its own model.
+  {
+    id: "switch-model-zh",
+    category: "direct",
+    lang: "zh",
+    floor: true,
+    seed: [
+      { user: "在 ~/dev/ducter 里把 App Store Connect 的上架资料准备好（截图、描述、隐私问卷）" },
+      { task: { key: "asc", title: "准备 App Store Connect 的上架资料", repo: "~/dev/ducter", ack: "我让 Codex 去准备上架资料。", state: "working", harness: "codex" } },
+    ],
+    steps: [{ user: "这个任务换成 6.2 sol" }],
+    expect: { called: [{ tool: "task_switch", args: { model: /6\.?2.*sol/i } }], opens: 0, noSend: true, noAsk: true, msgs: [0, 1], maxChars: 80 },
+    rubric: "The user asked to move the App Store Connect task to the gpt-6.2-sol model. The partner calls task_switch on that task with the model as said, opens no new task, sends the task no message about it, and puts up no card. At most one short Chinese line (e.g. that it's switched and takes effect from the task's next step), or nothing; never a claim that the work restarted or that progress was lost.",
   },
 ];

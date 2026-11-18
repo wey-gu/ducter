@@ -98,11 +98,19 @@ export interface SourceView {
   whenDone: WhenDone;
   /** The standing goes, and how they came: after the person took (or let it write) twice in 14 days, or set here. */
   standing?: { take?: { at: string; after?: number }; write?: { at: string; after?: number } };
-  /** Open items in scope at the last look, and how many have a live task. */
+  /**
+   * Open items in scope at the last look (GitHub: search's total over the scope, not the one page
+   * read), and how many have a live task. openAtLeast: only a lower bound was known ("at least").
+   */
   open?: number;
+  openAtLeast?: boolean;
+  /** github: open PRs waiting for the person's review (review requested), in the same scope. */
+  review?: number;
   taken?: number;
-  /** When it last looked. */
+  /** When it last looked. Counts are shown only after a look that read the list (checkedAt and open). */
   checkedAt?: string;
+  /** A look is running now (正在看… / Looking…). */
+  looking?: boolean;
 }
 
 /** What the home could add without asking anything: gh signed in, vaults Obsidian knows. */

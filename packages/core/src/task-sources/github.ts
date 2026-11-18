@@ -15,9 +15,14 @@ export interface GitHubOpts {
   /** Only issues with this label. */
   label?: () => string | undefined;
   timeoutMs?: number;
+  now?: () => number;
 }
 
 const BODY_MAX = 1200;
+/** The list's one page: the recent ones, for offering and "new". */
+const PER_PAGE = 50;
+/** The search total is asked again at least this often while the list's ETag says nothing changed. */
+export const TOTAL_MS = 10 * 60_000;
 const REF = /^([\w.-]+\/[\w.-]+)#(\d+)$/;
 
 interface Raw {
@@ -72,7 +77,9 @@ export function createGitHub(o: GitHubOpts): SourceAdapter & { login(): string |
   const env = () => ghRunEnv(o.env ?? process.env);
   const timeoutMs = o.timeoutMs ?? 30_000;
   let login: string | undefined;
-  let cache: { etag?: string; items: SourceItem[] } | undefined;
+  let cache: { etag?: string; items: SourceItem[]; whole?: boolean } | undefined;
+  let counted: { key: string; at: number; value: { open: number; atLeast?: boolean; review?: number } } | undefined;
+  const now = o.now ?? (() => Date.now());
 
   const gh = (args: string[], stdin?: string) => run(args, { env: env(), timeoutMs, ...(stdin !== undefined ? { stdin } : {}) });
 
@@ -99,17 +106,48 @@ export function createGitHub(o: GitHubOpts): SourceAdapter & { login(): string |
       return { state: "ok", ...(login ? { account: login } : {}) };
     },
     async list() {
-      const args = ["api", "-i", "-X", "GET", "/issues", "-f", "filter=assigned", "-f", "state=open", "-f", "sort=updated", "-f", "per_page=50"];
+      const args = ["api", "-i", "-X", "GET", "/issues", "-f", "filter=assigned", "-f", "state=open", "-f", "sort=updated", "-f", `per_page=${PER_PAGE}`];
       if (cache?.etag) args.push("-H", `If-None-Match: ${cache.etag}`);
       const r = await gh(args);
       if (r.missing) throw new Error("gh isn't on this computer");
       const res = splitResponse(r.out);
       if (res.status === 304 && cache) return cache.items.filter(inScope);
       if (r.code !== 0 || res.status >= 400) throw new Error((r.err || res.body).trim().slice(0, 200) || `gh exited ${r.code}`);
-      const raw = JSON.parse(res.body || "[]") as Raw[];
+      // Only a whole 200 answer is a list: anything else is "couldn't read", never "nothing assigned".
+      if (res.status !== 200) throw new Error(`GitHub's answer couldn't be read (${res.status ? `HTTP ${res.status}` : "no status line"})`);
+      let raw: Raw[];
+      try {
+        raw = JSON.parse(res.body) as Raw[];
+      } catch {
+        throw new Error("GitHub's answer couldn't be read (not JSON)");
+      }
+      if (!Array.isArray(raw)) throw new Error("GitHub's answer couldn't be read (not a list)");
       const items = raw.map((x) => itemOf(o.source, x));
-      cache = { ...(res.etag ? { etag: res.etag } : {}), items };
+      cache = { ...(res.etag ? { etag: res.etag } : {}), items, ...(raw.length < PER_PAGE ? { whole: true } : {}) };
+      counted = undefined; // the list changed: count again
       return items.filter(inScope);
+    },
+    // The list is the recent page (for offering and "new"); the count is GitHub's search total over
+    // the same scope, so 557 assigned reads 557, not 50. Two searches per change (or every
+    // TOTAL_MS), far inside search's 30 a minute.
+    async total() {
+      const key = JSON.stringify([o.repos?.() ?? [], o.label?.() ?? ""]);
+      if (counted && counted.key === key && now() - counted.at < TOTAL_MS) return counted.value;
+      const scope = [...(o.repos?.() ?? []).map((r) => `repo:${r}`), ...(o.label?.()?.trim() ? [`label:"${o.label!()!.trim().replace(/"/g, "")}"`] : [])];
+      const who = login ?? "@me";
+      const search = async (q: string) => {
+        const r = await gh(["api", "-X", "GET", "search/issues", "-f", `q=${q}`, "-f", "per_page=1", "--jq", "[.total_count, .incomplete_results] | @tsv"]);
+        if (r.code !== 0) throw new Error((r.err || r.out).trim().slice(0, 200) || `gh exited ${r.code}`);
+        const [n, partial] = r.out.trim().split("\t");
+        if (!/^\d+$/.test(n ?? "")) throw new Error("GitHub's search total couldn't be read");
+        return { n: Number(n), partial: partial === "true" };
+      };
+      // Fewer than a page assigned: the list is all of them, and is the count.
+      const open = cache?.whole ? { n: cache.items.filter(inScope).length, partial: false } : await search([`assignee:${who}`, "is:open", "archived:false", ...scope].join(" "));
+      const review = await search([`review-requested:${who}`, "is:open", "is:pr", "archived:false", ...scope].join(" ")).catch(() => undefined);
+      const value = { open: open.n, ...(open.partial ? { atLeast: true } : {}), ...(review ? { review: review.n } : {}) };
+      counted = { key, at: now(), value };
+      return value;
     },
     async get(ref) {
       const m = REF.exec(ref);

@@ -21,7 +21,11 @@ type Frame = Extract<SourcesServerFrame, { t: "sources" }>;
 export const TS: { frame?: Frame; items?: SourceItem[]; itemsFor?: string; busy: Record<string, boolean>; said?: string } = { busy: {} };
 
 A.onSourcesFrame = (f) => {
-  if (f.t === "sources") TS.frame = f;
+  if (f.t === "sources") {
+    TS.frame = f;
+    // 再试一次 waits for the home's own word that it is looking (or has looked).
+    for (const s of f.sources) if (s.looking || s.state !== "error") delete TS.busy[`look:${s.id}`];
+  }
   else if (f.t === "source_items_result") {
     if (f.clientId === TS.itemsFor) TS.items = f.items;
   } else if (f.t === "source_result") {
@@ -41,7 +45,33 @@ function subOf(v: SourceView): string {
 
 function problem(v: SourceView): string | undefined {
   if (v.state === "ok") return undefined;
+  // A failed look says so, with the app's name: never a count it didn't read.
+  if (v.state === "error") return t("todos.read.failed", appOf(v.kind));
   return t(`todos.state.${v.state}`, A.homeName ?? "");
+}
+
+/**
+ * The count line's state: counted only after a look that read the list; before one, 正在看… / Looking….
+ * (A failed look shows its problem instead, so 0 件没做完 is never a guess.)
+ */
+export function countOf(v: Pick<SourceView, "state" | "open" | "checkedAt">): "looking" | "counted" | "failed" {
+  if (v.state !== "ok") return "failed";
+  return v.checkedAt && v.open !== undefined ? "counted" : "looking";
+}
+
+/** The counts, each its own fact (D291): open (the true total, or "at least"), being done, PRs waiting for review. */
+export function countWords(v: Pick<SourceView, "open" | "openAtLeast" | "taken" | "review">): (string | false)[] {
+  const n = v.open ?? 0;
+  const open = v.openAtLeast ? t("todos.open.atleast", n) : n === 1 ? t("todos.open.one") : t("todos.open", n);
+  const review = (v.review ?? 0) > 0 && (v.review === 1 ? t("todos.review.one") : t("todos.review", v.review));
+  return [open, (v.taken ?? 0) > 0 && t("todos.taken", v.taken), review];
+}
+
+/** 再试一次 / Try again: asking for the sources again makes the home look now. */
+function retry(v: SourceView) {
+  TS.busy[`look:${v.id}`] = true;
+  A.send({ t: "sources" });
+  A.changed();
 }
 
 export function TodoSourcesSettings() {
@@ -141,7 +171,8 @@ function VaultPath() {
 function SourceCard({ v }: { v: SourceView }) {
   const [asking, setAsking] = useState(false);
   const bad = problem(v);
-  const set = (patch: { whenNew?: WhenNew; whenDone?: WhenDone }) => A.send({ t: "source_set", id: v.id, ...patch });
+  const count = countOf(v);
+  const set =(patch: { whenNew?: WhenNew; whenDone?: WhenDone }) => A.send({ t: "source_set", id: v.id, ...patch });
   const done = (WHEN_DONE as Record<string, readonly WhenDone[]>)[v.kind] ?? [];
   const name = v.kind === "github" ? "GitHub" : v.name;
   return (
@@ -153,10 +184,16 @@ function SourceCard({ v }: { v: SourceView }) {
           <small class={bad ? "tone-bad" : v.kind === "github" && A.ghConnected ? "tone-done" : undefined}>{bad ?? (v.kind === "github" && A.ghConnected ? t("todos.connected", A.ghConnected) : subOf(v))}</small>
         </span>
       </div>
-      {!bad && v.open === undefined && v.kind === "github" && <small class="muted todo-counts">{t("todos.pick.loading")}</small>}
+      {count === "looking" && <small class="muted todo-counts">{t("todos.looking")}</small>}
+      {v.state === "error" && (
+        <div class="chat-row todo-failed">
+          <small class="muted grow">{v.error}</small>
+          {v.looking || TS.busy[`look:${v.id}`] ? <small class="muted">{t("todos.looking")}</small> : <Btn kind="secondary" size="sm" label={t("todos.retry")} about={name} onClick={() => retry(v)} />}
+        </div>
+      )}
       {v.kind === "github" && bad && A.ghTodo && <GhSignIn which="todos" inline />}
-      {!bad && (v.open !== undefined || (v.taken ?? 0) > 0) && (
-        <Facts class="todo-counts" items={[v.open !== undefined && (v.open === 1 ? t("todos.open.one") : t("todos.open", v.open)), (v.taken ?? 0) > 0 && t("todos.taken", v.taken)]} />
+      {count === "counted" && (
+        <Facts class="todo-counts" items={countWords(v)} />
       )}
       <div class="chat-row">
         <span class="grow">

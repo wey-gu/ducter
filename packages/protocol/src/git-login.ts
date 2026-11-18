@@ -12,6 +12,7 @@
 //
 // Keys never leave the computer: the code and the link are the only things that travel, the token
 // goes from the client to gh's stdin and nowhere else, and nothing here is logged.
+import { homedir } from "node:os";
 import { gitEnv, toolEnv } from "./tool-env.ts";
 
 export const GITHUB_HOST = "github.com";
@@ -59,7 +60,9 @@ export const realGhRun: GhRun = async (args, o) => {
   };
   try {
     const [out, err, code] = await Promise.all([read(p.stdout as ReadableStream<Uint8Array>), read(p.stderr as ReadableStream<Uint8Array>, o.onErr), p.exited]);
-    return { code, out: out.slice(-8000), err: err.slice(-8000), ...(timedOut ? { timedOut: true as const } : {}) };
+    // stdout whole: it is the answer. `gh api -i` prints its status line first and a page of
+    // issues after it (often hundreds of KB): a tail of it read as an empty list. stderr's tail is enough.
+    return { code, out, err: err.slice(-8000), ...(timedOut ? { timedOut: true as const } : {}) };
   } finally {
     clearTimeout(timer);
     o.signal?.removeEventListener("abort", stop);
@@ -73,7 +76,11 @@ export const realGhRun: GhRun = async (args, o) => {
  * login while one is set.
  */
 export function ghRunEnv(inherited?: Record<string, string | undefined>, withToken = false): Record<string, string> {
+  // A service started without HOME (a root unit with no User=): gh keeps its sign-in under
+  // ~/.config/gh, so the home folder of the user this runs as stands in.
+  const home = (inherited ?? process.env).HOME || homeOf();
   return {
+    ...(home ? { HOME: home } : {}),
     ...gitEnv(inherited),
     ...toolEnv({ own: withToken ? /^(?:GH_|GITHUB_TOKEN$)/ : /^GH_(?!TOKEN$|ENTERPRISE_TOKEN$)/, ownSecrets: withToken, inherited }),
     GH_PROMPT_DISABLED: "1",
@@ -82,6 +89,14 @@ export function ghRunEnv(inherited?: Record<string, string | undefined>, withTok
     NO_COLOR: "1",
   };
 }
+
+const homeOf = () => {
+  try {
+    return homedir();
+  } catch {
+    return "";
+  }
+};
 
 const CODE = /one-time code[^A-Z0-9]*([A-Z0-9]{4}-[A-Z0-9]{4})/i;
 const URL_RE = /(https:\/\/[^\s]+\/login\/device)\b/;

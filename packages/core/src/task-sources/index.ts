@@ -56,6 +56,11 @@ interface State {
   offered: Record<string, { take?: string; write?: string }>;
   /** When each source last told the partner about new to-dos. */
   told: Record<string, string>;
+  /**
+   * When each source's first look learned what was there. A source seen empty without it (0.0.75
+   * read GitHub's long answers as empty lists) learns quietly on its next look, never 50 "new" at once.
+   */
+  learned?: Record<string, string>;
 }
 
 export interface TaskSourcesDeps {
@@ -190,11 +195,11 @@ export function createTaskSources(d: TaskSourcesDeps): TaskSources {
   const file = join(d.dataDir, SOURCES_FILE);
   const now = d.now ?? (() => Date.now());
   const home = d.home ?? homedir();
-  let st: State = { sources: [], seen: {}, offered: {}, told: {} };
+  let st: State = { sources: [], seen: {}, offered: {}, told: {}, learned: {} };
   if (existsSync(file))
     try {
       const raw = JSON.parse(readFileSync(file, "utf8")) as Partial<State>;
-      st = { sources: Array.isArray(raw.sources) ? raw.sources : [], seen: raw.seen ?? {}, offered: raw.offered ?? {}, told: raw.told ?? {} };
+      st = { sources: Array.isArray(raw.sources) ? raw.sources : [], seen: raw.seen ?? {}, offered: raw.offered ?? {}, told: raw.told ?? {}, learned: raw.learned ?? {} };
     } catch (err) {
       console.warn(`[task-sources] ${file} is unreadable; starting with none:`, (err as Error).message);
     }
@@ -209,11 +214,11 @@ export function createTaskSources(d: TaskSourcesDeps): TaskSources {
 
   // ---------- adapters ----------
   const adapters = new Map<string, SourceAdapter>();
-  const status = new Map<string, { state: SourceView["state"]; account?: string; error?: string; at?: string; open?: number }>();
+  const status = new Map<string, { state: SourceView["state"]; account?: string; error?: string; at?: string; open?: number; atLeast?: boolean; review?: number }>();
   const adapterOf = (s: Stored): SourceAdapter => {
     let a = adapters.get(s.id);
     if (a) return a;
-    if (s.kind === "github") a = createGitHub({ source: s.id, ...(d.ghRun ? { run: d.ghRun } : {}), ...(d.ghEnv ? { env: d.ghEnv } : {}), repos: () => s.repos, label: () => s.label });
+    if (s.kind === "github") a = createGitHub({ source: s.id, ...(d.ghRun ? { run: d.ghRun } : {}), ...(d.ghEnv ? { env: d.ghEnv } : {}), repos: () => s.repos, label: () => s.label, now });
     else if (s.kind === "obsidian") a = createObsidian({ source: s.id, vault: s.path!, folder: () => s.folder, tag: () => s.label, ...(d.today ? { today: d.today } : {}), now, ...(d.quietMs !== undefined ? { quietMs: d.quietMs } : {}) });
     else throw new Error(`${s.kind} isn't built yet`);
     adapters.set(s.id, a);
@@ -254,8 +259,11 @@ export function createTaskSources(d: TaskSourcesDeps): TaskSources {
       whenDone: s.whenDone,
       ...(s.standing ? { standing: s.standing } : {}),
       ...(x?.open !== undefined ? { open: x.open } : {}),
+      ...(x?.atLeast ? { openAtLeast: true } : {}),
+      ...(x?.review ? { review: x.review } : {}),
       taken,
       ...(x?.at ? { checkedAt: x.at } : {}),
+      ...(looking ? { looking: true } : {}),
     };
   };
 
@@ -373,11 +381,16 @@ export function createTaskSources(d: TaskSourcesDeps): TaskSources {
         status.set(s.id, { state: "error", account: x.account, error: (err as Error).message.slice(0, 200), at: new Date(now()).toISOString() });
         continue;
       }
-      status.set(s.id, { state: "ok", ...(x.account ? { account: x.account } : {}), at: new Date(now()).toISOString(), open: items.length });
+      // The true count where the list is only the recent ones (GitHub's page of 50); if the total
+      // can't be had, the list's length is only a lower bound when it is a full page.
+      const total = a.total ? await a.total().catch(() => undefined) : undefined;
+      const count = total ?? { open: items.length, ...(a.total && items.length >= 50 ? { atLeast: true } : {}) };
+      status.set(s.id, { state: "ok", ...(x.account ? { account: x.account } : {}), at: new Date(now()).toISOString(), open: count.open, ...(count.atLeast ? { atLeast: true } : {}), ...(total?.review !== undefined ? { review: total.review } : {}) });
       const seen = new Set(st.seen[s.id] ?? []);
-      const first = !st.seen[s.id];
+      const first = !st.learned?.[s.id] && !seen.size;
       const fresh = items.filter((i) => !seen.has(i.ref) && !taskOf(i.ref));
       st.seen[s.id] = [...new Set([...(st.seen[s.id] ?? []), ...items.map((i) => i.ref)])].slice(-2000);
+      if (!st.learned?.[s.id]) st.learned = { ...(st.learned ?? {}), [s.id]: new Date(now()).toISOString() };
       // The first look only learns what is there: nothing is "new" the moment a source is added.
       if (!first && fresh.length && s.whenNew !== "quiet") {
         const told = st.told[s.id] ? Date.parse(st.told[s.id]!) : 0;
@@ -449,11 +462,16 @@ export function createTaskSources(d: TaskSourcesDeps): TaskSources {
       return look();
     }));
     looking = (async () => {
+      await Promise.resolve();
+      changed(); // looking is set now: the clients say 正在看… while it runs
       await probeGh();
       await lookSources();
       await lookBound();
       changed();
-    })().finally(() => (looking = undefined));
+    })().finally(() => {
+      looking = undefined;
+      changed();
+    });
     return looking;
   }
 
@@ -586,6 +604,7 @@ export function createTaskSources(d: TaskSourcesDeps): TaskSources {
       adapters.delete(id);
       status.delete(id);
       delete st.seen[id];
+      if (st.learned) delete st.learned[id];
       save();
       return true;
     },

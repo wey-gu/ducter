@@ -76,7 +76,10 @@ place (the same inode: Obsidian and the syncs keep following the file):
 ## 6. Where it shows
 
 - **Settings › 待办来源 / To-do sources** (after 账号 / Accounts): the lede; one card per source (its mark,
-  its name, whose or which folder, counts **{n} 件没做完** **{n} 件在做** as separate facts, **新的来了** and
+  its name, whose or which folder, counts **{n} 件没做完** **{n} 件在做** as separate facts (D351: only after a look
+  that read the list; GitHub's is the true total, **至少 {n} 件没做完** when only a bound is known, and
+  **{n} 个 PR 等你 review** apart; before a look **正在看…**; a failed look **没能读到 {app}。**, its reason
+  apart, and **再试一次**), **新的来了** and
   **做完以后** as segments, which part it reads as labelled 44-tall fields saved on Return or leaving them (D348:
   GitHub **只看这些仓库** as owner/repo by commas, blank = every repository; a vault **看哪个文件夹** and **只看带这个标签的**,
   blank = the whole vault, any tag; `source_set`, read by the adapters from the next look), the standing line, a problem row, a quiet **移除** that asks in place:
@@ -97,8 +100,11 @@ place (the same inode: Obsidian and the syncs keep following the file):
   `WhenNew`/`WhenDone`, the frames. Log events: `task_bound`, `source_seen` (new, closed, reopened, edited,
   gone), `source_write`. `TaskCard.source` is projected from them.
 - `packages/core/src/task-sources/`: `adapter.ts` (the interface every app implements: `status`, `list`,
-  `get`, `write`, `ops`; consent is never an adapter's), `github.ts` (gh: `/issues?filter=assigned` with
-  ETag, `/repos/{o}/{r}/issues/{n}`, comment and close through `--input -`), `obsidian.ts` (parser, the
+  `get`, `write`, `ops`, optional `total`; consent is never an adapter's), `github.ts` (gh: `/issues?filter=assigned` with
+  ETag, one page of the 50 most recent for offering and "new"; the count is `search/issues` `total_count`
+  over the same scope (`assignee:{login} is:open archived:false`, plus `repo:`/`label:` for the filters),
+  and PRs waiting for review apart (`review-requested:{login} is:open is:pr`), asked when the list changed
+  or every 10 min (D351); `/repos/{o}/{r}/issues/{n}`, comment and close through `--input -`), `obsidian.ts` (parser, the
   write above, Obsidian's own vault list), `index.ts` (the store `task-sources.json`, looks every 2 min
   and each bound to-do every 5 min while its task is live, bindings, the cards and their Go, the standing
   goes, the tick on done).

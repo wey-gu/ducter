@@ -32,6 +32,12 @@ export interface SourceAdapter {
   status(): Promise<AdapterStatus>;
   /** Open items in scope, newest first. */
   list(): Promise<SourceItem[]>;
+  /**
+   * How many are open in scope when list() reads only the recent ones (GitHub: a page of 50 of
+   * maybe hundreds). atLeast: only a lower bound is known. review: PRs waiting for the person's review.
+   * Absent: list() is all of them.
+   */
+  total?(): Promise<{ open: number; atLeast?: boolean; review?: number }>;
   /** One item by its ref, closed ones too; undefined when it is gone (deleted, the line removed). */
   get(ref: string): Promise<SourceItem | undefined>;
   /** What it can write. */

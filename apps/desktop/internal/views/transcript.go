@@ -79,8 +79,9 @@ type Turn struct {
 	Body   []Block `json:"body"`
 }
 
-// Block is one thing in the transcript. K is brief, voice, steps, you,
-// partner, report or note.
+// Block is one thing in the transcript. K is brief, voice, saved, steps,
+// you, partner, report or note. D349: saved is a checkpoint that isn't what
+// the agent just said, one quiet line without its words.
 type Block struct {
 	K    string `json:"k"`
 	Seq  int64  `json:"seq"`
@@ -899,7 +900,7 @@ func build(harness string, events []protocol.LogEvent, working bool, ctx buildCt
 			if raw == "" {
 				continue
 			}
-			text, full := clipWords(raw)
+			text, _ := clipWords(raw)
 			// Saved what it just said: the same words once, marked saved.
 			said := -1
 			for i := len(out) - 1; i >= 0; i-- {
@@ -910,11 +911,17 @@ func build(harness string, events []protocol.LogEvent, working bool, ctx buildCt
 			}
 			if said >= 0 && out[said].K == "voice" && normSpace(out[said].Text) == normSpace(text) {
 				out[said].Saved = true
+			} else if n := len(out); n > 0 && out[n-1].K == "voice" {
+				out[n-1].Saved = true // D349: its note, under the words it just said
+			} else if n := len(out); n > 0 && out[n-1].K == "saved" {
+				out[n-1].Seq = ev.Seq // D349: a run of saves in a row is one, the latest
 			} else {
-				out = append(out, Block{K: "voice", Seq: ev.Seq, Text: text, Full: full, Saved: true})
+				out = append(out, Block{K: "saved", Seq: ev.Seq})
 			}
 		case *protocol.Report:
-			if ev.Seq == last {
+			// The latest is the outcome, said above the transcript; D349: a progress
+			// report is no outcome (a watcher's "nothing new"), so it stays.
+			if ev.Seq == last && b.State != "progress" {
 				continue
 			}
 			text, full := clipWords(b.Summary)

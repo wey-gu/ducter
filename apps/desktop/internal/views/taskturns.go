@@ -212,6 +212,8 @@ func (a *App) block(c *ui.Context, task *store.Task, b *Block) {
 	switch b.K {
 	case "voice":
 		a.voice(c, task, b)
+	case "saved":
+		a.savedLine(c, task, b)
 	case "steps":
 		ui.Column(c.Key("lines")).Gap(2).MinWidth(0).Children(func() {
 			for i := range b.Lines {

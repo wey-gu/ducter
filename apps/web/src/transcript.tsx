@@ -579,10 +579,26 @@ function Voice({ task, b, took }: { task: Task; b: Extract<Block, { k: "voice" }
   );
 }
 
+/** D349: it saved its progress, its own note: only 保存了进度, its time on hover, never the note. */
+function Saved({ task, b }: { task: Task; b: Extract<Block, { k: "saved" }> }) {
+  const ms = tsOf(task, b.seq);
+  const at = Number.isFinite(ms) ? clock(new Date(ms).toISOString()) : "";
+  return (
+    <div class="voice saved-only">
+      <small class="vmeta kept">
+        <span class="saved">{t("task.saved")}</span>
+        {at && <span class="hov">{at}</span>}
+      </small>
+    </div>
+  );
+}
+
 function BlockView({ task, b, live, took }: { task: Task; b: Block; live?: boolean; took?: string }) {
   switch (b.k) {
     case "voice":
       return <Voice task={task} b={b} took={took} />;
+    case "saved":
+      return <Saved task={task} b={b} />;
     case "steps": {
       const n = b.lines.length - 1;
       return (

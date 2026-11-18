@@ -597,6 +597,21 @@ func (a *App) voice(c *ui.Context, task *store.Task, b *Block) {
 	})
 }
 
+// savedLine (D349) is a checkpoint that was the agent's own note: only
+// "保存了进度", and on hover its time, never the note.
+func (a *App) savedLine(c *ui.Context, task *store.Task, b *Block) {
+	t := a.T
+	ink := t.InkMuted.Alpha(0.8)
+	row := ui.Row(c.Key("saved")).Gap(t.S2).MinHeight(16).AlignItems(ui.Center).MinWidth(0)
+	hover := row.Hovered()
+	row.Children(func() {
+		ui.Text(c, a.L.T("task.saved")).FontSize(t.XXS).TextColor(ink).Shrink(0)
+		if at := clock(a.tsOf(task, b.Seq)); hover && at != "" {
+			ui.Text(c.Key("at"), at).FontSize(t.XXS).TextColor(ink).FontFeatures("tnum").Shrink(0)
+		}
+	})
+}
+
 // jumpToLatest is the round button over the transcript's foot when the
 // reader scrolled up from the end: back to the newest. Only the button
 // takes the pointer: the page under it still scrolls.

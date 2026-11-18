@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.0.83 - 2026-11-19
+
+<!-- whats-new
+zh: 接着说的事接着原来那件做
+en: A follow-up carries on the task it follows
+zh: 跑腿交给快的；说别用谁就记成规则
+en: Errands go to the faster model; "not that one" becomes a rule
+-->
+
+**Tasks**
+- A follow-up goes to the task it follows, done or not: the same session, browser sign-ins, files
+  and branch, errands as well as code. Say "start a new one" when you want a fresh task.
+- Errands (booking, comparing prices, forms) go to a faster model by default, keeping the
+  strongest for code; your partner says so once. If the faster one can't finish, the strongest
+  takes over by itself.
+- Say "don't use Claude Code for this kind of thing" and it is saved as a rule right away, shown
+  in Your rules with its own mark.
+- A task moved to another AI agent while it waited for you carries on at once.
+
+**Devices**
+- DeepSeek Harness end to end: found in its Mac app, signed in with your DeepSeek account or a
+  key, installed from a device card, and updated by its app.
+
 ## 0.0.82 - 2026-11-18
 
 <!-- whats-new

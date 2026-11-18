@@ -20,10 +20,21 @@ describe("to-do sources' count", () => {
     expect(countOf({ state: "signed_out" })).toBe("failed");
   });
 
+  test("the true total, at least when only a bound is known, and PRs waiting for review apart", async () => {
+    const { A } = await import("../src/app.ts");
+    const { strings } = await import("../src/i18n.ts");
+    const { countWords } = await import("../src/todos.tsx");
+    A.L = strings("zh");
+    expect(countWords({ open: 557, review: 4 })).toEqual(["557 件没做完", false, "4 个 PR 等你 review"]);
+    expect(countWords({ open: 50, openAtLeast: true, taken: 1 })).toEqual(["至少 50 件没做完", "1 件在做", false]);
+    A.L = strings("en");
+    expect(countWords({ open: 557, review: 1 })).toEqual(["557 open", false, "1 PR waiting for your review"]);
+  });
+
   test("the words exist in zh and en, the same as the Mac's", () => {
     expect(todoWords.zh["todos.read.failed"]).toBe("没能读到 %s。");
     expect(todoWords.en["todos.read.failed"]).toBe("Couldn't read %s.");
-    for (const k of ["todos.read.failed", "todos.retry", "todos.looking"])
+    for (const k of ["todos.read.failed", "todos.retry", "todos.looking", "todos.open.atleast", "todos.review", "todos.review.one"])
       for (const lang of ["zh", "en"] as const) {
         expect(todoWords[lang][k]).toBeTruthy();
         expect(mac).toContain(`"${todoWords[lang][k]}"`);

@@ -281,6 +281,17 @@ func TestTodosCountOnlyAfterALook(t *testing.T) {
 		if !tt.HasText(w("0 件没做完", "0 open")) || tt.HasText(w("正在看…", "Looking…")) {
 			t.Errorf("%s: a look that read nothing: %q", lang, tt.Texts())
 		}
+		// The true total (not the page of 50), PRs waiting for review apart; a lower bound says so.
+		app.Receive(protocol.ServerFrame{T: "sources", Sources: &protocol.SourcesFrame{View: &protocol.SourcesView{Sources: []protocol.SourceView{
+			{ID: "src_gh", Kind: "github", Name: "lin-dev", State: "ok", WhenNew: "tell", WhenDone: "ask", CheckedAt: at, Open: 557, Review: 4},
+			{ID: "src_x", Kind: "github", Name: "lin-dev", State: "ok", WhenNew: "tell", WhenDone: "ask", CheckedAt: at, Open: 50, AtLeast: true},
+		}}}})
+		todoFrames(tt, 2)
+		for _, want := range []string{w("557 件没做完", "557 open"), w("4 个 PR 等你 review", "4 PRs waiting for your review"), w("至少 50 件没做完", "At least 50 open")} {
+			if !tt.HasText(want) {
+				t.Errorf("%s: no %q in %q", lang, want, tt.Texts())
+			}
+		}
 	}
 }
 

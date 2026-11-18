@@ -69,7 +69,9 @@ type SourceView struct {
 	WhenNew   string           `json:"whenNew"`
 	WhenDone  string           `json:"whenDone"`
 	Standing  *SourceStandings `json:"standing,omitempty"`
-	Open      int              `json:"open,omitempty"`
+	Open      int              `json:"open,omitempty"` // github: search's true total, not the page read
+	AtLeast   bool             `json:"openAtLeast,omitempty"`
+	Review    int              `json:"review,omitempty"` // github: PRs waiting for the person's review
 	Taken     int              `json:"taken,omitempty"`
 	CheckedAt string           `json:"checkedAt,omitempty"` // counts are shown only once it is set
 	Looking   bool             `json:"looking,omitempty"`   // a look is running now

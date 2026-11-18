@@ -214,11 +214,11 @@ export function createTaskSources(d: TaskSourcesDeps): TaskSources {
 
   // ---------- adapters ----------
   const adapters = new Map<string, SourceAdapter>();
-  const status = new Map<string, { state: SourceView["state"]; account?: string; error?: string; at?: string; open?: number }>();
+  const status = new Map<string, { state: SourceView["state"]; account?: string; error?: string; at?: string; open?: number; atLeast?: boolean; review?: number }>();
   const adapterOf = (s: Stored): SourceAdapter => {
     let a = adapters.get(s.id);
     if (a) return a;
-    if (s.kind === "github") a = createGitHub({ source: s.id, ...(d.ghRun ? { run: d.ghRun } : {}), ...(d.ghEnv ? { env: d.ghEnv } : {}), repos: () => s.repos, label: () => s.label });
+    if (s.kind === "github") a = createGitHub({ source: s.id, ...(d.ghRun ? { run: d.ghRun } : {}), ...(d.ghEnv ? { env: d.ghEnv } : {}), repos: () => s.repos, label: () => s.label, now });
     else if (s.kind === "obsidian") a = createObsidian({ source: s.id, vault: s.path!, folder: () => s.folder, tag: () => s.label, ...(d.today ? { today: d.today } : {}), now, ...(d.quietMs !== undefined ? { quietMs: d.quietMs } : {}) });
     else throw new Error(`${s.kind} isn't built yet`);
     adapters.set(s.id, a);
@@ -259,6 +259,8 @@ export function createTaskSources(d: TaskSourcesDeps): TaskSources {
       whenDone: s.whenDone,
       ...(s.standing ? { standing: s.standing } : {}),
       ...(x?.open !== undefined ? { open: x.open } : {}),
+      ...(x?.atLeast ? { openAtLeast: true } : {}),
+      ...(x?.review ? { review: x.review } : {}),
       taken,
       ...(x?.at ? { checkedAt: x.at } : {}),
       ...(looking ? { looking: true } : {}),
@@ -379,7 +381,11 @@ export function createTaskSources(d: TaskSourcesDeps): TaskSources {
         status.set(s.id, { state: "error", account: x.account, error: (err as Error).message.slice(0, 200), at: new Date(now()).toISOString() });
         continue;
       }
-      status.set(s.id, { state: "ok", ...(x.account ? { account: x.account } : {}), at: new Date(now()).toISOString(), open: items.length });
+      // The true count where the list is only the recent ones (GitHub's page of 50); if the total
+      // can't be had, the list's length is only a lower bound when it is a full page.
+      const total = a.total ? await a.total().catch(() => undefined) : undefined;
+      const count = total ?? { open: items.length, ...(a.total && items.length >= 50 ? { atLeast: true } : {}) };
+      status.set(s.id, { state: "ok", ...(x.account ? { account: x.account } : {}), at: new Date(now()).toISOString(), open: count.open, ...(count.atLeast ? { atLeast: true } : {}), ...(total?.review !== undefined ? { review: total.review } : {}) });
       const seen = new Set(st.seen[s.id] ?? []);
       const first = !st.learned?.[s.id] && !seen.size;
       const fresh = items.filter((i) => !seen.has(i.ref) && !taskOf(i.ref));

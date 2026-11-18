@@ -38,13 +38,25 @@ function scriptGh(dir: string) {
       '[ -z "$HOME" ] && { echo "failed to read configuration: $HOME is not defined" >&2; exit 1; }',
       'if [ "$1 $2" = "api user" ]; then echo lin-dev; exit 0; fi',
       `if [ -f "${fail}" ]; then cat "${fail}" >&2; exit 1; fi`,
+      // The search total: what --jq '[.total_count, .incomplete_results] | @tsv' prints; q logged.
+      `case "$*" in *search/issues*) for a in "$@"; do case "$a" in q=*) echo "$a" >> "${dir}/queries";; esac; done;;`,
+      "esac",
+      `case "$*" in *search/issues*review-requested*) cat "${dir}/review"; exit 0;; *search/issues*) cat "${dir}/total"; exit 0;; esac`,
       `cat "${page}"`,
       "",
     ].join("\n"),
   );
   chmodSync(join(bin, "gh"), 0o755);
   writeFileSync(page, assignedResponse(50));
-  return { bin, page, fail, env: (o: { home?: boolean } = {}) => ({ PATH: `${bin}:/usr/bin:/bin`, ...(o.home === false ? {} : { HOME: dir }) }) };
+  writeFileSync(join(dir, "total"), "50\tfalse\n");
+  writeFileSync(join(dir, "review"), "0\tfalse\n");
+  return {
+    bin,
+    page,
+    fail,
+    totals: (open: string, review: string) => (writeFileSync(join(dir, "total"), `${open}\n`), writeFileSync(join(dir, "review"), `${review}\n`)),
+    queries: () => { try { return readFileSync(join(dir, "queries"), "utf8").trim().split("\n"); } catch { return []; } },
+    env: (o: { home?: boolean } = {}) => ({ PATH: `${bin}:/usr/bin:/bin`, ...(o.home === false ? {} : { HOME: dir }) }) };
 }
 
 function boot(dir: string, env: Record<string, string>) {
@@ -162,4 +174,47 @@ test("while a look runs the source says so (looking), and not after", async () =
   off();
   expect(seen).toContain(true);
   expect(ts.view().sources[0]!.looking).toBeUndefined();
+});
+
+test("the count is GitHub's true total, not the page of 50; PRs waiting for review counted apart; filters reach the search", async () => {
+  const t = tempDir();
+  stops.push(t.cleanup);
+  const gh = scriptGh(t.dir);
+  gh.totals("557\tfalse", "4\tfalse");
+  const core = boot(t.dir, gh.env());
+  const ts = core.taskSources;
+  await ts.add("github");
+  await until(() => ts.view().sources[0]?.open === 557);
+  const v = ts.view().sources[0]!;
+  expect(v).toMatchObject({ open: 557, review: 4 });
+  expect(v.openAtLeast).toBeUndefined();
+  // Offering and "new" still read the recent page.
+  expect(JSON.parse(readFileSync(join(t.dir, "data", SOURCES_FILE), "utf8")).seen[v.id]).toHaveLength(50);
+  const qs = gh.queries();
+  expect(qs).toContain("q=assignee:lin-dev is:open archived:false");
+  expect(qs).toContain("q=review-requested:lin-dev is:open is:pr archived:false");
+  // A filter: both searches carry it.
+  ts.set(v.id, { repos: ["acme/web", "acme/infra"], label: "type/bug" });
+  await ts.look();
+  expect(gh.queries().slice(-2)).toEqual([
+    'q=assignee:lin-dev is:open archived:false repo:acme/web repo:acme/infra label:"type/bug"',
+    'q=review-requested:lin-dev is:open is:pr archived:false repo:acme/web repo:acme/infra label:"type/bug"',
+  ]);
+  // GitHub says its total is partial: only "at least".
+  gh.totals("1000\ttrue", "0\tfalse");
+  ts.set(v.id, { label: "" });
+  await ts.look();
+  expect(ts.view().sources[0]).toMatchObject({ open: 1000, openAtLeast: true });
+  expect(ts.view().sources[0]!.review).toBeUndefined();
+});
+
+test("search refused (its own limit): a full page counts as at least 50, never a plain 50", async () => {
+  const t = tempDir();
+  stops.push(t.cleanup);
+  const gh = scriptGh(t.dir);
+  gh.totals("not a number", "x");
+  const core = boot(t.dir, gh.env());
+  await core.taskSources.add("github");
+  await until(() => core.taskSources.view().sources[0]?.open === 50);
+  expect(core.taskSources.view().sources[0]).toMatchObject({ state: "ok", open: 50, openAtLeast: true });
 });

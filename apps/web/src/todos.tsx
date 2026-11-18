@@ -59,6 +59,14 @@ export function countOf(v: Pick<SourceView, "state" | "open" | "checkedAt">): "l
   return v.checkedAt && v.open !== undefined ? "counted" : "looking";
 }
 
+/** The counts, each its own fact (D291): open (the true total, or "at least"), being done, PRs waiting for review. */
+export function countWords(v: Pick<SourceView, "open" | "openAtLeast" | "taken" | "review">): (string | false)[] {
+  const n = v.open ?? 0;
+  const open = v.openAtLeast ? t("todos.open.atleast", n) : n === 1 ? t("todos.open.one") : t("todos.open", n);
+  const review = (v.review ?? 0) > 0 && (v.review === 1 ? t("todos.review.one") : t("todos.review", v.review));
+  return [open, (v.taken ?? 0) > 0 && t("todos.taken", v.taken), review];
+}
+
 /** 再试一次 / Try again: asking for the sources again makes the home look now. */
 function retry(v: SourceView) {
   TS.busy[`look:${v.id}`] = true;
@@ -185,7 +193,7 @@ function SourceCard({ v }: { v: SourceView }) {
       )}
       {v.kind === "github" && bad && A.ghTodo && <GhSignIn which="todos" inline />}
       {count === "counted" && (
-        <Facts class="todo-counts" items={[v.open === 1 ? t("todos.open.one") : t("todos.open", v.open), (v.taken ?? 0) > 0 && t("todos.taken", v.taken)]} />
+        <Facts class="todo-counts" items={countWords(v)} />
       )}
       <div class="chat-row">
         <span class="grow">

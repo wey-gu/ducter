@@ -163,12 +163,22 @@ func (a *App) todoSourceGroup(c *ui.Context, s protocol.SourceView) {
 			}
 			// D291: each count its own small fact.
 			open := a.L.T("todos.open", fmt.Sprint(s.Open))
-			if s.Open == 1 {
+			switch {
+			case s.AtLeast:
+				open = a.L.T("todos.open.atleast", fmt.Sprint(s.Open))
+			case s.Open == 1:
 				open = a.L.T("todos.open.one")
 			}
 			ui.Text(c.Key("open"), open).FontSize(t.SM).FontWeight(600).TextColor(t.InkSoft).FontFeatures("tnum").SingleLine()
 			if s.Taken > 0 {
 				ui.Text(c.Key("taken"), a.L.T("todos.taken", fmt.Sprint(s.Taken))).FontSize(t.SM).FontWeight(600).TextColor(t.Working.Ink).FontFeatures("tnum").SingleLine()
+			}
+			if s.Review > 0 {
+				review := a.L.T("todos.review", fmt.Sprint(s.Review))
+				if s.Review == 1 {
+					review = a.L.T("todos.review.one")
+				}
+				ui.Text(c.Key("review"), review).FontSize(t.SM).FontWeight(600).TextColor(t.InkSoft).FontFeatures("tnum").SingleLine()
 			}
 		})
 		if s.State != "ok" {

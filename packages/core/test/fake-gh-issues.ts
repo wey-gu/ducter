@@ -12,6 +12,8 @@ export interface FakeIssue {
   labels?: string[];
   pr?: boolean;
   assigned?: boolean;
+  /** A PR whose review is requested of the person (not assigned). */
+  review?: boolean;
   updated?: string;
 }
 
@@ -21,6 +23,8 @@ export interface FakeGh {
   comments: { repo: string; number: number; body: string }[];
   closes: { repo: string; number: number; reason: string }[];
   calls: string[][];
+  /** Search calls (the count). */
+  searches: number;
   /** Answer the next list with 304 when its ETag is sent (true by default). */
   etags: boolean;
   signedIn: boolean;
@@ -49,6 +53,7 @@ export function fakeGh(seed: FakeIssue[] = [], o: { login?: string } = {}): Fake
     comments: [],
     closes: [],
     calls: [],
+    searches: 0,
     etags: true,
     signedIn: true,
     missing: false,
@@ -106,6 +111,16 @@ export function fakeGh(seed: FakeIssue[] = [], o: { login?: string } = {}): Fake
       });
       if (args[0] !== "api") return { code: 1, out: "", err: `fake gh: ${args.join(" ")}` };
       if (args[1] === "user") return { code: 0, out: `${login}\n`, err: "" };
+      // The search total (per_page=1, --jq ... @tsv): assignee / review-requested, repo:, label:.
+      if (args.includes("search/issues")) {
+        f.searches++;
+        const q = (args.find((a) => a.startsWith("q=")) ?? "q=").slice(2);
+        const repos = [...q.matchAll(/repo:(\S+)/g)].map((m) => m[1]!.toLowerCase());
+        const label = /label:"([^"]*)"/.exec(q)?.[1]?.toLowerCase();
+        const review = q.includes("review-requested:");
+        const n = f.issues.filter((i) => i.state === "open" && (review ? i.review && i.pr : i.assigned) && (!repos.length || repos.includes(i.repo.toLowerCase())) && (!label || (i.labels ?? []).some((l) => l.toLowerCase() === label))).length;
+        return { code: 0, out: `${n}\tfalse\n`, err: "" };
+      }
       if (args.includes("/issues")) {
         const etag = `W/"v${version}"`;
         const sent = args.find((a) => a.startsWith("If-None-Match: "))?.slice(15);

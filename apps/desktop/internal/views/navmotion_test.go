@@ -58,16 +58,26 @@ func TestNavMotionFrames(t *testing.T) {
 	// The same moves under reduced motion are the baseline: the moves may cost
 	// more than a still page, but not much more. Wall-clock limits alone fail on a
 	// shared CI runner that paints every frame on the CPU several times slower.
+	// A busy runner can stall a whole run (2026-11-18: the released 0.0.78 failed
+	// here too, its still frames 18-36 ms against ~5 ms on a quiet one), so a
+	// language gets three tries; a real slowdown fails every one.
 	for _, lang := range []i18n.Lang{i18n.ZH, i18n.EN} {
-		moving := navMotionRun(t, lang, false)
-		still := navMotionRun(t, lang, true)
-		if testing.Short() {
-			continue
+		var m, s, limit time.Duration
+		for try := 1; try <= 3; try++ {
+			moving := navMotionRun(t, lang, false)
+			still := navMotionRun(t, lang, true)
+			if testing.Short() {
+				break
+			}
+			m, s = p95(moving), p95(still)
+			limit = max(50*time.Millisecond, 3*s+10*time.Millisecond)
+			t.Logf("%s try %d: p95 frame %v moving, %v still (limit %v)", lang, try, m, s, limit)
+			if m <= limit {
+				break
+			}
 		}
-		m, s := p95(moving), p95(still)
-		t.Logf("%s: p95 frame %v moving, %v still", lang, m, s)
-		if limit := max(50*time.Millisecond, 3*s+10*time.Millisecond); m > limit {
-			t.Errorf("%s: p95 frame %v moving against %v still (limit %v)", lang, m, s, limit)
+		if !testing.Short() && m > limit {
+			t.Errorf("%s: p95 frame %v moving against %v still (limit %v), three tries", lang, m, s, limit)
 		}
 	}
 }

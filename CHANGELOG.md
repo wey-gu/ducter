@@ -16,6 +16,10 @@ en: Tasks that are one piece of work, as one group
 - Say "put these together" to make a group, or select tasks on the web and choose Put in a group.
   Ungrouping keeps every task.
 
+**Agent messaging**
+- With Nowledge Mem 0.10.120 or later, your partner knows which of your agents wrote to it and
+  which message answers its question. Settings offers the update when yours is older.
+
 ## 0.0.78 - 2026-11-18
 
 <!-- whats-new

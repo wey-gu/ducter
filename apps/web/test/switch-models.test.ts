@@ -37,7 +37,7 @@ describe("the in-place Model and Effort rows (D282, D352)", () => {
 
   test("on a model past the row (gpt-5.6-luna): still a chip, chosen; no effort row to offer for it", () => {
     const tu = inPlaceTune([codex], "codex", undefined, "gpt-5.6-luna", undefined)!;
-    expect(tu.models.at(-1)).toEqual({ id: "gpt-5.6-luna", label: "gpt-5.6-luna" });
+    expect(tu.models.at(-1)).toEqual({ id: "gpt-5.6-luna", label: "GPT-5.6-Luna" }); // D355: in its agent's casing, never the raw id
     expect(tu.model?.id).toBe("gpt-5.6-luna");
     expect(tu.model?.efforts).toBeUndefined();
   });

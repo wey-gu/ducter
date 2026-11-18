@@ -183,11 +183,65 @@ func modelLabel(h *protocol.DeviceHarness, id string) string {
 			return m.label
 		}
 	}
+	return prettyModel(id)
+}
+
+// prettyModel is a model's name in words when no list says it: Claude
+// Code's aliases capitalised ("Opus"), an OpenAI id in its own casing
+// ("gpt-6.2-sol" is "GPT-6.2-Sol", as Codex lists it); anything else as is.
+func prettyModel(id string) string {
 	switch id {
 	case "opus", "sonnet", "haiku":
 		return strings.ToUpper(id[:1]) + id[1:]
 	}
-	return id
+	if !strings.HasPrefix(id, "gpt-") {
+		return id
+	}
+	parts := strings.Split(id, "-")
+	parts[0] = "GPT"
+	for i := 1; i < len(parts); i++ {
+		if p := parts[i]; p != "" && p[0] >= 'a' && p[0] <= 'z' {
+			parts[i] = strings.ToUpper(p[:1]) + p[1:]
+		}
+	}
+	return strings.Join(parts, "-")
+}
+
+// modelWord is a task's model in the words its agent lists it with: the
+// agent's own list on the computer the task runs on (the New task lists,
+// then that computer's account), then the home's, then prettyModel.
+func (a *App) modelWord(harness, device, id string) string {
+	if id == "" {
+		return ""
+	}
+	if o := a.S.NewTaskOptions; o != nil {
+		label := ""
+		for _, row := range o.Models {
+			if row.Harness != harness {
+				continue
+			}
+			for _, m := range row.Models {
+				if m.ID == id && m.Label != "" && (label == "" || row.Device == device) {
+					label = m.Label
+				}
+			}
+		}
+		if label != "" {
+			return label
+		}
+	}
+	if d := a.computerOf(device); d != nil {
+		for i := range d.Harnesses {
+			if h := &d.Harnesses[i]; h.Harness == harness {
+				for _, m := range h.Models {
+					if m.ID == id && m.Label != "" {
+						return m.Label
+					}
+				}
+			}
+		}
+	}
+	return modelLabel(a.trayHarness(harness), id)
 }
 
 func pct(f float64) int { return int(f*100 + 0.5) }
@@ -652,7 +706,7 @@ func (a *App) liveTune(task *store.Task, device string) (models []protocol.Model
 	// D352: the model it's on is always a chip, even one past the row's first few.
 	models = row.Models
 	if now := task.Model(); now != "" && !slices.ContainsFunc(models, func(m protocol.ModelChoice) bool { return m.ID == now }) {
-		models = append(slices.Clone(models), protocol.ModelChoice{ID: now, Label: modelLabel(a.trayHarness(h), now)})
+		models = append(slices.Clone(models), protocol.ModelChoice{ID: now, Label: a.modelWord(h, task.Place().Device, now)})
 	}
 	for i := range models {
 		if m := &models[i]; (task.Model() != "" && m.ID == task.Model()) || (task.Model() == "" && m.Default) {
@@ -706,7 +760,7 @@ func candKey(cd protocol.Candidate) string { return cd.Harness + "/" + cd.Model 
 // candName is "Claude Code 的 Opus" / "Claude Code with Opus" (D296: a phrase).
 func (a *App) candName(cd protocol.Candidate) string {
 	if cd.Model != "" {
-		return a.L.T("loadout.brain.with", harnessName(cd.Harness), modelLabel(a.trayHarness(cd.Harness), cd.Model))
+		return a.L.T("loadout.brain.with", harnessName(cd.Harness), a.modelWord(cd.Harness, cd.Device, cd.Model))
 	}
 	return harnessName(cd.Harness)
 }

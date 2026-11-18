@@ -14,7 +14,11 @@ var zhWatch = Table{
 	"watch.tally":     "看了 %d 次",
 	"watch.tally.one": "看了 1 次",
 	"watch.last":      "上次%s",
-	"watch.last.not":  "上次%s，还没有",
+	// D355: what the last look found, its own fact; when it looks next, the one number.
+	"watch.nothing":   "还没有新的",
+	"watch.next.min":  "%d 分钟后再看",
+	"watch.next.hour": "%d 小时后再看",
+	"watch.next.day":  "%d 天后再看",
 	"watch.met":       "等到了，接着做",
 }
 
@@ -28,7 +32,10 @@ var enWatch = Table{
 	"watch.tally":     "Looked %d times",
 	"watch.tally.one": "Looked once",
 	"watch.last":      "Last at %s",
-	"watch.last.not":  "Last at %s: not yet",
+	"watch.nothing":   "Nothing new yet",
+	"watch.next.min":  "Next look in %d min",
+	"watch.next.hour": "Next look in %d h",
+	"watch.next.day":  "Next look in %d d",
 	"watch.met":       "Wait over, carrying on",
 }
 

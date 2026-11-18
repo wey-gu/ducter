@@ -205,7 +205,7 @@ func (a *App) whoParts(cd protocol.Candidate) []string {
 	parts := []string{harnessName(cd.Harness)}
 	if len(tu.models) == 0 {
 		if cd.Model != "" {
-			parts = append(parts, modelLabel(a.trayHarness(cd.Harness), cd.Model))
+			parts = append(parts, a.modelWord(cd.Harness, cd.Device, cd.Model))
 		}
 		return parts
 	}

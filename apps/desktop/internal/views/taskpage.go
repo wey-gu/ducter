@@ -313,10 +313,12 @@ func (a *App) taskHead(c *ui.Context, task *store.Task, m *taskMemo) {
 		head.Children(func() {
 			ui.Box(c.Key("facebox")).Shrink(0).Children(func() {
 				a.partnerFace(c, "task:"+task.ID, taskPresence(task), taskFaceW)
-				// What it waits for, in a bubble by its head (D112).
+				// What it waits for, a thought bubble by its head (D112): up
+				// on the face's top corner, clear of its eyes and of the
+				// words, its tail toward the head.
 				if w := a.S.WaiterFor(task.ID); w != nil && task.Attention() == protocol.Blocked && (w.Check != nil || w.Event != nil) {
-					ui.Box(c.Key("bubble")).Absolute().Left(taskFaceW - 30).Top(-12).Children(func() {
-						a.waitBubble(c, waitGlyph(w.Check, w.Event), 46)
+					ui.Box(c.Key("bubble")).Absolute().Left(taskFaceW - waitBadgeW + 12).Top(-8).Children(func() {
+						a.waitBadge(c, waitGlyph(w.Check, w.Event))
 					})
 				}
 			})

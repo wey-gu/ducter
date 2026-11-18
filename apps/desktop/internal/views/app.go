@@ -1139,7 +1139,7 @@ func (a *App) bodyParts(t *store.Task) []string {
 		parts = append(parts, h)
 	}
 	if m := t.Model(); m != "" {
-		parts = append(parts, modelLabel(a.trayHarness(t.Harness()), m))
+		parts = append(parts, a.modelWord(t.Harness(), t.Place().Device, m))
 	}
 	if e := t.Effort(); e != "" {
 		parts = append(parts, a.effortWord(e)) // D202

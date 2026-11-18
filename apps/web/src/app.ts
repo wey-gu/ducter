@@ -16,7 +16,7 @@ import { haptic, inApp, nativeCall, nativeInfo, tellReach, tellWays } from "./na
 import { copy } from "./conv-copy.ts";
 import { applyLend, LEND_WAIT_MS, lendError, type LendKind, type LendState } from "./lend-view.ts";
 import { attention, doneTodayOf, finished, LANE, laneOf, looksSecret, olderPage, placeOf, Store, title, windowAsk, type DecisionState, type Entry } from "./store.ts";
-import { harnessName, modelName, shownDeviceName, spoken, withoutStaleAgentUpdate, withoutStaleFailure } from "./format.ts";
+import { harnessName, learnModelLabels, modelName, shownDeviceName, spoken, withoutStaleAgentUpdate, withoutStaleFailure } from "./format.ts";
 import { canFillNow, wideNow } from "./fold.ts";
 import { kindOf, navMove } from "./nav.ts";
 import { forgetGlance, keepEvents, saveGlance, type Glance } from "./glance.ts";
@@ -746,6 +746,7 @@ class AppState {
       // A failure the device (or the agent's copy) has moved past is dropped (D167, D156).
       // D291: a name from before shows as the model alone ("iPad · Ducter" → "iPad").
       const devices = f.devices.map((d) => ({ ...d, name: shownDeviceName(d.name), ...(d.update ? { update: withoutStaleFailure(d.update) } : {}), harnesses: d.harnesses.map(withoutStaleAgentUpdate) }));
+      learnModelLabels(devices.flatMap((d) => d.harnesses)); // D355: a model in its agent's own words
       this.updateAll = f.updateAll;
       this.afterUpdateAll(f.updateAll);
       return void ((this.agents = devices.find((d) => d.home)?.harnesses ?? home?.harnesses ?? []), (this.homeName = home?.name), (this.devices = devices), (this.reach = f.reach && { ...f.reach, clients: f.reach.clients.map((c) => ({ ...c, name: shownDeviceName(c.name) })) }), this.changed());
@@ -764,6 +765,7 @@ class AppState {
     if (f.t === "account_usage") return void (this.accountUsage.set(f.harness, { ...(f.usage ? { usage: f.usage } : {}), ...(f.why ? { why: f.why } : {}), asked: this.accountUsage.get(f.harness)?.asked ?? Date.now() }), this.changed());
     if (f.t === "task_new_options") {
       this.newTaskOptions = { places: f.places, candidates: f.candidates, ...(f.models ? { models: f.models } : {}), ...(f.ducterFolders ? { ducterFolders: f.ducterFolders } : {}) };
+      learnModelLabels(f.models);
       // D203: the copy picked on another computer says its branches now: keep the branch it has.
       const want = this.nt.wantBranch;
       const ch = want ? this.chosenPlace() : undefined;

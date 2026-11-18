@@ -9,7 +9,7 @@ import { DEFAULT_EVERY_MS, describeCheck, describePredicate } from "@ducter/prot
 import { useEffect, useState } from "preact/hooks";
 import { A } from "./app.ts";
 import { cjkPad, clock, day, harnessName, md, when } from "./format.ts";
-import { Toggle } from "./controls.tsx";
+import { Btn, Toggle } from "./controls.tsx";
 
 const pad = (s: string) => cjkPad(A.L, s);
 /** t with a time padded from the Chinese around it, without stray spaces at the ends or before punctuation. */
@@ -298,21 +298,29 @@ export function WatchCard({ task, wakes, wokeAt }: { task: Task; wakes: number; 
   const woke = Number.isFinite(wokeAt) ? wokeAt : 0;
   const last = Math.max(Number.isFinite(lastLook) ? lastLook : 0, woke);
   const notYet = Number.isFinite(lastLook) && lastLook >= woke;
-  const lastWords = last > 0 ? tp(notYet ? "watch.last.not" : "watch.last", clock(new Date(last).toISOString())) : "";
-  // How it comes back first, so a count reads as looks now and then, never as watching nonstop.
+  // D291: the count, the last look and what it found, each its own fact.
+  const lastWords = last > 0 ? tp("watch.last", clock(new Date(last).toISOString())) : "";
+  const nothing = last > 0 && notYet ? t("watch.nothing") : "";
+  // How it comes back.
   const rhythm = w.check ? t("wait.every", minutes(w.everyMs ?? DEFAULT_EVERY_MS)) : w.event ? t("wait.each_new") : t("watch.timer");
   const count = looks > 0 ? (looks === 1 ? t("watch.tally.one") : t("watch.tally", looks)) : "";
   const tally = count || lastWords;
+  // D355: one number. A watch says when it looks next in words, the ring only shows it filling; how
+  // often is said apart, quieter. A timer keeps how long is left inside its ring.
+  const head = b.left && watches ? nextWords(b.left) : rhythm;
   return (
     <section class="watch">
       <div class="watch-main">
-        <LookRing frac={b.frac} inside={b.left ? leftWords(b.left) : undefined} label={backWords(w)} />
+        <LookRing frac={b.frac} inside={b.left && !watches ? leftWords(b.left) : undefined} label={backWords(w)} />
         <div class="watch-words">
-          <p class="rhythm">{rhythm}</p>
+          <p class="watch-next">
+            <span class="rhythm">{head}</span>
+            {head !== rhythm && <span class="often">{rhythm}</span>}
+          </p>
           {tally && (
             <p class="tally">
               {looks > 0 && <Pebbles came={wakes} empty={w.looks ?? 0} />}
-              <Facts items={[count, lastWords]} />
+              <Facts items={[count, lastWords, nothing]} />
             </p>
           )}
         </div>
@@ -320,12 +328,18 @@ export function WatchCard({ task, wakes, wokeAt }: { task: Task; wakes: number; 
       {w.until && <Groove w={w} big />}
       {watches && (
         <div class="btns">
-          <button class="btn secondary" onClick={() => A.waiterAction(w.waiterId, "look")}>{t("wait.look")}</button>
-          <button class="btn text" onClick={() => A.waiterAction(w.waiterId, "cancel")}>{t("wait.cancel")}</button>
+          <Btn kind="secondary" size="sm" label={t("wait.look")} onClick={() => A.waiterAction(w.waiterId, "look")} />
+          <Btn kind="text" size="sm" label={t("wait.cancel")} onClick={() => A.waiterAction(w.waiterId, "cancel")} />
         </div>
       )}
     </section>
   );
+}
+
+/** When a watch looks next, in a few words (D355): "20 分钟后再看" / "Next look in 20 min". */
+function nextWords(ms: number): string {
+  const m = Math.max(1, Math.ceil(ms / 60_000));
+  return m < 60 ? t("watch.next.min", m) : m < 48 * 60 ? t("watch.next.hour", Math.round(m / 60)) : t("watch.next.day", Math.round(m / 1440));
 }
 
 /** When a wait comes back, as its state (D279): "21:59 回来" / "Back at 21:59", "有动静就回来" /

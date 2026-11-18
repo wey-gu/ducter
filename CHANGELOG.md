@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.0.81 - 2026-11-18
+
+<!-- whats-new
+zh: 伙伴知道你这几天在忙什么
+en: Your partner knows what you're focused on
+zh: 修好：消息多了以后新消息看不到
+en: Fixed: new agent messages missed behind older ones
+-->
+
+**Memory**
+- With Nowledge Mem, your partner knows the day's focus from your own notes and weighs things
+  by it, without saying it read them. The morning note puts what matters to your focus first.
+- Ask how you solved something with another AI tool and your partner looks through your past
+  conversations too.
+
+**Agent messaging**
+- Fixed: once more than twenty messages had come in, newer ones from your agents could go
+  unseen. Every message is read now.
+
 ## 0.0.80 - 2026-11-18
 
 <!-- whats-new

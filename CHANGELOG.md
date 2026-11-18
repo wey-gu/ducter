@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.0.77 - 2026-11-18
+
+<!-- whats-new
+zh: 任务框下直接换模型和思考深度
+en: Change a task's model and effort under its box
+zh: 待办上了手头的事；文件链接能打开了
+en: Your to-dos on On hand; file links open in Ducter
+-->
+
+**Tasks**
+- Under a task's box, the model and the effort it thinks with are always in sight. Tap either to
+  change it from the next turn.
+- A link to a file the task made opens in Ducter's viewer, fetched from the computer it is on,
+  with the Markdown laid out. If it can't open, it says why.
+- A task that checks on something every so often shows one number: when it looks next. The model
+  shows by its own name.
+
+**On hand**
+- Your GitHub issues and Obsidian to-dos have a group of their own: the few worth a look, and the
+  rest folded beneath. Hand one over in a tap. The counts in Settings take you there.
+
+**Devices**
+- One Add a device entry: choose whether it's for talking to Ducter or for doing tasks.
+- Add a computer for tasks is drawn in clay, waits with you, and says when it joins. On the Mac it
+  no longer waits forever for its line.
+- The words say what each computer does: "Ducter runs here", "Helps <your partner> with tasks".
+- A task you ask to run on a computer with no AI agent signed in says so, instead of running
+  somewhere else.
+
 ## 0.0.76 - 2026-11-18
 
 <!-- whats-new

@@ -210,7 +210,7 @@ export async function main(mods: BootModules = {}) {
       // Its own Mem identity or nothing: until it is bound, it neither recalls nor saves.
       const nmem = process.env.DUCTER_MEMORY === "off" ? undefined : make.createNmemClient?.({ identity: () => view.persona.mem });
       const memory = nmem && make.noMemory
-        ? { search: (q: string, n: number) => (view.persona.mem ? nmem.search(q, n) : make.noMemory.search(q, n)), add: (m: unknown) => (view.persona.mem ? nmem.add(m) : make.noMemory.add(m)), ...(nmem.forget ? { forget: (x: string) => nmem.forget(x) } : {}) }
+        ? { search: (q: string, n: number) => (view.persona.mem ? nmem.search(q, n) : make.noMemory.search(q, n)), add: (m: unknown) => (view.persona.mem ? nmem.add(m) : make.noMemory.add(m)), ...(nmem.threads ? { threads: (q: string, n: number) => (view.persona.mem ? nmem.threads(q, n) : make.noMemory.search(q, n)) } : {}), ...(nmem.forget ? { forget: (x: string) => nmem.forget(x) } : {}) }
         : undefined;
       return make.createPartner(view, runnerNow, { dir: o.dir, prewarm: false, bridge: null, ...(memory ? { memory } : {}) });
     });

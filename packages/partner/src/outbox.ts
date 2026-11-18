@@ -145,6 +145,7 @@ export function withOutbox(inner: MemoryClient, o: { file: string; now?: () => n
       }
       return { ok: true, waiting: key };
     },
+    ...(inner.threads ? { threads: (q: string, n: number) => inner.threads!(q, n) } : {}),
     ...(inner.forget ? { forget: (id: string) => inner.forget!(id) } : {}),
     ...(inner.correct ? { correct: (id: string, t: string) => inner.correct!(id, t) } : {}),
     ...(inner.archive ? { archive: (id: string) => inner.archive!(id) } : {}),

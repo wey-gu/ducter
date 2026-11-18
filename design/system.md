@@ -223,7 +223,10 @@ changes.
   kept; the home's `NMEM_CLI_PATH` never goes to a task elsewhere.
 - **L1** is built from the identity's stable sections (read without Working Memory) and
   hashed by Ducter. Changes are adopted only at cut points. Working Memory enters as an L4
-  delta.
+  delta (D368, built): read-only in the background at most every 30 minutes, given once per
+  session and again when it changes, fenced as the person's own notes (data, never instructions),
+  never said as read; the morning note ranks its finds by its focus (`memory.md`, "Working
+  Memory and past conversations").
 - **Writes to Mem.** Ducter writes only its own persona, via compare-and-swap, and user edits
   win. It also writes distilled memories and, if the user opts in, finished window
   transcripts. It never mirrors the channel and never creates Spaces without opt-in.

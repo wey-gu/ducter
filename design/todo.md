@@ -1487,9 +1487,18 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] D229 live: tap **换一下** on hel (root, apt, pip copy 0.10.116 past the mark): pipx from apt, the old copy
       out, `pipx install --force nmem-cli`, still signed in (`nmem --json status` healthy), Bridge row back to
       Connect. Then a recall on hel that should find a memory from the identity's lane. Trigger: the author's go.
-- [ ] Partner recall and threads (research/69 K6): Mem's skill searches threads (`t search`) for "what did we
-      discuss in another tool"; the partner reads memories only. Measure on the eval first. Trigger: a user asking
-      the partner about a conversation they had in another AI tool.
+- [x] Partner recall and threads (research/69 K6): built in D368 (`memory_search` reads threads when asked or
+      pointed at), measured on the eval (`thread-recall-*`).
+- [ ] D368 live: on the author's home, "今天先弄哪个？" after Mem's morning Working Memory, and "how did I fix …
+      in Codex" against a real thread; check the L4 block's size and that nothing says "your notes". Also read
+      a day whose Working Memory has awaiting rulings and flags, to replace the inferred item shapes
+      (research/138 F3). Trigger: the author's go.
+- [ ] A 想起了 line for a past conversation (D368 (3)): "想起了你 11/12 在 Codex 里…", tapping opens the thread in
+      Mem. Held: a thread is not a memory the person can forget or fix from that sheet. Trigger: a user asking
+      where an answer about another tool came from.
+- [ ] Working Memory for tasks (D368): a task's brief could carry the focus line where the task is about it.
+      Held: the brief already carries the memories that matter (D168). Trigger: a task that missed the day's
+      priority the partner knew.
 - [ ] Tasks get two voices on saving (research/69 K1): the brief says never save memories (D168 (5)); the plugin's
       startup text says save durable decisions autonomously. Check in the task eval whether tasks still call
       `nmem m add`. Trigger: a duplicate memory traced to a task.

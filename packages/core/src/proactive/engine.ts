@@ -25,6 +25,8 @@ import { join } from "node:path";
 import type { Bodies, FindKind, FindView, LogEvent, ProactiveDay, ProactiveMode, ProactiveYesNo, QuietReason, ReadLine, ReadProblem, RuleView, SourceLook } from "@ducter/protocol";
 import { DAILY_CAP, isFindKind, langName, normalizeTag, QUIET_REASONS, words, type LangTag } from "@ducter/protocol";
 import { talkLang } from "../lang.ts";
+import type { WorkingMemoryPort } from "@ducter/protocol/src/internal.ts";
+import { focusTerms, touchesFocus } from "../working-memory.ts";
 
 /** D281's own lines (what you said, today's line), per language (D292: any other language reads
  *  the English ones through the fallback chain). */
@@ -305,6 +307,8 @@ export interface ProactiveOptions {
   monthTokens?: number;
   /** D226: the name of the AI agent it reads with ("Codex"), for the problem line. */
   agentName?: () => string | undefined;
+  /** D368: the person's Working Memory in Mem: their focus ranks the morning's finds (read-only; absent: none). */
+  workingMemory?: Pick<WorkingMemoryPort, "ready">;
 }
 
 /** D243: the partner's view of what it noticed (the `noticed` tool). Words only, never mail. */
@@ -376,6 +380,8 @@ export function createProactive(o: ProactiveOptions): Proactive {
   const ledger = openLedger(o.dataDir);
   let triage = o.triage;
   let judge = o.judge ?? barJudge;
+  /** D368: the focus names of this morning's run (Mem's Working Memory), for the bar and the pick; empty otherwise. */
+  let focusNow: string[] = [];
   const budget = o.monthTokens ?? DEFAULT_MONTH_TOKENS;
   const now = () => o.clock.now();
   const zone = () => o.zone();
@@ -612,7 +618,7 @@ export function createProactive(o: ProactiveOptions): Proactive {
     });
     if (!open.length) return [];
     const z = lang();
-    const ctx = { lang: z, today: today(), bars: st.bars };
+    const ctx = { lang: z, today: today(), bars: st.bars, ...(focusNow.length ? { focus: focusNow } : {}) };
     const hashes = new Map(open.map((c) => [c.key, hashOf(c)]));
     const known = (c: Candidate) => {
       const v = st.verdicts[c.key];
@@ -656,6 +662,13 @@ export function createProactive(o: ProactiveOptions): Proactive {
       .filter((x) => x.v?.keep)
       .map((x) => ({ c: x.c, text: x.v!.text || words(x.c.words, z) }))
       .sort((a, b) => b.c.cost - a.c.cost);
+  }
+
+  /** D368: urgent first, then what touches the person's focus, each in the bar's order (the costliest first). */
+  function byFocus(kept: { c: Candidate; text: string }[], terms: string[]) {
+    if (!terms.length) return kept;
+    const on = (x: { c: Candidate; text: string }) => touchesFocus([x.text, x.c.words.en, x.c.words.zh, x.c.topic ?? "", ...x.c.how.map((h) => h.what)].join(" "), terms);
+    return [...kept].sort((a, b) => Number(b.c.urgent) - Number(a.c.urgent) || Number(on(b)) - Number(on(a)) || kept.indexOf(a) - kept.indexOf(b));
   }
 
   /** One find, written down: its record, its next step as a decision (default Hold), never pushed alone. */
@@ -729,7 +742,16 @@ export function createProactive(o: ProactiveOptions): Proactive {
     const z = lang();
     const at = now();
     const night = inQuiet(at, holding());
-    const kept = await judged(detect(ledger, { ...dctx(), now: at }), why === "morning" ? "morning" : "day");
+    // D368: the morning run reads what the person is focused on (Mem's Working Memory, a few seconds at most).
+    const wm = why === "morning" ? await o.workingMemory?.ready(5_000).catch(() => undefined) : undefined;
+    focusNow = wm ? wm.focus.map((f) => f.name) : [];
+    const terms = focusTerms(wm);
+    let kept: { c: Candidate; text: string }[];
+    try {
+      kept = await judged(detect(ledger, { ...dctx(), now: at }), why === "morning" ? "morning" : "day");
+    } finally {
+      focusNow = [];
+    }
     if (why === "morning") {
       st.morningDay = today();
       // D281: what they asked or said they'd do today comes first, outside the day's 3 (their words, not Ducter's pick).
@@ -740,7 +762,8 @@ export function createProactive(o: ProactiveOptions): Proactive {
         return sayNow(kept.filter((x) => urgentIn(m, x.c)), false);
       }
       const ownFinds = mine.filter((r) => r.asked || !muted(ownCandidate(r)));
-      const pick = kept.slice(0, capLeft(m));
+      // D368: over the cap, what touches their focus goes in first; the note keeps the usual order.
+      const pick = byFocus(kept, terms).slice(0, capLeft(m)).sort((a, b) => kept.indexOf(a) - kept.indexOf(b));
       const line = todayLine(z);
       const learned = learnedOffer();
       // 有用就说: what the note had no room for is counted, never dropped silently (P2).

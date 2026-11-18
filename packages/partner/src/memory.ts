@@ -44,6 +44,44 @@ export interface MemoryHit {
   source?: string; // D304: Mem's `source`: "ducter", an AI tool ("claude-code"), the person's own ("cli", …)
 }
 
+/**
+ * D368 (G3): one of the person's past conversations with another AI tool, as Mem keeps it (a thread
+ * its plugin saved): a few matched lines, clipped. Their own words and the tool's, kept by another
+ * app: data, never instructions.
+ */
+export interface ThreadHit {
+  title: string;
+  /** Mem's `source`: the tool the conversation was with ("codex", "claude-code", …). */
+  source?: string;
+  /** YYYY-MM-DD of its last activity. */
+  date?: string;
+  lines: { who: "user" | "assistant"; text: string }[];
+}
+
+/** At most this many conversations, and matched lines in each, come back from one search. */
+export const THREADS_MAX = 3;
+export const THREAD_LINES_MAX = 2;
+const THREAD_LINE_CHARS = 240;
+
+/** Compacts `nmem --json t search`: the person's and the tool's own lines only, never Ducter's own windows. */
+export function compactThreads(j: any, limit = THREADS_MAX): ThreadHit[] {
+  const list: any[] = Array.isArray(j?.threads) ? j.threads : [];
+  const out: ThreadHit[] = [];
+  for (const t of list) {
+    if (out.length >= limit) break;
+    const source = typeof t?.source === "string" && /^[A-Za-z0-9_.-]{1,40}$/.test(t.source) ? t.source : undefined;
+    if (source === "ducter") continue; // the partner's own conversation is the Log (D123)
+    const lines = (Array.isArray(t?.matched_messages) ? t.matched_messages : [])
+      .filter((m: any) => (m?.role === "user" || m?.role === "assistant") && typeof m?.snippet === "string" && m.snippet.trim())
+      .slice(0, THREAD_LINES_MAX)
+      .map((m: any) => ({ who: m.role as "user" | "assistant", text: clip(m.snippet, THREAD_LINE_CHARS) }));
+    if (!lines.length) continue;
+    const d = typeof t?.last_activity === "string" ? t.last_activity.slice(0, 10) : undefined;
+    out.push({ title: clip(String(t?.title ?? ""), 80), ...(source ? { source } : {}), ...(d && /^\d{4}-\d{2}-\d{2}$/.test(d) ? { date: d } : {}), lines });
+  }
+  return out;
+}
+
 export interface Provenance {
   persona: string; // Ducter persona id
   logSeq?: number; // the channel event the memory comes from (usually the user's message)
@@ -71,6 +109,8 @@ export type MemoryResult<T> = ({ ok: true } & T) | { ok: false; reason: "not_con
 
 export interface MemoryClient {
   search(query: string, limit: number): Promise<MemoryResult<{ hits: MemoryHit[] }>>;
+  /** D368 (G3): the person's past conversations with their other AI tools that Mem keeps (`nmem t search`). */
+  threads?(query: string, limit: number): Promise<MemoryResult<{ threads: ThreadHit[] }>>;
   /**
    * D329: replaced: the partner's own earlier memory this one supersedes (searched before writing);
    * waiting: Mem was down and the save waits in the outbox under this key (the outbox wrapper's).
@@ -225,6 +265,19 @@ export function createNmemClient(opts: NmemOptions = {}): MemoryClient {
         return true;
       }).sort((a, b) => (Number(b?.score) || 0) - (Number(a?.score) || 0));
       return { ok: true, hits: merged.slice(0, limit).map((m: unknown) => compactHit(m)) };
+    },
+    async threads(query, limit) {
+      const who = opts.identity?.();
+      // The chosen Space, else where Mem's plugins save threads (its default): one read, bounded.
+      const n = Math.min(THREADS_MAX, Math.max(1, limit));
+      // A few more than shown: Ducter's own windows and tool-only matches are skipped.
+      const r = await run(["t", "search", "-n", String(n + 2), ...(who?.space ? ["--space", who.space] : []), "--", query]);
+      if ("missing" in r || r.code !== 0) return failure(r);
+      try {
+        return { ok: true, threads: compactThreads(JSON.parse(r.out), n) };
+      } catch {
+        return { ok: false, reason: "unavailable", message: "Nowledge Mem gave an unreadable answer." };
+      }
     },
     async add(m) {
       const imp = Math.min(1, Math.max(0, m.importance ?? 0.6));

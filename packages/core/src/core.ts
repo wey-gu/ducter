@@ -52,6 +52,7 @@ import { callAbility, createDevicesView, publicAddress, qrRows, homeName as save
 import { openSettings, type SettingsStore } from "./settings.ts";
 import { createBridgeLink, nmemCall, type NmemCall } from "./bridge-link.ts";
 import { createMemGlance } from "./mem-glance.ts";
+import { createWorkingMemory } from "./working-memory.ts";
 import { identityIdFor, readMemIdentity } from "./mem-identity.ts";
 import { openRules, type RulesStore } from "./rules.ts";
 import { createLoadout, isRuleHint, registerRuleTools, registerSwitchTool, type Loadout } from "./loadout.ts";
@@ -196,6 +197,8 @@ export interface CoreOptions {
   /** D340: whether this home connects to the person's Mem by itself (default: connectsByItself(dataDir)). */
   bridgeByItself?: boolean;
   bridgeLink?: { run?: NmemCall; env?: Record<string, string | undefined>; exec?: import("./bridge-link.ts").MemExec; sys?: import("./mem-cli.ts").MemSys };
+  /** D368: Nowledge Mem's Working Memory, read-only: tests and the eval pass a fake nmem (else bridgeLink's, else none in tests). */
+  workingMemory?: { run?: NmemCall; ttlMs?: number };
   /** D218: seams for the own-number phone (tests and demos: a fake phone, a loopback cable, a fake voice engine). */
   ownNumber?: Partial<import("./phone-own/index.ts").OwnPhoneDeps>;
   update?: { fetch?: ReleaseFetch; sys?: UpdateSys; run?: UpdatesDeps["run"]; how?: import("@ducter/protocol").UpdateHow; version?: string; homeName?: string; execPath?: string; autoEveryMs?: number; graceMs?: number; criticalWaitMs?: number };
@@ -822,6 +825,16 @@ export function startCore(opts: CoreOptions = {}): Core {
     changed: () => settings.bridgeChanged(),
   });
   settings.setGlance(() => memGlance.get(), memGlance);
+  // D368: the person's Working Memory (their day's focus in Mem), for the partner's L4 and the morning note; gated like the glance.
+  const wmRun = opts.workingMemory?.run ?? opts.bridgeLink?.run;
+  const workingMemory = createWorkingMemory({
+    run: wmRun ?? nmemCall({ env: opts.bridgeLink?.env }),
+    on: () => settings.get().memory && process.env.DUCTER_MEMORY !== "off" && !settings.memMissing() && (process.env.NODE_ENV !== "test" || !!wmRun),
+    space: () => persona.mem?.space,
+    now: () => clock.now(),
+    today: () => dayKey(clock.now(), zone()),
+    ...(opts.workingMemory?.ttlMs !== undefined ? { ttlMs: opts.workingMemory.ttlMs } : {}),
+  });
   // D206: pictures and files, content-addressed on the home (media.ts).
   const media = createMediaStore(dataDir);
   // D293: its ways to be reached (the address book, reach-book.ts); the home's own key is made above.
@@ -833,7 +846,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   const limitWaits = createLimitWaits({ log, tasks, waiters: work.waiters, loadout, settings, usage: accountUsage, runner: () => runner, clock });
   limitsDecorate = (o) => ({ ...o, waiters: o.waiters.map((w) => limitWaits.decorate(w)) });
   const workFrames: typeof work.frames = { ...work.frames, waiter: (id, action) => limitWaits.act(id, action) ?? (action === "handoff" ? Promise.resolve(false) : work.frames.waiter(id, action)) };
-  const api = { log, tasks, mcp, persona, dataDir, settings, connections, phone, bodies: loadout, spine: log.spine, bridgeLink, media, limits: accountUsage, ...(browser ? { browser: browser.port } : {}) } as CoreApi;
+  const api = { log, tasks, mcp, persona, dataDir, settings, connections, phone, bodies: loadout, spine: log.spine, bridgeLink, media, limits: accountUsage, workingMemory, ...(browser ? { browser: browser.port } : {}) } as CoreApi;
   // D312: with more than one partner, the default partner keeps to its own too, and a task's
   // brief and Mem identity are those of the partner it is for.
   const memOf = new Map<string, MemIdentity | undefined>();
@@ -1501,8 +1514,12 @@ export function startCore(opts: CoreOptions = {}): Core {
     present: () => ws.present(),
     zone,
     agentName: () => HARNESSES[brainInUse().harness]?.name,
+    // D368: what the person is focused on (Mem's Working Memory) ranks the morning's finds.
+    workingMemory,
   });
   proactiveRef = proactive;
+  // D368: read once at the start, so the partner's first turn already has the day's focus (never awaited).
+  void workingMemory.refresh().catch(() => undefined);
   registerProactiveTools(mcp, rules, proactive);
 
   const server = Bun.serve<WsData | WorkerSocketData>({

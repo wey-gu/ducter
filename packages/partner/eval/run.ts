@@ -197,6 +197,7 @@ interface RunResult {
   ms: number;
   transcript: string;
   recalls: { query: string; step: number }[];
+  threadSearches: { query: string; step: number }[];
   remembered: MemoryAdd[]; // saved (accepted by the fake Mem)
   memAttempts: { input: unknown; step: number }[]; // every memory_add call, refused ones too
   sources: (Bodies["memory_recalled"] & { step: number })[]; // D304: the 想起了 lines
@@ -313,7 +314,13 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   // D312: the partner under test is a second partner (its own conversation, channel:p2); the seed is the default's.
   const conv = sc.second ? "channel:p2" : "channel";
   const todoGh = sc.todos ? fakeGh(TODO_ISSUES, { login: "wey-gu" }) : undefined;
-  const core = startCore({ dataDir, port: 0, persona, // D341: never the machine's own gh (the person's real issues) nor its Obsidian vault list.
+  // D368: the person's Working Memory from a fake nmem (never the author's real Mem): the scenario's, or none.
+  const wmOut = JSON.stringify(
+    sc.workingMemory
+      ? { exists: true, date: new Date().toISOString().slice(0, 10), parsed: { focus_areas: sc.workingMemory.focus, flags: [], briefing: sc.workingMemory.briefing ?? "", awaiting_rulings: sc.workingMemory.rulings ?? [], awaiting_rulings_more: 0 } }
+      : { exists: false },
+  );
+  const core = startCore({ dataDir, port: 0, persona, workingMemory: { run: async () => ({ code: 0, out: wmOut, err: "" }) }, // D341: never the machine's own gh (the person's real issues) nor its Obsidian vault list.
     taskSources: { ghRun: todoGh?.run ?? (async () => ({ code: 127, out: "", err: "", missing: true as const })), ghEnv: {}, home: join(dataDir, "no-home"), pollMs: 3_600_000, ask: async () => ({ text: "[]", tokens: 1 }) }, ...(sc.second ? { partners: true } : {}), ownPhone: { platform: "darwin", arch: "arm64" }, ...(calOo ? { ooSource: calOo.source } : sc.phone ? { ooSource: { detect: () => ({ installed: false, account: false }), read: () => undefined } } : {}) });
   if (calOo && !(await core.connections.addFromOo()).ok) throw new Error("fake oo calendar: not added");
   if (todoGh && !(await core.taskSources.add("github")).ok) throw new Error("fake GitHub: not added");
@@ -343,12 +350,14 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
     } else if (!early.has(callId)) tools.push({ name: ev.tool.name, input: ev.tool.input, step: cur.step });
   });
   const fr = fakeRunner(core, port, cur);
-  const mem = fakeMemory(sc.memories ?? [], { down: sc.memoryDown });
+  const mem = fakeMemory(sc.memories ?? [], { down: sc.memoryDown, ...(sc.threads ? { threads: sc.threads } : {}) });
   const recalls: { query: string; step: number }[] = [];
+  const threadSearches: { query: string; step: number }[] = [];
   const memAttempts: { input: unknown; step: number }[] = [];
   const memWrapped = {
     search: (q: string, n: number) => (recalls.push({ query: q, step: cur.step }), mem.memory.search(q, n)),
     add: (m: MemoryAdd) => mem.memory.add(m),
+    threads: (q: string, n: number) => (threadSearches.push({ query: q, step: cur.step }), mem.memory.threads!(q, n)),
   };
   core.setRunner(fr.runner);
   core.setPartner({ onTrigger() {} }); // history is background, not new work
@@ -535,6 +544,7 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
     for (const c of dayCards.filter((x) => x.step === i)) lines.push(`  [the app shows a day card under the message] ${c.cal.days.map((d) => `${d.date}: ${d.events.map((x) => `${x.allDay ? "all day" : `${x.start.slice(11, 16)}–${x.end.slice(11, 16)}`} ${x.title}${x.me && x.me !== "accepted" ? ` (their answer: ${x.me})` : ""}${x.free ? " (shown as free)" : ""}`).join("; ") || "nothing"}`).join(" | ")}${c.cal.clashes?.length ? ` (overlaps drawn: ${c.cal.clashes.length})` : ""}`);
     for (const b of blocks.filter((x) => x.step === i)) lines.push(`  [the message also shows a ${b.ui.type === "chart" ? `${b.ui.kind} chart` : b.ui.type} block the partner wrote] ${JSON.stringify({ ...b.ui, plain: undefined })}`);
     for (const q of recalls.filter((x) => x.step === i)) lines.push(`  [searched long-term memory (invisible to the user)] ${q.query}`);
+    for (const q of threadSearches.filter((x) => x.step === i)) lines.push(`  [also searched their past conversations with other AI tools (invisible to the user)] ${q.query}`);
     for (const a of memAttempts.filter((x) => x.step === i)) {
       // The stream's tool input can be partial (title first); the saved record is the truth.
       const m = a.input as { title?: string; content?: string };
@@ -568,7 +578,7 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   await core.stop().catch(() => {});
   tuwa?.stop();
   const boundRefs = new Map(core.tasks.list().filter((c) => c.source).map((c) => [c.taskId, c.source!.ref] as [string, string]));
-  return { sc, visible, dayCards, calKinds, todoCards, boundRefs, blocks, dropped, tools, opened: fr.opened, sent, keyOf, idOf, dataDir, usage, error, ms: Date.now() - t0, transcript: lines.join("\n"), recalls, remembered: mem.added, memAttempts, sources, retitles, bridgeSent, work: { ...work, asks } };
+  return { sc, visible, dayCards, calKinds, todoCards, boundRefs, blocks, dropped, tools, opened: fr.opened, sent, keyOf, idOf, dataDir, usage, error, ms: Date.now() - t0, transcript: lines.join("\n"), recalls, threadSearches, remembered: mem.added, memAttempts, sources, retitles, bridgeSent, work: { ...work, asks } };
 }
 
 const r_opened = (o: Opened[], step: number) => o.filter((x) => x.step === step);
@@ -754,6 +764,8 @@ function check(r: RunResult): string[] {
   // Memory.
   if (e.recall && !r.recalls.length) fails.push("no memory_search");
   if (e.noRecall && r.recalls.length) fails.push(`memory_search ×${r.recalls.length} (want none)`);
+  if (e.threadSearch && !r.threadSearches.length) fails.push("no search of past conversations");
+  if (e.noThreadSearch && r.threadSearches.length) fails.push("searched past conversations (want none)");
   // Never more than one recall per turn unless the user asks (the tool gates it; count the calls).
   for (const st of new Set(r.recalls.map((x) => x.step))) if (r.recalls.filter((x) => x.step === st).length > 1) fails.push("more than one memory_search in a turn");
   const savedText = r.remembered.map((m) => `${m.title}\n${m.content}`).join("\n");

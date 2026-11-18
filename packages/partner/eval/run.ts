@@ -427,7 +427,7 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
       const jobId = `job_${Math.random().toString(36).slice(2, 10)}`;
       jobOf.set(taskId, jobId);
       core.log.append({ stream: "channel", origin: "partner", kind: "ack", body: { jobId, text: t.ack, replyTo: lastUser } });
-      const place = fr.placeFor(taskId, t.title, t.repo ? { kind: "repo", device: "local", repoPath: expand(t.repo) } : undefined, t.branch);
+      const place = fr.placeFor(taskId, t.title, t.repo ? { kind: "repo", device: "local", repoPath: expand(t.repo) } : t.browser ? { kind: "browser", device: "local", profile: "default" } : undefined, t.branch);
       fr.openCard(taskId, t.title, place, `User's words: (seeded)\nTitle: ${t.title}`, t.harness);
       core.log.append({ stream: "channel", origin: "partner", kind: "job_status", body: { jobId, text: t.title, state: "running", taskId } });
       if (t.report) {

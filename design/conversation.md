@@ -97,8 +97,16 @@ promotion are not built.*
   the fork's checkpoint. The fork itself does not continue, so a long job never carries the
   whole channel.
 - **Follow-ups** while a job runs are steered in or queued, and the sender gets a receipt.
-  After a job, a follow-up goes to the same task only when it builds on that task's unmerged
-  change; anything else opens a new task, and a task is retitled when its job changes (D67).
+  After a job, continuity first (D373): a follow-up carries the task it follows on, done or
+  failed, in its own session and place (the same errand or goal, building on what it found or
+  changed, needing its sign-ins, files or branch); errands as well as code. Each user line names
+  the task the talk was on just before it (`(just before this: task …)`, the last task opened,
+  finished or continued in the conversation, within 12 h); the first `task_open` of a turn whose
+  message follows a finished task is asked back once. Separate work, work after a merge, or a
+  new one the user asks for ("开个新的") opens a new task; a task is retitled when its job
+  widens (D67). A task taken up again goes back under the follow-up's own line (its ack and a
+  `job_status` with the same task), so the conversation shows it under the newest ask and On
+  hand keeps one card.
   "Never mind" cancels the job.
 - **Models.** Text uses one model. Voice adds a realtime front-end limited to an allow-list,
   which escalates to the main AI and logs every utterance (OpenAI's chat-supervisor

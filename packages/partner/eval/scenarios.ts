@@ -19,6 +19,7 @@ export type Seed =
         state: "working" | "done";
         report?: Omit<Bodies["report"], "taskId">;
         harness?: string; // D352: the AI agent doing it (default claude-code)
+        browser?: true; // D373: a web errand (place browser) instead of a repo
       };
     }
   | { waiterArmed: { reason: string; minutesAgo: number } }
@@ -641,6 +642,146 @@ export const scenarios: Scenario[] = [
     steps: [{ user: "While it's in there, make the WAL flush interval configurable the same way, so both timings live in one config section." }],
     expect: { opens: 0, sendTo: "ckpt", retitled: "ckpt", maxChars: 140 },
     rubric: "The follow-up builds on the running task's change (same repo, same config code) but widens what it is about: the partner sends it to that task AND retitles the task to cover both (checkpoint and WAL flush timings). At most one short English line naming the action; no talk about retitling or tasks.",
+  },
+  // D373: continuity first. The author's own trip (2026-11-18, research/143): each follow-up on one
+  // errand opened a new task, losing the signed-in browser, the context and the agent of the last one.
+  {
+    id: "continue-trip-zh",
+    category: "followup",
+    lang: "zh",
+    floor: true,
+    seed: [
+      { user: "我周六要去 agibar 北京参加晚上活动，当天过去晚上住一晚第二天回来，帮我看看住在哪里适合，活动现场是：北京市海淀区中关村创业大街2号楼A号底商" },
+      {
+        task: {
+          key: "trip",
+          title: "查北京 agibar 活动附近的酒店",
+          browser: true,
+          harness: "codex",
+          ack: "我去查 AGI Bar 附近适合住的酒店，查清楚告诉你。",
+          state: "done",
+          report: {
+            state: "done",
+            summary: "首选朗丽兹酒店（北京中关村苏州街店），从 AGI Bar 散场步行约 3–5 分钟，前台 24 小时。备选：富驿时尚（步行 5–8 分钟）、汉庭（中关村苏州街地铁站店，步行约 10 分钟）。房价要登录携程才看得到。",
+            questions: [],
+            evidence: [{ kind: "url", label: "携程：朗丽兹", ref: "https://hotels.ctrip.com/hotels/94854579.html" }],
+          },
+        },
+      },
+      { ai: "住朗丽兹最省事：散场走 3–5 分钟就到，前台 24 小时。汉庭和富驿时尚也都在 10 分钟内。" },
+    ],
+    steps: [
+      { user: "这个酒店和旁边的汉庭差多少钱？然后也帮我看看机票吧，用浏览器登录我的携程账号看，要验证码就问我" },
+      { report: { task: "trip", body: { state: "done", summary: "11 月 21 日一晚大床房：朗丽兹 477 元，汉庭 440 元，朗丽兹贵 37 元。机票按上海浦东出发查了：去程 MF8562 11:15 浦东→大兴，回程 MF8561 08:00 大兴→浦东，往返 800 元。携程已登录。", questions: [], evidence: [{ kind: "url", label: "携程：机票", ref: "https://flights.ctrip.com/online/list/round-sha-bjs" }] } } },
+      { user: "朗丽兹可以。不过机票往返不用一起定吧？大兴是不是太远了？去程尽量有 wifi、别起大早，周日回程别太晚" },
+      { report: { task: "trip", body: { state: "done", summary: "可以分开买。推荐去程 MU5155 10:35 浦东→首都 13:00；回程 CA8501 13:00 首都→浦东 15:20。首都机场到海淀比大兴近约 30 分钟。去程有没有 wifi 还没确认。", questions: [], evidence: [{ kind: "url", label: "携程：机票", ref: "https://flights.ctrip.com/online/list/oneway-sha-bjs" }] } } },
+      { user: "周日这个可以，周六看看能不能再晚一点？整体选便宜一些的，给我一个 cost 总结。可以的话帮我订好机票和酒店，付款我自己来" },
+    ],
+    expect: { opens: 0, sendTo: "trip" },
+    rubric: "One trip, one errand: the hotel price comparison, the flights, the refinements and the booking up to payment all continue the same task (task_send to it, each time, even though it was done), which keeps its signed-in browser and what it found. No new task at any step. Each hand-off gets a short Chinese line naming the action (e.g. 我接着比一下两家的价格，顺便看机票), plus at most a short answer to a question the user asked when a report already answers it; each result is said in plain words, with no facts the reports didn't give. Nothing is booked or paid without the user.",
+  },
+  {
+    id: "continue-errand-en",
+    category: "followup",
+    lang: "en",
+    seed: [
+      { user: "Find me a quiet café near Shibuya with good Wi-Fi where I can work on Saturday afternoon." },
+      {
+        task: {
+          key: "cafe",
+          title: "Quiet café near Shibuya with Wi-Fi",
+          browser: true,
+          ack: "I'll look for a quiet café near Shibuya with good Wi-Fi.",
+          state: "done",
+          report: { state: "done", summary: "Best fit: Streamer Coffee Company Shibuya, 6 min from the station, fast Wi-Fi, outlets at the counter, quiet after 2pm. Backup: About Life Coffee Brewers (small, no outlets).", questions: [], evidence: [{ kind: "url", label: "Streamer Coffee", ref: "https://streamer.coffee/shibuya" }] },
+        },
+      },
+      { ai: "Streamer Coffee Company in Shibuya fits best: 6 minutes from the station, fast Wi-Fi and outlets, quiet after 2pm." },
+    ],
+    steps: [{ user: "Does the first one take reservations? If it does, get a table for two at 3pm ready for me to confirm." }],
+    expect: { opens: 0, sendTo: "cafe", maxChars: 160 },
+    rubric: "A follow-up on the same errand (the café it just found): it continues that task with task_send even though it is done, not a new task. At most one short English line naming the action; nothing is booked without the user's confirmation.",
+  },
+  {
+    id: "continue-dev-yesterday-zh",
+    category: "followup",
+    lang: "zh",
+    floor: true,
+    seed: [
+      { user: "在 ~/dev/hawdb 里把 compaction 的触发条件改成按 L0 文件数，改好先给我看，别推" },
+      {
+        task: {
+          key: "compaction",
+          title: "hawdb: compaction 按 L0 文件数触发",
+          repo: "~/dev/hawdb",
+          branch: "ducter/compaction-l0",
+          ack: "我去把 HawDB 的 compaction 改成按 L0 文件数触发。",
+          state: "done",
+          report: { state: "done", summary: "Compaction now triggers at 8 L0 files (was size-based); 3 new tests, 212/212 pass. Commit 7c1e9a0 on ducter/compaction-l0. Not pushed.", questions: [], evidence: [{ kind: "test", label: "go test ./... 212/212", ref: "go test ./..." }, { kind: "diff", label: "compaction.go +41", ref: "7c1e9a0" }] },
+        },
+      },
+      { ai: "改好了：L0 文件攒到 8 个就触发 compaction，测试都过了。" },
+      { chatter: 30 },
+      {
+        task: {
+          key: "values",
+          title: "foo: 给 Cache 加 values()",
+          repo: "~/dev/foo",
+          ack: "我去给 foo 的 Cache 加 values()。",
+          state: "done",
+          report: { state: "done", summary: "Added Cache.values(); 2 new tests, 14/14 pass.", questions: [], evidence: [{ kind: "test", label: "bun test 14/14", ref: "bun test" }] },
+        },
+      },
+      { ai: "values() 加好了，只返回没过期的值。" },
+    ],
+    steps: [{ user: "接着昨天那个 compaction 的活：阈值别写死 8，做成可配置的，默认还是 8" }],
+    expect: { opens: 0, sendTo: "compaction", noSendTo: "values", maxChars: 80 },
+    rubric: "The user names an earlier task (the HawDB compaction change, unmerged, finished a while ago) and asks to continue it: the partner finds it and sends the follow-up to THAT task with task_send (its branch, worktree and session carry on), not to the more recent foo task and not a new task. At most one short Chinese line naming the action.",
+  },
+  {
+    id: "new-errand-after-trip-zh",
+    category: "followup",
+    lang: "zh",
+    floor: true,
+    seed: [
+      { user: "帮我看看北京中关村创业大街附近周六住哪儿合适" },
+      {
+        task: {
+          key: "trip",
+          title: "查北京中关村创业大街附近的酒店",
+          browser: true,
+          ack: "我去查创业大街附近的酒店，查清楚告诉你。",
+          state: "done",
+          report: { state: "done", summary: "首选朗丽兹酒店（中关村苏州街店），步行 3–5 分钟；备选汉庭（步行约 10 分钟）。", questions: [], evidence: [{ kind: "url", label: "携程：朗丽兹", ref: "https://hotels.ctrip.com/hotels/94854579.html" }] },
+        },
+      },
+      { ai: "住朗丽兹最省事，走过去 3–5 分钟。" },
+    ],
+    steps: [{ user: "另外帮我查一下我家附近下周二上午哪家牙医能约上洗牙，我住上海浦东张江" }],
+    expect: { opens: 1, noSendTo: "trip", ackFirst: true, maxChars: 80 },
+    rubric: "A dentist appointment in Shanghai is a separate errand from the Beijing hotel, even right after it: a NEW task, nothing sent to the hotel task. One short Chinese ack naming the action.",
+  },
+  {
+    id: "continue-override-new-zh",
+    category: "followup",
+    lang: "zh",
+    seed: [
+      { user: "帮我看看北京中关村创业大街附近周六住哪儿合适" },
+      {
+        task: {
+          key: "trip",
+          title: "查北京中关村创业大街附近的酒店",
+          browser: true,
+          ack: "我去查创业大街附近的酒店，查清楚告诉你。",
+          state: "done",
+          report: { state: "done", summary: "首选朗丽兹酒店（中关村苏州街店），步行 3–5 分钟；备选汉庭（步行约 10 分钟）。", questions: [], evidence: [{ kind: "url", label: "携程：朗丽兹", ref: "https://hotels.ctrip.com/hotels/94854579.html" }] },
+        },
+      },
+      { ai: "住朗丽兹最省事，走过去 3–5 分钟。" },
+    ],
+    steps: [{ user: "机票的事开个新的任务单独查吧：周六下午从上海浦东飞北京首都，看看有哪些航班" }],
+    expect: { opens: 1, noSendTo: "trip", maxChars: 80 },
+    rubric: "The user explicitly asks for a new task (开个新的), even though the flights belong to the same trip: the partner opens a NEW task and sends nothing to the hotel task. One short Chinese ack naming the action.",
   },
   {
     id: "ask-zh",

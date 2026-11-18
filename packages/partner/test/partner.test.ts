@@ -317,7 +317,8 @@ describe("turn loop", () => {
     expect(seed).toContain("you] 在做，还没报告。");
     expect(seed).toContain('<tasks>\nOpen:\n- t1 "Fix flaky test" · working · repo /x/foo');
     // the triggering message is the delta at the end, not in the background
-    expect(seed.trimEnd().split("\n").slice(-3)[0]).toBe("[user] 现在怎么样了？");
+    // D373: the user's line, then the task the talk was on just before it.
+    expect(seed.trimEnd().split("\n").slice(-4, -2)).toEqual(["[user] 现在怎么样了？", '  (just before this: task t1 "Fix flaky test", still working, Claude Code, repo /x/foo)']);
     expect(seed.match(/现在怎么样了/g)!.length).toBe(1);
     expect(seed).not.toMatch(/reset|restart|new session|fresh session|lost|重置|重启|新会话/i);
     expect(partner.stats.freshStarts).toBe(2);

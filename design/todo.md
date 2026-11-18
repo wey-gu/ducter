@@ -2038,3 +2038,10 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] **D372: limits by kind** (keep the smartest's limit for code by the limit left, not only by kind) waits on D133's reported limits. Trigger: D133 built.
 - [ ] **D372: a preference only in Mem** (said before rules existed) never reaches the ranking until said again; offer once to make it a rule when recall finds one. Trigger: a task goes to an agent a memory says not to use.
 - [ ] **D372: the unsaved-preference eval** (`kind-never-unsaved-zh`) passes 1 of 2 on haiku. Trigger: the next persona pass.
+
+## Continuity first (D373, `conversation.md`, research/143)
+
+- [ ] **D373: a continued task moves to the computer its follow-up needs** (the errand on hel's browser, the follow-up needs the person's signed-in Chrome on the Mac: `task_switch` takes a computer, `loadout.switchTask` already moves, E3). Trigger: the author's first follow-up that needs another computer's sign-ins.
+- [ ] **D373: continue the person's own sessions from the conversation** ("接着我早上终端里那个 claude 会话": search D299's outside sessions under D327's consent and adopt one through the runner's `adopt`). Trigger: the author asks for it in the conversation, or the D299 reader is opened to the partner for another reason.
+- [ ] **D373: watch it on the home** (how often the second look fires on separate work, and whether a long-lived continued session needs a fresh one sooner). Trigger: a week of the author's use after the release.
+- [ ] **D373: Claude Code resume days later, live** (Codex verified on hel; Claude Code only per research/03). Trigger: the first Claude Code task taken up again after its session was parked a day.

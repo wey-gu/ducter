@@ -65,7 +65,9 @@ administrator password. Then, in Nowledge Mem, open **Settings â€º Connectors â€
 click **Generate connect link & copy prompt**, paste everything it copied, and tap **Sign in**. Nowledge Mem signs that computer in and connects its
 Codex and Claude Code, and the card says **Remembers you**: tasks there know how you like things
 before they start, and what they do is kept in your one memory. A link works once, within 15
-minutes, and Ducter doesn't keep it. Without Nowledge Mem, nothing about it shows.
+minutes, and Ducter doesn't keep it. Without Nowledge Mem, nothing about it shows. If the
+computer later can't reach your Nowledge Mem, the card says so with **Check again**; if its sign-in
+stopped working, it asks for a new one the same way.
 
 The code works once, for 10 minutes; the card shows how long it has left. Pasting the line
 again later is fine: what is already installed and connected stays as it is.

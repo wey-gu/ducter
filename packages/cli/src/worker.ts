@@ -271,7 +271,7 @@ export async function cmdWorker(o: {
     sendUp = send;
     // D293: one host for the life of this process; its sessions outlive a dropped socket for the
     // grace. mainBase follows the way in use, for the sessions started after a switch.
-    const host = runnerMod.createWorkerHost({ dataDir, harness, get mainBase() { return s.url; }, deviceToken: s.token, send, browser: { ducter: browse.ducter }, extraOps: { ...browse.ops, mem_plugins: async () => (await inspectMemPlugins(nmemInspectExec(process.env))) ?? null }, abilities: browse });
+    const host = runnerMod.createWorkerHost({ dataDir, harness, get mainBase() { return s.url; }, deviceToken: s.token, send, browser: { ducter: browse.ducter }, extraOps: { ...browse.ops, mem_plugins: async () => (await inspectMemPlugins(nmemInspectExec(process.env))) ?? null, mem_connect: (a: { harnesses?: unknown }) => mem.connectTools(Array.isArray(a?.harnesses) ? a.harnesses.filter((x): x is string => typeof x === "string") : []) }, abilities: browse });
     // Nobody to drive Ducter's browser here once the socket is gone: quit it (sign-ins saved).
     const closeAll = host.closeAll;
     host.closeAll = async () => {
@@ -289,6 +289,7 @@ export async function cmdWorker(o: {
     if (f.op === "mem_setup") {
       if (a.action === "install") mem.install();
       else if (a.action === "connect") mem.connect(typeof a.link === "string" && a.link ? a.link : undefined);
+      else if (a.action === "look") void mem.look(); // D374: 再看一次 on its Mem row
       else return up({ t: "res", id: f.id, ok: false, error: `unknown action ${a.action}` });
       return up({ t: "res", id: f.id, ok: true, result: { ok: true } });
     }

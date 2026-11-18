@@ -11,7 +11,7 @@ import { updatingWords } from "./agent-progress.ts";
 import type { DeviceHarness, DeviceUpdate, DeviceVia, DeviceView, ReachWay } from "@ducter/protocol";
 import { inApp } from "./native.ts";
 import { AppUpdateRow, androidAppVersion } from "./app-update.tsx";
-import { clientShape, computerKey, computerName, TRY_LIVE } from "@ducter/protocol";
+import { MEM_CONNECT_TOOLS, clientShape, computerKey, computerName, TRY_LIVE } from "@ducter/protocol";
 import { changelogUrl } from "@ducter/protocol/src/version.ts";
 import { Fragment, type ComponentChildren } from "preact";
 import { useEffect, useState } from "preact/hooks";
@@ -756,7 +756,8 @@ function MemAction({ dv, h }: { dv: DeviceView; h: DeviceHarness }) {
       {asking ? (
         <div class="dev-cut">
           <div class="dev-cut-q">{t("memp.ask", agent, dv.name)}</div>
-          <div class="small sub">{t("memp.means", agent, dv.name)}</div>
+          {/* D374: Mem's own command first where it has one for this agent and the plugin isn't there. */}
+          <div class="small sub">{t(MEM_CONNECT_TOOLS[h.harness] && h.mem.state === "absent" ? "memp.means.direct" : "memp.means", agent, dv.name)}</div>
           <div class="btns">
             <Btn kind="secondary" size="sm" label={t("memp.ok")} about={about} onClick={() => (A.installMem(dv.id, h.harness), setAsking(false))} />
             <Btn kind="text" size="sm" label={t("memp.cancel")} about={about} onClick={() => setAsking(false)} />
@@ -772,7 +773,7 @@ function MemAction({ dv, h }: { dv: DeviceView; h: DeviceHarness }) {
   );
 }
 
-coinLines.push((_dv, h) => (h.mem && h.installed ? memWords(A.L, h.mem).line : ""));
+coinLines.push((_dv, h) => (h.mem && h.installed ? memWords(A.L, h.mem, harnessName(h.harness)).line : ""));
 coinActions.push((dv, h) => <MemAction dv={dv} h={h} />);
 
 // ---------- how it's connected ----------

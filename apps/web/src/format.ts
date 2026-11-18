@@ -259,8 +259,11 @@ export function phaseLine(L: Strings, u: DeviceUpdate): string {
 }
 
 /** D169: an agent's Nowledge Mem line and its action's words, from Mem's own check (never "working"). */
-export function memWords(L: Strings, m: MemPluginView): { line: string; action?: string } {
+export function memWords(L: Strings, m: MemPluginView, agent = ""): { line: string; action?: string } {
   if (m.taskId) return { line: L.t("memp.setting") };
+  // D374: Mem's own command putting it in now; just put in (the agent uses it once restarted).
+  if (m.busy) return { line: L.t("memp.busy") };
+  if (m.fresh && m.state !== "absent") return { line: L.t("memp.fresh", agent) };
   switch (m.state) {
     case "installed":
       return { line: m.version ? L.t("memp.installed", m.version) : L.t("memp.installed.bare") };

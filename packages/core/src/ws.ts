@@ -133,6 +133,8 @@ export interface WsDeps {
   updateAll?: () => import("./update-all.ts").UpdateAll | undefined;
   /** D169: Nowledge Mem in each device's own agents (mem-plugins.ts); absent in tests that don't need it. */
   memPlugins?: () => import("./mem-plugins.ts").MemPlugins | undefined;
+  /** D374: Mem's own health on the home (Settings › 记忆). */
+  memHealth?: { refresh(): Promise<void> };
   /** D228: 从外面连's guided setup (anywhere.ts). */
   anywhere?: () => import("./anywhere.ts").AnywhereCtl | undefined;
   /** D276: 聊天软件 / Chat apps (channels/); absent in tests that don't need it. */
@@ -1065,7 +1067,7 @@ export function createWsHandler(deps: WsDeps) {
         // only: never logged, kept or sent back. Progress arrives as fresh devices frames.
         const device = String(f.device ?? "");
         const action = f.action as import("@ducter/protocol").DeviceMemAction;
-        if (!["install", "connect"].includes(action)) throw new Error("unknown action");
+        if (!["install", "connect", "look"].includes(action)) throw new Error("unknown action");
         watchDevices();
         ws.data.devices = true;
         const link = typeof f.link === "string" && f.link.trim() ? f.link.trim() : undefined;
@@ -1098,7 +1100,7 @@ export function createWsHandler(deps: WsDeps) {
         if (!mp) return send(ws, { t: "mem_plugin_result", device, harness, ok: false, reason: "failed" });
         watchDevices();
         const r = await mp.install(device, harness);
-        return send(ws, r.ok ? { t: "mem_plugin_result", device, harness, ok: true, taskId: r.taskId } : { t: "mem_plugin_result", device, harness, ok: false, reason: r.reason });
+        return send(ws, r.ok ? { t: "mem_plugin_result", device, harness, ok: true, ...(r.taskId ? { taskId: r.taskId } : {}) } : { t: "mem_plugin_result", device, harness, ok: false, reason: r.reason });
       }
       case "anywhere_setup": {
         // D228: 让 Ducter 帮我设好 (the person's tap is the Go for this one task), and the steps its
@@ -1142,6 +1144,14 @@ export function createWsHandler(deps: WsDeps) {
         if (!deps.settings || !deps.bridgeLink) throw new Error("settings are not available");
         ws.data.settings = true;
         await (f.t === "bridge_mem_install" ? deps.bridgeLink.installMem() : deps.bridgeLink.signInMem(typeof f.link === "string" ? f.link : ""));
+        // D374: what Mem's doctor says follows a new sign-in or a new nmem at once.
+        void deps.memHealth?.refresh();
+        return;
+      }
+      case "mem_health": {
+        // D374: 再看一次 / Check again on Settings › 记忆: read-only; the settings frame follows when it changed.
+        ws.data.settings = true;
+        await deps.memHealth?.refresh();
         return;
       }
       case "settings": {

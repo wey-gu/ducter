@@ -78,6 +78,8 @@ export interface SettingsStore extends SettingsApi {
   setProactive(mode: ProactiveMode, by: "chosen" | "keep_note"): void;
   /** D295: the glance at Mem itself (mem-glance.ts), read on each view. */
   setGlance(fn: () => MemView["glance"], ops?: GlanceOps): void;
+  /** D374: Mem's own health on the home (memory on and Mem connected), cached by its reader. */
+  setHealth(fn: () => MemView["health"]): void;
   /** D321: Settings › 记忆's own rows, by Mem's id: forget one in Mem; fix its words in Mem. True when Mem did. */
   forgetMem(id: string): Promise<boolean>;
   fixMem(id: string, title: string): Promise<boolean>;
@@ -141,6 +143,7 @@ export function openSettings(opts: {
   let memHooks: Parameters<NonNullable<import("@ducter/protocol/src/internal.ts").SettingsApi["setMemHooks"]>>[0] | undefined;
   let glance: (() => MemView["glance"]) | undefined;
   let glanceOps: GlanceOps | undefined;
+  let health: (() => MemView["health"]) | undefined;
   let memSeen: "connected" | "missing" | undefined;
   let bridgeTrouble: { code: string } | undefined; // D369: the partner's word, never saved
   // D135: checked once at start (env + file); a value out of range is said once, then its default runs.
@@ -252,6 +255,9 @@ export function openSettings(opts: {
       changed();
       return true;
     },
+    setHealth(fn) {
+      health = fn;
+    },
     setGlance(fn, ops) {
       glance = fn;
       glanceOps = ops;
@@ -312,11 +318,12 @@ export function openSettings(opts: {
       const m = opts.persona.mem;
       const keptUnder = state === "connected" && m ? (m.owned ? opts.persona.name : m.label || m.agentId) : undefined;
       const g = state !== "off" ? glance?.() : undefined;
+      const h = state === "connected" ? health?.() : undefined;
       const forgotten = forgottenRecalls();
       const undone = data.undone ?? [];
       const keys = memHooks?.waiting() ?? new Set<string>();
       const waiting = keys.size ? opts.log.read({ stream: "channel", kinds: ["memory_noted"], limit: 500 }).filter((x) => keys.has(String((x.body as Bodies["memory_noted"]).waiting ?? "")) && !undone.includes(x.seq)).map((x) => x.seq) : [];
-      return { settings: s, mem: { state, noted: noted(), ...(forgotten.length ? { forgotten } : {}), ...(undone.length ? { undone } : {}), ...(waiting.length ? { waiting } : {}), ...(keptUnder ? { keptUnder } : {}), ...(g ? { glance: g } : {}) } };
+      return { settings: s, mem: { state, noted: noted(), ...(forgotten.length ? { forgotten } : {}), ...(undone.length ? { undone } : {}), ...(waiting.length ? { waiting } : {}), ...(keptUnder ? { keptUnder } : {}), ...(g ? { glance: g } : {}), ...(h ? { health: h } : {}) } };
     },
     set(patch) {
       const did: string[] = [];

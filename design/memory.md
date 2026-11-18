@@ -193,7 +193,7 @@ whether Mem forgets or the line only leaves the list; nothing another tool saved
 **Memory, on:** (1) one group: the notebook in the tile column, **{name} 记得你**, **这周新记了 N 条** in
 the done ink (or **这周还没有新记的**), the switch at the right edge; its foot says what the switch does.
 (2)–(3) are D321's now ("What it knows about you" below): the groups by kind, the search, the other tools as a
-count, each tool's own mark (D314). (4) **Nowledge Mem** as one group: Mem's own app icon as the tile (D314), **已连上**; **记在哪儿**,
+count, each tool's own mark (D314). (4) **Nowledge Mem** as one group: Mem's own app icon as the tile (D314), its head saying Mem's own health (D374, "Mem's own health" below); **记在哪儿**,
 **它的名字**, the one update worth a tap as a row (D229's words), the raw facts behind **详情**, the
 version as the foot's note. **Off:** only the first group, its foot what stays. **Before Mem:** the
 partner at 84–96 on the paper (an empty state, never inside a group), then one group: Mem's faded
@@ -456,15 +456,43 @@ on every computer, without owning it (D17):
   only what the check knows: every answer carries "runtime loading is not verified", which
   alone never makes a review; the check's own `review`, several copies, or an install it
   can't call enabled does. `update` shows only when the check says so.
-- **安装 / Install** asks in place what it changes, then opens one task on that computer with
-  that agent (else any agent signed in there), with the user's own setup, origin "you": it
-  follows https://mem.nowledge.co/SKILL.md for that host only, never guesses a URL or key,
-  asks for a connect link when Mem isn't connected there, verifies with the check, and says
-  the agent must be restarted.
+- **安装 / Install** asks in place what it changes. For Claude Code and Codex with the plugin
+  absent, Mem's own `nmem --json connect --tool <id> --on-conflict abort` runs first (D374: on the
+  home with its nmem, on a worker through its `mem_connect` op, one at a time per computer; no
+  agent signed in needed, no tokens); the line says **正在用 Nowledge Mem 自己的命令安装…**, and when
+  the check afterwards finds it, **Nowledge Mem 装好了，重开 {agent} 才用得上**. Otherwise (it didn't
+  put it in, `abort` left another memory integration alone, an older worker, pi, DeepSeek Harness,
+  an update, a review) one task on that computer with that agent (else any agent signed in there),
+  with the user's own setup, origin "you": it follows https://mem.nowledge.co/SKILL.md for that host
+  only, never guesses a URL or key, asks for a connect link when Mem isn't connected there, verifies
+  with the check, and says the agent must be restarted; after a failed command its brief says what
+  the command said.
 - **Ducter recommends it once** per computer and agent, ever, wherever the check finds a
   signed-in agent without it: one card, Go 装上 suggested, no timer (it changes the agent's
   own settings, so it waits for the tap).
 - **Memory off:** no line, no card, no install.
+
+## Mem's own health (D374, built 2026-11-19)
+
+*Who:* the developer whose Mem key was rotated or whose Cloud is down, while the page said **已连上**;
+the consumer whose sign-in expired. The fresh user never meets it (no Mem, nothing shows). Evidence:
+`research/144`.
+
+- **The read:** Mem's own `nmem --json doctor` (`protocol/src/mem-health.ts`): old (no doctor),
+  unreachable (a saved address not answering; on the home also Mem's built-in default), signed_out
+  (answers, refuses the key; *fresh* when never signed in), plugin (an installed Claude Code or Codex
+  Mem's per-tool check doesn't pass), else all well. Statuses and a few phrases only: a detail line
+  is never shown or sent (the credential line carries the key's tail).
+- **The home** (`core/mem-health.ts`): in the background, at most every 5 minutes, gated like the
+  glance; again after a sign-in, an update or Mem's own `connect`; `MemView.health`. The head says
+  **已连上** until the first answer, then **已连上，一切正常**, or the one thing wrong in the failed ink
+  with its one action: 更新 (when Ducter can run it, and not twice with the update row), 再看一次
+  (`mem_health`), 重新登录 (D225's field in place), 接上 (D169's install for each agent, so Mem's own
+  command).
+- **A lent computer** (`core/worker-mem.ts`): the same read rides on `DeviceMemView.health` (and
+  `ours` when its nmem is Ducter's copy); while the row would ask to sign in it says unreachable
+  (再看一次, no paste box), an expired sign-in (the box), or too old (更新 by `uv tool upgrade
+  nmem-cli` when ours, else how).
 
 ## Mem on a computer for tasks (D366, built 2026-11-18)
 

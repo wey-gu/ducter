@@ -25,7 +25,7 @@
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { DeviceMemReason, DeviceMemView } from "@ducter/protocol";
+import { MEM_CONNECT_TOOLS, memHealthOf, type DeviceMemReason, type DeviceMemView } from "@ducter/protocol";
 import { toolsOwnBin } from "./agent-path.ts";
 import { realAgentSetupSys } from "./agent-setup.ts";
 import { connectLinkFrom } from "./mem-cli.ts";
@@ -43,8 +43,8 @@ export const UV_RELEASE = {
 };
 export const MEM_PACKAGE = "nmem-cli";
 
-/** Mem's own tool id for each agent `nmem connect` registers by itself (SKILL.md: Claude Code and Codex). */
-export const MEM_CONNECT_TOOLS: Readonly<Record<string, string>> = { "claude-code": "claude-code", codex: "codex-cli" };
+/** Mem's own tool id for each agent `nmem connect` registers by itself (SKILL.md: Claude Code and Codex); D374 moved it to the protocol. */
+export { MEM_CONNECT_TOOLS };
 
 export interface WorkerMemSys {
   platform: string;
@@ -64,6 +64,12 @@ export interface WorkerMem {
   install(): void;
   /** With a link: sign in and connect the agents; without one (already signed in): connect the agents. */
   connect(link?: string): void;
+  /**
+   * D374: the home's 装上 for one agent's Mem plugin here (D169): Mem's own `nmem connect --tool`
+   * for those agents, no link (Mem must be signed in here). Answers when it ended; the home then
+   * reads the plugin check again. unsupported: no nmem, or none of these agents is one Mem connects.
+   */
+  connectTools(harnesses: string[]): Promise<{ ok: true } | { ok: false; reason: "unsupported" | "busy" | "failed"; detail?: string }>;
   view(): DeviceMemView;
   busy(): boolean;
 }
@@ -161,7 +167,11 @@ export function createWorkerMem(o: {
     const version = /(\d+\.\d+\.\d+[\w.-]*)/.exec(v.out)?.[1];
     const d = await sys.run([nmem, "--json", "doctor"], { env: sys.env(), timeoutMs: 30_000 });
     const doc = readDoctor(d.out);
-    view = { state: doc?.ready ? "ready" : "sign_in", ...(version ? { version } : {}), ...(doc?.agents.length ? { agents: doc.agents } : {}) };
+    // D374: what Mem's own doctor says is wrong here, said on the row (a first sign-in and an agent
+    // not connected yet are the row's own states already).
+    const h = memHealthOf(d, o.agents());
+    const health = h?.issue && h.issue !== "plugin" && !(h.issue === "signed_out" && h.fresh) ? { health: { issue: h.issue } } : {};
+    view = { state: doc?.ready ? "ready" : "sign_in", ...(version ? { version } : {}), ...(doc?.agents.length ? { agents: doc.agents } : {}), ...health, ...(nmem.startsWith(bin) ? { ours: true as const } : {}) };
     say();
   }
 
@@ -218,6 +228,35 @@ export function createWorkerMem(o: {
     await look();
   }
 
+  /** D374: an nmem too old to have a doctor: Ducter's own copy is upgraded in place; the person's own is theirs. */
+  async function upgradeNow(): Promise<void> {
+    const nmem = sys.which("nmem");
+    const uv = join(bin, "uv");
+    if (!nmem || !nmem.startsWith(bin) || !existsSync(uv)) return look();
+    set({ phase: "installing" });
+    const r = await sys.run([uv, "tool", "upgrade", MEM_PACKAGE], { env: uvEnv(), timeoutMs: 10 * 60_000 });
+    if (r.code !== 0) {
+      const detail = lastLine(r.out);
+      return set({ phase: "failed", reason: installReason(r.out), ...(detail ? { detail } : {}) });
+    }
+    step = undefined;
+    await look();
+  }
+
+  async function connectToolsNow(harnesses: string[]): Promise<{ ok: true } | { ok: false; reason: "unsupported" | "busy" | "failed"; detail?: string }> {
+    const nmem = sys.which("nmem");
+    const tools = harnesses.flatMap((h) => (MEM_CONNECT_TOOLS[h] ? ["--tool", MEM_CONNECT_TOOLS[h]!] : []));
+    if (!nmem || !tools.length) return { ok: false, reason: "unsupported" };
+    // abort: an agent that already has another memory integration is left alone (the task that follows reads it).
+    const r = await sys.run([nmem, "--json", "connect", ...tools, "--on-conflict", "abort"], { env: sys.env(), timeoutMs: 5 * 60_000 });
+    await look();
+    if (r.code !== 0) {
+      const detail = lastLine(r.out);
+      return { ok: false, reason: "failed", ...(detail ? { detail } : {}) };
+    }
+    return { ok: true };
+  }
+
   async function connectNow(pasted?: string): Promise<void> {
     const nmem = sys.which("nmem");
     if (!nmem) return set({ phase: "failed", reason: "failed" });
@@ -248,8 +287,20 @@ export function createWorkerMem(o: {
 
   return {
     look: () => (running ? Promise.resolve() : look().catch(() => {})),
-    install: () => once(async () => (sys.which("nmem") ? look() : installNow())),
+    install: () => once(async () => (sys.which("nmem") ? (view.health?.issue === "old" ? upgradeNow() : look()) : installNow())),
     connect: (link) => once(() => connectNow(link)),
+    async connectTools(harnesses) {
+      if (running) return { ok: false, reason: "busy" };
+      running = true;
+      try {
+        return await connectToolsNow(harnesses);
+      } catch (e) {
+        const detail = lastLine(String((e as Error)?.message ?? e));
+        return { ok: false, reason: "failed", ...(detail ? { detail } : {}) };
+      } finally {
+        running = false;
+      }
+    },
     view: () => ({ ...view, ...(step ? { step } : {}) }),
     busy: () => running,
   };

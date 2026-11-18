@@ -10,14 +10,15 @@
 // quiet line, a search, the week's check one tap away; other tools' working notes only as a count.
 // D332: 和你的其他 agent 通信 shows what came and went lately (both ways), 试试看 with the exact words, and one switch.
 import type { BridgeView, MemItem } from "@ducter/protocol";
+import type { ComponentChildren } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { A } from "./app.ts";
 import { BrandTile, toolBrand } from "./brand.tsx";
 import { Coin } from "./coin.tsx";
 import { copy } from "./conv-copy.ts";
 import { Btn, DangerButton, LinkBtn, Switch } from "./controls.tsx";
-import { ago } from "./format.ts";
-import { aboutGroups, bySource, groupNoted, MEM_MIN, memPhase, memUpdate, ownsAgents, peersNamesUpdate, peersPhase, peersShown, peersSwitchOn, recentHandoffs, tryAgents, type Handoff, type MemPhase, type MemUpdate } from "./mem-view.ts";
+import { ago, harnessName, spoken } from "./format.ts";
+import { aboutGroups, bySource, groupNoted, MEM_MIN, memHealthLook, memPhase, memUpdate, ownsAgents, peersNamesUpdate, peersPhase, peersShown, peersSwitchOn, recentHandoffs, tryAgents, type Handoff, type MemPhase, type MemUpdate } from "./mem-view.ts";
 import { GBlock, GConfirm, GFoot, GHead, GRow, Group, Said, say, Tile } from "./set-grid.tsx";
 import { Avatar, Check } from "./views.tsx";
 
@@ -357,6 +358,75 @@ function MemUpdateRow({ u, b }: { u: MemUpdate; b: BridgeView }) {
   );
 }
 
+/** The agents as words: "Claude Code 和 Codex" / "Claude Code and Codex". */
+const agentWords = (ids: string[]) => {
+  const names = ids.map(harnessName);
+  return names.length <= 1 ? (names[0] ?? "") : t("wmem.and", names.slice(0, -1).join(t("wmem.comma")), names.at(-1)!);
+};
+
+/**
+ * D374: Nowledge Mem's head, with what Mem's own doctor on the home says: one calm line when all is
+ * well, else the one thing wrong in the failed ink and its one action (Update, Check again, Sign in
+ * again with the link field in place, Connect by Mem's own command). Read in the background: until
+ * the first answer it says "Connected" as before, and never holds the page.
+ */
+function MemHealthHead({ b }: { b: BridgeView | undefined }) {
+  const [signing, setSigning] = useState(false);
+  const [link, setLink] = useState("");
+  const homeDv = A.devices?.find((d) => d.home);
+  const h = memHealthLook(A.mem?.health, b, homeDv?.harnesses ?? []);
+  const home = homeOf(b);
+  let line = t("mem.app.on");
+  let tone: "done" | "bad" | undefined = "done";
+  let act: ComponentChildren = null;
+  if (h.look === "ok") line = t("mem.health.ok");
+  else if (h.look === "old") {
+    (line = t("mem.health.old")), (tone = "bad");
+    if (h.canUpdate) act = <Btn kind="secondary" size="sm" label={t("mem.health.old.go")} about="Nowledge Mem" onClick={() => A.installBridgeMem()} />;
+  } else if (h.look === "unreachable") {
+    (line = t("mem.health.unreachable", home)), (tone = "bad");
+    act = <Btn kind="secondary" size="sm" label={t("mem.health.again")} about="Nowledge Mem" onClick={() => A.checkMemHealth()} />;
+  } else if (h.look === "signed_out") {
+    (line = t("mem.health.signed_out")), (tone = "bad");
+    if (!signing) act = <Btn kind="primary" size="sm" label={t("mem.health.signin")} about="Nowledge Mem" onClick={() => setSigning(true)} />;
+  } else if (h.look === "plugin") {
+    const who = agentWords(h.agents);
+    if (h.busy) (line = t("mem.health.plugin.busy", who)), (tone = undefined);
+    else {
+      (line = t("mem.health.plugin", who)), (tone = "bad");
+      if (homeDv) act = <Btn kind="primary" size="sm" label={t("mem.health.plugin.go")} about={spoken(A.L, who, "Nowledge Mem")} onClick={() => h.agents.forEach((a) => A.installMem(homeDv.id, a))} />;
+    }
+  }
+  const why = b?.signIn === "used" ? t("bridge.mem.signin.used") : b?.signIn === "bad" ? t("bridge.mem.signin.bad") : b?.signIn === "failed" ? t("bridge.mem.signin.failed", b.detail ?? "") : "";
+  const go = () => {
+    if (!link.trim()) return;
+    A.signInBridgeMem(link.trim());
+    setLink("");
+  };
+  return (
+    <>
+      <GHead tile={<MemTile faded={tone === "bad"} />} name="Nowledge Mem" line={line} tone={tone}>
+        {act}
+      </GHead>
+      {h.look === "plugin" && !h.busy && <GBlock><small class="mem-health-why">{t("mem.health.plugin.why")}</small></GBlock>}
+      {h.look === "signed_out" && signing && (
+        <GBlock>
+          <small class="mem-health-why">{t("bridge.mem.signin", home)}</small>
+          {why && <small class="mem-why">{why}</small>}
+          <label class="acct-field">
+            <span class="small">{t("bridge.mem.signin.link")}</span>
+            <textarea class="wmem-paste" rows={3} autoComplete="off" autoCapitalize="off" autoCorrect="off" spellcheck={false} enterkeyhint="go" placeholder={t("bridge.mem.signin.ph")} value={link} onInput={(e) => setLink((e.target as HTMLTextAreaElement).value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing) (e.preventDefault(), go()); }} />
+          </label>
+          <span class="mem-health-acts">
+            <Btn kind="primary" size="sm" disabled={!link.trim()} label={t("bridge.mem.signin.go")} about={home} onClick={go} />
+            <Btn kind="text" size="sm" label={t("memp.cancel")} about="Nowledge Mem" onClick={() => (setSigning(false), setLink(""))} />
+          </span>
+        </GBlock>
+      )}
+    </>
+  );
+}
+
 /** Nowledge Mem itself: connected, where it's kept, its name there, the one update worth a tap, the raw facts behind 详情. */
 function MemLink({ b }: { b: BridgeView | undefined }) {
   const [more, setMore] = useState(false);
@@ -365,7 +435,7 @@ function MemLink({ b }: { b: BridgeView | undefined }) {
   const where = memWhere(b);
   return (
     <Group class="mem-g" label="Nowledge Mem">
-      <GHead tile={<MemTile />} name="Nowledge Mem" line={t("mem.app.on")} tone="done" />
+      <MemHealthHead b={b} />
       {where && <GRow title={t("mem.app.kept.title")} line={where} />}
       {mem?.keptUnder && <GRow title={t("mem.app.name.title")} line={t("mem.app.name.line", mem.keptUnder)} />}
       <GRow title={mem?.glance?.total ? t("mem.all.count", thousands(mem.glance.total)) : t("mem.all.note")}>

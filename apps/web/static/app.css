@@ -14057,6 +14057,10 @@ svg .wave.w2.on {
 /* D329: the Nowledge Mem app closed: its sentence, then the one way to open it, under the head. */
 .mem-closed-line { color: var(--ink-muted); line-height: 1.5; }
 .mem-closed-act { display: flex; }
+/* D374: Mem's health on Memory's Nowledge Mem head: why it matters, the sign-in field in place. */
+.mem-health-why { display: block; color: var(--ink-muted); line-height: 1.5; }
+.g-block small.mem-why { display: block; color: var(--failed-ink); line-height: 1.5; margin-top: var(--s1); }
+.mem-health-acts { display: flex; flex-wrap: wrap; gap: var(--s2); margin-top: var(--s2); }
 
 /* D332: 终端里的 AI / AI in your terminal. The picture, literal: the person's agents' coins, the partner,
    and the two ways between them in words; the Partner page's one quiet invitation line. */

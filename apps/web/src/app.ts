@@ -2101,7 +2101,7 @@ class AppState {
     this.sheet = null;
     this.go({ name: "task", id: taskId });
   }
-  /** D169: one task on that device puts Nowledge Mem into that agent, following Mem's own guide. */
+  /** D169, D374: Mem's own command (else one task on that device) puts Nowledge Mem into that agent. */
   installMem(device: string, harness: string) {
     this.memAnswer = undefined;
     this.send({ t: "mem_plugin_install", device, harness });
@@ -2114,10 +2114,14 @@ class AppState {
     if (action !== "look") this.changed();
   }
   /** D366: Nowledge Mem on a computer for tasks: put its command line there, or sign it in with a one-time link. */
-  memSetup(device: string, action: "install" | "connect", link?: string) {
+  memSetup(device: string, action: "install" | "connect" | "look", link?: string) {
     this.memSetupAnswer = undefined;
     this.send({ t: "mem_setup", device, action, ...(link ? { link } : {}) });
     this.changed();
+  }
+  /** D374: 再看一次 / Check again: read Mem's own doctor on the home now (the settings frame follows). */
+  checkMemHealth() {
+    this.send({ t: "mem_health" });
   }
   /** D156: update one AI agent on a device with its own updater. */
   updateAgent(device: string, harness: string) {

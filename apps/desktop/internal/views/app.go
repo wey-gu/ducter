@@ -105,7 +105,9 @@ type App struct {
 	memPage memPageState
 	// bridgeLink: the connect link being pasted on the row (D225); never kept.
 	bridgeLink string
-	StatusErr  string
+	// memReSign: Memory's 重新登录 was tapped, so the link field shows in place (D374).
+	memReSign bool
+	StatusErr string
 	// Failed is set once a connection attempt failed, and cleared by a
 	// welcome: until the first welcome it shows the first-run screen.
 	Failed bool

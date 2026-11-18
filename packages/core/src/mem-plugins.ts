@@ -6,14 +6,16 @@
 // update or a sign-in, and after a setup task ends; the runner asks `present` to know whether a
 // task there has the plugin in any form (else Ducter's own read-only memory stands in).
 //
-// Installing is never silent (D17: the agents' setup is the user's): 装上 / Install opens one task
-// on that computer, with that agent, that follows Mem's official setup guide and reads the check
-// again. Where a signed-in agent lacks it, Ducter recommends it once per computer and agent: one
+// Installing is never silent (D17: the agents' setup is the user's): 装上 / Install runs Mem's own
+// `nmem connect --tool <id>` on that computer when Mem has one for that agent (Claude Code, Codex)
+// and its plugin is absent (D374: no tokens, no signed-in agent, seconds); else, or when that didn't
+// put it in, it opens one task there, with that agent, that follows Mem's official setup guide.
+// Either way the check is read again after. Where a signed-in agent lacks it, Ducter recommends it once per computer and agent: one
 // card, Go 装上 suggested, nothing happens until the user taps.
 // Memory off (Settings › 记得什么): no checks shown, no cards, no installs.
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { fill, harnessName, langName, words, type Bodies, type LangTag, type DeviceHarness, type LogEvent, type MemPluginReason, type MemPluginView } from "@ducter/protocol";
+import { MEM_CONNECT_TOOLS, fill, harnessName, langName, words, type Bodies, type LangTag, type DeviceHarness, type LogEvent, type MemPluginReason, type MemPluginView } from "@ducter/protocol";
 import type { LogStore, Runner, TaskRegistry } from "@ducter/protocol/src/internal.ts";
 import { MEM_HOSTS } from "@ducter/protocol/src/mem-plugins.ts";
 
@@ -35,6 +37,11 @@ export interface MemPluginsDeps {
   inspectWorker: (deviceId: string) => Promise<Plugins | undefined>;
   /** The devices now: id, name, home, awake, and which agents are installed and signed in. */
   devices: () => Promise<{ id: string; name: string; home: boolean; awake: boolean; harnesses: { harness: string; installed: boolean; loggedIn: boolean }[] }[]>;
+  /**
+   * D374: Mem's own `nmem connect --tool` for these agents on that device, answered when it ended;
+   * undefined when it can't run there (no nmem, a Ducter there from before D374). Without it, a task.
+   */
+  connectTools?: (deviceId: string, home: boolean, harnesses: string[]) => Promise<{ ok: boolean; detail?: string } | undefined>;
   now?: () => number;
   /** How often every awake device is checked again (default a day; 0 = only on events). */
   everyMs?: number;
@@ -51,8 +58,8 @@ export interface MemPlugins {
   present(device: string | undefined, harness: string): boolean;
   /** Runs the check on one device (or every awake one) now. */
   check(deviceId?: string): Promise<void>;
-  /** 装上 / Install: opens the setup task on that device with that agent. */
-  install(device: string, harness: string): Promise<{ ok: true; taskId: string } | { ok: false; reason: MemPluginReason }>;
+  /** 装上 / Install: Mem's own command there (D374), else the setup task on that device with that agent. */
+  install(device: string, harness: string): Promise<{ ok: true; taskId?: string } | { ok: false; reason: MemPluginReason }>;
   onChange(fn: () => void): () => void;
   stop(): void;
 }
@@ -86,10 +93,12 @@ const W = {
 const FINISHED = new Set(["done_claimed", "done", "failed", "dropped", "blocked"]);
 
 /** D169: the brief of the task that puts Nowledge Mem into one of the user's own agents on a computer. */
-export function memSetupBrief(o: { agent: string; host: string; device: string; lang: LangTag }): string {
+export function memSetupBrief(o: { agent: string; host: string; device: string; lang: LangTag; tried?: { tool: string; said?: string } }): string {
   const lang = `Write your report in ${langName(o.lang)}.`;
+  // D374: Mem's own command went first and didn't put it in: say so, so the guide's other route is taken.
+  const tried = o.tried ? `\nNowledge Mem's own \`nmem connect --tool ${o.tried.tool} --on-conflict abort\` ran first and didn't put it in${o.tried.said ? ` (its last line: ${o.tried.said})` : ""}. If ${o.agent} already has another memory integration, say which and ask the user before changing anything.\n` : "";
   return `Set up Nowledge Mem for ${o.agent} on this computer (${o.device}), for the user's own use of ${o.agent} outside Ducter. The user tapped Install for this.
-
+${tried}
 1. Read Nowledge Mem's official setup guide at https://mem.nowledge.co/SKILL.md and follow it for the host "${o.host}". It is the only source of the steps; don't improvise others.
 2. It changes only ${o.agent}'s own plugin or MCP setup and Nowledge Mem's own config on this computer. Nothing of Ducter's. Back up a file before editing it by hand, as the guide says.
 3. Never guess a server address, an API key or a workspace, and never print a key. If Nowledge Mem isn't connected on this computer (\`nmem doctor\` fails), stop and ask the user for a connect link (report_to_main, state "needs_input", with no default).
@@ -124,16 +133,29 @@ export function createMemPlugins(d: MemPluginsDeps): MemPlugins {
   const seen = new Map<string, Plugins>(); // device -> its last check
   const names = new Map<string, string>(); // a device's name -> its id, from the last list
   const running = new Map<string, Promise<void>>();
+  // D374: device:harness pairs Mem's own command is putting in now; ones it just put in (restart the
+  // agent to use it, said until the next check); ones it didn't, so the next tap goes to a task.
+  const direct = new Set<string>();
+  const fresh = new Set<string>();
+  const triedDirect = new Set<string>();
+  // One Mem command at a time per computer: two would write Mem's config side by side.
+  const queue = new Map<string, Promise<unknown>>();
+  const inTurn = <T>(id: string, fn: () => Promise<T>): Promise<T> => {
+    const p = (queue.get(id) ?? Promise.resolve()).catch(() => {}).then(fn);
+    queue.set(id, p);
+    return p;
+  };
   const fns = new Set<() => void>();
   const changed = () => {
     for (const fn of fns) fn();
   };
 
-  async function checkOne(id: string, home: boolean): Promise<void> {
+  async function checkOne(id: string, home: boolean, keepFresh = false): Promise<void> {
     if (!d.on()) return;
     const got = await (home ? d.inspectLocal() : d.inspectWorker(id)).catch(() => undefined);
     if (!got) return;
     seen.set(id, got);
+    if (!keepFresh) for (const k of [...fresh]) if (k.startsWith(`${id}:`)) fresh.delete(k);
     await offers(id, got);
     changed();
   }
@@ -163,7 +185,7 @@ export function createMemPlugins(d: MemPluginsDeps): MemPlugins {
     // Tasks there use it (D168), so every signed-in agent without it gets its one card.
     for (const h of signedIn) {
       const key = `${id}:${h}`;
-      if (got[h]?.state !== "absent" || saved.offered.includes(key) || setupOf(id, h)) continue;
+      if (got[h]?.state !== "absent" || saved.offered.includes(key) || setupOf(id, h) || direct.has(key)) continue;
       saved.offered.push(key);
       offer(id, dev.name, h);
     }
@@ -187,14 +209,45 @@ export function createMemPlugins(d: MemPluginsDeps): MemPlugins {
 
   const setupOf = (device: string, harness: string) => Object.entries(saved.setups).find(([, s]) => s.device === device && s.harness === harness)?.[0];
 
-  async function install(device: string, harness: string): Promise<{ ok: true; taskId: string } | { ok: false; reason: MemPluginReason }> {
+  async function install(device: string, harness: string): Promise<{ ok: true; taskId?: string } | { ok: false; reason: MemPluginReason }> {
     if (!d.on()) return { ok: false, reason: "off" };
     const host = MEM_HOSTS[harness];
     const dev = (await d.devices().catch(() => [])).find((x) => x.id === device || x.name === device);
     if (!host || !dev) return { ok: false, reason: "unknown" };
     if (!dev.awake) return { ok: false, reason: "offline" };
-    const open = setupOf(dev.id, harness);
-    if (open) return { ok: false, reason: "running" };
+    const key = `${dev.id}:${harness}`;
+    if (setupOf(dev.id, harness) || direct.has(key)) return { ok: false, reason: "running" };
+    // D374: Mem's own command first, where Mem has one for this agent and its plugin isn't there at all
+    // (an update or a review is the guide's, by a task). It needs no agent signed in and no tokens.
+    const tool = MEM_CONNECT_TOOLS[harness];
+    const was = seen.get(dev.id)?.[harness]?.state;
+    if (tool && d.connectTools && (was === undefined || was === "absent") && !triedDirect.has(key)) {
+      direct.add(key);
+      changed();
+      void (async () => {
+        const r = await inTurn(dev.id, async () => {
+          const r = await d.connectTools!(dev.id, dev.home, [harness]).catch(() => undefined);
+          await checkOne(dev.id, dev.home, true).catch(() => {});
+          return r;
+        });
+        direct.delete(key);
+        const now = seen.get(dev.id)?.[harness]?.state;
+        if (r?.ok && now !== undefined && now !== "absent") {
+          fresh.add(key);
+          return changed();
+        }
+        // Not in: the task that follows Mem's guide, told what the command said.
+        triedDirect.add(key);
+        changed();
+        if (r) await openSetup(dev, harness, host, { tool, ...(r.detail ? { said: r.detail } : {}) }).catch(() => undefined);
+        else await openSetup(dev, harness, host).catch(() => undefined);
+      })();
+      return { ok: true };
+    }
+    return openSetup(dev, harness, host);
+  }
+
+  async function openSetup(dev: { id: string; name: string; home: boolean; harnesses: { harness: string; installed: boolean; loggedIn: boolean }[] }, harness: string, host: string, tried?: { tool: string; said?: string }): Promise<{ ok: true; taskId: string } | { ok: false; reason: MemPluginReason }> {
     // The agent itself does it when it is signed in there; else any agent signed in there can.
     const signed = dev.harnesses.filter((h) => h.installed && h.loggedIn);
     const body = signed.find((h) => h.harness === harness) ?? signed[0];
@@ -206,7 +259,7 @@ export function createMemPlugins(d: MemPluginsDeps): MemPlugins {
       const card = await runner.openTask({
         persona: d.persona.id,
         title: fill(words(W, lang).title, { device: dev.name, agent }),
-        brief: memSetupBrief({ agent, host, device: dev.name, lang }),
+        brief: memSetupBrief({ agent, host, device: dev.name, lang, ...(tried ? { tried } : {}) }),
         place: dev.home ? { kind: "none" } : { kind: "none", device: dev.id },
         harness: body.harness,
         language: lang,
@@ -264,7 +317,8 @@ export function createMemPlugins(d: MemPluginsDeps): MemPlugins {
         const m = got[h.harness];
         if (!m || !h.installed) return h;
         const task = setupOf(deviceId, h.harness);
-        return { ...h, mem: { ...m, ...(task ? { taskId: task } : {}) } };
+        const key = `${deviceId}:${h.harness}`;
+        return { ...h, mem: { ...m, ...(task ? { taskId: task } : {}), ...(direct.has(key) ? { busy: true as const } : {}), ...(fresh.has(key) ? { fresh: true as const } : {}) } };
       });
     },
     check,

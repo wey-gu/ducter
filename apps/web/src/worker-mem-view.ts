@@ -11,6 +11,18 @@ export function memRowLook(m: DeviceMemView): MemRowLook {
   return m.state;
 }
 
+/**
+ * D374: what Mem's own doctor there says is wrong, when the row would otherwise just ask to sign in:
+ * unreachable (set up, its Mem doesn't answer: Check again), signed_out (it signed in once, that
+ * stopped working: the link field, as a first sign-in), old (that nmem has no doctor: Update when
+ * it is Ducter's own copy, else how). Undefined: the row's own words.
+ */
+export function memRowHealth(m: DeviceMemView): "unreachable" | "signed_out" | "old" | undefined {
+  if (memRowLook(m) !== "sign_in") return undefined;
+  const i = m.health?.issue;
+  return i === "unreachable" || i === "signed_out" || i === "old" ? i : undefined;
+}
+
 /** The agents Mem connects by itself (Codex, Claude Code) that are installed there and not connected to it yet. */
 export function unconnected(dv: Pick<DeviceView, "harnesses" | "mem">): string[] {
   if (dv.mem?.state !== "ready") return [];

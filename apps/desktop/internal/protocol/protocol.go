@@ -1225,8 +1225,9 @@ type AgentUpdateReq struct {
 }
 
 // MemPluginInstall is 装上 / Install on an agent's Nowledge Mem line (D169):
-// one task on that device follows Mem's own setup guide. Answered with
-// mem_plugin_result (OK, TaskID, Reason).
+// Mem's own `nmem connect --tool` there where Mem has one for that agent and
+// its plugin is absent (D374), else one task on that device follows Mem's
+// own setup guide. Answered with mem_plugin_result (OK, TaskID, Reason).
 type MemPluginInstall struct {
 	T       string `json:"t"` // "mem_plugin_install"
 	Device  string `json:"device"`
@@ -1505,6 +1506,25 @@ type MemView struct {
 	// D295: Glance is a look at Mem itself when it answers: how many
 	// memories it holds and the latest ones other AI tools saved there.
 	Glance *MemGlance `json:"glance,omitempty"`
+	// D374: Health is what Mem's own doctor on the home says, once read.
+	Health *MemHealth `json:"health,omitempty"`
+}
+
+// MemHealth is what Nowledge Mem's own `nmem doctor` says is wrong on a
+// computer (D374): Issue old (no doctor in this nmem) | unreachable |
+// signed_out (Fresh: never signed in there) | plugin (Agents, harness ids,
+// aren't connected to it); no Issue: all well.
+type MemHealth struct {
+	Issue     string   `json:"issue,omitempty"`
+	Fresh     bool     `json:"fresh,omitempty"`
+	Agents    []string `json:"agents,omitempty"`
+	CheckedAt string   `json:"checkedAt,omitempty"`
+}
+
+// MemHealthReq is 再看一次 / Check again on Settings › 记忆 (D374): read
+// Mem's doctor on the home now; the settings frame follows.
+type MemHealthReq struct {
+	T string `json:"t"` // "mem_health"
 }
 
 // MemGlance is Mem's count, what it knows about the person by Mem's own kinds
@@ -1815,6 +1835,10 @@ type MemPluginView struct {
 	Why       string `json:"why,omitempty"`
 	TaskID    string `json:"taskId,omitempty"`
 	CheckedAt string `json:"checkedAt,omitempty"`
+	// D374: Busy: Mem's own `nmem connect --tool` is putting it in now;
+	// Fresh: just put in by it (the agent uses it once restarted).
+	Busy  bool `json:"busy,omitempty"`
+	Fresh bool `json:"fresh,omitempty"`
 }
 
 // MemPluginAsk is Ducter's one card offering Nowledge Mem for an agent on a
@@ -1917,6 +1941,10 @@ type DeviceMemView struct {
 	Version     string         `json:"version,omitempty"`
 	Agents      []string       `json:"agents,omitempty"`
 	Step        *DeviceMemStep `json:"step,omitempty"`
+	// D374: Health is what Mem's own doctor there says is wrong; Ours: its
+	// command line there is Ducter's own copy, so Ducter can update it.
+	Health *MemHealth `json:"health,omitempty"`
+	Ours   bool       `json:"ours,omitempty"`
 }
 
 // DeviceMemStep is the step under way on DeviceMemView, or how it ended.
@@ -1933,7 +1961,7 @@ type DeviceMemStep struct {
 type MemSetupReq struct {
 	T      string `json:"t"` // "mem_setup"
 	Device string `json:"device"`
-	Action string `json:"action"` // install | connect
+	Action string `json:"action"` // install | connect | look (D374)
 	Link   string `json:"link,omitempty"`
 }
 

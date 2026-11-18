@@ -172,6 +172,14 @@ hel 上：一直醒着，合上 MacBook 也不停。**
 "在 Mac 上做" · "换到 hel 上" · "用我的 Chrome" are pins, restated in the ack. After two
 moves in the same direction, the existing rule proposal: **以后要登录的网页都在 MacBook 上做？**
 
+D376: a task already going moves the same way. A follow-up that names a computer, or asks for the
+person's own account ("用我的携程账号") while another computer browses in their Chrome and this
+one doesn't, moves the task there first (the partner's `task_switch` with `device`; the brief,
+checkpoints and last report go with it), then gets the follow-up, under one line naming the
+action and where: **我到你 MacBook 的 Chrome 上用携程比一下价格，顺便看机票。** Code asks the
+partner back once when the words want the account and the task's computer lacks it. A code task
+moves only after the person's go (its branch is pushed); a folder never.
+
 ### 6.2 The switch sheet: who and where together
 
 The action stays **换谁来做 / Switch who does it** (D89, D152). With one computer the sheet is
@@ -236,7 +244,8 @@ its pushed branch; uncommitted work never moves. What this note adds:
 4. **Prevention beats moving**: long or ongoing work starts on a computer that doesn't sleep
    (§4.3 step 5), so W6 rarely needs a move at all. This is the 惊喜.
 5. **Never toward more access without the person**: a move to the user's Chrome or a computer
-   signed in as them always comes from their tap or their Go.
+   signed in as them always comes from their tap, their Go, or their words asking for their own
+   account (D376).
 
 ## 8. Copy (zh + en, from the glossary; D78 spacing: a space where Han meets Latin or a digit)
 

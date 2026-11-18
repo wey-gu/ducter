@@ -815,7 +815,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     }
     const progress = progressOf(t);
     const seed = t.movedFrom
-      ? movedOver(t.movedFrom.from, t.movedFrom.to, progress, t.movedFrom.repo)
+      ? movedOver(t.movedFrom.from, t.movedFrom.to, progress, t.movedFrom.repo, await carryOver(t))
       : t.handedFrom
         ? t.outsideOver
           ? outsideOver(harnessName(t.handedFrom), await carryOver(t))
@@ -1756,7 +1756,15 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       t.outsideOver = undefined;
       if (t.dropped) return;
       const told = `${ADOPTED} It began in ${harnessName(a.agent)} on ${a.startedAt.slice(0, 10)}, in ${t.spec.cwd}${same ? "; this is that same session, resumed, so its earlier turns are yours" : ""}.`;
-      await sendTurn(t, seed ? `${told}\n\n${seed}` : told, "ducter");
+      const first = seed ? `${told}\n\n${seed}` : told;
+      if (!a.ask) await sendTurn(t, first, "ducter");
+      else {
+        // D376: carried on from the conversation with what the person asks of it now: one turn says
+        // both; the transcript shows Ducter's hairline, then the ask as Ducter's words to it.
+        logInput(t, first, "ducter", "turn");
+        logInput(t, a.ask, "partner", "turn");
+        await sendTurn(t, seedThen(first, a.ask), "ducter", true);
+      }
     } catch (err) {
       if (isOffline(err)) return deviceLost(t, true);
       const reason = preview(err instanceof Error ? err.message : String(err), 500);

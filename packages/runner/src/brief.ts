@@ -377,10 +377,12 @@ export function startedAfresh(progress: string[]): string {
  * D157: the first turn on another computer after the user moved the task there (E3): the same
  * task, from its saved progress; a repo comes as a fresh worktree of the pushed branch.
  */
-export function movedOver(from: string, to: string, progress: string[], repo: boolean): string {
+export function movedOver(from: string, to: string, progress: string[], repo: boolean, carry?: CarryOver): string {
   const where = progress.length ? `\n\nWhere it stood (saved progress, oldest first):\n${progress.map((p) => `- ${p}`).join("\n")}` : "";
   const files = repo ? " The worktree here is a fresh checkout of the task branch as it was pushed: committed work is all here; check git log and git status." : " Files you made there are not here; anything you need again, make again.";
-  return `The user moved this task from ${from} to ${to}, to carry on here.${files} Check where the work stands, then continue with the brief from there. Don't start over.${where}\n\nReport via report_to_main when done, blocked, or needing a decision.`;
+  // D376: what it found there (its last report, the last thing it said) comes along: a finished
+  // errand moved for its follow-up must not look again for what it already found.
+  return `The user moved this task from ${from} to ${to}, to carry on here.${files} Check where the work stands, then continue with the brief from there. Don't start over.${where}${carryLines(carry)}\n\nReport via report_to_main when done, blocked, or needing a decision.`;
 }
 
 /** A new session's seed (handedOver / startedAfresh) followed by the message that woke it. */

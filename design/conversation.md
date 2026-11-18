@@ -106,7 +106,13 @@ promotion are not built.*
   new one the user asks for ("开个新的") opens a new task; a task is retitled when its job
   widens (D67). A task taken up again goes back under the follow-up's own line (its ack and a
   `job_status` with the same task), so the conversation shows it under the newest ask and On
-  hand keeps one card.
+  hand keeps one card. A follow-up that needs another computer (D376: the person names it, or it
+  asks for their own account and only another computer browses in their Chrome) moves the same
+  task there first (`task_switch` with `device`; its brief, checkpoints and last report go with
+  it), asked back once by code when the words want their account and the task's computer lacks
+  it. Work the person did by hand in their own Claude Code, Codex or pi on the home ("接着我终端里
+  那个 Claude 在做的") is found and carried on as a task (`own_session_find`,
+  `own_session_continue`; `past.md`).
   "Never mind" cancels the job.
 - **Models.** Text uses one model. Voice adds a realtime front-end limited to an allow-list,
   which escalates to the main AI and logs every utterance (OpenAI's chat-supervisor

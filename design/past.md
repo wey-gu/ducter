@@ -126,7 +126,8 @@ pebble settled 2 pt; it lifts back on resume.
 - **From the conversation** (D373): the partner continues a task the talk was on, or one the
   person names ("接着昨天那个 compaction 的活"), the same way as Continue: `task_send` to it; the
   task's line moves under the newest ask. New only for separate work, after a merge, or when
-  asked ("开个新的").
+  asked ("开个新的"). A follow-up that needs another computer's sign-ins moves the task there
+  first (D376, `where.md` §6.1).
 - **On another computer**: the card says which; Continue on a computer that is away answers with
   its line, and the person can pick another agent (or Move, D157) from the opened task.
 - **A dropped task**: Continue brings it back (it is no longer dropped).
@@ -148,7 +149,7 @@ same conversation in Ducter.** Where they live and what their records say: `rese
   Leave this folder out** (that folder and those inside it, here and in the first words' offers;
   Settings lists each with 再显示). Files of another account on the computer are never read.
 
-- **Read** only when Past tasks asks, on the home, each file's head and tail only (the shared
+- **Read** only when Past tasks asks (or, D376, the person asks the partner for one), on the home, each file's head and tail only (the shared
   reader `packages/core/src/local-agents/`, also D298's), kept until the file changes. Ducter's own
   sessions never show (their ids are in the Log; its data folder, the Ducter folder and temporary
   folders are left out); one carried on already shows as its task.
@@ -170,5 +171,21 @@ same conversation in Ducter.** Where they live and what their records say: `rese
   what the session said, D282's condensed start; also the fallback when the agent refuses the
   resume), and **不再显示 {agent} 的 / Don't show {agent} here** (for good, on the home; the
   section's last line **不显示的：{agents} / Not shown: {agents}** with **再显示 / Show again**).
-- **Not here yet:** a worker's sessions, New task from an outside session, a session still running
-  in a terminal (not detected; its agent would race itself).
+- **Still open where the person runs it** (D376): never carried on. Claude Code keeps one file per
+  running process (`sessions/<pid>.json`, with the session's id): a live one says **它还在 {agent}
+  里开着。先在那边退出（/exit），再在这里接着做。 / It's still open in {agent}. Close it there first
+  (/exit), then carry it on here.** A session written in the last two minutes (Codex and pi keep no
+  such file) says once **{agent} 刚刚还在写它。那边关掉了的话，再试一次。 / {agent} wrote to it a
+  moment ago. If it's closed there, try again.**, and goes when asked again within 10 minutes.
+- **From the conversation** (D376): "接着我终端里那个 Claude 在做的" finds it with the same reader
+  (`own_session_find`: at most 5, newest first without words, the agent and time words narrow it)
+  and carries it on the same way (`own_session_continue`), the person's words for it sent with its
+  first turn and shown as Ducter's words to it after 在 Ducter 里接着做; the partner's line is the
+  task's ack. Only when the person asks, never from a report or a routine; off (读它们留下的记录)
+  means nothing is read. Two close matches: the partner asks which, naming each by what it was
+  about and its folder. The first look ever, Ducter says once, before the answer, **我看了
+  {computer} 上你在 {agents} 里的对话记录：只看名字、文件夹、时间和你说的头一句，不看代码和文件。 / I
+  looked at your {agents} conversations on {computer}: only their names, folders, times and your
+  first words, no code or files.**
+- **Not here yet:** a worker's sessions (from Past tasks or the conversation: D327's yes on that
+  computer first), New task from an outside session.

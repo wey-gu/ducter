@@ -17,7 +17,9 @@ import { join, resolve } from "node:path";
 import { HARNESSES, HARNESS_IDS, isHarnessId, type Bodies, type HarnessId, type LogEvent, type Place, type ReplyWant, type TaskCard, type TaskNeeds } from "../../protocol/src/index.ts";
 import type { HarnessEvent, HarnessPort, HarnessSession, Runner } from "../../protocol/src/internal.ts";
 import { startCore, type Core } from "../../core/src/index.ts";
-import { kindOf } from "../../core/src/candidates.ts";
+import { kindOf, type Computer } from "../../core/src/candidates.ts";
+import { createLocalAgents } from "../../core/src/local-agents/index.ts";
+import { writeSession } from "../../core/test/fixtures-agents.ts";
 import { writeDotsFacts } from "./noticed-facts.ts";
 import { logUserMessage } from "../../core/src/reply.ts";
 import { createOarHarnessPort, shortId } from "../../runner/src/index.ts";
@@ -337,8 +339,19 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
       ? { exists: true, date: new Date().toISOString().slice(0, 10), parsed: { focus_areas: sc.workingMemory.focus, flags: [], briefing: sc.workingMemory.briefing ?? "", awaiting_rulings: sc.workingMemory.rulings ?? [], awaiting_rulings_more: 0 } }
       : { exists: false },
   );
-  const core = startCore({ dataDir, port: 0, persona, workingMemory: { run: async () => ({ code: 0, out: wmOut, err: "" }) }, // D341: never the machine's own gh (the person's real issues) nor its Obsidian vault list.
+  // D376: the person's own Claude Code / Codex sessions, from a scratch home beside the data folder
+  // (never this machine's ~/.claude or ~/.codex): the scenario's, or none.
+  const ownHome = mkdtempSync(join(root, `own-home-${sc.id}-`));
+  for (const s of sc.ownSessions ?? []) {
+    const cwd = join(ownHome, s.folder);
+    mkdirSync(cwd, { recursive: true });
+    const updatedAt = new Date(Date.now() - s.minutesAgo * 60_000);
+    writeSession(ownHome, { agent: s.agent, id: s.id, cwd, turns: s.turns, ...(s.title ? { title: s.title } : {}), ...(s.branch ? { branch: s.branch } : {}), startedAt: new Date(updatedAt.getTime() - 3600_000), updatedAt });
+  }
+  const core = startCore({ dataDir, port: 0, persona, localAgents: createLocalAgents({ home: ownHome, env: {}, uid: null }), workingMemory: { run: async () => ({ code: 0, out: wmOut, err: "" }) }, // D341: never the machine's own gh (the person's real issues) nor its Obsidian vault list.
     taskSources: { ghRun: todoGh?.run ?? (async () => ({ code: 127, out: "", err: "", missing: true as const })), ghEnv: {}, home: join(dataDir, "no-home"), pollMs: 3_600_000, ask: async () => ({ text: "[]", tokens: 1 }) }, ...(sc.second ? { partners: true } : {}), ownPhone: { platform: "darwin", arch: "arm64" }, ...(calOo ? { ooSource: calOo.source } : sc.phone ? { ooSource: { detect: () => ({ installed: false, account: false }), read: () => undefined } } : {}) });
+  // D376: the home's name as the records' computer: a fixed fake one, never this machine's own name.
+  (core.outside as { computer: () => string | undefined }).computer = () => "Weyl's Mac";
   if (calOo && !(await core.connections.addFromOo()).ok) throw new Error("fake oo calendar: not added");
   if (todoGh && !(await core.taskSources.add("github")).ok) throw new Error("fake GitHub: not added");
   if (sc.second && !core.partners.add({ name: sc.second.name }).ok) throw new Error("second partner: not added");
@@ -367,6 +380,24 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
     } else if (!early.has(callId)) tools.push({ name: ev.tool.name, input: ev.tool.input, step: cur.step });
   });
   const fr = fakeRunner(core, port, cur, !!sc.firstErrand);
+  // D376: other computers (the [devices] line), and task_switch's move to one recorded, not made.
+  if (sc.computers) {
+    const others = sc.computers;
+    (core.workers as { list: () => unknown[] }).list = () => others.map((c, i) => ({ id: `w${i + 1}`, name: c.name, online: true, os: "macOS", web: c.web, harnesses: c.harnesses.map((id) => ({ id, installed: true, loggedIn: true })) }));
+    const comps: Computer[] = [
+      { id: "local", name: "local", home: true, state: "awake", alwaysOn: true, mac: false, harnesses: [], web: { on: true, where: "ducter" } },
+      ...others.map((c, i) => ({ id: `w${i + 1}`, name: c.name, home: false, state: "awake" as const, alwaysOn: false, mac: true, harnesses: [], web: { on: true, where: c.web } })),
+    ];
+    core.loadout.computers = async () => comps;
+    core.loadout.switchTask = async (taskId, harness, _m, _r, device) => {
+      const to = comps.find((c) => c.id === device);
+      if (to) {
+        const open = core.log.read({ stream: `task:${taskId}`, kinds: ["task_open"], limit: 1000 }).at(-1)!.body as Bodies["task_open"];
+        core.log.append({ stream: `task:${taskId}`, origin: "user", kind: "task_open", body: { ...open, place: { ...(open.place as Place), device: to.name } as Place, harness } });
+      }
+      return { ok: true };
+    };
+  }
   const mem = fakeMemory(sc.memories ?? [], { down: sc.memoryDown, ...(sc.threads ? { threads: sc.threads } : {}) });
   const recalls: { query: string; step: number }[] = [];
   const threadSearches: { query: string; step: number }[] = [];

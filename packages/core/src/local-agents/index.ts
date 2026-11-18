@@ -6,9 +6,9 @@
 // and tail (sessions reach a GB, research/103 §4), a summary is kept until the file changes, and
 // nothing here leaves the computer. Never writes, renames or locks an agent's files: when a
 // session is carried on, the agent itself appends to it, as it does by hand.
-import { statSync } from "node:fs";
+import { readdirSync, readFileSync, statSync } from "node:fs";
 import { homedir } from "node:os";
-import { basename, dirname } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { filesOf, LOCAL_AGENTS, type LocalAgent, rootsOf, type SessionSummary, type SessionTurn, summarize, turnsOf } from "./agents.ts";
 
 export { LOCAL_AGENTS, type LocalAgent, type SessionSummary, type SessionTurn } from "./agents.ts";
@@ -40,10 +40,33 @@ export interface LocalAgents {
    * ran, so those under `skip` (Ducter's own, temporary folders) don't count; Codex's don't say.
    */
   active(o: { since: number; skip?: string[] }): LocalAgent[];
+  /**
+   * D376: whether a session is still open where the person ran it: "running" when its agent says
+   * so (Claude Code keeps one small file per running process, `sessions/<pid>.json`, with the
+   * session's id; the process is alive), "recent" when its file was written in the last two
+   * minutes (Codex and pi keep no such file). Carrying on an open session would put two writers
+   * on one conversation.
+   */
+  openNow(agent: LocalAgent, id: string): "running" | "recent" | undefined;
 }
 
-export function createLocalAgents(opts: { home?: string; env?: Record<string, string | undefined>; uid?: number | null } = {}): LocalAgents {
+/** D376: a session written this recently may still be open in a terminal. */
+export const OPEN_RECENT_MS = 120_000;
+
+/** Whether a process runs (signal 0 checks without sending anything). */
+function pidAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (err) {
+    return (err as NodeJS.ErrnoException).code === "EPERM";
+  }
+}
+
+export function createLocalAgents(opts: { home?: string; env?: Record<string, string | undefined>; uid?: number | null; now?: () => number; alive?: (pid: number) => boolean } = {}): LocalAgents {
   const roots = rootsOf(opts.home ?? homedir(), opts.env ?? process.env);
+  const now = opts.now ?? Date.now;
+  const alive = opts.alive ?? pidAlive;
   const cache = new Map<string, { size: number; mtime: number; sum: SessionSummary | undefined }>();
   // D327: only the files of the account this Ducter runs as (null: any, for a test's fixtures).
   const uid = opts.uid === null ? undefined : (opts.uid ?? process.getuid?.());
@@ -110,6 +133,32 @@ export function createLocalAgents(opts: { home?: string; env?: Record<string, st
         return slugs.some((s) => d === s || d.startsWith(`${s}-`));
       };
       return LOCAL_AGENTS.filter((agent) => filesOf(agent, roots[agent]).some((f) => !skipped(agent, f.path) && (statOf(f.path)?.mtime ?? 0) >= since));
+    },
+    openNow(agent, id) {
+      if (agent === "claude-code") {
+        // <config>/sessions/<pid>.json: { pid, sessionId, cwd, status, … } while that process runs.
+        const dir = join(dirname(roots["claude-code"]), "sessions");
+        let names: string[] = [];
+        try {
+          names = readdirSync(dir).filter((n) => /^\d+\.json$/.test(n));
+        } catch {
+          /* none running, or an agent before the file */
+        }
+        for (const n of names) {
+          const path = join(dir, n);
+          if (!statOf(path)) continue;
+          try {
+            const j = JSON.parse(readFileSync(path, "utf8")) as { pid?: unknown; sessionId?: unknown };
+            if (j.sessionId !== id || typeof j.pid !== "number") continue;
+            if (alive(j.pid)) return "running";
+          } catch {
+            /* a file being written */
+          }
+        }
+      }
+      const f = find(agent, id);
+      const st = f && statOf(f.path);
+      return st && now() - st.mtime < OPEN_RECENT_MS ? "recent" : undefined;
     },
     history(agent, id, o = {}) {
       const f = find(agent, id);

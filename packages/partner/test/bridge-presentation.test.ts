@@ -9,7 +9,8 @@ import { join, resolve } from "node:path";
 import type { Bodies } from "../../protocol/src/index.ts";
 import { createNmemBridge, createPartner } from "../src/index.ts";
 import { mailboxError, transient } from "../src/bridge.ts";
-import { lostLine, type OutOp } from "../src/bridge-out.ts";
+import { followCandidates, lostLine, type OutOp } from "../src/bridge-out.ts";
+import type { LogEvent } from "../../protocol/src/index.ts";
 import { FakeClock, fakeCore, fakeMemory, fakeRunner, type Script } from "./fakes.ts";
 
 const tmp = () => mkdtempSync(join(tmpdir(), "ducter-bridge-presentation-test-"));
@@ -178,4 +179,33 @@ describe("D294: Mem can't take it right now", () => {
     expect(w.mailbox()).toHaveLength(0);
     await partner.close();
   }, 30_000);
+});
+
+describe("D364: nmem 0.10.120 asks for the linked shape; an unlinked original answers nothing", () => {
+  test("the fake at 0.10.120 answers in Mem's representation by itself; every message says whether it is linked", async () => {
+    const w = world({ messages: [{ id: "msg-001", from: "terminal", to: "ducter", body: "Task: fix the Linux runner test." }] });
+    const r = (await w.bridge({ NMEM_FAKE_SHAPE: "", NMEM_FAKE_VERSION: "0.10.120" }).check(new Set())) as { messages: Record<string, unknown>[] };
+    expect(r.messages[0]).toMatchObject({ messageId: "msg-001", mine: true, linked: true });
+    expect(r.messages[0]!.inReplyTo).toBeUndefined();
+    // 0.10.119's bare shape carries no in_reply_to on an original: not linked.
+    const old = world({ messages: [{ id: "msg-001", from: "terminal", to: "ducter", body: "Task: fix the Linux runner test." }] });
+    const o = (await old.bridge({ NMEM_FAKE_SHAPE: "", NMEM_FAKE_VERSION: "0.10.119" }).check(new Set())) as { messages: Record<string, unknown>[] };
+    expect(o.messages[0]!.linked).toBeUndefined();
+  }, 20_000);
+
+  test("follow-through: an unnamed own agent's new message stops the nudge only when Mem can't link replies", () => {
+    const t0 = Date.parse("2026-11-18T08:00:00Z");
+    const at = (min: number) => new Date(t0 + min * 60_000).toISOString();
+    const ev = (seq: number, ts: string, body: Record<string, unknown>) => ({ seq, ts, stream: "channel", origin: "partner", kind: "bridge_msg", body }) as unknown as LogEvent;
+    const sent = ev(1, at(0), { direction: "out", opId: "bo-1", messageId: "bm-o1", to: "another agent", mine: true, text: "那个 PR 今晚能提吗？", decisionId: "d-1", state: "sent" });
+    const other = (linked: boolean) => ev(2, at(10), { direction: "in", messageId: "bm-x", from: "another agent", mine: true, text: "Task: tidy the README.", ...(linked ? { linked: true } : {}) });
+    const now = t0 + 3 * 3_600_000;
+    // nmem 0.10.119: it may be the answer (Mem links nothing), so Ducter stays quiet (D249).
+    expect(followCandidates([sent, other(false)], now)).toEqual([]);
+    // nmem 0.10.120: Mem says it answers nothing, so the question is still open: one nudge is due.
+    expect(followCandidates([sent, other(true)], now).map((o) => o.opId)).toEqual(["bo-1"]);
+    // And a linked answer still closes it.
+    const answer = ev(3, at(20), { direction: "in", messageId: "bm-a", from: "another agent", mine: true, text: "能，22 点。", inReplyTo: "bm-o1", linked: true });
+    expect(followCandidates([sent, other(true), answer], now)).toEqual([]);
+  });
 });

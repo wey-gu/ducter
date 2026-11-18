@@ -3121,6 +3121,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           text: redactSecrets(m.text),
           ...(m.sentAt ? { sentAt: m.sentAt } : {}),
           ...(m.inReplyTo ? { inReplyTo: m.inReplyTo } : {}),
+          ...(m.linked ? { linked: true } : {}),
           ...where,
         };
         const e = core.log.append({ stream: "channel", origin: "peer", kind: "bridge_msg", body });

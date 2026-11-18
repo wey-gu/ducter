@@ -179,7 +179,10 @@ needs the Nowledge Mem plugin to hear them, a row says so, with **Install**.
 
 Each row in **Recently** names the agent by the name it has in Nowledge Mem. One that has no name
 there is called by the app it runs in, for example **an agent in Claude Code**, or else **an
-unnamed agent**, with a small drawn agent in place of its app's mark.
+unnamed agent**, with a small drawn agent in place of its app's mark. An older Nowledge Mem can't
+say which agent wrote, nor which message answers what your partner asked; while a newer one is out,
+the page says so with **Update** (it only swaps the program: you stay signed in, and your memories
+don't move).
 
 One switch, **Let agents connected to Nowledge Mem reach {name}**, turns it all on or off. If something is wrong
 (Nowledge Mem says no, or another computer is answering your agents), one row says what and offers

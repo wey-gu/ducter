@@ -29,7 +29,8 @@
 // context (Space `personal-<member>` for the user's own place). NMEM_FAKE_SHAPE=named keeps the old,
 // richer shape (sender agent and member on `open` and `inbox`) for the partner eval's teammates.
 //   NMEM_FAKE_UNREGISTERED=<context>  sends to it answer Mem's 409 "no current registered mailbox"
-// D294 (Mem PR #10278, the CLI after 0.10.119; interfaces only, research/66 §8): NMEM_FAKE_SHAPE=presentation
+// D294 (Mem PR #10278, in nmem 0.10.120; interfaces only, research/66 §8, research/134): NMEM_FAKE_SHAPE=presentation
+// (the default once NMEM_FAKE_VERSION is 0.10.120 or later, D364)
 // adds `sender: {actor_id, member, agent, agent_id}` and `in_reply_to` (null on an original) to `inbox`
 // messages and `open`, and `agent_id` + `mailbox_available` to contact cards (an unregistered one has
 // `send_args_prefix: null`). NMEM_FAKE_SENDER_MEMBER=<label> replaces `sender.member` (a display name).
@@ -125,7 +126,14 @@ if (argv[0] === "connect") {
 }
 if (process.env.NMEM_FAKE_SIGNED_OUT === "1" && !existsSync(signedFile)) fail("unreachable", "fake nmem: not signed in", 1);
 const NAMED = process.env.NMEM_FAKE_SHAPE === "named";
-const PRESENT = process.env.NMEM_FAKE_SHAPE === "presentation";
+// D364: nmem 0.10.120 is the first CLI that asks Mem for #10278's representation (VERIFIED in its
+// binary, research/134), so a fake at 0.10.120+ answers in it unless NMEM_FAKE_SHAPE says otherwise
+// (NMEM_FAKE_SHAPE=released keeps 0.10.118/0.10.119's bare shape at any version).
+const presentsSince = (() => {
+  const [a, b, c] = VERSION.split(/[.-]/).map(Number);
+  return a! > 0 || b! > 10 || (b === 10 && c! >= 120);
+})();
+const PRESENT = process.env.NMEM_FAKE_SHAPE === "presentation" || (!process.env.NMEM_FAKE_SHAPE && presentsSince);
 if (argv[0] === "agents" && argv[1] === "context" && argv[2] === "show") {
   // Local read of a saved context (0.10.118 shape): its custodian and exact Space.
   const name = argv[argv.indexOf("--name") + 1] ?? "";

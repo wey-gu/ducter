@@ -274,3 +274,39 @@ func TestMemShots(t *testing.T) {
 		}
 	}
 }
+
+// D364: the update that names senders shows on the connected pane only for
+// an nmem before 0.10.120 with a newer one out. The web's cases
+// (apps/web/test/memory.test.ts).
+func TestPeersNamesUpdate(t *testing.T) {
+	newer := func(v string) *string { return &v }
+	up := &protocol.BridgeUpkeep{Kind: "update"}
+	for _, c := range []struct {
+		b    *protocol.BridgeView
+		want string
+	}{
+		{&protocol.BridgeView{State: "connected", Version: "0.10.119", Newer: newer("0.10.120"), Upkeep: up}, "newer"},
+		{&protocol.BridgeView{State: "connected", Version: "0.10.119", Newer: newer("0.10.120")}, "app"},
+		{&protocol.BridgeView{State: "connected", Version: "0.10.119"}, ""},
+		{&protocol.BridgeView{State: "connected", Version: "0.10.120", Newer: newer("0.10.121"), Upkeep: up}, ""},
+		{&protocol.BridgeView{State: "ready", Version: "0.10.119", Newer: newer("0.10.120"), Upkeep: up}, ""},
+		{&protocol.BridgeView{State: "connected", Version: "weird", Newer: newer("0.10.120")}, ""},
+		{nil, ""},
+	} {
+		got := ""
+		if u := peersNamesUpdate(c.b); u != nil {
+			got = u.Kind
+		}
+		if got != c.want {
+			t.Errorf("peersNamesUpdate(%+v) = %q, want %q", c.b, got, c.want)
+		}
+	}
+	for _, c := range []struct {
+		v, min string
+		want   bool
+	}{{"0.10.119", "0.10.120", true}, {"0.10.120", "0.10.120", false}, {"0.11.0", "0.10.120", false}, {"0.9.200", "0.10.120", true}, {"", "0.10.120", false}, {"0.10.120-rc1", "0.10.120", false}} {
+		if got := nmemOlder(c.v, c.min); got != c.want {
+			t.Errorf("nmemOlder(%q, %q) = %v, want %v", c.v, c.min, got, c.want)
+		}
+	}
+}

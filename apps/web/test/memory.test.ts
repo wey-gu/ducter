@@ -5,7 +5,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import type { BridgeView, MemView } from "@ducter/protocol";
-import { groupNoted, memBadge, memPhase, memUpdate, peersShown } from "../src/mem-view.ts";
+import { groupNoted, memBadge, memPhase, memUpdate, peersNamesUpdate, peersShown } from "../src/mem-view.ts";
 import { memoryWords } from "../src/i18n-memory.ts";
 
 const b = (o: Partial<BridgeView>): BridgeView => ({ state: "connected", identity: "ducter", ...o });
@@ -70,5 +70,18 @@ describe("Memory (D257)", () => {
     const macKeys = [...mac.matchAll(/^\t"([^"]+)":/gm)].map((m) => m[1]);
     expect([...new Set(macKeys)].sort()).toEqual(Object.keys(memoryWords.zh).sort());
     for (const [k, v] of Object.entries({ ...memoryWords.zh, ...memoryWords.en })) expect(mac).toContain(`"${k}":`), expect(mac).toContain(JSON.stringify(v));
+  });
+});
+
+describe("D364: the update that names senders, on Talk with your other agents", () => {
+  test("only connected, only before 0.10.120, only when Mem says a newer one is out", () => {
+    expect(peersNamesUpdate(b({ version: "0.10.119", newer: "0.10.120", upkeep: { kind: "update" } }))).toMatchObject({ kind: "newer", newer: "0.10.120", version: "0.10.119" });
+    // The Nowledge Mem app's own copy: said, updated in the app.
+    expect(peersNamesUpdate(b({ version: "0.10.119", newer: "0.10.120" }))).toMatchObject({ kind: "app" });
+    expect(peersNamesUpdate(b({ version: "0.10.119" }))).toBeUndefined(); // nothing newer out: nothing to do
+    expect(peersNamesUpdate(b({ version: "0.10.120", newer: "0.10.121", upkeep: { kind: "update" } }))).toBeUndefined(); // already names senders
+    expect(peersNamesUpdate(b({ state: "ready", version: "0.10.119", newer: "0.10.120", upkeep: { kind: "update" } }))).toBeUndefined();
+    expect(peersNamesUpdate(b({ version: "weird", newer: "0.10.120" }))).toBeUndefined();
+    expect(peersNamesUpdate(undefined)).toBeUndefined();
   });
 });

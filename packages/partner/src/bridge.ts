@@ -48,6 +48,11 @@ export interface BridgeMessage {
   text: string; // clipped
   sentAt?: string;
   inReplyTo?: string; // set when this answers a message we sent (the CLI's in_reply_to)
+  /**
+   * D364: Mem's linked representation (nmem 0.10.120+, #10278) said `in_reply_to: null`: an original,
+   * not an answer to anything Ducter sent.
+   */
+  linked?: true;
   space?: string; // D334: the exact Space it came in (its reply goes back there)
   spaceLabel?: string;
   shared?: boolean; // D334: it came in a Space the person shares with others (not their own place)
@@ -548,6 +553,9 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
           // the handle `reply` takes, the message's own id. Only a different one names a parent.
           const handle = str(b?.reply_to);
           const inReplyTo = str(b?.in_reply_to) ?? str(b?.message?.in_reply_to) ?? (handle && handle !== id ? handle : undefined);
+          // D364: `in_reply_to: null` is Mem's linked shape saying this is an original, not an answer
+          // (nmem 0.10.120+; 0.10.119 never sends the key on an original).
+          const linked = !inReplyTo && ((!!b && typeof b === "object" && b.in_reply_to === null) || (!!b?.message && typeof b.message === "object" && b.message.in_reply_to === null));
           const who = b?.message && typeof b.message === "object" ? { ...b, ...b.message } : b;
           const agent = agentOf(who);
           const sp = spaceIn(typeof entry(id) === "object" ? { ...entry(id), ...who } : who, pl);
@@ -573,6 +581,7 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
             text: clip(body, MAX_TEXT),
             ...(sentAt ? { sentAt } : {}),
             ...(inReplyTo ? { inReplyTo } : {}),
+            ...(linked ? { linked: true as const } : {}),
             ...(sp.id ? { space: sp.id } : {}),
             ...(sp.label ? { spaceLabel: sp.label } : {}),
             ...(shared ? { shared: true } : {}),

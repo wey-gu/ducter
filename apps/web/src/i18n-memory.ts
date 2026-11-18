@@ -36,6 +36,8 @@ export const memoryWords: { zh: Record<string, string>; en: Record<string, strin
     "mem.badge.needed": "Nowledge Mem 要更新",
 
     "peers.mem.newer": "Nowledge Mem 有新版本。连不上的时候，先更新它，再试一次。",
+    "peers.names.title": "更新 Nowledge Mem，%s 就能认出是哪个 agent 找它",
+    "peers.names.line": "也知道哪条是在回它问的话。更新只换程序：登录不变，记忆不动。",
     "peers.mem.go": "去「记忆」",
     "mem.week.count": "这周新记了 %s 条",
     "mem.week.none": "这周还没有新记的",
@@ -205,6 +207,8 @@ export const memoryWords: { zh: Record<string, string>; en: Record<string, strin
     "mem.badge.needed": "Mem needs an update",
 
     "peers.mem.newer": "A newer Nowledge Mem is out. If connecting doesn't work, update it first, then try again.",
+    "peers.names.title": "Update Nowledge Mem so %s can tell which agent wrote",
+    "peers.names.line": "and which message answers what it asked. An update only swaps the program: you stay signed in, and your memories don't move.",
     "peers.mem.go": "Go to Memory",
     "mem.week.count": "%s new this week",
     "mem.week.none": "Nothing new this week",

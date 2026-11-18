@@ -1364,9 +1364,15 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [x] Read Mem #10278's `sender`, `in_reply_to` and `mailbox_available`, and retry Mem's "can't right now"
       briefly (D294; over the fake's `presentation` shape).
 - [ ] Rerun `bridge:live -- --real` (D324: as the trial's own identity) and make the live S2 check pass (5/5);
-      then drop D249 (5)'s maybe-answered rule. Check on that first run that Mem connects a freshly enrolled
-      identity at once, that `agents delete` retires its mailbox, and that `--cleanup` finds nothing after.
-      Trigger: an nmem after 0.10.119 (the first to ask for #10278's representation).
+      then drop D249 (5)'s maybe-answered rule (D364 already leaves Mem's `in_reply_to: null` originals out of it),
+      and the "until the live trial passes" wording in `bridge.md` and `roadmap.md`. Check on that first run that
+      Mem connects a freshly enrolled identity at once, that `agents delete` retires its mailbox, that `--cleanup`
+      finds nothing after, and what `sender` really holds (research/134 §1.1: 3 fields, #10278 named 4).
+      Trigger met 2026-11-18: nmem 0.10.120 asks for #10278's representation (research/134); the exact run is in
+      `bridge.md` "Try it live". Waits on the author's Go (it writes a throwaway identity to Mem).
+- [ ] D364: after the live run, check on hel (nmem 0.10.120) that a real native Claude Code's message reaches the
+      partner named (`sender.agent` other than "Bridge agent") or by its tool; if Mem still says "Bridge agent" for
+      every native session, ask Nowledge for the session's label in `sender` (research/66 §8.4). Trigger: the live run.
 - [ ] D324 on the author's homes: end the Mac's leftover `ducter` connection (the 2026-11-13 trial's, made by the
       Mac's own nmem login) so hel alone reads the mailbox: hel's Settings › 和你的其他 agent 通信 › 只留这台, or on the
       Mac `nmem bridge connections revoke <the id that isn't hel's>` and `nmem agents context clear --name ducter`.

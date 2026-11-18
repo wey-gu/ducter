@@ -22,6 +22,61 @@ const memMin = "0.10.118"
 
 const memSite = "https://mem.nowledge.co"
 
+// memNames is the first nmem that asks Mem who sent a message and what it
+// answers (D364, Mem #10278, research/134).
+const memNames = "0.10.120"
+
+// nmemOlder says whether version v (major.minor.patch, nothing after) is
+// before min. An unreadable version is never older: nothing is offered.
+func nmemOlder(v, min string) bool {
+	num := func(s string) ([3]int, bool) {
+		var out [3]int
+		parts := strings.Split(strings.TrimPrefix(strings.TrimSpace(s), "v"), ".")
+		if len(parts) != 3 {
+			return out, false
+		}
+		for i, p := range parts {
+			n := 0
+			if p == "" {
+				return out, false
+			}
+			for _, ch := range p {
+				if ch < '0' || ch > '9' {
+					return out, false
+				}
+				n = n*10 + int(ch-'0')
+			}
+			out[i] = n
+		}
+		return out, true
+	}
+	a, ok1 := num(v)
+	b, ok2 := num(min)
+	if !ok1 || !ok2 {
+		return false
+	}
+	for i := 0; i < 3; i++ {
+		if a[i] != b[i] {
+			return a[i] < b[i]
+		}
+	}
+	return false
+}
+
+// peersNamesUpdate (D364): on the connected Talk with your other agents
+// pane, an nmem older than memNames while Mem says a newer one is out:
+// Mem's update, offered there with what it gives the pane. Nil otherwise.
+// The web's: peersNamesUpdate (apps/web/src/mem-view.ts).
+func peersNamesUpdate(b *protocol.BridgeView) *memUpd {
+	if b == nil || b.State != "connected" || !nmemOlder(b.Version, memNames) {
+		return nil
+	}
+	if u := memUpdate(b); u != nil && (u.Kind == "newer" || u.Kind == "app") {
+		return u
+	}
+	return nil
+}
+
 // memPhase is where the partner's memory stands: off, missing, install,
 // installing, sign_in, signing_in, closed (D329: the Mem app on the home is
 // closed), or on (Mem answers).

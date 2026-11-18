@@ -231,11 +231,13 @@ export function followCandidates(events: LogEvent[], now: number): OutOp[] {
     if (e.kind !== "bridge_msg") continue;
     const b = e.body as Msg;
     if (b.direction === "in" && b.inReplyTo) answered.add(b.inReplyTo);
-    if (b.direction === "in" && !b.inReplyTo && b.mine && !b.agent && !b.state && e.ts > unlinked) unlinked = e.ts;
+    // D364: a message Mem marks as linkable (it carried `in_reply_to`) and that has no parent answers nothing.
+    if (b.direction === "in" && !b.inReplyTo && !b.linked && b.mine && !b.agent && !b.state && e.ts > unlinked) unlinked = e.ts;
     if (b.direction === "out" && b.state === "followed") followed.add(b.messageId);
   }
-  // nmem 0.10.118 links no reply to what it answers and names no sender: after a message to such an
-  // agent, anything an unnamed own agent wrote since may be the answer. Unsure, Ducter stays quiet.
+  // nmem 0.10.118/0.10.119 link no reply to what it answers and name no sender: after a message to such
+  // an agent, anything an unnamed own agent wrote since may be the answer. Unsure, Ducter stays quiet.
+  // D364: once Mem links replies (nmem 0.10.120+), only an unlinked-shape message counts here.
   const maybeAnswered = (o: OutOp) => o.last.mine && !o.last.agent && !!unlinked && unlinked > o.sentTs!;
   return [...foldOut(events).values()]
     .filter((o) => o.state === "sent" && o.last.decisionId && o.last.messageId && o.sentTs)

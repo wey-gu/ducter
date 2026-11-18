@@ -135,11 +135,11 @@ async function preflightConnected(): Promise<boolean> {
   const recent = ver[0]! > 0 || ver[1]! > 10 || (ver[1] === 10 && ver[2]! >= 118);
   say(`  ${recent ? "✓" : "✗"} nmem ${m ? m[0] : "(unknown)"} has \`bridge connections\` (0.10.118+)`);
   if (!recent) return false;
-  // D294: Mem #10278 (sender, in_reply_to, mailbox_available) is on Mem Cloud since 2026-11-17 and
-  // reaches the CLI after 0.10.119 (released 11-14, before the merge). Said, never a stop: without it
-  // S2's "a reply to ours" check fails on Mem's side (B17), the rest runs.
-  const presents = ver[0]! > 0 || ver[1]! > 10 || (ver[1] === 10 && ver[2]! > 119);
-  say(`  ${presents ? "✓" : "–"} nmem ${m![0]} ${presents ? "carries" : "predates"} Mem's sender and in_reply_to (after 0.10.119)`);
+  // D294, D364: Mem #10278 (sender, in_reply_to, mailbox_available) is on Mem Cloud since 2026-11-17;
+  // nmem 0.10.120 (PyPI 2026-11-16) is the first CLI that asks for it (research/134). Said, never a
+  // stop: without it S2's "a reply to ours" check fails on Mem's side (B17), the rest runs.
+  const presents = ver[0]! > 0 || ver[1]! > 10 || (ver[1] === 10 && ver[2]! >= 120);
+  say(`  ${presents ? "✓" : "–"} nmem ${m![0]} ${presents ? "carries" : "predates"} Mem's sender and in_reply_to (0.10.120+)`);
   let space = arg("space-id");
   if (!space) {
     const s = await nm(["bridge", "setup"]); // passive, no context: the user's places
@@ -361,7 +361,7 @@ async function main() {
     await settle(partner);
     seq = show(core, seq);
     // The answer arrived at all (Ducter's side), and Mem linked it to ours (Mem's side: nmem 0.10.119's
-    // `open` carries no in_reply_to, B17 in research/66 §7–8; Mem #10278 is on Cloud, its CLI comes after 0.10.119).
+    // `open` carries no in_reply_to, B17 in research/66 §7–8; nmem 0.10.120 asks for #10278's shape, D364).
     const answer = !!sent && ins().some((b) => b.messageId && core.log.read({ stream: "channel", kinds: ["bridge_msg"], limit: 5000 }).find((e) => (e.body as Bodies["bridge_msg"]).messageId === b.messageId)!.seq > before2);
     check("s2", "an answer came in after ours", answer);
     check("s2", "the answer came back as a reply to ours (Mem links it: B17)", !!sent && ins().some((b) => b.inReplyTo === sent.messageId));
@@ -386,8 +386,11 @@ async function main() {
     user("在吗，CI 那边怎么样");
     await settle(partner);
     seq = show(core, seq);
+    // The follow-through line is the code's (D110), marked once as "followed"; the partner's own answer to
+    // "怎么样" may mention the silence too (2026-11-18: "…也还没回我…"), which is not a second line.
     const said = saidSince(from).filter((t) => FOLLOW.test(t));
-    check("s3", "exactly one follow-through line, which never says 'reminded'", said.length === 1 && !/提醒/.test(said[0]!));
+    const marks = core.log.read({ stream: "channel", fromSeq: from + 1, kinds: ["bridge_msg"], limit: 100 }).filter((e) => (e.body as Bodies["bridge_msg"]).state === "followed").length;
+    check("s3", "exactly one follow-through line, which never says 'reminded'", marks === 1 && said.length >= 1 && !said.some((t) => /提醒/.test(t)));
     offset += 60 * 60_000;
     const from2 = core.log.head();
     user("好");
@@ -445,6 +448,9 @@ async function main() {
     say(`\n## Mailbox ledger (fake Bridge state)\n`);
     for (const m of ledger()) say(`  ${m.id} ${m.from} → ${m.to}${m.in_reply_to ? ` (reply to ${m.in_reply_to})` : ""}: ${m.body.replace(/\n/g, " ").slice(0, 200)}`);
   }
+  // D364: whether Mem's linked shape reached Ducter: an original that came in says `in_reply_to: null`.
+  const originals = ins().filter((b) => !b.inReplyTo);
+  if (originals.length) say(`\n  ${originals.some((b) => b.linked) ? "✓" : "–"} Mem marks an original as one (in_reply_to: null, nmem 0.10.120+; D364 keeps it out of D249's maybe-answered rule)`);
   say(`\nmodels: partner ${MODEL}, peer ${PEER_MODEL} · ${REAL ? `REAL nmem, the trial's own identity ${PERSONA_AGENT} + native Claude Code peer` : "fake Bridge"} · ${stamp()} · tasks opened ${fr.opened.length}`);
   await partner.close().catch(() => {});
   await core.stop().catch(() => {});

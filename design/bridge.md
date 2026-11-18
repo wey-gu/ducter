@@ -1,10 +1,10 @@
 # Bridge: Ducter and the Agents It Didn't Start
 
-> Design note · 2026-11-09, updated 2026-11-16 · Principles 1, 7, 12, 14, 17, 18 · Decided: D105–D111 (outbound,
+> Design note · 2026-11-09, updated 2026-11-18 · Principles 1, 7, 12, 14, 17, 18 · Decided: D105–D111 (outbound,
 > the outgoing ledger, the result reply, names, copy, follow-through, the Mem asks), D162 (the live check and the
-> real shapes), D163–D164 (beyond itself: X1–X3), D170 (X1, X2 and the Settings switch, built), D171 (the persona's Space), D205 (the persona connects itself with one tap), D225 (the released Bridge; the home's own Mem put in, updated and signed in from the same row), D324 (one home answers a partner's mailbox; the trial as its own identity), D333 (the partner's own tools only, 查看来信, the card says where it reads), D334 (the address is the identity, not the Space: every Space read, replies in the message's, a teammate's first message is a card), D338 (the card names only the Spaces read; a Space Mem answers 404 for is said and backed off; no connection per Space); still open: J-Q1–3, J-Q8, J-Q14 ·
+> real shapes), D163–D164 (beyond itself: X1–X3), D170 (X1, X2 and the Settings switch, built), D171 (the persona's Space), D205 (the persona connects itself with one tap), D225 (the released Bridge; the home's own Mem put in, updated and signed in from the same row), D324 (one home answers a partner's mailbox; the trial as its own identity), D333 (the partner's own tools only, 查看来信, the card says where it reads), D334 (the address is the identity, not the Space: every Space read, replies in the message's, a teammate's first message is a card), D338 (the card names only the Spaces read; a Space Mem answers 404 for is said and backed off; no connection per Space), D364 (nmem 0.10.120's linked shape: an original is not an answer; the update offered on the pane); still open: J-Q1–3, J-Q8, J-Q14 ·
 > Evidence: `research/31` (public), `research/37` (dogfood, §6 the live check), `research/66` (the release, the live
-> run, Mem on a home without it), private `31` and `10`.
+> run, Mem on a home without it), `research/134` (nmem 0.10.120), private `31` and `10`.
 >
 > Nowledge Bridge is Mem's agent mailbox. This note describes how Ducter uses it. All of it is in `main`:
 > receive, ask and reply, the linked result reply (J2, D107), outbound messages through a card (J4, D105), the
@@ -19,6 +19,14 @@
 > lacks both fields; the trial reruns when a release carries them, as its own throwaway identity (D324). 2026-11-17 (D294, research/66 §8): Mem Cloud now runs the fix (#10278), but
 > it is a representation the CLI asks for, and 0.10.119 predates it; Ducter already reads `sender`, `in_reply_to`
 > and `mailbox_available`, and retries Mem's "can't right now" briefly, never as a second copy.
+> **2026-11-18 (D364, research/134): nmem 0.10.120 (PyPI 2026-11-16) is the first CLI that asks for #10278's
+> shape**, so the live rerun is no longer blocked on Mem; it is the author's step ("Try it live"). Ducter reads Mem's
+> `in_reply_to: null` as "an original, not an answer" (D249's maybe-answered rule keeps only the old shape), and
+> Settings › 和你的其他 agent 通信 offers Mem's update, by what it gives, on a connected home still before 0.10.120.
+> Not in 0.10.120: one inbox across Spaces (#10402) and an inbox long-poll, so D334's per-Space contexts, D338's
+> back-off and D335's cadence stay. Since D332 the person's own home connects by itself once Mem is ready; what
+> "until the live trial passes" still holds back is the wording here and in the roadmap, and D249 (5)'s rule for
+> the old shape.
 
 ## Connecting the persona (D205)
 
@@ -777,6 +785,26 @@ made (revoke, `agents context clear`, `agents delete`); `--cleanup` removes what
 own partner and mailbox are never used, so it runs any time; D258's guard and `--share-mailbox` are gone. Built
 and tested with the fake nmem only; whether Mem connects a freshly enrolled identity at once is INFERRED until
 the first real run (research/66 §9).
+
+**Status 2026-11-18 (D364, research/134): ready for the author.** nmem 0.10.120 carries Mem's linked shape; this
+Mac still has 0.10.119 (Mem says `pipx upgrade nmem-cli`). The run, on the Mac, from the repo:
+
+```sh
+pipx upgrade nmem-cli && nmem --version            # 0.10.120 or later
+bun run bridge:live -- --connected                 # read-only: ✓ 0.10.120 carries sender and in_reply_to, ✓ one personal place
+bun run bridge:live -- --connected --real          # S1, S2, S3, X1, haiku on both sides (about 10 min)
+bun run bridge:live -- --cleanup                   # only if a run crashed: finds nothing otherwise
+```
+
+What `--real` writes to Mem, all removed at the end: one throwaway identity `ducter-trial-<stamp>-<hex>` ("Ducter
+trial", source app `ducter-trial`; its ledger under `~/dev/ducter-evidence/bridge/` first), its connection in Only me
+(`connections connect --space-id <Only me> --agent-id <it> --context <it>`), the peer's native Claude Code session
+bound with `bridge session --host claude-code --session-id <fresh uuid> prepare`, and the messages of S1–X1 between
+those two only. The partner's own `ducter` identity, its connection on hel and its mailbox are never used. The gate:
+S2 5/5 with "the answer came back as a reply to ours", and the closing line "✓ Mem marks an original as one". Then
+D249 (5)'s rule goes for good and the "until the live trial passes" wording leaves this note and the roadmap. If Mem
+refuses the fresh identity (`feature_disabled`, `cloud_agent_context_authority_denied`), the run stops before any
+message and says so; nothing else is tried.
 
 **Status 2026-11-17 (D294, research/66 §8).** Not rerun live: the dry preflight passes the version, the one
 personal place and the persona's connection, then stops at a second active `ducter` connection (hel's home reads

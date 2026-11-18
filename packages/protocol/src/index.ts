@@ -552,6 +552,9 @@ export interface Bodies {
     to?: string;
     text: string;
     inReplyTo?: string;
+    // D364, in: Mem's linked shape (nmem 0.10.120+) said `in_reply_to: null`: an original, not an
+    // answer to anything Ducter sent (so D249's maybe-answered rule leaves it out).
+    linked?: boolean;
     sentAt?: string;
     taskId?: string;
     decisionId?: string;

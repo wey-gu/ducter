@@ -65,6 +65,9 @@ heard of a subagent.
     following up on silence (S3) 3 of 3, an agent asking for your call (X1) 3 of 3. The misses: a card
     once named you in the third person (model wording), and an answer that Mem didn't yet link to the
     question it answers.
+  - 2026-11-18: Mem's command line 0.10.120 is the first to ask for linked answers and named senders,
+    so the live rerun is ready to run; Ducter no longer mistakes a new message for the answer it waits
+    on, and Settings › Talk with your other agents offers Mem's update where it is older.
   - 2026-11-17: Mem Cloud now links answers and names senders, but the newest Mem command line
     (0.10.119) predates that, so the live rerun waits on Mem's next release. The trial now runs as its
     own throwaway identity, made for the run and removed after it, so it never touches your partner's

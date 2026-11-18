@@ -122,6 +122,18 @@ more. A task never saves memories itself; it can suggest something worth keeping
 partner decides. Tasks in a browser get none of it, so a web page can't ask for it. Turn off
 **Remember things** and tasks get no memory: the plugin is switched off inside them too.
 
+**Is it working?** **Settings › Memory** says how your Nowledge Mem is doing, as Nowledge Mem
+itself sees it: **Connected and working** when all is well. If something is wrong it says the one
+thing, with the one button that fixes it: **Sign in again** when its sign-in stopped working,
+**Check again** when it can't be reached, **Update** when its command line is too old to say, and
+**Connect** when Claude Code or Codex on this computer isn't connected to it yet. Ducter only reads
+this; it never shows your key.
+
+**Putting the plugin in.** Each AI agent's line on your computer's card says whether it has the
+Nowledge Mem plugin. For Claude Code and Codex, **Install** runs Nowledge Mem's own command and
+takes seconds; start the agent again to use it. If that can't do it, and for other agents, Ducter
+starts one task there that follows Nowledge Mem's own setup guide.
+
 Every memory records that it came from Ducter, which partner wrote it (its own name in
 Nowledge Mem, the same for its tasks) and which conversation it came from, so you can always
 trace it back. If you already chose an AI identity for Nowledge Mem on this computer, Ducter

@@ -1,7 +1,7 @@
 // D257: what Settings › 记忆 / Memory and › 和你的其他 agent 通信 / Talk with your other agents (D332) show, from the
 // settings frame (settings.memory, mem, bridge). Pure, so the phone, the wide page and the tests
 // read it the same way; the Mac has the same rules (apps/desktop/internal/views/memory.go).
-import type { BridgeView, MemView, PeersSettings } from "@ducter/protocol";
+import type { BridgeView, MemHealth, MemView, PeersSettings } from "@ducter/protocol";
 import { compareVersions, isVersion } from "@ducter/protocol/src/version.ts";
 
 /** D225: the first nmem with `bridge connections` (bridge-link.ts BRIDGE_CONNECT_SINCE). */
@@ -58,6 +58,43 @@ export function memUpdate(b: BridgeView | undefined): MemUpdate | undefined {
   if (b.upkeep?.kind === "update") return { kind: "newer", newer: b.newer ?? "", ...(b.version ? { version: b.version } : {}), ...(b.upkeep.detail ? { detail: b.upkeep.detail } : {}), ...(b.upkeep.kept ? { kept: true } : {}) };
   if (b.newer !== undefined) return { kind: "app", newer: b.newer, ...(b.version ? { version: b.version } : {}) };
   return undefined;
+}
+
+/**
+ * D375: what the Nowledge Mem head on Memory says about Mem's own health (its doctor on the home):
+ * unread (not read yet, or it can't tell: the plain "Connected"), ok (one calm line), or the one thing
+ * wrong with its one action: old (this nmem has no doctor; Update when Ducter can run it, and not
+ * when the update row already offers it), unreachable (Check again), signed_out (Sign in again: the
+ * link field in place), plugin (these agents aren't connected: Connect, Mem's own command; busy while
+ * it runs).
+ */
+export type MemHealthLook =
+  | { look: "unread" }
+  | { look: "ok" }
+  | { look: "old"; canUpdate: boolean }
+  | { look: "unreachable" }
+  | { look: "signed_out" }
+  | { look: "plugin"; agents: string[]; busy: boolean };
+
+export function memHealthLook(h: MemHealth | undefined, b: BridgeView | undefined, home: { harness: string; mem?: { state: string; busy?: true; fresh?: true } }[] = []): MemHealthLook {
+  if (!h) return { look: "unread" };
+  switch (h.issue) {
+    case undefined:
+      return { look: "ok" };
+    case "old":
+      // The update row already says Mem's command line is behind, with its own button.
+      return memUpdate(b) ? { look: "unread" } : { look: "old", canUpdate: !!b?.canRun };
+    case "unreachable":
+    case "signed_out":
+      return { look: h.issue };
+    case "plugin": {
+      // An agent Mem's command just put in is connected: the next read says so.
+      const agents = (h.agents ?? []).filter((a) => !home.find((x) => x.harness === a)?.mem?.fresh);
+      if (!agents.length) return { look: "ok" };
+      return { look: "plugin", agents, busy: agents.some((a) => !!home.find((x) => x.harness === a)?.mem?.busy) };
+    }
+  }
+  return { look: "unread" };
 }
 
 /** D364: the first nmem that asks Mem who sent a message and what it answers (Mem #10278, research/134). */

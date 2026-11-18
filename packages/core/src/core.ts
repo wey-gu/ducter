@@ -8,7 +8,7 @@ import { homedir, tmpdir } from "node:os";
 import { thisComputer } from "./this-computer.ts";
 import { join, resolve, sep } from "node:path";
 import { randomBytes } from "node:crypto";
-import { HARNESSES, fill, harnessName, normalizeTag, sameComputer, pickTag, words, type Bodies, type HarnessId, type LangTag, type LogEvent, type OnHand, type PartnerAsk, type Place, type TaskCard } from "@ducter/protocol";
+import { HARNESSES, MEM_CONNECT_TOOLS, fill, harnessName, normalizeTag, sameComputer, pickTag, words, type Bodies, type HarnessId, type LangTag, type LogEvent, type OnHand, type PartnerAsk, type Place, type TaskCard } from "@ducter/protocol";
 import { intlLocale, talkLang } from "./lang.ts";
 import type { CoreApi, ListedModel, MemIdentity, Partner, Runner, TaskMemoryPort } from "@ducter/protocol/src/internal.ts";
 import { migrateKeys, readKeys, scrubKeysFromEnv } from "@ducter/protocol/src/keys.ts";
@@ -53,6 +53,8 @@ import { openSettings, type SettingsStore } from "./settings.ts";
 import { createBridgeLink, nmemCall, type NmemCall } from "./bridge-link.ts";
 import { connectLinkFrom } from "./mem-cli.ts";
 import { createMemGlance } from "./mem-glance.ts";
+import { createMemHealth } from "./mem-health.ts";
+import { scrub as scrubMem } from "./worker-mem.ts";
 import { createWorkingMemory } from "./working-memory.ts";
 import { identityIdFor, readMemIdentity } from "./mem-identity.ts";
 import { openRules, type RulesStore } from "./rules.ts";
@@ -211,7 +213,7 @@ export interface CoreOptions {
   /** D363 test seams: putting agents on the home (default: the real network and npm, never in tests). */
   agentSetup?: { sys?: import("./agent-setup.ts").AgentSetupSys };
   /** D169 test seams: the Mem plugin check on the home (default: the real `nmem`, never in tests). */
-  memPlugins?: { inspectLocal?: () => Promise<Record<string, import("@ducter/protocol").MemPluginView> | undefined>; everyMs?: number; now?: () => number; connected?: () => boolean };
+  memPlugins?: { inspectLocal?: () => Promise<Record<string, import("@ducter/protocol").MemPluginView> | undefined>; everyMs?: number; now?: () => number; connected?: () => boolean; connectLocal?: (args: string[]) => Promise<{ code: number; out: string; err: string } | undefined> };
   /** D151 test seams for Ducter's own browser (false: none). */
   browser?: false | Partial<Omit<DucterBrowserOptions, "mcp" | "log" | "tasks" | "decisions" | "persona" | "dataDir">>;
   /** D217: Ducter's phone (用手机); false leaves it out (tests). */
@@ -839,6 +841,14 @@ export function startCore(opts: CoreOptions = {}): Core {
     changed: () => settings.bridgeChanged(),
   });
   settings.setGlance(() => memGlance.get(), memGlance);
+  // D375: Mem's own health on the home (its doctor) for the same page's Nowledge Mem head, gated like the glance.
+  const memHealth = createMemHealth({
+    run: opts.bridgeLink?.run ?? nmemCall({ env: opts.bridgeLink?.env }),
+    on: () => settings.get().memory && process.env.DUCTER_MEMORY !== "off" && process.env.DUCTER_BRIDGE !== "0" && !settings.memMissing() && (process.env.NODE_ENV !== "test" || !!opts.bridgeLink?.run),
+    agents: async () => ((await devicesView?.frame())?.devices ?? []).find((x) => x.home)?.harnesses.filter((h) => h.installed).map((h) => h.harness) ?? [],
+    changed: () => settings.bridgeChanged(),
+  });
+  settings.setHealth(() => memHealth.get());
   // D368: the person's Working Memory (their day's focus in Mem), for the partner's L4 and the morning note; gated like the glance.
   const wmRun = opts.workingMemory?.run ?? opts.bridgeLink?.run;
   const workingMemory = createWorkingMemory({
@@ -1044,7 +1054,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       socketsChanged: () => reachRef?.refresh(),
     },
     partners,
-    core: api, workbench, bridgeLink, decisions, runner: () => runner, devices: () => devicesView, lend: () => lendRef, settings, connections, phone, rules, loadout, accountUsage, closing, work: workFrames, newTask, updates: () => updatesRef, agents: () => agentsRef, agentSetup: (device, f) => agentSetupOp(device, f), memSetup: (device, action, link) => memSetupOp(device, action, link), updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, anywhere: () => anywhereRef, channels, proactive: () => proactiveRef, calendar: () => calendarRef, taskSources: () => taskSourcesRef, taskGroups: () => taskGroups, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets, past: { ...past, marks, persona: () => persona.id, ongoing, outside }, keys: { dataDir, ...(opts.keyFetch ? { fetch: opts.keyFetch } : {}), ...(opts.keyCanRun ? { canRun: opts.keyCanRun } : {}) }, ...(firstWordsDeps ? { firstWords: firstWordsDeps } : {}), did, ownAgents });
+    core: api, workbench, bridgeLink, decisions, runner: () => runner, devices: () => devicesView, lend: () => lendRef, settings, connections, phone, rules, loadout, accountUsage, closing, work: workFrames, newTask, updates: () => updatesRef, agents: () => agentsRef, agentSetup: (device, f) => agentSetupOp(device, f), memSetup: (device, action, link) => memSetupOp(device, action, link), updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, memHealth, anywhere: () => anywhereRef, channels, proactive: () => proactiveRef, calendar: () => calendarRef, taskSources: () => taskSourcesRef, taskGroups: () => taskGroups, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets, past: { ...past, marks, persona: () => persona.id, ongoing, outside }, keys: { dataDir, ...(opts.keyFetch ? { fetch: opts.keyFetch } : {}), ...(opts.keyCanRun ? { canRun: opts.keyCanRun } : {}) }, ...(firstWordsDeps ? { firstWords: firstWordsDeps } : {}), did, ownAgents });
   handsets.onChange(() => (devicesView?.changed(), ws.onHandChanged()));
   onHandChanged = ws.onHandChanged;
   // D156: a partner turn in flight keeps an update of the agent it thinks with waiting.
@@ -1383,6 +1393,9 @@ export function startCore(opts: CoreOptions = {}): Core {
   const memConnected = mp.connected ?? (() => !!persona.mem && !settings.memMissing());
   const memOn = () => settings.get().memory && process.env.DUCTER_MEMORY !== "off" && memConnected();
   memOnRef = memOn;
+  // D375: the home's own nmem for Mem's `connect --tool` (a test passes a fake; a test without one never runs nmem).
+  const connectNmem = agentTesting ? undefined : nmemCall({ env: opts.bridgeLink?.env, timeoutMs: 5 * 60_000 });
+  const connectLocal = mp.connectLocal ?? (connectNmem ? (args: string[]) => connectNmem(["connect", ...args]) : undefined);
   const memPlugins = createMemPlugins({
     dataDir,
     log,
@@ -1400,6 +1413,25 @@ export function startCore(opts: CoreOptions = {}): Core {
       return link.call<Record<string, import("@ducter/protocol").MemPluginView> | null>("mem_plugins", {}, 30_000).then((r) => r ?? undefined).catch(() => undefined);
     },
     devices: async () => ((await devicesView?.frame())?.devices ?? []).map((x) => ({ id: x.id, name: x.name, home: x.home, awake: x.state === "awake", harnesses: x.harnesses })),
+    // D375: Mem's own `nmem connect --tool` (on the home here; on a worker its mem_connect op).
+    ...(connectLocal || !agentTesting
+      ? {
+          connectTools: async (id: string, home: boolean, hs: string[]) => {
+            if (home) {
+              const tools = hs.flatMap((h) => (MEM_CONNECT_TOOLS[h] ? ["--tool", MEM_CONNECT_TOOLS[h]!] : []));
+              if (!tools.length || !connectLocal) return undefined;
+              const r = await connectLocal([...tools, "--on-conflict", "abort"]);
+              void memHealth.refresh();
+              if (!r) return undefined;
+              const last = scrubMem(`${r.out}\n${r.err}`).split("\n").map((l) => l.trim()).filter(Boolean).pop();
+              return { ok: r.code === 0, ...(r.code !== 0 && last ? { detail: last.slice(0, 160) } : {}) };
+            }
+            const link = workers.link(id);
+            if (!link?.online()) return undefined;
+            return link.call<{ ok: boolean; detail?: string }>("mem_connect", { harnesses: hs }, 6 * 60_000).catch(() => undefined);
+          },
+        }
+      : {}),
     ...(mp.everyMs !== undefined ? { everyMs: mp.everyMs } : agentTesting ? { everyMs: 0 } : {}),
     ...(mp.now ? { now: mp.now } : {}),
   });

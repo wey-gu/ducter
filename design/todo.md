@@ -96,8 +96,10 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
 - **D366 live (and D370):** a real prompt from Mem's Settings › Connectors › Any AI agent pasted whole and redeemed on a lent computer and on a home, `nmem doctor` passing there, and one task
   run there with Mem's plugin (its Context Bundle in, its thread captured as the persona). Trigger: the
   author's haswell after the next release (his link, his Mem).
-- **D366: `nmem connect --tool` for D169's 装上 everywhere** (research/136 G5): Mem's own command registers
-  Claude Code and Codex without a model task or a signed-in agent. Trigger: D366's live run passes.
+- **D375 live:** Mem's own `nmem connect --tool` for a Claude Code or Codex that lacks the plugin, on the
+  home and on a lent computer, and its `--on-conflict abort` against another memory integration (how it
+  reports the clash; research/144 F9); an expired key seen on Memory's head. Trigger: the author's next
+  agent without the plugin, or a key rotation.
 - **D366: Ducter's uv route on a bare home too** (D225 says "install pipx first" when none of pipx, uv or
   pip is there). Trigger: a home install that hits it.
 - **D366: the home's Mem in the Mac app reaching a lent computer** (Access Anywhere; `nmem key
@@ -107,15 +109,11 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
   partner reads `nmem --json wm read` once a day, never shown. Trigger: the author takes it.
 - **Recall across Mem's threads** (research/136 G3, research/69 K6): `memory_search` also searching
   `t search`, so "how did we fix it in Codex last week" is found. Needs the haiku eval (D175).
-- **Mem's health on Memory's head row**: the trigger below is met (`nmem doctor --json` is
-  `{checks: [{name, status, detail, tool}], failed}`, research/136 G4); build it.
 - **D304 follow-ups:** the full partner eval at merge (only the memory scenarios ran, with `--only`);
   a link to the one memory in Nowledge Mem (Open in Nowledge Mem opens Mem's site; trigger: Mem documents
   a per-memory URL or `nowledgemem://` form); the 想起了 line in chat apps (Telegram, Slack, WeChat show
   none; trigger: the author asks); the CLI's `talk` shows none either; an eval case for a task brief's
   `<from_your_other_tools>` actually read by the agent through its plugin (live, with a real plugin).
-- **Mem's health on Memory's head row:** a sign-in that expired or a link Mem refuses said there in the
-  failed ink with its one step. Trigger: `nmem doctor --json` gives a stable shape for it.
 - **Cloud or local in one flow:** when the home has the Mem app and a Cloud sign-in is offered, one calm
   choice. Trigger: a home where both exist (research first: what `nmem status` says then).
 - **Forget another tool's memory from Settings:** read-only there (D295); from a 想起了 line it can be

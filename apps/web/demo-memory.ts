@@ -6,6 +6,8 @@
 // DEMO_MEM: newer (connected, Bridge on, Mem says 0.10.121 is out; pipx copy) · on (connected, up to
 //   date) · empty (connected, nothing noted yet) · off (switched off) · fresh (no nmem on the home) ·
 //   sign_in (nmem there, not signed in) · old (0.10.116 by pipx: too old for Bridge)
+// D375: DEMO_HEALTH: what Mem's own doctor answers (made-up details): ok · unreachable · signed_out ·
+//   plugin (Claude Code here isn't connected; 接上 runs a pretend `nmem connect` for 3 s) · old (no doctor)
 // then open http://127.0.0.1:7864/app#settings=memory (or #settings=peers)
 import { startCore, stubRunner } from "./demo-core.ts";
 import { noOo } from "./demo-oo.ts";
@@ -16,9 +18,23 @@ const SPACE = "6f1c0d2e-8b4a-4d1e-9c3f-2a7b5e0d9c11";
 const ok = (j: unknown) => ({ code: 0, out: JSON.stringify(j), err: "" });
 const conn = { connection_id: "00000000-0000-4000-8000-000000000001", agent_id: "ducter", identity_birth: "00000000-0000-4000-8000-000000000900", client_label: "ducter", state: "active" };
 const version = want === "old" ? "0.10.116" : "0.10.118";
+const health = process.env.DEMO_HEALTH;
+let ccIn = false;
+const chk = (name: string, status: string, detail = "", tool: string | null = null) => ({ name, status, detail, tool });
+const doctorOut = () => {
+  const cred = chk("credential home", "pass", "/home/wei/.nowledge-mem/config.json — url https://mem.example.invalid (config), key nmem_xx…0000");
+  const up = chk("server reachable", "pass", "https://mem.example.invalid (server v0.1.0)");
+  const key = chk("api key", "pass", "authenticated probe ok");
+  const tools = [chk("Claude Code", health === "plugin" && !ccIn ? "warn" : "pass", "registered", "claude-code"), chk("Codex", "pass", "registered", "codex-cli")];
+  if (health === "unreachable") return { code: 1, out: JSON.stringify({ checks: [cred, chk("server reachable", "fail", "error sending request"), chk("api key", "warn", "skipped (server unreachable)")], failed: true }), err: "" };
+  if (health === "signed_out") return { code: 1, out: JSON.stringify({ checks: [cred, up, chk("api key", "fail", "key invalid or rotated")], failed: true }), err: "" };
+  if (health === "old") return { code: 2, out: "", err: "error: unrecognized subcommand 'doctor'" };
+  return { code: 0, out: JSON.stringify({ checks: [cred, up, key, ...tools], failed: false }), err: "" };
+};
 const run = async (args: string[]) => {
   const a = args.join(" ");
   if (want === "fresh") return undefined;
+  if (args[0] === "doctor" && health) return doctorOut();
   if (args[0] === "--version") return ok(`nmem ${version}`);
   if (a.includes("bridge connections --help")) return { code: want === "old" ? 2 : 0, out: "", err: "" };
   if (a === "status" && want === "closed") return { code: 1, out: "", err: "error: connecting to http://127.0.0.1:14242 for /health/details: error sending request: tcp connect error: Connection refused (os error 61)" };
@@ -49,7 +65,18 @@ const exec = async () => new Promise<never>(() => {}); // a tap stays "updating�
 
 let shift = 0;
 const clock = { now: () => Date.now() - shift, setTimeout: (fn: () => void, ms: number) => setTimeout(fn, ms), clearTimeout: (h: unknown) => clearTimeout(h as ReturnType<typeof setTimeout>) };
-const core = startCore({ ooSource: noOo, clock, persona: { id: "default", name: zh ? "小鸭" : "Duckie", identity: "" }, hostname: process.env.DUCTER_HOST || "127.0.0.1", update: { homeName: "home-server" }, bridgeLink: { run: run as never, env: {}, sys, exec, ...(want === "closed" ? { memApp: () => "/Applications/Nowledge Mem.app" } : {}) } as never });
+const healthOpts = health
+  ? {
+      deviceProbes: { cua: async () => ({ missing: "no" }), native: async () => undefined, kind: async () => "server", harnesses: async () => [{ harness: "claude-code", installed: true, loggedIn: true, version: "2.1.322", how: "installer" }, { harness: "codex", installed: true, loggedIn: true, version: "0.169.1", how: "npm" }] },
+      memPlugins: {
+        inspectLocal: async () => ({ "claude-code": health === "plugin" && !ccIn ? { state: "absent" } : { state: "installed", version: "0.7.36" }, codex: { state: "installed", version: "0.7.36" } }),
+        everyMs: 0,
+        connected: () => true,
+        connectLocal: async () => (await new Promise((r) => setTimeout(r, 3000)), (ccIn = true), { code: 0, out: "{}", err: "" }),
+      },
+    }
+  : {};
+const core = startCore({ ...(healthOpts as object), ooSource: noOo, clock, persona: { id: "default", name: zh ? "小鸭" : "Duckie", identity: "" }, hostname: process.env.DUCTER_HOST || "127.0.0.1", update: { homeName: "home-server" }, bridgeLink: { run: run as never, env: {}, sys, exec, ...(want === "closed" ? { memApp: () => "/Applications/Nowledge Mem.app" } : {}) } as never });
 core.setRunner(stubRunner(core));
 core.setPartner({ onTrigger() {} });
 if (want !== "fresh" && want !== "sign_in") core.persona.mem = { agentId: "ducter", owned: true };

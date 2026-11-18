@@ -8,7 +8,7 @@ import { A } from "./app.ts";
 import { BrandMark } from "./brand.tsx";
 import { Btn } from "./controls.tsx";
 import { harnessName } from "./format.ts";
-import { memRowLook, unconnected } from "./worker-mem-view.ts";
+import { memRowHealth, memRowLook, unconnected } from "./worker-mem-view.ts";
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
 /** The agents as words: "Codex 和 Claude Code" / "Codex and Claude Code". */
@@ -31,6 +31,7 @@ export function MemOnDevice({ dv }: { dv: DeviceView }) {
   const [link, setLink] = useState("");
   if (!m) return null;
   const look = memRowLook(m);
+  const health = memRowHealth(m); // D375
   const awake = dv.state === "awake";
   const home = A.devices?.find((d) => d.home)?.name ?? "";
   const left = unconnected(dv);
@@ -39,10 +40,11 @@ export function MemOnDevice({ dv }: { dv: DeviceView }) {
     look === "ready" ? t("wmem.ready")
     : look === "installing" ? (m.step?.pct ? `${t("wmem.installing")} ${m.step.pct}%` : t("wmem.installing"))
     : look === "connecting" ? t("wmem.connecting", dv.name)
+    : health ? t(`wmem.health.${health}`, dv.name)
     : look === "sign_in" ? t("wmem.signin.line")
     : look === "failed" ? t(`wmem.failed.${m.step?.reason ?? "failed"}`, dv.name)
     : t("wmem.absent", dv.name);
-  const signIn = (look === "sign_in" || (look === "failed" && m.state === "sign_in")) && awake;
+  const signIn = ((look === "sign_in" && health !== "unreachable" && health !== "old") || (look === "failed" && m.state === "sign_in")) && awake;
   const go = () => {
     if (!link.trim()) return;
     A.memSetup(dv.id, "connect", link.trim());
@@ -58,12 +60,16 @@ export function MemOnDevice({ dv }: { dv: DeviceView }) {
         </span>
         <span class="ag-t">
           <b>Nowledge Mem</b>
-          <small class={look === "failed" ? "warn" : look === "ready" ? "ok" : ""}>{word}</small>
+          <small class={look === "failed" || health ? "warn" : look === "ready" ? "ok" : ""}>{word}</small>
         </span>
         {look === "absent" && m.installable ? (
           <Btn kind="primary" size="sm" label={t("wmem.install")} about="Nowledge Mem" disabled={!awake} onClick={() => A.memSetup(dv.id, "install")} />
         ) : look === "failed" && m.state === "absent" ? (
           <Btn kind="secondary" size="sm" label={t("wmem.retry")} about="Nowledge Mem" disabled={!awake} onClick={() => A.memSetup(dv.id, "install")} />
+        ) : health === "unreachable" ? (
+          <Btn kind="secondary" size="sm" label={t("wmem.again")} about="Nowledge Mem" disabled={!awake} onClick={() => A.memSetup(dv.id, "look")} />
+        ) : health === "old" && m.ours ? (
+          <Btn kind="primary" size="sm" label={t("wmem.update")} about="Nowledge Mem" disabled={!awake} onClick={() => A.memSetup(dv.id, "install")} />
         ) : look === "ready" && left.length ? (
           <Btn kind="secondary" size="sm" label={t("wmem.connect")} about="Nowledge Mem" disabled={!awake} onClick={() => A.memSetup(dv.id, "connect")} />
         ) : null}
@@ -72,6 +78,7 @@ export function MemOnDevice({ dv }: { dv: DeviceView }) {
       {look === "absent" && <p class="wmem-why">{t(m.installable ? "wmem.absent.why" : "wmem.absent.none", dv.name)}</p>}
       {look === "absent" && m.installable && <p class="wmem-why soft">{t("ag.where")}</p>}
       {look === "ready" && <p class="wmem-why">{readyWords(dv.name, installed, left)}</p>}
+      {health === "old" && !m.ours && <p class="wmem-why">{t("wmem.health.old.how", dv.name)}</p>}
       {signIn && (
         <div class="ag-login wmem-signin">
           <p>{A.bridge?.where === "local" ? t("wmem.signin.local", home, dv.name) : t("wmem.signin.how")}</p>

@@ -153,6 +153,9 @@ func (a *App) answeredWords(d *store.DecisionState) string {
 	if d.Call != nil && ((d.Resolved != nil && d.Resolved.Now) || (d.Resolved == nil && d.Pending == "go" && a.ph().now[d.DecisionID])) {
 		return a.L.T("call.now.done") // D208: Call now
 	}
+	if d.Resolved != nil && d.Resolved.Settled && d.MemPlugin != nil {
+		return a.L.T("memp.card.done") // D375: D169's offer closed by itself once the plugin was in
+	}
 	opt, text, by := d.Pending, "", ""
 	if d.Resolved != nil {
 		opt, text, by = d.Resolved.Option, d.Resolved.Text, d.Resolved.By

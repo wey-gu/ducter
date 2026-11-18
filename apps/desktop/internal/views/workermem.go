@@ -33,6 +33,20 @@ func memRowLook(m *protocol.DeviceMemView) string {
 	return m.State
 }
 
+// memRowHealth is what Mem's own doctor there says is wrong when the row
+// would otherwise just ask to sign in (D375, the web's memRowHealth):
+// unreachable | signed_out | old, or "".
+func memRowHealth(m *protocol.DeviceMemView) string {
+	if memRowLook(m) != "sign_in" || m.Health == nil {
+		return ""
+	}
+	switch m.Health.Issue {
+	case "unreachable", "signed_out", "old":
+		return m.Health.Issue
+	}
+	return ""
+}
+
 // memUnconnected is the agents Mem connects by itself (Codex, Claude Code)
 // that are installed there and not connected to it yet.
 func memUnconnected(dv *protocol.DeviceView) []string {
@@ -106,6 +120,7 @@ func (a *App) memOnDevice(c *ui.Context, dv *protocol.DeviceView) {
 	a.drainDeviceResults()
 	m := dv.Mem
 	look := memRowLook(m)
+	health := memRowHealth(m) // D375
 	awake := dv.State == protocol.DeviceAwake
 	name := a.deviceNameIn(dv)
 	if look == "installing" || look == "connecting" {
@@ -125,6 +140,9 @@ func (a *App) memOnDevice(c *ui.Context, dv *protocol.DeviceView) {
 		word = a.L.T("wmem.connecting", name)
 	case "sign_in":
 		word = a.L.T("wmem.signin.line")
+		if health != "" {
+			word, ink = a.L.T("wmem.health."+health, name), t.Failed.Ink
+		}
 	case "failed":
 		reason := "failed"
 		if m.Step.Reason != "" {
@@ -153,6 +171,14 @@ func (a *App) memOnDevice(c *ui.Context, dv *protocol.DeviceView) {
 				if awake && a.buttonFor(c, a.L.T("wmem.retry"), "Nowledge Mem", btnSecondary, t.ControlSM, t.Surface) {
 					a.memSetupReq(dv, "install", "")
 				}
+			case health == "unreachable":
+				if awake && a.buttonFor(c, a.L.T("wmem.again"), "Nowledge Mem", btnSecondary, t.ControlSM, t.Surface) {
+					a.memSetupReq(dv, "look", "")
+				}
+			case health == "old" && m.Ours:
+				if awake && a.buttonFor(c, a.L.T("wmem.update"), "Nowledge Mem", btnPrimary, t.ControlSM, t.Surface) {
+					a.memSetupReq(dv, "install", "")
+				}
 			case look == "ready" && len(memUnconnected(dv)) > 0:
 				if awake && a.buttonFor(c, a.L.T("wmem.connect"), "Nowledge Mem", btnSecondary, t.ControlSM, t.Surface) {
 					a.memSetupReq(dv, "connect", "")
@@ -173,7 +199,10 @@ func (a *App) memOnDevice(c *ui.Context, dv *protocol.DeviceView) {
 		case "ready":
 			a.infoText(c, a.memReadyWords(dv))
 		}
-		if awake && (look == "sign_in" || (look == "failed" && m.State == "sign_in")) {
+		if health == "old" && !m.Ours {
+			a.infoText(c, a.L.T("wmem.health.old.how", name))
+		}
+		if awake && ((look == "sign_in" && health != "unreachable" && health != "old") || (look == "failed" && m.State == "sign_in")) {
 			a.memSignIn(c, dv)
 		}
 		if r := a.wm.answer; r != nil && r.Device == dv.ID {

@@ -11,6 +11,9 @@ var zhMemPlugin = Table{
 	"memp.review.multiple": "Nowledge Mem 装了不止一份，需要检查",
 	"memp.review.unclear":  "不确定 Nowledge Mem 装好没有，需要检查",
 	"memp.setting":         "正在安装 Nowledge Mem…",
+	"memp.busy":            "正在用 Nowledge Mem 自己的命令安装…",
+	"memp.fresh":           "Nowledge Mem 装好了，重开 %s 才用得上",
+	"memp.means.direct":    "会在 %[2]s 上用 Nowledge Mem 自己的命令来装，几秒钟：只改 %[1]s 自己的设置，不动 Ducter。装不上的话，再新建一件事照它的官方说明来装。装好以后，重开 %[1]s 才用得上。",
 	"memp.btn.install":     "安装",
 	"memp.btn.update":      "更新",
 	"memp.btn.review":      "检查",
@@ -27,6 +30,7 @@ var zhMemPlugin = Table{
 	"memp.card.question":   "%[2]s 上的 %[1]s 还没装 Nowledge Mem。装上以后，我在那儿做事和你自己用 %[1]s 时都记得你；会改 %[1]s 自己的设置。",
 	"memp.card.go":         "安装",
 	"memp.card.hold":       "暂不安装",
+	"memp.card.done":       "已装好",
 }
 
 var enMemPlugin = Table{
@@ -37,6 +41,9 @@ var enMemPlugin = Table{
 	"memp.review.multiple": "Nowledge Mem is installed more than once; worth a look",
 	"memp.review.unclear":  "Can't tell if Nowledge Mem is set up; worth a look",
 	"memp.setting":         "Installing Nowledge Mem…",
+	"memp.busy":            "Installing with Nowledge Mem's own command…",
+	"memp.fresh":           "Nowledge Mem is in; start %s again to use it",
+	"memp.means.direct":    "Nowledge Mem's own command does it on %[2]s in seconds, changing only %[1]s's own settings, nothing of Ducter's. If it can't, a task there follows Nowledge Mem's own setup guide. Start %[1]s again afterwards to use it.",
 	"memp.btn.install":     "Install",
 	"memp.btn.update":      "Update",
 	"memp.btn.review":      "Sort it out",
@@ -53,6 +60,7 @@ var enMemPlugin = Table{
 	"memp.card.question":   "%[1]s on %[2]s doesn't have Nowledge Mem. With it, my work there and your own %[1]s sessions both remember you; it changes %[1]s's own settings.",
 	"memp.card.go":         "Install",
 	"memp.card.hold":       "Not now",
+	"memp.card.done":       "Installed",
 }
 
 func init() {

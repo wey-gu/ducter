@@ -114,6 +114,59 @@ type memUpd struct {
 	Kept              bool
 }
 
+// memHealthLook is what the Nowledge Mem head on Memory says about Mem's own
+// health (D375), the web's memHealthLook (mem-view.ts): Look unread (not read
+// yet, or it can't tell: the plain "Connected") | ok | old (CanUpdate, and
+// not when the update row offers it) | unreachable | signed_out | plugin
+// (Agents not connected; Busy while Mem's own command runs).
+type memHealthView struct {
+	Look      string
+	CanUpdate bool
+	Agents    []string
+	Busy      bool
+}
+
+func memHealthLook(h *protocol.MemHealth, b *protocol.BridgeView, home []protocol.DeviceHarness) memHealthView {
+	if h == nil {
+		return memHealthView{Look: "unread"}
+	}
+	switch h.Issue {
+	case "":
+		return memHealthView{Look: "ok"}
+	case "old":
+		if memUpdate(b) != nil {
+			return memHealthView{Look: "unread"}
+		}
+		return memHealthView{Look: "old", CanUpdate: b != nil && b.CanRun}
+	case "unreachable", "signed_out":
+		return memHealthView{Look: h.Issue}
+	case "plugin":
+		of := func(a string) *protocol.MemPluginView {
+			for _, x := range home {
+				if x.Harness == a {
+					return x.Mem
+				}
+			}
+			return nil
+		}
+		var agents []string
+		busy := false
+		for _, a := range h.Agents {
+			m := of(a)
+			if m != nil && m.Fresh {
+				continue
+			}
+			agents = append(agents, a)
+			busy = busy || (m != nil && m.Busy)
+		}
+		if len(agents) == 0 {
+			return memHealthView{Look: "ok"}
+		}
+		return memHealthView{Look: "plugin", Agents: agents, Busy: busy}
+	}
+	return memHealthView{Look: "unread"}
+}
+
 func memUpdate(b *protocol.BridgeView) *memUpd {
 	if b == nil {
 		return nil

@@ -432,7 +432,7 @@ func (a *App) memLink(c *ui.Context, b *protocol.BridgeView) {
 	t := a.T
 	m := a.S.Mem
 	a.group(c, "mem-app", "", "", func() {
-		a.headRow(c, "mem-app", a.memTile(c, false), "Nowledge Mem", a.L.T("mem.app.on"), sideDone, nil)
+		a.memHealthHead(c, b)
 		if w := a.memWhere(b); w != "" {
 			a.tileRow(c, "mem-where", nil, a.L.T("mem.app.kept.title"), w, nil)
 		}
@@ -466,6 +466,113 @@ func (a *App) memLink(c *ui.Context, b *protocol.BridgeView) {
 		})
 	})
 	_ = t
+}
+
+// memHealthHead is Nowledge Mem's head with what Mem's own doctor on the home
+// says (D375): one calm line when all is well, else the one thing wrong in the
+// failed ink and its one action (更新, 再看一次, 重新登录 with the link field
+// in place, 接上 by Mem's own command). Until the first answer it says
+// "Connected" as before; the page never waits for it.
+func (a *App) memHealthHead(c *ui.Context, b *protocol.BridgeView) {
+	t := a.T
+	var health *protocol.MemHealth
+	if a.S.Mem != nil {
+		health = a.S.Mem.Health
+	}
+	var home *protocol.DeviceView
+	for i := range a.S.Devices {
+		if a.S.Devices[i].Home {
+			home = &a.S.Devices[i]
+		}
+	}
+	var hs []protocol.DeviceHarness
+	if home != nil {
+		hs = home.Harnesses
+	}
+	h := memHealthLook(health, b, hs)
+	homeName := a.memHome()
+	line, tone := a.L.T("mem.app.on"), sideDone
+	var act func()
+	switch h.Look {
+	case "ok":
+		line = a.L.T("mem.health.ok")
+	case "old":
+		line, tone = a.L.T("mem.health.old"), sideFailed
+		if h.CanUpdate {
+			act = func() {
+				if a.buttonFor(c, a.L.T("mem.health.old.go"), "Nowledge Mem", btnSecondary, t.ControlSM, t.Surface) && b != nil {
+					b.State = "updating"
+					a.send(protocol.BridgeAction{T: "bridge_mem_install"})
+				}
+			}
+		}
+	case "unreachable":
+		line, tone = a.L.T("mem.health.unreachable", homeName), sideFailed
+		act = func() {
+			if a.buttonFor(c, a.L.T("mem.health.again"), "Nowledge Mem", btnSecondary, t.ControlSM, t.Surface) {
+				a.send(protocol.MemHealthReq{T: "mem_health"})
+			}
+		}
+	case "signed_out":
+		line, tone = a.L.T("mem.health.signed_out"), sideFailed
+		if !a.memReSign {
+			act = func() {
+				if a.buttonFor(c, a.L.T("mem.health.signin"), "Nowledge Mem", btnPrimary, t.ControlSM, t.Surface) {
+					a.memReSign = true
+				}
+			}
+		}
+	case "plugin":
+		who := a.memAgentsWords(h.Agents)
+		if h.Busy {
+			line, tone = a.L.T("mem.health.plugin.busy", who), sideMuted
+			c.After(500e6)
+		} else {
+			line, tone = a.L.T("mem.health.plugin", who), sideFailed
+			if home != nil {
+				act = func() {
+					if a.buttonFor(c, a.L.T("mem.health.plugin.go"), spoken(a.L, who, "Nowledge Mem"), btnPrimary, t.ControlSM, t.Surface) {
+						for _, x := range h.Agents {
+							a.send(protocol.MemPluginInstall{T: "mem_plugin_install", Device: home.ID, Harness: x})
+						}
+					}
+				}
+			}
+		}
+	}
+	a.headRow(c, "mem-app", a.memTile(c, tone == sideFailed), "Nowledge Mem", line, tone, act)
+	if h.Look == "plugin" && !h.Busy {
+		a.textBlock(c, "mem-health-why", func() { a.note(c, a.L.T("mem.health.plugin.why")) })
+	}
+	if h.Look == "signed_out" && a.memReSign {
+		a.textBlock(c, "mem-resign", func() {
+			help := a.L.T("mem.health.resign.how") // D375: its own line, not the first sign-in's
+			if b != nil {
+				switch b.SignIn {
+				case "used":
+					help += "\n" + a.L.T("bridge.mem.signin.used")
+				case "bad":
+					help += "\n" + a.L.T("bridge.mem.signin.bad")
+				case "failed":
+					help += "\n" + a.L.T("bridge.mem.signin.failed", b.Detail)
+				}
+			}
+			a.note(c, help)
+			ui.Row(c).Gap(t.S2).AlignItems(ui.End).Children(func() {
+				ui.Column(c).Grow(1).MinWidth(0).Children(func() {
+					a.field(c, "bridge-link", a.L.T("bridge.mem.signin.link"), &a.bridgeLink, a.L.T("bridge.mem.signin.ph"), "")
+				})
+				if a.buttonFor(c, a.L.T("bridge.mem.signin.go"), homeName, btnPrimary, t.ControlMD, t.Surface) && strings.TrimSpace(a.bridgeLink) != "" && b != nil {
+					b.State = "signing_in"
+					a.send(protocol.BridgeMemSignIn{T: "bridge_mem_sign_in", Link: strings.TrimSpace(a.bridgeLink)})
+					a.bridgeLink, a.memReSign = "", false
+				}
+				if a.buttonFor(c, a.L.T("memp.cancel"), "Nowledge Mem", btnText, t.ControlMD, t.Surface) {
+					a.bridgeLink, a.memReSign = "", false
+				}
+			})
+		})
+	}
 }
 
 // memFacts is the literal facts for support, selectable, in mono.

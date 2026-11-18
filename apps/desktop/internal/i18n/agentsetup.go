@@ -1,0 +1,89 @@
+package i18n
+
+// D359: putting the AI agents on a device and signing them in there, from the
+// device card and the lend sheet. The same words as the web's
+// (apps/web/src/i18n-agentsetup.ts). Glossary: design/product-model.md.
+var zhAgentSetup = Table{
+	"ag.install":            "安装",
+	"ag.queued":             "等着装",
+	"ag.installing":         "正在装上…",
+	"ag.failed.network":     "没连上网，没装上。",
+	"ag.failed.space":       "%s 上空间不够了，没装上。",
+	"ag.failed.unsupported": "这台电脑上装不了它。",
+	"ag.failed.failed":      "没装上。",
+	"ag.retry":              "再试一次",
+	"ag.signin":             "登录",
+	"ag.signed_out":         "未登录",
+	"ag.ready":              "可以用了",
+	"ag.missing":            "还没装",
+	"ag.where":              "装在 Ducter 自己的文件夹里，不用管理员密码。",
+	"ag.login.starting":     "正在准备登录…",
+	"ag.login.codex":        "在任意设备上打开这个链接，输入这个码：",
+	"ag.login.claude":       "打开这个链接登录，再把页面给你的码粘贴到这里：",
+	"ag.login.open":         "打开链接",
+	"ag.login.copy":         "复制码",
+	"ag.login.paste":        "粘贴码",
+	"ag.login.send":         "好了",
+	"ag.login.checking":     "正在确认…",
+	"ag.login.done":         "登录好了",
+	"ag.login.expired":      "登录等太久，停了。",
+	"ag.login.failed":       "没登录上。",
+	"ag.login.device_off":   "先在 ChatGPT 的安全设置里打开「设备码登录」，再试一次。",
+	"ag.login.wrong_code":   "那个码不对，或者过期了。",
+	"ag.login.pi":           "pi 的登录要在 %s 的终端里做：运行 pi，再输入 /login。",
+	"ag.login.cancel":       "不登录了",
+	"ag.away":               "%s 现在连不上，等它回来再装。",
+	"ag.old":                "%s 上的 Ducter 太旧了，先更新它。",
+	"lend.setup.q":          "装上哪些 AI？",
+	"lend.setup.go":         "装上",
+	"lend.setup.skip":       "以后再说",
+	"lend.setup.later":      "以后也能在 %s 的卡片上装。",
+	"lend.ready":            "%s 可以干活了",
+}
+
+var enAgentSetup = Table{
+	"ag.install":            "Install",
+	"ag.queued":             "Waiting to install",
+	"ag.installing":         "Installing…",
+	"ag.failed.network":     "Couldn't reach the internet, so it isn't installed.",
+	"ag.failed.space":       "There isn't enough room on %s, so it isn't installed.",
+	"ag.failed.unsupported": "It can't be installed on this computer.",
+	"ag.failed.failed":      "It didn't install.",
+	"ag.retry":              "Try again",
+	"ag.signin":             "Sign in",
+	"ag.signed_out":         "Not signed in",
+	"ag.ready":              "Ready",
+	"ag.missing":            "Not installed",
+	"ag.where":              "Installed in Ducter's own folder there. No administrator password.",
+	"ag.login.starting":     "Getting the sign-in ready…",
+	"ag.login.codex":        "Open this link on any device and enter this code:",
+	"ag.login.claude":       "Open this link to sign in, then paste the code the page gives you here:",
+	"ag.login.open":         "Open link",
+	"ag.login.copy":         "Copy code",
+	"ag.login.paste":        "Paste the code",
+	"ag.login.send":         "Done",
+	"ag.login.checking":     "Checking…",
+	"ag.login.done":         "Signed in",
+	"ag.login.expired":      "The sign-in waited too long and stopped.",
+	"ag.login.failed":       "The sign-in didn't finish.",
+	"ag.login.device_off":   "Turn on device code sign-in in ChatGPT's security settings first, then try again.",
+	"ag.login.wrong_code":   "That code is wrong or has expired.",
+	"ag.login.pi":           "pi signs in from a terminal on %s: run pi, then type /login.",
+	"ag.login.cancel":       "Cancel",
+	"ag.away":               "%s can't be reached right now. Install once it's back.",
+	"ag.old":                "Ducter on %s is too old for this. Update it first.",
+	"lend.setup.q":          "Which AIs should it have?",
+	"lend.setup.go":         "Install",
+	"lend.setup.skip":       "Later",
+	"lend.setup.later":      "You can install them later from %s's card too.",
+	"lend.ready":            "%s is ready for tasks",
+}
+
+func init() {
+	for k, v := range zhAgentSetup {
+		zh[k] = v
+	}
+	for k, v := range enAgentSetup {
+		en[k] = v
+	}
+}

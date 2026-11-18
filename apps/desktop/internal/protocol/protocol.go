@@ -1702,6 +1702,46 @@ type DeviceHarness struct {
 	// D169: Nowledge Mem's plugin for this agent, for the user's own use of
 	// it outside Ducter; nil when memory is off or the check can't tell.
 	Mem *MemPluginView `json:"mem,omitempty"`
+	// D359: Ducter can put it on that device from here (安装); putting it
+	// there now (or why it didn't); its sign-in running there now.
+	Installable bool             `json:"installable,omitempty"`
+	Setup       *AgentSetupState `json:"setup,omitempty"`
+	Login       *AgentLoginState `json:"login,omitempty"`
+}
+
+// AgentSetupState is an agent being put on a device (D359): queued |
+// installing | failed, with why it failed (network | space | unsupported |
+// failed) and the installer's last line.
+type AgentSetupState struct {
+	Phase  string `json:"phase"`
+	Pct    int    `json:"pct,omitempty"`
+	Reason string `json:"reason,omitempty"`
+	Detail string `json:"detail,omitempty"`
+}
+
+// AgentLoginState is an agent's own sign-in running on that device (D359):
+// starting | waiting (URL, Codex's Code; Paste: Claude's page gives a code
+// to paste back) | checking | done | failed | expired | terminal (pi: what to
+// run there). Reason: device_off | wrong_code | failed.
+type AgentLoginState struct {
+	State   string `json:"state"`
+	URL     string `json:"url,omitempty"`
+	Code    string `json:"code,omitempty"`
+	Paste   bool   `json:"paste,omitempty"`
+	Reason  string `json:"reason,omitempty"`
+	Command string `json:"command,omitempty"`
+}
+
+// AgentSetupReq is 安装, 登录, a pasted code, 不登录了 or a look again on a
+// device's agents (D359). Answered with agent_setup_result only when the
+// device can't take it; progress comes as fresh devices frames.
+type AgentSetupReq struct {
+	T         string   `json:"t"` // "agent_setup"
+	Device    string   `json:"device"`
+	Action    string   `json:"action"` // install | login | code | cancel | look
+	Harnesses []string `json:"harnesses,omitempty"`
+	Harness   string   `json:"harness,omitempty"`
+	Code      string   `json:"code,omitempty"`
 }
 
 // MemPluginView is one agent's Nowledge Mem line (D169), from Mem's own
@@ -2496,7 +2536,7 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 	// dropped here unseen (the live view's live / live_frame were, from D151 to
 	// D172: 试一下 sat at 正在打开 example.com…… forever).
 	case "welcome", "events", "on_hand", "task_history", "sent", "action_result", "error",
-		"devices", "ability_result", "pair_code", "lend", "rename_result", "disconnect_result", "update_result", "agent_update_result", "update_all_result", "mem_plugin_result", "anywhere_setup_result", "settings", "connections", "connection_result", "rules", "candidates", "account_usage", "activity",
+		"devices", "ability_result", "pair_code", "lend", "rename_result", "disconnect_result", "update_result", "agent_update_result", "agent_setup_result", "update_all_result", "mem_plugin_result", "anywhere_setup_result", "settings", "connections", "connection_result", "rules", "candidates", "account_usage", "activity",
 		"task_new_options", "task_new_result", "open_task", "open_result", "project_add_result", "project_clone_result", "folder_browse_result",
 		"project_new_result", "git_login_state",
 		"first_screen", "folder_changes", "close_result", "live", "live_frame", "live_turn", "live_doing", "phone_terms", "phone_install_result", "phone_erase_result", "phone_view", "phone_frame", "phone_doing", "browser_sites", "browser_check", "connection_reads", "proactive_day", "media_keys", "saved", "phone_did",

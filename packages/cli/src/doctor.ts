@@ -10,6 +10,7 @@ import { HARNESS_FACTS, versionStanding } from "@ducter/protocol/src/harness-fac
 import { readKeys } from "@ducter/protocol/src/keys.ts";
 import { gitEnv, nmemEnv, toolEnv } from "@ducter/protocol/src/tool-env.ts";
 import { childEnvironment } from "@ducter/runner/src/child-env.ts";
+import { whichNow } from "@ducter/protocol/src/which.ts";
 
 export const MIN_BUN = "1.3.0";
 
@@ -397,7 +398,7 @@ export function probeEnv(cmd: string[], inherited: Record<string, string | undef
 
 export function realHost(): Host {
   return {
-    which: (cmd) => Bun.which(cmd),
+    which: (cmd) => whichNow(cmd),
     env: process.env,
     read: (p) => {
       try {

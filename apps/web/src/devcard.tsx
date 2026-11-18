@@ -26,6 +26,7 @@ import { liveSize } from "./live.tsx";
 import { Mark, UpdateAllCard } from "./updateall.tsx";
 import { Qr } from "./phone.tsx";
 import { AddDeviceRow, LendSheet } from "./lend.tsx";
+import { AgentRow, SetupAnswer } from "./agent-setup.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 const art = (n: string) => `app/art/${n}.webp`;
@@ -213,6 +214,10 @@ function Hero({ src, grey, tall, shape, motion }: { src: string; grey?: boolean;
 function DeviceSheet({ dv, folded, go }: { dv: DeviceView; folded: Client[]; go: (id: string) => void }) {
   const s = statusLine(A.L, dv, { persona: A.S.personaName, home: homeName(), running: runningOn(dv), ago: dv.lastSeen ? ago(A.L, dv.lastSeen) : "" });
   const motion = dv.state === "awake" ? (dv.kind === "server" ? "drift" : "float") : dv.state === "asleep" ? "blanket" : "";
+  // D359: the card opened: that computer looks at its AI agents again (one installed by hand shows now).
+  useEffect(() => {
+    if (dv.state === "awake") A.agentSetup(dv.home ? "local" : dv.id, "look");
+  }, [dv.id]);
   return (
     <div class="dc" role="group" aria-label={dv.name}>
       <Hero src={deviceArt(dv)} grey={dv.state === "unreachable"} tall={dv.kind === "phone"} motion={motion} />
@@ -356,8 +361,10 @@ function NotifyChip() {
 
 function CoinTray({ dv }: { dv: DeviceView }) {
   const [open, setOpen] = useState("");
-  const shown = dv.harnesses.filter((h) => h.installed);
-  const missing = dv.harnesses.filter((h) => !h.installed);
+  // D359: one being installed arrives as its coin (a ring while it goes in); the rest wait in the socket.
+  const arriving = (h: DeviceHarness) => h.setup?.phase === "installing" || h.setup?.phase === "queued";
+  const shown = dv.harnesses.filter((h) => h.installed || arriving(h));
+  const missing = dv.harnesses.filter((h) => !h.installed && !arriving(h));
   const n = shown.length + (missing.length ? 1 : 0);
   if (!n) return null;
   const idx = open === "+" ? shown.length : shown.findIndex((h) => h.harness === open);
@@ -378,7 +385,7 @@ function CoinTray({ dv }: { dv: DeviceView }) {
               label={label}
               off={!h.loggedIn || dv.state !== "awake"}
               dot={dot}
-              running={agentRunning(h)}
+              running={agentRunning(h) || arriving(h)}
               pop={Date.now() - (popped.get(k) ?? 0) < 600}
               sel={open === h.harness}
               onClick={() => setOpen(open === h.harness ? "" : h.harness)}
@@ -393,12 +400,11 @@ function CoinTray({ dv }: { dv: DeviceView }) {
             <>
               <div class="ln">{t("coin.socket.there", dv.name)}</div>
               {missing.map((h) => (
-                <div class="dc-missing" key={h.harness}>
-                  <Coin harness={h.harness} size={28} off />
-                  <b>{harnessName(h.harness)}</b>
-                </div>
+                <AgentRow key={h.harness} dv={dv} h={h} />
               ))}
-              <div class="ln">{t("coin.there", dv.name)}</div>
+              <SetupAnswer dv={dv} />
+              {/* D359: Ducter puts them there itself; only one it can't install is left to that computer. */}
+              <div class="ln small">{t(missing.some((h) => h.installable) ? "ag.where" : "coin.there", dv.name)}</div>
             </>
           ) : (
             <CoinDetail dv={dv} h={shown[idx]!} />
@@ -432,15 +438,13 @@ function agentPhase(u: NonNullable<DeviceHarness["update"]>): string {
 
 function CoinDetail({ dv, h }: { dv: DeviceView; h: DeviceHarness }) {
   const name = harnessName(h.harness);
-  if (!h.loggedIn)
+  // D359: being put there, or there and not signed in: its row, with 登录 and the sign-in in place.
+  if (!h.installed || !h.loggedIn)
     return (
       <>
-        <div class="dh">
-          <b>{name}</b>
-          <small>{t("coin.signed_out")}</small>
-        </div>
-        <div class="ln">{t("coin.signin.why", dv.name)}</div>
-        <div class="ln">{t("coin.there", dv.name)}</div>
+        <AgentRow dv={dv} h={h} />
+        <SetupAnswer dv={dv} />
+        {h.installed && !h.login && <div class="ln">{t("coin.signin.why", dv.name)}</div>}
       </>
     );
   const others = (A.devices ?? []).filter((o) => o.id !== dv.id && o.harnesses.some((x) => x.harness === h.harness && x.installed && x.loggedIn)).map((o) => o.name);

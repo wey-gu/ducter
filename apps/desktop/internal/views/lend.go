@@ -618,26 +618,9 @@ func (a *App) lendHere(c *ui.Context, l *protocol.ServerFrame) {
 				}
 			})
 		}
-		var in []protocol.DeviceHarness
-		for _, h := range dv.Harnesses {
-			if h.LoggedIn {
-				in = append(in, h)
-			}
-		}
-		ui.Text(c, a.L.T("lend.agents")).FontSize(t.SM).TextColor(t.InkMuted)
-		if len(in) == 0 {
-			a.infoText(c, a.L.T("lend.agents.none"))
-		} else {
-			ui.Row(c.Key("lend-agents")).Gap(t.S2).Wrap().Children(func() {
-				for _, h := range in {
-					h := h
-					ui.Row(c.Key("lend-agent:"+h.Harness)).Gap(t.S2).Padding(t.S1, t.S3, t.S1, t.S1).MinHeight(t.ControlMD).Radius(t.RadiusLG).
-						Background(t.Sunken).AlignItems(ui.Center).Children(func() {
-						a.coinBox(c, "lend:"+h.Harness, h.Harness, 32, false, coinStill)
-						ui.Text(c, harnessName(h.Harness)).FontSize(t.SM).FontWeight(700).TextColor(t.Ink)
-					})
-				}
-			})
+		// D359: 装上哪些 AI？, then each one arriving, its 登录 right there.
+		if a.lendAgents(c, dv) {
+			return // its own 以后再说 and 装上 end the sheet while it asks
 		}
 	}
 	ui.Row(c).Justify(ui.End).Children(func() {

@@ -66,8 +66,11 @@ func (a *App) deviceDetail(c *ui.Context, dv *protocol.DeviceView) {
 		d.selClient = ""
 	}
 	if dv == nil {
+		a.ag.looked = ""
 		return
 	}
+	// D359: the card opened: that computer looks at its AI agents again.
+	a.lookAgainOnce(dv)
 	name := a.deviceName(dv)
 	card.Role(ui.RoleGroup).Label(spoken(a.L, name, a.kindLine(dv))).Children(func() {
 		// D155: every device renames in place, the home too; the title says "this Mac"
@@ -301,7 +304,8 @@ func (a *App) coinTray(c *ui.Context, dv *protocol.DeviceView) {
 	var shown []protocol.DeviceHarness
 	missing := 0
 	for _, h := range dv.Harnesses {
-		if h.Installed {
+		// D359: one being installed arrives as its coin; the rest wait in the socket.
+		if h.Installed || anySetup([]protocol.DeviceHarness{h}, "installing", "queued") {
 			shown = append(shown, h)
 		} else {
 			missing++
@@ -368,7 +372,7 @@ func (a *App) coinTile(c *ui.Context, dv *protocol.DeviceView, h protocol.Device
 		tile.Background(t.Surface.Alpha(0.55))
 	}
 	popAt := s.pop[key]
-	running := h.Update.Running()
+	running := h.Update.Running() || anySetup([]protocol.DeviceHarness{h}, "installing", "queued") // D359: going in
 	phase := phaseOf(key)
 	tile.Children(func() {
 		art := ui.Box(c.Key("coin-art:"+key)).Size(coinSize, coinSize).AccessHidden(true)
@@ -533,6 +537,16 @@ func (a *App) coinDetail(c *ui.Context, dv *protocol.DeviceView, h protocol.Devi
 	name := harnessName(h.Harness)
 	manage := a.manageAccount(dv, h)
 	a.detailBox(c, coinKey(dv.ID, h.Harness), name, idx, n, func() {
+		// D359: being put there, or there and not signed in, on a computer this app
+		// doesn't run Ducter on: its row, with 登录 and the sign-in in place.
+		if (!h.Installed || !h.LoggedIn) && !manage {
+			a.agentRow(c, dv, h, nil)
+			a.setupAnswer(c, dv)
+			if h.Installed && h.Login == nil {
+				ui.Text(c, a.L.T("coin.signin.why", a.deviceNameIn(dv))).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5)
+			}
+			return
+		}
 		if !h.LoggedIn {
 			ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Wrap().Children(func() {
 				ui.Text(c, name).FontSize(t.MD).FontWeight(800)
@@ -616,8 +630,15 @@ func (a *App) socketDetail(c *ui.Context, dv *protocol.DeviceView, idx, n int) {
 	d := a.devState()
 	a.detailBox(c, coinKey(dv.ID, "+"), a.L.T("coin.socket"), idx, n, func() {
 		ui.Text(c, a.L.T("coin.socket.there", a.deviceNameIn(dv))).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5)
+		installable := false
 		for _, h := range dv.Harnesses {
-			if h.Installed {
+			if h.Installed || anySetup([]protocol.DeviceHarness{h}, "installing", "queued") {
+				continue
+			}
+			// D359: Ducter puts it there itself (the Mac this app runs Ducter on keeps its own sheet).
+			if !a.manageAccount(dv, h) {
+				installable = installable || h.Installable
+				a.agentRow(c, dv, h, nil)
 				continue
 			}
 			name := harnessName(h.Harness)
@@ -629,7 +650,10 @@ func (a *App) socketDetail(c *ui.Context, dv *protocol.DeviceView, idx, n int) {
 				}
 			})
 		}
-		if !(a.Backend != nil && dv.Home) {
+		a.setupAnswer(c, dv)
+		if installable {
+			ui.Text(c, a.L.T("ag.where")).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.5)
+		} else if !(a.Backend != nil && dv.Home) {
 			ui.Text(c, a.L.T("coin.there", a.deviceNameIn(dv))).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.5)
 		}
 	})

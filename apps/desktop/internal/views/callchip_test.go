@@ -65,6 +65,7 @@ func TestHomeCallChip(t *testing.T) {
 		// Off: + 打电话 goes to Accounts and starts the offer's own Tuwa sign-in.
 		app, sent, click := setup(protocol.DeviceAbility{ID: "call", State: "off"})
 		click(spoken(L, L.T("chip.phone"), L.T("chip.state.later")))
+		*sent = withoutLooks(*sent) // D359: the card's own look again when it opens
 		if len(*sent) != 0 {
 			t.Fatalf("%s: a ghost sent %#v", lang, *sent)
 		}

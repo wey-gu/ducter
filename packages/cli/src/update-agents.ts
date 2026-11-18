@@ -17,6 +17,7 @@ import type { Conn } from "./client.ts";
 import type { UpdateCtx } from "./update.ts";
 import type { T } from "./i18n.ts";
 import type { Style } from "./doctor.ts";
+import { whichNow } from "@ducter/protocol/src/which.ts";
 
 interface AgentRow {
   device: string;
@@ -163,7 +164,7 @@ function report(c: UpdateCtx, outcome: { device: string; harness: string; ok: bo
 async function direct(c: UpdateCtx, sys: UpdateSys, say: (s: string) => void): Promise<number> {
   const { t, style, args } = c;
   const exec = async (argv: string[], ms?: number) => sys.run(argv, { timeoutMs: ms ?? 15_000 });
-  const probe = { exec, which: (x: string) => Bun.which(x), env: process.env, dataDir: c.dataDir };
+  const probe = { exec, which: (x: string) => whichNow(x), env: process.env, dataDir: c.dataDir };
   const found = (await probeHarnesses(probe)).filter((h) => h.installed && h.version);
   const latest = createAgentLatest({ dataDir: c.dataDir, fetch: sys.fetch, env: process.env });
   await latest.refresh(found, true);

@@ -13,6 +13,9 @@ import { Coin } from "./coin.tsx";
 import { harnessName } from "./format.ts";
 import { Qr } from "./phone.tsx";
 import { arrived, lendStep, minutesLeft, type LendKind } from "./lend-view.ts";
+import type { DeviceView } from "@ducter/protocol";
+import { AgentRow, SetupAnswer } from "./agent-setup.tsx";
+import { anyInstalling, anyReady, offerable } from "./agent-setup-view.ts";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 const art = (n: string) => `app/art/${n}.webp`;
@@ -224,7 +227,11 @@ function Pair() {
 function Here() {
   const f = A.lend!.frame!;
   const d = arrived(f, A.devices);
+  const dv = d.id ? A.devices?.find((x) => x.id === d.id) : undefined;
   const [draft, setDraft] = useState<string | null>(null);
+  // D359: 以后再说 or 装上 pressed: the question is answered (its own buttons end the sheet until then).
+  const [done, setDone] = useState(false);
+  const asking = !!dv && lendAsks(dv, done);
   const save = () => {
     const next = (draft ?? "").trim();
     if (d.id && next && next !== d.name) A.renameDevice(d.id, next);
@@ -240,22 +247,26 @@ function Here() {
           {d.arch && <small>{d.arch}</small>}
         </div>
       )}
-      <div class="lend-agents">
-        <div class="small sub">{t("lend.agents")}</div>
-        {d.agents.length ? (
-          <div class="lend-coins">
-            {d.agents.map((h) => (
-              <span class="lend-coin" key={h}>
-                <Coin harness={h} size={40} />
-                <small>{harnessName(h)}</small>
-              </span>
-            ))}
-          </div>
-        ) : (
-          <p class="lend-note">{t("lend.agents.none")}</p>
-        )}
-      </div>
-      {draft === null ? (
+      {dv ? (
+        <LendAgents dv={dv} done={done} setDone={setDone} />
+      ) : (
+        <div class="lend-agents">
+          <div class="small sub">{t("lend.agents")}</div>
+          {d.agents.length ? (
+            <div class="lend-coins">
+              {d.agents.map((h) => (
+                <span class="lend-coin" key={h}>
+                  <Coin harness={h} size={40} />
+                  <small>{harnessName(h)}</small>
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p class="lend-note">{t("lend.agents.none")}</p>
+          )}
+        </div>
+      )}
+      {asking ? null : draft === null ? (
         <div class="lend-acts">
           {d.id && <Btn kind="secondary" label={t("lend.rename")} onClick={() => setDraft(d.name)} />}
           <Btn kind="primary" label={t("lend.done")} onClick={() => A.closeLend()} />
@@ -279,6 +290,69 @@ function Here() {
     </div>
   );
 }
+
+/**
+ * D359: the AI agents on the computer that just came: 装上哪些 AI？ with Codex and Claude Code
+ * checked, one 装上; then each one arriving as its row, its 登录 right there; {name} 可以干活了 once
+ * one is signed in. 以后再说 leaves them for the card.
+ */
+/** The lend sheet asks 装上哪些 AI？ now. */
+function lendAsks(dv: DeviceView, done: boolean): boolean {
+  return !anyReady(dv.harnesses) && !done && offerable(dv.harnesses).length > 0 && !anyInstalling(dv.harnesses) && !dv.harnesses.some((h) => h.setup?.phase === "failed");
+}
+
+function LendAgents({ dv, done, setDone }: { dv: DeviceView; done: boolean; setDone: (v: boolean) => void }) {
+  const offer = offerable(dv.harnesses);
+  const [picked, setPicked] = useState<Record<string, boolean> | undefined>(undefined);
+  const skipped = done;
+  const setSkipped = setDone;
+  const setAsked = setDone;
+  const chosen = picked ?? Object.fromEntries(offer.map((o) => [o.harness, o.checked]));
+  const ready = anyReady(dv.harnesses);
+  // The rows that mean something now: there, going in, or failed (a fresh computer: none yet).
+  const rows = dv.harnesses.filter((h) => h.installed || h.setup || ((INSTALL_ORDER as readonly string[]).includes(h.harness) && h.login));
+  const ask = lendAsks(dv, done);
+  const go = () => {
+    const hs = offer.map((o) => o.harness).filter((h) => chosen[h]);
+    if (hs.length) A.agentSetup(dv.id, "install", { harnesses: hs });
+    setAsked(true); // asked once: from here on, the rows
+  };
+  const ordered = [...rows].sort((a, b) => INSTALL_ORDER.indexOf(a.harness as never) - INSTALL_ORDER.indexOf(b.harness as never));
+  return (
+    <div class="lend-agents lend-setup">
+      {ready && <h4 class="lend-ready">{t("lend.ready", dv.name)}</h4>}
+      {ask ? (
+        <>
+          <div class="small sub">{t("lend.setup.q")}</div>
+          {ordered.filter((h) => h.installed).map((h) => (
+            <AgentRow key={h.harness} dv={dv} h={h} />
+          ))}
+          {offer.map((o) => {
+            const h = dv.harnesses.find((x) => x.harness === o.harness)!;
+            return <AgentRow key={o.harness} dv={dv} h={h} pick={{ checked: !!chosen[o.harness], onChange: (v) => setPicked({ ...chosen, [o.harness]: v }) }} />;
+          })}
+          <p class="lend-note">{t("ag.where")}</p>
+          <SetupAnswer dv={dv} />
+          <div class="lend-acts">
+            <Btn kind="secondary" label={t("lend.setup.skip")} onClick={() => setSkipped(true)} />
+            <Btn kind="primary" label={t("lend.setup.go")} disabled={!offer.some((o) => chosen[o.harness])} onClick={go} />
+          </div>
+        </>
+      ) : (
+        <>
+          {ordered.map((h) => (
+            <AgentRow key={h.harness} dv={dv} h={h} />
+          ))}
+          {!ordered.length && <p class="lend-note">{t("lend.agents.none")}</p>}
+          {skipped && !ordered.length && <p class="lend-note">{t("lend.setup.later", dv.name)}</p>}
+          <SetupAnswer dv={dv} />
+        </>
+      )}
+    </div>
+  );
+}
+
+const INSTALL_ORDER = ["codex", "claude-code", "pi"] as const;
 
 /** The sheet, pushed inside 你的设备; its back row goes one step back (to 你的设备 from the first). */
 export function LendSheet() {

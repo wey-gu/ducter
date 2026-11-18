@@ -1090,6 +1090,12 @@ export type ClientFrame =
   // (check: read the latest versions again and only report). Answered with agent_update_result;
   // progress arrives as fresh devices frames and agent_update events.
   | { t: "agent_update"; device: string; harness: string; check?: boolean }
+  // D359: putting an AI agent on a device, signing it in there, and looking again (core
+  // agent-setup.ts): install: these agents into Ducter's own tools folder there; login: start that
+  // agent's own sign-in there (Codex's device code, Claude's link); code: the code Claude's page
+  // gave; cancel: stop a sign-in; look: probe that device's agents now (its card opened). Answered
+  // with agent_setup_result; progress arrives as fresh devices frames.
+  | { t: "agent_setup"; device: string; action: AgentSetupAction; harnesses?: string[]; harness?: string; code?: string }
   // D224: update_all: 全部更新 / Update all: the home makes one plan of everything behind (its own
   // Ducter first, then the other computers, then each computer's AI agents at a safe point) and
   // runs it, kept on disk so it outlives its own restart. stop: 停止剩下的 / Stop the rest (what
@@ -1465,6 +1471,8 @@ export type ServerFrame =
   | { t: "disconnect_result"; device: string; ok: boolean; reason?: "unknown_device" | "home" }
   | { t: "update_result"; device: string; ok: boolean; reason?: UpdateReason; detail?: string; update?: DeviceUpdate }
   | { t: "agent_update_result"; device: string; harness: string; ok: boolean; reason?: AgentReason; detail?: string }
+  // D359: an agent_setup the device couldn't take (away: not connected; unknown: no such device or agent).
+  | { t: "agent_setup_result"; device: string; action: AgentSetupAction; ok: boolean; reason?: "away" | "unknown" | "failed" }
   | { t: "update_all_result"; ok: boolean; reason?: "nothing" | "running" | "failed"; detail?: string; id?: string }
   | { t: "mem_plugin_result"; device: string; harness: string; ok: boolean; taskId?: string; reason?: MemPluginReason }
   // D332: ownAgents: the AI agents the person runs themselves on the home (their own records changed in
@@ -1746,6 +1754,45 @@ export interface DeviceHarness {
   /** D169: Nowledge Mem's plugin for this agent, when the user uses it outside Ducter; absent
    *  when memory is off, nmem isn't on that device, or its check can't tell. */
   mem?: MemPluginView;
+  /** D359: Ducter can put this agent on that device from here (安装 / Install) while it isn't there. */
+  installable?: boolean;
+  /** D359: putting it there now, or why the last try didn't (absent when idle). */
+  setup?: AgentSetupState;
+  /** D359: its sign-in running on that device now, or how the last one ended (absent when idle). */
+  login?: AgentLoginState;
+}
+
+/** D359: what an agent_setup asks of a device. */
+export type AgentSetupAction = "install" | "login" | "code" | "cancel" | "look";
+/** D359: why putting an agent on a device didn't work: no network, no room, no build for that computer, anything else. */
+export type AgentSetupReason = "network" | "space" | "unsupported" | "failed";
+/** D359: queued: waiting its turn; installing: being put there; failed: one line and 再试一次. */
+export interface AgentSetupState {
+  phase: "queued" | "installing" | "failed";
+  /** While installing: how far, 0–100, when it can tell (the first one downloads Node, the slow part). */
+  pct?: number;
+  reason?: AgentSetupReason;
+  /** A short line from the installer when it failed (never a secret). */
+  detail?: string;
+}
+/**
+ * D359: an agent's own sign-in, run on that device and shown wherever the person is.
+ *  - starting: started, its link not out yet;
+ *  - waiting: the link (and Codex's code) to open on any device; `paste`: Claude's page gives a
+ *    code to paste back here;
+ *  - checking: the pasted code went in;
+ *  - done: signed in (the row turns ready with the probe that follows);
+ *  - failed / expired: one line and 再试一次; reason device_off: Codex's device sign-in is off in
+ *    the ChatGPT account (turn it on there first);
+ *  - terminal: this agent has no sign-in Ducter can carry (pi): `command` is what to run there.
+ */
+export interface AgentLoginState {
+  state: "starting" | "waiting" | "checking" | "done" | "failed" | "expired" | "terminal";
+  url?: string;
+  code?: string;
+  paste?: boolean;
+  reason?: "device_off" | "wrong_code" | "failed";
+  command?: string;
 }
 
 // ---------- Nowledge Mem in the user's own agents (D169, design/memory.md "Mem and tasks") ----------

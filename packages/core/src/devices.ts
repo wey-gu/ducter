@@ -16,6 +16,7 @@ import type { Workers } from "./workers.ts";
 import { pairFragment, type DeviceVia, type HomeKey, type ReachWay } from "@ducter/protocol/src/reach.ts";
 import { probeHarnesses } from "./harness-probe.ts";
 import type { BrowserSetup } from "./browser/index.ts";
+import { whichNow } from "@ducter/protocol/src/which.ts";
 
 export type DevicesFrame = Extract<ServerFrame, { t: "devices" }>;
 export type AbilityResult = Extract<ServerFrame, { t: "ability_result" }>;
@@ -42,6 +43,8 @@ export interface DeviceProbes {
 
 export interface DevicesOptions {
   dataDir: string;
+  /** D359: putting agents on the home and signing them in there (agent-setup.ts): its rows carry that state. */
+  agentSetup?: () => import("./agent-setup.ts").AgentSetup | undefined;
   auth: DeviceAuth;
   workers: Workers;
   env?: Record<string, string | undefined>;
@@ -278,7 +281,7 @@ export const alwaysOnKind = (kind: DeviceKind) => kind === "server" || kind === 
 export function createDevicesView(o: DevicesOptions): DevicesView {
   const env = o.env ?? process.env;
   const exec = o.exec ?? defaultExec;
-  const which = o.which ?? ((c: string) => Bun.which(c));
+  const which = o.which ?? ((c: string) => whichNow(c));
   const now = o.now ?? Date.now;
   const cacheMs = o.cacheMs ?? 60_000;
   // D310: this computer by its name as a person reads it, and by its host name (what a pairing
@@ -373,7 +376,7 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
       home: true,
       state: "awake", // this answer comes from it
       alwaysOn: alwaysOnKind(me.kind),
-      harnesses: agentsView("local", me.harnesses.map((h) => deviceHarness(h))),
+      harnesses: agentsView("local", (o.agentSetup?.()?.decorate(me.harnesses) ?? me.harnesses).map((h) => deviceHarness(h))),
       abilities: [webAbility(me.cua, me.native), (await o.computer?.ability().catch(() => undefined)) ?? later("computer"), { id: "remote", state: remoteOn ? "on" : "off" }, o.ownPhone?.ability() ?? later("phone"), o.call?.() ?? { id: "call", state: "off" }],
       ...(o.self ? { version: o.self.version, platform: o.self.platform } : {}),
     };
@@ -410,7 +413,19 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
           })(),
           harnesses: agentsView(
             d.id,
-            (hello?.harnesses ?? []).map((h) => deviceHarness({ harness: h.id, installed: h.installed, loggedIn: h.loggedIn, ...(h.version ? { version: h.version } : {}), ...(h.how ? { how: h.how as AgentHow } : {}) })),
+            (hello?.harnesses ?? []).map((h) =>
+              deviceHarness({
+                harness: h.id,
+                installed: h.installed,
+                loggedIn: h.loggedIn,
+                ...(h.version ? { version: h.version } : {}),
+                ...(h.how ? { how: h.how as AgentHow } : {}),
+                // D359: what the worker says of putting it there and signing it in (an older Ducter says neither).
+                ...(h.installable && !h.installed ? { installable: true } : {}),
+                ...(h.setup ? { setup: h.setup } : {}),
+                ...(h.login ? { login: h.login } : {}),
+              }),
+            ),
           ),
           // D157: a worker browses with its own browsers and says how in its hello; a Ducter
           // there from before that says nothing, so its card asks for an update.

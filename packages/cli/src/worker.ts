@@ -14,7 +14,11 @@ import type { T } from "./i18n.ts";
 import * as runnerMod from "@ducter/runner";
 import { scriptedHarness } from "./scripted.ts";
 import { localDeviceKind } from "@ducter/core/src/devices.ts";
-import { detectAgent, probeHarnesses as probeLocalHarnesses } from "@ducter/core/src/harness-probe.ts";
+import { bundledPiVersion, detectAgent, probeHarnesses as probeLocalHarnesses } from "@ducter/core/src/harness-probe.ts";
+import { agentSignature, captureLoginPath, saveLoginPath, widenAgentPath } from "@ducter/core/src/agent-path.ts";
+import { createAgentSetup, realAgentSetupSys, type AgentSetup } from "@ducter/core/src/agent-setup.ts";
+import { whichNow } from "@ducter/protocol/src/which.ts";
+import { probeEnv } from "./doctor.ts";
 import { createWorkerAgentUpdater } from "@ducter/core/src/agents.ts";
 import { migrateKeys, readKeys, scrubKeysFromEnv } from "@ducter/protocol/src/keys.ts";
 import { isCompiled } from "./doctor.ts";
@@ -75,8 +79,11 @@ function save(file: string, s: WorkerSaved) {
 }
 
 /** The four first-wave harnesses on this machine (D85), as the main's Your devices shows them. */
-async function probeHarnesses(_t: T, dataDir: string) {
+async function probeHarnesses(_t: T, dataDir: string, setup?: AgentSetup) {
   const host = realHost();
+  // D359: the person's own agent folders and Ducter's tools folder, looked at again each time (an
+  // nvm node installed since shows up without a restart).
+  widenAgentPath({ dataDir });
   const found = await probeLocalHarnesses({
     exec: async (argv, ms) => {
       const r = await host.run(argv, ms);
@@ -84,9 +91,23 @@ async function probeHarnesses(_t: T, dataDir: string) {
     },
     which: (c) => host.which(c),
     dataDir,
+    piBundled: bundledPiVersion,
   });
   // D156: each agent's version and how it was installed ride along; the main reads its latest.
-  return found.map((h) => ({ id: h.harness, installed: h.installed, loggedIn: h.loggedIn, ...(h.version ? { version: h.version } : {}), ...(h.how ? { how: h.how } : {}) }));
+  const rows = found.map((h) => ({ id: h.harness, installed: h.installed, loggedIn: h.loggedIn, ...(h.version ? { version: h.version } : {}), ...(h.how ? { how: h.how } : {}) }));
+  return setup ? setup.decorate(rows) : rows;
+}
+
+/**
+ * D359: the worker's PATH at start: the login shell's (captured again now, kept for the next
+ * start), the usual per-user folders and Ducter's tools folder. A service's own PATH is not the
+ * person's shell's, so an agent in ~/.nvm or ~/.npm-global was never found before.
+ */
+async function startAgentPath(dataDir: string): Promise<void> {
+  const host = realHost();
+  const login = await captureLoginPath({ run: async (argv, ms) => ((r) => ({ code: r.code, out: r.stdout }))(await host.run(argv, ms)) });
+  if (login?.length) saveLoginPath(dataDir, login);
+  widenAgentPath({ dataDir, ...(login?.length ? { login } : {}) });
 }
 
 /** D156: the main's `agent_update` op on this machine (core agents.ts), with the real updaters. */
@@ -192,6 +213,18 @@ export async function cmdWorker(o: {
   const kind = await localDeviceKind();
   let updater: WorkerUpdater | undefined;
   const agentUpdater = workerAgentUpdater(t, o.dataDir, () => updater?.underWay() ?? false);
+  // D359: the person's own agents, wherever their shell would find them; then putting agents here
+  // and signing them in, asked for from the home (the agent_setup op).
+  await startAgentPath(o.dataDir);
+  let rows: Awaited<ReturnType<typeof probeHarnesses>> = [];
+  const sendAgents = (harnesses: typeof rows) => ((rows = harnesses), (hello.harnesses = harnesses), sendUp({ t: "agents", harnesses }));
+  const reprobe = () => probeHarnesses(t, o.dataDir, setup).then(sendAgents);
+  const setup: AgentSetup = createAgentSetup({
+    dataDir: o.dataDir,
+    sys: realAgentSetupSys({ platform: platform(), arch: arch(), which: (c) => whichNow(c), env: (cmd) => probeEnv([cmd]) }),
+    probe: reprobe,
+    changed: () => sendAgents(setup.decorate(rows)),
+  });
   const hello = {
     t: "hello",
     name: saved.name,
@@ -201,7 +234,7 @@ export async function cmdWorker(o: {
     abilities: await browse.abilities(),
     alwaysOn: browse.alwaysOn(kind),
     version: pkg.version,
-    harnesses: await probeHarnesses(t, o.dataDir),
+    harnesses: (rows = await probeHarnesses(t, o.dataDir, setup)),
     // D148: how this computer updates, and how its last update went (once, after its restart).
     how: updateHow({ compiled: isCompiled(), platform: platform(), execPath: process.execPath }),
     // D187: a Mac's worker asks its app to update (the phone's 更新 reaches it).
@@ -234,7 +267,23 @@ export async function cmdWorker(o: {
   };
   let outcomeWatch: ReturnType<typeof setInterval> | undefined;
   let agentsTimer: ReturnType<typeof setInterval> | undefined;
-  const code = await stayConnected(s, hello, t, style, makeHost, updater, agentUpdater, file, () => {
+  let agentsFull: ReturnType<typeof setInterval> | undefined;
+  // D359: agent_setup from the home: install, sign in, a pasted code, cancel, look again.
+  const onSetup = async (f: any, up: (x: object) => void) => {
+    const a = f.args ?? {};
+    const hs: string[] = Array.isArray(a.harnesses) ? a.harnesses.filter((x: unknown) => typeof x === "string") : [];
+    const h = typeof a.harness === "string" ? a.harness : "";
+    if (a.action === "install") setup.install(hs);
+    else if (a.action === "login") setup.login(h);
+    else if (a.action === "code") setup.code(h, String(a.code ?? ""));
+    else if (a.action === "cancel") setup.cancel(h);
+    else if (a.action === "look") {
+      await startAgentPath(dataDir);
+      await reprobe().catch(() => {});
+    } else return up({ t: "res", id: f.id, ok: false, error: `unknown action ${a.action}` });
+    up({ t: "res", id: f.id, ok: true, result: { ok: true } });
+  };
+  const code = await stayConnected(s, hello, t, style, makeHost, updater, agentUpdater, file, onSetup, () => {
     // Reached the main: a restart after an update is healthy now (update.ts waitHealthy).
     writeAlive(dataDir, pkg.version);
     lastOutcome(dataDir, { markReported: true, version: pkg.version });
@@ -255,13 +304,22 @@ export async function cmdWorker(o: {
     // since (by Ducter before a reconnect, or by hand) must not be offered again at its old
     // version (that update then "fails" with nothing newer). Fresh on every welcome, and every
     // 30 min while connected.
-    const agents = () =>
-      void probeHarnesses(t, dataDir)
-        .then((harnesses) => ((hello.harnesses = harnesses), sendUp({ t: "agents", harnesses })))
-        .catch(() => {});
+    // D359: and within seconds of a change made by hand: a cheap look (where each agent's command
+    // is, when its sign-in files changed; no process started) every 5 s, a real probe when it moved.
+    const agents = () => void reprobe().catch(() => {});
     agents();
-    agentsTimer ??= setInterval(agents, 30 * 60_000);
+    let seen = "";
+    const look = () => agentSignature({ dataDir, which: (c) => whichNow(c) });
+    agentsTimer ??= setInterval(() => {
+      if (setup.busy()) return; // its own probe follows each step
+      widenAgentPath({ dataDir });
+      const now = look();
+      if (seen && now !== seen) agents();
+      seen = now;
+    }, 5000);
     (agentsTimer as any).unref?.();
+    agentsFull ??= setInterval(agents, 30 * 60_000);
+    (agentsFull as any).unref?.();
   });
   return refusedExit(code, process.env);
 }
@@ -296,6 +354,7 @@ async function stayConnected(
   updater: WorkerUpdater | undefined,
   agentUpdater: ReturnType<typeof createWorkerAgentUpdater> | undefined,
   file: string,
+  onSetup?: (f: any, up: (x: object) => void) => Promise<void>,
   onWelcome?: () => void,
 ): Promise<number> {
   let backoff = 1000;
@@ -342,6 +401,8 @@ async function stayConnected(
         if (f.t === "req" && f.op === "update" && updater) return void updater.handle(f, up, host);
         // D156: updating one of this machine's AI agents, the same way.
         if (f.t === "req" && f.op === "agent_update" && agentUpdater) return void agentUpdater.handle(f, up, host);
+        // D359: putting an agent here, signing it in, looking again.
+        if (f.t === "req" && f.op === "agent_setup" && onSetup) return void onSetup(f, up).catch((e) => up({ t: "res", id: f.id, ok: false, error: String(e) }));
         if (f.t === "req") return void host.handle(f);
         // D293: the home's ways changed (a domain added, the tunnel turned off).
         if (f.t === "ways" && Array.isArray(f.ways)) return void ((s.ways = f.ways), persist());

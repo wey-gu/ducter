@@ -164,13 +164,11 @@ func TestLendFlow(t *testing.T) {
 	app.Receive(protocol.ServerFrame{T: "devices", Devices: []protocol.DeviceView{lendHome(), lendNas("claude-code")}})
 	app.Receive(protocol.ServerFrame{T: "lend", Code: "K7QM-4XPA", State: "here", Device: "a1b2c3d4e5", Name: "nas"})
 	lendFrame(tt)
-	for _, w := range []string{"nas 来了", "Linux", "arm64", "已登录的 AI agent", "Claude Code", "完成"} {
+	// D363: one signed in: 可以干活了, and the one that isn't offers 登录 right there.
+	for _, w := range []string{"nas 来了", "Linux", "arm64", "nas 可以干活了", "Claude Code", "可以用了", "Codex", "登录", "完成"} {
 		if !tt.HasText(w) {
 			t.Errorf("here: no %q in %q", w, tt.Texts())
 		}
-	}
-	if tt.HasText("Codex") {
-		t.Errorf("an agent not signed in is listed")
 	}
 	if err := tt.Click("完成"); err != nil {
 		t.Fatal(err)

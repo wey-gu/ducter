@@ -125,6 +125,8 @@ export interface WsDeps {
   updates?: () => import("./updates.ts").Updates | undefined;
   /** D156: updating the AI agents on each device (agents.ts); absent in tests that don't need it. */
   agents?: () => import("./agents.ts").AgentUpdates | undefined;
+  /** D363: putting an agent on a device, signing it in there, looking again (core.ts routes it). */
+  agentSetup?: (device: string, f: { action: import("@ducter/protocol").AgentSetupAction; harnesses?: string[]; harness?: string; code?: string }) => Promise<{ ok: boolean; reason?: "away" | "unknown" | "failed" }>;
   /** D224: 全部更新 / Update all. */
   updateAll?: () => import("./update-all.ts").UpdateAll | undefined;
   /** D169: Nowledge Mem in each device's own agents (mem-plugins.ts); absent in tests that don't need it. */
@@ -1035,6 +1037,19 @@ export function createWsHandler(deps: WsDeps) {
         const r = await ag.start(device, harness, { by: "user" });
         send(ws, r.ok ? { t: "agent_update_result", device, harness, ok: true } : { t: "agent_update_result", device, harness, ok: false, reason: r.reason, ...(r.detail ? { detail: r.detail } : {}) });
         return; // progress pushes fresh devices frames to every subscriber
+      }
+      case "agent_setup": {
+        // D363: the device answers with fresh devices frames as each step happens.
+        const device = String(f.device ?? "local");
+        const action = f.action as import("@ducter/protocol").AgentSetupAction;
+        if (!["install", "login", "code", "cancel", "look"].includes(action)) throw new Error("unknown action");
+        watchDevices();
+        ws.data.devices = true;
+        const strs = (x: unknown) => (Array.isArray(x) ? x.filter((v): v is string => typeof v === "string") : undefined);
+        const hs = strs(f.harnesses);
+        const r = deps.agentSetup ? await deps.agentSetup(device, { action, ...(hs ? { harnesses: hs } : {}), ...(typeof f.harness === "string" ? { harness: f.harness } : {}), ...(typeof f.code === "string" ? { code: f.code } : {}) }) : { ok: false, reason: "failed" as const };
+        if (!r.ok) send(ws, { t: "agent_setup_result", device, action, ok: false, ...(r.reason ? { reason: r.reason } : {}) });
+        return;
       }
       case "update_all": {
         // D224: 全部更新 / Update all (stop: 停止剩下的; dismiss: put a finished plan away).

@@ -471,6 +471,17 @@ check, install unless this version is there, join (kept if the saved one still w
 service (a system unit as root). Safe to paste twice.
 
 
+**Its AI agents (D363, research/132).** A computer that just joined usually has none. The sheet's
+last step asks **装上哪些 AI？/ Which AIs should it have?** (Codex and Claude Code checked, pi not),
+**装上 / Install** or **以后再说 / Later**; then each agent as a row arriving (正在装上… / 等着装), its
+**登录 / Sign in** in place (Codex's link and code; Claude's link and the code pasted back; pi's line
+for that computer's terminal), and **{name} 可以干活了 / {name} is ready for tasks** once one is
+signed in. Every device card has the same rows (安装 in Add an AI's detail, 登录 on a coin not signed
+in). Ducter installs into `<data>/tools` there (its own pinned Node, each agent's npm package at the
+version it verified; no sudo), and finds the person's own copies: the worker's PATH is widened with
+the login shell's PATH and the usual per-user folders, and it looks again within seconds of a
+change (a fingerprint every 5 s, a real probe when it moves, and when a card opens).
+
 **The look (D358).** The sheet is clay, not a form: the kind question as two clay cards; the computer's
 own clay over every step, its pose the state (asleep under its blanket while the line is made, a ripple
 under it while it is waited for, awake with one swell as it joins, floating once here, grey when the code

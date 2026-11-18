@@ -14,6 +14,7 @@ import type { T } from "./i18n.ts";
 import type { Tailnet } from "./tailscale.ts";
 import { homeIdentity } from "@ducter/core/src/home-key.ts";
 import { pairFragment } from "@ducter/protocol/src/reach.ts";
+import { captureLoginPath, saveLoginPath } from "@ducter/core/src/agent-path.ts";
 
 export const UNIT_NAME = "ducter.service";
 export const unitPath = (home = homedir()) => join(home, ".config", "systemd", "user", UNIT_NAME);
@@ -375,9 +376,18 @@ export function selfCommand(compiled: boolean): string[] {
   return [process.execPath, resolve(dirname(new URL(import.meta.url).pathname), "main.ts")];
 }
 
-export function servicePath(env: Record<string, string | undefined> = process.env, home = homedir()): string {
-  const parts = [...(env.PATH ?? "").split(":"), join(home, ".local", "bin"), join(home, ".bun", "bin"), "/usr/local/bin", "/usr/bin", "/bin"];
+export function servicePath(env: Record<string, string | undefined> = process.env, home = homedir(), login: string[] = []): string {
+  // D363: the login shell's PATH too (nvm, fnm, mise, a custom npm prefix live there), so a worker
+  // finds the agents the person installed themselves; the worker widens it again on every probe.
+  const parts = [...(env.PATH ?? "").split(":"), ...login, join(home, ".local", "bin"), join(home, ".bun", "bin"), "/usr/local/bin", "/usr/bin", "/bin"];
   return [...new Set(parts.filter(Boolean))].join(":");
+}
+
+/** D363: the person's login shell's PATH, captured as the worker service is installed and kept for its starts. */
+async function serviceLoginPath(host: Host, dataDir: string): Promise<string[]> {
+  const login = (await captureLoginPath({ run: async (argv, ms) => ((r) => ({ code: r.code, out: r.stdout }))(await host.run(argv, ms)) })) ?? [];
+  if (login.length) saveLoginPath(dataDir, login);
+  return login;
 }
 
 async function sh(host: Host, cmd: string[], timeoutMs = 15_000) {
@@ -516,7 +526,8 @@ export async function cmdService(o: {
 
   // D102: keys an older install left in the unit's EnvironmentFile move to keys.env first.
   migrateKeys(o.dataDir);
-  const unit = systemdUnit({ execStart: selfCommand(host.compiled), dataDir: o.dataDir, path: servicePath(), port: o.port, host: o.bindHost, worker: o.worker });
+  const login = o.worker ? await serviceLoginPath(host, o.dataDir) : [];
+  const unit = systemdUnit({ execStart: selfCommand(host.compiled), dataDir: o.dataDir, path: servicePath(process.env, homedir(), login), port: o.port, host: o.bindHost, worker: o.worker });
   mkdirSync(dirname(unitPath()), { recursive: true });
   writeFileSync(unitPath(), unit);
   console.log(style.dim(t("service.installed", { unit: unitPath() })));
@@ -579,7 +590,8 @@ export async function cmdSystemWorker(o: { t: T; style: Style; host: Host; dataD
   if (!existsSync(join(o.dataDir, "worker.json"))) return console.log(t("service.mac.joinFirst")), 1;
   migrateKeys(o.dataDir);
   const home = homedir();
-  writeFileSync(file, systemdUnit({ execStart: selfCommand(host.compiled), dataDir: o.dataDir, path: servicePath(process.env, home), port: 0, worker: true, system: true }));
+  const login = await serviceLoginPath(host, o.dataDir);
+  writeFileSync(file, systemdUnit({ execStart: selfCommand(host.compiled), dataDir: o.dataDir, path: servicePath(process.env, home, login), port: 0, worker: true, system: true }));
   console.log(style.dim(t("service.installed", { unit: file })));
   for (const cmd of [["daemon-reload"], ["enable", UNIT_NAME], ["restart", UNIT_NAME]]) {
     const r = await sh(host, ["systemctl", ...cmd]);

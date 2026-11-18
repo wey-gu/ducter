@@ -99,6 +99,9 @@ import { homeIdentity, okNonce } from "./home-key.ts";
 import { addWay, bookHas, createReach, removeWay, viaOf, type ReachWatch } from "./reach-book.ts";
 import { CHALLENGE_PATH } from "@ducter/protocol/src/reach.ts";
 import { proveHome } from "@ducter/protocol/src/reach-verify.ts";
+import { whichNow } from "@ducter/protocol/src/which.ts";
+import { createAgentSetup, realAgentSetupSys } from "./agent-setup.ts";
+import { widenAgentPath } from "./agent-path.ts";
 
 declare const DUCTER_COMMIT: string | undefined; // set by packages/cli/build.sh via --define
 /** The build this core runs ("dev" from a checkout): /health says it, so Ducter.app can tell a background
@@ -199,6 +202,8 @@ export interface CoreOptions {
   /** D224 test seams: how often a running plan looks again, and the night's look. */
   updateAll?: { tickMs?: number; nightEveryMs?: number; tz?: string };
   agents?: { fetch?: ReleaseFetch; sys?: UpdateSys; which?: (c: string) => string | null; detect?: AgentUpdatesDeps["detect"]; loggedIn?: AgentUpdatesDeps["loggedIn"]; exists?: (p: string) => boolean; settleMs?: number; autoEveryMs?: number };
+  /** D363 test seams: putting agents on the home (default: the real network and npm, never in tests). */
+  agentSetup?: { sys?: import("./agent-setup.ts").AgentSetupSys };
   /** D169 test seams: the Mem plugin check on the home (default: the real `nmem`, never in tests). */
   memPlugins?: { inspectLocal?: () => Promise<Record<string, import("@ducter/protocol").MemPluginView> | undefined>; everyMs?: number; now?: () => number; connected?: () => boolean };
   /** D151 test seams for Ducter's own browser (false: none). */
@@ -1005,7 +1010,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       socketsChanged: () => reachRef?.refresh(),
     },
     partners,
-    core: api, workbench, bridgeLink, decisions, runner: () => runner, devices: () => devicesView, lend: () => lendRef, settings, connections, phone, rules, loadout, accountUsage, closing, work: workFrames, newTask, updates: () => updatesRef, agents: () => agentsRef, updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, anywhere: () => anywhereRef, channels, proactive: () => proactiveRef, calendar: () => calendarRef, taskSources: () => taskSourcesRef, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets, past: { ...past, marks, persona: () => persona.id, ongoing, outside }, keys: { dataDir, ...(opts.keyFetch ? { fetch: opts.keyFetch } : {}), ...(opts.keyCanRun ? { canRun: opts.keyCanRun } : {}) }, ...(firstWordsDeps ? { firstWords: firstWordsDeps } : {}), did, ownAgents });
+    core: api, workbench, bridgeLink, decisions, runner: () => runner, devices: () => devicesView, lend: () => lendRef, settings, connections, phone, rules, loadout, accountUsage, closing, work: workFrames, newTask, updates: () => updatesRef, agents: () => agentsRef, agentSetup: (device, f) => agentSetupOp(device, f), updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, anywhere: () => anywhereRef, channels, proactive: () => proactiveRef, calendar: () => calendarRef, taskSources: () => taskSourcesRef, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets, past: { ...past, marks, persona: () => persona.id, ongoing, outside }, keys: { dataDir, ...(opts.keyFetch ? { fetch: opts.keyFetch } : {}), ...(opts.keyCanRun ? { canRun: opts.keyCanRun } : {}) }, ...(firstWordsDeps ? { firstWords: firstWordsDeps } : {}), did, ownAgents });
   handsets.onChange(() => (devicesView?.changed(), ws.onHandChanged()));
   onHandChanged = ws.onHandChanged;
   // D156: a partner turn in flight keeps an update of the agent it thinks with waiting.
@@ -1032,6 +1037,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   let lendRef: import("./lend.ts").Lend | undefined;
   let updatesRef: Updates | undefined;
   let agentsRef: AgentUpdates | undefined;
+  let agentSetupOp: (device: string, f: { action: import("@ducter/protocol").AgentSetupAction; harnesses?: string[]; harness?: string; code?: string }) => Promise<{ ok: boolean; reason?: "away" | "unknown" | "failed" }> = async () => ({ ok: false, reason: "failed" });
   let updateAllRef: UpdateAll | undefined;
   let memPluginsRef: MemPlugins | undefined;
   let anywhereRef: AnywhereCtl | undefined;
@@ -1102,7 +1108,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   const agentTesting = process.env.NODE_ENV === "test";
   const agentSys = a.sys ?? u.sys ?? realSys;
   const agentLatest = createAgentLatest({ dataDir, ...(a.fetch ? { fetch: a.fetch } : agentTesting ? {} : { fetch: (x, i) => fetch(x, i) }), env: process.env });
-  const agentProbe = { exec: (argv: string[], ms?: number) => agentSys.run(argv, { timeoutMs: ms ?? 15_000 }), which: a.which ?? ((c: string) => Bun.which(c)), env: process.env, dataDir, ...(agentTesting ? {} : { piBundled: bundledPiVersion }) };
+  const agentProbe = { exec: (argv: string[], ms?: number) => agentSys.run(argv, { timeoutMs: ms ?? 15_000 }), which: a.which ?? ((c: string) => whichNow(c)), env: process.env, dataDir, ...(agentTesting ? {} : { piBundled: bundledPiVersion }) };
   const isWorker = (dev: string) => devices.list().some((x) => x.kind === "worker" && (x.id === dev || x.name === dev));
   const agents = createAgentUpdates({
     log,
@@ -1145,6 +1151,51 @@ export function startCore(opts: CoreOptions = {}): Core {
     return n + partner;
   }
   agentsRef = agents;
+  // D363: the person's own agent folders and Ducter's tools folder on the home's PATH too.
+  if (!agentTesting) widenAgentPath({ dataDir });
+  // D363: putting agents on the home itself and signing them in here (a worker has its own, the
+  // agent_setup op). No network or npm in tests unless a sys is given.
+  const homeSetup =
+    opts.agentSetup?.sys || !agentTesting
+      ? createAgentSetup({
+          dataDir,
+          sys: opts.agentSetup?.sys ?? realAgentSetupSys({ platform: process.platform, arch: process.arch, which: (c) => whichNow(c) }),
+          probe: async () => {
+            widenAgentPath({ dataDir });
+            devicesView?.refresh();
+            devicesView?.changed();
+          },
+          changed: () => devicesView?.changed(),
+        })
+      : undefined;
+  agentSetupOp = async (device, f) => {
+    const isHome = device === "local" || device === "" || (await devicesView?.frame())?.devices.some((d) => d.home && d.id === device);
+    if (isHome) {
+      if (f.action === "look") {
+        widenAgentPath({ dataDir });
+        devicesView?.refresh();
+        devicesView?.changed();
+        return { ok: true };
+      }
+      if (!homeSetup) return { ok: false, reason: "failed" };
+      if (f.action === "install") homeSetup.install(f.harnesses ?? []);
+      else if (f.action === "login") homeSetup.login(f.harness ?? "");
+      else if (f.action === "code") homeSetup.code(f.harness ?? "", f.code ?? "");
+      else if (f.action === "cancel") homeSetup.cancel(f.harness ?? "");
+      return { ok: true };
+    }
+    const id = devices.list().find((x) => x.kind === "worker" && (x.id === device || x.name === device))?.id;
+    if (!id) return { ok: false, reason: "unknown" };
+    const link = workers.link(id);
+    if (!link) return { ok: false, reason: "away" };
+    try {
+      await link.call("agent_setup", { action: f.action, ...(f.harnesses ? { harnesses: f.harnesses } : {}), ...(f.harness ? { harness: f.harness } : {}), ...(f.code ? { code: f.code } : {}) }, 30_000);
+      return { ok: true };
+    } catch {
+      // A Ducter there from before D363 doesn't know the op.
+      return { ok: false, reason: "failed" };
+    }
+  };
   // D224: 全部更新 / Update all: the home's one plan, kept on disk, picked up again after its restart.
   const ua = opts.updateAll ?? {};
   const updateAll = createUpdateAll({
@@ -1248,7 +1299,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   workers.onChange(() => reachRef?.refresh());
   // D347: 加一台做事的电脑 / Add a computer for tasks: a code, the line to paste, and when it arrives.
   lendRef = createLend({ auth: devices, dataDir, bind: hostname, port: () => listening, broadcast: (f) => ws.broadcast(f) });
-  devicesView = createDevicesView({ anywhere, dataDir, auth: devices, workers, connected: () => ws.connected(), viaOf: (id) => ws.vias().get(id), ways: () => reachRef?.ways() ?? [], homeKey: identity, probes: opts.deviceProbes, ...(u.homeName ? { hostname: u.homeName } : {}), updates: () => updates, agents: () => agents, updateAll: () => updateAll, mem: () => memPluginsRef, ...(agentTesting ? {} : { piBundled: bundledPiVersion }), self: { version, how: selfHow, platform: `${process.platform}-${process.arch}` }, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), handsets, ...(opts.platform ? { platform: opts.platform } : {}), call: () => callAbility(phone.available(), connections.view()), onDisconnect: (id) => {
+  devicesView = createDevicesView({ anywhere, dataDir, auth: devices, workers, connected: () => ws.connected(), viaOf: (id) => ws.vias().get(id), ways: () => reachRef?.ways() ?? [], homeKey: identity, probes: opts.deviceProbes, ...(u.homeName ? { hostname: u.homeName } : {}), updates: () => updates, agents: () => agents, agentSetup: () => homeSetup, updateAll: () => updateAll, mem: () => memPluginsRef, ...(agentTesting ? {} : { piBundled: bundledPiVersion }), self: { version, how: selfHow, platform: `${process.platform}-${process.arch}` }, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), handsets, ...(opts.platform ? { platform: opts.platform } : {}), call: () => callAbility(phone.available(), connections.view()), onDisconnect: (id) => {
     for (const s of push.forget(id)) void apns.revoke?.(s);
   } });
   updates.onChange(() => devicesView?.changed());

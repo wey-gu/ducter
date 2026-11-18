@@ -7,6 +7,7 @@ const files = (m: Record<string, string>) => (p: string) => m[p];
 test("a machine with all four: logins read from their own commands and files", async () => {
   const r = await probeHarnesses({
     which: (c) => (["claude", "codex", "node", "dsh"].includes(c) ? `/bin/${c}` : null),
+    piBundled: () => "", // D363: node runs OAR's bundled pi (a checkout); no version to report
     exec: async (argv) =>
       argv[0]!.endsWith("claude")
         ? { code: 0, out: '{"loggedIn": true}' }
@@ -28,7 +29,7 @@ test("a machine with all four: logins read from their own commands and files", a
 });
 
 test("pi with no provider and DeepSeek Harness too old or without a key are not signed in", async () => {
-  const base = { which: (c: string) => (c === "node" || c === "dsh" ? `/bin/${c}` : null), env: {}, home: "/h", dataDir: "/d" };
+  const base = { which: (c: string) => (c === "node" || c === "dsh" ? `/bin/${c}` : null), env: {}, home: "/h", dataDir: "/d", piBundled: () => "" };
   const old = await probeHarnesses({ ...base, exec: async () => ({ code: 0, out: "0.2.0" }), read: files({ "/d/env": "OO_TOKEN=x" }), only: ["pi", "deepseek-harness"] });
   expect(old).toEqual([
     { harness: "pi", installed: true, loggedIn: false, canBePartner: false },
@@ -46,4 +47,9 @@ test("versions compare with prereleases", () => {
   expect(compareVersions("0.2.1-rc.4", "0.2.1-rc.5")! < 0).toBe(true);
   expect(compareVersions("0.2.1", "0.2.1-rc.5")! > 0).toBe(true);
   expect(compareVersions("x", "0.2.1")).toBeNull();
+});
+
+test("D363: node alone is not pi (the single binary runs only a pi command)", async () => {
+  const r = await probeHarnesses({ which: (c) => (c === "node" ? "/usr/bin/node" : null), exec: async () => ({ code: 1, out: "" }), env: {}, home: "/h", dataDir: "/d", read: () => undefined, only: ["pi"] });
+  expect(r[0]).toMatchObject({ harness: "pi", installed: false });
 });

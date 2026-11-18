@@ -186,8 +186,10 @@ export async function probeHarnesses(o: HarnessProbeEnv): Promise<DeviceHarness[
     const models = parseJson(read(join(agentDir, "models.json")));
     const keyed = Object.values(models?.providers ?? {}).some((p: any) => typeof p?.apiKey === "string" && p.apiKey.length > 0);
     const loggedIn = (auth && Object.keys(auth).length > 0) || keyed || HARNESS_KEYS.pi.some(has);
-    // Installed: OAR's pi runs under node, or the user's own `pi`.
-    return { harness: "pi", installed: !!(o.which("node") || o.which("pi")), loggedIn: !!loggedIn };
+    // Installed: the user's own `pi`, or OAR's bundled pi under node, which only a Ducter run from
+    // a checkout has (piBundled); the single binary runs the user's pi (runner oar.ts). D363: node
+    // alone on a server is not pi (it showed a pi that couldn't run).
+    return { harness: "pi", installed: !!(o.which("pi") || (o.which("node") && o.piBundled?.() !== undefined)), loggedIn: !!loggedIn };
   };
   const dsh = async (): Promise<RawHarness> => {
     const bin = env.OAR_DSH_BIN || o.which("dsh");

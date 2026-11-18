@@ -227,14 +227,14 @@ func TestCharacterSheet(t *testing.T) {
 		click(tt, L.T("card.disconnect.device", "MacBook"))
 		has(tt, L.T("device.disconnect.ask", "MacBook"))
 
-		// hel from this Mac: Codex is grey; its detail only says sign in there.
+		// hel from this Mac: Codex is grey; its detail offers 登录 there (D363).
 		app = sheetApp(t, lang, "awake")
 		app.devState().sel = "local"
 		tt = sheetTester(app, 1280, 860, true)
 		has(tt, L.T("card.status.home", "Ducter"), L.T("chip.web"), L.T("chip.remote"))
 		hasNot(tt, L.T("card.disconnect.device", "hel"))
 		click(tt, spoken(L, "Codex", "hel", L.T("coin.signed_out")))
-		has(tt, L.T("coin.signin.why", "hel"), L.T("coin.there", "hel"))
+		has(tt, L.T("coin.signin.why", "hel"), L.T("ag.signin"))
 		shot(tt, "hel-codex")
 		// Ducter's own version line only with an update.
 		hasNot(tt, L.T("devup.current"))

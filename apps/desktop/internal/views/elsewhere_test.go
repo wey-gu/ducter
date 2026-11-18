@@ -63,6 +63,7 @@ func TestHomeAbilitiesElsewhere(t *testing.T) {
 		var sent []any
 		app.Send = func(f any) error { sent = append(sent, f); return nil }
 		click(t, tt, chip("phone", L.T("chip.elsewhere", "MacBook")))
+		sent = withoutLooks(sent) // D363: the opened card's own look again
 		if app.devState().sel != "dev_mac" || len(sent) != 0 {
 			t.Fatalf("%s: the chip opened %q and sent %#v", lang, app.devState().sel, sent)
 		}

@@ -30,11 +30,25 @@ A computer added this way only does tasks. It can't read your conversation or de
    background: it starts again after a restart. You don't need to be an administrator; if you
    run it as root, it runs as a system service instead.
 4. Ducter shows **Waiting for it to connect…** until it arrives, then **nas is here**, with
-   its system and which AI agents are signed in on it. Rename it there if you like.
+   its system. Rename it there if you like.
+5. **Which AIs should it have?** Codex and Claude Code are already checked; tap **Install**.
+   Ducter puts them in its own folder on that computer: no administrator password, nothing else
+   on it changes. They arrive one by one, which takes a few minutes on a slow connection.
+6. Tap **Sign in** beside each one. Codex shows a link and a code: open the link on any device
+   and enter the code. Claude Code shows a link: sign in there, then paste the code the page
+   gives you back into Ducter. When one is signed in, Ducter says **nas is ready for tasks**.
 
-Tasks run on that computer with its own AI agents, so sign one in there (Claude Code or Codex, in
-a terminal on that computer). Until one is, asking for a task there gets one line saying so; the
-task never quietly runs somewhere else.
+Tasks run on that computer with its own AI agents. Until one is signed in, asking for a task
+there gets one line saying so; the task never quietly runs somewhere else.
+
+**Later, or on any computer.** Tap **Later** to skip, and do it from the computer's card in
+**Your devices** whenever you like: **Add an AI** lists what isn't there yet, each with
+**Install**, and an AI that isn't signed in opens on **Sign in**. If you install an AI on that
+computer yourself (with npm, nvm or its own installer), its card shows it within seconds.
+
+For Codex, the code works once device sign-in is on in your ChatGPT account's security
+settings; if it isn't, Ducter says so. pi signs in from a terminal on that computer: run `pi`,
+then type `/login`.
 
 The code works once, for 10 minutes; the card shows how long it has left. Pasting the line
 again later is fine: what is already installed and connected stays as it is.

@@ -1,0 +1,37 @@
+// D363: where one AI agent stands on a device, as its row shows it (the card, the lend sheet).
+// Pure, so tests drive it; the Mac's views/agentsetup.go reads the same order.
+import type { DeviceHarness } from "@ducter/protocol";
+
+export type AgentRowLook =
+  | "ready" // installed and signed in
+  | "login" // its sign-in is running there (or just ended): the login panel
+  | "signin" // installed, not signed in: 登录
+  | "installing"
+  | "queued"
+  | "failed" // the last install didn't: one line, 再试一次
+  | "install" // not there, Ducter can put it there: 安装
+  | "missing"; // not there, and Ducter can't (an older Ducter there, an agent it doesn't install)
+
+export function agentRowLook(h: Pick<DeviceHarness, "installed" | "loggedIn" | "installable" | "setup" | "login">): AgentRowLook {
+  if (h.setup?.phase === "installing") return "installing";
+  if (h.setup?.phase === "queued") return "queued";
+  if (h.installed && h.loggedIn && (!h.login || h.login.state !== "done")) return "ready";
+  if (h.installed && h.login) return "login";
+  if (h.installed) return h.loggedIn ? "ready" : "signin";
+  if (h.setup?.phase === "failed") return "failed";
+  return h.installable ? "install" : "missing";
+}
+
+/** The agents the lend sheet offers to install, and which start checked (Codex and Claude Code). */
+export function offerable(hs: readonly DeviceHarness[]): { harness: string; checked: boolean }[] {
+  const order = ["codex", "claude-code", "pi"];
+  return order
+    .map((id) => hs.find((h) => h.harness === id))
+    .filter((h): h is DeviceHarness => !!h && !h.installed && !!h.installable)
+    .map((h) => ({ harness: h.harness, checked: h.harness !== "pi" }));
+}
+
+/** Is any agent signed in there (the computer can take tasks)? */
+export const anyReady = (hs: readonly DeviceHarness[]) => hs.some((h) => h.installed && h.loggedIn);
+/** Is anything being put there now? */
+export const anyInstalling = (hs: readonly DeviceHarness[]) => hs.some((h) => h.setup?.phase === "installing" || h.setup?.phase === "queued");

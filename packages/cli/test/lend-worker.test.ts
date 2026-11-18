@@ -146,3 +146,26 @@ test("as root the worker is a system service: /etc/systemd/system, multi-user.ta
   expect(await svc("uninstall")).toBe(0);
   expect(existsSync(join(sys, "ducter.service"))).toBe(false);
 });
+
+test("D363: the login shell's PATH (nvm, an npm prefix) goes into the worker's unit and is kept for its starts", async () => {
+  const root = tmp();
+  const dataDir = join(root, "data");
+  const sys = join(root, "system");
+  mkdirSync(dataDir, { recursive: true });
+  mkdirSync(sys, { recursive: true });
+  writeFileSync(join(dataDir, "worker.json"), JSON.stringify({ url: "https://hel.example.com", token: "dvc.x", deviceId: "x", persona: "Ducter", name: "nas" }));
+  const nvm = "/root/.nvm/versions/node/v22.11.0/bin";
+  const host = {
+    compiled: false,
+    bunVersion: "1",
+    which: () => null,
+    writable: () => true,
+    port: async () => "free" as const,
+    run: async (cmd: string[]) =>
+      cmd[1] === "-lic" ? { code: 0, stdout: `motd\n__DUCTER_PATH__${nvm}:/usr/bin__DUCTER_END__` } : { code: 0, stdout: cmd.includes("is-active") ? "active\n" : "" },
+  } as unknown as Host;
+  console.log = () => {};
+  expect(await cmdService({ t: en, style: plainStyle, host, dataDir, port: 7777, worker: true, rest: ["install"], platform: "linux", uid: 0, systemDir: sys })).toBe(0);
+  expect(readFileSync(join(sys, "ducter.service"), "utf8")).toContain(nvm);
+  expect(readFileSync(join(dataDir, "login-path"), "utf8").trim()).toBe(`${nvm}:/usr/bin`);
+});

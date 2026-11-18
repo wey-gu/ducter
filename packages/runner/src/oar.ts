@@ -27,6 +27,7 @@ import { bridgeCommand, writeBridgeTarget } from "./mcp-bridge.ts";
 import { childEnvOverlay } from "./child-env.ts";
 import { taskCredentials } from "./task-credentials.ts";
 import { CODEX_NATIVE_MCP, CODEX_NATIVE_PLUGINS } from "@ducter/protocol/src/native-browser.ts";
+import { whichNow } from "@ducter/protocol/src/which.ts";
 
 export type { HarnessId };
 
@@ -372,11 +373,11 @@ function piCommand(): { command: string; args: string[] } | undefined {
   try {
     const here = fileURLToPath(import.meta.resolve("@botiverse/oar/runtimes/pi"));
     const entry = Bun.resolveSync("@earendil-works/pi-coding-agent/rpc-entry", dirname(here));
-    if (existsSync(entry) && Bun.which("node")) return { command: "node", args: [entry] };
+    if (existsSync(entry) && whichNow("node")) return { command: "node", args: [entry] };
   } catch {
     /* a single binary: no node_modules on disk */
   }
-  const pi = Bun.which("pi");
+  const pi = whichNow("pi");
   return pi ? { command: pi, args: [] } : undefined;
 }
 

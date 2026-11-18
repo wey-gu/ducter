@@ -290,9 +290,16 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
 - [ ] **Push never holds a decision past its default (D59):** coalescing (15 min) must let a
       decision out at once when its default would fire before the window ends
       (`packages/core/src/push.ts`, `tick`). Trigger: now; it is a correctness gap.
-- [ ] **Relayed harness logins (D52 Q17):** spawn `claude auth login` / `codex login
-      --device-auth` on the server, show URL + code in the client, pipe the pasted code back.
-      Trigger: the browser setup page (A1-V) or a desktop "Your AI" row for remote Ducters.
+- [x] **Relayed harness logins (D52 Q17):** built for workers and the home by D363 (a device
+      card's 登录, the lend sheet): Codex's device code and Claude's link with the pasted code.
+- [ ] **D363, the rest** (research/132): (a) one real sign-in end to end through the card (Codex's
+      device code and Claude's pasted code reaching "signed in", then a task there), only run up to
+      the link and a wrong code so far; (b) an agent installed by another user than the service's
+      (a root system worker and a person's own `~/.npm-global`) is not found: say so on the card, or
+      offer to install for the service's user; (c) 安装 on a Mac home and a Mac worker (only Linux was
+      run); (d) about 700 MB for all three agents: drop Claude Code's other platforms if npm keeps
+      them, or use its native download; (e) updating Ducter's own Node; (f) haswell wiped and lent
+      again from the release, as the author will. Trigger: the release that carries D363.
 - [ ] Desktop: a 断开 / Disconnect item and a visible "connected to <host>" line, so a remote
       connection is never invisible.
 - [ ] A2-W confirm card ("vps-1 想加入 …" with Go / Not mine) in the Devices UI. Today a worker

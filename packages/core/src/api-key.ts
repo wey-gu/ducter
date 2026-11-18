@@ -5,6 +5,7 @@
 // never in the Log, never printed, never sent back. Used by the home (the key_add frame) and by
 // the CLI before Ducter runs (`ducter key add`, the Mac app's first run).
 import { writeKey } from "@ducter/protocol/src/keys.ts";
+import { whichNow } from "@ducter/protocol/src/which.ts";
 import { KEY_PROVIDER_INFO, PI_INSTALL, cleanKey, keyName, recognizeKey, type HarnessId, type KeyProvider, type LangTag, type KeyResult, type KeyTrouble } from "@ducter/protocol";
 
 export interface KeyCheckOptions {
@@ -20,7 +21,7 @@ export interface KeyCheckOptions {
   dryRun?: boolean;
 }
 
-export function defaultCanRun(which: (cmd: string) => string | null | undefined = (c) => Bun.which(c)): (h: HarnessId) => boolean {
+export function defaultCanRun(which: (cmd: string) => string | null | undefined = (c) => whichNow(c)): (h: HarnessId) => boolean {
   return (h) => (h === "claude-code" ? !!which("claude") : h === "codex" ? !!which("codex") : h === "deepseek-harness" ? !!which("dsh") : !!(which("pi") || which("node")));
 }
 

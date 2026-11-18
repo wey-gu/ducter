@@ -57,6 +57,12 @@ func (a *App) drainDeviceResults() {
 		} else {
 			d.card.cutFailed = res.Reason
 		}
+	case "agent_setup_result":
+		// D363: the device couldn't take it (away, or a Ducter there from before).
+		if !res.OK {
+			fc := *res
+			a.ag.answer = &fc
+		}
 	case "agent_update_result":
 		// "Nothing newer" answers a stale view, not a failure: the devices
 		// frame that follows has the version there now.

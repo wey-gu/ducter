@@ -6,6 +6,7 @@
 import { HARNESS_FACTS } from "./harness-facts.ts";
 import type { MemPluginView, MemPluginWhy } from "./index.ts";
 import { nmemEnv } from "./tool-env.ts";
+import { whichNow } from "./which.ts";
 
 // The plugin's facts per agent live in the registry with their evidence (harness-facts memPlugin,
 // research/48 M4); these two views are read from it.
@@ -86,7 +87,7 @@ export async function inspectMemPlugins(exec: InspectExec, now: () => Date = () 
  */
 export function nmemInspectExec(env: Record<string, string | undefined>): InspectExec {
   return async (argv, ms) => {
-    if (!Bun.which(argv[0]!)) return { code: 127, out: "" };
+    if (!whichNow(argv[0]!)) return { code: 127, out: "" };
     const p = Bun.spawn(argv, { stdout: "pipe", stderr: "ignore", stdin: "ignore", env: nmemEnv(env) });
     const timer = setTimeout(() => p.kill(), ms ?? 20_000);
     try {

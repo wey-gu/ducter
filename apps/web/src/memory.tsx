@@ -521,12 +521,12 @@ export function MemoryPage() {
 
 // ---------- 和你的其他 agent 通信 / Talk with your other agents (D332; D295: on the settings grid) ----------
 
-/** Two of the person's agents' coins, overlapping: this page's mark. */
+/** Two of the person's agents' coins, overlapping: this page's mark; faded, grey as the Mac's (D374). */
 const CoinsTile = ({ faded }: { faded?: boolean }) => (
-  <Tile>
+  <Tile faded={faded}>
     <span class="mem-coins">
-      <Coin harness="claude-code" size={24} off={faded} />
-      <Coin harness="codex" size={24} off={faded} />
+      <Coin harness="claude-code" size={24} />
+      <Coin harness="codex" size={24} />
     </span>
   </Tile>
 );

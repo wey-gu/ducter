@@ -620,9 +620,14 @@ func (a *App) voiceSettings(c *ui.Context) {
 				sel = i
 			}
 		}
-		help := ""
-		if keys[sel] == "fn" {
-			help = a.L.T("voice.settings.key.fn.help")
+		// D374: the row says what the key does; Fn adds how to keep macOS's
+		// own dictation off it.
+		help := a.L.T("voice.settings.key.help")
+		switch keys[sel] {
+		case "fn":
+			help += "\n" + a.L.T("voice.settings.key.fn.help")
+		case "none":
+			help = a.L.T("voice.settings.key.none.help")
 		}
 		a.row(c, "voicekey", a.L.T("voice.settings.key"), help, func() {
 			labels := []string{a.L.T("voice.settings.key.ropt"), a.L.T("voice.settings.key.fn"), a.L.T("voice.settings.key.none")}

@@ -28,11 +28,11 @@ func (a *App) coinsTile(c *ui.Context, faded bool) func() {
 					ui.Box(c).Width(0).Margin(0, 0, 0, -14)
 				}
 				bmp := theme.Clay(art)
+				if faded {
+					bmp = theme.FadedClay(art, a.T) // D374: grey, never see-through
+				}
 				if bmp != nil {
-					img := ui.Image(c, bmp).Size(28, 28)
-					if faded {
-						img.Opacity(0.5)
-					}
+					ui.Image(c, bmp).Size(28, 28)
 				}
 			}
 		})

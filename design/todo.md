@@ -1925,3 +1925,5 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] **Live check:** a fresh Linux home without gh, as root and as a plain user, and a Mac with and without Homebrew: 连上 → 装上 gh → the code → connected. Trigger: before calling D345 done.
 - [ ] **Install on a worker:** New task's clone on a worker without gh still says how to install it by hand. Trigger: a worker without gh reported.
 - [ ] **Keep the pinned gh current:** a Ducter release moves `GH_RELEASE` (`packages/core/src/gh-install.ts`), and the home replaces its own copy. Trigger: the next gh security release.
+
+- [ ] **e2e flake (2026-11-18):** "all → done in order" (Update all finished by the restarted home) failed once at 16/17 during a network drop, passed 33/33 on rerun. Trigger: it fails again; then read the log for the plan step that stalled.

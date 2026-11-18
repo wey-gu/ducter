@@ -381,6 +381,40 @@ where a brain switch starts the next session on the other harness and the conver
 projection is unchanged; `fw_candidates` table tests (rule, reserve, account off, nothing left →
 one line with a default, never a silent fallback).
 
+## Kinds of work (D370, research/140)
+
+*Who:* the heavy developer whose Opus limit goes to booking a hotel; the consumer who says "订酒店别用
+Claude Code" once and expects it kept; the fresh user, who never hears the word "model" and sees one
+line the first time. *Felt before:* errands ran on the smartest model like code, a "never" said in
+the conversation was promised and not kept, and a saved rule turned "not X" into "use Y". *After:*
+放心: what they said is what it does, in their words, on the Partner page; 惊喜: their limit lasts
+longer without them doing anything.
+
+- **The kind is decided once**, by the partner at `task_open` (`kind`: code, errand, writing,
+  research, other), kept on the task (`task_open.workKind`); when it says none, Ducter reads it from
+  the needs and place (web pages, a phone app: errand; a repo: code); else none (ranked as code).
+- **Rules by kind and "never".** `RuleView.kinds` and `never`. A rule matches by its words (the
+  more specific) or by the task's kind; newest wins within each. A never-rule is a hard filter
+  (`ruled_out`, greyed in the switch sheet with **你说过这类不用它 / You said not for this kind**); a
+  pin in the moment ("这次就用 Claude Code") passes it; if only the ruled-out agent could take the
+  task, nothing opens and the partner asks in one line. Saving a never for X removes an older rule
+  sending that work to X, and the other way round.
+- **Built-in defaults by kind.** The tier score is per kind: for errands a fast tier the table knows
+  (Claude Code · Sonnet, DeepSeek Flash) scores 100, the smartest 75, a guessed one 50; every other
+  kind as before (smartest 100, fast 50). Pay-per-use still costs 30 and the limit left still adds
+  up to 20, so plan before pay-per-use holds. Codex has no fast tier until one is evidenced.
+- **Said once, changeable.** The first errand the default puts on a fast tier gets `why: kind,
+  first`; Ducter itself adds one line after the ack (**这类跑腿的事我先交给 {fast}：更快，也给 {smart}
+  留着额度。想换就说。**). The task's who line says **跑腿的事，先交给快的**; the Partner page lists the
+  defaults under the rules in literal words (`rules.defaults`), with no Remove: a rule said in the
+  conversation changes them.
+- **Safety net.** An errand on a fast tier whose task fails, reports failed or stalls after its
+  nudge carries on on the smartest on the same computer, once, by itself (`body_selected` why
+  `retry`, Ducter's words to the task); that failed report doesn't wake the partner, and a pending
+  "done/failed" notification is withdrawn when the task is back at work. A second miss reaches
+  the person as any failure does.
+- **Moving a task that waits on the person carries on at once** (it was idle until a message).
+
 ## Summary
 
 There is no place today; the partner is hard-coded to Claude Code. Recommendation: two cards at

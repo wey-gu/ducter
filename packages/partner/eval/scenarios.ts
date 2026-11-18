@@ -135,6 +135,10 @@ export interface Expect {
   needs?: { browse?: boolean; signedIn?: boolean; site?: string; app?: string; long?: boolean; draw?: boolean; phone?: boolean | string | (boolean | string)[] };
   /** Some opened task names this agent (harness). */
   harness?: string;
+  /** D370: no opened task names this agent. */
+  notHarness?: string;
+  /** D370: some opened task is of this kind of work (said, or read from its needs and place). */
+  workKind?: "code" | "errand" | "writing" | "research" | "other";
   /** Some opened task's place has this kind. */
   placeKind?: "repo" | "folder" | "browser" | "none";
   /** Partner tools that must be called (by name), each with these args (a RegExp matches a string arg). */
@@ -187,6 +191,8 @@ export interface Scenario {
   /** D368 (G2): the person's Working Memory in the fake Mem (nmem's `parsed` fields); omitted = none. */
   workingMemory?: { focus: { name: string; description?: string }[]; briefing?: string; rulings?: string[] };
   steps: Step[];
+  /** D370: the home has never put an errand on a faster model (Ducter says its one line once). */
+  firstErrand?: true;
   expect: Expect;
   /** What the judge checks, specific to this scenario. */
   rubric: string;
@@ -1682,6 +1688,55 @@ export const scenarios: Scenario[] = [
     steps: [{ user: "以后 hawdb 的活都交给 Codex 做吧" }],
     expect: { opens: 0, msgs: [1, 1], maxChars: 80, called: [{ tool: "rule_save" }] },
     rubric: "A standing preference about who does a kind of work. It keeps it as a rule (rule_save) and says it back in one short Chinese line in the user's terms (e.g. 好，以后 HawDB 的事交给 Codex。). No task opened, no explanation of rules or harnesses.",
+  },
+  // ---------- D370: the kind of work picks who does it (live: hel, 2026-11-18) ----------
+  {
+    id: "kind-errand-first-zh",
+    category: "rules",
+    lang: "zh",
+    firstErrand: true,
+    steps: [{ user: "帮我看看京都 12 月 20 号到 23 号住哪儿好，两个人，一晚 1500 以内" }],
+    expect: { opens: 1, ackFirst: true, workKind: "errand", msgs: [1, 1], maxChars: 90, require: [/Sonnet/i], notHarness: "claude-code" },
+    rubric: "D370: a hotel search is an errand. It opens one task (kind errand or web needs) without naming an agent, acks in one short Chinese line, and then (the tool said this is the first errand put on a faster model) says exactly one more short line: this kind goes to Sonnet, faster, keeping Opus and its limit for harder work, and the user can say to change it. No explanation of tiers or harnesses beyond that one line.",
+  },
+  {
+    id: "kind-code-stays-smart-zh",
+    category: "rules",
+    lang: "zh",
+    steps: [{ user: "~/dev/hawdb 的 CI 又红了，帮我修一下" }],
+    expect: { opens: 1, ackFirst: true, workKind: "code", msgs: [0, 0], maxChars: 80, forbid: [/Sonnet|更快的模型|省额度/] },
+    rubric: "D370: fixing CI in a repo is code. One task in the repo, one short Chinese ack, nothing about which model does it (code stays on the smartest, said nowhere).",
+  },
+  {
+    id: "rule-never-claude-code-zh",
+    category: "rules",
+    lang: "zh",
+    floor: true,
+    steps: [{ user: "对了，请你记住，订酒店等生活相关的工作别用 claude code 哈" }],
+    expect: { opens: 0, msgs: [1, 1], maxChars: 80, called: [{ tool: "rule_save", args: { harness: "claude-code", never: true } }] },
+    rubric: "Live (hel, 2026-11-18): the partner once answered \"好，以后…都不用 Claude Code\" and saved nothing, then later saved \"use Codex\", losing the exclusion. Now it saves the rule in this same turn as a never-rule on Claude Code (kind errand, or words like 酒店/机票), and says it back in one short Chinese line that keeps the exclusion (not 'use Codex'). No task opened.",
+  },
+  {
+    id: "kind-never-unsaved-zh",
+    category: "rules",
+    lang: "zh",
+    // As on hel: said earlier, answered, but no rule was saved then.
+    seed: [{ user: "对了，请你记住，订酒店等生活相关的工作别用 claude code 哈" }, { ai: "好，以后查机票、订酒店这类生活上的事都不用 Claude Code。" }],
+    steps: [{ user: "帮我算一下北京往返大阪 12 月 20 到 24 号、加上朗丽兹两晚的总价，准备好确认页，先别付" }],
+    expect: { opens: 1, ackFirst: true, notHarness: "claude-code", called: [{ tool: "task_open", args: { harness: /^(codex|pi|deepseek-harness)$/ } }], maxChars: 200 },
+    rubric: "Live (hel, 2026-11-18): the partner had promised not to use Claude Code for this but saved no rule, then wrote the preference into the next task's brief, and the task went to Claude Code anyway. Now the preference said in the conversation goes in harness on task_open (an agent other than Claude Code), never only in the brief; saving it as a never-rule now (rule_save) is right too. One short Chinese ack. No booking or payment.",
+  },
+  {
+    id: "kind-retry-failed-zh",
+    category: "rules",
+    lang: "zh",
+    seed: [
+      { user: "帮我在携程订一下 12 月 20 号京都的酒店" },
+      { task: { key: "hotel", title: "订京都酒店", ack: "我去携程看看，订之前问你。", state: "working" } },
+    ],
+    steps: [{ report: { task: "hotel", body: { state: "failed", summary: "Sonnet 没做下来，Ducter 换到 Opus 接着做了一次，也没成：携程要先登录，登录页一直弹验证码，停在这里。", questions: [], evidence: [] } } }],
+    expect: { opens: 0, msgs: [1, 1], maxChars: 160, noSend: true },
+    rubric: "D370's safety net, its last step: the errand already moved once by itself from Sonnet to Opus and still failed. Only now the person hears it: one short Chinese line saying it didn't get booked and why (Ctrip wants a sign-in, the captcha kept coming), and what would let it go on (e.g. they sign in to Ctrip once, or it tries another site). It doesn't quietly retry again, doesn't open a new task, and doesn't explain models.",
   },
   {
     id: "connections-none-en",

@@ -32,9 +32,10 @@ export function GHead(p: { tile: ComponentChildren; name: string; line?: string;
 }
 
 /** A row: the tile column (a tile, or empty so the words keep the text edge), title, one line, control. */
-export function GRow(p: { tile?: ComponentChildren; title?: string; line?: string; children?: ComponentChildren }) {
+/** cls "one-line" (D370): a short quiet action stays beside the words on a phone (a rule's 删除). */
+export function GRow(p: { tile?: ComponentChildren; title?: string; line?: string; cls?: string; children?: ComponentChildren }) {
   return (
-    <div class={`chat-row${p.tile ? " tiled" : ""}`}>
+    <div class={`chat-row${p.tile ? " tiled" : ""}${p.cls ? ` ${p.cls}` : ""}`}>
       {p.tile}
       <span class="grow">
         {p.title && <b>{p.title}</b>}

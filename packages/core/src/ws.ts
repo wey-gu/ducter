@@ -299,10 +299,15 @@ export function createWsHandler(deps: WsDeps) {
     if (!subs.length) return;
     void settingsFrame().then((f) => subs.forEach((ws) => sockets.has(ws) && send(ws, f)));
   });
-  const rulesFrame = (): ServerFrame => ({ t: "rules", rules: deps.rules!.list() });
+  // D370: with the built-in default per kind of work (a probe that fails leaves them out).
+  const rulesFrame = async (): Promise<ServerFrame> => {
+    const defaults = (await deps.loadout?.defaults().catch(() => undefined)) ?? [];
+    return { t: "rules", rules: deps.rules!.list(), ...(defaults.length ? { defaults } : {}) };
+  };
   const offRules = deps.rules?.onChange(() => {
-    const f = rulesFrame();
-    for (const ws of sockets) if (ws.data.rules) send(ws, f);
+    void rulesFrame().then((f) => {
+      for (const ws of sockets) if (ws.data.rules) send(ws, f);
+    });
   });
   // Connections: same pattern. The frame never carries a token.
   const connectionsFrame = (): ServerFrame => {
@@ -1216,14 +1221,14 @@ export function createWsHandler(deps: WsDeps) {
       case "rules": {
         if (!deps.rules) throw new Error("rules are not available");
         ws.data.rules = true;
-        send(ws, rulesFrame());
+        send(ws, await rulesFrame());
         return;
       }
       case "rule_remove": {
         if (!deps.rules) throw new Error("rules are not available");
         ws.data.rules = true;
         // A removal pushes a fresh frame to every subscriber; an unknown id: answer this one.
-        if (!deps.rules.remove(String(f.id ?? ""))) send(ws, rulesFrame());
+        if (!deps.rules.remove(String(f.id ?? ""))) send(ws, await rulesFrame());
         return;
       }
       case "candidates": {

@@ -9,9 +9,9 @@
 // that can start now over rows that wait, then the person's word (a computer they named, a rule),
 // then the least access that does the job, then a computer that doesn't sleep for long work, then
 // continuity, then the agent's own rank, then the home. One reason says why that computer.
-import { HARNESSES, harnessName, isHarnessId, PARTNER_RESERVE, type BodyWhy, type Candidate, type CandidateBlock, type DeviceHarness, type DeviceView, type Place, type RuleView, type Settings, type TaskNeeds, type WhereBlock, type WhereWhy } from "@ducter/protocol";
+import { HARNESSES, harnessName, isHarnessId, isWorkKind, PARTNER_RESERVE, type BodyWhy, type Candidate, type CandidateBlock, type DeviceHarness, type DeviceView, type KindDefault, type Place, type RuleView, type Settings, type TaskNeeds, type WhereBlock, type WhereWhy, type WorkKind } from "@ducter/protocol";
 import { HARNESS_FACTS } from "@ducter/protocol/src/harness-facts.ts";
-import { ruleFor } from "./rules.ts";
+import { neverFor, ruleFor, rulesOut, type RuleWork } from "./rules.ts";
 
 /** One AI agent and model, as the tier table knows it. smart: the strongest; fast: quick and light on the limit. */
 interface Tier {
@@ -22,6 +22,8 @@ interface Tier {
   listed?: true;
   /** The model in plain words, where its id isn't one (DeepSeek's provider/model ids). */
   label?: string;
+  /** D370: the tier comes from this table (a named model), not a guess from the order of a list. */
+  known?: true;
 }
 
 /**
@@ -86,7 +88,8 @@ export function computersOf(devices: DeviceView[], sites?: (deviceId: string) =>
 }
 
 export interface CandidateInput {
-  work: { title: string; brief?: string };
+  /** kind (D370): the kind of work, for the rules that name one and the built-in tier by kind. */
+  work: RuleWork;
   /** The AI agents on the device the task runs on (one computer; the old input, kept for callers without computers). */
   harnesses?: DeviceHarness[];
   /** D157: every computer that runs tasks; the ranking is over (computer × agent × model). */
@@ -120,12 +123,34 @@ const rows = (h: DeviceHarness): Tier[] => {
     const known = TIERS.filter((t) => t.harness === h.harness && t.model);
     return h.models.map((m, i) => {
       const k = known.find((x) => x.model === m.id);
-      return { harness: h.harness, model: m.id, kind: k?.kind ?? (i === 0 ? "smart" : "fast"), ...(k?.label ? { label: k.label } : {}) };
+      return { harness: h.harness, model: m.id, kind: k?.kind ?? (i === 0 ? "smart" : "fast"), ...(k?.label ? { label: k.label } : {}), ...(k ? { known: true as const } : {}) };
     });
   }
-  const own = TIERS.filter((t) => t.harness === h.harness && !t.listed);
+  const own = TIERS.filter((t) => t.harness === h.harness && !t.listed).map((t) => (t.model ? { ...t, known: true as const } : t));
   return own.length ? own : [{ harness: h.harness, kind: "fast" }];
 };
+
+/**
+ * D370: the kind of work, as the partner said it; else what its needs and place say (web pages,
+ * a phone app: an errand; a repo: code); else none (ranked as before: the smartest first).
+ */
+export function kindOf(said: unknown, needs?: TaskNeeds, place?: Place): WorkKind | undefined {
+  if (isWorkKind(said)) return said;
+  if (place?.kind === "repo") return "code";
+  if (needs?.browse || needs?.signedIn || needs?.phone || place?.kind === "browser") return "errand";
+  return undefined;
+}
+
+/**
+ * D370: the built-in tier for a kind of work, before the plan and the limit left. Errands (booking,
+ * comparing prices, forms, looking things up) go to a fast tier the table knows (Claude Code ·
+ * Sonnet, DeepSeek Flash), so the smartest and its limit are kept for code; every other kind, and
+ * a fast tier only guessed from a list's order, the smartest first (as before D370).
+ */
+function tierScore(t: Tier, kind: WorkKind | undefined): number {
+  if (kind === "errand") return t.kind === "fast" && t.known ? 100 : t.kind === "smart" ? 75 : 50;
+  return t.kind === "smart" ? 100 : 50;
+}
 
 /**
  * The models the partner may think with on an AI agent (D150): what the home's account lists,
@@ -172,6 +197,8 @@ interface Row extends Candidate {
   /** Higher is better, compared step by step (design/where.md §4.3). */
   key: number[];
   comp: Computer;
+  /** D370: the row's tier, as the table knows it. */
+  tier: Tier;
 }
 
 /** Steps of the ranking, in order; the index into Row.key. */
@@ -182,14 +209,18 @@ function rank(inp: CandidateInput): { rows: Row[]; multi: boolean } {
   const comps: Computer[] = inp.computers ?? [{ id: "local", name: "", home: true, state: "awake", alwaysOn: false, mac: true, harnesses: inp.harnesses ?? [] }];
   const multi = (inp.computers?.length ?? 0) > 1;
   const rule = ruleFor(inp.rules, inp.work);
+  // D370: "别用 Claude Code 订酒店": the rows a rule rules out for this work (a pin still may).
+  const nevers = neverFor(inp.rules, inp.work);
   const all: Row[] = [];
   for (const c of comps) {
     const f = fit(c, inp.needs, inp.place);
     for (const h of c.harnesses) {
       if (!isHarnessId(h.harness) || !HARNESSES[h.harness].task) continue;
       // D206: a picture to make goes only to an agent that makes pictures.
-      const blocked = blockOf(h, inp.settings) ?? f.block ?? (inp.needs?.draw && !HARNESSES[h.harness].draws ? ("no_draw" as const) : undefined);
+      const blocked0 = blockOf(h, inp.settings) ?? f.block ?? (inp.needs?.draw && !HARNESSES[h.harness].draws ? ("no_draw" as const) : undefined);
       for (const t of rows(h)) {
+        const out = nevers.find((r) => rulesOut(r, t));
+        const blocked = blocked0 ?? (out ? ("ruled_out" as const) : undefined);
         const ruled = !!rule && rule.harness === t.harness && (!rule.model || rule.model === t.model);
         const left = h.allowance?.left;
         const waits = c.state === "awake" ? undefined : c.state;
@@ -198,8 +229,9 @@ function rank(inp: CandidateInput): { rows: Row[]; multi: boolean } {
         // Least access that does the job: Ducter's own browser (signed in where needed) over the user's Chrome.
         // D235: work in a Mac app goes to a Mac where the person added 用电脑 / Use the computer.
         const access = f.uses === "ducter" && !f.needsSignIn ? 2 : f.uses === "chrome" ? 1 : inp.needs?.app && c.computer ? 1 : 0;
-        // Strongest; plan before pay-per-use; then the most limit left (the agent's own rank, D89).
-        const agent = (t.kind === "smart" ? 100 : 50) + (h.billing === "usage" ? -30 : 0) + (left ?? 0.5) * 20;
+        // Strongest (D370: the tier for this kind of work); plan before pay-per-use; then the most
+        // limit left (the agent's own rank, D89).
+        const agent = tierScore(t, inp.work.kind) + (h.billing === "usage" ? -30 : 0) + (left ?? 0.5) * 20;
         const key = [blocked ? 0 : 1, waits ? 0 : 1, word, access, inp.needs?.long && c.alwaysOn ? 1 : 0, inp.current?.device && isComputer(c, inp.current.device) ? 1 : 0, agent, c.home ? 1 : 0];
         const reason: Candidate["reason"] = ruled ? { kind: "rule", ruleId: rule!.id, text: rule!.text } : { kind: t.kind === "smart" ? "fit" : "fast" };
         all.push({
@@ -218,6 +250,7 @@ function rank(inp: CandidateInput): { rows: Row[]; multi: boolean } {
           ...(f.uses === "chrome" && inp.current && inp.current.uses !== "chrome" && (inp.current.uses || inp.place?.kind === "browser") ? { widens: true } : {}),
           key,
           comp: c,
+          tier: t,
         });
       }
     }
@@ -229,7 +262,7 @@ function rank(inp: CandidateInput): { rows: Row[]; multi: boolean } {
   return { rows: all, multi };
 }
 
-const strip = ({ key: _k, comp: _c, ...c }: Row): Candidate => c;
+const strip = ({ key: _k, comp: _c, tier: _t, ...c }: Row): Candidate => c;
 
 /**
  * Everyone who could do this work, best first: the one doing it now, then others who can take it,
@@ -261,6 +294,7 @@ const BLOCK_WORDS: Record<CandidateBlock, string> = {
   reserve: "only the part of its limit kept for the partner is left",
   no_model: "no model is picked for it yet",
   offline: "its device can't be reached",
+  ruled_out: "the user's rule says not to use it for this kind of work",
   no_browser: "no computer it is on can browse the web",
   no_chrome: "it needs the user's Chrome, and no computer it is on has it",
   no_app: "it needs a Mac app, and it isn't on a Mac",
@@ -408,7 +442,9 @@ export function chooseBody(inp: Omit<CandidateInput, "current"> & { pinned?: { h
   };
   if (inp.pinned) {
     const mine = all.filter((c) => c.harness === inp.pinned!.harness);
-    const usable = [...mine.filter((c) => !c.blocked && named.includes(c)), ...mine.filter((c) => !c.blocked)];
+    // D370: a pin in the moment ("这次就用 Claude Code") goes past a rule's never.
+    const free = (c: Row) => !c.blocked || c.blocked === "ruled_out";
+    const usable = [...mine.filter((c) => free(c) && named.includes(c)), ...mine.filter(free)];
     const best = usable.find((c) => !inp.pinned!.model || c.model === inp.pinned!.model) ?? usable[0];
     if (best) {
       // D128: the user picked it on the New task card (or `ducter task --agent`): "…，是你选的".
@@ -433,7 +469,15 @@ export function chooseBody(inp: Omit<CandidateInput, "current"> & { pinned?: { h
     return pick(next, movedWhy(rule.harness, b, rule));
   }
   let best = ok[0];
-  if (!best) return undefined;
+  if (!best) {
+    // D370: only the person's own never rule stands in the way: say so, never run it silently.
+    const out = all.filter((c) => c.blocked === "ruled_out");
+    if (out.length && !all.some((c) => !c.blocked)) {
+      const names = [...new Set(out.map((c) => harnessName(c.harness)))].join(", ");
+      return { problem: `the user's rule says not to use ${names} for this kind of work, and no other AI agent can take it. No task was opened. Ask the user in one line whether to use ${names} this once (then open it with that harness), or wait.` };
+    }
+    return undefined;
+  }
   // D157 (where.md §4.4): the best computer for the task is asleep, and another can start now.
   // Never ask between equal computers: the awake one just does it. When what the user would see
   // differs (other sign-ins; they'd sign in there first) or the awake one widens access (their
@@ -451,7 +495,44 @@ export function chooseBody(inp: Omit<CandidateInput, "current"> & { pinned?: { h
   if (best.harness !== inp.settings.brain.harness && brain && blockOf(brain, inp.settings) === "reserve") {
     return pick(best, { kind: "limit", from: inp.settings.brain.harness });
   }
+  // D370: an errand on a fast tier by the built-in default, with the smartest kept for harder work.
+  const kind = inp.work.kind;
+  if (kind === "errand" && best.tier.kind === "fast" && best.tier.known) {
+    const smart = ok.find((c) => c.tier.kind === "smart" && c !== best);
+    if (smart) return pick(best, { kind: "kind", work: kind, keeps: { harness: smart.harness, ...(smart.model ? { model: smart.model } : {}) } });
+  }
   // The model the ranking chose goes with it, so the card says what runs (the runner may put
   // DUCTER_TASK_MODEL in its place for a default pick, and logs what it actually ran).
   return pick(best, { kind: "default" });
+}
+
+/**
+ * D370 (the safety net): the smartest that can take this task now, other than the one on it: the
+ * ranking as for code (the tier by kind left out), the rules' nevers kept.
+ */
+export function smartestFor(inp: CandidateInput & { current: { harness: string; model?: string; device?: string } }): { harness: string; model?: string } | undefined {
+  const { work, ...rest } = inp;
+  const { rows: all, multi } = rank({ ...rest, work: { title: work.title, ...(work.brief ? { brief: work.brief } : {}) } });
+  const nevers = neverFor(inp.rules, work);
+  // On the computer it is on: the retry carries on there, from its saved progress.
+  const r = all.find((c) => !c.blocked && !c.waits && c.tier.kind === "smart" && !same(c, inp.current) && (!multi || isComputer(c.comp, inp.current.device)) && !nevers.some((n) => rulesOut(n, c)));
+  return r ? { harness: r.harness, ...(r.model ? { model: r.model } : {}) } : undefined;
+}
+
+/**
+ * D370: the built-in default per kind of work (no rules), for the Partner page: errands, and every
+ * other kind. Empty when they are the same (one agent, no fast tier the table knows).
+ */
+export function kindDefaults(inp: Omit<CandidateInput, "work" | "rules">): KindDefault[] {
+  const top = (kind: WorkKind) => {
+    const p = chooseBody({ ...inp, work: { title: "", kind }, rules: [] });
+    return p && !("problem" in p) ? { harness: p.harness, ...(p.model ? { model: p.model } : {}) } : undefined;
+  };
+  const errand = top("errand");
+  const rest = top("code");
+  if (!errand || !rest || same(errand, rest)) return [];
+  return [
+    { work: "errand", ...errand },
+    { work: "rest", ...rest },
+  ];
 }

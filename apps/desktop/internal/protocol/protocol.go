@@ -2280,8 +2280,10 @@ type ServerFrame struct {
 	// home (their records' file times); 和你的其他 agent 通信 shows for them.
 	OwnAgents []string `json:"ownAgents,omitempty"`
 	// rules: Your rules. candidates: who could do TaskID, best first.
-	Rules      []RuleView  `json:"rules,omitempty"`
-	Candidates []Candidate `json:"candidates,omitempty"`
+	Rules []RuleView `json:"rules,omitempty"`
+	// Defaults: the built-in default per kind of work (rules frame, D370).
+	Defaults   []KindDefault `json:"defaults,omitempty"`
+	Candidates []Candidate   `json:"candidates,omitempty"`
 	// connections: the user's connections and what oo is set up with;
 	// connection_result: OK, ID, Reason, and Readable (D158): what the
 	// added connection can read now; non-nil and empty means connected, but

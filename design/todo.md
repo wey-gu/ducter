@@ -2021,3 +2021,8 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] **D365: a contrast floor for faded "not set up" marks** (the resting own-number and Tuwa handsets white on white; Jira's navy mark on the dark tile; research/135 #12, #13). Trigger: the next Settings pass or a theme token change.
 - [ ] **D365: the server home's versions row** (version, state and 检查更新 stacked in a narrow right column; no hairline above 自动更新; research/135 #11). Trigger: the update work next touches `devupdate.go`'s `versionRow`.
 - [ ] **D365: the Settings pass in the real Mac app and the iOS Simulator** (this pass used the Mac's test renderer and headless Chrome at 390). Trigger: the next release's walk.
+- [ ] **D370: an errand run live on the fast tier** (Sonnet booking and comparing on real sites vs Opus; research/140 only infers it). Trigger: the author's next hotel or flight task on the home.
+- [ ] **D370: Codex's fast tier** (which of sol/terra/luna/astra is faster and lighter on the plan; nothing Ducter reads says). Trigger: Codex lists a tier, or a measured run.
+- [ ] **D370: limits by kind** (keep the smartest's limit for code by the limit left, not only by kind) waits on D133's reported limits. Trigger: D133 built.
+- [ ] **D370: a preference only in Mem** (said before rules existed) never reaches the ranking until said again; offer once to make it a rule when recall finds one. Trigger: a task goes to an agent a memory says not to use.
+- [ ] **D370: the unsaved-preference eval** (`kind-never-unsaved-zh`) passes 1 of 2 on haiku. Trigger: the next persona pass.

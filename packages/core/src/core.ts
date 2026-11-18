@@ -56,6 +56,7 @@ import { createWorkingMemory } from "./working-memory.ts";
 import { identityIdFor, readMemIdentity } from "./mem-identity.ts";
 import { openRules, type RulesStore } from "./rules.ts";
 import { createLoadout, isRuleHint, registerRuleTools, registerSwitchTool, type Loadout } from "./loadout.ts";
+import { createKindRetry, type KindRetry } from "./kind-retry.ts";
 import { openConnections, type ConnectionsStore, type Linker, type OoSource } from "./connections.ts";
 import { callWakes, neverCall, openPhone, type Phone } from "./phone.ts";
 import { openOwnPhone } from "./phone-own/index.ts";
@@ -696,14 +697,19 @@ export function startCore(opts: CoreOptions = {}): Core {
       console.error(`[core] partner ${id} onTrigger failed on ${e.kind}#${e.seq}:`, err);
     }
   };
-  const unsubscribePartner = log.subscribe((e) => {
-    if (!triggersPartner(e) || !work.wakes(e) || (proactiveRef && !proactiveRef.wakes(e)) || (calendarRef && !calendarRef.wakes(e)) || (taskSourcesRef && !taskSourcesRef.wakes(e))) return;
+  const wake = (e: LogEvent) => {
     // D312: another partner's conversation, task, wait or routine wakes that partner, never the default.
     const who = partners.on() ? whose.ofEvent(e) : DEFAULT_PARTNER;
     if (who !== DEFAULT_PARTNER) return triggerOther(who, e);
     if (isOtherChannel(e.stream)) return;
     if (partner) trigger(e);
     else if (early.length < 100) early.push(e);
+  };
+  // D370: an errand's failed report that Ducter answers by retrying it on the smartest (set below).
+  let kindRetryRef: KindRetry | undefined;
+  const unsubscribePartner = log.subscribe((e) => {
+    if (!triggersPartner(e) || !work.wakes(e) || (proactiveRef && !proactiveRef.wakes(e)) || (calendarRef && !calendarRef.wakes(e)) || (taskSourcesRef && !taskSourcesRef.wakes(e)) || (kindRetryRef && !kindRetryRef.wakes(e))) return;
+    wake(e);
   });
 
   // D191: 密码和银行卡 / Passwords & cards (D336; Autofill in code): saved sign-ins, cards and details, filled by reference in Ducter's browser.
@@ -799,6 +805,9 @@ export function startCore(opts: CoreOptions = {}): Core {
   registerClosingTool(mcp, closing, langNow);
   // D352: the partner's 换成 … / "use … for this": a task's model, effort or agent, as the person said it.
   registerSwitchTool(mcp, { loadout, tasks, models: modelCatalog, runner: () => runner });
+  // D370: an errand on a fast tier that fails or stalls carries on on the smartest, once.
+  kindRetryRef = createKindRetry({ log, loadout, runner: () => runner, retell: wake });
+  log.subscribe((e) => kindRetryRef?.onEvent(e));
   // D293: the home's own key pair (made before the Bridge link: D324 names its connection with it).
   const identity = homeIdentity(dataDir);
   // D205: Settings › 伙伴's one-tap Bridge connection for the persona, run by the home's nmem.

@@ -476,7 +476,7 @@ func (a *App) tasksGroup(c *ui.Context) {
 		note = a.L.T("loadout.tasks.only", harnessName(ready[0].Harness))
 	}
 	b := a.brain()
-	if len(ready) == 1 && ready[0].Harness == b.Harness && len(a.S.Rules) == 0 {
+	if len(ready) == 1 && ready[0].Harness == b.Harness && len(a.S.Rules) == 0 && len(a.S.RuleDefaults) == 0 {
 		// The one agent is the one it thinks with, already shown above: one line, no repeat.
 		a.sectionHead(c, title, note)
 		return
@@ -520,17 +520,50 @@ func (a *App) tasksGroup(c *ui.Context) {
 			}
 			a.tileRow(c, "agent:"+h.Harness, a.agentTile(c, h.Harness, false), agent, strings.Join(lines, "\n"), control)
 		}
-		if len(ready) < 2 && len(a.S.Rules) == 0 {
+		if len(ready) < 2 && len(a.S.Rules) == 0 && len(a.S.RuleDefaults) == 0 {
 			return
 		}
 		for _, r := range a.S.Rules {
 			r := r
-			a.tileRow(c, "rule:"+r.ID, nil, r.Text, a.L.T("loadout.rule.line"), func() {
+			line := a.L.T("loadout.rule.line")
+			if r.Never {
+				line = a.L.T("loadout.rule.line.never") // D370
+			}
+			// D370: the rule's agent on the coin column (dimmed for a never-rule), one compact row.
+			var tile func()
+			if r.Harness != "" {
+				tile = a.agentTile(c, r.Harness, r.Never)
+			}
+			a.tileRow(c, "rule:"+r.ID, tile, r.Text, line, func() {
 				if a.quietDanger(c, "rule:"+r.ID, a.L.T("loadout.rule.remove"), r.Text) {
 					a.send(protocol.RuleRemove{T: "rule_remove", ID: r.ID})
 					a.say("tasks", a.L.T("loadout.rule.removed", r.Text))
 				}
 			})
+		}
+		// D370: the built-in default per kind of work, in literal words.
+		rest := ""
+		for _, d := range a.S.RuleDefaults {
+			if d.Work == "rest" {
+				rest = a.whoName(d.Harness, d.Model)
+			}
+		}
+		// A rule about errands (to an agent, or never one) speaks for them.
+		errandRule := false
+		for _, r := range a.S.Rules {
+			for _, k := range r.Kinds {
+				errandRule = errandRule || k == "errand"
+			}
+		}
+		for _, d := range a.S.RuleDefaults {
+			if d.Work == "errand" && errandRule {
+				continue
+			}
+			if d.Work == "errand" {
+				a.tileRow(c, "default:errand", a.agentTile(c, d.Harness, false), a.L.T("loadout.default.errand", a.whoName(d.Harness, d.Model)), a.L.T("loadout.default.errand.line", a.padEnd(rest)), nil)
+			} else {
+				a.tileRow(c, "default:rest", a.agentTile(c, d.Harness, false), a.L.T("loadout.default.rest", a.whoName(d.Harness, d.Model)), a.L.T("loadout.default.rest.line"), nil)
+			}
 		}
 		if a.addRow(c, "rule", a.L.T("loadout.rule.add", name), a.L.T("loadout.rule.add.line")) {
 			a.Route = RouteConversation
@@ -643,8 +676,36 @@ func (a *App) whoLine(task *store.Task) (who, why string) {
 		}
 	case "you":
 		why = a.L.T("who.why.you")
+	case "kind": // D370
+		why = a.L.T("who.why.kind")
+	case "retry":
+		if w.Why.From != "" {
+			k := "who.why.retry"
+			if w.Why.Stalled {
+				k = "who.why.retry.stalled"
+			}
+			why = a.L.T(k, a.padEnd(a.whoName(w.Why.From, w.Why.FromModel)))
+		}
 	}
 	return who, why
+}
+
+// padEnd is a name before Chinese words: a space only after a Latin end
+// ("Codex 留给", "（Opus）留给"; D370).
+func (a *App) padEnd(s string) string {
+	if !a.L.Han() || s == "" || s[len(s)-1] >= 0x80 {
+		return s
+	}
+	return s + " "
+}
+
+// whoName is an agent and its model inside a sentence ("Claude Code（Sonnet）"),
+// never joined by a dot (D291).
+func (a *App) whoName(h, m string) string {
+	if m == "" {
+		return harnessName(h)
+	}
+	return a.L.T("who.name", harnessName(h), a.modelWord(h, "", m))
 }
 
 // canSwitch: the task can still move to another AI agent.
@@ -1011,6 +1072,18 @@ func (a *App) whoSentence(task *store.Task) string {
 		return a.L.T("who.sentence.you", who)
 	case "default":
 		return a.L.T("who.sentence.default", who, a.S.PersonaName)
+	case "kind": // D370
+		if w.Why.Keeps != nil {
+			return a.L.T("who.sentence.kind", who, a.padEnd(a.whoName(w.Why.Keeps.Harness, w.Why.Keeps.Model)))
+		}
+	case "retry":
+		if w.Why.From != "" {
+			k := "who.sentence.retry"
+			if w.Why.Stalled {
+				k = "who.sentence.retry.stalled"
+			}
+			return a.L.T(k, who, a.padEnd(a.whoName(w.Why.From, w.Why.FromModel)))
+		}
 	}
 	return a.L.T("who.sentence", who)
 }

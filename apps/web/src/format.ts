@@ -177,6 +177,11 @@ export function inPlaceTune(rows: readonly AgentModels[], harness: string, devic
 }
 
 /** A Latin word in Chinese text gets a space on each side ("在 MacBook 上"). */
+/** D370: a name before Chinese words: a space only after a Latin end ("Codex 留给", "（Opus）留给"). */
+export function padEnd(L: Strings, s: string): string {
+  return L.style.spaced || !s || s.charCodeAt(s.length - 1) >= 0x80 ? s : s + " ";
+}
+
 export function cjkPad(L: Strings, s: string): string {
   if (L.style.spaced || !s) return s;
   if (s.charCodeAt(0) < 0x80) s = " " + s;

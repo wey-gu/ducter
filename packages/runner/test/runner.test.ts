@@ -434,16 +434,30 @@ describe("send: steer vs queue", () => {
     await runner.dispose();
   });
 
+  test("D370: switching a task that waits on the person carries on at once (moving it is their answer)", async () => {
+    const fake = new FakePort();
+    const runner = createRunner(core, { harness: fake, newId: nextId });
+    const card = await runner.openTask({ persona: "p1", title: "订酒店", brief: "b", harness: "claude-code" });
+    await runner.whenStarted(card.taskId);
+    await core.call("report_to_main", { state: "needs_input", summary: "你说过这类不用 Claude Code，要换到 Codex 吗？", questions: [] }, card.taskId);
+    expect(await runner.switchBody!(card.taskId, "codex")).toEqual({ ok: true });
+    expect(fake.specs[1]).toMatchObject({ harness: "codex" });
+    expect(fake.sessions[1]!.sent[0]!.text).toContain("started by Claude Code");
+    expect(core.tasks.get(card.taskId)).toMatchObject({ attention: "working", residency: "hot" });
+    await runner.dispose();
+  });
+
   test("switching a waiting task: the answer starts a new session on the new agent from the brief and saved progress", async () => {
     const fake = new FakePort();
     const runner = createRunner(core, { harness: fake, newId: nextId });
     const card = await runner.openTask({ persona: "p1", title: "Fix CI", brief: "b", harness: "codex" });
     await runner.whenStarted(card.taskId);
     core.log.append({ stream: `task:${card.taskId}`, origin: "task", kind: "checkpoint", body: { taskId: card.taskId, text: "found the failing test" } });
-    await core.call("report_to_main", { state: "needs_input", summary: "which file?", questions: [] }, card.taskId);
+    await core.call("report_to_main", { state: "blocked", summary: "waiting for the CI run", questions: [] }, card.taskId);
+    const att = core.tasks.get(card.taskId)!.attention;
     expect(await runner.switchBody!(card.taskId, "claude-code")).toEqual({ ok: true });
     expect(fake.sessions).toHaveLength(1); // nothing starts until there is something to say
-    expect(core.tasks.get(card.taskId)).toMatchObject({ attention: "needs_you", residency: "parked" });
+    expect(core.tasks.get(card.taskId)).toMatchObject({ attention: att, residency: "parked" });
     expect(await runner.send(card.taskId, "src/a.ts", undefined, "user")).toEqual({ delivered: "prompted" });
     expect(fake.specs[1]).toMatchObject({ harness: "claude-code" });
     expect(fake.specs[1]!.resumeSessionId).toBeUndefined();
@@ -476,7 +490,7 @@ describe("send: steer vs queue", () => {
     const r1 = createRunner(core, { harness: fake1, newId: nextId });
     const card = await r1.openTask({ persona: "p1", title: "Fix CI", brief: "b", harness: "codex" });
     await r1.whenStarted(card.taskId);
-    await core.call("report_to_main", { state: "needs_input", summary: "which?", questions: [] }, card.taskId);
+    await core.call("report_to_main", { state: "blocked", summary: "waiting for CI", questions: [] }, card.taskId);
     await r1.switchBody!(card.taskId, "claude-code");
     // core records who does it now (loadout.switchTask's body_selected)
     core.tasks.get(card.taskId)!.body = { harness: "claude-code", why: { kind: "you" } };

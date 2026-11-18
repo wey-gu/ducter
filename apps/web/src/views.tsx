@@ -19,7 +19,7 @@ import { AmbientLine } from "./ambient.tsx";
 import { A, candKey, effortWord, HANDHELD, placeKey, type SettingsPage } from "./app.ts";
 import { HARNESSES, isHarnessId, TRY_LIVE, type HeldMsg } from "@ducter/protocol";
 import { closingWords, computerApart, computerOf, computers, computerState, manyComputers, whereAsk, watchesBrowser, whereCandReason } from "./where.ts";
-import { ago, behind, cjkPad, deviceLabel, duration, harnessName, inPlaceTune, modelName, phaseLine as phaseWords, sameWords, splitOutcome, spoken, when } from "./format.ts";
+import { ago, behind, cjkPad, deviceLabel, duration, harnessName, inPlaceTune, modelName, padEnd, phaseLine as phaseWords, sameWords, splitOutcome, spoken, when } from "./format.ts";
 import { markdown } from "./markdown.ts";
 import { Coin } from "./coin.tsx";
 import { EyeShut, liveSize } from "./live.tsx";
@@ -1900,6 +1900,9 @@ function whoSentence(task: Task): string {
   if (w?.kind === "unavailable" && w.from) return t("who.sentence.unavailable", who, harnessName(w.from));
   if (w?.kind === "you") return t("who.sentence.you", who);
   if (w?.kind === "default") return t("who.sentence.default", who, A.S.personaName);
+  // D370: the kind of work put it on a faster one; or the faster one missed and it carries on here.
+  if (w?.kind === "kind" && w.keeps) return t("who.sentence.kind", who, padEnd(A.L, whoName(w.keeps.harness, w.keeps.model)));
+  if (w?.kind === "retry" && w.from) return t(w.stalled ? "who.sentence.retry.stalled" : "who.sentence.retry", who, padEnd(A.L, whoName(w.from, w.fromModel)));
   return t("who.sentence", who);
 }
 
@@ -1925,6 +1928,8 @@ function whoLine(task: Task): [string[], string] {
     return [who, w.ruleId ? t("who.why.limit.rule", harnessName(w.from ?? "")) : w.from ? t(plain, harnessName(w.from)) : ""];
   }
   if (w.kind === "you") return [who, t("who.why.you")];
+  if (w.kind === "kind") return [who, t("who.why.kind")];
+  if (w.kind === "retry" && w.from) return [who, t(w.stalled ? "who.why.retry.stalled" : "who.why.retry", padEnd(A.L, whoName(w.from, w.fromModel)))];
   return [who, ""];
 }
 

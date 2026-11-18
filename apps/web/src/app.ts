@@ -3,7 +3,7 @@ import { onWbFrame } from "./workbench-ask.ts";
 import { onFileOpenFrame } from "./filelink-ask.ts";
 import { onPastFrame, openPast } from "./past.tsx";
 import { onDidFrame, openDid } from "./did.tsx";
-import type { AgentModels, AgentReason, MemPluginReason, BrainNow, BridgeView, Candidate, ModelChoice, ClientFrame, Place, PlaceChoice, ConnectionReason, ConnectionView, DeviceHarness, DeviceView, DucterFolderView, GhInstallPlan, GitLoginState, MemItem, MemView, OoDetect, Reach, RuleView, ServerFrame, Settings, SettingsPatch, UpdateAllView, UpdateReason } from "@ducter/protocol";
+import type { AgentModels, AgentReason, MemPluginReason, BrainNow, BridgeView, Candidate, ModelChoice, ClientFrame, Place, PlaceChoice, ConnectionReason, ConnectionView, DeviceHarness, DeviceView, DucterFolderView, GhInstallPlan, GitLoginState, MemItem, MemView, OoDetect, Reach, KindDefault, RuleView, ServerFrame, Settings, SettingsPatch, UpdateAllView, UpdateReason } from "@ducter/protocol";
 import { MEDIA_LIMITS, TUWA_MCP, WATCH_LIVE, type MediaRef, type FileOpenError } from "@ducter/protocol";
 import { keepLocal, noteFlights, prepare, tooBigWords, upload, type Pic, type ViewerState } from "./media-up.ts";
 import { picturesIn } from "./media-keys.ts";
@@ -348,6 +348,8 @@ class AppState {
   /** Who does the tasks (D89): Your rules, this Mac's AI agents (from devices), and who could
    *  do the task whose Switch who does it is open. */
   rules?: RuleView[];
+  /** D370: the built-in default per kind of work, from the rules frame. */
+  ruleDefaults: KindDefault[] = [];
   agents?: DeviceHarness[];
   /** D148: every device and every phone or window that reaches Ducter (Settings › Your devices), and
    *  why the last update or rename from here was refused. */
@@ -744,7 +746,7 @@ class AppState {
     // D321: only the answer to what is asked now (a later word replaced an earlier one).
     if (f.t === "mem_found") return void (f.q === this.memQuery && ((this.memFound = { q: f.q, ok: f.ok, items: f.items }), this.changed()));
     if (f.t === "partners") return this.applyPartners(f);
-    if (f.t === "rules") return void ((this.rules = f.rules), this.changed());
+    if (f.t === "rules") return void ((this.rules = f.rules), (this.ruleDefaults = f.defaults ?? []), this.changed());
     if (f.t === "ways") {
       this.ways = f;
       if (inApp()) tellWays({ ways: f.ways, ...(f.key ? { key: f.key } : {}), ...(f.fp ? { fp: f.fp } : {}) });

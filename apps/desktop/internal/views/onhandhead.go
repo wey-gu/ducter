@@ -259,8 +259,11 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 			card.Jump("cheer", 0)
 		}
 		if k := card.AnimateTo("cheer", 1, ui.Animation{Duration: a.T.Pop, Ease: ui.Linear, Delay: a.navLanding(c)}); k > 0 && k < 1 {
+			// Drawn once and scaled as a picture while it swells: its
+			// shadows, scaled, are what a frame paints slowest on the CPU,
+			// and at most 2% larger the picture shows the same.
 			sc := cheerScale(k)
-			card.Scale(sc, sc)
+			card.Scale(sc, sc).Cache()
 		}
 	}
 	card.Children(func() {

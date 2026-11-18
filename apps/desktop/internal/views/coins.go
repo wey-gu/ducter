@@ -67,6 +67,10 @@ func coinMotionOf(att protocol.Attention) coinMotion {
 // drawCoin paints an agent's coin into r, moving by m.
 func drawCoin(p *ui.Painter, r ui.Rect, harness string, off bool, m coinMotion, phase float64) {
 	bmp := theme.Clay(coinArt(harness, off))
+	if off && !coinKnown(harness) {
+		// The plain token has no grey clay of its own: faded, never see-through (D374).
+		bmp = theme.FadedClayNow(coinArt(harness, off))
+	}
 	if bmp == nil {
 		return
 	}

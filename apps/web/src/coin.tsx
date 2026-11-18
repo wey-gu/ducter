@@ -23,7 +23,9 @@ const DARK = new Set(["codex"]);
  *  drawn (28 points and up, D213), so the size doesn't pick the image. */
 export function coinSrc(harness: string, off = false, dark = false): string {
   const id = COINS[harness];
-  if (!id) return "app/art/token_ink.webp";
+  // The plain clay token is ink clay: in the dark it is always its bone cast, on or off (the off
+  // one is greyed by CSS, --faded-art), never the ink one that vanishes on the dark card.
+  if (!id) return `app/art/token_ink${dark ? "_dark" : ""}.webp`;
   return `app/art/coin_${id}${off ? "_off" : dark && DARK.has(harness) ? "_dark" : ""}.webp`;
 }
 
@@ -32,12 +34,12 @@ export function coinSrc(harness: string, off = false, dark = false): string {
 export function Coin({ harness, size, off = false, motion = "still" }: { harness: string; size: number; off?: boolean; motion?: CoinMotion }) {
   const known = harness in COINS;
   const m = off ? "still" : motion;
-  const dk = !off && DARK.has(harness);
+  const dk = known ? !off && DARK.has(harness) : true;
   return (
     <span class={`coin-art${known ? "" : " generic"}${off ? " off" : ""}${dk ? " has-dark" : ""}${m !== "still" ? ` m-${m}` : ""}`} style={{ width: `${size}px`, height: `${size}px` }} aria-hidden="true">
       <img src={coinSrc(harness, off)} alt="" width={size} height={size} />
       {/* The theme shows one of the two (static/app.css). */}
-      {dk && <img class="dk" src={coinSrc(harness, false, true)} alt="" width={size} height={size} />}
+      {dk && <img class="dk" src={coinSrc(harness, off, true)} alt="" width={size} height={size} />}
     </span>
   );
 }

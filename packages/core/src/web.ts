@@ -45,6 +45,7 @@ import artDone from "../../../apps/web/static/art/done.webp" with { type: "file"
 import artNapping from "../../../apps/web/static/art/napping.webp" with { type: "file" };
 import tokenOrange from "../../../apps/web/static/art/token_orange.webp" with { type: "file" };
 import tokenInk from "../../../apps/web/static/art/token_ink.webp" with { type: "file" };
+import tokenInkDark from "../../../apps/web/static/art/token_ink_dark.webp" with { type: "file" };
 // Each AI agent's own coin (tools/art/coins.py, D183): its mark in clay, and in grey clay when unavailable.
 import coinClaudeCode from "../../../apps/web/static/art/coin_claude_code.webp" with { type: "file" };
 import coinClaudeCodeOff from "../../../apps/web/static/art/coin_claude_code_off.webp" with { type: "file" };
@@ -120,6 +121,7 @@ const ASSETS: Record<string, [string, string]> = {
   "art/done.webp": [artDone, "image/webp"],
   "art/token_orange.webp": [tokenOrange, "image/webp"],
   "art/token_ink.webp": [tokenInk, "image/webp"],
+  "art/token_ink_dark.webp": [tokenInkDark, "image/webp"],
   "art/napping.webp": [artNapping, "image/webp"],
   "art/coin_claude_code.webp": [coinClaudeCode, "image/webp"],
   "art/coin_claude_code_off.webp": [coinClaudeCodeOff, "image/webp"],

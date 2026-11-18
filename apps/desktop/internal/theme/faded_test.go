@@ -3,6 +3,7 @@ package theme
 import (
 	"bytes"
 	"image"
+	"image/draw"
 	"regexp"
 	"sort"
 	"strings"
@@ -18,9 +19,9 @@ import (
 // all InkMuted (4.5:1, contrast_test.go) with its white holes in the card's
 // ground, none of its own colours left.
 func TestFadedPicturesKeepTheFloor(t *testing.T) {
-	// token_ink (an agent with no coin of its own) is ink on the dark card
-	// even unfaded: it owes a dark cast (todo.md), not a fade.
-	names := []string{"ab_call_later", "ab_call", "coin_claude_code", "coin_codex", "coin_pi", "nowledge_mem"}
+	// token_ink: an agent with no coin of its own; ink clay, so in the dark
+	// it is its bone cast (token_ink_dark), never the ink one faded.
+	names := []string{"ab_call_later", "ab_call", "coin_claude_code", "coin_codex", "coin_pi", "token_ink", "nowledge_mem"}
 	for _, tk := range []*Tokens{Pebble(), PebbleDark()} {
 		for _, n := range names {
 			f := clayFile(n)
@@ -42,21 +43,33 @@ func TestFadedPicturesKeepTheFloor(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			g := Grey(img, tk.Faded)
-			var cs []float64
-			for i := 0; i+3 < len(g.Pix); i += 4 {
-				if g.Pix[i+3] < 128 {
-					continue
-				}
-				v := g.Pix[i]
-				cs = append(cs, contrast(ui.RGB(v, v, v), tk.Surface))
-			}
-			sort.Float64s(cs)
-			if m := cs[len(cs)/2]; m < 3 {
+			if m := middle(Grey(img, tk.Faded), tk.Surface); m < 3 {
 				t.Errorf("dark=%v %s faded: its middle is %.2f:1 on the card, under 3:1", tk.Dark, n, m)
+			}
+			// The plain token is all one clay, no mark of its own: it keeps the
+			// floor unfaded too (its dark cast, coins.py TOKENS_DARK).
+			if n == "token_ink" {
+				g := image.NewNRGBA(img.Bounds())
+				draw.Draw(g, g.Bounds(), img, img.Bounds().Min, draw.Src)
+				if m := middle(g, tk.Surface); m < 3 {
+					t.Errorf("dark=%v %s: its middle is %.2f:1 on the card, under 3:1", tk.Dark, n, m)
+				}
 			}
 		}
 	}
+}
+
+// middle is the median contrast on ground of a picture's solid pixels.
+func middle(g *image.NRGBA, ground ui.Color) float64 {
+	var cs []float64
+	for i := 0; i+3 < len(g.Pix); i += 4 {
+		if g.Pix[i+3] < 128 {
+			continue
+		}
+		cs = append(cs, contrast(ui.RGB(g.Pix[i], g.Pix[i+1], g.Pix[i+2]), ground))
+	}
+	sort.Float64s(cs)
+	return cs[len(cs)/2]
 }
 
 func TestFadedMarksAreTheMutedInk(t *testing.T) {

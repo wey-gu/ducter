@@ -4052,9 +4052,9 @@ a.btn {
 .agent + .agent {
   border-top: 1px solid var(--line-soft);
 }
-.agent .coin-art.generic.off img {
-  opacity: 0.45;
-  filter: grayscale(1);
+/* The plain token, unavailable: grey and toned like every faded picture (D374), never see-through. */
+.coin-art.generic.off img {
+  filter: var(--faded-art);
 }
 .agent .grow,
 .cand .grow {
@@ -5197,10 +5197,11 @@ ol.tries b {
   :root:not([data-theme="light"]) .coin-art.has-dark img:not(.dk) { visibility: hidden; }
   :root:not([data-theme="light"]) .coin-art.has-dark img.dk { visibility: visible; }
 }
-/* In the dark an unavailable coin's grey clay would read as lit: it sits back a little. */
-:root[data-theme="dark"] .coin-art.off img { opacity: 0.6; }
+/* In the dark an unavailable coin's grey clay would read as lit: it sits back a little.
+   The plain token's bone cast is toned by --faded-art instead, so it keeps 3:1 on the card. */
+:root[data-theme="dark"] .coin-art.off:not(.generic) img { opacity: 0.6; }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .coin-art.off img { opacity: 0.6; }
+  :root:not([data-theme="light"]) .coin-art.off:not(.generic) img { opacity: 0.6; }
 }
 @media (prefers-reduced-motion: reduce) {
   .coin-art.m-working img,

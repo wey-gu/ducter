@@ -2,6 +2,7 @@
 // settings frame (settings.memory, mem, bridge). Pure, so the phone, the wide page and the tests
 // read it the same way; the Mac has the same rules (apps/desktop/internal/views/memory.go).
 import type { BridgeView, MemView, PeersSettings } from "@ducter/protocol";
+import { compareVersions, isVersion } from "@ducter/protocol/src/version.ts";
 
 /** D225: the first nmem with `bridge connections` (bridge-link.ts BRIDGE_CONNECT_SINCE). */
 export const MEM_MIN = "0.10.118";
@@ -57,6 +58,20 @@ export function memUpdate(b: BridgeView | undefined): MemUpdate | undefined {
   if (b.upkeep?.kind === "update") return { kind: "newer", newer: b.newer ?? "", ...(b.version ? { version: b.version } : {}), ...(b.upkeep.detail ? { detail: b.upkeep.detail } : {}), ...(b.upkeep.kept ? { kept: true } : {}) };
   if (b.newer !== undefined) return { kind: "app", newer: b.newer, ...(b.version ? { version: b.version } : {}) };
   return undefined;
+}
+
+/** D364: the first nmem that asks Mem who sent a message and what it answers (Mem #10278, research/134). */
+export const MEM_NAMES = "0.10.120";
+
+/**
+ * D364: on the connected Talk with your other agents pane, an nmem older than MEM_NAMES while Mem says
+ * a newer one is out: Mem's update, offered there with what it gives this pane (the sender's name, the
+ * answer tied to its question). Nothing when it is current or nothing newer is out.
+ */
+export function peersNamesUpdate(b: BridgeView | undefined): Extract<MemUpdate, { kind: "newer" | "app" }> | undefined {
+  if (b?.state !== "connected" || !isVersion(b.version) || compareVersions(b.version, MEM_NAMES) >= 0) return undefined;
+  const u = memUpdate(b);
+  return u && (u.kind === "newer" || u.kind === "app") ? u : undefined;
 }
 
 /** The Settings entry's line for Memory (the list row, the Mac's rail): key, or "" for its usual words. */

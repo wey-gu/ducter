@@ -1,6 +1,8 @@
 package views
 
 import (
+	"strings"
+
 	"github.com/egoist/mygo/ui"
 
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
@@ -124,6 +126,7 @@ func (a *App) peersCard(c *ui.Context, st *protocol.Settings) {
 		if !b.Pinned && len(b.Others) > 0 {
 			a.group(c, "peers-problem", "", "", func() { a.peersProblem(c, b, name) })
 		}
+		a.peersNames(c, b, name)
 		a.peersRecent(c, name)
 		a.peersTry(c, name)
 	} else {
@@ -194,6 +197,39 @@ func (a *App) peersCard(c *ui.Context, st *protocol.Settings) {
 				}
 			})
 		}
+	})
+}
+
+// peersNames is D364's one quiet row: an nmem too old to say who wrote
+// while a newer one is out, its update said by what it gives here. The
+// Nowledge Mem app's own copy is updated in the app.
+func (a *App) peersNames(c *ui.Context, b *protocol.BridgeView, name string) {
+	u := peersNamesUpdate(b)
+	if u == nil {
+		return
+	}
+	t := a.T
+	home := a.memHome()
+	title := a.L.T("peers.names.title", name)
+	line := a.L.T("peers.names.line")
+	var control func()
+	if u.Kind == "app" {
+		line = a.L.T("mem.update.app.body", home)
+	} else {
+		label := a.L.T("bridge.mem.update.go")
+		if u.Detail != "" {
+			label = a.L.T("bridge.retry")
+			line = strings.TrimSpace(line + "\n" + a.memFailed(false, home, u.Detail, u.Kept))
+		}
+		control = func() {
+			if a.buttonFor(c, label, home, btnSecondary, t.ControlSM, t.Surface) {
+				b.State = "updating"
+				a.send(protocol.BridgeAction{T: "bridge_mem_install"})
+			}
+		}
+	}
+	a.group(c, "peers-names", "", "", func() {
+		a.tileRow(c, "peers-names", a.glyphTile(c, 18, drawUp(t.Accent)), title, line, control)
 	})
 }
 

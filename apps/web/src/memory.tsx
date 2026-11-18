@@ -17,7 +17,7 @@ import { Coin } from "./coin.tsx";
 import { copy } from "./conv-copy.ts";
 import { Btn, DangerButton, LinkBtn, Switch } from "./controls.tsx";
 import { ago } from "./format.ts";
-import { aboutGroups, bySource, groupNoted, MEM_MIN, memPhase, memUpdate, ownsAgents, peersPhase, peersShown, peersSwitchOn, recentHandoffs, tryAgents, type Handoff, type MemPhase, type MemUpdate } from "./mem-view.ts";
+import { aboutGroups, bySource, groupNoted, MEM_MIN, memPhase, memUpdate, ownsAgents, peersNamesUpdate, peersPhase, peersShown, peersSwitchOn, recentHandoffs, tryAgents, type Handoff, type MemPhase, type MemUpdate } from "./mem-view.ts";
 import { GBlock, GConfirm, GFoot, GHead, GRow, Group, Said, say, Tile } from "./set-grid.tsx";
 import { Avatar, Check } from "./views.tsx";
 
@@ -764,6 +764,7 @@ export function PeersPage() {
       {phase === "on" ? (
         <>
           {b && <PeersProblemGroup b={b} name={name} />}
+          {b && <PeersNames b={b} name={name} />}
           <PeersRecent name={name} />
           <PeersTry name={name} />
         </>
@@ -820,6 +821,29 @@ export function PeersPage() {
         </section>
       )}
     </>
+  );
+}
+
+/**
+ * D364: an nmem too old to say who wrote (before 0.10.120) while a newer one is out: Mem's update as one
+ * quiet row, said by what it gives here. The Nowledge Mem app's own copy is updated in the app.
+ */
+function PeersNames({ b, name }: { b: BridgeView; name: string }) {
+  const u = peersNamesUpdate(b);
+  if (!u) return null;
+  const home = homeOf(b);
+  const failed = u.kind === "newer" ? u.detail : undefined;
+  return (
+    <Group class="mem-g" label={t("peers.names.title", name)}>
+      <GRow tile={<Tile><span class="mem-glyph"><UpMark /></span></Tile>} title={t("peers.names.title", name)} line={u.kind === "app" ? t("mem.update.app.body", home) : t("peers.names.line")}>
+        {u.kind === "newer" && <Btn kind="secondary" size="sm" label={failed ? t("bridge.retry") : t("bridge.mem.update.go")} about={home} onClick={() => A.installBridgeMem()} />}
+      </GRow>
+      {u.kind === "newer" && failed && (
+        <GBlock>
+          <MemFailed detail={failed} kept={u.kept} install={false} />
+        </GBlock>
+      )}
+    </Group>
   );
 }
 

@@ -6,6 +6,8 @@
 //   D225: install (no nmem; pipx here) · install_need (no pipx) · update_pip (home-server: 0.10.116 by pip) · sign_in · local
 //   D229: hel_ready (home-server's pip copy, working: a quiet move offered) · moving (a tap stays moving) ·
 //         moved (a tap moves it: done) · move_failed (a tap fails; the old copy is put back)
+//   D364: names (connected on nmem 0.10.119 from pipx, Mem says 0.10.120 is out; a tap stays updating) ·
+//         names_app (the same, the Nowledge Mem app's own copy) — open #settings=peers
 // then open http://127.0.0.1:7798/app#settings=partner
 import { startCore, stubRunner } from "./demo-core.ts";
 import { noOo } from "./demo-oo.ts";
@@ -19,14 +21,15 @@ const SPACE = "6f1c0d2e-8b4a-4d1e-9c3f-2a7b5e0d9c11";
 const ok = (j: unknown) => ({ code: 0, out: JSON.stringify(j), err: "" });
 const conn = { connection_id: "00000000-0000-4000-8000-000000000001", agent_id: "ducter", identity_birth: "00000000-0000-4000-8000-000000000900", client_label: "ducter", state: "active" };
 const HEL = ["update_pip", "hel_ready", "moving", "moved", "move_failed"];
+const NAMES = ["names", "names_app"];
 let moved = false;
 const run = async (args: string[]) => {
   const a = args.join(" ");
   if (want === "install" || want === "install_need") return undefined; // no nmem on the home
   const old = (want === "update" || want === "update_pip") && !moved;
-  if (args[0] === "--version") return ok(old ? "nmem 0.10.116" : "nmem 0.10.118");
+  if (args[0] === "--version") return ok(old ? "nmem 0.10.116" : NAMES.includes(want) ? "nmem 0.10.119" : "nmem 0.10.118");
   if (a.includes("bridge connections --help")) return { code: old ? 2 : 0, out: "", err: "" };
-  if (a === "status") return want === "sign_in" ? { code: 1, out: "", err: "connection refused" } : ok({ status: "healthy", backend: want === "local" ? "local" : "cloud" });
+  if (a === "status") return want === "sign_in" ? { code: 1, out: "", err: "connection refused" } : ok({ status: "healthy", backend: want === "local" ? "local" : "cloud", ...(NAMES.includes(want) ? { update: { current: "0.10.119", latest: "0.10.120", update_available: true, command: "pipx upgrade nmem-cli" } } : {}) });
   if (a === "bridge setup")
     return ok({
       state: "selection_needed",
@@ -39,8 +42,12 @@ const run = async (args: string[]) => {
     if (want === "connecting") return new Promise<never>(() => {});
     if (code) return { code: 1, out: JSON.stringify({ error_code: code, detail: "refused", outcome_unknown: false, http_status: 403 }), err: "" };
     if (want === "failed") return { code: 1, out: "", err: "error: connection to Mem timed out after 30 s" };
-    return ok({ state: "connected", agent_context: "ducter", connection: conn, selection: { scope: { space_id: SPACE }, address: { agent_id: "ducter" } } });
+    // D364's states: the connection carries the home's own label (D324), as Mem keeps it.
+    if (NAMES.includes(want)) conn.client_label = args[args.indexOf("--context") + 1] ?? "ducter";
+    return ok({ state: "connected", agent_context: conn.client_label, connection: conn, selection: { scope: { space_id: SPACE }, address: { agent_id: "ducter" } } });
   }
+  if (NAMES.includes(want) && a.includes(`--agent-context ${conn.client_label} bridge setup`)) return ok({ state: "enable_needed", endpoint: { address: { agent_id: "ducter" } } });
+  if (NAMES.includes(want) && a.includes("connections list")) return ok({ schema_version: 1, connections: conn.client_label === "ducter" ? [] : [conn], next_connection_id: null });
   if (a.includes("--agent-context ducter bridge setup")) return want === "unconfirmed" ? { code: 1, out: "", err: "agent context could not be verified" } : ok({ state: "enable_needed", endpoint: { address: { agent_id: "ducter" } } });
   if (a.includes("connections list")) return ok({ schema_version: 1, connections: [conn], next_connection_id: null });
   if (a.includes("connections revoke")) return ok({ schema_version: 1, connection: { ...conn, state: "revoked" } });
@@ -49,13 +56,20 @@ const run = async (args: string[]) => {
 
 // D225: the home's files as the row reads them: home-server's pip copy, or pipx to install with.
 const files: Record<string, string> = HEL.includes(want) ? { "/root/.local/bin/nmem": "ELF", "/root/.local/lib/python3.14/site-packages/nmem_cli-0.10.116.dist-info/INSTALLER": "pip\n" } : {};
-const tools: Record<string, string> = want === "install" ? { pipx: "/usr/bin/pipx" } : HEL.includes(want) ? { nmem: "/root/.local/bin/nmem", "python3.14": "/usr/bin/python3.14", "apt-get": "/usr/bin/apt-get" } : {};
+const tools: Record<string, string> =
+  want === "install" ? { pipx: "/usr/bin/pipx" }
+  : HEL.includes(want) ? { nmem: "/root/.local/bin/nmem", "python3.14": "/usr/bin/python3.14", "apt-get": "/usr/bin/apt-get" }
+  : want === "names" ? { nmem: "/root/.local/bin/nmem", pipx: "/usr/bin/pipx" }
+  : want === "names_app" ? { nmem: "/usr/local/bin/nmem" }
+  : {};
+// D364: where each copy really lives (pipx's venv; the Nowledge Mem app's bundle).
+const reals: Record<string, string> = want === "names" ? { "/root/.local/bin/nmem": "/root/.local/pipx/venvs/nmem-cli/bin/nmem" } : want === "names_app" ? { "/usr/local/bin/nmem": "/Applications/Nowledge Mem.app/Contents/MacOS/nmem" } : {};
 const sys = {
   which: (c: string) => tools[c],
   exists: (p: string) => p in files,
   read: (p: string) => files[p],
   list: (d: string) => [...new Set(Object.keys(files).filter((p) => p.startsWith(d + "/")).map((p) => p.slice(d.length + 1).split("/")[0]!))],
-  real: (p: string) => p,
+  real: (p: string) => reals[p] ?? p,
   home: "/root",
   platform: "linux" as const,
   uid: 0, // home-server runs Ducter as root

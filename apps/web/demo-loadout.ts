@@ -5,7 +5,8 @@
 // DEMO_ACCOUNTS: one (a fresh user: Claude Code only) | multi (Claude Code, Codex, pi, DeepSeek Harness not installed)
 // DEMO_ALLOWANCE: plenty (Claude Code 64% left) | low (5%: only the part kept for Ducter)
 // DEMO_CASE (D322, Settings › Partner): author (a server, Codex only, Claude Code not installed) |
-// two (Claude Code and Codex) | none (Claude Code signed out) | server (home-server, both) | key (a DeepSeek key only)
+// two (Claude Code and Codex) | none (Claude Code signed out) | server (home-server, both) | key (a DeepSeek key only) |
+// other (agents with no coin of their own beside the two: opencode signed in, amp signed out)
 import { mkdirSync, writeFileSync } from "node:fs";
 import { startCore, stubRunner } from "./demo-core.ts";
 import { noOo } from "./demo-oo.ts";
@@ -48,6 +49,8 @@ const cases: Record<string, { hs: DeviceHarness[]; kind: "laptop" | "server"; na
   none: { hs: [{ harness: "claude-code", installed: true, loggedIn: false, canBePartner: true }, off("codex"), off("pi"), off("deepseek-harness")], kind: "laptop" },
   server: { hs: [cc, cx, off("pi"), off("deepseek-harness")], kind: "server", name: "home-server" },
   key: { hs: [off("claude-code"), off("codex"), off("pi"), { harness: "deepseek-harness", installed: true, loggedIn: true, canBePartner: true, billing: "usage" }], kind: "laptop" },
+  // Agents with no coin of their own (the plain clay token): one signed in beside the two, one signed out.
+  other: { hs: [cc, cx, { harness: "opencode", installed: true, loggedIn: true, canBePartner: false }, { harness: "amp", installed: true, loggedIn: false, canBePartner: false }, off("pi")], kind: "laptop" },
 };
 const pick = kase ? cases[kase] : undefined;
 if (pick?.name && process.env.DUCTER_DATA_DIR) {

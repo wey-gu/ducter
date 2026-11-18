@@ -18,7 +18,11 @@ and an agent whose clay would vanish on the dark ground (DARK) a third:
 
     coin_<id>_dark the dark theme's coin: the same object re-cast in a pale clay
 
+The plain token (token_ink, for an agent with no coin) gets its dark cast the same way
+(TOKENS_DARK): token_ink_dark.
+
     python3 tools/art/coins.py                         # every coin, every size
+    python3 tools/art/coins.py token_ink               # the plain token's dark cast only
     python3 tools/art/coins.py master <id> <cut.png> [#tone]  # a new master from a cut-out render
 
 Desktop: apps/desktop/internal/theme/art/clay/<name>@256.png (theme.Clay)
@@ -57,6 +61,13 @@ OFF = "#B3ADA5"
 # key light still falls from the top), the way the mark itself turns light on a dark page.
 # Codex's charcoal knot vanished on the dark ground; it becomes bone clay there.
 DARK = {"codex": "#DCD4C8"}
+
+# The plain clay token an agent with no coin of its own gets (token_ink, made with the AI-account
+# tokens from batch_tokens.json) is ink clay, about 1.2:1 on the dark card: it gets the same dark
+# cast. Its base is the shipped light file at each size (so the dark one sits in the very same
+# frame); the tone is a step under Codex's bone, so the plain disc weighs on the dark card what
+# the knot does (its middle about 10:1, faded about 7:1; theme/faded_test.go keeps 3:1).
+TOKENS_DARK = {"token_ink": "#CFC5B6"}
 
 
 # --- colour -------------------------------------------------------------------------------
@@ -166,13 +177,26 @@ def recast(im, tone):
 
 def save(name, im, desk=True):
     a = im.convert("RGBa")
-    if desk:  # the Mac has no dark theme yet, so it loads no dark coin
+    if desk:  # Codex's dark coin on the Mac is its 128 px web size (D302), not written here
         a.resize((256, 256), Image.LANCZOS).convert("RGBA").save(DESK / f"{name}@256.png", optimize=True)
     a.resize((128, 128), Image.LANCZOS).convert("RGBA").save(
         WEB / f"{name}.webp", quality=88, alpha_quality=100, method=6, exact=True)
 
 
+def token_dark(name, tone):
+    """A plain token's dark cast at the sizes the apps load, from the light files themselves."""
+    for f in (DESK / f"{name}@256.png", WEB / f"{name}.webp"):
+        out = recast(Image.open(f).convert("RGBA"), tone)
+        if f.suffix == ".png":
+            out.save(DESK / f"{name}_dark@256.png", optimize=True)
+        else:
+            out.save(WEB / f"{name}_dark.webp", quality=88, alpha_quality=100, method=6, exact=True)
+
+
 def build(only=None):
+    for name, tone in TOKENS_DARK.items():
+        if not only or name in only:
+            token_dark(name, tone)
     for cid, fill in COINS.items():
         if only and cid not in only:
             continue

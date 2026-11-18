@@ -50,6 +50,19 @@ func FadedClay(name string, t *Tokens) *ui.Bitmap {
 	return b
 }
 
+// restTokens are the two appearances' resting tokens, made once.
+var restTokens = sync.OnceValue(func() [2]*Tokens { return [2]*Tokens{Pebble(), PebbleDark()} })
+
+// FadedClayNow is FadedClay for the window's appearance now (UseDarkArt),
+// for a painter that has no tokens at hand.
+func FadedClayNow(name string) *ui.Bitmap {
+	t := restTokens()[0]
+	if artDark.Load() {
+		t = restTokens()[1]
+	}
+	return FadedClay(name, t)
+}
+
 // FadedBrand is Brand(name) faded for the theme t: a drawn mark in the
 // muted ink with its holes the tile's ground (Surface), an app icon grey.
 // The colours are the theme's resting ones (For(t.Dark)), so the appearance's

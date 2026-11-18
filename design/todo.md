@@ -2060,7 +2060,7 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] **D360: the keys walk a group's parts** (j/k skip the parts inside a group card on both clients; each opens by click). Trigger: the author walks On hand by keys past a group.
 - [ ] **D360: a group's parts on the phone apps** (iOS, Android draw the parts as their own cards). Trigger: the next phone On hand pass.
 - [x] **D365: a contrast floor for faded "not set up" marks.** Done in D374 (2026-11-19): grey and the muted ink, never transparency, 3:1 at the least (`theme/faded_test.go`).
-- [ ] **D374: a dark cast for `token_ink`** (the token of an agent with no coin of its own is ink on the dark card, faded or not, about 1.2:1). Trigger: the next clay art pass.
+- [x] **D374: a dark cast for `token_ink`** (the token of an agent with no coin of its own is ink on the dark card, faded or not, about 1.2:1). Done 2026-11-19 the D213 way: `token_ink_dark`, the same token re-cast in bone clay (`tools/art/coins.py` TOKENS_DARK), about 10:1 on the dark card and 7:1 faded; the Mac picks it by `theme.Clay`/`FadedClay`, the web by `coinSrc`, and a signed-out one is grey and toned, never see-through, on both (`theme/faded_test.go` keeps 3:1 for it faded and unfaded).
 - [x] **D365: the server home's versions row.** Done in D374 (2026-11-19): rows under hairlines, the version and 检查更新 at the right end.
 - [ ] **D365: the Settings pass in the real Mac app and the iOS Simulator** (this pass used the Mac's test renderer and headless Chrome at 390). Trigger: the next release's walk.
 - [ ] **D372: an errand run live on the fast tier** (Sonnet booking and comparing on real sites vs Opus; research/142 only infers it). Trigger: the author's next hotel or flight task on the home.

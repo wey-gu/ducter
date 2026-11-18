@@ -91,6 +91,13 @@ A very long file shows its first part and says so; Save a copy has all of it. Ki
 show yet (a Word or Excel file, a zip) say so, with **Save a copy**; on a Mac, **Open on this
 Mac** opens it in its own app.
 
+When your partner or a task names a file as a link ("Done: review.md"), tap it and it opens the
+same way, even when the file is on the computer Ducter lives on or on another computer you lent
+it, not on the device in your hand. Ducter opens only files in a task's own folders. When it
+can't open one, it says why in one line: the file is gone, it isn't in a task's folders, it is
+over 25 MB, or that computer can't be reached right now. On a Mac with Ducter on the same Mac, a
+link to a file on that Mac opens in its own app, as before.
+
 ## Good to know
 
 - Pictures stay on the computer Ducter lives on. A picture is only reachable through a link that

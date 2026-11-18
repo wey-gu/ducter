@@ -494,6 +494,16 @@ func (a *App) View(c *ui.Context) {
 		// (1.6 Latin, 1.75 with Chinese), never by the app's language.
 		a.mdTask.CodeBlock, a.mdTaskHan.CodeBlock = a.codeBlockTask, a.codeBlockTask
 		a.mdTask.Theme, a.mdTaskHan.Theme = a.taskMarkdownTheme(1.6), a.taskMarkdownTheme(1.75)
+		// D356: a link to a file opens in Ducter's own viewer (the home's
+		// copy when the path is the home's); a web link as before.
+		a.md.OnLink = a.mdLink(func() string { return "" })
+		a.mdTask.OnLink = a.mdLink(func() string {
+			if a.Route == RouteTask {
+				return a.TaskID
+			}
+			return ""
+		})
+		a.mdTaskHan.OnLink = a.mdTask.OnLink
 	}
 	c.SetTheme(a.uiTheme)
 	a.winW, a.winH = c.Size()
@@ -634,6 +644,23 @@ func (a *App) Up() {
 		a.pastBack()
 	case RouteDid:
 		a.didBack()
+	}
+}
+
+// mdLink handles a click on a link in the partner's or a task's words
+// (MyGo's Markdown view, Options.OnLink): a file's path opens in the viewer
+// (OpenFileLink, D356; taskID is the task it was shown in); http, https and
+// mailto open as a link always has; anything else does nothing, as before.
+func (a *App) mdLink(taskID func() string) func(string) {
+	return func(u string) {
+		if p := protocol.FileLinkPath(u); p != "" {
+			a.OpenFileLink(p, taskID())
+			return
+		}
+		l := strings.ToLower(u)
+		if strings.HasPrefix(l, "http://") || strings.HasPrefix(l, "https://") || strings.HasPrefix(l, "mailto:") {
+			a.openLink(u)
+		}
 	}
 }
 
@@ -1032,6 +1059,10 @@ func (a *App) Applied(f protocol.ServerFrame) {
 	// D142: a folder's list came back; ask once more if something changed meanwhile.
 	if f.T == "wb" {
 		a.wbFrame(f)
+		return
+	}
+	if f.T == "file_open" {
+		a.fileOpenFrame(f) // D356: a linked file, or why not
 		return
 	}
 	if f.T == "folder_changes" {

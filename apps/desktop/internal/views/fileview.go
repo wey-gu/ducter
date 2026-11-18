@@ -23,7 +23,12 @@ package views
 import (
 	"context"
 	"fmt"
+	"net/url"
+	"os"
+	"path/filepath"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/egoist/mygo/ui"
 	"github.com/egoist/mygo/ui/editor"
@@ -64,6 +69,11 @@ type fileViewState struct {
 	at       int
 	scrolled int  // the match last scrolled to (-1: none yet)
 	wasSrc   bool // the source toggle before find took it
+
+	// D356: a file a link names, while the home fetches it (link set, ref
+	// empty), or why it couldn't (linkErr, a FileOpenError, and linkMsg).
+	link, linkTask, linkID string
+	linkErr, linkMsg       string
 }
 
 // fileKind is the view a file opens in on the Mac: an SVG is its source
@@ -90,6 +100,129 @@ func (a *App) OpenFile(ref protocol.MediaRef, from ui.Rect) {
 	fv := &fileViewState{open: true, ref: ref, from: from}
 	a.fileView = fv
 	a.loadFile(fv)
+}
+
+// fileLinkSeq numbers the file_open asks (the UI thread's own).
+var fileLinkSeq int
+
+// fileLinkWait is how long a linked file may take before the sheet says it
+// didn't open (a home too old to know file_open never answers).
+var fileLinkWait = 60 * time.Second
+
+// OpenFileLink opens the file a link names (D356). On this Mac, with the
+// Ducter here, the path is a file here: it opens as a file link always has.
+// Otherwise it is the home's (or a worker's) path: the home reads it from
+// the task's own folders and keeps a copy, and the viewer opens on that,
+// saying Opening… until then and, when it can't, the one line why.
+func (a *App) OpenFileLink(path, taskID string) {
+	if a.onThisMachine() && a.localFile(path) {
+		a.openLink("file://" + (&url.URL{Path: path}).EscapedPath())
+		return
+	}
+	fv := &fileViewState{open: true, link: path, linkTask: taskID}
+	a.fileView = fv
+	a.askFileLink(fv)
+}
+
+// localFile: path names a file on this Mac (~ is this Mac's home).
+func (a *App) localFile(path string) bool {
+	if strings.HasPrefix(path, "~/") {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return false
+		}
+		path = filepath.Join(home, path[2:])
+	}
+	st, err := os.Stat(path)
+	return err == nil && !st.IsDir()
+}
+
+// askFileLink sends (or sends again) the ask for the linked file.
+func (a *App) askFileLink(fv *fileViewState) {
+	fileLinkSeq++
+	id := "fo" + strconv.Itoa(fileLinkSeq)
+	fv.linkID, fv.loading, fv.linkErr, fv.linkMsg = id, true, "", ""
+	a.send(protocol.FileOpenReq{T: "file_open", ID: id, Path: fv.link, TaskID: fv.linkTask})
+	if a.Win == nil {
+		return // tests answer by hand
+	}
+	a.later(func() { time.Sleep(fileLinkWait) }, func() {
+		if a.fileView == fv && fv.link != "" && fv.linkID == id && fv.linkErr == "" {
+			fv.loading, fv.linkErr = false, "failed"
+		}
+	})
+}
+
+// fileOpenFrame is the home's answer to a file_open ask (Applied hands it here).
+func (a *App) fileOpenFrame(f protocol.ServerFrame) {
+	fv := a.fileView
+	if fv == nil || fv.link == "" || fv.linkID != f.ID {
+		return
+	}
+	if f.OK && f.File != nil {
+		fv.ref, fv.link, fv.loading = *f.File, "", false
+		if fv.ref.IsImage() {
+			a.fileView = nil
+			a.OpenViewer("conv", fv.ref.ID)
+			return
+		}
+		a.loadFile(fv)
+		return
+	}
+	fv.loading = false
+	fv.linkErr, fv.linkMsg = f.WbError, f.Message
+	if fv.linkErr == "" {
+		fv.linkErr = "failed"
+	}
+}
+
+// fileLinkSays is the one line a linked file that didn't open says.
+func (a *App) fileLinkSays(fv *fileViewState) string {
+	switch fv.linkErr {
+	case "missing", "outside", "too_big", "offline", "unsupported":
+		return a.L.T("file.link." + fv.linkErr)
+	}
+	if fv.linkMsg != "" {
+		return a.L.T("file.failed") + " " + fv.linkMsg
+	}
+	return a.L.T("file.failed")
+}
+
+// fileLinkSheet: the linked file's name and its path on the home, then
+// Opening… or why it didn't open (Retry when trying again could help).
+func (a *App) fileLinkSheet(c *ui.Context, fv *fileViewState) {
+	t := a.T
+	name := protocol.FileLinkName(fv.link)
+	ui.Row(c.Key("fv-head")).Gap(t.S3).AlignItems(ui.Center).Padding(t.S3+2, t.S3, t.S3, t.S4+2).Background(t.Surface).
+		BorderWidth(0, 0, 1, 0).BorderColor(t.Line).Children(func() {
+		ui.Box(c).Size(42, 42).Radius(t.RadiusSM).Background(t.Sunken).Shrink(0).Children(func() {
+			ui.Box(c).Size(42, 42).Draw(drawFileKind(t.InkSoft, protocol.FileText))
+		})
+		ui.Column(c).Grow(1).MinWidth(0).Gap(1).Children(func() {
+			ui.Text(c, name).Font(t.Display).FontSize(t.LG).FontWeight(800).TextColor(t.Ink).SingleLine().MinWidth(0).Tooltip(name)
+			ui.Text(c, fv.link).Font(t.Mono).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().MinWidth(0).Tooltip(fv.link)
+		})
+		cl := ui.Box(c.Key("fv-close")).Size(t.ControlMD, t.ControlMD).Radius(t.ControlMD / 2).Role(ui.RoleButton).Shrink(0).
+			Label(a.L.T("media.close")).Cursor(ui.CursorPointer).Focusable().Draw(drawCross(t.InkSoft))
+		if cl.Hovered() {
+			cl.Background(t.Sunken)
+		}
+		if cl.Clicked() {
+			fv.open = false
+		}
+	})
+	ui.Column(c.Key("fv-link")).Grow(1).MinHeight(0).AlignItems(ui.Center).Justify(ui.Center).Gap(t.S3).Padding(t.S6).Children(func() {
+		if fv.linkErr == "" {
+			ui.Text(c, a.L.T("file.loading")).FontSize(t.SM).TextColor(t.InkMuted)
+			return
+		}
+		ui.Text(c, a.fileLinkSays(fv)).FontSize(t.MD).TextColor(t.InkSoft).MaxWidth(520).TextAlign(ui.Center)
+		if fv.linkErr == "offline" || fv.linkErr == "failed" {
+			if a.button(c, a.L.T("media.retry"), btnSecondary, t.ControlSM, t.Bg) {
+				a.askFileLink(fv)
+			}
+		}
+	})
 }
 
 // loadFile fetches the first part of a text file (nothing for a kind that
@@ -315,6 +448,11 @@ func (a *App) fileViewer(c *ui.Context) {
 	pw, ph := min(w-2*t.S6, 860), max(320, min(h-2*t.S5, 980))
 	kind := fileKind(fv.ref)
 	name := fileSaveName(fv.ref)
+	if fv.link != "" {
+		// D356: the home still fetches it, or said why not: a smaller sheet.
+		pw, ph = min(w-2*t.S6, 620), 260
+		name = protocol.FileLinkName(fv.link)
+	}
 	ui.DialogBase(c, &fv.open, func(back, panel ui.Element) {
 		findKeys() // inside the dialog (a shortcut outside it never fires)
 		clickedOut = back.Clicked()
@@ -322,6 +460,10 @@ func (a *App) fileViewer(c *ui.Context) {
 		panel.Width(pw).Height(ph).Radius(t.RadiusXL).Background(t.Bg).Clip().
 			Shadow(0, t.Floating.Y, t.Floating.Blur, 0, t.Floating.Color).Shadow(0, 5, 0, 0, t.Line).Label(name)
 		a.fileGrow(c, panel, fv, w, h, pw, ph)
+		if fv.link != "" {
+			ui.Column(c.Key("fv-l")).Fill().Children(func() { a.fileLinkSheet(c, fv) })
+			return
+		}
 		ui.Column(c.Key("fv")).Fill().Children(func() {
 			a.fileHead(c, fv, kind, name)
 			if fv.finding {
@@ -541,7 +683,8 @@ func (a *App) fileBar(c *ui.Context, fv *fileViewState, kind string) {
 	t := a.T
 	ui.Row(c.Key("fv-bar")).Gap(t.S2).AlignItems(ui.Center).Padding(t.S2+2, t.S4, t.S3, t.S4).Background(t.Surface).
 		BorderWidth(1, 0, 0, 0).BorderColor(t.Line).Children(func() {
-		if ref := fv.ref; ref.From != nil {
+		// A task this Mac doesn't hold (a linked file from an old task, D356) has no 来自.
+		if ref := fv.ref; ref.From != nil && a.S.Task(ref.From.TaskID) != nil {
 			if title := a.S.Task(ref.From.TaskID).Title(); title != "" {
 				l := ui.Text(c.Key("fv-from"), a.L.T("media.from", title)).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).SingleLine().MinWidth(0).Shrink(1).
 					Cursor(ui.CursorPointer).Role(ui.RoleLink).Focusable().Label(a.L.T("media.from", title))

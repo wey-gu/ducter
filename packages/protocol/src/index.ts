@@ -1036,6 +1036,10 @@ export type ClientFrame =
   // D214: one op of the opened task's workbench (its files, changes, pages), answered with a wb
   // frame carrying the same id.
   | { t: "wb"; id: string; taskId: string; req: import("./workbench.ts").WbRequest }
+  // D356: a link in a task's or the partner's words to a file on the home or a worker: the home
+  // reads it from the task's own folders (taskId: the task it was shown in, a hint) and answers
+  // with a file_open frame carrying the same id: the file as a media ref for the viewer, or why not.
+  | { t: "file_open"; id: string; path: string; taskId?: string }
   | { t: "read"; upToSeq: number }
   // D284: an opened task asks for its newest window first (limit ~200), then older pages with
   // beforeSeq = the oldest seq it holds; limit is at most 2,000.
@@ -1446,6 +1450,7 @@ export type ServerFrame =
   | { t: "action_result"; taskId: string; action: string; ok: boolean; message?: string; ref?: string; confirm?: UndoConfirm }
   | { t: "folder_changes"; taskId: string; changes: FolderChanges | null }
   | ({ t: "wb"; id: string; taskId: string } & ({ ok: true; answer: import("./workbench.ts").WbAnswer } | { ok: false; error: import("./workbench.ts").WbError; message?: string }))
+  | ({ t: "file_open"; id: string } & ({ ok: true; file: MediaRef } | { ok: false; error: import("./media.ts").FileOpenError; message?: string }))
   | { t: "devices"; devices: DeviceView[]; reach: Reach; updateAll?: UpdateAllView }
   // D293: the ways to reach the home and its key, right after the welcome and whenever they change.
   | { t: "ways"; ways: ReachWay[]; key?: string; fp?: string }

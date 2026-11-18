@@ -1,9 +1,10 @@
 // The phone app's state and actions (the views read it and call these). One store, one socket.
 import { onWbFrame } from "./workbench-ask.ts";
+import { onFileOpenFrame } from "./filelink-ask.ts";
 import { onPastFrame, openPast } from "./past.tsx";
 import { onDidFrame, openDid } from "./did.tsx";
 import type { AgentModels, AgentReason, MemPluginReason, BrainNow, BridgeView, Candidate, ModelChoice, ClientFrame, Place, PlaceChoice, ConnectionReason, ConnectionView, DeviceHarness, DeviceView, DucterFolderView, GhInstallPlan, GitLoginState, MemItem, MemView, OoDetect, Reach, RuleView, ServerFrame, Settings, SettingsPatch, UpdateAllView, UpdateReason } from "@ducter/protocol";
-import { MEDIA_LIMITS, TUWA_MCP, WATCH_LIVE, type MediaRef } from "@ducter/protocol";
+import { MEDIA_LIMITS, TUWA_MCP, WATCH_LIVE, type MediaRef, type FileOpenError } from "@ducter/protocol";
 import { keepLocal, noteFlights, prepare, tooBigWords, upload, type Pic, type ViewerState } from "./media-up.ts";
 import { picturesIn } from "./media-keys.ts";
 import { DUCTER_VERSION } from "@ducter/protocol/src/version.ts";
@@ -454,6 +455,8 @@ class AppState {
   viewer?: ViewerState;
   /** D239: the file viewer, when open: a file a task showed, read inside Ducter. */
   fileView?: { ref: MediaRef; from?: DOMRect };
+  /** D356: a file a link names, while the home fetches it (then fileView), or why it couldn't. */
+  fileLink?: { path: string; taskId?: string; n: number; error?: FileOpenError; message?: string };
   /** D254: what is typed to the partner survives the app being closed (a phone's web view is
    *  often let go in the background): kept in this browser until it is sent or cleared. */
   private draftNow = readDraft();
@@ -792,6 +795,8 @@ class AppState {
     if (f.t === "open_result") return;
     // D214: a workbench answer (workbench.tsx asked for it).
     if (f.t === "wb") return onWbFrame(f as Parameters<typeof onWbFrame>[0]);
+    // D356: a linked file the viewer asked for (fileview.tsx).
+    if (f.t === "file_open") return onFileOpenFrame(f as Parameters<typeof onFileOpenFrame>[0]);
     if (f.t === "connections") return (this.connections = f.connections), (this.oo = f.oo), (this.ownPhone = f.ownPhone), this.changed();
     if (f.t === "own_phone_result") return (this.ownAnswer = f.reason ?? "phone"), this.changed();
     if (f.t === "connection_reads") return void (this.connReads.set(f.id, f.reads), this.changed());

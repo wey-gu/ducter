@@ -124,8 +124,8 @@ func (a *App) peersRecent(c *ui.Context, name string) {
 			if s := a.agoLong(h.At); s != "" {
 				age = func() { ui.Text(c, s).FontSize(t.SM).FontWeight(600).TextColor(t.InkMuted).SingleLine() }
 			}
-			who := a.peerWho(h.Agent)
-			if a.openRow(c, "handoff:"+itoa(h.Seq), a.toolTile(c, peerName(who)), autospace(h.Words), a.L.T("peers.recent."+h.Way, who, name), t.InkMuted, false, age) {
+			who := a.peerCalledText(h.Agent, h.Host)
+			if a.openRow(c, "handoff:"+itoa(h.Seq), a.peerTile(c, h.Agent, h.Host), autospace(h.Words), capPeer(a.L.T("peers.recent."+h.Way, who, name)), t.InkMuted, false, age) {
 				if h.TaskID != "" {
 					a.OpenTask(h.TaskID)
 				} else {
@@ -178,10 +178,11 @@ func (a *App) peersTry(c *ui.Context, name string) {
 // from another agent (or before its card): who, how, and where answers go.
 func (a *App) firstPeerNote(c *ui.Context, b *protocol.BridgeMsg) {
 	t := a.T
-	who := a.peerWho(firstNonEmpty(b.Agent, b.From))
+	who := a.peerWhoOf(b)
+	n, h := peerCalled(b)
 	ui.Row(c.Key("peer-first")).Justify(ui.Center).Padding(t.S2, 0, t.S3, 0).Children(func() {
 		ui.Row(c).Gap(t.S3).AlignItems(ui.Start).MaxWidth(560).Padding(t.S3, t.S4).Radius(t.RadiusLG).Background(t.SurfaceSunken).Children(func() {
-			a.toolTile(c, peerName(who))()
+			a.peerTile(c, n, h)()
 			ui.Text(c, autospace(a.L.T("peer.first.note", who, a.personaName()))).FontSize(t.SM).LineHeight(a.leading(1.6)).TextColor(t.InkSoft).Grow(1).Basis(0).MinWidth(0)
 		})
 	})

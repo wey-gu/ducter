@@ -47,6 +47,12 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
 
 ## 和你的其他 agent 通信 / Talk with your other agents (D332, `bridge.md` "Simple, by who")
 
+- [ ] **D350 (5): an unnamed sender's Mem display name from its contact card**, fetched once per agent id and
+      cached, before falling back to its tool or 一个没留名字的 agent. Trigger: `bridge contacts --query <agent_id>` is
+      known to match the card (or Mem returns the sender's display name on `open`), checked on a context Bridge accepts.
+- [ ] **D350: the host a sender runs in**, read today only from `sender.host` / `source_app` if Mem sends one. Trigger:
+      Mem's #10194 answer on native senders (research/66 §8.4); then verify the field name live and the examples list
+      (Claude Code, Codex, Grok Build) against the plugins carrying Bridge.
 - [ ] **A teammate's agent, asked per sender the first time** (replaces D170's 也包括同事的): the first message from a
       teammate's agent becomes one card (**{teammate} 的 {agent} 想找你…** · 让它找 · 不用), remembered per sender;
       nothing in Settings. Trigger: the partner has a team mailbox (Mem's Team Bridge, X3).

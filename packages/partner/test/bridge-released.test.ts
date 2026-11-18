@@ -10,7 +10,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import type { Bodies } from "../../protocol/src/index.ts";
 import { createNmemBridge, createPartner } from "../src/index.ts";
-import { outgoingReads } from "../src/bridge.ts";
+import { hostOf, outgoingReads } from "../src/bridge.ts";
 import { whoForModel, whoForUser } from "../src/bridge-out.ts";
 import { FakeClock, fakeCore, fakeMemory, fakeRunner, type Script } from "./fakes.ts";
 
@@ -56,11 +56,31 @@ esac`;
     expect(outgoingReads({ outgoing: [{ message: "a", status: "delivered", read_recipients: 0, recipients: 1 }, { message: "b", status: "read", read_recipients: 1, recipients: 1 }] })).toEqual({ a: false, b: true });
   });
 
-  test("an own agent Mem doesn't name: 一个 AI agent to the user (D273), told to the model as the user's own", () => {
-    expect(whoForUser({ mine: true, from: "another agent" }, "zh")).toBe("一个 AI agent");
-    expect(whoForUser({ mine: true, label: "" }, "en")).toBe("an AI agent");
-    expect(whoForUser({ from: "another agent" }, "zh")).toBe("一个 AI agent");
+  test("an own agent Mem doesn't name: unnamed to the user (D273), told to the model as the user's own", () => {
+    expect(whoForUser({ mine: true, from: "another agent" }, "zh")).toBe("一个没留名字的 agent");
+    expect(whoForUser({ mine: true, label: "" }, "en")).toBe("an unnamed agent");
+    expect(whoForUser({ from: "another agent" }, "zh")).toBe("一个没留名字的 agent");
     expect(whoForModel({ mine: true, from: "another agent" })).toContain("one of the user's own AI agents");
+  });
+
+  test("the sender's name, else the tool it runs in, else unnamed", () => {
+    // Its own name in Mem comes first, even with a tool.
+    expect(whoForUser({ mine: true, agent: "Claude 收尾协调", host: "Claude Code" }, "zh")).toBe("Claude 收尾协调");
+    // No name: the tool it runs in.
+    expect(whoForUser({ mine: true, from: "another agent", host: "Claude Code" }, "zh")).toBe("Claude Code 里的 agent");
+    expect(whoForUser({ mine: true, from: "another agent", host: "Codex" }, "en")).toBe("an agent in Codex");
+    expect(whoForUser({ from: "another agent", host: "Codex" }, "en")).toBe("an agent in Codex");
+    // Neither: unnamed.
+    expect(whoForUser({ from: "another agent" }, "en")).toBe("an unnamed agent");
+    expect(whoForModel({ mine: true, from: "another agent", host: "Codex" })).toContain("in Codex");
+  });
+
+  test("the tool a sender runs in is read only by a known host id", () => {
+    expect(hostOf({ sender: { host: "claude-code" } })).toBe("Claude Code");
+    expect(hostOf({ sender: { agent: { host: "codex" } } })).toBe("Codex");
+    expect(hostOf({ source_app: "grok" })).toBe("Grok Build");
+    expect(hostOf({ sender: { host: "x-7f3a" } })).toBeUndefined();
+    expect(hostOf({})).toBeUndefined();
   });
 });
 
@@ -120,7 +140,7 @@ describe("D249: reaching the agent that wrote, over the released shapes", () => 
     expect(got[0].wroteLately[0]).toMatchObject({ contact: "reply:msg-001" });
     expect(got[0].wroteLately[0].who).toContain("Task: fix the Linux failure");
     expect(got[0].contacts.map((c: { who: string }) => c.who)).toContain("Claude 收尾协调 (the user's own agent: call it 你的 Claude 收尾协调 / your Claude 收尾协调, never by the user's name)");
-    expect(t.card().question.split("\n")[0]).toBe("发给一个 AI agent？");
+    expect(t.card().question.split("\n")[0]).toBe("发给一个没留名字的 agent？");
     expect(t.card().question).toContain("（就是发来「Task: fix the Linux failure in the runne…」的那个）");
     t.tap(t.card().decisionId);
     await t.partner.idle();

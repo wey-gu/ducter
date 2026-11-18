@@ -61,7 +61,7 @@ describe("D294: sender and in_reply_to (Mem #10278)", () => {
     const r = await w.bridge({ NMEM_FAKE_SENDER_MEMBER: "Wey Gu" }).check(new Set());
     expect(r.ok).toBe(true);
     const [a, b] = (r as { messages: Record<string, unknown>[] }).messages;
-    // A native session's Agent is only "Bridge agent": unnamed, so the user reads 一个 AI agent.
+    // A native session's Agent is only "Bridge agent": unnamed, so the user reads 一个没留名字的 agent.
     expect(a).toMatchObject({ messageId: "msg-001", mine: true });
     expect(a!.agent).toBeUndefined();
     expect(a!.inReplyTo).toBeUndefined(); // in_reply_to: null on an original

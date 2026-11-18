@@ -103,6 +103,32 @@ const ToolTile = ({ from }: { from: string }) => {
   return <Tile>{h ? <Coin harness={h} size={36} /> : <span class="mem-tool-letter">{[...from][0]?.toUpperCase()}</span>}</Tile>;
 };
 
+/**
+ * An agent that left no name and no tool (D332): a drawn agent, a rounded head with two eyes and a short
+ * antenna, on the same sunken pebble as a letter, so it never reads as a minus or a remove button.
+ */
+export const AgentMark = () => (
+  <svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M10 2.6v2.6" />
+    <circle cx="10" cy="2.3" r="0.9" fill="currentColor" stroke="none" />
+    <rect x="3.6" y="5.6" width="12.8" height="10.4" rx="4" />
+    <circle cx="7.6" cy="10.6" r="1.15" fill="currentColor" stroke="none" />
+    <circle cx="12.4" cy="10.6" r="1.15" fill="currentColor" stroke="none" />
+  </svg>
+);
+
+/** Another agent's tile in 最近 and 不再听的: its tool's coin or mark by its name or the tool it runs in, else the drawn agent. */
+const PeerTile = ({ agent, host }: { agent: string; host?: string }) =>
+  agent || host ? (
+    <ToolTile from={agent ? peerTool(agent) : host!} />
+  ) : (
+    <Tile>
+      <span class="mem-tool-letter mem-agent">
+        <AgentMark />
+      </span>
+    </Tile>
+  );
+
 /** The first group: the partner remembers you, what's new this week, the switch; the week's check (D304) one tap away. */
 function MemHead() {
   const s = A.settings!;
@@ -585,8 +611,11 @@ function Exchange({ to, words, then }: { to: string; words: string; then: string
   );
 }
 
+/** "an unnamed agent asked …" starts a line capitalised; names stay as they are. */
+const capWho = (s: string) => (s.startsWith("an unnamed agent") || s.startsWith("an agent in ") ? "A" + s.slice(1) : s);
 const peerTool = (agent: string) => (/claude/i.test(agent) ? "Claude Code" : /codex/i.test(agent) ? "Codex" : /\bpi\b/i.test(agent) ? "pi" : agent);
-const whoOf = (agent: string) => (agent && agent !== "another agent" ? agent : t("peer.someone"));
+/** 最近's who (D332): its name, else the tool it runs in, else unnamed (mem-view.ts peerCalled). */
+const whoOf = (h: Pick<Handoff, "agent" | "host">) => h.agent || (h.host ? t("peer.in.host", h.host) : t("peer.someone"));
 
 /** D332: where an exchange leads: its task, else the message in the conversation. */
 function openHandoff(h: Handoff) {
@@ -609,10 +638,10 @@ function PeersRecent({ name }: { name: string }) {
         {list.length === 0 && <GRow tile={<Tile><span class="handoff-wait" /></Tile>} title={t("peers.wait.title")} line={t("peers.wait.line")} />}
         {list.map((h) => (
           <button type="button" key={h.seq} class="chat-row tiled mem-item" onClick={() => openHandoff(h)}>
-            <ToolTile from={peerTool(h.agent)} />
+            <PeerTile agent={h.agent} host={h.host} />
             <span class="grow">
               <b dir="auto">{h.words}</b>
-              <small>{t(`peers.recent.${h.way}`, whoOf(h.agent), name)}</small>
+              <small>{capWho(t(`peers.recent.${h.way}`, whoOf(h), name))}</small>
             </span>
             <span class="g-state">{ago(A.L, h.at)}</span>
           </button>

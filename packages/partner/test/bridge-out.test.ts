@@ -831,7 +831,7 @@ describe("X1 / D164, D170: the user's own agents ask the user through the partne
     (t.fc.core as { settings?: unknown }).settings = { get: () => ({ peers }), setPeers: (p: Partial<typeof peers>) => Object.assign(peers, p), setForgetter() {}, setMemState() {} };
     await t.partner.checkBridge();
     const card = t.card();
-    expect(card.question.split("\n")[0]).toBe("Everyone 里有个 AI agent 想找 Ducter：");
+    expect(card.question.split("\n")[0]).toBe("Everyone 里一个没留名字的 agent 想找 Ducter：");
     t.tap(card.decisionId, "hold");
     await t.partner.idle();
     expect(peers.muted).toEqual(["AI agent (Everyone)"]);

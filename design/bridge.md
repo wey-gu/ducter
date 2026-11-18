@@ -199,6 +199,10 @@ Bridge assumption and setting; make it smooth and reasonable; no needless option
   end of the Partner page that opens it. The name is the author's (research/120): "终端里的 AI", the rater test's
   winner, was wrong, since these agents also live in desktop apps and editors; "你的" answers the raters' main
   misreading (other people's AI), and "连上的 AI agent" read as the partner's own brains next to Partner's line.
+- **What the pane says (D350).** The lede names the thing: any agent of the person's connected to Nowledge Mem (Claude
+  Code, Codex, Grok Build: the plugins that carry Bridge, research/66 §10) messages the partner through Nowledge Bridge,
+  both ways; the switch is **让接上 Nowledge Mem 的 agent 能找到{name}**. A sender is named by its Mem agent name, else
+  the tool it runs in (`bridge_msg.host`, when Mem says), else **一个没留名字的 agent**, with a drawn agent for its tile.
 - **Connect without a tap, on the person's own home only** (`packages/core/src/bridge-auto.ts`, D340). Mem signed
   in with exactly one personal place (bridge-link's `ready`), the switch on, agents of their own: the home connects
   at start, or as soon as Mem gets there; opening the page while ready is the same ask. **The person's own home**

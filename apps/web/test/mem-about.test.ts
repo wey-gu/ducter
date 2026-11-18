@@ -3,7 +3,9 @@
 // The Mac has the same rules (apps/desktop/internal/views/memory_about_test.go TestPeersRules).
 import { describe, expect, test } from "bun:test";
 import type { BridgeView } from "@ducter/protocol";
-import { aboutGroups, bySource, ownsAgents, peersPhase, peersSwitchOn, recentHandoffs, tryAgents } from "../src/mem-view.ts";
+import { aboutGroups, bySource, ownsAgents, peerCalled, peersPhase, peersSwitchOn, recentHandoffs, tryAgents } from "../src/mem-view.ts";
+import { memoryWords } from "../src/i18n-memory.ts";
+import { readFileSync } from "node:fs";
 
 describe("What it knows about you (D321)", () => {
   test("groups in a fixed order, empty kinds left out", () => {
@@ -66,6 +68,53 @@ describe("What it knows about you (D321)", () => {
     expect(got[0]!.taskId).toBe("t1");
     expect(got[2]!.words).toBe("fix the CI");
     expect(recentHandoffs([{ ev: ev(1), peer: { direction: "in", text: "a" } }, { ev: ev(2), peer: { direction: "in", text: "b" } }], 1).map((h) => h.seq)).toEqual([2]);
+  });
+
+  test("who an agent is called: its name in Mem, else the tool it runs in, else unnamed", () => {
+    // Its own name first, even when Mem also names its tool.
+    expect(peerCalled({ agent: "Claude 收尾协调", from: "Claude 收尾协调 (Wey)", host: "Claude Code" })).toEqual({ name: "Claude 收尾协调" });
+    // No agent name: the readable sender, if it is one.
+    expect(peerCalled({ from: "reviewer (dev team)" })).toEqual({ name: "reviewer (dev team)" });
+    // nmem's "another agent" is no name: the tool, else nothing.
+    expect(peerCalled({ from: "another agent", host: "Codex" })).toEqual({ host: "Codex" });
+    expect(peerCalled({ from: "another agent" })).toEqual({});
+    // Going out, the recipient is the one named.
+    expect(peerCalled({ to: "Codex", from: "x" }, "out")).toEqual({ name: "Codex" });
+    const ev = (seq: number) => ({ seq, ts: "2026-11-17T10:00:00Z" });
+    const got = recentHandoffs([
+      { ev: ev(1), peer: { direction: "in", from: "another agent", text: "a" } },
+      { ev: ev(2), peer: { direction: "in", from: "another agent", host: "Claude Code", text: "b" } },
+      { ev: ev(3), peer: { direction: "out", to: "another agent", host: "Codex", text: "c" } },
+    ]);
+    expect(got.map((h) => `${h.seq}:${h.agent}:${h.host ?? ""}`)).toEqual(["3::Codex", "2::Claude Code", "1::"]);
+  });
+
+  test("the pane's words say it plainly: any agent connected to Nowledge Mem, through Nowledge Bridge", () => {
+    const zh = memoryWords.zh as Record<string, string>;
+    const en = memoryWords.en as Record<string, string>;
+    expect(zh["settings.lede.peers"]).toBe("接上了 Nowledge Mem 的 agent，比如 Claude Code、Codex、Grok Build，都能通过 Nowledge Bridge 和%[1]s互相发消息：把事交给%[1]s，或者让%[1]s替你去问它们。");
+    expect(en["settings.lede.peers"]).toBe("Any agent of yours connected to Nowledge Mem, such as Claude Code, Codex or Grok Build, can message %[1]s through Nowledge Bridge: hand %[1]s work, or have %[1]s ask it for you.");
+    expect(zh["peers.switch"]).toBe("让接上 Nowledge Mem 的 agent 能找到%s");
+    expect(en["peers.switch"]).toBe("Let agents connected to Nowledge Mem reach %s");
+    // The switch's line stays about what shows up in the conversation.
+    expect(zh["peers.switch.on"]).toContain("对话");
+    expect(en["peers.switch.on"]).toContain("conversation");
+    // The other states say the same thing: Mem, and any agent connected to it.
+    for (const k of ["peers.joining", "peers.none", "peers.mem.what", "peers.switch.off"]) {
+      expect(zh[k]).toContain("Nowledge Mem");
+      expect(en[k]).toContain("Nowledge Mem");
+    }
+    expect(zh["peers.mem.what"]).toContain("Nowledge Bridge");
+    expect(en["peers.mem.what"]).toContain("Nowledge Bridge");
+    // D291: no dot-joined facts.
+    for (const v of [...Object.values(zh), ...Object.values(en)]) expect(v).not.toContain(" · ");
+    // The sender's fallbacks, the same on the Mac.
+    const mac = readFileSync(new URL("../../desktop/internal/i18n/languages.go", import.meta.url), "utf8");
+    const web = readFileSync(new URL("../src/i18n.ts", import.meta.url), "utf8");
+    for (const [k, v] of [["peer.someone", "一个没留名字的 agent"], ["peer.someone", "an unnamed agent"], ["peer.in.host", "%s 里的 agent"], ["peer.in.host", "an agent in %s"]]) {
+      expect(web).toContain(`"${k}": ${JSON.stringify(v)}`);
+      expect(mac).toContain(`"${k}": ${JSON.stringify(v)}`);
+    }
   });
 
   test("which agents can hear the words: signed in somewhere, Mem's plugin in it, else where to put it (the home first)", () => {

@@ -43,6 +43,7 @@ export interface BridgeMessage {
   messageId: string; // the CLI's message handle (what `open` and `reply` take)
   from: string; // a readable sender: agent and member as the CLI returns them
   agent?: string; // the sending agent's own name
+  host?: string; // the tool it runs in ("Claude Code"), when Mem says so and it has no name of its own
   mine?: boolean; // the sender belongs to the user (same member as the persona's owner)
   text: string; // clipped
   sentAt?: string;
@@ -206,6 +207,30 @@ const agentOf = (m: any): string | undefined => {
   if (a && GENERIC_AGENT.test(a)) return undefined;
   return a ?? str(m?.sender_agent_id) ?? str(m?.agent_id);
 };
+
+// The tools a sender may run in, by the host ids Mem uses (`bridge session --host`, `source_app`), in the
+// tool's own name. An id not listed says nothing a person reads, so it is dropped.
+const HOSTS: Record<string, string> = {
+  "claude-code": "Claude Code",
+  codex: "Codex",
+  "codex-cli": "Codex",
+  grok: "Grok Build",
+  "grok-build": "Grok Build",
+  cursor: "Cursor",
+  "gemini-cli": "Gemini CLI",
+  "copilot-cli": "Copilot CLI",
+  opencode: "OpenCode",
+  pi: "pi",
+};
+
+/**
+ * The tool a sender runs in, when Mem says (read tolerantly: no released shape is VERIFIED to carry it;
+ * a native session's sender is `--host codex|claude-code` on Mem's side). Only a known tool, by its name.
+ */
+export function hostOf(m: any): string | undefined {
+  const h = str(m?.sender?.host) ?? str(m?.sender?.agent?.host) ?? str(m?.agent?.host) ?? str(m?.host) ?? str(m?.sender?.source_app) ?? str(m?.source_app);
+  return h ? HOSTS[h.toLowerCase()] : undefined;
+}
 
 /** The id in an id-only member label ("Member 4e74…"), as real contact cards carry it. */
 export function memberIdLabel(v: string): string | undefined {
@@ -543,6 +568,7 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
             from: named,
             ...(!own && said.name && !memberIdLabel(said.name) && said.name !== agent ? { member: said.name } : {}),
             ...(agent ? { agent } : {}),
+            ...(!agent && hostOf(who) ? { host: hostOf(who) } : {}),
             ...(own ? { mine: true } : {}),
             text: clip(body, MAX_TEXT),
             ...(sentAt ? { sentAt } : {}),

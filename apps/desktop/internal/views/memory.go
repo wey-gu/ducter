@@ -170,7 +170,8 @@ func peersPhase(b *protocol.BridgeView, switchOn bool) string {
 type handoff struct {
 	Seq    int64
 	At     string
-	Agent  string
+	Agent  string // its own name, "" when it left none
+	Host   string // the tool it runs in, when it left no name and Mem says
 	Way    string // in | sent | replied
 	Words  string
 	TaskID string
@@ -196,16 +197,15 @@ func recentHandoffs(ch []*store.Entry, limit int) []handoff {
 		if words == "" {
 			continue
 		}
-		agent := firstNonEmpty(p.Agent, p.From)
+		agent, host := peerCalled(p)
 		way := "in"
 		if p.Direction != "in" {
-			agent = firstNonEmpty(p.Agent, p.To)
 			way = "replied"
 			if p.DecisionID != "" {
 				way = "sent"
 			}
 		}
-		out = append(out, handoff{Seq: ch[i].Event.Seq, At: ch[i].Event.TS, Agent: agent, Way: way, Words: words, TaskID: p.TaskID})
+		out = append(out, handoff{Seq: ch[i].Event.Seq, At: ch[i].Event.TS, Agent: agent, Host: host, Way: way, Words: words, TaskID: p.TaskID})
 	}
 	return out
 }

@@ -39,7 +39,7 @@ import { AddPictures, DropHint, MediaBlock, Tray, useDropPaste, Viewer } from ".
 import { FileViewer } from "./fileview.tsx";
 import { NewTaskSheet } from "./newtask.tsx";
 import { MemoryPage, Notebook, PeersInvite, PeersPage, peersPageShown } from "./memory.tsx";
-import { memBadge, memUpdate } from "./mem-view.ts";
+import { memBadge, memUpdate, peerCalled } from "./mem-view.ts";
 import { benchable, BenchToggle, openBenchAt } from "./workbench.tsx";
 import { TaskInfoButton } from "./task-info.tsx";
 import { PartnersSection, PartnerSwitch } from "./partners.tsx";
@@ -1273,7 +1273,7 @@ function FirstPeerNote({ b }: { b: Bodies["bridge_msg"] }) {
 /** One quiet line about the user's other agents (D170, J-Q5): who, and what, never Bridge words. */
 export function peerLineText(b: Bodies["bridge_msg"], ts: string, setAside?: number): string {
   // D273: an agent is named by what it is ("Claude Code"), never 你的 / other; Mem may not say
-  // who sent it (nmem stores "another agent"): then 一个 AI agent / an AI agent.
+  // who sent it (nmem stores "another agent"): then the tool it runs in, else 一个没留名字的 agent.
   const who = peerName(b);
   if (b.direction === "in" && b.state === "set_aside") return capFirst(t("peer.set_aside", who, String(setAside ?? 1)));
   if (b.direction === "in") {
@@ -1284,14 +1284,15 @@ export function peerLineText(b: Bodies["bridge_msg"], ts: string, setAside?: num
   return t(b.decisionId ? "peer.sent" : "peer.replied", who);
 }
 
-/** What an agent Ducter didn't start is called (D273): its own name, else 一个 AI agent / an AI agent. */
-export function peerName(b: { agent?: string; from?: string; to?: string }): string {
-  const named = [b.agent, b.from, b.to].find((x) => x && x !== "another agent");
-  return named ?? t("peer.someone");
+/** What an agent Ducter didn't start is called (D273): its own name, else the tool it runs in
+ *  (Claude Code 里的 agent / an agent in Claude Code), else 一个没留名字的 agent / an unnamed agent. */
+export function peerName(b: { agent?: string; from?: string; to?: string; host?: string; direction?: "in" | "out" }): string {
+  const w = peerCalled(b, b.direction ?? (b.from ? "in" : "out"));
+  return w.name ?? (w.host ? t("peer.in.host", w.host) : t("peer.someone"));
 }
 
-/** "an AI agent asks you" starts a line as "An AI agent …"; an agent's own name stays as it is. */
-const capFirst = (s: string) => (s.startsWith("an AI agent") ? "A" + s.slice(1) : s);
+/** "an unnamed agent asks you" starts a line as "An unnamed agent …"; an agent's own name stays as it is. */
+const capFirst = (s: string) => (s.startsWith("an unnamed agent") || s.startsWith("an agent in ") ? "A" + s.slice(1) : s);
 
 /** Who asks on a card (D273): "Claude Code（~/dev/ducter）问你" / "Claude Code (~/dev/ducter) asks you". */
 export function askerText(a: { agent: string; where?: string }): string {

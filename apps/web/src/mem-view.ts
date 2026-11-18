@@ -119,8 +119,19 @@ export function peersPhase(b: BridgeView | undefined, switchOn: boolean): PeersP
   return "problem"; // local_mem, no_space, refused, failed, unconfirmed, elsewhere
 }
 
-/** D332: one exchange with another agent, as 最近 / Recently lists it: who, which way, its words, when, where it leads. */
-export type Handoff = { seq: number; at: string; agent: string; way: "in" | "sent" | "replied"; words: string; taskId?: string };
+/** D332: one exchange with another agent, as 最近 / Recently lists it: who (its name, else the tool it runs in), which way, its words, when, where it leads. */
+export type Handoff = { seq: number; at: string; agent: string; host?: string; way: "in" | "sent" | "replied"; words: string; taskId?: string };
+
+/**
+ * What another agent is called, in this order: its own name in Mem (the sender's agent, else the readable
+ * sender), else the tool it runs in when Mem says (`host`: "Claude Code 里的 agent"), else nothing (unnamed).
+ * nmem stores a sender it can't name as "another agent"; that is no name.
+ */
+export function peerCalled(b: { agent?: string; from?: string; to?: string; host?: string }, dir: "in" | "out" = "in"): { name?: string; host?: string } {
+  const named = (dir === "in" ? [b.agent, b.from] : [b.agent, b.to]).find((x) => x && x.trim() && x !== "another agent");
+  if (named) return { name: named };
+  return b.host ? { host: b.host } : {};
+}
 
 /**
  * D332: the latest exchanges with the person's other agents, both ways, newest first: what one sent the
@@ -128,7 +139,7 @@ export type Handoff = { seq: number; at: string; agent: string; way: "in" | "sen
  * person's tap, one that didn't go, or one set aside or muted.
  */
 export function recentHandoffs(
-  channel: { ev: { seq: number; ts: string }; peer?: { direction: "in" | "out"; agent?: string; from?: string; to?: string; text: string; taskId?: string; decisionId?: string; state?: string } }[],
+  channel: { ev: { seq: number; ts: string }; peer?: { direction: "in" | "out"; agent?: string; host?: string; from?: string; to?: string; text: string; taskId?: string; decisionId?: string; state?: string } }[],
   limit = 5,
 ): Handoff[] {
   const out: Handoff[] = [];
@@ -139,8 +150,8 @@ export function recentHandoffs(
     if (p.direction === "in" ? p.state === "early" || p.state === "set_aside" || p.state === "muted" : p.state !== undefined && p.state !== "sent" && p.state !== "followed") continue;
     const words = p.text.replace(/\s+/g, " ").trim();
     if (!words) continue;
-    const agent = (p.direction === "in" ? p.agent || p.from : p.agent || p.to) ?? "";
-    out.push({ seq: e.ev.seq, at: e.ev.ts, agent, way: p.direction === "in" ? "in" : p.decisionId ? "sent" : "replied", words, ...(p.taskId ? { taskId: p.taskId } : {}) });
+    const who = peerCalled(p, p.direction);
+    out.push({ seq: e.ev.seq, at: e.ev.ts, agent: who.name ?? "", ...(who.host ? { host: who.host } : {}), way: p.direction === "in" ? "in" : p.decisionId ? "sent" : "replied", words, ...(p.taskId ? { taskId: p.taskId } : {}) });
   }
   return out;
 }

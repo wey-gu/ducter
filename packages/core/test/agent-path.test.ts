@@ -49,3 +49,10 @@ test("the fingerprint moves when an agent appears or a sign-in file changes, not
   times["/home/w/.codex/auth.json"] = 2; // `codex login` in a terminal
   expect(sig()).not.toBe(b);
 });
+
+test("a Mac app's own command line: DeepSeek Harness.app's dsh, in /Applications or ~/Applications, after the usual places", () => {
+  const sys = "/Applications/DeepSeek Harness.app/Contents/Resources/runtime/cli/bin";
+  const own = "/Users/w/Applications/DeepSeek Harness.app/Contents/Resources/runtime/cli/bin";
+  expect(userAgentDirs({ home: "/Users/w", env: {}, fs: fakeFs({ "/opt/homebrew/bin": true, [sys]: true }) })).toEqual(["/opt/homebrew/bin", sys]);
+  expect(userAgentDirs({ home: "/Users/w", env: {}, fs: fakeFs({ [own]: true }) })).toEqual([own]);
+});

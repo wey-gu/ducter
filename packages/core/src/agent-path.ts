@@ -6,7 +6,8 @@
 //      asdf or mise set up in .bashrc / .zshrc is in it);
 //   2. the usual per-user places, looked at on every probe (no shell needed): ~/.local/bin, the
 //      npm prefix in ~/.npmrc, ~/.npm-global/bin, every nvm node's bin, fnm, volta, asdf, mise,
-//      bun, Homebrew on Linux (/home/linuxbrew), /usr/local/bin, /opt/homebrew/bin;
+//      bun, Homebrew on Linux (/home/linuxbrew), /usr/local/bin, /opt/homebrew/bin, and the CLI a Mac
+//      app carries inside itself (DeepSeek Harness.app's dsh);
 //   3. Ducter's own tools folder (<data>/tools/node/bin, <data>/tools/bin), last.
 // The person's own copies come first: a Codex they installed wins over Ducter's.
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync, mkdirSync } from "node:fs";
@@ -72,6 +73,10 @@ export function userAgentDirs(o: { home?: string; env?: Record<string, string | 
   }
   dirs.push(join(home, ".volta", "bin"), join(home, ".asdf", "shims"), join(home, ".local", "share", "mise", "shims"), join(home, ".bun", "bin"), join(home, ".local", "share", "pnpm"));
   dirs.push(join(home, ".linuxbrew", "bin"), "/home/linuxbrew/.linuxbrew/bin", "/opt/homebrew/bin", "/usr/local/bin");
+  // A Mac app that carries its agent's command line inside itself and never puts it on PATH:
+  // DeepSeek Harness.app (0.2.2-rc.3 keeps `dsh` in Resources/runtime/cli/bin), in /Applications
+  // or ~/Applications. Last, so a `dsh` the person put on PATH wins.
+  for (const apps of ["/Applications", join(home, "Applications")]) dirs.push(join(apps, "DeepSeek Harness.app", "Contents", "Resources", "runtime", "cli", "bin"));
   return [...new Set(dirs)].filter((d) => fs.exists(d));
 }
 

@@ -2,9 +2,9 @@
 
 > Design note · 2026-11-09, updated 2026-11-18 · Principles 1, 7, 12, 14, 17, 18 · Decided: D105–D111 (outbound,
 > the outgoing ledger, the result reply, names, copy, follow-through, the Mem asks), D162 (the live check and the
-> real shapes), D163–D164 (beyond itself: X1–X3), D170 (X1, X2 and the Settings switch, built), D171 (the persona's Space), D205 (the persona connects itself with one tap), D225 (the released Bridge; the home's own Mem put in, updated and signed in from the same row), D324 (one home answers a partner's mailbox; the trial as its own identity), D333 (the partner's own tools only, 查看来信, the card says where it reads), D334 (the address is the identity, not the Space: every Space read, replies in the message's, a teammate's first message is a card), D338 (the card names only the Spaces read; a Space Mem answers 404 for is said and backed off; no connection per Space), D364 (nmem 0.10.120's linked shape: an original is not an answer; the update offered on the pane); still open: J-Q1–3, J-Q8, J-Q14 ·
+> real shapes), D163–D164 (beyond itself: X1–X3), D170 (X1, X2 and the Settings switch, built), D171 (the persona's Space), D205 (the persona connects itself with one tap), D225 (the released Bridge; the home's own Mem put in, updated and signed in from the same row), D324 (one home answers a partner's mailbox; the trial as its own identity), D333 (the partner's own tools only, 查看来信, the card says where it reads), D334 (the address is the identity, not the Space: every Space read, replies in the message's, a teammate's first message is a card), D338 (the card names only the Spaces read; a Space Mem answers 404 for is said and backed off; no connection per Space), D364 (nmem 0.10.120's linked shape: an original is not an answer; the update offered on the pane), D367 (every inbox page read; the trial's peer touches only its own run's mail); still open: J-Q1–3, J-Q8, J-Q14 ·
 > Evidence: `research/31` (public), `research/37` (dogfood, §6 the live check), `research/66` (the release, the live
-> run, Mem on a home without it), `research/134` (nmem 0.10.120), private `31` and `10`.
+> run, Mem on a home without it), `research/134` (nmem 0.10.120), `research/137` (the 0.10.120 live run: the inbox's pages), private `31` and `10`.
 >
 > Nowledge Bridge is Mem's agent mailbox. This note describes how Ducter uses it. All of it is in `main`:
 > receive, ask and reply, the linked result reply (J2, D107), outbound messages through a card (J4, D105), the
@@ -653,7 +653,8 @@ other agent ──bridge send──▶ Mem (persona's Agent mailbox)
                                   │  Ducter checks: at start, then every minute, and when asked (bridge_check, D333);
                                   │  see "When the home reads its mailbox" below (D335)
                                   ▼
-   nmem --json --agent-context C bridge inbox     → message handles
+   nmem --json --agent-context C bridge inbox     → message handles, 20 a page, oldest first, opened ones too;
+     … bridge inbox --cursor <next>               → every page until `next` is "" (at most 25, D367)
    nmem --json --agent-context C bridge open <id> → body (0.10.118: no sender; in Only me it is the user's own, D249;
                                                     after 0.10.119: sender {member, agent, agent_id} + in_reply_to, D294)
                                   ▼
@@ -785,6 +786,24 @@ made (revoke, `agents context clear`, `agents delete`); `--cleanup` removes what
 own partner and mailbox are never used, so it runs any time; D258's guard and `--share-mailbox` are gone. Built
 and tested with the fake nmem only; whether Mem connects a freshly enrolled identity at once is INFERRED until
 the first real run (research/66 §9).
+
+**Status 2026-11-18, after the run (D367, research/137): fixed, ready to rerun.** The author's run on nmem
+0.10.120 (haiku both sides, 449 s) passed S1 6/6 and X1 3/3 and showed "✓ Mem marks an original as one", but
+failed S2 2/5 and S3 2/3. Mem's inbox lists the whole mailbox, 20 a page, oldest first; the peer (the author's own
+Claude Code identity) read one page of 20 older answers from earlier trials, never saw Ducter's question, opened
+20 old messages and answered an old one (a reply to the author's real partner). S1's and X1's terminal checks had
+passed on any words. Ducter read only the first page too. Now Ducter reads every page (bounded at 25), the peer
+runs `nmem` through a guard that opens and answers only this run's mail and sends only to this run's Ducter, the
+transcript says where in the peer's mailbox this run's messages are, and the terminal checks count only an actual
+open. The rerun, with the same 0.10.120 CLI:
+
+```sh
+NMEM_CLI_PATH=<nmem 0.10.120> bun run bridge:live -- --connected          # read-only preflight
+NMEM_CLI_PATH=<nmem 0.10.120> bun run bridge:live -- --connected --real   # S1, S2, S3, X1 (about 10 min)
+```
+
+The gate is unchanged (S2 5/5, the closing ✓); also read each "(the peer's mailbox: …)" line and the guard's line
+at the end, which says how many peer calls on other mail it refused.
 
 **Status 2026-11-18 (D364, research/134): ready for the author.** nmem 0.10.120 carries Mem's linked shape; this
 Mac still has 0.10.119 (Mem says `pipx upgrade nmem-cli`). The run, on the Mac, from the repo:

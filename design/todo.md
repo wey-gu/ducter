@@ -1447,6 +1447,13 @@ Codex first, once OAR is near 1.0. See `research/17`.
       offer that from the elsewhere row once Bridge per partner exists. Trigger: D312's "Bridge per partner".
 - [ ] Post the drafts in research/66 §9.3 (a device label on connections, cross-login revoke, `outcome_unknown` as a
       contract, `agents delete` and the mailbox). Trigger: the author's go.
+- [ ] Post B18 (research/137 §6): `bridge inbox` lists the whole mailbox oldest first, 20 a page, so the first
+      page of a mailbox with history is all old mail; ask for newest first or an unread filter, a resumable
+      cursor, and the order in the help and the Bridge skill. Then (D367) drop the 25-page walk for it.
+      Trigger: the author's go.
+- [ ] D367: tell the author's live `ducter` about the stray reply 47dcd5db (the 2026-11-18 trial's peer answered
+      its old question 960715b8 with made-up status) if it surfaces in his conversation. Trigger: the home
+      updates to a Ducter that pages its inbox.
 - [ ] Post the five drafts in research/66 §8.4 (B17 release, local Bridge version, telling connections apart,
       transient codes, native senders' names). Trigger: the author's go.
 - [ ] Local Bridge (Mem app or Vault): the live check on a Mem in local mode. Trigger: Mem names the version with

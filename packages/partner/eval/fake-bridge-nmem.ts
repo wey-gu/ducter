@@ -58,6 +58,10 @@
 // (`space {id,label,kind}`, `resolved_space_id`); an agent in `state.everywhere` has a card in every
 // Space. `agents context select --name N --agent-id A --space-id S` makes a local context when some
 // context already speaks as A (NMEM_FAKE_SELECT_REFUSE=<space id,...> answers Mem's refusal there).
+// D367 (nmem 0.10.120 against Mem Cloud, VERIFIED 2026-11-18, research/137): `inbox` answers at most
+// 20 messages a page, oldest first, opened ones included, with `next` a cursor for `--cursor` (a new
+// opaque string on every call) and "" on the last page. NMEM_FAKE_INBOX_PAGE=<n> changes the 20.
+// The `named` shape stays one page with no `next` (an older answer, which Ducter still reads).
 //   NMEM_FAKE_WIDE=1   Mem #10402: `bridge inbox --help` offers `--all-spaces`, and `inbox --all-spaces`
 //                      reads the identity's messages in every Space (each with `space_id`).
 import { appendFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
@@ -490,16 +494,28 @@ switch (verb) {
       while (!unread() && Date.now() < until) await Bun.sleep(50);
       Object.assign(s, load());
     }
-    const mine = s.messages.filter((m) => forMe(m) && !m.pending);
+    const all = s.messages.filter((m) => forMe(m) && !m.pending);
+    const cursor = take("--cursor");
     if (NAMED) {
+      const mine = all;
       const messages = mine.map((m) => ({ message: m.id, ...card(m.from), created_at: m.created_at, read: !!m.read_at, ...(m.in_reply_to ? { in_reply_to: m.in_reply_to } : {}) }));
       const outgoing = s.messages.filter((m) => m.from === me && !m.pending).map((m) => ({ message: m.id, read: !!m.read_at }));
       out({ messages, outgoing });
       break;
     }
+    // D367: one page from the cursor's place, oldest first; `next` "" on the last page.
+    const size = Math.max(1, Number(process.env.NMEM_FAKE_INBOX_PAGE) || 20);
+    let at = 0;
+    if (cursor !== undefined) {
+      const m = /^at:(\d+):/.exec(Buffer.from(cursor, "base64url").toString());
+      if (!m) fail("invalid_cursor", "That cursor isn't one this inbox gave.");
+      at = Number(m![1]);
+    }
+    const mine = all.slice(at, at + size);
+    const next = at + size < all.length ? Buffer.from(`at:${at + size}:${crypto.randomUUID()}`).toString("base64url") : "";
     // 0.10.118: handles only; our own sent messages' read status beside them.
     const outgoing = s.messages.filter((m) => m.from === me && !m.pending).map((m) => ({ message: m.id, status: m.read_at ? "read" : "delivered", read_recipients: m.read_at ? 1 : 0, recipients: 1 }));
-    out({ messages: mine.map((m) => ({ ...(PRESENT ? { message: m.id, sender: sender(m.from), in_reply_to: m.in_reply_to ?? null } : { message: m.id }), ...(WIDE ? { space_id: msgSpace(m) } : {}) })), next: "", outgoing, status_observed_at_us: Date.now() * 1000 });
+    out({ messages: mine.map((m) => ({ ...(PRESENT ? { message: m.id, sender: sender(m.from), in_reply_to: m.in_reply_to ?? null } : { message: m.id }), ...(WIDE ? { space_id: msgSpace(m) } : {}) })), next, outgoing, status_observed_at_us: Date.now() * 1000 });
     break;
   }
   case "open": {

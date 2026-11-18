@@ -145,6 +145,7 @@ export interface NmemBridgeOptions {
   bin?: string; // default NMEM_CLI_PATH or "nmem"
   timeoutMs?: number; // per call, default 20 s
   maxOpen?: number; // bodies opened per check, default 5
+  inboxPages?: number; // D367: inbox pages read per inbox, default 25 (20 messages each in nmem 0.10.120)
   /**
    * The user's member (id or display name), to tell the user's own agents from teammates'.
    * Default DUCTER_BRIDGE_MEMBER, else the member that passive `bridge setup` reports for the
@@ -287,6 +288,40 @@ export function inboxIds(j: any): string[] {
   return ids;
 }
 
+/**
+ * D367: the cursor to the inbox's next page, or undefined on the last one. nmem 0.10.120 (VERIFIED
+ * 2026-11-18, research/137): 20 messages a page, oldest first, `next` a cursor for `--cursor`, "" on
+ * the last page. `next_cursor` is the same thing by another name; an older answer has neither.
+ */
+export function inboxNext(j: any): string | undefined {
+  return str(j?.next) ?? str(j?.next_cursor);
+}
+
+/** D367: two inbox pages as one answer: messages in order, each once; a later page's read status wins. */
+export function mergeInboxPages(a: any, b: any): any {
+  const key = (m: any) => (typeof m === "string" ? m : str(m?.message) ?? str(m?.message_id) ?? str(m?.id));
+  const join = (x: unknown, y: unknown) => {
+    const list = [...(Array.isArray(x) ? x : []), ...(Array.isArray(y) ? y : [])];
+    const seen = new Set<string>();
+    return list.filter((m) => {
+      const k = key(m);
+      if (!k) return true;
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+  };
+  const out: any = { ...a, ...b };
+  for (const f of ["messages", "incoming"]) if (Array.isArray(a?.[f]) || Array.isArray(b?.[f])) out[f] = join(a?.[f], b?.[f]);
+  for (const f of ["outgoing", "sent"])
+    if (Array.isArray(a?.[f]) || Array.isArray(b?.[f])) {
+      const later = Array.isArray(b?.[f]) ? b[f] : [];
+      const ids = new Set(later.map(key).filter(Boolean));
+      out[f] = [...(Array.isArray(a?.[f]) ? a[f] : []).filter((m: any) => !ids.has(key(m))), ...later];
+    }
+  return out;
+}
+
 /** Read status of our own sent messages, from the inbox's outgoing refresh (when present). */
 export function outgoingReads(j: any): Record<string, boolean> | undefined {
   const list = Array.isArray(j?.outgoing) ? j.outgoing : Array.isArray(j?.sent) ? j.sent : undefined;
@@ -378,6 +413,7 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
   const bin = opts.bin ?? env.NMEM_CLI_PATH ?? "nmem";
   const timeoutMs = opts.timeoutMs ?? 20_000;
   const maxOpen = opts.maxOpen ?? 5;
+  const inboxPages = Math.max(1, opts.inboxPages ?? 25);
   // D334: the home's own context first; every other Space it reads after it, each once.
   const places: BridgePlace[] = [];
   for (const p of [{ context: opts.context }, ...(opts.places ?? [])]) {
@@ -519,6 +555,36 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
     }
     return { ...(pl.spaceId ? { id: pl.spaceId } : {}), ...(pl.spaceLabel ? { label: pl.spaceLabel } : {}), ...(pl.kind ? { kind: pl.kind } : {}) };
   };
+  /**
+   * D367: the rest of an inbox after its first page, as one answer. Mem answers oldest first, so the
+   * newest mail is on the last page: every page is read, at most `inboxPages`. A page that fails or
+   * adds nothing ends it with what came so far (the next check reads again).
+   */
+  const restOfInbox = async (first: any, args: string[], ctx: string): Promise<any> => {
+    let all = first;
+    let page = first;
+    for (let n = 1; n < inboxPages; n++) {
+      const cursor = inboxNext(page);
+      if (!cursor) break;
+      const r = await read([...args, "--cursor", cursor], ctx);
+      if ("missing" in r || r.code !== 0) break;
+      const p = parse(r.out);
+      if (p === undefined) break;
+      const had = inboxIds(all).length;
+      all = mergeInboxPages(all, p);
+      if (inboxIds(all).length === had) break; // nothing new: never a loop on a cursor that repeats
+      page = p;
+    }
+    return all;
+  };
+  /** One inbox, every page (D367): the answer, or why it didn't come. */
+  const readInbox = async (args: string[], ctx: string): Promise<{ j: any } | { fail: BridgeFailure }> => {
+    const r = await read(args, ctx);
+    if ("missing" in r || r.code !== 0) return { fail: failure(r) };
+    const j = parse(r.out);
+    if (j === undefined) return { fail: { ok: false, reason: "unavailable", message: "Bridge gave no answer (it may be switched off for this account)." } };
+    return { j: await restOfInbox(j, args, ctx) };
+  };
   return {
     async check(known) {
       const messages: BridgeMessage[] = [];
@@ -526,16 +592,12 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
       let answered = false;
       let lastFail: BridgeFailure | undefined;
       for (const { pl, args } of inboxes()) {
-        const r = await read(args, pl.context);
-        if ("missing" in r || r.code !== 0) {
-          lastFail = failure(r);
+        const got = await readInbox(args, pl.context);
+        if ("fail" in got) {
+          lastFail = got.fail;
           continue; // one Space not answering doesn't hide the others'
         }
-        const j = parse(r.out);
-        if (j === undefined) {
-          lastFail = { ok: false, reason: "unavailable", message: "Bridge gave no answer (it may be switched off for this account)." };
-          continue;
-        }
+        const j = got.j;
         answered = true;
         const list = Array.isArray(j?.messages) ? j.messages : Array.isArray(j?.incoming) ? j.incoming : [];
         const entry = (id: string) => list.find((m: any) => (typeof m === "string" ? m : str(m?.message) ?? str(m?.message_id) ?? str(m?.id)) === id);
@@ -596,11 +658,9 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
     async inboxIds() {
       const ids: string[] = [];
       for (const { pl, args } of inboxes()) {
-        const r = await read(args, pl.context);
-        if ("missing" in r || r.code !== 0) return failure(r);
-        const j = parse(r.out);
-        if (j === undefined) return { ok: false, reason: "unavailable", message: "Bridge gave no answer (it may be switched off for this account)." };
-        for (const id of inboxIds(j)) if (!ids.includes(id)) ids.push(id);
+        const got = await readInbox(args, pl.context);
+        if ("fail" in got) return got.fail;
+        for (const id of inboxIds(got.j)) if (!ids.includes(id)) ids.push(id);
       }
       return { ok: true, ids };
     },
@@ -629,7 +689,8 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
       if ("missing" in r || r.code !== 0) return failure(r);
       const j = parse(r.out);
       if (j === undefined) return { ok: false, reason: "unavailable", message: "Bridge gave no answer." };
-      return { ok: true, ids: inboxIds(j) };
+      // D367: the wait answers the first page (oldest first); new mail is on the last one.
+      return { ok: true, ids: inboxIds(await restOfInbox(j, at.args, at.pl.context)) };
     },
     async reply(messageId, text, space) {
       // Body through stdin (--body-file -): text starting with "-" can't parse as a flag.

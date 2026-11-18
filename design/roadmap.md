@@ -65,6 +65,11 @@ heard of a subagent.
     following up on silence (S3) 3 of 3, an agent asking for your call (X1) 3 of 3. The misses: a card
     once named you in the third person (model wording), and an answer that Mem didn't yet link to the
     question it answers.
+  - 2026-11-18, the live run on 0.10.120: S1 6 of 6, X1 3 of 3, Mem marks an original as one, but S2
+    2 of 5 and S3 2 of 3. Mem's inbox lists 20 messages a page, oldest first, and the terminal side read
+    only the first page of older mail, so it never saw the question; Ducter read only one page too. Now
+    Ducter reads every page and the trial's terminal side touches only its own run's mail (D367,
+    research/137); the rerun is ready.
   - 2026-11-18: Mem's command line 0.10.120 is the first to ask for linked answers and named senders,
     so the live rerun is ready to run; Ducter no longer mistakes a new message for the answer it waits
     on, and Settings › Talk with your other agents offers Mem's update where it is older.

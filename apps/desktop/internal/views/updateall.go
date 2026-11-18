@@ -187,6 +187,22 @@ func (a *App) updAllRow(c *ui.Context, it *protocol.UpdateAllItem) {
 		}
 	}
 	var below func()
+	// D362: a step past its usual time there: one quiet line, 再等等 and 停止.
+	if it.Kind == "agent" && it.State == "running" && it.Wait != "reconnect" && a.agentSlow(key, &it.AgentProgress) {
+		below = func() {
+			a.note(c, a.L.T("upall.slow"))
+			t := a.T
+			a.cardEnd(c, t.ControlSM, func() {
+				if a.buttonFor(c, a.L.T("upall.slow.wait"), a.updAllName(it), btnText, t.ControlSM, t.Surface) {
+					a.agentKeepWaiting(key, &it.AgentProgress)
+				}
+			}, func() {
+				if a.buttonFor(c, a.L.T("upall.slow.stop"), a.updAllName(it), btnSecondary, t.ControlSM, t.Surface) {
+					a.send(protocol.UpdateAllReq{T: "update_all", StopItem: it.Key})
+				}
+			})
+		}
+	}
 	if it.State == "failed" && open {
 		below = func() {
 			a.reasonLine(c, a.updAllWhy(it))
@@ -242,6 +258,12 @@ func (a *App) updAllPhase(it *protocol.UpdateAllItem) string {
 		}
 		if it.To == "" && ph == "updating" {
 			return a.L.T("upall.state.updating.bare")
+		}
+		// D362: what it is doing now, in words that move.
+		if it.Kind == "agent" && ph == "updating" {
+			if s := a.agentUpdatingWords(&it.AgentProgress, it.To); s != "" {
+				return s
+			}
 		}
 		return a.L.T("agentv.phase."+ph, it.To)
 	}

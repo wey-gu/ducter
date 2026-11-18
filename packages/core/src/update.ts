@@ -19,6 +19,7 @@ import { dirname, join } from "node:path";
 import type { UpdateHow, UpdatePhase, UpdateReason } from "@ducter/protocol";
 import { compareVersions, isVersion } from "@ducter/protocol/src/version.ts";
 import { REPO, type Fetch } from "./release.ts";
+import { downloadFile } from "./download.ts";
 
 export const UNIT = "ducter.service";
 /** How long the helper waits for the restarted Ducter: a first start on a big Log or a cold disk can take a minute. */
@@ -29,11 +30,28 @@ export const MIN_FREE_BYTES = 300 * 1024 * 1024;
 export interface RunResult {
   code: number;
   out: string;
+  /** D362: killed at its time limit. */
+  timedOut?: boolean;
+  /** D362: killed because its signal was aborted (停止). */
+  stopped?: boolean;
+}
+
+/** D362: how a download ended. stalled: no bytes for its stall limit; timeout: past its whole limit; stopped: its signal. */
+export type DownloadResult = { ok: true; size: number } | { ok: false; why: "network" | "stalled" | "timeout" | "stopped"; detail?: string };
+
+export interface DownloadOpts {
+  signal?: AbortSignal;
+  /** Bytes so far, and the whole size when the source says it. */
+  onBytes?: (got: number, size?: number) => void;
+  stallMs?: number;
+  timeoutMs?: number;
 }
 
 export interface UpdateSys {
   fetch: Fetch;
-  run(argv: string[], o?: { timeoutMs?: number; env?: Record<string, string> }): Promise<RunResult>;
+  run(argv: string[], o?: { timeoutMs?: number; env?: Record<string, string>; signal?: AbortSignal }): Promise<RunResult>;
+  /** D362: fetch url into file with live byte counts (absent: no download Ducter can watch). */
+  download?(url: string, file: string, o?: DownloadOpts): Promise<DownloadResult>;
   /** Free bytes on the volume holding dir; undefined when it can't tell. */
   freeBytes(dir: string): number | undefined;
   sleep(ms: number): Promise<void>;
@@ -44,15 +62,22 @@ export const realSys: UpdateSys = {
   fetch: (u, i) => fetch(u, i),
   async run(argv, o = {}) {
     try {
+      if (o.signal?.aborted) return { code: -1, out: "stopped", stopped: true };
       const p = Bun.spawn(argv, { stdout: "pipe", stderr: "pipe", stdin: "ignore", env: o.env ? { ...process.env, ...o.env } : process.env });
-      const timer = setTimeout(() => p.kill(), o.timeoutMs ?? 30_000);
+      let timedOut = false;
+      let stopped = false;
+      const timer = setTimeout(() => ((timedOut = true), p.kill()), o.timeoutMs ?? 30_000);
+      const onAbort = () => ((stopped = true), p.kill());
+      o.signal?.addEventListener("abort", onAbort, { once: true });
       const [out, err, code] = await Promise.all([new Response(p.stdout).text(), new Response(p.stderr).text(), p.exited]);
       clearTimeout(timer);
-      return { code, out: [out.trim(), err.trim()].filter(Boolean).join("\n") };
+      o.signal?.removeEventListener("abort", onAbort);
+      return { code, out: [out.trim(), err.trim()].filter(Boolean).join("\n"), ...(timedOut ? { timedOut } : {}), ...(stopped ? { stopped } : {}) };
     } catch (err) {
       return { code: -1, out: (err as Error).message };
     }
   },
+  download: (url, file, o) => downloadFile(url, file, o),
   freeBytes(dir) {
     try {
       const s = statfsSync(dir);

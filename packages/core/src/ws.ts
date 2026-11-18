@@ -1042,6 +1042,8 @@ export function createWsHandler(deps: WsDeps) {
         if (!ua) return send(ws, { t: "update_all_result", ok: false, reason: "failed", detail: "updates are not available" });
         watchDevices();
         if (f.stop) return send(ws, { t: "update_all_result", ok: ua.stop(), ...(ua.plan() ? { id: ua.plan()!.id } : {}) });
+        // D362: 停止 on one slow agent step; the rest goes on.
+        if (typeof f.stopItem === "string") return send(ws, { t: "update_all_result", ok: await ua.stopItem(f.stopItem), ...(ua.plan() ? { id: ua.plan()!.id } : {}) });
         if (f.dismiss) {
           const ok = ua.dismiss();
           devicesView()?.changed();

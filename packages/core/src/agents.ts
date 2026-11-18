@@ -10,8 +10,9 @@
 //            doesn't answer, or lost its login, goes back to the old version where pinning is
 //   night:   the D148 switch: quiet hours, nothing working, only versions Ducter verified
 import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { AgentHow, AgentPhase, AgentReason, AgentUpdate, Bodies, DeviceHarness, Settings } from "@ducter/protocol";
+import type { AgentHow, AgentPhase, AgentReason, AgentStep, AgentUpdate, Bodies, DeviceHarness, Settings } from "@ducter/protocol";
 import { CASK_LATEST, HARNESS_FACTS, NPM_LATEST, versionStanding } from "@ducter/protocol/src/harness-facts.ts";
 import { isHarnessId, type HarnessId } from "@ducter/protocol/src/harnesses.ts";
 import type { LogStore } from "@ducter/protocol/src/internal.ts";
@@ -23,8 +24,21 @@ import type { UpdateSys } from "./update.ts";
 export const AGENT_CHECK_EVERY_MS = 6 * 60 * 60_000;
 /** How long an update waits for work on that agent to settle before it gives up. */
 export const AGENT_SETTLE_MS = 30 * 60_000;
-/** An updater gets this long (a download, npm). */
+/** An updater that installs what Ducter already fetched gets this long (npm from its cache: seconds). */
 export const AGENT_INSTALL_MS = 10 * 60_000;
+/**
+ * D362: an updater that downloads by itself, unseen (brew, an installer, npm without a known
+ * tarball), gets this long; a 155 MB Codex took 12.5 min at ~200 KB/s (research/130), past the
+ * old 10 min. Update all's own step limit (45 min) stays above this and the download's.
+ */
+export const AGENT_UPDATER_MS = 25 * 60_000;
+/** D362: a download Ducter watches gets this long in all, and stops when no bytes come for the stall limit. */
+export const AGENT_DOWNLOAD_MS = 30 * 60_000;
+export const AGENT_STALL_MS = 2 * 60_000;
+/** D362: slower than usual: 3x the last update of this agent there, never under 90 s; 4 min with none known. */
+export const AGENT_SLOW_DEFAULT_MS = 4 * 60_000;
+export const AGENT_SLOW_MIN_MS = 90_000;
+export const slowAfter = (usualMs: number | undefined) => (usualMs && usualMs > 0 ? Math.max(3 * usualMs, AGENT_SLOW_MIN_MS) : AGENT_SLOW_DEFAULT_MS);
 export const AGENT_DONE_SHOWN_MS = 30 * 60_000;
 export const AGENT_FAILED_SHOWN_MS = 24 * 60 * 60_000;
 
@@ -72,7 +86,16 @@ export interface AgentPlan {
   /** It installs exactly the version asked for. */
   pinned: boolean;
   env?: Record<string, string>;
+  /**
+   * D362: npm only, where the channel names its binary's tarball: Ducter fetches it into npm's own
+   * cache first (watched, stoppable, the installed copy untouched), then `argv` installs from there.
+   */
+  fetch?: { npm: string; pkg: string; blob: string };
 }
+
+/** D362: the `{os}` and `{arch}` npm uses for this machine's binary package. */
+export const npmOs = (p: string = process.platform) => (p === "darwin" || p === "linux" || p === "win32" ? p : undefined);
+export const npmArch = (a: string = process.arch) => (a === "arm64" || a === "aarch64" ? "arm64" : a === "x64" || a === "amd64" ? "x64" : undefined);
 
 /**
  * The command that updates this copy to `to` with its own channel (research/42): npm installs the
@@ -80,14 +103,18 @@ export interface AgentPlan {
  * installer runs its updater for the newest, or its pinned install for any other version. An
  * app's copy, Ducter's own pi and an unknown copy have none.
  */
-export function updatePlan(h: HarnessId, a: AgentInstall, to: string, o: { latest?: string; exists?: (p: string) => boolean } = {}): AgentPlan | undefined {
+export function updatePlan(h: HarnessId, a: AgentInstall, to: string, o: { latest?: string; exists?: (p: string) => boolean; platform?: string; arch?: string } = {}): AgentPlan | undefined {
   const ch = HARNESS_FACTS[h].channels.value;
   const exists = o.exists ?? existsSync;
   switch (a.how) {
     case "npm": {
       if (!ch.npm) return undefined;
       const npm = a.prefix && exists(join(a.prefix, "bin", "npm")) ? join(a.prefix, "bin", "npm") : "npm";
-      return { argv: [npm, ...(a.prefix ? ["--prefix", a.prefix] : []), "install", "-g", `${ch.npm}@${to}`], pinned: true, env: { npm_config_update_notifier: "false", npm_config_fund: "false" } };
+      const plan: AgentPlan = { argv: [npm, ...(a.prefix ? ["--prefix", a.prefix] : []), "install", "-g", `${ch.npm}@${to}`], pinned: true, env: { npm_config_update_notifier: "false", npm_config_fund: "false" } };
+      const os = npmOs(o.platform);
+      const arch = npmArch(o.arch);
+      if (ch.npmBlob && os && arch) plan.fetch = { npm, pkg: `${ch.npm}@${to}`, blob: ch.npmBlob.replaceAll("{v}", to).replaceAll("{os}", os).replaceAll("{arch}", arch) };
+      return plan;
     }
     case "brew":
       return ch.cask ? { argv: ["brew", "upgrade", "--cask", ch.cask], pinned: false, env: { HOMEBREW_NO_ENV_HINTS: "1" } } : undefined;
@@ -226,7 +253,73 @@ export interface AgentRunInput {
   /** Held while the updater runs: no new session on this agent starts. */
   hold?: (on: boolean) => void;
   onPhase?: (phase: AgentPhase, to?: string) => void;
+  /** D362: inside "updating": downloading (bytes) or installing. */
+  onProgress?: (p: { step: AgentStep; got?: number; size?: number }) => void;
+  /** D362: 停止. Before the install the copy is untouched; during it, judged and put back as any failure. */
+  signal?: AbortSignal;
+  /** D362: where a download is kept until npm's cache has it (default: the system's temp folder). */
+  scratch?: string;
+  platform?: string;
+  arch?: string;
   exists?: (p: string) => boolean;
+}
+
+type AgentSys = Pick<UpdateSys, "run" | "download">;
+
+/** D362: the registry this npm installs from (the person's own .npmrc), else npm's default. */
+async function npmRegistry(sys: AgentSys, npm: string, signal?: AbortSignal): Promise<string> {
+  const r = await sys.run([npm, "config", "get", "registry"], { timeoutMs: 15_000, ...(signal ? { signal } : {}) }).catch(() => undefined);
+  const line = r?.code === 0 ? r.out.split("\n").map((l) => l.trim()).find((l) => /^https?:\/\/\S+$/.test(l)) : undefined;
+  return (line ?? "https://registry.npmjs.org/").replace(/\/+$/, "");
+}
+
+/**
+ * D362: fetch the binary's tarball into npm's own cache, watched: `npm cache add` of the downloaded
+ * file stores it under its sha512, which is what the install looks up (research/130), and the
+ * package's own metadata is cached beside it at the same time. Ok: the install can run from there.
+ * A source that doesn't answer is no failure: npm then downloads it itself, unseen.
+ */
+async function prefetch(sys: AgentSys, f: NonNullable<AgentPlan["fetch"]>, i: AgentRunInput): Promise<"ok" | "skip" | AgentFail> {
+  if (!sys.download) return "skip";
+  const signal = i.signal;
+  i.onProgress?.({ step: "downloading" });
+  const env = { npm_config_update_notifier: "false", npm_config_fund: "false", npm_config_audit: "false" };
+  const reg = await npmRegistry(sys, f.npm, signal);
+  const dir = join(i.scratch ?? tmpdir(), `ducter-agent-${process.pid}-${Date.now().toString(36)}`);
+  mkdirSync(dir, { recursive: true });
+  const file = join(dir, f.blob.split("/").pop()!);
+  try {
+    // The package's own metadata (npm reads it at the install) comes down beside the tarball.
+    const meta = sys.run([f.npm, "cache", "add", f.pkg], { timeoutMs: AGENT_DOWNLOAD_MS, env, ...(signal ? { signal } : {}) }).catch(() => undefined);
+    let last = -Infinity;
+    const r = await sys.download(`${reg}/${f.blob}`, file, {
+      ...(signal ? { signal } : {}),
+      stallMs: AGENT_STALL_MS,
+      timeoutMs: AGENT_DOWNLOAD_MS,
+      onBytes: (got, size) => {
+        // At most once a second, and the last byte: enough to move the line, never a flood.
+        const t = Date.now();
+        if (t - last < 1000 && got !== size) return;
+        last = t;
+        i.onProgress?.({ step: "downloading", got, ...(size ? { size } : {}) });
+      },
+    });
+    if (!r.ok) {
+      if (r.why === "stopped") return { ok: false, reason: "stopped" };
+      if (r.why === "stalled") return { ok: false, reason: "timeout", detail: "the download stopped moving" };
+      if (r.why === "timeout") return { ok: false, reason: "timeout", detail: "the download took too long" };
+      await meta;
+      return "skip";
+    }
+    const add = await sys.run([f.npm, "cache", "add", file], { timeoutMs: 5 * 60_000, env, ...(signal ? { signal } : {}) });
+    const m = await meta;
+    if (signal?.aborted || add.stopped || m?.stopped) return { ok: false, reason: "stopped" };
+    return add.code === 0 ? "ok" : "skip";
+  } finally {
+    try {
+      rmSync(dir, { recursive: true, force: true });
+    } catch {}
+  }
 }
 
 const firstLine = (s: string) =>
@@ -238,12 +331,12 @@ const firstLine = (s: string) =>
     ?.slice(0, 200);
 
 /** The whole update of one agent on this machine. Judged by the version read back, never the updater's exit code. */
-export async function updateAgent(sys: Pick<UpdateSys, "run">, i: AgentRunInput): Promise<AgentOutcome> {
+export async function updateAgent(sys: AgentSys, i: AgentRunInput): Promise<AgentOutcome> {
   const h = i.harness;
   const before = await i.detect();
   if (!before?.version) return { ok: false, reason: "failed", detail: "not installed here" };
   const from = before.version;
-  const plan = updatePlan(h, before, i.to, { latest: i.latest, exists: i.exists });
+  const plan = updatePlan(h, before, i.to, { latest: i.latest, exists: i.exists, ...(i.platform ? { platform: i.platform } : {}), ...(i.arch ? { arch: i.arch } : {}) });
   if (!plan) return { ok: false, reason: "how", from, detail: before.how };
   // Already there (a stale view of this copy asked for it): done, with nothing run.
   if (cmp(from, i.to) >= 0) return { ok: true, from, to: from, already: true };
@@ -254,21 +347,29 @@ export async function updateAgent(sys: Pick<UpdateSys, "run">, i: AgentRunInput)
     if (f) return { ...f, from, to: i.to };
   }
   i.onPhase?.("updating", i.to);
+  if (i.signal?.aborted) return { ok: false, reason: "stopped", from, to: i.to, rolledBack: false };
+  // D362: the download first, while the agent keeps working; only the install holds it.
+  const pre = plan.fetch ? await prefetch(sys, plan.fetch, i) : "skip";
+  if (typeof pre === "object") return { ...pre, from, to: i.to, rolledBack: false };
+  const argv = pre === "ok" ? [...plan.argv, "--prefer-offline", "--no-audit"] : plan.argv;
+  if (pre === "ok") i.onProgress?.({ step: "installing" });
   i.hold?.(true);
   try {
-    const r = await sys.run(plan.argv, { timeoutMs: AGENT_INSTALL_MS, ...(plan.env ? { env: plan.env } : {}) });
+    const r = await sys.run(argv, { timeoutMs: pre === "ok" ? AGENT_INSTALL_MS : AGENT_UPDATER_MS, ...(plan.env ? { env: plan.env } : {}), ...(i.signal ? { signal: i.signal } : {}) });
     i.onPhase?.("checking", i.to);
     const after = await i.detect();
+    // D362: cut off at its limit or by 停止: judged as any failure, said as what happened.
+    const cutReason: AgentReason | undefined = r.stopped ? "stopped" : r.timedOut ? "timeout" : undefined;
     const back = async (reason: AgentReason, detail?: string): Promise<AgentOutcome> => {
       // Back to the version that worked, where the channel can name it.
       const undo = canPin(h, before.how) ? updatePlan(h, before, from, { exists: i.exists }) : undefined;
       if (!undo?.pinned) return { ok: false, reason, from, to: i.to, rolledBack: false, ...(detail ? { detail } : {}) };
-      await sys.run(undo.argv, { timeoutMs: AGENT_INSTALL_MS, ...(undo.env ? { env: undo.env } : {}) });
+      await sys.run(undo.argv, { timeoutMs: AGENT_UPDATER_MS, ...(undo.env ? { env: undo.env } : {}) });
       const again = await i.detect();
       return { ok: false, reason, from, to: i.to, rolledBack: again?.version === from, ...(detail ? { detail } : {}) };
     };
-    if (!after?.version) return await back("version", firstLine(r.out) ?? `exit ${r.code}`);
-    if (cmp(after.version, from) === 0) return { ok: false, reason: r.code === 0 ? "unchanged" : "failed", from, to: i.to, rolledBack: false, ...(firstLine(r.out) ? { detail: firstLine(r.out) } : {}) };
+    if (!after?.version) return await back(cutReason ?? "version", firstLine(r.out) ?? `exit ${r.code}`);
+    if (cmp(after.version, from) === 0) return { ok: false, reason: cutReason ?? (r.code === 0 ? "unchanged" : "failed"), from, to: i.to, rolledBack: false, ...(firstLine(r.out) ? { detail: firstLine(r.out) } : {}) };
     if (wasIn && !(await i.loggedIn().catch(() => false))) return await back("signed_out");
     return { ok: true, from, to: after.version };
   } finally {
@@ -286,6 +387,10 @@ export interface WorkerAgentFrame {
   reason?: AgentReason;
   detail?: string;
   rolledBack?: boolean;
+  /** D362: inside "updating". */
+  step?: AgentStep;
+  got?: number;
+  size?: number;
 }
 
 // ---------- the home's side: every device's agents ----------
@@ -294,11 +399,15 @@ export interface AgentWorkerSide {
   online(): { id: string; name: string }[];
   /** Sends the agent_update op; resolves with the worker's first answer (accepted or why not). */
   update(id: string, args: { harness: string; to: string; latest?: string }): Promise<{ ok: boolean; reason?: AgentReason; detail?: string }>;
+  /** D362: the agent_update_stop op (停止); an older worker doesn't know it and says no. */
+  stop?(id: string, args: { harness: string }): Promise<{ ok: boolean }>;
 }
 
 export interface AgentUpdatesDeps {
   log: LogStore;
-  sys: Pick<UpdateSys, "run" | "sleep" | "now">;
+  sys: Pick<UpdateSys, "run" | "sleep" | "now" | "download">;
+  /** D362: where how long each agent's last update took is kept (absent: in memory only), and downloads wait. */
+  dataDir?: string;
   latest: AgentLatest;
   /** The home's name. */
   name: () => string;
@@ -335,6 +444,8 @@ export interface AgentUpdates {
   reconnected(id: string, name: string, o: { restarted: boolean; running?: string[]; harnesses?: { id: string; version?: string }[] }): void;
   /** Agents whose updater runs on that device now, past its safe point (the home's own restart waits for these, D227). */
   updating(device: string): string[];
+  /** D362: 停止 one running update (a slow download, mostly). Its outcome arrives as "failed" with reason "stopped". */
+  cancel(device: string, harness: string): Promise<boolean>;
   /** Reads every channel again now. */
   check(): Promise<void>;
   nightly(): Promise<void>;
@@ -360,17 +471,49 @@ export function nightTarget(h: HarnessId, how: AgentHow | undefined, version: st
 
 export function createAgentUpdates(d: AgentUpdatesDeps): AgentUpdates {
   const states = new Map<string, AgentState>();
+  /** D362: the home's own running updates, for 停止. */
+  const ctls = new Map<string, AbortController>();
   const fns = new Set<() => void>();
   const changed = () => fns.forEach((fn) => queueMicrotask(fn));
   const offLatest = d.latest.onChange(changed);
   const now = () => d.sys.now();
   const key = (device: string, h: string) => `${device}|${h}`;
 
+  // D362: how long each agent's last update took on each device (since the updater began), for
+  // "slower than usual"; kept at <dataDir>/updates/agent-times.json.
+  const timesFile = d.dataDir ? join(d.dataDir, "updates", "agent-times.json") : undefined;
+  let times: Record<string, number> = {};
+  try {
+    if (timesFile && existsSync(timesFile)) times = JSON.parse(readFileSync(timesFile, "utf8")) ?? {};
+  } catch {}
+  const keepTime = (k: string, ms: number) => {
+    times[k] = Math.round(ms);
+    if (!timesFile) return;
+    try {
+      mkdirSync(join(d.dataDir!, "updates"), { recursive: true });
+      writeFileSync(`${timesFile}.tmp`, JSON.stringify(times, null, 2));
+      renameSync(`${timesFile}.tmp`, timesFile);
+    } catch {}
+  };
+
   const set = (device: string, name: string, h: string, p: Omit<AgentUpdate, "at">) => {
-    const prev = states.get(key(device, h));
-    const atMs = now();
-    states.set(key(device, h), { ...p, at: new Date(atMs).toISOString(), atMs });
-    if (prev?.phase !== p.phase) {
+    const k = key(device, h);
+    const prev = states.get(k);
+    const same = prev?.phase === p.phase;
+    const atMs = same ? prev!.atMs : now();
+    const next: AgentState = { ...p, at: same ? prev!.at : new Date(atMs).toISOString(), atMs };
+    // D362: the elapsed time counts from the updater's start, kept through its steps and the check.
+    const live = p.phase === "updating" || p.phase === "checking";
+    if (live) {
+      next.since = prev?.since && (prev.phase === "updating" || prev.phase === "checking") ? prev.since : new Date(now()).toISOString();
+      next.slowMs = slowAfter(times[`${device}|${h}`]);
+      if (p.phase === "checking") (delete next.step, delete next.got, delete next.size);
+    } else {
+      for (const f of ["step", "got", "size", "since", "slowMs"] as const) delete next[f];
+      if (p.phase === "done" && prev?.since) keepTime(k, now() - Date.parse(prev.since));
+    }
+    states.set(k, next);
+    if (!same) {
       const body: Bodies["agent_update"] = {
         device,
         name,
@@ -423,7 +566,9 @@ export function createAgentUpdates(d: AgentUpdatesDeps): AgentUpdates {
         // Judged against the version there now: a failure the copy has moved past isn't one.
         const j = judgeAgent(s, h.version);
         const phase = j === "done" ? "done" : s.phase;
-        const shown = j !== "superseded" && (phase === "done" ? age < AGENT_DONE_SHOWN_MS : phase === "failed" ? age < AGENT_FAILED_SHOWN_MS : true);
+        // D362: one the person stopped says nothing more: the card is back as it was.
+        const stopped = s.phase === "failed" && s.reason === "stopped";
+        const shown = !stopped && j !== "superseded" && (phase === "done" ? age < AGENT_DONE_SHOWN_MS : phase === "failed" ? age < AGENT_FAILED_SHOWN_MS : true);
         if (shown) {
           const { atMs: _, ...u } = s;
           out.update = j === "done" && s.phase === "failed" ? { phase: "done", from: u.from, at: u.at, ...(u.to ? { to: u.to } : {}), ...(u.by ? { by: u.by } : {}) } : u;
@@ -453,6 +598,8 @@ export function createAgentUpdates(d: AgentUpdatesDeps): AgentUpdates {
     const name = d.name();
     const base = { from: a.version, to, ...(o.by ? { by: o.by } : {}) };
     set("local", name, h, { phase: "waiting", ...base });
+    const ctl = new AbortController();
+    ctls.set(key("local", h), ctl);
     void (async () => {
       const out = await updateAgent(d.sys, {
         harness: h,
@@ -463,8 +610,12 @@ export function createAgentUpdates(d: AgentUpdatesDeps): AgentUpdates {
         settle: settleFor("local", h),
         hold: (on) => d.hold?.(h, on),
         onPhase: (phase) => phase !== "waiting" && set("local", name, h, { phase, ...base }),
+        onProgress: (p) => set("local", name, h, { phase: "updating", ...base, ...p }),
+        signal: ctl.signal,
+        ...(d.dataDir ? { scratch: join(d.dataDir, "updates") } : {}),
         ...(d.exists ? { exists: d.exists } : {}),
       }).catch((err): AgentOutcome => ({ ok: false, reason: "failed", detail: (err as Error).message }));
+      ctls.delete(key("local", h));
       d.probed?.();
       if (out.ok && out.already) clear("local", h);
       else if (out.ok) set("local", name, h, { phase: "done", from: out.from, to: out.to, ...(o.by ? { by: o.by } : {}) });
@@ -510,7 +661,24 @@ export function createAgentUpdates(d: AgentUpdatesDeps): AgentUpdates {
       ...(f.detail ? { detail: f.detail } : {}),
       ...(f.rolledBack !== undefined ? { rolledBack: f.rolledBack } : {}),
       ...(by ? { by } : {}),
+      ...(f.step ? { step: f.step } : {}),
+      ...(typeof f.got === "number" ? { got: f.got } : {}),
+      ...(typeof f.size === "number" ? { size: f.size } : {}),
     });
+  }
+
+  async function cancel(device: string, harness: string): Promise<boolean> {
+    const dev = device === d.name() ? "local" : device;
+    if (!running(dev, harness)) return false;
+    const ctl = ctls.get(key(dev, harness));
+    if (ctl) {
+      ctl.abort();
+      return true;
+    }
+    const ws = d.workers?.();
+    if (!ws?.stop) return false;
+    const r = await ws.stop(device, { harness }).catch(() => ({ ok: false }));
+    return r.ok;
   }
 
   function reconnected(id: string, name: string, o: { restarted: boolean; running?: string[]; harnesses?: { id: string; version?: string }[] }) {
@@ -556,6 +724,7 @@ export function createAgentUpdates(d: AgentUpdatesDeps): AgentUpdates {
     start,
     fromWorker,
     reconnected,
+    cancel,
     updating: (device) =>
       [...states]
         .filter(([k, s]) => k.startsWith(`${device}|`) && (s.phase === "updating" || s.phase === "checking"))
@@ -634,7 +803,7 @@ const pidAlive = (pid: number) => {
  * of this machine's agents follows (`agents`), so the home sees the new version.
  */
 export function createWorkerAgentUpdater(o: {
-  sys: Pick<UpdateSys, "run" | "sleep" | "now">;
+  sys: Pick<UpdateSys, "run" | "sleep" | "now" | "download">;
   detect: (h: HarnessId) => Promise<AgentInstall | undefined>;
   loggedIn: (h: HarnessId) => Promise<boolean>;
   /** This machine's agents as the hello says them, probed again. */
@@ -656,6 +825,8 @@ export function createWorkerAgentUpdater(o: {
     if (raw(f) === false) unsent.push(f);
   };
   const busy = new Set<string>();
+  /** D362: each running update's 停止. */
+  const ctls = new Map<string, AbortController>();
   /** Past the safe point: the updater itself runs (a restart now would cut it off). */
   const installing = new Set<string>();
   const pid = o.pid ?? process.pid;
@@ -673,6 +844,12 @@ export function createWorkerAgentUpdater(o: {
     },
     /** D227: agents this process is updating now, waiting or installing (the hello says them). */
     updating: () => [...busy],
+    /** D362: the home's agent_update_stop op (停止): answered at once; the outcome follows as "failed", reason "stopped". */
+    stop(req: { id?: number; args?: any }, send: Send): void {
+      const ctl = ctls.get(String(req.args?.harness ?? ""));
+      ctl?.abort();
+      void send({ t: "res", id: req.id, ok: true, result: { ok: !!ctl } });
+    },
     /** D227: agents whose updater runs now: this worker's own Ducter restart waits for them. */
     installing: () => [...installing],
     /**
@@ -710,6 +887,8 @@ export function createWorkerAgentUpdater(o: {
       }
       busy.add(h);
       keep(h, { from: a.version, to });
+      const ctl = new AbortController();
+      ctls.set(h, ctl);
       answer(true);
       const frame = (f: Omit<WorkerAgentFrame, "t" | "harness" | "from">) => out({ t: "agent_update", harness: h, from: a.version!, ...f });
       const settle = async (): Promise<AgentFail | undefined> => {
@@ -730,7 +909,12 @@ export function createWorkerAgentUpdater(o: {
           if (phase === "updating" || phase === "checking") installing.add(h);
           frame({ phase, to });
         },
+        // D362: live progress only while the socket is up (a missed one is replaced by the next).
+        onProgress: (p) => void raw({ t: "agent_update", harness: h, from: a.version!, phase: "updating", to, ...p }),
+        signal: ctl.signal,
+        ...(o.dataDir ? { scratch: join(o.dataDir, "updates") } : {}),
       }).catch((err): AgentOutcome => ({ ok: false, reason: "failed", detail: (err as Error).message }));
+      ctls.delete(h);
       busy.delete(h);
       installing.delete(h);
       keep(h);

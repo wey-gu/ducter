@@ -122,6 +122,12 @@ export interface MemPluginFact {
 export interface AgentChannels {
   /** The npm package (`npm install -g <pkg>@<v>`, which pins). */
   npm?: string;
+  /**
+   * D362: the npm tarball that carries this machine's binary, under the registry (`{v}`, `{os}`:
+   * darwin linux win32, `{arch}`: arm64 x64). Ducter fetches it into npm's own cache first, with
+   * progress, then npm installs from there; absent: npm downloads it itself, unseen.
+   */
+  npmBlob?: string;
   /** The Homebrew cask (`brew upgrade --cask <token>`; no pinning). */
   cask?: string;
   /** The agent's own installer: a path segment that marks its copies, its updater, and a pinned install when it has one. */
@@ -392,6 +398,9 @@ export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
     channels: {
       value: {
         npm: "@openai/codex",
+        // D362 (research/130): the binary rides in an optional dependency aliased to this
+        // package's own `{v}-{os}-{arch}` version (155 MB for 0.170.0 darwin-arm64).
+        npmBlob: "@openai/codex/-/codex-{v}-{os}-{arch}.tgz",
         cask: "codex",
         installer: {
           mark: "/packages/standalone/",
@@ -403,7 +412,7 @@ export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
       },
       evidence: {
         kind: "VERIFIED",
-        how: "research/42 §2: `codex update --help`, `codex doctor --json` (install context npm, update action npm install -g @openai/codex), install.sh --help (--release VERSION, CODEX_NON_INTERACTIVE), brew info --cask (read-only)",
+        how: "research/42 §2: `codex update --help`, `codex doctor --json` (install context npm, update action npm install -g @openai/codex), install.sh --help (--release VERSION, CODEX_NON_INTERACTIVE), brew info --cask (read-only); research/130: npmBlob, `npm view @openai/codex@0.170.0 optionalDependencies` and a scratch-prefix install from a cache filled with that tarball (2026-11-18)",
         date: "2026-11-10",
         version: "0.167.0",
       },

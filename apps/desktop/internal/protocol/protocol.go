@@ -1165,6 +1165,8 @@ type UpdateAllReq struct {
 	Stop    bool   `json:"stop,omitempty"`
 	Dismiss bool   `json:"dismiss,omitempty"`
 	By      string `json:"by,omitempty"` // user | cli
+	// D362: 停止 on one slow AI agent step (its key); the rest goes on.
+	StopItem string `json:"stopItem,omitempty"`
 }
 
 // AgentUpdateReq is 更新 / Update on an AI agent's row (D156). Answered with
@@ -1735,6 +1737,19 @@ type AgentUpdate struct {
 	RolledBack bool   `json:"rolledBack,omitempty"`
 	At         string `json:"at,omitempty"`
 	By         string `json:"by,omitempty"`
+	AgentProgress
+}
+
+// AgentProgress is D362's live part of a running agent update: Step
+// "downloading" (Got/Size bytes; Size 0 when the source doesn't say) or
+// "installing", Since (ISO) when the updater began, and SlowMs after which
+// it is slower than usual there. The same on an Update all step.
+type AgentProgress struct {
+	Step   string `json:"step,omitempty"`
+	Got    int64  `json:"got,omitempty"`
+	Size   int64  `json:"size,omitempty"`
+	Since  string `json:"since,omitempty"`
+	SlowMs int64  `json:"slowMs,omitempty"`
 }
 
 // Running reports an agent update under way.
@@ -1866,6 +1881,7 @@ type UpdateAllItem struct {
 	Detail     string  `json:"detail,omitempty"`
 	RolledBack bool    `json:"rolledBack,omitempty"`
 	At         string  `json:"at"`
+	AgentProgress
 }
 
 // Final reports a step that is over (done, failed or skipped).

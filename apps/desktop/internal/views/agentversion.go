@@ -22,6 +22,9 @@ func (a *App) agentPhase(u *protocol.AgentUpdate) string {
 	case "waiting":
 		return a.L.T("agentv.phase.waiting")
 	case "updating":
+		if s := a.agentUpdatingWords(&u.AgentProgress, u.To); s != "" { // D362
+			return s
+		}
 		return a.L.T("agentv.phase.updating", u.To)
 	case "checking":
 		return a.L.T("agentv.phase.checking", u.To)

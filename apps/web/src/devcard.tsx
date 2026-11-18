@@ -7,6 +7,7 @@ import { KeyRow } from "./settings-more.tsx";
 import { PhoneBlock, PhoneInfo, startInstall } from "./phone-use.tsx";
 import { ComputerBlock, ComputerInfo } from "./computer-use.tsx";
 import { HandsetChip } from "./handset.tsx";
+import { updatingWords } from "./agent-progress.ts";
 import type { DeviceHarness, DeviceUpdate, DeviceVia, DeviceView, ReachWay } from "@ducter/protocol";
 import { inApp } from "./native.ts";
 import { AppUpdateRow, androidAppVersion } from "./app-update.tsx";
@@ -419,7 +420,7 @@ function agentPhase(u: NonNullable<DeviceHarness["update"]>): string {
     case "waiting":
       return t("agentv.phase.waiting");
     case "updating":
-      return t("agentv.phase.updating", u.to ?? "");
+      return updatingWords(u, u.to ?? "") ?? t("agentv.phase.updating", u.to ?? ""); // D362
     case "checking":
       return t("agentv.phase.checking", u.to ?? "");
     case "done":

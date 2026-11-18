@@ -837,7 +837,11 @@ said (D167); its update's `failed` for this target is a failure with its reason 
 an agent at or past its target is done, `no_update` is done (D172). A started step with no outcome
 in 45 min fails `no_answer`. All steps final: `finishedAt`, `update_all finished` (or `stopped`)
 with done and failed counts. `stop` skips what is queued or waiting; `dismiss` hides a finished
-plan (it is otherwise shown 30 min, a day with a failure).
+plan (it is otherwise shown 30 min, a day with a failure). D362: a running agent step carries its
+update's live part (`step`, `got`, `size`, `since`, `slowMs`; see "Updating the AI agents"), so
+its row reads **正在下载（61 / 155 MB）**, **正在装好…** or the elapsed time, and past `slowMs`
+**比平常慢，可能是网络慢** with **再等等** and **停止** (`stopItem`: that step is skipped `stopped`,
+the rest goes on); an agent's `stopped` outcome is read the same way.
 
 **A computer that restarts under a step (D227).** An agent step also waits while its computer's
 Ducter is mid-update outside the plan (a 更新 tapped on its card first): `wait: "ducter"`, **等
@@ -941,7 +945,8 @@ range) and `latestVerified`.
 **The update** (`updateAgent`, one path for the home, a worker and the CLI): detect the copy
 fresh → **safe point**: no task turn on that agent on that device and, on the home, no partner
 turn on it (≤ 30 min, `busy`) → hold new task sessions on it on the home (`runner.holdHarness`,
-≤ 15 min) → run the plan (≤ 10 min) → read the version back. Not answering: put the old version
+≤ 15 min) → run the plan (D362: a watched download first where the channel allows, see below; the
+updater ≤ 10 min after it, ≤ 25 min without) → read the version back. Not answering: put the old version
 back where the channel pins (`version`, `rolledBack`). Unchanged: `unchanged` (or `failed` with
 the updater's last line). Signed in before and not after: back where it pins (`signed_out`).
 Every phase (`waiting`, `updating`, `checking`, `done`, `failed`) is an `agent_update` event on
@@ -954,6 +959,32 @@ Found on 0.0.7: pi at 1.5.1 on the MacBook said 没更新成 · 没有更新的�
 hello was probed once at its start and every reconnect said the old version; now a worker probes
 its agents again on every welcome and every 30 min, and answers a request for a version it already
 has with `no_update` plus its fresh list.
+
+**While it runs (D362).** Codex from npm is a 13 KB package whose binary is an optional
+dependency aliased to `@openai/codex@<v>-<os>-<arch>`: 155 MB for 0.170.0 on darwin-arm64, plus
+a 19.5 MB packument, every version (research/130). npm fetches both silently, so the row said
+**正在更新到 0.170.0…** for minutes on a slow line (12.5 min measured at ~200 KB/s, past the old
+10 min limit). Where harness-facts names the binary's tarball (`channels.npmBlob`), the update
+now: (1) after the safe point, with the agent still working, reads the registry npm itself uses
+(`npm config get registry`, so a mirror in the person's `.npmrc` is kept), downloads the tarball
+with live bytes (`download.ts`: `step: "downloading"`, `got`, `size`; at most one frame a second;
+no bytes for 2 min or 30 min in all stops it as `timeout`), while `npm cache add <pkg>@<v>`
+caches the metadata beside it; (2) `npm cache add <file>` stores it under its sha512, which is
+what the install looks up; (3) holds the agent and runs the same `npm install -g` with
+`--prefer-offline --no-audit` (`step: "installing"`, seconds, ≤ 10 min); (4) checks as before.
+A source that won't serve the tarball, or an `npm cache add` that fails, falls back to the plain
+install (npm downloads it itself). The person's install method is never switched: npm still
+installs, into the same prefix. Channels Ducter can't see inside (brew, the agents' own
+installers, npm without `npmBlob`) say the elapsed time and get 25 min (`AGENT_UPDATER_MS`); a
+run killed at its limit is `timeout`, not `unchanged`. The home keeps how long each agent's last
+update took on each device (`<dataDir>/updates/agent-times.json`) and sends `since` (the updater's
+start, the home's clock) and `slowMs` (3× that, never under 90 s; 4 min with none known) with the
+running update and its Update all step. Past it, the row adds **比平常慢，可能是网络慢** with
+**再等等** (hides the line for another stretch, on this client) and **停止**: `update_all {stopItem}`
+→ `AgentUpdates.cancel` → the home's AbortController, or `agent_update_stop` down a worker's
+socket (an older worker says no and the step runs on). Stopped in the download, nothing was
+touched; in the install, it is judged and put back as any failure. Either way the step reads
+**已停止** and the plan goes on; the device card shows nothing for it.
 
 **Workers.** `agent_update {harness, to, latest}` down the worker's socket; the worker answers at
 once (`no_update` with its fresh `agents` list when it is already there), runs the same update with its host's `turningOn(harness)` as the safe point, sends
@@ -972,7 +1003,9 @@ the updaters in-process.
 **Simulated vs verified.** Facts per channel were read on a Mac (research/42, read-only); the
 probe script reads every channel live. Every update path runs in tests with a fake registry and
 a fake npm/brew/claude (`core/test/agents.test.ts`, `cli/test/update.test.ts`); no real
-install was run. Todo: a real npm and native round on a server.
+install was run. D362's cache path was run for real into scratch prefixes and caches (research/130:
+`npm cache add` of the tarball, then `npm install -g --offline` in 3 s); its code runs on a fake
+download and npm (`core/test/agent-download.test.ts`). Todo: a real npm and native round on a server.
 
 ## Hooks v1 must leave open for phone and call (research/22)
 

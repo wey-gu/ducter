@@ -222,8 +222,7 @@ func (a *App) devicesView(c *ui.Context) {
 			case len(a.S.Devices) == 0:
 				a.devicesWaiting(c)
 			case narrow:
-				ui.Row(c).Gap(t.S2).Wrap().AlignItems(ui.Center).Children(func() { a.deviceCards(c, 230); a.connectEntry(c); a.lendEntry(c, false) })
-				a.lendEmpty(c)
+				ui.Row(c).Gap(t.S2).Wrap().AlignItems(ui.Center).Children(func() { a.deviceCards(c, 230); a.addDeviceRow(c, 230) })
 				if w < 1040 {
 					// Too narrow for both: the stage, then the card under it.
 					ui.Column(c).Height(560).Children(func() { a.stage(c, dev) })
@@ -242,10 +241,8 @@ func (a *App) devicesView(c *ui.Context) {
 					ui.Column(c).Width(listW).Shrink(0).Gap(t.S1 + 2).Children(func() {
 						ui.Text(c, a.L.T("devices.list")).FontSize(t.SM).FontWeight(800).TextColor(t.InkMuted).Margin(t.S1, t.S2, t.S1, t.S2)
 						a.deviceCards(c, 0)
-						a.lendEmpty(c)
-						ui.Row(c).Margin(t.S2, 0, 0, 0).Children(func() { a.connectEntry(c) })
-						// D347: lending a computer sits right beside connecting one, with its why.
-						a.lendEntry(c, true)
+						// D355: one way to add a device, a row like the others; its sheet asks what it's for.
+						a.addDeviceRow(c, 0)
 					})
 					// The stage stays in view while the card scrolls past (it never clips: it is shorter than the window).
 					ui.Column(c).Grow(1).MinWidth(0).Height(stageH).Sticky().Top(t.S4).Children(func() { a.stage(c, dev) })
@@ -421,17 +418,6 @@ func (a *App) clientWord(cl *protocol.ReachClient) (string, ui.Color) {
 		return a.L.T("list.state.seen", ago), t.InkMuted
 	}
 	return a.L.T("device.client.never"), t.InkMuted
-}
-
-// connectEntry is the way to add a device: a phone or another computer
-// connects with a one-time code (D54). The code shows in the scene, on a
-// sign at the end of a jetty from home (D81, pairing.go).
-func (a *App) connectEntry(c *ui.Context) {
-	t := a.T
-	if a.button(c, a.L.T("devices.connect"), btnSecondary, t.ControlSM, t.Bg) {
-		a.devState().account = ""
-		a.openPair()
-	}
 }
 
 // deviceChip is a device's state word, with its colors: 睡着了, 连不上 or

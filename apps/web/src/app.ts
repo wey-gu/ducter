@@ -751,6 +751,8 @@ class AppState {
       return void ((this.agents = devices.find((d) => d.home)?.harnesses ?? home?.harnesses ?? []), (this.homeName = home?.name), (this.devices = devices), (this.reach = f.reach && { ...f.reach, clients: f.reach.clients.map((c) => ({ ...c, name: shownDeviceName(c.name) })) }), this.changed());
     }
     if (f.t === "lend") return void ((this.lend = applyLend(this.lend, f)), this.changed());
+    // D355: the code for a phone, a tablet or a window, asked from 加一台设备.
+    if (f.t === "pair_code") return void (this.lend?.pair && ((this.lend = { ...this.lend, pair: f }), this.changed()));
     if (f.t === "update_all_result") return void ((this.updateAllAnswer = f.ok || f.reason === "nothing" ? undefined : (f.reason ?? "failed")), this.changed());
     // D228: on with no tunnel made yet starts the guided setup; a setup that couldn't start says why.
     if (f.t === "ability_result" && f.ability === "remote" && f.on && !f.ok && f.reason === "no_address") return void this.beginAnywhere();
@@ -2022,8 +2024,27 @@ class AppState {
     this.changed();
   }
   /** D347: the kind chosen (or 换一个新码 / New code): a fresh code and its line. */
+  /** D355: 加一台设备 / Add a device: the sheet in 你的设备 at its first step, what it is for. */
+  openAdd() {
+    this.openSettings("devices");
+    this.lend = { add: true };
+    this.changed();
+  }
+  /** D355: to talk with the partner from a phone, a tablet or another window: a one-time code. */
+  addPair() {
+    this.lend = { pair: "asking", fromAdd: true, pairFrom: this.reach?.clients.length ?? 0 };
+    this.send({ t: "pair_code" });
+    this.changed();
+  }
+  /** D355: back one step in the sheet: from the line to the question, from the question or the code to 加一台设备. */
+  lendBack() {
+    const l = this.lend;
+    if (!l) return;
+    this.lend = l.kind ? { fromAdd: l.fromAdd } : l.fromAdd ? { add: true } : undefined;
+    this.changed();
+  }
   lendAsk(kind: LendKind) {
-    this.lend = { kind, awaiting: true };
+    this.lend = { kind, awaiting: true, fromAdd: this.lend?.fromAdd };
     this.send({ t: "lend_code" });
     this.changed();
   }

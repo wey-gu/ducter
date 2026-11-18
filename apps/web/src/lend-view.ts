@@ -1,6 +1,9 @@
 // D347: 借一台电脑来干活 / Lend a computer: which step the sheet is on, from what the person chose
 // and what the home said (lend frames, packages/core/src/lend.ts). Pure, so tests drive it.
-import type { DeviceView, LendFrame } from "@ducter/protocol";
+import type { DeviceView, LendFrame, ServerFrame } from "@ducter/protocol";
+
+/** D355: the one-time code a phone, a tablet or another window connects with (the Mac shows it on a sign in its scene). */
+export type PairFrame = Extract<ServerFrame, { t: "pair_code" }>;
 
 export type LendKind = "mac" | "linux";
 
@@ -11,11 +14,20 @@ export interface LendState {
   frame?: LendFrame;
   /** A lend_code is out and its answer not here yet. */
   awaiting?: boolean;
+  /** D355: at 加一台设备 / Add a device's first step (what it is for). */
+  add?: boolean;
+  /** D355: came from that step, so back goes there. */
+  fromAdd?: boolean;
+  /** D355: connecting a phone, a tablet or a window: the code ("asking" until it comes), and how many were connected when it went out. */
+  pair?: PairFrame | "asking";
+  pairFrom?: number;
 }
 
-export type LendStep = "ask" | "asking" | "noaddress" | "line" | "expired" | "joined" | "here";
+export type LendStep = "add" | "pair" | "ask" | "asking" | "noaddress" | "line" | "expired" | "joined" | "here";
 
 export function lendStep(l: LendState, now: number): LendStep {
+  if (l.add) return "add";
+  if (l.pair) return "pair";
   if (!l.kind) return "ask";
   const f = l.frame;
   if (!f) return "asking";

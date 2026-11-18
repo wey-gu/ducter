@@ -1,76 +1,118 @@
-// D347: 借一台电脑来干活 / Lend a computer (design/where.md). One question (a Mac or a Linux
-// server), then the one line to paste there, with its code's minutes and what it does; the sheet
-// waits in place until the computer is here, then says its name, its OS and the AI agents signed
-// in on it, and offers a new name. A failure is one sentence and one next step. The same words and
-// steps as the Mac's (apps/desktop/internal/views/lend.go). The partner says nothing about it.
+// D347, D355: 加一台设备 / Add a device, and 加一台做事的电脑 / Add a computer for tasks
+// (design/where.md). 加一台设备 asks what the device is for, as two clay cards: to talk with the
+// partner (a phone, a tablet or another window: a one-time code, its QR and the address) or for
+// the partner to do tasks on (a Mac or a server: the one line to paste there). The computer's own
+// clay tells the wait without words: asleep under its blanket, a ripple under it while it is
+// waited for, awake and swelling once as it joins; then its name, its OS and the AI agents
+// signed in on it, and a new name. A failure is one sentence and one next step. The same words
+// and steps as the Mac's (apps/desktop/internal/views/lend.go). The partner says nothing about it.
 import { useEffect, useState } from "preact/hooks";
 import { A } from "./app.ts";
-import { AddRow, BackRow, Btn } from "./controls.tsx";
+import { BackRow, Btn, ListRow } from "./controls.tsx";
 import { Coin } from "./coin.tsx";
 import { harnessName } from "./format.ts";
+import { Qr } from "./phone.tsx";
 import { arrived, lendStep, minutesLeft, type LendKind } from "./lend-view.ts";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 const art = (n: string) => `app/art/${n}.webp`;
 const homeName = () => A.devices?.find((d) => d.home)?.name ?? A.homeName ?? "Ducter";
 
-/** The entry in 你的设备 (and the partner's card): a plus, the words, why. */
-export function LendEntry() {
-  return (
-    <div class="set-card lend-entry">
-      <AddRow label={t("lend.entry")} help={t("lend.entry.why")} onClick={() => A.openLend()} />
-    </div>
-  );
+/** D355: the one way in on 你的设备: a row like the devices', an empty clay slot with a drawn plus. */
+export function AddDeviceRow() {
+  return <ListRow art={art("slot_empty")} name={t("add.row")} word={t("add.row.sub")} plus onClick={() => A.openAdd()} />;
 }
 
-/** The partner's 借一台电脑来干活 card (a `lend` block in its words, D303): one button to the sheet. */
+/** The partner's 加一台做事的电脑 card (a `lend` block in its words, D303): one button to the sheet. */
 export function LendCard() {
   return (
     <div class="rich-card rich-lend">
       <img src={art("dev_server_awake")} alt="" aria-hidden="true" />
       <div class="rl-words">
-        <b>{t("lend.entry")}</b>
+        <b>{t("lend.card")}</b>
         <small>{t("lend.entry.why")}</small>
       </div>
-      <Btn kind="secondary" size="sm" label={t("lend.entry")} onClick={() => A.openLend()} />
+      <Btn kind="secondary" size="sm" label={t("lend.card.go")} onClick={() => A.openLend()} />
     </div>
   );
 }
 
-function CopyLine({ text, kind }: { text: string; kind: "line" | "ask" }) {
+function CopyLine({ text, kind }: { text: string; kind: "line" | "ask" | "check" }) {
   const [copied, setCopied] = useState(false);
   const copy = () => void navigator.clipboard?.writeText(text).then(() => (setCopied(true), setTimeout(() => setCopied(false), 1800))).catch(() => undefined);
   return (
     <div class={`lend-copy ${kind}`}>
+      {kind === "line" && (
+        <span class="prompt" aria-hidden="true">
+          $
+        </span>
+      )}
       <code>{text}</code>
       <Btn kind="secondary" size="sm" label={t(copied ? "lend.copied" : "lend.copy")} onClick={copy} />
     </div>
   );
 }
 
-function Waiting({ say }: { say: string }) {
+/** A big choice: the clay on its own light, the words under it. */
+function ClayCard({ arts, title, sub, onClick }: { arts: string[]; title: string; sub?: string; onClick: () => void }) {
   return (
-    <div class="lend-wait" role="status" aria-live="polite">
-      <i class="lend-pulse" aria-hidden="true" />
-      {t(say)}
+    <button class={`clay-card${arts.length > 1 ? " two" : ""}`} onClick={onClick}>
+      <span class="cc-stage" aria-hidden="true">
+        {arts.map((a) => (
+          <img key={a} src={art(a)} alt="" />
+        ))}
+        <i class="cc-ground" />
+      </span>
+      <b>{title}</b>
+      {sub && <small>{sub}</small>}
+    </button>
+  );
+}
+
+/** The computer being added, in clay: its state is its pose (the caption under it says it in words). */
+function Hero({ kind, phase, say, dots }: { kind: "server" | "laptop" | "phone"; phase: "asleep" | "waiting" | "joined" | "here" | "stopped"; say?: string; dots?: boolean }) {
+  const awake = phase === "joined" || phase === "here";
+  const pic = kind === "phone" ? "dev_phone" : `dev_${kind}_${awake ? "awake" : "asleep"}`;
+  return (
+    <div class={`lend-hero ${phase}`}>
+      <div class="lh-stage" aria-hidden="true">
+        {phase === "waiting" && <i class="lh-ring" />}
+        <i class="lh-ground" />
+        <img src={art(pic)} alt="" />
+      </div>
+      {say && (
+        <div class={`lend-cap ${phase}`} role="status" aria-live="polite">
+          {dots && (
+            <i class="lend-dots" aria-hidden="true">
+              <i />
+              <i />
+              <i />
+            </i>
+          )}
+          {say}
+        </div>
+      )}
     </div>
   );
 }
 
 /** 没连上？ / Didn't connect?: each a bold sentence and one next step. */
-function Help({ address, check, open }: { address: string; check?: string; open?: boolean }) {
+function Help({ address, check, kind }: { address: string; check?: string; kind: LendKind }) {
   return (
-    <details class="lend-help" open={open}>
+    <details class="lend-help">
       <summary>{t("lend.help")}</summary>
       <dl>
         <dt>{t("lend.help.expired")}</dt>
         <dd>
           <span>{t("lend.help.expired.do")}</span>
+          <div class="lend-acts">
+            <Btn kind="secondary" size="sm" label={t("lend.newcode")} onClick={() => A.lendAsk(kind)} />
+          </div>
         </dd>
         <dt>{t("lend.help.reach", homeName())}</dt>
         <dd>
           <span>{t("lend.help.reach.do", address)}</span>
-          {check && <CopyLine text={check} kind="line" />}
+          {check && <CopyLine text={check} kind="check" />}
         </dd>
         <dt>{t("lend.help.curl")}</dt>
         <dd>
@@ -85,21 +127,95 @@ function Help({ address, check, open }: { address: string; check?: string; open?
   );
 }
 
+/** 加一台设备's first step: what it is for. */
+function AddStep() {
+  const name = A.S.personaName;
+  return (
+    <div class="lend-ask">
+      <div class="lend-q">{t("add.question")}</div>
+      <div class="lend-kinds">
+        <ClayCard arts={["dev_tablet", "dev_phone"]} title={t("add.talk", name)} sub={t("add.talk.sub")} onClick={() => A.addPair()} />
+        <ClayCard arts={["dev_laptop_awake", "dev_server_awake"]} title={t("add.work", name)} sub={t("add.work.sub")} onClick={() => ((A.lend = { fromAdd: true }), A.changed())} />
+      </div>
+    </div>
+  );
+}
+
 function Pick() {
-  const kinds: { k: LendKind; art: string; label: string }[] = [
-    { k: "mac", art: "dev_laptop_awake", label: t("lend.kind.mac") },
-    { k: "linux", art: "dev_server_awake", label: t("lend.kind.linux") },
-  ];
   return (
     <div class="lend-ask">
       <div class="lend-q">{t("lend.question")}</div>
       <div class="lend-kinds">
-        {kinds.map((x) => (
-          <button key={x.k} class="lend-kind" onClick={() => A.lendAsk(x.k)}>
-            <img src={art(x.art)} alt="" aria-hidden="true" />
-            <b>{x.label}</b>
-          </button>
-        ))}
+        <ClayCard arts={["dev_server_awake"]} title={t("lend.kind.linux")} sub={t("lend.kind.linux.sub")} onClick={() => A.lendAsk("linux")} />
+        <ClayCard arts={["dev_laptop_awake"]} title={t("lend.kind.mac")} sub={t("lend.kind.mac.sub")} onClick={() => A.lendAsk("mac")} />
+      </div>
+    </div>
+  );
+}
+
+/** Copy, paste there, it joins by itself. */
+function Steps({ kind }: { kind: LendKind }) {
+  return (
+    <ol class="lend-steps">
+      {["lend.step.copy", `lend.step.paste.${kind}`, "lend.step.joins"].map((k) => (
+        <li key={k}>{t(k)}</li>
+      ))}
+    </ol>
+  );
+}
+
+/** D355: a phone, a tablet or another window: the code, its QR, the address; the phone's clay waits for it. */
+function Pair() {
+  const p = A.lend!.pair!;
+  const home = homeName();
+  const [, tick] = useState(0);
+  useEffect(() => {
+    const h = setInterval(() => tick((n) => n + 1), 15_000);
+    return () => clearInterval(h);
+  }, []);
+  if (p === "asking") return <Hero kind="phone" phase="asleep" say={t("add.pair.asking")} dots />;
+  const clients = A.reach?.clients ?? [];
+  const joined = clients.length > (A.lend!.pairFrom ?? 0) ? clients[clients.length - 1] : undefined;
+  if (joined)
+    return (
+      <div class="lend-body">
+        <Hero kind="phone" phase="here" say={t("add.pair.here", joined.name)} />
+        <div class="lend-acts center">
+          <Btn kind="primary" label={t("lend.done")} onClick={() => A.closeLend()} />
+        </div>
+      </div>
+    );
+  if (!p.address || !p.link)
+    return (
+      <div class="lend-body">
+        <Hero kind="phone" phase="stopped" />
+        <p class="lend-say">{t("add.pair.noaddress", home)}</p>
+        <div class="lend-acts center">
+          <Btn kind="primary" label={t("lend.noaddress.go")} onClick={() => A.anywhereOn(true)} />
+        </div>
+      </div>
+    );
+  if (Date.now() >= Date.parse(p.expiresAt))
+    return (
+      <div class="lend-body">
+        <Hero kind="phone" phase="stopped" />
+        <p class="lend-say">{t("lend.expired")}</p>
+        <div class="lend-acts center">
+          <Btn kind="primary" label={t("lend.newcode")} onClick={() => A.addPair()} />
+        </div>
+      </div>
+    );
+  return (
+    <div class="lend-body">
+      <Hero kind="phone" phase="waiting" say={t("lend.waiting")} dots />
+      <div class="pair-card">
+        {p.qr && <Qr rows={p.qr} label={t("add.pair.scan")} />}
+        <div class="pair-words">
+          <code class="pair-code">{p.code}</code>
+          <small>{t("add.pair.once", minutesLeft(p, Date.now()))}</small>
+          <p>{t("add.pair.how")}</p>
+          <code class="pair-addr">{p.address}</code>
+        </div>
       </div>
     </div>
   );
@@ -116,10 +232,7 @@ function Here() {
   };
   return (
     <div class="lend-here">
-      <div class="dc-hero" aria-hidden="true">
-        <div class="ground" />
-        <img class="art drift" src={art(d.os === "mac" ? "dev_laptop_awake" : "dev_server_awake")} alt="" />
-      </div>
+      <Hero kind={d.os === "mac" ? "laptop" : "server"} phase="here" />
       <h3 class="lend-arrived">{t("lend.here", d.name)}</h3>
       {d.os && (
         <div class="lend-os">
@@ -167,7 +280,7 @@ function Here() {
   );
 }
 
-/** The sheet, pushed inside 你的设备 with its own ‹ 你的设备. */
+/** The sheet, pushed inside 你的设备; its back row goes one step back (to 你的设备 from the first). */
 export function LendSheet() {
   const l = A.lend!;
   const now = Date.now();
@@ -181,55 +294,64 @@ export function LendSheet() {
   }, [step]);
   const f = l.frame;
   const home = homeName();
+  const kind = l.kind === "mac" ? "laptop" : "server";
+  const first = step === "add" || (step === "ask" && !l.fromAdd);
+  const backTo = first ? t("devices.title") : l.kind && step !== "joined" && step !== "here" ? t("lend.title") : t("add.back");
+  const title = step === "add" ? t("add.title") : step === "pair" ? t("add.talk", A.S.personaName) : t("lend.title");
   return (
     <section class="set devices lend">
-      <BackRow label={t("devices.title")} onClick={() => A.closeLend()} />
-      <h2 class="lend-title">{t("lend.title")}</h2>
+      <BackRow label={backTo} onClick={() => (first || step === "here" ? A.closeLend() : A.lendBack())} />
+      <h2 class="lend-title">{title}</h2>
+      {step === "add" && <AddStep />}
+      {step === "pair" && <Pair />}
       {step === "ask" && <Pick />}
-      {step === "asking" && <Waiting say="lend.loading" />}
+      {step === "asking" && (
+        <div class="lend-body">
+          <Hero kind={kind} phase="asleep" say={t("lend.loading")} dots />
+          <Steps kind={l.kind!} />
+          <div class="lend-copy line ghost" aria-hidden="true" />
+        </div>
+      )}
       {step === "noaddress" && (
         <div class="lend-body">
-          <p>{t("lend.noaddress", home)}</p>
-          <div class="lend-acts">
+          <Hero kind={kind} phase="stopped" />
+          <p class="lend-say">{t("lend.noaddress", home)}</p>
+          <div class="lend-acts center">
             <Btn kind="primary" label={t("lend.noaddress.go")} onClick={() => A.anywhereOn(true)} />
           </div>
         </div>
       )}
-      {(step === "line" || step === "expired") && f && (
+      {step === "expired" && (
         <div class="lend-body">
-          <div class="lend-chosen">
-            <b>{t(l.kind === "mac" ? "lend.kind.mac" : "lend.kind.linux")}</b>
-            <Btn kind="text" size="sm" label={t("lend.kind.other")} onClick={() => (A.lend = {}, A.changed())} />
+          <Hero kind={kind} phase="stopped" />
+          <p class="lend-say">{t("lend.expired")}</p>
+          <div class="lend-acts center">
+            <Btn kind="primary" label={t("lend.newcode")} onClick={() => A.lendAsk(l.kind!)} />
           </div>
-          {step === "expired" ? (
-            <>
-              <p class="lend-bad">{t("lend.expired")}</p>
-              <div class="lend-acts">
-                <Btn kind="primary" label={t("lend.newcode")} onClick={() => A.lendAsk(l.kind!)} />
-              </div>
-            </>
-          ) : (
-            <>
-              {l.kind === "mac" && <p class="lend-note">{t("lend.mac.app", home, t("lend.mac.toggle", A.S.personaName))}</p>}
-              <div class="lend-step">{t(l.kind === "mac" ? "lend.mac.paste" : "lend.linux.paste")}</div>
-              <CopyLine text={f.line!} kind="line" />
-              <small class="lend-muted">{t("lend.does")}</small>
-              <small class="lend-muted">{t("lend.left", minutesLeft(f, now))}</small>
-              {f.sameNetwork && <small class="lend-muted">{t("lend.samenet", home)}</small>}
-              <Waiting say="lend.waiting" />
-              <details class="lend-agent">
-                <summary>{t("lend.agent")}</summary>
-                <small>{t("lend.agent.how")}</small>
-                <CopyLine text={t("lend.agent.ask", f.line!)} kind="ask" />
-              </details>
-            </>
-          )}
-          <Help address={f.address!} check={f.check} open={step === "expired" ? false : undefined} />
+        </div>
+      )}
+      {step === "line" && f && (
+        <div class="lend-body">
+          <Hero kind={kind} phase="waiting" say={t("lend.waiting")} dots />
+          {l.kind === "mac" && <p class="lend-note">{t("lend.mac.app", home, t("lend.mac.toggle", A.S.personaName))}</p>}
+          <Steps kind={l.kind!} />
+          <CopyLine text={f.line!} kind="line" />
+          <div class="lend-facts">
+            <small class="lend-muted">{t("lend.left", minutesLeft(f, now))}</small>
+            <small class="lend-muted">{t("lend.does")}</small>
+            {f.sameNetwork && <small class="lend-same">{t("lend.samenet", home)}</small>}
+          </div>
+          <details class="lend-agent">
+            <summary>{t("lend.agent")}</summary>
+            <small>{t("lend.agent.how")}</small>
+            <CopyLine text={t("lend.agent.ask", f.line!)} kind="ask" />
+          </details>
+          <Help address={f.address!} check={f.check} kind={l.kind!} />
         </div>
       )}
       {step === "joined" && (
         <div class="lend-body">
-          <Waiting say="lend.joined" />
+          <Hero kind={kind} phase="joined" say={t("lend.joined")} dots />
         </div>
       )}
       {step === "here" && <Here />}

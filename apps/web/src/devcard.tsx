@@ -25,7 +25,7 @@ import { turnOnPush } from "./views.tsx";
 import { liveSize } from "./live.tsx";
 import { Mark, UpdateAllCard } from "./updateall.tsx";
 import { Qr } from "./phone.tsx";
-import { LendEntry, LendSheet } from "./lend.tsx";
+import { AddDeviceRow, LendSheet } from "./lend.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 const art = (n: string) => `app/art/${n}.webp`;
@@ -108,7 +108,7 @@ const popped = new Map<string, number>();
  * the page's own ‹ 设置 and title step aside for it, so one way back shows, to the list it came from).
  */
 export function deviceCardShown(open: string | null): boolean {
-  if (A.lend) return true; // D347: the Lend a computer sheet brings its own ‹ 你的设备
+  if (A.lend) return true; // D347, D355: the add sheet brings its own back row
   if (!open || !A.devices?.length) return false;
   if (open.startsWith("dev:")) return A.devices.some((d) => `dev:${d.id}` === open);
   const f = foldClients(A.devices, A.reach?.clients ?? []);
@@ -148,8 +148,6 @@ export function DevicesSection({ open, setOpen }: { open: string | null; setOpen
   return (
     <section class="set devices">
       <UpdateAllCard />
-      {/* D347: 借一台电脑来干活 / Lend a computer, in sight, not in a menu. */}
-      <LendEntry />
       <div class="plist">
         {list.map((dv) => {
           const w = listWord(A.L, dv, { home, running: runningOn(dv) });
@@ -166,9 +164,9 @@ export function DevicesSection({ open, setOpen }: { open: string | null; setOpen
               onClick={() => setOpen(`cl:${cl.id}`)}
             />
           ))}
+        {/* D355: one way to add a device, a row like the others; its sheet asks what it is for. */}
+        <AddDeviceRow />
       </div>
-      {/* D347: only the home here yet: say what else can join. */}
-      {list.length === 1 && !(A.reach?.clients ?? []).some((cl) => !f.hidden.has(cl.id)) && <div class="small sub lend-empty">{t("lend.empty")}</div>}
       {/* D273: the version line and the night's updates, one group, the control at the right edge. */}
       <div class="set-card">
         <Versions />

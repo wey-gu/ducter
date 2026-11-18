@@ -84,7 +84,7 @@ also lives in Settings, so it can be seen and undone in one place:
 |---|---|---|
 | 伙伴 / Partner, in **再添一个 AI agent / Add another AI agent** (D322) | **贴一个 API 密钥 / Paste an API key**, its button opening D298's card in place (no title, no card in the card) | the first run's and the conversation's key card |
 | 伙伴 / Partner | **额度用完的时候 / When a limit runs out**: **直接换别的 AI agent 接着做** and its one line | the switch under a task's limit card (D297) |
-| 伙伴 / Partner | **你的 AI agent 留下的记录 / What your AI agents keep**: **读它们留下的记录 / Read what they keep** (D327: one switch for Past tasks and a look the person asked for; off forgets), each hidden agent and each folder left out with **再显示** | 别再看了 / 还是看吧 (D298, D327), Past tasks' 不再显示 (D299), 这个文件夹别看了 (D327) |
+| 伙伴 / Partner | **你的 AI agent 留下的记录 / What your AI agents keep**: **读它们留下的记录 / Read what they keep** (D327: one switch for Past tasks and a look the person asked for; off forgets; D377: off at the home means no computer for tasks is asked either, each of which also keeps its own yes on its card), each hidden agent and each folder left out with **再显示** | 别再看了 / 还是看吧 (D298, D327), Past tasks' 不再显示 (D299), 这个文件夹别看了 (D327) |
 | Devices, the home's card | **或者，贴一个 API 密钥 / Or paste an API key**, a flat row under the AI agents' tray | the same card |
 | 这台手机 / This phone (web) | **浅色和深色 / Light and dark** | the Mac's row under Look (D302) |
 

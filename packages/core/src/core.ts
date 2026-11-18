@@ -944,7 +944,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   const outsideReader = opts.localAgents ?? (process.env.NODE_ENV === "test" || process.env.DUCTER_OUTSIDE === "0" ? createLocalAgents({ home: join(dataDir, "no-outside"), env: {} }) : createLocalAgents(process.env.DUCTER_OUTSIDE_HOME ? { home: process.env.DUCTER_OUTSIDE_HOME, env: {} } : {}));
   // D298: the first words read the same records (D299's reader), or a scratch home's in tests.
   const firstReader = opts.firstWords?.home ? createLocalAgents({ home: opts.firstWords.home, env: opts.firstWords.env ?? {} }) : outsideReader;
-  const outside = createOutside({ reader: outsideReader, dataDir, log, tasks, ducterFolder: homeFolder, language: () => languageOf("", settings), looks: () => settings.localAgents(), computer: () => computers.homeName() });
+  const outside = createOutside({ reader: outsideReader, dataDir, log, tasks, ducterFolder: homeFolder, language: () => languageOf("", settings), looks: () => settings.localAgents(), computer: () => computers.homeName(), workers: () => workersRef });
   // D327: what the first words may say about the records: whether there are any (file times alone),
   // what they offer once the person asks, the home's name, and forgetting what was read.
   const firstWordsDeps = opts.firstWords
@@ -1054,7 +1054,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       socketsChanged: () => reachRef?.refresh(),
     },
     partners,
-    core: api, workbench, bridgeLink, decisions, runner: () => runner, devices: () => devicesView, lend: () => lendRef, settings, connections, phone, rules, loadout, accountUsage, closing, work: workFrames, newTask, updates: () => updatesRef, agents: () => agentsRef, agentSetup: (device, f) => agentSetupOp(device, f), memSetup: (device, action, link) => memSetupOp(device, action, link), updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, memHealth, anywhere: () => anywhereRef, channels, proactive: () => proactiveRef, calendar: () => calendarRef, taskSources: () => taskSourcesRef, taskGroups: () => taskGroups, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets, past: { ...past, marks, persona: () => persona.id, ongoing, outside }, keys: { dataDir, ...(opts.keyFetch ? { fetch: opts.keyFetch } : {}), ...(opts.keyCanRun ? { canRun: opts.keyCanRun } : {}) }, ...(firstWordsDeps ? { firstWords: firstWordsDeps } : {}), did, ownAgents });
+    core: api, workbench, bridgeLink, decisions, runner: () => runner, devices: () => devicesView, lend: () => lendRef, settings, connections, phone, rules, loadout, accountUsage, closing, work: workFrames, newTask, updates: () => updatesRef, agents: () => agentsRef, agentSetup: (device, f) => agentSetupOp(device, f), memSetup: (device, action, link) => memSetupOp(device, action, link), recordsAllow: (device, on) => recordsAllowOp(device, on), updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, memHealth, anywhere: () => anywhereRef, channels, proactive: () => proactiveRef, calendar: () => calendarRef, taskSources: () => taskSourcesRef, taskGroups: () => taskGroups, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets, past: { ...past, marks, persona: () => persona.id, ongoing, outside }, keys: { dataDir, ...(opts.keyFetch ? { fetch: opts.keyFetch } : {}), ...(opts.keyCanRun ? { canRun: opts.keyCanRun } : {}) }, ...(firstWordsDeps ? { firstWords: firstWordsDeps } : {}), did, ownAgents });
   handsets.onChange(() => (devicesView?.changed(), ws.onHandChanged()));
   onHandChanged = ws.onHandChanged;
   // D156: a partner turn in flight keeps an update of the agent it thinks with waiting.
@@ -1101,6 +1101,20 @@ export function startCore(opts: CoreOptions = {}): Core {
       return { ok: true };
     } catch {
       // A Ducter there from before D366 doesn't know the op.
+      return { ok: false, reason: "failed" };
+    }
+  };
+  // D377: the person's yes for their own agents' records on a computer for tasks, saved there.
+  const recordsAllowOp = async (device: string, on: boolean): Promise<{ ok: boolean; reason?: "away" | "unknown" | "failed" }> => {
+    const id = devices.list().find((x) => x.kind === "worker" && (x.id === device || x.name === device))?.id;
+    if (!id) return { ok: false, reason: "unknown" };
+    const link0 = workers.link(id);
+    if (!link0?.online()) return { ok: false, reason: "away" };
+    try {
+      await link0.call("records_allow", { on }, 15_000);
+      return { ok: true };
+    } catch {
+      // A Ducter there from before D377 doesn't know the op.
       return { ok: false, reason: "failed" };
     }
   };
@@ -1378,7 +1392,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   workers.onChange(() => reachRef?.refresh());
   // D347: 加一台做事的电脑 / Add a computer for tasks: a code, the line to paste, and when it arrives.
   lendRef = createLend({ auth: devices, dataDir, bind: hostname, port: () => listening, broadcast: (f) => ws.broadcast(f) });
-  devicesView = createDevicesView({ anywhere, dataDir, auth: devices, workers, connected: () => ws.connected(), viaOf: (id) => ws.vias().get(id), ways: () => reachRef?.ways() ?? [], homeKey: identity, probes: opts.deviceProbes, ...(u.homeName ? { hostname: u.homeName } : {}), updates: () => updates, agents: () => agents, agentSetup: () => homeSetup, memOn: () => memOnRef?.() ?? false, updateAll: () => updateAll, mem: () => memPluginsRef, ...(agentTesting ? {} : { piBundled: bundledPiVersion }), self: { version, how: selfHow, platform: `${process.platform}-${process.arch}` }, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), handsets, ...(opts.platform ? { platform: opts.platform } : {}), call: () => callAbility(phone.available(), connections.view()), onDisconnect: (id) => {
+  devicesView = createDevicesView({ anywhere, dataDir, auth: devices, workers, connected: () => ws.connected(), viaOf: (id) => ws.vias().get(id), ways: () => reachRef?.ways() ?? [], homeKey: identity, probes: opts.deviceProbes, ...(u.homeName ? { hostname: u.homeName } : {}), updates: () => updates, agents: () => agents, agentSetup: () => homeSetup, memOn: () => memOnRef?.() ?? false, recordsOn: () => settings.localAgents(), updateAll: () => updateAll, mem: () => memPluginsRef, ...(agentTesting ? {} : { piBundled: bundledPiVersion }), self: { version, how: selfHow, platform: `${process.platform}-${process.arch}` }, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), handsets, ...(opts.platform ? { platform: opts.platform } : {}), call: () => callAbility(phone.available(), connections.view()), onDisconnect: (id) => {
     for (const s of push.forget(id)) void apns.revoke?.(s);
   } });
   updates.onChange(() => devicesView?.changed());

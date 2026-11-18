@@ -13,6 +13,8 @@ const W = {
     kindFirst: "这类跑腿的事我先交给 {fast}：更快，也给 {smart} 留着额度。想换就说。",
     // D376: the first time the partner looks in the person's own sessions, said once.
     ownLook: "我看了 {computer} 上你在 {agents} 里的对话记录：只看名字、文件夹、时间和你说的头一句，不看代码和文件。",
+    // D377: the person's own records on a computer for tasks wait for their yes on its card.
+    ownAsk: "你最近在 {computer} 上用过 {agents}，那台电脑上的记录我还没读过。在「你的设备」里打开 {computer}，点「读它们留下的记录」，我就去找。",
     yourAgent: "你的 {agent}",
     trustQuestion: "以后{agent}发来的事，直接接下？",
     trustGo: "直接接下",
@@ -33,6 +35,7 @@ const W = {
     trustedBrief: "(Your {agent} asked for this; you let its work start without asking.)",
     kindFirst: "Errands like this go to {fast} first: it's faster, and {smart}'s limit is kept for harder work. Say if you'd rather not.",
     ownLook: "I looked at your {agents} conversations on {computer}: only their names, folders, times and your first words, no code or files.",
+    ownAsk: "You used {agents} on {computer} lately, and I haven't read its records yet. Open {computer} in Your devices and tap Read what they keep, and I'll look.",
     yourAgent: "your {agent}",
     trustQuestion: "Take work from {agent} without asking from now on?",
     trustGo: "Take it directly",

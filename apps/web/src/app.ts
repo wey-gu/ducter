@@ -375,6 +375,8 @@ class AppState {
   setupAnswer?: { device: string; reason: "away" | "unknown" | "failed" };
   /** D366: a mem_setup the computer couldn't take. */
   memSetupAnswer?: { device: string; reason: "away" | "unknown" | "failed" };
+  /** D377: a records_allow that computer couldn't take. */
+  recordsAnswer?: { device: string; reason: "away" | "unknown" | "failed" };
   /** D169: the last 装上 / Install of Nowledge Mem that didn't start, and why. */
   memAnswer?: { device: string; harness: string; reason: MemPluginReason };
   /** D228: why 让 Ducter 帮我设好 didn't start (no agent signed in here, …). */
@@ -772,6 +774,7 @@ class AppState {
     if (f.t === "mem_plugin_result") return void ((this.memAnswer = f.ok ? undefined : { device: f.device, harness: f.harness, reason: f.reason ?? "failed" }), this.changed());
     // "Nothing newer" answers a stale view, never a failure: the devices frame that follows has the version there now.
     if (f.t === "mem_setup_result") return void ((this.memSetupAnswer = f.ok ? undefined : { device: f.device, reason: f.reason ?? "failed" }), this.changed());
+    if (f.t === "records_allow_result") return void ((this.recordsAnswer = f.ok ? undefined : { device: f.device, reason: f.reason ?? "failed" }), this.changed());
     if (f.t === "agent_setup_result") return void (f.action !== "look" && ((this.setupAnswer = f.ok ? undefined : { device: f.device, reason: f.reason ?? "failed" }), this.changed()));
     if (f.t === "agent_update_result") return void ((this.agentAnswer = f.ok || f.reason === "no_update" ? undefined : { device: f.device, harness: f.harness, reason: f.reason ?? "failed" }), this.changed());
     if (f.t === "update_result") return void ((this.checkingUpdates = false), (this.deviceAnswer = f.ok || f.update || f.reason === "no_release" ? undefined : { device: f.device, reason: f.reason ?? "failed" }), this.changed());
@@ -2122,6 +2125,12 @@ class AppState {
   /** D375: 再看一次 / Check again: read Mem's own doctor on the home now (the settings frame follows). */
   checkMemHealth() {
     this.send({ t: "mem_health" });
+  }
+  /** D377: 读它们留下的记录 / 别再看了 for the person's own agents' records on a computer for tasks. */
+  recordsAllow(device: string, on: boolean) {
+    this.recordsAnswer = undefined;
+    this.send({ t: "records_allow", device, on });
+    this.changed();
   }
   /** D156: update one AI agent on a device with its own updater. */
   updateAgent(device: string, harness: string) {

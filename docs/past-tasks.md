@@ -95,16 +95,24 @@ Claude was doing in my terminal". Ducter looks for it the same way (the newest o
 words point to another; if two could be it, it asks which) and carries it on, with what you asked
 for next. The first time, it tells you in one line what it looked at. It only looks when you ask.
 
+If you ran it on another of your computers that does tasks for Ducter (say your MacBook, while
+Ducter lives on a server), Ducter looks there too once you say yes on that computer's card in
+**你的设备 / Your devices**: **读它们留下的记录 / Read what they keep**. Until then it only knows which
+AI agents you used there and when, and if that is likely where your conversation is, it asks you
+for that yes in one line. The yes stays on that computer; **别再看了 / Stop looking** on the same
+card takes it back. A conversation found there is carried on there, in its own folder.
+
 A conversation that is still open in your terminal is never carried on, since both would write to
 it at once: close it there first (`/exit`), then ask again. One your AI agent wrote to a moment ago
 gets the same reminder once; ask again once it is closed.
 
-Ducter reads these only on your home computer and only when you open Past tasks or ask for one: each
+Ducter reads these only on the computer they are on, and only when you open Past tasks or ask for one: each
 conversation's name, folder and time and your first and last words, with any key you pasted hidden.
 They are never sent anywhere else. Turning off **Read what they keep** in Settings › Partner hides
 the section and nothing is read. It never changes them; when you continue one, the AI agent adds to it as it
 would if you had continued it yourself. A conversation whose folder is gone is shown, but can't be
-continued. Conversations on your other computers are not listed yet.
+continued. Conversations on your other computers are found when you ask in the conversation (after
+your yes on that computer), but are not listed in Past tasks yet.
 
 ## Ongoing: pause, resume, run now
 

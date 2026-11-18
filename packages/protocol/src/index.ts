@@ -1114,6 +1114,11 @@ export type ClientFrame =
   // Answered with mem_setup_result only when the device couldn't take it; progress arrives as
   // fresh devices frames (DeviceView.mem).
   | { t: "mem_setup"; device: string; action: DeviceMemAction; link?: string }
+  // D377: 读它们留下的记录 / Read what they keep, on a computer for tasks: the person's yes (on: true)
+  // or 别再看了 / Stop looking (on: false) for their own agents' records there, saved on that computer
+  // itself. Answered with records_allow_result only when the device couldn't take it; the change
+  // arrives as fresh devices frames (DeviceView.records).
+  | { t: "records_allow"; device: string; on: boolean }
   // D224: update_all: 全部更新 / Update all: the home makes one plan of everything behind (its own
   // Ducter first, then the other computers, then each computer's AI agents at a safe point) and
   // runs it, kept on disk so it outlives its own restart. stop: 停止剩下的 / Stop the rest (what
@@ -1499,6 +1504,8 @@ export type ServerFrame =
   | { t: "agent_setup_result"; device: string; action: AgentSetupAction; ok: boolean; reason?: "away" | "unknown" | "failed" }
   // D366: a mem_setup the device couldn't take (away; unknown: no such computer; failed: its Ducter is too old for it).
   | { t: "mem_setup_result"; device: string; action: DeviceMemAction; ok: boolean; reason?: "away" | "unknown" | "failed" }
+  // D377: a records_allow the device couldn't take (away; unknown: no such computer; failed: its Ducter is too old for it).
+  | { t: "records_allow_result"; device: string; on: boolean; ok: boolean; reason?: "away" | "unknown" | "failed" }
   | { t: "update_all_result"; ok: boolean; reason?: "nothing" | "running" | "failed"; detail?: string; id?: string }
   | { t: "mem_plugin_result"; device: string; harness: string; ok: boolean; taskId?: string; reason?: MemPluginReason }
   // D332: ownAgents: the AI agents the person runs themselves on the home (their own records changed in
@@ -1977,6 +1984,24 @@ export interface DeviceView {
    * while memory is on and the home's Mem is connected; absent on an older worker (it says nothing).
    */
   mem?: DeviceMemView;
+  /**
+   * D377: the person's own AI agents' records on this computer for tasks (its Claude Code, Codex and
+   * pi sessions, D327 (9)): whether that computer lets the partner look, and which agents kept
+   * records there (by file times alone). Only on a worker that says it, only while looking is on
+   * at the home (Settings, 读它们留下的记录), only when it has records or said yes.
+   */
+  records?: DeviceRecordsView;
+}
+
+/**
+ * D377: unasked: nobody said yes on that computer yet; on: the person said 读它们留下的记录 / Read
+ * what they keep there; off: they said 别再看了 / Stop looking there.
+ */
+export type DeviceRecordsState = "unasked" | "on" | "off";
+export interface DeviceRecordsView {
+  state: DeviceRecordsState;
+  /** The agents with a session there, and when each last wrote one (file times alone; nothing inside is read). */
+  agents: { agent: import("./past.ts").OutsideAgent; lastAt: string }[];
 }
 
 // ---------- Nowledge Mem on a computer for tasks (D366, design/memory.md "Mem on a computer for tasks") ----------

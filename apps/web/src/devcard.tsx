@@ -29,6 +29,7 @@ import { Qr } from "./phone.tsx";
 import { AddDeviceRow, LendSheet } from "./lend.tsx";
 import { AgentRow, SetupAnswer } from "./agent-setup.tsx";
 import { MemOnDevice } from "./worker-mem.tsx";
+import { RecordsOnDevice } from "./worker-records.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 const art = (n: string) => `app/art/${n}.webp`;
@@ -240,6 +241,8 @@ function DeviceSheet({ dv, folded, go }: { dv: DeviceView; folded: Client[]; go:
       <CoinTray dv={dv} />
       {/* D366: Nowledge Mem on a computer for tasks, under its AI agents (only when the home has Mem). */}
       {!dv.home && dv.mem && <div class="dc-mem"><MemOnDevice dv={dv} /></div>}
+      {/* D377: the person's own agents' records there, read only after their yes on this card. */}
+      {!dv.home && dv.records && <div class="dc-mem"><RecordsOnDevice dv={dv} /></div>}
       {/* D307: on the home's card, a key instead of a subscription (D298), beside its AI agents. */}
       {dv.home && <KeyRow instead />}
       <Chips dv={dv} go={go} />

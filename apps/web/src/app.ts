@@ -371,6 +371,8 @@ class AppState {
   agentAnswer?: { device: string; harness: string; reason: AgentReason };
   /** D363: an agent_setup the device couldn't take (it's away, or its Ducter is too old). */
   setupAnswer?: { device: string; reason: "away" | "unknown" | "failed" };
+  /** D366: a mem_setup the computer couldn't take. */
+  memSetupAnswer?: { device: string; reason: "away" | "unknown" | "failed" };
   /** D169: the last 装上 / Install of Nowledge Mem that didn't start, and why. */
   memAnswer?: { device: string; harness: string; reason: MemPluginReason };
   /** D228: why 让 Ducter 帮我设好 didn't start (no agent signed in here, …). */
@@ -767,6 +769,7 @@ class AppState {
     if (f.t === "anywhere_setup_result" && !f.step) return void ((this.anywhereAnswer = f.ok || f.reason === "running" ? undefined : (f.reason ?? "failed")), this.changed());
     if (f.t === "mem_plugin_result") return void ((this.memAnswer = f.ok ? undefined : { device: f.device, harness: f.harness, reason: f.reason ?? "failed" }), this.changed());
     // "Nothing newer" answers a stale view, never a failure: the devices frame that follows has the version there now.
+    if (f.t === "mem_setup_result") return void ((this.memSetupAnswer = f.ok ? undefined : { device: f.device, reason: f.reason ?? "failed" }), this.changed());
     if (f.t === "agent_setup_result") return void (f.action !== "look" && ((this.setupAnswer = f.ok ? undefined : { device: f.device, reason: f.reason ?? "failed" }), this.changed()));
     if (f.t === "agent_update_result") return void ((this.agentAnswer = f.ok || f.reason === "no_update" ? undefined : { device: f.device, harness: f.harness, reason: f.reason ?? "failed" }), this.changed());
     if (f.t === "update_result") return void ((this.checkingUpdates = false), (this.deviceAnswer = f.ok || f.update || f.reason === "no_release" ? undefined : { device: f.device, reason: f.reason ?? "failed" }), this.changed());
@@ -2107,6 +2110,12 @@ class AppState {
     if (action !== "look") this.setupAnswer = undefined;
     this.send({ t: "agent_setup", device, action, ...o });
     if (action !== "look") this.changed();
+  }
+  /** D366: Nowledge Mem on a computer for tasks: put its command line there, or sign it in with a one-time link. */
+  memSetup(device: string, action: "install" | "connect", link?: string) {
+    this.memSetupAnswer = undefined;
+    this.send({ t: "mem_setup", device, action, ...(link ? { link } : {}) });
+    this.changed();
   }
   /** D156: update one AI agent on a device with its own updater. */
   updateAgent(device: string, harness: string) {

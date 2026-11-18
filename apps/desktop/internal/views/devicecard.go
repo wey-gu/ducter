@@ -91,6 +91,10 @@ func (a *App) deviceDetail(c *ui.Context, dv *protocol.DeviceView) {
 			ui.Row(c).Justify(ui.Center).Margin(0, 0, t.S3, 0).Children(func() { a.closingRow(c, dv) })
 		}
 		a.coinTray(c, dv)
+		// D366: Nowledge Mem on a computer for tasks, under its AI agents (only when the home has Mem).
+		if !dv.Home && dv.Mem != nil {
+			a.memOnDeviceCard(c, dv)
+		}
 		if dv.Home {
 			a.deviceKeyRow(c) // D307: a key instead of a subscription (D298), beside its AI agents
 		}

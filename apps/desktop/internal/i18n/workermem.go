@@ -1,0 +1,73 @@
+package i18n
+
+// D366: Nowledge Mem on a computer for tasks (its card, the lend sheet). The
+// same words as the web's (apps/web/src/i18n-workermem.ts). Glossary:
+// design/product-model.md.
+var zhWorkerMem = Table{
+	"wmem.absent":             "%s 上做事还不记得你",
+	"wmem.absent.why":         "装上 Nowledge Mem，%s 上的 AI 就用你的同一份记忆：做事前想得起你的习惯，做完的也记得下来。",
+	"wmem.absent.none":        "这台电脑上 Ducter 装不了 Nowledge Mem。在 %s 上照 Nowledge Mem 的说明装好，这里就会看到。",
+	"wmem.install":            "装上",
+	"wmem.installing":         "正在装 Nowledge Mem…",
+	"wmem.signin.line":        "装好了，还差登录",
+	"wmem.signin.how":         "在 Nowledge Mem 网页的「Connectors › AI Tools」里拿一个连接链接，贴在这里。链接只能用一次，用完就不留。",
+	"wmem.signin.local":       "你的 Nowledge Mem 在 %s 的应用里，%s 够不着它。先在 Nowledge Mem 应用里打开 Access Anywhere，再从那里拿一个连接链接贴在这里。",
+	"wmem.signin.link":        "连接链接",
+	"wmem.signin.go":          "登录",
+	"wmem.connecting":         "正在登录，接上 %s 上的 AI…",
+	"wmem.ready":              "记得你了",
+	"wmem.ready.why":          "%s 上的 %s 用的是你的同一份记忆：做事前想得起你的习惯，做完的也记得下来。",
+	"wmem.ready.left":         "%s 还没接上。",
+	"wmem.ready.none":         "登录好了，%s 上的 AI 还没接上它。",
+	"wmem.ready.noagent":      "登录好了。%s 上装了 AI 以后，在这儿接上就行。",
+	"wmem.connect":            "接上",
+	"wmem.retry":              "再试一次",
+	"wmem.failed.network":     "%s 上不了网，没装上。",
+	"wmem.failed.space":       "%s 上空间不够了，没装上。",
+	"wmem.failed.unsupported": "这台电脑上装不了它。",
+	"wmem.failed.bad_link":    "这不像 Nowledge Mem 的连接链接，它应该以 https:// 开头，带着 nmem_connect。",
+	"wmem.failed.used":        "这个链接用过或过期了。再拿一个新的贴进来。",
+	"wmem.failed.unreachable": "%s 连不上这个链接里的 Nowledge Mem。看看链接对不对，或者那台电脑能不能上网。",
+	"wmem.failed.failed":      "没弄好。",
+	"wmem.and":                "%s 和 %s",
+	"wmem.comma":              "、",
+}
+
+var enWorkerMem = Table{
+	"wmem.absent":             "Tasks on %s don't remember you yet",
+	"wmem.absent.why":         "With Nowledge Mem there, the AIs on %s share your one memory: they know how you like things before they start, and what they do is remembered.",
+	"wmem.absent.none":        "Ducter can't install Nowledge Mem on this computer. Install it on %s with Nowledge Mem's own guide and it shows here.",
+	"wmem.install":            "Install",
+	"wmem.installing":         "Installing Nowledge Mem…",
+	"wmem.signin.line":        "Installed; signing in is left",
+	"wmem.signin.how":         "In Nowledge Mem on the web, get a connect link under Connectors › AI Tools and paste it here. A link works once and isn't kept.",
+	"wmem.signin.local":       "Your Nowledge Mem lives in the app on %s, which %s can't reach. Turn on Access Anywhere in the Nowledge Mem app, then paste a connect link from there.",
+	"wmem.signin.link":        "Connect link",
+	"wmem.signin.go":          "Sign in",
+	"wmem.connecting":         "Signing in and connecting the AIs on %s…",
+	"wmem.ready":              "Remembers you",
+	"wmem.ready.why":          "On %s, your one memory reaches %s: how you like things is known before a task starts, and what it does is kept.",
+	"wmem.ready.left":         "Not connected yet: %s.",
+	"wmem.ready.none":         "Signed in. The AIs on %s aren't connected to it yet.",
+	"wmem.ready.noagent":      "Signed in. Once %s has an AI, connect it here.",
+	"wmem.connect":            "Connect",
+	"wmem.retry":              "Try again",
+	"wmem.failed.network":     "%s couldn't reach the internet, so it isn't installed.",
+	"wmem.failed.space":       "There isn't enough room on %s, so it isn't installed.",
+	"wmem.failed.unsupported": "It can't be installed on this computer.",
+	"wmem.failed.bad_link":    "That doesn't look like a Nowledge Mem connect link. It starts with https:// and carries nmem_connect.",
+	"wmem.failed.used":        "This link was used or has expired. Paste a fresh one.",
+	"wmem.failed.unreachable": "%s couldn't reach the Nowledge Mem in this link. Check the link, or whether that computer is online.",
+	"wmem.failed.failed":      "That didn't work.",
+	"wmem.and":                "%s and %s",
+	"wmem.comma":              ", ",
+}
+
+func init() {
+	for k, v := range zhWorkerMem {
+		zh[k] = v
+	}
+	for k, v := range enWorkerMem {
+		en[k] = v
+	}
+}

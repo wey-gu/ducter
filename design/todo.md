@@ -93,6 +93,22 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
 
 ## Deep Nowledge Mem integration (D295, `memory.md`)
 
+- **D366 live:** a real connect link redeemed on a lent computer, `nmem doctor` passing there, and one task
+  run there with Mem's plugin (its Context Bundle in, its thread captured as the persona). Trigger: the
+  author's haswell after the next release (his link, his Mem).
+- **D366: `nmem connect --tool` for D169's 装上 everywhere** (research/136 G5): Mem's own command registers
+  Claude Code and Codex without a model task or a signed-in agent. Trigger: D366's live run passes.
+- **D366: Ducter's uv route on a bare home too** (D225 says "install pipx first" when none of pipx, uv or
+  pip is there). Trigger: a home install that hits it.
+- **D366: the home's Mem in the Mac app reaching a lent computer** (Access Anywhere; `nmem key
+  --show-login` makes a login link on that Mac): one tap instead of a link fetched by hand. Trigger:
+  research on what Access Anywhere's link carries and how long it lives.
+- **Working Memory as a once-a-day L4 line** (research/136 G2; `system.md` already says so): the
+  partner reads `nmem --json wm read` once a day, never shown. Trigger: the author takes it.
+- **Recall across Mem's threads** (research/136 G3, research/69 K6): `memory_search` also searching
+  `t search`, so "how did we fix it in Codex last week" is found. Needs the haiku eval (D175).
+- **Mem's health on Memory's head row**: the trigger below is met (`nmem doctor --json` is
+  `{checks: [{name, status, detail, tool}], failed}`, research/136 G4); build it.
 - **D304 follow-ups:** the full partner eval at merge (only the memory scenarios ran, with `--only`);
   a link to the one memory in Nowledge Mem (Open in Nowledge Mem opens Mem's site; trigger: Mem documents
   a per-memory URL or `nowledgemem://` form); the 想起了 line in chat apps (Telegram, Slack, WeChat show
@@ -588,7 +604,7 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
       as recall does. Trigger: a real account whose lane holds memories about the person that the page misses.
 - [x] **Nowledge Mem in 全部更新 / Update all** (D257 option C): built by D329 (6), the home's `nmem` after the
       agents, by day only.
-- [ ] **Mem in Update all on a worker** (D329 (6)): only the home's `nmem` is an item; a worker's own `nmem`
+- [ ] **Mem in Update all on a worker** (D329 (6); D366 puts one there through uv: `uv tool upgrade nmem-cli` with its tools-folder env): only the home's `nmem` is an item; a worker's own `nmem`
       (its tasks' Mem plugin) is not. Trigger: a worker whose tasks need a newer Mem.
 - [ ] **An On hand line when a Mem update blocks something in use** (D257 (5)): today the update is said on
       Memory, on the Settings entry, and on 和你的其他 agent 通信 when a connection fails with a newer Mem out. If people

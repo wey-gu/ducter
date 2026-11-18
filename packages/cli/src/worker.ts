@@ -17,6 +17,7 @@ import { localDeviceKind } from "@ducter/core/src/devices.ts";
 import { bundledPiVersion, detectAgent, probeHarnesses as probeLocalHarnesses } from "@ducter/core/src/harness-probe.ts";
 import { agentSignature, captureLoginPath, saveLoginPath, widenAgentPath } from "@ducter/core/src/agent-path.ts";
 import { createAgentSetup, realAgentSetupSys, type AgentSetup } from "@ducter/core/src/agent-setup.ts";
+import { createWorkerMem, realWorkerMemSys } from "@ducter/core/src/worker-mem.ts";
 import { whichNow } from "@ducter/protocol/src/which.ts";
 import { probeEnv } from "./doctor.ts";
 import { createWorkerAgentUpdater } from "@ducter/core/src/agents.ts";
@@ -225,6 +226,19 @@ export async function cmdWorker(o: {
     probe: reprobe,
     changed: () => sendAgents(setup.decorate(rows)),
   });
+  // D366: Nowledge Mem on this computer for tasks: where it stands (Mem's own doctor), putting its
+  // command line here, signing it in with the person's one-time link and connecting the agents here.
+  // Its view rides in the hello once looked at, and as `mem` frames after each change.
+  const mem = createWorkerMem({
+    dataDir: o.dataDir,
+    sys: realWorkerMemSys({ platform: platform(), arch: arch(), which: (c) => whichNow(c), env: () => probeEnv(["nmem"]) }),
+    agents: () => rows.filter((h) => h.installed).map((h) => h.id),
+    changed: () => {
+      const v = mem.view();
+      (hello as { mem?: unknown }).mem = v;
+      sendUp({ t: "mem", mem: v });
+    },
+  });
   const hello = {
     t: "hello",
     name: saved.name,
@@ -271,6 +285,13 @@ export async function cmdWorker(o: {
   // D363: agent_setup from the home: install, sign in, a pasted code, cancel, look again.
   const onSetup = async (f: any, up: (x: object) => void) => {
     const a = f.args ?? {};
+    // D366: Nowledge Mem here: put its command line in, or sign it in (the link goes to nmem only).
+    if (f.op === "mem_setup") {
+      if (a.action === "install") mem.install();
+      else if (a.action === "connect") mem.connect(typeof a.link === "string" && a.link ? a.link : undefined);
+      else return up({ t: "res", id: f.id, ok: false, error: `unknown action ${a.action}` });
+      return up({ t: "res", id: f.id, ok: true, result: { ok: true } });
+    }
     const hs: string[] = Array.isArray(a.harnesses) ? a.harnesses.filter((x: unknown) => typeof x === "string") : [];
     const h = typeof a.harness === "string" ? a.harness : "";
     if (a.action === "install") setup.install(hs);
@@ -280,6 +301,7 @@ export async function cmdWorker(o: {
     else if (a.action === "look") {
       await startAgentPath(dataDir);
       await reprobe().catch(() => {});
+      void mem.look(); // D366: its card opened: where Mem stands there now
     } else return up({ t: "res", id: f.id, ok: false, error: `unknown action ${a.action}` });
     up({ t: "res", id: f.id, ok: true, result: { ok: true } });
   };
@@ -300,6 +322,8 @@ export async function cmdWorker(o: {
     }
     // 上网 may have changed while it was away (Claude in Chrome connected, Chrome installed).
     void browse.abilities().then((abilities) => sendUp({ t: "abilities", abilities }));
+    // D366: and where Nowledge Mem stands here (Mem's own doctor; a sign-in may have changed).
+    void mem.look();
     // The AI agents too: the hello was probed when this worker started, and an agent updated
     // since (by Ducter before a reconnect, or by hand) must not be offered again at its old
     // version (that update then "fails" with nothing newer). Fresh on every welcome, and every
@@ -404,7 +428,8 @@ async function stayConnected(
         // D362: 停止 on one of them (a slow download).
         if (f.t === "req" && f.op === "agent_update_stop" && agentUpdater) return void agentUpdater.stop(f, up);
         // D363: putting an agent here, signing it in, looking again.
-        if (f.t === "req" && f.op === "agent_setup" && onSetup) return void onSetup(f, up).catch((e) => up({ t: "res", id: f.id, ok: false, error: String(e) }));
+        // D366: Nowledge Mem on this computer for tasks (its command line, its sign-in), the same way.
+        if (f.t === "req" && (f.op === "agent_setup" || f.op === "mem_setup") && onSetup) return void onSetup(f, up).catch((e) => up({ t: "res", id: f.id, ok: false, error: String(e) }));
         if (f.t === "req") return void host.handle(f);
         // D293: the home's ways changed (a domain added, the tunnel turned off).
         if (f.t === "ways" && Array.isArray(f.ways)) return void ((s.ways = f.ways), persist());

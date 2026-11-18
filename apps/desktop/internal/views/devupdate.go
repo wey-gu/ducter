@@ -63,6 +63,12 @@ func (a *App) drainDeviceResults() {
 			fc := *res
 			a.ag.answer = &fc
 		}
+	case "mem_setup_result":
+		// D366: the computer couldn't take it (away, or a Ducter there from before).
+		if !res.OK {
+			fc := *res
+			a.wm.answer = &fc
+		}
 	case "agent_update_result":
 		// "Nothing newer" answers a stale view, not a failure: the devices
 		// frame that follows has the version there now.

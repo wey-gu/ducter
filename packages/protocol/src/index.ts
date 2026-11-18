@@ -1103,6 +1103,12 @@ export type ClientFrame =
   // gave; cancel: stop a sign-in; look: probe that device's agents now (its card opened). Answered
   // with agent_setup_result; progress arrives as fresh devices frames.
   | { t: "agent_setup"; device: string; action: AgentSetupAction; harnesses?: string[]; harness?: string; code?: string }
+  // D366: Nowledge Mem on a computer for tasks (core worker-mem.ts): install: Mem's command line
+  // into Ducter's own tools folder there; connect: sign it in with the one-time connect link the
+  // person pasted (never logged or kept) and connect that computer's Codex and Claude Code to it.
+  // Answered with mem_setup_result only when the device couldn't take it; progress arrives as
+  // fresh devices frames (DeviceView.mem).
+  | { t: "mem_setup"; device: string; action: DeviceMemAction; link?: string }
   // D224: update_all: 全部更新 / Update all: the home makes one plan of everything behind (its own
   // Ducter first, then the other computers, then each computer's AI agents at a safe point) and
   // runs it, kept on disk so it outlives its own restart. stop: 停止剩下的 / Stop the rest (what
@@ -1483,6 +1489,8 @@ export type ServerFrame =
   | { t: "agent_update_result"; device: string; harness: string; ok: boolean; reason?: AgentReason; detail?: string }
   // D363: an agent_setup the device couldn't take (away: not connected; unknown: no such device or agent).
   | { t: "agent_setup_result"; device: string; action: AgentSetupAction; ok: boolean; reason?: "away" | "unknown" | "failed" }
+  // D366: a mem_setup the device couldn't take (away; unknown: no such computer; failed: its Ducter is too old for it).
+  | { t: "mem_setup_result"; device: string; action: DeviceMemAction; ok: boolean; reason?: "away" | "unknown" | "failed" }
   | { t: "update_all_result"; ok: boolean; reason?: "nothing" | "running" | "failed"; detail?: string; id?: string }
   | { t: "mem_plugin_result"; device: string; harness: string; ok: boolean; taskId?: string; reason?: MemPluginReason }
   // D332: ownAgents: the AI agents the person runs themselves on the home (their own records changed in
@@ -1939,6 +1947,37 @@ export interface DeviceView {
   alwaysOn?: boolean;
   /** D293: how a connected worker reaches the home now. */
   via?: DeviceVia;
+  /**
+   * D366: Nowledge Mem on this computer for tasks, as that computer says it: only on a worker, only
+   * while memory is on and the home's Mem is connected; absent on an older worker (it says nothing).
+   */
+  mem?: DeviceMemView;
+}
+
+// ---------- Nowledge Mem on a computer for tasks (D366, design/memory.md "Mem on a computer for tasks") ----------
+
+/** D366: what a mem_setup asks of a computer. */
+export type DeviceMemAction = "install" | "connect";
+/**
+ * D366: why the last step didn't work. network / space / unsupported: putting the command line
+ * there (no internet, no room, no build for that computer); bad_link: not a connect link (refused
+ * before anything ran); used: Mem says the link was used or expired (one uniform answer, 410);
+ * unreachable: the link's Mem couldn't be reached from that computer; failed: anything else (detail).
+ */
+export type DeviceMemReason = "network" | "space" | "unsupported" | "bad_link" | "used" | "unreachable" | "failed";
+/**
+ * D366: absent: no Mem command line there; sign_in: it's there, not signed in to a Mem it can
+ * reach (Mem's own `nmem doctor`); ready: signed in, its check passes. `agents`: the AI agents
+ * there Mem's check says are connected to it (harness ids). `step`: installing or connecting
+ * now, or how the last try ended (failed), absent when idle.
+ */
+export interface DeviceMemView {
+  state: "absent" | "sign_in" | "ready";
+  /** Ducter can put Mem's command line there itself (it has a build for that computer). */
+  installable?: boolean;
+  version?: string;
+  agents?: string[];
+  step?: { phase: "installing" | "connecting" | "failed"; pct?: number; reason?: DeviceMemReason; detail?: string };
 }
 
 // ---------- Updating in place (D148, design/system.md "Updating in place") ----------

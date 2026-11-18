@@ -1017,7 +1017,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       socketsChanged: () => reachRef?.refresh(),
     },
     partners,
-    core: api, workbench, bridgeLink, decisions, runner: () => runner, devices: () => devicesView, lend: () => lendRef, settings, connections, phone, rules, loadout, accountUsage, closing, work: workFrames, newTask, updates: () => updatesRef, agents: () => agentsRef, agentSetup: (device, f) => agentSetupOp(device, f), updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, anywhere: () => anywhereRef, channels, proactive: () => proactiveRef, calendar: () => calendarRef, taskSources: () => taskSourcesRef, taskGroups: () => taskGroups, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets, past: { ...past, marks, persona: () => persona.id, ongoing, outside }, keys: { dataDir, ...(opts.keyFetch ? { fetch: opts.keyFetch } : {}), ...(opts.keyCanRun ? { canRun: opts.keyCanRun } : {}) }, ...(firstWordsDeps ? { firstWords: firstWordsDeps } : {}), did, ownAgents });
+    core: api, workbench, bridgeLink, decisions, runner: () => runner, devices: () => devicesView, lend: () => lendRef, settings, connections, phone, rules, loadout, accountUsage, closing, work: workFrames, newTask, updates: () => updatesRef, agents: () => agentsRef, agentSetup: (device, f) => agentSetupOp(device, f), memSetup: (device, action, link) => memSetupOp(device, action, link), updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, anywhere: () => anywhereRef, channels, proactive: () => proactiveRef, calendar: () => calendarRef, taskSources: () => taskSourcesRef, taskGroups: () => taskGroups, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets, past: { ...past, marks, persona: () => persona.id, ongoing, outside }, keys: { dataDir, ...(opts.keyFetch ? { fetch: opts.keyFetch } : {}), ...(opts.keyCanRun ? { canRun: opts.keyCanRun } : {}) }, ...(firstWordsDeps ? { firstWords: firstWordsDeps } : {}), did, ownAgents });
   handsets.onChange(() => (devicesView?.changed(), ws.onHandChanged()));
   onHandChanged = ws.onHandChanged;
   // D156: a partner turn in flight keeps an update of the agent it thinks with waiting.
@@ -1047,6 +1047,23 @@ export function startCore(opts: CoreOptions = {}): Core {
   let agentSetupOp: (device: string, f: { action: import("@ducter/protocol").AgentSetupAction; harnesses?: string[]; harness?: string; code?: string }) => Promise<{ ok: boolean; reason?: "away" | "unknown" | "failed" }> = async () => ({ ok: false, reason: "failed" });
   let updateAllRef: UpdateAll | undefined;
   let memPluginsRef: MemPlugins | undefined;
+  // D366: memory on and the home's Mem connected (D169's gate), set once memPlugins is made.
+  let memOnRef: (() => boolean) | undefined;
+  // D366: Nowledge Mem on a computer for tasks: the worker's own mem_setup op.
+  const memSetupOp = async (device: string, action: import("@ducter/protocol").DeviceMemAction, link?: string): Promise<{ ok: boolean; reason?: "away" | "unknown" | "failed" }> => {
+    if (!memOnRef?.()) return { ok: false, reason: "failed" };
+    const id = devices.list().find((x) => x.kind === "worker" && (x.id === device || x.name === device))?.id;
+    if (!id) return { ok: false, reason: "unknown" };
+    const link0 = workers.link(id);
+    if (!link0) return { ok: false, reason: "away" };
+    try {
+      await link0.call("mem_setup", { action, ...(link ? { link } : {}) }, 30_000);
+      return { ok: true };
+    } catch {
+      // A Ducter there from before D366 doesn't know the op.
+      return { ok: false, reason: "failed" };
+    }
+  };
   let anywhereRef: AnywhereCtl | undefined;
   const workers = createWorkers({
     personaName: () => persona.name,
@@ -1306,7 +1323,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   workers.onChange(() => reachRef?.refresh());
   // D347: 加一台做事的电脑 / Add a computer for tasks: a code, the line to paste, and when it arrives.
   lendRef = createLend({ auth: devices, dataDir, bind: hostname, port: () => listening, broadcast: (f) => ws.broadcast(f) });
-  devicesView = createDevicesView({ anywhere, dataDir, auth: devices, workers, connected: () => ws.connected(), viaOf: (id) => ws.vias().get(id), ways: () => reachRef?.ways() ?? [], homeKey: identity, probes: opts.deviceProbes, ...(u.homeName ? { hostname: u.homeName } : {}), updates: () => updates, agents: () => agents, agentSetup: () => homeSetup, updateAll: () => updateAll, mem: () => memPluginsRef, ...(agentTesting ? {} : { piBundled: bundledPiVersion }), self: { version, how: selfHow, platform: `${process.platform}-${process.arch}` }, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), handsets, ...(opts.platform ? { platform: opts.platform } : {}), call: () => callAbility(phone.available(), connections.view()), onDisconnect: (id) => {
+  devicesView = createDevicesView({ anywhere, dataDir, auth: devices, workers, connected: () => ws.connected(), viaOf: (id) => ws.vias().get(id), ways: () => reachRef?.ways() ?? [], homeKey: identity, probes: opts.deviceProbes, ...(u.homeName ? { hostname: u.homeName } : {}), updates: () => updates, agents: () => agents, agentSetup: () => homeSetup, memOn: () => memOnRef?.() ?? false, updateAll: () => updateAll, mem: () => memPluginsRef, ...(agentTesting ? {} : { piBundled: bundledPiVersion }), self: { version, how: selfHow, platform: `${process.platform}-${process.arch}` }, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), handsets, ...(opts.platform ? { platform: opts.platform } : {}), call: () => callAbility(phone.available(), connections.view()), onDisconnect: (id) => {
     for (const s of push.forget(id)) void apns.revoke?.(s);
   } });
   updates.onChange(() => devicesView?.changed());
@@ -1320,6 +1337,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   // answering "missing"); without Mem, nothing about its plugin shows, anywhere.
   const memConnected = mp.connected ?? (() => !!persona.mem && !settings.memMissing());
   const memOn = () => settings.get().memory && process.env.DUCTER_MEMORY !== "off" && memConnected();
+  memOnRef = memOn;
   const memPlugins = createMemPlugins({
     dataDir,
     log,
@@ -1355,10 +1373,18 @@ export function startCore(opts: CoreOptions = {}): Core {
     };
     // A computer that comes online is checked once it said hello.
     let up = new Set(workers.online().map((w) => w.deviceId));
+    // D366: and once Nowledge Mem there turns ready (signed in, its agents connected), so the
+    // agents' own Mem lines and a task's plugin there follow at once.
+    const memReady = new Map<string, boolean>();
     workers.onChange(() => {
       const now = new Set(workers.online().filter((w) => w.hello).map((w) => w.deviceId));
       for (const id of now) if (!up.has(id)) void memPlugins.check(id);
       up = now;
+      for (const w of workers.online()) {
+        const ready = w.hello?.mem?.state === "ready";
+        if (ready && memReady.get(w.deviceId) === false) void memPlugins.check(w.deviceId);
+        memReady.set(w.deviceId, ready);
+      }
     });
     // Memory switched back on: check everything again.
     let wasOn = memOn();

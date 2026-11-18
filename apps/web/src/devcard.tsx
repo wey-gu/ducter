@@ -28,6 +28,7 @@ import { Mark, UpdateAllCard } from "./updateall.tsx";
 import { Qr } from "./phone.tsx";
 import { AddDeviceRow, LendSheet } from "./lend.tsx";
 import { AgentRow, SetupAnswer } from "./agent-setup.tsx";
+import { MemOnDevice } from "./worker-mem.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 const art = (n: string) => `app/art/${n}.webp`;
@@ -233,6 +234,8 @@ function DeviceSheet({ dv, folded, go }: { dv: DeviceView; folded: Client[]; go:
       )}
       {s.text && <div class={`dc-status${s.state ? "" : ` ${s.tone}`}`}>{s.text}</div>}
       <CoinTray dv={dv} />
+      {/* D366: Nowledge Mem on a computer for tasks, under its AI agents (only when the home has Mem). */}
+      {!dv.home && dv.mem && <div class="dc-mem"><MemOnDevice dv={dv} /></div>}
       {/* D307: on the home's card, a key instead of a subscription (D298), beside its AI agents. */}
       {dv.home && <KeyRow instead />}
       <Chips dv={dv} go={go} />

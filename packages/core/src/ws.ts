@@ -127,6 +127,8 @@ export interface WsDeps {
   agents?: () => import("./agents.ts").AgentUpdates | undefined;
   /** D363: putting an agent on a device, signing it in there, looking again (core.ts routes it). */
   agentSetup?: (device: string, f: { action: import("@ducter/protocol").AgentSetupAction; harnesses?: string[]; harness?: string; code?: string }) => Promise<{ ok: boolean; reason?: "away" | "unknown" | "failed" }>;
+  /** D366: Nowledge Mem on a computer for tasks: put its command line there, or sign it in (core.ts routes it). */
+  memSetup?: (device: string, action: import("@ducter/protocol").DeviceMemAction, link?: string) => Promise<{ ok: boolean; reason?: "away" | "unknown" | "failed" }>;
   /** D224: 全部更新 / Update all. */
   updateAll?: () => import("./update-all.ts").UpdateAll | undefined;
   /** D169: Nowledge Mem in each device's own agents (mem-plugins.ts); absent in tests that don't need it. */
@@ -1051,6 +1053,19 @@ export function createWsHandler(deps: WsDeps) {
         const hs = strs(f.harnesses);
         const r = deps.agentSetup ? await deps.agentSetup(device, { action, ...(hs ? { harnesses: hs } : {}), ...(typeof f.harness === "string" ? { harness: f.harness } : {}), ...(typeof f.code === "string" ? { code: f.code } : {}) }) : { ok: false, reason: "failed" as const };
         if (!r.ok) send(ws, { t: "agent_setup_result", device, action, ok: false, ...(r.reason ? { reason: r.reason } : {}) });
+        return;
+      }
+      case "mem_setup": {
+        // D366: Nowledge Mem on a computer for tasks. The connect link goes to that computer's nmem
+        // only: never logged, kept or sent back. Progress arrives as fresh devices frames.
+        const device = String(f.device ?? "");
+        const action = f.action as import("@ducter/protocol").DeviceMemAction;
+        if (!["install", "connect"].includes(action)) throw new Error("unknown action");
+        watchDevices();
+        ws.data.devices = true;
+        const link = typeof f.link === "string" && f.link.trim() ? f.link.trim() : undefined;
+        const r = deps.memSetup ? await deps.memSetup(device, action, link) : { ok: false, reason: "failed" as const };
+        if (!r.ok) send(ws, { t: "mem_setup_result", device, action, ok: false, ...(r.reason ? { reason: r.reason } : {}) });
         return;
       }
       case "update_all": {

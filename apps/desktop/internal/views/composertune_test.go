@@ -103,11 +103,15 @@ func TestComposerTuneChips(t *testing.T) {
 			t.Fatalf("%s: an effort chip for a model without levels", lang)
 		}
 
+		if _, ok := tt.Find(spoken(L, L.T("newtask.model"), "GPT-6-Astra")); !ok {
+			t.Fatalf("%s: no model chip before the task is dropped", lang)
+		}
 		// Can't switch (dropped): nothing.
 		tk := app.S.Tasks["t_asc"]
 		tk.State, tk.Card.Attention = nil, protocol.Dropped
 		tt.Frame()
-		if tt.HasText("GPT-6-Astra") {
+		// The head's meta line names the model too (D355), so look for the chip itself.
+		if _, ok := tt.Find(spoken(L, L.T("newtask.model"), "GPT-6-Astra")); ok {
 			t.Fatalf("%s: chips on a task that can't switch: %q", lang, tt.Texts())
 		}
 	}

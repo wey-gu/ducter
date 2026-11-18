@@ -59,6 +59,14 @@ Your marks are kept on your home computer, so every device shows the same.
   touched). Remove the chip to start fresh.
 - Click the card to just look at the task.
 
+You can also just say it in the conversation. When you follow up on something Ducter just did for
+you ("那汉庭贵多少？再看看机票", "make it configurable too"), it carries on the same task: the same
+signed-in browser, the same branch and files, the same AI agent, and what it already found. The
+task shows under your new message, and On hand keeps one card for it. An earlier one works too:
+"接着昨天那个 compaction 的活" / "carry on with yesterday's compaction change". Something new
+gets a task of its own; if you want a fresh start on the same thing, say so ("开个新的" / "start a
+new one").
+
 Keys: `/` search, the arrow keys or j/k move, Enter opens, ⌘Enter continues, ⇧⌘Enter new task from this, `s`
 stars, `r` renames, Esc clears and then goes back.
 

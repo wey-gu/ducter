@@ -182,7 +182,7 @@ describe("live-run regressions", () => {
     const p = buildSystemPrompt({ id: "p", name: "Ducter", identity: "ID" });
     expect(p).toMatchSnapshot();
     // Tuned with packages/partner/eval: the result prose leaves evidence, Outside and Merge to the app.
-    for (const s of ["at most 2 lines", "left-out line", "Never restate the evidence", "no task ids", "call ask", "write nothing else that turn, before or after it", "nothing after task_open", "how long it usually takes ONLY when you have", "Continue an existing task (task_send", "gets ask first", "never pass it to a task", "ONE\n  concrete example"]) {
+    for (const s of ["at most 2 lines", "left-out line", "Never restate the evidence", "no task ids", "call ask", "write nothing else that turn, before or after it", "nothing after task_open", "how long it usually takes ONLY when you have", "Continuity first. A follow-up carries on", "gets ask first", "never pass it to a task", "ONE\n  concrete example"]) {
       expect(p).toContain(s);
     }
   });
@@ -453,9 +453,10 @@ describe("review 2 regressions", () => {
     expect(fr.sent).toHaveLength(0);
   });
 
-  test("persona: follow-ups continue a task only on its unmerged change; one-time instructions are not memory", () => {
+  // D372: continuity first; separate work, merged work, or a new one asked for is a new task.
+  test("persona: a follow-up carries on its task; separate or merged work is new; one-time instructions are not memory", () => {
     const p = buildSystemPrompt({ id: "p", name: "Ducter", identity: "ID" });
-    for (const s of ["ONLY when the follow-up", "not merged yet", "Anything else is a new task", "task_retitle", "never an instruction for this one piece of work"]) expect(p).toContain(s);
+    for (const s of ["Continuity first", "even when it", "only for separate work", "after its work was merged", "开个新的", "task_retitle", "never an instruction for this one piece of work"]) expect(p).toContain(s);
   });
 });
 

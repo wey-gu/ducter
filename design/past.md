@@ -123,6 +123,10 @@ pebble settled 2 pt; it lifts back on resume.
   still works; the task says **之前的记录接不上了，从保存的进度接着做** (D207's line).
 - **The worktree was removed** (merged, or idle past the archive horizon): it is added back from
   the kept branch; a branch deleted since makes Continue fail with the runner's words.
+- **From the conversation** (D372): the partner continues a task the talk was on, or one the
+  person names ("接着昨天那个 compaction 的活"), the same way as Continue: `task_send` to it; the
+  task's line moves under the newest ask. New only for separate work, after a merge, or when
+  asked ("开个新的").
 - **On another computer**: the card says which; Continue on a computer that is away answers with
   its line, and the person can pick another agent (or Move, D157) from the opened task.
 - **A dropped task**: Continue brings it back (it is no longer dropped).

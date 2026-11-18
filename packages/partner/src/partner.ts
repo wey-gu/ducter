@@ -145,6 +145,14 @@ export interface PartnerHandle extends Partner {
 
 interface TurnState {
   triggers: LogEvent[];
+  /** D372: finished tasks this turn sent a follow-up to (each back at work under its own line). */
+  continued?: Set<string>;
+  /** D372: this turn's first task_open was weighed against the task the message follows. */
+  openWeighed?: boolean;
+  /** D372: the line a task_open asked back already put up: the task carried on goes under it. */
+  redirectJob?: string;
+  /** D372: a finished task taken up again before any line: the next line said is its ack. */
+  lateContinue?: string;
   userTexts: string[];
   /** D333: Bridge messages bridge_check took in this turn (their requests still wait for the user's go). */
   checked: Set<string>;
@@ -221,6 +229,12 @@ interface Job {
 const COLD_MS = 55 * 60 * 1000;
 const TASK_OPEN_RE = /(^|__)task_open$/;
 const TASK_SEND_RE = /(^|__)task_send$/;
+/** D372: how long after a task last moved a new message is still taken to follow it. */
+const FOLLOWS_HOURS = 12;
+/** D372: a task that has finished: a follow-up sent to it goes back to work, under a new line in the conversation. */
+const FINISHED = new Set(["done", "done_claimed", "failed"]);
+/** D372: the user asks for a new task in so many words: no second look at the one it follows. */
+const ASKS_NEW = /开个新|新开一个|开一个新|新的任务|另开|单独开|重新开一个|a new (one|task)|new task|separate task|start (a )?fresh/i;
 /** A partner tool call as the step the user sees (D104); undefined keeps the current step. */
 export function activityStep(tool: string): ActivityStep | undefined {
   const name = tool.split("__").pop() ?? tool;
@@ -681,6 +695,26 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       const p = core.tasks.get(id)?.place;
       return p?.kind === "repo" ? p.baseBranch : undefined;
     },
+    // D372: the task the conversation was on right before this message (the last task opened, or
+    // finished, or continued, in the conversation), within FOLLOWS_HOURS. A follow-up carries it on.
+    follows: (seq) => {
+      const at = core.log.read({ stream: "channel", fromSeq: seq, limit: 1 })[0];
+      const evs = core.log.read({ stream: "channel", kinds: ["job_status"], beforeSeq: seq, limit: 200 });
+      for (let i = evs.length - 1; i >= 0; i--) {
+        const b = evs[i]!.body as Bodies["job_status"];
+        if (evs[i]!.origin !== "partner" || !b.taskId) continue;
+        const c = core.tasks.get(b.taskId);
+        if (!c || c.attention === "dropped" || c.attention === "superseded") return undefined;
+        const when = Date.parse(at?.ts ?? new Date(now()).toISOString());
+        const agoMin = Math.max(0, Math.round((when - Date.parse(c.updatedAt || evs[i]!.ts)) / 60_000));
+        if (!(agoMin <= FOLLOWS_HOURS * 60)) return undefined;
+        const p = c.place;
+        const on = "device" in p && p.device && p.device !== "local" ? ` on ${p.device}` : "";
+        const where = p.kind === "browser" ? `a browser${on}` : p.kind === "repo" ? `repo ${p.repoPath}${p.branch ? `, branch ${p.branch}` : ""}${on}` : p.kind === "folder" ? `folder ${p.path}${on}` : on.trim() || undefined;
+        return { taskId: c.taskId, title: c.title, attention: c.attention, agoMin, ...(c.harness ? { harness: HARNESSES[c.harness as HarnessId]?.name ?? c.harness } : {}), ...(where ? { where } : {}), ...(ctx.merged?.(c.taskId) ? { merged: true } : {}) };
+      }
+      return undefined;
+    },
     taskGroup: (id) => {
       const g = (core as { taskGroups?: TaskGroupsPort }).taskGroups?.of(id);
       if (!g || g.members.length < 2) return undefined;
@@ -853,6 +887,30 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     relang.push({ text: text.trim(), ...(t.replyTo !== undefined ? { replyTo: t.replyTo } : {}) });
     return true;
   };
+  // D372: a follow-up sent to a finished task: it goes back to work under this turn's line (its ack,
+  // or a line of its own), so the conversation shows it under the follow-up, not under the old
+  // answer, and On hand keeps the one card. Its next done or failed report closes the line.
+  const continueJob = (t: TurnState, taskId: string, jobId: string) => {
+    const c = core.tasks.get(taskId);
+    if (!c) return;
+    (t.continued ??= new Set()).add(taskId);
+    jobs.set(taskId, { jobId, title: c.title, replyTo: replyToFor(t), state: "running" });
+    core.log.append({ stream: "channel", origin: "partner", kind: "job_status", body: { jobId, text: c.title, state: "running", taskId } });
+  };
+  // The line before a task_send is its ack, and a short line after it is filler (live:
+  // "已经交给它去做了，做完会告诉您结果。"). D372: to a finished task, the line is that task's
+  // ack (it goes back to work under it); else a message.
+  const takeSendLine = (t: TurnState, taskId: unknown) => {
+    if (t.acked || t.pending === null || !t.pending.trim()) return;
+    const line = t.pending;
+    const mark = t.pendingMark;
+    t.pending = null;
+    t.pendingMark = undefined;
+    const c = typeof taskId === "string" && !t.quiet ? core.tasks.get(taskId) : undefined;
+    if (c && FINISHED.has(c.attention) && !t.continued?.has(c.taskId)) continueJob(t, c.taskId, appendAck(t, line).jobId);
+    else appendAiMsg(line, undefined, mark);
+    t.acked = true;
+  };
   const replyToFor = (t: TurnState) => t.replyTo ?? t.triggers[t.triggers.length - 1]?.seq ?? core.log.head();
   const appendAck = (t: TurnState, text: string): { jobId: string } => {
     const jobId = newId("job");
@@ -875,6 +933,14 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     // D304: a mark said on its own after the answer belongs to the words just said.
     if (!p.trim()) {
       if (mark && turn.lastSaid !== undefined) recalledUnder(turn.lastSaid, mark);
+      return;
+    }
+    // D372: the line after a call that took a finished task up again is that task's ack.
+    const late = turn.lateContinue;
+    if (late && !turn.acked && !turn.quiet) {
+      turn.lateContinue = undefined;
+      turn.pendingMark = mark;
+      continueJob(turn, late, appendAck(turn, p).jobId);
       return;
     }
     // Silence after the ack (live: "Task opened.", "任务已开。" right after it). With a
@@ -947,13 +1013,12 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     if (ev.tool) {
       // Handing more work to an existing task is an action like opening one: the line before
       // it is the ack, and a short line after it is filler (live: "已经交给它去做了，做完会告诉您结果。").
-      if (TASK_SEND_RE.test(ev.tool.name) && !turn.acked && turn.pending !== null && turn.pending.trim()) {
-        const line = turn.pending;
-        const mark = turn.pendingMark;
-        turn.pending = null;
-        turn.pendingMark = undefined;
-        appendAiMsg(line, undefined, mark);
-        turn.acked = true;
+      if (TASK_SEND_RE.test(ev.tool.name)) {
+        // D372: which task it goes to decides what the line is: wait for the call's input.
+        const to = (ev.tool.input as { taskId?: unknown } | undefined)?.taskId;
+        const final = ev.tool.output !== undefined || ev.tool.ok !== undefined;
+        if (typeof to !== "string" && !final) return;
+        takeSendLine(turn, to);
       }
       if (TASK_OPEN_RE.test(ev.tool.name) && turn.carried && carriedTask(turn.carried, (ev.tool.input as { title?: unknown } | undefined)?.title, false)) {
         turn.pending = null; // its ack went out in the cut-off turn
@@ -1386,6 +1451,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       await session!.send(input, "turn", picturesOf(batch));
       await reading;
       flushPending();
+      // D372: taken up again and nothing said after it: the task still moves under this turn.
+      if (turn.lateContinue) continueJob(turn, turn.lateContinue, newId("job")), (turn.lateContinue = undefined);
       // D222: a day card asked for with no words after it still shows, on its own.
       if (turn.cal) core.log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: "", cal: turn.cal, ...(turn.replyTo !== undefined ? { replyTo: turn.replyTo } : {}) } }), (turn.cal = undefined);
       appendNoted(turn);
@@ -1487,7 +1554,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   core.mcp.register(
     "partner",
     "task_open",
-    "Open a task: a separate working session in its own place (repo, folder, browser) for anything that needs a place, writes, or takes more than ~10s. A follow-up on recent work (same repo, builds on what a task just did) is NOT a new task: task_send it to that task, even if it is done; it keeps its branch, worktree and session. Open a new task only for separate work; if it must build on an unmerged task branch, set place.baseBranch to that branch. Write the one-sentence ack BEFORE calling this. Fill the fields in this order: title, needs (only when it needs something of a computer), place ({\"kind\":\"none\"} when it has none), then brief last: the task starts as soon as its title and place are written. Ducter picks the computer a task runs on from its needs (and says where on the task); name a computer in place.device only when the user named one. The brief must quote the user's words verbatim and list decisions, done-criteria, out of scope, and the place. " +
+    "Open a task: a separate working session in its own place (repo, folder, browser) for anything that needs a place, writes, or takes more than ~10s. A follow-up on a task's work (the same errand or goal, builds on what it found or changed, needs its sign-ins, files or branch) is NOT a new task: task_send it to that task, even when done; it keeps its session, place and agent. Open a new task only for separate work, or when the user asks for a new one; if it must build on an unmerged task branch, set place.baseBranch to that branch. Write the one-sentence ack BEFORE calling this. Fill the fields in this order: title, needs (only when it needs something of a computer), place ({\"kind\":\"none\"} when it has none), then brief last: the task starts as soon as its title and place are written. Ducter picks the computer a task runs on from its needs (and says where on the task); name a computer in place.device only when the user named one. The brief must quote the user's words verbatim and list decisions, done-criteria, out of scope, and the place. " +
       'Choose place {"kind":"browser"} when the work happens on the web: looking something up, checking or reading a page or site, comparing products, filling a form. Codex and Claude Code tasks work in the user\'s own Chrome with their own browser tools (signed in as the user, in a window of their own) and never sign in, submit, post or pay without the user\'s Go; otherwise the task uses Ducter\'s own browser, which keeps its sign-ins between tasks. Any Codex task can also operate apps on this Mac with its Computer Use; say so when a task will. ' +
       "A browser task never signs in, submits, posts, buys, or pays by itself: it stops and asks the user with a question, so put that in the brief's out of scope. " +
       "Returns at once; the task reports back on its own. Never wait on it.",
@@ -1584,6 +1651,29 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         }
         return { ok: true, taskId: again.taskId, title: again.title, note: "This task was already opened for this message; it was not opened again. It reports back on its own." };
       }
+      // D372: continuity first. The first task_open of a turn whose message follows a finished task is
+      // asked back once (the author's trip opened four tasks for one errand, losing its sign-ins
+      // each time): carry that task on with task_send, or call again for separate work. Not for
+      // a split, a cut-off turn redone, or when the user asked for a new one.
+      if (t && !t.openWeighed && !grouped && !t.carried && t.userTexts.length) {
+        t.openWeighed = true;
+        const u = [...t.triggers].reverse().find((e) => e.kind === "user_msg" && !(e.body as Bodies["user_msg"]).reply && !(e.body as Bodies["user_msg"]).forwarded);
+        const f = u ? ctx.follows?.(u.seq) : undefined;
+        if (f && FINISHED.has(f.attention) && !f.merged && !ASKS_NEW.test(t.userTexts.join("\n"))) {
+          t.opensHandled++;
+          const early = t.early.find((e) => !e.used);
+          if (early) {
+            early.used = true;
+            early.brief.reject(new Error("the message follows an existing task"));
+          }
+          t.redirectJob = early?.jobId ?? claimAck(t)?.jobId;
+          return {
+            ok: false,
+            error: `Not opened: this message follows task ${f.taskId} "${f.title}" (finished; a follow-up takes it up again). If it carries that work on (the same errand or goal, builds on what it found, needs its sign-ins, files or branch), task_send it there instead: it keeps its session, place and agent, and your line already said what you are doing. Only if it is separate work, call task_open again as it was. Say nothing about this.`,
+          };
+        }
+      }
+      if (t) t.redirectJob = undefined; // opened after all: separate work
       let jobId: string;
       const userTexts = t?.userTexts ?? [];
       const place = resolvePlace(args.place, [args.brief, args.title, ...userTexts], myTasks(), fs);
@@ -1718,7 +1808,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   core.mcp.register(
     "partner",
     "task_send",
-    "Send text to a task, running or finished (a finished one resumes in its own branch and worktree): the user's follow-up or correction, the next step on the same work, or a question that needs the task's own judgment. Only on the same subject and its unmerged change: other work in the same repo, or anything after the user merged it, is a new task (task_open). Read first (task_read, log_search, log_read); ask only what the Log can't answer. mode 'steer' (default) interrupts at the next safe point; 'queue' waits for its current turn.",
+    "Send text to a task, running or finished (a finished one goes back to work in its own session and place: branch and worktree, browser and sign-ins): the user's follow-up or correction, the next step of the same errand or goal, or a question that needs the task's own judgment. Separate work (another bug, another errand), anything after the user merged its work, or a new one the user asks for, is a new task (task_open). Read first (task_read, log_search, log_read); ask only what the Log can't answer. mode 'steer' (default) interrupts at the next safe point; 'queue' waits for its current turn.",
     {
       type: "object",
       properties: {
@@ -1731,6 +1821,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     },
     async (args: { taskId: string; text: string; mode?: "steer" | "queue"; media?: unknown }) => {
       await Bun.sleep(5); // let the streamed text land first
+      if (turn) takeSendLine(turn, args.taskId); // the line before it, if the stream didn't take it yet
       flushPending(); // a line written before this call is a message, not an ack
       // A turn woken only by a task's question: the user answers it on its card (eval: the
       // partner sent "Go：…" to the task on the user's behalf).
@@ -1745,9 +1836,29 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       try {
         const named = mediaNamed(args.media);
         if (named.unknown.length && !named.media.length) return { ok: false, error: `No picture or file with id ${named.unknown.join(", ")}.` };
-        const r = await runner.send(args.taskId, redactSecrets(args.text, turn?.userTexts ?? []), args.mode, undefined, undefined, named.media.length ? named.media : undefined);
+        const t = turn;
+        const was = core.tasks.get(args.taskId)?.attention;
+        const r = await runner.send(args.taskId, redactSecrets(args.text, t?.userTexts ?? []), args.mode, undefined, undefined, named.media.length ? named.media : undefined);
+        // D372: taken up again with no line before the call: its line still moves to this turn. After
+        // a task_open asked back, the line it put up is this task's now.
+        if (t?.redirectJob && !t.continued?.has(args.taskId)) {
+          continueJob(t, args.taskId, t.redirectJob);
+          t.redirectJob = undefined;
+          t.unboundAck = null;
+        } else if (t && !t.quiet && was && FINISHED.has(was) && !t.continued?.has(args.taskId)) {
+          // The line comes after the call (the model wrote it second): it becomes the ack then.
+          if (!t.acked && !t.lateContinue) t.lateContinue = args.taskId;
+          else continueJob(t, args.taskId, newId("job"));
+        }
         return { ok: true, ...r };
       } catch (err) {
+        // A follow-up that never reached the task: its line goes back to how the task stands.
+        const j = turn?.continued?.has(args.taskId) ? jobs.get(args.taskId) : undefined;
+        const c = core.tasks.get(args.taskId);
+        if (j && c && j.state === "running") {
+          j.state = c.attention === "failed" ? "failed" : "done";
+          core.log.append({ stream: "channel", origin: "partner", kind: "job_status", body: { jobId: j.jobId, text: c.title, state: j.state, taskId: c.taskId } });
+        }
         return { ok: false, error: err instanceof Error ? err.message : String(err) };
       }
     },

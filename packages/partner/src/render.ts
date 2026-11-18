@@ -156,6 +156,33 @@ export interface RenderCtx {
   taskAttention?(taskId: string): Attention | undefined;
   /** D341: the outside to-do a task is bound to, and what Ducter does with it when it is done. */
   taskSource?(taskId: string): { kind: string; where?: string; label: string; title: string; whenDone?: string; wrote?: string[] } | undefined;
+  /** D372: the task the conversation was on just before this user message (seq), if recent. */
+  follows?(seq: number): Follows | undefined;
+}
+
+/** D372: the task the last answer came from, so a follow-up continues it instead of opening a new one. */
+export interface Follows {
+  taskId: string;
+  title: string;
+  attention: Attention;
+  /** Minutes since the task last moved, at the message. */
+  agoMin: number;
+  harness?: string;
+  /** Where it works, in a few words ("a browser on MacBook", "repo ~/dev/hawdb, branch ducter/x"). */
+  where?: string;
+  merged?: boolean;
+}
+
+const agoWords = (min: number) => (min < 2 ? "just now" : min < 90 ? `${min} min ago` : `${Math.round(min / 60)} h ago`);
+
+/** D372: one line under the user's message: the task it most likely follows, and what continuing means. */
+export function followsLine(f: Follows): string {
+  const state = f.attention === "done" || f.attention === "done_claimed" ? "done" : f.attention === "failed" ? "didn't work" : f.attention === "needs_you" || f.attention === "blocked" ? "waiting for the user" : "still working";
+  const who = [f.harness, f.where].filter(Boolean).join(", ");
+  const head = `  (just before this: task ${f.taskId} "${clip(f.title, 80)}", ${state}${state === "still working" ? "" : ` ${agoWords(f.agoMin)}`}${who ? `, ${who}` : ""}`;
+  if (f.merged) return `${head}; its work was merged: new work is a new task)`;
+  if (state === "still working" || state === "waiting for the user") return `${head})`;
+  return `${head}. More of that work goes there with task_send, even done; separate work, or a new one asked for: task_open)`;
 }
 
 /** D236: who said the message a reply answers, and what it was, as the head of the user's line. */
@@ -237,7 +264,9 @@ export function renderTrigger(e: LogEvent, ctx: RenderCtx): string {
           : `[your question answered: reply]${about} · user: ${b.text}${pics} (they answered by replying to it)`;
       }
       if (b.reply) return [`[user, ${replyHead(b.reply, false)}] ${b.text}${pics}`, ...replyAbout(b.reply, ctx)].join("\n");
-      return `[user] ${b.text}${pics}`;
+      // D372: what the conversation was on just before, so a follow-up carries that task on.
+      const f = e.seq > 0 ? ctx.follows?.(e.seq) : undefined;
+      return `[user] ${b.text}${pics}${f ? `\n${followsLine(f)}` : ""}`;
     }
     case "report": {
       const r = e.body as Bodies["report"];

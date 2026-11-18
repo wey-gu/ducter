@@ -2021,3 +2021,10 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] **D365: a contrast floor for faded "not set up" marks** (the resting own-number and Tuwa handsets white on white; Jira's navy mark on the dark tile; research/135 #12, #13). Trigger: the next Settings pass or a theme token change.
 - [ ] **D365: the server home's versions row** (version, state and 检查更新 stacked in a narrow right column; no hairline above 自动更新; research/135 #11). Trigger: the update work next touches `devupdate.go`'s `versionRow`.
 - [ ] **D365: the Settings pass in the real Mac app and the iOS Simulator** (this pass used the Mac's test renderer and headless Chrome at 390). Trigger: the next release's walk.
+
+## Continuity first (D372, `conversation.md`, research/139)
+
+- [ ] **D372: a continued task moves to the computer its follow-up needs** (the errand on hel's browser, the follow-up needs the person's signed-in Chrome on the Mac: `task_switch` takes a computer, `loadout.switchTask` already moves, E3). Trigger: the author's first follow-up that needs another computer's sign-ins.
+- [ ] **D372: continue the person's own sessions from the conversation** ("接着我早上终端里那个 claude 会话": search D299's outside sessions under D327's consent and adopt one through the runner's `adopt`). Trigger: the author asks for it in the conversation, or the D299 reader is opened to the partner for another reason.
+- [ ] **D372: watch it on the home** (how often the second look fires on separate work, and whether a long-lived continued session needs a fresh one sooner). Trigger: a week of the author's use after the release.
+- [ ] **D372: Claude Code resume days later, live** (Codex verified on hel; Claude Code only per research/03). Trigger: the first Claude Code task taken up again after its session was parked a day.

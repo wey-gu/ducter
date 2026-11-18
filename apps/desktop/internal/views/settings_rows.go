@@ -140,10 +140,13 @@ func (a *App) confirmRow(c *ui.Context, key, ask, keep, goLabel, about string) (
 }
 
 // clayTile is clay art fitted in the 40 tile column; faded, a thing not
-// there yet.
+// there yet: grey, never see-through (D375, theme.FadedClay).
 func (a *App) clayTile(c *ui.Context, art string, faded bool) func() {
 	return func() {
 		bmp := theme.Clay(art)
+		if faded {
+			bmp = theme.FadedClay(art, a.T)
+		}
 		if bmp == nil {
 			return
 		}
@@ -156,10 +159,7 @@ func (a *App) clayTile(c *ui.Context, art string, faded bool) func() {
 				w = 40 * iw / ih
 			}
 		}
-		img := ui.Image(c, bmp).Size(w, h).AccessHidden(true)
-		if faded {
-			img.Opacity(0.5)
-		}
+		ui.Image(c, bmp).Size(w, h).AccessHidden(true)
 	}
 }
 
@@ -176,27 +176,25 @@ func (a *App) markTile(c *ui.Context, key string, draw func(p *ui.Painter, r ui.
 // brandTile is a third-party product's own mark (D314), drawn faithfully at
 // 24 on the small white clay tile; an app whose mark is its app icon
 // (Nowledge Mem) shows that icon as the tile itself, at 40. Faded: the
-// product not set up yet.
+// product not set up yet: the mark's shape in the muted ink on the same
+// tile, an app icon grey (D375, theme.FadedBrand), never see-through.
 func (a *App) brandTile(c *ui.Context, name string, faded bool) func() {
 	t := a.T
 	return func() {
 		src := theme.Brand(name)
+		if src != nil && faded {
+			src = theme.FadedBrand(name, t)
+		}
 		if src == nil {
 			return
 		}
 		if _, ok := src.(*ui.Bitmap); ok {
-			img := ui.Image(c.Key("brand:"+name), src).Size(40, 40).Radius(t.RadiusSM).AccessHidden(true)
-			if faded {
-				img.Opacity(0.5)
-			}
+			ui.Image(c.Key("brand:"+name), src).Size(40, 40).Radius(t.RadiusSM).AccessHidden(true)
 			return
 		}
 		ui.Row(c.Key("btile:"+name)).Size(40, 40).Radius(t.RadiusSM).Background(t.Surface).Border(1, t.LineSoft).
 			Shadow(0, 2, 0, 0, t.Line).Justify(ui.Center).AlignItems(ui.Center).AccessHidden(true).Children(func() {
-			img := ui.Image(c, src).Size(24, 24)
-			if faded {
-				img.Opacity(0.5)
-			}
+			ui.Image(c, src).Size(24, 24)
 		})
 	}
 }

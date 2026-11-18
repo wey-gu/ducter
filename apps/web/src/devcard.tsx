@@ -188,16 +188,20 @@ function upToDate(u: DeviceUpdate): string {
 
 /**
  * D161 (5): the card says Ducter's version only with an update; when it is current, the list says
- * so once, with 现在检查 (在查… in the same place while it asks, D167).
+ * so once, with 检查更新 (在查… in the same place while it asks, D167). D375: a row like the switch
+ * under it (its name, its line, the button at the right edge), as the Mac's versions card.
  */
 function Versions() {
   const home = A.devices?.find((d) => d.home);
   const u = home?.update;
   if (!home || !u || !u.latest || u.available || u.phase) return null;
   return (
-    <div class="dc-versions">
-      <span class="small sub">{upToDate(u)}</span>
-      {A.checkingUpdates ? <span class="small sub">{t("devup.checking")}</span> : <Btn kind="text" size="sm" label={t("devup.checknow")} onClick={() => A.checkUpdates(home.id)} />}
+    <div class="set-row dc-versions">
+      <span class="grow">
+        <b>{t("settings.versions.title")}</b>
+        <small>{upToDate(u)}</small>
+      </span>
+      {A.checkingUpdates ? <small class="dc-checking">{t("devup.checking")}</small> : <Btn kind="secondary" size="sm" label={t("devup.checknow")} onClick={() => A.checkUpdates(home.id)} />}
     </div>
   );
 }

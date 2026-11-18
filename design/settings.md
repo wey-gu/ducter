@@ -204,8 +204,21 @@ The two weakest, and what changed:
   carry the Mac's drawn check and ask bubble; the web's 这台电脑 says what each choice does; the web's
   night-update line is its switch's line; 「今天有什么安排」 in 「」.
 
-Left, with reasons in research/135: the server home's versions row (the update work's slot), a contrast
-floor for faded "not set up" marks, 按住说话的键 with no line.
+Left then, done in the second pass (D375): the versions row, the faded marks, 按住说话的键's line.
+
+## The second pass (D375)
+
+- **A faded mark keeps a contrast floor.** "Not set up" (or down, or coming soon) takes the colour
+  away, never the shape, and never by transparency: a drawn mark is its shape in the muted ink with its
+  white holes the tile's ground; a picture is grey, its tone times the theme's `Faded` token, so its
+  middle keeps 3:1 on the card in both themes (`theme/faded_test.go`). The tile keeps its clay. One
+  token on each platform (`Tokens.Faded`, `--faded-art`, `--faded-ink`); every faded tile uses it.
+- **Updates and about's versions card is rows** (the shared `stateRow`): each computer under a
+  hairline, name, line and its one state on the left; its version and the home's **检查更新** at the
+  right end. The night switch is a row under its own hairline. The web's version line is a row the same
+  way, titled **各台电脑上的 Ducter**.
+- **按住说话的键** says what the key does (**Ducter 在最前面时，按住它说话，松开就放进输入框。**); Fn adds
+  the dictation line; 不用键 points at the microphone.
 
 ## Not done
 

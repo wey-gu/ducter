@@ -33,6 +33,10 @@
   --ink-soft: #4a3d30;
   --ink-muted: #75654f;
   --faint: #c7b49a;
+  /* D375: a faded mark's floor. A drawn mark in the muted ink; a picture grey, its tone times
+     0.72 (0.85 in the dark), so its middle keeps 3:1 on the card (the Mac's theme.Faded). Never transparency. */
+  --faded-ink: var(--ink-muted);
+  --faded-art: grayscale(1) brightness(0.72);
   --accent: #ff8a3d;
   --on-accent: #2b2118;
   /* The two voices (D129): the user in the accent with ink (6.9:1), the partner in white. */
@@ -210,6 +214,7 @@
     --ink-soft: #dccbb6;
     --ink-muted: #a8957e;
     --faint: #5a4c3e;
+    --faded-art: grayscale(1) brightness(0.85);
     --user-bubble: #ff8a3d;
     --on-user-bubble: #2b2118;
     --partner-bubble: #2a221b;
@@ -294,6 +299,7 @@
   --ink-soft: #dccbb6;
   --ink-muted: #a8957e;
   --faint: #5a4c3e;
+  --faded-art: grayscale(1) brightness(0.85);
   --user-bubble: #ff8a3d;
   --on-user-bubble: #2b2118;
   --partner-bubble: #2a221b;
@@ -11025,17 +11031,16 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   color: var(--ink-soft);
 }
 /* 你的设备: the version line is a row, its button at the right edge. */
-.set-card > .dc-versions {
-  justify-content: space-between;
+/* D375: the versions line is a row like the switch under it: name, line, the button at the right edge. */
+.set-card > .set-row.dc-versions {
   flex-wrap: nowrap;
-  min-height: 52px;
+  gap: var(--s3);
+  min-height: 56px;
   margin: 0;
-  padding: var(--s1) var(--s2) var(--s1) var(--set-in, var(--s4));
+  padding: var(--s3) var(--set-in, var(--s4));
 }
-.set-card > .dc-versions .small {
-  margin: 0;
-  color: var(--ink-soft);
-}
+.set-card > .set-row.dc-versions:active { background: none; }
+.set-card > .set-row.dc-versions .dc-checking { flex: none; margin: 0; }
 /* Accounts: a source, the calls and your own number read as rows: the art in the tile column,
    the name and its line beside it, the actions at the right edge; never a centred poster. */
 .set-page.pushed .src-card {
@@ -12862,11 +12867,15 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 .g-tile { flex: none; display: grid; place-items: center; width: 40px; height: 40px; }
 .g-tile.mark { border-radius: var(--r-sm); background: var(--surface); border: 1px solid var(--line-soft); box-shadow: 0 2px 0 var(--line); }
 .g-tile img { width: 40px; height: 40px; object-fit: contain; }
-.g-tile.faded img { opacity: 0.5; }
+/* D375: faded takes the colour, never the shape: grey and toned (--faded-art), never see-through. */
+.g-tile.faded img { filter: var(--faded-art); }
 /* D314: a product's own mark at 24 on the white clay tile; an app icon (Nowledge Mem) is the tile itself. */
 .g-tile .brand-mark { display: block; color: var(--ink); }
 .g-tile .brand-mark svg { display: block; width: 100%; height: 100%; }
-.g-tile.brand.faded .brand-mark { opacity: 0.5; }
+/* A faded drawn mark: its shape in the muted ink, its white holes the tile's ground (the Mac's theme.Silhouette). */
+.g-tile.brand.faded .brand-mark { color: var(--faded-ink); }
+.g-tile.brand.faded .brand-mark svg [fill]:not([fill="none"]):not([fill="#fff"]) { fill: var(--faded-ink); }
+.g-tile.brand.faded .brand-mark svg [fill="#fff"] { fill: var(--surface); }
 .g-tile.brand-app img { width: 40px; height: 40px; border-radius: var(--r-sm); }
 /* A tile of agent coins: each coin keeps its own size (the tile's 40-pt art rule is for one image). */
 .g-tile .coin-art img { width: 100%; height: 100%; }
@@ -15552,7 +15561,7 @@ svg .wave.w2.on {
 /* D366: Nowledge Mem on a computer for tasks: one row under its AI agents, on its card and the lend sheet. */
 .dc-mem { margin-top: 10px; padding: 4px 14px; border-radius: var(--r-md); background: var(--surface); box-shadow: inset 0 0 0 1px var(--line), 0 2px 0 var(--line); }
 .wmem-icon .brand-icon { display: block; width: 36px; height: 36px; border-radius: 10px; box-shadow: 0 1px 0 var(--line); }
-.wmem-icon.faded .brand-icon { filter: saturate(0.35); opacity: 0.7; }
+.wmem-icon.faded .brand-icon { filter: var(--faded-art); } /* D375 */
 .wmem-icon .cring { border-radius: 12px; }
 .wmem-why { margin: 0; font-size: var(--sm); line-height: 1.55; color: var(--ink-soft); }
 .wmem-why.soft { font-size: var(--xs); color: var(--ink-muted); }

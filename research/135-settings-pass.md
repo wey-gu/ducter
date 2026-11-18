@@ -60,10 +60,10 @@ of the pane's main job, delight. The total is out of 35.
 | 8 | This computer (web) | Light and dark, Language, Details in the conversation with no line of what they do | `apps/web/src/views.tsx:2916`, `settings-more.tsx:171` | Fixed: one line each, as the Mac's (zh and en) |
 | 9 | Your devices (web) | The night-update note under the card, not the switch's line | `apps/web/src/devcard.tsx:174-176` | Fixed |
 | 10 | Accounts (both) | **日历已连接：可以问它“今天有什么安排”** in curly quotes where every other line quotes with 「」 | `apps/desktop/internal/i18n/calendar.go:81`, `apps/web/src/i18n-calendar.ts:66` | Fixed: 「今天有什么安排」 |
-| 11 | Updates and about (Mac) | The server home's versions row cramped (version, state, 检查更新 stacked in the right column) and no hairline above 自动更新 | `apps/desktop/internal/views/devupdate.go:511` | Left: the update work's own slot (D148), in motion with D362 |
-| 12 | Accounts, own number (both) | The resting handset faint on white | `apps/web/src/own-phone.tsx:325`, Mac's own group | Left: deliberate (not set up, D337); a contrast floor for faded tiles is worth a decision of its own |
-| 13 | To-do sources (Mac, dark) | Jira's faded mark dark blue on the dark tile | the brand tile's faded state | Left: same as 12 |
-| 14 | Look and sound (Mac) | 按住说话的键 is the only row there with no line | `voice` rows | Left: small |
+| 11 | Updates and about (Mac) | The server home's versions row cramped (version, state, 检查更新 stacked in the right column) and no hairline above 自动更新 | `apps/desktop/internal/views/devupdate.go:511` | Left then; done in D375: a row like every other (name, line and state left, version and 检查更新 right), a hairline above 自动更新; the web's line a row too |
+| 12 | Accounts, own number (both) | The resting handset faint on white | `apps/web/src/own-phone.tsx:325`, Mac's own group | Left then; done in D375: faded is grey, never see-through, with a 3:1 floor (tested) |
+| 13 | To-do sources (Mac, dark) | Jira's faded mark dark blue on the dark tile | the brand tile's faded state | Left then; done in D375: a faded drawn mark is its shape in the muted ink |
+| 14 | Look and sound (Mac) | 按住说话的键 is the only row there with no line | `voice` rows | Left then; done in D375: one line of what the key does |
 | 15 | Passwords & cards (both) | A toggle row's words on the card edge and add rows' on the tile column's text edge, in one card | the grid's convention | Left: systemic, D273's |
 
 Looked at and fine: the Settings list (web), Notifications (the master switch's line already says where
@@ -80,7 +80,7 @@ pane, zh/en parity of the words read back.
   drawing the same row two ways (add rows, notes after cards). The shared pieces in `settings.md` now
   name the resting row.
 - **Faded tiles need a contrast floor.** Two "not set up" marks nearly vanish (white on white, navy on
-  dark). Left for its own decision.
+  dark). Decided in D375: grey and the muted ink, never transparency, 3:1 at the least.
 
 ## Summary
 

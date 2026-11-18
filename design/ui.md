@@ -97,6 +97,11 @@ components and tokens; a value not in the scales below needs a token first.
   press.
 - There are no chips for status, evidence or metadata (D73, "No pills" below).
 
+**Faded (D375).** A thing not set up, down or coming soon is faded by colour, never by transparency:
+a drawn mark in `InkMuted` (its white holes the tile's ground), a picture grey with its tone times
+`Faded` (0.72 light, 0.85 dark; web `--faded-art`), so its middle keeps 3:1 on the card. Its tile keeps
+its clay.
+
 **Buttons** (one family): primary (ink filled from `#3B2D22` at the top, cream text, highlight cream at 26%, a 1pt rim of `#FFECD6` at 8%, a 1pt warm seam `#5A4434` above a `#140D07` ledge, drop at 38%: an ink ledge alone vanishes),
 secondary (cream `#FFF6EA` with a 1pt inner rim of ink at 9%, ledge `#CDAE8C` under a 1pt `#EAD6BC` seam (darker than the paper so it reads as tall as the ink button); on a tinted card
 it turns white on the card's ledge deepened 45% toward the state's strong tone, e.g. `#E99A65` on Needs you), accent (orange, ledge `#C9642A` under a 1pt `#FFA466` seam, highlight white at

@@ -582,6 +582,41 @@ func (a *App) valueRow(c *ui.Context, key, title, sub string, mark func(), value
 	})
 }
 
+// stateRow is a card's row for one thing that has a version and a state
+// (D375: a computer in Updates and about's versions card), laid out as
+// every row is: the hairline above, the name and its line on the left with
+// its state under them (sideStatus, sideLink), the value in mono and the one
+// action at the right end, centred on the row. below: what opens under it
+// (a failure's why, the update's button), on the row's text edge.
+func (a *App) stateRow(c *ui.Context, key, title, sub string, state func(), value string, action func(), below func()) {
+	t := a.T
+	a.sep(c)
+	ui.Column(c.Key("srow:"+key)).Gap(t.S3).Padding(t.S4, t.S5).Children(func() {
+		ui.Row(c).Gap(t.S5).MinHeight(36).AlignItems(ui.Center).Children(func() {
+			ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(2).Children(func() {
+				ui.Text(c, title).FontSize(t.MD).FontWeight(700).LineHeight(1.4)
+				if sub != "" {
+					ui.Text(c, sub).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
+				}
+				if state != nil {
+					state()
+				}
+			})
+			ui.Row(c).Shrink(0).Gap(t.S4).AlignItems(ui.Center).Children(func() {
+				if value != "" {
+					ui.Text(c, value).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.InkSoft).Selectable()
+				}
+				if action != nil {
+					action()
+				}
+			})
+		})
+		if below != nil {
+			below()
+		}
+	})
+}
+
 // sideStatus is a valueRow's status words: one short line, XS, in its tone.
 func (a *App) sideStatus(c *ui.Context, text string, tone sideTone) {
 	t := a.T

@@ -60,7 +60,10 @@ type Tokens struct {
 	// BgDeep is the devices stage; Sunken the lighter sunken tint (diff
 	// hunks, inline code); Faint separators in words (a crumb's slash).
 	BgDeep, Sunken, Faint ui.Color
-	Accent, OnAccent      ui.Color
+	// Faded is a faded picture's tone (D375): grey, times this, so its
+	// middle keeps 3:1 on the card (faded.go). Drawn marks fade to InkMuted.
+	Faded            float32
+	Accent, OnAccent ui.Color
 	// The two voices of the conversation (D129): the user's bubble in the
 	// accent, the partner's in a soft surface on the paper.
 	UserBubble, OnUserBubble                ui.Color
@@ -323,6 +326,7 @@ func Pebble() *Tokens {
 		BgDeep:        hex("#FCECD7"),
 		Sunken:        hex("#F7EBDA"),
 		Faint:         hex("#C7B49A"),
+		Faded:         0.72,
 		Line2:         hex("#E0C9B0"),
 		Ink:           hex("#2B2118"),
 		InkMuted:      hex("#75654F"),

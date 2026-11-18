@@ -2030,8 +2030,9 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] **D360: a group by hand on the Mac** (the web has the selection bar's **放进一个分组**; the Mac has no multi-select on On hand yet, so it is the partner's words there). Trigger: the Mac's On hand gets selection.
 - [ ] **D360: the keys walk a group's parts** (j/k skip the parts inside a group card on both clients; each opens by click). Trigger: the author walks On hand by keys past a group.
 - [ ] **D360: a group's parts on the phone apps** (iOS, Android draw the parts as their own cards). Trigger: the next phone On hand pass.
-- [ ] **D365: a contrast floor for faded "not set up" marks** (the resting own-number and Tuwa handsets white on white; Jira's navy mark on the dark tile; research/135 #12, #13). Trigger: the next Settings pass or a theme token change.
-- [ ] **D365: the server home's versions row** (version, state and 检查更新 stacked in a narrow right column; no hairline above 自动更新; research/135 #11). Trigger: the update work next touches `devupdate.go`'s `versionRow`.
+- [x] **D365: a contrast floor for faded "not set up" marks.** Done in D375 (2026-11-19): grey and the muted ink, never transparency, 3:1 at the least (`theme/faded_test.go`).
+- [ ] **D375: a dark cast for `token_ink`** (the token of an agent with no coin of its own is ink on the dark card, faded or not, about 1.2:1). Trigger: the next clay art pass.
+- [x] **D365: the server home's versions row.** Done in D375 (2026-11-19): rows under hairlines, the version and 检查更新 at the right end.
 - [ ] **D365: the Settings pass in the real Mac app and the iOS Simulator** (this pass used the Mac's test renderer and headless Chrome at 390). Trigger: the next release's walk.
 - [ ] **D372: an errand run live on the fast tier** (Sonnet booking and comparing on real sites vs Opus; research/142 only infers it). Trigger: the author's next hotel or flight task on the home.
 - [ ] **D372: Codex's fast tier** (which of sol/terra/luna/astra is faster and lighter on the plan; nothing Ducter reads says). Trigger: Codex lists a tier, or a measured run.

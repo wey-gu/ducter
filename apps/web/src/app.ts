@@ -519,9 +519,14 @@ class AppState {
   /** D306: after each frame, the glances the app shows are kept true (ambient.tsx). */
   onAmbient?: () => void;
   changed() {
-    for (const fn of this.listeners) fn();
-    this.scheduleRead();
-    this.reloadIfStale();
+    // A listener that throws must not keep the read receipts or the stale reload from running
+    // (2026-11-19: a test file's leftover listener held the reload on CI).
+    try {
+      for (const fn of this.listeners) fn();
+    } finally {
+      this.scheduleRead();
+      this.reloadIfStale();
+    }
   }
 
   /** The home's version, when it isn't the one this page was built with (welcome.version). */

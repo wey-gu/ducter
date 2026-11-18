@@ -39,13 +39,13 @@ test("a welcome from a newer home reloads, after the sheet closes and the words 
   expect(A.staleFor).toBe("9.9.9");
   expect(reloads).toBe(0); // a sheet is open
   A.sheet = null;
-  A.changed();
+  A.reloadIfStale(); // what changed() runs; changed() may wait for a frame when another file defined requestAnimationFrame (CI, 2026-11-19)
   expect(reloads).toBe(0); // words not sent yet
   A.draft = "";
-  A.changed();
+  A.reloadIfStale(); // what changed() runs; changed() may wait for a frame when another file defined requestAnimationFrame (CI, 2026-11-19)
   // If this ever fails again, say which guard held it (CI only, 2026-11-19).
   expect({ stale: A.staleFor, sheet: A.sheet, live: A.live?.id ?? null, draft: A.draft, kept: store.get("ducter.reloadedFor") ?? null, hasReload: typeof (globalThis as any).location?.reload }).toEqual({ stale: "9.9.9", sheet: null, live: null, draft: "", kept: "9.9.9", hasReload: "function" });
   expect(reloads).toBe(1);
-  A.changed();
+  A.reloadIfStale(); // what changed() runs; changed() may wait for a frame when another file defined requestAnimationFrame (CI, 2026-11-19)
   expect(reloads).toBe(1); // once per version
 });

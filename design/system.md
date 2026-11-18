@@ -216,6 +216,11 @@ changes.
   check per computer, shows one line per agent in its coin detail, and recommends it once
   where it is missing; it installs only through a task the user starts (Go on the card, or
   装上), following Mem's official setup guide. Never silently (D17).
+- **Nowledge Mem on a computer for tasks (D364).** A worker says where Mem stands there (Mem's own
+  `nmem doctor`); on the person's tap Ducter puts Mem's command line in its own tools folder (uv,
+  pinned) and signs it in with the person's one-time link through Mem's own `nmem connect`, which
+  also connects that computer's Codex and Claude Code. Only when the home has Mem; the link is never
+  kept; the home's `NMEM_CLI_PATH` never goes to a task elsewhere.
 - **L1** is built from the identity's stable sections (read without Working Memory) and
   hashed by Ducter. Changes are adopted only at cut points. Working Memory enters as an L4
   delta.

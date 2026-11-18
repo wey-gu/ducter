@@ -388,7 +388,7 @@ blocked feature. Copy never implies payment.
   with the title and brief (≤ 300 chars, 4 hits, 6 s cap) and puts `<what_i_know>` (ids, "the
   brief wins") in front of the first turn, logged by id; a read-only task `memory_search`
   (≤ 5 results, 6 per task, each read logged by query and ids) is answered by the home, so a
-  worker holds no Mem key. `<what_i_know>` is capped at the render too (4 notes, 220 chars
+  worker without Mem of its own needs no Mem sign-in (one with it: D364, below). `<what_i_know>` is capped at the render too (4 notes, 220 chars
   each; `KNOWN_MAX`, guarded in `prompt-budget.test.ts`). Where the plugin is there **in any
   form** (installed, review, update: D174 (6); the author's own Codex is a review), neither: it
   already gives that context, and a second recall would double it. The plugin's own Context
@@ -428,6 +428,30 @@ on every computer, without owning it (D17):
   signed-in agent without it: one card, Go 装上 suggested, no timer (it changes the agent's
   own settings, so it waits for the tap).
 - **Memory off:** no line, no card, no install.
+
+## Mem on a computer for tasks (D364, built 2026-11-18)
+
+*Who:* the developer whose haswell got Codex and Claude Code from D363 and whose tasks there should
+know him like his own sessions do; the consumer lending a NAS. The fresh user never sees it: nothing
+shows unless the home already has Mem (D169 (6)). *Before:* the card said nothing, its tasks ran
+without the person's Context Bundle, and nothing they did reached Mem. *After:* the card says
+**{device} 上做事还不记得你**, and two taps and one pasted link later **记得你了**, naming the agents that
+share the one memory there. Evidence and the live install: `research/134`.
+
+- **Where it stands** (`core/worker-mem.ts`, on the worker): Mem's own `nmem --json doctor` at
+  start, each welcome, the card opening and after each step. absent (no `nmem`), sign_in (`server
+  reachable` and `api key` not both pass), ready (with the agents Mem's per-tool checks pass for).
+  `DeviceView.mem` carries it, only on a worker and only while memory is on and the home's Mem is
+  connected.
+- **装上 / Install:** the person's own `nmem` stays; else uv 0.13.7 (pinned, checked) into
+  `<data>/tools/bin` and `uv tool install nmem-cli` with every uv folder inside `<data>/tools`.
+  10 s and 57 MB on a bare Ubuntu 24.04 (VERIFIED).
+- **登录 / Sign in:** the person's one-time connect link, then Mem's own `nmem connect <link> --tool
+  codex-cli --tool claude-code` for the agents there: the sign-in, a live check, and Mem's plugin
+  registered in those agents (DOCUMENTED). The link reaches only that computer's nmem; shown lines
+  are scrubbed. **接上 / Connect** runs the same without a link for an agent added later.
+- **Then:** Mem turning ready makes the home read Mem's plugin check there at once; tasks there run
+  with the plugin as the persona (D168), and the home's `NMEM_CLI_PATH` is never passed to them.
 
 ## Open (measure in the prototype)
 

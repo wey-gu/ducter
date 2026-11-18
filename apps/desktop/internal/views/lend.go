@@ -622,6 +622,10 @@ func (a *App) lendHere(c *ui.Context, l *protocol.ServerFrame) {
 		if a.lendAgents(c, dv) {
 			return // its own 以后再说 and 装上 end the sheet while it asks
 		}
+		// D364: once it can take tasks, Nowledge Mem there too, so its tasks remember you.
+		if dv.Mem != nil && anyReady(dv.Harnesses) {
+			a.memOnDevice(c, dv)
+		}
 	}
 	ui.Row(c).Justify(ui.End).Children(func() {
 		if a.button(c, a.L.T("lend.done"), btnPrimary, t.ControlMD, t.Surface) {

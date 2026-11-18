@@ -1451,7 +1451,10 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     // NMEM_SPACE only when the user chose one. D229: NMEM_CLI_PATH too, when Ducter's nmem is
     // named there (one Ducter put in off PATH), so the plugin runs the same nmem (its own rule).
     const mem = core.personaFor ? core.personaFor(core.tasks.get(id)?.persona).mem : core.persona.mem; // D312: the partner the task is for
-    if (mem) spec.env = { NMEM_AGENT_ID: mem.agentId, ...(mem.space ? { NMEM_SPACE: mem.space } : {}), ...(process.env.NMEM_CLI_PATH ? { NMEM_CLI_PATH: process.env.NMEM_CLI_PATH } : {}) };
+    // D364: only on the home: the home's path means nothing on another computer, where the plugin
+    // finds that computer's own nmem on its PATH (Ducter's tools folder is on it).
+    const elsewhere = "device" in open.place && !!open.place.device && open.place.device !== "local";
+    if (mem) spec.env = { NMEM_AGENT_ID: mem.agentId, ...(mem.space ? { NMEM_SPACE: mem.space } : {}), ...(process.env.NMEM_CLI_PATH && !elsewhere ? { NMEM_CLI_PATH: process.env.NMEM_CLI_PATH } : {}) };
     if (memoryOn()) {
       // D168: the user's Nowledge Mem plugin stays on in the task, as the persona's identity. Its
       // Bridge mailbox notices stay out: messages to the persona are the partner's, not a task's.

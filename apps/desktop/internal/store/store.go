@@ -704,7 +704,7 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 	case "rename_result":
 		fc := f
 		s.Renamed = &fc
-	case "disconnect_result", "update_result", "agent_update_result", "agent_setup_result", "mem_plugin_result", "anywhere_setup_result":
+	case "disconnect_result", "update_result", "agent_update_result", "agent_setup_result", "mem_setup_result", "mem_plugin_result", "anywhere_setup_result":
 		fc := f
 		s.DeviceResult = &fc
 	case "settings":

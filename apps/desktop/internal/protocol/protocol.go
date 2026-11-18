@@ -1888,6 +1888,40 @@ type DeviceView struct {
 	AlwaysOn bool `json:"alwaysOn,omitempty"`
 	// Via is how a connected worker reaches the home now (D293).
 	Via *DeviceVia `json:"via,omitempty"`
+	// Mem is Nowledge Mem on a computer for tasks (D364): only on a worker,
+	// only while memory is on and the home's Mem is connected.
+	Mem *DeviceMemView `json:"mem,omitempty"`
+}
+
+// DeviceMemView is Nowledge Mem on a computer for tasks (D364): State absent
+// (no Mem command line there) | sign_in | ready; Agents: the AI agents there
+// Mem's check says are connected to it; Step: installing | connecting |
+// failed now (Reason network | space | unsupported | bad_link | used |
+// unreachable | failed), nil when idle.
+type DeviceMemView struct {
+	State       string         `json:"state"`
+	Installable bool           `json:"installable,omitempty"`
+	Version     string         `json:"version,omitempty"`
+	Agents      []string       `json:"agents,omitempty"`
+	Step        *DeviceMemStep `json:"step,omitempty"`
+}
+
+// DeviceMemStep is the step under way on DeviceMemView, or how it ended.
+type DeviceMemStep struct {
+	Phase  string `json:"phase"`
+	Pct    int    `json:"pct,omitempty"`
+	Reason string `json:"reason,omitempty"`
+	Detail string `json:"detail,omitempty"`
+}
+
+// MemSetupReq is 装上 or 登录 (with the pasted one-time link, never kept)
+// or 接上 for Nowledge Mem on a computer for tasks (D364). Answered with
+// mem_setup_result only when the computer can't take it.
+type MemSetupReq struct {
+	T      string `json:"t"` // "mem_setup"
+	Device string `json:"device"`
+	Action string `json:"action"` // install | connect
+	Link   string `json:"link,omitempty"`
 }
 
 // DeviceVia is how a device reaches the home now (D293): Kind is "local"
@@ -2598,7 +2632,7 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 	// dropped here unseen (the live view's live / live_frame were, from D151 to
 	// D172: 试一下 sat at 正在打开 example.com…… forever).
 	case "welcome", "events", "on_hand", "task_history", "sent", "action_result", "error",
-		"devices", "ability_result", "pair_code", "lend", "rename_result", "disconnect_result", "update_result", "agent_update_result", "agent_setup_result", "update_all_result", "mem_plugin_result", "anywhere_setup_result", "settings", "connections", "connection_result", "rules", "candidates", "account_usage", "activity",
+		"devices", "ability_result", "pair_code", "lend", "rename_result", "disconnect_result", "update_result", "agent_update_result", "agent_setup_result", "mem_setup_result", "update_all_result", "mem_plugin_result", "anywhere_setup_result", "settings", "connections", "connection_result", "rules", "candidates", "account_usage", "activity",
 		"task_new_options", "task_new_result", "open_task", "open_result", "project_add_result", "project_clone_result", "folder_browse_result",
 		"project_new_result", "git_login_state",
 		"first_screen", "folder_changes", "close_result", "live", "live_frame", "live_turn", "live_doing", "phone_terms", "phone_install_result", "phone_erase_result", "phone_view", "phone_frame", "phone_doing", "browser_sites", "browser_check", "connection_reads", "proactive_day", "media_keys", "saved", "phone_did",

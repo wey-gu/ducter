@@ -15506,3 +15506,16 @@ svg .wave.w2.on {
     transform: scaleY(0.7);
   }
 }
+
+/* D364: Nowledge Mem on a computer for tasks: one row under its AI agents, on its card and the lend sheet. */
+.dc-mem { margin-top: 10px; padding: 4px 14px; border-radius: var(--r-md); background: var(--surface); box-shadow: inset 0 0 0 1px var(--line), 0 2px 0 var(--line); }
+.wmem-icon .brand-icon { display: block; width: 36px; height: 36px; border-radius: 10px; box-shadow: 0 1px 0 var(--line); }
+.wmem-icon.faded .brand-icon { filter: saturate(0.35); opacity: 0.7; }
+.wmem-icon .cring { border-radius: 12px; }
+.wmem-why { margin: 0; font-size: var(--sm); line-height: 1.55; color: var(--ink-soft); }
+.wmem-why.soft { font-size: var(--xs); color: var(--ink-muted); }
+.wmem-signin p { color: var(--ink); }
+.lend-setup .wmem { margin-top: var(--s2); border-top: 1px solid var(--line); padding-top: 12px; }
+@media (prefers-reduced-motion: reduce) {
+  .wmem-icon .cring { animation: none; border-color: var(--accent); opacity: 0.5; }
+}

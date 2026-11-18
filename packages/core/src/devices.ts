@@ -45,6 +45,8 @@ export interface DevicesOptions {
   dataDir: string;
   /** D363: putting agents on the home and signing them in there (agent-setup.ts): its rows carry that state. */
   agentSetup?: () => import("./agent-setup.ts").AgentSetup | undefined;
+  /** D364: memory is on and the home's Nowledge Mem is connected: a worker's own Mem shows on its card. */
+  memOn?: () => boolean;
   auth: DeviceAuth;
   workers: Workers;
   env?: Record<string, string | undefined>;
@@ -434,6 +436,8 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
           abilities: [hello?.abilities?.find((a) => a.id === "web") ?? { id: "web", state: "unavailable", reason: "worker_old" }, hello?.abilities?.find((a) => a.id === "computer") ?? later("computer"), hello?.abilities?.find((a) => a.id === "phone") ?? later("phone")], // D199: no 打电话 here (the home's)
           alwaysOn: hello?.alwaysOn ?? alwaysOnKind(kind),
           ...(on?.via ? { via: { kind: on.via.kind, sealed: on.via.sealed } } : {}),
+          // D364: Nowledge Mem there, as it says it; only for someone whose home has Mem (never a reason to get it, D169 (6)).
+          ...(hello?.mem && o.memOn?.() ? { mem: hello.mem } : {}),
         } satisfies DeviceView;
       });
     const devices = [home, ...workers];

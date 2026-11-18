@@ -16,6 +16,8 @@ import { arrived, lendStep, minutesLeft, type LendKind } from "./lend-view.ts";
 import type { DeviceView } from "@ducter/protocol";
 import { AgentRow, SetupAnswer } from "./agent-setup.tsx";
 import { anyInstalling, anyReady, offerable } from "./agent-setup-view.ts";
+import { MemOnDevice } from "./worker-mem.tsx";
+import { lendShowsMem } from "./worker-mem-view.ts";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 const art = (n: string) => `app/art/${n}.webp`;
@@ -346,6 +348,8 @@ function LendAgents({ dv, done, setDone }: { dv: DeviceView; done: boolean; setD
           {!ordered.length && <p class="lend-note">{t("lend.agents.none")}</p>}
           {skipped && !ordered.length && <p class="lend-note">{t("lend.setup.later", dv.name)}</p>}
           <SetupAnswer dv={dv} />
+          {/* D364: once it can take tasks, Nowledge Mem there too, so its tasks remember you. */}
+          {lendShowsMem(dv) && <MemOnDevice dv={dv} />}
         </>
       )}
     </div>

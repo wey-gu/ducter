@@ -122,6 +122,30 @@ apart, then the sort's groups as rows, each with its count and one button (**交
 carries **我看过了** with its counts on its card. The pile counts as something on hand (the empty
 state doesn't show over it). Its sheets and their Go: `task-sources.md` §9.
 
+## Groups (D360)
+
+Several tasks that are one piece of work (登录页重做 in three tasks) stand as **one card** in the state
+section of their most urgent part; a stopped line stands in 等你 and counts as one thing that needs
+you. The partner makes a group when it splits a request (`task_open` `group`) or when the person says
+"把这几件放一起" (`task_group`); on the web the selection bar offers **放进一个分组 / Put in a group**.
+Nothing is filed by hand first. A group shows from two parts; counts stay per task; while finding,
+and in the rail beside an opened task, its tasks are rows of their own.
+
+The card: the group's name (display face 15/800), beads one per part and **{n} 件里做完 {k} 件**, its
+menu (⋯ on the web, right-click on the Mac: **改名**, **改成同时做 / 改成一件做完接下一件**, **取消分组（任务都留着）**);
+then the parts numbered on a thread, each with its mark (a tick, three working bars, a flag, a ring, a
+cross, a dashed ring for **排着**) and its right-hand words (the card's heartbeat words); a part that
+needs you shows its question inside the card. More than three parts fold to what is live and the next
+in line (**还有 {n} 件**). Under the parts: **一件做完接下一件 / One after another** (or **同时做**) while
+something is held; a stopped line instead says **第 2 件没做成，第 3 件在等你决定。** with **再试第 2 件**,
+**不管它，做第 3 件** and **第 3 件也不做了** (several: **后面 {n} 件** and **后面的不做了**). A held part offers
+**提前** on hover.
+
+The line (core `task-groups.ts`): parts in the same folder on the same computer run one after another;
+a later one is held by the home (no task, no agent) and opens when the part before it is done (its
+result back) from that part's unmerged branch, its brief led by which part it is and what the one
+before reported. Parts elsewhere run side by side. Research and words: research/131.
+
 D285: under the sections, On hand's last line leads on: **一直在跑的 n 件 ›** (when something keeps
 going on its own) and **做过的事 ›**, where every finished task stays, findable and marked
 (`past.md`). D315: the line wraps, so nothing is clipped from 900 to 1280. A Find that matches

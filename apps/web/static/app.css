@@ -15170,3 +15170,303 @@ svg .wave.w2.on {
     animation: pile-in 150ms linear;
   }
 }
+/* ---------- D360: 分组 / a group of tasks that are one piece of work, as one card ---------- */
+.tgroup {
+  position: relative;
+  margin: 2px 0 10px;
+  padding: 14px 16px 12px;
+  border-radius: 20px;
+  background: var(--surface);
+  box-shadow: 0 2px 0 var(--line), var(--drop);
+}
+.tgroup.live::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 44px;
+  border-radius: 20px 20px 0 0;
+  background: linear-gradient(var(--working-surface), transparent);
+  pointer-events: none;
+}
+.tgroup.stopped {
+  box-shadow: 0 2px 0 var(--needs-ledge), var(--drop);
+}
+.tgroup .ghead {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 28px;
+}
+.tgroup .gname {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--head);
+  font-size: var(--md);
+  font-weight: 800;
+  color: var(--ink);
+}
+.tgroup .gname-input,
+.bulk .gname-input {
+  min-width: 0;
+  flex: 1;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface-sunken);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 700;
+}
+.tgroup .gbeads {
+  display: inline-flex;
+  gap: 4px;
+  margin-left: auto;
+}
+.tgroup .gbead {
+  display: block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--line);
+}
+.tgroup .gbead.b-done {
+  background: var(--done-dot);
+}
+.tgroup .gbead.b-working {
+  background: var(--working-dot);
+}
+.tgroup .gbead.b-needs {
+  background: var(--needs-dot);
+}
+.tgroup .gbead.b-failed,
+.tgroup .gbead.b-dropped {
+  background: var(--failed-dot);
+}
+.tgroup .gbead.b-held,
+.tgroup .gbead.b-waiting {
+  background: none;
+  box-shadow: inset 0 0 0 1.5px var(--ink-soft);
+}
+.tgroup .gcount {
+  flex: none;
+  font-size: var(--xs);
+  font-weight: 600;
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+.tgroup .gmenu {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 6px 0 2px;
+  padding: 4px;
+  border-radius: var(--r-sm);
+  background: var(--surface-sunken);
+}
+.tgroup .gparts {
+  position: relative;
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}
+/* The thread the parts hang on, from the first mark to the last. */
+.tgroup .gparts::before {
+  content: "";
+  position: absolute;
+  left: 37px;
+  top: 18px;
+  bottom: 18px;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--line-soft);
+}
+.tgroup .gpart {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  min-height: 36px;
+  padding: 2px 0;
+}
+.tgroup .gpart.kfocus .gtitle {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+.tgroup .gidx {
+  width: 18px;
+  flex: none;
+  text-align: right;
+  font-size: var(--xs);
+  font-weight: 600;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+.tgroup .gmark {
+  position: relative;
+  z-index: 1;
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--surface);
+}
+.tgroup .gmark svg {
+  display: block;
+}
+.tgroup .gmark svg circle {
+  fill: currentColor;
+}
+.tgroup .gmark svg path {
+  stroke: var(--surface);
+}
+.tgroup .gmark.k-done {
+  color: var(--done-dot);
+}
+.tgroup .gmark.k-needs {
+  color: var(--needs-dot);
+}
+.tgroup .gmark.k-failed,
+.tgroup .gmark.k-dropped {
+  color: var(--failed-dot);
+}
+.tgroup .gmark.k-held {
+  color: var(--ink-soft);
+}
+.tgroup .gmark.k-waiting {
+  color: var(--waiting-ink);
+}
+.tgroup .gmark.k-held svg circle,
+.tgroup .gmark.k-waiting svg circle {
+  fill: var(--surface);
+}
+.tgroup .gmark.k-working {
+  background: var(--working-surface);
+}
+.tgroup .gmark .pulse {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 10px;
+}
+.tgroup .gmark .pulse i {
+  width: 2.5px;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--working-dot);
+  transform-origin: bottom;
+  animation: oh-pulse 1.6s var(--ease) infinite;
+}
+.tgroup .gmark .pulse i:nth-child(2) {
+  animation-delay: -0.55s;
+}
+.tgroup .gmark .pulse i:nth-child(3) {
+  animation-delay: -1.1s;
+}
+.tgroup .gtitle {
+  flex: 1 1 160px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  font: inherit;
+  font-size: var(--sm);
+  font-weight: 600;
+  line-height: 20px;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.tgroup .gtitle:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.tgroup .gtitle.is-held {
+  color: var(--ink-muted);
+  cursor: default;
+}
+.tgroup .gtitle.is-held:hover {
+  text-decoration: none;
+}
+.tgroup .m-done .gtitle {
+  color: var(--ink-soft);
+}
+.tgroup .gwhen {
+  flex: none;
+  font-size: var(--xs);
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+.tgroup .m-working .gwhen {
+  color: var(--working-ink);
+}
+.tgroup .m-done .gwhen {
+  color: var(--done-ink);
+}
+.tgroup .m-needs .gwhen {
+  color: var(--needs-ink);
+}
+.tgroup .m-failed .gwhen {
+  color: var(--failed-ink);
+}
+.tgroup .gask {
+  flex: 1 0 100%;
+  padding: 4px 0 6px 56px;
+}
+.tgroup .gfoot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 0 0 28px;
+  font-size: var(--xs);
+  color: var(--ink-muted);
+}
+.tgroup .gline {
+  color: var(--ink-soft);
+}
+.tgroup .gstop {
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: var(--needs-surface);
+}
+.tgroup .gstop p {
+  margin: 0 0 8px;
+  font-size: var(--sm);
+  font-weight: 600;
+  color: var(--needs-ink);
+}
+.tgroup .gacts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.bulk .gmake {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 200px;
+}
+.room-phone .tgroup {
+  padding: 12px 12px 10px;
+}
+.room-phone .tgroup .gask {
+  padding-left: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tgroup .gmark .pulse i {
+    animation: none;
+    transform: scaleY(0.7);
+  }
+}

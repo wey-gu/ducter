@@ -311,6 +311,7 @@ func (a *App) lensTabs(c *ui.Context, groups []lensGroup, lens string) {
 // are in the list with their own words, not counted here).
 func (a *App) stateCounts(b store.Board, lens string) [4]int {
 	n := [4]int{len(b.Lanes[store.LaneNeedsYou]), len(b.Lanes[store.LaneWorking]), len(b.Lanes[store.LaneWaiting]), store.DoneToday(b.Lanes[store.LaneDone], a.Now().Local())}
+	n[0] += a.stoppedGroups(b) // D360: a stopped line waits for the person's word
 	if loose(lens) {
 		n[0] += len(a.partnerDecisions()) + len(a.otherAsks()) // D312: another partner's own questions too
 		n[2] += len(a.looseWaiters())

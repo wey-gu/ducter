@@ -151,6 +151,8 @@ export interface WsDeps {
   calendar?: () => import("./calendar.ts").Calendar | undefined;
   /** D341: 待办来源 / To-do sources (task-sources/). */
   taskSources?: () => import("./task-sources/index.ts").TaskSources | undefined;
+  /** D360: groups of tasks that are one piece of work (task-groups.ts). */
+  taskGroups?: () => import("./task-groups.ts").TaskGroups | undefined;
   /** D285: 做过的事 / Past tasks (past.ts); absent in tests that don't need it. */
   /** D309: 伙伴们 / Partners (partners.ts); absent in tests that don't need them. */
   partners?: Partners;
@@ -1560,6 +1562,14 @@ export function createWsHandler(deps: WsDeps) {
           ...(Array.isArray(f.repos) ? { repos: f.repos.map(String) } : {}),
         });
         return send(ws, { t: "source_result", op: "set", ok, id: sid });
+      }
+      // D360: a group of tasks (task-groups.ts): made, renamed, reordered, taken apart, its line moved on.
+      case "task_group": {
+        const g = deps.taskGroups?.();
+        if (!g) throw new Error("groups aren't available here");
+        const r = await g.frame(f);
+        if (!r.ok) return send(ws, { t: "error", message: r.error });
+        return;
       }
       // D359: the pile (task-sources/pile.ts).
       case "pile_sort":

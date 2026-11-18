@@ -73,6 +73,7 @@ import { createGitLogin, type GitLogin, type GitLoginState } from "@ducter/proto
 import { createGhInstaller, useOwnTools, type GhInstaller } from "./gh-install.ts";
 import { ducterFolder } from "@ducter/protocol/src/ducter-folder.ts";
 import { createProjects } from "./projects.ts";
+import { createTaskGroups, type TaskGroups } from "./task-groups.ts";
 import { createReleaseWatch, type Fetch as ReleaseFetch, type ReleaseWatch } from "./release.ts";
 import { createUpdates, type Updates, type UpdatesDeps } from "./updates.ts";
 import { createAgentLatest, createAgentUpdates, type AgentUpdates, type AgentUpdatesDeps } from "./agents.ts";
@@ -259,6 +260,8 @@ export interface Core extends CoreApi {
   calendar: Calendar;
   /** D341: 待办来源 / To-do sources: the person's to-dos in other apps and the tasks bound to them. */
   taskSources: TaskSources;
+  /** D360: groups of tasks that are one piece of work, and the members held in line. */
+  taskGroups: TaskGroups;
   /** What each repo task changed so far (D128). */
   changes: Changes;
   /** D148: updating devices in place, and the newest release. */
@@ -605,13 +608,17 @@ export function startCore(opts: CoreOptions = {}): Core {
     onChange: () => onHandChanged(),
     onCalling: () => devicesView?.changed(), // D199: the home's 打电话
   });
+  // D360: groups of tasks that are one piece of work; the later members of a line are held here.
+  const taskGroups = createTaskGroups({ dataDir, tasks, runner: () => runner, now: () => clock.now(), changed: () => onHandChanged() });
+  log.subscribe((e) => taskGroups.onEvent(e));
   tasks.setDecorator((o) => {
     const on = decorateBrowsing(changes.decorate(limitsDecorate(work.decorate(o))));
     const added = projects.list();
     const calls = phone.calls();
     // D312: every partner's own open questions, so On hand lists another partner's (a client leaves out the one it shows).
     const asks: PartnerAsk[] = partners.questions();
-    return { ...on, ...(added.length ? { projects: added } : {}), ...(calls.length ? { calls } : {}), ...(asks.length ? { asks } : {}) };
+    const groups = taskGroups.list();
+    return { ...on, ...(added.length ? { projects: added } : {}), ...(calls.length ? { calls } : {}), ...(asks.length ? { asks } : {}), ...(groups.length ? { groups } : {}) };
   });
   if (opts.work?.judge) work.setJudge(opts.work.judge);
 
@@ -1005,7 +1012,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       socketsChanged: () => reachRef?.refresh(),
     },
     partners,
-    core: api, workbench, bridgeLink, decisions, runner: () => runner, devices: () => devicesView, lend: () => lendRef, settings, connections, phone, rules, loadout, accountUsage, closing, work: workFrames, newTask, updates: () => updatesRef, agents: () => agentsRef, updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, anywhere: () => anywhereRef, channels, proactive: () => proactiveRef, calendar: () => calendarRef, taskSources: () => taskSourcesRef, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets, past: { ...past, marks, persona: () => persona.id, ongoing, outside }, keys: { dataDir, ...(opts.keyFetch ? { fetch: opts.keyFetch } : {}), ...(opts.keyCanRun ? { canRun: opts.keyCanRun } : {}) }, ...(firstWordsDeps ? { firstWords: firstWordsDeps } : {}), did, ownAgents });
+    core: api, workbench, bridgeLink, decisions, runner: () => runner, devices: () => devicesView, lend: () => lendRef, settings, connections, phone, rules, loadout, accountUsage, closing, work: workFrames, newTask, updates: () => updatesRef, agents: () => agentsRef, updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, anywhere: () => anywhereRef, channels, proactive: () => proactiveRef, calendar: () => calendarRef, taskSources: () => taskSourcesRef, taskGroups: () => taskGroups, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets, past: { ...past, marks, persona: () => persona.id, ongoing, outside }, keys: { dataDir, ...(opts.keyFetch ? { fetch: opts.keyFetch } : {}), ...(opts.keyCanRun ? { canRun: opts.keyCanRun } : {}) }, ...(firstWordsDeps ? { firstWords: firstWordsDeps } : {}), did, ownAgents });
   handsets.onChange(() => (devicesView?.changed(), ws.onHandChanged()));
   onHandChanged = ws.onHandChanged;
   // D156: a partner turn in flight keeps an update of the agent it thinks with waiting.
@@ -1516,6 +1523,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     brainInUse,
     calendar,
     taskSources,
+    taskGroups,
     changes,
     updates,
     release,
@@ -1532,6 +1540,8 @@ export function startCore(opts: CoreOptions = {}): Core {
     anywhere,
     setRunner(r) {
       runner = r;
+      // D360: what was held in line before a restart opens now if its turn came meanwhile.
+      void taskGroups.pump().catch((err) => console.warn("[core] the groups' line couldn't move:", (err as Error).message));
       // The cheap judge (D112, D113) runs on the harness the partner thinks with, on its small model.
       if (!opts.work?.judge)
         work.setJudge(createHarnessJudge({ harness: () => runner?.harness, pick: brainInUse, dataDir }));

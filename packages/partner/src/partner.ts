@@ -51,7 +51,7 @@
 //   that arrived while down) are queued again; user messages that already got a reply are not.
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { callWakes, fileView, HARNESSES, HARNESS_IDS, isHarnessId, isImage, MEDIA_LIMITS, viewText, type MediaRef, type ActivityStep, type Bodies, type Brain, type CalEvent, type CalGlance, type EventKind, type HarnessId, type LogEvent, type Place, type TaskCard, type TaskNeeds } from "../../protocol/src/index.ts";
+import { callWakes, fileView, HARNESSES, HARNESS_IDS, isHarnessId, isImage, MEDIA_LIMITS, viewText, type MediaRef, type ActivityStep, type Bodies, type Brain, type CalEvent, type CalGlance, type EventKind, type HarnessId, type LogEvent, type Place, type TaskCard, type TaskGroupFrame, type TaskGroupView, type TaskNeeds } from "../../protocol/src/index.ts";
 import type { CoreApi, HarnessEvent, HarnessSession, Partner, Runner, SendImage } from "../../protocol/src/internal.ts";
 import { resolveWindows, WINDOW_MAX, WINDOW_MIN } from "../../protocol/src/harness-facts.ts";
 import { bridgeFor, bridgeKeyFor, type BridgeClient, type BridgeContact, type BridgeOp, type BridgeResult } from "./bridge.ts";
@@ -177,6 +177,8 @@ interface TurnState {
   cal?: CalGlance; // D222: the day card calendar do=agenda show put under this turn's next message
   carried?: Carried; // this turn redoes one a restart cut off
   early: EarlyOpen[]; // tasks opened from the streamed head of a task_open call (D120)
+  groupsSeen?: Set<string>; // D360: groups a task_open of this turn named (one ack for a whole split)
+  openedIds?: string[]; // D360: tasks this turn opened (a split whose first part forgot its group takes them in)
 }
 
 /** A task opened before its brief was written (D120), waiting for its task_open call. */
@@ -418,6 +420,18 @@ function carriedTask(c: Carried, title: unknown, take: boolean): Carried["tasks"
 }
 
 const OPENED_NOTE = "Task opened. It reports back on its own. Your turn is done: write nothing more and call nothing else (no wait_until for it, no checking on it), except keep_going on it when the user asked to keep at it until something holds (\"一直修到 CI 绿\").";
+/** D360: a part of a split, opened or held: the other parts are opened in the same turn. */
+const GROUP_NOTE = "Task opened as a part of its group. Open the group's remaining parts now (task_open, the same group), then your turn is done: one short line at most, no checking on them.";
+const HELD_NOTE = "Held in line: Ducter opens it when the part before it in the same place is done, from that part's branch. Open any remaining parts the same way, then end your turn; say at most one short line that they go one after another.";
+/** D360: what the partner reaches of core's groups (core/src/task-groups.ts). */
+type TaskGroupsPort = {
+  named(persona: string, name: string): TaskGroupView | undefined;
+  wouldHold(persona: string, name: string, place: Place | undefined): boolean;
+  open(persona: string, name: string, input: Parameters<Runner["openTask"]>[0]): Promise<{ card: TaskCard; group: TaskGroupView } | { held: true; key: string; after: string; group: TaskGroupView }>;
+  join(persona: string, name: string, taskIds: string[], by: "partner" | "you"): TaskGroupView | { error: string };
+  of(taskId: string): TaskGroupView | undefined;
+  frame(f: TaskGroupFrame): Promise<{ ok: true; group?: TaskGroupView } | { ok: false; error: string }>;
+};
 /** D67 (2): when a reversible ask's default applies if the model names no time. */
 const ASK_DEFAULT_MINUTES = 10;
 const generatedAck = (lang: LangTag | undefined, title: string) => said(lang, "ack", { title });
@@ -665,6 +679,15 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     taskBase: (id) => {
       const p = core.tasks.get(id)?.place;
       return p?.kind === "repo" ? p.baseBranch : undefined;
+    },
+    taskGroup: (id) => {
+      const g = (core as { taskGroups?: TaskGroupsPort }).taskGroups?.of(id);
+      if (!g || g.members.length < 2) return undefined;
+      const part = g.members.findIndex((m) => "taskId" in m && m.taskId === id) + 1;
+      // Only what comes after this part: a held one is named once, on the last task before it.
+      const lastTask = g.members.reduce((k, m, i) => ("taskId" in m ? i : k), -1);
+      const held = part - 1 === lastTask ? g.members.flatMap((m) => ("key" in m ? [m.title] : [])) : [];
+      return { name: g.name, part, of: g.members.length, held };
     },
     decision: (decisionId) => {
       const evs = core.log.read({ stream: "channel", kinds: ["decision"], limit: 500 });
@@ -943,7 +966,13 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           // No line before the call: ack by the title as soon as it streams in, instead of
           // after the whole brief is written (live: 5 s).
           const title = (ev.tool.input as { title?: unknown } | undefined)?.title;
-          if (!ack && typeof title === "string" && title.trim()) turn.unboundAck = appendAck(turn, generatedAck(turn.lang, title.trim()));
+          // D360: a later part of a split this turn already acked says nothing of its own.
+          const grp = (ev.tool.input as { group?: unknown } | undefined)?.group;
+          const gk = typeof grp === "string" && grp.trim() ? grp.trim().toLowerCase() : "";
+          // A title written before its group, in a turn that already opened a split: wait for the head to say.
+          const laterPart = gk ? !!turn.groupsSeen?.has(gk) : kind === "tool_call_title" && !!turn.groupsSeen?.size;
+          if (gk) (turn.groupsSeen ??= new Set()).add(gk);
+          if (!ack && !laterPart && typeof title === "string" && title.trim()) turn.unboundAck = appendAck(turn, generatedAck(turn.lang, title.trim()));
           // Title and place are written, the brief is still coming: start the task now (D120).
           const callId = (ev.raw as { callId?: string } | undefined)?.callId;
           if (kind === "tool_call_title" || kind === "tool_call_head") openEarly(turn, ev.tool.input as Record<string, unknown>, kind === "tool_call_head" ? "head" : "title", callId);
@@ -979,6 +1008,9 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       place = resolvePlace(given, [title, ...t.userTexts], myTasks(), fs);
     }
     if (dataPlace(place)) return; // the call itself is refused (D207)
+    // D360: a part of a split opens at its call, in order: a later one in the same folder is held.
+    // A title before its group, in a turn that already named one, waits for the call too.
+    if ((typeof head.group === "string" && head.group.trim()) || (at === "title" && t.groupsSeen?.size)) return;
     const prev = t.early.find((e) => !e.used && e.callId === callId);
     if (prev && samePlace(prev.place, place) && JSON.stringify(prev.who) === JSON.stringify(who)) return;
     if (prev) {
@@ -1434,6 +1466,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   const UNAVAILABLE = "Memory isn't available right now. Carry on as someone who just doesn't remember: if you need it, ask the user plainly in one short line (\"上次用的什么参数？\" / \"Which settings did we use?\"). Never say you couldn't find a record, or that memory or anything is unavailable, unless the user asks about memory.";
 
   // ---------- MCP tools (role "partner") ----------
+  let groupChain: Promise<void> = Promise.resolve(); // D360: grouped task_opens, one at a time
   const withVerbatim = (brief: string, userTexts: string[]) => {
     const missing = userTexts.map((t) => t.trim()).filter((t) => t && !brief.includes(t));
     if (!missing.length) return brief;
@@ -1450,6 +1483,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     () => ({
       type: "object",
       properties: {
+        group: { type: "string", description: "When the user lists separate parts to do in turn (\"先…然后…最后…\", \"一件做完再做下一件\"): one task per part, one short name on every part, written first. Parts in the same repo or folder run one after another, each from the one before's branch (Ducter holds the later ones): open every part now, in order." },
         title: { type: "string", description: "Short title in the user's language" },
         place: {
           type: "object",
@@ -1496,7 +1530,16 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       },
       required: ["title", "brief"],
     }),
-    async (raw: { title?: unknown; brief?: unknown; place?: Place; project?: string; harness?: string; model?: string; forMessage?: unknown; needs?: unknown; media?: unknown }) => {
+    async (raw0: { title?: unknown; brief?: unknown; place?: Place; project?: string; harness?: string; model?: string; forMessage?: unknown; needs?: unknown; media?: unknown; group?: unknown }) => {
+      // D360: the parts of a split open one at a time, in the order they were called, so a later
+      // part sees the one before it in its group (parallel calls would all open at once).
+      const grouped = typeof raw0?.group === "string" && raw0.group.trim() !== "";
+      const before = grouped ? groupChain : undefined;
+      let release = () => {};
+      if (grouped) groupChain = new Promise<void>((r) => (release = r));
+      try {
+        if (before) await before;
+        return await (async (raw: typeof raw0) => {
       // Validate before any channel side effect (live: a call without `title` crashed after
       // "On it: undefined" and a failed job_status were already on the channel).
       // A Bridge message is another agent's request, not the user's: no task from it until the
@@ -1543,16 +1586,39 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       if (named.unknown.length && !named.media.length) return { ok: false, error: `No picture or file with id ${named.unknown.join(", ")}. Use the ids from [with … picture <id>] or [with … file <id>].` };
       const sentNow = (t?.triggers ?? []).flatMap((e) => (e.kind === "user_msg" ? ((e.body as Bodies["user_msg"]).media ?? []) : []));
       const handed = named.media.length ? named.media : sentNow;
+      // D360: one part of a split: joined to its group; a later part in the same folder is held in line.
+      const groupName = typeof raw.group === "string" ? raw.group.trim().slice(0, 40) : "";
+      const groups = (core as { taskGroups?: TaskGroupsPort }).taskGroups;
       const note = forOriginal
         ? `Task opened. Ducter already told ${forOriginal.agent ?? forOriginal.from ?? "the agent that asked"} it is taken; don't reply to it now. When the task reports, you'll be told to send the outcome.`
-        : OPENED_NOTE;
+        : groupName && groups
+          ? GROUP_NOTE
+          : OPENED_NOTE;
+      const joinGroup = (taskId: string) => {
+        if (t) (t.openedIds ??= []).push(taskId);
+        if (groupName && groups) groups.join(core.persona.id, groupName, [taskId], "partner");
+      };
+      // A split whose first part was opened without its group (eval: haiku named it from part 2 on):
+      // what this turn already opened in the same place is that first part.
+      if (groupName && groups && t?.openedIds?.length && !groups.named(core.persona.id, groupName)) {
+        const lineOf = (p: Place | undefined) => (p?.kind === "repo" ? `${p.device || "local"}:${p.repoPath}` : p?.kind === "folder" ? `${p.device || "local"}:${p.path}` : "");
+        const here = lineOf(place);
+        const same = here ? t.openedIds.filter((id) => lineOf(core.tasks.get(id)?.place) === here) : [];
+        if (same.length) groups.join(core.persona.id, groupName, same, "partner");
+      }
       // Spike (J-Q7, J-Q8): the user's Go plus this claim is the work agreement, and the
       // link (taskId on the claim) makes the outcome reply owed by code, not by prompt.
       const claimFor = async (card: TaskCard) => {
         if (forOriginal && bridge) await deliver({ ...peerOf(forOriginal), text: claimText(forOriginal.text, card.title || args.title), inReplyTo: forOriginal.messageId, taskId: card.taskId }, "reply");
         if (forOriginal && bridge && !trustedFor) offerTrust(forOriginal); // X2: after the second Go
       };
-      const early = t?.early.find((e) => !e.used);
+      const early0 = t?.early.find((e) => !e.used);
+      // D360: opened from the title before the group was known, but its turn hasn't come: dropped, held below.
+      if (early0 && groupName && groups?.wouldHold(core.persona.id, groupName, place)) {
+        early0.used = true;
+        early0.brief.reject(new Error("a later part of its group: held in line"));
+      }
+      const early = early0 && !early0.used ? early0 : undefined;
       if (t && early) {
         // Opened from the streamed head already (D120): this call only brings its brief.
         early.used = true;
@@ -1567,6 +1633,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           early.media(handed);
           early.brief.resolve(brief);
           (core as { taskSources?: { bindStaged(id: string, texts?: string[]): unknown } }).taskSources?.bindStaged(card.taskId, [brief, args.title]);
+          joinGroup(card.taskId);
           await claimFor(card);
           return { ok: true, taskId: card.taskId, title: card.title, place: card.place, attention: card.attention, note };
         }
@@ -1581,6 +1648,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
             ack = claimAck(t);
           }
         }
+        const later = !!groupName && !!groups?.named(core.persona.id, groupName);
+        if (!ack && later) ack = { jobId: newId("job") } as NonNullable<typeof ack>;
         if (!ack) ack = appendAck(t, generatedAck(t.lang, args.title));
         t.unboundAck = null;
         t.opensHandled++;
@@ -1589,7 +1658,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         jobId = newId("job");
       }
       try {
-        const card = await runner.openTask({
+        const input = {
           persona: core.persona.id,
           title: args.title,
           brief,
@@ -1600,7 +1669,18 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           ...((n) => (n ? { needs: n } : {}))(parseNeeds(raw.needs)),
           language: taskLanguage(t),
           ...(handed.length ? { media: handed } : {}),
-        });
+        };
+        // D360: a later part in the same folder waits for the one before it: held, no task yet.
+        if (groupName && groups && groups.wouldHold(core.persona.id, groupName, place)) {
+          const r = await groups.open(core.persona.id, groupName, input);
+          if ("held" in r) {
+            // No job line: nothing runs yet (a "running" line would say it does); it shows on On hand as 排着.
+            void jobId;
+            return { ok: true, held: true, group: r.group.name, after: r.after, note: HELD_NOTE };
+          }
+        }
+        const card = await runner.openTask(input);
+        joinGroup(card.taskId);
         jobs.set(card.taskId, { jobId, title: card.title || args.title, replyTo: t ? replyToFor(t) : undefined, state: "running" });
         core.log.append({
           stream: "channel",
@@ -1616,6 +1696,10 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         // The status line is the person's; the "Tell the user …" instruction is the partner's only (as newtask.ts).
         core.log.append({ stream: "channel", origin: "partner", kind: "job_status", body: { jobId, text: `${args.title}: ${forPerson(msg)}`, state: "failed" } });
         return { ok: false, error: `task_open failed: ${msg}` };
+      }
+        })(raw0);
+      } finally {
+        release();
       }
     },
   );
@@ -1683,6 +1767,48 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       const j = jobs.get(args.taskId);
       if (j) j.title = title;
       return { ok: true, title };
+    },
+  );
+
+  // D360: the person's words "把这几件放一起" / "take them apart": a group made, renamed or taken
+  // apart from the conversation (tasks you open with task_open's group join it by themselves).
+  core.mcp.register(
+    "partner",
+    "task_group",
+    "Group tasks the user says belong together (\"把这几件放一起\"): one card on On hand. rename: a new name; ungroup: take it apart (the tasks stay). Parts opened with task_open's group join by themselves.",
+    {
+      type: "object",
+      properties: {
+        do: { type: "string", enum: ["group", "rename", "ungroup"] },
+        taskIds: { type: "array", items: { type: "string" }, description: "group: two or more; else any one task in the group" },
+        name: { type: "string", description: "short, in the user's language" },
+      },
+      required: ["do", "taskIds"],
+    },
+    async (args: { do?: string; taskIds?: unknown; name?: unknown }) => {
+      const groups = (core as { taskGroups?: TaskGroupsPort }).taskGroups;
+      if (!groups) return { ok: false, error: "Groups aren't available here." };
+      const ids = Array.isArray(args.taskIds) ? args.taskIds.filter((x): x is string => typeof x === "string") : [];
+      const name = typeof args.name === "string" ? args.name.trim() : "";
+      if (args.do === "group") {
+        if (ids.length < 2) return { ok: false, error: "A group needs two or more tasks." };
+        const unknown = ids.filter((id) => !core.tasks.get(id));
+        if (unknown.length) return { ok: false, error: `unknown task ${unknown.join(", ")}` };
+        const r = await groups.frame({ t: "task_group", op: "make", taskIds: ids, ...(name ? { name } : {}) });
+        return r.ok ? { ok: true, group: r.group?.name, note: "Grouped on On hand. Say it in one short line." } : r;
+      }
+      const g = ids.map((id) => groups.of(id)).find(Boolean);
+      if (!g) return { ok: false, error: "That task isn't in a group." };
+      if (args.do === "rename") {
+        if (!name) return { ok: false, error: "rename needs a name" };
+        const r = await groups.frame({ t: "task_group", op: "rename", groupId: g.id, name });
+        return r.ok ? { ok: true, group: name } : r;
+      }
+      if (args.do === "ungroup") {
+        const r = await groups.frame({ t: "task_group", op: "dissolve", groupId: g.id });
+        return r.ok ? { ok: true, note: "Taken apart; every task stays, and any part still in line starts now." } : r;
+      }
+      return { ok: false, error: "do is group, rename or ungroup" };
     },
   );
 

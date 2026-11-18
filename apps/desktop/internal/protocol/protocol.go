@@ -103,6 +103,8 @@ const (
 	KindLivingMsg        = "living_msg"
 	KindDecision         = "decision"
 	KindDecisionResolved = "decision_resolved"
+	KindDecisionLater    = "decision_later"
+	KindDecisionBack     = "decision_back"
 	KindReadReceipt      = "read_receipt"
 	KindTaskOpen         = "task_open"
 	KindTaskState        = "task_state"
@@ -169,6 +171,9 @@ type LivingItem struct {
 	Text       string        `json:"text"`
 	DecisionID string        `json:"decisionId,omitempty"`
 	Evidence   []EvidenceRef `json:"evidence,omitempty"`
+	// Back (D382): a question back from 晚点再问我 / Ask me later (when it
+	// came back): said once above it.
+	Back string `json:"back,omitempty"`
 }
 
 type Decision struct {
@@ -179,6 +184,10 @@ type Decision struct {
 	DefaultOption string `json:"defaultOption"` // go | hold
 	DefaultAt     string `json:"defaultAt,omitempty"`
 	Reversible    bool   `json:"reversible"`
+	// Later and BackAt (D382) come on a task card's pendingDecision: put
+	// off until Later (晚点再问我 / Ask me later), or back since BackAt.
+	Later  string `json:"later,omitempty"`
+	BackAt string `json:"backAt,omitempty"`
 	// RoutineID marks a routine's proposal or review card (D114): Go
 	// activates or keeps it.
 	RoutineID string `json:"routineId,omitempty"`
@@ -322,6 +331,22 @@ type WhereAsk struct {
 type SignInAsk struct {
 	Site string `json:"site"`
 	URL  string `json:"url,omitempty"`
+}
+
+// DecisionLater (D382): 晚点再问我 / Ask me later: the question is put off
+// until Until; it stays open but out of Needs you, its countdown stopped.
+type DecisionLater struct {
+	DecisionID string `json:"decisionId"`
+	Until      string `json:"until"`
+	By         string `json:"by"`
+}
+
+// DecisionBack (D382): back in Needs you, at its time (By "time") or by
+// 现在就定 / Decide now ("user"), with its countdown again.
+type DecisionBack struct {
+	DecisionID string `json:"decisionId"`
+	By         string `json:"by"`
+	DefaultAt  string `json:"defaultAt,omitempty"`
 }
 
 type DecisionResolved struct {
@@ -766,6 +791,10 @@ func (e LogEvent) Typed() (any, error) {
 		v = &Decision{}
 	case KindDecisionResolved:
 		v = &DecisionResolved{}
+	case KindDecisionLater:
+		v = &DecisionLater{}
+	case KindDecisionBack:
+		v = &DecisionBack{}
 	case KindReadReceipt:
 		v = &ReadReceipt{}
 	case KindTaskOpen:
@@ -1080,6 +1109,14 @@ type Decide struct {
 	DecisionID string `json:"decisionId"`
 	Option     string `json:"option"` // go | hold | reply
 	Text       string `json:"text,omitempty"`
+}
+
+// Later (D382) puts a question off to Until (RFC 3339); a nil Until brings
+// it back now (现在就定 / Decide now).
+type Later struct {
+	T          string  `json:"t"` // "later"
+	DecisionID string  `json:"decisionId"`
+	Until      *string `json:"until"`
 }
 
 type TaskSend struct {

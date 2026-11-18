@@ -139,6 +139,14 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
 
 ## The partner reads no web page itself (D378)
 
+## Ask me later (D382, research/151)
+
+- [ ] **D382: "when something happens"** (等 CI 过了再问我): a partner tool that turns the person's words into a waiter (D112's check) on a decision, back when it holds. A partner-tool change: eval twice (D175). Trigger: the author asks, or a Reply like it is seen in a Log.
+- [ ] **D382: chat apps, iMessage, the menu bar, the CLI (`ducter answer --later`) and the phones' notification actions** offer only Go / Hold / Reply; a card put off elsewhere stays as sent there. Trigger: the author puts asks off from a chat app or a notification.
+- [ ] **D382: a real overnight return** (an ask put off at night, back at the end of quiet hours inside the morning's one notice) on a live home and a phone. Trigger: the next release on hel.
+- [ ] **D382: the times in the person's zone on a server home**: the client sends an absolute time from its own zone; 明早 is the end of quiet hours as set. Trigger: a person whose phone and home are in different zones.
+- [ ] **D382: comprehension with people** (the LLM-proxy panels' "asks again and again" and "the assistant picks the time"). Trigger: the first friends' install.
+
 ## The quick web look (D380, research/149)
 
 - [ ] **D380: live on a home** (hel: "明天上海会下雨吗" → the line, 在网上查…, the answer naming its site in about 20 s; nothing in On hand). Trigger: the next release on hel.

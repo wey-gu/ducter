@@ -1044,6 +1044,14 @@ func (s *Store) applyOnHand(o *protocol.OnHand) {
 			if d.Question == "" {
 				d.Decision = pd.Decision
 			}
+			// D382: whether it is put off is the card's.
+			d.Later = pd.Later
+			if pd.BackAt != "" {
+				d.BackAt = pd.BackAt
+				if pd.DefaultAt != "" {
+					d.DefaultAt = pd.DefaultAt
+				}
+			}
 		}
 		// A snapshot is newer than every task_state that arrived before it;
 		// later task_state events override it again.
@@ -1210,6 +1218,24 @@ func (s *Store) ApplyEvent(ev protocol.LogEvent) {
 	case *protocol.DecisionResolved:
 		s.resolve(b)
 		s.bySeq[ev.Seq] = nil
+	case *protocol.DecisionLater:
+		// D382: put off: out of Needs you until its time.
+		if d := s.Decisions[b.DecisionID]; d != nil {
+			d.Later, d.BackAt = b.Until, ""
+		}
+		s.bySeq[ev.Seq] = nil
+	case *protocol.DecisionBack:
+		// D382: back, with its countdown again; at its time it says so once.
+		if d := s.Decisions[b.DecisionID]; d != nil {
+			d.Later = ""
+			if b.By == "time" {
+				d.BackAt = ev.TS
+			}
+			if b.DefaultAt != "" {
+				d.DefaultAt = b.DefaultAt
+			}
+		}
+		s.bySeq[ev.Seq] = nil
 	case *protocol.ReadReceipt:
 		s.ReadUpTo = max(s.ReadUpTo, b.UpToSeq)
 		s.bySeq[ev.Seq] = nil
@@ -1321,7 +1347,7 @@ func (s *Store) addDecision(ev protocol.LogEvent, d *protocol.Decision) {
 func (s *Store) OpenDecisions() []*DecisionState {
 	var out []*DecisionState
 	for _, d := range s.Decisions {
-		if d.Resolved == nil && d.Pending == "" && d.Question != "" {
+		if d.Resolved == nil && d.Pending == "" && d.Later == "" && d.Question != "" {
 			if t := s.Tasks[d.TaskID]; t != nil && LaneOf(t.Attention()) == LaneHidden {
 				continue // its task was dropped or handed off
 			}

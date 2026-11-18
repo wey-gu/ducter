@@ -7,7 +7,7 @@ import { realClock, type Clock } from "./clock.ts";
 /** D120: the partner's call changed before its brief arrived, so this early open was dropped unstarted (runner.ts). */
 export const neverStarted = (c: Pick<TaskCard, "attention" | "reason">) => c.attention === "dropped" && c.reason === "not started";
 
-export const PROJECTED_KINDS = ["task_open", "task_state", "body_selected", "report", "decision", "decision_resolved", "waiter", "waiter_look", "until", "until_try", "routine", "routine_run", "job_status", "task_held", "task_bound", "source_seen", "source_write"] as const;
+export const PROJECTED_KINDS = ["task_open", "task_state", "body_selected", "report", "decision", "decision_resolved", "decision_later", "decision_back", "waiter", "waiter_look", "until", "until_try", "routine", "routine_run", "job_status", "task_held", "task_bound", "source_seen", "source_write"] as const;
 
 /** D216: a step or the agent's words, the kind On hand's latest line is made from. */
 export const isStepEvent = (b: Bodies["task_event"]) => b.role === "tool" || (b.role === "assistant" && (!!b.text?.trim() || !!b.thinking?.length));
@@ -59,7 +59,7 @@ export function createRegistry(log: LogStore, clock: Clock = realClock, zone: ()
   const cards = new Map<string, TaskCard>();
   const pending = new Map<string, string[]>(); // taskId -> unresolved decisionIds
   const decisionTask = new Map<string, string>(); // decisionId -> taskId
-  const decisionBody = new Map<string, Bodies["decision"] & { askedAt: string }>();
+  const decisionBody = new Map<string, NonNullable<TaskCard["pendingDecision"]>>();
   const waiters = new Map<string, Bodies["waiter"]>(); // armed only
   const routineNames = new Map<string, string>();
   const runOf = new Map<string, { routineId: string; name: string }>(); // a routine's run task
@@ -246,6 +246,25 @@ export function createRegistry(log: LogStore, clock: Clock = realClock, zone: ()
           if (!c.pendingDecisionId) delete c.pendingDecisionId;
           c.updatedAt = e.ts;
         }
+        break;
+      }
+      case "decision_later":
+      case "decision_back": {
+        // D382: put off (later: its time) or back (backAt; its countdown again, the same length).
+        const id = (e.body as { decisionId: string }).decisionId;
+        const d = decisionBody.get(id);
+        if (!d) break;
+        if (e.kind === "decision_later") {
+          d.later = (e.body as Bodies["decision_later"]).until;
+          delete d.backAt;
+        } else {
+          const b = e.body as Bodies["decision_back"];
+          delete d.later;
+          if (b.by === "time") d.backAt = e.ts; // Decide now needs no word: the person just tapped
+          if (b.defaultAt) d.defaultAt = b.defaultAt;
+        }
+        const c = cards.get(decisionTask.get(id) ?? "");
+        if (c && c.pendingDecisionId === id) (c.pendingDecision = d), (c.updatedAt = e.ts);
         break;
       }
       case "waiter": {

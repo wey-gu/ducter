@@ -31,6 +31,7 @@ import { Said, say } from "./set-grid.tsx";
 import { CallDecision, CallRow, PhoneCard, PhoneOffer } from "./phone.tsx";
 import { callEnded } from "@ducter/protocol";
 import { FindsNote } from "./finds.tsx";
+import { LaterAway, LaterBack, LaterButton, LaterTimes } from "./later.tsx";
 import { LearnedSheet, RecallLine, RecallSheet } from "./recall.tsx";
 import { MicButton, ReadingLine, useReadback, voice, VoiceSettings, VoiceStrip } from "./voice.tsx";
 import { FirstAfter, firstOpening, KeyCard, keyJustAdded } from "./first-words.tsx";
@@ -364,8 +365,17 @@ export function DecisionBody({ d, taskId }: { d: DecisionState; taskId?: string 
   if (d.call) return <CallDecision d={d} />;
   // D157: wait for a computer (the default) or do it now on another; built in the user's words.
   const wa = d.where ? whereAsk(d.where) : undefined;
+  // D382: put off: the question, when it asks again, and Decide now; nothing else until it is back.
+  if (open && d.later)
+    return (
+      <>
+        <div class="q">{d.memPlugin ? t("memp.card.question", harnessName(d.memPlugin.harness), d.memPlugin.deviceName) : d.question}</div>
+        <LaterAway d={d} about={about} />
+      </>
+    );
   return (
     <>
+      {open && <LaterBack d={d} />}
       <div class="q">{wa?.question ?? (d.closing ? closingWords(d.closing).question : d.memPlugin ? t("memp.card.question", harnessName(d.memPlugin.harness), d.memPlugin.deviceName) : d.question)}</div>
       {d.routineId && <RoutineFacts routineId={d.routineId} />}
       {d.cal && <CalFacts c={d.cal} />}
@@ -382,9 +392,11 @@ export function DecisionBody({ d, taskId }: { d: DecisionState; taskId?: string 
             about={about}
             onClick={() => {
               A.replyOpen.has(d.decisionId) ? A.replyOpen.delete(d.decisionId) : A.replyOpen.add(d.decisionId);
+              A.laterOpen.delete(d.decisionId);
               A.changed();
             }}
           />
+          <LaterButton d={d} about={about} />
           <span class="pair">
             {d.asker?.other ? (
               // X1: its second option, answered in its own words (a reply), never Hold.
@@ -401,6 +413,7 @@ export function DecisionBody({ d, taskId }: { d: DecisionState; taskId?: string 
       ) : (
         <Resolved d={d} />
       )}
+      {open && <LaterTimes d={d} />}
       {open && A.replyOpen.has(d.decisionId) && (
         <div class="reply">
           <AutoText
@@ -970,12 +983,16 @@ function Ask({ d, taskId, buttons = true, rk, seq }: { d: DecisionState; taskId?
       {d.src && <SourceCardBody src={d.src} />}
       {/* A routine's proposal card (D29, D114): what it would do, before one Go. */}
       {d.routineId && open && <RoutineFacts routineId={d.routineId} />}
-      {open ? (
+      {open && d.later ? (
+        // D382: put off: when it asks again, and Decide now.
+        <LaterAway d={d} about={about} />
+      ) : open ? (
         <>
+          <LaterBack d={d} />
           {/* One compact tray (D129): Reply… · Hold as quiet text, Go last, named by the action. */}
           {buttons && (
             <div class="tray">
-              <Btn kind="text" size="sm" label={t("decision.reply")} about={about} onClick={() => (A.replyOpen.has(d.decisionId) ? A.replyOpen.delete(d.decisionId) : A.replyOpen.add(d.decisionId), A.changed())} />
+              <Btn kind="text" size="sm" label={t("decision.reply")} about={about} onClick={() => (A.replyOpen.has(d.decisionId) ? A.replyOpen.delete(d.decisionId) : A.replyOpen.add(d.decisionId), A.laterOpen.delete(d.decisionId), A.changed())} />
               {d.asker?.other ? (
                 // X1: its second option, answered in its own words (a reply), never Hold.
                 <Btn kind="secondary" size="sm" label={d.asker.other} about={about} onClick={() => A.decide(d.decisionId, "reply", d.asker!.other)} />
@@ -991,6 +1008,7 @@ function Ask({ d, taskId, buttons = true, rk, seq }: { d: DecisionState; taskId?
               {d.asker?.suggests && <b class="sug">{t("peer.suggests", d.goLabel)}</b>}
               {defaultInfo(d, Date.now()).line}
             </span>
+            {buttons && <LaterButton d={d} about={about} line />}
             {task && title(task) && <DetailsToggle k={k} about={about} />}
           </div>}
           {task && A.detailsOpen(k) && (
@@ -999,6 +1017,7 @@ function Ask({ d, taskId, buttons = true, rk, seq }: { d: DecisionState; taskId?
               {d.said && d.question && <div class="its">{t("decision.its_words", d.question)}</div>}
             </div>
           )}
+          {buttons && <LaterTimes d={d} />}
           {A.replyOpen.has(d.decisionId) && (
             <div class="reply">
               <AutoText

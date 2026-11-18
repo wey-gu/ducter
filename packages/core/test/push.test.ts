@@ -312,6 +312,28 @@ describe("the pusher", () => {
     expect(JSON.parse(await decrypt(s.sent[0]!.body, r)).body).toBe("早上好。1 件等你。");
   });
 
+  test("D382: put off, nothing goes out; back at its time, one push; brought back by the person, none", async () => {
+    const s = await setup();
+    s.store.subscribe(s.sub);
+    decision(s.log, "d1");
+    s.log.append({ stream: "channel", origin: "user", kind: "decision_later", body: { decisionId: "d1", until: "2026-11-09T12:00:00Z", by: "user" } });
+    s.clock.advance(60_000);
+    await s.pusher.idle();
+    expect(s.sent.length).toBe(0);
+    s.clock.advance(3600_000);
+    s.log.append({ stream: "channel", origin: "system", kind: "decision_back", body: { decisionId: "d1", by: "time" } });
+    s.clock.advance(31_000);
+    await s.pusher.idle();
+    expect(s.sent.length).toBe(1);
+    expect(JSON.parse(await decrypt(s.sent[0]!.body, s.r))).toMatchObject({ url: "app#d=d1" });
+    decision(s.log, "d2");
+    s.log.append({ stream: "channel", origin: "user", kind: "decision_later", body: { decisionId: "d2", until: "2026-11-09T12:00:00Z", by: "user" } });
+    s.log.append({ stream: "channel", origin: "user", kind: "decision_back", body: { decisionId: "d2", by: "user" } });
+    s.clock.advance(20 * 60_000);
+    await s.pusher.idle();
+    expect(s.sent.length).toBe(1);
+  });
+
   test("done results push only when the user asked for them", async () => {
     const s = await setup();
     s.store.subscribe(s.sub);

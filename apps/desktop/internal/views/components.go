@@ -754,6 +754,11 @@ func (a *App) decisionButtons(c *ui.Context, d *store.DecisionState, st decision
 		})
 		return
 	}
+	// D382: put off: when it asks again, and Decide now; back: said once.
+	if a.laterAway(c, d, st.quietBg) {
+		return
+	}
+	a.laterBack(c, d)
 	goText := a.goLabel(d)
 	ui.Row(c.Key("decide:" + d.DecisionID)).Gap(t.S3).Wrap().AlignItems(ui.Center).Children(func() {
 		// One order on every surface (ui.md, Buttons): quiet text actions first, the
@@ -761,7 +766,9 @@ func (a *App) decisionButtons(c *ui.Context, d *store.DecisionState, st decision
 		about := a.decisionAbout(d)
 		if a.buttonFor(c, a.L.T("decision.reply"), about, btnText, st.height, st.quietBg) {
 			a.replyOpen[d.DecisionID] = !a.replyOpen[d.DecisionID]
+			delete(a.laterOpen, d.DecisionID)
 		}
+		a.laterToggle(c, d, about, st.height, st.quietBg)
 		if st.after != nil {
 			st.after()
 		}
@@ -781,6 +788,7 @@ func (a *App) decisionButtons(c *ui.Context, d *store.DecisionState, st decision
 	if d.Asker != nil && d.Asker.Suggests {
 		ui.Text(c, a.L.T("peer.suggests", d.GoLabel)).FontSize(t.XS).FontWeight(700).TextColor(t.NeedsYou.Ink)
 	}
+	a.laterTimes(c, d, st.quietBg)
 	if a.replyOpen[d.DecisionID] {
 		draft := a.replyDraft[d.DecisionID]
 		ui.Row(c.Key("reply:"+d.DecisionID)).Gap(t.S2).Padding(t.S1, t.S1, t.S1, t.S3).Radius(t.RadiusMD).Background(t.Surface).Children(func() {

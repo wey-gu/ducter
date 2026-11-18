@@ -193,6 +193,11 @@ func (a *App) decisionTray(c *ui.Context, d *store.DecisionState, task *store.Ta
 	t := a.T
 	about := a.decisionAbout(d)
 	ui.Column(c.Key("tray:" + d.DecisionID)).Gap(t.S2).MaxWidth(t.BubbleMeasure).MaxWidthPercent(84).Children(func() {
+		// D382: put off: when it asks again, and Decide now, in place of the tray.
+		if a.laterAway(c, d, t.Bg) {
+			return
+		}
+		a.laterBack(c, d)
 		card := ui.Column(c).Gap(t.S2).Padding(t.S2, t.S2, t.S2, t.S2).Radius(t.RadiusMD).Background(t.Surface).
 			Border(1, t.Line).Shadow(0, t.Raised.Y-1, 0, 0, t.Raised.Color)
 		card.Children(func() {
@@ -217,11 +222,14 @@ func (a *App) decisionTray(c *ui.Context, d *store.DecisionState, task *store.Ta
 				if line := a.defaultLine(c, d); line != "" {
 					ui.Text(c, line).FontSize(t.XS + 1).TextColor(t.InkMuted).LineHeight(1.45)
 				}
+				// D382: on the default's own line: the other way than letting the time run.
+				a.laterToggle(c, d, about, t.ControlSM, t.Bg)
 				if details {
 					a.detailsToggle(c, key, task.Title())
 				}
 			})
 		})
+		a.laterTimes(c, d, t.Bg)
 	})
 }
 

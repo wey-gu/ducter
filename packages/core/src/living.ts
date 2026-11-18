@@ -7,19 +7,24 @@ import { realClock, type Clock } from "./clock.ts";
 import type { Decisions } from "./decisions.ts";
 import type { CoreRegistry } from "./registry.ts";
 
-const RENDER_KINDS = new Set(["report", "decision", "decision_resolved", "task_state", "task_open"]);
+const RENDER_KINDS = new Set(["report", "decision", "decision_resolved", "decision_later", "decision_back", "task_state", "task_open"]);
 const KIND_ORDER: LivingItem["kind"][] = ["decision", "blocked", "failed", "progress", "done"];
 const WINDOW_MS = 24 * 3600 * 1000;
 
-const sig = (i: LivingItem) => JSON.stringify([i.taskId, i.kind, i.text, i.decisionId ?? ""]);
+// D382: a question back from Ask me later is new again, even where it was read before it went.
+const sig = (i: LivingItem) => JSON.stringify([i.taskId, i.kind, i.text, i.decisionId ?? "", i.back ?? ""]);
 
 export function itemsFor(c: TaskCard, decisions: Decisions, pending: string[]): LivingItem[] {
   const base = { taskId: c.taskId, title: c.title };
   const r = c.lastReport;
-  const open = pending.filter((id) => decisions.isPending(id));
+  const live = pending.filter((id) => decisions.isPending(id));
+  // D382: a question put off is out of the message until it is back (then said once as back).
+  const open = live.filter((id) => decisions.laterUntil(id) === undefined);
   if (open.length) {
-    return open.map((id) => ({ ...base, kind: "decision" as const, text: decisions.get(id)!.question, decisionId: id }));
+    const backAt = c.pendingDecision?.backAt;
+    return open.map((id) => ({ ...base, kind: "decision" as const, text: decisions.get(id)!.question, decisionId: id, ...(backAt && c.pendingDecisionId === id ? { back: backAt } : {}) }));
   }
+  if (live.length) return [];
   switch (c.attention) {
     case "blocked":
       return [{ ...base, kind: "blocked", text: r?.state === "blocked" ? r.summary : c.reason ?? "Waiting" }];

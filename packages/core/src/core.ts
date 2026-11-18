@@ -1506,6 +1506,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   const apns = opts.apns ?? createAppPushSender(createApnsSender(loadApnsConfig(dataDir)), relayAt ? createRelayClient(relayAt, opts.relayFetch) : undefined);
   const pusher = createPusher({
     log,
+    decisionOf: (id) => decisions.get(id),
     store: push,
     clock,
     personaName: () => persona.name,

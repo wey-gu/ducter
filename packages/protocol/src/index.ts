@@ -16,6 +16,7 @@ export * from "./phone.ts";
 export * from "./media.ts";
 export * from "./phone-use.ts";
 export * from "./calendar.ts";
+export * from "./later.ts";
 export * from "./task-groups.ts";
 export * from "./partners.ts";
 export * from "./computer-use.ts";
@@ -348,6 +349,12 @@ export interface Bodies {
   // settled (D375): closed by what happened, not by an answer (D169's offer once Mem's check sees the
   // plugin in): it reads as done (已装好 / Installed), never as a default taken.
   decision_resolved: { decisionId: string; option: "go" | "hold" | "reply"; text?: string; by: "user" | "default"; now?: boolean; delivered?: boolean; msgSeq?: number; settled?: true };
+  // D382: 晚点再问我 / Ask me later: the person put a waiting question off to `until`. It stays
+  // open (answering it still works) but out of Needs you; its countdown stops.
+  decision_later: { decisionId: string; until: string; by: "user" };
+  // D382: it is back in Needs you: its time came ("time") or the person asked for it now ("user",
+  // 现在就定 / Decide now). defaultAt: its countdown again, the same length it was first given.
+  decision_back: { decisionId: string; by: "time" | "user"; defaultAt?: string };
   read_receipt: { upToSeq: number };
   task_open: {
     taskId: string;
@@ -715,6 +722,8 @@ export interface LivingItem {
   text: string;
   decisionId?: string;
   evidence?: EvidenceRef[];
+  /** D382: a question back from 晚点再问我 / Ask me later: clients say so once above it (when it came back). */
+  back?: string;
 }
 
 // ---------- On hand snapshot ----------
@@ -745,7 +754,9 @@ export interface TaskCard {
   reason?: string;
   lastReport?: Bodies["report"];
   pendingDecisionId?: string;
-  pendingDecision?: Bodies["decision"] & { askedAt: string }; // the open decision, for On hand
+  // the open decision, for On hand. D382: later: put off to this time (the task shows in Waiting);
+  // backAt: when it came back from being put off.
+  pendingDecision?: Bodies["decision"] & { askedAt: string; later?: string; backAt?: string };
   openedAt: string;
   updatedAt: string;
   until?: UntilView; // D113
@@ -1040,6 +1051,9 @@ export type ClientFrame =
   // key, once (D233): a key card's Go carries the key the person pasted (kept in Autofill unless
   // once; never logged, never sent back) and whether it is for this task only.
   | { t: "decide"; decisionId: string; option: "go" | "hold" | "reply"; text?: string; cvc?: string; key?: string; once?: boolean }
+  // D382: 晚点再问我 / Ask me later: put the question off to `until` (ISO); null brings it back now
+  // (现在就定 / Decide now).
+  | { t: "later"; decisionId: string; until: string | null }
   // clientId (optional): a resend with the same id is not delivered twice; it gets the same "sent".
   | { t: "task_send"; taskId: string; text: string; clientId?: string; media?: string[]; /** D268: steer (default while it works) or queue for after this turn. */ mode?: "steer" | "queue" }
   // D325: one held message (TaskCard.held) changed (edit, with text), taken back (drop), or said

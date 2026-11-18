@@ -63,6 +63,14 @@ time, 10 min unless the work suggests otherwise; only effect-ladder asks (`flows
 as its default (D340):** whoever made it (the partner's ask or a task's question), its words
 decide (`packages/protocol/src/destructive.ts`), it waits on Hold, with no time.
 
+**Ask me later (D382, research/151).** An ask can be put off to a time: **晚点再问我 / Ask me
+later** on the default's own line opens the times as chips (今晚 20:00 · 明早 {end of quiet hours} ·
+下周一 · 选个时间…) and one line, **到时再问你。在那之前，什么都不做。** Put off, the card says
+**{time} 再问你** with **现在就定 / Decide now**, leaves 等你 and the living message, and its
+countdown stops; at its time it is back once (**你说晚点再问，现在来问你。**), its countdown again
+with its first length, pushed by the usual rules (in quiet hours with the morning's one notice).
+No partner turn. Not on a card whose moment is the point (`laterable`).
+
 **In a chat app (D276, `channels.md`).** Telegram and Slack are more windows on this one
 conversation: a turn started there gets its ack, result and asks there, the job as one status
 message edited in place, and anything new as a new message; what Ducter starts itself goes only

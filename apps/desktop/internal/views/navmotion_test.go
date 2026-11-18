@@ -60,7 +60,9 @@ func TestNavMotionFrames(t *testing.T) {
 	// shared CI runner that paints every frame on the CPU several times slower.
 	// A busy runner can stall a whole run (2026-11-18: the released 0.0.78 failed
 	// here too, its still frames 18-36 ms against ~5 ms on a quiet one), so a
-	// language gets three tries; a real slowdown fails every one.
+	// language gets three tries; a real slowdown fails every one. The ratio is 4x + 15 ms: a quiet
+	// Mac measures moving at ~6x still (it passes on the 50 ms floor), a CI runner ~4x, so 3x failed
+	// there even for the released 0.0.78 (2026-11-19); twice as slow still fails.
 	for _, lang := range []i18n.Lang{i18n.ZH, i18n.EN} {
 		var m, s, limit time.Duration
 		for try := 1; try <= 3; try++ {
@@ -70,7 +72,7 @@ func TestNavMotionFrames(t *testing.T) {
 				break
 			}
 			m, s = p95(moving), p95(still)
-			limit = max(50*time.Millisecond, 3*s+10*time.Millisecond)
+			limit = max(50*time.Millisecond, 4*s+15*time.Millisecond)
 			t.Logf("%s try %d: p95 frame %v moving, %v still (limit %v)", lang, try, m, s, limit)
 			if m <= limit {
 				break

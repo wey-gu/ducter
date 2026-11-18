@@ -159,9 +159,12 @@ describe("another agent: condensed carry-over, or its own session back", () => {
     fake.sessions[0]!.emit({ role: "assistant", text: "The retry wrapper hides the race." });
     await waitFor(() => core.log.read({ stream: `task:${id}`, kinds: ["task_event"] }).some((e) => (e.body as Bodies["task_event"]).role === "assistant"));
     await core.call("report_to_main", { state: "needs_input", summary: "Two fixes possible.", questions: [{ id: "q1", text: "Remove the retry?", blocking: true, default: "remove it", reversible: true }] }, id);
+    // D372: a task waiting on the person carries on as soon as it is moved (the move is their
+    // answer about who does it), so the carry-over goes first and their words follow it.
     await runner.switchBody!(id, "codex", undefined, "high");
     await runner.send(id, "remove it, and keep the log line", undefined, "user");
     const first = fake.sessions[1]!.sent[0]!.text;
+    const next = fake.sessions[1]!.sent.at(-1)!.text;
     expect(fake.specs[1]).toMatchObject({ harness: "codex", effort: "high" });
     expect(fake.specs[1]!.resumeSessionId).toBeUndefined();
     expect(first).toContain("started by Claude Code");
@@ -169,7 +172,7 @@ describe("another agent: condensed carry-over, or its own session back", () => {
     expect(first).toContain("Its last report (needs_input): Two fixes possible.");
     expect(first).toContain("It asked: Remove the retry? (default: remove it)");
     expect(first).toContain("The last thing it said: The retry wrapper hides the race.");
-    expect(first).toEndWith("remove it, and keep the log line");
+    expect(next).toEndWith("remove it, and keep the log line");
     expect(sys(id).find((b) => (b.raw as any)?.switched)?.raw).toEqual({ switched: { from: "claude-code", to: "codex", effort: "high" } });
     await runner.dispose();
   });

@@ -11,6 +11,33 @@ export interface AdapterStatus {
   error?: string;
 }
 
+export interface Totals {
+  open: number;
+  atLeast?: boolean;
+  review?: number;
+  /** D357: the newest few PRs waiting for the person's review (review: true). */
+  reviewItems?: SourceItem[];
+  /** D357: the newest few assigned ones that mention the person. */
+  mentioned?: SourceItem[];
+}
+
+export interface BrowseOpts {
+  /** 1-based; BROWSE_PAGE a page. */
+  page: number;
+  query?: string;
+  /** github: one repository ("owner/repo"). */
+  where?: string;
+  /** github: a label. */
+  tag?: string;
+  /** github: the PRs waiting for the person's review instead of what is assigned. */
+  review?: boolean;
+}
+
+/** D357: the app asked to slow down (GitHub's rate limit). */
+export class RateLimited extends Error {
+  override name = "RateLimited";
+}
+
 export interface WriteResult {
   ok: boolean;
   /** What the app gave back (a comment's address). */
@@ -37,7 +64,13 @@ export interface SourceAdapter {
    * maybe hundreds). atLeast: only a lower bound is known. review: PRs waiting for the person's review.
    * Absent: list() is all of them.
    */
-  total?(): Promise<{ open: number; atLeast?: boolean; review?: number }>;
+  total?(): Promise<Totals>;
+  /**
+   * D357: a page of the open ones beyond list() (GitHub: its pages, or its search when there is a
+   * query, a repository, a label scope or the review requests). Absent: list() is all of them and
+   * the service pages it itself.
+   */
+  browse?(o: BrowseOpts): Promise<{ items: SourceItem[]; more: boolean }>;
   /** One item by its ref, closed ones too; undefined when it is gone (deleted, the line removed). */
   get(ref: string): Promise<SourceItem | undefined>;
   /** What it can write. */

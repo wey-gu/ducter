@@ -45,6 +45,17 @@ type SourceItem struct {
 	Repeats   bool     `json:"repeats,omitempty"`
 	// TaskID: the live task already bound to it (a pick opens that task).
 	TaskID string `json:"taskId,omitempty"`
+	// Author (D357): github, who opened it (a review request's author).
+	Author string `json:"author,omitempty"`
+	// Review (D357): a PR waiting for the person's review, opened, never taken.
+	Review bool `json:"review,omitempty"`
+}
+
+// SourceGlance (D357) is one of the few to-dos On hand shows first, and why:
+// review | mentioned | due | recent.
+type SourceGlance struct {
+	SourceItem
+	Why string `json:"why"`
 }
 
 // SourceStanding is one standing go and how it came.
@@ -114,6 +125,8 @@ type SourcesFound struct {
 type SourcesView struct {
 	Sources []SourceView `json:"sources"`
 	Found   SourcesFound `json:"found"`
+	// Glance (D357): the few On hand shows (at most three), none with a live task.
+	Glance []SourceGlance `json:"glance,omitempty"`
 }
 
 // SourceAsk is a card about a bound to-do (Decision.Src): kind write (a
@@ -137,6 +150,13 @@ type SourcesFrame struct {
 	ClientID string
 	Items    []SourceItem
 	Errors   []SourceErr
+	// D357: On hand's fold: the page answered, whether another follows, the
+	// chips (repositories or folders, tags), and GitHub's rate limit.
+	Page    int
+	More    bool
+	Wheres  []string
+	Tags    []string
+	Limited bool
 	// source_result: Op add | set | remove; Reason no_tool | signed_out |
 	// missing | exists | unknown.
 	Op     string
@@ -182,25 +202,38 @@ type SourceItemsReq struct {
 	ID       string `json:"id,omitempty"`
 	Query    string `json:"query,omitempty"`
 	ClientID string `json:"clientId,omitempty"`
+	// D357: On hand's fold, a page at a time: a repository or a vault's top
+	// folder (Where, "" the vault's top when WhereSet), a tag, or the PRs
+	// waiting for the person's review.
+	Page   int     `json:"page,omitempty"`
+	Where  *string `json:"where,omitempty"`
+	Tag    string  `json:"tag,omitempty"`
+	Review bool    `json:"review,omitempty"`
 }
 
 // decodeSources reads the three D341 frames on their own.
 func decodeSources(data []byte, f ServerFrame) (ServerFrame, error) {
 	var raw struct {
-		Sources  *[]SourceView `json:"sources"`
-		Found    *SourcesFound `json:"found"`
-		ClientID string        `json:"clientId"`
-		Items    []SourceItem  `json:"items"`
-		Errors   []SourceErr   `json:"errors"`
-		Op       string        `json:"op"`
-		OK       bool          `json:"ok"`
-		ID       string        `json:"id"`
-		Reason   string        `json:"reason"`
+		Sources  *[]SourceView  `json:"sources"`
+		Found    *SourcesFound  `json:"found"`
+		ClientID string         `json:"clientId"`
+		Items    []SourceItem   `json:"items"`
+		Errors   []SourceErr    `json:"errors"`
+		Op       string         `json:"op"`
+		OK       bool           `json:"ok"`
+		ID       string         `json:"id"`
+		Reason   string         `json:"reason"`
+		Glance   []SourceGlance `json:"glance"`
+		Page     int            `json:"page"`
+		More     bool           `json:"more"`
+		Wheres   []string       `json:"wheres"`
+		Tags     []string       `json:"tags"`
+		Limited  bool           `json:"limited"`
 	}
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return f, err
 	}
-	s := &SourcesFrame{ClientID: raw.ClientID, Items: raw.Items, Errors: raw.Errors, Op: raw.Op, OK: raw.OK, ID: raw.ID, Reason: raw.Reason}
+	s := &SourcesFrame{ClientID: raw.ClientID, Items: raw.Items, Errors: raw.Errors, Op: raw.Op, OK: raw.OK, ID: raw.ID, Reason: raw.Reason, Page: raw.Page, More: raw.More, Wheres: raw.Wheres, Tags: raw.Tags, Limited: raw.Limited}
 	if f.T == "sources" {
 		v := &SourcesView{}
 		if raw.Sources != nil {
@@ -209,12 +242,16 @@ func decodeSources(data []byte, f ServerFrame) (ServerFrame, error) {
 		if raw.Found != nil {
 			v.Found = *raw.Found
 		}
+		v.Glance = raw.Glance
 		s.View = v
 	}
 	f.SavedItems = nil
 	f.Sources = s
 	return f, nil
 }
+
+// BrowsePage (D357) is a page of On hand's fold (BROWSE_PAGE).
+const BrowsePage = 30
 
 // SourceKindName is an app's own name (GitHub, Obsidian, Jira).
 func SourceKindName(kind string) string {

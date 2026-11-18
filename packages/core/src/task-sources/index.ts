@@ -10,12 +10,12 @@ import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { randomBytes } from "node:crypto";
-import type { Bodies, LogEvent, SourceAsk, SourceItem, SourceItemRef, SourceKind, SourceOp, SourcesFound, SourcesView, SourceView, TaskCard, WhenDone, WhenNew } from "@ducter/protocol";
-import { DEFAULT_WHEN, WHEN_DONE } from "@ducter/protocol";
+import type { Bodies, LogEvent, SourceAsk, SourceGlance, SourceItem, SourceItemRef, SourceKind, SourceOp, SourcesFound, SourcesView, SourceView, TaskCard, WhenDone, WhenNew } from "@ducter/protocol";
+import { BROWSE_PAGE, DEFAULT_WHEN, GLANCE_MAX, WHEN_DONE } from "@ducter/protocol";
 import { isActive as isActiveAttention } from "../registry.ts";
 import type { LogStore, TaskRegistry } from "@ducter/protocol/src/internal.ts";
 import type { GhRun } from "@ducter/protocol/src/git-login.ts";
-import type { SourceAdapter, WriteResult } from "./adapter.ts";
+import { RateLimited, type SourceAdapter, type WriteResult } from "./adapter.ts";
 import { createGitHub } from "./github.ts";
 import { createObsidian, obsidianVaults } from "./obsidian.ts";
 
@@ -63,6 +63,72 @@ interface State {
   learned?: Record<string, string>;
 }
 
+/** What a look found that On hand may show first (D357): the recent ones, review requests, mentions. */
+export interface GlanceFrom {
+  recent: SourceItem[];
+  review: SourceItem[];
+  mentioned: SourceItem[];
+}
+
+const newest = (xs: SourceItem[]) => [...xs].sort((a, b) => (b.updatedAt ?? "").localeCompare(a.updatedAt ?? ""));
+const dayAfter = (day: string, n: number) => new Date(Date.parse(`${day}T00:00:00Z`) + n * DAY_MS).toISOString().slice(0, 10);
+
+/**
+ * D357: the few to-dos On hand shows (never more than max), chosen to save attention, never by a
+ * model: the newest PR waiting for the person's review; assigned ones that mention them (two at
+ * most); Obsidian lines due by the day after tomorrow, soonest first; then the most recently
+ * updated, a source at a time; a second review request only if room is left. None that has a live task (it is on the
+ * board already, with its chip).
+ */
+export function glanceOf(from: GlanceFrom[], live: (ref: string) => boolean, today: string, max = GLANCE_MAX): SourceGlance[] {
+  const out: SourceGlance[] = [];
+  const seen = new Set<string>();
+  const put = (i: SourceItem, why: SourceGlance["why"]) => {
+    if (out.length >= max || seen.has(i.ref) || live(i.ref)) return false;
+    seen.add(i.ref);
+    out.push({ ...i, why });
+    return true;
+  };
+  const reviews = newest(from.flatMap((f) => f.review));
+  for (const i of reviews) if (put(i, "review")) break;
+  let m = 0;
+  for (const i of newest(from.flatMap((f) => f.mentioned))) if (m < 2 && put(i, "mentioned")) m++;
+  const by = dayAfter(today, 2);
+  const due = from.flatMap((f) => f.recent).filter((i) => i.due && i.due <= by).sort((a, b) => a.due!.localeCompare(b.due!));
+  for (const i of due) put(i, "due");
+  // The newest, a source at a time (two sources: each has its newest seen, not one app's three).
+  const lists = from.map((f) => newest(f.recent));
+  for (let k = 0; lists.some((l) => k < l.length); k++) for (const l of lists) if (l[k]) put(l[k]!, "recent");
+  for (const i of reviews) put(i, "review");
+  return out;
+}
+
+/** D357: the fold's chips: the commonest values first, at most n. */
+export function commonest(values: string[], n = 8): string[] {
+  const c = new Map<string, number>();
+  for (const v of values) if (v) c.set(v, (c.get(v) ?? 0) + 1);
+  return [...c.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, n).map(([v]) => v);
+}
+
+/**
+ * D357: where a GitHub to-do handed over from On hand is done: the place whose origin is its
+ * repository (this computer's copy first), else a place named like the repository, else none (the
+ * task clones it itself). Never asked: the person tapped one button.
+ */
+export function placeForRepo<P extends { place: { kind: string; device?: string }; name: string; remote?: string }>(places: P[], repo: string | undefined): P | undefined {
+  if (!repo) return undefined;
+  const r = repo.toLowerCase();
+  const repos = places.filter((p) => p.place.kind === "repo");
+  const local = (p: P) => !p.place.device || p.place.device === "local";
+  const byRemote = repos.filter((p) => p.remote?.toLowerCase().replace(/\.git$/, "").endsWith(`github.com/${r}`));
+  const name = r.split("/")[1] ?? r;
+  const byName = repos.filter((p) => p.name.toLowerCase() === name);
+  return byRemote.find(local) ?? byRemote[0] ?? byName.find(local) ?? byName[0];
+}
+
+/** An Obsidian line's folder (the note's top folder; "" for the vault's top). */
+export const folderOf = (where: string | undefined) => (where && where.includes("/") ? where.slice(0, where.indexOf("/")) : "");
+
 export interface TaskSourcesDeps {
   dataDir: string;
   log: LogStore;
@@ -104,6 +170,12 @@ export interface TaskSources {
   remove(id: string): boolean;
   /** Open to-dos across the sources (or one), newest first; query matches words, labels and where. */
   items(o?: { source?: string; query?: string; limit?: number; found?: boolean }): Promise<{ items: SourceItem[]; errors: { source: string; error: string }[] }>;
+  /**
+   * D357: On hand's fold: one page of the open ones (BROWSE_PAGE each), newest first, narrowed by
+   * words, a repository or folder (where), a label or tag, or the PRs waiting for review; with the
+   * chips to offer.
+   */
+  browse(o: { source?: string; page?: number; query?: string; where?: string; tag?: string; review?: boolean }): Promise<{ items: SourceItem[]; more: boolean; page: number; wheres: string[]; tags: string[]; errors: { source: string; error: string }[]; limited?: boolean }>;
   /** One to-do by its ref (closed ones too). */
   item(ref: string, source?: string): Promise<SourceItem | undefined>;
   /** Bind a task to a to-do (the New task pick, the partner's take, a standing go). */
@@ -214,7 +286,7 @@ export function createTaskSources(d: TaskSourcesDeps): TaskSources {
 
   // ---------- adapters ----------
   const adapters = new Map<string, SourceAdapter>();
-  const status = new Map<string, { state: SourceView["state"]; account?: string; error?: string; at?: string; open?: number; atLeast?: boolean; review?: number }>();
+  const status = new Map<string, { state: SourceView["state"]; account?: string; error?: string; at?: string; open?: number; atLeast?: boolean; review?: number; glance?: GlanceFrom }>();
   const adapterOf = (s: Stored): SourceAdapter => {
     let a = adapters.get(s.id);
     if (a) return a;
@@ -385,7 +457,8 @@ export function createTaskSources(d: TaskSourcesDeps): TaskSources {
       // can't be had, the list's length is only a lower bound when it is a full page.
       const total = a.total ? await a.total().catch(() => undefined) : undefined;
       const count = total ?? { open: items.length, ...(a.total && items.length >= 50 ? { atLeast: true } : {}) };
-      status.set(s.id, { state: "ok", ...(x.account ? { account: x.account } : {}), at: new Date(now()).toISOString(), open: count.open, ...(count.atLeast ? { atLeast: true } : {}), ...(total?.review !== undefined ? { review: total.review } : {}) });
+      const glance: GlanceFrom = { recent: items.slice(0, 12), review: total?.reviewItems ?? [], mentioned: total?.mentioned ?? [] };
+      status.set(s.id, { state: "ok", ...(x.account ? { account: x.account } : {}), at: new Date(now()).toISOString(), open: count.open, ...(count.atLeast ? { atLeast: true } : {}), ...(total?.review !== undefined ? { review: total.review } : {}), glance });
       const seen = new Set(st.seen[s.id] ?? []);
       const first = !st.learned?.[s.id] && !seen.size;
       const fresh = items.filter((i) => !seen.has(i.ref) && !taskOf(i.ref));
@@ -553,7 +626,13 @@ export function createTaskSources(d: TaskSourcesDeps): TaskSources {
 
   return {
     view() {
-      return { sources: st.sources.map(viewOf), found: { ...(foundGh ? { github: foundGh } : {}), vaults: obsidianVaults(home, d.platform).filter((v) => !st.sources.some((s) => s.kind === "obsidian" && s.path && resolve(s.path) === resolve(v.path))) } };
+      const from = st.sources.map((s) => status.get(s.id)).filter((x) => x?.state === "ok" && x.glance).map((x) => x!.glance!);
+      const live = (ref: string) => {
+        const c = taskOf(ref);
+        return !!c && isActiveAttention(c.attention);
+      };
+      const glance = from.length ? glanceOf(from, live, d.today?.() ?? new Date(now()).toISOString().slice(0, 10)) : [];
+      return { sources: st.sources.map(viewOf), ...(glance.length ? { glance } : {}), found: { ...(foundGh ? { github: foundGh } : {}), vaults: obsidianVaults(home, d.platform).filter((v) => !st.sources.some((s) => s.kind === "obsidian" && s.path && resolve(s.path) === resolve(v.path))) } };
     },
     async add(kind, path) {
       if (kind === "github") {
@@ -637,6 +716,47 @@ export function createTaskSources(d: TaskSourcesDeps): TaskSources {
       const q = o.query?.trim();
       const out = (q ? items.filter((i) => matches(i, q)) : items).slice(0, o.limit ?? 50);
       return { items: out, errors };
+    },
+    async browse(o) {
+      const page = Math.max(1, Math.floor(o.page ?? 1) || 1);
+      const items: SourceItem[] = [];
+      const errors: { source: string; error: string }[] = [];
+      const wheres: string[] = [];
+      const tags: string[] = [];
+      let more = false;
+      let limited = false;
+      const q = o.query?.trim() ?? "";
+      for (const s of st.sources) {
+        if (o.source && s.id !== o.source) continue;
+        if (o.review && s.kind !== "github") continue;
+        const a = adapterOf(s);
+        try {
+          // The chips come from what the look read (GitHub: its recent page; a vault: all of it).
+          const known = await a.list();
+          for (const i of known) {
+            wheres.push(s.kind === "obsidian" ? folderOf(i.where) : (i.where ?? ""));
+            tags.push(...(i.labels ?? []));
+          }
+          if (s.kind === "github" && s.repos?.length) wheres.push(...s.repos);
+          let got: { items: SourceItem[]; more: boolean };
+          if (a.browse) got = await a.browse({ page, ...(q ? { query: q } : {}), ...(o.where ? { where: o.where } : {}), ...(o.tag ? { tag: o.tag } : {}), ...(o.review ? { review: true } : {}) });
+          else {
+            const all = known.filter((i) => (o.where === undefined || folderOf(i.where) === o.where) && (!o.tag || (i.labels ?? []).some((l) => l.toLowerCase() === o.tag!.toLowerCase())) && (!q || matches(i, q)));
+            got = { items: all.slice((page - 1) * BROWSE_PAGE, page * BROWSE_PAGE), more: all.length > page * BROWSE_PAGE };
+          }
+          more ||= got.more;
+          for (const i of got.items) {
+            const t = taskOf(i.ref);
+            items.push(t && isActiveAttention(t.attention) ? { ...i, taskId: t.taskId } : i);
+          }
+        } catch (err) {
+          if (err instanceof RateLimited) limited = true;
+          errors.push({ source: s.id, error: (err as Error).message.slice(0, 200) });
+        }
+      }
+      // Two sources at once: one list, newest first (each source's page beside the other's).
+      if (!o.source && st.sources.length > 1) items.sort((a, b) => (b.updatedAt ?? "").localeCompare(a.updatedAt ?? ""));
+      return { items, more, page, wheres: commonest(wheres), tags: commonest(tags), errors, ...(limited ? { limited: true } : {}) };
     },
     async item(ref, source) {
       for (const s of st.sources) {

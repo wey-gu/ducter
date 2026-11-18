@@ -14283,3 +14283,146 @@ svg .wave.w2.on {
   .lend-pulse { animation: none; }
   .lend-here { animation: none; }
 }
+/* D357: 你的待办 / Your to-dos on On hand: the board's cards and low cards, the app's mark where a
+   task has its agent's coin; the fold opened in place: Find, chips on a sunk track, pages. */
+.todo-group h3 .todo-marks {
+  display: inline-flex;
+  align-self: center;
+  gap: 4px;
+  margin-right: 8px;
+  color: var(--ink-soft);
+}
+.todo-group h3 > span + .n {
+  margin-left: 8px;
+}
+.todo-card {
+  flex-direction: column;
+}
+.todo-card .cmain {
+  text-decoration: none;
+  padding-bottom: 6px;
+}
+.todo-mark {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--sunken);
+  color: var(--ink);
+}
+.todo-mark.small {
+  width: 22px;
+  height: 22px;
+}
+.todo-card .todo-c2,
+.tcompact.todo-row-card .k2 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  min-height: 0;
+}
+.tcompact.todo-row-card .k2 {
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+.todo-why {
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+.todo-why.why-review {
+  color: var(--needs-ink);
+}
+.todo-why.why-mentioned {
+  color: var(--working-ink);
+}
+.todo-why.why-due {
+  color: var(--waiting-ink);
+}
+.todo-by {
+  color: var(--ink-muted);
+  font-size: var(--xs);
+}
+.todo-label {
+  padding: 1px 8px;
+  border-radius: var(--pill);
+  background: var(--sunken);
+  color: var(--ink-muted);
+  font-size: var(--xs);
+  white-space: nowrap;
+}
+.todo-card .todo-foot {
+  padding: 0 12px 10px 16px;
+  justify-content: flex-end;
+}
+.todo-card .todo-foot .beat {
+  margin-right: auto;
+}
+.todo-failed {
+  margin-right: auto;
+  color: var(--failed-ink);
+  white-space: normal;
+}
+.todo-card .todo-foot .btn,
+.todo-row-card .tacts .btn {
+  min-height: 44px;
+}
+.todo-row-card .kmain {
+  text-decoration: none;
+}
+.todo-fold {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 4px 0 6px;
+}
+.onhand-list .todo-fold .todo-find {
+  flex: none;
+  height: 44px;
+}
+.todo-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 4px;
+  border-radius: 22px;
+  background: var(--sunken);
+  align-self: flex-start;
+  max-width: 100%;
+}
+.todo-chips .todo-chip {
+  height: 36px;
+  position: relative;
+}
+.todo-chips .todo-chip::before {
+  content: "";
+  position: absolute;
+  inset: -4px 0;
+}
+.todo-fold .todo-page {
+  align-self: center;
+  min-height: 44px;
+}
+.todo-count-link {
+  margin: 0;
+  padding: 0 4px;
+  min-height: 32px;
+}
+.room-phone .todo-chips {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+/* A low card's second line keeps its chip whole; the author and labels give way first. */
+.tcompact.todo-row-card .k2 > * {
+  flex: none;
+}
+.tcompact.todo-row-card .k2 > .todo-by,
+.tcompact.todo-row-card .k2 > .todo-label {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

@@ -139,7 +139,12 @@ export function createObsidian(o: ObsidianOpts): SourceAdapter & { vaultName(): 
     return out;
   }
 
-  const itemOf = (rel: string, t: TaskLine, mtime: number, _line?: string): SourceItem => ({
+  const itemOf = (rel: string, t: TaskLine, mtime: number, line?: string): SourceItem => {
+    // D357: the line's #tags, for the fold's chips (without the #).
+    const labels = [...new Set([...(line ?? "").matchAll(/(?:^|\s)#([\p{L}\p{N}_/-]+)/gu)].map((m) => m[1]!).filter((x) => !/^\d+$/.test(x)))];
+    return { ...itemBase(rel, t, mtime), ...(labels.length ? { labels } : {}) };
+  };
+  const itemBase = (rel: string, t: TaskLine, mtime: number): SourceItem => ({
     source: o.source,
     kind: "obsidian",
     ref: `${rel}::${t.key}`,

@@ -1213,7 +1213,9 @@ export type ClientFrame =
   // D202: model and effort only when the user picked other than the defaults (an effort the model
   // doesn't list is dropped, with a line in the task, never sent).
   // D285: from, 带着它开新任务 / New task from this: the brief carries what that task found.
-  | { t: "task_new"; words: string; place?: Place; harness?: string; model?: string; effort?: string; clientId?: string; when?: NewTaskWhen; media?: string[]; from?: string; item?: SourceItemRef }
+  // D357: handed: the to-do was handed over from On hand (交给{name} / Hand to {name}); no place was
+  // picked, so the home finds the repository's own folder.
+  | { t: "task_new"; words: string; place?: Place; harness?: string; model?: string; effort?: string; clientId?: string; when?: NewTaskWhen; media?: string[]; from?: string; item?: SourceItemRef; handed?: boolean }
   // D186: add a folder on the home's computer as a project (a repo or not). Answered with
   // project_add_result; On hand's projects and the card's places then include it. device (D197):
   // the folder is on that worker (the Mac app's own, when the home is elsewhere), read there.

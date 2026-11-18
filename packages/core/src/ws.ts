@@ -12,7 +12,7 @@ import { talkLang } from "./lang.ts";
 import type { DevicesView } from "./devices.ts";
 import { redactDeep } from "@ducter/protocol/src/redact.ts";
 import { PROJECTED_KINDS, isActive, taskStream } from "./registry.ts";
-import { briefOf } from "./task-sources/index.ts";
+import { briefOf, placeForRepo } from "./task-sources/index.ts";
 import { sessionIndexes } from "./session-index.ts";
 import { indexFrom } from "@ducter/protocol/src/session.ts";
 import { machineId } from "./machine.ts";
@@ -1409,6 +1409,8 @@ export function createWsHandler(deps: WsDeps) {
         if (already && isActive(already.attention)) return send(ws, { t: "task_new_result", ok: true, ...(id ? { clientId: id } : {}), taskId: already.taskId, card: already });
         const full = pick && ts ? await ts.item(pick.ref, pick.source).catch(() => undefined) : undefined;
         const srcBrief = pick ? briefOf(full ?? pick) : undefined;
+        // D357: handed over from On hand (no place given): the repository's own folder when there is one.
+        const place = f.place ?? (pick?.kind === "github" && f.handed === true ? placeForRepo((await deps.newTask.options().catch(() => ({ places: [] }))).places, pick.where)?.place : undefined);
         // A resend (the client never saw its result): the same answer, nothing opened twice.
         const prior = id ? newTaskSeen.get(id) : undefined;
         const pending =
@@ -1416,7 +1418,7 @@ export function createWsHandler(deps: WsDeps) {
           // D312: a task or routine made from another partner's conversation is that partner's.
           actAs(ws.data.partner, () => deps.newTask!.open({
             words: String(f.words ?? ""),
-            ...(f.place ? { place: f.place } : {}),
+            ...(place ? { place } : {}),
             ...(typeof f.harness === "string" && f.harness ? { harness: f.harness } : {}),
             ...(typeof f.model === "string" && f.model ? { model: f.model } : {}),
             ...(typeof f.effort === "string" && f.effort ? { effort: f.effort } : {}),
@@ -1525,6 +1527,18 @@ export function createWsHandler(deps: WsDeps) {
           send(ws, { t: "sources", ...ts.view() });
           void ts.look().catch(() => {});
           return;
+        }
+        if (f.t === "source_items" && typeof f.page === "number") {
+          // D357: On hand's fold, a page at a time.
+          const r = await ts.browse({
+            page: f.page,
+            ...(typeof f.id === "string" && f.id ? { source: f.id } : {}),
+            ...(typeof f.query === "string" ? { query: f.query.slice(0, 200) } : {}),
+            ...(typeof f.where === "string" ? { where: f.where.slice(0, 200) } : {}),
+            ...(typeof f.tag === "string" && f.tag ? { tag: f.tag.slice(0, 60) } : {}),
+            ...(f.review === true ? { review: true } : {}),
+          });
+          return send(ws, { t: "source_items_result", ...(typeof f.clientId === "string" ? { clientId: f.clientId.slice(0, 64) } : {}), items: r.items, page: r.page, more: r.more, wheres: r.wheres, tags: r.tags, ...(r.errors.length ? { errors: r.errors } : {}), ...(r.limited ? { limited: true } : {}) });
         }
         if (f.t === "source_items") {
           const r = await ts.items({ ...(typeof f.id === "string" && f.id ? { source: f.id } : {}), ...(typeof f.query === "string" ? { query: f.query.slice(0, 200) } : {}) });

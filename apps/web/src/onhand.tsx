@@ -23,7 +23,7 @@ import { computerName, deviceWait, manyComputers } from "./where.ts";
 import { Avatar, DecisionCard, stateLabel } from "./views.tsx";
 import { Coin } from "./coin.tsx";
 import { BrandMark } from "./brand.tsx";
-import { SourceChip, TS } from "./todos.tsx";
+import { askFold, SourceChip, TF, TodoCard, todoCounts, TodoFold, todoGroupName, TS } from "./todos.tsx";
 import { Goal, Groove, limitAt, limitState, untilLine, WaitBubble, waitCaption, waitLine } from "./work.tsx";
 import { handover, isNewResult, statusOf, urgentOf, type Status } from "./seen.ts";
 import { OtherAsk, PartnerMark } from "./partners.tsx";
@@ -1150,6 +1150,8 @@ export function OnHandList({ room }: { room: Room }) {
           )}
         </Section>
       )}
+      {/* D357: the person's to-dos in their own apps: a few, the rest folded. */}
+      {!rail && !q && !f && <TodoGroup lens={lens} />}
       {/* D285: 做过的事 / Past tasks: what you have seen, and everything before it. */}
       {!rail && !q && (
         <div class="past-links">
@@ -1164,6 +1166,63 @@ export function OnHandList({ room }: { room: Room }) {
       )}
       {room === "full" && L.sel.size > 0 && <BulkBar />}
     </div>
+  );
+}
+
+/**
+ * D357: 你的待办 / Your to-dos (GitHub 上标给你的 / Assigned to you on GitHub when it is the only
+ * source): only while a source is on, under All or that source's lens. At most three stand as
+ * cards (GLANCE_MAX: a review request, a mention, a due line, the newest); the rest fold under
+ * 还有 n 件 / n more, which opens in place with Find, chips and pages. Nothing for someone with no source.
+ */
+function TodoGroup({ lens }: { lens: string }) {
+  useEffect(() => {
+    // The sources frame keeps coming once asked (on each connection; the look it starts is ETag'd:
+    // free when nothing changed).
+    if (A.S.welcomed) A.send({ t: "sources" });
+  }, [A.S.welcomed]);
+  const ref = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    if (TF.scroll && ref.current) (TF.scroll = false), ref.current.scrollIntoView({ block: "start", behavior: "smooth" });
+  });
+  const frame = TS.frame;
+  if (!frame?.sources.length) return null;
+  if (lens && !lens.startsWith("src:")) return null;
+  const sources = lens ? frame.sources.filter((s) => `src:${s.id}` === lens) : frame.sources;
+  if (!sources.length) return null;
+  const glance = (frame.glance ?? []).filter((g) => sources.some((s) => s.id === g.source));
+  const c = todoCounts(sources, glance);
+  // Silence: a source that reads and has nothing open draws nothing.
+  if (!glance.length && !c.rest && !c.review && !TF.open) return null;
+  const toggle = () => {
+    TF.open = !TF.open;
+    if (TF.open && !TF.items.length) askFold(1);
+    A.changed();
+  };
+  return (
+    <section class="tsec todo-group" aria-label={todoGroupName(sources)} ref={ref as never}>
+      <h3>
+        {/* Several sources: their marks before the name (one is named by the heading itself). */}
+        {sources.length > 1 && (
+          <span class="todo-marks" aria-hidden="true">
+            {[...new Set(sources.map((s) => s.kind))].map((k) => (
+              <BrandMark key={k} name={k} size={18} />
+            ))}
+          </span>
+        )}
+        <span>{todoGroupName(sources)}</span>
+        {c.open > 0 && <span class="n">{c.atLeast ? `${c.open}+` : c.open}</span>}
+      </h3>
+      {glance.length > 0 && (
+        <div class="tcards">
+          {glance.map((g) => (
+            <TodoCard key={g.ref} i={g} />
+          ))}
+        </div>
+      )}
+      {(c.rest > 0 || c.review > 0 || TF.open) && <FoldLine words={t("onhand.todos.more", c.rest)} open={TF.open} onToggle={toggle} />}
+      {TF.open && <TodoFold sources={sources} shown={glance.map((g) => g.ref)} />}
+    </section>
   );
 }
 

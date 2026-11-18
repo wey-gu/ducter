@@ -1930,6 +1930,9 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] **`set_todos` read by people** (D348: five LLM raters only). Trigger: the next comprehension test with people.
 - [ ] **Live checks:** the author's gh and a real (copied) vault on iCloud and Obsidian Sync with the note open in Obsidian. Trigger: before calling D341 done.
 - [ ] **Several GitHub accounts** (one source per home's gh today). Trigger: someone with a work and a personal account on one home.
+- [ ] **D357 live:** On hand's group and fold against the author's real GitHub (557 assigned, the review requests, a mention), the hand-over landing in the repository's folder, the rate limit while typing fast in the fold's Find. Trigger: before calling D357 done.
+- [ ] **D357: the review list's own count of pages** (search caps at 1000; a person with more sees "more" stop there). Trigger: someone past 1000 open in one scope.
+- [ ] **D357: a mention not assigned to the person** (search `mentions:` alone) is not offered: D341 takes what is assigned. Trigger: the author asks for mentions they aren't assigned.
 
 ## What changed after an update (D344)
 

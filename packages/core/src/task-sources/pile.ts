@@ -145,6 +145,8 @@ const W = {
     picksGo: "交给{name}",
     picksHold: "今天先不",
     labelled: "标了 {label}",
+    closeLabelled: "先关掉了：它标了 {label}。不对的话可以重新打开。",
+    repeats: "每周都有的事",
     fallback: "先关掉了；还需要的话可以重新打开。",
   },
   en: {
@@ -170,6 +172,8 @@ const W = {
     picksGo: "Hand them to {name}",
     picksHold: "Not today",
     labelled: "Labelled {label}",
+    closeLabelled: "Closing this: it is labelled {label}. Reopen it if that is wrong.",
+    repeats: "It repeats",
     fallback: "Closing this for now; reopen it if it still matters.",
   },
 };
@@ -436,11 +440,11 @@ export function createPile(d: PileDeps): Pile {
       if (v && v.updatedAt === i.updatedAt && v.lang === lang) continue;
       const lab = (i.labels ?? []).find((l) => CLOSE_LABELS.test(l));
       if (lab) {
-        st.verdicts[i.ref] = { at: nowIso, ...(i.updatedAt ? { updatedAt: i.updatedAt } : {}), group: "close", why: fill(W[lang].labelled, { label: lab }), comment: langOfItem(i) === "zh" ? `先关掉了：它标了 ${lab}。不对的话可以重新打开。` : `Closing this: it is labelled ${lab}. Reopen it if that is wrong.`, lang, rule: true };
+        st.verdicts[i.ref] = { at: nowIso, ...(i.updatedAt ? { updatedAt: i.updatedAt } : {}), group: "close", why: fill(W[lang].labelled, { label: lab }), comment: fill(W[langOfItem(i) === "zh" ? "zh" : "en"].closeLabelled, { label: lab }), lang, rule: true };
         continue;
       }
       if (i.repeats) {
-        st.verdicts[i.ref] = { at: nowIso, ...(i.updatedAt ? { updatedAt: i.updatedAt } : {}), group: "later", why: lang === "zh" ? "每周都有的事" : "It repeats", lang, rule: true };
+        st.verdicts[i.ref] = { at: nowIso, ...(i.updatedAt ? { updatedAt: i.updatedAt } : {}), group: "later", why: W[lang].repeats, lang, rule: true };
         continue;
       }
       todo.push(i);

@@ -15,7 +15,7 @@ export const agentSetupWords: { zh: Record<string, string>; en: Record<string, s
     "ag.ready": "可以用了",
     "ag.missing": "还没装",
     "ag.where": "装在 Ducter 自己的文件夹里，不用管理员密码。",
-    "ag.login.starting": "正在准备登录…",
+    "ag.login.starting": "正在打开登录…",
     "ag.login.codex": "在任意设备上打开这个链接，输入这个码：",
     "ag.login.claude": "打开这个链接登录，再把页面给你的码粘贴到这里：",
     "ag.login.open": "打开链接",

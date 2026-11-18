@@ -18,6 +18,7 @@ import type { GhRun } from "@ducter/protocol/src/git-login.ts";
 import { RateLimited, type SourceAdapter, type WriteResult } from "./adapter.ts";
 import { createGitHub } from "./github.ts";
 import { createObsidian, obsidianVaults } from "./obsidian.ts";
+import { createPile, endsTask, type Ask, type Pile } from "./pile.ts";
 
 export const SOURCES_FILE = "task-sources.json";
 /** A look at every source (the open lists; GitHub's answers are ETag'd, so an unchanged look is free). */
@@ -152,6 +153,14 @@ export interface TaskSourcesDeps {
   boundMs?: number;
   /** A file changed this recently isn't written (ms; tests 0). */
   quietMs?: number;
+  /** D359: the person's day for a time (their zone); the person's language; the partner's name. */
+  dayOf?: (ms: number) => string;
+  lang?: () => "zh" | "en";
+  name?: () => string;
+  /** D359: open a task for a handed-over to-do (its brief carries the to-do); the service binds it. */
+  openTask?: (item: SourceItem, brief: string) => Promise<{ ok: boolean; taskId?: string; error?: string }>;
+  /** D359: a repository's own review guide, when its folder is on this computer. */
+  reviewGuide?: (repo: string) => Promise<string | undefined> | string | undefined;
 }
 
 export interface ProposeResult {
@@ -197,6 +206,10 @@ export interface TaskSources {
   wakes(e: LogEvent): boolean;
   /** Whether the partner's tool is listed: a source is on, or one could be added without a step. */
   listed(): boolean;
+  /** D359: the pile: sorted on connect and daily, handed over in a queue, closed in a reviewed batch. */
+  pile: Pile;
+  /** D359: the cheapest model to sort and pre-read with (set when the runner is). */
+  setAsk(a: Ask | undefined): void;
   onChange(fn: () => void): () => void;
   stop(): void;
 }
@@ -374,6 +387,12 @@ export function createTaskSources(d: TaskSourcesDeps): TaskSources {
         ...(r.error ? { error: r.refused ? `${r.refused}: ${r.error}` : r.error } : {}),
       },
     });
+    // D359: the pile's count ticks down at once (557 → 556); the next look counts it again for real.
+    if (r.ok && (op === "close" || op === "tick")) {
+      const x = status.get(item.source);
+      if (x?.open !== undefined && x.open > 0) x.open--;
+      changed();
+    }
     return r;
   }
 
@@ -399,7 +418,7 @@ export function createTaskSources(d: TaskSourcesDeps): TaskSources {
       const taken = new Set<string>();
       for (const e of d.log.read({ kinds: ["task_bound"], beforeSeq: d.log.head() + 1, limit: 2000 })) {
         const b = e.body as Bodies["task_bound"];
-        if (b.item?.source === source && b.by !== "rule" && Date.parse(e.ts) >= since) taken.add(b.item.ref);
+        if (b.item?.source === source && b.by !== "rule" && !fromPile.has(b.taskId) && Date.parse(e.ts) >= since) taken.add(b.item.ref);
       }
       return taken.size;
     }
@@ -541,6 +560,11 @@ export function createTaskSources(d: TaskSourcesDeps): TaskSources {
       await lookSources();
       await lookBound();
       changed();
+      // D359: the sort, the first time a source read its list and then once a day (only what
+      // changed goes to the model), and the newest review requests pre-read. Neither holds the look.
+      if (pile.due()) void pile.sort(sortedOnce() ? "daily" : "connect").catch((err) => console.warn("[task-sources] the sort failed:", (err as Error).message));
+      const prs = [...status.values()].flatMap((x) => (x.state === "ok" ? (x.glance?.review ?? []) : []));
+      if (prs.length) void pile.readNewest(prs).catch(() => {});
     })().finally(() => {
       looking = undefined;
       changed();
@@ -548,18 +572,57 @@ export function createTaskSources(d: TaskSourcesDeps): TaskSources {
     return looking;
   }
 
+  // ---------- D359: the pile ----------
+  let api: TaskSources | undefined;
+  const fromPile = new Set<string>();
+  const okSources = () => st.sources.filter((s) => status.get(s.id)?.state === "ok" && (s.kind === "github" || s.kind === "obsidian"));
+  const pile = createPile({
+    dataDir: d.dataDir,
+    log: d.log,
+    tasks: d.tasks,
+    now,
+    dayOf: d.dayOf ?? ((ms) => new Date(ms).toISOString().slice(0, 10)),
+    lang: d.lang ?? (() => "en"),
+    name: d.name ?? (() => "Ducter"),
+    sources: () => okSources().map((s) => ({ id: s.id, kind: s.kind, adapter: adapterOf(s) })),
+    open: () => {
+      const xs = okSources().map((s) => status.get(s.id)!).filter((x) => x.open !== undefined);
+      return { open: xs.reduce((n, x) => n + (x.open ?? 0), 0), ...(xs.some((x) => x.atLeast) ? { atLeast: true } : {}) };
+    },
+    write: (item, op, how) => write(item, op, how),
+    ...(d.openTask
+      ? {
+          openTask: async (item: SourceItem, brief: string) => {
+            const r = await d.openTask!(item, brief);
+            // A batch handed over from the pile is one choice, not a habit: it never offers the standing go.
+            if (r.ok && r.taskId) fromPile.add(r.taskId), api!.bind(r.taskId, item, "you");
+            return r;
+          },
+        }
+      : {}),
+    ...(d.reviewGuide ? { reviewGuide: d.reviewGuide } : {}),
+    taskOf: (ref) => taskOf(ref),
+    item: (ref, source) => api!.item(ref, source),
+    changed: () => changed(),
+  });
+  const sortedOnce = () => !!pile.view().sortedAt;
+
   // ---------- Go on its own cards, and a done task's tick ----------
   const running = new Set<string>();
   const off = d.log.subscribe((e) => {
     if (e.kind === "decision_resolved") {
       const r = e.body as Bodies["decision_resolved"];
       if (r.option === "reply" || running.has(r.decisionId)) return;
+      // D359: the close batch and a review's comments are run where their Go was given (pile.ts).
+      if (pile.owns(r.decisionId)) return;
       const card = srcCard(r.decisionId);
       if (!card?.src) return;
       running.add(r.decisionId);
       void onAnswer(card, r).finally(() => running.delete(r.decisionId));
       return;
     }
+    // D359: a task ended: the next handed-over to-do in line starts.
+    if (endsTask(e)) void pile.pump().catch((err) => console.warn("[task-sources] the queue couldn't move:", (err as Error).message));
     if (e.kind === "task_state") {
       const b = e.body as Bodies["task_state"];
       if (b.attention !== "done") return;
@@ -574,12 +637,15 @@ export function createTaskSources(d: TaskSourcesDeps): TaskSources {
       const b = e.body as Bodies["task_bound"];
       if (!b.item || b.by === "rule") return;
       const s = byId(b.item.source);
-      if (s) offerTrust(s, "take", langOf(d.tasks.get(b.taskId)), b.item);
+      if (s && !fromPile.has(b.taskId)) offerTrust(s, "take", langOf(d.tasks.get(b.taskId)), b.item);
     }
   });
 
   async function onAnswer(card: Bodies["decision"], r: Bodies["decision_resolved"]) {
     const src = card.src as SourceAsk;
+    // D359: the morning's picks, answered inside the note: Go hands them over.
+    if (src.kind === "picks") return pile.answer(card, r);
+    if (src.kind === "batch" || src.kind === "review") return;
     const s = byId(src.item.source);
     if (src.kind === "write") {
       if (r.option !== "go") return;
@@ -624,15 +690,20 @@ export function createTaskSources(d: TaskSourcesDeps): TaskSources {
       .every((w) => hay.includes(w));
   };
 
-  return {
+  api = {
     view() {
       const from = st.sources.map((s) => status.get(s.id)).filter((x) => x?.state === "ok" && x.glance).map((x) => x!.glance!);
       const live = (ref: string) => {
         const c = taskOf(ref);
         return !!c && isActiveAttention(c.attention);
       };
-      const glance = from.length ? glanceOf(from, live, d.today?.() ?? new Date(now()).toISOString().slice(0, 10)) : [];
-      return { sources: st.sources.map(viewOf), ...(glance.length ? { glance } : {}), found: { ...(foundGh ? { github: foundGh } : {}), vaults: obsidianVaults(home, d.platform).filter((v) => !st.sources.some((s) => s.kind === "obsidian" && s.path && resolve(s.path) === resolve(v.path))) } };
+      // D359: a review request the partner already read carries what it found (我看过了).
+      const glance = (from.length ? glanceOf(from, live, d.today?.() ?? new Date(now()).toISOString().slice(0, 10)) : []).map((g) => {
+        const r = g.review ? pile.read(g.ref) : undefined;
+        return r ? { ...g, read: { problems: r.problems, suggestions: r.suggestions, at: r.at, state: r.state } } : g;
+      });
+      const counted = okSources().some((s) => status.get(s.id)?.open !== undefined);
+      return { sources: st.sources.map(viewOf), ...(glance.length ? { glance } : {}), ...(counted ? { pile: pile.view() } : {}), found: { ...(foundGh ? { github: foundGh } : {}), vaults: obsidianVaults(home, d.platform).filter((v) => !st.sources.some((s) => s.kind === "obsidian" && s.path && resolve(s.path) === resolve(v.path))) } };
     },
     async add(kind, path) {
       if (kind === "github") {
@@ -862,6 +933,12 @@ export function createTaskSources(d: TaskSourcesDeps): TaskSources {
     listed() {
       return st.sources.length > 0 || foundGh?.state === "ok";
     },
+    pile,
+    setAsk(a) {
+      pile.setAsk(a);
+      // A sort that waited for a model to read with goes now.
+      if (a && pile.due()) void pile.sort(sortedOnce() ? "daily" : "connect").catch(() => {});
+    },
     onChange(fn) {
       listeners.add(fn);
       return () => listeners.delete(fn);
@@ -871,6 +948,7 @@ export function createTaskSources(d: TaskSourcesDeps): TaskSources {
       off();
     },
   };
+  return api;
 
   function countTaken(source: string): number {
     return d.log.read({ kinds: ["task_bound"], beforeSeq: d.log.head() + 1, limit: 500 }).filter((e) => {

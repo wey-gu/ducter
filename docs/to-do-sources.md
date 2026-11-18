@@ -77,6 +77,36 @@ review) take you straight there.
 
 Nothing shows on On hand until you add a source.
 
+## Let your partner go through the pile
+
+When you connect GitHub, your partner reads every open issue assigned to you (with the AI agent it
+already thinks with, on its smallest model) and sorts them. You see it working, then one message:
+how many you could hand to it, how many need your call, how many you might close (you see each one
+first), and how many can wait. If there are more than it reads in one go, it says how many it hasn't
+looked at closely yet. It sorts again once a day, reading only what changed, or when you tap **Sort
+again** or ask it ("go through my GitHub issues").
+
+At the top of your to-dos on On hand, your partner stands beside the stack: **{n} still open**, how
+many it cleared for you today, and one row for each group with one button:
+
+- **Hand to** your partner: tick what to hand over (six are ticked, smallest first). Three are worked
+  on at a time; the next starts when one is done. Each becomes a task bound to its issue, and nothing
+  is posted on GitHub until the work is done and you say so.
+- **Decide them**: one question each, with your partner's suggestion already picked. Hand it over,
+  mark it as one you might close, or leave it.
+- **Look them over**: every issue it thinks you might close, with the line it would leave on each.
+  Tap **Keep open** on any you want kept. **Close these {n}, with a line on each** closes the rest:
+  each gets its line and is closed as not planned. Each one is in **Done for you**, and any can be
+  reopened on GitHub. Watch the count go down as they close.
+
+A pull request waiting for your review may already say **I've read it**, with how many problems and
+suggestions your partner found. **See them** shows the comments it drafted; drop any you don't want,
+then **Send these {n}** posts them as review comments. They are comments only: whether to merge stays your call.
+
+In the morning note, your partner may offer up to three it can clear for you today. Tap **Hand them
+to** your partner, or just say yes. If you leave the offer twice, it stops offering until you hand
+something over again.
+
 ## When a new one comes
 
 Each source has **When a new one comes**:

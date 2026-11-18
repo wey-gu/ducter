@@ -36,6 +36,7 @@ var zhAccounts = Table{
 	"kind.service":         "你用的服务",
 	"kind.update":          "之前说的有变",
 	"kind.said":            "你说过的",
+	"kind.todos":           "你的待办",
 
 	"first.go":       "好，看一眼",
 	"first.no":       "以后再说",
@@ -180,6 +181,7 @@ var enAccounts = Table{
 	"kind.service":         "A service you use",
 	"kind.update":          "An update to what I told you",
 	"kind.said":            "Something you said",
+	"kind.todos":           "Your to-dos",
 
 	"first.go":       "Take a look",
 	"first.no":       "Not now",

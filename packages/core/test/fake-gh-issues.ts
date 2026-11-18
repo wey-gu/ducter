@@ -19,6 +19,10 @@ export interface FakeIssue {
   /** D357: who opened it. */
   author?: string;
   updated?: string;
+  /** D359: how many comments it has. */
+  comments?: number;
+  /** D359: a PR's diff (what `Accept: application/vnd.github.diff` answers). */
+  diff?: string;
 }
 
 export interface FakeGh {
@@ -26,6 +30,8 @@ export interface FakeGh {
   issues: FakeIssue[];
   comments: { repo: string; number: number; body: string }[];
   closes: { repo: string; number: number; reason: string }[];
+  /** D359: reviews sent on PRs (event, body, line comments). */
+  reviews: { repo: string; number: number; event: string; body: string; comments: { path: string; line: number; body: string }[] }[];
   calls: string[][];
   /** Search calls (the count). */
   searches: number;
@@ -58,6 +64,7 @@ export function fakeGh(seed: FakeIssue[] = [], o: { login?: string } = {}): Fake
     issues: seed.map((i) => ({ state: "open", assigned: true, updated: "2026-11-17T08:00:00Z", ...i })),
     comments: [],
     closes: [],
+    reviews: [],
     calls: [],
     searches: 0,
     etags: true,
@@ -115,6 +122,7 @@ export function fakeGh(seed: FakeIssue[] = [], o: { login?: string } = {}): Fake
         repository: { full_name: i.repo },
         ...(i.author ? { user: { login: i.author } } : {}),
         ...(i.pr ? { pull_request: {} } : {}),
+        ...(i.comments ? { comments: i.comments } : {}),
       });
       if (args[0] !== "api") return { code: 1, out: "", err: `fake gh: ${args.join(" ")}` };
       if (args[1] === "user") return { code: 0, out: `${login}\n`, err: "" };
@@ -152,6 +160,18 @@ export function fakeGh(seed: FakeIssue[] = [], o: { login?: string } = {}): Fake
         const per = Number((args.find((a) => a.startsWith("per_page=")) ?? "per_page=30").slice(9));
         if (list.length > per) list.length = per;
         return { code: 0, out: `HTTP/2.0 200 OK\nEtag: ${etag}\nContent-Type: application/json\n\n${JSON.stringify(list)}`, err: "" };
+      }
+      // D359: a PR's diff, and a review sent on it.
+      const pull = /^\/repos\/([^/]+\/[^/]+)\/pulls\/(\d+)(\/reviews)?$/.exec(args.find((a) => a.startsWith("/repos/")) ?? "");
+      if (pull) {
+        const pr = f.issues.find((i) => i.repo === pull[1] && i.number === Number(pull[2]) && i.pr);
+        if (!pr) return { code: 1, out: "", err: "gh: Not Found (HTTP 404)" };
+        if (pull[3]) {
+          const b = JSON.parse(opts.stdin ?? "{}") as { event?: string; body?: string; comments?: { path: string; line: number; body: string }[] };
+          f.reviews.push({ repo: pr.repo, number: pr.number, event: b.event ?? "", body: b.body ?? "", comments: b.comments ?? [] });
+          return { code: 0, out: JSON.stringify({ html_url: `https://github.com/${pr.repo}/pull/${pr.number}#pullrequestreview-${f.reviews.length}` }), err: "" };
+        }
+        return { code: 0, out: pr.diff ?? "", err: "" };
       }
       const m = /^\/repos\/([^/]+\/[^/]+)\/issues\/(\d+)(\/comments)?$/.exec(args.find((a) => a.startsWith("/repos/")) ?? "");
       if (!m) return { code: 1, out: "", err: `fake gh: no route ${args.join(" ")}` };

@@ -662,7 +662,7 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 		if f.Sources != nil && f.Sources.View != nil {
 			s.Sources = f.Sources.View
 		}
-	case "source_items_result":
+	case "source_items_result", "pile_items_result", "pile_result": // D359: the pile's answers by clientId too
 		if f.Sources != nil {
 			if s.SourceItems == nil {
 				s.SourceItems = map[string]*protocol.SourcesFrame{}

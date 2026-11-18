@@ -11754,7 +11754,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   min-width: 0;
   border-radius: 20px;
   background: var(--surface);
-  box-shadow: 0 2px 0 var(--line), 0 8px 18px -12px rgb(43 33 24 / 0.28);
+  box-shadow: 0 2px 0 var(--line), var(--drop);
   transition: transform var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
 }
 .tcard .cmain {
@@ -11924,7 +11924,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 }
 .tcard.unseen.a-failed {
   background: linear-gradient(180deg, color-mix(in srgb, var(--failed-surface) 70%, var(--surface)), var(--surface) 72%);
-  box-shadow: 0 2px 0 var(--line), 0 8px 18px -12px rgb(43 33 24 / 0.28);
+  box-shadow: 0 2px 0 var(--line), var(--drop);
 }
 /* A new result's little moment, once: it pops on the spring and its glow swells and settles. */
 .tcard.cheer {
@@ -14659,4 +14659,504 @@ svg .wave.w2.on {
 @media (prefers-reduced-motion: reduce) {
   .cc-stage img, .lh-stage img, .lend-dots i { animation: none !important; }
   .lh-ring { display: none; }
+}
+/* D359: the pile at the head of 你的待办 (research/130): the partner beside a stack of pages whose
+   height is the count's bucket, the count itself literal (还有 557 件), the day's line, the queue,
+   and the sort's groups as rows, each with its own count and one action. A cleared one rolls the
+   number down and lifts a page off; reduced motion changes the number in place. */
+.pile {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 16px 12px;
+  border-radius: 20px;
+  background: var(--surface);
+  box-shadow: 0 2px 0 var(--line), var(--drop);
+}
+.pile-head {
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+}
+.pile-art {
+  position: relative;
+  flex: none;
+  width: 160px;
+  height: 128px;
+}
+.pile-art img {
+  display: block;
+  width: 160px;
+  height: 128px;
+  object-fit: contain;
+  object-position: left bottom;
+  animation: pile-in 400ms var(--ease);
+}
+.pile-leaf {
+  position: absolute;
+  left: 72px;
+  top: 52px;
+  width: 26px;
+  height: 32px;
+  border-radius: 6px;
+  background: var(--surface-raised);
+  box-shadow: 0 1px 0 var(--line-2), var(--drop);
+  animation: pile-leaf 500ms var(--ease-push) forwards;
+  pointer-events: none;
+}
+.pile-facts {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding-bottom: 6px;
+}
+.pile-count {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-family: var(--head);
+  color: var(--ink);
+}
+.pile-count.clear {
+  font-size: 22px;
+  font-weight: 700;
+}
+.pile-unit {
+  font-size: var(--md);
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+.pile-n {
+  position: relative;
+  display: inline-grid;
+  overflow: hidden;
+  height: 40px;
+  font-size: 34px;
+  font-weight: 800;
+  line-height: 40px;
+  font-variant-numeric: tabular-nums;
+}
+.pile-n > span {
+  grid-area: 1 / 1;
+}
+.pile-n.ticking .pile-was {
+  animation: pile-out 240ms var(--ease) forwards;
+}
+.pile-n.ticking .pile-now {
+  animation: pile-roll 240ms var(--ease);
+}
+.pile-day {
+  font-weight: 600;
+  color: var(--done-ink);
+}
+.pile-queue {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  font-size: var(--sm);
+  color: var(--ink-muted);
+}
+.pile-q.run {
+  color: var(--working-ink);
+  font-weight: 600;
+}
+.pile-rows {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--line-soft);
+}
+.pile-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+.pile-row-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.pile-row-label {
+  font-weight: 600;
+  color: var(--ink);
+}
+.pile-row-note {
+  font-size: var(--xs);
+  color: var(--ink-muted);
+}
+.pile-row-n {
+  font-family: var(--head);
+  font-size: var(--lg);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+.pile-row .btn {
+  min-height: 44px;
+  min-width: 96px;
+}
+.pile-row-gap {
+  width: 96px;
+}
+.pile-row.g-later .pile-row-label,
+.pile-row.g-unread .pile-row-label,
+.pile-row.g-later .pile-row-n,
+.pile-row.g-unread .pile-row-n {
+  color: var(--ink-muted);
+  font-weight: 600;
+}
+.pile-sorting {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.pile-sorting-line {
+  font-weight: 600;
+  color: var(--working-ink);
+}
+.pile-bar {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--sunken);
+  overflow: hidden;
+}
+.pile-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+  background: var(--working-dot);
+  transition: width 300ms var(--ease);
+}
+.pile-sorting-facts,
+.pile-foot {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: var(--sm);
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+.pile-foot .btn {
+  margin-left: auto;
+  min-height: 44px;
+}
+.pile-first {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.pile-first p {
+  flex: 1;
+  margin: 0;
+  color: var(--ink-soft);
+}
+.pile-first .btn {
+  min-height: 44px;
+}
+.pile-failed {
+  margin: 0;
+  color: var(--waiting-ink);
+}
+/* 我看过了 / I've read it, on a review request's card. */
+.pile-read {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  min-height: 44px;
+  margin: 0 12px 4px 16px;
+  padding: 6px 12px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: var(--sunken);
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: var(--sm);
+  text-align: left;
+  cursor: pointer;
+}
+.pile-read-who {
+  font-weight: 700;
+  color: var(--ink);
+}
+.pile-read-fact.bad {
+  color: var(--needs-ink);
+  font-weight: 600;
+}
+.pile-read-see {
+  margin-left: auto;
+  font-weight: 600;
+  color: var(--ink);
+}
+/* The pile's sheet: a group's to-dos, each with why and what goes with it; the action at the foot. */
+.pile-sheet .past-head h2 {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.pile-sheet .past-head h2 .n {
+  font-size: var(--lg);
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+.pile-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.pile-lede {
+  margin: 4px 0 0;
+  color: var(--ink-soft);
+  line-height: var(--lh-read);
+}
+.pile-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.pile-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: 0 2px 0 var(--line);
+}
+.pile-item.pick {
+  cursor: pointer;
+}
+.pile-item.pick input {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  margin: 2px 0 0;
+  accent-color: var(--accent);
+}
+.pile-item.kept,
+.pile-item.done {
+  opacity: 0.62;
+}
+.pile-item-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.pile-item-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.pile-item-title {
+  min-width: 0;
+  color: var(--ink);
+  font-weight: 600;
+  text-decoration: none;
+}
+.pile-item-title:hover {
+  text-decoration: underline;
+}
+.pile-why,
+.pile-ask {
+  color: var(--ink-soft);
+}
+.pile-ask {
+  font-weight: 600;
+  color: var(--ink);
+}
+.pile-item-facts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  font-size: var(--sm);
+}
+.pile-picks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.pile-pick {
+  min-height: 44px;
+  gap: 6px;
+}
+.pile-suggested {
+  padding: 1px 7px;
+  border-radius: var(--pill);
+  background: var(--hi-accent);
+  font-size: var(--xs);
+  font-weight: 600;
+}
+.pile-picked {
+  font-weight: 600;
+  color: var(--done-ink);
+}
+.pile-says {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: var(--r-sm);
+  background: var(--sunken);
+}
+.pile-says-label {
+  font-size: var(--xs);
+  font-weight: 600;
+  color: var(--ink-muted);
+}
+.pile-says-text {
+  color: var(--ink);
+  quotes: none;
+}
+.pile-item .btn {
+  flex: none;
+  min-height: 44px;
+}
+.pile-note-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+}
+.pile-note-kind {
+  font-size: var(--xs);
+  font-weight: 700;
+  padding: 1px 8px;
+  border-radius: var(--pill);
+  background: var(--waiting-surface);
+  color: var(--waiting-ink);
+}
+.pile-note-kind.problem {
+  background: var(--needs-surface);
+  color: var(--needs-ink);
+}
+.pile-note-where {
+  font-size: var(--xs);
+  color: var(--ink-muted);
+}
+.pile-note-text {
+  color: var(--ink);
+  line-height: var(--lh-read);
+}
+.pile-pr {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.pile-go {
+  position: sticky;
+  bottom: -28px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0 -28px -28px;
+  padding: 14px 28px 20px;
+  background: var(--bg);
+  border-top: 1px solid var(--line-soft);
+}
+.pile-go-row {
+  display: flex;
+  gap: 10px;
+}
+.pile-go .btn {
+  min-height: 48px;
+}
+.pile-foot-note {
+  margin: 0;
+  font-size: var(--sm);
+  color: var(--ink-muted);
+}
+@keyframes pile-roll {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+@keyframes pile-out {
+  from {
+    transform: none;
+    opacity: 1;
+  }
+  to {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+}
+@keyframes pile-leaf {
+  0% {
+    transform: none;
+    opacity: 1;
+  }
+  100% {
+    transform: translate(46px, -40px) rotate(14deg);
+    opacity: 0;
+  }
+}
+@keyframes pile-in {
+  from {
+    opacity: 0.4;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@media (max-width: 640px) {
+  .pile-art,
+  .pile-art img {
+    width: 120px;
+    height: 96px;
+  }
+  .pile-leaf {
+    left: 54px;
+    top: 38px;
+  }
+  .pile-n {
+    height: 34px;
+    font-size: 28px;
+    line-height: 34px;
+  }
+  .pile-row .btn,
+  .pile-row-gap {
+    min-width: 84px;
+    width: auto;
+  }
+  .pile-go {
+    bottom: -24px;
+    margin: 0 -16px -24px;
+    padding: 12px 16px calc(16px + var(--safe-bottom, 0px));
+  }
+  .pile-item {
+    flex-wrap: wrap;
+  }
+  .pile-item.close .btn,
+  .pile-item.note .btn {
+    margin-left: 34px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pile-art img,
+  .pile-n.ticking .pile-now,
+  .pile-bar > span {
+    animation: none;
+    transition: none;
+  }
+  .pile-leaf,
+  .pile-n.ticking .pile-was {
+    display: none;
+  }
+  .pile-n.ticking .pile-now {
+    animation: pile-in 150ms linear;
+  }
 }

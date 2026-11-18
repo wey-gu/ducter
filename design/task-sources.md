@@ -1,6 +1,6 @@
 # To-do sources (待办来源): the person's to-dos in other apps, and the tasks bound to them
 
-Decided in D341 (may need renumbering at merge). Evidence: `research/126-task-sources.md`. Words are the
+Decided in D341; the pile (§9) in D359 (both may need renumbering at merge). Evidence: `research/126-task-sources.md`. Words are the
 glossary's (`product-model.md`); the look is Pebble's (`ui.md`). Built: GitHub (read, bind, comment,
 close) and Obsidian on the home (read, bind, tick); Jira and a company's own tracker are adapters later.
 
@@ -132,3 +132,26 @@ Jira (`/rest/api/3/search/jql`, ADF comments, done as a chosen workflow transiti
 fit) and a company's own tracker (an MCP or HTTP adapter with list mine, get, comment, set done, a link)
 implement `SourceAdapter`; nothing else changes: the gate, the Log, the chip and the pane are shared.
 Triggers in `todo.md`.
+
+## 9. The pile: sorted, handed over, seen shrinking (D359)
+
+Who and why: the person with 557 open needs one thing first, someone to carry the pile; the list of
+three (§6) only showed it. Evidence for the look and the words: `research/130-todo-pile.md`.
+
+| Step | When | What the person sees | What runs |
+|---|---|---|---|
+| Sort | the first look that reads a source's list, once a day after, **再理一遍 / Sort again**, or "帮我理一理" (`todos do=sort`) | **正在一件件看…** with a bar, **看了 n 件** · **共 n 件** apart; then one sentence in the conversation (on connect and when asked only) and the groups on the pile | GitHub's list in pages of 100 (at most 600), batches of 25 to the harness's cheapest model (`createHarnessAsk`, cheap), the text fenced and redacted; code's rules first (a duplicate or won't-fix label); a verdict kept until the issue's `updated_at` changes; stopped at 300k weighted tokens (`failed: budget`, the rest **还没细看的**) |
+| Hand over | **交给{name}** on the do row | a sheet, small ones first, six ticked, **一次做 3 件，做完一件接下一件。**; **交给{name}这 6 件** | a queue in `task-sources-pile.json`: `PILE_CAP` (3) tasks at a time, each opened like New task's pick with "Fixes owner/repo#n" in its brief and bound by the person; the next on any task's end. Never offers the standing go. Nothing is posted |
+| Decide | **一件件定** | one question each, **交给{name} · 可以关掉 · 先放着**, the suggestion marked **建议** | `pile_choose`: handed over, moved to the closable ones, or left. Never a Log decision |
+| Close | **过目** | each closable one with **会留一句** and **留着**; **关掉这 n 件，各留一句** | one `decision` (src `batch`, every line) resolved Go by the person where it was given; per issue a comment then a close as *not planned*, each a `source_write` (`by: go`); the count drops at each close |
+| Pre-read | the two newest PRs waiting for review, by themselves (at most 6 a day), or **看看** | on the card **我看过了** · **2 处问题** · **1 条建议**; the sheet with the drafted comments, **不发这条**, **发出这 n 条** | the PR's diff (cut at 60 KB) and the repository's own review guide when its folder is on the home, to the cheapest model; sent as one `COMMENT` review (`source_write` op `review`), never a verdict on the PR (only comments) |
+| Morning | the morning note, unless 只说急的 or 不用主动找我 | a find **你的待办**: **昨天替你清掉了 4 件。今天能替你清掉这 3 件。**, the three under 怎么知道的, Go **交给{name}** | `proactive.morningFinds` → `pile.morning`: once a day; two unanswered in a row stop it until a hand-over; a yes in words is `todos do=hand picks=true` |
+
+The numbers: the pile's count is GitHub's search total (§7), ticked down at once by each close or
+tick Ducter writes; **今天替你清掉 n 件** counts the to-dos Ducter closed or ticked for the person that
+day (their day, their zone); every group count is code's count of verdicts still open and not handed
+over. None is a number a model wrote.
+
+What it never does: post at hand-over, close without the sheet's Go, close a vault line (a tick says
+it was done: a closable-looking line can wait instead), give a PR a verdict (only comments), or speak
+in the evening (the day's line lives on the pile and opens the next morning's find).

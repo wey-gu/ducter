@@ -2510,7 +2510,7 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 		return decodeDid(data, f)
 	case "mem_found":
 		return decodeMemFound(data, f)
-	case "sources", "source_items_result", "source_result":
+	case "sources", "source_items_result", "source_result", "pile_items_result", "pile_result":
 		return decodeSources(data, f)
 	default:
 		return f, fmt.Errorf("unknown server frame %q", f.T)

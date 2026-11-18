@@ -19,6 +19,8 @@ import { createGhInstaller, toolsBin } from "../../packages/core/src/gh-install.
 import { createGitLogin, type GhRun } from "../../packages/protocol/src/git-login.ts";
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
+import type { Runner, TaskCard } from "../../packages/protocol/src/index.ts";
+import { demoAsk, pileIssues } from "./demo-pile.ts";
 
 const zh = (process.env.DEMO_LANG ?? "zh") === "zh";
 const scratch = mkdtempSync(join(tmpdir(), "ducter-demo-todos-"));
@@ -78,9 +80,15 @@ if (many) {
     { repo: "acme/api", number: 352, title: "Token refresh races when two tabs are open", state: "open", assigned: true, mentions: true, labels: ["bug"], updated: ago(70) },
   );
 }
+// D359: DEMO_TODOS=pile: GitHub alone with 557 open, sorted by the demo's fake cheapest model
+// (DEMO_SORT_MS a batch), handed-over tasks that finish after DEMO_TASK_MS with a draft PR, a PR
+// waiting for review pre-read, and DEMO_MORNING=1 to make the morning note now.
+const pile = process.env.DEMO_TODOS === "pile";
+if (pile) gh.issues.splice(0, gh.issues.length, ...pileIssues());
 const missing = process.env.DEMO_GH === "missing";
 const dataDir = process.env.DUCTER_DATA_DIR || join(scratch, "data");
-let ghRun: GhRun = gh.run;
+// D359: a write takes a moment, as GitHub's does (DEMO_WRITE_MS), so the pile is seen ticking down one by one.
+let ghRun: GhRun = pile ? async (args, x) => (args.includes("PATCH") || args.includes("POST") ? (await Bun.sleep(Number(process.env.DEMO_WRITE_MS ?? 180)), gh.run(args, x)) : gh.run(args, x)) : gh.run;
 let extra = {};
 if (missing) {
   gh.signedIn = false;
@@ -124,13 +132,46 @@ if (missing) {
   };
 }
 
-const core = startCore({ ooSource: noOo, dataDir, persona: { id: "default", name: zh ? "小鸭" : "Duckie", identity: "" }, hostname: process.env.DUCTER_HOST || "127.0.0.1", taskSources: { ghRun, ghEnv: {}, home, quietMs: 0, pollMs: 3_600_000 }, ...extra });
-core.setRunner(stubRunner(core));
+const core = startCore({ ooSource: noOo, dataDir, persona: { id: "default", name: zh ? "小鸭" : "Duckie", identity: "" }, hostname: process.env.DUCTER_HOST || "127.0.0.1", taskSources: { ghRun, ghEnv: {}, home, quietMs: 0, pollMs: 3_600_000, ...(pile ? { ask: demoAsk(zh, Number(process.env.DEMO_SORT_MS ?? 250)) } : {}) }, ...extra });
+core.setRunner(pile ? pileRunner() : stubRunner(core));
 core.setPartner({ onTrigger() {} });
 core.settings.set({ language: zh ? "zh" : "en" });
 
+/** D359: tasks open for real on the board, work for DEMO_TASK_MS, and end with a draft PR (no agent runs). */
+function pileRunner(): Runner {
+  let n = 0;
+  const taskMs = Number(process.env.DEMO_TASK_MS ?? 20_000);
+  return {
+    harness: { start: async () => ({}) as never, available: async () => [] },
+    async openTask(input: Parameters<Runner["openTask"]>[0]): Promise<TaskCard> {
+      const taskId = `tp${++n}`;
+      core.log.append({ stream: `task:${taskId}`, origin: "partner", kind: "task_open", body: { taskId, title: input.title, project: input.project ?? "", place: input.place ?? { kind: "none" }, harness: "claude-code", brief: input.brief, language: zh ? "zh" : "en" } });
+      core.tasks.setState(taskId, "working", "hot");
+      const pr = 1400 + n;
+      setTimeout(() => {
+        const repo = core.tasks.get(taskId)?.source?.where ?? "acme/web";
+        core.log.append({ stream: `task:${taskId}`, origin: "task", kind: "report", body: { taskId, state: "done", summary: zh ? `改好了，草稿 PR #${pr}。` : `Fixed; draft PR #${pr}.`, questions: [], evidence: [{ kind: "url", ref: `https://github.com/${repo}/pull/${pr}` }] } });
+        core.tasks.setState(taskId, "done", "cold");
+      }, taskMs);
+      return core.tasks.get(taskId)!;
+    },
+    send: async () => ({ delivered: "prompted" as const }),
+    interrupt: async () => {},
+    drop: async () => {},
+  } as unknown as Runner;
+}
+
 const ts = core.taskSources;
-if (missing) {
+if (pile) {
+  // DEMO_ADD=0: GitHub not added yet (Settings › 待办来源 › 连上 is the first step to walk).
+  if (process.env.DEMO_ADD !== "0") await ts.add("github"), await ts.look();
+  // The sort runs on the add's look; the morning note when asked for.
+  if (process.env.DEMO_MORNING === "1") {
+    while (!ts.view().pile?.sortedAt || ts.view().pile?.sorting) await Bun.sleep(200);
+    await core.proactive.morning();
+  }
+  console.log(`[demo] up at http://127.0.0.1:${core.port}/app with 557 to sort (data: ${core.dataDir}; scratch: ${scratch})`);
+} else if (missing) {
   await ts.add("obsidian", life);
   console.log(`[demo] up at http://127.0.0.1:${core.port}/app with no gh (data: ${core.dataDir}; scratch: ${scratch})`);
 } else {

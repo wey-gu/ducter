@@ -61,7 +61,8 @@ import { openOwnPhone } from "./phone-own/index.ts";
 import { providerOf } from "./phone-provider.ts";
 import { registerConnectionTools } from "./connection-tools.ts";
 import { createCalendar, type Calendar } from "./calendar.ts";
-import { createTaskSources, type TaskSources, type TaskSourcesDeps } from "./task-sources/index.ts";
+import { briefOf, createTaskSources, placeForRepo, type TaskSources, type TaskSourcesDeps } from "./task-sources/index.ts";
+import { dayKey } from "./proactive/detect.ts";
 import { createChanges, type Changes } from "./changes.ts";
 import { createModelCatalog, type ModelCatalog } from "./models.ts";
 import { browseFolders, cloneProject, createFoundRepos, ghInstallHome, gitLoginOn, isOldOp, newFolderProject, languageOf, newTaskOptions, openYourTask, type FolderProjects, type GitLoginAction, type GitRun, type NewTaskComputers, type NewTaskInput } from "./newtask.ts";
@@ -183,7 +184,7 @@ export interface CoreOptions {
   /** D345 test seam: puts gh on the home (default: Homebrew or GitHub's own build; tests: none). */
   ghInstaller?: GhInstaller;
   /** D341: 待办来源 / To-do sources: the seams (a fake gh, a scratch home for Obsidian's vault list, the look's pace). Tests default to no gh and no vaults. */
-  taskSources?: Partial<Pick<TaskSourcesDeps, "ghRun" | "ghEnv" | "home" | "pollMs" | "boundMs" | "quietMs" | "today" | "now">>;
+  taskSources?: Partial<Pick<TaskSourcesDeps, "ghRun" | "ghEnv" | "home" | "pollMs" | "boundMs" | "quietMs" | "today" | "now">> & { /** D359: the model the pile sorts and pre-reads with (tests, demos: a fake). */ ask?: import("./task-sources/pile.ts").Ask };
   /** D202 test seam: each agent's models on each computer (else read from the agents themselves). */
   models?: ModelCatalog;
   /** D148 test seams: the release feed, the update side effects, how this process updates. */
@@ -1352,10 +1353,37 @@ export function startCore(opts: CoreOptions = {}): Core {
       const c = tasks.get(taskId);
       if (c && c.attention !== "dropped") tasks.setState(taskId, "dropped", c.residency, "its to-do was closed");
     },
+    // D359: the pile counts its days in the person's zone and speaks their language.
+    dayOf: (ms) => dayKey(ms, zone()),
+    lang: () => (langNow().startsWith("zh") ? "zh" : "en"),
+    name: () => persona.name,
+    // D359: a handed-over to-do opens like 交给{name} on On hand: its repository's folder, its words as the brief.
+    openTask: async (item, extra) => {
+      const place = item.kind === "github" ? placeForRepo((await newTask.options().catch(() => ({ places: [] }))).places, item.where)?.place : undefined;
+      const r = await newTask.open({ words: item.title, ...(place ? { place } : {}), brief: `${item.title}\n\n${briefOf(item)}${extra ? `\n${extra}` : ""}` });
+      if (!r.ok) return { ok: false, error: r.message ?? r.reason };
+      return "card" in r ? { ok: true, taskId: r.card.taskId } : { ok: false, error: "it became a routine" };
+    },
+    // D359: the repository's own review guide, read from its folder on this computer when there is one.
+    reviewGuide: async (repo) => {
+      const p = placeForRepo((await newTask.options().catch(() => ({ places: [] }))).places, repo);
+      const root = p && p.place.kind === "repo" && (!p.place.device || p.place.device === "local") ? p.place.repoPath.replace(/^~(?=\/)/, homedir()) : undefined;
+      if (!root) return undefined;
+      for (const f of [".claude/skills/review/SKILL.md", ".claude/commands/review.md", ".agents/skills/review/SKILL.md", "REVIEW.md", ".github/REVIEW.md"]) {
+        try {
+          const t = readFileSync(join(root, f), "utf8");
+          if (t.trim()) return t.slice(0, 4000);
+        } catch {
+          // not there: the next
+        }
+      }
+      return undefined;
+    },
     ...(srcTesting ? { ghRun: async () => ({ code: 127, out: "", err: "", missing: true as const }), home: join(dataDir, "no-home") } : {}),
     ...(opts.taskSources ?? {}),
   });
   taskSourcesRef = taskSources;
+  if (opts.taskSources?.ask) taskSources.setAsk(opts.taskSources.ask);
   const proactive = createProactive({
     calendarIds: (a) => calendar.seenIds(a),
     dataDir,
@@ -1367,6 +1395,12 @@ export function startCore(opts: CoreOptions = {}): Core {
     push,
     pusher,
     claimed: (k) => channels.claimed(k),
+    // D359: the to-dos it can clear today, inside the morning note with their own Go.
+    morningFinds: (noteId) => {
+      const findId = `find_${randomBytes(6).toString("hex")}`;
+      const m = taskSources.pile.morning(noteId, findId);
+      return m ? [{ findId, kind: "todos" as const, text: m.text, how: m.how, decisionId: m.decisionId, goLabel: m.goLabel }] : [];
+    },
     rules,
     decisions,
     runner: () => runner,
@@ -1510,6 +1544,8 @@ export function startCore(opts: CoreOptions = {}): Core {
         ...(opts.proactive?.triage ? {} : { triage: modelTriage(createHarnessAsk({ harness: port, pick, dataDir, cheap: true, dir: "triage" })) }),
         ...(opts.proactive?.judge ? {} : { judge: modelJudge(createHarnessAsk({ harness: port, pick, dataDir, cheap: false, dir: "judge" })) }),
       });
+      // D359: the pile is sorted and PRs pre-read on the cheapest model of the harness the partner thinks with.
+      if (!opts.taskSources?.ask) taskSources.setAsk(createHarnessAsk({ harness: port, pick, dataDir, cheap: true, dir: "pile", timeoutMs: 120_000 }));
       // Answers that were resolved but never handed to their task before a restart (decisions.ts).
       for (const u of decisions.takeUnforwarded()) {
         console.warn(`[core] re-sending the answer to ${u.decisionId} that ${u.taskId} never got (restart)`);

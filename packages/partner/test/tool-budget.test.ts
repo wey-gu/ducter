@@ -27,7 +27,7 @@ const TASK_TOOLS = ["ask_for_key", "checkpoint", "log_read", "log_search", "memo
 const CEILING = {
   partner: 31_800, // 31.6K today (D352: + task_switch, 0.7K, "这个任务换成 6.2 sol" without a trip to the app; D300: + did_list, 0.6K, the partner's answer to "what did you send for me today?" from the Done for you record; D245: routine_propose watch, routine_list run state; D247: needs.phone covers the person's own phone; D243: + noticed, 0.5K, the partner's answer to "anything for me?" from the same detectors as the note); (D215's call sheet fields on phone_call, D217's needs.phone on task_open): 26 tools (phone_call, D193, 2.2K after trimming; D206 media on task_open and task_send); wait_for (3.9K) and task_open (4.8K) are the largest
   partnerWithCalendar: 33_300, // D352: + task_switch
-  partnerWithTodos: 32_900, // D352: + task_switch; D341: + todos (≈1.4K), listed only while a to-do source is on or the home's gh is signed in // D300: + did_list; D245, D247; D243: + noticed; D222: + calendar (≈1.9K), listed only while a calendar account is connected
+  partnerWithTodos: 33_400, // D359: + todos do=sort and do=hand (≈0.3K), the pile sorted and handed over from the conversation; D352: + task_switch; D341: + todos (≈1.4K), listed only while a to-do source is on or the home's gh is signed in // D300: + did_list; D245, D247; D243: + noticed; D222: + calendar (≈1.9K), listed only while a calendar account is connected
   task: 9_200, // 8.7K: 7 tools (ask_for_key, D233, 0.7K); wait_for alone is 3.6K; memory_search (1.2K) is the D168 fallback where the Mem plugin is absent
 };
 

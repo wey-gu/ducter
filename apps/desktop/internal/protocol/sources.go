@@ -56,6 +56,8 @@ type SourceItem struct {
 type SourceGlance struct {
 	SourceItem
 	Why string `json:"why"`
+	// Read (D359): the partner already read this PR (我看过了).
+	Read *PreReadSummary `json:"read,omitempty"`
 }
 
 // SourceStanding is one standing go and how it came.
@@ -127,6 +129,8 @@ type SourcesView struct {
 	Found   SourcesFound `json:"found"`
 	// Glance (D357): the few On hand shows (at most three), none with a live task.
 	Glance []SourceGlance `json:"glance,omitempty"`
+	// Pile (D359): the pile, once a source read its list.
+	Pile *PileView `json:"pile,omitempty"`
 }
 
 // SourceAsk is a card about a bound to-do (Decision.Src): kind write (a
@@ -163,6 +167,15 @@ type SourcesFrame struct {
 	OK     bool
 	ID     string
 	Reason string
+	// D359: pile_items_result (Group, PileItems) and pile_result (PileOp hand |
+	// close | review | pre_read, Done, Failed, Read, Error; OK above).
+	Group     string
+	PileItems []PileItem
+	PileOp    string
+	Done      int
+	Failed    int
+	Read      *PreRead
+	Error     string
 }
 
 // SourcesReq subscribes to the sources (T "sources").
@@ -229,11 +242,31 @@ func decodeSources(data []byte, f ServerFrame) (ServerFrame, error) {
 		Wheres   []string       `json:"wheres"`
 		Tags     []string       `json:"tags"`
 		Limited  bool           `json:"limited"`
+		Pile     *PileView      `json:"pile"`
+		Group    string         `json:"group"`
+		Done     int            `json:"done"`
+		Failed   int            `json:"failed"`
+		Read     *PreRead       `json:"read"`
+		Error    string         `json:"error"`
 	}
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return f, err
 	}
 	s := &SourcesFrame{ClientID: raw.ClientID, Items: raw.Items, Errors: raw.Errors, Op: raw.Op, OK: raw.OK, ID: raw.ID, Reason: raw.Reason, Page: raw.Page, More: raw.More, Wheres: raw.Wheres, Tags: raw.Tags, Limited: raw.Limited}
+	// D359: the pile's answers.
+	if f.T == "pile_items_result" {
+		var p struct {
+			Items []PileItem `json:"items"`
+		}
+		if err := json.Unmarshal(data, &p); err != nil {
+			return f, err
+		}
+		s.Items = nil
+		s.Group, s.PileItems = raw.Group, p.Items
+	}
+	if f.T == "pile_result" {
+		s.PileOp, s.Done, s.Failed, s.Read, s.Error = raw.Op, raw.Done, raw.Failed, raw.Read, raw.Error
+	}
 	if f.T == "sources" {
 		v := &SourcesView{}
 		if raw.Sources != nil {
@@ -243,6 +276,7 @@ func decodeSources(data []byte, f ServerFrame) (ServerFrame, error) {
 			v.Found = *raw.Found
 		}
 		v.Glance = raw.Glance
+		v.Pile = raw.Pile
 		s.View = v
 	}
 	f.SavedItems = nil

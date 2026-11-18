@@ -1781,6 +1781,16 @@ export const scenarios: Scenario[] = [
     expect: { opens: 0, msgs: [1, 1], maxChars: 160, notCalled: ["task_open"], noTodoCard: true },
     rubric: "A look at GitHub found one issue newly assigned to the user (wey-gu/ducter#9, a docs typo). It offers it in one short Chinese line (naming #9 and what it is) and asks whether to take it. It starts nothing and opens no task.",
   },
+  // D359: the pile, sorted and handed over from the conversation.
+  {
+    id: "todos-sort-zh",
+    category: "todos",
+    lang: "zh",
+    todos: true,
+    steps: [{ user: "GitHub 上那一大堆 issue，帮我理一理" }],
+    expect: { opens: 0, msgs: [1, 1], maxChars: 120, called: [{ tool: "todos", args: { do: "sort" } }], notCalled: ["task_open"], noTodoCard: true, forbid: [/\d+ ?件/] },
+    rubric: "The user asks it to go through their whole pile of GitHub issues. It starts the sort (todos do=sort) and says in one short Chinese line that it is going through them and will say what it finds. It gives no counts or groups it can't know yet, lists no issues, opens no task and makes no card.",
+  },
   // ---------- calendars (D222): two accounts merged, changes behind a card ----------
   {
     id: "calendar-today-zh",

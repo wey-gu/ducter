@@ -48,7 +48,7 @@ import { inApp, unsupportedKey } from "./native.ts";
 import { useWide } from "./wide.ts";
 import { AutofillSettings, FillBody, fillTitle, KeyBody, keyTask, PayBody } from "./autofill.tsx";
 import { ChatAppsSettings } from "./channels.tsx";
-import { SourceCardBody, TodoSourcesSettings } from "./todos.tsx";
+import { SourceCardBody, TodoSourcesSettings, TS } from "./todos.tsx";
 import { HandoffSettings, PaperRow, RecordsSettings } from "./settings-more.tsx";
 import { AddSection, noBrain, TasksSection, ThinksSection } from "./partner-story.tsx";
 import { ComposerReply, HoverReply, Imprint, PartReply, ReplyMenu, replyKey, replyOf, SelectText, SentImprint, useReplyGestures, whoOf as replyWho } from "./reply.tsx";
@@ -58,6 +58,7 @@ import { FillButton, forecast, FullTop, NextLine } from "./board.tsx";
 import { L as OnHandState, OnHandList, storyOf, Switcher, taskNext } from "./onhand.tsx";
 import { PastSheet } from "./past.tsx";
 import { DidSheet } from "./did.tsx";
+import { PileSheet } from "./pile.tsx";
 import { RichBlock } from "./rich.tsx";
 import { splitRich } from "@ducter/protocol/src/rich.ts";
 import { ContextButton } from "./context-meter.tsx";
@@ -1846,7 +1847,12 @@ export function OnHand() {
   const loose = A.S.armedWaiters().filter((w) => !w.taskId);
   const routines = A.S.routines().filter((r) => r.state === "active" || r.state === "paused");
   const calls = A.S.onHand?.calls ?? [];
-  const nothing = b.lanes.slice(0, 4).every((l) => !l.length) && !A.S.partnerDecisions().length && !loose.length && !A.S.missedToday().length && !routines.length && !calls.length;
+  // D359: a pile with something in it (or cleared today) is something on hand too.
+  const pile = TS.frame?.pile;
+  useEffect(() => {
+    if (A.S.welcomed) A.send({ t: "sources" });
+  }, [A.S.welcomed]);
+  const nothing = b.lanes.slice(0, 4).every((l) => !l.length) && !A.S.partnerDecisions().length && !loose.length && !A.S.missedToday().length && !routines.length && !calls.length && !(pile && (pile.open > 0 || pile.clearedToday > 0));
   const wide = useWide();
   // Beside the conversation, 接下来 as the Mac shows it: one quiet grey line, only when more than one thing is coming (D184).
   const next = wide && !nothing ? forecast() : [];
@@ -3071,6 +3077,7 @@ export function Sheets() {
   if (A.sheet.kind === "did") return <DidSheet />;
   if (A.sheet.kind === "recall") return <RecallSheet seq={A.sheet.seq} />;
   if (A.sheet.kind === "learned") return <LearnedSheet />;
+  if (A.sheet.kind === "pile") return <PileSheet />;
   return A.sheet.kind === "decision" ? <DecisionSheet id={A.sheet.id} /> : <SettingsSheet />;
 }
 

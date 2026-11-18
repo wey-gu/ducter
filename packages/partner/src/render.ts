@@ -407,7 +407,7 @@ export function renderHistoryLine(e: LogEvent, ctx: RenderCtx): string | null {
       // (research/48 P2). At most FINDS_SHOWN either way.
       const fresh = b.rung === "fold" && b.added ? b.finds.slice(-b.added) : b.finds;
       const shown = fresh.slice(0, FINDS_SHOWN);
-      const finds = [...shown.map((f) => `${f.kind}: ${clip(f.text, 200)}${f.goLabel ? ` (next step offered: ${clip(f.goLabel, 40)})` : ""}`), ...(fresh.length > shown.length ? [`${fresh.length - shown.length} more`] : [])].join(" | ");
+      const finds = [...shown.map((f) => `${f.kind}: ${clip(f.text, 200)}${f.goLabel ? ` (next step offered: ${clip(f.goLabel, 40)})` : ""}${f.kind === "todos" ? " (a yes in words: todos do=hand picks=true)" : ""}`), ...(fresh.length > shown.length ? [`${fresh.length - shown.length} more`] : [])].join(" | ");
       const what = b.rung === "fold" ? "you added to this morning's note" : b.rung === "first" ? "you said when they added accounts" : `you noticed in their accounts (${b.rung})`;
       // D304: the week's offer; the app opens the list itself when they tap it.
       const learned = b.learned ? ` (and offered to show the ${b.learned.count} things you noted about them this week; the app's list lets them confirm, correct or forget each)` : "";

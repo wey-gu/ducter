@@ -608,6 +608,14 @@ One vocabulary on every tab:
   `prompts/set_todos.md`; Mac `art/clay/set_todos@256.png`, web `art/set_todos.webp`). Each source's
   filters are labelled fields like Chat apps' (label 13/700 over a 44-tall white input with a hairline).
   `design/task-sources.md`.
+- **The pile / 你的待办 on On hand** (D359, research/130): the partner in clay beside a stack of cream
+  clay pages, four states on one canvas, bottom-aligned so a change never moves the layout: `pile_big`
+  (≥ 100, a stack as tall as the partner, three pages in its arms), `pile_mid` (20–99), `pile_small`
+  (1–19, one page in its hands), `pile_clear` (0, one ticked page on the floor, the partner sitting back);
+  made like `set_todos` (`design/art/assets/batch_pile.json`, `prompts/pile_*.md`, cut by `tools/cut.swift`;
+  web `art/pile_*.webp` 320×256, Mac `art/clay/pile_*@640.png`). The count is literal type beside it
+  (Display 34/800, tabular); a clear rolls it down 240 ms and lifts a page off (500 ms); reduced
+  motion changes the number in place.
 - **Chat apps / 聊天软件** (D276; D283): its rail mark is clay art like its neighbours, two puffy
   clay speech bubbles, a cream one behind and a sky one in front with three ink dots
   (`set_chats`, made like `set_autofill`: `design/art/assets/batch_chats.json`, cut with

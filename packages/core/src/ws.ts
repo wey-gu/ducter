@@ -1,7 +1,7 @@
 // Client WebSocket protocol (ClientFrame / ServerFrame) over Bun's built-in WS.
 import { DUCTER_VERSION } from "@ducter/protocol/src/version.ts";
 import { brainNow } from "./brain.ts";
-import { CLIENT_SHAPES, harnessName, isHarnessId, isProactiveYesNo, shapeOfModel, TRY_LIVE, WATCH_LIVE } from "@ducter/protocol";
+import { CLIENT_SHAPES, harnessName, isHarnessId, isProactiveYesNo, PILE_GROUPS, shapeOfModel, TRY_LIVE, WATCH_LIVE } from "@ducter/protocol";
 import type { ServerWebSocket } from "bun";
 import type { Bodies, ClientFrame, ClientKind, Delivery, FileOpenError, LogEvent, MediaRef, OoApp, PartnerActivity, Place, ServerFrame, UndoConfirm } from "@ducter/protocol";
 import type { NewTaskInput, NewTaskResult } from "./newtask.ts";
@@ -1560,6 +1560,46 @@ export function createWsHandler(deps: WsDeps) {
           ...(Array.isArray(f.repos) ? { repos: f.repos.map(String) } : {}),
         });
         return send(ws, { t: "source_result", op: "set", ok, id: sid });
+      }
+      // D359: the pile (task-sources/pile.ts).
+      case "pile_sort":
+      case "pile_items":
+      case "pile_hand":
+      case "pile_choose":
+      case "pile_close":
+      case "pre_read":
+      case "pre_read_send": {
+        const ts = deps.taskSources?.();
+        if (!ts) throw new Error("to-do sources aren't available here");
+        const pile = ts.pile;
+        const id0 = (f as { clientId?: unknown }).clientId;
+        const cid = typeof id0 === "string" ? { clientId: id0.slice(0, 64) } : {};
+        const refs = (xs: unknown) => (Array.isArray(xs) ? xs.filter((x): x is string => typeof x === "string").slice(0, 200) : []);
+        if (f.t === "pile_sort") return void pile.sort("asked").catch(() => {});
+        if (f.t === "pile_items") {
+          const group = (PILE_GROUPS as readonly string[]).includes(f.group) ? f.group : "do";
+          return send(ws, { t: "pile_items_result", ...cid, group, items: pile.items(group) });
+        }
+        if (f.t === "pile_hand") {
+          const r = await pile.hand(refs(f.refs));
+          return send(ws, { t: "pile_result", ...cid, op: "hand", ok: r.queued > 0 && !r.error, done: r.queued, ...(r.error ? { error: r.error } : {}) });
+        }
+        if (f.t === "pile_choose") {
+          if (typeof f.ref !== "string" || !["hand", "close", "later", "keep"].includes(f.pick)) return;
+          return void (await pile.choose(f.ref, f.pick));
+        }
+        if (f.t === "pile_close") {
+          const r = await pile.close(refs(f.refs));
+          return send(ws, { t: "pile_result", ...cid, op: "close", ok: r.done > 0 && !r.failed, done: r.done, failed: r.failed });
+        }
+        if (f.t === "pre_read") {
+          if (typeof f.ref !== "string") return;
+          const read = pile.read(f.ref) ?? (await pile.preRead(f.ref));
+          return send(ws, { t: "pile_result", ...cid, op: "pre_read", ok: !!read, ...(read ? { read } : {}) });
+        }
+        if (typeof f.ref !== "string") return;
+        const r = await pile.sendRead(f.ref, Array.isArray(f.keep) ? f.keep.filter((k): k is number => typeof k === "number") : []);
+        return send(ws, { t: "pile_result", ...cid, op: "review", ok: r.ok, ...(r.error ? { error: r.error } : {}) });
       }
       case "did": {
         if (!deps.did) throw new Error("the record is not available");

@@ -13,6 +13,7 @@ import { BrandMark, BrandTile } from "./brand.tsx";
 import { Btn, Chev, DangerButton, Facts, Seg } from "./controls.tsx";
 import { SecHead, Tag } from "./set-grid.tsx";
 import { GhSignIn } from "./gh-signin.tsx";
+import { onPileFrame, ReadLine } from "./pile.tsx";
 
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
@@ -151,6 +152,7 @@ export function TodoCard({ i }: { i: SourceGlance }) {
           ))}
         </span>
       </a>
+      {i.read && <ReadLine g={i} />}
       <div class="c3 todo-foot">
         {failed ? <span class="todo-failed">{failed}</span> : i.updatedAt && <span class="beat">{t("onhand.todos.updated", ago(A.L, i.updatedAt))}</span>}
         <TodoAct i={i} />
@@ -272,6 +274,8 @@ export function TodoFold({ sources, shown = [] }: { sources: SourceView[]; shown
 }
 
 A.onSourcesFrame = (f) => {
+  // D359: the pile's own answers (its sheets).
+  if (onPileFrame(f)) return;
   if (f.t === "sources") {
     TS.frame = f;
     // 再试一次 waits for the home's own word that it is looking (or has looked).

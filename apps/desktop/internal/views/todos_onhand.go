@@ -226,13 +226,18 @@ func (a *App) todoGroup(c *ui.Context, lens string) {
 		}
 	}
 	open, atLeast, review, rest := todoCounts(sources, glance)
-	// Silence: nothing open, nothing to review, nothing to show.
-	if len(glance) == 0 && rest == 0 && review == 0 && !f.open {
+	// D359: the pile at the group's head (every source's: under all, or a lone source's lens).
+	var pile *protocol.PileView
+	if v.Pile != nil && (lens == "" || len(v.Sources) == 1) {
+		pile = v.Pile
+	}
+	// Silence: nothing open, nothing to review, nothing to show (a cleared day still shows its line).
+	if len(glance) == 0 && rest == 0 && review == 0 && !f.open && (pile == nil || (pile.Open == 0 && pile.ClearedToday == 0)) {
 		return
 	}
 	name := a.todoGroupName(sources)
 	n := ""
-	if open > 0 {
+	if open > 0 && pile == nil {
 		n = fmt.Sprint(open)
 		if atLeast {
 			n += "+"
@@ -264,6 +269,9 @@ func (a *App) todoGroup(c *ui.Context, lens string) {
 				ui.Text(c, n).Font(t.Display).FontSize(t.LG).FontWeight(600).TextColor(t.InkMuted).FontFeatures("tnum")
 			}
 		})
+		if pile != nil {
+			a.pileBlock(c, pile)
+		}
 		if len(glance) > 0 {
 			w := a.oh.listW
 			if w <= 0 {
@@ -383,6 +391,7 @@ func (a *App) todoCard(c *ui.Context, g protocol.SourceGlance, w float32) {
 		if top.Clicked() && it.URL != "" {
 			c.OpenURL(it.URL)
 		}
+		a.pileReadLine(c, g) // D359: 我看过了
 		ui.Box(c.Key("room")).Grow(1)
 		ui.Row(c.Key("c3")).Gap(10).AlignItems(ui.Center).MinHeight(t.ControlMD).Children(func() {
 			if why := a.todos.fold.handFailed[it.Ref]; why != "" {

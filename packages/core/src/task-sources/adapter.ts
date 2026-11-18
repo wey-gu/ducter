@@ -71,6 +71,13 @@ export interface SourceAdapter {
    * the service pages it itself.
    */
   browse?(o: BrowseOpts): Promise<{ items: SourceItem[]; more: boolean }>;
+  /**
+   * D359: every open one in scope, up to max, for the sort (GitHub: its list's pages of 100). more:
+   * there are more than max. Absent: list() is all of them.
+   */
+  all?(max: number): Promise<{ items: SourceItem[]; more: boolean }>;
+  /** D359: a PR's diff for the pre-read (GitHub only), cut long. */
+  diff?(ref: string): Promise<{ text: string; cut: boolean }>;
   /** One item by its ref, closed ones too; undefined when it is gone (deleted, the line removed). */
   get(ref: string): Promise<SourceItem | undefined>;
   /** What it can write. */

@@ -1943,6 +1943,13 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] **D357 live:** On hand's group and fold against the author's real GitHub (557 assigned, the review requests, a mention), the hand-over landing in the repository's folder, the rate limit while typing fast in the fold's Find. Trigger: before calling D357 done.
 - [ ] **D357: the review list's own count of pages** (search caps at 1000; a person with more sees "more" stop there). Trigger: someone past 1000 open in one scope.
 - [ ] **D357: a mention not assigned to the person** (search `mentions:` alone) is not offered: D341 takes what is assigned. Trigger: the author asks for mentions they aren't assigned.
+- [ ] **D359 live:** the sort against the author's real GitHub (557 assigned) on the real cheapest model: what it costs, how long, whether the groups are right (a hand-check of 50), and a pre-read of a real PR. Never run here. Trigger: the author's home on this build.
+- [ ] **D359: humans on the pile's look and words** (research/130 is LLM raters only; the en sentence was edited after the round, not re-rated). Trigger: the first three people who connect GitHub.
+- [ ] **D359: linked PRs as a signal in the sort** (an issue with an open PR of the person's, or one merged). Today the model sees only the issue's own words. Trigger: the sort puts a done-by-PR issue in "do".
+- [ ] **D359: each clear a little brighter** (the nth of the day lifts a slightly warmer page; no sound). Borrowed idea, held. Trigger: the author asks for more delight in the tick.
+- [ ] **D359: 这类不用告诉我 on the morning's to-dos find** mutes nothing today (the find isn't the engine's). Trigger: someone taps it.
+- [ ] **D359: a decide answered "later" or a close "kept" is remembered only until the issue changes** (its verdict is made again). Trigger: the same issue asked twice.
+- [ ] **D359: the pile's sheets on the phone apps** (the iPhone and Android clients show the pile only through the web view). Trigger: the phone apps' On hand.
 
 ## What changed after an update (D344)
 

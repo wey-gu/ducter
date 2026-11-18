@@ -24,6 +24,7 @@ import { Avatar, DecisionCard, stateLabel } from "./views.tsx";
 import { Coin } from "./coin.tsx";
 import { BrandMark } from "./brand.tsx";
 import { askFold, SourceChip, TF, TodoCard, todoCounts, TodoFold, todoGroupName, TS } from "./todos.tsx";
+import { PileBlock } from "./pile.tsx";
 import { Goal, Groove, limitAt, limitState, untilLine, WaitBubble, waitCaption, waitLine } from "./work.tsx";
 import { handover, isNewResult, statusOf, urgentOf, type Status } from "./seen.ts";
 import { OtherAsk, PartnerMark } from "./partners.tsx";
@@ -1192,8 +1193,10 @@ function TodoGroup({ lens }: { lens: string }) {
   if (!sources.length) return null;
   const glance = (frame.glance ?? []).filter((g) => sources.some((s) => s.id === g.source));
   const c = todoCounts(sources, glance);
-  // Silence: a source that reads and has nothing open draws nothing.
-  if (!glance.length && !c.rest && !c.review && !TF.open) return null;
+  // D359: the pile stands at the head of the group (every source's, so under All or a lone source's lens).
+  const pile = frame.pile && (!lens || frame.sources.length === 1) ? frame.pile : undefined;
+  // Silence: a source that reads and has nothing open draws nothing (the pile's day line still shows a cleared day).
+  if (!glance.length && !c.rest && !c.review && !TF.open && !(pile && (pile.open > 0 || pile.clearedToday > 0))) return null;
   const toggle = () => {
     TF.open = !TF.open;
     if (TF.open && !TF.items.length) askFold(1);
@@ -1211,8 +1214,9 @@ function TodoGroup({ lens }: { lens: string }) {
           </span>
         )}
         <span>{todoGroupName(sources)}</span>
-        {c.open > 0 && <span class="n">{c.atLeast ? `${c.open}+` : c.open}</span>}
+        {c.open > 0 && !pile && <span class="n">{c.atLeast ? `${c.open}+` : c.open}</span>}
       </h3>
+      {pile && <PileBlock pile={pile} />}
       {glance.length > 0 && (
         <div class="tcards">
           {glance.map((g) => (

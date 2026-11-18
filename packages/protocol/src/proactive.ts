@@ -16,8 +16,8 @@
  *   update           之前说的有变 / An update to what I told you (a later notice changes a find already said)
  *   said             你说过的 / Something you said (D281: a reminder they asked for, a thing they said they would do on a day, the partner's own promise to remind; from the conversation, said once at its moment)
  */
-export type FindKind = "mismatch" | "waiting_on_you" | "waiting_on_them" | "promised" | "deadline" | "plan_changed" | "meeting" | "coming_up" | "service" | "update" | "said";
-export const FIND_KINDS: readonly FindKind[] = ["mismatch", "waiting_on_you", "waiting_on_them", "promised", "deadline", "plan_changed", "meeting", "coming_up", "service", "update", "said"];
+export type FindKind = "mismatch" | "waiting_on_you" | "waiting_on_them" | "promised" | "deadline" | "plan_changed" | "meeting" | "coming_up" | "service" | "update" | "said" | "todos";
+export const FIND_KINDS: readonly FindKind[] = ["mismatch", "waiting_on_you", "waiting_on_them", "promised", "deadline", "plan_changed", "meeting", "coming_up", "service", "update", "said", "todos"];
 export const isFindKind = (k: unknown): k is FindKind => typeof k === "string" && (FIND_KINDS as readonly string[]).includes(k);
 
 /**

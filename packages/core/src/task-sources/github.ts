@@ -42,6 +42,7 @@ interface Raw {
   repository?: { full_name?: string };
   repository_url?: string;
   user?: { login?: string };
+  comments?: number;
 }
 
 const repoOf = (r: Raw): string => r.repository?.full_name ?? r.repository_url?.replace(/^.*\/repos\//, "") ?? "";
@@ -64,8 +65,12 @@ export function itemOf(source: string, r: Raw): SourceItem {
     ...(r.updated_at ? { updatedAt: r.updated_at } : {}),
     ...(labels.length ? { labels } : {}),
     ...(r.user?.login ? { author: r.user.login } : {}),
+    ...(typeof r.comments === "number" && r.comments > 0 ? { comments: r.comments } : {}),
   };
 }
+
+/** D359: a PR's diff is cut here before a model reads it (the pre-read says when it was cut). */
+export const DIFF_MAX = 60_000;
 
 /** D357: GitHub's "slow down": its primary or secondary rate limit. */
 export const rateLimited = (text: string) => /rate limit|HTTP 429|abuse detection/i.test(text);
@@ -257,12 +262,76 @@ export function createGitHub(o: GitHubOpts): SourceAdapter & { login(): string |
         }
       }
       if (op === "close") {
-        const r = await gh(["api", "-X", "PATCH", `/repos/${m[1]}/issues/${m[2]}`, "--input", "-"], JSON.stringify({ state: "closed", state_reason: "completed" }));
+        // D359: a to-do closed from the pile's batch isn't "completed": it closes as not planned.
+        const reason = text === "not_planned" ? "not_planned" : "completed";
+        const r = await gh(["api", "-X", "PATCH", `/repos/${m[1]}/issues/${m[2]}`, "--input", "-"], JSON.stringify({ state: "closed", state_reason: reason }));
         if (r.code !== 0) return { ok: false, error: (r.err || r.out).trim().slice(0, 200) || `gh exited ${r.code}` };
         cache = undefined; // the next look sees it gone from the open list
+        counted = undefined; // and counts again
         return { ok: true };
       }
+      if (op === "review") {
+        // D359: a pre-read's kept comments, as one review that only comments (never approves or
+        // requests changes). text: {"body", "notes": [{path, line, text}]}. A line GitHub won't
+        // place (outside the diff) goes into the review's body instead of failing the whole review.
+        let p: { body?: string; notes?: { path?: string; line?: number; text: string }[] };
+        try {
+          p = JSON.parse(text ?? "{}");
+        } catch {
+          return { ok: false, error: "a review needs its notes" };
+        }
+        const notes = (p.notes ?? []).filter((n) => n.text?.trim());
+        if (!notes.length && !p.body?.trim()) return { ok: false, error: "an empty review" };
+        const placed = notes.filter((n) => n.path && n.line);
+        const loose = notes.filter((n) => !(n.path && n.line));
+        const bodyOf = (xs: typeof notes) => [p.body?.trim(), ...xs.map((n) => `- ${n.path ? `\`${n.path}${n.line ? `:${n.line}` : ""}\` ` : ""}${n.text.trim()}`)].filter(Boolean).join("\n") + SIGNATURE;
+        const send = (payload: unknown) => gh(["api", "-X", "POST", `/repos/${m[1]}/pulls/${m[2]}/reviews`, "--input", "-"], JSON.stringify(payload));
+        let r = await send({ event: "COMMENT", body: bodyOf(loose), comments: placed.map((n) => ({ path: n.path, line: n.line, side: "RIGHT", body: n.text.trim() })) });
+        if (r.code !== 0 && placed.length && /422|Unprocessable|line/i.test(r.err + r.out)) r = await send({ event: "COMMENT", body: bodyOf(notes) });
+        if (r.code !== 0) return { ok: false, error: (r.err || r.out).trim().slice(0, 200) || `gh exited ${r.code}` };
+        try {
+          return { ok: true, link: (JSON.parse(r.out) as { html_url?: string }).html_url };
+        } catch {
+          return { ok: true };
+        }
+      }
       return { ok: false, error: `GitHub can't ${op}` };
+    },
+    // D359: every open one assigned (up to max), for the sort: the list's pages of 100, newest first.
+    async all(max: number) {
+      const items: SourceItem[] = [];
+      let ended = false;
+      for (let page = 1; items.length < max && page <= 30; page++) {
+        const r = await gh(["api", "-X", "GET", "/issues", "-f", "filter=assigned", "-f", "state=open", "-f", "sort=updated", "-f", "per_page=100", "-f", `page=${page}`]);
+        if (r.missing) throw new Error("gh isn't on this computer");
+        if (r.code !== 0) {
+          const why = (r.err || r.out).trim().slice(0, 200) || `gh exited ${r.code}`;
+          throw rateLimited(why) ? new RateLimited(why) : new Error(why);
+        }
+        let raw: Raw[];
+        try {
+          raw = JSON.parse(r.out) as Raw[];
+        } catch {
+          throw new Error("GitHub's answer couldn't be read (not JSON)");
+        }
+        if (!Array.isArray(raw)) throw new Error("GitHub's answer couldn't be read (not a list)");
+        items.push(...raw.map((x) => itemOf(o.source, x)).filter(inScope));
+        if (raw.length < 100) {
+          ended = true;
+          break;
+        }
+      }
+      const more = !ended || items.length > max;
+      if (items.length > max) items.length = max;
+      return { items, more };
+    },
+    // D359: a PR's diff, for the pre-read (cut at DIFF_MAX).
+    async diff(ref: string) {
+      const m = REF.exec(ref);
+      if (!m) throw new Error(`not a GitHub ref: ${ref}`);
+      const r = await gh(["api", `/repos/${m[1]}/pulls/${m[2]}`, "-H", "Accept: application/vnd.github.diff"]);
+      if (r.code !== 0) throw new Error((r.err || r.out).trim().slice(0, 200) || `gh exited ${r.code}`);
+      return r.out.length > DIFF_MAX ? { text: r.out.slice(0, DIFF_MAX), cut: true } : { text: r.out, cut: false };
     },
   };
 }

@@ -59,6 +59,8 @@ export interface SourceItem extends SourceItemRef {
    * opened, never taken (D341 offers only what is assigned).
    */
   review?: boolean;
+  /** github: how many comments it has (a sign of a discussion, for the sort). */
+  comments?: number;
 }
 
 /**
@@ -68,6 +70,94 @@ export interface SourceItem extends SourceItemRef {
  */
 export interface SourceGlance extends SourceItem {
   why: "review" | "mentioned" | "due" | "recent";
+  /** D359: a PR waiting for review that the partner already read (我看过了 / I've read it). */
+  read?: PreReadSummary;
+}
+
+// ---------- D359: the pile (your to-dos sorted, handed over, shrinking) ----------
+
+/**
+ * D359: the few honest groups the sort puts each open to-do in (the words are the glossary's):
+ *   do      我能直接做完的 / I can just do: clear what is wanted, small enough for one task
+ *   decide  要你拿主意的 / Need your call: a choice only the person can make
+ *   close   看起来可以关掉的 / Look ready to close: done already, stale, a duplicate, no longer wanted
+ *   later   先放着的 / Can wait: big, vague, or nothing to do now
+ * Every count shown is code's count of these per-item verdicts, never a number a model wrote.
+ */
+export const PILE_GROUPS = ["do", "decide", "close", "later"] as const;
+export type PileGroup = (typeof PILE_GROUPS)[number];
+export type PilePick = "hand" | "close" | "later";
+
+/** D359: one open to-do as the sort left it: its group, why in one line, and what goes with it. */
+export interface PileItem {
+  item: SourceItem;
+  group: PileGroup;
+  /** One line, in the person's language: why it is in this group. */
+  why: string;
+  /** do: how big it looks (the queue starts the small ones first). */
+  size?: "small" | "medium" | "large";
+  /** decide: the one question for the person, in their language. */
+  ask?: string;
+  /** decide: the suggested answer (the sheet marks it 建议 / Suggested; it is the default). */
+  pick?: PilePick;
+  /** close: the one line left on it when it is closed, in the issue's own language. */
+  comment?: string;
+  /** The person's own answer: a decide answered, a close kept open (keep). */
+  chosen?: PilePick | "keep";
+  /** Handed over: waiting in line (its task opens when one ends). */
+  queued?: boolean;
+}
+
+/** D359: handed-over to-dos run this many at a time; the next starts when one ends. */
+export const PILE_CAP = 3;
+/** D359: what 交给{name} hands over by default (the sheet can take more or fewer). */
+export const PILE_HAND_DEFAULT = 6;
+
+/** D359: the pile as On hand draws it: the true count and its change, the sort's groups, the queue. */
+export interface PileView {
+  /** Open to-dos across the sources that read (GitHub's search total; atLeast: only a lower bound). */
+  open: number;
+  atLeast?: boolean;
+  /** How many Ducter closed or ticked for the person today (each one a write in Done for you), and yesterday. */
+  clearedToday: number;
+  clearedYesterday?: number;
+  /** The sort running: how many read so far, of how many it will read. */
+  sorting?: { read: number; of: number };
+  /** When the last sort finished. */
+  sortedAt?: string;
+  /** Open to-dos with a verdict, and open ones not read closely (past the cost cap, or new since). */
+  read: number;
+  unread: number;
+  /** Code's counts of the verdicts: still open, not handed over, not answered away. */
+  groups: Record<PileGroup, number>;
+  /** Handed over: tasks working now and to-dos waiting in line. */
+  queue: { running: number; waiting: number; cap: number };
+  /** Why the last sort stopped short: no AI agent to read with, the cost cap, or an error. */
+  failed?: "no_model" | "budget" | "error";
+}
+
+/** D359: a PR waiting for the person's review, read by the partner (read-only, the cheap model). */
+export interface PreReadSummary {
+  problems: number;
+  suggestions: number;
+  at: string;
+  /** drafted: nothing sent yet; sent: the kept comments went as one review; dropped: set aside. */
+  state: "drafted" | "sent" | "dropped";
+}
+export interface PreReadNote {
+  kind: "problem" | "suggestion";
+  path?: string;
+  line?: number;
+  /** The drafted comment, in the PR's own language. */
+  text: string;
+}
+export interface PreRead extends PreReadSummary {
+  ref: string;
+  title: string;
+  url?: string;
+  notes: PreReadNote[];
+  /** One line in the person's language: what the PR does. */
+  gist?: string;
 }
 
 /** D357: never more than this many to-dos stand on On hand; the rest are folded. */
@@ -146,10 +236,12 @@ export interface SourcesView {
   found: SourcesFound;
   /** D357: the few On hand shows (≤ GLANCE_MAX), across the sources, none with a live task. */
   glance?: SourceGlance[];
+  /** D359: the pile, once a source read its list. */
+  pile?: PileView;
 }
 
 /** One write to an outside app on the person's behalf. tick/untick: obsidian; comment/close: github. */
-export type SourceOp = "comment" | "close" | "tick" | "untick";
+export type SourceOp = "comment" | "close" | "tick" | "untick" | "review";
 
 /**
  * A card about a bound to-do (Bodies.decision.src).
@@ -158,7 +250,12 @@ export type SourceOp = "comment" | "close" | "tick" | "untick";
  *   trust   以后 {app} 上…直接接下？/ the standing go offered once (take) or 直接留言 (write).
  */
 export interface SourceAsk {
-  kind: "write" | "closed" | "trust";
+  /*
+   * D359: batch   关掉这 {n} 件，各留一句？ the reviewed close batch (its Go given on the sheet that showed every line)
+   *       picks   今天能替你清掉这 {n} 件 the morning's picks, inside the note (Go hands them over)
+   *       review  发出这 {n} 条？ a pre-read's drafted review comments (its Go given on the sheet)
+   */
+  kind: "write" | "closed" | "trust" | "batch" | "picks" | "review";
   item: SourceItemRef;
   /** write: the comment, exactly as it goes out (the card shows it whole). */
   text?: string;
@@ -168,6 +265,10 @@ export interface SourceAsk {
   taskId?: string;
   /** trust: which standing go. */
   trust?: "take" | "write";
+  /** batch, picks: the to-dos (batch: with the line each one gets). */
+  items?: { item: SourceItemRef; text?: string }[];
+  /** review: the drafted comments that go out. */
+  notes?: PreReadNote[];
 }
 
 export type SourcesClientFrame =
@@ -181,7 +282,19 @@ export type SourcesClientFrame =
   // The composer's 从待办里选 / Pick from your to-dos: open items, newest first (query matches words and labels).
   // D357: On hand's fold pages through them too: page (1-based, BROWSE_PAGE each), a repository or
   // an Obsidian folder (where), a tag or label, or the PRs waiting for the person's review.
-  | { t: "source_items"; id?: string; query?: string; clientId?: string; page?: number; where?: string; tag?: string; review?: boolean };
+  | { t: "source_items"; id?: string; query?: string; clientId?: string; page?: number; where?: string; tag?: string; review?: boolean }
+  // D359: the pile. pile_sort: sort again now (再理一遍). pile_items: one group's to-dos.
+  | { t: "pile_sort" }
+  | { t: "pile_items"; group: PileGroup; clientId?: string }
+  // 交给{name}这 {n} 件 / Hand these {n} to {name}: into the queue, a few at a time.
+  | { t: "pile_hand"; refs: string[]; clientId?: string }
+  // A decide answered (hand, close, later), or a close kept open (keep).
+  | { t: "pile_choose"; ref: string; pick: PilePick | "keep" }
+  // The close batch's Go, given on the sheet that showed every line: these refs, each with its line.
+  | { t: "pile_close"; refs: string[]; clientId?: string }
+  // A PR's pre-read: read it now, or send its drafted comments (the Go; keep = the notes kept, by index).
+  | { t: "pre_read"; ref: string; clientId?: string }
+  | { t: "pre_read_send"; ref: string; keep: number[]; clientId?: string };
 
 export type SourcesServerFrame =
   | ({ t: "sources" } & SourcesView)
@@ -199,7 +312,10 @@ export type SourcesServerFrame =
       /** D357: GitHub asked to slow down (its rate limit): try again in a minute. */
       limited?: boolean;
     }
-  | { t: "source_result"; op: "add" | "set" | "remove"; ok: boolean; id?: string; reason?: "no_tool" | "signed_out" | "missing" | "exists" | "unknown" };
+  | { t: "source_result"; op: "add" | "set" | "remove"; ok: boolean; id?: string; reason?: "no_tool" | "signed_out" | "missing" | "exists" | "unknown" }
+  | { t: "pile_items_result"; clientId?: string; group: PileGroup; items: PileItem[] }
+  // D359: what a pile action did: handed (into the queue), closed (done, failed), a review sent, a pre-read made.
+  | { t: "pile_result"; clientId?: string; op: "hand" | "close" | "review" | "pre_read"; ok: boolean; done?: number; failed?: number; read?: PreRead; error?: string };
 
 /** The chip's words on a task: "#123" (with the repo when asked), or the note's name. */
 export function sourceChip(r: Pick<SourceItemRef, "kind" | "label" | "where">, withWhere = false): string {

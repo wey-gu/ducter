@@ -113,6 +113,15 @@ its chip. The rest fold under **还有 n 件 / n more**: opened in place, On han
 track, low cards, pages of 30 (`task-sources.md` §6). Nothing shows for someone with no source, under
 a project's lens, with a filter on, or while finding.
 
+D359: at the group's head (under All, or a lone source's lens) stands **the pile**: the partner in clay
+beside a stack of pages whose height is the count's bucket, the count itself literal (**还有 557 件 /
+557 still open**, which replaces the heading's count), **今天替你清掉 n 件**, **在做 n 件** and **排着 n 件**
+apart, then the sort's groups as rows, each with its count and one button (**交给{name}**, **一件件定**,
+**过目**), **可以先放着的** and **还没细看的** as quiet rows, and **{ago}理过** with **再理一遍**. While it sorts,
+**正在一件件看…** and a bar; before any sort, one line and **理一理**. A review request the partner read
+carries **我看过了** with its counts on its card. The pile counts as something on hand (the empty
+state doesn't show over it). Its sheets and their Go: `task-sources.md` §9.
+
 D285: under the sections, On hand's last line leads on: **一直在跑的 n 件 ›** (when something keeps
 going on its own) and **做过的事 ›**, where every finished task stays, findable and marked
 (`past.md`). D315: the line wraps, so nothing is clipped from 900 to 1280. A Find that matches

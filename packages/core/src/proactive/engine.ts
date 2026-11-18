@@ -284,6 +284,11 @@ export interface ProactiveOptions {
   pusher?: Pusher;
   /** D276: a chat app already carried this note (n:<noteId>): no push for it. */
   claimed?: (key: string) => boolean;
+  /**
+   * D359: Ducter's own offer for the morning note (the to-dos it can clear today): a find made by
+   * its owner with its own Go card, outside the day's 3 like D281's own line. None: nothing added.
+   */
+  morningFinds?: (noteId: string) => FindView[];
   rules: RulesStore;
   decisions: Decisions;
   runner: () => Runner | undefined;
@@ -741,25 +746,32 @@ export function createProactive(o: ProactiveOptions): Proactive {
       // 有用就说: what the note had no room for is counted, never dropped silently (P2).
       if (m === "useful") st.more += kept.length - pick.length;
       const noteId = newId("note");
+      // D359: the to-dos Ducter can clear today, its own offer with its own Go (outside the day's 3).
+      let extra: FindView[] = [];
+      try {
+        extra = o.morningFinds?.(noteId) ?? [];
+      } catch (err) {
+        console.warn("[proactive] the morning's to-dos couldn't be added:", (err as Error).message);
+      }
       // D173: what was left out is the partner's to say only when asked ("还有别的吗？"); no screen shows it.
       const leftOut = W.leftOut(z, { ...st.left, more: st.more });
       for (const r of mine) r.state = "said";
-      if (!pick.length && !ownFinds.length && !line && learned) {
+      if (!pick.length && !ownFinds.length && !extra.length && !line && learned) {
         // D304: a quiet morning that opens the week: only the offer, shown, never pushed (it can wait).
         const e = note({ noteId, rung: "morning", opening: W.open(z), finds: [], learned, ...(leftOut ? { leftOut } : {}) });
         st.mornings.push({ noteId, seq: e.seq, day: today(), finds: 0 });
-      } else if (!pick.length && !ownFinds.length && !line) {
+      } else if (!pick.length && !ownFinds.length && !extra.length && !line) {
         // A quiet day (D173): nothing sent and nothing shown. The partner alone knows it looked.
         const e = note({ noteId, rung: "morning", opening: "", finds: [], quiet: true, ...(leftOut ? { leftOut } : {}) });
         st.mornings.push({ noteId, seq: e.seq, day: today(), finds: 0 });
-      } else if (!pick.length && !ownFinds.length) {
+      } else if (!pick.length && !ownFinds.length && !extra.length) {
         // D281: nothing new noticed, but the day holds something of Ducter's own: the one line, passive.
         const opening = `${W.open(z)}${words(OWN, z).gap}${line}`;
         const e = note({ noteId, rung: "morning", opening, finds: [], ...(learned ? { learned } : {}), ...(leftOut ? { leftOut } : {}) });
         st.mornings.push({ noteId, seq: e.seq, day: today(), finds: 0 });
         notify("passive", line, noteId);
       } else {
-        const finds = [...ownFinds.map((r) => ownCandidate(r)).map((c) => makeFind(c, words(c.words, z), noteId)), ...pick.map((x) => makeFind(x.c, x.text, noteId))];
+        const finds = [...ownFinds.map((r) => ownCandidate(r)).map((c) => makeFind(c, words(c.words, z), noteId)), ...pick.map((x) => makeFind(x.c, x.text, noteId)), ...extra];
         // D250: the first note on the default (never chosen, never asked) says how it works, with the chips.
         const askHow = modeBy() === "default" && !st.cadenceAsked && !st.cadenceNote;
         if (askHow) (st.cadenceAsked = true), (st.cadenceNote = noteId);

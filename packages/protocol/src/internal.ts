@@ -169,7 +169,7 @@ export interface MediaApi {
   named?(id: string): string | undefined;
   /** A file on the home (a task's report): copied in. files: besides pictures. Throws when it isn't one Ducter shows. */
   putFile(path: string, o?: { name?: string; from?: { taskId: string }; files?: boolean }): import("./media.ts").MediaRef;
-  put(bytes: Uint8Array, o?: { name?: string; from?: { taskId: string }; files?: boolean }): import("./media.ts").MediaRef;
+  put(bytes: Uint8Array, o?: { name?: string; from?: { taskId: string }; files?: boolean; sent?: boolean }): import("./media.ts").MediaRef;
   /** D242: v with every media ref in it carrying a fresh, expiring key (what a client gets). */
   fresh?<T>(v: T): T;
   /** D242: fresh keys for the ids the home holds. */
@@ -589,6 +589,11 @@ export interface Runner {
   // Optional (D214): where a task's page is reached from the home: "here" (this machine's
   // loopback), or a fetch that carries the request to its worker. undefined: no such task.
   pageRoute?(taskId: string): { here: true } | { here: false; fetch(a: { port: number; method: string; path: string; headers: [string, string][]; body?: string }): Promise<{ status: number; headers: [string, string][]; body: string }> } | undefined;
+  // Optional (D356): a file a link in a task's or the partner's words points at, read on the
+  // computer the task works on from its own folders (D206's shown rules) and kept in the home's
+  // media for the viewer. taskId: the task the link was shown in (a hint; the path decides).
+  // Throws an Error whose `code` is a FileOpenError.
+  fileOpen?(path: string, taskId?: string): Promise<import("./media.ts").MediaRef>;
 }
 
 export function createRunnerSignature(_core: CoreApi): Runner {

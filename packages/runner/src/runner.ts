@@ -1,5 +1,5 @@
 import { randomBytes, randomUUID } from "node:crypto";
-import { HARNESS_IDS, HARNESSES as HARNESS_INFO, harnessName, isImage, kindWords, sizeWords, type MediaRef, type Attention, type Bodies, type BranchChanges, type Delivery, type EvidenceRef, type FolderChanges, type FolderSummary, type HeldMsg, type UndoConfirm, type LogEvent, type Place, type Question, type Residency, type TaskCard, type TaskNeeds, type WhereAsk } from "@ducter/protocol";
+import { HARNESS_IDS, HARNESSES as HARNESS_INFO, harnessName, isImage, kindWords, sizeWords, type MediaRef, type FileOpenError, type Attention, type Bodies, type BranchChanges, type Delivery, type EvidenceRef, type FolderChanges, type FolderSummary, type HeldMsg, type UndoConfirm, type LogEvent, type Place, type Question, type Residency, type TaskCard, type TaskNeeds, type WhereAsk } from "@ducter/protocol";
 import type { CoreApi, HarnessEvent, HarnessPort, HarnessSession, Runner, SendFile, SendImage, SessionSpec } from "@ducter/protocol/src/internal.ts";
 import { ADOPTED, outsideOver, NUDGE, PRECOMPACT_NOTE, REOPENED, RESUME_AFTER_RESTART, SAVE_BEFORE_COMPACT, afterCompaction, briefTurn, knownTurn, othersTurn, OTHERS_MAX, handedBack, handedOver, kickoff, movedOver, noCopyAnswer, seedThen, startedAfresh, taskBrief, type CarryOver } from "./brief.ts";
 import { resolveModel, resolveWindows, saveBeforeAt } from "@ducter/protocol/src/harness-facts.ts";
@@ -12,7 +12,7 @@ import { archiveWorktree, branchChanges, mergeTaskBranch, openDraftPr, pushForMo
 import { DEVICE_BACK, DeviceOfflineError, deviceOf, isOffline, localFolderOps, remoteOps, type PlaceOps } from "./remote.ts";
 import { createFolderStore, type CantKeep } from "./folder.ts";
 import { join } from "node:path";
-import { readShown } from "./shown.ts";
+import { readShown, shownCode } from "./shown.ts";
 import { limitHit, mergeLimits, type FailedOutcome } from "./limit-hit.ts";
 import { wbHost, WbFail } from "./workbench.ts";
 import { userEditsNote } from "./brief.ts";
@@ -2464,6 +2464,55 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       const fetch = ops.wbFetch;
       if (!fetch) return undefined;
       return { here: false, fetch: (a) => fetch({ taskId, ...a }) };
+    },
+
+    // D356: a link to a file in a task's or the partner's words. The task whose folders hold it
+    // reads it where it works (its working copy, its own scratch or evidence, D206's rules), and
+    // the home keeps the bytes for the viewer. Which task: the one the link was shown in, the
+    // one its scratch or evidence folder names, then any whose working copy holds the path.
+    async fileOpen(path, hint) {
+      const fail = (code: FileOpenError, message?: string) => Object.assign(new Error(message ?? code), { code });
+      if (!core.media) throw fail("unsupported");
+      const raw = typeof path === "string" ? path.trim() : "";
+      if (!raw || raw.length > 4096 || raw.includes("\0")) throw fail("missing");
+      const known = (id: string | undefined) => !!id && (tasks.has(id) || !!core.tasks.get(id));
+      const order: string[] = [];
+      const add = (id: string | undefined) => void (id && known(id) && !order.includes(id) && order.push(id));
+      add(hint);
+      add(/\/(?:scratch|evidence)\/([A-Za-z0-9_-]{1,64})(?:\/|$)/.exec(raw)?.[1]);
+      for (const card of core.tasks.list()) {
+        const p = card.place;
+        const cwd = p?.kind === "repo" ? (p.worktree ?? p.repoPath) : p?.kind === "folder" ? p.path : "";
+        if (cwd && (raw === cwd || raw.startsWith(cwd.endsWith("/") ? cwd : `${cwd}/`))) add(card.taskId);
+      }
+      if (!order.length) throw fail("outside");
+      // When none reads it, the most telling no: gone beats unreachable beats outside.
+      const rank: FileOpenError[] = ["outside", "unsupported", "failed", "offline", "missing"];
+      let last: (Error & { code: FileOpenError }) | undefined;
+      const keep = (e: Error & { code: FileOpenError }) => void ((!last || rank.indexOf(e.code) > rank.indexOf(last.code)) && (last = e));
+      for (const taskId of order.slice(0, 6)) {
+        const t = tasks.get(taskId);
+        const place = core.tasks.get(taskId)?.place ?? t?.card.place ?? { kind: "none" as const };
+        const ops = t?.ops ?? opsFor(place);
+        const cwd = t?.spec.cwd ?? (ops.device ? remoteCwd(place) : cwdOf(place, taskId, core.dataDir));
+        if (ops.device && !ops.device.online()) {
+          keep(fail("offline"));
+          continue;
+        }
+        try {
+          const f = await ops.shown({ path: raw, cwd, taskId });
+          // Any kind of file: the person asked for this one (a kind Ducter can't show is kept inert, D259).
+          return core.media.put(f.bytes, { name: f.name, from: { taskId }, sent: true });
+        } catch (err) {
+          const e = err as { code?: unknown; message?: unknown; status?: unknown };
+          const code: FileOpenError = e?.status === 413 ? "too_big" : typeof e?.code === "string" && e.code !== "failed" ? (e.code as FileOpenError) : shownCode(String(e?.message ?? ""));
+          const no = fail(code, code === "failed" ? String(e?.message ?? "").slice(0, 200) : undefined);
+          // A file too big is the answer; another task (another computer) may hold any other.
+          if (code === "too_big") throw no;
+          keep(no);
+        }
+      }
+      throw last ?? fail("outside");
     },
 
     async folderReport(taskId) {

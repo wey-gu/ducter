@@ -1,7 +1,10 @@
 // Markdown-lite for the partner's messages: paragraphs, line breaks, **bold**, *italic*,
 // `code`, fenced code, - / 1. lists, ### headings and http(s) links. Everything is escaped first,
 // so a message can never inject markup.
+import { fileLinkPath } from "@ducter/protocol/src/media.ts";
+
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+const unesc = (s: string) => s.replace(/&quot;/g, '"').replace(/&gt;/g, ">").replace(/&lt;/g, "<").replace(/&amp;/g, "&");
 
 export function inline(s: string): string {
   const codes: string[] = [];
@@ -10,6 +13,12 @@ export function inline(s: string): string {
   s = s.replace(/`([^`\n]+)`/g, (_m, c: string) => `\u0000${codes.push(c) - 1}\u0000`);
   s = esc(s);
   s = s.replace(/\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)/g, (_m, t: string, u: string) => `<a href="${u}" target="_blank" rel="noopener noreferrer">${t}</a>`);
+  // D356: a link to a file (a path on the home or a worker) opens in Ducter's own viewer
+  // (fileview.tsx listens for a click on data-path), never as an address in the browser.
+  s = s.replace(/\[([^\]\n]+)\]\(((?:file:|~?\/)[^\s)]*)\)/g, (m, t: string, u: string) => {
+    const p = fileLinkPath(unesc(u));
+    return p ? `<a href="#" class="file-link" data-path="${esc(p)}" title="${esc(p)}">${t}</a>` : m;
+  });
   s = s.replace(/(^|[\s(])(https?:\/\/[^\s<)]+)/g, (_m, pre: string, u: string) => `${pre}<a href="${u}" target="_blank" rel="noopener noreferrer">${u}</a>`);
   s = s.replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>");
   s = s.replace(/(^|[^*\w])\*([^*\n]+)\*(?=[^*\w]|$)/g, "$1<em>$2</em>");

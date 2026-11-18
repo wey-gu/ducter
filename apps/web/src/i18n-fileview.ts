@@ -18,6 +18,12 @@ export const fileWords: { zh: Record<string, string>; en: Record<string, string>
     "file.none.kept": "这种文件在 Ducter 里不会打开，只原样存着。存一份，用你自己的应用看。",
     "file.loading": "正在打开…",
     "file.failed": "没能打开这个文件。",
+    // D356: a link to a file on the home or a worker, and why it didn't open.
+    "file.link.missing": "这个文件已经不在了。",
+    "file.link.outside": "这个文件不在任何一件事自己的文件夹里，Ducter 不会打开它。",
+    "file.link.too_big": "这个文件超过 25 MB，在这里打不开。",
+    "file.link.offline": "这个文件所在的电脑现在连不上。",
+    "file.link.unsupported": "这个 Ducter 还打不开链接里的文件。更新以后再试。",
     "media.copy.failed.text": "这里拷贝不了文字",
     // D242
     "file.pages": "%d 页",
@@ -48,6 +54,11 @@ export const fileWords: { zh: Record<string, string>; en: Record<string, string>
     "file.none.kept": "Ducter never opens this kind of file; it keeps it as it is. Save a copy and open it in your own app.",
     "file.loading": "Opening…",
     "file.failed": "Couldn't open this file.",
+    "file.link.missing": "This file isn't there any more.",
+    "file.link.outside": "This file isn't in any task's own folders, so Ducter won't open it.",
+    "file.link.too_big": "This file is over 25 MB, too big to open here.",
+    "file.link.offline": "The computer this file is on can't be reached right now.",
+    "file.link.unsupported": "This Ducter can't open linked files yet. Update it and try again.",
     "media.copy.failed.text": "Text can't be copied here",
     // D242
     "file.pages": "%d pages",

@@ -2089,6 +2089,10 @@ type ServerFrame struct {
 	// wb (D214): a workbench answer (ID, OK, Answer) or its refusal (WbError).
 	Answer  *WbAnswer `json:"answer,omitempty"`
 	WbError string    `json:"error,omitempty"`
+	// file_open (D356): the linked file the home now keeps (ID, OK, File),
+	// or why it couldn't (WbError: missing | outside | too_big | offline |
+	// unsupported | failed, and Message).
+	File *MediaRef `json:"file,omitempty"`
 	// devices: Your devices and abilities.
 	Devices []DeviceView `json:"devices,omitempty"`
 	Reach   *Reach       `json:"reach,omitempty"`
@@ -2496,7 +2500,7 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 		"task_new_options", "task_new_result", "open_task", "open_result", "project_add_result", "project_clone_result", "folder_browse_result",
 		"project_new_result", "git_login_state",
 		"first_screen", "folder_changes", "close_result", "live", "live_frame", "live_turn", "live_doing", "phone_terms", "phone_install_result", "phone_erase_result", "phone_view", "phone_frame", "phone_doing", "browser_sites", "browser_check", "connection_reads", "proactive_day", "media_keys", "saved", "phone_did",
-		"connection_signin", "phone_voice_result", "own_phone_result", "wb", "channels", "channel_result",
+		"connection_signin", "phone_voice_result", "own_phone_result", "wb", "file_open", "channels", "channel_result",
 		"handset_dial_result", "ways", "pong", "key_add_result", "partners", "task_index":
 	case "past_result", "past_marked", "outside_adopted", "outside_hidden":
 		return decodePast(data, f)

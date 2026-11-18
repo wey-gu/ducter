@@ -9245,6 +9245,10 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   white-space: nowrap;
 }
 .fv-title .meta { font-size: var(--xs); font-weight: 600; color: var(--ink-muted); font-variant-numeric: tabular-nums; letter-spacing: 0.01em; }
+/* D356: a linked file while it comes, or why it didn't: its path, quiet and in mono. */
+.fv-title .fv-path { font-family: var(--mono); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fv-k-link .fv-body { min-height: 9rem; display: grid; place-items: center; }
+.fv-k-link .fv-note p { max-width: 32rem; text-wrap: pretty; }
 .fv-toggle { flex: none; color: var(--ink-soft); }
 .fv-toggle[aria-pressed="true"] { color: var(--ink); }
 .fv-x { flex: none; color: var(--ink-soft); }

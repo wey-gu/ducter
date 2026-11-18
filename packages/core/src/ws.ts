@@ -3,7 +3,7 @@ import { DUCTER_VERSION } from "@ducter/protocol/src/version.ts";
 import { brainNow } from "./brain.ts";
 import { CLIENT_SHAPES, harnessName, isHarnessId, isProactiveYesNo, shapeOfModel, TRY_LIVE, WATCH_LIVE } from "@ducter/protocol";
 import type { ServerWebSocket } from "bun";
-import type { Bodies, ClientFrame, ClientKind, Delivery, LogEvent, MediaRef, OoApp, PartnerActivity, Place, ServerFrame, UndoConfirm } from "@ducter/protocol";
+import type { Bodies, ClientFrame, ClientKind, Delivery, FileOpenError, LogEvent, MediaRef, OoApp, PartnerActivity, Place, ServerFrame, UndoConfirm } from "@ducter/protocol";
 import type { NewTaskInput, NewTaskResult } from "./newtask.ts";
 import type { CoreApi, Runner } from "@ducter/protocol/src/internal.ts";
 import type { Decisions } from "./decisions.ts";
@@ -1696,6 +1696,23 @@ export function createWsHandler(deps: WsDeps) {
         const id = typeof f.id === "string" ? f.id.slice(0, 64) : "";
         const answer = deps.workbench && ws.data.client !== "cli" ? await deps.workbench.handle(String(f.taskId ?? ""), f.req) : { ok: false as const, error: "unsupported" as const };
         send(ws, { t: "wb", id, taskId: String(f.taskId ?? ""), ...answer });
+        return;
+      }
+      case "file_open": {
+        // D356: a link to a file on the home or a worker, opened in the client's own viewer.
+        const id = typeof f.id === "string" ? f.id.slice(0, 64) : "";
+        const r = deps.runner();
+        if (!r?.fileOpen || ws.data.client === "cli") return send(ws, { t: "file_open", id, ok: false, error: "unsupported" });
+        try {
+          const file = await r.fileOpen(String(f.path ?? ""), typeof f.taskId === "string" && f.taskId ? f.taskId : undefined);
+          send(ws, { t: "file_open", id, ok: true, file });
+        } catch (e) {
+          const code = (e as { code?: unknown })?.code;
+          const known: FileOpenError[] = ["missing", "outside", "too_big", "offline", "unsupported", "failed"];
+          const error = known.includes(code as FileOpenError) ? (code as FileOpenError) : "failed";
+          const message = error === "failed" && (e as Error)?.message ? String((e as Error).message).slice(0, 200) : undefined;
+          send(ws, { t: "file_open", id, ok: false, error, ...(message && message !== "failed" ? { message } : {}) });
+        }
         return;
       }
       case "folder_changes": {

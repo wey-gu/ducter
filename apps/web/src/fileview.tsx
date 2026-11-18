@@ -8,7 +8,8 @@
 // client's own fetch (the same keyed path the pictures use), the first FILE_VIEW_BYTES of a text,
 // cut at a whole line; Save a copy takes the whole file to this device (the share sheet on a
 // phone, a download elsewhere), never by sending the person to the home's address.
-import { ANY_FILE, EXT_OF, FILE_VIEW_BYTES, FILE_VIEW_ROWS, fileView, parseTable, sizeWords, tableSep, viewText, type MediaRef } from "@ducter/protocol";
+import { ANY_FILE, EXT_OF, FILE_VIEW_BYTES, FILE_VIEW_ROWS, fileLinkName, fileView, parseTable, sizeWords, tableSep, viewText, type FileOpenError, type MediaRef } from "@ducter/protocol";
+import { askFile, fileLinkSender } from "./filelink-ask.ts";
 import type { JSX } from "preact";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "preact/hooks";
 import { A } from "./app.ts";
@@ -29,6 +30,101 @@ const handheld = () => typeof navigator !== "undefined" && /iPhone|iPad|Android/
 export function openFile(m: MediaRef, el?: HTMLElement) {
   A.fileView = { ref: m, ...(el ? { from: el.getBoundingClientRect() } : {}) };
   A.changed();
+}
+
+// ---------- D356: a link to a file on the home or a worker ----------
+
+fileLinkSender((f) => A.send(f));
+let linkSeq = 0;
+
+/**
+ * Opens the file a link names: the home reads it from the task's own folders on the computer it
+ * works on and keeps a copy, and the viewer opens on that. Until it answers the sheet says
+ * Opening…; when it can't, the one line why (gone, outside the task's folders, too big, that
+ * computer unreachable), never nothing.
+ */
+export function openFileLink(path: string, taskId?: string) {
+  const n = ++linkSeq;
+  A.fileView = undefined;
+  A.fileLink = { path, n, ...(taskId ? { taskId } : {}) };
+  A.changed();
+  askFile(path, taskId).then(
+    (ref) => {
+      if (A.fileLink?.n !== n) return;
+      A.fileLink = undefined;
+      A.fileView = { ref };
+      A.changed();
+    },
+    (e: { error?: FileOpenError; message?: string }) => {
+      if (A.fileLink?.n !== n) return;
+      A.fileLink = { ...A.fileLink, error: e?.error ?? "failed", ...(e?.message ? { message: e.message } : {}) };
+      A.changed();
+    },
+  );
+}
+
+/** The task a link was tapped in: the one opened now (the home also finds it by the path). */
+const shownIn = () => (A.route.name === "task" ? A.route.id : undefined);
+
+/** A tap on a file link anywhere (the conversation, a task's words): the viewer, never the browser. */
+export function onFileLinkClick(e: Pick<MouseEvent, "target" | "defaultPrevented" | "preventDefault">) {
+  const a = (e.target as Element | null)?.closest?.<HTMLElement>("a[data-path]");
+  if (!a?.dataset.path || e.defaultPrevented) return;
+  e.preventDefault();
+  openFileLink(a.dataset.path, shownIn());
+}
+if (typeof document !== "undefined") document.addEventListener("click", onFileLinkClick);
+
+/** The sheet while a linked file comes, or why it didn't: its name, the path, one line. */
+export function FileLinkSheet() {
+  const l = A.fileLink!;
+  const name = fileLinkName(l.path);
+  const close = () => ((A.fileLink = undefined), A.changed());
+  useEffect(() => {
+    const k = (e: KeyboardEvent) => {
+      if (e.key === "Escape") e.preventDefault(), e.stopPropagation(), close();
+    };
+    addEventListener("keydown", k, true);
+    return () => removeEventListener("keydown", k, true);
+  }, []);
+  const again = l.error === "offline" || l.error === "failed";
+  return (
+    <div class="fileview" role="dialog" aria-modal="true" aria-label={name}>
+      <div class="scrim" onClick={close} />
+      <article class="fv-sheet fv-k-link">
+        <header class="fv-head">
+          <span class="fv-grab" aria-hidden="true" />
+          <div class="fv-title">
+            <span class="nm" title={name}>
+              {name}
+            </span>
+            <span class="meta fv-path" title={l.path}>
+              {l.path}
+            </span>
+          </div>
+          <button type="button" class="btn text icon fv-x" aria-label={t("media.close")} onClick={close}>
+            <Cross />
+          </button>
+        </header>
+        <div class="fv-body">
+          {!l.error ? (
+            <p class="fv-note quiet" aria-live="polite">
+              {t("file.loading")}
+            </p>
+          ) : (
+            <div class="fv-note" role="alert">
+              <p>{l.error === "failed" ? (l.message ? `${t("file.failed")} ${l.message}` : t("file.failed")) : t(`file.link.${l.error}`)}</p>
+              {again && (
+                <button type="button" class="btn secondary sm" onClick={() => openFileLink(l.path, l.taskId)}>
+                  <span class="lbl">{t("media.retry")}</span>
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      </article>
+    </div>
+  );
 }
 
 /** What a file is called when it is saved. */

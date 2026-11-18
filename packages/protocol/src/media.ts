@@ -401,3 +401,37 @@ export function sizeWords(bytes: number): string {
   if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(bytes < 10 * 1024 * 1024 ? 1 : 0)} MB`;
 }
+
+// ---------- a link to a file on the home (D356) ----------
+
+/**
+ * Why the home didn't open a linked file (D356): it is gone, outside the task's own folders,
+ * over the limit, on a computer that can't be reached, or no such thing here.
+ */
+export type FileOpenError = "missing" | "outside" | "too_big" | "offline" | "unsupported" | "failed";
+
+/**
+ * D356: the path a link in a task's or the partner's words points at, when it names a file
+ * rather than a page: `/abs/path`, `file:///abs/path` or `~/path` (percent-escapes decoded, a
+ * `#fragment` or `?query` dropped). undefined for a web address, a mail link, `#a-heading` or a
+ * relative name.
+ */
+export function fileLinkPath(href: unknown): string | undefined {
+  if (typeof href !== "string") return undefined;
+  let s = href.trim();
+  if (!s || s.length > 4096) return undefined;
+  if (/^file:/i.test(s)) {
+    s = s.replace(/^file:(\/\/(localhost)?)?/i, "");
+    if (!s.startsWith("/")) return undefined;
+  } else if (!s.startsWith("/") && !s.startsWith("~/")) return undefined;
+  if (s.startsWith("//")) return undefined; // a protocol-relative web address
+  s = s.replace(/[?#].*$/, "");
+  try {
+    s = decodeURIComponent(s);
+  } catch {}
+  if (s.includes("\0") || s === "/" || s === "~/") return undefined;
+  return s;
+}
+
+/** The name a linked file goes by before the home answers (its last path segment). */
+export const fileLinkName = (path: string): string => path.replace(/\/+$/, "").split("/").pop() || path;

@@ -36,7 +36,7 @@ import { MicButton, ReadingLine, useReadback, voice, VoiceSettings, VoiceStrip }
 import { FirstAfter, firstOpening, KeyCard, keyJustAdded } from "./first-words.tsx";
 import { CalFacts, calHold, CalSettle, DayCard, TodayRow } from "./calendar.tsx";
 import { AddPictures, DropHint, MediaBlock, Tray, useDropPaste, Viewer } from "./media.tsx";
-import { FileViewer } from "./fileview.tsx";
+import { FileLinkSheet, FileViewer } from "./fileview.tsx";
 import { NewTaskSheet } from "./newtask.tsx";
 import { MemoryPage, Notebook, PeersInvite, PeersPage, peersPageShown } from "./memory.tsx";
 import { memBadge, memUpdate, peerCalled } from "./mem-view.ts";
@@ -3063,6 +3063,7 @@ function SettingsSheet() {
 export function Sheets() {
   if (A.viewer) return <Viewer />;
   if (A.fileView) return <FileViewer />;
+  if (A.fileLink) return <FileLinkSheet />;
   if (!A.sheet) return null;
   if (A.sheet.kind === "newtask") return <NewTaskSheet />;
   if (A.sheet.kind === "switch") return <Switcher />;

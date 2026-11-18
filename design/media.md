@@ -174,6 +174,17 @@ drawing needs Codex signed in on one of their computers. The picture comes back 
   under the partner's words; in a task, with your lines, the partner's, the brief and each report.
   A file is one line on a card, a clay button: its drawn kind, name, size, **打开 / Open**. A tap
   reads it inside Ducter (below, D239).
+- **A link to a file (D356)** in the partner's or a task's words (`/abs/path`, `file://…`,
+  `~/…`; `fileLinkPath`) opens the same viewer. The client sends `file_open {id, path, taskId?}`
+  (taskId: the task it was tapped in, a hint); the home picks the task whose folders hold the path
+  (the hint, the task its `scratch/<id>` or `evidence/<id>` names, then any whose working copy
+  holds it), reads it where that task works with D206's `readShown` (its working copy, its own
+  scratch and evidence, Codex's pictures; links resolved; never Ducter's data folder but the
+  task's own scratch and evidence; 25 MB), keeps it in media (`sent` kinds: any file, inert when
+  unknown) and answers with the ref. Until then the sheet shows the name, the path in mono and
+  **正在打开… / Opening…**; a refusal is one line (`file.link.{missing,outside,too_big,offline,
+  unsupported}`), Retry for offline and failed; Esc or × goes back. The Mac with the Ducter on
+  this Mac opens a link to a file here as before (`file://`, `onThisMachine`).
 - **The viewer:** a tap grows the picture out of its tile, clipped to the tile's own crop and
   round corners so it is one continuous picture (the tile stays empty while it flies; a fade under
   reduced motion), onto the theme's paper; the tile's rendition shows under the full picture while

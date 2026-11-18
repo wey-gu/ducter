@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.0.79 - 2026-11-18
+
+<!-- whats-new
+zh: 一块工作的几件任务排成一组
+en: Tasks that are one piece of work, as one group
+-->
+
+**On hand**
+- When your partner splits one request into several tasks, they appear as one group: a card with
+  each task in order, how many are done, and which is in progress.
+- Tasks in a group that work in the same folder run one after another, each starting from the
+  last one's work, instead of all at once. Switch a group to run side by side whenever you like.
+- If one doesn't finish, the group stops and asks: try it again, skip it, or drop the rest.
+- Say "put these together" to make a group, or select tasks on the web and choose Put in a group.
+  Ungrouping keeps every task.
+
 ## 0.0.78 - 2026-11-18
 
 <!-- whats-new

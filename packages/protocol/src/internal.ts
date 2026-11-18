@@ -468,6 +468,10 @@ export interface SessionSpec {
   // native tool that writes or runs anything; Ducter's MCP tools stay. Each harness maps it in
   // runner/oar.ts (Claude Code and pi deny the tools, Codex runs its read-only sandbox).
   readOnly?: boolean;
+  // The partner only (D378): none of the harness's own web tools (search, fetch). What a site or
+  // the web says is read by a task, and only its report reaches the partner. Each harness maps it
+  // by its own switch (harness-facts noWeb, runner/oar.ts).
+  noWeb?: boolean;
   // D142, a folder place: writes stay inside cwd where the harness can enforce it (Codex: its
   // workspace-write sandbox, network on). Claude Code has no such switch under bypass; its brief
   // asks it, and the folder's copy makes what it changed there undoable.

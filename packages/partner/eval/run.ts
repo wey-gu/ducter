@@ -7,7 +7,7 @@
 // reports are injected as scripted Log events. Each scenario gets a scratch DUCTER_DATA_DIR.
 //
 // Safety: repo paths in scenarios (~/dev/foo, ~/dev/hawdb) do not exist on this machine, and
-// the partner's use of Bash/Write/Edit is a failing check. The ~/.claude/projects folders the
+// the partner's use of Bash/Write/Edit (or of a web tool, D378) is a failing check. The ~/.claude/projects folders the
 // partner sessions create (named after the scratch dir, "ducter-eval-") are deleted at the end.
 // Memory is a FAKE Mem per scenario (scenario.memories, test/fakes.ts fakeMemory): the eval
 // never reads or writes the user's real Nowledge Mem.
@@ -752,6 +752,9 @@ const CJK = /[㐀-鿿豈-﫿]/;
 const CLAIMS_CHOICE = /(选|点|按|回复?|回)\s*[「“"]?\s*(Go|Hold|好|先等等)\b|\b(tap|press|choose|pick|select|reply|hit|say)\s+["“]?(Go|Hold)\b|\bGo\s*\/\s*Hold\b/i;
 // The tools that do work, as each harness names them (Claude Code, Codex, pi, DeepSeek Harness).
 const DO_WORK_TOOLS = /^(Bash|Write|Edit|MultiEdit|NotebookEdit|exec_command|commandExecution|fileChange|shell|apply_patch|write_stdin|write_file|edit_file)$/i;
+// D378: the harness's own web tools, as each names them. The partner has none (a task reads the
+// web); one used means a harness let it through.
+const WEB_TOOLS = /^(WebFetch|WebSearch|web_search|webSearch|web_fetch|webFetch)$/i;
 
 function check(r: RunResult): string[] {
   const fails: string[] = [];
@@ -788,6 +791,7 @@ function check(r: RunResult): string[] {
   for (const v of r.visible.filter((x) => x.kind === "decision")) if (/默认\s*[:：（(是为]|[(（]\s*(默认|default)|\bdefault\s*[:：(]|\bby default\b/i.test(v.text)) fails.push(`default written into the question: "${clip(v.text)}"`);
   // Global: the partner does not do place-bound work itself.
   for (const t of r.tools) if (DO_WORK_TOOLS.test(t.name)) fails.push(`used ${t.name} itself`);
+  for (const t of r.tools) if (WEB_TOOLS.test(t.name)) fails.push(`read the web itself (${t.name})`);
 
   // Per scenario.
   if (e.opens !== undefined) {

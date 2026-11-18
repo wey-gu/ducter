@@ -59,6 +59,7 @@ describe("live-run regressions", () => {
     await partner.idle();
     expect(fr.sessions[0]!.spec.isolateUserConfig).toBe(true);
     expect(fr.sessions[0]!.spec.readOnly).toBe(true); // principle 6: no native write or run tools
+    expect(fr.sessions[0]!.spec.noWeb).toBe(true); // D378: no web tools of its own either
     // Loading its tools up front is the adapter's switch for an isolated session (runner/oar.ts).
     expect(fr.sessions[0]!.spec.env).toBeUndefined();
   });

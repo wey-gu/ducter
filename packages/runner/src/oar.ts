@@ -139,7 +139,7 @@ export function piFlags(v: PiVariant | undefined): string[] {
  * session's prompt as the whole system-prompt opener, the tools a read-only or tool-less session
  * may not have dropped, the session-log upload off, and the compaction point.
  */
-export function dshLayer(o: { prompt?: string; readOnly?: boolean; noTools?: boolean; compaction?: Record<string, unknown>[]; credentials?: string }): Record<string, unknown>[] {
+export function dshLayer(o: { prompt?: string; readOnly?: boolean; noTools?: boolean; noWeb?: boolean; compaction?: Record<string, unknown>[]; credentials?: string }): Record<string, unknown>[] {
   const rows: Record<string, unknown>[] = [];
   // D371: the credential store reads the person's own file (the account's sign-in lives there).
   if (o.credentials) rows.push({ id: DSH_PROFILE.credentials, config: { path: o.credentials } });
@@ -149,6 +149,8 @@ export function dshLayer(o: { prompt?: string; readOnly?: boolean; noTools?: boo
     if (o.noTools) for (const id of DSH_PROFILE.noToolsOff) rows.push({ id, disabled: true });
     else rows.push({ id: DSH_PROFILE.fs, config: { write: false, edit: false, applyPatch: false } });
   }
+  // D378: the partner reads no web page itself (a one-shot's noToolsOff already drops the row).
+  if (o.noWeb && !o.noTools) for (const id of HARNESS_FACTS["deepseek-harness"].noWeb.value.rows) rows.push({ id, disabled: true });
   rows.push({ id: DSH_PROFILE.sessionLog, config: { enabled: false } });
   rows.push(...(o.compaction ?? []));
   return rows;
@@ -631,7 +633,7 @@ export function adaptSpec(spec: SessionSpec, ctx: { env?: Record<string, string 
         // of Ducter's doesn't have: its credential store reads that file where it is (never copied;
         // DSH's own `credentials` row, research/140). A key still rides in the env, as before.
         const credentials = dshAccount ? dshCredentialsFile(dshEnv(ctx.env ?? {})) : undefined;
-        const layer = dshLayer({ prompt: asPrompt, readOnly: spec.readOnly, noTools: spec.noTools, compaction: knobs?.profile, ...(credentials ? { credentials } : {}) });
+        const layer = dshLayer({ prompt: asPrompt, readOnly: spec.readOnly, noTools: spec.noTools, noWeb: spec.noWeb, compaction: knobs?.profile, ...(credentials ? { credentials } : {}) });
         // One home per setup: sessions live in their home, so the same prompt and tools resume
         // where they were, and a one-shot starting beside the partner never rewrites its files.
         const key = createHash("sha256").update(JSON.stringify(layer)).update("\0").update(agentsMd).digest("hex").slice(0, 12);
@@ -663,6 +665,13 @@ export function adaptSpec(spec: SessionSpec, ctx: { env?: Record<string, string 
     // Codex declines MCP calls under its sandbox unless a tool is marked read-only: the URL tells
     // Ducter's MCP the session is sandboxed, and it marks the partner's tools (core/src/mcp.ts).
     if (h === "codex") mcpServers = sandboxedMcp(mcpServers);
+  }
+
+  // D378: the partner has none of the harness's own web tools; a task reads the web and reports.
+  if (spec.noWeb) {
+    const off = HARNESS_FACTS[h].noWeb.value;
+    disallowed = [...disallowed, ...off.deny.filter((t) => !disallowed.includes(t))];
+    if (off.args.length) launchArgs = [...(launchArgs ?? []), ...off.args];
   }
 
   // What the runtime says it cannot honor is never sent (OAR refuses by presence).

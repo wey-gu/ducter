@@ -137,6 +137,13 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
 - [ ] **Change when for every week picks the weekday** (today it keeps the routine's own day). Trigger: the first weekly routine moved to another day.
 - [ ] **On hand's rows draw the person's picture and name** (the name already is the title; the picture is not drawn on rows yet). Trigger: On hand's redesign settles.
 
+## The partner reads no web page itself (D378)
+
+- [ ] **D378: a one-fact look-up without a row in On hand** (the weather, a version: today a whole browsing task, a minute instead of seconds). The fork executor (`conversation.md`: read-only, side context, its conclusion only returns) with web tools and no memory or accounts is the path. Trigger: forks are built, or the author or a rater finds a one-number look-up too slow.
+- [ ] **D378: live on a home** (a web question on hel: the ack, the task in Ducter's own browser, the result with its source; the partner's session lists no web tool). Trigger: the next release on hel.
+- [ ] **D378: Codex's `web_search="disabled"` measured in a session** (parsed by 0.170.0; the tool is hosted, so its absence is documented, not seen). Trigger: the next Codex partner eval.
+- [ ] **D378: connected accounts' contents (mail) still reach the partner in turn**, untrusted text like a page. Kept: they are the person's own and the in-turn answers need them; Go cards gate every effect. Trigger: an injected instruction seen in a connector's result.
+
 ## The person's own sessions on a computer for tasks (D377, research/148)
 
 - [ ] **D377: live on the author's MacBook** (hel the home, the yes on Macbook Pro M3's card, "接着我终端里那个 Claude 在做的" carried on there). Trigger: the next release on hel and the MacBook.

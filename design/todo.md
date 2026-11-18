@@ -1447,6 +1447,10 @@ Codex first, once OAR is near 1.0. See `research/17`.
       offer that from the elsewhere row once Bridge per partner exists. Trigger: D312's "Bridge per partner".
 - [ ] Post the drafts in research/66 §9.3 (a device label on connections, cross-login revoke, `outcome_unknown` as a
       contract, `agents delete` and the mailbox). Trigger: the author's go.
+- [ ] Post B19 (research/139 §4): `cloud_mailbox_own_source_unreconciled` on the author's native Claude Code
+      mailbox (409, not retryable, no reconcile command in nmem 0.10.120): what causes it, how a person gets
+      out, `outcome_unknown: false` on reads. Then rerun the live trial (its preflight says when it clears).
+      Trigger: the author's go.
 - [ ] Post B18 (research/137 §6): `bridge inbox` lists the whole mailbox oldest first, 20 a page, so the first
       page of a mailbox with history is all old mail; ask for newest first or an unread filter, a resumable
       cursor, and the order in the help and the Bridge skill. Then (D367) drop the 25-page walk for it.

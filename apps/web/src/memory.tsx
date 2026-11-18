@@ -765,6 +765,7 @@ export function PeersPage() {
         <>
           {b && <PeersProblemGroup b={b} name={name} />}
           {b && <PeersNames b={b} name={name} />}
+          {b?.stuck && <PeersStuck code={b.stuck.code} name={name} />}
           <PeersRecent name={name} />
           <PeersTry name={name} />
         </>
@@ -843,6 +844,18 @@ function PeersNames({ b, name }: { b: BridgeView; name: string }) {
           <MemFailed detail={failed} kept={u.kept} install={false} />
         </GBlock>
       )}
+    </Group>
+  );
+}
+
+/**
+ * D371: Mem said the partner's mailbox can't be read until Mem sorts it out on its side: one quiet line,
+ * Mem's own code beside it, nothing to tap. Gone once a read works again.
+ */
+function PeersStuck({ code, name }: { code: string; name: string }) {
+  return (
+    <Group class="mem-g" label={t("peers.stuck.title", name)}>
+      <GRow title={t("peers.stuck.title", name)} line={t("peers.stuck.line", name, code)} />
     </Group>
   );
 }

@@ -2,9 +2,9 @@
 
 > Design note · 2026-11-09, updated 2026-11-18 · Principles 1, 7, 12, 14, 17, 18 · Decided: D105–D111 (outbound,
 > the outgoing ledger, the result reply, names, copy, follow-through, the Mem asks), D162 (the live check and the
-> real shapes), D163–D164 (beyond itself: X1–X3), D170 (X1, X2 and the Settings switch, built), D171 (the persona's Space), D205 (the persona connects itself with one tap), D225 (the released Bridge; the home's own Mem put in, updated and signed in from the same row), D324 (one home answers a partner's mailbox; the trial as its own identity), D333 (the partner's own tools only, 查看来信, the card says where it reads), D334 (the address is the identity, not the Space: every Space read, replies in the message's, a teammate's first message is a card), D338 (the card names only the Spaces read; a Space Mem answers 404 for is said and backed off; no connection per Space), D364 (nmem 0.10.120's linked shape: an original is not an answer; the update offered on the pane), D367 (every inbox page read; the trial's peer touches only its own run's mail); still open: J-Q1–3, J-Q8, J-Q14 ·
+> real shapes), D163–D164 (beyond itself: X1–X3), D170 (X1, X2 and the Settings switch, built), D171 (the persona's Space), D205 (the persona connects itself with one tap), D225 (the released Bridge; the home's own Mem put in, updated and signed in from the same row), D324 (one home answers a partner's mailbox; the trial as its own identity), D333 (the partner's own tools only, 查看来信, the card says where it reads), D334 (the address is the identity, not the Space: every Space read, replies in the message's, a teammate's first message is a card), D338 (the card names only the Spaces read; a Space Mem answers 404 for is said and backed off; no connection per Space), D364 (nmem 0.10.120's linked shape: an original is not an answer; the update offered on the pane), D367 (every inbox page read; the trial's peer touches only its own run's mail), D371 (a mailbox Mem must sort out on its side: said once, checked every 30 min; the trial's guard reads Mem's own send prefix); still open: J-Q1–3, J-Q8, J-Q14 ·
 > Evidence: `research/31` (public), `research/37` (dogfood, §6 the live check), `research/66` (the release, the live
-> run, Mem on a home without it), `research/134` (nmem 0.10.120), `research/137` (the 0.10.120 live run: the inbox's pages), private `31` and `10`.
+> run, Mem on a home without it), `research/134` (nmem 0.10.120), `research/137` (the 0.10.120 live run: the inbox's pages), `research/139` (the second 0.10.120 run: the guard, a mailbox Mem must sort out), private `31` and `10`.
 >
 > Nowledge Bridge is Mem's agent mailbox. This note describes how Ducter uses it. All of it is in `main`:
 > receive, ask and reply, the linked result reply (J2, D107), outbound messages through a card (J4, D105), the
@@ -655,6 +655,7 @@ other agent ──bridge send──▶ Mem (persona's Agent mailbox)
                                   ▼
    nmem --json --agent-context C bridge inbox     → message handles, 20 a page, oldest first, opened ones too;
      … bridge inbox --cursor <next>               → every page until `next` is "" (at most 25, D367)
+     a read Mem answers cloud_mailbox_*_unreconciled → stuck: said once in Settings, checked every 30 min (D371)
    nmem --json --agent-context C bridge open <id> → body (0.10.118: no sender; in Only me it is the user's own, D249;
                                                     after 0.10.119: sender {member, agent, agent_id} + in_reply_to, D294)
                                   ▼
@@ -786,6 +787,14 @@ made (revoke, `agents context clear`, `agents delete`); `--cleanup` removes what
 own partner and mailbox are never used, so it runs any time; D258's guard and `--share-mailbox` are gone. Built
 and tested with the fake nmem only; whether Mem connects a freshly enrolled identity at once is INFERRED until
 the first real run (research/66 §9).
+
+**Status 2026-11-18, after the second run (D371, research/139): blocked on Mem.** The rerun at 14:41 UTC got
+nothing through. The trial's own peer guard refused the right send (Mem's `send_args_prefix` writes
+`--agent-context=<ctx>`, which the guard didn't read; fixed, with tests on the run's shapes), and the author's
+native Claude Code mailbox now answers every read 409 `cloud_mailbox_own_source_unreconciled`, not retryable,
+with no command in nmem 0.10.120 to clear it (B19, drafted). Ducter now says that state once in Settings ›
+和你的其他 agent 通信 and checks every 30 minutes while it lasts. The trial reads the peer's mailbox before it
+makes anything, so until Mem clears it the same command stops at the preflight with one line naming the code.
 
 **Status 2026-11-18, after the run (D367, research/137): fixed, ready to rerun.** The author's run on nmem
 0.10.120 (haiku both sides, 449 s) passed S1 6/6 and X1 3/3 and showed "✓ Mem marks an original as one", but

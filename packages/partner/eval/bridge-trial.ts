@@ -13,6 +13,7 @@
 // Commands as nmem 0.10.119's help prints them; their answers are INFERRED until the first real run.
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { mailboxError, mailboxStuck } from "../src/bridge.ts";
 
 export type Nm = (args: string[]) => Promise<{ code: number; out: string; err: string; j: any }>;
 
@@ -23,6 +24,19 @@ export interface TrialIdentity {
   enrolled?: boolean;
   connectionId?: string;
   at: string;
+}
+
+/**
+ * D371: why the peer's own mailbox can't take part, from a read-only `bridge inbox` as the peer, or
+ * undefined when it answered. 2026-11-18: Mem answered the author's native Claude Code mailbox 409
+ * `cloud_mailbox_own_source_unreconciled` ("Mailbox source authority requires reconciliation before
+ * browsing", not retryable; nmem 0.10.120 has no command for it), and the whole run failed around it.
+ */
+export function peerInboxBlocked(r: { code: number; out: string; err: string }): string | undefined {
+  if (r.code === 0) return undefined;
+  const e = mailboxError(`${r.out}\n${r.err}`);
+  if (mailboxStuck(e)) return `Nowledge Mem says the peer's own mailbox (the native Claude Code session) needs sorting out on Mem's side before it can be read (${e.code}${e.http ? `, HTTP ${e.http}` : ""}); nmem has no command for that, so nothing was made and nothing ran. Ask Nowledge, then run this again.`;
+  return `The peer's own mailbox didn't answer a read (${e.code ?? `exit ${r.code}`}${e.http ? `, HTTP ${e.http}` : ""}); nothing was made and nothing ran.`;
 }
 
 const TRIAL = /^ducter-trial-\d{12}-[0-9a-f]{4}$/;

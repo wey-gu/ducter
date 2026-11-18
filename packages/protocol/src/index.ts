@@ -2515,6 +2515,12 @@ export interface BridgeView {
    * D338: status, the HTTP status Mem answered with (404 on nmem 0.10.120: nowledge-co/mem#10402).
    */
   unread?: { label: string; code?: string; status?: number }[];
+  /**
+   * D371: on connected, Mem said the partner's mailbox can't be read until Mem sorts something out on
+   * its side (`cloud_mailbox_own_source_unreconciled`, research/139): one quiet line says so, with Mem's
+   * code; nothing to tap. Gone once a read works again.
+   */
+  stuck?: { code: string };
 }
 
 /** The choices offered for defaultAfterMin, in minutes. */

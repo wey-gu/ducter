@@ -127,6 +127,7 @@ func (a *App) peersCard(c *ui.Context, st *protocol.Settings) {
 			a.group(c, "peers-problem", "", "", func() { a.peersProblem(c, b, name) })
 		}
 		a.peersNames(c, b, name)
+		a.peersStuck(c, b, name)
 		a.peersRecent(c, name)
 		a.peersTry(c, name)
 	} else {
@@ -230,6 +231,18 @@ func (a *App) peersNames(c *ui.Context, b *protocol.BridgeView, name string) {
 	}
 	a.group(c, "peers-names", "", "", func() {
 		a.tileRow(c, "peers-names", a.glyphTile(c, 18, drawUp(t.Accent)), title, line, control)
+	})
+}
+
+// peersStuck is D371's one quiet line: Mem said the partner's mailbox
+// can't be read until Mem sorts it out on its side. Mem's code beside it,
+// nothing to tap; gone once a read works again.
+func (a *App) peersStuck(c *ui.Context, b *protocol.BridgeView, name string) {
+	if b == nil || b.Stuck == nil {
+		return
+	}
+	a.group(c, "peers-stuck", "", "", func() {
+		a.tileRow(c, "peers-stuck", nil, a.L.T("peers.stuck.title", name), a.L.T("peers.stuck.line", name, b.Stuck.Code), nil)
 	})
 }
 

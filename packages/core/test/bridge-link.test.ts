@@ -21,7 +21,7 @@ afterEach(async () => {
   stops = [];
 });
 
-function rig(env: Record<string, string> = {}, now?: () => number) {
+function rig(env: Record<string, string> = {}, now?: () => number, extra: Partial<Parameters<typeof createBridgeLink>[0]> = {}) {
   const t = tempDir();
   stops.push(t.cleanup);
   const bin = join(t.dir, "nmem");
@@ -35,11 +35,22 @@ function rig(env: Record<string, string> = {}, now?: () => number) {
   const data = join(t.dir, "data");
   mkdirSync(data);
   let changes = 0;
-  const link = createBridgeLink({ dataDir: data, identity: () => "ducter", home: () => "hel", run: nmemCall({ bin, env: fullEnv }), env: fullEnv, ...(now ? { now } : {}) });
+  const link = createBridgeLink({ dataDir: data, identity: () => "ducter", home: () => "hel", run: nmemCall({ bin, env: fullEnv }), env: fullEnv, ...(now ? { now } : {}), ...extra });
   link.onChange(() => changes++);
   return { link, calls, data, bin, fullEnv, changes: () => changes, state };
 }
 const writes = (calls: string[][]) => calls.filter((c) => c.includes("connections") && (c.includes("connect") || c.includes("revoke")));
+
+describe("D371: a mailbox Mem must sort out on its side", () => {
+  test("the connected view says it with Mem's code while the partner says so, and not after", async () => {
+    let trouble: { code: string } | undefined = { code: "cloud_mailbox_own_source_unreconciled" };
+    const r = rig({}, undefined, { trouble: () => trouble });
+    await r.link.connect();
+    expect(await r.link.view()).toMatchObject({ state: "connected", stuck: { code: "cloud_mailbox_own_source_unreconciled" } });
+    trouble = undefined;
+    expect((await r.link.view())?.stuck).toBeUndefined();
+  });
+});
 
 describe("pieces", () => {
   test("version: 0.10.118 and its pre-releases have `bridge connections`; 0.10.117 doesn't", () => {

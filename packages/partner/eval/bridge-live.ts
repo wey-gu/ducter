@@ -43,7 +43,7 @@ import { createOarHarnessPort, shortId } from "../../runner/src/index.ts";
 import { createNmemBridge, createPartner } from "../src/index.ts";
 import { foldOut, whoForUser } from "../src/bridge-out.ts";
 import { fakeMemory } from "../test/fakes.ts";
-import { createTrial, removeTrial, trialId, trialLedgers, type TrialIdentity } from "./bridge-trial.ts";
+import { createTrial, peerInboxBlocked, removeTrial, trialId, trialLedgers, type TrialIdentity } from "./bridge-trial.ts";
 
 const argv = process.argv.slice(2);
 const arg = (n: string, d?: string) => (argv.indexOf(`--${n}`) >= 0 ? argv[argv.indexOf(`--${n}`) + 1] : d);
@@ -187,9 +187,9 @@ async function preflightConnected(): Promise<boolean> {
     say(
       [
         "\nDry run: nothing was written. With --real it would:",
-        `  1. make the trial's own identity: nmem agents enroll ${trialId()} --name "Ducter trial" --source-app ducter-trial (a ledger under ${OUT} first)`,
-        `  2. connect it in this place: nmem bridge connections connect --space-id ${space} --agent-id <it> --context <it>, and check it is the only reader`,
-        `  3. bind the peer's own Claude Code session: nmem ${prep.join(" ")}`,
+        `  1. bind the peer's own Claude Code session: nmem ${prep.join(" ")}, and read its inbox once (read-only); a mailbox Mem must sort out stops the run here (D371)`,
+        `  2. make the trial's own identity: nmem agents enroll ${trialId()} --name "Ducter trial" --source-app ducter-trial (a ledger under ${OUT} first)`,
+        `  3. connect it in this place: nmem bridge connections connect --space-id ${space} --agent-id <it> --context <it>, and check it is the only reader`,
         `  4. run ${ONLY.join(", ")}`,
         "  5. remove what it made: revoke the connection, clear the context, delete the identity (a crashed run: --cleanup)",
         "Your own partner's identity and mailbox are never used.",
@@ -197,6 +197,16 @@ async function preflightConnected(): Promise<boolean> {
     );
     return false;
   }
+  // D371: the peer's own side first, before anything is made: its native session bound (its context),
+  // then one read-only inbox as it. A mailbox Mem must sort out on its side stops the run here.
+  const p = await nm(prep);
+  const ctx = typeof p.j?.context === "string" ? p.j.context : "";
+  say(`  ${p.code === 0 && ctx ? "✓" : "✗"} the peer's native session is prepared: exit ${p.code}, state ${p.j?.state ?? "(none)"}, context ${ctx || "(none)"}`);
+  if (p.code !== 0 || !ctx) return false;
+  PEER_CTX = ctx; // the native binding's own context: its logical contacts/send/inbox/reply use it (INFERRED)
+  const blocked = peerInboxBlocked(await nm(["--agent-context", PEER_CTX, "bridge", "inbox"]));
+  say(`  ${blocked ? "✗" : "✓"} the peer's own mailbox answers a read${blocked ? `: ${blocked}` : ""}`);
+  if (blocked) return false;
   const made = await createTrial(nm, space, OUT, say);
   if (!made.ok) {
     if (/_(unavailable|busy|capacity)\b/.test(made.why)) say("\nNowledge Mem's side can't take Bridge connections right now (its own refusal; nothing to change here). Run this again later.");
@@ -219,11 +229,6 @@ async function preflightConnected(): Promise<boolean> {
     say(`  ${same ? "✓" : "✗"} (nmem 0.10.118 setup can't find the context) the saved context names ${agent ?? "(none)"} in this place, and its inbox answers: exit ${inbox.code}`);
   }
   if (!same) return false;
-  const p = await nm(prep);
-  const ctx = typeof p.j?.context === "string" ? p.j.context : "";
-  say(`  ${p.code === 0 && ctx ? "✓" : "✗"} the peer's native session is prepared: exit ${p.code}, state ${p.j?.state ?? "(none)"}, context ${ctx || "(none)"}`);
-  if (p.code !== 0 || !ctx) return false;
-  PEER_CTX = ctx; // the native binding's own context: its logical contacts/send/inbox/reply use it (INFERRED)
   return true;
 }
 

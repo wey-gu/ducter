@@ -342,6 +342,8 @@ export interface SettingsApi {
   setMemState(state: "connected" | "missing"): void;
   /** D170: the partner keeps the learned rules (trusted) and the muted senders here. */
   setPeers?(peers: Partial<PeersSettings>): void;
+  /** D371: Mem said the partner's mailbox needs sorting out on Mem's side (its code), or that is over (undefined). */
+  setBridgeTrouble?(t: { code: string } | undefined): void;
 }
 
 // ---------- workers (main ↔ worker over the worker's outbound /worker socket) ----------

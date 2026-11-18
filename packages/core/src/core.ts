@@ -807,6 +807,8 @@ export function startCore(opts: CoreOptions = {}): Core {
   const bridgeLink = createBridgeLink({
     dataDir,
     byItself: () => byItself,
+    // D371: the partner's word that Mem must sort out its mailbox, said on the connected pane.
+    trouble: () => settings.bridgeTrouble(),
     identity: () => (settings.memMissing() ? undefined : persona.mem?.agentId),
     // D225: before Mem is in, the row still offers to put it in; connect names the persona's own id.
     fallbackIdentity: () => identityIdFor(persona.id),

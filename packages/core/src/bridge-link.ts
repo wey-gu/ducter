@@ -395,6 +395,8 @@ export function createBridgeLink(opts: {
   now?: () => number;
   /** D340: false: this home connects only when asked, and its ready view says so (asks). */
   byItself?: () => boolean;
+  /** D371: Mem's code when the partner's mailbox needs sorting out on Mem's side (the partner says so). */
+  trouble?: () => { code: string } | undefined;
   /** D329: where the Nowledge Mem app is on this computer (a Mac); undefined: none to open. Tests inject it. */
   memApp?: () => string | undefined;
   /** D329: how long openMem waits for the app to answer, looking every `openEveryMs`. */
@@ -774,7 +776,8 @@ export function createBridgeLink(opts: {
       const others = othersIn(p.conns, r, r.agentId);
       // D334: a Space Mem refused a reader in: one quiet problem row (never a list of Spaces otherwise).
       const unread = r.unread?.length ? { unread: r.unread.map((u) => ({ label: u.spaceLabel, ...(u.code ? { code: u.code } : {}), ...(u.status ? { status: u.status } : {}) })) } : {};
-      return { state: "connected", ...(await extras()), ...base, ...(others.length ? { others: others.map(shown) } : {}), ...unread, ...(undoFailed ? { detail: undoFailed } : {}) };
+      const stuck = opts.trouble?.();
+      return { state: "connected", ...(await extras()), ...base, ...(others.length ? { others: others.map(shown) } : {}), ...unread, ...(stuck ? { stuck: { code: stuck.code } } : {}), ...(undoFailed ? { detail: undoFailed } : {}) };
     }
     if (!p) {
       const plan = await freshPlan();

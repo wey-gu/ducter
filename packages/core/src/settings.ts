@@ -102,6 +102,8 @@ export interface SettingsStore extends SettingsApi {
   bridgeChanged(): void;
   /** Mem answered "not installed or not connected" the last time it was asked (D169: then nothing about its plugin shows). */
   memMissing(): boolean;
+  /** D371: Mem's code when the partner's mailbox needs sorting out on Mem's side, else undefined. */
+  bridgeTrouble(): { code: string } | undefined;
   /** A reversible decision's wait, from the setting. */
   defaultAfterMs(): number;
   /** The user (or DUCTER_PARTNER_HARNESS) chose what the partner thinks with; else it's the default. */
@@ -140,6 +142,7 @@ export function openSettings(opts: {
   let glance: (() => MemView["glance"]) | undefined;
   let glanceOps: GlanceOps | undefined;
   let memSeen: "connected" | "missing" | undefined;
+  let bridgeTrouble: { code: string } | undefined; // D371: the partner's word, never saved
   // D135: checked once at start (env + file); a value out of range is said once, then its default runs.
   const windowsNow = () => resolveWindows(data.windows, opts.env ?? process.env);
   for (const p of windowsNow().problems) console.warn(`[settings] windows: ${p}`);
@@ -269,6 +272,12 @@ export function openSettings(opts: {
     async findMem(q) {
       return glanceOps ? glanceOps.find(q) : undefined;
     },
+    setBridgeTrouble(t) {
+      if (t?.code === bridgeTrouble?.code) return;
+      bridgeTrouble = t;
+      changed();
+    },
+    bridgeTrouble: () => bridgeTrouble,
     setMemState(s) {
       if (s === memSeen) return;
       memSeen = s;

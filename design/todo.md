@@ -316,6 +316,14 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
       run); (d) about 700 MB for all three agents: drop Claude Code's other platforms if npm keeps
       them, or use its native download; (e) updating Ducter's own Node; (f) haswell wiped and lent
       again from the release, as the author will. Trigger: the release that carries D363.
+- [ ] **D369, the rest** (research/139): (a) Ducter's own npm install of DeepSeek Harness on a bare
+      Linux VM and a Mac worker (only a scratch prefix with Node 26 was run; Ducter's Node 24.22.3
+      ships npm 11.19.1); (b) a Mac with only the npm copy can't use the DeepSeek account (the
+      account's sign-in lives in the app): offer the app there once DeepSeek has a download page
+      Ducter can name; (c) the account route's own sign-out or a rejected grant mid-task: say
+      "signed out" on the card instead of a failed task; (d) 1.3 GB: ask DeepSeek for a slimmer CLI
+      package (its document tools are most of it). Trigger: the release that carries D369, or the
+      first report of a DeepSeek-only user.
 - [ ] Desktop: a 断开 / Disconnect item and a visible "connected to <host>" line, so a remote
       connection is never invisible.
 - [ ] A2-W confirm card ("vps-1 想加入 …" with Go / Not mine) in the Devices UI. Today a worker

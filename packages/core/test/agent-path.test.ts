@@ -47,7 +47,10 @@ test("the fingerprint moves when an agent appears or a sign-in file changes, not
   const b = sig();
   expect(b).not.toBe(a);
   times["/home/w/.codex/auth.json"] = 2; // `codex login` in a terminal
-  expect(sig()).not.toBe(b);
+  const c = sig();
+  expect(c).not.toBe(b);
+  times["/home/w/.dsh/.credentials.yaml"] = 3; // D369: signed in in DeepSeek Harness.app
+  expect(sig()).not.toBe(c);
 });
 
 test("a Mac app's own command line: DeepSeek Harness.app's dsh, in /Applications or ~/Applications, after the usual places", () => {

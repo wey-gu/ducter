@@ -7,7 +7,8 @@
 //                     ~/.pi/agent (auth.json, a models.json key) or a provider key pi is
 //                     given (HARNESS_KEYS.pi) in the env or Ducter's key file
 //   DeepSeek Harness: `dsh --version` at or above OAR's floor; signed in = a DeepSeek key in the
-//                     env, Ducter's key file (<dataDir>/keys.env, D102), or DSH's own credential file
+//                     env, Ducter's key file (<dataDir>/keys.env, D102), or DSH's own credential file,
+//                     or (D369) the DeepSeek account its desktop app signed in with
 // Every probe reads presence only, never a secret's value into any output.
 // D156: each installed agent also gets its version (its own --version) and how it was installed
 // (`how`, from where its binary really lives; research/42).
@@ -18,6 +19,7 @@ import { CLAUDE_TOKEN_ENV, DSH_KEY_ENV, HARNESS_KEYS, deviceHarness, type AgentH
 import { HARNESS_FACTS } from "@ducter/protocol/src/harness-facts.ts";
 import type { HarnessId } from "@ducter/protocol/src/harnesses.ts";
 import { readKeys } from "@ducter/protocol/src/keys.ts";
+import { dshCredentialsFile, dshSignIns } from "@ducter/protocol/src/dsh.ts";
 
 type RawHarness = Omit<DeviceHarness, "canBePartner">;
 
@@ -197,8 +199,10 @@ export async function probeHarnesses(o: HarnessProbeEnv): Promise<DeviceHarness[
     const v = await o.exec([bin, "--version"], 15_000);
     const version = /\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?/.exec(v.out)?.[0];
     const ok = v.code === 0 && !!version && (compareVersions(version, DSH_MIN) ?? -1) >= 0;
-    const creds = read(join(env.DSH_HOME || join(home, ".dsh"), ".credentials.yaml")) ?? "";
-    const loggedIn = has(DSH_KEY_ENV) || new RegExp(`^\\s+${DSH_KEY_ENV}:\\s*\\S`, "m").test(creds);
+    // D369: its own credential file (the CLI and the desktop app share it): a key, or the app's
+    // DeepSeek account sign-in, which runs on the account route (dsh.ts).
+    const own = dshSignIns(read(dshCredentialsFile(env, home)));
+    const loggedIn = has(DSH_KEY_ENV) || own.key || own.account;
     return { harness: "deepseek-harness", installed: ok, loggedIn: ok && loggedIn };
   };
   const probes: [string, () => Promise<RawHarness>][] = [

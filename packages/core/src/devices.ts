@@ -295,11 +295,11 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
     cua: o.probes?.cua ?? defaultCuaProbe(env, exec, which),
     native: o.probes?.native ?? defaultNativeProbe(env, which),
     // The four first-wave harnesses (D85, harness-probe.ts).
-    // Claude Code and Codex always show (one can be installed from here); pi and DeepSeek Harness
-    // only once set up, so a Mac without them reads as before.
+    // Claude Code, Codex and (D369) DeepSeek Harness always show (each can be installed from here;
+    // one not there waits in the socket); pi only once signed in, so a Mac without it reads as before.
     harnesses:
       o.probes?.harnesses ??
-      (async () => (await probeHarnesses({ exec, which, env, dataDir: o.dataDir, ...(o.piBundled ? { piBundled: o.piBundled } : {}) })).filter((h) => (h.harness === "pi" ? h.loggedIn : h.harness === "deepseek-harness" ? h.installed : true))),
+      (async () => (await probeHarnesses({ exec, which, env, dataDir: o.dataDir, ...(o.piBundled ? { piBundled: o.piBundled } : {}) })).filter((h) => (h.harness === "pi" ? h.loggedIn : true))),
     kind: o.probes?.kind ?? (() => localDeviceKind(exec)),
   };
 

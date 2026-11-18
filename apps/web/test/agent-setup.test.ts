@@ -44,6 +44,12 @@ describe("a row's look", () => {
       { harness: "claude-code", checked: true },
       { harness: "pi", checked: false },
     ]);
+    // D369: DeepSeek Harness where Ducter can install it: offered, before pi, not checked.
+    expect(offerable([...hs.slice(0, 3), h("deepseek-harness", { installable: true })])).toEqual([
+      { harness: "claude-code", checked: true },
+      { harness: "deepseek-harness", checked: false },
+      { harness: "pi", checked: false },
+    ]);
     expect(anyReady(hs)).toBe(false);
     expect(anyReady([h("codex", { installed: true, loggedIn: true })])).toBe(true);
     expect(anyInstalling([h("pi", { setup: { phase: "queued" } })])).toBe(true);

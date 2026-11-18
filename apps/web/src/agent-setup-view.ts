@@ -22,13 +22,13 @@ export function agentRowLook(h: Pick<DeviceHarness, "installed" | "loggedIn" | "
   return h.installable ? "install" : "missing";
 }
 
-/** The agents the lend sheet offers to install, and which start checked (Codex and Claude Code). */
+/** The agents the lend sheet offers to install, and which start checked (Codex and Claude Code; D369: DeepSeek Harness offered, not checked). */
 export function offerable(hs: readonly DeviceHarness[]): { harness: string; checked: boolean }[] {
-  const order = ["codex", "claude-code", "pi"];
+  const order = ["codex", "claude-code", "deepseek-harness", "pi"];
   return order
     .map((id) => hs.find((h) => h.harness === id))
     .filter((h): h is DeviceHarness => !!h && !h.installed && !!h.installable)
-    .map((h) => ({ harness: h.harness, checked: h.harness !== "pi" }));
+    .map((h) => ({ harness: h.harness, checked: h.harness === "codex" || h.harness === "claude-code" }));
 }
 
 /** Is any agent signed in there (the computer can take tasks)? */

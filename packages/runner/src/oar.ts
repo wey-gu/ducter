@@ -28,6 +28,7 @@ import { childEnvOverlay } from "./child-env.ts";
 import { taskCredentials } from "./task-credentials.ts";
 import { CODEX_NATIVE_MCP, CODEX_NATIVE_PLUGINS } from "@ducter/protocol/src/native-browser.ts";
 import { whichNow } from "@ducter/protocol/src/which.ts";
+import { dshCredentialKey as ownDshKey, dshCredentialsFile, dshModel, dshOwnSignIns } from "@ducter/protocol/src/dsh.ts";
 
 export type { HarnessId };
 
@@ -138,8 +139,10 @@ export function piFlags(v: PiVariant | undefined): string[] {
  * session's prompt as the whole system-prompt opener, the tools a read-only or tool-less session
  * may not have dropped, the session-log upload off, and the compaction point.
  */
-export function dshLayer(o: { prompt?: string; readOnly?: boolean; noTools?: boolean; compaction?: Record<string, unknown>[] }): Record<string, unknown>[] {
+export function dshLayer(o: { prompt?: string; readOnly?: boolean; noTools?: boolean; compaction?: Record<string, unknown>[]; credentials?: string }): Record<string, unknown>[] {
   const rows: Record<string, unknown>[] = [];
+  // D369: the credential store reads the person's own file (the account's sign-in lives there).
+  if (o.credentials) rows.push({ id: DSH_PROFILE.credentials, config: { path: o.credentials } });
   if (o.prompt) rows.push({ id: DSH_PROFILE.systemPrompt, config: { includeHarnessIdentity: false, personaPrefix: o.prompt } });
   if (o.readOnly || o.noTools) {
     for (const id of DSH_PROFILE.readOnlyOff) rows.push({ id, disabled: true });
@@ -352,20 +355,23 @@ function ooSignedOut(dataDir: string): string {
   return dir;
 }
 
-/** Whether DeepSeek Harness has a DeepSeek key anywhere it reads one (env, Ducter's key file, its own credential file). */
-function dshHasKey(dataDir: string, env: Record<string, string | null | undefined>): boolean {
-  return !!harnessKey(dataDir, DSH_KEY_ENV, env) || !!dshCredentialKey(env);
+/** The person's own DSH settings place: the overlay's DSH_HOME, else this process's. */
+const dshEnv = (env: Record<string, string | null | undefined>) => ({ DSH_HOME: env.DSH_HOME || process.env.DSH_HOME });
+
+/**
+ * How DeepSeek Harness is signed in for a session (D369): a DeepSeek key anywhere it reads one
+ * (the env, Ducter's key file, its own credential file), else the DeepSeek account its desktop
+ * app signed in with (its own credential file), which runs on the account route.
+ */
+export function dshSignIn(dataDir: string, env: Record<string, string | null | undefined>, read?: (p: string) => string | undefined): "key" | "account" | undefined {
+  if (harnessKey(dataDir, DSH_KEY_ENV, env)) return "key";
+  const own = read ? dshOwnSignIns(dshEnv(env), read) : dshOwnSignIns(dshEnv(env));
+  return own.key ? "key" : own.account ? "account" : undefined;
 }
 
 /** The DeepSeek key in the person's own DSH credential file (`<DSH_HOME or ~/.dsh>/.credentials.yaml`), if any. Never logged. */
 export function dshCredentialKey(env: Record<string, string | null | undefined>): string | undefined {
-  const home = env.DSH_HOME || process.env.DSH_HOME || join(homedir(), ".dsh");
-  try {
-    const m = new RegExp(`^\\s+${DSH_KEY_ENV}:\\s*(?:"([^"\\n]+)"|'([^'\\n]+)'|([^\\s#]+))`, "m").exec(readFileSync(join(home, ".credentials.yaml"), "utf8"));
-    return m ? (m[1] ?? m[2] ?? m[3]) : undefined;
-  } catch {
-    return undefined;
-  }
+  return ownDshKey(dshEnv(env));
 }
 
 /** pi's RPC process: OAR's bundled pi under node, else the user's `pi`. Bun cannot host it (research/34). */
@@ -515,6 +521,7 @@ export function adaptSpec(spec: SessionSpec, ctx: { env?: Record<string, string 
   let appendSystemPrompt = spec.appendSystemPrompt;
   let preamble: string | undefined;
   let launchArgs: string[] | undefined;
+  let dshAccount = false;
   let disallowed = [...new Set([...(DISALLOWED[h] ?? []), ...(spec.disallowedTools ?? [])])];
   let mcpServers: McpServer[] = spec.mcp.map((m): McpServer =>
     "command" in m
@@ -610,6 +617,8 @@ export function adaptSpec(spec: SessionSpec, ctx: { env?: Record<string, string 
       // ~/.agents stay out of a session that reads hostile pages. DSH's own tools are its built-in
       // `acp` profile's, so they all stay (the layer drops none for a session that may write).
       const browser = !clean && spec.userConfiguration === "exclude";
+      // D369: signed in only with the DeepSeek account (the desktop app's 登录): the account route.
+      dshAccount = !env?.[DSH_KEY_ENV] && dshSignIn(ctx.dataDir, ctx.env ?? {}) === "account";
       if (clean || memOff || browser) {
         // A Ducter-owned home: none of the user's profiles, plugins, AGENTS.md or ~/.agents, and a
         // profile layer of Ducter's own (D177, research/50): the clean session's prompt is the
@@ -618,7 +627,11 @@ export function adaptSpec(spec: SessionSpec, ctx: { env?: Record<string, string 
         // or writes, the session-log upload is off, and the compactor fires where the plan says.
         const asPrompt = clean && !!systemPrompt && !systemPrompt.includes("{{") ? systemPrompt : undefined;
         const agentsMd = asPrompt ? (appendSystemPrompt ?? "") : instructions;
-        const layer = dshLayer({ prompt: asPrompt, readOnly: spec.readOnly, noTools: spec.noTools, compaction: knobs?.profile });
+        // D369: the account's sign-in is a grant in the person's own credential file, which a home
+        // of Ducter's doesn't have: its credential store reads that file where it is (never copied;
+        // DSH's own `credentials` row, research/139). A key still rides in the env, as before.
+        const credentials = dshAccount ? dshCredentialsFile(dshEnv(ctx.env ?? {})) : undefined;
+        const layer = dshLayer({ prompt: asPrompt, readOnly: spec.readOnly, noTools: spec.noTools, compaction: knobs?.profile, ...(credentials ? { credentials } : {}) });
         // One home per setup: sessions live in their home, so the same prompt and tools resume
         // where they were, and a one-shot starting beside the partner never rewrites its files.
         const key = createHash("sha256").update(JSON.stringify(layer)).update("\0").update(agentsMd).digest("hex").slice(0, 12);
@@ -660,7 +673,7 @@ export function adaptSpec(spec: SessionSpec, ctx: { env?: Record<string, string 
 
   const options: SessionOptions = {
     cwd: spec.cwd,
-    model: modelFor(h, window ? modelForWindow(h, spec.model, window) : spec.model),
+    model: modelFor(h, window ? modelForWindow(h, spec.model, window) : spec.model, dshAccount),
     systemPrompt,
     appendSystemPrompt,
     // D16 bypass: OAR launches every runtime without approval gates (claude
@@ -688,11 +701,13 @@ function pluginsOff(spec: SessionSpec): { enabledPlugins?: Record<string, false>
   return ids.length ? { enabledPlugins: Object.fromEntries(ids.map((id) => [id, false as const])) } : {};
 }
 
-/** DeepSeek Harness routes by provider/model; a bare DeepSeek name gets the official provider. */
-function modelFor(h: HarnessId, model: string | undefined): string | undefined {
-  if (!model) return undefined;
-  if (h === "deepseek-harness" && !model.includes("/")) return `deepseek-official/${model}`;
-  return model;
+/**
+ * DeepSeek Harness routes by provider/model; a bare DeepSeek name gets the official provider, or
+ * (D369) the account route when only the DeepSeek account is signed in (dsh.ts dshModel).
+ */
+function modelFor(h: HarnessId, model: string | undefined, dshAccount = false): string | undefined {
+  if (h === "deepseek-harness") return dshModel(model, dshAccount);
+  return model || undefined;
 }
 
 export function createOarHarnessPort(opts: OarPortOptions = {}): HarnessPort {
@@ -740,11 +755,12 @@ export function createOarHarnessPort(opts: OarPortOptions = {}): HarnessPort {
             continue;
           }
           // Pi and DeepSeek Harness have no authStatus. Pi: signed in means "has a usable
-          // model". DeepSeek Harness lists its catalog without a key, so: has a DeepSeek key.
+          // model". DeepSeek Harness lists its catalog without a key, so: has a DeepSeek key, or
+          // (D369) the DeepSeek account its app signed in with.
           const auth = rt.authStatus ? await rt.authStatus(inst, { env, timeoutMs: 15_000 }).catch(() => undefined) : undefined;
           const listed = await rt.listModels?.(inst, { env, timeoutMs: 30_000 }).catch(() => undefined);
           const models = listed?.kind === "ok" ? listed.models.filter((m) => !m.disabled).map((m) => m.id) : undefined;
-          const loggedIn = auth ? auth.kind === "logged_in" : harness === "deepseek-harness" ? dshHasKey(dataDir, opts.env ?? {}) : (models?.length ?? 0) > 0;
+          const loggedIn = auth ? auth.kind === "logged_in" : harness === "deepseek-harness" ? !!dshSignIn(dataDir, opts.env ?? {}) : (models?.length ?? 0) > 0;
           out.push({ harness, installed: true, loggedIn, models });
         } catch {
           out.push({ harness, installed: false, loggedIn: false });

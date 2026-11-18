@@ -17,7 +17,7 @@ function fakeLogin() {
   return { proc, say: (t: string) => fns.forEach((f) => f(t)), exit: (c: number) => end(c), written };
 }
 
-function rig(o: { nodeThere?: boolean; npm?: (argv: string[]) => { code: number; out: string }; download?: (url: string, on?: (p: number) => void) => Promise<Uint8Array>; platform?: string } = {}) {
+function rig(o: { nodeThere?: boolean; npm?: (argv: string[]) => { code: number; out: string }; download?: (url: string, on?: (p: number) => void) => Promise<Uint8Array>; platform?: string; app?: boolean; files?: Record<string, string>; checkKey?: AgentSetupSys["checkKey"] } = {}) {
   const dir = mkdtempSync(join(tmpdir(), "ducter-agent-setup-"));
   const runs: { argv: string[]; env: Record<string, string> }[] = [];
   const spawned: { argv: string[]; login: ReturnType<typeof fakeLogin> }[] = [];
@@ -36,8 +36,12 @@ function rig(o: { nodeThere?: boolean; npm?: (argv: string[]) => { code: number;
     },
     which: (c) => `/home/w/.ducter/tools/node/bin/${c}`,
     env: () => ({ PATH: "/usr/bin", HOME: "/home/w" }),
-    exists: (p) => !!o.nodeThere && /tools\/node\/bin\/(node|npm)$/.test(p),
+    exists: (p) => (!!o.nodeThere && /tools\/node\/bin\/(node|npm)$/.test(p)) || (!!o.app && p === "/Applications/DeepSeek Harness.app"),
     writeFile: () => {},
+    // D369: DeepSeek Harness's sign-in files (its own credential file, Ducter's key file), and DeepSeek's key check.
+    read: (p) => o.files?.[p],
+    dshApps: () => ["/Applications/DeepSeek Harness.app", "/Users/w/Applications/DeepSeek Harness.app"],
+    ...(o.checkKey ? { checkKey: o.checkKey } : {}),
   };
   const s = createAgentSetup({ dataDir: dir, sys, probe: async () => void probes++, changed: () => void changes++, setTimer: (fn, ms) => (timers.push({ fn, ms }), timers.length), clearTimer: () => {} });
   return { s, dir, runs, spawned, timers, probes: () => probes, changes: () => changes, done: () => rmSync(dir, { recursive: true, force: true }) };
@@ -51,23 +55,24 @@ test("pins: each agent's npm package at the newest version Ducter verified", () 
   expect(agentPin("codex")).toEqual({ pkg: "@openai/codex", version: HARNESS_FACTS.codex.verified.to });
   expect(agentPin("claude-code")).toEqual({ pkg: "@anthropic-ai/claude-code", version: HARNESS_FACTS["claude-code"].verified.to });
   expect(agentPin("pi")).toEqual({ pkg: "@earendil-works/pi-coding-agent", version: HARNESS_FACTS.pi.verified.to });
-  expect(agentPin("deepseek-harness")).toBeUndefined();
+  // D369: DeepSeek Harness's command line too.
+  expect(agentPin("deepseek-harness")).toEqual({ pkg: "@deepseek-ai/dsh", version: HARNESS_FACTS["deepseek-harness"].verified.to });
   for (const a of Object.values(NODE_RELEASE.assets)) expect(a.sha256).toMatch(/^[0-9a-f]{64}$/);
 });
 
 test("install: queued in order, one at a time, npm with Ducter's node as the prefix; nothing else touched", async () => {
   const r = rig({ nodeThere: true });
-  r.s.install(["claude-code", "codex", "deepseek-harness"]);
+  r.s.install(["claude-code", "codex", "deepseek-harness", "nope"]);
   expect(r.s.state("codex").setup).toEqual({ phase: "queued" });
-  expect(r.s.state("deepseek-harness").setup).toBeUndefined();
+  expect(r.s.state("nope").setup).toBeUndefined();
   await settle(r.s);
   const npm = r.runs.filter((x) => x.argv.includes("install"));
-  expect(npm.map((x) => x.argv.at(-1))).toEqual([`@anthropic-ai/claude-code@${HARNESS_FACTS["claude-code"].verified.to}`, `@openai/codex@${HARNESS_FACTS.codex.verified.to}`]);
+  expect(npm.map((x) => x.argv.at(-1))).toEqual([`@anthropic-ai/claude-code@${HARNESS_FACTS["claude-code"].verified.to}`, `@openai/codex@${HARNESS_FACTS.codex.verified.to}`, `@deepseek-ai/dsh@${HARNESS_FACTS["deepseek-harness"].verified.to}`]);
   const prefix = join(r.dir, "tools", "node");
   expect(npm[0]!.argv).toEqual([join(prefix, "bin", "node"), join(prefix, "bin", "npm"), "install", "-g", "--prefix", prefix, expect.any(String)]);
   expect(npm[0]!.env.PATH.split(":")[0]).toBe(join(prefix, "bin"));
   expect(npm[0]!.env.npm_config_update_notifier).toBe("false");
-  expect(r.probes()).toBe(2); // a probe after each, so they arrive one by one
+  expect(r.probes()).toBe(3); // a probe after each, so they arrive one by one
   expect(r.s.state("codex").setup).toBeUndefined();
   r.done();
 });
@@ -126,8 +131,73 @@ test("decorate: installable only where it isn't there; a finished setup leaves t
   expect(rows.map((x) => [x.harness, x.installable ?? false])).toEqual([
     ["codex", true],
     ["claude-code", false],
-    ["deepseek-harness", false],
+    ["deepseek-harness", true],
   ]);
+  r.done();
+});
+
+// ---------- D369: DeepSeek Harness's sign-in ----------
+
+const CREDS = "/home/w/.dsh/.credentials.yaml";
+
+test("DeepSeek Harness on a Mac with its app: the app opens there, a key can be pasted too, and a sign-in made in the app turns the row ready", async () => {
+  const files: Record<string, string> = {};
+  const r = rig({ platform: "darwin", app: true, files });
+  const prior = process.env.DSH_HOME;
+  process.env.DSH_HOME = "/home/w/.dsh";
+  try {
+    r.s.login("deepseek-harness");
+    expect(r.spawned).toEqual([]); // no sign-in process: the app is the sign-in
+    expect(r.runs.map((x) => x.argv)).toEqual([["open", "/Applications/DeepSeek Harness.app"]]);
+    expect(r.s.state("deepseek-harness").login).toEqual({ state: "waiting", key: true, url: "https://platform.deepseek.com/api_keys", app: "DeepSeek Harness" });
+    expect(r.s.busy()).toBe(true);
+    // Nothing yet: it looks again in a few seconds.
+    r.timers.at(-1)!.fn();
+    expect(r.s.state("deepseek-harness").login?.state).toBe("waiting");
+    // The person signs in to the DeepSeek account in the app (its credential file gains the grant).
+    files[CREDS] = "version: 1\nrecords:\n  deepseek-account-platform/default:\n    kind: grant\n    payload:\n      version: 1\n      token: not-a-real-token\n";
+    r.timers.at(-1)!.fn();
+    expect(r.s.state("deepseek-harness").login).toEqual({ state: "done" });
+    expect(r.probes()).toBe(1);
+  } finally {
+    if (prior === undefined) delete process.env.DSH_HOME;
+    else process.env.DSH_HOME = prior;
+    r.done();
+  }
+});
+
+test("DeepSeek Harness without its app (a server, npm's copy): paste a key; a wrong one asks again, a good one is kept in this computer's key file only", async () => {
+  const checked: string[] = [];
+  const r = rig({ checkKey: async (k) => (checked.push(k), k === "sk-good-test-only-placeholder" ? { ok: true } : { ok: false, reason: "wrong_key" }) });
+  r.s.login("deepseek-harness");
+  expect(r.runs).toEqual([]); // nothing opened on Linux
+  expect(r.s.state("deepseek-harness").login).toEqual({ state: "waiting", key: true, url: "https://platform.deepseek.com/api_keys" });
+  r.s.code("deepseek-harness", " sk-bad ");
+  expect(r.s.state("deepseek-harness").login?.state).toBe("checking");
+  await Bun.sleep(5);
+  expect(r.s.state("deepseek-harness").login).toEqual({ state: "waiting", key: true, url: "https://platform.deepseek.com/api_keys", reason: "wrong_key" });
+  r.s.code("deepseek-harness", "sk-good-test-only-placeholder");
+  await Bun.sleep(5);
+  expect(r.s.state("deepseek-harness").login).toEqual({ state: "done" });
+  expect(checked).toEqual(["sk-bad", "sk-good-test-only-placeholder"]);
+  const kept = await Bun.file(join(r.dir, "keys.env")).text();
+  expect(kept).toContain("DEEPSEEK_API_KEY=sk-good-test-only-placeholder");
+  expect(JSON.stringify(r.s.state("deepseek-harness"))).not.toContain("sk-"); // never in a frame back
+  expect(r.probes()).toBe(1);
+  r.done();
+});
+
+test("DeepSeek Harness's sign-in stops after its wait; cancel stops looking", () => {
+  let t = 0;
+  const r = rig();
+  const s = createAgentSetup({ dataDir: r.dir, sys: { platform: "linux", arch: "x64", download: async () => new Uint8Array(), run: async () => ({ code: 0, out: "" }), spawn: () => fakeLogin().proc, which: () => null, env: () => ({}), read: () => undefined }, probe: async () => {}, changed: () => {}, now: () => t, setTimer: (fn, ms) => (r.timers.push({ fn, ms }), r.timers.length), clearTimer: () => {} });
+  s.login("deepseek-harness");
+  t = LOGIN_WAIT_MS + 1;
+  r.timers.at(-1)!.fn();
+  expect(s.state("deepseek-harness").login).toEqual({ state: "expired" });
+  s.login("deepseek-harness");
+  s.cancel("deepseek-harness");
+  expect(s.state("deepseek-harness").login).toBeUndefined();
   r.done();
 });
 

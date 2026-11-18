@@ -1809,7 +1809,15 @@ export interface AgentLoginState {
   url?: string;
   code?: string;
   paste?: boolean;
-  reason?: "device_off" | "wrong_code" | "failed";
+  /**
+   * D369: DeepSeek Harness signs in with a DeepSeek API key pasted here (`url`: where one is
+   * made), and, on a Mac with its app, `app` names the app Ducter just opened there to sign in
+   * with the DeepSeek account. The row turns signed in whichever way it happens.
+   */
+  key?: boolean;
+  app?: string;
+  /** wrong_key: DeepSeek didn't take the key; no_balance: it did, with nothing left; offline: DeepSeek couldn't be reached from there. */
+  reason?: "device_off" | "wrong_code" | "wrong_key" | "no_balance" | "offline" | "failed";
   command?: string;
 }
 
@@ -1858,6 +1866,10 @@ export interface RememberNote {
  * from a checkout; updates with Ducter); unknown: can't tell, so never updated.
  */
 export type AgentHow = "npm" | "brew" | "installer" | "app" | "ducter" | "unknown";
+/** The desktop app an `app` copy rides in, by agent (harness-facts channels app.name; D369: DeepSeek Harness's own). */
+export function agentAppName(harness: string): string {
+  return harness === "claude-code" ? "Claude" : harness === "deepseek-harness" ? "DeepSeek Harness" : "Codex";
+}
 export type VersionStanding = "verified" | "newer" | "older" | "unknown";
 /** 等它手上的事停好 · 在更新 · 在检查 · 好了 · 没更新成 */
 export type AgentPhase = "waiting" | "updating" | "checking" | "done" | "failed";

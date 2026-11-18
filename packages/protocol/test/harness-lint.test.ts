@@ -15,6 +15,7 @@ const ALLOWED: Record<string, string> = {
   "packages/protocol/src/harness-facts.ts": "the registry",
   "packages/protocol/src/harnesses.ts": "the registry (identity, isolation method, login env)",
   "packages/protocol/src/native-browser.ts": "the registry for native browser tools",
+  "packages/protocol/src/dsh.ts": "the registry for DeepSeek Harness's app, its credential file and its model routes (D369)",
   "packages/runner/src/oar.ts": "the one adapter",
   "packages/runner/src/browser.ts": "a browser place's sidecar declares its Claude launch (D126); applied by oar.ts",
   "packages/core/src/harness-probe.ts": "login probes read each harness's own credential files",

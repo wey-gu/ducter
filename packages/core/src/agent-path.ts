@@ -13,6 +13,7 @@
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync, mkdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
+import { DSH_APP_CLI, dshAppPaths, dshCredentialsFile } from "@ducter/protocol/src/dsh.ts";
 
 export interface AgentPathFs {
   exists(p: string): boolean;
@@ -76,7 +77,7 @@ export function userAgentDirs(o: { home?: string; env?: Record<string, string | 
   // A Mac app that carries its agent's command line inside itself and never puts it on PATH:
   // DeepSeek Harness.app (0.2.2-rc.3 keeps `dsh` in Resources/runtime/cli/bin), in /Applications
   // or ~/Applications. Last, so a `dsh` the person put on PATH wins.
-  for (const apps of ["/Applications", join(home, "Applications")]) dirs.push(join(apps, "DeepSeek Harness.app", "Contents", "Resources", "runtime", "cli", "bin"));
+  for (const app of dshAppPaths(home)) dirs.push(join(app, ...DSH_APP_CLI));
   return [...new Set(dirs)].filter((d) => fs.exists(d));
 }
 
@@ -170,6 +171,8 @@ export function agentSignature(o: { dataDir: string; home?: string; env?: Record
     join(home, ".claude.json"),
     join(env.PI_CODING_AGENT_DIR || join(home, ".pi", "agent"), "auth.json"),
     join(env.PI_CODING_AGENT_DIR || join(home, ".pi", "agent"), "models.json"),
+    // D369: DeepSeek Harness's own (its desktop app's 登录 or a key saved there lands here).
+    dshCredentialsFile(env, home),
     join(o.dataDir, "keys.env"),
   ].map((f) => `${f}@${mtime(f) ?? ""}`);
   return [...cmds, ...files].join("|");

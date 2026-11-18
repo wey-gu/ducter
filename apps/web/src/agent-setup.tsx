@@ -37,6 +37,7 @@ export function LoginPanel({ dv, h }: { dv: DeviceView; h: DeviceHarness }) {
         {again}
       </div>
     );
+  if (l.key) return <KeyLogin dv={dv} h={h} code={code} setCode={setCode} />;
   return (
     <div class="ag-login">
       <p>{t(h.harness === "codex" ? "ag.login.codex" : "ag.login.claude")}</p>
@@ -61,6 +62,42 @@ export function LoginPanel({ dv, h }: { dv: DeviceView; h: DeviceHarness }) {
       {l.state === "checking" && <p class="soft">{t("ag.login.checking")}</p>}
       <div class="ag-acts">
         {l.url && <Btn kind="secondary" size="sm" label={t("ag.login.open")} onClick={() => window.open(l.url, "_blank", "noopener")} />}
+        <Btn kind="text" size="sm" label={t("ag.login.cancel")} onClick={() => A.agentSetup(dv.id, "cancel", { harness: h.harness })} />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * D369: DeepSeek Harness's sign-in in place: its app opened on that Mac (when it has one), and a
+ * DeepSeek API key to paste, kept only on that computer. Turns ready by itself either way.
+ */
+function KeyLogin({ dv, h, code, setCode }: { dv: DeviceView; h: DeviceHarness; code: string; setCode: (v: string) => void }) {
+  const l = h.login!;
+  const checking = l.state === "checking";
+  const send = () => {
+    if (!code.trim() || checking) return;
+    A.agentSetup(dv.id, "code", { harness: h.harness, code });
+    setCode("");
+  };
+  const why = l.reason === "wrong_key" ? t("ag.login.wrong_key") : l.reason === "no_balance" ? t("ag.login.no_balance") : l.reason === "offline" ? t("ag.login.offline", dv.name) : l.reason === "failed" ? t("ag.login.failed") : "";
+  return (
+    <div class="ag-login">
+      {l.app && <p>{t("ag.dsh.app", dv.name)}</p>}
+      <p>{t(l.app ? "ag.dsh.key.or" : "ag.dsh.key", dv.name)}</p>
+      <form
+        class="ag-paste"
+        onSubmit={(e) => {
+          e.preventDefault();
+          send();
+        }}
+      >
+        <input class="dev-input" type="password" autocomplete="off" spellcheck={false} value={code} placeholder="sk-…" aria-label={t("ag.dsh.field")} onInput={(e) => setCode((e.target as HTMLInputElement).value)} />
+        <Btn kind="primary" size="sm" label={checking ? t("ag.login.checking") : t("ag.dsh.check")} about={harnessName(h.harness)} disabled={!code.trim() || checking} onClick={send} />
+      </form>
+      {why && !checking && <p class="warn" role="alert">{why}</p>}
+      <div class="ag-acts">
+        {l.url && <Btn kind="secondary" size="sm" label={t("ag.dsh.get")} onClick={() => window.open(l.url, "_blank", "noopener")} />}
         <Btn kind="text" size="sm" label={t("ag.login.cancel")} onClick={() => A.agentSetup(dv.id, "cancel", { harness: h.harness })} />
       </div>
     </div>
@@ -101,6 +138,8 @@ export function AgentRow({ dv, h, pick }: { dv: DeviceView; h: DeviceHarness; pi
         ) : null}
       </div>
       {look === "failed" && h.setup?.detail && <div class="ag-detail">{h.setup.detail}</div>}
+      {/* D369: its command line is big; say so before the tap. */}
+      {(look === "install" || look === "queued") && h.harness === "deepseek-harness" && <div class="ag-detail">{t("ag.dsh.size")}</div>}
       {look === "login" && <LoginPanel dv={dv} h={h} />}
     </div>
   );

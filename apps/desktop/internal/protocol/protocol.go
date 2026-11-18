@@ -1770,12 +1770,17 @@ type AgentSetupState struct {
 // AgentLoginState is an agent's own sign-in running on that device (D363):
 // starting | waiting (URL, Codex's Code; Paste: Claude's page gives a code
 // to paste back) | checking | done | failed | expired | terminal (pi: what to
-// run there). Reason: device_off | wrong_code | failed.
+// run there). Reason: device_off | wrong_code | wrong_key | no_balance |
+// offline | failed. D369: Key, DeepSeek Harness signs in with a DeepSeek API
+// key pasted here (URL: where one is made); App, the app Ducter just opened on
+// that Mac to sign in with the DeepSeek account.
 type AgentLoginState struct {
 	State   string `json:"state"`
 	URL     string `json:"url,omitempty"`
 	Code    string `json:"code,omitempty"`
 	Paste   bool   `json:"paste,omitempty"`
+	Key     bool   `json:"key,omitempty"`
+	App     string `json:"app,omitempty"`
 	Reason  string `json:"reason,omitempty"`
 	Command string `json:"command,omitempty"`
 }

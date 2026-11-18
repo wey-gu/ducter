@@ -199,6 +199,8 @@ export const DSH_PROFILE = {
   fs: "tool-fs",
   compaction: "compaction-basic",
   sessionLog: "session-log-deepseek",
+  /** D369: the credential store's row (dsh-credentials-local; `path` names the file it reads, research/139). */
+  credentials: "credentials",
   readOnlyOff: ["tool-bash", "tool-pwsh", "tool-jobs", "tool-subagent", "tool-subagent-fork", "tool-subagent-control", "tool-workflow", "tool-goal", "tool-todo", "tool-skill", "tool-working-directory", "tool-plugin-manager"],
   /** Rows named tool-* that are machinery, not model tools (the probe checks every other tool row is named above). */
   notTools: ["tool-result-pruner", "tool-executor-native", "tool-executor-ptc"],
@@ -458,14 +460,21 @@ export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
     harness: "deepseek-harness",
     // It ships prereleases (0.2.2-rc.1): the version keeps its tag, which orders before 0.2.2.
     version: { command: ["dsh", "--version"], pattern: /(\d+\.\d+\.\d+(?:-[0-9A-Za-z.]+)?)/ },
-    // 0.2.2-rc.1 installed into a scratch prefix and run live 2026-11-10 (D177, research/50).
-    verified: { from: "0.2.2-rc.1", to: "0.2.2-rc.1" },
+    // 0.2.2-rc.1 installed into a scratch prefix and run live 2026-11-10 (D177, research/50);
+    // 0.2.2-rc.3 run live 2026-11-18 through Ducter's runner, both the copy inside DeepSeek
+    // Harness.app and npm's in a scratch prefix: a read-only turn in a home of Ducter's on the key
+    // route and on the account route, and a task's shell tool (D369, research/139 §5).
+    verified: { from: "0.2.2-rc.1", to: "0.2.2-rc.3" },
     models: {
       value: {
         "deepseek-official/deepseek-flash": { id: "deepseek-official/deepseek-flash", window: DSH_PROFILE.officialWindow },
         "deepseek-official/deepseek-v4-pro": { id: "deepseek-official/deepseek-v4-pro", window: DSH_PROFILE.officialWindow },
         "deepseek-flash": { id: "deepseek-official/deepseek-flash", window: DSH_PROFILE.officialWindow },
         "deepseek-v4-pro": { id: "deepseek-official/deepseek-v4-pro", window: DSH_PROFILE.officialWindow },
+        // D369: the same models on the DeepSeek account's route (the app's 登录), research/139 §4:
+        // its listing named both, and a turn on it reported the same 1,048,576 window.
+        "deepseek-account/deepseek-flash": { id: "deepseek-account/deepseek-flash", window: DSH_PROFILE.officialWindow },
+        "deepseek-account/deepseek-v4-pro": { id: "deepseek-account/deepseek-v4-pro", window: DSH_PROFILE.officialWindow },
       },
       evidence: DSH_LIVE("DeepSeek's GET /models: context_window 1,048,576 and max_output_tokens 393,216 for deepseek-flash (DeepSeek-V4.1-Flash) and deepseek-v4-pro; DSH's own catalog (dsh-llm-deepseek OFFICIAL_CONTEXT_WINDOW) the same"),
     },
@@ -497,8 +506,16 @@ export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
       evidence: { kind: "INFERRED", why: "the author's inspect fixture lists a dsh_profile_bundle 0.1.2 for host deepseek-harness (packages/protocol/fixtures/mem-inspect); DSH is not installed on the verifying Mac, so no per-session profile switch is known; a Ducter-owned DSH_HOME (as the partner's clean setup) loads none of the user's profiles" },
     },
     channels: {
-      value: { npm: "@deepseek-ai/dsh" },
-      evidence: { kind: "DOCUMENTED", source: "OAR 0.95.1 runtimes/dsh/install.js (npm package @deepseek-ai/dsh); research/34, research/42 §4" },
+      // D369 (research/139): the desktop app carries its own `dsh` (Resources/runtime/cli/bin, a
+      // shell launcher that runs the app's Electron as node) and updates it with itself; its
+      // "install the command" puts /usr/local/bin/dsh, a link back into the app.
+      value: { npm: "@deepseek-ai/dsh", app: { marks: ["/DeepSeek Harness.app/Contents/"], name: "DeepSeek Harness" } },
+      evidence: {
+        kind: "VERIFIED",
+        how: "OAR 0.95.1 runtimes/dsh/install.js (npm package @deepseek-ai/dsh), research/34, research/42 §4; research/139: DeepSeek Harness.app 0.2.2-rc.3 read only (Contents/Resources/runtime/cli/bin/dsh, its command manager's /usr/local/bin/dsh link, its update feed)",
+        date: "2026-11-18",
+        version: "0.2.2-rc.3",
+      },
     },
   },
 };

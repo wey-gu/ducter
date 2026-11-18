@@ -50,6 +50,14 @@ For Codex, the code works once device sign-in is on in your ChatGPT account's se
 settings; if it isn't, Ducter says so. pi signs in from a terminal on that computer: run `pi`,
 then type `/login`.
 
+**DeepSeek Harness.** It's offered too, unchecked: Ducter installs its command line (about
+1.3 GB, a few minutes). To sign it in, tap **Sign in** and paste a DeepSeek API key (**Make one on
+DeepSeek** opens the page where you get one); Ducter checks it without spending anything and keeps
+it only on that computer. On a Mac with the DeepSeek Harness app, **Sign in** also opens the app
+there: sign in to your DeepSeek account in it, and the card turns ready by itself. A DeepSeek
+account works without an API key. If you installed the app yourself, Ducter finds the copy inside
+it within seconds, and it updates with the app.
+
 **Your memory there too.** If you use [Nowledge Mem](https://mem.nowledge.co) with Ducter, the
 computer's card (and the sheet, once an AI there is signed in) says **Tasks on nas don't remember
 you yet**. Tap **Install**: Ducter puts Nowledge Mem in its own folder on that computer, with no

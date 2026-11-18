@@ -41,6 +41,19 @@ test("pi with no provider and DeepSeek Harness too old or without a key are not 
   expect(envKey[0]!.loggedIn).toBe(true);
 });
 
+test("D369: DeepSeek Harness.app's own dsh, signed in with the DeepSeek account (no key): installed with the app, signed in", async () => {
+  const bin = "/Applications/DeepSeek Harness.app/Contents/Resources/runtime/cli/bin/dsh";
+  const grant = "version: 1\nrecords:\n  deepseek-account-platform/default:\n    kind: grant\n    payload:\n      version: 1\n      token: not-a-real-token\n      issuer: https://platform.deepseek.com\n";
+  const r = await probeHarnesses({ which: (c) => (c === "dsh" ? bin : null), exec: async () => ({ code: 0, out: "0.2.2-rc.3\n" }), env: {}, home: "/h", dataDir: "/d", read: files({ "/h/.dsh/.credentials.yaml": grant }), realpath: (p) => p, only: ["deepseek-harness"] });
+  expect(r).toEqual([{ harness: "deepseek-harness", installed: true, loggedIn: true, canBePartner: true, billing: "usage", version: "0.2.2-rc.3", how: "app" }]);
+  // The app's "install the command" link in /usr/local/bin reads as the app's too.
+  const linked = await probeHarnesses({ which: (c) => (c === "dsh" ? "/usr/local/bin/dsh" : null), exec: async () => ({ code: 0, out: "0.2.2-rc.3" }), env: {}, home: "/h", dataDir: "/d", read: files({}), realpath: () => bin, only: ["deepseek-harness"] });
+  expect(linked[0]).toMatchObject({ how: "app", loggedIn: false });
+  // A grant whose token is gone (signed out in the app) is not a sign-in.
+  const out = await probeHarnesses({ which: (c) => (c === "dsh" ? bin : null), exec: async () => ({ code: 0, out: "0.2.2-rc.3" }), env: {}, home: "/h", dataDir: "/d", read: files({ "/h/.dsh/.credentials.yaml": "records:\n  deepseek-account-platform/device:\n    kind: plain\n    payload:\n      id: x\n" }), realpath: (p) => p, only: ["deepseek-harness"] });
+  expect(out[0]!.loggedIn).toBe(false);
+});
+
 test("versions compare with prereleases", () => {
   expect(compareVersions("0.2.1-rc.5", "0.2.1-rc.5")).toBe(0);
   expect(compareVersions("0.2.2-rc.1", "0.2.1-rc.5")! > 0).toBe(true);

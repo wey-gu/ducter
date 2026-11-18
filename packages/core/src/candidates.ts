@@ -35,6 +35,9 @@ const TIERS: Tier[] = [
   { harness: "codex", kind: "smart" },
   { harness: "deepseek-harness", model: "deepseek-official/deepseek-v4-pro", kind: "smart", label: "V4 Pro" },
   { harness: "deepseek-harness", model: "deepseek-official/deepseek-flash", kind: "fast", label: "Flash" },
+  // D369: the same two on the DeepSeek account's route, as its listing names them when only the account is signed in.
+  { harness: "deepseek-harness", model: "deepseek-account/deepseek-v4-pro", kind: "smart", listed: true, label: "V4 Pro" },
+  { harness: "deepseek-harness", model: "deepseek-account/deepseek-flash", kind: "fast", listed: true, label: "Flash" },
   { harness: "pi", model: "deepseek/deepseek-v4-pro", kind: "smart", listed: true, label: "V4 Pro" },
   { harness: "pi", model: "deepseek/deepseek-flash", kind: "fast", listed: true, label: "Flash" },
   { harness: "pi", kind: "fast" },

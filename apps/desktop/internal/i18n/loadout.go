@@ -67,6 +67,7 @@ var zhLoadout = Table{
 
 	"who.sentence":             "%s 在做。",
 	"who.sentence.rule":        "%s 在做，按你的规则「%s」。",
+	"who.sentence.said":        "%s 在做，因为你说过「%s」。", // D379
 	"who.sentence.limit":       "%s 在做，因为 %s 额度不多了。",
 	"who.sentence.unavailable": "%s 在做，因为 %s 现在用不了。",
 	"who.sentence.limit.rule":  "%s 在做：你的规则说 %s，但它现在用不了。",
@@ -82,6 +83,7 @@ var zhLoadout = Table{
 	"who.failed":               "没能更换：%s",
 	"who.loading":              "在看谁能做…",
 	"who.why.rule":             "按你的规则「%s」",
+	"who.why.said":             "你说过「%s」",
 	"who.why.limit":            "%s 额度不多了",
 	"who.why.unavailable":      "%s 现在用不了",
 	"who.why.limit.rule":       "你的规则说 %s，但它现在用不了",
@@ -208,6 +210,7 @@ var enLoadout = Table{
 
 	"who.sentence":               "%s is doing it.",
 	"who.sentence.rule":          "%s is doing it, by your rule \u201c%s\u201d.",
+	"who.sentence.said":          "%s is doing it, because you said \u201c%s\u201d.",
 	"who.sentence.limit":         "%s is doing it, because %s's limit is low.",
 	"who.sentence.unavailable":   "%s is doing it, because %s can't take it now.",
 	"who.sentence.limit.rule":    "%s is doing it: your rule says %s, but it can't take it now.",
@@ -223,6 +226,7 @@ var enLoadout = Table{
 	"who.failed":                 "Didn't switch: %s",
 	"who.loading":                "Looking at who can do it…",
 	"who.why.rule":               "your rule “%s”",
+	"who.why.said":               "you said “%s”",
 	"who.why.limit":              "%s's limit is low",
 	"who.why.unavailable":        "%s can't take it now",
 	"who.why.limit.rule":         "Your rule says %s, but it can't take it now",

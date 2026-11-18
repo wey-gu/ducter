@@ -1,7 +1,7 @@
 // Who does the tasks (D89): picks who does a new task (fw_candidates v0), lists who else could
 // (换谁来做 / Switch who does it), moves a task when the person switches it, keeps 你的规则 / Your
 // rules, and after two switches the same way asks the partner to offer a rule once.
-import type { Bodies, Candidate, DeviceHarness, KindDefault, LogEvent, Place, TaskNeeds, WorkKind } from "@ducter/protocol";
+import type { Bodies, BodyWhy, Candidate, DeviceHarness, RuleView, KindDefault, LogEvent, Place, TaskNeeds, WorkKind } from "@ducter/protocol";
 import { harnessName, isHarnessId, whichPhone, WORK_KINDS } from "@ducter/protocol";
 import { resolveModel } from "@ducter/protocol/src/harness-facts.ts";
 import type { BodyChoice, LogStore, Runner } from "@ducter/protocol/src/internal.ts";
@@ -14,6 +14,7 @@ import type { DevicesView } from "./devices.ts";
 import type { CoreMcpHub } from "./mcp.ts";
 import { taskStream, type CoreRegistry } from "./registry.ts";
 import type { RulesStore } from "./rules.ts";
+import type { SaidStore } from "./said.ts";
 import type { SettingsStore } from "./settings.ts";
 
 /** A hidden channel note of a switch (clients skip job_status ids with this prefix). */
@@ -48,6 +49,8 @@ export function createLoadout(o: {
   tasks: CoreRegistry;
   settings: SettingsStore;
   rules: RulesStore;
+  /** D379: who does which work, said by the person and never saved as a rule. */
+  said?: SaidStore;
   devices: () => DevicesView | undefined;
   /** D157: the sites Ducter's own browser on a computer is signed in to. */
   sites?: (deviceId: string) => string[];
@@ -113,6 +116,12 @@ export function createLoadout(o: {
       return w.kind === "kind" && w.work === work;
     });
 
+  /** The person's rules, and (D379) what they said and never saved that decides this kind of work now. */
+  const rulesWith = (kind: WorkKind | undefined) => {
+    const said = o.said?.rulesFor(kind) ?? [];
+    return said.length ? [...o.rules.list(), ...said] : o.rules.list();
+  };
+
   const api: Loadout = {
     computers,
 
@@ -140,7 +149,7 @@ export function createLoadout(o: {
         ...(open?.needs ? { needs: open.needs } : {}),
         place: card.place,
         settings: o.settings.get(),
-        rules: o.rules.list(),
+        rules: rulesWith(sel?.why.work),
         current: { harness: card.harness, ...(card.model ? { model: card.model } : {}), device },
       });
       if (!to) return { ok: false, message: "no smarter AI agent can take it here" };
@@ -177,17 +186,24 @@ export function createLoadout(o: {
       const one = !multi && comps?.length === 1 && (comps[0]!.web || comps[0]!.phone) ? [{ ...comps[0]!, harnesses: hs! }] : undefined;
       // D372: the kind of work, as the partner said it, else read from its needs and place.
       const kind = kindOf(work.workKind, work.needs, work.place);
-      const pick0 = chooseBody({
+      const input = {
         work: { title: work.title, ...(work.brief ? { brief: work.brief } : {}), ...(kind ? { kind } : {}) },
         ...(multi ? { computers: comps } : one ? { computers: one } : { harnesses: hs }),
         ...(work.needs ? { needs: work.needs } : {}),
         ...(work.place ? { place: work.place } : {}),
         ...(pinDevice ? { pinDevice } : {}),
         settings: o.settings.get(),
-        rules: o.rules.list(),
         ...(work.harness ? { pinned: { harness: work.harness, ...(work.model ? { model: work.model } : {}) } } : {}),
         ...(work.by ? { pinnedBy: work.by } : {}),
-      });
+      };
+      // D379: what the person said and never saved counts as their rule; a pin in the moment still
+      // says who (the person's own pick is theirs alone). When the saying changes who does it (or
+      // the partner's pin follows it), the task says so and the partner asks once to keep it.
+      const said = work.by === "you" ? [] : (o.said?.rulesFor(kind) ?? []);
+      const { pinned: _p, ...unpinned } = input;
+      const pick0 = said.length
+        ? saidPick(chooseBody({ ...input, rules: [...o.rules.list(), ...said] }), () => chooseBody({ ...unpinned, rules: o.rules.list() }), said)
+        : chooseBody({ ...input, rules: o.rules.list() });
       // The person's own pick can't run: their one line, never a silent move.
       if (pick0 && "problem" in pick0) return { none: pick0.problem };
       // D372: the first errand the default puts on a fast tier is said once, by the partner.
@@ -206,10 +222,10 @@ export function createLoadout(o: {
       const work = { ...work0, ...(kind ? { kind } : {}) };
       if (comps && comps.length > 1) {
         const pinDevice = pinOf(work.place);
-        return fwCandidates({ work, computers: comps, ...(work.place ? { place: work.place } : {}), ...(work.needs ? { needs: work.needs } : {}), ...(pinDevice ? { pinDevice } : {}), settings: o.settings.get(), rules: o.rules.list(), ...(opts?.every ? { every: true as const } : {}) });
+        return fwCandidates({ work, computers: comps, ...(work.place ? { place: work.place } : {}), ...(work.needs ? { needs: work.needs } : {}), ...(pinDevice ? { pinDevice } : {}), settings: o.settings.get(), rules: rulesWith(kind), ...(opts?.every ? { every: true as const } : {}) });
       }
       const hs = (await harnessesFor(work.place && "device" in work.place ? work.place.device : undefined)) ?? [];
-      return fwCandidates({ work, harnesses: hs, settings: o.settings.get(), rules: o.rules.list(), ...(opts?.every ? { every: true as const } : {}) });
+      return fwCandidates({ work, harnesses: hs, settings: o.settings.get(), rules: rulesWith(kind), ...(opts?.every ? { every: true as const } : {}) });
     },
 
     async candidates(taskId) {
@@ -232,7 +248,7 @@ export function createLoadout(o: {
           place: card.place,
           ...(open?.needs ? { needs: open.needs } : {}),
           settings: o.settings.get(),
-          rules: o.rules.list(),
+          rules: rulesWith(kind),
           current: { ...current, device, ...(sel?.why.where?.uses === "chrome" || sel?.why.where?.uses === "ducter" ? { uses: sel.why.where.uses } : {}) },
         });
       }
@@ -241,7 +257,7 @@ export function createLoadout(o: {
         work,
         harnesses: hs,
         settings: o.settings.get(),
-        rules: o.rules.list(),
+        rules: rulesWith(kind),
         current,
       });
     },
@@ -500,4 +516,31 @@ export function isRuleHint(e: LogEvent): boolean {
   if (e.kind !== "job_status" || e.origin !== "user") return false;
   const id = (e.body as Bodies["job_status"]).jobId;
   return id.startsWith(BODY_NOTE_PREFIX) && id.includes(RULE_HINT_SUFFIX);
+}
+
+/**
+ * D379: the pick with what the person said and never saved. When that changed who does it (a
+ * "never" moved it off the one the default would pick, or "always" put it on the one named, by
+ * the saying or by the partner's pin following it), its why says so with their words, so the
+ * partner can ask once to keep it. Otherwise the pick as it is.
+ */
+export function saidPick<P extends { harness: string; why: BodyWhy }>(
+  withSaid: P | { problem: string } | undefined,
+  without: (() => P | { problem: string } | undefined) | undefined,
+  said: RuleView[],
+): P | { problem: string } | undefined {
+  if (!without || !withSaid || "problem" in withSaid) return withSaid;
+  const why = withSaid.why;
+  const named = why.kind === "rule" ? said.find((r) => r.id === why.ruleId) : undefined;
+  let r = named;
+  if (!r) {
+    // Who the default would pick with neither the saying nor a pin: a saying that moved it (or a
+    // pin that follows the saying) is what decided it.
+    const plain = without();
+    if (plain && !("problem" in plain) && plain.harness !== withSaid.harness)
+      r = said.find((x) => (x.never ? x.harness === plain.harness : x.harness === withSaid.harness));
+  }
+  if (!r) return withSaid;
+  const { ruleId: _r, text: _t, ...rest } = why;
+  return { ...withSaid, why: { ...rest, kind: "said", text: r.text, said: { key: r.id, harness: r.harness, ...(r.never ? { never: true as const } : {}), kinds: r.kinds ?? [] } } };
 }

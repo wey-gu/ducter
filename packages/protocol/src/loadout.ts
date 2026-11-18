@@ -121,9 +121,11 @@ export interface WhereWhy {
  *             smartest (keeps) is kept for harder work; first: the first time for this kind;
  *  - retry (D372): the fast tier (from, fromModel) failed or stalled (stalled), so it carries on
  *             here, on the smartest, once by itself.
+ *  - said (D379): what the person said earlier ("订酒店这类别用 Claude Code", text), never saved as
+ *             a rule, changed who does it.
  */
 export interface BodyWhy {
-  kind: "default" | "rule" | "limit" | "unavailable" | "you" | "partner" | "kind" | "retry";
+  kind: "default" | "rule" | "limit" | "unavailable" | "you" | "partner" | "kind" | "retry" | "said";
   ruleId?: string;
   text?: string;
   from?: string;
@@ -140,6 +142,11 @@ export interface BodyWhy {
   fromModel?: string;
   /** D372 (retry): it stopped without a report (else it failed). */
   stalled?: true;
+  /**
+   * D379 (said): what the person said earlier and never saved as a rule decided it (text: their
+   * words): the saying, so the partner asks once to keep it.
+   */
+  said?: { key: string; harness: string; never?: true; kinds: WorkKind[] };
 }
 
 export interface TaskBody {

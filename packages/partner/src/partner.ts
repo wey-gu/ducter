@@ -51,7 +51,7 @@
 //   that arrived while down) are queued again; user messages that already got a reply are not.
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { callWakes, fileView, harnessName, HARNESSES, HARNESS_IDS, isHarnessId, isImage, isWorkKind, WORK_KINDS, type WorkKind, MEDIA_LIMITS, viewText, type MediaRef, type ActivityStep, type Bodies, type Brain, type CalEvent, type CalGlance, type EventKind, type HarnessId, type LogEvent, type Place, type TaskCard, type TaskGroupFrame, type TaskGroupView, type TaskNeeds } from "../../protocol/src/index.ts";
+import { callWakes, fileView, harnessName, HARNESSES, HARNESS_IDS, isHarnessId, isImage, isWorkKind, WORK_KINDS, type WorkKind, MEDIA_LIMITS, viewText, type MediaRef, type ActivityStep, type Bodies, type BodyWhy, type Brain, type CalEvent, type CalGlance, type EventKind, type HarnessId, type LogEvent, type Place, type TaskCard, type TaskGroupFrame, type TaskGroupView, type TaskNeeds } from "../../protocol/src/index.ts";
 import type { CoreApi, HarnessEvent, HarnessSession, Partner, Runner, SendImage, WorkingMemoryView } from "../../protocol/src/internal.ts";
 import { resolveWindows, WINDOW_MAX, WINDOW_MIN } from "../../protocol/src/harness-facts.ts";
 import { bridgeFor, bridgeKeyFor, type BridgeClient, type BridgeContact, type BridgeOp, type BridgeResult } from "./bridge.ts";
@@ -1625,6 +1625,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   const kindNote = (taskId: string, note: string): string => {
     const sel = core.log.read({ stream: `task:${taskId}`, kinds: ["body_selected"], limit: 50 }).at(-1)?.body as Bodies["body_selected"] | undefined;
     const w = sel?.why;
+    if (sel && w?.kind === "said" && w.said && note === OPENED_NOTE) return saidNote(sel, w as BodyWhy & { said: NonNullable<BodyWhy["said"]> });
     if (!sel || w?.kind !== "kind" || !w.first || note !== OPENED_NOTE) return note;
     const name = (h: string, m?: string) => (m ? modelWord(m) : harnessName(h));
     const fast = name(sel.harness, sel.model);
@@ -1633,6 +1634,36 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     // note 1 of 1 times instead of writing the line it asked for).
     tellUser(said(userLang() ?? NO_WORDS_YET, "kindFirst", { fast, smart }));
     return `Task opened. Ducter already told the user in one line that errands like this go to ${fast} by default (faster, keeping ${smart} and its limit for harder work) and that they can say to change it. Your turn is done: write nothing more and call nothing else.`;
+  };
+  /**
+   * D379: what the person said earlier and never saved decided who does this task. Ducter asks once,
+   * by code, whether to keep it as a rule (Go saves their words; 只这次, the default, keeps nothing);
+   * the same saying is never asked about again. The model only hears that it was handled.
+   */
+  const saidNote = (sel: Bodies["body_selected"], w: BodyWhy & { said: NonNullable<BodyWhy["said"]> }): string => {
+    const quote = w.text ?? "";
+    const agent = harnessName(sel.harness);
+    const overlaps = (k: string[]) => k.some((x) => w.said.kinds.includes(x as never));
+    const asked = core.log
+      .read({ kinds: ["decision"], limit: 5000 })
+      .some((e) => {
+        const s = (e.body as Bodies["decision"]).saying;
+        return !!s && s.harness === w.said.harness && !!s.never === !!w.said.never && overlaps(s.kinds);
+      });
+    if (!asked) {
+      const lang = userLang() ?? NO_WORDS_YET;
+      const body: Bodies["decision"] = {
+        decisionId: newId("d"),
+        question: said(lang, "saidQuestion", { quote, agent }),
+        goLabel: said(lang, "saidGo"),
+        holdLabel: said(lang, "saidHold"),
+        defaultOption: "hold",
+        reversible: false,
+        saying: { ...w.said, quote },
+      };
+      core.log.append({ stream: "channel", origin: "partner", kind: "decision", body });
+    }
+    return `Task opened. It went to ${agent}, not ${harnessName(w.said.harness)}, because the user said earlier "${quote}" (never saved as a rule). ${asked ? "They were asked about keeping it before" : "Ducter already asked them once, with a card under your ack, whether to keep it as a rule"}. Your turn is done: write nothing more and call nothing else (no rule_save: their answer on the card keeps it).`;
   };
   const withVerbatim = (brief: string, userTexts: string[]) => {
     const missing = userTexts.map((t) => t.trim()).filter((t) => t && !brief.includes(t));
@@ -2352,6 +2383,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       const askThreads = !!memory.threads && !!t?.userTexts.some((u) => POINTS_AT_THREAD.test(u));
       const [r, th] = await Promise.all([memory.search(query, limit), askThreads ? memory.threads!(query, THREADS_MAX).catch(() => undefined) : undefined]);
       noteMemState(r);
+      // D379: a memory that says who does which work ("订酒店别用 Claude Code") is read by code, so it holds.
+      if (r.ok && r.hits.length) core.said?.fromMemory(r.hits);
       const conversations = th?.ok ? threadsForModel(th.threads) : [];
       if (!r.ok && !conversations.length) return { ok: false, available: false, note: UNAVAILABLE };
       const talks = conversations.length ? { conversations, conversationsNote: THREADS_NOTE } : {};
@@ -3864,6 +3897,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         if (b.by === "user") letSender(from, b.option === "go");
         return;
       }
+      // D379: the ask to keep a saying as a rule: core keeps it on Go; Ducter's own bookkeeping, no partner turn.
+      if (e.kind === "decision_resolved" && ctx.decision((e.body as Bodies["decision_resolved"]).decisionId)?.saying) return;
       if (e.kind === "decision_resolved" && trustOf((e.body as Bodies["decision_resolved"]).decisionId)) {
         const b = e.body as Bodies["decision_resolved"];
         const agent = trustOf(b.decisionId)!.trust!.agent;

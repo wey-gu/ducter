@@ -893,6 +893,9 @@ func (a *App) defaultLine(c *ui.Context, d *store.DecisionState) string {
 	if d.Asker != nil {
 		return a.L.T("peer.default") // silence never answers for the user (D164)
 	}
+	if d.Saying != nil {
+		return a.L.T("decision.saying.default") // D379: nothing waits on it; unanswered, it still goes by their words
+	}
 	if !d.Reversible {
 		return a.L.T("decision.no_default") // never claim it can be undone
 	}

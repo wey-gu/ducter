@@ -219,6 +219,9 @@ type Decision struct {
 	// Trust (D170, X2): the offer to take an own agent's work without
 	// asking; Go keeps the rule.
 	Trust *TrustAsk `json:"trust,omitempty"`
+	// Saying (D379): who does which work, said and never saved, just decided
+	// a task; Go keeps it as a rule, Hold (只这次, the default) keeps nothing.
+	Saying *SayingAsk `json:"saying,omitempty"`
 	// Sender (D334): a teammate's agent wrote for the first time; Go
 	// (答应) lets it through as questions, Hold (不理, the default) mutes it.
 	Sender *SenderAsk `json:"sender,omitempty"`
@@ -237,6 +240,14 @@ type Decision struct {
 // TrustAsk names the agent a standing-go offer is about.
 type TrustAsk struct {
 	Agent string `json:"agent"`
+}
+
+// SayingAsk is the person's own words about who does which work (D379).
+type SayingAsk struct {
+	Harness string   `json:"harness"`
+	Never   bool     `json:"never,omitempty"`
+	Kinds   []string `json:"kinds,omitempty"`
+	Quote   string   `json:"quote"`
 }
 
 // SenderAsk is a teammate's agent's first message (D334): who sent it, as

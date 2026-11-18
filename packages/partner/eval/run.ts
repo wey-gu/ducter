@@ -17,7 +17,8 @@ import { join, resolve } from "node:path";
 import { HARNESSES, HARNESS_IDS, isHarnessId, type Bodies, type HarnessId, type LogEvent, type Place, type ReplyWant, type TaskCard, type TaskNeeds } from "../../protocol/src/index.ts";
 import type { HarnessEvent, HarnessPort, HarnessSession, Runner } from "../../protocol/src/internal.ts";
 import { startCore, type Core } from "../../core/src/index.ts";
-import { kindOf, type Computer } from "../../core/src/candidates.ts";
+import { chooseBody, kindOf, type Computer } from "../../core/src/candidates.ts";
+import { saidPick } from "../../core/src/loadout.ts";
 import { createLocalAgents } from "../../core/src/local-agents/index.ts";
 import { createWorkerRecords } from "../../core/src/worker-records.ts";
 import { writeSession } from "../../core/test/fixtures-agents.ts";
@@ -132,6 +133,11 @@ function teePort(real: HarnessPort, onEvent: (e: HarnessEvent, sessionIdx: numbe
 
 // ---------- fake task runner ----------
 interface Opened { taskId: string; title: string; brief: string; place?: Place; step: number; needs?: Record<string, unknown>; harness?: string; group?: string; workKind?: string }
+const SAID_HOME = [
+  { harness: "claude-code", installed: true, loggedIn: true, canBePartner: true, billing: "plan" as const, models: [{ id: "opus", label: "Opus" }, { id: "sonnet", label: "Sonnet" }] },
+  { harness: "codex", installed: true, loggedIn: true, canBePartner: true, billing: "plan" as const },
+];
+
 function fakeRunner(core: Core, harness: HarnessPort, cur: { step: number }, firstErrand = false) {
   const opened: Opened[] = [];
   // D372: who does it, as core's ranking would pick on a home with Claude Code (Opus, Sonnet) and
@@ -140,6 +146,18 @@ function fakeRunner(core: Core, harness: HarnessPort, cur: { step: number }, fir
   const routed = new Set<string>(firstErrand ? [] : ["errand"]);
   const bodyFor = (taskId: string, input: { workKind?: string; needs?: unknown; place?: Place; harness?: string; model?: string }) => {
     const kind = kindOf(input.workKind, input.needs as TaskNeeds | undefined, input.place);
+    // D379: what the person said and never saved, as core's choose reads it (the same home: Claude
+    // Code with Opus and Sonnet, Codex): when it changes who does it, the pick says so.
+    const said = core.said.rulesFor(kind);
+    if (said.length) {
+      const inp = { work: { title: "", ...(kind ? { kind } : {}) }, harnesses: SAID_HOME, settings: { brain: { harness: "claude-code" as const, model: "opus" } } };
+      const pin = input.harness ? { pinned: { harness: input.harness, ...(input.model ? { model: input.model } : {}) } } : {};
+      const p = saidPick(chooseBody({ ...inp, ...pin, rules: [...core.rules.list(), ...said] }), () => chooseBody({ ...inp, rules: core.rules.list() }), said);
+      if (p && !("problem" in p) && p.why.kind === "said") {
+        core.log.append({ stream: `task:${taskId}`, origin: "system", kind: "body_selected", body: { taskId, harness: p.harness, ...(p.model ? { model: p.model } : {}), why: p.why } });
+        return;
+      }
+    }
     const errand = kind === "errand" && !input.harness;
     const first = errand && !routed.has("errand");
     if (errand) routed.add("errand");
@@ -626,7 +644,12 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
     // D360: the group a task is in on On hand, when it is in one.
     const groupOf = (id: string) => core.taskGroups.of(id)?.name;
     for (const o of fr.opened) if (groupOf(o.taskId)) o.group = groupOf(o.taskId);
-    for (const o of r_opened(fr.opened, i)) lines.push(`  [opened a task] title: ${o.title}${groupOf(o.taskId) ? ` | group: ${groupOf(o.taskId)}` : ""} | place: ${JSON.stringify(o.place ?? null)} | brief: ${o.brief.slice(0, 1200).replace(/\n/g, " ⏎ ")}`);
+    // D379: who it went to, and why when the person's own words decided it.
+    const wentTo = (id: string) => {
+      const b = core.log.read({ stream: `task:${id}`, kinds: ["body_selected"], limit: 50 }).at(-1)?.body as Bodies["body_selected"] | undefined;
+      return b ? ` | Ducter gave it to: ${b.harness}${b.model ? ` (${b.model})` : ""}${b.why.kind === "said" ? ` because the user said earlier "${b.why.text}"` : ""}` : "";
+    };
+    for (const o of r_opened(fr.opened, i)) lines.push(`  [opened a task] title: ${o.title}${groupOf(o.taskId) ? ` | group: ${groupOf(o.taskId)}` : ""} | place: ${JSON.stringify(o.place ?? null)}${wentTo(o.taskId)} | brief: ${o.brief.slice(0, 1200).replace(/\n/g, " ⏎ ")}`);
     // D360: a later part of a split is held by Ducter (not a task yet), shown so the judge sees all parts.
     const openedTitles = new Set(r_opened(fr.opened, i).map((o) => o.title));
     for (const x of tools.filter((x) => x.step === i && /(^|__)task_open$/.test(x.name)))
@@ -644,11 +667,13 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   }
   if (error) lines.push(`ERROR: ${error}`);
 
+  const bodies = core.log.read({ kinds: ["body_selected"], fromSeq: startSeq + 1, limit: 1000 }).map((e) => e.body as Bodies["body_selected"]);
+  const saidAsks = core.log.read({ kinds: ["decision"], fromSeq: startSeq + 1, limit: 1000 }).filter((e) => (e.body as Bodies["decision"]).saying).length;
   await partner.close().catch(() => {});
   await core.stop().catch(() => {});
   tuwa?.stop();
   const boundRefs = new Map(core.tasks.list().filter((c) => c.source).map((c) => [c.taskId, c.source!.ref] as [string, string]));
-  return { sc, visible, dayCards, calKinds, todoCards, boundRefs, blocks, dropped, tools, opened: fr.opened, sent, keyOf, idOf, dataDir, usage, error, ms: Date.now() - t0, transcript: lines.join("\n"), recalls, threadSearches, remembered: mem.added, memAttempts, sources, retitles, bridgeSent, work: { ...work, asks } };
+  return { sc, visible, dayCards, calKinds, todoCards, boundRefs, blocks, dropped, tools, opened: fr.opened, sent, keyOf, idOf, dataDir, usage, error, ms: Date.now() - t0, transcript: lines.join("\n"), recalls, threadSearches, remembered: mem.added, memAttempts, sources, retitles, bridgeSent, work: { ...work, asks }, bodies, saidAsks };
 }
 
 const r_opened = (o: Opened[], step: number) => o.filter((x) => x.step === step);
@@ -874,6 +899,9 @@ function check(r: RunResult): string[] {
   // D372: the kind of work, as the partner said it or as Ducter reads it from needs and place.
   if (e.workKind && !r.opened.some((o) => kindOf(o.workKind, o.needs as TaskNeeds | undefined, o.place) === e.workKind)) fails.push(`no task of kind ${e.workKind} (got ${r.opened.map((o) => kindOf(o.workKind, o.needs as TaskNeeds | undefined, o.place) ?? "none").join(", ") || "none"})`);
   if (e.notHarness && r.opened.some((o) => o.harness === e.notHarness)) fails.push(`a task pinned to ${e.notHarness}`);
+  // D379: who a task actually went to (its body_selected), whoever decided it, and the one ask to keep a saying.
+  if (e.notBody && r.bodies.some((b) => b.harness === e.notBody)) fails.push(`a task went to ${e.notBody}`);
+  if (e.saidAsk !== undefined && r.saidAsks !== (e.saidAsk ? 1 : 0)) fails.push(`asks to keep a saying x${r.saidAsks} (want ${e.saidAsk ? 1 : 0})`);
   // A partner tool that must (or must not) be called, by its MCP name's tail, with these args.
   for (const c of e.called ?? []) {
     const hit = r.tools.some((t) => (t.name === c.tool || t.name.endsWith(`__${c.tool}`)) && Object.entries(c.args ?? {}).every(([k, v]) => {

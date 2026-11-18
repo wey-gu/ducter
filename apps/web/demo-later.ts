@@ -1,6 +1,6 @@
 // A demo core for 晚点再问我 / Ask me later (D382): late in the evening, four asks wait. One was put
 // off to the morning (it stands in Waiting with when it asks again), one came back at its time
-// (said once above its buttons), and two are open, one with a countdown.
+// (said once above its buttons; its countdown starts once a client has seen it), and two are open.
 //   DUCTER_PORT=7841 DUCTER_DATA_DIR=/tmp/x DEMO_LANG=zh bun apps/web/demo-later.ts
 import { startCore, stubRunner } from "./demo-core.ts";
 import { laterChoices } from "@ducter/protocol";
@@ -39,13 +39,14 @@ for (const [i, a] of asks.entries()) {
   log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: a.said, decisionId: d.decisionId } });
   await tick();
 }
-// The release notes were put off to the morning; the weekly report was put off and is back.
+// The release notes were put off to the morning; the build number was put off and is back (its
+// countdown starts once a client has seen it).
 const morning = laterChoices(new Date()).find((c) => c.key === "morning")!.at;
 core.decisions.later(ids[0]!, Date.parse(morning));
 await tick();
-log.append({ stream: "channel", origin: "user", kind: "decision_later", body: { decisionId: ids[2]!, until: new Date(Date.now() + 3600_000).toISOString(), by: "user" } });
+log.append({ stream: "channel", origin: "user", kind: "decision_later", body: { decisionId: ids[1]!, until: new Date(Date.now() + 3600_000).toISOString(), by: "user" } });
 await tick();
-log.append({ stream: "channel", origin: "system", kind: "decision_back", body: { decisionId: ids[2]!, by: "time" } });
+log.append({ stream: "channel", origin: "system", kind: "decision_back", body: { decisionId: ids[1]!, by: "time" } });
 await tick();
 core.living.render();
 

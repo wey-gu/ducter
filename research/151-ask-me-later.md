@@ -48,7 +48,11 @@ card with a countdown, the word, and where the put-off card lives and how it com
 
 The third is the honest reading of the tap: "not now, ask me then", with the card's own promise
 intact afterwards. Remaining-time pause was rejected: a card put off with 40 s left would come
-back with 40 s.
+back with 40 s. **Amended in review (2026-11-19):** restarting at the return still lets a default
+run at 08:30 on a card that came back at 08:00 while the person slept. They said "ask me", so the
+countdown waits for the card to be seen: the first read past its return on any client (the
+conversation's existing read receipt; the Mac app sends it only with its window in front), then
+the first length from that moment. Never seen, it waits in Needs you and the count.
 
 ## 4. The word (comprehension test, LLM proxies)
 
@@ -105,13 +109,14 @@ beliefs: **到时再问你。在那之前，什么都不做。/ I'll ask you aga
 
 1. Add **晚点再问我 / Ask me later** to an ask, opening the times; never on cards whose moment is
    the point.
-2. Put off = out of Needs you into Waiting, countdown stopped; back = Needs you, countdown again
-   from its first length, said once, pushed by the usual rules.
-3. Two Log events (`decision_later`, `decision_back`) and one client frame (`later`); no partner
-   turn, no partner change.
+2. Put off = out of Needs you into Waiting, countdown stopped; back = Needs you, said once, pushed
+   by the usual rules; its countdown (first length) starts only once it is seen.
+3. Three Log events (`decision_later`, `decision_back`, `decision_seen`) and one client frame
+   (`later`); no partner turn, no partner change.
 4. Conditions and the other surfaces wait for their triggers (`todo.md`).
 
 **Summary.** Hold today is "never". Later is "not now, ask me at a time I pick": the card leaves
-Needs you, nothing runs, and at that time it comes back once with its countdown starting over.
+Needs you, nothing runs, and at that time it comes back once; its countdown starts over only when
+it is seen.
 "Ask me later" beat "Later", "Snooze" and "Remind me" with LLM-proxy raters; the times as chips
 under it, with one line that nothing happens before then, answer the panels' worst false belief.

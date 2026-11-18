@@ -39,7 +39,12 @@ async function ask(s: ReturnType<typeof setup>, taskId = "t1") {
   return kinds(s.log, "decision").at(-1)!.body as Bodies["decision"];
 }
 
-test("put off: out of Needs you, no default while away, back at its time with the countdown again", async () => {
+const read = (s: { log: ReturnType<typeof openLog> }) => {
+  const upToSeq = s.log.read({}).at(-1)!.seq;
+  s.log.append({ stream: "channel", origin: "user", kind: "read_receipt", body: { upToSeq } });
+};
+
+test("put off: out of Needs you, no default while away; back at its time, no default until it is seen", async () => {
   const s = setup();
   const d = await ask(s);
   expect(s.tasks.onHand().counts.needs_you).toBe(1);
@@ -58,19 +63,37 @@ test("put off: out of Needs you, no default while away, back at its time with th
   s.clock.advance(HOUR);
   await tick();
   const [b] = kinds(s.log, "decision_back");
-  expect(b!.body).toMatchObject({ decisionId: d.decisionId, by: "time" });
-  const restarted = (b!.body as Bodies["decision_back"]).defaultAt!;
-  expect(Date.parse(restarted) - s.clock.now()).toBe(30 * MIN);
+  expect(b!.body).toEqual({ decisionId: d.decisionId, by: "time" }); // no countdown yet
   expect(s.tasks.get("t1")).toMatchObject({ attention: "needs_you" });
-  expect(s.tasks.get("t1")!.pendingDecision).toMatchObject({ defaultAt: restarted });
+  expect(s.tasks.onHand().counts.needs_you).toBe(1);
+  expect(s.tasks.get("t1")!.pendingDecision!.defaultAt).toBeUndefined();
   expect(s.tasks.get("t1")!.pendingDecision!.later).toBeUndefined();
   expect(s.tasks.get("t1")!.pendingDecision!.backAt).toBeTruthy();
   // Said once: the living message has it again, marked back.
   s.living.render();
   const items = (kinds(s.log, "living_msg").at(-1)!.body as Bodies["living_msg"]).items;
   expect(items).toEqual([expect.objectContaining({ decisionId: d.decisionId, kind: "decision", back: expect.any(String) })]);
-  // The restarted countdown runs as before.
-  s.clock.advance(30 * MIN);
+  // Nobody looks for six hours: nothing runs; it stays in Needs you.
+  s.clock.advance(6 * HOUR);
+  await tick();
+  expect(kinds(s.log, "decision_resolved")).toHaveLength(0);
+  expect(kinds(s.log, "decision_seen")).toHaveLength(0);
+  // A read that stops short of its return isn't seeing it.
+  s.log.append({ stream: "channel", origin: "user", kind: "read_receipt", body: { upToSeq: b!.seq - 1 } });
+  await tick();
+  expect(kinds(s.log, "decision_seen")).toHaveLength(0);
+  // Seen on some client: its countdown runs its first length from now, once.
+  read(s);
+  read(s);
+  await tick();
+  const seen = kinds(s.log, "decision_seen");
+  expect(seen).toHaveLength(1);
+  const restarted = (seen[0]!.body as Bodies["decision_seen"]).defaultAt;
+  expect(Date.parse(restarted) - s.clock.now()).toBe(30 * MIN);
+  expect(s.tasks.get("t1")!.pendingDecision).toMatchObject({ defaultAt: restarted });
+  s.clock.advance(29 * MIN);
+  expect(kinds(s.log, "decision_resolved")).toHaveLength(0);
+  s.clock.advance(MIN);
   expect(kinds(s.log, "decision_resolved").at(-1)!.body).toMatchObject({ decisionId: d.decisionId, option: "go", by: "default" });
   await tick();
   expect(s.forwarded).toEqual([["t1", "User says Go: Send."]]);
@@ -99,7 +122,10 @@ test("现在就定 / Decide now brings it back at once; a time too near, too far
   await tick();
   s.decisions.later(d.decisionId, null);
   await tick();
-  expect(kinds(s.log, "decision_back").at(-1)!.body).toMatchObject({ by: "user" });
+  // Brought back by the person, it is in front of them: its countdown runs at once.
+  const nb = kinds(s.log, "decision_back").at(-1)!.body as Bodies["decision_back"];
+  expect(nb).toMatchObject({ by: "user" });
+  expect(Date.parse(nb.defaultAt!) - s.clock.now()).toBe(30 * MIN);
   expect(s.tasks.get("t1")!.attention).toBe("needs_you");
   s.clock.advance(6 * HOUR);
   await tick();
@@ -127,8 +153,30 @@ test("a restart keeps it away, and one whose time passed while down comes back a
   await tick();
   expect(kinds(log2, "decision_back")).toHaveLength(1);
   expect(tasks2.get("t1")!.attention).toBe("needs_you");
-  const at = (kinds(log2, "decision_back")[0]!.body as Bodies["decision_back"]).defaultAt!;
-  expect(Date.parse(at) - s.clock.now()).toBe(30 * MIN);
+  expect((kinds(log2, "decision_back")[0]!.body as Bodies["decision_back"]).defaultAt).toBeUndefined();
+  s.clock.advance(5 * HOUR);
+  expect(kinds(log2, "decision_resolved")).toHaveLength(0); // unseen: it waits
+});
+
+test("a read past its return that came while the countdown was never logged starts it at start", async () => {
+  const s = setup();
+  const d = await ask(s);
+  s.decisions.later(d.decisionId, s.clock.now() + HOUR);
+  await tick();
+  s.clock.advance(HOUR);
+  await tick();
+  s.decisions.stop();
+  s.living.stop();
+  // The read lands in the Log while no decisions module listens (the process was going down).
+  read(s);
+  const tasks2 = createRegistry(s.log, s.clock);
+  createDecisions({ log: s.log, tasks: tasks2, clock: s.clock });
+  await tick();
+  const seen = kinds(s.log, "decision_seen");
+  expect(seen).toHaveLength(1);
+  expect(Date.parse((seen[0]!.body as Bodies["decision_seen"]).defaultAt) - s.clock.now()).toBe(30 * MIN);
+  s.clock.advance(30 * MIN);
+  expect(kinds(s.log, "decision_resolved").at(-1)!.body).toMatchObject({ decisionId: d.decisionId, by: "default" });
 });
 
 test("the offered times: tonight before 19:00, the next morning, Monday unless that is tomorrow", () => {

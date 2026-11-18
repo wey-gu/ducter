@@ -105,6 +105,7 @@ const (
 	KindDecisionResolved = "decision_resolved"
 	KindDecisionLater    = "decision_later"
 	KindDecisionBack     = "decision_back"
+	KindDecisionSeen     = "decision_seen"
 	KindReadReceipt      = "read_receipt"
 	KindTaskOpen         = "task_open"
 	KindTaskState        = "task_state"
@@ -342,11 +343,19 @@ type DecisionLater struct {
 }
 
 // DecisionBack (D382): back in Needs you, at its time (By "time") or by
-// 现在就定 / Decide now ("user"), with its countdown again.
+// 现在就定 / Decide now ("user"). DefaultAt comes only with Decide now: back
+// at its time, no default runs until it is seen (DecisionSeen).
 type DecisionBack struct {
 	DecisionID string `json:"decisionId"`
 	By         string `json:"by"`
 	DefaultAt  string `json:"defaultAt,omitempty"`
+}
+
+// DecisionSeen (D382): back at its time and first seen on some client: its
+// countdown runs from now, the length it was first given.
+type DecisionSeen struct {
+	DecisionID string `json:"decisionId"`
+	DefaultAt  string `json:"defaultAt"`
 }
 
 type DecisionResolved struct {
@@ -795,6 +804,8 @@ func (e LogEvent) Typed() (any, error) {
 		v = &DecisionLater{}
 	case KindDecisionBack:
 		v = &DecisionBack{}
+	case KindDecisionSeen:
+		v = &DecisionSeen{}
 	case KindReadReceipt:
 		v = &ReadReceipt{}
 	case KindTaskOpen:

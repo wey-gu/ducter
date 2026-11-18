@@ -646,6 +646,8 @@ export function createPusher(opts: {
         return;
       }
       case "decision_back": {
+        // Its countdown waits until it is seen, so the notice names no time.
+        const untimed = ({ defaultAt: _, ...rest }: Bodies["decision"]) => rest;
         // D382: back at its time: one notice, by the usual rules (unseen after the hold; quiet hours
         // hold it to their end, where it joins the morning's one). Brought back by the person: no push.
         const b = e.body as Bodies["decision_back"];
@@ -653,7 +655,7 @@ export function createPusher(opts: {
         const d = asked.get(b.decisionId) ?? opts.decisionOf?.(b.decisionId);
         if (!d || d.findId) return;
         const who = opts.partnerOf?.(e);
-        add({ key: `d:${b.decisionId}:${e.seq}`, seq: e.seq, kind: "decision", decision: { ...d, ...(b.defaultAt ? { defaultAt: b.defaultAt } : {}) }, ...(who ? { who } : {}) });
+        add({ key: `d:${b.decisionId}:${e.seq}`, seq: e.seq, kind: "decision", decision: untimed(d), ...(who ? { who } : {}) });
         return;
       }
       case "read_receipt":

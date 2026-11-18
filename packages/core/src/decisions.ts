@@ -115,6 +115,10 @@ export function createDecisions(opts: {
   const wakes = new Map<string, unknown>();
   const restarted = new Map<string, string>();
   const askedTs = new Map<string, number>();
+  // D382: back at its time and not yet seen: the seq of its return. Its countdown waits for the
+  // first read past that seq (the conversation seen on any client), then runs its first length.
+  const unseen = new Map<string, number>();
+  let readTo = 0;
 
   const setAttention = (taskId: string, attention: Attention, reason?: string) => {
     const c = tasks.get(taskId);
@@ -142,6 +146,7 @@ export function createDecisions(opts: {
     const d = r ? { ...d0, defaultAt: r } : d0;
     if (!d.reversible || !d.defaultAt) return;
     if (laterAt.has(d.decisionId)) return; // D382: put off: its countdown waits until it is back
+    if (unseen.has(d.decisionId)) return; // D382: back but not seen yet: no default on a card nobody saw
     // D340: a card whose Go deletes something never goes by itself, whoever made it.
     if (d.defaultOption === "go" && destructiveChoice(d.question, d.goLabel)) return;
     const ms = Date.parse(d.defaultAt) - clock.now();
@@ -223,6 +228,7 @@ export function createDecisions(opts: {
     if (t !== undefined) clock.clearTimeout(t), timers.delete(r.decisionId);
     clearWake(r.decisionId);
     laterAt.delete(r.decisionId);
+    unseen.delete(r.decisionId);
     const d = all.get(r.decisionId);
     if (!d) return;
     // A partner-level decision (the partner's own ask, no task): resolving it only wakes the
@@ -273,12 +279,29 @@ export function createDecisions(opts: {
     const len = asked !== undefined && Number.isFinite(asked) ? Math.max(60_000, Date.parse(d.defaultAt) - asked) : delay();
     return new Date(clock.now() + len).toISOString();
   };
+  // Brought back by the person (Decide now), it is in front of them: its countdown runs at once.
+  // Back at its time, it runs from when it is first seen (seen() below).
   const back = (id: string, by: "time" | "user") => {
-    const defaultAt = restartAt(id);
+    const defaultAt = by === "user" ? restartAt(id) : undefined;
     log.append({ stream: "channel", origin: by === "user" ? "user" : "system", kind: "decision_back", body: { decisionId: id, by, ...(defaultAt ? { defaultAt } : {}) } });
+  };
+  /** Its countdown, once it needs one, from the first read past its return. */
+  const counts = (id: string) => {
+    const d = all.get(id);
+    return !!d?.reversible && !!d.defaultAt;
+  };
+  const seen = () => {
+    for (const [id, seq] of [...unseen]) {
+      if (readTo < seq) continue;
+      unseen.delete(id);
+      if (resolved.has(id) || laterAt.has(id)) continue;
+      const defaultAt = restartAt(id);
+      if (defaultAt) log.append({ stream: "channel", origin: "system", kind: "decision_seen", body: { decisionId: id, defaultAt } });
+    }
   };
   const onLater = (b: Bodies["decision_later"]) => {
     if (resolved.has(b.decisionId)) return;
+    unseen.delete(b.decisionId);
     laterAt.set(b.decisionId, Date.parse(b.until));
     const t = timers.get(b.decisionId);
     if (t !== undefined) clock.clearTimeout(t), timers.delete(b.decisionId);
@@ -289,11 +312,12 @@ export function createDecisions(opts: {
     const open = tasks.pendingDecisions(taskId).filter((id) => !resolved.has(id) && !laterAt.has(id));
     if (!open.length) setAttention(taskId, "blocked");
   };
-  const onBack = (b: Bodies["decision_back"]) => {
+  const onBack = (b: Bodies["decision_back"], seq: number) => {
     clearWake(b.decisionId);
     laterAt.delete(b.decisionId);
     if (resolved.has(b.decisionId)) return;
     if (b.defaultAt) restarted.set(b.decisionId, b.defaultAt);
+    else if (counts(b.decisionId)) unseen.set(b.decisionId, seq);
     const d = all.get(b.decisionId);
     if (d) schedule(d);
     if (d?.taskId && !dropped(d.taskId)) setAttention(d.taskId, "needs_you");
@@ -302,7 +326,17 @@ export function createDecisions(opts: {
   // Rebuild from the Log (no side effects for history), then re-arm pending defaults.
   const askedAt = new Map<string, number>(); // decisionId -> seq of the decision event
   const lastAnswer = new Map<string, LogEvent<"decision_resolved">>(); // taskId -> its latest resolution
-  for (const e of log.read({ fromSeq: 0, limit: Number.MAX_SAFE_INTEGER, kinds: ["decision", "decision_resolved", "decision_later", "decision_back"] })) {
+  for (const e of log.read({ fromSeq: 0, limit: Number.MAX_SAFE_INTEGER, kinds: ["decision", "decision_resolved", "decision_later", "decision_back", "decision_seen", "read_receipt"] })) {
+    if (e.kind === "read_receipt") {
+      readTo = Math.max(readTo, (e.body as Bodies["read_receipt"]).upToSeq);
+      continue;
+    }
+    if (e.kind === "decision_seen") {
+      const b = e.body as Bodies["decision_seen"];
+      unseen.delete(b.decisionId);
+      restarted.set(b.decisionId, b.defaultAt);
+      continue;
+    }
     if (e.kind === "decision") {
       const d = e.body as Bodies["decision"];
       all.set(d.decisionId, d);
@@ -315,6 +349,7 @@ export function createDecisions(opts: {
       const b = e.body as Bodies["decision_back"];
       laterAt.delete(b.decisionId);
       if (b.defaultAt) restarted.set(b.decisionId, b.defaultAt);
+      else if (counts(b.decisionId)) unseen.set(b.decisionId, e.seq);
     } else {
       const r = e.body as Bodies["decision_resolved"];
       resolved.add(r.decisionId);
@@ -323,6 +358,7 @@ export function createDecisions(opts: {
     }
   }
   for (const id of [...laterAt.keys()]) if (resolved.has(id)) laterAt.delete(id);
+  for (const id of [...unseen.keys()]) if (resolved.has(id) || laterAt.has(id)) unseen.delete(id);
   for (const d of all.values()) if (!resolved.has(d.decisionId)) schedule(d);
 
   // Answers the process died before handing to their task: the latest resolution of a task
@@ -353,7 +389,16 @@ export function createDecisions(opts: {
       askedTs.set(d.decisionId, Date.parse(e.ts));
       schedule(d);
     } else if (e.kind === "decision_later") onLater(e.body as Bodies["decision_later"]);
-    else if (e.kind === "decision_back") onBack(e.body as Bodies["decision_back"]); else if (e.kind === "decision_resolved") onResolved(e.body as Bodies["decision_resolved"]);
+    else if (e.kind === "decision_back") onBack(e.body as Bodies["decision_back"], e.seq);
+    else if (e.kind === "decision_seen") {
+      const b = e.body as Bodies["decision_seen"];
+      restarted.set(b.decisionId, b.defaultAt);
+      const d = all.get(b.decisionId);
+      if (d && !resolved.has(b.decisionId)) schedule(d);
+    } else if (e.kind === "read_receipt") {
+      readTo = Math.max(readTo, (e.body as Bodies["read_receipt"]).upToSeq);
+      if (unseen.size) seen();
+    } else if (e.kind === "decision_resolved") onResolved(e.body as Bodies["decision_resolved"]);
     else if (e.kind === "task_event") {
       // The partner answering a task with task_send (the runner logs it first, from "partner").
       // Decision forwards are logged from "user"; the user's own task_send goes through ws.
@@ -365,6 +410,7 @@ export function createDecisions(opts: {
   // D382: put-off questions wait for their time again (one past it while down comes back now).
   queueMicrotask(() => {
     for (const id of [...laterAt.keys()]) armWake(id);
+    seen(); // read past its return while down (the countdown was never logged): it runs from now
   });
 
   const api: Decisions = {

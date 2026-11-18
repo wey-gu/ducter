@@ -418,7 +418,11 @@ export class Store {
         // D382: whether it is put off is the card's (a snapshot after the events agrees with them).
         if (pd.later) d.later = pd.later;
         else delete d.later;
-        if (pd.backAt) (d.backAt = pd.backAt), pd.defaultAt && (d.defaultAt = pd.defaultAt);
+        if (pd.backAt) {
+          d.backAt = pd.backAt;
+          if (pd.defaultAt) d.defaultAt = pd.defaultAt;
+          else delete d.defaultAt; // back, not seen yet: no countdown
+        }
       }
       t.state = { taskId: card.taskId, attention: card.attention, residency: card.residency, reason: card.reason };
       if (card.lastReport) t.lastReport = card.lastReport;
@@ -462,19 +466,9 @@ export class Store {
         if (t.index && ev.stream === `task:${taskId}`) indexAdd(t.index, ev);
       } else if (t.events[lowerBound(t.events, ev.seq)]?.seq !== ev.seq) this.insert(t, ev); // let go of before, back again
     }
-    if (ev.kind === "decision_later" || ev.kind === "decision_back") {
-      // D382: put off, or back (with its countdown again).
-      const id = (ev.body as { decisionId: string }).decisionId;
-      const d = this.decisions.get(id);
-      if (d) {
-        if (ev.kind === "decision_later") (d.later = (ev.body as Bodies["decision_later"]).until), delete d.backAt;
-        else {
-          const b = ev.body as Bodies["decision_back"];
-          delete d.later;
-          if (b.by === "time") d.backAt = ev.ts;
-          if (b.defaultAt) d.defaultAt = b.defaultAt;
-        }
-      }
+    if (ev.kind === "decision_later" || ev.kind === "decision_back" || ev.kind === "decision_seen") {
+      // D382: put off; back (no countdown until it is seen, or at once by Decide now); seen.
+      this.applyLater(ev);
       return;
     }
     if (ev.kind === "waiter") {
@@ -646,6 +640,22 @@ export class Store {
     let j = this.jobs.get(id);
     if (!j) this.jobs.set(id, (j = { id }));
     return j;
+  }
+
+  /** D382: what Ask me later's events do to a card (shared fixture: packages/protocol/fixtures/later-events.json). */
+  applyLater(ev: LogEvent) {
+    const id = (ev.body as { decisionId: string }).decisionId;
+    const d = this.decisions.get(id);
+    if (!d) return;
+    if (ev.kind === "decision_later") (d.later = (ev.body as Bodies["decision_later"]).until), delete d.backAt;
+    else if (ev.kind === "decision_seen") d.defaultAt = (ev.body as Bodies["decision_seen"]).defaultAt;
+    else if (ev.kind === "decision_back") {
+      const b = ev.body as Bodies["decision_back"];
+      delete d.later;
+      if (b.by === "time") d.backAt = ev.ts;
+      if (b.defaultAt) d.defaultAt = b.defaultAt;
+      else delete d.defaultAt; // its countdown waits until it is seen
+    }
   }
 
   private addDecision(ev: Ev<"decision">) {

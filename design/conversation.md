@@ -67,8 +67,9 @@ decide (`packages/protocol/src/destructive.ts`), it waits on Hold, with no time.
 later** on the default's own line opens the times as chips (今晚 20:00 · 明早 {end of quiet hours} ·
 下周一 · 选个时间…) and one line, **到时再问你。在那之前，什么都不做。** Put off, the card says
 **{time} 再问你** with **现在就定 / Decide now**, leaves 等你 and the living message, and its
-countdown stops; at its time it is back once (**你说晚点再问，现在来问你。**), its countdown again
-with its first length, pushed by the usual rules (in quiet hours with the morning's one notice).
+countdown stops; at its time it is back once (**你说晚点再问，现在来问你。**) and pushed by the usual rules (in
+quiet hours with the morning's one notice). No default runs on it until it is seen: its countdown
+starts, with its first length, at the first read past its return on any client.
 No partner turn. Not on a card whose moment is the point (`laterable`).
 
 **In a chat app (D276, `channels.md`).** Telegram and Slack are more windows on this one

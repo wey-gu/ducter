@@ -1048,9 +1048,7 @@ func (s *Store) applyOnHand(o *protocol.OnHand) {
 			d.Later = pd.Later
 			if pd.BackAt != "" {
 				d.BackAt = pd.BackAt
-				if pd.DefaultAt != "" {
-					d.DefaultAt = pd.DefaultAt
-				}
+				d.DefaultAt = pd.DefaultAt // back, not seen yet: no countdown
 			}
 		}
 		// A snapshot is newer than every task_state that arrived before it;
@@ -1219,22 +1217,13 @@ func (s *Store) ApplyEvent(ev protocol.LogEvent) {
 		s.resolve(b)
 		s.bySeq[ev.Seq] = nil
 	case *protocol.DecisionLater:
-		// D382: put off: out of Needs you until its time.
-		if d := s.Decisions[b.DecisionID]; d != nil {
-			d.Later, d.BackAt = b.Until, ""
-		}
+		s.ApplyLater(ev.TS, b)
 		s.bySeq[ev.Seq] = nil
 	case *protocol.DecisionBack:
-		// D382: back, with its countdown again; at its time it says so once.
-		if d := s.Decisions[b.DecisionID]; d != nil {
-			d.Later = ""
-			if b.By == "time" {
-				d.BackAt = ev.TS
-			}
-			if b.DefaultAt != "" {
-				d.DefaultAt = b.DefaultAt
-			}
-		}
+		s.ApplyLater(ev.TS, b)
+		s.bySeq[ev.Seq] = nil
+	case *protocol.DecisionSeen:
+		s.ApplyLater(ev.TS, b)
 		s.bySeq[ev.Seq] = nil
 	case *protocol.ReadReceipt:
 		s.ReadUpTo = max(s.ReadUpTo, b.UpToSeq)
@@ -1606,6 +1595,31 @@ func (s *Store) DecisionShownInLiving(id string) bool {
 		}
 	}
 	return false
+}
+
+// ApplyLater is what 晚点再问我 / Ask me later's events do to a card (D382):
+// put off; back (its countdown paused until seen, or at once by Decide
+// now); seen. The phone does the same on the same fixture
+// (packages/protocol/fixtures/later-events.json).
+func (s *Store) ApplyLater(ts string, body any) {
+	switch b := body.(type) {
+	case *protocol.DecisionLater:
+		if d := s.Decisions[b.DecisionID]; d != nil {
+			d.Later, d.BackAt = b.Until, ""
+		}
+	case *protocol.DecisionBack:
+		if d := s.Decisions[b.DecisionID]; d != nil {
+			d.Later = ""
+			if b.By == "time" {
+				d.BackAt = ts
+			}
+			d.DefaultAt = b.DefaultAt // "" back at its time: no default on a card nobody saw
+		}
+	case *protocol.DecisionSeen:
+		if d := s.Decisions[b.DecisionID]; d != nil {
+			d.DefaultAt = b.DefaultAt
+		}
+	}
 }
 
 // PendingDecision is the unresolved decision of a task, or nil.

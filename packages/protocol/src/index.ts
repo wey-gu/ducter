@@ -353,8 +353,12 @@ export interface Bodies {
   // open (answering it still works) but out of Needs you; its countdown stops.
   decision_later: { decisionId: string; until: string; by: "user" };
   // D382: it is back in Needs you: its time came ("time") or the person asked for it now ("user",
-  // 现在就定 / Decide now). defaultAt: its countdown again, the same length it was first given.
+  // 现在就定 / Decide now). defaultAt (only by "user", who is looking at it): its countdown again,
+  // the length it was first given. Back at its time, no default runs until it is seen.
   decision_back: { decisionId: string; by: "time" | "user"; defaultAt?: string };
+  // D382: back at its time and first seen (the first read past its return, on any client): its
+  // countdown runs from now, the length it was first given.
+  decision_seen: { decisionId: string; defaultAt: string };
   read_receipt: { upToSeq: number };
   task_open: {
     taskId: string;

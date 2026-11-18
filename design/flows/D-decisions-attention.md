@@ -72,7 +72,7 @@ W reports question (+ default, deadline, reversible) ──► M
              │                   asks nothing more; card says "你说先等等 / You said hold" [I]
              ├─ 晚点再问我 / Ask me later (D382) ──► a time chosen: out of Needs you into
              │                   Waiting, countdown stopped; at that time back in Needs you,
-             │                   said once, its countdown again with its first length
+             │                   said once; its countdown (first length) starts when first seen
              ├─ 回复… / Reply… ──► free text to M; M turns it into an answer, a new
              │                   question, or a steer; countdown pauses while the reply is open
              ├─ deadline passes, reversible ──► C applies default ("按默认 / By default"), Working;
@@ -101,7 +101,9 @@ Surfaces (same decision object, four renderings):
 | Needs you | Working | U | Go, or a Reply that M resolves into an answer |
 | Needs you | Needs you (held) | U | Hold. Default and deadline cleared |
 | Needs you | Waiting (put off) | U | 晚点再问我 / Ask me later with a time (D382). Countdown stopped |
-| Waiting (put off) | Needs you | C / U | Its time came (said once), or 现在就定 / Decide now. Countdown again, its first length |
+| Waiting (put off) | Needs you (unseen) | C | Its time came (said once). No countdown until it is seen |
+| Needs you (unseen) | Needs you | C | First read past its return on any client: countdown, its first length, from then |
+| Waiting (put off) | Needs you | U | 现在就定 / Decide now: countdown at once, its first length |
 | Needs you | Working | C | Deadline passes, default is reversible and policy-allowed [doc] |
 | Working (after default) | Needs you | U → M | Undo; M runs the inverse, re-asks without a deadline [I] |
 | Needs you | Dropped | U / M | "算了 / never mind" [doc] |

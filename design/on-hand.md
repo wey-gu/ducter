@@ -52,7 +52,7 @@ same lens, whose head names it and goes back. The column never stands beside the
    waits, then the quiet ones; D382: a question put off with **晚点再问我 / Ask me later** stands
    here, out of 等你 and its count, its line **{time} 再问你：{question} / Asking again {time}:
    {question}** with **现在就定 / Decide now** (on hover on a wide screen; the opened card always),
-   until its time puts it back in 等你. 今天做完: new results as cards, then the seen ones. One reading
+   until its time puts it back in 等你 (no default runs on it there until it is seen). 今天做完: new results as cards, then the seen ones. One reading
    column (760). D315: a section's name is a heading in the display face (18/700, ink) with its
    count beside it in muted figures, as the first drawings had it (the README shots); beside an
    opened task (the rail) it stays small and quiet (D270). State is said by the small glyph or

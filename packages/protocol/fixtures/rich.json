@@ -40,7 +40,8 @@
      "plain": "当 Ducter 的家\n- 起售价：Mac mini M4 ¥4,499，MacBook Air M4 ¥7,999\n- 内存：Mac mini M4 16 GB，MacBook Air M4 16 GB\n- 一直开着：Mac mini M4 很适合，MacBook Air M4 要一直插电\n- 带出门：Mac mini M4 不行，MacBook Air M4 可以"
     }
    ],
-   "dropped": []
+   "dropped": [],
+   "pins": []
   },
   {
    "name": "week-en",
@@ -87,7 +88,8 @@
      "plain": "Tasks finished\nFriday was the busiest with 9; the weekend was quiet.\nMon 5, Tue 8, Wed 3, Thu 6, Fri 9, Sat 2, Sun 1"
     }
    ],
-   "dropped": []
+   "dropped": [],
+   "pins": []
   },
   {
    "name": "ci-zh",
@@ -127,7 +129,8 @@
      "plain": "HawDB CI 每天平均时长\n周一 18.5 分钟，周四最慢 26.4 分钟，周五回到 22.1 分钟。\n周一 18.5 分钟，周二 21 分钟，周三 19.2 分钟，周四 26.4 分钟，周五 22.1 分钟"
     }
    ],
-   "dropped": []
+   "dropped": [],
+   "pins": []
   },
   {
    "name": "release-en",
@@ -149,7 +152,8 @@
      "plain": "Before 0.0.62\n- Rerun the full partner eval\n- Check the iPhone build in TestFlight\n- Tag v0.0.62\n- Update the release notes page"
     }
    ],
-   "dropped": []
+   "dropped": [],
+   "pins": []
   },
   {
    "name": "compare-en",
@@ -191,7 +195,8 @@
      "plain": "An always-on home\n- From: Mac mini M4 $599, MacBook Air M4 $999\n- Memory: Mac mini M4 16 GB, MacBook Air M4 16 GB\n- Always on: Mac mini M4 Made for it, MacBook Air M4 Needs to stay plugged in\n- Comes with you: Mac mini M4 No, MacBook Air M4 Yes"
     }
    ],
-   "dropped": []
+   "dropped": [],
+   "pins": []
   },
   {
    "name": "release-zh",
@@ -213,7 +218,8 @@
      "plain": "发 0.0.62 之前\n- 重跑整套伙伴测评\n- 在 TestFlight 里看一眼 iPhone 版\n- 打 v0.0.62 的 tag\n- 更新发布说明"
     }
    ],
-   "dropped": []
+   "dropped": [],
+   "pins": []
   },
   {
    "name": "which-repo-zh",
@@ -232,7 +238,8 @@
      "plain": "- ducter\n- hawdb\n- foo"
     }
    ],
-   "dropped": []
+   "dropped": [],
+   "pins": []
   },
   {
    "name": "which-meeting-en",
@@ -250,7 +257,8 @@
      "plain": "- The dentist\n- HawDB weekly"
     }
    ],
-   "dropped": []
+   "dropped": [],
+   "pins": []
   },
   {
    "name": "bad-json",
@@ -262,7 +270,8 @@
     {
      "error": "not valid JSON"
     }
-   ]
+   ],
+   "pins": []
   },
   {
    "name": "only-bad",
@@ -274,7 +283,8 @@
     {
      "error": "chart.kind is \"bar\" or \"line\""
     }
-   ]
+   ],
+   "pins": []
   },
   {
    "name": "too-many-rows",
@@ -286,7 +296,8 @@
     {
      "error": "table rows: 1–12, got 13"
     }
-   ]
+   ],
+   "pins": []
   },
   {
    "name": "unclosed",
@@ -303,7 +314,8 @@
      "plain": "- 好\n- 先不"
     }
    ],
-   "dropped": []
+   "dropped": [],
+   "pins": []
   },
   {
    "name": "negatives",
@@ -342,7 +354,8 @@
      "plain": "Tokyo lows\nFrom -3 °C on Monday up to 7 °C by Friday.\nMon -3°C, Tue -1.5°C, Wed 2°C, Thu 4.25°C, Fri 7°C"
     }
    ],
-   "dropped": []
+   "dropped": [],
+   "pins": []
   },
   {
    "name": "numbers-table",
@@ -381,7 +394,8 @@
      "plain": "- Pro: Price $20, Window 200K, Note for most days\n- Max: Price $100, Window 1M\n- Team: Price 30, Window 200K, Note per seat"
     }
    ],
-   "dropped": []
+   "dropped": [],
+   "pins": []
   },
   {
    "name": "sentence-cells-en",
@@ -415,7 +429,8 @@
      "plain": "SQLite or Postgres\n- SQLite: Setup Zero setup. It's a file inside your app. Concurrency Single writer at a time. Backups Copy the file\n- Postgres: Setup A server to run! Concurrency Many writers, \"row locks.\" Backups pg_dump, or a managed service."
     }
    ],
-   "dropped": []
+   "dropped": [],
+   "pins": []
   },
   {
    "name": "sentence-cells-zh",
@@ -445,7 +460,8 @@
      "plain": "- SQLite：装起来 不用装，就是一个文件。并发 同一时间只能一个人写！\n- Postgres：装起来 要跑一个服务器，并发 可以很多人一起写。"
     }
    ],
-   "dropped": []
+   "dropped": [],
+   "pins": []
   },
   {
    "name": "sentence-cells-ja",
@@ -475,7 +491,8 @@
      "plain": "- SQLite：準備 ファイルひとつ。同時書き込み 一度にひとつだけ。\n- Postgres：準備 サーバーが要る、同時書き込み たくさん書ける。"
     }
    ],
-   "dropped": []
+   "dropped": [],
+   "pins": []
   },
   {
    "name": "big",
@@ -505,7 +522,8 @@
      "plain": "Spend rose each month.\nSep 1,240 USD, Oct 2,310.5 USD, Nov 3,875 USD"
     }
    ],
-   "dropped": []
+   "dropped": [],
+   "pins": []
   },
   {
    "name": "lend-zh",
@@ -518,7 +536,8 @@
      "plain": "加一台做事的电脑：你的设备 › 加一台设备。"
     }
    ],
-   "dropped": []
+   "dropped": [],
+   "pins": []
   },
   {
    "name": "lend-en",
@@ -531,7 +550,8 @@
      "plain": "To add a computer for tasks: Your devices › Add a device."
     }
    ],
-   "dropped": []
+   "dropped": [],
+   "pins": []
   }
  ],
  "split": [

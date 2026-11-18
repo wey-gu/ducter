@@ -101,7 +101,7 @@ heard of a subagent.
 | **Phone use** | Tasks that operate an Android or iPhone app |
 | **Voice** | Talk to your partner hands-free, as a call (the first step, hold to talk and read aloud, is built: D305) |
 | **More AI agents** | Cursor, Gemini, Kimi and others as their command-line agents mature |
-| **Your own small apps** | Pages and tools your partner builds for you to keep (the first small step, tables, charts, lists and choices in a reply, is built: D303) |
+| **Your own small apps** | Pages and tools your partner builds for you to keep (the first steps are built: tables, charts, lists and choices in a reply, D303; a table, chart or list pinned at the top of the conversation and kept current by your partner, D381) |
 | **Leaner runtime** | A Go runner with no JavaScript runtime, and an embedded database option |
 
 ## Not planned for now

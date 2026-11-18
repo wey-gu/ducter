@@ -58,6 +58,7 @@ import { FillButton, forecast, FullTop, NextLine } from "./board.tsx";
 import { L as OnHandState, OnHandList, storyOf, Switcher, taskNext } from "./onhand.tsx";
 import { PastSheet } from "./past.tsx";
 import { DidSheet } from "./did.tsx";
+import { PinsSheet, PinStrip } from "./pins.tsx";
 import { PileSheet } from "./pile.tsx";
 import { RichBlock } from "./rich.tsx";
 import { splitRich } from "@ducter/protocol/src/rich.ts";
@@ -1717,6 +1718,8 @@ export function Conversation() {
     <>
       {/* Offline is said once, in the header's line under the sleeping face (D73, D211). */}
       <Top />
+      {/* D381: what is pinned, under the bar. */}
+      <PinStrip />
       <main class="scroll" ref={scroller} role="log" aria-label={t("conv.log", A.S.personaName || "Ducter")} onScroll={(e) => follow.onScroll(e.currentTarget as HTMLDivElement)}>
         <div class="spacer" />
         <DropHint on={dropping} />
@@ -3093,6 +3096,7 @@ export function Sheets() {
   if (A.sheet.kind === "switch") return <Switcher />;
   if (A.sheet.kind === "past") return <PastSheet />;
   if (A.sheet.kind === "did") return <DidSheet />;
+  if (A.sheet.kind === "pins") return <PinsSheet />;
   if (A.sheet.kind === "recall") return <RecallSheet seq={A.sheet.seq} />;
   if (A.sheet.kind === "learned") return <LearnedSheet />;
   if (A.sheet.kind === "pile") return <PileSheet />;

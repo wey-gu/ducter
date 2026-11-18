@@ -526,7 +526,11 @@ type Store struct {
 	// RuleDefaults: the built-in default per kind of work (D372).
 	RuleDefaults []protocol.KindDefault
 	RulesAt      time.Time
-	Candidates   map[string][]protocol.Candidate
+	// Pins are 置顶 / Pinned, newest first, as the home last sent (D381);
+	// PinRefused is why the last pin didn't happen, until shown.
+	Pins       []protocol.PinView
+	PinRefused string
+	Candidates map[string][]protocol.Candidate
 	// AccountUsage is each agent's account limits as the home last
 	// answered (D288), by harness.
 	AccountUsage  map[string]AccountAnswer
@@ -795,6 +799,8 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 		}
 	case "rules":
 		s.Rules, s.RuleDefaults, s.RulesAt = f.Rules, f.Defaults, time.Now()
+	case "pins":
+		s.Pins, s.PinRefused = f.Pins, f.Refused
 	case "candidates":
 		if s.Candidates == nil {
 			s.Candidates = map[string][]protocol.Candidate{}

@@ -1,6 +1,6 @@
 ---
 title: Tables, charts, lists and choices
-description: When a reply is easier to read as a table, a chart, a list to tick or a few answers to tap, your partner shows it that way, in the app and in plain lines everywhere else.
+description: When a reply is easier to read as a table, a chart, a list to tick or a few answers to tap, your partner shows it that way, in the app and in plain lines everywhere else; pin one to keep it at the top.
 order: 5.8
 ---
 
@@ -18,7 +18,7 @@ asked for something that needs it, never just to decorate an answer.
   sentence above it that says what it shows. The numbers come from a task's report, your accounts
   or what you told it, never a guess.
 - **A list to tick off** when you ask for one ("make me a list I can tick off"). Tap an item to
-  tick it. Ticks stay on the device you ticked them on and aren't sent anywhere. If your partner
+  tick it. Ticks stay on the device you ticked them on (unless you pin the list, below). If your partner
   asked to hear back, the list has **Send progress**: it sends what you've ticked and what's left
   as your reply.
 - **Answers to tap** when your partner asks you something with a few short answers ("Which repo
@@ -28,6 +28,22 @@ asked for something that needs it, never just to decorate an answer.
 
 For a choice about doing something (pushing, sending, paying), your partner still asks with its
 usual buttons, never with answers to tap.
+
+## Pin one to the top
+
+A table, chart or list you'll want again can stay at the top of the conversation:
+
+- Tap **Pin** in its corner, or just say "pin it". It moves into a strip under the bar, with how
+  much of a list you've ticked. Tap the strip to see everything pinned.
+- A pinned list's ticks are the same on all your devices: tick it on your phone and the Mac shows
+  it ticked too.
+- To change one, say so ("add a power bank to the list", "update the prices"). Your partner
+  changes the pinned one in place; it doesn't post a second copy. Ask "what's left?" and it answers
+  from the list.
+- Up to 6 can be pinned. **Unpin** takes one off the top; the message it came from stays where it
+  was.
+
+Pinning is for your conversation with your main partner for now.
 
 ## Everywhere else
 

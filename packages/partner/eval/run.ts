@@ -411,6 +411,14 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
     if (!added.ok) throw new Error(`fake Tuwa: ${JSON.stringify(added)}`);
   }
   for (const item of sc.saved ?? []) core.autofill.store.put(item);
+  // D381: what the person pinned: the partner's earlier list, pinned by a tap, ticked on a phone.
+  for (const p of sc.pinned ?? []) {
+    const plain = [p.title, ...p.items.map((x) => `- ${x}`)].join("\n");
+    const e = core.log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: plain, ui: [{ type: "checklist", title: p.title, items: p.items, plain }] } });
+    const r = core.pins.pin(e.seq, 0);
+    if (!r.ok) throw new Error(`pinned seed: ${r.error}`);
+    for (const x of p.ticks ?? []) core.pins.tick(r.pin.id, x, true);
+  }
   // D300: a day of things Ducter did for the person (a mail, a payment, a call, a merge…), logged now.
   if (sc.did) seedDidDay(core, { zh: sc.lang.startsWith("zh") });
   const usage: Usage = { inputTokens: 0, outputTokens: 0, cacheRead: 0, cacheWrite: 0 };

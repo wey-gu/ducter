@@ -216,6 +216,8 @@ export interface Scenario {
   spaces?: true;
   /** D191: what is saved in Passwords & cards (test cards only, e.g. 4242…), in a key file in the scratch data folder. */
   saved?: import("../../protocol/src/saved.ts").SavedInput[];
+  /** D381: lists the person pinned (said by the partner earlier, then pinned by a tap), with their ticks. */
+  pinned?: { title: string; items: string[]; ticks?: string[] }[];
   /** D193: a calling connection (the fake Tuwa, packages/core/test/fake-tuwa.ts), never the real one. */
   phone?: true;
   /** D217: Ducter's phone is added on this computer (a stand-in install; no emulator runs). */
@@ -2124,6 +2126,33 @@ export const scenarios: Scenario[] = [
     steps: [{ user: "I'll do these myself before I ship 0.0.62: rerun the full partner eval, check the iPhone build in TestFlight, tag it, update the release notes. Make me a list I can tick off as I go, and I'll tell you when it's done" }],
     expect: { opens: 0, msgs: [1, 1], maxChars: 160, ui: "checklist", uiRequire: [/eval/i, /TestFlight/i, /tag/i, /release notes/i] },
     rubric: "The user asks for a list to tick off of the four things they named. The partner gives it as a checklist block with those four items (its own short wording is fine, nothing added that they didn't say) and one short English line. It opens no task and does nothing else.",
+  },
+  // ---------- D381: 置顶 / Pin: a block pinned when asked, changed in place, read back from the [pinned] line ----------
+  {
+    id: "pin-ask-zh",
+    category: "rich",
+    lang: "zh",
+    steps: [{ user: "12 月 20 号去大阪，帮我列个要带的东西，置顶，我收拾的时候勾" }],
+    expect: { opens: 0, msgs: [1, 1], maxChars: 120, ui: "checklist", uiRequire: [/"pin":"p[a-z0-9]+"/, /护照/] },
+    rubric: "The user asks for a packing list for an Osaka trip, pinned, to tick while packing. The partner answers in one short Chinese line and gives a checklist block of sensible things to pack for a few days in Osaka in December (a passport among them), written with \"pin\":true so it is pinned. It opens no task and asks nothing.",
+  },
+  {
+    id: "pin-change-zh",
+    category: "rich",
+    lang: "zh",
+    pinned: [{ title: "大阪行李清单", items: ["护照", "日元现金", "充电器和转换插头", "ICOCA 卡", "折叠伞", "酒店确认单"], ticks: ["护照"] }],
+    steps: [{ user: "清单里加上充电宝，伞不用带了" }],
+    expect: { opens: 0, msgs: [1, 1], maxChars: 120, ui: "checklist", uiRequire: [/"pin":"p[a-z0-9]+"/, /充电宝/, /护照/, /酒店确认单/] },
+    rubric: "The user pinned a packing list earlier (a [pinned] line shows it, with its id, passport ticked). They ask to add a power bank and drop the umbrella. The partner answers in one short Chinese line and writes the whole new checklist with \"pin\" set to that pinned list's id: the same items in the same words, the power bank added, the umbrella gone, nothing else changed (its title kept). It opens no task, posts no second unpinned list, and doesn't list the items again in prose.",
+  },
+  {
+    id: "pin-left-en",
+    category: "rich",
+    lang: "en",
+    pinned: [{ title: "Osaka packing list", items: ["Passport", "Yen in cash", "Charger and plug adapter", "ICOCA card", "Folding umbrella", "Hotel confirmation"], ticks: ["Passport", "ICOCA card", "Folding umbrella"] }],
+    steps: [{ user: "what's still left on my packing list?" }],
+    expect: { opens: 0, msgs: [1, 1], maxChars: 220, noUi: true, require: [/yen|cash/i, /charger/i, /hotel/i] },
+    rubric: "The user pinned a packing list; passport, ICOCA card and umbrella are ticked (the [pinned] line says so). They ask what's left. The partner answers in plain English from that line: yen in cash, the charger and plug adapter, the hotel confirmation; nothing ticked is named as left. No block (the list is already pinned at the top), no task.",
   },
   // D347: the person wants another computer to do tasks: the Add a computer for tasks card, never a how-to.
   {

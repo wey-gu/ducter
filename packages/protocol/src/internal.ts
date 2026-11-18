@@ -164,6 +164,16 @@ export interface CoreApi {
   workingMemory?: WorkingMemoryPort;
   /** D380: a quick web look for one live fact (core/src/web-look.ts); absent in tests and stubs (then a browsing task does it). */
   webLook?: WebLookPort;
+  /**
+   * D381: 置顶 / Pinned, the default conversation's (core/src/pins.ts). The partner sees them in a
+   * line each turn and claims a block's "pin" before writing its message; absent for a second
+   * partner (preview) and in stubs.
+   */
+  pins?: {
+    list(): import("./pins.ts").PinView[];
+    claim(asks: readonly import("./rich.ts").RichPinAsk[]): Map<number, string>;
+    put(seq: number, ui: readonly import("./rich.ts").RichUi[], asks: readonly import("./rich.ts").RichPinAsk[]): void;
+  };
 }
 
 /** D380: what a quick web look came back with: typed and clipped by Ducter, never page text. */

@@ -15583,3 +15583,89 @@ textarea.wmem-paste { display: block; box-sizing: border-box; height: auto; widt
 @media (prefers-reduced-motion: reduce) {
   .wmem-icon .cring { animation: none; border-color: var(--accent); opacity: 0.5; }
 }
+/* ---------- D381: 置顶 / Pinned (pins.tsx, rich.tsx): the card's corner, the strip, the sheet ---------- */
+.rich-card.has-pin { position: relative; }
+.rich-card.has-pin > figcaption, .rich-card.has-pin > .rich-title { padding-right: 76px; }
+.rich-pin {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 9px 0 7px;
+  border: 0;
+  border-radius: var(--pill);
+  background: none;
+  color: var(--ink-muted);
+  font: inherit;
+  font-size: var(--sm);
+  font-weight: 700;
+  cursor: pointer;
+  transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease), transform var(--t-press) var(--ease);
+}
+.rich-pin:hover, .rich-pin:focus-visible { background: var(--sunken); color: var(--ink-soft); }
+.rich-pin:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.rich-pin:active { transform: translateY(1px); }
+.rich-pin.on { background: var(--highlight); color: var(--highlight-ink); box-shadow: 0 2px 0 var(--line-2); }
+.rich-pin .pin-glyph { flex: none; }
+.pin-strip-row { flex: none; display: flex; justify-content: center; padding: 6px 16px 2px; }
+.pin-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: min(100%, 720px);
+  min-height: 44px;
+  box-sizing: border-box;
+  padding: 6px 14px 6px 8px;
+  border: 0;
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--base);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+  transition: transform var(--t-press) var(--ease);
+}
+.pin-strip:active { transform: translateY(2px); box-shadow: 0 2px 0 var(--line); }
+.pin-strip:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.pin-strip.settle { animation: pin-settle 420ms var(--ease) both; }
+.pin-dot {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  background: var(--highlight);
+  color: var(--highlight-ink);
+  box-shadow: 0 2px 0 var(--line-2);
+}
+.pin-name { flex: 1; min-width: 0; font-family: var(--head); font-weight: 800; font-size: var(--md); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pin-prog { flex: none; font-size: var(--sm); font-weight: 700; color: var(--ink-muted); font-variant-numeric: tabular-nums; }
+.pin-prog.all { color: var(--done-ink); }
+.pin-more { flex: none; padding: 2px 8px; border-radius: var(--pill); background: var(--sunken); color: var(--ink-soft); font-size: var(--sm); font-weight: 700; }
+@keyframes pin-settle {
+  0% { transform: translateY(-6px); }
+  55% { transform: translateY(2px); }
+  100% { transform: none; }
+}
+.pins-sheet { width: min(640px, calc(100vw - 32px)); }
+.pins-sheet .past-head h2 { display: flex; align-items: center; gap: 10px; }
+.pins-list { display: flex; flex-direction: column; gap: var(--s4); padding: 8px 24px 24px; overflow-y: auto; }
+.pin-item { display: flex; flex-direction: column; gap: 6px; }
+.pin-item .rich-card { width: 100%; animation: none; }
+.pin-foot { display: flex; align-items: center; gap: var(--s2); padding: 0 4px; }
+.pin-when { flex: 1; min-width: 0; font-size: var(--sm); color: var(--ink-muted); }
+.pin-hint { margin: 4px 4px 0; font-size: var(--sm); color: var(--ink-muted); line-height: 1.45; }
+@media (max-width: 480px) {
+  .pins-sheet { width: 100vw; }
+  .pins-list { padding: 8px 16px 24px; }
+  .pin-strip-row { padding: 4px 12px 2px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pin-strip.settle { animation: none; }
+}

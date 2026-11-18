@@ -2363,6 +2363,10 @@ type ServerFrame struct {
 	OwnAgents []string `json:"ownAgents,omitempty"`
 	// rules: Your rules. candidates: who could do TaskID, best first.
 	Rules []RuleView `json:"rules,omitempty"`
+	// pins (D381): what is pinned, newest first; Refused: why a pin didn't
+	// happen (full, gone, kind), to the asking socket only.
+	Pins    []PinView `json:"pins,omitempty"`
+	Refused string    `json:"refused,omitempty"`
 	// Defaults: the built-in default per kind of work (rules frame, D372).
 	Defaults   []KindDefault `json:"defaults,omitempty"`
 	Candidates []Candidate   `json:"candidates,omitempty"`
@@ -2721,7 +2725,7 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 		"project_new_result", "git_login_state",
 		"first_screen", "folder_changes", "close_result", "live", "live_frame", "live_turn", "live_doing", "phone_terms", "phone_install_result", "phone_erase_result", "phone_view", "phone_frame", "phone_doing", "browser_sites", "browser_check", "connection_reads", "proactive_day", "media_keys", "saved", "phone_did",
 		"connection_signin", "phone_voice_result", "own_phone_result", "wb", "file_open", "channels", "channel_result",
-		"handset_dial_result", "ways", "pong", "key_add_result", "partners", "task_index":
+		"handset_dial_result", "ways", "pong", "key_add_result", "partners", "task_index", "pins":
 	case "past_result", "past_marked", "outside_adopted", "outside_hidden":
 		return decodePast(data, f)
 	case "ongoing_result":

@@ -29,6 +29,10 @@ type richAt struct {
 	live bool
 	// picked is the person's reply right after it.
 	picked string
+	// block is the block itself; sheet the pin it is drawn as in the
+	// pinned sheet (no corner there: Unpin is under it). D381.
+	block *protocol.RichUI
+	sheet *protocol.PinView
 }
 
 // richWords draws a message with blocks: its words in bubbles, each block
@@ -106,6 +110,7 @@ func (a *App) richTitle(c *ui.Context, s string) {
 // richBlock draws one block.
 func (a *App) richBlock(c *ui.Context, b *protocol.RichUI, at richAt) {
 	m := protocol.ModelOf(b)
+	at.block = b
 	switch m.Type {
 	case "table":
 		a.richTable(c, m, at)
@@ -127,7 +132,7 @@ func (a *App) richTable(c *ui.Context, m protocol.RichModel, at richAt) {
 		label = a.L.T("rich.table")
 	}
 	a.richCard(c, at.key, label).Children(func() {
-		a.richTitle(c, m.Title)
+		a.richHead(c, m.Title, at)
 		grow := func(j int) float32 {
 			if j == 0 {
 				return 1.1
@@ -205,7 +210,7 @@ func (a *App) richChart(c *ui.Context, m protocol.RichModel, at richAt) {
 	zero := float32((0 - m.Lo) / span)
 	a.richCard(c, at.key, label).Children(func() {
 		ui.Column(c).Gap(2).Children(func() {
-			a.richTitle(c, m.Title)
+			a.richHead(c, m.Title, at)
 			ui.Text(c, m.Summary).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(1.45)
 		})
 		chart := ui.Column(c).Gap(6).Padding(richLabelH, 0, 0, 0).Role(ui.RoleImage).Label(richChartWords(m, a.L.T("rich.join")))
@@ -308,12 +313,17 @@ func (a *App) richChecklist(c *ui.Context, m protocol.RichModel, at richAt) {
 	t := a.T
 	key := fmt.Sprintf("%d.%d", at.seq, at.index)
 	on := a.Local.Ticks(key)
+	// D381: a pinned list's ticks are the home's, the same on every device.
+	pin := a.pinOf(at)
+	if pin != nil {
+		on = pinTicks(pin, m.Items)
+	}
 	label := m.Title
 	if label == "" {
 		label = strings.Join(m.Items, a.L.T("rich.join"))
 	}
 	a.richCard(c, at.key, label).Children(func() {
-		a.richTitle(c, m.Title)
+		a.richHead(c, m.Title, at)
 		ui.Column(c).Role(ui.RoleList).Children(func() {
 			for i, x := range m.Items {
 				ticked := slices.Contains(on, i)
@@ -322,7 +332,10 @@ func (a *App) richChecklist(c *ui.Context, m protocol.RichModel, at richAt) {
 				}
 				row := ui.Row(c.Key(fmt.Sprint("ck", i))).Gap(t.S3).Padding(t.S2+1, 0).AlignItems(ui.Start).Cursor(ui.CursorPointer).
 					Role(ui.RoleCheckBox).Checked(ticked).Label(x).Focusable()
-				if row.Clicked() {
+				if clicked := row.Clicked(); clicked && pin != nil {
+					a.tickPin(pin, x, !ticked)
+					c.Invalidate()
+				} else if clicked {
 					next := slices.DeleteFunc(slices.Clone(on), func(v int) bool { return v == i })
 					if !ticked {
 						next = append(next, i)

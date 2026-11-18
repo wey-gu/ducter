@@ -4,9 +4,12 @@
 // summary in words and its values in a table for a screen reader; a checklist's ticks stay on
 // this device; a choice's tap sends its words as the person's reply.
 import { useState } from "preact/hooks";
-import { richModel, type RichModel, type RichUi } from "@ducter/protocol/src/rich.ts";
+import type { ComponentChildren } from "preact";
+import { PINNABLE, richModel, type RichModel, type RichUi } from "@ducter/protocol/src/rich.ts";
+import { pinAt, pinTitle, pinWas, type PinView } from "@ducter/protocol/src/pins.ts";
 import { A } from "./app.ts";
 import { LendCard } from "./lend.tsx";
+import { openPins, PIN_GLYPH, tickPin } from "./pins.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
@@ -18,17 +21,22 @@ export interface RichAt {
   live: boolean;
   /** The person's reply right after it, when it is one of its choices. */
   picked?: string;
+  /** D381: drawn in the pinned sheet: this pin, no corner (Unpin is under it). */
+  sheet?: PinView;
 }
 
 export function RichBlock({ b, at }: { b: RichUi; at: RichAt }) {
   const m = richModel(b);
+  // D381: the pin this block is now (only its newest message), and the corner that pins it.
+  const pin = at.sheet ?? (at.seq > 0 ? pinAt(A.pins, at.seq, at.index) : undefined);
+  const corner = at.sheet || !PINNABLE.includes(b.type) || !A.showsDefault() || (!pin && pinWas(A.pins, at.seq, at.index)) ? undefined : <PinCorner b={b} at={at} pin={pin} />;
   switch (m.type) {
     case "table":
-      return <RichTable m={m} />;
+      return <RichTable m={m} corner={corner} />;
     case "chart":
-      return <RichChart m={m} />;
+      return <RichChart m={m} corner={corner} />;
     case "checklist":
-      return <RichChecklist m={m} at={at} />;
+      return <RichChecklist m={m} at={at} pin={pin} corner={corner} />;
     case "choices":
       return <RichChoices m={m} at={at} />;
     case "lend":
@@ -38,9 +46,31 @@ export function RichBlock({ b, at }: { b: RichUi; at: RichAt }) {
 
 type M<K extends RichModel["type"]> = Extract<RichModel, { type: K }>;
 
-function RichTable({ m }: { m: M<"table"> }) {
+/**
+ * D381: the card's corner: 置顶 / Pin, or 已置顶 / Pinned (a tap opens the pinned sheet) when this
+ * block is a pin now. Quiet until wanted: muted ink, the accent only once it is pinned.
+ */
+function PinCorner({ b, at, pin }: { b: RichUi; at: RichAt; pin: PinView | undefined }) {
+  const name = pinTitle(b);
+  if (pin)
+    return (
+      <button type="button" class="rich-pin on" aria-label={t("pin.open", pin.title)} onClick={() => openPins(pin.id)}>
+        {PIN_GLYPH}
+        <span>{t("pin.pinned")}</span>
+      </button>
+    );
   return (
-    <figure class="rich-card rich-table">
+    <button type="button" class="rich-pin" aria-label={name ? t("pin.pin.about", name) : t("pin.pin")} onClick={() => A.send({ t: "pin", seq: at.seq, index: at.index })}>
+      {PIN_GLYPH}
+      <span>{t("pin.pin")}</span>
+    </button>
+  );
+}
+
+function RichTable({ m, corner }: { m: M<"table">; corner?: ComponentChildren }) {
+  return (
+    <figure class={`rich-card rich-table${corner ? " has-pin" : ""}`}>
+      {corner}
       {m.title && <figcaption class="rich-title">{m.title}</figcaption>}
       {/* A wide table scrolls inside its card on a phone; the row labels stay put. */}
       <div class="rich-scroll" tabIndex={0} role="region" aria-label={m.title || t("rich.table")}>
@@ -73,13 +103,14 @@ function RichTable({ m }: { m: M<"table"> }) {
   );
 }
 
-function RichChart({ m }: { m: M<"chart"> }) {
+function RichChart({ m, corner }: { m: M<"chart">; corner?: ComponentChildren }) {
   const n = m.points.length;
   const zero = (0 - m.lo) / (m.hi - m.lo);
   const x = (i: number) => ((i + 0.5) / n) * 100;
   const y = (f: number) => (1 - f) * 100;
   return (
-    <figure class={`rich-card rich-chart rc-${m.kind}-chart`}>
+    <figure class={`rich-card rich-chart rc-${m.kind}-chart${corner ? " has-pin" : ""}`}>
+      {corner}
       <figcaption>
         {m.title && <span class="rich-title">{m.title}</span>}
         <span class="rich-sum">{m.summary}</span>
@@ -170,18 +201,22 @@ const TICK_GLYPH = (
   </svg>
 );
 
-function RichChecklist({ m, at }: { m: M<"checklist">; at: RichAt }) {
+function RichChecklist({ m, at, pin, corner }: { m: M<"checklist">; at: RichAt; pin?: PinView; corner?: ComponentChildren }) {
   const key = `${at.seq}.${at.index}`;
-  const [on, setOn] = useState(() => new Set(readTicks(key)));
+  const [mine, setMine] = useState(() => new Set(readTicks(key)));
+  // D381: a pinned list's ticks are the home's, the same on every device; the others stay here.
+  const on = pin ? new Set(m.items.map((x, i) => ((pin.ticks ?? []).includes(x) ? i : -1)).filter((i) => i >= 0)) : mine;
   const flip = (i: number) => {
-    const next = new Set(on);
+    if (pin) return tickPin(pin, m.items[i]!, !on.has(i));
+    const next = new Set(mine);
     if (next.has(i)) next.delete(i);
     else next.add(i);
-    setOn(next);
+    setMine(next);
     keepTicks(key, [...next].sort((a, b) => a - b));
   };
   return (
-    <figure class="rich-card rich-check">
+    <figure class={`rich-card rich-check${corner ? " has-pin" : ""}`}>
+      {corner}
       {m.title && <figcaption class="rich-title">{m.title}</figcaption>}
       <ul>
         {m.items.map((x, i) => (
@@ -194,8 +229,8 @@ function RichChecklist({ m, at }: { m: M<"checklist">; at: RichAt }) {
           </li>
         ))}
       </ul>
-      {/* Ticks stay on this device; only when the partner asked to hear back is there a way to tell it,
-          at any time: a list is ticked over days while the conversation goes on. */}
+      {/* Ticks stay on this device (a pinned list's on the home); only when the partner asked to hear
+          back is there a way to tell it, at any time: a list is ticked over days. */}
       {m.tell && (
         <div class="rich-tell">
           <button type="button" class="btn secondary sm" onClick={() => A.sendWords(toldWords(m.items, on))}>

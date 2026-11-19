@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.0.94 - 2026-11-19
+
+<!-- whats-new
+zh: 你说的偏好当场生效，不用再点一次
+en: What you say you prefer takes effect at once
+zh: 读不了的账号会直接告诉你
+en: An account that can't be read now says so
+-->
+
+**Your partner**
+- Say how you want a kind of work done ("don't use Claude Code for travel") and it's kept as a
+  rule the moment you say it, in your words, on the partner page. Tasks opened right after
+  already follow it. No card to confirm.
+
+**Accounts**
+- An account Ducter can't read stops being tried and says why on its row: not supported yet, or
+  reconnect it. Brief hiccups back off quietly instead.
+
+**Other agents (Nowledge Bridge)**
+- Works with Nowledge Mem 0.10.121: one inbox per identity, read once; new mail is heard as it
+  arrives. If Mem also notifies you about the same mail, the page says so once.
+
+**Settings**
+- Every pane checked against a real setup (many devices, accounts and models): fewer repeated
+  lines, the important sentence first, cards told apart by their last four digits, Disconnect asks
+  first on the web too, and update times follow your quiet hours.
+
 ## 0.0.93 - 2026-11-19
 
 <!-- whats-new

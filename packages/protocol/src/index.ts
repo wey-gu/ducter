@@ -2726,6 +2726,12 @@ export interface BridgeView {
    * code; nothing to tap. Gone once a read works again.
    */
   stuck?: { code: string };
+  /**
+   * D400: on connected, Nowledge Mem itself also tells the person about mail to the partner's identity
+   * (`bridge notices status`, nmem 0.10.121): one quiet line says a message may announce itself twice;
+   * nothing in Mem is changed from here.
+   */
+  notices?: true;
 }
 
 /** The choices offered for defaultAfterMin, in minutes. */

@@ -1,10 +1,10 @@
 # Bridge: Ducter and the Agents It Didn't Start
 
-> Design note · 2026-11-09, updated 2026-11-18 · Principles 1, 7, 12, 14, 17, 18 · Decided: D105–D111 (outbound,
+> Design note · 2026-11-09, updated 2026-11-19 · Principles 1, 7, 12, 14, 17, 18 · Decided: D105–D111 (outbound,
 > the outgoing ledger, the result reply, names, copy, follow-through, the Mem asks), D162 (the live check and the
-> real shapes), D163–D164 (beyond itself: X1–X3), D170 (X1, X2 and the Settings switch, built), D171 (the persona's Space), D205 (the persona connects itself with one tap), D225 (the released Bridge; the home's own Mem put in, updated and signed in from the same row), D324 (one home answers a partner's mailbox; the trial as its own identity), D333 (the partner's own tools only, 查看来信, the card says where it reads), D334 (the address is the identity, not the Space: every Space read, replies in the message's, a teammate's first message is a card), D338 (the card names only the Spaces read; a Space Mem answers 404 for is said and backed off; no connection per Space), D364 (nmem 0.10.120's linked shape: an original is not an answer; the update offered on the pane), D367 (every inbox page read; the trial's peer touches only its own run's mail), D369 (a mailbox Mem must sort out on its side: said once, checked every 30 min; the trial's guard reads Mem's own send prefix); still open: J-Q1–3, J-Q8, J-Q14 ·
+> real shapes), D163–D164 (beyond itself: X1–X3), D170 (X1, X2 and the Settings switch, built), D171 (the persona's Space), D205 (the persona connects itself with one tap), D225 (the released Bridge; the home's own Mem put in, updated and signed in from the same row), D324 (one home answers a partner's mailbox; the trial as its own identity), D333 (the partner's own tools only, 查看来信, the card says where it reads), D334 (the address is the identity, not the Space: every Space read, replies in the message's, a teammate's first message is a card), D338 (the card names only the Spaces read; a Space Mem answers 404 for is said and backed off; no connection per Space), D364 (nmem 0.10.120's linked shape: an original is not an answer; the update offered on the pane), D367 (every inbox page read; the trial's peer touches only its own run's mail), D369 (a mailbox Mem must sort out on its side: said once, checked every 30 min; the trial's guard reads Mem's own send prefix), D400 (nmem 0.10.121: the identity inbox read once, Mem's own open/reply argv, `--watch` or a 5 s wait, a device label, Mem's own notices said); still open: J-Q1–3, J-Q8, J-Q14 ·
 > Evidence: `research/31` (public), `research/37` (dogfood, §6 the live check), `research/66` (the release, the live
-> run, Mem on a home without it), `research/134` (nmem 0.10.120), `research/137` (the 0.10.120 live run: the inbox's pages), `research/139` (the second 0.10.120 run: the guard, a mailbox Mem must sort out), private `31` and `10`.
+> run, Mem on a home without it), `research/134` (nmem 0.10.120), `research/137` (the 0.10.120 live run: the inbox's pages), `research/139` (the second 0.10.120 run: the guard, a mailbox Mem must sort out), `research/161` (nmem 0.10.121 and the read-only live read), private `31` and `10`.
 >
 > Nowledge Bridge is Mem's agent mailbox. This note describes how Ducter uses it. All of it is in `main`:
 > receive, ask and reply, the linked result reply (J2, D107), outbound messages through a card (J4, D105), the
@@ -27,6 +27,11 @@
 > back-off and D335's cadence stay. Since D332 the person's own home connects by itself once Mem is ready; what
 > "until the live trial passes" still holds back is the wording here and in the roadmap, and D249 (5)'s rule for
 > the old shape.
+> **2026-11-19 (D400, research/161): nmem 0.10.121 ships #10402 as the plain `bridge inbox`** (every authorized
+> Space, each message's own Space, Mem's open/reply argv) and a real long-poll (`--watch`; `--wait` only 1–5 s).
+> Ducter reads it once by the help's words, runs Mem's argv, watches, and clamps the wait; D334's per-Space
+> contexts and D338's back-off remain for 0.10.120. One read-only live read: the mailbox D369 found stuck now
+> answers, except its personal Space, still `cloud_mailbox_own_source_unreconciled`.
 
 ## Connecting the persona (D205)
 
@@ -169,9 +174,22 @@ until it ships, Ducter handles it.
   **A 404** (nmem 0.10.120 on hel, VERIFIED 2026-11-17: every non-personal Space, an unverifiable body,
   no code; the identity is a contact there but can't be selected) is asked again once a day, and at once
   when nmem's version changes; the entry keeps when and with which nmem.
-- **One switch to Mem's fix.** When `bridge inbox --help` offers `--all-spaces` (#10402), the connection's
-  context alone reads every Space (`inbox --all-spaces`, the Space from each message) and the per-Space
-  contexts go unused. The client is one code path: its places and `wide`.
+- **One switch to Mem's fix (D400).** #10402 shipped in nmem 0.10.121 as the plain `bridge inbox` ("List
+  incoming identity mail across currently authorized Spaces", with `--watch`, without `--all-spaces`,
+  research/161). Those words in `bridge inbox --help` (or `--watch`), or an earlier preview's `--all-spaces`,
+  mean `wide`: the connection's context alone reads every Space (the plain `inbox` there, `inbox
+  --all-spaces` only where the help offers it), each message's Space is its own (`space_id`; its label and
+  kind from passive `bridge setup`, once), and the per-Space contexts go unused. The partner's client also
+  goes wide by the help alone, so a connection saved before the update never reads the same mail once per
+  Space. The client is one code path: its places and `wide`.
+- **Mem's own argv (D400).** An identity-inbox entry carries `open_args` and `reply_args_prefix`, both ending
+  in its `bm1:` reference (VERIFIED live 2026-11-19); the open and the reply run them as given (only a `bridge
+  open` / `bridge reply` command, global flags alone before `bridge`; the body still by `--body-file -`), so
+  the reply keeps the original's Context and Space. An entry with `eligible: false` (an expired one) is never
+  opened. A Space the read reports `unavailable` with D369's code keeps D369's line while the others are read.
+  "Select your approved Agent Context…" (plain text) is `not_configured`; a stale identity cursor restarts the
+  read from page one, once. Contacts take the grouped default (one card per identity) first, `--all-spaces`
+  after.
 - **Replies and sends.** Each message keeps its Space (`space`, `spaceLabel` in the Log); a reply, an
   open, an inspect or a resume runs with that Space's context, so the answer goes back where it was
   asked. The partner's own send: contacts are looked up in every Space and folded into one card per
@@ -698,9 +716,9 @@ Every outgoing op (D106), logged before the CLI call:
          → sent | failed | still unknown ×3 → unconfirmed (say once; never resent)
 ```
 
-**When the home reads its mailbox (D335).** Mem's `bridge inbox` is pull-only; a long-poll (`inbox --wait`) is
-asked for upstream (nowledge-co/mem#10402). One read is a short local CLI call, one at a time; nothing wakes the
-partner unless a new message is there.
+**When the home reads its mailbox (D335, D400).** Before nmem 0.10.121 `bridge inbox` was pull-only; 0.10.121
+adds `inbox --watch` (changes as JSON lines, never acknowledges) and `inbox --wait` (1–5 s). One read is a short
+local CLI call, one at a time; nothing wakes the partner unless a new message is there.
 
 ```
 at start                       one check (then B14's start mark)
@@ -710,9 +728,18 @@ after a send or reply          +10 s, +30 s, +1 min, +2 min after it; the rest c
   (bridge_reply, a carded        (in_reply_to = ours) arrives
    send, the claim/result)
 asked                          bridge_check reads now (D333)
+watch, when the CLI has it     D400: `inbox --help` lists --watch (nmem 0.10.121; read once per nmem version)
+                                 → one `inbox --watch` child per context (one when wide), never a Space flag;
+                                   each JSON line runs the usual check (one at a time, one more if a line
+                                   came during it); the timer drops to every 5 min as below;
+                                   a child that ends starts again after 1 s, 2 s, 4 s … (≤ 5 min, reset after
+                                   a minute's run); 5 quick ends → the timer, the watch tried again after 10 min;
+                                   killed when the client changes or the partner closes
 long-poll, when the CLI has it `nmem bridge inbox --help` lists --wait (read once per nmem version, like D205)
-                                 → one `inbox --wait 25` at a time, back to back, per Space context
-                                   (D334: one per place; wide: one `inbox --all-spaces --wait 25`);
+                                 → one `inbox --wait <s>` at a time, back to back, per Space context
+                                   (D334: one per place; wide: one read for every Space), <s> = 25 clamped to
+                                   what the help states (D400: nmem 0.10.121 takes 1..=5, so 5), and once
+                                   more at the bound a refusal names;
                                    a handle new to the Log runs the usual check;
                                    a wait back at once with nothing new pauses 15 s (never spins);
                                    the timer drops to every 5 min (recovery, follow-through), no reads after a send
@@ -787,6 +814,12 @@ made (revoke, `agents context clear`, `agents delete`); `--cleanup` removes what
 own partner and mailbox are never used, so it runs any time; D258's guard and `--share-mailbox` are gone. Built
 and tested with the fake nmem only; whether Mem connects a freshly enrolled identity at once is INFERRED until
 the first real run (research/66 §9).
+
+**Status 2026-11-19 (D400, research/161 §8): still blocked on Mem, narrower.** One read-only read with the
+author's nmem 0.10.121 (`--agent-context <the peer's native-session context> bridge inbox`, and that session's
+`status`): exit 0, one expired message, every Space `observed` but the personal one, which still says
+`cloud_mailbox_own_source_unreconciled`. The trial's mail lives in that Space, so the preflight still stops
+there (it now reads `spaces[]` too); the session's local `status` says `context_state: required`. B19 stands.
 
 **Status 2026-11-18, after the second run (D369, research/139): blocked on Mem.** The rerun at 14:41 UTC got
 nothing through. The trial's own peer guard refused the right send (Mem's `send_args_prefix` writes

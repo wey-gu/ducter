@@ -80,6 +80,12 @@ export interface BridgeConnectionRecord {
   unread?: { spaceId: string; spaceLabel: string; code?: string; status?: number; at?: string; nmem?: string }[];
   /** D334: Mem reads every Space with one inbox (#10402): the connection's context alone. */
   wide?: boolean;
+  /**
+   * D400: `bridge notices status` (local) said Mem also tells the person about mail to this identity:
+   * a second voice for what the partner already handles. `noticesBy`: the nmem version it was read with.
+   */
+  notices?: boolean;
+  noticesBy?: string;
 }
 
 /** How the description Ducter enrolls an identity with begins (mem-identity.ts): a card Ducter may keep current. */
@@ -151,9 +157,43 @@ export function identitySpaces(j: any, agent: string): Set<string> {
   return out;
 }
 
-/** D334: whether this nmem reads every Space with one inbox (Mem #10402): `bridge inbox --help` offers `--all-spaces`. */
+/**
+ * D334: whether this nmem reads every Space with one inbox (Mem #10402) by `bridge inbox --help`. D400:
+ * nmem 0.10.121 shipped it as the plain `inbox` ("List incoming identity mail across currently
+ * authorized Spaces", with `--watch`, without `--all-spaces`, research/161); an earlier preview's
+ * `--all-spaces` still counts.
+ */
 export function wideInboxIn(help: string): boolean {
-  return /--all-spaces\b/.test(help);
+  return /--all-spaces\b/.test(help) || /identity mail across/i.test(help) || /--watch\b/.test(help);
+}
+
+/**
+ * D400: whether Mem would also tell the person about mail to this identity (`bridge notices status`,
+ * nmem 0.10.121, local only): a subscription or target naming the identity or its context with an OS
+ * (person-facing) channel on. The shape is not public: read tolerantly, and only a clear yes counts.
+ */
+export function noticesForIn(j: any, ids: readonly string[]): boolean {
+  if (!j || typeof j !== "object") return false;
+  const want = new Set(ids.filter(Boolean));
+  const lists: any[] = [];
+  for (const k of ["subscriptions", "targets", "stream_targets", "entries", "bindings", "observing"]) if (Array.isArray(j[k])) lists.push(...j[k]);
+  const names = (o: any): boolean => {
+    for (const k of ["agent_id", "agent", "identity", "identity_key", "context", "agent_context", "target", "address"]) {
+      const v = o?.[k];
+      if (typeof v === "string" && want.has(v)) return true;
+      if (v && typeof v === "object" && names(v)) return true;
+    }
+    return false;
+  };
+  const osOn = (o: any): boolean => {
+    const ch = o?.channels ?? o?.channel ?? o?.routes;
+    if (o?.os === true || o?.os_notifications === true || o?.notify_os === true) return true;
+    if (typeof ch === "string") return /\bos\b/i.test(ch);
+    if (Array.isArray(ch)) return ch.some((c) => (typeof c === "string" ? /^os$/i.test(c) : c && /^os$/i.test(c.channel ?? c.kind ?? "") && c.enabled !== false));
+    if (ch && typeof ch === "object") return ch.os === true || ch.os?.enabled === true;
+    return false;
+  };
+  return lists.some((o) => o && typeof o === "object" && names(o) && osOn(o) && o.enabled !== false && o.state !== "disabled");
 }
 
 /** Mem's registered refusal codes (nmem-wire cloud_bridge_setup) and what Ducter calls each. */
@@ -581,6 +621,41 @@ export function createBridgeLink(opts: {
     if (h) wideBy.set(v, wide);
     return wide;
   }
+  // D400: flags a subcommand's help offers, per nmem version (`connections connect --device-label`).
+  const helpBy = new Map<string, string>();
+  async function helpOf(cmd: string[]): Promise<string> {
+    const key = `${probe?.version ?? ""}\0${cmd.join(" ")}`;
+    const known = helpBy.get(key);
+    if (known !== undefined) return known;
+    const h = await run([...cmd, "--help"]);
+    const text = h && h.code === 0 ? `${h.out}\n${h.err}` : "";
+    if (h) helpBy.set(key, text);
+    return text;
+  }
+  /**
+   * D400: once per connection and nmem version, `bridge notices status` (nmem 0.10.121: "Inspect bounded
+   * local configuration without a backend request"): does Mem also tell the person about this
+   * identity's mail? Kept on the record; nothing in Mem is changed.
+   */
+  async function readNotices(r0: BridgeConnectionRecord) {
+    if (!r0.confirmed || env.DUCTER_BRIDGE_CONTEXT?.trim()) return;
+    const v = probe?.version ?? "";
+    if (r0.noticesBy === v) return;
+    const help = await helpOf(["bridge", "notices"]);
+    let on = false;
+    if (/\bstatus\b/.test(help)) {
+      const s = await run(["--agent-context", r0.context, "bridge", "notices", "status"]);
+      if (!s || s.code !== 0) return; // can't tell: asked again at the next recheck
+      on = noticesForIn(jsonIn(s.out)[0], [r0.agentId, r0.context]);
+    }
+    const cur = read();
+    if (!cur || cur.connectionId !== r0.connectionId) return;
+    const next: BridgeConnectionRecord = { ...cur, noticesBy: v, ...(on ? { notices: true } : {}) };
+    if (!on) delete next.notices;
+    if (JSON.stringify(next) === JSON.stringify(cur)) return;
+    write(next);
+    if (!!cur.notices !== on) changed();
+  }
   let discovering: Promise<void> | undefined;
   function discover(r0: BridgeConnectionRecord): Promise<void> {
     return (discovering ??= (async () => {
@@ -779,7 +854,7 @@ export function createBridgeLink(opts: {
       // D334: a Space Mem refused a reader in: one quiet problem row (never a list of Spaces otherwise).
       const unread = r.unread?.length ? { unread: r.unread.map((u) => ({ label: u.spaceLabel, ...(u.code ? { code: u.code } : {}), ...(u.status ? { status: u.status } : {}) })) } : {};
       const stuck = opts.trouble?.();
-      return { state: "connected", ...(await extras()), ...base, ...(others.length ? { others: others.map(shown) } : {}), ...unread, ...(stuck ? { stuck: { code: stuck.code } } : {}), ...(undoFailed ? { detail: undoFailed } : {}) };
+      return { state: "connected", ...(await extras()), ...base, ...(others.length ? { others: others.map(shown) } : {}), ...unread, ...(stuck ? { stuck: { code: stuck.code } } : {}), ...(r.notices ? { notices: true as const } : {}), ...(undoFailed ? { detail: undoFailed } : {}) };
     }
     if (!p) {
       const plan = await freshPlan();
@@ -841,8 +916,10 @@ export function createBridgeLink(opts: {
         if (!how?.here && othersIn(p.conns, undefined, agent).length) return;
         const ctx = contextFor(agent, p.conns);
         const space = p.space;
-        // The one write, on the user's tap: this identity, this exact place, this context.
-        const c = await run(["bridge", "connections", "connect", "--space-id", space.id, "--agent-id", agent, "--context", ctx]);
+        // The one write, on the user's tap: this identity, this exact place, this context. D400: with
+        // the home's name as Mem's device label when this nmem takes one (0.10.121); never proof of reach.
+        const label = /--device-label\b/.test(await helpOf(["bridge", "connections", "connect"])) ? opts.home().trim().slice(0, 64) : "";
+        const c = await run(["bridge", "connections", "connect", "--space-id", space.id, "--agent-id", agent, "--context", ctx, ...(label ? ["--device-label", label] : [])]);
         if (!c) {
           outcome = { state: "failed", detail: "nmem didn't start" };
           return;
@@ -884,6 +961,7 @@ export function createBridgeLink(opts: {
         else if (how?.here) await revokeOthers(read()!);
         if (confirmed) await discover(read()!).catch(() => {});
         if (confirmed) await publishWhere(read()!).catch(() => {});
+        if (confirmed) await readNotices(read()!).catch(() => {});
         await look(true);
       } finally {
         busy = undefined;
@@ -899,6 +977,7 @@ export function createBridgeLink(opts: {
       // D334: Spaces the identity was added to or left since the last look.
       await discover(r).catch(() => {});
       await publishWhere(read() ?? r).catch(() => {});
+      await readNotices(read() ?? r).catch(() => {});
     },
     async onlyHere() {
       // D324: 改由这台收 / 只留这台: connected here first (never a moment with nobody answering), then the others end.

@@ -96,7 +96,7 @@ describe("D367: the inbox's pages", () => {
     w.add({ id: "new-1", from: "terminal", to: "ducter", body: "past the bound" });
     const r = await w.bridge({}, 2).check(new Set(w.oldIds));
     expect(r).toEqual({ ok: true, messages: [], reads: {} });
-    expect(w.calls().filter((a) => a.includes("inbox"))).toHaveLength(2);
+    expect(w.calls().filter((a) => a.includes("inbox") && !a.includes("--help"))).toHaveLength(2);
   });
 
   test("a long-poll's first page is followed to the last, where the new mail is", async () => {

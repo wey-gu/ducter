@@ -203,6 +203,10 @@ the one fix. If you told your partner to stop listening to an agent, that agent 
 **Claude Code (~/dev/ducter) asks you**; the first time one reaches your partner, a short note says
 what happened.
 
+Nowledge Mem can also tell you itself when a message comes in. If it does that for your partner's
+messages, one quiet line says so: the same message may then reach you twice, once from Nowledge Mem
+and once from your partner. Ducter doesn't change Nowledge Mem's own settings.
+
 ## Notifications
 
 - **Notifications** turns the nudges on this Mac and your connected phones on or off. With them

@@ -119,7 +119,7 @@ describe("Which home connects by itself (D340)", () => {
     writeFileSync(state, JSON.stringify({ identities: {}, messages: [], seq: 0 }));
     const argvLog = join(d, "argv.log");
     const env = { PATH: process.env.PATH ?? "", NMEM_CLI_PATH: bin, NMEM_FAKE_BRIDGE_STATE: state, NMEM_FAKE_ARGV_LOG: argvLog };
-    const connects = () => (existsSync(argvLog) ? readFileSync(argvLog, "utf8").trim().split("\n").filter(Boolean).map((l) => JSON.parse(l) as string[]) : []).filter((c) => c.includes("connections") && c.includes("connect"));
+    const connects = () => (existsSync(argvLog) ? readFileSync(argvLog, "utf8").trim().split("\n").filter(Boolean).map((l) => JSON.parse(l) as string[]) : []).filter((c) => !c.includes("--help") && c.includes("connections") && c.includes("connect"));
     const data = join(d, "data");
     mkdirSync(data);
     return { d, data, env, bin, connects };

@@ -62,7 +62,7 @@ import { identityIdFor, readMemIdentity } from "./mem-identity.ts";
 import { keepSaidOnGo, openSaid, type SaidStore } from "./said.ts";
 import { openRules, type RulesStore } from "./rules.ts";
 import { openPins, type PinsStore } from "./pins.ts";
-import { createLoadout, isRuleHint, registerRuleTools, registerSwitchTool, type Loadout } from "./loadout.ts";
+import { createLoadout, isRuleHint, registerRuleTools, registerSwitchTool, registerBrainSwitchTool, type Loadout } from "./loadout.ts";
 import { createKindRetry, type KindRetry } from "./kind-retry.ts";
 import { openConnections, type ConnectionsStore, type Linker, type OoSource } from "./connections.ts";
 import { callWakes, neverCall, openPhone, type Phone } from "./phone.ts";
@@ -829,6 +829,8 @@ export function startCore(opts: CoreOptions = {}): Core {
   registerClosingTool(mcp, closing, langNow);
   // D352: the partner's 换成 … / "use … for this": a task's model, effort or agent, as the person said it.
   registerSwitchTool(mcp, { loadout, tasks, models: modelCatalog, runner: () => runner });
+  // D390: 用 astra 跟我聊 / "switch yourself to Opus": what the partner itself thinks with.
+  registerBrainSwitchTool(mcp, { settings, models: modelCatalog, home: () => devicesView?.harnessesNow() });
   // D372: an errand on a fast tier that fails or stalls carries on on the smartest, once.
   kindRetryRef = createKindRetry({ log, loadout, runner: () => runner, retell: wake });
   log.subscribe((e) => kindRetryRef?.onEvent(e));
@@ -1078,7 +1080,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       socketsChanged: () => reachRef?.refresh(),
     },
     partners,
-    core: api, workbench, bridgeLink, decisions, runner: () => runner, devices: () => devicesView, lend: () => lendRef, settings, connections, phone, rules, pins, loadout, accountUsage, closing, work: workFrames, newTask, updates: () => updatesRef, agents: () => agentsRef, agentSetup: (device, f) => agentSetupOp(device, f), memSetup: (device, action, link) => memSetupOp(device, action, link), recordsAllow: (device, on) => recordsAllowOp(device, on), updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, memHealth, anywhere: () => anywhereRef, channels, proactive: () => proactiveRef, calendar: () => calendarRef, taskSources: () => taskSourcesRef, taskGroups: () => taskGroups, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets, past: { ...past, marks, persona: () => persona.id, ongoing, outside, made }, keys: { dataDir, ...(opts.keyFetch ? { fetch: opts.keyFetch } : {}), ...(opts.keyCanRun ? { canRun: opts.keyCanRun } : {}) }, ...(firstWordsDeps ? { firstWords: firstWordsDeps } : {}), did, ownAgents });
+    core: api, workbench, bridgeLink, decisions, runner: () => runner, devices: () => devicesView, lend: () => lendRef, settings, connections, phone, rules, pins, loadout, models: modelCatalog, accountUsage, closing, work: workFrames, newTask, updates: () => updatesRef, agents: () => agentsRef, agentSetup: (device, f) => agentSetupOp(device, f), memSetup: (device, action, link) => memSetupOp(device, action, link), recordsAllow: (device, on) => recordsAllowOp(device, on), updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, memHealth, anywhere: () => anywhereRef, channels, proactive: () => proactiveRef, calendar: () => calendarRef, taskSources: () => taskSourcesRef, taskGroups: () => taskGroups, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets, past: { ...past, marks, persona: () => persona.id, ongoing, outside, made }, keys: { dataDir, ...(opts.keyFetch ? { fetch: opts.keyFetch } : {}), ...(opts.keyCanRun ? { canRun: opts.keyCanRun } : {}) }, ...(firstWordsDeps ? { firstWords: firstWordsDeps } : {}), did, ownAgents });
   handsets.onChange(() => (devicesView?.changed(), ws.onHandChanged()));
   onHandChanged = ws.onHandChanged;
   // D156: a partner turn in flight keeps an update of the agent it thinks with waiting.

@@ -2810,7 +2810,29 @@ export const scenarios: Scenario[] = [
       { task: { key: "asc", title: "准备 App Store Connect 的上架资料", repo: "~/dev/ducter", ack: "我让 Codex 去准备上架资料。", state: "working", harness: "codex" } },
     ],
     steps: [{ user: "这个任务换成 6.2 sol" }],
-    expect: { called: [{ tool: "task_switch", args: { model: /6\.?2.*sol/i } }], opens: 0, noSend: true, noAsk: true, msgs: [0, 1], maxChars: 80 },
+    expect: { called: [{ tool: "task_switch", args: { model: /6\.?2.*sol/i } }], notCalled: ["brain_switch"], opens: 0, noSend: true, noAsk: true, msgs: [0, 1], maxChars: 80 },
     rubric: "The user asked to move the App Store Connect task to the gpt-6.2-sol model. The partner calls task_switch on that task with the model as said, opens no new task, sends the task no message about it, and puts up no card. At most one short Chinese line (e.g. that it's switched and takes effect from the task's next step), or nothing; never a claim that the work restarted or that progress was lost.",
+  },
+  // D390: the person asks the partner itself to think with another model: brain_switch (the
+  // setting Settings › Partner writes), never task_switch, a task, or a card.
+  {
+    id: "brain-switch-zh",
+    category: "direct",
+    lang: "zh",
+    steps: [{ user: "你换成 sonnet 跟我聊吧" }],
+    expect: { called: [{ tool: "brain_switch", args: { model: /sonnet/i } }], notCalled: ["task_switch"], opens: 0, noAsk: true, msgs: [0, 1], maxChars: 60 },
+    rubric: "The user asked the partner itself to think with Sonnet. The partner calls brain_switch with the model as said, opens no task and puts up no card. At most one short Chinese line saying it uses Sonnet from the user's next message (e.g. 好，从你下一句起我用 Sonnet。), nothing about sessions or settings pages.",
+  },
+  {
+    id: "brain-switch-en",
+    category: "direct",
+    lang: "en",
+    seed: [
+      { user: "fix the flaky test in ~/dev/fib" },
+      { task: { key: "fib", title: "Fix the flaky fib test", repo: "~/dev/fib", ack: "I'll fix the flaky fib test.", state: "working" } },
+    ],
+    steps: [{ user: "switch yourself to opus for our chats" }],
+    expect: { called: [{ tool: "brain_switch", args: { model: /opus/i } }], notCalled: ["task_switch"], opens: 0, noSend: true, noAsk: true, msgs: [0, 1], maxChars: 120 },
+    rubric: "A task is running, but the user asked the partner ITSELF to use Opus for the conversation. The partner calls brain_switch with the model, leaves the task alone (no task_switch, nothing sent to it) and opens nothing. At most one short English line that it thinks with Opus from the user's next message.",
   },
 ];

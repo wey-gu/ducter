@@ -18,6 +18,14 @@ Deferred work, grouped by area, each with its trigger where it has one.
   the chip and by "这个任务换成 6.2 sol" while a turn runs: the turn ends on the old model, the next
   one reports gpt-6.2-sol (Codex's own model line), same thread id. Checked with fakes only.
   *Trigger:* next release walk.
+- **The partner's own effort (D390).** The partner runs without an effort (`partner.ts` passes
+  none, so the agent's own default for the model); Settings › Partner offers models only. Offer
+  D387's level dial there once a reason shows (answers too slow or too shallow on a model with
+  levels). *Trigger:* the person asks the partner to think harder or answer faster.
+- **Live: the partner on GPT-6.2-Astra (D390).** On hel (Codex only): Settings › Partner lists
+  Codex's own models, Astra picked, the next message's session started with `-m gpt-6.2-astra`;
+  and "用 astra 跟我聊" asking which of gpt-6.2-astra and gpt-6-astra. Checked with fakes and the
+  haiku eval only. *Trigger:* the next release on hel.
 - **Say once when an agent adds a model?** One quiet line ("Codex 有了 GPT-6.2-Sol…") when a
   `fresh` model first appears, with a Go that moves new tasks to it. Held back: proactive
   restraint, and the person's own agent default already decides. *Trigger:* the person asks for

@@ -289,7 +289,7 @@ check a change the way CI sees it, on the Mac:
 ```sh
 env -i HOME="$(mktemp -d)" TMPDIR=/tmp PATH="/usr/bin:/bin:$(dirname "$(command -v bun)")" \
   GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=user.useConfigOnly GIT_CONFIG_VALUE_0=true \
-  bun test
+  bun run test
 ```
 
 `user.useConfigOnly` stops git from guessing a name from the Mac account, which is what Linux

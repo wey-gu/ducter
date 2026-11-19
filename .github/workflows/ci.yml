@@ -69,7 +69,7 @@ jobs:
           bun run build
 
       - name: bun test
-        run: bun test
+        run: bun run test
 
       - name: Markdown links resolve
         run: bun scripts/check-links.ts

@@ -41,7 +41,7 @@ You need [Bun](https://bun.sh) and, for the desktop app, [Go](https://go.dev).
 
 ```sh
 bun install
-bun test                        # all packages
+bun run test                    # all packages (bun test --timeout 20000)
 bun run typecheck               # both TypeScript configs
 bun packages/cli/src/main.ts up --port 7783 --data-dir /tmp/ducter-dev
 sh packages/cli/build.sh        # the single `ducter` binary

@@ -214,7 +214,7 @@ test("the draft's words: no bracketed blanks, a schema's own field names, the ma
 });
 
 test("the aha week with hel's eleven: 6/6 in time, the four said with drafts, no false positive, nothing on now for a person waiting", async () => {
-  const { r, said } = await runAha("three", { waiting: true, rig: { drafter: recordedDrafter(WAITING_DRAFTS) } });
+  const { r, said } = await runAha("three", { waiting: true, quietStep: 6 * 3_600_000, rig: { drafter: recordedDrafter(WAITING_DRAFTS) } });
   rigs.push(r);
   for (const w of AHA_SAY) {
     const h = hit(said, w);

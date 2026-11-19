@@ -33,7 +33,7 @@ export function fakeLook(o: { found?: boolean } = {}): WebLookPort & { asked: st
 }
 
 /** Runs Wed 07:00 to Fri 12:00, mail and the person's words arriving as they did; what was said, when. The caller stops the rig. */
-export async function runAha(mode: ProactiveMode, o: { web?: "found" | "none" | "off"; waiting?: boolean; rig?: Partial<Parameters<typeof rig>[0]> } = {}) {
+export async function runAha(mode: ProactiveMode, o: { web?: "found" | "none" | "off"; waiting?: boolean; quietStep?: number; rig?:Partial<Parameters<typeof rig>[0]> } = {}) {
   const { fx, later, said } = ahaDays();
   // D403: hel's eleven waiting-for-your-reply mails, rebuilt (fixtures/waiting-days.ts).
   // hel watched all along, so these run from Monday 11-09 with every mail arriving at its own time
@@ -54,8 +54,20 @@ export async function runAha(mode: ProactiveMode, o: { web?: "found" | "none" | 
   const STEP = 10 * 60_000;
   const mail = [...later].sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
   const words = [...said].sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
+  // Before the aha days (only hel's mail arriving) a caller may stride further, but never past
+  // a mail's or the person's words' own minute, the evening read, or the aha days' start.
+  const nextNoonUtc = (t: number) => {
+    const d = new Date(t);
+    d.setUTCHours(12, 0, 0, 0);
+    return d.getTime() > t ? d.getTime() : d.getTime() + 86_400_000;
+  };
   while (r.clock.now() < AHA_END) {
-    await r.advance(STEP, STEP);
+    const now = r.clock.now();
+    const step =
+      now < AHA_START && o.quietStep
+        ? Math.min(o.quietStep, AHA_START - now, nextNoonUtc(now) - now, ...[mail[0]?.at, words[0]?.at].filter((a): a is string => !!a).map((a) => Math.max(STEP, Date.parse(a) - now)))
+        : STEP;
+    await r.advance(step, step);
     // The person reads their conversation each evening (over eleven days, three unread mornings would pause the note).
     if (o.waiting && new Date(r.clock.now()).getUTCHours() === 12 && new Date(r.clock.now()).getUTCMinutes() < 10) r.log.append({ stream: "channel", origin: "user", kind: "read_receipt", body: { upToSeq: r.log.head() } });
     while (words.length && Date.parse(words[0]!.at) <= r.clock.now()) r.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: words.shift()!.text } });

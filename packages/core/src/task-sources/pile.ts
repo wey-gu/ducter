@@ -117,6 +117,8 @@ export interface PileDeps {
   /** The full item (with its body) for a ref. */
   item: (ref: string, source?: string) => Promise<SourceItem | undefined>;
   changed: () => void;
+  /** The service stopped (the Log is closing): a sort in flight is dropped quietly, nothing written. */
+  stopped?: () => boolean;
 }
 
 const cjk = (t: string) => (t.match(/[぀-ヿ㐀-鿿가-힯]/g) ?? []).length;
@@ -506,10 +508,11 @@ export function createPile(d: PileDeps): Pile {
         all.push(...got.items.filter((i) => i.state === "open" && !i.review));
         more ||= got.more;
       } catch (err) {
-        console.warn(`[pile] couldn't read ${s.id} for the sort:`, (err as Error).message);
+        if (!d.stopped?.()) console.warn(`[pile] couldn't read ${s.id} for the sort:`, (err as Error).message);
       }
       if (all.length >= SORT_MAX) break;
     }
+    if (d.stopped?.()) return void (sorting = undefined);
     const lang = d.lang();
     const nowIso = new Date(d.now()).toISOString();
     // D385: the subjects already given, so the same thing keeps one name across batches and sorts.
@@ -554,9 +557,10 @@ export function createPile(d: PileDeps): Pile {
           if (g.subject) known.set(g.subject, (known.get(g.subject) ?? 0) + 1);
         }
       } catch (err) {
-        console.warn("[pile] a sort batch failed:", (err as Error).message);
+        if (!d.stopped?.()) console.warn("[pile] a sort batch failed:", (err as Error).message);
         failed = "error";
       }
+      if (d.stopped?.()) return void (sorting = undefined);
       sorting = { read: Math.min(all.length, sorting.read + batch.length), of: all.length };
       d.changed();
     }

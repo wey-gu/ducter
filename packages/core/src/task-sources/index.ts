@@ -558,7 +558,10 @@ export function createTaskSources(d: TaskSourcesDeps): TaskSources {
 
   /** One look at a time; asked again while one runs (a source just added), another follows it. */
   let again: Promise<void> | undefined;
+  /** Set at stop: a look or sort still in flight is dropped quietly (the Log is closing). */
+  let stopped = false;
   async function look(): Promise<void> {
+    if (stopped) return;
     if (looking) return (again ??= looking.then(() => {
       again = undefined;
       return look();
@@ -572,7 +575,8 @@ export function createTaskSources(d: TaskSourcesDeps): TaskSources {
       changed();
       // D359: the sort, the first time a source read its list and then once a day (only what
       // changed goes to the model), and the newest review requests pre-read. Neither holds the look.
-      if (pile.due()) void pile.sort(sortedOnce() ? "daily" : "connect").catch((err) => console.warn("[task-sources] the sort failed:", (err as Error).message));
+      if (stopped) return;
+      if (pile.due()) void pile.sort(sortedOnce() ? "daily" : "connect").catch((err) => stopped || console.warn("[task-sources] the sort failed:", (err as Error).message));
       const prs = [...status.values()].flatMap((x) => (x.state === "ok" ? (x.glance?.review ?? []) : []));
       if (prs.length) void pile.readNewest(prs).catch(() => {});
     })().finally(() => {
@@ -594,6 +598,7 @@ export function createTaskSources(d: TaskSourcesDeps): TaskSources {
     dayOf: d.dayOf ?? ((ms) => new Date(ms).toISOString().slice(0, 10)),
     lang: d.lang ?? (() => "en"),
     name: d.name ?? (() => "Ducter"),
+    stopped: () => stopped,
     sources: () => okSources().map((s) => ({ id: s.id, kind: s.kind, adapter: adapterOf(s) })),
     open: () => {
       const xs = okSources().map((s) => status.get(s.id)!).filter((x) => x.open !== undefined);
@@ -1013,6 +1018,7 @@ export function createTaskSources(d: TaskSourcesDeps): TaskSources {
       return () => listeners.delete(fn);
     },
     stop() {
+      stopped = true;
       clearInterval(timer);
       off();
     },

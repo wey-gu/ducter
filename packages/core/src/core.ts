@@ -2037,6 +2037,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     partnerSessions: () => sessions,
     async stop() {
       ws.stop();
+      loadout.stop();
       previews.close();
       await browser?.stop().catch(() => {});
       await ownPhone?.stop().catch(() => {});

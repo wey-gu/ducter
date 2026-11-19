@@ -82,14 +82,16 @@ test("their words come into the one conversation; the answer goes back with thei
   expect(u.clientId).toMatch(/^wechat:.+:7000000000000000\d{3}$/);
   expect(hub.lastRoute()).toBe("wechat");
   expect(Date.parse(wechat().openUntil!)).toBeGreaterThan(rig.clock.now()); // the rig's clock, not the real one (it went past the fixture's day)
+  // Typing showed while it thought: the answer is held until WeChat was told (its typing takes a
+  // getconfig round trip first, so an answer said at once could land before it under load).
+  await waitFor(() => wx.sent("sendtyping").length > 0);
+  expect(wx.texts()).toHaveLength(0);
   rig.say("十点一个，和设计组。", u.seq);
   await waitFor(() => wx.texts().includes("十点一个，和设计组。"));
   const sent = wx.sent("sendmessage").at(-1)!;
   expect(sent.msg.to_user_id).toBe(SCANNER);
   expect(sent.msg.context_token).toMatch(/^ctx-/);
   expect(sent.msg.message_type).toBe(2);
-  // Typing showed while it thought.
-  expect(wx.sent("sendtyping").length).toBeGreaterThan(0);
   // Someone else, a group: nothing logged, nothing answered.
   const before = wx.texts().length;
   wx.says(OTHER, "我是他朋友，帮我查一下");

@@ -486,6 +486,7 @@ A new control is added to the set (and to this table) before it is used.
 | A row that opens more under it, a switch apart at its right edge (a source's service, a setup's step; D289) | `openRow` (`settings_rows.go`) | `OpenRow` |
 | A row that goes elsewhere with its tile in the tile column (AI accounts → Devices with the agents' coins; D296) | `tileLinkRow` (`settings_rows.go`) | the phone's Settings list rows |
 | The one switch alone at a row's right edge, its words the row's own (Memory's head row, D295; 用我的声音打, D296) | `switchControl` inside the row's control | `Switch` |
+| Words someone may edit in place before they go out (a reply already written in a find, D402) | `ui.TextArea` in a sunken well (`findDraft`) | `TextBox` |
 | The drawn chevron of anything that opens more (D213) | `drawChevron` through `glyph` (`quiet.go`) | `Chev` |
 | A group of separate facts, spaced, wrapping (D291) | `facts` (`facts.go`) | `Facts` |
 

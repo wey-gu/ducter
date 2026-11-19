@@ -5719,6 +5719,13 @@ button.dev-name {
 .bubble.note .fhow .fsrc { color: var(--ink); font-weight: 600; }
 .bubble.note .fhow .fsays { color: var(--ink); }
 .bubble.note .fhow .flink { overflow-wrap: anywhere; }
+/* D402: a reply already written, in the find: who it goes to, the words in a sunken well (a field
+   while its Go is open), what to check first, then Send and Hold, or the undo line after Go. */
+.bubble.note .fdraft { display: flex; flex-direction: column; gap: 6px; margin-top: 2px; }
+.bubble.note .fdraft-text { display: block; width: 100%; box-sizing: border-box; padding: 10px 12px; border-radius: var(--r-sm); background: var(--sunken); color: var(--ink); font-size: 15px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+.bubble.note textarea.fdraft-text { border: 1px solid var(--line); resize: vertical; min-height: 4.5em; outline: none; }
+.bubble.note textarea.fdraft-text:focus-visible { border-color: var(--ink-soft); }
+.bubble.note .fdraft:not(.open) .fdraft-text { color: var(--ink-soft); }
 .bubble.note .note-ask { display: flex; flex-direction: column; gap: 8px; padding-top: 10px; border-top: 1px solid var(--line); }
 
 /* ---------- D184: On hand at the whole screen, the Mac's (onhand.go, byproject.go) ---------- */

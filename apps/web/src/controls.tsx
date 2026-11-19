@@ -506,3 +506,10 @@ export function Switch(p: { label: string; on: boolean; onChange: (v: boolean) =
     </label>
   );
 }
+
+/** D402: words someone may edit in place before they go out (a reply in a find): a sunken well that grows with its text. */
+export function TextBox(p: { value: string; label: string; lang?: string; class?: string; onInput: (v: string) => void }) {
+  return (
+    <textarea class={`textbox${p.class ? ` ${p.class}` : ""}`} value={p.value} rows={Math.min(8, Math.max(3, Math.ceil(p.value.length / 38)))} lang={p.lang} aria-label={p.label} onInput={(e) => p.onInput((e.target as HTMLTextAreaElement).value)} />
+  );
+}

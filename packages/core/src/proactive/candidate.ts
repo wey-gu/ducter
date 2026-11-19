@@ -39,4 +39,24 @@ export interface Candidate {
    * keeps it and says the answer once when a later source gives it.
    */
   open?: { sheet: string; name: string; day: string; place?: string; fields: ("day" | "time")[]; days: string[] };
+  /** D402: not urgent, but what 只说急的 still says (a person who asked again, or waited three working days). */
+  pressing?: boolean;
+  /** D402: where a reply to it goes (a mail thread): the engine drafts one before it is said. */
+  reply?: ReplyTarget;
+  /** D402: the draft written for it, attached by the engine (never by a detector). */
+  draft?: { text: string; lang: string; check?: string };
+}
+
+/** D402: one thread a reply can be sent to: the source, the message it answers, who it goes to. */
+export interface ReplyTarget {
+  connectionId: string;
+  service: string;
+  account?: string;
+  thread?: string;
+  messageId: string;
+  /** Their address (lower case) and their name, as their mail gave it. */
+  to: string;
+  name?: string;
+  /** The subject it answers (the reply's subject is "Re: " and this). */
+  subject: string;
 }

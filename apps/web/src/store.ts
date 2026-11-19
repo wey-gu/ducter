@@ -239,6 +239,10 @@ export class Store {
   recalled = new Map<number, Bodies["memory_recalled"] & { seq: number }>();
   /** D165: each find's latest change, and the user's latest message. */
   findStates = new Map<string, Bodies["find_state"]>();
+  /** D402: a drafted reply's sending (sending, sent, unsent, send_failed), apart from the reactions. */
+  findSends = new Map<string, Bodies["find_state"]>();
+  /** D402: a find's Go asked again (after 撤回 or a failed send): its latest decision. */
+  findAsks = new Map<string, string>();
   lastUserSeq = 0;
   private notes = new Map<string, Entry>();
   /** Senders set aside per day (D163): how many, and the seq of the one line that says so. */
@@ -520,7 +524,9 @@ export class Store {
       }
       case "find_state": {
         const b = ev.body as Bodies["find_state"];
-        this.findStates.set(b.findId, b);
+        if (b.state === "sending" || b.state === "sent" || b.state === "unsent" || b.state === "send_failed") this.findSends.set(b.findId, b);
+        else this.findStates.set(b.findId, b);
+        if (b.decisionId) this.findAsks.set(b.findId, b.decisionId);
         return void this.bySeq.set(ev.seq, null);
       }
       case "ai_msg": {

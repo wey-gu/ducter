@@ -23,7 +23,7 @@ import { createHash } from "node:crypto";
 import { chmodSync, existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Bodies, FindKind, FindView, LogEvent, ProactiveDay, ProactiveMode, ProactiveYesNo, QuietReason, ReadLine, ReadProblem, RuleView, SourceLook } from "@ducter/protocol";
-import { DAILY_CAP, isFindKind, langName, normalizeTag, QUIET_REASONS, words, type LangTag } from "@ducter/protocol";
+import { DAILY_CAP, SEND_UNDO_MS, isFindKind, langName, normalizeTag, QUIET_REASONS, words, type LangTag } from "@ducter/protocol";
 import { talkLang } from "../lang.ts";
 import type { WebLookPort, WorkingMemoryPort } from "@ducter/protocol/src/internal.ts";
 import { daySettled, dayEn as planDayEn, dayZh as planDayZh, howOfClaim, provenance, saysOf, sheetFor, timeFill, type Claim, type OwnClaim } from "./plans.ts";
@@ -64,7 +64,9 @@ import { openLedger, type Ledger } from "./ledger.ts";
 import { backfillWorthy, NOTICE_DAY_MAX, stage1, type Left } from "./stage1.ts";
 import { BATCH, eventFact, factsOf, type Triage } from "./triage.ts";
 import { atLocal, ownWords } from "./said.ts";
-import { createWatchers, lookFor, type Watchers } from "./watch.ts";
+import { createWatchers, lookFor, meOf, type Watchers } from "./watch.ts";
+import { readForDraft, sendPlan, type Drafter } from "./reply.ts";
+import type { ReplyTarget } from "./candidate.ts";
 import { KIND_WORDS, W } from "./words.ts";
 
 export const PROACTIVE_FILE = "proactive.json";
@@ -116,6 +118,15 @@ export const OWN_GRACE_MS = 10 * 60_000;
 /** D281: a kept line not said within this of its moment (the home was off) is let go, never said stale. */
 export const OWN_LATE_MS = 12 * 3_600_000;
 const VERDICT_DAYS = 7;
+/** D402: how long one reply's reading and writing may take before the find is said without it. */
+export const DRAFT_WAIT_MS = 60_000;
+/** D402: a drafted reply's Go. */
+const SEND_LABEL = { zh: "发出去", en: "Send" };
+const withTimeout = <T,>(p: Promise<T>, ms: number): Promise<T | undefined> =>
+  new Promise((res) => {
+    const t = setTimeout(() => res(undefined), ms);
+    p.then((v) => (clearTimeout(t), res(v)), () => (clearTimeout(t), res(undefined)));
+  });
 /** Items whose triage failed, retried on the next look (in memory only: nothing on disk keeps mail). */
 const RETRY_MAX = 100;
 
@@ -140,6 +151,10 @@ interface FindRec {
   /** D388: what it didn't know and didn't change when it was said (for "how did you know?"). */
   unknown?: string;
   untouched?: string;
+  /** D402: the thread a drafted reply goes to, the draft as written, and where its sending is. */
+  reply?: ReplyTarget;
+  draft?: { text: string; lang: string; check?: string };
+  send?: { state: "sending" | "sent" | "unsent" | "failed"; until?: number; text?: string };
 }
 
 interface VerdictRec {
@@ -335,6 +350,8 @@ export interface ProactiveOptions {
   /** Stage 2 and 3; set later (they need the runner's harness). Without a triage nothing is read past stage 1. */
   triage?: Triage;
   judge?: FindJudge;
+  /** D402: writes a 在等你回 find's reply before it is said (the cheapest capable model). Absent: the find offers a task that drafts one. */
+  drafter?: Drafter;
   /** A client app is open (fold-ins; a meeting line needs no notification). */
   present: () => boolean;
   /** The person's zone (quiet hours', else the last client's, else the server's). */
@@ -391,7 +408,9 @@ export interface Proactive {
   wakes(e: LogEvent): boolean;
   /** D388: the questions said finds left open, and what became of them (the replay reports them). */
   opens(): { name: string; fields: ("day" | "time")[]; state: "open" | "filled" | "gone"; looks: number }[];
-  setModels(m: { triage?: Triage; judge?: FindJudge }): void;
+  setModels(m: { triage?: Triage; judge?: FindJudge; drafter?: Drafter }): void;
+  /** D402: 撤回 / Undo on a drafted reply inside its window: nothing is sent and its Go is asked again. False when it can't be undone. */
+  undo(findId: string): boolean;
   /** Something the accounts card shows changed (a look, a find, a tile). */
   onChange(fn: () => void): () => void;
   /** D226: 今天看了什么 / What it looked at today, and why it stayed quiet. */
@@ -433,6 +452,9 @@ export function createProactive(o: ProactiveOptions): Proactive {
   const ledger = openLedger(o.dataDir);
   let triage = o.triage;
   let judge = o.judge ?? barJudge;
+  let drafter = o.drafter;
+  /** D402: the replies waiting out their undo window (in memory: a restart asks again instead of sending). */
+  const sendTimers = new Map<string, unknown>();
   /** D368: the focus names of this morning's run (Mem's Working Memory), for the bar and the pick; empty otherwise. */
   let focusNow: string[] = [];
   const budget = o.monthTokens ?? DEFAULT_MONTH_TOKENS;
@@ -735,7 +757,8 @@ export function createProactive(o: ProactiveOptions): Proactive {
     let goLabel: string | undefined;
     if (c.step) {
       decisionId = newId("d");
-      goLabel = words(c.step.goLabel, z);
+      // D402: with its reply already written, Go is the send itself.
+      goLabel = c.draft ? words(SEND_LABEL, z) : words(c.step.goLabel, z);
       o.log.append({ stream: "channel", origin: "partner", kind: "decision", body: { decisionId, question: text, goLabel, defaultOption: "hold", reversible: false, findId } });
     }
     // D388: each source line says what that source says, in the person's language.
@@ -758,6 +781,8 @@ export function createProactive(o: ProactiveOptions): Proactive {
       facts: c.facts,
       ...(unknown ? { unknown } : {}),
       ...(untouched ? { untouched } : {}),
+      ...(c.reply ? { reply: c.reply } : {}),
+      ...(c.draft ? { draft: c.draft } : {}),
     };
     st.finds[findId] = rec;
     st.said[c.key] = findId;
@@ -768,7 +793,75 @@ export function createProactive(o: ProactiveOptions): Proactive {
         list.push({ id: newId("open"), findId, sheet: c.open.sheet, name: c.open.name, day: c.open.day, days: c.open.days, ...(c.open.place ? { place: c.open.place } : {}), fields: c.open.fields, at: now(), looks: 0, state: "open" });
       st.opens = list.slice(-30);
     }
-    return { findId, kind: c.kind, text, how, ...(decisionId ? { decisionId, goLabel } : {}), ...(c.dueAt ? { dueAt: c.dueAt } : {}), ...(c.sender ? { sender: c.sender } : {}), ...(unknown ? { unknown } : {}), ...(untouched ? { untouched } : {}) };
+    const draft = c.draft && c.reply ? { text: c.draft.text, to: c.reply.name ?? c.reply.to, ...(c.reply.account ? { from: c.reply.account } : {}), subject: c.reply.subject, lang: c.draft.lang, ...(c.draft.check ? { check: c.draft.check } : {}) } : undefined;
+    return { findId, kind: c.kind, text, how, ...(decisionId ? { decisionId, goLabel } : {}), ...(c.dueAt ? { dueAt: c.dueAt } : {}), ...(c.sender ? { sender: c.sender } : {}), ...(unknown ? { unknown } : {}), ...(untouched ? { untouched } : {}), ...(draft ? { draft } : {}) };
+  }
+
+  /**
+   * D402: the replies of the 在等你回 finds about to be said, written first (in parallel, each in
+   * DRAFT_WAIT_MS): the thread and the person's own sent mail are read, the cheapest capable model
+   * writes, and the words are attached to the candidate. A draft that can't be written leaves the
+   * find as it was (its Go opens a task that drafts one): it is never held back for want of one.
+   */
+  async function withDrafts(list: { c: Candidate }[]): Promise<void> {
+    const d = drafter;
+    if (!d) return;
+    const todo = list.filter((x) => x.c.reply && !x.c.draft && !sourcesOver(x.c));
+    await Promise.all(
+      todo.map(async ({ c }) => {
+        const t = c.reply!;
+        try {
+          const me = o.connections.apps(t.connectionId).filter((a) => a.service === t.service).flatMap(meOf);
+          const got = await withTimeout(readForDraft(o.connections, t, me), DRAFT_WAIT_MS);
+          if (!got) return;
+          const r = await withTimeout(d({ to: { addr: t.to, ...(t.name ? { name: t.name } : {}) }, subject: t.subject, thread: got.thread, mine: got.mine, fallbackLang: langName(lang()), today: today() }), DRAFT_WAIT_MS);
+          if (r?.tokens) spend(t.connectionId, r.tokens);
+          if (r?.draft) c.draft = r.draft;
+        } catch (err) {
+          console.warn(`[proactive] no draft for a reply: ${(err as Error).message}`);
+        }
+      }),
+    );
+  }
+
+  /** D402: the find's Go asked again (after 撤回, a failed send or a restart in the window). */
+  function askAgain(findId: string, f: FindRec): string {
+    const decisionId = newId("d");
+    f.decisionId = decisionId;
+    o.log.append({ stream: "channel", origin: "partner", kind: "decision", body: { decisionId, question: f.text, goLabel: f.goLabel ?? words(SEND_LABEL, lang()), defaultOption: "hold", reversible: false, findId } });
+    return decisionId;
+  }
+
+  /** D402: Go on a drafted reply: the text as the person left it waits SEND_UNDO_MS, then is sent once. */
+  function startSend(findId: string, f: FindRec, edited?: string): void {
+    const text = (edited?.trim() || f.draft!.text).slice(0, 4000);
+    const until = now() + SEND_UNDO_MS;
+    f.send = { state: "sending", until, text };
+    save();
+    o.log.append({ stream: "channel", origin: "system", kind: "find_state", body: { findId, kind: f.kind, state: "sending", until: new Date(until).toISOString() } });
+    sendTimers.set(findId, o.clock.setTimeout(() => void finishSend(findId).catch((err) => console.warn(`[proactive] sending a reply: ${(err as Error).message}`)), SEND_UNDO_MS));
+  }
+
+  async function finishSend(findId: string): Promise<void> {
+    sendTimers.delete(findId);
+    const f = st.finds[findId];
+    if (!f || f.send?.state !== "sending" || !f.reply || !f.decisionId) return;
+    const fail = (error: string) => {
+      f.send = { state: "failed", ...(f.send?.text ? { text: f.send.text } : {}) };
+      f.state = undefined;
+      const decisionId = askAgain(findId, f);
+      save();
+      o.log.append({ stream: "channel", origin: "system", kind: "find_state", body: { findId, kind: f.kind, state: "send_failed", decisionId, error: error.slice(0, 120) } });
+    };
+    const plan = await sendPlan(o.connections, f.reply, f.send.text ?? f.draft?.text ?? "").catch(() => undefined);
+    if (!plan) return fail("no_send");
+    const staged = o.connections.stage(f.reply.connectionId, plan.action, plan.input, f.decisionId, f.reply.account);
+    if (!staged.ok) return fail(staged.error);
+    const r = await o.connections.runApproved(f.decisionId);
+    if (!r.ok) return fail(r.error);
+    f.send = { state: "sent" };
+    save();
+    o.log.append({ stream: "channel", origin: "system", kind: "find_state", body: { findId, kind: f.kind, state: "sent" } });
   }
 
   const note = (b: Bodies["finds"]) => o.log.append({ stream: "channel", origin: "partner", kind: "finds", body: b });
@@ -783,7 +876,7 @@ export function createProactive(o: ProactiveOptions): Proactive {
    * What can't wait. D232: urgent by what waiting costs; in 只说急的, with no morning note to join,
    * a promise due today is said now too.
    */
-  const urgentIn = (m: ProactiveMode, c: Candidate) => c.urgent || (m === "urgent" && c.kind === "promised");
+  const urgentIn = (m: ProactiveMode, c: Candidate) => c.urgent || (m === "urgent" && (c.kind === "promised" || !!c.pressing));
   const todaysNote = () => st.mornings.find((m) => m.day === today() && m.finds > 0);
 
   /**
@@ -833,6 +926,7 @@ export function createProactive(o: ProactiveOptions): Proactive {
       const ownFinds = mine.filter((r) => r.asked || !muted(ownCandidate(r)));
       // D368: over the cap, what touches their focus goes in first; the note keeps the usual order.
       const pick = byFocus(kept, terms).slice(0, capLeft(m)).sort((a, b) => kept.indexOf(a) - kept.indexOf(b));
+      await withDrafts(pick);
       const line = todayLine(z);
       const learned = learnedOffer();
       // 有用就说: what the note had no room for is counted, never dropped silently (P2).
@@ -894,6 +988,7 @@ export function createProactive(o: ProactiveOptions): Proactive {
       const rest = timely.slice(0, room);
       if (m === "useful") st.more += timely.length - rest.length;
       if (rest.length) {
+        await withDrafts(rest);
         const prev = o.log.read({ stream: "channel", kinds: ["finds"], limit: 200 }).reverse().find((e) => (e.body as Bodies["finds"]).noteId === morningNote.noteId || (e.body as Bodies["finds"]).revises === morningNote.noteId);
         const pb = prev?.body as Bodies["finds"] | undefined;
         if (pb) {
@@ -912,6 +1007,7 @@ export function createProactive(o: ProactiveOptions): Proactive {
     rollDay();
     const room = Math.max(0, NOW_MAX - (st.day.now ?? 0));
     const pick = list.slice(0, room);
+    await withDrafts(pick);
     if (pick.length) {
       // D388: what can't wait, found in the same look, is one calm message (and one notification),
       // each thing its own find: hel's three "now" notes in one second (2026-11-13) read as noise.
@@ -1349,7 +1445,17 @@ export function createProactive(o: ProactiveOptions): Proactive {
         f.state = "go";
         welcomed(f.kind);
         save();
-        void Promise.resolve().then(() => follow(findId, f));
+        // D402: a reply already written is sent (after its undo window), not handed to a task; only
+        // a Go that carries the words the person saw (the card always sends them). A bare Go (On
+        // hand, a notification's action, a chat app) never sends unseen words: the card asks again.
+        if (f.draft && f.reply && r.text?.trim()) startSend(findId, f, r.text);
+        else if (f.draft && f.reply) {
+          f.state = undefined;
+          const decisionId = askAgain(findId, f);
+          save();
+          o.log.append({ stream: "channel", origin: "system", kind: "find_state", body: { findId, kind: f.kind, state: "unsent", decisionId } });
+        }
+        else void Promise.resolve().then(() => follow(findId, f));
       } else if (r.option === "reply") {
         // D258: a reply (or a message that answered the card) is the person engaging, never a
         // "not now": the find is done with and the bar learns nothing from it.
@@ -1395,6 +1501,15 @@ export function createProactive(o: ProactiveOptions): Proactive {
     // D258: undefined is a 只说急的 set before D250, when the morning note couldn't see a flight.
     return by === "keep_note" || by === undefined;
   }
+  // D402: a reply whose undo window a restart cut short is never sent unseen: its Go is asked again.
+  for (const [findId, f] of Object.entries(st.finds))
+    if (f.send?.state === "sending") {
+      f.send = { state: "unsent", ...(f.send.text ? { text: f.send.text } : {}) };
+      f.state = undefined;
+      const decisionId = askAgain(findId, f);
+      o.log.append({ stream: "channel", origin: "system", kind: "find_state", body: { findId, kind: f.kind, state: "unsent", decisionId } });
+      save();
+    }
   // D258: bars learned before BARS_REV counted a reply as "not now". Relearned once from the Log:
   // only the person's own Go and Not now on a find move a bar; a find held by a reply is passed.
   if ((st.barsRev ?? 0) < BARS_REV) {
@@ -1914,8 +2029,22 @@ export function createProactive(o: ProactiveOptions): Proactive {
     setModels(m) {
       if (m.triage) triage = m.triage;
       if (m.judge) judge = m.judge;
+      if (m.drafter) drafter = m.drafter;
       // A look back that waited for a model to read with goes now (D226).
       if (m.triage) resumeBackfills();
+    },
+    undo(findId) {
+      const f = st.finds[findId];
+      if (!f || f.send?.state !== "sending") return false;
+      const h = sendTimers.get(findId);
+      if (h !== undefined) o.clock.clearTimeout(h);
+      sendTimers.delete(findId);
+      f.send = { state: "unsent", ...(f.send.text ? { text: f.send.text } : {}) };
+      f.state = undefined;
+      const decisionId = askAgain(findId, f);
+      save();
+      o.log.append({ stream: "channel", origin: "system", kind: "find_state", body: { findId, kind: f.kind, state: "unsent", decisionId } });
+      return true;
     },
     morning: () => serial(() => morningRun()),
     async lookNow(days = 1) {
@@ -1936,6 +2065,8 @@ export function createProactive(o: ProactiveOptions): Proactive {
         await fill();
       }),
     stop() {
+      for (const h of sendTimers.values()) o.clock.clearTimeout(h);
+      sendTimers.clear();
       stopped = true;
       watchers.stop();
       unsubscribe();

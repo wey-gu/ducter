@@ -217,7 +217,7 @@ Each find is typed (stage 2 extracts, stage 3 judges; 你说过的 is read by co
 | Kind (zh / en) | What it is | Sources | When it is said | Next step it offers | On by default |
 |---|---|---|---|---|---|
 | **两件事对不上 / Two things don't match** (the aha) | Two facts that contradict or leave a gap: a flight lands the night before the hotel starts; a renewal notice with no payment after it and the card expired; an invoice with no matching bank mail; a meeting during a flight; two meetings at once in any of their calendars, today or tomorrow (D222); the calendar and a confirmation mail naming the same thing on different days, within two weeks (D226); any two of one plan's sources on different days: the calendar's hold or event, a confirmation, a mail that mentions it, the person's own words, a public page (D388, §4.1) | mail + calendar + the conversation, joined through the ledger (§9) over 60 days | the morning note; **now** only if it costs something today | a 上网 task that looks it up (Go), never the change itself | yes |
-| **在等你回 / Waiting on you** | A real person asked you something (a question, a request, a review) and you haven't answered in 2 working days, or they asked again | mail, GitHub review requests, Discord DMs and @-mentions | the morning note | read it first and write up what matters (a task, Go); a draft reply kept in Ducter (Go to save or send) | yes, people only (no lists, no bulk, no noreply) |
+| **在等你回 / Waiting on you** | A real person asked you something (a question, a request, a review) and you haven't answered in 2 working days, or they asked again; D402: only when worth a tap (§4.2: not a relay or a stranger's role address, an ask with words, last asked within 10 working days, nothing sent them since) | mail, GitHub review requests, Discord DMs and @-mentions | the morning note (never "now" by itself; 只说急的: one who asked again or waited 3 working days) | mail: the reply already written in the card, editable, **好，发出去** after 30 s with **撤回** (§4.2); GitHub: read it first (a task, Go) | yes, people only (no lists, no bulk, no noreply) |
 | **你在等别人回 / You're waiting on someone** | You asked a question or made a request, and nobody answered in 3 working days, and it mattered (a deadline, money, a person who matters, Mem) | your sent mail | the morning note | a short follow-up draft (Go) | yes |
 | **你答应过的 / Something you promised** | A commitment in your own sent mail or messages ("我周五前发给你") with nothing showing it was kept | sent mail (14 days, research/46) | the morning of the due day | find the related draft or files; a draft reply (Go) | yes |
 | **快到期和要花钱的 / Deadlines and money** | A renewal, a price going up, a trial ending, a bill or a form due; a quota or allowance nearly used up, saying what the mail leaves out (D388) | mail (+ Mem: the last price) | the morning note, a few days ahead; **now** the day before if unpaid | open the renewal page in Ducter's browser (Go); paying is the person's | yes |
@@ -270,6 +270,42 @@ came back with the time it said was missing). *First time:* a find in the mornin
   the home (scratch folder deleted after, no pusher, no runner, nothing in the person's Log) over the
   last days of the real accounts; it prints what it would have said, with sources, what it held and
   why, and how it knew.
+
+### 4.2 Waiting for your reply: worth a tap, with the reply written (D402, research/163)
+
+*Who:* the developer whose users' mail waits while he codes; the consumer whose friend asked twice;
+the fresh user who just wants to answer. *Feels:* before, a chore per find (hel: 11 of 11 held, one
+answered by hand two minutes after holding it); after, 放心 (only the ones that matter) and 惊喜 (the
+reply is already there, in their language). *First time:* a morning note; under the find, the reply.
+
+- **Said only when worth it** (`detect.ts`, code): a person writing, not a relay (GitHub's and other
+  services' notification senders, no-reply, mailers: the service says it, and a mail reply reaches no
+  one) nor a role address (sales@, events@, …) they never wrote to; an ask with words (an ask triage
+  couldn't name is nothing to answer); last asked within **10 working days** (first seen weeks later
+  with nothing since: handled elsewhere); nothing the person sent them since on any service (a reply,
+  a new mail asking them, a promise). D388's pitch filter stays.
+- **The morning note's, never "now" by itself;** 只说急的 still says one who asked again or waited
+  three working days (D232's test, kept as `pressing`).
+- **The reply, written before the note is made** (`reply.ts`): the thread with them and up to five
+  of the person's own sent mails, read as the watch (in memory, kept nowhere); the cheapest capable
+  model, tool-less, writes at most five sentences in the thread's language and the person's voice,
+  never a fact the thread doesn't give (an honest holding reply, and **发之前确认：{what} / Check
+  first: {what}**), never a code, key or address from the thread. A bracketed blank or no answer is
+  no draft; a minute at most; without one the find is as before (**拟个回复** opens a task). Gmail
+  only for now; GitHub keeps **先帮我读一遍**.
+- **The card:** **回给 {name} / To {name}**, the words in a sunken well (a field while Go is open,
+  `lang` set to the thread's), the check line, **好，发出去 / Go: Send** · **先等等 / Hold**.
+- **Go sends once, after 30 seconds (D61 GQ3):** **{n} 秒后发出 / Sending in {n} s** with **撤回 /
+  Undo**, then **已发给 {name} / Sent to {name}**. The text as edited rides the Go
+  (`decision_resolved.text`); the home stages it (`connections.stage`) and runs it
+  (`runApproved`), so it is in 替你做过的. The send action comes from the account's catalog
+  (`gmail.reply_to_thread`, else `gmail.send_email`), its input from that schema's own field names
+  (recipient, subject `Re: …`, body, thread). 撤回, a refused send (**没发出去，回复还在这里。**), no
+  send action (**这个账号现在没法从这里发信。**) or a restart inside the window asks again under a new
+  decision (`find_state` `unsent` / `send_failed` with `decisionId`). Never sent unseen; never
+  saved into the mailbox.
+- **Measured** on the aha week with hel's eleven rebuilt (`aha.ts three --waiting`): waiting finds
+  said 8 → 5, false positives 3 → 0, on "now" 4 → 0, every worth one with its draft; the aha six 6/6.
 
 ## 5. When it speaks: one ladder, one switch
 
@@ -372,7 +408,8 @@ Every find offers at most one next step, as a decision (D61's effect ladder):
 |---|---|---|---|
 | Look it up (the hotel's site, the registrar, rebook options) | reads the web | **Go** label names it; default **Hold** (background-raised asks never auto-run) | a task with 上网 on the device that has it (D157), reports back in the conversation |
 | Read it first (a PR, a long thread) | reads | Hold | a task; its report is the write-up |
-| A draft (reply, follow-up, a form) | writes nothing outside Ducter | Hold | the draft is shown whole in the conversation; a second Go **存成草稿 / Save as draft** or **发出去 / Send** writes once (D96) |
+| A draft (follow-up, a form) | writes nothing outside Ducter | Hold | the draft is shown whole in the conversation; a second Go **存成草稿 / Save as draft** or **发出去 / Send** writes once (D96) |
+| A reply to someone waiting (D402, §4.2) | sends one mail, on Go | Hold | already written in the card; Go sends it after 30 s with **撤回 / Undo** |
 | Pay, accept, change a booking | the person's own | — | Ducter opens the page and stops (takeover, D48) |
 
 Asks raised by background work **expire into Passed** with the find's date (the Grok bot's

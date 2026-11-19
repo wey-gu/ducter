@@ -1537,6 +1537,13 @@ export function createWsHandler(deps: WsDeps) {
         p.react(String(f.findId ?? ""), f.reaction === "mute" ? "mute" : "useful");
         return;
       }
+      case "find_undo": {
+        // D403: 撤回 / Undo on a drafted reply inside its window (a no-op once it went).
+        const p = deps.proactive?.();
+        if (!p) throw new Error("not available");
+        p.undo(String(f.findId ?? ""));
+        return;
+      }
       case "proactive_answer": {
         const p = deps.proactive?.();
         if (!p) throw new Error("not available");

@@ -2209,6 +2209,11 @@ class AppState {
     this.send({ t: "find_react", findId, reaction });
     this.changed();
   }
+  /** D403: 撤回 / Undo on a drafted reply inside its window. */
+  undoFind(findId: string) {
+    haptic("light");
+    this.send({ t: "find_undo", findId });
+  }
   answerNote(noteId: string, ask: import("@ducter/protocol").ProactiveYesNo, yes: boolean) {
     this.send({ t: "proactive_answer", noteId, ask, yes });
   }

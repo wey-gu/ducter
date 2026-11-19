@@ -3,32 +3,99 @@
 // next step 好，<action> · 先等等 that never runs without Go, 怎么知道的 › with the evidence in
 // place, 有用 · 这类不用告诉我), then 没说的; and the one ask a note may carry. Only shared controls.
 import type { Bodies, FindView } from "@ducter/protocol";
-import { useState } from "preact/hooks";
+import { useEffect, useState } from "preact/hooks";
 import { A } from "./app.ts";
 import { HoverReply, replyKey, replyOfFind } from "./reply.tsx";
 import { ProactiveChips } from "./accounts.tsx";
-import { Btn, Facts, LinkBtn } from "./controls.tsx";
+import { Btn, Facts, LinkBtn, TextBox } from "./controls.tsx";
 import { openDid } from "./did.tsx";
 import { LearnedLine } from "./recall.tsx";
 import { ago } from "./format.ts";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
+/**
+ * D403: a 在等你回 find's reply, already written: who it goes to, the words (editable in place
+ * while its Go is open), what to check first; after Go, a 30-second line with 撤回 / Undo, then 已发出.
+ */
+function Draft({ f, open, decide }: { f: FindView; open: boolean; decide: (text: string) => void }) {
+  const dr = f.draft!;
+  const send = A.S.findSends.get(f.findId);
+  const [text, setText] = useState(dr.text);
+  const [, tick] = useState(0);
+  const sending = send?.state === "sending" && !!send.until;
+  useEffect(() => {
+    if (!sending) return;
+    const h = setInterval(() => tick((n) => n + 1), 1000);
+    return () => clearInterval(h);
+  }, [sending]);
+  const left = sending ? Math.max(0, Math.ceil((Date.parse(send!.until!) - Date.now()) / 1000)) : 0;
+  return (
+    <div class={`fdraft${open ? " open" : ""}`}>
+      <div class="fdraft-to small sub">{t("draft.to", dr.to)}</div>
+      {open ? (
+        <TextBox class="fdraft-text" value={text} lang={dr.lang} label={t("draft.edit", dr.to)} onInput={setText} />
+      ) : (
+        <div class="fdraft-text" lang={dr.lang}>
+          {text}
+        </div>
+      )}
+      {open && dr.check && <div class="small sub">{t("draft.check", dr.check)}</div>}
+      {open ? (
+        <div class="fstep">
+          <Btn kind="secondary" size="sm" label={t("decision.go.label", f.goLabel ?? t("draft.send"))} about={dr.to} disabled={!text.trim()} onClick={() => decide(text)} />
+          <Btn kind="text" size="sm" label={t("decision.hold")} onClick={() => decide("")} />
+        </div>
+      ) : sending ? (
+        <div class="fstep">
+          <span class="small sub" aria-live="polite">{t("draft.sending", left)}</span>
+          <Btn kind="text" size="sm" label={t("draft.undo")} about={dr.to} onClick={() => A.undoFind(f.findId)} />
+        </div>
+      ) : send?.state === "sent" ? (
+        <div class="small sub">{t("draft.sent", dr.to)}</div>
+      ) : null}
+      {open && send?.state === "send_failed" && <div class="small sub">{t(send.error === "no_send" ? "draft.no_send" : "draft.failed")}</div>}
+    </div>
+  );
+}
+
+/** D403: 看草稿 / See the draft, from On hand: the conversation (on a phone, its pane), scrolled to the find, which glows once. */
+export function seeDraft(findId: string) {
+  if (A.route.name !== "conv") A.go({ name: "conv" });
+  const find = (n: number) => {
+    const el = document.getElementById(`find-${findId}`);
+    if (!el) return void (n > 0 && setTimeout(() => find(n - 1), 80));
+    el.scrollIntoView({ block: "center", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+    el.classList.remove("flash");
+    void el.offsetWidth;
+    el.classList.add("flash");
+    setTimeout(() => el.classList.remove("flash"), 1800);
+  };
+  setTimeout(() => find(12), 60);
+}
+
 function Find({ f, seq }: { f: FindView; seq?: number }) {
   const [how, setHow] = useState(false);
   const st = A.S.findStates.get(f.findId);
-  const d = f.decisionId ? A.S.decisions.get(f.decisionId) : undefined;
+  // D403: after 撤回 or a failed send, the find's Go is asked again under a new decision.
+  const did = A.S.findAsks.get(f.findId) ?? f.decisionId;
+  const d = did ? A.S.decisions.get(did) : undefined;
   const open = !!d && !d.resolved && !d.pending;
+  const send = A.S.findSends.get(f.findId);
   const rk = seq !== undefined ? replyKey(replyOfFind(seq, f.findId, f.text)) : undefined;
   return (
-    <div class="find" data-reply={rk} data-seq={undefined}>
+    <div class="find" id={`find-${f.findId}`} data-reply={rk} data-seq={undefined}>
       <div class="kind">{t(`kind.${f.kind}`)}</div>
       {/* D256: the pebble rests outside the card, beside the find's words. */}
       <div class="ftext">
         {f.text}
         <HoverReply k={rk} />
       </div>
+      {f.draft && d && st?.state !== "passed" && (send || open || (d.pending ?? d.resolved?.option) === "go") ? (
+        <Draft f={f} open={open} decide={(text) => (text ? A.decide(d.decisionId, "go", text) : A.decide(d.decisionId, "hold"))} />
+      ) : null}
       {d &&
+        !(f.draft && (open || send || (d.pending ?? d.resolved?.option) === "go")) &&
         (st?.state === "passed" ? (
           <div class="small sub">{t("find.passed")}</div>
         ) : open ? (

@@ -1,6 +1,9 @@
 package views
 
 import (
+	"strconv"
+	"time"
+
 	"github.com/egoist/mygo/ui"
 
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
@@ -69,7 +72,18 @@ func (a *App) findBlock(c *ui.Context, f protocol.FindView, seq int64) {
 				}
 			})
 		})
-		if d := a.S.Decisions[f.DecisionID]; d != nil {
+		// D403: after 撤回 or a failed send, the find's Go is asked again under a new decision.
+		did := f.DecisionID
+		if x := a.S.FindAsks[f.FindID]; x != "" {
+			did = x
+		}
+		send := a.S.FindSends[f.FindID]
+		d := a.S.Decisions[did]
+		drafted := f.Draft != nil && d != nil && (st == nil || st.State != "passed") && (send != nil || openAsk(d) || d.Pending == "go" || (d.Resolved != nil && d.Resolved.Option == "go"))
+		if drafted {
+			a.findDraft(c, f, d, send)
+		}
+		if d != nil && !drafted {
 			switch {
 			case st != nil && st.State == "passed":
 				ui.Text(c, a.L.T("find.passed")).FontSize(t.SM).TextColor(t.InkMuted)
@@ -180,4 +194,73 @@ func (a *App) noteAsk(c *ui.Context, n *protocol.Finds) {
 		}
 		a.proactiveChips(c, "note-"+n.NoteID)
 	}
+}
+
+// findDraft is a 在等你回 find's reply, already written (D403): who it goes
+// to, the words in a sunken well (a field while its Go is open), what to
+// check first, then 发出去 · 先等等; after Go, the 30-second line with 撤回,
+// then 已发给 {name}.
+func (a *App) findDraft(c *ui.Context, f protocol.FindView, d *store.DecisionState, send *protocol.FindState) {
+	t := a.T
+	dr := f.Draft
+	key := "draft:" + f.FindID
+	text, ok := a.replyDraft[key]
+	if !ok {
+		text = dr.Text
+	}
+	open := openAsk(d)
+	ui.Column(c.Key(key)).Gap(t.S1 + 2).Children(func() {
+		ui.Text(c, a.L.T("draft.to", dr.To)).FontSize(t.SM).TextColor(t.InkMuted)
+		if open {
+			ui.TextArea(c.Key("draft-text:"+f.FindID), &text).Lines(2, 16).Label(a.L.T("draft.edit", dr.To)).
+				Background(t.Sunken).Border(1, t.LineSoft).Radius(t.RadiusSM).Padding(t.S2, t.S3).FontSize(t.PartnerSize).TextColor(t.Ink)
+		} else {
+			ui.Box(c.Key("draft-well:"+f.FindID)).Background(t.Sunken).Radius(t.RadiusSM).Padding(t.S2, t.S3).Children(func() {
+				ui.Text(c, text).Selectable().FontSize(t.PartnerSize).LineHeight(leadingFor(text, 1.5)).TextColor(t.InkSoft)
+			})
+		}
+		if open && dr.Check != "" {
+			ui.Text(c, a.L.T("draft.check", dr.Check)).FontSize(t.SM).TextColor(t.InkMuted)
+		}
+		switch {
+		case open:
+			if send != nil && send.State == "send_failed" {
+				k := "draft.failed"
+				if send.Error == "no_send" {
+					k = "draft.no_send"
+				}
+				ui.Text(c, a.L.T(k)).FontSize(t.SM).TextColor(t.InkMuted)
+			}
+			ui.Row(c.Key("draft-step:" + f.FindID)).Gap(t.S2).AlignItems(ui.Center).Children(func() {
+				label := f.GoLabel
+				if label == "" {
+					label = a.L.T("draft.send")
+				}
+				if a.buttonFor(c, a.L.T("decision.go.label", label), dr.To, btnSecondary, t.ControlSM, t.PartnerBubble) && text != "" {
+					a.Decide(d.DecisionID, "go", text)
+				}
+				if a.buttonFor(c, a.holdLabel(d), "", btnText, t.ControlSM, t.PartnerBubble) {
+					a.Decide(d.DecisionID, "hold", "")
+				}
+			})
+		case send != nil && send.State == "sending":
+			left := 0
+			if at, err := time.Parse(time.RFC3339Nano, send.Until); err == nil {
+				left = int((at.Sub(a.Now()) + time.Second - 1) / time.Second)
+				if left < 0 {
+					left = 0
+				}
+				c.After(time.Second)
+			}
+			ui.Row(c.Key("draft-undo:" + f.FindID)).Gap(t.S2).AlignItems(ui.Center).Children(func() {
+				ui.Text(c, a.L.T("draft.sending", strconv.Itoa(left))).FontSize(t.SM).TextColor(t.InkMuted)
+				if a.buttonFor(c, a.L.T("draft.undo"), dr.To, btnText, t.ControlSM, t.PartnerBubble) {
+					a.send(protocol.FindUndo{T: "find_undo", FindID: f.FindID})
+				}
+			})
+		case send != nil && send.State == "sent":
+			ui.Text(c, a.L.T("draft.sent", dr.To)).FontSize(t.SM).TextColor(t.InkMuted)
+		}
+	})
+	a.replyDraft[key] = text
 }

@@ -459,6 +459,12 @@ func (a *App) seePlan(d *store.DecisionState) {
 
 // takePlanJump finds the plan card once the conversation has its rows.
 func (a *App) takePlanJump(c *ui.Context) {
+	if id := a.draftJump; id != "" {
+		a.draftJump = ""
+		if seq := a.S.FindSeq[id]; seq > 0 {
+			a.jumpTo(c, seq, id)
+		}
+	}
 	if a.planJump == 0 {
 		return
 	}

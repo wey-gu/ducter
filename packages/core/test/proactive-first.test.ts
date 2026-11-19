@@ -31,9 +31,9 @@ test("the first add: one offer; D250: watching on the default, the quiet look ba
   await r.advance(15 * 60_000);
   // Silence: the quiet look back went (60 days, the last 3 in full).
   expect(reach(r)).toContain(60);
-  // Only what can't wait was said (a person who asked again today, D232), as on any day at the default.
-  expect(r.notes().slice(1).map((e) => e.body.rung)).toEqual(["now"]);
-  expect(r.sent.map((m) => m.level)).toEqual(["time-sensitive"]); // that "now" only: the offer is in the conversation, never a notification
+  // Nothing can't wait: a person who asked again today waits for the morning note (D403; D232 said it now).
+  expect(r.notes().slice(1).map((e) => e.body.rung)).toEqual([]);
+  expect(r.sent).toEqual([]); // the offer is in the conversation, never a notification
 });
 
 test("好，看一眼: 3 days in full and two weeks that may hold a fact, what needs the person (D232), then the cadence question; 60 days fill the ledger silently", async () => {

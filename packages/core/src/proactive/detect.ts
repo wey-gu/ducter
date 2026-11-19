@@ -244,8 +244,24 @@ function changes(facts: Fact[], c: DetectCtx): Candidate[] {
 /** D388: what a cold pitch asks for: a meeting, a call, a link to book, a deal, an invitation. */
 export const PITCH = /\b(meet(ing)?s?|calls?|demo|book(ing)?|schedule|calendly|links?|coffee|introduc\w*|partner(ship)?s?|collaborat\w*|proposals?|invit\w*|webinar|opportunit\w*|sponsor\w*|freelance|outsourc\w*)\b|约个|约一下|聊聊|见面|会议|通话|电话|链接|介绍|合作|邀请|提案|洽谈|商务|外包/i;
 
+/**
+ * D403: a sender that relays for a service, not a person writing (GitHub's notifications, a
+ * no-reply, a mailer): a reply by mail reaches nobody, and the service says it on its own.
+ */
+export const RELAY = /^(notifications?|noreply|no[-_.]?reply|do[-_.]?not[-_.]?reply|mailer(-daemon)?|bounces?|notify|alerts?|automated|postmaster)@|@(github\.com|gitlab\.com|linear\.app|[a-z0-9-]+\.atlassian\.net|slack\.com|discord\.com|figma\.com|notion\.so)$|@(reply|noreply|bounces?)\.[a-z0-9.-]+$/i;
+/** D403: a role address (a sales or events team): a person only if the person wrote to it before. */
+export const ROLE = /^(info|hello|hi|team|sales|marketing|contact|news|newsletter|bizdev|partners?|events?|community|growth|recruit(ing|er)?|careers?|jobs|hr)@/i;
+/** D403: an ask first seen this many working days after it came, with nothing since, is not news: it was likely handled elsewhere. */
+export const WAIT_STALE_DAYS = 10;
+/** D403: the services a reply can be drafted for (read the thread, send behind Go). */
+export const MAIL_SERVICES = new Set(["gmail"]);
+
 function waitingOnYou(facts: Fact[], c: DetectCtx): Candidate[] {
   const replies = facts.filter((f): f is Extract<Fact, { type: "reply" }> => f.type === "reply" && f.out);
+  // D403: anything the person sent them since, on any service: a reply, a new mail asking them something, a promise.
+  const wroteTo = (addr: string, after: number) =>
+    replies.some((r) => r.with.toLowerCase() === addr && Date.parse(r.at) > after) ||
+    facts.some((f) => ((f.type === "ask_out" && f.to.toLowerCase() === addr) || (f.type === "commitment" && f.to.toLowerCase() === addr)) && Date.parse(f.at) > after);
   const asks = facts.filter((f): f is Extract<Fact, { type: "ask_in" }> => f.type === "ask_in" && f.person);
   const byThread = new Map<string, Extract<Fact, { type: "ask_in" }>[]>();
   for (const a of asks) byThread.set(`${a.ref.connectionId}|${a.ref.thread ?? a.ref.id}`, [...(byThread.get(`${a.ref.connectionId}|${a.ref.thread ?? a.ref.id}`) ?? []), a]);
@@ -267,6 +283,15 @@ function waitingOnYou(facts: Fact[], c: DetectCtx): Candidate[] {
     const from = first.from.toLowerCase();
     const known = replies.some((r) => r.with.toLowerCase() === from) || facts.some((f) => f.type === "ask_out" && f.to.toLowerCase() === from);
     if (!gh && !known && PITCH.test(`${list.map((a) => a.what).join(" ")} ${first.label}`)) continue;
+    // D403: said only when it is worth a tap (research/164, hel's eleven): a person writing, not a
+    // service relaying (GitHub's own mail: GitHub is where it's answered) nor a role address they
+    // never wrote to; an ask it can name (an ask with no words is nothing to answer); not stale
+    // (first seen weeks later with nothing since: handled elsewhere); not answered anywhere since.
+    if (!gh && (RELAY.test(from) || (!known && ROLE.test(from)))) continue;
+    if (!list.some((a) => a.what.trim())) continue;
+    const lastDays = workingDaysSince(Date.parse(last.at), c.now, c.zone);
+    if (lastDays > WAIT_STALE_DAYS) continue;
+    if (wroteTo(from, Date.parse(last.at))) continue;
     const ago = daysUntil(first.at, c.now, c.zone);
     const whenZh = ago >= 0 ? "今天" : ago === -1 ? "昨天" : `${-ago} 天前`;
     const zh = `${who} ${whenZh}问你${first.what ? `「${first.what}」` : "一件事"}${again ? `，${daysUntil(last.at, c.now, c.zone) === 0 ? "今天" : ""}又问了一次。` : `，还没回。`}`;
@@ -275,9 +300,11 @@ function waitingOnYou(facts: Fact[], c: DetectCtx): Candidate[] {
       key: `wait_you:${k}:${list.length}`,
       kind: "waiting_on_you",
       cost: Math.min(90, 50 + (again ? 15 : 0) + days * 5),
-      // D232: urgent by what waiting costs, not by kind: a person who asked again, or has waited
-      // three working days, is said in 只说急的 too.
-      urgent: again || days >= 3,
+      // D403: never "now" by itself: a person waiting is the morning note's (on hel, six such
+      // finds took the day's "now" room from a trip's mismatch). 只说急的 still says the ones
+      // that asked again or waited three working days (D232), through the engine's urgentIn.
+      urgent: false,
+      ...(again || days >= 3 ? { pressing: true } : {}),
       sender: who,
       people: [first.from.toLowerCase()],
       how: list.map(howOf).slice(-3),
@@ -286,6 +313,8 @@ function waitingOnYou(facts: Fact[], c: DetectCtx): Candidate[] {
         ? { kind: "read", goLabel: { zh: "先帮我读一遍", en: "Read it for me first" }, brief: "Someone is waiting on the person on GitHub (below). Read it (the PR or issue, its diff and discussion) and write up in a few lines what matters for the person's answer. Read only: comment nothing, approve nothing.", data: { from: who, item: first.label } }
         : { kind: "draft", goLabel: { zh: "拟个回复", en: "Draft a reply" }, brief: "Someone asked the person something (below). Read the thread and write a short reply draft in the thread's language. Show the draft whole in your report; send nothing, save nothing to the mailbox.", data: { from: who, asked: first.what, thread: first.label } },
       facts: list.map((a) => a.id),
+      // D403: where a reply goes (mail only): the engine drafts it before the find is said.
+      ...(!gh && MAIL_SERVICES.has(last.ref.service) ? { reply: { connectionId: last.ref.connectionId, service: last.ref.service, ...(last.ref.account ? { account: last.ref.account } : {}), ...(last.ref.thread ? { thread: last.ref.thread } : {}), messageId: last.ref.id, to: from, ...(first.name ? { name: first.name } : {}), subject: last.label } } : {}),
     });
   }
   // The same person asking in two places (a mail and a GitHub review request) is one find: the

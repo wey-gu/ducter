@@ -156,8 +156,20 @@ answers from those same lines, adding nothing. If it told you something was stil
 with no time yet), it may come back once when it finds out: from a later mail, your calendar, or
 a quick look at the event's public page (only the event's name, place and the days in question
 are searched), with **Filling in the time: …** and the page it read. It also gives at most one next step, like **See if it can start earlier**: nothing happens until
-you tap it, and even then it only looks things up or drafts; it never sends, pays, books,
-deletes or marks anything read. A step you don't take quietly becomes **Passed** after its date.
+you tap it, and even then it only looks things up or drafts; it never pays, books, deletes or
+marks anything read, and sends only the reply you tapped **Send** on. A step you don't take
+quietly becomes **Passed** after its date.
+
+Someone waiting on your answer is mentioned only when it's worth your time: a real person (not a
+service's notification or a sales address you never wrote to), with a question it can name, not
+weeks old, and not answered by you anywhere since. It comes in the morning message, never as a
+notification of its own. With Gmail, the reply is already written under it, in their language and
+in the way you usually write, from the thread and a few of your own sent emails; nothing it reads
+for that is kept. Edit it right there if you like, then **Go: Send**. It waits 30 seconds with
+**Undo** before it goes, and then says **Sent to {name}**. If something needs checking first (a
+fix you haven't shipped yet), it says so above the button. Nothing is ever sent without your tap,
+and nothing is saved into your mailbox. On **On hand** the same item shows the reply's first line
+and **See the draft**, which takes you to it in the conversation.
 
 Under each one, **Useful** or **Don't tell me this kind**. The second becomes a rule in **Your
 rules**, where you can remove it. If three morning messages in a row go unread, they stop, and

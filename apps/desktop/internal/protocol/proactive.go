@@ -38,7 +38,23 @@ type FindView struct {
 	// D388: what it doesn't know yet, and what it did not change.
 	Unknown   string `json:"unknown,omitempty"`
 	Untouched string `json:"untouched,omitempty"`
+	// D403: a reply already written for a 在等你回 find (editable; Go sends it after the undo window).
+	Draft *FindDraft `json:"draft,omitempty"`
 }
+
+// FindDraft is the reply a cheap model wrote from the thread, in its
+// language and the person's voice (D403).
+type FindDraft struct {
+	Text    string `json:"text"`
+	To      string `json:"to"`
+	From    string `json:"from,omitempty"`
+	Subject string `json:"subject,omitempty"`
+	Lang    string `json:"lang"`
+	Check   string `json:"check,omitempty"`
+}
+
+// SendUndoMs is how long a reply waits after Go, with 撤回 / Undo (D403, D61 GQ3).
+const SendUndoMs = 30_000
 
 // Finds is one note the partner said by itself: the morning note, a
 // fold-in (Revises today's note), "now", before a meeting, or the
@@ -66,13 +82,29 @@ type Learned struct {
 	Count int `json:"count"`
 }
 
-// FindState is a find's change: go, held, passed (过了), useful, muted.
+// FindState is a find's change: go, held, passed (过了), useful, muted; and
+// a drafted reply's sending, sent, unsent, send_failed (D403: Until is when
+// it goes; DecisionID the find's Go asked again; Error why it didn't go).
 type FindState struct {
+	FindID     string `json:"findId"`
+	Kind       string `json:"kind"`
+	State      string `json:"state"`
+	TaskID     string `json:"taskId,omitempty"`
+	RuleID     string `json:"ruleId,omitempty"`
+	Until      string `json:"until,omitempty"`
+	DecisionID string `json:"decisionId,omitempty"`
+	Error      string `json:"error,omitempty"`
+}
+
+// IsSendState says whether a find state is a drafted reply's sending (D403).
+func IsSendState(s string) bool {
+	return s == "sending" || s == "sent" || s == "unsent" || s == "send_failed"
+}
+
+// FindUndo is 撤回 / Undo on a drafted reply inside its window (D403).
+type FindUndo struct {
+	T      string `json:"t"` // "find_undo"
 	FindID string `json:"findId"`
-	Kind   string `json:"kind"`
-	State  string `json:"state"`
-	TaskID string `json:"taskId,omitempty"`
-	RuleID string `json:"ruleId,omitempty"`
 }
 
 // AppWatch is one app tile on an accounts card (D166).
@@ -193,4 +225,9 @@ type ReadProblem struct {
 	Agent   string `json:"agent,omitempty"`
 	Since   string `json:"since"`
 	Waiting int    `json:"waiting"`
+}
+
+// DecisionDraft is a drafted reply's first line, for its ask away from the card (D403).
+type DecisionDraft struct {
+	First string `json:"first"`
 }

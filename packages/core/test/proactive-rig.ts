@@ -36,6 +36,8 @@ export interface RigOptions {
   workingMemory?: ProactiveOptions["workingMemory"];
   /** D388: a fake quick web look for open questions (never the web). */
   webLook?: ProactiveOptions["webLook"];
+  /** D403: a recorded drafter (never a model). */
+  drafter?: ProactiveOptions["drafter"];
 }
 
 export function rig(o: RigOptions = {}) {
@@ -50,7 +52,7 @@ export function rig(o: RigOptions = {}) {
   settings.set({ language: o.language ?? "zh", quiet: { start: "23:00", end: "08:00", tz: ZONE }, ...(o.mode ? { proactive: o.mode } : {}) });
   const rules = openRules(t.dir);
   const fx = o.fx ?? busyWeek();
-  const acc = fakeAccounts(fx, o.accounts);
+  const acc = fakeAccounts(fx, { now: () => clock.now(), ...o.accounts });
   const sent: PushMessage[] = [];
   const pusher: Pusher = {
     pending: () => [],
@@ -88,6 +90,7 @@ export function rig(o: RigOptions = {}) {
     ...(o.monthTokens ? { monthTokens: o.monthTokens } : {}),
     ...(o.workingMemory ? { workingMemory: o.workingMemory } : {}),
     ...(o.webLook ? { webLook: o.webLook } : {}),
+    ...(o.drafter ? { drafter: o.drafter } : {}),
     present: () => present,
     zone: () => ZONE,
   };

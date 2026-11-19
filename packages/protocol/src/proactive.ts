@@ -83,7 +83,30 @@ export interface FindView {
   unknown?: string;
   /** D388: what it did not change, when the person might think it did ("日历我没改。"), ≤ 40 chars. */
   untouched?: string;
+  /**
+   * D403: a reply already written for a 在等你回 find, shown whole in the card and editable in
+   * place. Its Go is 发出去 / Send: the text as edited goes with the Go (decision_resolved.text),
+   * waits SEND_UNDO_MS with 撤回 / Undo, then is sent once by the home; never sent on its own.
+   */
+  draft?: FindDraft;
 }
+
+/** D403: the reply a cheap model wrote from the thread, in its language, in the person's own voice. */
+export interface FindDraft {
+  text: string;
+  /** Who it goes to (their name, else their address) and the account it is sent from. */
+  to: string;
+  from?: string;
+  /** The subject it answers. */
+  subject?: string;
+  /** BCP 47: the thread's language. */
+  lang: string;
+  /** What to make true or check before sending ("Plus 真的开通了"), at most 40 chars; shown above Send. */
+  check?: string;
+}
+
+/** D403 (D61 GQ3): how long a reply waits after Go before it is sent, with 撤回 / Undo. */
+export const SEND_UNDO_MS = 30_000;
 
 /**
  * The rungs of the ladder (§5) a note was said on. "first": the first-account moment (§11).
@@ -102,7 +125,12 @@ export type ProactiveYesNo = "first_look" | "keep_note" | "note_again";
 export const isProactiveYesNo = (a: unknown): a is ProactiveYesNo => a === "first_look" || a === "keep_note" || a === "note_again";
 
 /** One state change of a find (core writes it; clients fold it into the note). */
-export type FindState = "go" | "held" | "passed" | "useful" | "muted";
+/**
+ * D403: a drafted reply's own states: sending (Go given, its undo window running until `until`),
+ * sent, unsent (撤回 / Undo, or a restart inside the window: the card asks again, with a new
+ * decisionId), send_failed (the account refused or didn't answer; `error` says it in a few words).
+ */
+export type FindState = "go" | "held" | "passed" | "useful" | "muted" | "sending" | "sent" | "unsent" | "send_failed";
 
 /** One app it can read in a source (a tile on the accounts card, D166). */
 export interface AppWatch {

@@ -37,6 +37,7 @@ import { createWebLook } from "./web-look.ts";
 import { createProactive, type Proactive } from "./proactive/engine.ts";
 import { replayProactive } from "./proactive/replay.ts";
 import { modelTriage, type Triage } from "./proactive/triage.ts";
+import { modelDrafter } from "./proactive/reply.ts";
 import { modelJudge, type FindJudge } from "./proactive/judge.ts";
 import { registerProactiveTools } from "./proactive/tools.ts";
 import { createWsHandler, type WsData } from "./ws.ts";
@@ -278,7 +279,7 @@ export interface CoreOptions {
   /** Work over time test seams (D112-D114): fake commands, a lower look floor, the judge. */
   work?: { exec?: import("@ducter/protocol/src/checks-run.ts").Exec; minEveryMs?: number; judgeMinMs?: number; restartLookMs?: number; defaultZone?: string; judge?: import("./waiters.ts").Judge; connectionFetch?: (url: string, init: RequestInit) => Promise<Response> };
   /** D165 test seams: the cheap triage and the bar (faked in tests; real ones need the runner's harness), the month's budget. */
-  proactive?: { triage?: Triage; judge?: FindJudge; monthTokens?: number; zone?: string };
+  proactive?: { triage?: Triage; judge?: FindJudge; drafter?: import("./proactive/reply.ts").Drafter; monthTokens?: number; zone?: string };
   /** D276 test seams for 聊天软件 / Chat apps: the adapters against fake servers, the outbox's sleep. */
   channels?: Pick<ChannelDeps, "make" | "sleep" | "gapMs" | "openUrl" | "wechat">;
 }
@@ -1839,6 +1840,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     runner: () => runner,
     ...(opts.proactive?.triage ? { triage: opts.proactive.triage } : {}),
     ...(opts.proactive?.judge ? { judge: opts.proactive.judge } : {}),
+    ...(opts.proactive?.drafter ? { drafter: opts.proactive.drafter } : {}),
     ...(opts.proactive?.monthTokens ? { monthTokens: opts.proactive.monthTokens } : {}),
     present: () => ws.present(),
     zone,
@@ -2004,6 +2006,8 @@ export function startCore(opts: CoreOptions = {}): Core {
       proactive.setModels({
         ...(opts.proactive?.triage ? {} : { triage: modelTriage(createHarnessAsk({ harness: port, pick, dataDir, cheap: true, dir: "triage" })) }),
         ...(opts.proactive?.judge ? {} : { judge: modelJudge(createHarnessAsk({ harness: port, pick, dataDir, cheap: false, dir: "judge" })) }),
+        // D403: a waiting-on-you find's reply, on the cheapest capable model (tool-less, its own folder).
+        ...(opts.proactive?.drafter ? {} : { drafter: modelDrafter(createHarnessAsk({ harness: port, pick, dataDir, cheap: true, dir: "drafts", timeoutMs: 60_000, system: "You answer with one JSON object and nothing else. You never use tools." })) }),
       });
       // D359: the pile is sorted and PRs pre-read on the cheapest model of the harness the partner thinks with.
       if (!opts.taskSources?.ask) taskSources.setAsk(createHarnessAsk({ harness: port, pick, dataDir, cheap: true, dir: "pile", timeoutMs: 120_000 }));

@@ -2221,3 +2221,16 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] **Take one off the list** (not delete the file): the person's own "not this one". Trigger: a person who asks to hide one.
 - [ ] **Find by what is inside a written file** the home never read (only its name, the words around it and a block's cells are searched today). Trigger: a miss in the author's use where the words were only inside the file.
 - [ ] **Walk it with weeks of a real Log** (the author's home): ranking, noise from coding tasks' written docs, and the raters' line with people. Trigger: the next live walk.
+
+## Waiting for your reply, with the reply written (D403, research/164)
+
+- [ ] **Read OOMOL's Gmail send schema** (`oo connector schema` for `gmail.reply_to_thread` and
+      `gmail.send_email`: field names only) and check `replyInput` maps them; then one real send to
+      the author's own address, on his Go. Trigger: before the release that carries D403 is called verified.
+- [ ] **On hel, three days after it updates:** waiting finds said per day, how many taken (Go) or
+      sent, how many 撤回; the 11-12 kind of stranger relay never said. Trigger: hel on the release.
+- [ ] **A drafter eval with a real cheap model** over synthetic threads (zh, en, ja): the thread's
+      language, the person's voice, no invented fact, a check line when the answer needs one.
+      Trigger: before widening drafts beyond Gmail.
+- [ ] **Drafts for Outlook and chat DMs** (Slack, Discord), and "answered elsewhere" from the person's
+      own chat messages. Trigger: the first person with Outlook connected, or a Slack find held twice.

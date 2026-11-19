@@ -22,7 +22,7 @@ export interface FakeCall {
   account?: string;
 }
 
-export function fakeAccounts(fx: Fixture, o: { id?: string; source?: ConnectionSource; name?: string; apps?: FakeApp[]; state?: ConnectionView["state"]; legacyThreads?: boolean; /** The apps not listed yet (right after a start, before OOMOL answered the list). */ unlisted?: boolean; refuse?: (input: Record<string, unknown>) => string | undefined } = {}) {
+export function fakeAccounts(fx: Fixture, o: { /** D403: the time now, so a read never sees mail from the future. */ now?: () => number; /** D403: how a send fails (its error), when it should. */ sendFails?: string; /** D403: no send action in the catalog. */ noSend?: boolean; id?: string; source?: ConnectionSource; name?: string; apps?: FakeApp[]; state?: ConnectionView["state"]; legacyThreads?: boolean; /** The apps not listed yet (right after a start, before OOMOL answered the list). */ unlisted?: boolean; refuse?: (input: Record<string, unknown>) => string | undefined } = {}) {
   const id = o.id ?? "conn_oo";
   const apps: FakeApp[] = o.apps ?? [
     { service: "gmail", title: "Gmail", account: ME },
@@ -31,6 +31,10 @@ export function fakeAccounts(fx: Fixture, o: { id?: string; source?: ConnectionS
     { service: "discord", title: "Discord", account: "wey" },
   ];
   const calls: FakeCall[] = [];
+  const clockNow = o.now ?? (() => Number.POSITIVE_INFINITY);
+  /** D403: writes staged on a decision, and the ones that ran (only on a Go the Log holds). */
+  const staged = new Map<string, { action: string; input: unknown; account?: string }>();
+  const sent: { action: string; input: Record<string, unknown>; account?: string; decisionId: string }[] = [];
   const listeners = new Set<() => void>();
   const removers = new Set<(id: string) => void>();
   const flags = new Map<string, { watch?: boolean; excluded?: boolean }>();
@@ -67,8 +71,14 @@ export function fakeAccounts(fx: Fixture, o: { id?: string; source?: ConnectionS
       const q = String(inp.query ?? "");
       if (o.refuse?.(inp)) return { ok: false, error: o.refuse(inp)! };
       const terms = /subject:\(([^)]*)\)/.exec(q)?.[1]?.split(/\s+OR\s+/).map((w) => w.replace(/"/g, "").toLowerCase());
+      // D403: a draft's reads: the thread with one address (from:x OR to:x), and the person's own sent mail.
+      const withAddr = /from:(\S+) OR to:(\S+)/.exec(q)?.[1]?.toLowerCase();
+      const sentOnly = /\bin:sent\b/.test(q);
+      const addrOf = (s: string) => (/<([^>]+)>/.exec(s)?.[1] ?? s).toLowerCase();
       const rows = fx.mail
-        .filter((m) => Date.parse(m.date) > since && (!terms || terms.some((w) => m.subject.toLowerCase().includes(w))))
+        .filter((m) => Date.parse(m.date) > since && (!(withAddr || sentOnly) || Date.parse(m.date) <= clockNow()) && (!terms || terms.some((w) => m.subject.toLowerCase().includes(w))))
+        .filter((m) => !withAddr || addrOf(m.from) === withAddr || (m.to ?? []).some((t) => addrOf(t) === withAddr))
+        .filter((m) => !sentOnly || (m.labelIds ?? []).includes("SENT"))
         .sort((x, y) => Date.parse(y.date) - Date.parse(x.date));
       if (o.legacyThreads) {
         if (action !== "gmail.search_threads") return { ok: false, error: `unknown action ${action}` };
@@ -90,6 +100,7 @@ export function fakeAccounts(fx: Fixture, o: { id?: string; source?: ConnectionS
         historyId: "1",
         sizeEstimate: 1000,
         snippet: m.snippet,
+        ...(inp.detail === "full" ? { messageText: m.snippet } : {}),
       }));
       return { ok: true, op: "read", result: { messages: page, nextPageToken: at + n < rows.length ? String(at + n) : null, resultSizeEstimate: rows.length } };
     }
@@ -144,6 +155,23 @@ export function fakeAccounts(fx: Fixture, o: { id?: string; source?: ConnectionS
       return () => removers.delete(fn);
     },
     oo: () => ({ installed: true, account: true }),
+    async guide(_who: ConnectionCaller, cid: string, action: string): Promise<ConnectionOutcome> {
+      if (cid !== id || o.noSend || action !== "gmail.send_email") return { ok: false, error: `No action ${action}` };
+      return { ok: true, op: "write", result: { op: "write", description: "Send an email", inputSchema: { type: "object", properties: { recipient_email: { type: "string" }, subject: { type: "string" }, body: { type: "string" }, thread_id: { type: "string" } }, required: ["recipient_email", "body"] } } };
+    },
+    stage(cid: string, action: string, input: unknown, decisionId: string, account?: string) {
+      if (cid !== id) return { ok: false, error: "No such connection." };
+      staged.set(decisionId, { action, input, ...(account ? { account } : {}) });
+      return { ok: true, callId: `c_${staged.size}` };
+    },
+    async runApproved(decisionId: string): Promise<ConnectionOutcome> {
+      const s = staged.get(decisionId);
+      if (!s) return { ok: false, error: "Nothing is waiting on that decision." };
+      staged.delete(decisionId);
+      if (o.sendFails) return { ok: false, error: o.sendFails, op: "write" };
+      sent.push({ action: s.action, input: s.input as Record<string, unknown>, ...(s.account ? { account: s.account } : {}), decisionId });
+      return { ok: true, op: "write", result: { id: `sent_${sent.length}` } };
+    },
   } as unknown as ConnectionsStore;
 
   return {
@@ -164,6 +192,8 @@ export function fakeAccounts(fx: Fixture, o: { id?: string; source?: ConnectionS
     setState(s: ConnectionView["state"]) {
       state = s;
     },
+    /** D403: what was sent (each only after its Go and undo window). */
+    sent,
     /** What was called that is not a read the broker would let a watcher make. */
     writes: () => calls.filter((c) => ooOp(c.action) === "write"),
   };

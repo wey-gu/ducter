@@ -30,6 +30,8 @@ var sharedControls = map[string]bool{
 	"addRow": true, "quietDanger": true, "openRow": true,
 	// D296: a row that goes elsewhere with its tile
 	"tileLinkRow": true,
+	// D398: a card's foot that folds what can wait, and an optional step as a row
+	"sheetFold": true, "extraStep": true,
 }
 
 // controlFiles are the cards and settings pages the rule covers.
@@ -37,7 +39,7 @@ var controlFiles = []string{
 	"devicecard.go", "devupdate.go", "computers.go", "sites.go", "abilities.go", "agentversion.go",
 	"settings.go", "settings_panels.go", "settings_update.go", "partner.go", "loadout.go", "whereswitch.go", "shared.go", "memplugin.go",
 	"accounts.go", "finds.go", "newtask.go", "newtaskwhere.go", "byproject.go", "phone.go", "chats.go", "imessage.go",
-	"settings_rows.go", "ownphone.go",
+	"settings_rows.go", "ownphone.go", "devguard.go", "handset.go", "reach.go",
 }
 
 // adHoc reports a call that makes a control by hand.

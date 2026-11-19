@@ -251,7 +251,7 @@ func placeDock(s *isle) {
 		return
 	}
 	w := n*dockSize + (n-1)*dockGap
-	s.dockR = ui.Rect{X: s.is.X + s.is.W/2 - w/2, Y: s.is.Y + s.is.H + 44, W: w, H: dockSize + 30}
+	s.dockR = ui.Rect{X: s.is.X + s.is.W/2 - w/2, Y: s.is.Y + s.is.H + 44, W: w, H: dockSize + 64}
 }
 
 // dockAbilities are the abilities a device shows at full size: those that
@@ -480,6 +480,7 @@ func (a *App) stage(c *ui.Context, dv *protocol.DeviceView) {
 		a.startEquip(dv, got.id, ui.Rect{X: sb.X + x - size/2, Y: sb.Y + y - size/2, W: size, H: size}, true)
 	}
 	b := stage.LayoutBounds()
+	d.stageR = stage.Bounds() // window space, last frame: what the scene must fit inside (D398)
 	sw, sh := b.W, b.H
 	if sw == 0 || sh == 0 {
 		c.Invalidate()
@@ -524,6 +525,9 @@ func (a *App) stage(c *ui.Context, dv *protocol.DeviceView) {
 				continue
 			}
 			a.paintBridge(p, r, v, home, s, lift[home.key], lift[s.key]+rise.dy, 1, now, still)
+		}
+		if len(home.dock) > 0 && d.pier.W > 0 {
+			a.paintPier(p, r, v.k, d.pierFrom, d.pier)
 		}
 		if spot != nil {
 			grow := float32(1)
@@ -949,6 +953,40 @@ func (a *App) paintBridge(p *ui.Painter, r ui.Rect, v view, home, s *isle, liftH
 	}
 }
 
+// paintPier is home's pier (D398): a short plank walk from the island's
+// front down to a plank deck where its abilities stand. The bridges' own
+// planks and colors; the deck a rounded slab with seams, its shadow on the
+// water down and right of the light. from and deck are in stage space.
+func (a *App) paintPier(p *ui.Painter, r ui.Rect, k float32, from ui.Point, deck ui.Rect) {
+	is := a.T.Isles
+	dk := ui.Rect{X: r.X + deck.X, Y: r.Y + deck.Y, W: deck.W, H: deck.H}
+	top := ui.Point{X: r.X + from.X, Y: r.Y + from.Y}
+	bw := max(22*k, 16)
+	// The walk: planks across it, from the island to the deck's top edge.
+	x := top.X
+	if x < dk.X+bw || x > dk.X+dk.W-bw {
+		x = dk.X + dk.W/2
+	}
+	if y0, y1 := top.Y, dk.Y+4; y1 > y0+4 {
+		p.Fill(ui.Rect{X: x - bw/2 + 4*k, Y: y0 + 8*k, W: bw, H: y1 - y0}, ui.RGBA(30, 80, 86, 0.14), 3)
+		step := max(8*k, 6)
+		for y := y0; y < y1; y += step {
+			h := min(step*0.72, y1-y)
+			p.Fill(ui.Rect{X: x - bw/2, Y: y + 2*k, W: bw, H: h}, is.PlankDark.Alpha(0.8), 2)
+			p.Fill(ui.Rect{X: x - bw/2, Y: y, W: bw, H: h}, is.Plank, 2)
+		}
+	}
+	rad := min(dk.H/2, 22*k+6)
+	p.Fill(ui.Rect{X: dk.X + 6*k, Y: dk.Y + 12*k, W: dk.W, H: dk.H}, ui.RGBA(30, 80, 86, 0.16), rad)
+	p.Fill(ui.Rect{X: dk.X, Y: dk.Y + 4*k, W: dk.W, H: dk.H}, is.PlankDark, rad)
+	p.Fill(dk, is.Plank, rad)
+	// Seams between the deck's boards, inside its rounded ends.
+	seam := max(26*k, 18)
+	for sx := dk.X + rad; sx < dk.X+dk.W-rad; sx += seam {
+		p.Fill(ui.Rect{X: sx, Y: dk.Y + 3, W: 1.2, H: dk.H - 6}, is.PlankDark.Alpha(0.28), 0)
+	}
+}
+
 // paintWaterRing is the still water where a joining device will rise.
 func (a *App) paintWaterRing(p *ui.Painter, r ui.Rect, v view, s *isle, grow float32) {
 	is := a.T.Isles
@@ -1057,18 +1095,16 @@ func (a *App) island(c *ui.Context, v view, s *isle, shown *protocol.DeviceView,
 		a.homeDucter(c, s, dk)
 		right = dk.X + dk.W*0.78
 	}
-	// Abilities: at full size in front of home (the dock); on another
-	// island, stuck to its rim.
-	if s.dv != nil && len(s.dock) > 0 {
-		// laid out below, under the island's name
-	} else if s.dv != nil {
-		right = max(right, a.badges(c, v, s, ir, sel))
+	// Abilities: at full size on home's own pier (the dock, laid out below,
+	// under the island's name). Another island carries none on its rim
+	// (D398: 26-point globes and hands read as noise; its card lists them),
+	// only the dashed spot where one being added lands.
+	if s.dv != nil && len(s.dock) == 0 {
+		a.badges(c, v, s, ir, sel)
 	}
-	// The connections (D96) stand on home's right rim as small clay mailboxes.
+	// D398: the connections no longer stand on home's rim as mailboxes (too
+	// small to read; they are accounts, kept in Settings › Accounts).
 	maxX := ir.X + ir.W*1.02
-	if s.home {
-		maxX = a.mailboxes(c, v, s, ir)
-	}
 	// AI accounts standing on the island, in front of the device.
 	if s.dv != nil {
 		bottom = max(bottom, a.isleTokens(c, v, s, ir, right+6, maxX-4))
@@ -1124,31 +1160,6 @@ func (a *App) sceneTag(c *ui.Context, sel bool) ui.Element {
 		tag.Border(1.5, t.Ink)
 	}
 	return tag
-}
-
-// mailboxes are the user's connections, each a small clay mailbox on the
-// home island's right rim (at most three; the Partner page lists them all).
-func (a *App) mailboxes(c *ui.Context, v view, s *isle, ir ui.Rect) float32 {
-	d := a.devState()
-	cs := a.HomeMailboxes()
-	w := max(26*v.k, 20)
-	h := w * 84 / 52
-	left := ir.X + ir.W*1.02
-	for i, cv := range cs {
-		if i == 3 {
-			break
-		}
-		x := ir.X + ir.W*0.9 - float32(i)*w*1.1
-		left = x
-		y := ir.Y + ir.H*(0.5+0.06*float32(i)) - h
-		box := ui.Box(c.Key("mail:"+cv.ID)).Absolute().Left(x).Top(y).Size(w, h).Role(ui.RoleImage).Label(cv.Name)
-		box.Draw(func(p *ui.Painter, r ui.Rect) {
-			softEllipse(p, ui.Rect{X: r.X + r.W*0.1, Y: r.Y + r.H*0.9, W: r.W * 0.9, H: r.H * 0.14}, ui.RGBA(60, 50, 20, 0.3))
-			a.drawMailbox(cv.Source)(p, r)
-		})
-		d.labels["mail:"+cv.ID] = box.Bounds()
-	}
-	return left
 }
 
 // selectIsle chooses an island: its device's card and abilities on the
@@ -1229,6 +1240,10 @@ func (a *App) dockRow(c *ui.Context, v view, s *isle, dy float32, sel bool, now 
 	total += float32(len(s.dock)-1) * gap
 	x := v.x(s.dockR.X+s.dockR.W/2) - total/2
 	y0 := max(v.y(s.dockR.Y+dy), minY)
+	// D398: they stand on home's own pier, a plank deck joined to the island
+	// by a short walk, so they read as home's and not as things adrift.
+	d.pier = ui.Rect{X: x - 16, Y: y0 + size*0.5, W: total + 32, H: size*0.5 + 40}
+	d.pierFrom = ui.Point{X: v.x(s.is.X + s.is.W/2), Y: v.y(s.is.Y+s.is.H*0.86) + dy*v.k}
 	for i, id := range s.dock {
 		slotW := widths[i]
 		x += slotW + gap
@@ -1328,69 +1343,18 @@ func (a *App) dockRow(c *ui.Context, v view, s *isle, dy float32, sel bool, now 
 	}
 }
 
-// badges are the abilities on a device, stuck to its island's left rim,
-// two a row toward the front. It returns their right edge.
-func (a *App) badges(c *ui.Context, v view, s *isle, ir ui.Rect, sel bool) float32 {
+// badges is, on an island other than home, the spot where an ability being
+// added lands: a dashed ring on its left rim, shown only while one is held
+// over the stage, hovered or in flight. The abilities already on are not
+// drawn there (D398); its card's chips say them.
+func (a *App) badges(c *ui.Context, v view, s *isle, ir ui.Rect, sel bool) {
 	t := a.T
 	d := a.devState()
-	size := max(34*v.k, 26)
-	var on []string
-	for _, ab := range s.dv.Abilities {
-		if a.shownOn(s.dv, ab.ID) {
-			on = append(on, ab.ID)
-		}
+	if !sel {
+		return
 	}
-	spot := func(i int) ui.Rect {
-		row, col := i/2, i%2
-		x := ir.X + ir.W*0.03 + float32(col)*size*0.98 + float32(row)*size*0.18
-		y := ir.Y + ir.H*0.4 - size*0.55 + float32(row)*size*0.78
-		return ui.Rect{X: x, Y: y, W: size, H: size}
-	}
-	right := ir.X
-	shown := len(on)
-	if sel && (d.hover != "" || (d.fx != nil && !d.fx.back && d.fx.device == s.dv.ID)) {
-		shown++
-	}
-	for i := 0; i < min(shown, 6); i++ {
-		right = max(right, spot(i).X+size)
-	}
-	for i, id := range on {
-		if i >= 6 {
-			break
-		}
-		at := spot(i)
-		name := a.L.T("ability." + id)
-		bd := ui.Box(c.Key("badge:"+s.key+":"+id)).Absolute().Left(at.X).Top(at.Y).Size(at.W, at.H).
-			Role(ui.RoleButton).Label(spoken(a.L, name, a.L.T("ability.slot.on"))).Cursor(ui.CursorPointer)
-		bmp := theme.Clay(abilityArt(id))
-		bd.Draw(func(p *ui.Painter, r ui.Rect) {
-			softEllipse(p, ui.Rect{X: r.X + r.W*0.1, Y: r.Y + r.H*0.7, W: r.W * 0.95, H: r.H * 0.36}, ui.RGBA(110, 66, 28, 0.3))
-			if bmp != nil {
-				p.Image(bmp, r, ui.Contain)
-			}
-		})
-		if sel {
-			d.slots[id] = bd.Bounds()
-		}
-		if bd.Clicked() {
-			a.selectIsle(s)
-			d.ability, d.removing = id, ""
-		}
-		if id == protocol.AbilityWeb && s.dv.State == protocol.DeviceAwake {
-			bd.ContextMenu(func(m *ui.Menu) {
-				if m.Item(a.L.T("ability.remove")).Chosen() {
-					a.selectIsle(s)
-					d.ability, d.removing = id, id
-				}
-			})
-		}
-	}
-	if !sel || len(on) >= 6 {
-		return right
-	}
-	// The next free spot: where an ability being added lands. It shows
-	// only while one is held over the stage, hovered, or in flight.
-	at := spot(len(on))
+	size := max(34*v.k, 28)
+	at := ui.Rect{X: ir.X + ir.W*0.03, Y: ir.Y + ir.H*0.4 - size*0.55, W: size, H: size}
 	next := ui.Box(c.Key("badge-next:"+s.key)).Absolute().Left(at.X).Top(at.Y).Size(at.W, at.H).PassThrough().AccessHidden(true)
 	flying := d.fx != nil && !d.fx.back && d.fx.device == s.dv.ID
 	if d.hover != "" || flying {
@@ -1408,19 +1372,21 @@ func (a *App) badges(c *ui.Context, v view, s *isle, ir ui.Rect, sel bool) float
 		})
 	}
 	for _, ab := range s.dv.Abilities {
-		if !a.shownOn(s.dv, ab.ID) {
-			d.slots[ab.ID] = next.Bounds()
-		}
+		d.slots[ab.ID] = next.Bounds()
 	}
 	if flying {
 		d.slots[d.fx.ability] = next.Bounds()
 	}
-	return right
 }
 
-// isleTokens are the AI accounts signed in on a device, standing on its
-// island's front right with their names under them, in rows that never
-// overlap. Tapping one lifts every island it's signed in on.
+// isleTokens are the AI agents signed in on a device: their coins in one
+// compact row on the island's front grass, between what stands at its left
+// (Ducter, on home) and its right rim, overlapping a little when room is
+// short and ending in +N when even that won't fit. No name tags: the coin's
+// own mark says which agent it is (D183), its name is its tooltip and its
+// spoken label, and the card beside the stage lists them by name. So the
+// row never grows into the island's name or a neighbour (D398). Tapping a
+// coin lifts every island it's signed in on.
 func (a *App) isleTokens(c *ui.Context, v view, s *isle, ir ui.Rect, minX, maxX float32) float32 {
 	t := a.T
 	d := a.devState()
@@ -1433,67 +1399,53 @@ func (a *App) isleTokens(c *ui.Context, v view, s *isle, ir ui.Rect, minX, maxX 
 	if len(hs) == 0 {
 		return ir.Y + ir.H
 	}
-	art := max(30*v.k, 24)
-	const gap, labelH = float32(6), float32(24)
-	widths := make([]float32, len(hs))
+	// D213: a coin is never drawn under 28 points.
+	art := min(max(30*v.k, 28), 40)
+	lo, hi := max(minX, ir.X+ir.W*0.04), min(ir.X+ir.W*0.96, maxX)
+	room := max(hi-lo, art)
+	// Side by side with a little air; then overlapping down to 62% of a
+	// coin; then as many as fit and a +N.
+	step := art + 4
+	n := len(hs)
+	if n > 1 && float32(n-1)*step+art > room {
+		step = max((room-art)/float32(n-1), art*0.62)
+	}
+	more := 0
+	if float32(n-1)*step+art > room {
+		fit := max(int((room-art)/step)+1, 2)
+		more = n - (fit - 1)
+		hs = hs[:fit-1]
+		n = fit
+	}
+	w := float32(n-1)*step + art
+	x0 := min(max(ir.X+ir.W/2-w/2, lo), max(hi-w, lo))
+	y := ir.Y + ir.H*0.5 - art*0.62
+	if s.home {
+		y = ir.Y + ir.H*0.52 - art*0.6
+	}
+	// The row is one box among the scene's words: it may stand in front of
+	// its own device, never on another island's name or clay.
+	var row ui.Rect
 	for i, h := range hs {
-		lw, _ := c.MeasureText(0, ui.Span{Text: harnessName(h.Harness), Size: t.XS, Weight: 800})
-		widths[i] = max(art, lw+18)
-	}
-	// Rows that fit between the badges and the island's right rim, each
-	// centered in front of the device.
-	lo, hi := max(minX, ir.X+ir.W*0.02), min(ir.X+ir.W*1.02, maxX)
-	var rows [][]int
-	var rowW []float32
-	for i := range hs {
-		n := len(rows)
-		if n == 0 || rowW[n-1]+gap+widths[i] > hi-lo {
-			rows, rowW = append(rows, []int{i}), append(rowW, widths[i])
-			continue
-		}
-		rows[n-1], rowW[n-1] = append(rows[n-1], i), rowW[n-1]+gap+widths[i]
-	}
-	y := ir.Y + ir.H*0.36 - art*0.15
-	bottom := ir.Y + ir.H
-	at := map[int]ui.Point{}
-	for r, row := range rows {
-		x := min(max(ir.X+ir.W/2-rowW[r]/2, lo), hi-rowW[r])
-		for _, i := range row {
-			at[i] = ui.Point{X: x, Y: y + float32(r)*(art+labelH-2)}
-			x += widths[i] + gap
-		}
-		bottom = max(bottom, y+float32(r)*(art+labelH-2)+art+labelH)
-	}
-	for i, h := range hs {
-		w := widths[i]
-		x, y := at[i].X, at[i].Y
+		x := x0 + float32(i)*step
 		lit := d.lit == h.Harness
 		name := harnessName(h.Harness)
-		tok := ui.Column(c.Key("tok:" + s.key + ":" + h.Harness)).Absolute().Left(x).Top(y).Width(w).AlignItems(ui.Center).
-			Role(ui.RoleButton).Label(name).Cursor(ui.CursorPointer).AccessSelected(lit)
-		bmp := theme.Clay(coinArt(h.Harness, !h.Installed || !h.LoggedIn))
-		tok.Children(func() {
-			ui.Box(c.Key("art")).Size(art, art).Draw(func(p *ui.Painter, r ui.Rect) {
-				softEllipse(p, ui.Rect{X: r.X + r.W*0.12, Y: r.Y + r.H*0.72, W: r.W * 0.92, H: r.H * 0.36}, ui.RGBA(110, 66, 28, 0.3))
-				if bmp != nil {
-					p.Image(bmp, r, ui.Contain)
-				}
-				if lit {
-					var m ui.Path
-					m.Circle(r.X+r.W/2, r.Y+r.H/2, r.W/2+3)
-					p.StrokePath(&m, 2, t.Ink)
-				}
-			}).Children(func() {
-				if s.dv != nil {
-					a.BrainBadge(c, s.dv, h.Harness) // D89: the token Ducter thinks with
-				}
-			})
-			tag := ui.Row(c.Key("tag")).Padding(1, 6, 2, 6).Radius(8).Background(t.Surface).Shadow(0, 1.5, 0, 0, t.Line).Margin(-3, 0, 0, 0)
-			tag.Children(func() {
-				ui.Text(c, name).FontSize(t.XS).FontWeight(800).TextColor(t.Ink).SingleLine()
-			})
-			d.labels["tok:"+s.key+":"+h.Harness] = tag.Bounds()
+		tok := ui.Box(c.Key("tok:"+s.key+":"+h.Harness)).Absolute().Left(x).Top(y).Size(art, art).
+			Role(ui.RoleButton).Label(name).Tooltip(name).Cursor(ui.CursorPointer).AccessSelected(lit)
+		bmp := theme.Clay(coinArt(h.Harness, false))
+		tok.Draw(func(p *ui.Painter, r ui.Rect) {
+			softEllipse(p, ui.Rect{X: r.X + r.W*0.12, Y: r.Y + r.H*0.72, W: r.W * 0.92, H: r.H * 0.36}, ui.RGBA(110, 66, 28, 0.3))
+			if bmp != nil {
+				p.Image(bmp, r, ui.Contain)
+			}
+			if lit {
+				var m ui.Path
+				m.Circle(r.X+r.W/2, r.Y+r.H/2, r.W/2+3)
+				p.StrokePath(&m, 2, t.Ink)
+			}
 		})
+		tok.Children(func() { a.isleBrainMark(c, s.dv, h.Harness, art) })
+		row = unionRect(row, tok.Bounds())
 		if tok.Clicked() {
 			a.selectIsle(s)
 			if d.lit == h.Harness {
@@ -1503,7 +1455,52 @@ func (a *App) isleTokens(c *ui.Context, v view, s *isle, ir ui.Rect, minX, maxX 
 			}
 		}
 	}
-	return bottom
+	if more > 0 {
+		x := x0 + float32(n-1)*step
+		sz := art * 0.8
+		el := ui.Row(c.Key("tok-more:"+s.key)).Absolute().Left(x).Top(y+(art-sz)/2).Height(sz).MinWidth(sz).Padding(0, 5).Radius(sz/2).
+			Background(t.Surface).Shadow(0, 2, 0, 0, t.Line).AlignItems(ui.Center).Justify(ui.Center).
+			Role(ui.RoleButton).Label(a.isleName(s)).Cursor(ui.CursorPointer)
+		el.Children(func() {
+			ui.Text(c, "+"+itoa(int64(more))).FontSize(t.XS).FontWeight(800).TextColor(t.InkSoft).SingleLine().AccessHidden(true)
+		})
+		row = unionRect(row, el.Bounds())
+		if el.Clicked() {
+			a.selectIsle(s)
+		}
+	}
+	d.labels["coins:"+s.key] = row
+	return ir.Y + ir.H
+}
+
+// unionRect is the smallest rect holding both (an empty one adds nothing).
+func unionRect(a, b ui.Rect) ui.Rect {
+	if a.W == 0 && a.H == 0 {
+		return b
+	}
+	if b.W == 0 && b.H == 0 {
+		return a
+	}
+	x0, y0 := min(a.X, b.X), min(a.Y, b.Y)
+	x1, y1 := max(a.X+a.W, b.X+b.W), max(a.Y+a.H, b.Y+b.H)
+	return ui.Rect{X: x0, Y: y0, W: x1 - x0, H: y1 - y0}
+}
+
+// isleBrainMark is D89's mark on the coin Ducter thinks with, sized for
+// the island: a small face on the coin's lower right.
+func (a *App) isleBrainMark(c *ui.Context, dv *protocol.DeviceView, harness string, art float32) {
+	t := a.T
+	m := a.BrainMark(dv, harness)
+	if m == "" {
+		return
+	}
+	sz := max(art*0.5, 16)
+	ui.Box(c.Key("brain-badge")).Absolute().Right(-sz*0.3).Bottom(-sz*0.25).Size(sz, sz).Radius(sz/2).Background(t.Surface).
+		Shadow(0, 1.5, 0, 0, t.Line2).Role(ui.RoleImage).Label(m).Tooltip(m).Children(func() {
+		if bmp := theme.Face(theme.Idle, 48); bmp != nil {
+			ui.Image(c, bmp).Size(sz-4, sz-4).Absolute().Left(2).Top(2).AccessHidden(true)
+		}
+	})
 }
 
 // accountArt is an AI account's clay coin on a Devices card. The accounts

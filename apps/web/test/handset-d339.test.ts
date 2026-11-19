@@ -66,12 +66,17 @@ describe("a phone task says where it works (D339)", () => {
     }
   });
 
-  test("Settings › 用这台手机: Smart Lock in Android's own words, and Ducter never asks for the PIN", () => {
+  // D398: the lock step is a row that opens to three steps in Android's own words (Extend Unlock,
+  // Smart Lock on some phones), and its last line says Ducter never asks for the screen lock.
+  test("the phone's card: the lock step in Android's own words, and Ducter never asks for the PIN", () => {
     for (const lang of ["zh", "en"] as const) {
       expect(TABLES[lang]["handset.where.on"], lang).toContain("%s");
-      expect(TABLES[lang]["handset.smartlock"], lang).toContain("Smart Lock");
+      expect(TABLES[lang]["handset.lock.s1.alt"], lang).toContain("Smart Lock");
+      expect(TABLES[lang]["handset.smartlock"], lang).toBeUndefined();
     }
-    expect(TABLES.zh["handset.smartlock"]).toContain("Ducter 从不要你的锁屏密码");
-    expect(TABLES.en["handset.smartlock"]).toContain("Ducter never asks for your screen lock PIN");
+    expect(TABLES.zh["handset.lock.s1"]).toContain("延长解锁");
+    expect(TABLES.en["handset.lock.s1"]).toContain("Extend Unlock");
+    expect(TABLES.zh["handset.lock.never"]).toContain("Ducter 从来不要");
+    expect(TABLES.en["handset.lock.never"]).toContain("Ducter never asks for it");
   });
 });

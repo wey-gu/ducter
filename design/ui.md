@@ -472,6 +472,8 @@ A new control is added to the set (and to this table) before it is used.
 | A name renamed in place | `cardName` (`devupdate.go`) | `RenameTitle` |
 | An agent's coin in a tray, and the socket | `coinTile`, `socketTile` (`devicecard.go`); `trayToken` (`loadout.go`) | `CoinButton`, `SocketButton` |
 | An ability chip with its ⓘ | `abilityChip` (`devicecard.go`) | `Chip` |
+| A card's foot that folds what can wait: how it's connected, its addresses, the one 断开 (D398) | `sheetFold` (`devguard.go`) | `Fold` |
+| An optional step as one framed row that opens in place (锁屏时也能借给任务 ›; D398) | `extraStep` (`devguard.go`) | `StepRow` |
 | One line in a list of devices | `listRow` (`abilities.go`) | `ListRow` |
 | An app a source can read, on the accounts card (D166; the dashed 再连一个 too) | `appTile` (`shared.go`) | `AppTile` |
 | A candidate row in 换谁来做 | `candRow` (`shared.go`) | the `cand` row in `SwitchList` |
@@ -957,10 +959,9 @@ of 20), building on `research/24`, `26`, `28` and D65's equip snap. Built in
 | a smaller island round it, far ones smaller | another computer (D84), or a phone / app window that reaches Ducter | awake floats; asleep under its blanket; can't reach: soft mist, the device a little grey, one line of words |
 | a plank-and-rope bridge from home | the connection (only ever to home) | pale when the device can't be reached; relaxed when asleep; never slack or broken |
 | parcels crossing a bridge | a task running on that device now | none when nothing runs there |
-| small clay tokens on an island, names on tags | the AI agents signed in on that device | tap one: every island where it is signed in lifts; the card says "N 台设备共用" |
-| full-size clay objects on the water in front of the island (a globe in a browser frame, a hand on a laptop, a little lighthouse, a hand tapping a phone, a handset on its base) | abilities that are on | bob gently; the equip flies in; not yet: the same object desaturated and a little see-through (the list beside the stage) |
+| a compact row of clay coins on an island (D398: no name tags; the name is the coin's tooltip and spoken label; at least 28 pt, overlapping to 62%, then **+N**) | the AI agents signed in on that device | tap one: every island where it is signed in lifts |
+| full-size clay objects on home's plank pier, joined to home by a short walk (D398; a globe in a browser frame, a hand on a laptop, a little lighthouse, a hand tapping a phone, a handset on its base) | the home's abilities that are on (another device's are on its card only, D398) | bob gently; the equip flies in; not yet: the same object desaturated and a little see-through (the list beside the stage) |
 | a stitched clay socket beside them, the object faint inside it | an ability that can be added (or needs a fix first) | dashed accent ring while one is held over the stage, hovered or in flight |
-| small clay mailboxes on home's right rim | the user's connections (D96), at most three | |
 | a jetty from home, a ring of still water, a sign | the one-time code is out, waiting for a device (D83) | the scene makes room for the sign; the new island rises in that water |
 
 The website draws the same scene (`apps/site`, a wide and a narrow layout). Its narrow layout is

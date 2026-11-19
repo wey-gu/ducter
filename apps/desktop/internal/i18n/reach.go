@@ -4,6 +4,7 @@ package i18n
 // Glossary: design/product-model.md "how a device is connected". The same
 // words as the web (apps/web/src/i18n.ts reach.*).
 var zhReach = Table{
+	"reach.ways.short":      "能连到它的地址",
 	"reach.how":             "怎么连着",
 	"reach.via.local":       "就在这台电脑上",
 	"reach.via.lan":         "同一个网络",
@@ -27,6 +28,7 @@ var zhReach = Table{
 }
 
 var enReach = Table{
+	"reach.ways.short":      "Addresses that reach it",
 	"reach.how":             "How it's connected",
 	"reach.via.local":       "On this same computer",
 	"reach.via.lan":         "Same network",

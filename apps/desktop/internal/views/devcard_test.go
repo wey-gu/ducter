@@ -134,6 +134,8 @@ func TestDeviceCards(t *testing.T) {
 				t.Fatalf("phone card: %q", h.tt.Texts())
 			}
 			shot("phone")
+			d.card.sheet.fold = "cl:c1" // D398: its one 断开 waits in the fold at the foot
+			h.settle(100 * time.Millisecond)
 			h.click(L.T("card.disconnect.device", "Wey 的 iPhone"))
 			h.settle(100 * time.Millisecond)
 			if !h.tt.HasText(L.T("device.disconnect.ask", "Wey 的 iPhone")) {

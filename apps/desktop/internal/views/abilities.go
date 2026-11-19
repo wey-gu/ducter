@@ -64,6 +64,12 @@ type devicesState struct {
 	viewAt           time.Time
 	// labels are the words in the scene, last frame (no two may overlap).
 	labels map[string]ui.Rect
+	// pier is home's plank deck under its abilities, and pierFrom where its
+	// walk leaves the island (stage space, last frame; D398).
+	pier     ui.Rect
+	pierFrom ui.Point
+	// stageR is the stage in window space, last frame.
+	stageR ui.Rect
 	// slotOf is where each island stands round home: kept while it is there.
 	slotOf map[string]int
 	// signH is the pairing sign's height, last frame (its post reaches down
@@ -258,9 +264,7 @@ func (a *App) devicesView(c *ui.Context) {
 
 func (a *App) devicesHeader(c *ui.Context, dev *protocol.DeviceView) {
 	t := a.T
-	if home := a.homeDevice(); home != nil {
-		ui.Text(c, a.L.T("devices.subtitle", a.S.PersonaName, a.deviceNameIn(home))).FontSize(t.MD).TextColor(t.InkMuted)
-	}
+	// D398: no "Ducter runs on …" line: the list's first row says it.
 	if a.Status != client.Connected && len(a.S.Devices) > 0 {
 		if home := a.homeDevice(); home != nil {
 			ui.Row(c.Key("devices-offline")).Gap(t.S3).Padding(t.S3, t.S4).Radius(t.RadiusSM).Background(t.Away.Surface).AlignItems(ui.Center).Children(func() {
@@ -404,13 +408,22 @@ func (a *App) listWord(dv *protocol.DeviceView) (string, ui.Color) {
 	} else if n > 1 {
 		return a.L.T("list.state.tasks", n), t.Working.Ink
 	}
-	return a.L.T("list.state.does", a.personaName()), t.InkMuted
+	// D398: idle, the one thing worth knowing is that it's free; its role
+	// ("帮 Ducter 做事") is the card's line.
+	return a.L.T("list.state.ready"), t.InkMuted
 }
 
 // clientWord is a phone's or a window's line: connected now, or when it
 // was last online (14 小时前在线 / Online 14 hours ago), never a bare time.
 func (a *App) clientWord(cl *protocol.ReachClient) (string, ui.Color) {
 	t := a.T
+	// D398: a phone that can be lent says so, or that it's lent now.
+	if h := cl.Handset; cl.Connected && h != nil && h.Added && h.Linked {
+		if h.Using != nil {
+			return a.L.T("list.state.lent"), t.Working.Ink
+		}
+		return a.L.T("list.state.lendable"), t.InkMuted
+	}
 	if cl.Connected {
 		return a.L.T("list.state.now"), t.InkMuted
 	}

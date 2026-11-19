@@ -2479,6 +2479,12 @@ const where: Record<Lang, Record<string, string>> = {
 // i18n/devicecard.go (status line, coins, chips, connections, the list's one word).
 const devcard: Record<Lang, Record<string, string>> = {
   zh: {
+    "reach.ways.short": "能连到它的地址",
+    "worker.g.chat": "看不到你和 %s 的对话",
+    "worker.g.uses": "用这台电脑上登录的 AI 和代码",
+    "list.state.lent": "借出去了",
+    "list.state.lendable": "能借给任务",
+    "list.state.ready": "待命",
     "agentv.how.unknown": "不知道它是怎么装的，在原来的地方更新它。",
     "device.client.never": "还没连上过",
     "ability.web.about": "让这台电脑用 Ducter 自己的浏览器替你办事：查资料、看网页、整理找到的东西。登录、提交和付款都留给你。",
@@ -2626,6 +2632,12 @@ const devcard: Record<Lang, Record<string, string>> = {
     "switch.sub": "换谁，也可以换一台电脑",
   },
   en: {
+    "reach.ways.short": "Addresses that reach it",
+    "worker.g.chat": "Never sees your conversations with %s",
+    "worker.g.uses": "Uses the AI and code on this computer",
+    "list.state.lent": "Lent now",
+    "list.state.lendable": "Can be lent",
+    "list.state.ready": "Ready",
     "agentv.how.unknown": "Installed some other way; update it where it came from.",
     "device.client.never": "Hasn't connected yet",
     "ability.web.about": "Lets this computer get things done on the web in Ducter's own browser: look things up, read pages, gather what it finds. Signing in, submitting and paying are always left to you.",

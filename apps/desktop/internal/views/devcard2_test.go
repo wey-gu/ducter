@@ -154,6 +154,7 @@ func TestDevicesHelFolding(t *testing.T) {
 				}
 			}
 			d.selClient = "app1"
+			d.card.sheet.fold = "cl:app1" // D398: how it's connected is folded at the foot
 			h.settle(200 * time.Millisecond)
 			for _, want := range []string{L.T("card.status.this"), L.T("card.via", L.T("card.via.app")+L.T("card.via.and")+L.T("card.via.cli")), L.T("chip.worker", "Ducter")} {
 				if !h.tt.HasText(want) {
@@ -230,6 +231,7 @@ func TestDevicesHelClientCard(t *testing.T) {
 			L := h.app.L
 			d := h.app.devState()
 			d.selClient = "ph2"
+			d.card.sheet.fold = "cl:ph2" // D398: its connection and its one 断开 are folded at the foot
 			h.settle(200 * time.Millisecond)
 			for _, want := range []string{L.T("card.via", L.T("card.via.safari")), L.T("card.disconnect.device", "iPhone · Safari · 2")} {
 				if !h.tt.HasText(want) {

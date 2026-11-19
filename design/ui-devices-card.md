@@ -8,6 +8,13 @@
 > (who does it, rules, 用它做事), D146 (coins), D150 (Settings), D157 (draft: where a task runs,
 > `design/where.md`).
 
+> **Amended by D398 (2026-11-19, `research/154`).** The card keeps this order and adds, after the
+> chips, a device's promises (short lines with drawn marks) and an optional step as a framed row;
+> §3.5's connection line and §3.6's **断开这台 {device}** now sit in one fold at the foot (**怎么连着**,
+> its summary the way), the one destructive action last inside it; the home's addresses fold the
+> same way. §4's idle word for a computer is **待命 / Ready**; a phone that can be lent says so. On the
+> stage, coins carry no name tags and other islands no ability glyphs (`design/ui.md`).
+
 The author looked at the right-hand card on the Mac's Devices page (hel, then the MacBook) and
 asked: "这些卡片设计好么，达到了我们的游戏级别的情绪价值和顺滑优雅标准了么，文字很多，layout
 也很乱". The honest answer is no. This note says why, proposes one card for every device built

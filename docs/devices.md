@@ -20,14 +20,16 @@ back to the middle one, because everything connects through the computer Ducter 
 
 - **Little parcels cross a bridge** while a task is running on that computer. When it's done
   they stop; the bridge stays.
-- **The AI agents signed in on a device** stand on its island. Tap one on a device's card and
-  every island where it is signed in lifts a little.
-- **What a device can do** stands in front of its island at full size.
+- **The AI agents signed in on a device** stand on its island as a small row of coins (hover one
+  for its name; the card lists them by name). Tap one and every island where it is signed in
+  lifts a little.
+- **What the computer Ducter runs on can do** stands on its own little pier in front of it, at
+  full size. The other devices' abilities are on their cards.
 - **A device that can't be reached** sits in a soft mist with one line, such as *Can't reach*
   and when it was last seen. Nothing needs fixing on your side; it shows up again when it's back.
 
-The list on the left has one line per device: its name and one word of how it is (*home*,
-*2 tasks*, *asleep*, *connected*). The last line, **Add a device**, adds one: it asks what the
+The list on the left has one line per device: its name and the one thing worth knowing about it
+now (*Ducter runs here*, *Ready*, *2 tasks*, *Asleep*, *Can be lent*, *Online 2 h ago*). The last line, **Add a device**, adds one: it asks what the
 device is for. **To talk with Ducter** is a phone, a tablet or another computer you chat from;
 **For Ducter to do tasks on** is a server at home, a NAS or another Mac ([Add a computer](add-a-computer.md)). Choose a line
 or an island to see that device's card. It reads
@@ -66,6 +68,11 @@ top to bottom like a character in a game:
     has it yet; tap it to read what it is. Add it on an Apple silicon Mac and the chip points
     there instead. A server shows no **Use the computer** of its own: it has no screen, so that
     one is always on a Mac.
+- **What it can and can't touch:** a few short lines, each with a small mark. A computer that does
+  tasks uses the AI and code on it and never sees your conversations; a phone you lend says what
+  it does only while lent, what waits for your Go, and what it never touches.
+- At the foot, folded, the things you rarely need. Open **How it's connected** (its summary says
+  the way, such as *Through your domain*) for:
 - **How it's connected:** for a device that is connected now, which way it reaches Ducter
   (**Through your tailnet**, **Through your domain**, **Through your Cloudflare tunnel**, or
   **On this same computer**) and, on the line under it, whether anyone in between can read it.
@@ -73,13 +80,13 @@ top to bottom like a character in a game:
   traffic at its edge, so the card says *Cloudflare can read it*. Below that, one quiet line such
   as *Connected via the app and command line*; the **⋯** beside it shows each connection with its
   own **Disconnect**.
-- **Addresses that reach it:** on the card of the computer Ducter runs on, every address it has
+- **Addresses that reach it:** folded at the foot of the card of the computer Ducter runs on, every address it has
   (your Tailscale network, your domain, your Cloudflare tunnel), each with **Reachable**,
   **Can't reach** or **Not checked yet**, and **In use** for the one this window uses. The Ducter
   apps on your phone and Mac know all of them and use the best one that works, so adding or
   removing one never means connecting your devices again. A web page stays on the address it was
   opened at.
-- **Disconnect this MacBook** is at the very bottom. Ducter asks once and says what it means; to
+- **Disconnect this MacBook**, the one destructive action, at the very end of that fold. Ducter asks once and says what it means; to
   bring the device back, connect it again with a new code.
 
 Ducter's own version shows on the card only when there is an update; **Settings › About** lists
@@ -90,8 +97,8 @@ the second one gets a *2* after its name; rename either.
 
 **One computer, one card.** When the Ducter app connects your Mac to a Ducter on a server, the
 `ducter` command line on that Mac connects too. It isn't a device of its own: the Mac's card says
-*Connected via the app and command line*, and the **⋯** beside that line disconnects just the
-command line.
+*Connected via the app and command line* (open **How it's connected**), and the **⋯** beside that
+line disconnects just the command line.
 
 ## Ducter's phone
 

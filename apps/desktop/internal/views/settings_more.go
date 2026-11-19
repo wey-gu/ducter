@@ -21,8 +21,19 @@ func (a *App) deviceKeyRow(c *ui.Context) {
 	// A flat row under the tray, never a card in the card (D273).
 	ui.Column(c.Key("dev-apikey")).Gap(t.S3).Margin(t.S3, 0, 0, 0).Padding(t.S2, t.S2).Children(func() {
 		if !k.setOpen["devices"] {
+			// D398: with an AI already signed in, the why can wait: the row is its title alone.
+			signed := false
+			if home := a.homeDevice(); home != nil {
+				for _, h := range home.Harnesses {
+					signed = signed || (h.Installed && h.LoggedIn)
+				}
+			}
 			ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
 				ui.Column(c).Grow(1).MinWidth(0).Gap(2).Children(func() {
+					if signed {
+						ui.Text(c, a.L.T("key.paste.instead")).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
+						return
+					}
 					ui.Text(c, a.L.T("key.paste.instead")).FontSize(t.MD).FontWeight(700)
 					ui.Text(c, a.L.T("key.paste.instead.note")).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
 				})

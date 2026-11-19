@@ -306,16 +306,19 @@ While it's lent:
 
 **Lending it while you're not holding it.** Ducter never asks for your phone's screen lock PIN:
 the lock guards everything on your phone, and locking it is how you say stop. If you'd like a task
-to carry on while the phone sits on your desk or in your pocket, turn on Android's own **Smart
-Lock** (on some phones **Extend Unlock**) in **Settings › Security**, with **On-body detection** or
-**Trusted places**. While it's on you or in that place, the phone doesn't ask for the lock again
-after the screen goes off, so the task can go on.
+to carry on while the phone sits on your desk or in your pocket, open **Lend it while it's
+locked** on the phone's card in **Your devices**. It walks you through Android's own setting: on the
+phone, open **Settings** and search for **Extend Unlock** (**Smart Lock** on some phones), confirm
+your screen lock when Android asks, and turn on **On-body detection** or **Trusted places**. While
+it's on you or in that place, the phone doesn't ask for the lock again after the screen goes off,
+so the task can go on.
 
 On the task's page, a task that uses your phone says so where it says who does it: **Codex on your
 Pixel**.
 
-Between tasks it reads nothing. To turn it off, tap **Use this phone** on the phone's card and
-**Remove**: that also turns Ducter's switch off in Android, and the quiet connection with it. The
+Between tasks it reads nothing. The phone's card says so in three short lines: what it does only
+while lent, what waits for your Go, and what it never touches. To turn it off, tap **Use this
+phone** on the phone's card, then **Stop lending**: that also turns Ducter's switch off in Android, and the quiet connection with it. The
 connection is what lets a task start and work with Ducter in the background; while a task is
 borrowing the phone, its notification says so, with **Stop**.
 

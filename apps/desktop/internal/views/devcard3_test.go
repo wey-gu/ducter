@@ -143,7 +143,15 @@ func TestCharacterSheet(t *testing.T) {
 			tt := sheetTester(app, sz[0], sz[1], false)
 			// The default card: who, how it is, what it carries, what it can do; nothing else.
 			has(tt, L.T("card.status.working", "Ducter", 2), L.T("chip.worker", "Ducter"), L.T("chip.computer"), "+ "+L.T("chip.web"),
-				L.T("card.via", L.T("card.via.app")+L.T("card.via.and")+L.T("card.via.cli")), L.T("card.disconnect.device", "MacBook"))
+				L.T("card.via", L.T("card.via.app")+L.T("card.via.and")+L.T("card.via.cli")))
+			// D398: the one 断开 waits in the fold at the foot.
+			hasNot(tt, L.T("card.disconnect.device", "MacBook"))
+			app.devState().card.sheet.fold = "dev:dev_mac"
+			tt.Frame()
+			tt.Frame()
+			has(tt, L.T("card.disconnect.device", "MacBook"))
+			app.devState().card.sheet.fold = ""
+			tt.Frame()
 			hasNot(tt, L.T("agentv.unverified"), L.T("work.mac.note.on", app.MacWorker.Log()), app.MacWorker.Log(), L.T("device.does"), L.T("token.shared", 2))
 			if r, ok := tt.Find(L.T("list.state.tasks", 2)); !ok || r.H > 24 { // its own line under the name, with its dot
 				t.Fatalf("%s: the list's word wraps or is missing: %v %v", lang, r, ok)
@@ -215,7 +223,9 @@ func TestCharacterSheet(t *testing.T) {
 			t.Fatalf("%s: Use the computer off sent %#v", lang, sent)
 		}
 
-		// The connections open in place, each with its own 断开 and an inline confirm.
+		// The connections open in place, each with its own 断开 and an inline confirm
+		// (D398: inside the fold at the foot).
+		click(tt, spoken(L, L.T("reach.how"), L.T("card.via", L.T("card.via.app")+L.T("card.via.and")+L.T("card.via.cli"))))
 		click(tt, L.T("card.via.more"))
 		has(tt, L.T("card.conn.app"), L.T("card.conn.cli"))
 		click(tt, spoken(L, L.T("device.disconnect"), L.T("device.cli.name", "MacBook")))
@@ -260,7 +270,12 @@ func TestCharacterSheet(t *testing.T) {
 		app = sheetApp(t, lang, "awake")
 		app.devState().sel, app.devState().selClient = "", "ph1"
 		tt = sheetTester(app, 1280, 860, true)
-		has(tt, L.T("device.client.now"), L.T("card.via", L.T("card.via.safari")), L.T("card.disconnect.device", "iPhone"))
+		has(tt, L.T("device.client.now"), L.T("card.via", L.T("card.via.safari")))
+		// D398: its 断开 waits in the fold; only itself, so no ⋯ of connections in there.
+		hasNot(tt, L.T("card.disconnect.device", "iPhone"))
+		click(tt, spoken(L, L.T("reach.how"), L.T("card.via", L.T("card.via.safari"))))
+		has(tt, L.T("card.disconnect.device", "iPhone"))
+		hasNot(tt, L.T("card.via.more"))
 		shot(tt, "iphone")
 	}
 }

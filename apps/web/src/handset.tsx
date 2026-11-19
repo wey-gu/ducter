@@ -8,7 +8,8 @@
 import type { CallPlan, DialHow, DialSheet, HandsetServerFrame, HandsetState, TaskCard } from "@ducter/protocol";
 import { useEffect, useState } from "preact/hooks";
 import { A } from "./app.ts";
-import { Btn, Chip } from "./controls.tsx";
+import { Btn, Chip, StepRow } from "./controls.tsx";
+import { TABLES } from "./i18n.ts";
 import { shownDeviceName } from "./format.ts";
 import { nativeCall, nativeInfo } from "./native.ts";
 import type { Client } from "./sheet.ts";
@@ -159,59 +160,180 @@ export function openHandsetGuide() {
 
 // ---------- the chip on a phone's card ----------
 
+/**
+ * D398: 用这台手机 is the phone's chip. On while it is added: a tap asks in one line before turning
+ * it off (Android's own switch goes off with it). Not added: dashed; on this phone it opens the
+ * guide, elsewhere a tap says where it is added. Can't be reached: the failed tint and why.
+ */
 export function HandsetChip({ cl }: { cl: Client }) {
   const [info, setInfo] = useState(false);
+  const [asking, setAsking] = useState(false);
   const h = cl.handset;
   const mine = A.me?.deviceId === cl.id && androidHere();
   if (!h && !mine) return null;
   const on = !!h?.added;
   const service = mine ? !!H.state?.service : !!h?.state?.service;
-  const look = on ? (service ? "on" : "fail") : mine && H.state ? "add" : "off";
+  const look = on ? (service && h?.linked !== false ? "on" : "fail") : "add";
   const name = shownDeviceName(cl.name);
   return (
     <>
       <div class="dc-chips">
         <Chip
-          label={t("chip.handset")}
+          // D398: the phone on the card, never "this computer" when the card is read on one (D330 renames only the reader's own).
+          label={mine ? t("chip.handset") : (TABLES[A.L.lang]["chip.handset"] ?? t("chip.handset"))}
           art="app/art/ab_phone.webp"
           look={look}
+          state={on && !h?.linked ? t("card.status.away") : undefined}
           infoOpen={info}
           onInfo={() => setInfo(!info)}
           onClick={() => {
-            if (look === "add" || (look === "fail" && mine)) return openHandsetGuide();
+            if (!on && mine && H.state) return openHandsetGuide();
+            if (look === "fail" && mine) return openHandsetGuide();
+            if (on && look === "on") return setAsking(!asking);
             setInfo(!info);
           }}
         />
       </div>
+      {asking && on && (
+        <div class="dc-note hs-off" role="group" aria-label={t("handset.off.ask")}>
+          <b>{t("handset.off.ask")}</b>
+          <div class="small sub">{t("handset.remove.means")}</div>
+          <div class="acts">
+            <Btn kind="text" size="sm" label={t("handset.off.keep")} onClick={() => setAsking(false)} />
+            <Btn kind="secondary" size="sm" label={t("handset.off.go")} about={name} onClick={() => (setAsking(false), A.send({ t: "handset_set", device: cl.id, on: false }))} />
+          </div>
+        </div>
+      )}
       {info && (
         <div class="dc-note">
           {!on && !mine && <div>{t("handset.elsewhere", name)}</div>}
           {!on && mine && !H.state && <div>{t("handset.old")}</div>}
           {!on && mine && H.state && <div>{t("ability.handset.about")}</div>}
-          {on && <div>{t("handset.where", name)}</div>}
-          {/* D339: lent while the person isn't holding it, with Android's own Smart Lock, never its PIN. */}
-          {on && <div class="small sub">{t("handset.smartlock")}</div>}
+          {on && service && h?.linked !== false && <div>{t("handset.chip.about")}</div>}
           {on && !service && <div>{t("handset.switch_off")}</div>}
           {on && !h?.linked && <div class="small sub">{t("handset.away")}</div>}
-          {on && (
+          {on && mine && !service && (
             <div class="acts">
-              {mine && !service && <Btn kind="secondary" size="sm" label={t("handset.reopen")} onClick={openHandsetGuide} />}
-              <Btn kind="text" size="sm" label={t("handset.remove")} about={t("handset.remove.means")} onClick={() => A.send({ t: "handset_set", device: cl.id, on: false })} />
+              <Btn kind="secondary" size="sm" label={t("handset.reopen")} onClick={openHandsetGuide} />
             </div>
           )}
         </div>
       )}
-      {h?.using && (
-        <div class="dev-browsing">
-          <div class="dev-site">
-            <div class="dev-site-what">
-              <div class="small">{t("handset.using", h.using.title)}</div>
-              {h.using.paused === "locked" && <div class="small sub" role="status">{t("handset.paused", name)}</div>}
-              {h.using.paused === "asking" && <div class="small sub" role="status">{t("handset.paused.asking", name)}</div>}
-              {h.using.quiet && !h.using.paused && <div class="small sub" role="status">{t("handset.quiet", name)}</div>}
+    </>
+  );
+}
 
-            </div>
-            <Btn kind="secondary" size="sm" label={t("handset.stop")} about={h.using.title} onClick={() => A.send({ t: "handset_stop", taskId: h.using!.taskId })} />
+/**
+ * D398: under the chip, once the phone is added: the task using it now and 停下 (the one action the
+ * moment calls for), what it can and can't touch as three marked lines, and the optional lock step
+ * as a row that opens in place. The same as the Mac's handsetCard (views/handset.go).
+ */
+export function HandsetBody({ cl }: { cl: Client }) {
+  const h = cl.handset;
+  if (!h?.added) return null;
+  const name = shownDeviceName(cl.name);
+  return (
+    <>
+      {h.using && (
+        <div class="hs-using" role="status">
+          <span class="grow">
+            <b>{t("handset.using", h.using.title)}</b>
+            {h.using.paused === "locked" && <small>{t("handset.paused", name)}</small>}
+            {h.using.paused === "asking" && <small>{t("handset.paused.asking", name)}</small>}
+            {h.using.quiet && !h.using.paused && <small>{t("handset.quiet", name)}</small>}
+          </span>
+          <Btn kind="primary" size="sm" label={t("handset.stop")} about={h.using.title} onClick={() => A.send({ t: "handset_stop", taskId: h.using!.taskId })} />
+        </div>
+      )}
+      <Promises
+        list={[
+          ["eye", t("handset.g.look")],
+          ["go", t("handset.g.go")],
+          ["lock", t("handset.g.off")],
+        ]}
+      />
+      <LockStep />
+    </>
+  );
+}
+
+type PromiseMark = "eye" | "go" | "lock" | "folder" | "chat";
+
+/** One drawn mark for a promise line (never a symbol from a font, D211). */
+export function PromiseMark({ m }: { m: PromiseMark | "moon" }) {
+  const s = { fill: "none", stroke: "currentColor", "stroke-width": 1.6, "stroke-linecap": "round", "stroke-linejoin": "round" } as const;
+  return (
+    <svg class="pm" width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+      {m === "eye" && (
+        <>
+          <path d="M1.5 9C4.5 4 13.5 4 16.5 9C13.5 14 4.5 14 1.5 9Z" {...s} />
+          <circle cx="9" cy="9" r="2.3" fill="currentColor" />
+        </>
+      )}
+      {m === "go" && (
+        <>
+          <rect x="2" y="4" width="14" height="10" rx="4" {...s} />
+          <path d="M6 9l2.2 2.2L12.2 6.8" {...s} />
+        </>
+      )}
+      {m === "lock" && (
+        <>
+          <path d="M5 8V5.5C5 1.8 13 1.8 13 5.5V8" {...s} />
+          <rect x="3" y="8" width="12" height="8.5" rx="2.2" {...s} />
+          <circle cx="9" cy="12.2" r="1.3" fill="currentColor" />
+        </>
+      )}
+      {m === "folder" && <path d="M2.2 4.5h4.5l1.7 1.7h7.4v8H2.2Z" {...s} />}
+      {m === "chat" && (
+        <>
+          <path d="M5 3h8a3 3 0 0 1 3 3v4a3 3 0 0 1-3 3H8l-3.5 3v-3A2.6 2.6 0 0 1 2 10V6a3 3 0 0 1 3-3Z" {...s} />
+          <path d="M3 15.5L15.5 1.5" {...s} />
+        </>
+      )}
+      {m === "moon" && <path d="M11 2C3 2.5 3 15.5 11 16c2 0 4-1 5-2.5C10 14 6.5 9.5 7 6.5 7.4 4 9 2.5 11 2Z" {...s} />}
+    </svg>
+  );
+}
+
+/** A device's promises: what it can and can't touch, short lines with a drawn mark each. */
+export function Promises({ list }: { list: [PromiseMark, string][] }) {
+  return (
+    <ul class="dc-promises">
+      {list.map(([m, words]) => (
+        <li key={m}>
+          <PromiseMark m={m} />
+          <span>{words}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** 锁屏时也能借给任务 › (D339, D398): one optional row; open, three steps with the setting's real names. */
+function LockStep() {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <StepRow mark={<PromiseMark m="moon" />} title={t("handset.lock.row")} sub={t("handset.lock.sub")} open={open} onClick={() => setOpen(!open)} />
+      {open && (
+        <div class="hs-lock-steps" role="group" aria-label={t("handset.lock.row")}>
+          <div class="small sub">{t("handset.lock.why")}</div>
+          <ol>
+            <li>
+              <b>{t("handset.lock.s1")}</b>
+              <small>{t("handset.lock.s1.alt")}</small>
+            </li>
+            <li>
+              <b>{t("handset.lock.s2")}</b>
+            </li>
+            <li>
+              <b>{t("handset.lock.s3")}</b>
+            </li>
+          </ol>
+          <div class="hs-never">
+            <PromiseMark m="lock" />
+            <small class="grow">{t("handset.lock.never")}</small>
+            <Btn kind="secondary" size="sm" label={t("handset.user.done")} onClick={() => setOpen(false)} />
           </div>
         </div>
       )}

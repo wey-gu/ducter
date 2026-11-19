@@ -30,20 +30,33 @@ func TestReachOnDevices(t *testing.T) {
 		app.Receive(w)
 
 		tt := sheetTester(app, 1280, 1400, true)
-		for _, want := range []string{L.T("reach.how"), L.T("reach.via.tailnet"), L.T("reach.private")} {
+		// D398: folded at the card's foot, its summary the way; opened, the whole of it.
+		for _, want := range []string{L.T("reach.how"), L.T("reach.via.tailnet")} {
 			if !tt.HasText(want) {
 				t.Fatalf("%s: worker card misses %q in %q", lang, want, tt.Texts())
 			}
 		}
+		if tt.HasText(L.T("reach.private")) {
+			t.Fatalf("%s: the fold should start closed: %q", lang, tt.Texts())
+		}
+		sheet := &app.devState().card.sheet
+		sheet.fold = "dev:dev_mac"
+		tt.Frame()
+		tt.Frame()
+		if !tt.HasText(L.T("reach.private")) {
+			t.Fatalf("%s: worker card's fold misses %q in %q", lang, L.T("reach.private"), tt.Texts())
+		}
 		app.devState().sel = "local"
+		sheet.fold = "ways:local"
 		tt.Frame()
 		tt.Frame()
-		for _, want := range []string{L.T("reach.ways", "hel"), L.T("reach.kind.tunnel"), "hel.tail5e21.ts.net", L.T("reach.state.here"), L.T("reach.note.tunnel")} {
+		for _, want := range []string{L.T("reach.ways.short"), L.T("reach.kind.tunnel"), "hel.tail5e21.ts.net", L.T("reach.state.here"), L.T("reach.note.tunnel")} {
 			if !tt.HasText(want) {
 				t.Fatalf("%s: home card misses %q in %q", lang, want, tt.Texts())
 			}
 		}
 		app.devState().sel, app.devState().selClient = "", "ph1"
+		sheet.fold = "cl:ph1"
 		tt.Frame()
 		tt.Frame()
 		if !tt.HasText(L.T("reach.open.cloudflare")) {

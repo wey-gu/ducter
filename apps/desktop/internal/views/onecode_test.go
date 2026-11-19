@@ -104,7 +104,7 @@ func TestOtherComputerCard(t *testing.T) {
 		t.Run(string(lang), func(t *testing.T) {
 			h := openDevices(t, lang, false)
 			L := h.app.L
-			does := L.T("list.state.does", h.app.personaName())
+			does := L.T("list.state.ready")
 			if !h.tt.HasText(does) {
 				t.Fatalf("subtitle: %q", h.tt.Texts())
 			}

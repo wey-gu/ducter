@@ -31,6 +31,9 @@ type sheetState struct {
 	squish    map[string]time.Time // a chip's key → when it was toggled
 	pop       map[string]time.Time // a coin's key → when its update landed
 	phase     map[string]string    // a coin's key → its update phase, last frame
+	fold      string               // D398: the card whose fold (how it's connected, disconnect) is open
+	lockSteps string               // D398: the phone whose 锁屏时也能借给任务 steps are open
+	handOff   string               // D398: the phone whose 用这台手机 chip asked before turning off
 }
 
 const (
@@ -103,19 +106,24 @@ func (a *App) deviceDetail(c *ui.Context, dv *protocol.DeviceView) {
 			a.deviceKeyRow(c) // D307: a key instead of a subscription (D298), beside its AI agents
 		}
 		a.chipRow(c, "dev:"+dv.ID, dv, nil)
-		// D293: how a worker is connected; the home's addresses.
-		if dv.Home {
-			a.homeWays(c, dv)
-		} else if dv.State == protocol.DeviceAwake {
-			a.howConnected(c, "dev:"+dv.ID, dv.Via)
-		}
+		// D398: what a computer for tasks touches and never sees.
 		if !dv.Home {
-			a.viaLine(c, "dev:"+dv.ID, deviceComputer(dv), nil)
+			a.workerPromises(c, dv)
 		}
 		a.ducterLine(c, dv)
-		if !dv.Home {
-			a.sheetFoot(c, dv.ID, name, name, "device.disconnect.means")
+		// D293, D398: the home's addresses, or how a worker is connected and
+		// its one 断开, folded at the foot.
+		if dv.Home {
+			a.homeWays(c, dv)
+			return
 		}
+		var via *protocol.DeviceVia
+		if dv.State == protocol.DeviceAwake {
+			via = dv.Via
+		}
+		a.connFold(c, "dev:"+dv.ID, dv.ID, via, deviceComputer(dv), nil, func() {
+			a.sheetFoot(c, dv.ID, name, name, "device.disconnect.means")
+		})
 	})
 }
 
@@ -133,21 +141,27 @@ func (a *App) clientCard(c *ui.Context, cl *protocol.ReachClient) {
 	a.sheetHero(c, "cl:"+cl.ID, art, kind, false)
 	a.sheetName(c, cl.ID, name, cl.Name, true)
 	line, _ := a.clientState(cl)
+	ink, strong := t.InkMuted, false
 	if computer != "" && !isCLI(cl) && a.isThisMac(computer) {
 		line = a.L.T("card.status.this")
+	} else if hs, hink, hstrong := a.handsetStatus(cl); hs != "" {
+		line, ink, strong = hs, hink, hstrong // D398: ready to lend, or lent now
 	}
-	a.statusLine(c, line, t.InkMuted, false)
+	a.statusLine(c, line, ink, strong)
 	a.chipRow(c, "cl:"+cl.ID, nil, cl)
 	a.handsetCard(c, cl)
+	// D398: how it's connected and its one 断开 wait folded at the foot.
+	var via *protocol.DeviceVia
 	if cl.Connected {
-		a.howConnected(c, "cl:"+cl.ID, cl.Via) // D293
+		via = cl.Via // D293
 	}
-	a.viaLine(c, "cl:"+cl.ID, computer, cl)
-	if isCLI(cl) {
-		a.sheetFoot(c, cl.ID, name, a.L.T("device.cli.name", computer), "device.disconnect.means.cli")
-		return
-	}
-	a.sheetFoot(c, cl.ID, name, name, "device.disconnect.means.client")
+	a.connFold(c, "cl:"+cl.ID, cl.ID, via, computer, cl, func() {
+		if isCLI(cl) {
+			a.sheetFoot(c, cl.ID, name, a.L.T("device.cli.name", computer), "device.disconnect.means.cli")
+			return
+		}
+		a.sheetFoot(c, cl.ID, name, name, "device.disconnect.means.client")
+	})
 }
 
 // ---------- who ----------
@@ -429,7 +443,8 @@ func (a *App) coinTile(c *ui.Context, dv *protocol.DeviceView, h protocol.Device
 		if !h.LoggedIn {
 			col, w = t.InkMuted, 600
 		}
-		ui.Text(c, name).FontSize(t.XS).FontWeight(w).TextColor(col).SingleLine().AccessHidden(true)
+		// D398: a long name (DeepSeek Harness) takes two lines, never "DeepSeek…".
+		ui.Text(c, name).FontSize(t.XS).FontWeight(w).TextColor(col).TextAlign(ui.Center).LineHeight(1.25).MaxLines(2).AccessHidden(true)
 	})
 	if tile.Clicked() {
 		if sel {
@@ -807,6 +822,10 @@ func (a *App) chipSpecs(c *ui.Context, card string, dv *protocol.DeviceView, cl 
 		out = append(out, a.workerChip(c, card, dv))
 	}
 	if dv == nil {
+		// D398: an Android phone's 用这台手机 is its chip.
+		if cl != nil && cl.Handset != nil {
+			out = append(out, a.handsetSpec(c, card, cl))
+		}
 		return out
 	}
 	var ghosts []chipSpec
@@ -1371,6 +1390,9 @@ func (a *App) chipNotes(c *ui.Context, card string, dv *protocol.DeviceView, cl 
 		}
 	}
 	if dv == nil {
+		if cl != nil {
+			a.handsetOffAsk(c, cl, note) // D398
+		}
 		return
 	}
 	if ab := dv.Ability(protocol.AbilityWeb); ab != nil && ab.Where == protocol.WhereDucter {
@@ -1438,6 +1460,29 @@ func connWay(cl *protocol.ReachClient) string {
 
 // viaLine is one quiet line of how the computer is connected, with one ⋯
 // that opens the connections in place, each with its own 断开.
+// viaWords is how a card's connections reach Ducter, in one line (通过 app
+// 和命令行连着); "" when there are none.
+func (a *App) viaWords(card string, self *protocol.ReachClient) string {
+	var list []*protocol.ReachClient
+	if self != nil {
+		list = append(list, self)
+	}
+	list = append(list, a.fold().members[card]...)
+	var ways []string
+	seen := map[string]bool{}
+	for _, cl := range list {
+		w := connWay(cl)
+		if !seen[w] {
+			seen[w] = true
+			ways = append(ways, a.L.T("card.via."+w))
+		}
+	}
+	if len(ways) == 0 {
+		return ""
+	}
+	return a.L.T("card.via", strings.Join(ways, a.L.T("card.via.and")))
+}
+
 func (a *App) viaLine(c *ui.Context, card, computer string, self *protocol.ReachClient) {
 	t := a.T
 	d := a.devState()
@@ -1450,19 +1495,16 @@ func (a *App) viaLine(c *ui.Context, card, computer string, self *protocol.Reach
 	if len(list) == 0 {
 		return
 	}
-	var ways []string
-	seen := map[string]bool{}
-	for _, cl := range list {
-		w := connWay(cl)
-		if !seen[w] {
-			seen[w] = true
-			ways = append(ways, a.L.T("card.via."+w))
-		}
-	}
-	text := a.L.T("card.via", strings.Join(ways, a.L.T("card.via.and")))
-	open := s.via == card
-	ui.Row(c.Key("via:"+card)).Gap(6).Justify(ui.Center).AlignItems(ui.Center).Margin(t.S4, 0, 0, 0).Children(func() {
+	text := a.viaWords(card, self)
+	// D398: a phone that is only itself has nothing to manage here: its one
+	// 断开 is the card's own, right under this line.
+	only := self != nil && len(list) == 1
+	open := s.via == card && !only
+	ui.Row(c.Key("via:"+card)).Gap(6).AlignItems(ui.Center).Margin(t.S2, t.S2, 0, t.S2).Children(func() {
 		ui.Text(c, text).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5)
+		if only {
+			return
+		}
 		if a.moreButton(c, "via-more:"+card, a.L.T("card.via.more"), open) {
 			if open {
 				s.via = ""

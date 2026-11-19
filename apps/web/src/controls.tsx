@@ -296,6 +296,38 @@ export function Chip(p: { label: string; art?: string; look: "on" | "off" | "add
 }
 
 /**
+ * D398: a card's foot: a hairline, then one quiet row (its title, a muted summary, a chevron) that
+ * opens in place, pushing what is under it down, never over anything. The Mac's sheetFold.
+ */
+export function Fold({ title, summary, children }: { title: string; summary?: string; children: ComponentChildren }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div class="dc-fold">
+      <button class="dc-fold-row" aria-expanded={open} onClick={() => setOpen(!open)}>
+        <b>{title}</b>
+        {summary && <small>{summary}</small>}
+        <Chev open={open} />
+      </button>
+      {open && <div class="dc-fold-body">{children}</div>}
+    </div>
+  );
+}
+
+/** D398: an optional step as one framed row (its mark, its title, a muted line, a chevron); open, the step is under it. */
+export function StepRow({ mark, title, sub, open, onClick }: { mark: ComponentChildren; title: string; sub?: string; open: boolean; onClick: () => void }) {
+  return (
+    <button class={`hs-lock${open ? " open" : ""}`} aria-expanded={open} onClick={onClick}>
+      {mark}
+      <span class="grow">
+        <b>{title}</b>
+        {sub && <small>{sub}</small>}
+      </span>
+      <Chev open={open} />
+    </button>
+  );
+}
+
+/**
  * One line in a list of devices: clay, the name alone, and under it one short line: what it is
  * doing (14 小时前在线 / Online 14 hours ago), or a state word in its color with its dot; 有更新 a
  * fact of its own beside it (D291: never "iPhone · 14 小时前"). Each line ellipsizes on its own.

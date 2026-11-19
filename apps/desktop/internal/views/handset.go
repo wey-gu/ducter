@@ -23,49 +23,42 @@ func phoneShort(name string) string {
 	return strings.TrimSpace(shownDeviceName(strings.TrimSpace(name)))
 }
 
-// handsetCard is 用这台手机 on an Android phone's card.
+// handsetCard is 用这台手机 on an Android phone's card, under its chip
+// (D398): while a task has it, that task and 停下 (the one action the
+// moment calls for); then, once it is added, what it can and can't touch
+// in three marked lines, and the optional lock step as a row. Removing it
+// is turning its chip off (asked in one line); adding it happens on the
+// phone, where Android's switch is.
 func (a *App) handsetCard(c *ui.Context, cl *protocol.ReachClient) {
 	h := cl.Handset
-	if h == nil {
+	if h == nil || !h.Added {
 		return
 	}
 	t := a.T
 	name := phoneShort(cl.Name)
-	if !h.Added {
-		a.infoText(c, a.L.T("handset.elsewhere", name))
-		return
-	}
-	a.infoText(c, a.L.T("handset.where", name))
-	// D339: lent while the person isn't holding it, with Android's own Smart Lock, never its PIN.
-	a.infoText(c, a.L.T("handset.smartlock"))
-	if !h.Linked {
-		a.reasonLine(c, a.L.T("handset.away"))
-	}
 	if u := h.Using; u != nil {
 		id, title := u.TaskID, u.Title
-		ui.Row(c.Key("handset-using:" + cl.ID)).Gap(t.S3).AlignItems(ui.Center).Children(func() {
-			ui.Column(c).Grow(1).MinWidth(0).Children(func() {
-				ui.Text(c, a.L.T("handset.using", title)).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(1.5)
+		ui.Row(c.Key("handset-using:"+cl.ID)).Gap(t.S3).AlignItems(ui.Center).Margin(t.S4, 0, 0, 0).Padding(t.S3, t.S4).
+			Radius(t.RadiusSM).Background(t.Working.Surface).Children(func() {
+			ui.Column(c).Grow(1).MinWidth(0).Gap(2).Children(func() {
+				ui.Text(c, a.L.T("handset.using", title)).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).LineHeight(1.45)
 				// D331: paused by the person's lock, or asking on the phone after the unlock.
 				switch {
 				case u.Paused == "asking":
-					ui.Text(c, a.L.T("handset.paused.asking", name)).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5)
+					ui.Text(c, a.L.T("handset.paused.asking", name)).FontSize(t.XS).TextColor(t.InkSoft).LineHeight(1.45)
 				case u.Paused != "":
-					ui.Text(c, a.L.T("handset.paused", name)).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5)
+					ui.Text(c, a.L.T("handset.paused", name)).FontSize(t.XS).TextColor(t.InkSoft).LineHeight(1.45)
 				case u.Quiet:
-					ui.Text(c, a.L.T("handset.quiet", name)).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5)
+					ui.Text(c, a.L.T("handset.quiet", name)).FontSize(t.XS).TextColor(t.InkSoft).LineHeight(1.45)
 				}
 			})
-			if a.buttonFor(c, a.L.T("handset.stop"), title, btnSecondary, t.ControlSM, t.Bg) {
+			if a.buttonFor(c, a.L.T("handset.stop"), title, btnPrimary, t.ControlSM, t.Working.Surface) {
 				a.send(protocol.HandsetStopReq{T: "handset_stop", TaskID: id})
 			}
 		})
 	}
-	ui.Row(c).Children(func() {
-		if a.dangerText(c, "handset-remove:"+cl.ID, a.L.T("handset.remove"), a.L.T("handset.remove.means")) {
-			a.send(protocol.HandsetSetReq{T: "handset_set", Device: cl.ID, On: false})
-		}
-	})
+	a.handsetPromises(c, cl)
+	a.lockStep(c, cl)
 }
 
 // handsetTaskLine is, on the opened task, the person's phone it is using,

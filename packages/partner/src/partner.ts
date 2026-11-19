@@ -54,6 +54,9 @@ import { join } from "node:path";
 import { callWakes, fileView, harnessName, HARNESSES, HARNESS_IDS, isHarnessId, isImage, isWorkKind, WORK_KINDS, type WorkKind, MEDIA_LIMITS, viewText, type MediaRef, type ActivityStep, type Bodies, type BodyWhy, type Brain, type CalEvent, type CalGlance, type EventKind, type HarnessId, type LogEvent, type Place, type TaskCard, type TaskGroupFrame, type TaskGroupView, type TaskNeeds } from "../../protocol/src/index.ts";
 import type { CoreApi, HarnessEvent, HarnessSession, Partner, Runner, SendImage, WebLookPort, WorkingMemoryView } from "../../protocol/src/internal.ts";
 import { resolveWindows, WINDOW_MAX, WINDOW_MIN } from "../../protocol/src/harness-facts.ts";
+
+/** D385: the partner's line before a plan-first hand-over, when the model said none. */
+const PLAN_FIRST_LINE = { zh: "好，我先看一遍，出个方案给你，你点头再做。", en: "OK. I'll read them first and show you a plan; nothing starts until you say so." };
 import { bridgeFor, bridgeKeyFor, type BridgeClient, type BridgeContact, type BridgeOp, type BridgeResult } from "./bridge.ts";
 import { claimText, fixedOutcome, followCandidates, followLine, foldOut, inQuiet, langOfRequest, lostLine, mayHaveGone, overAsks, peerAnswer, whoForModel, whoForUser, AFTER_SEND_MS, CHECK_EVERY_MS, DAY_MS, FOLLOW_ACTIVE_MS, LIVE_CHECK_MS, LIVE_MS, WAIT_RETRY_MS, WAIT_S, WAITING_EVERY_MS, STUCK_EVERY_MS, PEER_ASKS_OPEN, PEER_NOT_YET_MS, SENDER_DAILY, TRUST_AFTER, TRUST_WINDOW_MS, TRUSTED_DAILY, type OutKind, type OutOp, type OutState } from "./bridge-out.ts";
 import { createNmemClient, noMemory, THREADS_MAX, type MemoryClient, type MemoryHit, type Replaced, type ThreadHit } from "./memory.ts";
@@ -3101,8 +3104,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
             // goes quiet and any card the hand-over raises (the lasting where) comes after the line.
             const willPlan = !group && (shape === "plan" || (!shape && !!set && refs.length >= 2));
             if (willPlan && !spoke) {
-              const zh = (taskLanguage(turn) ?? (/[㐀-鿿]/.test(note) ? "zh" : "en")).startsWith("zh");
-              core.log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: zh ? "好，我先看一遍，出个方案给你，你点头再做。" : "OK. I'll read them first and show you a plan; nothing starts until you say so." } } as never);
+              const line = words(PLAN_FIRST_LINE, taskLanguage(turn) ?? (/[㐀-鿿]/.test(note) ? "zh-Hans" : "en"));
+              core.log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: line } } as never);
               if (turn) turn.handed = true;
             }
             const r = await ho.hand({ refs, ...(note ? { note } : {}), ...(shape ? { shape } : {}), ...(group ? { group } : {}), ...(set ? { setId: set.setId, bySubject: true, ...(set.subject ? { subject: set.subject } : {}) } : {}) });

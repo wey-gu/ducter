@@ -33,6 +33,9 @@ nothing changed on any failure, said plainly), 惊喜 (the fold becomes the spin
 
 - The page is the product: `<home>/app` in the system WebView, exactly what a browser gets. The
   app adds what a page can't: pairing memory, the QR scanner, insets, the fold, haptics, updates.
+- A link out of the page goes to the system (`ACTION_VIEW`): the app that owns an app link (GitHub,
+  Docs), else the default browser, both where the person is signed in (D384, as on the iPhone).
+  Frames the page holds (the workbench's preview) load in place.
 - The bridge is the iPhone app's contract (`apps/web/src/native.ts`): `window.ducterNative` and a
   promise-returning `postMessage`, limited to the paired home's origin. Messages: `hello` (the
   page's language and the partner's name), `haptic`, `push.state` / `push.enable` (answer

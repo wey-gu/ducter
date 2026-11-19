@@ -328,7 +328,10 @@ changes.
     tokens. A MyGo WASM web client is not planned.
   - iPhone (D131): a native SwiftUI shell (`apps/ios`) around the same phone client, with APNs
     and Go / Hold / Reply on a decision's notification; TestFlight public beta
-    (`design/release/ios.md`). Expo is not planned.
+    (`design/release/ios.md`). Expo is not planned. A link out of the page goes to the phone
+    (D384): its own app for a universal link (GitHub, Docs), else the default browser, where the
+    person is signed in; never a browser sheet inside Ducter, whose cookies are its own. Only this
+    Ducter's pages, and frames the page holds (the workbench's preview), stay in the app.
   - **Notifications to the iPhone app (D159, research/45).** APNs takes pushes only under the
     app publisher's key, so a home reaches the public app through the **notification relay**:
     one Vercel Node function next to the website (`apps/site/api/push/[op].ts`,

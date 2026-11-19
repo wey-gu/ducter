@@ -1,4 +1,3 @@
-import SafariServices
 import SwiftUI
 import WebKit
 
@@ -108,7 +107,7 @@ final class Shell: NSObject, ObservableObject, WKNavigationDelegate, WKUIDelegat
         web.evaluateJavaScript("window.ducterCommand && window.ducterCommand(\(jsString(name)))")
     }
 
-    // MARK: navigation: this Ducter in the app, everything else in Safari
+    // MARK: navigation: this Ducter in the app, everything else on the phone (D384)
 
     private func isOurs(_ url: URL?) -> Bool {
         guard let url, let base = AppState.shared.base else { return false }
@@ -118,6 +117,8 @@ final class Shell: NSObject, ObservableObject, WKNavigationDelegate, WKUIDelegat
     func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction) async -> WKNavigationActionPolicy {
         guard let url = action.request.url else { return .cancel }
         if isOurs(url) || url.scheme == "about" { return .allow }
+        // A frame inside the page (the workbench's preview of a task's own site) loads in place.
+        if let frame = action.targetFrame, !frame.isMainFrame, url.scheme == "http" || url.scheme == "https" { return .allow }
         openOutside(url)
         return .cancel
     }
@@ -128,14 +129,12 @@ final class Shell: NSObject, ObservableObject, WKNavigationDelegate, WKUIDelegat
         return nil
     }
 
+    /// D384: a link that isn't this Ducter goes to the phone, never a sheet inside the app. The
+    /// system hands a universal link (github.com, a doc, a calendar) to its own app when the person
+    /// has it, else to their default browser: both are where they are signed in. An in-app Safari
+    /// sheet keeps cookies of its own, so a private repo's page there is a 404.
     private func openOutside(_ url: URL) {
-        if url.scheme == "http" || url.scheme == "https" {
-            let vc = SFSafariViewController(url: url)
-            vc.preferredControlTintColor = UIColor(hex: 0xFF8A3D)
-            UIApplication.shared.topViewController?.present(vc, animated: true)
-        } else {
-            UIApplication.shared.open(url)
-        }
+        UIApplication.shared.open(url)
     }
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {

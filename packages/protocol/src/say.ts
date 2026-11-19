@@ -6,8 +6,8 @@
 //   - inTongue: is this text in the reader's language, any language (lang.ts inLanguage: by
 //     script where scripts tell, never wrongly held back where they don't);
 //   - proofLabel: an evidence label as is when it is in the reader's language or reads as a name
-//     (a file, a command, "PR #12", a host), else a neutral label from what it is (the page's
-//     host, the file's name, 测试结果 / Test results).
+//     (a file, a command, "PR #12", a host), else a neutral label from what it is (a code host's
+//     pull request or issue by number, the page's host, the file's name, 测试结果 / Test results).
 // The reader's language is the report's (the task's `language`), not the interface's (D292).
 // The opened task keeps the agent's own words (D152). The Go port (apps/desktop/internal/say)
 // passes the same cases (fixtures/say.json).
@@ -45,6 +45,14 @@ function hostOf(ref: string): string | undefined {
   return m ? m[1]!.replace(/^www\./, "") : undefined;
 }
 
+/** A pull request or an issue on a code host, by its number ("PR #12", "web#40"): a bare host
+ *  ("github.com") says nothing about which one. GitHub's and GitLab's paths. */
+function codeLink(ref: string): string | undefined {
+  const m = /^https?:\/\/[^/?#]+\/[^/?#]+\/([^/?#]+)\/(?:-\/)?(pull|pulls|merge_requests|issues)\/(\d+)(?:[/?#]|$)/i.exec(ref.trim());
+  if (!m) return undefined;
+  return m[2]!.toLowerCase() === "issues" ? `${m[1]}#${m[3]}` : `PR #${m[3]}`;
+}
+
 function baseName(ref: string): string | undefined {
   const s = ref.trim().replace(/^file:\/\//, "").replace(/[/\\]+$/, "");
   if (!s || /\s/.test(s)) return undefined;
@@ -56,7 +64,7 @@ function baseName(ref: string): string | undefined {
 export function proofLabel(ev: Pick<EvidenceRef, "kind" | "label" | "ref">, lang: LangTag): string {
   const label = (ev.label ?? "").trim();
   if (label && (inTongue(label, lang) || readsAsName(label))) return label;
-  const host = hostOf(ev.ref);
+  const host = codeLink(ev.ref) ?? hostOf(ev.ref);
   if (host) return host;
   if (ev.kind === "file") {
     const b = baseName(ev.ref);

@@ -2007,15 +2007,83 @@ a {
   gap: 6px;
   min-width: 0;
 }
+/* How long it took sits on the state word's line, at its size (the conversation's .when has a
+   top margin and a smaller size of its own). */
 .standing .when {
+  margin: 0;
+  font-size: inherit;
   font-variant-numeric: tabular-nums;
 }
 /* D291: the facts are spaced by the gap, no dots between them (D211, D213: no coin to start a group). */
 .standing {
   column-gap: var(--s3);
 }
-.standing > :first-child + b {
+/* The two groups (where it stands; who and where) are one wrapping line on a wide screen. */
+.standing > .st-line,
+.standing > .st-facts {
+  display: contents;
+}
+.standing .st-line > :first-child + b {
   margin-inline-start: -4px;
+}
+/* Every piece of the line on one height, so a wrapped line keeps its pieces' middles level: the
+   to-do's chip no taller than the words beside it. */
+.standing .src-chip .src-link {
+  padding-block: 0;
+  line-height: inherit;
+}
+/* A phone: the state and how long it took beside the face, the title under it; who, where, the
+   to-do and Switch take the page's whole width under both (not three ragged lines in a column a
+   third of the screen wide); the outcome said once at the page's title size, not a poster's. */
+@media (max-width: 600px) {
+  .task-head .head-words,
+  .task-head .standing {
+    display: contents;
+  }
+  .task-head .face {
+    grid-row: 1 / span 2;
+  }
+  .task-head .standing > .st-line {
+    grid-column: 2;
+    order: 1;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 2px var(--s3);
+    align-self: end;
+  }
+  .task-head h1 {
+    grid-column: 2;
+    order: 2;
+    align-self: start;
+  }
+  .task-head .waitline,
+  .task-head .waitnext {
+    grid-column: 2;
+    order: 3;
+  }
+  .task-head .standing > .st-facts {
+    grid-column: 1 / -1;
+    order: 4;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px var(--s3);
+    margin-top: var(--s1);
+  }
+  .task-head .where-why {
+    grid-column: 1 / -1;
+    order: 5;
+  }
+  .task-head .headline {
+    order: 6;
+    font-size: var(--t20);
+    letter-spacing: -0.2px;
+    line-height: 1.3;
+  }
+  :lang(zh) .task-head .headline {
+    line-height: 1.45;
+  }
 }
 .standing .inline-link {
   font-size: var(--sm);
@@ -6712,6 +6780,12 @@ dl.call-summary dd { margin: 0; }
 .fc-pv.code pre.in {
   animation: fade-in var(--t-med) var(--ease);
 }
+/* A line longer than the card fades out at its right edge, as the glimpse fades at its foot:
+   a glimpse, not a line cut mid-character. */
+.fc-pv.code pre {
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+  mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+}
 .fc-pv.code .cl {
   display: block;
   overflow: hidden;
@@ -10193,12 +10267,20 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 }
 .room-phone .strip {
   flex: 1 1 100%;
+  align-self: stretch;
 }
+/* Each count as wide as its words, the rest of the width shared: equal shares cut 今天做完 out of
+   its own pressed chip. Only when four don't fit does a word give way, with an ellipsis. */
 .room-phone .strip .cell {
-  flex: 1 1 0;
+  flex: 1 1 auto;
   min-width: 0;
   justify-content: center;
-  padding: 5px 4px 0;
+  padding: 5px 8px 0;
+}
+.room-phone .strip .cell span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 /* A wait's next look, with its small ring; a quiet one says since when. */
 .trow .l2 .next {
@@ -10347,6 +10429,21 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   background: none;
   padding: 0;
   font-size: inherit;
+}
+/* Its Copy sits at the block's top right: the first line starts under it, never beneath it. */
+.turns .tx.assistant.md .codeblock pre {
+  padding-top: 34px;
+}
+/* A phone or a tablet: a long line (a link, a log line) wraps inside the block, as the words
+   around it do, instead of running off its right edge with nothing to say there is more (a scroll
+   a finger finds only by accident). A mouse keeps the block's own sideways scroll. */
+@media (max-width: 600px), (pointer: coarse) {
+  .tx .codeblock pre,
+  .partner .codeblock pre,
+  .turns .tx.assistant.md pre {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
 }
 /* Steps: one quiet line each, 2 apart; 12 between words and a run of steps. */
 .turns .lines {
@@ -11697,6 +11794,18 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 .tcompact .k2 .meta {
   flex: none;
 }
+/* The to-do's chip keeps its number and its word whole; the line's words give way first (the
+   chip squeezed to an empty pill, its word spilling over the time, was the other way round). */
+.tcompact .k2 .src-chip {
+  flex: none;
+}
+.tcompact .k2 .w {
+  flex: 0 1 auto;
+}
+/* A phone's row is narrow: the chip's number stays, its word (已留言) is the opened task's to say. */
+.room-phone .tcompact .k2 .src-state {
+  display: none;
+}
 .tcompact .time {
   flex: none;
   font-size: var(--xs);
@@ -12617,6 +12726,8 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 @media (max-width: 640px) { .past-tabs { margin: 4px 16px 0; } .og-edit { left: 8px; right: 8px; } }
 @media (prefers-reduced-motion: reduce) { .og-run.running { animation: none; } }
 .past-links { display: flex; justify-content: center; gap: 4px; flex-wrap: wrap; margin-top: 10px; } .past-links .past-link { margin: 8px 0; }
+/* A phone: the three links (Ongoing, Past tasks, Done for you) keep one line down to 360 wide. */
+@media (max-width: 430px) { .past-links { gap: 0; } .past-links .past-link { padding-inline: 10px; } }
 /* D288 · 上下文 / Context: a quiet ring by the task's composer (ink-muted, butter once it is close,
    never red: compaction is ordinary), and the card it opens (the 工作副本 popover's shape). */
 .ctx-anchor { position: relative; display: inline-flex; flex: none; align-self: center; }

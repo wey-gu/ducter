@@ -19,7 +19,12 @@
     { "kind": "file", "label": "README.md", "ref": "README.md", "zh": "README.md", "en": "README.md" },
     { "kind": "log", "label": "nmem doctor", "ref": "nmem doctor", "zh": "nmem doctor", "en": "nmem doctor" },
     { "kind": "diff", "label": "Two files changed", "ref": "abc1234", "zh": "改动", "en": "Two files changed" },
-    { "kind": "url", "label": "example.com", "ref": "https://www.example.com/", "zh": "example.com", "en": "example.com" }
+    { "kind": "url", "label": "example.com", "ref": "https://www.example.com/", "zh": "example.com", "en": "example.com" },
+    { "kind": "url", "label": "Draft pull request", "ref": "https://github.com/acme/mem/pull/10412", "zh": "PR #10412", "en": "Draft pull request" },
+    { "kind": "url", "ref": "https://github.com/acme/mem/pull/10412/files", "zh": "PR #10412", "en": "PR #10412" },
+    { "kind": "url", "ref": "https://github.com/acme/mem/issues/398#issuecomment-1", "zh": "mem#398", "en": "mem#398" },
+    { "kind": "url", "ref": "https://gitlab.com/acme/web/-/merge_requests/7", "zh": "PR #7", "en": "PR #7" },
+    { "kind": "url", "ref": "https://github.com/acme/mem/blob/main/README.md", "zh": "github.com", "en": "github.com" }
   ],
   "proofOther": [
     { "kind": "test", "label": "All tests pass", "ref": "bun test", "lang": "ko", "want": "Test results" },

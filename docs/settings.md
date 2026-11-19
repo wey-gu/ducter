@@ -61,10 +61,12 @@ At the top is your partner, its name and one line: where it lives and what it th
   partner repeats it back and keeps it. Your rules are listed under Who does the tasks;
   **Remove** drops one. A rule can also say what not to use ("don't use Claude Code for hotels and
   flights"): that AI agent then never takes that kind of work unless you ask for it on one task.
-  If you said one in passing and it wasn't kept as a rule, it still holds: the task says
-  "you said …", and your partner asks once whether to keep it as a rule (**Keep it**, or
-  **Just this once**). Only a clear "never" or "always" about a kind of work counts; "I like Codex"
-  is not a rule.
+  Said in passing counts too: the moment you say it, it's one of your rules, in your own words,
+  and the very next task goes by it, even one you ask for in the same message. The task then
+  says "by your rule …". Only a clear "never" or "always" about a kind of work counts; "I like
+  Codex" or "use Codex this time" is not a rule. If you told another AI tool and your memory
+  brings it back, the task goes by it and your partner asks once whether to keep it as a rule
+  (**Keep it**, or **Just this once**).
   If you move the same kind of task to another AI agent twice, your partner asks once whether to
   make it a rule. Any task can still be handed to another AI agent from the task itself.
 - **Errands go to a faster one.** Booking a hotel, looking up flights, comparing prices or

@@ -2192,6 +2192,9 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [x] **D372: a preference only in Mem.** Done in D379 (2026-11-19) for a memory the partner's recall returns: read by code, applied, asked once to keep.
 - [x] **D372: the unsaved-preference eval** (`kind-never-unsaved-zh`). Done in D379: Ducter applies it by code.
 - [ ] **D379: a Mem-only saying the partner never recalls** (said to another tool, never in this conversation) still waits for a recall; a quiet Mem search for agent sayings (one query per agent, a few times a day) would catch it. Trigger: a task goes to an agent a memory says not to use, with no recall in that turn.
+- [ ] **D401: a where said in passing** ("要登录的网页都在 MacBook 上做", "验证都去 haswell") is still kept only by the partner's rule_save; a rule names an agent, and a where-only saying has none. Trigger: a task opened on another computer after the person said where this kind goes.
+- [ ] **D402: Discord read as the person** (a user connection, not OOMOL's bot): watch it when a source offers one with mentions and DMs. Trigger: such a connector in oo or OpenConnector.
+- [ ] **D402: the morning note names an account it couldn't read** ("Discord 还读不了") once, the first morning after it stopped. Trigger: a person who never opens Settings › Accounts asks why Discord was never mentioned.
 - [ ] **D379: sayings in other languages** (the parser knows zh and en words; a ko or ja saying is not read). Trigger: a person who says it in another language.
 
 ## Continuity first (D373, `conversation.md`, research/143)

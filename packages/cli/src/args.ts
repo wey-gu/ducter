@@ -1,6 +1,6 @@
 // Argument parsing for `ducter`. Pure: no env, no I/O, so it is easy to test.
 
-export type Command = "up" | "open" | "doctor" | "status" | "version" | "help" | "pair" | "devices" | "service" | "domain" | "tailscale" | "worker" | "uninstall" | "report" | "merge" | "undo" | "task" | "say" | "tail" | "answer" | "connect" | "disconnect" | "update" | "ability" | "browser" | "anywhere" | "git" | "reach" | "key";
+export type Command = "up" | "open" | "doctor" | "status" | "version" | "help" | "pair" | "devices" | "service" | "domain" | "tailscale" | "worker" | "uninstall" | "report" | "merge" | "undo" | "task" | "say" | "tail" | "answer" | "connect" | "disconnect" | "update" | "ability" | "browser" | "anywhere" | "git" | "reach" | "key" | "proactive";
 
 export interface Args {
   command: Command;
@@ -39,13 +39,15 @@ export interface Args {
   withToken?: boolean; // git login --with-token: a GitHub key read from stdin (D272)
   kind?: string; // reach add <address> --kind tailnet|domain|tunnel (D293)
   hostname?: string; // anywhere on --hostname <name>: the hostname that tunnel serves; anywhere step create --hostname
+  days?: number; // proactive replay --days <n> (D388): how many days back, 1–7
+  noWeb?: boolean; // proactive replay --no-web (D388): no web look for an open question
 }
 
 export type ParseResult = { ok: true; args: Args } | { ok: false; error: { key: "err.unknownCommand" | "err.unknownFlag" | "err.missingValue" | "err.badPort" | "err.badTimeout"; vars: Record<string, string> } };
 
-const COMMANDS = new Set<Command>(["up", "open", "doctor", "status", "version", "help", "pair", "devices", "service", "domain", "tailscale", "worker", "uninstall", "report", "merge", "undo", "task", "say", "tail", "answer", "connect", "disconnect", "update", "ability", "browser", "anywhere", "git", "reach", "key"]);
+const COMMANDS = new Set<Command>(["up", "open", "doctor", "status", "version", "help", "pair", "devices", "service", "domain", "tailscale", "worker", "uninstall", "report", "merge", "undo", "task", "say", "tail", "answer", "connect", "disconnect", "update", "ability", "browser", "anywhere", "git", "reach", "key", "proactive"]);
 /** Commands that take words after them (`ducter devices revoke a1b2`, `ducter service install`). */
-const WITH_REST = new Set<Command>(["devices", "service", "domain", "merge", "undo", "open", "task", "say", "tail", "answer", "connect", "ability", "browser", "anywhere", "git", "reach", "key"]);
+const WITH_REST = new Set<Command>(["devices", "service", "domain", "merge", "undo", "open", "task", "say", "tail", "answer", "connect", "ability", "browser", "anywhere", "git", "reach", "key", "proactive"]);
 const ALIASES: Record<string, Command> = {
   "-v": "version",
   "--version": "version",
@@ -167,6 +169,16 @@ export function parseArgs(argv: string[]): ParseResult {
       }
       case "--check":
         args.check = true;
+        continue;
+      case "--days": {
+        const v = value();
+        if (v === undefined) return { ok: false, error: { key: "err.missingValue", vars: { flag: a } } };
+        if (!/^\d+$/.test(v) || Number(v) < 1) return { ok: false, error: { key: "err.badTimeout", vars: { value: v } } };
+        args.days = Number(v);
+        continue;
+      }
+      case "--no-web":
+        args.noWeb = true;
         continue;
       case "--agents":
         args.agents = true;

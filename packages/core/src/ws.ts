@@ -161,6 +161,8 @@ export interface WsDeps {
   autofill?: import("./saved/index.ts").Autofill;
   /** D165/D166: what Ducter notices in the accounts; absent in tests that don't need it. */
   proactive?: () => import("./proactive/engine.ts").Proactive | undefined;
+  /** D388: `ducter proactive replay`: a dry engine over the last days of the real accounts. */
+  replay?: (o: { days?: number; web?: boolean }) => Promise<import("@ducter/protocol").ReplayReport>;
   /** D222: the person's calendars (Accounts' calendar rows, today's line, cal_pick). */
   calendar?: () => import("./calendar.ts").Calendar | undefined;
   /** D341: 待办来源 / To-do sources (task-sources/). */
@@ -1021,6 +1023,8 @@ export function createWsHandler(deps: WsDeps) {
       }
       case "read":
         log.append({ stream: channelOf(ws.data.partner), origin: "user", kind: "read_receipt", body: { upToSeq: f.upToSeq } }); // D312: the conversation it shows
+        // D388: the person is looking (not a socket that reconnected): an early morning may be assembled now.
+        if (ws.data.client !== "cli") deps.proactive?.()?.hello(undefined, true);
         return;
       case "devices": {
         const v = devicesView();
@@ -1477,6 +1481,16 @@ export function createWsHandler(deps: WsDeps) {
         // D226: 今天看了什么 / What it looked at today, under the switch.
         const p = deps.proactive?.();
         if (p) send(ws, { t: "proactive_day", day: p.day() });
+        return;
+      }
+      case "proactive_replay": {
+        // D388: minutes, not seconds: answered when done, on this socket only.
+        if (!deps.replay) throw new Error("not available");
+        const days = typeof f.days === "number" && Number.isFinite(f.days) ? f.days : undefined;
+        void deps
+          .replay({ ...(days !== undefined ? { days } : {}), web: f.web !== false })
+          .then((report) => send(ws, { t: "proactive_replay_result", report }))
+          .catch((err: Error) => send(ws, { t: "proactive_replay_result", error: err.message.slice(0, 200) }));
         return;
       }
       case "connection_reads": {

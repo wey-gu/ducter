@@ -34,6 +34,7 @@ import { createWork, type Work } from "./work.ts";
 import { createHarnessAsk, createHarnessJudge } from "./judge.ts";
 import { createWebLook } from "./web-look.ts";
 import { createProactive, type Proactive } from "./proactive/engine.ts";
+import { replayProactive } from "./proactive/replay.ts";
 import { modelTriage, type Triage } from "./proactive/triage.ts";
 import { modelJudge, type FindJudge } from "./proactive/judge.ts";
 import { registerProactiveTools } from "./proactive/tools.ts";
@@ -661,6 +662,8 @@ export function startCore(opts: CoreOptions = {}): Core {
   if (opts.work?.judge) work.setJudge(opts.work.judge);
 
   let proactiveRef: Proactive | undefined;
+  // D388: `ducter proactive replay`, one at a time (set once the engine and its sources exist).
+  let replayRef: ((o: { days?: number; web?: boolean }) => Promise<import("@ducter/protocol").ReplayReport>) | undefined;
   let calendarRef: Calendar | undefined;
   let taskSourcesRef: TaskSources | undefined;
   // D276: 聊天软件 / Chat apps: the person's own Telegram bot and Slack app, more windows on this
@@ -896,7 +899,9 @@ export function startCore(opts: CoreOptions = {}): Core {
   const limitWaits = createLimitWaits({ log, tasks, waiters: work.waiters, loadout, settings, usage: accountUsage, runner: () => runner, clock });
   limitsDecorate = (o) => ({ ...o, waiters: o.waiters.map((w) => limitWaits.decorate(w)) });
   const workFrames: typeof work.frames = { ...work.frames, waiter: (id, action) => limitWaits.act(id, action) ?? (action === "handoff" ? Promise.resolve(false) : work.frames.waiter(id, action)) };
-  const api = { log, tasks, mcp, persona, dataDir, settings, connections, phone, bodies: loadout, said, spine: log.spine, bridgeLink, media, limits: accountUsage, workingMemory, pins, ...(browser ? { browser: browser.port } : {}) } as CoreApi;
+  // D388: the pages the last noticed call rested on (a holder: the Core is a copy of api).
+  const noticedSources: { links?: { label: string; url: string }[]; whys?: { text: string; why: string }[] } = {};
+  const api = { log, tasks, mcp, persona, dataDir, settings, connections, phone, bodies: loadout, said, spine: log.spine, bridgeLink, media, limits: accountUsage, workingMemory, pins, noticedSources, ...(browser ? { browser: browser.port } : {}) } as CoreApi;
   // D312: with more than one partner, the default partner keeps to its own too, and a task's
   // brief and Mem identity are those of the partner it is for.
   const memOf = new Map<string, MemIdentity | undefined>();
@@ -1085,7 +1090,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       socketsChanged: () => reachRef?.refresh(),
     },
     partners,
-    core: api, workbench, bridgeLink, decisions, runner: () => runner, devices: () => devicesView, lend: () => lendRef, settings, connections, phone, rules, pins, loadout, models: modelCatalog, accountUsage, closing, work: workFrames, newTask, updates: () => updatesRef, agents: () => agentsRef, agentSetup: (device, f) => agentSetupOp(device, f), memSetup: (device, action, link) => memSetupOp(device, action, link), recordsAllow: (device, on) => recordsAllowOp(device, on), updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, memHealth, anywhere: () => anywhereRef, channels, proactive: () => proactiveRef, calendar: () => calendarRef, taskSources: () => taskSourcesRef, taskGroups: () => taskGroups, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets, past: { ...past, marks, persona: () => persona.id, ongoing, outside, made }, keys: { dataDir, ...(opts.keyFetch ? { fetch: opts.keyFetch } : {}), ...(opts.keyCanRun ? { canRun: opts.keyCanRun } : {}) }, ...(firstWordsDeps ? { firstWords: firstWordsDeps } : {}), did, ownAgents });
+    core: api, workbench, bridgeLink, decisions, runner: () => runner, devices: () => devicesView, lend: () => lendRef, settings, connections, phone, rules, pins, loadout, models: modelCatalog, accountUsage, closing, work: workFrames, newTask, updates: () => updatesRef, agents: () => agentsRef, agentSetup: (device, f) => agentSetupOp(device, f), memSetup: (device, action, link) => memSetupOp(device, action, link), recordsAllow: (device, on) => recordsAllowOp(device, on), updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, memHealth, anywhere: () => anywhereRef, channels, proactive: () => proactiveRef, replay: (o) => replayRef?.(o) ?? Promise.reject(new Error("not ready yet")), calendar: () => calendarRef, taskSources: () => taskSourcesRef, taskGroups: () => taskGroups, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets, past: { ...past, marks, persona: () => persona.id, ongoing, outside, made }, keys: { dataDir, ...(opts.keyFetch ? { fetch: opts.keyFetch } : {}), ...(opts.keyCanRun ? { canRun: opts.keyCanRun } : {}) }, ...(firstWordsDeps ? { firstWords: firstWordsDeps } : {}), did, ownAgents });
   handsets.onChange(() => (devicesView?.changed(), ws.onHandChanged()));
   onHandChanged = ws.onHandChanged;
   // D156: a partner turn in flight keeps an update of the agent it thinks with waiting.
@@ -1691,11 +1696,24 @@ export function startCore(opts: CoreOptions = {}): Core {
     agentName: () => HARNESSES[brainInUse().harness]?.name,
     // D368: what the person is focused on (Mem's Working Memory) ranks the morning's finds.
     workingMemory,
+    // D388: a question a said find left open (a public plan's day or time) may be looked up on the web.
+    webLook: () => api.webLook,
   });
   proactiveRef = proactive;
+  // D388: the dry replay: a second engine on a scratch folder, the same sources and agent, nothing sent.
+  let replaying = false;
+  replayRef = async (o) => {
+    if (replaying) throw new Error("a replay is already running");
+    replaying = true;
+    try {
+      return await replayProactive({ connections, settings, rules, log, persona, zone, harness: () => runner?.harness, pick: brainInUse, webLook: () => api.webLook, calendarIds: (a) => calendar.seenIds(a) }, o);
+    } finally {
+      replaying = false;
+    }
+  };
   // D368: read once at the start, so the partner's first turn already has the day's focus (never awaited).
   void workingMemory.refresh().catch(() => undefined);
-  registerProactiveTools(mcp, rules, proactive);
+  registerProactiveTools(mcp, rules, proactive, (links, whys) => void Object.assign(noticedSources, { links, whys }));
 
   const server = Bun.serve<WsData | WorkerSocketData>({
     hostname,

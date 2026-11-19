@@ -5666,6 +5666,10 @@ button.dev-name {
 .bubble.note .freact .grow { flex: 1; }
 .bubble.note .freact .btn.text { font-size: var(--xs); color: var(--ink-muted); }
 .bubble.note .fhow { display: flex; flex-direction: column; gap: 2px; color: var(--ink-soft); }
+/* D388: a source line names where it was read (a small word), what it says, and links its page. */
+.bubble.note .fhow .fsrc { color: var(--ink); font-weight: 600; }
+.bubble.note .fhow .fsays { color: var(--ink); }
+.bubble.note .fhow .flink { overflow-wrap: anywhere; }
 .bubble.note .note-ask { display: flex; flex-direction: column; gap: 8px; padding-top: 10px; border-top: 1px solid var(--line); }
 
 /* ---------- D184: On hand at the whole screen, the Mac's (onhand.go, byproject.go) ---------- */

@@ -141,6 +141,22 @@ answer (no access to what the pipeline knew). The fix is D243: notices reach tri
 more kinds (§4), "now" in its own room and ripening by time (§5), the person's zone, and `noticed`
 for the partner. Replayed day: 1/7 → 7/7 said in time, no false alarms.
 
+### 1.4 Another app's morning, and Ducter's week (D388, 2026-11-19, research/154)
+
+The author showed another personal AI's messages of 2026-11-19: a weekly report that put his AGI Bar
+talk on Friday against the calendar's Saturday hold, said before he booked trains, with the time
+named as unknown and a 95 % quota mail beside it in the same message; two hours later, unprompted,
+the time from the event's site (19:00, the doors, not his slot); and, asked, its sources in order,
+each linked, with what it didn't know and that it hadn't touched the calendar. On hel over 11-12 to
+11-19 Ducter said 13 things by itself, 11 of them waiting-on-you finds, all held; three "now" notes
+in one second; nothing about the trip, the quota or renewals (VERIFIED, counts and the partner's own
+words). In code: an all-day hold without a place was no fact; the only calendar-vs-mail join wanted
+a confirmation; the person's own words never joined; nothing kept a question open; 怎么知道的 had no
+source kinds, no "what it says", no links. D388 is the raise: the plan sheet (§4.1), open questions
+closed once, near-limit quotas, one message for one look, provenance composed by code, and
+`ducter proactive replay` for the author's real days. The rebuilt week: 2/5 → 5/5 in time, no false
+alarms (`packages/partner/eval/proactive/aha.ts`).
+
 ## 2. User first
 
 | | Heavy multi-agent developer (the author) | Consumer personal-AI user | Fresh user |
@@ -200,11 +216,11 @@ Each find is typed (stage 2 extracts, stage 3 judges; 你说过的 is read by co
 
 | Kind (zh / en) | What it is | Sources | When it is said | Next step it offers | On by default |
 |---|---|---|---|---|---|
-| **两件事对不上 / Two things don't match** (the aha) | Two facts that contradict or leave a gap: a flight lands the night before the hotel starts; a renewal notice with no payment after it and the card expired; an invoice with no matching bank mail; a meeting during a flight; two meetings at once in any of their calendars, today or tomorrow (D222); the calendar and a confirmation mail naming the same thing on different days, within two weeks (D226) | mail + calendar, joined through the ledger (§9) over 60 days | the morning note; **now** only if it costs something today | a 上网 task that looks it up (Go), never the change itself | yes |
+| **两件事对不上 / Two things don't match** (the aha) | Two facts that contradict or leave a gap: a flight lands the night before the hotel starts; a renewal notice with no payment after it and the card expired; an invoice with no matching bank mail; a meeting during a flight; two meetings at once in any of their calendars, today or tomorrow (D222); the calendar and a confirmation mail naming the same thing on different days, within two weeks (D226); any two of one plan's sources on different days: the calendar's hold or event, a confirmation, a mail that mentions it, the person's own words, a public page (D388, §4.1) | mail + calendar + the conversation, joined through the ledger (§9) over 60 days | the morning note; **now** only if it costs something today | a 上网 task that looks it up (Go), never the change itself | yes |
 | **在等你回 / Waiting on you** | A real person asked you something (a question, a request, a review) and you haven't answered in 2 working days, or they asked again | mail, GitHub review requests, Discord DMs and @-mentions | the morning note | read it first and write up what matters (a task, Go); a draft reply kept in Ducter (Go to save or send) | yes, people only (no lists, no bulk, no noreply) |
 | **你在等别人回 / You're waiting on someone** | You asked a question or made a request, and nobody answered in 3 working days, and it mattered (a deadline, money, a person who matters, Mem) | your sent mail | the morning note | a short follow-up draft (Go) | yes |
 | **你答应过的 / Something you promised** | A commitment in your own sent mail or messages ("我周五前发给你") with nothing showing it was kept | sent mail (14 days, research/46) | the morning of the due day | find the related draft or files; a draft reply (Go) | yes |
-| **快到期和要花钱的 / Deadlines and money** | A renewal, a price going up, a trial ending, a bill or a form due | mail (+ Mem: the last price) | the morning note, a few days ahead; **now** the day before if unpaid | open the renewal page in Ducter's browser (Go); paying is the person's | yes |
+| **快到期和要花钱的 / Deadlines and money** | A renewal, a price going up, a trial ending, a bill or a form due; a quota or allowance nearly used up, saying what the mail leaves out (D388) | mail (+ Mem: the last price) | the morning note, a few days ahead; **now** the day before if unpaid | open the renewal page in Ducter's browser (Go); paying is the person's | yes |
 | **计划变了 / A plan changed** | A flight changed or was cancelled; a meeting moved into a clash | mail, calendar | **now** if it affects today or tomorrow, else the morning note | look up options (Go) | yes |
 | **开会前 / Before a meeting** | 10 minutes before a meeting with people you have something open with: their last thread, the open item, what you promised them | calendar + the other kinds | in the conversation 10 min before; a silent notification if you aren't in Ducter | — (it is the prep) | yes, only with something open; never for a meeting with nothing open |
 | **快到了 / Coming up** (D243) | A flight or a train within 36 hours: when, from where, when to be there (2 h for a flight); a booking confirmed by mail for a time today | mail + calendar (a flight in the calendar is a booking) | the morning note; **now** within 30 h | check the flight's status (Go) | yes |
@@ -216,6 +232,45 @@ Kinds left out on purpose: newsletters, receipts, shipping updates that say it a
 subject, "you have N unread", social notifications, anything GitHub or the calendar already
 pushes. They go to the **没说的 / Left out** count, which the partner says only when asked (D173).
 
+### 4.1 The plan sheet: one coming plan, every source side by side (D388)
+
+*Who:* the heavy developer whose colleague's weekly report puts his talk on the wrong day; the
+consumer whose calendar and confirmation disagree; the fresh user who just wants to know which day.
+*Feels:* 放心 (two of my sources disagree and it says which says what, before it costs me), 惊喜 (it
+came back with the time it said was missing). *First time:* a find in the morning or "now", its
+怎么知道的, and maybe one line later; nothing to set up.
+
+- **The sources** (`proactive/plans.ts`, code, no model): within two weeks, every word on one plan:
+  the calendar's hold (an all-day event with no place: a `plan` fact, time open) or event, a
+  confirmation mail (`booking`), a mail that mentions it without confirming it (triage's `plan`: a
+  weekly report, an agenda), what the person said in the conversation (said.ts, their day), and a
+  public page a web look read. The same plan by name ("AGI Bar" is "agibar"; three Chinese characters
+  past generic words and city names), on days at most three apart.
+- **A contradiction** is two sources on two days, said with each source and the weekday, and the next
+  step when it costs: **日历上「AGI Bar 北京分享」是 11/21（周六），Lina 的周报写的是 11/20（周五）。时间也没定，
+  订票前先跟主办方确认。** Not said when only their own words disagree with their own calendar.
+  **Cost of a miss:** sooner first day, travel booked near it, raise it; their words agreeing with the
+  calendar lower it; within three days it is "now" (never at night).
+- **What it doesn't know** rides the find (**还不知道：几点开始**), and **日历我没改。** when it rests on
+  the calendar.
+- **The open question** is kept once said and closed by a later source on the sheet (a mail, the
+  calendar moved, a page): said once, **补上刚才缺的时间：「AGI Bar 北京分享」11/21（周六）19:00 开门
+  （agibar.example.com）。你几点上场页面上没写。**, inside "now"'s room; let go silently when its day
+  passes. A quick web look (D380) may close it: no sooner than 30 min after it was said, at most twice
+  3 h apart, at most 3 a day, plans within 10 days, and only the plan's name, place and the two days
+  leave Ducter. Nothing open: no look, no follow-up.
+- **How it knows**, as data: each 怎么知道的 line is one source (**日历 / 邮件 / 你说的 / 网上**), what it
+  says, its page; the `noticed` tool's `why` is composed from those lines, so "你怎么知道的？" is
+  answered with one line of the partner's and, under it, those lines as code wrote them (D388 (11)).
+- **Two precision fixes from hel (D388 (9), (10)):** a first-time sender the person never wrote to,
+  asking for a meeting, a call, a link or a deal, is not 在等你回 (asked again or not); and only the
+  person looking (a read receipt) assembles the morning note early, never an app reconnecting after
+  an update.
+- **The replay** (`ducter proactive replay [--days 1–7] [--no-web]`): a second engine in a dry mode on
+  the home (scratch folder deleted after, no pusher, no runner, nothing in the person's Log) over the
+  last days of the real accounts; it prints what it would have said, with sources, what it held and
+  why, and how it knew.
+
 ## 5. When it speaks: one ladder, one switch
 
 The existing escalation (principle 7: badge → message → push → call) with proactive rungs:
@@ -225,7 +280,7 @@ The existing escalation (principle 7: badge → message → push → call) with 
 | **Left out** | Nothing on screen (D173). The partner knows it and says it only when asked ("还有别的吗？" → "没说的：12 封通知和收据，看标题就知道；1 封像推销。") | everything below the bar |
 | **The morning note** | One message in the conversation at the end of quiet hours; one **silent** notification (Apple's passive level; research/46) | up to the daily cap |
 | **Fold-in** | While the person is in Ducter, a find that is timely today joins the open living message (principle 7, revised in place, never re-notifies) | today's finds after the morning |
-| **Now** | A notification that may come through (time-sensitive, which the phone lets them turn off per app) | only "costs something if it waits a day": a flight changed today, a domain that lapses tomorrow unpaid, a flight or production maintenance within 30 h, a correction (D243). Its own room of 3 a day, not inside the note's 3 (D243); the detectors run every half hour, so a trip ripens without new mail; with no quiet hours set, what can wait six hours waits for 08:00 in the person's zone |
+| **Now** | A notification that may come through (time-sensitive, which the phone lets them turn off per app); what one look found is one message and one notification (D388) | only "costs something if it waits a day": a flight changed today, a domain that lapses tomorrow unpaid, a flight or production maintenance within 30 h, a correction (D243). Its own room of 3 a day, not inside the note's 3 (D243); the detectors run every half hour, so a trip ripens without new mail; with no quiet hours set, what can wait six hours waits for 08:00 in the person's zone |
 | **Before a meeting** | A line in the conversation; silent notification when away | 开会前 only |
 
 **Quiet hours** (D59, built) hold everything. The only way through at night is a **per-kind

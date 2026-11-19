@@ -50,7 +50,20 @@ export interface FindHow {
   what: string; // "续费通知" (its subject or header), ≤ 80 chars
   from?: string; // "Cloudflare": who it came from, its own element (D291)
   at: string; // ISO date of that mail or event
+  /**
+   * D388: where it was read, said as its own small word before it (日历 / 邮件 / 你说的 / 网上;
+   * i18n `find.src.<id>`): the order of the lines is the order the find rests on them.
+   */
+  src?: FindSrc;
+  /** D388: what this source says about the thing ("11/21（周六），全天，没写时间"), ≤ 60 chars; code's words, never a quote. */
+  says?: string;
+  /** D388: the page it was read on (a web look's source), http(s) only: every web claim links its source. */
+  url?: string;
 }
+
+/** D388: the kinds of source a find's line names. */
+export type FindSrc = "calendar" | "mail" | "chat" | "github" | "you" | "web";
+export const FIND_SRCS: readonly FindSrc[] = ["calendar", "mail", "chat", "github", "you", "web"];
 
 /** One find, as the note shows it. */
 export interface FindView {
@@ -66,6 +79,10 @@ export interface FindView {
   dueAt?: string;
   /** Who it is about, for the Rule "这类不用告诉我" ("Cloudflare 的续费提醒不用告诉我"). */
   sender?: string;
+  /** D388: what it doesn't know yet, in the person's language ("几点开始"), ≤ 60 chars; under 怎么知道的. */
+  unknown?: string;
+  /** D388: what it did not change, when the person might think it did ("日历我没改。"), ≤ 40 chars. */
+  untouched?: string;
 }
 
 /**
@@ -154,6 +171,34 @@ export const QUIET_REASONS: readonly QuietReason[] = ["not_urgent", "for_morning
 export type ReadProblem = "no_agent" | "not_installed" | "signed_out" | "failed" | "nothing_kept";
 
 /** D226: one day of watching, as Settings shows it under the switch. */
+/**
+ * D388: `ducter proactive replay`: what Ducter would have said over the last days of the person's
+ * real accounts, run through a second engine in a dry mode on the home (its own scratch Log and
+ * state, no pushes, no tasks, nothing in the conversation, deleted after). Words only, for the
+ * person's own terminal.
+ */
+export interface ReplayReport {
+  days: number;
+  mode: ProactiveMode;
+  zone: string;
+  /** A web look was allowed for open questions (and could run). */
+  web: boolean;
+  looked: ProactiveDay["looked"];
+  read: number;
+  noted: number;
+  /** What it would have said, in order: the rung, the find with its sources, what it doesn't know. */
+  said: { rung: FindRung; kind: FindKind; text: string; how: FindHow[]; unknown?: string; untouched?: string }[];
+  /** What it held back, and why (the same reasons as 今天看了什么). */
+  held: ProactiveDay["held"];
+  /** What it noticed, said or not, with the answer to "how did you know?". */
+  noticed: { kind: FindKind; text: string; said: boolean; why?: string; unknown?: string }[];
+  /** The questions it left open (a plan's day or time), and whether a later source closed them. */
+  open: { name: string; fields: ("day" | "time")[]; state: "open" | "filled" | "gone" }[];
+  /** Web looks run for open questions. */
+  looks: number;
+  problem?: ProactiveDay["problem"];
+}
+
 export interface ProactiveDay {
   /** The person's day, YYYY-MM-DD. */
   day: string;

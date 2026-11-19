@@ -42,8 +42,8 @@ func TestEveryServerFrameDecodes(t *testing.T) {
 		types = append(types, ts...)
 	}
 	// Frames only another client asks for: the Android app's own link and the web's
-	// Use this phone and 用电脑 switches (handset_*, computer_*).
-	notMac := map[string]bool{"computer_grant_result": true, "computer_stop_result": true, "handset_req": true, "handset_set_result": true, "handset_stop_result": true, "handset_guide": true, "handset_dial_req": true}
+	// Use this phone and 用电脑 switches (handset_*, computer_*), and the CLI's dry replay (D388).
+	notMac := map[string]bool{"computer_grant_result": true, "computer_stop_result": true, "handset_req": true, "handset_set_result": true, "handset_stop_result": true, "handset_guide": true, "handset_dial_req": true, "proactive_replay_result": true}
 	for _, m := range types {
 		if notMac[m[1]] {
 			continue

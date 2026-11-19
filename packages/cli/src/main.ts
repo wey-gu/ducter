@@ -16,6 +16,7 @@ import { cliChecks, cmdConnect, cmdDevicesAt, cmdDisconnect, cmdPairAt, targetLi
 import { realpathSync } from "node:fs";
 import { fetchSnapshot, formatSnapshot, pickTask, taskAction, toMerge } from "./status.ts";
 import { cmdAbility, cmdBrowser } from "./browser-cmd.ts";
+import { cmdProactive } from "./proactive-cmd.ts";
 import { cmdDevices, cmdPair, cmdService, ducterCommand, fetchPublicIp, isLoopback, publicUrl } from "./remote.ts";
 import { cmdAnywhere } from "./anywhere-cmd.ts";
 import { stopSavedTunnel } from "@ducter/core/src/anywhere.ts";
@@ -69,6 +70,7 @@ export function helpText(t: T): string {
     cmd("disconnect", t("help.disconnect")),
     cmd("ability", t("help.ability")),
     cmd("browser", t("help.browser")),
+    cmd("proactive", t("help.proactive")),
     cmd("service", t("help.service")),
     cmd("anywhere", t("help.anywhere")),
     cmd("tailscale", t("help.tailscale")),
@@ -689,6 +691,9 @@ export async function run(argv: string[]): Promise<number | "running"> {
       return cmdAbility({ t, target: ctx.target, json: args.json, rest: args.rest ?? [] });
     case "browser":
       return cmdBrowser({ t, target: ctx.target, json: args.json, rest: args.rest ?? [] });
+    case "proactive":
+      // D388: the dry replay of the last days of the accounts, on the home.
+      return cmdProactive({ t, target: ctx.target, json: args.json, rest: args.rest ?? [], ...(args.days ? { days: args.days } : {}), ...(args.noWeb ? { noWeb: true } : {}) });
     case "service":
       return cmdService({
         t,

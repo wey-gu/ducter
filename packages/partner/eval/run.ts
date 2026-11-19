@@ -22,7 +22,7 @@ import { saidPick } from "../../core/src/loadout.ts";
 import { createLocalAgents } from "../../core/src/local-agents/index.ts";
 import { createWorkerRecords } from "../../core/src/worker-records.ts";
 import { writeSession } from "../../core/test/fixtures-agents.ts";
-import { writeDotsFacts } from "./noticed-facts.ts";
+import { writeAgibarFacts, writeDotsFacts } from "./noticed-facts.ts";
 import { logUserMessage } from "../../core/src/reply.ts";
 import { createOarHarnessPort, shortId } from "../../runner/src/index.ts";
 import { buildSystemPrompt, createNmemBridge, createPartner } from "../src/index.ts";
@@ -403,6 +403,8 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   }
   // D243: what Ducter noted by itself on dots' day (synthetic facts around now).
   if (sc.noticed === "dots") writeDotsFacts(dataDir);
+  // D388: one plan, three sources (the calendar, a weekly report, the event page).
+  if (sc.noticed === "agibar") writeAgibarFacts(dataDir);
   // D222: two Google Calendar accounts (and Gmail) in a fake oo, on today's date here; never the real oo.
   const calOo = sc.calendar ? fakeOoCalendar({ day: new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date()), ...(sc.calendarDown ? { listFails: true } : {}) }) : undefined;
   // D312: the partner under test is a second partner (its own conversation, channel:p2); the seed is the default's.

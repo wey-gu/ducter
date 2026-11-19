@@ -6,6 +6,7 @@ import type { FindHow, FindKind } from "@ducter/protocol";
 import type { Candidate } from "./candidate.ts";
 import { senderOf, type Fact, type Ledger } from "./ledger.ts";
 import { FLIGHT_NO, type BillingWhat } from "./triage.ts";
+import { planMismatches, type OwnClaim } from "./plans.ts";
 
 export type { Candidate, StepKind } from "./candidate.ts";
 
@@ -18,6 +19,8 @@ export interface DetectCtx {
   kinds?: FindKind[];
   /** D243: finds already said (an update to one of them is a find of its own). */
   said?: SaidFind[];
+  /** D388: what the person said they'd do on a day (said.ts): their word on a plan's sheet. */
+  own?: OwnClaim[];
 }
 
 /** D243: a find already said, as the update detector needs it. */
@@ -107,7 +110,9 @@ function mismatches(facts: Fact[], c: DetectCtx): Candidate[] {
     const covered = hotels.some((h) => daysUntil(h.start, c.now, c.zone) <= aIdx && (h.end ? daysUntil(h.end, c.now, c.zone) > aIdx : false));
     const next = hotels.find((h) => daysUntil(h.start, c.now, c.zone) === aIdx + 1);
     if (!covered && next) {
-      const zh = `${md(arrive, c.zone)} 的 ${fl.name} 晚上 ${hm(arrive, c.zone)} 到${fl.place ?? ""}，${next.name || "酒店"}却是 ${md(next.start, c.zone)} 才入住，那晚还没地方住。`;
+      // D388: the names stay short enough for one phone line (the hotel's full name is in 怎么知道的), spaced (D78).
+      const hotel = next.name && [...next.name].length <= 10 ? next.name : "酒店";
+      const zh = zhSpace(`${md(arrive, c.zone)} 的 ${fl.name} 晚上 ${hm(arrive, c.zone)} ${fl.place && [...fl.place].length <= 10 ? `到${fl.place}` : "落地"}，${hotel}却是 ${md(next.start, c.zone)} 才入住，那晚还没地方住。`);
       const en = `${fl.name} lands${fl.place ? ` at ${fl.place}` : ""} at ${hm(arrive, c.zone)} on ${md(arrive, c.zone)}, but ${next.name || "the hotel"} starts ${md(next.start, c.zone)}: nowhere to stay that night.`;
       out.push({
         key: `mismatch:${fl.id}:${next.id}`,
@@ -150,41 +155,6 @@ function mismatches(facts: Fact[], c: DetectCtx): Candidate[] {
           facts: [fl.id, m.id],
         });
       }
-    }
-  }
-  // D226: the calendar and a confirmation disagree on the day (a talk on the 18th in the calendar,
-  // the organizer's mail says the 19th): what dots caught for its first users. A booking that names
-  // the same thing as a coming meeting, on another day, within two weeks.
-  for (const b of bookings) {
-    if (b.what === "flight") continue;
-    const bIdx = daysUntil(b.start, c.now, c.zone);
-    if (bIdx < 0 || bIdx > 14 || !b.name) continue;
-    for (const m of meetings) {
-      const mIdx = daysUntil(m.start, c.now, c.zone);
-      if (mIdx < 0 || mIdx > 14 || mIdx === bIdx || !sameName(m.title, b.name)) continue;
-      const first = Math.min(bIdx, mIdx);
-      const sender = senderOf(b);
-      out.push({
-        key: `mismatch:${b.id}:${m.id}`,
-        kind: "mismatch",
-        cost: first <= 1 ? 85 : 72,
-        urgent: first <= 1,
-        dueAt: mIdx < bIdx ? m.start : b.start,
-        ...(sender ? { sender } : {}),
-        people: m.with,
-        how: [howOf(m), howOf(b)],
-        words: {
-          zh: `日历上「${m.title}」是 ${md(m.start, c.zone)}，${sender ? `${sender} 的` : ""}确认信写的是 ${md(b.start, c.zone)}。`,
-          en: `Your calendar has "${m.title}" on ${md(m.start, c.zone)}, but the confirmation${sender ? ` from ${sender}` : ""} says ${md(b.start, c.zone)}.`,
-        },
-        step: {
-          kind: "read",
-          goLabel: { zh: "核对哪个对", en: "Check which is right" },
-          brief: `The person's calendar and a confirmation mail disagree on the day of the same thing (below): the calendar says ${dayKey(Date.parse(m.start), c.zone)}, the mail ${dayKey(Date.parse(b.start), c.zone)}. Read the mail and the event and say in two lines which date is right and why. Read only: move nothing, reply to nothing.`,
-          data: { event: m.title, mail: b.label },
-        },
-        facts: [b.id, m.id],
-      });
     }
   }
   // D222: two meetings at the same time, today or tomorrow, often in two accounts that can't see
@@ -271,6 +241,9 @@ function changes(facts: Fact[], c: DetectCtx): Candidate[] {
     });
 }
 
+/** D388: what a cold pitch asks for: a meeting, a call, a link to book, a deal, an invitation. */
+export const PITCH = /\b(meet(ing)?s?|calls?|demo|book(ing)?|schedule|calendly|links?|coffee|introduc\w*|partner(ship)?s?|collaborat\w*|proposals?|invit\w*|webinar|opportunit\w*|sponsor\w*|freelance|outsourc\w*)\b|约个|约一下|聊聊|见面|会议|通话|电话|链接|介绍|合作|邀请|提案|洽谈|商务|外包/i;
+
 function waitingOnYou(facts: Fact[], c: DetectCtx): Candidate[] {
   const replies = facts.filter((f): f is Extract<Fact, { type: "reply" }> => f.type === "reply" && f.out);
   const asks = facts.filter((f): f is Extract<Fact, { type: "ask_in" }> => f.type === "ask_in" && f.person);
@@ -288,6 +261,12 @@ function waitingOnYou(facts: Fact[], c: DetectCtx): Candidate[] {
     if (days < 2 && !again) continue;
     const who = nameOf(first.from, first.name);
     const gh = first.ref.service === "github";
+    // D388: a stranger's pitch is not someone waiting on you (hel: 11 of 11 held, several cold
+    // pitches). Someone the person never wrote to, asking for a meeting, a call, a link or a deal,
+    // stays below (asked again or not); a question or a person they answered before is said.
+    const from = first.from.toLowerCase();
+    const known = replies.some((r) => r.with.toLowerCase() === from) || facts.some((f) => f.type === "ask_out" && f.to.toLowerCase() === from);
+    if (!gh && !known && PITCH.test(`${list.map((a) => a.what).join(" ")} ${first.label}`)) continue;
     const ago = daysUntil(first.at, c.now, c.zone);
     const whenZh = ago >= 0 ? "今天" : ago === -1 ? "昨天" : `${-ago} 天前`;
     const zh = `${who} ${whenZh}问你${first.what ? `「${first.what}」` : "一件事"}${again ? `，${daysUntil(last.at, c.now, c.zone) === 0 ? "今天" : ""}又问了一次。` : `，还没回。`}`;
@@ -426,7 +405,8 @@ export function detect(ledger: Ledger, c: DetectCtx): Candidate[] {
   const usedByUpdate = new Set(ups.flatMap((u) => u.facts));
   return [
     ...ups,
-    ...(want("mismatch") ? mismatches(facts, c) : []),
+    // D388: the calendar, a confirmation, a mail that mentions it and the person's own words on one plan (D226's join, widened).
+    ...(want("mismatch") ? [...mismatches(facts, c), ...planMismatches(facts, c)] : []),
     ...(want("deadline") ? [...deadlines(facts, c), ...billing(facts, c)] : []),
     ...(want("plan_changed") ? changes(facts, c).filter((x) => !x.facts.some((id) => usedByUpdate.has(id))) : []),
     ...(want("coming_up") ? comingUp(facts, c) : []),
@@ -718,7 +698,9 @@ function billing(facts: Fact[], c: DetectCtx): Candidate[] {
   for (const f of facts.filter((x): x is Extract<Fact, { type: "billing" }> => x.type === "billing")) {
     const d = daysUntil(f.on, c.now, c.zone);
     const failed = f.what === "payment_failed";
-    if (failed ? c.now - Date.parse(f.at) > 3 * 86_400_000 : d < 0 || d > 10) continue;
+    // D388: a quota nearly used up is about now, like a failed payment: said within three days of the mail.
+    const near = f.what === "near_limit";
+    if (failed || near ? c.now - Date.parse(f.at) > 3 * 86_400_000 : d < 0 || d > 10) continue;
     const amt = f.amount ? `（${f.amount}）` : "";
     const amtEn = f.amount ? ` (${f.amount})` : "";
     const when = md(f.on, c.zone);
@@ -727,22 +709,28 @@ function billing(facts: Fact[], c: DetectCtx): Candidate[] {
       price_up: { zh: `${f.name} ${when} 起涨价${amt}。`, en: `${f.name} goes up on ${when}${amtEn}.` },
       payment_failed: { zh: `${f.name} 的扣款没成功${amt}。`, en: `A payment to ${f.name} failed${amtEn}.` },
       over_limit: { zh: `${f.name} 的用量超过免费额度了，${when} 起会收费${amt}。`, en: `${f.name} is over its free tier; charges start ${when}${amtEn}.` },
+      // D388: what the mail doesn't say is said plainly, never guessed (no remaining amount, no reset day).
+      near_limit: {
+        zh: `${f.name}的额度已经用了 ${f.used ?? "大半"}${f.amount ? `，还剩 ${f.amount}` : ""}。${f.amount && f.resets ? `${md(f.resets, c.zone)} 重置。` : f.resets ? `${md(f.resets, c.zone)} 重置，信里没写还剩多少。` : f.amount ? "信里没写哪天重置。" : "信里没写还剩多少、哪天重置。"}`,
+        en: `${f.name} has used ${f.used ?? "most"} of its quota${f.amount ? `, ${f.amount} left` : ""}.${f.amount && f.resets ? ` It resets ${md(f.resets, c.zone)}.` : f.resets ? ` It resets ${md(f.resets, c.zone)}; the mail doesn't say how much is left.` : f.amount ? " The mail doesn't say when it resets." : " The mail doesn't say how much is left or when it resets."}`,
+      },
       trial_ends: { zh: `${f.name} 的试用 ${when} 结束${amt}。`, en: `The ${f.name} trial ends on ${when}${amtEn}.` },
       other: { zh: `${f.name} 的费用 ${when} 起有变化${amt}。`, en: `What ${f.name} charges changes on ${when}${amtEn}.` },
     };
     out.push({
       key: `billing:${f.id}`,
       kind: "deadline",
-      cost: failed ? 85 : Math.min(82, 58 + (10 - d) * 2 + (f.what === "over_limit" ? 6 : 0)),
-      urgent: failed || d <= 1,
-      dueAt: failed ? new Date(Date.parse(f.at) + 3 * 86_400_000).toISOString() : f.on,
+      cost: failed ? 85 : near ? 72 : Math.min(82, 58 + (10 - d) * 2 + (f.what === "over_limit" ? 6 : 0)),
+      urgent: failed || (!near && d <= 1),
+      dueAt: failed || near ? new Date(Date.parse(f.at) + 3 * 86_400_000).toISOString() : f.on,
       sender: senderOf(f) || f.name,
       people: [],
       how: [howOf(f)],
       words: { zh: zhSpace(w[f.what].zh), en: w[f.what].en },
+      ...(near && !(f.amount && f.resets) ? { unknown: f.amount ? { zh: "哪天重置", en: "when it resets" } : f.resets ? { zh: "还剩多少", en: "how much is left" } : { zh: "还剩多少、哪天重置", en: "how much is left, when it resets" } } : {}),
       step: {
         kind: "lookup",
-        goLabel: { zh: "打开账单页", en: "Open the billing page" },
+        goLabel: near ? { zh: "打开用量页", en: "Open the usage page" } : { zh: "打开账单页", en: "Open the billing page" },
         brief: `Open the billing or usage page for the service below in Ducter's browser and stop there: tell the person what changes on ${dayKey(Date.parse(f.on), c.zone)}, what they would be charged on their plan, and what is using it if it shows. Never pay, never change a setting or a plan; that is the person's.`,
         data: { service: f.name, mail: f.label, ...(f.amount ? { amount: f.amount } : {}) },
         needs: { browse: true, signedIn: true },

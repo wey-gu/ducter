@@ -235,7 +235,7 @@ export interface Scenario {
    * D243: the facts Ducter noted by itself (findings.json, synthetic, dated around now): the day
    * dots spoke four times (research/81). The `noticed` tool answers from them.
    */
-  noticed?: "dots";
+  noticed?: "dots" | "agibar";
   /** D193: the owner's quiet hours cover now (calls wait for the morning). */
   quietNow?: true;
   /**
@@ -2093,6 +2093,25 @@ export const scenarios: Scenario[] = [
     steps: [{ user: "Anything I should know about today?" }],
     expect: { opens: 0, msgs: [1, 1], maxChars: 700, called: [{ tool: "noticed" }], require: [/19:40/, /13:00/], forbid: [/I (just )?(checked|read|scanned|went through)|\b\d+ (e-?mails|messages)\b|haven't (told|mentioned)/i] },
     rubric: "The user asks if there's anything they should know today. It calls noticed and answers in short English with the few things that matter, time-bound first: tomorrow's 19:40 NH 920 flight (airport by 17:40), PlanetScale maintenance on two production databases tomorrow at 13:00 and 15:00, the nightly-stats job failing repeatedly, Cloudflare AI Search starting to charge, Mia waiting about onboarding. The carpet cleaning is left out or last. One line each with when and what to do. Never says what it read or checked, or that it hadn't told them before. No task opened.",
+  },
+  // ---------- D388: "how did you know?" from the find's own lines (research/154) ----------
+  {
+    id: "noticed-how-zh",
+    category: "accounts",
+    lang: "zh",
+    noticed: "agibar",
+    steps: [{ user: "你怎么知道我要去 AGI Bar 的？是哪天来着" }],
+    expect: { opens: 0, msgs: [1, 1], maxChars: 420, called: [{ tool: "noticed" }], require: [/日历/, /周报|邮件|Lina/, /agibar\.example\.com/], forbid: [/我(已经|帮你)?(改|调|更新|移)(了|好)?(你的)?日历/, /(你|您)(发|写)的(帖|推|微博)/] },
+    rubric: "The user asks how it knew they're going to AGI Bar and which day it is. It calls noticed and answers in short Chinese from that item's why, in its order: the calendar holds it all day the day after tomorrow with no time; the event page (agibar.example.com, linked) says the day after tomorrow at 19:00, and that 19:00 is when the doors open; Lina's weekly report says tomorrow. The time belongs to the page only, never to the calendar. It says what it doesn't know yet (when their part starts) and that it didn't change the calendar. It never adds a source the item doesn't list (no post of theirs, no organiser mail), never says it changed anything, and opens no task.",
+  },
+  {
+    id: "noticed-how-en",
+    category: "accounts",
+    lang: "en",
+    noticed: "agibar",
+    steps: [{ user: "Wait, how do you know I'm going to the AGI Bar thing?" }],
+    expect: { opens: 0, msgs: [1, 1], maxChars: 800, called: [{ tool: "noticed" }], require: [/calendar/i, /report|mail|Lina/i, /agibar\.example\.com/], forbid: [/I (moved|changed|updated|fixed) (it|the event|your calendar)/i, /your (post|tweet)/i] },
+    rubric: "The user asks how it knows they're going to the AGI Bar event. It calls noticed and answers in short English from that item's why, in order: their calendar's all-day hold (no time), the event page at agibar.example.com (linked) with 19:00 doors, Lina's weekly report giving the day before. It says what it doesn't know yet (when their part starts) and that it didn't change their calendar. No invented sources, no claim of having changed anything, no task.",
   },
   // ---------- D303: rich answers, a block only when it truly helps ----------
   {

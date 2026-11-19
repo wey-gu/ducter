@@ -139,7 +139,8 @@ test("每天最多 3 件: the morning note leads with what costs most; the talk'
   expect(note.finds.map((f) => f.kind)).toContain("plan_changed");
   const all = detect(r.p.ledger, { now: r.clock.now(), zone: ZONE });
   const talk = all.find((c) => c.kind === "mismatch" && c.key.startsWith("mismatch:") && c.words.zh.includes("确认信"))!;
-  expect(talk.words.zh).toBe("日历上「AI Builders Meetup」是 11/18，Mia Chen 的确认信写的是 11/19。");
+  // D388: the weekday beside each date (Fri or Sat is how people tell days apart).
+  expect(talk.words.zh).toBe("日历上「AI Builders Meetup」是 11/18（周三），Mia 的确认信写的是 11/19（周四）。");
   expect(talk.step?.kind).toBe("read");
   expect(r.p.day().held.find((h) => h.reason === "cap")?.n).toBeGreaterThanOrEqual(1);
 });

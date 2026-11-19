@@ -7,7 +7,7 @@ import type { CoreMcpHub } from "../mcp.ts";
 import type { RulesStore } from "../rules.ts";
 import type { Proactive } from "./engine.ts";
 
-export function registerProactiveTools(mcp: CoreMcpHub, rules: RulesStore, proactive?: Pick<Proactive, "noticed">) {
+export function registerProactiveTools(mcp: CoreMcpHub, rules: RulesStore, proactive?: Pick<Proactive, "noticed">, onLinks?: (links: { label: string; url: string }[], whys: { text: string; why: string }[]) => void) {
   mcp.register(
     "partner",
     "notice_rule",
@@ -37,10 +37,17 @@ export function registerProactiveTools(mcp: CoreMcpHub, rules: RulesStore, proac
   mcp.register(
     "partner",
     "noticed",
-    "What you have noticed in the user's accounts by yourself, most costly first, said or not: trips coming up, deadlines and money, services they use (maintenance, outages, failing jobs), people waiting on them, plans that changed. Call it first when they ask what's worth knowing. Each item: kind, your words, when, how you know (headers, dates), said, the next step you can take.",
+    "What you have noticed in the user's accounts by yourself, most costly first, said or not: trips coming up, deadlines and money, services they use (maintenance, outages, failing jobs), people waiting on them, plans that changed. Call it first when they ask what's worth knowing. Each item: kind, your words, when, how you know (each source, what it says, its link), said, the next step you can take; why: the answer to \"how did you know?\" as it is.",
     { type: "object", properties: {} },
     async () => {
       const n = proactive.noticed();
+      // D388: the pages its answers rest on, for the reply that answers "how did you know?".
+      const links = new Map<string, string>();
+      for (const i of n.items) for (const m of (i.why ?? "").matchAll(/\[([^\]]{1,80})\]\((https?:\/\/[^\s)]{1,300})\)/g)) if (!links.has(m[2]!)) links.set(m[2]!, m[1]!);
+      onLinks?.(
+        [...links].slice(0, 4).map(([url, label]) => ({ label, url })),
+        n.items.filter((i) => i.why).map((i) => ({ text: i.text, why: i.why! })),
+      );
       return { ok: true, watching: n.watching, items: n.items, ...(n.items.length ? {} : { note: n.watching ? "nothing noticed: read their mail and calendar yourself if they asked" : "not watching: read their mail and calendar yourself" }) };
     },
   );

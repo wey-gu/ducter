@@ -65,8 +65,9 @@ with how many are open.
 Only a few stand there, so the list never takes over: a pull request waiting for your review, an
 issue where someone mentioned you, an Obsidian to-do due in the next couple of days, and the most
 recently updated. Each says why it's there. Tap one to open it in GitHub or Obsidian, or tap **Hand to**
-your partner's name and it becomes a task right there on On hand. If you've worked on that repository
-here before, the task works in that folder.
+your partner's name and it becomes a task right there on On hand. The task works in the copy of
+that repository on one of your computers (a Mac first); if none of them has it, your partner clones
+it on a computer that can read it and tells you so in one line.
 
 The rest are folded under **{n} more**. Open it to find one by its title or number, narrow it to one
 repository, one folder or tag of your vault, or the pull requests waiting for your review, and see
@@ -115,7 +116,7 @@ Each source has **When a new one comes**:
   take.
 - **Don't tell me** (Obsidian's default): it waits until you ask.
 - **Take it directly**: new ones start without asking, up to five a day. Your partner offers this once,
-  after you've taken a couple from the same place.
+  after a couple you took from the same place have finished well.
 
 ## When it's done
 

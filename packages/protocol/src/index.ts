@@ -76,7 +76,17 @@ export type Place =
   | { kind: "none"; device?: string } // device: where a place-less task runs (a worker); default this machine
   // hasRemote: whether the repo has an origin to push to (set when the task opens); false hides
   // Open draft PR. Absent (tasks from before it): unknown, the action stays and says why if it fails.
-  | { kind: "repo"; device: string; repoPath: string; worktree?: string; branch?: string; baseBranch?: string; hasRemote?: boolean }
+  | {
+      kind: "repo";
+      device: string;
+      repoPath: string;
+      worktree?: string;
+      branch?: string;
+      baseBranch?: string;
+      hasRemote?: boolean;
+      /** D391: no computer had the repository: cloned from this address (owner/name or a Git URL) into that computer's Ducter folder before the task starts. */
+      clone?: string;
+    }
   | { kind: "folder"; device: string; path: string }
   | { kind: "browser"; device: string; profile: string };
 
@@ -393,7 +403,7 @@ export interface Bodies {
     // D372: the kind of work it is (the partner's word at open, else inferred from its needs and place).
     workKind?: WorkKind;
   };
-  task_state: { taskId: string; attention: Attention; residency: Residency; reason?: string };
+  task_state: { taskId: string; attention: Attention; residency: Residency; reason?: string; cant?: CantStart };
   // D325: the person's words held for after this turn (做完再说, or a steer its agent can't take
   // mid-turn): the whole queue as it is now, in order. Ducter holds them, not the agent, so each
   // can be changed, taken back or said now; at the turn's end they go as the next turn. [] = none.
@@ -796,6 +806,26 @@ export interface TaskCard {
   held?: HeldMsg[];
   /** D341: the outside to-do it is bound to (待办来源), with what Ducter last saw of it there and what it wrote back. */
   source?: SourceItemRef & { state?: "open" | "closed" | "gone"; wrote?: SourceOp[] };
+  /** D391: it couldn't start because of its place: why, and what fixes it (absent once it starts). */
+  cant?: CantStart;
+}
+
+/**
+ * D391: why a task couldn't start where it was to work, in a word the clients put in their own
+ * language ("没能开始：Hetzner Server 上没有 mem 的代码"), and the fixes core found for it.
+ */
+export interface CantStart {
+  /** no_repo: no git repository there; no_folder: no such folder; clone_failed: cloning it there failed. */
+  why: "no_repo" | "no_folder" | "clone_failed";
+  /** The computer it was to start on, by name. */
+  computer: string;
+  /** The repository's or folder's own name ("mem"). */
+  what: string;
+  path?: string;
+  /** Another computer that has it: 在 {name} 上做 / Do it on {name}. */
+  elsewhere?: { device: string; name: string };
+  /** Its repository is known and that computer's git can read it: 拉一份到这里 / Clone it here. */
+  cloneHere?: boolean;
 }
 
 export interface OnHand {
@@ -1075,7 +1105,8 @@ export type ClientFrame =
   // (path: only that one entry of folder_changes); keep frees the copy (就这样 / Keep the
   // changes). An undo of a folder someone changed after the task finished is answered ok:false
   // with `confirm` (what would be lost); the same undo with force: true goes ahead.
-  | { t: "task_action"; taskId: string; action: "interrupt" | "drop" | "undrop" | "reopen" | "merge" | "open_pr" | "undo" | "keep"; path?: string; force?: boolean }
+  // D391: start_at (device): a task that couldn't start starts on that computer's copy; clone_here: clones it where it was to start.
+  | { t: "task_action"; taskId: string; action: "interrupt" | "drop" | "undrop" | "reopen" | "merge" | "open_pr" | "undo" | "keep" | "start_at" | "clone_here"; path?: string; force?: boolean; device?: string }
   // D142: the list behind a folder task's Changes; answered with a folder_changes frame.
   | { t: "folder_changes"; taskId: string }
   // D214: one op of the opened task's workbench (its files, changes, pages), answered with a wb

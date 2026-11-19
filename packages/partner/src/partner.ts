@@ -61,6 +61,7 @@ import { withOutbox } from "./outbox.ts";
 import { AI_TOOLS, memSource } from "../../protocol/src/mem-source.ts";
 import { buildSystemPrompt } from "./persona.ts";
 import { realFs, resolvePlace, type PlaceFs } from "./place.ts";
+import { effortFromWords } from "../../protocol/src/effort-words.ts";
 import { ducterDataRefusal, isDucterData } from "../../protocol/src/ducter-folder.ts";
 import { FILE_INLINE_CHARS, renderHistoryLine, renderProjection, renderTime, renderTrigger, type RenderCtx } from "./render.ts";
 import { inTongue } from "../../protocol/src/say.ts";
@@ -482,6 +483,16 @@ function carriedTask(c: Carried, title: unknown, take: boolean): Carried["tasks"
 
 const OPENED_NOTE = "Task opened. It reports back on its own. Your turn is done: write nothing more and call nothing else (no wait_until for it, no checking on it), except keep_going on it when the user asked to keep at it until something holds (\"一直修到 CI 绿\").";
 /** D360: a part of a split, opened or held: the other parts are opened in the same turn. */
+/** D391: the clone line went out by code under the ack. */
+const CLONE_NOTE = "Task opened. No computer had this repository, so Ducter clones it first and already told the user so in one line under your ack. Your turn is done: write nothing more and call nothing else.";
+/** D391: the person asked for care ("仔细", "carefully"): the brief asks the task to check its work. */
+const CAREFUL_BRIEF =
+  "\n\nThe user asked for this to be done carefully: before you report, check the work (build it, run the tests that cover what you changed, look at the result the way the user would) and say in the report what you checked and what you couldn't.";
+/** D391: the repository a task_open place names by its remote (owner/name, a Git address). */
+const remoteOf = (p: unknown): string | undefined => {
+  const r = (p as { remote?: unknown } | undefined)?.remote;
+  return typeof r === "string" && r.trim() ? r.trim().slice(0, 300) : undefined;
+};
 const GROUP_NOTE = "Task opened as a part of its group. Open the group's remaining parts now (task_open, the same group), then your turn is done: one short line at most, no checking on them.";
 const HELD_NOTE = "Held in line: Ducter opens it when the part before it in the same place is done, from that part's branch. Open any remaining parts the same way, then end your turn; say at most one short line that they go one after another.";
 /** D360: what the partner reaches of core's groups (core/src/task-groups.ts). */
@@ -1158,6 +1169,12 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     }
   };
 
+  /** D391: the repository of the GitHub to-do the partner took this turn, if it took one. */
+  const stagedRemote = (): string | undefined => {
+    const it = (core as { taskSources?: { stagedItem?(): { kind: string; where?: string } | undefined } }).taskSources?.stagedItem?.();
+    return it?.kind === "github" ? it.where : undefined;
+  };
+
   // ---------- ack and go (D120) ----------
   // At the title: only when the user's words already name the place (a repo or folder path).
   // At the head (title + place written): the call's own place; a speculative open that guessed
@@ -1180,6 +1197,16 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       place = resolvePlace(given, [title, ...t.userTexts], myTasks(), fs);
     }
     if (dataPlace(place)) return; // the call itself is refused (D207)
+    // D391: a repository place opens early only when it is that repository on this computer now
+    // (read at once); anything else waits for the call, whose pre-flight finds or clones it. A
+    // to-do taken this turn names its repository: a place-less head waits too. Careful words wait
+    // as well (the call carries the effort).
+    if (core.places) {
+      const staged = stagedRemote();
+      const remote = remoteOf(head.place) ?? staged;
+      if (place.kind === "repo" ? !core.places.quick(place, remote) : !!remote && place.kind === "none") return;
+      if (effortFromWords(t.userTexts)) return;
+    }
     // D360: a part of a split opens at its call, in order: a later one in the same folder is held.
     // A title before its group, in a turn that already named one, waits for the call too.
     if ((typeof head.group === "string" && head.group.trim()) || (at === "title" && t.groupsSeen?.size)) return;
@@ -1757,6 +1784,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
             kind: { type: "string", enum: ["none", "repo", "folder", "browser"] },
             device: { type: "string", description: 'Leave it out (or "local") and Ducter picks the computer from needs. A computer\'s name from the [devices] line only when the user named that computer ("在 MacBook 上做"); a repo or folder on another computer: that computer.' },
             repoPath: { type: "string" },
+            remote: { type: "string", description: "owner/name, when its path isn't known: Ducter finds or clones it. Never guess repoPath." },
             path: { type: "string" },
             profile: { type: "string" },
             baseBranch: { type: "string", description: "Repo only: branch to start from. For new work that builds on an earlier task's unmerged branch, pass that branch." },
@@ -1862,11 +1890,30 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       if (t) t.redirectJob = undefined; // opened after all: separate work
       let jobId: string;
       const userTexts = t?.userTexts ?? [];
-      const place = resolvePlace(args.place, [args.brief, args.title, ...userTexts], myTasks(), fs);
+      let place = resolvePlace(args.place, [args.brief, args.title, ...userTexts], myTasks(), fs);
       // D207: refused before anything is said or opened, so the partner opens it again elsewhere.
       const refused = dataPlace(place);
       if (refused) return { ok: false, error: refused };
-      const brief = redactSecrets(withVerbatim(args.brief, userTexts), userTexts);
+      // D391: a repository place is checked before the task exists, against the repository the work
+      // is on (the place's remote, the to-do taken, an address in the words): a path the model
+      // guessed never wins over a copy Ducter found, and no clone anywhere means one is made first.
+      let cloneLine: string | undefined;
+      if (core.places) {
+        const pf = await core.places.preflight({ place, ...(remoteOf(raw.place) ? { remote: remoteOf(raw.place)! } : {}), texts: [args.title, args.brief], userTexts });
+        if (!pf.ok) {
+          const early = t?.early.find((e) => !e.used);
+          if (early) {
+            early.used = true;
+            early.brief.reject(new Error("its place didn't check out"));
+          }
+          return { ok: false, error: pf.error };
+        }
+        place = pf.place;
+        cloneLine = pf.said;
+      }
+      // D391: "仔细" / "carefully" in the person's words: the task thinks harder (and checks its work).
+      const effort = effortFromWords(userTexts);
+      const brief = redactSecrets(withVerbatim(args.brief, userTexts), userTexts) + (effort === "high" ? CAREFUL_BRIEF : "");
       // D206: the pictures it hands on (the ones the user sent this turn when it names none but the
       // brief is about them: an agent would otherwise get "this screenshot" without the screenshot).
       const named = mediaNamed(raw.media);
@@ -1916,7 +1963,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         // The needs too: they pick the computer and the agent, and say which tools the session
         // lists from its start (a phone task opened from a head written before its needs had no
         // phone tools for its whole life: "当前任务没有任何 phone 工具").
-        if (card && samePlace(place, early.place) && (args.harness ?? "") === (early.who.harness ?? "") && (args.model ?? "") === (early.who.model ?? "") && JSON.stringify(parseNeeds(raw.needs) ?? null) === JSON.stringify(early.who.needs ?? null) && (isWorkKind(raw.kind) ? raw.kind : undefined) === early.who.workKind) {
+        if (card && !effort && samePlace(place, early.place) && (args.harness ?? "") === (early.who.harness ?? "") && (args.model ?? "") === (early.who.model ?? "") && JSON.stringify(parseNeeds(raw.needs) ?? null) === JSON.stringify(early.who.needs ?? null) && (isWorkKind(raw.kind) ? raw.kind : undefined) === early.who.workKind) {
           early.media(handed);
           early.brief.resolve(brief);
           (core as { taskSources?: { bindStaged(id: string, texts?: string[]): unknown } }).taskSources?.bindStaged(card.taskId, [brief, args.title]);
@@ -1953,6 +2000,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           ...(args.project !== undefined ? { project: args.project } : {}),
           ...(args.harness ? { harness: args.harness } : {}),
           ...(args.model ? { model: args.model } : {}),
+          ...(effort ? { effort } : {}),
           ...((n) => (n ? { needs: n } : {}))(parseNeeds(raw.needs)),
           ...(isWorkKind(raw.kind) ? { workKind: raw.kind } : {}),
           language: taskLanguage(t),
@@ -1978,6 +2026,10 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         });
         (core as { taskSources?: { bindStaged(id: string, texts?: string[]): unknown } }).taskSources?.bindStaged(card.taskId, [brief, args.title]);
         await claimFor(card);
+        if (cloneLine) {
+          tellUser(cloneLine);
+          return { ok: true, taskId: card.taskId, title: card.title, place: card.place, attention: card.attention, note: CLONE_NOTE };
+        }
         return { ok: true, taskId: card.taskId, title: card.title, place: card.place, attention: card.attention, note: kindNote(card.taskId, note) };
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
@@ -3014,7 +3066,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           const rule = !!turn?.triggers.some((e) => e.kind === "source_seen" && (e.body as Bodies["source_seen"]).taken && (e.body as Bodies["source_seen"]).items?.some((i) => i.ref === ref));
           todos.stage(it, rule);
           const { briefOf } = await import("../../core/src/task-sources/index.ts");
-          return { ok: true, item: short(it), brief: briefOf(it), note: "Now task_open it: a title from it in the user's language; the brief quotes the user's words and carries this brief as is; place: the repo's local path when you know it (an earlier task, a [devices] line), else leave place out. Ducter binds the task to the to-do." };
+          return { ok: true, item: short(it), brief: briefOf(it), note: `Now task_open it: a title from it in the user's language; the brief quotes the user's words and carries this brief as is; place {"kind":"repo","remote":"${it.kind === "github" && it.where ? it.where : "owner/name"}"} with no repoPath: Ducter finds the computer with its code (or clones it) and says where. Never guess a path. Ducter binds the task to the to-do.` };
         }
         if (what === "write") {
           await Bun.sleep(5);

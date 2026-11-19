@@ -8,6 +8,9 @@ import type { BodyChoice, LogStore, Runner } from "@ducter/protocol/src/internal
 import { blockOf, chooseBody, computersOf, fwCandidates, kindDefaults, kindOf, smartestFor, type Computer, noPhoneLine } from "./candidates.ts";
 import { checkEffort, type ModelCatalog } from "./models.ts";
 
+/** D391: the levels tried, in order, when the model doesn't offer the one asked for in words. */
+const NEAR_EFFORT: Record<string, string[]> = { high: ["medium"], low: ["minimal", "medium"] };
+
 /** D202: how long a task's open waits for the chosen model's effort levels it doesn't have yet. */
 const EFFORT_CHECK_MS = 10_000;
 import type { DevicesView } from "./devices.ts";
@@ -106,7 +109,11 @@ export function createLoadout(o: {
   const withEffort = async <P extends { harness: string; model?: string; deviceId?: string }>(pick: P, effort: string): Promise<P & { effort?: string; effortDropped?: string }> => {
     const list = await o.models?.get(pick.deviceId ?? "local", pick.harness, EFFORT_CHECK_MS);
     const r = checkEffort(pick.harness, pick.model, effort, list);
-    return r.ok ? { ...pick, effort } : { ...pick, effortDropped: `effort ${effort} was left out: ${r.why}` };
+    if (r.ok) return { ...pick, effort };
+    // D391: "仔细" / "carefully" asks for high, "快速" for low: a model without exactly that level
+    // takes the nearest one on its own side (never an extreme one: xhigh, max).
+    const near = (NEAR_EFFORT[effort] ?? []).find((e) => checkEffort(pick.harness, pick.model, e, list).ok);
+    return near ? { ...pick, effort: near } : { ...pick, effortDropped: `effort ${effort} was left out: ${r.why}` };
   };
 
   /** D372: a task of this kind was put on a fast tier by the default before (the line was said). */

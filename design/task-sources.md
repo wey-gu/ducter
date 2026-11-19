@@ -44,8 +44,9 @@ conventions, and gives two owners for one field, so conflicts need rules. One ow
   partner, at most once per source per 3 hours, and it offers them in one line. **不用说 / Don't tell me**
   (Obsidian's default: a personal list churns; it waits to be asked). **直接接下 / Take it directly**: the
   standing go, at most 5 a day per source; the sixth is offered.
-- **The standing go is learned, X2's way:** after the person took to-dos from one source twice in 14 days,
-  one card once: **以后 GitHub 上标给你的，直接接下？** (Obsidian: **以后 Obsidian 里的待办，直接接下？**) with
+- **The standing go is learned, X2's way:** after two to-dos the person took from one source in 14 days
+  finished well (D391: never at the take, never beside a task that couldn't start or failed), one card
+  once, when the second finishes: **以后 GitHub 上标给你的，直接接下？** (Obsidian: **以后 Obsidian 里的待办，直接接下？**) with
   **直接接下 / Take it directly** and **仍然先问我 / Keep asking me** (default Hold). Settings shows **你接下过两次以后定的**.
 - A task taken under the standing go still asks before anything outward, like any task.
 
@@ -97,8 +98,8 @@ place (the same inode: Obsidian and the syncs keep following the file):
   (**等你 review**, opened only), assigned ones that mention the person (**提到了你**, two at most), an
   Obsidian line due by the day after tomorrow, then the newest a source at a time; none with a live
   task. Each says why, its chip and labels apart (D291), when it changed, and **交给{name} / Hand to
-  {name}** (New task's pick without the card: `task_new` with `handed`, the home choosing the folder
-  whose origin is the repository). The rest fold under **还有 {n} 件 / {n} more**, opened in place: Find,
+  {name}** (New task's pick without the card: `task_new` with `handed`; D391: where it works is the
+  one resolver's answer, `core/src/repo-where.ts`, see design/where.md §18). The rest fold under **还有 {n} 件 / {n} more**, opened in place: Find,
   chips (sources, **等你 review {n}**, repositories, a vault's folders and tags), low cards, pages of 30.
   Settings' **{n} 件没做完 ›** and **{n} 个 PR 等你 review ›** open it there; no list in Settings.
 - **On hand by source:** after the projects in the lens column (and the row of names on a phone), under

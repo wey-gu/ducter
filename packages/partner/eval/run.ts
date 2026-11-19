@@ -33,6 +33,8 @@ import { fakeMemory } from "../test/fakes.ts";
 import { fakeTuwa } from "../../core/test/fake-tuwa.ts";
 import { fakeOoCalendar } from "../../core/test/fake-oo-calendar.ts";
 import { fakeGh } from "../../core/test/fake-gh-issues.ts";
+import { createPlaces, createRepoWhere, type WhereComputer } from "../../core/src/repo-where.ts";
+import { remoteKey } from "../../protocol/src/clones.ts";
 
 /** D341: the issues assigned to the user in the eval's fake GitHub. */
 const TODO_ISSUES = [
@@ -134,7 +136,7 @@ function teePort(real: HarnessPort, onEvent: (e: HarnessEvent, sessionIdx: numbe
 }
 
 // ---------- fake task runner ----------
-interface Opened { taskId: string; title: string; brief: string; place?: Place; step: number; needs?: Record<string, unknown>; harness?: string; group?: string; workKind?: string }
+interface Opened { taskId: string; title: string; brief: string; place?: Place; step: number; needs?: Record<string, unknown>; harness?: string; group?: string; workKind?: string; effort?: string }
 const SAID_HOME = [
   { harness: "claude-code", installed: true, loggedIn: true, canBePartner: true, billing: "plan" as const, models: [{ id: "opus", label: "Opus" }, { id: "sonnet", label: "Sonnet" }] },
   { harness: "codex", installed: true, loggedIn: true, canBePartner: true, billing: "plan" as const },
@@ -183,7 +185,7 @@ function fakeRunner(core: Core, harness: HarnessPort, cur: { step: number }, fir
     async openTask(input) {
       const taskId = shortId();
       const place = placeFor(taskId, input.title, input.place);
-      opened.push({ taskId, title: input.title, brief: input.brief, place: input.place, step: cur.step, ...(input.needs ? { needs: input.needs as Record<string, unknown> } : {}), ...(input.harness ? { harness: input.harness } : {}), ...(input.workKind ? { workKind: input.workKind } : {}) });
+      opened.push({ taskId, title: input.title, brief: input.brief, place: input.place, step: cur.step, ...(input.needs ? { needs: input.needs as Record<string, unknown> } : {}), ...(input.harness ? { harness: input.harness } : {}), ...(input.workKind ? { workKind: input.workKind } : {}), ...(input.effort ? { effort: input.effort } : {}) });
       openCard(taskId, input.title, place, input.brief);
       bodyFor(taskId, input);
       return core.tasks.get(taskId) as TaskCard;
@@ -355,7 +357,7 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   const calOo = sc.calendar ? fakeOoCalendar({ day: new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date()), ...(sc.calendarDown ? { listFails: true } : {}) }) : undefined;
   // D312: the partner under test is a second partner (its own conversation, channel:p2); the seed is the default's.
   const conv = sc.second ? "channel:p2" : "channel";
-  const todoGh = sc.todos ? fakeGh(TODO_ISSUES, { login: "wey-gu" }) : undefined;
+  const todoGh = sc.todos ? fakeGh([...TODO_ISSUES, ...(sc.todoIssues ?? [])], { login: "wey-gu" }) : undefined;
   // D368: the person's Working Memory from a fake nmem (never the author's real Mem): the scenario's, or none.
   const wmOut = JSON.stringify(
     sc.workingMemory
@@ -475,6 +477,34 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
     add: (m: MemoryAdd) => mem.memory.add(m),
     threads: (q: string, n: number) => (threadSearches.push({ query: q, step: cur.step }), mem.memory.threads!(q, n)),
   };
+  // D391: where a repository is, from the scenario (never this machine's disk or git).
+  {
+    const names = ["local", ...(sc.computers ?? []).map((c) => c.name)];
+    const idOf = (name: string) => (name === "local" ? "local" : `w${names.indexOf(name)}`);
+    const comps: WhereComputer[] = names.map((n, i) => ({ id: idOf(n), name: n, home: i === 0, online: true, build: i === 0 ? 0 : 2 }));
+    const have = sc.clones?.have ?? {};
+    const paths = new Map(Object.entries(have).flatMap(([n, ps]) => ps.map((p) => [`${idOf(n)} ${p}`, true] as const)));
+    const where = createRepoWhere({
+      computers: () => comps,
+      async clones(dev, remote, probe) {
+        const n = comps.find((c) => c.id === dev)!.name;
+        // Without clones in the scenario, the home has every repository at ~/dev/<name> (as the seeds' tasks say).
+        const mine = sc.clones ? (have[n] ?? []) : n === "local" ? [`~/dev/${remoteKey(remote).split("/").pop()}`] : [];
+        const clones = mine.map((p) => ({ name: p.split("/").pop()!, path: p, touchedAt: "2026-11-18T10:00:00.000Z", remote: remoteKey(remote) }));
+        return probe && !clones.length ? { clones, canRead: sc.clones ? (sc.clones.canRead ?? []).includes(n) : n === "local" } : { clones };
+      },
+      // Without clones in the scenario, every place given is there (the scenarios before D391).
+      folder: async (dev, path) => (!sc.clones || paths.has(`${dev} ${path}`) ? { exists: true, kind: "repo" } : { exists: false }),
+    });
+    (core as { places?: unknown }).places = createPlaces({
+      where,
+      computers: () => comps,
+      tasks: core.tasks,
+      opened: () => undefined,
+      lang: () => sc.lang,
+      staged: () => core.taskSources.stagedItem(),
+    });
+  }
   core.setRunner(fr.runner);
   core.setPartner({ onTrigger() {} }); // history is background, not new work
   const fb = sc.bridge ? fakeBridge(dataDir, !!sc.spaces) : undefined;
@@ -770,7 +800,7 @@ function applyStep(st: Exclude<Step, { peer: unknown }>, core: Core, idOf: Map<s
     // D341: the look's news, as core logs it.
     const items = st.todosNew.refs.map((ref) => {
       const m = /^(.+)#(\d+)$/.exec(ref)!;
-      const i = TODO_ISSUES.find((x) => x.repo === m[1] && x.number === Number(m[2]))!;
+      const i = [...TODO_ISSUES, ...scenarios.flatMap((x) => x.todoIssues ?? [])].find((x) => x.repo === m[1] && x.number === Number(m[2]))!;
       return { source: core.taskSources.view().sources[0]!.id, kind: "github" as const, ref, label: `#${i.number}`, where: i.repo, title: i.title, url: `https://github.com/${i.repo}/issues/${i.number}` };
     });
     core.log.append({ stream: "channel", origin: "system", kind: "source_seen", body: { source: items[0]!.source, change: "new", items, ...(st.todosNew.taken ? { taken: true } : {}) } });
@@ -939,6 +969,17 @@ function check(r: RunResult): string[] {
   }
   if (e.harness && !r.opened.some((o) => o.harness === e.harness)) fails.push(`no task pinned to ${e.harness} (got ${r.opened.map((o) => o.harness ?? "default").join(", ") || "none"})`);
   if (e.placeKind && !r.opened.some((o) => (o.place?.kind ?? "none") === e.placeKind)) fails.push(`no task with place ${e.placeKind}`);
+  // D391: where it opened (a computer by name; the eval's workers are w1, w2… in sc.computers order) and how hard it thinks.
+  if (e.openedPlace) {
+    const want = e.openedPlace;
+    const devOf = (n: string) => (n === "local" ? "local" : `w${(r.sc.computers ?? []).findIndex((c) => c.name === n) + 1}`);
+    const hit = r.opened.some((o) => {
+      const p = o.place as (Place & { repoPath?: string; clone?: string; device?: string }) | undefined;
+      return !!p && (!want.computer || (p.device ?? "local") === devOf(want.computer)) && (!want.repoPath || p.repoPath === want.repoPath) && (!want.clone || p.clone === want.clone);
+    });
+    if (!hit) fails.push(`no task opened at ${JSON.stringify(want)} (got ${JSON.stringify(r.opened.map((o) => o.place))})`);
+  }
+  if (e.effort && !r.opened.some((o) => o.effort === e.effort)) fails.push(`no task at effort ${e.effort} (got ${r.opened.map((o) => o.effort ?? "default").join(", ") || "none"})`);
   // D372: the kind of work, as the partner said it or as Ducter reads it from needs and place.
   if (e.workKind && !r.opened.some((o) => kindOf(o.workKind, o.needs as TaskNeeds | undefined, o.place) === e.workKind)) fails.push(`no task of kind ${e.workKind} (got ${r.opened.map((o) => kindOf(o.workKind, o.needs as TaskNeeds | undefined, o.place) ?? "none").join(", ") || "none"})`);
   if (e.notHarness && r.opened.some((o) => o.harness === e.notHarness)) fails.push(`a task pinned to ${e.notHarness}`);

@@ -511,3 +511,56 @@ Back is an arrow, one step. Reduced motion keeps the clay still.
 **The words for the computers (D358, research/128).** The home: **{name} 在这台上运行 / {name} runs here**;
 a computer that does tasks: **帮 {name} 做事 / Helps {name} with tasks**, the partner's name, never a
 machine's. Where a computer is added or switched on, one line says it never sees the conversation.
+
+## 18. A repository is named by its remote, never guessed by path (D391)
+
+**Who.** The author's first real hand-off (hel, 2026-11-19): a GitHub to-do on `nowledge-co/mem`,
+「10559 帮我用 codex astra 仔细做一下」. The partner guessed `/root/dev/mem` on the home (a server
+with git and no clones); the task failed at once with 没成 and a bare worktree path, and 再试一次
+would have failed the same way. The fresh user has never cloned anything and should never need to.
+**Felt before:** let down on the very first try, then asked "以后…直接接下？" beside the failure.
+**After:** the task starts where the code is, or Ducter clones it first and says so in one line.
+
+**One resolver** (`packages/core/src/repo-where.ts`), used by task_open's pre-flight, a to-do handed
+over from On hand (`task_new` `handed`), the pile's hand-over, 再试一次 on a task that couldn't
+start, and D385's hand-over of several. Its order generalizes D385's:
+
+1. a computer the person named in words (or the place's own device when the partner set one);
+2. a where-rule (a rule with a computer whose words match the work);
+3. a computer that has a clone: the one that builds first (a Mac 2, a worker 1, a server home 0),
+   then the most recently touched copy;
+4. no clone anywhere: clone it on the best computer whose own git can read it (`git ls-remote`, its
+   own gh sign-in or credentials, no prompt) into that computer's Ducter folder
+   (`place.clone`, provisioned by the runner before the worktree);
+5. no computer can read it: no task; the partner asks once (sign in to GitHub on a computer, or say
+   where the code is).
+
+A place the caller gave stays when it checks out on its computer (it exists, is a git repository,
+its origin is the repository); a worker that is away keeps its place (D157 waits). A path the model
+guessed never wins over a copy found.
+
+**Which clones of <remote>** is one cheap question to every computer: the home answers itself, a
+worker by its `clones` op (`protocol/src/clones.ts`). It looks in the Ducter folder's projects and the
+folders people keep code in (`~/dev`, `~/code`, `~/src`, `~/projects`, `~/work`, `~/repos`, `~/git`,
+`~/github`, `~/Developer`, `~/workspace`, `~/Documents/GitHub`, `~/go/src/<host>/<owner>`, two levels
+deep, and the home folder's top), reads only `.git/config`'s origin, and sends back only the copies
+whose origin is the asked repository: the rest of the disk never leaves the computer. Answers are
+kept 10 minutes; 再试一次 asks again.
+
+**Pre-flight.** task_open resolves the repository from the place's `remote`, the to-do taken this turn,
+or a GitHub address in the words, and checks the place before the task exists. A place it can't fix
+returns an error the model can act on ("give the repository as remote, or ask"), never a task that
+fails at start. D120's early open happens only for a place on the home that is that repository now.
+
+**When it still can't start** (a folder removed between the check and the start): the runner asks
+core why (`places.cantStart`), and the card says **没能开始：{computer} 上没有 {repo} 的代码 /
+Couldn't start: {computer} has no copy of {repo}** with what fixes it: **在 {computer} 上做 / Do it
+on {computer}** (another copy), **拉一份到这里 / Clone it here**; with neither, **再试一次 / Try
+again** re-resolves. 换谁来做 stays in the head's meta line. The living line says the same cause.
+The clone, when it happens at open, is said by Ducter's code under the ack, once: **{repo} 的代码还
+没在哪台电脑上，我先在 {computer} 上拉一份。**
+
+**Effort in words.** 「仔细」「认真」「好好做」/ "carefully", "thoroughly" open the task at high
+effort (D387's highest level that isn't extreme; a model without it takes medium), and its brief
+asks it to check its work before reporting; 「快速」「随便看看」/ "quick look" open it at low.
+Only the person's words count.

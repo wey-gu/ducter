@@ -72,7 +72,7 @@ export interface TaskRegistry {
   get(taskId: string): TaskCard | undefined;
   list(): TaskCard[];
   onHand(): OnHand;
-  setState(taskId: string, attention: Attention, residency: Residency, reason?: string): void; // appends task_state
+  setState(taskId: string, attention: Attention, residency: Residency, reason?: string, cant?: import("./index.ts").CantStart): void; // appends task_state
 }
 
 // D312: persona: the partner calling (absent: the default), or for a task-role call the partner the task is for.
@@ -131,6 +131,8 @@ export interface CoreApi {
   partnerFallback?(): { harness: HarnessId; model?: string } | undefined;
   /** Who does a new task (D89, core/src/loadout.ts); absent in tests and stubs (then: the runner's default). */
   bodies?: BodyChooser;
+  /** D391: where a repository task works, resolved by code (core/src/repo-where.ts); absent in tests and stubs. */
+  places?: PlacesPort;
   /** D379: memories the partner's recall returned, read by code for who-does-which-work the person said. */
   said?: { fromMemory(hits: { id?: string; title: string; content: string; date?: string }[]): void };
   /** The user's connections (D96, core/src/connections.ts); absent in tests and stubs. */
@@ -613,6 +615,8 @@ export interface Runner {
   interrupt(taskId: string): Promise<void>;
   // Optional: resume (or start) a finished/dropped task's session and tell it to carry on.
   reopen?(taskId: string): Promise<{ delivered: Delivery }>;
+  /** D391: a task that couldn't start starts in this place instead (its brief and agent stay). */
+  restartAt?(taskId: string, place: Place): Promise<{ ok: boolean; message?: string }>;
   // Optional: Undo a drop; merge the task branch into its base in the user's checkout; push +
   // open a draft PR (an outside effect). Each resolves with a user-facing message.
   undrop?(taskId: string): Promise<{ ok: boolean; message: string; ref?: string }>;
@@ -686,4 +690,26 @@ export interface PhonePort {
   result(callId: string, outcome: string, reached?: boolean): { ok: true } | { ok: false; error: string };
   get(callId: string): CallBody | undefined;
   calls(): (CallBody & { updatedAt: string })[];
+}
+
+/** D391: task_open's pre-flight answer: the place to open in (checked, replaced, or a clone first), or what to tell the model. */
+export type PreflightResult =
+  | { ok: true; place: Place; how?: "given" | "named" | "rule" | "found" | "clone"; computer?: string; repo?: string; /** A line Ducter says itself (the clone). */ said?: string }
+  | { ok: false; error: string };
+
+/** D391: where a repository task works, resolved by code from the repository (core/src/repo-where.ts). */
+export interface PlacesPort {
+  /**
+   * Before a task exists: a repository place is checked (there, a git repository, that origin),
+   * replaced by the resolver's answer when it isn't, or planned as a clone; a place that can't be
+   * fixed is an error the partner can act on. remote: the repository the work is on (the partner's
+   * place.remote, the to-do it took, an address in the words).
+   */
+  preflight(a: { place: Place; remote?: string; texts: string[]; userTexts: string[] }): Promise<PreflightResult>;
+  /** D120's early open: a place on this computer that is that repository now (read at once, no git). */
+  quick(place: Place, remote?: string): boolean;
+  /** Why a task couldn't start and the fixes, in the task's language (the runner asks before it marks it failed). */
+  cantStart(taskId: string, p: { why: import("./index.ts").CantStart["why"]; path: string; device: string }): Promise<import("./index.ts").CantStart & { line: string }>;
+  /** 再试一次 / 在 X 上做 / 拉一份到这里 on a task that couldn't start: the place it starts in now. */
+  replan(taskId: string, how: { action: "reopen" | "start_at" | "clone_here"; device?: string }): Promise<{ ok: true; place: Place } | { ok: false; message: string }>;
 }

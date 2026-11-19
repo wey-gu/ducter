@@ -10,7 +10,7 @@
 // (GIT_TERMINAL_PROMPT=0, ssh in batch mode), and a time limit.
 import { existsSync, rmSync } from "node:fs";
 import { join } from "node:path";
-import { ensureDucterFolder, type DucterFolderOpts } from "./ducter-folder.ts";
+import { ducterFolder, ensureDucterFolder, type DucterFolderOpts } from "./ducter-folder.ts";
 import { normalizeRemote } from "./folder-info.ts";
 import { defaultBranchOf, originOf, realFs, type FsLike } from "./repos.ts";
 import { ghEnv } from "./tool-env.ts";
@@ -93,6 +93,22 @@ export interface CloneDeps extends DucterFolderOpts {
   spawn?: GitSpawn;
   repoFs?: FsLike;
   timeoutMs?: number;
+}
+
+/**
+ * D391: where cloneRepo would put `address` on this computer (without making anything): the same
+ * origin's folder when it is there already, else the first free `<repo>`, `<repo>-2`, ….
+ */
+export function cloneTarget(address: unknown, d: DucterFolderOpts & { repoFs?: FsLike } = {}): string | undefined {
+  const a = parseGitAddress(address);
+  if (!a.ok) return undefined;
+  const fs = d.repoFs ?? realFs;
+  const projects = join(ducterFolder(d).path, "projects");
+  for (let n = 1; n < 100; n++) {
+    const p = join(projects, n === 1 ? a.name : `${a.name}-${n}`);
+    if (!existsSync(p) || originOf(fs.readText?.(join(p, ".git", "config"))) === a.remote) return p;
+  }
+  return undefined;
 }
 
 /**

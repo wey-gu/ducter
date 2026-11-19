@@ -200,3 +200,16 @@ test("D203: browse caps a listing and says there were more", () => {
   expect(r).toMatchObject({ ok: true, more: true });
   if (r.ok) expect(r.folders.length).toBe(10);
 });
+
+test("D391: clones: only this repository's copies, from the usual code folders and the Ducter folder; with probe and none, whether its git can read it", async () => {
+  repo(join(home, "dev", "mem"), { origin: "git@github.com:nowledge-co/mem.git", head: "main", heads: ["main"], at: 2_000_000 });
+  repo(join(home, "ducter", "projects", "mem"), { origin: "https://github.com/nowledge-co/mem", head: "main", heads: ["main"], at: 1_000_000 });
+  repo(join(home, "dev", "secret"), { origin: "git@github.com:someone/secret.git", head: "main", heads: ["main"], at: 3_000_000 });
+  const ask = host({ gitSpawn: async () => ({ code: 0, err: "" }) });
+  const r = await ask(1, "clones", { remote: "nowledge-co/mem" });
+  expect(r.ok).toBe(true);
+  expect(r.result.clones.map((c: { path: string }) => c.path)).toEqual([join(home, "dev", "mem"), join(home, "ducter", "projects", "mem")]);
+  expect(JSON.stringify(r.result)).not.toContain("secret");
+  const p = await ask(2, "clones", { remote: "nowledge-co/other", probe: true });
+  expect(p.result).toEqual({ clones: [], canRead: true });
+});

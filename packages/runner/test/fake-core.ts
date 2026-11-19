@@ -65,8 +65,8 @@ export function createFakeCore(dataDir: string): FakeCore {
       get: (id) => cards.get(id),
       list: () => [...cards.values()],
       onHand: (): OnHand => ({ tasks: [...cards.values()], counts: { needs_you: 0, working: 0, waiting: 0, done_today: 0 } }),
-      setState(taskId: string, attention: Attention, residency: Residency, reason?: string) {
-        log.append({ persona: cards.get(taskId)?.persona, stream: `task:${taskId}`, origin: "system", kind: "task_state", body: { taskId, attention, residency, reason } });
+      setState(taskId: string, attention: Attention, residency: Residency, reason?: string, cant?: Bodies["task_state"]["cant"]) {
+        log.append({ persona: cards.get(taskId)?.persona, stream: `task:${taskId}`, origin: "system", kind: "task_state", body: { taskId, attention, residency, reason, ...(cant ? { cant } : {}) } });
       },
     },
     mcp: {

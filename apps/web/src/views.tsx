@@ -5,7 +5,7 @@ import { openPhone, PhoneAskBody } from "./phone-use.tsx";
 import { AppUpdateRow } from "./app-update.tsx";
 import { ComputerLine } from "./computer-use.tsx";
 import { HandsetAskBody, HandsetLine, handsetAskTitle } from "./handset.tsx";
-import type { AgentUpdate, Attention, Bodies, Candidate, DeviceHarness, DeviceUpdate, DeviceView, EvidenceRef, FolderChange, FolderSummary, LivingItem, OoDetect, Reach } from "@ducter/protocol";
+import type { AgentUpdate, Attention, Bodies, Candidate, CantStart, DeviceHarness, DeviceUpdate, DeviceView, EvidenceRef, FolderChange, FolderSummary, LivingItem, OoDetect, Reach } from "@ducter/protocol";
 import { Fragment } from "preact";
 import { PARTNER_RESERVE } from "@ducter/protocol/src/loadout.ts";
 import { inTongue, proofLabel, sayable } from "@ducter/protocol/src/say.ts";
@@ -70,6 +70,7 @@ import { Locator, safe, saidSince, shortGo, shortTitle, taskBlocks, TaskFoot, Ta
 import {
   attention,
   browsing,
+  cantOf,
   editedFiles,
   finalAt,
   finished,
@@ -2361,7 +2362,9 @@ export function TaskView({ id, full }: { id: string; full?: boolean }) {
             {r?.media?.length ? <MediaBlock media={r.media} side="task" ctx={{ kind: "task", taskId: id }} /> : null}
             <ProofLine task={task} evs={resultEvidence(task)} />
             <SentLine task={task} />
-            {a === "failed" ? (
+            {a === "failed" && cantOf(task) ? (
+              <CantStartView task={task} c={cantOf(task)!} />
+            ) : a === "failed" ? (
               // Didn't work (D76): try the same again, or tell it how; that opens its composer.
               <div class="btns">
                 <Btn kind="secondary" label={t("task.action.retry")} onClick={() => A.taskAction(id, "reopen")} />
@@ -2442,6 +2445,26 @@ function DecisionSheet({ id }: { id: string }) {
 
 
 const tz = () => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+
+/**
+ * D391: a task that couldn't start where it was to work: the cause in plain words (never a bare
+ * path) and the taps that fix it: 在 {computer} 上做 (its copy there), 拉一份到这里 (clone it where
+ * it was); 换谁来做 stays in the head's meta line, right above. With no fix found, 再试一次 asks
+ * the computers again, so it never repeats the same failure.
+ */
+export function CantStartView({ task, c }: { task: Task; c: CantStart }) {
+  const fixes = !!c.elsewhere || !!c.cloneHere;
+  return (
+    <div class="cant">
+      <p class="cant-line">{t(`cant.${c.why}`, c.computer, c.what)}</p>
+      <div class="btns">
+        {c.elsewhere && <Btn kind="primary" label={t("cant.on", c.elsewhere.name)} about={safe(title(task))} onClick={() => A.cantAction(task.id, "start_at", c.elsewhere!.device)} />}
+        {c.cloneHere && <Btn kind={c.elsewhere ? "secondary" : "primary"} label={t("cant.clone_here")} about={safe(title(task))} onClick={() => A.cantAction(task.id, "clone_here")} />}
+        {!fixes && <Btn kind="primary" label={t("task.action.retry")} about={safe(title(task))} onClick={() => A.cantAction(task.id, "reopen")} />}
+      </div>
+    </div>
+  );
+}
 
 /** D322: where it lives and what it thinks with, one line under the name (the Mac's header). The
  *  Settings list's hero says the same, never an agent when none can be used. */

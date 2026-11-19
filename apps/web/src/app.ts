@@ -3000,6 +3000,12 @@ class AppState {
     this.changed();
   }
 
+  /** D391: a task that couldn't start: start it on another computer's copy, clone it here, or ask again. */
+  cantAction(id: string, action: "start_at" | "clone_here" | "reopen", device?: string) {
+    this.send({ t: "task_action", taskId: id, action, ...(device ? { device } : {}) });
+    this.changed();
+  }
+
   /** D142, a folder task: 改回去 / Undo all changes (path: one entry; force: after confirming),
    *  or 就这样 / Keep the changes. The list comes back fresh after either. */
   folderAction(id: string, action: "undo" | "keep", o: { path?: string; force?: boolean } = {}) {

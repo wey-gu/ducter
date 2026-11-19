@@ -245,6 +245,13 @@ export function createWsHandler(deps: WsDeps) {
   };
   const { log, tasks } = core;
   const sockets = new Set<ServerWebSocket<WsData>>();
+  // Set by stop(). Work started before it (a frame awaiting a probe) may land after the Log and the
+  // devices database are closed: it is dropped quietly, never left to reject unhandled.
+  let stopped = false;
+  /** A background push's failure: said while the home runs, silent once it stopped. */
+  const pushFailed = (what: string) => (err: unknown) => {
+    if (!stopped) console.warn(`[ws] ${what}:`, (err as Error).message);
+  };
   // D320: each opened task's session index, kept as the Log grows.
   const indexes = sessionIndexes(log);
   const batchMs = deps.batchMs ?? 50;
@@ -293,10 +300,10 @@ export function createWsHandler(deps: WsDeps) {
     const v = devicesView();
     if (v)
       offDevices = v.onChange(() => {
-        void pushDevices().catch((err) => console.warn("[ws] devices:", (err as Error).message));
+        void pushDevices().catch(pushFailed("devices"));
         // A sign-in on the home can change what the partner thinks with (brainNow).
         const subs = [...sockets].filter((ws) => ws.data.settings);
-        if (subs.length && deps.settings) void settingsFrame().then((f) => subs.forEach((ws) => sockets.has(ws) && send(ws, f)));
+        if (subs.length && deps.settings) pushSettings(subs);
       });
   };
 
@@ -320,7 +327,7 @@ export function createWsHandler(deps: WsDeps) {
         const f = await settingsFrame();
         subs.forEach((ws) => sockets.has(ws) && send(ws, f));
       })
-      .catch((err) => console.warn("[ws] brain models:", (err as Error).message))
+      .catch(pushFailed("brain models"))
       .finally(() => brainReading.delete(harness));
   };
   // Settings: every subscriber gets a fresh frame on every change (another window, the phone).
@@ -337,10 +344,16 @@ export function createWsHandler(deps: WsDeps) {
     const own = deps.ownAgents?.() ?? [];
     return { t: "settings", ...v, brainNow: now, ...(forgot ? { forgot } : {}), ...(corrected ? { corrected } : {}), ...(bridge ? { bridge } : {}), ...(own.length ? { ownAgents: own } : {}) };
   };
+  /** A fresh settings frame to these subscribers, from a change rather than a frame they sent. */
+  const pushSettings = (subs: ServerWebSocket<WsData>[]) => {
+    if (stopped) return;
+    void settingsFrame()
+      .then((f) => subs.forEach((ws) => !stopped && sockets.has(ws) && send(ws, f)))
+      .catch(pushFailed("settings"));
+  };
   const offSettings = deps.settings?.onChange(() => {
     const subs = [...sockets].filter((ws) => ws.data.settings);
-    if (!subs.length) return;
-    void settingsFrame().then((f) => subs.forEach((ws) => sockets.has(ws) && send(ws, f)));
+    if (subs.length) pushSettings(subs);
   });
   // D372: with the built-in default per kind of work (a probe that fails leaves them out).
   const rulesFrame = async (): Promise<ServerFrame> => {
@@ -355,9 +368,12 @@ export function createWsHandler(deps: WsDeps) {
     for (const ws of sockets) if (ws.data.live && !ws.data.partner) send(ws, f);
   });
   const offRules = deps.rules?.onChange(() => {
-    void rulesFrame().then((f) => {
-      for (const ws of sockets) if (ws.data.rules) send(ws, f);
-    });
+    if (stopped) return;
+    void rulesFrame()
+      .then((f) => {
+        for (const ws of sockets) if (!stopped && ws.data.rules) send(ws, f);
+      })
+      .catch(pushFailed("rules"));
   });
   // Connections: same pattern. The frame never carries a token.
   const connectionsFrame = (): ServerFrame => {
@@ -474,7 +490,7 @@ export function createWsHandler(deps: WsDeps) {
   const offNoted = log.subscribe((e) => {
     if (e.kind !== "memory_noted" || !deps.settings) return;
     const subs = [...sockets].filter((ws) => ws.data.settings);
-    if (subs.length) void settingsFrame().then((f) => subs.forEach((ws) => sockets.has(ws) && send(ws, f)));
+    if (subs.length) pushSettings(subs);
   });
 
   // Idempotent send: clientId -> seq of its user_msg. Seeded from the Log's recent window (the
@@ -761,7 +777,7 @@ export function createWsHandler(deps: WsDeps) {
               }
               if (today && sockets.has(ws)) send(ws, { t: "first_screen", first: { ...first, today } });
             })
-            .catch((err) => console.warn("[ws] first screen:", (err as Error).message));
+            .catch(pushFailed("first screen"));
         return;
       }
       case "send": {
@@ -2350,6 +2366,7 @@ export function createWsHandler(deps: WsDeps) {
       return out;
     },
     stop() {
+      stopped = true;
       offPins?.();
       offDevices?.();
       offSettings?.();

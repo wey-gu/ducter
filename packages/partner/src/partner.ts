@@ -75,7 +75,7 @@ import type { PastForkInput, PastItem, PastQuery, PastStep } from "../../protoco
 
 /** D391: the parts of core's Past tasks and Redo the partner's task_find and task_fork use. */
 interface PastPort {
-  query(persona: string, q: PastQuery): { items: PastItem[]; total: number };
+  query(persona: string, q: PastQuery): { items: PastItem[]; total: number; scores?: number[] };
 }
 interface RedoPort {
   steps(taskId: string): Promise<{ steps: PastStep[]; report?: string; repo: boolean }>;
@@ -168,6 +168,8 @@ interface TurnState {
   signWeighed?: boolean;
   /** D376: the task whose follow-up was asked back for another computer, until it is sent. */
   signPending?: string;
+  /** D391: task_find found two that fit alike and the user's words name neither: no task_send or task_fork to either this turn. */
+  ambiguous?: { ids: string[]; line: string };
   /** D373: the line a task_open asked back already put up: the task carried on goes under it. */
   redirectJob?: string;
   /** D373: a finished task taken up again before any line: the next line said is its ack. */
@@ -1145,6 +1147,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         if (typeof to !== "string" && !final) return;
         // D376: a send that will be asked back keeps its line waiting (the one after the move is the ack).
         if (asksBack(turn, to)) return;
+        // D391: a send to one of two alike is refused: its line is not an ack.
+        if (typeof to === "string" && ambiguousFor(to)) return;
         takeSendLine(turn, to);
       }
       if (TASK_OPEN_RE.test(ev.tool.name) && turn.carried && carriedTask(turn.carried, (ev.tool.input as { title?: unknown } | undefined)?.title, false)) {
@@ -2046,6 +2050,12 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         };
       }
       if (turn?.signPending === args.taskId) turn.signPending = undefined;
+      // D391: one of two alike that task_find found this turn, and the user named neither: ask first.
+      const alike = ambiguousFor(args.taskId);
+      if (alike) {
+        if (turn) turn.pending = null; // the line written for the send would claim an action that didn't happen
+        return { ok: false, error: alike };
+      }
       if (turn) takeSendLine(turn, args.taskId); // the line before it, if the stream didn't take it yet
       flushPending(); // a line written before this call is a message, not an ack
       // A turn woken only by a task's question: the user answers it on its card (eval: the
@@ -2255,6 +2265,41 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       },
     );
   }
+  /** D391: two found tasks fit the user's words alike (the second scores within 15% of the first). */
+  const NEAR = 0.85;
+  /** A task's own words that the other one lacks (title, project, branch; Latin words and CJK pairs), lowercased. */
+  const ownWords = (it: PastItem, other: PastItem): string[] => {
+    const toks = (s: string) => {
+      const out = new Set<string>();
+      for (const w of s.toLowerCase().split(/[^\p{L}\p{N}]+/u)) {
+        if (!w) continue;
+        if (/[\u3400-\u9fff]/u.test(w)) for (let i = 0; i + 1 < w.length; i++) out.add(w.slice(i, i + 2));
+        else if (w.length >= 3) out.add(w);
+      }
+      return out;
+    };
+    const mine = toks(`${it.title} ${it.project} ${it.branch ?? ""}`);
+    const theirs = toks(`${other.title} ${other.project} ${other.branch ?? ""}`);
+    return [...mine].filter((w) => !theirs.has(w));
+  };
+  /** The user names this one: one of its own words, or its day ("11月14", "Nov 14", "14 号"), is in what they said. */
+  const namesIt = (said: string, it: PastItem, other: PastItem): boolean => {
+    const s = said.toLowerCase();
+    if (ownWords(it, other).some((w) => s.includes(w))) return true;
+    const d = new Date(it.updatedAt);
+    const o = new Date(other.updatedAt);
+    if (d.toDateString() === o.toDateString()) return false;
+    const m = d.getMonth() + 1;
+    const day = d.getDate();
+    const mon = d.toLocaleDateString("en-US", { month: "short" }).toLowerCase();
+    return [`${m}月${day}`, `${mon} ${day}`, `${day} ${mon}`, `${day}号`, `${day} 号`, `${m}/${day}`].some((x) => s.includes(x));
+  };
+  /** D391: a send or a redo to one of two alike, in the turn that found them, is refused until the user names one. */
+  const ambiguousFor = (taskId: string): string | undefined => {
+    const a = turn?.ambiguous;
+    return a && a.ids.includes(taskId) ? `Not sent: two earlier tasks match the user's words alike (${a.line}). Ask which first, in one short question naming both by what they were about and their day; act when they answer.` : undefined;
+  };
+
   function registerPastTools(past: PastPort, redo: RedoPort) {
     const asked = () => !!turn && !bridgeOnly(turn) && !turn.quiet && turn.userTexts.length > 0;
     const ago = (iso: string) => {
@@ -2321,6 +2366,15 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         let r = past.query(core.persona.id, query);
         // A computer named as they say it ("haswell", "my MacBook") that isn't a name here: without it.
         if (!r.items.length && query.computer !== undefined) r = past.query(core.persona.id, { ...query, computer: undefined });
+        // D391: the first two fit alike and the user's words name neither: this turn asks before it acts on either.
+        const [a1, a2] = r.items;
+        const [s1, s2] = r.scores ?? [];
+        if (turn && a1 && a2 && s1 && s2 !== undefined && s2 >= s1 * NEAR) {
+          const said = turn.userTexts.join("\n");
+          const n1 = namesIt(said, a1, a2);
+          const n2 = namesIt(said, a2, a1);
+          if (n1 === n2) turn.ambiguous = { ids: [a1.taskId, a2.taskId], line: `"${a1.title}" (${a1.updatedAt.slice(0, 10)}) and "${a2.title}" (${a2.updatedAt.slice(0, 10)})` };
+        }
         if (!r.items.length)
           return { ok: true, tasks: [], note: "No Ducter task matches. If they ran it themselves in Claude Code, Codex or pi: own_session_find. Else one short question: what it was about." };
         return {
@@ -2351,6 +2405,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         if (!t || !asked()) return { ok: false, error: "Only when the user asks to redo an earlier task, in this turn." };
         const c = core.tasks.get(String(a.taskId));
         if (!c || c.persona !== core.persona.id) return { ok: false, error: `unknown task ${a.taskId}` };
+        const alike = ambiguousFor(c.taskId);
+        if (alike) return { ok: false, error: alike };
         const r = await redo.fork({
           taskId: c.taskId,
           ...(Number(a.step) > 0 ? { step: Math.round(Number(a.step)) } : {}),

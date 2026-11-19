@@ -349,7 +349,7 @@ export interface PastDeps {
 }
 
 export interface Past {
-  query(persona: string, q: PastQuery): { items: PastItem[]; total: number; facets: PastFacets; suggestions: string[]; range?: { since: string; before: string; words: string } };
+  query(persona: string, q: PastQuery): { items: PastItem[]; total: number; facets: PastFacets; suggestions: string[]; range?: { since: string; before: string; words: string }; scores?: number[] };
   item(taskId: string): PastItem | undefined;
   /** D285: what a new task opened from this one carries, put after the person's words. */
   seed(taskId: string, words: string, lang: LangTag): string;
@@ -608,6 +608,8 @@ export function createPast(d: PastDeps): Past {
       const suggestions = [...new Set([...facets.tags.map((x) => x.tag), ...facets.projects.filter((p) => p.name).map((p) => p.name.toLowerCase())])].slice(0, 12);
       return {
         items: list.slice(0, limit).map((x) => x.it),
+        // D391: how well each matched (words only; none without words), for the partner's "two alike" check.
+        ...(terms.length ? { scores: list.slice(0, limit).map((x) => x.score) } : {}),
         total: list.length,
         facets,
         suggestions,

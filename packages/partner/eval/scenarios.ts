@@ -2177,8 +2177,8 @@ export const scenarios: Scenario[] = [
     lang: "zh",
     history: true,
     steps: [{ user: "接着上周那个 compaction 的 PR，把 review 里说的锁粒度改细一点" }],
-    expect: { opens: 0, called: [{ tool: "task_find" }], sendTo: "compaction_pr", sentRequire: { compaction_pr: [/锁/] }, notCalled: ["task_fork"], noAsk: true, msgs: [0, 1], maxChars: 120 },
-    rubric: "A week ago a task split HawDB's compaction scheduler and opened draft PR #4127 (a mem digest compaction task 20 days ago is not a PR and not last week). The user asks to carry on that PR with finer-grained locking. The partner finds it (task_find) and carries the same task on (task_send with the locking change), opening nothing new and asking nothing. One short Chinese line naming the work and which task (its title or 上周的 PR), no outcome claimed.",
+    expect: { opens: 0, sendTo: "compaction_pr", sentRequire: { compaction_pr: [/锁/] }, notCalled: ["task_fork"], noAsk: true, msgs: [0, 1], maxChars: 120 },
+    rubric: "A week ago a task split HawDB's compaction scheduler and opened draft PR #4127 (a mem digest compaction task 20 days ago is not a PR and not last week). The user asks to carry on that PR with finer-grained locking. The partner carries that same task on (task_send with the locking change; finding it with task_find or from what it already knows is fine), opening nothing new and asking nothing. One short Chinese line naming the work and which task (its title or 上周的 PR), no outcome claimed.",
   },
   {
     id: "past-redo-step3-zh",

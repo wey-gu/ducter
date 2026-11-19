@@ -15684,3 +15684,34 @@ textarea.wmem-paste { display: block; box-sizing: border-box; height: auto; widt
 .later-back { font-size: var(--sm); font-weight: 700; color: var(--needs-ink); margin-bottom: 4px; }
 .askq .later, .askq .later-away { padding: 0 2px; }
 .askq .dflt .later-tb { font-weight: 700; color: var(--ink-soft); }
+
+/* D383: 给你做的 / Made for you, Past tasks' middle tab: a thing's own face on the left (a picture's
+   thumbnail, a file's badge, a drawn table, chart, list or link), its name, why it came up, its facts. */
+.made-line { margin: 10px 30px 0; font-size: var(--sm); line-height: var(--lh-read); color: var(--ink-muted); max-width: 620px; }
+.mcard { flex-wrap: nowrap; }
+.mcard.open { flex-wrap: wrap; }
+.mtile {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 30%;
+  overflow: hidden;
+  color: var(--ink-muted);
+  background: var(--sunken);
+  box-shadow: inset 0 -2px 0 var(--line);
+}
+.mtile.pic img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.mtile.file { background: transparent; box-shadow: none; }
+.mtile.drawn.k-table, .mtile.drawn.k-chart, .mtile.drawn.k-list { color: var(--accent-ink, var(--ink-soft)); }
+.mcard .pacts { align-self: center; padding-right: 12px; opacity: 1; }
+.mtask { font-size: var(--sm); white-space: nowrap; }
+.mblock { flex-basis: 100%; min-width: 0; padding: 0 16px 14px 70px; }
+.mblock > * { max-width: 100%; }
+@media (max-width: 560px) {
+  .mcard .pacts { width: auto; padding: 0 10px 0 0; }
+  .mcard .pmain { padding-right: 0; }
+  .mblock { padding-left: 16px; }
+  .made-line { margin: 8px 18px 0; }
+}

@@ -168,10 +168,10 @@ type App struct {
 	replyOpen   map[string]bool
 	// D382: the asks whose 晚点再问我 / Ask me later times are open, and a
 	// time being picked.
-	laterOpen map[string]bool
-	laterPick map[string]*laterPick
-	replyDraft  map[string]string
-	diffs       map[string]*diffPane
+	laterOpen  map[string]bool
+	laterPick  map[string]*laterPick
+	replyDraft map[string]string
+	diffs      map[string]*diffPane
 	// D214: the opened task's workbench (workbench.go).
 	bench benchState
 	// D142: a folder task's list was asked for (throttle), and an undo

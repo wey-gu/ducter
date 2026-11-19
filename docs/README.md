@@ -30,7 +30,7 @@ These pages are for using Ducter. If you want to build it or change it, start wi
 - **[On hand](on-hand.md):** every task at a glance, what each one is doing now, finding one
   fast, and acting on several at once.
 - **[Past tasks and ongoing work](past-tasks.md):** find any task you had before by a few words,
-  a file or a day, name and star the ones you come back to, carry on with one, start a new task
+  a file or a day, get back a file or table Ducter made for you, name and star the ones you come back to, carry on with one, start a new task
   that knows what it found, and pause or resume what runs on its own.
 - **[Done for you](done-for-you.md):** everything Ducter sent, paid, called, signed in to,
   changed or deleted for you, day by day, with who asked and where; and which accounts it looked at.

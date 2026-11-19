@@ -9,6 +9,7 @@ import { A } from "./app.ts";
 import type { TableLang } from "./i18n.ts";
 import { Btn, Facts } from "./controls.tsx";
 import { harnessName, spoken } from "./format.ts";
+import { askMade, M, MadeTab } from "./made.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
@@ -27,8 +28,8 @@ export const P = {
   moreFor: "",
   popped: "",
   timer: 0 as unknown as ReturnType<typeof setTimeout> | 0,
-  /** D285: which collection: 做过的事 / Past or 一直在跑的 / Ongoing. */
-  tab: "past" as "past" | "ongoing",
+  /** D285: which collection: 做过的事 / Past or 一直在跑的 / Ongoing; D383: 给你做的 / Made for you. */
+  tab: "past" as "past" | "made" | "ongoing",
   og: undefined as OngoingItem[] | undefined,
   ogMenu: "",
   ogPause: "",
@@ -41,13 +42,16 @@ export const P = {
 const ACTIVE = new Set(["queued", "working", "needs_you", "blocked", "done_claimed"]);
 
 /** Opens 做过的事, with words when given (On hand's Find, the switcher); or 一直在跑的 / Ongoing. */
-export function openPast(q = "", tab: "past" | "ongoing" = "past") {
+export function openPast(q = "", tab: "past" | "made" | "ongoing" = "past") {
   P.q = q;
   P.tab = tab;
   P.filter = { kind: "all" };
   P.focus = P.markFor = P.moreFor = P.ogMenu = P.ogPause = P.ogEdit = "";
+  M.kind = undefined;
+  M.open = "";
   A.sheet = { kind: "past" };
   ask(true);
+  askMade(q, true);
   A.send({ t: "ongoing", id: "og" });
   A.changed();
 }
@@ -224,7 +228,7 @@ export function groupOf(iso: string, now = Date.now()): { key: string; label: st
 }
 
 /** A card's date: a time today, a weekday this week, else the day of the month. */
-function dateOf(iso: string, now = Date.now()): string {
+export function dateOf(iso: string, now = Date.now()): string {
   const d = new Date(iso);
   const f = DATES[A.L.lang];
   if (Date.parse(iso) >= startOfDay(now)) return d.toLocaleTimeString(f.intl, { hour: "2-digit", minute: "2-digit", hour12: false });
@@ -243,7 +247,7 @@ function rangeLine(r: NonNullable<Result["range"]>): string[] {
 // ---------- pieces ----------
 
 /** The words in a line marked where the query's words are. */
-function Marked({ text, q }: { text: string; q: string }) {
+export function Marked({ text, q }: { text: string; q: string }) {
   const words = q
     .toLowerCase()
     .split(/\s+/)
@@ -519,10 +523,12 @@ export function PastSheet() {
     const inField = (e.target as HTMLElement)?.tagName === "INPUT";
     const cur = at >= 0 ? order[at] : undefined;
     if (P.markFor) return;
+    // D383: on Made for you, Esc and / only (its cards are buttons, walked by Tab).
+    if (P.tab === "made" && e.key !== "Escape" && e.key !== "/") return;
     if (e.key === "Escape") {
       e.preventDefault(), e.stopPropagation();
       if (P.moreFor) return void ((P.moreFor = ""), A.changed());
-      if (P.q) return void ((P.q = ""), ask(true), A.changed());
+      if (P.q) return void ((P.q = ""), ask(true), askMade("", true), A.changed());
       return close();
     }
     if (e.key === "ArrowDown" || (!inField && e.key === "j")) return e.preventDefault(), walk(1);
@@ -541,33 +547,53 @@ export function PastSheet() {
   const searching = !!P.q.trim();
   const loading = !P.res;
   const ongoing = P.tab === "ongoing";
+  const made = P.tab === "made";
   return (
     <>
       <div class="scrim" onClick={close} />
       <div class="past-sheet" role="dialog" aria-modal="true" aria-label={t("past.title")} onKeyDown={keys}>
         <div class="past-head">
-          <h2>{t(ongoing ? "og.tab" : "past.title")}</h2>
+          <h2>{t(ongoing ? "og.tab" : made ? "made.tab" : "past.title")}</h2>
           <button class="past-x" aria-label={t("nav.back")} onClick={close}>
             ×
           </button>
         </div>
         <div class="past-tabs" role="tablist">
-          {(["past", "ongoing"] as const).map((k) => (
-            <button key={k} role="tab" aria-selected={P.tab === k} class={`pchip${P.tab === k ? " on" : ""}`} onClick={() => ((P.tab = k), k === "ongoing" && A.send({ t: "ongoing", id: "og" }), A.changed())}>
-              {t(k === "past" ? "past.tab" : "og.tab")}
+          {(["past", "made", "ongoing"] as const).map((k) => (
+            <button key={k} role="tab" aria-selected={P.tab === k} class={`pchip${P.tab === k ? " on" : ""}`} onClick={() => ((P.tab = k), k === "ongoing" && A.send({ t: "ongoing", id: "og" }), k === "made" && askMade(P.q, true), A.changed())}>
+              {t(k === "past" ? "past.tab" : k === "made" ? "made.tab" : "og.tab")}
               {k === "ongoing" && (P.og?.length ?? 0) > 0 && <span class="ptab-n">{P.og!.length}</span>}
             </button>
           ))}
         </div>
         {ongoing ? (
           <OngoingList />
+        ) : made ? (
+          <MadeTab
+            q={P.q}
+            group={(iso) => groupOf(iso)}
+            dateOf={(iso) => dateOf(iso)}
+            close={close}
+            mark={(text, q) => <Marked text={text} q={q} />}
+            field={
+              <>
+                <label class="past-find">
+                  <svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="true">
+                    <path d={G.look} fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" />
+                  </svg>
+                  <input ref={ref} value={P.q} placeholder={t("made.find")} aria-label={t("made.find")} autocomplete="off" spellcheck={false} onInput={(e) => ((P.q = e.currentTarget.value), askMade(P.q), ask(), A.changed())} />
+                </label>
+                {M.res?.range && <Facts class="past-range" items={rangeLine(M.res.range)} />}
+              </>
+            }
+          />
         ) : (
           <>
         <label class="past-find">
           <svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="true">
             <path d={G.look} fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" />
           </svg>
-          <input ref={ref} value={P.q} placeholder={t("past.find")} aria-label={t("past.find")} autocomplete="off" spellcheck={false} onInput={(e) => ((P.q = e.currentTarget.value), (P.focus = ""), ask(), A.changed())} />
+          <input ref={ref} value={P.q} placeholder={t("past.find")} aria-label={t("past.find")} autocomplete="off" spellcheck={false} onInput={(e) => ((P.q = e.currentTarget.value), (P.focus = ""), ask(), askMade(P.q), A.changed())} />
         </label>
         {P.res?.range && <Facts class="past-range" items={rangeLine(P.res.range)} />}
         <Chips />

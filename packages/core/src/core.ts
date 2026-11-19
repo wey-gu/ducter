@@ -21,6 +21,7 @@ import { DEFAULT_IDENTITY, otherIdentity, type Persona } from "./persona.ts";
 import { createRegistry, type CoreRegistry } from "./registry.ts";
 import { createMarks, createPast } from "./past.ts";
 import { createOutside } from "./outside.ts";
+import { createMade, type Made } from "./made.ts";
 import { createLocalAgents, type LocalAgents } from "./local-agents/index.ts";
 import { bridgeOnWords, connectsByItself, createBridgeAuto } from "./bridge-auto.ts";
 import { createDid } from "./did.ts";
@@ -285,6 +286,8 @@ export interface Core extends CoreApi {
   taskGroups: TaskGroups;
   /** D299: the sessions the person ran in their own agents here; D376: found and carried on from the conversation. */
   outside: import("./outside.ts").Outside;
+  /** D383: 给你做的 / Made for you: what Ducter made, found again by words, kind and time (read from the Log). */
+  made: Made;
   /** What each repo task changed so far (D128). */
   changes: Changes;
   /** D148: updating devices in place, and the newest release. */
@@ -958,6 +961,9 @@ export function startCore(opts: CoreOptions = {}): Core {
   const marks = createMarks({ dataDir });
   tasks.setMarks((p, id) => marks.get(p, id));
   const past = createPast({ log, tasks, marks, computerName: (dev) => computers.nameOf(dev) });
+  // D383: 给你做的 / Made for you: the files, pictures, tables and links Ducter made, from the Log.
+  const made = createMade({ log, tasks, pins: () => pins.list(), now: () => clock.now() });
+  (api as { made?: Made }).made = made;
   // D299: the sessions the person ran in their own agents here (read only when Past tasks asks).
   const outsideReader = opts.localAgents ?? (process.env.NODE_ENV === "test" || process.env.DUCTER_OUTSIDE === "0" ? createLocalAgents({ home: join(dataDir, "no-outside"), env: {} }) : createLocalAgents(process.env.DUCTER_OUTSIDE_HOME ? { home: process.env.DUCTER_OUTSIDE_HOME, env: {} } : {}));
   // D298: the first words read the same records (D299's reader), or a scratch home's in tests.
@@ -1072,7 +1078,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       socketsChanged: () => reachRef?.refresh(),
     },
     partners,
-    core: api, workbench, bridgeLink, decisions, runner: () => runner, devices: () => devicesView, lend: () => lendRef, settings, connections, phone, rules, pins, loadout, accountUsage, closing, work: workFrames, newTask, updates: () => updatesRef, agents: () => agentsRef, agentSetup: (device, f) => agentSetupOp(device, f), memSetup: (device, action, link) => memSetupOp(device, action, link), recordsAllow: (device, on) => recordsAllowOp(device, on), updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, memHealth, anywhere: () => anywhereRef, channels, proactive: () => proactiveRef, calendar: () => calendarRef, taskSources: () => taskSourcesRef, taskGroups: () => taskGroups, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets, past: { ...past, marks, persona: () => persona.id, ongoing, outside }, keys: { dataDir, ...(opts.keyFetch ? { fetch: opts.keyFetch } : {}), ...(opts.keyCanRun ? { canRun: opts.keyCanRun } : {}) }, ...(firstWordsDeps ? { firstWords: firstWordsDeps } : {}), did, ownAgents });
+    core: api, workbench, bridgeLink, decisions, runner: () => runner, devices: () => devicesView, lend: () => lendRef, settings, connections, phone, rules, pins, loadout, accountUsage, closing, work: workFrames, newTask, updates: () => updatesRef, agents: () => agentsRef, agentSetup: (device, f) => agentSetupOp(device, f), memSetup: (device, action, link) => memSetupOp(device, action, link), recordsAllow: (device, on) => recordsAllowOp(device, on), updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, memHealth, anywhere: () => anywhereRef, channels, proactive: () => proactiveRef, calendar: () => calendarRef, taskSources: () => taskSourcesRef, taskGroups: () => taskGroups, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets, past: { ...past, marks, persona: () => persona.id, ongoing, outside, made }, keys: { dataDir, ...(opts.keyFetch ? { fetch: opts.keyFetch } : {}), ...(opts.keyCanRun ? { canRun: opts.keyCanRun } : {}) }, ...(firstWordsDeps ? { firstWords: firstWordsDeps } : {}), did, ownAgents });
   handsets.onChange(() => (devicesView?.changed(), ws.onHandChanged()));
   onHandChanged = ws.onHandChanged;
   // D156: a partner turn in flight keeps an update of the agent it thinks with waiting.
@@ -1725,6 +1731,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     taskSources,
     taskGroups,
     outside,
+    made,
     changes,
     updates,
     release,

@@ -163,6 +163,9 @@ export interface Expect {
   /** D222: a calendar change card of this kind was made / none was. */
   calCard?: "create" | "move" | "cancel" | "respond";
   noCalCard?: boolean;
+  /** D383: a file or block made earlier was put under a message (by name or block JSON) / nothing was. */
+  madeShown?: RegExp;
+  noMadeShown?: boolean;
   /** D303: a ducter-ui block of this type was drawn / none was; a chart of this kind; what the blocks' JSON must match. */
   ui?: "table" | "chart" | "checklist" | "choices" | "lend";
   noUi?: boolean;
@@ -216,6 +219,8 @@ export interface Scenario {
   spaces?: true;
   /** D191: what is saved in Passwords & cards (test cards only, e.g. 4242…), in a key file in the scratch data folder. */
   saved?: import("../../protocol/src/saved.ts").SavedInput[];
+  /** D383: what Ducter made over the last weeks (eval/seed-made.ts): the Kyoto itinerary (9 days ago), the visa PDF (5), a HawDB load-test CSV (20), a Bun note on the home (12), the Mac table (3). */
+  made?: true;
   /** D381: lists the person pinned (said by the partner earlier, then pinned by a tap), with their ticks. */
   pinned?: { title: string; items: string[]; ticks?: string[] }[];
   /** D193: a calling connection (the fake Tuwa, packages/core/test/fake-tuwa.ts), never the real one. */
@@ -2153,6 +2158,34 @@ export const scenarios: Scenario[] = [
     steps: [{ user: "what's still left on my packing list?" }],
     expect: { opens: 0, msgs: [1, 1], maxChars: 220, noUi: true, require: [/yen|cash/i, /charger/i, /hotel/i] },
     rubric: "The user pinned a packing list; passport, ICOCA card and umbrella are ticked (the [pinned] line says so). They ask what's left. The partner answers in plain English from that line: yen in cash, the charger and plug adapter, the hotel confirmation; nothing ticked is named as left. No block (the list is already pinned at the top), no task.",
+  },
+  // ---------- D383: 给你做的 / Made for you: found again from the conversation, shown as it is ----------
+  {
+    id: "made-itinerary-zh",
+    category: "made",
+    lang: "zh",
+    made: true,
+    steps: [{ user: "找一下上周做的那个行程表" }],
+    expect: { opens: 0, msgs: [1, 1], maxChars: 120, called: [{ tool: "made_find" }], madeShown: /kyoto-itinerary/, notCalled: ["task_open"] },
+    rubric: "Last week a task made the person a three-day Kyoto itinerary (kyoto-itinerary.md). They ask for \"that itinerary from last week\". The partner finds it and puts the file itself under one short Chinese line saying what it is and when (\"这是上周排的京都三日行程。\"); it doesn't retell the itinerary, open a task or ask which one.",
+  },
+  {
+    id: "made-visa-en",
+    category: "made",
+    lang: "en",
+    made: true,
+    steps: [{ user: "can you send me the PDF you made for the visa again?" }],
+    expect: { opens: 0, msgs: [1, 1], maxChars: 160, called: [{ tool: "made_find" }], madeShown: /japan-visa-application\.pdf/, notCalled: ["task_open"] },
+    rubric: "Five days ago a task filled in the person's Japan visa application and showed the PDF. They ask for it again. The partner puts that PDF under one short English line naming it and when it was made; no task, no question, no retelling of the form.",
+  },
+  {
+    id: "made-none-en",
+    category: "made",
+    lang: "en",
+    made: true,
+    steps: [{ user: "where's the seating chart you made for the wedding?" }],
+    expect: { opens: 0, msgs: [1, 1], maxChars: 220, called: [{ tool: "made_find" }], noMadeShown: true, noUi: true, notCalled: ["task_open"], forbid: [/here('s| is) (the|your) seating/i] },
+    rubric: "Nothing Ducter made is a wedding seating chart (it made a Kyoto itinerary, a visa PDF, a load-test CSV, a Bun note and a Mac comparison). The partner looks and says plainly, in one or two short English lines, that it didn't make or can't find a wedding seating chart; it may offer to make one. It never presents another file as the chart, invents one, or opens a task unasked.",
   },
   // D347: the person wants another computer to do tasks: the Add a computer for tasks card, never a how-to.
   {

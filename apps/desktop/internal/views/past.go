@@ -74,6 +74,8 @@ type pastState struct {
 	// tab is the collection shown: "" 做过的事, "ongoing" 一直在跑的 (ongoing.go).
 	tab string
 	og  ongoingState
+	// made is 给你做的 / Made for you's own state (made.go, D383).
+	made madeState
 	// D299: adopting is the outside session being carried on (agent:id),
 	// opened when its task is there; outMsg why one couldn't be.
 	adopting, outMsg string
@@ -93,6 +95,7 @@ func (a *App) OpenPast(q string) {
 	ps.marking, ps.markOpen = "", false
 	ps.focusField = true
 	ps.tab = ""
+	ps.made.kind, ps.made.open = "", ""
 	a.askPast()
 }
 
@@ -121,6 +124,10 @@ func (a *App) pastEsc() {
 	case ps.markOpen:
 		a.closeMarks()
 	case ps.tab == "ongoing" && a.ongoingEsc():
+	case ps.tab == "made" && ps.q != "":
+		ps.q = ""
+	case ps.tab == "made" && ps.made.kind != "":
+		ps.made.kind = ""
 	case ps.tab == "" && ps.q != "":
 		ps.q = ""
 	case ps.tab == "" && ps.filter.kind != "":
@@ -205,8 +212,11 @@ func (a *App) pastView(c *ui.Context) {
 		a.crumb(c, a.L.T("nav.conversation"), RouteConversation)
 		a.crumb(c, a.L.T("onhand.title"), RouteOnHand)
 		title := a.L.T("past.title")
-		if ps.tab == "ongoing" {
+		switch ps.tab {
+		case "ongoing":
 			title = a.L.T("og.tab")
+		case "made":
+			title = a.L.T("made.tab")
 		}
 		a.chromeTitle(c, title)
 	}, nil)
@@ -218,6 +228,10 @@ func (a *App) pastView(c *ui.Context) {
 				a.pastTabs(c)
 				if ps.tab == "ongoing" {
 					a.ongoingList(c)
+					return
+				}
+				if ps.tab == "made" {
+					field = a.madeTab(c) // D383 (made.go)
 					return
 				}
 				field = a.pastField(c, res)
@@ -241,13 +255,17 @@ func (a *App) pastField(c *ui.Context, res *protocol.PastFrame) ui.Element {
 	t := a.T
 	ps := &a.past
 	var in ui.Element
+	find := "past.find"
+	if ps.tab == "made" {
+		find = "made.find"
+	}
 	ui.Column(c.Key("past-field")).Gap(t.S2).Children(func() {
 		ui.Row(c.Key("track")).Height(52).Gap(t.S3).Padding(0, t.S4).AlignItems(ui.Center).Radius(t.RadiusMD).
 			Background(t.SurfaceSunken).InsetShadow(0, 1.5, 3, 0, t.Line).Children(func() {
 			ui.Box(c).Size(20, 20).Shrink(0).AccessHidden(true).Draw(func(p *ui.Painter, r ui.Rect) {
 				drawPastGlyph("look", t.InkMuted)(p, r)
 			})
-			in = ui.TextInput(c.Key("past-in"), &ps.q).Placeholder(a.L.T("past.find")).Label(a.L.T("past.find")).
+			in = ui.TextInput(c.Key("past-in"), &ps.q).Placeholder(a.L.T(find)).Label(a.L.T(find)).
 				FontSize(t.LG-1).Grow(1).MinWidth(0).Background(ui.Color{}).Border(0, ui.Color{})
 			if ps.focusField {
 				in.Focus()

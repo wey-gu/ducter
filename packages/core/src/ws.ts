@@ -166,7 +166,7 @@ export interface WsDeps {
   /** D285: 做过的事 / Past tasks (past.ts); absent in tests that don't need it. */
   /** D309: 伙伴们 / Partners (partners.ts); absent in tests that don't need them. */
   partners?: Partners;
-  past?: import("./past.ts").Past & { marks: import("./past.ts").Marks; persona: () => string; ongoing?: import("./ongoing.ts").Ongoing; outside?: import("./outside.ts").Outside };
+  past?: import("./past.ts").Past & { marks: import("./past.ts").Marks; persona: () => string; ongoing?: import("./ongoing.ts").Ongoing; outside?: import("./outside.ts").Outside; made?: import("./made.ts").Made };
   /** D300: 替你做过的 / Done for you (did.ts); absent in tests that don't need it. */
   did?: import("./did.ts").Did;
   /**
@@ -1719,6 +1719,13 @@ export function createWsHandler(deps: WsDeps) {
         // D299: the sessions the person ran in their own agents here, beside Ducter's tasks.
         const o = deps.past.outside?.list(query);
         send(ws, { t: "past_result", ...(typeof f.id === "string" ? { id: f.id.slice(0, 64) } : {}), ...r, ...(o ? { outside: o.items, sources: o.sources } : {}) });
+        return;
+      }
+      case "made": {
+        // D383: 给你做的 / Made for you: what Ducter made, by words, kind and time.
+        if (!deps.past?.made) throw new Error("made things are not available");
+        const query = f.query && typeof f.query === "object" ? f.query : {};
+        send(ws, { t: "made_result", ...(typeof f.id === "string" ? { id: f.id.slice(0, 64) } : {}), ...deps.past.made.query(deps.past.persona(), query) });
         return;
       }
       case "past_mark": {

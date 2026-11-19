@@ -2559,6 +2559,8 @@ type ServerFrame struct {
 	Op          string            `json:"op,omitempty"`
 	// D285: past_result and past_marked (past.go), decoded on their own.
 	Past *PastFrame `json:"-"`
+	// D383: made_result (made.go), decoded on its own.
+	Made *MadeFrame `json:"-"`
 	// D300: did_result (did.go), decoded on its own.
 	DidFor *DidFrame `json:"-"`
 	// MemFound is mem_found (D321), decoded on its own (its items aren't SavedItems).
@@ -2778,6 +2780,8 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 		return decodePast(data, f)
 	case "ongoing_result":
 		return decodeOngoing(data, f)
+	case "made_result":
+		return decodeMade(data, f)
 	case "did_result":
 		return decodeDid(data, f)
 	case "mem_found":

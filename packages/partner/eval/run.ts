@@ -41,6 +41,8 @@ const TODO_ISSUES = [
   { repo: "wey-gu/ducter", number: 9, title: "Typo in docs/install.md", body: "'recieve' should be 'receive'.", labels: ["docs"], updated: "2026-11-16T08:00:00Z" },
 ];
 import { seedDidDay } from "../../core/test/did-day.ts";
+import { seedMade } from "./seed-made.ts";
+import { realClock } from "../../core/src/clock.ts";
 import { partnerFingerprint } from "../test/fingerprint.ts";
 import type { MemoryAdd } from "../src/memory.ts";
 
@@ -251,6 +253,8 @@ interface RunResult {
   boundRefs?: Map<string, string>;
   /** D303: the blocks drawn in messages (ducter-ui), and how many written ones weren't valid. */
   blocks?: { step: number; seq: number; ui: RichUi }[];
+  /** D383: the files and pictures put under the partner's messages (their names). */
+  shown?: string[];
   dropped?: number;
 }
 
@@ -378,7 +382,10 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
         : { state: "found" as const, answer: look.answer, sources: look.sources, confidence: look.confidence ?? "high", harness: "claude-code", model: "haiku", ms: 40 };
     },
   };
-  const core = startCore({ dataDir, port: 0, persona, webLook, localAgents: createLocalAgents({ home: ownHome, env: {}, uid: null }), workingMemory: { run: async () => ({ code: 0, out: wmOut, err: "" }) }, // D341: never the machine's own gh (the person's real issues) nor its Obsidian vault list.
+  // D383: the core's clock can be set back while what was made weeks ago is logged (seed-made.ts).
+  const back = { ms: 0 };
+  const clock = { ...realClock, now: () => Date.now() - back.ms };
+  const core = startCore({ dataDir, port: 0, persona, webLook, clock, localAgents: createLocalAgents({ home: ownHome, env: {}, uid: null }), workingMemory: { run: async () => ({ code: 0, out: wmOut, err: "" }) }, // D341: never the machine's own gh (the person's real issues) nor its Obsidian vault list.
     taskSources: { ghRun: todoGh?.run ?? (async () => ({ code: 127, out: "", err: "", missing: true as const })), ghEnv: {}, home: join(dataDir, "no-home"), pollMs: 3_600_000, ask: async () => ({ text: "[]", tokens: 1 }) }, ...(sc.second ? { partners: true } : {}), ownPhone: { platform: "darwin", arch: "arm64" }, ...(calOo ? { ooSource: calOo.source } : sc.phone ? { ooSource: { detect: () => ({ installed: false, account: false }), read: () => undefined } } : {}) });
   // D376: the home's name as the records' computer: a fixed fake one, never this machine's own name.
   (core.outside as { computer: () => string | undefined }).computer = () => sc.homeName ?? "Weyl's Mac";
@@ -421,6 +428,8 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   }
   // D300: a day of things Ducter did for the person (a mail, a payment, a call, a merge…), logged now.
   if (sc.did) seedDidDay(core, { zh: sc.lang.startsWith("zh") });
+  // D383: what Ducter made over the last weeks (files, a PDF, a CSV, a table), at their own times.
+  if (sc.made) seedMade(core as never, back, sc.lang.startsWith("zh"));
   const usage: Usage = { inputTokens: 0, outputTokens: 0, cacheRead: 0, cacheWrite: 0 };
   const perSession = new Map<number, Usage>();
   const tools: ToolCall[] = [];
@@ -576,11 +585,13 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   const visible: Visible[] = [];
   const dayCards: { step: number; seq: number; cal: NonNullable<Bodies["ai_msg"]["cal"]> }[] = [];
   const blocks: { step: number; seq: number; ui: RichUi }[] = [];
+  const shown: string[] = [];
   let dropped = 0;
   for (const e of core.log.read({ stream: conv, fromSeq: startSeq + 1, limit: 10_000 })) {
     if (e.kind === "ai_msg") {
       const b = e.body as Bodies["ai_msg"];
       for (const ui of b.ui ?? []) blocks.push({ step: stepOf(e.seq), seq: e.seq, ui });
+      for (const m of b.media ?? []) shown.push(m.name ?? m.id);
       dropped += b.uiDropped ?? 0;
     }
     // D222: a day card with no words of its own is a card, not a message.
@@ -702,7 +713,7 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   await core.stop().catch(() => {});
   tuwa?.stop();
   const boundRefs = new Map(core.tasks.list().filter((c) => c.source).map((c) => [c.taskId, c.source!.ref] as [string, string]));
-  return { sc, visible, dayCards, calKinds, todoCards, boundRefs, blocks, dropped, tools, opened: fr.opened, sent, keyOf, idOf, dataDir, usage, error, ms: Date.now() - t0, transcript: lines.join("\n"), recalls, threadSearches, remembered: mem.added, memAttempts, sources, retitles, bridgeSent, work: { ...work, asks }, bodies, saidAsks };
+  return { sc, visible, dayCards, calKinds, todoCards, boundRefs, blocks, shown, dropped, tools, opened: fr.opened, sent, keyOf, idOf, dataDir, usage, error, ms: Date.now() - t0, transcript: lines.join("\n"), recalls, threadSearches, remembered: mem.added, memAttempts, sources, retitles, bridgeSent, work: { ...work, asks }, bodies, saidAsks };
 }
 
 const r_opened = (o: Opened[], step: number) => o.filter((x) => x.step === step);
@@ -872,6 +883,9 @@ function check(r: RunResult): string[] {
   if (e.noUi && r.blocks?.length) fails.push(`a ${r.blocks.map((b) => b.ui.type).join(", ")} block nobody needed`);
   if (e.uiKind && !r.blocks?.some((b) => b.ui.type === "chart" && b.ui.kind === e.uiKind)) fails.push(`no ${e.uiKind} chart`);
   const blockText = (r.blocks ?? []).map((b) => JSON.stringify(b.ui)).join("\n");
+  // D383: what made_find show put under a message (a file by its name, a block by its JSON).
+  if (e.madeShown && !(r.shown ?? []).some((n) => e.madeShown!.test(n)) && !e.madeShown.test(blockText)) fails.push(`nothing shown matching ${e.madeShown} (shown: ${(r.shown ?? []).join(", ") || "none"})`);
+  if (e.noMadeShown && (r.shown?.length || 0) > 0) fails.push(`showed ${r.shown!.join(", ")} though nothing should be`);
   for (const re of e.uiRequire ?? []) if (!re.test(blockText)) fails.push(`the block lacks ${re}`);
   if (e.calCard && !r.calKinds?.includes(e.calCard)) fails.push(`no calendar ${e.calCard} card`);
   if (e.noCalCard && r.calKinds?.length) fails.push("a calendar change card nobody asked for");

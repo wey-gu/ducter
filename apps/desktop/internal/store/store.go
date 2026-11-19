@@ -884,6 +884,8 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 		}
 	case "past_result", "past_marked", "ongoing_result", "outside_adopted", "outside_hidden":
 		s.applyPast(f) // D285 (past.go)
+	case "made_result":
+		s.applyMade(f) // D383 (past.go)
 	case "did_result":
 		s.applyDid(f) // D300 (did.go)
 	case "mem_found":

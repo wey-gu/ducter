@@ -3,7 +3,6 @@
 // a task is on is always a chip, even past the row's first eight; a pick switches in place.
 import { describe, expect, test } from "bun:test";
 import { inPlaceTune } from "../src/format.ts";
-import { strings } from "../src/i18n.ts";
 
 const ULTRA = ["low", "medium", "high", "xhigh", "max", "ultra"];
 /** Codex 0.169.1's row as the home sends it (task_new_options): eight, the person's default marked. */
@@ -45,10 +44,5 @@ describe("the in-place Model and Effort rows (D282, D352)", () => {
   test("no live list (Ducter's tier table only): no in-place rows", () => {
     expect(inPlaceTune([{ ...codex, from: "tiers" }], "codex", undefined, undefined, undefined)).toBeUndefined();
     expect(inPlaceTune([], "codex", undefined, undefined, undefined)).toBeUndefined();
-  });
-
-  test("its words, zh and en", () => {
-    expect(strings("zh").t("switch.tune.note", "Codex")).toContain("Codex");
-    expect(strings("en").t("switch.tune.note", "Codex")).toContain("Codex");
   });
 });

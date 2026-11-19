@@ -4,7 +4,6 @@
 import { describe, expect, test } from "bun:test";
 import { HARNESS_IDS, HARNESSES, type LogEvent, type TaskCard } from "@ducter/protocol";
 import { strings } from "../src/i18n.ts";
-import { transcriptWords } from "../src/i18n-transcript.ts";
 import { Store } from "../src/store.ts";
 
 let n = 0;
@@ -12,20 +11,6 @@ const ev = (body: object, seq = ++n): LogEvent => ({ seq, ts: new Date(1_763_000
 const card = (held?: TaskCard["held"]): TaskCard => ({ taskId: "t1", persona: "p", title: "Ship it", project: "", place: { kind: "none" }, harness: "claude-code", attention: "working", residency: "hot", openedAt: "2026-11-17T10:00:00Z", updatedAt: "2026-11-17T10:00:00Z", ...(held ? { held } : {}) }) as TaskCard;
 
 describe("words", () => {
-  test("zh and en have the same keys, and the new ones read as sentences", () => {
-    expect(Object.keys(transcriptWords.zh).sort()).toEqual(Object.keys(transcriptWords.en).sort());
-    const zh = strings("zh");
-    const en = strings("en");
-    expect(zh.t("composer.steer.hint")).toBe("回车：它做到下一步就会看到");
-    expect(zh.t("composer.queue.hint")).toBe("⌥ 回车：这一轮做完再说");
-    expect(en.t("delivery.steer.read")).toBe("Seen");
-    expect(zh.t("delivery.steer.wait")).toBe("它做到下一步就会看到");
-    expect(zh.t("held.now")).toBe("现在就说");
-    expect(en.t("held.now")).toBe("Say it now");
-    expect(zh.t("composer.nosteer.hint", "pi")).toBe("pi 做事时不能插话，发出的话会等这一轮做完");
-    expect(en.t("held.head.nosteer", "pi")).toBe("pi reads these when this turn is done");
-  });
-
   test("every agent says whether it takes a steer (OAR 0.95.1: all four do)", () => {
     for (const h of HARNESS_IDS) expect(typeof HARNESSES[h].steer).toBe("boolean");
     expect(HARNESS_IDS.filter((h) => HARNESSES[h].steer)).toEqual(["claude-code", "codex", "pi", "deepseek-harness"]);

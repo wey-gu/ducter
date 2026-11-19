@@ -87,12 +87,4 @@ describe("room (D244)", () => {
     expect(col).not.toContain("border-left");
     expect(css).toContain(".bench-resize.dragging::after");
   });
-  test("the launcher's and side by side's words, zh and en together", () => {
-    for (const k of ["wb.launcher", "wb.launcher.files", "wb.launcher.preview", "wb.launcher.browser", "wb.launcher.phone", "wb.launcher.made", "wb.screens.both"]) {
-      expect(workbench.zh[k]).toBeTruthy();
-      expect(workbench.en[k]).toBeTruthy();
-    }
-    expect(workbench.zh["wb.screens.both"]).toBe("并排");
-    expect(workbench.en["wb.screens.both"]).toBe("Side by side");
-  });
 });

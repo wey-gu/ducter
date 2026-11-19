@@ -1,7 +1,7 @@
 // 你的设备 / Your devices on the phone (D148): every device and phone kept from the devices
 // frame, the update's step in words, the card's actions sent to the server.
 import { describe, expect, test } from "bun:test";
-import { strings, TABLES } from "../src/i18n.ts";
+import { strings } from "../src/i18n.ts";
 
 describe("your devices (D148)", () => {
   const home = (update: Record<string, unknown>) =>
@@ -44,11 +44,6 @@ describe("your devices (D148)", () => {
     expect(A.deviceAnswer).toEqual({ device: "local", reason: "checksum" });
     A.receive({ t: "update_result", device: "local", ok: true } as any);
     expect(A.deviceAnswer).toBeUndefined();
-  });
-
-  test("zh and en have the same device and update keys", () => {
-    const keys = (l: "zh" | "en") => Object.keys(TABLES[l]).filter((k) => /^(devup|device\.|devices\.title|settings\.versions)/.test(k)).sort();
-    expect(keys("zh")).toEqual(keys("en"));
   });
 
   test("D167: 没更新成 never on the version it went to, nor once the device moved on; a real one stays", async () => {

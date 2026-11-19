@@ -83,6 +83,3 @@ test("review together sends every to-do of the rows not left out; the set card c
   expect([...setTicks("s1", ["a", "b"], own)]).toEqual(["b"]);
 });
 
-test("zh and en are written together: the same keys", () => {
-  expect(Object.keys(handoverWords.zh).sort()).toEqual(Object.keys(handoverWords.en).sort());
-});

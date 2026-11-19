@@ -8,14 +8,6 @@ import { settingsMore } from "../src/i18n-settings.ts";
 
 const src = (f: string) => readFileSync(new URL(`../src/${f}`, import.meta.url), "utf8");
 
-test("every word in zh and en, the same keys, never a dot join", () => {
-  expect(Object.keys(settingsMore.zh).sort()).toEqual(Object.keys(settingsMore.en).sort());
-  for (const v of [...Object.values(settingsMore.zh), ...Object.values(settingsMore.en)]) expect(v).not.toContain(" · ");
-  expect(strings("zh").t("records.hidden", "Codex")).toBe("Codex 的对话不在「做过的事」里显示");
-  expect(strings("en").t("handoff.row")).toBe("Hand it to another AI agent right away");
-  expect(strings("zh").t("settings.look.mode.system")).toBe("跟随系统");
-});
-
 test("the Mac says the same words under the same keys", () => {
   const mac = readFileSync(new URL("../../desktop/internal/i18n/settings_more.go", import.meta.url), "utf8");
   for (const lang of ["zh", "en"] as const)

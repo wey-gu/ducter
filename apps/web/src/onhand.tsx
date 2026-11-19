@@ -1339,7 +1339,7 @@ function GroupCard({ b, room }: { b: BoardGroup; room: Room }) {
           );
         })}
       </ol>
-      {rest > 0 && <FoldLine words={t("group.more", rest)} open={false} onToggle={toggle} />}
+      {rest > 0 && <FoldLine words={t("group.more.tasks", rest)} open={false} onToggle={toggle} />}
       {open && b.rows.length > 3 && <FoldLine words={t("onhand.fold.close")} open onToggle={toggle} />}
       {b.stopped ? (
         <div class="gstop">

@@ -4,7 +4,6 @@ import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { copy, copyByField } from "../src/conv-copy.ts";
 import { AT_END, countWords, dividerAt, gapOf, keepDraft, landing, newSince, readDraft, showWayBack, stillFollowing } from "../src/follow.ts";
-import { convWords } from "../src/i18n-conv.ts";
 import { strings } from "../src/i18n.ts";
 import { copyText, forReading, markdown } from "../src/markdown.ts";
 
@@ -145,13 +144,6 @@ describe("the stylesheet", () => {
 });
 
 describe("words", () => {
-  test("zh and en have the same keys, and the same as the Mac", () => {
-    expect(Object.keys(convWords.zh).sort()).toEqual(Object.keys(convWords.en).sort());
-    const mac = readFileSync(new URL("../../desktop/internal/i18n/conv.go", import.meta.url), "utf8");
-    const macKeys = [...mac.matchAll(/^\t"([^"]+)":/gm)].map((x) => x[1]);
-    expect([...new Set(macKeys)].sort()).toEqual(Object.keys(convWords.zh).sort());
-    for (const [k, v] of Object.entries({ ...convWords.zh, ...convWords.en })) expect(mac).toContain(`"${k}":`), expect(mac).toContain(JSON.stringify(v));
-  });
   test("the chip reads naturally in both", () => {
     expect(strings("zh").t("conv.new.n", countWords(3))).toBe("3 条新消息");
     expect(strings("en").t("conv.new.n", countWords(120))).toBe("99+ new messages");

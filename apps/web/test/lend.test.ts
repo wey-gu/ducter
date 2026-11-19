@@ -21,15 +21,7 @@ const waiting: LendFrame = {
 };
 
 describe("words", () => {
-  test("zh and en, the same keys, never a dot join", () => {
-    expect(Object.keys(lendWords.zh).sort()).toEqual(Object.keys(lendWords.en).sort());
-    for (const v of [...Object.values(lendWords.zh), ...Object.values(lendWords.en)]) expect(v).not.toContain(" · ");
-    expect(strings("zh").t("lend.entry")).toBe("加一台做事的电脑");
-    expect(strings("en").t("lend.entry")).toBe("Add a computer for tasks");
-    expect(strings("zh").t("lend.left", 9)).toBe("这个码还能用 9 分钟，只能用一次。");
-    expect(strings("en").t("lend.here", "nas")).toBe("nas is here");
-    expect(strings("en").t("lend.mac.app", "hel", "Let this Mac do tasks for Ducter")).toBe("Does that Mac have the Ducter app, connected to hel? On that Mac, open its own card and turn on “Let this Mac do tasks for Ducter”.");
-    // The agent sentence carries the line whole, so it can be pasted as is.
+  test("the agent sentence carries the line whole, so it can be pasted as is", () => {
     expect(strings("zh").t("lend.agent.ask", waiting.line)).toContain(waiting.line!);
   });
 

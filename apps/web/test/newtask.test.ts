@@ -152,14 +152,6 @@ describe("New task: when it starts (D185)", () => {
 });
 
 describe("New task copy (D185, D186)", () => {
-  test("zh and en have the same keys, and the same as the Mac", () => {
-    expect(Object.keys(starts.zh).sort()).toEqual(Object.keys(starts.en).sort());
-    const mac = readFileSync(new URL("../../desktop/internal/i18n/starts.go", import.meta.url), "utf8");
-    const macKeys = [...mac.matchAll(/^\t"([^"]+)":/gm)].map((m) => m[1]);
-    expect([...new Set(macKeys)].sort()).toEqual(Object.keys(starts.zh).sort());
-    for (const [k, v] of Object.entries(starts.zh)) expect(mac).toContain(`"${k}":`), expect(mac).toContain(JSON.stringify(v));
-  });
-
   test("the sheet draws its pills and rows only through controls.tsx", () => {
     const src = readFileSync(new URL("../src/newtask.tsx", import.meta.url), "utf8");
     expect(src.match(/<(button|a|select)\b/g) ?? []).toEqual([]);

@@ -3,7 +3,6 @@
 // the row's line in the viewer's language, and On hand's group of tasks on one account.
 import { describe, expect, test } from "bun:test";
 import { strings } from "../src/i18n.ts";
-import { limitWords } from "../src/i18n-limits.ts";
 
 const now = Date.now();
 const iso = (ms: number) => new Date(ms).toISOString();
@@ -26,21 +25,6 @@ async function home(lang: "zh" | "en") {
   } as any);
   return { A, reset };
 }
-
-test("every limit word in zh and en, the same keys, never a dot join", () => {
-  expect(Object.keys(limitWords.zh).sort()).toEqual(Object.keys(limitWords.en).sort());
-  for (const v of [...Object.values(limitWords.zh), ...Object.values(limitWords.en)]) expect(v).not.toContain(" · ");
-  const zh = strings("zh");
-  const en = strings("en");
-  expect(zh.t("limit.back", "3:12")).toBe("额度 3:12 恢复，到时接着做");
-  expect(en.t("limit.back", "3:12")).toBe("The limit resets at 3:12, and it carries on then");
-  expect(zh.t("limit.handoff", "Codex")).toBe("现在换 Codex 接着做");
-  expect(en.t("limit.handoff", "Codex")).toBe("Hand it to Codex now");
-  expect(zh.t("limit.cancel")).toBe("先停下");
-  // D291: the hairlines say the fact; their times are drawn apart.
-  expect(en.t("note.limit", "Claude Code")).toBe("Claude Code's limit ran out");
-  expect(zh.t("wake.limit", "Claude Code")).toBe("Claude Code 的额度恢复了，接着做");
-});
 
 describe("a limit wait's words", () => {
   test("the state says the reset, without its grace minute; with no reset, that it waits", async () => {

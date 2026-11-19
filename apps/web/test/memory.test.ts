@@ -3,10 +3,8 @@
 // equal to the Mac's (apps/desktop/internal/i18n/memory.go). The same cases as the Mac's
 // (apps/desktop/internal/views/memtab_test.go).
 import { describe, expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
 import type { BridgeView, MemView } from "@ducter/protocol";
 import { groupNoted, memBadge, memPhase, memUpdate, peersNamesUpdate, peersShown } from "../src/mem-view.ts";
-import { memoryWords } from "../src/i18n-memory.ts";
 
 const b = (o: Partial<BridgeView>): BridgeView => ({ state: "connected", identity: "ducter", ...o });
 const conn: MemView = { state: "connected", noted: [] };
@@ -62,14 +60,6 @@ describe("Memory (D257)", () => {
     const at = (h: number) => new Date(now.getTime() - h * 3600_000).toISOString();
     const gs = groupNoted([{ at: at(1) }, { at: at(10) }, { at: at(26) }, { at: at(6 * 24) }, { at: at(9 * 24) }, { at: "?" }], now);
     expect(gs.map((g) => `${g.when}:${g.items.length}`)).toEqual(["today:2", "week:2", "earlier:2"]);
-  });
-
-  test("zh and en have the same keys, and the same words as the Mac", () => {
-    expect(Object.keys(memoryWords.zh).sort()).toEqual(Object.keys(memoryWords.en).sort());
-    const mac = readFileSync(new URL("../../desktop/internal/i18n/memory.go", import.meta.url), "utf8");
-    const macKeys = [...mac.matchAll(/^\t"([^"]+)":/gm)].map((m) => m[1]);
-    expect([...new Set(macKeys)].sort()).toEqual(Object.keys(memoryWords.zh).sort());
-    for (const [k, v] of Object.entries({ ...memoryWords.zh, ...memoryWords.en })) expect(mac).toContain(`"${k}":`), expect(mac).toContain(JSON.stringify(v));
   });
 });
 

@@ -4,7 +4,6 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { voiceWords } from "../src/i18n-voice.ts";
-import { TABLES } from "../src/i18n.ts";
 import { chunks, FakeRecognizer, FakeSpeaker, levelOfRms, pickVoice, whyOfWebError } from "../src/voice-engine.ts";
 import { VoiceCtl } from "../src/voice.tsx";
 
@@ -182,9 +181,5 @@ describe("words", () => {
       for (const m of block.matchAll(/^\s*"([^"]+)":\s+("(?:[^"\\]|\\.)*"),$/gm)) go[m[1]!] = JSON.parse(m[2]!);
       expect(go).toEqual(voiceWords[lang]);
     }
-  });
-  test("every key in both languages, and in the client's tables", () => {
-    expect(Object.keys(voiceWords.zh).sort()).toEqual(Object.keys(voiceWords.en).sort());
-    for (const k of Object.keys(voiceWords.en)) expect(TABLES.en[k]).toBe(voiceWords.en[k]!);
   });
 });

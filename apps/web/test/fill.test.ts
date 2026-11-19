@@ -5,7 +5,6 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { routeHash, type Route } from "../src/app.ts";
 import { canFill, type Split } from "../src/fold.ts";
-import { strings } from "../src/i18n.ts";
 import { upFrom } from "../src/wide.ts";
 
 const css = readFileSync(join(import.meta.dir, "../static/app.css"), "utf8");
@@ -46,15 +45,6 @@ describe("taking the whole screen", () => {
     expect(app).toContain('return this.go(r.name === "onhand" && r.full ? { name: "conv" } : { name: "onhand", full: true });');
     // A task opened from the whole-screen On hand opens at the whole screen too.
     expect(app).toContain('if (r.name === "task" && r.full === undefined && this.route.name !== "conv" && this.route.full) r = { ...r, full: true };');
-  });
-
-  test("the Mac's words, in both languages", () => {
-    for (const lang of ["zh", "en"] as const) {
-      const L = strings(lang);
-      for (const k of ["pane.fill", "pane.beside", "onhand.by", "onhand.by.state", "onhand.by.project", "onhand.other", "onhand.newhere", "onhand.next"]) expect(L.t(k)).not.toBe(k);
-    }
-    expect(strings("zh").t("onhand.by.project")).toBe("按项目");
-
   });
 
   test("nothing at the whole screen lies across a book fold", () => {

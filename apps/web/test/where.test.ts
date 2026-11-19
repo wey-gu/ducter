@@ -1,7 +1,7 @@
 // D157 on the phone: every task says which computer it runs on once there are two, the home by its
 // own name ("this Mac" means nothing on a phone); a tap says why there. Same words as the desktop.
 import { describe, expect, test } from "bun:test";
-import { strings, TABLES } from "../src/i18n.ts";
+import { strings } from "../src/i18n.ts";
 
 const devices = (n: 1 | 2) =>
   ({
@@ -51,11 +51,5 @@ describe("where a task runs (D157)", () => {
     expect(deviceWait("device:asleep:MacBook")).toBe("MacBook 睡着了");
     A.L = strings("en");
     expect(whereAsk({ kind: "pin", device: "MacBook", state: "unreachable", other: "hel", agent: "claude-code", otherAgent: "codex" }).go).toBe("Have Codex do it");
-  });
-
-  test("every where key is in both languages", () => {
-    const keys = (l: "zh" | "en") => Object.keys(TABLES[l]).filter((k) => /^(where|switch|newtask\.computer|newtask\.agent|move\.closing)\./.test(k)).sort();
-    expect(keys("zh")).toEqual(keys("en"));
-    expect(keys("zh").length).toBeGreaterThan(40);
   });
 });

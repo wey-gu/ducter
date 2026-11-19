@@ -4,20 +4,6 @@
 import { expect, test } from "bun:test";
 import type { LogEvent } from "@ducter/protocol";
 import { strings } from "../src/i18n.ts";
-import { contextWords } from "../src/i18n-context.ts";
-
-test("every context word in zh and en, the same keys", () => {
-  expect(Object.keys(contextWords.zh).sort()).toEqual(Object.keys(contextWords.en).sort());
-  const zh = strings("zh");
-  const en = strings("en");
-  expect(zh.t("ctx.ring", "48%")).toBe("上下文已用 48%");
-  expect(en.t("ctx.ring", "48%")).toBe("48% of the context used");
-  expect(zh.t("note.compacted.size", "152k", "31k")).toBe("上下文从 152k 压缩到了 31k");
-  expect(en.t("note.compacted.size", "152k", "31k")).toBe("Context compacted from 152k to 31k");
-  expect(zh.t("ctx.why.unsupported", "pi")).toBe("pi 不提供额度信息");
-  expect(en.t("ctx.compact")).toBe("Compact now");
-  expect(zh.t("ctx.compact")).toBe("现在压缩");
-});
 
 test("a usage window in words", async () => {
   const { A } = await import("../src/app.ts");

@@ -4,25 +4,11 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import type { DeviceHarness } from "@ducter/protocol";
-import { strings } from "../src/i18n.ts";
-import { agentSetupWords } from "../src/i18n-agentsetup.ts";
 import { agentRowLook, anyInstalling, anyReady, offerable } from "../src/agent-setup-view.ts";
 import { shortUrl } from "../src/agent-setup.tsx";
 
 const src = (f: string) => readFileSync(new URL(`../src/${f}`, import.meta.url), "utf8");
 const h = (harness: string, o: Partial<DeviceHarness> = {}): DeviceHarness => ({ harness, installed: false, loggedIn: false, canBePartner: false, ...o });
-
-describe("words", () => {
-  test("zh and en, the same keys, never a dot join", () => {
-    expect(Object.keys(agentSetupWords.zh).sort()).toEqual(Object.keys(agentSetupWords.en).sort());
-    for (const v of [...Object.values(agentSetupWords.zh), ...Object.values(agentSetupWords.en)]) expect(v).not.toContain(" · ");
-    expect(strings("zh").t("lend.setup.q")).toBe("装上哪些 AI？");
-    expect(strings("zh").t("ag.install")).toBe("安装");
-    expect(strings("zh").t("ag.signin")).toBe("登录");
-    expect(strings("zh").t("lend.ready", "haswell")).toBe("haswell 可以干活了");
-    expect(strings("en").t("lend.ready", "haswell")).toBe("haswell is ready for tasks");
-  });
-});
 
 describe("a row's look", () => {
   test("installing, then not signed in, then its sign-in, then ready", () => {

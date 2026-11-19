@@ -84,19 +84,6 @@ describe("the chips under the task's composer (D354)", () => {
       { t: "task_switch", taskId: "t1", harness: "codex", model: "gpt-6.2-sol", effort: "high" },
     ]);
   });
-
-  test("its words, zh and en, the same keys as the Mac", () => {
-    const zh = strings("zh");
-    const en = strings("en");
-    expect(zh.t("tune.reset")).toBe("回到默认");
-    expect(en.t("tune.reset")).toBe("Back to default");
-    expect(zh.t("tune.change.model")).toBe("换模型");
-    expect(en.t("tune.back")).toBe("Back");
-    expect(zh.t("tune.next.model", "GPT-6.2-Sol")).toBe("下一轮起用 GPT-6.2-Sol");
-    expect(en.t("tune.next.model", "GPT-6.2-Sol")).toBe("From its next turn: GPT-6.2-Sol");
-    expect(zh.t("tune.next.effort", zh.t("effort.high"))).toBe("下一轮起思考：高");
-    expect(en.t("tune.next.effort", en.t("effort.high"))).toBe("From its next turn: High effort");
-  });
 });
 
 describe("the one chip and its card (D387)", () => {

@@ -34,7 +34,19 @@ export function listWord(L: Words, dv: DeviceView, o: { persona: string; running
   if (dv.home) return { text: L.t("list.state.home", o.persona), tone: "" };
   if (dv.kind === "phone") return { text: L.t("list.state.now"), tone: "" };
   if (o.running > 0) return { text: o.running === 1 ? L.t("list.state.tasks.one") : L.t("list.state.tasks", o.running), tone: "working" };
-  return { text: L.t("list.state.does", o.persona), tone: "" };
+  // D398: idle, the one thing worth knowing is that it is free; its role is the card's line.
+  return { text: L.t("list.state.ready"), tone: "" };
+}
+
+/**
+ * D398: an Android phone that can be lent says so in the list and on its card, or that it is lent
+ * now; undefined for any other client (its line is connected now, or when it was last online).
+ */
+export function lendWord(L: Words, cl: Client, card = false): { text: string; tone: Tone } | undefined {
+  const h = cl.handset;
+  if (!cl.connected || !h?.added || !h.linked) return undefined;
+  if (h.using) return { text: L.t(card ? "handset.status.lent" : "list.state.lent"), tone: "working" };
+  return { text: L.t(card ? "handset.status.ready" : "list.state.lendable"), tone: "" };
 }
 
 /** The Android app (D178): its platform says "android-app"; one paired before D291 still carries the app's old name suffix. */

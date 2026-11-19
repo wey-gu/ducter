@@ -6,6 +6,11 @@ package i18n
 // one line per device. Glossary: design/product-model.md;
 // design/ui-devices-card.md §8.
 var zhDeviceCard = Table{
+	"worker.g.chat":                "看不到你和 %s 的对话",
+	"worker.g.uses":                "用这台电脑上登录的 AI 和代码",
+	"list.state.lent":              "借出去了",
+	"list.state.lendable":          "能借给任务",
+	"list.state.ready":             "待命",
 	"card.status.home":             "%s 在这台上运行",
 	"card.status.home.working":     "%s 在这儿做着 %d 件事",
 	"card.status.home.working.one": "%s 在这儿做着 1 件事",
@@ -122,6 +127,11 @@ var zhDeviceCard = Table{
 }
 
 var enDeviceCard = Table{
+	"worker.g.chat":                "Never sees your conversations with %s",
+	"worker.g.uses":                "Uses the AI and code on this computer",
+	"list.state.lent":              "Lent now",
+	"list.state.lendable":          "Can be lent",
+	"list.state.ready":             "Ready",
 	"card.status.home":             "%s runs here",
 	"card.status.home.working":     "%s is here working on %d tasks",
 	"card.status.home.working.one": "%s is here working on 1 task",

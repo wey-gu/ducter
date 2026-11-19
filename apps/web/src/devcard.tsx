@@ -6,7 +6,7 @@
 import { KeyRow } from "./settings-more.tsx";
 import { PhoneBlock, PhoneInfo, startInstall } from "./phone-use.tsx";
 import { ComputerBlock, ComputerInfo } from "./computer-use.tsx";
-import { HandsetChip } from "./handset.tsx";
+import { HandsetBody, HandsetChip, Promises } from "./handset.tsx";
 import { updatingWords } from "./agent-progress.ts";
 import type { DeviceHarness, DeviceUpdate, DeviceVia, DeviceView, ReachWay } from "@ducter/protocol";
 import { inApp } from "./native.ts";
@@ -16,10 +16,10 @@ import { changelogUrl } from "@ducter/protocol/src/version.ts";
 import { Fragment, type ComponentChildren } from "preact";
 import { useEffect, useState } from "preact/hooks";
 import { A } from "./app.ts";
-import { BackRow, Btn, Chip, LinkBtn, CoinButton, DangerButton, Facts, ListRow, MoreButton, RenameTitle, SocketButton, Toggle } from "./controls.tsx";
+import { BackRow, Btn, Chip, LinkBtn, CoinButton, DangerButton, Facts, Fold, ListRow, MoreButton, RenameTitle, SocketButton, Toggle } from "./controls.tsx";
 import { Coin } from "./coin.tsx";
 import { ago, behind, harnessName, memWords, phaseLine as phaseWords, spoken } from "./format.ts";
-import { agentBehind, agentRunning, androidApp, chipsFor, type ChipLook, type Client, listWord, statusLine, versionFacts, viaText } from "./sheet.ts";
+import { agentBehind, agentRunning, androidApp, chipsFor, type ChipLook, type Client, lendWord, listWord, statusLine, versionFacts, viaText } from "./sheet.ts";
 import { attention, placeOf } from "./store.ts";
 import { disablePush } from "./push-client.ts";
 import { turnOnPush } from "./views.tsx";
@@ -158,15 +158,19 @@ export function DevicesSection({ open, setOpen }: { open: string | null; setOpen
         })}
         {A.reach?.clients
           .filter((cl) => !f.hidden.has(cl.id))
-          .map((cl) => (
-            <ListRow
-              key={cl.id}
-              art={clientArt(cl)}
-              name={clientName(cl)}
-              word={cl.connected ? t("list.state.now") : cl.lastSeen ? t("list.state.seen", ago(A.L, cl.lastSeen)) : t("device.client.never")}
-              onClick={() => setOpen(`cl:${cl.id}`)}
-            />
-          ))}
+          .map((cl) => {
+            const lend = lendWord(A.L, cl); // D398: can be lent, or lent now
+            return (
+              <ListRow
+                key={cl.id}
+                art={clientArt(cl)}
+                name={clientName(cl)}
+                word={lend ? lend.text : cl.connected ? t("list.state.now") : cl.lastSeen ? t("list.state.seen", ago(A.L, cl.lastSeen)) : t("device.client.never")}
+                tone={lend?.tone}
+                onClick={() => setOpen(`cl:${cl.id}`)}
+              />
+            );
+          })}
         {/* D358: one way to add a device, a row like the others; its sheet asks what it is for. */}
         <AddDeviceRow />
       </div>
@@ -246,11 +250,25 @@ function DeviceSheet({ dv, folded, go }: { dv: DeviceView; folded: Client[]; go:
       {/* D307: on the home's card, a key instead of a subscription (D298), beside its AI agents. */}
       {dv.home && <KeyRow instead />}
       <Chips dv={dv} go={go} />
-      {!dv.home && dv.state === "awake" && <HowConnected via={dv.via} />}
-      {dv.home && <Ways home={dv.name} />}
-      {!dv.home && <Via card={`dev:${dv.id}`} list={folded} computer={dv.computer || dv.name} />}
+      {/* D398: what a computer for tasks touches and never sees. */}
+      {!dv.home && (
+        <Promises
+          list={[
+            ["folder", t("worker.g.uses")],
+            ["chat", t("worker.g.chat", A.S.personaName)],
+          ]}
+        />
+      )}
       <DucterLine dv={dv} />
-      {!dv.home && <Foot id={dv.id} name={dv.name} means="device.disconnect.means" />}
+      {/* D293, D398: the home's addresses, or how a worker is connected and its one 断开, folded at the foot. */}
+      {dv.home && <Ways home={dv.name} />}
+      {!dv.home && (
+        <Fold title={t("reach.how")} summary={dv.state === "awake" && dv.via ? t(`reach.via.${dv.via.kind}`) : ""}>
+          {dv.state === "awake" && <HowConnected via={dv.via} />}
+          <Via card={`dev:${dv.id}`} list={folded} computer={dv.computer || dv.name} />
+          <Foot id={dv.id} name={dv.name} means="device.disconnect.means" />
+        </Fold>
+      )}
     </div>
   );
 }
@@ -258,7 +276,8 @@ function DeviceSheet({ dv, folded, go }: { dv: DeviceView; folded: Client[]; go:
 function ClientSheet({ cl, folded }: { cl: Client; folded: Client[] }) {
   const name = clientName(cl);
   const mine = A.me?.deviceId === cl.id;
-  const line = mine ? t("card.status.this") : cl.connected ? t("device.client.now") : cl.lastSeen ? t("device.client.seen", ago(A.L, cl.lastSeen)) : t("device.client.never");
+  const lend = mine ? undefined : lendWord(A.L, cl, true); // D398: ready to lend, or lent now
+  const line = mine ? t("card.status.this") : lend ? lend.text : cl.connected ? t("device.client.now") : cl.lastSeen ? t("device.client.seen", ago(A.L, cl.lastSeen)) : t("device.client.never");
   const src = clientArt(cl);
   return (
     <div class="dc" role="group" aria-label={spoken(A.L, name, clientKind(cl))}>
@@ -266,7 +285,7 @@ function ClientSheet({ cl, folded }: { cl: Client; folded: Client[] }) {
       <div class="dc-name">
         <RenameTitle id={cl.id} name={name} renamable />
       </div>
-      <div class="dc-status">{line}</div>
+      <div class={`dc-status${lend?.tone ? ` ${lend.tone}` : ""}`}>{line}</div>
       {mine && <NotifyChip />}
       {/* D342: this phone, in the Android app: the app's own version and 检查更新. */}
       {mine && androidAppVersion() && (
@@ -275,9 +294,13 @@ function ClientSheet({ cl, folded }: { cl: Client; folded: Client[] }) {
         </div>
       )}
       <HandsetChip cl={cl} />
-      {cl.connected && <HowConnected via={cl.via} />}
-      <Via card={`cl:${cl.id}`} list={[cl, ...folded]} computer={clientComputer(cl)} />
-      <Foot id={cl.id} name={name} confirm={isCli(cl) ? t("device.cli.name", clientComputer(cl)) : name} means={isCli(cl) ? "device.disconnect.means.cli" : "device.disconnect.means.client"} />
+      <HandsetBody cl={cl} />
+      {/* D398: how it's connected and its one 断开 wait folded at the foot. */}
+      <Fold title={t("reach.how")} summary={cl.connected && cl.via ? t(`reach.via.${cl.via.kind}`) : ""}>
+        {cl.connected && <HowConnected via={cl.via} />}
+        <Via card={`cl:${cl.id}`} list={[cl, ...folded]} computer={clientComputer(cl)} only={!folded.length} />
+        <Foot id={cl.id} name={name} confirm={isCli(cl) ? t("device.cli.name", clientComputer(cl)) : name} means={isCli(cl) ? "device.disconnect.means.cli" : "device.disconnect.means.client"} />
+      </Fold>
     </div>
   );
 }
@@ -291,7 +314,6 @@ function HowConnected({ via }: { via?: DeviceVia }) {
   const line = via.kind === "local" ? "reach.private.local" : via.sealed ? "reach.private" : via.kind === "lan" ? "reach.open.plain" : "reach.open.cloudflare";
   return (
     <div class="dc-reach" role="group" aria-label={t("reach.how")}>
-      <div class="dc-reach-h">{t("reach.how")}</div>
       <div class="dc-reach-list">
         <div class="rw">
           <span class="t">
@@ -321,9 +343,11 @@ function Ways({ home }: { home: string }) {
   const ways = A.reach?.ways;
   if (!ways?.length) return null;
   const here = (w: ReachWay) => !inApp() && isHere(w.url);
+  // D398: folded at the card's foot; the summary is the way in use (or the first one).
+  const now = ways.find(here) ?? ways[0]!;
   return (
+    <Fold title={t("reach.ways.short")} summary={t(`reach.kind.${now.kind}`)}>
     <div class="dc-reach" role="group" aria-label={t("reach.ways", home)}>
-      <div class="dc-reach-h">{t("reach.ways", home)}</div>
       <div class="dc-reach-list" role="list">
         {ways.map((w) => (
           <div class="rw" role="listitem" key={w.url}>
@@ -338,6 +362,7 @@ function Ways({ home }: { home: string }) {
       {ways.some((w) => w.kind === "tunnel") && <div class="small sub dc-reach-note">{t("reach.note.tunnel")}</div>}
       {!inApp() && ways.length > 1 && <div class="small sub dc-reach-note">{t("reach.note.web")}</div>}
     </div>
+    </Fold>
   );
 }
 
@@ -799,7 +824,8 @@ function Confirm({ id, name, means, onDone }: { id: string; name: string; means:
   );
 }
 
-function Via({ card, list, computer }: { card: string; list: Client[]; computer: string }) {
+/** D398: only, a phone that is just itself: nothing to manage, its one 断开 is the card's own, right under. */
+function Via({ card, list, computer, only }: { card: string; list: Client[]; computer: string; only?: boolean }) {
   const [open, setOpen] = useState(false);
   const [cutting, setCutting] = useState("");
   if (!list.length) return null;
@@ -807,7 +833,7 @@ function Via({ card, list, computer }: { card: string; list: Client[]; computer:
     <>
       <div class="dc-via">
         {viaText(A.L, list)}
-        <MoreButton label={t("card.via.more")} open={open} onClick={() => setOpen(!open)} />
+        {!only && <MoreButton label={t("card.via.more")} open={open} onClick={() => setOpen(!open)} />}
       </div>
       {open && (
         <div class="dc-conns" id={`conns-${card}`}>

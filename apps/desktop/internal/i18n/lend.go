@@ -71,7 +71,7 @@ var zhLend = Table{
 
 var enLend = Table{
 	"add.row":               "Add a device",
-	"add.row.sub":           "A phone, a tablet or a computer",
+	"add.row.sub":           "Phone, tablet or computer",
 	"add.title":             "Add a device",
 	"add.question":          "What's it for?",
 	"add.talk":              "To talk with %s",

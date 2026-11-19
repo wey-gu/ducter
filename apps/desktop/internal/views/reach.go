@@ -78,8 +78,15 @@ func (a *App) homeWays(c *ui.Context, dv *protocol.DeviceView) {
 		here = strings.TrimSuffix(strings.TrimSuffix(strings.Replace(strings.Replace(a.URL, "wss://", "https://", 1), "ws://", "http://", 1), "/ws"), "/")
 	}
 	tunnel := false
-	ui.Column(c.Key("ways:" + dv.ID)).Children(func() {
-		a.reachHeader(c, a.L.T("reach.ways", a.deviceName(dv)))
+	// D398: folded at the card's foot; the summary is the way in use (or
+	// the first one).
+	summary := a.L.T("reach.kind." + r.Ways[0].Kind)
+	for _, w := range r.Ways {
+		if here != "" && strings.EqualFold(here, strings.TrimSuffix(w.URL, "/")) {
+			summary = a.L.T("reach.kind." + w.Kind)
+		}
+	}
+	a.sheetFold(c, "ways:"+dv.ID, a.L.T("reach.ways.short"), summary, false, func() {
 		ui.Column(c).Radius(t.RadiusSM).Background(t.Bg).Clip().Children(func() {
 			for i, w := range r.Ways {
 				if i > 0 {

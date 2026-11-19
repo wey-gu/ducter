@@ -77,6 +77,30 @@ export function openHand(o: { door: "do" | "subject" | "set" | "find"; subject?:
   A.changed();
 }
 
+/**
+ * A link straight to the sheet on a subject: #hand?subject=记忆提炼 (&step=2: its how; &note=…: the
+ * note written in, never sent). Opens the sheet once the home answered; nothing is handed over
+ * without the person's Go on it. Used by the demo's phone shots, and by any link that names a subject.
+ */
+function handLink() {
+  if (typeof location === "undefined" || !location.hash.startsWith("#hand?")) return;
+  const q = new URLSearchParams(location.hash.slice("#hand?".length));
+  const subject = q.get("subject")?.trim();
+  if (!subject) return;
+  const tick = setInterval(() => {
+    if (!A?.S?.welcomed) return;
+    clearInterval(tick);
+    history.replaceState(null, "", location.pathname + location.search);
+    openHand({ door: "subject", subject });
+    const note = q.get("note");
+    if (note) HS.note = note.slice(0, 2000);
+    if (q.get("step") === "2") HS.step = 2;
+    A.changed();
+  }, 150);
+  setTimeout(() => clearInterval(tick), 20_000);
+}
+setTimeout(handLink, 0);
+
 function closeHand() {
   A.sheet = null;
   clearTimeout(findTimer);
@@ -306,7 +330,7 @@ function ItemRow({ p, i }: { p: FoundItem; i: number }) {
             placeholder={t("ho.item.note")}
             aria-label={t("ho.item.note.label", p.item.title)}
             ref={(el) => void (el && HS.noteOpen.has(p.item.ref) && !HS.notes[p.item.ref] && document.activeElement !== el && el.focus())}
-            onInput={(e) => ((HS.notes[p.item.ref] = (e.target as HTMLTextAreaElement).value), A.changed())}
+            onInput={(e) => (grow(e.target as HTMLTextAreaElement), (HS.notes[p.item.ref] = (e.target as HTMLTextAreaElement).value), A.changed())}
             onBlur={() => (HS.noteOpen.delete(p.item.ref), A.changed())}
           />
         ) : (
@@ -453,7 +477,7 @@ function How() {
         <label class="ho-h" for="ho-note">
           {t("ho.note", name())}
         </label>
-        <textarea id="ho-note" class="ho-ta" rows={3} value={HS.note} placeholder={t("ho.note.ph")} onInput={(e) => ((HS.note = (e.target as HTMLTextAreaElement).value), askHow(), A.changed())} />
+        <textarea id="ho-note" class="ho-ta" rows={3} value={HS.note} placeholder={t("ho.note.ph")} ref={grow} onInput={(e) => (grow(e.target as HTMLTextAreaElement), (HS.note = (e.target as HTMLTextAreaElement).value), askHow(), A.changed())} />
       </div>
       {n > 1 && how && choices.length > 0 && (
         <div class="ho-field" role="radiogroup" aria-labelledby="ho-how-h">
@@ -698,7 +722,7 @@ function PartNote({ groupId, partId, live, slot }: { groupId: string; partId: st
       value={v}
       placeholder={t("ho.item.note")}
       ref={(el) => void (el && PN.noteOpen.has(k) && !v && document.activeElement !== el && el.focus())}
-      onInput={(e) => (PN.notes.set(groupId, { ...notes, [partId]: (e.target as HTMLTextAreaElement).value }), A.changed())}
+      onInput={(e) => (grow(e.target as HTMLTextAreaElement), PN.notes.set(groupId, { ...notes, [partId]: (e.target as HTMLTextAreaElement).value }), A.changed())}
       onBlur={() => (PN.noteOpen.delete(k), A.changed())}
     />
   );
@@ -817,7 +841,7 @@ export function PlanCard({ d, seq, bare, inGroup }: { d: DecisionState; seq?: nu
         <>
           {replying && (
             <div class="ho-reply">
-              <textarea class="ho-ta" rows={2} value={draft} placeholder={t("ho.plan.reply.ph")} aria-label={t("ho.plan.reply")} ref={(el) => void (el && !draft && document.activeElement !== el && el.focus())} onInput={(e) => (PN.reply.set(groupId, (e.target as HTMLTextAreaElement).value), A.changed())} onKeyDown={(e) => e.key === "Enter" && (e.metaKey || e.ctrlKey) && draft.trim() && answer(groupId, "reply", draft.trim())} />
+              <textarea class="ho-ta" rows={2} value={draft} placeholder={t("ho.plan.reply.ph")} aria-label={t("ho.plan.reply")} ref={(el) => void (el && !draft && document.activeElement !== el && el.focus())} onInput={(e) => (grow(e.target as HTMLTextAreaElement), PN.reply.set(groupId, (e.target as HTMLTextAreaElement).value), A.changed())} onKeyDown={(e) => e.key === "Enter" && (e.metaKey || e.ctrlKey) && draft.trim() && answer(groupId, "reply", draft.trim())} />
               <Btn kind="primary" size="sm" label={t("ho.plan.reply.send")} disabled={!draft.trim()} onClick={() => answer(groupId, "reply", draft.trim())} />
             </div>
           )}
@@ -850,6 +874,28 @@ export function PlanCard({ d, seq, bare, inGroup }: { d: DecisionState; seq?: nu
 }
 
 /** D385: what a hand-over group's card on On hand says under its name: the plan, its making, review together. */
+/** 看方案 / See the plan: the conversation (on a phone, its pane), scrolled to the plan card, which glows once. */
+export function seePlan(decisionId: string) {
+  if (A.route.name !== "conv") A.go({ name: "conv" });
+  const find = (n: number) => {
+    const el = document.getElementById(`d-${decisionId}`);
+    if (!el) return void (n > 0 && setTimeout(() => find(n - 1), 80));
+    el.scrollIntoView({ block: "start", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+    el.classList.remove("flash");
+    void el.offsetWidth;
+    el.classList.add("flash");
+    setTimeout(() => el.classList.remove("flash"), 1800);
+  };
+  setTimeout(() => find(12), 60);
+}
+
+/** A note field grows with what is written (no grip to drag); CSS field-sizing does it where the browser can. */
+const grow = (el: HTMLTextAreaElement | null) => {
+  if (!el || CSS.supports?.("field-sizing", "content")) return;
+  el.style.height = "auto";
+  el.style.height = `${el.scrollHeight + 2}px`;
+};
+
 export function HandBlock({ g }: { g: TaskGroupView }) {
   const h = g.hand!;
   const s = handState(h);
@@ -873,8 +919,22 @@ export function HandBlock({ g }: { g: TaskGroupView }) {
           <span>{t("ho.plan.making.line", h.items.length)}</span>
         </div>
       )}
-      {(s === "ready" || s === "held") && d && <PlanCard d={d} inGroup />}
-      {(s === "ready" || s === "held") && !d && <p class="ho-waits">{t("ho.plan.waits")}</p>}
+      {/* The plan itself lives in the conversation; here its state, the way to it, and Go. */}
+      {(s === "ready" || s === "held") && (
+        <div class={`ho-plan-ready${s === "held" ? " held" : ""}`} role="group" aria-label={t("ho.plan.title", g.name)}>
+          <span class="ho-ready-mark" aria-hidden="true">
+            <svg viewBox="0 0 20 20" width="18" height="18">
+              <rect x="4" y="2.8" width="12" height="14.4" rx="2.6" fill="none" stroke="currentColor" stroke-width="1.8" />
+              <path d="M7.4 7.2h5.2M7.4 10h5.2M7.4 12.8h3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+            </svg>
+          </span>
+          <b>{s === "held" ? t("ho.plan.held") : t("ho.plan.ready")}</b>
+          <span class="ho-ready-acts">
+            {d && <Btn kind="text" size="sm" label={t("ho.plan.see")} about={g.name} onClick={() => seePlan(d.decisionId)} />}
+            {h.plan?.plan || h.plan?.summary ? <Btn kind="primary" size="sm" label={t("ho.plan.go")} about={g.name} disabled={answering(g.id)} onClick={() => answer(g.id, "go")} /> : null}
+          </span>
+        </div>
+      )}
       {s === "failed" && (
         <div class="ho-making failed">
           <b>{t("ho.plan.failed")}</b>

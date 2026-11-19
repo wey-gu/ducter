@@ -12709,6 +12709,8 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 .pcard.og.paused { background: var(--surface-raised); box-shadow: 0 1px 0 var(--line); }
 .pcard.og.settle .og-peb, .pcard.og.settle .pebble { transform: translateY(2px); filter: saturate(0.4); transition: transform 200ms var(--ease), filter 200ms var(--ease); }
 .og-line.paused { color: var(--ink-muted); }
+/* D394: a review task's standing after its last round, under its state line. */
+.og-standing { color: var(--ink); font-size: var(--sm); }
 .og-runs { display: inline-flex; align-items: center; gap: 4px; margin-left: 2px; }
 .og-run { width: 10px; height: 10px; border-radius: 40%; background: var(--faint); box-shadow: inset 0 -1.5px 0 rgba(43, 33, 24, 0.12); }
 .og-run.link { cursor: pointer; }
@@ -14387,6 +14389,10 @@ svg .wave.w2.on {
   gap: var(--s1);
   margin: var(--s2) 0;
 }
+/* D394: a review round's card: each drafted review, opened as its PR's pre-read. */
+.src-reviews { list-style: none; margin: 0; padding: 0; width: 100%; display: flex; flex-direction: column; gap: var(--s1); }
+.src-review { display: flex; align-items: center; gap: var(--s2); min-width: 0; padding: var(--s1) var(--s2); border-radius: var(--r-sm); background: var(--surface-sunken); }
+.src-review-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--sm); }
 .src-quote {
   margin: 0;
   padding: var(--s2) var(--s3);

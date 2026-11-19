@@ -7,7 +7,7 @@
     "up": "bun run packages/core/src/main.ts",
     "ducter": "bun packages/cli/src/main.ts",
     "build:cli": "sh packages/cli/build.sh",
-    "test": "bun test",
+    "test": "bun test --timeout 20000",
     "eval:partner": "bun packages/partner/eval/run.ts",
     "bridge:live": "bun packages/partner/eval/bridge-live.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p apps/web/tsconfig.json",

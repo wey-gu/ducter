@@ -8,7 +8,7 @@
 
 ## How it was checked
 
-- [ ] `bun test` passes
+- [ ] `bun run test` passes
 - [ ] `bun run typecheck` passes
 - [ ] `cd apps/desktop && go build ./... && go vet ./... && go test ./...` passes (if the desktop changed)
 - [ ] New user-facing copy has both zh and en keys

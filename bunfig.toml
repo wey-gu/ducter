@@ -6,4 +6,4 @@ jsxImportSource = "preact"
 [test]
 # Every test run: a placeholder printed empty fails the test that drew it (apps/web/test/guard.ts).
 preload = ["./scripts/test/setup.ts", "./apps/web/test/guard.ts"]
-# The 20 s default timeout is set in scripts/test/setup.ts (a `timeout` key here isn't applied).
+# The 20 s per-test timeout is `bun run test`'s --timeout (a `timeout` key here is not applied; scripts/test/setup.ts says why).

@@ -97,6 +97,9 @@ type settingsState struct {
 	cheer int64
 	// said is when a change the partner answers was made (saidLine, D296).
 	said map[string]saidWord
+	// memTried: 再试一次 was pressed while the home still lacked the tool
+	// to install Mem with, so the step says it was tried (D404).
+	memTried bool
 	// railFrom is the tab shown before this one, so the pane comes in
 	// from the way the rail's knob went (D296).
 	railFrom string

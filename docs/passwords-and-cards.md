@@ -18,8 +18,9 @@ locked on your computer.
 
 - **Sign-ins:** a website, your user name or email, and the password. A sign-in is only ever
   filled on its own website. The first time it's used there, your partner asks you once.
-- **Cards:** the number, expiry and the name on the card. The security code (the 3 or 4 digits
-  on the back) is never saved: you type it each time you pay.
+- **Cards:** the number, expiry and the name on the card. Type the expiry as it's printed
+  (08/29), or just the four digits (0829) on a phone's number pad. The security code (the 3 or 4
+  digits on the back) is never saved: you type it each time you pay.
 - **Your details:** your name as on your ID, email, phone, seat and meal preferences, your
   passport, birthday, home address, known traveler number and loyalty numbers.
   - Your name, email, phone, seat and meal your partner can read, so it can choose a window seat

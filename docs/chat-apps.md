@@ -118,8 +118,10 @@ from someone else is read as their words, not yours: your partner never takes in
 ## Unlink or disconnect
 
 In **Settings › Chat apps**, **Unlink** forgets your account (the bot stays; link again any
-time). **Disconnect** forgets the bot's key too, so it asks first, in place. If anyone else writes to your bot, it doesn't
-answer them; Settings tells you once that someone tried.
+time). **Disconnect** forgets the bot's key too, so it asks first, in place, and your partner
+confirms it under the card; your conversation stays in Ducter. To connect the same Telegram bot
+again, send BotFather `/mybots`, pick your bot, then **API Token**, and paste that key. If anyone
+else writes to your bot, it doesn't answer them; Settings tells you once that someone tried.
 
 ## Coming soon
 

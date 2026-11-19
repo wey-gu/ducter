@@ -762,6 +762,10 @@ func (a *App) memSteps(c *ui.Context, phase string, b *protocol.BridgeView) {
 				if b != nil && b.Detail != "" && !busy {
 					help += "\n" + a.memFailed(true, home, b.Detail, b.Kept)
 				}
+				// D404: a retry that meets the same missing tool says so.
+				if a.settings.memTried && b != nil && !b.CanRun && !busy {
+					help += "\n" + a.L.T("mem.retry.same")
+				}
 				a.note(c, help)
 				if busy {
 					return
@@ -772,6 +776,7 @@ func (a *App) memSteps(c *ui.Context, phase string, b *protocol.BridgeView) {
 				}
 				ui.Row(c).Children(func() {
 					if a.buttonFor(c, label, home, kind, t.ControlSM, t.Surface) && b != nil {
+						a.settings.memTried = !b.CanRun
 						b.State = "installing"
 						a.send(protocol.BridgeAction{T: "bridge_mem_install"})
 					}

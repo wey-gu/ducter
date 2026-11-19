@@ -191,7 +191,17 @@ func (a *App) bridgeNote(b *protocol.BridgeView) string {
 	case "unconfirmed":
 		return a.L.T("bridge.unconfirmed", b.Identity)
 	}
+	if k, ok := failedDetails[b.Detail]; ok {
+		return a.L.T(k)
+	}
 	return a.L.T("bridge.failed", b.Detail)
+}
+
+// failedDetails (D404): the home's own words for a failed connect
+// (bridge-link.ts), said in the person's language rather than shown raw.
+var failedDetails = map[string]string{
+	"Mem answered with another identity or place": "bridge.failed.identity",
+	"nmem didn't start":                           "bridge.failed.nostart",
 }
 
 // memFailed is D229's failed install or update: one plain sentence, whether

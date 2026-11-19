@@ -2,6 +2,7 @@
 import { onWbFrame } from "./workbench-ask.ts";
 import { onFileOpenFrame } from "./filelink-ask.ts";
 import { onPastFrame, openPast } from "./past.tsx";
+import { onMadeFrame } from "./made.tsx";
 import { onDidFrame, openDid } from "./did.tsx";
 import type { AgentModels, AgentReason, MemPluginReason, BrainNow, BridgeView, Candidate, ModelChoice, ClientFrame, Place, PlaceChoice, ConnectionReason, ConnectionView, DeviceHarness, DeviceView, DucterFolderView, GhInstallPlan, GitLoginState, MemItem, MemView, OoDetect, Reach, KindDefault, RuleView, ServerFrame, Settings, SettingsPatch, UpdateAllView, UpdateReason } from "@ducter/protocol";
 import { MEDIA_LIMITS, TUWA_MCP, WATCH_LIVE, type MediaRef, type FileOpenError } from "@ducter/protocol";
@@ -822,6 +823,7 @@ class AppState {
     // D285: 做过的事 / Past tasks (past.tsx).
     // D300: 替你做过的 / Done for you (did.tsx).
     if (f.t === "did_result") return onDidFrame(f);
+    if (f.t === "made_result") return onMadeFrame(f);
     if (f.t === "past_result" || f.t === "past_marked" || f.t === "ongoing_result" || f.t === "outside_adopted" || f.t === "outside_hidden") return onPastFrame(f);
     // `ducter open <task>` (D128): show it as if tapped; back returns.
     if (f.t === "open_task") return void ((this.sheet = null), this.go({ name: "task", id: f.taskId }));

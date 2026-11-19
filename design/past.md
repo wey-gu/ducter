@@ -17,7 +17,7 @@ back to work from it. Decided in D285; the scenarios and the evidence are in
 
 ## The place
 
-A view, **做过的事 / Past tasks**: on the Mac a whole-window place (like On hand at the whole
+A view, **做过的事 / Past tasks** (three tabs: 做过的事, 给你做的 / Made for you (D383), 一直在跑的): on the Mac a whole-window place (like On hand at the whole
 screen); on the web a sheet, a centred 920-wide panel when wide, the whole screen on a phone.
 
 Ways in:
@@ -91,6 +91,12 @@ Kept per persona on the home (`marks.json`), the same on every device, changed f
 
 `/` the field; ↑↓ or j/k walk the cards; Enter opens; ⌘Enter continues; ⇧⌘Enter new task from
 this; `s` stars; `r` renames; Esc clears, then goes back.
+
+## 给你做的 / Made for you (D383)
+
+The middle tab: the files, pictures, tables, charts, lists and links the partner and its tasks made,
+found by a name, a kind, a day or what is in them, each opened with what already opens it. The
+field's words are shared with the first tab. `made.md`.
 
 ## 一直在跑的 / Ongoing
 

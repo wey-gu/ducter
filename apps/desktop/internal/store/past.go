@@ -15,6 +15,17 @@ type PastState struct {
 	// Adopted is the last outside_adopted (D299): the outside session
 	// carried on, and its task (or why not).
 	Adopted *protocol.PastFrame
+	// Made is 给你做的 / Made for you's last made_result (D383).
+	Made *protocol.MadeFrame
+}
+
+// applyMade keeps the newest made_result (the view drops one that answers
+// an older query by its id).
+func (s *Store) applyMade(f protocol.ServerFrame) {
+	if f.Made != nil {
+		s.Past.Made = f.Made
+		s.Past.Version++
+	}
 }
 
 func (s *Store) applyPast(f protocol.ServerFrame) {

@@ -95,7 +95,7 @@ func (a *App) pastTabs(c *ui.Context) {
 	ui.Row(c.Key("tabs-row")).Children(func() {
 		ui.Row(c.Key("tabs")).Padding(pad).Gap(2).Radius(t.RadiusSM).AlignItems(ui.Center).Background(t.SurfaceSunken).
 			InsetShadow(0, 1.5, 2, 0, t.Line).Role(ui.RoleTabList).Children(func() {
-			for _, tab := range []struct{ key, label string }{{"", a.L.T("past.tab")}, {"ongoing", a.L.T("og.tab")}} {
+			for _, tab := range []struct{ key, label string }{{"", a.L.T("past.tab")}, {"made", a.L.T("made.tab")}, {"ongoing", a.L.T("og.tab")}} {
 				on := ps.tab == tab.key
 				b := ui.Row(c.Key("tab:"+tab.key)).Height(30).Padding(0, t.S4).Radius(t.RadiusSM - pad).AlignItems(ui.Center).
 					Cursor(ui.CursorPointer).Role(ui.RoleTab).Label(tab.label).AccessSelected(on).Focusable().Shrink(0)

@@ -32,6 +32,7 @@ export * from "./computer-name.ts";
 export * from "./done-today.ts";
 export * from "./rich.ts";
 export * from "./pins.ts";
+export * from "./made.ts";
 export * from "./reach.ts";
 export * from "./mem-source.ts";
 export * from "./mem-health.ts";
@@ -41,6 +42,7 @@ import type { PastClientFrame, PastMark, PastServerFrame } from "./past.ts";
 import type { DidClientFrame, DidServerFrame } from "./did.ts";
 import type { RichUi } from "./rich.ts";
 import type { PinView } from "./pins.ts";
+import type { MadeClientFrame, MadeServerFrame } from "./made.ts";
 import type { ChannelClientFrame, ChannelKind, ChannelServerFrame } from "./channels.ts";
 import type { SourceAsk, SourceItemRef, SourceOp, SourcesClientFrame, SourcesServerFrame } from "./task-sources.ts";
 import type { HandsetAsk, HandsetClientFrame, HandsetServerFrame, HandsetView } from "./handset.ts";
@@ -1350,6 +1352,8 @@ export type ClientFrame =
   | ChannelClientFrame
   // D285: 做过的事 / Past tasks (past.ts).
   | PastClientFrame
+  // D383: 给你做的 / Made for you (made.ts).
+  | MadeClientFrame
   // D300: 替你做过的 / Done for you (did.ts).
   | DidClientFrame
   // D341: 待办来源 / To-do sources (task-sources.ts).
@@ -1621,6 +1625,7 @@ export type ServerFrame =
   | HandsetServerFrame
   | ChannelServerFrame
   | PastServerFrame
+  | MadeServerFrame
   | DidServerFrame
   | SourcesServerFrame
   | { t: "error"; message: string };

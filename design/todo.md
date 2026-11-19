@@ -2111,3 +2111,12 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [x] **D373: continue the person's own sessions from the conversation**: built by D376 for the home's sessions.
 - [ ] **D373: watch it on the home** (how often the second look fires on separate work, and whether a long-lived continued session needs a fresh one sooner). Trigger: a week of the author's use after the release.
 - [ ] **D373: Claude Code resume days later, live** (Codex verified on hel; Claude Code only per research/03). Trigger: the first Claude Code task taken up again after its session was parked a day.
+
+## D383: 给你做的 / Made for you (`made.md`, research/152)
+
+- [ ] **Save to… (I3)**: a made thing written into a folder or a repo's main checkout, never committed, 7-day undo (I-results IQ4). Trigger: the first "把那份放到项目里".
+- [ ] **Versions of a document** (I3's 第 n 版 / What changed). Trigger: a follow-up that rewrites a document a task made.
+- [ ] **Share a link (I5)**, with the pre-share check (IQ6, IQ7). Trigger: Ducter Edge.
+- [ ] **Take one off the list** (not delete the file): the person's own "not this one". Trigger: a person who asks to hide one.
+- [ ] **Find by what is inside a written file** the home never read (only its name, the words around it and a block's cells are searched today). Trigger: a miss in the author's use where the words were only inside the file.
+- [ ] **Walk it with weeks of a real Log** (the author's home): ranking, noise from coding tasks' written docs, and the raters' line with people. Trigger: the next live walk.

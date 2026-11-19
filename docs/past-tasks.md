@@ -1,13 +1,14 @@
 ---
 title: Past tasks and ongoing work
-description: Find any task you had before, mark the ones you come back to, carry on with one, and pause or resume what runs on its own.
+description: Find any task you had before and anything Ducter made for you, mark the ones you come back to, carry on with one, and pause or resume what runs on its own.
 order: 2.6
 ---
 
 # Past tasks and ongoing work
 
 A task you finished doesn't disappear. On hand shows what is going on now; everything you had
-before stays in **做过的事 / Past tasks**, ready to find and pick up again. Next to it,
+before stays in **做过的事 / Past tasks**, ready to find and pick up again; what it made for you is
+in **给你做的 / Made for you**. Next to them,
 **一直在跑的 / Ongoing** keeps what runs on its own: things you asked for every day or every week,
 and tasks that keep looking for something.
 
@@ -32,6 +33,24 @@ best match first, with a line saying where it matched (**你说过 / You said**,
 
 Without words, the list shows your starred tasks first, then today, yesterday, this week, last
 week, this month and earlier months.
+
+## What Ducter made for you
+
+The files, pictures, tables and links Ducter made for you are in the middle tab,
+**给你做的 / Made for you**: a PDF a task filled in, a screenshot of a booking page, a document it
+wrote, a table or a list from the conversation, a pull request it opened. You don't need to
+remember which task made it.
+
+- **Just ask.** "找一下上周做的那个行程表", "send me the PDF you made for the visa again": Ducter
+  finds it and puts the file itself (or the table) under its answer. When nothing matches, it says
+  so; it never hands you something else in its place.
+- **Or look.** Type a name, a kind or a day (`PDF`, `表格`, `截图`, `上周`), or tap a kind
+  (**文件 / Files**, **图片 / Pictures**, **表格 / Tables**, **清单 / Lists**, **链接 / Links**).
+  Tap one to open it: a file or picture opens in the viewer, a table opens in place, a link in the
+  browser. **看那件事 / See the task** opens the task that made it.
+
+A file a task wrote on another computer opens only while that computer is reachable; if it was
+moved or deleted since, Ducter says so and can make it again.
 
 ## Marking the ones you come back to
 

@@ -1,10 +1,10 @@
-# Flows I: Results (做好的 / Finished)
+# Flows I: Results (给你做的 / Made for you)
 
 > Draft 1 · 2026-11-09 · Status: **drafted; its open questions were decided 2026-11-09 (D60, D61), words per D66**. Covers scenarios I1–I5
 > (`product-model.md` §6 "I. Results"). Builds on principles 6, 7, 12, 18, 20,
 > `conversation.md` (turn protocol, living message), `focus-window.md` (report, evidence),
 > D4 in `D-decisions-attention.md` (done · checking, check didn't pass), B2/B3 in
-> `B-kinds-of-work.md` (document card, draft PR intent), D52 Q7 (documents live in 做好的 on the
+> `B-kinds-of-work.md` (document card, draft PR intent), D52 Q7 (documents live in 给你做的 on the
 > control plane, with an optional "write it into a place"), and `G-safety.md` (outside
 > effects, the day's record).
 >
@@ -343,7 +343,7 @@ C refreshes only while the task or its waiters are active, and once when the use
 
 ---
 
-## I3 · Documents: research and writing live in 做好的
+## I3 · Documents: research and writing live in 给你做的
 
 ### 1. Scenario card
 
@@ -385,7 +385,7 @@ follow-up days later ("那 1.4.5 呢？") ──► same task reopens [doc B2] �
 Why the control plane by default and not the repo [doc D52 Q7, reasoning I]: a research
 document has no natural place for a consumer user, and for a developer the right folder is a
 judgment call; writing into a repo is a write that needs a lease and pollutes `git status`.
-Keeping it in 做好的 is zero-question, survives every device sleeping, and "Save to…" is one
+Keeping it in 给你做的 is zero-question, survives every device sleeping, and "Save to…" is one
 tap when the user does want it in a place.
 
 ### 3. States
@@ -443,7 +443,7 @@ can be any place, not only a project folder [I].
 - **A very long document** (> 20 pages): the reader shows a table of contents; the card's top
   line still fits in 3 lines [doc B2].
 - **The user edits the saved file, then asks for v2:** Ducter never overwrites their edits;
-  v2 lives in 做好的, and Save to… asks again.
+  v2 lives in 给你做的, and Save to… asks again.
 - **Writing (not research):** a weekly report draft is a document too; it carries
   `read_through` evidence and no source counts.
 - **The document quotes private memory** (from Mem recall): marked in the reader as "来自你的
@@ -495,10 +495,9 @@ browsing, and every row in it leads with the user's own ask (Rule 5) [I].
         "要我留一份吗？/ Shall I keep a copy?"
 ```
 
-**Browse (fallback): the 做好的 / Finished list** [I].
-- **Where:** opened from On hand, from the Done lane header: "做好的东西 → / All results". It
-  is a view *inside* On hand, not a fourth zoom level, so the three-level model holds
-  (conversation · On hand · opened task).
+**Browse (fallback): the 给你做的 / Made for you list** [I].
+- **Where (D383, supersedes this draft's On hand list):** Past tasks' middle tab, 给你做的 / Made
+  for you, a lens on an existing place, not a fourth zoom level. As built: `design/made.md`.
 - **Rows:** grouped by project (then 其他 / Other), newest first. Each row: kind glyph,
   title, the ask (one line, muted), date, the best evidence chip, persona face when there are
   several personas (On hand aggregates per person [doc]).
@@ -518,9 +517,9 @@ a device unless the user asks for the live place ("叫醒 / Wake") [doc principl
 
 | i18n key | zh | en |
 |---|---|---|
-| `results.all` | 做好的东西 → | All results → |
-| `results.title` | 做好的东西 | Everything finished |
-| `results.search` | 找做好的东西… | Find something finished… |
+| `results.all` | 给你做的 → | All results → |
+| `results.title` | 给你做的 | Made for you |
+| `results.search` | 找给你做的… | Find something finished… |
 | `results.kind.document` | 文档 | Documents |
 | `results.kind.change` | 改动 | Changes |
 | `results.kind.files` | 文件 | Files |
@@ -528,11 +527,11 @@ a device unless the user asks for the live place ("叫醒 / Wake") [doc principl
 | `results.row.asked` | 你问的：{ask} | You asked: {ask} |
 | `results.found_on` | {date} 你问的：『{ask}』 | On {date} you asked: "{ask}" |
 | `results.pick` | 有几份可能是，你要哪份？ | A few could be it. Which one? |
-| `results.none` | 没找到。我在做好的东西和对话里找了「{query}」。 | Didn't find it. I searched results and the conversation for "{query}". |
+| `results.none` | 没找到。我在给你做的和对话里找了「{query}」。 | Didn't find it. I searched results and the conversation for "{query}". |
 | `results.keep_offer` | 要我留一份吗？ | Shall I keep a copy? |
 | `results.newer_since` | 那之后{what}，要我看看有没有变化吗？ | Since then {what}. Want me to check what changed? |
 | `results.show_on` | 在 {device} 上显示 | Show on {device} |
-| `results.other_persona` | 那份是 {persona} 做的，在做好的东西里能打开。 | {persona} made that one; you can open it under Everything finished. |
+| `results.other_persona` | 那份是 {persona} 做的，在给你做的里能打开。 | {persona} made that one; you can open it under Made for you. |
 
 ### 5. Motion
 
@@ -549,7 +548,7 @@ a device unless the user asks for the live place ("叫醒 / Wake") [doc principl
 - **The branch was deleted upstream and the device reclaimed the worktree:** the diff
   snapshot opens; the card says "分支已经删了，这是 {date} 时的样子 / The branch is gone; this
   is the snapshot from {date}".
-- **The user deleted the saved file in the place:** 做好的 still has the document; the "Saved
+- **The user deleted the saved file in the place:** 给你做的 still has the document; the "Saved
   to" chip reads "那边已经删了 / Removed there".
 - **Retention:** results are kept until the user deletes one (10 s Undo); diff snapshots are
   capped per task (Open question IQ5).
@@ -690,7 +689,7 @@ Every link and send is in the day's record (G5).
 | save into a place | 存到… / Save to… | I3, I5 | Generalizes B2's 存到项目 |
 | version | 第 n 版 / Version n | I3, I5 | |
 | what changed between versions | 改了什么 / What changed | I3 | |
-| results list entry | 做好的东西 / Everything finished | I4 | 做好的 / Finished itself is in the glossary |
+| results list entry | 给你做的 / Made for you | I4 | 给你做的 / Made for you itself is in the glossary |
 | the user's original ask | 你问的 / You asked | I3, I4 | |
 | share sheet | 分享… / Share… | I5 | |
 | copy, save as file | 复制 / Copy · 存成文件 / Save as file | I5 | Ordinary verbs, listed for completeness |
@@ -704,7 +703,7 @@ Every link and send is in the day's record (G5).
 |---|---|---|---|
 | IQ1 | When does the result message appear: at Done · checking, or only at verified Done? | **At verified Done.** Exception: if the user is watching and the checks take > 10 s, post at Done · checking with unfilled chips that fill as checks pass | Honesty (principle 7) without making a watching user stare at nothing |
 | IQ2 | Is the Sent out line always shown for tasks that had a place, even when nothing went out? | **Yes.** "发出去的：没有" is the trust signal. Omitted for in-turn answers and research with no place | The dogfood run shows the user wants this said; prose is easy to miss |
-| IQ3 | Where does the Results list live? | **Inside On hand**, opened from the Done lane header ("做好的东西 →"). No fourth zoom level. Asking is the primary path | Keeps the three-level model (principle 20) |
+| IQ3 | Where does the Results list live? | **Superseded by D383:** Past tasks' middle tab, 给你做的 / Made for you (`made.md`). Asking is the primary path | A lens on an existing place (D71); the three-level model holds |
 | IQ4 | "Save to…" into a git repo: commit or not? | **Write the file, never commit; say so.** Offer a draft PR once, as a separate decision (default Hold). 7-day Undo for unchanged files in non-git folders | Writing into a repo is the user's territory; a commit is a choice |
 | IQ5 | Diff snapshot at Done: size cap? | **Yes, snapshot at Done; cap 5 MB per task**, beyond that keep stat + the first 50 files | Evidence must outlive worktree reclaim and branch deletion |
 | IQ6 | Share links: default expiry, and in v1? | **7 days, revocable, ships with Ducter Edge (not tonight)** | A link is the farthest a result can go |

@@ -223,7 +223,7 @@
 | the menu bar extra (D71, D306) | the clay partner in the macOS menu bar; its mark: quiet, at work (eyes down), or needs you (a soft clay dot), never a number; its menu: On hand's one sentence first, each question with **好：{action} / Go: {action}** · **先等等 / Hold** · **回复… / Reply…** · **打开任务 / Open the Task**, then **打开 Ducter / Open Ducter** · **设置… / Settings…** · **不在菜单栏显示 / Don't Show in the Menu Bar**; Settings › Look and sound **在菜单栏显示 / Show in the menu bar** with **一眼看到它在做事，还是有事要你定。要你定时，旁边有一个小点。/ See at a glance whether it's at work or something needs you. A small dot when something does.** | Never a count in the bar; the dot is the accent's clay, never red |
 | keeping one thing in sight on the phone (D306) | iPhone: **在锁屏上显示 / Show on the Lock Screen** · **不在锁屏上显示 / Remove from the Lock Screen**; Android: **在通知栏显示 / Show in notifications** · **不在通知栏显示 / Remove from notifications**; the line under it **只显示它在做、在等还是等你，不显示内容。做完就自己收起。/ Only whether it's working, waiting or needs you, never what it says. It goes away when it's done.**; on the Lock Screen and in the shade the attention states' words and the calls' (**在打 / Calling** · **通话中 / On the call** · **对方在问 / They're asking** · **打完了 / Called** · **没人接 / No answer** · **没打通 / Didn't connect**), and **可能不是最新的 / May be out of date**; Android's channel **跟着看的任务和通话 / Tasks and calls you follow** | Only what the person chose, and a live call; never every task, never a task's words. Never "Live Activity" or "ongoing notification" on screen |
 | a sandboxed place | **no noun**: the property, **碰不到你的文件 / Can't touch your files** | 沙盒 retired (D66, GQ8) |
-| Artifact | **做好的 / Finished**; the list **做好的东西 / Everything finished** | 成果 retired (report-speak) |
+| Artifact, what Ducter made (D383, `made.md`) | **给你做的 / Made for you**: Past tasks' middle tab, under it always **{name} 给你做的文件、图片、表格和链接，聊天里做的也在这里。/ The files, pictures, tables and links {name} made for you, including the ones in your chats.**; its field **名字、PDF、表格、截图、哪天… / A name, a PDF, a table, a day…**; chips **全部 / All · 文件 / Files · 图片 / Pictures · 表格 / Tables · 图表 / Charts · 清单 / Lists · 链接 / Links**; a card's kind **文件 / File · 图片 / Picture · 表格 / Table · 图表 / Chart · 清单 / List · 链接 / Link** (a file's own letters, PDF, MD; a pull request **PR**); its line **你问的：{ask} / You asked: {ask} · 来自「{task}」 / From “{task}” · 在对话里 / In the conversation**, where it matched **那件事 / Task · 你问的 / You asked · 里面有 / Inside · 它说过 / It said**; **已置顶 / Pinned**; **看那件事 / See the task**; **找到 n 个 / n found**; **还没有给你做的东西。让{name}查点什么、做个表格，做好的会在这里。/ Nothing made for you yet. Ask {name} to look something up or make a table, and it shows up here.** · **没找到。换几个字，或者直接问{name}。/ Nothing found. Try other words, or just ask {name}.** | Found by asking first ("上周那个行程表"); the tab is the browse. 成果 retired (report-speak); D383 retired **做好的 / Finished** and **做好的东西 / Everything finished** (raters read "Finished" as finished tasks 6/6, research/152). Never "files" for the whole tab, "artifacts", "outputs", "gallery" or "library" |
 | the first screen (empty conversation) | the partner's greeting in its own name: **早上好呀，我是{name}。 / Good morning, I'm {name}.** (returning: **{name} 在呢 / {name} is here**); starters under **可以这样开头 / You could start with**, each in the person's own voice; one timely line with **查看 / Take a look** | D149. Starters are worked out on the home from names it already has; never a path, never how they were made |
 
 ## 2. Objects and ownership
@@ -516,9 +516,9 @@ Timing and springs come from the theme's `motion.personality`. The spec lives in
 
 ## 8. Open questions
 
-- Results: where finished documents live is decided (D52 Q7: in 做好的 (Finished) on the control plane,
-  with an optional "write it into a place"). The results view and the result anatomy are open
-  (`flows/I-results.md`, IQ1–IQ11).
+- Results: finding what Ducter made is decided (D383: asked for in the conversation, browsed in
+  Past tasks' 给你做的 / Made for you, read from the Log; `made.md`). Saving into a place (D52 Q7's
+  "write it into a place"), versions and the result anatomy are open (`flows/I-results.md`, IQ1–IQ11).
 - Merging and splitting tasks: the cheap version is decided (D52 Q5); full semantics for the
   Log, leases, and branches stay open.
 - Linking personas: scope (read-only? ask-only?) and how it is shown.

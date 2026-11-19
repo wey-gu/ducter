@@ -185,7 +185,7 @@ Fork → window: `queued → working → done? → done`; branches to `needs-you
 
 ### Open questions
 - Where the document lives (product-model §8): proposed default = control-plane blob, shown
-  under 做好的 / Finished, with "存到项目" to write it into a place.
+  under 给你做的 / Made for you, with "存到项目" to write it into a place.
 - Is "只是查资料 / Just reading" the right label for the empty Where chip, or hide the chip?
   Proposed: show it, so the user learns that Where exists.
 
@@ -766,6 +766,6 @@ firing; a running run is a normal Working card nested under it.
 
 1. Glossary additions above, especially 接手 / 还给它 / 画面 for takeover.
 2. Draft-PR default: auto-open after a countdown for personal repos, Go-only for org repos?
-3. Where research documents live (blob under 做好的 vs written into a place; decided D52 Q7).
+3. Where research documents live (blob under 给你做的 vs written into a place; decided D52 Q7).
 4. Routine auto-pause on unread: automatic vs proposed.
 5. Waiter with no prior task: full card or compact row on On hand.

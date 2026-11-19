@@ -32,6 +32,18 @@ type OngoingItem struct {
 	TaskID      string          `json:"taskId,omitempty"`
 	StartedAt   string          `json:"startedAt"`
 	Mark        *PastMark       `json:"mark,omitempty"`
+	// D394: a review task's standing after its last round.
+	Reviews *ReviewStanding `json:"reviews,omitempty"`
+}
+
+// ReviewStanding is where a review task's requests stand after its last
+// round (D394): waiting on the person, reviewed again, unchanged, drafted.
+type ReviewStanding struct {
+	Waiting int    `json:"waiting"`
+	Again   int    `json:"again"`
+	Same    int    `json:"same"`
+	Drafted int    `json:"drafted"`
+	At      string `json:"at"`
 }
 
 // OngoingFrame is ongoing_result.

@@ -14390,9 +14390,12 @@ svg .wave.w2.on {
   margin: var(--s2) 0;
 }
 /* D394: a review round's card: each drafted review, opened as its PR's pre-read. */
-.src-reviews { list-style: none; margin: 0; padding: 0; width: 100%; display: flex; flex-direction: column; gap: var(--s1); }
+.src-card:has(.src-reviews) { align-self: stretch; min-width: 0; max-width: 100%; box-sizing: border-box; }
+.partner .src-reviews { margin: 0; padding-inline-start: 0; }
+.src-reviews { min-width: 0; list-style: none; margin: 0; padding: 0; width: 100%; display: flex; flex-direction: column; gap: var(--s1); }
 .src-review { display: flex; align-items: center; gap: var(--s2); min-width: 0; padding: var(--s1) var(--s2); border-radius: var(--r-sm); background: var(--surface-sunken); }
-.src-review-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--sm); }
+.src-review > :not(.src-review-title) { flex-shrink: 0; }
+.src-review-title { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--sm); }
 .src-quote {
   margin: 0;
   padding: var(--s2) var(--s3);

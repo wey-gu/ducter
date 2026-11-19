@@ -825,6 +825,23 @@ func (a *App) todoAskBody(c *ui.Context, d *store.DecisionState) {
 		})
 		return
 	}
+	if src.Kind == "reviews" {
+		// D394: a review task's round: each drafted review, opened as its PR's pre-read.
+		ui.Column(c.Key("todo-reviews")).Gap(t.S1).Children(func() {
+			for _, x := range src.Items {
+				ref := x.Item.Ref
+				ui.Row(c.Key("rev:"+ref)).Gap(t.S2).Padding(t.S1, t.S3).Radius(t.RadiusSM).Background(t.Surface.Alpha(0.75)).AlignItems(ui.Center).MinWidth(0).Children(func() {
+					a.todoChip(c, "rev:"+d.DecisionID+":"+ref, x.Item)
+					ui.Text(c, keepWords(autospace(x.Item.Title))).FontSize(t.SM).TextColor(t.Ink).SingleLine().Grow(1).Shrink(1).MinWidth(0).Tooltip(x.Item.Title)
+					if a.button(c, a.L.T("todos.reviews.read"), btnText, t.ControlMD, t.Surface) {
+						a.openPreRead(ref)
+					}
+				})
+			}
+			ui.Text(c, a.L.T("todos.reviews.foot")).FontSize(t.SM).TextColor(t.InkMuted)
+		})
+		return
+	}
 	if src.Kind != "write" {
 		ui.Row(c.Key("todo-ask-chip")).Children(func() { a.todoChip(c, "ask:"+d.DecisionID, src.Item) })
 		return

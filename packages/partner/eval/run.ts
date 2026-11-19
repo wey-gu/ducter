@@ -18,7 +18,7 @@ import { HARNESSES, HARNESS_IDS, isHarnessId, type Bodies, type HarnessId, type 
 import type { HarnessEvent, HarnessPort, HarnessSession, Runner } from "../../protocol/src/internal.ts";
 import { startCore, type Core } from "../../core/src/index.ts";
 import { chooseBody, kindOf, type Computer } from "../../core/src/candidates.ts";
-import { saidPick } from "../../core/src/loadout.ts";
+import { neverPick, saidPick } from "../../core/src/loadout.ts";
 import { createLocalAgents } from "../../core/src/local-agents/index.ts";
 import { createWorkerRecords } from "../../core/src/worker-records.ts";
 import { writeSession } from "../../core/test/fixtures-agents.ts";
@@ -205,12 +205,16 @@ function fakeRunner(core: Core, harness: HarnessPort, cur: { step: number }, fir
     const kind = kindOf(input.workKind, input.needs as TaskNeeds | undefined, input.place);
     // D379: what the person said and never saved, as core's choose reads it (the same home: Claude
     // Code with Opus and Sonnet, Codex): when it changes who does it, the pick says so.
+    // D401: and the person's saved rules (a saying is kept as one the moment it is said): a never
+    // that moved the pick says so as their rule.
     const said = core.said.rulesFor(kind);
-    if (said.length) {
+    const saved = core.rules.list().filter((r) => !r.notice);
+    if (said.length || saved.length) {
       const inp = { work: { title: "", ...(kind ? { kind } : {}) }, harnesses: SAID_HOME, settings: { brain: { harness: "claude-code" as const, model: "opus" } } };
       const pin = input.harness ? { pinned: { harness: input.harness, ...(input.model ? { model: input.model } : {}) } } : {};
-      const p = saidPick(chooseBody({ ...inp, ...pin, rules: [...core.rules.list(), ...said] }), () => chooseBody({ ...inp, rules: core.rules.list() }), said);
-      if (p && !("problem" in p) && p.why.kind === "said") {
+      let p = said.length ? saidPick(chooseBody({ ...inp, ...pin, rules: [...saved, ...said] }), () => chooseBody({ ...inp, rules: saved }), said) : chooseBody({ ...inp, ...pin, rules: saved });
+      if (p && !("problem" in p)) p = neverPick(p, () => chooseBody({ ...inp, rules: saved.filter((r) => !r.never) }), saved, inp.work);
+      if (p && !("problem" in p) && (p.why.kind === "said" || p.why.kind === "rule")) {
         core.log.append({ stream: `task:${taskId}`, origin: "system", kind: "body_selected", body: { taskId, harness: p.harness, ...(p.model ? { model: p.model } : {}), why: p.why } });
         return;
       }
@@ -832,11 +836,19 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
 
   const bodies = core.log.read({ kinds: ["body_selected"], fromSeq: startSeq + 1, limit: 1000 }).map((e) => e.body as Bodies["body_selected"]);
   const saidAsks = core.log.read({ kinds: ["decision"], fromSeq: startSeq + 1, limit: 1000 }).filter((e) => (e.body as Bodies["decision"]).saying).length;
+  // D401: the person's rules as the run left them (kept by Ducter from their words, or by rule_save).
+  let rulesNow: { harness: string; never?: boolean; kinds?: string[]; text: string }[] = [];
+  try {
+    if (existsSync(join(dataDir, "rules.json"))) rulesNow = JSON.parse(readFileSync(join(dataDir, "rules.json"), "utf8")).rules ?? [];
+  } catch {
+    /* none */
+  }
+  if (rulesNow.length) lines.push(`--- the person's rules after the run: ${rulesNow.map((x) => `"${x.text}" (${x.never ? "never" : "always"} ${x.harness}${x.kinds?.length ? `, ${x.kinds.join("/")}` : ""})`).join("; ")}`);
   await partner.close().catch(() => {});
   await core.stop().catch(() => {});
   tuwa?.stop();
   const boundRefs = new Map(core.tasks.list().filter((c) => c.source).map((c) => [c.taskId, c.source!.ref] as [string, string]));
-  return { sc, visible, dayCards, calKinds, todoCards, boundRefs, blocks, shown, dropped, tools, opened: fr.opened, sent, keyOf, idOf, dataDir, usage, error, ms: Date.now() - t0, transcript: lines.join("\n"), recalls, threadSearches, remembered: mem.added, memAttempts, sources, retitles, bridgeSent, work: { ...work, asks }, bodies, saidAsks };
+  return { sc, visible, dayCards, calKinds, todoCards, boundRefs, blocks, shown, dropped, tools, opened: fr.opened, sent, keyOf, idOf, dataDir, usage, error, ms: Date.now() - t0, transcript: lines.join("\n"), recalls, threadSearches, remembered: mem.added, memAttempts, sources, retitles, bridgeSent, work: { ...work, asks }, bodies, saidAsks, rulesNow };
 }
 
 const r_opened = (o: Opened[], step: number) => o.filter((x) => x.step === step);
@@ -1079,6 +1091,8 @@ function check(r: RunResult): string[] {
   // D379: who a task actually went to (its body_selected), whoever decided it, and the one ask to keep a saying.
   if (e.notBody && r.bodies.some((b) => b.harness === e.notBody)) fails.push(`a task went to ${e.notBody}`);
   if (e.saidAsk !== undefined && r.saidAsks !== (e.saidAsk ? 1 : 0)) fails.push(`asks to keep a saying x${r.saidAsks} (want ${e.saidAsk ? 1 : 0})`);
+  // D401: the person's own words became their rule, with no card.
+  if (e.ruleKept && !r.rulesNow.some((x) => x.harness === e.ruleKept!.harness && !!x.never === !!e.ruleKept!.never && (!e.ruleKept!.kind || (x.kinds ?? []).includes(e.ruleKept!.kind)))) fails.push(`no rule kept: ${e.ruleKept.never ? "never" : "always"} ${e.ruleKept.harness}`);
   // A partner tool that must (or must not) be called, by its MCP name's tail, with these args.
   for (const c of e.called ?? []) {
     const hit = r.tools.some((t) => (t.name === c.tool || t.name.endsWith(`__${c.tool}`)) && Object.entries(c.args ?? {}).every(([k, v]) => {

@@ -239,9 +239,9 @@ export class Store {
   recalled = new Map<number, Bodies["memory_recalled"] & { seq: number }>();
   /** D165: each find's latest change, and the user's latest message. */
   findStates = new Map<string, Bodies["find_state"]>();
-  /** D402: a drafted reply's sending (sending, sent, unsent, send_failed), apart from the reactions. */
+  /** D403: a drafted reply's sending (sending, sent, unsent, send_failed), apart from the reactions. */
   findSends = new Map<string, Bodies["find_state"]>();
-  /** D402: a find's Go asked again (after 撤回 or a failed send): its latest decision. */
+  /** D403: a find's Go asked again (after 撤回 or a failed send): its latest decision. */
   findAsks = new Map<string, string>();
   lastUserSeq = 0;
   private notes = new Map<string, Entry>();

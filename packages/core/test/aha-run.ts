@@ -14,7 +14,7 @@ export interface AhaSaid {
   noteId: string;
   how: { src?: string; url?: string; says?: string; what: string }[];
   unknown?: string;
-  /** D402: the reply draft it came with (a waiting-on-you find). */
+  /** D403: the reply draft it came with (a waiting-on-you find). */
   draft?: { text: string; lang?: string };
 }
 
@@ -35,7 +35,7 @@ export function fakeLook(o: { found?: boolean } = {}): WebLookPort & { asked: st
 /** Runs Wed 07:00 to Fri 12:00, mail and the person's words arriving as they did; what was said, when. The caller stops the rig. */
 export async function runAha(mode: ProactiveMode, o: { web?: "found" | "none" | "off"; waiting?: boolean; rig?: Partial<Parameters<typeof rig>[0]> } = {}) {
   const { fx, later, said } = ahaDays();
-  // D402: hel's eleven waiting-for-your-reply mails, rebuilt (fixtures/waiting-days.ts).
+  // D403: hel's eleven waiting-for-your-reply mails, rebuilt (fixtures/waiting-days.ts).
   // hel watched all along, so these run from Monday 11-09 with every mail arriving at its own time
   // (a look back at the start reads only the last three days in full).
   let start = AHA_START;

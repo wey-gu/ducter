@@ -146,6 +146,8 @@ export interface Expect {
   notBody?: string;
   /** D379: Ducter asked once to keep a saying as a rule (true), or never (false). */
   saidAsk?: boolean;
+  /** D401: after the run, the person's rules hold this one (kept from their words, with no card). */
+  ruleKept?: { harness: string; never?: boolean; kind?: string };
   /** D372: some opened task is of this kind of work (said, or read from its needs and place). */
   workKind?: "code" | "errand" | "writing" | "research" | "other";
   /** D395: some opened task's place is on this computer (its name, "local" for the home) and matches these fields. */
@@ -742,6 +744,33 @@ export const scenarios: Scenario[] = [
     ],
     expect: { opens: 0, sendTo: "trip" },
     rubric: "One trip, one errand: the hotel price comparison, the flights, the refinements and the booking up to payment all continue the same task (task_send to it, each time, even though it was done), which keeps its signed-in browser and what it found. No new task at any step. Each hand-off gets a short Chinese line naming the action (e.g. 我接着比一下两家的价格，顺便看机票), plus at most a short answer to a question the user asked when a report already answers it; each result is said in plain words, with no facts the reports didn't give. Nothing is booked or paid without the user.",
+  },
+  // D401: hel, 2026-11-18 15:17, replayed: the booking task waits on the person in the MacBook's
+  // Chrome; the person, after four tasks for one trip: 「你不要每次都开新的 focus window/session」.
+  {
+    id: "continue-no-new-window-zh",
+    category: "followup",
+    lang: "zh",
+    floor: true,
+    computers: [{ name: "Macbook Pro M3", web: "chrome", harnesses: ["claude-code", "codex"] }],
+    seed: [
+      { user: "可以的话帮我订好机票和酒店，我可以自己接着做付款的步骤" },
+      {
+        task: {
+          key: "book",
+          title: "算北京往返和朗丽兹总价并准备确认页",
+          browser: true,
+          harness: "codex",
+          ack: "我用你 Mac 上的 Chrome 查周六的航班，和周日回程、朗丽兹一起算总价，准备到确认页就停。",
+          state: "done",
+          report: { state: "done", summary: "已核实周六去程：东航 MU5155 10:35 浦东→首都 13:00，含税 590 元。回程 MU5154 和朗丽兹现价还没核实，没有下单。携程在这台 Mac 的 Chrome 里已登录。", questions: [], evidence: [{ kind: "url", label: "携程：机票", ref: "https://flights.ctrip.com/online/list/oneway-sha-bjs" }] },
+        },
+      },
+      { ai: "周六去程 MU5155，含税 590 元。回程和朗丽兹现价还没核实，没下单。" },
+    ],
+    steps: [{ user: "现在我需要定下来这个机票和酒店，定下来之后就直接购买了，我们一起操作，你不要每次都开新的 focus window/session\n\n旅客姓名是张明" }],
+    expect: { opens: 0, sendTo: "book", maxChars: 160 },
+    rubric: "The user wants to finish the booking together in the same browser window and is annoyed that each step opened a new task. Pass if the partner continues the SAME booking task (task_send to it, even though it reported done), opening no new task, with one short Chinese line naming the action (e.g. 就在刚才的携程窗口里接着选好航班和酒店，付款前停下来给你。). It doesn't apologise at length, doesn't explain tasks or sessions, and doesn't claim anything was booked. It never pays or submits by itself.",
   },
   {
     id: "continue-errand-en",
@@ -2035,8 +2064,8 @@ export const scenarios: Scenario[] = [
     lang: "zh",
     floor: true,
     steps: [{ user: "对了，请你记住，订酒店等生活相关的工作别用 claude code 哈" }],
-    expect: { opens: 0, msgs: [1, 1], maxChars: 80, called: [{ tool: "rule_save", args: { harness: "claude-code", never: true } }] },
-    rubric: "Live (hel, 2026-11-18): the partner once answered \"好，以后…都不用 Claude Code\" and saved nothing, then later saved \"use Codex\", losing the exclusion. Now it saves the rule in this same turn as a never-rule on Claude Code (kind errand, or words like 酒店/机票), and says it back in one short Chinese line that keeps the exclusion (not 'use Codex'). No task opened.",
+    expect: { opens: 0, msgs: [1, 1], maxChars: 80, ruleKept: { harness: "claude-code", never: true, kind: "errand" } },
+    rubric: "Live (hel, 2026-11-18): the partner once answered \"好，以后…都不用 Claude Code\" and saved nothing, then later saved \"use Codex\", losing the exclusion. Now (D401) Ducter keeps the person's words as a never-rule on Claude Code the moment they land (the line under their words says so); the partner says it back in one short Chinese line that keeps the exclusion (not 'use Codex'), without claiming it is unsaved. No task opened.",
   },
   {
     id: "kind-never-unsaved-zh",
@@ -2045,8 +2074,37 @@ export const scenarios: Scenario[] = [
     // As on hel: said earlier, answered, but no rule was saved then.
     seed: [{ user: "对了，请你记住，订酒店等生活相关的工作别用 claude code 哈" }, { ai: "好，以后查机票、订酒店这类生活上的事都不用 Claude Code。" }],
     steps: [{ user: "帮我算一下北京往返大阪 12 月 20 到 24 号、加上朗丽兹两晚的总价，准备好确认页，先别付" }],
-    expect: { opens: 1, ackFirst: true, notHarness: "claude-code", notBody: "claude-code", saidAsk: true, msgs: [0, 0], maxChars: 200 },
-    rubric: "Live (hel, 2026-11-18): the partner had promised not to use Claude Code for this but saved no rule, and the next task went to Claude Code anyway. Now (D379) Ducter itself reads what the user said and gives the task to another agent (the transcript shows who it went to and why), and asks once with a card whether to keep it as a rule. The partner's part: one short Chinese ack naming the action, no other message, no booking or payment, and it never names Claude Code for the task.",
+    expect: { opens: 1, ackFirst: true, notHarness: "claude-code", notBody: "claude-code", saidAsk: false, ruleKept: { harness: "claude-code", never: true, kind: "errand" }, msgs: [0, 0], maxChars: 200 },
+    rubric: "Live (hel, 2026-11-18): the partner had promised not to use Claude Code for this but saved no rule, and the next task went to Claude Code anyway. Now (D401) the user's words were kept as their rule when they said them, so the task goes to another agent (the transcript shows who it went to and by which rule) and no card asks to keep anything. The partner's part: one short Chinese ack naming the action, no other message, no booking or payment, and it never names Claude Code for the task.",
+  },
+  // D401: hel, 2026-11-18, replayed as it happened: the preference at 14:29, the booking at 14:51 on
+  // the MacBook's signed-in Chrome, where Claude Code was the default pick. The booking went to
+  // Claude Code (Opus), refused and sat; the rule came 24 minutes later behind a Go card.
+  {
+    id: "said-then-booking-zh",
+    category: "rules",
+    lang: "zh",
+    floor: true,
+    computers: [{ name: "Macbook Pro M3", web: "chrome", harnesses: ["claude-code", "codex"] }],
+    seed: [
+      { user: "我周六要去北京参加晚上的 AGI Bar，住朗丽兹（中关村苏州街店）一晚，周日回上海。去程东航 MU5155 浦东飞首都，回程 MU5154。" },
+      { ai: "好，朗丽兹一晚，去程 MU5155、回程 MU5154。" },
+    ],
+    steps: [
+      { user: "对了，请你记住，订酒店等生活相关的工作别用 claude code 哈" },
+      { user: "可以的话帮我订好机票和酒店，用我 Mac 上登录了携程的 Chrome，我可以自己接着做付款的步骤" },
+    ],
+    expect: { opens: 1, notBody: "claude-code", notHarness: "claude-code", saidAsk: false, ruleKept: { harness: "claude-code", never: true, kind: "errand" }, maxChars: 220 },
+    rubric: "The user said a standing preference (no Claude Code for hotel bookings and other everyday errands), then, two messages on, asked to book the flights and the hotel up to payment in the Mac's signed-in Chrome. Pass if the preference was said back in one short Chinese line keeping the 'not' (Ducter keeps it as a rule by itself; rule_save is fine but not needed, and no card asks), and the booking opens one task that did NOT go to Claude Code (the transcript shows who took it and by which rule), with one short Chinese ack naming the action. Nothing is paid or submitted.",
+  },
+  // D401: said and asked in one message: the task opened in that same turn already goes by it.
+  {
+    id: "said-same-turn-en",
+    category: "rules",
+    lang: "en",
+    steps: [{ user: "From now on, don't use Claude Code for hotel bookings or other errands. Find me a hotel near Kyoto station for Dec 20-22 under ¥20k a night; don't book." }],
+    expect: { opens: 1, notBody: "claude-code", notHarness: "claude-code", saidAsk: false, ruleKept: { harness: "claude-code", never: true, kind: "errand" }, maxChars: 220 },
+    rubric: "A standing preference and a look-up in one message. Pass if one look-up task opens that did not go to Claude Code (the transcript shows who and by which rule), the partner's words are a short English ack naming the look-up (it may say back the preference in a few words), and nothing is booked. No card asking to keep the preference.",
   },
   {
     id: "said-never-memory-en",

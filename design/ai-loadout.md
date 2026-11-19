@@ -432,6 +432,19 @@ longer without them doing anything.
   Unanswered, it keeps applying and is not asked again; answered, never again for that saying,
   until the person says it anew. A pin in the moment passes it like a never-rule; the New task
   card's own pick is never touched. Where it changes nothing, nothing is said.
+- **Said in the conversation is a rule at once (D401).** The card above is now only for what a
+  recalled memory says (words said to another tool, or a note in someone else's words). The
+  person's own message is read the moment it lands, before the partner's turn
+  (`core/src/said.ts` `keepSaidAtOnce`): an explicit saying becomes a rule in their words, with its
+  kinds and never, on the Partner page, so a task opened later in that same turn already goes by
+  it; no card, no Go (a Go only for what Ducter inferred, as the two-switches ask). Each saying is
+  kept once (`said-memory.json` `kept`): a rule removed on the Partner page never comes back from
+  the same words; said again, it is kept again. Sayings in the Log from before this are kept when
+  Ducter starts, unless a D379 card answered them or a rule saved since covers their kind. The
+  partner sees **(Ducter already kept this as the user's rule…)** under the person's words and
+  says it back in one line, with no rule_save. A never-rule that moves a task off the default's
+  pick says so like a rule that names an agent: why `rule`, **按你的规则「{words}」**. The words
+  read are D379's; a where ("都在 MacBook 上做") is not read by code yet (todo).
 
 ## Summary
 

@@ -428,11 +428,11 @@ type Store struct {
 	Tasks     map[string]*Task
 	// FindStates are each find's latest change (D165), by find id.
 	FindStates map[string]*protocol.FindState
-	// FindSends are each drafted reply's sending (D402), apart from the reactions;
+	// FindSends are each drafted reply's sending (D403), apart from the reactions;
 	// FindAsks the find's Go asked again (after 撤回 or a failed send).
 	FindSends map[string]*protocol.FindState
 	FindAsks  map[string]string
-	// FindSeq is the seq of the note each find is in (D402: 看草稿 finds it).
+	// FindSeq is the seq of the note each find is in (D403: 看草稿 finds it).
 	FindSeq map[string]int64
 	// DecisionCalls are the latest connection_call of each decision's Go,
 	// by decision id (D222: a calendar change settles from it).

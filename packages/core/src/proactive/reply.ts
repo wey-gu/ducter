@@ -1,4 +1,4 @@
-// D402 (research/164): a 在等你回 find arrives with its reply already written. The thread and a
+// D403 (research/164): a 在等你回 find arrives with its reply already written. The thread and a
 // few of the person's own sent mails are read through the broker as the read-only watch caller
 // (nothing is kept: they go to the model in memory and are dropped), and the cheapest capable
 // model writes a short reply in the thread's language and the person's voice. It is shown in the

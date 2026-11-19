@@ -129,6 +129,31 @@ from such mail would have been dated 1970 and swept the next morning. Fixed (D22
   `[proactive] look back: read N, kept M, noted K`;
 - a look back that no source answered stays pending, like one whose every read failed.
 
+### 1.2b A watch that can't read is never silent (D402, 2026-11-19, research/162 gap 4)
+
+On hel the watch called `discord.list_mentions`, `discord.search_messages` and
+`discord.list_direct_messages` 767 times each between 11-12 and 11-17, every one "unknown action",
+and nothing said so (VERIFIED, hel's Log, counts only). Two causes: OOMOL's Discord is `discordbot`,
+a bot whose catalogue reads the channels and guilds the bot is in and nothing addressed to the
+person (no mentions, no DMs; DOCUMENTED, the connector's own action list); and `watch.ts`, when
+every action was remembered missing, asked again from the best one on every look. Now:
+- `discordbot` is not watched at all (no call); its row says **读不了 / Can't read it**, its detail
+  **这个连接还读不到 @你 和私信，所以 Ducter 没在看它。是还不支持，不是你哪里没设好。**
+- An app whose every action answered unknown stops by itself (`watch.json` `broken`, why
+  `unsupported`), logs one line, and is tried once more after 7 days.
+- A source that says the account must be connected again (`connection_required`, `app_not_found`,
+  `credential_expired`, `scope_missing`, `unauthorized`…) stops at the first such answer (why
+  `reconnect`): its row says **要重新连接 / Connect it again**, the detail names the place and
+  **去 OOMOL 重新连接**; tried every 6 hours, and within a minute once its connection was seen signed
+  out and is fine again.
+- Any other failure (a timeout, a busy service) backs off: each failed look doubles the wait from
+  the app's own interval, up to 3 hours; the first read that works puts it back on pace and clears
+  any trouble. A passing failure is never shown as broken.
+- What it couldn't read is never counted as read (今天看了什么 counts only reads that came back).
+Since 11-17 the Log has no other connector failing this way: Slack's `list_mentions` was unknown 4
+times on 11-12 and the next action read (the missing-action memory); Google Calendar's
+`list_calendars` and the "write outside the Go path" denials of 11-10 to 11-12 were fixed then.
+
 ### 1.3 The day dots spoke four times (D243, 2026-11-13, research/81)
 
 dots told the author about a billing change, Saturday's flight (asked), a correction to a
@@ -217,7 +242,7 @@ Each find is typed (stage 2 extracts, stage 3 judges; 你说过的 is read by co
 | Kind (zh / en) | What it is | Sources | When it is said | Next step it offers | On by default |
 |---|---|---|---|---|---|
 | **两件事对不上 / Two things don't match** (the aha) | Two facts that contradict or leave a gap: a flight lands the night before the hotel starts; a renewal notice with no payment after it and the card expired; an invoice with no matching bank mail; a meeting during a flight; two meetings at once in any of their calendars, today or tomorrow (D222); the calendar and a confirmation mail naming the same thing on different days, within two weeks (D226); any two of one plan's sources on different days: the calendar's hold or event, a confirmation, a mail that mentions it, the person's own words, a public page (D388, §4.1) | mail + calendar + the conversation, joined through the ledger (§9) over 60 days | the morning note; **now** only if it costs something today | a 上网 task that looks it up (Go), never the change itself | yes |
-| **在等你回 / Waiting on you** | A real person asked you something (a question, a request, a review) and you haven't answered in 2 working days, or they asked again; D402: only when worth a tap (§4.2: not a relay or a stranger's role address, an ask with words, last asked within 10 working days, nothing sent them since) | mail, GitHub review requests, Discord DMs and @-mentions | the morning note (never "now" by itself; 只说急的: one who asked again or waited 3 working days) | mail: the reply already written in the card, editable, **好，发出去** after 30 s with **撤回** (§4.2); GitHub: read it first (a task, Go) | yes, people only (no lists, no bulk, no noreply) |
+| **在等你回 / Waiting on you** | A real person asked you something (a question, a request, a review) and you haven't answered in 2 working days, or they asked again; D403: only when worth a tap (§4.2: not a relay or a stranger's role address, an ask with words, last asked within 10 working days, nothing sent them since) | mail, GitHub review requests, Discord DMs and @-mentions | the morning note (never "now" by itself; 只说急的: one who asked again or waited 3 working days) | mail: the reply already written in the card, editable, **好，发出去** after 30 s with **撤回** (§4.2); GitHub: read it first (a task, Go) | yes, people only (no lists, no bulk, no noreply) |
 | **你在等别人回 / You're waiting on someone** | You asked a question or made a request, and nobody answered in 3 working days, and it mattered (a deadline, money, a person who matters, Mem) | your sent mail | the morning note | a short follow-up draft (Go) | yes |
 | **你答应过的 / Something you promised** | A commitment in your own sent mail or messages ("我周五前发给你") with nothing showing it was kept | sent mail (14 days, research/46) | the morning of the due day | find the related draft or files; a draft reply (Go) | yes |
 | **快到期和要花钱的 / Deadlines and money** | A renewal, a price going up, a trial ending, a bill or a form due; a quota or allowance nearly used up, saying what the mail leaves out (D388) | mail (+ Mem: the last price) | the morning note, a few days ahead; **now** the day before if unpaid | open the renewal page in Ducter's browser (Go); paying is the person's | yes |
@@ -271,7 +296,7 @@ came back with the time it said was missing). *First time:* a find in the mornin
   last days of the real accounts; it prints what it would have said, with sources, what it held and
   why, and how it knew.
 
-### 4.2 Waiting for your reply: worth a tap, with the reply written (D402, research/164)
+### 4.2 Waiting for your reply: worth a tap, with the reply written (D403, research/164)
 
 *Who:* the developer whose users' mail waits while he codes; the consumer whose friend asked twice;
 the fresh user who just wants to answer. *Feels:* before, a chore per find (hel: 11 of 11 held, one
@@ -413,7 +438,7 @@ Every find offers at most one next step, as a decision (D61's effect ladder):
 | Look it up (the hotel's site, the registrar, rebook options) | reads the web | **Go** label names it; default **Hold** (background-raised asks never auto-run) | a task with 上网 on the device that has it (D157), reports back in the conversation |
 | Read it first (a PR, a long thread) | reads | Hold | a task; its report is the write-up |
 | A draft (follow-up, a form) | writes nothing outside Ducter | Hold | the draft is shown whole in the conversation; a second Go **存成草稿 / Save as draft** or **发出去 / Send** writes once (D96) |
-| A reply to someone waiting (D402, §4.2) | sends one mail, on Go | Hold | already written in the card; Go sends it after 30 s with **撤回 / Undo** |
+| A reply to someone waiting (D403, §4.2) | sends one mail, on Go | Hold | already written in the card; Go sends it after 30 s with **撤回 / Undo** |
 | Pay, accept, change a booking | the person's own | — | Ducter opens the page and stops (takeover, D48) |
 
 Asks raised by background work **expire into Passed** with the find's date (the Grok bot's
@@ -616,6 +641,9 @@ the desktop's own renderer, phone from a scratch core with a fake oo).
 | ★ `card.oo_out` | oo 退出登录了 · 在终端里运行 oo login | oo is signed out · run oo login in a terminal |
 | ★ `tile.reads` · `tile.asks` | 会看：{what} · 先问你：{what} | Reads: {what} · Asks you first: {what} |
 | ★ `tile.watch` · `tile.mentions` | 自己留意 · 只看 @你 和私信 | Watch on its own · Only @-mentions and DMs |
+| `tile.trouble.unsupported` · `tile.trouble.reconnect` (D402) | 读不了 · 要重新连接 | Can't read it · Connect it again |
+| `tile.trouble.unsupported.chat` | 这个连接还读不到 @你 和私信，所以 Ducter 没在看它。是还不支持，不是你哪里没设好。 | This connection can't read @-mentions or DMs yet, so Ducter isn't watching it. It isn't supported yet; nothing is wrong on your side. |
+| `tile.trouble.reconnect.note` · `.go` | {source} 说这个账号要重新连接一下才读得到。连好以后 Ducter 会自己接着看。 · 去 {source} 重新连接 | {source} says this account needs connecting again before it can be read. Once it's connected, Ducter picks up watching by itself. · Connect again in {source} |
 | ★ `tile.exclude` · `tile.signout_oo` | 不让 Ducter 看这个 · 要退出登录，去 oo 里 | Don't let Ducter read this one · Sign out in oo |
 | ★ `tile.more.oo` | 在 oo 里再连一个 | Connect another in oo |
 | ★ `card.read_list` | 看了哪些 | What it read |

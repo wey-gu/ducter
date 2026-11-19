@@ -1,7 +1,7 @@
 # 164 · Waiting for your reply: worth a tap, with the reply already written
 
 Date: 2026-11-19, on main at `04249066` (0.0.93). Follows research/154 (D388) and research/162 gap #3
-("the finds aren't worth a tap yet", score 24). Decision: D402.
+("the finds aren't worth a tap yet", score 24). Decision: D403.
 
 Tags: **VERIFIED** = read in hel's Log or files (read only) or measured on this branch; **DOCUMENTED**
 = a source's own docs; **INFERRED** = judgment.
@@ -51,13 +51,13 @@ No model, no network (recorded triage, a recorded drafter).
 | Mode | Code | Waiting said | On "now" | Worth said | With a draft | False positives | The aha six in time |
 |---|---|---|---|---|---|---|---|
 | 每天最多 3 件 | main (0.0.93) | 8 | 4 | 4/4 | 0 | 3 (stale refund, GitHub relay, wordless ask) | 6/6 |
-| 每天最多 3 件 | D402 | 5 | 0 | 4/4 | 4/4 (+ Mia's) | 0 | 6/6 |
+| 每天最多 3 件 | D403 | 5 | 0 | 4/4 | 4/4 (+ Mia's) | 0 | 6/6 |
 | 有用就说 | main | 8 | 2 | 4/4 | 0 | 3 | 6/6 |
-| 有用就说 | D402 | 5 | 0 | 4/4 | 4/4 | 0 | 6/6 |
+| 有用就说 | D403 | 5 | 0 | 4/4 | 4/4 | 0 | 6/6 |
 | 只说急的 | main | 8 | 8 | 4/4 | 0 | 3 | 2/6 (the time fill late: the "now" room taken) |
-| 只说急的 | D402 | 5 | 5 | 4/4 | 4/4 | 0 | 3/6 (fill in time; the rest wait for a note this mode doesn't have, as before) |
+| 只说急的 | D403 | 5 | 5 | 4/4 | 4/4 | 0 | 3/6 (fill in time; the rest wait for a note this mode doesn't have, as before) |
 
-Before D402, people waiting filled the day's "now" room (three a day) and pushed the AGI Bar time
+Before D403, people waiting filled the day's "now" room (three a day) and pushed the AGI Bar time
 fill a day late in 只说急的; with 有用就说 on hel's own mail, the same pattern produced the seven
 one-at-a-time pushes of 11-12 to 11-14.
 
@@ -101,6 +101,6 @@ undo. Keep people waiting off the "now" rung. Verify on hel once 0.0.94 is there
 waiting finds per day, how many go out on Go, and the first real send's input against OOMOL's schema.
 
 **Summary:** of hel's 11 waiting finds (all held), 4 were worth saying and 7 should have been silent;
-D388 already silences 4, and D402's code gate the other 3 (a stale ask, GitHub's relay, an ask with no
+D388 already silences 4, and D403's code gate the other 3 (a stale ask, GitHub's relay, an ask with no
 words). On the rebuilt week, waiting finds said go from 8 to 5 with 0 false positives (was 3), none on
 "now" (was 4), and every worth one arrives with its reply written; the aha six stay 6/6.

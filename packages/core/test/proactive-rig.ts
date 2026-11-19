@@ -36,7 +36,7 @@ export interface RigOptions {
   workingMemory?: ProactiveOptions["workingMemory"];
   /** D388: a fake quick web look for open questions (never the web). */
   webLook?: ProactiveOptions["webLook"];
-  /** D402: a recorded drafter (never a model). */
+  /** D403: a recorded drafter (never a model). */
   drafter?: ProactiveOptions["drafter"];
 }
 

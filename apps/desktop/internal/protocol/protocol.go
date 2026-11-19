@@ -223,7 +223,7 @@ type Decision struct {
 	// FindID (D165): a find's one next step; shown inside its note, never
 	// as a card of its own in the conversation.
 	FindID string `json:"findId,omitempty"`
-	// Draft (D402): the find's reply is already written; away from its card
+	// Draft (D403): the find's reply is already written; away from its card
 	// (On hand) show its first line and 看草稿, which opens the card; never Send.
 	Draft *DecisionDraft `json:"draft,omitempty"`
 	// Asker (D170): asked for one of the user's own agents through Bridge;

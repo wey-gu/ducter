@@ -333,7 +333,7 @@ export interface Bodies {
     // D165: a find's one next step. Clients render it inside its note (not as a card of its own);
     // On hand lists it like any ask. Never pushed on its own: the note is the one notification.
     findId?: string;
-    // D402: the find's reply is already written: anywhere but its card (On hand, a chat app) the
+    // D403: the find's reply is already written: anywhere but its card (On hand, a chat app) the
     // card shows its first line and 看草稿 / See the draft (goLabel), which opens the card in the
     // conversation; never a Send there. A Go without the words never sends.
     draft?: { first: string };
@@ -660,7 +660,7 @@ export interface Bodies {
   finds: { noteId: string; rung: FindRung; opening: string; finds: FindView[]; leftOut?: string; quiet?: boolean; ask?: ProactiveAsk; revises?: string; answered?: string; /** A fold-in: how many finds at the end are new in this revision (the partner reads only those). */ added?: number; learned?: { count: number } };
   // A find changed: Go or Hold on its step, passed its date (过了), or the person's reaction
   // (有用; 这类不用告诉我 adds a Rule, ruleId). taskId: the task Go opened.
-  // D402: until (sending): when the reply goes; decisionId (unsent, send_failed): the find's Go asked again; error (send_failed): why, in a few words.
+  // D403: until (sending): when the reply goes; decisionId (unsent, send_failed): the find's Go asked again; error (send_failed): why, in a few words.
   find_state: { findId: string; kind: FindKind; state: FindState; taskId?: string; ruleId?: string; until?: string; decisionId?: string; error?: string };
   connection_call: {
     callId: string;
@@ -1318,7 +1318,7 @@ export type ClientFrame =
   | ({ t: "own_phone" } & OwnPhoneAction)
   // D165: the person's answer in a note: a reaction to a find, or an ask (first_look, keep_note).
   | { t: "find_react"; findId: string; reaction: "useful" | "mute" }
-  // D402: 撤回 / Undo on a drafted reply inside its window: nothing is sent, the card asks again.
+  // D403: 撤回 / Undo on a drafted reply inside its window: nothing is sent, the card asks again.
   | { t: "find_undo"; findId: string }
   | { t: "proactive_answer"; noteId: string; ask: ProactiveYesNo; yes: boolean }
   // Work over time (D112-D114), each answered with action_result (taskId = the waiter or routine

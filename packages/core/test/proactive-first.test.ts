@@ -31,7 +31,7 @@ test("the first add: one offer; D250: watching on the default, the quiet look ba
   await r.advance(15 * 60_000);
   // Silence: the quiet look back went (60 days, the last 3 in full).
   expect(reach(r)).toContain(60);
-  // Nothing can't wait: a person who asked again today waits for the morning note (D402; D232 said it now).
+  // Nothing can't wait: a person who asked again today waits for the morning note (D403; D232 said it now).
   expect(r.notes().slice(1).map((e) => e.body.rung)).toEqual([]);
   expect(r.sent).toEqual([]); // the offer is in the conversation, never a notification
 });

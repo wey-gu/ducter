@@ -14,7 +14,7 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 )
 
-// D402: a 在等你回 find arrives with its reply already written. The words sit
+// D403: a 在等你回 find arrives with its reply already written. The words sit
 // in a sunken well, a field while its Go is open; 好，发出去 sends the text as
 // edited; then 30 seconds with 撤回, then 已发给 {name}.
 

@@ -5,10 +5,10 @@ import { afterEach, expect, test } from "bun:test";
 import { join } from "node:path";
 import type { Bodies, DeviceHarness, Settings } from "@ducter/protocol";
 import { chooseBody } from "../src/candidates.ts";
-import { saidPick } from "../src/loadout.ts";
+import { neverPick, saidPick } from "../src/loadout.ts";
 import { openLog } from "../src/log.ts";
 import { openRules } from "../src/rules.ts";
-import { keepSaidOnGo, openSaid, readSaid } from "../src/said.ts";
+import { keepSaidAtOnce, keepSaidOnGo, openSaid, readSaid } from "../src/said.ts";
 import { tempDir } from "./helpers.ts";
 
 let stops: (() => void)[] = [];
@@ -149,4 +149,73 @@ test("someone else's words passed on are not the person's preference", () => {
   const h = home();
   h.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: "订酒店别用 Claude Code", forwarded: { from: "Mia" } } });
   expect(h.said.rulesFor("errand")).toEqual([]);
+});
+
+// D401: hel, 2026-11-18: said at 14:29, the booking at 14:52 still went to Claude Code, and the rule
+// came at 14:53 only behind a Go card. Now the person's words are their rule the moment they land.
+test("said in the conversation: kept as the person's rule at once, before the partner's turn, with no card", () => {
+  const h = home();
+  stops.push(keepSaidAtOnce(h.log, h.said));
+  const e = h.say("对了，请你记住，订酒店等生活相关的工作别用 claude code 哈");
+  expect(h.rules.list()).toMatchObject([{ harness: "claude-code", never: true, kinds: ["errand"], text: "订酒店等生活相关的工作别用 claude code" }]);
+  expect(h.said.keptFrom(e.seq)).toHaveLength(1);
+  // Kept, so it is no longer a provisional saying (no card will ask about it).
+  expect(h.said.rulesFor("errand")).toEqual([]);
+  // The next errand goes by the rule, and says so with their words.
+  const input = { work: { title: "订北京往返机票和朗丽兹一晚", kind: "errand" as const }, harnesses: [cc, cx], settings };
+  const rules = h.rules.list();
+  const pick = chooseBody({ ...input, rules })!;
+  expect(pick).toMatchObject({ harness: "codex" });
+  expect(neverPick(pick as never, () => chooseBody({ ...input, rules: [] }) as never, rules, input.work)).toMatchObject({ harness: "codex", why: { kind: "rule", text: "订酒店等生活相关的工作别用 claude code" } });
+  // Code is untouched, and says nothing about the rule.
+  const code = { work: { title: "修 CI", kind: "code" as const }, harnesses: [cc, cx], settings };
+  const cp = chooseBody({ ...code, rules })!;
+  expect(neverPick(cp as never, () => chooseBody({ ...code, rules: [] }) as never, rules, code.work).why.kind).not.toBe("rule");
+});
+
+test("kept once: removed on the Partner page it stays removed; said again, it is kept again", () => {
+  const h = home();
+  stops.push(keepSaidAtOnce(h.log, h.said));
+  h.say("Don't use Claude Code for hotel bookings.");
+  expect(h.rules.list()).toHaveLength(1);
+  h.rules.remove(h.rules.list()[0]!.id);
+  expect(h.said.backfill()).toEqual([]);
+  expect(h.said.rulesFor("errand")).toEqual([]);
+  // Across a restart too.
+  expect(openSaid({ log: h.log, rules: h.rules, dataDir: h.dir }).backfill()).toEqual([]);
+  h.say("Again: don't use Claude Code for hotel bookings.");
+  expect(h.rules.list()).toHaveLength(1);
+});
+
+test("a taste, a one-off or someone else's words keep no rule", () => {
+  const h = home();
+  stops.push(keepSaidAtOnce(h.log, h.said));
+  h.say("我挺喜欢 Codex 的");
+  h.say("这次用 Codex 订酒店吧");
+  h.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: "订酒店别用 Claude Code", forwarded: { from: "Mia" } } });
+  expect(h.rules.list()).toEqual([]);
+});
+
+test("said before Ducter kept sayings at once: kept when it starts, unless answered on a card or a newer rule covers it", async () => {
+  const h = home();
+  h.say("订酒店等生活相关的工作别用 claude code 哈");
+  h.say("以后写代码都用 Codex。");
+  // hel's own later rule (words only, no kind): it doesn't cover the kind, so the never is kept too.
+  await Bun.sleep(5);
+  h.rules.add({ text: "查机票和酒店 → Codex", harness: "codex", match: ["机票", "酒店"] });
+  const kept = h.said.backfill();
+  expect(kept.map((r) => [r.harness, !!r.never, r.kinds])).toEqual([["claude-code", true, ["errand"]], ["codex", false, ["code"]]]);
+  expect(h.said.backfill()).toEqual([]);
+
+  // A newer rule for the kind is the person's newer word; a 只这次 on a D379 card is their answer.
+  const g = home();
+  g.say("以后订机票都用 Codex");
+  await Bun.sleep(5);
+  g.rules.add({ text: "跑腿的事 → Claude Code", harness: "claude-code", match: [], kinds: ["errand"] });
+  expect(g.said.backfill()).toEqual([]);
+  const k = home();
+  k.say("Don't use Claude Code for hotel bookings.");
+  k.log.append({ stream: "channel", origin: "partner", kind: "decision", body: { decisionId: "d_9", question: "?", goLabel: "Keep", defaultOption: "hold", reversible: false, saying: { key: "said:1", harness: "claude-code", never: true, kinds: ["errand"], quote: "x" } } as Bodies["decision"] });
+  k.log.append({ stream: "channel", origin: "user", kind: "decision_resolved", body: { decisionId: "d_9", option: "hold", by: "user" } as Bodies["decision_resolved"] });
+  expect(k.said.backfill()).toEqual([]);
 });

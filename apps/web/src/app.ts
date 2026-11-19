@@ -2209,7 +2209,7 @@ class AppState {
     this.send({ t: "find_react", findId, reaction });
     this.changed();
   }
-  /** D402: 撤回 / Undo on a drafted reply inside its window. */
+  /** D403: 撤回 / Undo on a drafted reply inside its window. */
   undoFind(findId: string) {
     haptic("light");
     this.send({ t: "find_undo", findId });

@@ -350,7 +350,7 @@ function Resolved({ d }: { d: DecisionState }) {
   );
 }
 
-/** D402: a 在等你回 find's ask away from its card: the question, the reply's first line (quiet, one line), 先等等 · 看草稿. */
+/** D403: a 在等你回 find's ask away from its card: the question, the reply's first line (quiet, one line), 先等等 · 看草稿. */
 function DraftAskBody({ d, about, open }: { d: DecisionState; about: string; open: boolean }) {
   return (
     <>
@@ -393,7 +393,7 @@ export function DecisionBody({ d, taskId }: { d: DecisionState; taskId?: string 
   // D233: a task asks for a key: the field is on the card itself, never a reply.
   if (d.key) return <KeyBody d={d} />;
   if (d.call) return <CallDecision d={d} />;
-  // D402: a reply already written: its first line, 先等等 and 看草稿 (the card in the conversation); never Send here.
+  // D403: a reply already written: its first line, 先等等 and 看草稿 (the card in the conversation); never Send here.
   if (d.draft && d.findId) return <DraftAskBody d={d} about={about} open={open} />;
   // D157: wait for a computer (the default) or do it now on another; built in the user's words.
   const wa = d.where ? whereAsk(d.where) : undefined;

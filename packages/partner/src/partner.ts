@@ -783,6 +783,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       const p = core.tasks.get(id)?.place;
       return p?.kind === "repo" ? p.baseBranch : undefined;
     },
+    // D401: the rules Ducter kept from this message of the user's, by itself.
+    kept: (seq) => core.said?.keptFrom?.(seq) ?? [],
     // D373: the task the conversation was on right before this message (the last task opened, or
     // finished, or continued, in the conversation), within FOLLOWS_HOURS. A follow-up carries it on.
     follows: (seq) => {

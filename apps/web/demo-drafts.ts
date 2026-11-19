@@ -1,4 +1,4 @@
-// A demo core for D402 (research/164): two 在等你回 finds in a morning note, each with its reply
+// A demo core for D403 (research/164): two 在等你回 finds in a morning note, each with its reply
 // already written (the thread's language, the person's voice), editable in place, sent on Go
 // after a 30-second undo window. DEMO_STAGE=sending shows the first one in its window and the
 // second one sent. Synthetic: every person and address is made up; nothing is sent anywhere.

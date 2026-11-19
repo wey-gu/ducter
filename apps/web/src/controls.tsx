@@ -507,7 +507,7 @@ export function Switch(p: { label: string; on: boolean; onChange: (v: boolean) =
   );
 }
 
-/** D402: words someone may edit in place before they go out (a reply in a find): a sunken well that grows with its text up to 40vh, no grip (as D385's notes); CSS field-sizing does it where the browser can. */
+/** D403: words someone may edit in place before they go out (a reply in a find): a sunken well that grows with its text up to 40vh, no grip (as D385's notes); CSS field-sizing does it where the browser can. */
 export function TextBox(p: { value: string; label: string; lang?: string; class?: string; onInput: (v: string) => void }) {
   const fit = (el: HTMLTextAreaElement | null) => {
     if (!el || CSS.supports?.("field-sizing", "content")) return;

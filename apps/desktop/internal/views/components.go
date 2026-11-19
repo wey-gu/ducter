@@ -754,7 +754,7 @@ func (a *App) decisionButtons(c *ui.Context, d *store.DecisionState, st decision
 		})
 		return
 	}
-	// D402: a reply already written: its first line, 先等等 and 看草稿 (the card in the
+	// D403: a reply already written: its first line, 先等等 and 看草稿 (the card in the
 	// conversation, where the words are); never Send away from the card.
 	if d.Draft != nil && d.FindID != "" {
 		if d.Draft.First != "" {

@@ -118,11 +118,11 @@ export const OWN_GRACE_MS = 10 * 60_000;
 /** D281: a kept line not said within this of its moment (the home was off) is let go, never said stale. */
 export const OWN_LATE_MS = 12 * 3_600_000;
 const VERDICT_DAYS = 7;
-/** D402: how long one reply's reading and writing may take before the find is said without it. */
+/** D403: how long one reply's reading and writing may take before the find is said without it. */
 export const DRAFT_WAIT_MS = 60_000;
-/** D402: a drafted reply's Go. */
+/** D403: a drafted reply's Go. */
 const SEND_LABEL = { zh: "发出去", en: "Send" };
-/** D402: the same find's Go anywhere but its card (On hand): it opens the card, never sends. */
+/** D403: the same find's Go anywhere but its card (On hand): it opens the card, never sends. */
 const SEE_LABEL = { zh: "看草稿", en: "See the draft" };
 const firstLine = (s: string) => {
   const l = s.trim().split(/\n/)[0]!.trim();
@@ -157,7 +157,7 @@ interface FindRec {
   /** D388: what it didn't know and didn't change when it was said (for "how did you know?"). */
   unknown?: string;
   untouched?: string;
-  /** D402: the thread a drafted reply goes to, the draft as written, and where its sending is. */
+  /** D403: the thread a drafted reply goes to, the draft as written, and where its sending is. */
   reply?: ReplyTarget;
   draft?: { text: string; lang: string; check?: string };
   send?: { state: "sending" | "sent" | "unsent" | "failed"; until?: number; text?: string };
@@ -356,7 +356,7 @@ export interface ProactiveOptions {
   /** Stage 2 and 3; set later (they need the runner's harness). Without a triage nothing is read past stage 1. */
   triage?: Triage;
   judge?: FindJudge;
-  /** D402: writes a 在等你回 find's reply before it is said (the cheapest capable model). Absent: the find offers a task that drafts one. */
+  /** D403: writes a 在等你回 find's reply before it is said (the cheapest capable model). Absent: the find offers a task that drafts one. */
   drafter?: Drafter;
   /** A client app is open (fold-ins; a meeting line needs no notification). */
   present: () => boolean;
@@ -415,7 +415,7 @@ export interface Proactive {
   /** D388: the questions said finds left open, and what became of them (the replay reports them). */
   opens(): { name: string; fields: ("day" | "time")[]; state: "open" | "filled" | "gone"; looks: number }[];
   setModels(m: { triage?: Triage; judge?: FindJudge; drafter?: Drafter }): void;
-  /** D402: 撤回 / Undo on a drafted reply inside its window: nothing is sent and its Go is asked again. False when it can't be undone. */
+  /** D403: 撤回 / Undo on a drafted reply inside its window: nothing is sent and its Go is asked again. False when it can't be undone. */
   undo(findId: string): boolean;
   /** Something the accounts card shows changed (a look, a find, a tile). */
   onChange(fn: () => void): () => void;
@@ -459,7 +459,7 @@ export function createProactive(o: ProactiveOptions): Proactive {
   let triage = o.triage;
   let judge = o.judge ?? barJudge;
   let drafter = o.drafter;
-  /** D402: the replies waiting out their undo window (in memory: a restart asks again instead of sending). */
+  /** D403: the replies waiting out their undo window (in memory: a restart asks again instead of sending). */
   const sendTimers = new Map<string, unknown>();
   /** D368: the focus names of this morning's run (Mem's Working Memory), for the bar and the pick; empty otherwise. */
   let focusNow: string[] = [];
@@ -763,9 +763,9 @@ export function createProactive(o: ProactiveOptions): Proactive {
     let goLabel: string | undefined;
     if (c.step) {
       decisionId = newId("d");
-      // D402: with its reply already written, Go is the send itself.
+      // D403: with its reply already written, Go is the send itself.
       goLabel = c.draft ? words(SEND_LABEL, z) : words(c.step.goLabel, z);
-      // D402: away from its card (On hand), a drafted reply's Go is 看草稿 / See the draft, never Send.
+      // D403: away from its card (On hand), a drafted reply's Go is 看草稿 / See the draft, never Send.
       o.log.append({ stream: "channel", origin: "partner", kind: "decision", body: { decisionId, question: text, goLabel: c.draft ? words(SEE_LABEL, z) : goLabel, defaultOption: "hold", reversible: false, findId, ...(c.draft ? { draft: { first: firstLine(c.draft.text) } } : {}) } });
     }
     // D388: each source line says what that source says, in the person's language.
@@ -805,7 +805,7 @@ export function createProactive(o: ProactiveOptions): Proactive {
   }
 
   /**
-   * D402: the replies of the 在等你回 finds about to be said, written first (in parallel, each in
+   * D403: the replies of the 在等你回 finds about to be said, written first (in parallel, each in
    * DRAFT_WAIT_MS): the thread and the person's own sent mail are read, the cheapest capable model
    * writes, and the words are attached to the candidate. A draft that can't be written leaves the
    * find as it was (its Go opens a task that drafts one): it is never held back for want of one.
@@ -831,7 +831,7 @@ export function createProactive(o: ProactiveOptions): Proactive {
     );
   }
 
-  /** D402: the find's Go asked again (after 撤回, a failed send or a restart in the window). */
+  /** D403: the find's Go asked again (after 撤回, a failed send or a restart in the window). */
   function askAgain(findId: string, f: FindRec): string {
     const decisionId = newId("d");
     f.decisionId = decisionId;
@@ -839,7 +839,7 @@ export function createProactive(o: ProactiveOptions): Proactive {
     return decisionId;
   }
 
-  /** D402: Go on a drafted reply: the text as the person left it waits SEND_UNDO_MS, then is sent once. */
+  /** D403: Go on a drafted reply: the text as the person left it waits SEND_UNDO_MS, then is sent once. */
   function startSend(findId: string, f: FindRec, edited?: string): void {
     const text = (edited?.trim() || f.draft!.text).slice(0, 4000);
     const until = now() + SEND_UNDO_MS;
@@ -1452,7 +1452,7 @@ export function createProactive(o: ProactiveOptions): Proactive {
         f.state = "go";
         welcomed(f.kind);
         save();
-        // D402: a reply already written is sent (after its undo window), not handed to a task; only
+        // D403: a reply already written is sent (after its undo window), not handed to a task; only
         // a Go that carries the words the person saw (the card always sends them). A bare Go (On
         // hand, a notification's action, a chat app) never sends unseen words: the card asks again.
         if (f.draft && f.reply && r.text?.trim()) startSend(findId, f, r.text);
@@ -1508,7 +1508,7 @@ export function createProactive(o: ProactiveOptions): Proactive {
     // D258: undefined is a 只说急的 set before D250, when the morning note couldn't see a flight.
     return by === "keep_note" || by === undefined;
   }
-  // D402: a reply whose undo window a restart cut short is never sent unseen: its Go is asked again.
+  // D403: a reply whose undo window a restart cut short is never sent unseen: its Go is asked again.
   for (const [findId, f] of Object.entries(st.finds))
     if (f.send?.state === "sending") {
       f.send = { state: "unsent", ...(f.send.text ? { text: f.send.text } : {}) };
@@ -1862,6 +1862,7 @@ export function createProactive(o: ProactiveOptions): Proactive {
           excluded: a.excluded,
           ...(c.state === "unauthorized" || c.state === "unreachable" ? { unreachable: true } : {}),
           ...(watchers.lastReadAt(a) ? { lastReadAt: watchers.lastReadAt(a) } : {}),
+          ...(!a.excluded && watchers.trouble(a) ? { trouble: watchers.trouble(a) } : {}),
         })),
       };
     },

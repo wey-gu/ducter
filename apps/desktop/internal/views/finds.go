@@ -72,7 +72,7 @@ func (a *App) findBlock(c *ui.Context, f protocol.FindView, seq int64) {
 				}
 			})
 		})
-		// D402: after 撤回 or a failed send, the find's Go is asked again under a new decision.
+		// D403: after 撤回 or a failed send, the find's Go is asked again under a new decision.
 		did := f.DecisionID
 		if x := a.S.FindAsks[f.FindID]; x != "" {
 			did = x
@@ -196,7 +196,7 @@ func (a *App) noteAsk(c *ui.Context, n *protocol.Finds) {
 	}
 }
 
-// findDraft is a 在等你回 find's reply, already written (D402): who it goes
+// findDraft is a 在等你回 find's reply, already written (D403): who it goes
 // to, the words in a sunken well (a field while its Go is open), what to
 // check first, then 发出去 · 先等等; after Go, the 30-second line with 撤回,
 // then 已发给 {name}.

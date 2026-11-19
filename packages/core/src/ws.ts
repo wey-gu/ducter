@@ -1522,7 +1522,7 @@ export function createWsHandler(deps: WsDeps) {
         return;
       }
       case "find_undo": {
-        // D402: 撤回 / Undo on a drafted reply inside its window (a no-op once it went).
+        // D403: 撤回 / Undo on a drafted reply inside its window (a no-op once it went).
         const p = deps.proactive?.();
         if (!p) throw new Error("not available");
         p.undo(String(f.findId ?? ""));

@@ -1,4 +1,4 @@
-// D402 (research/164): a 在等你回 find is said only when it is worth a tap, and arrives with its
+// D403 (research/164): a 在等你回 find is said only when it is worth a tap, and arrives with its
 // reply already written (the thread's language, the person's voice), editable; Go sends it once
 // after a 30-second undo window, through the staged write; 撤回 / Undo, a restart in the window or
 // a failed send ask again; nothing is ever sent without Go, and never saved into the mailbox.

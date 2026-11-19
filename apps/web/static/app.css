@@ -5719,14 +5719,14 @@ button.dev-name {
 .bubble.note .fhow .fsrc { color: var(--ink); font-weight: 600; }
 .bubble.note .fhow .fsays { color: var(--ink); }
 .bubble.note .fhow .flink { overflow-wrap: anywhere; }
-/* D402: a reply already written, in the find: who it goes to, the words in a sunken well (a field
+/* D403: a reply already written, in the find: who it goes to, the words in a sunken well (a field
    while its Go is open), what to check first, then Send and Hold, or the undo line after Go. */
 .bubble.note .fdraft { display: flex; flex-direction: column; gap: 6px; margin-top: 2px; }
 .bubble.note .fdraft-text { display: block; width: 100%; box-sizing: border-box; padding: 10px 12px; border-radius: var(--r-sm); background: var(--sunken); color: var(--ink); font-size: 15px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
 .bubble.note textarea.fdraft-text { border: 1px solid var(--line); resize: none; field-sizing: content; min-height: 3em; max-height: 40vh; overflow-y: auto; outline: none; }
 .bubble.note textarea.fdraft-text:focus-visible { border-color: var(--ink-soft); }
 .bubble.note .fdraft:not(.open) .fdraft-text { color: var(--ink-soft); }
-/* D402: 看草稿 from On hand lands here; the find glows once. On hand shows the reply's first line, quiet, one line. */
+/* D403: 看草稿 from On hand lands here; the find glows once. On hand shows the reply's first line, quiet, one line. */
 .bubble.note .find.flash { animation: ho-glow 1.6s var(--ease); border-radius: var(--r-sm); }
 @media (prefers-reduced-motion: reduce) { .bubble.note .find.flash { animation: none; box-shadow: 0 0 0 3px var(--accent); } }
 .decision .draft-first { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: var(--ink-muted); }

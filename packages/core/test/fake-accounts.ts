@@ -22,7 +22,7 @@ export interface FakeCall {
   account?: string;
 }
 
-export function fakeAccounts(fx: Fixture, o: { /** D402: the time now, so a read never sees mail from the future. */ now?: () => number; /** D402: how a send fails (its error), when it should. */ sendFails?: string; /** D402: no send action in the catalog. */ noSend?: boolean; id?: string; source?: ConnectionSource; name?: string; apps?: FakeApp[]; state?: ConnectionView["state"]; legacyThreads?: boolean; /** The apps not listed yet (right after a start, before OOMOL answered the list). */ unlisted?: boolean; refuse?: (input: Record<string, unknown>) => string | undefined } = {}) {
+export function fakeAccounts(fx: Fixture, o: { /** D403: the time now, so a read never sees mail from the future. */ now?: () => number; /** D403: how a send fails (its error), when it should. */ sendFails?: string; /** D403: no send action in the catalog. */ noSend?: boolean; id?: string; source?: ConnectionSource; name?: string; apps?: FakeApp[]; state?: ConnectionView["state"]; legacyThreads?: boolean; /** The apps not listed yet (right after a start, before OOMOL answered the list). */ unlisted?: boolean; refuse?: (input: Record<string, unknown>) => string | undefined } = {}) {
   const id = o.id ?? "conn_oo";
   const apps: FakeApp[] = o.apps ?? [
     { service: "gmail", title: "Gmail", account: ME },
@@ -32,7 +32,7 @@ export function fakeAccounts(fx: Fixture, o: { /** D402: the time now, so a read
   ];
   const calls: FakeCall[] = [];
   const clockNow = o.now ?? (() => Number.POSITIVE_INFINITY);
-  /** D402: writes staged on a decision, and the ones that ran (only on a Go the Log holds). */
+  /** D403: writes staged on a decision, and the ones that ran (only on a Go the Log holds). */
   const staged = new Map<string, { action: string; input: unknown; account?: string }>();
   const sent: { action: string; input: Record<string, unknown>; account?: string; decisionId: string }[] = [];
   const listeners = new Set<() => void>();
@@ -71,7 +71,7 @@ export function fakeAccounts(fx: Fixture, o: { /** D402: the time now, so a read
       const q = String(inp.query ?? "");
       if (o.refuse?.(inp)) return { ok: false, error: o.refuse(inp)! };
       const terms = /subject:\(([^)]*)\)/.exec(q)?.[1]?.split(/\s+OR\s+/).map((w) => w.replace(/"/g, "").toLowerCase());
-      // D402: a draft's reads: the thread with one address (from:x OR to:x), and the person's own sent mail.
+      // D403: a draft's reads: the thread with one address (from:x OR to:x), and the person's own sent mail.
       const withAddr = /from:(\S+) OR to:(\S+)/.exec(q)?.[1]?.toLowerCase();
       const sentOnly = /\bin:sent\b/.test(q);
       const addrOf = (s: string) => (/<([^>]+)>/.exec(s)?.[1] ?? s).toLowerCase();
@@ -192,7 +192,7 @@ export function fakeAccounts(fx: Fixture, o: { /** D402: the time now, so a read
     setState(s: ConnectionView["state"]) {
       state = s;
     },
-    /** D402: what was sent (each only after its Go and undo window). */
+    /** D403: what was sent (each only after its Go and undo window). */
     sent,
     /** What was called that is not a read the broker would let a watcher make. */
     writes: () => calls.filter((c) => ooOp(c.action) === "write"),

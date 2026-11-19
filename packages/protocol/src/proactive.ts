@@ -84,14 +84,14 @@ export interface FindView {
   /** D388: what it did not change, when the person might think it did ("日历我没改。"), ≤ 40 chars. */
   untouched?: string;
   /**
-   * D402: a reply already written for a 在等你回 find, shown whole in the card and editable in
+   * D403: a reply already written for a 在等你回 find, shown whole in the card and editable in
    * place. Its Go is 发出去 / Send: the text as edited goes with the Go (decision_resolved.text),
    * waits SEND_UNDO_MS with 撤回 / Undo, then is sent once by the home; never sent on its own.
    */
   draft?: FindDraft;
 }
 
-/** D402: the reply a cheap model wrote from the thread, in its language, in the person's own voice. */
+/** D403: the reply a cheap model wrote from the thread, in its language, in the person's own voice. */
 export interface FindDraft {
   text: string;
   /** Who it goes to (their name, else their address) and the account it is sent from. */
@@ -105,7 +105,7 @@ export interface FindDraft {
   check?: string;
 }
 
-/** D402 (D61 GQ3): how long a reply waits after Go before it is sent, with 撤回 / Undo. */
+/** D403 (D61 GQ3): how long a reply waits after Go before it is sent, with 撤回 / Undo. */
 export const SEND_UNDO_MS = 30_000;
 
 /**
@@ -126,7 +126,7 @@ export const isProactiveYesNo = (a: unknown): a is ProactiveYesNo => a === "firs
 
 /** One state change of a find (core writes it; clients fold it into the note). */
 /**
- * D402: a drafted reply's own states: sending (Go given, its undo window running until `until`),
+ * D403: a drafted reply's own states: sending (Go given, its undo window running until `until`),
  * sent, unsent (撤回 / Undo, or a restart inside the window: the card asks again, with a new
  * decisionId), send_failed (the account refused or didn't answer; `error` says it in a few words).
  */
@@ -145,6 +145,12 @@ export interface AppWatch {
   unreachable?: boolean;
   lastReadAt?: string;
   readsToday?: number;
+  /**
+   * D402: why Ducter stopped looking at it by itself, said on its row: unsupported (the source can't
+   * read what the watch needs, e.g. OOMOL's Discord bot has no mentions or DMs), reconnect (the
+   * source says the account must be connected again there).
+   */
+  trouble?: "unsupported" | "reconnect";
   /** D222: a calendar account's calendars, and which it reads (absent until it listed them). */
   calendars?: import("./calendar.ts").CalendarRow[];
 }

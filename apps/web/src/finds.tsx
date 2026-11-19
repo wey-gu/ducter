@@ -15,7 +15,7 @@ import { ago } from "./format.ts";
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
 /**
- * D402: a 在等你回 find's reply, already written: who it goes to, the words (editable in place
+ * D403: a 在等你回 find's reply, already written: who it goes to, the words (editable in place
  * while its Go is open), what to check first; after Go, a 30-second line with 撤回 / Undo, then 已发出.
  */
 function Draft({ f, open, decide }: { f: FindView; open: boolean; decide: (text: string) => void }) {
@@ -59,7 +59,7 @@ function Draft({ f, open, decide }: { f: FindView; open: boolean; decide: (text:
   );
 }
 
-/** D402: 看草稿 / See the draft, from On hand: the conversation (on a phone, its pane), scrolled to the find, which glows once. */
+/** D403: 看草稿 / See the draft, from On hand: the conversation (on a phone, its pane), scrolled to the find, which glows once. */
 export function seeDraft(findId: string) {
   if (A.route.name !== "conv") A.go({ name: "conv" });
   const find = (n: number) => {
@@ -77,7 +77,7 @@ export function seeDraft(findId: string) {
 function Find({ f, seq }: { f: FindView; seq?: number }) {
   const [how, setHow] = useState(false);
   const st = A.S.findStates.get(f.findId);
-  // D402: after 撤回 or a failed send, the find's Go is asked again under a new decision.
+  // D403: after 撤回 or a failed send, the find's Go is asked again under a new decision.
   const did = A.S.findAsks.get(f.findId) ?? f.decisionId;
   const d = did ? A.S.decisions.get(did) : undefined;
   const open = !!d && !d.resolved && !d.pending;

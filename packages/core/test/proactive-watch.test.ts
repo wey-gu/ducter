@@ -230,3 +230,110 @@ test("an action the hosted catalog doesn't have is missing, not a write: the loo
     v2.stop();
   }
 });
+
+// D402: hel, 2026-11-16 and 11-17: the watch called discord.list_mentions, search_messages and
+// list_direct_messages 684 times, every one "unknown action", and nothing anywhere said so.
+test("a source with none of the watch's reads is said so once and not called again for a week", async () => {
+  const dir = scratch();
+  const clock = new FakeClock(MORNING);
+  const acc = fakeAccounts(busyWeek(), { apps: [{ service: "telegram", title: "Telegram", account: "wey" }] });
+  const w = createWatchers({ dataDir: dir, connections: acc.store, clock, enabled: () => true, zone: () => ZONE, onItems: () => {} });
+  w.sync();
+  for (let i = 0; i < 2 * 24 * 6; i++) {
+    clock.advance(10 * 60_000);
+    await flush();
+  }
+  // One look tried each action once; then nothing for two days.
+  expect(acc.calls.map((c) => c.action)).toEqual(["telegram.list_mentions", "telegram.search_messages", "telegram.list_direct_messages"]);
+  const tg = acc.store.apps(acc.id)[0]!;
+  expect(w.trouble(tg)).toBe("unsupported");
+  expect(w.reads(acc.id)).toEqual([]); // never counted as read
+  // After the week, one more try from the best (the source may have changed), then quiet again.
+  for (let i = 0; i < 6 * 24 * 6; i++) {
+    clock.advance(10 * 60_000);
+    await flush();
+  }
+  expect(acc.calls).toHaveLength(6);
+  w.stop();
+  // Kept across a restart: a new watcher on the same folder still knows.
+  const w2 = createWatchers({ dataDir: dir, connections: acc.store, clock, enabled: () => true, zone: () => ZONE, onItems: () => {} });
+  expect(w2.trouble(tg)).toBe("unsupported");
+  w2.stop();
+});
+
+test("OOMOL's Discord bot (no mentions, no DMs) is never called: its row says it can't be read", async () => {
+  const dir = scratch();
+  const clock = new FakeClock(MORNING);
+  const acc = fakeAccounts(busyWeek(), { apps: [{ service: "discordbot", title: "Discord Bot", account: "wey" }, { service: "github", title: "GitHub", account: "wey" }] });
+  const w = createWatchers({ dataDir: dir, connections: acc.store, clock, enabled: () => true, zone: () => ZONE, onItems: () => {} });
+  w.sync();
+  for (let i = 0; i < 6; i++) {
+    clock.advance(10 * 60_000);
+    await flush();
+  }
+  expect(acc.calls.some((c) => c.action.startsWith("discord"))).toBe(false);
+  expect(acc.calls.filter((c) => c.action === "github.list_notifications").length).toBeGreaterThan(0);
+  const bot = acc.store.apps(acc.id).find((a) => a.service === "discordbot")!;
+  expect(w.trouble(bot)).toBe("unsupported");
+  expect(w.trouble(acc.store.apps(acc.id).find((a) => a.service === "github")!)).toBeUndefined();
+  w.stop();
+});
+
+test("an account the source says to connect again stops its looks; connected anew, it reads again at once", async () => {
+  const dir = scratch();
+  const clock = new FakeClock(MORNING);
+  const acc = fakeAccounts(busyWeek(), { apps: [{ service: "gmail", title: "Gmail", account: "wey@nowledge.co" }] });
+  const w = createWatchers({ dataDir: dir, connections: acc.store, clock, enabled: () => true, zone: () => ZONE, onItems: () => {} });
+  acc.setState("unauthorized");
+  w.sync();
+  for (let i = 0; i < 12; i++) {
+    clock.advance(10 * 60_000);
+    await flush();
+  }
+  // One call, not one per action and not one every ten minutes.
+  expect(acc.calls).toHaveLength(1);
+  const gm = acc.store.apps(acc.id)[0]!;
+  expect(w.trouble(gm)).toBe("reconnect");
+  // Seen signed out, then fine again: tried within the minute, and the trouble is gone.
+  w.sync();
+  acc.setState("ok");
+  w.sync();
+  clock.advance(60_000);
+  await flush();
+  expect(acc.calls.length).toBe(2);
+  expect(w.trouble(gm)).toBeUndefined();
+  w.stop();
+});
+
+test("a passing failure backs off: fewer looks while it lasts, the usual pace once it reads", async () => {
+  const dir = scratch();
+  const clock = new FakeClock(MORNING);
+  const acc = fakeAccounts(busyWeek(), { apps: [{ service: "github", title: "GitHub", account: "wey" }] });
+  let busy = true;
+  let failedCalls = 0;
+  const store = Object.create(acc.store) as typeof acc.store;
+  store.read = (...a: Parameters<typeof acc.store.read>) => (busy ? (failedCalls++, Promise.resolve({ ok: false as const, error: "timed out after 30s" })) : acc.store.read(...a));
+  const w = createWatchers({ dataDir: dir, connections: store, clock, enabled: () => true, zone: () => ZONE, onItems: () => {} });
+  w.sync();
+  for (let i = 0; i < 6 * 6; i++) {
+    clock.advance(10 * 60_000);
+    await flush();
+  }
+  // Six hours at every 10 minutes would be 36 looks; doubling to a 3-hour cap makes a handful.
+  expect(failedCalls).toBeGreaterThan(1);
+  expect(failedCalls).toBeLessThanOrEqual(6);
+  expect(w.trouble(store.apps(acc.id)[0]!)).toBeUndefined(); // passing: not said as broken
+  busy = false;
+  for (let i = 0; i < 3 * 6; i++) {
+    clock.advance(10 * 60_000);
+    await flush();
+  }
+  const n = acc.calls.length;
+  expect(n).toBeGreaterThan(0);
+  for (let i = 0; i < 6; i++) {
+    clock.advance(10 * 60_000);
+    await flush();
+  }
+  expect(acc.calls.length - n).toBe(6);
+  w.stop();
+});

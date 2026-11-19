@@ -38,12 +38,12 @@ type FindView struct {
 	// D388: what it doesn't know yet, and what it did not change.
 	Unknown   string `json:"unknown,omitempty"`
 	Untouched string `json:"untouched,omitempty"`
-	// D402: a reply already written for a 在等你回 find (editable; Go sends it after the undo window).
+	// D403: a reply already written for a 在等你回 find (editable; Go sends it after the undo window).
 	Draft *FindDraft `json:"draft,omitempty"`
 }
 
 // FindDraft is the reply a cheap model wrote from the thread, in its
-// language and the person's voice (D402).
+// language and the person's voice (D403).
 type FindDraft struct {
 	Text    string `json:"text"`
 	To      string `json:"to"`
@@ -53,7 +53,7 @@ type FindDraft struct {
 	Check   string `json:"check,omitempty"`
 }
 
-// SendUndoMs is how long a reply waits after Go, with 撤回 / Undo (D402, D61 GQ3).
+// SendUndoMs is how long a reply waits after Go, with 撤回 / Undo (D403, D61 GQ3).
 const SendUndoMs = 30_000
 
 // Finds is one note the partner said by itself: the morning note, a
@@ -83,7 +83,7 @@ type Learned struct {
 }
 
 // FindState is a find's change: go, held, passed (过了), useful, muted; and
-// a drafted reply's sending, sent, unsent, send_failed (D402: Until is when
+// a drafted reply's sending, sent, unsent, send_failed (D403: Until is when
 // it goes; DecisionID the find's Go asked again; Error why it didn't go).
 type FindState struct {
 	FindID     string `json:"findId"`
@@ -96,12 +96,12 @@ type FindState struct {
 	Error      string `json:"error,omitempty"`
 }
 
-// IsSendState says whether a find state is a drafted reply's sending (D402).
+// IsSendState says whether a find state is a drafted reply's sending (D403).
 func IsSendState(s string) bool {
 	return s == "sending" || s == "sent" || s == "unsent" || s == "send_failed"
 }
 
-// FindUndo is 撤回 / Undo on a drafted reply inside its window (D402).
+// FindUndo is 撤回 / Undo on a drafted reply inside its window (D403).
 type FindUndo struct {
 	T      string `json:"t"` // "find_undo"
 	FindID string `json:"findId"`
@@ -116,6 +116,10 @@ type AppWatch struct {
 	Excluded    bool   `json:"excluded"`
 	Unreachable bool   `json:"unreachable,omitempty"`
 	LastReadAt  string `json:"lastReadAt,omitempty"`
+	// Trouble (D402): why Ducter stopped looking at it by itself:
+	// "unsupported" (the source can't read what the watch needs) or
+	// "reconnect" (the source says to connect the account again).
+	Trouble string `json:"trouble,omitempty"`
 	// Calendars (D222): a calendar account's calendars, and which it
 	// reads (nil until it listed them).
 	Calendars []CalendarRow `json:"calendars,omitempty"`
@@ -223,7 +227,7 @@ type ReadProblem struct {
 	Waiting int    `json:"waiting"`
 }
 
-// DecisionDraft is a drafted reply's first line, for its ask away from the card (D402).
+// DecisionDraft is a drafted reply's first line, for its ask away from the card (D403).
 type DecisionDraft struct {
 	First string `json:"first"`
 }

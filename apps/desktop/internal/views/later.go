@@ -248,7 +248,7 @@ func (a *App) laterAway(c *ui.Context, d *store.DecisionState, bg ui.Color) bool
 	if err == nil {
 		when = a.when(at.Local())
 	}
-	ui.Row(c.Key("later-away:"+d.DecisionID)).Gap(t.S3).Wrap().AlignItems(ui.Center).Role(ui.RoleStatus).Children(func() {
+	ui.Row(c.Key("later-away:" + d.DecisionID)).Gap(t.S3).Wrap().AlignItems(ui.Center).Role(ui.RoleStatus).Children(func() {
 		ui.Text(c, a.tp("later.away", when)).FontSize(t.SM).TextColor(t.InkMuted)
 		if a.buttonFor(c, a.L.T("later.now"), a.decisionAbout(d), btnText, t.ControlSM, bg) {
 			a.Later(d.DecisionID, nil)

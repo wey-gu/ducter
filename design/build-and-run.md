@@ -241,3 +241,17 @@ links `/usr/local/bin/ducter`; otherwise both installers append one block betwee
 `install.sh` copied, and Ducter's Caddy site (Caddy stays). The Agent Skills in `skills/` are
 copied to the site's `public/skills/` at build time (`apps/site/scripts/skills.mjs`).
 
+
+## What a test must earn
+
+A test stays only if deleting it lets through a real failure no other test catches, or it pins a
+contract another side reads (the protocol fixtures Go and TypeScript share, redaction, the D175
+tool budget and eval results, the word, link, join and binary guards, secrets and consent).
+- **Ablate before adding.** Name the failure only it catches. Mutate the code it covers (flip a
+  condition, drop a branch); a test that kills no mutant the others miss is a duplicate.
+- **Words are checked once, for every table** (`apps/web/test/words.test.ts`): same keys and
+  arguments in zh and en, no table overwritten in the merge, every key the source asks for exists,
+  the Mac's mirrored tables match. A feature's test asserts a word only to pin a product rule.
+- **One case per real difference**: a table, not a copy with other strings, sizes or languages.
+- **Timing**: one test per user-facing budget, a quiet Mac's number stretched by the machine's
+  measured slowness (`apps/web/test/slowness.ts`, `views/slowness_test.go`), never a CI constant.

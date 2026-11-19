@@ -255,6 +255,29 @@ describe("nudge (stall rule)", () => {
     await runner.dispose();
   });
 
+  test("D394: a round that ends resting on its own wait owes no report: no nudge, no stall", async () => {
+    const inputs: string[] = [];
+    const port = createOarHarnessPort({
+      loadRuntime: async () =>
+        trippedRuntime(async (t) => {
+          inputs.push(t.input);
+          // A review round that found nothing new: it arms its next round and ends the turn.
+          await t.tool("mcp__ducter__wait_for", "{}", async () => {
+            core.log.append({ stream: "channel", origin: "waiter", kind: "waiter", body: { waiterId: "w_round", taskId: "tsk00001", wakes: "task", at: new Date(Date.now() + 45 * 60_000).toISOString(), reason: "再看一轮评审", state: "armed" } });
+            return "Armed.";
+          });
+        }, {}),
+    });
+    const runner = createRunner(core, { harness: port, newId: nextId });
+    const card = await runner.openTask({ persona: "p1", title: "t", brief: "b" });
+    await runner.whenStarted(card.taskId);
+    await waitFor(() => taskEvents(card.taskId).some((e) => (e.raw as any)?.turnEnd), "turn end");
+    await Bun.sleep(80);
+    expect(inputs).toEqual([expect.stringContaining("Start the task")]);
+    expect(taskEvents(card.taskId).some((e) => (e.raw as any)?.stall)).toBe(false);
+    await runner.dispose();
+  });
+
   test("a nudge that yields a report clears the stall", async () => {
     const inputs: string[] = [];
     const port = createOarHarnessPort({

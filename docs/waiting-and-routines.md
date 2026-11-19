@@ -35,6 +35,12 @@ often it looks, how many times it has looked so far, and what it found last. **C
 closes with a tick and the task carries on. To see how a wait checks, click the line at the end
 of the task, which says what it waits for and when it is back.
 
+A task that looks again every so often stays quiet when a look finds nothing new: you hear from
+it only when something new needs you, and then it also says what is still waiting. Anything it
+would send to other people, like a review on a colleague's pull request, it writes first and
+asks you once for the whole round ("3 PR reviews are written. Post them to GitHub?"); you can
+read each one before you say Go, and nothing is posted before you do.
+
 ## "Remind me …" and what you said you'd do
 
 > Remind me at 3 this afternoon to pay the landlord.

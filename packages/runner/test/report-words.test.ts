@@ -52,7 +52,14 @@ describe("the brief and the tools say the bar (D349)", () => {
     expect(b).toContain('never glued into notes like "16checks15success"');
     expect(b).toContain("round numbers, counters, ledger or note file names, ids, hashes");
     expect(b).toContain("Say what changed since your last report");
-    expect(b).toContain('"nowledge-co 没有新的待审 PR"');
+    expect(b).not.toContain('"nowledge-co 没有新的待审 PR"');
+  });
+
+  test("D394: a repeating round that found nothing new is silent; what reaches people waits for Go", () => {
+    expect(b).toContain("a round that found nothing new for the user doesn't report at all");
+    expect(b).toContain('never "nothing new" alone while things wait on them');
+    expect(b).toContain("one `needs_input` report per round for all of them");
+    expect(b).toContain("Post after Go, once.");
   });
 
   test("a checkpoint is the task's own note, never copied into a report", () => {
@@ -123,7 +130,7 @@ beforeEach(() => {
 });
 afterEach(() => rmSync(dir, { recursive: true, force: true }));
 
-describe("a watcher with nothing new (D349)", () => {
+describe("a watcher's report (D349; D394: a round with nothing new is silent)", () => {
   test("its notes go back once, it says one line, and the transcript shows that line and a quiet saved mark", async () => {
     const fake = new FakePort();
     const ids = ["tskwatch1"];
@@ -131,7 +138,7 @@ describe("a watcher with nothing new (D349)", () => {
     const card = await runner.openTask({ persona: "p1", title: "盯着 nowledge-co 的待审 PR", brief: "每 45 分钟看一次 nowledge-co 里请我 review 和提到我的 PR，有新的就告诉我。", language: "zh-CN" } as never);
     await runner.whenStarted(card.taskId);
     // The task's brief carries the rule for a round that found nothing.
-    expect(fake.specs[0]!.appendSystemPrompt).toContain("found nothing new says so in one short line");
+    expect(fake.specs[0]!.appendSystemPrompt).toContain("a round that found nothing new for the user doesn't report at all");
 
     // Its own note: kept for it, whatever it looks like.
     expect(await core.call("checkpoint", { text: LIVE_CHECKPOINT }, card.taskId)).toBe("Checkpoint saved.");

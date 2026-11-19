@@ -50,8 +50,12 @@ read the whole Log.
   result first in one plain sentence, then at most a few short lines; ordinary spacing, numbers
   with their units; none of the task's own bookkeeping (round numbers, counters, ledger or note
   file names, ids, hashes) unless the person needs one to act; only what changed since the last
-  report. Work that repeats (a watcher) and found nothing new says so in one short line
-  ("nowledge-co 没有新的待审 PR"). A summary that reads as notes (two or more runs of letters
+  report. Work that repeats (a watcher, a review round) and found nothing new **doesn't report**
+  (D394): it re-arms its own timer and ends the turn, owing no report (the runner doesn't nudge a
+  turn that ends resting on its own wait). When it does report, it says what still stands, never
+  "nothing new" alone while requests wait on the person. What would reach other people (a PR
+  review) is drafted to files and asked once per round, all drafts in one `needs_input` (Go posts
+  them, D61 GQ10). A summary that reads as notes (two or more runs of letters
   and digits glued in turns, such as `5requests4mentions`) is sent back once, unlogged, to be
   written again; the second one goes as it is
 - `questions[]`: each has `blocking`, a `default`, and whether the default is reversible

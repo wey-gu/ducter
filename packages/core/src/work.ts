@@ -205,7 +205,7 @@ export function createWork(o: WorkOptions): Work {
       void o.runner()?.send(w.taskId, text, undefined, "partner").catch((err) => console.warn(`[work] could not wake ${w.taskId}: ${(err as Error).message}`));
     } else if (w.state === "expired") {
       tasks.setState(w.taskId, "needs_you", card.residency, fill(wordsOf(w.reason).deadline, { reason: w.reason }));
-    } else if (w.state === "cancelled" && card.attention === "blocked") {
+    } else if (w.state === "cancelled" && card.attention === "blocked" && !w.replacedBy) {
       tasks.setState(w.taskId, "working", card.residency);
       // D144: it can no longer come true: the task hears why and decides what is next.
       if (w.unmet && e.origin === "waiter") {
@@ -267,8 +267,19 @@ export function createWork(o: WorkOptions): Work {
     if (at <= now) return { ok: false, error: "that time is already past" };
     if (at - now > 7 * 86_400_000) return { ok: false, error: "at most 7 days ahead; for longer, report blocked with what you wait for" };
     try {
+      // D394: a task has one timer of its own, the newest. A round started by another wake (a
+      // nudge, a compaction, a restart's re-run) re-arms it instead of starting a second cadence
+      // (seen live: three timers 3 and 12 min apart, so a "45 min" review ran every few minutes).
+      const before = waiters.views().filter((v) => v.taskId === taskId && v.wakes === "task" && !v.limit && kindOf(v) === "timer");
       const w = waiters.arm({ reason, taskId, at: new Date(at).toISOString(), wakes: "task" });
-      return { ok: true, waiterId: w.waiterId, at: w.at, note: "Armed. End your turn now; you will be woken then. To repeat, call wait_for again when you wake." };
+      for (const v of before) waiters.cancel(v.waiterId, { by: "task", replacedBy: w.waiterId });
+      return {
+        ok: true,
+        waiterId: w.waiterId,
+        at: w.at,
+        ...(before.length ? { replaced: before.map((v) => v.at) } : {}),
+        note: "Armed; it replaces any timer you had. End your turn now; you will be woken then, and nobody needs a report from a round that found nothing new. To repeat, call wait_for again when you wake.",
+      };
     } catch (err) {
       return { ok: false, error: (err as Error).message };
     }

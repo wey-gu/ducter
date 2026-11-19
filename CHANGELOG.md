@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.0.90 - 2026-11-19
+
+<!-- whats-new
+zh: 一次交出一组待办：先说几句，再出个方案
+en: Hand over a set of to-dos with a note and a plan
+-->
+
+**To-do sources**
+- Pick a subject ("memory distill") and every to-do about it comes up, found by meaning across
+  Chinese and English. Hand them over in one sheet: a note for all of them, a note for one, where
+  they run and how: plan first, as one task, one after another, or side by side.
+- Plan first reads them all, changes nothing, and comes back with a plan: what is already fixed,
+  what belongs together, what goes in order. Nothing starts until you say Go.
+- When the group is done, review it together: every PR, its checks and the comment to leave, sent
+  with one Go.
+
+**Faster**
+- Long tasks open and scroll faster: hiding keys and passwords in what a task shows now takes a
+  fraction of the time.
+
 ## 0.0.89 - 2026-11-19
 
 <!-- whats-new

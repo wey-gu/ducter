@@ -61,7 +61,7 @@ function subjectOf(title: string): [string, string] {
   if (/alt text|Accessibility|Button label|keyboard/.test(t)) return ["无障碍", "Accessibility"];
   if (/Dark mode|Footer|Settings page|dashboard|date picker|pricing/i.test(t)) return ["网页界面", "Web UI"];
   if (/CI|CDN|Terraform|staging|runners|alert/.test(t)) return ["基础设施", "Infrastructure"];
-  if (/billing|Postmark|SES|audit log/i.test(t)) return ["计费", "Billing"];
+  if (/[Bb]illing|Postmark|\bSES\b|audit log/.test(t)) return ["计费", "Billing"];
   if (/Android|share action|tablet|mobile|onboarding/i.test(t)) return ["手机应用", "Mobile app"];
   if (/importer|GraphQL|monolith|memory spike/i.test(t)) return ["数据导入", "Data import"];
   return ["其他", "Other"];
@@ -161,6 +161,7 @@ function runner(): Runner {
     harness: { start: async () => ({}) as never, available: async () => [] },
     async openTask(input: Parameters<Runner["openTask"]>[0]): Promise<TaskCard> {
       const taskId = `th${++n}`;
+      const k = n;
       const planning = input.brief.includes("plan_report");
       core.log.append({ stream: `task:${taskId}`, origin: "partner", kind: "task_open", body: { taskId, title: input.title, project: input.project ?? "", place: input.place ?? { kind: "none" }, harness: input.harness ?? "codex", brief: input.brief, language: zh ? "zh" : "en" } });
       core.tasks.setState(taskId, "working", "hot");
@@ -173,7 +174,7 @@ function runner(): Runner {
             core.tasks.setState(taskId, "done", "cold");
             return;
           }
-          const pr = 420 + n;
+          const pr = 420 + k;
           core.log.append({ stream: `task:${taskId}`, origin: "task", kind: "report", body: { taskId, state: "done", summary: zh ? `改好了，在 haswell 上跑过测试；草稿 PR #${pr}。` : `Fixed and tested on haswell; draft PR #${pr}.`, questions: [], evidence: [{ kind: "url", label: `PR #${pr}`, ref: `https://github.com/acme/mem/pull/${pr}` }] } });
           core.tasks.setState(taskId, "done_claimed", "cold");
         },

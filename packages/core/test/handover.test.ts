@@ -289,7 +289,7 @@ test("plan first: a read-only lead part; its typed plan becomes a card (no defau
   expect(rev).toMatchObject({ prs: 3, fixed: 1 });
   const fixedRow = rev.rows.find((x) => x.fixedIn)!;
   expect(fixedRow).toMatchObject({ close: true, comment: "This was fixed in #360 (merged). Closing." });
-  expect(rev.rows.find((x) => x.taskId === "t2")!.comment).toBe("Fixed in https://github.com/acme/mem/pull/420.");
+  expect(rev.rows.find((x) => x.taskId === "t2")!.comment).toBe("Fixed in #420.");
   // A part's own write-back waits for review together.
   expect(await b.ts.propose({ taskId: "t2", text: "x" })).toMatchObject({ ok: true, held: true });
   // One Go: every comment, the fixed one also closes; nothing else closes.

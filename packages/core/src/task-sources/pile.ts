@@ -347,7 +347,7 @@ export interface Pile {
 }
 
 /** D385: one subject however it was written (case, spaces). */
-export const subjectKey = (s: string) => s.toLocaleLowerCase().replace(/[\s·・_-]+/g, "");
+export const subjectKey = (s: string) => s.toLocaleLowerCase().replace(/[\s\u00b7\u30fb_-]+/g, "");
 
 export function createPile(d: PileDeps): Pile {
   const file = join(d.dataDir, PILE_FILE);

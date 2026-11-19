@@ -723,7 +723,8 @@ export function createHandover(d: HandoverDeps): Handover {
         ...(checks ? { checks } : {}),
         ...(c.changes ? { size: { added: c.changes.adds, removed: c.changes.dels } } : {}),
         ...(result ? { result } : {}),
-        comment: pr ? fill(W[l].doneIn, { pr: pr.url ?? pr.label }) : W[l].done,
+        // A PR in the to-do's own repository is "#n" there (GitHub links it); elsewhere its address.
+        comment: pr ? fill(W[l].doneIn, { pr: pr.url && its[0]!.where && new RegExp(`github\\.com/${its[0]!.where.replace(/[.]/g, "\\.")}/pull/(\\d+)`, "i").test(pr.url) ? `#${/\/pull\/(\d+)/.exec(pr.url)![1]}` : (pr.url ?? pr.label) }) : W[l].done,
         close: false,
       });
     }

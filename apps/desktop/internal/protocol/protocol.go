@@ -836,6 +836,8 @@ func (e LogEvent) Typed() (any, error) {
 		v = &CallBody{}
 	case KindConnectionCall:
 		v = &ConnectionCall{}
+	case KindTodoSet:
+		v = &TodoSet{}
 	default:
 		return nil, nil
 	}
@@ -1011,6 +1013,8 @@ type TaskGroup struct {
 	Members   []GroupMember `json:"members"`
 	Stopped   *GroupStopped `json:"stopped,omitempty"`
 	CreatedAt string        `json:"createdAt"`
+	// Hand (D385): made by a hand-over of to-dos: its note, shape, plan and review.
+	Hand *GroupHandView `json:"hand,omitempty"`
 }
 
 // GroupMember is a task (TaskID) or a part held in line (Key, Title).
@@ -2760,6 +2764,14 @@ const (
 
 // DecodeServerFrame decodes one server frame.
 func DecodeServerFrame(data []byte) (ServerFrame, error) {
+	// D385: pile_how_result's "how" is an object, not the string other frames
+	// carry under that name: it is read on its own, past the shared struct.
+	var head struct {
+		T string `json:"t"`
+	}
+	if json.Unmarshal(data, &head) == nil && head.T == "pile_how_result" {
+		return decodeSources(data, ServerFrame{T: head.T})
+	}
 	var f ServerFrame
 	if err := json.Unmarshal(data, &f); err != nil {
 		return f, err
@@ -2786,7 +2798,7 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 		return decodeDid(data, f)
 	case "mem_found":
 		return decodeMemFound(data, f)
-	case "sources", "source_items_result", "source_result", "pile_items_result", "pile_result":
+	case "sources", "source_items_result", "source_result", "pile_items_result", "pile_result", "pile_find_result", "pile_how_result", "group_review_result":
 		return decodeSources(data, f)
 	default:
 		return f, fmt.Errorf("unknown server frame %q", f.T)

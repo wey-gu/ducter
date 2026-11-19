@@ -289,11 +289,16 @@ type App struct {
 	wr         workerRecordsState // D377: the person's own agents' records on a computer for tasks
 	cu         computerUseState   // D235: 用电脑
 	sites      sitesState
-	af         autofillState // D191: 设置 › 密码和银行卡
-	chats      chatsState    // D276: 设置 › 聊天软件
-	todos      todosState    // D341: 设置 › 待办来源, and New task's pick
-	pile       pileState     // D359: the pile's sheet
-	pins       pinsState     // D381: 置顶 / Pinned's sheet (pins.go)
+	af         autofillState                // D191: 设置 › 密码和银行卡
+	chats      chatsState                   // D276: 设置 › 聊天软件
+	todos      todosState                   // D341: 设置 › 待办来源, and New task's pick
+	pile       pileState                    // D359: the pile's sheet
+	ho         handState                    // D385: 交给{name}, the hand-over sheet (handover.go)
+	sets       map[string]map[string]bool   // D385: a set card's ticks, by set
+	planNotes  map[string]map[string]string // D385: a plan card's 给这件的话…, by decision then part
+	planReply  map[string]*string           // D385: a plan card's 回复… draft, by decision
+	rv         reviewState                  // D385: 一起过目 / Review together's sheet
+	pins       pinsState                    // D381: 置顶 / Pinned's sheet (pins.go)
 	winW, winH float32
 	slid       map[string]float32 // D244: a sliding pane's width when open (onhandrail.go)
 	// partner and settings are the Partner page's and Settings' own state.
@@ -562,6 +567,8 @@ func (a *App) View(c *ui.Context) {
 		a.phoneInstallSheet(c) // D217
 		a.lendSheet(c)         // D347
 		a.pileSheet(c)         // D359
+		a.handSheet(c)         // D385
+		a.reviewSheet(c)       // D385
 		a.pinsSheet(c)         // D381
 		a.phoneView(c)
 	}

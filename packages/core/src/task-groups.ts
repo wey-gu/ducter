@@ -301,9 +301,9 @@ export function createTaskGroups(d: TaskGroupsDeps): TaskGroups {
     },
     get: (groupId) => ((g) => (g ? view(g) : undefined))(groups.find((x) => x.id === groupId)),
     onSubject(persona, subject) {
-      const k = subject.toLocaleLowerCase().replace(/[\s·・_-]+/g, "");
+      const k = subject.toLocaleLowerCase().replace(/[\s\u00b7\u30fb_-]+/g, "");
       if (!k) return undefined;
-      const g = groups.find((x) => live(x) && x.hand && x.persona === persona && x.hand.review !== "sent" && (x.hand.subject ?? x.name).toLocaleLowerCase().replace(/[\s·・_-]+/g, "") === k);
+      const g = groups.find((x) => live(x) && x.hand && x.persona === persona && x.hand.review !== "sent" && (x.hand.subject ?? x.name).toLocaleLowerCase().replace(/[\s\u00b7\u30fb_-]+/g, "") === k);
       return g ? view(g) : undefined;
     },
     of: (taskId) => ((g) => (g ? view(g) : undefined))(groupOf(taskId)),

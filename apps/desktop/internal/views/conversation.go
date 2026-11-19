@@ -577,7 +577,13 @@ func (a *App) entry(c *ui.Context, e *store.Entry) {
 			})
 			return
 		}
-		// D405: an app's ask, or words typed about an app: a small line names it.
+		// D405: an app's own ask is not the person's words: a neutral bubble on
+		// the left under the app's name. Words typed about an app stay theirs,
+		// with a small line naming it.
+		if e.User.App != nil && e.User.App.Ask != "" {
+			a.appAskBubble(c, itoa(e.FirstSeq), e.User.App, e.User.Text)
+			return
+		}
 		if e.User.App != nil {
 			a.userAppLine(c, itoa(e.FirstSeq), e.User.App)
 		}

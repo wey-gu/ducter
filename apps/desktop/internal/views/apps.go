@@ -96,6 +96,27 @@ func (a *App) userAppLine(c *ui.Context, key string, ref *protocol.AppRef) {
 	})
 }
 
+// appAskBubble is an app's own ask (ducter.ask): on the left, in a neutral
+// sunken bubble, under the app's name, so it never reads as the person's words.
+func (a *App) appAskBubble(c *ui.Context, key string, ref *protocol.AppRef, text string) {
+	t := a.T
+	ui.Column(c.Key("appask:" + key)).Gap(4).AlignItems(ui.Start).MaxWidthPercent(80).Children(func() {
+		words := a.L.T("app.asks", ref.Name)
+		b := ui.Row(c.Key("b")).Gap(6).AlignItems(ui.Center).Padding(2, t.S2).Radius(999).Background(t.Sunken).
+			Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(words).Focusable()
+		b.Children(func() {
+			ui.Box(c.Key("g")).Size(14, 14).AccessHidden(true).Draw(drawMadeKind("app", t.InkSoft))
+			ui.Text(c, keepWords(autospace(words))).FontSize(t.XS).FontWeight(700).TextColor(t.InkSoft).SingleLine()
+		})
+		if b.Clicked() {
+			a.openApp(ref.ID)
+		}
+		ui.Column(c.Key("w")).Padding(10, 14).Radius(t.RadiusMD).Background(t.Sunken).InsetShadow(0, 0, 0, 1, t.Line).MinWidth(0).Children(func() {
+			ui.Text(c, autospace(text)).Selectable().FontSize(t.Bubble).LineHeight(leadingFor(text, 1.5)).TextColor(t.InkSoft)
+		})
+	})
+}
+
 // openApp opens an app in its own window (main.go's OpenAppWindow); the
 // renderer and tests only record it.
 func (a *App) openApp(id string) {

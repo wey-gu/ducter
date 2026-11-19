@@ -242,6 +242,26 @@ links `/usr/local/bin/ducter`; otherwise both installers append one block betwee
 copied to the site's `public/skills/` at build time (`apps/site/scripts/skills.mjs`).
 
 
+## The Mac app against a demo core (developer switches)
+
+To see a change in the real Mac app without touching `~/.ducter` or `:7777`, run a demo core on
+its own port and data folder, then the app from this checkout pointed at it:
+
+```sh
+DUCTER_PORT=7983 DUCTER_DATA_DIR=/tmp/demo DEMO_LANG=zh bun apps/web/demo-apps.ts   # prints the app's id
+cd apps/desktop && go build -o /tmp/ducter-desktop .
+DUCTER_URL=ws://127.0.0.1:7983/ws DUCTER_DATA_DIR=/tmp/demo-mac DUCTER_NO_TITLE=1 /tmp/ducter-desktop
+```
+
+| Variable | What it does |
+|---|---|
+| `DUCTER_URL`, `DUCTER_TOKEN` | the home to dial (and its device token); the command line is left alone |
+| `DUCTER_DATA_DIR` | the app's own data folder (hints, `desktop.json`), never `~/.ducter` |
+| `DUCTER_NO_TITLE` | skip the first-launch title |
+| `DUCTER_OPEN_APP=<id>` | D405: open that app's window five seconds after launch |
+| `DUCTER_APP_SHOT_DIR=<dir>` | D405: write the app window's page as `mac-app-window-<id>.png` four seconds after it opens |
+| `DUCTER_APP_PROBE=1` | D405, with the shot dir: run `ducter.set("probe", 1)` and a `ducter.ask` in the page and write the page's title once answered (`mac-app-probe-<id>.txt`): the bridge both ways |
+
 ## What a test must earn
 
 A test stays only if deleting it lets through a real failure no other test catches, or it pins a

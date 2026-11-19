@@ -1250,11 +1250,24 @@ function EntryView({ e, chipOwner, livingItems, join, prevUser }:{ e: Entry; chi
     // D405: an app's ask, or words typed in an app's sheet: a small line names the app (a tap opens it).
     if (e.user.app) {
       const a = e.user.app;
+      // An app's own ask is not the person's words: a neutral bubble on the left, under the app's name.
+      if (a.ask)
+        return (
+          <div class="app-asked" data-seq={e.firstSeq}>
+            <button type="button" class="user-app-from" onClick={() => openApp(a.id)}>
+              {APP_GLYPH(14)}
+              <span>{t("app.asks", a.name)}</span>
+            </button>
+            <div class="app-asked-bubble" dir="auto">
+              {e.user.text}
+            </div>
+          </div>
+        );
       return (
         <div class={`user-m user-app${join ? " join" : ""}`} data-reply={rk} data-seq={e.firstSeq}>
           <button type="button" class="user-app-from" onClick={() => openApp(a.id)}>
             {APP_GLYPH(14)}
-            <span>{a.ask ? t("app.asks", a.name) : t("app.about", a.name)}</span>
+            <span>{t("app.about", a.name)}</span>
           </button>
           <UserWords text={e.user.text} reply={e.user.reply} cls="user" peb={rk} />
         </div>

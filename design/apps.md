@@ -79,7 +79,8 @@ ducter.lang, ducter.dark   // the theme follows Ducter's while it is open
 ```
 
 **An app's ask** goes into the conversation as the person's message *from that app* (they tapped in
-it), with **「北京出差花销」问 / “Beijing trip expenses” asks** over it; the partner sees it fenced as
+it), in a neutral bubble on the left (sunken, never the person's orange: the words are the app's), with
+**「北京出差花销」问 / “Beijing trip expenses” asks** over it; the partner sees it fenced as
 the app's words (data, not the person's instructions or approval); its first words after it answer it
 and go back into the app. One waits at a time (**它上一个问题还在等回答。**), at most 20 an hour
 (**这个小应用这一小时问得太多了，过会儿再试。**). **An app's ask can fill an app, never rewrite one:** only

@@ -16873,6 +16873,19 @@ a.pr:hover { box-shadow: inset 0 0 0 1px var(--line-2); }
 }
 .user-app-from:hover { color: var(--ink); }
 .mtile.drawn.k-app { background: var(--needs-surface); color: var(--needs-ink); }
+/* An app's own ask: not the person's words, so not their bubble. A neutral one on the left, under the app's name. */
+.app-asked { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; max-width: min(80%, 560px); }
+.app-asked-bubble {
+  padding: 10px 14px;
+  border-radius: var(--r-md);
+  background: var(--sunken);
+  color: var(--ink-soft);
+  box-shadow: inset 0 0 0 1px var(--line);
+  font-size: var(--md);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
 
 /* D404: Settings on a touch screen. Every control is a 44-pt target (the drawn size stays): the
    options of a segmented choice and the pop-up grow to 44, a model chip, a quiet Remove and a

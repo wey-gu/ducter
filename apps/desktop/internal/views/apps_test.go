@@ -62,6 +62,13 @@ func TestAppsCardLineAndOpen(t *testing.T) {
 			t.Errorf("no %q in %q", want, tt.Texts())
 		}
 	}
+	// The app's own ask sits on the left, not in the person's bubble on the right;
+	// the person's own words about the app stay on the right.
+	ask, ok1 := tt.Find("报销要准备什么？")
+	own, ok2 := tt.Find("预算按 3000 算，超了标红")
+	if !ok1 || !ok2 || ask.X > 640 || own.X+own.W < 640 {
+		t.Errorf("the app's ask at %v, the person's words at %v", ask, own)
+	}
 	if err := tt.Click(app.L.T("app.open")); err != nil {
 		t.Fatal(err)
 	}

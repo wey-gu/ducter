@@ -37,7 +37,8 @@ Your partner can also fill it in for you: "add today's taxi rides to my trip app
 ## Asking your partner from inside an app
 
 An app can have a button that asks your partner something ("What do I need for the expense
-claim?"). The question shows in your conversation under the app's name, and the answer comes back
+claim?"). The question shows in your conversation in a grey bubble on the left, under the app's
+name (it's the app asking, not you), and the answer comes back
 into the app. Your partner treats what an app asks as a question, not as you saying yes: anything
 that goes out (sending an email, paying, posting) still waits for your own **Go** in the
 conversation, whatever the app says.

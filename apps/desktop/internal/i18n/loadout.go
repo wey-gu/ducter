@@ -143,10 +143,12 @@ var zhLoadout = Table{
 	"partner.header.none":         "在 %s 上运行，还没有能用的 AI agent",
 	"handoff.one":                 "现在只有一个 AI agent 能做事：额度用完时，等它恢复再接着做。",
 
-	// D354: the chips under the task's composer, and the line after a choice.
-	"tune.effort":      "思考：%s",
-	"tune.next.model":  "下一轮起用 %s",
-	"tune.next.effort": "下一轮起思考：%s",
+	// D387 (D354's chips made one): the chip under the task's composer, its card, and the line after a choice.
+	"tune.reset":        "回到默认",
+	"tune.back":         "返回",
+	"tune.change.model": "换模型",
+	"tune.next.model":   "下一轮起用 %s",
+	"tune.next.effort":  "下一轮起思考：%s",
 }
 
 var enLoadout = Table{
@@ -284,10 +286,12 @@ var enLoadout = Table{
 	"partner.header.none":         "Runs on %s, with no AI agent to use yet",
 	"handoff.one":                 "Only one AI agent does tasks now, so when its limit runs out the task waits for it to come back.",
 
-	// D354: the chips under the task's composer, and the line after a choice.
-	"tune.effort":      "Effort: %s",
-	"tune.next.model":  "From its next turn: %s",
-	"tune.next.effort": "From its next turn: %s effort",
+	// D387 (D354's chips made one): the chip under the task's composer, its card, and the line after a choice.
+	"tune.reset":        "Back to default",
+	"tune.back":         "Back",
+	"tune.change.model": "Change model",
+	"tune.next.model":   "From its next turn: %s",
+	"tune.next.effort":  "From its next turn: %s effort",
 }
 
 func init() {

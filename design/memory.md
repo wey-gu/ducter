@@ -522,6 +522,17 @@ share the one memory there. Evidence and the live install: `research/136`.
   410: expired (15 minutes) or used, with the box still there; 401/403: **refused**. **接上 / Connect** runs the same without a link for an agent added later.
 - **Then:** Mem turning ready makes the home read Mem's plugin check there at once; tasks there run
   with the plugin as the persona (D168), and the home's `NMEM_CLI_PATH` is never passed to them.
+- **The person's own `nmem` too old (D386):** one with no `doctor` (haswell's: the old Python CLI,
+  whose argparse answered `connect` with a usage error) is known at the look, so the paste box never
+  shows and nothing is sent to it. The row says **{device} 上你自己装的 Nowledge Mem 太旧，登录不了**
+  with **装上新的**: Ducter's own current copy into `<data>/tools` (the same uv route), used there by
+  its path for doctor, connect and 接上, and first on that computer's PATH for `nmem` alone (a link in
+  `<data>/tools/prefer`, `agent-path.ts`) so tasks and Mem's plugins inside them find a working one.
+  The person's copy is never run beyond its doctor and never changed; the row shows the one command
+  that updates it when its install says (pipx, uv, pip). Once theirs has a doctor again, the link goes
+  and theirs is used. Ducter's own copy too old: updated, then the sign-in goes on. A usage error from
+  nmem is said as **太旧**, never shown; a paste that wasn't spent (not a link, too old, install
+  failed, Mem unreachable) stays in the box.
 
 ## Open (measure in the prototype)
 

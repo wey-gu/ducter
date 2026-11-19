@@ -369,7 +369,12 @@ func (a *App) contextRing(c *ui.Context, task *store.Task) {
 		return
 	}
 	ui.PopoverBase(c, b, &ctxUI.open, func(panel ui.Element) {
-		panel.Margin(t.S2, 0, 0, 0).Width(340).Padding(t.S4).Radius(t.RadiusMD).Background(t.Surface).
+		// D387: never past the window: 340 wide where it fits, kept 12 from its edges.
+		w := float32(340)
+		if a.winW > 0 {
+			w = min(w, a.winW-24)
+		}
+		panel.Margin(t.S2, 0, 0, 0).Width(w).AttachEdgeMargin(12).Padding(t.S4).Radius(t.RadiusMD).Background(t.Surface).
 			Shadow(0, t.Floating.Y, t.Floating.Blur, 0, t.Floating.Color).Border(1, t.LineSoft).Label(a.L.T("ctx.title"))
 		a.contextCard(c, task, m)
 	})

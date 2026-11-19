@@ -31,6 +31,13 @@ Deferred work, grouped by area, each with its trigger where it has one.
   `fresh` model first appears, with a Go that moves new tasks to it. Held back: proactive
   restraint, and the person's own agent default already decides. *Trigger:* the person asks for
   it, or a fresh model is picked by hand twice.
+- **Back to the agent's own effort on Claude Code (D387).** Claude Code names no default level, so
+  the card offers no 回到默认 / Back to default once a level is picked; going back needs the core
+  to clear a task's effort (`task_switch` with an explicit "none", the runner dropping `--effort`
+  on resume). *Trigger:* the person asks for it, or a Claude Code release names its default.
+- **The task's 关于 / About card on a phone (found with D387, read in its code, not yet seen).** It renders as a "sheet" without
+  its frame, inside the head (the same fault D387 fixed for the ring's card); move it to
+  `pop-place.ts` or `SheetFrame`. *Trigger:* next phone polish pass.
 - **A `fresh` chip on the picker** (a small 新 / New mark) for a model newer than the registry.
   Needs a glossary word first. *Trigger:* the same as above.
 

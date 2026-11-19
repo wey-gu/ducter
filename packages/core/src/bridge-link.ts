@@ -48,6 +48,7 @@ import { dirname, join } from "node:path";
 import { createHash } from "node:crypto";
 import type { BridgeRefusal, BridgeView } from "@ducter/protocol";
 import type { BridgeLinkApi } from "@ducter/protocol/src/internal.ts";
+import { nmemTooOld } from "@ducter/protocol";
 import { scrub } from "./worker-mem.ts";
 import { connectLinkFrom, copyOf, copyPython, externallyManaged, extraBins, findNmem, installPlan, joinPath, MEM_INSTALL_MS, PY_PROBE, realSys, toolOf, updatePlan, type MemCopy, type MemFacts, type MemPlan, type MemStep, type MemSys } from "./mem-cli.ts";
 import { nmemEnv, toolEnv } from "@ducter/protocol/src/tool-env.ts";
@@ -1046,6 +1047,9 @@ export function createBridgeLink(opts: {
         return changed();
       }
       link = made;
+      // D386: never to an nmem that can't take it (an old one has no `connect`): the row offers the update instead, the link unspent.
+      const p = await look(true);
+      if (p && !p.supported) return changed();
       busy = "signing_in";
       signIn = undefined;
       changed();
@@ -1055,7 +1059,7 @@ export function createBridgeLink(opts: {
         if (!r || r.code !== 0) {
           const text = r ? `${r.out}\n${r.err}` : "";
           signIn = /\b410\b|gone|already used|expired/i.test(text) ? "used" : "failed";
-          if (signIn === "failed") signInDetail = r ? scrub(lastLine(r.err || r.out), link) : "nmem didn't start";
+          if (signIn === "failed" && !nmemTooOld(text)) signInDetail = r ? scrub(lastLine(r.err || r.out), link) : "nmem didn't start";
           return;
         }
         const q = await look(true);

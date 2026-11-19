@@ -2088,7 +2088,7 @@ export type DeviceMemAction = "install" | "connect" | "look"; // look: D375, rea
  * unreachable: the link's Mem couldn't be reached from that computer; refused: Mem turned the sign-in down
  * (401/403, D370); failed: anything else (detail).
  */
-export type DeviceMemReason = "network" | "space" | "unsupported" | "bad_link" | "used" | "unreachable" | "refused" | "failed";
+export type DeviceMemReason = "network" | "space" | "unsupported" | "bad_link" | "used" | "unreachable" | "refused" | "old" | "failed"; // old: D386, the nmem there can't sign in (nothing was sent)
 /**
  * D366: absent: no Mem command line there; sign_in: it's there, not signed in to a Mem it can
  * reach (Mem's own `nmem doctor`); ready: signed in, its check passes. `agents`: the AI agents
@@ -2106,6 +2106,13 @@ export interface DeviceMemView {
   health?: MemHealth;
   /** D375: Mem's command line there is Ducter's own copy (its tools folder), so Ducter can update it. */
   ours?: true;
+  /**
+   * D386: the person's own nmem there (first on its PATH) is too old to sign in (no `doctor`, no
+   * `connect`: the old Python CLI). Ducter never changes it: it puts its own current copy in its
+   * tools folder (install) and uses that one there, for its own steps and its tasks. `how`: how the
+   * person updates theirs, when its install says (pipx, uv, pip).
+   */
+  theirs?: { old: true; how?: "pipx" | "uv" | "pip" };
 }
 
 // ---------- Updating in place (D148, design/system.md "Updating in place") ----------

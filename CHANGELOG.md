@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.0.89 - 2026-11-19
+
+<!-- whats-new
+zh: 模型和思考深度合成一个，拖一下就换
+en: Model and effort in one chip; slide to change
+-->
+
+**Tasks**
+- Under a task's box, one chip says its model and how hard it thinks; tap it for a card with an
+  effort slider (only the levels that model has), a way back to the default, and the model list.
+- On phones, the context card and the new card always stay on screen.
+
 ## 0.0.88 - 2026-11-19
 
 <!-- whats-new
@@ -13,6 +25,10 @@ en: On phones, GitHub links open where you're signed in
 - Ask for something Ducter made ("the itinerary from last week", "the visa PDF") and it's put
   right under the answer. Past tasks has a new tab, Made for you: files, pictures, tables, charts,
   lists and links, by day.
+
+**Nowledge Mem**
+- On a computer whose own Nowledge Mem is too old to sign in, the card says so and installs a current
+  copy for Ducter's use; your pasted prompt is never sent to the old one and stays in the box.
 
 **Phone apps**
 - Links to GitHub and other sites open with your phone: the GitHub app if you have it, otherwise

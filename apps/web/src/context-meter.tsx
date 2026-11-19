@@ -1,13 +1,15 @@
 // D288: 上下文 / Context. A quiet ring by the task's composer that fills with the agent's context
 // window (the compaction point a tick on it; butter, never red, once it is close), and the card it
 // opens: the window used, the last turn and this task in all, how many times it was compacted,
-// 现在压缩 / Compact now, and the agent account's limits when the agent shares them. Wide, a
-// popover over the ring; on a phone, a sheet. Read from the task's own Log (protocol/context-meter.ts).
+// 现在压缩 / Compact now, and the agent account's limits when the agent shares them. A popover over
+// the ring on every width, placed inside the screen and its safe area (D387, pop-place.ts); it
+// scrolls inside when it is taller than the room. Read from the task's own Log (protocol/context-meter.ts).
 import { contextMeter, limitSpan, tightest, tokensShort, type AccountUsage, type ContextMeter, type UsageWindow } from "@ducter/protocol";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { A } from "./app.ts";
 import { Btn, Facts } from "./controls.tsx";
 import { harnessName, when } from "./format.ts";
+import { usePlaced } from "./pop-place.ts";
 import { attention, finished, harnessOf, type Task } from "./store.ts";
 
 const t = (k: string, ...a: unknown[]) => A.L.t(k, ...a);
@@ -54,7 +56,7 @@ export function ContextButton({ task }: { task: Task }) {
       <button ref={btn} type="button" class={`ctx-btn${open ? " on" : ""}`} aria-label={label} title={label} aria-expanded={open} aria-haspopup="dialog" onClick={() => setOpen(!open)}>
         <Ring m={m} />
       </button>
-      {open && <ContextCard task={task} m={m} onClose={() => (setOpen(false), btn.current?.focus())} />}
+      {open && <ContextCard task={task} m={m} anchor={btn} onClose={() => (setOpen(false), btn.current?.focus())} />}
     </span>
   );
 }
@@ -110,11 +112,11 @@ function Limits({ harness }: { harness: string }) {
 /** A plan as the agent names it, capitalised ("max" → "Max"). */
 const planWord = (p: string) => p.charAt(0).toUpperCase() + p.slice(1);
 
-export function ContextCard({ task, m, onClose }: { task: Task; m: ContextMeter; onClose: () => void }) {
+export function ContextCard({ task, m, anchor, onClose }: { task: Task; m: ContextMeter; anchor: { current: Element | null }; onClose: () => void }) {
   const box = useRef<HTMLDivElement>(null);
   const [asked, setAsked] = useState(false);
-  const narrow = typeof matchMedia === "function" && !matchMedia("(min-width: 700px)").matches;
   const harness = harnessOf(task);
+  usePlaced(true, anchor, box, { align: "end", width: 340, gap: 10 });
   useEffect(() => {
     if (harness) A.askAccountUsage(harness);
     const key = (e: KeyboardEvent) => e.key === "Escape" && (e.stopPropagation(), onClose());
@@ -138,8 +140,7 @@ export function ContextCard({ task, m, onClose }: { task: Task; m: ContextMeter;
     setAsked(true);
   };
   return (
-    <div ref={box} tabIndex={-1} class={`ctx-pop${narrow ? " as-sheet sheet" : ""}`} role="dialog" aria-label={t("ctx.title")}>
-      {narrow && <div class="grab" />}
+    <div ref={box} tabIndex={-1} class="ctx-pop" role="dialog" aria-label={t("ctx.title")}>
       <div class="ctx-head">
         <span class="ttl">{t("ctx.title")}</span>
         {m.tokens !== undefined && m.window ? (

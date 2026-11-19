@@ -111,6 +111,9 @@ await task("t_wal", w("WAL 回放的基准测试", "Benchmark WAL replay"), "Haw
 await task("t_flaky", w("修 compaction 偶发失败的测试", "Fix the flaky compaction test"), "HawDB", repo("hawdb", "ducter/compaction-fix"), "claude-code", "done", [2, 31, 9]);
 await task("t_cart", w("购物车数量为 0 时隐藏结算按钮", "Hide checkout when the cart is empty"), "tinycart", repo("tinycart", "ducter/empty-cart"), "claude-code", "working", [3, 42, 7], "you");
 await task("t_train", w("查下周五去上海最早的高铁", "Find the earliest train to Shanghai next Friday"), "", { kind: "none" }, "claude-code", "done");
+// D288, D387: the App Store task's context, as the runner logs it, for the ring and its card.
+log.append({ stream: "task:t_asc", origin: "task", kind: "task_event", body: { taskId: "t_asc", role: "assistant", text: w("先列出要填的字段。", "Listing the fields to fill first."), usage: { inputTokens: 148_200, outputTokens: 6_400, cacheRead: 121_000, contextTokens: 154_600, contextWindow: 272_000 } } });
+log.append({ stream: "task:t_asc", origin: "task", kind: "task_event", body: { taskId: "t_asc", role: "system", raw: { kind: "context", contextTokens: 186_000, contextWindow: 272_000, compactAt: 244_800 } } });
 log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: w("今天先把 New task 的界面做完", "Let's finish the New task UI today") } });
 log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: w("好。它在做，做完我告诉你。", "Sure. It's on it, and I'll tell you when it's done.") } });
 

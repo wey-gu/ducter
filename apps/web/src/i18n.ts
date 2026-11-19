@@ -875,8 +875,11 @@ const zh: Record<string, string> = {
   "who.name": "%s（%s）",
   "spoken.sep": "，",
   "switch.tune.note": "换模型或思考深度，%s 还是接着这件事做，从下一轮开始。",
-  // D354: the chips under the task's composer, and the line after a choice (the Mac: i18n/loadout.go).
-  "tune.effort": "思考：%s",
+  // D387 (D354's chips made one): the chip under the task's composer, its card, and the line after a
+  // choice (the Mac: i18n/loadout.go).
+  "tune.reset": "回到默认",
+  "tune.back": "返回",
+  "tune.change.model": "换模型",
   "tune.next.model": "下一轮起用 %s",
   "tune.next.effort": "下一轮起思考：%s",
   "who.done": "换到 %s 接着做了",
@@ -1737,8 +1740,10 @@ const en: Record<string, string> = {
   "who.name": "%s (%s)",
   "spoken.sep": ", ",
   "switch.tune.note": "A new model or effort: %s carries on with this task from its next turn.",
-  // D354: the chips under the task's composer, and the line after a choice.
-  "tune.effort": "Effort: %s",
+  // D387 (D354's chips made one): the chip under the task's composer, its card, and the line after a choice.
+  "tune.reset": "Back to default",
+  "tune.back": "Back",
+  "tune.change.model": "Change model",
   "tune.next.model": "From its next turn: %s",
   "tune.next.effort": "From its next turn: %s effort",
   "who.done": "Continued on %s",

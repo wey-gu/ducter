@@ -1249,6 +1249,10 @@ export type ClientFrame =
   | { t: "connection_reads"; id: string }
   // D226: 今天看了什么 / What it looked at today, under the switch; answered with proactive_day.
   | { t: "proactive_day" }
+  // D388: `ducter proactive replay`: the last `days` (1–7) of the real accounts through a dry
+  // engine on the home (no sends, no tasks, nothing in the conversation); web: allow a web look for
+  // an open question. Answered with proactive_replay_result, minutes later.
+  | { t: "proactive_replay"; days?: number; web?: boolean }
   // D242: fresh keys for media this client holds refs to (its keys ran out); answered with media_keys.
   | { t: "media_keys"; ids: string[] }
   // D193: the device sign-in (RFC 8628) a connection_add started: stop waiting for it; or sign in
@@ -1572,6 +1576,7 @@ export type ServerFrame =
   | { t: "own_phone_result"; ok: false; action: string; reason?: string }
   | { t: "connection_reads"; id: string; reads: ReadLine[] }
   | { t: "proactive_day"; day: ProactiveDay }
+  | { t: "proactive_replay_result"; report?: import("./proactive.ts").ReplayReport; error?: string }
   // D242: a fresh key per id the home holds (ids it doesn't hold are left out). Not "keys": the saved frame's.
   | { t: "media_keys"; mediaKeys: Record<string, string> }
   // readable (D158): what the added connection can read now; [] = connected, but no account there yet.

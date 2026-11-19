@@ -100,6 +100,8 @@ export const NOTICE_TERMS = [
   "maintenance", "scheduled", "downtime", "outage", "incident", "degraded", "disruption", "restart", "维护", "停机", "故障", "中断",
   "security", "sign-in", "new login", "password", "suspicious", "安全", "登录", "密码", "异常",
   "billing", "charge", "charging", "usage", "quota", "limit", "exceed", "free tier", "overage", "pricing", "计费", "收费", "用量", "额度", "超出", "欠费",
+  // D388: a quota or traffic allowance running out ("流量包使用已达 95%", "You've used 90% of your data").
+  "traffic", "allowance", "data plan", "流量", "套餐", "余量", "剩余", "已使用", "used up",
   "shutdown", "shutting down", "sunset", "discontinu", "deprecat", "end of life", "action required", "停止服务", "停服", "下线", "关停", "弃用",
   "failed", "failing", "failure", "alert", "is down", "失败", "报警", "告警",
   "delivery", "arriving", "派送", "送达", "签收", "gate", "terminal", "登机", "值机",

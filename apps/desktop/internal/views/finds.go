@@ -110,14 +110,34 @@ func (a *App) findBlock(c *ui.Context, f protocol.FindView, seq int64) {
 		})
 		if open {
 			ui.Column(c.Key("howlist:" + f.FindID)).Gap(2).Children(func() {
+				// D388: each line is one source, in the order the find rests on
+				// them: where it was read, what it is, what it says, its page.
 				for i, h := range f.How {
 					ui.Row(c.Key("h" + itoa(int64(i)))).Gap(t.S2).Children(func() {
+						if h.Src != "" {
+							ui.Text(c, a.L.T("find.src."+h.Src)).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).Shrink(0)
+						}
 						ui.Text(c, a.whenOf(h.At)).FontSize(t.SM).TextColor(t.InkMuted).Shrink(0)
 						if h.From != "" {
 							ui.Text(c, h.From).FontSize(t.SM).TextColor(t.InkMuted).Shrink(0).MaxWidth(160).SingleLine()
 						}
-						ui.Text(c, h.What).FontSize(t.SM).TextColor(t.InkSoft).Grow(1).MinWidth(0).MaxLines(2)
+						if h.URL != "" {
+							if a.quietButton(c, "hl:"+f.FindID+itoa(int64(i)), h.What, "", false, 0) {
+								c.OpenURL(h.URL)
+							}
+						} else {
+							ui.Text(c, h.What).FontSize(t.SM).TextColor(t.InkSoft).Shrink(1).MinWidth(0).MaxLines(2)
+						}
+						if h.Says != "" {
+							ui.Text(c, h.Says).FontSize(t.SM).TextColor(t.Ink).Grow(1).MinWidth(0).MaxLines(2)
+						}
 					})
+				}
+				if f.Unknown != "" {
+					ui.Text(c, a.L.T("find.unknown", f.Unknown)).FontSize(t.SM).TextColor(t.InkMuted)
+				}
+				if f.Untouched != "" {
+					ui.Text(c, f.Untouched).FontSize(t.SM).TextColor(t.InkMuted)
 				}
 			})
 		}

@@ -96,8 +96,10 @@ test("只说急的: no morning note; only what costs something if it waits goes,
   expect(ns.every((n) => n.rung === "now")).toBe(true);
   // D232: urgent by what waiting costs: the card that expired before a renewal, and Lina, who
   // asked 4 days ago and again today (a person waiting is said in 只说急的 too).
-  expect(ns.map((n) => n.finds[0]!.kind)).toEqual(["deadline", "waiting_on_you"]);
-  expect(r.sent.map((m) => m.level)).toEqual(["time-sensitive", "time-sensitive"]);
+  // D388: found in the same look, they are one message with one notification, each its own find.
+  expect(ns.flatMap((n) => n.finds.map((f) => f.kind))).toEqual(["deadline", "waiting_on_you"]);
+  expect(r.sent.map((m) => m.level).every((l) => l === "time-sensitive")).toBe(true);
+  expect(r.sent.length).toBe(ns.length);
 });
 
 test("now: during the day at once (time-sensitive), in its own room of 3 (D243)", async () => {
@@ -110,7 +112,10 @@ test("now: during the day at once (time-sensitive), in its own room of 3 (D243)"
   expect(r.notes().map((n) => n.body.rung)).toEqual(["morning", "now"]);
   for (let i = 0; i < 3; i++) r.p.ledger.add([{ ref: { connectionId: "conn_oo", service: "gmail", id: `chg${i}` }, label: `Air China · Schedule change ${i}`, at: new Date(r.clock.now()).toISOString(), type: "change", what: "flight_changed", name: `CA93${i + 1}`, on: "2026-11-11T08:00:00+08:00" }]);
   await r.p.lookNow(0);
-  expect(r.notes().filter((n) => n.body.rung === "now")).toHaveLength(3); // NOW_MAX holds
+  // NOW_MAX holds (D388: the two said together are one message).
+  const nows = r.notes().filter((n) => n.body.rung === "now");
+  expect(nows.flatMap((n) => n.body.finds)).toHaveLength(3);
+  expect(nows).toHaveLength(2);
 });
 
 test("now: an urgent find while there's room goes at once; at night it waits unless that kind may wake them", async () => {
@@ -124,7 +129,9 @@ test("now: an urgent find while there's room goes at once; at night it waits unl
   change("CA2");
   await r.p.lookNow(0);
   const ns = r.notes().map((e) => e.body);
-  expect(ns.map((n) => n.rung)).toEqual(["now", "now"]); // the person said this kind may wake them
+  // The person said this kind may wake them: both changes, held and new, in one message (D388).
+  expect(ns.map((n) => n.rung)).toEqual(["now"]);
+  expect(ns[0]!.finds.map((f) => f.kind)).toEqual(["plan_changed", "plan_changed"]);
   expect(r.sent.every((m) => m.level === "time-sensitive")).toBe(true);
 });
 

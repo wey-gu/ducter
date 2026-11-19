@@ -28,4 +28,15 @@ export interface Candidate {
   topic?: string;
   /** D243: typed details for the bar only (an effect, a count), never said as they are. */
   notes?: string[];
+  /** D388: what each `how` line's source says about it, in both languages (the same order as how). */
+  says?: { zh: string; en: string }[];
+  /** D388: what it doesn't know yet ("几点开始"), and what it did not change ("日历我没改。"). */
+  unknown?: { zh: string; en: string };
+  untouched?: { zh: string; en: string };
+  /**
+   * D388: the question it leaves open once said (plans.ts): the plan's sheet, name, the day the
+   * plan is on and the days in dispute, and what is still open (the day, the time). The engine
+   * keeps it and says the answer once when a later source gives it.
+   */
+  open?: { sheet: string; name: string; day: string; place?: string; fields: ("day" | "time")[]; days: string[] };
 }

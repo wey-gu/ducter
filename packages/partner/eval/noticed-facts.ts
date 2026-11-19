@@ -29,3 +29,24 @@ export function writeDotsFacts(dataDir: string, now = Date.now()) {
   writeFileSync(join(dataDir, "findings.json"), JSON.stringify({ facts }), { mode: 0o600 });
   writeFileSync(join(dataDir, "settings.json"), JSON.stringify({ proactive: "urgent" }), { mode: 0o600 });
 }
+
+/**
+ * D388 (research/154): one plan, three sources: the calendar holds "AGI Bar Beijing talk" all day the
+ * day after tomorrow (no time), a colleague's weekly report says tomorrow, and the event page a web
+ * look read says the day after tomorrow at 19:00, doors. Synthetic (example.com/.org), dated around
+ * now in this machine's zone; for "how did you know?".
+ */
+export function writeAgibarFacts(dataDir: string, now = Date.now()) {
+  const iso = (d: number) => new Date(d).toISOString();
+  const local = (ms: number) => new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(ms));
+  const sat = local(now + 2 * 24 * H);
+  const fri = local(now + 1 * 24 * H);
+  const page = `https://agibar.example.com/events/${sat}-beijing`;
+  const facts = [
+    { id: "f_hold", ref: { connectionId: "conn_oo", service: "googlecalendar", account: "wey@example.com", id: "ev_agibar" }, label: "AGI Bar Beijing talk", at: iso(now - 7 * 24 * H), date: sat, type: "plan", name: "AGI Bar Beijing talk", day: sat, tbd: true, src: "calendar" },
+    { id: "f_weekly", ref: { connectionId: "conn_oo", service: "gmail", account: "wey@example.com", id: "m_weekly" }, label: "本周周报 W47", sender: "Lina Zhou", at: iso(now - 14 * H), date: fri, type: "plan", name: "AGI Bar Beijing talk", day: fri, place: "北京", src: "mail" },
+    { id: "f_page", ref: { connectionId: "web", service: "web", id: page }, label: "agibar.example.com", sender: "agibar.example.com", at: iso(now - 12 * H), date: sat, type: "plan", name: "AGI Bar Beijing talk", day: sat, time: "19:00", doors: true, src: "web", url: page },
+  ];
+  writeFileSync(join(dataDir, "findings.json"), JSON.stringify({ facts }), { mode: 0o600 });
+  writeFileSync(join(dataDir, "settings.json"), JSON.stringify({ proactive: "urgent" }), { mode: 0o600 });
+}

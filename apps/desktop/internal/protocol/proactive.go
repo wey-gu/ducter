@@ -17,6 +17,11 @@ type FindHow struct {
 	What string `json:"what"`
 	From string `json:"from,omitempty"`
 	At   string `json:"at"`
+	// D388: where it was read (calendar, mail, chat, github, you, web), what
+	// that source says, and the page a web claim was read on.
+	Src  string `json:"src,omitempty"`
+	Says string `json:"says,omitempty"`
+	URL  string `json:"url,omitempty"`
 }
 
 // FindView is one find in a note: at most two sentences, its evidence,
@@ -30,6 +35,9 @@ type FindView struct {
 	GoLabel    string    `json:"goLabel,omitempty"`
 	DueAt      string    `json:"dueAt,omitempty"`
 	Sender     string    `json:"sender,omitempty"`
+	// D388: what it doesn't know yet, and what it did not change.
+	Unknown   string `json:"unknown,omitempty"`
+	Untouched string `json:"untouched,omitempty"`
 }
 
 // Finds is one note the partner said by itself: the morning note, a

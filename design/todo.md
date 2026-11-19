@@ -797,6 +797,33 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
 - [ ] **"Done" for a kept line:** a reply that says it was done ("交了") quietly drops what is still
       ahead. Trigger: a reminder said after it was done.
 
+## The plan sheet and the aha moments (D388, research/154)
+
+- [ ] **The author runs `ducter proactive replay --days 3` on hel** and compares it with the other
+      app's morning (research/154 §1): which of the four moments it would have said, when, and what
+      the cheapest model made of the weekly report (a `plan` fact or nothing). Trigger: the release
+      that carries D388 reaches hel.
+- [ ] **Look before saying, when a look can settle it:** run the web look for a contradiction's open
+      time before the find is said, and say one complete message instead of two. Trigger: replays or
+      live days where the follow-up comes within the hour of the find.
+- [ ] **A cold sender is not waiting on you:** 11 of 11 waiting-on-you finds on hel were held, several
+      from senders pitching (research/154 §2). A first mail from a sender the person never wrote to,
+      asking for a meeting, a call or a link, needs a second ask or a person who matters (Mem) to be
+      said. Measure on the rig and the aha days before shipping. Trigger: now (the next proactive change).
+- [ ] **A reconnect is not the person opening Ducter:** the 11-19 morning note came at 05:15, the
+      second the home restarted for an update (a hello within two hours of the end of quiet hours
+      assembles the note). Only a hello from a client brought to the front counts. Trigger: now.
+- [ ] **A notice Rule for the open question's web look** ("别替我上网查活动时间"), and the look's count
+      in 今天看了什么. Trigger: the first person who asks why it searched, or the live week.
+- [ ] **Their public posts as a source** (the other app named the author's own post about attending):
+      only with a yes, only their own accounts. Trigger: a person connects a social account.
+- [ ] **The replay over a longer look back** (`--deep`: the 60-day subjects into the ledger first), so
+      a booking from weeks ago meets this week's mail. Trigger: a replay that misses a join the live
+      engine makes.
+- [ ] **The person's own words dated by when they said them:** in the replay their lines are copied
+      in at the replay's time, so "周六" resolves from today, not from the day they said it. Trigger:
+      a replay across a weekend.
+
 ## Your accounts and connected AI agents (promised as "coming soon" on the site)
 
 The site, README and `docs/faq.md` say these are coming. Each needs the change loop (a design

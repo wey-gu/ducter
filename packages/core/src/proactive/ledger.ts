@@ -44,7 +44,13 @@ export type Fact = Base &
     | { type: "change"; what: "flight_changed" | "flight_cancelled" | "meeting_moved" | "other"; name: string; on: string }
     | { type: "meeting"; title: string; start: string; end?: string; with: string[]; location?: string }
     | { type: "service"; what: ServiceWhat; name: string; start?: string; end?: string; effect?: string; prod?: boolean }
-    | { type: "billing"; what: BillingWhat; name: string; on: string; amount?: string }
+    | { type: "billing"; what: BillingWhat; name: string; on: string; amount?: string; used?: string; resets?: string }
+    // D388: one source's word on a coming plan (a talk, a dinner, a trip's event): the day it puts
+    // it on, and the time and place when it says them. tbd: the source itself leaves the time open
+    // (an all-day hold in the calendar). src: the calendar's own hold, a mail that mentions it (not
+    // its confirmation: that is a booking), or a public page a web look read (url). doors: the time
+    // is when the doors open, not when the person's part starts.
+    | { type: "plan"; name: string; day: string; time?: string; place?: string; tbd?: boolean; src: "calendar" | "mail" | "web"; url?: string; doors?: boolean }
   );
 
 export type FactType = Fact["type"];
@@ -67,6 +73,8 @@ function dateOf(f: NewFact): string {
       return f.end ?? f.start ?? f.at;
     case "billing":
       return f.on;
+    case "plan":
+      return f.day;
     default:
       return f.at;
   }
@@ -88,6 +96,9 @@ function identity(f: NewFact | Fact): string {
       return `${p}|booking|${f.ref.id}|${f.name}|${f.start}`;
     case "service":
       return `${p}|service|${f.ref.id}|${f.name}|${f.start ?? ""}`;
+    // D388: a calendar hold moved to another day is a new word on the plan; a web look's answer is one per page and time.
+    case "plan":
+      return `${p}|plan|${f.ref.id}|${f.day}|${f.time ?? ""}`;
     default:
       return `${p}|${f.type}|${f.ref.id}`;
   }
@@ -225,7 +236,16 @@ export function sanitize(fact: Fact): Fact | undefined {
     case "billing": {
       const on = iso(f.on);
       if (!on) return;
-      return { ...base, type: "billing", what: (BILLING_WHATS as readonly string[]).includes(f.what) ? f.what : "other", name: s80(f.name) ?? "", on, ...(s80(f.amount) ? { amount: s80(f.amount) } : {}) };
+      const used = typeof f.used === "string" && /^\d{1,3}(\.\d)?%$/.test(f.used.trim()) ? f.used.trim() : undefined;
+      return { ...base, type: "billing", what: (BILLING_WHATS as readonly string[]).includes(f.what) ? f.what : "other", name: s80(f.name) ?? "", on, ...(s80(f.amount) ? { amount: s80(f.amount) } : {}), ...(used ? { used } : {}), ...(iso(f.resets) ? { resets: iso(f.resets) } : {}) };
+    }
+    case "plan": {
+      const day = typeof f.day === "string" && /^\d{4}-\d\d-\d\d$/.test(f.day) && !Number.isNaN(Date.parse(f.day)) ? f.day : undefined;
+      if (!day || !s80(f.name)) return;
+      const time = typeof f.time === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(f.time) ? f.time : undefined;
+      const url = typeof f.url === "string" && /^https?:\/\/[^\s<>"'`]+$/i.test(f.url) && f.url.length <= 300 ? f.url : undefined;
+      const src = f.src === "calendar" || f.src === "web" ? f.src : "mail";
+      return { ...base, type: "plan", name: s80(f.name)!, day, ...(time ? { time } : {}), ...(s80(f.place) ? { place: s80(f.place) } : {}), ...(f.tbd && !time ? { tbd: true } : {}), src, ...(url ? { url } : {}), ...(f.doors && time ? { doors: true } : {}) };
     }
     default:
       return;

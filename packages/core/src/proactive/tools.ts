@@ -37,7 +37,7 @@ export function registerProactiveTools(mcp: CoreMcpHub, rules: RulesStore, proac
   mcp.register(
     "partner",
     "noticed",
-    "What you have noticed in the user's accounts by yourself, most costly first, said or not: trips coming up, deadlines and money, services they use (maintenance, outages, failing jobs), people waiting on them, plans that changed. Call it first when they ask what's worth knowing. Each item: kind, your words, when, how you know (headers, dates), said, the next step you can take.",
+    "What you have noticed in the user's accounts by yourself, most costly first, said or not: trips coming up, deadlines and money, services they use (maintenance, outages, failing jobs), people waiting on them, plans that changed. Call it first when they ask what's worth knowing. Each item: kind, your words, when, how you know (each source, what it says, its link), said, the next step you can take; why: the answer to \"how did you know?\" as it is.",
     { type: "object", properties: {} },
     async () => {
       const n = proactive.noticed();

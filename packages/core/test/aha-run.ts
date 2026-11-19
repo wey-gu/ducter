@@ -1,0 +1,60 @@
+// D388: the aha days run through the whole engine on fakes (shared by proactive-aha.test.ts and
+// packages/partner/eval/proactive/aha.ts). No model, no network: the web look is a fake.
+import type { ProactiveMode } from "@ducter/protocol";
+import type { WebLookPort } from "@ducter/protocol/src/internal.ts";
+import { AGIBAR_PAGE, AHA_END, AHA_SAY, AHA_START, ahaDays } from "./fixtures/aha-days.ts";
+import { rig } from "./proactive-rig.ts";
+
+export interface AhaSaid {
+  at: number;
+  rung: string;
+  kind: string;
+  text: string;
+  noteId: string;
+  how: { src?: string; url?: string; says?: string; what: string }[];
+  unknown?: string;
+}
+
+/** A fake quick web look: the event page, or nothing settled; every question it was asked is kept. */
+export function fakeLook(o: { found?: boolean } = {}): WebLookPort & { asked: string[] } {
+  const asked: string[] = [];
+  return {
+    asked,
+    can: () => true,
+    async look(q) {
+      asked.push(q.question);
+      if (o.found === false) return { state: "unsettled", why: "not_found" };
+      return { state: "found", answer: "2026-11-21 19:00 开门（doors open at 19:00）；议程没写分享人几点上场。", sources: [AGIBAR_PAGE], confidence: "high" };
+    },
+  };
+}
+
+/** Runs Wed 07:00 to Fri 12:00, mail and the person's words arriving as they did; what was said, when. The caller stops the rig. */
+export async function runAha(mode: ProactiveMode, o: { web?: "found" | "none" | "off" } = {}) {
+  const { fx, later, said } = ahaDays();
+  const look = o.web === "off" ? undefined : fakeLook({ found: o.web !== "none" });
+  const r = rig({ mode, fx, start: AHA_START, present: true, ...(look ? { webLook: () => look } : {}) });
+  await r.settle();
+  const STEP = 10 * 60_000;
+  const mail = [...later].sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
+  const words = [...said].sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
+  while (r.clock.now() < AHA_END) {
+    await r.advance(STEP, STEP);
+    while (words.length && Date.parse(words[0]!.at) <= r.clock.now()) r.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: words.shift()!.text } });
+    while (mail.length && Date.parse(mail[0]!.at) <= r.clock.now()) {
+      const l = mail.shift()!;
+      fx.mail.push({ ...l.mail, date: new Date(r.clock.now() + 1000).toISOString() });
+      fx.triage[l.mail.id] = l.triage;
+    }
+  }
+  const out: AhaSaid[] = [];
+  for (const e of r.notes()) {
+    const b = e.body;
+    const fresh = b.revises ? (b.added ? b.finds.slice(-b.added) : []) : b.finds;
+    for (const f of fresh) out.push({ at: Date.parse(e.ts), rung: b.revises ? "fold" : b.rung, kind: f.kind, text: f.text, noteId: b.noteId, how: f.how, ...(f.unknown ? { unknown: f.unknown } : {}) });
+  }
+  return { r, said: out, look };
+}
+
+/** The first thing said that matches one expected moment. */
+export const hit = (said: AhaSaid[], w: (typeof AHA_SAY)[number]) => said.find((s) => s.kind === w.kind && w.contains.every((c) => s.text.includes(c)));

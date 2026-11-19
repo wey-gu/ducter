@@ -6,7 +6,7 @@ import type { ConnectionCaller, ConnectionOutcome } from "@ducter/protocol/src/i
 import type { ConnectionSource, ConnectionView } from "@ducter/protocol";
 import type { AppTarget, ConnectionsStore } from "../src/connections.ts";
 import { ooOp } from "../src/oo-link.ts";
-import { ME, type Fixture } from "./fixtures/inbox.ts";
+import { ME, type FakeEvent, type Fixture } from "./fixtures/inbox.ts";
 
 export interface FakeApp {
   service: string;
@@ -97,7 +97,9 @@ export function fakeAccounts(fx: Fixture, o: { id?: string; source?: ConnectionS
       if (action !== "googlecalendar.list_events") return { ok: false, error: `unknown action ${action}` };
       const lo = Date.parse(String(inp.timeMin ?? "")) || 0;
       const hi = Date.parse(String(inp.timeMax ?? "")) || Infinity;
-      return { ok: true, op: "read", result: { items: fx.events.filter((e) => Date.parse(e.start.dateTime) >= lo && Date.parse(e.start.dateTime) <= hi) } };
+      // D388: an all-day event has a date, no dateTime (Google Calendar's shape).
+      const startOf = (e: FakeEvent) => Date.parse(e.start.dateTime ?? (e.start as { date?: string }).date ?? "");
+      return { ok: true, op: "read", result: { items: fx.events.filter((e) => startOf(e) >= lo && startOf(e) <= hi) } };
     }
     if (service === "github") {
       if (action !== "github.list_notifications") return { ok: false, error: `unknown action ${action}` };

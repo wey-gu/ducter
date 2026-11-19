@@ -7,7 +7,7 @@ import { useState } from "preact/hooks";
 import { A } from "./app.ts";
 import { HoverReply, replyKey, replyOfFind } from "./reply.tsx";
 import { ProactiveChips } from "./accounts.tsx";
-import { Btn, Facts } from "./controls.tsx";
+import { Btn, Facts, LinkBtn } from "./controls.tsx";
 import { openDid } from "./did.tsx";
 import { LearnedLine } from "./recall.tsx";
 import { ago } from "./format.ts";
@@ -55,9 +55,22 @@ function Find({ f, seq }: { f: FindView; seq?: number }) {
       </div>
       {how && (
         <div class="fhow">
+          {/* D388: each line is one source, in the order the find rests on them: where it was read, what it is, what it says, its page. */}
           {f.how.map((h, i) => (
-            <Facts key={i} class="small" items={[<span class="sub">{ago(A.L, h.at)}</span>, h.from && <span class="sub">{h.from}</span>, h.what]} />
+            <Facts
+              key={i}
+              class="small"
+              items={[
+                h.src && <span class="fsrc">{t(`find.src.${h.src}`)}</span>,
+                <span class="sub">{ago(A.L, h.at)}</span>,
+                h.from && <span class="sub">{h.from}</span>,
+                h.url ? <LinkBtn kind="text" size="sm" class="flink" href={h.url} label={h.what} /> : h.what,
+                h.says && <span class="fsays">{h.says}</span>,
+              ]}
+            />
           ))}
+          {f.unknown && <div class="small sub">{t("find.unknown", f.unknown)}</div>}
+          {f.untouched && <div class="small sub">{f.untouched}</div>}
         </div>
       )}
     </div>

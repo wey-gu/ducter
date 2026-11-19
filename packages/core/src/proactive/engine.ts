@@ -25,7 +25,8 @@ import { join } from "node:path";
 import type { Bodies, FindKind, FindView, LogEvent, ProactiveDay, ProactiveMode, ProactiveYesNo, QuietReason, ReadLine, ReadProblem, RuleView, SourceLook } from "@ducter/protocol";
 import { DAILY_CAP, isFindKind, langName, normalizeTag, QUIET_REASONS, words, type LangTag } from "@ducter/protocol";
 import { talkLang } from "../lang.ts";
-import type { WorkingMemoryPort } from "@ducter/protocol/src/internal.ts";
+import type { WebLookPort, WorkingMemoryPort } from "@ducter/protocol/src/internal.ts";
+import { daySettled, dayEn as planDayEn, dayZh as planDayZh, howOfClaim, provenance, saysOf, sheetFor, timeFill, type Claim, type OwnClaim } from "./plans.ts";
 import { focusTerms, touchesFocus } from "../working-memory.ts";
 
 /** D281's own lines (what you said, today's line), per language (D292: any other language reads
@@ -136,6 +137,9 @@ interface FindRec {
   /** D243: what it was about and the facts it rested on (a later notice on it is an update). */
   topic?: string;
   facts?: string[];
+  /** D388: what it didn't know and didn't change when it was said (for "how did you know?"). */
+  unknown?: string;
+  untouched?: string;
 }
 
 interface VerdictRec {
@@ -211,7 +215,41 @@ interface State {
   learnedWeek?: string;
   /** D281: decisions the morning note already named as waiting (each is named once, never again). */
   toldPending?: string[];
+  /** D388: the questions a said find left open (a plan's day or time), until a later source answers them. */
+  opens?: OpenRec[];
+  /** D388: the web looks run today for open questions (≤ WEB_LOOKS_A_DAY). */
+  webDay?: { day: string; n: number };
 }
+
+/**
+ * D388: a question a said find left open: the plan (its sheet, name, day, the days in dispute),
+ * what is still open, and the web looks tried for it. open: kept; filled: the answer was said
+ * once; gone: its day passed with nothing new (let go quietly, never said).
+ */
+interface OpenRec {
+  id: string;
+  findId: string;
+  sheet: string;
+  name: string;
+  day: string;
+  days: string[];
+  place?: string;
+  fields: ("day" | "time")[];
+  at: number;
+  looks: number;
+  lastLook?: number;
+  state: "open" | "filled" | "gone";
+}
+
+/** D388: an open question is looked up on the web no sooner than this after it was said (a stutter reads as a correction). */
+export const OPEN_LOOK_AFTER_MS = 30 * 60_000;
+/** Between two looks for one question, and at most this many for it. */
+export const OPEN_LOOK_GAP_MS = 3 * 3_600_000;
+export const OPEN_LOOKS_MAX = 2;
+/** All open questions together, a day. */
+export const WEB_LOOKS_A_DAY = 3;
+/** A plan further out than this is not looked up yet. */
+export const OPEN_LOOK_DAYS = 10;
 
 /**
  * D281: one thing the person said they'd do, asked to be reminded of, or the partner promised to
@@ -309,13 +347,22 @@ export interface ProactiveOptions {
   agentName?: () => string | undefined;
   /** D368: the person's Working Memory in Mem: their focus ranks the morning's finds (read-only; absent: none). */
   workingMemory?: Pick<WorkingMemoryPort, "ready">;
+  /**
+   * D388: a quick web look (D380's, core/src/web-look.ts) for a question a said find left open: a
+   * public plan's day or time. Only the plan's name, place and the days in dispute leave Ducter.
+   * Absent: open questions close only by mail and the calendar.
+   */
+  webLook?: () => WebLookPort | undefined;
+  /** D388: how long after it was said an open question may be looked up (OPEN_LOOK_AFTER_MS; the replay: 0). */
+  openLookAfterMs?: number;
 }
 
 /** D243: the partner's view of what it noticed (the `noticed` tool). Words only, never mail. */
 export interface Noticed {
   /** It watches on its own (a mode other than Only when I ask). */
   watching: boolean;
-  items: { kind: FindKind; text: string; urgent: boolean; when?: string; how: string[]; said: boolean; next?: string }[];
+  /** why (D388): the answer to "how did you know?", composed from its source lines (provenance in plans.ts); unknown: what it doesn't know yet. */
+  items: { kind: FindKind; text: string; urgent: boolean; when?: string; how: string[]; said: boolean; next?: string; unknown?: string; why?: string }[];
 }
 
 export interface Proactive {
@@ -338,6 +385,8 @@ export interface Proactive {
   noticed(): Noticed;
   /** Whether a Log event should wake the partner (a find's Go/Hold is handled here). */
   wakes(e: LogEvent): boolean;
+  /** D388: the questions said finds left open, and what became of them (the replay reports them). */
+  opens(): { name: string; fields: ("day" | "time")[]; state: "open" | "filled" | "gone"; looks: number }[];
   setModels(m: { triage?: Triage; judge?: FindJudge }): void;
   /** Something the accounts card shows changed (a look, a find, a tile). */
   onChange(fn: () => void): () => void;
@@ -390,7 +439,10 @@ export function createProactive(o: ProactiveOptions): Proactive {
   /** D243: what the detectors need: the time, the zone, and the finds already said (for updates). */
   const saidFinds = (): SaidFind[] =>
     Object.entries(st.finds).map(([findId, f]) => ({ findId, kind: f.kind, ...(f.topic ? { topic: f.topic } : {}), text: f.text, at: f.at, facts: f.facts ?? [], ...(f.state === "passed" ? { passed: true } : {}) }));
-  const dctx = () => ({ now: now(), zone: zone(), said: saidFinds() });
+  /** D388: what the person said they'd do on a day, as their word on a plan's sheet. */
+  const ownClaims = (): OwnClaim[] =>
+    (st.own ?? []).filter((r) => r.by === "user" && !r.asked && r.dueAt && r.state !== "gone").map((r) => ({ id: r.id, what: r.what, quote: r.quote, at: r.at, dueAt: r.dueAt! }));
+  const dctx = () => ({ now: now(), zone: zone(), said: saidFinds(), own: ownClaims() });
 
   // ---------- the switch, the language, the budget ----------
 
@@ -682,6 +734,10 @@ export function createProactive(o: ProactiveOptions): Proactive {
       goLabel = words(c.step.goLabel, z);
       o.log.append({ stream: "channel", origin: "partner", kind: "decision", body: { decisionId, question: text, goLabel, defaultOption: "hold", reversible: false, findId } });
     }
+    // D388: each source line says what that source says, in the person's language.
+    const how = c.how.map((h, i) => (c.says?.[i] ? { ...h, says: words(c.says[i]!, z) } : h));
+    const unknown = c.unknown ? words(c.unknown, z) : undefined;
+    const untouched = c.untouched ? words(c.untouched, z) : undefined;
     const rec: FindRec = {
       key: c.key,
       kind: c.kind,
@@ -693,13 +749,22 @@ export function createProactive(o: ProactiveOptions): Proactive {
       ...(c.dueAt ? { dueAt: c.dueAt } : {}),
       ...(decisionId ? { decisionId, goLabel } : {}),
       ...(c.step ? { step: c.step } : {}),
-      how: c.how,
+      how,
       ...(c.topic ? { topic: c.topic } : {}),
       facts: c.facts,
+      ...(unknown ? { unknown } : {}),
+      ...(untouched ? { untouched } : {}),
     };
     st.finds[findId] = rec;
     st.said[c.key] = findId;
-    return { findId, kind: c.kind, text, how: c.how, ...(decisionId ? { decisionId, goLabel } : {}), ...(c.dueAt ? { dueAt: c.dueAt } : {}), ...(c.sender ? { sender: c.sender } : {}) };
+    // D388: what it leaves open is kept, and answered once when a later source gives it.
+    if (c.open) {
+      const list = (st.opens ??= []);
+      if (!list.some((r) => r.state === "open" && r.sheet === c.open!.sheet))
+        list.push({ id: newId("open"), findId, sheet: c.open.sheet, name: c.open.name, day: c.open.day, days: c.open.days, ...(c.open.place ? { place: c.open.place } : {}), fields: c.open.fields, at: now(), looks: 0, state: "open" });
+      st.opens = list.slice(-30);
+    }
+    return { findId, kind: c.kind, text, how, ...(decisionId ? { decisionId, goLabel } : {}), ...(c.dueAt ? { dueAt: c.dueAt } : {}), ...(c.sender ? { sender: c.sender } : {}), ...(unknown ? { unknown } : {}), ...(untouched ? { untouched } : {}) };
   }
 
   const note = (b: Bodies["finds"]) => o.log.append({ stream: "channel", origin: "partner", kind: "finds", body: b });
@@ -843,16 +908,130 @@ export function createProactive(o: ProactiveOptions): Proactive {
     rollDay();
     const room = Math.max(0, NOW_MAX - (st.day.now ?? 0));
     const pick = list.slice(0, room);
-    for (const x of pick) {
+    if (pick.length) {
+      // D388: what can't wait, found in the same look, is one calm message (and one notification),
+      // each thing its own find: hel's three "now" notes in one second (2026-11-13) read as noise.
       const noteId = newId("note");
-      const f = makeFind(x.c, x.text, noteId);
-      note({ noteId, rung: "now", opening: "", finds: [f] });
-      st.day.said++;
-      st.day.now = (st.day.now ?? 0) + 1;
+      const finds = pick.map((x) => makeFind(x.c, x.text, noteId));
+      note({ noteId, rung: "now", opening: "", finds });
+      st.day.said += finds.length;
+      st.day.now = (st.day.now ?? 0) + finds.length;
       // Time-sensitive: the phone lets the person turn that off per app (research/46).
-      notify("time-sensitive", f.text, noteId);
+      notify("time-sensitive", finds.length === 1 ? finds[0]!.text : W.lockBody(lang(), finds.map((f) => f.text)), noteId);
     }
     save();
+  }
+
+  // ---------- D388: open questions, answered once ----------
+
+  const dayNum = (d: string) => Math.round(Date.parse(`${d}T00:00:00Z`) / DAY);
+  const hostOf = (u?: string) => {
+    try {
+      return u ? new URL(u).hostname.replace(/^www\./, "") : "";
+    } catch {
+      return "";
+    }
+  };
+
+  /** The follow-up line: the time (or the day) a later source gave, and where it said it. */
+  function fillCandidate(r: OpenRec, t: Claim | undefined, d: Claim | undefined): Candidate {
+    const by = t ?? d!;
+    const where = by.role === "page" ? { zh: `（${hostOf(by.url) || "网上"}）`, en: `per ${hostOf(by.url) || "the web"}` } : by.src === "calendar" ? { zh: "，日历上改过了", en: "your calendar has it now" } : { zh: `，${by.sender ? `${by.sender} 的` : ""}信里写的`, en: `per ${by.sender ? `${by.sender}'s mail` : "a mail"}` };
+    const words = t
+      ? {
+          zh: zhSpace(`补上刚才缺的时间：「${r.name}」${planDayZh(t.day)}${t.time}${t.doors ? " 开门" : ""}${where.zh}。${t.doors ? "你几点上场页面上没写。" : ""}`),
+          en: `Filling in the time: "${r.name}" is ${planDayEn(t.day)} at ${t.time}${t.doors ? " (doors)" : ""}, ${where.en}.${t.doors ? " That's when the doors open; your slot isn't listed." : ""}`,
+        }
+      : { zh: zhSpace(`「${r.name}」对上了：是 ${planDayZh(d!.day)}${where.zh}。`), en: `"${r.name}" is settled: ${planDayEn(d!.day)}, ${where.en}.` };
+    const said = st.finds[r.findId];
+    return {
+      key: `fill:${r.id}`,
+      kind: "update",
+      cost: 80,
+      urgent: true,
+      dueAt: new Date(Date.parse(`${by.day}T23:59:00Z`)).toISOString(),
+      ...(by.sender ? { sender: by.sender } : by.url ? { sender: hostOf(by.url) } : {}),
+      people: [],
+      how: [howOfClaim(by), ...(said?.how ?? []).map(({ says: _s, ...h }) => h)].slice(0, 4),
+      says: [saysOf(by)],
+      words,
+      ...(t?.doors ? { unknown: { zh: "你那部分几点开始", en: "when your part starts" } } : {}),
+      ...(said?.untouched ? { untouched: { zh: "日历我没改。", en: "I didn't change your calendar." } } : {}),
+      facts: [by.id],
+      topic: r.name,
+    };
+  }
+
+  /**
+   * Each open question: closed by a later source on the plan's sheet (a mail, the calendar moved, a
+   * page a web look read), and then said once, as a follow-up line (never at night, inside "now"'s
+   * room); or looked up on the web (the plan's name, place and the two days only), no sooner than
+   * half an hour after it was said, at most twice; or let go when its day passed. Nothing open:
+   * nothing here, ever (no follow-up the person didn't get a question for).
+   */
+  async function fill(): Promise<void> {
+    const list = st.opens ?? [];
+    if (!list.some((r) => r.state === "open") || mode() === "off") return;
+    const at = now();
+    const t0 = dayNum(today());
+    const ready: { c: Candidate; text: string; r: OpenRec }[] = [];
+    for (const r of list) {
+      if (r.state !== "open") continue;
+      if (Math.max(...r.days.map(dayNum)) < t0) {
+        r.state = "gone";
+        continue;
+      }
+      // The sheet as it is now; a web look that found something is read on it at once.
+      for (let pass = 0; pass < 2; pass++) {
+        const s = sheetFor(ledger.all(), { ...dctx(), now: at }, r);
+        const t = s && r.fields.includes("time") ? timeFill(s, r.at) : undefined;
+        const d = s && !t ? daySettled(s, r.at) : undefined;
+        if (t || d) {
+          const c = fillCandidate(r, t, d);
+          if (!st.said[c.key]) ready.push({ c, text: words(c.words, lang()), r });
+          else r.state = "filled";
+          break;
+        }
+        if (pass || !(await lookUp(r, at, t0))) break;
+      }
+    }
+    if (ready.length && !inQuiet(at, holding())) {
+      const before = new Set(Object.keys(st.said));
+      await sayNow(ready, false);
+      for (const x of ready) if (st.said[x.c.key] && !before.has(x.c.key)) x.r.state = "filled";
+    }
+    save();
+  }
+
+  /** One web look for an open question, within its limits; a found answer becomes the web's word on the plan. */
+  async function lookUp(r: OpenRec, at: number, t0: number): Promise<boolean> {
+    const port = o.webLook?.();
+    if (!port?.can()) return false;
+    if (r.looks >= OPEN_LOOKS_MAX || at - r.at < (o.openLookAfterMs ?? OPEN_LOOK_AFTER_MS) || (r.lastLook && at - r.lastLook < OPEN_LOOK_GAP_MS)) return false;
+    if (dayNum(r.day) - t0 > OPEN_LOOK_DAYS) return false;
+    if (st.webDay?.day !== today()) st.webDay = { day: today(), n: 0 };
+    if (st.webDay.n >= WEB_LOOKS_A_DAY) return false;
+    st.webDay.n++;
+    r.looks++;
+    r.lastLook = at;
+    save();
+    const question = `When is "${r.name}"${r.place ? ` in ${r.place}` : ""}: ${[...new Set(r.days)].join(" or ")}? Answer with its date as YYYY-MM-DD and the local start time as HH:MM if a page lists one, and say whether that time is when the doors open rather than the programme.`;
+    const res = await port.look({ question, lang: lang() }).catch(() => undefined);
+    if (!res || res.state !== "found" || res.confidence === "low" || !res.answer || !res.sources?.length) return false;
+    const a = res.answer;
+    const iso = /(\d{4})-(\d\d)-(\d\d)/.exec(a);
+    const md = /(\d{1,2})\s*[\/月]\s*(\d{1,2})/.exec(a);
+    const year = r.day.slice(0, 4);
+    const day = iso ? `${iso[1]}-${iso[2]}-${iso[3]}` : md ? `${year}-${md[1]!.padStart(2, "0")}-${md[2]!.padStart(2, "0")}` : undefined;
+    // Only a day it asked about: a page about another day is about something else.
+    if (!day || !r.days.includes(day)) return false;
+    const tm = /\b([01]?\d|2[0-3])[:：]([0-5]\d)\b/.exec(a.replace(/\d{4}-\d\d-\d\d/g, ""));
+    const time = tm ? `${tm[1]!.padStart(2, "0")}:${tm[2]}` : undefined;
+    const url = res.sources[0]!;
+    const site = hostOf(url);
+    ledger.add([{ type: "plan", src: "web", name: r.name, day, ...(time ? { time } : {}), ...(time && /door|入场|签到|开门|进场|check-?in/i.test(a) ? { doors: true } : {}), url, label: site || url.slice(0, 80), ...(site ? { sender: site } : {}), at: new Date(at).toISOString(), ref: { connectionId: "web", service: "web", id: url } }]);
+    console.log(`[proactive] web look for an open question: found ${time ? "a time" : "a day"} on ${site || "a page"}`);
+    return true;
   }
 
   async function meetings(): Promise<void> {
@@ -1433,6 +1612,7 @@ export function createProactive(o: ProactiveOptions): Proactive {
         await meetings();
         await ripen();
         await mine();
+        await fill();
       }).finally(armTick);
     }, TICK_MS);
   }
@@ -1641,6 +1821,7 @@ export function createProactive(o: ProactiveOptions): Proactive {
       note({ noteId, rung: "first", opening: W.firstOffer(lang(), names), finds: [], ask: "first_look" });
     },
     clientZone: () => st.clientZone,
+    opens: () => (st.opens ?? []).map((r) => ({ name: r.name, fields: [...r.fields], state: r.state, looks: r.looks })),
     noticed() {
       // The same detectors and the same words as the note; muted ones stay out, said ones are marked.
       const z = lang();
@@ -1656,21 +1837,39 @@ export function createProactive(o: ProactiveOptions): Proactive {
       const cands = detect(ledger, { ...dctx(), now: at })
         .filter((c) => !muted(c))
         .sort((a, b) => Number(b.urgent) - Number(a.urgent) || b.cost - a.cost);
+      // D388: a source line says where it was read, what it says and its page; a find that rests on
+      // several sources carries the answer to "how did you know?", composed here from those lines.
+      const line = (h: FindView["how"][number]) => `${h.src ? `${h.src}: ` : ""}${h.from ? `from ${h.from}, ` : ""}${h.what} (${h.at.slice(0, 10)})${h.says ? ` says ${h.says}` : ""}${h.url ? ` <${h.url}>` : ""}`;
+      const whyOf = (how: FindView["how"], unknown?: string, untouched?: string) => (how.some((h) => h.src) ? { why: words(provenance(how, { ...(unknown ? { unknown } : {}), ...(untouched ? { untouched } : {}) }), z) } : {});
+      const listed = new Set<string>();
       for (const c of cands) {
         if (seen.has(c.words.en)) continue;
         seen.add(c.words.en);
         const v = st.verdicts[c.key];
         const findId = st.said[c.key];
+        const rec = findId ? st.finds[findId] : undefined;
+        if (findId) listed.add(findId);
+        const how = rec?.how ?? c.how.map((h, i) => (c.says?.[i] ? { ...h, says: words(c.says[i]!, z) } : h));
+        const unknown = rec ? rec.unknown : c.unknown ? words(c.unknown, z) : undefined;
+        const untouched = rec ? rec.untouched : c.untouched ? words(c.untouched, z) : undefined;
         items.push({
           kind: c.kind,
-          text: (findId && st.finds[findId]?.text) || (v?.keep && v.text) || words(c.words, z),
+          text: rec?.text || (v?.keep && v.text) || words(c.words, z),
           urgent: c.urgent,
           ...(c.dueAt ? { when: c.dueAt } : {}),
-          how: c.how.slice(0, 3).map((h) => `${h.what} (${h.at.slice(0, 10)})`),
+          how: how.slice(0, 4).map(line),
           said: Boolean(findId),
           ...(c.step ? { next: words(c.step.goLabel, z) } : {}),
+          ...(unknown ? { unknown } : {}),
+          ...whyOf(how.slice(0, 4), unknown, untouched),
         });
         if (items.length >= 8) break;
+      }
+      // D388: what it said in the last three days about a plan (a contradiction, the follow-up that
+      // filled it), so "how did you know?" is answered from the lines it was said with.
+      for (const [findId, f] of Object.entries(st.finds).sort((a, b) => b[1].at - a[1].at)) {
+        if (items.length >= 10 || listed.has(findId) || at - f.at > 3 * DAY || (f.kind !== "mismatch" && f.kind !== "update") || !f.how.some((h) => h.src)) continue;
+        items.push({ kind: f.kind, text: f.text, urgent: false, ...(f.dueAt ? { when: f.dueAt } : {}), how: f.how.slice(0, 4).map(line), said: true, ...(f.unknown ? { unknown: f.unknown } : {}), ...whyOf(f.how.slice(0, 4), f.unknown, f.untouched) });
       }
       return { watching: mode() !== "off", items };
     },
@@ -1730,6 +1929,7 @@ export function createProactive(o: ProactiveOptions): Proactive {
         await meetings();
         await ripen();
         await mine();
+        await fill();
       }),
     stop() {
       stopped = true;

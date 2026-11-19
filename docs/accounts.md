@@ -133,15 +133,23 @@ over earlier mail and your calendars, so it knows the bookings and bills already
 nothing about that look.
 
 What it may tell you: two things that don't match (a flight that lands the night before your
-hotel starts, or a talk your calendar has on the 18th while the organizer's mail says the 19th), someone waiting on your answer, you waiting on someone, something you promised
-for today, a deadline or a payment, a price or a charge about to start, a plan that changed, a
+hotel starts, or a talk your calendar has on Saturday while a colleague's weekly report or the
+organizer's mail says Friday, or the day you told Ducter yourself), someone waiting on your answer, you waiting on someone, something you promised
+for today, a deadline or a payment, a price or a charge about to start, a quota nearly used up, a plan that changed, a
 flight or train coming up (when, from where, when to leave), a service you use (maintenance on
 your production databases, an outage, a job that keeps failing, a product shutting down), a
 correction when a later mail changes something it told you, and, 10 minutes before a meeting,
 what you have open with those people. Service notices it reads too, not only mail from people;
 newsletters, marketing and receipts it leaves alone. Ask it any time ("anything for me?") and it
-answers from the same things, most pressing first. Each comes with **How I know** (the mails or events, with
-dates) and at most one next step, like **See if it can start earlier**: nothing happens until
+answers from the same things, most pressing first. Things found at the same time come in one
+message. Each comes with **How I know**: each source on its own line (**Calendar**, **Mail**,
+**You said**, **Web**, with its date), what that source says, and a link when it read a page;
+then what it doesn't know yet (**Not known yet: what time it starts**) and, when it matters,
+that it changed nothing (**I didn't change your calendar.**). Ask "how did you know?" and it
+answers from those same lines, adding nothing. If it told you something was still open (a talk
+with no time yet), it may come back once when it finds out: from a later mail, your calendar, or
+a quick look at the event's public page (only the event's name, place and the days in question
+are searched), with **Filling in the time: …** and the page it read. It also gives at most one next step, like **See if it can start earlier**: nothing happens until
 you tap it, and even then it only looks things up or drafts; it never sends, pays, books,
 deletes or marks anything read. A step you don't take quietly becomes **Passed** after its date.
 

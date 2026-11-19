@@ -194,6 +194,20 @@ export interface CoreApi {
     claim(asks: readonly import("./rich.ts").RichPinAsk[]): Map<number, string>;
     put(seq: number, ui: readonly import("./rich.ts").RichUi[], asks: readonly import("./rich.ts").RichPinAsk[]): void;
   };
+  /**
+   * D405: 小应用 / Apps (core/src/apps.ts). The partner makes and changes them with its app tool and
+   * sees them in a line each turn; absent for a second partner (preview) and in stubs.
+   */
+  apps?: {
+    list(persona: string): import("./apps.ts").AppMeta[];
+    get(id: string): import("./apps.ts").AppMeta | undefined;
+    html(id: string): string | undefined;
+    data(id: string): Record<string, unknown>;
+    make(persona: string, a: { name: string; html: string; ask?: string; note?: string }): { ok: true; app: import("./apps.ts").AppMeta } | { ok: false; error: string };
+    change(id: string, c: { html?: string; edits?: { find: string; replace: string }[]; name?: string; note?: string }): { ok: true; app: import("./apps.ts").AppMeta } | { ok: false; error: string };
+    put(id: string, key: string, value: unknown, by: "app" | "partner"): { ok: true } | { ok: false; error: string };
+    answered(id: string, ref?: string): void;
+  };
 }
 
 /** D380: what a quick web look came back with: typed and clipped by Ducter, never page text. */

@@ -33,6 +33,7 @@ export * from "./done-today.ts";
 export * from "./rich.ts";
 export * from "./pins.ts";
 export * from "./made.ts";
+export * from "./apps.ts";
 export * from "./reach.ts";
 export * from "./mem-source.ts";
 export * from "./mem-health.ts";
@@ -44,6 +45,7 @@ import type { DidClientFrame, DidServerFrame } from "./did.ts";
 import type { RichUi } from "./rich.ts";
 import type { PinView } from "./pins.ts";
 import type { MadeClientFrame, MadeServerFrame } from "./made.ts";
+import type { AppAnswer, AppCard, AppRef, AppsClientFrame, AppsServerFrame } from "./apps.ts";
 import type { ChannelClientFrame, ChannelKind, ChannelServerFrame } from "./channels.ts";
 import type { SourceAsk, SourceItemRef, SourceOp, SourcesClientFrame, SourcesServerFrame } from "./task-sources.ts";
 import type { HandsetAsk, HandsetClientFrame, HandsetServerFrame, HandsetView } from "./handset.ts";
@@ -289,7 +291,8 @@ export interface Bodies {
   // forwarded (D276): the words are something the person forwarded or shared from someone else:
   // outside data, never the person's own words or instructions.
   // via "imessage" (D277): through the Mac app's iMessage bridge.
-  user_msg: { text: string; clientId?: string; media?: MediaRef[]; reply?: ReplyRef; via?: ChannelKind | "imessage"; forwarded?: { from?: string } };
+  // app (D405): words about one of the person's apps (typed in its sheet), or the app's own ask (app.ask).
+  user_msg: { text: string; clientId?: string; media?: MediaRef[]; reply?: ReplyRef; via?: ChannelKind | "imessage"; forwarded?: { from?: string }; app?: AppRef };
   // decisionId: a task's question said in the partner's own words (D129); clients show it as
   // that decision's question, not as a message of its own.
   // media (D206): what a task showed, relayed with the partner's words about it.
@@ -298,7 +301,8 @@ export interface Bodies {
   // conversation, with the things it offers to start or continue (a tap fills the composer).
   // ui (D303): the blocks the partner put in its words (a table, a chart, a checklist, choices),
   // each standing in for its plain text in `text`; uiDropped: how many it wrote that weren't valid.
-  ai_msg: { text: string; replyTo?: number; decisionId?: string; media?: MediaRef[]; cal?: CalGlance; first?: FirstWords; ui?: RichUi[]; uiDropped?: number };
+  // app (D405): the app this message made or changed (its card under the words); appAnswer: it answers an app's ask.
+  ai_msg: { text: string; replyTo?: number; decisionId?: string; media?: MediaRef[]; cal?: CalGlance; first?: FirstWords; ui?: RichUi[]; uiDropped?: number; app?: AppCard; appAnswer?: AppAnswer };
   ack: { jobId: string; text: string; replyTo: number }; // names the action, never the outcome
   // D380: a quick web look for one live fact (the weather, a version, one price), run beside the
   // conversation by a session that holds only web tools. "looking" when the partner asks it (no
@@ -1091,7 +1095,7 @@ export type ClientFrame =
   // media (D206): ids from POST /api/media; the home turns them into refs. text may be empty then.
   // reply (D236): the one message this answers (core fills in its quote from the Log).
   // via (D277): the Mac app's iMessage bridge relays words the person wrote in iMessage.
-  | { t: "send"; text: string; clientId: string; media?: string[]; reply?: ReplyWant; via?: "imessage" }
+  | { t: "send"; text: string; clientId: string; media?: string[]; reply?: ReplyWant; via?: "imessage"; app?: string } // app (D405): typed in that app's sheet
   // D277: the Mac app's iMessage bridge says how it stands (on: it reads and answers there).
   // While some socket says on and the person last wrote from iMessage, the home's push stays quiet
   // for what the bridge carries, so each thing reaches them once.
@@ -1405,6 +1409,7 @@ export type ClientFrame =
   | PastClientFrame
   // D383: 给你做的 / Made for you (made.ts).
   | MadeClientFrame
+  | AppsClientFrame
   // D300: 替你做过的 / Done for you (did.ts).
   | DidClientFrame
   // D341: 待办来源 / To-do sources (task-sources.ts).
@@ -1678,6 +1683,7 @@ export type ServerFrame =
   | ChannelServerFrame
   | PastServerFrame
   | MadeServerFrame
+  | AppsServerFrame
   | DidServerFrame
   | SourcesServerFrame
   | { t: "error"; message: string };

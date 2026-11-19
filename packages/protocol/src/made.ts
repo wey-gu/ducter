@@ -8,7 +8,8 @@ import type { MediaRef } from "./media.ts";
 import type { RichUi } from "./rich.ts";
 
 /** What a made thing is, as the person names it: a file, a picture, a table, a chart, a list, a link. */
-export const MADE_KINDS = ["file", "picture", "table", "chart", "list", "link"] as const;
+// D405: an app the partner made is one of them (小应用 / Apps), opened in its own sheet or window.
+export const MADE_KINDS = ["app", "file", "picture", "table", "chart", "list", "link"] as const;
 export type MadeKind = (typeof MADE_KINDS)[number];
 
 /** Why a thing came up for the words: its name, its kind, the task that made it, what the person asked, what is in it. */
@@ -38,6 +39,8 @@ export interface MadeItem {
   url?: string;
   /** D381: this block is pinned at the top of the conversation now. */
   pinned?: true;
+  /** D405: an app (its id and version now); opened with app_open. */
+  app?: { id: string; version: number };
   /** For a search: where it matched, with a short piece of the text. */
   hit?: { field: MadeField; text: string };
 }
@@ -66,6 +69,14 @@ export type MadeServerFrame =
 /** Words in a query that name a kind of thing, by language-free match (lowercased, whole term). */
 export const MADE_KIND_WORDS: Record<string, MadeKind | "pdf"> = {
   pdf: "pdf",
+  app: "app",
+  apps: "app",
+  应用: "app",
+  小应用: "app",
+  小工具: "app",
+  工具: "app",
+  tool: "app",
+  tracker: "app",
   文件: "file",
   文档: "file",
   file: "file",

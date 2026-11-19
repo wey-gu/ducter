@@ -52,6 +52,7 @@ const DAY = 24 * 3600_000;
 
 const BLOCK_KIND: Partial<Record<RichUi["type"], MadeKind>> = { table: "table", chart: "chart", checklist: "list" };
 const KIND_FIELD_WORDS: Record<MadeKind, string> = {
+  app: "app tool tracker 小应用 应用 工具",
   file: "file document 文件 文档",
   picture: "picture image screenshot photo 图片 截图 照片",
   table: "table comparison 表格 对比表",
@@ -68,6 +69,8 @@ export interface MadeDeps {
   tasks: TaskRegistry;
   /** D381: what is pinned now (an older version of a pinned block is not listed). */
   pins?: () => readonly PinView[];
+  /** D405: an app as it is now (its name and version); a removed one is left out. */
+  app?: (id: string) => { name: string; version: number; updated: string; persona: string } | undefined;
   now?: () => number;
 }
 
@@ -187,6 +190,14 @@ export function createMade(d: MadeDeps): Made {
       });
       // What a task showed comes in its report first (with its task); a reply only relays it.
       for (const m of b.media ?? []) if (!recs.has(`m:${m.id}`)) mediaItem(e, m, m.from?.taskId, words);
+      // D405: an app made or changed in a reply: one card per app, found by what was asked and said.
+      if (b.app) {
+        const ask = b.replyTo !== undefined ? asked.get(b.replyTo) : undefined;
+        const had = recs.get(`a:${b.app.id}`);
+        if (had) {
+          if (words && !had.around.includes(words.toLowerCase())) had.around = `${had.around}\n${words.toLowerCase()}`.slice(-AROUND_CAP);
+        } else put({ item: { id: `a:${b.app.id}`, kind: "app", title: b.app.name, at: e.ts, ...(ask ? { ask } : {}), app: { id: b.app.id, version: b.app.version } }, persona: e.persona, content: b.app.name, around: words });
+      }
       for (const p of linkedPaths(text)) pathItem(e, p, undefined, words);
       return;
     }
@@ -239,6 +250,12 @@ export function createMade(d: MadeDeps): Made {
   /** The card as it is now: the task's title today, a block that is pinned now, an older version left out. */
   const view = (r: Rec, pins: readonly PinView[]): MadeItem | undefined => {
     const it = r.item;
+    if (it.app) {
+      // D405: the app as it is now, at when it last changed; one removed since is gone from the list.
+      const now = d.app?.(it.app.id);
+      if (d.app && !now) return undefined;
+      return now ? { ...it, title: now.name, at: now.updated, app: { id: it.app.id, version: now.version } } : { ...it };
+    }
     if (it.block && it.seq !== undefined) {
       const index = Number(it.id.split(":")[2]);
       if (pinWas(pins as PinView[], it.seq, index)) return undefined;

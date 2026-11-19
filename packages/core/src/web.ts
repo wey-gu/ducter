@@ -172,8 +172,9 @@ const ASSETS: Record<string, [string, string]> = {
   "art/nowledge_mem.webp": [artNowledgeMem, "image/webp"],
 };
 
-// The page loads only its own scripts and styles; it talks only to this origin.
-const CSP = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' ws: wss:; manifest-src 'self'; worker-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'";
+// The page loads only its own scripts and styles; it talks only to this origin. D405: it frames
+// only this origin (an app's frame, /app-frame/<token>) and, below, this host's own ports.
+const CSP = "default-src 'self'; frame-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' ws: wss:; manifest-src 'self'; worker-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'";
 
 /**
  * D214: a task's page previews in a frame of the opened task's workbench, from a port of this
@@ -183,7 +184,7 @@ export function cspFor(req: Request): string {
   const host = (req.headers.get("host") ?? "").replace(/:\d+$/, "");
   if (!/^(\[[0-9a-fA-F:.]+\]|[A-Za-z0-9.-]{1,253})$/.test(host)) return CSP;
   const here = `http://${host}:* https://${host}:*`;
-  return CSP.replace("connect-src 'self' ws: wss:", `connect-src 'self' ws: wss: ${here}`).replace("default-src 'self';", `default-src 'self'; frame-src ${here};`);
+  return CSP.replace("connect-src 'self' ws: wss:", `connect-src 'self' ws: wss: ${here}`).replace("default-src 'self'; frame-src 'self';", `default-src 'self'; frame-src 'self' ${here};`);
 }
 
 const etags = new Map<string, string>();

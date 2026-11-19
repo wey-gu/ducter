@@ -564,6 +564,9 @@ func (a *App) serviceState(cv protocol.ConnectionView, w protocol.AppWatch) (str
 		return a.L.T("svc.excluded"), t.InkMuted
 	case w.Unreachable || sourceDown(cv):
 		return a.L.T("card.unreachable"), t.Failed.Ink
+	case w.Trouble != "":
+		// D402: a watch that stopped by itself says so, never a silent "watching".
+		return a.L.T("tile.trouble." + w.Trouble), t.Failed.Ink
 	case kindOf(w.Service) != "other" && w.Watch:
 		if watching {
 			return "", t.Done.Ink
@@ -608,13 +611,29 @@ func (a *App) tileDetail(c *ui.Context, cv protocol.ConnectionView, w protocol.A
 			a.factRow(c, a.L.T("tile.asks.label"), a.L.T("tile.asks."+k))
 		})
 		var notes []string
-		if k == "chat" {
+		via := "OOMOL"
+		if cv.Source == "oo" {
+			via = "oo"
+		}
+		// D402: an app it stopped looking at by itself says why, first, in words.
+		switch w.Trouble {
+		case "unsupported":
+			if k == "chat" {
+				notes = append(notes, a.L.T("tile.trouble.unsupported.chat"))
+			} else {
+				notes = append(notes, a.L.T("tile.trouble.unsupported.other"))
+			}
+		case "reconnect":
+			notes = append(notes, a.L.T("tile.trouble.reconnect.note", via))
+		}
+		if k == "chat" && w.Trouble == "" {
 			notes = append(notes, a.L.T("tile.mentions"))
 		}
-		if st := a.S.Settings; st != nil && (st.Proactive == "" || st.Proactive == "off") && w.Watch {
+		// A stopped app's why is said above; the held line and the budget would contradict it.
+		if st := a.S.Settings; w.Trouble == "" && st != nil && (st.Proactive == "" || st.Proactive == "off") && w.Watch {
 			// The switch keeps the person's choice; this says why it isn't looking now.
 			notes = append(notes, a.L.T("tile.watch.held."+map[bool]string{true: "never", false: "off"}[st.Proactive == ""]))
-		} else if cv.Look != nil && cv.Look.Watching && w.Watch && k != "other" {
+		} else if w.Trouble == "" && cv.Look != nil && cv.Look.Watching && w.Watch && k != "other" {
 			notes = append(notes, a.L.T("card.budget", cv.Look.BudgetPct))
 		}
 		if w.LastReadAt != "" {
@@ -622,6 +641,12 @@ func (a *App) tileDetail(c *ui.Context, cv protocol.ConnectionView, w protocol.A
 		}
 		for _, n := range notes { // D291: each fact its own line
 			a.note(c, n)
+		}
+		if w.Trouble == "reconnect" && (cv.Source == "oomol" || cv.Source == "oo") {
+			label := a.L.T("tile.trouble.reconnect.go", via)
+			if a.quietLink(c, "reconnect:"+cv.ID+"|"+tileKey(w), label, label) {
+				a.openLink(oomolAccounts)
+			}
 		}
 		if k == "calendar" {
 			a.calendarsBand(c, cv, w) // D222: 看哪些日历 / Calendars it reads

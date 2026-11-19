@@ -129,6 +129,31 @@ from such mail would have been dated 1970 and swept the next morning. Fixed (D22
   `[proactive] look back: read N, kept M, noted K`;
 - a look back that no source answered stays pending, like one whose every read failed.
 
+### 1.2b A watch that can't read is never silent (D402, 2026-11-19, research/162 gap 4)
+
+On hel the watch called `discord.list_mentions`, `discord.search_messages` and
+`discord.list_direct_messages` 767 times each between 11-12 and 11-17, every one "unknown action",
+and nothing said so (VERIFIED, hel's Log, counts only). Two causes: OOMOL's Discord is `discordbot`,
+a bot whose catalogue reads the channels and guilds the bot is in and nothing addressed to the
+person (no mentions, no DMs; DOCUMENTED, the connector's own action list); and `watch.ts`, when
+every action was remembered missing, asked again from the best one on every look. Now:
+- `discordbot` is not watched at all (no call); its row says **读不了 / Can't read it**, its detail
+  **这个连接还读不到 @你 和私信，所以 Ducter 没在看它。是还不支持，不是你哪里没设好。**
+- An app whose every action answered unknown stops by itself (`watch.json` `broken`, why
+  `unsupported`), logs one line, and is tried once more after 7 days.
+- A source that says the account must be connected again (`connection_required`, `app_not_found`,
+  `credential_expired`, `scope_missing`, `unauthorized`…) stops at the first such answer (why
+  `reconnect`): its row says **要重新连接 / Connect it again**, the detail names the place and
+  **去 OOMOL 重新连接**; tried every 6 hours, and within a minute once its connection was seen signed
+  out and is fine again.
+- Any other failure (a timeout, a busy service) backs off: each failed look doubles the wait from
+  the app's own interval, up to 3 hours; the first read that works puts it back on pace and clears
+  any trouble. A passing failure is never shown as broken.
+- What it couldn't read is never counted as read (今天看了什么 counts only reads that came back).
+Since 11-17 the Log has no other connector failing this way: Slack's `list_mentions` was unknown 4
+times on 11-12 and the next action read (the missing-action memory); Google Calendar's
+`list_calendars` and the "write outside the Go path" denials of 11-10 to 11-12 were fixed then.
+
 ### 1.3 The day dots spoke four times (D243, 2026-11-13, research/81)
 
 dots told the author about a billing change, Saturday's flight (asked), a correction to a
@@ -575,6 +600,9 @@ the desktop's own renderer, phone from a scratch core with a fake oo).
 | ★ `card.oo_out` | oo 退出登录了 · 在终端里运行 oo login | oo is signed out · run oo login in a terminal |
 | ★ `tile.reads` · `tile.asks` | 会看：{what} · 先问你：{what} | Reads: {what} · Asks you first: {what} |
 | ★ `tile.watch` · `tile.mentions` | 自己留意 · 只看 @你 和私信 | Watch on its own · Only @-mentions and DMs |
+| `tile.trouble.unsupported` · `tile.trouble.reconnect` (D402) | 读不了 · 要重新连接 | Can't read it · Connect it again |
+| `tile.trouble.unsupported.chat` | 这个连接还读不到 @你 和私信，所以 Ducter 没在看它。是还不支持，不是你哪里没设好。 | This connection can't read @-mentions or DMs yet, so Ducter isn't watching it. It isn't supported yet; nothing is wrong on your side. |
+| `tile.trouble.reconnect.note` · `.go` | {source} 说这个账号要重新连接一下才读得到。连好以后 Ducter 会自己接着看。 · 去 {source} 重新连接 | {source} says this account needs connecting again before it can be read. Once it's connected, Ducter picks up watching by itself. · Connect again in {source} |
 | ★ `tile.exclude` · `tile.signout_oo` | 不让 Ducter 看这个 · 要退出登录，去 oo 里 | Don't let Ducter read this one · Sign out in oo |
 | ★ `tile.more.oo` | 在 oo 里再连一个 | Connect another in oo |
 | ★ `card.read_list` | 看了哪些 | What it read |

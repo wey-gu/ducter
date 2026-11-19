@@ -239,7 +239,10 @@ function TileDetail({ c, w }: { c: ConnectionView; w: AppWatch }) {
   const held = w.watch && (!mode || mode === "off") ? t(`tile.watch.held.${mode ? "off" : "never"}`) : "";
   const budget = !held && c.look?.watching && w.watch && k !== "other" ? t("card.budget", c.look.budgetPct) : "";
   const last = w.lastReadAt && !w.excluded ? t("tile.last", ago(A.L, w.lastReadAt)) : "";
-  const notes = [k === "chat" ? t("tile.mentions") : "", held, budget, last].filter(Boolean); // D291: each its own line
+  // D402: an app it stopped looking at by itself says why, first, in words.
+  const via = c.source === "oo" ? "oo" : "OOMOL";
+  const trouble = w.trouble === "unsupported" ? t(`tile.trouble.unsupported.${k === "chat" ? "chat" : "other"}`) : w.trouble === "reconnect" ? t("tile.trouble.reconnect.note", via) : "";
+  const notes = [trouble, k === "chat" && !w.trouble ? t("tile.mentions") : "", w.trouble ? "" : held, w.trouble ? "" : budget, last].filter(Boolean); // D291: each its own line
   return (
     <GBlock>
       {w.excluded ? (
@@ -257,6 +260,7 @@ function TileDetail({ c, w }: { c: ConnectionView; w: AppWatch }) {
               {n}
             </div>
           ))}
+          {w.trouble === "reconnect" && (c.source === "oomol" || c.source === "oo") && <Btn kind="text" size="sm" chev label={t("tile.trouble.reconnect.go", via)} onClick={() => window.open(OOMOL_ACCOUNTS, "_blank", "noopener")} />}
           {k === "calendar" && <CalendarsBand c={c} w={w} />}
         </>
       )}
@@ -417,9 +421,10 @@ export function SourceCard({ c }: { c: ConnectionView }) {
         const k = kindOf(w.service);
         // D291: whether Ducter reads it is a state word of its own, never joined to the account.
         // D296: and only where the row differs from what the group's first row says (its switch says the rest).
-        const bad = !w.excluded && (!!w.unreachable || down(c));
+        const bad = !w.excluded && (!!w.unreachable || down(c) || !!w.trouble);
         const watching = !w.excluded && !bad && k !== "other" && w.watch;
-        const state = w.excluded ? t("svc.excluded") : bad ? t("card.unreachable") : watching ? (srcWatching ? "" : t("svc.watching")) : srcWatching ? t("svc.asked") : "";
+        // D402: a watch that stopped by itself says so on the row, never a silent "watching".
+        const state = w.excluded ? t("svc.excluded") : w.trouble && !w.unreachable && !down(c) ? t(`tile.trouble.${w.trouble}`) : bad ? t("card.unreachable") : watching ? (srcWatching ? "" : t("svc.watching")) : srcWatching ? t("svc.asked") : "";
         const isOpen = open === key(w);
         return (
           <Fragment key={key(w)}>

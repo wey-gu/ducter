@@ -1740,6 +1740,7 @@ export function createProactive(o: ProactiveOptions): Proactive {
           excluded: a.excluded,
           ...(c.state === "unauthorized" || c.state === "unreachable" ? { unreachable: true } : {}),
           ...(watchers.lastReadAt(a) ? { lastReadAt: watchers.lastReadAt(a) } : {}),
+          ...(!a.excluded && watchers.trouble(a) ? { trouble: watchers.trouble(a) } : {}),
         })),
       };
     },

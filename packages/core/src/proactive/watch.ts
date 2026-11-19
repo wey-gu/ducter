@@ -35,6 +35,16 @@ export interface LookSpec {
   next?(result: unknown, input: Record<string, unknown>): Record<string, unknown> | undefined;
 }
 
+/**
+ * D402: why an app's watch stopped by itself, said on its row in Accounts.
+ *   unsupported: the source has none of the reads the watch needs (OOMOL's Discord is a bot: it has
+ *     no read of the person's mentions or DMs), or none of the actions it tried exists; tried again
+ *     in a week.
+ *   reconnect: the source says the account must be connected again; tried again every 6 hours (one
+ *     call), and at once when its connection is fine again.
+ */
+export type WatchTrouble = "unsupported" | "reconnect";
+
 /** Pages one mail read may follow (100 a page): a day of a busy inbox, or what waited on a broken read. */
 export const MAIL_PAGES = 5;
 /** Subject words per search in the long look back. */
@@ -89,6 +99,12 @@ const GITHUB: LookSpec = {
   actions: ["github.list_notifications", "github.list_notifications_for_authenticated_user"],
   inputs: (since) => [{ since: new Date(since).toISOString(), participating: true, all: true }],
 };
+/**
+ * D402: OOMOL's Discord is a bot (`discordbot`): its catalogue reads channels and guilds the bot is
+ * in, and nothing addressed to the person (no mentions, no DMs). Not watched, and said so.
+ */
+const BOT_ONLY = new Set(["discordbot"]);
+const NOT_WATCHABLE: LookSpec = { kind: "chat", everyMs: 10 * MIN, actions: [], inputs: () => [] };
 const CHAT = (svc: string): LookSpec => ({
   kind: "chat",
   everyMs: 10 * MIN,
@@ -108,6 +124,7 @@ export function lookFor(service: string): LookSpec | undefined {
   if (service === "outlook") return OUTLOOK;
   if (/calendar/.test(service)) return CALENDAR(service);
   if (service === "github") return GITHUB;
+  if (BOT_ONLY.has(service)) return NOT_WATCHABLE;
   if (CHAT_SERVICES.has(service)) return CHAT(service.replace(/bot$/, ""));
   return;
 }
@@ -127,11 +144,22 @@ interface FileState {
   /** Ids whose close reading failed: read again on the next look, for up to PENDING_DAYS (ids and dates only). */
   pending: Record<string, { id: string; at: number; first: number }[]>;
   reads: (ReadLine & { connectionId: string })[];
+  /** D402: apps whose watch stopped by itself: why, since when, and when it is tried again. */
+  broken: Record<string, { why: WatchTrouble; since: number; retryAt: number; error: string; down?: boolean }>;
+  /** D402: apps whose last looks failed for a passing reason, how many in a row (the next look waits longer). */
+  backoff: Record<string, number>;
 }
 
 /** How long an item whose reading failed keeps waiting to be read again. */
 export const PENDING_DAYS = 3;
 const NO_ACTION = /no (such )?(action|tool)|unknown action|metadata request returned HTTP 404/i;
+/** D402: the source says this account has to be connected again (OOMOL's codes, plain HTTP, oo's words). */
+const RECONNECT = /connection_required|app_not_found|app_not_ready|credential_expired|scope_missing|invalid_grant|not connected|\b(401|403)\b|unauthori[sz]ed|signed out/i;
+/** D402: how long an app whose watch stopped waits before it is tried again. */
+export const RETRY_UNSUPPORTED_MS = 7 * DAY;
+export const RETRY_RECONNECT_MS = 6 * 3_600_000;
+/** D402: the longest a passing failure pushes the next look out (doubling from the app's own interval). */
+export const BACKOFF_MAX_MS = 3 * 3_600_000;
 
 export interface Watchers {
   /** Arms a timer per watched app (and drops the rest): call when settings or connections change. */
@@ -149,6 +177,8 @@ export interface Watchers {
   /** Items read today, per source. */
   readToday(connectionId: string): number;
   lastReadAt(a: AppTarget): string | undefined;
+  /** D402: why this app isn't watched any more (said on its row), if it stopped by itself. */
+  trouble(a: AppTarget): WatchTrouble | undefined;
   forget(connectionId: string): void;
   stop(): void;
 }
@@ -173,7 +203,7 @@ export function createWatchers(opts: {
   calendarIds?: (a: AppTarget) => Promise<string[]>;
 }): Watchers {
   const path = join(opts.dataDir, WATCH_FILE);
-  let st: FileState = { since: {}, seen: {}, action: {}, missing: {}, pending: {}, reads: [] };
+  let st: FileState = { since: {}, seen: {}, action: {}, missing: {}, pending: {}, reads: [], broken: {}, backoff: {} };
   if (existsSync(path)) {
     try {
       st = { ...st, ...(JSON.parse(readFileSync(path, "utf8")) as Partial<FileState>) };
@@ -231,16 +261,36 @@ export function createWatchers(opts: {
     if (!spec || a.excluded) return;
     const k = appKey(a);
     const now = opts.clock.now();
+    // D402: stopped by itself: no call until its retry time (the week, or the 6 hours); then once,
+    // from the best action, and the next retry is set before it (a passing failure then waits too).
+    const broke = st.broken[k];
+    if (broke && now < broke.retryAt) return;
+    if (broke) {
+      delete st.missing[k];
+      broke.retryAt = now + (broke.why === "reconnect" ? RETRY_RECONNECT_MS : RETRY_UNSUPPORTED_MS);
+    }
+    // D402: a source with nothing the watch can read is said so, and never called.
+    if (!spec.actions.length) {
+      stopWatching(a, "unsupported", "no read of what is addressed to the person");
+      return;
+    }
     const gone = new Set(st.missing[k] ?? []);
     const left = spec.actions.filter((x) => !gone.has(x));
-    // Every action said missing: the source may have changed; ask again from the best.
+    // Every action said missing (a week ago, D402): the source may have changed; ask again from the best.
     const tries = left.length ? left : spec.actions;
+    let lastError = "";
     // A calendar account: each calendar the person lets it read, one read each (D222).
     const cals = spec.kind === "event" && opts.calendarIds && a.service === "googlecalendar" ? await opts.calendarIds(a).catch(() => []) : [];
     for (const action of tries) {
       const base = spec.inputs(since, now, { ...lo, action });
       const inputs = cals.length ? cals.flatMap((calendarId) => base.map((i) => ({ ...i, calendarId, timeZone: opts.zone() }))) : base;
       let { results, failed, refused } = await readAll(a, spec, action, inputs);
+      if (!results.length && failed) lastError = failed;
+      if (!results.length && RECONNECT.test(failed) && !NO_ACTION.test(failed)) {
+        // D402: the account needs connecting again: no other action reads it either.
+        stopWatching(a, "reconnect", failed);
+        return;
+      }
       if (!results.length && NO_ACTION.test(failed)) {
         // An action this source doesn't have: remembered, and the next one tried.
         st.missing[k] = [...new Set([...(st.missing[k] ?? []), action])];
@@ -253,8 +303,14 @@ export function createWatchers(opts: {
         const plain = await readAll(a, spec, action, spec.inputs(since, now, { action }));
         results = [...results, ...plain.results];
       }
-      if (!results.length) return;
+      if (!results.length) {
+        if (failed) failedNow(a, failed);
+        return;
+      }
       st.action[k] = action;
+      // It reads again: whatever stopped it is over.
+      delete st.broken[k];
+      delete st.backoff[k];
       const byKey = new Map<string, Item>();
       for (const it of results.flatMap((res) => itemsOf(target(a), spec.kind, res))) if (!byKey.has(it.key)) byKey.set(it.key, it);
       let items = [...byKey.values()];
@@ -272,7 +328,29 @@ export function createWatchers(opts: {
       save();
       return items;
     }
+    // D402: none of its actions exists: stop, and say so (684 unknown actions on hel, 11-16 and 11-17).
+    if (spec.actions.every((x) => (st.missing[k] ?? []).includes(x))) stopWatching(a, "unsupported", lastError);
+    else save();
     return;
+  }
+
+  /** D402: the app's watch stops by itself, recorded once (its row in Accounts says why). */
+  function stopWatching(a: AppTarget, why: WatchTrouble, error: string) {
+    const k = appKey(a);
+    const now = opts.clock.now();
+    const was = st.broken[k];
+    st.broken[k] = { why, since: was?.why === why ? was.since : now, retryAt: now + (why === "reconnect" ? RETRY_RECONNECT_MS : RETRY_UNSUPPORTED_MS), error: error.slice(0, 200) };
+    delete st.backoff[k];
+    if (was?.why !== why) console.warn(`[watch] ${a.title}${a.account ? ` (${a.account})` : ""}: stopped watching (${why}): ${error.slice(0, 160)}`);
+    save();
+  }
+
+  /** D402: a passing failure (a timeout, a busy service): the next look waits longer, up to BACKOFF_MAX_MS. */
+  function failedNow(a: AppTarget, error: string) {
+    const k = appKey(a);
+    st.backoff[k] = (st.backoff[k] ?? 0) + 1;
+    if (st.backoff[k] === 3) console.warn(`[watch] ${a.title}: three looks in a row failed; looking less often: ${error.slice(0, 160)}`);
+    save();
   }
 
   async function tick(a: AppTarget) {
@@ -321,14 +399,38 @@ export function createWatchers(opts: {
     if (!spec || stopped) return;
     const k = appKey(a);
     if (timers.has(k)) return;
-    timers.set(k, opts.clock.setTimeout(() => void tick(a), spec.everyMs));
+    // D402: a stopped app waits for its retry time; passing failures double the wait, to a cap.
+    const broke = st.broken[k];
+    const fails = st.backoff[k] ?? 0;
+    const wait = broke ? Math.max(MIN, broke.retryAt - opts.clock.now()) : fails ? Math.min(BACKOFF_MAX_MS, spec.everyMs * 2 ** Math.min(fails, 10)) : spec.everyMs;
+    timers.set(k, opts.clock.setTimeout(() => void tick(a), wait));
   }
 
   return {
     sync() {
       const on = opts.enabled();
       const want = new Map<string, AppTarget>();
-      if (on) for (const c of opts.connections.view()) for (const a of opts.connections.apps(c.id)) if (a.watch && !a.excluded && lookFor(a.service)) want.set(appKey(a), a);
+      const down = new Set<string>();
+      if (on)
+        for (const c of opts.connections.view()) {
+          if (c.state === "unauthorized" || c.state === "unreachable") down.add(c.id);
+          for (const a of opts.connections.apps(c.id)) if (a.watch && !a.excluded && lookFor(a.service)) want.set(appKey(a), a);
+        }
+      // D402: an account said to need connecting again: once its connection was seen signed out and
+      // is fine again (connected anew), it is tried within a minute instead of at the 6 hours.
+      for (const [k, b] of Object.entries(st.broken)) {
+        const a = want.get(k);
+        if (!a || b.why !== "reconnect") continue;
+        if (down.has(a.connectionId)) {
+          b.down = true;
+          continue;
+        }
+        if (!b.down) continue;
+        delete b.down;
+        b.retryAt = Math.min(b.retryAt, opts.clock.now() + MIN);
+        const t = timers.get(k);
+        if (t !== undefined) opts.clock.clearTimeout(t), timers.delete(k);
+      }
       for (const [k, t] of timers) if (!want.has(k)) opts.clock.clearTimeout(t), timers.delete(k);
       for (const [k, a] of want) {
         // Watching starts from now: the first look already covered the days before (§11).
@@ -377,12 +479,13 @@ export function createWatchers(opts: {
       // The card says emails: mail looks only (not events, mentions or notifications).
       return st.reads.filter((r) => r.connectionId === connectionId && (r.what === "new" || r.what === "full")).reduce((n, r) => n + r.items, 0);
     },
+    trouble: (a) => st.broken[appKey(a)]?.why ?? (lookFor(a.service)?.actions.length === 0 ? "unsupported" : undefined),
     lastReadAt(a) {
       const hit = [...st.reads].reverse().find((r) => r.connectionId === a.connectionId && r.service === a.service && (r.account ?? "") === (a.label ?? a.account ?? ""));
       return hit?.at;
     },
     forget(connectionId) {
-      for (const m of [st.since, st.seen, st.action, st.missing, st.pending] as Record<string, unknown>[]) for (const k of Object.keys(m)) if (k.startsWith(`${connectionId}|`)) delete m[k];
+      for (const m of [st.since, st.seen, st.action, st.missing, st.pending, st.broken, st.backoff] as Record<string, unknown>[]) for (const k of Object.keys(m)) if (k.startsWith(`${connectionId}|`)) delete m[k];
       st.reads = st.reads.filter((r) => r.connectionId !== connectionId);
       for (const [k, t] of timers) if (k.startsWith(`${connectionId}|`)) opts.clock.clearTimeout(t), timers.delete(k);
       save();

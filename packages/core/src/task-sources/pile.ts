@@ -11,7 +11,7 @@
 import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { randomBytes } from "node:crypto";
-import type { Bodies, FindHow, LogEvent, PileGroup, PileItem, PilePick, PileView, PreRead, PreReadNote, SourceItem, SourceItemRef, SourceOp, TaskCard } from "@ducter/protocol";
+import type { Bodies, FindHow, LogEvent, PileGroup, PileItem, PilePick, PileView, PreRead, PreReadNote, ReviewStanding, SourceItem, SourceItemRef, SourceOp, TaskCard } from "@ducter/protocol";
 import { PILE_CAP, PILE_GROUPS, SUBJECT_MIN, SUBJECTS_PAST, SUBJECTS_SHOWN } from "@ducter/protocol";
 import { redact } from "@ducter/protocol/src/redact.ts";
 import type { LogStore, TaskRegistry } from "@ducter/protocol/src/internal.ts";
@@ -80,6 +80,8 @@ interface State {
   picksIgnored?: number;
   picksId?: string;
   picksRefs?: string[];
+  /** D394: a review task's standing after its last round, and its open round card. */
+  rounds?: Record<string, ReviewStanding & { decisionId?: string }>;
 }
 
 const fresh = (): State => ({ verdicts: {}, chosen: {}, items: [], queue: [], handed: {}, reads: {} });
@@ -139,6 +141,9 @@ const W = {
     closeQ: "关掉这 {n} 件，各留一句？",
     closeGo: "关掉",
     closeHold: "先不关",
+    roundQ: "{n} 个 PR 的评审写好了，发到 GitHub？",
+    roundGo: "发到 GitHub",
+    roundHold: "先不发",
     reviewQ: "在 {where}{label} 下发出这 {n} 条 review 评论？",
     reviewGo: "发出",
     reviewHold: "先不发",
@@ -166,6 +171,10 @@ const W = {
     closeQ: "Close these {n}, with a line on each?",
     closeGo: "Close them",
     closeHold: "Not now",
+    roundQ: "{n} PR reviews are written. Post them to GitHub?",
+    roundQ1: "1 PR review is written. Post it to GitHub?",
+    roundGo: "Post to GitHub",
+    roundHold: "Not now",
     reviewQ: "Send these {n} review comments on {where}{label}?",
     reviewGo: "Send",
     reviewHold: "Not now",
@@ -290,6 +299,25 @@ export function parseRead(text: string): { gist?: string; notes: PreReadNote[] }
   return { ...(typeof j.gist === "string" && j.gist.trim() ? { gist: j.gist.trim().slice(0, 160) } : {}), notes };
 }
 
+/** D394: a review task's round as it reported it: refs checked, notes clipped as a pre-read's are. */
+export function parseRound(raw: unknown): { ok: true; prs: { ref: string; head?: string; changed: boolean; gist?: string; notes: PreReadNote[] }[] } | { ok: false; error: string } {
+  const j = (raw ?? {}) as { prs?: unknown };
+  if (!Array.isArray(j.prs)) return { ok: false, error: "review_report needs prs: every pull request waiting on the person this round." };
+  const prs: { ref: string; head?: string; changed: boolean; gist?: string; notes: PreReadNote[] }[] = [];
+  const seen = new Set<string>();
+  for (const x of j.prs.slice(0, 60) as Record<string, unknown>[]) {
+    const ref = typeof x?.ref === "string" ? x.ref.trim() : "";
+    if (!/^[\w.-]+\/[\w.-]+#\d+$/.test(ref)) return { ok: false, error: `each pr's ref is owner/repo#number, got ${JSON.stringify(x?.ref ?? null)}` };
+    if (seen.has(ref)) continue;
+    seen.add(ref);
+    const head = typeof x.head === "string" && /^[0-9a-f]{7,40}$/i.test(x.head.trim()) ? x.head.trim().toLowerCase() : undefined;
+    const notes = parseRead(JSON.stringify({ notes: Array.isArray(x.notes) ? x.notes : [] }))?.notes ?? [];
+    const gist = typeof x.gist === "string" && x.gist.trim() ? x.gist.trim().slice(0, 160) : undefined;
+    prs.push({ ref, ...(head ? { head } : {}), changed: x.changed === true, ...(gist ? { gist } : {}), notes });
+  }
+  return { ok: true, prs };
+}
+
 /** D359: the one sentence the sort ends with, from code's counts (zero groups left out). */
 export function sentenceOf(lang: Lang, c: { app?: string; n: number; groups: Record<PileGroup, number>; unread: number }): string {
   const w = W[lang];
@@ -318,6 +346,15 @@ export interface Pile {
   sendRead(ref: string, keep: number[]): Promise<{ ok: boolean; error?: string }>;
   /** The pre-reads On hand's review cards carry. */
   read(ref: string): PreRead | undefined;
+  /**
+   * D394: a review task's round: every request waiting on the person, the ones reviewed again with
+   * their drafted comments. The drafts become those PRs' pre-reads; one card asks to post them all.
+   */
+  round(taskId: string, raw: unknown): Promise<{ ok: boolean; error?: string; drafted?: number; standing?: ReviewStanding }>;
+  /** D394: the round card's answer: Go posts each drafted review once. */
+  answerRound(card: Bodies["decision"], r: Bodies["decision_resolved"]): Promise<{ done: number; failed: number }>;
+  /** D394: a review task's standing (the Ongoing card's line). */
+  standing(taskId: string): ReviewStanding | undefined;
   /** Pre-read the newest review requests by themselves (bounded a day). */
   readNewest(prs: SourceItem[]): Promise<void>;
   /** The morning note's to-dos find: its text, how-lines, and the Go card (inside the note). */
@@ -583,6 +620,7 @@ export function createPile(d: PileDeps): Pile {
   }
 
   const newId = () => `d_${randomBytes(6).toString("hex")}`;
+  const srcOf = () => d.sources().find((x) => x.kind === "github")?.id ?? "github";
 
   return {
     view() {
@@ -780,6 +818,91 @@ export function createPile(d: PileDeps): Pile {
     },
     read(ref) {
       return st.reads[ref];
+    },
+    async round(taskId, raw) {
+      const r = parseRound(raw);
+      if (!r.ok) return { ok: false, error: r.error };
+      const lang = d.lang();
+      const at = new Date(d.now()).toISOString();
+      const drafted: string[] = [];
+      for (const pr of r.prs) {
+        if (!pr.changed || !pr.notes.length) continue;
+        const had = st.reads[pr.ref];
+        // Already posted at this head: nothing new to ask.
+        if (had && had.state === "sent" && pr.head && had.head === pr.head) continue;
+        const item = await d.item(pr.ref).catch(() => undefined);
+        if (!item || !item.pr) continue;
+        st.reads[pr.ref] = {
+          ref: pr.ref,
+          title: item.title,
+          ...(item.url ? { url: item.url } : {}),
+          ...(item.updatedAt ? { updatedAt: item.updatedAt } : {}),
+          at,
+          problems: pr.notes.filter((n) => n.kind === "problem").length,
+          suggestions: pr.notes.filter((n) => n.kind === "suggestion").length,
+          state: "drafted",
+          notes: pr.notes,
+          ...(pr.gist ? { gist: pr.gist } : {}),
+          byTask: taskId,
+          ...(pr.head ? { head: pr.head } : {}),
+        };
+        drafted.push(pr.ref);
+      }
+      const keys = Object.keys(st.reads);
+      for (const k of keys.slice(0, Math.max(0, keys.length - 40))) delete st.reads[k];
+      // Every draft of this task still unsent goes on the one card (an earlier round's too).
+      const unsent = Object.values(st.reads).filter((x) => x.byTask === taskId && x.state === "drafted");
+      const rounds = (st.rounds ??= {});
+      const prev = rounds[taskId];
+      const standing: ReviewStanding & { decisionId?: string } = { waiting: r.prs.length, again: r.prs.filter((p) => p.changed).length, same: r.prs.filter((p) => !p.changed).length, drafted: unsent.length, at };
+      if (drafted.length) {
+        // The earlier round's card, still open, is settled: this one carries its drafts too.
+        if (prev?.decisionId) d.log.append({ stream: "channel", origin: "partner", kind: "decision_resolved", body: { decisionId: prev.decisionId, option: "hold", by: "default", settled: true } });
+        const items = unsent.map((x) => ({ item: { source: srcOf(), kind: "github" as const, ref: x.ref, label: `#${x.ref.split("#")[1] ?? ""}`, where: x.ref.split("#")[0], title: x.title, ...(x.url ? { url: x.url } : {}), pr: true } }));
+        const w = W[lang];
+        const n = items.length;
+        const body: Bodies["decision"] = {
+          decisionId: newId(),
+          question: n === 1 && lang === "en" ? W.en.roundQ1 : fill(w.roundQ, { n }),
+          goLabel: w.roundGo,
+          holdLabel: w.roundHold,
+          defaultOption: "hold",
+          reversible: false,
+          src: { kind: "reviews", item: items[0]!.item, taskId, items },
+        };
+        d.log.append({ stream: "channel", origin: "partner", kind: "decision", body });
+        standing.decisionId = body.decisionId;
+      } else if (prev?.decisionId) standing.decisionId = prev.decisionId;
+      rounds[taskId] = standing;
+      save();
+      const { decisionId: _d, ...out } = standing;
+      return { ok: true, drafted: drafted.length, standing: out };
+    },
+    async answerRound(card, r) {
+      const src = card.src;
+      if (!src || src.kind !== "reviews") return { done: 0, failed: 0 };
+      const open = src.taskId ? st.rounds?.[src.taskId] : undefined;
+      if (open?.decisionId === card.decisionId) (open.decisionId = undefined), save();
+      if (r.option !== "go" || r.settled) return { done: 0, failed: 0 };
+      let done = 0;
+      let failed = 0;
+      for (const { item } of src.items ?? []) {
+        const read = st.reads[item.ref];
+        if (!read || read.state !== "drafted" || !read.notes.length) continue;
+        const w = await d.write(item, "review", { by: "go", decisionId: card.decisionId, ...(src.taskId ? { taskId: src.taskId } : {}), text: JSON.stringify({ notes: read.notes }) });
+        if (w.ok) (read.state = "sent"), done++;
+        else failed++;
+      }
+      const s0 = src.taskId ? st.rounds?.[src.taskId] : undefined;
+      if (s0) s0.drafted = Object.values(st.reads).filter((x) => x.byTask === src.taskId && x.state === "drafted").length;
+      save();
+      return { done, failed };
+    },
+    standing(taskId) {
+      const s0 = st.rounds?.[taskId];
+      if (!s0) return undefined;
+      const { decisionId: _d, ...out } = s0;
+      return out;
     },
     async readNewest(prs) {
       if (!ask) return;

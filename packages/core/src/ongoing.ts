@@ -34,7 +34,7 @@ export interface Ongoing {
   stop(): void;
 }
 
-export function createOngoing(o: { dataDir: string; log: LogStore; tasks: CoreRegistry; waiters: Waiters; routines: Routines; marks?: Marks; clock?: Clock; onChange?: () => void }): Ongoing {
+export function createOngoing(o: { dataDir: string; log: LogStore; tasks: CoreRegistry; waiters: Waiters; routines: Routines; marks?: Marks; clock?: Clock; onChange?: () => void; reviews?: (taskId: string) => import("@ducter/protocol").ReviewStanding | undefined }): Ongoing {
   const clock = o.clock ?? realClock;
   const file = join(o.dataDir, "paused.json");
   let paused: Record<string, Paused> = {};
@@ -134,6 +134,8 @@ export function createOngoing(o: { dataDir: string; log: LogStore; tasks: CoreRe
         ...(!p && w ? { nextAt: w.nextLookAt ?? w.at } : {}),
         ...(p ? { pausedBy: "user" as const, ...(p.until ? { pausedUntil: p.until } : {}) } : {}),
         runs: taskRuns(id),
+        // D394: a review task's standing after its last round (the card's line).
+        ...((r) => (r ? { reviews: r } : {}))(o.reviews?.(id)),
         taskId: id,
         startedAt: c.openedAt,
         ...(c.mark ? { mark: c.mark } : {}),

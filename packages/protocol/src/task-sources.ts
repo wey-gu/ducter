@@ -167,6 +167,22 @@ export interface PreRead extends PreReadSummary {
   notes: PreReadNote[];
   /** One line in the person's language: what the PR does. */
   gist?: string;
+  /** D394: read by a task of the person's (a review that runs every so often), at this head. */
+  byTask?: string;
+  head?: string;
+}
+
+/** D394: where a review task's requests stand after its last round (the Ongoing card's line). */
+export interface ReviewStanding {
+  /** Requests waiting on the person (review requests and mentions, after dedupe). */
+  waiting: number;
+  /** Of those, reviewed again this round because their head moved. */
+  again: number;
+  /** Of those, unchanged since they were reviewed. */
+  same: number;
+  /** Drafted reviews not yet sent (on the round's card). */
+  drafted: number;
+  at: string;
 }
 
 /** D357: never more than this many to-dos stand on On hand; the rest are folded. */
@@ -264,7 +280,7 @@ export interface SourceAsk {
    *       picks   今天能替你清掉这 {n} 件 the morning's picks, inside the note (Go hands them over)
    *       review  发出这 {n} 条？ a pre-read's drafted review comments (its Go given on the sheet)
    */
-  kind: "write" | "closed" | "trust" | "batch" | "picks" | "review" | "plan" | "where_rule" | "group_review";
+  kind: "write" | "closed" | "trust" | "batch" | "picks" | "review" | "plan" | "where_rule" | "group_review" | "reviews";
   item: SourceItemRef;
   /** write: the comment, exactly as it goes out (the card shows it whole). */
   text?: string;
@@ -276,6 +292,10 @@ export interface SourceAsk {
   trust?: "take" | "write";
   /** batch, picks: the to-dos (batch: with the line each one gets). */
   items?: { item: SourceItemRef; text?: string }[];
+  /*
+   * D394: reviews  {n} 个 PR 的评审写好了，发到 GitHub？ a review task's round: its drafted reviews,
+   *                each opened as its pre-read (items), posted on Go as one COMMENT review each.
+   */
   /** review: the drafted comments that go out. */
   notes?: PreReadNote[];
   /*

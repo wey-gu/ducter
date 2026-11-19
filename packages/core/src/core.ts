@@ -117,6 +117,38 @@ import { agentSignature, widenAgentPath } from "./agent-path.ts";
 declare const DUCTER_COMMIT: string | undefined; // set by packages/cli/build.sh via --define
 /** The build this core runs ("dev" from a checkout): /health says it, so Ducter.app can tell a background
  *  Ducter still on the helper it replaced (the app dragged in by hand) and restart it. */
+/** D394: what a review task's round says (review_report). */
+const REVIEW_WORDS = /\breview|code review|\bPRs?\b.*\b(look|check)|评审|审查|审一下|审核|review 一下/i;
+const REVIEW_ROUND_SCHEMA = {
+  type: "object",
+  properties: {
+    prs: {
+      type: "array",
+      description: "Every pull request waiting on the person this round, reviewed again or not",
+      items: {
+        type: "object",
+        properties: {
+          ref: { type: "string", description: "owner/repo#number" },
+          head: { type: "string", description: "The head commit you looked at (sha)" },
+          changed: { type: "boolean", description: "true: its head moved and you reviewed it again this round" },
+          gist: { type: "string", description: "One line in the person's language: what the PR does" },
+          notes: {
+            type: "array",
+            description: "Only when changed: your drafted review comments, at most 6",
+            items: {
+              type: "object",
+              properties: { kind: { type: "string", enum: ["problem", "suggestion"] }, path: { type: "string" }, line: { type: "number" }, text: { type: "string" } },
+              required: ["kind", "text"],
+            },
+          },
+        },
+        required: ["ref", "changed"],
+      },
+    },
+  },
+  required: ["prs"],
+} as const;
+
 const BUILD = typeof DUCTER_COMMIT === "string" ? DUCTER_COMMIT : "dev";
 
 /** D228: the Go card for a tunnel in the person's own Cloudflare account (D292: zh and en; ko → en). */
@@ -1033,7 +1065,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   const did = createDid({ log, tasks, uses: () => autofill.store.view().uses, deviceName: (dev) => (dev === "local" ? computers.homeName() : computers.nameOf(dev)), folder: (id) => changes.folder(id), now: () => clock.now() });
   registerDidTool(mcp, did, () => clock.now());
   // D285: 一直在跑的 / Ongoing: routines and tasks that look again on their own, paused and resumed.
-  const ongoing = createOngoing({ dataDir, log, tasks, waiters: work.waiters, routines: work.routines, marks, clock, onChange: () => ws.ongoingChanged() });
+  const ongoing = createOngoing({ dataDir, log, tasks, waiters: work.waiters, routines: work.routines, marks, clock, onChange: () => ws.ongoingChanged(), reviews: (id) => taskSourcesRef?.pile.standing(id) });
   const newTask = {
     // D285: 带着它开新任务 / New task from this: the brief carries what that task found.
     open: (i: NewTaskInput) => openYourTask(newTaskDeps, i.from && tasks.get(i.from) ? { ...i, brief: past.seed(i.from, i.words, languageOf(i.words, settings)) } : i),
@@ -1620,6 +1652,37 @@ export function startCore(opts: CoreOptions = {}): Core {
       return "Plan kept. Now call report_to_main with state done and one plain line; the person sees the plan as a card.";
     },
     (ctx) => !!ctx.taskId && !!taskSourcesRef?.handover?.isPlanTask(ctx.taskId),
+  );
+  // D394: a task that reviews pull requests every so often reports each round here: every request
+  // waiting on the person, and the drafts for those it reviewed again. The drafts become those
+  // PRs' pre-reads (the sheet that shows them on the phone and the Mac) and one card asks to post
+  // them all; the task never posts on its own. Seen only by a task whose brief is about reviewing,
+  // with GitHub connected as a to-do source.
+  const reviewTasks = new Map<string, boolean>();
+  const isReviewTask = (taskId: string) => {
+    if (!taskSourcesRef?.view().sources.some((x) => x.kind === "github")) return false;
+    const known = reviewTasks.get(taskId);
+    if (known !== undefined) return known;
+    const opens = log.read({ stream: `task:${taskId}`, kinds: ["task_open"], limit: 20 });
+    const text = opens.map((e) => `${(e.body as Bodies["task_open"]).title ?? ""} ${(e.body as Bodies["task_open"]).brief ?? ""}`).join(" ");
+    const yes = REVIEW_WORDS.test(text);
+    reviewTasks.set(taskId, yes);
+    return yes;
+  };
+  mcp.registerWhen(
+    "task",
+    "review_report",
+    "For a task that reviews pull requests every so often, once per round after you looked: every PR waiting on the person (ref owner/repo#number, the head commit you looked at, changed true when you reviewed it again this round because its head moved), and for each one reviewed again its drafted comments (kind problem or suggestion, path, line, text in the PR's own language). Ducter shows the drafts on those PRs and asks the person once to post them all; never post reviews yourself. Then wait_for the next round; a round that only calls this needs no report_to_main.",
+    REVIEW_ROUND_SCHEMA,
+    async (args, ctx) => {
+      if (!ctx.taskId) throw new Error("review_report requires a task token");
+      const r = await taskSources.pile.round(ctx.taskId, args);
+      if (!r.ok) return r.error ?? "Not kept.";
+      return r.drafted
+        ? `Kept: ${r.drafted} new draft${r.drafted === 1 ? "" : "s"}; the person sees every unsent draft on one card and Ducter posts them on Go. Now wait_for the next round and end your turn.`
+        : "Kept: nothing new to ask the person. Now wait_for the next round and end your turn.";
+    },
+    (ctx) => !!ctx.taskId && isReviewTask(ctx.taskId),
   );
   taskSourcesRef = taskSources;
   if (opts.taskSources?.ask) taskSources.setAsk(opts.taskSources.ask);

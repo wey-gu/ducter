@@ -171,6 +171,8 @@ export interface OngoingItem {
   pauseWhy?: string;
   /** The latest runs or looks, oldest first (at most 12). */
   runs: OngoingRun[];
+  /** D394: a review task's standing: the requests waiting on the person after its last round. */
+  reviews?: import("./task-sources.ts").ReviewStanding;
   /** The task of a routine's run in progress, or the task itself. */
   taskId?: string;
   startedAt: string;

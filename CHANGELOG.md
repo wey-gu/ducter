@@ -14,6 +14,10 @@ en: On phones, GitHub links open where you're signed in
   right under the answer. Past tasks has a new tab, Made for you: files, pictures, tables, charts,
   lists and links, by day.
 
+**Nowledge Mem**
+- On a computer whose own Nowledge Mem is too old to sign in, the card says so and installs a current
+  copy for Ducter's use; your pasted prompt is never sent to the old one and stays in the box.
+
 **Phone apps**
 - Links to GitHub and other sites open with your phone: the GitHub app if you have it, otherwise
   your own signed-in browser.

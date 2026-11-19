@@ -450,11 +450,8 @@ function Heard() {
         <small>{t("ho.said.about")}</small>
         <b dir="auto">{h.about}</b>
       </span>
-      <span class="ho-heard-part note">
-        <small>{t("ho.said.note", name())}</small>
-        <q dir="auto">{h.note}</q>
-        {moved && <em>{narrow() ? t("ho.said.moved.thin") : t("ho.said.moved")}</em>}
-      </span>
+      {/* The note itself lives on the right: one quiet line says it went there (never the note twice). */}
+      {moved && <span class="ho-heard-moved">{narrow() ? t("ho.said.moved.thin", name()) : t("ho.said.moved", name())}</span>}
     </div>
   );
 }

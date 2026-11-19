@@ -465,18 +465,18 @@ func (a *App) handWhat(c *ui.Context, wide bool) {
 	})
 	a.enter(c, field)
 	said := strings.TrimSpace(h.query) != ""
-	// How the words were heard: what it looked for, and the note taken out (each its own fact).
+	// How the words were heard: what it looked for; the note itself lives on the
+	// right (one quiet line says it went there, never the note twice).
 	if hd := h.heard; hd != nil && hd.Note != "" && !h.finding {
-		ui.Row(c.Key("heard")).Wrap().Gap(t.S2).Padding(t.S1, 0, 0, 0).Children(func() {
-			a.heardPart(c, "about", a.L.T("hand.said.about"), hd.About, "")
-			moved := ""
+		ui.Column(c.Key("heard")).Gap(t.S1).Padding(t.S1, 0, 0, 0).Children(func() {
+			a.heardPart(c, "about", a.L.T("hand.said.about"), hd.About)
 			if h.note == h.noteAuto && strings.TrimSpace(h.note) != "" {
-				moved = a.L.T("hand.said.moved")
+				moved := a.L.T("hand.said.moved", name)
 				if !wide {
-					moved = a.L.T("hand.said.moved.narrow")
+					moved = a.L.T("hand.said.moved.narrow", name)
 				}
+				ui.Text(c.Key("moved"), moved).FontSize(t.SM).TextColor(t.InkMuted).Padding(0, t.S1)
 			}
-			a.heardPart(c, "note", a.L.T("hand.note", name), hd.Note, moved)
 		})
 	}
 	if !said && h.subject == "" && h.setID == "" {
@@ -557,16 +557,12 @@ func (a *App) handList(c *ui.Context) {
 	}
 }
 
-// heardPart is one part of how the words were heard: its small label, the
-// words, and (the note) where they went.
-func (a *App) heardPart(c *ui.Context, key, label, words, moved string) {
+// heardPart is how the words were heard: its small label and the words.
+func (a *App) heardPart(c *ui.Context, key, label, words string) {
 	t := a.T
-	ui.Row(c.Key("hp:"+key)).Wrap().Gap(t.S2).AlignItems(ui.Baseline).Padding(t.S2, t.S3).Radius(12).Background(t.SurfaceSunken).Shrink(1).MinWidth(0).Children(func() {
+	ui.Row(c.Key("hp:"+key)).Wrap().Gap(t.S2).AlignItems(ui.Baseline).Padding(t.S2, t.S3).Radius(12).Background(t.SurfaceSunken).Shrink(1).MinWidth(0).AlignSelf(ui.Start).Children(func() {
 		ui.Text(c.Key("l"), label).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
 		ui.Text(c.Key("w"), words).FontWeight(700).TextColor(t.Ink).Shrink(1).MinWidth(0)
-		if moved != "" {
-			ui.Text(c.Key("m"), moved).FontSize(t.XS).TextColor(t.InkMuted)
-		}
 	})
 }
 

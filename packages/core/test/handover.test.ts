@@ -237,6 +237,13 @@ test("D396 find by words: the subject by code, the note beside it; the model's s
   expect(r.query).toBe("distill");
   expect(r.found.n).toBe(8);
   expect(r.suggest).toContain("记忆提炼"); // the pile's biggest subjects
+  // The note heard in the words names a computer: it wins Where over the computer with the clone (D395's order).
+  const w = await b.ho.find({ words: "关于 distill 的，先别动数据库迁移，验证都去 haswell 上跑" });
+  expect(w.said?.note).toBe("先别动数据库迁移，验证都去 haswell 上跑");
+  const how = await b.ho.how({ refs: w.ticked, note: w.said!.note!, bySubject: true });
+  expect(how.where).toMatchObject({ device: "w-haswell", name: "haswell", why: "note", said: "haswell" });
+  const plain = await b.ho.how({ refs: w.ticked, bySubject: true });
+  expect(plain.where.why).not.toBe("note");
   // The conversation's set: the same split, the note kept on the set.
   const s = await b.ho.set({ query: "关于 distill 的，先别动数据库" });
   expect(s.query).toBe("distill");

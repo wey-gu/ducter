@@ -345,7 +345,7 @@ func (a *App) palette(c *ui.Context) {
 		if len(rows) > 0 {
 			acts = a.palActs(rows[at], q)
 		}
-		panel.Width(min(w-2*t.S6, 680)).Radius(t.RadiusXL).Background(t.Surface).Shadow(0, t.Floating.Y, t.Floating.Blur, 0, t.Floating.Color).
+		panel.Width(min(w-2*t.S6, 680)).MaxHeight(sheetBack(c, back, h)).Radius(t.RadiusXL).Background(t.Surface).Shadow(0, t.Floating.Y, t.Floating.Blur, 0, t.Floating.Color).
 			Label(a.L.T("pal.label"))
 		ui.Row(c.Key("pal-field")).Gap(t.S3).Padding(0, t.S5).Height(60).AlignItems(ui.Center).Children(func() {
 			ui.Box(c).Size(20, 20).Shrink(0).AccessHidden(true).Draw(drawPastGlyph("look", t.InkMuted))
@@ -374,7 +374,7 @@ func (a *App) palette(c *ui.Context) {
 			}
 		})
 		ui.Box(c.Key("rule")).Height(1).Background(t.LineSoft)
-		ui.Scroll(c.Key("pal-list")).MaxHeight(min(520, h-220)).Children(func() {
+		ui.Scroll(c.Key("pal-list")).MaxHeight(max(120, min(520, h-sheetTop(c)-sheetBottom-160))).Children(func() {
 			ui.Column(c).Padding(t.S2).Gap(1).Children(func() {
 				group := "-"
 				for n, r := range rows {

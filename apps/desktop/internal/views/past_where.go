@@ -141,7 +141,7 @@ func (a *App) pastWhereSheet(c *ui.Context) {
 	w, h := c.Size()
 	ui.DialogBase(c, &ps.sheet, func(back, panel ui.Element) {
 		back.Background(t.Scrim)
-		panel.Width(min(w-2*t.S5, 560)).MaxHeight(h-2*t.S5).Radius(t.RadiusXL).Background(t.Surface).
+		panel.Width(min(w-2*t.S5, 560)).MaxHeight(sheetBack(c, back, h)).Radius(t.RadiusXL).Background(t.Surface).
 			Shadow(0, t.Floating.Y, t.Floating.Blur, 0, t.Floating.Color).Label(a.L.T("past.where"))
 		ui.Scroll(c.Key("where-sheet")).Grow(1).MinHeight(0).Children(func() {
 			ui.Column(c).Padding(t.S5, t.S5, t.S4, t.S5).Gap(t.S4).Children(func() {
@@ -443,7 +443,7 @@ func (a *App) redoSheet(c *ui.Context) {
 	title := a.L.T("past.redo.title", r.step)
 	ui.DialogBase(c, &r.open, func(back, panel ui.Element) {
 		back.Background(t.Scrim)
-		panel.Width(min(w-2*t.S5, 560)).MaxHeight(h-2*t.S5).Radius(t.RadiusXL).Background(t.Surface).
+		panel.Width(min(w-2*t.S5, 560)).MaxHeight(sheetBack(c, back, h)).Radius(t.RadiusXL).Background(t.Surface).
 			Shadow(0, t.Floating.Y, t.Floating.Blur, 0, t.Floating.Color).Label(title)
 		ui.Scroll(c.Key("redo-scroll")).Grow(1).MinHeight(0).Children(func() {
 			ui.Column(c).Padding(t.S5, t.S6, t.S5, t.S6).Gap(t.S4).Children(func() {

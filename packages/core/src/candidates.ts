@@ -169,6 +169,12 @@ export function brainModelRows(harness: string, h: DeviceHarness | undefined): {
     .map((t) => ({ id: t.model, label: t.label || listed?.find((m) => m.id === t.model)?.label || t.model[0]!.toUpperCase() + t.model.slice(1), kind: t.kind }));
 }
 
+/** D390: what the tier table says of one named model (its kind and plain words), if it names it. */
+export function tierOf(harness: string, model: string): { kind: "smart" | "fast"; label?: string } | undefined {
+  const t = TIERS.find((x) => x.harness === harness && x.model === model);
+  return t ? { kind: t.kind, ...(t.label ? { label: t.label } : {}) } : undefined;
+}
+
 const same = (a: { harness: string; model?: string }, b?: { harness: string; model?: string }) =>
   !!b && a.harness === b.harness && (a.model ?? "") === (b.model ?? "");
 

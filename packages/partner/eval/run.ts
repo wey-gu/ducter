@@ -88,6 +88,15 @@ import { seedMade } from "./seed-made.ts";
 import { seedHistory } from "./seed-history.ts";
 import { realClock } from "../../core/src/clock.ts";
 import { partnerFingerprint } from "../test/fingerprint.ts";
+import { createModelCatalog } from "../../core/src/models.ts";
+
+/** D390: Codex's own list on the eval's home (scenario.brainCodex), as Codex 0.169.1 names them (trimmed). */
+const EVAL_CODEX = [
+  { id: "gpt-6.2-sol", label: "GPT-6.2-Sol", default: true as const },
+  { id: "gpt-6.2-astra", label: "GPT-6.2-Astra" },
+  { id: "gpt-6.1-terra", label: "GPT-6.1-Terra" },
+  { id: "gpt-6-luna", label: "GPT-6-Luna" },
+];
 import type { MemoryAdd } from "../src/memory.ts";
 
 // ---------- args ----------
@@ -431,7 +440,14 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   const clock = { ...realClock, now: () => Date.now() - back.ms };
   // D391: a redo opens a repo task on fake repos: git answers as a checkout with main (never the machine's own repos).
   const fakeGit = async (cwd: string, args: string[]) => (args.includes("--show-toplevel") ? { ok: true, out: cwd } : args[0] === "for-each-ref" || args[0] === "branch" ? { ok: true, out: "main" } : args[0] === "symbolic-ref" ? { ok: true, out: "origin/main" } : { ok: true, out: "" });
-  const core = startCore({ dataDir, port: 0, persona, webLook, clock, ...(sc.history ? { git: fakeGit } : {}), localAgents: createLocalAgents({ home: ownHome, env: {}, uid: null }), workingMemory: { run: async () => ({ code: 0, out: wmOut, err: "" }) }, // D341: never the machine's own gh (the person's real issues) nor its Obsidian vault list.
+  // D390: a home with Codex and Claude Code signed in, Codex listing its own models (never this machine's).
+  const brainHome = sc.brainCodex
+    ? {
+        models: createModelCatalog({ read: async (_d: string, h: string) => (h === "codex" ? EVAL_CODEX : undefined) }),
+        deviceProbes: { cua: async () => ({ missing: "eval" }), harnesses: async () => [{ harness: "claude-code", installed: true, loggedIn: true }, { harness: "codex", installed: true, loggedIn: true }], kind: async () => "laptop" as const },
+      }
+    : {};
+  const core = startCore({ ...brainHome, dataDir, port: 0, persona, webLook, clock, ...(sc.history ? { git: fakeGit } : {}), localAgents: createLocalAgents({ home: ownHome, env: {}, uid: null }), workingMemory: { run: async () => ({ code: 0, out: wmOut, err: "" }) }, // D341: never the machine's own gh (the person's real issues) nor its Obsidian vault list.
     taskSources: { ghRun: todoGh?.run ?? (async () => ({ code: 127, out: "", err: "", missing: true as const })), ghEnv: {}, home: join(dataDir, "no-home"), pollMs: 3_600_000, ask: sc.todosPile ? pileAsk : async () => ({ text: "[]", tokens: 1 }) }, ...(sc.second ? { partners: true } : {}), ownPhone: { platform: "darwin", arch: "arm64" }, ...(calOo ? { ooSource: calOo.source } : sc.phone ? { ooSource: { detect: () => ({ installed: false, account: false }), read: () => undefined } } : {}) });
   // D376: the home's name as the records' computer: a fixed fake one, never this machine's own name.
   (core.outside as { computer: () => string | undefined }).computer = () => sc.homeName ?? "Weyl's Mac";
@@ -527,6 +543,7 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
     threads: (q: string, n: number) => (threadSearches.push({ query: q, step: cur.step }), mem.memory.threads!(q, n)),
   };
   core.setRunner(fr.runner);
+  if (sc.brainCodex) core.settings.set({ brain: { harness: "codex" } });
   core.setPartner({ onTrigger() {} }); // history is background, not new work
   const fb = sc.bridge ? fakeBridge(dataDir, !!sc.spaces) : undefined;
 

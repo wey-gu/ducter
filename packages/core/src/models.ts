@@ -20,6 +20,8 @@ export type ModelReader = (device: string, harness: string) => Promise<ListedMod
 export interface ModelCatalog {
   /** The list of that agent on that computer ("local": the home), waiting at most `ms` for a read. */
   get(device: string, harness: string, ms: number): Promise<ListedModel[] | undefined>;
+  /** D390: the list last read for that agent there, at once and whatever its age (no read); none yet: undefined. */
+  peek?(device: string, harness: string): ListedModel[] | undefined;
 }
 
 export const MODELS_TTL_MS = 10 * 60_000;
@@ -61,6 +63,7 @@ export function createModelCatalog(o: { read: ModelReader; now?: () => number; t
     return p;
   };
   return {
+    peek: (device, harness) => kept.get(`${device || "local"} ${harness}`)?.list,
     async get(device, harness, ms) {
       const k = `${device || "local"} ${harness}`;
       const had = kept.get(k);
@@ -85,7 +88,7 @@ export function shortModels(harness: string, list: ListedModel[]): ListedModel[]
 }
 
 /** At most this many models in one agent's row (the suggestion always among them). */
-const ROW_MAX = 8;
+export const ROW_MAX = 8;
 
 /**
  * The model the agent runs when none is named, as a model of the list: its own word (default),

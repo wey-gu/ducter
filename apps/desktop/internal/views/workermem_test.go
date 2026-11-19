@@ -92,14 +92,15 @@ func TestMemOnDeviceCard(t *testing.T) {
 	if last := got[len(got)-1]; last.Action != "connect" || last.Link != "https://cloud.nowledge.co/app?nmem_connect=nmem_ct_x" {
 		t.Fatalf("sent %+v", last)
 	}
-	if app.wm.link["hw1"] != "" {
-		t.Fatal("the link stayed in the box")
-	}
 	app.Receive(protocol.ServerFrame{T: "devices", Devices: []protocol.DeviceView{entryHome(), haswellMem(&protocol.DeviceMemView{State: "ready", Version: "0.10.120", Agents: []string{"claude-code", "codex"}})}})
 	tt.Frame()
 	tt.Frame()
 	if _, ok := tt.Find("记得你了"); !ok {
 		t.Fatal("not ready")
+	}
+	// D386: kept until the step ended; signed in, it is gone.
+	if app.wm.link["hw1"] != "" {
+		t.Fatal("the link stayed in the box")
 	}
 }
 
@@ -111,7 +112,7 @@ func TestMemFailedWordsClean(t *testing.T) {
 		app.Now = func() time.Time { return lendNow }
 		app.Route = RouteDevices
 		tt := ui.NewTesterWith(app.View, 1440, 900, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
-		for _, r := range []string{"network", "space", "unsupported", "bad_link", "used", "unreachable", "refused", "failed"} {
+		for _, r := range []string{"network", "space", "unsupported", "bad_link", "used", "unreachable", "refused", "old", "failed"} {
 			w := app.memFailedWords(r, "haswell")
 			if strings.Contains(w, "%!") || w == "wmem.failed."+r {
 				t.Errorf("%s %s: %q", lang, r, w)
@@ -133,6 +134,53 @@ func TestMemFailedWordsClean(t *testing.T) {
 		got := memSent(*sent)
 		if len(got) == 0 || got[len(got)-1].Link != prompt {
 			t.Fatalf("%s: sent %+v", lang, got)
+		}
+	}
+}
+
+// D386: the person's own nmem too old: its own line, 装上新的 sends install,
+// no paste box, how to update theirs; once Ducter's own is used, the box is
+// back; a paste that wasn't spent stays after a failure, a spent one goes.
+func TestMemTheirsOld(t *testing.T) {
+	for _, lang := range []i18n.Lang{i18n.ZH, i18n.EN} {
+		app, sent := iaApp(t, lang)
+		app.Now = func() time.Time { return lendNow }
+		app.Route = RouteDevices
+		tt := ui.NewTesterWith(app.View, 1440, 900, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
+		show := func(m *protocol.DeviceMemView) {
+			app.Receive(protocol.ServerFrame{T: "devices", Devices: []protocol.DeviceView{entryHome(), haswellMem(m)}})
+			app.devState().sel = "hw1"
+			tt.Frame()
+			tt.Frame()
+		}
+		show(&protocol.DeviceMemView{State: "sign_in", Installable: true, Health: &protocol.MemHealth{Issue: "old"}, Theirs: &protocol.DeviceMemTheirs{Old: true, How: "pipx"}})
+		for _, w := range []string{app.L.T("wmem.theirs.old", "haswell"), "pipx upgrade nmem-cli"} {
+			if _, ok := tt.Find(w); !ok {
+				t.Errorf("%s: %q not drawn", lang, w)
+			}
+		}
+		if _, ok := tt.Find(app.L.T("wmem.signin.go")); ok {
+			t.Errorf("%s: a paste box for an nmem that can't sign in", lang)
+		}
+		if err := tt.Click(app.L.T("wmem.theirs.install")); err != nil {
+			t.Fatal(err)
+		}
+		if got := memSent(*sent); len(got) == 0 || got[len(got)-1].Action != "install" {
+			t.Fatalf("%s: sent %+v", lang, got)
+		}
+		using := &protocol.DeviceMemView{State: "sign_in", Version: "0.10.120", Ours: true, Theirs: &protocol.DeviceMemTheirs{Old: true, How: "pipx"}}
+		show(using)
+		if _, ok := tt.Find(app.L.T("wmem.theirs.using", "haswell")); !ok {
+			t.Errorf("%s: using line not drawn", lang)
+		}
+		app.wm.link = map[string]string{"hw1": "a prompt"}
+		show(&protocol.DeviceMemView{State: "sign_in", Ours: true, Step: &protocol.DeviceMemStep{Phase: "failed", Reason: "old"}})
+		if app.wm.link["hw1"] != "a prompt" {
+			t.Errorf("%s: an unspent paste was cleared", lang)
+		}
+		show(&protocol.DeviceMemView{State: "sign_in", Ours: true, Step: &protocol.DeviceMemStep{Phase: "failed", Reason: "used"}})
+		if app.wm.link["hw1"] != "" {
+			t.Errorf("%s: a spent paste stayed", lang)
 		}
 	}
 }
@@ -167,6 +215,10 @@ func TestWorkerMemShots(t *testing.T) {
 		{"05-ready", &protocol.DeviceMemView{State: "ready", Version: "0.10.120", Agents: []string{"claude-code", "codex"}}},
 		{"06-bad-link", &protocol.DeviceMemView{State: "sign_in", Version: "0.10.120", Step: &protocol.DeviceMemStep{Phase: "failed", Reason: "bad_link"}}},
 		{"07-refused", &protocol.DeviceMemView{State: "sign_in", Version: "0.10.120", Step: &protocol.DeviceMemStep{Phase: "failed", Reason: "refused", Detail: "error: verifying credential: 401 Unauthorized"}}},
+		// D386: the person's own nmem too old to sign in, then Ducter's own used beside it.
+		{"08-theirs-old", &protocol.DeviceMemView{State: "sign_in", Installable: true, Health: &protocol.MemHealth{Issue: "old"}, Theirs: &protocol.DeviceMemTheirs{Old: true, How: "pipx"}}},
+		{"09-theirs-using", &protocol.DeviceMemView{State: "sign_in", Version: "0.10.120", Installable: true, Ours: true, Theirs: &protocol.DeviceMemTheirs{Old: true, How: "pipx"}}},
+		{"10-failed-old", &protocol.DeviceMemView{State: "sign_in", Version: "0.10.120", Ours: true, Step: &protocol.DeviceMemStep{Phase: "failed", Reason: "old"}}},
 	}
 	for _, dark := range []bool{false, true} {
 		mode := "light"

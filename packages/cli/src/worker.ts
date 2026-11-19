@@ -234,7 +234,10 @@ export async function cmdWorker(o: {
   // Its view rides in the hello once looked at, and as `mem` frames after each change.
   const mem = createWorkerMem({
     dataDir: o.dataDir,
-    sys: realWorkerMemSys({ platform: platform(), arch: arch(), which: (c) => whichNow(c), env: () => probeEnv(["nmem"]) }),
+    // D386: `path` asks on another PATH (the person's own nmem, outside Ducter's tools folder).
+    sys: realWorkerMemSys({ platform: platform(), arch: arch(), which: (c, p) => whichNow(c, p === undefined ? process.env : { PATH: p }), env: () => probeEnv(["nmem"]) }),
+    // D386: Ducter's own nmem went ahead of the person's too-old one on PATH (or stepped back).
+    pathChanged: () => void widenAgentPath({ dataDir: o.dataDir }),
     agents: () => rows.filter((h) => h.installed).map((h) => h.id),
     changed: () => {
       const v = mem.view();

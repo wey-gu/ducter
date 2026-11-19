@@ -15681,6 +15681,7 @@ svg .wave.w2.on {
 .wmem-icon .cring { border-radius: 12px; }
 .wmem-why { margin: 0; font-size: var(--sm); line-height: 1.55; color: var(--ink-soft); }
 .wmem-why.soft { font-size: var(--xs); color: var(--ink-muted); }
+.wmem-why code.wmem-cmd { font-family: var(--mono); font-size: var(--xs); padding: 1px 6px; border-radius: var(--r-sm); background: var(--surface-sunken, var(--surface)); color: var(--ink); display: inline-block; max-width: 100%; white-space: nowrap; overflow-x: auto; vertical-align: bottom; user-select: all; } /* D386: the person's own update, shown, never run */
 /* D377: the agents that kept records on that computer, their coins overlapping a little. */
 .wrec-coins { display: inline-flex; flex: none; }
 .wrec-coins .ag-coin + .ag-coin { margin-left: -12px; }

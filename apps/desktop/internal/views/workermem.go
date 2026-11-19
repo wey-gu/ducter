@@ -18,8 +18,17 @@ import (
 
 // workerMemState is the rows' own state, kept across frames.
 type workerMemState struct {
-	link   map[string]string // device → the link being pasted
-	answer *protocol.ServerFrame
+	link    map[string]string // device → the link being pasted
+	cleared map[string]string // D386: device → the ended step its spent paste was cleared for
+	answer  *protocol.ServerFrame
+}
+
+// stepKey names how the last step ended (one clear per ending, so a new paste after it stays).
+func stepKey(m *protocol.DeviceMemView) string {
+	if m.Step == nil {
+		return m.State
+	}
+	return m.Step.Phase + ":" + m.Step.Reason + ":" + m.Step.Detail
 }
 
 // memRowLook is where Mem stands there, in the web's order.
@@ -37,7 +46,7 @@ func memRowLook(m *protocol.DeviceMemView) string {
 // would otherwise just ask to sign in (D375, the web's memRowHealth):
 // unreachable | signed_out | old, or "".
 func memRowHealth(m *protocol.DeviceMemView) string {
-	if memRowLook(m) != "sign_in" || m.Health == nil {
+	if memRowLook(m) != "sign_in" || m.Health == nil || memRowTheirs(m) == "old" {
 		return ""
 	}
 	switch m.Health.Issue {
@@ -45,6 +54,47 @@ func memRowHealth(m *protocol.DeviceMemView) string {
 		return m.Health.Issue
 	}
 	return ""
+}
+
+// memRowTheirs is the person's own Mem command line there when it is too old
+// to sign in (D386, the web's memRowTheirs): old (nothing of Ducter's there
+// yet: its own current copy is offered, never the paste) | using (Ducter's
+// own is used there) | "".
+func memRowTheirs(m *protocol.DeviceMemView) string {
+	if m.Theirs == nil || !m.Theirs.Old {
+		return ""
+	}
+	if m.Ours {
+		return "using"
+	}
+	return "old"
+}
+
+// theirUpdateCommand is the one command that updates the person's own copy
+// (D386: shown, never run), or "".
+func theirUpdateCommand(m *protocol.DeviceMemView) string {
+	if m.Theirs == nil {
+		return ""
+	}
+	switch m.Theirs.How {
+	case "pipx":
+		return "pipx upgrade nmem-cli"
+	case "uv":
+		return "uv tool upgrade nmem-cli"
+	case "pip":
+		return "python3 -m pip install --user --upgrade nmem-cli"
+	}
+	return ""
+}
+
+// memKeepsPaste: after a failed sign-in, the paste stays in the box only when
+// nothing was spent (D386, the web's memKeepsPaste).
+func memKeepsPaste(reason string) bool {
+	switch reason {
+	case "bad_link", "old", "network", "space", "unsupported", "unreachable":
+		return true
+	}
+	return false
 }
 
 // memUnconnected is the agents Mem connects by itself (Codex, Claude Code)
@@ -121,7 +171,20 @@ func (a *App) memOnDevice(c *ui.Context, dv *protocol.DeviceView) {
 	m := dv.Mem
 	look := memRowLook(m)
 	health := memRowHealth(m) // D375
+	theirs := memRowTheirs(m) // D386
 	awake := dv.State == protocol.DeviceAwake
+	// D386: a paste that wasn't spent stays after a failure; a spent one (or a sign-in done) is cleared.
+	if (look == "failed" && !memKeepsPaste(m.Step.Reason)) || (m.Step == nil && m.State == "ready") {
+		if a.wm.link != nil && a.wm.link[dv.ID] != "" && a.wm.cleared[dv.ID] != stepKey(m) {
+			a.wm.link[dv.ID] = ""
+		}
+		if a.wm.cleared == nil {
+			a.wm.cleared = map[string]string{}
+		}
+		a.wm.cleared[dv.ID] = stepKey(m)
+	} else if a.wm.cleared != nil {
+		delete(a.wm.cleared, dv.ID)
+	}
 	name := a.deviceNameIn(dv)
 	if look == "installing" || look == "connecting" {
 		c.After(500e6)
@@ -140,7 +203,9 @@ func (a *App) memOnDevice(c *ui.Context, dv *protocol.DeviceView) {
 		word = a.L.T("wmem.connecting", name)
 	case "sign_in":
 		word = a.L.T("wmem.signin.line")
-		if health != "" {
+		if theirs == "old" {
+			word, ink = a.L.T("wmem.theirs.old", name), t.Failed.Ink
+		} else if health != "" {
 			word, ink = a.L.T("wmem.health."+health, name), t.Failed.Ink
 		}
 	case "failed":
@@ -165,6 +230,14 @@ func (a *App) memOnDevice(c *ui.Context, dv *protocol.DeviceView) {
 			switch {
 			case look == "absent" && m.Installable:
 				if awake && a.buttonFor(c, a.L.T("wmem.install"), "Nowledge Mem", btnPrimary, t.ControlSM, t.Surface) {
+					a.memSetupReq(dv, "install", "")
+				}
+			case theirs == "old" && look == "sign_in" && m.Installable:
+				if awake && a.buttonFor(c, a.L.T("wmem.theirs.install"), "Nowledge Mem", btnPrimary, t.ControlSM, t.Surface) {
+					a.memSetupReq(dv, "install", "")
+				}
+			case theirs == "old" && look == "failed" && m.Installable:
+				if awake && a.buttonFor(c, a.L.T("wmem.retry"), "Nowledge Mem", btnSecondary, t.ControlSM, t.Surface) {
 					a.memSetupReq(dv, "install", "")
 				}
 			case look == "failed" && m.State == "absent":
@@ -202,7 +275,21 @@ func (a *App) memOnDevice(c *ui.Context, dv *protocol.DeviceView) {
 		if health == "old" && !m.Ours {
 			a.infoText(c, a.L.T("wmem.health.old.how", name))
 		}
-		if awake && ((look == "sign_in" && health != "unreachable" && health != "old") || (look == "failed" && m.State == "sign_in")) {
+		if theirs != "" && look != "installing" && look != "connecting" {
+			if theirs == "old" && m.Installable {
+				a.infoText(c, a.L.T("wmem.theirs.why", name))
+			}
+			if theirs == "using" {
+				ui.Text(c, a.L.T("wmem.theirs.using", name)).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.4)
+			}
+			if cmd := theirUpdateCommand(m); cmd != "" {
+				ui.Text(c, a.L.T("wmem.theirs.cmd", name)).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.4)
+				ui.Text(c, cmd).Font(t.Mono).FontSize(t.XS).TextColor(t.Ink).Selectable()
+			} else {
+				ui.Text(c, a.L.T("wmem.theirs.guide")).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.4)
+			}
+		}
+		if awake && theirs != "old" && ((look == "sign_in" && health != "unreachable" && health != "old") || (look == "failed" && m.State == "sign_in")) {
 			a.memSignIn(c, dv)
 		}
 		if r := a.wm.answer; r != nil && r.Device == dv.ID {
@@ -246,8 +333,8 @@ func (a *App) memSignIn(c *ui.Context, dv *protocol.DeviceView) {
 			ui.TextArea(c.Key("wmem-link:"+dv.ID), &v).Lines(2, 4).Placeholder(a.L.T("wmem.signin.ph")).Label(a.L.T("wmem.signin.link")).
 				FontSize(t.SM).Padding(t.S2, t.S3).Radius(t.RadiusSM).Background(t.SurfaceSunken).Border(1, t.LineSoft).Grow(1).MinWidth(0)
 			if a.buttonFor(c, a.L.T("wmem.signin.go"), "Nowledge Mem", btnPrimary, t.ControlSM, t.Bg) && strings.TrimSpace(v) != "" {
+				// D386: kept until the step ends (memOnDevice clears a spent one).
 				a.memSetupReq(dv, "connect", strings.TrimSpace(v))
-				v = ""
 			}
 		})
 	})

@@ -12740,20 +12740,30 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 .ctx-ring.near .fill { stroke: var(--waiting-dot); }
 .ctx-ring .tick { stroke: var(--faint); stroke-width: 1.4; stroke-linecap: round; }
 @media (prefers-reduced-motion: reduce) { .ctx-ring .fill { transition: none; } }
-.ctx-pop:not(.as-sheet) {
-  position: absolute;
-  bottom: calc(100% + 12px);
-  right: -8px;
+/* D386: on every width a popover over the ring, placed by script (pop-place.ts) inside the screen
+   and its safe area; it scrolls inside when taller than the room. Hidden until placed. */
+.ctx-pop {
+  position: fixed;
+  left: 0;
+  top: 0;
+  visibility: hidden;
   z-index: 40;
-  width: min(340px, calc(100vw - 32px));
+  width: 340px;
+  max-width: calc(100vw - 24px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 14px 16px 12px;
   border-radius: var(--r-md);
   background: var(--surface);
   box-shadow: var(--floating), inset 0 0 0 1px var(--rim);
-  animation: info-in var(--t-fast) var(--ease);
+  animation: pop-rise var(--t-fast) var(--ease);
   text-align: left;
 }
-.ctx-pop.as-sheet { z-index: 60; text-align: left; }
+.ctx-pop[data-side="below"] { animation-name: info-in; }
+@keyframes pop-rise {
+  from { transform: translateY(4px); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .ctx-pop { animation: none; } }
 .ctx-pop:focus { outline: none; }
 .ctx-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
 .ctx-head .ttl { font-family: var(--head); font-size: var(--md); font-weight: 800; color: var(--ink); }
@@ -14458,14 +14468,17 @@ svg .wave.w2.on {
   .lend-pulse { animation: none; }
   .lend-here { animation: none; }
 }
-/* D354: the task's model and effort under its composer: quiet chips, a menu over each. */
+/* D386 (D354's two chips made one): the task's model and effort under its composer, one quiet chip
+   that reads as a phrase (the model in ink, the effort muted with a small level mark), and one clay
+   card over it: the effort big, a stepped control (a sunk groove, a dot per level, a raised thumb),
+   Back to default, the model as a line with ›, or the agent's models. Placed by pop-place.ts. */
 .composer-hint.tuned {
   flex-wrap: wrap;
   align-items: center;
   justify-content: flex-start;
   row-gap: 0;
   column-gap: var(--s3);
-  padding-left: 10px;
+  padding-left: 8px;
 }
 .composer-hint.tuned .k {
   margin-left: auto;
@@ -14474,7 +14487,7 @@ svg .wave.w2.on {
   display: inline-flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--s1);
+  gap: var(--s2);
   min-width: 0;
 }
 .ctune-m {
@@ -14485,86 +14498,308 @@ svg .wave.w2.on {
 .ctune-chip {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  min-height: 28px;
-  max-width: 220px;
-  padding: 0 var(--s2);
-  border-radius: var(--r-sm);
+  gap: 7px;
+  min-width: 0;
+  min-height: 30px;
+  max-width: 300px;
+  padding: 0 10px;
+  border-radius: 999px;
   font-size: var(--xs);
-  font-weight: 600;
-  color: var(--ink-muted);
+  line-height: 1.2;
   background: transparent;
   cursor: pointer;
-  transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
+  transition: background var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
 }
-.ctune-chip .w {
+.ctune-chip .m {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-.ctune-chip svg {
-  flex: none;
-}
-.ctune-chip:hover {
-  background: var(--surface-sunken);
+  font-weight: 650;
   color: var(--ink-soft);
+}
+.ctune-chip .e {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  font-weight: 500;
+  color: var(--ink-muted);
+  white-space: nowrap;
+}
+.ctune-chip .lvl rect {
+  fill: var(--faint);
+}
+.ctune-chip .lvl rect.on {
+  fill: var(--ink-muted);
+}
+.ctune-chip .caret {
+  flex: none;
+  color: var(--ink-muted);
+}
+@media (hover: hover), (any-hover: hover) {
+  .ctune-chip:hover {
+    background: var(--surface-sunken);
+  }
 }
 .ctune-chip.open {
   background: var(--surface);
-  color: var(--ink);
-  box-shadow: inset 0 0 0 1.5px var(--ink);
+  box-shadow: var(--knob), inset 0 0 0 1px var(--rim);
 }
-.ctune-menu {
-  position: absolute;
-  bottom: calc(100% + 6px);
+.ctune-chip.open .m {
+  color: var(--ink);
+}
+.ctune-pop {
+  position: fixed;
   left: 0;
-  z-index: 30;
-  min-width: 200px;
-  max-width: min(300px, calc(100vw - 32px));
-  max-height: min(360px, 50vh);
+  top: 0;
+  visibility: hidden;
+  z-index: 40;
+  width: 300px;
+  max-width: calc(100vw - 24px);
   overflow-y: auto;
-  padding: 6px;
+  overscroll-behavior: contain;
+  padding: 14px 16px 12px;
   border-radius: var(--r-md);
   background: var(--surface);
-  box-shadow: var(--floating), 0 0 0 1px var(--line-soft);
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+  box-shadow: var(--floating), inset 0 0 0 1px var(--rim);
+  animation: pop-rise var(--t-fast) var(--ease);
+  text-align: left;
+  color: var(--ink);
 }
-.ctune-menu > small {
-  padding: 6px 10px 4px;
+.ctune-pop:focus {
+  outline: none;
+}
+.ctune-pop[data-side="below"] {
+  animation-name: info-in;
+}
+.tp-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s2);
+}
+.tp-ttl {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
+  min-width: 0;
+}
+.tp-ttl > small:first-child {
+  flex-basis: 100%;
   font-size: var(--xs);
   font-weight: 700;
   color: var(--ink-muted);
 }
-.ctune-menu button {
+.tp-ttl .big {
+  font-family: var(--head);
+  font-size: var(--t20);
+  font-weight: 800;
+  line-height: 1.25;
+  color: var(--ink);
+}
+.tp-ttl .tag {
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: var(--xs);
+  font-weight: 600;
+  color: var(--ink-muted);
+  background: var(--surface-sunken);
+}
+.tp-reset,
+.tp-back {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  color: var(--ink-soft);
+  background: var(--surface-sunken);
+  transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
+}
+@media (hover: hover), (any-hover: hover) {
+  .tp-reset:hover,
+  .tp-back:hover {
+    color: var(--ink);
+    background: var(--line-soft);
+  }
+}
+.tp-steps {
+  --pad: 12px;
+  position: relative;
+  height: 36px;
+  margin: 12px 0 0;
+  border-radius: 18px;
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.tp-steps:focus-visible {
+  outline: none;
+}
+.tp-steps .groove {
+  position: absolute;
+  left: var(--pad);
+  right: var(--pad);
+  top: 50%;
+  height: 8px;
+  margin-top: -4px;
+  border-radius: 4px;
+  background: var(--surface-sunken);
+  box-shadow: inset 0 1px 1px var(--line), inset 0 0 0 1px var(--line);
+}
+.tp-steps .fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: calc(var(--f) * 100%);
+  border-radius: 4px;
+  background: var(--ink-soft);
+  transition: width 260ms var(--spring);
+}
+.tp-steps .dot {
+  position: absolute;
+  top: 50%;
+  left: calc(var(--k) * 100%);
+  width: 6px;
+  height: 6px;
+  margin: -3px 0 0 -3px;
+  border-radius: 50%;
+  background: var(--ink-muted);
+  opacity: 0.5;
+}
+.tp-steps .dot.in {
+  background: var(--surface);
+  opacity: 0.85;
+}
+/* The model's own default level: a short tick under its dot. */
+.tp-steps .dot.def::after {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 12px;
+  width: 2px;
+  height: 5px;
+  border-radius: 1px;
+  background: var(--faint);
+}
+.tp-steps .thumb {
+  position: absolute;
+  top: 50%;
+  left: calc(var(--pad) + (100% - 2 * var(--pad)) * var(--f));
+  width: 24px;
+  height: 24px;
+  margin: -12px 0 0 -12px;
+  border-radius: 50%;
+  background: var(--surface-raised);
+  box-shadow: var(--knob), inset 0 0 0 1.5px var(--ink-soft);
+  transition: left 260ms var(--spring), box-shadow var(--t-fast) var(--ease);
+}
+.tp-steps:focus-visible .thumb {
+  box-shadow: var(--knob), inset 0 0 0 1.5px var(--ink-soft), 0 0 0 3px var(--accent);
+}
+.tp-steps.none .thumb {
+  display: none;
+}
+.tp-ends {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s2);
+  margin-top: 6px;
+  padding: 0 2px;
+  font-size: var(--xs);
+  color: var(--ink-muted);
+}
+.tp-model {
   display: flex;
   align-items: center;
   gap: var(--s2);
-  min-height: 34px;
+  width: 100%;
+  min-height: 44px;
+  margin-top: 10px;
+  padding: 8px 2px 0;
+  border-top: 1px solid var(--line-soft);
+  text-align: left;
+  color: var(--ink-muted);
+}
+.tp-model small {
+  flex: none;
+  font-size: var(--xs);
+  font-weight: 700;
+}
+.tp-model .w {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: right;
+  font-size: var(--sm);
+  font-weight: 650;
+  color: var(--ink);
+}
+.tp-model svg {
+  flex: none;
+}
+@media (hover: hover), (any-hover: hover) {
+  .tp-model:hover .w {
+    text-decoration: underline;
+    text-decoration-color: var(--faint);
+    text-underline-offset: 3px;
+  }
+}
+.tp-list-head {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  margin-bottom: 6px;
+}
+.tp-list-head small {
+  font-size: var(--xs);
+  font-weight: 700;
+  color: var(--ink-muted);
+}
+.tp-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0 -8px;
+}
+.tp-list button {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  min-height: 36px;
   padding: 0 10px;
   border-radius: var(--r-xs);
   font-size: var(--sm);
   color: var(--ink);
   text-align: left;
 }
-.ctune-menu button .w {
+.tp-list button .w {
   flex: 1;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.ctune-menu button .tag {
-  font-size: var(--xs);
-  color: var(--ink-muted);
-}
-.ctune-menu button:hover,
-.ctune-menu button:focus-visible {
+.tp-list button:hover,
+.tp-list button:focus-visible {
   background: var(--surface-sunken);
 }
-.ctune-menu button.on {
+.tp-list button.on {
   font-weight: 700;
+}
+.tp-said {
+  margin: 8px 0 0;
+  font-size: var(--xs);
+  color: var(--ink-muted);
+  animation: ctune-said var(--t-fast) var(--ease);
 }
 .ctune-said {
   font-size: var(--xs);
@@ -14576,23 +14811,35 @@ svg .wave.w2.on {
     opacity: 0;
   }
 }
-/* A phone: 44pt targets; the chips wrap under the hint, never pushing Send. */
+/* A phone: 44pt targets; the chip wraps under the hint, never pushing Send. */
 @media (pointer: coarse) {
-  .ctune-chip {
+  .ctune-chip,
+  .tp-list button {
     min-height: 44px;
   }
-  .ctune-menu button {
-    min-height: 44px;
+  .tp-reset,
+  .tp-back {
+    width: 44px;
+    height: 44px;
+  }
+  .tp-steps {
+    height: 44px;
   }
 }
 @media (max-width: 480px) {
   .ctune-chip {
-    max-width: 180px;
+    max-width: calc(100vw - 48px);
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .ctune-said {
+  .ctune-said,
+  .tp-said,
+  .ctune-pop {
     animation: none;
+  }
+  .tp-steps .fill,
+  .tp-steps .thumb {
+    transition: none;
   }
 }
 /* D357: 你的待办 / Your to-dos on On hand: the board's cards and low cards, the app's mark where a

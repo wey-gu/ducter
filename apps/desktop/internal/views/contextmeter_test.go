@@ -99,6 +99,21 @@ func TestContextRingCard(t *testing.T) {
 			}
 		}
 		newTaskShot(t, tt, "context-card-"+string(lang))
+		// D386: at 1280×720 and at the narrowest window (760), the card stays inside it.
+		for _, w := range []int{1280, 760} {
+			tt.SetSize(w, 720)
+			tt.Frame()
+			tt.Frame()
+			card, ok := tt.Access(L.T("ctx.title"))
+			if !ok {
+				t.Fatalf("%s %d: no context card", lang, w)
+			}
+			b := card.Bounds
+			if b.X < 0 || b.Y < 0 || b.X+b.W > float32(w) || b.Y+b.H > 720 {
+				t.Fatalf("%s %d: the card leaves the window: %+v", lang, w, b)
+			}
+			composerTuneShot(t, tt, fmt.Sprintf("mac-ring-%d-%s", w, lang))
+		}
 		click(t, tt, L.T("ctx.compact"))
 		if s, ok := lastFrame[protocol.TaskSend](sent); !ok || s.Text != "/compact" || s.TaskID != "t_newtask" {
 			t.Fatalf("%s: Compact now sends the person's /compact: %+v", lang, s)

@@ -154,12 +154,14 @@ func (a *App) partnerName(c *ui.Context) {
 				ps.editing, ps.nameDraft, ps.focused = true, "", false
 			}
 		})
+		a.saidLine(c, "rename") // D404: a new name gets one line in the partner's voice
 		return
 	}
 	save := func() {
 		name := strings.TrimSpace(ps.nameDraft)
 		if name != "" && name != a.defaultName() {
 			a.SetSettings(protocol.SettingsPatch{Name: &name})
+			a.say("rename", a.L.T("said.rename", name))
 			if a.shownPartnerID() == protocol.DefaultPartner {
 				a.S.PersonaName = name // shown at once; the settings frame confirms it
 			}
@@ -503,6 +505,7 @@ func (a *App) accountsPanel(c *ui.Context) {
 	if sources {
 		a.sourceCards(c, list)
 	}
+	a.saidLine(c, "acct-stop") // D404: a source stopped is answered once, where it was
 	title, lede := a.L.T("acct.title"), a.L.T("acct.lede")
 	if sources {
 		title, lede = "", ""

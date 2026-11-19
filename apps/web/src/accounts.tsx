@@ -454,7 +454,7 @@ export function SourceCard({ c }: { c: ConnectionView }) {
           <DangerButton quiet label={t("card.stop", name)} onClick={() => setStopping(true)} />
         </GFoot>
       ) : (
-        <GConfirm ask={t("card.stop.ask")} keep={t("card.stop.keep")} go={t("card.stop.go")} about={name} onKeep={() => setStopping(false)} onGo={() => (setStopping(false), A.removeConnection(c.id))} />
+        <GConfirm ask={t("card.stop.ask")} keep={t("card.stop.keep")} go={t("card.stop.go")} about={name} onKeep={() => setStopping(false)} onGo={() => (setStopping(false), A.removeConnection(c.id), say("acct-stop", t("said.acct.stop", name)))} />
       )}
     </Group>
     <Said k={`watch:${c.id}`} />
@@ -478,6 +478,7 @@ export function SourceCards({ list, add }: { list: ConnectionView[]; add?: preac
         </section>
       )}
       {!sources.length && add}
+      <Said k="acct-stop" />
       <CallsSection list={list} />
     </>
   );

@@ -32,6 +32,8 @@ var zhSettings = Table{
 	"said.default":      "好，你没回的话，%s后我按默认做。",
 	"said.watch.on":     "好，%s 我自己留意着。",
 	"said.watch.off":    "好，%s 你问起来我再看。",
+	"said.acct.stop":    "好，%s 停了：它连着的账号我都不看了。想再用，重新连上就好。",
+	"said.rename":       "好，以后我就叫%s。",
 	"acct.ai.link.help": "Claude Code、Codex、pi 和 DeepSeek Harness 在「设备」里登录",
 
 	"settings.look.group":    "外观",
@@ -92,6 +94,8 @@ var enSettings = Table{
 	"said.default":             "Got it: if you don't answer, I'll go with the default after %s.",
 	"said.watch.on":            "Got it: I'll keep an eye on %s myself.",
 	"said.watch.off":           "Got it: I'll look at %s only when you ask.",
+	"said.acct.stop":           "Done: %s is off, and I won't read its accounts. Connect it again whenever you like.",
+	"said.rename":              "Got it: from now on I'm %s.",
 	"acct.ai.link.help":        "Sign in to Claude Code, Codex, pi and DeepSeek Harness on Devices",
 
 	"settings.look.group":    "Look",

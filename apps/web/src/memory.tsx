@@ -462,6 +462,7 @@ const FACE = { missing: "idle", install: "idle", installing: "working", sign_in:
  */
 export function MemSteps({ phase, b }: { phase: "install" | "installing" | "sign_in" | "signing_in"; b: BridgeView | undefined }) {
   const [link, setLink] = useState("");
+  const [tried, setTried] = useState(false);
   const home = homeOf(b);
   const installed = phase === "sign_in" || phase === "signing_in";
   const busyIn = phase === "installing";
@@ -483,7 +484,9 @@ export function MemSteps({ phase, b }: { phase: "install" | "installing" | "sign
               <small>{busyIn ? t("bridge.mem.installing", home) : b?.canRun ? t("bridge.mem.install", home) : t("bridge.mem.install.need", home)}</small>
               {b?.detail && !busyIn && <MemFailed detail={b.detail} kept={b.kept} install />}
               {!b?.canRun && !busyIn && <MemMore label={t("bridge.mem.how")} text={t("bridge.mem.install.need.how")} />}
-              {!busyIn && <Btn kind={b?.canRun ? "primary" : "secondary"} size="sm" label={b?.canRun ? t("bridge.mem.install.go") : t("bridge.retry")} about={home} onClick={() => A.installBridgeMem()} />}
+              {/* D404: a retry that meets the same missing tool says so, instead of the same words coming back. */}
+              {tried && !b?.canRun && !busyIn && <small class="mem-tried">{t("mem.retry.same")}</small>}
+              {!busyIn && <Btn kind={b?.canRun ? "primary" : "secondary"} size="sm" label={b?.canRun ? t("bridge.mem.install.go") : t("bridge.retry")} about={home} onClick={() => (setTried(!b?.canRun), A.installBridgeMem())} />}
             </>
           )}
         </span>
@@ -788,7 +791,7 @@ function PeersProblem({ b, name }: { b: BridgeView; name: string }) {
       </>
     );
   if (b.state === "no_space") return <GRow tile={<CoinsTile faded />} title={t("bridge.no_space")} />;
-  const note = b.state === "refused" ? t(`bridge.refused.${b.reason ?? "control_denied"}`, b.identity) : b.state === "unconfirmed" ? t("bridge.unconfirmed", b.identity) : t("bridge.failed", b.detail ?? "");
+  const note = b.state === "refused" ? t(`bridge.refused.${b.reason ?? "control_denied"}`, b.identity) : b.state === "unconfirmed" ? t("bridge.unconfirmed", b.identity) : failedLine(b.detail);
   const tryNewer = b.newer !== undefined;
   return (
     <GRow tile={<CoinsTile faded />} title={tryNewer ? `${note}\n${t("peers.mem.newer")}` : note}>
@@ -797,6 +800,10 @@ function PeersProblem({ b, name }: { b: BridgeView; name: string }) {
     </GRow>
   );
 }
+
+/** D404: the home's own words for a failed connect (bridge-link.ts), said in the person's language, never raw. */
+export const FAILED_DETAILS: Record<string, string> = { "Mem answered with another identity or place": "bridge.failed.identity", "nmem didn't start": "bridge.failed.nostart" };
+export const failedLine = (d?: string): string => (d && FAILED_DETAILS[d] ? t(FAILED_DETAILS[d]!) : t("bridge.failed", d ?? ""));
 
 /** Whether 和你的其他 agent 通信 has anything to show yet (D332: by who; J6). */
 export const peersPageShown = () => A.peersAsked || peersShown(A.settings?.peers, A.bridge, A.S.channel.some((e) => e.peer), ownsAgents(A.ownAgents, A.devices ?? []));

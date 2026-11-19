@@ -47,7 +47,13 @@ const codex: ListedModel[] = [
 // OOMOL's look-alike: the author's seven accounts, one he left out.
 const KEY = "demo_oomol_not_a_key";
 const app = (id: string, service: string, displayName: string, accountLabel: string) => ({ id, service, displayName, accountLabel, alias: null, authType: "oauth2", status: "active" });
-const oomol = fakeOpenConnector([{ id: "gmail.search_threads", operationType: "read", run: () => ({ threads: [] }) }], KEY, {
+// D404: each service answers what Ducter watches with (else every calendar and Slack row reads 读不了).
+const reads = [
+  { id: "gmail.search_threads", operationType: "read", run: () => ({ threads: [] }) },
+  { id: "googlecalendar.list_events", operationType: "read", run: () => ({ items: [] }) },
+  { id: "slack.list_direct_messages", operationType: "read", run: () => ({ messages: [] }) },
+];
+const oomol = fakeOpenConnector(reads, KEY, {
   path: "/v1/mcp",
   plain401: true,
   apps: [

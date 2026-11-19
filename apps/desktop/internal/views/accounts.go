@@ -736,6 +736,7 @@ func (a *App) connActions(c *ui.Context, cv protocol.ConnectionView, name string
 		if stop {
 			cs.stopping = ""
 			a.send(protocol.ConnectionRemove{T: "connection_remove", ID: cv.ID})
+			a.say("acct-stop", a.L.T("said.acct.stop", name)) // D404
 		}
 		return
 	}

@@ -113,6 +113,7 @@ func (a *App) wechatCard(c *ui.Context, v protocol.ChannelView) {
 			if forget {
 				s.forgetting = ""
 				a.send(protocol.ChannelOpReq{T: "channel_forget", Kind: "wechat"})
+				a.say("chat:wechat", a.L.T("said.chats.off", name)) // D404
 			}
 			return
 		}

@@ -39,6 +39,8 @@ type chatsState struct {
 	copied     bool
 	manifest   bool   // the manifest's View is open
 	forgetting string // D289: the app whose Disconnect asks in place
+	// was is each app's state as last drawn, so becoming linked is answered once (D404).
+	was map[string]string
 	// open: the apps whose setup the person opened with 设置 / Set up (D365): an
 	// app never connected rests as its one row until then.
 	open map[string]bool
@@ -83,12 +85,25 @@ func (a *App) chatsPanel(c *ui.Context) {
 	if f == nil {
 		ui.Text(c, a.L.T("chats.state.starting")).FontSize(t.MD).TextColor(t.InkMuted)
 	} else {
+		if a.chats.was == nil {
+			a.chats.was = map[string]string{}
+		}
 		for _, v := range f.Channels {
+			// D404: the moment an app becomes linked is answered once, never on opening the pane.
+			if prev, seen := a.chats.was[v.Kind]; seen && prev != "linked" && v.State == "linked" {
+				who := chatNames[v.Kind]
+				if v.Kind == "wechat" {
+					who = a.L.T("chats.wechat")
+				}
+				a.say("chat:"+v.Kind, a.L.T("said.chats.linked", who))
+			}
+			a.chats.was[v.Kind] = v.State
 			if v.Kind == "wechat" {
 				a.wechatCard(c, v) // D301 (wechat.go)
-				continue
+			} else {
+				a.chatCard(c, v, f.SlackManifest)
 			}
-			a.chatCard(c, v, f.SlackManifest)
+			a.saidLine(c, "chat:"+v.Kind)
 		}
 	}
 	a.imessageGroup(c)
@@ -323,6 +338,7 @@ func (a *App) chatCard(c *ui.Context, v protocol.ChannelView, manifest string) {
 			if forget {
 				a.chats.forgetting = ""
 				a.send(protocol.ChannelOpReq{T: "channel_forget", Kind: v.Kind})
+				a.say("chat:"+v.Kind, a.L.T("said.chats.off", name)) // D404
 			}
 			return
 		}
@@ -347,6 +363,7 @@ func (a *App) chatConnect(c *ui.Context, kind, manifest string) {
 						a.openLink(botFatherURL)
 					}
 				})
+				a.note(c, a.L.T("chats.tg.step1.have")) // D404: a bot made before keeps its key in BotFather
 			})
 			a.chatStep(c, 2, a.L.T("chats.tg.step2", a.personaName()), nil)
 			a.chatStep(c, 3, a.L.T("chats.tg.step3"), func() {
@@ -453,7 +470,11 @@ func (a *App) chatLink(c *ui.Context, v protocol.ChannelView) {
 			ui.Box(c).Width(40).Shrink(0)
 			ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(t.S2).Children(func() {
 				if v.Kind == "telegram" {
-					ui.Text(c, a.L.T("chats.tg.code")).FontSize(t.MD).LineHeight(a.leading(1.5))
+					key := "chats.tg.code" // "Or…" only beside the open button (D404)
+					if code.Link == "" {
+						key = "chats.tg.code.only"
+					}
+					ui.Text(c, a.L.T(key)).FontSize(t.MD).LineHeight(a.leading(1.5))
 					a.chatChip(c, "/start "+code.Code, t.MonoSM)
 				} else {
 					bot := a.personaName()

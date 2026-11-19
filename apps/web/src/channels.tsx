@@ -12,13 +12,13 @@
 // own WeChat and confirms on the phone, and that scan is the link (no code). Its group says plainly
 // what WeChat allows: it answers inside a day of their words, a few messages, no buttons.
 import type { ChannelKind, ChannelServerFrame, ChannelView } from "@ducter/protocol";
-import type { ComponentChildren } from "preact";
+import { Fragment, type ComponentChildren } from "preact";
 import { useEffect, useState } from "preact/hooks";
 import { A } from "./app.ts";
 import { BrandTile } from "./brand.tsx";
 import { Btn, DangerButton, LinkBtn } from "./controls.tsx";
 import { Qr } from "./phone.tsx";
-import { GConfirm } from "./set-grid.tsx";
+import { GConfirm, Said, say } from "./set-grid.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
@@ -27,6 +27,15 @@ type Result = Extract<ChannelServerFrame, { t: "channel_result" }>;
 
 /** What this page knows; the home's frames keep it current. */
 const S: { frame?: Frame; busy: Partial<Record<ChannelKind, boolean>>; bad: Partial<Record<ChannelKind, Result["reason"]>>; code: Partial<Record<ChannelKind, Result>>; open: Partial<Record<ChannelKind, boolean>> } = { busy: {}, bad: {}, code: {}, open: {} };
+
+/**
+ * D404: a chat app's state as last seen on this page, so the moment it becomes linked is answered once,
+ * in the partner's voice (the first connection is the moment that earns it), and never on opening the page.
+ */
+const was: Partial<Record<ChannelKind, ChannelView["state"]>> = {};
+export function chatLinkedNow(prev: ChannelView["state"] | undefined, next: ChannelView["state"]): boolean {
+  return prev !== undefined && prev !== "linked" && next === "linked";
+}
 
 /**
  * D365 (as D337's own number): an app never connected rests as its first row with 设置 / Set up and
@@ -50,6 +59,10 @@ A.onChannelFrame = (f) => {
     S.frame = f;
     // A linked account needs no code any more.
     for (const v of f.channels) if (v.state !== "unlinked") delete S.code[v.kind];
+    for (const v of f.channels) {
+      if (chatLinkedNow(was[v.kind], v.state)) say(`chat:${v.kind}`, t("said.chats.linked", nameOf(v.kind)));
+      was[v.kind] = v.state;
+    }
   } else {
     if (f.op === "connect") {
       S.busy[f.kind] = false;
@@ -76,7 +89,12 @@ export function ChatAppsSettings() {
     <>
       <p class="af-lede">{t("chats.lede", A.S.personaName)}</p>
       <p class="small lede-note">{t("chats.goes")}</p>
-      {f.channels.map((v) => (v.kind === "wechat" ? <WechatCard key={v.kind} v={v} /> : <ChannelCard key={v.kind} v={v} manifest={f.slackManifest} />))}
+      {f.channels.map((v) => (
+        <Fragment key={v.kind}>
+          {v.kind === "wechat" ? <WechatCard v={v} /> : <ChannelCard v={v} manifest={f.slackManifest} />}
+          <Said k={`chat:${v.kind}`} />
+        </Fragment>
+      ))}
       <IMessageCard frame={f} />
     </>
   );
@@ -97,7 +115,7 @@ export function IMessageCard(p: { frame: Frame }) {
   );
 }
 
-function stateLine(v: ChannelView): [string, string] {
+export function stateLine(v: ChannelView): [string, string] {
   if (v.state === "linked") return [t("chats.state.linked", botLine(v)), "done"];
   if (v.state === "cant_connect") {
     const r = v.reason ?? "network";
@@ -158,7 +176,7 @@ function Foot(p: { note: string; children?: ComponentChildren }) {
 function ForgetFoot(p: { kind: ChannelKind; name: string; note: string; label: string }) {
   const [asking, setAsking] = useState(false);
   if (asking)
-    return <GConfirm ask={t("chats.forget.ask", p.name)} keep={t("card.stop.keep")} go={p.label} about={p.name} onKeep={() => setAsking(false)} onGo={() => (setAsking(false), A.send({ t: "channel_forget", kind: p.kind }))} />;
+    return <GConfirm ask={t("chats.forget.ask", p.name)} keep={t("card.stop.keep")} go={p.label} about={p.name} onKeep={() => setAsking(false)} onGo={() => (setAsking(false), A.send({ t: "channel_forget", kind: p.kind }), say(`chat:${p.kind}`, t("said.chats.off", p.name)))} />;
   return (
     <Foot note={p.note}>
       <DangerButton label={p.label} about={p.name} quiet onClick={() => setAsking(true)} />
@@ -244,6 +262,7 @@ function Connect({ kind, manifest, who }: { kind: ChannelKind; manifest: string;
                 <code class="chat-chip">/newbot</code>
                 <LinkBtn kind="text" size="sm" href={BOTFATHER} label={t("chats.tg.botfather")} />
               </span>
+              <small class="chat-have">{t("chats.tg.step1.have")}</small>
             </Step>
             <Step n={2} text={t("chats.tg.step2", A.S.personaName)} />
             <Step n={3} text={t("chats.tg.step3")}>
@@ -297,7 +316,7 @@ function Link({ v }: { v: ChannelView }) {
       <span class="grow">
         {v.kind === "telegram" ? (
           <>
-            <p>{t("chats.tg.code")}</p>
+            <p>{t(c.link ? "chats.tg.code" : "chats.tg.code.only")}</p>
             <code class="chat-chip">/start {c.code}</code>
           </>
         ) : (

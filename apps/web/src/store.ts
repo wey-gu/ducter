@@ -151,6 +151,8 @@ export function doneTodayOf(tasks: Task[], now = Date.now()): number {
   return countDoneToday(tasks.map((t) => ({ attention: attention(t), at: [t.card?.updatedAt, t.events.at(-1)?.ts].filter(Boolean).sort().at(-1) })), now);
 }
 export const reasonOf = (t: Task) => t.state?.reason || t.card?.reason || "";
+/** D395: why it couldn't start where it was to work, and what fixes it (the latest state's, else the card's). */
+export const cantOf = (t: Task) => (t.state ? t.state.cant : t.card?.cant);
 export const placeOf = (t: Task): Place => t.open?.place ?? t.card?.place ?? { kind: "none" };
 /** The proof line counts the changes ("1 file changed"), except for a folder (D142): its own
  *  sentence says them, with Undo and Keep, and a count beside it would say it twice. */

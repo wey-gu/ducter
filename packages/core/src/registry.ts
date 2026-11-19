@@ -195,6 +195,9 @@ export function createRegistry(log: LogStore, clock: Clock = realClock, zone: ()
         c.attention = b.attention;
         c.residency = b.residency;
         c.reason = b.reason;
+        // D395: why it couldn't start, until it is started again.
+        if (b.cant) c.cant = b.cant;
+        else delete c.cant;
         c.updatedAt = e.ts;
         break;
       }
@@ -345,10 +348,11 @@ export function createRegistry(log: LogStore, clock: Clock = realClock, zone: ()
     setMarks(fn) {
       markOf = fn;
     },
-    setState(taskId: string, attention: Attention, residency: Residency, reason?: string) {
+    setState(taskId: string, attention: Attention, residency: Residency, reason?: string, cant?: import("@ducter/protocol").CantStart) {
       if (!cards.has(taskId)) throw new Error(`unknown task ${taskId}`);
       const body: Bodies["task_state"] = { taskId, attention, residency };
       if (reason) body.reason = reason;
+      if (cant) body.cant = cant;
       log.append({ stream: taskStream(taskId), origin: "system", kind: "task_state", body });
     },
   };

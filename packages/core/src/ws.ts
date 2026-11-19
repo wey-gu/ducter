@@ -985,7 +985,19 @@ export function createWsHandler(deps: WsDeps) {
               const u = await r.undrop(f.taskId);
               return result(u.ok, u.message);
             }
+            case "start_at":
+            case "clone_here":
             case "reopen": {
+              // D395: a task that couldn't start where it was to work: 再试一次 asks the computers
+              // again (it never repeats the same failure), 在 X 上做 starts on X's copy, 拉一份到这里
+              // clones it where it was; the place is re-resolved by core, then started there.
+              if (card.cant && core.places && r?.restartAt) {
+                const p = await core.places.replan(f.taskId, { action: f.action, ...(f.device ? { device: f.device } : {}) });
+                if (!p.ok) return result(false, p.message);
+                const s = await r.restartAt(f.taskId, p.place);
+                return result(s.ok, s.message);
+              }
+              if (f.action !== "reopen") return result(false, "That only applies to a task that couldn't start.");
               // Truthful state only: the runner resumes the session and the task goes back to work.
               if (!r?.reopen) return result(false, "Reopen isn't available.");
               const { delivered } = await r.reopen(f.taskId);
@@ -1555,7 +1567,12 @@ export function createWsHandler(deps: WsDeps) {
         const full = pick && ts ? await ts.item(pick.ref, pick.source).catch(() => undefined) : undefined;
         const srcBrief = pick ? briefOf(full ?? pick) : undefined;
         // D357: handed over from On hand (no place given): the repository's own folder when there is one.
-        const place = f.place ?? (pick?.kind === "github" && f.handed === true ? placeForRepo((await deps.newTask.options().catch(() => ({ places: [] }))).places, pick.where)?.place : undefined);
+        // D395: the one resolver task_open uses: the computer with its code (or a clone there first).
+        const handedTo = async () => {
+          const r = pick?.where ? await core.places?.preflight({ place: { kind: "none" }, remote: pick.where, texts: [pick.title ?? ""], userTexts: [] }).catch(() => undefined) : undefined;
+          return r?.ok && r.place.kind === "repo" ? r.place : placeForRepo((await deps.newTask!.options().catch(() => ({ places: [] }))).places, pick?.where)?.place;
+        };
+        const place = f.place ?? (pick?.kind === "github" && f.handed === true ? await handedTo() : undefined);
         // A resend (the client never saw its result): the same answer, nothing opened twice.
         const prior = id ? newTaskSeen.get(id) : undefined;
         const pending =

@@ -399,6 +399,8 @@ type TaskState struct {
 	Attention Attention `json:"attention"`
 	Residency Residency `json:"residency"`
 	Reason    string    `json:"reason,omitempty"`
+	// Cant (D395): why it couldn't start where it was to work.
+	Cant *CantStart `json:"cant,omitempty"`
 }
 
 type ToolCall struct {
@@ -920,6 +922,28 @@ type TaskCard struct {
 	// Source (D341): the outside to-do it is bound to, how it stands there
 	// and what Ducter wrote there.
 	Source *TaskSource `json:"source,omitempty"`
+	// Cant (D395): it couldn't start where it was to work: why, and what
+	// fixes it. Absent once it starts.
+	Cant *CantStart `json:"cant,omitempty"`
+}
+
+// CantStart (D395) is why a task couldn't start where it was to work (Why:
+// no_repo, no_folder, clone_failed), on which computer, what (the repository's
+// or folder's name), and the fixes core found: another computer's copy
+// (Elsewhere) and whether it can be cloned where it was (CloneHere).
+type CantStart struct {
+	Why       string         `json:"why"`
+	Computer  string         `json:"computer"`
+	What      string         `json:"what"`
+	Path      string         `json:"path,omitempty"`
+	Elsewhere *CantElsewhere `json:"elsewhere,omitempty"`
+	CloneHere bool           `json:"cloneHere,omitempty"`
+}
+
+// CantElsewhere is another computer that has the task's repository.
+type CantElsewhere struct {
+	Device string `json:"device"`
+	Name   string `json:"name"`
 }
 
 // HeldMsg is one message the person held for after this turn (D325): ID is
@@ -1149,11 +1173,14 @@ type TaskSend struct {
 type TaskAction struct {
 	T      string `json:"t"` // "task_action"
 	TaskID string `json:"taskId"`
-	Action string `json:"action"` // interrupt | drop | undrop | reopen | merge | open_pr | undo | keep
+	Action string `json:"action"` // interrupt | drop | undrop | reopen | merge | open_pr | undo | keep | start_at | clone_here (D395)
 	// undo (D142): Path puts back only that entry; Force undoes even though
 	// the folder changed after the task finished.
 	Path  string `json:"path,omitempty"`
 	Force bool   `json:"force,omitempty"`
+	// Device (D395, start_at): the computer whose copy a task that couldn't
+	// start starts on.
+	Device string `json:"device,omitempty"`
 }
 
 type Read struct {

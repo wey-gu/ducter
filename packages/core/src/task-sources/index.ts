@@ -163,7 +163,7 @@ export interface TaskSourcesDeps {
   /** D359: a repository's own review guide, when its folder is on this computer. */
   reviewGuide?: (repo: string) => Promise<string | undefined> | string | undefined;
   /** D385: handing several over (groups, places, computers, rules, opening and telling tasks). */
-  handover?: Pick<HandoverDeps, "persona" | "groups" | "places" | "computers" | "rules" | "addRule" | "open" | "tell">;
+  handover?: Pick<HandoverDeps, "persona" | "groups" | "places" | "computers" | "rules" | "addRule" | "open" | "tell" | "repoWhere">;
 }
 
 export interface ProposeResult {
@@ -196,6 +196,8 @@ export interface TaskSources {
   bind(taskId: string, item: SourceItemRef, by: Bodies["task_bound"]["by"]): void;
   /** The partner took this to-do in its turn: the next task it opens is bound to it. */
   stage(item: SourceItem, rule?: boolean): void;
+  /** D395: the to-do staged this turn (its repository says where the task works), while it is fresh. */
+  stagedItem(): SourceItem | undefined;
   /**
    * The task the partner just opened: bound to the to-do it took this turn; else to an open to-do
    * its brief names by ref or address (a take the partner skipped), if exactly one does.
@@ -425,7 +427,8 @@ export function createTaskSources(d: TaskSourcesDeps): TaskSources {
       const taken = new Set<string>();
       for (const e of d.log.read({ kinds: ["task_bound"], beforeSeq: d.log.head() + 1, limit: 2000 })) {
         const b = e.body as Bodies["task_bound"];
-        if (b.item?.source === source && b.by !== "rule" && !fromPile.has(b.taskId) && Date.parse(e.ts) >= since) taken.add(b.item.ref);
+        // D395: a take counts once its task finished well (never one that couldn't start or failed).
+        if (b.item?.source === source && b.by !== "rule" && !fromPile.has(b.taskId) && Date.parse(e.ts) >= since && d.tasks.get(b.taskId)?.attention === "done") taken.add(b.item.ref);
       }
       return taken.size;
     }
@@ -664,18 +667,20 @@ export function createTaskSources(d: TaskSourcesDeps): TaskSources {
       if (b.attention !== "done") return;
       const c = d.tasks.get(b.taskId);
       const src = c?.source;
+      // D395: "以后…直接接下？" only after a take that finished well, never beside a failure.
+      if (src && !fromPile.has(b.taskId) && boundBy(b.taskId) !== "rule") {
+        const s0 = byId(src.source);
+        if (s0) offerTrust(s0, "take", langOf(c), src);
+      }
       if (!src || src.kind !== "obsidian" || src.wrote?.includes("tick")) return;
       const s = byId(src.source);
       if (s?.whenDone !== "tick") return;
       void write(src, "tick", { by: "rule", taskId: b.taskId });
     }
-    if (e.kind === "task_bound") {
-      const b = e.body as Bodies["task_bound"];
-      if (!b.item || b.by === "rule") return;
-      const s = byId(b.item.source);
-      if (s && !fromPile.has(b.taskId)) offerTrust(s, "take", langOf(d.tasks.get(b.taskId)), b.item);
-    }
   });
+  /** Who bound a task to its to-do (the partner, the person, or the standing go). */
+  const boundBy = (taskId: string): Bodies["task_bound"]["by"] | undefined =>
+    (d.log.read({ stream: `task:${taskId}`, kinds: ["task_bound"], limit: 20 }).at(-1)?.body as Bodies["task_bound"] | undefined)?.by;
 
   async function onAnswer(card: Bodies["decision"], r: Bodies["decision_resolved"]) {
     const src = card.src as SourceAsk;
@@ -904,6 +909,9 @@ export function createTaskSources(d: TaskSourcesDeps): TaskSources {
     },
     stage(item, rule) {
       staged = { item, at: now(), ...(rule ? { rule: true } : {}) };
+    },
+    stagedItem() {
+      return staged && now() - staged.at <= 10 * 60_000 ? staged.item : undefined;
     },
     bindStaged(taskId, texts = []) {
       if (!staged || now() - staged.at > 10 * 60_000) {

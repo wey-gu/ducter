@@ -19,6 +19,7 @@ import { readShown } from "./shown.ts";
 import { listFolders, projectRepos, realFs, type FsLike } from "@ducter/protocol/src/repos.ts";
 import { ducterFolder } from "@ducter/protocol/src/ducter-folder.ts";
 import { cloneRepo, type GitSpawn } from "@ducter/protocol/src/clone.ts";
+import { answerClones } from "@ducter/protocol/src/clones.ts";
 import { newProjectFolder } from "@ducter/protocol/src/new-folder.ts";
 import { createGitLogin, type GhRun } from "@ducter/protocol/src/git-login.ts";
 
@@ -245,6 +246,13 @@ export function createWorkerHost(o: WorkerHostOptions): WorkerHost {
     repos: async () => {
       const folder = ducterFolder({ home: o.home ?? homedir(), dataDir: o.dataDir }).path;
       return { folder, repos: projectRepos(join(folder, "projects"), o.fs ?? realFs) };
+    },
+    // D395: which copies of one repository this computer has (its origin must be that repository;
+    // nothing else on the disk is sent), and with probe, whether its git can read it. Read-only.
+    clones: async (a: { remote?: unknown; probe?: unknown }) => {
+      const home = o.home ?? homedir();
+      const folder = ducterFolder({ home, dataDir: o.dataDir }).path;
+      return answerClones(a, { home, ducterProjects: join(folder, "projects"), ...(o.fs ? { fs: o.fs } : {}), ...(o.gitSpawn ? { spawn: o.gitSpawn } : {}) });
     },
     // D204: 从 Git 地址加… / Add from a Git address…: clone into this computer's Ducter folder with
     // its own git sign-in. Only the address comes from the home, checked here again (clone.ts).

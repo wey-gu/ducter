@@ -63,7 +63,9 @@ function fakeAsk(calls: { finds: number }): Ask {
   };
 }
 
-function boot() {
+/** D395: the author's computers: a server home with no clone, a Mac worker that has it (or none, and the Mac can read it). */
+type Where = { macHas?: string; macReads?: boolean };
+function boot(where?: Where) {
   const t = tempDir();
   const gh = fakeGh(issues(), { login: "lin-dev" });
   const calls = { finds: 0 };
@@ -75,14 +77,25 @@ function boot() {
     batchMs: 5,
     clock: { now: () => clock, setTimeout: (f: () => void, ms: number) => setTimeout(f, ms), clearTimeout: (h: unknown) => clearTimeout(h as ReturnType<typeof setTimeout>) } as never,
     // Two computers: the home and haswell (a worker), each with acme/mem checked out.
-    newTaskComputers: {
-      nameOf: (dev: string) => (dev === "w-haswell" ? "haswell" : undefined),
-      homeName: () => "mac-mini",
-      workers: () => [{ id: "w-haswell", name: "haswell", online: true }],
-      folderInfo: async () => "offline",
-      repos: async () => ({ folder: "/home/lin/ducter", repos: [{ path: "/home/lin/mem", name: "mem", remote: "github.com/acme/mem", touchedAt: "2026-11-18T00:00:00Z" }] }),
-    } as never,
-    homeRepos: () => ({ folder: "/Users/lin/ducter", repos: [{ path: "/Users/lin/dev/mem", name: "mem", remote: "github.com/acme/mem", touchedAt: "2026-11-18T00:00:00Z" }] }),
+    newTaskComputers: where
+      ? ({
+          nameOf: (dev: string) => (dev === "w-mac" ? "MacBook" : undefined),
+          homeName: () => "Hetzner Server",
+          workers: () => [{ id: "w-mac", name: "MacBook", online: true }],
+          folderInfo: async () => "offline",
+          repos: async () => ({ folder: "/Users/lin/ducter", repos: [] }),
+          clones: async (_dev: string, remote: string, probe: boolean) =>
+            where.macHas ? { clones: [{ path: where.macHas, name: "mem", remote: "github.com/" + remote, touchedAt: "2026-11-18T00:00:00Z" }] } : probe ? { clones: [], canRead: !!where.macReads } : { clones: [] },
+        } as never)
+      : ({
+          nameOf: (dev: string) => (dev === "w-haswell" ? "haswell" : undefined),
+          homeName: () => "mac-mini",
+          workers: () => [{ id: "w-haswell", name: "haswell", online: true }],
+          folderInfo: async () => "offline",
+          repos: async () => ({ folder: "/home/lin/ducter", repos: [{ path: "/home/lin/mem", name: "mem", remote: "github.com/acme/mem", touchedAt: "2026-11-18T00:00:00Z" }] }),
+        } as never),
+    homeRepos: () => (where ? { folder: "/root/ducter", repos: [] } : { folder: "/Users/lin/ducter", repos: [{ path: "/Users/lin/dev/mem", name: "mem", remote: "github.com/acme/mem", touchedAt: "2026-11-18T00:00:00Z" }] }),
+    ...(where ? { platform: "linux", homeClones: async () => ({ clones: [], canRead: false }) } : {}),
     taskSources: { ghRun: gh.run, ghEnv: {}, home: join(t.dir, "home"), pollMs: 3_600_000, boundMs: 0, quietMs: 0, today: () => "2026-11-19", now: () => clock, ask: fakeAsk(calls) },
   });
   stops.push(t.cleanup, () => core.stop());
@@ -372,4 +385,27 @@ test("adding later: into a live group still planning, the to-do goes to the plan
   expect(add.ok).toBe(true);
   expect(b.told.at(-1)![0]).toBe("t1");
   expect(b.core.taskGroups.get(r.groupId!)!.hand!.items.length).toBe(5);
+});
+
+// D395 (the author on 0.0.90): the sheet's 在哪儿做 for acme/mem defaulted to the server home with
+// no clone. The sheet and the tasks it opens use the one resolver task_open uses.
+test("D395: the sheet's Where is the computer with the clone, never a server home without one; the task opens in that clone", async () => {
+  const b = boot({ macHas: "/Users/lin/dev/mem" });
+  await sorted(b);
+  const h = await b.ho.how({ refs: ["acme/mem#398", "acme/mem#412"] });
+  expect(h.where).toMatchObject({ device: "w-mac", name: "MacBook", why: "repo", hasRepo: true });
+  expect(h.wheres.find((w) => w.device === "local")?.hasRepo).toBeFalsy();
+  const r = await b.ho.hand({ refs: ["acme/mem#398"] });
+  expect(r).toMatchObject({ ok: true, handed: 1 });
+  expect(b.opened[0]!.place).toMatchObject({ kind: "repo", device: "w-mac", repoPath: "/Users/lin/dev/mem" });
+});
+
+test("D395: no computer has it: the sheet's Where says it is cloned on the computer that can read it, and the task clones it there first", async () => {
+  const b = boot({ macReads: true });
+  await sorted(b);
+  const h = await b.ho.how({ refs: ["acme/mem#398"] });
+  expect(h.where).toMatchObject({ device: "w-mac", name: "MacBook", clone: true });
+  expect(h.where.hasRepo).toBeFalsy();
+  await b.ho.hand({ refs: ["acme/mem#398"] });
+  expect(b.opened[0]!.place).toMatchObject({ kind: "repo", device: "w-mac", clone: "acme/mem" });
 });

@@ -1,10 +1,10 @@
 import { randomBytes, randomUUID } from "node:crypto";
-import { HARNESS_IDS, HARNESSES as HARNESS_INFO, harnessName, isImage, kindWords, sizeWords, type MediaRef, type FileOpenError, type Attention, type Bodies, type BranchChanges, type Delivery, type EvidenceRef, type FolderChanges, type FolderSummary, type HeldMsg, type UndoConfirm, type LogEvent, type Place, type Question, type Residency, type TaskCard, type TaskNeeds, type WhereAsk } from "@ducter/protocol";
+import { HARNESS_IDS, HARNESSES as HARNESS_INFO, harnessName, isImage, kindWords, sizeWords, type MediaRef, type FileOpenError, type Attention, type Bodies, type BranchChanges, type CantStart, type Delivery, type EvidenceRef, type FolderChanges, type FolderSummary, type HeldMsg, type UndoConfirm, type LogEvent, type Place, type Question, type Residency, type TaskCard, type TaskNeeds, type WhereAsk } from "@ducter/protocol";
 import type { CoreApi, HarnessEvent, HarnessPort, HarnessSession, Runner, SendFile, SendImage, SessionSpec } from "@ducter/protocol/src/internal.ts";
 import { ADOPTED, outsideOver, NUDGE, PRECOMPACT_NOTE, REOPENED, RESUME_AFTER_RESTART, SAVE_BEFORE_COMPACT, afterCompaction, briefTurn, knownTurn, othersTurn, OTHERS_MAX, handedBack, handedOver, kickoff, movedOver, noCopyAnswer, seedThen, startedAfresh, freshRound, taskBrief, type CarryOver } from "./brief.ts";
 import { resolveModel, resolveWindows, saveBeforeAt } from "@ducter/protocol/src/harness-facts.ts";
 import { createOarHarnessPort } from "./oar.ts";
-import { cwdOf, planPlace, provisionPlace, type ResolvedPlace } from "./places.ts";
+import { cwdOf, placeProblem, planPlace, provisionPlace, type ResolvedPlace } from "./places.ts";
 import { browserSidecar, codexComputerBrief, computerUseGuard, type BrowserGuardHit, type BrowserOptions, type BrowserSidecar, type BrowserTool, type SidecarInput } from "./browser.ts";
 import { checkEvidence } from "./evidence.ts";
 import { PREVIEW_MAX, preview } from "./normalize.ts";
@@ -1849,12 +1849,28 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       }
     } catch (err) {
       if (isOffline(err)) return deviceLost(t, true);
-      const reason = preview(err instanceof Error ? err.message : String(err), 500);
-      logEvent(t, { role: "system", from: "runner", text: `failed to start: ${reason}` });
-      setState(t, "failed", "archived", reason);
+      await startFailed(t, err);
     }
   }
 
+
+  /**
+   * A task that couldn't start. D395: when its place is the cause (no repository or folder there,
+   * a clone that failed), core says why in the person's words and finds the fixes (another
+   * computer's copy, a clone here), so the card shows the cause and what to tap, never a bare path.
+   */
+  async function startFailed(t: TaskRt, err: unknown): Promise<void> {
+    const reason = preview(err instanceof Error ? err.message : String(err), 500) ?? "";
+    const problem = placeProblem(reason);
+    const device = t.ops.device?.id ?? "local";
+    const cant = problem ? await core.places?.cantStart(t.id, { ...problem, device }).catch(() => undefined) : undefined;
+    const { line, ...card } = cant ?? { line: undefined };
+    logEvent(t, { role: "system", from: "runner", text: `failed to start: ${reason}`, ...(cant ? { raw: { cant: card } } : {}) });
+    if (t.dropped) return;
+    t.attention = "failed";
+    t.residency = "archived";
+    core.tasks.setState(t.id, "failed", "archived", line ?? reason, cant ? (card as CantStart) : undefined);
+  }
 
   /** Provision the place, start the session, and send the first turn (the brief, once written). */
   async function launch(t: TaskRt, c: StartCtx, resolved: ResolvedPlace): Promise<void> {
@@ -1901,9 +1917,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       await sendTurn(t, first, "runner", false, media?.length ? media : undefined);
     } catch (err) {
       if (isOffline(err)) return deviceLost(t, true);
-      const reason = preview(err instanceof Error ? err.message : String(err), 500);
-      logEvent(t, { role: "system", from: "runner", text: `failed to start: ${reason}` });
-      setState(t, "failed", "archived", reason);
+      await startFailed(t, err);
     }
   }
 
@@ -1938,9 +1952,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
         setState(t, "blocked", "offline", unreachableReason(t.ops.device?.name ?? ""));
         return waitThere(t, c);
       }
-      const reason = preview(err instanceof Error ? err.message : String(err), 500);
-      logEvent(t, { role: "system", from: "runner", text: `failed to start: ${reason}` });
-      return setState(t, "failed", "archived", reason);
+      return startFailed(t, err);
     }
     // Planned there: the place as that computer resolved it (a worktree, a branch).
     const body = { ...c.body, place: resolved.place, harness: t.base.harness, ...(t.base.model ? { model: t.base.model } : {}) };
@@ -2290,6 +2302,35 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
         throw err;
       }
       return { delivered: "prompted" as const };
+    },
+
+    // D395: a task that couldn't start (no session yet) starts in another place: another
+    // computer's copy, or a clone, as core re-resolved it. Its brief and agent stay.
+    async restartAt(taskId, place) {
+      const t = get(taskId);
+      await t.started.catch(() => {});
+      if (t.session || t.sessionId) return { ok: false, message: "It has started already; move it to another computer instead." };
+      const ops = opsFor(place);
+      if (ops.device && !ops.device.online()) return { ok: false, message: `${ops.device.name} can't be reached right now.` };
+      const opened = core.log.read({ stream: stream(taskId), kinds: ["task_open"], limit: 50 }).at(-1)?.body as Bodies["task_open"] | undefined;
+      if (!opened) return { ok: false, message: "This task's brief isn't in the Log." };
+      let resolved: ResolvedPlace;
+      try {
+        resolved = await ops.plan(place, taskId, t.card.title);
+      } catch (err) {
+        return { ok: false, message: (err as Error).message };
+      }
+      t.ops = ops;
+      t.dropped = false;
+      const body: Bodies["task_open"] = { ...opened, place: resolved.place, harness: t.base.harness, ...(t.base.model ? { model: t.base.model } : {}) };
+      core.log.append({ persona: t.persona, stream: stream(taskId), origin: "system", kind: "task_open", body });
+      t.card = { ...t.card, place: resolved.place };
+      t.base = { ...specFor(taskId, body, resolved.cwd, true), harness: t.base.harness, ...(t.base.model ? { model: t.base.model } : {}), ...(t.base.effort ? { effort: t.base.effort } : {}) };
+      t.spec = withBrowser(t.base, t.sidecar, partnerNameOf(t.persona));
+      logEvent(t, { role: "system", from: "runner", text: `starting again on ${ops.device?.name ?? "this computer"}`, raw: { restarted: { device: ops.device?.id ?? "local", ...(resolved.clone ? { clone: true } : {}) } } });
+      setState(t, "queued", "provisioning");
+      t.started = launch(t, { body, later: false, briefIn: body.brief, title: t.card.title, persona: t.persona, partnerName: partnerNameOf(t.persona) }, resolved);
+      return { ok: true };
     },
 
     async moveTask(taskId, to, harness, model) {

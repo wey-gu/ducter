@@ -148,6 +148,10 @@ export interface Expect {
   saidAsk?: boolean;
   /** D372: some opened task is of this kind of work (said, or read from its needs and place). */
   workKind?: "code" | "errand" | "writing" | "research" | "other";
+  /** D395: some opened task's place is on this computer (its name, "local" for the home) and matches these fields. */
+  openedPlace?: { computer?: string; repoPath?: string; clone?: string };
+  /** D395: some opened task runs at this effort (read from the person's words). */
+  effort?: string;
   /** Some opened task's place has this kind. */
   placeKind?: "repo" | "folder" | "browser" | "none";
   /** Partner tools that must be called (by name), each with these args (a RegExp matches a string arg). */
@@ -276,6 +280,14 @@ export interface Scenario {
    * task_switch's move to one is recorded, never made.
    */
   computers?: { name: string; web: "chrome" | "ducter"; harnesses: string[] }[];
+  /**
+   * D395: which computers have a clone of which repository (by computer name, "local" for the
+   * home: its paths), and which can read a repository they don't have (canRead). Absent: every
+   * place given is taken as there, and a repository named by its remote is cloned on the home.
+   */
+  clones?: { have: Record<string, string[]>; canRead?: string[] };
+  /** D395: more GitHub issues assigned to the user, beside the usual three. */
+  todoIssues?: { repo: string; number: number; title: string; body?: string; labels?: string[]; updated?: string }[];
   /**
    * D376: the person's own sessions on the home, written in their agents' record shapes into a
    * scratch home (never this machine's ~/.claude or ~/.codex). folder: under that home.
@@ -2375,6 +2387,34 @@ export const scenarios: Scenario[] = [
     steps: [{ todosNew: { refs: ["wey-gu/ducter#9"] } }],
     expect: { opens: 0, msgs: [1, 1], maxChars: 160, notCalled: ["task_open"], noTodoCard: true },
     rubric: "A look at GitHub found one issue newly assigned to the user (wey-gu/ducter#9, a docs typo). It offers it in one short Chinese line (naming #9 and what it is) and asks whether to take it. It starts nothing and opens no task.",
+  },
+  // D395 (hel, 2026-11-19): the author's first real hand-off. A to-do on nowledge-co/mem, whose
+  // code is only on the MacBook (the home is a server with no clone); "仔细" in his words.
+  {
+    id: "todos-first-take-zh",
+    category: "todos",
+    lang: "zh",
+    todos: true,
+    todoIssues: [{ repo: "nowledge-co/mem", number: 10559, title: "Improve general setting page", body: "The general settings page has grown: group the options, fix the spacing, and make it clear when a change is saved.", labels: ["enhancement"], updated: "2026-11-19T07:00:00Z" }],
+    computers: [{ name: "MacBook", web: "chrome", harnesses: ["claude-code", "codex"] }],
+    clones: { have: { MacBook: ["/Users/wey/dev/mem"] } },
+    seed: [{ user: "GitHub 上有新的吗" }, { ai: "有一个新的：nowledge-co/mem#10559，Improve general setting page。要接吗？" }],
+    steps: [{ user: "10559 帮我用 codex astra 仔细做一下" }],
+    expect: { opens: 1, ackFirst: true, bound: "nowledge-co/mem#10559", openedPlace: { computer: "MacBook", repoPath: "/Users/wey/dev/mem" }, effort: "high", harness: "codex", briefRequire: [/10559/], noTodoCard: true, forbid: [/直接接下|没能开始|not a git/] },
+    rubric: "A GitHub issue (nowledge-co/mem#10559) was offered; the user says to have Codex (its astra model) do it carefully. It takes it and opens one task with Codex for it, its brief carrying the issue and the user's words. One short Chinese ack before the task; it does not claim where the code is or guess a folder in its words, does not ask anything, and does not ask about taking such issues without asking.",
+  },
+  {
+    id: "todos-take-clone-zh",
+    category: "todos",
+    lang: "zh",
+    todos: true,
+    todoIssues: [{ repo: "nowledge-co/mem", number: 10559, title: "Improve general setting page", body: "The general settings page has grown: group the options, fix the spacing, and make it clear when a change is saved.", labels: ["enhancement"], updated: "2026-11-19T07:00:00Z" }],
+    computers: [{ name: "MacBook", web: "chrome", harnesses: ["claude-code", "codex"] }],
+    clones: { have: {}, canRead: ["MacBook"] },
+    seed: [{ user: "GitHub 上有新的吗" }, { ai: "有一个新的：nowledge-co/mem#10559，Improve general setting page。要接吗？" }],
+    steps: [{ user: "10559 接下吧" }],
+    expect: { opens: 1, ackFirst: true, bound: "nowledge-co/mem#10559", openedPlace: { computer: "MacBook", clone: "nowledge-co/mem" }, require: [/拉一份/], noTodoCard: true, forbid: [/没能开始|not a git/] },
+    rubric: "A GitHub issue (nowledge-co/mem#10559) was offered and the user says to take it. No computer has its code yet, so Ducter clones it on the MacBook first and says so in one line of its own. The partner takes the issue and opens one task for it with one short Chinese ack; it does not repeat the clone line, guess a folder, or ask anything.",
   },
   // D359: the pile, sorted and handed over from the conversation.
   {

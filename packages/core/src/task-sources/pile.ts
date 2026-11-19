@@ -142,6 +142,7 @@ const W = {
     closeGo: "关掉",
     closeHold: "先不关",
     roundQ: "{n} 个 PR 的评审写好了，发到 GitHub？",
+    roundQ1: "1 个 PR 的评审写好了，发到 GitHub？",
     roundGo: "发到 GitHub",
     roundHold: "先不发",
     reviewQ: "在 {where}{label} 下发出这 {n} 条 review 评论？",
@@ -865,7 +866,7 @@ export function createPile(d: PileDeps): Pile {
         const n = items.length;
         const body: Bodies["decision"] = {
           decisionId: newId(),
-          question: n === 1 && lang === "en" ? W.en.roundQ1 : fill(w.roundQ, { n }),
+          question: n === 1 ? w.roundQ1 : fill(w.roundQ, { n }),
           goLabel: w.roundGo,
           holdLabel: w.roundHold,
           defaultOption: "hold",

@@ -409,6 +409,10 @@ func (a *App) outcome(c *ui.Context, task *store.Task) {
 			a.proofLine(c, task, evs, false)
 		}
 		a.sentLine(c, task)
+		if k := task.Cant(); task.Attention() == protocol.Failed && k != nil {
+			a.cantStart(c, task, k)
+			return
+		}
 		if task.Attention() == protocol.Failed {
 			// Try again, or tell it what to do instead: the primary
 			// opens the task's composer (D76).
@@ -423,6 +427,33 @@ func (a *App) outcome(c *ui.Context, task *store.Task) {
 			return
 		}
 		a.resultActions(c, task)
+	})
+}
+
+// cantStart (D395): a task that couldn't start where it was to work says
+// why in plain words (never a bare path) and offers what fixes it: 在 X 上做
+// (its copy there), 拉一份到这里 (clone it where it was); 换谁来做 stays in
+// the head's meta line. With no fix found, 再试一次 asks the computers again
+// instead of repeating.
+func (a *App) cantStart(c *ui.Context, task *store.Task, k *protocol.CantStart) {
+	t := a.T
+	ui.Text(c.Key("cant-line"), a.L.T("cant."+k.Why, k.Computer, k.What)).FontSize(t.MD).LineHeight(1.5).TextColor(t.Ink).MaxWidth(readMeasure)
+	ui.Row(c.Key("cant-btns")).Gap(t.S3).Wrap().AlignItems(ui.Center).Padding(t.S2, 0, 0, 0).Children(func() {
+		if k.Elsewhere != nil && a.buttonFor(c, a.L.T("cant.on", k.Elsewhere.Name), task.Title(), btnPrimary, t.ControlMD, t.Bg) {
+			a.CantAction(task.ID, "start_at", k.Elsewhere.Device)
+		}
+		if k.CloneHere {
+			kind := btnPrimary
+			if k.Elsewhere != nil {
+				kind = btnSecondary
+			}
+			if a.buttonFor(c, a.L.T("cant.clone_here"), task.Title(), kind, t.ControlMD, t.Bg) {
+				a.CantAction(task.ID, "clone_here", "")
+			}
+		}
+		if k.Elsewhere == nil && !k.CloneHere && a.buttonFor(c, a.L.T("task.action.retry"), task.Title(), btnPrimary, t.ControlMD, t.Bg) {
+			a.CantAction(task.ID, "reopen", "")
+		}
 	})
 }
 

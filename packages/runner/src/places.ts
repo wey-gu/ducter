@@ -11,6 +11,7 @@ import { basename, join, resolve } from "node:path";
 import type { Place } from "@ducter/protocol";
 import { gitEnv } from "@ducter/protocol/src/tool-env.ts";
 import { ducterDataRefusal, ducterFolder, isDucterData, markDucterFolder } from "@ducter/protocol/src/ducter-folder.ts";
+import { cloneRepo, cloneTarget } from "@ducter/protocol/src/clone.ts";
 
 export function expandHome(p: string): string {
   if (p === "~") return homedir();
@@ -65,6 +66,34 @@ export interface ResolvedPlace {
   fetch?: boolean;
   /** D204: the Ducter folder the new worktree goes in (made and marked when it is provisioned). */
   folder?: string;
+  /** D395: the repository is cloned into repoPath first (no computer had it). */
+  clone?: { address: string; dataDir: string };
+}
+
+/**
+ * D395: a start that failed because of its place, read from its message (a worker's error comes
+ * back as its words alone): no repository there, no folder, or a clone that failed.
+ */
+export function placeProblem(message: string): { why: "no_repo" | "no_folder" | "clone_failed"; path: string } | undefined {
+  const m = /^(?:Error: )?not a git repository: (.+)$/m.exec(message);
+  if (m) return { why: "no_repo", path: m[1]!.trim() };
+  const f = /^(?:Error: )?folder does not exist: (.+)$/m.exec(message);
+  if (f) return { why: "no_folder", path: f[1]!.trim() };
+  const c = /^(?:Error: )?couldn't clone ([^\s:]+)/m.exec(message) ?? /^(?:Error: )?cloned (\S+) into/m.exec(message);
+  if (c) return { why: "clone_failed", path: c[1]!.trim() };
+  return undefined;
+}
+
+/** D395: a place that can't be used as it is: the reason in a word, for the task's card. */
+export class PlaceError extends Error {
+  override name = "PlaceError";
+  constructor(
+    readonly why: "no_repo" | "no_folder" | "clone_failed",
+    readonly path: string,
+    message: string,
+  ) {
+    super(message);
+  }
 }
 
 /** D207: a place in Ducter's own data folder, refused before the task exists. */
@@ -87,7 +116,9 @@ export async function planPlace(place: Place | undefined, taskId: string, title:
       return { place: { ...p, path }, cwd: path };
     }
     case "repo": {
-      const repoPath = resolve(expandHome(p.repoPath));
+      // D395: cloned here first: the folder the clone makes (or this computer's copy already there).
+      const target = p.clone && !existsSync(resolve(expandHome(p.repoPath))) ? cloneTarget(p.clone, { dataDir }) : undefined;
+      const repoPath = target ?? resolve(expandHome(p.repoPath));
       if (isDucterData(repoPath, dataDir)) throw new DucterDataError(repoPath);
       // Whether Open draft PR can work at all (fresh-user QA: offered on a repo with no origin).
       const hasRemote = existsSync(repoPath) ? { hasRemote: (await git(repoPath, ["remote", "get-url", "origin"])).ok } : {};
@@ -108,7 +139,7 @@ export async function planPlace(place: Place | undefined, taskId: string, title:
         const head = await git(repoPath, ["rev-parse", "--abbrev-ref", "HEAD"]);
         baseBranch = head.ok && head.out !== "HEAD" ? head.out : undefined;
       }
-      return { place: { ...p, repoPath, worktree, branch, baseBranch, ...hasRemote }, cwd: worktree, folder };
+      return { place: { ...p, repoPath, worktree, branch, baseBranch, ...hasRemote }, cwd: worktree, folder, ...(p.clone && !existsSync(repoPath) ? { clone: { address: p.clone, dataDir } } : {}) };
     }
     case "browser":
       // The browser itself is a sidecar (browser.ts); the task also gets a scratch dir.
@@ -176,13 +207,19 @@ export async function provisionPlace(r: ResolvedPlace): Promise<void> {
     return;
   }
   if (p.kind === "folder") {
-    if (!existsSync(r.cwd)) throw new Error(`folder does not exist: ${r.cwd}`);
+    if (!existsSync(r.cwd)) throw new PlaceError("no_folder", r.cwd, `folder does not exist: ${r.cwd}`);
     return;
   }
   if (p.kind === "repo") {
     if (existsSync(r.cwd)) return; // explicit or already-created worktree
+    // D395: no computer had it: cloned here first, into the Ducter folder, with this computer's own git.
+    if (r.clone && !existsSync(p.repoPath)) {
+      const c = await cloneRepo(r.clone.address, { dataDir: r.clone.dataDir });
+      if (!c.ok) throw new PlaceError("clone_failed", p.repoPath, `couldn't clone ${r.clone.address}: ${c.message}`);
+      if (resolve(c.path) !== resolve(p.repoPath)) throw new PlaceError("clone_failed", p.repoPath, `cloned ${r.clone.address} into ${c.path}, not ${p.repoPath}`);
+    }
     const top = await git(p.repoPath, ["rev-parse", "--show-toplevel"]);
-    if (!top.ok) throw new Error(`not a git repository: ${p.repoPath}`);
+    if (!top.ok) throw new PlaceError("no_repo", p.repoPath, `not a git repository: ${p.repoPath}`);
     if (r.folder && r.cwd.startsWith(r.folder + "/")) markDucterFolder(r.folder);
     mkdirSync(join(r.cwd, ".."), { recursive: true });
     // D157: moved here from another computer: the pushed branch is the work (E3).

@@ -250,6 +250,18 @@ func (t *Task) Attention() protocol.Attention {
 	return protocol.Queued
 }
 
+// Cant (D395) is why it couldn't start where it was to work, and what fixes
+// it: the latest state's, else the card's.
+func (t *Task) Cant() *protocol.CantStart {
+	if t.State != nil {
+		return t.State.Cant
+	}
+	if t.Card != nil {
+		return t.Card.Cant
+	}
+	return nil
+}
+
 // Reason is why the task is in its state.
 func (t *Task) Reason() string {
 	switch {

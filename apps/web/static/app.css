@@ -1813,6 +1813,19 @@ a {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+/* D395: a task that couldn't start: its cause in the voice, then the taps that fix it. */
+.cant {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.cant-line {
+  margin: 0;
+  font-size: var(--partner);
+  line-height: var(--lh-voice);
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
 .sec-title {
   margin: 0 2px;
   font-size: var(--t20);

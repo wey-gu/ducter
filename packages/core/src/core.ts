@@ -80,6 +80,9 @@ import { createModelCatalog, type ModelCatalog } from "./models.ts";
 import { browseFolders, cloneProject, createFoundRepos, ghInstallHome, gitLoginOn, isOldOp, newFolderProject, languageOf, newTaskOptions, openYourTask, type FolderProjects, type GitLoginAction, type GitRun, type NewTaskComputers, type NewTaskInput } from "./newtask.ts";
 import { projectRepos, realFs, type BrowseResult } from "@ducter/protocol/src/repos.ts";
 import { cloneRepo, type CloneResult } from "@ducter/protocol/src/clone.ts";
+import { answerClones, type ClonesAnswer } from "@ducter/protocol/src/clones.ts";
+import { folderInfo, realGit as realGitInfo, type FolderInfo } from "@ducter/protocol/src/folder-info.ts";
+import { createPlaces, createRepoWhere, type WhereComputer } from "./repo-where.ts";
 import { newProjectFolder, type NewFolderResult } from "@ducter/protocol/src/new-folder.ts";
 import { createGitLogin, type GitLogin, type GitLoginState } from "@ducter/protocol/src/git-login.ts";
 import { createGhInstaller, useOwnTools, type GhInstaller } from "./gh-install.ts";
@@ -222,6 +225,10 @@ export interface CoreOptions {
   keyCanRun?: (h: HarnessId) => boolean;
   /** D204 test seam: the home's own Ducter folder and its projects (default: <Ducter folder>/projects here). */
   homeRepos?: () => FolderProjects;
+  /** D395 test seam: the home's own clones of a repository, and whether its git can read it (default: this computer's code folders; none in tests). */
+  homeClones?: (remote: string, probe: boolean) => Promise<ClonesAnswer>;
+  /** D395 test seam: what a folder on the home is (default: git here). */
+  homeFolderInfo?: (path: string) => Promise<FolderInfo>;
   /** D204 test seam: clone into the home's own Ducter folder (default: git, with this computer's sign-in). */
   cloneHome?: (address: string) => Promise<CloneResult>;
   /** D203 test seam: the home's own subfolders for 找一个文件夹… (default: this computer's home folder). */
@@ -1005,6 +1012,59 @@ export function startCore(opts: CoreOptions = {}): Core {
   useOwnTools(dataDir);
   const ghInstaller = opts.ghInstaller ?? (process.env.NODE_ENV === "test" ? { plan: () => undefined, install: async () => ({ ok: false as const, how: "release" as const, where: "", reason: "unsupported" as const, message: "not in tests" }) } : createGhInstaller({ dataDir }));
   const newTaskDeps = { log, tasks, runner: () => runner, persona, dataDir, loadout, settings, routines: work.routines, untils: work.untils, projects, computers, models: modelCatalog, found, cloneHome, newFolderHome, gitLoginHome, ghInstaller, ...(opts.browseHome ? { browseHome: opts.browseHome } : {}), ...(opts.git ? { git: opts.git } : {}) };
+  // D395: where a repository task works, from the repository itself: every computer is asked
+  // which clones of it it has (the home here, a worker by its clones op), the best one wins, and
+  // with none anywhere it is cloned where git can read it. task_open checks its place with it first.
+  const whereTesting = process.env.NODE_ENV === "test";
+  const homeClones =
+    opts.homeClones ??
+    ((remote: string, probe: boolean) =>
+      whereTesting ? Promise.resolve({ clones: [], canRead: false }) : answerClones({ remote, probe }, { home: homedir(), ducterProjects: join(homeFolder(), "projects") }));
+  const whereComputers = (): WhereComputer[] => {
+    const online = new Map((workersRef?.online() ?? []).map((w) => [w.deviceId, w] as const));
+    const away = workersRef?.away();
+    const homeServer = (opts.platform ?? process.platform) === "linux";
+    return [
+      { id: "local", name: computers.homeName(), home: true, online: true, build: homeServer ? 0 : 2 },
+      // The same computers New task and the hand-over sheet list (their workers, away ones too).
+      ...(computers.workers?.() ?? []).map((w) => {
+        const hello = online.get(w.id)?.hello ?? away?.get(w.id)?.hello;
+        const os = (hello?.os ?? "").toLowerCase();
+        return { id: w.id, name: w.name, home: false, online: w.online, build: os.startsWith("darwin") || os.startsWith("mac") ? 2 : 1 };
+      }),
+    ];
+  };
+  const repoWhere = createRepoWhere({
+    computers: whereComputers,
+    async clones(dev, remote, probe, ms) {
+      if (dev === "local") return homeClones(remote, probe);
+      if (computers.clones) return computers.clones(dev, remote, probe, probe ? ms + 15_000 : ms);
+      const link = workersRef?.link(dev);
+      if (!link?.online()) return "offline";
+      try {
+        return await link.call<ClonesAnswer>("clones", { remote, probe }, probe ? ms + 15_000 : ms);
+      } catch (err) {
+        return isOldOp(err) ? "old" : "offline";
+      }
+    },
+    async folder(dev, path, ms) {
+      if (dev === "local") return (opts.homeFolderInfo ?? ((p: string) => folderInfo(p, opts.git ?? realGitInfo)))(path);
+      return computers.folderInfo(dev, path, ms).catch(() => "offline" as const);
+    },
+    rules: () => rules.list(),
+  });
+  api.places = createPlaces({
+    where: repoWhere,
+    computers: whereComputers,
+    tasks,
+    opened: (id) => {
+      const b = log.read({ stream: `task:${id}`, kinds: ["task_open"], limit: 50 }).at(-1)?.body as Bodies["task_open"] | undefined;
+      return b ? { title: b.title, brief: b.brief, ...(b.language ? { language: b.language } : {}) } : undefined;
+    },
+    lang: () => langNow(),
+    staged: () => taskSourcesRef?.stagedItem(),
+    fs: { isDir: (p) => realFs.isDir(p), readText: (p) => realFs.readText?.(p), home: homedir() },
+  });
   // D285: 做过的事 / Past tasks: the person's marks, and every task findable again.
   const marks = createMarks({ dataDir });
   tasks.setMarks((p, id) => marks.get(p, id));
@@ -1657,7 +1717,9 @@ export function startCore(opts: CoreOptions = {}): Core {
     name: () => persona.name,
     // D359: a handed-over to-do opens like 交给{name} on On hand: its repository's folder, its words as the brief.
     openTask: async (item, extra) => {
-      const place = item.kind === "github" ? placeForRepo((await newTask.options().catch(() => ({ places: [] }))).places, item.where)?.place : undefined;
+      // D395: the one resolver task_open uses: the computer with its code (or a clone first).
+      const where = item.kind === "github" && item.where ? await repoWhere.resolve({ remote: item.where, texts: [item.title] }).catch(() => undefined) : undefined;
+      const place = where?.ok ? where.place : item.kind === "github" ? placeForRepo((await newTask.options().catch(() => ({ places: [] }))).places, item.where)?.place : undefined;
       const r = await newTask.open({ words: item.title, ...(place ? { place } : {}), brief: `${item.title}\n\n${briefOf(item)}${extra ? `\n${extra}` : ""}` });
       if (!r.ok) return { ok: false, error: r.message ?? r.reason };
       return "card" in r ? { ok: true, taskId: r.card.taskId } : { ok: false, error: "it became a routine" };
@@ -1687,6 +1749,8 @@ export function startCore(opts: CoreOptions = {}): Core {
       },
       computers: () => [{ device: "local", name: computers.homeName() ?? "" }, ...(computers.workers?.() ?? []).map((w) => ({ device: w.id, name: w.name }))],
       rules: () => rules.list(),
+      // D395: the one resolver task_open uses, so the sheet's Where and the tasks it opens agree with it.
+      repoWhere: (a) => repoWhere.resolve(a) as Promise<import("./task-sources/handover.ts").RepoWhereAnswer>,
       addRule: (r) => void rules.add(r),
       open: async (input) => {
         if (!runner) throw new Error("Tasks can't run right now.");

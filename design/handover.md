@@ -78,7 +78,9 @@ on the subject → add to it.
 **Where and who.** New task's rows, **在哪儿做 / Where** and **谁来做 / Who does it**, filled in this
 order and said on the row: the note's own words (**你写了 haswell / Your note says haswell**), a rule
 (D372, D379), the computer that has the repository's folder (never `place: none` for a code to-do when
-a folder exists anywhere in the home), else the home. Who follows rules by kind. Both change on a tap
+a folder exists anywhere in the home), else the home. D395: this order is one shared resolver
+(`core/src/repo-where.ts`, design/where.md §18) that task_open and every hand-over use; with no copy
+anywhere it clones on the computer that can read it. Who follows rules by kind. Both change on a tap
 (the New task pickers).
 
 **Go:** **交给{name}这 n 件 / Hand these n to {name}**, its shape as its own line beneath (never

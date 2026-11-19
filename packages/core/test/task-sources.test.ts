@@ -322,3 +322,33 @@ test("Settings' filters: repositories narrow GitHub; a folder and a tag narrow a
   expect(ts.view().sources.find((s) => s.id === ob)!.label).toBeUndefined();
   expect((await titles(ob)).length).toBeGreaterThan(2);
 });
+
+test("D395: the standing go for takes is asked only after takes that finished well, never beside a failure", async () => {
+  const { core, open, cards } = boot([
+    { repo: "acme/web", number: 12, title: "Fix the login redirect" },
+    { repo: "acme/web", number: 14, title: "Tidy the footer" },
+  ]);
+  const ts = core.taskSources;
+  await ts.add("github");
+  const { items } = await ts.items();
+  const takeOffers = () => cards().filter((c) => c.src?.kind === "trust" && c.src.trust === "take");
+  open("t1");
+  ts.bind("t1", items[0]!, "partner");
+  open("t2");
+  ts.bind("t2", items[1]!, "partner");
+  // Two takes, but nothing has finished: not asked (before D395 it was asked at the second bind).
+  await Bun.sleep(20);
+  expect(takeOffers()).toEqual([]);
+  // The first couldn't start: still not asked.
+  core.tasks.setState("t1", "failed", "archived", "没能开始：Hetzner Server 上没有 web 的代码");
+  core.tasks.setState("t2", "done", "warm");
+  await Bun.sleep(20);
+  expect(takeOffers()).toEqual([]);
+  // It is tried again and finishes well: now asked, once.
+  core.tasks.setState("t1", "done", "warm");
+  await Bun.sleep(20);
+  expect(takeOffers().map((c) => c.question)).toEqual(["Take what's assigned to you on GitHub without asking from now on?"]);
+  core.tasks.setState("t2", "done", "warm", "again");
+  await Bun.sleep(20);
+  expect(takeOffers().length).toBe(1);
+});

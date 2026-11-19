@@ -887,6 +887,13 @@ func (a *App) TaskAction(id, action string) {
 	a.send(protocol.TaskAction{T: "task_action", TaskID: id, Action: action})
 }
 
+// CantAction (D395) fixes a task that couldn't start: start_at starts it on
+// that computer's copy, clone_here clones it where it was, reopen asks the
+// computers again.
+func (a *App) CantAction(id, action, device string) {
+	a.send(protocol.TaskAction{T: "task_action", TaskID: id, Action: action, Device: device})
+}
+
 // GoOnAllDefaults takes the default of every open decision.
 func (a *App) GoOnAllDefaults() {
 	for _, d := range a.defaultable() {

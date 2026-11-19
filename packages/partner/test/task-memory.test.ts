@@ -95,3 +95,33 @@ test("a remember proposal reaches the partner to distill; an answered Mem card s
   const done = s.fc.core.log.append({ stream: "channel", origin: "user", kind: "decision_resolved", body: { decisionId: "d1", option: "hold", by: "default" } });
   expect(renderTrigger(done, { taskTitle: () => undefined, decision: () => card })).toContain("never bring it up again");
 });
+
+// D393: a task saves what the user stated as lasting, through the home, with the partner's rules.
+test("memory_save for a task: saved with the task's provenance and logged by title; secrets, plumbing and a third are refused", async () => {
+  const s = setup();
+  s.card("t1", "none");
+  const save = (args: unknown) => s.fc.tools.get("task:memory_save")!.handler(args, { role: "task", taskId: "t1" } as any) as Promise<any>;
+  expect(await save({ title: "Tabs, not spaces", content: "The user wants tabs in every Go file." })).toEqual({ ok: true, saved: true });
+  expect(s.mem.added[0]).toMatchObject({ title: "Tabs, not spaces", provenance: { persona: "p1", taskId: "t1" } });
+  const logged = s.fc.events.find((e) => e.stream === "task:t1" && (e.body as any).raw?.memory === "save");
+  expect((logged!.body as any).raw).toMatchObject({ memory: "save", title: "Tabs, not spaces", id: "mem-1" });
+  expect((await save({ title: "Key", content: "api key sk-ant-api03-" + "a".repeat(40) })).ok).toBe(false);
+  expect((await save({ title: "Branch", content: "Work is on ducter/fix-clock in /worktrees/x" })).ok).toBe(false);
+  expect((await save({ title: "Short replies", content: "The user likes short replies." })).ok).toBe(true);
+  expect((await save({ title: "Third", content: "One more lasting thing." })).ok).toBe(false);
+  expect(s.mem.added).toHaveLength(2);
+  s.card("t2", "browser");
+  const browser = (await s.fc.tools.get("task:memory_save")!.handler({ title: "x", content: "y" }, { role: "task", taskId: "t2" } as any)) as any;
+  expect(browser.saved).toBe(false);
+});
+
+test("a task's thread goes to Mem from the home, secrets taken out; memory off: nothing", async () => {
+  const s = setup();
+  const n = await s.fc.core.taskMemory!.saveThread!({ taskId: "t1", persona: "p1", title: "Disk", from: 0, messages: [{ role: "user", content: "Check the disk, the token is ghp_" + "b".repeat(36) }, { role: "assistant", content: "42% used." }] });
+  expect(n).toBe(2);
+  expect(s.mem.threadSaves[0]!.messages[0]!.content).not.toContain("ghp_");
+  expect(s.mem.threadSaves[0]!.messages[1]!.content).toBe("42% used.");
+  s.setOn(false);
+  expect(await s.fc.core.taskMemory!.saveThread!({ taskId: "t1", persona: "p1", title: "Disk", from: 2, messages: [] })).toBeUndefined();
+  expect(s.fc.core.taskMemory!.focus!()).toEqual([]);
+});

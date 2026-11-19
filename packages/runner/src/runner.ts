@@ -189,6 +189,9 @@ interface TaskRt {
   /** D297: the account's limits as this session said them last (a limit hit reads its reset here). */
   limitsSeen?: HarnessEvent["limits"];
   saveAsked: boolean;
+  /** D393: a thread save to Mem in flight (one at a time), and one due when this turn ends. */
+  threadSaving?: Promise<void>;
+  threadDue?: boolean;
   prefix: string[];
   /** D325: the person's words held for after this turn, in order (logged whole as task_held). */
   held: HeldMsg[];
@@ -413,7 +416,35 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     if (!t) return;
     t.reportedThisTurn = true;
     t.attention = REPORT_ATTENTION[body.state] ?? t.attention;
+    // D393: saved once the turn is over, so its last words are in the Log too.
+    if (body.state === "done" || body.state === "failed") t.threadDue = true;
   });
+
+  /**
+   * D393: the task's thread goes to Mem from the home when it ends, where no plugin there keeps it
+   * (Ducter's own memory): the brief, the turns sent in, and its own words, from the Log. A second
+   * end (a follow-up) sends only what Mem doesn't have yet. Logged by count, never the text.
+   */
+  function saveThread(t: TaskRt) {
+    const port = core.taskMemory;
+    if (!port?.saveThread || memoryMode(t.card.place, t.card.harness) !== "ducter") return;
+    const prev = t.threadSaving ?? Promise.resolve();
+    t.threadSaving = prev.then(async () => {
+      let from = 0;
+      const messages: { role: "user" | "assistant"; content: string }[] = [];
+      const open = core.log.read({ stream: stream(t.id), kinds: ["task_open"], limit: 50 }).pop()?.body as Bodies["task_open"] | undefined;
+      if (open?.brief?.trim()) messages.push({ role: "user", content: open.brief.trim() });
+      for (const ev of core.log.read({ stream: stream(t.id), kinds: ["task_event"], limit: 50_000 })) {
+        const b = ev.body as Bodies["task_event"];
+        const raw = b.raw as { memory?: string; count?: number } | undefined;
+        if (b.role === "system" && raw?.memory === "thread" && typeof raw.count === "number") from = raw.count;
+        if ((b.role === "user" && b.from !== "runner") || b.role === "assistant") if (b.text?.trim()) messages.push({ role: b.role, content: b.text.trim() });
+      }
+      if (messages.length <= from) return;
+      const count = await port.saveThread!({ taskId: t.id, persona: t.persona, title: t.card.title, messages, from }).catch(() => undefined);
+      if (count !== undefined) logEvent(t, { role: "system", from: "runner", text: `saved this task's thread to memory (${count - from} new)`, raw: { memory: "thread", count } });
+    });
+  }
 
   const stream = (id: string) => `task:${id}`;
   const taskWindows = () => (core.settings?.get().windows ?? resolveWindows(undefined, process.env).windows).tasks;
@@ -1219,6 +1250,10 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     t.running = busy;
     const reported = t.reportedThisTurn;
     t.reportedThisTurn = false;
+    if (t.threadDue && !busy) {
+      t.threadDue = false;
+      saveThread(t);
+    }
     const compactTurn = !busy && !!t.compactTurn;
     if (!busy) t.compactTurn = false;
     // D288: a /compact asked mid-turn runs once the turn is over.
@@ -1459,6 +1494,17 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       // D168: the user's Nowledge Mem plugin stays on in the task, as the persona's identity. Its
       // Bridge mailbox notices stay out: messages to the persona are the partner's, not a task's.
       if (spec.env) spec.env = { ...spec.env, NMEM_NO_MAILBOX_NOTICE: "1" };
+      // D393: elsewhere, Mem is carried from the home: that computer's nmem (the person's own plugin
+      // there, or the copy carried below) talks to the home's relay with a key for this task alone,
+      // so nothing there needs a Mem sign-in and no Mem secret reaches it. A worker rewrites the
+      // loopback address to the home's (worker-host.ts), and a sandbox there inherits the env.
+      const carry = core.memCarry;
+      if (carry && elsewhere && open.place.kind !== "browser") {
+        const base = new URL(mcp.url).origin;
+        const env = carry.envFor(id, base);
+        if (env) spec.env = { ...(spec.env ?? {}), ...env };
+        if (carriedKit(open.place, open.harness)) spec.pluginUrls = carry.kitFor(id, open.harness, base);
+      }
     } else {
       // D168: memory is off in Ducter: the plugin is off in this session too (their other plugins
       // stay), so the switch holds inside tasks.
@@ -1489,7 +1535,21 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     if (place.kind === "browser" || !memoryOn()) return "none";
     const device = "device" in place ? place.device : undefined;
     if (core.memPluginIn?.(device, harness)) return "plugin";
+    if (carriedKit(place, harness)) return "plugin";
     return core.taskMemory ? "ducter" : "none";
+  }
+
+  /**
+   * D393: Mem's plugin goes with the task from the home: another computer, an agent whose plugin
+   * the home has (Claude Code), none of the person's own there (theirs is reused, never doubled),
+   * and an nmem there for its hooks to run (Ducter's own copy, D386). Else Ducter's own memory.
+   */
+  function carriedKit(place: Place, harness: string): boolean {
+    const carry = core.memCarry;
+    if (!carry || place.kind === "browser") return false;
+    const device = "device" in place ? place.device : undefined;
+    if (!device || device === "local" || core.memPluginIn?.(device, harness)) return false;
+    return carry.nmemIn(device) && carry.kitFor("probe", harness, "http://127.0.0.1").length > 0;
   }
 
   /**
@@ -1503,8 +1563,11 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     if (!port || mode === "none" || !brief.trim()) return turn;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const late = new Promise<undefined>((r) => (timer = setTimeout(() => r(undefined), RECALL_MS)));
-    const notes = await Promise.race([port.recall({ taskId: t.id, persona: t.persona, title: t.card.title, brief }).catch(() => undefined), late]).finally(() => clearTimeout(timer));
-    if (!notes?.length) return turn;
+    const found = await Promise.race([port.recall({ taskId: t.id, persona: t.persona, title: t.card.title, brief }).catch(() => undefined), late]).finally(() => clearTimeout(timer));
+    // D393: Working Memory's focus too, where no plugin gives its own (it injects it at start).
+    const focus = mode === "ducter" ? (port.focus?.() ?? []) : [];
+    if (!found?.length && !focus.length) return turn;
+    const notes = found ?? [];
     if (mode === "plugin") {
       // D304: the plugin gives its own context; only other tools' memories are named, by title.
       const named = othersTurn(notes);
@@ -1513,8 +1576,8 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       logEvent(t, { role: "system", from: "runner", text: `named ${others.length} of your other tools' memories in the brief`, raw: { memory: "others", ids: others.map((n) => n.id ?? null), titles: others.map((n) => n.title) } });
       return named + turn;
     }
-    logEvent(t, { role: "system", from: "runner", text: `recalled ${notes.length} from memory for the brief`, raw: { memory: "recall", ids: notes.map((n) => n.id ?? null), titles: notes.map((n) => n.title) } });
-    return knownTurn(notes, partnerNameOf(t.persona)) + turn;
+    logEvent(t, { role: "system", from: "runner", text: `recalled ${notes.length} from memory for the brief`, raw: { memory: "recall", ids: notes.map((n) => n.id ?? null), titles: notes.map((n) => n.title), ...(focus.length ? { focus: focus.length } : {}) } });
+    return knownTurn(notes, partnerNameOf(t.persona), focus) + turn;
   }
 
   function newRt(id: string, persona: string, card: TaskCard, spec: SessionSpec, ops: PlaceOps = localOps): TaskRt {

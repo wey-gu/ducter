@@ -16,6 +16,10 @@
 //   - Tests inject a fake MemoryClient or point `bin` at a stub; nothing in tests reaches the
 //     user's real Mem.
 
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
 /** What nmem needs from Ducter's environment: paths, user, locale, temp folder, proxies, CA bundles. */
 const NMEM_BASICS = new Set([
   "PATH", "HOME", "USER", "LOGNAME", "SHELL", "LANG", "LANGUAGE", "TERM", "TMPDIR", "TMP", "TEMP", "TZ",
@@ -126,6 +130,12 @@ export interface MemoryClient {
    * `nmem m update` sets its title and text to them. True when Mem took it.
    */
   correct?(id: string, title: string): Promise<boolean>;
+  /**
+   * D393: a task's thread, from Ducter's own record, under the persona's identity (`nmem t import
+   * --id ducter-task-<id> --agent-id`); `from` messages are already in Mem: only the rest are sent,
+   * as a checkpointed suffix. ok: the count Mem now has.
+   */
+  saveThread?(t: { taskId: string; title: string; messages: { role: "user" | "assistant"; content: string }[]; from: number }): Promise<MemoryResult<{ count: number }>>;
   /** D329: 撤销 / Undo on a Noted line: `nmem m archive` (hidden from recall, kept audit-readable; never deleted). */
   archive?(id: string): Promise<boolean>;
   /** D329: an undone save's replaced memory comes back: its words read (`nmem m show`) and written again. */
@@ -204,6 +214,8 @@ export interface NmemOptions {
 }
 
 const SAFE_ID = /^[A-Za-z0-9_-]{1,80}$/;
+/** D393: one message of a task's thread as it goes to Mem, at most this long. */
+const THREAD_MSG_CHARS = 8000;
 
 /** MemoryClient over the nmem CLI (the user's own binary and its own connection config). */
 export function createNmemClient(opts: NmemOptions = {}): MemoryClient {
@@ -307,6 +319,26 @@ export function createNmemClient(opts: NmemOptions = {}): MemoryClient {
         if (!("missing" in s) && s.code === 0) replaced = { id: old.id, title: old.title };
       }
       return { ok: true, ...(id ? { id: String(id) } : {}), ...(replaced ? { replaced } : {}) };
+    },
+    async saveThread(t) {
+      const id = `ducter-task-${t.taskId.replace(/[^A-Za-z0-9_-]/g, "").slice(0, 60)}`;
+      const rest = t.messages.slice(t.from).map((m) => ({ role: m.role, content: m.content.length <= THREAD_MSG_CHARS ? m.content : m.content.slice(0, THREAD_MSG_CHARS - 1) + "…" }));
+      if (!rest.length) return { ok: true, count: t.messages.length };
+      const who = opts.identity?.();
+      const title = t.title.replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, 120) || "Ducter task";
+      // The messages go in a file of Ducter's own (0600), gone after: a long thread never hits argv limits.
+      const dir = mkdtempSync(join(tmpdir(), "ducter-thread-"));
+      const file = join(dir, "messages.json");
+      try {
+        writeFileSync(file, JSON.stringify(rest), { mode: 0o600 });
+        const args = ["t", "import", "-f", file, `--id=${id}`, `--title=${title}`, "-s", "ducter", ...(t.from ? ["--expected-message-count", String(t.from), `--idempotency-key=${id}-${t.messages.length}`] : [])];
+        if (who) args.push("--agent-id", who.agentId, ...(who.space ? ["--space", who.space] : []));
+        const r = await run(args);
+        if ("missing" in r || r.code !== 0) return failure(r);
+        return { ok: true, count: t.messages.length };
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
     },
     async archive(id) {
       if (!SAFE_ID.test(id)) return false;

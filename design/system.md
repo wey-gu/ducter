@@ -209,14 +209,20 @@ changes.
 - **Nowledge Mem inside tasks (D168, `memory.md` "Mem and tasks").** A task keeps the user's
   Nowledge Mem plugin and runs it as the persona (`NMEM_AGENT_ID`, `NMEM_SPACE`), with
   `NMEM_NO_MAILBOX_NOTICE=1` so the persona's Bridge mailbox stays the partner's. Where the
-  plugin isn't installed for that agent there, Ducter's recall and a read-only `memory_search`
-  (answered by the home) fill in. A task proposes `remember`; only the partner writes
-  memories. With memory off, the plugin is turned off by id in the session.
+  plugin isn't installed for that agent there, Ducter's recall and `memory_search` (answered by
+  the home) fill in, and the home saves the thread when the task ends. A task may save what the
+  user stated as lasting (≤ 2, D393 (4)); anything else it proposes as `remember`. With memory
+  off, the plugin is turned off by id in the session.
+- **Mem carried to every task (D393, `memory.md` "Mem carried to every task").** Mem is connected
+  once, at the home. A task on another computer (or in a sandbox there) gets `NMEM_API_URL` (the
+  home's `/mem` relay) and `NMEM_API_KEY` (a per-task key that dies with the task); the relay puts
+  on the home's own credential, which never leaves it. A Claude Code task there without the
+  person's own plugin gets Mem's plugin from the home by `--plugin-url`, for that session only.
 - **Nowledge Mem in the user's agents, per computer (D169).** Ducter reads Mem's own local
   check per computer, shows one line per agent in its coin detail, and recommends it once
   where it is missing; it installs only through a task the user starts (Go on the card, or
   装上), following Mem's official setup guide. Never silently (D17).
-- **Nowledge Mem on a computer for tasks (D366).** A worker says where Mem stands there (Mem's own
+- **Nowledge Mem on a computer for tasks (D366, re-scoped by D393 to the person's own sessions there).** A worker says where Mem stands there (Mem's own
   `nmem doctor`); on the person's tap Ducter puts Mem's command line in its own tools folder (uv,
   pinned) and signs it in with the person's one-time link through Mem's own `nmem connect`, which
   also connects that computer's Codex and Claude Code. Only when the home has Mem; the link is never

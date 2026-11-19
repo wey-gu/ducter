@@ -69,8 +69,21 @@ const CRITICAL_OPS = new Set(["merge", "archive", "folderUndo", "folderKeep"]);
 /** Main's loopback MCP URL → the main's address as seen from here, plus the device token. */
 export function rewriteMcp(spec: SessionSpec, mainBase: string, deviceToken: string): SessionSpec {
   const base = mainBase.replace(/\/+$/, "");
+  // D393: Mem carried from the home: its relay and its plugin's copy, on the main's address. They
+  // carry their own per-task key (never the device token: a sandbox here must not hold that).
+  const home = (raw: string) => {
+    try {
+      const u = new URL(raw);
+      return /^(127\.0\.0\.1|localhost|\[::1\])$/.test(u.hostname) ? base + u.pathname + u.search : raw;
+    } catch {
+      return raw;
+    }
+  };
+  const env = spec.env?.NMEM_API_URL ? { ...spec.env, NMEM_API_URL: home(spec.env.NMEM_API_URL) } : spec.env;
   return {
     ...spec,
+    ...(env ? { env } : {}),
+    ...(spec.pluginUrls ? { pluginUrls: spec.pluginUrls.map(home) } : {}),
     mcp: spec.mcp.map((m) => {
       if (!("url" in m)) return m;
       let u: URL;

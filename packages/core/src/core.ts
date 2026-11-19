@@ -57,6 +57,7 @@ import { connectLinkFrom } from "./mem-cli.ts";
 import { createMemGlance } from "./mem-glance.ts";
 import { createMemHealth } from "./mem-health.ts";
 import { scrub as scrubMem } from "./worker-mem.ts";
+import { createMemRelay, homeClaudeMemPlugin, readMemCredential } from "./mem-relay.ts";
 import { createWorkingMemory } from "./working-memory.ts";
 import { identityIdFor, readMemIdentity } from "./mem-identity.ts";
 import { keepSaidOnGo, openSaid, type SaidStore } from "./said.ts";
@@ -220,6 +221,8 @@ export interface CoreOptions {
   /** D363 test seams: putting agents on the home (default: the real network and npm, never in tests). */
   agentSetup?: { sys?: import("./agent-setup.ts").AgentSetupSys };
   /** D169 test seams: the Mem plugin check on the home (default: the real `nmem`, never in tests). */
+  /** D393: test seams for the Mem relay (mem-relay.ts): the home's credential, the upstream fetch, the plugin's folder. */
+  memRelay?: { credential?: () => import("./mem-relay.ts").MemCredential | undefined; fetch?: typeof fetch; kitDir?: (harness: string) => string | undefined };
   memPlugins?: { inspectLocal?: () => Promise<Record<string, import("@ducter/protocol").MemPluginView> | undefined>; everyMs?: number; now?: () => number; connected?: () => boolean; connectLocal?: (args: string[]) => Promise<{ code: number; out: string; err: string } | undefined> };
   /** D151 test seams for Ducter's own browser (false: none). */
   browser?: false | Partial<Omit<DucterBrowserOptions, "mcp" | "log" | "tasks" | "decisions" | "persona" | "dataDir">>;
@@ -481,7 +484,8 @@ export function startCore(opts: CoreOptions = {}): Core {
     },
   });
   const living = createLiving({ log, tasks, decisions, clock, ...(partners.on() ? { streamOf: (c: TaskCard) => channelOf(whose.ofTask(c.taskId)) } : {}) });
-  const mcp = createMcpHub({ secret: loadSecret(dataDir) });
+  const mcpSecret = loadSecret(dataDir);
+  const mcp = createMcpHub({ secret: mcpSecret });
   registerCoreTools(mcp, log, tasks, partners.on() ? whose : undefined);
   // D312: a task's tool calls carry the partner it is for (its memory_search is that partner's).
   mcp.setTaskPersona((taskId) => {
@@ -906,6 +910,9 @@ export function startCore(opts: CoreOptions = {}): Core {
   const taskMemory: TaskMemoryPort = {
     on: () => defaultTaskMemory?.on() ?? [...taskMemOf.values()].some((p) => p.on()),
     recall: (w) => (isOther(w.persona) ? taskMemOf.get(w.persona) : defaultTaskMemory)?.recall(w) ?? Promise.resolve(undefined),
+    // D393: the thread is saved by the partner the task is for; Working Memory is the person's, one for all.
+    saveThread: (t) => (isOther(t.persona) ? taskMemOf.get(t.persona) : defaultTaskMemory)?.saveThread?.(t) ?? Promise.resolve(undefined),
+    focus: () => defaultTaskMemory?.focus?.() ?? [],
   };
   Object.defineProperty(api, "taskMemory", {
     enumerable: true,
@@ -1111,6 +1118,8 @@ export function startCore(opts: CoreOptions = {}): Core {
   let memPluginsRef: MemPlugins | undefined;
   // D366: memory on and the home's Mem connected (D169's gate), set once memPlugins is made.
   let memOnRef: (() => boolean) | undefined;
+  let memRelayRef: import("./mem-relay.ts").MemRelay | undefined;
+  let memCarriedRef: (() => boolean) | undefined;
   // D366: Nowledge Mem on a computer for tasks: the worker's own mem_setup op.
   const memSetupOp = async (device: string, action: import("@ducter/protocol").DeviceMemAction, link?: string): Promise<{ ok: boolean; reason?: "away" | "unknown" | "failed" }> => {
     if (!memOnRef?.()) return { ok: false, reason: "failed" };
@@ -1417,7 +1426,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   workers.onChange(() => reachRef?.refresh());
   // D347: 加一台做事的电脑 / Add a computer for tasks: a code, the line to paste, and when it arrives.
   lendRef = createLend({ auth: devices, dataDir, bind: hostname, port: () => listening, broadcast: (f) => ws.broadcast(f) });
-  devicesView = createDevicesView({ anywhere, dataDir, auth: devices, workers, connected: () => ws.connected(), viaOf: (id) => ws.vias().get(id), ways: () => reachRef?.ways() ?? [], homeKey: identity, probes: opts.deviceProbes, ...(u.homeName ? { hostname: u.homeName } : {}), updates: () => updates, agents: () => agents, agentSetup: () => homeSetup, memOn: () => memOnRef?.() ?? false, recordsOn: () => settings.localAgents(), updateAll: () => updateAll, mem: () => memPluginsRef, ...(agentTesting ? {} : { piBundled: bundledPiVersion }), self: { version, how: selfHow, platform: `${process.platform}-${process.arch}` }, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), handsets, ...(opts.platform ? { platform: opts.platform } : {}), call: () => callAbility(phone.available(), connections.view()), onDisconnect: (id) => {
+  devicesView = createDevicesView({ anywhere, dataDir, auth: devices, workers, connected: () => ws.connected(), viaOf: (id) => ws.vias().get(id), ways: () => reachRef?.ways() ?? [], homeKey: identity, probes: opts.deviceProbes, ...(u.homeName ? { hostname: u.homeName } : {}), updates: () => updates, agents: () => agents, agentSetup: () => homeSetup, memOn: () => memOnRef?.() ?? false, memCarried: () => !!memRelayRef && (memOnRef?.() ?? false) && !!memCarriedRef?.(), recordsOn: () => settings.localAgents(), updateAll: () => updateAll, mem: () => memPluginsRef, ...(agentTesting ? {} : { piBundled: bundledPiVersion }), self: { version, how: selfHow, platform: `${process.platform}-${process.arch}` }, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), handsets, ...(opts.platform ? { platform: opts.platform } : {}), call: () => callAbility(phone.available(), connections.view()), onDisconnect: (id) => {
     for (const s of push.forget(id)) void apns.revoke?.(s);
   } });
   updates.onChange(() => devicesView?.changed());
@@ -1476,6 +1485,38 @@ export function startCore(opts: CoreOptions = {}): Core {
   });
   memPluginsRef = memPlugins;
   api.memPluginIn = (device, harness) => memPlugins.present(device, harness); // D168: a task there has it, in any form (research/48 M1)
+  // D393: Mem carried to every task from this one connection: a relay for the task's nmem and Mem's
+  // plugin as the home runs it, so a computer (or a sandbox on it) needs nothing of Mem's set up.
+  // A test reaches the person's real Mem never: without a seam it carries nothing.
+  const mr = opts.memRelay;
+  const memCred = mr?.credential ?? (agentTesting ? () => undefined : () => readMemCredential());
+  const memRelay = createMemRelay({
+    secret: mcpSecret,
+    credential: memCred,
+    on: memOn,
+    taskLive: (id) => {
+      const c = tasks.get(id);
+      return !!c && c.residency !== "archived" && c.attention !== "dropped";
+    },
+    kitDir: mr?.kitDir ?? (agentTesting ? () => undefined : (h) => (h === "claude-code" ? homeClaudeMemPlugin() : undefined)),
+    ...(mr?.fetch ? { fetch: mr.fetch } : {}),
+    used: (id) => {
+      const c = tasks.get(id);
+      if (c) log.append({ persona: c.persona, stream: `task:${id}`, origin: "task", kind: "task_event", body: { taskId: id, role: "system", from: "runner", text: "Nowledge Mem reached through the home", raw: { memory: "relay" } } });
+    },
+  });
+  memRelayRef = memRelay;
+  memCarriedRef = () => !!memCred();
+  api.memCarry = {
+    envFor: (id, base) => memRelay.envFor(id, base),
+    kitFor: (id, h, base) => memRelay.kitFor(id, h, base),
+    nmemIn: (device) => {
+      if (!device || device === "local") return true;
+      const w = workers.online().find((x) => x.deviceId === device || x.name === device);
+      const st = w?.hello?.mem?.state;
+      return !!st && st !== "absent";
+    },
+  };
   memPlugins.onChange(() => devicesView?.changed());
   {
     // A sign-in, a sign-out or an agent update refreshes the devices: read the check again.
@@ -1682,6 +1723,8 @@ export function startCore(opts: CoreOptions = {}): Core {
       // D206: a picture's bytes, by its key (an <img> sends no token); everything else about it is behind the gate.
       const pic = await media.serve(req);
       if (pic) return pic;
+      // D393: the Mem relay carries its own per-task key (a sandbox holds no device token).
+      if (url.pathname === "/mem" || url.pathname.startsWith("/mem/")) return (await memRelayRef?.handle(req)) ?? new Response("not found", { status: 404 });
       // Off-machine callers need a paired device token (auth.ts); /pair is answered here.
       const g = await gate.check(req, srv.requestIP(req)?.address);
       if (!g.pass) return g.response;

@@ -2719,11 +2719,30 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       if (!r.ok || !r.hits.length) return undefined;
       return r.hits.slice(0, 4).map((h) => toNote(h, 200));
     },
+    // D393: the thread of a task no Mem plugin kept, saved by the home from the Log when it ends.
+    ...(memoryBase.saveThread
+      ? {
+          async saveThread(t: { taskId: string; persona: string; title: string; messages: { role: "user" | "assistant"; content: string }[]; from: number }) {
+            if (!memOn()) return undefined;
+            // Secrets never go to Mem, whoever said them (the same redaction as the partner's own words).
+            const messages = t.messages.map((m) => ({ role: m.role, content: redactSecrets(m.content) }));
+            const r = await memoryBase.saveThread!({ taskId: t.taskId, title: t.title, messages, from: t.from }).catch(() => undefined);
+            if (r) noteMemState(r);
+            return r?.ok ? r.count : undefined;
+          },
+        }
+      : {}),
+    // D393: Working Memory's focus, from the home's one read, for a task's first turn.
+    focus() {
+      if (!memOn()) return [];
+      const wm = core.workingMemory?.get();
+      return wm ? wm.focus.slice(0, 3).map((f) => (f.about ? `${f.name}: ${f.about}` : f.name)) : [];
+    },
   };
   core.mcp.register(
     "task",
     "memory_search",
-    "Read the user's long-term memory (Nowledge Mem): their preferences, conventions, past decisions and people. Read-only: a few short results. Use it when the work turns on something the user decided or prefers that you can't see; not for facts in the repo or on the web. You never write memory: propose `remember` in your final report instead.",
+    "Read the user's long-term memory (Nowledge Mem): their preferences, conventions, past decisions and people. Read-only: a few short results. Use it when the work turns on something the user decided or prefers that you can't see; not for facts in the repo or on the web. To save, `memory_save`.",
     {
       type: "object",
       properties: {
@@ -2756,6 +2775,51 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       if (!r.ok) return { ok: false, available: false, note: "Memory didn't answer. Carry on with the brief; ask in report_to_main if you must." };
       if (!results.length) return { ok: true, results: [], note: "Nothing in memory fits." };
       return { ok: true, results, note: "Background from the user's memory: follow what clearly fits; the brief wins." };
+    },
+  );
+
+  // D393: a task saves a memory the way Mem's plugin lets an agent do (its distill skill), through
+  // the home's one connection, as the partner's identity with the task's provenance. The partner's
+  // own rules hold: no secrets, no task plumbing, a couple per task.
+  const TASK_SAVES = 2;
+  const taskSaves = new Map<string, number>();
+  core.mcp.register(
+    "task",
+    "memory_save",
+    "Save one durable thing about the user to their long-term memory (Nowledge Mem): a preference, decision or lasting fact they stated in this task. Never secrets, task plumbing (ids, branches, commits, progress) or one-off instructions. At most 2 per task; if unsure, propose `remember` in your report instead.",
+    {
+      type: "object",
+      properties: {
+        title: { type: "string", description: "Short title in the user's language" },
+        content: { type: "string", description: "One or two self-contained sentences, with the why if given" },
+      },
+      required: ["title", "content"],
+    },
+    async (args: { title?: unknown; content?: unknown }, ctx: { taskId?: string }) => {
+      const card = ctx.taskId ? core.tasks.get(ctx.taskId) : undefined;
+      if (!card) throw new Error("memory_save needs a task");
+      if (!memOn() || card.place.kind === "browser") return { ok: false, saved: false, note: "Memory isn't available to this task. Propose `remember` in your report instead." };
+      const title = typeof args?.title === "string" ? args.title.trim().slice(0, 80) : "";
+      const content = typeof args?.content === "string" ? args.content.trim().slice(0, 1200) : "";
+      if (!title || !content) return { ok: false, error: "memory_save needs `title` and `content`." };
+      const text = `${title}\n${content}`;
+      if (redactSecrets(text) !== text) return { ok: false, error: "That contains a secret. Never store secrets; nothing was saved." };
+      if (PLUMBING_RE.test(text) || text.includes(card.taskId)) return { ok: false, error: "That is task plumbing; remember only durable things about the user. Nothing was saved." };
+      const used = taskSaves.get(card.taskId) ?? 0;
+      if (used >= TASK_SAVES) return { ok: false, error: "Enough saved for this task. Propose anything else as `remember` in your report." };
+      taskSaves.set(card.taskId, used + 1);
+      const r = await memory.add({ title, content, provenance: { persona: card.persona, taskId: card.taskId } });
+      noteMemState(r);
+      // Logged on the task's stream like a read: the title and the id, so the person can find and undo it.
+      core.log.append({
+        persona: card.persona,
+        stream: `task:${card.taskId}`,
+        origin: "task",
+        kind: "task_event",
+        body: { taskId: card.taskId, role: "system", from: "runner", text: r.ok ? `saved to memory: "${title}"` : `memory didn't take: "${title}"`, raw: { memory: "save", title, id: r.ok ? (r.id ?? null) : null } },
+      });
+      if (!r.ok) return { ok: false, saved: false, note: "Memory didn't answer; nothing was saved. Propose it as `remember` in your report." };
+      return { ok: true, saved: true };
     },
   );
 

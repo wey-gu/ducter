@@ -28,7 +28,14 @@ function boot(zh = true) {
   core.setPartner({ onTrigger: () => {} });
   const told: { taskId: string; text: string }[] = [];
   const runner = {
-    harness: { start: async () => ({}) as never, available: async () => [] },
+    // No model here: the pre-reads a look starts in the background fail at once, inside this test
+    // (an empty fake session left them throwing later, in whichever file ran next).
+    harness: {
+      start: async () => {
+        throw new Error("no model in this test");
+      },
+      available: async () => [],
+    },
     async openTask(): Promise<TaskCard> {
       throw new Error("no");
     },

@@ -104,9 +104,9 @@ test("headers: hop headers dropped, Host and Origin as the page expects, redirec
 
 test("the page's CSP lets only this host's ports be framed", () => {
   const csp = cspFor(new Request("http://hel.example:7777/app", { headers: { host: "hel.example:7777" } }));
-  expect(csp).toContain("frame-src http://hel.example:* https://hel.example:*");
+  expect(csp).toContain("frame-src 'self' http://hel.example:* https://hel.example:*"); // D405: 'self' for an app's frame
   expect(csp).toContain("connect-src 'self' ws: wss: http://hel.example:*");
-  expect(cspFor(new Request("http://x/app", { headers: { host: "bad host;script-src *" } }))).not.toContain("frame-src");
+  expect(cspFor(new Request("http://x/app", { headers: { host: "bad host;script-src *" } }))).not.toContain("frame-src 'self' http");
 });
 
 test("the ports a task's output named, newest first; the frames refuse a port that isn't its page", async () => {

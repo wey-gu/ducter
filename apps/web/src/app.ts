@@ -4,6 +4,7 @@ import { onFileOpenFrame } from "./filelink-ask.ts";
 import { onPastFrame, openPast } from "./past.tsx";
 import { onStepsFrame } from "./past-preview.tsx";
 import { onMadeFrame } from "./made.tsx";
+import { onAppsFrame, openApp } from "./apps.tsx";
 import { onDidFrame, openDid } from "./did.tsx";
 import type { AgentModels, AgentReason, MemPluginReason, BrainNow, BridgeView, Candidate, ModelChoice, ClientFrame, Place, PlaceChoice, ConnectionReason, ConnectionView, DeviceHarness, DeviceView, DucterFolderView, GhInstallPlan, GitLoginState, MemItem, MemView, OoDetect, Reach, KindDefault, RuleView, ServerFrame, Settings, SettingsPatch, UpdateAllView, UpdateReason } from "@ducter/protocol";
 import { MEDIA_LIMITS, TUWA_MCP, WATCH_LIVE, type MediaRef, type FileOpenError } from "@ducter/protocol";
@@ -99,7 +100,7 @@ export function morph(apply: () => void) {
 }
 /** Settings (D150) is a list of sections; page is the one pushed ("" is the list). */
 export type SettingsPage = "" | "partner" | "memory" | "peers" | "notify" | "accounts" | "todos" | "chats" | "autofill" | "devices" | "phone";
-export type Sheet = { kind: "decision"; id: string } | { kind: "settings"; page?: SettingsPage } | { kind: "newtask" } | { kind: "switch" } | { kind: "past" } | { kind: "did" } | { kind: "pins" } | { kind: "recall"; seq: number } | { kind: "learned" } | { kind: "pile" } | { kind: "hand" } | { kind: "review"; groupId: string } | null;
+export type Sheet = { kind: "decision"; id: string } | { kind: "settings"; page?: SettingsPage } | { kind: "newtask" } | { kind: "switch" } | { kind: "past" } | { kind: "did" } | { kind: "pins" } | { kind: "app"; id: string } | { kind: "recall"; seq: number } | { kind: "learned" } | { kind: "pile" } | { kind: "hand" } | { kind: "review"; groupId: string } | null;
 
 /** 开一件事 / New task's sheet (D128): what the user chose and typed, and how starting went. */
 export interface NewTaskDraft {
@@ -713,6 +714,8 @@ class AppState {
   }
 
   receive(f: ServerFrame) {
+    // D405: the apps list, an opened app, its keys and the answers to its asks.
+    if (onAppsFrame(f)) return;
     // A cursor replay as long as the home sends at once: the glance is too old to catch up from.
     // Start from the home's own fresh replay instead (it ends with on_hand, like any replay).
     if (f.t === "events" && this.fromGlance && f.events.length >= REPLAY_MAX) {
@@ -2501,6 +2504,12 @@ class AppState {
       return this.changed();
     }
     this.route = { name: "conv" };
+    // D405: #app=<id> opens one of the person's apps (a link from the Mac, a push, a bookmark).
+    const app = /^#app=([a-z0-9]{1,16})$/.exec(hash);
+    if (app) {
+      history.replaceState(null, "", location.pathname);
+      return openApp(app[1]!);
+    }
     const set = /^#settings(?:=(partner|memory|peers|notify|accounts|todos|chats|autofill|devices|phone))?$/.exec(hash);
     if (set) {
       history.replaceState(null, "", location.pathname);

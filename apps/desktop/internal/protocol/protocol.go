@@ -129,6 +129,8 @@ type UserMsg struct {
 	// Via (D276/D277): the chat app the person wrote it in (slack |
 	// telegram | imessage); "" = a Ducter app or the CLI.
 	Via string `json:"via,omitempty"`
+	// App (D405): about one of the person's apps, or that app's own ask.
+	App *AppRef `json:"app,omitempty"`
 }
 
 type AIMsg struct {
@@ -146,6 +148,9 @@ type AIMsg struct {
 	// UI (D303): the blocks the partner put in its words, each standing in
 	// for its plain text in Text.
 	UI []RichUI `json:"ui,omitempty"`
+	// App (D405): the app this message made or changed; AppAnswer: it answers an app's ask.
+	App       *AppCard   `json:"app,omitempty"`
+	AppAnswer *AppAnswer `json:"appAnswer,omitempty"`
 }
 
 type Ack struct {
@@ -2617,6 +2622,8 @@ type ServerFrame struct {
 	PastSteps *PastStepsFrame `json:"-"`
 	// D383: made_result (made.go), decoded on its own.
 	Made *MadeFrame `json:"-"`
+	// D405: apps, app_open, app_data, app_ask_refused (apps.go), decoded on their own.
+	AppsF *AppsFrame `json:"-"`
 	// D300: did_result (did.go), decoded on its own.
 	DidFor *DidFrame `json:"-"`
 	// MemFound is mem_found (D321), decoded on its own (its items aren't SavedItems).
@@ -2823,6 +2830,11 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 	}
 	if json.Unmarshal(data, &head) == nil && head.T == "pile_how_result" {
 		return decodeSources(data, ServerFrame{T: head.T})
+	}
+	// D405: the apps frames (their "apps" is a list where the shared struct's is a count).
+	switch head.T {
+	case "apps", "app_open", "app_data", "app_ask_refused":
+		return decodeApps(data, ServerFrame{T: head.T})
 	}
 	var f ServerFrame
 	if err := json.Unmarshal(data, &f); err != nil {

@@ -552,6 +552,8 @@ type Store struct {
 	// PinRefused is why the last pin didn't happen, until shown.
 	Pins       []protocol.PinView
 	PinRefused string
+	// Apps (D405) are the person's apps (the default conversation's), newest change first.
+	Apps       []protocol.AppMeta
 	Candidates map[string][]protocol.Candidate
 	// AccountUsage is each agent's account limits as the home last
 	// answered (D288), by harness.
@@ -826,6 +828,10 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 		s.Rules, s.RuleDefaults, s.RulesAt = f.Rules, f.Defaults, time.Now()
 	case "pins":
 		s.Pins, s.PinRefused = f.Pins, f.Refused
+	case "apps":
+		if f.AppsF != nil {
+			s.Apps = f.AppsF.Apps
+		}
 	case "candidates":
 		if s.Candidates == nil {
 			s.Candidates = map[string][]protocol.Candidate{}

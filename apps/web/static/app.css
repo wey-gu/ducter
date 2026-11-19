@@ -16763,6 +16763,129 @@ a.pr:hover { box-shadow: inset 0 0 0 1px var(--line-2); }
 @media (prefers-reduced-motion: reduce) { .ho-heard, .ho-suggest .ho-chip { animation: none; } }
 /* The right column scrolls: its parts keep their height (a clipped group would shrink to nothing). */
 .ho-right > * { flex: none; }
+/* D405: 小应用 / Apps. The card under the partner's words: the app's clay tile, its name, what
+   happened, 打开 / Open. The sheet runs the app (a sandboxed frame) with a line to change it. */
+.app-card {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  width: min(100%, 420px);
+  box-sizing: border-box;
+  margin: 2px 0 4px;
+  padding: var(--s3) var(--s3) var(--s3) var(--s3);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--base);
+  animation: cal-rise 220ms var(--ease) both;
+}
+.app-face {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: var(--needs-surface);
+  color: var(--needs-ink);
+  box-shadow: inset 0 1.5px 0 var(--hi-secondary), 0 3px 0 var(--needs-ledge);
+}
+.app-face.sm { width: 34px; height: 34px; border-radius: 11px; box-shadow: inset 0 1px 0 var(--hi-secondary), 0 2px 0 var(--needs-ledge); }
+.app-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.app-name { font-family: var(--head); font-size: var(--md); font-weight: 800; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.app-what { font-size: var(--sm); color: var(--ink-muted); line-height: 1.35; }
+.app-open { flex: none; }
+.app-card.gone .app-face { background: var(--sunken); color: var(--faded-ink); box-shadow: none; }
+.app-card.gone .app-name { color: var(--ink-muted); }
+.partner .app-card { margin-top: 6px; }
+
+.app-sheet { width: min(760px, calc(100vw - 32px)); }
+.app-head { gap: 10px; }
+.app-head h2 { display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1; }
+.app-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.app-changed {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 4px 28px 0;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: var(--done-surface);
+  color: var(--done-ink);
+  font-size: var(--sm);
+  animation: cal-rise 220ms var(--ease) both;
+}
+.app-changed-word { font-weight: 800; flex: none; }
+.app-changed-note { min-width: 0; overflow-wrap: anywhere; }
+.app-stage {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  margin: 12px 28px 0;
+  border-radius: var(--r-md);
+  background: var(--bg);
+  box-shadow: inset 0 0 0 1px var(--line);
+  overflow: hidden;
+}
+.app-stage > .past-none { margin: auto; }
+.app-frame { flex: 1; width: 100%; height: 100%; border: 0; background: var(--bg); display: block; }
+.app-foot { display: flex; gap: 10px; align-items: center; margin: 12px 28px 0; }
+.app-ask {
+  flex: 1;
+  min-width: 0;
+  height: 44px;
+  box-sizing: border-box;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--r-btn);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--md);
+  box-shadow: inset 0 0 0 1px var(--line), 0 2px 0 var(--line);
+}
+.app-ask::placeholder { color: var(--ink-muted); }
+.app-ask:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.app-meta { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 8px 30px 16px; font-size: var(--xs); color: var(--ink-muted); }
+@media (max-width: 640px) {
+  .app-sheet { width: 100vw; }
+  .app-changed { margin: 4px 16px 0; }
+  .app-stage { margin: 8px 0 0; border-radius: 0; box-shadow: inset 0 1px 0 var(--line), inset 0 -1px 0 var(--line); }
+  .app-foot { margin: 10px 16px 0; }
+  .app-meta { margin: 6px 18px calc(10px + var(--safe-bottom, 0px)); }
+}
+
+/* An app's ask, or words about an app, in the conversation: a small line names the app. */
+.user-app { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.user-app-from {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--sunken);
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: var(--xs);
+  font-weight: 700;
+  cursor: pointer;
+}
+.user-app-from:hover { color: var(--ink); }
+.mtile.drawn.k-app { background: var(--needs-surface); color: var(--needs-ink); }
+/* An app's own ask: not the person's words, so not their bubble. A neutral one on the left, under the app's name. */
+.app-asked { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; max-width: min(80%, 560px); }
+.app-asked-bubble {
+  padding: 10px 14px;
+  border-radius: var(--r-md);
+  background: var(--sunken);
+  color: var(--ink-soft);
+  box-shadow: inset 0 0 0 1px var(--line);
+  font-size: var(--md);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
 
 /* D404: Settings on a touch screen. Every control is a 44-pt target (the drawn size stays): the
    options of a segmented choice and the pop-up grow to 44, a model chip, a quiet Remove and a

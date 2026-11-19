@@ -10,6 +10,7 @@ import { FileBadge } from "./filecard.tsx";
 import { openFile, openFileLink } from "./fileview.tsx";
 import { url } from "./media.tsx";
 import { RichBlock } from "./rich.tsx";
+import { APP_GLYPH, openApp } from "./apps.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
@@ -47,7 +48,7 @@ export function onMadeFrame(f: Result) {
 
 // ---------- the tile: a picture's own thumbnail, a file's badge, a drawn kind ----------
 
-const KIND_G: Record<Exclude<MadeKind, "file" | "picture">, string> = {
+const KIND_G: Record<Exclude<MadeKind, "file" | "picture" | "app">, string> = {
   table: "M4 5.5h12v9H4zM4 8.5h12M4 11.5h12M9 5.5v9",
   chart: "M4.5 15.5h11M6.5 15.5v-4M10 15.5V7M13.5 15.5V9.5",
   list: "M4.5 6.5l1.2 1.2 2-2.2M4.5 11.5l1.2 1.2 2-2.2M10 6.5h5.5M10 11.5h5.5M10 15h5.5",
@@ -59,6 +60,13 @@ export function Tile({ it }: { it: MadeItem }) {
     return (
       <span class="mtile pic" aria-hidden="true">
         <img src={url(thumbPath(it.media))} alt="" loading="lazy" decoding="async" />
+      </span>
+    );
+  }
+  if (it.kind === "app") {
+    return (
+      <span class="mtile drawn k-app" aria-hidden="true">
+        {APP_GLYPH(22)}
       </span>
     );
   }
@@ -92,6 +100,7 @@ export function kindWord(it: MadeItem): string {
 // ---------- opening ----------
 
 export function openIt(it: MadeItem, el: HTMLElement | undefined, close: () => void) {
+  if (it.app) return void (close(), openApp(it.app.id));
   if (it.media) return openFile(it.media, el);
   if (it.path) return openFileLink(it.path, it.task?.taskId);
   if (it.url) return void window.open(it.url, "_blank", "noopener");

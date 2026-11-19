@@ -63,6 +63,7 @@ import { Palette } from "./palette.tsx";
 import { PV, RedoSheet } from "./past-preview.tsx";
 import { DidSheet } from "./did.tsx";
 import { PinsSheet, PinStrip } from "./pins.tsx";
+import { APP_GLYPH, AppCardView, AppSheet, openApp } from "./apps.tsx";
 import { PileSheet } from "./pile.tsx";
 import { HandSheet, PlanCard, ReviewSheet, SetCard } from "./handover.tsx";
 import { RichBlock } from "./rich.tsx";
@@ -1246,6 +1247,32 @@ function RichWords({ e, ans, rk }: { e: Entry; ans?: { seq: number; quote: strin
 function EntryView({ e, chipOwner, livingItems, join, prevUser }:{ e: Entry; chipOwner: Map<string, number>; livingItems: (e: Entry) => LivingItem[]; join?: boolean; prevUser?: number }) {
   const rk = replyKey(replyOf(e));
   if (e.user) {
+    // D405: an app's ask, or words typed in an app's sheet: a small line names the app (a tap opens it).
+    if (e.user.app) {
+      const a = e.user.app;
+      // An app's own ask is not the person's words: a neutral bubble on the left, under the app's name.
+      if (a.ask)
+        return (
+          <div class="app-asked" data-seq={e.firstSeq}>
+            <button type="button" class="user-app-from" onClick={() => openApp(a.id)}>
+              {APP_GLYPH(14)}
+              <span>{t("app.asks", a.name)}</span>
+            </button>
+            <div class="app-asked-bubble" dir="auto">
+              {e.user.text}
+            </div>
+          </div>
+        );
+      return (
+        <div class={`user-m user-app${join ? " join" : ""}`} data-reply={rk} data-seq={e.firstSeq}>
+          <button type="button" class="user-app-from" onClick={() => openApp(a.id)}>
+            {APP_GLYPH(14)}
+            <span>{t("app.about", a.name)}</span>
+          </button>
+          <UserWords text={e.user.text} reply={e.user.reply} cls="user" peb={rk} />
+        </div>
+      );
+    }
     // D206: the pictures stand above the words, on their own, as in a messaging app.
     if (!e.user.media?.length) return <UserWords text={e.user.text} reply={e.user.reply} cls={`user${join ? " join" : ""}`} rk={rk} seq={e.firstSeq} />;
     return (
@@ -1269,7 +1296,7 @@ function EntryView({ e, chipOwner, livingItems, join, prevUser }:{ e: Entry; chi
             pictures under the words never move it). */}
         {e.ai.ui?.length ? (
           <RichWords e={e} ans={ans} rk={rk} />
-        ) : (e.ai.text || !e.ai.cal) && (ans ? (
+        ) : (e.ai.text || (!e.ai.cal && !e.ai.app)) && (ans ? (
           <div class="bubble has-reply">
             <Imprint from="you" quote={ans.quote} seq={ans.seq} />
             <div dir="auto" dangerouslySetInnerHTML={{ __html: markdown(e.ai.text, t("reply.copy")) }} />
@@ -1285,6 +1312,8 @@ function EntryView({ e, chipOwner, livingItems, join, prevUser }:{ e: Entry; chi
         {e.ai.cal && <DayCard g={e.ai.cal} />}
         {/* D206: what a task showed, under the partner's words about it. */}
         {e.ai.media?.length ? <MediaBlock media={e.ai.media} side="partner" ctx={{ kind: "conv" }} /> : null}
+        {/* D405: the app this message made or changed, under its words. */}
+        {e.ai.app && <AppCardView c={e.ai.app} />}
         {e.ai.first && <FirstAfter fw={e.ai.first} />}
         <RecallLine seq={e.firstSeq} />
         <ReadingLine seq={e.firstSeq} />
@@ -3192,6 +3221,7 @@ function SheetsMain() {
   if (A.sheet.kind === "past") return <PastSheet />;
   if (A.sheet.kind === "did") return <DidSheet />;
   if (A.sheet.kind === "pins") return <PinsSheet />;
+  if (A.sheet.kind === "app") return <AppSheet id={A.sheet.id} />;
   if (A.sheet.kind === "recall") return <RecallSheet seq={A.sheet.seq} />;
   if (A.sheet.kind === "learned") return <LearnedSheet />;
   if (A.sheet.kind === "pile") return <PileSheet />;

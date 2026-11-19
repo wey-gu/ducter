@@ -30,6 +30,7 @@ Read from the Log on first use and kept live (`packages/core/src/made.ts`), per 
 | file, picture (on a computer) | a file a task wrote with a kind a person keeps (a document, a sheet, a PDF, a picture, a calendar file…), a file its evidence points at, a path its report or a reply links to (D356) | `file_open` (D356): read where the task works, then the viewer |
 | table, chart, list | the partner's blocks (D303); a pinned one as it is now (D381), older versions left out | the block drawn again in place |
 | link | a page a done report names as evidence, a PR opened from Ducter | the browser |
+| app | an app the partner made (D405, `apps.md`), one card per app as it is now; a deleted one is left out | its sheet (web, phone) or its window (Mac) |
 
 Not counted: the person's own pictures and files, source files a coding task edited (they are its
 changes, in the workbench, D214), a project's machinery (`node_modules`, `.git`, the agents' own
@@ -55,13 +56,13 @@ never a retelling. Honest edges:
 ## The place: 给你做的 / Made for you, Past tasks' middle tab
 
 Tabs: **做过的事 / Past** · **给你做的 / Made for you** · **一直在跑的 / Ongoing**. Under the tabs,
-always, the literal line **{name} 给你做的文件、图片、表格和链接，聊天里做的也在这里。/ The files,
-pictures, tables and links {name} made for you, including the ones in your chats.** (raters found
+always, the literal line **{name} 给你做的小应用、文件、图片、表格和链接，聊天里做的也在这里。/ The apps,
+files, pictures, tables and links {name} made for you, including the ones in your chats.** (D405 added apps) (raters found
 chat tables only with it, research/152 §4).
 
 - **Field:** **名字、PDF、表格、截图、哪天… / A name, a PDF, a table, a day…**, the words shared
   with the Past tab; time words said under it (**上周 · 11月9日–15日**).
-- **Chips:** **全部 / All** and each kind present: **文件 / Files**, **图片 / Pictures**,
+- **Chips:** **全部 / All** and each kind present: **小应用 / Apps** (D405), **文件 / Files**, **图片 / Pictures**,
   **表格 / Tables**, **图表 / Charts**, **清单 / Lists**, **链接 / Links**.
 - **List:** by date (Past's own groups) without words; one ranked list with words
   (**找到 n 个 / n found**).

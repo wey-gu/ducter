@@ -9,7 +9,7 @@ import type { CoreApi, Runner } from "@ducter/protocol/src/internal.ts";
 import type { Decisions } from "./decisions.ts";
 import { logUserMessage } from "./reply.ts";
 import { talkLang } from "./lang.ts";
-import { words as wordsIn } from "@ducter/protocol";
+import { words as wordsIn, APP_ASK_MAX } from "@ducter/protocol";
 
 /** Said when no runner is up, in the conversation's language (a zh screen never reads it in English). */
 const NO_RUNNER = { en: "Tasks can't run right now.", zh: "现在开不了任务。" };
@@ -114,6 +114,8 @@ export interface WsDeps {
   rules?: RulesStore;
   /** D381: 置顶 / Pinned (pins.ts); absent in tests that don't need it. */
   pins?: import("./pins.ts").PinsStore;
+  /** D405: 小应用 / Apps (apps.ts); absent in tests that don't need them. */
+  apps?: import("./apps.ts").AppsStore;
   loadout?: Loadout;
   /** D390: each agent's live models (models.ts, D202): the partner's on the home, for Settings › Partner; absent in tests that don't need it. */
   models?: import("./models.ts").ModelCatalog;
@@ -365,6 +367,14 @@ export function createWsHandler(deps: WsDeps) {
   const pinsFrame = (refused?: "full" | "gone" | "kind"): ServerFrame => ({ t: "pins", pins: deps.pins!.list(), ...(refused ? { refused } : {}) });
   const offPins = deps.pins?.onChange(() => {
     const f = pinsFrame();
+    for (const ws of sockets) if (ws.data.live && !ws.data.partner) send(ws, f);
+  });
+  // D405: the apps list goes with the pins (default conversation), and a key an app or the partner
+  // wrote reaches every device that may have it open.
+  const appsPersona = () => deps.past?.persona() ?? "";
+  const appsFrame = (): ServerFrame => ({ t: "apps", apps: deps.apps!.list(appsPersona()) });
+  const offApps = deps.apps?.onChange((c) => {
+    const f: ServerFrame = c.kind === "list" ? appsFrame() : { t: "app_data", id: c.id, key: c.key, value: c.value, by: c.by };
     for (const ws of sockets) if (ws.data.live && !ws.data.partner) send(ws, f);
   });
   const offRules = deps.rules?.onChange(() => {
@@ -748,6 +758,7 @@ export function createWsHandler(deps: WsDeps) {
         send(ws, { t: "events", events: dropSuperseded(events).map((e) => (stream === "channel" ? e : { ...e, stream: "channel" })) });
         send(ws, { t: "on_hand", onHand: tasks.onHand() });
         if (deps.pins && !ws.data.partner) send(ws, pinsFrame());
+        if (deps.apps && !ws.data.partner) send(ws, appsFrame());
         const doing = activityOf(ws);
         if (doing) send(ws, { t: "activity", activity: doing });
         ws.data.live = true; // synchronous since the read: no event can be missed in between
@@ -798,7 +809,10 @@ export function createWsHandler(deps: WsDeps) {
           logUserMessage(log, decisions, { text: f.text ?? "", clientId: f.clientId, media, ...(f.reply ? { reply: f.reply } : {}), stream: channelOf(ws.data.partner) });
           return;
         }
-        logUserMessage(log, decisions, { text: f.text ?? "", clientId: f.clientId, media, ...(f.reply ? { reply: f.reply } : {}), ...(via ? { via } : {}) });
+        // D405: typed in an app's sheet: about that app.
+        const about = typeof f.app === "string" ? deps.apps?.get(f.app) : undefined;
+        const app = about && about.persona === appsPersona() ? { app: { id: about.id, name: about.name } } : {};
+        logUserMessage(log, decisions, { text: f.text ?? "", clientId: f.clientId, media, ...(f.reply ? { reply: f.reply } : {}), ...(via ? { via } : {}), ...app });
         return; // the partner is triggered by core's user_msg subscription
       }
       case "partners": {
@@ -1341,6 +1355,53 @@ export function createWsHandler(deps: WsDeps) {
       case "unpin": {
         if (!deps.pins) throw new Error("pins are not available");
         if (!deps.pins.unpin(String(f.id ?? ""))) send(ws, pinsFrame("gone"));
+        return;
+      }
+      case "apps": {
+        if (!deps.apps) throw new Error("apps are not available");
+        return send(ws, appsFrame());
+      }
+      case "app_open": {
+        // D405: the document a client runs, composed with its bridge for that client's transport.
+        if (!deps.apps) throw new Error("apps are not available");
+        const id = String(f.id ?? "");
+        const m = deps.apps.get(id);
+        if (!m || m.persona !== appsPersona()) return send(ws, { t: "app_open", id, gone: true });
+        const app = deps.apps.open(id, { transport: f.transport === "fetch" ? "fetch" : "message", dark: f.dark === true, lang: typeof f.lang === "string" ? f.lang.slice(0, 16) : "en" });
+        deps.apps.touch(id);
+        // The web frames it from this home by a one-app token (its page forbids inline scripts in srcdoc).
+        const token = f.transport === "fetch" ? undefined : deps.apps.frameToken(id, { dark: f.dark === true, ...(typeof f.lang === "string" ? { lang: f.lang.slice(0, 16) } : {}) });
+        return send(ws, app ? { t: "app_open", id, app: { ...app, ...(token ? { src: `/app-frame/${token}` } : {}) } } : { t: "app_open", id, gone: true });
+      }
+      case "app_put": {
+        if (!deps.apps) throw new Error("apps are not available");
+        const r = deps.apps.put(String(f.id ?? ""), String(f.key ?? ""), f.value ?? null, "app");
+        if (!r.ok) throw new Error(r.error);
+        return;
+      }
+      case "app_ask": {
+        // D405: the app's ducter.ask: the person's message from that app (they tapped in it), once
+        // at a time and at most APP_ASKS_PER_HOUR an hour. Its answer is the partner's next message.
+        if (!deps.apps) throw new Error("apps are not available");
+        const id = String(f.id ?? "");
+        const ref = String(f.ref ?? "").slice(0, 40);
+        const text = String(f.text ?? "").replace(/[\p{Cc}]/gu, (c) => (c === "\n" ? c : " ")).trim().slice(0, APP_ASK_MAX);
+        const m = deps.apps.get(id);
+        const may = !m || m.persona !== appsPersona() ? "gone" : !text ? "empty" : deps.apps.mayAsk(id);
+        if (may !== "ok") return send(ws, { t: "app_ask_refused", id, ref, why: may });
+        deps.apps.asked(id, ref);
+        logUserMessage(log, decisions, { text, app: { id, name: m!.name, ask: ref } });
+        return;
+      }
+      case "app_back": {
+        if (!deps.apps) throw new Error("apps are not available");
+        const r = deps.apps.back(String(f.id ?? ""));
+        if (!r.ok) throw new Error(r.error);
+        return;
+      }
+      case "app_remove": {
+        if (!deps.apps) throw new Error("apps are not available");
+        deps.apps.remove(String(f.id ?? ""));
         return;
       }
       case "pin_tick": {
@@ -2375,6 +2436,7 @@ export function createWsHandler(deps: WsDeps) {
     stop() {
       stopped = true;
       offPins?.();
+      offApps?.();
       offDevices?.();
       offSettings?.();
       offRules?.();

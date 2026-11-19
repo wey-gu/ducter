@@ -11,6 +11,7 @@ import { pastWords } from "./i18n-past.ts";
 import { sessionWords } from "./i18n-sessions.ts";
 import { didWords } from "./i18n-did.ts";
 import { richWords } from "./i18n-rich.ts";
+import { appWords } from "./i18n-apps.ts";
 import { voiceWords } from "./i18n-voice.ts";
 import { workbench } from "./i18n-workbench.ts";
 import { phoneuse } from "./i18n-phoneuse.ts";
@@ -3157,7 +3158,7 @@ const accounts: Record<Lang, Record<string, string>> = {
 };
 
 import { autofill } from "./i18n-autofill.ts";
-export const TABLES: Record<TableLang, Record<string, string>> = { zh: { ...zh, ...folder.zh, ...devup.zh, ...signin.zh, ...where.zh, ...devcard.zh, ...accounts.zh, ...starts.zh, ...autofill.zh, ...phone.zh, ...workbench.zh, ...onhandWords.zh, ...phoneuse.zh, ...computeruse.zh, ...handset.zh, ...fileWords.zh, ...calendarWords.zh, ...updateAllWords.zh, ...convWords.zh, ...memoryWords.zh, ...transcriptWords.zh, ...pastWords.zh, ...sessionWords.zh, ...didWords.zh, ...richWords.zh, ...voiceWords.zh, ...contextWords.zh, ...firstWords.zh, ...limitWords.zh, ...settingsMore.zh, ...partnersWords.zh, ...lendWords.zh, ...agentSetupWords.zh, ...workerMemWords.zh, ...workerRecordsWords.zh }, en: { ...en, ...folder.en, ...devup.en, ...signin.en, ...where.en, ...devcard.en, ...accounts.en, ...starts.en, ...autofill.en, ...phone.en, ...workbench.en, ...onhandWords.en, ...phoneuse.en, ...computeruse.en, ...handset.en, ...fileWords.en, ...calendarWords.en, ...updateAllWords.en, ...convWords.en, ...memoryWords.en, ...transcriptWords.en, ...pastWords.en, ...sessionWords.en, ...didWords.en, ...richWords.en, ...voiceWords.en, ...contextWords.en, ...firstWords.en, ...limitWords.en, ...settingsMore.en, ...partnersWords.en, ...lendWords.en, ...agentSetupWords.en, ...workerMemWords.en, ...workerRecordsWords.en } };
+export const TABLES: Record<TableLang, Record<string, string>> = { zh: { ...zh, ...folder.zh, ...devup.zh, ...signin.zh, ...where.zh, ...devcard.zh, ...accounts.zh, ...starts.zh, ...autofill.zh, ...phone.zh, ...workbench.zh, ...onhandWords.zh, ...phoneuse.zh, ...computeruse.zh, ...handset.zh, ...fileWords.zh, ...calendarWords.zh, ...updateAllWords.zh, ...convWords.zh, ...memoryWords.zh, ...transcriptWords.zh, ...pastWords.zh, ...sessionWords.zh, ...didWords.zh, ...richWords.zh, ...appWords.zh, ...voiceWords.zh, ...contextWords.zh, ...firstWords.zh, ...limitWords.zh, ...settingsMore.zh, ...partnersWords.zh, ...lendWords.zh, ...agentSetupWords.zh, ...workerMemWords.zh, ...workerRecordsWords.zh }, en: { ...en, ...folder.en, ...devup.en, ...signin.en, ...where.en, ...devcard.en, ...accounts.en, ...starts.en, ...autofill.en, ...phone.en, ...workbench.en, ...onhandWords.en, ...phoneuse.en, ...computeruse.en, ...handset.en, ...fileWords.en, ...calendarWords.en, ...updateAllWords.en, ...convWords.en, ...memoryWords.en, ...transcriptWords.en, ...pastWords.en, ...sessionWords.en, ...didWords.en, ...richWords.en, ...appWords.en, ...voiceWords.en, ...contextWords.en, ...firstWords.en, ...limitWords.en, ...settingsMore.en, ...partnersWords.en, ...lendWords.en, ...agentSetupWords.en, ...workerMemWords.en, ...workerRecordsWords.en } };
 // D276: 聊天软件 / Chat apps (i18n-channels.ts).
 Object.assign(TABLES.zh, channelWords.zh);
 Object.assign(TABLES.en, channelWords.en);

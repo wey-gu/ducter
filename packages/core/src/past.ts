@@ -25,6 +25,8 @@ import {
   type PastMark,
   type PastMarkPatch,
   type PastQuery,
+  type PastStep,
+  PAST_STEP_LEN,
   type TaskCard,
 } from "@ducter/protocol";
 import { fill, words, type LangTag } from "@ducter/protocol";
@@ -244,6 +246,20 @@ interface Doc {
   said: string; // the agent's words, capped
   files: string[];
   from?: string;
+  /** D391: the step of `from` it redoes. */
+  fromStep?: number;
+  /** D391: its steps, the brief first (seq order). */
+  steps: { seq: number; at: string; who: "you" | "partner"; text: string; came?: string }[];
+  opened?: boolean;
+  /** D391: the agent's last words, one line. */
+  last?: string;
+}
+
+const STEPS_CAP = 400;
+/** One line of an agent's words, for where it stopped: its first non-empty line, cut. */
+function firstLine(text: string, len = 200): string {
+  const l = text.split("\n").map((x) => x.replace(/^[#>*\-\s]+/, "").trim()).find(Boolean) ?? "";
+  return l.length > len ? `${l.slice(0, len - 1)}…` : l;
 }
 
 const SAID_CAP = 12_000;
@@ -333,10 +349,16 @@ export interface PastDeps {
 }
 
 export interface Past {
-  query(persona: string, q: PastQuery): { items: PastItem[]; total: number; facets: PastFacets; suggestions: string[]; range?: { since: string; before: string; words: string } };
+  query(persona: string, q: PastQuery): { items: PastItem[]; total: number; facets: PastFacets; suggestions: string[]; range?: { since: string; before: string; words: string }; scores?: number[] };
   item(taskId: string): PastItem | undefined;
   /** D285: what a new task opened from this one carries, put after the person's words. */
   seed(taskId: string, words: string, lang: LangTag): string;
+  /** D391: its steps, the brief first, each with what came of it (no commits: the caller adds them). */
+  steps(taskId: string): PastStep[];
+  /** D391: its last report in full, cut. */
+  report(taskId: string): string | undefined;
+  /** D391: the brief of a task that redoes step `step` of this one: what led up to it, then the words. */
+  forkBrief(taskId: string, step: number, words: string, lang: LangTag, commit?: { sha: string; at: string }): string;
 }
 
 const ACTIVE = new Set(["queued", "working", "needs_you", "blocked", "done_claimed"]);
@@ -347,7 +369,7 @@ export function createPast(d: PastDeps): Past {
   let built = false;
   const docOf = (taskId: string): Doc => {
     let doc = docs.get(taskId);
-    if (!doc) docs.set(taskId, (doc = { taskId, brief: "", words: [], reports: [], said: "", files: [] }));
+    if (!doc) docs.set(taskId, (doc = { taskId, brief: "", words: [], reports: [], said: "", files: [], steps: [] }));
     return doc;
   };
   const apply = (e: LogEvent) => {
@@ -356,6 +378,12 @@ export function createPast(d: PastDeps): Past {
       const doc = docOf(b.taskId);
       if (b.brief) doc.brief = b.brief;
       if (b.from) doc.from = b.from;
+      if (b.fromStep) doc.fromStep = b.fromStep;
+      // D391: step 1 is the brief, at its first open (a retitle copies the body; a held part's brief comes later).
+      if (b.brief && !doc.opened) {
+        doc.opened = true;
+        doc.steps.unshift({ seq: e.seq, at: e.ts, who: b.origin === "you" ? "you" : "partner", text: b.brief });
+      }
     } else if (e.kind === "report") {
       const b = e.body as Bodies["report"];
       if (b.summary) docOf(b.taskId).reports.push(b.summary);
@@ -367,7 +395,15 @@ export function createPast(d: PastDeps): Past {
       if (!b.taskId) return;
       const doc = docOf(b.taskId);
       if (b.role === "user" && b.from === "user" && b.text) doc.words.push(b.text);
-      else if (b.role === "assistant" && b.text && doc.said.length < SAID_CAP) doc.said += `\n${b.text.slice(0, SAID_CAP - doc.said.length)}`;
+      // D391: each later message to it is a step (the person's, or the partner's for them).
+      if (b.role === "user" && (b.from === "user" || b.from === "partner") && b.text && doc.steps.length < STEPS_CAP) doc.steps.push({ seq: e.seq, at: e.ts, who: b.from === "user" ? "you" : "partner", text: b.text });
+      if (b.role === "assistant" && b.text?.trim()) {
+        const line = firstLine(b.text);
+        doc.last = line;
+        const step = doc.steps.at(-1);
+        if (step) step.came = line;
+      }
+      if (b.role === "assistant" && b.text && doc.said.length < SAID_CAP) doc.said += `\n${b.text.slice(0, SAID_CAP - doc.said.length)}`;
       else if (b.role === "tool" && b.tool?.input && typeof b.tool.input === "object" && doc.files.length < FILES_CAP) {
         const inp = b.tool.input as Record<string, unknown>;
         for (const k of PATH_KEYS) {
@@ -412,9 +448,24 @@ export function createPast(d: PastDeps): Past {
       ...(c.integrated ? { integrated: { act: c.integrated.act, ...(c.integrated.ref ? { ref: c.integrated.ref } : {}) } } : {}),
       kind: kindOf(own, doc?.brief),
       ...(mark ? { mark } : {}),
-      ...(from && fromCard ? { from: { taskId: from, title: fromCard.title } } : {}),
+      ...(from && fromCard ? { from: { taskId: from, title: d.marks.get(fromCard.persona, from)?.name ?? fromCard.title, ...((doc?.fromStep ?? c.from?.step) ? { step: doc?.fromStep ?? c.from!.step! } : {}) } } : {}),
       ...(c.outside && (OUTSIDE_AGENTS as readonly string[]).includes(c.outside.agent) ? { outside: { agent: c.outside.agent as OutsideAgent, startedAt: c.outside.startedAt } } : {}),
+      // D391: where it stopped, in its own words, and what it asks while it waits on the person.
+      ...(doc?.last && doc.last !== outcome ? { lastWords: doc.last } : {}),
+      ...(c.pendingDecision?.question && (c.attention === "needs_you" || c.attention === "blocked") ? { asking: firstLine(c.pendingDecision.question, 240) } : {}),
+      ...(doc?.steps.length ? { steps: doc.steps.length } : {}),
     };
+  };
+  /** D391: the computer a task ran on, by name; "" for the home. */
+  const computerOf = (c: TaskCard) => {
+    const dev = "device" in c.place ? c.place.device : undefined;
+    return dev && dev !== "local" ? (d.computerName?.(dev) ?? dev) : "";
+  };
+  const ENDED: Record<NonNullable<PastQuery["ended"]>, (a: string) => boolean> = {
+    done: (a) => a === "done" || a === "superseded",
+    failed: (a) => a === "failed",
+    cancelled: (a) => a === "dropped",
+    on_hand: (a) => ACTIVE.has(a),
   };
 
   /** The fields of one task, lowercased, in the order a hit is reported. */
@@ -476,10 +527,12 @@ export function createPast(d: PastDeps): Past {
       const facets: PastFacets = { projects: [], harnesses: [], tags: d.marks.tags(persona) };
       const pn = new Map<string, number>();
       const hn = new Map<string, number>();
-      for (const c of all) pn.set(c.project, (pn.get(c.project) ?? 0) + 1), hn.set(c.harness, (hn.get(c.harness) ?? 0) + 1);
+      const cn = new Map<string, number>();
+      for (const c of all) pn.set(c.project, (pn.get(c.project) ?? 0) + 1), hn.set(c.harness, (hn.get(c.harness) ?? 0) + 1), cn.set(computerOf(c), (cn.get(computerOf(c)) ?? 0) + 1);
       facets.projects = [...pn].map(([name, n]) => ({ name, n })).sort((a, b) => b.n - a.n || a.name.localeCompare(b.name));
       facets.harnesses = [...hn].map(([harness, n]) => ({ harness, n })).sort((a, b) => b.n - a.n);
-      const browsing = !terms.length && !tw && !q.tag && !q.starred && !q.project && !q.harness && !q.since && !q.before;
+      facets.computers = [...cn].map(([name, n]) => ({ name, n })).sort((a, b) => b.n - a.n || a.name.localeCompare(b.name));
+      const browsing = !terms.length && !tw && !q.tag && !q.starred && !q.project && !q.harness && !q.since && !q.before && q.computer === undefined && !q.ended;
       const scored: { it: PastItem; score: number; at: number }[] = [];
       const loose: { it: PastItem; score: number; at: number; n: number }[] = [];
       for (const c of all) {
@@ -489,6 +542,8 @@ export function createPast(d: PastDeps): Past {
         if (!(opened < before && at >= since)) continue;
         if (q.project !== undefined && q.project !== null && c.project !== q.project) continue;
         if (q.harness && c.harness !== q.harness) continue;
+        if (typeof q.computer === "string" && computerOf(c).toLowerCase() !== q.computer.trim().toLowerCase()) continue;
+        if (q.ended && ENDED[q.ended] && !ENDED[q.ended](c.attention)) continue;
         const it = itemOf(c);
         if (q.starred && !it.mark?.starred) continue;
         if (q.tag && !it.mark?.tags?.includes(cleanTag(q.tag))) continue;
@@ -553,6 +608,8 @@ export function createPast(d: PastDeps): Past {
       const suggestions = [...new Set([...facets.tags.map((x) => x.tag), ...facets.projects.filter((p) => p.name).map((p) => p.name.toLowerCase())])].slice(0, 12);
       return {
         items: list.slice(0, limit).map((x) => x.it),
+        // D391: how well each matched (words only; none without words), for the partner's "two alike" check.
+        ...(terms.length ? { scores: list.slice(0, limit).map((x) => x.score) } : {}),
         total: list.length,
         facets,
         suggestions,
@@ -563,6 +620,43 @@ export function createPast(d: PastDeps): Past {
       build();
       const c = d.tasks.get(taskId);
       return c ? itemOf(c) : undefined;
+    },
+    steps(taskId) {
+      build();
+      const doc = docs.get(taskId);
+      if (!doc) return [];
+      const cut = (t: string) => (t.length > PAST_STEP_LEN ? `${t.slice(0, PAST_STEP_LEN - 1)}…` : t);
+      return doc.steps.map((x, i) => ({ n: i + 1, seq: x.seq, at: x.at, who: x.who, text: cut(x.text.trim()), ...(x.came ? { came: x.came } : {}) }));
+    },
+    report(taskId) {
+      const s = d.tasks.get(taskId)?.lastReport?.summary?.trim();
+      return s ? (s.length > 1600 ? `${s.slice(0, 1599)}…` : s) : undefined;
+    },
+    forkBrief(taskId, step, said, lang, commit) {
+      build();
+      const c = d.tasks.get(taskId);
+      const doc = docs.get(taskId);
+      if (!c || !doc) return said;
+      const w = words(FORK, lang);
+      const it = itemOf(c);
+      const before = doc.steps.slice(0, Math.max(0, step - 1));
+      const lines: string[] = [said.trim(), "", "---", fill(w.head, { title: it.title, n: String(step), agent: harnessName(c.harness) })];
+      // What led up to that step, newest last, within a budget (the condensed start, D282).
+      const budget = 9_000;
+      const parts: string[] = [];
+      let used = 0;
+      for (const [i, x] of [...before.entries()].reverse()) {
+        const p = `${fill(w.step, { n: String(i + 1), who: x.who === "you" ? w.you : w.partner })} ${x.text.replace(/\s+/g, " ").slice(0, 1200)}${x.came ? `\n  ${w.came} ${x.came}` : ""}`;
+        if (used + p.length > budget) break;
+        parts.unshift(p);
+        used += p.length;
+      }
+      if (parts.length < before.length) lines.push(fill(w.earlier, { n: String(before.length - parts.length) }));
+      lines.push(...parts);
+      if (!before.length) lines.push(w.fromStart);
+      if (c.place.kind === "repo") lines.push(commit ? fill(w.code, { sha: commit.sha, at: commit.at }) : w.codeStart);
+      lines.push(w.now);
+      return lines.join("\n");
     },
     seed(taskId, said, lang) {
       build();
@@ -586,6 +680,34 @@ export function createPast(d: PastDeps): Past {
     },
   };
 }
+
+/** D391: the brief of a task redoing a step of another one, per language. */
+const FORK = {
+  zh: {
+    head: "这件事是把之前的「{title}」（{agent}）从第 {n} 步重做一遍。原来那件不动。到这一步之前的经过：",
+    step: "第 {n} 步，{who}：",
+    you: "对方说",
+    partner: "伙伴替对方说",
+    came: "结果：",
+    earlier: "（更早的 {n} 步略过了。）",
+    fromStart: "（从头重做：没有之前的步骤。）",
+    code: "代码已经在这一步之前的样子：提交 {sha}（{at}）。之后的改动在原来那件里，这里没有。",
+    codeStart: "代码是它开始时的样子：这一步之前它没有提交过。",
+    now: "上面是要你从这一步重做的事。不要照搬原来之后的做法，按这一步的要求重新来。",
+  },
+  en: {
+    head: 'This redoes an earlier task, "{title}" ({agent}), from its step {n}. The original stays as it is. What led up to that step:',
+    step: "Step {n}, {who}:",
+    you: "the person said",
+    partner: "the partner said for them",
+    came: "Result:",
+    earlier: "({n} earlier steps left out.)",
+    fromStart: "(Redone from the start: no steps before it.)",
+    code: "The code is as it was before that step: commit {sha} ({at}). Later changes are in the original task, not here.",
+    codeStart: "The code is as it was when that task began: it made no commit before this step.",
+    now: "Above it is what to do from this step. Don't copy what the original did after it; do this step afresh.",
+  },
+};
 
 /** The brief a continued task carries about the one it picks up from (D285), per language (D292). */
 const SEED = {

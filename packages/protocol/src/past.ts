@@ -67,10 +67,50 @@ export interface PastItem {
   mark?: PastMark;
   /** For a search: where it matched, with a short piece of the text around it. */
   hit?: { field: PastField; text: string };
-  /** A task seeded from another one (New task from this): that task's id and title. */
-  from?: { taskId: string; title: string };
+  /** A task seeded from another one (New task from this): that task's id and title; D391 step:
+   *  it redoes that task from its step n (从这一步重来 / Redo from here). */
+  from?: { taskId: string; title: string; step?: number };
   /** D299: carried on from a session the person ran in their own agent outside Ducter. */
   outside?: { agent: OutsideAgent; startedAt: string };
+  /** D391: the agent's last words in it, one line (where it stopped, in its own voice). */
+  lastWords?: string;
+  /** D391: what it asks the person, while it waits on them. */
+  asking?: string;
+  /** D391: how many steps it has (its brief, then each later message to it). */
+  steps?: number;
+}
+
+// ---------- D391: steps, and redoing a task from one ----------
+
+/** One step of a task: its brief (n 1), then each later message to it, with what came of it. */
+export interface PastStep {
+  /** 1-based; 1 is the brief. */
+  n: number;
+  /** The Log seq of the message (the brief: the task_open). */
+  seq: number;
+  at: string;
+  /** Who said it: the person, or the partner for them. */
+  who: "you" | "partner";
+  /** The words, cut to PAST_STEP_LEN. */
+  text: string;
+  /** The agent's last words before the next step (or the end), one line, cut. */
+  came?: string;
+  /** The code as it stood when this step began: the last commit on its branch before it (short sha). */
+  commit?: string;
+}
+
+export const PAST_STEP_LEN = 400;
+
+/** 从这一步重来 / Redo from here: a new task from step n of this one. */
+export interface PastForkInput {
+  taskId: string;
+  /** The step to redo (1 = from the start); absent = the last step. */
+  step?: number;
+  /** Another agent (and model) for it; absent = the same. */
+  harness?: string;
+  model?: string;
+  /** What to ask at that step instead of its own words; absent = its own words. */
+  words?: string;
 }
 
 // ---------- D299: 也在这台电脑上 / Also on this computer ----------
@@ -122,6 +162,10 @@ export interface PastQuery {
   harness?: string;
   tag?: string;
   starred?: boolean;
+  /** D391: the computer it ran on, by name ("" = the home). */
+  computer?: string;
+  /** D391: how it ended: done, didn't work, cancelled, or still on hand (anything not finished). */
+  ended?: "done" | "failed" | "cancelled" | "on_hand";
   /** ISO dates (inclusive start, exclusive end), on when it was last worked on. */
   since?: string;
   before?: string;
@@ -132,6 +176,8 @@ export interface PastFacets {
   projects: { name: string; n: number }[];
   harnesses: { harness: string; n: number }[];
   tags: { tag: string; n: number }[];
+  /** D391: the computers tasks ran on, by name ("" = the home), most used first. */
+  computers?: { name: string; n: number }[];
 }
 
 // ---------- 一直在跑的 / Ongoing: what keeps going (a routine, a task looking again on its own) ----------
@@ -196,6 +242,10 @@ export type PastClientFrame =
   // 接着做 / Continue: the same task goes back to work; harness (and model) when the person picked
   // another agent; words, what they say to it first. Answered with action_result (action "continue").
   | { t: "past_continue"; taskId: string; harness?: string; model?: string; words?: string }
+  // D391: a task's steps, for 从这一步重来 / Redo from here. Answered with past_steps_result.
+  | { t: "past_steps"; id?: string; taskId: string }
+  // D391: 从这一步重来 / Redo from here: a new task from that step. Answered with past_forked.
+  | ({ t: "past_fork" } & PastForkInput)
   // D299: carry on a session the person ran outside Ducter: the same agent resumes it in a new
   // task (harness absent or the same), or another agent starts from what it said. Answered with
   // outside_adopted (and the new task's events like any task's).
@@ -212,6 +262,11 @@ export type PastServerFrame =
   // D299: outside, the sessions the person ran in their own agents on the home (also on this
   // computer), best first, filtered and searched like the tasks; sources, each agent read.
   | { t: "past_result"; id?: string; items: PastItem[]; total: number; facets: PastFacets; suggestions: string[]; range?: { since: string; before: string; words: string }; outside?: OutsideItem[]; sources?: OutsideSource[] }
+  // report: its last report in full (cut to 1600), for 停在哪儿 / Where it stopped; repo: it works in a repo (a redo says where its code starts).
+  // elsewhere: a repo task on another computer, whose commits aren't read from here (a redo starts from where it began).
+  | { t: "past_steps_result"; id?: string; taskId: string; steps: PastStep[]; report?: string; repo?: boolean; elsewhere?: boolean }
+  // D391: the new task (taskId) redoing step `step` of `from`, or why it couldn't open.
+  | { t: "past_forked"; from: string; step: number; ok: boolean; taskId?: string; message?: string }
   | { t: "outside_adopted"; agent: OutsideAgent; id: string; ok: boolean; taskId?: string; message?: string }
   | { t: "outside_hidden"; agent: OutsideAgent; hidden: boolean }
   | { t: "past_marked"; taskId: string; mark: PastMark | null }

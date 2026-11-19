@@ -2580,6 +2580,8 @@ type ServerFrame struct {
 	Op          string            `json:"op,omitempty"`
 	// D285: past_result and past_marked (past.go), decoded on their own.
 	Past *PastFrame `json:"-"`
+	// D391: past_steps_result and past_forked (past.go), decoded on their own.
+	PastSteps *PastStepsFrame `json:"-"`
 	// D383: made_result (made.go), decoded on its own.
 	Made *MadeFrame `json:"-"`
 	// D300: did_result (did.go), decoded on its own.
@@ -2791,6 +2793,14 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 	}
 	var f ServerFrame
 	if err := json.Unmarshal(data, &f); err != nil {
+		// D391: past_forked's step is a number where ServerFrame's "step" is
+		// the anywhere setup's: read it on its own.
+		var head struct {
+			T string `json:"t"`
+		}
+		if json.Unmarshal(data, &head) == nil && (head.T == "past_steps_result" || head.T == "past_forked") {
+			return decodePastSteps(data, ServerFrame{T: head.T})
+		}
 		return f, err
 	}
 	switch f.T {
@@ -2807,6 +2817,8 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 		"handset_dial_result", "ways", "pong", "key_add_result", "partners", "task_index", "pins":
 	case "past_result", "past_marked", "outside_adopted", "outside_hidden":
 		return decodePast(data, f)
+	case "past_steps_result", "past_forked":
+		return decodePastSteps(data, f)
 	case "ongoing_result":
 		return decodeOngoing(data, f)
 	case "made_result":

@@ -85,6 +85,7 @@ const pileAsk = async (prompt: string): Promise<{ text: string; tokens: number }
 };
 import { seedDidDay } from "../../core/test/did-day.ts";
 import { seedMade } from "./seed-made.ts";
+import { seedHistory } from "./seed-history.ts";
 import { realClock } from "../../core/src/clock.ts";
 import { partnerFingerprint } from "../test/fingerprint.ts";
 import { createModelCatalog } from "../../core/src/models.ts";
@@ -439,6 +440,8 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   // D383: the core's clock can be set back while what was made weeks ago is logged (seed-made.ts).
   const back = { ms: 0 };
   const clock = { ...realClock, now: () => Date.now() - back.ms };
+  // D391: a redo opens a repo task on fake repos: git answers as a checkout with main (never the machine's own repos).
+  const fakeGit = async (cwd: string, args: string[]) => (args.includes("--show-toplevel") ? { ok: true, out: cwd } : args[0] === "for-each-ref" || args[0] === "branch" ? { ok: true, out: "main" } : args[0] === "symbolic-ref" ? { ok: true, out: "origin/main" } : { ok: true, out: "" });
   // D390: a home with Codex and Claude Code signed in, Codex listing its own models (never this machine's).
   const brainHome = sc.brainCodex
     ? {
@@ -446,7 +449,7 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
         deviceProbes: { cua: async () => ({ missing: "eval" }), harnesses: async () => [{ harness: "claude-code", installed: true, loggedIn: true }, { harness: "codex", installed: true, loggedIn: true }], kind: async () => "laptop" as const },
       }
     : {};
-  const core = startCore({ ...brainHome, dataDir, port: 0, persona, webLook, clock, localAgents: createLocalAgents({ home: ownHome, env: {}, uid: null }), workingMemory: { run: async () => ({ code: 0, out: wmOut, err: "" }) }, // D341: never the machine's own gh (the person's real issues) nor its Obsidian vault list.
+  const core = startCore({ ...brainHome, dataDir, port: 0, persona, webLook, clock, ...(sc.history ? { git: fakeGit } : {}), localAgents: createLocalAgents({ home: ownHome, env: {}, uid: null }), workingMemory: { run: async () => ({ code: 0, out: wmOut, err: "" }) }, // D341: never the machine's own gh (the person's real issues) nor its Obsidian vault list.
     taskSources: { ghRun: todoGh?.run ?? (async () => ({ code: 127, out: "", err: "", missing: true as const })), ghEnv: {}, home: join(dataDir, "no-home"), pollMs: 3_600_000, ask: sc.todosPile ? pileAsk : async () => ({ text: "[]", tokens: 1 }) }, ...(sc.second ? { partners: true } : {}), ownPhone: { platform: "darwin", arch: "arm64" }, ...(calOo ? { ooSource: calOo.source } : sc.phone ? { ooSource: { detect: () => ({ installed: false, account: false }), read: () => undefined } } : {}) });
   // D376: the home's name as the records' computer: a fixed fake one, never this machine's own name.
   (core.outside as { computer: () => string | undefined }).computer = () => sc.homeName ?? "Weyl's Mac";
@@ -551,6 +554,8 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   const jobOf = new Map<string, string>();
   let lastUser = 0;
   const waiters = new Map<string, Bodies["waiter"]>();
+  // D391: earlier tasks over six weeks, found by task_find and redone by task_fork; their keys as seeded tasks'.
+  if (sc.history) for (const [k, id] of seedHistory(core as never, back, sc.lang.startsWith("zh"))) idOf.set(k, id), keyOf.set(id, k);
   for (const s of sc.seed ?? []) {
     if ("user" in s) lastUser = core.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: s.user } }).seq;
     else if ("ai" in s) core.log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: s.ai, replyTo: lastUser } });

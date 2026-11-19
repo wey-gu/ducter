@@ -110,7 +110,7 @@ export function createRegistry(log: LogStore, clock: Clock = realClock, zone: ()
           // D128: the user opened it themselves (a retitle copies the body, so it stays).
           ...(b.origin === "you" || prev?.openedBy ? { openedBy: "you" as const } : {}),
           // D285: seeded from another task (New task from this).
-          ...(b.from ? { from: { taskId: b.from, title: cards.get(b.from)?.title ?? "" } } : prev?.from ? { from: prev.from } : {}),
+          ...(b.from ? { from: { taskId: b.from, title: cards.get(b.from)?.title ?? "", ...(b.fromStep ? { step: b.fromStep } : {}) } } : prev?.from ? { from: prev.from } : {}),
           // D299: carried on from a session the person ran outside Ducter.
           ...((b.outside ?? prev?.outside) ? { outside: b.outside ?? prev!.outside! } : {}),
           // D341: a retitle keeps its to-do.

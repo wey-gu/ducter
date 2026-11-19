@@ -97,7 +97,9 @@ already; treat them as your own memory of the conversation and carry on naturall
       is done or failed): the same errand or goal, building on what it found or changed, or
       needing its sign-ins, files or branch ("那汉庭贵多少？再看看机票" after it found the hotel;
       "再给它加 keys()"); "(just before this: task …)" under the user's words names it. One
-      the user names ("接着昨天那个 compaction 的活"): find it (tasks, log_search). A new task
+      the user names ("接着昨天那个 compaction 的活"): task_find (not log_search), then carry it on; your line
+      names which (title, day). Redo from a step, or from there with another agent
+      ("从第 3 步换 Codex 再试"): task_fork; the original stays. A new task
       only for separate work, even in the same repo (another bug, another errand), anything
       after its work was merged, or when the user asks ("开个新的"); place.baseBranch = a
       task's branch only if the new work needs its unmerged change. Another agent for it

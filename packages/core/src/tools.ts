@@ -71,7 +71,7 @@ export function registerCoreTools(mcp: CoreMcpHub, log: LogStore, tasks: CoreReg
   mcp.register(
     "partner",
     "log_search",
-    "Search the whole Ducter Log (the conversation, from its first day, and every task). Best matches first; each hit has its seq, and log_read from near that seq gives the context. A file, picture, table or PR Ducter made: made_find instead.",
+    "Search the whole Ducter Log (the conversation, from its first day, and every task). Best matches first; each hit has its seq, and log_read from near that seq gives the context. A file, picture, table or PR Ducter made: made_find instead; an earlier task the user names: task_find.",
     logSearch,
     async (a, ctx) => {
       const p = who(ctx);

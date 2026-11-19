@@ -10,6 +10,8 @@ import type { TableLang } from "./i18n.ts";
 import { Btn, Facts } from "./controls.tsx";
 import { harnessName, spoken } from "./format.ts";
 import { askMade, M, MadeTab } from "./made.tsx";
+import { forgetSteps, Preview, PV, startRedo, type PreviewActs } from "./past-preview.tsx";
+import { ROOMY, useRoomy } from "./wide.ts";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
@@ -37,16 +39,31 @@ export const P = {
   settling: "",
   /** D299: the outside session being carried on (agent:id), opened when its task is there. */
   adopting: "",
+  /** D391: the computer and the ending narrowing the list (each beside the filter above). */
+  computer: undefined as string | undefined,
+  ended: undefined as PastQuery["ended"],
+  /** D391: the card whose 停在哪儿 / Where it stopped stands beside the list (wide). */
+  sel: "",
 };
 
 const ACTIVE = new Set(["queued", "working", "needs_you", "blocked", "done_claimed"]);
 
 /** Opens 做过的事, with words when given (On hand's Find, the switcher); or 一直在跑的 / Ongoing. */
+queueMicrotask(() => {
+  A.openPast = (q) => openPast(q ?? "");
+  A.onPastWelcome = () => void (A.sheet?.kind === "past" && (ask(true), askMade(P.q, true)));
+  // Opened from a link before this registered (the first load): follow it now.
+  if (typeof location !== "undefined" && /^#(past|find)/.test(location.hash)) A.fromHash();
+});
+
 export function openPast(q = "", tab: "past" | "made" | "ongoing" = "past") {
   P.q = q;
   P.tab = tab;
   P.filter = { kind: "all" };
-  P.focus = P.markFor = P.moreFor = P.ogMenu = P.ogPause = P.ogEdit = "";
+  P.focus = P.markFor = P.moreFor = P.ogMenu = P.ogPause = P.ogEdit = P.sel = "";
+  P.computer = P.ended = undefined;
+  PV.sheet = "";
+  forgetSteps();
   M.kind = undefined;
   M.open = "";
   A.sheet = { kind: "past" };
@@ -61,6 +78,8 @@ function queryOf(): PastQuery {
   return {
     ...(P.q.trim() ? { q: P.q.trim() } : {}),
     ...(f.kind === "starred" ? { starred: true } : f.kind === "project" ? { project: f.v } : f.kind === "harness" ? { harness: f.v } : f.kind === "tag" ? { tag: f.v } : {}),
+    ...(P.computer !== undefined ? { computer: P.computer } : {}),
+    ...(P.ended ? { ended: P.ended } : {}),
   };
 }
 
@@ -280,8 +299,21 @@ function endWord(it: PastItem): string {
   return "";
 }
 
-function Card({ it }: { it: PastItem }) {
+/** D391: a card's click: beside the list (wide) it is chosen for 停在哪儿; else its preview fills the screen. */
+function choose(it: PastItem, wide: boolean) {
+  P.focus = P.sel = it.taskId;
+  if (!wide) PV.sheet = it.taskId;
+  A.changed();
+}
+
+/** What the preview's buttons do for one card. */
+export function actsFor(it: PastItem): PreviewActs {
+  return { open: () => open(it), carryOn: (h) => carryOn(it, h), seed: () => seedFrom(it), dateOf: (iso) => dateOf(iso), active: ACTIVE.has(it.attention) };
+}
+
+function Card({ it, wide }: { it: PastItem; wide: boolean }) {
   const on = P.focus === it.taskId;
+  const chosen = wide && P.sel === it.taskId;
   const marking = P.markFor === it.taskId;
   const more = P.moreFor === it.taskId;
   const active = ACTIVE.has(it.attention);
@@ -291,11 +323,11 @@ function Card({ it }: { it: PastItem }) {
   const hitLabel = it.hit ? t(`past.hit.${it.hit.field === "name" ? "title" : it.hit.field}`) : "";
   return (
     <div
-      class={`pcard${on ? " on" : ""}${marking || more ? " open" : ""}`}
+      class={`pcard${on ? " on" : ""}${chosen ? " picked" : ""}${marking || more ? " open" : ""}`}
       data-id={it.taskId}
       onMouseEnter={() => P.focus !== it.taskId && ((P.focus = it.taskId), A.changed())}
     >
-      <button class="pmain" onClick={() => open(it)} aria-label={it.title}>
+      <button class="pmain" onClick={() => choose(it, wide)} onDblClick={() => open(it)} aria-label={it.title} aria-current={chosen || undefined}>
         <Pebble it={it} />
         <span class="pbody">
           <span class="pl1">
@@ -330,6 +362,7 @@ function Card({ it }: { it: PastItem }) {
             ) : null}
             {it.integrated && <span class="pint">{t(it.integrated.act === "merge" ? "onhand.pr.merged" : "onhand.pr.draft")}</span>}
             {it.outside && <span class="pint">{t("past.out.from", harnessName(it.outside.agent))}</span>}
+            {it.from?.step && <span class="pfrom">{t("past.from.step", it.from.title, it.from.step)}</span>}
             {end && <span class={`pend${active ? " live" : ""}`}>{end}</span>}
           </span>
         </span>
@@ -357,6 +390,9 @@ function More({ it }: { it: PastItem }) {
     <div class="pmenu" role="menu">
       <button role="menuitem" onClick={() => (shut(), seedFrom(it))}>
         {t("past.seed")}
+      </button>
+      <button role="menuitem" onClick={() => (shut(), startRedo(it))}>
+        {t("pv.redo.any")}
       </button>
       <button role="menuitem" aria-expanded={others} onClick={() => setOthers(!others)}>
         {t("past.other.agent")}
@@ -477,21 +513,62 @@ function Chips() {
   for (const g of (r?.facets.tags ?? []).slice(0, 8)) chips.push({ key: `t:${g.tag}`, label: `#${g.tag}`, f: { kind: "tag", v: g.tag } });
   const keyOf = (x: Filter) => (x.kind === "all" || x.kind === "starred" ? x.kind : `${x.kind[0]}:${x.v}`);
   const cur = keyOf(f);
+  const all = cur === "all" && P.computer === undefined && !P.ended;
   return (
-    <div class="pchips" role="radiogroup">
-      {chips.map((c) => (
-        <button key={c.key} role="radio" aria-checked={cur === c.key} class={`pchip${cur === c.key ? " on" : ""}`} onClick={() => ((P.filter = cur === c.key ? { kind: "all" } : c.f), ask(true), A.changed())}>
-          {c.key === "starred" && <StarMark on={cur === c.key} />}
-          {c.label}
+    <div class="pchips" role="group">
+      {chips.map((c) => {
+        const on = c.key === "all" ? all : cur === c.key;
+        const pick = () => {
+          if (c.key === "all") (P.filter = { kind: "all" }), (P.computer = undefined), (P.ended = undefined);
+          else P.filter = cur === c.key ? { kind: "all" } : c.f;
+          ask(true);
+          A.changed();
+        };
+        return (
+          <button key={c.key} aria-pressed={on} class={`pchip${on ? " on" : ""}`} onClick={pick}>
+            {c.key === "starred" && <StarMark on={on} />}
+            {c.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** D391: the computer it ran on (from two) and how it ended: a row of their own under the filters,
+ *  each a toggle that holds beside the one above. */
+function Narrow() {
+  const computers = P.res?.facets.computers ?? [];
+  const home = A.homeName || t("past.c.home");
+  const endings: NonNullable<PastQuery["ended"]>[] = ["done", "failed", "cancelled", "on_hand"];
+  return (
+    <div class="pchips narrow" role="group">
+      {computers.length > 1 &&
+        computers.map((c) => (
+          <button key={`c:${c.name}`} aria-pressed={P.computer === c.name} class={`pchip where${P.computer === c.name ? " on" : ""}`} onClick={() => ((P.computer = P.computer === c.name ? undefined : c.name), ask(true), A.changed())}>
+            <ComputerMark />
+            {c.name || home}
+          </button>
+        ))}
+      {computers.length > 1 && <span class="pchip-gap" aria-hidden="true" />}
+      {endings.map((e) => (
+        <button key={`e:${e}`} aria-pressed={P.ended === e} class={`pchip end-${e}${P.ended === e ? " on" : ""}`} onClick={() => ((P.ended = P.ended === e ? undefined : e), ask(true), A.changed())}>
+          {t(`past.e.${e}`)}
         </button>
       ))}
     </div>
   );
 }
 
+const ComputerMark = () => (
+  <svg width="14" height="14" viewBox="0 0 20 20" aria-hidden="true">
+    <path d="M3.5 5.5h13v8h-13zM7.5 16.5h5M10 13.5v3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+  </svg>
+);
+
 /** The list as drawn: starred first, then by when, while browsing; one ranked list with words. */
 function sections(items: PastItem[]): { key: string; label: string; items: PastItem[] }[] {
-  if (P.q.trim()) return [{ key: "found", label: t("past.n", P.res?.total ?? items.length), items }];
+  if (P.q.trim() || P.computer !== undefined || P.ended) return [{ key: "found", label: t("past.n", P.res?.total ?? items.length), items }];
   const out: { key: string; label: string; items: PastItem[] }[] = [];
   const starred = P.filter.kind === "all" ? items.filter((i) => i.mark?.starred) : [];
   if (starred.length) out.push({ key: "starred", label: t("past.starred"), items: starred });
@@ -507,22 +584,28 @@ function sections(items: PastItem[]): { key: string; label: string; items: PastI
 
 export function PastSheet() {
   const ref = useRef<HTMLInputElement>(null);
+  const wide = useRoomy(ROOMY) && !coarsePointer();
   useEffect(() => ref.current?.focus(), []);
   const items = P.res?.items ?? [];
   const secs = sections(items);
   const order = secs.flatMap((s) => s.items);
   const at = order.findIndex((i) => i.taskId === P.focus);
+  // D391: beside the list, the chosen card's 停在哪儿; none chosen yet, the first one drawn.
+  const pv = wide ? chosenOf(order) : undefined;
+  if (pv && P.sel !== pv.taskId) P.sel = pv.taskId;
   const walk = (by: number) => {
     if (!order.length) return;
     const n = at < 0 ? (by > 0 ? 0 : order.length - 1) : Math.max(0, Math.min(order.length - 1, at + by));
     P.focus = order[n]!.taskId;
+    if (wide) P.sel = P.focus;
     A.changed();
     requestAnimationFrame(() => document.querySelector(`.pcard[data-id="${CSS.escape(P.focus)}"]`)?.scrollIntoView({ block: "nearest" }));
   };
   const keys = (e: KeyboardEvent) => {
     const inField = (e.target as HTMLElement)?.tagName === "INPUT";
     const cur = at >= 0 ? order[at] : undefined;
-    if (P.markFor) return;
+    if (P.markFor || PV.redo) return;
+    if (PV.sheet && e.key === "Escape") return e.preventDefault(), e.stopPropagation(), (PV.sheet = ""), A.changed();
     // D383: on Made for you, Esc and / only (its cards are buttons, walked by Tab).
     if (P.tab === "made" && e.key !== "Escape" && e.key !== "/") return;
     if (e.key === "Escape") {
@@ -535,8 +618,17 @@ export function PastSheet() {
     if (e.key === "ArrowUp" || (!inField && e.key === "k")) return e.preventDefault(), walk(-1);
     if (e.key === "/" && !inField) return e.preventDefault(), ref.current?.focus();
     if (!cur) return;
+    // D391: Space or → looks at where it stopped (beside the list, or filling the screen).
+    if (!inField && (e.key === " " || e.key === "ArrowRight")) {
+      e.preventDefault();
+      if (!wide) return choose(cur, false);
+      P.sel = cur.taskId;
+      A.changed();
+      return requestAnimationFrame(() => (document.querySelector(".past-sheet .pv .pv-foot .btn") as HTMLElement | null)?.focus());
+    }
     if (e.key === "Enter" && !e.isComposing) {
       e.preventDefault();
+      if (e.altKey) return startRedo(cur);
       if (e.metaKey && e.shiftKey) return seedFrom(cur);
       if (e.metaKey || e.ctrlKey) return carryOn(cur);
       return open(cur);
@@ -551,7 +643,7 @@ export function PastSheet() {
   return (
     <>
       <div class="scrim" onClick={close} />
-      <div class="past-sheet" role="dialog" aria-modal="true" aria-label={t("past.title")} onKeyDown={keys}>
+      <div class={`past-sheet${wide && P.tab === "past" ? " with-pv" : ""}`} role="dialog" aria-modal="true" aria-label={t("past.title")} onKeyDown={keys}>
         <div class="past-head">
           <h2>{t(ongoing ? "og.tab" : made ? "made.tab" : "past.title")}</h2>
           <button class="past-x" aria-label={t("nav.back")} onClick={close}>
@@ -597,22 +689,53 @@ export function PastSheet() {
         </label>
         {P.res?.range && <Facts class="past-range" items={rangeLine(P.res.range)} />}
         <Chips />
+        <Narrow />
+        <div class="past-body">
         <div class="past-list">
           {!loading && !items.length && !P.res?.outside?.length && <p class="past-none">{searching || P.filter.kind !== "all" ? t("past.none") : t("past.empty")}</p>}
           {secs.map((s) => (
             <section key={s.key} class="past-sec">
               <h3>{s.label}</h3>
               {s.items.map((it) => (
-                <Card key={it.taskId} it={it} />
+                <Card key={it.taskId} it={it} wide={wide} />
               ))}
             </section>
           ))}
           <OutsideSection />
         </div>
+        {wide && <Preview it={pv} acts={pv && actsFor(pv)} />}
+        </div>
+        {!wide && PV.sheet && <PhonePreview items={items} />}
           </>
         )}
       </div>
     </>
+  );
+}
+
+/** The card beside the list: the one chosen, else the first. */
+function chosenOf(items: PastItem[]): PastItem | undefined {
+  return items.find((i) => i.taskId === P.sel) ?? items[0];
+}
+
+const coarsePointer = () => typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches;
+
+/** D391: on a phone (and narrow), where it stopped fills the screen; back goes to the list. */
+function PhonePreview({ items }: { items: PastItem[] }) {
+  const it = items.find((i) => i.taskId === PV.sheet);
+  if (!it) return null;
+  return (
+    <div class="pv-sheet" role="dialog" aria-label={t("pv.title")}>
+      <div class="pv-sheet-head">
+        <button class="pv-back" aria-label={t("nav.back")} onClick={() => ((PV.sheet = ""), A.changed())}>
+          <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">
+            <path d="M12.5 4.5 7 10l5.5 5.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+          <span>{t("past.title")}</span>
+        </button>
+      </div>
+      <Preview it={it} acts={actsFor(it)} />
+    </div>
   );
 }
 

@@ -9,6 +9,10 @@ import type { CoreApi, Runner } from "@ducter/protocol/src/internal.ts";
 import type { Decisions } from "./decisions.ts";
 import { logUserMessage } from "./reply.ts";
 import { talkLang } from "./lang.ts";
+import { words as wordsIn } from "@ducter/protocol";
+
+/** Said when no runner is up, in the conversation's language (a zh screen never reads it in English). */
+const NO_RUNNER = { en: "Tasks can't run right now.", zh: "现在开不了任务。" };
 import type { DevicesView } from "./devices.ts";
 import { redactDeep } from "@ducter/protocol/src/redact.ts";
 import { PROJECTED_KINDS, isActive, taskStream } from "./registry.ts";
@@ -172,7 +176,7 @@ export interface WsDeps {
   /** D285: 做过的事 / Past tasks (past.ts); absent in tests that don't need it. */
   /** D309: 伙伴们 / Partners (partners.ts); absent in tests that don't need them. */
   partners?: Partners;
-  past?: import("./past.ts").Past & { marks: import("./past.ts").Marks; persona: () => string; ongoing?: import("./ongoing.ts").Ongoing; outside?: import("./outside.ts").Outside; made?: import("./made.ts").Made };
+  past?: import("./past.ts").Past & { marks: import("./past.ts").Marks; persona: () => string; ongoing?: import("./ongoing.ts").Ongoing; outside?: import("./outside.ts").Outside; made?: import("./made.ts").Made; redo?: import("./redo.ts").Redo };
   /** D300: 替你做过的 / Done for you (did.ts); absent in tests that don't need it. */
   did?: import("./did.ts").Did;
   /**
@@ -232,6 +236,7 @@ export function dropSuperseded(events: LogEvent[]): LogEvent[] {
 
 export function createWsHandler(deps: WsDeps) {
   const { core, decisions } = deps;
+  const noRunnerLine = () => wordsIn(NO_RUNNER, talkLang(deps.settings, core.log));
   /** D206: the refs for the ids a client sent (throws on one the home doesn't hold). */
   const mediaOf = (ids: unknown): MediaRef[] => {
     if (ids === undefined || ids === null || (Array.isArray(ids) && !ids.length)) return [];
@@ -962,7 +967,7 @@ export function createWsHandler(deps: WsDeps) {
         try {
           switch (f.action) {
             case "interrupt":
-              if (!r) return result(false, "Tasks can't run right now.");
+              if (!r) return result(false, noRunnerLine());
               await r.interrupt(f.taskId);
               return result(true);
             case "drop": {
@@ -1863,6 +1868,30 @@ export function createWsHandler(deps: WsDeps) {
         refreshFirstScreens(); // D307: Settings shows what is not shown, and its way back
         return;
       }
+      case "past_steps": {
+        // D391: a task's steps, for 停在哪儿 / Where it stopped and 从这一步重来 / Redo from here.
+        const redo = deps.past?.redo;
+        if (!redo) throw new Error("past tasks are not available");
+        const card = tasks.get(String(f.taskId ?? ""));
+        if (!card || card.persona !== deps.past!.persona()) throw new Error("I can't find that task.");
+        const r = await redo.steps(card.taskId);
+        send(ws, { t: "past_steps_result", ...(typeof f.id === "string" ? { id: f.id.slice(0, 64) } : {}), taskId: card.taskId, ...r });
+        return;
+      }
+      case "past_fork": {
+        // D391: 从这一步重来 / Redo from here: a new task; the original is not touched.
+        const redo = deps.past?.redo;
+        const step = Number(f.step) || 0;
+        const done = (r: { ok: boolean; taskId?: string; message?: string; step?: number }) => send(ws, { t: "past_forked", from: String(f.taskId ?? ""), step: r.step ?? step, ok: r.ok, ...(r.taskId ? { taskId: r.taskId } : {}), ...(r.message ? { message: r.message } : {}) });
+        if (!redo) return done({ ok: false, message: "Past tasks are not available." });
+        const card = tasks.get(String(f.taskId ?? ""));
+        if (!card || card.persona !== deps.past!.persona()) return done({ ok: false, message: "I can't find that task." });
+        const r = await redo.fork({ taskId: card.taskId, ...(step ? { step } : {}), ...(typeof f.harness === "string" && f.harness ? { harness: f.harness } : {}), ...(typeof f.model === "string" && f.model ? { model: f.model } : {}), ...(typeof f.words === "string" ? { words: f.words.slice(0, 16_000) } : {}) }).catch((err: Error) => ({ ok: false as const, step, message: err.message }));
+        if (!r.ok) return done({ ok: false, step: r.step, message: r.message });
+        // The partner knows (it never wakes for this): the person redid an earlier task from a step.
+        log.append({ stream: "channel", origin: "user", kind: "job_status", body: { jobId: `act_${r.card.taskId}_redo`, taskId: r.card.taskId, state: "running", text: `the user redid step ${r.step} of an earlier task (${card.title}) as this new one${r.card.harness !== card.harness ? `, with ${r.card.harness}` : ""}` } });
+        return done({ ok: true, taskId: r.card.taskId, step: r.step });
+      }
       case "past_continue": {
         // 接着做 / Continue: the same task goes back to work. Another agent first when picked
         // (its saved progress carries over, D89); then the person's words, or Ducter's own
@@ -1872,7 +1901,7 @@ export function createWsHandler(deps: WsDeps) {
         const card = tasks.get(f.taskId);
         if (!card) return result(false, "I can't find that task.");
         const r = deps.runner();
-        if (!r?.reopen) return result(false, "Tasks can't run right now.");
+        if (!r?.reopen) return result(false, noRunnerLine());
         const reopen = r.reopen.bind(r);
         try {
           const harness = typeof f.harness === "string" && f.harness ? f.harness : "";

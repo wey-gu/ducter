@@ -17,14 +17,49 @@ type PastState struct {
 	Adopted *protocol.PastFrame
 	// Made is 给你做的 / Made for you's last made_result (D383).
 	Made *protocol.MadeFrame
+	// D391: the find-anything palette's own answers (ids starting with
+	// PaletteID), kept apart from the place's so neither overwrites the other.
+	Palette     *protocol.PastFrame
+	PaletteMade *protocol.MadeFrame
+	// Steps is each task's last past_steps_result, by task id.
+	Steps map[string]*protocol.PastStepsFrame
+	// Forked is the last past_forked.
+	Forked *protocol.PastStepsFrame
 }
+
+// PaletteID begins the id of every query the palette sends.
+const PaletteID = "pal"
+
+func paletteID(id string) bool { return len(id) >= len(PaletteID) && id[:len(PaletteID)] == PaletteID }
 
 // applyMade keeps the newest made_result (the view drops one that answers
 // an older query by its id).
 func (s *Store) applyMade(f protocol.ServerFrame) {
 	if f.Made != nil {
-		s.Past.Made = f.Made
+		if paletteID(f.Made.ID) {
+			s.Past.PaletteMade = f.Made
+		} else {
+			s.Past.Made = f.Made
+		}
 		s.Past.Version++
+	}
+}
+
+// applyPastSteps keeps a task's steps, and the last fork's answer (D391).
+func (s *Store) applyPastSteps(f protocol.ServerFrame) {
+	p := f.PastSteps
+	if p == nil {
+		return
+	}
+	s.Past.Version++
+	switch f.T {
+	case "past_steps_result":
+		if s.Past.Steps == nil {
+			s.Past.Steps = map[string]*protocol.PastStepsFrame{}
+		}
+		s.Past.Steps[p.TaskID] = p
+	case "past_forked":
+		s.Past.Forked = p
 	}
 }
 
@@ -36,6 +71,10 @@ func (s *Store) applyPast(f protocol.ServerFrame) {
 	s.Past.Version++
 	switch f.T {
 	case "past_result":
+		if paletteID(p.ID) {
+			s.Past.Palette = p
+			return
+		}
 		s.Past.Result, s.Past.ResultID = p, p.ID
 	case "ongoing_result":
 		s.Past.Ongoing = p.Ongoing

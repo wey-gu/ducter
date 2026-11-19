@@ -7,6 +7,10 @@ import type { CoreRegistry } from "./registry.ts";
 import { keyReadyText, keyRefusedText } from "./saved/key-words.ts";
 import { destructiveChoice } from "@ducter/protocol/src/destructive.ts";
 import { laterable, laterRefusal } from "@ducter/protocol/src/later.ts";
+import { detect, words, type LangTag } from "@ducter/protocol/src/lang.ts";
+
+/** The Go of a task's question that names none, in the task's language (the card reads "好，继续", never "好，Continue"). */
+const GO_PLAIN = { en: "Continue", zh: "继续", "zh-Hant": "繼續", ja: "続ける", ko: "계속" } as const;
 
 export type DecisionHook = (taskId: string, text: string, resolved: Bodies["decision_resolved"]) => void | Promise<void>;
 
@@ -165,6 +169,11 @@ export function createDecisions(opts: {
     timers.set(d.decisionId, clock.setTimeout(fire, Math.max(0, ms)));
   };
 
+  /** A task's language: what its brief was written for, else its question's own. */
+  const langOf = (taskId: string, text: string): LangTag | undefined => {
+    const open = log.read({ stream: `task:${taskId}`, fromSeq: 0, limit: 1, kinds: ["task_open"] })[0]?.body as Bodies["task_open"] | undefined;
+    return open?.language ?? detect(text)?.lang;
+  };
   const onReport = (r: Bodies["report"]) => {
     let blocking = r.questions.filter((q) => q.blocking && q.text.trim());
     if (r.state === "needs_input" && !blocking.length) blocking = r.questions.filter((q) => q.text.trim());
@@ -178,7 +187,7 @@ export function createDecisions(opts: {
           decisionId: newId(),
           taskId: r.taskId,
           question: q.text,
-          goLabel: named ? q.default!.trim() : "Continue",
+          goLabel: named ? q.default!.trim() : words(GO_PLAIN, langOf(r.taskId, q.text)),
           defaultOption: hasDefault ? "go" : "hold",
           reversible: q.reversible,
           ...(q.signIn ? { signIn: q.signIn } : {}),

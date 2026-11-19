@@ -33,6 +33,7 @@
 "menu.devices" = "Your devices";
 "menu.partner" = "Partner";
 "menu.composer" = "Talk to %@";
+"menu.find" = "Find Anything…";
 "menu.switch" = "Open Task…";
 /* D200: the home runs an older Ducter than this app. */
 "home.older" = "Ducter on %1$@ is still %2$@, older than this app; some new things wait for it to update.";

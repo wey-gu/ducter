@@ -884,99 +884,13 @@ func (a *App) OpenSwitcher() {
 		return
 	}
 	a.oh.sw = !a.oh.sw
-	a.oh.swQuery, a.oh.swAt = "", 0
+	a.oh.swQuery, a.oh.swAt, a.pal.at = "", 0, 0
 }
 
+// switcher is 找任何东西 / Find anything while it is open (D391, palette.go).
 func (a *App) switcher(c *ui.Context) {
 	if !a.oh.sw {
 		return
 	}
-	t := a.T
-	w, _ := c.Size()
-	if w <= 0 {
-		w = 1040
-	}
-	list := a.switchList(strings.TrimSpace(a.oh.swQuery))
-	at := min(a.oh.swAt, max(0, len(list)-1))
-	pick := func(x *store.Task) {
-		a.oh.sw = false
-		if x == nil {
-			q := strings.TrimSpace(a.oh.swQuery)
-			if q == "" {
-				return
-			}
-			a.OpenNewTask(nil)
-			a.nt.words = q
-			return
-		}
-		a.OpenTask(x.ID)
-	}
-	switch {
-	case c.Shortcut(0, ui.KeyDown):
-		a.oh.swAt = min(at+1, max(0, len(list)-1))
-	case c.Shortcut(0, ui.KeyUp):
-		a.oh.swAt = max(at-1, 0)
-	case c.Shortcut(0, ui.KeyEnter):
-		if len(list) > 0 {
-			pick(list[at])
-		} else {
-			pick(nil)
-		}
-		return
-	}
-	ui.DialogBase(c, &a.oh.sw, func(back, panel ui.Element) {
-		back.Background(t.Scrim)
-		panel.Width(min(w-2*t.S6, 640)).Radius(t.RadiusXL).Background(t.Surface).Shadow(0, t.Floating.Y, t.Floating.Blur, 0, t.Floating.Color).
-			Label(a.L.T("switch.label"))
-		in := ui.TextInput(c.Key("sw-in"), &a.oh.swQuery).Placeholder(a.L.T("switch.placeholder")).Label(a.L.T("switch.placeholder")).
-			FontSize(t.LG).Padding(t.S5-4, t.S5).Background(ui.Color{}).Border(0, ui.Color{})
-		in.Focus()
-		ui.Box(c.Key("rule")).Height(1).Background(t.LineSoft)
-		ui.Column(c.Key("sw-list")).Padding(t.S2).MaxHeight(520).Children(func() {
-			ui.Scroll(c).Children(func() {
-				for n, x := range list {
-					a.switcherRow(c.Key("sw:"+x.ID), x, n == at, func() { pick(x) })
-				}
-				if len(list) == 0 && strings.TrimSpace(a.oh.swQuery) != "" {
-					q := strings.TrimSpace(a.oh.swQuery)
-					r := ui.Row(c.Key("sw-new")).Padding(t.S3-2, t.S4).Radius(t.RadiusMD).Background(t.Sunken).Cursor(ui.CursorPointer)
-					r.Children(func() {
-						ui.Text(c, a.L.T("switch.new", q)).FontSize(t.MD).FontWeight(700)
-					})
-					if r.Clicked() {
-						pick(nil)
-					}
-				}
-				a.pastSwitchRow(c, strings.TrimSpace(a.oh.swQuery)) // D285
-			})
-		})
-	})
-}
-
-func (a *App) switcherRow(c *ui.Context, x *store.Task, on bool, pick func()) {
-	t := a.T
-	p := x.Place()
-	where := nonEmpty(x.Project(), p.Branch)
-	r := ui.Row(c).Gap(t.S3).Padding(t.S3-2, t.S4).Radius(t.RadiusMD).AlignItems(ui.Center).Cursor(ui.CursorPointer).Role(ui.RoleLink).Label(x.Title())
-	if on || r.Hovered() {
-		r.Background(t.Sunken)
-	}
-	r.Children(func() {
-		ui.Text(c, keepWords(autospace(shortTitle(x.Title())))).FontSize(t.MD).FontWeight(700).SingleLine().Grow(1).Shrink(1).MinWidth(0)
-		for _, w := range where {
-			ui.Text(c.Key("m:"+w), w).Font(t.Mono).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(2).MinWidth(0)
-		}
-		att := x.Attention()
-		ink := t.InkMuted
-		switch att {
-		case protocol.NeedsYou:
-			ink = t.NeedsYou.Ink
-		case protocol.Failed:
-			ink = t.Failed.Ink
-		}
-		ui.Text(c.Key("st"), a.stateLabel(att)).FontSize(t.XS).FontWeight(700).TextColor(ink).Shrink(0)
-	})
-	if r.Clicked() {
-		pick()
-	}
+	a.palette(c)
 }

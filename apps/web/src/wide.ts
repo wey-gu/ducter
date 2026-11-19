@@ -105,9 +105,11 @@ export function useRoomy(query: string): boolean {
   return on;
 }
 
-/** D216: ⌘O (Ctrl+O elsewhere) opens the switcher, 打开一件事 / Open a task, as the app's menu does. */
+/** D216: ⌘O (Ctrl+O elsewhere) opens the switcher; D391: ⌘K too, the switcher grown into
+ *  找什么都行 / Find anything (it supersedes ⌘K for the composer on the web). */
 export function openKey(e: KeyboardEvent) {
-  if (e.key.toLowerCase() !== "o" || !(e.metaKey || e.ctrlKey) || e.shiftKey || e.altKey) return;
+  const k = e.key.toLowerCase();
+  if ((k !== "o" && k !== "k") || !(e.metaKey || e.ctrlKey) || e.shiftKey || e.altKey) return;
   e.preventDefault();
   A.command("switch");
 }

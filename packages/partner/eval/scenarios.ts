@@ -225,6 +225,8 @@ export interface Scenario {
   saved?: import("../../protocol/src/saved.ts").SavedInput[];
   /** D383: what Ducter made over the last weeks (eval/seed-made.ts): the Kyoto itinerary (9 days ago), the visa PDF (5), a HawDB load-test CSV (20), a Bun note on the home (12), the Mac table (3). */
   made?: true;
+  /** D391: seed a heavy developer's earlier tasks (seed-history.ts): last week's compaction PR, last month's Rust build on haswell, a WAL task with four steps, two bloom-filter tasks. */
+  history?: true;
   /** D381: lists the person pinned (said by the partner earlier, then pinned by a tap), with their ticks. */
   pinned?: { title: string; items: string[]; ticks?: string[] }[];
   /** D193: a calling connection (the fake Tuwa, packages/core/test/fake-tuwa.ts), never the real one. */
@@ -2191,6 +2193,43 @@ export const scenarios: Scenario[] = [
     steps: [{ user: "what's still left on my packing list?" }],
     expect: { opens: 0, msgs: [1, 1], maxChars: 220, noUi: true, require: [/yen|cash/i, /charger/i, /hotel/i] },
     rubric: "The user pinned a packing list; passport, ICOCA card and umbrella are ticked (the [pinned] line says so). They ask what's left. The partner answers in plain English from that line: yen in cash, the charger and plug adapter, the hotel confirmation; nothing ticked is named as left. No block (the list is already pinned at the top), no task.",
+  },
+  // ---------- D391: every earlier task open: found by vague words, carried on or redone from a step ----------
+  {
+    id: "past-compaction-pr-zh",
+    category: "past",
+    lang: "zh",
+    history: true,
+    steps: [{ user: "接着上周那个 compaction 的 PR，把 review 里说的锁粒度改细一点" }],
+    expect: { opens: 0, sendTo: "compaction_pr", sentRequire: { compaction_pr: [/锁/] }, notCalled: ["task_fork"], noAsk: true, msgs: [0, 1], maxChars: 120 },
+    rubric: "A week ago a task split HawDB's compaction scheduler and opened draft PR #4127 (a mem digest compaction task 20 days ago is not a PR and not last week). The user asks to carry on that PR with finer-grained locking. The partner carries that same task on (task_send with the locking change; finding it with task_find or from what it already knows is fine), opening nothing new and asking nothing. One short Chinese line naming the work and which task (its title or 上周的 PR), no outcome claimed.",
+  },
+  {
+    id: "past-redo-step3-zh",
+    category: "past",
+    lang: "zh",
+    history: true,
+    steps: [{ user: "WAL group commit 那个，从第 3 步换 Codex 再试一次" }],
+    expect: { opens: 1, called: [{ tool: "task_fork", args: { step: 3, harness: "codex" } }], noSendTo: "wal", noAsk: true, msgs: [0, 1], maxChars: 120 },
+    rubric: "Three days ago the WAL group commit task (Claude Code) went through four steps: group commit, a configurable batch size, io_uring writes (step 3), then CI failing on Linux 5.4. The user asks to redo it from step 3 with Codex. The partner redoes it as a new task from step 3 with Codex (task_fork step 3, harness codex), not by continuing or switching the original. One short Chinese line saying it redoes step 3 of the WAL task with Codex (the original stays as it is is fine), no outcome claimed, no question.",
+  },
+  {
+    id: "past-rust-haswell-zh",
+    category: "past",
+    lang: "zh",
+    history: true,
+    steps: [{ user: "我上个月在 haswell 上那个 Rust 构建的，再接着把增量构建也弄快" }],
+    expect: { opens: 0, called: [{ tool: "task_find" }], sendTo: "rust_haswell", noSendTo: "clippy", notCalled: ["task_fork"], noAsk: true, msgs: [0, 1], maxChars: 120 },
+    rubric: "Last month a Codex task on haswell sped up cold Rust builds from 14 to 6 minutes (sccache and mold) and left incremental builds untouched; a clippy pass on the home four days ago is not it. The user asks to carry that one on for incremental builds. The partner finds it (task_find) and sends the follow-up to that same task (task_send), opening nothing new. One short Chinese line naming the work, no outcome claimed, no question.",
+  },
+  {
+    id: "past-vague-bloom-en",
+    category: "past",
+    lang: "en",
+    history: true,
+    steps: [{ user: "pick the bloom filter one from last week back up" }],
+    expect: { opens: 0, called: [{ tool: "task_find" }], noSend: true, notCalled: ["task_fork"], msgs: [0, 1], maxChars: 260 },
+    rubric: "Last week there were two bloom filter tasks: hawdb's false-positive rate (6 days ago, pi) and mem search's bloom filter memory (5 days ago). The user's words fit both equally. The partner looks (task_find), carries neither on and opens nothing, and asks which in one short English question naming both by what they were about (a choice each, or a decision card with two choices, is fine).",
   },
   // ---------- D383: 给你做的 / Made for you: found again from the conversation, shown as it is ----------
   {

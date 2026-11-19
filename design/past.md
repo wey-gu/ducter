@@ -26,7 +26,7 @@ Ways in:
 |---|---|
 | On hand | Its last line, **做过的事 ›**, under every section (the seen fold leads to it: what you have seen today is also there, with everything before) |
 | On hand's Find | No match: **在做过的事里找「{q}」 / Look for "{q}" in Past tasks**, which opens it with the words |
-| The switcher (⌘O) | Its last row, the same line, while words are typed |
+| 找什么都行 / Find anything (⌘K, ⌘O; D391) | Its 做过的 / Earlier group finds every task in place; Enter opens, ⌘Enter continues |
 | The Mac's menu | **做过的事… / Past Tasks…** (⌘Y) |
 
 Esc clears the field, then goes back to where it came from.
@@ -42,7 +42,13 @@ on when it was worked on, said under the field (**上周二 · 11月10日**): �
 上周二, 周二, 这个月, 上个月, 最近 7 天, 3 天前, 11月10日, and the English ones.
 
 Under the field, one row of chips, each a filter (the chosen one the knob, D270): **全部 / All**,
-**标了星的 / Starred**, then the projects, the agents and the tags in use, most used first.
+**标了星的 / Starred**, then the projects, the agents and the tags in use, most used first. D391: then
+the computers (from two) and how it ended (**做完了 / Done · 没做成 / Didn't work · 取消了 / Cancelled ·
+还在手头 / Still on hand**).
+
+D391: on a wide screen the selected card's **停在哪儿 / Where it stopped** stands beside the list (a
+sheet on a phone): how it ended in full, its last words, what it asks, the diff and PR, and its
+steps, each with **从这一步开新任务**. A single click selects; double-click or Enter opens.
 
 ## The list
 
@@ -72,6 +78,7 @@ Hover (or the keys on it) lifts the card 2 pt with a deeper drop, and shows its 
 | **换一个 agent 接着做 / Continue with another agent** | The ⋯ menu: the same, with another agent; the saved progress goes over (D89's switch) |
 | **带着它开新任务 / New task from this** | New task opens at the same place with a chip **带着「{name}」的发现 / With what "{name}" found**; the new task's brief is the person's words, then that task's reports, branch and files. The chip can be removed |
 | **标记 / Mark** | The marks popover |
+| **从这一步开新任务 / New task from this step** (D391) | On a step in 停在哪儿 / Where it stopped, or 从某一步开新任务… in the foot: a new task does that step again from what led up to it, its code from the last commit before it, any agent; the original stays (`sessions.md`) |
 
 ## Marks
 
@@ -90,7 +97,8 @@ Kept per persona on the home (`marks.json`), the same on every device, changed f
 ## Keys (Mac and wide web)
 
 `/` the field; ↑↓ or j/k walk the cards; Enter opens; ⌘Enter continues; ⇧⌘Enter new task from
-this; `s` stars; `r` renames; Esc clears, then goes back.
+this; `s` stars; `r` renames; D391: Space or → the preview, ⌥Enter a new task from a step; Esc
+clears, then goes back.
 
 ## 给你做的 / Made for you (D383)
 

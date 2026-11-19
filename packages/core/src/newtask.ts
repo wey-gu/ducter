@@ -321,6 +321,9 @@ export interface NewTaskInput {
   from?: string;
   /** D285: the brief when it differs from the words (the words plus what that task found); the title stays the words'. */
   brief?: string;
+  /** D391: 从这一步重来 / Redo from here: the step of `from` it redoes, and the commit its code starts from. */
+  fromStep?: number;
+  fromCommit?: string;
 }
 
 export type NewTaskResult = { ok: true; card: TaskCard } | { ok: true; routine: RoutineView } | { ok: false; reason: NewTaskReason; message: string };
@@ -405,7 +408,7 @@ export async function openYourTask(d: NewTaskDeps, input: NewTaskInput): Promise
   const words = typeof input.words === "string" ? input.words.trim() : "";
   if (!words) return { ok: false, reason: "empty", message: "Say what the task should do." };
   const runner = d.runner();
-  if (!runner) return { ok: false, reason: "failed", message: "Tasks can't run right now." };
+  if (!runner) return { ok: false, reason: "failed", message: languageOf(words, d.settings).startsWith("zh") ? "现在开不了任务。" : "Tasks can't run right now." };
   let place: Place = input.place ?? { kind: "none" };
   let project = "";
   if (place.kind === "repo") {
@@ -418,7 +421,8 @@ export async function openYourTask(d: NewTaskDeps, input: NewTaskInput): Promise
       if (!top) return { ok: false, reason: "not_repo", message: `${place.repoPath} isn't a git repository.` };
       repoPath = top;
       const b = await repoBranches(top, git);
-      if (baseBranch && b.branches.length && !b.branches.includes(baseBranch))
+      // D391: a redo starts from a commit (its sha), not a branch.
+      if (baseBranch && b.branches.length && !b.branches.includes(baseBranch) && !/^[0-9a-f]{7,40}$/.test(baseBranch))
         return { ok: false, reason: "failed", message: `${basename(top)} has no branch called ${baseBranch}.` };
       baseBranch ??= b.defaultBranch;
     }
@@ -469,6 +473,7 @@ export async function openYourTask(d: NewTaskDeps, input: NewTaskInput): Promise
       origin: "you",
       ...(input.media?.length ? { media: input.media } : {}),
       ...(input.from && input.brief ? { from: input.from } : {}),
+      ...(input.from && input.brief && input.fromStep ? { fromStep: input.fromStep, ...(input.fromCommit ? { fromCommit: input.fromCommit } : {}) } : {}),
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

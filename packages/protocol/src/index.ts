@@ -386,6 +386,9 @@ export interface Bodies {
     origin?: "you";
     // D285: opened with 带着它开新任务 / New task from this: the task its brief carries findings from.
     from?: string;
+    // D391: opened with 从这一步重来 / Redo from here: the step of `from` it redoes, and the commit its code started from.
+    fromStep?: number;
+    fromCommit?: string;
     // D299: a session the person ran in their own AI agent outside Ducter, carried on here: which
     // agent kept it, its id there, and when it began. The task works in that session's folder.
     outside?: { agent: string; sessionId: string; startedAt: string };
@@ -794,8 +797,8 @@ export interface TaskCard {
   /** D285: the person's marks (their name for it is already its title; original keeps the task's own). */
   mark?: PastMark;
   original?: string;
-  /** D285: seeded from that task (New task from this). */
-  from?: { taskId: string; title: string };
+  /** D285: seeded from that task (New task from this); D391 step: it redoes that task from its step n. */
+  from?: { taskId: string; title: string; step?: number };
   /** D299: carried on from a session the person ran in their own agent outside Ducter. */
   outside?: { agent: string; sessionId: string; startedAt: string };
   /** D325: what the person held for after this turn, in order (absent: nothing held). */

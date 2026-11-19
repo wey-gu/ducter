@@ -592,10 +592,13 @@ export function renderTasks(all: TaskCard[], maxDone = 8, ctx?: Pick<RenderCtx, 
   const out: string[] = [];
   out.push("Open:");
   out.push(...(open.length ? open.map(line) : ["- (none)"]));
-  if (hidden) out.push(`- (${hidden} more open tasks not listed, quieter ones; log_search finds one by its words)`);
+  if (hidden) out.push(`- (${hidden} more open tasks not listed, quieter ones; task_find finds one by its words)`);
   if (closed.length) {
     out.push("Recently finished:");
     out.push(...closed.map(line));
+    // D391: everything older is one task_find away.
+    const older = cards.length - allOpen.length - closed.length;
+    if (older > 0) out.push(`- (${older} earlier tasks not listed; task_find finds one by the user's words)`);
   }
   return out.join("\n");
 }

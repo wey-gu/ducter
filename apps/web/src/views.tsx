@@ -56,8 +56,10 @@ import { ComposerReply, HoverReply, Imprint, PartReply, ReplyMenu, replyKey, rep
 import { dividerSeq, NewDivider, useFollow, WayBack } from "./conv-follow.tsx";
 import { isImage, plainWords, type MediaRef } from "@ducter/protocol";
 import { FillButton, forecast, FullTop, NextLine } from "./board.tsx";
-import { L as OnHandState, OnHandList, storyOf, Switcher, taskNext } from "./onhand.tsx";
-import { PastSheet } from "./past.tsx";
+import { L as OnHandState, OnHandList, storyOf, taskNext } from "./onhand.tsx";
+import { dateOf, PastSheet } from "./past.tsx";
+import { Palette } from "./palette.tsx";
+import { PV, RedoSheet } from "./past-preview.tsx";
 import { DidSheet } from "./did.tsx";
 import { PinsSheet, PinStrip } from "./pins.tsx";
 import { PileSheet } from "./pile.tsx";
@@ -3114,12 +3116,24 @@ function SettingsSheet() {
 // ---------- 开一件事 / New task (D128, D185): the sheet is in newtask.tsx ----------
 
 export function Sheets() {
+  const main = SheetsMain();
+  // D391: 从这一步开新任务 / New task from this step stands over whatever opened it (Past tasks, the find-anything field).
+  if (!PV.redo) return main;
+  return (
+    <>
+      {main}
+      <RedoSheet dateOf={(iso) => dateOf(iso)} />
+    </>
+  );
+}
+
+function SheetsMain() {
   if (A.viewer) return <Viewer />;
   if (A.fileView) return <FileViewer />;
   if (A.fileLink) return <FileLinkSheet />;
   if (!A.sheet) return null;
   if (A.sheet.kind === "newtask") return <NewTaskSheet />;
-  if (A.sheet.kind === "switch") return <Switcher />;
+  if (A.sheet.kind === "switch") return <Palette />;
   if (A.sheet.kind === "past") return <PastSheet />;
   if (A.sheet.kind === "did") return <DidSheet />;
   if (A.sheet.kind === "pins") return <PinsSheet />;

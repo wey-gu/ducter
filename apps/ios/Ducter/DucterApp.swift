@@ -45,7 +45,9 @@ struct PlaceCommands: Commands {
             Button(L("menu.onhand")) { shell.command("onhand") }.keyboardShortcut("2").disabled(!connected)
             Button(L("menu.devices")) { shell.command("devices") }.keyboardShortcut("3").disabled(!connected)
             Button(L("menu.partner")) { shell.command("partner") }.keyboardShortcut("4").disabled(!connected)
-            Button(L("menu.composer", name)) { shell.command("composer") }.keyboardShortcut("k").disabled(!connected)
+            // D391: ⌘K is 找什么都行 / Find anything (its last rows talk to the partner); ⌘O opens it too.
+            Button(L("menu.find")) { shell.command("switch") }.keyboardShortcut("k").disabled(!connected)
+            Button(L("menu.composer", name)) { shell.command("composer") }.disabled(!connected)
             Button(L("menu.switch")) { shell.command("switch") }.keyboardShortcut("o").disabled(!connected)
             Divider()
         }

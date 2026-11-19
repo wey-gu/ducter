@@ -19,6 +19,7 @@ import { RateLimited, type SourceAdapter, type WriteResult } from "./adapter.ts"
 import { createGitHub } from "./github.ts";
 import { createObsidian, obsidianVaults } from "./obsidian.ts";
 import { createPile, endsTask, type Ask, type Pile } from "./pile.ts";
+import { createHandover, type Handover, type HandoverDeps } from "./handover.ts";
 
 export const SOURCES_FILE = "task-sources.json";
 /** A look at every source (the open lists; GitHub's answers are ETag'd, so an unchanged look is free). */
@@ -161,6 +162,8 @@ export interface TaskSourcesDeps {
   openTask?: (item: SourceItem, brief: string) => Promise<{ ok: boolean; taskId?: string; error?: string }>;
   /** D359: a repository's own review guide, when its folder is on this computer. */
   reviewGuide?: (repo: string) => Promise<string | undefined> | string | undefined;
+  /** D385: handing several over (groups, places, computers, rules, opening and telling tasks). */
+  handover?: Pick<HandoverDeps, "persona" | "groups" | "places" | "computers" | "rules" | "addRule" | "open" | "tell">;
 }
 
 export interface ProposeResult {
@@ -170,6 +173,8 @@ export interface ProposeResult {
   decisionId?: string;
   /** It ran under the standing go (no card). */
   wrote?: { op: SourceOp; link?: string }[];
+  /** D385: a part of a hand-over group under way: its group's review together carries the comment. */
+  held?: true;
 }
 
 export interface TaskSources {
@@ -208,6 +213,8 @@ export interface TaskSources {
   listed(): boolean;
   /** D359: the pile: sorted on connect and daily, handed over in a queue, closed in a reviewed batch. */
   pile: Pile;
+  /** D385: handing several over: find, the sheet's how, the group, plan first, review together. */
+  handover?: Handover;
   /** D359: the cheapest model to sort and pre-read with (set when the runner is). */
   setAsk(a: Ask | undefined): void;
   onChange(fn: () => void): () => void;
@@ -606,21 +613,50 @@ export function createTaskSources(d: TaskSourcesDeps): TaskSources {
     changed: () => changed(),
   });
   const sortedOnce = () => !!pile.view().sortedAt;
+  // D385: handing several over, on the pile (find, how, the group, plan first, review together).
+  const handover: Handover | undefined = d.handover
+    ? createHandover({
+        ...d.handover,
+        dataDir: d.dataDir,
+        log: d.log,
+        tasks: d.tasks,
+        pile,
+        now,
+        lang: d.lang ?? (() => "en"),
+        name: d.name ?? (() => "Ducter"),
+        item: (ref) => api!.item(ref),
+        bind: (taskId, items) => {
+          // A hand-over is one choice, not a habit: it never offers the standing go.
+          fromPile.add(taskId);
+          if (items[0]) api!.bind(taskId, items[0], "you");
+        },
+        write: (item, op, how) => write(item, op, how),
+        checks: async (prRef) => {
+          const s = okSources().find((x) => x.kind === "github");
+          const a = s ? adapterOf(s) : undefined;
+          return a?.checks ? a.checks(prRef) : undefined;
+        },
+        changed: () => changed(),
+      })
+    : undefined;
 
   // ---------- Go on its own cards, and a done task's tick ----------
   const running = new Set<string>();
   const off = d.log.subscribe((e) => {
     if (e.kind === "decision_resolved") {
       const r = e.body as Bodies["decision_resolved"];
-      if (r.option === "reply" || running.has(r.decisionId)) return;
+      if (running.has(r.decisionId)) return;
       // D359: the close batch and a review's comments are run where their Go was given (pile.ts).
-      if (pile.owns(r.decisionId)) return;
+      if (pile.owns(r.decisionId) || handover?.owns(r.decisionId)) return;
       const card = srcCard(r.decisionId);
       if (!card?.src) return;
+      // D385: a reply to a plan goes to the plan's own task; other replies are the partner's.
+      if (r.option === "reply" && card.src.kind !== "plan") return;
       running.add(r.decisionId);
       void onAnswer(card, r).finally(() => running.delete(r.decisionId));
       return;
     }
+    handover?.onEvent(e);
     // D359: a task ended: the next handed-over to-do in line starts.
     if (endsTask(e)) void pile.pump().catch((err) => console.warn("[task-sources] the queue couldn't move:", (err as Error).message));
     if (e.kind === "task_state") {
@@ -645,6 +681,13 @@ export function createTaskSources(d: TaskSourcesDeps): TaskSources {
     const src = card.src as SourceAsk;
     // D359: the morning's picks, answered inside the note: Go hands them over.
     if (src.kind === "picks") return pile.answer(card, r);
+    // D385: the plan card answered by its own buttons (any client), and the note's lasting where.
+    if (src.kind === "plan") {
+      if (src.groupId && handover) await handover.answerPlan(src.groupId, r.option, { ...(r.text ? { text: r.text } : {}) });
+      return;
+    }
+    if (src.kind === "where_rule") return handover?.answerRule(card, r);
+    if (src.kind === "group_review") return;
     if (src.kind === "batch" || src.kind === "review") return;
     const s = byId(src.item.source);
     if (src.kind === "write") {
@@ -880,6 +923,8 @@ export function createTaskSources(d: TaskSourcesDeps): TaskSources {
     taskOf,
     async propose(p) {
       const c = p.taskId ? d.tasks.get(p.taskId) : p.ref ? taskOf(p.ref) : undefined;
+      // D385: a part of a hand-over group under way: review together carries its comment, one Go for all.
+      if (c && handover?.inGroup(c.taskId)) return { ok: true, held: true };
       const item = c?.source ?? undefined;
       if (!item) return { ok: false, error: p.taskId ? `task ${p.taskId} isn't bound to a to-do` : "no task is bound to that to-do" };
       const s = byId(item.source);
@@ -925,15 +970,19 @@ export function createTaskSources(d: TaskSourcesDeps): TaskSources {
     },
     look,
     wakes(e) {
+      // D385: a plan task's done report is its plan card; the partner says nothing over it.
+      if (e.kind === "report") return !(handover?.isPlanTask((e.body as Bodies["report"]).taskId) && (e.body as Bodies["report"]).state === "done");
       if (e.kind !== "decision_resolved") return true;
       const r = e.body as Bodies["decision_resolved"];
-      if (r.option === "reply") return true;
-      return !srcCard(r.decisionId);
+      const card = srcCard(r.decisionId);
+      if (r.option === "reply") return card?.src?.kind !== "plan";
+      return !card;
     },
     listed() {
       return st.sources.length > 0 || foundGh?.state === "ok";
     },
     pile,
+    ...(handover ? { handover } : {}),
     setAsk(a) {
       pile.setAsk(a);
       // A sort that waited for a model to read with goes now.

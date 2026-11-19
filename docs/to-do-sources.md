@@ -89,9 +89,9 @@ again** or ask it ("go through my GitHub issues").
 At the top of your to-dos on On hand, your partner stands beside the stack: **{n} still open**, how
 many it cleared for you today, and one row for each group with one button:
 
-- **Hand to** your partner: tick what to hand over (six are ticked, smallest first). Three are worked
-  on at a time; the next starts when one is done. Each becomes a task bound to its issue, and nothing
-  is posted on GitHub until the work is done and you say so.
+- **Hand to** your partner: the hand-over sheet opens with the ones it could take ticked. Say how in
+  **A note for {name}**, choose how they're done, and hand them over (see below). Each becomes a task
+  bound to its issue, and nothing is posted on GitHub until the work is done and you say so.
 - **Decide them**: one question each, with your partner's suggestion already picked. Hand it over,
   mark it as one you might close, or leave it.
 - **Look them over**: every issue it thinks you might close, with the line it would leave on each.
@@ -106,6 +106,41 @@ then **Send these {n}** posts them as review comments. They are comments only: w
 In the morning note, your partner may offer up to three it can clear for you today. Tap **Hand them
 to** your partner, or just say yes. If you leave the offer twice, it stops offering until you hand
 something over again.
+
+## Hand several over at once
+
+When there are more than twenty open, the pile shows **Subjects**: what they're about, each with its
+count ("Distillation 13"). Tap one, or type in **Find…** on the hand-over sheet: it matches words,
+issue numbers and labels at once, then reads every title for meaning, in Chinese and English, so
+"memory distill" also finds the issue written as 长对话的自动提炼总是失败. The line under the field says
+how many it found and how. Everything shows, grouped as your partner sorted it: the ones it could take
+are ticked; one that needs your call shows its question (tick it to go with the suggestion).
+
+Then, on the same sheet:
+
+- **A note for {name}**: how it should go, in your own words ("leave the database migrations alone;
+  run every check on haswell"). Every task gets it at the top. **A note for this one…** on an item adds
+  words for that one only. Name a computer and **Where** follows it; say it as a habit ("always") and
+  your partner asks once whether to keep it as a rule.
+- **How**, with one marked **Suggested**:
+  - **Plan first** (starts when you say so): one task reads them all and the code, changes nothing,
+    and shows you a plan: what's already fixed, what belongs in one change, what goes in order. Add a
+    note to any part, then **Go with this**, **Hold**, or **Reply…** to have it plan again.
+  - **As one task**: one task and one pull request that fixes them all (one repository, or errands).
+  - **One after another**: each starts from the one before's branch.
+  - **Side by side**: three at a time, a pull request each.
+  - **Add to "{group}"** shows first when work on the same subject is already under way.
+- **Where** and **Who does it**: filled for you, each with why; tap to change.
+
+**Hand these {n} to {name}** makes one group on On hand that carries them all. You can also say it in
+the conversation: "pull out everything about memory distill so we can look" shows the set there, ticked
+the same way; "just these, plus #405; check everything on haswell" hands it over with your words as the
+note.
+
+When every part is done, the group offers **Review together**: each pull request with its checks, its
+size, what it did and the comment it will leave on its issue. Turn off any comment with **Not this
+one**, then **Comment on these {n}** posts them all at once. Ones that were already fixed are closed
+after their comment; the rest close themselves when their pull request is merged.
 
 ## When a new one comes
 

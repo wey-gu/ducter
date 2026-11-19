@@ -14,6 +14,7 @@ import { AddRow, Btn, Chev, DangerButton, Facts, Seg } from "./controls.tsx";
 import { SecHead, Tag } from "./set-grid.tsx";
 import { GhSignIn } from "./gh-signin.tsx";
 import { onPileFrame, ReadLine } from "./pile.tsx";
+import { onHandFrame } from "./handover.tsx";
 
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
@@ -274,6 +275,8 @@ export function TodoFold({ sources, shown = [] }: { sources: SourceView[]; shown
 }
 
 A.onSourcesFrame = (f) => {
+  // D385: the hand-over sheet's own answers (find, how, Go, review together), then the pile's.
+  if (onHandFrame(f)) return;
   // D359: the pile's own answers (its sheets).
   if (onPileFrame(f)) return;
   if (f.t === "sources") {
@@ -633,7 +636,7 @@ export function TodoPick(p: { picked?: SourceItemRef; onPick: (it: SourceItem | 
 export function SourceCardBody({ src }: { src: NonNullable<import("@ducter/protocol").Bodies["decision"]["src"]> }) {
   return (
     <div class="src-card">
-      <SourceChip src={src.item} states={false} />
+      {src.kind !== "where_rule" && src.kind !== "group_review" && <SourceChip src={src.item} states={false} />}
       {src.kind === "write" && src.text && (
         <>
           <small class="muted">{t("todos.card.says")}</small>
@@ -641,6 +644,16 @@ export function SourceCardBody({ src }: { src: NonNullable<import("@ducter/proto
         </>
       )}
       {src.kind === "write" && src.close && <small class="muted">{t("todos.card.and.close")}</small>}
+      {/* D385: the note's lasting where, in the person's own words. */}
+      {src.kind === "where_rule" && src.quote && (
+        <>
+          <small class="muted">{t("ho.rule.said")}</small>
+          <blockquote class="src-quote" dir="auto">
+            {src.quote}
+          </blockquote>
+        </>
+      )}
+      {(src.kind === "group_review" || src.kind === "batch") && src.items && src.items.length > 1 && <small class="muted">{t("ho.batch.n", src.items.length)}</small>}
     </div>
   );
 }

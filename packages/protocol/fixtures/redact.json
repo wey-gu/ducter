@@ -22,5 +22,13 @@
   { "in": "card 4242 4242 4242 4242 exp 08/29", "want": "card ••••••4242 exp 08/29" },
   { "in": "我的卡号 4242424242424242，安全码 737，帮我订", "want": "我的卡号 ••••••4242，安全码 ••••••，帮我订" },
   { "in": "Amex 3782-822463-10005 CVV: 1234", "want": "Amex ••••••0005 CVV: ••••••" },
-  { "in": "order 4242424242424241 shipped; build 1794327346044 done", "want": "order 4242424242424241 shipped; build 1794327346044 done" }
+  { "in": "order 4242424242424241 shipped; build 1794327346044 done", "want": "order 4242424242424241 shipped; build 1794327346044 done" },
+  { "in": "config.api_key = 'a3f9c2e81b7d4f6a9c0e2b5d8f1a4c7e'", "want": "config.api_key = '••••••'" },
+  { "in": "curl -H 'x-api-token: Zx81kPq0aB7cD9eF2gH4' https://example.com/v1/items", "want": "curl -H 'x-api-token: ••••••' https://example.com/v1/items" },
+  { "in": "MY_SECRET_KEY=9q8w7e6r5t4y3u2i1o0p ./run.sh", "want": "MY_SECRET_KEY=•••••• ./run.sh" },
+  { "in": "Db_PassWord: Tr0ub4dor3horsebattery9", "want": "Db_PassWord: ••••••" },
+  { "in": "AUTH-Key = 7c4e1a9b2d8f6e3a0b5c", "want": "AUTH-Key = ••••••" },
+  { "in": "{\n  \"access_key\":\n    \"AbCd1234EfGh5678IjKl\",\n  \"region\": \"us-east-1\"\n}", "want": "{\n  \"access_key\":\n    \"••••••\",\n  \"region\": \"us-east-1\"\n}" },
+  { "in": "export OPENAI_API_TOKEN=\nsk9Q2w4E6r8T0y1U3i5O7p", "want": "export OPENAI_API_TOKEN=\n••••••" },
+  { "in": "the tokenizer_config: vocab_size_32000_tokens is not a secret", "want": "the tokenizer_config: vocab_size_32000_tokens is not a secret" }
 ]

@@ -113,6 +113,7 @@ func (a *App) conversation(c *ui.Context) {
 	t := a.T
 	rows := a.rows()
 	a.noteRows(rows)     // D236: for the jump and the answer tab
+	a.takePlanJump(c)    // D385: 看方案 from On hand
 	a.followBefore(rows) // D254: the divider, what is new since the reader left the end
 	a.header(c)
 	a.pinStrip(c) // D381: what is pinned, under the bar
@@ -620,6 +621,8 @@ func (a *App) entry(c *ui.Context, e *store.Entry) {
 		a.living(c, e)
 	case e.Finds != nil:
 		a.findsEntry(c, e)
+	case e.Set != nil:
+		a.setCard(c, e) // D385: a set found in the conversation
 	case e.Decision != nil:
 		if d := a.S.Decisions[e.Decision.DecisionID]; d != nil {
 			a.ask(c, d, "")
@@ -710,6 +713,10 @@ func (a *App) livingItems(e *store.Entry) []protocol.LivingItem {
 		if (it.Kind == "done" || it.Kind == "failed") && a.resultShown[it.TaskID] {
 			continue
 		}
+		// D385: plan first's done is its plan card, which says it.
+		if it.Kind == "done" && a.isPlanTask(it.TaskID) {
+			continue
+		}
 		// A read living message is frozen and the next one repeats what
 		// still stands: say each line once, in the newest message.
 		if it.Kind != "decision" && a.livingNewest[livingKey(it)] > e.FirstSeq {
@@ -783,6 +790,10 @@ func (a *App) decisionBody(c *ui.Context, d *store.DecisionState, taskID string)
 	t := a.T
 	if d.Call != nil {
 		a.callBody(c, d) // D189: a call's Go card, or a question from the line
+		return
+	}
+	if d.Src != nil && d.Src.Kind == "plan" {
+		a.handPlanCard(c, d, true) // D385
 		return
 	}
 	question := a.questionOf(d)

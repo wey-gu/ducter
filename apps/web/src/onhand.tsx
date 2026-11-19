@@ -25,6 +25,7 @@ import { Coin } from "./coin.tsx";
 import { BrandMark } from "./brand.tsx";
 import { askFold, SourceChip, TF, TodoCard, todoCounts, TodoFold, todoGroupName, TS } from "./todos.tsx";
 import { PileBlock } from "./pile.tsx";
+import { HandBlock } from "./handover.tsx";
 import { Goal, Groove, limitAt, limitState, untilLine, WaitBubble, waitCaption, waitLine } from "./work.tsx";
 import { handover, isNewResult, statusOf, urgentOf, type Status } from "./seen.ts";
 import { OtherAsk, PartnerMark } from "./partners.tsx";
@@ -1068,7 +1069,7 @@ export function OnHandList({ room }: { room: Room }) {
   const waiting = ungrouped(keep(lanes[LANE.waiting]!));
   const done = ungrouped(keep(lanes[LANE.done]!));
   const loose = !q && looseIn(lens);
-  const partnerDs = loose ? A.S.partnerDecisions() : [];
+  const partnerDs = loose ? A.S.partnerDecisions().filter((d) => d.src?.kind !== "plan") : [];
   // D312: another partner's own questions are listed here too (answered in its conversation).
   const otherAs = loose ? A.otherAsks() : [];
   const looseWs = loose ? A.S.armedWaiters().filter((w) => !w.taskId) : [];
@@ -1296,9 +1297,11 @@ function GroupCard({ b, room }: { b: BoardGroup; room: Room }) {
             <i key={r.kind === "task" ? r.taskId : r.key} class={`gbead b-${markOf(r)}`} />
           ))}
         </span>
-        <span class="gcount">{t("group.done", b.done, b.of)}</span>
+        {b.of > 0 && <span class="gcount">{t("group.done", b.done, b.of)}</span>}
         <MoreButton label={t("group.menu")} open={menu} onClick={() => setMenu(!menu)} />
       </div>
+      {/* D385: a hand-over's plan, its making, review together. */}
+      {b.g.hand && <HandBlock g={b.g} />}
       {menu && (
         <div class="gmenu" role="menu">
           <Btn kind="text" size="sm" label={t("group.rename")} onClick={() => (setMenu(false), setDraft(b.g.name))} />

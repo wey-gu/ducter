@@ -2,8 +2,10 @@ package views
 
 // D284: opening a long task feels instant. A fake home holds a 5,000-event
 // task behind a simulated link (80 ms round trip, 4 Mbit/s, as a VPS behind
-// a tunnel); the app asks for the newest window first and paints it within
-// the budget after the frame arrives, then pages older history in the
+// a tunnel). TestTaskOpensFast: the home answers as core/src/ws.ts does, the
+// session index and the newest window (D320); the first paint and every
+// page after it land within the budget. TestTaskOpensFastNoIndex: a home
+// before D320 sends no index; the app pages older history in the
 // background up to historyLimit, and further only at the head.
 
 import (
@@ -85,13 +87,107 @@ func historyReqs(sent []any) []protocol.TaskHistoryReq {
 	return out
 }
 
-func TestTaskOpensFast(t *testing.T) {
-	budget := 300 * time.Millisecond
+// openBudget is how long a paint after a frame may take: 300 ms locally; a
+// shared CI runner paints on the CPU about half again slower than a Mac at
+// rest, so CI catches only a real regression.
+func openBudget() time.Duration {
 	if os.Getenv("CI") != "" {
-		// A shared CI runner paints on the CPU about half again slower than a Mac at
-		// rest; the 300 ms budget holds locally, CI catches only a real regression.
-		budget = 450 * time.Millisecond
+		return 450 * time.Millisecond
 	}
+	return 300 * time.Millisecond
+}
+
+// indexWire is the task_index frame on the wire for the whole stream, and
+// how long the link takes to carry it.
+func (h historyHome) indexWire(id string, ix *protocol.SessionIndex) ([]byte, time.Duration) {
+	data, _ := json.Marshal(protocol.ServerFrame{T: "task_index", TaskID: id, Index: ix})
+	if h.gzip && len(data) > 16*1024 {
+		var b bytes.Buffer
+		zw := gzip.NewWriter(&b)
+		zw.Write(data)
+		zw.Close()
+		data = b.Bytes()
+	}
+	return data, h.rtt + time.Duration(float64(len(data))/h.bps*float64(time.Second))
+}
+
+func TestTaskOpensFast(t *testing.T) {
+	budget := openBudget()
+	home := historyHome{evs: longTask(5000, "long1"), rtt: 80 * time.Millisecond, bps: 4e6 / 8, gzip: true}
+	ix := indexOf(home.evs)
+	app, sent := iaApp(t, i18n.ZH)
+	app.Status = client.Connected
+	tt := ui.NewTesterWith(app.View, 1280, 760, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
+	app.OpenTask("long1")
+	tt.Frame()
+	// It asked for its index and its newest window; both answered as the home does.
+	answered := 0
+	var asked []any
+	answer := func() (time.Duration, int, bool) {
+		for answered < len(*sent) {
+			f := (*sent)[answered]
+			answered++
+			switch r := f.(type) {
+			case protocol.TaskIndexReq:
+				asked = append(asked, r)
+				data, _ := home.indexWire(r.TaskID, ix)
+				return paint(t, app, tt, data), len(data), true
+			case protocol.TaskHistoryReq:
+				asked = append(asked, r)
+				data, _ := home.answer(r)
+				return paint(t, app, tt, data), len(data), true
+			}
+		}
+		return 0, 0, false
+	}
+	ixTook, ixKB, _ := answer()
+	took, winKB, ok := answer()
+	if !ok || len(asked) != 2 {
+		t.Fatalf("an opened task asks for its index and its newest window: %+v", asked)
+	}
+	if r, ok := asked[1].(protocol.TaskHistoryReq); !ok || r.BeforeSeq != 0 || r.Limit != historyFirst {
+		t.Fatalf("an opened task asks for its newest window: %+v", asked)
+	}
+	t.Logf("index %d KB, painted %v; newest window %d KB, first paint %v after it arrived", ixKB/1024, ixTook.Round(time.Millisecond), winKB/1024, took.Round(time.Millisecond))
+	if took > budget || ixTook > budget {
+		t.Errorf("first paint took %v (index %v) after the frames arrived, over %v", took, ixTook, budget)
+	}
+	if app.S.Task("long1").Index == nil {
+		t.Fatal("the index didn't land")
+	}
+	var words struct {
+		Role string `json:"role"`
+		Text string `json:"text"`
+	}
+	for i := len(home.evs) - 1; i >= 0 && (words.Role != "assistant" || words.Text == ""); i-- {
+		words.Role, words.Text = "", ""
+		_ = json.Unmarshal(home.evs[i].Body, &words)
+	}
+	if _, ok := tt.Find(words.Text); !ok {
+		t.Fatalf("the newest turn's words don't show: %q", texts(tt))
+	}
+	// Whatever the window asks for next, at the end where it opened: each page within the budget.
+	pages := 0
+	for range 20 {
+		took, _, ok := answer()
+		if !ok {
+			tt.Frame()
+			if took, _, ok = answer(); !ok {
+				break
+			}
+		}
+		pages++
+		if took > budget {
+			t.Errorf("page %d held the page %v", pages, took)
+		}
+	}
+	t.Logf("%d more pages at the end; %d events held", pages, len(app.S.Task("long1").Events))
+}
+
+// A home before D320 (no task_index): the newest window, then older pages
+// in the background up to historyLimit, then more only at the head.
+func TestTaskOpensFastNoIndex(t *testing.T) {
+	budget := openBudget()
 	home := historyHome{evs: longTask(5000, "long1"), rtt: 80 * time.Millisecond, bps: 4e6 / 8, gzip: true}
 	app, sent := iaApp(t, i18n.ZH)
 	app.Status = client.Connected

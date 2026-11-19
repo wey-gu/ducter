@@ -1,9 +1,10 @@
-# Handing over: several to-dos, a note, a shape (D385, proposed for the author)
+# Handing over: several to-dos, a note, a shape (D385)
 
-**Status: proposed, not built.** A design for the author to decide before any build. Evidence and
-the rater panels: `research/153-handover-flows.md`. Screens: a prototype drawn into the real web app
-on a demo core (`design/prototypes/handover.js` over `apps/web/demo-todos.ts` with
-`DEMO_TODOS=pile`; shots in `.shots/handover-flows/`, 1400 and 390, zh and en). Builds on D341 (to-do
+**Status: decided by the author (2026-11-19, all six defaults) and built (all seven slices; §9 says
+how, and what is still owed).** Evidence and the rater panels: `research/153-handover-flows.md`. The
+first screens were a prototype drawn into the real web app (`design/prototypes/handover.js`, shots in
+`.shots/handover-flows/`); the built screens run on `apps/web/demo-handover.ts` (shots in
+`.shots/handover-build/`). Builds on D341 (to-do
 sources), D359 (the pile and its hand sheet), D360 (groups), D373 (continuity), D157 (where), D372
 and D379 (rules by kind and what was said).
 
@@ -132,7 +133,7 @@ The set card is never pinned (D381 keeps partner-made lists only).
   already-fixed ones also close; the rest close when their PR merges. The per-task write-back cards of
   D341 are not raised for a group's parts while the group is under way.
 
-## 7. Mechanics (for the build; nothing exists yet)
+## 7. Mechanics (as designed; §9 is what was built)
 
 - Protocol: `pile_hand` gains `note?`, `notes?: Record<ref, string>`, `shape?: "plan" | "one" |
   "one_by_one" | "side_by_side"`, `group?` (add to), `place?`, `harness?`; `pile_find {query}` →
@@ -151,3 +152,52 @@ Start anything from a find or a set card without a Go or the person's words; fan
 before the person saw the plan (unless they chose another shape); write to an issue at hand-over;
 merge a PR; make a subject a fifth sort group; call a shape **一起做 / Together** (read as side by side
 by the raters).
+
+## 9. As built (2026-11-19)
+
+All seven slices, in the plan's order, on one core path (`packages/core/src/task-sources/handover.ts`)
+with the shapes in `packages/protocol/src/handover.ts`.
+
+- **Subjects.** The sort's verdict gains `subject` (1–4 words in the person's language); the prompt
+  lists the subjects already given so one thing keeps one name across batches and sorts. Code merges
+  only spelling (case, spaces). `PileView.subjects` appears past `SUBJECTS_PAST` (20) open, for a
+  subject of `SUBJECT_MIN` (3) or more, at most `SUBJECTS_SHOWN` (8), with `subjectsMore`.
+- **Find.** `pile_find {query | subject | setId}` → every sort group, each item with how it was found
+  (`ref`, `title`, `label`, `subject`, `meaning`). Code first: a number, every query word in the
+  title (a word may start a longer one, so "distill" finds "Distillation"), a word in a label, the
+  subject. Then meaning: one cheapest-model call over every open title, its labels and subject, across
+  zh and en, cached by query + the last sort + language. No model: code's match only, said as
+  `noMeaning`. Ordered do, decide, later, close; the do ones ticked.
+- **How.** `pile_how {refs, note}` → the shape by code's table (`defaultShape`, `canBeOne`), the one
+  repository, `addTo` a live group on the same subject, where (the note's own words → a rule's
+  computer → the computer with the repository's folder → the home), who (a rule by kind, else as
+  usual), and `lasting` when the note states a lasting where.
+- **Go.** `pile_hand` with the note, per-item notes, shape, group, device, harness, subject, setId.
+  One to-do: one task now, bound, its brief led by the note (fenced as the person's words). Two or
+  more: a D360 group carrying `hand` (its note, shape, where, who, items, plan, review). As one task:
+  one task bound to all, "Fixes" each. One after another and side by side: held parts that open by
+  the group's line (a hand-over group with no folder still keeps one line) and its cap
+  (`HAND_CAP` 3). A lasting where is asked once as a rule (`where_rule`, Go keeps it, the default
+  holds). The old `refs`-only `pile_hand` still queues as D359's did.
+- **Plan first.** The lead part is a task whose brief asks it to read every to-do (comments, linked
+  PRs), the code and the note, change nothing, and call `plan_report` (a task tool only that task
+  sees) with `fixed`, `one`, `line`, `side`, `later`, `limits`; read strictly (unknown refs dropped,
+  each placed once, the unplaced last in line). Its done report becomes the plan card (decision
+  `src.kind: "plan"`, no default, the partner not woken); the group shows it too. 照这个做 (from the
+  card's own buttons or `plan_answer` with per-part notes) holds the parts: each as-one and
+  side-by-side part its own line, the plan's line one line; later ones go back on the pile; fixed
+  ones wait for review together. 先等等 holds; 回复… goes to the plan's own task, which plans again
+  (the old card answered by the reply).
+- **Review together.** When every part is done (done_claimed or merged), `hand.review` is `ready`.
+  `group_review` → rows: each part's to-dos, its PR (the draft PR it opened, or a pull link in its
+  report), GitHub's checks (`gh pr checks --json bucket`), its size, its result line, and the line each
+  to-do gets in its own language; the already-fixed ones with their comment and `close`.
+  `group_review_send {keep}` is one decision recorded as given on the sheet (D359's close sheet), each
+  comment a `source_write` in 替你做过的; only the already-fixed close. A part's own write-back card
+  (D341) is held while its group is under way (`propose` → `held`).
+- **The conversation.** `todos do=find` posts the set card (Log kind `todo_set`, re-logged with its
+  group once handed over); `todos do=hand set= note= shape= group=` hands it over (packages/partner).
+
+**Still owed** (also in `todo.md`): humans on the words; recall of the find on hel's real 49; a plan
+task's report without `plan_report` falls back to one after another of the whole set (said on the
+card); moving a running part to another computer stays D376's.

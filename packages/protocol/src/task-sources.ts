@@ -106,6 +106,8 @@ export interface PileItem {
   chosen?: PilePick | "keep";
   /** Handed over: waiting in line (its task opens when one ends). */
   queued?: boolean;
+  /** D385: what it is about, a few words in the person's language (the sort's; one name per subject). */
+  subject?: string;
 }
 
 /** D359: handed-over to-dos run this many at a time; the next starts when one ends. */
@@ -134,6 +136,13 @@ export interface PileView {
   queue: { running: number; waiting: number; cap: number };
   /** Why the last sort stopped short: no AI agent to read with, the cost cap, or an error. */
   failed?: "no_model" | "budget" | "error";
+  /**
+   * D385: 讲的是 / Subjects: what the open ones are about, most first, each with its count (only past
+   * SUBJECTS_PAST open, a subject with SUBJECT_MIN or more, at most SUBJECTS_SHOWN; absent otherwise).
+   */
+  subjects?: { name: string; n: number }[];
+  /** D385: how many more subjects there are past the ones shown. */
+  subjectsMore?: number;
 }
 
 /** D359: a PR waiting for the person's review, read by the partner (read-only, the cheap model). */
@@ -255,7 +264,7 @@ export interface SourceAsk {
    *       picks   今天能替你清掉这 {n} 件 the morning's picks, inside the note (Go hands them over)
    *       review  发出这 {n} 条？ a pre-read's drafted review comments (its Go given on the sheet)
    */
-  kind: "write" | "closed" | "trust" | "batch" | "picks" | "review";
+  kind: "write" | "closed" | "trust" | "batch" | "picks" | "review" | "plan" | "where_rule" | "group_review";
   item: SourceItemRef;
   /** write: the comment, exactly as it goes out (the card shows it whole). */
   text?: string;
@@ -269,6 +278,21 @@ export interface SourceAsk {
   items?: { item: SourceItemRef; text?: string }[];
   /** review: the drafted comments that go out. */
   notes?: PreReadNote[];
+  /*
+   * D385: plan         {group}：方案 / {group}: the plan: 照这个做 / Go with this (its parts open), 先等等 /
+   *                    Hold, 回复… / Reply… (to the plan's own task, which plans again). No default runs on it.
+   *       where_rule   以后写代码的事都去 {computer} 上做？ the note's lasting where, asked once (Go keeps it as a rule).
+   *       group_review 在这 {n} 件下留言 / Comment on these {n}: review together's batch (its Go given on the sheet).
+   */
+  groupId?: string;
+  plan?: import("./handover.ts").HandPlan;
+  /** plan: the group's name (the card's title). */
+  group?: string;
+  /** where_rule: the computer (device id and name), the person's words, and the agent the rule keeps. */
+  device?: string;
+  deviceName?: string;
+  quote?: string;
+  harness?: string;
 }
 
 export type SourcesClientFrame =
@@ -286,8 +310,33 @@ export type SourcesClientFrame =
   // D359: the pile. pile_sort: sort again now (再理一遍). pile_items: one group's to-dos.
   | { t: "pile_sort" }
   | { t: "pile_items"; group: PileGroup; clientId?: string }
-  // 交给{name}这 {n} 件 / Hand these {n} to {name}: into the queue, a few at a time.
-  | { t: "pile_hand"; refs: string[]; clientId?: string }
+  // 交给{name}这 {n} 件 / Hand these {n} to {name}. D385: with the sheet's note (给{name}的话), a note
+  // per to-do (给这件的话…), the shape, where and who; group: into that live group (加进「{group}」);
+  // subject: the set's name (the group's); setId: the conversation's set card it came from.
+  | {
+      t: "pile_hand";
+      refs: string[];
+      clientId?: string;
+      note?: string;
+      notes?: Record<string, string>;
+      shape?: import("./handover.ts").HandShape;
+      group?: string;
+      device?: string;
+      harness?: string;
+      subject?: string;
+      bySubject?: boolean;
+      setId?: string;
+    }
+  // D385: find across the pile by words and by meaning (找… / Find…), a 讲的是 chip's subject, or a
+  // set card's refs: every sort group, each item with how it was found.
+  | { t: "pile_find"; query?: string; subject?: string; setId?: string; clientId?: string }
+  // D385: the sheet's how for the ticked set and the note so far (sent as they change).
+  | { t: "pile_how"; refs: string[]; note?: string; bySubject?: boolean; subject?: string; clientId?: string }
+  // D385: a plan card's answer: go (its parts open, with the notes said on them), hold, or reply (to the plan's task).
+  | { t: "plan_answer"; groupId: string; option: "go" | "hold" | "reply"; text?: string; notes?: Record<string, string>; clientId?: string }
+  // D385: 一起过目 / Review together: read a done group's rows; send its comments (keep: the to-dos' refs whose line goes out).
+  | { t: "group_review"; groupId: string; clientId?: string }
+  | { t: "group_review_send"; groupId: string; keep: string[]; clientId?: string }
   // A decide answered (hand, close, later), or a close kept open (keep).
   | { t: "pile_choose"; ref: string; pick: PilePick | "keep" }
   // The close batch's Go, given on the sheet that showed every line: these refs, each with its line.
@@ -315,7 +364,11 @@ export type SourcesServerFrame =
   | { t: "source_result"; op: "add" | "set" | "remove"; ok: boolean; id?: string; reason?: "no_tool" | "signed_out" | "missing" | "exists" | "unknown" }
   | { t: "pile_items_result"; clientId?: string; group: PileGroup; items: PileItem[] }
   // D359: what a pile action did: handed (into the queue), closed (done, failed), a review sent, a pre-read made.
-  | { t: "pile_result"; clientId?: string; op: "hand" | "close" | "review" | "pre_read"; ok: boolean; done?: number; failed?: number; read?: PreRead; error?: string };
+  | { t: "pile_result"; clientId?: string; op: "hand" | "close" | "review" | "pre_read" | "plan" | "group_review"; ok: boolean; done?: number; failed?: number; read?: PreRead; error?: string; groupId?: string }
+  // D385: a find's answer (the sheet's find field, a chip, a set card), and the sheet's how.
+  | { t: "pile_find_result"; clientId?: string; query?: string; subject?: string; found: import("./handover.ts").FindSummary; items: import("./handover.ts").FoundItem[]; ticked: string[]; setId?: string }
+  | { t: "pile_how_result"; clientId?: string; how: import("./handover.ts").HandHow }
+  | { t: "group_review_result"; clientId?: string; review?: import("./handover.ts").GroupReview; error?: string };
 
 /** The chip's words on a task: "#123" (with the repo when asked), or the note's name. */
 export function sourceChip(r: Pick<SourceItemRef, "kind" | "label" | "where">, withWhere = false): string {

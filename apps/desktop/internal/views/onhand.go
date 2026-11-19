@@ -137,6 +137,10 @@ func (a *App) lensRoutines(c *ui.Context, g *lensGroup) {
 func (a *App) partnerDecisions() []*store.DecisionState {
 	var out []*store.DecisionState
 	for _, d := range a.S.OpenDecisions() {
+		// D385: a plan card shows inside its group's card while that stands.
+		if d.Src != nil && d.Src.Kind == "plan" && a.handGroup(d.Src.GroupID) != nil {
+			continue
+		}
 		if d.TaskID == "" {
 			out = append(out, d)
 		}

@@ -41,6 +41,9 @@ type PileView struct {
 	Groups           map[string]int `json:"groups"`
 	Queue            PileQueue      `json:"queue"`
 	Failed           string         `json:"failed,omitempty"`
+	// D385: 讲的是 / Subjects, past 20 open, each of 3 or more; SubjectsMore past the shown.
+	Subjects     []PileSubject `json:"subjects,omitempty"`
+	SubjectsMore int           `json:"subjectsMore,omitempty"`
 }
 
 // PileItem is one open to-do as the sort left it. Size small | medium |
@@ -54,6 +57,9 @@ type PileItem struct {
 	Pick    string     `json:"pick,omitempty"`
 	Comment string     `json:"comment,omitempty"`
 	Chosen  string     `json:"chosen,omitempty"`
+	Queued  bool       `json:"queued,omitempty"`
+	// D385: what it is about, in the person's language.
+	Subject string `json:"subject,omitempty"`
 }
 
 // PreReadSummary is what a review request's card says: 我看过了 with its

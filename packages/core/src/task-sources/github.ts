@@ -333,5 +333,23 @@ export function createGitHub(o: GitHubOpts): SourceAdapter & { login(): string |
       if (r.code !== 0) throw new Error((r.err || r.out).trim().slice(0, 200) || `gh exited ${r.code}`);
       return r.out.length > DIFF_MAX ? { text: r.out.slice(0, DIFF_MAX), cut: true } : { text: r.out, cut: false };
     },
+    // D385: a PR's checks for review together (read-only): passed, failed (how many), or still running.
+    async checks(ref: string) {
+      const m = REF.exec(ref);
+      if (!m) return undefined;
+      const r = await gh(["pr", "checks", m[2]!, "--repo", m[1]!, "--json", "bucket"]);
+      // gh exits 8 while checks are pending and 1 when one failed; the JSON is printed either way.
+      let rows: { bucket?: string }[];
+      try {
+        rows = JSON.parse(r.out || "[]") as { bucket?: string }[];
+      } catch {
+        return undefined;
+      }
+      if (!Array.isArray(rows) || !rows.length) return undefined;
+      const failed = rows.filter((x) => x.bucket === "fail" || x.bucket === "cancel").length;
+      if (failed) return { state: "failed" as const, failed };
+      if (rows.some((x) => x.bucket === "pending")) return { state: "running" as const };
+      return { state: "passed" as const };
+    },
   };
 }

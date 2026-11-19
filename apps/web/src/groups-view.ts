@@ -31,12 +31,17 @@ const isHeld = (m: GroupMember): m is Extract<GroupMember, { key: string }> => "
 export function boardGroups(groups: TaskGroupView[] | undefined, laneOf: (taskId: string) => number, attentionOf: (taskId: string) => Attention | undefined, persona?: string): BoardGroup[] {
   const out: BoardGroup[] = [];
   for (const g of groups ?? []) {
-    if (g.members.length < 2) continue;
+    // D385: a hand-over's group stands with one part too (its plan, or as one task).
+    if (g.members.length < 2 && !(g.hand && g.members.length)) continue;
     if (persona && g.persona && g.persona !== persona) continue;
-    const rows: MemberRow[] = g.members.map((m, i) => (isHeld(m) ? { kind: "held", key: m.key, part: i + 1, title: m.title, ...(m.device ? { device: m.device } : {}) } : { kind: "task", taskId: m.taskId, part: i + 1, attention: attentionOf(m.taskId) }));
-    const lanes = rows.flatMap((r) => (r.kind === "task" ? [laneOf(r.taskId)] : [])).filter((l) => l >= 0);
+    // D385: plan first's own part is the plan, said by the card's plan block, never a numbered part.
+    const plan = g.hand?.plan?.taskId;
+    const parts = plan ? g.members.filter((m) => isHeld(m) || m.taskId !== plan) : g.members;
+    const rows: MemberRow[] = parts.map((m, i) => (isHeld(m) ? { kind: "held", key: m.key, part: i + 1, title: m.title, ...(m.device ? { device: m.device } : {}) } : { kind: "task", taskId: m.taskId, part: i + 1, attention: attentionOf(m.taskId) }));
+    const all = [...rows.flatMap((r) => (r.kind === "task" ? [r.taskId] : [])), ...(plan ? [plan] : [])];
+    const lanes = all.map(laneOf).filter((l) => l >= 0);
     if (!lanes.length) continue;
-    const ids = new Set(rows.flatMap((r) => (r.kind === "task" && laneOf(r.taskId) >= 0 ? [r.taskId] : [])));
+    const ids = new Set(all.filter((id) => laneOf(id) >= 0));
     const done = rows.filter((r) => markOf(r) === "done").length;
     let stopped: BoardGroup["stopped"];
     if (g.stopped) {
@@ -44,8 +49,10 @@ export function boardGroups(groups: TaskGroupView[] | undefined, laneOf: (taskId
       const after = rows.slice(at + 1).filter((r) => r.kind === "held");
       if (at >= 0 && after.length) stopped = { why: g.stopped.why, part: at + 1, next: after[0]!.part, waiting: after.length, taskId: g.stopped.taskId };
     }
-    // A stopped line waits for the person: it stands with what needs them.
-    out.push({ g, lane: stopped ? 0 : Math.min(...lanes), rows, ids, done, of: rows.length, ...(stopped ? { stopped } : {}) });
+    // A stopped line waits for the person: it stands with what needs them. D385: so does a plan
+    // waiting to be looked at, and a finished hand-over offering review together.
+    const waits = !!g.hand && ((!!g.hand.plan && (g.hand.plan.state === "ready" || g.hand.plan.state === "held" || g.hand.plan.state === "failed")) || g.hand.review === "ready");
+    out.push({ g, lane: stopped || waits ? 0 : Math.min(...lanes), rows, ids, done, of: rows.length, ...(stopped ? { stopped } : {}) });
   }
   return out;
 }

@@ -4,7 +4,7 @@ import type { Bodies, LogEvent } from "../../../protocol/src/index.ts";
 import { estTokens, type Obligation, type WindowSnap } from "./digest.ts";
 
 /** Channel events the spine reads: the conversation and its work, not receipts or renderings. */
-export const SPINE_KINDS = ["user_msg", "ai_msg", "ack", "job_status", "report", "decision", "decision_resolved", "waiter", "memory_noted", "bridge_msg", "web_look"] as const satisfies readonly LogEvent["kind"][];
+export const SPINE_KINDS = ["user_msg", "ai_msg", "ack", "job_status", "report", "decision", "decision_resolved", "waiter", "memory_noted", "bridge_msg", "web_look", "todo_set"] as const satisfies readonly LogEvent["kind"][];
 
 export interface Unit {
   e: LogEvent;

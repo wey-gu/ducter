@@ -1,0 +1,88 @@
+// D385: the hand-over sheet as data: sections by sort group, the find's line as separate facts (D291),
+// the shapes offered (加进「…」 first), their lines, the plan's sections, a group's state, review's keep.
+import { expect, test } from "bun:test";
+import type { FoundItem, GroupHandView, HandHow, HandPlan } from "@ducter/protocol";
+import { foundLine, handState, oneRepoOf, planSections, planTasks, refLabel, refsLabel, reviewKeep, sections, setTicks, shapeChoices, shapeLine, suggestedShape } from "../src/handover-view.ts";
+import { handoverWords } from "../src/i18n-handover.ts";
+
+const fmt = (s: string, args: unknown[]) => {
+  let i = 0;
+  return s.replace(/%(?:\[(\d+)\])?[sd]/g, (_, n) => String(args[n ? Number(n) - 1 : i++]));
+};
+const tz = (k: string, ...a: unknown[]) => fmt(handoverWords.zh[k] ?? k, a);
+const te = (k: string, ...a: unknown[]) => fmt(handoverWords.en[k] ?? k, a);
+
+const item = (n: number, group: FoundItem["group"], by: FoundItem["by"] = "title"): FoundItem => ({ item: { source: "s", kind: "github", ref: `acme/mem#${n}`, label: `#${n}`, where: "acme/mem", title: `T${n}`, state: "open" }, group, why: "w", by });
+
+test("sections follow do, decide, later, close and leave empty groups out", () => {
+  const s = sections([item(1, "later"), item(2, "do"), item(3, "decide"), item(4, "do")]);
+  expect(s.map((x) => x.group)).toEqual(["do", "decide", "later"]);
+  expect(s[0]!.items.map((p) => p.item.label)).toEqual(["#2", "#4"]);
+});
+
+test("the find's line: the head, then each way it was found as its own fact; none when it says nothing new", () => {
+  expect(foundLine({ n: 9, subject: "记忆提炼", inTitle: 6, byLabel: 0, byMeaning: 3 }, tz)).toEqual({ head: "找到 9 件讲记忆提炼的", facts: ["标题里写着的 6 件", "说的是同一件事的 3 件"] });
+  expect(foundLine({ n: 4, subject: "memory distillation", inTitle: 4, byLabel: 0, byMeaning: 0 }, te)).toEqual({ head: "4 about memory distillation", facts: [] });
+  expect(foundLine({ n: 0, inTitle: 0, byLabel: 0, byMeaning: 0 }, tz).head).toBe("找到 0 件");
+  // D291: no fact carries a joined dot.
+  for (const f of foundLine({ n: 9, subject: "x", inTitle: 3, byLabel: 2, byMeaning: 4 }, tz).facts) expect(f).not.toContain("·");
+});
+
+const how = (o: Partial<HandHow> = {}): HandHow => ({ shape: "plan", shapes: ["plan", "one", "one_by_one", "side_by_side"], repo: "acme/mem", where: { device: "local", name: "Mac", why: "home" }, wheres: [], who: { why: "usual" }, whos: [], cap: 3, ...o });
+
+test("shapes: add to a live group first and suggested; plan first always says you nod first; one to-do has none", () => {
+  const h = how({ addTo: { groupId: "g", name: "记忆提炼", n: 4, planning: false } });
+  expect(shapeChoices(h)).toEqual(["add", "plan", "one", "one_by_one", "side_by_side"]);
+  expect(suggestedShape(h)).toBe("add");
+  expect(suggestedShape(how())).toBe("plan");
+  expect(shapeChoices(how({ shape: undefined, shapes: [] }))).toEqual([]);
+  expect(shapeLine("plan", how(), tz, false)).toBe("你点头再做");
+  expect(shapeLine("one_by_one", how(), tz, false)).toBe("在 acme/mem 里排着，每件从上一件的分支接着做");
+  expect(shapeLine("side_by_side", how(), te, false)).toBe("3 at a time, a PR each");
+  expect(shapeLine("one", how(), te, true)).toBe("One task that does them in order");
+  expect(shapeLine("add", h, tz, false)).toBe("它正在做 4 件");
+  // Never "一起做 / Together" for a shape (research/153: read as side by side).
+  for (const k of ["ho.shape.plan", "ho.shape.one", "ho.shape.one_by_one", "ho.shape.side_by_side"]) {
+    expect(handoverWords.zh[k]).not.toBe("一起做");
+    expect(handoverWords.en[k]).not.toBe("Together");
+  }
+});
+
+test("refs as the plan says them: #n in one repository, repo#n across several", () => {
+  expect(refLabel("acme/mem#405", true)).toBe("#405");
+  expect(refLabel("acme/mem#405", false)).toBe("mem#405");
+  expect(refsLabel(["acme/mem#398", "acme/mem#412"], true)).toBe("#398 + #412");
+  expect(oneRepoOf(["acme/mem#1", "acme/mem#2"])).toBe(true);
+  expect(oneRepoOf(["acme/mem#1", "acme/web#2"])).toBe(false);
+});
+
+test("the plan's sections in the shapes' words, empty ones left out; Go opens one task per part", () => {
+  const p: HandPlan = { fixed: [{ ref: "a/b#1", where: "PR #3" }], one: [{ id: "p1", refs: ["a/b#2", "a/b#4"], title: "", why: "" }], line: [], side: [{ id: "p2", refs: ["a/b#5"], title: "", why: "" }], later: [], limits: [], read: { n: 4 } };
+  expect(planSections(p).map((s) => s.kind)).toEqual(["fixed", "one", "side"]);
+  expect(planTasks(p)).toBe(2);
+});
+
+test("a hand-over group's state: planning, waiting for a look, held, going, review, sent", () => {
+  const h = (o: Partial<GroupHandView>): GroupHandView => ({ shape: "plan", items: [], ...o });
+  expect(handState(h({ plan: { taskId: "t", state: "planning" } }))).toBe("planning");
+  expect(handState(h({ plan: { taskId: "t", state: "ready" } }))).toBe("ready");
+  expect(handState(h({ plan: { taskId: "t", state: "held" } }))).toBe("held");
+  expect(handState(h({ plan: { taskId: "t", state: "going" } }))).toBe("going");
+  expect(handState(h({ shape: "side_by_side" }))).toBe("going");
+  expect(handState(h({ review: "ready", plan: { taskId: "t", state: "going" } }))).toBe("review");
+  expect(handState(h({ review: "sent" }))).toBe("sent");
+  expect(handState(undefined)).toBeUndefined();
+});
+
+test("review together sends every to-do of the rows not left out; the set card carries its own ticks", () => {
+  const row = (refs: string[]) => ({ items: refs.map((ref) => ({ source: "s", kind: "github" as const, ref, label: ref.slice(ref.indexOf("#")), title: ref })), comment: "x", close: false });
+  expect(reviewKeep([row(["a#1", "a#2"]), row(["a#3"]), row(["a#4"])], new Set([1]))).toEqual(["a#1", "a#2", "a#4"]);
+  const own = new Map<string, Set<string>>();
+  expect([...setTicks("s1", ["a", "b"], own)]).toEqual(["a", "b"]);
+  own.set("s1", new Set(["b"]));
+  expect([...setTicks("s1", ["a", "b"], own)]).toEqual(["b"]);
+});
+
+test("zh and en are written together: the same keys", () => {
+  expect(Object.keys(handoverWords.zh).sort()).toEqual(Object.keys(handoverWords.en).sort());
+});

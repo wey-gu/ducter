@@ -15,6 +15,7 @@ import { BrandMark } from "./brand.tsx";
 import { Btn } from "./controls.tsx";
 import { ago } from "./format.ts";
 import { SourceChip } from "./todos.tsx";
+import { openHand, SubjectChips } from "./handover.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
@@ -189,6 +190,8 @@ export function PileBlock({ pile }: { pile: PileView }) {
           )}
         </div>
       </div>
+      {/* D385: 讲的是 / Subjects: what the open ones are about, each a way into the hand-over sheet. */}
+      {!pile.sorting && pile.subjects?.length ? <SubjectChips subjects={pile.subjects} more={pile.subjectsMore} /> : null}
       {pile.sorting ? (
         <div class="pile-sorting" role="status">
           <span class="pile-sorting-line">{t("pile.sorting")}</span>
@@ -202,7 +205,7 @@ export function PileBlock({ pile }: { pile: PileView }) {
         </div>
       ) : sorted ? (
         <div class="pile-rows">
-          {g.do > 0 && <Row g="do" n={g.do} act={t("pile.act.do", name)} onAct={() => openPile("do")} />}
+          {g.do > 0 && <Row g="do" n={g.do} act={t("pile.act.do", name)} onAct={() => openHand({ door: "do" })} />}
           {g.decide > 0 && <Row g="decide" n={g.decide} act={t("pile.act.decide")} onAct={() => openPile("decide")} />}
           {g.close > 0 && <Row g="close" n={g.close} note={t("pile.g.close.note")} act={t("pile.act.close")} onAct={() => openPile("close")} />}
           {g.later > 0 && <Row g="later" n={g.later} />}

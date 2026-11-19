@@ -132,6 +132,8 @@ function renderReport(r: Bodies["report"], title?: string, told?: string[], undo
 export interface RenderCtx {
   /** D206: false when the AI the partner thinks with can't see pictures. */
   seesPictures?: boolean;
+  /** D385: a hand-over group by id: its name, and whether its plan is still being made or waits for Go. */
+  handGroup?(groupId: string): { name: string; planning: boolean } | undefined;
   /** D259: where a file the user sent is on the home, under its own name. */
   fileAt?(m: MediaRef): string | undefined;
   /** D259: the whole text of a short text file the user sent (≤ FILE_INLINE_CHARS), else undefined. */
@@ -497,9 +499,25 @@ export function renderHistoryLine(e: LogEvent, ctx: RenderCtx): string | null {
       if (b.state === "go") return `[${t} the user said Go on your ${b.kind} find${b.taskId ? `: task ${b.taskId}` : ""}]`;
       return null;
     }
+    case "todo_set": {
+      // D385: the set card Ducter put under your line (todos do=find): its id, what it holds, and whether it was handed over.
+      const s = e.body as Bodies["todo_set"];
+      const ticked = s.ticked.length;
+      const head = `[${t} the set card under your line, set ${s.setId}] ${s.found.n} about "${clip(s.subject ?? s.query ?? "", 60)}", ${ticked} ticked (${s.ticked.slice(0, 6).map((r) => r.replace(/^.*(?=#)/, "")).join(" ")}${ticked > 6 ? " …" : ""})`;
+      const rest = s.refs.filter((r) => !s.ticked.includes(r)).slice(0, 6).map((r) => r.replace(/^.*(?=#)/, ""));
+      if (s.groupId) {
+        const g = ctx.handGroup?.(s.groupId);
+        return g ? `${head}: handed over as the group "${g.name}"${g.planning ? " (its plan is being made, or waits for the user's Go)" : ""}; more to-dos join it with todos do=hand group="${g.name}" refs=[…]` : `${head}: handed over`;
+      }
+      return `${head}${rest.length ? `; not ticked: ${rest.join(" ")}` : ""}. Words about how after it are its hand-over: todos do=hand set=${s.setId} note=<their words>.`;
+    }
     case "decision": {
       const d = e.body as Bodies["decision"];
       if (d.findId) return null; // rendered with its note
+      // D385: Ducter's own cards for a hand-over: shown whole to the user with their buttons; never restated.
+      if (d.src?.kind === "plan") return `[${t} the plan card for "${clip(d.src.group ?? "", 40)}" (group ${d.src.groupId}): the user sees the plan whole with 照这个做 / 先等等 / 回复… (Go with this / Hold / Reply); a reply goes to the plan itself. Never restate it.]`;
+      if (d.src?.kind === "where_rule") return `[${t} Ducter asked once whether to keep "${clip(d.src.quote ?? "", 80)}" as a rule (its own card)]`;
+      if (d.src?.kind === "group_review") return `[${t} the user sent the review-together comments for group ${d.src.groupId} (${d.src.items?.length ?? 0})]`;
       return `[${t} ${d.taskId ? `task ${d.taskId} asks` : "you asked (ask)"}] ${clip(d.question, 300)} (Go: ${d.goLabel}, default ${d.defaultOption})`;
     }
     case "decision_resolved": {

@@ -36,6 +36,8 @@ export interface TaskGroupView {
    */
   stopped?: { taskId: string; why: "failed" | "dropped" };
   createdAt: string;
+  /** D385: made by a hand-over of to-dos: its note, shape, plan and review (design/handover.md). */
+  hand?: import("./handover.ts").GroupHandView;
 }
 
 /** Client → home: make, rename, reorder or take apart a group; move a stopped line on. */

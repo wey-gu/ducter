@@ -458,7 +458,7 @@ export function createHandover(d: HandoverDeps): Handover {
     })();
     if (subj) {
       const g = groups()?.onSubject(d.persona(), subj);
-      if (g) addTo = { groupId: g.id, name: g.name, n: g.members.filter((m) => !isHeld(m) || true).length, planning: !!g.hand?.plan && g.hand.plan.state !== "going" };
+      if (g) addTo = { groupId: g.id, name: g.name, n: g.members.length, planning: !!g.hand?.plan && g.hand.plan.state !== "going" };
     }
     return { ...(shape ? { shape } : {}), shapes, ...(repo ? { repo } : {}), ...(addTo ? { addTo } : {}), where, wheres, who, whos: [...new Set(harnesses)], cap: HAND_CAP, ...(said && o.note && lastingWhere(o.note) ? { lasting: true } : {}) };
   }

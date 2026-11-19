@@ -10,6 +10,9 @@ Deferred work, grouped by area, each with its trigger where it has one.
 - **A plan task that reports without `plan_report`** falls back to one after another of the whole set
   (the card shows its words). If a real agent skips the tool, ask it once more by code before the
   fallback. *Trigger:* the first plan card without a typed plan.
+- **A worker takes a subject later** (§6: "让 haswell 做记忆提炼这一摊" moves the group's Where for the
+  parts not yet started). Where is chosen at hand-over (the note, a rule, the repository's computer);
+  changing it for a running group is not built. *Trigger:* the author asks it of a live group.
 - **Subjects merge only by spelling.** Two names for one thing ("Distillation", "记忆提炼") stay two
   chips until a sort reuses one; a model-made merge is held. *Trigger:* the author sees one subject
   twice on the pile.

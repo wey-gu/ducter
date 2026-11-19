@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.0.96 - 2026-11-19
+
+<!-- whats-new
+zh: 一些稳定性修复
+en: Steadiness fixes
+-->
+
+**Fixes**
+- After Ducter stops or restarts, nothing left running tries to read its closed database.
+
 ## 0.0.95 - 2026-11-19
 
 <!-- whats-new

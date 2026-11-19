@@ -43,6 +43,30 @@ func TestReviewStandingLine(t *testing.T) {
 	}
 }
 
+// D394: while its round card is unanswered the review task stands under 等你,
+// and goes back to 等下一次 once answered (the home sets the state).
+func TestReviewTaskSection(t *testing.T) {
+	items := ongoingFixture(i18n.ZH)
+	items[1].State = "needs_you"
+	items[1].Reviews = &protocol.ReviewStanding{Waiting: 8, Again: 3, Same: 5, Drafted: 3}
+	s := ongoingSections(items)
+	in := func(k int) bool {
+		for _, it := range s[k] {
+			if it.ID == "t_review" {
+				return true
+			}
+		}
+		return false
+	}
+	if !in(0) || in(2) {
+		t.Errorf("an unanswered round: not under 等你")
+	}
+	items[1].State = "resting"
+	if s = ongoingSections(items); in(0) || !in(2) {
+		t.Errorf("answered: not back under 等下一次")
+	}
+}
+
 func reviewRoundCard(lang i18n.Lang) protocol.Decision {
 	w := func(zh, en string) string { return pastWord(lang, zh, en) }
 	items := []protocol.SourceAskItem{
@@ -118,10 +142,19 @@ func TestReviewRoundShots(t *testing.T) {
 		items := ongoingFixture(lang)
 		items[1].Title = w("看 nowledge-co 里请我 review 的 PR", "Review my requests in nowledge-co")
 		items[1].Runs = ongoingRunsOf(45*time.Minute, w("8 个请求在等你", "8 requests wait on you"), "looked", "looked", "looked", "looked", "met", "looked", "looked", "looked", "looked", "looked", "looked", "met")
+		// Its round card unanswered: it waits on the person, under 等你.
+		items[1].State = "needs_you"
 		items[1].Reviews = &protocol.ReviewStanding{Waiting: 8, Again: 3, Same: 5, Drafted: 3, At: ogAt(-time.Minute)}
 		app.OpenOngoing()
 		app.Receive(ongoingFrame(items))
 		shot("ongoing", 1280, 820)
+		// Posted (or Not now): back under 等下一次.
+		after := ongoingFixture(lang)
+		after[1].Title = items[1].Title
+		after[1].Runs = items[1].Runs
+		after[1].Reviews = &protocol.ReviewStanding{Waiting: 8, Same: 8, At: ogAt(-time.Minute)}
+		app.Receive(ongoingFrame(after))
+		shot("ongoing-after", 1280, 820)
 		// The round's one card in the conversation.
 		app.Route = RouteConversation
 		app.Receive(protocol.ServerFrame{T: "events", Events: []protocol.LogEvent{

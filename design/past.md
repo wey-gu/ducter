@@ -116,7 +116,7 @@ GitHub?**), each draft opened from the card on the phone and the Mac; Go posts t
 countdown). A review task reports each round with `review_report`; its card adds a standing line under the
 state line: **8 个请求在等你：3 个有新提交已复审，5 个没变 / 8 requests wait on you: 3 had new commits
 and are reviewed again, 5 unchanged** and **3 份评审还没发 / 3 drafted reviews not posted yet**, each its
-own element. Each draft is that PR's pre-read (`task-sources.md` §9), opened with **看草稿 / Read
+own element. While its round card is unanswered the card stands under **等你** (the card is the one needs-you, never counted twice) and goes back to **等下一次** once it is answered. Each draft is that PR's pre-read (`task-sources.md` §9), opened with **看草稿 / Read
 draft** from the round's card. A round after a long rest, or after its session compacted, starts in a
 fresh session from the brief and its latest progress (Codex, Claude Code).
 

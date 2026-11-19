@@ -34,7 +34,7 @@ export interface Ongoing {
   stop(): void;
 }
 
-export function createOngoing(o: { dataDir: string; log: LogStore; tasks: CoreRegistry; waiters: Waiters; routines: Routines; marks?: Marks; clock?: Clock; onChange?: () => void; reviews?: (taskId: string) => import("@ducter/protocol").ReviewStanding | undefined }): Ongoing {
+export function createOngoing(o: { dataDir: string; log: LogStore; tasks: CoreRegistry; waiters: Waiters; routines: Routines; marks?: Marks; clock?: Clock; onChange?: () => void; reviews?: (taskId: string) => import("@ducter/protocol").ReviewStanding | undefined; asking?: (taskId: string) => boolean }): Ongoing {
   const clock = o.clock ?? realClock;
   const file = join(o.dataDir, "paused.json");
   let paused: Record<string, Paused> = {};
@@ -120,7 +120,8 @@ export function createOngoing(o: { dataDir: string; log: LogStore; tasks: CoreRe
       const w = waits.get(id);
       const p = paused[id];
       const pw = p?.waiters[0];
-      const state: OngoingItem["state"] = p ? "paused" : c.attention === "needs_you" ? "needs_you" : ACTIVE.has(c.attention) ? "running" : "resting";
+      // D394: a review task whose round card is unanswered waits on the person, under 等你.
+      const state: OngoingItem["state"] = p ? "paused" : c.attention === "needs_you" || o.asking?.(id) ? "needs_you" : ACTIVE.has(c.attention) ? "running" : "resting";
       const every = w?.everyMs ?? pw?.everyMs;
       const reason = w?.reason ?? pw?.reason;
       items.push({

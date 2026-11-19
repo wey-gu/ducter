@@ -1071,7 +1071,14 @@ export function startCore(opts: CoreOptions = {}): Core {
   const did = createDid({ log, tasks, uses: () => autofill.store.view().uses, deviceName: (dev) => (dev === "local" ? computers.homeName() : computers.nameOf(dev)), folder: (id) => changes.folder(id), now: () => clock.now() });
   registerDidTool(mcp, did, () => clock.now());
   // D285: 一直在跑的 / Ongoing: routines and tasks that look again on their own, paused and resumed.
-  const ongoing = createOngoing({ dataDir, log, tasks, waiters: work.waiters, routines: work.routines, marks, clock, onChange: () => ws.ongoingChanged(), reviews: (id) => taskSourcesRef?.pile.standing(id) });
+  const ongoing = createOngoing({ dataDir, log, tasks, waiters: work.waiters, routines: work.routines, marks, clock, onChange: () => ws.ongoingChanged(), reviews: (id) => taskSourcesRef?.pile.standing(id), asking: (id) => !!taskSourcesRef?.pile.asking(id) });
+  // D394: a review round's card asked or answered moves its task between 等你 and 等下一次.
+  const roundCards = new Set<string>();
+  log.subscribe((e) => {
+    const id = e.kind === "decision" && (e.body as Bodies["decision"]).src?.kind === "reviews" ? (e.body as Bodies["decision"]).decisionId : e.kind === "decision_resolved" ? (e.body as Bodies["decision_resolved"]).decisionId : undefined;
+    if (!id || (e.kind === "decision" ? (roundCards.add(id), false) : !roundCards.delete(id))) return;
+    setTimeout(() => ws.ongoingChanged(), 30);
+  });
   const newTask = {
     // D285: 带着它开新任务 / New task from this: the brief carries what that task found.
     open: (i: NewTaskInput) => openYourTask(newTaskDeps, i.from && tasks.get(i.from) ? { ...i, brief: past.seed(i.from, i.words, languageOf(i.words, settings)) } : i),

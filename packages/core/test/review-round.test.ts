@@ -138,6 +138,40 @@ test("Hold posts nothing; the drafts stay; a task not about reviewing never sees
   expect(core.mcp.listed({ role: "task", taskId: "t3" } as never)).not.toContain("review_report");
 });
 
+test("Ongoing: an unanswered round card puts the review task under 等你; Post or Not now puts it back to 等下一次", async () => {
+  const { core, open, ts } = boot();
+  await ts.add("github");
+  await ts.look();
+  open("swj3zc4w", "看 nowledge-co 的评审请求", "每 45 分钟 review 一次 nowledge-co 里请我 review 的 PR。");
+  core.log.append({ stream: "channel", origin: "task", kind: "waiter", body: { waiterId: "w_next", taskId: "swj3zc4w", wakes: "task", reason: "再看一轮评审请求", state: "armed", at: new Date(Date.now() + 45 * 60_000).toISOString() } as Bodies["waiter"] });
+  const frames: { t: string; id?: string; items?: { id: string; state: string; reviews?: { drafted: number } }[] }[] = [];
+  const ws = new WebSocket(core.url);
+  ws.onmessage = (m) => frames.push(JSON.parse(String(m.data)));
+  await new Promise<void>((r) => (ws.onopen = () => r()));
+  stops.push(() => ws.close());
+  ws.send(JSON.stringify({ t: "hello" }));
+  await until(() => frames.some((f) => f.t === "on_hand"));
+  let k = 0;
+  const ask = async () => {
+    const id = `q${++k}`;
+    ws.send(JSON.stringify({ t: "ongoing", id }));
+    await until(() => frames.some((f) => f.t === "ongoing_result" && f.id === id));
+    return frames.find((f) => f.t === "ongoing_result" && f.id === id)!.items!.find((i) => i.id === "swj3zc4w")!;
+  };
+  const pushed = (state: string) => frames.some((f) => f.t === "ongoing_result" && !f.id && f.items?.find((i) => i.id === "swj3zc4w")?.state === state);
+  expect((await ask()).state).toBe("resting");
+  await call(core, "swj3zc4w", { prs: [{ ref: "nowledge-co/mem#10287", head: "a1b2c3d", changed: true, notes: [note("The batch size is read before it is checked.")] }, { ref: "nowledge-co/mem#8528", changed: false }] });
+  expect(await ask()).toMatchObject({ state: "needs_you", reviews: { drafted: 1 } });
+  // Pushed to every window as it changes, without asking.
+  await until(() => pushed("needs_you"));
+  // One needs-you for the person: the card itself; the task's own state stays as it was.
+  expect(core.tasks.get("swj3zc4w")!.attention).not.toBe("needs_you");
+  const card = cards(core)[0]!;
+  core.log.append({ stream: "channel", origin: "user", kind: "decision_resolved", body: { decisionId: card.decisionId, option: "hold", by: "user" } });
+  await until(() => pushed("resting"));
+  expect((await ask()).state).toBe("resting");
+});
+
 async function until(ok: () => unknown, ms = 3000) {
   const end = Date.now() + ms;
   while (!ok()) {

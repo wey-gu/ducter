@@ -355,6 +355,8 @@ export interface Pile {
   answerRound(card: Bodies["decision"], r: Bodies["decision_resolved"]): Promise<{ done: number; failed: number }>;
   /** D394: a review task's standing (the Ongoing card's line). */
   standing(taskId: string): ReviewStanding | undefined;
+  /** D394: its round card waits on the person (Ongoing puts it under 等你 until it is answered). */
+  asking(taskId: string): boolean;
   /** Pre-read the newest review requests by themselves (bounded a day). */
   readNewest(prs: SourceItem[]): Promise<void>;
   /** The morning note's to-dos find: its text, how-lines, and the Go card (inside the note). */
@@ -897,6 +899,9 @@ export function createPile(d: PileDeps): Pile {
       if (s0) s0.drafted = Object.values(st.reads).filter((x) => x.byTask === src.taskId && x.state === "drafted").length;
       save();
       return { done, failed };
+    },
+    asking(taskId) {
+      return !!st.rounds?.[taskId]?.decisionId;
     },
     standing(taskId) {
       const s0 = st.rounds?.[taskId];

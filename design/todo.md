@@ -2,7 +2,7 @@
 
 Deferred work, grouped by area, each with its trigger where it has one.
 
-## A review that runs every so often (D394, `past.md` Ongoing, research/154)
+## A review that runs every so often (D394, `past.md` Ongoing, research/158)
 
 - **Rounds as fresh short runs.** One Codex session ran swj3zc4w for days, compacted dozens of
   times a day, each time re-sent the brief. A timer wake of a task resting on its own wait could

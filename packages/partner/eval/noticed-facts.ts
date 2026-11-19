@@ -44,7 +44,7 @@ export function writeAgibarFacts(dataDir: string, now = Date.now()) {
   const page = `https://agibar.example.com/events/${sat}-beijing`;
   const facts = [
     { id: "f_hold", ref: { connectionId: "conn_oo", service: "googlecalendar", account: "wey@example.com", id: "ev_agibar" }, label: "AGI Bar Beijing talk", at: iso(now - 7 * 24 * H), date: sat, type: "plan", name: "AGI Bar Beijing talk", day: sat, tbd: true, src: "calendar" },
-    { id: "f_weekly", ref: { connectionId: "conn_oo", service: "gmail", account: "wey@example.com", id: "m_weekly" }, label: "本周周报 W47", sender: "Lina Zhou", at: iso(now - 14 * H), date: fri, type: "plan", name: "AGI Bar Beijing talk", day: fri, place: "北京", src: "mail" },
+    { id: "f_weekly", ref: { connectionId: "conn_oo", service: "gmail", account: "wey@example.com", id: "m_weekly" }, label: "Weekly report W47", sender: "Lina Zhou", at: iso(now - 14 * H), date: fri, type: "plan", name: "AGI Bar Beijing talk", day: fri, place: "北京", src: "mail" },
     { id: "f_page", ref: { connectionId: "web", service: "web", id: page }, label: "agibar.example.com", sender: "agibar.example.com", at: iso(now - 12 * H), date: sat, type: "plan", name: "AGI Bar Beijing talk", day: sat, time: "19:00", doors: true, src: "web", url: page },
   ];
   writeFileSync(join(dataDir, "findings.json"), JSON.stringify({ facts }), { mode: 0o600 });

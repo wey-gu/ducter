@@ -165,6 +165,12 @@ export interface CoreApi {
   /** D380: a quick web look for one live fact (core/src/web-look.ts); absent in tests and stubs (then a browsing task does it). */
   webLook?: WebLookPort;
   /**
+   * D388: the pages the last `noticed` call's answers rest on (each find's web source), so a reply to
+   * "how did you know?" carries them even when the model leaves them out. Cleared at each turn. A
+   * holder object: the Core the partner gets is a copy of the api, so a field set later wouldn't reach it.
+   */
+  noticedSources?: { links?: { label: string; url: string }[]; whys?: { text: string; why: string }[] };
+  /**
    * D381: 置顶 / Pinned, the default conversation's (core/src/pins.ts). The partner sees them in a
    * line each turn and claims a block's "pin" before writing its message; absent for a second
    * partner (preview) and in stubs.

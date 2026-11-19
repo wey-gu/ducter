@@ -893,7 +893,9 @@ export function startCore(opts: CoreOptions = {}): Core {
   const limitWaits = createLimitWaits({ log, tasks, waiters: work.waiters, loadout, settings, usage: accountUsage, runner: () => runner, clock });
   limitsDecorate = (o) => ({ ...o, waiters: o.waiters.map((w) => limitWaits.decorate(w)) });
   const workFrames: typeof work.frames = { ...work.frames, waiter: (id, action) => limitWaits.act(id, action) ?? (action === "handoff" ? Promise.resolve(false) : work.frames.waiter(id, action)) };
-  const api = { log, tasks, mcp, persona, dataDir, settings, connections, phone, bodies: loadout, said, spine: log.spine, bridgeLink, media, limits: accountUsage, workingMemory, pins, ...(browser ? { browser: browser.port } : {}) } as CoreApi;
+  // D388: the pages the last noticed call rested on (a holder: the Core is a copy of api).
+  const noticedSources: { links?: { label: string; url: string }[]; whys?: { text: string; why: string }[] } = {};
+  const api = { log, tasks, mcp, persona, dataDir, settings, connections, phone, bodies: loadout, said, spine: log.spine, bridgeLink, media, limits: accountUsage, workingMemory, pins, noticedSources, ...(browser ? { browser: browser.port } : {}) } as CoreApi;
   // D312: with more than one partner, the default partner keeps to its own too, and a task's
   // brief and Mem identity are those of the partner it is for.
   const memOf = new Map<string, MemIdentity | undefined>();
@@ -1671,7 +1673,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   };
   // D368: read once at the start, so the partner's first turn already has the day's focus (never awaited).
   void workingMemory.refresh().catch(() => undefined);
-  registerProactiveTools(mcp, rules, proactive);
+  registerProactiveTools(mcp, rules, proactive, (links, whys) => void Object.assign(noticedSources, { links, whys }));
 
   const server = Bun.serve<WsData | WorkerSocketData>({
     hostname,

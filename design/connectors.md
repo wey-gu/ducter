@@ -261,7 +261,11 @@ came back with the time it said was missing). *First time:* a find in the mornin
   leave Ducter. Nothing open: no look, no follow-up.
 - **How it knows**, as data: each 怎么知道的 line is one source (**日历 / 邮件 / 你说的 / 网上**), what it
   says, its page; the `noticed` tool's `why` is composed from those lines, so "你怎么知道的？" is
-  answered in the same order with the same links, adding nothing.
+  answered with one line of the partner's and, under it, those lines as code wrote them (D388 (11)).
+- **Two precision fixes from hel (D388 (9), (10)):** a first-time sender the person never wrote to,
+  asking for a meeting, a call, a link or a deal, is not 在等你回 (asked again or not); and only the
+  person looking (a read receipt) assembles the morning note early, never an app reconnecting after
+  an update.
 - **The replay** (`ducter proactive replay [--days 1–7] [--no-web]`): a second engine in a dry mode on
   the home (scratch folder deleted after, no pusher, no runner, nothing in the person's Log) over the
   last days of the real accounts; it prints what it would have said, with sources, what it held and

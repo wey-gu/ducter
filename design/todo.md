@@ -822,13 +822,6 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
 - [ ] **Look before saying, when a look can settle it:** run the web look for a contradiction's open
       time before the find is said, and say one complete message instead of two. Trigger: replays or
       live days where the follow-up comes within the hour of the find.
-- [ ] **A cold sender is not waiting on you:** 11 of 11 waiting-on-you finds on hel were held, several
-      from senders pitching (research/154 §2). A first mail from a sender the person never wrote to,
-      asking for a meeting, a call or a link, needs a second ask or a person who matters (Mem) to be
-      said. Measure on the rig and the aha days before shipping. Trigger: now (the next proactive change).
-- [ ] **A reconnect is not the person opening Ducter:** the 11-19 morning note came at 05:15, the
-      second the home restarted for an update (a hello within two hours of the end of quiet hours
-      assembles the note). Only a hello from a client brought to the front counts. Trigger: now.
 - [ ] **A notice Rule for the open question's web look** ("别替我上网查活动时间"), and the look's count
       in 今天看了什么. Trigger: the first person who asks why it searched, or the live week.
 - [ ] **Their public posts as a source** (the other app named the author's own post about attending):

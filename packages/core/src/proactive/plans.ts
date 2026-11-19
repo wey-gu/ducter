@@ -273,18 +273,20 @@ export function provenance(how: FindHow[], o: { unknown?: string; untouched?: st
     const t = Date.parse(iso);
     return Number.isNaN(t) ? "" : new Date(t).toISOString().slice(5, 10).replace("-", "/").replace(/^0/, "").replace(/\/0/, "/");
   };
+  // D388: each page is a Markdown link, so the answer carries it as written (the partner gives why word for word).
+  const link = (h: FindHow) => (h.url ? `[${h.what}](${h.url})` : h.what);
   const zh = how.map((h, i) => {
     const src = h.src ? SRC_ZH[h.src] : "";
-    const who = h.src === "you" ? `你 ${day(h.at)} 说的「${h.what}」` : h.src === "web" ? `网页 ${h.what}` : h.src === "mail" ? `${h.from ? `${h.from} 的` : ""}邮件「${h.what}」` : `${src}${h.from ? ` ${h.from} 的` : ""}「${h.what}」`;
-    return `${i + 1}. ${who}${h.says ? `：${h.says}` : ""}${h.url ? `（${h.url}）` : ""}`;
+    const who = h.src === "you" ? `你 ${day(h.at)} 说的「${h.what}」` : h.src === "web" ? `网页 ${link(h)}` : h.src === "mail" ? `${h.from ? `${h.from} 的` : ""}邮件「${h.what}」` : `${src}${h.from ? ` ${h.from} 的` : ""}「${h.what}」`;
+    return `${i + 1}. ${who}${h.says ? `：${h.says}` : ""}${h.url && h.src !== "web" ? `（[链接](${h.url})）` : ""}`;
   });
   const en = how.map((h, i) => {
-    const who = h.src === "you" ? `you said on ${day(h.at)}: "${h.what}"` : h.src === "web" ? `the page on ${h.what}` : `${h.src ? SRC_EN[h.src] : "a source"}${h.from ? ` from ${h.from}` : ""}, "${h.what}"`;
-    return `${i + 1}. ${who}${h.says ? `: ${h.says}` : ""}${h.url ? ` (${h.url})` : ""}`;
+    const who = h.src === "you" ? `you said on ${day(h.at)}: "${h.what}"` : h.src === "web" ? `the page ${link(h)}` : `${h.src ? SRC_EN[h.src] : "a source"}${h.from ? ` from ${h.from}` : ""}, "${h.what}"`;
+    return `${i + 1}. ${who}${h.says ? `: ${h.says}` : ""}${h.url && h.src !== "web" ? ` ([link](${h.url}))` : ""}`;
   });
   return {
-    zh: `${zh.join("；")}。${o.unknown ? `还不知道：${o.unknown}。` : ""}${o.untouched ?? ""}`,
-    en: `${en.join("; ")}.${o.unknown ? ` Not known yet: ${o.unknown}.` : ""}${o.untouched ? ` ${o.untouched}` : ""}`,
+    zh: `${zh.join("\n")}\n${o.unknown ? `还不知道：${o.unknown}。` : ""}${o.untouched ?? ""}`.trim(),
+    en: `${en.join("\n")}\n${o.unknown ? `Not known yet: ${o.unknown}.` : ""}${o.untouched ? ` ${o.untouched}` : ""}`.trim(),
   };
 }
 

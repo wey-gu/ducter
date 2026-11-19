@@ -241,6 +241,9 @@ function changes(facts: Fact[], c: DetectCtx): Candidate[] {
     });
 }
 
+/** D388: what a cold pitch asks for: a meeting, a call, a link to book, a deal, an invitation. */
+export const PITCH = /\b(meet(ing)?s?|calls?|demo|book(ing)?|schedule|calendly|links?|coffee|introduc\w*|partner(ship)?s?|collaborat\w*|proposals?|invit\w*|webinar|opportunit\w*|sponsor\w*|freelance|outsourc\w*)\b|约个|约一下|聊聊|见面|会议|通话|电话|链接|介绍|合作|邀请|提案|洽谈|商务|外包/i;
+
 function waitingOnYou(facts: Fact[], c: DetectCtx): Candidate[] {
   const replies = facts.filter((f): f is Extract<Fact, { type: "reply" }> => f.type === "reply" && f.out);
   const asks = facts.filter((f): f is Extract<Fact, { type: "ask_in" }> => f.type === "ask_in" && f.person);
@@ -258,6 +261,12 @@ function waitingOnYou(facts: Fact[], c: DetectCtx): Candidate[] {
     if (days < 2 && !again) continue;
     const who = nameOf(first.from, first.name);
     const gh = first.ref.service === "github";
+    // D388: a stranger's pitch is not someone waiting on you (hel: 11 of 11 held, several cold
+    // pitches). Someone the person never wrote to, asking for a meeting, a call, a link or a deal,
+    // stays below (asked again or not); a question or a person they answered before is said.
+    const from = first.from.toLowerCase();
+    const known = replies.some((r) => r.with.toLowerCase() === from) || facts.some((f) => f.type === "ask_out" && f.to.toLowerCase() === from);
+    if (!gh && !known && PITCH.test(`${list.map((a) => a.what).join(" ")} ${first.label}`)) continue;
     const ago = daysUntil(first.at, c.now, c.zone);
     const whenZh = ago >= 0 ? "今天" : ago === -1 ? "昨天" : `${-ago} 天前`;
     const zh = `${who} ${whenZh}问你${first.what ? `「${first.what}」` : "一件事"}${again ? `，${daysUntil(last.at, c.now, c.zone) === 0 ? "今天" : ""}又问了一次。` : `，还没回。`}`;

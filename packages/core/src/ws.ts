@@ -993,6 +993,8 @@ export function createWsHandler(deps: WsDeps) {
       }
       case "read":
         log.append({ stream: channelOf(ws.data.partner), origin: "user", kind: "read_receipt", body: { upToSeq: f.upToSeq } }); // D312: the conversation it shows
+        // D388: the person is looking (not a socket that reconnected): an early morning may be assembled now.
+        if (ws.data.client !== "cli") deps.proactive?.()?.hello(undefined, true);
         return;
       case "devices": {
         const v = devicesView();

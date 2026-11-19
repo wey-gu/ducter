@@ -374,8 +374,12 @@ export interface Proactive {
   answer(noteId: string, ask: ProactiveYesNo, yes: boolean): Promise<void>;
   /** A source was just added: the first-account moment (§11), once. */
   added(connectionId: string): void;
-  /** A client said hello (with its zone, D243): before the end of quiet hours, the note is assembled now (§6). */
-  hello(tz?: string): void;
+  /**
+   * A client said hello (with its zone, D243). opened: the person is looking (a read receipt), not a
+   * socket that reconnected (an update's restart at 05:15, D388): only then, before the end of quiet
+   * hours, is the note assembled now (§6).
+   */
+  hello(tz?: string, opened?: boolean): void;
   /** D243: the zone the person's apps last said they are in. */
   clientZone(): string | undefined;
   /**
@@ -1873,7 +1877,7 @@ export function createProactive(o: ProactiveOptions): Proactive {
       }
       return { watching: mode() !== "off", items };
     },
-    hello(tz) {
+    hello(tz, opened) {
       // D243: the person's zone, as their app says it (a server home runs in UTC).
       if (typeof tz === "string" && tz && tz !== st.clientZone) {
         try {
@@ -1887,7 +1891,7 @@ export function createProactive(o: ProactiveOptions): Proactive {
       }
       const q = holding();
       const at = now();
-      if (mode() === "off" || !q || !inQuiet(at, q)) return;
+      if (!opened || mode() === "off" || !q || !inQuiet(at, q)) return;
       // Within the last two hours before the end of quiet hours: assembled now.
       if (quietEndsAt(at, q) - at <= 2 * 3_600_000) {
         void serial(async () => {

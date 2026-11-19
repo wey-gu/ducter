@@ -380,6 +380,14 @@ function bridgeOnly(t: TurnState | null): boolean {
 }
 
 /** Prose that tells the user to pick Go / Hold (only true when a decision event exists). */
+/** D388: the person asks how Ducter knew something it noticed. */
+/** D388: words two texts share: Latin words of 3+ letters, and Chinese two-character runs. */
+function overlap(a: string, b: string): number {
+  const keys = (x: string) => new Set([...(x.toLowerCase().match(/[a-z0-9]{3,}/g) ?? []), ...[...(x.match(/[㐀-鿿]+/g) ?? [])].flatMap((r) => [...r].slice(0, -1).map((c, i) => c + r[i + 1]))]);
+  const B = keys(b);
+  return [...keys(a)].filter((k) => B.has(k)).length;
+}
+const HOW_KNOW = /怎么知道|咋知道|从哪(里|儿)?(知道|看到)|哪(里|儿)?来的|how (did|do) you know|where did you (get|see|find)/i;
 const CLAIMS_CHOICE = /(选|点|按|回复?|回)\s*[「“"]?\s*(Go|Hold|好|先等等)\b|\b(tap|press|choose|pick|select|reply|hit|say)\s+["“]?(Go|Hold)\b|\bGo\s*\/\s*Hold\b/i;
 
 /**
@@ -836,11 +844,25 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     // D303: each ```ducter-ui block, validated, stands in the text as its plain form; the block
     // goes with the message for the apps to draw. A task's question carries words only.
     const rich = parseRich(raw, userLang());
-    const t = rich.text;
+    let t = rich.text;
     if (!decisionId && CLAIMS_CHOICE.test(t) && !openDecisionExists()) {
       // Honesty guard (live: "选 Go 就保留" with no decision anywhere). The words are already
       // the model's; make them true right away or have it take them back, in a follow-up turn.
       corrections.push(t);
+    }
+    // D388: asked how it knew, the pages its sources rest on are in the reply, written by code: a
+    // model that summarises (haiku left the link out in every eval run) can't drop them.
+    const src = core.noticedSources;
+    if (!decisionId && turn && src && (src.links?.length || src.whys?.length) && turn.userTexts.some((u) => HOW_KNOW.test(u))) {
+      // The find they asked about (the most words in common with their question): its why, as code wrote it.
+      const asked = turn.userTexts.join(" ");
+      const best = (src.whys ?? []).map((w) => ({ w, n: overlap(asked, `${w.text} ${w.why}`) })).sort((a, b) => b.n - a.n)[0];
+      if (best && best.n > 0 && !t.includes(best.w.why)) t = `${t}\n\n${best.w.why}`;
+      else {
+        const missing = (src.links ?? []).filter((l) => !t.includes(l.url));
+        if (missing.length) t = `${t}\n\n${missing.map((l) => `[${l.label}](${l.url})`).join("\n")}`;
+      }
+      src.links = src.whys = undefined;
     }
     const body: Bodies["ai_msg"] = turn?.replyTo !== undefined ? { text: t, replyTo: turn.replyTo } : { text: t };
     // D381: a block asked to be pinned, or to stand in for a pinned one: the home says which pin it is.
@@ -1565,6 +1587,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     // anything more is dropped (eval: a second line restated it in 4 of 4 runs).
     const quiet = batch.length > 0 && batch.every((e) => e.kind === "report" && (e.body as Bodies["report"]).state === "needs_input");
     const results = batch.filter((e) => e.kind === "report" && (e.body as Bodies["report"]).state === "done").length;
+    if (core.noticedSources) core.noticedSources.links = core.noticedSources.whys = undefined; // D388: only a noticed call of this turn counts
     turn = { triggers: batch, userTexts, checked: new Set(), replyTo, pending: null, unboundAck: null, opensSeen: 0, opensHandled: 0, lang, quiet, results, recalls: 0, noted: [], early: [] };
     refreshComps(); // D376: where the user's sign-ins are, for a task_send this turn
     const shows = batch.flatMap((e) => (e.kind === "report" ? ((e.body as Bodies["report"]).media ?? []) : []));

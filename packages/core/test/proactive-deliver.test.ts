@@ -154,7 +154,8 @@ test("fold-in: while the person is in the app, a find timely today joins today's
 test("opened before the end of quiet hours: the note is assembled then, once", async () => {
   const r = make({ mode: "three", start: Date.parse("2026-11-10T06:30:00+08:00") });
   await r.p.lookNow(40);
-  r.p.hello();
+  // D388: the person looking (a read receipt), not a reconnect, assembles it early.
+  r.p.hello(undefined, true);
   await r.settle();
   expect(r.notes().map((e) => e.body.rung)).toEqual(["morning"]);
   await r.advance(2 * HOUR);

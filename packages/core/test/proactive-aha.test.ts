@@ -53,11 +53,11 @@ test("每天最多 3 件: the contradiction before travel, the time filled once,
   expect(look!.asked[0]).toContain("2026-11-21");
   expect(look!.asked[0]).not.toMatch(/Lina|周报|Wey|example\.org/);
 
-  // The quota names what the mail didn't say; things found together are one calm message (the first morning: the renewal and the flight).
+  // The quota names what the mail didn't say; things found together are one calm message (the first morning: the renewal, the flight and Mia; never the stranger's pitch).
   const quota = hit(said, AHA_SAY[2]!)!;
   expect(quota.text).toContain("还剩多少");
   const first = said.find((s) => s.text.includes("ducter-demo.example"))!;
-  expect(said.filter((s) => s.noteId === first.noteId).map((s) => s.kind).sort()).toEqual(["deadline", "mismatch"]);
+  expect(said.filter((s) => s.noteId === first.noteId).map((s) => s.kind).sort()).toEqual(["deadline", "mismatch", "waiting_on_you"]);
 
   // "How did you know?": composed from the lines, in order, with the page; what it doesn't know and didn't change.
   const n = r.p.noticed();
@@ -84,6 +84,19 @@ test("只说急的: the contradiction two days out is urgent and goes; the quota
   expect(hit(said, AHA_SAY[0]!)).toBeDefined();
   expect(said.some((s) => s.text.includes("95%"))).toBe(false);
 }, 120_000);
+
+test("an early morning note is assembled when the person looks, never when a socket reconnects (an update's restart)", async () => {
+  const { rig } = await import("./proactive-rig.ts");
+  const r = rig({ mode: "three", start: Date.parse("2026-11-10T06:30:00+08:00"), present: true });
+  rigs.push(r);
+  await r.p.lookNow(40);
+  r.p.hello("Asia/Shanghai");
+  await r.settle();
+  expect(r.notes().filter((n) => n.body.rung === "morning")).toEqual([]);
+  r.p.hello(undefined, true);
+  await r.settle();
+  expect(r.notes().filter((n) => n.body.rung === "morning")).toHaveLength(1);
+});
 
 test("the same plan by name, never by its city or its kind", () => {
   expect(samePlan("AGI Bar 北京分享", "AGI Bar Beijing talk")).toBe(true);

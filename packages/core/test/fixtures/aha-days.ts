@@ -87,6 +87,11 @@ export function ahaDays(): { fx: Fixture; later: Later[]; said: Said[] } {
         snippet: "See you on Sunday 22 Nov at 19:00.",
         date: T("2026-11-14T12:00:00+08:00"),
       },
+      // Negative (D388): a stranger's pitch, asked twice, the person never wrote to them.
+      { id: "m_pitch1", threadId: "t_pitch", from: "Dana Growth <dana@growth.example.com>", to: [ME], subject: "Quick call next week?", snippet: "Could we book 15 minutes to talk about a partnership?", date: T("2026-11-15T10:00:00+08:00") },
+      { id: "m_pitch2", threadId: "t_pitch", from: "Dana Growth <dana@growth.example.com>", to: [ME], subject: "Re: Quick call next week?", snippet: "Just following up: here is my booking link.", date: T("2026-11-17T10:00:00+08:00") },
+      // A colleague's real question, unanswered for two working days: still said.
+      { id: "m_ask", threadId: "t_ask", from: "Mia Chen <mia@example.org>", to: [ME], subject: "Which release has the export fix?", snippet: "Hi, which release will have the export fix? A user is asking.", date: T("2026-11-16T09:00:00+08:00") },
       // Noise.
       { id: "m_news", from: "AI Weekly <newsletter@aiweekly.example.com>", to: [ME], subject: "This week in AI: agents everywhere", snippet: "This week: …", date: T("2026-11-17T21:00:00+08:00"), listUnsubscribe: true },
       { id: "m_promo", from: "Shop <deals@shop.example.com>", to: [ME], subject: "Black Friday early access: 40% off", snippet: "Don't miss out", date: T("2026-11-17T22:00:00+08:00"), labelIds: ["CATEGORY_PROMOTIONS"] },
@@ -107,6 +112,9 @@ export function ahaDays(): { fx: Fixture; later: Later[]; said: Said[] } {
       m_flight: { person: false, needsAnswer: false, facts: [{ type: "booking", what: "flight", name: "CA929", from: "Shanghai Pudong T2", place: "Tokyo Narita", start: "2026-11-26T17:30:00+08:00", end: "2026-11-26T21:40:00+09:00" }] },
       m_hotel: { person: false, needsAnswer: false, facts: [{ type: "booking", what: "hotel", name: "Hotel Shinjuku Example", place: "Tokyo", start: "2026-11-27", end: "2026-11-30" }] },
       m_rust: { person: false, needsAnswer: false, facts: [{ type: "booking", what: "other", name: "Rust Beijing Meetup", start: "2026-11-22T19:00:00+08:00" }] },
+      m_pitch1: { person: true, needsAnswer: true, facts: [{ type: "ask", what: "book a call about a partnership" }] },
+      m_pitch2: { person: true, needsAnswer: true, again: true, facts: [{ type: "ask", what: "book a call via the link" }] },
+      m_ask: { person: true, needsAnswer: true, facts: [{ type: "ask", what: "which release has the export fix" }] },
       m_news: none,
       m_promo: none,
       m_rcpt: { person: false, needsAnswer: false, facts: [{ type: "payment", name: "Linear", amount: "$8.00" }] },
@@ -138,6 +146,7 @@ export const AHA_SAY: { kind: string; contains: string[]; by: string; case: stri
   { case: "quota-95", kind: "deadline", contains: ["95%", "没写"], by: "2026-11-19T08:30:00+08:00" },
   { case: "domain-renewal", kind: "deadline", contains: ["ducter-demo.example"], by: "2026-11-19T08:30:00+08:00" },
   { case: "flight-hotel", kind: "mismatch", contains: ["CA929"], by: "2026-11-20T08:30:00+08:00" },
+  { case: "colleague-waiting", kind: "waiting_on_you", contains: ["Mia"], by: "2026-11-20T08:30:00+08:00" },
 ];
 /** Never said: the agreeing meetup, the person's own words against their own calendar, the noise. */
-export const AHA_NEVER = ["Rust", "西湖", "AI Weekly", "40%", "Linear"];
+export const AHA_NEVER = ["Rust", "西湖", "AI Weekly", "40%", "Linear", "Dana"];

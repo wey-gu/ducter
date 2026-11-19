@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.0.98 - 2026-11-20
+
+<!-- whats-new
+zh: 一句话让 Ducter 给你做个小应用
+en: Ask Ducter for a small app of your own
+-->
+
+**Small apps**
+- Say "make me a little app to track this trip's expenses" and Ducter makes one right there: it
+  opens on the Mac, the web and your phone with the same data, and it's kept in Made for you.
+- Change it by saying so ("budget is 3000, turn red when over"); go back to an earlier version if
+  you'd rather.
+- An app can ask Ducter something; the question shows in your conversation, labelled with the
+  app's name, and the answer goes back into the app. It can't reach the internet, and anything
+  that would go out to the world still waits for your Go.
+
 ## 0.0.97 - 2026-11-20
 
 <!-- whats-new

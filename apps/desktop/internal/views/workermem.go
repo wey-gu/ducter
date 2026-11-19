@@ -19,6 +19,7 @@ import (
 // workerMemState is the rows' own state, kept across frames.
 type workerMemState struct {
 	link    map[string]string // device → the link being pasted
+	own     map[string]bool   // D393: device → the person asked to sign in there for their own sessions
 	cleared map[string]string // D386: device → the ended step its spent paste was cleared for
 	answer  *protocol.ServerFrame
 }
@@ -189,6 +190,16 @@ func (a *App) memOnDevice(c *ui.Context, dv *protocol.DeviceView) {
 	if look == "installing" || look == "connecting" {
 		c.After(500e6)
 	}
+	// D393: the home carries Mem to the tasks here: they remember with nothing set up; this
+	// computer's own sign-in is only for the person's own sessions, asked for when they want it.
+	carried := m.Carried && look != "installing" && look != "connecting" && look != "failed"
+	own := a.wm.own != nil && a.wm.own[dv.ID]
+	home := ""
+	for _, d := range a.S.Devices {
+		if d.Home {
+			home = a.deviceNameIn(&d)
+		}
+	}
 	word := a.L.T("wmem.absent", name)
 	ink := t.InkMuted
 	switch look {
@@ -215,11 +226,14 @@ func (a *App) memOnDevice(c *ui.Context, dv *protocol.DeviceView) {
 		}
 		word, ink = a.memFailedWords(reason, name), t.Failed.Ink
 	}
+	if carried {
+		word, ink = a.L.T("wmem.carried"), t.Done.Ink
+	}
 	ui.Column(c.Key("wmem:"+dv.ID)).Gap(t.S2).Padding(t.S2, 0).Children(func() {
 		ui.Row(c).Gap(t.S3).AlignItems(ui.Center).MinHeight(t.ControlMD).Children(func() {
 			if src := theme.Brand("nowledge_mem"); src != nil {
 				img := ui.Image(c.Key("wmem-icon:"+dv.ID), src).Size(36, 36).Radius(t.RadiusSM).AccessHidden(true)
-				if look != "ready" {
+				if look != "ready" && !carried {
 					img.Opacity(0.55)
 				}
 			}
@@ -227,9 +241,20 @@ func (a *App) memOnDevice(c *ui.Context, dv *protocol.DeviceView) {
 				ui.Text(c, "Nowledge Mem").FontSize(t.MD).FontWeight(800)
 				ui.Text(c, word).FontSize(t.XS).TextColor(ink)
 			})
+			installKind := btnPrimary
+			if carried {
+				installKind = btnSecondary
+			}
 			switch {
+			case carried && look == "sign_in" && !own && theirs != "old" && health != "unreachable" && health != "old":
+				if awake && a.buttonFor(c, a.L.T("wmem.own.go"), "Nowledge Mem", btnSecondary, t.ControlSM, t.Surface) {
+					if a.wm.own == nil {
+						a.wm.own = map[string]bool{}
+					}
+					a.wm.own[dv.ID] = true
+				}
 			case look == "absent" && m.Installable:
-				if awake && a.buttonFor(c, a.L.T("wmem.install"), "Nowledge Mem", btnPrimary, t.ControlSM, t.Surface) {
+				if awake && a.buttonFor(c, a.L.T("wmem.install"), "Nowledge Mem", installKind, t.ControlSM, t.Surface) {
 					a.memSetupReq(dv, "install", "")
 				}
 			case theirs == "old" && look == "sign_in" && m.Installable:
@@ -261,15 +286,33 @@ func (a *App) memOnDevice(c *ui.Context, dv *protocol.DeviceView) {
 		if look == "failed" && m.Step.Detail != "" {
 			ui.Text(c, m.Step.Detail).FontSize(t.XS).TextColor(t.InkSoft).LineHeight(1.4)
 		}
-		switch look {
-		case "absent":
+		if carried {
+			a.infoText(c, a.L.T("wmem.carried.why", home))
+			soft := ""
+			switch {
+			case look == "absent" && m.Installable:
+				soft = a.L.T("wmem.own.absent", name)
+			case look == "sign_in" && !own && theirs != "old":
+				soft = a.L.T("wmem.own.signin", name)
+			case health != "":
+				soft = a.L.T("wmem.health."+health, name)
+			}
+			if soft != "" {
+				ui.Text(c, soft).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.4)
+			}
+		}
+		switch {
+		case carried && look == "absent":
+		case carried && look == "ready":
+			ui.Text(c, a.memReadyWords(dv)).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.4)
+		case look == "absent":
 			if m.Installable {
 				a.infoText(c, a.L.T("wmem.absent.why", name))
 				ui.Text(c, a.L.T("ag.where")).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.4)
 			} else {
 				a.infoText(c, a.L.T("wmem.absent.none", name))
 			}
-		case "ready":
+		case look == "ready":
 			a.infoText(c, a.memReadyWords(dv))
 		}
 		if health == "old" && !m.Ours {
@@ -289,7 +332,7 @@ func (a *App) memOnDevice(c *ui.Context, dv *protocol.DeviceView) {
 				ui.Text(c, a.L.T("wmem.theirs.guide")).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.4)
 			}
 		}
-		if awake && theirs != "old" && ((look == "sign_in" && health != "unreachable" && health != "old") || (look == "failed" && m.State == "sign_in")) {
+		if awake && theirs != "old" && ((look == "sign_in" && health != "unreachable" && health != "old" && (!m.Carried || own)) || (look == "failed" && m.State == "sign_in")) {
 			a.memSignIn(c, dv)
 		}
 		if r := a.wm.answer; r != nil && r.Device == dv.ID {

@@ -147,6 +147,13 @@ export interface CoreApi {
   phone?: PhonePort;
   /** D168: the user's Nowledge Mem plugin for this agent is on that device in any form but absent (by id or name; undefined = the home), as Mem's own check last said (research/48 M1). */
   memPluginIn?(device: string | undefined, harness: string): boolean;
+  /**
+   * D393: Mem carried to tasks from the home's one connection (core/src/mem-relay.ts): the relay
+   * env a task elsewhere gets (NMEM_API_URL to the home, a per-task key that dies with the task),
+   * and the home's copy of Mem's plugin for an agent, by URL, for a session that lacks its own.
+   * Absent: no Mem connected on the home, memory off, or a test without it.
+   */
+  memCarry?: MemCarry;
   /** D205: the persona's own Bridge connection, made from Settings › 伙伴 (core/src/bridge-link.ts); absent in tests and stubs. */
   bridgeLink?: BridgeLinkApi;
   /** D206: pictures and files on the home (core/src/media.ts); absent in tests and stubs. */
@@ -200,6 +207,16 @@ export interface WorkingMemoryView {
   awaiting: string[];
   awaitingMore?: number;
   flags: string[];
+}
+
+/** D393: what the home carries to a task so Mem works there with nothing set up on that computer. */
+export interface MemCarry {
+  /** The env that points a task's nmem (and Mem's plugin) at the home's relay: NMEM_API_URL, NMEM_API_KEY (a task token, never Mem's key). undefined: nothing to carry. */
+  envFor(taskId: string, base: string): Record<string, string> | undefined;
+  /** URLs of Mem's plugin for this agent, as the home has it, for `--plugin-url` (Claude Code); [] when the home has none for it. */
+  kitFor(taskId: string, harness: string, base: string): string[];
+  /** Whether that computer has an nmem the plugin's hooks can run (a worker's Mem look; the home: true). */
+  nmemIn(device: string | undefined): boolean;
 }
 
 export interface WorkingMemoryPort {
@@ -480,6 +497,8 @@ export interface SessionSpec {
   keepNativeTools?: boolean;
   /** D168: the user's plugins to turn off by id in this session only (their Mem plugin, when memory is off in Ducter). */
   disablePlugins?: string[];
+  /** D393: plugins this session loads for itself only, by URL (Claude Code `--plugin-url`): Mem's plugin the home carries where the computer has none. */
+  pluginUrls?: string[];
   /** D175 (3): a one-shot that needs no tools at all (the judge, the digest writer); the adapter maps it per harness (harness-facts noTools). */
   noTools?: boolean;
   // Tasks only (D135): what the harness keeps when it compacts (Claude Code's PreCompact hook

@@ -127,6 +127,9 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
 
 ## Deep Nowledge Mem integration (D295, `memory.md`)
 
+- **D393 live:** one Claude Code task on haswell with the carried plugin (`--plugin-url` over http VERIFIED against a fake Mem, research/159), its Context Bundle and thread reaching the author's real Mem through the relay as the persona. Trigger: the author's review of D393.
+- **D393: Codex's Mem plugin carried.** Codex has no per-session plugin URL; a `CODEX_HOME` overlay with Mem's plugin in a cache folder of Ducter's loaded nothing (live, codex-cli 0.170.0): it needs a local marketplace of Ducter's (`-c marketplaces.<name>`) and its hooks trusted. Trigger: a Codex task elsewhere that should have Mem's own hooks.
+- **D393: an older worker** doesn't rewrite the relay address (its tasks' nmem then can't reach Mem; D168's floor still works). Trigger: a worker not updated past D393.
 - **D366 live (and D370):** a real prompt from Mem's Settings › Connectors › Any AI agent pasted whole and redeemed on a lent computer and on a home, `nmem doctor` passing there, and one task
   run there with Mem's plugin (its Context Bundle in, its thread captured as the persona). Trigger: the
   author's haswell after the next release (his link, his Mem).

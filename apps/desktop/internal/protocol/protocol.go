@@ -2044,6 +2044,10 @@ type DeviceMemView struct {
 	// D386: Theirs is the person's own nmem there when it is too old to sign
 	// in (Ducter never changes it); How: pipx | uv | pip, when its install says.
 	Theirs *DeviceMemTheirs `json:"theirs,omitempty"`
+	// D393: Carried: the home carries Mem to the tasks there from its own one
+	// connection; this computer's own Mem then concerns only the person's own
+	// sessions there, offered quietly.
+	Carried bool `json:"carried,omitempty"`
 }
 
 // DeviceMemTheirs is the person's own Mem command line on a computer for

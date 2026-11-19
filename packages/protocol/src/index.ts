@@ -2113,6 +2113,12 @@ export interface DeviceMemView {
    * person updates theirs, when its install says (pipx, uv, pip).
    */
   theirs?: { old: true; how?: "pipx" | "uv" | "pip" };
+  /**
+   * D393: the home carries Mem to the tasks there from its own one connection (core/src/mem-relay.ts):
+   * they remember with nothing set up there. What this computer's own Mem says (absent, sign_in)
+   * then concerns only the person's own sessions there, offered quietly, never required.
+   */
+  carried?: true;
 }
 
 // ---------- Updating in place (D148, design/system.md "Updating in place") ----------

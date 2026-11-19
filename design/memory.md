@@ -425,7 +425,8 @@ blocked feature. Copy never implies payment.
   with the title and brief (≤ 300 chars, 4 hits, 6 s cap) and puts `<what_i_know>` (ids, "the
   brief wins") in front of the first turn, logged by id; a read-only task `memory_search`
   (≤ 5 results, 6 per task, each read logged by query and ids) is answered by the home, so a
-  worker without Mem of its own needs no Mem sign-in (one with it: D366, below). `<what_i_know>` is capped at the render too (4 notes, 220 chars
+  worker without Mem of its own needs no Mem sign-in; elsewhere, Mem's plugin itself goes with the
+  task (D393, above). `<what_i_know>` is capped at the render too (4 notes, 220 chars
   each; `KNOWN_MAX`, guarded in `prompt-budget.test.ts`). Where the plugin is there **in any
   form** (installed, review, update: D174 (6); the author's own Codex is a review), neither: it
   already gives that context, and a second recall would double it. The plugin's own Context
@@ -473,6 +474,49 @@ on every computer, without owning it (D17):
   open card closes itself and reads **已装好** (D375: `decision_resolved.settled`, hold, nothing runs).
 - **Memory off:** no line, no card, no install.
 
+## Mem carried to every task (D393, built 2026-11-19)
+
+*Who:* the developer whose tasks run on haswell, a NAS, a cloud box, and soon in a sandbox per task;
+the consumer lending a NAS; the fresh user never sees it (no Mem on the home, nothing shows). *Before:*
+one memory, set up again on every computer (install, a one-time link from Mem's app, a paste, a
+restart), and impossible in a sandbox. *After:* Mem is connected once, at the home; a task on any
+computer remembers like the person's own sessions, with nothing set up there. Evidence and the live
+checks: `research/159`.
+
+```
+ task's computer / sandbox                    the home                          Mem
+ ─────────────────────────                    ────────                          ───
+ Claude Code --plugin-url <home>/mem/kit/…  → serves Mem's plugin (its own copy)
+ Mem's hooks / skills → nmem
+   NMEM_API_URL=<home>/mem                  → /mem/*: task key checked,       → the person's Mem,
+   NMEM_API_KEY=dmr.<task key>                 data paths only, the home's       as the persona
+                                               own key put on
+```
+
+Three parts, nothing else:
+
+- **The relay** (`core/src/mem-relay.ts`): a task elsewhere gets two variables. The task key (`dmr.`,
+  HMAC over task and 30 days, compared in constant time) is checked on every request: archived or
+  dropped, memory off, or no Mem on the home closes it at once. Only Mem's data paths pass (an
+  allowlist by first path part, from the paths nmem itself calls); never DELETE; a burst of 60 and
+  10 a second per task. The home drops the caller's auth, cookies and device headers and puts on
+  its own credential (Mem's credential home or env, read per request, never written). Nothing is
+  logged but one line on the task's stream. A worker rewrites the loopback address to the home's,
+  never adding its device token. Tasks on the home use its own connection.
+- **The plugin** goes with a Claude Code task elsewhere when the person has none of their own there
+  and the computer has an nmem for its hooks: `--plugin-url`, for that session only (the home's copy,
+  newest in its Claude Code plugin cache, zipped without tests or caches). Theirs is reused, never
+  doubled. VERIFIED with a real Claude Code over plain http on a LAN address.
+- **The floor** is D168's, unchanged: recall in the first turn and `memory_search` for an agent the
+  home carries no plugin for (Codex, pi, DeepSeek Harness); its nmem still reaches Mem through the
+  relay.
+
+**The computer card** says **这里的任务也记得你** while the home carries Mem; that computer's own sign-in
+is for the person's own sessions, offered quietly (below). **Sandboxes:** two variables and a URL,
+minted per task; outbound HTTPS to the home, and an nmem and python3 for the plugin's hooks (else
+the floor). Nothing is kept. **Not yet:** a real Mem behind the relay; Codex's plugin (an overlay
+needs a marketplace of Ducter's: `todo.md`).
+
 ## Mem's own health (D375, built 2026-11-19)
 
 *Who:* the developer whose Mem key was rotated or whose Cloud is down, while the page said **已连上**;
@@ -495,7 +539,15 @@ the consumer whose sign-in expired. The fresh user never meets it (no Mem, nothi
   (再看一次, no paste box), an expired sign-in (the box), or too old (更新 by `uv tool upgrade
   nmem-cli` when ours, else how).
 
-## Mem on a computer for tasks (D366, built 2026-11-18)
+## Mem on a computer for tasks (D366, built 2026-11-18; re-scoped by D393)
+
+**D393:** while the home carries Mem, tasks there need none of this. The row then says **这里的任务也记得你
+/ Tasks here remember you too** with **用的是 {home} 上那一份记忆，这台电脑上什么都不用设置。**, and what
+follows is offered for the person's own sessions there (outside Ducter), quietly: a secondary **装上**
+under **你自己在 {device} 上开的 AI 也想记得你，就在这里装上 Nowledge Mem。**, or a secondary **登录** that
+opens the paste box only when tapped, under **你自己在 {device} 上开的 AI 也想记得你，就登录一次。**; Mem's
+health there is a soft line, never a failure. Ducter's own nmem there (D386) still matters to tasks:
+Mem's carried plugin needs one for its hooks.
 
 *Who:* the developer whose haswell got Codex and Claude Code from D363 and whose tasks there should
 know him like his own sessions do; the consumer lending a NAS. The fresh user never sees it: nothing

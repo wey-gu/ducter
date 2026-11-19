@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.0.97 - 2026-11-20
+
+<!-- whats-new
+zh: 设置里每一步都有回应，手机上更好点
+en: Settings answer every step, and are easier on a phone
+-->
+
+**Settings**
+- Every change says one plain line back: a disconnect, a stopped account, a new name.
+- On a phone, a card's expiry takes just the digits (0829), forms put the cursor where you type,
+  every button is easy to tap, and sheets stay above the keyboard.
+- Connecting Telegram or WeChat for the first time gets a small welcome; reconnecting an old
+  Telegram bot shows how to find it again.
+
 ## 0.0.96 - 2026-11-19
 
 <!-- whats-new

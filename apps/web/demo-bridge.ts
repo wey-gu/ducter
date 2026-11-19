@@ -42,11 +42,11 @@ const run = async (args: string[]) => {
     if (want === "connecting") return new Promise<never>(() => {});
     if (code) return { code: 1, out: JSON.stringify({ error_code: code, detail: "refused", outcome_unknown: false, http_status: 403 }), err: "" };
     if (want === "failed") return { code: 1, out: "", err: "error: connection to Mem timed out after 30 s" };
-    // D364's states: the connection carries the home's own label (D324), as Mem keeps it.
-    if (NAMES.includes(want)) conn.client_label = args[args.indexOf("--context") + 1] ?? "ducter";
+    // The connection carries the home's own label (D324, D364), as Mem keeps it.
+    conn.client_label = args[args.indexOf("--context") + 1] ?? "ducter";
     return ok({ state: "connected", agent_context: conn.client_label, connection: conn, selection: { scope: { space_id: SPACE }, address: { agent_id: "ducter" } } });
   }
-  if (NAMES.includes(want) && a.includes(`--agent-context ${conn.client_label} bridge setup`)) return ok({ state: "enable_needed", endpoint: { address: { agent_id: "ducter" } } });
+  if (a.includes(`--agent-context ${conn.client_label} bridge setup`) && conn.client_label !== "ducter") return ok({ state: "enable_needed", endpoint: { address: { agent_id: "ducter" } } });
   if (NAMES.includes(want) && a.includes("connections list")) return ok({ schema_version: 1, connections: conn.client_label === "ducter" ? [] : [conn], next_connection_id: null });
   if (a.includes("--agent-context ducter bridge setup")) return want === "unconfirmed" ? { code: 1, out: "", err: "agent context could not be verified" } : ok({ state: "enable_needed", endpoint: { address: { agent_id: "ducter" } } });
   if (a.includes("connections list")) return ok({ schema_version: 1, connections: [conn], next_connection_id: null });

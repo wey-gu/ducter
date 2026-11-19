@@ -1,11 +1,11 @@
-# 165 · Your own small apps: what others do, what the author already does, and what this codebase allows
+# 166 · Your own small apps: what others do, what the author already does, and what this codebase allows
 
 Date: 2026-11-20, on main at `22951b22` (0.0.96). Feeds D405 (`design/apps.md`). Closes the research
 half of research/162 gap #5 ("Nothing he makes with it stays as his own small app").
 
 Tags: **VERIFIED** = read in Ducter's code at this commit, in hel's Log (read only), or run here;
 **DOCUMENTED** = an outside product's own public docs; **REPORTED** = third-party or user reports;
-**INFERRED** = judgment. Outside products are named only in `research/private/165-refs.md`
+**INFERRED** = judgment. Outside products are named only in `research/private/166-refs.md`
 (gitignored); here they are "a chat assistant's artifacts", "a chatbot's apps platform", "an open
 protocol for UI in tool results", "a consumer canvas", "a dev-studio builder", "a Q&A aggregator's
 canvas apps".
@@ -49,7 +49,7 @@ once, and be found again without a new place to learn. (INFERRED)
 
 ## 3. What reference products do (public docs only)
 
-Full notes with names and URLs in `research/private/165-refs.md`.
+Full notes with names and URLs in `research/private/166-refs.md`.
 
 | Question | What they do | Tag |
 |---|---|---|

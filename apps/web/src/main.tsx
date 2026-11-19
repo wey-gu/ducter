@@ -24,8 +24,10 @@ import { markSeen } from "./seen.ts";
 import { edgeSwipe, navBusy, popMove } from "./nav.ts";
 import { wideNow } from "./fold.ts";
 import { applyPaper } from "./settings-more.tsx";
+import { keepAboveKeyboard } from "./keyboard.ts";
 
 applyPaper(); // D307: this device's own light or dark, before the first paint
+keepAboveKeyboard(); // D404: iOS lays the keyboard over a sheet; the sheet stands on it
 
 const base = baseUrl();
 const token = () => storage.get()?.token;

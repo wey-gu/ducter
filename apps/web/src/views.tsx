@@ -2528,12 +2528,14 @@ function NameRow() {
   const [draft, setDraft] = useState("");
   const save = () => {
     const n = draft.trim();
-    if (n && n !== A.defaultName()) A.setSettings({ name: n });
+    // D404: a new name is a moment worth one line in the partner's voice, under the name.
+    if (n && n !== A.defaultName()) A.setSettings({ name: n }), say("rename", t("said.rename", n));
     setEditing(false);
   };
   const lede = partnerLede();
   return (
-    <div class="partner-head">
+    <>
+      <div class="partner-head">
       <Avatar size={56} />
       {editing ? (
         <>
@@ -2543,6 +2545,7 @@ function NameRow() {
             maxLength={24}
             aria-label={t("partner.rename")}
             autoFocus
+            onFocus={(e) => (e.target as HTMLInputElement).select()}
             onInput={(e) => setDraft((e.target as HTMLInputElement).value)}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.isComposing) save();
@@ -2561,7 +2564,9 @@ function NameRow() {
           {A.settings && <Btn kind="text" label={t("partner.rename")} onClick={() => (setDraft(A.defaultName()), setEditing(true))} />}
         </>
       )}
-    </div>
+      </div>
+      <Said k="rename" />
+    </>
   );
 }
 
@@ -2940,6 +2945,7 @@ function Accounts() {
       )}
       {!adding && refusal && <AcctRefusal reason={refusal} hosted={false} />}
       <div class="small sub">{t("acct.honest")}</div>
+      <Said k="acct-stop" />
       {/* D193, D289: calls are their own section, in the same flow. */}
       {list && <CallsSection list={list} />}
     </section>

@@ -19,7 +19,26 @@ type Editing = { kind: "signin"; item?: SavedView } | { kind: "card"; item?: Sav
 /** The details form, in the order a booking asks for them. */
 const DETAIL_ORDER: DetailKey[] = ["name", "email", "phone", "birthday", "address", "passport_number", "passport_country", "passport_expiry", "known_traveler", "loyalty", "seat", "meal"];
 
-function Field(p: { id: string; label: string; value: string; onInput: (v: string) => void; type?: string; mode?: "numeric" | "email" | "tel" | "url" | "text"; placeholder?: string; auto?: string; wrong?: boolean }) {
+/**
+ * D404: a card's expiry as people type it. A phone's number pad has no "/" (inputmode numeric on
+ * iOS), so 0829, 829 and 08 29 are 08/29 too; the month is 1 to 12; a two-digit year is this century.
+ */
+export function parseExp(s: string): { month: number; year: number } | undefined {
+  const t = s.trim();
+  const m = t.match(/^(\d{1,2})\s*[/\-.\s]\s*(\d{2}|\d{4})$/) ?? t.match(/^(\d{1,2})(\d{2})$/);
+  if (!m) return undefined;
+  const month = Number(m[1]);
+  const year = Number(m[2]);
+  return month >= 1 && month <= 12 ? { month, year: year < 100 ? 2000 + year : year } : undefined;
+}
+
+/** D404: digits typed without a slash read back as MM/YY once there are enough of them (0829 → 08/29). */
+export function shapeExp(s: string): string {
+  if (!/^\d{4}$/.test(s)) return s;
+  return `${s.slice(0, 2)}/${s.slice(2)}`;
+}
+
+function Field(p: { id: string; label: string; value: string; onInput: (v: string) => void; type?: string; mode?: "numeric" | "email" | "tel" | "url" | "text"; placeholder?: string; auto?: string; wrong?: boolean; first?: boolean }) {
   return (
     <label class="acct-field" for={p.id}>
       <span class="small">{p.label}</span>
@@ -33,6 +52,7 @@ function Field(p: { id: string; label: string; value: string; onInput: (v: strin
         autoCorrect="off"
         spellcheck={false}
         placeholder={p.placeholder}
+        autoFocus={p.first}
         value={p.value}
         onInput={(e) => p.onInput((e.target as HTMLInputElement).value)}
       />
@@ -49,7 +69,7 @@ function SignInForm({ item, done }: { item?: SavedView; done: () => void }) {
   const save = () => A.savedPut({ kind: "signin", ...(item ? { id: item.id } : {}), site, username: user, ...(pw ? { password: pw } : {}) }, done);
   return (
     <div class="acct-form af-form">
-      <Field id="af-site" label={t("af.signin.site")} value={site} onInput={setSite} mode="url" placeholder="github.com" />
+      <Field id="af-site" label={t("af.signin.site")} value={site} onInput={setSite} mode="url" placeholder="github.com" first={!item} />
       <Field id="af-user" label={t("af.signin.user")} value={user} onInput={setUser} mode="email" />
       <Field id="af-pw" label={t("af.signin.password")} value={pw} onInput={setPw} type="password" auto="new-password" placeholder={item ? t("af.keep") : ""} />
       <AfError />
@@ -69,13 +89,13 @@ function CardForm({ item, done }: { item?: SavedView; done: () => void }) {
   const [num, setNum] = useState("");
   const [exp, setExp] = useState(item?.exp ?? "");
   const [sure, setSure] = useState(false);
-  const m = exp.match(/^\s*(\d{1,2})\s*\/\s*(\d{2,4})\s*$/);
-  const save = () => m && A.savedPut({ kind: "card", ...(item ? { id: item.id } : {}), name, ...(num ? { number: num } : {}), expMonth: Number(m[1]), expYear: Number(m[2]) }, done);
+  const m = parseExp(exp);
+  const save = () => m && A.savedPut({ kind: "card", ...(item ? { id: item.id } : {}), name, ...(num ? { number: num } : {}), expMonth: m.month, expYear: m.year }, done);
   return (
     <div class="acct-form af-form">
-      <Field id="af-num" label={t("af.card.number")} value={num} onInput={setNum} mode="numeric" auto="off" placeholder={item ? t("af.keep.with", `•••• ${item.last4}`) : "4242 4242 4242 4242"} />
+      <Field id="af-num" label={t("af.card.number")} value={num} onInput={setNum} mode="numeric" auto="off" placeholder={item ? t("af.keep.with", `•••• ${item.last4}`) : "4242 4242 4242 4242"} first={!item} />
       <div class="af-pair">
-        <Field id="af-exp" label={t("af.card.exp")} value={exp} onInput={setExp} mode="numeric" placeholder="08/29" wrong={!!exp && !m} />
+        <Field id="af-exp" label={t("af.card.exp")} value={exp} onInput={(v) => setExp(shapeExp(v))} mode="numeric" placeholder="08/29" wrong={exp.trim().length >= 4 && !m} />
         <Field id="af-name" label={t("af.card.name")} value={name} onInput={setName} />
       </div>
       <div class="small sub">{t("af.card.nocvc")}</div>
@@ -100,7 +120,7 @@ function KeyForm({ item, done }: { item?: KeyView; done: () => void }) {
   const save = () => A.savedPut({ kind: "key", ...(item ? { id: item.id } : {}), name, env: env.trim(), ...(value ? { value } : {}) }, done);
   return (
     <div class="acct-form af-form">
-      <Field id="af-key-name" label={t("af.key.name")} value={name} onInput={setName} placeholder={t("af.key.name.eg")} />
+      <Field id="af-key-name" label={t("af.key.name")} value={name} onInput={setName} placeholder={t("af.key.name.eg")} first={!item} />
       <Field id="af-key-env" label={t("af.key.env")} value={env} onInput={(v) => setEnv(v.toUpperCase().replace(/[^A-Z0-9_]/g, "_"))} placeholder="DO_TOKEN" wrong={!!env && !envOk} />
       <Field id="af-key-value" label={t("af.key.value")} value={value} onInput={setValue} type="password" auto="off" placeholder={item ? t("af.keep.with", item.hint ?? t("af.key.kept")) : ""} />
       <AfError />

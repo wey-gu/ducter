@@ -236,9 +236,35 @@ drawn over another. The grammar it settled, for every pane:
 - **A destructive action asks in place on every client** (the web's chat-app 断开 now does).
 - A line names the person's own setting, not the default's rule (automatic updates in **23:00 到 08:00**).
 
+## The fourth pass: flows, and the phone (D404)
+
+Each pane walked as flows, not pages: connect, the state in between, connected, disconnect, a wrong
+input, a retry, on the web at 1400 and 390 (the words read at +80 ms, +600 ms and +2.5 s after every
+tap) and the iPhone Simulator's Safari (`research/165`, `.shots/settings-pass4`, three flows recorded:
+a chat app disconnected and set up again, a card added on the phone, the partner renamed). The rules it
+settled, for every pane:
+
+- **Every tap is answered.** Either the state changes in words the person reads at once, or the partner
+  says its one line where the consequence isn't shown: a source stopped, a chat app disconnected, a
+  retry that met the same lack. A retry never just repeats the same paragraph.
+- **Warmth where the moment earns it, once.** A chat app becoming linked (**连上了。以后在 Telegram 里找我也行。**)
+  and a new name (**好，以后我就叫小满。**) get the said line with the pebble's pop; on the change only,
+  never on opening the page. Nothing else is added: no confetti, no new art.
+- **A field takes what the phone's keyboard can type.** A card's expiry reads 0829 as 08/29; an add form's
+  first field takes focus; a rename selects the old name.
+- **The home's own words are translated, not shown raw**; a service's own words still follow its line.
+- **On a touch screen every control is 44 pt**, by size or by an invisible margin, the drawn size kept;
+  **a bottom sheet stands on the iOS keyboard** (`keyboard.ts`, `--kb`).
+
+The partner's word after a change (above) now also covers: a source stopped
+(**好，OOMOL 停了：它连着的账号我都不看了。想再用，重新连上就好。**), a chat app disconnected
+(**好，Telegram 断开了。你们的对话还在这里。**), linked (**连上了。以后在 Telegram 里找我也行。**), and a new name.
+
 ## Not done
 
 - A comprehension pass with people on the said lines and on a row with no state word.
 - The web has no AI accounts row on Accounts (the phone has no Devices page of its own there);
   its Partner page keeps the tray-less lists (D89).
-- The iOS Simulator was not used; the phone shots are headless Chrome at 390.
+- The iPhone keyboard over a sheet seen with a real keyboard (the Simulator can't be tapped from the
+  shell); the Mac app driven through the same flows rather than the test renderer.
+- The add-a-computer page's back label repeats its title; at 390 **再试一次** sits close to step 2.

@@ -16873,3 +16873,20 @@ a.pr:hover { box-shadow: inset 0 0 0 1px var(--line-2); }
 }
 .user-app-from:hover { color: var(--ink); }
 .mtile.drawn.k-app { background: var(--needs-surface); color: var(--needs-ink); }
+
+/* D404: Settings on a touch screen. Every control is a 44-pt target (the drawn size stays): the
+   options of a segmented choice and the pop-up grow to 44, a model chip, a quiet Remove and a
+   count link reach 44 through an invisible margin. */
+@media (pointer: coarse) {
+  .seg button { min-height: 44px; min-width: 44px; }
+  .set-item .pick select { min-height: 44px; }
+  .nt-chip, .danger-text { position: relative; }
+  .nt-chip::before, .danger-text::before { content: ""; position: absolute; inset: -7px -2px; }
+  .past-link::before { inset: -6px 0; }
+  .mem-more summary { min-height: 44px; min-width: 44px; }
+}
+/* D404: iOS lays the keyboard over the page; the phone's sheet stands on it (keyboard.ts sets --kb). */
+@media not ((min-width: 700px) and (min-height: 640px)) {
+  .sheet-frame { bottom: var(--kb, 0px); max-height: calc(88vh - var(--kb, 0px)); transition: bottom var(--t-fast) var(--ease); }
+}
+.mem-tried { color: var(--ink-soft) !important; }

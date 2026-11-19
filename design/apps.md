@@ -3,7 +3,7 @@
 How a person gets their own small app from one sentence ("给我做个小应用，记一下这趟北京出差的花销"),
 keeps it on every device, changes it by talking, and lets the partner act inside it when asked.
 Decided in D405; the evidence (what the author already does, what others do, what this codebase
-allows, the name test) is `research/165-own-apps.md`. Words are the glossary's (`product-model.md`);
+allows, the name test) is `research/166-own-apps.md`. Words are the glossary's (`product-model.md`);
 visuals are Pebble's (`ui.md`).
 
 ## Who and how it starts
@@ -12,7 +12,7 @@ visuals are Pebble's (`ui.md`).
   typed into a note, a total done by hand, the partner's prose answer gone up the scroll. After: a card
   under one line, 打开, and a finished-looking little app with their own costs in it, the same on the
   Mac that evening. 惊喜: it exists in seconds and already looks like Ducter.
-- **The heavy developer** gets 309 prose reports a week from one review routine (hel, research/165
+- **The heavy developer** gets 309 prose reports a week from one review routine (hel, research/166
   §2). Before: the same shape re-read as paragraphs. After: "make it a little board" and a page they
   keep open, which the routine's partner fills.
 - **The fresh user** never meets a concept: they asked for "a little thing", a card says what it is and

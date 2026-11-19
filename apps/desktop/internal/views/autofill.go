@@ -36,7 +36,24 @@ type autofillState struct {
 	sentAt  time.Time
 }
 
-var expRe = regexp.MustCompile(`^\s*(\d{1,2})\s*/\s*(\d{2,4})\s*$`)
+// expRe reads a card's expiry as people type it (D404): 08/29, 08-29, 08 29,
+// or 0829 with no separator at all; the core checks the month and the year.
+var expRe = regexp.MustCompile(`^\s*(\d{1,2})\s*[/\-.\s]\s*(\d{2}|\d{4})\s*$|^\s*(\d{1,2})(\d{2})\s*$`)
+
+// parseExp is expRe's month and year, or false (D404).
+func parseExp(s string) (int, int, bool) {
+	m := expRe.FindStringSubmatch(s)
+	if m == nil {
+		return 0, 0, false
+	}
+	a, b := m[1], m[2]
+	if a == "" {
+		a, b = m[3], m[4]
+	}
+	mm, _ := strconv.Atoi(a)
+	yy, _ := strconv.Atoi(b)
+	return mm, yy, mm >= 1 && mm <= 12
+}
 
 func (a *App) savedFrame() *protocol.ServerFrame { return a.S.Saved }
 
@@ -275,11 +292,9 @@ func (a *App) afForm(c *ui.Context, kind string, x *protocol.SavedView) {
 			a.afInput(c, "exp", a.L.T("af.card.exp"), &s.exp, "08/29", false)
 			a.afInput(c, "name", a.L.T("af.card.name"), &s.name, "", false)
 			ui.Text(c, a.L.T("af.card.nocvc")).FontSize(t.SM).TextColor(t.InkMuted)
-			m := expRe.FindStringSubmatch(s.exp)
-			ok = m != nil && s.name != "" && (x != nil || s.number != "")
-			if m != nil {
-				mm, _ := strconv.Atoi(m[1])
-				yy, _ := strconv.Atoi(m[2])
+			mm, yy, good := parseExp(s.exp)
+			ok = good && s.name != "" && (x != nil || s.number != "")
+			if good {
 				put = protocol.SavedInput{Kind: "card", Name: s.name, Number: s.number, ExpMonth: mm, ExpYear: yy}
 			}
 		}

@@ -2235,14 +2235,14 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] **Drafts for Outlook and chat DMs** (Slack, Discord), and "answered elsewhere" from the person's
       own chat messages. Trigger: the first person with Outlook connected, or a Slack find held twice.
 
-## D405: 小应用 / Apps (`apps.md`, research/165)
+## D405: 小应用 / Apps (`apps.md`, research/166)
 
 - [ ] **Open the Mac's app window in the real app** (the test renderer draws no web view): the scheme, the long poll, the theme, a resize, Cmd-W. Trigger: the next run of the built app.
 - [ ] **The Mac window's own line to change it, and 改回去** (the web's sheet has both; the Mac sends the person to the conversation). Trigger: the window opened for real.
-- [ ] **Sharing an app** with someone: a link, their own data or a shared copy, viewer-pays and a first-use consent (research/165 §3). Trigger: Ducter Edge, or the first "发给她用一下".
+- [ ] **Sharing an app** with someone: a link, their own data or a shared copy, viewer-pays and a first-use consent (research/166 §3). Trigger: Ducter Edge, or the first "发给她用一下".
 - [ ] **Point to change**: tap part of the app and say what to change (every reference does it). Trigger: an edit the partner applied to the wrong part twice.
 - [ ] **An app made by a coding task** (several files, a library, a build) when one file is not enough. Trigger: an app over ~60K characters, or one the partner can't fit.
-- [ ] **A routine that fills an app** (the review routine's PR board, research/165 §2): the routine's partner writes its data on each run. Trigger: the author asks for a board for a routine.
+- [ ] **A routine that fills an app** (the review routine's PR board, research/166 §2): the routine's partner writes its data on each run. Trigger: the author asks for a board for a routine.
 - [ ] **Offline on the phone**: the last version and data kept in the shell, writes queued. Trigger: a person who opens an app with the home away.
 - [ ] **Delete from Made for you** (`app_remove` exists; no button). Trigger: a person with an app they don't want listed.
 - [ ] **An app's card in chat apps** (Telegram, Slack, iMessage get the partner's words only, no card or link). Trigger: an app made from a chat app.

@@ -2,7 +2,7 @@
 // sandbox on it) with nothing of Mem's set up: no Mem sign-in, no config, no plugin. Its task still
 // gets Mem's plugin (the home's copy, by URL), its nmem talks to the home's relay with a key for
 // that task alone, and nothing of the home's Mem key ever reaches it. Where no plugin goes with the
-// task (an agent Mem has none for), Ducter's own memory stands in and the home saves the thread.
+// task (an agent Mem has none for), Ducter's own memory (recall, memory_search) stands in, as before.
 // The relay is the real one (core/src/mem-relay.ts); Mem upstream is a fake; no network.
 import { afterEach, beforeEach, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
@@ -138,8 +138,7 @@ async function asSandbox(env: Record<string, string | null>, path: string, init:
 
 test("a sandbox with nothing of Mem's: the task gets Mem's plugin from the home, its hooks reach Mem through the relay, and no Mem secret lands there", async () => {
   const seen = { options: [] as any[] };
-  core.taskMemory = { on: () => true, recall: async () => undefined, saveThread: async () => (saves++, 9) };
-  let saves = 0;
+  core.taskMemory = { on: () => true, recall: async () => undefined };
   core.memPluginIn = () => false; // nothing of the person's there
   const w = fakeWorker(async (t) => {
     t.say("Working in the sandbox.");
@@ -183,9 +182,11 @@ test("a sandbox with nothing of Mem's: the task gets Mem's plugin from the home,
   expect(upstream[1]!.body).toContain("Tidy it");
   // Nothing of the home's Mem key on that computer's disk.
   expect(allText(join(dir, "worker"))).not.toContain(HOME_KEY);
-  // The plugin keeps the thread there: the home saves none of its own (never twice).
-  await Bun.sleep(20);
-  expect(saves).toBe(0);
+  // The task's key is in its env and launch only: never in the Log, its brief or a report.
+  const key: string = o.env.NMEM_API_KEY;
+  expect(JSON.stringify(core.events)).not.toContain(key);
+  expect(JSON.stringify(core.events)).not.toContain("dmr.");
+  expect(String(o.systemPrompt ?? "") + String(o.appendSystemPrompt ?? "")).not.toContain("dmr.");
   await runner.dispose();
 });
 
@@ -200,7 +201,7 @@ test("the key dies with the task, and never opens Mem's own administration", asy
   await runner.whenStarted(card.taskId);
   await waitFor(() => seen.options.length > 0, "started");
   const env = seen.options[0].env;
-  expect((await asSandbox(env, "/remote-access/status")).status).toBe(403);
+  for (const path of ["/remote-access/status", "/settings", "/agent-keys/x", "/license", "/agent/trigger/kg-extraction", "/export"]) expect((await asSandbox(env, path)).status).toBe(403);
   expect((await asSandbox(env, "/memories/m1", { method: "DELETE" })).status).toBe(403);
   expect((await asSandbox({ ...env, NMEM_API_KEY: env.NMEM_API_KEY.slice(0, -2) + "xx" }, "/memories/search")).status).toBe(401);
   core.tasks.setState(card.taskId, "done", "archived");
@@ -209,20 +210,12 @@ test("the key dies with the task, and never opens Mem's own administration", asy
   await runner.dispose();
 });
 
-test("an agent Mem has no plugin for there: Ducter's own memory stands in, through the same relay, and the home saves the thread when it ends", async () => {
+test("an agent the home carries no plugin for: Ducter's own memory stands in as before, and that computer's nmem still reaches Mem through the relay", async () => {
   const seen = { options: [] as any[] };
-  const saved: { messages: { role: string; content: string }[]; from: number }[] = [];
-  core.taskMemory = {
-    on: () => true,
-    recall: async () => undefined,
-    focus: () => ["Ducter: v1 release"],
-    saveThread: async (t) => (saved.push({ messages: t.messages, from: t.from }), t.messages.length),
-  };
+  core.taskMemory = { on: () => true, recall: async () => [{ id: "m1", title: "Fake clock in tests", content: "Always a fake clock." }] };
   core.memPluginIn = () => false;
-  let n = 0;
   const w = fakeWorker(async (t) => {
-    n++;
-    t.say(n === 1 ? "Checked the disk." : "Checked again.");
+    t.say("Checked the disk.");
     await t.tool("mcp__ducter__report_to_main", "{}", () => core.call("report_to_main", { state: "done", summary: "ok" }, "tskmem03"));
   }, seen);
   core.workers = { link: (d) => (d === "vps-2" || d === "w1" ? w.link : undefined), list: () => [] };
@@ -230,21 +223,11 @@ test("an agent Mem has no plugin for there: Ducter's own memory stands in, throu
   // Codex: the home carries no plugin for it (Claude Code only), so no --plugin-url.
   const card = await runner.openTask({ persona: "p1", title: "Disk", brief: "Check the disk", place: { kind: "none", device: "vps-2" }, harness: "codex" });
   await runner.whenStarted(card.taskId);
-  await waitFor(() => saved.length === 1, "thread saved at the end");
+  await waitFor(() => core.tasks.get(card.taskId)?.attention === "done_claimed", "done");
   const o = seen.options[0];
-  expect(o.env.NMEM_API_URL).toBe("https://ducter.example.com/mem"); // a skill's nmem there still reaches Mem
+  expect(o.env.NMEM_API_URL).toBe("https://ducter.example.com/mem");
   expect(JSON.stringify(o.launchArgs ?? [])).not.toContain("--plugin-url");
-  expect(saved[0]!.from).toBe(0);
-  expect(saved[0]!.messages[0]).toEqual({ role: "user", content: "Check the disk" });
-  expect(saved[0]!.messages.some((m) => m.role === "assistant" && m.content === "Checked the disk.")).toBe(true);
-  // Working Memory's focus came with the first turn.
-  const firstTurn = core.events.find((e) => e.kind === "task_event" && (e.body as any).raw?.memory === "recall");
-  expect((firstTurn?.body as any)?.raw?.focus).toBe(1);
-  // A follow-up that ends again sends only what Mem doesn't have yet.
-  await runner.send(card.taskId, "Again please");
-  await waitFor(() => saved.length === 2, "the rest saved");
-  expect(saved[1]!.from).toBe(saved[0]!.messages.length);
-  expect(saved[1]!.messages.slice(saved[1]!.from).map((m) => m.content)).toEqual(expect.arrayContaining(["Again please", "Checked again."]));
+  expect(core.events.some((e) => e.kind === "task_event" && (e.body as any).raw?.memory === "recall")).toBe(true);
   await runner.dispose();
 });
 

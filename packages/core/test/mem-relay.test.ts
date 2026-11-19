@@ -6,7 +6,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { startCore } from "../src/core.ts";
-import { createMemRelay, homeClaudeMemPlugin, MEM_LOCAL_DEFAULT, readMemCredential, storeZip, TASK_KEY_MS } from "../src/mem-relay.ts";
+import { createMemRelay, dataPath, homeClaudeMemPlugin, MEM_LOCAL_DEFAULT, RATE, readMemCredential, storeZip, TASK_KEY_MS } from "../src/mem-relay.ts";
 
 let dir: string;
 let stops: (() => Promise<void> | void)[] = [];
@@ -111,4 +111,39 @@ test("the plugin's copy is a zip unzip reads; the home's Claude Code cache gives
   }
   expect(homeClaudeMemPlugin(dir)).toBe(join(root, "0.7.37"));
   expect(homeClaudeMemPlugin(join(dir, "none"))).toBeUndefined();
+});
+
+// D393 security pass: what a task key reaches, how fast, how keys compare.
+test("only Mem's data paths, as nmem and the plugin call them; Mem's own administration and its job triggers never", () => {
+  for (const p of ["/health/details", "/capabilities", "/agent/feed/events", "/threads", "/threads/claude-code-x", "/memories/search", "/context/bundle", "/api/memories/search", "/agent/working-memory/history", "/spaces", "/mailbox/x"]) expect(dataPath(p)).toBe(true);
+  for (const p of ["/", "/settings", "/remote-access/status", "/license", "/models", "/agent-keys/x", "/agent-team/cloud/setup", "/key", "/export", "/import", "/plugins", "/agent/trigger/kg-extraction", "/agent/tools/call", "/api/settings", "/config.toml"]) expect(dataPath(p)).toBe(false);
+});
+
+test("a key is slowed past its burst, per task: another task is not", async () => {
+  let t = 0;
+  const r = createMemRelay({ secret: "s", credential: () => ({ url: "https://mem.example.test" }), on: () => true, taskLive: () => true, now: () => t, fetch: (async () => Response.json({})) as typeof fetch });
+  const a = r.keyFor("a");
+  const call = (k: string) => r.handle(new Request("http://127.0.0.1/mem/memories/search", { headers: { authorization: `Bearer ${k}` } })).then((x) => x!.status);
+  for (let i = 0; i < RATE.burst; i++) expect(await call(a)).toBe(200);
+  expect(await call(a)).toBe(429);
+  expect(await call(r.keyFor("b"))).toBe(200);
+  t += 1000;
+  expect(await call(a)).toBe(200); // refilled
+});
+
+test("keys are compared in constant time, and the route never logs a key or a request", () => {
+  const src = readFileSync(join(import.meta.dir, "../src/mem-relay.ts"), "utf8");
+  expect(src).toContain("timingSafeEqual(want, got)");
+  expect(src).not.toMatch(/console\.(log|warn|error)/);
+});
+
+test("archiving the task closes its key at once (no cache), and a dropped one too", async () => {
+  const state = { live: true };
+  const r = createMemRelay({ secret: "s", credential: () => ({ url: "https://mem.example.test" }), on: () => true, taskLive: () => state.live, fetch: (async () => Response.json({})) as typeof fetch });
+  const k = r.keyFor("t");
+  const call = () => r.handle(new Request("http://127.0.0.1/mem/memories/search", { headers: { authorization: `Bearer ${k}` } })).then((x) => x!.status);
+  expect(await call()).toBe(200);
+  state.live = false;
+  expect(await call()).toBe(401);
+  expect((await r.handle(new Request(`http://127.0.0.1/mem/kit/${k}/claude-code.zip`)))!.status).toBe(401);
 });

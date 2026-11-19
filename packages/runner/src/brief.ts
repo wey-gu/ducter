@@ -25,9 +25,7 @@ export interface BriefInput {
 function memorySection(b: BriefInput): string {
   if (!b.memory) return "";
   const s = b.mcpServerName;
-  // D393: a task may save what the user said is lasting, as Mem's plugin lets any agent; the rest is proposed.
-  const how = b.memory === "plugin" ? "with Mem's own save or distill" : `with \`memory_save\` on the \`${s}\` server`;
-  const write = `Save a memory yourself only when the user stated something lasting in this task (a preference, a convention they keep, a decision), ${how}, at most two. Anything else durable you learned goes in \`remember\` on your final report; ${b.partnerName} decides what to keep. Never secrets, never task plumbing (branches, commits, ids, progress).`;
+  const write = `You never save memories yourself (no "save" or "distill" command, no \`nmem m add\`): if you learned something durable about the user (a stated preference, a convention they keep, a lasting fact about their work or people), put it in \`remember\` on your final report; ${b.partnerName} decides what to keep. Never secrets, never task plumbing (branches, commits, ids, progress).`;
   if (b.memory === "plugin")
     return `
 ## What ${b.partnerName} remembers about the user
@@ -41,7 +39,6 @@ function memorySection(b: BriefInput): string {
 
 - Your first message may start with \`<what_i_know>\`: the few things the user's long-term memory holds that matter here (their preferences, conventions, people), each with its id. Follow them unless the brief says otherwise; the brief wins.
 - To look closer, \`memory_search\` on the \`${s}\` server reads the user's memory (a few short results, read-only). Use it when the work turns on something the user decided or prefers that you can't see; not for facts in the repo or on the web.
-- ${b.partnerName} keeps this task's thread in memory when it ends; leave that to it.
 - ${write}
 `;
 }
@@ -51,12 +48,9 @@ export const KNOWN_MAX = { notes: 4, title: 80, content: 220, id: 40 } as const;
 const clipTo = (s: string, n: number) => (s.length <= n ? s : s.slice(0, n - 1) + "…");
 
 /** D168: the memories in front of a task's first turn (ids so it can look closer; the brief wins). */
-export function knownTurn(notes: { id?: string; title: string; content: string; date?: string; from?: string }[], partnerName: string, focus: string[] = []): string {
+export function knownTurn(notes: { id?: string; title: string; content: string; date?: string; from?: string }[], partnerName: string): string {
   const lines = notes.slice(0, KNOWN_MAX.notes).map((n) => `- ${n.id ? `[${clipTo(n.id, KNOWN_MAX.id)}] ` : ""}${clipTo(n.title, KNOWN_MAX.title)}: ${clipTo(n.content, KNOWN_MAX.content)}${n.date || n.from ? ` (${[n.from ? `saved by ${clipTo(n.from, 30)}` : "", n.date ? n.date.slice(0, 10) : ""].filter(Boolean).join(", ")})` : ""}`);
-  // D393: what the user is focused on these days (their Working Memory), a few clipped lines.
-  const on = focus.slice(0, 3).map((f) => `- ${clipTo(f.replace(/[<>\u0000-\u001f]/g, " "), 160)}`);
-  const parts = [lines.length ? `From the user's memory, what ${partnerName} thinks matters for this task (background; the brief wins):\n${lines.join("\n")}` : "", on.length ? `What the user is focused on these days (their Working Memory):\n${on.join("\n")}` : ""].filter(Boolean);
-  return `<what_i_know>\n${parts.join("\n")}\n</what_i_know>\n\n`;
+  return `<what_i_know>\nFrom the user's memory, what ${partnerName} thinks matters for this task (background; the brief wins):\n${lines.join("\n")}\n</what_i_know>\n\n`;
 }
 
 /** D304: at most this many of the user's other AI tools' memories named in front of a task's first turn, titles only. */

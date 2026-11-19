@@ -294,14 +294,6 @@ export interface TaskMemoryPort {
   on(): boolean;
   /** The few memories that matter here; undefined: off, Mem down or slow, or nothing fits. Never throws. */
   recall(work: { taskId: string; persona: string; title: string; brief: string }): Promise<TaskMemoryNote[] | undefined>;
-  /**
-   * D393: the task's thread, saved to Mem by the home from Ducter's own record when it reports done
-   * or failed (no hooks on that computer). `from`: how many of these messages Mem already has (a
-   * second save sends only the rest). Resolves to the count Mem now has; undefined: not saved.
-   */
-  saveThread?(t: { taskId: string; persona: string; title: string; messages: { role: "user" | "assistant"; content: string }[]; from: number }): Promise<number | undefined>;
-  /** D393: Working Memory's focus lines for the brief, from the home's one read (≤ 3 short lines); [] when none. */
-  focus?(): string[];
 }
 
 /**

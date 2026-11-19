@@ -210,7 +210,6 @@ export function fakeMemory(seed: { id?: string; title: string; content: string; 
   const searches: { query: string; limit: number }[] = [];
   const threadSearches: { query: string; limit: number }[] = [];
   const added: MemoryAdd[] = [];
-  const threadSaves: { taskId: string; title: string; messages: { role: string; content: string }[]; from: number }[] = [];
   // D304: every seeded memory has Mem's id and source (the person's words to Ducter by default).
   const all = seed.map((m, i) => ({ ...m, id: m.id ?? `mem-seed-${i + 1}`, source: m.source ?? "ducter" }));
   const memory: MemoryClient = {
@@ -235,12 +234,6 @@ export function fakeMemory(seed: { id?: string; title: string; content: string; 
       added.push(m);
       return { ok: true, id: `mem-${added.length}` };
     },
-    // D393: a task's thread, saved by the home.
-    async saveThread(t) {
-      if (opts.down) return { ok: false, reason: "unavailable", message: "Nowledge Mem didn't answer." };
-      threadSaves.push(t);
-      return { ok: true, count: t.messages.length };
-    },
   };
-  return { memory, searches, added, threadSearches, threadSaves };
+  return { memory, searches, added, threadSearches };
 }

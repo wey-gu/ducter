@@ -64,7 +64,7 @@ test("no plugin on that computer: the first turn starts with what memory says ma
   expect(h.turns[0]).toContain('Start the task "Fix the flaky test" now');
   // The brief says how to use it and how to propose; never to write.
   expect(h.specs[0]!.appendSystemPrompt).toContain("`memory_search`");
-  expect(h.specs[0]!.appendSystemPrompt).toContain("Save a memory yourself only when the user stated something lasting");
+  expect(h.specs[0]!.appendSystemPrompt).toContain("You never save memories yourself");
   const logged = core.events.filter((e) => e.kind === "task_event").map((e) => e.body as Bodies["task_event"]).find((b) => (b.raw as any)?.memory === "recall");
   expect((logged!.raw as any).ids).toEqual(["mem_a1", "mem_b2"]);
   expect(logged!.text).not.toContain("fake clocks");
@@ -92,7 +92,7 @@ test("the brief speaks of memory only when the task gets it (a browser task neve
   const plugin = taskBrief({ ...base, memory: "plugin" });
   expect(plugin).toContain("Nowledge Mem is on in this session as Ducter's own memory");
   expect(plugin).not.toContain("memory_search` on the");
-  expect(plugin).toContain("Save a memory yourself only when the user stated something lasting");
+  expect(plugin).toContain("You never save memories yourself");
 });
 
 test("plugin installed there: it stays on, as the persona, with no Ducter notes (D304: only other tools' titles, none here); mailbox notices stay out", async () => {

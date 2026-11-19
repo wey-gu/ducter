@@ -910,9 +910,6 @@ export function startCore(opts: CoreOptions = {}): Core {
   const taskMemory: TaskMemoryPort = {
     on: () => defaultTaskMemory?.on() ?? [...taskMemOf.values()].some((p) => p.on()),
     recall: (w) => (isOther(w.persona) ? taskMemOf.get(w.persona) : defaultTaskMemory)?.recall(w) ?? Promise.resolve(undefined),
-    // D393: the thread is saved by the partner the task is for; Working Memory is the person's, one for all.
-    saveThread: (t) => (isOther(t.persona) ? taskMemOf.get(t.persona) : defaultTaskMemory)?.saveThread?.(t) ?? Promise.resolve(undefined),
-    focus: () => defaultTaskMemory?.focus?.() ?? [],
   };
   Object.defineProperty(api, "taskMemory", {
     enumerable: true,

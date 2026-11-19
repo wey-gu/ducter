@@ -431,12 +431,11 @@ blocked feature. Copy never implies payment.
   form** (installed, review, update: D174 (6); the author's own Codex is a review), neither: it
   already gives that context, and a second recall would double it. The plugin's own Context
   Bundle size is not measured yet (harness-facts `memPlugin.contextCost: "unknown"`, todo).
-- **Writing (D393 (4)):** the plugin keeps the thread; where it isn't, the home saves it from the
-  Log when the task ends. A task may save what the user stated as lasting in it, at most two
-  (Mem's own save where the plugin is, else `memory_save`); anything else durable it proposes as
-  `remember` (≤ 3) in its report, and the partner keeps what is durable with `memory_add` and the
-  task's provenance. Open: whether Mem distills captured threads into memories by itself, which
-  could duplicate a `remember` (todo).
+- **Writing:** the plugin keeps the thread; memories come only from the partner. A task
+  proposes `remember` (≤ 3) in its report; the partner keeps what is durable with
+  `memory_add` and the task's provenance. The brief says not to save or distill memories
+  from inside the task. Open: whether Mem distills captured threads into memories by itself,
+  which could duplicate a `remember` (todo).
 - **Browser places get none** (the clean setup leaves every user plugin out): the plugin would
   put the user's Context Bundle into the session unasked, and a page could steer the agent to
   type it into a form or a URL.
@@ -480,9 +479,9 @@ on every computer, without owning it (D17):
 *Who:* the developer whose tasks run on haswell, a NAS, a cloud box, and soon in a sandbox per task;
 the consumer lending a NAS; the fresh user never sees it (no Mem on the home, nothing shows). *Before:*
 one memory, set up again on every computer (install, a one-time link from Mem's app, a paste, a
-restart), and impossible in a sandbox. *After:* Mem is connected once, at the home; every task, on
-any computer, remembers like the person's own sessions, with nothing set up there. Evidence and the
-live check: `research/155`.
+restart), and impossible in a sandbox. *After:* Mem is connected once, at the home; a task on any
+computer remembers like the person's own sessions, with nothing set up there. Evidence and the live
+checks: `research/159`.
 
 ```
  task's computer / sandbox                    the home                          Mem
@@ -490,32 +489,33 @@ live check: `research/155`.
  Claude Code --plugin-url <home>/mem/kit/…  → serves Mem's plugin (its own copy)
  Mem's hooks / skills → nmem
    NMEM_API_URL=<home>/mem                  → /mem/*: task key checked,       → the person's Mem,
-   NMEM_API_KEY=dmr.<task key>                 the home's own key put on         as the persona
- Ducter MCP: memory_search, memory_save     → the partner's Mem client       →
- (no plugin there)                            thread saved from the Log at the end
+   NMEM_API_KEY=dmr.<task key>                 data paths only, the home's       as the persona
+                                               own key put on
 ```
 
-- **The relay** (`core/src/mem-relay.ts`): a task elsewhere gets two variables; the home checks the
-  task key (`dmr.`, HMAC over task and expiry, 30 days; dead once the task is archived or dropped,
-  memory is off or the home has no Mem), drops the caller's auth, cookies and device headers, puts
-  on its own credential (Mem's credential home or env, read per request, never written) and
-  forwards. DELETE and Mem's administration paths are refused. Nothing is logged but one line on the
-  task's stream that it reached Mem through the home. A worker rewrites the loopback address to the
-  home's (`worker-host.ts`), never adding its device token. Tasks on the home use its own connection.
+Three parts, nothing else:
+
+- **The relay** (`core/src/mem-relay.ts`): a task elsewhere gets two variables. The task key (`dmr.`,
+  HMAC over task and 30 days, compared in constant time) is checked on every request: archived or
+  dropped, memory off, or no Mem on the home closes it at once. Only Mem's data paths pass (an
+  allowlist by first path part, from the paths nmem itself calls); never DELETE; a burst of 60 and
+  10 a second per task. The home drops the caller's auth, cookies and device headers and puts on
+  its own credential (Mem's credential home or env, read per request, never written). Nothing is
+  logged but one line on the task's stream. A worker rewrites the loopback address to the home's,
+  never adding its device token. Tasks on the home use its own connection.
 - **The plugin** goes with a Claude Code task elsewhere when the person has none of their own there
-  and the computer has an nmem for its hooks: `--plugin-url` for that session only (the home's copy,
+  and the computer has an nmem for its hooks: `--plugin-url`, for that session only (the home's copy,
   newest in its Claude Code plugin cache, zipped without tests or caches). Theirs is reused, never
-  doubled. Codex, pi, DeepSeek Harness: not carried (todo for Codex).
-- **Where no plugin goes,** Ducter's memory is whole: `<what_i_know>` with up to three Working
-  Memory focus lines, `memory_search`, `memory_save` (≤ 2, the partner's guards), and the thread
-  saved by the home at done or failed (`nmem t import --id ducter-task-<id> --agent-id`, secrets
-  redacted, only the rest on a later end).
-- **The computer card** says **这里的任务也记得你** while the home carries Mem; that computer's own
-  sign-in is for the person's own sessions, offered quietly (below).
-- **Sandboxes:** the same kit, minted per task: two variables and a URL. They need outbound HTTPS
-  to the home, and an nmem and python3 for the plugin's hooks (else the MCP floor). Nothing is kept.
-- **Not yet:** a real Claude Code with `--plugin-url` (http on a LAN, the zip's layout), a real Mem
-  behind the relay, Codex's overlay, Mem's scoped keys (research/155 §5).
+  doubled. VERIFIED with a real Claude Code over plain http on a LAN address.
+- **The floor** is D168's, unchanged: recall in the first turn and `memory_search` for an agent the
+  home carries no plugin for (Codex, pi, DeepSeek Harness); its nmem still reaches Mem through the
+  relay.
+
+**The computer card** says **这里的任务也记得你** while the home carries Mem; that computer's own sign-in
+is for the person's own sessions, offered quietly (below). **Sandboxes:** two variables and a URL,
+minted per task; outbound HTTPS to the home, and an nmem and python3 for the plugin's hooks (else
+the floor). Nothing is kept. **Not yet:** a real Mem behind the relay; Codex's plugin (an overlay
+needs a marketplace of Ducter's: `todo.md`).
 
 ## Mem's own health (D375, built 2026-11-19)
 

@@ -1,7 +1,7 @@
 // Memory slice: recall/remember tools, gating, provenance, the Noted line, and the nmem client
 // against a STUB binary (never the user's real Mem).
 import { describe, expect, test } from "bun:test";
-import { chmodSync, existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Bodies } from "../../protocol/src/index.ts";
@@ -233,27 +233,6 @@ describe("nmem client (stub binary)", () => {
     expect(a).not.toContain("--agent-id");
     expect(a).not.toContain("--space");
     expect(s.stdin()).toBe("--all time tests use a fake clock");
-  });
-
-  // D393: a task's thread, imported as the persona with a stable id; a later save sends only the rest.
-  test("saveThread: t import from a file of Ducter's own, gone after; the identity named; only the rest the second time", async () => {
-    const s = stub(`f=""; prev=""; for a in "$@"; do [ "$prev" = "-f" ] && f="$a"; prev="$a"; done; cp "$f" "$(dirname "$0")/messages.json"; echo "$f" > "$(dirname "$0")/file"; echo '{"ok":true}'`);
-    const c = createNmemClient({ bin: s.bin, identity: () => ({ agentId: "ducter", space: "Work" }) });
-    const msgs = [{ role: "user" as const, content: "Check the disk" }, { role: "assistant" as const, content: "42% used." }];
-    expect(await c.saveThread!({ taskId: "tsk1", title: "Disk", messages: msgs, from: 0 })).toEqual({ ok: true, count: 2 });
-    const a = s.writeArgs();
-    expect(a.slice(0, 5)).toEqual(["--json", "t", "import", "-f", readFileSync(join(s.dir, "file"), "utf8").trim()]);
-    expect(a).toContain("--id=ducter-task-tsk1");
-    expect(a).toContain("--title=Disk");
-    expect(a.join(" ")).toContain("-s ducter");
-    expect(a.join(" ")).toContain("--agent-id ducter --space Work");
-    expect(a).not.toContain("--expected-message-count");
-    expect(JSON.parse(readFileSync(join(s.dir, "messages.json"), "utf8"))).toEqual(msgs);
-    expect(existsSync(readFileSync(join(s.dir, "file"), "utf8").trim())).toBe(false);
-    const more = [...msgs, { role: "user" as const, content: "Again" }];
-    expect(await c.saveThread!({ taskId: "tsk1", title: "Disk", messages: more, from: 2 })).toEqual({ ok: true, count: 3 });
-    expect(s.writeArgs().join(" ")).toContain("--expected-message-count 2");
-    expect(JSON.parse(readFileSync(join(s.dir, "messages.json"), "utf8"))).toEqual([{ role: "user", content: "Again" }]);
   });
 
   test("nmem gets the basics and NMEM_*, never Ducter's keys (D102)", async () => {

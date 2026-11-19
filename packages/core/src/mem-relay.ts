@@ -1,5 +1,5 @@
 // D393: Nowledge Mem carried to every task from the home's one connection (design/memory.md
-// "Mem carried to every task", research/155).
+// "Mem carried to every task", research/159).
 //
 // A task on another computer, or in a sandbox there, gets Mem with nothing set up on that
 // computer: its nmem (and Mem's own plugin, its hooks and skills) is pointed at this relay on the
@@ -55,12 +55,21 @@ export function readMemCredential(env: Record<string, string | undefined> = proc
 }
 
 /**
- * What a task's key may not reach: Mem's own administration (its keys, Access Anywhere, licence,
- * settings, export and restore) and every DELETE. The plugin, its skills and Bridge never need
- * them. INFERRED from nmem's command names (Mem's REST paths aren't documented); a scoped key from
- * Mem replaces this list (research/155, the asks).
+ * What a task's key may reach: Mem's data, by the first part of the path, as nmem and Mem's plugin
+ * call it (read from the paths in nmem 0.10.121's binary and seen live: /health, /capabilities,
+ * /agent/feed, /threads, /memories, /context; research/159). Anything else (Mem's settings, its
+ * keys, Access Anywhere, licence, models, team, export and import, plugins) is refused, and so are
+ * the agent routes that start Mem's own jobs, and every DELETE. A leading /api is the same path.
  */
-const ADMIN = /(^|\/)(remote-access|api-keys?|keys|license|licence|settings|export|import-archive|backup|restore|repair|reconcile|models|labs|team|access|service)(\/|$)/i;
+const DATA = new Set(["health", "capabilities", "memories", "threads", "context", "agent", "agents", "agent-profiles", "agent-sessions", "agent_context", "spaces", "rules", "feed", "fs", "resources", "search", "search-index", "artifacts", "skills", "entities", "labels", "communities", "graph", "wiki", "ask", "mailbox", "bridge", "collaboration", "working-memory"]);
+const AGENT_JOBS = /^\/agent\/(trigger|tools|skill-builder|ontology-builder|ai-now)(\/|$)/;
+export function dataPath(rest: string): boolean {
+  const p = rest.replace(/^\/api(?=\/)/, "");
+  if (p.includes("..") || AGENT_JOBS.test(p)) return false;
+  return DATA.has(p.split("/")[1] ?? "");
+}
+/** A task's calls: a burst of this many, then this many a second (the plugin makes ~5 at a start). */
+export const RATE = { burst: 60, perSec: 10 } as const;
 
 /** Headers a client sends that never go on to Mem (its key is the home's, its address Mem's). */
 const DROP_IN = new Set(["authorization", "x-nmem-api-key", "host", "cookie", "connection", "content-length", "x-forwarded-for", "x-forwarded-host", "x-forwarded-proto", "x-real-ip", "x-ducter-device"]);
@@ -96,7 +105,7 @@ export interface MemRelay {
 
 const b64 = (s: string) => Buffer.from(s).toString("base64url");
 
-/** Which agents' plugins the home can carry: Claude Code's `--plugin-url` loads one for a session (research/155). */
+/** Which agents' plugins the home can carry: Claude Code, whose `--plugin-url` loads one for a session (research/159). */
 const KIT_AGENTS = new Set(["claude-code"]);
 
 export function createMemRelay(o: MemRelayOptions): MemRelay {
@@ -104,6 +113,18 @@ export function createMemRelay(o: MemRelayOptions): MemRelay {
   const f = o.fetch ?? fetch;
   const mac = (p: string) => createHmac("sha256", o.secret).update(`mem-relay\n${p}`).digest("base64url");
   const told = new Set<string>();
+  // Per task: a token bucket (RATE), so one runaway task can't flood the person's Mem through the home.
+  const buckets = new Map<string, { n: number; at: number }>();
+  const take = (taskId: string) => {
+    const t = now();
+    const b = buckets.get(taskId) ?? { n: RATE.burst, at: t };
+    b.n = Math.min(RATE.burst, b.n + ((t - b.at) / 1000) * RATE.perSec);
+    b.at = t;
+    buckets.set(taskId, b);
+    if (b.n < 1) return false;
+    b.n -= 1;
+    return true;
+  };
   const kits = new Map<string, { at: string; zip: Uint8Array }>();
 
   const keyFor = (taskId: string) => {
@@ -178,7 +199,8 @@ export function createMemRelay(o: MemRelayOptions): MemRelay {
       const taskId = key ? verify(key) : undefined;
       if (!taskId) return deny(401, "unauthorized");
       const rest = url.pathname.slice(4) || "/";
-      if (req.method === "DELETE" || ADMIN.test(rest)) return deny(403, "not for tasks");
+      if (req.method === "DELETE" || !dataPath(rest)) return deny(403, "not for tasks");
+      if (!take(taskId)) return deny(429, "slow down");
       const cred = o.credential();
       if (!cred) return deny(503, "Mem isn't connected on the home");
       if (!told.has(taskId)) {
@@ -207,10 +229,13 @@ export function createMemRelay(o: MemRelayOptions): MemRelay {
  * plugin cache (read-only; never changed). undefined when the home's Claude Code has none.
  */
 export function homeClaudeMemPlugin(home = homedir()): string | undefined {
-  const root = join(home, ".claude", "plugins", "cache", "nowledge-community", "nowledge-mem");
+  return newestPlugin(join(home, ".claude", "plugins", "cache", "nowledge-community", "nowledge-mem"), ".claude-plugin");
+}
+
+function newestPlugin(root: string, manifestDir: string): string | undefined {
   let vs: string[];
   try {
-    vs = readdirSync(root).filter((v) => /^\d+(\.\d+)*$/.test(v) && existsSync(join(root, v, ".claude-plugin", "plugin.json")));
+    vs = readdirSync(root).filter((v) => /^\d+(\.\d+)*$/.test(v) && existsSync(join(root, v, manifestDir, "plugin.json")));
   } catch {
     return undefined;
   }

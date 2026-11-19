@@ -112,6 +112,34 @@ test("the sentence says code's counts, leaves out empty groups, and says what it
   expect(sentenceOf("en", { app: "GitHub", n: 2000, groups: { do: 12, decide: 0, close: 3, later: 585 }, unread: 1400 })).toBe("Of the 2000 open on GitHub: 12 you could hand to me, 3 you might close (you see each one first), 585 can wait; 1400 I haven't looked at closely yet. It's all in On hand.");
 });
 
+test("a sort still running when the home stops is dropped quietly: nothing written, nothing warned", async () => {
+  let release!: () => void;
+  const held = new Promise<void>((r) => (release = r));
+  let asked = 0;
+  const ask: Ask = async (p) => {
+    asked++;
+    await held;
+    return fakeAsk()(p);
+  };
+  const { core, ts } = boot({ issues: pileOf(30), ask });
+  await ts.add("github");
+  await ts.look();
+  await until(() => asked > 0);
+  const warn = console.warn;
+  const said: string[] = [];
+  console.warn = (...a: unknown[]) => void said.push(a.map(String).join(" "));
+  try {
+    stops.pop(); // stopped here, not again after
+    await core.stop();
+    release();
+    await new Promise((r) => setTimeout(r, 50));
+    expect(said.filter((s) => /pile|task-sources|closed database/.test(s))).toEqual([]);
+    expect(asked).toBe(1); // the next batch never asked
+  } finally {
+    console.warn = warn;
+  }
+});
+
 test("557 on connect: sorted once by the cheap model in batches, counted by code, said once; the second sort reads only what changed", async () => {
   const calls: string[][] = [];
   const { core, gh, ts } = boot({ ask: fakeAsk({ calls }) });

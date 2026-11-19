@@ -46,6 +46,8 @@ export interface Loadout {
    * smartest, once, by itself (said in the task). False when there is no smarter one to take it.
    */
   retry(taskId: string, how: { stalled?: boolean; summary?: string }, runner: Runner | undefined): Promise<{ ok: boolean; message?: string }>;
+  /** The home stopped: devices reads after it are dropped quietly. */
+  stop(): void;
 }
 
 export function createLoadout(o: {
@@ -65,6 +67,11 @@ export function createLoadout(o: {
   /** D247: the person's Android app is connected without 用这台手机: a phone task opens and its card offers to turn it on. */
   handsetOffer?: () => string | undefined;
 }): Loadout {
+  /** Set at stop: a devices read still in flight (or begun after) is dropped quietly, not warned. */
+  let stopped = false;
+  /** A probe that fails must never stop a task from opening: no info, no opinion (said while the home runs). */
+  const frameOf = (v: DevicesView) =>
+    stopped ? Promise.resolve(undefined) : v.frame().catch((err) => (stopped || console.warn("[loadout] devices:", (err as Error).message), undefined));
   /** The paired clients (phones among them), from the last devices frame read. */
   let clients: Parameters<typeof noPhoneLine>[0];
   /** D157: every computer that runs tasks, from the devices frame. */
@@ -72,7 +79,7 @@ export function createLoadout(o: {
   const computers = async (needs?: TaskNeeds): Promise<Computer[] | undefined> => {
     const v = o.devices();
     if (!v) return undefined;
-    const f = await v.frame().catch((err) => (console.warn("[loadout] devices:", (err as Error).message), undefined));
+    const f = await frameOf(v);
     if (!f) return undefined;
     clients = f.reach?.clients;
     const comps = computersOf(f.devices, o.sites);
@@ -98,8 +105,7 @@ export function createLoadout(o: {
   const harnessesFor = async (device?: string): Promise<DeviceHarness[] | undefined> => {
     const v = o.devices();
     if (!v) return undefined;
-    // A probe that fails must never stop a task from opening: no info, no opinion.
-    const f = await v.frame().catch((err) => (console.warn("[loadout] devices:", (err as Error).message), undefined));
+    const f = await frameOf(v);
     if (!f) return undefined;
     const d = !device || device === "local" ? f.devices.find((x) => x.home) : f.devices.find((x) => x.id === device || x.name === device);
     // A worker that doesn't say what it has: nothing to choose by, so no opinion (the runner decides).
@@ -132,6 +138,10 @@ export function createLoadout(o: {
 
   const api: Loadout = {
     computers,
+
+    stop() {
+      stopped = true;
+    },
 
     async defaults() {
       const comps = await computers();

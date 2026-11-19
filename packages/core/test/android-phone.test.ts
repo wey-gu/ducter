@@ -391,4 +391,21 @@ describe("where a phone task runs", () => {
     const lo = createLoadout({ log: {} as any, tasks: {} as any, settings: { get: () => ({}) } as any, rules: { list: () => [] } as any, devices: () => ({ frame: async () => ({ t: "devices", devices: [dev({ state: "off" })], reach: { clients: [] } }) }) as any });
     expect(await lo.choose({ title: "看小红书", needs: { phone: true } })).toEqual({ none: NO_PHONE });
   });
+  test("a devices read that fails after the home stopped is dropped quietly; before it, it is said", async () => {
+    let calls = 0;
+    const lo = createLoadout({ log: {} as any, tasks: {} as any, settings: { get: () => ({}) } as any, rules: { list: () => [] } as any, devices: () => ({ frame: async () => (calls++, Promise.reject(new RangeError("Cannot use a closed database"))) }) as any });
+    const warn = console.warn;
+    const said: unknown[][] = [];
+    console.warn = (...a: unknown[]) => void said.push(a);
+    try {
+      expect(await lo.computers()).toBeUndefined();
+      expect(said).toHaveLength(1);
+      lo.stop();
+      expect(await lo.computers()).toBeUndefined();
+      expect(said).toHaveLength(1);
+      expect(calls).toBe(1); // after stop nothing is read at all
+    } finally {
+      console.warn = warn;
+    }
+  });
 });

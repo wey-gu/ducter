@@ -509,7 +509,7 @@ func (a *App) updateSection(c *ui.Context) {
 			a.versionRow(c, dv, dv == home)
 		}
 		if auto := a.S.Settings; auto != nil {
-			if v, ch := a.toggleRow(c, "autoupdate", a.L.T("settings.versions.night"), a.L.T("settings.versions.night.note"), auto.AutoUpdate); ch {
+			if v, ch := a.toggleRow(c, "autoupdate", a.L.T("settings.versions.night"), a.nightNote(), auto.AutoUpdate); ch {
 				a.send(protocol.SettingsSet{T: "settings_set", Patch: protocol.SettingsPatch{AutoUpdate: &v}})
 			}
 		}
@@ -553,7 +553,9 @@ func (a *App) versionRow(c *ui.Context, dv *protocol.DeviceView, home bool) {
 			}
 		case behind(dv):
 			a.sideStatus(c, a.L.T("devup.available", u.Latest), sideInk)
-		case current:
+		case current && home:
+			// D399: said once, on the home's row; a computer that does tasks is current with it and
+			// says nothing (three rows of the same words were a wall).
 			words, _ := a.upToDate(u) // one phrase, 刚看过，已经是最新的 (D296)
 			a.sideStatus(c, words, sideMuted)
 		}
@@ -634,4 +636,13 @@ func (a *App) notesIf(ok bool, u *protocol.DeviceUpdate) []string {
 		return nil
 	}
 	return u.NotesBy[string(a.L.Lang)]
+}
+
+// nightNote: when the computers update by themselves, in the person's own quiet hours when they
+// set some (D399: never "3 to 5 am if none are set" to someone who set 23:00 to 08:00).
+func (a *App) nightNote() string {
+	if st := a.S.Settings; st != nil && st.Quiet != nil && st.Quiet.Start != "" {
+		return a.L.T("settings.versions.night.quiet", st.Quiet.Start, st.Quiet.End)
+	}
+	return a.L.T("settings.versions.night.note")
 }

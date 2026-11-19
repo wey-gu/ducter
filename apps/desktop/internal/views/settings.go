@@ -483,6 +483,14 @@ func (a *App) panelHead(c *ui.Context, tab, lede string) {
 	})
 }
 
+// ledeNote is a second, smaller line close under a pane's lede (D399): what is true of the
+// whole pane (who owns a to-do, where the saved things are kept, what the chat apps are sent),
+// said once at the top, never left under the last card.
+func (a *App) ledeNote(c *ui.Context, key, text string) {
+	t := a.T
+	ui.Text(c.Key(key), text).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted).Margin(-t.S3, 0, 0, 0)
+}
+
 // group is one titled group of a section: its title (and a note) on the
 // paper, then a white card on the clay base holding its rows.
 func (a *App) group(c *ui.Context, key, title, note string, body func()) {

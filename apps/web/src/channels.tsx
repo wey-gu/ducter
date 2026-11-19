@@ -18,6 +18,7 @@ import { A } from "./app.ts";
 import { BrandTile } from "./brand.tsx";
 import { Btn, DangerButton, LinkBtn } from "./controls.tsx";
 import { Qr } from "./phone.tsx";
+import { GConfirm } from "./set-grid.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
@@ -74,9 +75,9 @@ export function ChatAppsSettings() {
   return (
     <>
       <p class="af-lede">{t("chats.lede", A.S.personaName)}</p>
+      <p class="small lede-note">{t("chats.goes")}</p>
       {f.channels.map((v) => (v.kind === "wechat" ? <WechatCard key={v.kind} v={v} /> : <ChannelCard key={v.kind} v={v} manifest={f.slackManifest} />))}
       <IMessageCard frame={f} />
-      <p class="small chats-goes">{t("chats.goes")}</p>
     </>
   );
 }
@@ -150,6 +151,21 @@ function Foot(p: { note: string; children?: ComponentChildren }) {
   );
 }
 
+/**
+ * D399: 断开 asks in place, as on the Mac (D289): a disconnect throws the key away, and getting it
+ * back means the steps again.
+ */
+function ForgetFoot(p: { kind: ChannelKind; name: string; note: string; label: string }) {
+  const [asking, setAsking] = useState(false);
+  if (asking)
+    return <GConfirm ask={t("chats.forget.ask", p.name)} keep={t("card.stop.keep")} go={p.label} about={p.name} onKeep={() => setAsking(false)} onGo={() => (setAsking(false), A.send({ t: "channel_forget", kind: p.kind }))} />;
+  return (
+    <Foot note={p.note}>
+      <DangerButton label={p.label} about={p.name} quiet onClick={() => setAsking(true)} />
+    </Foot>
+  );
+}
+
 /** One step: its mark in the tile column, one sentence, and what the step needs under it. */
 function Step(p: { n: number; text: string; children?: ComponentChildren }) {
   return (
@@ -186,9 +202,7 @@ function ChannelCard({ v, manifest }: { v: ChannelView; manifest: string }) {
               <Btn kind="text" size="sm" label={t("chats.unlink")} about={name} onClick={() => A.send({ t: "channel_unlink", kind: v.kind })} />
             </Row>
           )}
-          <Foot note={who}>
-            <DangerButton label={t("chats.forget", name)} about={name} onClick={() => A.send({ t: "channel_forget", kind: v.kind })} />
-          </Foot>
+          <ForgetFoot kind={v.kind} name={name} note={who} label={t("chats.forget", name)} />
         </>
       )}
     </section>
@@ -342,9 +356,7 @@ function WechatCard({ v }: { v: ChannelView }) {
         <>
           {v.state === "linked" && <Row title={t("chats.wx.linked")} line={t("chats.linked.goes", name)} />}
           {v.state === "linked" && <Row title={t(open ? "chats.wx.open" : "chats.wx.closed")} line={t("chats.wx.rule")} />}
-          <Foot note={t("chats.wx.who")}>
-            <DangerButton label={t("chats.wx.forget")} about={name} onClick={() => A.send({ t: "channel_forget", kind: "wechat" })} />
-          </Foot>
+          <ForgetFoot kind="wechat" name={name} note={t("chats.wx.who")} label={t("chats.wx.forget")} />
         </>
       )}
     </section>

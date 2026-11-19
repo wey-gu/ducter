@@ -757,7 +757,7 @@ func (a *App) memSteps(c *ui.Context, phase string, b *protocol.BridgeView) {
 				case busy:
 					help = a.L.T("bridge.mem.installing", home)
 				case b != nil && !b.CanRun:
-					help = a.L.T("bridge.mem.install.need", home) + "\n" + a.L.T("bridge.mem.install.need.how")
+					help = a.L.T("bridge.mem.install.need.below", home) + "\n" + a.L.T("bridge.mem.install.need.how") // D399: the Mac has no 怎么装 fold; the step is right below
 				}
 				if b != nil && b.Detail != "" && !busy {
 					help += "\n" + a.memFailed(true, home, b.Detail, b.Kept)

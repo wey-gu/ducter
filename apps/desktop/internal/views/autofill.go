@@ -50,6 +50,14 @@ func (a *App) autofillPanel(c *ui.Context) {
 	}
 	a.panelHead(c, TabAutofill, a.L.T("af.lede"))
 	f := a.savedFrame()
+	if f != nil {
+		// D399: where it is all kept is true of the whole pane: under the lede, not under the last card.
+		where := "af.kept.file"
+		if f.KeptIn == "keychain" {
+			where = "af.kept.keychain"
+		}
+		a.ledeNote(c, "af-kept", a.L.T(where, a.homeName()))
+	}
 	if f == nil {
 		ui.Text(c, a.L.T("conn.connecting")).FontSize(t.SM).TextColor(t.InkMuted)
 		return
@@ -89,7 +97,7 @@ func (a *App) autofillPanel(c *ui.Context) {
 				a.afForm(c, "card", &x)
 				continue
 			}
-			a.afRow(c, "card:"+x.ID, drawCardMark, x.Label, a.L.T("af.card.line", x.Name, x.Exp), a.afUsed(x.UsedAt), func() { a.afEdit("card", &x) }) // D291
+			a.afRow(c, "card:"+x.ID, drawCardMark, x.Label, a.afCardLine(x), a.afUsed(x.UsedAt), func() { a.afEdit("card", &x) }) // D291
 		}
 		if s.editing == "card:new" {
 			a.afForm(c, "card", nil)
@@ -158,16 +166,19 @@ func (a *App) autofillPanel(c *ui.Context) {
 			})
 		})
 	}
-	where := "af.kept.file"
-	if f.KeptIn == "keychain" {
-		where = "af.kept.keychain"
+}
+
+// afCardLine: whose card, which one (its last four, as the pay card and the web's tile say it), and until when.
+func (a *App) afCardLine(x protocol.SavedView) string {
+	if x.Last4 == "" {
+		return a.L.T("af.card.line", x.Name, x.Exp)
 	}
-	a.paperNote(c, a.L.T(where, a.homeName()))
+	return a.L.T("af.card.line4", x.Name, x.Last4, x.Exp)
 }
 
 func (a *App) afUsed(at string) string {
 	if at == "" {
-		return a.L.T("af.unused")
+		return "" // D399: a row speaks only when it differs; never used is every new row's state
 	}
 	return a.L.T("af.used", a.agoLong(at))
 }

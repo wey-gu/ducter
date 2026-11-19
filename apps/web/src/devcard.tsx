@@ -178,7 +178,7 @@ export function DevicesSection({ open, setOpen }: { open: string | null; setOpen
       <div class="set-card">
         <Versions />
         {/* D365: what the night's updates do is the switch's own line, as on the Mac, not a stray note under the card. */}
-        {A.settings && <Toggle label={t("settings.versions.night")} help={t("settings.versions.night.note")} checked={!!A.settings.autoUpdate} onChange={(v) => A.setSettings({ autoUpdate: v })} />}
+        {A.settings && <Toggle label={t("settings.versions.night")} help={A.settings.quiet?.start ? t("settings.versions.night.quiet", A.settings.quiet.start, A.settings.quiet.end) : t("settings.versions.night.note")} checked={!!A.settings.autoUpdate} onChange={(v) => A.setSettings({ autoUpdate: v })} />}
       </div>
     </section>
   );

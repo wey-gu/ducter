@@ -152,6 +152,13 @@ tick Ducter writes; **今天替你清掉 n 件** counts the to-dos Ducter closed
 day (their day, their zone); every group count is code's count of verdicts still open and not handed
 over. None is a number a model wrote.
 
+**A review task's drafts (D394).** A task of the person's that reviews their requests every so often
+reports each round with `review_report`; the drafts for PRs it reviewed again land as those PRs'
+pre-reads (marked with the task and the head), so the same card and sheet show them. One card a
+round, **{n} 个 PR 的评审写好了，发到 GitHub？**, carries every unsent draft; Go posts each as one
+comment-only review (`source_write` op `review`), Hold posts nothing. The request is tied to the
+task by its read, not bound (a binding's end comments or closes, which a review must not).
+
 What it never does: post at hand-over, close without the sheet's Go, close a vault line (a tick says
 it was done: a closable-looking line can wait instead), give a PR a verdict (only comments), or speak
 in the evening (the day's line lives on the pile and opens the next morning's find).

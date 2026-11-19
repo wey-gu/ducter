@@ -4,25 +4,16 @@ Deferred work, grouped by area, each with its trigger where it has one.
 
 ## A review that runs every so often (D394, `past.md` Ongoing, research/158)
 
-- **Rounds as fresh short runs.** One Codex session ran swj3zc4w for days, compacted dozens of
-  times a day, each time re-sent the brief. A timer wake of a task resting on its own wait could
-  start a fresh session seeded from the brief, the last checkpoints and the task's own state files
-  (`startedAfresh`, D373's resumeOrSeed) once the session has compacted since its last round.
-  Needs a fake measuring tokens per round before and after, per harness (Codex resumes a long
-  rollout; Claude Code replays its summary). *Trigger:* the author's call on the default below, or
-  a second hot session with more than 10 compactions a day.
-- **Per-PR state on the To-do sources' GitHub to-dos (D341).** A review request is a GitHub to-do;
-  the head reviewed, the findings (severity, file:line) and the draft belong on that to-do and on
-  the Ongoing card's standing line (**8 个请求在等你：3 个有新提交已复审，5 个没变**), not in a
-  scratch ledger. Needs a typed `review_report` (or evidence kind) and the D341 binding for
-  review-requested PRs, which today binds issues assigned to the person. *Trigger:* after the
-  brief rule has run a day on hel and the drafts it writes are seen.
-- **Drafts the person can open on the phone.** The batched Go card carries each draft as a `show`
-  file today; a draft viewer with the PR's diff beside it is not built. *Trigger:* the first round
-  card on the phone.
-- **Live check on hel.** The brief rule, the no-nudge rule and the one-timer rule are checked with
-  fakes only; the running task keeps its old brief until it starts a new session. *Trigger:* this
+- **Live check on hel.** Everything in D394 is checked with fakes only: the brief rule, no nudge,
+  one timer, fresh rounds (the token numbers are the fake's model), `review_report` and the round
+  card. Does a real Codex call `review_report` and stay silent on quiet rounds? *Trigger:* this
   build on the author's home.
+- **A fresh round's own state files.** It reads its checkpoints; files it kept in its scratch folder
+  are there but the seed doesn't name them. *Trigger:* a fresh round that redoes work it had.
+- **The PR's diff beside a draft.** The sheet shows the notes with path:line; the lines themselves
+  are on GitHub. *Trigger:* the author asks for it on the phone.
+- **Mentions that aren't review requests** go in `prs` too and count as waiting; they may want
+  their own word. *Trigger:* the standing line reads wrong to the author.
 
 ## Handing over several to-dos (D385, built, `handover.md` §9)
 

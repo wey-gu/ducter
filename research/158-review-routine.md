@@ -66,9 +66,13 @@ all drafts, never one card per PR and never silently.
 3. **The brief says silence** (built): a repeating round with nothing new doesn't report; a report
    says what stands, never "nothing new" alone while things wait; outward writes are drafted to
    files and asked once per round in one `needs_input` (default: post), drafts in `show`.
-4. **Not built** (todo): fresh sessions per round seeded from the checkpoint and the task's state
-   files, measured per harness; per-PR state on the To-do sources' GitHub to-dos (D341) and the
-   Ongoing card's standing line; a draft viewer.
+4. **Built after** (D394 (4)–(7)): a round after a rest of 30 min or more, or after a compaction,
+   starts in a fresh session (Codex, Claude Code). On a fake of this task (12 rounds, 28k of tool
+   output each, compacting at 160k) the tokens read fell from 910,892 to 74,695 (the largest round
+   144,060 to 7,101); a fresh start only after a compaction saved 2%, because a resumed session
+   after 45 minutes is read again uncached anyway (INFERRED from the providers' cache lifetimes,
+   minutes to an hour). `review_report` lands the drafts as those PRs' pre-reads, one card a
+   round asks to post them, and the Ongoing card says where the requests stand.
 
 **Summary.** The reviewer did review; the brief told it to say only "nothing new", the runner's
 nudge forced that line out of every quiet round and started extra rounds, its timers stacked, and

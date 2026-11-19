@@ -406,6 +406,8 @@ export interface Runner {
   healthy(port: number): Promise<boolean>;
   /** D228: stops 从外面连's tunnel kept in this data folder (it outlives Ducter by design). */
   stopTunnel?(dataDir: string): Promise<void>;
+  /** The wait between /health checks while launchd lets go (tests pass one that doesn't wait). */
+  sleep?(ms: number): Promise<void>;
   uid: number;
 }
 
@@ -437,7 +439,7 @@ export async function executeUninstall(plan: Plan, o: { runner: Runner; port: nu
     // launchd's bootout returns before the process is gone; give it a moment.
     let up = await o.runner.healthy(o.port);
     for (let n = 0; up && n < 20; n++) {
-      await Bun.sleep(250);
+      await (o.runner.sleep ?? Bun.sleep)(250);
       up = await o.runner.healthy(o.port);
     }
     if (up) {

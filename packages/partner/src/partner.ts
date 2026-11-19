@@ -2272,7 +2272,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       const was = t.appCard?.id === m.id ? t.appCard.change : undefined;
       t.appCard = { id: m.id, name: m.name, version: m.version, change: was === "made" ? "made" : was === "changed" && change === "data" ? "changed" : change };
     };
-    const after = "Then one short line in their language saying what it is or what changed (its card with Open goes under your words); never paste the code, never list its features.";
+    const after = "Then one short line in their language, a few words saying it is ready or what changed (\"做好了，记一笔就自动加总。\"); its card with Open goes under it. Never paste the code, never explain how to use it or list its features.";
     core.mcp.register(
       "partner",
       "app",
@@ -2955,6 +2955,17 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         turn.carried!.asks.delete(body.question);
         (turn.asked = true), (turn.askedId = askedBefore);
         return { ok: true, decisionId: askedBefore, note: "That question is already in front of the user. End your turn now." };
+      }
+      // D405: an app asked for something that needs the user's Go: this card is the app's answer
+      // (the app is told it waits for their Go in the conversation).
+      if (turn && !turn.appAnswered) {
+        const ask = [...turn.triggers].reverse().find((e) => e.kind === "user_msg" && (e.body as Bodies["user_msg"]).app?.ask);
+        const app = ask ? (ask.body as Bodies["user_msg"]).app : undefined;
+        if (app?.ask) {
+          body.forApp = { id: app.id, ask: app.ask };
+          turn.appAnswered = true;
+          core.apps?.answered(app.id, app.ask);
+        }
       }
       core.log.append({ stream: "channel", origin: "partner", kind: "decision", body });
       if (turn) (turn.asked = true), (turn.askedId = body.decisionId);

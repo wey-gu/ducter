@@ -8,7 +8,7 @@ import "encoding/json"
 // browser).
 
 // MadeKinds are the kinds, in the order the chips show them.
-var MadeKinds = []string{"file", "picture", "table", "chart", "list", "link"}
+var MadeKinds = []string{"app", "file", "picture", "table", "chart", "list", "link"}
 
 // MadeTask is the task that made a thing.
 type MadeTask struct {
@@ -37,6 +37,14 @@ type MadeItem struct {
 	URL    string    `json:"url,omitempty"`
 	Pinned bool      `json:"pinned,omitempty"`
 	Hit    *MadeHit  `json:"hit,omitempty"`
+	// App (D405): an app, opened in its own window.
+	App *MadeApp `json:"app,omitempty"`
+}
+
+// MadeApp is an app in Made for you: its id and version now.
+type MadeApp struct {
+	ID      string `json:"id"`
+	Version int    `json:"version"`
 }
 
 // MadeQuery narrows Made for you.

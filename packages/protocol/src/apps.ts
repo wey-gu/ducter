@@ -187,10 +187,3 @@ window.addEventListener("error",function(e){post({t:"error",text:String(e.messag
 post({t:"ready"});})();`;
   return `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="${appCsp(o.transport)}"><meta name="viewport" content="width=device-width,initial-scale=1"><style>${style}</style><script>${bridge}</script></head><body>${a.html}</body></html>`;
 }
-
-/** The plain line an app card reads as everywhere a card can't be drawn (chat apps, Copy, pushes). */
-export function appPlain(c: Pick<AppCard, "name" | "change">, lang: string): string {
-  const zh = lang.startsWith("zh");
-  if (c.change === "made") return zh ? `［小应用］${c.name}` : `[App] ${c.name}`;
-  return zh ? `［小应用，改好了］${c.name}` : `[App, changed] ${c.name}`;
-}

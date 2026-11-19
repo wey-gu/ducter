@@ -322,6 +322,7 @@ export interface Bodies {
     defaultAt?: string; // ISO time the default applies (only if reversible)
     reversible: boolean;
     routineId?: string; // a routine's proposal card (D114): Go activates it
+    forApp?: AppAnswer; // D405: the card answers an app's ask (something outward it asked for waits for this Go)
     unsure?: boolean; // D245: with routineId: its watch saw something it isn't sure of; Go runs it once
     signIn?: SignInAsk; // D151: a sign-in card; Go = 好了 / Done in the live view
     pay?: PayAsk; // D191: 付款 / Pay: merchant, amount, card; Go pays once, no default

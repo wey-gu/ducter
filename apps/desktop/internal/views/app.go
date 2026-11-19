@@ -64,6 +64,11 @@ type App struct {
 	Send func(frame any) error
 	// Win schedules work from other goroutines.
 	Win Updater
+	// OpenAppWindow (D405) opens one of the person's apps in its own window
+	// (main.go: a web view on the app's own scheme); nil records it only.
+	OpenAppWindow func(id, name string)
+	openedApp     string
+	bridge        *AppBridge
 	// Now is the clock, time.Now unless a test sets it.
 	Now func() time.Time
 	// Local is what the client knows about this Mac (first-run hints,
@@ -1020,6 +1025,9 @@ func (a *App) Receive(f protocol.ServerFrame) {
 	}
 	a.noteResults(f)
 	a.S.Apply(f)
+	if a.bridge != nil {
+		a.bridge.receive(f) // D405: an app window's data, answers, refusals
+	}
 	a.liveIndex(f)
 	if f.T == "task_history" || f.T == "task_index" {
 		a.pageHistory(f.TaskID)

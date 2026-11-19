@@ -1,7 +1,7 @@
 // D405: 小应用 / Apps (design/apps.md). The same words as the Mac's (apps/desktop/internal/i18n/apps.go).
 export const appWords: { zh: Record<string, string>; en: Record<string, string> } = {
   zh: {
-    "app.made": "%s给你做的小应用，随时再打开。",
+    "app.made": "%s给你做的小应用，放在「给你做的」里，随时再打开。",
     "app.changed": "改好了",
     "app.filled": "填好了",
     "app.gone": "这个小应用已经删掉了。",
@@ -13,13 +13,14 @@ export const appWords: { zh: Record<string, string>; en: Record<string, string> 
     "app.ask.sent": "发给%s了，改好会在这里刷新。",
     "app.ask.limit": "这个小应用这一小时问得太多了，过会儿再试。",
     "app.ask.busy": "它上一个问题还在等回答。",
+    "app.ask.go": "这件事要你在和%s的对话里点「好」才会做。",
     "app.only": "不联网；它要问的都经过%s。",
     "app.updated": "%s 更新",
     "app.asks": "「%s」问",
     "app.about": "关于「%s」",
   },
   en: {
-    "app.made": "An app %s made for you. Open it any time.",
+    "app.made": "An app %s made for you. It stays in Made for you; open it any time.",
     "app.changed": "Changed",
     "app.filled": "Filled in",
     "app.gone": "This app was deleted.",
@@ -31,6 +32,7 @@ export const appWords: { zh: Record<string, string>; en: Record<string, string> 
     "app.ask.sent": "Sent to %s. It refreshes here once it's changed.",
     "app.ask.limit": "This app asked too often this hour. Try again later.",
     "app.ask.busy": "Its last question is still waiting for an answer.",
+    "app.ask.go": "This waits for your Go in your conversation with %s.",
     "app.only": "No internet. What it asks goes through %s.",
     "app.updated": "Updated %s",
     "app.asks": "“%s” asks",

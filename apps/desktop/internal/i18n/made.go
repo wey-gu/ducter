@@ -5,7 +5,7 @@ package i18n
 
 var zhMade = Table{
 	"made.tab":         "给你做的",
-	"made.line":        "%s 给你做的文件、图片、表格和链接，聊天里做的也在这里。",
+	"made.line":        "%s 给你做的小应用、文件、图片、表格和链接，聊天里做的也在这里。",
 	"made.find":        "名字、PDF、表格、截图、哪天…",
 	"made.all":         "全部",
 	"made.c.file":      "文件",
@@ -36,7 +36,7 @@ var zhMade = Table{
 
 var enMade = Table{
 	"made.tab":         "Made for you",
-	"made.line":        "The files, pictures, tables and links %s made for you, including the ones in your chats.",
+	"made.line":        "The apps, files, pictures, tables and links %s made for you, including the ones in your chats.",
 	"made.find":        "A name, a PDF, a table, a day…",
 	"made.all":         "All",
 	"made.c.file":      "Files",

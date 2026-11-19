@@ -25,7 +25,7 @@ core.setRunner(stubRunner(core));
 core.setPartner({
   onTrigger(e) {
     const app = e.kind === "user_msg" ? (e.body as { app?: { id: string; ask?: string } }).app : undefined;
-    if (app?.ask) setTimeout(() => log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: w.a, appAnswer: { id: app.id, ask: app.ask! } } }), 600);
+    if (app?.ask && app.ask !== "a1-demo") setTimeout(() => log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: w.a, appAnswer: { id: app.id, ask: app.ask! } } }), 600);
   },
 });
 const log = core.log;

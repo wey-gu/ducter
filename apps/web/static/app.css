@@ -16788,9 +16788,9 @@ a.pr:hover { box-shadow: inset 0 0 0 1px var(--line-2); }
   border-radius: 14px;
   background: var(--needs-surface);
   color: var(--needs-ink);
-  box-shadow: inset 0 1.5px 0 rgb(255 255 255 / 0.55), 0 3px 0 var(--needs-ledge);
+  box-shadow: inset 0 1.5px 0 var(--hi-secondary), 0 3px 0 var(--needs-ledge);
 }
-.app-face.sm { width: 34px; height: 34px; border-radius: 11px; box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.55), 0 2px 0 var(--needs-ledge); }
+.app-face.sm { width: 34px; height: 34px; border-radius: 11px; box-shadow: inset 0 1px 0 var(--hi-secondary), 0 2px 0 var(--needs-ledge); }
 .app-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .app-name { font-family: var(--head); font-size: var(--md); font-weight: 800; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .app-what { font-size: var(--sm); color: var(--ink-muted); line-height: 1.35; }

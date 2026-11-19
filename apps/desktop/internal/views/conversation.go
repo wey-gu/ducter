@@ -577,6 +577,10 @@ func (a *App) entry(c *ui.Context, e *store.Entry) {
 			})
 			return
 		}
+		// D405: an app's ask, or words typed about an app: a small line names it.
+		if e.User.App != nil {
+			a.userAppLine(c, itoa(e.FirstSeq), e.User.App)
+		}
 		a.userReplyBubble(c, e.User.Text, false, e.User.Reply, nil, e.User.ClientID)
 	case e.AI != nil:
 		// The partner's words get the CJK-Latin gap at display time; a
@@ -592,7 +596,7 @@ func (a *App) entry(c *ui.Context, e *store.Entry) {
 			}
 			if len(e.AI.UI) > 0 {
 				a.richWords(c, e, a.rp.next) // D303: its words with the blocks it drew
-			} else if strings.TrimSpace(e.AI.Text) != "" || e.AI.Cal == nil {
+			} else if strings.TrimSpace(e.AI.Text) != "" || (e.AI.Cal == nil && e.AI.App == nil) {
 				rt := a.rp.next // D254: Reply and Copy on a right click, as the user's bubbles have
 				a.partnerBubble(c, a.takeJoin(), func() {
 					// The view shares its selection with this box (ShareSelection), whose
@@ -609,6 +613,10 @@ func (a *App) entry(c *ui.Context, e *store.Entry) {
 			}
 			// D206: what a task showed, under the partner's words about it.
 			a.messageMedia(c, fmt.Sprint("a", e.FirstSeq), e.AI.Media, nil, false, "conv")
+			// D405: the app this message made or changed, under its words.
+			if e.AI.App != nil {
+				a.appCard(c, itoa(e.FirstSeq), e.AI.App)
+			}
 			if e.AI.First != nil {
 				a.firstWordsAfter(c, e) // D298: what they offer, where they were read, a key
 			}

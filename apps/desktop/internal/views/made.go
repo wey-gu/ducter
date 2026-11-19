@@ -399,6 +399,15 @@ func drawMadeKind(kind string, col ui.Color) func(p *ui.Painter, r ui.Rect) {
 			ln(16.5, 11.8)
 			mv(10, 15.6)
 			ln(16.5, 15.6)
+		case "app": // a small window: its frame, its bar, two rows
+			x0, y0 := P(3.5, 4)
+			roundRect(&m, x0, y0, 13*s, 12*s, 3*s)
+			mv(3.5, 7.6)
+			ln(16.5, 7.6)
+			mv(6.5, 10.6)
+			ln(10.5, 10.6)
+			mv(6.5, 13)
+			ln(13.5, 13)
 		default: // a link: two rounded links
 			x0, y0 := P(2.6, 7.4)
 			roundRect(&m, x0, y0, 8.4*s, 5.2*s, 2.6*s)
@@ -412,6 +421,8 @@ func drawMadeKind(kind string, col ui.Color) func(p *ui.Painter, r ui.Rect) {
 // madeOpen opens a thing with what already opens it.
 func (a *App) madeOpen(it *protocol.MadeItem, from ui.Rect) {
 	switch {
+	case it.App != nil:
+		a.openApp(it.App.ID) // D405: its own window
 	case it.Media != nil && it.Media.IsImage():
 		a.med().viewer = &viewerState{open: true, items: []protocol.MediaRef{*it.Media}, from: from}
 	case it.Media != nil:

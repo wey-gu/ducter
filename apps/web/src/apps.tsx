@@ -32,7 +32,7 @@ const dark = () => {
 };
 
 function ask(id: string) {
-  A.send({ t: "app_open", id, transport: "message", dark: dark(), lang: A.L.lang === "zh" ? "zh-CN" : "en" });
+  A.send({ t: "app_open", id, transport: "message", dark: dark(), lang: A.L.lang });
 }
 
 export function openApp(id: string) {
@@ -95,6 +95,9 @@ export function onAppsFrame(f: ServerFrame): boolean {
   if (f.t === "events") {
     // An answer to the open app's ask: the app gets the partner's words.
     for (const e of f.events as LogEvent[]) {
+      // An outward ask put on a Go card: the app is told it waits for the person's Go.
+      const fa = e.kind === "decision" ? (e.body as Bodies["decision"]).forApp : undefined;
+      if (fa && AP.open?.id === fa.id && AP.open.asks.delete(fa.ask)) post({ t: "answer", ref: fa.ask, text: t("app.ask.go", A.defaultName() || "Ducter") });
       if (e.kind !== "ai_msg") continue;
       const b = e.body as Bodies["ai_msg"];
       const o = AP.open;

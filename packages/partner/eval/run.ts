@@ -314,6 +314,11 @@ interface RunResult {
   blocks?: { step: number; seq: number; ui: RichUi }[];
   /** D383: the files and pictures put under the partner's messages (their names). */
   shown?: string[];
+  /** D405: app cards under messages, answers to an app's ask, and the apps as they are at the end. */
+  appCards?: { step: number; change: string; name: string; id: string }[];
+  appAnswers?: number;
+  appsNow?: { id: string; name: string; version: number; html: string; data: Record<string, unknown> }[];
+  appsSeeded?: { id: string; html: string }[];
   dropped?: number;
 }
 
@@ -500,6 +505,14 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
     const r = core.pins.pin(e.seq, 0);
     if (!r.ok) throw new Error(`pinned seed: ${r.error}`);
     for (const x of p.ticks ?? []) core.pins.tick(r.pin.id, x, true);
+  }
+  // D405: the person's apps, made before (the first is the one a step's app names).
+  const appsSeeded: { id: string; html: string; name: string }[] = [];
+  for (const a of sc.apps ?? []) {
+    const r = core.apps.make(persona.id ?? core.persona.id, { name: a.name, html: a.html });
+    if (!r.ok) throw new Error(`apps seed: ${r.error}`);
+    for (const [k, v] of Object.entries(a.data ?? {})) core.apps.put(r.app.id, k, v, "app");
+    appsSeeded.push({ id: r.app.id, html: a.html, name: a.name });
   }
   // D300: a day of things Ducter did for the person (a mail, a payment, a call, a merge…), logged now.
   if (sc.did) seedDidDay(core, { zh: sc.lang.startsWith("zh") });
@@ -700,6 +713,8 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   const dayCards: { step: number; seq: number; cal: NonNullable<Bodies["ai_msg"]["cal"]> }[] = [];
   const blocks: { step: number; seq: number; ui: RichUi }[] = [];
   const shown: string[] = [];
+  const appCards: { step: number; change: string; name: string; id: string }[] = [];
+  let appAnswers = 0;
   let dropped = 0;
   for (const e of core.log.read({ stream: conv, fromSeq: startSeq + 1, limit: 10_000 })) {
     if (e.kind === "ai_msg") {
@@ -707,7 +722,10 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
       for (const ui of b.ui ?? []) blocks.push({ step: stepOf(e.seq), seq: e.seq, ui });
       for (const m of b.media ?? []) shown.push(m.name ?? m.id);
       dropped += b.uiDropped ?? 0;
+      if (b.app) appCards.push({ step: stepOf(e.seq), change: b.app.change, name: b.app.name, id: b.app.id });
+      if (b.appAnswer) appAnswers++;
     }
+    if (e.kind === "decision" && (e.body as Bodies["decision"]).forApp) appAnswers++; // an outward ask put on a Go card
     // D222: a day card with no words of its own is a card, not a message.
     if (e.kind === "ai_msg" && (e.body as Bodies["ai_msg"]).cal) dayCards.push({ step: stepOf(e.seq), seq: e.seq, cal: (e.body as Bodies["ai_msg"]).cal! });
     if (e.kind === "ai_msg" && !(e.body as Bodies["ai_msg"]).text.trim()) continue;
@@ -796,6 +814,11 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
     for (const x of tools.filter((x) => x.step === i && /(^|__)todos$/.test(x.name) && (x.input as { do?: string } | undefined)?.do === "hand" && (x.input as { group?: string }).group))
       lines.push(`  [Ducter added to the group "${(x.input as { group?: string }).group}"] ${JSON.stringify((x.input as { refs?: unknown }).refs ?? [])}`);
     for (const c of dayCards.filter((x) => x.step === i)) lines.push(`  [the app shows a day card under the message] ${c.cal.days.map((d) => `${d.date}: ${d.events.map((x) => `${x.allDay ? "all day" : `${x.start.slice(11, 16)}–${x.end.slice(11, 16)}`} ${x.title}${x.me && x.me !== "accepted" ? ` (their answer: ${x.me})` : ""}${x.free ? " (shown as free)" : ""}`).join("; ") || "nothing"}`).join(" | ")}${c.cal.clashes?.length ? ` (overlaps drawn: ${c.cal.clashes.length})` : ""}`);
+    for (const c of appCards.filter((x) => x.step === i)) {
+      const a = core.apps.get(c.id);
+      const html = core.apps.html(c.id) ?? "";
+      lines.push(`  [an app card under the message: ${c.change} \"${c.name}\", with Open] the app's file now (v${a?.version ?? "?"}, ${html.length} characters): ${html.length > 2500 ? html.slice(0, 1200) + " … " + html.slice(-1200) : html}`);
+    }
     for (const b of blocks.filter((x) => x.step === i)) lines.push(`  [the message also shows a ${b.ui.type === "chart" ? `${b.ui.kind} chart` : b.ui.type} block the partner wrote] ${JSON.stringify({ ...b.ui, plain: undefined })}`);
     for (const q of recalls.filter((x) => x.step === i)) lines.push(`  [searched long-term memory (invisible to the user)] ${q.query}`);
     for (const q of threadSearches.filter((x) => x.step === i)) lines.push(`  [also searched their past conversations with other AI tools (invisible to the user)] ${q.query}`);
@@ -848,7 +871,10 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   await core.stop().catch(() => {});
   tuwa?.stop();
   const boundRefs = new Map(core.tasks.list().filter((c) => c.source).map((c) => [c.taskId, c.source!.ref] as [string, string]));
-  return { sc, visible, dayCards, calKinds, todoCards, boundRefs, blocks, shown, dropped, tools, opened: fr.opened, sent, keyOf, idOf, dataDir, usage, error, ms: Date.now() - t0, transcript: lines.join("\n"), recalls, threadSearches, remembered: mem.added, memAttempts, sources, retitles, bridgeSent, work: { ...work, asks }, bodies, saidAsks, rulesNow };
+  const appsNow = core.apps.list(persona.id ?? core.persona.id).map((m) => ({ id: m.id, name: m.name, version: m.version, html: core.apps.html(m.id) ?? "", data: core.apps.data(m.id) }));
+  // D405: the apps the model wrote, kept whole for a look (the results file clips them); never committed.
+  if (process.env.DUCTER_EVAL_APPS_DIR) for (const a of appsNow) writeFileSync(join(process.env.DUCTER_EVAL_APPS_DIR, `${sc.id}-${a.id}-v${a.version}.html`), a.html);
+  return { sc, visible, dayCards, calKinds, todoCards, boundRefs, blocks, shown, appCards, appAnswers, appsNow, appsSeeded, dropped, tools, opened: fr.opened, sent, keyOf, idOf, dataDir, usage, error, ms: Date.now() - t0, transcript: lines.join("\n"), recalls, threadSearches, remembered: mem.added, memAttempts, sources, retitles, bridgeSent, work: { ...work, asks }, bodies, saidAsks, rulesNow };
 }
 
 const r_opened = (o: Opened[], step: number) => o.filter((x) => x.step === step);
@@ -856,6 +882,8 @@ const r_opened = (o: Opened[], step: number) => o.filter((x) => x.step === step)
 function describeStep(st: Step): string {
   if ("users" in st) return st.users.map((u) => `user says${u.replyTo ? ` (replying, by swipe, to the earlier message with "${u.replyTo}")` : ""}: ${u.text}`).join(" || then at once ") + " (sent together, before any answer)";
   if ("user" in st && st.replyTo) return `user replies (by swipe, quoting it) to the earlier message with "${st.replyTo}": ${st.user}`;
+  if ("user" in st && st.app === "ask") return `the user tapped a button in their own app (the first one listed in [apps]), and the app asked the partner through ducter.ask: ${st.user}`;
+  if ("user" in st && st.app === "about") return `user types in the sheet of their app (the first one listed in [apps]), about it: ${st.user}`;
   if ("user" in st) return `user says: ${st.user}${st.images?.length ? ` (with ${st.images.length === 1 ? "a picture" : `${st.images.length} pictures`}: ${st.images.map((p) => p.split("/").pop()).join(", ")})` : ""}`;
   if ("report" in st) return `${st.report.told?.length ? `the user typed straight into task "${st.report.task}"'s own box: ${st.report.told.map((t) => `"${t}"`).join(", ")}; then ` : ""}task "${st.report.task}" reports ${st.report.body.state}: ${st.report.body.summary}${st.report.body.questions.length ? ` | its question (already shown to the user with Go / Hold / Reply buttons): ${st.report.body.questions.map((q) => q.text).join(" / ")}` : ""}${st.report.body.evidence.length ? "" : " | (no evidence attached)"}`;
   if ("reports" in st) return st.reports.map((r) => `task "${r.task}" reports ${r.body.state}: ${r.body.summary}`).join(" || ") + " (both within the same second)";
@@ -893,7 +921,11 @@ function applyStep(st: Exclude<Step, { peer: unknown }>, core: Core, idOf: Map<s
   if ("user" in st) {
     // D206: the pictures go through the home's media store, as an upload would.
     const media = (st.images ?? []).map((p) => core.media.putFile(join(import.meta.dir, "..", "..", "..", p)));
-    logUserMessage(core.log, core.decisions, { text: st.user, ...to, ...(media.length ? { media } : {}), ...(st.replyTo ? { reply: replyWant(core, st.replyTo) } : {}) });
+    // D405: the first app made asks (on the user's tap), or the user typed in its sheet.
+    const first = st.app ? [...core.apps.list("default")].sort((a, b) => a.made.localeCompare(b.made))[0] : undefined;
+    const app = first ? { app: { id: first.id, name: first.name, ...(st.app === "ask" ? { ask: `e${Date.now().toString(36)}` } : {}) } } : {};
+    if (first && st.app === "ask") core.apps.asked(first.id, app.app!.ask!);
+    logUserMessage(core.log, core.decisions, { text: st.user, ...to, ...(media.length ? { media } : {}), ...(st.replyTo ? { reply: replyWant(core, st.replyTo) } : {}), ...app });
   } else if ("users" in st) {
     for (const u of st.users) logUserMessage(core.log, core.decisions, { text: u.text, ...to, ...(u.replyTo ? { reply: replyWant(core, u.replyTo) } : {}) });
   } else if ("callEnded" in st) {
@@ -1020,6 +1052,14 @@ function check(r: RunResult): string[] {
   const blockText = (r.blocks ?? []).map((b) => JSON.stringify(b.ui)).join("\n");
   // D383: what made_find show put under a message (a file by its name, a block by its JSON).
   if (e.madeShown && !(r.shown ?? []).some((n) => e.madeShown!.test(n)) && !e.madeShown.test(blockText)) fails.push(`nothing shown matching ${e.madeShown} (shown: ${(r.shown ?? []).join(", ") || "none"})`);
+  // D405: the app card, the answer to an app's ask, the file, and a seeded app kept as it was.
+  const cards = r.appCards ?? [];
+  if (e.appCard && !cards.some((c) => c.change === e.appCard)) fails.push(`no ${e.appCard} app card (cards: ${cards.map((c) => c.change).join(", ") || "none"})`);
+  if (e.noAppCard && cards.length) fails.push(`an app card though none should be (${cards.map((c) => c.change).join(", ")})`);
+  if (e.appAnswer && !r.appAnswers) fails.push("no reply answered the app's ask");
+  const newest = [...(r.appsNow ?? [])].sort((a, b) => b.version - a.version)[0];
+  if (e.appHtml && !(r.appsNow ?? []).some((a) => e.appHtml!.test(a.html))) fails.push(`no app's file matches ${e.appHtml} (newest: ${newest ? `${newest.name} v${newest.version}, ${newest.html.length} chars` : "none"})`);
+  if (e.appKept) for (const s of r.appsSeeded ?? []) if ((r.appsNow ?? []).find((a) => a.id === s.id)?.html !== s.html) fails.push("a seeded app's file was changed");
   if (e.noMadeShown && (r.shown?.length || 0) > 0) fails.push(`showed ${r.shown!.join(", ")} though nothing should be`);
   for (const re of e.uiRequire ?? []) if (!re.test(blockText)) fails.push(`the block lacks ${re}`);
   if (e.calCard && !r.calKinds?.includes(e.calCard)) fails.push(`no calendar ${e.calCard} card`);

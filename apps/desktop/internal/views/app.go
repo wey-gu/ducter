@@ -359,6 +359,7 @@ type App struct {
 	ctune      composerTuneState // D354: the model and effort chips under the task's composer
 	infoCopied time.Time
 	past       pastState // D285: 做过的事 / Past tasks (past.go)
+	pal        palState  // D390: 找任何东西 / Find anything, ⌘K (palette.go)
 	did        didState  // D300: 替你做过的 / Done for you (did.go)
 }
 
@@ -570,17 +571,17 @@ func (a *App) View(c *ui.Context) {
 }
 
 // shortcuts: Esc goes up one level, Cmd+1 the conversation, Cmd+2 On
-// hand, Cmd+3 Devices, Cmd+4 Partner, Cmd+, Settings, Cmd+K the composer
-// of the level shown. (In Ducter.app the menu bar holds the same keys.)
+// hand, Cmd+3 Devices, Cmd+4 Partner, Cmd+, Settings, Cmd+K (and Cmd+O)
+// Find anything (D390). (In Ducter.app the menu bar holds the same keys.)
 func (a *App) shortcuts(c *ui.Context) {
 	if a.nt.open {
 		return // the New task card has the keys (Esc closes it)
 	}
 	if a.oh.sw {
-		if c.Shortcut(ui.Cmd, ui.KeyO) || c.Shortcut(0, ui.KeyEscape) {
+		if c.Shortcut(ui.Cmd, ui.KeyO) || c.Shortcut(ui.Cmd, ui.KeyK) || c.Shortcut(0, ui.KeyEscape) {
 			a.oh.sw = false
 		}
-		return // the switcher has the keys (D216)
+		return // the palette has the keys (D216, D390)
 	}
 	a.railKeys(c) // D244: ⌘⇧] and ⌘⇧[ walk the tasks, from anywhere
 	switch {
@@ -605,10 +606,7 @@ func (a *App) shortcuts(c *ui.Context) {
 	case c.Shortcut(ui.Cmd|ui.Alt, ui.KeyB):
 		a.ToggleBench() // D214: the workbench, as VS Code's, Zed's and Codex's right panel
 	case c.Shortcut(ui.Cmd, ui.KeyK):
-		if a.Route != RouteConversation && a.Route != RouteTask {
-			a.Route = RouteConversation
-		}
-		a.focusComposer = true
+		a.OpenSwitcher() // D390: 找任何东西 / Find anything (it was the composer, D216)
 	case a.Route == RouteConversation && c.Shortcut(ui.Cmd, ui.KeyDown):
 		a.ToLatest() // D254: to the newest message
 	case c.Shortcut(0, ui.KeyEscape):

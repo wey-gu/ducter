@@ -886,6 +886,8 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 		s.applyPast(f) // D285 (past.go)
 	case "made_result":
 		s.applyMade(f) // D383 (past.go)
+	case "past_steps_result", "past_forked":
+		s.applyPastSteps(f) // D390 (past.go)
 	case "did_result":
 		s.applyDid(f) // D300 (did.go)
 	case "mem_found":

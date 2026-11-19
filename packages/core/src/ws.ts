@@ -166,7 +166,7 @@ export interface WsDeps {
   /** D285: 做过的事 / Past tasks (past.ts); absent in tests that don't need it. */
   /** D309: 伙伴们 / Partners (partners.ts); absent in tests that don't need them. */
   partners?: Partners;
-  past?: import("./past.ts").Past & { marks: import("./past.ts").Marks; persona: () => string; ongoing?: import("./ongoing.ts").Ongoing; outside?: import("./outside.ts").Outside; made?: import("./made.ts").Made };
+  past?: import("./past.ts").Past & { marks: import("./past.ts").Marks; persona: () => string; ongoing?: import("./ongoing.ts").Ongoing; outside?: import("./outside.ts").Outside; made?: import("./made.ts").Made; redo?: import("./redo.ts").Redo };
   /** D300: 替你做过的 / Done for you (did.ts); absent in tests that don't need it. */
   did?: import("./did.ts").Did;
   /**
@@ -1779,6 +1779,30 @@ export function createWsHandler(deps: WsDeps) {
         if (!sockets.has(ws)) send(ws, { t: "outside_hidden", agent: f.agent, hidden: !!f.hidden });
         refreshFirstScreens(); // D307: Settings shows what is not shown, and its way back
         return;
+      }
+      case "past_steps": {
+        // D390: a task's steps, for 停在哪儿 / Where it stopped and 从这一步重来 / Redo from here.
+        const redo = deps.past?.redo;
+        if (!redo) throw new Error("past tasks are not available");
+        const card = tasks.get(String(f.taskId ?? ""));
+        if (!card || card.persona !== deps.past!.persona()) throw new Error("I can't find that task.");
+        const r = await redo.steps(card.taskId);
+        send(ws, { t: "past_steps_result", ...(typeof f.id === "string" ? { id: f.id.slice(0, 64) } : {}), taskId: card.taskId, ...r });
+        return;
+      }
+      case "past_fork": {
+        // D390: 从这一步重来 / Redo from here: a new task; the original is not touched.
+        const redo = deps.past?.redo;
+        const step = Number(f.step) || 0;
+        const done = (r: { ok: boolean; taskId?: string; message?: string; step?: number }) => send(ws, { t: "past_forked", from: String(f.taskId ?? ""), step: r.step ?? step, ok: r.ok, ...(r.taskId ? { taskId: r.taskId } : {}), ...(r.message ? { message: r.message } : {}) });
+        if (!redo) return done({ ok: false, message: "Past tasks are not available." });
+        const card = tasks.get(String(f.taskId ?? ""));
+        if (!card || card.persona !== deps.past!.persona()) return done({ ok: false, message: "I can't find that task." });
+        const r = await redo.fork({ taskId: card.taskId, ...(step ? { step } : {}), ...(typeof f.harness === "string" && f.harness ? { harness: f.harness } : {}), ...(typeof f.model === "string" && f.model ? { model: f.model } : {}), ...(typeof f.words === "string" ? { words: f.words.slice(0, 16_000) } : {}) }).catch((err: Error) => ({ ok: false as const, step, message: err.message }));
+        if (!r.ok) return done({ ok: false, step: r.step, message: r.message });
+        // The partner knows (it never wakes for this): the person redid an earlier task from a step.
+        log.append({ stream: "channel", origin: "user", kind: "job_status", body: { jobId: `act_${r.card.taskId}_redo`, taskId: r.card.taskId, state: "running", text: `the user redid step ${r.step} of an earlier task (${card.title}) as this new one${r.card.harness !== card.harness ? `, with ${r.card.harness}` : ""}` } });
+        return done({ ok: true, taskId: r.card.taskId, step: r.step });
       }
       case "past_continue": {
         // 接着做 / Continue: the same task goes back to work. Another agent first when picked

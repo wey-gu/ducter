@@ -2,6 +2,7 @@
 import { onWbFrame } from "./workbench-ask.ts";
 import { onFileOpenFrame } from "./filelink-ask.ts";
 import { onPastFrame, openPast } from "./past.tsx";
+import { onStepsFrame } from "./past-preview.tsx";
 import { onMadeFrame } from "./made.tsx";
 import { onDidFrame, openDid } from "./did.tsx";
 import type { AgentModels, AgentReason, MemPluginReason, BrainNow, BridgeView, Candidate, ModelChoice, ClientFrame, Place, PlaceChoice, ConnectionReason, ConnectionView, DeviceHarness, DeviceView, DucterFolderView, GhInstallPlan, GitLoginState, MemItem, MemView, OoDetect, Reach, KindDefault, RuleView, ServerFrame, Settings, SettingsPatch, UpdateAllView, UpdateReason } from "@ducter/protocol";
@@ -823,8 +824,12 @@ class AppState {
     // D285: 做过的事 / Past tasks (past.tsx).
     // D300: 替你做过的 / Done for you (did.tsx).
     if (f.t === "did_result") return onDidFrame(f);
+    // D390: the find-anything field asks with its own ids (k…): its answers are its own.
+    if ((f.t === "made_result" || f.t === "past_result") && f.id?.startsWith("k")) return void this.palette?.frame(f);
     if (f.t === "made_result") return onMadeFrame(f);
     if (f.t === "past_result" || f.t === "past_marked" || f.t === "ongoing_result" || f.t === "outside_adopted" || f.t === "outside_hidden") return onPastFrame(f);
+    // D390: a task's steps and a redo's new task (past-preview.tsx); the palette's own past/made answers.
+    if (f.t === "past_steps_result" || f.t === "past_forked") return onStepsFrame(f);
     // `ducter open <task>` (D128): show it as if tapped; back returns.
     if (f.t === "open_task") return void ((this.sheet = null), this.go({ name: "task", id: f.taskId }));
     if (f.t === "open_result") return;
@@ -1021,6 +1026,8 @@ class AppState {
    *  partner, ⌘, Settings, ⌘K the composer of the level shown. Unknown names do nothing. */
   /** D244: opens the next (1) or the previous (-1) task in On hand's order (onhand.tsx sets it). */
   walk?: (by: number) => void;
+  /** D390: the find-anything field's own answers and its reset (palette.tsx sets them; no import cycle). */
+  palette?: { frame: (f: Extract<ServerFrame, { t: "past_result" } | { t: "made_result" }>) => void; reset: () => void };
 
   command(c: string) {
     const r = this.route;
@@ -1040,6 +1047,7 @@ class AppState {
     if (c === "switch") {
       if (this.sheet?.kind === "newtask") return;
       this.sheet = this.sheet?.kind === "switch" ? null : { kind: "switch" };
+      if (this.sheet) this.palette?.reset();
       return this.changed();
     }
     if (c === "onhand") {

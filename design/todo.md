@@ -146,6 +146,17 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
 - OAR upstream: carry Codex's reset on the `quota` failure, and `rate_limit_event` as an event.
 - A comprehension pass with people on 先停下 / Stop here and the hand-off switch.
 
+## Every task open (D390, `sessions.md`, research/155)
+
+- [ ] **The code exactly as it was at a step**, uncommitted work included: Ducter's own snapshot at each turn's end (a hidden ref per turn, `git stash create` style), used by New task from this step before the newest commit. Trigger: a redo that lost work the agent hadn't committed.
+- [ ] **A worker's commits for a redo** (read on that computer; today a redo there starts from where the task began and says so). Trigger: the first redo of a worker's repo task.
+- [ ] **The agent's own fork for the same agent** (`--fork-session` with a message, `thread/fork`, pi's `fork`) instead of the condensed start, when the agent is the same. Trigger: a redo whose condensed start missed something the session knew.
+- [ ] **Compare two tasks' branches side by side** (two redos of one step). Trigger: the person asks which of two tries is better.
+- [ ] **CI checks on Past cards and in Where it stopped** (needs a PR watcher, D216's todo). Trigger: the same.
+- [ ] **What a cleanup would remove** (worktrees past the archive horizon, listed before they go). Trigger: a person who asks where a worktree went.
+- [ ] **Find on a phone with a hardware keyboard** (⌘K on the iPad's web shell). Trigger: the iPad app.
+- [ ] **Live with weeks of the author's real tasks** (ranking of task_find against his words). Trigger: the next live walk on the home.
+
 ## Past tasks and Ongoing (D285, `past.md`)
 
 - [ ] **The partner can search Past tasks** (a `past_search` tool beside `log_search`, so "continue last Tuesday's refactor" said in the conversation finds the card and offers 接着做). A tool change: run the D175 eval. Trigger: the author asks the partner for an old task by words.

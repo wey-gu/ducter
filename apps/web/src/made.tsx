@@ -54,7 +54,7 @@ const KIND_G: Record<Exclude<MadeKind, "file" | "picture">, string> = {
   link: "M8.6 11.4a3 3 0 0 0 4.2 0l2.1-2.1a3 3 0 0 0-4.2-4.2l-.9.9M11.4 8.6a3 3 0 0 0-4.2 0L5.1 10.7a3 3 0 0 0 4.2 4.2l.9-.9",
 };
 
-function Tile({ it }: { it: MadeItem }) {
+export function Tile({ it }: { it: MadeItem }) {
   if (it.kind === "picture" && it.media) {
     return (
       <span class="mtile pic" aria-hidden="true">
@@ -80,7 +80,7 @@ function Tile({ it }: { it: MadeItem }) {
 }
 
 /** The words a card says what it is by: a file's own kind (PDF, MD), else the kind's word. */
-function kindWord(it: MadeItem): string {
+export function kindWord(it: MadeItem): string {
   if (it.kind === "file") {
     const b = it.media ? fileBadge(it.media) : madeExt(it.title).toUpperCase();
     return b || t("made.k.file");
@@ -91,7 +91,7 @@ function kindWord(it: MadeItem): string {
 
 // ---------- opening ----------
 
-function openIt(it: MadeItem, el: HTMLElement | undefined, close: () => void) {
+export function openIt(it: MadeItem, el: HTMLElement | undefined, close: () => void) {
   if (it.media) return openFile(it.media, el);
   if (it.path) return openFileLink(it.path, it.task?.taskId);
   if (it.url) return void window.open(it.url, "_blank", "noopener");

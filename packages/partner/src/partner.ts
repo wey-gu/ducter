@@ -68,6 +68,16 @@ import { destructiveChoice } from "../../protocol/src/destructive.ts";
 import { parseRich, RICH_LIMITS, type RichUi } from "../../protocol/src/rich.ts";
 import { MADE_KINDS, type MadeItem, type MadeKind, type MadeQuery } from "../../protocol/src/made.ts";
 import { PINS_MAX, type PinView } from "../../protocol/src/pins.ts";
+import type { PastForkInput, PastItem, PastQuery, PastStep } from "../../protocol/src/past.ts";
+
+/** D390: the parts of core's Past tasks and Redo the partner's task_find and task_fork use. */
+interface PastPort {
+  query(persona: string, q: PastQuery): { items: PastItem[]; total: number };
+}
+interface RedoPort {
+  steps(taskId: string): Promise<{ steps: PastStep[]; report?: string; repo: boolean }>;
+  fork(input: PastForkInput): Promise<{ ok: true; card: TaskCard; step: number } | { ok: false; step: number; message: string }>;
+}
 import { detect, inLanguage, langName, languageOfTexts, normalizeTag, words, type LangTag } from "../../protocol/src/lang.ts";
 import { NO_WORDS_YET, said } from "./words.ts";
 import { isConnectCode, redactWith } from "../../protocol/src/redact.ts";
@@ -288,7 +298,10 @@ export function activityStep(tool: string): ActivityStep | undefined {
       return "checking_task";
     case "task_open":
     case "own_session_continue": // D376
+    case "task_fork": // D390
       return "opening_task";
+    case "task_find": // D390
+      return "recalling";
     case "task_send":
       return "messaging_task";
     case "wait_until":
@@ -313,7 +326,7 @@ export function activityStep(tool: string): ActivityStep | undefined {
       return "looking";
   }
 }
-const QUIET_TOOL_RE = /(^ToolSearch$)|((^|__)(log_search|log_read|task_read|memory_search|memory_add|task_retitle|task_switch|own_session_find|own_session_continue|made_find)$)/;
+const QUIET_TOOL_RE = /(^ToolSearch$)|((^|__)(log_search|log_read|task_read|memory_search|memory_add|task_retitle|task_switch|own_session_find|own_session_continue|made_find|task_find|task_fork)$)/;
 /** D376: the user asks for their own account (a sign-in only their own browser has). */
 const OWN_ACCOUNT = /登录|登入|登陆|账号|帐号|账户|帐户|验证码|sign(?:ed)?[ -]?in\b|log(?:ged)?[ -]?in\b|my (?:\w+ )?account/i;
 
@@ -2111,6 +2124,12 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   const own = (core as { outside?: OwnSessionsPort }).outside;
   if (own) registerOwnSessionTools(own);
 
+  // D390: "接着上周那个 compaction 的 PR", "从第 3 步换 Codex 再试": an earlier Ducter task found by
+  // the person's words in Past tasks' index (never a model), read cheaply where it stopped, then
+  // carried on (task_send) or redone from a step (task_fork).
+  const pastPort = core as { past?: PastPort; redo?: RedoPort };
+  if (pastPort.past && pastPort.redo) registerPastTools(pastPort.past, pastPort.redo);
+
   // D383: "找一下上周做的那个行程表", "the PDF you made for the visa": what Ducter made, found by
   // the person's words, its kind and time words in core's index, and put under the reply as it
   // is (a file as a file the viewer opens, a table drawn again, a link). Only when asked.
@@ -2226,6 +2245,133 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       },
     );
   }
+  function registerPastTools(past: PastPort, redo: RedoPort) {
+    const asked = () => !!turn && !bridgeOnly(turn) && !turn.quiet && turn.userTexts.length > 0;
+    const ago = (iso: string) => {
+      const m = Math.max(0, Math.round((now() - Date.parse(iso)) / 60_000));
+      const d = new Date(iso);
+      const day = d.toISOString().slice(0, 10);
+      return m < 90 ? `${m} min ago` : m < 36 * 60 ? `${Math.round(m / 60)} h ago (${day})` : `${Math.round(m / 1440)} days ago (${day})`;
+    };
+    const ended = (a: string) => (a === "done" || a === "superseded" ? "done" : a === "failed" ? "didn't work" : a === "dropped" ? "cancelled" : a === "needs_you" || a === "blocked" ? "still on hand, waiting on the user" : "still on hand, working");
+    const brief = (it: PastItem) => ({
+      taskId: it.taskId,
+      title: it.title,
+      ...(it.project ? { project: it.project } : {}),
+      agent: harnessName(it.harness) + (it.model ? ` (${it.model})` : ""),
+      computer: it.computer ?? "the home",
+      worked: ago(it.updatedAt),
+      ended: ended(it.attention),
+      ...(it.outcome ? { result: it.outcome } : {}),
+      ...(it.lastWords ? { lastWords: it.lastWords } : {}),
+      ...(it.asking ? { asking: it.asking } : {}),
+      ...(it.branch ? { branch: it.branch } : {}),
+      ...(it.integrated ? { pr: it.integrated.act === "merge" ? "merged" : `draft PR ${it.integrated.ref ?? ""}`.trim() } : {}),
+      ...(it.changes ? { changes: `+${it.changes.adds} −${it.changes.dels} in ${it.changes.files} files` } : {}),
+      ...(it.steps ? { steps: it.steps } : {}),
+      ...(it.hit ? { matched: `${it.hit.field}: ${it.hit.text}` } : {}),
+      ...(it.from ? { from: `${it.from.step ? `redoes step ${it.from.step} of` : "carries on from"} "${it.from.title}"` } : {}),
+    });
+    core.mcp.register(
+      "partner",
+      "task_find",
+      "When the user names an earlier Ducter task (\"接着上周那个 compaction 的 PR\"): finds it by their words (time words kept), best first, with where it stopped; taskId: its steps. One clear fit: act (task_send or task_fork), naming it by title and day; several alike: ask which. Never unasked.",
+      {
+        type: "object",
+        properties: {
+          words: { type: "string", description: "Their words: subject, repo, branch, file, time words" },
+          computer: { type: "string" },
+          agent: { type: "string", enum: ["claude-code", "codex", "pi"] },
+          ended: { type: "string", enum: ["done", "failed", "cancelled", "on_hand"] },
+          taskId: { type: "string" },
+        },
+      },
+      async (a: { words?: unknown; computer?: unknown; agent?: unknown; ended?: unknown; taskId?: unknown }) => {
+        if (!asked()) return { ok: false, error: "Only when the user asks for an earlier task, in this turn." };
+        if (typeof a.taskId === "string" && a.taskId) {
+          const c = core.tasks.get(a.taskId);
+          if (!c || c.persona !== core.persona.id) return { ok: false, error: `unknown task ${a.taskId}` };
+          const r = await redo.steps(c.taskId);
+          return {
+            ok: true,
+            taskId: c.taskId,
+            title: c.title,
+            steps: r.steps.map((s) => ({ n: s.n, who: s.who === "you" ? "user" : "partner", text: s.text.length > 200 ? `${s.text.slice(0, 199)}…` : s.text, ...(s.came ? { came: s.came } : {}), ...(s.commit ? { codeAt: s.commit } : {}) })),
+            note: "Step 1 is its brief. task_fork with the step that their words name redoes it from there (that step's own words, or theirs).",
+          };
+        }
+        const q = typeof a.words === "string" ? a.words.trim().slice(0, 200) : "";
+        const query: PastQuery = {
+          ...(q ? { q } : {}),
+          ...(typeof a.agent === "string" && ["claude-code", "codex", "pi"].includes(a.agent) ? { harness: a.agent } : {}),
+          ...(typeof a.computer === "string" && a.computer.trim() ? { computer: a.computer.trim() } : {}),
+          ...(typeof a.ended === "string" && ["done", "failed", "cancelled", "on_hand"].includes(a.ended) ? { ended: a.ended as PastQuery["ended"] } : {}),
+          limit: 5,
+        };
+        let r = past.query(core.persona.id, query);
+        // A computer named as they say it ("haswell", "my MacBook") that isn't a name here: without it.
+        if (!r.items.length && query.computer !== undefined) r = past.query(core.persona.id, { ...query, computer: undefined });
+        if (!r.items.length)
+          return { ok: true, tasks: [], note: "No Ducter task matches. If they ran it themselves in Claude Code, Codex or pi: own_session_find. Else one short question: what it was about." };
+        return {
+          ok: true,
+          tasks: r.items.map(brief),
+          ...(r.total > r.items.length ? { more: r.total - r.items.length } : {}),
+          note: "Best first. Pick by their words. One clearly fits: act now (task_send to carry it on in its own session, branch and worktree; task_fork to redo from a step) and name it in your line by title and day. Two or more fit alike: one question naming each by title, day and computer; open nothing.",
+        };
+      },
+    );
+    core.mcp.register(
+      "partner",
+      "task_fork",
+      "Redo an earlier task from a step as a new task (\"从第 3 步换 Codex 再试\"): what led up to it goes along, its code from the last commit before it; the original stays. step 1: from the start; omitted: the last.",
+      {
+        type: "object",
+        properties: {
+          taskId: { type: "string" },
+          step: { type: "number" },
+          harness: { type: "string", enum: ["claude-code", "codex", "pi", "deepseek-harness"] },
+          model: { type: "string" },
+          words: { type: "string", description: "New words for that step, if they give any" },
+        },
+        required: ["taskId"],
+      },
+      async (a: { taskId: string; step?: unknown; harness?: unknown; model?: unknown; words?: unknown }) => {
+        const t = turn;
+        if (!t || !asked()) return { ok: false, error: "Only when the user asks to redo an earlier task, in this turn." };
+        const c = core.tasks.get(String(a.taskId));
+        if (!c || c.persona !== core.persona.id) return { ok: false, error: `unknown task ${a.taskId}` };
+        const r = await redo.fork({
+          taskId: c.taskId,
+          ...(Number(a.step) > 0 ? { step: Math.round(Number(a.step)) } : {}),
+          ...(typeof a.harness === "string" && isHarnessId(a.harness) ? { harness: a.harness } : {}),
+          ...(typeof a.model === "string" && a.model ? { model: a.model } : {}),
+          ...(typeof a.words === "string" && a.words.trim() ? { words: redactSecrets(a.words, t.userTexts) } : {}),
+        });
+        if (!r.ok) return { ok: false, error: `task_fork failed: ${r.message}` };
+        // Its line: the one said before the call (or after it), as task_open's.
+        let ack = claimAck(t);
+        const until = Date.now() + ackWaitMs;
+        while (!ack && Date.now() < until) {
+          await Bun.sleep(10);
+          ack = claimAck(t);
+        }
+        if (!ack) ack = appendAck(t, ackFor(t, r.card.title));
+        t.unboundAck = null;
+        t.opensHandled++;
+        jobs.set(r.card.taskId, { jobId: ack.jobId, title: r.card.title, replyTo: replyToFor(t), state: "running" });
+        core.log.append({ stream: "channel", origin: "partner", kind: "job_status", body: { jobId: ack.jobId, text: r.card.title, state: "running", taskId: r.card.taskId } });
+        return {
+          ok: true,
+          taskId: r.card.taskId,
+          redoes: `step ${r.step} of "${c.title}"`,
+          agent: harnessName(r.card.harness),
+          note: "Opened. At most one short line: which task and step it redoes, with which agent; the original stays as it is.",
+        };
+      },
+    );
+  }
+
   function registerOwnSessionTools(own: OwnSessionsPort) {
     const asked = () => !!turn && !bridgeOnly(turn) && !turn.quiet && turn.userTexts.length > 0;
     core.mcp.register(

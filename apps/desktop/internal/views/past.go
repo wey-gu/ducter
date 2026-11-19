@@ -11,6 +11,7 @@ package views
 import (
 	"fmt"
 	"math"
+	"slices"
 	"strings"
 	"time"
 	"unicode"
@@ -79,6 +80,19 @@ type pastState struct {
 	// D299: adopting is the outside session being carried on (agent:id),
 	// opened when its task is there; outMsg why one couldn't be.
 	adopting, outMsg string
+	// D390: computer and ended narrow the list on their own, beside
+	// filter (one computer, one ending, each a chip that toggles).
+	computer *string
+	ended    string
+	// sel is the card 停在哪儿 / Where it stopped shows; sheet shows it as
+	// a sheet (narrow); pickSteps: came to pick a step to redo from.
+	sel        string
+	sheet      bool
+	pickSteps  bool
+	stepsAsked map[string]bool
+	synth      map[string]*protocol.PastItem
+	// redo is the 从这一步开新任务 / New task from this step sheet (past_where.go).
+	redo redoState
 }
 
 // ---------- ways in ----------
@@ -92,6 +106,8 @@ func (a *App) OpenPast(q string) {
 	}
 	a.Route = RoutePast
 	ps.q, ps.typed, ps.filter, ps.focus = q, q, pastFilter{}, ""
+	ps.computer, ps.ended, ps.sel, ps.sheet, ps.pickSteps = nil, "", "", false, false
+	ps.stepsAsked = nil // a task's steps are asked again: it may have moved on
 	ps.marking, ps.markOpen = "", false
 	ps.focusField = true
 	ps.tab = ""
@@ -123,6 +139,10 @@ func (a *App) pastEsc() {
 	switch {
 	case ps.markOpen:
 		a.closeMarks()
+	case ps.redo.open:
+		ps.redo.open = false
+	case ps.sheet && ps.sel != "" && ps.tab == "":
+		ps.sheet = false
 	case ps.tab == "ongoing" && a.ongoingEsc():
 	case ps.tab == "made" && ps.q != "":
 		ps.q = ""
@@ -130,8 +150,8 @@ func (a *App) pastEsc() {
 		ps.made.kind = ""
 	case ps.tab == "" && ps.q != "":
 		ps.q = ""
-	case ps.tab == "" && ps.filter.kind != "":
-		ps.filter = pastFilter{}
+	case ps.tab == "" && (ps.filter.kind != "" || ps.computer != nil || ps.ended != ""):
+		ps.filter, ps.computer, ps.ended = pastFilter{}, nil, ""
 	default:
 		a.pastBack()
 	}
@@ -152,15 +172,23 @@ func (a *App) pastQuery() protocol.PastQuery {
 	case "tag":
 		q.Tag = ps.filter.value
 	}
+	if ps.computer != nil {
+		v := *ps.computer
+		q.Computer = &v
+	}
+	q.Ended = ps.ended
 	return q
 }
 
 func pastKey(q protocol.PastQuery) string {
-	p := ""
+	p, pc := "", ""
 	if q.Project != nil {
 		p = "p:" + *q.Project
 	}
-	return fmt.Sprint(q.Q, "\x00", q.Starred, p, q.Harness, q.Tag)
+	if q.Computer != nil {
+		pc = "c:" + *q.Computer
+	}
+	return fmt.Sprint(q.Q, "\x00", q.Starred, p, q.Harness, q.Tag, pc, q.Ended)
 }
 
 // askPast sends the query now.
@@ -222,29 +250,45 @@ func (a *App) pastView(c *ui.Context) {
 	}, nil)
 	res := a.S.Past.Result
 	var field ui.Element
-	ui.Scroll(c.Key("past-scroll")).Grow(1).MinHeight(0).Children(func() {
-		ui.Column(c).Padding(t.S5, t.S6, t.S7, t.S6).Children(func() {
-			ui.Column(c.Key("past-col")).Gap(t.S4).Width(pastMeasure).MaxWidthPercent(100).AlignSelf(ui.Center).Children(func() {
-				a.pastTabs(c)
-				if ps.tab == "ongoing" {
-					a.ongoingList(c)
-					return
-				}
-				if ps.tab == "made" {
-					field = a.madeTab(c) // D383 (made.go)
-					return
-				}
-				field = a.pastField(c, res)
-				if res != nil {
-					a.pastChips(c, res)
-				}
-				a.pastList(c, res)
+	// D390: wide, 停在哪儿 / Where it stopped stands beside the list, on
+	// the card chosen (the first one until another is).
+	split := ps.tab == "" && a.pastWide(c)
+	ui.Row(c.Key("past-split")).Grow(1).MinHeight(0).AlignItems(ui.Stretch).Children(func() {
+		ui.Scroll(c.Key("past-scroll")).Grow(1).MinHeight(0).MinWidth(0).Children(func() {
+			ui.Column(c).Padding(t.S5, t.S6, t.S7, t.S6).Children(func() {
+				ui.Column(c.Key("past-col")).Gap(t.S4).Width(pastMeasure).MaxWidthPercent(100).AlignSelf(ui.Center).Children(func() {
+					a.pastTabs(c)
+					if ps.tab == "ongoing" {
+						a.ongoingList(c)
+						return
+					}
+					if ps.tab == "made" {
+						field = a.madeTab(c) // D383 (made.go)
+						return
+					}
+					field = a.pastField(c, res)
+					if res != nil {
+						a.pastChips(c, res)
+					}
+					a.pastList(c, res)
+				})
 			})
 		})
+		if split {
+			a.pastWhereColumn(c)
+		}
 	})
 	if ps.tab == "" {
 		a.pastKeys(c, field)
+		a.pastWhereSheet(c)
 	}
+	// The cards as drawn now: wide, the preview stays on one of them (the
+	// first, until one is chosen), unless it came to pick a step.
+	if split && !ps.pickSteps && len(ps.order) > 0 && (ps.sel == "" || !slices.Contains(ps.order, ps.sel)) {
+		a.pastSelect(ps.order[0])
+		c.After(16 * time.Millisecond)
+	}
+	a.redoSheet(c)
 	if ps.marking != "" && !ps.markOpen {
 		a.closeMarks()
 	}
@@ -343,6 +387,21 @@ func (a *App) pastChips(c *ui.Context, res *protocol.PastFrame) {
 			chips = append(chips, chip{pastFilter{"harness", h.Harness}, harnessName(h.Harness), h.N})
 		}
 	}
+	// D390: a second track: the computers (from two), then how it ended;
+	// each on its own, so "haswell" and "没做成" hold together.
+	var more []chip
+	if len(res.Facets.Computers) > 1 {
+		for _, pc := range res.Facets.Computers {
+			name := pc.Name
+			if name == "" {
+				name = a.pastHomeName()
+			}
+			more = append(more, chip{pastFilter{"computer", pc.Name}, name, pc.N})
+		}
+	}
+	for _, e := range []struct{ v, key string }{{"done", "past.ended.done"}, {"failed", "past.ended.failed"}, {"cancelled", "past.ended.cancel"}, {"on_hand", "past.ended.onhand"}} {
+		more = append(more, chip{pastFilter{"ended", e.v}, a.L.T(e.key), 0})
+	}
 	for i, tg := range res.Facets.Tags {
 		if i == 6 {
 			break
@@ -358,41 +417,70 @@ func (a *App) pastChips(c *ui.Context, res *protocol.PastFrame) {
 		chips = append(chips, chip{ps.filter, ps.filter.value, 0})
 	}
 	const pad = float32(3)
-	ui.Row(c.Key("chips-row")).Children(func() {
-		ui.ScrollHorizontal(c.Key("chips-scroll")).Shrink(1).MinWidth(0).Children(func() {
-			ui.Row(c.Key("chips")).Padding(pad).Gap(2).Radius(t.RadiusSM).AlignItems(ui.Center).Background(t.SurfaceSunken).
-				InsetShadow(0, 1.5, 2, 0, t.Line).Role(ui.RoleTabList).Label(a.L.T("past.title")).Children(func() {
-				for i, ch := range chips {
-					on := ch.f == ps.filter
-					b := ui.Row(c.Key(fmt.Sprintf("chip:%d:%s:%s", i, ch.f.kind, ch.f.value))).Height(28).Padding(0, t.S3).Gap(t.S1 + 1).
-						Radius(t.RadiusSM - pad).AlignItems(ui.Center).Cursor(ui.CursorPointer).Role(ui.RoleTab).Label(ch.label).
-						AccessSelected(on).Focusable().Shrink(0)
-					fg := t.InkSoft
-					switch {
-					case on:
-						a.knob(b)
-						fg = t.Ink
-					case b.Hovered():
-						b.Background(t.SurfaceSunken.Mix(t.Surface, 0.5))
-						fg = t.Ink
-					}
-					b.Children(func() {
-						if ch.f.kind == "starred" {
-							ui.Box(c).Size(12, 12).Shrink(0).Draw(drawStar(fg, on)).AccessHidden(true)
+	for gi, chips := range [][]chip{chips, more} {
+		ui.Row(c.Key(fmt.Sprintf("chips-row:%d", gi))).Children(func() {
+			ui.ScrollHorizontal(c.Key("chips-scroll")).Shrink(1).MinWidth(0).Children(func() {
+				ui.Row(c.Key("chips")).Padding(pad).Gap(2).Radius(t.RadiusSM).AlignItems(ui.Center).Background(t.SurfaceSunken).
+					InsetShadow(0, 1.5, 2, 0, t.Line).Role(ui.RoleTabList).Label(a.L.T("past.title")).Children(func() {
+					for i, ch := range chips {
+						on := ch.f == ps.filter
+						switch ch.f.kind {
+						case "":
+							on = on && ps.computer == nil && ps.ended == ""
+						case "computer":
+							on = ps.computer != nil && *ps.computer == ch.f.value
+						case "ended":
+							on = ps.ended == ch.f.value
 						}
-						w := 500
-						if on {
-							w = 700
+						b := ui.Row(c.Key(fmt.Sprintf("chip:%d:%s:%s", i, ch.f.kind, ch.f.value))).Height(28).Padding(0, t.S3).Gap(t.S1 + 1).
+							Radius(t.RadiusSM - pad).AlignItems(ui.Center).Cursor(ui.CursorPointer).Role(ui.RoleTab).Label(ch.label).
+							AccessSelected(on).Focusable().Shrink(0)
+						fg := t.InkSoft
+						switch {
+						case on:
+							a.knob(b)
+							fg = t.Ink
+						case b.Hovered():
+							b.Background(t.SurfaceSunken.Mix(t.Surface, 0.5))
+							fg = t.Ink
 						}
-						ui.Text(c, ch.label).FontSize(t.SM).FontWeight(w).TextColor(fg).SingleLine().AccessHidden(true)
-					})
-					if b.Clicked() {
-						ps.filter, ps.focus = ch.f, ""
+						b.Children(func() {
+							if ch.f.kind == "starred" {
+								ui.Box(c).Size(12, 12).Shrink(0).Draw(drawStar(fg, on)).AccessHidden(true)
+							}
+							w := 500
+							if on {
+								w = 700
+							}
+							ui.Text(c, ch.label).FontSize(t.SM).FontWeight(w).TextColor(fg).SingleLine().AccessHidden(true)
+						})
+						if b.Clicked() {
+							ps.focus, ps.sel = "", ""
+							switch ch.f.kind {
+							case "computer":
+								if on {
+									ps.computer = nil
+								} else {
+									v := ch.f.value
+									ps.computer = &v
+								}
+							case "ended":
+								if on {
+									ps.ended = ""
+								} else {
+									ps.ended = ch.f.value
+								}
+							case "":
+								ps.filter, ps.computer, ps.ended = ch.f, nil, ""
+							default:
+								ps.filter = ch.f
+							}
+						}
 					}
-				}
+				})
 			})
 		})
-	})
+	}
 }
 
 // ---------- the list ----------
@@ -586,6 +674,9 @@ func (a *App) pastCard(c *ui.Context, it *protocol.PastItem, terms []string) {
 	// A card rests on its clay ledge; lifted, the ledge shows deeper and a
 	// soft drop opens under it.
 	card.Shadow(0, 2+5*k, 6+12*k, -2, t.Ink.Alpha(0.04+0.06*k)).Shadow(0, 2+2*k, 0, 0, t.Line)
+	if ps.sel == it.TaskID && a.pastWide(c) {
+		card.Border(2, t.Accent.Alpha(0.75)) // D390: the one shown beside the list
+	}
 	if focus {
 		card.AccessSelected(true)
 		if ps.scroll {
@@ -609,9 +700,15 @@ func (a *App) pastCard(c *ui.Context, it *protocol.PastItem, terms []string) {
 			a.pastActs(c, it)
 		}
 	})
-	if card.Clicked() {
-		ps.focus = it.TaskID
+	// D390: a click shows where it stopped (beside the list, or as a sheet
+	// when narrow); a double click opens it, as Enter does.
+	if card.DoubleClicked() {
+		ps.focus, ps.sheet = it.TaskID, false
 		a.pastOpen(it)
+	} else if card.Clicked() {
+		ps.focus = it.TaskID
+		a.pastSelect(it.TaskID)
+		ps.sheet = true
 	}
 }
 
@@ -790,6 +887,10 @@ func (a *App) pastMeta(c *ui.Context, it *protocol.PastItem) {
 			}
 			ui.Text(c.Key("pr"), a.L.T(key)).FontSize(t.XS).FontWeight(600).TextColor(t.InkSoft).SingleLine().Shrink(0)
 		}
+		if f := it.From; f != nil && f.Step > 0 {
+			// D390: redone from a step of another task.
+			ui.Text(c.Key("redone"), a.L.T("past.redone", shortTitle(f.Title), f.Step)).FontSize(t.XS).FontWeight(600).TextColor(t.InkSoft).SingleLine().Shrink(1).MinWidth(0)
+		}
 		if o := it.Outside; o != nil {
 			// D299: carried on from a session the person ran outside Ducter.
 			ui.Text(c.Key("outside"), a.L.T("past.out.from", harnessName(o.Agent))).FontSize(t.XS).FontWeight(600).TextColor(t.InkSoft).SingleLine().Shrink(0)
@@ -918,6 +1019,7 @@ func (a *App) pastItem(id string) *protocol.PastItem {
 
 // pastOpen opens the task as it is; Esc comes back here.
 func (a *App) pastOpen(it *protocol.PastItem) {
+	a.past.sheet = false
 	a.OpenTask(it.TaskID)
 	a.back = &returnTo{task: it.TaskID, route: RoutePast}
 }
@@ -1316,7 +1418,7 @@ func (a *App) marksPicture(c *ui.Context, it *protocol.PastItem) {
 // (pastEsc).
 func (a *App) pastKeys(c *ui.Context, field ui.Element) {
 	ps := &a.past
-	if a.nt.open || a.oh.sw || ps.markOpen {
+	if a.nt.open || a.oh.sw || ps.markOpen || ps.redo.open {
 		return
 	}
 	typing := field.Valid() && field.Focused()
@@ -1325,6 +1427,10 @@ func (a *App) pastKeys(c *ui.Context, field ui.Element) {
 		cur = a.pastItem(ps.order[0])
 	}
 	switch {
+	case c.Shortcut(ui.Alt, ui.KeyEnter):
+		if cur != nil {
+			a.pastRedoPick(cur.TaskID) // D390: 从某一步开新任务…
+		}
 	case c.Shortcut(ui.Cmd|ui.Shift, ui.KeyEnter):
 		if cur != nil {
 			a.pastSeed(cur)
@@ -1357,6 +1463,12 @@ func (a *App) pastKeys(c *ui.Context, field ui.Element) {
 		if cur != nil {
 			a.openMarks(cur, true)
 		}
+	case c.Shortcut(0, ui.KeySpace), c.Shortcut(0, ui.KeyRight):
+		if cur != nil {
+			// D390: where it stopped, as a sheet when it isn't beside the list.
+			a.pastSelect(cur.TaskID)
+			ps.sheet = true
+		}
 	}
 }
 
@@ -1382,6 +1494,7 @@ func (a *App) pastWalk(by int) {
 		i = max(0, min(len(o)-1, i+by))
 	}
 	ps.focus, ps.scroll = o[i], true
+	a.pastSelect(o[i]) // D390: where it stopped follows the keys
 }
 
 // ---------- the ways in, drawn ----------
@@ -1414,27 +1527,4 @@ func (a *App) pastFindLink(c *ui.Context, q string) {
 			a.OpenPast(strings.TrimSpace(q))
 		}
 	})
-}
-
-// pastSwitchRow is the switcher's last row while words are typed.
-func (a *App) pastSwitchRow(c *ui.Context, q string) {
-	if q == "" {
-		return
-	}
-	t := a.T
-	r := ui.Row(c.Key("sw-past")).Gap(t.S2).Padding(t.S3-2, t.S4).Radius(t.RadiusMD).AlignItems(ui.Center).Cursor(ui.CursorPointer).
-		Role(ui.RoleLink).Label(a.L.T("past.find.in", q))
-	hover := r.Hovered()
-	if hover {
-		r.Background(t.Sunken)
-	}
-	r.Children(func() {
-		ui.Box(c).Size(16, 16).Shrink(0).AccessHidden(true).Draw(drawPastGlyph("look", t.InkMuted))
-		ui.Text(c, a.L.T("past.find.in", q)).FontSize(t.MD).TextColor(t.InkSoft).SingleLine().Shrink(1).MinWidth(0)
-		a.glyph(c, 12, drawChevron(t.InkMuted, false))
-	})
-	if r.Clicked() {
-		a.oh.sw = false
-		a.OpenPast(q)
-	}
 }

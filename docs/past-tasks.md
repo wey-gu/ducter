@@ -17,7 +17,11 @@ and tasks that keep looking for something.
 - At the end of On hand, tap **做过的事 ›** (or **一直在跑的 n 件 ›**).
 - In On hand's search, when nothing there matches, tap **在做过的事里找「…」** to look for the
   same words in every earlier task.
-- In the Mac app: **做过的事… / Past Tasks…** in the menu, or ⌘Y. ⌘O, Open a task, offers it too.
+- In the Mac app: **做过的事… / Past Tasks…** in the menu, or ⌘Y.
+- Anywhere, on the Mac or in a browser: press ⌘K (Ctrl+K), **找什么都行 / Find anything**, and type a
+  few words. It finds what is on hand, every earlier task, what Ducter made for you and your own
+  sessions, and goes to any page. Enter opens the one under the keys, ⌘Enter carries it on. Its
+  last two lines say the words to Ducter, or start a new task with them. ⌘O opens it too.
 
 ## Finding a task
 
@@ -29,7 +33,17 @@ best match first, with a line saying where it matched (**你说过 / You said**,
 - Words in any order: `hawdb compaction`, `flaky 原因`, `picker.go`.
 - A day: `上周二`, `yesterday`, `last week`, `11月10日`, `3 天前`. The days it took are shown under
   the field.
-- The chips under the field narrow it: **标了星的 / Starred**, a project, an agent, one of your tags.
+- The chips under the field narrow it: **标了星的 / Starred**, a project, an agent, one of your tags,
+  the computer it ran on, and how it ended (**做完了 / Done**, **没做成 / Didn't work**,
+  **取消了 / Cancelled**, **还在手头 / Still on hand**).
+
+## Where it stopped
+
+On a wide screen, the task you select (click it once, or move to it with the arrow keys) shows
+beside the list in **停在哪儿 / Where it stopped**: how it ended, its last words, what it is asking
+you, what it changed and its pull request, and its steps: what you (or Ducter for you) asked it,
+one step at a time, with what came of each. On a phone, tap a card to see the same. Double-click,
+Enter or **打开 / Open** opens the task itself.
 
 Without words, the list shows your starred tasks first, then today, yesterday, this week, last
 week, this month and earlier months.
@@ -76,7 +90,16 @@ Your marks are kept on your home computer, so every device shows the same.
 - **带着它开新任务 / New task from this** (in ⋯): New task opens at the same place with a chip that
   says the new task takes along what that one found (its reports, branch and the files it
   touched). Remove the chip to start fresh.
-- Click the card to just look at the task.
+- **从这一步开新任务 / New task from this step:** point at a step in **停在哪儿 / Where it stopped**
+  (or choose **从某一步开新任务… / New task from a step…**). A new task does that step again, with
+  everything before it, and the same or another AI agent. Its words are already filled in, so you
+  can change them first. For code, it starts from how the code was just before that step (its
+  last commit then); what came after stays in the original. The original task isn't changed.
+- Click the card to just look at the task (on a wide screen: double-click).
+
+You can also just say it: "接着上周那个 compaction 的 PR", "我上个月在 haswell 上那个 Rust 构建的", "try the
+WAL one again from step 3 with Codex". Ducter finds the task, says which one it picked, and carries
+it on, or starts the new one from that step. When two fit, it asks which.
 
 You can also just say it in the conversation. When you follow up on something Ducter just did for
 you ("那汉庭贵多少？再看看机票", "make it configurable too"), it carries on the same task: the same

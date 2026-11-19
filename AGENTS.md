@@ -81,6 +81,7 @@ Design notes:
 - `computer-use.md`: 用电脑 / Use the computer, tasks in the person's Mac apps (D235).
 - `on-hand.md`: 手头的事 / On hand, the conductor surface: projects as a lens, the strip, the folds (D261).
 - `past.md`: 做过的事 / Past tasks and 一直在跑的 / Ongoing: finding, marking, continuing, pausing (D285).
+- `sessions.md`: every task open: ⌘K 找什么都行 / Find anything, where a task stopped, its steps, a new task from any step, and the partner's task_find / task_fork (D390).
 - `imessage.md`: the partner in iMessage through the Mac app: chat.db, AppleScript, identity, pairing (D277).
 - `task-sources.md`: 待办来源 / To-do sources, the person's GitHub issues and Obsidian Tasks bound to tasks: who owns which field, offered never started, writing back behind a Go (D341).
 - `settings.md`: Settings pane by pane: who is in each, the flows walked, the shared pieces and the partner's word after a change (D296).

@@ -84,6 +84,10 @@ type AppWatch struct {
 	Excluded    bool   `json:"excluded"`
 	Unreachable bool   `json:"unreachable,omitempty"`
 	LastReadAt  string `json:"lastReadAt,omitempty"`
+	// Trouble (D402): why Ducter stopped looking at it by itself:
+	// "unsupported" (the source can't read what the watch needs) or
+	// "reconnect" (the source says to connect the account again).
+	Trouble string `json:"trouble,omitempty"`
 	// Calendars (D222): a calendar account's calendars, and which it
 	// reads (nil until it listed them).
 	Calendars []CalendarRow `json:"calendars,omitempty"`

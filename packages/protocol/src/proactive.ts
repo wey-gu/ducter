@@ -117,6 +117,12 @@ export interface AppWatch {
   unreachable?: boolean;
   lastReadAt?: string;
   readsToday?: number;
+  /**
+   * D402: why Ducter stopped looking at it by itself, said on its row: unsupported (the source can't
+   * read what the watch needs, e.g. OOMOL's Discord bot has no mentions or DMs), reconnect (the
+   * source says the account must be connected again there).
+   */
+  trouble?: "unsupported" | "reconnect";
   /** D222: a calendar account's calendars, and which it reads (absent until it listed them). */
   calendars?: import("./calendar.ts").CalendarRow[];
 }

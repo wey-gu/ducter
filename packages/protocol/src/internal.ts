@@ -8,6 +8,7 @@ import type { CallBody, DraftRequest, DraftResult } from "./phone.ts";
 import type { AccountUsage, Attention, Bodies, BodyWhy, BranchChanges, Delivery, FolderChanges, UndoConfirm, EventKind, LogEvent, OnHand, Origin, PartnerActivity, Place, Residency, PeersSettings, Settings, TaskCard, TaskNeeds, WorkKind } from "./index.ts";
 import type { MediaRef } from "./media.ts";
 import type { LangTag } from "./lang.ts";
+import type { RuleView } from "./loadout.ts";
 
 // ---------- core ----------
 
@@ -134,7 +135,11 @@ export interface CoreApi {
   /** D395: where a repository task works, resolved by code (core/src/repo-where.ts); absent in tests and stubs. */
   places?: PlacesPort;
   /** D379: memories the partner's recall returned, read by code for who-does-which-work the person said. */
-  said?: { fromMemory(hits: { id?: string; title: string; content: string; date?: string }[]): void };
+  said?: {
+    fromMemory(hits: { id?: string; title: string; content: string; date?: string }[]): void;
+    /** D401: the rules Ducter kept by itself from this user message (seq). */
+    keptFrom?(seq: number): RuleView[];
+  };
   /** The user's connections (D96, core/src/connections.ts); absent in tests and stubs. */
   connections?: ConnectionsApi;
   /** What the partner is doing while the user waits (D104); absent in tests and stubs. */

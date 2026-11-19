@@ -98,6 +98,12 @@ means, and the line goes away by itself.
 
 - **Watch on its own** (the switch): on, Ducter looks at this app by itself (once you said yes,
   below). For Discord and Slack it looks only at @-mentions and direct messages.
+- **Can't read it**: Ducter tried and this connection can't give it what it looks for, so it
+  stopped looking and says so here instead of staying quiet. OOMOL's Discord connection is a bot:
+  it can't see your @-mentions or direct messages, so Discord isn't watched yet. It's not
+  something you set wrong.
+- **Connect it again**: the place that holds the account says it has to be connected again.
+  Tap the row, then **Connect again in OOMOL**; once it's connected, Ducter picks up by itself.
 
 Tap a row to see what it reads, what it always asks you first, when it last looked, and **Don't
 let Ducter read this one**: nothing reads that account, not even when you ask.

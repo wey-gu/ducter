@@ -17,7 +17,7 @@ const EFFORT_CHECK_MS = 10_000;
 import type { DevicesView } from "./devices.ts";
 import type { CoreMcpHub } from "./mcp.ts";
 import { taskStream, type CoreRegistry } from "./registry.ts";
-import type { RulesStore } from "./rules.ts";
+import { neverFor, rulesOut, type RuleWork, type RulesStore } from "./rules.ts";
 import type { SaidStore } from "./said.ts";
 import type { SettingsStore } from "./settings.ts";
 
@@ -209,11 +209,15 @@ export function createLoadout(o: {
       // the partner's pin follows it), the task says so and the partner asks once to keep it.
       const said = work.by === "you" ? [] : (o.said?.rulesFor(kind) ?? []);
       const { pinned: _p, ...unpinned } = input;
-      const pick0 = said.length
-        ? saidPick(chooseBody({ ...input, rules: [...o.rules.list(), ...said] }), () => chooseBody({ ...unpinned, rules: o.rules.list() }), said)
-        : chooseBody({ ...input, rules: o.rules.list() });
+      const saved = o.rules.list();
+      const pickS = said.length
+        ? saidPick(chooseBody({ ...input, rules: [...saved, ...said] }), () => chooseBody({ ...unpinned, rules: saved }), said)
+        : chooseBody({ ...input, rules: saved });
       // The person's own pick can't run: their one line, never a silent move.
-      if (pick0 && "problem" in pick0) return { none: pick0.problem };
+      if (pickS && "problem" in pickS) return { none: pickS.problem };
+      // D401: a "never" the person said (kept as their rule at once) that moved the pick says so with
+      // their words, as a rule that names an agent does; where it changed nothing, nothing is said.
+      const pick0 = work.by === "you" || !pickS ? pickS : neverPick(pickS, () => chooseBody({ ...unpinned, rules: saved.filter((r) => !r.never) }), saved, input.work);
       // D372: the first errand the default puts on a fast tier is said once, by the partner.
       const first = pick0?.why.kind === "kind" && !routedBefore(pick0.why.work);
       const pick = pick0 && { ...pick0, why: first ? { ...pick0.why, first: true as const } : pick0.why, ...(kind ? { workKind: kind } : {}) };
@@ -551,6 +555,24 @@ export function saidPick<P extends { harness: string; why: BodyWhy }>(
   if (!r) return withSaid;
   const { ruleId: _r, text: _t, ...rest } = why;
   return { ...withSaid, why: { ...rest, kind: "said", text: r.text, said: { key: r.id, harness: r.harness, ...(r.never ? { never: true as const } : {}), kinds: r.kinds ?? [] } } };
+}
+
+/**
+ * D401: the pick with the person's never-rules. When one moved it off who the default would pick
+ * (with no never), its why names that rule and its words, so the task says "by your rule «…»";
+ * otherwise the pick as it is. Only over Ducter's own reasons (default, kind of work, the
+ * partner's pick): the person's own pick, a rule that names an agent and a saying say their own.
+ */
+export function neverPick<P extends { harness: string; model?: string; why: BodyWhy }>(pick: P, without: () => P | { problem: string } | undefined, rules: RuleView[], work: RuleWork): P {
+  if (!["default", "kind", "partner"].includes(pick.why.kind)) return pick;
+  const nevers = neverFor(rules, work);
+  if (!nevers.length) return pick;
+  const plain = without();
+  if (!plain || "problem" in plain || (plain.harness === pick.harness && plain.model === pick.model)) return pick;
+  const r = nevers.find((n) => rulesOut(n, plain));
+  if (!r) return pick;
+  const { first: _f, keeps: _k, ...rest } = pick.why;
+  return { ...pick, why: { ...rest, kind: "rule", ruleId: r.id, text: r.text } };
 }
 
 /**

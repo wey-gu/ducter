@@ -62,7 +62,7 @@ import { scrub as scrubMem } from "./worker-mem.ts";
 import { createMemRelay, homeClaudeMemPlugin, readMemCredential } from "./mem-relay.ts";
 import { createWorkingMemory } from "./working-memory.ts";
 import { identityIdFor, readMemIdentity } from "./mem-identity.ts";
-import { keepSaidOnGo, openSaid, type SaidStore } from "./said.ts";
+import { keepSaidAtOnce, keepSaidOnGo, openSaid, type SaidStore } from "./said.ts";
 import { openRules, type RulesStore } from "./rules.ts";
 import { openPins, type PinsStore } from "./pins.ts";
 import { createLoadout, isRuleHint, registerRuleTools, registerSwitchTool, registerBrainSwitchTool, type Loadout } from "./loadout.ts";
@@ -543,6 +543,15 @@ export function startCore(opts: CoreOptions = {}): Core {
   // D379: who does which work, said and never saved: read from the Log and recalled memories; Go keeps it.
   const said = openSaid({ log, rules, dataDir });
   keepSaidOnGo(log, rules);
+  // D401: what the person says about who does which work is their rule the moment it lands (before
+  // the partner's turn); what they said before this was built is kept now.
+  keepSaidAtOnce(log, said);
+  try {
+    const back = said.backfill();
+    if (back.length) console.log(`[said] kept ${back.length} rule(s) from what you said earlier: ${back.map((r) => r.text).join(" | ")}`);
+  } catch (err) {
+    console.warn("[said] couldn't keep earlier sayings:", (err as Error).message);
+  }
   const connections = openConnections({ dataDir, log, linker: opts.connectionLinker, oo: opts.ooSource, fetcher: opts.work?.connectionFetch, oauthFetch: opts.oauthFetch, signInMsPerSec: opts.signInMsPerSec, clientName: "Ducter", knownName: (ts) => providerOf(ts)?.name });
   registerConnectionTools(mcp, connections);
   let workersRef: Workers | undefined;

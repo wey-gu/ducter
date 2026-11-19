@@ -4,6 +4,13 @@
 // returned, and when it changes who does a task, the task goes by it and the partner asks once to
 // keep it as a rule (记成规则 / Keep as a rule; 只这次 / Just this once, the default hold).
 //
+// D401: what the person says in the conversation is their rule at once. The moment their message
+// lands (before the partner's turn, so the task it opens in the same turn already goes by it), an
+// explicit saying is kept as a rule in their words, and the Partner page lists it; no card asks to
+// keep it. A saying in the Log from before this (never kept) is kept the same way when Ducter
+// starts. Only what memory recalled (said to another tool, or a note in someone's words) still goes
+// by D379: it applies, and a card asks once whether to keep it.
+//
 // Only an explicit statement counts: an agent named, a directive ("别用", "不要用", "以后都用",
 // "never use", "always use"), and a kind of work in the same sentence. A taste ("我挺喜欢 Codex",
 // "I like Codex"), a one-off ("这次用 Codex"), a question, or a sentence with no kind of work is
@@ -122,23 +129,40 @@ export interface SaidStore {
   fromMemory(hits: { id?: string; title: string; content: string; date?: string }[]): void;
   /** Whether the ask for this saying was made already (answered or not). */
   asked(p: { harness: string; never?: boolean; kinds: WorkKind[] }): boolean;
+  /**
+   * D401: keep what the person said as their rule (their words, its kinds, never), once per saying:
+   * a rule removed on the Partner page never comes back from the same words. The rule, or
+   * undefined when it was kept before or couldn't be saved.
+   */
+  keep(p: SaidPref): RuleView | undefined;
+  /** D401: the rules kept from this user message (seq), still on the Partner page. */
+  keptFrom(seq: number): RuleView[];
+  /**
+   * D401: the Log's sayings never kept (said before Ducter kept them at once), oldest first, kept
+   * now unless the person answered for them on a card, or a rule they saved since covers them.
+   */
+  backfill(): RuleView[];
 }
 
 export function openSaid(o: { log: LogStore; rules: RulesStore; dataDir: string; now?: () => Date }): SaidStore {
+  const rules = o.rules;
   const now = o.now ?? (() => new Date());
   const path = join(o.dataDir, SAID_MEMORY_FILE);
   let memory: SaidPref[] = [];
+  /** D401: sayings kept as rules (key → the rule's id), so each is kept once. */
+  let kept: Record<string, string> = {};
   if (existsSync(path)) {
     try {
       const raw = JSON.parse(readFileSync(path, "utf8"));
       if (Array.isArray(raw?.said)) memory = raw.said.filter((p: SaidPref) => p && typeof p.key === "string" && isHarnessId(p.harness) && Array.isArray(p.kinds) && p.kinds.every(isWorkKind));
+      if (raw?.kept && typeof raw.kept === "object") kept = Object.fromEntries(Object.entries(raw.kept).filter(([k, v]) => typeof k === "string" && typeof v === "string")) as Record<string, string>;
     } catch (err) {
       console.warn(`[said] ${path} is unreadable; starting with none:`, (err as Error).message);
     }
   }
   const saveMemory = () => {
     const tmp = `${path}.tmp`;
-    writeFileSync(tmp, JSON.stringify({ said: memory }, null, 2) + "\n", { mode: 0o600 });
+    writeFileSync(tmp, JSON.stringify({ said: memory, kept }, null, 2) + "\n", { mode: 0o600 });
     chmodSync(tmp, 0o600);
     renameSync(tmp, path);
   };
@@ -171,6 +195,8 @@ export function openSaid(o: { log: LogStore; rules: RulesStore; dataDir: string;
       const live = all().filter(
         (p) =>
           p.kinds.includes(kind) &&
+          // D401: kept as a rule already (the rule decides, or its removal does).
+          !kept[p.key] &&
           // A rule saved since (or at the same time) is the person's newer word.
           !saved.some((r) => r.createdAt >= p.at) &&
           // Answered already (kept as a rule, or 只这次): not again, until they say it anew.
@@ -205,7 +231,54 @@ export function openSaid(o: { log: LogStore; rules: RulesStore; dataDir: string;
       }
     },
     asked: (p) => asks().some((a) => sameSaying(a, p)),
+    keep(p) {
+      if (kept[p.key]) return;
+      try {
+        const r = rules.add({ text: p.quote, harness: p.harness, match: [], kinds: p.kinds, ...(p.never ? { never: true } : {}) });
+        kept[p.key] = r.id;
+        saveMemory();
+        return r;
+      } catch (err) {
+        console.warn("[said] couldn't keep what was said as a rule:", (err as Error).message);
+        return;
+      }
+    },
+    keptFrom(seq) {
+      const ids = Object.entries(kept)
+        .filter(([k]) => k === `said:${seq}` || k.startsWith(`said:${seq}.`))
+        .map(([, id]) => id);
+      return ids.length ? o.rules.list().filter((r) => ids.includes(r.id)) : [];
+    },
+    backfill() {
+      const saved = o.rules.list().filter((r) => !r.notice);
+      const made = asks();
+      const out: RuleView[] = [];
+      for (const p of fromLog()) {
+        if (kept[p.key]) continue;
+        // Answered on a D379 card (kept, or 只这次), or a rule they saved since covers its kind.
+        if (made.some((a) => a.option && sameSaying(a, p) && a.ts >= p.at)) continue;
+        if (saved.some((r) => r.createdAt >= p.at && (r.kinds ?? []).some((k) => p.kinds.includes(k)))) continue;
+        const r = this.keep(p);
+        if (r) out.push(r);
+      }
+      return out;
+    },
   };
+}
+
+/**
+ * D401: the person's own words are their rule at once. Each message of theirs in the conversation
+ * (not words forwarded from someone else) is read as it lands; an explicit saying is kept before
+ * the partner's turn starts, so a task opened in that same turn already goes by it.
+ */
+export function keepSaidAtOnce(log: LogStore, said: SaidStore): () => void {
+  return log.subscribe((e) => {
+    if (e.kind !== "user_msg" || e.origin !== "user") return;
+    if (!(e.stream === "channel" || e.stream.startsWith("channel:"))) return;
+    const b = e.body as Bodies["user_msg"];
+    if (b.forwarded) return;
+    readSaid(b.text ?? "").forEach((p, i) => said.keep({ ...p, key: `said:${e.seq}${i ? `.${i}` : ""}`, at: e.ts }));
+  });
 }
 
 /**

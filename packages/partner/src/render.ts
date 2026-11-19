@@ -160,6 +160,14 @@ export interface RenderCtx {
   taskSource?(taskId: string): { kind: string; where?: string; label: string; title: string; whenDone?: string; wrote?: string[] } | undefined;
   /** D373: the task the conversation was on just before this user message (seq), if recent. */
   follows?(seq: number): Follows | undefined;
+  /** D401: the rules Ducter kept from this user message by itself (who does which work), still kept. */
+  kept?(seq: number): { text: string; harness: string; never?: boolean; kinds?: string[] }[];
+}
+
+/** D401: one line under the user's words: what Ducter already kept as their rule from them. */
+export function keptLine(rules: { text: string; harness: string; never?: boolean; kinds?: string[] }[]): string {
+  const what = rules.map((r) => `"${clip(r.text, 90)}" (${r.never ? "never" : "always"} ${r.harness}${r.kinds?.length ? ` for ${r.kinds.join(", ")}` : ""})`).join("; ");
+  return `  (Ducter already kept this as the user's rule, on the Partner page: ${what}. It holds for every task from now on, this turn too. No rule_save; say it back in one short line in their words, keeping a "not" a "not".)`;
 }
 
 /** D373: the task the last answer came from, so a follow-up continues it instead of opening a new one. */
@@ -307,7 +315,9 @@ export function renderTrigger(e: LogEvent, ctx: RenderCtx): string {
       if (b.reply) return [`[user, ${replyHead(b.reply, false)}] ${b.text}${pics}`, ...replyAbout(b.reply, ctx)].join("\n");
       // D373: what the conversation was on just before, so a follow-up carries that task on.
       const f = e.seq > 0 ? ctx.follows?.(e.seq) : undefined;
-      return `[user] ${b.text}${pics}${f ? `\n${followsLine(f)}` : ""}`;
+      // D401: what Ducter kept from these words as the user's rule, by itself.
+      const kept = e.seq > 0 ? (ctx.kept?.(e.seq) ?? []) : [];
+      return `[user] ${b.text}${pics}${kept.length ? `\n${keptLine(kept)}` : ""}${f ? `\n${followsLine(f)}` : ""}`;
     }
     case "report": {
       const r = e.body as Bodies["report"];

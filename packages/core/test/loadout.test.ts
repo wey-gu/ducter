@@ -344,12 +344,12 @@ test("D372: an errand opens on Sonnet with Opus kept, marked first once; the rul
   ]);
 });
 
-test("D379: a never said in the conversation and never saved moves an errand off that agent, said with the person's words; a pin still decides", async () => {
+test("D379, D401: a never said in the conversation is kept as a rule at once and moves an errand off that agent, said with the person's words; a pin still decides", async () => {
   harnessesNow = [cc(0.64, { models: [{ id: "opus", label: "Opus" }, { id: "sonnet", label: "Sonnet" }] }), cx()];
   const core = boot();
   core.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: "订酒店等生活相关的工作别用 claude code 哈" } });
   const pick = await core.loadout.choose({ title: "北京往返大阪的总价", needs: { browse: true } });
-  expect(pick).toMatchObject({ harness: "codex", workKind: "errand", why: { kind: "said", text: "订酒店等生活相关的工作别用 claude code", said: { harness: "claude-code", never: true, kinds: ["errand"] } } });
+  expect(pick).toMatchObject({ harness: "codex", workKind: "errand", why: { kind: "rule", text: "订酒店等生活相关的工作别用 claude code" } });
   // The switch sheet greys it with "you said not for this kind".
   expect((await core.loadout.candidatesFor({ title: "订酒店", needs: { browse: true } })).find((c) => c.harness === "claude-code")?.blocked).toBe("ruled_out");
   // Code is untouched; "这次就用 Claude Code" goes past it.

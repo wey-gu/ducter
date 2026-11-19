@@ -892,7 +892,7 @@ func (a *App) switcher(c *ui.Context) {
 		return
 	}
 	t := a.T
-	w, _ := c.Size()
+	w, wh := c.Size()
 	if w <= 0 {
 		w = 1040
 	}
@@ -926,7 +926,7 @@ func (a *App) switcher(c *ui.Context) {
 	}
 	ui.DialogBase(c, &a.oh.sw, func(back, panel ui.Element) {
 		back.Background(t.Scrim)
-		panel.Width(min(w-2*t.S6, 640)).Radius(t.RadiusXL).Background(t.Surface).Shadow(0, t.Floating.Y, t.Floating.Blur, 0, t.Floating.Color).
+		panel.Width(min(w-2*t.S6, 640)).MaxHeight(sheetBack(c, back, wh)).Radius(t.RadiusXL).Background(t.Surface).Shadow(0, t.Floating.Y, t.Floating.Blur, 0, t.Floating.Color).
 			Label(a.L.T("switch.label"))
 		in := ui.TextInput(c.Key("sw-in"), &a.oh.swQuery).Placeholder(a.L.T("switch.placeholder")).Label(a.L.T("switch.placeholder")).
 			FontSize(t.LG).Padding(t.S5-4, t.S5).Background(ui.Color{}).Border(0, ui.Color{})

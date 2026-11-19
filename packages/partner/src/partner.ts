@@ -3068,6 +3068,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
             ticked: s.ticked.length,
             groups: { do: count("do"), decide: count("decide"), later: count("later"), close: count("close") },
             ...(decide.length ? { decide: decide.slice(0, 3) } : {}),
+            // D394: the how-to part of their words, kept on the set as its note (do=hand uses it unless they say another).
+            ...(s.note ? { theirNote: s.note } : {}),
             note: s.found.n
               ? "A card under your line shows them, the ones you can take ticked, with a button to hand them over. Your whole reply is ONE short line in the user's language from these counts only (e.g. \"找到 9 件讲记忆提炼的。能直接交给我的 6 件先勾上了；#405 要你定一下；两件改动大，先放着。\"); never list them. Start nothing: their next words about how are this set's hand-over (do=hand set=… note=…)."
               : "None found: say so in one short line; offer to look with other words.",
@@ -3092,7 +3094,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           const named = set ? [...s_(a.note).matchAll(/#(\d{1,7})\b/g)].map((m) => set.refs.find((r) => r.endsWith(`#${m[1]}`))).filter((r): r is string => !!r) : [];
           const refs = a.picks === true ? todos.pile.picks() : set && !handed ? [...new Set([...set.ticked, ...given.map(inSet), ...named])] : set ? given.map(inSet) : given;
           if (!refs.length) return { ok: false, error: a.picks === true ? "No picks were offered this morning." : "hand needs refs or set." };
-          const note = s_(a.note);
+          // D394: the how-to part of the words the set was found by ("关于 distill 的，先别动数据库") is its note unless they said another.
+          const note = s_(a.note) || set?.note || "";
           const shape = ["plan", "one", "one_by_one", "side_by_side"].includes(s_(a.shape)) ? (s_(a.shape) as "plan" | "one" | "one_by_one" | "side_by_side") : undefined;
           // A set already handed over: more to-dos for it join its group ("这个也加进去").
           const g0 = s_(a.group) || (set?.groupId && groups0()?.get?.(set.groupId)?.hand ? set.groupId : "");

@@ -198,7 +198,10 @@ type SourcesFrame struct {
 	Subject    string
 	SetID      string
 	How        *HandHow
-	Review     *GroupReview
+	// D394: how the words were heard (Said) and the words field's suggestions (Suggest).
+	Said    *FindSaid
+	Suggest []string
+	Review  *GroupReview
 }
 
 // SourcesReq subscribes to the sources (T "sources").
@@ -301,6 +304,8 @@ func decodeSources(data []byte, f ServerFrame) (ServerFrame, error) {
 			Query   string      `json:"query"`
 			Subject string      `json:"subject"`
 			SetID   string      `json:"setId"`
+			Said    *FindSaid   `json:"said"`
+			Suggest []string    `json:"suggest"`
 		}
 		if err := json.Unmarshal(data, &p); err != nil {
 			return f, err
@@ -308,6 +313,7 @@ func decodeSources(data []byte, f ServerFrame) (ServerFrame, error) {
 		s.Items = nil
 		s.PileOp = "find"
 		s.Found, s.FoundItems, s.Ticked, s.Query, s.Subject, s.SetID = &p.Found, p.Items, p.Ticked, p.Query, p.Subject, p.SetID
+		s.Said, s.Suggest = p.Said, p.Suggest
 	case "pile_how_result":
 		var p struct {
 			How HandHow `json:"how"`

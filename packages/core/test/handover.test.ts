@@ -10,7 +10,7 @@ import { join } from "node:path";
 import type { Bodies, Runner, TaskCard } from "@ducter/protocol";
 import { canBeOne, defaultShape } from "@ducter/protocol";
 import { startCore } from "../src/core.ts";
-import { codeMatch, lastingWhere, namedComputer, parseFind, parsePlan, queryWords } from "../src/task-sources/handover.ts";
+import { aboutOf, codeMatch, lastingWhere, namedComputer, parseFind, parsePlan, queryWords, splitWords } from "../src/task-sources/handover.ts";
 import type { Ask } from "../src/task-sources/pile.ts";
 import { fakeGh, type FakeIssue } from "./fake-gh-issues.ts";
 import { tempDir } from "./helpers.ts";
@@ -200,6 +200,43 @@ test("find: code's match on words and labels, then meaning across languages in o
   expect(b.calls.finds).toBe(1); // cached until the next sort
   const chip = await b.ho.find({ subject: "记忆提炼" });
   expect(chip.items.every((p) => p.by === "subject")).toBe(true);
+});
+
+test("D394 the words split by clause: what to find, and the note word for word; filler around the subject dropped", () => {
+  expect(splitWords("关于 distill 的，先别动数据库")).toEqual({ about: "distill", note: "先别动数据库" });
+  expect(splitWords("那些关于记忆提炼的都交给你，先别动数据库迁移，验证都去 haswell 上跑。")).toEqual({ about: "记忆提炼", note: "先别动数据库迁移，验证都去 haswell 上跑。" });
+  expect(splitWords("everything about offline mode, but don't touch the sync schema")).toEqual({ about: "offline mode", note: "don't touch the sync schema" });
+  expect(splitWords("sign-in issues; run every check on haswell")).toEqual({ about: "sign-in", note: "run every check on haswell" });
+  expect(splitWords("搬家的事，下周六前搞定，预算 3000")).toEqual({ about: "搬家", note: "下周六前搞定，预算 3000" });
+  // Only a subject: no note; only a how: the whole stays the subject (nothing found is said, not guessed).
+  expect(splitWords("memory distill")).toEqual({ about: "memory distill" });
+  expect(splitWords("关于登录的")).toEqual({ about: "登录" });
+  expect(splitWords("#405")).toEqual({ about: "#405" });
+  expect(aboutOf("the ones about the importer")).toBe("importer");
+  expect(parseFind('{"subject":"x","ids":[0],"about":"distill","note":"先别动数据库"}', 1)).toEqual({ subject: "x", ids: [0], about: "distill", note: "先别动数据库" });
+});
+
+test("D394 find by words: the subject by code, the note beside it; the model's split kept only when it is their words; suggestions put what they handed over first", async () => {
+  const b = boot();
+  await sorted(b);
+  const r = await b.ho.find({ words: "关于 distill 的，先别动数据库" });
+  expect(r.said).toEqual({ about: "distill", note: "先别动数据库", by: "code" });
+  expect(r.query).toBe("distill");
+  expect(r.found.n).toBe(8);
+  expect(r.suggest).toContain("记忆提炼"); // the pile's biggest subjects
+  // The conversation's set: the same split, the note kept on the set.
+  const s = await b.ho.set({ query: "关于 distill 的，先别动数据库" });
+  expect(s.query).toBe("distill");
+  expect(s.note).toBe("先别动数据库");
+  expect(s.found.n).toBe(8);
+  // Nothing asked: only the suggestions.
+  const none = await b.ho.find({});
+  expect(none.items.length).toBe(0);
+  expect(none.suggest.length).toBeGreaterThan(0);
+  // A subject handed over leads the suggestions next time.
+  const h = await b.ho.hand({ refs: ["acme/web#1001", "acme/web#1003"], subject: "错字", bySubject: true });
+  expect(h).toMatchObject({ ok: true });
+  expect((await b.ho.find({})).suggest[0]).toBe("错字");
 });
 
 test("how: the note's computer fills where (and is lasting); else the computer with the repository; plan first for a subject set", async () => {

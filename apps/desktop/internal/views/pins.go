@@ -196,7 +196,7 @@ func (a *App) pinsSheet(c *ui.Context) {
 	open := true
 	ui.DialogBase(c, &open, func(back, panel ui.Element) {
 		back.Background(t.Scrim)
-		panel.Width(min(w-2*t.S6, 640)).MaxHeight(h-2*t.S6).Radius(t.RadiusXL).Background(t.Bg).Shadow(0, t.Floating.Y, t.Floating.Blur, 0, t.Floating.Color).Label(title)
+		panel.Width(min(w-2*t.S6, 640)).MaxHeight(sheetBack(c, back, h)).Radius(t.RadiusXL).Background(t.Bg).Shadow(0, t.Floating.Y, t.Floating.Blur, 0, t.Floating.Color).Label(title)
 		a.enter(c, panel)
 		ui.Row(c.Key("pins-head")).Gap(t.S3).AlignItems(ui.Center).Padding(t.S5, t.S6, t.S2, t.S6).Children(func() {
 			ui.Box(c).Size(32, 32).Shrink(0).Radius(10).Background(t.Highlight).Shadow(0, 2, 0, 0, t.Line2).Justify(ui.Center).AlignItems(ui.Center).Children(func() {

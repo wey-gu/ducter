@@ -187,7 +187,7 @@ func TestHandSheetPicksShapeAndWhere(t *testing.T) {
 		t.Fatal(err)
 	}
 	tt.Frame()
-	if err := tt.Click("Where haswell"); err != nil {
+	if err := tt.Click(spoken(app.L, "Where", "haswell", "Your note says haswell")); err != nil {
 		t.Fatal(err)
 	}
 	tt.Frame()
@@ -243,7 +243,22 @@ func TestPileSubjectsAndDoRowOpenTheSheet(t *testing.T) {
 		t.Fatalf("the chip: %+v", *sent)
 	}
 	app.ho.open = false
+	// D394: the do row opens on the words (its suggestions asked, nothing ticked); one by one is a link away.
 	app.openHandDo()
+	if f, ok := lastSent[protocol.PileFindReq](*sent); !ok || f.Words != "" || f.Subject != "" || f.SetID != "" || len(app.ho.handTicked()) != 0 {
+		t.Fatalf("the do row: %+v", *sent)
+	}
+	todoFrames(tt, 2)
+	all = strings.Join(tt.Texts(), " | ")
+	for _, want := range []string{"想交给小鸭哪些？", "说一类就行：讲这件事的我都找出来，你再删减。", "一件件挑", "在哪儿做"} {
+		if !strings.Contains(all, want) {
+			t.Fatalf("missing %q in %s", want, all)
+		}
+	}
+	if err := tt.Click("一件件挑"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
 	r, ok := lastSent[protocol.PileItemsReq](*sent)
 	if !ok || r.Group != "do" {
 		t.Fatalf("the do row: %+v", *sent)

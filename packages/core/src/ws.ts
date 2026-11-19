@@ -1695,7 +1695,7 @@ export function createWsHandler(deps: WsDeps) {
         const notesOf = (v: unknown) => (v && typeof v === "object" ? Object.fromEntries(Object.entries(v as Record<string, unknown>).filter(([, x]) => typeof x === "string").slice(0, 60)) as Record<string, string> : undefined);
         if (f.t === "pile_find") {
           if (!ho) return;
-          const r = await ho.find({ ...(str(f.query, 200) ? { query: str(f.query, 200)! } : {}), ...(str(f.subject, 60) ? { subject: str(f.subject, 60)! } : {}), ...(str(f.setId, 64) ? { setId: str(f.setId, 64)! } : {}) });
+          const r = await ho.find({ ...(str(f.query, 200) ? { query: str(f.query, 200)! } : {}), ...(str(f.words, 400) ? { words: str(f.words, 400)! } : {}),...(str(f.subject, 60) ? { subject: str(f.subject, 60)! } : {}), ...(str(f.setId, 64) ? { setId: str(f.setId, 64)! } : {}) });
           return send(ws, { t: "pile_find_result", ...cid, ...r });
         }
         if (f.t === "pile_how") {

@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.0.92 - 2026-11-19
+
+<!-- whats-new
+zh: 记忆只在一台连一次，别的电脑上的任务也记得你
+en: Connect Mem once; tasks on every computer remember you
+zh: 定时的事不再一遍遍说"没有新的"
+en: Routines stop repeating "nothing new"
+-->
+
+**Nowledge Mem**
+- Connect Mem once, on the computer Ducter runs on. Tasks on your other computers use that same
+  memory, with nothing to set up there; Claude Code tasks get Mem's own plugin for that session.
+  A task's access ends when the task does, and Mem's key never leaves your home computer.
+
+**Routines**
+- A routine has one timer: a restart or a nudge no longer starts extra rounds.
+- A round with nothing new stays quiet. When it does speak, it says where everything stands.
+- Anything meant for other people, like a PR review, is drafted first and asked about once a round.
+
+**Fixes**
+- A few words that were missing on the web now show (a computer you can't reach, collapsed steps).
+
 ## 0.0.91 - 2026-11-19
 
 <!-- whats-new

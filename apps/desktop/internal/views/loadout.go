@@ -438,12 +438,24 @@ func (a *App) thinksGroup(c *ui.Context) {
 			for i, m := range models {
 				labels[i] = m.label
 			}
-			a.tileRow(c, "brain-model", nil, a.L.T("loadout.brain.model"), a.brainModelLine(models[sel], b.Harness), func() {
+			pick := func() {
 				if i := a.choices(c, "brain-model", a.L.T("loadout.brain.model"), labels, sel); i >= 0 && i != sel {
 					a.setBrain(protocol.Brain{Harness: b.Harness, Model: models[i].id})
 					a.say("brain", a.L.T("said.brain", a.L.T("loadout.brain.with", harnessName(b.Harness), models[i].label)))
 				}
-			})
+			}
+			if len(models) <= 3 {
+				a.tileRow(c, "brain-model", nil, a.L.T("loadout.brain.model"), a.brainModelLine(models[sel], b.Harness), pick)
+			} else {
+				// An agent with more models than fit beside the title (Codex lists five or
+				// more): the title and its line on their own row, the models wrapping below,
+				// so the text column is never squeezed to a character's width.
+				a.tileRow(c, "brain-model", nil, a.L.T("loadout.brain.model"), a.brainModelLine(models[sel], b.Harness), nil)
+				ui.Row(c.Key("brain-model-wrap")).Padding(0, t.S5, t.S4, t.S5).Children(func() {
+					ui.Box(c).Width(40).Shrink(0)
+					ui.Row(c).Grow(1).Basis(0).MinWidth(0).Children(pick)
+				})
+			}
 		}
 		if len(others) > 0 || len(models) > 1 {
 			a.footRow(c, "brain", a.L.T("loadout.brain.keep"), nil)

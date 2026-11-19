@@ -375,6 +375,12 @@ export function startedAfresh(progress: string[]): string {
   return `Your earlier session on this task couldn't be resumed, so this is a new session on the same task and place. Check where the work stands (git status, git log, the files), then continue with the brief from there. Don't start over.${where}\n\nReport via report_to_main when done, blocked, or needing a decision.`;
 }
 
+/** D394: a repeating task's round in a fresh session: its last session had compacted (research/158). */
+export function freshRound(progress: string[]): string {
+  const where = progress.length ? `\n\nWhere it stood (your latest saved progress, oldest first):\n${progress.map((p) => `- ${p}`).join("\n")}` : "";
+  return `This is the next round of work that repeats. To keep each round small, it runs in a new session on the same task and place: what earlier rounds found is in your saved progress below and in the files you keep in your working place. Read those first, do this round from there (don't redo what is unchanged), call checkpoint with where it stands, then wait_for the next round.${where}`;
+}
+
 /**
  * D157: the first turn on another computer after the user moved the task there (E3): the same
  * task, from its saved progress; a repo comes as a fresh worktree of the pushed branch.

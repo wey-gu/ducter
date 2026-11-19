@@ -1,7 +1,7 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import { HARNESS_IDS, HARNESSES as HARNESS_INFO, harnessName, isImage, kindWords, sizeWords, type MediaRef, type FileOpenError, type Attention, type Bodies, type BranchChanges, type Delivery, type EvidenceRef, type FolderChanges, type FolderSummary, type HeldMsg, type UndoConfirm, type LogEvent, type Place, type Question, type Residency, type TaskCard, type TaskNeeds, type WhereAsk } from "@ducter/protocol";
 import type { CoreApi, HarnessEvent, HarnessPort, HarnessSession, Runner, SendFile, SendImage, SessionSpec } from "@ducter/protocol/src/internal.ts";
-import { ADOPTED, outsideOver, NUDGE, PRECOMPACT_NOTE, REOPENED, RESUME_AFTER_RESTART, SAVE_BEFORE_COMPACT, afterCompaction, briefTurn, knownTurn, othersTurn, OTHERS_MAX, handedBack, handedOver, kickoff, movedOver, noCopyAnswer, seedThen, startedAfresh, taskBrief, type CarryOver } from "./brief.ts";
+import { ADOPTED, outsideOver, NUDGE, PRECOMPACT_NOTE, REOPENED, RESUME_AFTER_RESTART, SAVE_BEFORE_COMPACT, afterCompaction, briefTurn, knownTurn, othersTurn, OTHERS_MAX, handedBack, handedOver, kickoff, movedOver, noCopyAnswer, seedThen, startedAfresh, freshRound, taskBrief, type CarryOver } from "./brief.ts";
 import { resolveModel, resolveWindows, saveBeforeAt } from "@ducter/protocol/src/harness-facts.ts";
 import { createOarHarnessPort } from "./oar.ts";
 import { cwdOf, planPlace, provisionPlace, type ResolvedPlace } from "./places.ts";
@@ -30,6 +30,8 @@ const HARNESSES: readonly HarnessId[] = HARNESS_IDS;
 
 export interface RunnerOptions {
   harness?: HarnessPort; // default: OAR
+  /** D394: a task's own round runs in a fresh session once the last one compacted (default on). */
+  freshRounds?: boolean;
   defaultHarness?: HarnessId;
   defaultModel?: string; // default env DUCTER_TASK_MODEL; else the harness default
   gh?: string; // GitHub CLI binary (tests)
@@ -107,6 +109,10 @@ const RECALL_MS = 6_000;
 const STOP_SETTLE_MS = 15_000;
 /** D282: how much of a task's own history a switch to another agent carries (the rest is in the Log). */
 const CARRY_CHECKPOINTS = 6;
+/** D394: the agents whose rounds start afresh (research/158); pi keeps its one session. */
+const FRESH_ROUND_HARNESSES = new Set(["codex", "claude-code"]);
+/** D394: a rest this long outlives any prompt cache (Anthropic's 5 min or 1 h, OpenAI's minutes): resuming saves nothing. */
+const FRESH_AFTER_REST_MS = 30 * 60_000;
 const CARRY_SAID = 5;
 const clip = (s: string, n: number) => (s.length <= n ? s : s.slice(0, n - 1) + "…");
 
@@ -188,6 +194,12 @@ interface TaskRt {
   // D135: the harness compacted this many times; asked to save before the next one; what the
   // next turn starts with (the save ask, the brief and progress again after a compaction).
   compactions: number;
+  /** D394: the compaction count when the task's last round began, and whether the next one starts afresh. */
+  roundFrom?: number;
+  roundArmedAt?: number;
+  freshRound?: boolean;
+  /** D394: the next session is a round's fresh start (its seed says so, not "couldn't be resumed"). */
+  roundSeed?: boolean;
   /** D297: the account's limits as this session said them last (a limit hit reads its reset here). */
   limitsSeen?: HarnessEvent["limits"];
   saveAsked: boolean;
@@ -358,6 +370,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
   const newId = opts.newId ?? shortId;
   const tasks = new Map<string, TaskRt>();
   const graceMs = opts.offlineGraceMs ?? Number(process.env.DUCTER_OFFLINE_GRACE_MS || 120_000);
+  const freshRounds = opts.freshRounds ?? process.env.DUCTER_FRESH_ROUNDS !== "0";
   const parkMs = opts.parkIdleMs ?? Number(process.env.DUCTER_PARK_IDLE_MS || 15 * 60_000);
   const archiveIdleMs = opts.archiveIdleMs ?? Number(process.env.DUCTER_ARCHIVE_IDLE_MS ?? 14 * 24 * 3600_000);
   const bgSettleMs = opts.backgroundSettleMs ?? 60_000;
@@ -416,7 +429,17 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       const t = w.taskId ? tasks.get(w.taskId) : undefined;
       if (!t) return;
       if (w.state === "armed" && t.running) (t.restsThisTurn ??= new Set()).add(w.waiterId);
+      if (w.state === "armed" && w.wakes === "task") t.roundArmedAt = Date.parse(e.ts);
       else if (w.state !== "armed") t.restsThisTurn?.delete(w.waiterId);
+      // D394: the task's own round is due. After a long rest (the agent's prompt cache is long
+      // cold, so resuming re-reads every earlier round at full price) or once its session
+      // compacted since the last round began, the round starts in a fresh session from the brief
+      // and its latest saved progress, not the long one (research/158).
+      if (w.state === "fired" && w.wakes === "task" && !w.limit) {
+        const rested = w.at && t.roundArmedAt ? Date.parse(w.at) - t.roundArmedAt : 0;
+        if (freshRounds && FRESH_ROUND_HARNESSES.has(t.base.harness) && (rested >= FRESH_AFTER_REST_MS || t.compactions > (t.roundFrom ?? 0))) t.freshRound = true;
+        t.roundFrom = t.compactions;
+      }
       return;
     }
     if (e.kind !== "report") return;
@@ -507,6 +530,23 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
         void missedReport(t);
       }, bgSettleMs);
     }
+  }
+
+  /** D394: the long session is let go (kept on disk, its id in the Log); the next turn seeds a new one. */
+  async function startRoundAfresh(t: TaskRt) {
+    t.freshRound = false;
+    if (isBusy(t) || bgLive(t) > 0 || t.gated) return;
+    const s = t.session;
+    t.session = undefined;
+    t.running = false;
+    if (t.sessionId) (t.past ??= {})[t.base.harness] = t.sessionId;
+    t.sessionId = undefined;
+    t.handedFrom = t.backFrom = undefined;
+    t.roundSeed = true;
+    t.prefix = t.prefix.filter((p) => !p.startsWith("Your context was just compacted"));
+    clearTimeout(t.parkTimer);
+    logEvent(t, { role: "system", from: "runner", text: "a fresh session for this round", raw: { fresh: "round" } });
+    if (s) await s.close().catch(() => {});
   }
 
   /** Idle and warm: park it after parkMs (the next input resumes it by session id). */
@@ -832,7 +872,10 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
         ? t.outsideOver
           ? outsideOver(harnessName(t.handedFrom), await carryOver(t))
           : handedOver(harnessName(t.handedFrom), progress.slice(-CARRY_CHECKPOINTS), await carryOver(t))
-        : startedAfresh(progress);
+        : t.roundSeed
+          ? freshRound(progress.slice(-CARRY_CHECKPOINTS))
+          : startedAfresh(progress);
+    t.roundSeed = undefined;
     t.movedFrom = undefined;
     t.outsideOver = undefined;
     await startSession(t, false);
@@ -2091,6 +2134,8 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       t.stallNoted = false;
       // D282: a model or effort changed during the last turn: reopen with them before this one.
       if (t.retune && t.session && !isBusy(t)) await reopenForRetune(t);
+      // D394: a round of the task's own, due after its session compacted: a fresh session.
+      if (t.freshRound && from === "partner") await startRoundAfresh(t);
       if (t.gated) {
         // D142: the answer to "change this folder without a copy?". Go, or a reply the task
         // reads, sends the turn held for it; from here on it doesn't ask again.

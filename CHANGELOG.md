@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.0.88 - 2026-11-19
+
+<!-- whats-new
+zh: 找回 Ducter 给你做的文件和表格
+en: Find what Ducter made for you
+zh: 手机上 GitHub 链接用你已登录的地方打开
+en: On phones, GitHub links open where you're signed in
+-->
+
+**Made for you**
+- Ask for something Ducter made ("the itinerary from last week", "the visa PDF") and it's put
+  right under the answer. Past tasks has a new tab, Made for you: files, pictures, tables, charts,
+  lists and links, by day.
+
+**Phone apps**
+- Links to GitHub and other sites open with your phone: the GitHub app if you have it, otherwise
+  your own signed-in browser.
+- An opened task's head, its summary and its evidence fit a phone; On hand's counts no longer
+  overflow; a done task says its PR or issue instead of a bare site name.
+
 ## 0.0.87 - 2026-11-19
 
 <!-- whats-new

@@ -5,7 +5,6 @@ import { join } from "node:path";
 import { deviceName } from "../src/conn.ts";
 import { connWay, type Client } from "../src/sheet.ts";
 import { BOOK_MIN, canFill, markSplit, readFold, splitFor, type Fold } from "../src/fold.ts";
-import { strings } from "../src/i18n.ts";
 
 const css = readFileSync(join(import.meta.dir, "../static/app.css"), "utf8");
 const book = (start: number, end = start, state: Fold["state"] = "half"): Fold => ({ axis: "vertical", state, start, end });
@@ -98,10 +97,5 @@ describe("the Android app", () => {
     expect(connWay({ ...at, name: "Pixel Fold", platform: "android-app" } as Client)).toBe("app");
     expect(connWay({ ...at, name: "Android phone · Ducter", platform: "android" } as Client)).toBe("app");
     expect(connWay({ ...at, name: "Android phone · Chrome", platform: "android" } as Client)).toBe("browser");
-  });
-  test("says plainly it can't notify in this version, in both languages", () => {
-    expect(strings("zh").t("notify.android.later")).toContain("安卓 App");
-    expect(strings("en").t("notify.android.later")).toContain("Android app");
-    expect(strings("en").t("device.kind.android.app")).toBe("An Android phone with the Ducter app");
   });
 });

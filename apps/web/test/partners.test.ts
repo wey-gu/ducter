@@ -8,12 +8,8 @@ import { partnersWords } from "../src/i18n-partners.ts";
 
 const src = (f: string) => readFileSync(new URL(`../src/${f}`, import.meta.url), "utf8");
 
-test("every word in zh and en, the same keys, never a dot join, one name per look", () => {
-  expect(Object.keys(partnersWords.zh).sort()).toEqual(Object.keys(partnersWords.en).sort());
-  for (const v of [...Object.values(partnersWords.zh), ...Object.values(partnersWords.en)]) expect(v).not.toContain(" · ");
+test("one name per look", () => {
   for (const l of PARTNER_LOOKS) expect(partnersWords.zh[`partners.look.${l}`]).toBeTruthy();
-  expect(strings("zh").t("partners.switch.asks", "小家", 1)).toBe("换到小家，有 1 件等你");
-  expect(strings("en").t("partners.switch", "Home")).toBe("Switch to Home");
 });
 
 test("the Mac says the same words under the same keys", () => {

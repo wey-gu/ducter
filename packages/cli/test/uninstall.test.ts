@@ -62,7 +62,7 @@ function ducterFolderWith(o: { projects?: string[]; unsaved?: boolean } = {}) {
 
 function fakeRunner(healthy = false) {
   const calls: string[][] = [];
-  const r: Runner = { uid: 501, run: async (c) => (calls.push(c), { code: 0, stdout: "" }), healthy: async () => healthy };
+  const r: Runner = { uid: 501, run: async (c) => (calls.push(c), { code: 0, stdout: "" }), healthy: async () => healthy, sleep: async () => {} };
   return { r, calls };
 }
 

@@ -12,7 +12,6 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
-	"os"
 	"testing"
 	"time"
 
@@ -87,15 +86,10 @@ func historyReqs(sent []any) []protocol.TaskHistoryReq {
 	return out
 }
 
-// openBudget is how long a paint after a frame may take: 300 ms locally; a
-// shared CI runner paints on the CPU about half again slower than a Mac at
-// rest, so CI catches only a real regression.
-func openBudget() time.Duration {
-	if os.Getenv("CI") != "" {
-		return 450 * time.Millisecond
-	}
-	return 300 * time.Millisecond
-}
+// openBudget is how long a paint after a frame may take on a quiet Mac;
+// overBudget stretches it by how slow this machine is right now
+// (slowness_test.go), so load alone doesn't fail it.
+const openBudget = 300 * time.Millisecond
 
 // indexWire is the task_index frame on the wire for the whole stream, and
 // how long the link takes to carry it.
@@ -112,7 +106,7 @@ func (h historyHome) indexWire(id string, ix *protocol.SessionIndex) ([]byte, ti
 }
 
 func TestTaskOpensFast(t *testing.T) {
-	budget := openBudget()
+	budget := openBudget
 	home := historyHome{evs: longTask(5000, "long1"), rtt: 80 * time.Millisecond, bps: 4e6 / 8, gzip: true}
 	ix := indexOf(home.evs)
 	app, sent := iaApp(t, i18n.ZH)
@@ -149,7 +143,7 @@ func TestTaskOpensFast(t *testing.T) {
 		t.Fatalf("an opened task asks for its newest window: %+v", asked)
 	}
 	t.Logf("index %d KB, painted %v; newest window %d KB, first paint %v after it arrived", ixKB/1024, ixTook.Round(time.Millisecond), winKB/1024, took.Round(time.Millisecond))
-	if took > budget || ixTook > budget {
+	if overBudget(t, took, budget) || overBudget(t, ixTook, budget) {
 		t.Errorf("first paint took %v (index %v) after the frames arrived, over %v", took, ixTook, budget)
 	}
 	if app.S.Task("long1").Index == nil {
@@ -177,7 +171,7 @@ func TestTaskOpensFast(t *testing.T) {
 			}
 		}
 		pages++
-		if took > budget {
+		if overBudget(t, took, budget) {
 			t.Errorf("page %d held the page %v", pages, took)
 		}
 	}
@@ -187,7 +181,7 @@ func TestTaskOpensFast(t *testing.T) {
 // A home before D320 (no task_index): the newest window, then older pages
 // in the background up to historyLimit, then more only at the head.
 func TestTaskOpensFastNoIndex(t *testing.T) {
-	budget := openBudget()
+	budget := openBudget
 	home := historyHome{evs: longTask(5000, "long1"), rtt: 80 * time.Millisecond, bps: 4e6 / 8, gzip: true}
 	app, sent := iaApp(t, i18n.ZH)
 	app.Status = client.Connected
@@ -201,7 +195,7 @@ func TestTaskOpensFastNoIndex(t *testing.T) {
 	data, link := home.answer(reqs[0])
 	took := paint(t, app, tt, data)
 	t.Logf("newest window: %d KB, link %v, first paint %v after it arrived (to first paint %v)", len(data)/1024, link.Round(time.Millisecond), took.Round(time.Millisecond), (link + took).Round(time.Millisecond))
-	if took > budget {
+	if overBudget(t, took, budget) {
 		t.Errorf("first paint took %v after the frame arrived, over %v", took, budget)
 	}
 	// Its latest words, at the end where it opens.
@@ -230,7 +224,7 @@ func TestTaskOpensFastNoIndex(t *testing.T) {
 			t.Fatalf("page %d: %+v", pages, r)
 		}
 		data, _ := home.answer(r)
-		if took := paint(t, app, tt, data); took > budget {
+		if took := paint(t, app, tt, data); overBudget(t, took, budget) {
 			t.Errorf("page %d held the page %v", pages, took)
 		}
 	}

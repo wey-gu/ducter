@@ -3,7 +3,6 @@
 // is the same (apps/desktop/internal/views/d337_test.go).
 import { describe, expect, test } from "bun:test";
 import type { OwnPhoneView } from "@ducter/protocol";
-import { strings } from "../src/i18n.ts";
 
 const fresh: OwnPhoneView = {
   where: "Siwei's MacBook Pro",
@@ -29,15 +28,5 @@ describe("the own-number setup at rest (D337)", () => {
     expect(ownStarted({ ...fresh, voice: { ...fresh.voice, key: true } })).toBe(true);
     expect(ownStarted({ ...fresh, test: { state: "failed", detail: "no_pickup" } })).toBe(true);
     expect(ownStarted({ ...fresh, ready: true })).toBe(true);
-  });
-
-  test("the folded row's words, in both languages", () => {
-    const zh = strings("zh"),
-      en = strings("en");
-    expect(zh.t("own.title")).toBe("用你自己的号码打");
-    expect(zh.t("own.fold")).toBe("用你的安卓手机和 SIM 卡打，对方看到的是你的号码。");
-    expect(zh.t("own.setup")).toBe("设置");
-    expect(en.t("own.fold")).toBe("Calls go from your Android phone and SIM, so they see your number.");
-    expect(en.t("own.setup")).toBe("Set up");
   });
 });

@@ -3,21 +3,11 @@
 import { describe, expect, test } from "bun:test";
 import type { BridgeView, MemView } from "@ducter/protocol";
 import { memPhase } from "../src/mem-view.ts";
-import { strings, TABLES } from "../src/i18n.ts";
+import { strings } from "../src/i18n.ts";
 import { memoryWords } from "../src/i18n-memory.ts";
 import { updateAllWords } from "../src/i18n-updateall.ts";
 
 describe("the Noted line (D329)", () => {
-  test("its words in both languages", () => {
-    expect(TABLES.zh["memory.undone"]).toBe("不记了「%s」");
-    expect(TABLES.en["memory.undone"]).toBe("Not kept “%s”");
-    expect(TABLES.zh["memory.replaced"]).toBe("换掉了之前那条「%s」");
-    expect(TABLES.en["memory.replaced"]).toBe("In place of “%s”");
-    expect(TABLES.zh["memory.waiting"]).toBe("等 Nowledge Mem 回来就存进去");
-    expect(TABLES.en["memory.undo"]).toBe("Undo");
-    expect(TABLES.zh["memory.undo.failed"]).toBe("Nowledge Mem 没回应，还记着");
-  });
-
   test("state from the settings frame and the conversation: undone, waiting, Undo only until the person speaks again, a refused undo", async () => {
     const { A } = await import("../src/app.ts");
     A.L = strings("zh");

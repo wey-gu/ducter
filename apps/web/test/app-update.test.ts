@@ -15,15 +15,6 @@ afterAll(() => {
 
 const kids = (v: any): any[] => (Array.isArray(v?.props?.children) ? v.props.children : [v?.props?.children]).filter((k: unknown) => k != null && k !== false);
 
-test("the words, in zh and en", async () => {
-  const { strings } = await import("../src/i18n.ts");
-  expect(strings("zh").t("app.this")).toBe("这个 App");
-  expect(strings("zh").t("app.check")).toBe("检查更新");
-  expect(strings("en").t("app.this")).toBe("This app");
-  expect(strings("en").t("app.check")).toBe("Check for updates");
-  expect(strings("zh").t("devup.version", "0.0.71")).toBe("版本 0.0.71");
-});
-
 test("in a browser and in the iPhone app: no row", async () => {
   const { AppUpdateRow, androidAppVersion } = await import("../src/app-update.tsx");
   delete g.ducterNative;

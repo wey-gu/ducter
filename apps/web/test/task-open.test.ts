@@ -11,6 +11,7 @@ import { olderPage, Store, windowAsk } from "../src/store.ts";
 import { indexOf, WINDOW } from "@ducter/protocol/src/session.ts";
 import { taskBlocks, taskTurns } from "../src/transcript.tsx";
 import { HISTORY_FIRST, HISTORY_LIMIT, HISTORY_PAGE } from "../src/app.ts";
+import { budget } from "./slowness.ts";
 
 type Req = Extract<ClientFrame, { t: "task_history" }>;
 
@@ -48,7 +49,7 @@ describe("opening a long task (D284)", () => {
     const first = ask({ t: "task_history", taskId: "long1", limit: HISTORY_FIRST });
     const ms = paint(S, first.json, "long1");
     console.log(`web: newest window ${Math.round(first.json.length / 1024)} KB, link ${Math.round(first.linkMs)} ms, ready ${ms.toFixed(1)} ms after it arrived`);
-    expect(ms).toBeLessThan(300);
+    expect(ms).toBeLessThan(budget(300, ms));
     const task = S.tasks.get("long1")!;
     expect(taskTurns(task).slice(-2).some((tu) => tu.body.some((b) => b.k === "voice" && b.text.startsWith("Round")))).toBe(true);
     // D320: with its session index, pages come only for what is on screen and ahead of it: at the
@@ -58,7 +59,8 @@ describe("opening a long task (D284)", () => {
     for (let a = windowAsk(S, "long1", undefined); a; a = windowAsk(S, "long1", undefined)) {
       S.historyAsked("long1", a.limit);
       expect("beforeSeq" in a).toBe(true);
-      expect(paint(S, ask({ t: "task_history", taskId: "long1", ...(a as { beforeSeq: number; limit: number }) }).json, "long1")).toBeLessThan(300);
+      const pageMs = paint(S, ask({ t: "task_history", taskId: "long1", ...(a as { beforeSeq: number; limit: number }) }).json, "long1");
+      expect(pageMs).toBeLessThan(budget(300, pageMs));
       pages++;
     }
     expect(pages).toBe(Math.ceil(WINDOW.ahead / HISTORY_PAGE));

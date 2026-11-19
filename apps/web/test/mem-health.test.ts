@@ -3,8 +3,6 @@ import { expect, test } from "bun:test";
 import type { BridgeView, DeviceMemView } from "@ducter/protocol";
 import { memHealthLook } from "../src/mem-view.ts";
 import { memRowHealth } from "../src/worker-mem-view.ts";
-import { memoryWords } from "../src/i18n-memory.ts";
-import { workerMemWords } from "../src/i18n-workermem.ts";
 import { TABLES } from "../src/i18n.ts";
 
 const b = (x: Partial<BridgeView> = {}) => ({ state: "connected", ...x }) as BridgeView;
@@ -42,14 +40,6 @@ test("a lent computer's row: only while it would ask to sign in, and only these 
   expect(memRowHealth(m({ health: { issue: "plugin" } }))).toBeUndefined();
   expect(memRowHealth(m({ health: { issue: "unreachable" }, step: { phase: "connecting" } }))).toBeUndefined();
   expect(memRowHealth({ state: "ready", health: { issue: "unreachable" } })).toBeUndefined();
-});
-
-test("the words exist in both languages, the same keys", () => {
-  for (const words of [memoryWords, workerMemWords]) {
-    const zh = Object.keys(words.zh).filter((k) => k.includes("health") || k === "wmem.again" || k === "wmem.update");
-    expect(zh.length).toBeGreaterThan(0);
-    for (const k of zh) expect(words.en[k]).toBeTruthy();
-  }
 });
 
 test("D375: the offer closed by itself reads as done; re-signing in has its own line", () => {

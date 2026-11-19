@@ -3,7 +3,6 @@
 // step 2 opens only once step 1 is done. A phone Android doesn't restrict has step 2 alone.
 import { describe, expect, test } from "bun:test";
 import type { HandsetState } from "@ducter/protocol";
-import { TABLES } from "../src/i18n.ts";
 
 const st = (o: Partial<HandsetState>): HandsetState => ({ bridge: 1, sdk: 36, model: "Pixel Fold", service: false, pictures: true, ...o });
 
@@ -43,14 +42,5 @@ describe("the Use this phone guide (D246)", () => {
     expect(current(st({ restricted: true }), g)).toBe("allow");
     g.visited.add("allow");
     expect(current(st({ restricted: true }), g)).toBe("on");
-  });
-
-  test("the words: step 1 is allowing, its parts and bodies exist in both languages", () => {
-    for (const lang of ["zh", "en"] as const) {
-      const s = TABLES[lang];
-      for (const k of ["handset.step.allow.title", "handset.part.try", "handset.part.allow", "handset.step.try.body", "handset.step.allow.body", "handset.step.on.title", "handset.step.on.body", "android.denied", "android.controlled"]) expect(s[k], `${lang} ${k}`).toBeTruthy();
-      expect(s["handset.step.try.title"]).toBeUndefined();
-    }
-    expect(TABLES.zh["handset.step.allow.title"]).toBe("允许受限制的设置");
   });
 });

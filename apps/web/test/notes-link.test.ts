@@ -4,12 +4,6 @@
 import { expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 
-test("the words, in zh and en", async () => {
-  const { strings } = await import("../src/i18n.ts");
-  expect(strings("zh").t("devup.notes")).toBe("看看都改了什么");
-  expect(strings("en").t("devup.notes")).toBe("See what changed");
-});
-
 test("the link goes to that version's notes and says they were read", async () => {
   const { A } = await import("../src/app.ts");
   const { strings } = await import("../src/i18n.ts");

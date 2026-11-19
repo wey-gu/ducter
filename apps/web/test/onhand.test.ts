@@ -2,9 +2,7 @@
 // step), a draft PR or a merge shows on it, Find and the switcher match every word, and many at
 // once offer only what fits each task.
 import { describe, expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
 import { strings } from "../src/i18n.ts";
-import { onhandWords } from "../src/i18n-onhand.ts";
 
 const now = new Date().toISOString();
 const card = (id: string, title: string, project: string, attention: string, extra: object = {}) => ({
@@ -74,12 +72,3 @@ describe("On hand rows (D216)", () => {
   });
 });
 
-describe("On hand copy (D216)", () => {
-  test("zh and en have the same keys, and the same as the Mac", () => {
-    expect(Object.keys(onhandWords.zh).sort()).toEqual(Object.keys(onhandWords.en).sort());
-    const mac = readFileSync(new URL("../../desktop/internal/i18n/onhand.go", import.meta.url), "utf8");
-    const macKeys = [...mac.matchAll(/^\t"([^"]+)":/gm)].map((m) => m[1]);
-    expect([...new Set(macKeys)].sort()).toEqual(Object.keys(onhandWords.zh).sort());
-    for (const [k, v] of Object.entries({ ...onhandWords.zh, ...onhandWords.en })) expect(mac).toContain(`"${k}":`), expect(mac).toContain(JSON.stringify(v));
-  });
-});

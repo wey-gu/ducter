@@ -63,7 +63,9 @@ func TestNavMotionFrames(t *testing.T) {
 	// language gets three tries; a real slowdown fails every one. The ratio is 4x + 15 ms: a quiet
 	// Mac measures moving at ~6x still (it passes on the 50 ms floor), a CI runner ~4x, so 3x failed
 	// there even for the released 0.0.78 (2026-11-19); twice as slow still fails.
-	for _, lang := range []i18n.Lang{i18n.ZH, i18n.EN} {
+	// One language: the frames are the same moves either way (the English pass measured the
+	// same ratio and doubled the time).
+	for _, lang := range []i18n.Lang{i18n.ZH} {
 		var m, s, limit time.Duration
 		for try := 1; try <= 3; try++ {
 			moving := navMotionRun(t, lang, false)

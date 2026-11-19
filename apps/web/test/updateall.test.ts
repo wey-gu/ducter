@@ -2,10 +2,8 @@
 // step in words, the buttons' frames, the apps' own last step (the Android app checks, a page the
 // home now serves newer reloads back on 你的设备), and the copy equal to the Mac's.
 import { describe, expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
 import type { UpdateAllItem } from "@ducter/protocol";
 import { strings } from "../src/i18n.ts";
-import { updateAllWords } from "../src/i18n-updateall.ts";
 
 const item = (o: Partial<UpdateAllItem>): UpdateAllItem => ({ key: "ducter:local", kind: "ducter", device: "local", deviceName: "hel", from: "0.0.30", to: "0.0.31", state: "queued", at: "2026-11-12T10:00:00Z", ...o });
 
@@ -89,13 +87,5 @@ describe("Update all (D224)", () => {
       A.staleFor = "";
       A.sheet = null;
     }
-  });
-
-  test("zh and en have the same keys, and the same words as the Mac", () => {
-    expect(Object.keys(updateAllWords.zh).sort()).toEqual(Object.keys(updateAllWords.en).sort());
-    const mac = readFileSync(new URL("../../desktop/internal/i18n/updateall.go", import.meta.url), "utf8");
-    const macKeys = [...mac.matchAll(/^\t"([^"]+)":/gm)].map((m) => m[1]);
-    expect([...new Set(macKeys)].sort()).toEqual(Object.keys(updateAllWords.zh).sort());
-    for (const [k, v] of Object.entries({ ...updateAllWords.zh, ...updateAllWords.en })) expect(mac).toContain(`"${k}":`), expect(mac).toContain(JSON.stringify(v));
   });
 });

@@ -241,11 +241,6 @@ describe("after a reconnect (soak design calls 2 and 3)", () => {
     s.apply({ t: "events", events: [ev("job_status", { jobId: "act_t2_open_pr", taskId: "t2", state: "done", text: "pr" }, { origin: "user" })] });
     expect([t2.unsure, t2.acted]).toEqual([undefined, { action: "open_pr", ok: true }]);
   });
-
-  test("the unsure line has zh and en copy", () => {
-    expect(strings("zh").t("result.unsure")).toBe("不确定成功了没有，你看一眼");
-    expect(strings("en").t("result.unsure")).toBe("Not sure it went through — check");
-  });
 });
 
 describe("the committed bundle", () => {

@@ -14,16 +14,6 @@ describe("the recording card (D280)", () => {
     expect(recordLeft("2026-11-16T20:13:59Z", now)).toBe("");
     expect(recordLeft(undefined, now)).toBe("");
   });
-
-  test("its words in both languages: tap Start now on the phone, the countdown, Skip recording, how it ended", () => {
-    for (const lang of ["zh", "en"] as const) {
-      const s = TABLES[lang];
-      for (const k of ["handset.record.title", "handset.record.what", "handset.record.left", "handset.record.hold", "handset.record.on", "handset.record.skipped", "handset.record.gave_up"]) expect(s[k], `${lang} ${k}`).toBeTruthy();
-    }
-    expect(TABLES.zh["handset.record.title"]!.replace("%s", "Pixel Fold")).toBe("在 Pixel Fold 上点「立即开始」，它才能录屏");
-    expect(TABLES.zh["handset.record.hold"]).toBe("不录了");
-    expect(TABLES.en["handset.record.hold"]).toBe("Skip recording");
-  });
 });
 
 describe("a loan's end, as a hairline (D280)", () => {

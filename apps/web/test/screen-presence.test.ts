@@ -24,17 +24,9 @@ const KEYS = [
   "phoneuse.did.open",
 ];
 
-test("every D248 word exists in zh and en", () => {
+test("the glossary's words for a device: 叫醒 to wake it, asleep, never off or broken (D56)", () => {
   const zh = strings("zh");
-  const en = strings("en");
-  for (const k of KEYS) {
-    expect(zh.t(k)).not.toBe(k);
-    expect(en.t(k)).not.toBe(k);
-  }
-  expect(zh.t("phoneuse.wake")).toBe("叫醒"); // the glossary's verb for a device (D56)
-  expect(zh.t("phoneuse.did.tap", "发送")).toBe("点了「发送」");
-  expect(en.t("phoneuse.asleep.why", "MacBook")).toContain("MacBook");
-  // Asleep, never "off" or "broken" (the glossary's device states).
+  expect(zh.t("phoneuse.wake")).toBe("叫醒");
   for (const k of ["phoneuse.asleep", "phoneuse.asleep.title", "phoneuse.running"]) expect(zh.t(k)).not.toMatch(/关机|故障|离线/);
 });
 

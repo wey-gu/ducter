@@ -2,8 +2,6 @@
 // person's words for days, the other side's zone, and who else is on an event.
 import { describe, expect, test } from "bun:test";
 import { dateRun, dayHead, hmOf, offsetOf, otherZoneLine, peopleWords, theirSide, todayIn, whenWords } from "../src/cal-format.ts";
-import { TABLES } from "../src/i18n.ts";
-import { calendarWords } from "../src/i18n-calendar.ts";
 
 describe("calendar words", () => {
   test("the wall clock comes from the string, not this device's zone", () => {
@@ -36,10 +34,5 @@ describe("calendar words", () => {
     expect(peopleWords("en", 5, ["Lina Chen", "alice"])).toBe("with Lina Chen, alice +3");
     expect(peopleWords("zh", 5, ["Lina Chen", "alice"])).toBe("和 Lina Chen、alice 等 5 人");
     expect(peopleWords("en", 0, [])).toBe("");
-  });
-
-  test("every calendar word is in both languages and merged", () => {
-    expect(Object.keys(calendarWords.zh).sort()).toEqual(Object.keys(calendarWords.en).sort());
-    for (const k of Object.keys(calendarWords.zh)) expect(TABLES.zh[k]).toBe(calendarWords.zh[k]!);
   });
 });

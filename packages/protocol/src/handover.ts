@@ -78,6 +78,8 @@ export interface HandWhere {
   said?: string;
   /** Whether the set's repository is on this computer (a task there gets its folder). */
   hasRepo?: boolean;
+  /** D391: no computer has the repository: it is cloned here first (拉一份到 {name} / Clone it onto {name}). */
+  clone?: true;
 }
 
 /** 谁来做 / Who does it: an agent, or the partner choosing per task as usual. */

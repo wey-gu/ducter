@@ -981,7 +981,8 @@ export function startCore(opts: CoreOptions = {}): Core {
     const homeServer = (opts.platform ?? process.platform) === "linux";
     return [
       { id: "local", name: computers.homeName(), home: true, online: true, build: homeServer ? 0 : 2 },
-      ...(workersRef?.list() ?? []).map((w) => {
+      // The same computers New task and the hand-over sheet list (their workers, away ones too).
+      ...(computers.workers?.() ?? []).map((w) => {
         const hello = online.get(w.id)?.hello ?? away?.get(w.id)?.hello;
         const os = (hello?.os ?? "").toLowerCase();
         return { id: w.id, name: w.name, home: false, online: w.online, build: os.startsWith("darwin") || os.startsWith("mac") ? 2 : 1 };
@@ -992,6 +993,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     computers: whereComputers,
     async clones(dev, remote, probe, ms) {
       if (dev === "local") return homeClones(remote, probe);
+      if (computers.clones) return computers.clones(dev, remote, probe, probe ? ms + 15_000 : ms);
       const link = workersRef?.link(dev);
       if (!link?.online()) return "offline";
       try {
@@ -1659,6 +1661,8 @@ export function startCore(opts: CoreOptions = {}): Core {
       },
       computers: () => [{ device: "local", name: computers.homeName() ?? "" }, ...(computers.workers?.() ?? []).map((w) => ({ device: w.id, name: w.name }))],
       rules: () => rules.list(),
+      // D391: the one resolver task_open uses, so the sheet's Where and the tasks it opens agree with it.
+      repoWhere: (a) => repoWhere.resolve(a) as Promise<import("./task-sources/handover.ts").RepoWhereAnswer>,
       addRule: (r) => void rules.add(r),
       open: async (input) => {
         if (!runner) throw new Error("Tasks can't run right now.");

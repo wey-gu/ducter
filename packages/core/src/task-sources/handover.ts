@@ -68,6 +68,9 @@ const W = {
 };
 const fill = (s: string, v: Record<string, string | number>) => s.replace(/\{(\w+)\}/g, (_, k) => String(v[k] ?? ""));
 
+/** D391: what the resolver answers, as the hand-over reads it. */
+export type RepoWhereAnswer = { ok: true; how: string; place: HeldOpen["place"] & object; computer: string; also?: string[] } | { ok: false };
+
 export interface HandoverDeps {
   dataDir: string;
   log: LogStore;
@@ -84,6 +87,12 @@ export interface HandoverDeps {
   /** The computers: the home first ("local"), then the workers (id and name). */
   computers: () => { device: string; name: string }[];
   rules: () => RuleView[];
+  /**
+   * D391: the one resolver task_open uses (core/src/repo-where.ts): which computer has the
+   * repository (the one that builds first), or where it is cloned when none has it. Absent: New
+   * task's places only (tests before D391).
+   */
+  repoWhere?: (a: { remote: string; named?: string; texts?: string[] }) => Promise<RepoWhereAnswer>;
   addRule?: (r: { text: string; harness: string; match: string[]; device?: string; kinds?: string[] }) => void;
   /** Opens a task now (the runner's openTask). */
   open: (input: HeldOpen) => Promise<TaskCard>;
@@ -445,6 +454,18 @@ export function createHandover(d: HandoverDeps): Handover {
       const c = comps.find((x) => x.name.toLowerCase() === rule.device!.toLowerCase() || x.device === rule.device);
       if (c) where = { device: c.device, name: c.name, why: "rule", said: rule.text, ...(hasRepo(c.device) ? { hasRepo: true } : {}) };
     }
+    // D391: the shared resolver: the computer with its clone (a Mac before a server home), or where it is cloned.
+    const resolved = repos.length && d.repoWhere ? await d.repoWhere({ remote: repos[0]!, texts: [titles] }).catch(() => ({ ok: false }) as const) : undefined;
+    if (resolved?.ok) {
+      const holders = new Set([resolved.how === "clone" ? "" : resolved.computer, ...(resolved.also ?? [])].filter(Boolean));
+      for (const w of wheres) if (holders.has(w.name)) Object.assign(w, { why: "repo", hasRepo: true, ...(repo ? { said: repo } : {}) });
+    }
+    if (!where && resolved?.ok) {
+      const dev = (resolved.place as { device?: string }).device || "local";
+      const c = comps.find((x) => x.device === dev);
+      if (c) where = resolved.how === "clone" ? { device: c.device, name: c.name, why: "repo", said: repos[0], clone: true } : { device: c.device, name: c.name, why: "repo", said: repos[0], hasRepo: true };
+    }
+    if (where && where.why !== "repo" && resolved?.ok && wheres.find((w) => w.device === where!.device)?.hasRepo) where.hasRepo = true;
     if (!where && repos.length) {
       // The computer that has the repository's folder (the home's first): never no place when a folder exists anywhere.
       const p = placeForRepo(places, repos[0]);
@@ -469,7 +490,10 @@ export function createHandover(d: HandoverDeps): Handover {
   // ---------- hand ----------
 
   /** The place a to-do gets on a computer: its repository's folder there, else no particular place there. */
-  function placeOn(i: SourceItemRef, device: string, places: PlaceChoice[]): HeldOpen["place"] {
+  function placeOn(i: SourceItemRef, device: string, places: PlaceChoice[], found?: Map<string, HeldOpen["place"]>): HeldOpen["place"] {
+    // D391: the resolver's answer on that computer (its clone there, or a clone made there first).
+    const f = i.kind === "github" && i.where ? found?.get(i.where.toLowerCase()) : undefined;
+    if (f) return f;
     if (i.kind === "github" && i.where) {
       const p = placeForRepo(places.filter((x) => x.place.kind === "repo" && (x.place.device || "local") === device), i.where);
       if (p) return p.place;
@@ -478,6 +502,19 @@ export function createHandover(d: HandoverDeps): Handover {
   }
   const projectOf = (place: HeldOpen["place"], places: PlaceChoice[]) => (place && place.kind === "repo" ? (places.find((p) => p.place.kind === "repo" && p.place.repoPath === place.repoPath && (p.place.device || "local") === (place.device || "local"))?.name ?? place.repoPath.split("/").pop() ?? "") : "");
   const titleOf = (t: string) => t.replace(/\s+/g, " ").trim().slice(0, 80);
+  /** D391: each repository's place on that computer, as the shared resolver says it (named: that computer). */
+  async function foundOn(items: SourceItemRef[], device: string): Promise<Map<string, HeldOpen["place"]>> {
+    const out = new Map<string, HeldOpen["place"]>();
+    if (!d.repoWhere) return out;
+    const repos = [...new Set(items.filter((i) => i.kind === "github" && i.where).map((i) => i.where!.toLowerCase()))];
+    await Promise.all(
+      repos.map(async (r) => {
+        const a = await d.repoWhere!({ remote: r, named: device }).catch(() => ({ ok: false }) as const);
+        if (a.ok && ((a.place as { device?: string }).device || "local") === device) out.set(r, a.place);
+      }),
+    );
+    return out;
+  }
 
   async function hand(o: Parameters<Handover["hand"]>[0]): ReturnType<Handover["hand"]> {
     const refs = [...new Set(o.refs)].slice(0, HAND_MAX).filter((r) => !d.pile.taken(r));
@@ -494,8 +531,9 @@ export function createHandover(d: HandoverDeps): Handover {
     const lang = d.lang();
     const persona = d.persona();
     const verdict = (i: SourceItem) => byRef(i.ref);
+    const found = await foundOn(items, device);
     const input = (its: SourceItem[], o2: { itemNote?: string; title?: string; brief?: string }): HeldOpen => {
-      const place = placeOn(its[0]!, device, places);
+      const place = placeOn(its[0]!, device, places, found);
       return {
         persona,
         title: titleOf(o2.title || its[0]!.title),
@@ -579,7 +617,7 @@ export function createHandover(d: HandoverDeps): Handover {
     try {
       if (shape === "plan") {
         const repo = h.repo;
-        const place = repo ? placeOn(items[0]!, device, places) : device === "local" ? { kind: "none" as const } : { kind: "none" as const, device };
+        const place = repo ? placeOn(items[0]!, device, places, found) : device === "local" ? { kind: "none" as const } : { kind: "none" as const, device };
         const c = await d.open({ persona, title: titleOf(fill(W[lang].planQ, { group: name })), brief: planBrief(items, { ...(note ? { note } : {}), ...(subject ? { subject } : {}), lang, ...(repo ? { repo } : {}) }), ...(place ? { place } : {}), project: projectOf(place, places), ...(harness ? { harness } : {}), language: lang, origin: "you" });
         g0.attach(g.id, c.taskId, true);
         g0.setHand(g.id, { plan: { taskId: c.taskId, state: "planning" } });
@@ -654,10 +692,11 @@ export function createHandover(d: HandoverDeps): Handover {
     const lang = d.lang();
     const device = hv.where?.device ?? "local";
     const note = hv.note;
+    const found = await foundOn(its, device);
     const mk = (refs: string[], part?: PlanPart): { open: HeldOpen; bind: SourceItemRef[] } | undefined => {
       const xs = refs.map((r) => by.get(r)).filter((i): i is SourceItem => !!i);
       if (!xs.length) return undefined;
-      const place = placeOn(xs[0]!, device, places);
+      const place = placeOn(xs[0]!, device, places, found);
       const why = part?.why ? `\nWhy it is its own part here (from the plan): ${part.why}` : "";
       return {
         open: {

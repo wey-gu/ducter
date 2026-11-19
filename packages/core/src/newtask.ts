@@ -39,6 +39,8 @@ export interface NewTaskComputers {
   repos?(device: string, timeoutMs: number): Promise<FolderProjects | "offline" | "old">;
   /** D203: a folder's subfolders on that worker (找一个文件夹… / Find a folder…); "old": too old to. */
   browse?(device: string, path: string | undefined, timeoutMs: number): Promise<BrowseResult | "offline" | "old">;
+  /** D391: which clones of a repository that worker has (with probe: whether its git can read it); default: its `clones` op. */
+  clones?(device: string, remote: string, probe: boolean, timeoutMs: number): Promise<import("@ducter/protocol/src/clones.ts").ClonesAnswer | "offline" | "old">;
   /** D204: clone a Git address into that worker's Ducter folder, there; "old": too old to. */
   clone?(device: string, address: string, timeoutMs: number): Promise<CloneResult | "offline" | "old">;
   /** D272: make <Ducter folder>/projects/<name> on that worker, there; "old": too old to. */

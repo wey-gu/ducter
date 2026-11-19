@@ -523,7 +523,7 @@ would have failed the same way. The fresh user has never cloned anything and sho
 
 **One resolver** (`packages/core/src/repo-where.ts`), used by task_open's pre-flight, a to-do handed
 over from On hand (`task_new` `handed`), the pile's hand-over, 再试一次 on a task that couldn't
-start, and D385's hand-over of several. Its order generalizes D385's:
+start, and D385's hand-over of several (the sheet's Where default, and the place each of its tasks opens in; `HandWhere.clone` when it is cloned there first). Its order generalizes D385's:
 
 1. a computer the person named in words (or the place's own device when the partner set one);
 2. a where-rule (a rule with a computer whose words match the work);

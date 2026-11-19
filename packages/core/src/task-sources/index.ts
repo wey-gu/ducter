@@ -163,7 +163,7 @@ export interface TaskSourcesDeps {
   /** D359: a repository's own review guide, when its folder is on this computer. */
   reviewGuide?: (repo: string) => Promise<string | undefined> | string | undefined;
   /** D385: handing several over (groups, places, computers, rules, opening and telling tasks). */
-  handover?: Pick<HandoverDeps, "persona" | "groups" | "places" | "computers" | "rules" | "addRule" | "open" | "tell">;
+  handover?: Pick<HandoverDeps, "persona" | "groups" | "places" | "computers" | "rules" | "addRule" | "open" | "tell" | "repoWhere">;
 }
 
 export interface ProposeResult {

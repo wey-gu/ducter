@@ -1794,7 +1794,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
             kind: { type: "string", enum: ["none", "repo", "folder", "browser"] },
             device: { type: "string", description: 'Leave it out (or "local") and Ducter picks the computer from needs. A computer\'s name from the [devices] line only when the user named that computer ("在 MacBook 上做"); a repo or folder on another computer: that computer.' },
             repoPath: { type: "string" },
-            remote: { type: "string", description: "owner/name, when its path isn't known: Ducter finds or clones it. Never guess repoPath." },
+            remote: { type: "string", description: "owner/name when the path is unknown; Ducter finds it" },
             path: { type: "string" },
             profile: { type: "string" },
             baseBranch: { type: "string", description: "Repo only: branch to start from. For new work that builds on an earlier task's unmerged branch, pass that branch." },

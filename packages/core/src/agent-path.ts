@@ -9,7 +9,11 @@
 //      bun, Homebrew on Linux (/home/linuxbrew), /usr/local/bin, /opt/homebrew/bin, and the CLI a Mac
 //      app carries inside itself (DeepSeek Harness.app's dsh);
 //   3. Ducter's own tools folder (<data>/tools/node/bin, <data>/tools/bin), last.
-// The person's own copies come first: a Codex they installed wins over Ducter's.
+// The person's own copies come first: a Codex they installed wins over Ducter's. One exception,
+// D384: when the person's own `nmem` is too old for Mem (the old Python CLI: no `connect`, no
+// `doctor`) and Ducter put its own current copy in its tools folder, Ducter's `nmem` alone goes
+// ahead of everything (<data>/tools/prefer holds only that one link), so Mem's plugins inside
+// Claude Code and Codex find a working one. worker-mem.ts puts the link there and takes it away.
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync, mkdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
@@ -42,6 +46,8 @@ const realFs: AgentPathFs = {
 /** Ducter's own node (for npm-installed agents) and its own tools. */
 export const toolsNodeBin = (dataDir: string) => join(dataDir, "tools", "node", "bin");
 export const toolsOwnBin = (dataDir: string) => join(dataDir, "tools", "bin");
+/** D384: a folder with only a link to Ducter's own `nmem`, first on PATH while the person's is too old. */
+export const toolsPreferBin = (dataDir: string) => join(dataDir, "tools", "prefer");
 /** Where the login shell's PATH is kept between runs. */
 export const loginPathFile = (dataDir: string) => join(dataDir, "login-path");
 
@@ -120,12 +126,16 @@ export function saveLoginPath(dataDir: string, dirs: string[]): void {
 /**
  * The PATH an agent probe and every task on this computer use: what the process has, then the
  * login shell's, then the usual places, then Ducter's tools folder; each once, in that order.
+ * D384: Ducter's preferred nmem folder first, while it holds its link.
  */
 export function agentPath(o: { dataDir: string; env?: Record<string, string | undefined>; home?: string; fs?: AgentPathFs; login?: string[] }): string {
   const env = o.env ?? process.env;
   const fs = o.fs ?? realFs;
+  // D384: Ducter's own nmem ahead, only while its link is there (a link to nothing is no link).
+  const prefer = toolsPreferBin(o.dataDir);
   const parts = [
-    ...(env.PATH ?? "").split(":"),
+    ...(fs.exists(join(prefer, "nmem")) ? [prefer] : []),
+    ...(env.PATH ?? "").split(":").filter((p) => p !== prefer),
     ...(o.login ?? savedLoginPath(o.dataDir, fs)),
     ...userAgentDirs({ ...(o.home ? { home: o.home } : {}), env, fs }),
     toolsNodeBin(o.dataDir),

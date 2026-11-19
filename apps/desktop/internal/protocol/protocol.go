@@ -2023,7 +2023,7 @@ type RecordsAllowReq struct {
 // (no Mem command line there) | sign_in | ready; Agents: the AI agents there
 // Mem's check says are connected to it; Step: installing | connecting |
 // failed now (Reason network | space | unsupported | bad_link | used |
-// unreachable | failed), nil when idle.
+// unreachable | refused | old | failed), nil when idle.
 type DeviceMemView struct {
 	State       string         `json:"state"`
 	Installable bool           `json:"installable,omitempty"`
@@ -2034,6 +2034,16 @@ type DeviceMemView struct {
 	// command line there is Ducter's own copy, so Ducter can update it.
 	Health *MemHealth `json:"health,omitempty"`
 	Ours   bool       `json:"ours,omitempty"`
+	// D384: Theirs is the person's own nmem there when it is too old to sign
+	// in (Ducter never changes it); How: pipx | uv | pip, when its install says.
+	Theirs *DeviceMemTheirs `json:"theirs,omitempty"`
+}
+
+// DeviceMemTheirs is the person's own Mem command line on a computer for
+// tasks, too old to sign in (D384).
+type DeviceMemTheirs struct {
+	Old bool   `json:"old"`
+	How string `json:"how,omitempty"`
 }
 
 // DeviceMemStep is the step under way on DeviceMemView, or how it ended.

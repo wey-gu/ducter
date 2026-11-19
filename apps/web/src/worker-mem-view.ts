@@ -1,6 +1,29 @@
 // D366: where Nowledge Mem stands on a computer for tasks, as its row shows it (the card, the lend
 // sheet). Pure, so tests drive it; the Mac's views/workermem.go reads the same order.
-import type { DeviceMemView, DeviceView } from "@ducter/protocol";
+import type { DeviceMemReason, DeviceMemView, DeviceView } from "@ducter/protocol";
+
+/**
+ * D384: the person's own Mem command line there is too old to sign in. old: nothing of Ducter's
+ * there yet (the row offers its own current copy, never the paste); using: Ducter's own copy is
+ * used there, the person's stays as it is. Undefined: nothing to say.
+ */
+export function memRowTheirs(m: DeviceMemView): "old" | "using" | undefined {
+  if (!m.theirs?.old) return undefined;
+  return m.ours ? "using" : "old";
+}
+
+/** D384: the one command that updates the person's own copy, when its install says how (shown, never run). */
+export function theirUpdateCommand(how: NonNullable<DeviceMemView["theirs"]>["how"]): string | undefined {
+  return how === "pipx" ? "pipx upgrade nmem-cli" : how === "uv" ? "uv tool upgrade nmem-cli" : how === "pip" ? "python3 -m pip install --user --upgrade nmem-cli" : undefined;
+}
+
+/**
+ * D384: after a failed sign-in, whether the paste stays in the box: only when nothing was spent
+ * (refused before the link reached Mem: not a link, too old, putting the command line there
+ * failed, Mem not reachable). A used, refused or unknown failure clears it: make a new one.
+ */
+export const memKeepsPaste = (reason: DeviceMemReason | undefined) =>
+  reason === "bad_link" || reason === "old" || reason === "network" || reason === "space" || reason === "unsupported" || reason === "unreachable";
 
 export type MemRowLook = "installing" | "connecting" | "failed" | "ready" | "sign_in" | "absent";
 
@@ -18,7 +41,7 @@ export function memRowLook(m: DeviceMemView): MemRowLook {
  * it is Ducter's own copy, else how). Undefined: the row's own words.
  */
 export function memRowHealth(m: DeviceMemView): "unreachable" | "signed_out" | "old" | undefined {
-  if (memRowLook(m) !== "sign_in") return undefined;
+  if (memRowLook(m) !== "sign_in" || memRowTheirs(m) === "old") return undefined; // D384: that row says its own
   const i = m.health?.issue;
   return i === "unreachable" || i === "signed_out" || i === "old" ? i : undefined;
 }

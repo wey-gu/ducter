@@ -21,7 +21,14 @@ interface Check {
   tool?: unknown;
 }
 
-const OLD = /unrecognized subcommand|unexpected argument|invalid subcommand|no such (sub)?command/i;
+// clap's (the current Rust nmem) and argparse's (the old Python nmem, D384: `argument COMMAND:
+// invalid choice: 'connect' (choose from status, plugins, …)`) answers to a command it doesn't have.
+const OLD = /unrecognized subcommand|unexpected argument|invalid subcommand|no such (sub)?command|invalid choice/i;
+
+/** D384: nmem said it doesn't have that command (or that flag): a usage error, never a line to show. */
+export function nmemTooOld(text: string): boolean {
+  return OLD.test(text) || /^usage: nmem\b/im.test(text);
+}
 const LOOPBACK = /127\.0\.0\.1|localhost|\[::1\]|local server/i;
 
 /** The doctor's checks, or undefined when the text isn't its answer. */

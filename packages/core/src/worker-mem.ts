@@ -22,11 +22,20 @@
 // Claude Code and Codex (DOCUMENTED, SKILL.md "What nmem connect does"). With no link and Mem
 // already signed in, the same command only connects the agents. The link goes to nmem's argv and
 // nowhere else: never logged, kept, or sent back; any line shown is scrubbed of it.
+//
+// D384: the person's own nmem too old for this (the old Python CLI, which has neither `doctor` nor
+// `connect`: haswell's answered the pasted prompt with an argparse usage error). Known up front, from
+// its doctor's usage error, so the paste is never sent to it: the row says so and offers one tap that
+// puts Ducter's own current copy in <data>/tools (the same uv route) and uses it on that computer,
+// for Mem's steps here and, through a link in <data>/tools/prefer that goes first on PATH
+// (agent-path.ts), for the tasks and Mem's plugins inside them. The person's own copy is never
+// changed; the row says how they'd update it. Once theirs works again, the link goes away and theirs
+// is used, as before. A sign-in that still meets an nmem that can't take it puts Ducter's in first.
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, realpathSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { MEM_CONNECT_TOOLS, memHealthOf, type DeviceMemReason, type DeviceMemView } from "@ducter/protocol";
-import { toolsOwnBin } from "./agent-path.ts";
+import { MEM_CONNECT_TOOLS, memHealthOf, nmemTooOld, type DeviceMemReason, type DeviceMemView } from "@ducter/protocol";
+import { toolsOwnBin, toolsPreferBin } from "./agent-path.ts";
 import { realAgentSetupSys } from "./agent-setup.ts";
 import { connectLinkFrom } from "./mem-cli.ts";
 
@@ -51,12 +60,37 @@ export interface WorkerMemSys {
   arch: string;
   download(url: string, onProgress?: (pct: number) => void): Promise<Uint8Array>;
   run(argv: string[], o: { env: Record<string, string>; timeoutMs: number }): Promise<{ code: number; out: string }>;
-  /** Where `nmem` is now (the person's own first, then Ducter's tools folder), or null. */
-  which(cmd: string): string | null;
+  /** Where `nmem` is now (the person's own first, then Ducter's tools folder), or null; with `path`, on that PATH instead. */
+  which(cmd: string, path?: string): string | null;
   /** nmem's environment (the basics and Mem's own NMEM_*; the widened PATH, so it finds the agents). */
   env(): Record<string, string>;
   writeFile?: (p: string, b: Uint8Array) => void;
+  /** Tests: whether a file is there (default: the disk). */
+  exists?: (p: string) => boolean;
+  /** Tests: where a command really is and its first line (default: the disk), to say how the person updates theirs. */
+  inspect?: (p: string) => { real: string; head: string };
 }
+
+/** D384: how the person updates their own nmem, from where it really is and what runs it. */
+export function theirUpdateHow(i: { real: string; head: string }): "pipx" | "uv" | "pip" | undefined {
+  const both = `${i.real}\n${i.head}`;
+  if (/[\\/]pipx[\\/]/.test(both)) return "pipx";
+  if (/[\\/]uv[\\/]tools[\\/]/.test(both)) return "uv";
+  if (/^#!.*python/.test(i.head)) return "pip";
+  return undefined;
+}
+
+const realInspect = (p: string) => {
+  let real = p;
+  let head = "";
+  try {
+    real = realpathSync(p);
+    head = readFileSync(real).subarray(0, 200).toString("utf8").split("\n")[0] ?? "";
+  } catch {
+    /* can't tell: no hint */
+  }
+  return { real, head };
+};
 
 export interface WorkerMem {
   /** Reads where Mem stands now (doctor) and says it. */
@@ -133,6 +167,8 @@ export function createWorkerMem(o: {
   changed: () => void;
   /** After a sign-in: the home reads Mem's plugin check again (the agents' Mem lines). */
   connected?: () => void;
+  /** D384: Ducter's nmem went ahead on PATH or stepped back: the worker widens its PATH again. */
+  pathChanged?: () => void;
   /** Tests: another uv pin (a fake download's checksum). */
   uv?: typeof UV_RELEASE;
 }): WorkerMem {
@@ -142,9 +178,45 @@ export function createWorkerMem(o: {
   const tools = join(o.dataDir, "tools");
   const bin = toolsOwnBin(o.dataDir);
   const asset = UV.assets[`${sys.platform}-${sys.arch}`];
+  const exists = sys.exists ?? existsSync;
+  const inspect = sys.inspect ?? realInspect;
+  const prefer = toolsPreferBin(o.dataDir);
   let view: DeviceMemView = { state: "absent", ...(asset ? { installable: true } : {}) };
   let step: DeviceMemView["step"];
   let running = false;
+  /** D384: the nmem Ducter uses here, as the last look found it (one whose doctor answers), or undefined. */
+  let usable: string | undefined;
+
+  const inTools = (p: string) => p === tools || p.startsWith(tools + "/");
+  /** Ducter's own copy, when it is there. */
+  const oursNow = () => {
+    const p = join(bin, "nmem");
+    if (exists(p)) return p;
+    const w = sys.which("nmem");
+    return w && w.startsWith(bin + "/") ? w : undefined;
+  };
+  /** The person's own: the first `nmem` on PATH outside Ducter's tools folder. */
+  const theirsNow = () => {
+    const outside = (sys.env().PATH ?? process.env.PATH ?? "").split(":").filter((d) => d && !inTools(d)).join(":");
+    const w = sys.which("nmem", outside);
+    return w && !inTools(w) ? w : undefined;
+  };
+  /** D384: Ducter's nmem first on PATH (tasks, Mem's plugins in them) only while the person's is too old. */
+  const preferOurs = (on: boolean) => {
+    const link = join(prefer, "nmem");
+    const had = existsSync(link);
+    try {
+      if (on && !had) {
+        rmSync(prefer, { recursive: true, force: true });
+        mkdirSync(prefer, { recursive: true });
+        symlinkSync(join(bin, "nmem"), link);
+      } else if (!on && existsSync(prefer)) rmSync(prefer, { recursive: true, force: true });
+    } catch {
+      return; // a read-only tools folder: Ducter's own steps still use its copy by its path
+    }
+    if (on !== had) o.pathChanged?.();
+  };
+  const doctor = (nmem: string) => sys.run([nmem, "--json", "doctor"], { env: sys.env(), timeoutMs: 30_000 });
 
   const say = () => o.changed();
   const set = (s: DeviceMemView["step"]) => ((step = s), say());
@@ -158,20 +230,45 @@ export function createWorkerMem(o: {
   });
 
   async function look(): Promise<void> {
-    const nmem = sys.which("nmem");
+    const theirs = theirsNow();
+    const ours = oursNow();
+    let nmem = theirs ?? ours;
+    usable = undefined;
     if (!nmem) {
+      preferOurs(false);
       view = { state: "absent", ...(asset ? { installable: true } : {}) };
+      return say();
+    }
+    let d = await doctor(nmem);
+    // D384: the person's own one has no doctor (too old to sign in): Ducter's own copy, if it put one here.
+    let theirsOld: DeviceMemView["theirs"];
+    if (theirs && memHealthOf(d, [])?.issue === "old") {
+      const how = theirUpdateHow(inspect(theirs));
+      theirsOld = { old: true, ...(how ? { how } : {}) };
+      if (ours) d = await doctor((nmem = ours));
+    }
+    preferOurs(!!theirsOld && !!ours);
+    if (theirsOld && !ours) {
+      // Nothing here can sign in: the row offers Ducter's own copy, never the paste.
+      view = { state: "sign_in", health: { issue: "old" }, theirs: theirsOld, ...(asset ? { installable: true } : {}) };
       return say();
     }
     const v = await sys.run([nmem, "--version"], { env: sys.env(), timeoutMs: 10_000 });
     const version = /(\d+\.\d+\.\d+[\w.-]*)/.exec(v.out)?.[1];
-    const d = await sys.run([nmem, "--json", "doctor"], { env: sys.env(), timeoutMs: 30_000 });
     const doc = readDoctor(d.out);
     // D375: what Mem's own doctor says is wrong here, said on the row (a first sign-in and an agent
     // not connected yet are the row's own states already).
     const h = memHealthOf(d, o.agents());
     const health = h?.issue && h.issue !== "plugin" && !(h.issue === "signed_out" && h.fresh) ? { health: { issue: h.issue } } : {};
-    view = { state: doc?.ready ? "ready" : "sign_in", ...(version ? { version } : {}), ...(doc?.agents.length ? { agents: doc.agents } : {}), ...health, ...(nmem.startsWith(bin) ? { ours: true as const } : {}) };
+    if (h?.issue !== "old") usable = nmem;
+    view = {
+      state: doc?.ready ? "ready" : "sign_in",
+      ...(version ? { version } : {}),
+      ...(doc?.agents.length ? { agents: doc.agents } : {}),
+      ...health,
+      ...(nmem.startsWith(bin) ? { ours: true as const } : {}),
+      ...(theirsOld ? { theirs: theirsOld } : {}),
+    };
     say();
   }
 
@@ -208,7 +305,18 @@ export function createWorkerMem(o: {
     return { ok: true, uv };
   }
 
+  type Done = { ok: true } | { ok: false; reason: DeviceMemReason; detail?: string };
+  const failed = (r: Done) => (r.ok ? undefined : set({ phase: "failed", reason: r.reason, ...(r.detail ? { detail: r.detail } : {}) }));
+
   async function installNow(): Promise<void> {
+    const r = await putOurs();
+    if (!r.ok) return failed(r);
+    step = undefined;
+    await look();
+  }
+
+  /** Ducter's own current nmem into its tools folder (uv's checked build, then `uv tool install`). */
+  async function putOurs(): Promise<Done> {
     set({ phase: "installing" });
     let last = -1;
     const got = await ensureUv((p) => {
@@ -217,58 +325,81 @@ export function createWorkerMem(o: {
       last = pct;
       set({ phase: "installing", pct });
     });
-    if (!got.ok) return set({ phase: "failed", reason: got.reason, ...(got.detail ? { detail: got.detail } : {}) });
+    if (!got.ok) return got;
     set({ phase: "installing", pct: 60 });
     const r = await sys.run([got.uv, "tool", "install", MEM_PACKAGE], { env: uvEnv(), timeoutMs: 10 * 60_000 });
     if (r.code !== 0 && !/already installed/i.test(r.out)) {
       const detail = lastLine(r.out);
-      return set({ phase: "failed", reason: installReason(r.out), ...(detail ? { detail } : {}) });
+      return { ok: false, reason: installReason(r.out), ...(detail ? { detail } : {}) };
     }
-    step = undefined;
-    await look();
+    return { ok: true };
   }
 
   /** D375: an nmem too old to have a doctor: Ducter's own copy is upgraded in place; the person's own is theirs. */
   async function upgradeNow(): Promise<void> {
-    const nmem = sys.which("nmem");
-    const uv = join(bin, "uv");
-    if (!nmem || !nmem.startsWith(bin) || !existsSync(uv)) return look();
-    set({ phase: "installing" });
-    const r = await sys.run([uv, "tool", "upgrade", MEM_PACKAGE], { env: uvEnv(), timeoutMs: 10 * 60_000 });
-    if (r.code !== 0) {
-      const detail = lastLine(r.out);
-      return set({ phase: "failed", reason: installReason(r.out), ...(detail ? { detail } : {}) });
-    }
+    if (!oursNow() || !exists(join(bin, "uv"))) return look();
+    const r = await upgradeOurs();
+    if (!r.ok) return failed(r);
     step = undefined;
     await look();
   }
 
+  async function upgradeOurs(): Promise<Done> {
+    set({ phase: "installing" });
+    const r = await sys.run([join(bin, "uv"), "tool", "upgrade", MEM_PACKAGE], { env: uvEnv(), timeoutMs: 10 * 60_000 });
+    if (r.code !== 0) {
+      const detail = lastLine(r.out);
+      return { ok: false, reason: installReason(r.out), ...(detail ? { detail } : {}) };
+    }
+    return { ok: true };
+  }
+
+  /**
+   * D384: an nmem here that can sign in, looked at now: the one the last look found, else Ducter's
+   * own put in (the person's is too old, or there is none) or updated (Ducter's own is too old).
+   */
+  async function readyNmem(): Promise<{ ok: true; nmem: string } | { ok: false; reason: DeviceMemReason; detail?: string }> {
+    await look();
+    if (usable) return { ok: true, nmem: usable };
+    const ours = oursNow();
+    const r: Done = ours ? (exists(join(bin, "uv")) ? await upgradeOurs() : { ok: false, reason: "old" }) : asset ? await putOurs() : { ok: false, reason: "old" };
+    step = undefined;
+    if (!r.ok) return r;
+    await look();
+    return usable ? { ok: true, nmem: usable } : { ok: false, reason: "old" };
+  }
+
   async function connectToolsNow(harnesses: string[]): Promise<{ ok: true } | { ok: false; reason: "unsupported" | "busy" | "failed"; detail?: string }> {
-    const nmem = sys.which("nmem");
+    await look();
+    const nmem = usable; // D384: never one too old to connect
     const tools = harnesses.flatMap((h) => (MEM_CONNECT_TOOLS[h] ? ["--tool", MEM_CONNECT_TOOLS[h]!] : []));
     if (!nmem || !tools.length) return { ok: false, reason: "unsupported" };
     // abort: an agent that already has another memory integration is left alone (the task that follows reads it).
     const r = await sys.run([nmem, "--json", "connect", ...tools, "--on-conflict", "abort"], { env: sys.env(), timeoutMs: 5 * 60_000 });
     await look();
     if (r.code !== 0) {
-      const detail = lastLine(r.out);
+      const detail = nmemTooOld(r.out) ? undefined : lastLine(r.out);
       return { ok: false, reason: "failed", ...(detail ? { detail } : {}) };
     }
     return { ok: true };
   }
 
   async function connectNow(pasted?: string): Promise<void> {
-    const nmem = sys.which("nmem");
-    if (!nmem) return set({ phase: "failed", reason: "failed" });
     // D370: what Mem copies is a whole prompt (or its token, or a link): the link is made from it.
     const link = pasted === undefined ? undefined : connectLinkFrom(pasted);
     if (pasted !== undefined && !link) return set({ phase: "failed", reason: "bad_link" });
+    // D384: never to an nmem that can't take it (the link stays unspent): Ducter's own first.
+    const got = await readyNmem();
+    if (!got.ok) return failed(got);
+    const nmem = got.nmem;
     set({ phase: "connecting" });
     const here = o.agents().filter((h) => MEM_CONNECT_TOOLS[h]);
     const toolArgs = here.length ? here.flatMap((h) => ["--tool", MEM_CONNECT_TOOLS[h]!]) : ["--skip-tools"];
     // Cloning a plugin's marketplace is most of it; a slow line gets five minutes.
     const r = await sys.run([nmem, "--json", "connect", ...(link ? [link] : []), ...toolArgs], { env: sys.env(), timeoutMs: 5 * 60_000 });
     if (r.code !== 0) {
+      // D384: a usage error is "too old", said in words (nmem refused it before redeeming anything).
+      if (nmemTooOld(r.out)) return set({ phase: "failed", reason: "old" });
       const detail = lastLine(r.out, link);
       return set({ phase: "failed", reason: connectReason(r.out), ...(detail ? { detail } : {}) });
     }
@@ -287,7 +418,8 @@ export function createWorkerMem(o: {
 
   return {
     look: () => (running ? Promise.resolve() : look().catch(() => {})),
-    install: () => once(async () => (sys.which("nmem") ? (view.health?.issue === "old" ? upgradeNow() : look()) : installNow())),
+    // D384: the person's own too old (or none) and none of Ducter's here yet: Ducter's own goes in beside it.
+    install: () => once(async () => (!oursNow() && (!theirsNow() || view.theirs?.old) ? installNow() : view.health?.issue === "old" && oursNow() ? upgradeNow() : look())),
     connect: (link) => once(() => connectNow(link)),
     async connectTools(harnesses) {
       if (running) return { ok: false, reason: "busy" };
@@ -307,7 +439,7 @@ export function createWorkerMem(o: {
 }
 
 /** The real seams: Ducter's download and process runner (agent-setup.ts), nmem found where the worker looks. */
-export function realWorkerMemSys(o: { platform: string; arch: string; which: (c: string) => string | null; env: () => Record<string, string> }): WorkerMemSys {
+export function realWorkerMemSys(o: { platform: string; arch: string; which: (c: string, path?: string) => string | null; env: () => Record<string, string> }): WorkerMemSys {
   const s = realAgentSetupSys({ platform: o.platform, arch: o.arch, which: o.which });
   return { platform: o.platform, arch: o.arch, download: s.download, run: s.run, which: o.which, env: o.env };
 }

@@ -4,7 +4,7 @@
 // socket (nothing is installed, no link is redeemed, no Mem is reached).
 //   DUCTER_PORT=7841 DUCTER_DATA_DIR=$(mktemp -d) DEMO_CTL_PORT=7842 bun apps/web/demo-worker-mem.ts
 // Then POST /mem?state=before | absent | installing | sign_in | used | connecting | ready | left
-// | unreachable | signed_out | old (D375) on
+// | unreachable | signed_out | old (D375) | theirs_old | theirs_using | failed_old (D384) on
 // DEMO_CTL_PORT. The card's own taps step it too: 装上 → installing → sign_in; 登录 → connecting → ready.
 import { startCore, stubRunner } from "./demo-core.ts";
 import { noOo } from "./demo-oo.ts";
@@ -46,6 +46,10 @@ const states: Record<string, Mem> = {
   unreachable: { state: "sign_in", version: "0.10.120", health: { issue: "unreachable" } },
   signed_out: { state: "sign_in", version: "0.10.120", health: { issue: "signed_out" } },
   old: { state: "sign_in", version: "0.10.116", health: { issue: "old" }, ours: true },
+  // D384: haswell's own nmem is the old Python CLI (no connect, no doctor); then Ducter's own used beside it.
+  theirs_old: { state: "sign_in", installable: true, health: { issue: "old" }, theirs: { old: true, how: "pipx" } },
+  theirs_using: { state: "sign_in", version: "0.10.120", installable: true, ours: true, theirs: { old: true, how: "pipx" } },
+  failed_old: { state: "sign_in", version: "0.10.120", ours: true, step: { phase: "failed", reason: "old" } },
 };
 let now = process.env.DEMO_MEM ?? "absent";
 
@@ -63,7 +67,7 @@ ws.onmessage = (m) => {
   if (f.op === "mem_plugins") return ws.send(JSON.stringify({ t: "res", id: f.id, ok: true, result: plugins() }));
   ws.send(JSON.stringify({ t: "res", id: f.id, ok: true, result: f.op === "mem_setup" ? { ok: true } : null }));
   if (f.op !== "mem_setup") return;
-  if (f.args.action === "install") (say("installing"), setTimeout(() => say("sign_in"), 2500));
+  if (f.args.action === "install") (say("installing"), setTimeout(() => say(now === "installing" && process.env.DEMO_MEM === "theirs_old" ? "theirs_using" : "sign_in"), 2500));
   if (f.args.action === "connect") (say("connecting"), setTimeout(() => say("ready"), 2500));
 };
 ws.send(

@@ -67,7 +67,10 @@ Codex and Claude Code, and the card says **Remembers you**: tasks there know how
 before they start, and what they do is kept in your one memory. A link works once, within 15
 minutes, and Ducter doesn't keep it. Without Nowledge Mem, nothing about it shows. If the
 computer later can't reach your Nowledge Mem, the card says so with **Check again**; if its sign-in
-stopped working, it asks for a new one the same way.
+stopped working, it asks for a new one the same way. If you installed Nowledge Mem there yourself
+long ago and your copy is too old to sign in, the card says so before you paste anything and offers
+**Install a current one**: Ducter puts its own current copy in its own folder and uses that one
+for tasks there. Yours stays as it is; the card shows the command that updates it.
 
 The code works once, for 10 minutes; the card shows how long it has left. Pasting the line
 again later is fine: what is already installed and connected stays as it is.

@@ -255,7 +255,7 @@ func (a *App) lendSheet(c *ui.Context) {
 	}
 	ui.DialogBase(c, &open, func(back, panel ui.Element) {
 		back.Background(t.Scrim)
-		panel.Width(min(w-2*t.S6, 600)).MaxHeight(h-2*t.S6).Radius(t.RadiusXL).
+		panel.Width(min(w-2*t.S6, 600)).MaxHeight(sheetBack(c, back, h)).Radius(t.RadiusXL).
 			Background(t.Surface).Shadow(0, t.Floating.Y, t.Floating.Blur, 0, t.Floating.Color).Label(title)
 		a.enter(c, panel)
 		ui.Scroll(c.Key("lend-scroll")).Grow(1).MinHeight(0).Children(func() {

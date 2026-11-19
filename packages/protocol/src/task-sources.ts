@@ -349,7 +349,9 @@ export type SourcesClientFrame =
     }
   // D385: find across the pile by words and by meaning (找… / Find…), a 讲的是 chip's subject, or a
   // set card's refs: every sort group, each item with how it was found.
-  | { t: "pile_find"; query?: string; subject?: string; setId?: string; clientId?: string }
+  // D396: words: the person's whole sentence ("关于 distill 的，先别动数据库"): core splits what to find
+  // from the note (said) and finds by the first; none of the four: only the suggestions (suggest).
+  | { t: "pile_find"; query?: string; words?: string; subject?: string; setId?: string; clientId?: string }
   // D385: the sheet's how for the ticked set and the note so far (sent as they change).
   | { t: "pile_how"; refs: string[]; note?: string; bySubject?: boolean; subject?: string; clientId?: string }
   // D385: a plan card's answer: go (its parts open, with the notes said on them), hold, or reply (to the plan's task).
@@ -386,7 +388,7 @@ export type SourcesServerFrame =
   // D359: what a pile action did: handed (into the queue), closed (done, failed), a review sent, a pre-read made.
   | { t: "pile_result"; clientId?: string; op: "hand" | "close" | "review" | "pre_read" | "plan" | "group_review"; ok: boolean; done?: number; failed?: number; read?: PreRead; error?: string; groupId?: string }
   // D385: a find's answer (the sheet's find field, a chip, a set card), and the sheet's how.
-  | { t: "pile_find_result"; clientId?: string; query?: string; subject?: string; found: import("./handover.ts").FindSummary; items: import("./handover.ts").FoundItem[]; ticked: string[]; setId?: string }
+  | { t: "pile_find_result"; clientId?: string; query?: string; subject?: string; found: import("./handover.ts").FindSummary; items: import("./handover.ts").FoundItem[]; ticked: string[]; setId?: string; said?: import("./handover.ts").FindSaid; suggest?: string[] }
   | { t: "pile_how_result"; clientId?: string; how: import("./handover.ts").HandHow }
   | { t: "group_review_result"; clientId?: string; review?: import("./handover.ts").GroupReview; error?: string };
 

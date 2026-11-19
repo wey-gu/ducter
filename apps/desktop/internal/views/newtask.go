@@ -626,7 +626,7 @@ func (a *App) newTaskCard(c *ui.Context) {
 	width := min(w-2*t.S6, 680)
 	ui.DialogBase(c, &nt.open, func(back, panel ui.Element) {
 		back.Background(t.Scrim)
-		panel.Width(width).MaxHeight(h-2*t.S6).Padding(t.S5+4, t.S6, t.S5, t.S6).Gap(t.S4).Radius(t.RadiusXL).
+		panel.Width(width).MaxHeight(sheetBack(c, back, h)).Padding(t.S5+4, t.S6, t.S5, t.S6).Gap(t.S4).Radius(t.RadiusXL).
 			Background(t.Surface).Shadow(0, t.Floating.Y, t.Floating.Blur, 0, t.Floating.Color).Label(a.L.T("newtask.title"))
 		a.enter(c, panel)
 		a.heading(c, a.L.T("newtask.title"), t.XL)

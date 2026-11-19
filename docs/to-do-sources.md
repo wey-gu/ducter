@@ -90,8 +90,9 @@ again** or ask it ("go through my GitHub issues").
 At the top of your to-dos on On hand, your partner stands beside the stack: **{n} still open**, how
 many it cleared for you today, and one row for each group with one button:
 
-- **Hand to** your partner: the hand-over sheet opens with the ones it could take ticked. Say how in
-  **A note for {name}**, choose how they're done, and hand them over (see below). Each becomes a task
+- **Hand to** your partner: the hand-over sheet opens and asks **What should {name} take on?** Say it
+  in a sentence, or tap **Pick one by one** for the list with the ones it could take ticked (see
+  below). Each becomes a task
   bound to its issue, and nothing is posted on GitHub until the work is done and you say so.
 - **Decide them**: one question each, with your partner's suggestion already picked. Hand it over,
   mark it as one you might close, or leave it.
@@ -110,12 +111,20 @@ something over again.
 
 ## Hand several over at once
 
-When there are more than twenty open, the pile shows **Subjects**: what they're about, each with its
-count ("Distillation 13"). Tap one, or type in **Find…** on the hand-over sheet: it matches words,
-issue numbers and labels at once, then reads every title for meaning, in Chinese and English, so
-"memory distill" also finds the issue written as 长对话的自动提炼总是失败. The line under the field says
-how many it found and how. Everything shows, grouped as your partner sorted it: the ones it could take
-are ticked; one that needs your call shows its question (tick it to go with the suggestion).
+With hundreds open, nobody wants to tick them one by one. The hand-over sheet opens on one question,
+**What should {name} take on?**, and one field. Say what you mean in your own words: "the memory
+distill ones, but leave the database alone". It matches words, issue numbers and labels at once, then
+reads every title for meaning, in Chinese and English, so "memory distill" also finds the issue
+written as 长对话的自动提炼总是失败. Under the field it shows how it heard you: **Looking for** memory
+distill, and **A note for {name}** with "leave the database alone", already written into the note
+(change either one). Then the line says how many it found and how, and the list shows them grouped as
+your partner sorted it: the ones it could take are ticked; one that needs your call shows its question
+(tick it to go with the suggestion). The list is there to check and trim.
+
+Before you type, **You could say** offers what you handed over lately and your biggest subjects; tap
+one to find it. **Pick one by one** is always a tap away. When there are more than twenty open, the
+pile also shows **Subjects**: what they're about, each with its count ("Distillation 13"); tapping one
+opens the sheet with it already found.
 
 Then, on the same sheet:
 
@@ -136,7 +145,8 @@ Then, on the same sheet:
 **Hand these {n} to {name}** makes one group on On hand that carries them all. You can also say it in
 the conversation: "pull out everything about memory distill so we can look" shows the set there, ticked
 the same way; "just these, plus #405; check everything on haswell" hands it over with your words as the
-note.
+note. Say both at once ("hand over the distill ones, but leave the database alone"): the words about how
+become the note, the same as on the sheet.
 
 When every part is done, the group offers **Review together**: each pull request with its checks, its
 size, what it did and the comment it will leave on its issue. Turn off any comment with **Not this

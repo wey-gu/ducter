@@ -17,6 +17,14 @@ Deferred work, grouped by area, each with its trigger where it has one.
 
 ## Handing over several to-dos (D385, built, `handover.md` §9)
 
+- **D396: the words' split by a real model.** Code's clause rule and a fake model were checked; the
+  cheapest real model on the author's own sentences (zh, en, mixed; one clause holding both) is not.
+  *Trigger:* the author's home on this build, or the first split that reads wrong.
+- **D396: humans on the question's words** (**想交给{name}哪些？**, the hint, **找的是**, **一件件挑**).
+  *Trigger:* the next rater panel.
+- **D396: the phone's disclosure rows in call cards** (`phone.go` callPlanBody, callResult) highlight a
+  square inside a rounded card (not at its edge). *Trigger:* the next pass on Use a phone.
+
 - **Live: plan first on a real subject.** hel's "memory distill" set on a real agent: does the lead
   part call `plan_report`, does it find the already-fixed ones, how long and how much it costs. Built
   and checked with a fake runner and a fake model only. *Trigger:* the author's home on this build.

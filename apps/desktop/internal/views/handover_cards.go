@@ -546,7 +546,7 @@ func (a *App) reviewSheet(c *ui.Context) {
 	open := true
 	ui.DialogBase(c, &open, func(back, panel ui.Element) {
 		back.Background(t.Scrim)
-		panel.Width(min(w-2*t.S6, 820)).MaxHeight(h-2*t.S6).Radius(t.RadiusXL).Background(t.Bg).Shadow(0, t.Floating.Y, t.Floating.Blur, 0, t.Floating.Color).Label(title).Role(ui.RoleDialog)
+		panel.Width(min(w-2*t.S6, 820)).MaxHeight(sheetBack(c, back, h)).Radius(t.RadiusXL).Background(t.Bg).Shadow(0, t.Floating.Y, t.Floating.Blur, 0, t.Floating.Color).Label(title).Role(ui.RoleDialog)
 		a.enter(c, panel)
 		ui.Row(c.Key("rv-head")).Gap(t.S2).AlignItems(ui.Center).Padding(t.S5, t.S6, t.S2, t.S6).Children(func() {
 			ui.Column(c).Gap(2).Shrink(1).MinWidth(0).Children(func() {

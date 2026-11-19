@@ -5,13 +5,14 @@
 // two columns; a phone: two screens (what, then the note and how). Go makes a group for two or more.
 // Plan first's card (in the conversation and inside its group on On hand) and 一起过目 / Review
 // together live here too. Core decides every default (pile_how); this file only draws and asks.
-import type { FindSummary, FoundItem, GroupHandView, GroupReview, HandHow, HandShape, PileItem, SourcesServerFrame, TaskGroupView, TodoSet } from "@ducter/protocol";
+import type { FindSaid, FindSummary, FoundItem, GroupHandView, GroupReview, HandHow, HandShape, PileItem, SourcesServerFrame, TaskGroupView, TodoSet } from "@ducter/protocol";
 import { PILE_HAND_DEFAULT } from "@ducter/protocol";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { A } from "./app.ts";
 import { BrandMark } from "./brand.tsx";
 import { Btn, Chev } from "./controls.tsx";
 import { harnessName } from "./format.ts";
+import { TS } from "./todos.tsx";
 import { foundLine, handState, oneRepoOf, planSections, planTasks, refLabel, refsLabel, reviewKeep, sections, setTicks, shapeChoices, shapeLine, suggestedShape, type ShapeChoice } from "./handover-view.ts";
 import type { DecisionState } from "./store.ts";
 
@@ -28,14 +29,24 @@ export const HS: {
   cid: string;
   findCid: string;
   howCid: string;
-  /** The door's own list (the do row's, a chip's, a set's), shown when the find field is empty. */
-  base?: FoundItem[];
-  baseFound?: FindSummary;
   items?: FoundItem[];
   found?: FindSummary;
   /** Every item seen in this sheet, by ref (a ticked one stays ticked when a find hides it). */
   known: Map<string, FoundItem>;
-  query: string;
+  /** D396: the person's words in the field (what to find, and maybe the note too). */
+  words: string;
+  /** The words a find was asked with (an answer for older words is dropped). */
+  findWords?: string;
+  /** How core split the words: what it looked for, and the note it heard. */
+  heard?: FindSaid;
+  /** The field's suggestions (recent subjects first). */
+  suggest?: string[];
+  /** The note as filled from the words (replaced while the person hasn't written their own). */
+  noteAuto?: string;
+  /** Picking one by one (the do group's list) instead of saying it. */
+  browse: boolean;
+  /** How many the do group holds (the 一件件挑 link's count). */
+  doCount?: number;
   finding: boolean;
   subject?: string;
   bySubject: boolean;
@@ -56,7 +67,7 @@ export const HS: {
   sending: boolean;
   said?: string;
   error?: boolean;
-} = { cid: "", findCid: "", howCid: "", known: new Map(), query: "", finding: false, bySubject: false, note: "", notes: {}, noteOpen: new Set(), step: 1, sending: false };
+} = { cid: "", findCid: "", howCid: "", known: new Map(), words: "", browse: false, finding: false, bySubject: false, note: "", notes: {}, noteOpen: new Set(), step: 1, sending: false };
 
 let findTimer: ReturnType<typeof setTimeout> | undefined;
 let howTimer: ReturnType<typeof setTimeout> | undefined;
@@ -65,33 +76,67 @@ let howTimer: ReturnType<typeof setTimeout> | undefined;
 const SETT = new Map<string, Set<string>>();
 
 /**
- * Opens the hand-over sheet from a door: the do row (its to-dos, the small ones ticked), a subject
- * chip (that subject across every group), a set card (its to-dos, its ticks carried), or a find.
+ * Opens the hand-over sheet from a door (D396: words first). The do row and the subjects' "more" open
+ * on the empty words field with its suggestions (one by one stays a link away); a subject chip and a
+ * set card open with their words already in the field and their set found, ticked as they came.
  */
-export function openHand(o: { door: "do" | "subject" | "set" | "find"; subject?: string; setId?: string; ticked?: string[]; query?: string }) {
+export function openHand(o: { door: "do" | "subject" | "set" | "find"; subject?: string; setId?: string; ticked?: string[]; query?: string; note?: string; doCount?: number }) {
   const now = Date.now();
-  Object.assign(HS, { cid: `hand-${now}`, findCid: "", howCid: "", base: undefined, baseFound: undefined, items: undefined, found: undefined, known: new Map(), query: o.query ?? "", finding: false, subject: o.subject, bySubject: o.door === "subject" || o.door === "set" || (o.door === "find" && !!o.query), setId: o.setId, ticked: undefined, carried: o.ticked, note: "", notes: {}, noteOpen: new Set(), how: undefined, shape: undefined, device: undefined, harness: undefined, picking: undefined, step: 1, sending: false, said: undefined, error: false });
-  if (o.door === "do") A.send({ t: "pile_items", group: "do", clientId: HS.cid });
-  else A.send({ t: "pile_find", ...(o.subject ? { subject: o.subject } : {}), ...(o.setId ? { setId: o.setId } : {}), ...(o.query ? { query: o.query } : {}), clientId: HS.cid });
+  const words = o.door === "subject" ? o.subject ?? "" : o.door === "set" ? o.query ?? o.subject ?? "" : o.query ?? "";
+  const note = o.note?.trim() ?? "";
+  Object.assign(HS, { cid: `hand-${now}`, findCid: "", howCid: "", items: undefined, found: undefined, known: new Map(), words, findWords: undefined, heard: undefined, said: undefined, suggest: undefined, noteAuto: note || undefined, browse: false, doCount: o.doCount, finding: false, subject: o.subject, bySubject: o.door === "subject" || o.door === "set", setId: o.setId, ticked: o.door === "do" || (o.door === "find" && !o.query) ? new Set<string>() : undefined, carried: o.ticked, note, notes: {}, noteOpen: new Set(), how: undefined, shape: undefined, device: undefined, harness: undefined, picking: undefined, step: 1, sending: false, error: false });
+  if (o.door === "subject" || o.door === "set") {
+    HS.finding = true;
+    A.send({ t: "pile_find", ...(o.subject ? { subject: o.subject } : {}), ...(o.setId ? { setId: o.setId } : {}), clientId: HS.cid });
+  } else if (o.query?.trim()) {
+    A.send({ t: "pile_find", clientId: HS.cid });
+    find(o.query, true);
+  } else A.send({ t: "pile_find", clientId: HS.cid });
+  // Where and who from the start: the right column is never a dead "looking" state.
+  askHow(true);
   A.sheet = { kind: "hand" };
   A.changed();
 }
 
+/** 一件件挑 / Pick one by one: the do group's list, the first few ticked (the old door, now secondary). */
+function browse(on: boolean) {
+  HS.browse = on;
+  HS.picking = undefined;
+  if (on) {
+    HS.items = undefined;
+    HS.found = undefined;
+    HS.findCid = `browse-${Date.now()}`;
+    A.send({ t: "pile_items", group: "do", clientId: HS.findCid });
+  } else {
+    HS.items = undefined;
+    HS.found = undefined;
+    HS.ticked = new Set();
+    if (HS.words.trim()) find(HS.words, true);
+    askHow();
+    setTimeout(() => (document.getElementById("ho-words") as HTMLInputElement | null)?.focus({ preventScroll: true }), 30);
+  }
+  A.changed();
+}
+
 /**
- * A link straight to the sheet on a subject: #hand?subject=记忆提炼 (&step=2: its how; &note=…: the
- * note written in, never sent). Opens the sheet once the home answered; nothing is handed over
- * without the person's Go on it. Used by the demo's phone shots, and by any link that names a subject.
+ * A link straight to the sheet: #hand?subject=记忆提炼 (a chip's door), #hand?words=… (the words said,
+ * found as typed), #hand?door=do (the empty words field), #hand?browse=1 (one by one); &step=2: its
+ * how; &note=…: the note written in, never sent. Opens the sheet once the home answered; nothing is
+ * handed over without the person's Go on it. Used by the demo's shots, and by any link that names one.
  */
 function handLink() {
   if (typeof location === "undefined" || !location.hash.startsWith("#hand?")) return;
   const q = new URLSearchParams(location.hash.slice("#hand?".length));
   const subject = q.get("subject")?.trim();
-  if (!subject) return;
+  const words = q.get("words")?.trim();
+  if (!subject && !words && !q.get("door") && !q.get("browse")) return;
   const tick = setInterval(() => {
     if (!A?.S?.welcomed) return;
     clearInterval(tick);
     history.replaceState(null, "", location.pathname + location.search);
-    openHand({ door: "subject", subject });
+    if (subject) openHand({ door: "subject", subject });
+    else openHand({ door: "find", ...(words ? { query: words } : {}) });
+    if (q.get("browse")) browse(true);
     const note = q.get("note");
     if (note) HS.note = note.slice(0, 2000);
     if (q.get("step") === "2") HS.step = 2;
@@ -111,12 +156,11 @@ function closeHand() {
 const ticked = () => HS.ticked ?? new Set<string>();
 const tickedItems = () => [...ticked()].map((r) => HS.known.get(r)).filter((p): p is FoundItem => !!p);
 
-/** Asks core for the sheet's how (shape, where, who) for the ticked set and the note so far. */
+/** Asks core for the sheet's how (shape, where, who) for the ticked set and the note so far; with none ticked, where and who alone. */
 function askHow(now = false) {
   clearTimeout(howTimer);
   const go = () => {
     const refs = [...ticked()];
-    if (!refs.length) return;
     HS.howCid = `how-${Date.now()}`;
     A.send({ t: "pile_how", refs, ...(HS.note.trim() ? { note: HS.note.trim() } : {}), ...(HS.bySubject ? { bySubject: true } : {}), ...(HS.subject ? { subject: HS.subject } : {}), clientId: HS.howCid });
   };
@@ -124,21 +168,40 @@ function askHow(now = false) {
   else howTimer = setTimeout(go, 260);
 }
 
-function find(q: string) {
-  HS.query = q;
+/** The note the words carried: written in while the person hasn't written their own (theirs is never replaced). */
+function fillNote(note: string | undefined) {
+  const mine = HS.note.trim() && HS.note !== HS.noteAuto;
+  if (mine) return;
+  HS.note = note ?? "";
+  HS.noteAuto = note || undefined;
+}
+
+/** D396: the words said (what to find, maybe the note too): found by meaning, the do ones ticked. */
+function find(q: string, now = false) {
+  HS.words = q;
   clearTimeout(findTimer);
+  if (HS.browse) HS.browse = false;
   if (!q.trim()) {
-    HS.items = HS.base;
-    HS.found = HS.baseFound;
+    HS.items = HS.found = HS.heard = HS.findWords = undefined;
+    HS.subject = undefined;
+    HS.bySubject = false;
+    HS.setId = undefined;
     HS.finding = false;
+    HS.ticked = new Set();
+    fillNote(undefined);
+    askHow();
     return A.changed();
   }
   HS.finding = true;
   A.changed();
-  findTimer = setTimeout(() => {
-    HS.findCid = `find-${Date.now()}`;
-    A.send({ t: "pile_find", query: q.trim(), clientId: HS.findCid });
-  }, 380);
+  findTimer = setTimeout(
+    () => {
+      HS.findCid = `find-${Date.now()}`;
+      HS.findWords = q.trim();
+      A.send({ t: "pile_find", words: q.trim(), clientId: HS.findCid });
+    },
+    now ? 0 : 420,
+  );
 }
 
 function toggle(ref: string) {
@@ -154,12 +217,13 @@ const asFound = (p: PileItem): FoundItem => ({ ...p, by: "title" });
 
 /** The home's answers about the sheet (routed here before the pile's own handler). */
 export function onHandFrame(f: SourcesServerFrame): boolean {
-  if (f.t === "pile_items_result" && f.clientId && f.clientId === HS.cid) {
+  if (f.t === "pile_items_result" && f.clientId && f.clientId === HS.findCid && HS.browse) {
     const items = f.items.map(asFound);
     for (const p of items) HS.known.set(p.item.ref, p);
-    HS.base = HS.items = items;
-    HS.baseFound = HS.found = undefined;
-    if (!HS.ticked) HS.ticked = new Set(items.slice(0, PILE_HAND_DEFAULT).map((p) => p.item.ref));
+    HS.items = items;
+    HS.found = undefined;
+    HS.doCount = items.length;
+    if (!ticked().size) HS.ticked = new Set(items.slice(0, PILE_HAND_DEFAULT).map((p) => p.item.ref));
     askHow(true);
     A.changed();
     return true;
@@ -167,20 +231,31 @@ export function onHandFrame(f: SourcesServerFrame): boolean {
   if (f.t === "pile_find_result" && f.clientId && (f.clientId === HS.cid || f.clientId === HS.findCid)) {
     for (const p of f.items) HS.known.set(p.item.ref, p);
     HS.error = false;
+    if (f.suggest) HS.suggest = f.suggest;
+    // The door's own answer: a chip's or a set's set, ticked as it came; the bare door only its suggestions.
     if (f.clientId === HS.cid) {
-      HS.base = f.items;
-      HS.baseFound = f.found;
+      if (!HS.subject && !HS.setId) return A.changed(), true;
       HS.subject ??= f.subject;
       if (!HS.ticked) HS.ticked = new Set((HS.carried ?? f.ticked).filter((r) => HS.known.has(r)));
+      HS.items = f.items;
+      HS.found = f.found;
+      HS.finding = false;
       askHow(true);
+      return A.changed(), true;
     }
-    // A find that came back after the field changed again is dropped (the newer one follows).
-    if (f.clientId === HS.findCid && HS.query.trim() && f.query?.trim() !== HS.query.trim()) return true;
-    if (f.clientId === HS.cid && HS.query.trim()) return A.changed(), true;
+    // A find that came back after the words changed again is dropped (the newer one follows).
+    if (HS.browse || !HS.words.trim() || HS.findWords !== HS.words.trim()) return true;
     HS.items = f.items;
     HS.found = f.found;
+    HS.heard = f.said;
     HS.finding = false;
-    if (f.clientId === HS.findCid && f.subject) (HS.subject = f.subject), (HS.bySubject = true);
+    HS.setId = undefined;
+    // New words, a new set: the do ones ticked, as found.
+    HS.ticked = new Set(f.ticked);
+    HS.subject = f.subject ?? f.said?.about;
+    HS.bySubject = f.items.some((p) => p.by === "meaning" || p.by === "subject") || !!f.subject;
+    fillNote(f.said?.note);
+    askHow(true);
     A.changed();
     return true;
   }
@@ -364,45 +439,160 @@ function FoundHead() {
   );
 }
 
-function What() {
-  const input = useRef<HTMLInputElement>(null);
-  const items = HS.items;
-  const secs = items ? sections(items) : [];
+/** How the words were heard: what was looked for, and the note taken out of them (each its own fact). */
+function Heard() {
+  const h = HS.heard;
+  if (!h || HS.finding || !h.note) return null;
+  const moved = HS.note === HS.noteAuto && HS.note.trim();
+  return (
+    <div class="ho-heard" role="note">
+      <span class="ho-heard-part">
+        <small>{t("ho.said.about")}</small>
+        <b dir="auto">{h.about}</b>
+      </span>
+      <span class="ho-heard-part note">
+        <small>{t("ho.said.note", name())}</small>
+        <q dir="auto">{h.note}</q>
+        {moved && <em>{narrow() ? t("ho.said.moved.thin") : t("ho.said.moved")}</em>}
+      </span>
+    </div>
+  );
+}
+
+/** The field's suggestions: a tap says it (found at once), recent subjects first. */
+function Suggest() {
+  const s = HS.suggest ?? [];
+  if (!s.length) return null;
+  return (
+    <div class="ho-suggest" role="group" aria-label={t("ho.ask.recent")}>
+      <small>{t("ho.ask.recent")}</small>
+      {s.map((x, i) => (
+        <button key={x} class="ho-chip" style={{ "--i": i } as never} onClick={() => (find(x, true), document.getElementById("ho-words")?.focus({ preventScroll: true }))}>
+          <b dir="auto">{x}</b>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function BrowseLink() {
+  const n = HS.doCount ?? TS.frame?.pile?.groups.do;
+  return (
+    <button class="ho-browse" onClick={() => browse(true)}>
+      <span class="ho-browse-t">{t("ho.browse")}</span>
+      {n ? <span class="ho-browse-n">{t("ho.browse.n", name(), n)}</span> : null}
+      <Chev />
+    </button>
+  );
+}
+
+function List({ items }: { items: FoundItem[] }) {
   let k = 0;
   return (
-    <div class="ho-left">
-      <label class="past-find ho-find">
-        <Lens />
-        <input ref={input} id="ho-find" value={HS.query} placeholder={t("ho.find")} aria-label={t("ho.find.label")} autoComplete="off" onInput={(e) => find((e.target as HTMLInputElement).value)} onKeyDown={(e) => e.key === "Escape" && HS.query && (e.stopPropagation(), find(""))} />
+    <div class={`ho-list${HS.finding ? " dim" : ""}`}>
+      {sections(items).map((s) => (
+        <section key={s.group} class="ho-sec" aria-label={s.group === "do" ? t("ho.g.do", name()) : t(`ho.g.${s.group}`)}>
+          <h3 class="ho-gh">
+            <span>{s.group === "do" ? t("ho.g.do", name()) : t(`ho.g.${s.group}`)}</span>
+            <span class="n">{A.L.num(s.items.length)}</span>
+          </h3>
+          {s.items.map((p) => (
+            <ItemRow key={p.item.ref} p={p} i={k++} />
+          ))}
+        </section>
+      ))}
+    </div>
+  );
+}
+
+function What() {
+  const items = HS.items;
+  const said = HS.words.trim();
+  const ask = (
+    <div class="ho-say">
+      <label class="ho-say-h" for="ho-words">
+        {t("ho.ask", name())}
       </label>
-      <FoundHead />
-      {HS.found?.noMeaning && !HS.finding && <p class="ho-honest">{t(HS.found.noMeaning === "no_model" ? "ho.no_model" : "ho.find.error")}</p>}
-      <div class={`ho-list${HS.finding ? " dim" : ""}`}>
-        {!items ? (
-          <div class="ho-skel" aria-label={t("ho.loading")} role="status">
-            <i />
-            <i />
-            <i />
-          </div>
-        ) : !items.length ? (
-          <div class="ho-none">
-            <p>{t("ho.none")}</p>
-            <small>{t("ho.none.try")}</small>
-          </div>
-        ) : (
-          secs.map((s) => (
-            <section key={s.group} class="ho-sec" aria-label={s.group === "do" ? t("ho.g.do", name()) : t(`ho.g.${s.group}`)}>
-              <h3 class="ho-gh">
-                <span>{s.group === "do" ? t("ho.g.do", name()) : t(`ho.g.${s.group}`)}</span>
-                <span class="n">{A.L.num(s.items.length)}</span>
-              </h3>
-              {s.items.map((p) => (
-                <ItemRow key={p.item.ref} p={p} i={k++} />
-              ))}
-            </section>
-          ))
+      <div class="ho-words">
+        <Lens />
+        <textarea
+          id="ho-words"
+          value={HS.words}
+          placeholder={t("ho.ask.ph")}
+          autoComplete="off"
+          enterkeyhint="search"
+          rows={1}
+          ref={grow}
+          onInput={(e) => (grow(e.target as HTMLTextAreaElement), find((e.target as HTMLTextAreaElement).value.replace(/\n/g, " ")))}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.metaKey && !e.ctrlKey) e.preventDefault(), said && find(HS.words, true);
+            if (e.key === "Escape" && HS.words) e.stopPropagation(), find("");
+          }}
+        />
+        {HS.words && (
+          <button class="ho-words-x" aria-label={t("ho.clear")} onClick={() => (find(""), document.getElementById("ho-words")?.focus())}>
+            ×
+          </button>
         )}
       </div>
+      <Heard />
+    </div>
+  );
+  if (HS.browse)
+    return (
+      <div class="ho-left">
+        <div class="ho-say browse">
+          <button class="ho-back-words" onClick={() => browse(false)}>
+            <Chev back />
+            <span>{t("ho.browse.back")}</span>
+          </button>
+        </div>
+        {!items ? (
+          <div class="ho-list">
+            <div class="ho-skel" aria-label={t("ho.loading")} role="status">
+              <i />
+              <i />
+              <i />
+            </div>
+          </div>
+        ) : (
+          <List items={items} />
+        )}
+      </div>
+    );
+  return (
+    <div class="ho-left">
+      {ask}
+      {!said && !HS.setId && !HS.subject ? (
+        <div class="ho-start">
+          <p class="ho-hint">{t("ho.ask.hint")}</p>
+          <Suggest />
+          <BrowseLink />
+        </div>
+      ) : (
+        <>
+          <FoundHead />
+          {HS.found?.noMeaning && !HS.finding && <p class="ho-honest">{t(HS.found.noMeaning === "no_model" ? "ho.no_model" : "ho.find.error")}</p>}
+          {!items ? (
+            <div class="ho-list">
+              <div class="ho-skel" aria-label={t("ho.loading")} role="status">
+                <i />
+                <i />
+                <i />
+              </div>
+            </div>
+          ) : !items.length ? (
+            <div class="ho-none">
+              <p dir="auto">{t("ho.none.about", HS.heard?.about ?? said)}</p>
+              <small>{t("ho.none.or")}</small>
+              <Suggest />
+              <BrowseLink />
+            </div>
+          ) : (
+            <List items={items} />
+          )}
+        </>
+      )}
     </div>
   );
 }
@@ -417,10 +607,15 @@ function WhereWho() {
   const pick = (k: "where" | "who") => ((HS.picking = open === k ? undefined : k), A.changed());
   return (
     <div class="ho-rows">
-      <button class={`ho-row${open === "where" ? " open" : ""}`} aria-expanded={open === "where"} onClick={() => pick("where")}>
+      {/* The computer's name wraps and its reason sits under it, whole: never "Hetzner Se…" beside "nowledge-co/mem 在…". */}
+      <button class={`ho-row${open === "where" ? " open" : ""}`} aria-expanded={open === "where"} title={`${where.name}\n${whereWhy}`} onClick={() => pick("where")}>
         <small>{t("ho.where")}</small>
-        <b>{where.name}</b>
-        <span class="why">{whereWhy}</span>
+        <span class="ho-row-v">
+          <b dir="auto">{where.name}</b>
+          <span class="why" dir="auto">
+            {whereWhy}
+          </span>
+        </span>
         <Chev open={open === "where"} />
       </button>
       {open === "where" && (
@@ -436,8 +631,10 @@ function WhereWho() {
       )}
       <button class={`ho-row${open === "who" ? " open" : ""}`} aria-expanded={open === "who"} onClick={() => pick("who")}>
         <small>{t("ho.who")}</small>
-        <b>{who ? harnessName(who) : t("ho.who.usual.v")}</b>
-        <span class="why">{who ? whoWhy : t("ho.who.usual", name())}</span>
+        <span class="ho-row-v">
+          <b>{who ? harnessName(who) : t("ho.who.usual.v")}</b>
+          {(who ? whoWhy : t("ho.who.usual", name())) && <span class="why">{who ? whoWhy : t("ho.who.usual", name())}</span>}
+        </span>
         <Chev open={open === "who"} />
       </button>
       {open === "who" && (
@@ -479,6 +676,14 @@ function How() {
         </label>
         <textarea id="ho-note" class="ho-ta" rows={3} value={HS.note} placeholder={t("ho.note.ph")} ref={grow} onInput={(e) => (grow(e.target as HTMLTextAreaElement), (HS.note = (e.target as HTMLTextAreaElement).value), askHow(), A.changed())} />
       </div>
+      {how ? (
+        <WhereWho />
+      ) : (
+        <div class="ho-skel rows" role="status" aria-label={t("ho.loading")}>
+          <i />
+          <i />
+        </div>
+      )}
       {n > 1 && how && choices.length > 0 && (
         <div class="ho-field" role="radiogroup" aria-labelledby="ho-how-h">
           <h3 class="ho-h" id="ho-how-h">
@@ -504,16 +709,6 @@ function How() {
           </div>
         </div>
       )}
-      {how ? (
-        <WhereWho />
-      ) : (
-        n > 0 && (
-          <div class="ho-skel rows" role="status" aria-label={t("ho.loading")}>
-            <i />
-            <i />
-          </div>
-        )
-      )}
     </div>
   );
 }
@@ -524,7 +719,7 @@ function GoButton({ wide }: { wide?: boolean }) {
   const shape = HS.shape ?? suggestedShape(how);
   return (
     <div class="ho-go">
-      <Btn kind="primary" grow={wide} label={n > 1 ? t("ho.go", name(), n) : n === 1 ? t("ho.go.one", name()) : t("ho.picked.none")} disabled={!n || HS.sending} onClick={go} />
+      <Btn kind="primary" grow={wide} label={n > 1 ? t("ho.go", name(), n) : n === 1 ? t("ho.go.one", name()) : t("ho.title", name())} disabled={!n || HS.sending} onClick={go} />
       {n > 1 && shape && <span class="ho-go-sub">{shapeTitle(shape, how)}</span>}
     </div>
   );
@@ -537,7 +732,7 @@ export function HandSheet() {
     const r = () => redraw((x) => x + 1);
     window.addEventListener("resize", r);
     // The find field first on a wide screen (a phone keeps its keyboard down until asked).
-    if (!narrow()) setTimeout(() => (document.getElementById("ho-find") as HTMLInputElement | null)?.focus({ preventScroll: true }), 60);
+    if (!narrow()) setTimeout(() => (document.getElementById("ho-words") as HTMLInputElement | null)?.focus({ preventScroll: true }), 60);
     return () => window.removeEventListener("resize", r);
   }, []);
   const n = ticked().size;
@@ -554,7 +749,7 @@ export function HandSheet() {
     if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) return void (e.preventDefault(), thin && HS.step === 1 ? n && ((HS.step = 2), A.changed()) : go());
     // "/" or a letter typed while not in a field goes to the find (the list's own keys stay).
     if (!typing && !e.metaKey && !e.ctrlKey && !e.altKey && (e.key === "/" || (e.key.length === 1 && /\S/.test(e.key) && e.key !== " "))) {
-      const f = document.getElementById("ho-find") as HTMLInputElement | null;
+      const f = document.getElementById("ho-words") as HTMLInputElement | null;
       if (f && (!thin || HS.step === 1)) {
         if (e.key === "/") e.preventDefault();
         f.focus();
@@ -647,6 +842,13 @@ export function SetCard({ s, seq }: { s: TodoSet; seq: number }) {
           <b dir="auto">{head}</b>
           <span class="n">{A.L.num(s.found.n)}</span>
         </div>
+        {/* D396: the how-to part of the words it was found by: the hand-over's note, shown as heard. */}
+        {s.note && !handed && (
+          <p class="ho-set-note">
+            <small>{t("ho.said.note", name())}</small>
+            <q dir="auto">{s.note}</q>
+          </p>
+        )}
         {!handed &&
           s.rows.map((p) => {
             const on = ticks.has(p.item.ref);
@@ -675,7 +877,7 @@ export function SetCard({ s, seq }: { s: TodoSet; seq: number }) {
           </div>
         ) : (
           <div class="ho-set-foot">
-            <Btn kind="primary" size="sm" label={t("ho.set.go", name(), ticks.size)} disabled={!ticks.size} onClick={() => openHand({ door: "set", setId: s.setId, ticked: [...ticks], ...(s.subject ? { subject: s.subject } : {}) })} />
+            <Btn kind="primary" size="sm" label={t("ho.set.go", name(), ticks.size)} disabled={!ticks.size} onClick={() => openHand({ door: "set", setId: s.setId, ticked: [...ticks], ...(s.subject ? { subject: s.subject } : {}), ...(s.query ? { query: s.query } : {}), ...(s.note ? { note: s.note } : {}) })} />
             <span>{t("ho.set.or")}</span>
           </div>
         )}

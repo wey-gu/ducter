@@ -248,7 +248,7 @@ func (a *App) madeCard(c *ui.Context, it *protocol.MadeItem, terms []string) {
 	open := ms.open == it.ID
 	title := firstNonEmpty(it.Title, a.madeKindWord(it))
 	var main ui.Element
-	ui.Column(c).Radius(t.RadiusLG-4).Background(t.Surface).Shadow(0, 2, 0, 0, t.Line).Children(func() {
+	ui.Column(c).Radius(t.RadiusLG-4).Background(t.Surface).Shadow(0, 2, 0, 0, t.Line).Clip().Children(func() { // the row's highlight keeps the card's corners
 		main = ui.Row(c.Key("main")).Gap(t.S3+2).Padding(t.S3+2, t.S4, t.S3+2, t.S3+2).AlignItems(ui.Center).
 			Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(title).Focusable()
 		if main.Hovered() {

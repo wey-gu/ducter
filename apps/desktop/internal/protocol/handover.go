@@ -37,6 +37,14 @@ type FindSummary struct {
 	NoMeaning string `json:"noMeaning,omitempty"`
 }
 
+// FindSaid is how core heard the words (D396): what it looked for (About)
+// and the note taken out of them, by code or the cheapest model.
+type FindSaid struct {
+	About string `json:"about"`
+	Note  string `json:"note,omitempty"`
+	By    string `json:"by"`
+}
+
 // FoundItem is one to-do in a find, and how it was found:
 // title | label | meaning | subject | ref.
 type FoundItem struct {
@@ -94,6 +102,8 @@ type TodoSet struct {
 	Ticked  []string    `json:"ticked"`
 	Rows    []FoundItem `json:"rows"`
 	GroupID string      `json:"groupId,omitempty"`
+	// D396: the how-to part of the words it was found by: the hand-over's note.
+	Note string `json:"note,omitempty"`
 }
 
 // PlanPart is one part of a plan: one task for these to-dos.
@@ -244,8 +254,10 @@ type PileHandReq struct {
 // PileFindReq finds across the pile by words and meaning (Query), a 讲的是
 // chip's Subject, or a set card's SetID.
 type PileFindReq struct {
-	T        string `json:"t"` // "pile_find"
-	Query    string `json:"query,omitempty"`
+	T     string `json:"t"` // "pile_find"
+	Query string `json:"query,omitempty"`
+	// D396: the person's whole sentence; core splits what to find from the note.
+	Words    string `json:"words,omitempty"`
 	Subject  string `json:"subject,omitempty"`
 	SetID    string `json:"setId,omitempty"`
 	ClientID string `json:"clientId,omitempty"`

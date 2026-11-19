@@ -45,8 +45,10 @@ today.
 
 ## 3. The sheet
 
-**What.** A find field (**找… / Find…**; code's match on words, numbers and the source's labels at
-once, then the cheapest model over every open title and label for meaning, across zh and en: one
+**What (D396: words first, §10).** The sheet asks **想交给{name}哪些？ / What should {name} take on?**
+over one field for a sentence; the list below is for confirming and trimming, and the do row's list
+is **一件件挑 / Pick one by one**, a link away. The find under it (code's match on words, numbers and
+the source's labels at once, then the cheapest model over every open title and label for meaning, across zh and en: one
 call, cached per query). Its line says what it found as separate facts: **找到 9 件讲{subject}的 /
 9 about {subject}**, **标题里写着的 6 件 / 6 say it in the title**, **说的是同一件事的 3 件 / 3 are
 about the same thing**. Items show by the sort's group (**可以交给{name}做的**, **要你拿主意的**,
@@ -203,3 +205,44 @@ with the shapes in `packages/protocol/src/handover.ts`.
 **Still owed** (also in `todo.md`): humans on the words; recall of the find on hel's real 49; a plan
 task's report without `plan_report` falls back to one after another of the whole set (said on the
 card); moving a running part to another computer stays D376's.
+
+## 10. Words first (D396)
+
+The author on 0.0.90, with two shots of the Mac sheet: with hundreds open, the sheet opened on a list
+to tick by hand, and its find field said only 找…. **Who:** the heavy developer thinks "those about
+memory distill" and cannot hunt 500 by hand; the consumer says "搬家的事，下周六前搞定，预算 3000";
+the fresh user meets one question.
+
+- **The question first.** From the do row (and the subjects' "more"): **想交给{name}哪些？ / What
+  should {name} take on?**, one field (**比如：关于 memory distill 的，先别动数据库 / e.g. memory
+  distill, but leave the database alone**), focused on a wide screen. Before anything is said: **说一类
+  就行：讲这件事的我都找出来，你再删减。 / Name a kind of thing: I'll find every one about it, and you
+  trim.**, **可以这样说 / You could say** (the subjects handed over lately, then the pile's biggest;
+  `SUGGEST_MAX` 5; a tap finds it), and **一件件挑 / Pick one by one** with **能直接交给{name}的 n 件**
+  (the do group's list, the first few ticked, **用一句话说 / Say it in a sentence** back). A 讲的是 chip
+  or a set card opens with its words in the field and its set already found.
+- **A sentence finds a set.** `pile_find {words}` (debounced; Enter finds at once): a new sentence is a
+  new set, its do ones ticked; the found line and the groups as before. Nothing found: **没找到讲「…」的
+  / Nothing about "…"**, **换个说法，中文英文都行；或者一件件挑。**, the suggestions and one by one.
+- **One sentence, two parts.** Code splits by clause (`splitWords`): a clause that says how (a limit,
+  a place, a tool, an order, a deadline: "先别…", "验证都去 … 上跑", "don't…", "run … on …", "下周六前
+  搞定") is the note, word for word, a joining word in front dropped ("but", "不过"); the first that
+  isn't is the subject, its filler dropped ("那些关于…的都交给你", "the ones about…"). One clause
+  holding both stays the subject. The cheapest model, in the find's one call, may read the split better;
+  its note is kept only when it is the person's own words. `said {about, note, by}` is shown under the
+  field as two facts: **找的是 / Looking for** and **给{name}的话 / A note for {name}** with **已经写进
+  右边 / Now in the note on the right** (narrow: **下一步里能改**). The note field takes it while the
+  person hasn't written their own; theirs is never replaced.
+- **The conversation agrees.** `todos do=find query=` runs the same split: the set's query is the
+  subject and `TodoSet.note` keeps the how (shown on the set card as **给{name}的话**); `do=hand set=`
+  uses it unless other words are said; the sheet opened from the card carries it.
+- **The right column is never dead.** `pile_how` answers where and who with nothing ticked; the column
+  is the note, **在哪儿做 / 谁来做**, then how once two or more are ticked. A computer's name wraps and
+  its reason sits under it, whole; the row's highlight is clipped by the group's corners.
+- **Mac sheets keep below the title bar.** Every sheet over the window centers in the room under the
+  60pt bar that holds the traffic lights (`sheetBack`), whatever the window's height.
+
+Shots: `.shots/handover-words/` (`before-*`, `after-*`; web on `apps/web/demo-handover.ts`, now with
+the pile across nowledge-co repos; Mac from `TestHandoverWordsShots`, the traffic lights painted in).
+**Still owed:** the split read by real models on the author's own sentences, and humans on the words
+(the question, the hint, **找的是**).

@@ -1,7 +1,7 @@
 // D385: a demo core for handing several over (design/handover.md): the heavy developer's pile (557
-// open, demo-pile.ts) plus one subject that cuts across it, "memory distillation" in acme/mem (English
+// open, demo-pile.ts) plus one subject that cuts across it, "memory distillation" in nowledge-co/mem (English
 // titles, Chinese titles, a label the titles miss, every sort group), two computers (this Mac and
-// haswell, a worker, both with acme/mem), a fake cheapest model that sorts with subjects and finds by
+// haswell, a worker, both with nowledge-co/mem), a fake cheapest model that sorts with subjects and finds by
 // meaning, and a fake runner whose plan-first task reads for a moment and reports a real-looking plan
 // and whose parts end with draft PRs. Fake gh, fake model: never the real GitHub, never a real model.
 //   DUCTER_PORT=7998 DUCTER_DATA_DIR=$(mktemp -d) DEMO_LANG=zh bun apps/web/demo-handover.ts
@@ -20,6 +20,7 @@ import { fakeGh, type FakeIssue } from "../../packages/core/test/fake-gh-issues.
 import type { GhRun } from "../../packages/protocol/src/git-login.ts";
 import type { Runner, TaskCard } from "../../packages/protocol/src/index.ts";
 import { demoAsk, pileIssues } from "./demo-pile.ts";
+import { splitWords } from "../../packages/core/src/task-sources/handover.ts";
 
 const zh = (process.env.DEMO_LANG ?? "zh") === "zh";
 const stage = process.env.DEMO_STAGE ?? "";
@@ -28,7 +29,7 @@ const dataDir = process.env.DUCTER_DATA_DIR || join(scratch, "data");
 const DAY = 86_400_000;
 const now = Date.now();
 
-/** The subject: 13 in acme/mem, four of them written in Chinese, three found only by their label. */
+/** The subject: 13 in nowledge-co/mem, four of them written in Chinese, three found only by their label. */
 const MEM: [number, string, string[], number][] = [
   [412, "Distillation: fall back to a smaller result instead of failing", ["component/distillation"], 2],
   [398, "Automatic distillation: the error says nothing useful", [], 3],
@@ -46,8 +47,8 @@ const MEM: [number, string, string[], number][] = [
 ];
 
 function issues(): FakeIssue[] {
-  const out = pileIssues(now);
-  for (const [n, title, labels, idle] of MEM) out.push({ repo: "acme/mem", number: n, title, state: "open", assigned: true, labels, updated: new Date(now - idle * DAY).toISOString(), ...(n === 412 ? { body: "When the full distillation fails we lose everything; a smaller structured result would be better than nothing." } : {}) });
+  const out = pileIssues(now).map((i) => ({ ...i, repo: i.repo.replace(/^acme\//, "nowledge-co/") }));
+  for (const [n, title, labels, idle] of MEM) out.push({ repo: "nowledge-co/mem", number: n, title, state: "open", assigned: true, labels, updated: new Date(now - idle * DAY).toISOString(), ...(n === 412 ? { body: "When the full distillation fails we lose everything; a smaller structured result would be better than nothing." } : {}) });
   return out;
 }
 
@@ -77,7 +78,9 @@ function ask(): (prompt: string) => Promise<{ text: string; tokens: number }> {
       const rows = JSON.parse(/<todos>\n([\s\S]*)\n<\/todos>/.exec(prompt)![1]!) as { id: number; title: string }[];
       const about = /distill|memory|提炼|记忆/i.test(q) ? /istill|提炼|facts|Packets/ : /sign|login|登录/i.test(q) ? /sign-in|login|SSO|Okta/i : /offline|离线/i.test(q) ? /[Oo]ffline/ : null;
       const subject = /distill|memory|提炼|记忆/i.test(q) ? (zh ? "记忆提炼" : "memory distillation") : q;
-      return { text: JSON.stringify({ subject, ids: about ? rows.filter((r) => about.test(r.title)).map((r) => r.id) : [] }), tokens: 20000 };
+      // The words split as a careful model would (the demo borrows code's clause rule for it).
+      const heard = prompt.includes("copy that part word for word") ? splitWords(q) : undefined;
+      return { text: JSON.stringify({ subject, ids: about ? rows.filter((r) => about.test(r.title)).map((r) => r.id) : [], ...(heard ? { about: heard.about, note: heard.note ?? "" } : {}) }), tokens: 20000 };
     }
     if (prompt.includes("<diff>")) return sort(prompt);
     const got = await sort(prompt);
@@ -118,15 +121,15 @@ const core = startCore({
   persona: { id: "default", name: zh ? "小鸭" : "Duckie", identity: "" },
   hostname: process.env.DUCTER_HOST || "127.0.0.1",
   taskSources: { ghRun, ghEnv: {}, home: join(scratch, "home"), quietMs: 0, pollMs: 3_600_000, ask: ask() },
-  // Two computers: this Mac and haswell (a worker), each with acme/mem and acme/web checked out.
+  // Two computers: this Mac and haswell (a worker), each with nowledge-co/mem and nowledge-co/web checked out.
   newTaskComputers: {
     nameOf: (dev: string) => (dev === "w-haswell" ? "haswell" : undefined),
     homeName: () => "MacBook Pro",
     workers: () => [{ id: "w-haswell", name: "haswell", online: true }],
     folderInfo: async () => "offline",
-    repos: async () => ({ folder: "/home/lin/ducter", repos: [{ path: "/home/lin/mem", name: "mem", remote: "github.com/acme/mem", touchedAt: new Date(now - DAY).toISOString() }] }),
+    repos: async () => ({ folder: "/home/lin/ducter", repos: [{ path: "/home/lin/mem", name: "mem", remote: "github.com/nowledge-co/mem", touchedAt: new Date(now - DAY).toISOString() }] }),
   } as never,
-  homeRepos: () => ({ folder: join(scratch, "ducter"), repos: [{ path: "/Users/lin/dev/mem", name: "mem", remote: "github.com/acme/mem", touchedAt: new Date(now - DAY).toISOString() }, { path: "/Users/lin/dev/web", name: "web", remote: "github.com/acme/web", touchedAt: new Date(now - 2 * DAY).toISOString() }] }),
+  homeRepos: () => ({ folder: join(scratch, "ducter"), repos: [{ path: "/Users/lin/dev/mem", name: "mem", remote: "github.com/nowledge-co/mem", touchedAt: new Date(now - DAY).toISOString() }, { path: "/Users/lin/dev/web", name: "web", remote: "github.com/nowledge-co/web", touchedAt: new Date(now - 2 * DAY).toISOString() }] }),
 } as never);
 core.setPartner({ onTrigger() {} });
 core.settings.set({ language: zh ? "zh" : "en" });
@@ -136,15 +139,15 @@ const ho = ts.handover!;
 
 /** The plan a careful lead part would report for the subject set (refs from the set only). */
 function planFor(refs: string[]) {
-  const has = (n: number) => refs.includes(`acme/mem#${n}`);
-  const R = (ns: number[]) => ns.filter(has).map((n) => `acme/mem#${n}`);
+  const has = (n: number) => refs.includes(`nowledge-co/mem#${n}`);
+  const R = (ns: number[]) => ns.filter(has).map((n) => `nowledge-co/mem#${n}`);
   return {
-    fixed: has(351) ? [{ ref: "acme/mem#351", where: "PR #360", comment: "This was fixed in #360 (merged): newer facts now replace older ones by when they were said. Closing." }] : [],
+    fixed: has(351) ? [{ ref: "nowledge-co/mem#351", where: "PR #360", comment: "This was fixed in #360 (merged): newer facts now replace older ones by when they were said. Closing." }] : [],
     one: R([398, 412, 405]).length ? [{ refs: R([398, 412, 405]), title: zh ? "失败时退一步，并重试一次" : "Step back on failure, and retry once", why: zh ? "都是自动提炼失败时怎么退一步，改的是同一处；加上一次有限的重试（你定的）" : "All about how distillation steps back when it fails, in the same place; plus one bounded retry (your call)" }] : [],
     line: [
-      ...(has(377) ? [{ refs: ["acme/mem#377"], title: zh ? "长对话的组包变快" : "Faster packets on long threads", why: zh ? "先做：后面两件都用到它改的组包" : "First: the other two use the packet code it changes" }] : []),
-      ...(has(340) ? [{ refs: ["acme/mem#340"], title: zh ? "第一次就能提炼成功" : "Succeed on the first try", why: zh ? "从 #377 的分支接着做" : "From #377's branch" }] : []),
-      ...(has(322) ? [{ refs: ["acme/mem#322"], title: zh ? "暂停时在任务记录里说一声" : "Say when it paused, in Task History", why: zh ? "最后：把暂停的样子放进任务记录" : "Last: the pause shown in Task History" }] : []),
+      ...(has(377) ? [{ refs: ["nowledge-co/mem#377"], title: zh ? "长对话的组包变快" : "Faster packets on long threads", why: zh ? "先做：后面两件都用到它改的组包" : "First: the other two use the packet code it changes" }] : []),
+      ...(has(340) ? [{ refs: ["nowledge-co/mem#340"], title: zh ? "第一次就能提炼成功" : "Succeed on the first try", why: zh ? "从 #377 的分支接着做" : "From #377's branch" }] : []),
+      ...(has(322) ? [{ refs: ["nowledge-co/mem#322"], title: zh ? "暂停时在任务记录里说一声" : "Say when it paused, in Task History", why: zh ? "最后：把暂停的样子放进任务记录" : "Last: the pause shown in Task History" }] : []),
     ],
     side: R([384, 331]).map((r) => ({ refs: [r], title: "", why: zh ? "跟其他几件不相干" : "Independent of the rest" })),
     later: [],
@@ -168,14 +171,14 @@ function runner(): Runner {
       setTimeout(
         () => {
           if (planning) {
-            const refs = [...input.brief.matchAll(/^- (acme\/[\w-]+#\d+):/gm)].map((m) => m[1]!);
+            const refs = [...input.brief.matchAll(/^- (nowledge-co\/[\w-]+#\d+):/gm)].map((m) => m[1]!);
             ho.planReport(taskId, planFor(refs));
             core.log.append({ stream: `task:${taskId}`, origin: "task", kind: "report", body: { taskId, state: "done", summary: zh ? "看完了：一件已经修好，其余排好了。" : "Read them all: one is already fixed, the rest are planned.", questions: [], evidence: [] } });
             core.tasks.setState(taskId, "done", "cold");
             return;
           }
           const pr = 420 + k;
-          core.log.append({ stream: `task:${taskId}`, origin: "task", kind: "report", body: { taskId, state: "done", summary: zh ? `改好了，在 haswell 上跑过测试；草稿 PR #${pr}。` : `Fixed and tested on haswell; draft PR #${pr}.`, questions: [], evidence: [{ kind: "url", label: `PR #${pr}`, ref: `https://github.com/acme/mem/pull/${pr}` }] } });
+          core.log.append({ stream: `task:${taskId}`, origin: "task", kind: "report", body: { taskId, state: "done", summary: zh ? `改好了，在 haswell 上跑过测试；草稿 PR #${pr}。` : `Fixed and tested on haswell; draft PR #${pr}.`, questions: [], evidence: [{ kind: "url", label: `PR #${pr}`, ref: `https://github.com/nowledge-co/mem/pull/${pr}` }] } });
           core.tasks.setState(taskId, "done_claimed", "cold");
         },
         planning ? planMs : taskMs + n * 900,
@@ -210,7 +213,7 @@ if (stage === "conv" || stage === "plan" || stage === "review") {
     const note = zh ? "先别动数据库迁移，验证都去 haswell 上跑。" : "Leave the database migrations alone and run every check on haswell.";
     // As the partner does (its line first, then the call): the lasting-where card comes after its line.
     say("partner", zh ? "好，我先看一遍，出个方案给你，你点头再做。" : "OK. I'll read them first and show you a plan; nothing starts until you say so.");
-    const r = await ho.hand({ refs: [...s.ticked, "acme/mem#405"], note, setId: s.setId, bySubject: true, subject: subjectName });
+    const r = await ho.hand({ refs: [...s.ticked, "nowledge-co/mem#405"], note, setId: s.setId, bySubject: true, subject: subjectName });
     await until(() => core.taskGroups.get(r.groupId!)?.hand?.plan?.state === "ready");
     if (stage === "review") {
       await ho.answerPlan(r.groupId!, "go");

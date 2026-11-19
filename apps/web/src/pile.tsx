@@ -205,7 +205,7 @@ export function PileBlock({ pile }: { pile: PileView }) {
         </div>
       ) : sorted ? (
         <div class="pile-rows">
-          {g.do > 0 && <Row g="do" n={g.do} act={t("pile.act.do", name)} onAct={() => openHand({ door: "do" })} />}
+          {g.do > 0 && <Row g="do" n={g.do} act={t("pile.act.do", name)} onAct={() => openHand({ door: "do", doCount: g.do })} />}
           {g.decide > 0 && <Row g="decide" n={g.decide} act={t("pile.act.decide")} onAct={() => openPile("decide")} />}
           {g.close > 0 && <Row g="close" n={g.close} note={t("pile.g.close.note")} act={t("pile.act.close")} onAct={() => openPile("close")} />}
           {g.later > 0 && <Row g="later" n={g.later} />}

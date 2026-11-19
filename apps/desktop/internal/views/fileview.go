@@ -457,6 +457,7 @@ func (a *App) fileViewer(c *ui.Context) {
 		findKeys() // inside the dialog (a shortcut outside it never fires)
 		clickedOut = back.Clicked()
 		back.Background(t.Scrim)
+		ph := min(ph, sheetBack(c, back, h)) // never over the title bar
 		panel.Width(pw).Height(ph).Radius(t.RadiusXL).Background(t.Bg).Clip().
 			Shadow(0, t.Floating.Y, t.Floating.Blur, 0, t.Floating.Color).Shadow(0, 5, 0, 0, t.Line).Label(name)
 		a.fileGrow(c, panel, fv, w, h, pw, ph)

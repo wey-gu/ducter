@@ -124,6 +124,19 @@ export interface FindSummary {
   noMeaning?: "no_model" | "error";
 }
 
+/**
+ * D396: the person's words split in two: what to find (about) and how to do it (note), by code's
+ * clause rule, then the cheapest model's reading when it ran (by). Both shown, both editable.
+ */
+export interface FindSaid {
+  about: string;
+  note?: string;
+  by: "code" | "model";
+}
+
+/** D396: how many suggestions the words field shows (the person's recent subjects first, then the pile's biggest). */
+export const SUGGEST_MAX = 5;
+
 /** One to-do in a find: the pile's item, how it was found. */
 export type FoundItem = PileItem & { by: "title" | "label" | "meaning" | "subject" | "ref" };
 
@@ -140,6 +153,8 @@ export interface TodoSet {
   rows: FoundItem[];
   /** Handed over: the group it became. */
   groupId?: string;
+  /** D396: the how-to part of the words it was found by ("先别动数据库"): the hand-over's note unless another is said. */
+  note?: string;
 }
 
 // ---------- plan first ----------

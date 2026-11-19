@@ -1098,7 +1098,9 @@ func (a *App) viewer(c *ui.Context) {
 		}
 		ui.Column(c.Key("viewer")).Fill().Children(func() {
 			// Top: the count, then Close.
-			ui.Row(c).Padding(t.S4, t.S5, t.S2, t.S5).AlignItems(ui.Center).Gap(t.S3).Children(func() {
+			// The window's own bar: the count clear of the traffic lights (a full-window sheet keeps their room).
+			bl, br := chromeInset(c)
+			ui.Row(c).Height(ChromeH).Padding(0, br, 0, bl).AlignItems(ui.Center).Gap(t.S3).Children(func() {
 				if len(v.items) > 1 {
 					ui.Text(c, a.L.T("media.count", v.i+1, len(v.items))).FontSize(t.SM).TextColor(t.LightboxInk.Alpha(0.7))
 				}

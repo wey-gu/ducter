@@ -25,7 +25,9 @@ type handState struct {
 	open bool
 	// cid answers the find (or the do row's items); howCid the how; goCid the Go.
 	cid, howCid, goCid string
-	// The door: a typed find, a 讲的是 subject, a set card, or the do row.
+	// D396: query is the person's words in the field (what to find, maybe
+	// the note too); sentQuery the words last asked; a 讲的是 subject or a set
+	// card comes in with its words already there.
 	query, sentQuery string
 	queryAt          time.Time
 	subject          string
@@ -35,13 +37,23 @@ type handState struct {
 	items            []protocol.FoundItem
 	found            *protocol.FindSummary
 	got, finding     bool
-	ticked           map[string]bool
-	note             string
-	notes            map[string]string
-	noteOpen         map[string]bool
-	how              *protocol.HandHow
-	howKey, sentHow  string
-	howAt            time.Time
+	// heard: how core split the words; suggest: the field's suggestions;
+	// noteAuto: the note as filled from the words (replaced while the person
+	// hasn't written their own).
+	heard    *protocol.FindSaid
+	suggest  []string
+	noteAuto string
+	// browse: picking one by one (the do group's list); doCount: its size.
+	browse   bool
+	doCount  int
+	ticked   map[string]bool
+	note     string
+	notes    map[string]string
+	noteOpen map[string]bool
+	how      *protocol.HandHow
+	howKey   string
+	sentHow  string
+	howAt    time.Time
 	// The person's own picks over the suggestion ("" = as suggested); addTo: 加进「{group}」.
 	shape, device, harness string
 	addTo                  bool
@@ -60,34 +72,72 @@ const handDebounce = 320 * time.Millisecond
 func (a *App) newHand() *handState {
 	a.nextClient++
 	h := &a.ho
-	*h = handState{open: true, cid: fmt.Sprintf("hand%d", a.nextClient), ticked: map[string]bool{}, notes: map[string]string{}, noteOpen: map[string]bool{}}
+	*h = handState{open: true, cid: fmt.Sprintf("hand%d", a.nextClient), ticked: map[string]bool{}, notes: map[string]string{}, noteOpen: map[string]bool{}, focusFind: true, howKey: "\x01"}
 	return h
 }
 
-// openHandDo is the pile's do row: the do group, the first six ticked (small first).
+// openHandDo is the pile's do row (D396: words first): the empty words field
+// with its suggestions; one by one is a link away.
 func (a *App) openHandDo() {
 	h := a.newHand()
-	h.fromDo = true
-	a.send(protocol.PileItemsReq{T: "pile_items", Group: "do", ClientID: h.cid})
+	h.fromDo, h.got = true, true
+	if pv := a.pileView(); pv != nil {
+		h.doCount = pv.Groups["do"]
+	}
+	a.send(protocol.PileFindReq{T: "pile_find", ClientID: h.cid})
 }
 
-// openHandSubject is a 讲的是 chip: every to-do on that subject, the do ones ticked.
+// openHandSubject is a 讲的是 chip: every to-do on that subject, the do ones
+// ticked, its name in the words field.
 func (a *App) openHandSubject(name string) {
 	h := a.newHand()
 	h.subject, h.bySubject, h.finding = name, true, true
+	h.query, h.sentQuery, h.focusFind = name, name, false
 	a.send(protocol.PileFindReq{T: "pile_find", Subject: name, ClientID: h.cid})
 }
 
-// openHandSet is a set card's Go: the same set, as ticked on the card.
+// openHandSet is a set card's Go: the same set, as ticked on the card, its
+// words in the field and the note heard in them.
 func (a *App) openHandSet(s *protocol.TodoSet, ticked map[string]bool) {
 	h := a.newHand()
 	h.setID, h.bySubject, h.subject, h.finding, h.seeded = s.SetID, true, s.Subject, true, true
+	h.query = firstNonEmpty(s.Query, s.Subject)
+	h.sentQuery, h.focusFind = h.query, false
+	if s.Note != "" {
+		h.note, h.noteAuto = s.Note, s.Note
+	}
 	for r, on := range ticked {
 		if on {
 			h.ticked[r] = true
 		}
 	}
 	a.send(protocol.PileFindReq{T: "pile_find", SetID: s.SetID, ClientID: h.cid})
+}
+
+// handBrowse turns one by one on (the do group's list, the first few
+// ticked) or back off to the words.
+func (a *App) handBrowse(on bool) {
+	h := &a.ho
+	h.browse, h.pickOpen = on, ""
+	a.nextClient++
+	h.cid = fmt.Sprintf("hand%d", a.nextClient)
+	h.items, h.found, h.got = nil, nil, false
+	if on {
+		a.send(protocol.PileItemsReq{T: "pile_items", Group: "do", ClientID: h.cid})
+		return
+	}
+	h.ticked = map[string]bool{}
+	h.got, h.focusFind = true, true
+	h.sentQuery = "\x00" // the words, asked again
+}
+
+// handFillNote writes the note the words carried, while the person hasn't
+// written their own (theirs is never replaced).
+func (h *handState) handFillNote(note string) {
+	if strings.TrimSpace(h.note) != "" && h.note != h.noteAuto {
+		return
+	}
+	h.note, h.noteAuto = note, note
 }
 
 // takeHand reads the home's answers about the sheet (by clientId).
@@ -97,17 +147,29 @@ func (a *App) takeHand() {
 		delete(a.S.SourceItems, h.cid)
 		h.got, h.finding = true, false
 		switch {
-		case r.Group != "": // the do row
+		case r.Group != "": // one by one: the do group
 			h.items = nil
-			for i, p := range r.PileItems {
+			for _, p := range r.PileItems {
 				h.items = append(h.items, protocol.FoundItem{PileItem: p})
-				if i < protocol.PileHandDefault {
-					h.ticked[p.Item.Ref] = true
+			}
+			h.doCount = len(h.items)
+			if len(h.handTicked()) == 0 {
+				for i, p := range r.PileItems {
+					if i < protocol.PileHandDefault {
+						h.ticked[p.Item.Ref] = true
+					}
 				}
 			}
 		case r.PileOp == "find":
-			h.items, h.found = r.FoundItems, r.Found
-			if r.Subject != "" && h.query == "" {
+			if r.Suggest != nil {
+				h.suggest = r.Suggest
+			}
+			// The bare door: only its suggestions.
+			if strings.TrimSpace(h.query) == "" && h.subject == "" && h.setID == "" {
+				break
+			}
+			h.items, h.found, h.heard = r.FoundItems, r.Found, r.Said
+			if r.Subject != "" {
 				h.subject = r.Subject
 			}
 			// A set card's own ticks stay (its first answer); otherwise the do ones, as found.
@@ -118,6 +180,10 @@ func (a *App) takeHand() {
 				}
 			}
 			h.seeded = false
+			if r.Said != nil {
+				h.handFillNote(r.Said.Note)
+				h.bySubject = r.Subject != "" || (r.Found != nil && r.Found.ByMeaning > 0)
+			}
 		}
 	}
 	if r := a.S.SourceItems[h.howCid]; r != nil && h.howCid != "" {
@@ -151,36 +217,32 @@ func (h *handState) handTicked() []string {
 	return out
 }
 
-// handPump sends what changed: a typed find, and the how for the set and the note.
+// handPump sends what changed: the words said, and the how for the set and
+// the note (where and who from the start, before anything is ticked).
 func (a *App) handPump(c *ui.Context) {
 	h := &a.ho
 	now := a.Now()
-	q := strings.TrimSpace(h.query)
-	if q != h.sentQuery {
+	q := strings.TrimSpace(strings.ReplaceAll(h.query, "\n", " "))
+	if q != h.sentQuery && !h.browse {
 		if wait := handDebounce - now.Sub(h.queryAt); wait > 0 {
 			c.After(wait + 10*time.Millisecond)
 		} else {
 			h.sentQuery = q
 			a.nextClient++
 			h.cid = fmt.Sprintf("hand%d", a.nextClient)
-			h.finding = true
-			if q == "" && h.subject != "" {
-				a.send(protocol.PileFindReq{T: "pile_find", Subject: h.subject, ClientID: h.cid})
-			} else if q == "" && h.setID != "" {
-				a.send(protocol.PileFindReq{T: "pile_find", SetID: h.setID, ClientID: h.cid})
-			} else if q == "" {
-				h.fromDo = true
-				a.send(protocol.PileItemsReq{T: "pile_items", Group: "do", ClientID: h.cid})
+			h.setID, h.seeded = "", false
+			if q == "" {
+				// Nothing said: nothing found, nothing ticked; the suggestions stay.
+				h.items, h.found, h.heard, h.subject, h.bySubject, h.finding = nil, nil, nil, "", false, false
+				h.ticked = map[string]bool{}
+				h.handFillNote("")
 			} else {
-				h.fromDo = false
-				a.send(protocol.PileFindReq{T: "pile_find", Query: q, ClientID: h.cid})
+				h.finding, h.subject = true, ""
+				a.send(protocol.PileFindReq{T: "pile_find", Words: q, ClientID: h.cid})
 			}
 		}
 	}
 	refs := h.handTicked()
-	if len(refs) == 0 {
-		return
-	}
 	key := strings.Join(refs, ",") + "\x00" + h.note
 	if key != h.howKey {
 		h.howKey, h.howAt = key, now
@@ -196,10 +258,10 @@ func (a *App) handPump(c *ui.Context) {
 	a.nextClient++
 	h.howCid = fmt.Sprintf("how%d", a.nextClient)
 	subj := h.subject
-	if h.query != "" && h.found != nil && h.found.Subject != "" {
+	if h.found != nil && h.found.Subject != "" && h.heard != nil {
 		subj = h.found.Subject
 	}
-	a.send(protocol.PileHowReq{T: "pile_how", Refs: refs, Note: strings.TrimSpace(h.note), BySubject: h.bySubject || (h.query != "" && h.found != nil && h.found.ByMeaning > 0), Subject: subj, ClientID: h.howCid})
+	a.send(protocol.PileHowReq{T: "pile_how", Refs: refs, Note: strings.TrimSpace(h.note), BySubject: h.bySubject, Subject: subj, ClientID: h.howCid})
 }
 
 // handShape is the shape Go makes: the person's pick, else the suggestion.
@@ -257,6 +319,29 @@ func (a *App) handGo() {
 	a.send(req)
 }
 
+// sheetTop is how far a sheet keeps from the window's top: below the top
+// bar that holds the traffic lights (ChromeH), whatever the window's height;
+// a window without them keeps a plain gutter.
+func sheetTop(c *ui.Context) float32 {
+	if bar := c.TitleBar(); bar.Left > 0 || bar.Height > 0 {
+		return ChromeH + 4
+	}
+	return 32
+}
+
+// sheetBottom is the gutter a sheet keeps from the window's bottom.
+const sheetBottom = 24
+
+// sheetBack lays a sheet's backdrop out so the panel centers in the room
+// under the title bar, and returns the panel's tallest height there. Every
+// sheet over the window goes through it (the traffic lights never sit on a
+// sheet).
+func sheetBack(c *ui.Context, back ui.Element, wh float32) float32 {
+	top := sheetTop(c)
+	back.Padding(top, 0, sheetBottom, 0)
+	return max(240, wh-top-sheetBottom)
+}
+
 // handSheet is the sheet over the window.
 func (a *App) handSheet(c *ui.Context) {
 	h := &a.ho
@@ -276,20 +361,21 @@ func (a *App) handSheet(c *ui.Context) {
 	open := true
 	ui.DialogBase(c, &open, func(back, panel ui.Element) {
 		back.Background(t.Scrim)
+		ph := sheetBack(c, back, wh)
 		pw := min(w-2*t.S6, 1180)
 		if !wide {
 			pw = min(w-2*t.S4, 620)
 		}
-		panel.Width(pw).Height(wh-2*t.S6).Radius(t.RadiusXL).Background(t.Bg).Shadow(0, t.Floating.Y, t.Floating.Blur, 0, t.Floating.Color).Label(title).Role(ui.RoleDialog)
+		panel.Width(pw).Height(ph).Radius(t.RadiusXL).Background(t.Bg).Shadow(0, t.Floating.Y, t.Floating.Blur, 0, t.Floating.Color).Label(title).Role(ui.RoleDialog)
 		a.enter(c, panel)
-		// Keyboard: Cmd+F finds, Cmd+Enter is Go.
+		// Keyboard: Cmd+F goes to the words, Cmd+Enter is Go.
 		if c.Shortcut(ui.Cmd, ui.KeyF) {
 			h.focusFind, h.step = true, 0
 		}
 		if c.Shortcut(ui.Cmd, ui.KeyEnter) {
 			a.handGo()
 		}
-		ui.Row(c.Key("hand-head")).Gap(t.S2).AlignItems(ui.Center).Padding(t.S5, t.S6, t.S3, t.S6).Children(func() {
+		ui.Row(c.Key("hand-head")).Gap(t.S2).AlignItems(ui.Center).Padding(t.S5, t.S6, t.S2, t.S6).Children(func() {
 			a.heading(c, title, t.XL).Shrink(1).MinWidth(0)
 			ui.Spacer(c)
 			if a.iconButtonFor(c, a.L.T("pile.close.x"), t.ControlMD, btnSecondary, drawCross) {
@@ -299,7 +385,7 @@ func (a *App) handSheet(c *ui.Context) {
 		if wide {
 			ui.Row(c.Key("hand-cols")).Grow(1).MinHeight(0).AlignItems(ui.Stretch).Children(func() {
 				ui.Scroll(c.Key("hand-what")).Grow(135).Shrink(1).MinWidth(0).Children(func() {
-					ui.Column(c).Padding(0, t.S6, t.S5, t.S6).Gap(t.S2).Children(func() { a.handWhat(c) })
+					ui.Column(c).Padding(0, t.S6, t.S5, t.S6).Gap(t.S2).Children(func() { a.handWhat(c, wide) })
 				})
 				ui.Scroll(c.Key("hand-how")).Grow(100).Shrink(1).MinWidth(340).Background(t.SurfaceSunken).Radius(t.RadiusLG).Margin(0, t.S5, 0, 0).Children(func() {
 					ui.Column(c).Padding(t.S4, t.S5, t.S5, t.S5).Gap(t.S4).Children(func() { a.handHowCol(c) })
@@ -309,7 +395,7 @@ func (a *App) handSheet(c *ui.Context) {
 			ui.Scroll(c.Key(fmt.Sprint("hand-step", h.step))).Grow(1).MinHeight(0).Children(func() {
 				ui.Column(c).Padding(0, t.S5, t.S5, t.S5).Gap(t.S2).Children(func() {
 					if h.step == 0 {
-						a.handWhat(c)
+						a.handWhat(c, wide)
 					} else {
 						a.handHowCol(c)
 					}
@@ -328,42 +414,87 @@ func (a *App) iconButtonFor(c *ui.Context, label string, size float32, kind btnK
 	return a.iconButton(c, label, size, kind, draw)
 }
 
-// handWhat is the left: the find, its line, the to-dos by sort group.
-func (a *App) handWhat(c *ui.Context) {
+// handWhat is the left (D396: words first): one question and one field; a
+// sentence finds the set, ticked, with how it was heard; the list is for
+// confirming and trimming. Before anything is said: a hint, the
+// suggestions, and one by one as a quiet link.
+func (a *App) handWhat(c *ui.Context, wide bool) {
 	t := a.T
 	h := &a.ho
 	name := a.personaName()
-	field := ui.Row(c.Key("find")).Gap(t.S2).AlignItems(ui.Center).Height(46).Padding(0, t.S4).Radius(t.Pill).Background(t.Surface).Border(1, t.Line).Shadow(0, 2, 0, 0, t.Line)
+	if h.browse {
+		back := ui.Row(c.Key("words-back")).Gap(t.S1).AlignItems(ui.Center).Height(36).Padding(0, t.S3, 0, t.S2).Radius(18).Background(t.SurfaceSunken).
+			Cursor(ui.CursorPointer).Role(ui.RoleButton).Focusable().Label(a.L.T("hand.browse.back")).AlignSelf(ui.Start)
+		if back.Hovered() {
+			back.Background(t.Surface).Shadow(0, 2, 0, 0, t.Line2)
+		}
+		back.Children(func() {
+			a.glyph(c, 16, drawBack(t.Ink))
+			ui.Text(c, a.L.T("hand.browse.back")).FontWeight(600).TextColor(t.Ink).AccessHidden(true)
+		})
+		if back.Clicked() {
+			a.handBrowse(false)
+		}
+		if !h.got {
+			a.handSkeleton(c, 3, 84)
+			return
+		}
+		a.handList(c)
+		return
+	}
+	ui.Text(c.Key("ask"), a.L.T("hand.ask", name)).Font(t.Display).FontSize(t.LG).FontWeight(800).TextColor(t.Ink).Padding(t.S1, t.S1, t.S1, t.S1).Role(ui.RoleText)
+	field := ui.Row(c.Key("find")).Gap(t.S2).AlignItems(ui.Center).MinHeight(56).Padding(0, t.S2, 0, t.S4).Radius(t.RadiusLG).Background(t.Surface).Border(2, t.Line2).Shadow(0, 3, 0, 0, t.Line2)
 	field.Children(func() {
 		a.glyph(c, 18, drawMagnifier(t.InkSoft))
-		in := ui.TextInput(c.Key("find-in"), &h.query).Placeholder(a.L.T("hand.find")).Label(a.L.T("hand.find.label")).FontSize(t.Bubble).Grow(1).MinWidth(0).
-			Background(ui.Transparent).Border(0, ui.Transparent).Padding(t.S2, 0)
+		in := ui.TextArea(c.Key("find-in"), &h.query).Lines(1, 4).MinHeight(0).Placeholder(a.L.T("hand.ask.ph")).Label(a.L.T("hand.ask", name)).FontSize(t.LG).LineHeight(a.leading(1.45)).Grow(1).MinWidth(0).
+			Background(ui.Transparent).Border(0, ui.Transparent).Padding(t.S3, 0)
 		if in.Changed() {
+			h.query = strings.ReplaceAll(h.query, "\n", " ")
 			h.queryAt = a.Now()
+		}
+		if in.Focused() {
+			field.Border(2, t.Accent)
 		}
 		if h.focusFind {
 			in.Focus()
 			h.focusFind = false
 		}
 		if h.query != "" && a.quietButton(c, "find-clear", a.L.T("mem.find.clear"), "", false, 0) {
-			h.query, h.queryAt = "", a.Now()
+			h.query, h.queryAt, h.focusFind = "", a.Now(), true
 		}
 	})
 	a.enter(c, field)
-	// The found line: its facts apart (D291).
-	if h.finding && strings.TrimSpace(h.query) != "" {
-		ui.Text(c.Key("finding"), a.L.T("hand.finding")).FontSize(t.SM).TextColor(t.InkMuted).Role(ui.RoleStatus).Padding(t.S1, t.S1)
-	} else if f := h.found; f != nil && (h.query != "" || h.subject != "" || h.setID != "") {
-		ui.Row(c.Key("found")).Wrap().Gap(t.S3).AlignItems(ui.Baseline).Padding(t.S1, t.S1, 0, t.S1).Role(ui.RoleStatus).Children(func() {
-			subj := f.Subject
-			if subj == "" {
-				subj = h.subject
+	said := strings.TrimSpace(h.query) != ""
+	// How the words were heard: what it looked for, and the note taken out (each its own fact).
+	if hd := h.heard; hd != nil && hd.Note != "" && !h.finding {
+		ui.Row(c.Key("heard")).Wrap().Gap(t.S2).Padding(t.S1, 0, 0, 0).Children(func() {
+			a.heardPart(c, "about", a.L.T("hand.said.about"), hd.About, "")
+			moved := ""
+			if h.note == h.noteAuto && strings.TrimSpace(h.note) != "" {
+				moved = a.L.T("hand.said.moved")
+				if !wide {
+					moved = a.L.T("hand.said.moved.narrow")
+				}
 			}
+			a.heardPart(c, "note", a.L.T("hand.note", name), hd.Note, moved)
+		})
+	}
+	if !said && h.subject == "" && h.setID == "" {
+		ui.Column(c.Key("start")).Gap(t.S4).Padding(t.S3, t.S1, 0, t.S1).Children(func() {
+			ui.Text(c.Key("hint"), a.L.T("hand.ask.hint")).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(a.leading(1.5))
+			a.handSuggest(c, false)
+			a.handBrowseLink(c, false)
+		})
+		return
+	}
+	// The found line: its facts apart (D291).
+	if h.finding {
+		ui.Text(c.Key("finding"), a.L.T("hand.finding")).FontSize(t.SM).TextColor(t.InkMuted).Role(ui.RoleStatus).Padding(t.S2, t.S1)
+	} else if f := h.found; f != nil && f.N > 0 {
+		ui.Row(c.Key("found")).Wrap().Gap(t.S3).AlignItems(ui.Baseline).Padding(t.S2, t.S1, 0, t.S1).Role(ui.RoleStatus).Children(func() {
+			subj := firstNonEmpty(f.Subject, h.subject)
 			head := a.L.T("hand.found.n", f.N)
-			switch {
-			case f.N == 0 && subj != "":
-				head = a.L.T("hand.found.none", subj)
-			case subj != "":
+			if subj != "" {
 				head = a.L.T("hand.found", f.N, subj)
 			}
 			ui.Text(c.Key("head"), head).Font(t.Display).FontSize(t.LG).FontWeight(800).TextColor(t.Ink)
@@ -382,13 +513,29 @@ func (a *App) handWhat(c *ui.Context) {
 		})
 	}
 	switch {
-	case !h.got:
-		ui.Text(c.Key("looking"), a.L.T("todos.looking")).TextColor(t.InkSoft).Padding(t.S3, t.S1)
-		return
+	case !h.got || (h.finding && len(h.items) == 0):
+		a.handSkeleton(c, 3, 84)
 	case len(h.items) == 0:
-		ui.Text(c.Key("empty"), a.L.T("pile.empty")).TextColor(t.InkSoft).Padding(t.S3, t.S1)
-		return
+		about := strings.TrimSpace(h.query)
+		if h.heard != nil && h.heard.About != "" {
+			about = h.heard.About
+		}
+		ui.Column(c.Key("none")).Gap(t.S2).AlignItems(ui.Center).Padding(t.S7, t.S4, 0, t.S4).Children(func() {
+			ui.Text(c.Key("h"), a.L.T("hand.found.none", "「"+about+"」")).Font(t.Display).FontSize(t.MD).FontWeight(800).TextColor(t.Ink).TextAlign(ui.Center)
+			ui.Text(c.Key("or"), a.L.T("hand.none.or")).FontSize(t.SM).TextColor(t.InkMuted).TextAlign(ui.Center)
+			ui.Box(c).Height(t.S2)
+			a.handSuggest(c, true)
+			a.handBrowseLink(c, true)
+		})
+	default:
+		a.handList(c)
 	}
+}
+
+// handList is the found (or one-by-one) to-dos by sort group.
+func (a *App) handList(c *ui.Context) {
+	t := a.T
+	h := &a.ho
 	for _, g := range []string{"do", "decide", "later", "close"} {
 		var its []protocol.FoundItem
 		for _, it := range h.items {
@@ -401,13 +548,98 @@ func (a *App) handWhat(c *ui.Context) {
 		}
 		label := a.L.T("pile.g." + g)
 		if g == "do" {
-			label = a.L.T("pile.g.do", name)
+			label = a.L.T("pile.g.do", a.personaName())
 		}
 		ui.Text(c.Key("gh:"+g), label).FontSize(t.SM).FontWeight(700).TextColor(t.InkMuted).Padding(t.S4, t.S1, 0, t.S1).Role(ui.RoleText)
 		for _, it := range its {
 			a.handItem(c, it)
 		}
 	}
+}
+
+// heardPart is one part of how the words were heard: its small label, the
+// words, and (the note) where they went.
+func (a *App) heardPart(c *ui.Context, key, label, words, moved string) {
+	t := a.T
+	ui.Row(c.Key("hp:"+key)).Wrap().Gap(t.S2).AlignItems(ui.Baseline).Padding(t.S2, t.S3).Radius(12).Background(t.SurfaceSunken).Shrink(1).MinWidth(0).Children(func() {
+		ui.Text(c.Key("l"), label).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
+		ui.Text(c.Key("w"), words).FontWeight(700).TextColor(t.Ink).Shrink(1).MinWidth(0)
+		if moved != "" {
+			ui.Text(c.Key("m"), moved).FontSize(t.XS).TextColor(t.InkMuted)
+		}
+	})
+}
+
+// handSuggest is the field's suggestions: a click says it.
+func (a *App) handSuggest(c *ui.Context, center bool) {
+	t := a.T
+	h := &a.ho
+	if len(h.suggest) == 0 {
+		return
+	}
+	align, justify := ui.Start, ui.Start
+	if center {
+		align, justify = ui.Center, ui.Center
+	}
+	ui.Column(c.Key("suggest")).Gap(t.S2).AlignItems(align).Children(func() {
+		ui.Text(c.Key("l"), a.L.T("hand.ask.recent")).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
+		ui.Row(c.Key("chips")).Wrap().Gap(t.S2).Justify(justify).Children(func() {
+			for _, s := range h.suggest {
+				s := s
+				chip := ui.Row(c.Key("sg:"+s)).Height(34).Padding(0, t.S3).Radius(17).AlignItems(ui.Center).Background(t.SurfaceSunken).
+					Cursor(ui.CursorPointer).Role(ui.RoleButton).Focusable().Label(s)
+				if chip.Hovered() {
+					chip.Background(t.Surface).Shadow(0, 2, 0, 0, t.Line2)
+				}
+				chip.Children(func() {
+					ui.Text(c, s).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).AccessHidden(true)
+				})
+				if chip.Clicked() {
+					h.query, h.queryAt, h.focusFind = s, a.Now().Add(-handDebounce), true
+				}
+			}
+		})
+	})
+}
+
+// handBrowseLink is 一件件挑 / Pick one by one, with how many the do group holds.
+func (a *App) handBrowseLink(c *ui.Context, center bool) {
+	t := a.T
+	h := &a.ho
+	n := h.doCount
+	if n == 0 {
+		if pv := a.pileView(); pv != nil {
+			n = pv.Groups["do"]
+		}
+	}
+	link := ui.Row(c.Key("browse")).Gap(t.S2).AlignItems(ui.Center).Height(40).Padding(0, t.S3, 0, t.S4).Radius(20).Border(1, t.Line2).
+		Cursor(ui.CursorPointer).Role(ui.RoleButton).Focusable().Label(a.L.T("hand.browse"))
+	if !center {
+		link.AlignSelf(ui.Start)
+	}
+	if link.Hovered() {
+		link.Background(t.Surface).Shadow(0, 2, 0, 0, t.Line2)
+	}
+	link.Children(func() {
+		ui.Text(c, a.L.T("hand.browse")).FontWeight(700).TextColor(t.Ink).AccessHidden(true)
+		if n > 0 {
+			ui.Text(c, a.L.T("hand.browse.n", a.personaName(), n)).FontSize(t.SM).TextColor(t.InkMuted).FontFeatures("tnum").AccessHidden(true)
+		}
+		a.glyph(c, 14, drawChevron(t.InkMuted, false))
+	})
+	if link.Clicked() {
+		a.handBrowse(true)
+	}
+}
+
+// handSkeleton is n quiet clay bars while something is being read.
+func (a *App) handSkeleton(c *ui.Context, n int, h float32) {
+	t := a.T
+	ui.Column(c.Key("skel")).Gap(t.S2).Padding(t.S2, 0, 0, 0).Role(ui.RoleStatus).Label(a.L.T("todos.looking")).Children(func() {
+		for i := 0; i < n; i++ {
+			ui.Box(c.Key(fmt.Sprint("s", i))).Height(h).Radius(16).Background(t.SurfaceSunken).Opacity(1 - float32(i)*0.22)
+		}
+	})
 }
 
 // handItem is one to-do: its tick, title, why (a decide's question with 建议),
@@ -517,7 +749,8 @@ func (a *App) handItem(c *ui.Context, it protocol.FoundItem) {
 	})
 }
 
-// handHowCol is the right: the note, how, where and who.
+// handHowCol is the right: the note, where and who (from the start, before
+// anything is ticked: never a dead "looking" state), then how.
 func (a *App) handHowCol(c *ui.Context) {
 	t := a.T
 	h := &a.ho
@@ -527,60 +760,34 @@ func (a *App) handHowCol(c *ui.Context) {
 	sec.Children(func() {
 		ui.Text(c.Key("h"), a.L.T("hand.note", name)).Font(t.Display).FontSize(t.MD).FontWeight(800).TextColor(t.Ink).Role(ui.RoleText)
 		ta := ui.TextArea(c.Key("note-in"), &h.note).Lines(3, 8).MinHeight(0).Placeholder(a.L.T("hand.note.ph")).Label(a.L.T("hand.note", name)).
-			Background(t.Surface).Border(2, t.Accent).Radius(16).Padding(t.S3, t.S4).FontSize(t.Bubble).LineHeight(a.leading(1.55))
+			Background(t.Surface).Border(2, t.Line2).Radius(16).Padding(t.S3, t.S4).FontSize(t.Bubble).LineHeight(a.leading(1.55))
+		if ta.Focused() {
+			ta.Border(2, t.Accent)
+		}
 		if h.step == 1 && h.note == "" && !ta.Changed() {
 			ta.AutoFocus()
 		}
 	})
 	a.enter(c, sec)
-	if n == 0 {
-		return
-	}
 	how := h.how
 	if how == nil {
-		ui.Text(c.Key("how-wait"), a.L.T("todos.looking")).FontSize(t.SM).TextColor(t.InkMuted)
-		return
-	}
-	if len(how.Shapes) > 0 || how.AddTo != nil {
-		shapes := ui.Column(c.Key("how")).Gap(t.S2).Role(ui.RoleRadioGroup).Label(a.L.T("hand.how"))
-		shapes.Children(func() {
-			ui.Text(c.Key("h"), a.L.T("hand.how")).Font(t.Display).FontSize(t.MD).FontWeight(800).TextColor(t.Ink).Padding(0, 0, t.S1, 0)
-			chosen := h.handShape()
-			if how.AddTo != nil {
-				line := a.L.T("hand.addto.line", how.AddTo.N)
-				if how.AddTo.Planning {
-					line = a.L.T("hand.addto.planning")
+		// Where and who come in a moment: their two rows, quiet.
+		ui.Column(c.Key("ww-wait")).Radius(16).Background(t.Surface).Shadow(0, 2, 0, 0, t.Line).Clip().Role(ui.RoleStatus).Label(a.L.T("todos.looking")).Children(func() {
+			for i, l := range []string{a.L.T("hand.where"), a.L.T("hand.who")} {
+				if i > 0 {
+					ui.Box(c.Key("sep")).Height(1).Background(t.LineSoft).Margin(0, t.S4)
 				}
-				if a.shapeCard(c, "addto", a.L.T("hand.addto", how.AddTo.Name), line, "", h.addTo, false) {
-					h.addTo = !h.addTo
-				}
-			}
-			for _, s := range how.Shapes {
-				line := a.L.T("hand.shape." + s + ".line")
-				switch s {
-				case "one_by_one":
-					if how.Repo != "" {
-						line = a.L.T("hand.shape.one_by_one.line", how.Repo)
-					} else {
-						line = a.L.T("hand.shape.one_by_one.line.any")
-					}
-				case "side_by_side":
-					line = a.L.T("hand.shape.side_by_side.line", max(1, how.Cap))
-				}
-				why := ""
-				if s == "plan" && s == how.Shape {
-					why = a.L.T("hand.shape.plan.why")
-				}
-				if a.shapeCard(c, s, a.L.T("hand.shape."+s), line, why, !h.addTo && s == chosen, s == how.Shape) {
-					h.shape, h.addTo = s, false
-				}
+				ui.Row(c.Key(fmt.Sprint("w", i))).Gap(t.S3).AlignItems(ui.Center).MinHeight(60).Padding(0, t.S4).Children(func() {
+					ui.Text(c, l).FontSize(t.SM).FontWeight(700).TextColor(t.InkMuted).Width(84).Shrink(0)
+					ui.Box(c).Height(14).Width(140).Radius(7).Background(t.SurfaceSunken)
+				})
 			}
 		})
-		a.enter(c, shapes)
+		return
 	}
-	rows := ui.Column(c.Key("ww")).Radius(16).Background(t.Surface).Shadow(0, 2, 0, 0, t.Line)
+	rows := ui.Column(c.Key("ww")).Radius(16).Background(t.Surface).Shadow(0, 2, 0, 0, t.Line).Clip()
 	rows.Children(func() {
-		// 在哪儿做: the computer, and why.
+		// 在哪儿做: the computer, and why (whole, under it).
 		where := how.Where
 		if h.device != "" {
 			for _, w := range how.Wheres {
@@ -631,9 +838,6 @@ func (a *App) handHowCol(c *ui.Context) {
 		if h.pickOpen == "who" {
 			if a.pickLine(c, "h:", a.L.T("hand.who.usual"), harness == "") {
 				h.harness, h.pickOpen = "", ""
-				if how.Who.Harness != "" {
-					h.harness = "" // the rule's agent stays the default
-				}
 			}
 			for _, x := range how.Whos {
 				x := x
@@ -644,6 +848,44 @@ func (a *App) handHowCol(c *ui.Context) {
 		}
 	})
 	a.enter(c, rows)
+	if n == 0 || (len(how.Shapes) == 0 && how.AddTo == nil) {
+		return
+	}
+	shapes := ui.Column(c.Key("how")).Gap(t.S2).Role(ui.RoleRadioGroup).Label(a.L.T("hand.how"))
+	shapes.Children(func() {
+		ui.Text(c.Key("h"), a.L.T("hand.how")).Font(t.Display).FontSize(t.MD).FontWeight(800).TextColor(t.Ink).Padding(0, 0, t.S1, 0)
+		chosen := h.handShape()
+		if how.AddTo != nil {
+			line := a.L.T("hand.addto.line", how.AddTo.N)
+			if how.AddTo.Planning {
+				line = a.L.T("hand.addto.planning")
+			}
+			if a.shapeCard(c, "addto", a.L.T("hand.addto", how.AddTo.Name), line, "", h.addTo, false) {
+				h.addTo = !h.addTo
+			}
+		}
+		for _, s := range how.Shapes {
+			line := a.L.T("hand.shape." + s + ".line")
+			switch s {
+			case "one_by_one":
+				if how.Repo != "" {
+					line = a.L.T("hand.shape.one_by_one.line", how.Repo)
+				} else {
+					line = a.L.T("hand.shape.one_by_one.line.any")
+				}
+			case "side_by_side":
+				line = a.L.T("hand.shape.side_by_side.line", max(1, how.Cap))
+			}
+			why := ""
+			if s == "plan" && s == how.Shape {
+				why = a.L.T("hand.shape.plan.why")
+			}
+			if a.shapeCard(c, s, a.L.T("hand.shape."+s), line, why, !h.addTo && s == chosen, s == how.Shape) {
+				h.shape, h.addTo = s, false
+			}
+		}
+	})
+	a.enter(c, shapes)
 }
 
 func toggle(cur, v string) string {
@@ -692,23 +934,30 @@ func (a *App) shapeCard(c *ui.Context, key, name, line, why string, on, suggeste
 	return card.Clicked()
 }
 
-// howRow is 在哪儿做 / 谁来做: its label, the value, why, a chevron when it can change.
+// howRow is 在哪儿做 / 谁来做: its label; the value, which wraps (a long
+// computer name is never cut to "Hetzner Se…"); why under it, whole; a
+// chevron when it can change. Its highlight is clipped by the group's
+// corners (the group clips).
 func (a *App) howRow(c *ui.Context, key, label, value, why string, can bool) bool {
 	t := a.T
-	row := ui.Row(c.Key("hr:"+key)).Gap(t.S3).AlignItems(ui.Center).MinHeight(52).Padding(0, t.S4).Label(label + " " + value)
+	row := ui.Row(c.Key("hr:"+key)).Gap(t.S3).AlignItems(ui.Center).MinHeight(60).Padding(t.S3, t.S4).Label(spoken(a.L, label, value, why))
 	if can {
 		row.Cursor(ui.CursorPointer).Role(ui.RolePopUpButton).Focusable()
-		if row.Hovered() {
+		switch {
+		case row.Pressed():
+			row.Background(t.SurfaceSunken)
+		case row.Hovered():
 			row.Background(t.SurfaceRaised)
 		}
 	}
 	row.Children(func() {
-		ui.Text(c.Key("l"), label).FontSize(t.SM).FontWeight(700).TextColor(t.InkMuted).Width(84).Shrink(0)
-		ui.Text(c.Key("v"), value).FontWeight(700).TextColor(t.Ink).SingleLine().Shrink(1).MinWidth(0)
-		ui.Spacer(c)
-		if why != "" {
-			ui.Text(c.Key("why"), why).FontSize(t.SM).TextColor(t.InkMuted).SingleLine().Shrink(1).MinWidth(0)
-		}
+		ui.Text(c.Key("l"), label).FontSize(t.SM).FontWeight(700).TextColor(t.InkMuted).Width(84).Shrink(0).AccessHidden(true)
+		ui.Column(c.Key("v")).Gap(2).Grow(1).Shrink(1).MinWidth(0).Children(func() {
+			ui.Text(c.Key("v"), value).FontWeight(700).TextColor(t.Ink).MaxLines(2).AccessHidden(true)
+			if why != "" {
+				ui.Text(c.Key("why"), why).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(a.leading(1.4)).AccessHidden(true)
+			}
+		})
 		if can {
 			a.glyph(c, 14, drawChevron(t.InkMuted, true))
 		}
@@ -719,8 +968,11 @@ func (a *App) howRow(c *ui.Context, key, label, value, why string, can bool) boo
 // pickLine is one choice under 在哪儿做 / 谁来做.
 func (a *App) pickLine(c *ui.Context, key, label string, on bool) bool {
 	t := a.T
-	row := ui.Row(c.Key("pk:"+key)).Gap(t.S2).AlignItems(ui.Center).MinHeight(38).Padding(0, t.S4, 0, 84+t.S4+t.S3).Cursor(ui.CursorPointer).Role(ui.RoleRadio).Checked(on).Focusable().Label(label)
-	if row.Hovered() {
+	row := ui.Row(c.Key("pk:"+key)).Gap(t.S2).AlignItems(ui.Center).MinHeight(40).Padding(t.S1, t.S4, t.S1, 84+t.S4+t.S3).Cursor(ui.CursorPointer).Role(ui.RoleRadio).Checked(on).Focusable().Label(label)
+	switch {
+	case row.Pressed():
+		row.Background(t.SurfaceSunken)
+	case row.Hovered():
 		row.Background(t.SurfaceRaised)
 	}
 	row.Children(func() {
@@ -728,7 +980,7 @@ func (a *App) pickLine(c *ui.Context, key, label string, on bool) bool {
 		if on {
 			ink = t.Ink
 		}
-		ui.Text(c, label).FontSize(t.SM).FontWeight(600).TextColor(ink).Grow(1)
+		ui.Text(c, label).FontSize(t.SM).FontWeight(600).TextColor(ink).Grow(1).Shrink(1).MinWidth(0)
 		if on {
 			a.glyph(c, 14, drawCheck(t.Ink))
 		}
@@ -870,4 +1122,12 @@ func (a *App) popOn(c *ui.Context, e ui.Element, on bool) {
 		}
 	}
 	e.AnimatePose(p, a.T.Bouncy)
+}
+
+// pileView is the pile as the home last said it (nil before it was sorted).
+func (a *App) pileView() *protocol.PileView {
+	if a.S.Sources == nil {
+		return nil
+	}
+	return a.S.Sources.Pile
 }

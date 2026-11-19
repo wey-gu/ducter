@@ -893,6 +893,8 @@ class AppState {
       if (this.live?.id) queueMicrotask(() => this.retryLive());
       // D238: a new socket: the phone's app says again what it can do (and whether it holds a loan).
       queueMicrotask(() => this.onHandsetWelcome?.());
+      // D390: Past tasks open over a new socket (or opened from a link before it was up): asked again.
+      queueMicrotask(() => this.onPastWelcome?.());
       this.readSent = 0;
       // What the old socket left unanswered: actions are settled from the Log after the replay;
       // messages go again, in order (core dedupes them, so none shows or lands twice).
@@ -1028,6 +1030,9 @@ class AppState {
   walk?: (by: number) => void;
   /** D390: the find-anything field's own answers and its reset (palette.tsx sets them; no import cycle). */
   palette?: { frame: (f: Extract<ServerFrame, { t: "past_result" } | { t: "made_result" }>) => void; reset: () => void };
+  /** D390: past.tsx registers its opener, so a link (#past, #past=words) opens Past tasks. */
+  openPast?: (q?: string) => void;
+  onPastWelcome?: () => void;
 
   command(c: string) {
     const r = this.route;
@@ -2481,6 +2486,15 @@ class AppState {
     }
     if (hash === "#onhand") return this.applyRoute({ name: "onhand" });
     if (hash === "#onhand/full") return this.applyRoute({ name: "onhand", full: true });
+    // D390: links straight to Past tasks (with words) and to 找什么都行 / Find anything.
+    const past = /^#past(?:=(.*))?$/.exec(hash);
+    if ((past || hash === "#find") && this.openPast) {
+      this.route = { name: "conv" };
+      history.replaceState(null, "", location.pathname);
+      if (past) this.openPast(decodeURIComponent(past[1] ?? ""));
+      else this.sheet = { kind: "switch" };
+      return this.changed();
+    }
     this.route = { name: "conv" };
     const set = /^#settings(?:=(partner|memory|peers|notify|accounts|todos|chats|autofill|devices|phone))?$/.exec(hash);
     if (set) {

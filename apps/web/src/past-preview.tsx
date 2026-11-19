@@ -314,7 +314,7 @@ export function RedoSheet({ dateOf }: { dateOf: (iso: string) => string }) {
               ))}
             </div>
             <div class="redo-notes">
-              {st?.repo && <p>{s?.commit ? t("redo.code.at", s.commit, dateOf(s.at)) : t("redo.code.none")}</p>}
+              {st?.repo && <p>{s?.commit ? t("redo.code.at", s.commit, dateOf(s.at)) : t(st.elsewhere ? "redo.code.elsewhere" : "redo.code.none")}</p>}
               <p>{t("redo.keep")}</p>
             </div>
             {r.error !== undefined && r.error !== "" && <p class="redo-err">{t("redo.failed", r.error)}</p>}

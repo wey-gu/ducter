@@ -106,16 +106,18 @@ type PastFork struct {
 // PastStepsFrame is past_steps_result (TaskID, Steps, Report, Repo) or
 // past_forked (From, Step, OK, TaskID the new task's, Message).
 type PastStepsFrame struct {
-	T       string     `json:"t"`
-	ID      string     `json:"id,omitempty"`
-	TaskID  string     `json:"taskId,omitempty"`
-	Steps   []PastStep `json:"steps,omitempty"`
-	Report  string     `json:"report,omitempty"`
-	Repo    bool       `json:"repo,omitempty"`
-	From    string     `json:"from,omitempty"`
-	Step    int        `json:"step,omitempty"`
-	OK      bool       `json:"ok,omitempty"`
-	Message string     `json:"message,omitempty"`
+	T      string     `json:"t"`
+	ID     string     `json:"id,omitempty"`
+	TaskID string     `json:"taskId,omitempty"`
+	Steps  []PastStep `json:"steps,omitempty"`
+	Report string     `json:"report,omitempty"`
+	Repo   bool       `json:"repo,omitempty"`
+	// Elsewhere: a repo task on another computer; its commits aren't read (D390).
+	Elsewhere bool   `json:"elsewhere,omitempty"`
+	From      string `json:"from,omitempty"`
+	Step      int    `json:"step,omitempty"`
+	OK        bool   `json:"ok,omitempty"`
+	Message   string `json:"message,omitempty"`
 }
 
 // decodePastSteps reads past_steps_result and past_forked on their own.

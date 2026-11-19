@@ -16325,7 +16325,7 @@ textarea.wmem-paste { display: block; box-sizing: border-box; height: auto; widt
   z-index: 31;
   top: max(10vh, calc(var(--safe-top) + 24px));
   left: 50%;
-  transform: translateX(-50%);
+  translate: -50% 0; /* not transform: the rise animation owns transform */
   width: min(560px, calc(100vw - 32px));
   max-height: calc(100dvh - max(20vh, 48px));
   display: flex;
@@ -16342,7 +16342,7 @@ textarea.wmem-paste { display: block; box-sizing: border-box; height: auto; widt
 .redo-of { margin: 4px 0 0; font-size: var(--sm); color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .redo-mark { flex: none; width: 36px; height: 36px; display: inline-grid; place-items: center; border-radius: 38%; background: var(--surface); box-shadow: 0 2px 0 var(--line); color: var(--ink-soft); }
 .redo-mark svg { width: 18px; height: 18px; }
-.redo-pick, .redo-body { flex: 1; min-height: 0; overflow: auto; padding: 8px 22px 12px; }
+.redo-pick, .redo-body { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 8px 22px 12px; }
 .redo-pick .pv-steps { gap: 6px; }
 .redo-step {
   width: 100%;
@@ -16376,17 +16376,21 @@ textarea.wmem-paste { display: block; box-sizing: border-box; height: auto; widt
   box-shadow: inset 0 0 0 1px var(--line), 0 2px 0 var(--line);
   color: var(--ink);
   font: inherit;
-  font-size: var(--md);
+  font-size: max(16px, var(--md)); /* under 16px iOS zooms the page in on focus and leaves it panned sideways */
   line-height: var(--lh-read);
 }
 .redo-words:focus { outline: 0; box-shadow: inset 0 0 0 2px var(--accent), 0 2px 0 var(--line); }
-.redo-agents { margin: 0; max-width: 100%; }
+.redo-agents { margin: 0; max-width: 100%; overflow-x: auto; scrollbar-width: none; } /* four agents scroll inside their track, never the sheet (iOS shifted the whole sheet) */
+.redo-agents::-webkit-scrollbar { display: none; }
+.redo-agents .pchip { flex: none; }
 .redo-notes { margin-top: 14px; display: flex; flex-direction: column; gap: 6px; }
 .redo-notes p { margin: 0; font-size: var(--sm); line-height: 1.5; color: var(--ink-soft); }
 .redo-err { margin: 10px 0 0; font-size: var(--sm); color: var(--failed-ink); }
 .redo-foot { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 20px 18px; border-top: 1px solid var(--line-soft); }
 @media (max-width: 640px) {
-  .redo-sheet { top: auto; bottom: 0; width: 100vw; max-height: calc(100dvh - var(--safe-top) - 24px); border-radius: var(--r-xl) var(--r-xl) 0 0; }
+  /* Pinned to both edges, no centring transform: on iOS a focused field otherwise scrolled the sheets sideways. */
+  .redo-sheet { top: auto; bottom: 0; left: 0; right: 0; translate: none; width: auto; max-height: calc(100dvh - var(--safe-top) - 24px); border-radius: var(--r-xl) var(--r-xl) 0 0; }
+  .past-sheet, .pv-sheet, .redo-sheet { overflow-x: clip; }
   .redo-head { padding: 18px 16px 6px 16px; }
   .redo-pick, .redo-body { padding: 6px 16px 10px; }
   .redo-foot { padding: 10px 16px max(14px, env(safe-area-inset-bottom)); }

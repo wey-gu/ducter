@@ -261,7 +261,8 @@ export type PastServerFrame =
   // computer), best first, filtered and searched like the tasks; sources, each agent read.
   | { t: "past_result"; id?: string; items: PastItem[]; total: number; facets: PastFacets; suggestions: string[]; range?: { since: string; before: string; words: string }; outside?: OutsideItem[]; sources?: OutsideSource[] }
   // report: its last report in full (cut to 1600), for 停在哪儿 / Where it stopped; repo: it works in a repo (a redo says where its code starts).
-  | { t: "past_steps_result"; id?: string; taskId: string; steps: PastStep[]; report?: string; repo?: boolean }
+  // elsewhere: a repo task on another computer, whose commits aren't read from here (a redo starts from where it began).
+  | { t: "past_steps_result"; id?: string; taskId: string; steps: PastStep[]; report?: string; repo?: boolean; elsewhere?: boolean }
   // D390: the new task (taskId) redoing step `step` of `from`, or why it couldn't open.
   | { t: "past_forked"; from: string; step: number; ok: boolean; taskId?: string; message?: string }
   | { t: "outside_adopted"; agent: OutsideAgent; id: string; ok: boolean; taskId?: string; message?: string }

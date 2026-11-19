@@ -20,7 +20,7 @@ export interface RedoDeps {
 
 export interface Redo {
   /** Its steps, each with the commit its code stood at; its last report; whether it works in a repo. */
-  steps(taskId: string): Promise<{ steps: PastStep[]; report?: string; repo: boolean }>;
+  steps(taskId: string): Promise<{ steps: PastStep[]; report?: string; repo: boolean; elsewhere?: boolean }>;
   fork(input: PastForkInput): Promise<{ ok: true; card: TaskCard; step: number } | { ok: false; step: number; message: string }>;
 }
 
@@ -57,7 +57,8 @@ export function createRedo(d: RedoDeps): Redo {
       if (!c) return { steps: [], repo: false };
       const { steps } = await withCommits(c);
       const report = d.past.report(taskId);
-      return { steps, ...(report ? { report } : {}), repo: c.place.kind === "repo" };
+      const elsewhere = c.place.kind === "repo" && !!c.place.device && c.place.device !== "local";
+      return { steps, ...(report ? { report } : {}), repo: c.place.kind === "repo", ...(elsewhere ? { elsewhere: true } : {}) };
     },
     async fork(input) {
       const c = d.tasks.get(input.taskId);

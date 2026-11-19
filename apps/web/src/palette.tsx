@@ -204,6 +204,8 @@ function first(r: Row, q: string) {
 }
 
 const coarse = () => typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches;
+/** A phone-wide field: the short placeholder, so the line never cuts off mid-list. */
+const narrow = () => typeof matchMedia === "function" && matchMedia("(max-width: 520px)").matches;
 
 // ---------- the field ----------
 
@@ -251,7 +253,7 @@ export function Palette() {
             ref={ref}
             class="sw-in"
             value={q}
-            placeholder={t("palette.placeholder")}
+            placeholder={t(narrow() ? "palette.placeholder.short" : "palette.placeholder")}
             aria-label={t("palette.placeholder")}
             role="combobox"
             aria-expanded="true"

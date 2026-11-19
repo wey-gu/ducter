@@ -49,6 +49,13 @@ export const P = {
 const ACTIVE = new Set(["queued", "working", "needs_you", "blocked", "done_claimed"]);
 
 /** Opens 做过的事, with words when given (On hand's Find, the switcher); or 一直在跑的 / Ongoing. */
+queueMicrotask(() => {
+  A.openPast = (q) => openPast(q ?? "");
+  A.onPastWelcome = () => void (A.sheet?.kind === "past" && (ask(true), askMade(P.q, true)));
+  // Opened from a link before this registered (the first load): follow it now.
+  if (typeof location !== "undefined" && /^#(past|find)/.test(location.hash)) A.fromHash();
+});
+
 export function openPast(q = "", tab: "past" | "made" | "ongoing" = "past") {
   P.q = q;
   P.tab = tab;

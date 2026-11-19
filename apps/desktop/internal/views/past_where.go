@@ -466,6 +466,9 @@ func (a *App) redoSheet(c *ui.Context) {
 				ui.Column(c.Key("notes")).Gap(t.S2).Children(func() {
 					if steps != nil && steps.Repo {
 						line := a.L.T("past.redo.nocommit")
+						if steps.Elsewhere {
+							line = a.L.T("past.redo.elsewhere")
+						}
 						if st.Commit != "" {
 							line = a.L.T("past.redo.commit", st.Commit, a.redoWhen(st.At))
 						}

@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.0.95 - 2026-11-19
+
+<!-- whats-new
+zh: 等你回的信带着写好的回复，点一下就发
+en: A reply you owe comes with a ready draft
+-->
+
+**Looking out for you**
+- When someone is really waiting on your reply, Ducter says so with a reply already written, in
+  the thread's language and your own voice, with anything you should check first named above it.
+  Edit it in place; it's sent only when you say Go, and you have 30 seconds to take it back.
+- It speaks up less: only for a real person who asked something, recently, that you haven't
+  answered anywhere. Notifications, no-reply senders and old threads stay quiet.
+
 ## 0.0.94 - 2026-11-19
 
 <!-- whats-new

@@ -2,6 +2,16 @@
 
 Deferred work, grouped by area, each with its trigger where it has one.
 
+## Handing over several to-dos (D385, proposed, `handover.md`)
+
+- **The author decides D385** (the sheet's three parts, the shapes and their defaults, plan first for
+  a subject set, review together, the five words). *Trigger:* the author's answer; then build slice 1
+  (the note and where at hand-over) first, research/153 §8.
+- **People, not proxies, for the five words** (给{name}的话, 先出个方案 · 你点头再做, 合成一件做,
+  讲的是 / Subjects, 一起过目). *Trigger:* the first human panel (shared with D348's and D382's words).
+- **A find by meaning on a real pile:** measure recall on hel's 49 distillation to-dos (words + labels
+  + one cheapest-model call) before trusting the line 说的是同一件事的 n 件. *Trigger:* slice 2.
+
 ## Models an agent adds (D352, `harnesses.md`)
 
 - **Live: a real switch to gpt-6.2-sol mid-task.** A Codex task on the author's Mac, switched by

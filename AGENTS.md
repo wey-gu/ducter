@@ -89,6 +89,7 @@ Design notes:
 - `personas.md`: 伙伴们 / Your partners, a second partner: what is shared and what is its own, one needs-you count, the switch, its stone (D309, preview).
 - `did.md`: 替你做过的 / Done for you, every outward action on the person's behalf, day by day (D300).
 - `made.md`: 给你做的 / Made for you, what Ducter made found again: asked for, or browsed in Past tasks (D383).
+- `handover.md`: handing over several to-dos: one sheet with a note and a shape, a group on Go, plan first for a subject (D385, proposed).
 - `site.md`: the website (ducter.ai): the landing page, `/download`, the docs' rendering, and what's owed (D319).
 - `product-model.md`: see above.
 

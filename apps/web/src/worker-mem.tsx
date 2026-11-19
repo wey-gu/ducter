@@ -29,6 +29,8 @@ function readyWords(device: string, installed: string[], left: string[]): string
 export function MemOnDevice({ dv }: { dv: DeviceView }) {
   const m = dv.mem;
   const [link, setLink] = useState("");
+  // D393: the home carries Mem to the tasks here; signing in here is only for the person's own sessions, asked for when they want it.
+  const [own, setOwn] = useState(false);
   // D386: a paste that wasn't spent stays in the box after a failure; a spent one (or a sign-in done) clears it.
   const failedWhy = m?.step?.phase === "failed" ? m.step.reason : undefined;
   const spent = !!m && ((m.step?.phase === "failed" && !memKeepsPaste(failedWhy)) || (!m.step && m.state === "ready"));
@@ -44,8 +46,10 @@ export function MemOnDevice({ dv }: { dv: DeviceView }) {
   const home = A.devices?.find((d) => d.home)?.name ?? "";
   const left = unconnected(dv);
   const installed = dv.harnesses.filter((h) => h.installed && (h.harness === "codex" || h.harness === "claude-code")).map((h) => h.harness);
+  const carried = !!m.carried && look !== "installing" && look !== "connecting" && look !== "failed";
   const word =
-    look === "ready" ? t("wmem.ready")
+    carried ? t("wmem.carried")
+    : look === "ready" ? t("wmem.ready")
     : look === "installing" ? (m.step?.pct ? `${t("wmem.installing")} ${m.step.pct}%` : t("wmem.installing"))
     : look === "connecting" ? t("wmem.connecting", dv.name)
     : theirs === "old" && look === "sign_in" ? t("wmem.theirs.old", dv.name)
@@ -53,7 +57,7 @@ export function MemOnDevice({ dv }: { dv: DeviceView }) {
     : look === "sign_in" ? t("wmem.signin.line")
     : look === "failed" ? t(`wmem.failed.${m.step?.reason ?? "failed"}`, dv.name)
     : t("wmem.absent", dv.name);
-  const signIn = ((look === "sign_in" && health !== "unreachable" && health !== "old" && theirs !== "old") || (look === "failed" && m.state === "sign_in" && theirs !== "old")) && awake;
+  const signIn = ((look === "sign_in" && health !== "unreachable" && health !== "old" && theirs !== "old") || (look === "failed" && m.state === "sign_in" && theirs !== "old")) && awake && (!m.carried || own || look === "failed");
   // D386: kept until the step ends (memKeepsPaste above says whether it stays).
   const go = () => {
     if (!link.trim()) return;
@@ -63,16 +67,18 @@ export function MemOnDevice({ dv }: { dv: DeviceView }) {
   return (
     <div class={`ag-row wmem ${look}`}>
       <div class="ag-head">
-        <span class={`ag-coin wmem-icon${look === "ready" ? "" : " faded"}`}>
+        <span class={`ag-coin wmem-icon${look === "ready" || carried ? "" : " faded"}`}>
           <BrandMark name="nowledge_mem" size={36} />
           {(look === "installing" || look === "connecting") && <i class="cring" aria-hidden="true" />}
         </span>
         <span class="ag-t">
           <b>Nowledge Mem</b>
-          <small class={look === "failed" || health || (theirs === "old" && look === "sign_in") ? "warn" : look === "ready" ? "ok" : ""}>{word}</small>
+          <small class={carried ? "ok" : look === "failed" || health || (theirs === "old" && look === "sign_in") ? "warn" : look === "ready" ? "ok" : ""}>{word}</small>
         </span>
-        {look === "absent" && m.installable ? (
-          <Btn kind="primary" size="sm" label={t("wmem.install")} about="Nowledge Mem" disabled={!awake} onClick={() => A.memSetup(dv.id, "install")} />
+        {carried && look === "sign_in" && !own && awake && theirs !== "old" && health !== "unreachable" && health !== "old" ? (
+          <Btn kind="secondary" size="sm" label={t("wmem.own.go")} about="Nowledge Mem" onClick={() => setOwn(true)} />
+        ) : look === "absent" && m.installable ? (
+          <Btn kind={carried ? "secondary" : "primary"} size="sm" label={t("wmem.install")} about="Nowledge Mem" disabled={!awake} onClick={() => A.memSetup(dv.id, "install")} />
         ) : theirs === "old" && (look === "sign_in" || look === "failed") && m.installable ? (
           <Btn kind={look === "failed" ? "secondary" : "primary"} size="sm" label={t(look === "failed" ? "wmem.retry" : "wmem.theirs.install")} about="Nowledge Mem" disabled={!awake} onClick={() => A.memSetup(dv.id, "install")} />
         ) : look === "failed" && m.state === "absent" ? (
@@ -86,9 +92,13 @@ export function MemOnDevice({ dv }: { dv: DeviceView }) {
         ) : null}
       </div>
       {look === "failed" && m.step?.detail && <div class="ag-detail">{m.step.detail}</div>}
-      {look === "absent" && <p class="wmem-why">{t(m.installable ? "wmem.absent.why" : "wmem.absent.none", dv.name)}</p>}
-      {look === "absent" && m.installable && <p class="wmem-why soft">{t("ag.where")}</p>}
-      {look === "ready" && <p class="wmem-why">{readyWords(dv.name, installed, left)}</p>}
+      {carried && <p class="wmem-why">{t("wmem.carried.why", home)}</p>}
+      {carried && look === "absent" && m.installable && <p class="wmem-why soft">{t("wmem.own.absent", dv.name)}</p>}
+      {carried && look === "sign_in" && !signIn && theirs !== "old" && <p class="wmem-why soft">{t("wmem.own.signin", dv.name)}</p>}
+      {!carried && look === "absent" && <p class="wmem-why">{t(m.installable ? "wmem.absent.why" : "wmem.absent.none", dv.name)}</p>}
+      {!carried && look === "absent" && m.installable && <p class="wmem-why soft">{t("ag.where")}</p>}
+      {look === "ready" && <p class={`wmem-why${carried ? " soft" : ""}`}>{readyWords(dv.name, installed, left)}</p>}
+      {carried && health && <p class="wmem-why soft">{t(`wmem.health.${health}`, dv.name)}</p>}
       {health === "old" && !m.ours && <p class="wmem-why">{t("wmem.health.old.how", dv.name)}</p>}
       {theirs === "old" && look !== "installing" && m.installable && <p class="wmem-why">{t("wmem.theirs.why", dv.name)}</p>}
       {theirs === "using" && look !== "installing" && look !== "connecting" && <p class="wmem-why soft">{t("wmem.theirs.using", dv.name)}</p>}

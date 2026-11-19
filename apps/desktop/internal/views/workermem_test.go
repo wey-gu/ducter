@@ -219,6 +219,10 @@ func TestWorkerMemShots(t *testing.T) {
 		{"08-theirs-old", &protocol.DeviceMemView{State: "sign_in", Installable: true, Health: &protocol.MemHealth{Issue: "old"}, Theirs: &protocol.DeviceMemTheirs{Old: true, How: "pipx"}}},
 		{"09-theirs-using", &protocol.DeviceMemView{State: "sign_in", Version: "0.10.120", Installable: true, Ours: true, Theirs: &protocol.DeviceMemTheirs{Old: true, How: "pipx"}}},
 		{"10-failed-old", &protocol.DeviceMemView{State: "sign_in", Version: "0.10.120", Ours: true, Step: &protocol.DeviceMemStep{Phase: "failed", Reason: "old"}}},
+		// D393: the home carries Mem to the tasks there; this computer's own Mem is the person's own, quietly.
+		{"11-carried-absent", &protocol.DeviceMemView{State: "absent", Installable: true, Carried: true}},
+		{"12-carried-signin", &protocol.DeviceMemView{State: "sign_in", Version: "0.10.120", Carried: true}},
+		{"13-carried-ready", &protocol.DeviceMemView{State: "ready", Version: "0.10.120", Agents: []string{"claude-code", "codex"}, Carried: true}},
 	}
 	for _, dark := range []bool{false, true} {
 		mode := "light"
@@ -239,5 +243,41 @@ func TestWorkerMemShots(t *testing.T) {
 				save(tt, p+"card-"+s.name+".png")
 			}
 		}
+	}
+}
+
+// D393: carried from the home, the card says tasks there remember with nothing set up; the
+// sign-in there is offered for the person's own sessions and opens only when they ask.
+func TestMemCarriedCard(t *testing.T) {
+	app, sent := iaApp(t, i18n.ZH)
+	app.Now = func() time.Time { return lendNow }
+	app.Receive(protocol.ServerFrame{T: "devices", Devices: []protocol.DeviceView{entryHome(), haswellMem(&protocol.DeviceMemView{State: "sign_in", Version: "0.10.120", Carried: true})}})
+	app.Route = RouteDevices
+	app.devState().sel = "hw1"
+	tt := ui.NewTesterWith(app.View, 1440, 900, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
+	tt.Frame()
+	tt.Frame()
+	if _, ok := tt.Find("这里的任务也记得你"); !ok {
+		t.Fatal("no carried line")
+	}
+	if _, ok := tt.Find("用的是 Hetzner Server 上那一份记忆，这台电脑上什么都不用设置。"); !ok {
+		t.Fatal("no where-from line")
+	}
+	if _, ok := tt.Find("装好了，还差登录"); ok {
+		t.Fatal("a sign-in asked for although the home carries Mem")
+	}
+	if _, ok := tt.Find("在 Nowledge Mem 的 设置 › Connectors 里选 Any AI agent，点「生成连接链接并复制提示」，把复制下来的整段贴在这里。15 分钟内有效，只能用一次，用完就不留。"); ok {
+		t.Fatal("the sign-in shows before the person asked")
+	}
+	if err := tt.Click("登录"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	tt.Frame()
+	if len(memSent(*sent)) != 0 {
+		t.Fatal("tapping 登录 sent something before a paste")
+	}
+	if _, ok := tt.Find("在 Nowledge Mem 的 设置 › Connectors 里选 Any AI agent，点「生成连接链接并复制提示」，把复制下来的整段贴在这里。15 分钟内有效，只能用一次，用完就不留。"); !ok {
+		t.Fatal("the sign-in didn't open on asking")
 	}
 }

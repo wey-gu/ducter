@@ -49,6 +49,14 @@ Deferred work, grouped by area, each with its trigger where it has one.
   the chip and by "这个任务换成 6.2 sol" while a turn runs: the turn ends on the old model, the next
   one reports gpt-6.2-sol (Codex's own model line), same thread id. Checked with fakes only.
   *Trigger:* next release walk.
+- **The partner's own effort (D390).** The partner runs without an effort (`partner.ts` passes
+  none, so the agent's own default for the model); Settings › Partner offers models only. Offer
+  D387's level dial there once a reason shows (answers too slow or too shallow on a model with
+  levels). *Trigger:* the person asks the partner to think harder or answer faster.
+- **Live: the partner on GPT-6.2-Astra (D390).** On hel (Codex only): Settings › Partner lists
+  Codex's own models, Astra picked, the next message's session started with `-m gpt-6.2-astra`;
+  and "用 astra 跟我聊" asking which of gpt-6.2-astra and gpt-6-astra. Checked with fakes and the
+  haiku eval only. *Trigger:* the next release on hel.
 - **Say once when an agent adds a model?** One quiet line ("Codex 有了 GPT-6.2-Sol…") when a
   `fresh` model first appears, with a Go that moves new tasks to it. Held back: proactive
   restraint, and the person's own agent default already decides. *Trigger:* the person asks for
@@ -141,6 +149,9 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
 
 ## Deep Nowledge Mem integration (D295, `memory.md`)
 
+- **D393 live:** one Claude Code task on haswell with the carried plugin (`--plugin-url` over http VERIFIED against a fake Mem, research/159), its Context Bundle and thread reaching the author's real Mem through the relay as the persona. Trigger: the author's review of D393.
+- **D393: Codex's Mem plugin carried.** Codex has no per-session plugin URL; a `CODEX_HOME` overlay with Mem's plugin in a cache folder of Ducter's loaded nothing (live, codex-cli 0.170.0): it needs a local marketplace of Ducter's (`-c marketplaces.<name>`) and its hooks trusted. Trigger: a Codex task elsewhere that should have Mem's own hooks.
+- **D393: an older worker** doesn't rewrite the relay address (its tasks' nmem then can't reach Mem; D168's floor still works). Trigger: a worker not updated past D393.
 - **D366 live (and D370):** a real prompt from Mem's Settings › Connectors › Any AI agent pasted whole and redeemed on a lent computer and on a home, `nmem doctor` passing there, and one task
   run there with Mem's plugin (its Context Bundle in, its thread captured as the persona). Trigger: the
   author's haswell after the next release (his link, his Mem).

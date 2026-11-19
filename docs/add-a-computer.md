@@ -58,13 +58,16 @@ there: sign in to your DeepSeek account in it, and the card turns ready by itsel
 account works without an API key. If you installed the app yourself, Ducter finds the copy inside
 it within seconds, and it updates with the app.
 
-**Your memory there too.** If you use [Nowledge Mem](https://mem.nowledge.co) with Ducter, the
-computer's card (and the sheet, once an AI there is signed in) says **Tasks on nas don't remember
-you yet**. Tap **Install**: Ducter puts Nowledge Mem in its own folder on that computer, with no
+**Your memory there too.** If you use [Nowledge Mem](https://mem.nowledge.co) with Ducter, tasks
+on every computer you add remember you with nothing to set up there: they use the one Nowledge Mem
+your Ducter is connected to, and its own Claude Code plugin comes with them. The computer's card
+says **Tasks here remember you too**. Your Nowledge Mem key stays where Ducter runs.
+
+If you also want the AIs you open on that computer yourself (outside Ducter) to remember you, the
+card offers it quietly. Tap **Install** there: Ducter puts Nowledge Mem in its own folder on that computer, with no
 administrator password. Then, in Nowledge Mem, open **Settings › Connectors › Any AI agent**,
 click **Generate connect link & copy prompt**, paste everything it copied, and tap **Sign in**. Nowledge Mem signs that computer in and connects its
-Codex and Claude Code, and the card says **Remembers you**: tasks there know how you like things
-before they start, and what they do is kept in your one memory. A link works once, within 15
+Codex and Claude Code, and the card names the AIs there that share your one memory. A link works once, within 15
 minutes, and Ducter doesn't keep it. Without Nowledge Mem, nothing about it shows. If the
 computer later can't reach your Nowledge Mem, the card says so with **Check again**; if its sign-in
 stopped working, it asks for a new one the same way. If you installed Nowledge Mem there yourself

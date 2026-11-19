@@ -565,6 +565,8 @@ export function adaptSpec(spec: SessionSpec, ctx: { env?: Record<string, string 
       // comes from Ducter there); under the clean setup none of their plugins load anyway.
       if (!clean && spec.userConfiguration !== "exclude" && spec.disablePlugins?.length && !launchArgs?.includes("--settings"))
         launchArgs = [...(launchArgs ?? []), "--settings", JSON.stringify(pluginsOff(spec))];
+      // D393: Mem's plugin as the home carries it, for this session only (nothing installed there).
+      for (const u of spec.pluginUrls ?? []) if (/^https?:\/\//.test(u)) launchArgs = [...(launchArgs ?? []), "--plugin-url", u];
       break;
     case "codex":
       // Codex denies only MCP tools qualified as mcp__server__tool (OAR tool-denials).

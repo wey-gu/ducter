@@ -1762,11 +1762,14 @@ type BrainNow struct {
 	Models []BrainModel `json:"models,omitempty"`
 }
 
-// BrainModel is one model the partner may think with: smart or fast.
+// BrainModel is one model the partner may think with: Kind smart or fast
+// where Ducter's tier table knows it, empty for a model only the agent's
+// live list names (D390); Default: what the agent runs when none is named.
 type BrainModel struct {
-	ID    string `json:"id"`
-	Label string `json:"label"`
-	Kind  string `json:"kind"`
+	ID      string `json:"id"`
+	Label   string `json:"label"`
+	Kind    string `json:"kind,omitempty"`
+	Default bool   `json:"default,omitempty"`
 }
 
 // Forgot says how a memory_forget went: "mem" (Mem forgot it) or
@@ -2041,6 +2044,10 @@ type DeviceMemView struct {
 	// D386: Theirs is the person's own nmem there when it is too old to sign
 	// in (Ducter never changes it); How: pipx | uv | pip, when its install says.
 	Theirs *DeviceMemTheirs `json:"theirs,omitempty"`
+	// D393: Carried: the home carries Mem to the tasks there from its own one
+	// connection; this computer's own Mem then concerns only the person's own
+	// sessions there, offered quietly.
+	Carried bool `json:"carried,omitempty"`
 }
 
 // DeviceMemTheirs is the person's own Mem command line on a computer for

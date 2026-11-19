@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.0.91 - 2026-11-19
+
+<!-- whats-new
+zh: 伙伴能换成 Codex 的任何模型，比如 Astra
+en: Pick any of Codex's models for your partner, like Astra
+-->
+
+**Your partner**
+- Settings › Partner lists the models your AI agent actually offers on your computer, so a
+  Codex-only setup can pick GPT-6.2-Astra or any other. It takes effect from your next message.
+- Or just say it: "switch to astra". If two models match, it asks which; if none does, it says so.
+
 ## 0.0.90 - 2026-11-19
 
 <!-- whats-new

@@ -2115,6 +2115,12 @@ export interface DeviceMemView {
    * person updates theirs, when its install says (pipx, uv, pip).
    */
   theirs?: { old: true; how?: "pipx" | "uv" | "pip" };
+  /**
+   * D393: the home carries Mem to the tasks there from its own one connection (core/src/mem-relay.ts):
+   * they remember with nothing set up there. What this computer's own Mem says (absent, sign_in)
+   * then concerns only the person's own sessions there, offered quietly, never required.
+   */
+  carried?: true;
 }
 
 // ---------- Updating in place (D148, design/system.md "Updating in place") ----------
@@ -2511,8 +2517,14 @@ export interface BrainNow extends Brain {
   /** auto: the user never chose; core picked it. why: the reason when it isn't the setting. */
   auto: boolean;
   why?: "only_codex" | "only_signed_in";
-  /** The models it may think with on the home (its listed ones, else Ducter's tier table); none: its own default. */
-  models: { id: string; label: string; kind: "smart" | "fast" }[];
+  /**
+   * The models it may think with on the home: the agent's own live list where core has read it
+   * (D202's catalog, the one the task composer shows), else the home's listed ones, else Ducter's
+   * tier table; none: its own default. kind: from the tier table, absent for a model the table
+   * doesn't know (D390: never guessed from a live list's order). default: what the agent runs
+   * when no model is named.
+   */
+  models: { id: string; label: string; kind?: "smart" | "fast"; default?: true }[];
 }
 
 export type SettingsPatch = Partial<Settings>;

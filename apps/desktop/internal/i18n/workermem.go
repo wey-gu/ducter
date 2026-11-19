@@ -46,6 +46,11 @@ var zhWorkerMem = Table{
 	"wmem.theirs.guide":       "要更新你自己的那份，照你当初装它的方式来。",
 	"wmem.and":                "%s 和 %s",
 	"wmem.comma":              "、",
+	"wmem.carried":            "这里的任务也记得你",
+	"wmem.carried.why":        "用的是 %s 上那一份记忆，这台电脑上什么都不用设置。",
+	"wmem.own.absent":         "你自己在 %s 上开的 AI 也想记得你，就在这里装上 Nowledge Mem。",
+	"wmem.own.signin":         "你自己在 %s 上开的 AI 也想记得你，就登录一次。",
+	"wmem.own.go":             "登录",
 }
 
 var enWorkerMem = Table{
@@ -91,6 +96,11 @@ var enWorkerMem = Table{
 	"wmem.theirs.guide":       "To update yours, use the way you installed it.",
 	"wmem.and":                "%s and %s",
 	"wmem.comma":              ", ",
+	"wmem.carried":            "Tasks here remember you too",
+	"wmem.carried.why":        "Through your one memory on %s; nothing to set up on this computer.",
+	"wmem.own.absent":         "For the AIs you open on %s yourself to remember you too, install Nowledge Mem here.",
+	"wmem.own.signin":         "For the AIs you open on %s yourself to remember you too, sign in once.",
+	"wmem.own.go":             "Sign in",
 }
 
 func init() {

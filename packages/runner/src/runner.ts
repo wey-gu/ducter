@@ -1516,6 +1516,17 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       // D168: the user's Nowledge Mem plugin stays on in the task, as the persona's identity. Its
       // Bridge mailbox notices stay out: messages to the persona are the partner's, not a task's.
       if (spec.env) spec.env = { ...spec.env, NMEM_NO_MAILBOX_NOTICE: "1" };
+      // D393: elsewhere, Mem is carried from the home: that computer's nmem (the person's own plugin
+      // there, or the copy carried below) talks to the home's relay with a key for this task alone,
+      // so nothing there needs a Mem sign-in and no Mem secret reaches it. A worker rewrites the
+      // loopback address to the home's (worker-host.ts), and a sandbox there inherits the env.
+      const carry = core.memCarry;
+      if (carry && elsewhere && open.place.kind !== "browser") {
+        const base = new URL(mcp.url).origin;
+        const env = carry.envFor(id, base);
+        if (env) spec.env = { ...(spec.env ?? {}), ...env };
+        if (carriedKit(open.place, open.harness)) spec.pluginUrls = carry.kitFor(id, open.harness, base);
+      }
     } else {
       // D168: memory is off in Ducter: the plugin is off in this session too (their other plugins
       // stay), so the switch holds inside tasks.
@@ -1546,7 +1557,21 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     if (place.kind === "browser" || !memoryOn()) return "none";
     const device = "device" in place ? place.device : undefined;
     if (core.memPluginIn?.(device, harness)) return "plugin";
+    if (carriedKit(place, harness)) return "plugin";
     return core.taskMemory ? "ducter" : "none";
+  }
+
+  /**
+   * D393: Mem's plugin goes with the task from the home: another computer, an agent whose plugin
+   * the home has (Claude Code), none of the person's own there (theirs is reused, never doubled),
+   * and an nmem there for its hooks to run (Ducter's own copy, D386). Else Ducter's own memory.
+   */
+  function carriedKit(place: Place, harness: string): boolean {
+    const carry = core.memCarry;
+    if (!carry || place.kind === "browser") return false;
+    const device = "device" in place ? place.device : undefined;
+    if (!device || device === "local" || core.memPluginIn?.(device, harness)) return false;
+    return carry.nmemIn(device) && carry.kitFor("probe", harness, "http://127.0.0.1").length > 0;
   }
 
   /**

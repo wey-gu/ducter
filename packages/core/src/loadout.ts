@@ -2,7 +2,8 @@
 // (换谁来做 / Switch who does it), moves a task when the person switches it, keeps 你的规则 / Your
 // rules, and after two switches the same way asks the partner to offer a rule once.
 import type { Bodies, BodyWhy, Candidate, DeviceHarness, RuleView, KindDefault, LogEvent, Place, TaskNeeds, WorkKind } from "@ducter/protocol";
-import { harnessName, isHarnessId, whichPhone, WORK_KINDS } from "@ducter/protocol";
+import { HARNESSES, harnessName, isHarnessId, whichPhone, WORK_KINDS } from "@ducter/protocol";
+import { effectiveBrain } from "./brain.ts";
 import { resolveModel } from "@ducter/protocol/src/harness-facts.ts";
 import type { BodyChoice, LogStore, Runner } from "@ducter/protocol/src/internal.ts";
 import { blockOf, chooseBody, computersOf, fwCandidates, kindDefaults, kindOf, smartestFor, type Computer, noPhoneLine } from "./candidates.ts";
@@ -543,4 +544,49 @@ export function saidPick<P extends { harness: string; why: BodyWhy }>(
   if (!r) return withSaid;
   const { ruleId: _r, text: _t, ...rest } = why;
   return { ...withSaid, why: { ...rest, kind: "said", text: r.text, said: { key: r.id, harness: r.harness, ...(r.never ? { never: true as const } : {}), kinds: r.kinds ?? [] } } };
+}
+
+/**
+ * D390: 用 astra 跟我聊 / "switch yourself to Opus": what the partner itself thinks with, as the
+ * person said it in the conversation: the setting Settings › Partner writes (Settings.brain), the
+ * model matched to its agent's live list on the home. It takes effect from the person's next
+ * message (the session ends and the next one starts on it, partner.ts runKey).
+ */
+export function registerBrainSwitchTool(mcp: CoreMcpHub, o: { settings: SettingsStore; models?: ModelCatalog; home: () => Pick<DeviceHarness, "harness" | "loggedIn">[] | undefined }) {
+  mcp.register(
+    "partner",
+    "brain_switch",
+    "When the user asks YOU to think or talk with another model or AI agent (\"用 astra 跟我聊\", \"switch yourself to Opus\"); a task's model is task_switch. model: as the user said it (matched to the agent's own list). It takes effect from their next message. Call it first; after, one short line.",
+    {
+      type: "object",
+      properties: {
+        model: { type: "string" },
+        harness: { type: "string", enum: ["claude-code", "codex", "pi", "deepseek-harness"], description: "Only to change the agent" },
+      },
+    },
+    async (a: { model?: unknown; harness?: unknown }) => {
+      const home = o.home();
+      const cur = effectiveBrain(o.settings.get().brain, o.settings.brainChosen(), home);
+      const harness = typeof a.harness === "string" && a.harness ? a.harness : cur.harness;
+      if (!isHarnessId(harness) || !HARNESSES[harness].partner) return { ok: false, error: `${harness} can't be what you think with.` };
+      if (home && !home.find((x) => x.harness === harness)?.loggedIn) return { ok: false, error: `${harnessName(harness)} isn't signed in on the computer Ducter runs on. Say so in one line.` };
+      const said = typeof a.model === "string" ? a.model.trim() : "";
+      if (!said && harness === cur.harness) return { ok: false, error: "Say which model or AI agent." };
+      const list = await o.models?.get("local", harness, SWITCH_LIST_MS);
+      let model: string | undefined;
+      if (said) {
+        const r = resolveModel(harness, said, list);
+        if ("ambiguous" in r) return { ok: false, error: `"${said}" could be ${r.ambiguous.join(", ")}. Ask the user which, in one line.` };
+        if ("none" in r) {
+          if (!r.none.length) model = said;
+          else return { ok: false, error: `${harnessName(harness)} has no model "${said}" here. It offers: ${r.none.join(", ")}.` };
+        } else model = r.id;
+      }
+      const label = model ? (list?.find((m) => m.id === model)?.label ?? model) : undefined;
+      const named = { harness, ...(model ? { model, label } : {}) };
+      if (harness === cur.harness && model === cur.model && !cur.auto) return { ok: true, already: true, ...named, note: "Already so: say it in one short line." };
+      o.settings.set({ brain: { harness, ...(model ? { model } : {}) } });
+      return { ok: true, ...named, note: "Done: from the user's next message you think with it; your name, memory and this conversation stay. One short line, nothing about sessions." };
+    },
+  );
 }

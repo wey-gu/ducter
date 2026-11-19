@@ -8,7 +8,7 @@ import { PARTNER_RESERVE } from "@ducter/protocol/src/loadout.ts";
 import { useState } from "preact/hooks";
 import { A } from "./app.ts";
 import { Coin } from "./coin.tsx";
-import { AddRow, Btn, DangerButton, Seg, Switch } from "./controls.tsx";
+import { AddRow, Btn, Choice, DangerButton, Seg, Switch } from "./controls.tsx";
 import { KeyCard } from "./first-words.tsx";
 import { harnessName, modelName, padEnd, when } from "./format.ts";
 import { GBlock, GFoot, GHead, GRow, Group, Said, say, Tile } from "./set-grid.tsx";
@@ -86,7 +86,12 @@ export function ThinksSection() {
     A.setSettings({ brain: { harness: harness as never, ...(m ? { model: m } : {}) } });
     say("brain", t("said.brain", label ?? harnessName(harness)));
   };
-  const model = models.find((m) => m.id === b.model) ?? models[0];
+  // D390: no model named, the agent's own default is the one in use (Codex's live list says which).
+  const model = models.find((m) => m.id === b.model) ?? models.find((m) => m.default) ?? models[0];
+  // The tier table's word where it knows the model; its own default said as that; else no line.
+  const modelLine = (m: { label: string; id: string; kind?: string; default?: true }) =>
+    m.kind ? t(m.kind === "fast" ? "loadout.model.line.fast" : "loadout.model.line.smart", m.label || m.id) : m.default ? t("loadout.model.line.default", m.label || m.id, harnessName(b.harness)) : undefined;
+  const pickModel = (m: string) => m !== model?.id && setBrain(b.harness, m, t("loadout.brain.with", harnessName(b.harness), models.find((x) => x.id === m)?.label ?? m));
   return (
     <section class="set">
       <h3>{title}</h3>
@@ -105,14 +110,21 @@ export function ThinksSection() {
             </GRow>
           ))}
         {models.length > 1 && !choosing && model && (
-          <GRow title={t("loadout.brain.model")} line={t(model.kind === "fast" ? "loadout.model.line.fast" : "loadout.model.line.smart", model.label || model.id)}>
-            <Seg
-              label={t("loadout.brain.model")}
-              value={b.model}
-              options={models.map((m) => ({ v: m.id, label: m.label || m.id }))}
-              onPick={(m) => m !== b.model && setBrain(b.harness, m, t("loadout.brain.with", harnessName(b.harness), models.find((x) => x.id === m)?.label ?? m))}
-            />
+          <GRow title={t("loadout.brain.model")} line={modelLine(model)}>
+            {models.length <= SEG_MAX && <Seg label={t("loadout.brain.model")} value={model.id} options={models.map((m) => ({ v: m.id, label: m.label || m.id }))} onPick={pickModel} />}
           </GRow>
+        )}
+        {/* D390: an agent's own longer list (Codex's) as the task card's chips, wrapping under the row. */}
+        {models.length > SEG_MAX && !choosing && model && (
+          <GBlock>
+            <div class="nt-chip-row" role="radiogroup" aria-label={t("loadout.brain.model")}>
+              {models.map((m) => (
+                <Choice key={m.id} label={m.label || m.id} on={m.id === model.id} onClick={() => pickModel(m.id)}>
+                  {m.label || m.id}
+                </Choice>
+              ))}
+            </div>
+          </GBlock>
         )}
         {(others.length > 0 || models.length > 1) && <GFoot note={t("loadout.brain.keep")} />}
       </Group>
@@ -120,6 +132,9 @@ export function ThinksSection() {
     </section>
   );
 }
+
+/** D390: up to this many models fit a segmented control; more (Codex's own list) wrap as chips. */
+const SEG_MAX = 3;
 
 /** 做事的 / Who does the tasks. */
 export function TasksSection() {

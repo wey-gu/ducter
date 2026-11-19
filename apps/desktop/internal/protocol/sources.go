@@ -143,6 +143,17 @@ type SourceAsk struct {
 	Close  bool          `json:"close,omitempty"`
 	TaskID string        `json:"taskId,omitempty"`
 	Trust  string        `json:"trust,omitempty"` // take | write
+	// D359: batch, picks: the to-dos (batch: with the line each gets).
+	Items []SourceAskItem `json:"items,omitempty"`
+	// D385: plan ({group}：方案), where_rule (the note's lasting where, asked
+	// once), group_review (review together's batch).
+	GroupID    string    `json:"groupId,omitempty"`
+	Plan       *HandPlan `json:"plan,omitempty"`
+	Group      string    `json:"group,omitempty"`
+	Device     string    `json:"device,omitempty"`
+	DeviceName string    `json:"deviceName,omitempty"`
+	Quote      string    `json:"quote,omitempty"`
+	Harness    string    `json:"harness,omitempty"`
 }
 
 // SourcesFrame is what a sources, source_items_result or source_result
@@ -176,6 +187,18 @@ type SourcesFrame struct {
 	Failed    int
 	Read      *PreRead
 	Error     string
+	// D385: pile_result's group (a hand-over, a plan, a review); pile_find_result
+	// (Found, FoundItems, Ticked, Query, Subject, SetID); pile_how_result (How);
+	// group_review_result (Review, Error).
+	GroupID    string
+	Found      *FindSummary
+	FoundItems []FoundItem
+	Ticked     []string
+	Query      string
+	Subject    string
+	SetID      string
+	How        *HandHow
+	Review     *GroupReview
 }
 
 // SourcesReq subscribes to the sources (T "sources").
@@ -248,6 +271,7 @@ func decodeSources(data []byte, f ServerFrame) (ServerFrame, error) {
 		Failed   int            `json:"failed"`
 		Read     *PreRead       `json:"read"`
 		Error    string         `json:"error"`
+		GroupID  string         `json:"groupId"`
 	}
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return f, err
@@ -265,7 +289,43 @@ func decodeSources(data []byte, f ServerFrame) (ServerFrame, error) {
 		s.Group, s.PileItems = raw.Group, p.Items
 	}
 	if f.T == "pile_result" {
-		s.PileOp, s.Done, s.Failed, s.Read, s.Error = raw.Op, raw.Done, raw.Failed, raw.Read, raw.Error
+		s.PileOp, s.Done, s.Failed, s.Read, s.Error, s.GroupID = raw.Op, raw.Done, raw.Failed, raw.Read, raw.Error, raw.GroupID
+	}
+	// D385: a find's answer, the sheet's how, a review together.
+	switch f.T {
+	case "pile_find_result":
+		var p struct {
+			Found   FindSummary `json:"found"`
+			Items   []FoundItem `json:"items"`
+			Ticked  []string    `json:"ticked"`
+			Query   string      `json:"query"`
+			Subject string      `json:"subject"`
+			SetID   string      `json:"setId"`
+		}
+		if err := json.Unmarshal(data, &p); err != nil {
+			return f, err
+		}
+		s.Items = nil
+		s.PileOp = "find"
+		s.Found, s.FoundItems, s.Ticked, s.Query, s.Subject, s.SetID = &p.Found, p.Items, p.Ticked, p.Query, p.Subject, p.SetID
+	case "pile_how_result":
+		var p struct {
+			How HandHow `json:"how"`
+		}
+		if err := json.Unmarshal(data, &p); err != nil {
+			return f, err
+		}
+		s.PileOp = "how"
+		s.How = &p.How
+	case "group_review_result":
+		var p struct {
+			Review *GroupReview `json:"review"`
+		}
+		if err := json.Unmarshal(data, &p); err != nil {
+			return f, err
+		}
+		s.PileOp = "group_review_read"
+		s.Review, s.Error = p.Review, raw.Error
 	}
 	if f.T == "sources" {
 		v := &SourcesView{}

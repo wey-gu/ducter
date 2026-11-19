@@ -2,15 +2,24 @@
 
 Deferred work, grouped by area, each with its trigger where it has one.
 
-## Handing over several to-dos (D385, proposed, `handover.md`)
+## Handing over several to-dos (D385, built, `handover.md` §9)
 
-- **The author decides D385** (the sheet's three parts, the shapes and their defaults, plan first for
-  a subject set, review together, the five words). *Trigger:* the author's answer; then build slice 1
-  (the note and where at hand-over) first, research/153 §8.
+- **Live: plan first on a real subject.** hel's "memory distill" set on a real agent: does the lead
+  part call `plan_report`, does it find the already-fixed ones, how long and how much it costs. Built
+  and checked with a fake runner and a fake model only. *Trigger:* the author's home on this build.
+- **A plan task that reports without `plan_report`** falls back to one after another of the whole set
+  (the card shows its words). If a real agent skips the tool, ask it once more by code before the
+  fallback. *Trigger:* the first plan card without a typed plan.
+- **A worker takes a subject later** (§6: "让 haswell 做记忆提炼这一摊" moves the group's Where for the
+  parts not yet started). Where is chosen at hand-over (the note, a rule, the repository's computer);
+  changing it for a running group is not built. *Trigger:* the author asks it of a live group.
+- **Subjects merge only by spelling.** Two names for one thing ("Distillation", "记忆提炼") stay two
+  chips until a sort reuses one; a model-made merge is held. *Trigger:* the author sees one subject
+  twice on the pile.
 - **People, not proxies, for the five words** (给{name}的话, 先出个方案 · 你点头再做, 合成一件做,
   讲的是 / Subjects, 一起过目). *Trigger:* the first human panel (shared with D348's and D382's words).
 - **A find by meaning on a real pile:** measure recall on hel's 49 distillation to-dos (words + labels
-  + one cheapest-model call) before trusting the line 说的是同一件事的 n 件. *Trigger:* slice 2.
+  + one cheapest-model call) before trusting the line 说的是同一件事的 n 件. *Trigger:* the author's home on this build.
 
 ## Models an agent adds (D352, `harnesses.md`)
 
@@ -2114,7 +2123,7 @@ Codex first, once OAR is near 1.0. See `research/17`.
 
 - [ ] **iOS 27 SDK before April 2027 (ITMS-90725, Apple mail on 0.0.75):** App Store Connect will refuse uploads built with an SDK older than iOS 27. The TestFlight job now picks the newest Xcode 27.x on the runner (DUCTER_XCODE=27 is a minimum), else warns and uses the default (Xcode 26.6 / iOS 26.5 SDK on macos-26 today). Trigger: GitHub adds Xcode 27 to its macOS runner images, or March 2027 at the latest: then move the job to a runner with it (or self-host) and confirm the warning is gone; iPhone Duo also needs 27.1 for full screen (D176).
 - [ ] **D360: humans on the group's words and card** (research/133 is LLM raters only). Trigger: the first person whose split runs in a group.
-- [ ] **D360: handed-over to-dos grouped by what they share** (one milestone or label, D359's batch): today a batch is paced by the pile's own queue, not shown as a group. Trigger: the author hands over a milestone's issues.
+- [x] **D360: handed-over to-dos grouped by what they share**: done by D385 (a hand-over of two or more is a group; a subject is found by meaning).
 - [ ] **D360: a group by hand on the Mac** (the web has the selection bar's **放进一个分组**; the Mac has no multi-select on On hand yet, so it is the partner's words there). Trigger: the Mac's On hand gets selection.
 - [ ] **D360: the keys walk a group's parts** (j/k skip the parts inside a group card on both clients; each opens by click). Trigger: the author walks On hand by keys past a group.
 - [ ] **D360: a group's parts on the phone apps** (iOS, Android draw the parts as their own cards). Trigger: the next phone On hand pass.

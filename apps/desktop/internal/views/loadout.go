@@ -133,6 +133,10 @@ type modelChoice struct {
 	id    string
 	label string
 	fast  bool
+	// known: the tier table names it (smart or fast); def: the agent's own
+	// default (D390).
+	known bool
+	def   bool
 }
 
 // brainModels are the models offered for what the partner thinks with: the
@@ -142,7 +146,7 @@ func (a *App) brainModels(b protocol.Brain, h *protocol.DeviceHarness) []modelCh
 	if bn := a.S.BrainNow; bn != nil && bn.Harness == b.Harness {
 		out := make([]modelChoice, 0, len(bn.Models))
 		for _, m := range bn.Models {
-			out = append(out, modelChoice{id: m.ID, label: m.Label, fast: m.Kind == "fast"})
+			out = append(out, modelChoice{id: m.ID, label: m.Label, fast: m.Kind == "fast", known: m.Kind != "", def: m.Default})
 		}
 		return out
 	}
@@ -167,12 +171,12 @@ func modelChoices(h *protocol.DeviceHarness) []modelChoice {
 			if label == "" {
 				label = m.ID
 			}
-			out = append(out, modelChoice{id: m.ID, label: label, fast: i > 0 && fast(m.ID) || fast(m.ID)})
+			out = append(out, modelChoice{id: m.ID, label: label, fast: i > 0 && fast(m.ID) || fast(m.ID), known: true})
 		}
 		return out
 	}
 	if h.Harness == "claude-code" {
-		return []modelChoice{{id: "opus", label: "Opus"}, {id: "sonnet", label: "Sonnet", fast: true}}
+		return []modelChoice{{id: "opus", label: "Opus", known: true}, {id: "sonnet", label: "Sonnet", fast: true, known: true}}
 	}
 	return nil
 }
@@ -429,19 +433,12 @@ func (a *App) thinksGroup(c *ui.Context) {
 			}
 		}
 		if len(models) > 1 && !lo.choosing {
-			sel := 0
+			sel := brainModelIndex(models, b.Model)
 			labels := make([]string, len(models))
 			for i, m := range models {
 				labels[i] = m.label
-				if m.id == b.Model {
-					sel = i
-				}
 			}
-			k := "loadout.model.line.smart"
-			if models[sel].fast {
-				k = "loadout.model.line.fast"
-			}
-			a.tileRow(c, "brain-model", nil, a.L.T("loadout.brain.model"), a.L.T(k, models[sel].label), func() {
+			a.tileRow(c, "brain-model", nil, a.L.T("loadout.brain.model"), a.brainModelLine(models[sel], b.Harness), func() {
 				if i := a.choices(c, "brain-model", a.L.T("loadout.brain.model"), labels, sel); i >= 0 && i != sel {
 					a.setBrain(protocol.Brain{Harness: b.Harness, Model: models[i].id})
 					a.say("brain", a.L.T("said.brain", a.L.T("loadout.brain.with", harnessName(b.Harness), models[i].label)))
@@ -453,6 +450,40 @@ func (a *App) thinksGroup(c *ui.Context) {
 		}
 	})
 	a.saidLine(c, "brain")
+}
+
+// brainModelIndex is the model in use among the choices: the one named;
+// none named, the agent's own default (D390: Codex's live list says which);
+// else the first.
+func brainModelIndex(models []modelChoice, model string) int {
+	def := -1
+	for i, m := range models {
+		if m.id == model && model != "" {
+			return i
+		}
+		if m.def && def < 0 {
+			def = i
+		}
+	}
+	if def >= 0 {
+		return def
+	}
+	return 0
+}
+
+// brainModelLine says a model in a few words: smartest or faster where
+// the tier table knows it; the agent's own default said as that; else
+// nothing (D390: never guessed from a live list's order).
+func (a *App) brainModelLine(m modelChoice, harness string) string {
+	switch {
+	case m.known && m.fast:
+		return a.L.T("loadout.model.line.fast", m.label)
+	case m.known:
+		return a.L.T("loadout.model.line.smart", m.label)
+	case m.def:
+		return a.L.T("loadout.model.line.default", m.label, harnessName(harness))
+	}
+	return ""
 }
 
 func (a *App) setBrain(b protocol.Brain) {

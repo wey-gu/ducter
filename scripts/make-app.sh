@@ -257,7 +257,16 @@ if [ "$IDENTITY" != - ]; then
     # Gatekeeper's own verdicts, as a friend's Mac would give them.
     spctl -a -vv "$APP"
     spctl -a -t open --context context:primary-signature -v "$DMG"
-    xcrun stapler validate -q "$APP" && xcrun stapler validate -q "$DMG"
+    # stapler validate looks the ticket up online; right after notarizing it can answer 68 while
+    # the ticket propagates (0.0.88 and 0.0.97 each failed here once with both spctl verdicts
+    # "accepted"). Try a few times before calling it a failure.
+    validated=no
+    for try in 1 2 3 4 5; do
+      if xcrun stapler validate -q "$APP" && xcrun stapler validate -q "$DMG"; then validated=yes; break; fi
+      echo "stapler validate not yet ($try); waiting" >&2
+      sleep 20
+    done
+    [ "$validated" = yes ] || { echo "stapler validate failed after 5 tries" >&2; exit 68; }
     SIGNED="$SIGNED, notarized"
   fi
 fi

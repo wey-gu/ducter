@@ -270,6 +270,13 @@ func (a *App) ongoingCard(c *ui.Context, it *protocol.OngoingItem) {
 					ui.Text(c, p).FontSize(t.SM).TextColor(ink).SingleLine().Shrink(1).MinWidth(0).FontFeatures("tnum")
 				}
 			})
+			if it.Reviews != nil {
+				ui.Row(c.Key("standing")).Gap(t.S2).AlignItems(ui.Center).MinWidth(0).Children(func() {
+					for _, p := range a.reviewLine(it.Reviews) {
+						ui.Text(c, p).FontSize(t.SM).TextColor(t.Ink).SingleLine().Shrink(1).MinWidth(0).FontFeatures("tnum").Tooltip(p)
+					}
+				})
+			}
 			a.ongoingRuns(c, it)
 		})
 		if hover {
@@ -323,6 +330,33 @@ func (a *App) ongoingLine(it *protocol.OngoingItem) []string {
 		next = a.L.T("og.next", a.ongoingWhen(at))
 	}
 	return nonEmpty(how, next)
+}
+
+// reviewLine is a review task's standing after its last round (D394),
+// each its own fact (D291).
+func (a *App) reviewLine(r *protocol.ReviewStanding) []string {
+	var head string
+	switch {
+	case r.Waiting == 0:
+		head = a.L.T("og.rev.none")
+	case r.Waiting == 1 && r.Again > 0:
+		head = a.L.T("og.rev.one.again")
+	case r.Waiting == 1:
+		head = a.L.T("og.rev.one.same")
+	case r.Again > 0 && r.Same > 0:
+		head = a.L.T("og.rev.mixed", r.Waiting, r.Again, r.Same)
+	case r.Again > 0:
+		head = a.L.T("og.rev.all", r.Waiting)
+	default:
+		head = a.L.T("og.rev.same", r.Waiting)
+	}
+	drafted := ""
+	if r.Drafted == 1 {
+		drafted = a.L.T("og.rev.drafted.1")
+	} else if r.Drafted > 1 {
+		drafted = a.L.T("og.rev.drafted", r.Drafted)
+	}
+	return nonEmpty(head, drafted)
 }
 
 // hanTight drops a space between two Chinese characters ("每 45 分钟 看一次"

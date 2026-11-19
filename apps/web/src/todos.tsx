@@ -13,7 +13,7 @@ import { BrandMark, BrandTile } from "./brand.tsx";
 import { AddRow, Btn, Chev, DangerButton, Facts, Seg } from "./controls.tsx";
 import { SecHead, Tag } from "./set-grid.tsx";
 import { GhSignIn } from "./gh-signin.tsx";
-import { onPileFrame, ReadLine } from "./pile.tsx";
+import { onPileFrame, openRead, ReadLine } from "./pile.tsx";
 import { onHandFrame } from "./handover.tsx";
 
 
@@ -636,7 +636,7 @@ export function TodoPick(p: { picked?: SourceItemRef; onPick: (it: SourceItem | 
 export function SourceCardBody({ src }: { src: NonNullable<import("@ducter/protocol").Bodies["decision"]["src"]> }) {
   return (
     <div class="src-card">
-      {src.kind !== "where_rule" && src.kind !== "group_review" && <SourceChip src={src.item} states={false} />}
+      {src.kind !== "where_rule" && src.kind !== "group_review" && src.kind !== "reviews" && <SourceChip src={src.item} states={false} />}
       {src.kind === "write" && src.text && (
         <>
           <small class="muted">{t("todos.card.says")}</small>
@@ -654,6 +654,23 @@ export function SourceCardBody({ src }: { src: NonNullable<import("@ducter/proto
         </>
       )}
       {(src.kind === "group_review" || src.kind === "batch") && src.items && src.items.length > 1 && <small class="muted">{t("ho.batch.n", src.items.length)}</small>}
+      {/* D394: a review task's round: each drafted review opens as its PR's pre-read. */}
+      {src.kind === "reviews" && src.items && (
+        <>
+          <ul class="src-reviews">
+            {src.items.map(({ item }) => (
+              <li key={item.ref} class="src-review">
+                <SourceChip src={item} small states={false} />
+                <span class="grow src-review-title" dir="auto">
+                  {item.title}
+                </span>
+                <Btn kind="text" size="sm" label={t("todos.reviews.read")} about={item.title} onClick={() => openRead(item.ref)} />
+              </li>
+            ))}
+          </ul>
+          <small class="muted">{t("todos.reviews.foot")}</small>
+        </>
+      )}
     </div>
   );
 }

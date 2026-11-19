@@ -688,6 +688,18 @@ export function createTaskSources(d: TaskSourcesDeps): TaskSources {
     }
     if (src.kind === "where_rule") return handover?.answerRule(card, r);
     if (src.kind === "group_review") return;
+    // D394: a review task's round: Go posts each drafted review once; the task hears what went.
+    if (src.kind === "reviews") {
+      const res = await pile.answerRound(card, r);
+      if (src.taskId && !r.settled)
+        d.tell?.(
+          src.taskId,
+          r.option === "go"
+            ? `[Ducter] The person said Go: ${res.done} review${res.done === 1 ? "" : "s"} went to GitHub${res.failed ? `, ${res.failed} couldn't be posted` : ""}. Don't post them yourself. Carry on with your rounds.`
+            : "[Ducter] The person held the drafted reviews: nothing was posted. They stay drafted on those pull requests; don't post them yourself.",
+        );
+      return;
+    }
     if (src.kind === "batch" || src.kind === "review") return;
     const s = byId(src.item.source);
     if (src.kind === "write") {

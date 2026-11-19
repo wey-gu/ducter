@@ -105,6 +105,8 @@ var zhTodos = Table{
 	"todos.lens": "来自",
 	// the write-back card
 	"todos.card.says":      "会留下这段话",
+	"todos.reviews.read":   "看草稿",
+	"todos.reviews.foot":   "每条草稿都能先看一遍。说好之前，什么都不会发到 GitHub。",
 	"todos.card.and.close": "然后关掉它",
 	// D359: the pile (the web's apps/web/src/i18n-todos.ts, the same words)
 	"pile.left.before":          "还有",
@@ -281,6 +283,8 @@ var enTodos = Table{
 	"onhand.todos.filters":       "Only",
 	"todos.see":                  "See them in On hand",
 	"todos.card.says":            "It will post",
+	"todos.reviews.read":         "Read draft",
+	"todos.reviews.foot":         "You can read each draft first. Nothing goes to GitHub before you say Go.",
 	"todos.card.and.close":       "Then close it",
 	// D359: the pile (the web's apps/web/src/i18n-todos.ts, the same words)
 	"pile.left.before":          "",

@@ -808,6 +808,17 @@ function stateLine(it: OngoingItem): string[] {
   return [how, it.nextAt ? t("og.next", soon(it.nextAt)) : ""].filter(Boolean);
 }
 
+/** D394: a review task's standing after its last round, each its own fact (D291). */
+export function reviewLine(r: NonNullable<OngoingItem["reviews"]>): string[] {
+  const head =
+    r.waiting === 0 ? t("og.rev.none")
+    : r.waiting === 1 ? t(r.again ? "og.rev.one.again" : "og.rev.one.same")
+    : r.again && r.same ? t("og.rev.mixed", r.waiting, r.again, r.same)
+    : r.again ? t("og.rev.all", r.waiting)
+    : t("og.rev.same", r.waiting);
+  return [head, r.drafted ? (r.drafted === 1 ? t("og.rev.drafted.1") : t("og.rev.drafted", r.drafted)) : ""].filter(Boolean);
+}
+
 const RepeatGlyph = ({ task }: { task: boolean }) => (
   <svg class="pg" width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">
     {task ? (
@@ -896,6 +907,11 @@ function OgCard({ it }: { it: OngoingItem }) {
             <span class="pt">{it.title}</span>
           </span>
           <span class={`pl2 og-line${paused ? " paused" : ""}`}><Facts items={stateLine(it)} /></span>
+          {it.reviews && (
+            <span class="pl2 og-standing">
+              <Facts items={reviewLine(it.reviews)} />
+            </span>
+          )}
           <span class="pl3">
             {it.project && <span>{it.project}</span>}
             <Runs runs={it.runs} />

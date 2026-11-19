@@ -133,7 +133,7 @@ ${languageLine(b.language)}
 - \`summary\` is written for the user, not for you: they read it as it is, often on their phone. Open with the result in one plain sentence anyone could follow (what is now true for them), then at most a few short lines on what stands. Write ordinary sentences with ordinary spacing: a number keeps its unit and its spaces ("16 checks, 15 passed", "16 项检查，15 项通过"), never glued into notes like "16checks15success". Leave out your own bookkeeping (round numbers, counters, ledger or note file names, ids, hashes) unless the user needs one to act; it goes in \`evidence\` or your checkpoint. At most 600 characters; shorter is better.
 - Say what changed since your last report, not everything again.
 - Work that repeats (a watcher, a review every so often): a round that found nothing new for the user doesn't report at all; call \`wait_for\` with the time of the next round and end your turn (silence means nothing changed). Report only when something new needs them: a new request, a change with new findings, a draft ready to send. Then say what still stands too, never "nothing new" alone while things wait on them ("8 review requests wait on you: 3 had new commits and are reviewed again, 5 unchanged").
-- Anything that would reach other people (a PR review or comment, an approval, a message) is drafted, not sent on your own unless the brief says to send it without asking: write each draft to a file, then one \`needs_input\` report per round for all of them ("3 PR reviews are written. Post them to GitHub?", default: post them), each draft's file in \`show\`. Post after Go, once.
+- Anything that would reach other people (a PR review or comment, an approval, a message) is drafted, not sent on your own unless the brief says to send it without asking: write each draft to a file, then one \`needs_input\` report per round for all of them ("3 PR reviews are written. Post them to GitHub?", default: post them), each draft's file in \`show\`. Post after Go, once. PR reviews, when you have a \`review_report\` tool, go through it instead: it puts your drafts on those PRs and asks the person once for the round; Ducter posts them.
 - \`questions\`: each with \`id\`, \`text\`, \`blocking\`, a \`default\` (what you will do if nobody answers), and \`reversible\` (whether that default can be undone).
   The user answers with three buttons: **Go** = do your \`default\`; **Hold** = pause and wait (it never means "no"); **Reply** = their own words. So phrase each question so that Go is the default action, and do not mention the buttons in the text.
 - \`evidence\`: refs such as {kind:"test", label:"bun test", ref:"12 passed"}, {kind:"diff", label:"commit", ref:"<sha>"}, {kind:"file", label:"...", ref:"<path>"}.
@@ -373,6 +373,12 @@ export function handedBack(from: string, progress: string[], carry?: CarryOver):
 export function startedAfresh(progress: string[]): string {
   const where = progress.length ? `\n\nWhere it stood (saved progress, oldest first):\n${progress.map((p) => `- ${p}`).join("\n")}` : "";
   return `Your earlier session on this task couldn't be resumed, so this is a new session on the same task and place. Check where the work stands (git status, git log, the files), then continue with the brief from there. Don't start over.${where}\n\nReport via report_to_main when done, blocked, or needing a decision.`;
+}
+
+/** D394: a repeating task's round in a fresh session: its last session had compacted (research/158). */
+export function freshRound(progress: string[]): string {
+  const where = progress.length ? `\n\nWhere it stood (your latest saved progress, oldest first):\n${progress.map((p) => `- ${p}`).join("\n")}` : "";
+  return `This is the next round of work that repeats. To keep each round small, it runs in a new session on the same task and place: what earlier rounds found is in your saved progress below and in the files you keep in your working place. Read those first, do this round from there (don't redo what is unchanged), call checkpoint with where it stands, then wait_for the next round.${where}`;
 }
 
 /**

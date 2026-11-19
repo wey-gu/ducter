@@ -814,6 +814,17 @@ func (a *App) todoAskBody(c *ui.Context, d *store.DecisionState) {
 		return
 	}
 	t := a.T
+	if src.Kind == "where_rule" && src.Quote != "" {
+		// D385: the note's lasting where, asked once: the person's own words.
+		ui.Column(c.Key("todo-rule")).Gap(t.S1).Children(func() {
+			ui.Text(c, a.L.T("hand.rule.said")).FontSize(t.SM).FontWeight(700).TextColor(t.NeedsYou.Ink)
+			ui.Row(c.Key("quote")).Gap(t.S3).Padding(t.S3, t.S4).Radius(t.RadiusMD).Background(t.Surface.Alpha(0.75)).Children(func() {
+				ui.Box(c).Width(3).Radius(2).AlignSelf(ui.Stretch).Background(t.NeedsYou.Ink.Alpha(0.35)).Shrink(0).AccessHidden(true)
+				ui.Text(c, src.Quote).FontSize(t.MD).LineHeight(a.leading(1.55)).TextColor(t.Ink).Grow(1).MinWidth(0).Selectable()
+			})
+		})
+		return
+	}
 	if src.Kind != "write" {
 		ui.Row(c.Key("todo-ask-chip")).Children(func() { a.todoChip(c, "ask:"+d.DecisionID, src.Item) })
 		return

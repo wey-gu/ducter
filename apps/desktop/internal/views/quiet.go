@@ -373,6 +373,11 @@ func (a *App) ask(c *ui.Context, d *store.DecisionState, taskID string) {
 			return
 		}
 	}
+	// D385: plan first's card stands on its own (its question is its title).
+	if d.Src != nil && d.Src.Kind == "plan" {
+		a.handPlanCard(c, d, false)
+		return
+	}
 	ui.Column(c.Key("ask:" + d.DecisionID)).Gap(t.S2).Children(func() {
 		if d.Asker != nil {
 			a.peerAskerRow(c, d.Asker) // X1: who asks, before the question

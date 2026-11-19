@@ -67,6 +67,21 @@ var kindWords = map[string]map[string]string{
 
 var hostRe = regexp.MustCompile(`(?i)^https?://([^/?#:]+)`)
 
+// codeRe is a pull request or an issue on a code host (GitHub's and GitLab's paths): a bare host
+// ("github.com") says nothing about which one.
+var codeRe = regexp.MustCompile(`(?i)^https?://[^/?#]+/[^/?#]+/([^/?#]+)/(?:-/)?(pull|pulls|merge_requests|issues)/(\d+)(?:[/?#]|$)`)
+
+func codeLink(ref string) string {
+	m := codeRe.FindStringSubmatch(strings.TrimSpace(ref))
+	if m == nil {
+		return ""
+	}
+	if strings.EqualFold(m[2], "issues") {
+		return m[1] + "#" + m[3]
+	}
+	return "PR #" + m[3]
+}
+
 func baseName(ref string) string {
 	s := strings.TrimRight(strings.TrimPrefix(strings.TrimSpace(ref), "file://"), `/\`)
 	if s == "" || strings.IndexFunc(s, unicode.IsSpace) >= 0 {
@@ -81,11 +96,14 @@ func baseName(ref string) string {
 
 // ProofLabel is what a proof line shows for an evidence item to a reader
 // of tag: its label when it is in that language or reads as a name, else
-// the page's host, the file's name, or what it is (测试结果 / Test results).
+// a code host's pull request or issue by number, the page's host, the file's name, or what it is (测试结果 / Test results).
 func ProofLabel(kind, label, ref, tag string) string {
 	l := strings.TrimSpace(label)
 	if l != "" && (InTongue(l, tag) || ReadsAsName(l)) {
 		return l
+	}
+	if c := codeLink(ref); c != "" {
+		return c
 	}
 	if m := hostRe.FindStringSubmatch(strings.TrimSpace(ref)); m != nil {
 		return strings.TrimPrefix(m[1], "www.")

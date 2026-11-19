@@ -1531,33 +1531,40 @@ export function TaskMeta({ task, stateLabel, mark, onSwitch }: { task: Task; sta
   return (
     <>
     <div class={`standing st-${a}`}>
-      {mark}
-      <b>{stateLabel}</b>
-      {when && <span class="when">{when}</span>}
-      {facts.length > 0 && (
-        <span class="who" title={p.repoPath || p.path || undefined}>
-          <Facts items={facts} />
-        </span>
-      )}
-      {on.line && (
-        <span class="who where">
-          {on.why ? (
-            <button class="where-on" title={on.why} aria-expanded={why} onClick={() => setWhy(why ? "" : task.id)}>
-              {on.line}
-            </button>
-          ) : (
-            <span>{on.line}</span>
-          )}
-        </span>
-      )}
-      {/* D341: the to-do it is bound to: its app's mark and number, opening it there. */}
-      {task.card?.source && <SourceChip src={task.card.source} />}
-      {onSwitch && (
-        <button class="inline-link" aria-expanded={A.switchFor === task.id} onClick={onSwitch}>
-          {t("who.switch")}
-          <Chev />
-        </button>
-      )}
+      {/* Where it stands and how long it took, then who and where: two groups, so a phone keeps
+          the first beside the face and gives the facts the page's whole width (one line on a wide
+          screen, as before). */}
+      <span class="st-line">
+        {mark}
+        <b>{stateLabel}</b>
+        {when && <span class="when">{when}</span>}
+      </span>
+      <span class="st-facts">
+        {facts.length > 0 && (
+          <span class="who" title={p.repoPath || p.path || undefined}>
+            <Facts items={facts} />
+          </span>
+        )}
+        {on.line && (
+          <span class="who where">
+            {on.why ? (
+              <button class="where-on" title={on.why} aria-expanded={why} onClick={() => setWhy(why ? "" : task.id)}>
+                {on.line}
+              </button>
+            ) : (
+              <span>{on.line}</span>
+            )}
+          </span>
+        )}
+        {/* D341: the to-do it is bound to: its app's mark and number, opening it there. */}
+        {task.card?.source && <SourceChip src={task.card.source} />}
+        {onSwitch && (
+          <button class="inline-link" aria-expanded={A.switchFor === task.id} onClick={onSwitch}>
+            {t("who.switch")}
+            <Chev />
+          </button>
+        )}
+      </span>
     </div>
     {why && on.why && <div class="where-why small sub">{on.why}</div>}
     </>

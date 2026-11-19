@@ -144,6 +144,13 @@ If you turn quiet hours off, they stay off, even when you connect another phone.
 To change the hours or turn them off, open **Partner** and use **Quiet hours** (see
 [Your partner and settings](settings.md#partner)).
 
+## Links
+
+A link in Ducter that goes somewhere else, like a pull request a task opened, opens on your phone
+the way any link does: in its own app when you have it (the GitHub app for a GitHub link), otherwise
+in your browser. Both are where you're already signed in, so a private repository opens instead of
+saying it can't be found. The system's back button in the corner takes you back to Ducter.
+
 ## On an iPad
 
 The iPhone app runs on iPad too, from the same TestFlight link, and so does Ducter in Safari.

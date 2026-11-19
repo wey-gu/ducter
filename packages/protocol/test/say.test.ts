@@ -11,7 +11,7 @@ describe("say (D154)", () => {
       expect(inTongue(c.text, "en")).toBe(c.en);
     });
   for (const c of cases.proof)
-    test(`proof label: ${c.label}`, () => {
+    test(`proof label: ${c.label ?? c.ref}`, () => {
       const ev = { kind: c.kind as "log", label: c.label, ref: c.ref };
       expect(proofLabel(ev, "zh")).toBe(c.zh);
       expect(proofLabel(ev, "en")).toBe(c.en);

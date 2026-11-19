@@ -201,6 +201,8 @@ class MainActivity : ComponentActivity() {
         override fun shouldOverrideUrlLoading(view: WebView, req: WebResourceRequest): Boolean {
             val u = req.url
             if (isOurs(u) || u.scheme == "about") return false
+            // A frame inside the page (the workbench's preview of a task's own site) loads in place.
+            if (!req.isForMainFrame && (u.scheme == "http" || u.scheme == "https")) return false
             openOutside(u)
             return true
         }
@@ -258,7 +260,11 @@ class MainActivity : ComponentActivity() {
         return u.scheme == b.scheme && u.host == b.host && u.port == b.port
     }
 
-    /** Everything that isn't this Ducter opens outside: a PR, a preview, a doc. */
+    /**
+     * D384: everything that isn't this Ducter opens on the phone, never in a view inside the app:
+     * Android hands a verified app link (github.com, a doc) to its own app when the person has it,
+     * else to their default browser, both where they are signed in. A PR, a preview, a doc.
+     */
     private fun openOutside(u: Uri) {
         try {
             startActivity(Intent(Intent.ACTION_VIEW, u).addCategory(Intent.CATEGORY_BROWSABLE))

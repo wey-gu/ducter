@@ -1,4 +1,4 @@
-# 155: Every task open: an audit of finding, reading and reusing earlier tasks (D390)
+# 155: Every task open: an audit of finding, reading and reusing earlier tasks (D391)
 
 The author, 2026-11-19: "我们的设计是在 conductor-like 产品之上的超集，所以，应该能允许用户或者 main ai
 找到适合的旧 session 然后继续任何一个 Session task，这方面在 ax/ux 上都要充分考虑，拉满…这里我们做的远远
@@ -148,6 +148,6 @@ raters only, no humans.
 
 **Summary:** Ducter could already find, mark and continue any earlier task, but showed only how it
 ended, could not redo a step, filtered neither by computer nor by ending, and the partner found
-named tasks through raw Log search or its eight-task list. D390 adds the preview of where a task
+named tasks through raw Log search or its eight-task list. D391 adds the preview of where a task
 stopped, its steps, a new task from any step (code from that step's commit, any agent), the ⌘K
 finder, and task_find / task_fork for the partner.

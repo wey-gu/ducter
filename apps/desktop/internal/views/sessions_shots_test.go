@@ -15,7 +15,7 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/store"
 )
 
-// D390's Mac screens, zh and en, light and dark, against the heavy
+// D391's Mac screens, zh and en, light and dark, against the heavy
 // developer's six weeks (sessions_fixture_test.go):
 //
 //	DUCTER_SESSIONS_SHOTS=1 DUCTER_SHOTS_DIR=<repo>/.shots/sessions go test ./internal/views -run SessionsShots

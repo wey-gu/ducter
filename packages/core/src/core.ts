@@ -290,7 +290,7 @@ export interface Core extends CoreApi {
   outside: import("./outside.ts").Outside;
   /** D383: 给你做的 / Made for you: what Ducter made, found again by words, kind and time (read from the Log). */
   made: Made;
-  /** D390: 做过的事 / Past tasks for the partner (task_find), and 从这一步重来 / Redo from here (task_fork). */
+  /** D391: 做过的事 / Past tasks for the partner (task_find), and 从这一步重来 / Redo from here (task_fork). */
   past: import("./past.ts").Past;
   redo: import("./redo.ts").Redo;
   /** What each repo task changed so far (D128). */
@@ -1038,7 +1038,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   registerDidTool(mcp, did, () => clock.now());
   // D285: 一直在跑的 / Ongoing: routines and tasks that look again on their own, paused and resumed.
   const ongoing = createOngoing({ dataDir, log, tasks, waiters: work.waiters, routines: work.routines, marks, clock, onChange: () => ws.ongoingChanged() });
-  // D390: 从这一步重来 / Redo from here: a new task from a step of an earlier one (its brief, its code from that commit).
+  // D391: 从这一步重来 / Redo from here: a new task from a step of an earlier one (its brief, its code from that commit).
   const redo = createRedo({ past, tasks, open: (i) => openYourTask(newTaskDeps, i), lang: (w) => languageOf(w, settings), ...(opts.git ? { git: opts.git } : {}) });
   const newTask = {
     // D285: 带着它开新任务 / New task from this: the brief carries what that task found.

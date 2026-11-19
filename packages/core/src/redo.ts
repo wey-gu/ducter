@@ -1,4 +1,4 @@
-// D390: 从这一步重来 / Redo from here (design/sessions.md). A task's steps (its brief, then each
+// D391: 从这一步重来 / Redo from here (design/sessions.md). A task's steps (its brief, then each
 // later message to it, with what came of it and the code as it stood when each began), and a new
 // task that redoes one of them: what led up to that step as its brief, its code from the last
 // commit the task made before that step (else where it began), the same or another agent. The

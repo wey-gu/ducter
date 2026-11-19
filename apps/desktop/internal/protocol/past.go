@@ -39,7 +39,7 @@ type PastHit struct {
 type PastFrom struct {
 	TaskID string `json:"taskId"`
 	Title  string `json:"title"`
-	// Step (D390): it redoes that task from its step n (从这一步开新任务 / New task from this step).
+	// Step (D391): it redoes that task from its step n (从这一步开新任务 / New task from this step).
 	Step int `json:"step,omitempty"`
 }
 
@@ -65,14 +65,14 @@ type PastItem struct {
 	From       *PastFrom   `json:"from,omitempty"`
 	// Outside: D299, carried on from a session the person ran outside Ducter.
 	Outside *PastOutside `json:"outside,omitempty"`
-	// D390: the agent's last words (one line), what it asks while it waits
+	// D391: the agent's last words (one line), what it asks while it waits
 	// on the person, and how many steps it has.
 	LastWords string `json:"lastWords,omitempty"`
 	Asking    string `json:"asking,omitempty"`
 	Steps     int    `json:"steps,omitempty"`
 }
 
-// PastStep is one step of a task (D390): its brief (N 1), then each later
+// PastStep is one step of a task (D391): its brief (N 1), then each later
 // message to it, with what came of it.
 type PastStep struct {
 	N      int    `json:"n"`
@@ -112,7 +112,7 @@ type PastStepsFrame struct {
 	Steps  []PastStep `json:"steps,omitempty"`
 	Report string     `json:"report,omitempty"`
 	Repo   bool       `json:"repo,omitempty"`
-	// Elsewhere: a repo task on another computer; its commits aren't read (D390).
+	// Elsewhere: a repo task on another computer; its commits aren't read (D391).
 	Elsewhere bool   `json:"elsewhere,omitempty"`
 	From      string `json:"from,omitempty"`
 	Step      int    `json:"step,omitempty"`
@@ -190,7 +190,7 @@ type PastQuery struct {
 	Harness string  `json:"harness,omitempty"`
 	Tag     string  `json:"tag,omitempty"`
 	Starred bool    `json:"starred,omitempty"`
-	// D390: the computer it ran on, by name ("" the home; nil any), and
+	// D391: the computer it ran on, by name ("" the home; nil any), and
 	// how it ended: done | failed | cancelled | on_hand.
 	Computer *string `json:"computer,omitempty"`
 	Ended    string  `json:"ended,omitempty"`
@@ -213,7 +213,7 @@ type PastFacets struct {
 		Tag string `json:"tag"`
 		N   int    `json:"n"`
 	} `json:"tags"`
-	// Computers (D390): the computers tasks ran on, by name ("" the home).
+	// Computers (D391): the computers tasks ran on, by name ("" the home).
 	Computers []PastNameN `json:"computers,omitempty"`
 }
 

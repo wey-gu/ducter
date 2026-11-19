@@ -17,7 +17,7 @@ type PastState struct {
 	Adopted *protocol.PastFrame
 	// Made is 给你做的 / Made for you's last made_result (D383).
 	Made *protocol.MadeFrame
-	// D390: the find-anything palette's own answers (ids starting with
+	// D391: the find-anything palette's own answers (ids starting with
 	// PaletteID), kept apart from the place's so neither overwrites the other.
 	Palette     *protocol.PastFrame
 	PaletteMade *protocol.MadeFrame
@@ -45,7 +45,7 @@ func (s *Store) applyMade(f protocol.ServerFrame) {
 	}
 }
 
-// applyPastSteps keeps a task's steps, and the last fork's answer (D390).
+// applyPastSteps keeps a task's steps, and the last fork's answer (D391).
 func (s *Store) applyPastSteps(f protocol.ServerFrame) {
 	p := f.PastSteps
 	if p == nil {

@@ -8,7 +8,7 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 )
 
-// D390's fixture: a heavy developer's six weeks, about forty-five tasks
+// D391's fixture: a heavy developer's six weeks, about forty-five tasks
 // across hawdb, nowledge-mem, ducter and test-infra plus a few errands, on
 // the home (MacBook Pro) and two computers for tasks (haswell, hel), by
 // three agents, several with three to six steps, two redone from a step.

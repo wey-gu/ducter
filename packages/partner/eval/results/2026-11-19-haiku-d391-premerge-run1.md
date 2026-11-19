@@ -1,4 +1,4 @@
-# Partner eval · 2026-11-19 · claude-code · haiku · d390-run1
+# Partner eval · 2026-11-19 · claude-code · haiku · d391-run1
 
 Pass: **138/183** (75%). Judge: haiku. Persona: 26485 chars (≈8277 tokens).
 Tokens (partner): in 17370662, out 132382, cache read 16153351, cache write 1216464 → ≈$0.38 at list price; judge $0.090.

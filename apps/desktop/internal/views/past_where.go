@@ -1,6 +1,6 @@
 package views
 
-// D390: every task is open. In 做过的事 / Past tasks the card the keys or
+// D391: every task is open. In 做过的事 / Past tasks the card the keys or
 // the pointer are on shows beside the list (≥ pastSplitW) as 停在哪儿 /
 // Where it stopped: its name and facts, how it ended in its own words, its
 // last words, what it asks, what it changed, and its steps, each with

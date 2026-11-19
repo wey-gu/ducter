@@ -13,7 +13,7 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/store"
 )
 
-// D390: every task is open: the palette, the preview beside Past tasks,
+// D391: every task is open: the palette, the preview beside Past tasks,
 // the steps and Redo from here, the computer and ending chips.
 
 func sessApp(t *testing.T, lang i18n.Lang) (*App, *[]any) {

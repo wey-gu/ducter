@@ -510,7 +510,7 @@ func appMenu(app *views.App, l *i18n.Strings, win *mygo.Window, lc *lifecycle) *
 		{Role: mygo.RoleEditMenu},
 		{Label: l.T("menu.view"), Submenu: []*mygo.MenuItem{
 			{Label: l.T("newtask.menu"), Accelerator: "CmdOrCtrl+N", Click: show(app.NewTaskShortcut)},
-			{Label: l.T("pal.menu"), Accelerator: "CmdOrCtrl+K", Click: show(app.OpenSwitcher)}, // D390
+			{Label: l.T("pal.menu"), Accelerator: "CmdOrCtrl+K", Click: show(app.OpenSwitcher)}, // D391
 			{Label: l.T("switch.menu"), Accelerator: "CmdOrCtrl+O", Click: show(app.OpenSwitcher)},
 			{Label: l.T("past.menu"), Accelerator: "CmdOrCtrl+Y", Click: show(func() { app.OpenPast("") })},
 			{Label: l.T("did.menu"), Accelerator: "CmdOrCtrl+Shift+Y", Click: show(app.OpenDid)}, // D300

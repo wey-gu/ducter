@@ -67,20 +67,20 @@ export interface PastItem {
   mark?: PastMark;
   /** For a search: where it matched, with a short piece of the text around it. */
   hit?: { field: PastField; text: string };
-  /** A task seeded from another one (New task from this): that task's id and title; D390 step:
+  /** A task seeded from another one (New task from this): that task's id and title; D391 step:
    *  it redoes that task from its step n (从这一步重来 / Redo from here). */
   from?: { taskId: string; title: string; step?: number };
   /** D299: carried on from a session the person ran in their own agent outside Ducter. */
   outside?: { agent: OutsideAgent; startedAt: string };
-  /** D390: the agent's last words in it, one line (where it stopped, in its own voice). */
+  /** D391: the agent's last words in it, one line (where it stopped, in its own voice). */
   lastWords?: string;
-  /** D390: what it asks the person, while it waits on them. */
+  /** D391: what it asks the person, while it waits on them. */
   asking?: string;
-  /** D390: how many steps it has (its brief, then each later message to it). */
+  /** D391: how many steps it has (its brief, then each later message to it). */
   steps?: number;
 }
 
-// ---------- D390: steps, and redoing a task from one ----------
+// ---------- D391: steps, and redoing a task from one ----------
 
 /** One step of a task: its brief (n 1), then each later message to it, with what came of it. */
 export interface PastStep {
@@ -162,9 +162,9 @@ export interface PastQuery {
   harness?: string;
   tag?: string;
   starred?: boolean;
-  /** D390: the computer it ran on, by name ("" = the home). */
+  /** D391: the computer it ran on, by name ("" = the home). */
   computer?: string;
-  /** D390: how it ended: done, didn't work, cancelled, or still on hand (anything not finished). */
+  /** D391: how it ended: done, didn't work, cancelled, or still on hand (anything not finished). */
   ended?: "done" | "failed" | "cancelled" | "on_hand";
   /** ISO dates (inclusive start, exclusive end), on when it was last worked on. */
   since?: string;
@@ -176,7 +176,7 @@ export interface PastFacets {
   projects: { name: string; n: number }[];
   harnesses: { harness: string; n: number }[];
   tags: { tag: string; n: number }[];
-  /** D390: the computers tasks ran on, by name ("" = the home), most used first. */
+  /** D391: the computers tasks ran on, by name ("" = the home), most used first. */
   computers?: { name: string; n: number }[];
 }
 
@@ -240,9 +240,9 @@ export type PastClientFrame =
   // 接着做 / Continue: the same task goes back to work; harness (and model) when the person picked
   // another agent; words, what they say to it first. Answered with action_result (action "continue").
   | { t: "past_continue"; taskId: string; harness?: string; model?: string; words?: string }
-  // D390: a task's steps, for 从这一步重来 / Redo from here. Answered with past_steps_result.
+  // D391: a task's steps, for 从这一步重来 / Redo from here. Answered with past_steps_result.
   | { t: "past_steps"; id?: string; taskId: string }
-  // D390: 从这一步重来 / Redo from here: a new task from that step. Answered with past_forked.
+  // D391: 从这一步重来 / Redo from here: a new task from that step. Answered with past_forked.
   | ({ t: "past_fork" } & PastForkInput)
   // D299: carry on a session the person ran outside Ducter: the same agent resumes it in a new
   // task (harness absent or the same), or another agent starts from what it said. Answered with
@@ -263,7 +263,7 @@ export type PastServerFrame =
   // report: its last report in full (cut to 1600), for 停在哪儿 / Where it stopped; repo: it works in a repo (a redo says where its code starts).
   // elsewhere: a repo task on another computer, whose commits aren't read from here (a redo starts from where it began).
   | { t: "past_steps_result"; id?: string; taskId: string; steps: PastStep[]; report?: string; repo?: boolean; elsewhere?: boolean }
-  // D390: the new task (taskId) redoing step `step` of `from`, or why it couldn't open.
+  // D391: the new task (taskId) redoing step `step` of `from`, or why it couldn't open.
   | { t: "past_forked"; from: string; step: number; ok: boolean; taskId?: string; message?: string }
   | { t: "outside_adopted"; agent: OutsideAgent; id: string; ok: boolean; taskId?: string; message?: string }
   | { t: "outside_hidden"; agent: OutsideAgent; hidden: boolean }

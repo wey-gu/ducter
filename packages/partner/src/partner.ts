@@ -73,7 +73,7 @@ import { MADE_KINDS, type MadeItem, type MadeKind, type MadeQuery } from "../../
 import { PINS_MAX, type PinView } from "../../protocol/src/pins.ts";
 import type { PastForkInput, PastItem, PastQuery, PastStep } from "../../protocol/src/past.ts";
 
-/** D390: the parts of core's Past tasks and Redo the partner's task_find and task_fork use. */
+/** D391: the parts of core's Past tasks and Redo the partner's task_find and task_fork use. */
 interface PastPort {
   query(persona: string, q: PastQuery): { items: PastItem[]; total: number };
 }
@@ -302,9 +302,9 @@ export function activityStep(tool: string): ActivityStep | undefined {
       return "checking_task";
     case "task_open":
     case "own_session_continue": // D376
-    case "task_fork": // D390
+    case "task_fork": // D391
       return "opening_task";
-    case "task_find": // D390
+    case "task_find": // D391
       return "recalling";
     case "task_send":
       return "messaging_task";
@@ -2134,7 +2134,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   const own = (core as { outside?: OwnSessionsPort }).outside;
   if (own) registerOwnSessionTools(own);
 
-  // D390: "接着上周那个 compaction 的 PR", "从第 3 步换 Codex 再试": an earlier Ducter task found by
+  // D391: "接着上周那个 compaction 的 PR", "从第 3 步换 Codex 再试": an earlier Ducter task found by
   // the person's words in Past tasks' index (never a model), read cheaply where it stopped, then
   // carried on (task_send) or redone from a step (task_fork).
   const pastPort = core as { past?: PastPort; redo?: RedoPort };
@@ -2327,7 +2327,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           ok: true,
           tasks: r.items.map(brief),
           ...(r.total > r.items.length ? { more: r.total - r.items.length } : {}),
-          note: "Best first. Pick by their words. One clearly fits: act now (task_send to carry it on in its own session, branch and worktree; task_fork to redo from a step) and name it in your line by title and day. Two or more fit alike: one question naming each by title, day and computer; open nothing.",
+          note: "Best first. Pick by their words. One clearly fits: act now (task_send to carry it on in its own session, branch and worktree; task_fork to redo from a step) and name it in your line by title and day. Two or more fit alike: open nothing; one short question that names each by what it was about and its day in the words themselves (\"the hawdb false positives one (Nov 13) or the mem memory one (Nov 14)?\"); a choices block may follow, each option a short name and day under 40 characters.",
         };
       },
     );

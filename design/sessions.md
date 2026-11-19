@@ -1,4 +1,4 @@
-# Every task open: finding, reading and reusing earlier tasks (D390)
+# Every task open: finding, reading and reusing earlier tasks (D391)
 
 Technically a task is an agent session (`motivation.md`), and every background session is fully
 open to the person whenever they want it. This note says how a person, or the partner on their

@@ -1,4 +1,4 @@
-// A demo core for D390 (every task fully open, design/sessions.md): a heavy developer's six weeks.
+// A demo core for D391 (every task fully open, design/sessions.md): a heavy developer's six weeks.
 // About 45 tasks across four repositories (hawdb, nowledge-mem, ducter, test-infra) and a few
 // errands, on three computers (the home, and the workers haswell and hel), with three agents
 // (Claude Code, Codex, pi); several with three to six steps, commits, branches, merged and draft PRs,

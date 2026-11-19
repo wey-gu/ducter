@@ -9,6 +9,10 @@ import type { CoreApi, Runner } from "@ducter/protocol/src/internal.ts";
 import type { Decisions } from "./decisions.ts";
 import { logUserMessage } from "./reply.ts";
 import { talkLang } from "./lang.ts";
+import { words as wordsIn } from "@ducter/protocol";
+
+/** Said when no runner is up, in the conversation's language (a zh screen never reads it in English). */
+const NO_RUNNER = { en: "Tasks can't run right now.", zh: "现在开不了任务。" };
 import type { DevicesView } from "./devices.ts";
 import { redactDeep } from "@ducter/protocol/src/redact.ts";
 import { PROJECTED_KINDS, isActive, taskStream } from "./registry.ts";
@@ -226,6 +230,7 @@ export function dropSuperseded(events: LogEvent[]): LogEvent[] {
 
 export function createWsHandler(deps: WsDeps) {
   const { core, decisions } = deps;
+  const noRunnerLine = () => wordsIn(NO_RUNNER, talkLang(deps.settings, core.log));
   /** D206: the refs for the ids a client sent (throws on one the home doesn't hold). */
   const mediaOf = (ids: unknown): MediaRef[] => {
     if (ids === undefined || ids === null || (Array.isArray(ids) && !ids.length)) return [];
@@ -930,7 +935,7 @@ export function createWsHandler(deps: WsDeps) {
         try {
           switch (f.action) {
             case "interrupt":
-              if (!r) return result(false, "Tasks can't run right now.");
+              if (!r) return result(false, noRunnerLine());
               await r.interrupt(f.taskId);
               return result(true);
             case "drop": {
@@ -1820,7 +1825,7 @@ export function createWsHandler(deps: WsDeps) {
         return;
       }
       case "past_steps": {
-        // D390: a task's steps, for 停在哪儿 / Where it stopped and 从这一步重来 / Redo from here.
+        // D391: a task's steps, for 停在哪儿 / Where it stopped and 从这一步重来 / Redo from here.
         const redo = deps.past?.redo;
         if (!redo) throw new Error("past tasks are not available");
         const card = tasks.get(String(f.taskId ?? ""));
@@ -1830,7 +1835,7 @@ export function createWsHandler(deps: WsDeps) {
         return;
       }
       case "past_fork": {
-        // D390: 从这一步重来 / Redo from here: a new task; the original is not touched.
+        // D391: 从这一步重来 / Redo from here: a new task; the original is not touched.
         const redo = deps.past?.redo;
         const step = Number(f.step) || 0;
         const done = (r: { ok: boolean; taskId?: string; message?: string; step?: number }) => send(ws, { t: "past_forked", from: String(f.taskId ?? ""), step: r.step ?? step, ok: r.ok, ...(r.taskId ? { taskId: r.taskId } : {}), ...(r.message ? { message: r.message } : {}) });
@@ -1852,7 +1857,7 @@ export function createWsHandler(deps: WsDeps) {
         const card = tasks.get(f.taskId);
         if (!card) return result(false, "I can't find that task.");
         const r = deps.runner();
-        if (!r?.reopen) return result(false, "Tasks can't run right now.");
+        if (!r?.reopen) return result(false, noRunnerLine());
         const reopen = r.reopen.bind(r);
         try {
           const harness = typeof f.harness === "string" && f.harness ? f.harness : "";

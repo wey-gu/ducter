@@ -246,12 +246,12 @@ interface Doc {
   said: string; // the agent's words, capped
   files: string[];
   from?: string;
-  /** D390: the step of `from` it redoes. */
+  /** D391: the step of `from` it redoes. */
   fromStep?: number;
-  /** D390: its steps, the brief first (seq order). */
+  /** D391: its steps, the brief first (seq order). */
   steps: { seq: number; at: string; who: "you" | "partner"; text: string; came?: string }[];
   opened?: boolean;
-  /** D390: the agent's last words, one line. */
+  /** D391: the agent's last words, one line. */
   last?: string;
 }
 
@@ -353,11 +353,11 @@ export interface Past {
   item(taskId: string): PastItem | undefined;
   /** D285: what a new task opened from this one carries, put after the person's words. */
   seed(taskId: string, words: string, lang: LangTag): string;
-  /** D390: its steps, the brief first, each with what came of it (no commits: the caller adds them). */
+  /** D391: its steps, the brief first, each with what came of it (no commits: the caller adds them). */
   steps(taskId: string): PastStep[];
-  /** D390: its last report in full, cut. */
+  /** D391: its last report in full, cut. */
   report(taskId: string): string | undefined;
-  /** D390: the brief of a task that redoes step `step` of this one: what led up to it, then the words. */
+  /** D391: the brief of a task that redoes step `step` of this one: what led up to it, then the words. */
   forkBrief(taskId: string, step: number, words: string, lang: LangTag, commit?: { sha: string; at: string }): string;
 }
 
@@ -379,7 +379,7 @@ export function createPast(d: PastDeps): Past {
       if (b.brief) doc.brief = b.brief;
       if (b.from) doc.from = b.from;
       if (b.fromStep) doc.fromStep = b.fromStep;
-      // D390: step 1 is the brief, at its first open (a retitle copies the body; a held part's brief comes later).
+      // D391: step 1 is the brief, at its first open (a retitle copies the body; a held part's brief comes later).
       if (b.brief && !doc.opened) {
         doc.opened = true;
         doc.steps.unshift({ seq: e.seq, at: e.ts, who: b.origin === "you" ? "you" : "partner", text: b.brief });
@@ -395,7 +395,7 @@ export function createPast(d: PastDeps): Past {
       if (!b.taskId) return;
       const doc = docOf(b.taskId);
       if (b.role === "user" && b.from === "user" && b.text) doc.words.push(b.text);
-      // D390: each later message to it is a step (the person's, or the partner's for them).
+      // D391: each later message to it is a step (the person's, or the partner's for them).
       if (b.role === "user" && (b.from === "user" || b.from === "partner") && b.text && doc.steps.length < STEPS_CAP) doc.steps.push({ seq: e.seq, at: e.ts, who: b.from === "user" ? "you" : "partner", text: b.text });
       if (b.role === "assistant" && b.text?.trim()) {
         const line = firstLine(b.text);
@@ -450,13 +450,13 @@ export function createPast(d: PastDeps): Past {
       ...(mark ? { mark } : {}),
       ...(from && fromCard ? { from: { taskId: from, title: d.marks.get(fromCard.persona, from)?.name ?? fromCard.title, ...((doc?.fromStep ?? c.from?.step) ? { step: doc?.fromStep ?? c.from!.step! } : {}) } } : {}),
       ...(c.outside && (OUTSIDE_AGENTS as readonly string[]).includes(c.outside.agent) ? { outside: { agent: c.outside.agent as OutsideAgent, startedAt: c.outside.startedAt } } : {}),
-      // D390: where it stopped, in its own words, and what it asks while it waits on the person.
+      // D391: where it stopped, in its own words, and what it asks while it waits on the person.
       ...(doc?.last && doc.last !== outcome ? { lastWords: doc.last } : {}),
       ...(c.pendingDecision?.question && (c.attention === "needs_you" || c.attention === "blocked") ? { asking: firstLine(c.pendingDecision.question, 240) } : {}),
       ...(doc?.steps.length ? { steps: doc.steps.length } : {}),
     };
   };
-  /** D390: the computer a task ran on, by name; "" for the home. */
+  /** D391: the computer a task ran on, by name; "" for the home. */
   const computerOf = (c: TaskCard) => {
     const dev = "device" in c.place ? c.place.device : undefined;
     return dev && dev !== "local" ? (d.computerName?.(dev) ?? dev) : "";
@@ -679,7 +679,7 @@ export function createPast(d: PastDeps): Past {
   };
 }
 
-/** D390: the brief of a task redoing a step of another one, per language. */
+/** D391: the brief of a task redoing a step of another one, per language. */
 const FORK = {
   zh: {
     head: "这件事是把之前的「{title}」（{agent}）从第 {n} 步重做一遍。原来那件不动。到这一步之前的经过：",

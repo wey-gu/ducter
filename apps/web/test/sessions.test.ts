@@ -1,4 +1,4 @@
-// D390: every task fully open. The find-anything field (⌘K) groups what it found in a fixed
+// D391: every task fully open. The find-anything field (⌘K) groups what it found in a fixed
 // order and always ends with the two ways on with the words; a place named in full leads; the
 // words are the same set in zh and en; ⌘K and ⌘O both open it.
 import { describe, expect, test } from "bun:test";

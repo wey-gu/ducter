@@ -80,7 +80,7 @@ type pastState struct {
 	// D299: adopting is the outside session being carried on (agent:id),
 	// opened when its task is there; outMsg why one couldn't be.
 	adopting, outMsg string
-	// D390: computer and ended narrow the list on their own, beside
+	// D391: computer and ended narrow the list on their own, beside
 	// filter (one computer, one ending, each a chip that toggles).
 	computer *string
 	ended    string
@@ -250,7 +250,7 @@ func (a *App) pastView(c *ui.Context) {
 	}, nil)
 	res := a.S.Past.Result
 	var field ui.Element
-	// D390: wide, 停在哪儿 / Where it stopped stands beside the list, on
+	// D391: wide, 停在哪儿 / Where it stopped stands beside the list, on
 	// the card chosen (the first one until another is).
 	split := ps.tab == "" && a.pastWide(c)
 	ui.Row(c.Key("past-split")).Grow(1).MinHeight(0).AlignItems(ui.Stretch).Children(func() {
@@ -387,7 +387,7 @@ func (a *App) pastChips(c *ui.Context, res *protocol.PastFrame) {
 			chips = append(chips, chip{pastFilter{"harness", h.Harness}, harnessName(h.Harness), h.N})
 		}
 	}
-	// D390: a second track: the computers (from two), then how it ended;
+	// D391: a second track: the computers (from two), then how it ended;
 	// each on its own, so "haswell" and "没做成" hold together.
 	var more []chip
 	if len(res.Facets.Computers) > 1 {
@@ -675,7 +675,7 @@ func (a *App) pastCard(c *ui.Context, it *protocol.PastItem, terms []string) {
 	// soft drop opens under it.
 	card.Shadow(0, 2+5*k, 6+12*k, -2, t.Ink.Alpha(0.04+0.06*k)).Shadow(0, 2+2*k, 0, 0, t.Line)
 	if ps.sel == it.TaskID && a.pastWide(c) {
-		card.Border(2, t.Accent.Alpha(0.75)) // D390: the one shown beside the list
+		card.Border(2, t.Accent.Alpha(0.75)) // D391: the one shown beside the list
 	}
 	if focus {
 		card.AccessSelected(true)
@@ -700,7 +700,7 @@ func (a *App) pastCard(c *ui.Context, it *protocol.PastItem, terms []string) {
 			a.pastActs(c, it)
 		}
 	})
-	// D390: a click shows where it stopped (beside the list, or as a sheet
+	// D391: a click shows where it stopped (beside the list, or as a sheet
 	// when narrow); a double click opens it, as Enter does.
 	if card.DoubleClicked() {
 		ps.focus, ps.sheet = it.TaskID, false
@@ -888,7 +888,7 @@ func (a *App) pastMeta(c *ui.Context, it *protocol.PastItem) {
 			ui.Text(c.Key("pr"), a.L.T(key)).FontSize(t.XS).FontWeight(600).TextColor(t.InkSoft).SingleLine().Shrink(0)
 		}
 		if f := it.From; f != nil && f.Step > 0 {
-			// D390: redone from a step of another task.
+			// D391: redone from a step of another task.
 			ui.Text(c.Key("redone"), a.L.T("past.redone", shortTitle(f.Title), f.Step)).FontSize(t.XS).FontWeight(600).TextColor(t.InkSoft).SingleLine().Shrink(1).MinWidth(0)
 		}
 		if o := it.Outside; o != nil {
@@ -1429,7 +1429,7 @@ func (a *App) pastKeys(c *ui.Context, field ui.Element) {
 	switch {
 	case c.Shortcut(ui.Alt, ui.KeyEnter):
 		if cur != nil {
-			a.pastRedoPick(cur.TaskID) // D390: 从某一步开新任务…
+			a.pastRedoPick(cur.TaskID) // D391: 从某一步开新任务…
 		}
 	case c.Shortcut(ui.Cmd|ui.Shift, ui.KeyEnter):
 		if cur != nil {
@@ -1465,7 +1465,7 @@ func (a *App) pastKeys(c *ui.Context, field ui.Element) {
 		}
 	case c.Shortcut(0, ui.KeySpace), c.Shortcut(0, ui.KeyRight):
 		if cur != nil {
-			// D390: where it stopped, as a sheet when it isn't beside the list.
+			// D391: where it stopped, as a sheet when it isn't beside the list.
 			a.pastSelect(cur.TaskID)
 			ps.sheet = true
 		}
@@ -1494,7 +1494,7 @@ func (a *App) pastWalk(by int) {
 		i = max(0, min(len(o)-1, i+by))
 	}
 	ps.focus, ps.scroll = o[i], true
-	a.pastSelect(o[i]) // D390: where it stopped follows the keys
+	a.pastSelect(o[i]) // D391: where it stopped follows the keys
 }
 
 // ---------- the ways in, drawn ----------

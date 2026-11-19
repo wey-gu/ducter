@@ -887,7 +887,7 @@ func (a *App) OpenSwitcher() {
 	a.oh.swQuery, a.oh.swAt, a.pal.at = "", 0, 0
 }
 
-// switcher is 找任何东西 / Find anything while it is open (D390, palette.go).
+// switcher is 找任何东西 / Find anything while it is open (D391, palette.go).
 func (a *App) switcher(c *ui.Context) {
 	if !a.oh.sw {
 		return

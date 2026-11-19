@@ -824,11 +824,11 @@ class AppState {
     // D285: 做过的事 / Past tasks (past.tsx).
     // D300: 替你做过的 / Done for you (did.tsx).
     if (f.t === "did_result") return onDidFrame(f);
-    // D390: the find-anything field asks with its own ids (k…): its answers are its own.
+    // D391: the find-anything field asks with its own ids (k…): its answers are its own.
     if ((f.t === "made_result" || f.t === "past_result") && f.id?.startsWith("k")) return void this.palette?.frame(f);
     if (f.t === "made_result") return onMadeFrame(f);
     if (f.t === "past_result" || f.t === "past_marked" || f.t === "ongoing_result" || f.t === "outside_adopted" || f.t === "outside_hidden") return onPastFrame(f);
-    // D390: a task's steps and a redo's new task (past-preview.tsx); the palette's own past/made answers.
+    // D391: a task's steps and a redo's new task (past-preview.tsx); the palette's own past/made answers.
     if (f.t === "past_steps_result" || f.t === "past_forked") return onStepsFrame(f);
     // `ducter open <task>` (D128): show it as if tapped; back returns.
     if (f.t === "open_task") return void ((this.sheet = null), this.go({ name: "task", id: f.taskId }));
@@ -893,7 +893,7 @@ class AppState {
       if (this.live?.id) queueMicrotask(() => this.retryLive());
       // D238: a new socket: the phone's app says again what it can do (and whether it holds a loan).
       queueMicrotask(() => this.onHandsetWelcome?.());
-      // D390: Past tasks open over a new socket (or opened from a link before it was up): asked again.
+      // D391: Past tasks open over a new socket (or opened from a link before it was up): asked again.
       queueMicrotask(() => this.onPastWelcome?.());
       this.readSent = 0;
       // What the old socket left unanswered: actions are settled from the Log after the replay;
@@ -1028,9 +1028,9 @@ class AppState {
    *  partner, ⌘, Settings, ⌘K the composer of the level shown. Unknown names do nothing. */
   /** D244: opens the next (1) or the previous (-1) task in On hand's order (onhand.tsx sets it). */
   walk?: (by: number) => void;
-  /** D390: the find-anything field's own answers and its reset (palette.tsx sets them; no import cycle). */
+  /** D391: the find-anything field's own answers and its reset (palette.tsx sets them; no import cycle). */
   palette?: { frame: (f: Extract<ServerFrame, { t: "past_result" } | { t: "made_result" }>) => void; reset: () => void };
-  /** D390: past.tsx registers its opener, so a link (#past, #past=words) opens Past tasks. */
+  /** D391: past.tsx registers its opener, so a link (#past, #past=words) opens Past tasks. */
   openPast?: (q?: string) => void;
   onPastWelcome?: () => void;
 
@@ -2486,7 +2486,7 @@ class AppState {
     }
     if (hash === "#onhand") return this.applyRoute({ name: "onhand" });
     if (hash === "#onhand/full") return this.applyRoute({ name: "onhand", full: true });
-    // D390: links straight to Past tasks (with words) and to 找什么都行 / Find anything.
+    // D391: links straight to Past tasks (with words) and to 找什么都行 / Find anything.
     const past = /^#past(?:=(.*))?$/.exec(hash);
     if ((past || hash === "#find") && this.openPast) {
       this.route = { name: "conv" };

@@ -1,6 +1,6 @@
 package i18n
 
-// D390: every task is open: the find-anything palette (⌘K), Past tasks'
+// D391: every task is open: the find-anything palette (⌘K), Past tasks'
 // computer and ending chips, 停在哪儿 / Where it stopped beside the list,
 // a task's steps, and 从这一步开新任务 / New task from this step. The same keys and
 // words as the web client (apps/web/src/i18n-past.ts).

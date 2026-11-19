@@ -105,7 +105,7 @@ export function useRoomy(query: string): boolean {
   return on;
 }
 
-/** D216: ⌘O (Ctrl+O elsewhere) opens the switcher; D390: ⌘K too, the switcher grown into
+/** D216: ⌘O (Ctrl+O elsewhere) opens the switcher; D391: ⌘K too, the switcher grown into
  *  找什么都行 / Find anything (it supersedes ⌘K for the composer on the web). */
 export function openKey(e: KeyboardEvent) {
   const k = e.key.toLowerCase();

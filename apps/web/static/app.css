@@ -16075,7 +16075,7 @@ textarea.wmem-paste { display: block; box-sizing: border-box; height: auto; widt
   .made-line { margin: 8px 18px 0; }
 }
 
-/* ---------- D390: 找什么都行 / Find anything (⌘K), the switcher grown ---------- */
+/* ---------- D391: 找什么都行 / Find anything (⌘K), the switcher grown ---------- */
 .switcher.palette { width: min(720px, calc(100vw - 32px)); }
 .palette .k-field {
   display: flex;
@@ -16171,7 +16171,7 @@ textarea.wmem-paste { display: block; box-sizing: border-box; height: auto; widt
   .palette .k-field { padding: 0 14px 0 16px; }
 }
 
-/* ---------- D390: Past tasks, every task open: 停在哪儿 / Where it stopped beside the list ---------- */
+/* ---------- D391: Past tasks, every task open: 停在哪儿 / Where it stopped beside the list ---------- */
 .past-body { flex: 1; min-height: 0; display: flex; }
 .past-body > .past-list { flex: 1; min-width: 0; }
 .past-sheet.with-pv { width: min(1280px, calc(100vw - 48px)); }
@@ -16318,7 +16318,7 @@ textarea.wmem-paste { display: block; box-sizing: border-box; height: auto; widt
   cursor: pointer;
 }
 
-/* ---------- D390: 从这一步重来 / Redo from here ---------- */
+/* ---------- D391: 从这一步重来 / Redo from here ---------- */
 .redo-scrim { z-index: 30; }
 .redo-sheet {
   position: fixed;
@@ -16367,7 +16367,9 @@ textarea.wmem-paste { display: block; box-sizing: border-box; height: auto; widt
 .redo-words {
   width: 100%;
   box-sizing: border-box;
-  resize: vertical;
+  resize: none;
+  field-sizing: content;
+  max-height: 40vh;
   min-height: 96px;
   padding: 12px 14px;
   border: 0;
@@ -16398,7 +16400,7 @@ textarea.wmem-paste { display: block; box-sizing: border-box; height: auto; widt
 @media (prefers-reduced-motion: reduce) {
   .redo-sheet, .pv-sheet, .redo-step, .pv-redo { animation: none; transition: none; }
 }
-/* D390 designer pass: the step's way on sits at its head on hover (no empty row under each step); the preview's foot stays one line. */
+/* D391 designer pass: the step's way on sits at its head on hover (no empty row under each step); the preview's foot stays one line. */
 .pv { width: 420px; }
 @media (hover: hover) and (min-width: 641px) { .pv-step .pv-redo { position: absolute; top: 0; right: 0; margin: 0; } }
 .pv-step { padding-bottom: 12px; }

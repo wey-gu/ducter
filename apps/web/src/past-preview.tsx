@@ -1,4 +1,4 @@
-// D390: every task fully open (design/sessions.md). Past tasks' 停在哪儿 / Where it stopped: how a
+// D391: every task fully open (design/sessions.md). Past tasks' 停在哪儿 / Where it stopped: how a
 // task ended (its last report in full, its last words, what it asks you, its changes) and its steps
 // (its brief, then each later message to it, with what came of it and the commit it started from);
 // and 从这一步开新任务 / New task from this step: a new task from that step, the original left as it is.
@@ -30,6 +30,13 @@ export const PV = {
 };
 
 /** Asks the home for a task's steps once (kept until Past tasks opens again). */
+/** The field grows with its words, no resize grip (as the hand-over note, D385). */
+const grow = (el: HTMLTextAreaElement | null) => {
+  if (!el || CSS.supports?.("field-sizing", "content")) return;
+  el.style.height = "auto";
+  el.style.height = `${el.scrollHeight + 2}px`;
+};
+
 export function askSteps(taskId: string, again = false) {
   if (!taskId || (!again && (PV.steps.has(taskId) || PV.asked.has(taskId)))) return;
   const id = `s${++PV.n}`;
@@ -239,6 +246,7 @@ export function RedoSheet({ dateOf }: { dateOf: (iso: string) => string }) {
   const ref = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
     if (r?.step) ref.current?.focus();
+    grow(ref.current);
   }, [r?.step]);
   if (!r) return null;
   const st = PV.steps.get(r.taskId);
@@ -304,7 +312,7 @@ export function RedoSheet({ dateOf }: { dateOf: (iso: string) => string }) {
             <label class="redo-k" for="redo-words">
               {t("redo.words")}
             </label>
-            <textarea id="redo-words" ref={ref} class="redo-words" rows={4} value={r.words} onInput={(e) => ((r.words = e.currentTarget.value), A.changed())} />
+            <textarea id="redo-words" ref={ref} class="redo-words" rows={4} value={r.words} onInput={(e) => (grow(e.currentTarget), (r.words = e.currentTarget.value), A.changed())} />
             <p class="redo-k">{t("redo.agent")}</p>
             <div class="pchips redo-agents" role="radiogroup" aria-label={t("redo.agent")}>
               {[r.harness, ...AGENTS.filter((h) => h !== r.harness)].map((h) => (

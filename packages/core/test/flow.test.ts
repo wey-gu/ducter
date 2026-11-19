@@ -281,3 +281,11 @@ test("living message: one open message, revisions supersede, read freezes", asyn
   // Already-seen items (the pending decision) are not repeated.
   expect((v3[2]!.body as Bodies["living_msg"]).items.map((i) => [i.taskId, i.kind])).toEqual([["t1", "done"]]);
 });
+
+test("a question that names no Go reads in the task's language (好，继续, never 好，Continue)", async () => {
+  const { log } = setup();
+  openTask(log, "t1");
+  report(log, "t1", { state: "needs_input", summary: "建索引慢 3 倍，用哪个参数？", questions: [] });
+  await tick();
+  expect((kinds(log, "decision")[0]!.body as Bodies["decision"]).goLabel).toBe("继续");
+});

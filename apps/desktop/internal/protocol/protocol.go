@@ -2573,7 +2573,7 @@ type ServerFrame struct {
 	Op          string            `json:"op,omitempty"`
 	// D285: past_result and past_marked (past.go), decoded on their own.
 	Past *PastFrame `json:"-"`
-	// D390: past_steps_result and past_forked (past.go), decoded on their own.
+	// D391: past_steps_result and past_forked (past.go), decoded on their own.
 	PastSteps *PastStepsFrame `json:"-"`
 	// D383: made_result (made.go), decoded on its own.
 	Made *MadeFrame `json:"-"`
@@ -2786,7 +2786,7 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 	}
 	var f ServerFrame
 	if err := json.Unmarshal(data, &f); err != nil {
-		// D390: past_forked's step is a number where ServerFrame's "step" is
+		// D391: past_forked's step is a number where ServerFrame's "step" is
 		// the anywhere setup's: read it on its own.
 		var head struct {
 			T string `json:"t"`

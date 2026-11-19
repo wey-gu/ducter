@@ -1,4 +1,4 @@
-// D390: task_find finds an earlier task by the person's words with where it stopped (or a task's
+// D391: task_find finds an earlier task by the person's words with where it stopped (or a task's
 // steps by its id); task_fork redoes a step as a new task under the line said before it; neither
 // works unasked.
 import { expect, test } from "bun:test";

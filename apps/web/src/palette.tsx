@@ -1,4 +1,4 @@
-// D390: 找什么都行 / Find anything (⌘K, ⌘O; design/sessions.md). The switcher grown into one field
+// D391: 找什么都行 / Find anything (⌘K, ⌘O; design/sessions.md). The switcher grown into one field
 // that finds any task (on hand here, earlier ones from the home's Past index by what anyone said,
 // a file, a branch, a PR, a day), what Ducter made, the person's own sessions and the places, and acts
 // on the one chosen: open it, carry it on, start a new task from one of its steps or from all it found; or tells

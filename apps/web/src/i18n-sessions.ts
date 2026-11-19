@@ -1,4 +1,4 @@
-// D390: every task fully open (design/sessions.md): the find-anything field (⌘K), Past tasks'
+// D391: every task fully open (design/sessions.md): the find-anything field (⌘K), Past tasks'
 // 停在哪儿 / Where it stopped, its steps, and 从这一步开新任务 / New task from this step. The same words as the Mac's.
 export const sessionWords: { zh: Record<string, string>; en: Record<string, string> } = {
   zh: {

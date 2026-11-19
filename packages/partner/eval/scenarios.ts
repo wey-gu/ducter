@@ -225,7 +225,7 @@ export interface Scenario {
   saved?: import("../../protocol/src/saved.ts").SavedInput[];
   /** D383: what Ducter made over the last weeks (eval/seed-made.ts): the Kyoto itinerary (9 days ago), the visa PDF (5), a HawDB load-test CSV (20), a Bun note on the home (12), the Mac table (3). */
   made?: true;
-  /** D390: seed a heavy developer's earlier tasks (seed-history.ts): last week's compaction PR, last month's Rust build on haswell, a WAL task with four steps, two bloom-filter tasks. */
+  /** D391: seed a heavy developer's earlier tasks (seed-history.ts): last week's compaction PR, last month's Rust build on haswell, a WAL task with four steps, two bloom-filter tasks. */
   history?: true;
   /** D381: lists the person pinned (said by the partner earlier, then pinned by a tap), with their ticks. */
   pinned?: { title: string; items: string[]; ticks?: string[] }[];
@@ -2170,7 +2170,7 @@ export const scenarios: Scenario[] = [
     expect: { opens: 0, msgs: [1, 1], maxChars: 220, noUi: true, require: [/yen|cash/i, /charger/i, /hotel/i] },
     rubric: "The user pinned a packing list; passport, ICOCA card and umbrella are ticked (the [pinned] line says so). They ask what's left. The partner answers in plain English from that line: yen in cash, the charger and plug adapter, the hotel confirmation; nothing ticked is named as left. No block (the list is already pinned at the top), no task.",
   },
-  // ---------- D390: every earlier task open: found by vague words, carried on or redone from a step ----------
+  // ---------- D391: every earlier task open: found by vague words, carried on or redone from a step ----------
   {
     id: "past-compaction-pr-zh",
     category: "past",

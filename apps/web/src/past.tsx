@@ -39,10 +39,10 @@ export const P = {
   settling: "",
   /** D299: the outside session being carried on (agent:id), opened when its task is there. */
   adopting: "",
-  /** D390: the computer and the ending narrowing the list (each beside the filter above). */
+  /** D391: the computer and the ending narrowing the list (each beside the filter above). */
   computer: undefined as string | undefined,
   ended: undefined as PastQuery["ended"],
-  /** D390: the card whose 停在哪儿 / Where it stopped stands beside the list (wide). */
+  /** D391: the card whose 停在哪儿 / Where it stopped stands beside the list (wide). */
   sel: "",
 };
 
@@ -299,7 +299,7 @@ function endWord(it: PastItem): string {
   return "";
 }
 
-/** D390: a card's click: beside the list (wide) it is chosen for 停在哪儿; else its preview fills the screen. */
+/** D391: a card's click: beside the list (wide) it is chosen for 停在哪儿; else its preview fills the screen. */
 function choose(it: PastItem, wide: boolean) {
   P.focus = P.sel = it.taskId;
   if (!wide) PV.sheet = it.taskId;
@@ -535,7 +535,7 @@ function Chips() {
   );
 }
 
-/** D390: the computer it ran on (from two) and how it ended: a row of their own under the filters,
+/** D391: the computer it ran on (from two) and how it ended: a row of their own under the filters,
  *  each a toggle that holds beside the one above. */
 function Narrow() {
   const computers = P.res?.facets.computers ?? [];
@@ -590,7 +590,7 @@ export function PastSheet() {
   const secs = sections(items);
   const order = secs.flatMap((s) => s.items);
   const at = order.findIndex((i) => i.taskId === P.focus);
-  // D390: beside the list, the chosen card's 停在哪儿; none chosen yet, the first one drawn.
+  // D391: beside the list, the chosen card's 停在哪儿; none chosen yet, the first one drawn.
   const pv = wide ? chosenOf(order) : undefined;
   if (pv && P.sel !== pv.taskId) P.sel = pv.taskId;
   const walk = (by: number) => {
@@ -618,7 +618,7 @@ export function PastSheet() {
     if (e.key === "ArrowUp" || (!inField && e.key === "k")) return e.preventDefault(), walk(-1);
     if (e.key === "/" && !inField) return e.preventDefault(), ref.current?.focus();
     if (!cur) return;
-    // D390: Space or → looks at where it stopped (beside the list, or filling the screen).
+    // D391: Space or → looks at where it stopped (beside the list, or filling the screen).
     if (!inField && (e.key === " " || e.key === "ArrowRight")) {
       e.preventDefault();
       if (!wide) return choose(cur, false);
@@ -720,7 +720,7 @@ function chosenOf(items: PastItem[]): PastItem | undefined {
 
 const coarsePointer = () => typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches;
 
-/** D390: on a phone (and narrow), where it stopped fills the screen; back goes to the list. */
+/** D391: on a phone (and narrow), where it stopped fills the screen; back goes to the list. */
 function PhonePreview({ items }: { items: PastItem[] }) {
   const it = items.find((i) => i.taskId === PV.sheet);
   if (!it) return null;

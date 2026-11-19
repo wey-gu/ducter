@@ -1,5 +1,44 @@
 # Changelog
 
+## 0.0.93 - 2026-11-19
+
+<!-- whats-new
+zh: ⌘K 找到以前任何一件事，接着做或从某一步重来
+en: ⌘K finds any past task; continue it or redo from a step
+zh: 交出一批待办时先用一句话说要哪些
+en: Hand over to-dos by saying which, in one sentence
+-->
+
+**Every task stays open**
+- ⌘K: Find anything. Type a few words and any task, on hand or done, shows up with where it ran,
+  what it ended with, and what to do next: open it, carry on, or start a new task from one step.
+- Past tasks filters by computer and by how it ended, and shows where a task stopped.
+- Say it instead: "carry on last week's compaction PR", "redo step 3 with Codex". If two tasks
+  match, Ducter asks which one.
+
+**Handing over**
+- The hand-over sheet opens on one question: what to hand over. Say "the memory distill ones,
+  don't touch the database" and it finds them, ticks them, and keeps your note.
+- A repository is found on the computer that has it, and cloned where none does. A task that
+  can't start says why, with a button that fixes it. "Carefully" means it thinks harder.
+
+**Looking out for you**
+- Different sources disagreeing about a plan (the calendar says Saturday, a newsletter says
+  Friday) are said once, with what isn't known yet, and filled in when it is. "How did you know?"
+  shows each source and its link.
+- Cold sales pitches no longer count as waiting for your reply.
+
+**Routines**
+- A review routine's drafted reviews wait under Waiting for you, one card a round.
+
+**Devices**
+- Each device says what it is to Ducter, what you can do, and three short promises; the rest is
+  folded away. The map never clips a name.
+
+**Fixes**
+- On the Mac, a long list of partner models wraps instead of squeezing the title.
+- Sheets on the Mac stay below the window's title bar.
+
 ## 0.0.92 - 2026-11-19
 
 <!-- whats-new

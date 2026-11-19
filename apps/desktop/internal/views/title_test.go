@@ -39,6 +39,7 @@ func titleApp(t *testing.T, lang i18n.Lang, prefs ui.Preferences) (*App, *ui.Tes
 
 func TestTitlePlaysOnceWithItsSoundAndLeavesOnAnyKey(t *testing.T) {
 	app, tt, played := titleApp(t, i18n.ZH, ui.Preferences{})
+	tt.SetSize(640, 430) // what is checked is time and sound, not pixels: a quarter of the paint
 	tt.SetWindowActive(true)
 	tt.Frame()
 	if !app.TitleShowing() || len(*played) != 1 {
@@ -69,10 +70,11 @@ func TestTitlePlaysOnceWithItsSoundAndLeavesOnAnyKey(t *testing.T) {
 
 func TestTitleFromThePromptFillsWithLight(t *testing.T) {
 	app, tt, played := titleApp(t, i18n.EN, ui.Preferences{})
+	tt.SetSize(640, 430) // what is checked is time and sound, not pixels: a quarter of the paint
 	tt.SetWindowActive(true)
 	tt.Frame()
 	tt.Advance(7 * time.Second)
-	tt.ClickAt(640, 430)
+	tt.ClickAt(320, 215)
 	if got := (*played)[0].stopped; len(got) != 1 || got[0] != 500*time.Millisecond {
 		t.Fatalf("leaving from the prompt stopped the sound with %v, want a 500ms fade", got)
 	}

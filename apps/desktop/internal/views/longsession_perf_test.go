@@ -1,7 +1,7 @@
 package views
 
 // D320: a long session stays smooth and bounded. A fake home holds a task
-// of 2,000, 10,000 and 50,000 events and answers task_index and
+// of 2,000 and 50,000 events and answers task_index and
 // task_history as core/src/ws.ts does; the app opens it (the index and the
 // newest window: first paint), the reader scrolls from its end to its head
 // a few rows a frame (every frame timed; each page answered at once), a
@@ -12,7 +12,6 @@ package views
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"slices"
 
 	"testing"
@@ -140,13 +139,9 @@ func (r *sessionRun) note() {
 }
 
 func TestLongSessionWindowed(t *testing.T) {
-	scale := time.Duration(1)
-	if os.Getenv("CI") != "" {
-		// A shared runner paints on the CPU about half again slower: CI catches only a real regression.
-		scale = 2
-	}
 	bound := winKeep + winTail + winSlack + winPage
-	for _, n := range []int{2000, 10000, 50000} {
+	// 10,000 was a third size on the same path: 2,000 (small) and 50,000 (the claim) bracket it.
+	for _, n := range []int{2000, 50000} {
 		t.Run(fmt.Sprint(n), func(t *testing.T) {
 			all := longTask(n+300, "big")
 			evs, live := all[:n], all[n:]
@@ -166,7 +161,7 @@ func TestLongSessionWindowed(t *testing.T) {
 			tt.Frame()
 			open := time.Since(start0)
 			r.pump(nil)
-			if open > 300*time.Millisecond*scale {
+			if overBudget(t, open, 300*time.Millisecond) {
 				t.Errorf("open: first paint took %v after its frames arrived", open)
 			}
 
@@ -194,7 +189,7 @@ func TestLongSessionWindowed(t *testing.T) {
 				t.Errorf("at the head, the brief doesn't show")
 			}
 			scrollP95 := p95(frames)
-			if scrollP95 > 80*time.Millisecond*scale {
+			if overBudget(t, scrollP95, 80*time.Millisecond) {
 				t.Errorf("scrolling: frame p95 %v", scrollP95)
 			}
 			if r.held > bound {
@@ -221,7 +216,7 @@ func TestLongSessionWindowed(t *testing.T) {
 			if app.tpage.flash.seq != target {
 				t.Errorf("the turn jumped to isn't tinted")
 			}
-			if jump > 300*time.Millisecond*scale {
+			if overBudget(t, jump, 300*time.Millisecond) {
 				t.Errorf("jump: %v to its turn", jump)
 			}
 

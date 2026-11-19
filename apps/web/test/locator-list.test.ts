@@ -12,7 +12,7 @@ import { loop } from "@ducter/protocol/fixtures/landmarks-cases.ts";
 import { A } from "../src/app.ts";
 import { strings } from "../src/i18n.ts";
 import { span, stamp } from "../src/format.ts";
-import { LOC_MAX, LOC_ROW, locatorRow, locKey, locScrollFor, locWindow } from "../src/transcript.tsx";
+import { LOC_MAX, LOC_ROW, locatorRow, locKey, locScrollFor, locWindow } from "../src/transcript.tsx";import { budget } from "./slowness.ts";
 
 const local = (d: number, h: number, m: number) => new Date(2026, 10, d, h, m).toISOString();
 const NOW = new Date(2026, 10, 17, 12, 0).getTime();
@@ -113,7 +113,7 @@ describe("D325 the list", () => {
     }
     const each = (performance.now() - t0) / ix.turns.length;
     // Well under a frame (16 ms): made once, then each move with its drawn rows said.
-    expect(made).toBeLessThan(8 * (process.env.CI ? 2 : 1));
-    expect(each).toBeLessThan(2 * (process.env.CI ? 2 : 1));
+    expect(made).toBeLessThan(budget(8, made));
+    expect(each).toBeLessThan(budget(2, each));
   });
 });

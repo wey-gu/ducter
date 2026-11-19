@@ -38,6 +38,8 @@ type harness struct {
 	// got counts the frames applied, by type (a barrier: frames on the
 	// socket arrive in the order the hub sent them).
 	got map[string]int
+	// rec, if set, sees every frame applied (D399: a live core's frames kept as a fixture).
+	rec func(protocol.ServerFrame)
 }
 
 func newHarness(t *testing.T, lang i18n.Lang) *harness {
@@ -71,6 +73,9 @@ func (h *harness) receive(f protocol.ServerFrame) {
 		h.got = map[string]int{}
 	}
 	h.got[f.T]++
+	if h.rec != nil {
+		h.rec(f)
+	}
 	h.app.Receive(f)
 }
 

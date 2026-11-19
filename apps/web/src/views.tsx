@@ -3070,12 +3070,13 @@ function SettingsSheet() {
             <Avatar size={64} />
             <span class="grow">
               <b>{A.S.personaName}</b>
-              {partnerLede() && <small>{partnerLede()}</small>}
+              <small>{partnerLede() || t("settings.list.partner")}</small>
             </span>
             <Chev />
           </button>
           <div class="set-card set-list">
-            {SECTIONS.filter((x) => x.page !== "peers" || peersPageShown()).map((x) => (
+            {/* D399: the hero above is the partner's row; the list never shows it twice (same face, same page). */}
+            {SECTIONS.filter((x) => x.page !== "partner" && (x.page !== "peers" || peersPageShown())).map((x) => (
               <button class="set-row" key={x.page} onClick={() => go(x.page)}>
                 <SectionArt art={x.art} size={40} />
                 <span class="grow">

@@ -124,7 +124,7 @@ func (a *App) todosPanel(c *ui.Context) {
 	a.todosInit()
 	a.panelHead(c, TabTodos, a.L.T("todos.lede", a.personaName()))
 	// Who owns what, one small line on the lede's edge, close under it.
-	ui.Text(c.Key("todos-own"), a.L.T("todos.own", a.personaName())).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted).Margin(-t.S3, 0, 0, 0)
+	a.ledeNote(c, "todos-own", a.L.T("todos.own", a.personaName()))
 	v := a.S.Sources
 	if v == nil {
 		ui.Text(c, a.L.T("todos.pick.loading")).FontSize(t.MD).TextColor(t.InkMuted).Padding(0, t.S5)

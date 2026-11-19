@@ -6242,9 +6242,6 @@ button.bcard:active {
   color: var(--ink-muted);
   font-size: var(--xs);
 }
-.af-kept {
-  margin-top: var(--s2);
-}
 /* 付款 / Pay: the facts as a small receipt, the amount biggest. */
 .pay-facts {
   display: grid;
@@ -11449,9 +11446,6 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   letter-spacing: 0.08em;
   user-select: all;
 }
-.set-page.pushed .chats-goes {
-  margin: var(--s2) 0 0;
-}
 /* A phone is narrow: the button drops under its note, at the right edge. */
 @media (max-width: 520px) {
   .chat-foot,
@@ -14251,11 +14245,11 @@ svg .wave.w2.on {
 /* D332: 终端里的 AI / AI in your terminal. The picture, literal: the person's agents' coins, the partner,
    and the two ways between them in words; the Partner page's one quiet invitation line. */
 .peers-pic { display: flex; align-items: center; justify-content: center; gap: var(--s3); margin: 0 0 var(--s4); padding: var(--s4) var(--s5); border-radius: var(--r-lg); background: var(--surface-sunken); box-shadow: inset 0 2px 0 var(--line); }
-.pp-end { display: flex; flex: none; flex-direction: column; align-items: center; gap: var(--s2); }
+.pp-end { display: flex; flex: 0 1 auto; flex-direction: column; align-items: center; gap: var(--s2); min-width: 0; max-width: 38%; }
 .pp-end small,
 .pp-way small { font-size: var(--sm); font-weight: 600; line-height: 1.4; color: var(--ink-soft); text-align: center; }
 .pp-end .mem-coins > * + * { margin-left: -16px; }
-.pp-ways { display: flex; flex: 1; flex-direction: column; gap: var(--s3); min-width: 0; max-width: 260px; }
+.pp-ways { display: flex; flex: 1; flex-direction: column; gap: var(--s3); min-width: 112px; max-width: 260px; }
 .pp-way { display: flex; flex-direction: column; gap: 2px; }
 .pp-arrow { width: 100%; height: 14px; color: var(--ink-muted); }
 .set-invite { display: flex; align-items: center; gap: var(--s3); padding: 0 var(--set-in, var(--s4)); color: var(--ink-muted); }
@@ -15954,7 +15948,9 @@ svg .wave.w2.on {
   font-weight: 700;
   line-height: 1.4;
 }
-.todo-own {
+/* D399: what is true of a whole pane, one small line close under its lede (to-do sources, passwords & cards, chat apps). */
+.todo-own,
+.lede-note {
   margin: calc(-1 * var(--s2)) 0 var(--s1);
   color: var(--ink-muted);
 }

@@ -77,6 +77,8 @@ func (a *App) chatsPanel(c *ui.Context) {
 	t := a.T
 	a.chatsInit()
 	a.panelHead(c, TabChats, a.L.T("chats.lede", a.personaName()))
+	// D399: what reaches a chat app is true of all of them: under the lede, not under the last card.
+	a.ledeNote(c, "chats-goes", a.L.T("chats.goes"))
 	f := a.S.Channels
 	if f == nil {
 		ui.Text(c, a.L.T("chats.state.starting")).FontSize(t.MD).TextColor(t.InkMuted)
@@ -90,7 +92,6 @@ func (a *App) chatsPanel(c *ui.Context) {
 		}
 	}
 	a.imessageGroup(c)
-	a.paperNote(c, a.L.T("chats.goes"))
 }
 
 func (a *App) chatState(v protocol.ChannelView) (string, sideTone) {

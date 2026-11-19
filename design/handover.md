@@ -230,8 +230,8 @@ the fresh user meets one question.
   isn't is the subject, its filler dropped ("那些关于…的都交给你", "the ones about…"). One clause
   holding both stays the subject. The cheapest model, in the find's one call, may read the split better;
   its note is kept only when it is the person's own words. `said {about, note, by}` is shown under the
-  field as two facts: **找的是 / Looking for** and **给{name}的话 / A note for {name}** with **已经写进
-  右边 / Now in the note on the right** (narrow: **下一步里能改**). The note field takes it while the
+  field as **找的是 / Looking for** and, when the note went to the note field, one quiet line **给{name}的话已写进
+  右边 / Your note for {name} is on the right** (narrow: **给{name}的话下一步里能改**); the note is shown once, in its field. The note field takes it while the
   person hasn't written their own; theirs is never replaced.
 - **The conversation agrees.** `todos do=find query=` runs the same split: the set's query is the
   subject and `TodoSet.note` keeps the how (shown on the set card as **给{name}的话**); `do=hand set=`
@@ -240,7 +240,10 @@ the fresh user meets one question.
   is the note, **在哪儿做 / 谁来做**, then how once two or more are ticked. A computer's name wraps and
   its reason sits under it, whole; the row's highlight is clipped by the group's corners.
 - **Mac sheets keep below the title bar.** Every sheet over the window centers in the room under the
-  60pt bar that holds the traffic lights (`sheetBack`), whatever the window's height.
+  60pt bar that holds the traffic lights (`sheetBack`), whatever the window's height: the ⌘K palette and
+  Past tasks' redo and where sheets too (D391).
+- **Where follows the note.** The note heard in the words goes to `pile_how` with the set, so a computer
+  it names wins Where over the one with the clone (D395's order: named computer, rule, clone).
 
 Shots: `.shots/handover-words/` (`before-*`, `after-*`; web on `apps/web/demo-handover.ts`, now with
 the pile across nowledge-co repos; Mac from `TestHandoverWordsShots`, the traffic lights painted in).

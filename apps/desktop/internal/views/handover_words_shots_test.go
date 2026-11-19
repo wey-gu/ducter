@@ -55,7 +55,11 @@ func wordsApp(t *testing.T, lang i18n.Lang, w, h int, scene string) (*App, *[]an
 		tt.Advance(time.Second)
 		todoFrames(tt, 2)
 		if hr, ok := lastSent[protocol.PileHowReq](*sent); ok {
+			// As core answers (D395's order): a computer the note names wins; else the one with the clone.
 			hw := longWhere(lang)
+			if strings.Contains(hr.Note, "haswell") {
+				hw.Where = protocol.HandWhere{Device: "w-haswell", Name: "haswell", Why: "note", Said: "haswell", HasRepo: true}
+			}
 			if len(hr.Refs) < 2 {
 				hw.Shape, hw.Shapes = "", nil
 			}
@@ -108,13 +112,26 @@ func wordsApp(t *testing.T, lang i18n.Lang, w, h int, scene string) (*App, *[]an
 func TestHandWordsFirst(t *testing.T) {
 	app, sent, tt := wordsApp(t, i18n.ZH, 1000, 720, "found")
 	all := strings.Join(tt.Texts(), " | ")
-	for _, want := range []string{"想交给小鸭哪些？", "找的是", "memory distill", "已经写进右边", "找到 9 件讲记忆提炼的", "在哪儿做", "Hetzner Server fsn1-cx52 (Falkenstein)", "nowledge-co/mem 在这台上", "先出个方案", "交给小鸭这 6 件"} {
+	for _, want := range []string{"想交给小鸭哪些？", "找的是", "memory distill", "给小鸭的话已写进右边", "找到 9 件讲记忆提炼的", "在哪儿做", "haswell", "你写了 haswell", "先出个方案", "交给小鸭这 6 件"} {
 		if !strings.Contains(all, want) {
 			t.Fatalf("missing %q in %s", want, all)
 		}
 	}
 	if app.ho.note != wordsNote(i18n.ZH) || len(app.ho.handTicked()) != 6 {
 		t.Fatalf("note %q, ticked %d", app.ho.note, len(app.ho.handTicked()))
+	}
+	// The note heard in the words goes to core's where with the set (so the computer it names wins).
+	if hr, _ := lastSent[protocol.PileHowReq](*sent); hr.Note != wordsNote(i18n.ZH) || len(hr.Refs) != 6 {
+		t.Fatalf("pile_how: %+v", hr)
+	}
+	// The note shows once: in the right column's field, not again as a chip on the left.
+	if n := strings.Count(all, wordsNote(i18n.ZH)); n > 1 {
+		t.Fatalf("the note shown %d times: %s", n, all)
+	}
+	// With nothing said, a long computer name is whole (wrapped), its reason under it.
+	_, _, te := wordsApp(t, i18n.ZH, 1000, 720, "empty")
+	if e := strings.Join(te.Texts(), " | "); !strings.Contains(e, "Hetzner Server fsn1-cx52 (Falkenstein)") || !strings.Contains(e, "nowledge-co/mem 在这台上") {
+		t.Fatalf("the long where: %s", e)
 	}
 	// Their own note stays when the words change.
 	app.ho.note = "我自己的话"
@@ -152,6 +169,17 @@ func TestSheetsKeepBelowTheTitleBar(t *testing.T) {
 		}
 		if r.Y < ChromeH {
 			t.Fatalf("the sheet's title at y=%.0f is under the title bar (window %d tall)", r.Y, h)
+		}
+		// ⌘K (D391's palette) too.
+		app.ho.open = false
+		app.oh.sw = true
+		todoFrames(tt, 3)
+		p, ok := tt.Find(app.L.T("pal.placeholder"))
+		if !ok {
+			t.Fatalf("no palette at %d: %v", h, tt.Texts())
+		}
+		if p.Y < ChromeH {
+			t.Fatalf("the palette's field at y=%.0f is under the title bar (window %d tall)", p.Y, h)
 		}
 	}
 }

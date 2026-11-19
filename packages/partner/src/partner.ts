@@ -3097,6 +3097,14 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           const group = g0 ? groups?.list().find((g) => g.hand && (g.id === g0 || g.name.toLowerCase() === g0.toLowerCase()))?.id : undefined;
           if (g0 && !group) return { ok: false, error: `No live hand-over group "${g0}".` };
           if (ho && (set || note || shape || group || refs.length > 1)) {
+            // A plan first with no line said yet: code says it before the hand-over, so the conversation never
+            // goes quiet and any card the hand-over raises (the lasting where) comes after the line.
+            const willPlan = !group && (shape === "plan" || (!shape && !!set && refs.length >= 2));
+            if (willPlan && !spoke) {
+              const zh = (taskLanguage(turn) ?? (/[㐀-鿿]/.test(note) ? "zh" : "en")).startsWith("zh");
+              core.log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: zh ? "好，我先看一遍，出个方案给你，你点头再做。" : "OK. I'll read them first and show you a plan; nothing starts until you say so." } } as never);
+              if (turn) turn.handed = true;
+            }
             const r = await ho.hand({ refs, ...(note ? { note } : {}), ...(shape ? { shape } : {}), ...(group ? { group } : {}), ...(set ? { setId: set.setId, bySubject: true, ...(set.subject ? { subject: set.subject } : {}) } : {}) });
             if (!r.ok) return { ok: false, error: r.error ?? "Couldn't hand them over." };
             if (spoke && turn) turn.handed = true;

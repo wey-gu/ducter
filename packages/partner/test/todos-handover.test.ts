@@ -61,6 +61,9 @@ test("do=hand set= with #405 and the note: one group, plan first, the note kept;
   const f = await call({ do: "find", query: "memory distill" });
   const r = await call({ do: "hand", set: f.set, note: "#405 也加上。先别动数据库迁移，验证都去 haswell 上跑。" });
   expect(r).toMatchObject({ ok: true, handed: 3, shape: "plan", group: "记忆提炼" });
+  // Nothing was said before the call: code says the plan-first line, before any card the hand-over raises.
+  const after = core.log.read({ stream: "channel", kinds: ["ai_msg"], limit: 20 }).map((e) => (e.body as Bodies["ai_msg"]).text);
+  expect(after.filter((t) => t === "好，我先看一遍，出个方案给你，你点头再做。").length).toBe(1);
   const g = core.taskGroups.list().find((x) => x.name === "记忆提炼")!;
   expect(g.hand!.items.map((i) => i.ref).sort()).toEqual(["acme/mem#398", "acme/mem#405", "acme/mem#412"]);
   expect(g.hand!.note).toBe("#405 也加上。先别动数据库迁移，验证都去 haswell 上跑。");

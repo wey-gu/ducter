@@ -260,6 +260,11 @@ export interface Scenario {
   /** D300: a day of things Ducter did for the person (packages/core/test/did-day.ts), logged now: the `did_list` tool answers from it. */
   did?: true;
   /**
+   * D390: the partner thinks with Codex on a home where Codex and Claude Code are signed in, and
+   * Codex lists its own models (a fake catalog: GPT-6.2-Sol, GPT-6.2-Astra, GPT-6.1-Terra, GPT-6-Luna).
+   */
+  brainCodex?: true;
+  /**
    * D312: the partner under test is a second partner with this name, on its own view of core (its
    * own conversation); the seed goes into the default partner's conversation, which it never sees.
    */
@@ -2886,5 +2891,44 @@ export const scenarios: Scenario[] = [
     steps: [{ user: "switch yourself to opus for our chats" }],
     expect: { called: [{ tool: "brain_switch", args: { model: /opus/i } }], notCalled: ["task_switch"], opens: 0, noSend: true, noAsk: true, msgs: [0, 1], maxChars: 120 },
     rubric: "A task is running, but the user asked the partner ITSELF to use Opus for the conversation. The partner calls brain_switch with the model, leaves the task alone (no task_switch, nothing sent to it) and opens nothing. At most one short English line that it thinks with Opus from the user's next message.",
+  },
+  // D390: on a Codex home, the short name the person says, matched to Codex's own list.
+  {
+    id: "brain-switch-astra-zh",
+    category: "direct",
+    lang: "zh",
+    brainCodex: true,
+    steps: [{ user: "用 astra 跟我聊" }],
+    expect: { called: [{ tool: "brain_switch", args: { model: /astra/i } }], notCalled: ["task_switch"], opens: 0, noAsk: true, msgs: [0, 1], maxChars: 60 },
+    rubric: "The partner thinks with Codex; the user wants it to talk with Astra (Codex's GPT-6.2-Astra). The partner calls brain_switch with the model as said, opens no task and puts up no card. At most one short Chinese line that it uses GPT-6.2-Astra from the user's next message; nothing about sessions or settings.",
+  },
+  {
+    id: "brain-switch-astra-en",
+    category: "direct",
+    lang: "en",
+    brainCodex: true,
+    steps: [{ user: "switch to astra" }],
+    expect: { called: [{ tool: "brain_switch", args: { model: /astra/i } }], notCalled: ["task_switch"], opens: 0, noAsk: true, msgs: [0, 1], maxChars: 120 },
+    rubric: "No task is open; the user asks the partner to switch to Astra (Codex's GPT-6.2-Astra). The partner calls brain_switch with the model, opens nothing. At most one short English line that it thinks with GPT-6.2-Astra from the user's next message.",
+  },
+  // A question about a model is not a request to use it.
+  {
+    id: "brain-astra-what-zh",
+    category: "direct",
+    lang: "zh",
+    brainCodex: true,
+    steps: [{ user: "astra 是什么" }],
+    expect: { notCalled: ["brain_switch", "task_switch"], noAsk: true, msgs: [1, 1], maxChars: 200 },
+    rubric: "The user only asks what Astra is. The partner answers briefly and honestly in Chinese without switching anything: no brain_switch, no task_switch, no card. Saying it is one of Codex's models, saying it isn't sure, or asking what they mean are all fine; offering to switch in a few words is fine; doing it is not.",
+  },
+  // A model this home's agent doesn't have: said so, nothing switched.
+  {
+    id: "brain-switch-missing-zh",
+    category: "direct",
+    lang: "zh",
+    brainCodex: true,
+    steps: [{ user: "用 gpt-9 跟我聊" }],
+    expect: { notCalled: ["task_switch"], opens: 0, msgs: [1, 1], maxChars: 140, forbid: [/(已|换)(经)?(切|换)(到|成)\s*gpt-?9|从你下一句起.*gpt-?9/i] },
+    rubric: "Codex on this home has no GPT-9 (it offers GPT-6.2-Sol, GPT-6.2-Astra, GPT-6.1-Terra, GPT-6-Luna). The partner may try brain_switch, which says so; it must NOT claim it switched. A short Chinese reply that there is no GPT-9 here; naming what it does have, or offering them as a choice (a plain question or a choices card with those models) is fine. No task; never a claim that it switched.",
   },
 ];

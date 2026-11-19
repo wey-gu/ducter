@@ -49,7 +49,12 @@ test("the replay says the contradiction and fills the time, from fresh scratch, 
   const push = openPushStore(home.dir, { tz: ZONE });
   const persona = { id: "default", name: "Ducter" };
   const settings = openSettings({ dataDir: home.dir, log, push, persona: { ...persona, identity: "" } });
-  settings.set({ language: "zh", quiet: { start: "23:00", end: "08:00", tz: ZONE } });
+  // The replay runs on the real clock and keeps the home's quiet hours, so quiet hours that hold
+  // the moment the test runs (23:00–08:00 there; 15:00–24:00 UTC in CI) would keep the find
+  // unsaid. Quiet hours set to begin three hours from now keep the test the same at any hour.
+  const hourThere = Number(new Intl.DateTimeFormat("en-GB", { timeZone: ZONE, hour: "2-digit", hourCycle: "h23" }).format(new Date()));
+  const at = (h: number) => `${String(h % 24).padStart(2, "0")}:00`;
+  settings.set({ language: "zh", quiet: { start: at(hourThere + 3), end: at(hourThere + 4), tz: ZONE } });
   const rules = openRules(home.dir);
   const acc = fakeAccounts(fx);
   const look = fakeLook();

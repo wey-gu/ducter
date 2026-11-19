@@ -32,7 +32,11 @@ export type Seed =
   // Many short exchanges (filler), so what came before them leaves the cold seed's window.
   | { chatter: number }
   // D341 (scenario.todos): the seeded task with this key is bound to that GitHub issue.
-  | { bound: { task: string; ref: string } };
+  | { bound: { task: string; ref: string } }
+  // D385 (scenario.todosPile): the set card a find put under the partner's line ("把 X 相关的拉出来"), and its line.
+  | { todoSet: { query: string; ai: string } }
+  // D385: that set handed over (core's default shape: plan first, its plan being made).
+  | { handSet: { note?: string; subject?: string } };
 
 /** D236: a reply names an earlier message by words it has (the latest one that has them). */
 export interface UserSay {
@@ -250,10 +254,20 @@ export interface Scenario {
    * GitHub: issues assigned to the user in nowledge-co/hawdb and wey-gu/ducter.
    */
   todos?: true;
+  /**
+   * D385: with `todos`: a heavy developer's pile instead (acme/mem's memory distillation in English and
+   * Chinese titles among unrelated ones), sorted by a fake cheapest model that also finds by meaning.
+   */
+  todosPile?: true;
   /** With `calendar`: the calendar tool can't read (hel, 2026-11-12); the default account still answers a generic read. */
   calendarDown?: true;
   /** D300: a day of things Ducter did for the person (packages/core/test/did-day.ts), logged now: the `did_list` tool answers from it. */
   did?: true;
+  /**
+   * D390: the partner thinks with Codex on a home where Codex and Claude Code are signed in, and
+   * Codex lists its own models (a fake catalog: GPT-6.2-Sol, GPT-6.2-Astra, GPT-6.1-Terra, GPT-6-Luna).
+   */
+  brainCodex?: true;
   /**
    * D312: the partner under test is a second partner with this name, on its own view of core (its
    * own conversation); the seed goes into the default partner's conversation, which it never sees.
@@ -2354,6 +2368,49 @@ export const scenarios: Scenario[] = [
     expect: { opens: 0, msgs: [1, 1], maxChars: 120, called: [{ tool: "todos", args: { do: "sort" } }], notCalled: ["task_open"], noTodoCard: true, forbid: [/\d+ ?件/] },
     rubric: "The user asks it to go through their whole pile of GitHub issues. It starts the sort (todos do=sort) and says in one short Chinese line that it is going through them and will say what it finds. It gives no counts or groups it can't know yet, lists no issues, opens no task and makes no card.",
   },
+  // D385: handing several over from the conversation: a subject pulled out as a set card, then said how.
+  {
+    id: "handover-find-zh",
+    category: "todos",
+    lang: "zh",
+    todos: true,
+    todosPile: true,
+    floor: true,
+    steps: [{ user: "把 memory distill 相关的拉出来我们看看" }],
+    expect: { opens: 0, msgs: [1, 1], maxChars: 140, called: [{ tool: "todos", args: { do: "find" } }], notCalled: ["task_open"], noTodoCard: true, forbid: [/^\s*[-•*\d]+[.、)]?\s/m] },
+    rubric: "The user asks to pull out everything about memory distillation (the pile's titles are mostly English, two are Chinese). It finds them (todos do=find), and a set card under its reply shows them with the takeable ones ticked. Its reply is ONE short Chinese line from the find's counts only: how many it found about the subject, how many it ticked as ones it can take, the one that needs the user's call (#405) and the ones left for later because they are big. It does not list the issues (the card does), invents no numbers, starts nothing and opens no task.",
+  },
+  {
+    id: "handover-say-how-zh",
+    category: "todos",
+    lang: "zh",
+    todos: true,
+    todosPile: true,
+    floor: true,
+    seed: [{ user: "把 memory distill 相关的拉出来我们看看" }, { todoSet: { query: "memory distill", ai: "找到 9 件讲记忆提炼的。能直接交给我的 6 件先勾上了；#405 要你定一下；两件改动大，先放着。" } }],
+    steps: [{ user: "就这几个，#405 也加上，按你的建议。先别动数据库迁移，验证都去 haswell 上跑。" }],
+    expect: { opens: [0, 1], msgs: [1, 1], maxChars: 120, called: [{ tool: "todos", args: { do: "hand", set: /^set_/, refs: /405/, note: /haswell/ } }], notCalled: ["task_open"], noTodoCard: true },
+    rubric: "After the set card about memory distillation, the user says to hand these over plus #405 (the suggested answer), and how: leave the database migrations alone, run every check on haswell. It hands the set over in one call (todos do=hand with the set, #405 added, the user's own words about how as the note) without forcing a shape, so Ducter makes a plan first. Its reply is one short Chinese line saying it will read them first and show a plan, starting only when the user agrees (e.g. 好，我先看一遍，出个方案给你，你点头再做。). It calls no task_open itself (Ducter opens the group's read-only plan task on the hand-over: that is right), lists nothing, and doesn't claim anything is done.",
+  },
+  {
+    id: "handover-add-zh",
+    category: "todos",
+    lang: "zh",
+    todos: true,
+    todosPile: true,
+    seed: [
+      { user: "把 memory distill 相关的拉出来我们看看" },
+      { todoSet: { query: "memory distill", ai: "找到 9 件讲记忆提炼的。能直接交给我的 6 件先勾上了；#405 要你定一下；两件改动大，先放着。" } },
+      { user: "就这几个，按你的思路做" },
+      { handSet: { subject: "记忆提炼" } },
+      { ai: "好，我先看一遍，出个方案给你，你点头再做。" },
+      { user: "acme/mem#366 长对话那个呢？" },
+      { ai: "#366 是长对话的自动提炼总是失败，改动大，我先放着了，没交出去。" },
+    ],
+    steps: [{ user: "这个也加进去" }],
+    expect: { msgs: [1, 1], maxChars: 100, called: [{ tool: "todos", args: { do: "hand", refs: /366/ } }], notCalled: ["task_open"], noTodoCard: true },
+    rubric: "Memory distillation was handed over as one group (记忆提炼) whose plan is being made. The user says to add #366 too. It adds it to that group (todos do=hand with #366, naming the group or the set it was handed over as), not a new task or a new group; Ducter itself then tells the plan's task to read it too (that relay is right, not the partner's doing). It says one short Chinese line that it's added (the plan will take it into account). It opens no task itself and lists nothing.",
+  },
   // ---------- calendars (D222): two accounts merged, changes behind a card ----------
   {
     id: "calendar-today-zh",
@@ -2850,7 +2907,68 @@ export const scenarios: Scenario[] = [
       { task: { key: "asc", title: "准备 App Store Connect 的上架资料", repo: "~/dev/ducter", ack: "我让 Codex 去准备上架资料。", state: "working", harness: "codex" } },
     ],
     steps: [{ user: "这个任务换成 6.2 sol" }],
-    expect: { called: [{ tool: "task_switch", args: { model: /6\.?2.*sol/i } }], opens: 0, noSend: true, noAsk: true, msgs: [0, 1], maxChars: 80 },
+    expect: { called: [{ tool: "task_switch", args: { model: /6\.?2.*sol/i } }], notCalled: ["brain_switch"], opens: 0, noSend: true, noAsk: true, msgs: [0, 1], maxChars: 80 },
     rubric: "The user asked to move the App Store Connect task to the gpt-6.2-sol model. The partner calls task_switch on that task with the model as said, opens no new task, sends the task no message about it, and puts up no card. At most one short Chinese line (e.g. that it's switched and takes effect from the task's next step), or nothing; never a claim that the work restarted or that progress was lost.",
+  },
+  // D390: the person asks the partner itself to think with another model: brain_switch (the
+  // setting Settings › Partner writes), never task_switch, a task, or a card.
+  {
+    id: "brain-switch-zh",
+    category: "direct",
+    lang: "zh",
+    steps: [{ user: "你换成 sonnet 跟我聊吧" }],
+    expect: { called: [{ tool: "brain_switch", args: { model: /sonnet/i } }], notCalled: ["task_switch"], opens: 0, noAsk: true, msgs: [0, 1], maxChars: 60 },
+    rubric: "The user asked the partner itself to think with Sonnet. The partner calls brain_switch with the model as said, opens no task and puts up no card. At most one short Chinese line saying it uses Sonnet from the user's next message (e.g. 好，从你下一句起我用 Sonnet。), nothing about sessions or settings pages.",
+  },
+  {
+    id: "brain-switch-en",
+    category: "direct",
+    lang: "en",
+    seed: [
+      { user: "fix the flaky test in ~/dev/fib" },
+      { task: { key: "fib", title: "Fix the flaky fib test", repo: "~/dev/fib", ack: "I'll fix the flaky fib test.", state: "working" } },
+    ],
+    steps: [{ user: "switch yourself to opus for our chats" }],
+    expect: { called: [{ tool: "brain_switch", args: { model: /opus/i } }], notCalled: ["task_switch"], opens: 0, noSend: true, noAsk: true, msgs: [0, 1], maxChars: 120 },
+    rubric: "A task is running, but the user asked the partner ITSELF to use Opus for the conversation. The partner calls brain_switch with the model, leaves the task alone (no task_switch, nothing sent to it) and opens nothing. At most one short English line that it thinks with Opus from the user's next message.",
+  },
+  // D390: on a Codex home, the short name the person says, matched to Codex's own list.
+  {
+    id: "brain-switch-astra-zh",
+    category: "direct",
+    lang: "zh",
+    brainCodex: true,
+    steps: [{ user: "用 astra 跟我聊" }],
+    expect: { called: [{ tool: "brain_switch", args: { model: /astra/i } }], notCalled: ["task_switch"], opens: 0, noAsk: true, msgs: [0, 1], maxChars: 60 },
+    rubric: "The partner thinks with Codex; the user wants it to talk with Astra (Codex's GPT-6.2-Astra). The partner calls brain_switch with the model as said, opens no task and puts up no card. At most one short Chinese line that it uses GPT-6.2-Astra from the user's next message; nothing about sessions or settings.",
+  },
+  {
+    id: "brain-switch-astra-en",
+    category: "direct",
+    lang: "en",
+    brainCodex: true,
+    steps: [{ user: "switch to astra" }],
+    expect: { called: [{ tool: "brain_switch", args: { model: /astra/i } }], notCalled: ["task_switch"], opens: 0, noAsk: true, msgs: [0, 1], maxChars: 120 },
+    rubric: "No task is open; the user asks the partner to switch to Astra (Codex's GPT-6.2-Astra). The partner calls brain_switch with the model, opens nothing. At most one short English line that it thinks with GPT-6.2-Astra from the user's next message.",
+  },
+  // A question about a model is not a request to use it.
+  {
+    id: "brain-astra-what-zh",
+    category: "direct",
+    lang: "zh",
+    brainCodex: true,
+    steps: [{ user: "astra 是什么" }],
+    expect: { notCalled: ["brain_switch", "task_switch"], noAsk: true, msgs: [1, 1], maxChars: 200 },
+    rubric: "The user only asks what Astra is. The partner answers briefly and honestly in Chinese without switching anything: no brain_switch, no task_switch, no card. Saying it is one of Codex's models, saying it isn't sure, or asking what they mean are all fine; offering to switch in a few words is fine; doing it is not.",
+  },
+  // A model this home's agent doesn't have: said so, nothing switched.
+  {
+    id: "brain-switch-missing-zh",
+    category: "direct",
+    lang: "zh",
+    brainCodex: true,
+    steps: [{ user: "用 gpt-9 跟我聊" }],
+    expect: { notCalled: ["task_switch"], opens: 0, msgs: [1, 1], maxChars: 140, forbid: [/(已|换)(经)?(切|换)(到|成)\s*gpt-?9|从你下一句起.*gpt-?9/i] },
+    rubric: "Codex on this home has no GPT-9 (it offers GPT-6.2-Sol, GPT-6.2-Astra, GPT-6.1-Terra, GPT-6-Luna). The partner may try brain_switch, which says so; it must NOT claim it switched. A short Chinese reply that there is no GPT-9 here; naming what it does have, or offering them as a choice (a plain question or a choices card with those models) is fine. No task; never a claim that it switched.",
   },
 ];

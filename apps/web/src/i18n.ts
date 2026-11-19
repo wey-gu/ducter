@@ -17,6 +17,7 @@ import { computeruse } from "./i18n-computeruse.ts";
 import { channelWords } from "./i18n-channels.ts";
 import { todoWords } from "./i18n-todos.ts";
 import { groupWords } from "./i18n-groups.ts";
+import { handoverWords } from "./i18n-handover.ts";
 import { handset } from "./i18n-handset.ts";
 import { fileWords } from "./i18n-fileview.ts";
 import { calendarWords } from "./i18n-calendar.ts";
@@ -841,6 +842,7 @@ const zh: Record<string, string> = {
   "loadout.brain.with": "%s 的 %s",
   "loadout.model.line.smart": "%s 想得最深。",
   "loadout.model.line.fast": "%s 回得更快。",
+  "loadout.model.line.default": "%s 是 %s 默认用的模型。",
   "loadout.model.default.line": "用它自己默认的模型",
   "loadout.signed_in": "已登录",
   "loadout.pi": "装好了，先选个模型",
@@ -1712,6 +1714,7 @@ const en: Record<string, string> = {
   "loadout.brain.with": "%s with %s",
   "loadout.model.line.smart": "%s thinks the deepest.",
   "loadout.model.line.fast": "%s answers faster.",
+  "loadout.model.line.default": "%s is the model %s uses by default.",
   "loadout.model.default.line": "On its own default model",
   "loadout.signed_in": "Signed in",
   "loadout.pi": "Installed; pick a model",
@@ -3087,6 +3090,9 @@ Object.assign(TABLES.en, todoWords.en);
 // D360: 分组 / Groups on On hand (i18n-groups.ts).
 Object.assign(TABLES.zh, groupWords.zh);
 Object.assign(TABLES.en, groupWords.en);
+// D385: handing several over (i18n-handover.ts).
+Object.assign(TABLES.zh, handoverWords.zh);
+Object.assign(TABLES.en, handoverWords.en);
 
 /** Drops a space between two Chinese characters (zh copy spaces around a name for Latin names). */
 /** D78: a space where a Chinese character touches a Latin letter or a digit ("住在%s 上" with "hel"). */

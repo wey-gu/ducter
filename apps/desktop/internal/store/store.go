@@ -30,6 +30,9 @@ type Entry struct {
 	// answer revises it in place.
 	Finds *protocol.Finds
 	Peer  *protocol.BridgeMsg // D170: one quiet line about the user's other agents
+	// Set (D385) is a set of to-dos found in the conversation; a later
+	// todo_set with the same SetID (handed over) revises it in place.
+	Set *protocol.TodoSet
 	// Revision counts how often a living message was superseded in place,
 	// for the re-settle motion.
 	Revision int
@@ -431,6 +434,7 @@ type Store struct {
 	// LastUserSeq is the user's latest message.
 	LastUserSeq int64
 	notes       map[string]*Entry
+	sets        map[string]*Entry
 	OnHand      *protocol.OnHand
 	// Waiters are the waiters known, by id (from waiter events and the
 	// snapshot's armed list).
@@ -680,7 +684,7 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 		if f.Sources != nil && f.Sources.View != nil {
 			s.Sources = f.Sources.View
 		}
-	case "source_items_result", "pile_items_result", "pile_result": // D359: the pile's answers by clientId too
+	case "source_items_result", "pile_items_result", "pile_result", "pile_find_result", "pile_how_result", "group_review_result": // D359, D385: the pile's answers by clientId too
 		if f.Sources != nil {
 			if s.SourceItems == nil {
 				s.SourceItems = map[string]*protocol.SourcesFrame{}
@@ -1156,6 +1160,20 @@ func (s *Store) ApplyEvent(ev protocol.LogEvent) {
 		s.add(&Entry{Event: ev, User: b})
 	case *protocol.Finds:
 		s.addFinds(ev, b)
+	case *protocol.TodoSet:
+		// D385: the latest per set wins, in the place it was first shown.
+		if s.sets == nil {
+			s.sets = map[string]*Entry{}
+		}
+		if old := s.sets[b.SetID]; old != nil {
+			old.Set = b
+			old.Revision++
+			s.bySeq[ev.Seq] = old
+			return
+		}
+		e := &Entry{Event: ev, Set: b}
+		s.sets[b.SetID] = e
+		s.add(e)
 	case *protocol.FindState:
 		s.FindStates[b.FindID] = b
 		s.bySeq[ev.Seq] = nil

@@ -61,6 +61,7 @@ import { PastSheet } from "./past.tsx";
 import { DidSheet } from "./did.tsx";
 import { PinsSheet, PinStrip } from "./pins.tsx";
 import { PileSheet } from "./pile.tsx";
+import { HandSheet, PlanCard, ReviewSheet, SetCard } from "./handover.tsx";
 import { RichBlock } from "./rich.tsx";
 import { splitRich } from "@ducter/protocol/src/rich.ts";
 import { ContextButton } from "./context-meter.tsx";
@@ -356,6 +357,8 @@ export function DecisionBody({ d, taskId }: { d: DecisionState; taskId?: string 
   const goText = goLabel(d);
   const draft = A.replyDraft.get(d.decisionId) ?? "";
   if (d.signIn) return <SignInBody d={d} />;
+  // D385: a plan card opened as a sheet or on On hand: the plan, not a generic Go.
+  if (d.src?.kind === "plan") return <PlanCard d={d} bare />;
   // D217: a phone task's Go for one tap, or the user's own turn on the phone.
   if (d.phone) return <PhoneAskBody d={d} />;
   if (d.handset) return <HandsetAskBody d={d} />; // D238
@@ -1265,9 +1268,13 @@ function EntryView({ e, chipOwner, livingItems, join, prevUser }:{ e: Entry; chi
   if (e.job) return <JobRow e={e} chipOwner={chipOwner} noted={A.notedFor(e)} join={join} rk={rk} ans={answerOf(e, prevUser)} />;
   if (e.living) return <Living e={e} items={livingItems(e)} chipOwner={chipOwner} />;
   if (e.finds) return <FindsNote n={e.finds} join={join} seq={e.ev.seq} seqs={`${e.firstSeq} ${e.ev.seq}`} />;
+  // D385: a set of to-dos the partner found, tickable, opening the hand-over sheet.
+  if (e.set) return <SetCard s={e.set} seq={e.firstSeq} />;
   if (e.decision) {
     const d = A.S.decisions.get(e.decision.decisionId);
     if (!d) return null;
+    // D385: plan first's card: the plan itself, its parts and its three answers.
+    if (d.src?.kind === "plan") return <PlanCard d={d} seq={e.firstSeq} />;
     return <Ask d={d} rk={rk} seq={e.firstSeq} />;
   }
   if (e.peer) {
@@ -3142,6 +3149,9 @@ export function Sheets() {
   if (A.sheet.kind === "recall") return <RecallSheet seq={A.sheet.seq} />;
   if (A.sheet.kind === "learned") return <LearnedSheet />;
   if (A.sheet.kind === "pile") return <PileSheet />;
+  // D385: handing several over, and review together.
+  if (A.sheet.kind === "hand") return <HandSheet />;
+  if (A.sheet.kind === "review") return <ReviewSheet groupId={A.sheet.groupId} />;
   return A.sheet.kind === "decision" ? <DecisionSheet id={A.sheet.id} /> : <SettingsSheet />;
 }
 

@@ -156,6 +156,16 @@ version of Ducter for it. A new task you don't pick a model for runs on your age
 default: for Codex, the `model` in your `~/.codex/config.toml`. Change that, or pick a model on
 **New task**, to use a newer one by default.
 
+### Can my partner itself use another model?
+
+Yes. In **Settings › Partner**, under **What it thinks with**, **Which model** lists the models
+your AI agent offers on the computer Ducter runs on: Codex's own list (GPT-6.2-Sol,
+GPT-6.2-Astra, …) or Claude Code's. Tap one; your partner uses it from your next message, and
+keeps its name, what it remembers and your conversation.
+
+Or just ask it: "用 astra 跟我聊" or "switch yourself to Opus". When a short name could be more
+than one model, it asks which.
+
 ### Does a project have to be a Git repository?
 
 No. A project is any folder on the computer that does the work: your invoices, a trip plan, a

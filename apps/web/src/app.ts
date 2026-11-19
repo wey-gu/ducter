@@ -98,7 +98,7 @@ export function morph(apply: () => void) {
 }
 /** Settings (D150) is a list of sections; page is the one pushed ("" is the list). */
 export type SettingsPage = "" | "partner" | "memory" | "peers" | "notify" | "accounts" | "todos" | "chats" | "autofill" | "devices" | "phone";
-export type Sheet = { kind: "decision"; id: string } | { kind: "settings"; page?: SettingsPage } | { kind: "newtask" } | { kind: "switch" } | { kind: "past" } | { kind: "did" } | { kind: "pins" } | { kind: "recall"; seq: number } | { kind: "learned" } | { kind: "pile" } | null;
+export type Sheet = { kind: "decision"; id: string } | { kind: "settings"; page?: SettingsPage } | { kind: "newtask" } | { kind: "switch" } | { kind: "past" } | { kind: "did" } | { kind: "pins" } | { kind: "recall"; seq: number } | { kind: "learned" } | { kind: "pile" } | { kind: "hand" } | { kind: "review"; groupId: string } | null;
 
 /** 开一件事 / New task's sheet (D128): what the user chose and typed, and how starting went. */
 export interface NewTaskDraft {
@@ -743,7 +743,7 @@ class AppState {
     if (f.t.startsWith("phone_")) return void this.onPhoneFrame?.(f as import("@ducter/protocol").PhoneServerFrame);
     // D276: 聊天软件 / Chat apps (channels.tsx keeps its own state).
     if (f.t === "channels" || f.t === "channel_result") return void this.onChannelFrame?.(f);
-    if (f.t === "sources" || f.t === "source_items_result" || f.t === "source_result" || f.t === "pile_items_result" || f.t === "pile_result") return void this.onSourcesFrame?.(f);
+    if (f.t === "sources" || f.t === "source_items_result" || f.t === "source_result" || f.t === "pile_items_result" || f.t === "pile_result" || f.t === "pile_find_result" || f.t === "pile_how_result" || f.t === "group_review_result") return void this.onSourcesFrame?.(f);
     // D238: the person's own phone (handset.tsx relays the home's calls to this phone's app).
     if (f.t.startsWith("handset_")) return void this.onHandsetFrame?.(f as import("@ducter/protocol").HandsetServerFrame);
     if (f.t === "browser_sites") {
@@ -3121,6 +3121,8 @@ class AppState {
       rows.push(e);
     }
     const resultShown = new Set<string>();
+    // D385: plan first's own task says its result as the plan card; its done line would say it twice.
+    for (const g of S.onHand?.groups ?? []) if (g.hand?.plan?.taskId && g.hand.plan.state !== "failed") resultShown.add(g.hand.plan.taskId);
     for (const e of rows) if (e.ai?.replyTo) for (const id of S.tasksOfReply(e.ai.replyTo)) if (S.tasks.get(id) && finished(S.tasks.get(id)!)) resultShown.add(id);
     const livingNewest = new Map<string, number>();
     const key = (it: { taskId: string; kind: string; text: string }) => `${it.taskId}|${it.kind}|${it.text}`;

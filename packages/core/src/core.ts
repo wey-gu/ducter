@@ -62,7 +62,7 @@ import { identityIdFor, readMemIdentity } from "./mem-identity.ts";
 import { keepSaidOnGo, openSaid, type SaidStore } from "./said.ts";
 import { openRules, type RulesStore } from "./rules.ts";
 import { openPins, type PinsStore } from "./pins.ts";
-import { createLoadout, isRuleHint, registerRuleTools, registerSwitchTool, type Loadout } from "./loadout.ts";
+import { createLoadout, isRuleHint, registerRuleTools, registerSwitchTool, registerBrainSwitchTool, type Loadout } from "./loadout.ts";
 import { createKindRetry, type KindRetry } from "./kind-retry.ts";
 import { openConnections, type ConnectionsStore, type Linker, type OoSource } from "./connections.ts";
 import { callWakes, neverCall, openPhone, type Phone } from "./phone.ts";
@@ -86,6 +86,7 @@ import { createGhInstaller, useOwnTools, type GhInstaller } from "./gh-install.t
 import { ducterFolder } from "@ducter/protocol/src/ducter-folder.ts";
 import { createProjects } from "./projects.ts";
 import { createTaskGroups, type TaskGroups } from "./task-groups.ts";
+import { PLAN_SCHEMA } from "./task-sources/handover.ts";
 import { createReleaseWatch, type Fetch as ReleaseFetch, type ReleaseWatch } from "./release.ts";
 import { createUpdates, type Updates, type UpdatesDeps } from "./updates.ts";
 import { createAgentLatest, createAgentUpdates, type AgentUpdates, type AgentUpdatesDeps } from "./agents.ts";
@@ -649,7 +650,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     onCalling: () => devicesView?.changed(), // D199: the home's 打电话
   });
   // D360: groups of tasks that are one piece of work; the later members of a line are held here.
-  const taskGroups = createTaskGroups({ dataDir, tasks, runner: () => runner, now: () => clock.now(), changed: () => onHandChanged() });
+  const taskGroups = createTaskGroups({ dataDir, tasks, runner: () => runner, now: () => clock.now(), changed: () => onHandChanged(), opened: (taskId, bind, group) => taskSourcesRef?.handover?.opened(taskId, bind, group) });
   log.subscribe((e) => taskGroups.onEvent(e));
   tasks.setDecorator((o) => {
     const on = decorateBrowsing(changes.decorate(limitsDecorate(work.decorate(o))));
@@ -836,6 +837,8 @@ export function startCore(opts: CoreOptions = {}): Core {
   registerClosingTool(mcp, closing, langNow);
   // D352: the partner's 换成 … / "use … for this": a task's model, effort or agent, as the person said it.
   registerSwitchTool(mcp, { loadout, tasks, models: modelCatalog, runner: () => runner });
+  // D390: 用 astra 跟我聊 / "switch yourself to Opus": what the partner itself thinks with.
+  registerBrainSwitchTool(mcp, { settings, models: modelCatalog, home: () => devicesView?.harnessesNow() });
   // D372: an errand on a fast tier that fails or stalls carries on on the smartest, once.
   kindRetryRef = createKindRetry({ log, loadout, runner: () => runner, retell: wake });
   log.subscribe((e) => kindRetryRef?.onEvent(e));
@@ -1136,7 +1139,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       socketsChanged: () => reachRef?.refresh(),
     },
     partners,
-    core: api, workbench, bridgeLink, decisions, runner: () => runner, devices: () => devicesView, lend: () => lendRef, settings, connections, phone, rules, pins, loadout, accountUsage, closing, work: workFrames, newTask, updates: () => updatesRef, agents: () => agentsRef, agentSetup: (device, f) => agentSetupOp(device, f), memSetup: (device, action, link) => memSetupOp(device, action, link), recordsAllow: (device, on) => recordsAllowOp(device, on), updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, memHealth, anywhere: () => anywhereRef, channels, proactive: () => proactiveRef, calendar: () => calendarRef, taskSources: () => taskSourcesRef, taskGroups: () => taskGroups, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets, past: { ...past, marks, persona: () => persona.id, ongoing, outside, made }, keys: { dataDir, ...(opts.keyFetch ? { fetch: opts.keyFetch } : {}), ...(opts.keyCanRun ? { canRun: opts.keyCanRun } : {}) }, ...(firstWordsDeps ? { firstWords: firstWordsDeps } : {}), did, ownAgents });
+    core: api, workbench, bridgeLink, decisions, runner: () => runner, devices: () => devicesView, lend: () => lendRef, settings, connections, phone, rules, pins, loadout, models: modelCatalog, accountUsage, closing, work: workFrames, newTask, updates: () => updatesRef, agents: () => agentsRef, agentSetup: (device, f) => agentSetupOp(device, f), memSetup: (device, action, link) => memSetupOp(device, action, link), recordsAllow: (device, on) => recordsAllowOp(device, on), updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, memHealth, anywhere: () => anywhereRef, channels, proactive: () => proactiveRef, calendar: () => calendarRef, taskSources: () => taskSourcesRef, taskGroups: () => taskGroups, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets, past: { ...past, marks, persona: () => persona.id, ongoing, outside, made }, keys: { dataDir, ...(opts.keyFetch ? { fetch: opts.keyFetch } : {}), ...(opts.keyCanRun ? { canRun: opts.keyCanRun } : {}) }, ...(firstWordsDeps ? { firstWords: firstWordsDeps } : {}), did, ownAgents });
   handsets.onChange(() => (devicesView?.changed(), ws.onHandChanged()));
   onHandChanged = ws.onHandChanged;
   // D156: a partner turn in flight keeps an update of the agent it thinks with waiting.
@@ -1646,9 +1649,40 @@ export function startCore(opts: CoreOptions = {}): Core {
       }
       return undefined;
     },
+    // D385: handing several over: groups, New task's places and agents, the computers by name, the rules.
+    handover: {
+      persona: () => persona.id,
+      groups: () => taskGroups,
+      places: async () => {
+        const o = await newTask.options().catch(() => ({ places: [], candidates: [] }) as { places: import("@ducter/protocol").PlaceChoice[]; candidates: { harness: string }[] });
+        return { places: o.places, harnesses: (o.candidates ?? []).map((c) => c.harness) };
+      },
+      computers: () => [{ device: "local", name: computers.homeName() ?? "" }, ...(computers.workers?.() ?? []).map((w) => ({ device: w.id, name: w.name }))],
+      rules: () => rules.list(),
+      addRule: (r) => void rules.add(r),
+      open: async (input) => {
+        if (!runner) throw new Error("Tasks can't run right now.");
+        return runner.openTask(input);
+      },
+      tell: (taskId, text) => void runner?.send(taskId, text, undefined, "ducter").catch((e) => console.warn(`[core] couldn't tell ${taskId} about its hand-over:`, (e as Error).message)),
+    },
     ...(srcTesting ? { ghRun: async () => ({ code: 127, out: "", err: "", missing: true as const }), home: join(dataDir, "no-home") } : {}),
     ...(opts.taskSources ?? {}),
   });
+  // D385: plan first's lead part reports its plan here (only that task sees the tool).
+  mcp.registerWhen(
+    "task",
+    "plan_report",
+    "Only for a task whose brief says it plans a hand-over: the plan, every to-do in exactly one place (fixed, one, line, side, later), and the person's limits. Call once (again after the person replies), then report_to_main done.",
+    PLAN_SCHEMA,
+    async (args, ctx) => {
+      if (!ctx.taskId) throw new Error("plan_report requires a task token");
+      const r = taskSources.handover?.planReport(ctx.taskId, args) ?? { ok: false, error: "No hand-over here." };
+      if (!r.ok) return r.error ?? "Not kept.";
+      return "Plan kept. Now call report_to_main with state done and one plain line; the person sees the plan as a card.";
+    },
+    (ctx) => !!ctx.taskId && !!taskSourcesRef?.handover?.isPlanTask(ctx.taskId),
+  );
   taskSourcesRef = taskSources;
   if (opts.taskSources?.ask) taskSources.setAsk(opts.taskSources.ask);
   const proactive = createProactive({

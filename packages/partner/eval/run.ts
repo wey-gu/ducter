@@ -42,10 +42,62 @@ const TODO_ISSUES = [
   { repo: "wey-gu/ducter", number: 6, title: "feat: task abstraction", body: "- built-in task abstraction\n- syncing with task services (GitHub issue per task binding?)", updated: "2026-11-17T08:00:00Z" },
   { repo: "wey-gu/ducter", number: 9, title: "Typo in docs/install.md", body: "'recieve' should be 'receive'.", labels: ["docs"], updated: "2026-11-16T08:00:00Z" },
 ];
+/**
+ * D385: a heavy developer's pile (scenario.todosPile): memory distillation in acme/mem, English titles
+ * with two Chinese ones and one found only by its label, among unrelated web and api issues.
+ */
+const PILE_ISSUES = [
+  [412, "acme/mem", "Distillation: fall back to a smaller result instead of failing", ["component/distillation"]],
+  [398, "acme/mem", "Automatic distillation: the error says nothing useful", []],
+  [377, "acme/mem", "Distillation gets slow on very long threads", []],
+  [351, "acme/mem", "Newer facts should replace older ones by when they were said", ["component/distillation"]],
+  [340, "acme/mem", "Distillation's first try often fails on long threads", []],
+  [322, "acme/mem", "Show when automatic distillation has paused", []],
+  [405, "acme/mem", "Retry a failed automatic distillation once?", []],
+  [366, "acme/mem", "长对话的自动提炼总是失败", []],
+  [331, "acme/mem", "提炼出来的记忆有重复", []],
+  [290, "acme/mem", "Distillation as a tool loop", []],
+  [12, "acme/web", "Login redirect drops the return path", ["bug"]],
+  [14, "acme/web", "Footer links overflow on small phones", []],
+  [31, "acme/api", "Rate limiter counts retries twice", []],
+  [44, "acme/api", "Docs: the install page still says Node 18", ["docs"]],
+  [52, "acme/web", "Dark mode: the date picker stays white", []],
+].map(([number, repo, title, labels], k) => ({ repo: repo as string, number: number as number, title: title as string, labels: labels as string[], updated: new Date(Date.parse("2026-11-18T09:00:00Z") - k * 3_600_000).toISOString() }));
+
+/** D385: the fake cheapest model for scenario.todosPile: sorts with a subject, finds by meaning (never a real model). */
+const pileAsk = async (prompt: string): Promise<{ text: string; tokens: number }> => {
+  const rows = JSON.parse(/<todos>\n([\s\S]*)\n<\/todos>/.exec(prompt)?.[1] ?? "[]") as { id: number; title: string }[];
+  const mem = (t: string) => /istill|提炼|facts/i.test(t);
+  if (prompt.includes("<query>")) {
+    const q = /<query>([\s\S]*?)<\/query>/.exec(prompt)?.[1] ?? "";
+    const about = /distill|memory|提炼|记忆/i.test(q);
+    return { text: JSON.stringify({ subject: about ? "记忆提炼" : q, ids: about ? rows.filter((r) => mem(r.title)).map((r) => r.id) : [] }), tokens: 2000 };
+  }
+  return {
+    text: JSON.stringify(
+      rows.map((r) =>
+        /\?$/.test(r.title) ? { id: r.id, group: "decide", why: "要不要重试是产品上的选择", ask: "要不要给失败的自动提炼一次有限的重试？", pick: "hand", subject: "记忆提炼" }
+        : /tool loop|长对话/.test(r.title) ? { id: r.id, group: "later", why: "改动大，得先拆开", size: "large", subject: "记忆提炼" }
+        : mem(r.title) ? { id: r.id, group: "do", why: "说得清楚，改动小", size: "small", subject: "记忆提炼" }
+        : { id: r.id, group: "do", why: "说得清楚，改动小", size: "small", subject: /Login/.test(r.title) ? "登录" : "网页界面" },
+      ),
+    ),
+    tokens: 1000,
+  };
+};
 import { seedDidDay } from "../../core/test/did-day.ts";
 import { seedMade } from "./seed-made.ts";
 import { realClock } from "../../core/src/clock.ts";
 import { partnerFingerprint } from "../test/fingerprint.ts";
+import { createModelCatalog } from "../../core/src/models.ts";
+
+/** D390: Codex's own list on the eval's home (scenario.brainCodex), as Codex 0.169.1 names them (trimmed). */
+const EVAL_CODEX = [
+  { id: "gpt-6.2-sol", label: "GPT-6.2-Sol", default: true as const },
+  { id: "gpt-6.2-astra", label: "GPT-6.2-Astra" },
+  { id: "gpt-6.1-terra", label: "GPT-6.1-Terra" },
+  { id: "gpt-6-luna", label: "GPT-6-Luna" },
+];
 import type { MemoryAdd } from "../src/memory.ts";
 
 // ---------- args ----------
@@ -357,7 +409,7 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   const calOo = sc.calendar ? fakeOoCalendar({ day: new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date()), ...(sc.calendarDown ? { listFails: true } : {}) }) : undefined;
   // D312: the partner under test is a second partner (its own conversation, channel:p2); the seed is the default's.
   const conv = sc.second ? "channel:p2" : "channel";
-  const todoGh = sc.todos ? fakeGh([...TODO_ISSUES, ...(sc.todoIssues ?? [])], { login: "wey-gu" }) : undefined;
+  const todoGh = sc.todos ? fakeGh([...(sc.todosPile ? PILE_ISSUES : TODO_ISSUES), ...(sc.todoIssues ?? [])], { login: "wey-gu" }) : undefined;
   // D368: the person's Working Memory from a fake nmem (never the author's real Mem): the scenario's, or none.
   const wmOut = JSON.stringify(
     sc.workingMemory
@@ -387,8 +439,15 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   // D383: the core's clock can be set back while what was made weeks ago is logged (seed-made.ts).
   const back = { ms: 0 };
   const clock = { ...realClock, now: () => Date.now() - back.ms };
-  const core = startCore({ dataDir, port: 0, persona, webLook, clock, localAgents: createLocalAgents({ home: ownHome, env: {}, uid: null }), workingMemory: { run: async () => ({ code: 0, out: wmOut, err: "" }) }, // D341: never the machine's own gh (the person's real issues) nor its Obsidian vault list.
-    taskSources: { ghRun: todoGh?.run ?? (async () => ({ code: 127, out: "", err: "", missing: true as const })), ghEnv: {}, home: join(dataDir, "no-home"), pollMs: 3_600_000, ask: async () => ({ text: "[]", tokens: 1 }) }, ...(sc.second ? { partners: true } : {}), ownPhone: { platform: "darwin", arch: "arm64" }, ...(calOo ? { ooSource: calOo.source } : sc.phone ? { ooSource: { detect: () => ({ installed: false, account: false }), read: () => undefined } } : {}) });
+  // D390: a home with Codex and Claude Code signed in, Codex listing its own models (never this machine's).
+  const brainHome = sc.brainCodex
+    ? {
+        models: createModelCatalog({ read: async (_d: string, h: string) => (h === "codex" ? EVAL_CODEX : undefined) }),
+        deviceProbes: { cua: async () => ({ missing: "eval" }), harnesses: async () => [{ harness: "claude-code", installed: true, loggedIn: true }, { harness: "codex", installed: true, loggedIn: true }], kind: async () => "laptop" as const },
+      }
+    : {};
+  const core = startCore({ ...brainHome, dataDir, port: 0, persona, webLook, clock, localAgents: createLocalAgents({ home: ownHome, env: {}, uid: null }), workingMemory: { run: async () => ({ code: 0, out: wmOut, err: "" }) }, // D341: never the machine's own gh (the person's real issues) nor its Obsidian vault list.
+    taskSources: { ghRun: todoGh?.run ?? (async () => ({ code: 127, out: "", err: "", missing: true as const })), ghEnv: {}, home: join(dataDir, "no-home"), pollMs: 3_600_000, ask: sc.todosPile ? pileAsk : async () => ({ text: "[]", tokens: 1 }) }, ...(sc.second ? { partners: true } : {}), ownPhone: { platform: "darwin", arch: "arm64" }, ...(calOo ? { ooSource: calOo.source } : sc.phone ? { ooSource: { detect: () => ({ installed: false, account: false }), read: () => undefined } } : {}) });
   // D376: the home's name as the records' computer: a fixed fake one, never this machine's own name.
   (core.outside as { computer: () => string | undefined }).computer = () => sc.homeName ?? "Weyl's Mac";
   // D377: a computer for tasks with the person's own sessions: its own scratch home and records ops,
@@ -414,6 +473,11 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   }
   if (calOo && !(await core.connections.addFromOo()).ok) throw new Error("fake oo calendar: not added");
   if (todoGh && !(await core.taskSources.add("github")).ok) throw new Error("fake GitHub: not added");
+  // D385: the pile sorted before the conversation (subjects and groups by the fake cheapest model).
+  if (sc.todosPile) {
+    await core.taskSources.look();
+    await core.taskSources.pile.sort("daily");
+  }
   if (sc.second && !core.partners.add({ name: sc.second.name }).ok) throw new Error("second partner: not added");
   if (tuwa) {
     const added = await core.connections.add({ url: tuwa.url, token: JSON.stringify({ accessToken: tuwa.access(), refreshToken: tuwa.refresh(), expires_in: 3600 }) });
@@ -506,6 +570,7 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
     });
   }
   core.setRunner(fr.runner);
+  if (sc.brainCodex) core.settings.set({ brain: { harness: "codex" } });
   core.setPartner({ onTrigger() {} }); // history is background, not new work
   const fb = sc.bridge ? fakeBridge(dataDir, !!sc.spaces) : undefined;
 
@@ -540,6 +605,14 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
         core.log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: said[i % said.length]!, replyTo: u.seq } });
       }
       lastUser = core.log.head() - 1;
+    } else if ("todoSet" in s) {
+      await core.taskSources.handover!.set({ query: s.todoSet.query });
+      core.log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: s.todoSet.ai } });
+    } else if ("handSet" in s) {
+      const set = core.log.read({ stream: "channel", kinds: ["todo_set"], limit: 20 }).at(-1)?.body as Bodies["todo_set"] | undefined;
+      if (!set) throw new Error("handSet: no set seeded");
+      const r = await core.taskSources.handover!.hand({ refs: set.ticked, setId: set.setId, bySubject: true, ...(s.handSet.note ? { note: s.handSet.note } : {}), ...(s.handSet.subject ? { subject: s.handSet.subject } : {}) });
+      if (!r.ok) throw new Error(`handSet: ${r.error}`);
     } else if ("bound" in s) {
       const it = await core.taskSources.item(s.bound.ref);
       if (!it) throw new Error(`fake GitHub: no ${s.bound.ref}`);
@@ -671,6 +744,8 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
     else if ("finds" in s) lines.push(`(earlier) Ducter's own note from the user's accounts: ${s.finds.opening} ${s.finds.finds.map((f) => `[${f.kind}] ${f.text}${f.goLabel ? ` (next step offered: ${f.goLabel})` : ""}`).join(" | ")}`);
     else if ("chatter" in s) lines.push(`(earlier) ${s.chatter} short exchanges about moving the stand-up (filler)`);
     else if ("bound" in s) lines.push(`(earlier) Ducter bound task "${s.bound.task}" to the GitHub issue ${s.bound.ref} (the user took it from their to-dos)`);
+    else if ("todoSet" in s) lines.push(`(earlier) the partner found the to-dos about "${s.todoSet.query}" and said: ${s.todoSet.ai} (a set card under it shows them, the takeable ones ticked)`);
+    else if ("handSet" in s) lines.push(`(earlier) that set was handed over as one group; a plan is being made first (nothing else started)${s.handSet.note ? `; the user's note: ${s.handSet.note}` : ""}`);
     else lines.push(`(earlier) reminder set: ${s.waiterArmed.reason}`);
   }
   if (sc.second)
@@ -698,6 +773,17 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
       } else if (v.kind === "waiter") lines.push(`  [reminder set] ${v.text}`);
       else lines.push(`  [partner ${v.kind === "ack" ? "ack line" : "message"}] ${v.text}`);
     }
+    // D385: the set card a find put under the reply, and a hand-over's group (as the app shows them).
+    for (const e of core.log.read({ stream: conv, fromSeq: startSeq + 1, kinds: ["todo_set"], limit: 50 }).filter((x) => stepOf(x.seq) === i)) {
+      const s = e.body as Bodies["todo_set"];
+      const num = (r: string) => r.replace(/^.*(?=#)/, "");
+      if (s.groupId) {
+        const g = core.taskGroups.get(s.groupId);
+        lines.push(`  [Ducter handed the set over as one group] ${g?.name ?? s.groupId} | shape: ${g?.hand?.shape ?? "?"}${g?.hand?.plan ? " (a plan is being made first; nothing else starts until the user says go)" : ""} | to-dos: ${(g?.hand?.items ?? []).map((x) => x.label).join(" ")}${g?.hand?.note ? ` | the user's note, quoted in every task: ${g.hand.note}` : ""}${g?.hand?.where ? ` | where: ${g.hand.where.name}` : ""}`);
+      } else lines.push(`  [the app shows a set card under the reply] ${s.found.n} about "${s.subject ?? s.query ?? ""}" | ticked: ${s.ticked.map(num).join(" ")} | not ticked: ${s.refs.filter((r) => !s.ticked.includes(r)).map(num).join(" ")} | button: hand these over…`);
+    }
+    for (const x of tools.filter((x) => x.step === i && /(^|__)todos$/.test(x.name) && (x.input as { do?: string } | undefined)?.do === "hand" && (x.input as { group?: string }).group))
+      lines.push(`  [Ducter added to the group "${(x.input as { group?: string }).group}"] ${JSON.stringify((x.input as { refs?: unknown }).refs ?? [])}`);
     for (const c of dayCards.filter((x) => x.step === i)) lines.push(`  [the app shows a day card under the message] ${c.cal.days.map((d) => `${d.date}: ${d.events.map((x) => `${x.allDay ? "all day" : `${x.start.slice(11, 16)}–${x.end.slice(11, 16)}`} ${x.title}${x.me && x.me !== "accepted" ? ` (their answer: ${x.me})` : ""}${x.free ? " (shown as free)" : ""}`).join("; ") || "nothing"}`).join(" | ")}${c.cal.clashes?.length ? ` (overlaps drawn: ${c.cal.clashes.length})` : ""}`);
     for (const b of blocks.filter((x) => x.step === i)) lines.push(`  [the message also shows a ${b.ui.type === "chart" ? `${b.ui.kind} chart` : b.ui.type} block the partner wrote] ${JSON.stringify({ ...b.ui, plain: undefined })}`);
     for (const q of recalls.filter((x) => x.step === i)) lines.push(`  [searched long-term memory (invisible to the user)] ${q.query}`);

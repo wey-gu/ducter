@@ -181,6 +181,7 @@ func (a *App) pileBlock(c *ui.Context, pv *protocol.PileView) {
 				})
 			})
 		case sorted:
+			a.pileSubjects(c, pv) // D385: 讲的是 / Subjects
 			ui.Column(c.Key("rows")).Children(func() {
 				g := pv.Groups
 				if g["do"] > 0 {
@@ -248,7 +249,11 @@ func (a *App) pileRow(c *ui.Context, key string, n int, label, note, act string,
 		}
 		ui.Box(c.Key("act")).MinWidth(96).Children(func() {
 			if a.buttonFor(c, act, label, kind, t.ControlMD, t.Surface) {
-				a.openPile(key)
+				if key == "do" {
+					a.openHandDo() // D385: the hand-over sheet
+				} else {
+					a.openPile(key)
+				}
 			}
 		})
 	})
@@ -271,10 +276,10 @@ func (a *App) pileReadLine(c *ui.Context, g protocol.SourceGlance) {
 			ui.Text(c.Key("clean"), a.L.T("pile.read.clean")).FontSize(t.SM).TextColor(t.InkSoft)
 		default:
 			if r.Problems > 0 {
-				ui.Text(c.Key("p"), a.L.N("pile.read.problems", r.Problems)).FontSize(t.SM).FontWeight(600).TextColor(t.NeedsYou.Ink)
+				ui.Text(c.Key("p"), a.nCount("pile.read.problems", r.Problems)).FontSize(t.SM).FontWeight(600).TextColor(t.NeedsYou.Ink)
 			}
 			if r.Suggestions > 0 {
-				ui.Text(c.Key("s"), a.L.N("pile.read.suggestions", r.Suggestions)).FontSize(t.SM).TextColor(t.InkSoft)
+				ui.Text(c.Key("s"), a.nCount("pile.read.suggestions", r.Suggestions)).FontSize(t.SM).TextColor(t.InkSoft)
 			}
 		}
 		ui.Spacer(c)

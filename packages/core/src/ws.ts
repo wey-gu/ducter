@@ -80,6 +80,8 @@ const ON_HAND_KINDS = new Set<string>([...PROJECTED_KINDS, "phone_call"]);
 /** D284: frames longer than this go gzipped to a client that asked (hello.gzip). */
 const GZIP_MIN = 16 * 1024;
 const REDACTED = new Set<string>(["events", "task_history", "task_index", "on_hand", "task_new_result", "action_result"]);
+/** D390: how long a Settings frame waits on the partner's agent to list its models before giving up on pushing them. */
+const BRAIN_MODELS_WAIT_MS = 30_000;
 const REPLAY_FRESH = 200; // channel events replayed when hello has no cursor
 const REPLAY_MAX = 5000; // cap for a cursor replay
 const SEEN_WINDOW = 2000; // user messages (by clientId) remembered for idempotent send
@@ -109,6 +111,8 @@ export interface WsDeps {
   /** D381: 置顶 / Pinned (pins.ts); absent in tests that don't need it. */
   pins?: import("./pins.ts").PinsStore;
   loadout?: Loadout;
+  /** D390: each agent's live models (models.ts, D202): the partner's on the home, for Settings › Partner; absent in tests that don't need it. */
+  models?: import("./models.ts").ModelCatalog;
   /** D288: each agent's account usage limits (account-usage.ts); absent in tests that don't need it. */
   accountUsage?: import("./account-usage.ts").AccountUsageBook;
   /** D157: Move before closing (closing.ts); absent in tests that don't need it. */
@@ -289,13 +293,39 @@ export function createWsHandler(deps: WsDeps) {
       });
   };
 
+  // D390: the partner's agent's live list on the home, read while Settings is open. The catalog
+  // answers from what it holds while the list is fresh, so a frame built from a landed list doesn't
+  // ask again; a list that differs from what the frame showed pushes one more frame to every
+  // subscriber.
+  const brainReading = new Set<string>();
+  const modelsKey = (l: { id: string; label: string }[] | undefined) => (l ?? []).map((m) => `${m.id}=${m.label}`).join("|");
+  const refreshBrainModels = (harness: string) => {
+    const cat = deps.models;
+    if (!cat?.peek || brainReading.has(harness)) return;
+    const had = modelsKey(cat.peek("local", harness));
+    brainReading.add(harness);
+    void cat
+      .get("local", harness, BRAIN_MODELS_WAIT_MS)
+      .then(async (list) => {
+        if (!list?.length || modelsKey(list) === had) return;
+        const subs = [...sockets].filter((ws) => ws.data.settings);
+        if (!subs.length || !deps.settings) return;
+        const f = await settingsFrame();
+        subs.forEach((ws) => sockets.has(ws) && send(ws, f));
+      })
+      .catch((err) => console.warn("[ws] brain models:", (err as Error).message))
+      .finally(() => brainReading.delete(harness));
+  };
   // Settings: every subscriber gets a fresh frame on every change (another window, the phone).
   const settingsFrame = async (forgot?: { seq: number; how: "mem" | "hidden" }, corrected?: { seq: number; how: "mem" | "here" }): Promise<ServerFrame> => {
     const v = await deps.settings!.view();
     // D150: the brain actually in use (core's Codex-only fallback included), so no client claims one
     // the home doesn't have.
     const home = devicesView() ? (await devicesView()!.frame()).devices.find((d) => d.home)?.harnesses : undefined;
-    const now = brainNow(v.settings.brain, deps.settings!.brainChosen(), home);
+    // D390: the partner's models from its agent's live list on the home, as last read (no wait);
+    // a read under way, or one the list is due for, pushes a fresh frame when it lands with news.
+    const now = brainNow(v.settings.brain, deps.settings!.brainChosen(), home, (h) => deps.models?.peek?.("local", h));
+    refreshBrainModels(now.harness);
     const bridge = await deps.bridgeLink?.view().catch(() => undefined);
     const own = deps.ownAgents?.() ?? [];
     return { t: "settings", ...v, brainNow: now, ...(forgot ? { forgot } : {}), ...(corrected ? { corrected } : {}), ...(bridge ? { bridge } : {}), ...(own.length ? { ownAgents: own } : {}) };
@@ -1689,7 +1719,12 @@ export function createWsHandler(deps: WsDeps) {
       case "pile_choose":
       case "pile_close":
       case "pre_read":
-      case "pre_read_send": {
+      case "pre_read_send":
+      case "pile_find":
+      case "pile_how":
+      case "plan_answer":
+      case "group_review":
+      case "group_review_send": {
         const ts = deps.taskSources?.();
         if (!ts) throw new Error("to-do sources aren't available here");
         const pile = ts.pile;
@@ -1700,6 +1735,40 @@ export function createWsHandler(deps: WsDeps) {
         if (f.t === "pile_items") {
           const group = (PILE_GROUPS as readonly string[]).includes(f.group) ? f.group : "do";
           return send(ws, { t: "pile_items_result", ...cid, group, items: pile.items(group) });
+        }
+        // D385: handing several over (task-sources/handover.ts).
+        const ho = ts.handover;
+        const str = (v: unknown, max: number) => (typeof v === "string" && v.trim() ? v.slice(0, max) : undefined);
+        const notesOf = (v: unknown) => (v && typeof v === "object" ? Object.fromEntries(Object.entries(v as Record<string, unknown>).filter(([, x]) => typeof x === "string").slice(0, 60)) as Record<string, string> : undefined);
+        if (f.t === "pile_find") {
+          if (!ho) return;
+          const r = await ho.find({ ...(str(f.query, 200) ? { query: str(f.query, 200)! } : {}), ...(str(f.subject, 60) ? { subject: str(f.subject, 60)! } : {}), ...(str(f.setId, 64) ? { setId: str(f.setId, 64)! } : {}) });
+          return send(ws, { t: "pile_find_result", ...cid, ...r });
+        }
+        if (f.t === "pile_how") {
+          if (!ho) return;
+          const how = await ho.how({ refs: refs(f.refs), ...(str(f.note, 2000) ? { note: str(f.note, 2000)! } : {}), ...(f.bySubject === true ? { bySubject: true } : {}), ...(str(f.subject, 60) ? { subject: str(f.subject, 60)! } : {}) });
+          return send(ws, { t: "pile_how_result", ...cid, how });
+        }
+        if (f.t === "plan_answer") {
+          if (!ho || typeof f.groupId !== "string" || !["go", "hold", "reply"].includes(f.option)) return;
+          const r = await ho.answerPlan(f.groupId, f.option, { ...(str(f.text, 2000) ? { text: str(f.text, 2000)! } : {}), ...(notesOf(f.notes) ? { notes: notesOf(f.notes)! } : {}) });
+          return send(ws, { t: "pile_result", ...cid, op: "plan", ok: r.ok, groupId: f.groupId, ...(r.error ? { error: r.error } : {}) });
+        }
+        if (f.t === "group_review") {
+          if (!ho || typeof f.groupId !== "string") return;
+          const review = await ho.review(f.groupId);
+          return send(ws, { t: "group_review_result", ...cid, ...(review ? { review } : { error: "That group isn't there any more." }) });
+        }
+        if (f.t === "group_review_send") {
+          if (!ho || typeof f.groupId !== "string") return;
+          const r = await ho.reviewSend(f.groupId, refs(f.keep));
+          return send(ws, { t: "pile_result", ...cid, op: "group_review", ok: r.ok, done: r.done, failed: r.failed, groupId: f.groupId, ...(r.error ? { error: r.error } : {}) });
+        }
+        if (f.t === "pile_hand" && ho && (f.shape || f.note || f.notes || f.group || f.device || f.harness || f.setId || f.subject)) {
+          const shape = (["plan", "one", "one_by_one", "side_by_side"] as const).find((s) => s === f.shape);
+          const r = await ho.hand({ refs: refs(f.refs), ...(str(f.note, 2000) ? { note: str(f.note, 2000)! } : {}), ...(notesOf(f.notes) ? { notes: notesOf(f.notes)! } : {}), ...(shape ? { shape } : {}), ...(str(f.group, 64) ? { group: str(f.group, 64)! } : {}), ...(str(f.device, 64) ? { device: str(f.device, 64)! } : {}), ...(str(f.harness, 40) ? { harness: str(f.harness, 40)! } : {}), ...(str(f.subject, 60) ? { subject: str(f.subject, 60)! } : {}), ...(f.bySubject === true ? { bySubject: true } : {}), ...(str(f.setId, 64) ? { setId: str(f.setId, 64)! } : {}) });
+          return send(ws, { t: "pile_result", ...cid, op: "hand", ok: r.ok, done: r.handed, ...(r.groupId ? { groupId: r.groupId } : {}), ...(r.error ? { error: r.error } : {}) });
         }
         if (f.t === "pile_hand") {
           const r = await pile.hand(refs(f.refs));
@@ -1718,7 +1787,7 @@ export function createWsHandler(deps: WsDeps) {
           const read = pile.read(f.ref) ?? (await pile.preRead(f.ref));
           return send(ws, { t: "pile_result", ...cid, op: "pre_read", ok: !!read, ...(read ? { read } : {}) });
         }
-        if (typeof f.ref !== "string") return;
+        if (f.t !== "pre_read_send" || typeof f.ref !== "string") return;
         const r = await pile.sendRead(f.ref, Array.isArray(f.keep) ? f.keep.filter((k): k is number => typeof k === "number") : []);
         return send(ws, { t: "pile_result", ...cid, op: "review", ok: r.ok, ...(r.error ? { error: r.error } : {}) });
       }

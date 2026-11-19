@@ -37,6 +37,7 @@ export * from "./reach.ts";
 export * from "./mem-source.ts";
 export * from "./mem-health.ts";
 export * from "./task-sources.ts";
+export * from "./handover.ts";
 import type { DeviceVia, HomeKey, ReachWay } from "./reach.ts";
 import type { PastClientFrame, PastMark, PastServerFrame } from "./past.ts";
 import type { DidClientFrame, DidServerFrame } from "./did.ts";
@@ -450,6 +451,9 @@ export interface Bodies {
   // D345: a tool Ducter put on the home because the person tapped for it (gh, for GitHub's sign-in):
   // how, where, the version, and how it went. Done for you lists a done one (changed, install).
   tool_install: { device: string; tool: "gh"; how: "brew" | "release"; where: string; version?: string; phase: "started" | "done" | "failed"; detail?: string; by: "user" };
+  // D385: a set of to-dos found in the conversation (todos do=find), drawn as a tickable card under
+  // the partner's line; logged again with groupId once it was handed over (clients keep the latest per setId).
+  todo_set: import("./handover.ts").TodoSet;
   // D341: what a look at a source saw change on a to-do: closed or reopened in its app, its words
   // edited, the line gone, or new to-dos in scope (refs, at most 20, untrusted titles).
   source_seen: {
@@ -2536,8 +2540,14 @@ export interface BrainNow extends Brain {
   /** auto: the user never chose; core picked it. why: the reason when it isn't the setting. */
   auto: boolean;
   why?: "only_codex" | "only_signed_in";
-  /** The models it may think with on the home (its listed ones, else Ducter's tier table); none: its own default. */
-  models: { id: string; label: string; kind: "smart" | "fast" }[];
+  /**
+   * The models it may think with on the home: the agent's own live list where core has read it
+   * (D202's catalog, the one the task composer shows), else the home's listed ones, else Ducter's
+   * tier table; none: its own default. kind: from the tier table, absent for a model the table
+   * doesn't know (D390: never guessed from a live list's order). default: what the agent runs
+   * when no model is named.
+   */
+  models: { id: string; label: string; kind?: "smart" | "fast"; default?: true }[];
 }
 
 export type SettingsPatch = Partial<Settings>;

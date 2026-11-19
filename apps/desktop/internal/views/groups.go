@@ -80,12 +80,25 @@ func (a *App) boardGroups(b store.Board) []boardGroup {
 	}
 	var out []boardGroup
 	for _, g := range a.S.OnHand.Groups {
-		if len(g.Members) < 2 {
+		// D385: a hand-over's group stands with one part (its plan, or as one task).
+		if len(g.Members) < 2 && (g.Hand == nil || len(g.Members) == 0) {
 			continue
 		}
 		bg := boardGroup{g: g, lane: 9, ids: map[string]bool{}}
-		for i, m := range g.Members {
-			r := groupRow{part: i + 1, taskID: m.TaskID, key: m.Key, title: m.Title, device: m.Device}
+		part := 0
+		for _, m := range g.Members {
+			// D385: plan first's own task is no part: once it has planned, its card says what it read.
+			plan := g.Hand != nil && g.Hand.Plan != nil && m.TaskID != "" && m.TaskID == g.Hand.Plan.TaskID
+			if plan {
+				// Its task leaves its own section and sets where the card stands, never a part.
+				if l := laneOf(m.TaskID); l >= 0 {
+					bg.ids[m.TaskID] = true
+					bg.lane = min(bg.lane, l)
+				}
+				continue
+			}
+			part++
+			r := groupRow{part: part, taskID: m.TaskID, key: m.Key, title: m.Title, device: m.Device}
 			if m.TaskID != "" {
 				if t := a.S.Task(m.TaskID); t != nil {
 					r.att, r.title = t.Attention(), t.Title()
@@ -100,7 +113,17 @@ func (a *App) boardGroups(b store.Board) []boardGroup {
 			}
 			bg.rows = append(bg.rows, r)
 		}
-		if len(bg.ids) == 0 {
+		if hv := g.Hand; hv != nil {
+			// D385: what waits for the person (the plan, the review) stands in Needs you.
+			if (hv.Plan != nil && (hv.Plan.State == "ready" || hv.Plan.State == "held")) || hv.Review == "ready" {
+				bg.lane = 0
+			} else if len(bg.ids) == 0 {
+				if hv.Review == "sent" {
+					continue
+				}
+				bg.lane = 1
+			}
+		} else if len(bg.ids) == 0 {
 			continue
 		}
 		if s := g.Stopped; s != nil {
@@ -268,13 +291,18 @@ func (a *App) groupCard(c *ui.Context, bg boardGroup) {
 					}
 				}
 			})
-			ui.Text(c, a.L.T("group.done", bg.done, len(bg.rows))).FontSize(t.XS).FontWeight(600).TextColor(t.InkMuted).FontFeatures("tnum").SingleLine()
+			if len(bg.rows) > 0 {
+				ui.Text(c, a.L.T("group.done", bg.done, len(bg.rows))).FontSize(t.XS).FontWeight(600).TextColor(t.InkMuted).FontFeatures("tnum").SingleLine()
+			}
 		})
 		var held []groupRow
 		for _, r := range bg.rows {
 			if r.taskID == "" {
 				held = append(held, r)
 			}
+		}
+		if g.Hand != nil {
+			a.handGroupFacts(c, &g, len(held)) // D385: where it stands, the plan, review together
 		}
 		for _, r := range bg.rows {
 			r := r
@@ -360,7 +388,7 @@ func (a *App) groupCard(c *ui.Context, bg boardGroup) {
 					}
 				})
 			})
-		} else if len(held) > 0 {
+		} else if len(held) > 0 && g.Hand == nil {
 			ui.Row(c.Key("foot")).Gap(8).AlignItems(ui.Center).Padding(4, 0, 0, 26).Children(func() {
 				words := a.L.T("group.line")
 				if g.Order == "side_by_side" {

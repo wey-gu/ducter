@@ -28,6 +28,8 @@ export interface Entry {
   /** D165: a note the partner said by itself; a fold-in or an answer revises it in place. */
   finds?: Bodies["finds"];
   peer?: Bodies["bridge_msg"]; // D170: one quiet line about the user's other agents
+  /** D385: a set of to-dos the partner found (todos do=find): its card; a later one with the same setId updates it. */
+  set?: Bodies["todo_set"];
 }
 
 export type DecisionState = Bodies["decision"] & {
@@ -531,7 +533,16 @@ export class Store {
           else this.decisions.set(b.decisionId, { decisionId: b.decisionId, question: "", goLabel: "", defaultOption: "hold", reversible: false, seq: 0, said: b.text });
           return void this.bySeq.set(ev.seq, null);
         }
-        return entry({ ai: b });
+        // D385: a set of to-dos is posted while the partner is still writing its line about it:
+        // the card stands under that line (the words introduce it), not above.
+        const last = this.channel[this.channel.length - 1];
+        entry({ ai: b });
+        if (last?.set && !last.set.groupId && ev.seq - last.firstSeq <= 3 && Date.parse(ev.ts) - Date.parse(last.ev.ts) < 120_000) {
+          this.channel.splice(this.channel.indexOf(last), 1);
+          last.firstSeq = ev.seq + 0.5;
+          this.add(last);
+        }
+        return;
       }
       case "ack": {
         const b = ev.body as Bodies["ack"];
@@ -622,6 +633,17 @@ export class Store {
         }
         const show = b.direction === "in" ? !b.state && !b.inReplyTo : b.state === "sent" && !!b.text;
         return show ? entry({ peer: b }) : void this.bySeq.set(ev.seq, null);
+      }
+      case "todo_set": {
+        // D385: the latest word on a set (handed over: its group) updates the card where it first stood.
+        const b = ev.body as Bodies["todo_set"];
+        const had = this.channel.find((x) => x.set?.setId === b.setId);
+        if (had) {
+          had.set = b;
+          had.revision++;
+          return void this.bySeq.set(ev.seq, null);
+        }
+        return entry({ set: b });
       }
       case "read_receipt":
         this.readUpTo = Math.max(this.readUpTo, (ev.body as Bodies["read_receipt"]).upToSeq);

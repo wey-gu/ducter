@@ -21,13 +21,18 @@ var (
 	bearer   = regexp.MustCompile(`\b((?:[Bb]earer|[Bb]asic|[Tt]oken)\s+)[A-Za-z0-9._~+/\-]{12,}=*`)
 	urlCred  = regexp.MustCompile(`(?i)(\b[a-z][a-z0-9+.\-]*://[^\s:/@]+:)[^\s@/]{3,}@`)
 	field    = regexp.MustCompile(`(?i)((?:[A-Za-z0-9]+[_\-])*(?:api[_\-]?key|apikey|access[_\-]?key|secret|token|password|passwd|pwd|credential|auth[_\-]?key|private[_\-]?key|connect[_\-]?code)(?:[_\-][A-Za-z0-9]+)*\\?["']?\s*(?:[:=]|\s)\s*\\?["']?)([^\s"'` + "`" + `,;<>()\[\]{}\\•]{12,})`)
-	pem      = regexp.MustCompile(`-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----`)
-	card     = regexp.MustCompile(`\b(?:[2-6]\d{14,15}|\d{4}(?:[ -]\d{4}){3}|\d{4}[ -]\d{6}[ -]\d{5})\b`)
-	cvc      = regexp.MustCompile(`(?i)((?:cvc2?|cvv2?|csc|cvn|security code|安全码|验证码|校验码)\s*[:：=]?\s*)(\d{3,8})\b`)
-	digit    = regexp.MustCompile(`[0-9]`)
-	letter   = regexp.MustCompile(`[A-Za-z]`)
-	base64   = regexp.MustCompile(`^[A-Za-z0-9+/]{20,}={0,2}$`)
-	version  = regexp.MustCompile(`^v?\d+(\.\d+)+$`)
+	// fieldAt is field from a secret's name on, anchored: where a match can
+	// start. The run of name words field allows before the name ("OPENAI_",
+	// "x-") only widens a match leftwards over text that stays as it is, so
+	// a match found from the name gives the same text (field_test.go).
+	fieldAt = regexp.MustCompile(`(?i)^((?:api[_\-]?key|apikey|access[_\-]?key|secret|token|password|passwd|pwd|credential|auth[_\-]?key|private[_\-]?key|connect[_\-]?code)(?:[_\-][A-Za-z0-9]+)*\\?["']?\s*(?:[:=]|\s)\s*\\?["']?)([^\s"'` + "`" + `,;<>()\[\]{}\\•]{12,})`)
+	pem     = regexp.MustCompile(`-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----`)
+	card    = regexp.MustCompile(`\b(?:[2-6]\d{14,15}|\d{4}(?:[ -]\d{4}){3}|\d{4}[ -]\d{6}[ -]\d{5})\b`)
+	cvc     = regexp.MustCompile(`(?i)((?:cvc2?|cvv2?|csc|cvn|security code|安全码|验证码|校验码)\s*[:：=]?\s*)(\d{3,8})\b`)
+	digit   = regexp.MustCompile(`[0-9]`)
+	letter  = regexp.MustCompile(`[A-Za-z]`)
+	base64  = regexp.MustCompile(`^[A-Za-z0-9+/]{20,}={0,2}$`)
+	version = regexp.MustCompile(`^v?\d+(\.\d+)+$`)
 )
 
 // keyLike: long, with a digit and a letter, not a path, not a version.
@@ -44,7 +49,70 @@ func keyLike(v string) bool {
 // replace is ReplaceAllString with a function that sees the submatches and
 // where the match ends.
 func replace(re *regexp.Regexp, s string, f func(m []string, end int) string) string {
-	idx := re.FindAllStringSubmatchIndex(s, -1)
+	return replaceAt(re.FindAllStringSubmatchIndex(s, -1), s, f)
+}
+
+// fieldHeads are how every secret's name in field begins, in lower case.
+var fieldHeads = []string{"api", "access", "secret", "token", "passw", "pwd", "credential", "auth", "private", "connect"}
+
+// fieldMatches is field.FindAllStringSubmatchIndex(s, -1), found faster: a
+// match starts only where a secret's name does, so fieldAt is tried at each
+// such place, left to right, past the end of the last match (D284: an
+// opened task runs every tool output through this; the unanchored pattern
+// tried every byte). (?i) folds the Kelvin sign into k and the long s into
+// s, which an ASCII search misses: text holding either takes the old way.
+func fieldMatches(s string) [][]int {
+	if strings.ContainsAny(s, "\u212a\u017f") {
+		return field.FindAllStringSubmatchIndex(s, -1)
+	}
+	b := []byte(s)
+	for i, c := range b {
+		if c >= 'A' && c <= 'Z' {
+			b[i] = c + 'a' - 'A'
+		}
+	}
+	lower := string(b)
+	next := make([]int, len(fieldHeads))
+	for i := range next {
+		next[i] = -2 // not looked for yet
+	}
+	var out [][]int
+	pos := 0
+	for pos < len(s) {
+		k := -1
+		for i, h := range fieldHeads {
+			if next[i] != -1 && next[i] < pos {
+				if j := strings.Index(lower[pos:], h); j >= 0 {
+					next[i] = pos + j
+				} else {
+					next[i] = -1
+				}
+			}
+			if next[i] >= 0 && (k < 0 || next[i] < k) {
+				k = next[i]
+			}
+		}
+		if k < 0 {
+			break
+		}
+		m := fieldAt.FindStringSubmatchIndex(s[k:])
+		if m == nil {
+			pos = k + 1
+			continue
+		}
+		for i := range m {
+			if m[i] >= 0 {
+				m[i] += k
+			}
+		}
+		out = append(out, m)
+		pos = m[1]
+	}
+	return out
+}
+
+// replaceAt replaces the matches at idx (FindAllStringSubmatchIndex's).
+func replaceAt(idx [][]int, s string, f func(m []string, end int) string) string {
 	if idx == nil {
 		return s
 	}
@@ -155,7 +223,7 @@ func text(s string) string {
 		return out
 	}
 	src := out
-	out = replace(field, src, func(m []string, end int) string {
+	out = replaceAt(fieldMatches(src), src, func(m []string, end int) string {
 		if keyLike(m[2]) && !strings.HasPrefix(src[end:], Hidden) {
 			return m[1] + Hidden
 		}

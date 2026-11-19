@@ -21,9 +21,48 @@ const JWT = /\beyJ[A-Za-z0-9_\-]{8,}\.[A-Za-z0-9_\-]{8,}\.[A-Za-z0-9_\-]{8,}/g;
 const BEARER = /\b((?:[Bb]earer|[Bb]asic|[Tt]oken)\s+)[A-Za-z0-9._~+/\-]{12,}=*/g;
 /** A password in a URL: scheme://user:secret@host. */
 const URL_CRED = /(\b[a-z][a-z0-9+.\-]*:\/\/[^\s:/@]+:)[^\s@/]{3,}@/gi;
-/** A value after a field that names a secret: token=…, "api_key": "…", password: …, --token … */
-const FIELD =
-  /((?:[A-Za-z0-9]+[_\-])*(?:api[_\-]?key|apikey|access[_\-]?key|secret|token|password|passwd|pwd|credential|auth[_\-]?key|private[_\-]?key|connect[_\-]?code)(?:[_\-][A-Za-z0-9]+)*\\?["']?\s*(?:[:=]|\s)\s*\\?["']?)([^\s"'`,;<>()\[\]{}\\•\uE000\uE001]{12,})/gi;
+/**
+ * A value after a field that names a secret: token=…, "api_key": "…", password: …, --token …
+ * Sticky, from the secret's name on, tried only where a name begins (replaceField). Until
+ * 2026-11-19 it ran unanchored over the whole text from a run of name words before the name
+ * ("OPENAI_", "x-"); that run only widened a match leftwards over text that stays as it is, so
+ * the output is the same (redact-field.test.ts keeps the old form as its oracle). D284: an opened
+ * task runs every tool output through this, and the old form tried every position.
+ */
+const FIELD_AT =
+  /((?:api[_\-]?key|apikey|access[_\-]?key|secret|token|password|passwd|pwd|credential|auth[_\-]?key|private[_\-]?key|connect[_\-]?code)(?:[_\-][A-Za-z0-9]+)*\\?["']?\s*(?:[:=]|\s)\s*\\?["']?)([^\s"'`,;<>()\[\]{}\\•\uE000\uE001]{12,})/iy;
+/** How every secret's name in FIELD_AT begins, in lower case. */
+const FIELD_HEADS = ["api", "access", "secret", "token", "passw", "pwd", "credential", "auth", "private", "connect"];
+
+/**
+ * The old unanchored s.replace(FIELD, f), found faster: FIELD_AT at each place a secret's name begins, left to right,
+ * past the end of the last match. Case is folded for ASCII only, as the `i` flag without `u` does.
+ */
+export function replaceField(s: string, f: (m: string, head: string, v: string, at: number, all: string) => string): string {
+  const lower = s.replace(/[A-Z]+/g, (x) => x.toLowerCase());
+  const next = FIELD_HEADS.map(() => -2);
+  let out = "";
+  let last = 0;
+  let pos = 0;
+  while (pos < s.length) {
+    let k = -1;
+    for (let i = 0; i < FIELD_HEADS.length; i++) {
+      if (next[i]! !== -1 && next[i]! < pos) next[i] = lower.indexOf(FIELD_HEADS[i]!, pos);
+      if (next[i]! >= 0 && (k < 0 || next[i]! < k)) k = next[i]!;
+    }
+    if (k < 0) break;
+    FIELD_AT.lastIndex = k;
+    const m = FIELD_AT.exec(s);
+    if (!m) {
+      pos = k + 1;
+      continue;
+    }
+    out += s.slice(last, k) + f(m[0], m[1]!, m[2]!, k, s);
+    last = pos = k + m[0].length;
+  }
+  return last === 0 ? s : out + s.slice(last);
+}
+
 /** A PEM private key block. */
 const PEM = /-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/g;
 /** D191: a card number (15–16 digits from a card network, or grouped as printed) that passes Luhn; the last four stay. */
@@ -85,7 +124,7 @@ export function redactWith(s: string, hide: (k: FoundKey) => string | undefined,
   out = out.replace(BEARER, (m, head: string) => head + mark({ kind: "bearer", head, key: m.slice(head.length) }));
   out = out.replace(URL_CRED, (m, head: string) => `${head}${mark({ kind: "url", head, key: m.slice(head.length, -1) })}@`);
   // A value already found by a pattern above ("sk-ant-api03-" + its marker) keeps its head.
-  out = out.replace(FIELD, (m, head: string, v: string, at: number, all: string) => (keyLike(v) && !all.startsWith("\uE000", at + m.length) ? head + mark({ kind: "field", head, key: v }) : m));
+  out = replaceField(out, (m, head, v, at, all) => (keyLike(v) && !all.startsWith("\uE000", at + m.length) ? head + mark({ kind: "field", head, key: v }) : m));
   if (!found.length) return s;
   return out.replace(MARK, (_m, i: string) => {
     const k = found[Number(i)]!;

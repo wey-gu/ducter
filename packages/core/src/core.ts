@@ -83,6 +83,7 @@ import { createGhInstaller, useOwnTools, type GhInstaller } from "./gh-install.t
 import { ducterFolder } from "@ducter/protocol/src/ducter-folder.ts";
 import { createProjects } from "./projects.ts";
 import { createTaskGroups, type TaskGroups } from "./task-groups.ts";
+import { PLAN_SCHEMA } from "./task-sources/handover.ts";
 import { createReleaseWatch, type Fetch as ReleaseFetch, type ReleaseWatch } from "./release.ts";
 import { createUpdates, type Updates, type UpdatesDeps } from "./updates.ts";
 import { createAgentLatest, createAgentUpdates, type AgentUpdates, type AgentUpdatesDeps } from "./agents.ts";
@@ -642,7 +643,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     onCalling: () => devicesView?.changed(), // D199: the home's 打电话
   });
   // D360: groups of tasks that are one piece of work; the later members of a line are held here.
-  const taskGroups = createTaskGroups({ dataDir, tasks, runner: () => runner, now: () => clock.now(), changed: () => onHandChanged() });
+  const taskGroups = createTaskGroups({ dataDir, tasks, runner: () => runner, now: () => clock.now(), changed: () => onHandChanged(), opened: (taskId, bind, group) => taskSourcesRef?.handover?.opened(taskId, bind, group) });
   log.subscribe((e) => taskGroups.onEvent(e));
   tasks.setDecorator((o) => {
     const on = decorateBrowsing(changes.decorate(limitsDecorate(work.decorate(o))));
@@ -1586,9 +1587,40 @@ export function startCore(opts: CoreOptions = {}): Core {
       }
       return undefined;
     },
+    // D385: handing several over: groups, New task's places and agents, the computers by name, the rules.
+    handover: {
+      persona: () => persona.id,
+      groups: () => taskGroups,
+      places: async () => {
+        const o = await newTask.options().catch(() => ({ places: [], candidates: [] }) as { places: import("@ducter/protocol").PlaceChoice[]; candidates: { harness: string }[] });
+        return { places: o.places, harnesses: (o.candidates ?? []).map((c) => c.harness) };
+      },
+      computers: () => [{ device: "local", name: computers.homeName() ?? "" }, ...(computers.workers?.() ?? []).map((w) => ({ device: w.id, name: w.name }))],
+      rules: () => rules.list(),
+      addRule: (r) => void rules.add(r),
+      open: async (input) => {
+        if (!runner) throw new Error("Tasks can't run right now.");
+        return runner.openTask(input);
+      },
+      tell: (taskId, text) => void runner?.send(taskId, text, undefined, "ducter").catch((e) => console.warn(`[core] couldn't tell ${taskId} about its hand-over:`, (e as Error).message)),
+    },
     ...(srcTesting ? { ghRun: async () => ({ code: 127, out: "", err: "", missing: true as const }), home: join(dataDir, "no-home") } : {}),
     ...(opts.taskSources ?? {}),
   });
+  // D385: plan first's lead part reports its plan here (only that task sees the tool).
+  mcp.registerWhen(
+    "task",
+    "plan_report",
+    "Only for a task whose brief says it plans a hand-over: the plan, every to-do in exactly one place (fixed, one, line, side, later), and the person's limits. Call once (again after the person replies), then report_to_main done.",
+    PLAN_SCHEMA,
+    async (args, ctx) => {
+      if (!ctx.taskId) throw new Error("plan_report requires a task token");
+      const r = taskSources.handover?.planReport(ctx.taskId, args) ?? { ok: false, error: "No hand-over here." };
+      if (!r.ok) return r.error ?? "Not kept.";
+      return "Plan kept. Now call report_to_main with state done and one plain line; the person sees the plan as a card.";
+    },
+    (ctx) => !!ctx.taskId && !!taskSourcesRef?.handover?.isPlanTask(ctx.taskId),
+  );
   taskSourcesRef = taskSources;
   if (opts.taskSources?.ask) taskSources.setAsk(opts.taskSources.ask);
   const proactive = createProactive({

@@ -10,7 +10,7 @@
 // computer, no place) never wait for each other.
 import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { Bodies, LogEvent, Place, TaskCard, TaskGroupFrame, TaskGroupView, GroupMember, GroupOrder } from "@ducter/protocol";
+import type { Bodies, GroupHandView, LogEvent, Place, SourceItemRef, TaskCard, TaskGroupFrame, TaskGroupView, GroupMember, GroupOrder } from "@ducter/protocol";
 import { GROUP_MEMBERS_MAX, GROUP_NAME_MAX, GROUPS_MAX, isHeld } from "@ducter/protocol";
 import type { Runner, TaskRegistry } from "@ducter/protocol/src/internal.ts";
 import { isActive } from "./registry.ts";
@@ -20,8 +20,9 @@ export const GROUPS_FILE = "task-groups.json";
 /** What a held member opens with: task_open's input, kept until its turn. */
 export type HeldOpen = Parameters<Runner["openTask"]>[0];
 
-type Held = { key: string; title: string; at: string; open: HeldOpen; device?: string };
-type Rec = Omit<TaskGroupView, "members"> & { members: ({ taskId: string } | Held)[]; doneAt?: string };
+/** D385: a held part of a hand-over carries the to-dos its task is bound to when it opens. */
+type Held = { key: string; title: string; at: string; open: HeldOpen; device?: string; bind?: SourceItemRef[]; line?: string };
+type Rec = Omit<TaskGroupView, "members"> & { members: ({ taskId: string; line?: string } | Held)[]; doneAt?: string };
 
 export interface TaskGroups {
   /** On hand's view: groups with two or more members, held ones by title only. */
@@ -45,6 +46,17 @@ export interface TaskGroups {
   onEvent(e: LogEvent): void;
   /** Opens what is due (after a restart, or a change of order). */
   pump(): Promise<void>;
+  /** D385: a hand-over's group (kept with one member, or none while its plan is being made). */
+  create(persona: string, name: string, o: { order: GroupOrder; hand: GroupHandView }): TaskGroupView;
+  /** D385: parts held in line (they open by the group's order: one by one, or `hand.cap` at a time). */
+  hold(groupId: string, parts: { open: HeldOpen; bind?: SourceItemRef[]; line?: string }[]): TaskGroupView | undefined;
+  /** D385: a task that already opened, into the group (first: at the front, the plan's part). */
+  attach(groupId: string, taskId: string, first?: boolean): TaskGroupView | undefined;
+  /** D385: the hand-over's record changed (its plan, its review). */
+  setHand(groupId: string, patch: Partial<GroupHandView>): TaskGroupView | undefined;
+  get(groupId: string): TaskGroupView | undefined;
+  /** D385: a live hand-over group on this subject (加进「{group}」). */
+  onSubject(persona: string, subject: string): TaskGroupView | undefined;
 }
 
 export interface TaskGroupsDeps {
@@ -54,6 +66,8 @@ export interface TaskGroupsDeps {
   now?: () => number;
   changed?: () => void;
   newId?: () => string;
+  /** D385: a held part opened as this task (bind it to its to-dos). */
+  opened?: (taskId: string, bind: SourceItemRef[], group: TaskGroupView) => void;
 }
 
 const clean = (s: unknown) => String(s ?? "").replace(/\s+/g, " ").trim().slice(0, GROUP_NAME_MAX);
@@ -102,6 +116,7 @@ export function createTaskGroups(d: TaskGroupsDeps): TaskGroups {
     persona: g.persona,
     createdAt: g.createdAt,
     ...(g.stopped ? { stopped: g.stopped } : {}),
+    ...(g.hand ? { hand: g.hand } : {}),
     members: g.members.map((m): GroupMember => (isHeld(m as GroupMember) ? { key: (m as Held).key, title: (m as Held).title, at: (m as Held).at, ...((m as Held).device ? { device: (m as Held).device } : {}) } : { taskId: (m as { taskId: string }).taskId })),
   });
   const placeOfMember = (m: Rec["members"][number]): Place | undefined => ("key" in m ? m.open.place : card(m.taskId)?.place);
@@ -112,17 +127,26 @@ export function createTaskGroups(d: TaskGroupsDeps): TaskGroups {
     return groups.find((g) => live(g) && g.persona === persona && same(g.name, n));
   };
 
+  /** D385: a hand-over's line: its folder, or the group itself when the part has none (one after another means it). */
+  const lineIn = (g: Rec, m: Rec["members"][number]) => (g.hand && m.line ? `${g.id}:${m.line}` : undefined) ?? lineOf(placeOfMember(m)) ?? (g.hand ? `group:${g.id}` : undefined);
+  /** D385: the plan's own part never holds a line (it changes nothing, so nothing starts from its branch). */
+  const isPlan = (g: Rec, m: Rec["members"][number]) => !!g.hand?.plan && !("key" in m) && m.taskId === g.hand.plan.taskId;
+
   /** The member a held one waits for: the nearest one before it in its line, or none. */
   function ahead(g: Rec, i: number): Rec["members"][number] | undefined {
     if (g.order === "side_by_side") return undefined;
-    const line = lineOf(placeOfMember(g.members[i]!));
+    const line = lineIn(g, g.members[i]!);
     if (!line) return undefined;
     for (let k = i - 1; k >= 0; k--) {
       const m = g.members[k]!;
-      if (lineOf(placeOfMember(m)) === line) return m;
+      if (isPlan(g, m)) continue;
+      if (lineIn(g, m) === line) return m;
     }
     return undefined;
   }
+
+  /** D385: side by side with a cap: how many of its parts are working now. */
+  const working = (g: Rec) => g.members.filter((m) => !("key" in m) && !isPlan(g, m) && (() => { const c = card(m.taskId); return !!c && isActive(c.attention) && !doneForLine(c.attention); })()).length;
 
   /** Whether what is ahead lets this one start: nothing ahead, or it is a task that is done. */
   function clear(g: Rec, i: number): "go" | "wait" | { stop: string; why: "failed" | "dropped" } {
@@ -140,8 +164,9 @@ export function createTaskGroups(d: TaskGroupsDeps): TaskGroups {
   function withBefore(g: Rec, i: number, h: Held): HeldOpen {
     const a = ahead(g, i);
     const prev = a && !("key" in a) ? card(a.taskId) : undefined;
-    const step = g.members.filter((m) => lineOf(placeOfMember(m)) === lineOf(h.open.place)).indexOf(g.members[i]!) + 1;
-    const of = g.members.filter((m) => lineOf(placeOfMember(m)) === lineOf(h.open.place)).length;
+    const inLine = g.members.filter((m) => !isPlan(g, m) && lineIn(g, m) === lineIn(g, h));
+    const step = inLine.indexOf(g.members[i]!) + 1;
+    const of = inLine.length;
     let place = h.open.place;
     let from = "";
     if (prev && prev.place.kind === "repo" && place?.kind === "repo" && prev.place.branch && prev.integrated?.act !== "merge") {
@@ -149,7 +174,7 @@ export function createTaskGroups(d: TaskGroupsDeps): TaskGroups {
       from = ` It starts from the branch of the one before it ("${prev.title}", ${prev.place.branch}), which isn't merged yet.`;
     } else if (prev) from = ` The one before it ("${prev.title}") is done${prev.integrated?.act === "merge" ? " and merged" : ""}.`;
     const said = prev?.lastReport?.summary ? ` What it reported: ${prev.lastReport.summary.slice(0, 600)}` : "";
-    const head = `This is part ${step} of ${of} of "${g.name}", one piece of work done one task after another.${from}${said}`;
+    const head = g.order === "side_by_side" ? `This is one part of "${g.name}", several pieces of work done side by side.` : `This is part ${step} of ${of} of "${g.name}", one piece of work done one task after another.${from}${said}`;
     return { ...h.open, ...(place ? { place } : {}), brief: `${head}\n\n${h.open.brief}` };
   }
 
@@ -166,6 +191,8 @@ export function createTaskGroups(d: TaskGroupsDeps): TaskGroups {
           for (let i = 0; i < g.members.length; i++) {
             const m = g.members[i]!;
             if (!("key" in m)) continue;
+            // D385: side by side, at most the hand-over's cap at once (the next opens when one ends).
+            if (g.order === "side_by_side" && g.hand?.cap && working(g) >= g.hand.cap) break;
             const c = clear(g, i);
             if (c === "wait") continue;
             if (typeof c === "object") {
@@ -176,8 +203,9 @@ export function createTaskGroups(d: TaskGroupsDeps): TaskGroups {
             if (!r) break; // no agent yet: the next event or restart opens it
             try {
               const opened = await r.openTask(withBefore(g, i, m));
-              g.members[i] = { taskId: opened.taskId };
+              g.members[i] = { taskId: opened.taskId, ...(m.line ? { line: m.line } : {}) };
               touched = true;
+              if (m.bind?.length) d.opened?.(opened.taskId, m.bind, view(g));
             } catch (err) {
               console.warn(`[groups] couldn't open "${m.title}" in "${g.name}":`, (err as Error).message);
               break;
@@ -188,13 +216,26 @@ export function createTaskGroups(d: TaskGroupsDeps): TaskGroups {
             if (s && (doneForLine(s.attention) || isActive(s.attention))) delete g.stopped, (touched = true), (again = true);
           }
           // Finished: every member a task that has ended (kept for the board's day, pruned later).
-          const ended = g.members.every((x) => !("key" in x) && (() => { const c = card(x.taskId); return !c || doneForLine(c.attention) || !isActive(c.attention); })());
+          const waitingPlan = !!g.hand?.plan && g.hand.plan.state !== "going" && g.hand.plan.state !== "failed";
+          const ended = !waitingPlan && g.members.length > 0 && g.members.every((x) => !("key" in x) && (() => { const c = card(x.taskId); return !c || doneForLine(c.attention) || !isActive(c.attention); })());
           if (ended && !g.doneAt) (g.doneAt = iso()), (touched = true);
           if (!ended && g.doneAt) delete g.doneAt, (touched = true);
+          // D385: 一起过目 / Review together, once every part (not the plan) came back done.
+          if (g.hand && g.hand.review !== "sent") {
+            const parts = g.members.filter((x) => !isPlan(g, x));
+            const going = !g.hand.plan || g.hand.plan.state === "going";
+            const ready = going && (parts.length > 0 || !!g.hand.fixed?.length) && parts.every((x) => !("key" in x) && doneForLine(card(x.taskId)?.attention));
+            if (ready && g.hand.review !== "ready") (g.hand = { ...g.hand, review: "ready" }), (touched = true);
+            if (!ready && g.hand.review === "ready") (g.hand = { ...g.hand }), delete g.hand.review, (touched = true);
+          }
         }
         if (touched) save();
       } while (again);
-    })().finally(() => (pumping = undefined));
+    })().finally(() => {
+      pumping = undefined;
+      // A pump asked for after the last pass (a change made while it ran) runs now.
+      if (again) (again = false), void pump();
+    });
     return pumping;
   }
 
@@ -211,12 +252,60 @@ export function createTaskGroups(d: TaskGroupsDeps): TaskGroups {
       if (was) was.members = was.members.filter((m) => "key" in m || m.taskId !== id);
       if (into.members.length < GROUP_MEMBERS_MAX) into.members.push({ taskId: id });
     }
-    // A group left with one member is no longer a group.
-    groups = groups.filter((g) => g === into || g.members.length >= 2 || g.members.some((m) => "key" in m));
+    // A group left with one member is no longer a group (a hand-over's keeps its record).
+    groups = groups.filter((g) => g === into || g.hand || g.members.length >= 2 || g.members.some((m) => "key" in m));
   }
 
   const api: TaskGroups = {
-    list: () => groups.filter((g) => g.members.length >= 2).map(view),
+    list: () => groups.filter((g) => g.members.length >= 2 || (g.hand && g.members.length >= 1)).map(view),
+    create(persona, name, o) {
+      const g = make(persona, name, "you");
+      g.order = o.order;
+      g.hand = o.hand;
+      save();
+      return view(g);
+    },
+    hold(groupId, parts) {
+      const g = groups.find((x) => x.id === groupId);
+      if (!g) return undefined;
+      for (const p of parts) {
+        if (g.members.length >= GROUP_MEMBERS_MAX) break;
+        g.members.push({ key: `h${newId()}`, title: p.open.title, at: iso(), open: p.open, ...(p.bind?.length ? { bind: p.bind } : {}), ...(p.line ? { line: p.line } : {}) });
+      }
+      delete g.doneAt;
+      save();
+      void pump();
+      return view(g);
+    },
+    attach(groupId, taskId, first) {
+      const g = groups.find((x) => x.id === groupId);
+      if (!g) return undefined;
+      const was = groupOf(taskId);
+      if (was && was !== g) was.members = was.members.filter((m) => "key" in m || m.taskId !== taskId);
+      if (!g.members.some((m) => !("key" in m) && m.taskId === taskId)) {
+        if (first) g.members.unshift({ taskId });
+        else g.members.push({ taskId });
+      }
+      delete g.doneAt;
+      save();
+      return view(g);
+    },
+    setHand(groupId, patch) {
+      const g = groups.find((x) => x.id === groupId);
+      if (!g || !g.hand) return undefined;
+      g.hand = { ...g.hand, ...patch };
+      for (const k of Object.keys(patch) as (keyof GroupHandView)[]) if (patch[k] === undefined) delete g.hand[k];
+      save();
+      void pump();
+      return view(g);
+    },
+    get: (groupId) => ((g) => (g ? view(g) : undefined))(groups.find((x) => x.id === groupId)),
+    onSubject(persona, subject) {
+      const k = subject.toLocaleLowerCase().replace(/[\s·・_-]+/g, "");
+      if (!k) return undefined;
+      const g = groups.find((x) => live(x) && x.hand && x.persona === persona && x.hand.review !== "sent" && (x.hand.subject ?? x.name).toLocaleLowerCase().replace(/[\s·・_-]+/g, "") === k);
+      return g ? view(g) : undefined;
+    },
     of: (taskId) => ((g) => (g ? view(g) : undefined))(groupOf(taskId)),
     named: (persona, name) => ((g) => (g ? view(g) : undefined))(named(persona, name)),
     wouldHold(persona, name, place) {
@@ -360,7 +449,8 @@ export function createTaskGroups(d: TaskGroupsDeps): TaskGroups {
     onEvent(e) {
       if (e.kind !== "task_state") return;
       const id = (e.body as Bodies["task_state"]).taskId;
-      if (groupOf(id)) void pump();
+      // Out of the Log's own delivery: opening a task appends to the Log, and the registry must see it first.
+      if (groupOf(id)) setTimeout(() => void pump(), 0);
     },
     pump,
   };

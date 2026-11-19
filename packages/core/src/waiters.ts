@@ -58,7 +58,7 @@ export interface Waiters {
   /** Looks now (Look now), instead of at the next scheduled time. */
   look(waiterId: string): Promise<boolean>;
   /** unmet: it can't come true, and why in the user's words (D145); by: who cancelled it. */
-  cancel(waiterId: string, why?: { unmet?: string; by?: Origin }): boolean;
+  cancel(waiterId: string, why?: { unmet?: string; by?: Origin; replacedBy?: string }): boolean;
   /** D145: 接着等 / Keep waiting: arms a wait that ended unmet again, as it was. */
   rearm(waiterId: string): boolean;
   /** One look of a check or event, outside any waiter: the dry run on a proposal card. */
@@ -140,7 +140,7 @@ export function createWaiters(opts: WaiterDeps): Waiters {
     a.timer = a.deadline = undefined;
   };
 
-  const close = (waiterId: string, state: "fired" | "cancelled" | "expired", observed?: string, why: { unmet?: string; by?: Origin; detail?: string; unsure?: boolean } = {}) => {
+  const close = (waiterId: string, state: "fired" | "cancelled" | "expired", observed?: string, why: { unmet?: string; by?: Origin; detail?: string; unsure?: boolean; replacedBy?: string } = {}) => {
     const a = armed.get(waiterId);
     if (!a) return;
     armed.delete(waiterId);
@@ -152,6 +152,7 @@ export function createWaiters(opts: WaiterDeps): Waiters {
     if (a.baseline) body.baseline = a.baseline;
     if (why.detail) body.detail = clip(why.detail, 2000);
     if (why.unsure) body.unsure = true;
+    if (why.replacedBy) body.replacedBy = why.replacedBy;
     log.append({ stream: "channel", origin: why.by ?? "waiter", kind: "waiter", body });
   };
 

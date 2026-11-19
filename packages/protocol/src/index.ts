@@ -508,6 +508,8 @@ export interface Bodies {
     // ("cancelled" with unmet = it can't come true; "expired" = it ran out of time).
     unmetSays?: string;
     unmet?: string;
+    /** D394: "cancelled" because the task armed its next timer: a task has one timer of its own, the newest. */
+    replacedBy?: string;
   };
   // One look of a check/event waiter, logged only when what it saw changed (or it began failing),
   // on the task's stream (task waiters) or the channel. Clients fold them into Details.

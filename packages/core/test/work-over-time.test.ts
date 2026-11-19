@@ -179,6 +179,63 @@ test("D267: a task's own timer: Waiting until then, wakes the task (not the part
   expect(p.ok).toBe(false);
 });
 
+test("D394: a task has one timer of its own: re-arming replaces it, so stacked rounds never run (seen live: 05:37, 05:40, 05:52)", async () => {
+  const s = setup({ start: Date.parse("2026-11-18T04:52:00Z") });
+  openTask(s.log, "t1");
+  s.tasks.setState("t1", "working", "hot");
+  const T = { role: "task", taskId: "t1" } as const;
+  // The live sequence: a round at 04:52 arms 45 min; a nudge's round at 04:55 and a compaction's
+  // round at 05:07 each arm again.
+  const r1 = (await s.mcp.call(T, "wait_for", { reason: "再看一轮评审", afterMinutes: 45 })) as { ok: boolean; replaced?: string[] };
+  expect(r1.replaced).toBeUndefined();
+  await flush();
+  s.clock.advance(3 * 60_000);
+  s.tasks.setState("t1", "working", "hot");
+  const r2 = (await s.mcp.call(T, "wait_for", { reason: "再看一轮评审", afterMinutes: 45 })) as { ok: boolean; replaced?: string[] };
+  expect(r2.replaced).toEqual(["2026-11-18T05:37:00.000Z"]);
+  await flush();
+  // Replaced, it doesn't wake the task out of Waiting.
+  expect(s.tasks.get("t1")).toMatchObject({ attention: "blocked" });
+  s.clock.advance(12 * 60_000);
+  await (s.mcp.call(T, "wait_for", { reason: "再看一轮评审", afterMinutes: 45 }) as Promise<unknown>);
+  await flush();
+  expect(s.tasks.get("t1")).toMatchObject({ attention: "blocked" });
+  const armedNow = s.work.waiters.views().filter((v) => v.taskId === "t1");
+  expect(armedNow.map((v) => v.at)).toEqual(["2026-11-18T05:52:00.000Z"]);
+  const cancelled = kinds(s.log, "waiter").filter((b) => (b as Bodies["waiter"]).state === "cancelled") as Bodies["waiter"][];
+  expect(cancelled).toHaveLength(2);
+  expect(cancelled.every((b) => b.replacedBy)).toBe(true);
+  // 05:37 and 05:40 pass: nothing wakes it. 05:52: one wake.
+  s.clock.advance(44 * 60_000);
+  await flush();
+  expect(s.sent).toEqual([]);
+  s.clock.advance(2 * 60_000);
+  await flush();
+  expect(s.sent).toHaveLength(1);
+  expect(s.sent[0]!.text).toContain("到时间了");
+  s.clock.advance(60 * 60_000);
+  await flush();
+  expect(s.sent).toHaveLength(1);
+});
+
+test("D394: a restart rebuilds one timer, never the replaced ones", async () => {
+  const s = setup({ start: Date.parse("2026-11-18T04:52:00Z") });
+  openTask(s.log, "t1");
+  s.tasks.setState("t1", "working", "hot");
+  const T = { role: "task", taskId: "t1" } as const;
+  await s.mcp.call(T, "wait_for", { reason: "再看一轮评审", afterMinutes: 45 });
+  s.clock.advance(3 * 60_000);
+  await s.mcp.call(T, "wait_for", { reason: "再看一轮评审", afterMinutes: 45 });
+  await flush();
+  s.work.stop();
+  const s2 = setup({ dir: s.dir, start: s.clock.now() });
+  await flush();
+  expect(s2.work.waiters.views().filter((v) => v.taskId === "t1").map((v) => v.at)).toEqual(["2026-11-18T05:40:00.000Z"]);
+  s2.clock.advance(60 * 60_000);
+  await flush();
+  expect(s2.sent).toHaveLength(1);
+});
+
 test("a task's own check: it rests on Waiting, wakes the task (not the partner) when it holds", async () => {
   let ok = false;
   const { clock, log, tasks, work, sent } = setup({ exec: async () => ({ exitCode: 0, stdout: checksJson([ok ? "SUCCESS" : "PENDING"]) }) });

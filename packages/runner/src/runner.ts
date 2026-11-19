@@ -144,6 +144,8 @@ interface TaskRt {
   archiveKeptAt?: string;
   running: boolean; // our view: a turn is in flight
   reportedThisTurn: boolean;
+  /** D394: this turn armed a wait of the task's own that is still armed: it rests, owing no report. */
+  restsThisTurn?: Set<string>;
   nudged: boolean;
   stallNoted: boolean;
   interruptRequested?: boolean; // the user stopped the current turn
@@ -407,6 +409,16 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
   }
 
   const unsubscribe = core.log.subscribe((e: LogEvent) => {
+    if (e.kind === "waiter") {
+      // D394: a turn that ends resting on its own wait (wait_for) has said what comes next: a
+      // round that found nothing new owes no report, so it is never nudged into "nothing new".
+      const w = e.body as Bodies["waiter"];
+      const t = w.taskId ? tasks.get(w.taskId) : undefined;
+      if (!t) return;
+      if (w.state === "armed" && t.running) (t.restsThisTurn ??= new Set()).add(w.waiterId);
+      else if (w.state !== "armed") t.restsThisTurn?.delete(w.waiterId);
+      return;
+    }
     if (e.kind !== "report") return;
     const body = e.body as Bodies["report"];
     const t = tasks.get(body.taskId);
@@ -1219,6 +1231,8 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     t.running = busy;
     const reported = t.reportedThisTurn;
     t.reportedThisTurn = false;
+    const rests = !busy && (t.restsThisTurn?.size ?? 0) > 0;
+    if (!busy) t.restsThisTurn = undefined;
     const compactTurn = !busy && !!t.compactTurn;
     if (!busy) t.compactTurn = false;
     // D288: a /compact asked mid-turn runs once the turn is over.
@@ -1272,7 +1286,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       t.stallNoted = false;
       return;
     }
-    if (reported) {
+    if (reported || rests) {
       t.nudged = false;
       t.stallNoted = false;
       return;

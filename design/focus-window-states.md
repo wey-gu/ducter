@@ -57,7 +57,12 @@ partner sees it marked and sends the task back. A worker's refs are not checked 
 
 **Missing report:** if a turn ends without `report_to_main`, C sends one cheap nudge ("report
 status"). If there is still no report, the window stays `working` and the stall rule applies.
-C never guesses `done`.
+C never guesses `done`. **Resting on its own wait (D394):** a turn that armed a wait of the
+task's own (`wait_for`) and ends with it still armed owes no report: it is neither nudged nor a
+miss, so a repeating round that found nothing new stays silent instead of being pushed into a
+"nothing new" line. A task has **one timer of its own**: arming the next replaces the armed one
+(`replacedBy`, which never wakes the task out of Waiting), so a round started by another wake (a
+nudge, a compaction, a restart's re-run of a cut-off turn) moves the next round, never adds one.
 
 **Background work (D266).** A harness can leave work running past its turn: Claude Code's
 background shells, Monitor and background subagents, Codex's subagents. C counts them from

@@ -24,8 +24,11 @@ async function home() {
   A.L = strings("en");
   A.send = () => {};
   A.S.welcomed = true;
+  A.S.tasks.clear(); // only this file's tasks, whatever an earlier file left (the app's store is one per run)
+  const k = await import("../src/palette.tsx");
+  k.resetPalette();
   A.receive({ t: "on_hand", onHand: { tasks: [card("t1", "Compaction throttle", "working"), card("t2", "Range scan", "needs_you")], counts: { needs_you: 1, working: 1, waiting: 0, done_today: 0 } } } as never);
-  return { A, k: await import("../src/palette.tsx") };
+  return { A, k };
 }
 
 describe("the find-anything field", () => {

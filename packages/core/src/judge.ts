@@ -89,6 +89,8 @@ export function createHarnessAsk(opts: { harness: () => HarnessPort | undefined;
           if (ev.turnEnd) break;
         }
       })();
+      // Handled here too: should send fail first, the reading's own failure is never left unhandled.
+      reading.catch(() => {});
       await session.send(prompt, "turn");
       await reading;
     } finally {

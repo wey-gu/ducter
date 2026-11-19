@@ -39,7 +39,7 @@ function rig(env: Record<string, string> = {}, now?: () => number, extra: Partia
   link.onChange(() => changes++);
   return { link, calls, data, bin, fullEnv, changes: () => changes, state };
 }
-const writes = (calls: string[][]) => calls.filter((c) => c.includes("connections") && (c.includes("connect") || c.includes("revoke")));
+const writes = (calls: string[][]) => calls.filter((c) => !c.includes("--help") && c.includes("connections") && (c.includes("connect") || c.includes("revoke")));
 
 describe("D369: a mailbox Mem must sort out on its side", () => {
   test("the connected view says it with Mem's code while the partner says so, and not after", async () => {
@@ -98,7 +98,7 @@ describe("the link over a fake nmem", () => {
     await r.link.view();
     await r.link.connect();
     expect(writes(r.calls())).toEqual([["--json", "bridge", "connections", "connect", "--space-id", "fake-space", "--agent-id", "ducter", "--context", "ducter-on-hel"]]);
-    const after = r.calls().slice(r.calls().findIndex((c) => c.includes("connect")) + 1);
+    const after = r.calls().slice(r.calls().findIndex((c) => c.includes("connect") && !c.includes("--help")) + 1);
     expect(after[0]).toEqual(["--json", "--agent-context", "ducter-on-hel", "bridge", "setup"]);
     expect(r.link.context()).toBe("ducter-on-hel");
     expect(await r.link.view()).toEqual({ state: "connected", identity: "ducter", space: { id: "fake-space", label: "Only me" }, home: "hel", version: "0.10.118", where: "cloud" });
@@ -410,7 +410,7 @@ describe("the link over a fake nmem", () => {
     expect(await r.link.view()).toMatchObject({ state: "ready", space: { label: "My vault" } });
     await r.link.connect();
     expect((await r.link.view())?.state).toBe("connected");
-    expect(r.calls().find((c) => c.includes("connections") && c.includes("connect"))).toContain("--space-id");
+    expect(r.calls().find((c) => !c.includes("--help") && c.includes("connections") && c.includes("connect"))).toContain("--space-id");
   });
 });
 
@@ -667,4 +667,56 @@ test("over the socket: 接上 pushes connecting…, then connected, in the setti
   await until((f) => f.t === "settings" && f.bridge?.state === "connected");
   // D324: named for this home and its key (D293).
   expect(core.bridgeLink.context()).toMatch(/^ducter-on-[a-z0-9-]+-[0-9a-f]{6}$/);
+});
+
+// D400 (nmem 0.10.121, research/161): the identity inbox is the plain `bridge inbox` (no --all-spaces),
+// connect takes a device label, and `bridge notices status` says whether Mem also tells the person.
+describe("D400: nmem 0.10.121", () => {
+  const SPACES = [
+    { id: "personal-weyl", label: "Only me", kind: "personal" },
+    { id: "ws-dev", label: "dev team", kind: "team" },
+  ];
+  const spaced = (r: ReturnType<typeof rig>) => {
+    const s0 = JSON.parse(readFileSync(r.state, "utf8"));
+    writeFileSync(r.state, JSON.stringify({ ...s0, spaces: SPACES, everywhere: ["ducter"] }));
+  };
+
+  test("wide by the help's words: no per-Space contexts; connect names the device; no notices, no line", async () => {
+    const r = rig({ NMEM_FAKE_VERSION: "0.10.121" });
+    spaced(r);
+    await r.link.connect();
+    expect(r.link.places!()).toEqual({ wide: true, places: [{ context: "ducter-on-hel", spaceId: "personal-weyl", spaceLabel: "Only me" }] });
+    expect(r.calls().some((c) => c.includes("select"))).toBe(false);
+    expect(writes(r.calls())).toEqual([["--json", "bridge", "connections", "connect", "--space-id", "personal-weyl", "--agent-id", "ducter", "--context", "ducter-on-hel", "--device-label", "hel"]]);
+    expect(JSON.parse(readFileSync(r.state, "utf8")).connections[0].device_label).toBe("hel");
+    // Notices read once, locally, with the connection's context; nothing in Mem changed.
+    const notices = r.calls().filter((c) => c.includes("notices"));
+    expect(notices.filter((c) => !c.includes("--help"))).toEqual([["--json", "--agent-context", "ducter-on-hel", "bridge", "notices", "status"]]);
+    expect(r.calls().some((c) => c.includes("notices") && /subscribe|unsubscribe|reset|watch/.test(c.join(" ")))).toBe(false);
+    const v = await r.link.view();
+    expect(v?.state).toBe("connected");
+    expect(v?.notices).toBeUndefined();
+    // The recheck reads it again only with another nmem.
+    const n = r.calls().filter((c) => c.includes("notices")).length;
+    await r.link.recheck();
+    expect(r.calls().filter((c) => c.includes("notices")).length).toBe(n);
+  });
+
+  test("Mem would notify the person for this identity: one quiet line on the connected view", async () => {
+    const r = rig({ NMEM_FAKE_VERSION: "0.10.121", NMEM_FAKE_NOTICES: "on" });
+    await r.link.connect();
+    const v = await r.link.view();
+    expect(v).toMatchObject({ state: "connected", notices: true });
+  });
+
+  test("0.10.120: per-Space contexts as before, no device label, no notices asked", async () => {
+    const r = rig({ NMEM_FAKE_VERSION: "0.10.120" });
+    spaced(r);
+    await r.link.connect();
+    expect(r.link.places!()!.wide).toBe(false);
+    expect(r.link.places!()!.places.map((p) => p.spaceId)).toEqual(["personal-weyl", "ws-dev"]);
+    expect(writes(r.calls())[0]).not.toContain("--device-label");
+    expect(r.calls().filter((c) => c.includes("notices") && !c.includes("--help"))).toEqual([]);
+    expect((await r.link.view())?.notices).toBeUndefined();
+  });
 });

@@ -36,6 +36,15 @@
 // Space's context. Contacts are looked up in every Space (`--all-spaces`); a send runs with the
 // context of the Space its card came from. With Mem's one inbox for every Space (#10402, `wide`), the
 // first context reads them all with `inbox --all-spaces` and the Space comes from each message.
+//
+// D400 (nmem 0.10.121, research/161): #10402 shipped as the default `bridge inbox` ("List incoming
+// identity mail across currently authorized Spaces"), with no `--all-spaces`. Its help's words (or
+// `--watch`) mean wide, whatever the connection says: one plain `inbox` with the home's context, each
+// message's own Space, and an entry's `open_args` / `reply_args_prefix` (Mem's own argv) used for its
+// open and reply. `--wait` takes 1–5 s there, so a wait is clamped to what the help states; `--watch`
+// (JSON lines, never acknowledges) is the long-poll when offered. The plain-text "Select your approved
+// Agent Context…" is `not_configured`; "Identity inbox cursor no longer matches…" restarts the read
+// from page one. Contacts take the grouped default (one card per identity) first, `--all-spaces` after.
 import type { BridgePlace, BridgeWhere } from "../../protocol/src/internal.ts";
 import { nmemEnv } from "./memory.ts";
 
@@ -102,7 +111,7 @@ export interface BridgeClient {
    * New messages in the persona's inbox, with bodies, skipping ids the caller already has.
    * `reads`: the read status of our own sent messages, when the inbox reports it.
    */
-  check(known: Set<string>): Promise<BridgeResult<{ messages: BridgeMessage[]; reads?: Record<string, boolean> }>>;
+  check(known: Set<string>): Promise<BridgeResult<{ messages: BridgeMessage[]; reads?: Record<string, boolean>; stuckIn?: { code: string; space: string } }>>;
   /**
    * The handles in the inbox, without opening any (nothing is marked read). Used once, when Bridge
    * is first on for a persona: what is already there is not a request to it (B14, D170).
@@ -123,6 +132,14 @@ export interface BridgeClient {
    * home's one, whose `inbox --all-spaces --wait` covers every Space. None given: one, the home's.
    */
   waitContexts?(): string[];
+  /** D400: whether this CLI's `bridge inbox` takes `--watch` (nmem 0.10.121: JSON lines, never acknowledges). */
+  canWatch?(): Promise<boolean>;
+  /**
+   * D400: one `inbox --watch` child with that context (the home's when none is given), running until
+   * `stop()`. Each JSON line it prints calls `onChange` (the caller runs its usual check; nothing is
+   * opened here). `ended` resolves when the child exits: ok after `stop()`, else why it ended.
+   */
+  watchInbox?(onChange: () => void, context?: string): { stop(): void; ended: Promise<BridgeResult<{}>> };
   /**
    * Reply to a received message; the CLI derives the recipient from that original.
    * A failure with reason "unavailable" means the outcome is UNKNOWN (D106): recover it, never resend.
@@ -308,6 +325,98 @@ export function inboxNext(j: any): string | undefined {
   return str(j?.next) ?? str(j?.next_cursor);
 }
 
+/** D400: what an nmem's `bridge inbox` offers, read from its `--help`. */
+export interface InboxShape {
+  /** nmem 0.10.121+ (#10402): the plain `inbox` reads the identity's mail in every authorized Space. */
+  identity: boolean;
+  /** An earlier preview of #10402: `inbox --all-spaces` does. */
+  allSpaces: boolean;
+  /** The longest `--wait` it takes, in seconds; 0 without `--wait`. */
+  waitMax: number;
+  /** `--watch`: changes as JSON lines, continuously. */
+  watch: boolean;
+}
+const SAID_NUMBERS: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, thirty: 30, sixty: 60 };
+/** Before 0.10.121 no released CLI had `--wait`; the fake's older help states no bound (D335's 25 s). */
+export const UNSTATED_WAIT_S = 25;
+/**
+ * D400: the shape from `bridge inbox --help`. nmem 0.10.121 (VERIFIED, research/161): "List incoming
+ * identity mail across currently authorized Spaces", `--wait <WAIT>` "Wait up to five seconds…"
+ * (1..=5), `--watch`; no `--all-spaces`.
+ */
+export function inboxShapeIn(help: string): InboxShape {
+  const allSpaces = /--all-spaces\b/.test(help);
+  const watch = /--watch\b/.test(help);
+  const identity = /identity mail across/i.test(help) || (watch && !allSpaces);
+  let waitMax = 0;
+  if (/--wait\b/.test(help)) {
+    const line = help.split("\n").find((l) => /--wait\b/.test(l)) ?? "";
+    const said = /up to (\d+|[a-z]+) seconds?/i.exec(line)?.[1]?.toLowerCase();
+    const range = /\b1\s*\.\.=?\s*(\d+)\b/.exec(line)?.[1];
+    const n = said ? (/^\d+$/.test(said) ? Number(said) : SAID_NUMBERS[said]) : range ? Number(range) : undefined;
+    waitMax = n && n > 0 ? n : identity ? 5 : UNSTATED_WAIT_S;
+  }
+  return { identity, allSpaces, waitMax, watch };
+}
+
+/** D400: the bound in a refused wait ("25 is not in 1..=5"), so the next one asks for what it takes. */
+export function waitBoundIn(text: string): number | undefined {
+  const m = /\b\d+ is not in (\d+)\s*\.\.=?\s*(\d+)/.exec(text);
+  return m ? Number(m[2]) : undefined;
+}
+
+/**
+ * D400: an argv Mem returned on an inbox entry (`open_args`, `reply_args_prefix`), as the arguments
+ * after `nmem`: only strings, only a `bridge <verb>` command, never another verb Ducter doesn't run
+ * for it; `--json` is dropped (the client adds its own). Undefined when it isn't one.
+ */
+export function memArgv(v: unknown, verb: "open" | "reply"): string[] | undefined {
+  if (!Array.isArray(v) || !v.length || !v.every((a) => typeof a === "string" && a.length > 0 && a.length < 2048)) return undefined;
+  let rest = v as string[];
+  if (/(^|\/)nmem(\.exe)?$/.test(rest[0]!)) rest = rest.slice(1);
+  rest = rest.filter((a) => a !== "--json" && a !== "-j");
+  const b = rest.indexOf("bridge");
+  if (b < 0) return undefined;
+  const words = rest.slice(b + 1).filter((a) => !a.startsWith("-"));
+  if (words[0] !== verb) return undefined;
+  // Before `bridge`, only global flags and their values (`--agent-context=x` or `--agent-context x`).
+  const head = rest.slice(0, b);
+  if (head.some((a, i) => !a.startsWith("-") && !(i > 0 && head[i - 1]!.startsWith("-") && !head[i - 1]!.includes("=")))) return undefined;
+  return rest;
+}
+
+/** D400: whether a `memArgv` already names what it acts on (a word after its verb, e.g. the `bm1:` reference). */
+export function namesTarget(args: readonly string[]): boolean {
+  const b = args.indexOf("bridge");
+  const words: string[] = [];
+  for (let i = b + 1; i < args.length; i++) {
+    const a = args[i]!;
+    if (a.startsWith("-")) {
+      if (!a.includes("=") && /^--(body-file|body|shared-document|cursor|to)$/.test(a)) i++; // a flag that takes the next word
+      continue;
+    }
+    words.push(a);
+  }
+  return words.length > 1;
+}
+
+/**
+ * D400: a Space the identity inbox couldn't read this time, as nmem 0.10.121 reports it beside the
+ * messages (`spaces[]`: `{space_id, status: "unavailable", error_code}`, VERIFIED 2026-11-19), when
+ * it is D369's stuck code: the read worked, that one Space didn't.
+ */
+export function stuckSpaceIn(j: any): { code: string; space: string } | undefined {
+  for (const s of Array.isArray(j?.spaces) ? j.spaces : []) {
+    const code = str(s?.error_code);
+    const space = str(s?.space_id) ?? str(s?.space?.id);
+    if (code && space && str(s?.status) !== "observed" && mailboxStuck({ code, ...(typeof s?.retryable === "boolean" ? { retryable: s.retryable } : {}) })) return { code, space };
+  }
+  return undefined;
+}
+
+/** D400: Mem's word that an identity inbox cursor is stale (a Context or Space changed): read again from page one. */
+export const cursorStale = (text: string) => /cursor no longer matches|restart the inbox/i.test(text);
+
 /** D367: two inbox pages as one answer: messages in order, each once; a later page's read status wins. */
 export function mergeInboxPages(a: any, b: any): any {
   const key = (m: any) => (typeof m === "string" ? m : str(m?.message) ?? str(m?.message_id) ?? str(m?.id));
@@ -433,9 +542,11 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
     else places.push({ ...p });
   }
   const wide = !!opts.wide;
+  // D400: wide also when this nmem's plain `inbox` is the identity inbox (0.10.121), whatever the connection said.
+  let wideNow = wide;
   const home = places[0]!;
   /** The context that reads (and answers in) a Space; the home's own when it isn't one the home reads. */
-  const ctxFor = (space?: string): string => (wide || !space ? home.context : (places.find((p) => p.spaceId === space)?.context ?? home.context));
+  const ctxFor = (space?: string): string => (wideNow || !space ? home.context : (places.find((p) => p.spaceId === space)?.context ?? home.context));
   // `whole`: the arguments are a whole nmem command (not a `bridge` one under the context).
   // D335: `limitMs` for a long-poll, which holds the read open longer than any other call.
   const run = async (args: string[], o: { input?: string; whole?: boolean; ctx?: string; limitMs?: number } = {}): Promise<{ code: number; out: string; err: string } | { missing: true }> => {
@@ -479,6 +590,9 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
     return r;
   };
   const read = (args: string[], ctx = home.context) => retried(() => run(args, { ctx }), false);
+  /** D400: a whole nmem command Mem handed back (`open_args`, `reply_args_prefix`), with `--json` added. */
+  const readWhole = (args: string[]) => retried(() => run(args, { whole: true }), false);
+  const writeWhole = (args: string[], input: string) => retried(() => run(args, { input, whole: true }), true);
   const write = (args: string[], input: string, ctx = home.context) => retried(() => run(args, { input, ctx }), true);
   const failure = (r: Ran): BridgeFailure => {
     if ("missing" in r) return { ok: false, reason: "not_configured", message: "Nowledge Mem isn't installed on this machine." };
@@ -487,6 +601,8 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
     const op = operation ? { operation } : {};
     const e = mailboxError(text);
     // D369: before "outcome unknown": Mem says the mailbox itself needs sorting out (a read that changed nothing).
+    // D400: nmem 0.10.121's plain-text refusals (no JSON even under --json): the identity inbox wants the approved context.
+    if (/select your approved agent context|select the original agent context/i.test(text)) return { ok: false, reason: "not_configured", message: "Nowledge Mem wants the partner's approved Agent Context for its inbox.", ...op };
     if (mailboxStuck(e)) return { ok: false, reason: "refused", stuck: true, code: e.code!, message: "Nowledge Mem has to sort out this mailbox on its side before it can be read; nothing to do here.", ...op };
     // Mem's own word on the outcome first: unknown is recovered, never called refused (D106).
     if (e.unknown === true) return { ok: false, reason: "unavailable", message: "Nowledge Mem didn't say whether it went out.", ...op };
@@ -546,7 +662,28 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
       // and `agents context show`, but `bridge setup` says it was "not found".
       return (await placeOf(home.context)).custodian;
     })());
-  const waitBy = new Map<string, boolean>(); // D335: per nmem version, whether `inbox --wait` exists
+  // D335, D400: what `inbox` offers (its --help), per nmem version; the version is looked at again after 5 min.
+  const shapeBy = new Map<string, InboxShape | undefined>();
+  let shapeAt = -Infinity;
+  let shapeNow: Promise<InboxShape | undefined> | undefined;
+  const inboxShape = (): Promise<InboxShape | undefined> => {
+    if (shapeNow && Date.now() - shapeAt < 5 * 60_000) return shapeNow;
+    shapeAt = Date.now();
+    return (shapeNow = (async () => {
+      const v = await run(["--version"], { whole: true });
+      if ("missing" in v || v.code !== 0) return undefined;
+      const version = (v.out || v.err).trim();
+      if (!shapeBy.has(version)) {
+        const h = await run(["inbox", "--help"]);
+        shapeBy.set(version, "missing" in h || h.code !== 0 ? undefined : inboxShapeIn(`${h.out}\n${h.err}`));
+      }
+      const sh = shapeBy.get(version);
+      wideNow = wide || !!sh?.identity;
+      return sh;
+    })());
+  };
+  let waitCap: number | undefined; // D400: the bound a refused wait named
+  const replyBy = new Map<string, string[]>(); // D400: Mem's reply argv prefix per message handle (this run)
   const sent = (r: { code: number; out: string; err: string } | { missing: true }): BridgeResult<{ messageId?: string; operation?: string }> => {
     if ("missing" in r || r.code !== 0) return failure(r);
     const j = parse(r.out);
@@ -555,15 +692,37 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
     const operation = str(j?.operation) ?? str(j?.operation_id);
     return { ok: true, ...(id ? { messageId: id } : {}), ...(operation ? { operation } : {}) };
   };
-  /** The inboxes to read: each place's own, or (wide) the home's one inbox for every Space. */
-  const inboxes = (): { pl: BridgePlace; args: string[] }[] => (wide ? [{ pl: home, args: ["inbox", "--all-spaces"] }] : places.map((pl) => ({ pl, args: ["inbox"] })));
+  /**
+   * The inboxes to read: each place's own, or (wide) the home's one inbox for every Space: D400, the
+   * plain `inbox` on an identity-inbox nmem (0.10.121), else `inbox --all-spaces`.
+   */
+  const inboxes = async (): Promise<{ pl: BridgePlace; args: string[] }[]> => {
+    const sh = await inboxShape();
+    if (!wideNow) return places.map((pl) => ({ pl, args: ["inbox"] }));
+    return [{ pl: home, args: sh?.identity && !sh.allSpaces ? ["inbox"] : ["inbox", "--all-spaces"] }];
+  };
+  /**
+   * D400: the person's Spaces by id, from passive `bridge setup` (no context, nothing chosen), read once
+   * when the identity inbox names a Space only by id (nmem 0.10.121's entries carry `space_id` alone).
+   */
+  const names = new Map<string, { spaceLabel?: string; kind?: string }>();
+  let namesRead: Promise<void> | undefined;
+  const learnNames = () =>
+    (namesRead ??= (async () => {
+      const r = await run(["bridge", "setup"], { whole: true });
+      if ("missing" in r || r.code !== 0) return void (namesRead = undefined);
+      for (const c of Array.isArray(parse(r.out)?.candidates) ? parse(r.out).candidates : []) {
+        const id = str(c?.id);
+        if (id) names.set(id, { ...(str(c?.label) ? { spaceLabel: str(c.label) } : {}), ...(str(c?.kind) ? { kind: str(c.kind) } : {}) });
+      }
+    })());
   /** D334: the Space an inbox entry or an opened message names (wide), else its place's. */
   const spaceIn = (o: any, pl: BridgePlace): { id?: string; label?: string; kind?: string } => {
     const id = str(o?.space_id) ?? str(o?.resolved_space_id) ?? str(o?.space?.id) ?? (typeof o?.space === "string" ? o.space : undefined);
-    if (wide && id) {
-      const known = places.find((p) => p.spaceId === id);
-      const label = str(o?.space?.label) ?? known?.spaceLabel;
-      const kind = str(o?.space?.kind) ?? known?.kind;
+    if (wideNow && id) {
+      const known = places.find((p) => p.spaceId === id) ?? names.get(id);
+      const label = str(o?.space?.label) ?? str(o?.space_label) ?? str(o?.space_name) ?? known?.spaceLabel;
+      const kind = str(o?.space?.kind) ?? str(o?.space_kind) ?? known?.kind;
       return { id, ...(label ? { label } : {}), ...(kind ? { kind } : {}) };
     }
     return { ...(pl.spaceId ? { id: pl.spaceId } : {}), ...(pl.spaceLabel ? { label: pl.spaceLabel } : {}), ...(pl.kind ? { kind: pl.kind } : {}) };
@@ -576,10 +735,22 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
   const restOfInbox = async (first: any, args: string[], ctx: string): Promise<any> => {
     let all = first;
     let page = first;
+    let restarted = false;
     for (let n = 1; n < inboxPages; n++) {
       const cursor = inboxNext(page);
       if (!cursor) break;
       const r = await read([...args, "--cursor", cursor], ctx);
+      // D400: an identity cursor goes stale when a Context or Space changes: once, from page one again.
+      if (!("missing" in r) && r.code !== 0 && !restarted && cursorStale(`${r.err}\n${r.out}`)) {
+        restarted = true;
+        const again = await read(args, ctx);
+        const p0 = "missing" in again || again.code !== 0 ? undefined : parse(again.out);
+        if (p0 === undefined) break;
+        all = mergeInboxPages(all, p0);
+        page = p0;
+        n = 0;
+        continue;
+      }
       if ("missing" in r || r.code !== 0) break;
       const p = parse(r.out);
       if (p === undefined) break;
@@ -602,9 +773,10 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
     async check(known) {
       const messages: BridgeMessage[] = [];
       let reads: Record<string, boolean> | undefined;
+      let stuckIn: { code: string; space: string } | undefined;
       let answered = false;
       let lastFail: BridgeFailure | undefined;
-      for (const { pl, args } of inboxes()) {
+      for (const { pl, args } of await inboxes()) {
         const got = await readInbox(args, pl.context);
         if ("fail" in got) {
           lastFail = got.fail;
@@ -612,13 +784,31 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
         }
         const j = got.j;
         answered = true;
+        stuckIn ??= stuckSpaceIn(j);
         const list = Array.isArray(j?.messages) ? j.messages : Array.isArray(j?.incoming) ? j.incoming : [];
         const entry = (id: string) => list.find((m: any) => (typeof m === "string" ? m : str(m?.message) ?? str(m?.message_id) ?? str(m?.id)) === id);
-        const fresh = inboxIds(j).filter((id) => !known.has(id) && !messages.some((m) => m.messageId === id)).slice(0, Math.max(0, maxOpen - messages.length));
+        // D400: nmem 0.10.121 marks an entry it won't open (`eligible: false`, e.g. `state: "expired"`,
+        // VERIFIED 2026-11-19): never opened, so it isn't tried again every check.
+        const closed = (id: string) => {
+          const e = entry(id);
+          return !!e && typeof e === "object" && (e.eligible === false || /^expired$/i.test(str(e.state) ?? ""));
+        };
+        const fresh = inboxIds(j).filter((id) => !known.has(id) && !closed(id) && !messages.some((m) => m.messageId === id)).slice(0, Math.max(0, maxOpen - messages.length));
         const mine = fresh.length ? await self() : undefined;
+        if (fresh.length && wideNow && fresh.some((id) => {
+          const e = entry(id);
+          const sid = typeof e === "object" ? str(e?.space_id) ?? str(e?.space?.id) : undefined;
+          return !!sid && !str(e?.space?.label) && !places.some((p) => p.spaceId === sid && p.spaceLabel) && !names.has(sid);
+        })) await learnNames();
         for (const id of fresh) {
+          // D400: Mem's own argv for this entry when it gives one (the identity inbox: the Context it came by).
+          const e0 = entry(id);
+          const openArgs = typeof e0 === "object" ? memArgv(e0?.open_args, "open") : undefined;
+          const replyArgs = typeof e0 === "object" ? memArgv(e0?.reply_args_prefix, "reply") : undefined;
+          if (replyArgs) replyBy.set(id, replyArgs);
           // `open` records this recipient's first read: Ducter has the body in its Log from here on.
-          const o = await read(["open", id], pl.context);
+          // nmem 0.10.121 (VERIFIED 2026-11-19): Mem's argv already ends in the entry's `reference` (`bm1:…`).
+          const o = openArgs ? await readWhole(namesTarget(openArgs) ? openArgs : [...openArgs, id]) : await read(["open", id], pl.context);
           if ("missing" in o || o.code !== 0) continue; // left unread; the next check tries again
           const b = parse(o.out);
           const body = str(b?.body) ?? str(b?.message?.body) ?? str(b?.text);
@@ -640,7 +830,7 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
           const said = memberOf(who);
           const byMember = !!(said.id || said.name) && isMine(who, mine);
           // The saved context is read only when it decides something (an own sender in an unnamed Space doesn't).
-          const personal = sp.kind ? sp.kind === "personal" : byMember && !sp.id ? false : await personalSpace(wide ? places.find((p) => p.spaceId === sp.id) : pl, sp.id);
+          const personal = sp.kind ? sp.kind === "personal" : byMember && !sp.id ? false : await personalSpace(wideNow ? places.find((p) => p.spaceId === sp.id) : pl, sp.id);
           const own = byMember || personal;
           // D334: a teammate's agent is told by its Space ("reviewer (dev team)", "AI agent (Everyone)").
           const shared = !personal && !!sp.id;
@@ -666,11 +856,11 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
         if (rd) reads = { ...(reads ?? {}), ...rd };
       }
       if (!answered && lastFail) return lastFail;
-      return { ok: true, messages, ...(reads ? { reads } : {}) };
+      return { ok: true, messages, ...(reads ? { reads } : {}), ...(stuckIn ? { stuckIn } : {}) };
     },
     async inboxIds() {
       const ids: string[] = [];
-      for (const { pl, args } of inboxes()) {
+      for (const { pl, args } of await inboxes()) {
         const got = await readInbox(args, pl.context);
         if ("fail" in got) return got.fail;
         for (const id of inboxIds(got.j)) if (!ids.includes(id)) ids.push(id);
@@ -679,42 +869,102 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
     },
     // D335: a long-poll when the CLI offers one, asked once per nmem version.
     async canWait() {
-      const v = await run(["--version"], { whole: true });
-      if ("missing" in v || v.code !== 0) return false;
-      const version = (v.out || v.err).trim();
-      let can = waitBy.get(version);
-      if (can === undefined) {
-        const h = await run(["inbox", "--help"]);
-        const help = "missing" in h ? "" : `${h.out}\n${h.err}`;
-        // Wide (D334): the one read covers every Space, so the wait must take --all-spaces too.
-        can = !("missing" in h) && h.code === 0 && /--wait\b/.test(help) && (!wide || /--all-spaces\b/.test(help));
-        waitBy.set(version, can);
-      }
-      return can;
+      const sh = await inboxShape();
+      // Wide through `--all-spaces` (an earlier #10402 preview): the wait must take it too.
+      return !!sh && sh.waitMax > 0 && (!wideNow || sh.identity || sh.allSpaces);
+    },
+    // D400: `--watch` (nmem 0.10.121): the identity inbox only, never with a Space selector.
+    async canWatch() {
+      const sh = await inboxShape();
+      return !!sh && sh.watch && (sh.identity || !wideNow);
     },
     // D335 with D334: one long-poll per place's context, or (wide) one on the home's for every Space.
     waitContexts() {
-      return inboxes().map(({ pl }) => pl.context);
+      return wideNow ? [home.context] : places.map((pl) => pl.context);
     },
     async waitInbox(seconds, context) {
-      const at = inboxes().find(({ pl }) => pl.context === context) ?? inboxes()[0]!;
-      const r = await run([...at.args, "--wait", String(seconds)], { ctx: at.pl.context, limitMs: seconds * 1000 + timeoutMs });
+      const all = await inboxes();
+      const at = all.find(({ pl }) => pl.context === context) ?? all[0]!;
+      // D400: never longer than this CLI takes (nmem 0.10.121: 1..=5 s), and once more at the bound a refusal names.
+      const sh = await inboxShape();
+      const cap = waitCap ?? (sh?.waitMax || seconds);
+      let s = Math.max(1, Math.min(seconds, cap));
+      let r = await run([...at.args, "--wait", String(s)], { ctx: at.pl.context, limitMs: s * 1000 + timeoutMs });
+      const bound = "missing" in r || r.code === 0 ? undefined : waitBoundIn(`${r.err}\n${r.out}`);
+      if (bound && bound > 0 && bound < s) {
+        waitCap = bound;
+        s = bound;
+        r = await run([...at.args, "--wait", String(s)], { ctx: at.pl.context, limitMs: s * 1000 + timeoutMs });
+      }
       if ("missing" in r || r.code !== 0) return failure(r);
       const j = parse(r.out);
       if (j === undefined) return { ok: false, reason: "unavailable", message: "Bridge gave no answer." };
       // D367: the wait answers the first page (oldest first); new mail is on the last one.
       return { ok: true, ids: inboxIds(await restOfInbox(j, at.args, at.pl.context)) };
     },
+    watchInbox(onChange, context) {
+      const ctx = context ?? home.context;
+      let stopped = false;
+      let proc: ReturnType<typeof Bun.spawn> | undefined;
+      try {
+        proc = Bun.spawn([bin, "--json", "--agent-context", ctx, "bridge", "inbox", "--watch"], { stdout: "pipe", stderr: "pipe", stdin: "ignore", env: nmemEnv(env) });
+      } catch {
+        return { stop() {}, ended: Promise.resolve({ ok: false as const, reason: "not_configured" as const, message: "Nowledge Mem isn't installed on this machine." }) };
+      }
+      const p = proc;
+      const ended = (async (): Promise<BridgeResult<{}>> => {
+        let other = "";
+        const lines = (async () => {
+          const dec = new TextDecoder();
+          let buf = "";
+          for await (const chunk of p.stdout as ReadableStream<Uint8Array>) {
+            buf += dec.decode(chunk, { stream: true });
+            let i: number;
+            while ((i = buf.indexOf("\n")) >= 0) {
+              const line = buf.slice(0, i).trim();
+              buf = buf.slice(i + 1);
+              if (!line) continue;
+              if (parse(line) !== undefined) {
+                if (!stopped) onChange();
+              } else other = clip(`${other}\n${line}`, 2000);
+            }
+          }
+          if (buf.trim()) other = clip(`${other}\n${buf.trim()}`, 2000);
+        })();
+        const [err, code] = await Promise.all([new Response(p.stderr as ReadableStream).text(), p.exited, lines]);
+        if (stopped) return { ok: true };
+        if (code === 0) return { ok: false, reason: "unavailable", message: "Bridge's watch ended." };
+        return failure({ code, out: other, err });
+      })();
+      return {
+        stop() {
+          if (stopped) return;
+          stopped = true;
+          p.kill();
+        },
+        ended,
+      };
+    },
     async reply(messageId, text, space) {
       // Body through stdin (--body-file -): text starting with "-" can't parse as a flag.
+      // D400: Mem's own reply argv when the inbox gave one (it keeps the original's Context and Space).
+      const pre = replyBy.get(messageId);
+      if (pre) return sent(await writeWhole([...pre, "--body-file", "-", ...(namesTarget(pre) ? [] : [messageId])], text));
       // D334: in the Space the message came in, with that Space's context.
       return sent(await write(["reply", "--body-file", "-", messageId], text, ctxFor(space)));
     },
     // Read-only discovery, then a send the user confirmed (design/bridge.md, S2). D334: in every
-    // Space the person reads (`--all-spaces`); an nmem without it, the home's own Space.
+    // Space the person reads (`--all-spaces`); an nmem without it, the home's own Space. D400: on an
+    // identity-inbox nmem (0.10.121) the plain `contacts` groups one card per identity across Spaces
+    // and a send resolves it in the home's Space; `--all-spaces` (one card per Space) if that fails.
     async contacts(query) {
-      let r = await read(["contacts", "--all-spaces", "--query", query]);
-      if (!("missing" in r) && r.code !== 0 && /all-spaces|unexpected argument|unrecognized/i.test(`${r.err}\n${r.out}`)) r = await read(["contacts", "--query", query]);
+      const sh = await inboxShape();
+      const plain = () => read(["contacts", "--query", query]);
+      const every = () => read(["contacts", "--all-spaces", "--query", query]);
+      let r = sh?.identity ? await plain() : await every();
+      if (sh?.identity) {
+        if (!("missing" in r) && r.code !== 0) r = await every();
+      } else if (!("missing" in r) && r.code !== 0 && /all-spaces|unexpected argument|unrecognized/i.test(`${r.err}\n${r.out}`)) r = await plain();
       if ("missing" in r || r.code !== 0) return failure(r);
       const j = parse(r.out);
       if (j === undefined) return { ok: false, reason: "unavailable", message: "Bridge gave no answer (it may be switched off for this account)." };
@@ -722,7 +972,7 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
       // A card without a Space came from the home's own.
       const cards = contactsOf(j, await self()).map((c) => (c.space ? c : { ...c, ...(home.spaceId ? { space: home.spaceId } : {}), ...(home.spaceLabel ? { spaceLabel: home.spaceLabel } : {}) }));
       // D338: a card in a Space the home doesn't read (known only when every place names its Space).
-      const known = !wide && places.every((p) => !!p.spaceId);
+      const known = !wideNow && places.every((p) => !!p.spaceId);
       for (const c of cards) if (known && c.space && !places.some((p) => p.spaceId === c.space)) c.unheard = true;
       return { ok: true, contacts: cards, more };
     },
@@ -734,7 +984,8 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
       const ops: BridgeOp[] = [];
       let answered = false;
       let lastFail: BridgeFailure | undefined;
-      for (const pl of wide ? [home] : places) {
+      await inboxShape();
+      for (const pl of wideNow ? [home] : places) {
         const r = await read(["outbox"], pl.context);
         if ("missing" in r || r.code !== 0) {
           lastFail = failure(r);
@@ -744,7 +995,7 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
         if (j === undefined) continue;
         answered = true;
         const list = Array.isArray(j?.operations) ? j.operations : Array.isArray(j?.outgoing) ? j.outgoing : Array.isArray(j?.items) ? j.items : Array.isArray(j) ? j : [];
-        for (const o of list.map(opOf).filter((o: BridgeOp | undefined): o is BridgeOp => !!o)) ops.push({ ...o, ...(pl.spaceId && !wide ? { space: pl.spaceId } : {}) });
+        for (const o of list.map(opOf).filter((o: BridgeOp | undefined): o is BridgeOp => !!o)) ops.push({ ...o, ...(pl.spaceId && !wideNow ? { space: pl.spaceId } : {}) });
       }
       if (!answered) return lastFail ?? { ok: false, reason: "unavailable", message: "Bridge gave no answer." };
       return { ok: true, ops };

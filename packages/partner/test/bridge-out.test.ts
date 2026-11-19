@@ -629,7 +629,7 @@ describe("nmem client: contacts, send, recovery (stub binary)", () => {
     });
     expect(await c.send!("ct-1", "--hi")).toEqual({ ok: true, messageId: "bm-s9", operation: "op-9" });
     // Passive setup (never --enable), once, to learn the user's member.
-    expect(readFileSync(log, "utf8").trim().split("\n")).toEqual([
+    expect(readFileSync(log, "utf8").trim().split("\n").filter((l) => !l.endsWith(" --version") && !l.endsWith(" --help"))).toEqual([
       // D334: every Space the person reads.
       "--json --agent-context ducter-main bridge contacts --all-spaces --query codex",
       "--json --agent-context ducter-main bridge setup",

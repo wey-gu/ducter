@@ -111,6 +111,25 @@ not what is tested).
 > 以及 Ducter 的连接如果写了 notices 订阅，Mem 桌面端会不会对同一封信再给用户发系统通知、能否按连接关掉。
 > request id 和完整返回我们这边都留着，需要的话发你。谢谢！
 
+## 8. The read-only live read (2026-11-19, D400)
+
+Run once, with the author's `/usr/local/bin/nmem` 0.10.121, after (a) was built; nothing opened, acknowledged,
+replied, sent, prepared, enrolled or reconciled. The peer is the native Claude Code session the 2026-11-18 trial
+bound (its context from that run's recorded `session prepare`). Outputs kept outside git; ids not repeated here.
+
+| Fact | Tag |
+|---|---|
+| `bridge session --host claude-code --session-id <that session> status --json`: exit 0, `state: "diagnostic"`, `read_only: true`, `client_version: "0.10.121"`, `context_state: "required"`, `backend_state` / `proof_state: "not_checked"`, `delivery_ready: null`. | VERIFIED |
+| `--agent-context <peer ctx> bridge inbox --json`: **exit 0** (no longer the 409). Top level: `messages`, `spaces`, `next: null`, `incomplete: true`, `coverage_scope: "current_space_batch"`, `outcome_unknown: false`, `identity` (the session's agent id). | VERIFIED |
+| `spaces[]`: 8 Spaces, each `{space_id, status, next_cursor, outgoing}`; 7 `observed`, the personal one `{status: "unavailable", error_code: "cloud_mailbox_own_source_unreconciled"}`. So the stuck state persists for that one Space; the identity inbox reads around it. | VERIFIED |
+| One entry: `message` (a uuid), `mine: null`, `state: "expired"`, `eligible: false`, `expires_at_ms`, `sequence`, `space_id` (an id only, no label), `reference` (`bm1:…`), `open_args` and `reply_args_prefix` = `nmem --api-url=<Mem> --agent-context=<ctx> bridge open|reply <reference>`. No sender on the entry. | VERIFIED |
+| Per-Space `next_cursor` beside a top-level `next: null`: how a long multi-Space inbox pages on is not shown by one short read. | INFERRED (open) |
+
+What changed in D400 because of it: Mem's argv already ends in the reference (Ducter adds nothing after it), an
+entry with `eligible: false` is never opened, a Space `unavailable` with D369's code keeps D369's line while the
+rest are read, labels come from passive `setup`, and the trial's preflight stops on that Space (its mail lives
+there). The fake answers in this shape at 0.10.121.
+
 ## 7. Implications for Ducter
 
 1. 0.10.121 does not unblock the trial; Mem's server might. One read-only inbox read decides it.

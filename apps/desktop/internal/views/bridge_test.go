@@ -105,6 +105,12 @@ func TestBridgeRow(t *testing.T) {
 			func(L *i18n.Strings) []string {
 				return []string{L.T("bridge.connect"), L.T("bridge.undo"), "ducter", "Only me", L.T("mem.details")}
 			}},
+		// D400: Mem itself also tells the person about the partner's mail: one quiet line, nothing to tap.
+		{"connected-notices", TabPeers, protocol.BridgeView{State: "connected", Identity: "ducter", Space: space, Notices: true},
+			func(L *i18n.Strings) []string {
+				return []string{L.T("peers.notices.title", "小鸭"), L.T("peers.notices.line", "小鸭")}
+			},
+			func(L *i18n.Strings) []string { return []string{L.T("bridge.connect"), "%!("} }},
 		{"no-space", TabPeers, protocol.BridgeView{State: "no_space", Identity: "ducter"},
 			func(L *i18n.Strings) []string { return []string{L.T("bridge.no_space")} },
 			func(L *i18n.Strings) []string { return []string{L.T("bridge.connect"), L.T("bridge.retry")} }},

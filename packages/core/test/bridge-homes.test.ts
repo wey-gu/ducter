@@ -30,7 +30,7 @@ function homes(env: Record<string, string> = {}) {
   const argvLog = join(t.dir, "argv.log");
   const fullEnv = { PATH: process.env.PATH ?? "", NMEM_CLI_PATH: bin, NMEM_FAKE_BRIDGE_STATE: state, NMEM_FAKE_ARGV_LOG: argvLog, ...env };
   const calls = (): string[][] => (existsSync(argvLog) ? readFileSync(argvLog, "utf8").trim().split("\n").filter(Boolean).map((l) => JSON.parse(l)) : []);
-  const writes = () => calls().filter((c) => c.includes("connections") && (c.includes("connect") || c.includes("revoke")));
+  const writes = () => calls().filter((c) => !c.includes("--help") && c.includes("connections") && (c.includes("connect") || c.includes("revoke")));
   const conns = () => (JSON.parse(readFileSync(state, "utf8")).connections ?? []) as { client_label: string; state: string; connection_id: string }[];
   // extra: this home's own nmem settings (NMEM_FAKE_FOREIGN: connections another login made, as this home's login sees them).
   const at = (home: string, n: number, extra: Record<string, string> = {}) => {

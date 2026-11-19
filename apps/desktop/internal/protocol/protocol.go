@@ -1731,6 +1731,9 @@ type BridgeView struct {
 	// D369: Stuck, on "connected": Mem said the partner's mailbox can't be
 	// read until Mem sorts it out on its side; Code is Mem's own.
 	Stuck *BridgeStuck `json:"stuck,omitempty"`
+	// D400: Notices, on "connected": Nowledge Mem itself also tells the
+	// person about mail to the partner's identity (bridge notices status).
+	Notices bool `json:"notices,omitempty"`
 }
 
 // BridgeStuck is Mem's word that a mailbox needs sorting out on its side (D369).

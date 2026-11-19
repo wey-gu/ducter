@@ -58,7 +58,7 @@ import { resolveWindows, WINDOW_MAX, WINDOW_MIN } from "../../protocol/src/harne
 /** D385: the partner's line before a plan-first hand-over, when the model said none. */
 const PLAN_FIRST_LINE = { zh: "好，我先看一遍，出个方案给你，你点头再做。", en: "OK. I'll read them first and show you a plan; nothing starts until you say so." };
 import { bridgeFor, bridgeKeyFor, type BridgeClient, type BridgeContact, type BridgeOp, type BridgeResult } from "./bridge.ts";
-import { claimText, fixedOutcome, followCandidates, followLine, foldOut, inQuiet, langOfRequest, lostLine, mayHaveGone, overAsks, peerAnswer, whoForModel, whoForUser, AFTER_SEND_MS, CHECK_EVERY_MS, DAY_MS, FOLLOW_ACTIVE_MS, LIVE_CHECK_MS, LIVE_MS, WAIT_RETRY_MS, WAIT_S, WAITING_EVERY_MS, STUCK_EVERY_MS, PEER_ASKS_OPEN, PEER_NOT_YET_MS, SENDER_DAILY, TRUST_AFTER, TRUST_WINDOW_MS, TRUSTED_DAILY, type OutKind, type OutOp, type OutState } from "./bridge-out.ts";
+import { claimText, fixedOutcome, followCandidates, followLine, foldOut, inQuiet, langOfRequest, lostLine, mayHaveGone, overAsks, peerAnswer, whoForModel, whoForUser, AFTER_SEND_MS, CHECK_EVERY_MS, DAY_MS, FOLLOW_ACTIVE_MS, LIVE_CHECK_MS, LIVE_MS, WAIT_RETRY_MS, WATCH_BACKOFF_MAX_MS, WATCH_BACKOFF_MS, WATCH_TRIES, WAIT_S, WAITING_EVERY_MS, STUCK_EVERY_MS, PEER_ASKS_OPEN, PEER_NOT_YET_MS, SENDER_DAILY, TRUST_AFTER, TRUST_WINDOW_MS, TRUSTED_DAILY, type OutKind, type OutOp, type OutState } from "./bridge-out.ts";
 import { createNmemClient, noMemory, THREADS_MAX, type MemoryClient, type MemoryHit, type Replaced, type ThreadHit } from "./memory.ts";
 import { withOutbox } from "./outbox.ts";
 import { AI_TOOLS, memSource } from "../../protocol/src/mem-source.ts";
@@ -4010,11 +4010,18 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   let lastOutcome: "ok" | "failed" | "off" = "ok";
   // D369: Mem said the mailbox needs sorting out on its side (not retryable): Settings says so once,
   // and the regular check slows to STUCK_EVERY_MS until a read works again (never a retry storm).
+  // D400: on nmem 0.10.121 the identity inbox reads the other Spaces while one says that code
+  // (`spaces[]`): Settings still says it, but the read worked, so the check keeps its pace.
   let stuck: string | undefined;
-  const setStuck = (code: string | undefined) => {
-    if (stuck === code) return;
-    stuck = code;
+  let troubleSaid: string | undefined;
+  const sayTrouble = (code: string | undefined) => {
+    if (troubleSaid === code) return;
+    troubleSaid = code;
     core.settings?.setBridgeTrouble?.(code ? { code } : undefined);
+  };
+  const setStuck = (code: string | undefined, partly?: string) => {
+    stuck = code;
+    sayTrouble(code ?? partly);
   };
   /** D333: while bridge_check reads, what arrives is collected for that turn instead of waking one. */
   let absorbing: LogEvent[] | null = null;
@@ -4029,6 +4036,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   const waiting = new Map<BridgeClient, Set<string>>();
   let waitFailedAt = 0;
   const waitPauses = new Set<unknown>();
+  /** D400: the running `inbox --watch` children, each with the client it belongs to. */
+  const watchers = new Map<{ stop(): void }, BridgeClient>();
   const waitKeys = (b: BridgeClient): string[] => b.waitContexts?.() ?? [""];
   /** Every place of the current client has its long-poll running. */
   const allWaiting = (): boolean => {
@@ -4081,7 +4090,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       const r = await bridge.check(known);
       if (!r.ok) setStuck(r.stuck ? r.code : undefined);
       if (!r.ok || closed) return 0;
-      setStuck(undefined);
+      setStuck(undefined, r.stuckIn?.code);
       lastOutcome = "ok";
       if (r.reads) lastReads = { ...lastReads, ...r.reads };
       let n = 0;
@@ -4394,11 +4403,69 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
    * a wait that came back at once (an inbox that doesn't hold the wait) pauses 15 s, so it never spins.
    */
   async function longPoll(b: BridgeClient): Promise<void> {
-    if (every <= 0 || closed || !b.canWait || !b.waitInbox) return;
-    if (!(await b.canWait().catch(() => false)) || closed || bridge !== b) return;
+    if (every <= 0 || closed) return;
+    // D400: `inbox --watch` first (nmem 0.10.121), one supervised child per context; else `--wait`.
+    const watch = !!b.canWatch && !!b.watchInbox && (await b.canWatch().catch(() => false));
+    if (closed || bridge !== b) return;
+    if (!watch) {
+      if (!b.canWait || !b.waitInbox) return;
+      if (!(await b.canWait().catch(() => false)) || closed || bridge !== b) return;
+    }
     let on = waiting.get(b);
     if (!on) waiting.set(b, (on = new Set()));
-    for (const key of waitKeys(b)) if (!on.has(key)) void waitLoop(b, key, on);
+    for (const key of waitKeys(b)) if (!on.has(key)) void (watch ? watchLoop(b, key, on) : waitLoop(b, key, on));
+  }
+  /**
+   * D400: one `inbox --watch` child per context while this client is the partner's: each JSON line
+   * runs the usual check (one at a time; a line during a check asks for one more after it). A child
+   * that ends is started again after 1 s, 2 s, 4 s … (at most 5 min; back to 1 s after one that ran
+   * a minute); after WATCH_TRIES quick ends in a row the timer takes that place's arrivals, as a
+   * failed wait does. Stopped (killed) when the client changes or the partner closes.
+   */
+  async function watchLoop(b: BridgeClient, key: string, on: Set<string>): Promise<void> {
+    on.add(key);
+    let fails = 0;
+    try {
+      while (!closed && bridge === b) {
+        const t0 = now();
+        const w = b.watchInbox!(() => onWatchLine(b), key || undefined);
+        watchers.set(w, b);
+        const r = await w.ended.catch((err): BridgeResult<{}> => ({ ok: false, reason: "unavailable", message: String(err) }));
+        watchers.delete(w);
+        if (closed || bridge !== b) return;
+        fails = now() - t0 >= 60_000 ? 1 : fails + 1;
+        if (fails > WATCH_TRIES || (!r.ok && r.reason === "not_configured")) {
+          waitFailedAt = now();
+          return;
+        }
+        await new Promise<void>((res) => {
+          const h = timers.setTimeout(() => (waitPauses.delete(h), res()), Math.min(WATCH_BACKOFF_MS * 2 ** (fails - 1), WATCH_BACKOFF_MAX_MS));
+          waitPauses.add(h);
+        });
+      }
+    } finally {
+      on.delete(key);
+      if (!on.size && waiting.get(b) === on) waiting.delete(b);
+    }
+  }
+  let watchAgain = false;
+  function onWatchLine(b: BridgeClient) {
+    if (closed || bridge !== b) return;
+    if (bridgeChecking) {
+      watchAgain = true;
+      return;
+    }
+    void checkBridge()
+      .catch((err) => (onError(err), 0))
+      .then(() => {
+        if (!watchAgain) return;
+        watchAgain = false;
+        onWatchLine(b);
+      });
+  }
+  /** D400: stop the watch children of every client but the current one (all of them once closed). */
+  function stopWatchers() {
+    for (const [w, c] of watchers) if (closed || c !== bridge) (w.stop(), watchers.delete(w));
   }
   async function waitLoop(b: BridgeClient, key: string, on: Set<string>): Promise<void> {
     on.add(key);
@@ -4437,6 +4504,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         if (key === bridgeKey || closed) return;
         bridgeKey = key;
         bridge = bridgeFor(process.env, core.bridgeLink?.context(), core.bridgeLink?.places?.());
+        stopWatchers(); // D400: the old client's watch children end now
         // D335: the new client's long-polls start, one per place; the old client's end on their own.
         if (bridge) bridgeStarted ? void longPoll(bridge) : startBridge(bridge);
       })
@@ -4517,6 +4585,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       offBridgeLink?.();
       if (bridgeTimer) timers.clearTimeout(bridgeTimer);
       for (const h of waitPauses) timers.clearTimeout(h);
+      stopWatchers();
       for (const id of [...afterSend.keys()]) answered(id);
       if (recoverTimer) clearTimeout(recoverTimer);
       if (spineTimer) clearInterval(spineTimer);

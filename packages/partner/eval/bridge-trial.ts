@@ -13,7 +13,7 @@
 // Commands as nmem 0.10.119's help prints them; their answers are INFERRED until the first real run.
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { mailboxError, mailboxStuck } from "../src/bridge.ts";
+import { mailboxError, mailboxStuck, stuckSpaceIn } from "../src/bridge.ts";
 
 export type Nm = (args: string[]) => Promise<{ code: number; out: string; err: string; j: any }>;
 
@@ -33,7 +33,18 @@ export interface TrialIdentity {
  * browsing", not retryable; nmem 0.10.120 has no command for it), and the whole run failed around it.
  */
 export function peerInboxBlocked(r: { code: number; out: string; err: string }): string | undefined {
-  if (r.code === 0) return undefined;
+  if (r.code === 0) {
+    // D400: nmem 0.10.121's identity inbox answers exit 0 and names a Space it couldn't read (VERIFIED
+    // 2026-11-19: the peer's personal Space, where the trial's mail goes, still `…_unreconciled`).
+    let j: unknown;
+    try {
+      j = JSON.parse(r.out);
+    } catch {
+      return undefined;
+    }
+    const s = stuckSpaceIn(j);
+    return s ? `Nowledge Mem reads the peer's other Spaces but says its mailbox in ${s.space}, where this run's mail goes, needs sorting out on Mem's side (${s.code}); nmem has no command for that, so nothing was made and nothing ran. Ask Nowledge, then run this again.` : undefined;
+  }
   const e = mailboxError(`${r.out}\n${r.err}`);
   if (mailboxStuck(e)) return `Nowledge Mem says the peer's own mailbox (the native Claude Code session) needs sorting out on Mem's side before it can be read (${e.code}${e.http ? `, HTTP ${e.http}` : ""}); nmem has no command for that, so nothing was made and nothing ran. Ask Nowledge, then run this again.`;
   return `The peer's own mailbox didn't answer a read (${e.code ?? `exit ${r.code}`}${e.http ? `, HTTP ${e.http}` : ""}); nothing was made and nothing ran.`;
@@ -83,7 +94,10 @@ export async function createTrial(nm: Nm, spaceId: string, ledgerDir: string, sa
   t.enrolled = true;
   keep(ledgerDir, t);
   say(`  ✓ the trial's own identity ${id} (removed after the run)`);
-  const c = await nm(["bridge", "connections", "connect", "--space-id", spaceId, "--agent-id", id, "--context", id]);
+  // D400: labelled as the trial's on an nmem that takes a device label (0.10.121), so Mem's list says what it is.
+  const h = await nm(["bridge", "connections", "connect", "--help"]);
+  const label = h.code === 0 && /--device-label\b/.test(`${h.out}\n${h.err}`) ? ["--device-label", "ducter-trial"] : [];
+  const c = await nm(["bridge", "connections", "connect", "--space-id", spaceId, "--agent-id", id, "--context", id, ...label]);
   const conn = c.j?.connection;
   if (c.code !== 0 || conn?.agent_id !== id || conn?.state !== "active" || typeof conn?.connection_id !== "string") return fail(`connect ${id}: exit ${c.code}${codeOf(c) ? `, ${codeOf(c)}` : ""}`);
   t.connectionId = conn.connection_id;

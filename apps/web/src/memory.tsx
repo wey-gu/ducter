@@ -836,6 +836,7 @@ export function PeersPage() {
           {b && <PeersProblemGroup b={b} name={name} />}
           {b && <PeersNames b={b} name={name} />}
           {b?.stuck && <PeersStuck code={b.stuck.code} name={name} />}
+          {b?.state === "connected" && b.notices && <PeersNotices name={name} />}
           <PeersRecent name={name} />
           <PeersTry name={name} />
         </>
@@ -926,6 +927,18 @@ function PeersStuck({ code, name }: { code: string; name: string }) {
   return (
     <Group class="mem-g" label={t("peers.stuck.title", name)}>
       <GRow title={t("peers.stuck.title", name)} line={t("peers.stuck.line", name, code)} />
+    </Group>
+  );
+}
+
+/**
+ * D400: Nowledge Mem itself also tells the person about mail to the partner's identity: one quiet line
+ * that a message may announce itself twice, nothing to tap (Mem's settings are Mem's).
+ */
+function PeersNotices({ name }: { name: string }) {
+  return (
+    <Group class="mem-g" label={t("peers.notices.title", name)}>
+      <GRow title={t("peers.notices.title", name)} line={t("peers.notices.line", name)} />
     </Group>
   );
 }

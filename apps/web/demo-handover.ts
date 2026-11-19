@@ -208,8 +208,9 @@ if (stage === "conv" || stage === "plan" || stage === "review") {
   if (stage !== "conv") {
     say("user", zh ? "就这几个，#405 也加上，按你的建议。先别动数据库迁移，验证都去 haswell 上跑。" : "Just these, plus #405 your way. Leave the database migrations alone and run every check on haswell.");
     const note = zh ? "先别动数据库迁移，验证都去 haswell 上跑。" : "Leave the database migrations alone and run every check on haswell.";
-    const r = await ho.hand({ refs: [...s.ticked, "acme/mem#405"], note, setId: s.setId, bySubject: true, subject: subjectName });
+    // As the partner does (its line first, then the call): the lasting-where card comes after its line.
     say("partner", zh ? "好，我先看一遍，出个方案给你，你点头再做。" : "OK. I'll read them first and show you a plan; nothing starts until you say so.");
+    const r = await ho.hand({ refs: [...s.ticked, "acme/mem#405"], note, setId: s.setId, bySubject: true, subject: subjectName });
     await until(() => core.taskGroups.get(r.groupId!)?.hand?.plan?.state === "ready");
     if (stage === "review") {
       await ho.answerPlan(r.groupId!, "go");

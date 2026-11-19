@@ -113,6 +113,7 @@ func (a *App) conversation(c *ui.Context) {
 	t := a.T
 	rows := a.rows()
 	a.noteRows(rows)     // D236: for the jump and the answer tab
+	a.takePlanJump(c)    // D385: 看方案 from On hand
 	a.followBefore(rows) // D254: the divider, what is new since the reader left the end
 	a.header(c)
 	a.pinStrip(c) // D381: what is pinned, under the bar

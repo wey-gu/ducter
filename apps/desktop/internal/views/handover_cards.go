@@ -203,6 +203,14 @@ func (a *App) handPlanCard(c *ui.Context, d *store.DecisionState, inGroup bool) 
 	} else {
 		card.Shadow(0, t.Raised.Y, 0, 0, t.Raised.Color)
 	}
+	// 看方案 from On hand: the card is found (its edge deepens once, it lifts a little).
+	if k := a.foundAt(c, d.Seq, ""); k > 0 && !inGroup {
+		card.Border(1.5+1.5*k, t.NeedsYou.Ledge.Mix(t.NeedsYou.Ink, 0.6*k))
+		if !c.Preferences().ReduceMotion {
+			s := 1 + 0.012*k
+			card.Scale(s, s)
+		}
+	}
 	a.enter(c, card)
 	card.Children(func() {
 		ui.Column(c.Key("head")).Gap(t.S1).Children(func() {
@@ -422,8 +430,16 @@ func (a *App) handGroupFacts(c *ui.Context, g *protocol.TaskGroup, held int) {
 			ui.Text(c.Key("who"), harnessName(hv.Harness)).FontSize(t.XS).TextColor(t.InkMuted)
 		}
 	})
-	if d := a.planDecision(g); d != nil && hv.Plan.State != "going" && hv.Plan.State != "planning" {
-		ui.Column(c.Key("plan")).Children(func() { a.handPlanCard(c, d, true) })
+	// The plan itself lives in the conversation; here, Go stays in reach and 看方案 takes you to it.
+	if d := a.planDecision(g); d != nil && (hv.Plan.State == "ready" || hv.Plan.State == "held") && d.Pending == "" {
+		ui.Row(c.Key("plan-acts")).Gap(t.S2).Wrap().AlignItems(ui.Center).Padding(t.S1, 0, 0, 0).Children(func() {
+			if a.buttonFor(c, a.L.T("hand.plan.go"), g.Name, btnPrimary, t.ControlMD, t.Surface) {
+				a.planAnswer(d, "go", "")
+			}
+			if a.buttonFor(c, a.L.T("hand.plan.see"), g.Name, btnSecondary, t.ControlMD, t.Surface) {
+				a.seePlan(d)
+			}
+		})
 	}
 	if hv.Review == "ready" {
 		ui.Row(c.Key("review")).Gap(t.S2).AlignItems(ui.Center).Padding(t.S1, 0, 0, 0).Children(func() {
@@ -432,6 +448,23 @@ func (a *App) handGroupFacts(c *ui.Context, g *protocol.TaskGroup, held int) {
 			}
 		})
 	}
+}
+
+// seePlan goes to the conversation and finds the plan card there.
+func (a *App) seePlan(d *store.DecisionState) {
+	a.planJump = d.Seq
+	a.Route = RouteConversation
+	a.markRead()
+}
+
+// takePlanJump finds the plan card once the conversation has its rows.
+func (a *App) takePlanJump(c *ui.Context) {
+	if a.planJump == 0 {
+		return
+	}
+	seq := a.planJump
+	a.planJump = 0
+	a.jumpTo(c, seq, "")
 }
 
 // ---------- 一起过目 / Review together ----------

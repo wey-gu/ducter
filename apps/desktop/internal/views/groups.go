@@ -89,9 +89,11 @@ func (a *App) boardGroups(b store.Board) []boardGroup {
 		for _, m := range g.Members {
 			// D385: plan first's own task is no part: once it has planned, its card says what it read.
 			plan := g.Hand != nil && g.Hand.Plan != nil && m.TaskID != "" && m.TaskID == g.Hand.Plan.TaskID
-			if plan && g.Hand.Plan.State != "planning" {
-				if laneOf(m.TaskID) >= 0 {
+			if plan {
+				// Its task leaves its own section and sets where the card stands, never a part.
+				if l := laneOf(m.TaskID); l >= 0 {
 					bg.ids[m.TaskID] = true
+					bg.lane = min(bg.lane, l)
 				}
 				continue
 			}

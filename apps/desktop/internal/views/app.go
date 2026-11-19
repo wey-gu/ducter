@@ -297,6 +297,7 @@ type App struct {
 	sets       map[string]map[string]bool   // D385: a set card's ticks, by set
 	planNotes  map[string]map[string]string // D385: a plan card's 给这件的话…, by decision then part
 	planReply  map[string]*string           // D385: a plan card's 回复… draft, by decision
+	planJump   int64                        // D385: 看方案: the plan card's seq to find in the conversation
 	rv         reviewState                  // D385: 一起过目 / Review together's sheet
 	pins       pinsState                    // D381: 置顶 / Pinned's sheet (pins.go)
 	winW, winH float32

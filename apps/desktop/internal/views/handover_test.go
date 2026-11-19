@@ -414,13 +414,46 @@ func TestGroupCardPlanAndReviewTogether(t *testing.T) {
 	app.Route = RouteOnHand
 	todoFrames(tt, 4)
 	all := strings.Join(tt.Texts(), " | ")
-	for _, want := range []string{"记忆提炼", "等你看方案", "haswell", "Codex", "记忆提炼：方案", "照这个做"} {
+	for _, want := range []string{"记忆提炼", "方案好了，等你点头", "haswell", "Codex", "照这个做", "看方案"} {
 		if !strings.Contains(all, want) {
 			t.Fatalf("missing %q in %s", want, all)
 		}
 	}
+	// The plan itself lives only in the conversation; the plan task is never a part.
+	for _, not := range []string{"已经修好了，只差关掉", "#398 + #412 + #405", "件里做完"} {
+		if strings.Contains(all, not) {
+			t.Fatalf("On hand shows %q: %s", not, all)
+		}
+	}
+	// Go from On hand.
+	if err := tt.Click("照这个做"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if r, ok := lastSent[protocol.PlanAnswerReq](*sent); !ok || r.Option != "go" || r.GroupID != "g1" {
+		t.Fatalf("plan_answer from On hand: %+v", r)
+	}
+	app.S.Decisions["dplan"].Pending = ""
+	tt.Frame()
+	// 看方案: to the conversation, the plan card found there.
+	if err := tt.Click("看方案"); err != nil {
+		t.Fatal(err)
+	}
+	todoFrames(tt, 2)
+	if app.Route != RouteConversation || app.rp.found.seq != app.S.Decisions["dplan"].Seq {
+		t.Fatalf("看方案 didn't find the plan: route %v found %d", app.Route, app.rp.found.seq)
+	}
+	app.Route = RouteOnHand
+	app.Receive(protocol.ServerFrame{T: "on_hand", OnHand: planOnHand(i18n.ZH, "going")})
+	todoFrames(tt, 3)
+	if all := strings.Join(tt.Texts(), " | "); !strings.Contains(all, "4 件里做完 0 件") {
+		t.Fatalf("going: the plan counted as a part: %s", all)
+	}
 	app.Receive(protocol.ServerFrame{T: "on_hand", OnHand: planOnHand(i18n.ZH, "review")})
 	todoFrames(tt, 3)
+	if all := strings.Join(tt.Texts(), " | "); !strings.Contains(all, "4 件里做完 4 件") {
+		t.Fatalf("review: %s", all)
+	}
 	if err := tt.Click("一起过目"); err != nil {
 		t.Fatalf("%v: %s", err, strings.Join(tt.Texts(), " | "))
 	}

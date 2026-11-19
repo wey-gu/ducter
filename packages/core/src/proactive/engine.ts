@@ -122,6 +122,12 @@ const VERDICT_DAYS = 7;
 export const DRAFT_WAIT_MS = 60_000;
 /** D402: a drafted reply's Go. */
 const SEND_LABEL = { zh: "发出去", en: "Send" };
+/** D402: the same find's Go anywhere but its card (On hand): it opens the card, never sends. */
+const SEE_LABEL = { zh: "看草稿", en: "See the draft" };
+const firstLine = (s: string) => {
+  const l = s.trim().split(/\n/)[0]!.trim();
+  return l.length > 80 ? `${l.slice(0, 79)}…` : l;
+};
 const withTimeout = <T,>(p: Promise<T>, ms: number): Promise<T | undefined> =>
   new Promise((res) => {
     const t = setTimeout(() => res(undefined), ms);
@@ -759,7 +765,8 @@ export function createProactive(o: ProactiveOptions): Proactive {
       decisionId = newId("d");
       // D402: with its reply already written, Go is the send itself.
       goLabel = c.draft ? words(SEND_LABEL, z) : words(c.step.goLabel, z);
-      o.log.append({ stream: "channel", origin: "partner", kind: "decision", body: { decisionId, question: text, goLabel, defaultOption: "hold", reversible: false, findId } });
+      // D402: away from its card (On hand), a drafted reply's Go is 看草稿 / See the draft, never Send.
+      o.log.append({ stream: "channel", origin: "partner", kind: "decision", body: { decisionId, question: text, goLabel: c.draft ? words(SEE_LABEL, z) : goLabel, defaultOption: "hold", reversible: false, findId, ...(c.draft ? { draft: { first: firstLine(c.draft.text) } } : {}) } });
     }
     // D388: each source line says what that source says, in the person's language.
     const how = c.how.map((h, i) => (c.says?.[i] ? { ...h, says: words(c.says[i]!, z) } : h));
@@ -828,7 +835,7 @@ export function createProactive(o: ProactiveOptions): Proactive {
   function askAgain(findId: string, f: FindRec): string {
     const decisionId = newId("d");
     f.decisionId = decisionId;
-    o.log.append({ stream: "channel", origin: "partner", kind: "decision", body: { decisionId, question: f.text, goLabel: f.goLabel ?? words(SEND_LABEL, lang()), defaultOption: "hold", reversible: false, findId } });
+    o.log.append({ stream: "channel", origin: "partner", kind: "decision", body: { decisionId, question: f.text, goLabel: words(SEE_LABEL, lang()), defaultOption: "hold", reversible: false, findId, ...(f.draft ? { draft: { first: firstLine(f.send?.text ?? f.draft.text) } } : {}) } });
     return decisionId;
   }
 

@@ -59,6 +59,21 @@ function Draft({ f, open, decide }: { f: FindView; open: boolean; decide: (text:
   );
 }
 
+/** D402: 看草稿 / See the draft, from On hand: the conversation (on a phone, its pane), scrolled to the find, which glows once. */
+export function seeDraft(findId: string) {
+  if (A.route.name !== "conv") A.go({ name: "conv" });
+  const find = (n: number) => {
+    const el = document.getElementById(`find-${findId}`);
+    if (!el) return void (n > 0 && setTimeout(() => find(n - 1), 80));
+    el.scrollIntoView({ block: "center", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+    el.classList.remove("flash");
+    void el.offsetWidth;
+    el.classList.add("flash");
+    setTimeout(() => el.classList.remove("flash"), 1800);
+  };
+  setTimeout(() => find(12), 60);
+}
+
 function Find({ f, seq }: { f: FindView; seq?: number }) {
   const [how, setHow] = useState(false);
   const st = A.S.findStates.get(f.findId);
@@ -69,7 +84,7 @@ function Find({ f, seq }: { f: FindView; seq?: number }) {
   const send = A.S.findSends.get(f.findId);
   const rk = seq !== undefined ? replyKey(replyOfFind(seq, f.findId, f.text)) : undefined;
   return (
-    <div class="find" data-reply={rk} data-seq={undefined}>
+    <div class="find" id={`find-${f.findId}`} data-reply={rk} data-seq={undefined}>
       <div class="kind">{t(`kind.${f.kind}`)}</div>
       {/* D256: the pebble rests outside the card, beside the find's words. */}
       <div class="ftext">

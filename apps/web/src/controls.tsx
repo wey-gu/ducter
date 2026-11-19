@@ -507,9 +507,14 @@ export function Switch(p: { label: string; on: boolean; onChange: (v: boolean) =
   );
 }
 
-/** D402: words someone may edit in place before they go out (a reply in a find): a sunken well that grows with its text. */
+/** D402: words someone may edit in place before they go out (a reply in a find): a sunken well that grows with its text up to 40vh, no grip (as D385's notes); CSS field-sizing does it where the browser can. */
 export function TextBox(p: { value: string; label: string; lang?: string; class?: string; onInput: (v: string) => void }) {
+  const fit = (el: HTMLTextAreaElement | null) => {
+    if (!el || CSS.supports?.("field-sizing", "content")) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight + 2, window.innerHeight * 0.4)}px`;
+  };
   return (
-    <textarea class={`textbox${p.class ? ` ${p.class}` : ""}`} value={p.value} rows={Math.min(8, Math.max(3, Math.ceil(p.value.length / 38)))} lang={p.lang} aria-label={p.label} onInput={(e) => p.onInput((e.target as HTMLTextAreaElement).value)} />
+    <textarea class={`textbox${p.class ? ` ${p.class}` : ""}`} value={p.value} rows={2} lang={p.lang} aria-label={p.label} ref={fit} onInput={(e) => (fit(e.target as HTMLTextAreaElement), p.onInput((e.target as HTMLTextAreaElement).value))} />
   );
 }

@@ -64,19 +64,41 @@
 // The `named` shape stays one page with no `next` (an older answer, which Ducter still reads).
 //   NMEM_FAKE_WIDE=1   Mem #10402: `bridge inbox --help` offers `--all-spaces`, and `inbox --all-spaces`
 //                      reads the identity's messages in every Space (each with `space_id`).
+// D400 (nmem 0.10.121, research/161; help VERIFIED, answer shapes GUESSED from its strings): at
+// NMEM_FAKE_VERSION=0.10.121 or later (or NMEM_FAKE_IDENTITY=1) the plain `inbox` is the identity
+// inbox: "List incoming identity mail across currently authorized Spaces", every Space's mail for the
+// context's identity, each entry with `space {id,label,kind}`, `space_id`, `open_args` and
+// `reply_args_prefix` (Mem's argv, written `--agent-context=<ctx>`); no `--all-spaces` (clap's plain
+// "unexpected argument", exit 2); `--wait` takes 1..=5 (else `bad_arguments`, "25 is not in 1..=5");
+// `--watch` prints one JSON line whenever new unread mail is there and runs until killed.
+//   NMEM_FAKE_UNAPPROVED=<ctx>[,<ctx>]  inbox answers the plain text "error: Select your approved Agent
+//                                       Context for the identity inbox" (exit 1, no JSON even under --json)
+//   NMEM_FAKE_CURSOR_STALE=1            the first `--cursor` read answers "Identity inbox cursor no longer
+//                                       matches this Context or Space roster; restart the inbox" (once)
+//   NMEM_FAKE_WATCH=exit                every `--watch` exits at once with Mem's 503
+// `contacts` without a Space selector groups one `identity_contact` card per identity (no Space; a send
+// resolves it in the sender's Space); `--all-spaces` keeps the per-Space view. `connections connect`
+// takes `--device-label` (kept on the connection); before 0.10.121 it is an unexpected argument.
+// `bridge notices status` (local): NMEM_FAKE_NOTICES=on lists a subscription for the context's identity
+// with the OS channel on; else none. Before 0.10.121 `notices` is an unrecognized subcommand.
 import { appendFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 
 interface Msg { id: string; op: string; from: string; to: string; body: string; in_reply_to?: string; created_at: string; read_at?: string; pending?: boolean; space?: string }
 interface Ident { agent: string; member: string; member_id?: string; description: string; space?: string }
 interface Space { id: string; label: string; kind: string }
-interface Conn { connection_id: string; agent_id: string; identity_birth: string; client_label: string; state: "active" | "revoked"; space_id: string }
-interface State { identities: Record<string, Ident>; messages: Msg[]; seq: number; lost?: string[]; connections?: Conn[]; retained?: Record<string, { to: string; body: string }>; busy?: Record<string, number>; agents?: Record<string, { name: string; source_app: string; description?: string }>; spaces?: Space[]; everywhere?: string[] }
+interface Conn { connection_id: string; agent_id: string; identity_birth: string; client_label: string; state: "active" | "revoked"; space_id: string; device_label?: string }
+interface State { identities: Record<string, Ident>; messages: Msg[]; seq: number; lost?: string[]; staled?: boolean; connections?: Conn[]; retained?: Record<string, { to: string; body: string }>; busy?: Record<string, number>; agents?: Record<string, { name: string; source_app: string; description?: string }>; spaces?: Space[]; everywhere?: string[] }
 
 if (process.env.NMEM_FAKE_ARGV_LOG) appendFileSync(process.env.NMEM_FAKE_ARGV_LOG, JSON.stringify(process.argv.slice(2)) + "\n");
 const VERSION = process.env.NMEM_FAKE_VERSION ?? "0.10.118";
 const connects = (() => {
   const [a, b, c] = VERSION.split(/[.-]/).map(Number);
   return a! > 0 || b! > 10 || (b === 10 && c! >= 118);
+})();
+// D400: nmem 0.10.121's identity inbox, notices and device labels.
+const IDENT = process.env.NMEM_FAKE_IDENTITY === "1" || (() => {
+  const [a, b, c] = VERSION.split(/[.-]/).map(Number);
+  return a! > 0 || b! > 10 || (b === 10 && c! >= 121);
 })();
 if (process.argv.includes("--version") || process.argv.includes("-V")) {
   console.log(`nmem ${VERSION}`);
@@ -99,7 +121,20 @@ const take = (flag: string): string | undefined => {
   return v;
 };
 argv.splice(0, argv.length, ...argv.filter((a) => a !== "--json" && a !== "-j"));
-const ctx = take("--agent-context") ?? process.env.NMEM_AGENT_CONTEXT;
+// D400: Mem's own argv carries `--api-url=<its server>`; the fake has no server to point at.
+argv.splice(0, argv.length, ...argv.filter((a) => !a.startsWith("--api-url=")));
+// D400: a `bm1:` reference (the identity inbox's) names its message.
+const unref = (a: string | undefined): string | undefined => {
+  if (!a?.startsWith("bm1:")) return a;
+  try {
+    return JSON.parse(Buffer.from(a.slice(4), "base64url").toString()).message;
+  } catch {
+    return a;
+  }
+};
+// Both forms parse, as in the real CLI (D369): `--agent-context x` and `--agent-context=x` (Mem's own argv).
+const ctxEq = argv.findIndex((a) => a.startsWith("--agent-context="));
+const ctx = (ctxEq >= 0 ? argv.splice(ctxEq, 1)[0]!.slice("--agent-context=".length) : undefined) ?? take("--agent-context") ?? process.env.NMEM_AGENT_CONTEXT;
 const out = (v: unknown) => console.log(JSON.stringify(v, null, 2));
 const fail = (code: string, message: string, exit = 1) => {
   console.error(JSON.stringify({ error: code, message }));
@@ -231,6 +266,11 @@ if (!verb || verb === "--help" || verb === "help") {
 // D335: an nmem whose `inbox` takes `--wait` (NMEM_FAKE_INBOX_WAIT=1; =error: every wait fails;
 // =error:<context>[,<context>]: only those contexts' waits fail, the others hold as with =1).
 const WAITS = process.env.NMEM_FAKE_INBOX_WAIT;
+if (verb === "inbox" && (argv.includes("--help") || argv.includes("-h")) && IDENT) {
+  // nmem 0.10.121's own words (VERIFIED, research/161).
+  console.log(`List incoming identity mail across currently authorized Spaces\n\nUsage: nmem bridge inbox [OPTIONS]\n\nOptions:\n      --cursor <CURSOR>       \n  -j, --json                  Emit raw JSON instead of human-readable output\n      --wait <WAIT>           Wait up to five seconds for an incoming change, without consuming mail\n      --agent-context <NAME>  Reuse a named local agent context\n      --watch                 Observe incoming changes continuously as JSON lines; never acknowledges mail\n  -h, --help                  Print help`);
+  process.exit(0);
+}
 if (verb === "inbox" && (argv.includes("--help") || argv.includes("-h"))) {
   console.log(`List incoming messages and automatically refresh outgoing read status\n\nUsage: nmem bridge inbox [OPTIONS]\n\nOptions:\n      --cursor <CURSOR>\n${process.env.NMEM_FAKE_WIDE === "1" ? "      --all-spaces            Read this identity's messages in every Space\n" : ""}${WAITS ? "      --wait <SECONDS>        Hold until a message arrives, at most this long\n" : ""}  -j, --json\n      --agent-context <NAME>`);
   process.exit(0);
@@ -255,6 +295,14 @@ if (verb === "connections") {
     process.exit(0);
   }
   s.connections ??= [];
+  if (sub === "connect" && argv.includes("--help")) {
+    console.log(`Represent an existing role using this login; save a logical Context\n\nUsage: nmem bridge connections connect [OPTIONS] --space-id <SPACE_ID> --agent-id <AGENT_ID>\n\nOptions:\n      --space-id <SPACE_ID>\n      --agent-id <AGENT_ID>\n  -j, --json\n      --context <CONTEXT>            Convenience name, defaulting to the requested role; never an identity\n${IDENT ? "      --device-label <DEVICE_LABEL>  Optional device label; the home identifier remains private and stable\n" : ""}  -h, --help`);
+    process.exit(0);
+  }
+  if (sub === "connect" && !IDENT && argv.some((a) => a === "--device-label" || a.startsWith("--device-label="))) {
+    console.error("error: unexpected argument '--device-label' found");
+    process.exit(2);
+  }
   if (sub === "connect") {
     const space = flag("--space-id");
     const agent = flag("--agent-id");
@@ -279,6 +327,8 @@ if (verb === "connections") {
       c = { connection_id: uuid(s.connections.length + 1), agent_id: agent!, identity_birth: uuid(900 + s.connections.length), client_label: name!, state: "active", space_id: space! };
       s.connections.push(c);
     }
+    const device = flag("--device-label");
+    if (device) c.device_label = device;
     s.identities[name!] ??= { agent: agent!, member: "Weyl", member_id: "member-weyl", description: `${agent} (connected)`, ...(space !== SPACE.id ? { space: space! } : {}) };
     save(s);
     const { space_id: _sp, ...summary } = c;
@@ -311,6 +361,22 @@ if (verb === "connections") {
     process.exit(0);
   }
   fail("bad_arguments", `fake nmem: bridge connections ${sub} is not implemented`, 2);
+}
+// D400: `bridge notices` (nmem 0.10.121): only `status`, local, read-only. The answer's shape is a GUESS.
+if (verb === "notices") {
+  if (!IDENT) {
+    console.error("error: unrecognized subcommand 'notices'");
+    process.exit(2);
+  }
+  if (argv.includes("--help") || !argv[2]) {
+    console.log("Observe approved mailbox subscriptions locally; never starts an agent\n\nUsage: nmem bridge notices [OPTIONS] <COMMAND>\n\nCommands:\n  reset        Explicitly forget this device's notice attempts; current mail may remind again\n  watch        Run the foreground device observer for approved subscriptions\n  unsubscribe  Remove only this ended host session's local subscriptions and hints\n  status       Inspect bounded local configuration without a backend request\n  subscribe    Subscribe an actual host session using the existing approved Context\n  help         Print this message or the help of the given subcommand(s)");
+    process.exit(0);
+  }
+  if (argv[2] !== "status") fail("bad_arguments", `fake nmem: bridge notices ${argv[2]} is not implemented`, 2);
+  const agent = ctx ? s.identities[ctx]?.agent : undefined;
+  const on = process.env.NMEM_FAKE_NOTICES === "on" && agent;
+  out({ schema_version: 1, observer: { observing: false }, subscriptions: on ? [{ target: { agent_id: agent, context: ctx }, channels: ["hooks", "os"], identity_mail: "chooser" }] : [] });
+  process.exit(0);
 }
 if (verb === "session") {
   const host = flag("--host");
@@ -355,7 +421,7 @@ const spaceOf = (name: string) => s.identities[name]?.space ?? SPACE.id;
 const spaceInfo = (id: string): Space => s.spaces?.find((x) => x.id === id) ?? (id === SPACE.id ? SPACE : { id, label: id, kind: "team" });
 const msgSpace = (m: Msg) => m.space ?? spaceOf(m.to);
 const agentOfCtx = (name: string) => s.identities[name]?.agent ?? name;
-const WIDE = process.env.NMEM_FAKE_WIDE === "1" && (verb !== "inbox" || argv.includes("--all-spaces"));
+const WIDE = IDENT || (process.env.NMEM_FAKE_WIDE === "1" && (verb !== "inbox" || argv.includes("--all-spaces")));
 const forMe = (m: Msg) => agentOfCtx(m.to) === agentOfCtx(me) && (WIDE || msgSpace(m) === spaceOf(me));
 // As the real CLI shows a member: an id-only label, never a person's name.
 const card = (name: string, space = spaceOf(name)) => ({ space: spaceInfo(space), member: `Member ${memberId(name)}`, agent: s.identities[name]!.agent, description: s.identities[name]!.description });
@@ -426,6 +492,22 @@ switch (verb) {
       out({ contacts: cards, spaces: spaces.map((x) => ({ space: x, status: "searched", next_cursor: null })), coverage_scope: "all_spaces_batch", next_spaces_cursor: null });
       break;
     }
+    if (IDENT) {
+      // D400: one card per identity across every Space (no Space on it); a send resolves it in the sender's Space.
+      const seen = new Set<string>([agentOfCtx(me)]);
+      const cards: unknown[] = [];
+      for (const n of Object.keys(s.identities)) {
+        const a = s.identities[n]!.agent;
+        if (seen.has(a)) continue;
+        if (words.length && !words.some((w) => `${n} ${a} ${s.identities[n]!.member} ${s.identities[n]!.description}`.toLowerCase().includes(w))) continue;
+        seen.add(a);
+        const available = process.env.NMEM_FAKE_UNREGISTERED !== n;
+        const { space: _sp, ...who } = card(n);
+        cards.push({ kind: "identity_contact", ...who, agent_id: a, contact: `ct-${n}`, mailbox_available: available, send_args_prefix: available ? ["nmem", `--agent-context=${me}`, "bridge", "send", `--to=ct-${n}`] : null });
+      }
+      out({ contacts: cards, next: null, match_state: cards.length === 1 ? "unique" : cards.length ? "ambiguous" : "none", has_more: false });
+      break;
+    }
     const contacts = Object.keys(s.identities)
       .filter((n) => n !== me && spaceOf(n) === spaceOf(me))
       .filter((n) => !words.length || words.some((w) => `${n} ${s.identities[n]!.agent} ${s.identities[n]!.member} ${s.identities[n]!.description}`.toLowerCase().includes(w)))
@@ -449,9 +531,11 @@ switch (verb) {
       to = handle ?? "";
       if (!to || !s.identities[to]) fail("unknown_contact", "Use a contact handle from `bridge contacts`.");
       // D334: a card from another Space than this context's can't be sent to from here.
-      if ((at ?? spaceOf(to)) !== spaceOf(me)) fail("space_mismatch", "That contact card is from another Space than this context's.");
+      if (!(IDENT && !at) && (at ?? spaceOf(to)) !== spaceOf(me)) fail("space_mismatch", "That contact card is from another Space than this context's.");
     } else {
-      const text0 = argv[argv.length - 1];
+      // The message is the positional word, wherever it stands (clap's way; Mem's argv puts it before the body flag).
+      const words = argv.slice(2).filter((a, i, all) => !a.startsWith("-") && !(i > 0 && /^--(body-file|body|shared-document)$/.test(all[i - 1]!)));
+      const text0 = unref(words[0]);
       const orig = s.messages.find((x) => x.id === text0 && forMe(x));
       if (!orig) fail("not_found", "Reply only to a message in this mailbox.");
       to = orig!.from;
@@ -484,10 +568,43 @@ switch (verb) {
     // D335: `inbox --wait <s>` (asked of Mem in nowledge-co/mem#10402): holds until an unread
     // message is there for this context (D334: its Space, or every Space with --all-spaces) or the
     // wait ends, then answers as `inbox` does.
+    if (IDENT) {
+      // D400: nmem 0.10.121's identity inbox: clap's plain refusals, its plain-text context refusal.
+      const bad = argv.find((a) => a === "--all-spaces" || a.startsWith("--space-id") || a.startsWith("--resolved-space-id"));
+      if (bad) {
+        console.error(`error: unexpected argument '${bad}' found\n\nUsage: nmem bridge inbox [OPTIONS]\n\nFor more information, try '--help'.`);
+        process.exit(2);
+      }
+      if ((process.env.NMEM_FAKE_UNAPPROVED ?? "").split(",").includes(me)) {
+        console.error("error: Select your approved Agent Context for the identity inbox");
+        process.exit(1);
+      }
+      const w = argv.indexOf("--wait");
+      if (w >= 0 && !(Number(argv[w + 1]) >= 1 && Number(argv[w + 1]) <= 5)) fail("bad_arguments", `error: invalid value '${argv[w + 1]}' for '--wait <WAIT>': ${argv[w + 1]} is not in 1..=5`, 2);
+      if (argv.includes("--watch")) {
+        if (process.env.NMEM_FAKE_WATCH === "exit") fail("cloud_agent_im_backend_unavailable", "fake nmem: the watch couldn't start", 1);
+        // One JSON line whenever unread mail for this identity grows; runs until killed.
+        const unread = () => load().messages.filter((m) => forMe(m) && !m.pending && !m.read_at).map((m) => m.id);
+        let had = new Set(unread());
+        for (;;) {
+          await Bun.sleep(50);
+          const now = unread();
+          const fresh = now.filter((id) => !had.has(id));
+          if (fresh.length) console.log(JSON.stringify({ event: "incoming_changed", messages: fresh.map((message) => ({ message })) }));
+          had = new Set(now);
+        }
+      }
+      if (process.env.NMEM_FAKE_CURSOR_STALE === "1" && argv.includes("--cursor") && !s.staled) {
+        s.staled = true;
+        save(s);
+        console.error("error: Identity inbox cursor no longer matches this Context or Space roster; restart the inbox");
+        process.exit(1);
+      }
+    }
     const wait = take("--wait");
     if (wait !== undefined) {
-      if (!WAITS) fail("bad_arguments", "error: unexpected argument '--wait' found", 2);
-      const failing = WAITS === "error" || (WAITS!.startsWith("error:") && WAITS!.slice(6).split(",").includes(me));
+      if (!WAITS && !IDENT) fail("bad_arguments", "error: unexpected argument '--wait' found", 2);
+      const failing = WAITS === "error" || (!!WAITS && WAITS.startsWith("error:") && WAITS!.slice(6).split(",").includes(me));
       if (failing) fail("cloud_agent_im_backend_unavailable", "fake nmem: the wait failed", 1);
       const until = Date.now() + Number(wait) * 1000;
       const unread = () => load().messages.some((m) => forMe(m) && !m.pending && !m.read_at);
@@ -515,11 +632,32 @@ switch (verb) {
     const next = at + size < all.length ? Buffer.from(`at:${at + size}:${crypto.randomUUID()}`).toString("base64url") : "";
     // 0.10.118: handles only; our own sent messages' read status beside them.
     const outgoing = s.messages.filter((m) => m.from === me && !m.pending).map((m) => ({ message: m.id, status: m.read_at ? "read" : "delivered", read_recipients: m.read_at ? 1 : 0, recipients: 1 }));
+    if (IDENT) {
+      // D400: nmem 0.10.121's identity inbox as read live on 2026-11-19 (research/161 §6): each entry its
+      // Space by id alone, a `bm1:` reference, Mem's open/reply argv ending in that reference, a state and
+      // whether it may be opened; no sender (that comes with `open`); `spaces[]` says each Space's read.
+      const stuck = (process.env.NMEM_FAKE_SPACE_STUCK ?? "").split(",").filter(Boolean);
+      const expired = (process.env.NMEM_FAKE_EXPIRED ?? "").split(",").filter(Boolean);
+      const shown = mine.filter((m) => !stuck.includes(msgSpace(m)));
+      const ref = (m: Msg) => `bm1:${Buffer.from(JSON.stringify({ message: m.id })).toString("base64url")}`;
+      const spaces = (s.spaces?.length ? s.spaces : [SPACE]).map((x) => (stuck.includes(x.id) ? { space_id: x.id, status: "unavailable", error_code: "cloud_mailbox_own_source_unreconciled" } : { space_id: x.id, status: "observed", next_cursor: "", outgoing: [] }));
+      out({
+        messages: shown.map((m, i) => ({ message: m.id, mine: null, state: expired.includes(m.id) ? "expired" : m.read_at ? "read" : "delivered", eligible: !expired.includes(m.id), sequence: at + i + 1, space_id: msgSpace(m), reference: ref(m), open_args: ["nmem", "--api-url=https://cloud.example/remote-api", `--agent-context=${me}`, "bridge", "open", ref(m)], reply_args_prefix: ["nmem", "--api-url=https://cloud.example/remote-api", `--agent-context=${me}`, "bridge", "reply", ref(m)] })),
+        spaces,
+        next: next || null,
+        incomplete: stuck.length > 0,
+        coverage_scope: "current_space_batch",
+        outcome_unknown: false,
+        identity: agentOfCtx(me),
+        outgoing,
+      });
+      break;
+    }
     out({ messages: mine.map((m) => ({ ...(PRESENT ? { message: m.id, sender: sender(m.from), in_reply_to: m.in_reply_to ?? null } : { message: m.id }), ...(WIDE ? { space_id: msgSpace(m) } : {}) })), next, outgoing, status_observed_at_us: Date.now() * 1000 });
     break;
   }
   case "open": {
-    const m = s.messages.find((x) => x.id === argv[2] && agentOfCtx(x.to) === agentOfCtx(me) && (process.env.NMEM_FAKE_WIDE === "1" || msgSpace(x) === spaceOf(me)) && !x.pending);
+    const m = s.messages.find((x) => x.id === unref(argv[2]) && agentOfCtx(x.to) === agentOfCtx(me) && (IDENT || process.env.NMEM_FAKE_WIDE === "1" || msgSpace(x) === spaceOf(me)) && !x.pending);
     if (!m) fail("not_found", "No such message in this mailbox.");
     m!.read_at ??= new Date().toISOString();
     save(s);

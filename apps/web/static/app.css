@@ -5723,9 +5723,13 @@ button.dev-name {
    while its Go is open), what to check first, then Send and Hold, or the undo line after Go. */
 .bubble.note .fdraft { display: flex; flex-direction: column; gap: 6px; margin-top: 2px; }
 .bubble.note .fdraft-text { display: block; width: 100%; box-sizing: border-box; padding: 10px 12px; border-radius: var(--r-sm); background: var(--sunken); color: var(--ink); font-size: 15px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
-.bubble.note textarea.fdraft-text { border: 1px solid var(--line); resize: vertical; min-height: 4.5em; outline: none; }
+.bubble.note textarea.fdraft-text { border: 1px solid var(--line); resize: none; field-sizing: content; min-height: 3em; max-height: 40vh; overflow-y: auto; outline: none; }
 .bubble.note textarea.fdraft-text:focus-visible { border-color: var(--ink-soft); }
 .bubble.note .fdraft:not(.open) .fdraft-text { color: var(--ink-soft); }
+/* D402: 看草稿 from On hand lands here; the find glows once. On hand shows the reply's first line, quiet, one line. */
+.bubble.note .find.flash { animation: ho-glow 1.6s var(--ease); border-radius: var(--r-sm); }
+@media (prefers-reduced-motion: reduce) { .bubble.note .find.flash { animation: none; box-shadow: 0 0 0 3px var(--accent); } }
+.decision .draft-first { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: var(--ink-muted); }
 .bubble.note .note-ask { display: flex; flex-direction: column; gap: 8px; padding-top: 10px; border-top: 1px solid var(--line); }
 
 /* ---------- D184: On hand at the whole screen, the Mac's (onhand.go, byproject.go) ---------- */
@@ -6248,9 +6252,6 @@ button.bcard:active {
   flex: none;
   color: var(--ink-muted);
   font-size: var(--xs);
-}
-.af-kept {
-  margin-top: var(--s2);
 }
 /* 付款 / Pay: the facts as a small receipt, the amount biggest. */
 .pay-facts {
@@ -11456,9 +11457,6 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   letter-spacing: 0.08em;
   user-select: all;
 }
-.set-page.pushed .chats-goes {
-  margin: var(--s2) 0 0;
-}
 /* A phone is narrow: the button drops under its note, at the right edge. */
 @media (max-width: 520px) {
   .chat-foot,
@@ -14258,11 +14256,11 @@ svg .wave.w2.on {
 /* D332: 终端里的 AI / AI in your terminal. The picture, literal: the person's agents' coins, the partner,
    and the two ways between them in words; the Partner page's one quiet invitation line. */
 .peers-pic { display: flex; align-items: center; justify-content: center; gap: var(--s3); margin: 0 0 var(--s4); padding: var(--s4) var(--s5); border-radius: var(--r-lg); background: var(--surface-sunken); box-shadow: inset 0 2px 0 var(--line); }
-.pp-end { display: flex; flex: none; flex-direction: column; align-items: center; gap: var(--s2); }
+.pp-end { display: flex; flex: 0 1 auto; flex-direction: column; align-items: center; gap: var(--s2); min-width: 0; max-width: 38%; }
 .pp-end small,
 .pp-way small { font-size: var(--sm); font-weight: 600; line-height: 1.4; color: var(--ink-soft); text-align: center; }
 .pp-end .mem-coins > * + * { margin-left: -16px; }
-.pp-ways { display: flex; flex: 1; flex-direction: column; gap: var(--s3); min-width: 0; max-width: 260px; }
+.pp-ways { display: flex; flex: 1; flex-direction: column; gap: var(--s3); min-width: 112px; max-width: 260px; }
 .pp-way { display: flex; flex-direction: column; gap: 2px; }
 .pp-arrow { width: 100%; height: 14px; color: var(--ink-muted); }
 .set-invite { display: flex; align-items: center; gap: var(--s3); padding: 0 var(--set-in, var(--s4)); color: var(--ink-muted); }
@@ -15961,7 +15959,9 @@ svg .wave.w2.on {
   font-weight: 700;
   line-height: 1.4;
 }
-.todo-own {
+/* D399: what is true of a whole pane, one small line close under its lede (to-do sources, passwords & cards, chat apps). */
+.todo-own,
+.lede-note {
   margin: calc(-1 * var(--s2)) 0 var(--s1);
   color: var(--ink-muted);
 }

@@ -223,6 +223,9 @@ type Decision struct {
 	// FindID (D165): a find's one next step; shown inside its note, never
 	// as a card of its own in the conversation.
 	FindID string `json:"findId,omitempty"`
+	// Draft (D402): the find's reply is already written; away from its card
+	// (On hand) show its first line and 看草稿, which opens the card; never Send.
+	Draft *DecisionDraft `json:"draft,omitempty"`
 	// Asker (D170): asked for one of the user's own agents through Bridge;
 	// the answer goes back to it by Ducter's code.
 	Asker *PeerAsk `json:"asker,omitempty"`
@@ -1731,6 +1734,9 @@ type BridgeView struct {
 	// D369: Stuck, on "connected": Mem said the partner's mailbox can't be
 	// read until Mem sorts it out on its side; Code is Mem's own.
 	Stuck *BridgeStuck `json:"stuck,omitempty"`
+	// D400: Notices, on "connected": Nowledge Mem itself also tells the
+	// person about mail to the partner's identity (bridge notices status).
+	Notices bool `json:"notices,omitempty"`
 }
 
 // BridgeStuck is Mem's word that a mailbox needs sorting out on its side (D369).

@@ -222,3 +222,8 @@ type ReadProblem struct {
 	Since   string `json:"since"`
 	Waiting int    `json:"waiting"`
 }
+
+// DecisionDraft is a drafted reply's first line, for its ask away from the card (D402).
+type DecisionDraft struct {
+	First string `json:"first"`
+}

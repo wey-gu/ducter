@@ -283,7 +283,7 @@ function waitingOnYou(facts: Fact[], c: DetectCtx): Candidate[] {
     const from = first.from.toLowerCase();
     const known = replies.some((r) => r.with.toLowerCase() === from) || facts.some((f) => f.type === "ask_out" && f.to.toLowerCase() === from);
     if (!gh && !known && PITCH.test(`${list.map((a) => a.what).join(" ")} ${first.label}`)) continue;
-    // D402: said only when it is worth a tap (research/163, hel's eleven): a person writing, not a
+    // D402: said only when it is worth a tap (research/164, hel's eleven): a person writing, not a
     // service relaying (GitHub's own mail: GitHub is where it's answered) nor a role address they
     // never wrote to; an ask it can name (an ask with no words is nothing to answer); not stale
     // (first seen weeks later with nothing since: handled elsewhere); not answered anywhere since.

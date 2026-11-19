@@ -432,6 +432,8 @@ type Store struct {
 	// FindAsks the find's Go asked again (after 撤回 or a failed send).
 	FindSends map[string]*protocol.FindState
 	FindAsks  map[string]string
+	// FindSeq is the seq of the note each find is in (D402: 看草稿 finds it).
+	FindSeq map[string]int64
 	// DecisionCalls are the latest connection_call of each decision's Go,
 	// by decision id (D222: a calendar change settles from it).
 	DecisionCalls map[string]*protocol.ConnectionCall
@@ -596,6 +598,7 @@ func New() *Store {
 		FindStates:    map[string]*protocol.FindState{},
 		FindSends:     map[string]*protocol.FindState{},
 		FindAsks:      map[string]string{},
+		FindSeq:       map[string]int64{},
 		DecisionCalls: map[string]*protocol.ConnectionCall{},
 		notes:         map[string]*Entry{},
 		Waiters:       map[string]*protocol.Waiter{},
@@ -1355,6 +1358,11 @@ func (s *Store) job(id string) *Job {
 // an answered ask). A quiet morning (D173) is nothing at all: no message,
 // no header line.
 func (s *Store) addFinds(ev protocol.LogEvent, b *protocol.Finds) {
+	for _, f := range b.Finds {
+		if _, ok := s.FindSeq[f.FindID]; !ok {
+			s.FindSeq[f.FindID] = ev.Seq
+		}
+	}
 	if b.Quiet {
 		s.bySeq[ev.Seq] = nil
 		return
@@ -1362,6 +1370,9 @@ func (s *Store) addFinds(ev protocol.LogEvent, b *protocol.Finds) {
 	if b.Revises != "" {
 		if old := s.notes[b.Revises]; old != nil {
 			old.Finds = b
+			for _, f := range b.Finds {
+				s.FindSeq[f.FindID] = old.Event.Seq
+			}
 			old.Revision++
 			s.notes[b.NoteID] = old
 			s.bySeq[ev.Seq] = old

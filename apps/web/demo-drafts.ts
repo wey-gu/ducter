@@ -1,4 +1,4 @@
-// A demo core for D402 (research/163): two 在等你回 finds in a morning note, each with its reply
+// A demo core for D402 (research/164): two 在等你回 finds in a morning note, each with its reply
 // already written (the thread's language, the person's voice), editable in place, sent on Go
 // after a 30-second undo window. DEMO_STAGE=sending shows the first one in its window and the
 // second one sent. Synthetic: every person and address is made up; nothing is sent anywhere.
@@ -54,7 +54,7 @@ const finds = [
     draft: { text: "Kenji さん、ご連絡ありがとうございます。お支払いの状況を確認して、すぐにご連絡します。Wey", to: "Kenji Example", subject: "Plus を購入しましたが Not active のままです", lang: "ja" },
   },
 ];
-for (const f of finds) log.append({ stream: "channel", origin: "partner", kind: "decision", body: { decisionId: f.decisionId, question: f.text, goLabel: f.goLabel, defaultOption: "hold", reversible: false, findId: f.findId } });
+for (const f of finds) log.append({ stream: "channel", origin: "partner", kind: "decision", body: { decisionId: f.decisionId, question: f.text, goLabel: zh ? "看草稿" : "See the draft", defaultOption: "hold", reversible: false, findId: f.findId, draft: { first: f.draft.text.split("\n")[0]! } } });
 log.append({ stream: "channel", origin: "partner", kind: "finds", body: { noteId: "n_m", rung: "morning", opening: zh ? "早。" : "Morning.", finds } });
 if (sending) {
   log.append({ stream: "channel", origin: "user", kind: "decision_resolved", body: { decisionId: "d_a", option: "go", by: "user" } });

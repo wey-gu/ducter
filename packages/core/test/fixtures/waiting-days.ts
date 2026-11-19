@@ -1,4 +1,4 @@
-// D402 (research/163): eleven "waiting for your reply" mails shaped like the ones hel said by itself
+// D402 (research/164): eleven "waiting for your reply" mails shaped like the ones hel said by itself
 // over 2026-11-12 to 11-18 (all held, none acted on), rebuilt as synthetic mail: every person,
 // company, domain and address is made up (example.com/.org/.net), except GitHub's own notification
 // sender, which is a service, not a person. Each carries what a cheap model said of it, as triage

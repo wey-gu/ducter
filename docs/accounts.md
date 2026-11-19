@@ -162,7 +162,8 @@ in the way you usually write, from the thread and a few of your own sent emails;
 for that is kept. Edit it right there if you like, then **Go: Send**. It waits 30 seconds with
 **Undo** before it goes, and then says **Sent to {name}**. If something needs checking first (a
 fix you haven't shipped yet), it says so above the button. Nothing is ever sent without your tap,
-and nothing is saved into your mailbox.
+and nothing is saved into your mailbox. On **On hand** the same item shows the reply's first line
+and **See the draft**, which takes you to it in the conversation.
 
 Under each one, **Useful** or **Don't tell me this kind**. The second becomes a rule in **Your
 rules**, where you can remove it. If three morning messages in a row go unread, they stop, and

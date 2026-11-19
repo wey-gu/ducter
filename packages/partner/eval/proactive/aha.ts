@@ -2,7 +2,7 @@
 // accounts, recorded triage, code's bar, a fake web look): what Ducter says by itself, when, and
 // what it never says. bun packages/partner/eval/proactive/aha.ts [three|urgent|useful] [--no-web] [--waiting]
 // Prints the timeline with each find's sources, then the score against AHA_SAY / AHA_NEVER and
-// the answer to "how did you know?" for the plan. --waiting (D402, research/163) adds hel's eleven
+// the answer to "how did you know?" for the plan. --waiting (D402, research/164) adds hel's eleven
 // waiting-for-your-reply mails, rebuilt, and scores them: said, with a draft, false positives.
 // No model, no network.
 import type { ProactiveMode } from "../../../protocol/src/index.ts";

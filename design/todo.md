@@ -1546,13 +1546,22 @@ Codex first, once OAR is near 1.0. See `research/17`.
       Mem stops advertising it where it can't), drop D338's workarounds: the 404 back-off in `discover`
       (`UNREAD_RETRY_MS`), the card's Space list (back to D334's "every Space" through `wide`), and
       `answerMayNotReach` / the `unheard` mark in `bridge_contacts` and `oneSpaceEach`. Until then, no
-      `bridge connections connect --space-id` per Space. Trigger: an nmem release carrying #10402.
-- [ ] D334: switch to Mem's one inbox per identity when nowledge-co/mem#10402 ships: the home sees `--all-spaces`
-      in `bridge inbox --help` and reads with the connection's context alone (built; the shapes are GUESSES:
-      check the real `inbox --all-spaces` answer names each message's Space, that `open`/`reply` take a message
-      from any Space under one context, and that a reply goes out in the message's Space), then drop the
-      per-Space contexts (`agents context clear`). Also when #10402 gives one contact per identity, fold
-      `oneSpaceEach` away. Trigger: an nmem release carrying #10402.
+      `bridge connections connect --space-id` per Space. Trigger: an nmem release carrying #10402 (met by
+      0.10.121, D400: `discover` already goes wide there; the 404 back-off and `unheard` stay for 0.10.120 until
+      no supported home runs it).
+- [x] D334: switch to Mem's one inbox per identity when nowledge-co/mem#10402 ships. Done by D400 for nmem
+      0.10.121 (the plain `inbox`, detected by the help's words; Mem's `open_args`/`reply_args_prefix`; the entry
+      shape VERIFIED by the read-only read of 2026-11-19, research/161 §8).
+- [ ] D400 live: on hel and the Mac with nmem 0.10.121, check that a reply by Mem's `reply_args_prefix` goes out
+      in the message's Space (the peer sees it there), that `--watch` brings an arrival within seconds (one line,
+      one check), how the identity inbox pages on past one batch (per-Space `next_cursor` beside a top-level
+      `next: null`), and what `bridge notices status --json` really prints for a home's connection (D400 (7)
+      reads it tolerantly). Then clear the per-Space contexts D334 made (`agents context clear --name
+      <…-in-<space>>`, the person's Go) and fold `oneSpaceEach` away once the grouped contacts are seen live.
+      Trigger: the personal Space's `…_unreconciled` cleared (B19), or a trial without it.
+- [ ] D400: if Mem notifies the person for mail the partner handles (the Settings line shows), ask Nowledge how
+      to turn that off per connection (research/161 §6 (c)), then offer it on that line. Trigger: the line seen on
+      a real home.
 - [ ] D334: an unnamed sender in a shared Space (nmem 0.10.119 names none) is treated as a teammate's, so the
       person's own agent writing from a team Space meets the 答应 card once. Once the CLI carries #10278's
       `sender.member`, it is known as the person's own and goes straight through. Trigger: an nmem after 0.10.119.
@@ -2210,7 +2219,7 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] **Find by what is inside a written file** the home never read (only its name, the words around it and a block's cells are searched today). Trigger: a miss in the author's use where the words were only inside the file.
 - [ ] **Walk it with weeks of a real Log** (the author's home): ranking, noise from coding tasks' written docs, and the raters' line with people. Trigger: the next live walk.
 
-## Waiting for your reply, with the reply written (D402, research/163)
+## Waiting for your reply, with the reply written (D402, research/164)
 
 - [ ] **Read OOMOL's Gmail send schema** (`oo connector schema` for `gmail.reply_to_thread` and
       `gmail.send_email`: field names only) and check `replyInput` maps them; then one real send to
@@ -2222,7 +2231,3 @@ Codex first, once OAR is near 1.0. See `research/17`.
       Trigger: before widening drafts beyond Gmail.
 - [ ] **Drafts for Outlook and chat DMs** (Slack, Discord), and "answered elsewhere" from the person's
       own chat messages. Trigger: the first person with Outlook connected, or a Slack find held twice.
-- [ ] **On hand's card for a drafted reply shows the reply** (and its Go sends what it shows). Today
-      a Go there, from a notification or a chat app carries no words, so it never sends: the card in
-      the conversation asks again (D402 (5)). Trigger: the first held-then-reopened draft on hel, or
-      before the iPhone app ships drafts.

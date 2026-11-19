@@ -333,6 +333,10 @@ export interface Bodies {
     // D165: a find's one next step. Clients render it inside its note (not as a card of its own);
     // On hand lists it like any ask. Never pushed on its own: the note is the one notification.
     findId?: string;
+    // D402: the find's reply is already written: anywhere but its card (On hand, a chat app) the
+    // card shows its first line and 看草稿 / See the draft (goLabel), which opens the card in the
+    // conversation; never a Send there. A Go without the words never sends.
+    draft?: { first: string };
     asker?: PeerAsk; // D170: asked for one of the user's own agents; the answer goes back to it
     trust?: { agent: string }; // D170 (X2): 以后你的 <agent> 发来的活，直接接？ Go keeps the rule
     // D379: who does which work, said by the person and never saved; it just decided a task. Go
@@ -2729,6 +2733,12 @@ export interface BridgeView {
    * code; nothing to tap. Gone once a read works again.
    */
   stuck?: { code: string };
+  /**
+   * D400: on connected, Nowledge Mem itself also tells the person about mail to the partner's identity
+   * (`bridge notices status`, nmem 0.10.121): one quiet line says a message may announce itself twice;
+   * nothing in Mem is changed from here.
+   */
+  notices?: true;
 }
 
 /** The choices offered for defaultAfterMin, in minutes. */

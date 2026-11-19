@@ -1,4 +1,4 @@
-// D402 (research/163): a 在等你回 find is said only when it is worth a tap, and arrives with its
+// D402 (research/164): a 在等你回 find is said only when it is worth a tap, and arrives with its
 // reply already written (the thread's language, the person's voice), editable; Go sends it once
 // after a 30-second undo window, through the staged write; 撤回 / Undo, a restart in the window or
 // a failed send ask again; nothing is ever sent without Go, and never saved into the mailbox.
@@ -43,6 +43,11 @@ test("hel's eleven, rebuilt: the four worth a tap are said, each with its draft 
     if (f) {
       expect(f.draft?.lang).toBe(c.lang!);
       expect(f.goLabel).toBe("发出去");
+      // Away from its card (On hand) the same ask is 看草稿 with the reply's first line, never Send.
+      const d = r.decisions.get(f.decisionId!)!;
+      expect(d.goLabel).toBe("看草稿");
+      expect(f.draft!.text.startsWith(d.draft!.first.replace(/…$/, ""))).toBe(true);
+      expect([...d.draft!.first].length).toBeLessThanOrEqual(80);
     }
   }
   // Ducter's own words and its how-lines, never the mail; the drafter read the thread and their voice.

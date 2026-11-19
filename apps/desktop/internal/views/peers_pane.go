@@ -128,6 +128,7 @@ func (a *App) peersCard(c *ui.Context, st *protocol.Settings) {
 		}
 		a.peersNames(c, b, name)
 		a.peersStuck(c, b, name)
+		a.peersNotices(c, b, name)
 		a.peersRecent(c, name)
 		a.peersTry(c, name)
 	} else {
@@ -243,6 +244,18 @@ func (a *App) peersStuck(c *ui.Context, b *protocol.BridgeView, name string) {
 	}
 	a.group(c, "peers-stuck", "", "", func() {
 		a.tileRow(c, "peers-stuck", nil, a.L.T("peers.stuck.title", name), a.L.T("peers.stuck.line", name, b.Stuck.Code), nil)
+	})
+}
+
+// peersNotices is D400's one quiet line: Nowledge Mem itself also tells
+// the person about mail to the partner's identity, so one message may
+// announce itself twice. Nothing to tap; Mem's settings are Mem's.
+func (a *App) peersNotices(c *ui.Context, b *protocol.BridgeView, name string) {
+	if b == nil || b.State != "connected" || !b.Notices {
+		return
+	}
+	a.group(c, "peers-notices", "", "", func() {
+		a.tileRow(c, "peers-notices", nil, a.L.T("peers.notices.title", name), a.L.T("peers.notices.line", name), nil)
 	})
 }
 

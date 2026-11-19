@@ -1,4 +1,4 @@
-# 163 · Waiting for your reply: worth a tap, with the reply already written
+# 164 · Waiting for your reply: worth a tap, with the reply already written
 
 Date: 2026-11-19, on main at `04249066` (0.0.93). Follows research/154 (D388) and research/162 gap #3
 ("the finds aren't worth a tap yet", score 24). Decision: D402.

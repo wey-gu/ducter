@@ -119,7 +119,7 @@ describe("D369: a mailbox Mem must sort out on its side", () => {
     const bin = join(dir, "nmem");
     writeFileSync(bin, `#!/bin/sh\nprintf '%s\\n' "$*" >> "${log}"\ncase "$*" in\n  *"agents context show"*) echo '{}' ;;\n  *"bridge inbox"*) if [ -f "${flag}" ]; then echo '{"messages":[],"next":"","outgoing":[]}'; else cat "${dir}/stuck.json"; exit 1; fi ;;\n  *) echo '{}' ;;\nesac\n`);
     chmodSync(bin, 0o755);
-    const inboxCalls = () => readFileSync(log, "utf8").split("\n").filter((l) => l.includes("bridge inbox")).length;
+    const inboxCalls = () => readFileSync(log, "utf8").split("\n").filter((l) => l.includes("bridge inbox") && !l.includes("--help")).length;
     return { bin, fix: () => writeFileSync(flag, "1"), inboxCalls };
   }
 

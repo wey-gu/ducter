@@ -35,7 +35,11 @@ func draftEvents(en bool) []protocol.LogEvent {
 	}}
 	evs := []protocol.LogEvent{}
 	for _, f := range note.Finds {
-		evs = append(evs, ev("channel", protocol.KindDecision, protocol.Decision{DecisionID: f.DecisionID, Question: f.Text, GoLabel: f.GoLabel, DefaultOption: "hold", FindID: f.FindID}))
+		see := "看草稿"
+		if en {
+			see = "See the draft"
+		}
+		evs = append(evs, ev("channel", protocol.KindDecision, protocol.Decision{DecisionID: f.DecisionID, Question: f.Text, GoLabel: see, DefaultOption: "hold", FindID: f.FindID, Draft: &protocol.DecisionDraft{First: f.Draft.Text}}))
 	}
 	return append(evs, ev("channel", protocol.KindFinds, note))
 }
@@ -113,6 +117,37 @@ func TestDraftedReplyInTheNote(t *testing.T) {
 	}
 }
 
+// On hand shows the same ask with the reply's first line and 看草稿, never 发出去:
+// a Go there carries no words and would not send. 看草稿 opens the conversation.
+func TestDraftOnHandNeverSays(t *testing.T) {
+	app, sent := iaApp(t, i18n.ZH)
+	app.Status = client.Connected
+	app.Receive(protocol.ServerFrame{T: "events", Events: draftEvents(false)})
+	app.Route = RouteOnHand
+	tt := ui.NewTesterWith(app.View, 1400, 1100, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
+	tt.Frame()
+	tt.Frame()
+	if !tt.HasText("看草稿") {
+		t.Fatalf("On hand has no 看草稿: %q", tt.Texts())
+	}
+	for _, s := range tt.Texts() {
+		if s == "好，发出去" || s == "发出去" {
+			t.Errorf("On hand says %q", s)
+		}
+	}
+	*sent = nil
+	if err := tt.Click("看草稿，CamLi 4 天前问你「大文件导入修好了没有」，又问了一次。"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if app.Route != RouteConversation {
+		t.Errorf("看草稿 stays on %v", app.Route)
+	}
+	if _, ok := lastSentFrame(*sent).(protocol.Decide); ok {
+		t.Errorf("看草稿 answered the ask: %#v", *sent)
+	}
+}
+
 // Shots for review (D75: outside git), zh and en, light and dark, wide and narrow:
 //
 //	DUCTER_SHOTS_DIR=$PWD/../../../../.shots/proactive-drafts go test ./internal/views -run DraftShots
@@ -127,7 +162,7 @@ func TestDraftShots(t *testing.T) {
 	for _, lang := range []i18n.Lang{i18n.ZH, i18n.EN} {
 		for _, dark := range []bool{false, true} {
 			for _, w := range []int{1400, 760} {
-				for _, stage := range []string{"open", "sending"} {
+				for _, stage := range []string{"open", "sending", "onhand"} {
 					app, _ := iaApp(t, lang)
 					app.Status = client.Connected
 					app.Receive(protocol.ServerFrame{T: "events", Events: draftEvents(lang == i18n.EN)})
@@ -138,6 +173,9 @@ func TestDraftShots(t *testing.T) {
 							ev("channel", protocol.KindDecisionResolved, protocol.DecisionResolved{DecisionID: "dd2", Option: "go", By: "user"}),
 							ev("channel", protocol.KindFindState, protocol.FindState{FindID: "fd2", Kind: "waiting_on_you", State: "sent"}),
 						}})
+					}
+					if stage == "onhand" {
+						app.Route = RouteOnHand
 					}
 					tt := ui.NewTesterWith(app.View, w, 1100, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 					tt.SetDark(dark)

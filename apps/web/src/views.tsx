@@ -2,6 +2,7 @@
 // sheets (a decision opened from a notification; this phone's settings). Behavior follows the
 // desktop client (apps/desktop/internal/views); copy comes only from i18n.ts.
 import { openPhone, PhoneAskBody } from "./phone-use.tsx";
+import { seeDraft } from "./finds.tsx";
 import { AppUpdateRow } from "./app-update.tsx";
 import { ComputerLine } from "./computer-use.tsx";
 import { HandsetAskBody, HandsetLine, handsetAskTitle } from "./handset.tsx";
@@ -349,6 +350,28 @@ function Resolved({ d }: { d: DecisionState }) {
   );
 }
 
+/** D402: a 在等你回 find's ask away from its card: the question, the reply's first line (quiet, one line), 先等等 · 看草稿. */
+function DraftAskBody({ d, about, open }: { d: DecisionState; about: string; open: boolean }) {
+  return (
+    <>
+      <div class="q">{d.question}</div>
+      <div class="dl draft-first">
+        {d.draft!.first}
+      </div>
+      {open ? (
+        <div class="btns decide">
+          <span class="pair">
+            <Btn kind="secondary" label={t("decision.hold")} about={about} onClick={() => A.decide(d.decisionId, "hold")} />
+            <Btn kind="primary" label={t("draft.see")} about={about} onClick={() => seeDraft(d.findId!)} />
+          </span>
+        </div>
+      ) : (
+        <Resolved d={d} />
+      )}
+    </>
+  );
+}
+
 export function DecisionBody({ d, taskId }: { d: DecisionState; taskId?: string }) {
   useTick(1000);
   const open = !d.resolved && !d.pending;
@@ -370,6 +393,8 @@ export function DecisionBody({ d, taskId }: { d: DecisionState; taskId?: string 
   // D233: a task asks for a key: the field is on the card itself, never a reply.
   if (d.key) return <KeyBody d={d} />;
   if (d.call) return <CallDecision d={d} />;
+  // D402: a reply already written: its first line, 先等等 and 看草稿 (the card in the conversation); never Send here.
+  if (d.draft && d.findId) return <DraftAskBody d={d} about={about} open={open} />;
   // D157: wait for a computer (the default) or do it now on another; built in the user's words.
   const wa = d.where ? whereAsk(d.where) : undefined;
   // D382: put off: the question, when it asks again, and Decide now; nothing else until it is back.
@@ -3070,12 +3095,13 @@ function SettingsSheet() {
             <Avatar size={64} />
             <span class="grow">
               <b>{A.S.personaName}</b>
-              {partnerLede() && <small>{partnerLede()}</small>}
+              <small>{partnerLede() || t("settings.list.partner")}</small>
             </span>
             <Chev />
           </button>
           <div class="set-card set-list">
-            {SECTIONS.filter((x) => x.page !== "peers" || peersPageShown()).map((x) => (
+            {/* D399: the hero above is the partner's row; the list never shows it twice (same face, same page). */}
+            {SECTIONS.filter((x) => x.page !== "partner" && (x.page !== "peers" || peersPageShown())).map((x) => (
               <button class="set-row" key={x.page} onClick={() => go(x.page)}>
                 <SectionArt art={x.art} size={40} />
                 <span class="grow">

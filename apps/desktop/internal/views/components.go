@@ -754,6 +754,24 @@ func (a *App) decisionButtons(c *ui.Context, d *store.DecisionState, st decision
 		})
 		return
 	}
+	// D402: a reply already written: its first line, 先等等 and 看草稿 (the card in the
+	// conversation, where the words are); never Send away from the card.
+	if d.Draft != nil && d.FindID != "" {
+		if d.Draft.First != "" {
+			ui.Text(c, d.Draft.First).FontSize(t.SM).TextColor(t.InkMuted).SingleLine()
+		}
+		ui.Row(c.Key("draft-acts:" + d.DecisionID)).Gap(t.S2).AlignItems(ui.Center).Children(func() {
+			if a.buttonFor(c, a.L.T("decision.hold"), d.Question, btnSecondary, st.height, st.quietBg) {
+				a.Decide(d.DecisionID, "hold", "")
+			}
+			if a.buttonFor(c, a.L.T("draft.see"), d.Question, btnPrimary, st.height, st.quietBg) {
+				a.draftJump = d.FindID
+				a.Route = RouteConversation
+				a.markRead()
+			}
+		})
+		return
+	}
 	// D382: put off: when it asks again, and Decide now; back: said once.
 	if a.laterAway(c, d, st.quietBg) {
 		return
@@ -892,8 +910,8 @@ func (a *App) goLabel(d *store.DecisionState) string {
 
 // defaultLine says what happens if the user doesn't answer.
 func (a *App) defaultLine(c *ui.Context, d *store.DecisionState) string {
-	if d.Call != nil || d.Cal != nil {
-		return "" // D189 (4), D222: it waits for the owner; no default, no countdown
+	if d.Call != nil || d.Cal != nil || d.Draft != nil {
+		return "" // D189 (4), D222: it waits for the owner; no default, no countdown (D403: a drafted reply waits in its card)
 	}
 	if d.Handset != nil && d.Handset.Kind == "record" {
 		return a.handsetRecordLeft(c, d) // D280: how long Android's prompt on the phone still waits

@@ -212,7 +212,7 @@ func (a *App) findDraft(c *ui.Context, f protocol.FindView, d *store.DecisionSta
 	ui.Column(c.Key(key)).Gap(t.S1 + 2).Children(func() {
 		ui.Text(c, a.L.T("draft.to", dr.To)).FontSize(t.SM).TextColor(t.InkMuted)
 		if open {
-			ui.TextArea(c.Key("draft-text:"+f.FindID), &text).Lines(3, 8).Label(a.L.T("draft.edit", dr.To)).
+			ui.TextArea(c.Key("draft-text:"+f.FindID), &text).Lines(2, 16).Label(a.L.T("draft.edit", dr.To)).
 				Background(t.Sunken).Border(1, t.LineSoft).Radius(t.RadiusSM).Padding(t.S2, t.S3).FontSize(t.PartnerSize).TextColor(t.Ink)
 		} else {
 			ui.Box(c.Key("draft-well:"+f.FindID)).Background(t.Sunken).Radius(t.RadiusSM).Padding(t.S2, t.S3).Children(func() {

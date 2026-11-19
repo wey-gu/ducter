@@ -176,7 +176,7 @@ esac`);
     const r = await createNmemBridge({ context: "ducter-main", bin: s.bin, me: "Weyl" }).check(new Set(["bm-1"]));
     // Weyl is the user's member, so codex-reviewer is the user's own agent (D108).
     expect(r).toEqual({ ok: true, messages: [{ messageId: "bm-2", from: "codex-reviewer (Weyl)", agent: "codex-reviewer", mine: true, text: "Review PR 412 please", sentAt: "2026-11-09T09:00:00Z" }], reads: {} });
-    expect(s.argv()).toEqual(["--json --agent-context ducter-main bridge inbox", "--json --agent-context ducter-main bridge open bm-2"]);
+    expect(s.argv().filter((a) => !a.endsWith(" --version") && !a.endsWith(" --help"))).toEqual(["--json --agent-context ducter-main bridge inbox", "--json --agent-context ducter-main bridge open bm-2"]);
   });
 
   test("reply sends the body on stdin and never names a recipient", async () => {

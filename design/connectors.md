@@ -271,7 +271,7 @@ came back with the time it said was missing). *First time:* a find in the mornin
   last days of the real accounts; it prints what it would have said, with sources, what it held and
   why, and how it knew.
 
-### 4.2 Waiting for your reply: worth a tap, with the reply written (D402, research/163)
+### 4.2 Waiting for your reply: worth a tap, with the reply written (D402, research/164)
 
 *Who:* the developer whose users' mail waits while he codes; the consumer whose friend asked twice;
 the fresh user who just wants to answer. *Feels:* before, a chore per find (hel: 11 of 11 held, one
@@ -295,6 +295,10 @@ reply is already there, in their language). *First time:* a morning note; under 
   only for now; GitHub keeps **先帮我读一遍**.
 - **The card:** **回给 {name} / To {name}**, the words in a sunken well (a field while Go is open,
   `lang` set to the thread's), the check line, **好，发出去 / Go: Send** · **先等等 / Hold**.
+- **Away from the card** (On hand, a sheet): the reply's first line, quiet, one line, and **先等等 /
+  Hold** · **看草稿 / See the draft**, which opens the conversation at the card (it glows once); the
+  ask's own `goLabel` is 看草稿 and it carries `draft.first`. Never a Send there: a Go away from the
+  card carries no words, and one that does arrive anyway never sends (the card asks again).
 - **Go sends once, after 30 seconds (D61 GQ3):** **{n} 秒后发出 / Sending in {n} s** with **撤回 /
   Undo**, then **已发给 {name} / Sent to {name}**. The text as edited rides the Go
   (`decision_resolved.text`); the home stages it (`connections.stage`) and runs it

@@ -220,6 +220,22 @@ Left then, done in the second pass (D374): the versions row, the faded marks, �
 - **按住说话的键** says what the key does (**Ducter 在最前面时，按住它说话，松开就放进输入框。**); Fn adds
   the dictation line; 不用键 points at the microphone.
 
+## The third pass: the person's real counts (D399)
+
+Every pane walked with the author's own shape, read off his home (nine devices, seven accounts, 557
+to-dos, Codex's six models, two chat apps linked, two cards, three sign-ins, two keys, long names), on
+the Mac at 1000 and 1400 and the web at 1400 and 390, zh and en, light and dark (`research/163`,
+`.shots/settings-pass3`). `apps/web/demo-settings-real.ts` is that shape on fakes; the Mac replays the
+frames it sent in `TestSettingsRealShapeFits`, which fails on a text off the window, squeezed, or
+drawn over another. The grammar it settled, for every pane:
+
+- **What is true of the whole pane is one small line under its lede**, never a paragraph under the last
+  card: who owns a to-do, where saved things are kept, what reaches a chat app.
+- **A row speaks only when it differs**: a saved thing never used says nothing; a computer as current as
+  the home says nothing in the versions card (the home's row says it once).
+- **A destructive action asks in place on every client** (the web's chat-app 断开 now does).
+- A line names the person's own setting, not the default's rule (automatic updates in **23:00 到 08:00**).
+
 ## Not done
 
 - A comprehension pass with people on the said lines and on a row with no state word.

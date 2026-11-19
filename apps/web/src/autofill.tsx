@@ -178,7 +178,8 @@ function AfError() {
   );
 }
 
-const usedLine = (x: { usedAt?: string }) => (x.usedAt ? t("af.used", ago(A.L, x.usedAt)) : t("af.unused"));
+// D399: a row speaks only when it differs: never used is every new row's state, so it says nothing.
+const usedLine = (x: { usedAt?: string }) => (x.usedAt ? t("af.used", ago(A.L, x.usedAt)) : "");
 
 /** A use's line and, apart, its site (D291, D296: each fact its own element, as on the Mac). */
 function useLine(u: SavedUse): [string, string] {
@@ -206,6 +207,7 @@ export function AutofillSettings() {
   return (
     <>
       <p class="af-lede">{t("af.lede")}</p>
+      <p class="small lede-note">{t(f.keptIn === "keychain" ? "af.kept.keychain" : "af.kept.file", A.homeName || "")}</p>
       <section class="set">
         <h3>{t("af.signins")}</h3>
         <div class="set-card">
@@ -223,7 +225,7 @@ export function AutofillSettings() {
                   <b>{x.label}</b>
                   <small>{x.username}</small>
                 </span>
-                <span class="g-state">{usedLine(x)}</span>
+                {x.usedAt && <span class="g-state">{usedLine(x)}</span>}
                 <span class="af-dots" aria-hidden="true">
                   ••••••
                 </span>
@@ -267,7 +269,7 @@ export function AutofillSettings() {
                   <b>{x.label}</b>
                   <small>{t("af.card.line", x.name, x.exp)}</small>
                 </span>
-                <span class="g-state">{usedLine(x)}</span>
+                {x.usedAt && <span class="g-state">{usedLine(x)}</span>}
               </button>
             ),
           )}
@@ -338,7 +340,7 @@ export function AutofillSettings() {
                     <code class="af-env">{x.env}</code>
                   </small>
                 </span>
-                <span class="g-state">{usedLine(x)}</span>
+                {x.usedAt && <span class="g-state">{usedLine(x)}</span>}
                 <span class="af-dots" aria-hidden="true">
                   {x.hint ?? t("af.key.kept")}
                 </span>
@@ -384,7 +386,6 @@ export function AutofillSettings() {
           <div class="small sub">{t("af.uses.none")}</div>
         )}
       </section>
-      <p class="small sub af-kept">{t(f.keptIn === "keychain" ? "af.kept.keychain" : "af.kept.file", A.homeName || "")}</p>
     </>
   );
 }

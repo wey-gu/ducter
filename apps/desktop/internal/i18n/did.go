@@ -66,6 +66,7 @@ var zhDid = Table{
 	"did.go.you":     "你点了好 %s",
 	"did.go.default": "没人回，按默认做了",
 	"did.go.before":  "之前允许过",
+	"did.go.said":    "你说过不用问：「%s」",
 	// Where.
 	"did.where.computer":     "在 %s 上",
 	"did.where.ducter_phone": "Ducter 的手机",
@@ -154,6 +155,7 @@ var enDid = Table{
 	"did.go.you":                     "You said Go at %s",
 	"did.go.default":                 "No answer; went by the default",
 	"did.go.before":                  "Allowed before",
+	"did.go.said":                    "You said not to ask: “%s”",
 	"did.where.computer":             "On %s",
 	"did.where.ducter_phone":         "Ducter's phone",
 	"did.where.line":                 "From a %s number",

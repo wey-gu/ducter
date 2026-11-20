@@ -80,7 +80,7 @@ test("rounds: drafts land on those PRs, one card a round carries every unsent on
       { ref: "nowledge-co/mem#6497", changed: false },
     ],
   });
-  expect(r1).toContain("Kept: 2 new drafts");
+  expect(r1).toContain("2 unsent drafts wait on one card");
   expect(gh.reviews).toEqual([]);
   const c1 = cards(core);
   expect(c1.length).toBe(1);

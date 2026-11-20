@@ -379,7 +379,9 @@ export interface Bodies {
   // msgSeq (D236): the reply message that answered it (its words show as that bubble, not on the card).
   // settled (D375): closed by what happened, not by an answer (D169's offer once Mem's check sees the
   // plugin in): it reads as done (已装好 / Installed), never as a default taken.
-  decision_resolved: { decisionId: string; option: "go" | "hold" | "reply"; text?: string; by: "user" | "default"; now?: boolean; delivered?: boolean; msgSeq?: number; settled?: true };
+  // D411 posted: a review round's card settled because every draft on it went under a standing
+  // permission the person said (shown 按你说的，直接发了 / Posted, as you said).
+  decision_resolved: { decisionId: string; option: "go" | "hold" | "reply"; text?: string; by: "user" | "default"; now?: boolean; delivered?: boolean; msgSeq?: number; settled?: true; posted?: true };
   // D382: 晚点再问我 / Ask me later: the person put a waiting question off to `until`. It stays
   // open (answering it still works) but out of Needs you; its countdown stops.
   decision_later: { decisionId: string; until: string; by: "user" };
@@ -496,8 +498,9 @@ export interface Bodies {
     by: "go" | "rule" | "undo";
     decisionId?: string;
     taskId?: string;
-    /** D410: by "rule" under a standing permission the person said (不用问我的): its id. */
+    /** D411: by "rule" under a standing permission the person said (不用问我的): its id, and their words. */
     standing?: string;
+    said?: string;
     /** comment: the words that went out (cut to 600). */
     text?: string;
     /** What the app gave back (the comment's address). */
@@ -1270,7 +1273,7 @@ export type ClientFrame =
   // Rules are added only by saying them in the conversation (the partner's rule_save tool).
   | { t: "rules" }
   | { t: "rule_remove"; id: string }
-  // D410: 收回 / Take back a standing permission (不用问我的 / Without asking); a fresh rules frame follows.
+  // D411: 收回 / Take back a standing permission (不用问我的 / Without asking); a fresh rules frame follows.
   | { t: "standing_revoke"; id: string }
   // D381: 置顶 / Pin. pin: a block of a partner message (its seq, the block's index) goes to the top;
   // unpin takes it off (the message keeps it); pin_tick ticks a pinned checklist's item, by its
@@ -1624,7 +1627,7 @@ export type ServerFrame =
   // D321: what Mem found for Settings › 记忆's search (ok false: Mem didn't answer).
   | { t: "mem_found"; q: string; ok: boolean; items: MemItem[] }
   // D372: defaults: the built-in default per kind of work, when it differs between kinds.
-  // D410: standing: what the person said Ducter may do without asking (不用问我的 / Without asking).
+  // D411: standing: what the person said Ducter may do without asking (不用问我的 / Without asking).
   | { t: "rules"; rules: RuleView[]; defaults?: KindDefault[]; standing?: StandingView[] }
   // D381: what is pinned in the default conversation, newest first; after the welcome and on every
   // change. refused (to the asking socket only): why a pin didn't happen (full: PINS_MAX already;

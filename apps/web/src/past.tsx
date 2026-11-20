@@ -940,7 +940,9 @@ export function reviewLine(r: NonNullable<OngoingItem["reviews"]>): string[] {
     : r.again && r.same ? t("og.rev.mixed", r.waiting, r.again, r.same)
     : r.again ? t("og.rev.all", r.waiting)
     : t("og.rev.same", r.waiting);
-  return [head, r.drafted ? (r.drafted === 1 ? t("og.rev.drafted.1") : t("og.rev.drafted", r.drafted)) : ""].filter(Boolean);
+  // D411: posted without asking this round, as the person said.
+  const posted = r.posted ? (r.posted === 1 ? t("og.rev.posted.1") : t("og.rev.posted", r.posted)) : "";
+  return [head, posted, r.drafted ? (r.drafted === 1 ? t("og.rev.drafted.1") : t("og.rev.drafted", r.drafted)) : ""].filter(Boolean);
 }
 
 const RepeatGlyph = ({ task }: { task: boolean }) => (

@@ -356,7 +356,14 @@ func (a *App) reviewLine(r *protocol.ReviewStanding) []string {
 	} else if r.Drafted > 1 {
 		drafted = a.L.T("og.rev.drafted", r.Drafted)
 	}
-	return nonEmpty(head, drafted)
+	// D411: posted without asking this round, as the person said.
+	posted := ""
+	if r.Posted == 1 {
+		posted = a.L.T("og.rev.posted.1")
+	} else if r.Posted > 1 {
+		posted = a.L.T("og.rev.posted", r.Posted)
+	}
+	return nonEmpty(head, posted, drafted)
 }
 
 // hanTight drops a space between two Chinese characters ("每 45 分钟 看一次"

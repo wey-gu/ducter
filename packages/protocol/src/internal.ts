@@ -140,7 +140,7 @@ export interface CoreApi {
     /** D401: the rules Ducter kept by itself from this user message (seq). */
     keptFrom?(seq: number): RuleView[];
   };
-  /** D410: what the person said may go without asking; what came of a message's words. */
+  /** D411: what the person said may go without asking; what came of a message's words. */
   standing?: {
     heardFrom(seq: number): ({ kind: "kept"; standing: { text: string; orgs?: string[] } } | { kind: "revoked"; text: string } | { kind: "floor"; what: "pay" | "secret" | "delete" } | { kind: "unsupported"; what: string })[];
   };

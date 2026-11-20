@@ -39,7 +39,12 @@ A task that looks again every so often stays quiet when a look finds nothing new
 it only when something new needs you, and then it also says what is still waiting. Anything it
 would send to other people, like a review on a colleague's pull request, it writes first and
 asks you once for the whole round ("3 PR reviews are written. Post them to GitHub?"); you can
-read each one before you say Go, and nothing is posted before you do. In Past tasks › Ongoing,
+read each one before you say Go, and nothing is posted before you do. If you'd rather it didn't
+ask, say so once ("just post the reviews, don't ask me"): from then on its reviews go straight
+to GitHub, the first time with one line listing what went, every one in Done for you. It is
+listed in Settings › Partner under "Without asking", where Take back ends it (or say "ask me
+before posting reviews"). A pull request that only mentions you, or one in a place it hasn't
+looked before, still asks. Paying, passwords and sign-ins, and deleting always ask. In Past tasks › Ongoing,
 its card also says where your requests stand, like "8 requests wait on you: 3 had new commits and
 are reviewed again, 5 unchanged".
 

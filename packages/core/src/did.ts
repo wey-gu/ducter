@@ -266,7 +266,7 @@ export function createDid(d: DidDeps): Did {
             const b = e.body as Bodies["source_write"];
             if (b.state !== "done" || !inRange(e.ts)) break;
             const app = b.item.kind === "github" ? "GitHub" : b.item.kind === "obsidian" ? "Obsidian" : "Jira";
-            const go: DidGo | undefined = b.by === "go" ? goOf(b.decisionId) : b.by === "rule" ? { by: "before" } : undefined;
+            const go: DidGo | undefined = b.by === "go" ? goOf(b.decisionId) : b.by === "rule" ? (b.said ? { by: "said", words: b.said } : { by: "before" }) : undefined;
             const to = b.item.kind === "github" ? `${b.item.where ?? ""}${b.item.label}` : b.item.title;
             // D359: a review sent on a PR is sent too (its first comment is the line).
             const reviewLine = () => {

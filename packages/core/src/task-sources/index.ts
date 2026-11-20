@@ -145,7 +145,7 @@ export interface TaskSourcesDeps {
   computer?: () => string | undefined;
   /** Tell a task something in Ducter's words (runner.send(..., "ducter")). */
   tell?: (taskId: string, text: string) => void;
-  /** D410: what the person said may go without asking (不用问我的): the review posting it covers. */
+  /** D411: what the person said may go without asking (不用问我的): the review posting it covers. */
   standing?: { allows(ref: string, o?: { mention?: boolean }): StandingView | undefined; firstUse(id: string): boolean };
   /** Stop a task (Go on "closed there; stop?"). */
   stop?: (taskId: string) => Promise<void>;
@@ -371,7 +371,7 @@ export function createTaskSources(d: TaskSourcesDeps): TaskSources {
   };
 
   // ---------- writes: the only path out ----------
-  async function write(item: SourceItemRef, op: SourceOp, how: { by: Bodies["source_write"]["by"]; decisionId?: string; taskId?: string; text?: string; standing?: string }): Promise<WriteResult> {
+  async function write(item: SourceItemRef, op: SourceOp, how: { by: Bodies["source_write"]["by"]; decisionId?: string; taskId?: string; text?: string; standing?: string; said?: string }): Promise<WriteResult> {
     const s = byId(item.source);
     let r: WriteResult;
     if (!s) r = { ok: false, error: "that to-do source was removed" };
@@ -394,6 +394,7 @@ export function createTaskSources(d: TaskSourcesDeps): TaskSources {
         ...(how.decisionId ? { decisionId: how.decisionId } : {}),
         ...(how.taskId ? { taskId: how.taskId } : {}),
         ...(how.standing ? { standing: how.standing } : {}),
+        ...(how.said ? { said: how.said.slice(0, 120) } : {}),
         ...(how.text ? { text: how.text.slice(0, 600) } : {}),
         ...(r.link ? { link: r.link } : {}),
         ...(r.error ? { error: r.refused ? `${r.refused}: ${r.error}` : r.error } : {}),

@@ -6,7 +6,7 @@ import { onStepsFrame } from "./past-preview.tsx";
 import { onMadeFrame } from "./made.tsx";
 import { onAppsFrame, openApp } from "./apps.tsx";
 import { onDidFrame, openDid } from "./did.tsx";
-import type { AgentModels, AgentReason, MemPluginReason, BrainNow, BridgeView, Candidate, ModelChoice, ClientFrame, Place, PlaceChoice, ConnectionReason, ConnectionView, DeviceHarness, DeviceView, DucterFolderView, GhInstallPlan, GitLoginState, MemItem, MemView, OoDetect, Reach, KindDefault, RuleView, ServerFrame, Settings, SettingsPatch, UpdateAllView, UpdateReason } from "@ducter/protocol";
+import type { AgentModels, AgentReason, MemPluginReason, BrainNow, BridgeView, Candidate, ModelChoice, ClientFrame, Place, PlaceChoice, ConnectionReason, ConnectionView, DeviceHarness, DeviceView, DucterFolderView, GhInstallPlan, GitLoginState, MemItem, MemView, OoDetect, Reach, KindDefault, RuleView, ServerFrame, StandingView, Settings, SettingsPatch, UpdateAllView, UpdateReason } from "@ducter/protocol";
 import { MEDIA_LIMITS, TUWA_MCP, WATCH_LIVE, type MediaRef, type FileOpenError } from "@ducter/protocol";
 import { PINS_MAX, type PinView } from "@ducter/protocol/src/pins.ts";
 import { keepLocal, noteFlights, prepare, tooBigWords, upload, type Pic, type ViewerState } from "./media-up.ts";
@@ -352,6 +352,8 @@ class AppState {
   /** Who does the tasks (D89): Your rules, this Mac's AI agents (from devices), and who could
    *  do the task whose Switch who does it is open. */
   rules?: RuleView[];
+  /** D411: 不用问我的 / Without asking, from the rules frame. */
+  standing: StandingView[] = [];
   /** D381: 置顶 / Pinned, newest first, from the home (the default conversation only). */
   pins: PinView[] = [];
   /** D372: the built-in default per kind of work, from the rules frame. */
@@ -764,7 +766,7 @@ class AppState {
     // D321: only the answer to what is asked now (a later word replaced an earlier one).
     if (f.t === "mem_found") return void (f.q === this.memQuery && ((this.memFound = { q: f.q, ok: f.ok, items: f.items }), this.changed()));
     if (f.t === "partners") return this.applyPartners(f);
-    if (f.t === "rules") return void ((this.rules = f.rules), (this.ruleDefaults = f.defaults ?? []), this.changed());
+    if (f.t === "rules") return void ((this.rules = f.rules), (this.ruleDefaults = f.defaults ?? []), (this.standing = f.standing ?? []), this.changed());
     if (f.t === "pins") {
       this.pins = f.pins;
       if (f.refused) this.toast(this.L.t(`pin.refused.${f.refused}`, PINS_MAX));

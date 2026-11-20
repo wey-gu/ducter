@@ -164,11 +164,11 @@ export interface RenderCtx {
   follows?(seq: number): Follows | undefined;
   /** D401: the rules Ducter kept from this user message by itself (who does which work), still kept. */
   kept?(seq: number): { text: string; harness: string; never?: boolean; kinds?: string[] }[];
-  /** D410: what Ducter did with this user message's words about asking first (不用问我的 / Without asking). */
+  /** D411: what Ducter did with this user message's words about asking first (不用问我的 / Without asking). */
   standing?(seq: number): StandingHeard[];
 }
 
-/** D410: what one sentence about asking first came to (core/src/standing.ts Heard). */
+/** D411: what one sentence about asking first came to (core/src/standing.ts Heard). */
 export type StandingHeard =
   | { kind: "kept"; standing: { text: string; orgs?: string[] } }
   | { kind: "revoked"; text: string }
@@ -181,7 +181,7 @@ const FLOOR_WHY = {
   delete: "deleting can't be undone, so each one is asked",
 } as const;
 
-/** D410: one line under the user's words: what Ducter did with what they said about asking first. */
+/** D411: one line under the user's words: what Ducter did with what they said about asking first. */
 export function standingLine(h: StandingHeard[]): string {
   return h
     .map((x) => {
@@ -347,7 +347,7 @@ export function renderTrigger(e: LogEvent, ctx: RenderCtx): string {
           ? `[decision resolved: reply]${about} ${b.text}${pics} (the user answered by replying to your question; already forwarded to the task)`
           : `[your question answered: reply]${about} · user: ${b.text}${pics} (they answered by replying to it)`;
       }
-      // D410: what Ducter did with what they said about asking first.
+      // D411: what Ducter did with what they said about asking first.
       const heard = e.seq > 0 ? (ctx.standing?.(e.seq) ?? []) : [];
       const sl = heard.length ? `\n${standingLine(heard)}` : "";
       if (b.reply) return [`[user, ${replyHead(b.reply, false)}] ${b.text}${pics}${sl}`, ...replyAbout(b.reply, ctx)].join("\n");

@@ -27,6 +27,8 @@ type DidWho struct {
 type DidGo struct {
 	By string `json:"by"`
 	At string `json:"at,omitempty"`
+	// Words (D411): by "said", the person's words that allowed it.
+	Words string `json:"words,omitempty"`
 }
 
 // DidWhere is where it happened: computer, phone, ducter_phone, line,

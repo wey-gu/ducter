@@ -150,6 +150,24 @@ type RuleRemove struct {
 	ID string `json:"id"`
 }
 
+// StandingView (D411) is one 不用问我的 / Without asking: what the person
+// said may go without asking (Action "pr_review"), where (Orgs), in their
+// words (Text).
+type StandingView struct {
+	ID        string   `json:"id"`
+	Action    string   `json:"action"`
+	Orgs      []string `json:"orgs,omitempty"`
+	Text      string   `json:"text"`
+	CreatedAt string   `json:"createdAt"`
+	UsedAt    string   `json:"usedAt,omitempty"`
+}
+
+// StandingRevoke is 收回 / Take back (D411).
+type StandingRevoke struct {
+	T  string `json:"t"` // "standing_revoke"
+	ID string `json:"id"`
+}
+
 // CandidatesReq asks who could do a task (换谁来做 / Switch who does it).
 type CandidatesReq struct {
 	T      string `json:"t"` // "candidates"

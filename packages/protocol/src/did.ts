@@ -50,8 +50,11 @@ export interface DidWho {
  * its own folder).
  */
 export interface DidGo {
-  by: "you" | "default" | "before";
+  /** D411: said = under a standing permission the person said (不用问我的), with their words. */
+  by: "you" | "default" | "before" | "said";
   at?: string;
+  /** said: the person's own words that allowed it. */
+  words?: string;
 }
 
 /** Where it happened: the computer or phone, a phone line, or the home itself (an account's API). */

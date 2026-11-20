@@ -1,4 +1,4 @@
-// D410: 不用问我的 / Without asking. Something the person said Ducter may do for them from now on
+// D411: 不用问我的 / Without asking. Something the person said Ducter may do for them from now on
 // without asking each time ("review 做好了直接发别和我确认"), kept at once in their words, listed in
 // Settings › Partner under 要不要先问, and taken back with one tap or one sentence. Only actions Ducter
 // can honour through its audited write path are kept; the floor (paying, passwords and sign-ins,

@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.1.2 - 2026-11-20
+
+<!-- whats-new
+zh: 交待办能听懂是谁的；循环任务不再悄悄停；一句话说多件事
+en: Hand-over finds what you meant; loops never quietly stop; several asks at once
+-->
+
+**Handing over to-dos**
+- "100gle 分配给我的 UI 走查问题" finds exactly those: who opened it, who assigned it, you, a
+  repository, a number or a time are read first and shown as chips you can remove; only the sure
+  ones are ticked, at most ten, and a name nobody has is said instead of guessed.
+
+**Things that keep going**
+- A task that runs in rounds keeps going until you stop it: a round that finishes never ends it,
+  and a missed round comes back on its own, after a restart or an upgrade too.
+- The Ongoing card says when one isn't on time (its computer asleep, out of credit, three rounds
+  failing) with Run now, and you can change how often it runs; or just ask how it's doing.
+
+**The conversation**
+- Say several things in one message: each shows as its own line under it, done or waiting, with
+  one word when they're all done.
+- While it works, the partner acts out the step it's on, with a line in your words.
+
+**Everywhere else**
+- Small apps open with the answer first, filled from what you said.
+- Settings say less; the device card and every menu share one look.
+- Replies to agents on Nowledge Mem are no longer lost when Ducter restarts.
+
 ## 0.1.1 - 2026-11-20
 
 <!-- whats-new

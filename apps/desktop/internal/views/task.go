@@ -158,34 +158,19 @@ func (a *App) moreMenu(c *ui.Context, task *store.Task) {
 		Tooltip(a.L.T("task.more")).Role(ui.RoleButton).Cursor(ui.CursorPointer).Focusable().Shrink(0)
 	fg := a.buttonLook(c, b, btnText, t.ControlSM, t.Chrome)
 	b.Draw(drawMore(fg))
-	if b.Clicked() {
-		a.moreOpen = !a.moreOpen
-	}
-	ui.PopoverBase(c, b, &a.moreOpen, func(panel ui.Element) {
-		panel.Margin(t.S2, 0, 0, 0).MinWidth(160).Padding(t.S1).Radius(t.RadiusMD).Background(t.Surface).
-			Shadow(0, t.Floating.Y, t.Floating.Blur, 0, t.Floating.Color).Border(1, t.LineSoft).Label(a.L.T("task.more"))
-		a.dropItem(c, task)
-	})
+	a.menuButton(c, b, func(m *ui.Menu) { a.dropItem(c, m, task) })
 }
 
 // dropItem is Cancel task (不做了) in the ⋯ while the task can still be
 // cancelled (D213, D268): it drops the task, undoable from its toast for
-// UndoWindow.
-func (a *App) dropItem(c *ui.Context, task *store.Task) {
-	t := a.T
+// UndoWindow. Past that, the menu says so, greyed.
+func (a *App) dropItem(c *ui.Context, m *ui.Menu, task *store.Task) {
 	switch task.Attention() {
 	case protocol.Failed, protocol.Dropped, protocol.Done, protocol.DoneClaimed, protocol.Superseded:
-		uiText(c, a.L.T("task.more")).FontSize(t.SM).TextColor(t.InkMuted).Padding(t.S2, t.S3)
+		m.Item(a.L.T("task.more")).Disabled(true)
 		return
 	}
-	label := a.L.T("task.action.drop")
-	it := uiText(c.Key("drop"), label).FontSize(t.SM).TextColor(t.Failed.Ink).Padding(t.S2, t.S3).Radius(t.RadiusXS).
-		Role(ui.RoleButton).Focusable().Cursor(ui.CursorPointer).Label(label)
-	if it.Hovered() {
-		it.Background(t.Failed.Surface.Alpha(0.6))
-	}
-	if it.Clicked() {
-		a.moreOpen = false
+	if m.Item(a.L.T("task.action.drop")).Danger().Chosen() {
 		a.DropTask(task.ID)
 		c.AddToast(ui.Toast{ID: "undo:" + task.ID, Title: a.L.T("undo.dropped", task.Title()), Timeout: UndoWindow,
 			Action: a.L.T("undo.action"), OnAction: a.UndoDrop})

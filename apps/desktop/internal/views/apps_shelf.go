@@ -364,7 +364,7 @@ func (a *App) appMore(c *ui.Context, m *protocol.AppMeta, inWindow bool) {
 		Tooltip(a.L.T("apps.more", name)).Role(ui.RoleButton).Cursor(ui.CursorPointer).Focusable().Shrink(0)
 	fg := a.buttonLook(c, b, btnText, t.ControlSM, t.Surface)
 	b.Draw(drawMore(fg))
-	b.Menu(func(mn *ui.Menu) {
+	a.menuButton(c, b, func(mn *ui.Menu) {
 		if mn.Item(a.L.T("apps.m.rename")).Chosen() {
 			if inWindow {
 				a.OpenApps()
@@ -395,7 +395,7 @@ func (a *App) appMore(c *ui.Context, m *protocol.AppMeta, inWindow bool) {
 			a.send(protocol.AppSetReq{T: "app_set", ID: id, Untask: true})
 		}
 		mn.Separator()
-		if mn.Item(a.L.T("apps.m.delete")).Chosen() {
+		if mn.Item(a.L.T("apps.m.delete")).Danger().Chosen() {
 			if inWindow {
 				a.OpenApps()
 				if a.ShowMain != nil {

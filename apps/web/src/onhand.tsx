@@ -30,6 +30,7 @@ import { Goal, Groove, limitAt, limitState, untilLine, WaitBubble, waitCaption, 
 import { handover, isNewResult, statusOf, urgentOf, type Status } from "./seen.ts";
 import { OtherAsk, PartnerMark } from "./partners.tsx";
 import { boardGroups, foldedRows, markOf, type BoardGroup, type MemberRow } from "./groups-view.ts";
+import { Menu, MenuItem } from "./menu.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
@@ -1303,11 +1304,17 @@ function GroupCard({ b, room }: { b: BoardGroup; room: Room }) {
       {/* D385: a hand-over's plan, its making, review together. */}
       {b.g.hand && <HandBlock g={b.g} />}
       {menu && (
-        <div class="gmenu" role="menu">
-          <Btn kind="text" size="sm" label={t("group.rename")} onClick={() => (setMenu(false), setDraft(b.g.name))} />
-          <Btn kind="text" size="sm" label={b.g.order === "one_by_one" ? t("group.toSide") : t("group.toLine")} onClick={() => (setMenu(false), send("order", { order: b.g.order === "one_by_one" ? "side_by_side" : "one_by_one" }))} />
-          <Btn kind="text" size="sm" label={t("group.ungroup")} onClick={() => (setMenu(false), send("dissolve"))} />
-        </div>
+        <Menu class="gmenu" label={b.g.name} onClose={() => setMenu(false)}>
+          <MenuItem class="btn text sm" onClick={() => (setMenu(false), setDraft(b.g.name))}>
+            <span class="lbl">{t("group.rename")}</span>
+          </MenuItem>
+          <MenuItem class="btn text sm" onClick={() => (setMenu(false), send("order", { order: b.g.order === "one_by_one" ? "side_by_side" : "one_by_one" }))}>
+            <span class="lbl">{b.g.order === "one_by_one" ? t("group.toSide") : t("group.toLine")}</span>
+          </MenuItem>
+          <MenuItem class="btn text sm" onClick={() => (setMenu(false), send("dissolve"))}>
+            <span class="lbl">{t("group.ungroup")}</span>
+          </MenuItem>
+        </Menu>
       )}
       <ol class="gparts">
         {shown.map((r) => {

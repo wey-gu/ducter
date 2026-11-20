@@ -202,7 +202,7 @@ describe("The phone (D404)", () => {
   test("on a touch screen every Settings control reaches 44 pt", () => {
     const css = src("apps/web/static/app.css");
     const block = css.slice(css.indexOf("/* D404: Settings on a touch screen."));
-    for (const sel of [".seg button { min-height: 44px", ".set-item .pick select { min-height: 44px", ".nt-chip::before, .danger-text::before", ".past-link::before { inset: -6px 0; }"]) expect(block).toContain(sel);
+    for (const sel of [".seg button { min-height: 44px", ".set-item .pick .dselect-btn, .dselect-btn { min-height: 44px", ".nt-chip::before, .danger-text::before", ".past-link::before { inset: -6px 0; }"]) expect(block).toContain(sel);
     // 32 (a quiet Remove) + 2 × 7 and 30 (a model chip) + 2 × 7 reach 44.
     expect(32 + 14).toBeGreaterThanOrEqual(44);
     expect(30 + 14).toBeGreaterThanOrEqual(44);

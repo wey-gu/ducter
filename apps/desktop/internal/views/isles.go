@@ -1326,8 +1326,8 @@ func (a *App) dockRow(c *ui.Context, v view, s *isle, dy float32, sel bool, now 
 			d.labels["dock:"+id] = tag.Bounds()
 		})
 		if on && s.dv.State == protocol.DeviceAwake && id == protocol.AbilityWeb {
-			col.ContextMenu(func(m *ui.Menu) {
-				if m.Item(a.L.T("ability.remove")).Chosen() {
+			a.contextMenu(c, col, func(m *ui.Menu) {
+				if m.Item(a.L.T("ability.remove")).Danger().Chosen() {
 					a.selectIsle(s)
 					d.ability, d.removing = id, id
 				}

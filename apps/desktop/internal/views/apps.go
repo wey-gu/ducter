@@ -221,7 +221,7 @@ func (b *AppBridge) Post(id string, body []byte) {
 		// D410: ducter.summary, the one line its shelf tile shows.
 		b.do(func() { b.a.send(protocol.AppSummaryReq{T: "app_summary", ID: id, Text: m.Text}) })
 	case "error":
-		// D418: its page threw: the home keeps it on this version; the tile
+		// D422: its page threw: the home keeps it on this version; the tile
 		// and the window say so with a fix.
 		b.do(func() {
 			if am := b.a.appByID(id); am != nil {

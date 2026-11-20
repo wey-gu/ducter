@@ -213,7 +213,7 @@ func (a *App) appWinFoot(c *ui.Context, w *AppWin, m *protocol.AppMeta, name str
 				uiText(c.Key("sent"), keepWords(autospace(a.L.T("app.ask.sent", partner)))).FontSize(t.XS).TextColor(t.InkMuted)
 				return
 			}
-			// D418: a plain app says who sees it and when it changed; any
+			// D422: a plain app says who sees it and when it changed; any
 			// other state is said in the strip over the app, or here.
 			if s := m.StateOf(); s == "plain" || a.appStripShown(m) {
 				uiText(c.Key("private"), keepWords(autospace(a.L.T("app.private")))).FontSize(t.XS).TextColor(t.InkMuted)
@@ -234,7 +234,7 @@ func (a *App) appStripShown(m *protocol.AppMeta) bool {
 	return label != "" || m.StateOf() == "changing"
 }
 
-// appWinStrip is the state over the app, with its one button (D418).
+// appWinStrip is the state over the app, with its one button (D422).
 func (a *App) appWinStrip(c *ui.Context, m *protocol.AppMeta) {
 	t := a.T
 	ui.Row(c.Key("strip")).Margin(0, t.S4, t.S2, t.S4).Padding(t.S2, t.S2, t.S2, t.S3).Gap(t.S3).Radius(t.RadiusMD).

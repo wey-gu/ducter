@@ -84,15 +84,15 @@ export interface AppsStore {
   answered(id: string, ref?: string): void;
   /** The ask still waiting, if any. */
   waiting(id: string): string | undefined;
-  /** D418: its page threw on this version: kept until the next version, shown with a fix. */
+  /** D422: its page threw on this version: kept until the next version, shown with a fix. */
   broke(id: string, version: number, text: string): boolean;
-  /** D418: the person asked for a change and the partner hasn't answered yet (on), or it answered (off). */
+  /** D422: the person asked for a change and the partner hasn't answered yet (on), or it answered (off). */
   changing(id: string, on: boolean): void;
-  /** D418: every app being changed now goes back to plain (the partner answered). */
+  /** D422: every app being changed now goes back to plain (the partner answered). */
   answeredAll(): void;
-  /** D418: how a repeating task keeps an app current (from Ongoing); core wires it once Ongoing exists. */
+  /** D422: how a repeating task keeps an app current (from Ongoing); core wires it once Ongoing exists. */
   keptBy(fn: (taskId: string) => AppLive["kept"] | undefined): void;
-  /** D418: Ongoing moved: the list goes out again when an app is kept by a task. */
+  /** D422: Ongoing moved: the list goes out again when an app is kept by a task. */
   liveMoved(): void;
   onChange(fn: (c: AppChange) => void): () => void;
 }
@@ -200,7 +200,7 @@ export function openApps(o: { dataDir: string; now?: () => Date }): AppsStore {
     }
   };
   if (existsSync(bin)) for (const id of readdirSync(bin)) removedMeta(id);
-  // D418: what each app is doing now, worked out on every list from one truth each: Ongoing for the
+  // D422: what each app is doing now, worked out on every list from one truth each: Ongoing for the
   // task that keeps it, the person's words not yet answered, its own page, its file's look.
   const changing = new Map<string, number>();
   const looks = new Map<string, { version: number; old: boolean }>();

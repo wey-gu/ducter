@@ -1,6 +1,6 @@
 package protocol
 
-// Code generated from packages/protocol/fixtures/app-glyphs.json (D418); held equal by
+// Code generated from packages/protocol/fixtures/app-glyphs.json (D422); held equal by
 // TestAppGlyphsMatchTheFixture. Edit packages/protocol/src/app-glyphs.ts, then regenerate.
 
 // AppGlyphStroke is the 20-grid stroke every mark is drawn with.

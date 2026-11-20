@@ -17135,7 +17135,7 @@ a.pr:hover { box-shadow: inset 0 0 0 1px var(--line-2); }
 .ho-take:hover { background: var(--sunken); color: var(--ink); }
 @media (hover: none) { .ho-take { opacity: 1; } }
 
-/* D418: an app's mark pressed into its clay (a light edge above, the tint's ledge below); its tile
+/* D422: an app's mark pressed into its clay (a light edge above, the tint's ledge below); its tile
    leads with what the app says of itself; one state line says what it is doing, and when the state
    asks for something, one button does it (the tile's foot, the strip over the app). */
 .app-glyph-hi { stroke: var(--hi-secondary); }

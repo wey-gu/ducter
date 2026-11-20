@@ -9,7 +9,7 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 )
 
-// D418: the apps' marks and the words that choose them are the web's
+// D422: the apps' marks and the words that choose them are the web's
 // (packages/protocol/fixtures/app-glyphs.json); every mark parses; an app's
 // own words pick its mark the way the web's appIcon does.
 func TestAppGlyphsMatchTheFixture(t *testing.T) {

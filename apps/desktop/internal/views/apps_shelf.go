@@ -260,7 +260,7 @@ func (a *App) shelfTile(c *ui.Context, m *protocol.AppMeta, width float32) {
 		if sh.renaming == id {
 			a.shelfRename(c, m)
 		} else {
-			// D418: the name over what the app says of itself, which leads.
+			// D422: the name over what the app says of itself, which leads.
 			name := uiText(c.Key("name"), autospace(m.Name)).Font(t.Display).FontSize(t.MD).FontWeight(800).TextColor(t.InkSoft).
 				MaxLines(2).Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(spoken(a.L, a.L.T("app.open"), m.Name)).Focusable()
 			if name.Clicked() {
@@ -273,7 +273,7 @@ func (a *App) shelfTile(c *ui.Context, m *protocol.AppMeta, width float32) {
 			uiText(c.Key("never"), a.L.T("apps.never")).FontSize(t.XS).TextColor(t.InkMuted)
 		}
 		ui.Spacer(c)
-		// D418: one state line (who keeps it current and when next, being
+		// D422: one state line (who keeps it current and when next, being
 		// changed, broken, the old look; else when it changed), and when the
 		// state asks for something, the one button that does it.
 		a.appStateLine(c, "state", m)

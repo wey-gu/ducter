@@ -9,7 +9,7 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
 )
 
-// D410, D418: an app's mark and its clay tile. The marks are the web's
+// D410, D422: an app's mark and its clay tile. The marks are the web's
 // (packages/protocol/src/app-glyphs.ts through fixtures/app-glyphs.json, held
 // equal by TestAppGlyphsMatchTheFixture): SVG path data on a 20-point grid,
 // chosen by what the app is about, never an emoji. On its tile the mark is

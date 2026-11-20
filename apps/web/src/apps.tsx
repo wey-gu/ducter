@@ -37,7 +37,7 @@ export const APP_GLYPH = (size = 22) => (
 );
 
 /**
- * D410, D418: each app's own mark, chosen by what it is about (APP_GLYPHS, shared with the Mac), drawn
+ * D410, D422: each app's own mark, chosen by what it is about (APP_GLYPHS, shared with the Mac), drawn
  * pressed into its clay: a light edge above, the tint's ledge below, the ink between. Never an emoji.
  */
 export function AppIconGlyph({ icon, size = 22, flat }: { icon: AppIcon; size?: number; flat?: boolean }) {
@@ -170,18 +170,18 @@ function onMessage(e: MessageEvent) {
     const back = o.id;
     appHooks.showDraft?.(ref, () => openApp(back));
   } else if (m.t === "error" && o.app) {
-    // D418: its page threw: the home keeps it on this version, and the tile and the window say so with a fix.
+    // D422: its page threw: the home keeps it on this version, and the tile and the window say so with a fix.
     A.send({ t: "app_error", id: o.id, version: o.app.version, text: String(m.text ?? "").slice(0, 300) });
   }
 }
 let lastShow = 0;
 
-/** D418: words about one app, said as the person's own (its fix, its new look): the partner answers in the conversation. */
+/** D422: words about one app, said as the person's own (its fix, its new look): the partner answers in the conversation. */
 function sayAbout(m: AppMeta, text: string) {
   A.send({ t: "send", text, clientId: `p${Date.now().toString(36)}app`, app: m.id });
 }
 
-/** D418: the one thing to do about an app's state, when there is one. */
+/** D422: the one thing to do about an app's state, when there is one. */
 export function stateAction(m: AppMeta): { label: string; run: () => void } | undefined {
   const partner = A.defaultName() || "Ducter";
   const k = m.live?.kept;
@@ -200,7 +200,7 @@ export function stateAction(m: AppMeta): { label: string; run: () => void } | un
 }
 
 /**
- * D418: what an app is doing, in one line of the partner's voice (each fact its own element, D291):
+ * D422: what an app is doing, in one line of the partner's voice (each fact its own element, D291):
  * being changed, broken, kept current by a task (running, failed, paused, next), the old look; else
  * when it last changed. The tile and the window say the same.
  */
@@ -216,7 +216,7 @@ export function StateLine({ m }: { m: AppMeta }) {
     : s === "kept_running" ? t("app.kept.running", k!.title)
     : s === "old" ? t("app.live.old")
     : s === "kept_next" ? (k!.next ? t("app.kept.next", k!.title, when(A.L, k!.next)) : t("app.kept", k!.title))
-    : m.task ? t("app.kept", m.task.title) : ""; // a home from before D418 sends no state: a task still keeps it
+    : m.task ? t("app.kept", m.task.title) : ""; // a home from before D422 sends no state: a task still keeps it
   return (
     <span class={`app-state s-${s}`}>
       {s === "changing" && <span class="app-state-track" aria-hidden="true" />}
@@ -378,7 +378,7 @@ export function removeApp(m: AppMeta) {
   A.changed();
 }
 
-/** D418: over the app, when its state asks for something: the words and the one thing to do. */
+/** D422: over the app, when its state asks for something: the words and the one thing to do. */
 function StateStrip({ m }: { m: AppMeta }) {
   const a = stateAction(m);
   return (

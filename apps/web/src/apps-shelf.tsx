@@ -21,7 +21,7 @@ function close() {
 function Tile({ m }: { m: AppMeta }) {
   const [menu, setMenu] = useState(false);
   const [name, setName] = useState<string | undefined>(undefined);
-  // D418: the headline is what the app says of itself (its total, what's left), big; under it its state.
+  // D422: the headline is what the app says of itself (its total, what's left), big; under it its state.
   const act = stateAction(m);
   const save = () => {
     const v = (name ?? "").trim();

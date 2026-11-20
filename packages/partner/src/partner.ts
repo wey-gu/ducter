@@ -2362,7 +2362,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           const r = apps.make(persona, { name: typeof a.name === "string" ? a.name : "", html, ...(ask ? { ask: (ask.body as Bodies["user_msg"]).text } : {}), ...(note ? { note } : {}), ...(task ? { task: { id: task.taskId, title: task.title } } : {}), ...(seed ? { data: seed } : {}), ...(summary ? { summary } : {}), ...(icon ? { icon } : {}) });
           if (!r.ok) return { ok: false, error: r.error };
           card(t, r.app, "made");
-          // D418: its tile needs its mark and its line from the start (the shelf shows both).
+          // D422: its tile needs its mark and its line from the start (the shelf shows both).
           const lint = [...appLint(html), ...(icon ? [] : ["no icon: call again with this id and icon, the mark for what it's about"]), ...(summary || /ducter\.summary\(/.test(html) ? [] : ["no shelf line: call ducter.summary(...) on every change in the file, or give summary"])];
           return { ok: true, id: r.app.id, ...(lint.length ? { fix: lint } : {}), say: (lint.length ? "Fix these with edits before you say it's ready. " : "") + (seed ? "Your line says what you already filled in and from where (\"做好了，11/20 的高铁和两晚酒店已经从你的预订里填进去了。\"). " : "It is empty. If you already know things for it (a trip this conversation booked or its calendar has, its costs and dates; a task's numbers), first call again with this id: data (each item with from) and a name for that, then say what you filled in. ") + after };
         }
@@ -4995,7 +4995,7 @@ export function renderApps(apps: readonly AppMeta[], data: (id: string) => Recor
     const name = m.name.length > 40 ? m.name.slice(0, 39) + "…" : m.name;
     // D407: kept current by a task's rounds (the review board: from its review_report; a row's 看草稿 opens that PR's draft).
     const by = m.task ? `; task ${m.task.id} keeps it current each round${m.kind === "reviews" ? " (Ducter's review board: each PR waiting with its CI, findings and draft; a row's 看草稿 / Read draft opens that draft)" : ""}` : "";
-    // D418: what is wrong with it now, so "fix it" / "换成新样子" has what it needs.
+    // D422: what is wrong with it now, so "fix it" / "换成新样子" has what it needs.
     const l = m.live;
     const state = `${l?.old ? "; drawn before the kit (asked for the new look: rewrite it whole with the kit, keep its keys, fill it from what you know)" : ""}${l?.broke ? `; its page broke: ${JSON.stringify(l.broke.text.slice(0, 120))}` : ""}${l?.kept?.state === "failed" ? "; its task's last round failed" : ""}`;
     return `  ${m.id} "${name}" v${m.version}, changed ${ago(m.updated)}${m.opened ? `, opened ${ago(m.opened)}` : ""}${m.pinned ? ", pinned" : ""}${by}${m.summary ? `; shows "${m.summary}"` : ""}${keys ? `; keeps: ${keys.slice(0, 200)}` : ""}${state}`;

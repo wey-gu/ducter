@@ -35,7 +35,7 @@ type AppMeta struct {
 	Icon    string `json:"icon,omitempty"`
 	Tint    string `json:"tint,omitempty"`
 	Pinned  bool   `json:"pinned,omitempty"`
-	// D418: its page threw on a version; what it is doing now (the home's).
+	// D422: its page threw on a version; what it is doing now (the home's).
 	Broke *AppBroke `json:"broke,omitempty"`
 	Live  *AppLive  `json:"live,omitempty"`
 }
@@ -58,7 +58,7 @@ func (m AppMeta) TintOf() string {
 	return AppTints[h%uint32(len(AppTints))]
 }
 
-// IconOf is an app's mark (D418, the web's appIcon): its own, else the
+// IconOf is an app's mark (D422, the web's appIcon): its own, else the
 // review board's board, else the one its name or the sentence it was made
 // from points to (出差花销: a suitcase), else the window.
 func (m AppMeta) IconOf() string {
@@ -100,14 +100,14 @@ func AppIconFor(words string) string {
 	return ""
 }
 
-// AppBroke is an app's page throwing on a version (D418).
+// AppBroke is an app's page throwing on a version (D422).
 type AppBroke struct {
 	Text    string `json:"text"`
 	At      string `json:"at"`
 	Version int    `json:"version"`
 }
 
-// AppLive is what an app is doing now, worked out by the home (D418, the
+// AppLive is what an app is doing now, worked out by the home (D422, the
 // web's AppLive): kept current by a task, being changed, broken, the old look.
 type AppLive struct {
 	Kept     *AppKept    `json:"kept,omitempty"`
@@ -135,7 +135,7 @@ type AppLiveErr struct {
 	Text string `json:"text"`
 }
 
-// StateOf is the one thing an app's tile and window say (D418, the web's
+// StateOf is the one thing an app's tile and window say (D422, the web's
 // appState), the most urgent first.
 func (m AppMeta) StateOf() string {
 	l := m.Live
@@ -160,7 +160,7 @@ func (m AppMeta) StateOf() string {
 	return "plain"
 }
 
-// AppErrorReq is the app's page throwing (D418): kept on that version.
+// AppErrorReq is the app's page throwing (D422): kept on that version.
 type AppErrorReq struct {
 	T       string `json:"t"` // app_error
 	ID      string `json:"id"`

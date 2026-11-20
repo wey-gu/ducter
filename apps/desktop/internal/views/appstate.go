@@ -9,7 +9,7 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 )
 
-// D418: what an app is doing, said the same on its tile and in its window
+// D422: what an app is doing, said the same on its tile and in its window
 // as the web says it (apps.tsx StateLine, stateAction): being changed now,
 // its page broke, the task that keeps it current failed, is paused, is
 // running or will update it next, the old look; else when it last changed.
@@ -41,7 +41,7 @@ func (a *App) appStateWords(m *protocol.AppMeta) (string, bool) {
 		}
 		return a.L.T("app.kept", k.Title), false
 	}
-	// A home from before D418 sends no state: a task still keeps it.
+	// A home from before D422 sends no state: a task still keeps it.
 	if m.Task != nil {
 		return a.L.T("app.kept", m.Task.Title), false
 	}

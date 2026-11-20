@@ -1444,7 +1444,7 @@ export function createWsHandler(deps: WsDeps) {
         return;
       }
       case "app_error": {
-        // D418: the app's page threw on a device: kept on that version, its tile and window say so with a fix.
+        // D422: the app's page threw on a device: kept on that version, its tile and window say so with a fix.
         if (!deps.apps) return;
         const id = String(f.id ?? "");
         const m = deps.apps.get(id);

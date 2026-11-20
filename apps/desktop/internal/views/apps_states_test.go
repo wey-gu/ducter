@@ -13,7 +13,7 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 )
 
-// statesFixture is the shelf with every state an app can be in (D418), as
+// statesFixture is the shelf with every state an app can be in (D422), as
 // the demo core's DEMO_STAGE=states: the author's old app, the trip pinned,
 // the review board resting until tomorrow, a fare check whose round failed,
 // the baby's feeds being changed, a habit app whose page broke.
@@ -48,7 +48,7 @@ func statesFixture(lang i18n.Lang) []protocol.AppMeta {
 	}
 }
 
-// D418: each tile says its state in words, its mark is by meaning (the old
+// D422: each tile says its state in words, its mark is by meaning (the old
 // app's stored nothing still reads as a suitcase), and the one button does
 // the one thing: the new look as the person's words about that app, a retry
 // through its Ongoing card.
@@ -87,7 +87,7 @@ func TestShelfTilesSayTheirState(t *testing.T) {
 	}
 }
 
-// D418: the window of an app made before the kit says so over the app, with
+// D422: the window of an app made before the kit says so over the app, with
 // its button; its foot says who sees it instead of the old internet line.
 func TestAppWindowSaysItsState(t *testing.T) {
 	app, _ := shelfApp(t, i18n.ZH, statesFixture(i18n.ZH), nil)

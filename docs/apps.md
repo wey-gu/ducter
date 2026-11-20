@@ -24,9 +24,20 @@ what your partner filled in. Add the rest as you go: the total stays at the top.
 ## Your apps
 
 Every app your partner made for you lives in **Your apps**: the **Apps** mark at the top of the
-screen (four little tiles), or ⌘K. Each tile shows what's in the app right now ("2 costs, ¥1,698 in
-all"), when it last changed, and whether something keeps it up to date. Tap one to open it. Its **⋯**
-lets you:
+screen (four little tiles), or ⌘K. Each tile shows a little picture of what the app is about (a
+suitcase for a trip, a bottle for a baby's feeds), what's in the app right now, big ("2 costs, ¥1,698
+in all"), and one line about what it's doing:
+
+- **Ducter is on it…** while your partner changes it for you
+- **“Check fares each morning” updates it again tomorrow 9:00** when a repeating task keeps it up to
+  date; if a round didn't work, it says so, with **Try again now**
+- **Something went wrong in it**, with **Ask Ducter to fix it**
+- **It still has the old look**, for an app made before apps got their current look, with **Give it
+  the new look**: your partner remakes it, filling in what it already knows, and keeps what you put in
+- otherwise, when it last changed
+
+Tap a tile to open it; the same line sits over the app when there's something to do. Its **⋯** lets
+you:
 
 - **Rename** it
 - **Ask your partner to change it**
@@ -80,7 +91,8 @@ Ongoing**, on the review's card (**Open “Review board”**).
 
 ## What an app can't do
 
-An app runs closed off, for your safety:
+Only you can see your apps, and each is the same on every device. An app runs closed off, for your
+safety:
 
 - It can't reach the internet, load anything from outside itself, or open other pages.
 - It keeps its data only on your own Ducter, never in the browser.

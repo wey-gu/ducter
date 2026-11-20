@@ -1,4 +1,4 @@
-// D418: an app's state, one truth each: the task that keeps it (Ongoing, through keptBy), the
+// D422: an app's state, one truth each: the task that keeps it (Ongoing, through keptBy), the
 // person's words about it not yet answered, its page breaking on a version, a file from before the
 // kit. The list carries it (never kept on disk); a new version clears what belonged to the old one.
 import { afterEach, expect, test } from "bun:test";

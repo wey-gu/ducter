@@ -1,4 +1,4 @@
-// D418: the apps' marks, one table for the Mac and the web (fixtures/app-glyphs.json), and the mark an app's own words point to.
+// D422: the apps' marks, one table for the Mac and the web (fixtures/app-glyphs.json), and the mark an app's own words point to.
 import { describe, expect, test } from "bun:test";
 import fx from "../fixtures/app-glyphs.json" with { type: "json" };
 import { APP_GLYPH_STROKE, APP_GLYPHS, APP_ICON_WORDS } from "../src/app-glyphs.ts";

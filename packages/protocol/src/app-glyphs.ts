@@ -1,4 +1,4 @@
-// D418: each small app's mark, chosen by what the app is about (a suitcase for a trip, a bottle for a
+// D422: each small app's mark, chosen by what the app is about (a suitcase for a trip, a bottle for a
 // baby's feeds, a branch for pull requests), never a placeholder window and never an emoji. One family
 // with Done for you's glyphs (D314): SVG path data on a 20-point grid, stroked 1.6 with round ends and
 // joins. On the tile it is drawn pressed into the clay: a light edge above, the tint's ledge below, the
@@ -42,8 +42,8 @@ export const APP_GLYPHS = {
 } as const;
 
 /**
- * D418: the mark an app's words point to, for an app the partner made without one (and every app
- * made before D418): its name first, then the sentence it was made from. Earlier rules win, so
+ * D422: the mark an app's words point to, for an app the partner made without one (and every app
+ * made before D422): its name first, then the sentence it was made from. Earlier rules win, so
  * 出差花销 is a trip (a suitcase) before it is spending (coins). Nothing matched: the window.
  */
 export const APP_ICON_WORDS: [keyof typeof APP_GLYPHS, RegExp][] = [

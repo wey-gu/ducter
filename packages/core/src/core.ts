@@ -1196,7 +1196,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   const ongoing = createOngoing({ dataDir, log, tasks, waiters: work.waiters, routines: work.routines, marks, clock, onChange: () => (ws.ongoingChanged(), apps.liveMoved()), reviews: (id) => taskSourcesRef?.pile.standing(id), asking: (id) => !!taskSourcesRef?.pile.asking(id), app: (id) => ((m) => (m ? { id: m.id, name: m.name } : undefined))(boards.appOf(id)) });
   // D407: an app given to a task (or taken back) changes what its Ongoing card opens.
   apps.onChange((c) => void (c.kind === "give" && setTimeout(() => ws.ongoingChanged(), 0)));
-  // D418: an app's state has one truth each. Kept current: the Ongoing card of the task that keeps
+  // D422: an app's state has one truth each. Kept current: the Ongoing card of the task that keeps
   // it (running, resting until its next time, paused, its last round failed). Being changed: the
   // person's words about it are in and the partner hasn't answered yet.
   apps.keptBy((taskId) => {

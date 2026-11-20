@@ -70,7 +70,7 @@ const user = (text: string) => log.append({ stream: "channel", origin: "user", k
 const tiny = (title: string, line: string) => `<main class="k-app"><section class="k-sum"><span class="k-sum-label">${title}</span><span class="k-sum-value">${line}</span></section></main>`;
 
 let id = "";
-// D418: DEMO_STAGE=states: the shelf with every state an app can be in, from one truth each: the
+// D422: DEMO_STAGE=states: the shelf with every state an app can be in, from one truth each: the
 // author's old app (made before the kit), the trip app pinned, the review board a task keeps (next
 // round tomorrow 9:00), a fare check whose last round failed, a baby-feeds app being changed now,
 // and a habit tracker whose page broke. Ongoing is stood in for by keptBy (no real task runs here).

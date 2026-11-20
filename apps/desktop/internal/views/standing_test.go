@@ -14,12 +14,12 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 )
 
-// D411: 不用问我的 / Without asking is the third list in 要不要先问's card on
+// D413: 不用问我的 / Without asking is the third list in 要不要先问's card on
 // Settings › Partner: what, where and the person's own words, each its own
 // line, and 收回 / Take back sends standing_revoke. Nothing before the first.
 //
-//	DUCTER_D411_SHOTS=$PWD/../../.shots/standing-permission go test ./internal/views -run TestD411
-func TestD411StandingOnPartner(t *testing.T) {
+//	DUCTER_D413_SHOTS=$PWD/../../.shots/standing-permission go test ./internal/views -run TestD413
+func TestD413StandingOnPartner(t *testing.T) {
 	for _, lang := range []i18n.Lang{i18n.ZH, i18n.EN} {
 		L := i18n.New(lang)
 		var two d322Case
@@ -48,7 +48,7 @@ func TestD411StandingOnPartner(t *testing.T) {
 				t.Fatalf("%s: no %q in %q", lang, want, tt.Texts())
 			}
 		}
-		if dir := os.Getenv("DUCTER_D411_SHOTS"); dir != "" {
+		if dir := os.Getenv("DUCTER_D413_SHOTS"); dir != "" {
 			t.Setenv("DUCTER_SHOTS_DIR", dir)
 			d302Both(t, app, tt, frames, "standing-partner", lang)
 		}
@@ -72,10 +72,10 @@ func TestD411StandingOnPartner(t *testing.T) {
 	}
 }
 
-// D411: in the conversation, the round's card that waited reads 按你说的，直接发了
+// D413: in the conversation, the round's card that waited reads 按你说的，直接发了
 // (never "you didn't answer"), and the one line lists what went; the Ongoing
 // line says how many were posted.
-func TestD411StandingConversation(t *testing.T) {
+func TestD413StandingConversation(t *testing.T) {
 	for _, lang := range []i18n.Lang{i18n.ZH, i18n.EN} {
 		w := func(zh, en string) string { return pastWord(lang, zh, en) }
 		L := i18n.New(lang)
@@ -104,7 +104,7 @@ func TestD411StandingConversation(t *testing.T) {
 		if got := strings.Join(app.reviewLine(&r), " | "); !strings.Contains(got, L.T("og.rev.posted.1")) {
 			t.Errorf("%s: the Ongoing line: %q", lang, got)
 		}
-		if dir := os.Getenv("DUCTER_D411_SHOTS"); dir != "" {
+		if dir := os.Getenv("DUCTER_D413_SHOTS"); dir != "" {
 			tt.SetScale(2)
 			for i := 0; i < 3; i++ {
 				tt.Frame()

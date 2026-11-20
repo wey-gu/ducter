@@ -323,7 +323,7 @@ export interface Core extends CoreApi {
   apps: AppsStore;
   /** D379: who does which work, said and never saved as a rule. */
   said: SaidStore;
-  /** D411: 不用问我的 / Without asking: what the person said may go without asking. */
+  /** D413: 不用问我的 / Without asking: what the person said may go without asking. */
   standing: StandingStore;
   loadout: Loadout;
   /** The user's connections (D96). */
@@ -559,7 +559,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   // D401: what the person says about who does which work is their rule the moment it lands (before
   // the partner's turn); what they said before this was built is kept now.
   keepSaidAtOnce(log, said);
-  // D411: what the person says may go without asking (不用问我的) is kept the moment it lands, the
+  // D413: what the person says may go without asking (不用问我的) is kept the moment it lands, the
   // same way; bounded by where the review routine looks now. Earlier sayings: after the to-do sources.
   const standing = openStanding({ log, dataDir, reviewOrgs: () => taskSourcesRef?.pile.reviewOrgs() ?? [] });
   keepStandingAtOnce(log, standing);
@@ -1859,7 +1859,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       if (!r.ok) return r.error ?? "Not kept.";
       // D407: its board (when the person keeps one) is written now; after a few rounds, offered once.
       boards.afterRound(ctx.taskId);
-      // D411: what the person said may go without asking went now; only the rest is on the card.
+      // D413: what the person said may go without asking went now; only the rest is on the card.
       const went = r.posted?.length ? `${r.posted.length} review${r.posted.length === 1 ? "" : "s"} went to GitHub without asking, as the person said (${r.posted.map((p) => p.ref).join(", ")}). ` : "";
       const asks = r.asking && (went || r.drafted) ? `${r.asking} unsent draft${r.asking === 1 ? "" : "s"} wait on one card; Ducter posts them on Go. ` : "";
       return went || r.drafted
@@ -1869,7 +1869,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     (ctx) => !!ctx.taskId && isReviewTask(ctx.taskId),
   );
   taskSourcesRef = taskSources;
-  // D411: a standing permission said: every draft that waits inside it goes now (its card shrinks or
+  // D413: a standing permission said: every draft that waits inside it goes now (its card shrinks or
   // settles), and the review task hears that Ducter posts from now on. Then the Log's earlier sayings.
   standing.onGrant(() => {
     void taskSources.pile

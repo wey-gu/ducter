@@ -384,7 +384,7 @@ type DecisionResolved struct {
 	// Settled (D375): closed by what happened, not by an answer (D169's
 	// offer once Mem's check sees the plugin in): it reads as done.
 	Settled bool `json:"settled,omitempty"`
-	// Posted (D411): settled because its drafts went under a standing permission.
+	// Posted (D413): settled because its drafts went under a standing permission.
 	Posted bool `json:"posted,omitempty"`
 }
 
@@ -2486,7 +2486,7 @@ type ServerFrame struct {
 	Refused string    `json:"refused,omitempty"`
 	// Defaults: the built-in default per kind of work (rules frame, D372).
 	Defaults []KindDefault `json:"defaults,omitempty"`
-	// StandingList (D411): 不用问我的 / Without asking (rules frame).
+	// StandingList (D413): 不用问我的 / Without asking (rules frame).
 	StandingList []StandingView `json:"standing,omitempty"`
 	Candidates   []Candidate    `json:"candidates,omitempty"`
 	// connections: the user's connections and what oo is set up with;

@@ -113,7 +113,7 @@ export interface WsDeps {
   settings?: SettingsStore;
   /** Your rules and who does the tasks (D89); absent in tests that don't need them. */
   rules?: RulesStore;
-  /** D411: 不用问我的 / Without asking, listed with the rules; absent in tests that don't need it. */
+  /** D413: 不用问我的 / Without asking, listed with the rules; absent in tests that don't need it. */
   standing?: import("./standing.ts").StandingStore;
   /** D381: 置顶 / Pinned (pins.ts); absent in tests that don't need it. */
   pins?: import("./pins.ts").PinsStore;

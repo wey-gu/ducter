@@ -158,7 +158,7 @@ reports each round with `review_report`; the drafts for PRs it reviewed again la
 pre-reads (marked with the task and the head), so the same card and sheet show them. One card a
 round, **{n} 个 PR 的评审写好了，发到 GitHub？**, carries every unsent draft; Go posts each as one
 comment-only review (`source_write` op `review`), Hold posts nothing. **Under a standing
-permission (D411)** the person said (**不用问我的 / Without asking**, `core/src/standing.ts`), the
+permission (D413)** the person said (**不用问我的 / Without asking**, `core/src/standing.ts`), the
 drafts inside it (its orgs; never a PR the round marks `mention`) are posted in the round through
 the same write (`by: "rule"`, `standing`, `said` = their words), the card carries only the rest, and
 the first post under a new permission is one partner line listing what went with links. The request is tied to the

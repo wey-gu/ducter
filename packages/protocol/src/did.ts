@@ -50,7 +50,7 @@ export interface DidWho {
  * its own folder).
  */
 export interface DidGo {
-  /** D411: said = under a standing permission the person said (不用问我的), with their words. */
+  /** D413: said = under a standing permission the person said (不用问我的), with their words. */
   by: "you" | "default" | "before" | "said";
   at?: string;
   /** said: the person's own words that allowed it. */

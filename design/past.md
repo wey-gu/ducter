@@ -121,7 +121,7 @@ only. It reports when something new needs the person, and then says what still s
 would reach other people (a review on someone's PR) is drafted and asked once per round, all drafts
 in one card (**3 个 PR 的评审写好了，发到 GitHub？ / 3 PR reviews are written. Post them to
 GitHub?**), each draft opened from the card on the phone and the Mac; Go posts them (D61 GQ10, no
-countdown). What the person said may go without asking (D411, **不用问我的 / Without asking**)
+countdown). What the person said may go without asking (D413, **不用问我的 / Without asking**)
 posts in the round with no card, and the line says **3 份评审已发到 GitHub / 3 reviews posted to GitHub**. A review task reports each round with `review_report`; its card adds a standing line under the
 state line: **8 个请求在等你：3 个有新提交已复审，5 个没变 / 8 requests wait on you: 3 had new commits
 and are reviewed again, 5 unchanged** and **3 份评审还没发 / 3 drafted reviews not posted yet**, each its

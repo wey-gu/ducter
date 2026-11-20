@@ -44,7 +44,7 @@ type ReviewStanding struct {
 	Waiting int    `json:"waiting"`
 	Again   int    `json:"again"`
 	Same    int    `json:"same"`
-	Posted  int    `json:"posted,omitempty"` // D411: posted without asking this round
+	Posted  int    `json:"posted,omitempty"` // D413: posted without asking this round
 	Drafted int    `json:"drafted"`
 	At      string `json:"at"`
 }

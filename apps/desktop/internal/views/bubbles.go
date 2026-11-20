@@ -157,7 +157,7 @@ func (a *App) answeredWords(d *store.DecisionState) string {
 		return a.L.T("memp.card.done") // D375: D169's offer closed by itself once the plugin was in
 	}
 	if d.Resolved != nil && d.Resolved.Posted {
-		return a.L.T("standing.settled") // D411: the drafts went under what the person said
+		return a.L.T("standing.settled") // D413: the drafts went under what the person said
 	}
 	opt, text, by := d.Pending, "", ""
 	if d.Resolved != nil {

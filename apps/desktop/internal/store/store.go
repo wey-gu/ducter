@@ -547,7 +547,7 @@ type Store struct {
 	Rules []protocol.RuleView
 	// RuleDefaults: the built-in default per kind of work (D372).
 	RuleDefaults []protocol.KindDefault
-	// Standing (D411): 不用问我的 / Without asking.
+	// Standing (D413): 不用问我的 / Without asking.
 	Standing []protocol.StandingView
 	RulesAt  time.Time
 	// Pins are 置顶 / Pinned, newest first, as the home last sent (D381);

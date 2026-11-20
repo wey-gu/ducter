@@ -145,7 +145,7 @@ export interface TaskSourcesDeps {
   computer?: () => string | undefined;
   /** Tell a task something in Ducter's words (runner.send(..., "ducter")). */
   tell?: (taskId: string, text: string) => void;
-  /** D411: what the person said may go without asking (不用问我的): the review posting it covers. */
+  /** D413: what the person said may go without asking (不用问我的): the review posting it covers. */
   standing?: { allows(ref: string, o?: { mention?: boolean }): StandingView | undefined; firstUse(id: string): boolean };
   /** Stop a task (Go on "closed there; stop?"). */
   stop?: (taskId: string) => Promise<void>;

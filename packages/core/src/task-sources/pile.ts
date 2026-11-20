@@ -111,7 +111,7 @@ export interface PileDeps {
   open: () => { open: number; atLeast?: boolean };
   /** The service's one path out: a write, logged as source_write (Done for you). */
   write: (item: SourceItemRef, op: SourceOp, how: { by: Bodies["source_write"]["by"]; decisionId?: string; taskId?: string; text?: string; standing?: string; said?: string }) => Promise<WriteResult>;
-  /** D411: what the person said may go without asking (不用问我的): the review posting it covers. */
+  /** D413: what the person said may go without asking (不用问我的): the review posting it covers. */
   standing?: { allows(ref: string, o?: { mention?: boolean }): StandingView | undefined; firstUse(id: string): boolean };
   /** Open a task for a to-do and bind it (the person handed it over). */
   openTask?: (item: SourceItem, brief: string) => Promise<{ ok: boolean; taskId?: string; error?: string }>;
@@ -152,7 +152,7 @@ const W = {
     roundQ1: "1 个 PR 的评审写好了，发到 GitHub？",
     roundGo: "发到 GitHub",
     roundHold: "先不发",
-    // D411: the first time reviews go under what the person said, once; after that, silence.
+    // D413: the first time reviews go under what the person said, once; after that, silence.
     standingFirst: "按你说的，这 {n} 份评审直接发到 GitHub 了：{links}。以后照这样发，不再一一说；都在「替你做过的」里，想收回说一声。",
     standingFirst1: "按你说的，这份评审直接发到 GitHub 了：{links}。以后照这样发，不再一一说；都在「替你做过的」里，想收回说一声。",
     // Said just now, with drafts waiting: the partner's own line says the rest; this is what went.
@@ -333,7 +333,7 @@ export function parseRound(raw: unknown): { ok: true; prs: (RoundPr & { notes: P
     const gist = typeof x.gist === "string" && x.gist.trim() ? x.gist.trim().slice(0, 160) : undefined;
     const title = typeof x.title === "string" && x.title.trim() ? x.title.trim().replace(/\s+/g, " ").slice(0, 200) : undefined;
     const ci = x.ci === "passing" || x.ci === "failing" || x.ci === "pending" || x.ci === "none" ? x.ci : undefined;
-    // D411: a PR that only mentions the person (didn't ask for their review) is never posted without asking.
+    // D413: a PR that only mentions the person (didn't ask for their review) is never posted without asking.
     prs.push({ ref, ...(title ? { title } : {}), ...(head ? { head } : {}), ...(ci ? { ci } : {}), changed: x.changed === true, ...(gist ? { gist } : {}), ...(x.mention === true ? { mention: true } : {}), notes });
   }
   return { ok: true, prs };
@@ -372,9 +372,9 @@ export interface Pile {
    * their drafted comments. The drafts become those PRs' pre-reads; one card asks to post them all.
    */
   round(taskId: string, raw: unknown): Promise<{ ok: boolean; error?: string; drafted?: number; posted?: { ref: string; link?: string }[]; asking?: number; standing?: ReviewStanding }>;
-  /** D411: a standing permission was just said: post every waiting draft it covers now (its card shrinks or settles). */
+  /** D413: a standing permission was just said: post every waiting draft it covers now (its card shrinks or settles). */
   postWaiting(): Promise<{ taskId: string; posted: { ref: string; link?: string }[] }[]>;
-  /** D411: the GitHub owners the review rounds look at now (a standing permission said without one is bounded by them). */
+  /** D413: the GitHub owners the review rounds look at now (a standing permission said without one is bounded by them). */
   reviewOrgs(): string[];
   /** D394: the round card's answer: Go posts each drafted review once. */
   answerRound(card: Bodies["decision"], r: Bodies["decision_resolved"]): Promise<{ done: number; failed: number }>;
@@ -664,7 +664,7 @@ export function createPile(d: PileDeps): Pile {
    */
   const roundCard = (taskId: string, prevId: string | undefined, unsent: PreRead[]): string | undefined => {
     if (prevId) {
-      // D411: every draft it carried went under what the person said: the card says so, not "no answer".
+      // D413: every draft it carried went under what the person said: the card says so, not "no answer".
       const was = d.log.read({ kinds: ["decision"], beforeSeq: d.log.head() + 1, limit: 2000 }).find((e) => (e.body as Bodies["decision"]).decisionId === prevId)?.body as Bodies["decision"] | undefined;
       const refs = (was?.src?.items ?? []).map((x) => x.item.ref);
       const posted = refs.length > 0 && refs.every((r) => st.reads[r]?.state === "sent");
@@ -687,7 +687,7 @@ export function createPile(d: PileDeps): Pile {
     return body.decisionId;
   };
   /**
-   * D411: post this task's unsent drafts that a standing permission covers (the person said reviews
+   * D413: post this task's unsent drafts that a standing permission covers (the person said reviews
    * go without asking, on these orgs; never a PR that only mentions them), through the one audited
    * write. The first time a permission is used, one line in the conversation lists what went.
    */
@@ -951,7 +951,7 @@ export function createPile(d: PileDeps): Pile {
       for (const k of keys.slice(0, Math.max(0, keys.length - 40))) delete st.reads[k];
       const rounds = (st.rounds ??= {});
       const prev = rounds[taskId];
-      // D411: what the person said may go without asking goes now; the rest waits on one card.
+      // D413: what the person said may go without asking goes now; the rest waits on one card.
       const mentionOf = (ref: string) => r.prs.find((p) => p.ref === ref)?.mention ?? prev?.prs?.find((p) => p.ref === ref)?.mention;
       const posted = await postStanding(taskId, mentionOf);
       // Every draft of this task still unsent goes on the one card (an earlier round's too).

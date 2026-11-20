@@ -2255,7 +2255,7 @@ export const scenarios: Scenario[] = [
     expect: { opens: 1, ackFirst: true, saidAsk: false, notCalled: ["rule_save"], maxChars: 160 },
     rubric: "The user once said they like Codex (a taste, not a rule) and now asks for a flight look-up. Pass if the partner opens one look-up task with one short Chinese ack, and does not save any rule or ask about making one from 'I like Codex'. Pinning Codex for this task is acceptable but not required; it must not claim a rule exists. No booking.",
   },
-  // D411: hel, 2026-11-20 02:43–02:44 UTC (VERIFIED, read only): the author said three times that
+  // D413: hel, 2026-11-20 02:43–02:44 UTC (VERIFIED, read only): the author said three times that
   // reviews go without asking; the partner kept the card, then the drafts, then called it "Ducter's
   // rule". Now Ducter keeps the words as a standing permission the moment they land.
   {

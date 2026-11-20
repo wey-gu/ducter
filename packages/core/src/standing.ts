@@ -1,4 +1,4 @@
-// D411: 不用问我的 / Without asking. What the person says Ducter may do for them from now on without
+// D413: 不用问我的 / Without asking. What the person says Ducter may do for them from now on without
 // asking ("review 做好了直接发别和我确认", "just post the reviews, don't ask me") is kept the moment their
 // message lands, in their words, like a said rule (D401): no card, no Go. The review routine then
 // posts its drafts on the PRs inside it through the same audited write (Done for you), and asks only
@@ -103,7 +103,7 @@ export interface StandingStore {
   /** The Log's sayings not heard yet (said before Ducter kept them), oldest first. */
   backfill(): StandingView[];
   onChange(fn: () => void): () => void;
-  /** Ongoing (D411): a grant was kept: post what waits inside it now. */
+  /** Ongoing (D413): a grant was kept: post what waits inside it now. */
   onGrant(fn: (s: StandingView) => void): () => void;
 }
 
@@ -240,7 +240,7 @@ export function openStanding(o: { log: LogStore; dataDir: string; now?: () => Da
   return store;
 }
 
-/** D411: the person's words are heard as they land, before the partner's turn (as D401's rules). */
+/** D413: the person's words are heard as they land, before the partner's turn (as D401's rules). */
 export function keepStandingAtOnce(log: LogStore, store: StandingStore): () => void {
   return log.subscribe((e) => {
     if (e.kind !== "user_msg" || e.origin !== "user") return;

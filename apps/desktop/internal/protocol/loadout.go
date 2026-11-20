@@ -150,7 +150,7 @@ type RuleRemove struct {
 	ID string `json:"id"`
 }
 
-// StandingView (D411) is one 不用问我的 / Without asking: what the person
+// StandingView (D413) is one 不用问我的 / Without asking: what the person
 // said may go without asking (Action "pr_review"), where (Orgs), in their
 // words (Text).
 type StandingView struct {
@@ -162,7 +162,7 @@ type StandingView struct {
 	UsedAt    string   `json:"usedAt,omitempty"`
 }
 
-// StandingRevoke is 收回 / Take back (D411).
+// StandingRevoke is 收回 / Take back (D413).
 type StandingRevoke struct {
 	T  string `json:"t"` // "standing_revoke"
 	ID string `json:"id"`

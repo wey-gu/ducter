@@ -352,7 +352,7 @@ class AppState {
   /** Who does the tasks (D89): Your rules, this Mac's AI agents (from devices), and who could
    *  do the task whose Switch who does it is open. */
   rules?: RuleView[];
-  /** D411: 不用问我的 / Without asking, from the rules frame. */
+  /** D413: 不用问我的 / Without asking, from the rules frame. */
   standing: StandingView[] = [];
   /** D381: 置顶 / Pinned, newest first, from the home (the default conversation only). */
   pins: PinView[] = [];

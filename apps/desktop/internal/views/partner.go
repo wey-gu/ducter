@@ -472,7 +472,7 @@ func (a *App) trustCard(c *ui.Context) {
 	})
 }
 
-// standingList is 不用问我的 / Without asking (D411), the third list in
+// standingList is 不用问我的 / Without asking (D413), the third list in
 // 要不要先问's card, in the done ink: what the person said may go without
 // asking, where, in their words, each with 收回 / Take back. Nothing at
 // all until they say one.
@@ -487,7 +487,7 @@ func (a *App) standingList(c *ui.Context) {
 	}
 	ui.Box(c).Height(1).Margin(0, t.S5).Background(t.LineSoft).Shrink(0)
 	ui.Column(c.Key("standing")).Gap(t.S3).Padding(t.S4, t.S5, t.S5, t.S5).Children(func() {
-		ui.Text(c, a.L.T("standing.title")).FontSize(t.MD).FontWeight(800).TextColor(t.Done.Ink)
+		uiText(c, a.L.T("standing.title")).FontSize(t.MD).FontWeight(800).TextColor(t.Done.Ink)
 		for _, x := range a.S.Standing {
 			x := x
 			where := a.L.T("standing.where.any")
@@ -498,7 +498,7 @@ func (a *App) standingList(c *ui.Context) {
 			ui.Row(c.Key("standing:" + x.ID)).Gap(t.S3).AlignItems(ui.Start).Children(func() {
 				ui.Box(c).Size(20, 20).Draw(drawCheck(t.Done.Ink)).Shrink(0).Margin(1, 0, 0, 0)
 				ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(2).Children(func() {
-					ui.Text(c, title).FontSize(t.MD).LineHeight(a.leading(1.45))
+					uiText(c, title).FontSize(t.MD).LineHeight(a.leading(1.45))
 					uiText(c, where).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
 					uiText(c, a.L.T("standing.said", x.Text)).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
 				})

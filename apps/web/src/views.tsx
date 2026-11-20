@@ -333,7 +333,7 @@ function answeredWords(d: DecisionState): string {
   const opt = d.resolved?.option ?? (d.pending || "go");
   // D375: D169's offer closed by itself once the plugin was in.
   if (d.resolved?.settled && d.memPlugin) return t("memp.card.done");
-  // D411: a review round's drafts went under what the person said.
+  // D413: a review round's drafts went under what the person said.
   if (d.resolved?.posted) return t("standing.settled");
   if (d.resolved?.by === "default") return t("decision.resolved.default");
   if (opt === "reply") return t("decision.resolved.reply", d.resolved?.text ?? "");
@@ -2653,7 +2653,7 @@ function TalkSettings() {
   );
 }
 
-/** D411: 不用问我的 / Without asking: what the person said may go without asking, each with 收回 / Take back. */
+/** D413: 不用问我的 / Without asking: what the person said may go without asking, each with 收回 / Take back. */
 function StandingList() {
   const xs = A.standing;
   if (!xs.length) return null;

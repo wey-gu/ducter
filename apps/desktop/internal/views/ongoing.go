@@ -356,7 +356,7 @@ func (a *App) reviewLine(r *protocol.ReviewStanding) []string {
 	} else if r.Drafted > 1 {
 		drafted = a.L.T("og.rev.drafted", r.Drafted)
 	}
-	// D411: posted without asking this round, as the person said.
+	// D413: posted without asking this round, as the person said.
 	posted := ""
 	if r.Posted == 1 {
 		posted = a.L.T("og.rev.posted.1")

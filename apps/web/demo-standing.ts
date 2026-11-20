@@ -1,4 +1,4 @@
-// D411: 不用问我的 / Without asking. A review routine on nowledge-co with two drafts on its round card;
+// D413: 不用问我的 / Without asking. A review routine on nowledge-co with two drafts on its round card;
 // then the author's own words (hel, 2026-11-19, read only): 「review 做好了直接发别和我确认」. Ducter keeps
 // it at once, posts what waited (the card settles), says the one first-time line with links, and
 // Settings › Partner lists it under 要不要先问 with 收回. A fake gh (never the real GitHub), a stub

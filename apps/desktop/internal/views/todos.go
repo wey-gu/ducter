@@ -292,6 +292,18 @@ func (a *App) todoChoices(c *ui.Context, s protocol.SourceView) {
 			write = a.L.T("todos.standing.write")
 		}
 	}
+	// D445: the row's line says what the chosen one does, in the source's own terms, and changes with
+	// the pick; a standing go speaks for itself instead.
+	if take == "" && s.WhenNew != "" {
+		take = a.L.T("todos.what.new." + s.WhenNew)
+	}
+	if write == "" && s.WhenDone != "" {
+		k := "todos.what.done." + s.WhenDone
+		if s.Kind == "obsidian" && s.WhenDone == "ask" {
+			k += ".obsidian"
+		}
+		write = a.L.T(k)
+	}
 	block("new", a.L.T("todos.new"), news, s.WhenNew, "todos.new.", take, func(v string) {
 		a.setSource(s.ID, func(x *protocol.SourceView) { x.WhenNew = v })
 		a.send(protocol.SourceSetReq{T: "source_set", ID: s.ID, WhenNew: v})

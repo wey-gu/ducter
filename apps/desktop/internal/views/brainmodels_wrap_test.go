@@ -11,11 +11,12 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 )
 
-// TestPartnerModelsWrapWhenMany: the author's 0.0.91 shot — Codex's real list
+// TestPartnerModelsInOnePillWhenMany: the author's 0.0.91 shot — Codex's real list
 // (five models and more) beside the title squeezed the title column to one
 // character, "用哪个模型" stacked a glyph a line. With more than three models the
-// title keeps its row and the models wrap below it, every one on screen.
-func TestPartnerModelsWrapWhenMany(t *testing.T) {
+// title keeps its row; D445: the chosen model is one pill at its right edge,
+// the rest in its list, every one on screen once it opens.
+func TestPartnerModelsInOnePillWhenMany(t *testing.T) {
 	for _, lang := range []i18n.Lang{i18n.ZH, i18n.EN} {
 		for _, w := range []int{1000, 1400} {
 			app, _ := iaApp(t, lang)
@@ -49,6 +50,23 @@ func TestPartnerModelsWrapWhenMany(t *testing.T) {
 			if r.H > 40 || r.W < 40 {
 				t.Errorf("%s %d: the title %q is squeezed: %+v", lang, w, title, r)
 			}
+			// D445: the chosen one is a pill at the row's right edge, on the title's line; the
+			// rest are in its list, every one on screen once it opens.
+			chosen := f.BrainNow.Models[0].Label
+			p, ok := tt.Find(chosen)
+			if !ok {
+				t.Fatalf("%s %d: no pill %q in %q", lang, w, chosen, tt.Texts())
+			}
+			if p.Y > r.Y+r.H+30 {
+				t.Errorf("%s %d: the pill %+v isn't on the title's row %+v", lang, w, p, r)
+			}
+			if _, ok := tt.Find(f.BrainNow.Models[5].Label); ok {
+				t.Errorf("%s %d: the list shows before the pill is pressed", lang, w)
+			}
+			if err := tt.Click(chosen); err != nil {
+				t.Fatal(err)
+			}
+			tt.Frame()
 			for _, m := range f.BrainNow.Models {
 				b, ok := tt.Find(m.Label)
 				if !ok {

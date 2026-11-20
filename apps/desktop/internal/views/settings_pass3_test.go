@@ -185,7 +185,7 @@ func paneGeometry(tt *ui.Tester, w float32) []string {
 
 // pass3Marks: one thing per pane that only the real shape has, so the fixture can't go thin unseen.
 var pass3Marks = map[string]string{
-	TabPartner:  "GPT-6-Luna",
+	TabPartner:  "GPT-6.2-Sol", // D445: Codex's six are one pill; the chosen one shows
 	TabAccounts: "Nowledge Community",
 	TabTodos:    "wey-gu",
 	TabChats:    "@weys_ducter_bot",

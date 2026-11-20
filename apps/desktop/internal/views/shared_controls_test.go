@@ -25,7 +25,7 @@ var sharedControls = map[string]bool{
 	// D166: an app a source can read, on the accounts card
 	"appTile": true,
 	// D185: a card's property that opens a list, and the list's rows (New task)
-	"pill": true, "menuRow": true, "choice": true, "foldHead": true,
+	"pill": true, "menuRow": true, "menuRowEl": true, "choice": true, "foldHead": true,
 	// D289: a group's add row, and a destructive action before it is confirmed
 	"addRow": true, "quietDanger": true, "openRow": true,
 	// D296: a row that goes elsewhere with its tile

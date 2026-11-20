@@ -416,7 +416,10 @@ export function Seg<V extends string | number>(p: { label: string; value: V | un
     if (!el) return;
     const fit = () => {
       el.classList.remove("stack");
-      el.classList.toggle("stack", el.scrollWidth > el.clientWidth + 1);
+      // D445: a choice whose own words overflow it counts too (the buttons shrink before the row does:
+      // To-do sources' "Take it directly" ran into "Don't tell me" at 390).
+      const over = el.scrollWidth > el.clientWidth + 1 || [...el.children].some((b) => b.scrollWidth > b.clientWidth + 1);
+      el.classList.toggle("stack", over);
     };
     fit();
     if (typeof ResizeObserver === "undefined") return;

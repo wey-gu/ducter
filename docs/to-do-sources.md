@@ -177,7 +177,7 @@ after their comment; the rest close themselves when their pull request is merged
 
 ## When a new one comes
 
-Each source has **When a new one comes**:
+Each source has **When a new one comes**; the line under it says what the one you picked does, and changes as you pick:
 
 - **Tell me** (GitHub's default): your partner mentions new ones in one short line, and asks which to
   take.

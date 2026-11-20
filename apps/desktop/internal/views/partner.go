@@ -29,11 +29,14 @@ type partnerState struct {
 	// fold shows the rest.
 	talkOpen, talkMore bool
 	// The quiet hours being edited, and the server's value they came from.
-	qStart, qEnd time.Time
-	qFrom        string
-	toast        string
-	toastAt      time.Time
-	toastTone    noticeTone // set with every toast: an error never wears the done look (D158)
+	// D445: a quiet-hours end's list of half hours is open; qJust is its first
+	// frame, when the chosen time is brought into sight.
+	qOpenStart, qOpenEnd, qJust bool
+	// D445: the model list under 想事情用 is open.
+	modelOpen bool
+	toast     string
+	toastAt   time.Time
+	toastTone noticeTone // set with every toast: an error never wears the done look (D158)
 	// forgetting: the noted lines asked to be forgotten, seq -> title.
 	forgetting map[int64]string
 	// Adding a connection (D96): the form, where it runs, the address and
@@ -288,7 +291,8 @@ func (a *App) talkCard(c *ui.Context, st *protocol.Settings) {
 			name = lang.Autonym(cur)
 		}
 		// D424: the picker says which language; no line under the row repeats it.
-		a.row(c, "talk", a.L.T("settings.talk.row"), "", func() {
+		// D445: its voice does instead: the partner's reply in that language, a small bubble.
+		a.rowUnder(c, "talk", a.L.T("settings.talk.row"), func() { a.talkSample(c, cur) }, func() {
 			e, click := a.pill(c, "talk-lang", spoken(a.L, a.L.T("partner.talk.title"), name), ps.talkOpen, func() {
 				uiText(c, name).FontSize(t.MD).TextColor(t.Ink).SingleLine().AccessHidden(true)
 			})
@@ -355,6 +359,8 @@ func (a *App) notifyPanel(c *ui.Context) {
 		return
 	}
 	st := a.S.Settings
+	// D445: the notification itself, live with every choice below (D43: shown, not explained).
+	a.notifyPreview(c, st, a.defaultWaitLabel(st.DefaultAfterMin))
 	a.group(c, "notify", a.L.T("partner.notify.title"), "", func() {
 		note := a.L.T("partner.notify.on.note")
 		if !st.Notify {
@@ -363,6 +369,7 @@ func (a *App) notifyPanel(c *ui.Context) {
 		if v, ch := a.toggleRow(c, "notify", a.L.T("partner.notify.on"), note, st.Notify); ch {
 			st.Notify = v
 			a.SetSettings(protocol.SettingsPatch{Notify: &v})
+			a.cheer()
 			if v {
 				a.notifyTurnedOn()
 			}
@@ -381,21 +388,24 @@ func (a *App) notifyPanel(c *ui.Context) {
 				a.SetSettings(protocol.SettingsPatch{ClearQuiet: true})
 				a.say("notify", a.L.T("said.quiet.off"))
 			}
+			a.cheer()
 		}
 		if q := st.Quiet; q != nil {
-			if from := q.Start + "-" + q.End; ps.qFrom != from {
-				ps.qStart, ps.qEnd, ps.qFrom = clockTime(q.Start), clockTime(q.End), from
-			}
+			// D445: each end a pill opening the half hours, 24-hour in every language (the
+			// region's 12-hour field said 11:00 PM in Chinese; Ducter's own words say 23:00).
 			a.row(c, "quiet-range", a.L.T("settings.quiet.hours"), "", func() {
-				s := ui.TimeInput(c.Key("quiet-start"), &ps.qStart).Label(a.L.T("partner.quiet"))
-				uiText(c, a.L.T("partner.quiet.to")).FontSize(t.MD).TextColor(t.InkMuted)
-				e := ui.TimeInput(c.Key("quiet-end"), &ps.qEnd).Label(spoken(a.L, a.L.T("partner.quiet"), a.L.T("partner.quiet.to")))
-				if s.Changed() || e.Changed() {
-					nq := &protocol.QuietHours{Start: ps.qStart.Format("15:04"), End: ps.qEnd.Format("15:04"), TZ: q.TZ}
-					ps.qFrom = nq.Start + "-" + nq.End
+				set := func(nq *protocol.QuietHours) {
 					st.Quiet = nq
 					a.SetSettings(protocol.SettingsPatch{Quiet: nq})
 					a.say("notify", a.L.T("said.quiet", nq.Start, nq.End))
+					a.cheer()
+				}
+				if v, ok := a.timePill(c, "quiet-start", a.L.T("partner.quiet"), q.Start, &ps.qOpenStart, &ps.qJust); ok {
+					set(&protocol.QuietHours{Start: v, End: q.End, TZ: q.TZ})
+				}
+				uiText(c, a.L.T("partner.quiet.to")).FontSize(t.MD).TextColor(t.InkMuted)
+				if v, ok := a.timePill(c, "quiet-end", spoken(a.L, a.L.T("partner.quiet"), a.L.T("partner.quiet.to")), q.End, &ps.qOpenEnd, &ps.qJust); ok {
+					set(&protocol.QuietHours{Start: q.Start, End: v, TZ: q.TZ})
 				}
 			})
 		}
@@ -423,6 +433,7 @@ func (a *App) notifyPanel(c *ui.Context) {
 				st.DefaultAfterMin = protocol.DefaultAfterChoices[i]
 				a.SetSettings(protocol.SettingsPatch{DefaultAfterMin: st.DefaultAfterMin})
 				a.say("default", a.L.T("said.default", labels[i]))
+				a.cheer()
 			}
 		})
 	})
@@ -980,15 +991,6 @@ func itoa(n int64) string {
 		b[i] = '-'
 	}
 	return string(b[i:])
-}
-
-// clockTime is "23:00" as a time today, for TimeInput.
-func clockTime(hhmm string) time.Time {
-	tm, err := time.ParseInLocation("15:04", hhmm, time.Local)
-	if err != nil {
-		return time.Date(2000, 1, 1, 23, 0, 0, 0, time.Local)
-	}
-	return tm
 }
 
 // localZone is this Mac's IANA zone ("Asia/Shanghai"), for quiet hours.

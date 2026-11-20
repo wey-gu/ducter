@@ -18020,3 +18020,35 @@ a.pr:hover { box-shadow: inset 0 0 0 1px var(--line-2); }
 .talk-floor-row .talk-floor {
   margin: 0;
 }
+
+/* ---------- D445: Settings shows what a setting does, live (settings-delight.tsx) ---------- */
+/* A preview stage on the paper (the Mac's lookPreview and notifyPreview): the paper's own tint, a hairline,
+   the large corners; what is inside follows the page's choices at once. */
+.pv-stage { flex-direction: row; align-items: flex-end; gap: var(--s5); padding: var(--s5) var(--s6); border-radius: var(--r-xl); background: var(--bg); border: 1px solid var(--line); }
+.notify-pv { flex-direction: column; align-items: center; gap: calc(var(--s3) + 4px); }
+.pv-note { display: flex; align-items: center; gap: var(--s3); width: 100%; max-width: 460px; padding: var(--s3) var(--s4); border-radius: var(--r-lg); background: var(--surface); box-shadow: var(--base); transition: background var(--t-med) var(--ease), box-shadow var(--t-med) var(--ease); }
+.pv-note.off { background: var(--surface-sunken); box-shadow: none; }
+.pv-note.off .pv-ask, .pv-note.off b { color: var(--ink-soft); }
+.pv-note .grow { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pv-head { display: flex; align-items: center; gap: var(--s2); }
+.pv-head b { flex: 1; min-width: 0; font-size: var(--sm); font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pv-head small { flex: none; font-size: var(--xs); color: var(--ink-muted); }
+.pv-ask { font-size: var(--md); line-height: 1.45; }
+.pv-wait { font-size: var(--sm); line-height: 1.5; color: var(--ink-muted); }
+.pv-under { margin: 0; text-align: center; font-size: var(--sm); font-weight: 600; line-height: 1.5; color: var(--ink-soft); animation: said-in var(--t-across) var(--ease-push); }
+.look-pv .pv-talk { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--s2); }
+.pv-you { align-self: flex-end; max-width: 84%; padding: 10px 14px; border-radius: var(--bubble); background: var(--user-bubble); color: var(--on-user-bubble); font-size: var(--md); line-height: 1.5; }
+.pv-reply { align-self: flex-start; max-width: 84%; padding: 10px 14px; border-radius: var(--bubble-partner); background: var(--partner-bubble); color: var(--on-partner-bubble); box-shadow: 0 2px 0 var(--line); font-size: var(--md); line-height: 1.5; }
+.pv-details, .pv-noted { display: inline-flex; align-items: center; gap: var(--s1); padding-left: 14px; font-size: var(--sm); font-weight: 700; color: var(--ink-soft); }
+.pv-noted { font-weight: 500; color: var(--ink-muted); }
+.pv-noted svg path { fill: none; stroke: var(--done-ink); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+/* Replies in's voice: the partner's reply in the language picked, a small partner bubble under the title. */
+.pv-sample { align-self: flex-start; display: inline-block; margin-top: var(--s2); padding: 6px 12px; border-radius: var(--bubble-partner); background: var(--partner-bubble); color: var(--on-partner-bubble); border: 1px solid var(--line-soft); box-shadow: 0 2px 0 var(--line); font-size: var(--sm); line-height: 1.5; animation: said-in var(--t-across) var(--ease-push); }
+.talk-row .grow { display: flex; flex-direction: column; align-items: flex-start; }
+@media (max-width: 520px) {
+  .pv-stage { padding: var(--s4); gap: var(--s3); }
+  .look-pv .avatar { width: 56px !important; height: 56px !important; }
+}
+/* To-do sources: the chosen one's consequence rises in as the pick changes. */
+.chat-row small.what { animation: said-in var(--t-across) var(--ease-push); }
+@media (prefers-reduced-motion: reduce) { .pv-under, .pv-sample, .chat-row small.what { animation: none; } .pv-note { transition: none; } }

@@ -1,6 +1,7 @@
 package views
 
 import (
+	"math"
 	"strings"
 	"time"
 
@@ -59,7 +60,7 @@ func (a *App) headRow(c *ui.Context, key string, tile func(), name, line string,
 	a.sep(c)
 	ui.Row(c.Key("head:"+key)).Gap(t.S3).Padding(t.S4, t.S5).MinHeight(72).AlignItems(ui.Center).Children(func() {
 		a.tileCol(c, tile)
-		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(2).Children(func() {
+		a.wordsThenControl(c, func() {
 			uiText(c, name).Font(t.Display).FontSize(t.LG).FontWeight(800).LineHeight(1.3)
 			if line != "" {
 				w := 600
@@ -68,10 +69,7 @@ func (a *App) headRow(c *ui.Context, key string, tile func(), name, line string,
 				}
 				uiText(c, line).FontSize(t.SM).FontWeight(w).LineHeight(a.leading(1.5)).TextColor(a.sideInk(tone))
 			}
-		})
-		if control != nil {
-			ui.Row(c).Shrink(0).Gap(t.S2).AlignItems(ui.Center).Children(control)
-		}
+		}, control)
 	})
 }
 
@@ -82,31 +80,67 @@ func (a *App) tileRow(c *ui.Context, key string, tile func(), title, line string
 	a.sep(c)
 	ui.Row(c.Key("trow:"+key)).Gap(t.S3).Padding(t.S4, t.S5).MinHeight(64).AlignItems(ui.Center).Children(func() {
 		a.tileCol(c, tile)
-		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(2).Children(func() {
+		a.wordsThenControl(c, func() {
 			if title != "" {
 				uiText(c, title).FontSize(t.MD).FontWeight(700).LineHeight(a.leading(1.4))
 			}
 			if line != "" {
 				uiText(c, line).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
 			}
-		})
-		if control != nil {
-			ui.Row(c).Shrink(0).Gap(t.S2).AlignItems(ui.Center).Children(control)
-		}
+		}, control)
+	})
+}
+
+// rowWordsMin is the least width a row's words keep beside its control
+// (D445): narrower, the control drops under the words on the text column,
+// as a phone's row does (D273), never squeezing the words to a letter a line
+// (To-do sources' three-way choices did at the window's narrowest, 760).
+const rowWordsMin = 160
+
+// wordsThenControl is a row's words and its control after the tile column:
+// side by side, the control at the right edge, while the words keep
+// rowWordsMin; else the control wraps under them on the same text edge.
+func (a *App) wordsThenControl(c *ui.Context, words func(), control func()) {
+	t := a.T
+	if control == nil {
+		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(2).Children(words)
+		return
+	}
+	ui.Row(c).Grow(1).Basis(0).MinWidth(0).Wrap().Gap(t.S3).AlignItems(ui.Center).Children(func() {
+		ui.Column(c).Grow(1).Basis(rowWordsMin).MinWidth(0).Gap(2).Children(words)
+		ui.Row(c).Shrink(0).MaxWidthPercent(100).Gap(t.S2).AlignItems(ui.Center).Children(control)
 	})
 }
 
 // paneWait is a pane still being read (D432): the shape of its first group,
 // a soft sunken square in the tile column and the word on the text column,
 // so the page never jumps from a bare line on the paper to its cards. The
-// web's `Waiting` (set-grid.tsx).
+// web's `Waiting` (set-grid.tsx). D445: the square breathes as the web's
+// does (its tint toward the card's surface and back, every 1.6 s), so a
+// pane that is reading looks alive, not stuck; still under reduced motion.
 func (a *App) paneWait(c *ui.Context, key, text string) {
 	t := a.T
+	tint := t.SurfaceSunken
+	if !c.Preferences().ReduceMotion {
+		tint = t.SurfaceSunken.Mix(t.Surface, waitBreath(c.Now()))
+		c.After(50 * time.Millisecond)
+	}
 	a.group(c, "wait:"+key, "", "", func() {
 		a.tileRow(c, "wait:"+key, func() {
-			ui.Box(c).Width(40).Height(40).Radius(t.RadiusSM).Background(t.SurfaceSunken)
+			ui.Box(c.Key("wait-tile")).Width(40).Height(40).Radius(t.RadiusSM).Background(tint).AccessHidden(true)
 		}, "", text, nil)
 	})
+}
+
+// waitBreathPeriod is one breath of a waiting pane's square: the web's
+// own-pulse (1.6 s), out of the reading rhythm.
+const waitBreathPeriod = 1600 * time.Millisecond
+
+// waitBreath is how far the square has faded toward the surface at now:
+// 0 at the start of a breath, 0.65 at its middle (the web's 0.35 opacity).
+func waitBreath(now time.Time) float32 {
+	ph := float64(now.UnixMilli()%waitBreathPeriod.Milliseconds()) / float64(waitBreathPeriod.Milliseconds())
+	return 0.65 * 0.5 * float32(1-math.Cos(2*math.Pi*ph))
 }
 
 // textBlock is a block of a group on the text column (past the tile

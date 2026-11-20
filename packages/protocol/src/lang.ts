@@ -29,6 +29,14 @@ export interface LanguageInfo {
 export const LANGUAGES: readonly LanguageInfo[] = table.languages;
 const BY_TAG = new Map(LANGUAGES.map((l) => [l.tag, l]));
 
+/**
+ * D445: the partner's one-line reply in a common language (Look and sound's preview answer), shown under
+ * Replies in so the person sees the voice they pick; undefined for a language without one.
+ */
+export function replySample(tag: LangTag): string | undefined {
+  return (table.samples as Record<string, string>)[tag];
+}
+
 /** The interface languages with complete tables. The rest fall back (fallbackChain). */
 export const UI_LANGS: readonly LangTag[] = LANGUAGES.filter((l) => l.hasUI).map((l) => l.tag);
 

@@ -251,8 +251,19 @@ export function versionConnects(v: readonly number[] | undefined): boolean {
 }
 
 /** JSON objects in nmem's output (stdout, then stderr; whole text, then line by line). */
-/** D432: the one command that puts pipx in on this home, for its own system: shown to copy, never run. */
-export const pipxCmd = (platform: string = process.platform) => (platform === "darwin" ? "brew install pipx" : "sudo apt install pipx");
+/**
+ * D432: the one command that puts pipx in on this home, for its own system: shown to copy, never run.
+ * D445: on Linux, the package manager the home has says which (Fedora's dnf, Arch's pacman, openSUSE's
+ * zypper); none found, apt's line (the commonest).
+ */
+export const pipxCmd = (platform: string = process.platform, has: (tool: string) => boolean = () => false) => {
+  if (platform === "darwin") return "brew install pipx";
+  if (has("apt-get")) return "sudo apt install pipx";
+  if (has("dnf")) return "sudo dnf install pipx";
+  if (has("pacman")) return "sudo pacman -S python-pipx";
+  if (has("zypper")) return "sudo zypper install python3-pipx";
+  return "sudo apt install pipx";
+};
 
 function jsonIn(...texts: string[]): any[] {
   const out: any[] = [];
@@ -891,7 +902,7 @@ export function createBridgeLink(opts: {
     }
     if (!p) {
       const plan = await freshPlan();
-      return { state: "install_mem", identity: agent, home, canRun: !!plan, ...(plan ? {} : { need: "pipx" as const, cmd: pipxCmd() }), ...failed };
+      return { state: "install_mem", identity: agent, home, canRun: !!plan, ...(plan ? {} : { need: "pipx" as const, cmd: pipxCmd(process.platform, (tool) => !!toolOf(tool, env, sys)) }), ...failed };
     }
     if (!p.supported) {
       const copy = copyHere();

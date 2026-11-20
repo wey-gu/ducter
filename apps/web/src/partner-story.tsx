@@ -8,7 +8,8 @@ import { PARTNER_RESERVE } from "@ducter/protocol/src/loadout.ts";
 import { useState } from "preact/hooks";
 import { A } from "./app.ts";
 import { Coin } from "./coin.tsx";
-import { AddRow, Btn, Choice, DangerButton, Seg, Switch } from "./controls.tsx";
+import { AddRow, Btn, DangerButton, Seg, Switch } from "./controls.tsx";
+import { Select } from "./menu.tsx";
 import { KeyCard } from "./first-words.tsx";
 import { harnessName, modelName, padEnd, stamp, when } from "./format.ts";
 import { GBlock, GFoot, GHead, GRow, Group, Said, say, Tile } from "./set-grid.tsx";
@@ -132,20 +133,13 @@ export function ThinksSection() {
           ))}
         {models.length > 1 && !choosing && model && (
           <GRow title={t("loadout.brain.model")} line={modelLine(model)}>
-            {models.length <= SEG_MAX && <Seg label={t("loadout.brain.model")} value={model.id} options={models.map((m) => ({ v: m.id, label: m.label || m.id }))} onPick={pickModel} />}
+            {models.length <= SEG_MAX ? (
+              <Seg label={t("loadout.brain.model")} value={model.id} options={models.map((m) => ({ v: m.id, label: m.label || m.id }))} onPick={pickModel} />
+            ) : (
+              /* D445: an agent's own longer list (Codex's six) as one pop-up at the row's right edge, as the reply language, never chips wrapping onto a second line. */
+              <Select label={t("loadout.brain.model")} value={model.id} options={models.map((m) => ({ v: m.id, label: m.label || m.id }))} onPick={pickModel} />
+            )}
           </GRow>
-        )}
-        {/* D390: an agent's own longer list (Codex's) as the task card's chips, wrapping under the row. */}
-        {models.length > SEG_MAX && !choosing && model && (
-          <GBlock>
-            <div class="nt-chip-row" role="radiogroup" aria-label={t("loadout.brain.model")}>
-              {models.map((m) => (
-                <Choice key={m.id} label={m.label || m.id} on={m.id === model.id} onClick={() => pickModel(m.id)}>
-                  {m.label || m.id}
-                </Choice>
-              ))}
-            </div>
-          </GBlock>
         )}
         {(others.length > 0 || models.length > 1) && <GFoot note={t("loadout.brain.keep")} />}
       </Group>
@@ -154,7 +148,7 @@ export function ThinksSection() {
   );
 }
 
-/** D390: up to this many models fit a segmented control; more (Codex's own list) wrap as chips. */
+/** D390: up to this many models fit a segmented control; more (Codex's own list) are one pop-up (D445). */
 const SEG_MAX = 3;
 
 /** 做事的 / Who does the tasks. */

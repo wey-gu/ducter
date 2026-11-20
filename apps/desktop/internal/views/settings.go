@@ -532,7 +532,8 @@ func (a *App) how(c *ui.Context, key, about, detail string) {
 func (a *App) explainedRow(c *ui.Context, key, label, help, detail string, control func()) {
 	t := a.T
 	a.sep(c)
-	ui.Row(c.Key("row:"+key)).Gap(t.S5).Padding(t.S4, t.S5).MinHeight(68).AlignItems(ui.Center).Children(func() {
+	// D445: the same least height as tileRow (64), so a pane's rows read as one rhythm.
+	ui.Row(c.Key("row:"+key)).Gap(t.S5).Padding(t.S4, t.S5).MinHeight(64).AlignItems(ui.Center).Children(func() {
 		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(2).Children(func() {
 			uiText(c, label).FontSize(t.MD).FontWeight(700).LineHeight(1.4)
 			if help != "" {
@@ -593,16 +594,15 @@ func (a *App) sep(c *ui.Context) {
 func (a *App) row(c *ui.Context, key, label, help string, control func()) {
 	t := a.T
 	a.sep(c)
-	ui.Row(c.Key("row:"+key)).Gap(t.S5).Padding(t.S4, t.S5).MinHeight(68).AlignItems(ui.Center).Children(func() {
-		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(2).Children(func() {
+	// D445: the same least height as tileRow (64), so a pane's rows read as one rhythm.
+	ui.Row(c.Key("row:"+key)).Padding(t.S4, t.S5).MinHeight(64).AlignItems(ui.Center).Children(func() {
+		// D445: the words keep their width; a narrow window drops the control under them.
+		a.wordsThenControl(c, func() {
 			uiText(c, label).FontSize(t.MD).FontWeight(700).LineHeight(1.4)
 			if help != "" {
 				uiText(c, help).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
 			}
-		})
-		if control != nil {
-			ui.Row(c).Shrink(0).Gap(t.S2).AlignItems(ui.Center).Children(control)
-		}
+		}, control)
 	})
 }
 

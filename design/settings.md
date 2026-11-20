@@ -51,6 +51,8 @@ with the author's accounts laid over it (`.shots/d296/before`, `.shots/d296/afte
 | A choice of a few as a row, the choice at the right edge (D432) | `tileRow` with `choices` | `chat-row` with `Seg` | 等多久再按默认做, 每天最多, To-do sources' 新的来了 and 做完以后 |
 | A pane still being read (D432) | `paneWait` | `Waiting` | Partner and Notifications (Mac), To-do sources, Chat apps (web), Passwords & cards |
 | A line to copy (D432) | `lendCopy` | `CopyLine` | Memory's and Agent messaging's missing tool |
+| A live preview stage on the paper (D150, D445) | `lookPreview`, `notifyPreview` | `LookPreview`, `NotifyPreview` (`settings-delight.tsx`) | Look and sound / This phone, Notifications |
+| A choice of many as one pill (D445) | `pill` + `listPanel` (`modelPill`, `timePill`) | `Select` | Replies in, Codex's models, quiet hours (Mac) |
 | A group's note: under its heading, never under the card (D289, D365) | `group(…, note, …)` | `<p class="g-note">` after the heading | To-do sources' empty line; what your AI agents keep; the trust lists |
 | The rail's chosen tab | the knob under the tabs, sliding (`railKnob`, `Nav.Across`) | — (the phone's list pushes, D290) | Every move between panes |
 | A pane coming in | `paneEnter`: a short rise from the side the knob came from | the pushed page from the trailing side, the list back from the leading side (D290) | Every move between panes |
@@ -387,9 +389,38 @@ Mac at 1400 and 760 and the web at 1400 and 390, zh and en, light and dark). The
 - **One text edge.** Under a pushed page's lede, 怎么做到的 keeps the lede's edge (web).
 - **A title is not said again under its card.** This phone / This computer lost **只改这台手机上的样子。**; its
   voice switch lost the **语音** heading; where the voice goes is behind 怎么做到的 while it works.
+Where it runs and About already read in a look and are unchanged. (The Mac's quiet hours then followed the
+region's hour cycle; D445 made them 24-hour pills everywhere.)
 
-Where it runs and About already read in a look and are unchanged. The Mac's quiet-hours fields follow the
-region's hour cycle (MyGo's `TimeInput`), so a 24-hour Mac shows 23:00.
+## Delight and flow, pane by pane (D445)
+
+The author on round two: every pane loved, full of feeling, easy and smooth. D432 fixed shapes; this pass
+walked each pane's flows (connect, change a choice, recover, undo) as H, C and F on the Mac at 1400 and 760
+and the web at 1400 and 390, zh and en, light and dark (research/192, `.shots/settings-delight/{before,after}`).
+The rules it leaves:
+
+- **Show what a setting does, live (D43).** Where a choice's consequence is a thing a person can picture,
+  the pane draws it and it follows every pick at once: **Notifications** opens with the notification itself
+  (the partner's face, its name, **现在**, a real ask **CI 有两种修法，先试改动小的那个？**, the person's own wait
+  **30 分钟内没回，我就先试它。**, and under it the quiet hours **23:00 到 08:00 不响，到点一起告诉你。**, or
+  **随时会响。**, or with notifications off the card sunk into the paper and **不弹出来：它在「手头的事」里等你。**);
+  **This phone / This computer** has Look and sound's stage, as the Mac (web `LookPreview`); **回你用的语言**
+  shows its voice, the preview's reply in the language picked (日本語 → **はい、明日の 9:00 にお知らせします。**,
+  `languages.json`'s `samples`); **To-do sources'** rows say what the chosen one does in the source's terms
+  (**做完先问你，再在 issue 下留言。**, **做完在笔记里勾掉；想撤回，把勾点掉就行。**), a standing go still speaking
+  for itself. Mac `notifyPreview`, `talkSample` (`settings_delight.go`); web `settings-delight.tsx`.
+- **A success is felt on the thing it changed.** The partner on a preview smiles for a moment after a change
+  on its pane (`cheer`, 1.6 s, the Mac's Look did already); the said line stays the one word (D296).
+- **A choice of many is one pill at the row's right edge** opening its list, as the reply language:
+  Codex's six models (never a tray wrapping one model onto a second line), the quiet hours' two ends (the
+  half hours, 24-hour in every language and region, the chosen one brought into sight). Mac `modelPill`,
+  `timePill`; web `Select`.
+- **A row's words keep their width.** At the Mac's narrowest a row's control drops under its words on the
+  text edge once the words would have less than 160 (`wordsThenControl`, for `row`, `tileRow`, `headRow`);
+  To-do sources' choices had squeezed their titles to a letter a line at 760. On the web a choice whose own
+  words overflow it stacks (`Seg`). Every row is at least 64 tall, `row` and `tileRow` alike.
+- **Waiting looks alive.** The Mac's waiting square breathes as the web's (1.6 s, still under reduced motion);
+  the web's Notifications waits in its shape too.
 
 ## Not done
 

@@ -35,6 +35,8 @@ On a phone, tap the gear at the top right (or your partner's face or name at the
 Settings opens as a list of the same sections (**Partner**, **Memory**, **Notifications**, **Accounts**, **Your devices**, **This phone**), and tapping one opens
 it. **This phone** (**This computer** in a browser on a computer) holds what is this device's own: **Light and dark** (**Follow the system**, **Light** or **Dark**),
 the language of its screens, Details in the conversation, and reading replies aloud when you talk by voice.
+A small preview at the top shows your partner, a message of yours and its reply as they look here, and
+changes the moment you pick something.
 
 ## Partner
 
@@ -51,7 +53,8 @@ At the top is your partner, its name and one line: where it lives and what it th
   says when your partner answers again. With Claude Code, pick **Opus** or **Sonnet**; the line under the
   choice says what the one you picked is like (Opus thinks the deepest, Sonnet answers faster);
   with DeepSeek Harness, or pi signed in to DeepSeek, pick DeepSeek's **V4 Pro** (smartest) or
-  **Flash** (faster replies). When another AI agent is signed in there, **Switch** lists it with
+  **Flash** (faster replies). An AI agent with a longer list of models (Codex lists six) shows the one
+  in use as a button at the end of the row; click it to pick another. When another AI agent is signed in there, **Switch** lists it with
   **Use this**. Switching keeps its name, what it remembers and your conversation; the new choice
   takes over from your next message. On every one of them your partner only reads and decides: it
   can't change your files or run commands itself; that is what its tasks do.
@@ -94,7 +97,7 @@ At the top is your partner, its name and one line: where it lives and what it th
   keeps the one you were using. Pick a language (简体中文, 繁體中文, English, 日本語, 한국어,
   Español and more under **Other language…**) and it always answers in that one. Ducter's own
   screens are in Chinese or English for now; a task's results are shown in the language you
-  talk in.
+  talk in. Under the choice, a short reply from your partner shows how it sounds in that language.
 - **What your AI agents keep.** **Read what they keep**: lists the conversations you had in Claude
   Code, Codex and pi on your home computer in Past tasks, and lets your partner find what to pick up
   when you ask it to look. Tap **How it works** under the switch to see exactly what is read: only
@@ -236,9 +239,14 @@ and once from your partner. Ducter doesn't change Nowledge Mem's own settings.
 
 ## Notifications
 
+At the top, a preview shows a notification from your partner as you would get it: its question, how
+long it waits before going with its suggestion, and your quiet hours under it. It changes as you change
+anything on the page, and with notifications off it shows where the question waits instead.
+
 - **Notifications** turns the nudges on this Mac and your connected phones on or off. With them
   off, anything that needs you waits in the conversation and in On hand.
-- **Quiet hours** holds notifications between two times, 23:00 to 08:00 at first. When the
+- **Quiet hours** holds notifications between two times, 23:00 to 08:00 at first. On the Mac, click
+  either time to pick another, on the hour or the half hour. When the
   quiet hours end, you hear about everything that came up during them.
 - **If you don't answer** sets how long a decision waits before your partner goes with its
   suggested default: 10 minutes, 30 minutes, 1 hour or 2 hours. This applies only to things

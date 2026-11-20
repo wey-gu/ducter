@@ -56,8 +56,8 @@ func (a *App) anywhereInfo(c *ui.Context, dv *protocol.DeviceView) {
 		if !awake {
 			return
 		}
-		ui.Text(c, a.L.T("anywhere.need")).FontSize(t.SM).TextColor(t.Ink).LineHeight(a.leading(1.55))
-		ui.Text(c, a.L.T("anywhere.setup.what")).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(a.leading(1.5))
+		uiText(c, a.L.T("anywhere.need")).FontSize(t.SM).TextColor(t.Ink).LineHeight(a.leading(1.55))
+		uiText(c, a.L.T("anywhere.setup.what")).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(a.leading(1.5))
 		answer()
 		ui.Row(c).Children(func() {
 			if a.button(c, a.L.T("anywhere.setup"), btnPrimary, t.ControlSM, t.Bg) {
@@ -68,7 +68,7 @@ func (a *App) anywhereInfo(c *ui.Context, dv *protocol.DeviceView) {
 	}
 	switch any.State {
 	case "off":
-		ui.Text(c, a.L.T("anywhere.kept", any.Hostname)).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(a.leading(1.5))
+		uiText(c, a.L.T("anywhere.kept", any.Hostname)).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(a.leading(1.5))
 		if awake {
 			ui.Row(c).Children(func() {
 				if a.button(c, a.L.T("anywhere.turnOn"), btnPrimary, t.ControlSM, t.Bg) {
@@ -102,14 +102,14 @@ func (a *App) anywhereInfo(c *ui.Context, dv *protocol.DeviceView) {
 		return
 	}
 	if a.S.Reach.Address != "" {
-		ui.Text(c, a.S.Reach.Address).Font(t.Mono).FontSize(t.XS).TextColor(t.Ink).Selectable().MaxLines(2)
+		uiText(c, a.S.Reach.Address).Font(t.Mono).FontSize(t.XS).TextColor(t.Ink).Selectable().MaxLines(2)
 	}
 	a.infoText(c, a.L.T("anywhere.who"))
 	how := a.L.T("anywhere.edge")
 	if any.How == "own" {
 		how = a.L.T("anywhere.own")
 	}
-	ui.Text(c, how).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(a.leading(1.5))
+	uiText(c, how).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(a.leading(1.5))
 }
 
 // anywhereSteps is the setup's list, one drawn mark per step, then the
@@ -136,7 +136,7 @@ func (a *App) anywhereSteps(c *ui.Context, s *protocol.AnywhereSetup, awake bool
 			ui.Column(c).Gap(2).Children(func() {
 				ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
 					a.glyph(c, 18, draw)
-					ui.Text(c, a.anywhereStep(st.ID, s.Hostname)).FontSize(t.SM).TextColor(col).LineHeight(a.leading(1.4))
+					uiText(c, a.anywhereStep(st.ID, s.Hostname)).FontSize(t.SM).TextColor(col).LineHeight(a.leading(1.4))
 				})
 				line := ""
 				if st.ID == "name" && st.State == "waiting" {
@@ -147,7 +147,7 @@ func (a *App) anywhereSteps(c *ui.Context, s *protocol.AnywhereSetup, awake bool
 				}
 				if line != "" {
 					ui.Row(c).Padding(0, 0, 0, 18+t.S2).Children(func() {
-						ui.Text(c, line).FontSize(t.XS).TextColor(col).LineHeight(a.leading(1.45))
+						uiText(c, line).FontSize(t.XS).TextColor(col).LineHeight(a.leading(1.45))
 					})
 				}
 			})
@@ -159,7 +159,7 @@ func (a *App) anywhereSteps(c *ui.Context, s *protocol.AnywhereSetup, awake bool
 			if l.Opened {
 				key = "anywhere.login.opened"
 			}
-			ui.Text(c, a.L.T(key)).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(a.leading(1.5))
+			uiText(c, a.L.T(key)).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(a.leading(1.5))
 			ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
 				if !l.Opened && len(l.QR) > 0 {
 					qrBox(c, l.QR, 96, t.Ink, t.Surface)
@@ -169,7 +169,7 @@ func (a *App) anywhereSteps(c *ui.Context, s *protocol.AnywhereSetup, awake bool
 						a.openLink(l.URL)
 					}
 					if !l.Opened && len(l.QR) > 0 {
-						ui.Text(c, a.L.T("anywhere.login.qr")).FontSize(t.XS).TextColor(t.InkMuted)
+						uiText(c, a.L.T("anywhere.login.qr")).FontSize(t.XS).TextColor(t.InkMuted)
 					}
 				})
 			})
@@ -218,7 +218,7 @@ func (a *App) anywhereOff(c *ui.Context, dv *protocol.DeviceView) {
 		return
 	}
 	if s.anywhereOff {
-		ui.Text(c, a.L.T("anywhere.off.note", a.deviceName(dv))).FontSize(t.XS).TextColor(t.InkSoft).LineHeight(a.leading(1.5))
+		uiText(c, a.L.T("anywhere.off.note", a.deviceName(dv))).FontSize(t.XS).TextColor(t.InkSoft).LineHeight(a.leading(1.5))
 	}
 	ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
 		if s.anywhereOff {

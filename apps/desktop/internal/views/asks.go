@@ -109,9 +109,9 @@ func (a *App) askRow(c *ui.Context, p theme.Presence, title, body string, action
 			ui.Image(c, bmp).Size(48, 48).Shrink(0)
 		}
 		ui.Column(c).Grow(1).MinWidth(0).Gap(2).Children(func() {
-			ui.Text(c, title).FontSize(t.MD).FontWeight(700).LineHeight(1.4)
+			uiText(c, title).FontSize(t.MD).FontWeight(700).LineHeight(1.4)
 			if body != "" {
-				ui.Text(c, body).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.45)
+				uiText(c, body).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.45)
 			}
 		})
 		actions()
@@ -188,7 +188,7 @@ func (a *App) phoneAsk(c *ui.Context) {
 	}
 	pc := a.S.PairCode
 	if pc == nil {
-		ui.Text(c, a.L.T("devices.loading")).FontSize(t.SM).TextColor(t.InkMuted)
+		uiText(c, a.L.T("devices.loading")).FontSize(t.SM).TextColor(t.InkMuted)
 		return
 	}
 	done := func() {
@@ -205,23 +205,23 @@ func (a *App) phoneAsk(c *ui.Context) {
 		qrBox(c, pc.QR, 132, t.Ink, t.Surface)
 		ui.Column(c).Grow(1).MinWidth(0).Gap(6).Children(func() {
 			if paired {
-				ui.Text(c, a.L.T("phone.paired")).FontSize(t.MD).FontWeight(700)
+				uiText(c, a.L.T("phone.paired")).FontSize(t.MD).FontWeight(700)
 				return
 			}
-			ui.Text(c, a.L.T("phone.scan")).FontSize(t.MD).FontWeight(700).LineHeight(1.4)
+			uiText(c, a.L.T("phone.scan")).FontSize(t.MD).FontWeight(700).LineHeight(1.4)
 			// D291: a small label, and apart the code itself in mono.
 			ui.Row(c.Key("code")).Gap(t.S2).AlignItems(ui.Baseline).Children(func() {
-				ui.Text(c, a.L.T("pair.code")).FontSize(t.XS).TextColor(t.InkMuted)
-				ui.Text(c, pc.Code).Font(t.Mono).FontSize(t.SM).TextColor(t.InkSoft).Selectable()
+				uiText(c, a.L.T("pair.code")).FontSize(t.XS).TextColor(t.InkMuted)
+				uiText(c, pc.Code).Font(t.Mono).FontSize(t.SM).TextColor(t.InkSoft).Selectable()
 			})
 			if exp := store.ParseTime(pc.ExpiresAt); !exp.IsZero() {
 				left := exp.Sub(a.Now())
 				if left > 0 {
-					ui.Text(c, a.L.T("pair.once", int(math.Ceil(left.Minutes())))).FontSize(t.XS).TextColor(t.InkMuted)
+					uiText(c, a.L.T("pair.once", int(math.Ceil(left.Minutes())))).FontSize(t.XS).TextColor(t.InkMuted)
 					c.After(min(left, time.Minute))
 				}
 			}
-			ui.Text(c, a.L.T("pair.waiting")).FontSize(t.SM).TextColor(t.InkMuted)
+			uiText(c, a.L.T("pair.waiting")).FontSize(t.SM).TextColor(t.InkMuted)
 		})
 		done()
 	})

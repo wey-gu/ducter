@@ -286,11 +286,39 @@ the arrow keys with **好，22:00 到 08:00 我不吵你…**, the language swit
 page walked, the small app's window and its ask answered both in the app and in the conversation,
 ⌘K by keyboard, the hand-over sheet words first with the subject's 117 found.
 
-Not changed, noted: the Mac doesn't reshape an expiry as typed (it parses 0829 on Save; the web shapes
-for phone keyboards); a pile's partner sentence and the demo's repeated issue titles are fixture data;
-an accessible static text on the Mac carries the U+2060 word joiners its line breaking adds
-(**对⁠话**), which a screen reader may spell; the driver's synthetic keystrokes typed each character
-twice into the app's fields (AX set-value didn't), unverified with a real keyboard.
+Not changed, noted: a pile's partner sentence and the demo's repeated issue titles are fixture data.
+The walk's other leftovers are D408 (below).
+
+### D408: what the walk left
+
+- **Read as words, drawn whole.** The views draw every text through `uiText` (`views/type.go`): a text
+  holding the word joiners `keepWords` and `keepTokens` put in for line breaking keeps them on screen
+  and gives assistive technology its words without them, so 「对话」 is read as a word, not spelled.
+  Markdown (the partner's replies, a task's report) is drawn and read by MyGo's own view, which has no
+  hook for its accessible text, so it gets the Chinese–Latin gap without the joiners (`mdSpace`): a
+  short token there (`ducter/fix-ci`) may wrap at its slash or hyphen. The tray's line has none either.
+  `TestNoJoinersInAccessibleText` walks every place and settings page in zh and en against the mock
+  home; `TestViewsDrawTextThroughUIText` keeps `ui.Text` out of the views.
+- **An expiry shaped as typed, on the Mac too.** 0829 and 829 read 08/29 as the last number goes in,
+  the caret after it (the web's `shapeExp`, which now also takes 829). 129 waits for a fourth number
+  (1/29 or 12/9…); Save still reads it as 1/29.
+- **Doubled keys were the driver's.** The fields take a key once: the key down, its text, the key up
+  (`TestKeysTypeOnceInFields`, an input method's composition too). cua-driver's `type_text` sets the
+  field's selected text over accessibility first; MyGo applies that on its next frame, so the value the
+  driver reads back at once is still the old one, the driver takes the write as failed and types the
+  same text again with CGEvents (inferred from the driver's documented read-back and MyGo's
+  `setAccessibilitySelectedText:` posting an event; not run against the driver). `set_value` doesn't
+  double. A real keyboard was not tried.
+- **The window doesn't change page by itself.** The 关于 jump reproduced in a test: the settings rail
+  dropped 和你的其他 agent 通信 when a frame no longer called for it, every tab under it moved up one row,
+  and a click meant for 在哪儿运行 landed on 关于. The rail now keeps a tab it listed for the session. A
+  restart into an update that fails opens Updates and about only after the person's own Restart to
+  update here (within two minutes); one asked from the phone or by an Update all plan leaves the page
+  as it is. `TestFramesNeverMoveThePage` lets the mock home's frames arrive on every place and settings
+  page and checks the page stays.
+- **The settings demo links a chat app.** `demo-settings-real.ts`'s Telegram stub sends `/start` with
+  each new code 2.5 s after it is shown, so **连上了。以后在 Telegram 里找我也行。** can be reached
+  (checked over the demo's socket: forget, connect, code, linked).
 
 ## Not done
 
@@ -299,6 +327,5 @@ twice into the app's fields (AX set-value didn't), unverified with a real keyboa
   its Partner page keeps the tray-less lists (D89).
 - The iPhone keyboard over a sheet seen with a real keyboard (the Simulator can't be tapped from the
   shell).
-- The Mac: typing into its fields with a real keyboard after the driver's doubled keystrokes; its
-  accessible text without the U+2060 joiners; a chat app's link completed (the demo's stub never
-  sends the code back).
+- The Mac: typing into its fields with a real keyboard (the doubling was the driver's, D408); the
+  accessible text and a chat app's link walked again in the real window.

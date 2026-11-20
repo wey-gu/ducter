@@ -1128,12 +1128,12 @@ func (a *App) island(c *ui.Context, v view, s *isle, shown *protocol.DeviceView,
 	nc.Children(func() {
 		tag := a.sceneTag(c, sel)
 		tag.Children(func() {
-			d.labels["name:"+s.key] = ui.Text(c, name).FontSize(t.SM).FontWeight(800).TextColor(t.Ink).SingleLine().TextAlign(ui.Center).Bounds()
+			d.labels["name:"+s.key] = uiText(c, name).FontSize(t.SM).FontWeight(800).TextColor(t.Ink).SingleLine().TextAlign(ui.Center).Bounds()
 			if line != "" {
 				if ink == t.InkMuted {
 					ink = t.InkSoft
 				}
-				d.labels["line:"+s.key] = ui.Text(c, line).FontSize(t.XS).FontWeight(700).TextColor(ink).SingleLine().TextAlign(ui.Center).Bounds()
+				d.labels["line:"+s.key] = uiText(c, line).FontSize(t.XS).FontWeight(700).TextColor(ink).SingleLine().TextAlign(ui.Center).Bounds()
 			}
 		})
 		d.labels["tag:"+s.key] = tag.Bounds()
@@ -1321,7 +1321,7 @@ func (a *App) dockRow(c *ui.Context, v view, s *isle, dy float32, sel bool, now 
 				if !on {
 					ink = t.InkSoft
 				}
-				ui.Text(c, name).FontSize(t.SM).FontWeight(800).TextColor(ink).SingleLine().AccessHidden(true)
+				uiText(c, name).FontSize(t.SM).FontWeight(800).TextColor(ink).SingleLine().AccessHidden(true)
 			})
 			d.labels["dock:"+id] = tag.Bounds()
 		})
@@ -1462,7 +1462,7 @@ func (a *App) isleTokens(c *ui.Context, v view, s *isle, ir ui.Rect, minX, maxX 
 			Background(t.Surface).Shadow(0, 2, 0, 0, t.Line).AlignItems(ui.Center).Justify(ui.Center).
 			Role(ui.RoleButton).Label(a.isleName(s)).Cursor(ui.CursorPointer)
 		el.Children(func() {
-			ui.Text(c, "+"+itoa(int64(more))).FontSize(t.XS).FontWeight(800).TextColor(t.InkSoft).SingleLine().AccessHidden(true)
+			uiText(c, "+"+itoa(int64(more))).FontSize(t.XS).FontWeight(800).TextColor(t.InkSoft).SingleLine().AccessHidden(true)
 		})
 		row = unionRect(row, el.Bounds())
 		if el.Clicked() {

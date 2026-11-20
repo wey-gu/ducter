@@ -123,7 +123,7 @@ func (a *App) richHead(c *ui.Context, title string, at richAt) {
 		}
 		btn.Children(func() {
 			a.pinGlyph(c, 16, fg)
-			ui.Text(c, label).FontSize(t.SM).FontWeight(700).TextColor(fg).SingleLine().AccessHidden(true)
+			uiText(c, label).FontSize(t.SM).FontWeight(700).TextColor(fg).SingleLine().AccessHidden(true)
 		})
 		if btn.Clicked() {
 			if pin != nil {
@@ -158,17 +158,17 @@ func (a *App) pinStrip(c *ui.Context) {
 			ui.Box(c).Size(30, 30).Shrink(0).Radius(10).Background(t.Highlight).Shadow(0, 2, 0, 0, t.Line2).Justify(ui.Center).AlignItems(ui.Center).Children(func() {
 				a.pinGlyph(c, 16, t.HighlightInk)
 			})
-			ui.Text(c, top.Title).Font(t.Display).FontSize(t.MD).FontWeight(800).TextColor(t.Ink).SingleLine().Grow(1).MinWidth(0).AccessHidden(true)
+			uiText(c, top.Title).Font(t.Display).FontSize(t.MD).FontWeight(800).TextColor(t.Ink).SingleLine().Grow(1).MinWidth(0).AccessHidden(true)
 			if done, total, ok := protocol.PinProgress(top); ok {
 				col := t.InkMuted
 				if done == total {
 					col = t.Done.Ink
 				}
-				ui.Text(c.Key("prog"), a.L.T("pin.progress", done, total)).FontSize(t.SM).FontWeight(700).TextColor(col).FontFeatures("tnum").Shrink(0).AccessHidden(true)
+				uiText(c.Key("prog"), a.L.T("pin.progress", done, total)).FontSize(t.SM).FontWeight(700).TextColor(col).FontFeatures("tnum").Shrink(0).AccessHidden(true)
 			}
 			if more := len(pins) - 1; more > 0 {
 				ui.Row(c.Key("more")).Padding(2, 8).Radius(t.Pill).Background(t.Sunken).Shrink(0).Children(func() {
-					ui.Text(c, a.L.T("pin.more", more)).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).SingleLine().AccessHidden(true)
+					uiText(c, a.L.T("pin.more", more)).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).SingleLine().AccessHidden(true)
 				})
 			}
 		})
@@ -220,7 +220,7 @@ func (a *App) pinsSheet(c *ui.Context) {
 							if pin.Updated != "" {
 								when = a.L.T("pin.updated", a.whenOf(pin.Updated))
 							}
-							ui.Text(c.Key("when"), when).FontSize(t.SM).TextColor(t.InkMuted).Grow(1).MinWidth(0)
+							uiText(c.Key("when"), when).FontSize(t.SM).TextColor(t.InkMuted).Grow(1).MinWidth(0)
 							if a.button(c, a.L.T("pin.unpin"), btnText, t.ControlSM, t.Bg) {
 								a.send(protocol.Unpin{T: "unpin", ID: pin.ID})
 								a.toast(a.L.T("pin.unpinned", pin.Title))
@@ -229,7 +229,7 @@ func (a *App) pinsSheet(c *ui.Context) {
 						})
 					})
 				}
-				ui.Text(c.Key("hint"), a.L.T("pin.hint", a.personaName())).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.45)
+				uiText(c.Key("hint"), a.L.T("pin.hint", a.personaName())).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.45)
 			})
 		})
 	})

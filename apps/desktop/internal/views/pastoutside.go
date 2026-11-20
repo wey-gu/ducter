@@ -37,16 +37,16 @@ func (a *App) pastOutside(c *ui.Context, res *protocol.PastFrame, terms []string
 	ui.Column(c.Key("outside")).Gap(t.S2).Padding(t.S5, 0, 0, 0).Children(func() {
 		ui.Box(c.Key("rule")).Height(1).Background(t.Line).Margin(0, t.S2, t.S2, t.S2)
 		ui.Row(c.Key("head")).Gap(t.S2).AlignItems(ui.Center).MinHeight(24).Padding(t.S2, t.S2, 0, t.S2).Children(func() {
-			ui.Text(c, a.L.T("past.out.title")).FontSize(t.XS).FontWeight(600).TextColor(t.InkMuted)
+			uiText(c, a.L.T("past.out.title")).FontSize(t.XS).FontWeight(600).TextColor(t.InkMuted)
 			if n := len(res.Outside); n > 0 {
-				ui.Text(c, fmt.Sprint(n)).FontSize(t.XS).FontWeight(500).TextColor(t.Faint).FontFeatures("tnum")
+				uiText(c, fmt.Sprint(n)).FontSize(t.XS).FontWeight(500).TextColor(t.Faint).FontFeatures("tnum")
 			}
 		})
 		if len(res.Outside) > 0 {
-			ui.Text(c.Key("sub"), a.L.T("past.out.sub", a.homeComputer())).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.55).MaxWidth(560).Padding(0, t.S2, t.S2, t.S2)
+			uiText(c.Key("sub"), a.L.T("past.out.sub", a.homeComputer())).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.55).MaxWidth(560).Padding(0, t.S2, t.S2, t.S2)
 		}
 		if a.past.outMsg != "" {
-			ui.Text(c.Key("msg"), a.past.outMsg).FontSize(t.SM).TextColor(t.Failed.Ink).Padding(0, t.S2, t.S2, t.S2)
+			uiText(c.Key("msg"), a.past.outMsg).FontSize(t.SM).TextColor(t.Failed.Ink).Padding(0, t.S2, t.S2, t.S2)
 		}
 		ui.Column(c.Key("cards")).Gap(t.S2 + 2).Children(func() {
 			for i := range res.Outside {
@@ -61,7 +61,7 @@ func (a *App) pastOutside(c *ui.Context, res *protocol.PastFrame, terms []string
 			}
 			sep := a.L.T("past.out.sep")
 			ui.Row(c.Key("hidden")).Gap(t.S3).AlignItems(ui.Center).Wrap().Padding(t.S2, t.S2, 0, t.S2).Children(func() {
-				ui.Text(c, a.L.T("past.out.hidden", strings.Join(names, sep))).FontSize(t.SM).TextColor(t.InkMuted)
+				uiText(c, a.L.T("past.out.hidden", strings.Join(names, sep))).FontSize(t.SM).TextColor(t.InkMuted)
 				for _, h := range hidden {
 					label := a.L.T("past.out.show")
 					if len(hidden) > 1 {
@@ -106,25 +106,25 @@ func (a *App) outsideCard(c *ui.Context, it *protocol.OutsideItem, terms []strin
 			if it.Gone {
 				ink = t.InkSoft
 			}
-			ui.Text(c.Key("l1"), keepWords(autospace(it.Title))).FontSize(t.MD).FontWeight(600).TextColor(ink).SingleLine().MinWidth(0).Tooltip(it.Title)
+			uiText(c.Key("l1"), keepWords(autospace(it.Title))).FontSize(t.MD).FontWeight(600).TextColor(ink).SingleLine().MinWidth(0).Tooltip(it.Title)
 			if h := it.Hit; h != nil && a.pastSearching() && strings.TrimSpace(h.Text) != "" {
 				ui.Row(c.Key("l2")).Gap(t.S2).AlignItems(ui.Center).MinWidth(0).Children(func() {
-					ui.Text(c, a.L.T("past.hit."+pastHitKey(h.Field))).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).SingleLine().Shrink(0)
+					uiText(c, a.L.T("past.hit."+pastHitKey(h.Field))).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).SingleLine().Shrink(0)
 					text := strings.Join(strings.Fields(h.Text), " ")
 					ui.RichText(c, a.pastMarked(text, terms, h.Field == "branch")...).SingleLine().Shrink(1).MinWidth(0).Tooltip(text)
 				})
 			} else if it.Ask != "" {
-				ui.Text(c.Key("l2"), keepWords(autospace(it.Ask))).FontSize(t.SM).TextColor(t.InkSoft).SingleLine().MinWidth(0).Tooltip(it.Ask)
+				uiText(c.Key("l2"), keepWords(autospace(it.Ask))).FontSize(t.SM).TextColor(t.InkSoft).SingleLine().MinWidth(0).Tooltip(it.Ask)
 			}
 			ui.Row(c.Key("l3")).Gap(t.S3).AlignItems(ui.Center).MinWidth(0).Children(func() {
-				ui.Text(c.Key("proj"), it.Project).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(1).MinWidth(0).Tooltip(it.Cwd)
-				ui.Text(c.Key("agent"), harnessName(it.Agent)).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(0)
+				uiText(c.Key("proj"), it.Project).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(1).MinWidth(0).Tooltip(it.Cwd)
+				uiText(c.Key("agent"), harnessName(it.Agent)).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(0)
 				if it.Branch != "" {
-					ui.Text(c.Key("branch"), it.Branch).Font(t.Mono).FontSize(t.XS - 1).TextColor(t.InkSoft).SingleLine().Shrink(1).MinWidth(0)
+					uiText(c.Key("branch"), it.Branch).Font(t.Mono).FontSize(t.XS - 1).TextColor(t.InkSoft).SingleLine().Shrink(1).MinWidth(0)
 				}
-				ui.Text(c.Key("when"), a.pastDate(store.ParseTime(it.UpdatedAt))).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(0)
+				uiText(c.Key("when"), a.pastDate(store.ParseTime(it.UpdatedAt))).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(0)
 				if it.Gone {
-					ui.Text(c.Key("gone"), a.L.T("past.out.gone")).FontSize(t.XS).FontWeight(600).TextColor(t.InkSoft).SingleLine().Shrink(0)
+					uiText(c.Key("gone"), a.L.T("past.out.gone")).FontSize(t.XS).FontWeight(600).TextColor(t.InkSoft).SingleLine().Shrink(0)
 				}
 			})
 		})

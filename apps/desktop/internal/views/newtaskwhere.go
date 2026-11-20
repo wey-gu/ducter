@@ -122,9 +122,9 @@ func (a *App) computerList(c *ui.Context, anchor ui.Element, cands []protocol.Ca
 					ui.Image(c, bmp).Size(40, 32).Shrink(0)
 				}
 				ui.Column(c).Grow(1).MinWidth(0).Gap(1).Children(func() {
-					ui.Text(c, d.Name).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine()
+					uiText(c, d.Name).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine()
 					if s := a.computerSetsApart(&d); s != "" {
-						ui.Text(c, s).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
+						uiText(c, s).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
 					}
 				})
 				if d.ID == sug {

@@ -88,7 +88,7 @@ func (a *App) firstWordsAfter(c *ui.Context, e *store.Entry) {
 						Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(text).Focusable()
 					a.buttonLook(c, chip, btnSecondary, t.ControlLG, t.Bg)
 					chip.Children(func() {
-						ui.Text(c, text).FontSize(t.MD).LineHeight(leadingFor(text, 1.45)).Grow(1).MinWidth(0)
+						uiText(c, text).FontSize(t.MD).LineHeight(leadingFor(text, 1.45)).Grow(1).MinWidth(0)
 					})
 					if chip.Clicked() {
 						if s.From == "look" {
@@ -129,7 +129,7 @@ func (a *App) firstWordsAfter(c *ui.Context, e *store.Entry) {
 		ui.Row(c.Key("first-from")).Gap(t.S2).AlignItems(ui.Center).Wrap().Margin(t.S1, 0, 0, 2).Children(func() {
 			if looks {
 				line := a.L.T("first.from", computer)
-				ui.Text(c, line).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.45).Grow(1).Basis(240).MinWidth(0)
+				uiText(c, line).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.45).Grow(1).Basis(240).MinWidth(0)
 				if a.button(c, a.L.T("first.stop"), btnText, t.ControlSM, t.Bg) {
 					a.send(protocol.LocalAgents{T: "local_agents", On: false})
 					if a.S.First != nil {
@@ -138,7 +138,7 @@ func (a *App) firstWordsAfter(c *ui.Context, e *store.Entry) {
 				}
 				return
 			}
-			ui.Text(c, a.L.T("first.stopped")).FontSize(t.XS).TextColor(t.InkMuted).Grow(1).Basis(240).MinWidth(0)
+			uiText(c, a.L.T("first.stopped")).FontSize(t.XS).TextColor(t.InkMuted).Grow(1).Basis(240).MinWidth(0)
 			if a.button(c, a.L.T("first.again"), btnText, t.ControlSM, t.Bg) {
 				a.send(protocol.LocalAgents{T: "local_agents", On: true})
 				if a.S.First != nil {
@@ -204,15 +204,15 @@ func (a *App) firstHowPanel(c *ui.Context, s protocol.FirstStart, computer strin
 	ui.Row(c.Key("how-panel")).Wrap().Gap(t.S2).AlignItems(ui.Center).Padding(t.S2, t.S3).Radius(t.RadiusMD).Background(t.SurfaceSunken).Children(func() {
 		ui.Row(c.Key("facts")).Wrap().Gap(t.S3).AlignItems(ui.Center).Grow(1).Basis(260).MinWidth(0).Children(func() {
 			ui.Row(c.Key("agent")).Padding(1, t.S2).Radius(999).Background(t.Surface).Children(func() {
-				ui.Text(c, a.L.T("first.how.from", agentName(s.From))).FontSize(t.XS).FontWeight(600).TextColor(t.Ink)
+				uiText(c, a.L.T("first.how.from", agentName(s.From))).FontSize(t.XS).FontWeight(600).TextColor(t.Ink)
 			})
 			if s.Path != "" {
-				ui.Text(c.Key("path"), s.Path).Font(t.Mono).FontSize(t.XS).TextColor(t.Ink).Selectable().MinWidth(0)
+				uiText(c.Key("path"), s.Path).Font(t.Mono).FontSize(t.XS).TextColor(t.Ink).Selectable().MinWidth(0)
 			}
 			if s.At != "" {
-				ui.Text(c.Key("at"), a.ago(s.At)).FontSize(t.XS).TextColor(t.InkMuted)
+				uiText(c.Key("at"), a.ago(s.At)).FontSize(t.XS).TextColor(t.InkMuted)
 			}
-			ui.Text(c.Key("on"), a.L.T("first.how.on", computer)).FontSize(t.XS).TextColor(t.InkMuted).MinWidth(0)
+			uiText(c.Key("on"), a.L.T("first.how.on", computer)).FontSize(t.XS).TextColor(t.InkMuted).MinWidth(0)
 		})
 		if s.Path != "" && a.button(c, a.L.T("first.how.leave"), btnText, t.ControlSM, t.SurfaceSunken) {
 			a.send(protocol.OutsideFolder{T: "outside_folder", Path: s.Path, Hidden: true})
@@ -314,13 +314,13 @@ func (a *App) keyCardIn(c *ui.Context, submit func(key string), from string) {
 	card.Children(func() {
 		if r != nil && r.OK && r.Needs == "" && a.Now().Sub(k.at) < KeyShownFor {
 			c.After(KeyShownFor - a.Now().Sub(k.at))
-			ui.Text(c, a.keySay(r)).FontSize(t.MD).LineHeight(1.5).TextColor(t.Done.Ink).FontWeight(700)
+			uiText(c, a.keySay(r)).FontSize(t.MD).LineHeight(1.5).TextColor(t.Done.Ink).FontWeight(700)
 			return
 		}
 		if from == "" {
-			ui.Text(c, a.L.T("key.paste.title")).FontSize(t.LG).FontWeight(800)
+			uiText(c, a.L.T("key.paste.title")).FontSize(t.LG).FontWeight(800)
 		}
-		ui.Text(c, a.L.T("key.paste.body")).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft)
+		uiText(c, a.L.T("key.paste.body")).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft)
 		submitNow := func() {
 			if v := strings.TrimSpace(k.key); v != "" && !waiting {
 				submit(v)
@@ -347,7 +347,7 @@ func (a *App) keyCardIn(c *ui.Context, submit func(key string), from string) {
 		if r.OK {
 			ink = t.Done.Ink
 		}
-		ui.Text(c, a.keySay(r)).FontSize(t.SM).LineHeight(1.5).TextColor(ink)
+		uiText(c, a.keySay(r)).FontSize(t.SM).LineHeight(1.5).TextColor(ink)
 		if r.OK && r.Needs == "pi" && r.Install != "" {
 			a.commandBoxSized(c, r.Install, 13)
 			if a.Backend != nil && a.button(c, a.L.T("key.paste.install"), btnSecondary, t.ControlMD, bg) {
@@ -389,8 +389,8 @@ func (a *App) setupKeyRow(c *ui.Context) {
 	if !k.open {
 		ui.Row(c.Key("key-instead")).Gap(t.S3).AlignItems(ui.Center).Children(func() {
 			ui.Column(c).Grow(1).MinWidth(0).Gap(2).Children(func() {
-				ui.Text(c, a.L.T("key.paste.instead")).FontSize(t.MD).FontWeight(700)
-				ui.Text(c, a.L.T("key.paste.instead.note")).FontSize(t.SM).TextColor(t.InkSoft)
+				uiText(c, a.L.T("key.paste.instead")).FontSize(t.MD).FontWeight(700)
+				uiText(c, a.L.T("key.paste.instead.note")).FontSize(t.SM).TextColor(t.InkSoft)
 			})
 			if a.button(c, a.L.T("key.paste.check.open"), btnSecondary, t.ControlMD, t.Surface) {
 				k.open = true

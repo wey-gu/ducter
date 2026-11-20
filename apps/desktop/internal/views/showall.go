@@ -22,7 +22,7 @@ import (
 func (a *App) showAll(c *ui.Context, task *store.Task, seq int64, full int, output bool) {
 	t := a.T
 	label := a.L.T("text.all", groupDigits(full))
-	l := ui.Text(c.Key(fmt.Sprintf("all:%d", seq)), label).FontSize(t.XS).FontWeight(700).TextColor(t.InkSoft).
+	l := uiText(c.Key(fmt.Sprintf("all:%d", seq)), label).FontSize(t.XS).FontWeight(700).TextColor(t.InkSoft).
 		Cursor(ui.CursorPointer).Role(ui.RoleButton).Focusable().Label(label)
 	if l.Hovered() {
 		l.TextColor(t.Ink)

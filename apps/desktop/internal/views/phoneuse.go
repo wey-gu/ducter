@@ -186,16 +186,16 @@ func (a *App) phoneNotes(c *ui.Context, card string, dv *protocol.DeviceView, no
 					line, frac = a.L.T("phoneuse.installing.phone"), 1
 				}
 			}
-			ui.Text(c, line).FontSize(t.SM).TextColor(t.Ink).Role(ui.RoleStatus)
+			uiText(c, line).FontSize(t.SM).TextColor(t.Ink).Role(ui.RoleStatus)
 			ui.Box(c.Key("phone-bar")).Height(6).Radius(3).Background(t.LineSoft).Children(func() {
 				ui.Box(c.Key("phone-bar-in")).Height(6).Width(float32(math.Max(6, float64(frac)*300))).Radius(3).Background(t.Accent)
 			})
-			ui.Text(c, a.L.T("phoneuse.installing.away")).FontSize(t.XS).TextColor(t.InkMuted)
+			uiText(c, a.L.T("phoneuse.installing.away")).FontSize(t.XS).TextColor(t.InkMuted)
 			c.After(time.Second)
 		})
 	case ab.State == protocol.AbilityUnavailable:
 		note("phone-failed", true, func() {
-			ui.Text(c, a.L.T("phoneuse.failed", ab.Detail)).FontSize(t.SM).FontWeight(700).TextColor(t.Failed.Ink).LineHeight(1.5)
+			uiText(c, a.L.T("phoneuse.failed", ab.Detail)).FontSize(t.SM).FontWeight(700).TextColor(t.Failed.Ink).LineHeight(1.5)
 			ui.Row(c).Justify(ui.End).Children(func() {
 				if a.button(c, a.L.T("live.retry"), btnSecondary, t.ControlSM, t.Bg) {
 					a.openPhoneInstall(dv.ID)
@@ -209,7 +209,7 @@ func (a *App) phoneNotes(c *ui.Context, card string, dv *protocol.DeviceView, no
 				if ab.Running {
 					line = a.L.T("phoneuse.running")
 				}
-				ui.Text(c, line).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(1.5).Grow(1).MinWidth(0)
+				uiText(c, line).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(1.5).Grow(1).MinWidth(0)
 				if dv.State == protocol.DeviceAwake && a.buttonFor(c, a.L.T("phoneuse.open"), a.L.T("phoneuse.title"), btnSecondary, t.ControlSM, t.Bg) {
 					a.OpenPhone(dv.ID, "", "", "takeover")
 				}
@@ -229,7 +229,7 @@ func (a *App) phoneNotes(c *ui.Context, card string, dv *protocol.DeviceView, no
 				id, title := cd.TaskID, cd.Title
 				ui.Row(c.Key("phoning:" + id)).Gap(t.S3).AlignItems(ui.Center).Children(func() {
 					a.coinBox(c, "phoning:"+id, cd.Harness, 20, false, coinStill)
-					ui.Text(c, a.L.T("live.using", title)).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(1.5).Grow(1).MinWidth(0)
+					uiText(c, a.L.T("live.using", title)).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(1.5).Grow(1).MinWidth(0)
 					if a.buttonFor(c, a.L.T("live.watch"), title, btnSecondary, t.ControlSM, t.Bg) {
 						a.OpenPhone(dv.ID, id, "", "watch")
 					}
@@ -304,12 +304,12 @@ func (a *App) phoneInstallSheet(c *ui.Context) {
 				ui.Image(c, bmp).Size(41, 64).Shrink(0).AccessHidden(true)
 			}
 			a.heading(c, a.L.T("phoneuse.install.title", name), t.XL).TextAlign(ui.Center)
-			ui.Text(c, a.L.T("phoneuse.install.lede")).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(1.55).TextAlign(ui.Center)
+			uiText(c, a.L.T("phoneuse.install.lede")).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(1.55).TextAlign(ui.Center)
 		})
 		tm := a.S.Phone.Terms
 		switch {
 		case tm == nil:
-			ui.Text(c, a.L.T("conn.connecting")).FontSize(t.SM).TextColor(t.InkMuted)
+			uiText(c, a.L.T("conn.connecting")).FontSize(t.SM).TextColor(t.InkMuted)
 		case !tm.OK:
 			msg := a.L.T("phoneuse.install.offline", tm.Message)
 			if tm.Reason == "not_mac_arm" {
@@ -319,8 +319,8 @@ func (a *App) phoneInstallSheet(c *ui.Context) {
 		default:
 			fact := func(k, v string) {
 				ui.Row(c.Key("fact:" + k)).Gap(t.S4).Children(func() {
-					ui.Text(c, k).FontSize(t.SM).TextColor(t.InkMuted).Width(120).Shrink(0)
-					ui.Text(c, v).FontSize(t.SM).TextColor(t.Ink).LineHeight(1.45).Grow(1).MinWidth(0)
+					uiText(c, k).FontSize(t.SM).TextColor(t.InkMuted).Width(120).Shrink(0)
+					uiText(c, v).FontSize(t.SM).TextColor(t.Ink).LineHeight(1.45).Grow(1).MinWidth(0)
 				})
 			}
 			fact(a.L.T("phoneuse.install.download"), a.L.T("phoneuse.install.gb", gbText(tm.Download)))
@@ -328,7 +328,7 @@ func (a *App) phoneInstallSheet(c *ui.Context) {
 			fact(a.L.T("phoneuse.install.what"), a.L.T("phoneuse.install.what.v"))
 			fact(a.L.T("phoneuse.install.runs"), a.L.T("phoneuse.install.runs.when"))
 			ui.Column(c.Key("phone-lic")).Gap(t.S2).Padding(t.S3, t.S3).Radius(t.RadiusMD).Background(t.Bg).Children(func() {
-				ui.Text(c, a.L.T("phoneuse.install.licenses")).FontSize(t.SM).TextColor(t.InkSoft)
+				uiText(c, a.L.T("phoneuse.install.licenses")).FontSize(t.SM).TextColor(t.InkSoft)
 				lang := string(a.L.Lang)
 				for _, l := range tm.Licenses {
 					l := l
@@ -338,7 +338,7 @@ func (a *App) phoneInstallSheet(c *ui.Context) {
 					}
 					open := a.pu.license == l.ID
 					ui.Row(c.Key("lic:" + l.ID)).Gap(t.S2).AlignItems(ui.Center).Children(func() {
-						ui.Text(c, title).FontSize(t.SM).FontWeight(700).Grow(1).MinWidth(0)
+						uiText(c, title).FontSize(t.SM).FontWeight(700).Grow(1).MinWidth(0)
 						lbl := a.L.T("phoneuse.install.read")
 						if open {
 							lbl = a.L.T("phoneuse.install.fold")
@@ -353,17 +353,17 @@ func (a *App) phoneInstallSheet(c *ui.Context) {
 					})
 					if open {
 						ui.Scroll(c.Key("lic-text:"+l.ID)).MaxHeight(240).Padding(t.S2, t.S3).Radius(t.RadiusSM).Background(t.Surface).Children(func() {
-							ui.Text(c, l.Text).FontSize(t.XS).TextColor(t.InkSoft).LineHeight(1.5).Selectable()
+							uiText(c, l.Text).FontSize(t.XS).TextColor(t.InkSoft).LineHeight(1.5).Selectable()
 						})
 					}
 				}
 				ui.Row(c.Key("phone-agree")).Gap(t.S3).AlignItems(ui.Center).Margin(t.S1, 0, 0, 0).Children(func() {
 					a.switchControl(c, "phone-agree", a.L.T("phoneuse.install.agree"), &a.pu.agreed)
-					ui.Text(c, a.L.T("phoneuse.install.agree")).FontSize(t.SM).TextColor(t.Ink).Grow(1).MinWidth(0)
+					uiText(c, a.L.T("phoneuse.install.agree")).FontSize(t.SM).TextColor(t.Ink).Grow(1).MinWidth(0)
 				})
 			})
 			if a.pu.errText != "" {
-				ui.Text(c, a.pu.errText).FontSize(t.SM).FontWeight(700).TextColor(t.Failed.Ink).LineHeight(1.5)
+				uiText(c, a.pu.errText).FontSize(t.SM).FontWeight(700).TextColor(t.Failed.Ink).LineHeight(1.5)
 			}
 		}
 		ui.Row(c).Gap(t.S3).Justify(ui.End).Margin(t.S2, 0, 0, 0).Children(func() {
@@ -407,12 +407,12 @@ func (a *App) phoneButtons(c *ui.Context, d *store.DecisionState, st decisionSty
 		}
 		ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
 			a.glyph(c, 16, drawCheck(t.InkMuted))
-			ui.Text(c, msg).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
+			uiText(c, msg).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
 		})
 		return
 	}
 	if ph.Kind == "user" {
-		ui.Text(c, a.L.T("phoneuse.user.why")).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft)
+		uiText(c, a.L.T("phoneuse.user.why")).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft)
 		ui.Row(c.Key("phone-user:" + d.DecisionID)).Gap(t.S3).Wrap().AlignItems(ui.Center).Children(func() {
 			if a.button(c, a.L.T("signin.later"), btnSecondary, st.height, st.quietBg) {
 				a.Decide(d.DecisionID, "hold", "")
@@ -428,7 +428,7 @@ func (a *App) phoneButtons(c *ui.Context, d *store.DecisionState, st decisionSty
 	if ph.Name != "" {
 		what = a.L.T("phoneuse.go.what", label, ph.Name)
 	}
-	ui.Text(c, what).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft)
+	uiText(c, what).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft)
 	ui.Row(c.Key("phone-go:" + d.DecisionID)).Gap(t.S3).Wrap().AlignItems(ui.Center).Children(func() {
 		if d.TaskID != "" && a.button(c, a.L.T("phoneuse.go.look"), btnText, st.height, st.quietBg) {
 			a.OpenPhone(a.phoneFor(d.TaskID), d.TaskID, "", "watch")
@@ -535,7 +535,7 @@ func (a *App) phoneView(c *ui.Context) {
 		Role(ui.RoleDialog).Label(title).Children(func() {
 		a.chrome(c, "phone-live", func() {
 			ui.Column(c).Grow(1).MinWidth(0).AlignItems(ui.Center).Gap(2).Children(func() {
-				ui.Text(c, title).FontSize(t.MD).FontWeight(800).SingleLine()
+				uiText(c, title).FontSize(t.MD).FontWeight(800).SingleLine()
 				ui.Row(c).Gap(6).AlignItems(ui.Center).Children(func() {
 					dev := pv.Device
 					if h := a.homeDevice(); dev == "" && h != nil {
@@ -549,7 +549,7 @@ func (a *App) phoneView(c *ui.Context) {
 						}
 						where = pv.Task.Title
 					}
-					ui.Text(c, where).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
+					uiText(c, where).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
 				})
 			})
 		}, func() {
@@ -571,7 +571,7 @@ func (a *App) phoneBody(c *ui.Context, pv *store.PhoneView, mine bool, doing *pr
 		w := t.State("blocked")
 		ui.Row(c.Key("phone-band")).Gap(6).Justify(ui.Center).AlignItems(ui.Center).Padding(t.S2, t.S4).Background(w.Surface).Role(ui.RoleStatus).Children(func() {
 			a.glyph(c, 14, drawEyeShut(w.Ink))
-			ui.Text(c, a.L.T("phoneuse.yourturn")).FontSize(t.SM).TextColor(w.Ink)
+			uiText(c, a.L.T("phoneuse.yourturn")).FontSize(t.SM).TextColor(w.Ink)
 		})
 	}
 	ui.Row(c).Grow(1).MinHeight(0).Justify(ui.Center).AlignItems(ui.Center).Padding(t.S3, t.S3).Background(t.SurfaceSunken).Children(func() {
@@ -586,7 +586,7 @@ func (a *App) phoneBody(c *ui.Context, pv *store.PhoneView, mine bool, doing *pr
 			}
 			c.After(500 * time.Millisecond)
 			if a.pu.bmp == nil {
-				ui.Text(c, line).FontSize(t.SM).TextColor(t.InkMuted)
+				uiText(c, line).FontSize(t.SM).TextColor(t.InkMuted)
 				return
 			}
 			// D248: the last frame, quiet, with one line over it.
@@ -598,7 +598,7 @@ func (a *App) phoneBody(c *ui.Context, pv *store.PhoneView, mine bool, doing *pr
 			pw := ph * float32(w) / float32(max(1, h))
 			ui.Box(c.Key("phone-held")).Size(pw, ph).Shrink(1).Children(func() {
 				ui.Image(c.Key("phone-held-img"), a.pu.bmp).Size(pw, ph).Radius(t.RadiusXL).Opacity(0.78).AccessHidden(true)
-				ui.Text(c.Key("phone-held-pill"), line).FontSize(t.XS).TextColor(t.InkSoft).Padding(6, 12).Radius(999).Background(t.SurfaceRaised).
+				uiText(c.Key("phone-held-pill"), line).FontSize(t.XS).TextColor(t.InkSoft).Padding(6, 12).Radius(999).Background(t.SurfaceRaised).
 					Absolute().Bottom(18).Left(12).Right(12).TextAlign(ui.Center).SingleLine().Role(ui.RoleStatus)
 			})
 			return
@@ -689,7 +689,7 @@ func (a *App) phoneBody(c *ui.Context, pv *store.PhoneView, mine bool, doing *pr
 	ui.Row(c).Padding(t.S3, t.S4).Gap(t.S3).Justify(ui.End).AlignItems(ui.Center).Children(func() {
 		switch {
 		case pv.Mode == "signin":
-			ui.Text(c, a.L.T("phoneuse.signin.note")).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(1.45).Grow(1).MinWidth(0)
+			uiText(c, a.L.T("phoneuse.signin.note")).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(1.45).Grow(1).MinWidth(0)
 			if a.buttonFor(c, a.L.T("phoneuse.notnow"), title, btnSecondary, t.ControlMD, t.Bg) {
 				a.ClosePhone(false)
 			}
@@ -716,7 +716,7 @@ func (a *App) phoneBody(c *ui.Context, pv *store.PhoneView, mine bool, doing *pr
 					ui.Box(c.Key("phone-pulse")).Size(8, 8).Shrink(0).Radius(4).Background(t.State("working").Dot)
 				}
 				if line != "" {
-					ui.Text(c, line).FontSize(t.SM).TextColor(col).SingleLine()
+					uiText(c, line).FontSize(t.SM).TextColor(col).SingleLine()
 				}
 			})
 			switch {

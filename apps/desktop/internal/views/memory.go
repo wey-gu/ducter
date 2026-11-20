@@ -359,13 +359,16 @@ func (a *App) peersSeen() bool {
 	return false
 }
 
-// visibleTabs is the rail: 和你的其他 agent 通信 only for who it is for (D332).
+// visibleTabs is the rail: 和你的其他 agent 通信 only for who it is for (D332),
+// and, once listed, for the rest of the session (D408): the rail never
+// shrinks under the person's pointer.
 func (a *App) visibleTabs() []string {
 	var p *protocol.Peers
 	if a.S.Settings != nil {
 		p = a.S.Settings.Peers
 	}
-	if a.peersAsked || peersShown(p, a.S.Bridge, a.peersSeen(), ownsAgents(a.S.OwnAgents, a.S.Devices)) {
+	if a.peersAsked || a.peersRailed || peersShown(p, a.S.Bridge, a.peersSeen(), ownsAgents(a.S.OwnAgents, a.S.Devices)) {
+		a.peersRailed = true // once listed, kept for the session (D408)
 		return settingsTabs
 	}
 	out := make([]string, 0, len(settingsTabs))

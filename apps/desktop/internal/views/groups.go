@@ -267,7 +267,7 @@ func (a *App) groupCard(c *ui.Context, bg boardGroup) {
 					a.oh.groupRename = ""
 				}
 			} else {
-				ui.Text(c, g.Name).Font(t.Display).FontSize(t.MD).FontWeight(800).TextColor(t.Ink).SingleLine().Shrink(1).MinWidth(0)
+				uiText(c, g.Name).Font(t.Display).FontSize(t.MD).FontWeight(800).TextColor(t.Ink).SingleLine().Shrink(1).MinWidth(0)
 			}
 			ui.Spacer(c)
 			ui.Row(c.Key("beads")).Gap(4).AlignItems(ui.Center).AccessHidden(true).Children(func() {
@@ -292,7 +292,7 @@ func (a *App) groupCard(c *ui.Context, bg boardGroup) {
 				}
 			})
 			if len(bg.rows) > 0 {
-				ui.Text(c, a.L.T("group.done", bg.done, len(bg.rows))).FontSize(t.XS).FontWeight(600).TextColor(t.InkMuted).FontFeatures("tnum").SingleLine()
+				uiText(c, a.L.T("group.done", bg.done, len(bg.rows))).FontSize(t.XS).FontWeight(600).TextColor(t.InkMuted).FontFeatures("tnum").SingleLine()
 			}
 		})
 		var held []groupRow
@@ -314,7 +314,7 @@ func (a *App) groupCard(c *ui.Context, bg boardGroup) {
 			ui.Column(c.Key("part:" + key)).Gap(t.S1).Children(func() {
 				row := ui.Row(c.Key("row")).Gap(10).AlignItems(ui.Center).MinHeight(32)
 				row.Children(func() {
-					ui.Text(c, fmt.Sprint(r.part)).FontSize(t.XS).FontWeight(600).TextColor(t.InkSoft).FontFeatures("tnum").Width(16).Label(a.L.T("group.part", r.part))
+					uiText(c, fmt.Sprint(r.part)).FontSize(t.XS).FontWeight(600).TextColor(t.InkSoft).FontFeatures("tnum").Width(16).Label(a.L.T("group.part", r.part))
 					fill := map[string]ui.Color{"done": t.Done.Dot, "working": t.Working.Dot, "needs": t.NeedsYou.Dot, "failed": t.Failed.Dot, "dropped": t.Failed.Dot, "held": t.InkSoft, "waiting": t.Waiting.Ink}[k]
 					if k == "working" {
 						ui.Box(c.Key("pulse")).Size(20, 20).Radius(10).Background(t.Working.Surface).Shrink(0).AccessHidden(true).Draw(drawPulse(t.Working.Dot, phaseOf(key)))
@@ -328,7 +328,7 @@ func (a *App) groupCard(c *ui.Context, bg boardGroup) {
 					} else if k == "done" {
 						ink = t.InkSoft
 					}
-					title := ui.Text(c, keepWords(autospace(shortTitle(r.title)))).FontSize(t.SM).FontWeight(600).TextColor(ink).SingleLine().Grow(1).Shrink(1).MinWidth(0).Tooltip(r.title)
+					title := uiText(c, keepWords(autospace(shortTitle(r.title)))).FontSize(t.SM).FontWeight(600).TextColor(ink).SingleLine().Grow(1).Shrink(1).MinWidth(0).Tooltip(r.title)
 					if task != nil {
 						title.Cursor(ui.CursorPointer).Role(ui.RoleLink)
 						if title.Clicked() {
@@ -341,15 +341,15 @@ func (a *App) groupCard(c *ui.Context, bg boardGroup) {
 						if r.device != "" {
 							words = a.L.T("group.held.on", a.computerName(r.device))
 						}
-						ui.Text(c, words).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
+						uiText(c, words).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
 						if i := heldIndex(held, r.key); i > 0 && row.Hovered() && a.button(c, a.L.T("group.up"), btnText, t.ControlSM, t.Surface) {
 							to := i - 1
 							send(protocol.TaskGroupFrame{Op: "move", Member: r.key, To: &to})
 						}
 					case k == "needs":
-						ui.Text(c, a.L.T("lane.needs_you")).FontSize(t.XS).FontWeight(600).TextColor(t.NeedsYou.Ink).SingleLine()
+						uiText(c, a.L.T("lane.needs_you")).FontSize(t.XS).FontWeight(600).TextColor(t.NeedsYou.Ink).SingleLine()
 					case k == "failed" || k == "dropped":
-						ui.Text(c, a.L.T(map[bool]string{true: "state.failed", false: "state.dropped"}[k == "failed"])).FontSize(t.XS).FontWeight(600).TextColor(t.Failed.Ink).SingleLine()
+						uiText(c, a.L.T(map[bool]string{true: "state.failed", false: "state.dropped"}[k == "failed"])).FontSize(t.XS).FontWeight(600).TextColor(t.Failed.Ink).SingleLine()
 					case task != nil:
 						a.heartbeat(c, task, task.Attention())
 					}
@@ -371,7 +371,7 @@ func (a *App) groupCard(c *ui.Context, bg boardGroup) {
 				if s.nWaits > 1 {
 					key, arg = key+".many", s.nWaits
 				}
-				ui.Text(c, a.L.T(key, s.part, arg)).FontSize(t.SM).FontWeight(600).TextColor(t.NeedsYou.Ink).Wrap()
+				uiText(c, a.L.T(key, s.part, arg)).FontSize(t.SM).FontWeight(600).TextColor(t.NeedsYou.Ink).Wrap()
 				ui.Row(c.Key("acts")).Gap(6).Wrap().Children(func() {
 					if a.button(c, a.L.T("group.retry", s.part), btnSecondary, t.ControlSM, t.NeedsYou.Surface) {
 						a.send(protocol.PastContinue{T: "past_continue", TaskID: s.taskID, Words: a.L.T("group.retry", s.part)})
@@ -394,7 +394,7 @@ func (a *App) groupCard(c *ui.Context, bg boardGroup) {
 				if g.Order == "side_by_side" {
 					words = a.L.T("group.side")
 				}
-				ui.Text(c, words).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
+				uiText(c, words).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
 			})
 		}
 	})

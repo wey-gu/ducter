@@ -127,7 +127,7 @@ func (a *App) todosPanel(c *ui.Context) {
 	a.ledeNote(c, "todos-own", a.L.T("todos.own", a.personaName()))
 	v := a.S.Sources
 	if v == nil {
-		ui.Text(c, a.L.T("todos.pick.loading")).FontSize(t.MD).TextColor(t.InkMuted).Padding(0, t.S5)
+		uiText(c, a.L.T("todos.pick.loading")).FontSize(t.MD).TextColor(t.InkMuted).Padding(0, t.S5)
 		return
 	}
 	for _, s := range v.Sources {
@@ -172,10 +172,10 @@ func (a *App) todoSourceGroup(c *ui.Context, s protocol.SourceView) {
 					a.SeeTodos(s.ID, false)
 				}
 			} else {
-				ui.Text(c.Key("open"), open).FontSize(t.SM).FontWeight(600).TextColor(t.InkSoft).FontFeatures("tnum").SingleLine()
+				uiText(c.Key("open"), open).FontSize(t.SM).FontWeight(600).TextColor(t.InkSoft).FontFeatures("tnum").SingleLine()
 			}
 			if s.Taken > 0 {
-				ui.Text(c.Key("taken"), a.L.T("todos.taken", fmt.Sprint(s.Taken))).FontSize(t.SM).FontWeight(600).TextColor(t.Working.Ink).FontFeatures("tnum").SingleLine()
+				uiText(c.Key("taken"), a.L.T("todos.taken", fmt.Sprint(s.Taken))).FontSize(t.SM).FontWeight(600).TextColor(t.Working.Ink).FontFeatures("tnum").SingleLine()
 			}
 			if s.Review > 0 {
 				review := a.L.T("todos.review", fmt.Sprint(s.Review))
@@ -194,7 +194,7 @@ func (a *App) todoSourceGroup(c *ui.Context, s protocol.SourceView) {
 			}
 		} else if s.CheckedAt == "" {
 			a.textBlock(c, "src-reading:"+s.ID, func() {
-				ui.Text(c, a.L.T("todos.looking")).FontSize(t.SM).TextColor(t.InkMuted)
+				uiText(c, a.L.T("todos.looking")).FontSize(t.SM).TextColor(t.InkMuted)
 			})
 		}
 		a.textBlock(c, "src-when:"+s.ID, func() { a.todoChoices(c, s) })
@@ -232,13 +232,13 @@ func (a *App) todoProblem(c *ui.Context, s protocol.SourceView) {
 		// A failed look says so, why (gh's own words), and 再试一次 / Try again.
 		a.textBlock(c, "src-problem:"+s.ID, func() {
 			ui.Column(c).Gap(t.S2).Grow(1).Children(func() {
-				ui.Text(c.Key("line"), line).FontSize(t.SM).FontWeight(600).LineHeight(a.leading(1.5)).TextColor(t.Failed.Ink).Role(ui.RoleStatus)
+				uiText(c.Key("line"), line).FontSize(t.SM).FontWeight(600).LineHeight(a.leading(1.5)).TextColor(t.Failed.Ink).Role(ui.RoleStatus)
 				if s.Error != "" {
-					ui.Text(c.Key("why"), s.Error).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
+					uiText(c.Key("why"), s.Error).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
 				}
 				ui.Row(c.Key("again")).Children(func() {
 					if s.Looking || a.todos.retrying[s.ID] {
-						ui.Text(c, a.L.T("todos.looking")).FontSize(t.SM).TextColor(t.InkMuted)
+						uiText(c, a.L.T("todos.looking")).FontSize(t.SM).TextColor(t.InkMuted)
 					} else if a.buttonFor(c, a.L.T("todos.retry"), protocol.SourceKindName(s.Kind), btnSecondary, t.ControlSM, t.Surface) {
 						a.todos.retrying[s.ID] = true
 						a.send(protocol.SourcesReq{T: "sources"})
@@ -249,7 +249,7 @@ func (a *App) todoProblem(c *ui.Context, s protocol.SourceView) {
 		return
 	}
 	a.textBlock(c, "src-problem:"+s.ID, func() {
-		tx := ui.Text(c, line).FontSize(t.SM).FontWeight(600).LineHeight(a.leading(1.5)).TextColor(t.Failed.Ink).Role(ui.RoleStatus)
+		tx := uiText(c, line).FontSize(t.SM).FontWeight(600).LineHeight(a.leading(1.5)).TextColor(t.Failed.Ink).Role(ui.RoleStatus)
 		if s.Error != "" {
 			tx.Tooltip(s.Error)
 		}
@@ -279,14 +279,14 @@ func (a *App) todoChoices(c *ui.Context, s protocol.SourceView) {
 			labels[i] = a.L.T(prefix + v)
 		}
 		ui.Column(c.Key(key)).Gap(t.S2).Children(func() {
-			ui.Text(c, title).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).LineHeight(a.leading(1.4))
+			uiText(c, title).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).LineHeight(a.leading(1.4))
 			if i := a.choices(c, key+":"+s.ID, title, labels, slices.Index(vals, cur)); i >= 0 {
 				pick(vals[i])
 			}
 			if standing != "" {
 				ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
 					a.glyph(c, 14, drawCheck(t.Done.Ink))
-					ui.Text(c, standing).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(a.leading(1.5))
+					uiText(c, standing).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(a.leading(1.5))
 				})
 			}
 		})
@@ -344,7 +344,7 @@ func (a *App) todoFilters(c *ui.Context, s protocol.SourceView) {
 			v = cur
 		}
 		ui.Column(c.Key("filter:" + k)).Gap(6).Grow(1).MinWidth(0).Children(func() {
-			ui.Text(c, label).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).AccessHidden(true)
+			uiText(c, label).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).AccessHidden(true)
 			in := ui.TextInput(c.Key("in:"+k), &v).Placeholder(placeholder).Label(label+"，"+name).
 				FontSize(t.MD).Height(44).Padding(0, t.S3).Radius(t.RadiusSM).Background(t.Surface).MinWidth(0)
 			focused := in.Focused()
@@ -354,7 +354,7 @@ func (a *App) todoFilters(c *ui.Context, s protocol.SourceView) {
 			}
 			in.Border(1, edge)
 			if hint != "" {
-				ui.Text(c, hint).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(a.leading(1.5))
+				uiText(c, hint).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(a.leading(1.5))
 			}
 			if focused && !in.Submitted() {
 				a.todos.drafts[k] = v
@@ -492,12 +492,12 @@ func (a *App) todoAddGroup(c *ui.Context, v *protocol.SourcesView) {
 					}
 				})
 				if s.addErr != "" {
-					ui.Text(c, s.addErr).FontSize(t.SM).FontWeight(600).TextColor(t.Failed.Ink).Role(ui.RoleStatus)
+					uiText(c, s.addErr).FontSize(t.SM).FontWeight(600).TextColor(t.Failed.Ink).Role(ui.RoleStatus)
 				}
 			})
 		} else if s.addErr != "" {
 			a.textBlock(c, "add-err", func() {
-				ui.Text(c, s.addErr).FontSize(t.SM).FontWeight(600).TextColor(t.Failed.Ink).Role(ui.RoleStatus)
+				uiText(c, s.addErr).FontSize(t.SM).FontWeight(600).TextColor(t.Failed.Ink).Role(ui.RoleStatus)
 			})
 		}
 		a.tileRow(c, "add-jira", a.brandTile(c, "jira", true), "Jira", a.L.T("todos.jira.sub"), func() { a.quietTag(c, a.L.T("todos.soon")) })
@@ -552,7 +552,7 @@ func (a *App) todoChip(c *ui.Context, key string, r protocol.SourceItemRef) {
 		if src := theme.Brand(r.Kind); src != nil {
 			ui.Image(c, src).Size(16, 16).Shrink(0).AccessHidden(true)
 		}
-		ui.Text(c, r.Label).FontSize(t.SM).FontWeight(600).TextColor(t.InkSoft).SingleLine().Shrink(1).MinWidth(0).AccessHidden(true)
+		uiText(c, r.Label).FontSize(t.SM).FontWeight(600).TextColor(t.InkSoft).SingleLine().Shrink(1).MinWidth(0).AccessHidden(true)
 	})
 	if r.URL != "" && chip.Clicked() {
 		c.OpenURL(r.URL)
@@ -606,7 +606,7 @@ func (a *App) todoHead(c *ui.Context, task *store.Task) {
 		if s.State == "closed" || s.State == "gone" {
 			ink = t.Waiting.Ink
 		}
-		ui.Text(c.Key("todo-state"), w).FontSize(t.SM).FontWeight(700).TextColor(ink).SingleLine().Shrink(0)
+		uiText(c.Key("todo-state"), w).FontSize(t.SM).FontWeight(700).TextColor(ink).SingleLine().Shrink(0)
 	}
 }
 
@@ -699,7 +699,7 @@ func (a *App) todoPick(c *ui.Context) {
 			a.todoChip(c, "nt", p.SourceItemRef)
 			// Its title, unless the words already say it.
 			if strings.TrimSpace(nt.words) != strings.TrimSpace(p.Title) {
-				ui.Text(c, keepWords(autospace(p.Title))).FontSize(t.SM).TextColor(t.InkSoft).SingleLine().Shrink(1).MinWidth(0)
+				uiText(c, keepWords(autospace(p.Title))).FontSize(t.SM).TextColor(t.InkSoft).SingleLine().Shrink(1).MinWidth(0)
 			}
 			if a.quietButton(c, "nt-unpick", a.L.T("todos.pick.unpick"), p.Label, false, 0) {
 				if strings.TrimSpace(nt.words) == strings.TrimSpace(p.Title) {
@@ -742,9 +742,9 @@ func (a *App) todoPick(c *ui.Context) {
 				ui.Column(c).Gap(2).Role(ui.RoleList).Label(a.L.T("todos.pick")).Children(func() {
 					switch {
 					case r == nil:
-						ui.Text(c, a.L.T("todos.pick.loading")).FontSize(t.SM).TextColor(t.InkMuted).Padding(t.S2, t.S3)
+						uiText(c, a.L.T("todos.pick.loading")).FontSize(t.SM).TextColor(t.InkMuted).Padding(t.S2, t.S3)
 					case len(r.Items) == 0:
-						ui.Text(c, a.L.T("todos.pick.none")).FontSize(t.SM).TextColor(t.InkMuted).Padding(t.S2, t.S3)
+						uiText(c, a.L.T("todos.pick.none")).FontSize(t.SM).TextColor(t.InkMuted).Padding(t.S2, t.S3)
 					default:
 						for i := range r.Items {
 							if a.todoPickRow(c, &r.Items[i]) {
@@ -775,13 +775,13 @@ func (a *App) todoPickRow(c *ui.Context, it *protocol.SourceItem) bool {
 		if src := theme.Brand(it.Kind); src != nil {
 			ui.Image(c, src).Size(16, 16).Shrink(0).AccessHidden(true)
 		}
-		ui.Text(c, it.Label).FontSize(t.SM).FontWeight(600).TextColor(t.InkMuted).SingleLine().Shrink(0).MaxWidth(160).AccessHidden(true)
-		ui.Text(c, keepWords(autospace(it.Title))).FontSize(t.MD).TextColor(t.Ink).SingleLine().Grow(1).Shrink(1).MinWidth(0).AccessHidden(true).Tooltip(it.Title)
+		uiText(c, it.Label).FontSize(t.SM).FontWeight(600).TextColor(t.InkMuted).SingleLine().Shrink(0).MaxWidth(160).AccessHidden(true)
+		uiText(c, keepWords(autospace(it.Title))).FontSize(t.MD).TextColor(t.Ink).SingleLine().Grow(1).Shrink(1).MinWidth(0).AccessHidden(true).Tooltip(it.Title)
 		if it.Due != "" {
-			ui.Text(c.Key("due"), a.L.T("todos.pick.due", it.Due)).FontSize(t.XS).FontWeight(600).TextColor(t.InkSoft).SingleLine().Shrink(0)
+			uiText(c.Key("due"), a.L.T("todos.pick.due", it.Due)).FontSize(t.XS).FontWeight(600).TextColor(t.InkSoft).SingleLine().Shrink(0)
 		}
 		if it.TaskID != "" {
-			ui.Text(c.Key("doing"), a.L.T("todos.pick.doing")).FontSize(t.XS).FontWeight(700).TextColor(t.Working.Ink).SingleLine().Shrink(0)
+			uiText(c.Key("doing"), a.L.T("todos.pick.doing")).FontSize(t.XS).FontWeight(700).TextColor(t.Working.Ink).SingleLine().Shrink(0)
 		}
 	})
 	return row.Clicked()
@@ -820,10 +820,10 @@ func (a *App) todoAskBody(c *ui.Context, d *store.DecisionState) {
 	if src.Kind == "where_rule" && src.Quote != "" {
 		// D385: the note's lasting where, asked once: the person's own words.
 		ui.Column(c.Key("todo-rule")).Gap(t.S1).Children(func() {
-			ui.Text(c, a.L.T("hand.rule.said")).FontSize(t.SM).FontWeight(700).TextColor(t.NeedsYou.Ink)
+			uiText(c, a.L.T("hand.rule.said")).FontSize(t.SM).FontWeight(700).TextColor(t.NeedsYou.Ink)
 			ui.Row(c.Key("quote")).Gap(t.S3).Padding(t.S3, t.S4).Radius(t.RadiusMD).Background(t.Surface.Alpha(0.75)).Children(func() {
 				ui.Box(c).Width(3).Radius(2).AlignSelf(ui.Stretch).Background(t.NeedsYou.Ink.Alpha(0.35)).Shrink(0).AccessHidden(true)
-				ui.Text(c, src.Quote).FontSize(t.MD).LineHeight(a.leading(1.55)).TextColor(t.Ink).Grow(1).MinWidth(0).Selectable()
+				uiText(c, src.Quote).FontSize(t.MD).LineHeight(a.leading(1.55)).TextColor(t.Ink).Grow(1).MinWidth(0).Selectable()
 			})
 		})
 		return
@@ -835,13 +835,13 @@ func (a *App) todoAskBody(c *ui.Context, d *store.DecisionState) {
 				ref := x.Item.Ref
 				ui.Row(c.Key("rev:"+ref)).Gap(t.S2).Padding(t.S1, t.S3).Radius(t.RadiusSM).Background(t.Surface.Alpha(0.75)).AlignItems(ui.Center).MinWidth(0).Children(func() {
 					a.todoChip(c, "rev:"+d.DecisionID+":"+ref, x.Item)
-					ui.Text(c, keepWords(autospace(x.Item.Title))).FontSize(t.SM).TextColor(t.Ink).SingleLine().Grow(1).Shrink(1).MinWidth(0).Tooltip(x.Item.Title)
+					uiText(c, keepWords(autospace(x.Item.Title))).FontSize(t.SM).TextColor(t.Ink).SingleLine().Grow(1).Shrink(1).MinWidth(0).Tooltip(x.Item.Title)
 					if a.button(c, a.L.T("todos.reviews.read"), btnText, t.ControlMD, t.Surface) {
 						a.openPreRead(ref)
 					}
 				})
 			}
-			ui.Text(c, a.L.T("todos.reviews.foot")).FontSize(t.SM).TextColor(t.InkMuted)
+			uiText(c, a.L.T("todos.reviews.foot")).FontSize(t.SM).TextColor(t.InkMuted)
 		})
 		return
 	}
@@ -851,17 +851,17 @@ func (a *App) todoAskBody(c *ui.Context, d *store.DecisionState) {
 	}
 	ui.Column(c.Key("todo-says")).Gap(t.S2).Children(func() {
 		ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
-			ui.Text(c, a.L.T("todos.card.says")).FontSize(t.SM).FontWeight(700).TextColor(t.NeedsYou.Ink).SingleLine()
+			uiText(c, a.L.T("todos.card.says")).FontSize(t.SM).FontWeight(700).TextColor(t.NeedsYou.Ink).SingleLine()
 			a.todoChip(c, "ask:"+d.DecisionID, src.Item)
 		})
 		if src.Text != "" {
 			ui.Row(c.Key("quote")).Gap(t.S3).Padding(t.S3, t.S4).Radius(t.RadiusMD).Background(t.Surface.Alpha(0.75)).Children(func() {
 				ui.Box(c).Width(3).Radius(2).AlignSelf(ui.Stretch).Background(t.NeedsYou.Ink.Alpha(0.35)).Shrink(0).AccessHidden(true)
-				ui.Text(c, src.Text).FontSize(t.MD).LineHeight(a.leading(1.55)).TextColor(t.Ink).Grow(1).MinWidth(0).Selectable()
+				uiText(c, src.Text).FontSize(t.MD).LineHeight(a.leading(1.55)).TextColor(t.Ink).Grow(1).MinWidth(0).Selectable()
 			})
 		}
 		if src.Close {
-			ui.Text(c, a.L.T("todos.card.and.close")).FontSize(t.SM).FontWeight(600).TextColor(t.NeedsYou.Ink)
+			uiText(c, a.L.T("todos.card.and.close")).FontSize(t.SM).FontWeight(600).TextColor(t.NeedsYou.Ink)
 		}
 	})
 }

@@ -83,7 +83,7 @@ func (a *App) chatsPanel(c *ui.Context) {
 	a.ledeNote(c, "chats-goes", a.L.T("chats.goes"))
 	f := a.S.Channels
 	if f == nil {
-		ui.Text(c, a.L.T("chats.state.starting")).FontSize(t.MD).TextColor(t.InkMuted)
+		uiText(c, a.L.T("chats.state.starting")).FontSize(t.MD).TextColor(t.InkMuted)
 	} else {
 		if a.chats.was == nil {
 			a.chats.was = map[string]string{}
@@ -183,12 +183,12 @@ func (a *App) chatHeadWith(c *ui.Context, kind, name, line string, tone sideTone
 	ui.Row(c.Key("chat-head:"+kind)).Gap(t.S3).Padding(t.S4, t.S5).MinHeight(72).AlignItems(ui.Center).Children(func() {
 		a.chatTile(c, kind)
 		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(2).Children(func() {
-			ui.Text(c, name).Font(t.Display).FontSize(t.LG).FontWeight(800).LineHeight(1.3)
+			uiText(c, name).Font(t.Display).FontSize(t.LG).FontWeight(800).LineHeight(1.3)
 			w := 600
 			if tone == sideMuted {
 				w = 500
 			}
-			ui.Text(c, line).FontSize(t.SM).FontWeight(w).LineHeight(a.leading(1.5)).TextColor(a.sideInk(tone))
+			uiText(c, line).FontSize(t.SM).FontWeight(w).LineHeight(a.leading(1.5)).TextColor(a.sideInk(tone))
 		})
 		if control != nil {
 			ui.Row(c).Shrink(0).Gap(t.S2).AlignItems(ui.Center).Children(control)
@@ -220,11 +220,11 @@ func (a *App) chatStep(c *ui.Context, n int, text string, aside func()) {
 		ui.Row(c).Width(40).Shrink(0).Justify(ui.Center).Padding(1, 0, 0, 0).Children(func() {
 			ui.Row(c).Size(26, 26).Radius(13).Background(t.Sunken).Shadow(0, 2, 0, 0, t.Line2).
 				Justify(ui.Center).AlignItems(ui.Center).AccessHidden(true).Children(func() {
-				ui.Text(c, strconv.Itoa(n)).FontSize(t.SM).FontWeight(800).TextColor(t.InkSoft).LineHeight(1)
+				uiText(c, strconv.Itoa(n)).FontSize(t.SM).FontWeight(800).TextColor(t.InkSoft).LineHeight(1)
 			})
 		})
 		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(t.S2).Children(func() {
-			ui.Text(c, text).FontSize(t.MD).LineHeight(a.leading(1.5)).TextColor(t.Ink)
+			uiText(c, text).FontSize(t.MD).LineHeight(a.leading(1.5)).TextColor(t.Ink)
 			if aside != nil {
 				aside()
 			}
@@ -240,9 +240,9 @@ func (a *App) chatRow(c *ui.Context, key, title, line string, control func()) {
 	ui.Row(c.Key("chat-row:"+key)).Gap(t.S3).Padding(t.S4, t.S5).MinHeight(64).AlignItems(ui.Center).Children(func() {
 		ui.Box(c).Width(40).Shrink(0)
 		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(2).Children(func() {
-			ui.Text(c, title).FontSize(t.MD).FontWeight(700).LineHeight(a.leading(1.4))
+			uiText(c, title).FontSize(t.MD).FontWeight(700).LineHeight(a.leading(1.4))
 			if line != "" {
-				ui.Text(c, line).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
+				uiText(c, line).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
 			}
 		})
 		if control != nil {
@@ -258,7 +258,7 @@ func (a *App) chatFoot(c *ui.Context, key, note string, buttons func()) {
 	a.sep(c)
 	ui.Row(c.Key("chat-foot:"+key)).Gap(t.S3).Padding(t.S3, t.S5, t.S4, t.S5).MinHeight(60).AlignItems(ui.Center).Children(func() {
 		ui.Box(c).Width(40).Shrink(0)
-		ui.Text(c, note).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted).Grow(1).Basis(0).MinWidth(0)
+		uiText(c, note).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted).Grow(1).Basis(0).MinWidth(0)
 		if buttons != nil {
 			ui.Row(c).Shrink(0).Gap(t.S2).AlignItems(ui.Center).Children(buttons)
 		}
@@ -270,7 +270,7 @@ func (a *App) chatFoot(c *ui.Context, key, note string, buttons func()) {
 func (a *App) chatChip(c *ui.Context, text string, size float32) {
 	t := a.T
 	ui.Row(c).Children(func() {
-		ui.Text(c, text).Font(t.Mono).FontSize(size).FontWeight(600).TextColor(t.Ink).
+		uiText(c, text).Font(t.Mono).FontSize(size).FontWeight(600).TextColor(t.Ink).
 			Padding(t.S1, t.S2).Radius(t.RadiusXS).Background(t.SurfaceSunken).Selectable()
 	})
 }
@@ -280,7 +280,7 @@ func (a *App) chatChip(c *ui.Context, text string, size float32) {
 func (a *App) chatField(c *ui.Context, key, label string, v *string, placeholder string) {
 	t := a.T
 	ui.Column(c.Key("chat-field:" + key)).Gap(t.S1).MaxWidth(460).Children(func() {
-		ui.Text(c, label).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
+		uiText(c, label).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
 		in := ui.TextInput(c.Key("chat-input:"+key), v).Placeholder(placeholder).Label(label).Password().
 			FontSize(t.MD).Height(t.ControlMD).Padding(0, t.S4).Radius(t.RadiusSM).Background(t.Surface)
 		edge := t.Line2
@@ -390,7 +390,7 @@ func (a *App) chatConnect(c *ui.Context, kind, manifest string) {
 				})
 				if s.manifest {
 					ui.Scroll(c.Key("chat-manifest")).MaxHeight(180).Radius(t.RadiusSM).Background(t.SurfaceSunken).Children(func() {
-						ui.Text(c, manifest).Font(t.Mono).FontSize(t.XS).LineHeight(1.5).TextColor(t.InkSoft).Padding(t.S3, t.S4).Selectable()
+						uiText(c, manifest).Font(t.Mono).FontSize(t.XS).LineHeight(1.5).TextColor(t.InkSoft).Padding(t.S3, t.S4).Selectable()
 					})
 				}
 			})
@@ -415,7 +415,7 @@ func (a *App) chatConnect(c *ui.Context, kind, manifest string) {
 			}
 			ui.Row(c).Gap(t.S3).Children(func() {
 				ui.Box(c).Width(40).Shrink(0)
-				ui.Text(c, a.L.T(key)).FontSize(t.SM).FontWeight(600).TextColor(t.Failed.Ink)
+				uiText(c, a.L.T(key)).FontSize(t.SM).FontWeight(600).TextColor(t.Failed.Ink)
 			})
 		}
 	})
@@ -474,17 +474,17 @@ func (a *App) chatLink(c *ui.Context, v protocol.ChannelView) {
 					if code.Link == "" {
 						key = "chats.tg.code.only"
 					}
-					ui.Text(c, a.L.T(key)).FontSize(t.MD).LineHeight(a.leading(1.5))
+					uiText(c, a.L.T(key)).FontSize(t.MD).LineHeight(a.leading(1.5))
 					a.chatChip(c, "/start "+code.Code, t.MonoSM)
 				} else {
 					bot := a.personaName()
 					if v.Bot != nil && v.Bot.Name != "" {
 						bot = v.Bot.Name
 					}
-					ui.Text(c, a.L.T("chats.sl.code", bot)).FontSize(t.MD).LineHeight(a.leading(1.5))
-					ui.Text(c, code.Code).Font(t.Mono).FontSize(t.XL).FontWeight(700).LetterSpacing(1).Selectable()
+					uiText(c, a.L.T("chats.sl.code", bot)).FontSize(t.MD).LineHeight(a.leading(1.5))
+					uiText(c, code.Code).Font(t.Mono).FontSize(t.XL).FontWeight(700).LetterSpacing(1).Selectable()
 				}
-				ui.Text(c, a.L.T("chats.code.ttl")).FontSize(t.SM).TextColor(t.InkMuted)
+				uiText(c, a.L.T("chats.code.ttl")).FontSize(t.SM).TextColor(t.InkMuted)
 			})
 			if v.Kind == "telegram" && code.Link != "" {
 				if a.buttonFor(c, a.L.T("chats.tg.open"), name, btnPrimary, t.ControlMD, t.Surface) {

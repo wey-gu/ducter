@@ -142,7 +142,7 @@ func (a *App) parcelTags(c *ui.Context, dv *protocol.DeviceView, dr ui.Rect, dy 
 	ui.Row(c.Key("parcel-tags:" + dv.ID)).Absolute().Left(dr.X - 60).Top(max(dr.Y+dy-30, 8)).Width(dr.W + 120).Justify(ui.Center).Gap(t.S1).AccessHidden(true).Children(func() {
 		for i, tag := range tags {
 			ui.Row(c.Key(i)).Padding(2, t.S2).Radius(8).Background(t.Isles.Parcel).Shadow(0, 2, 0, 0, t.Isles.ParcelEdge.Alpha(0.6)).Children(func() {
-				ui.Text(c, tag).FontSize(t.XS).FontWeight(800).TextColor(t.InkSoft).SingleLine().MaxWidth(160)
+				uiText(c, tag).FontSize(t.XS).FontWeight(800).TextColor(t.InkSoft).SingleLine().MaxWidth(160)
 			})
 		}
 	})

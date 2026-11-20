@@ -133,16 +133,16 @@ func (a *App) connect(c *ui.Context) {
 			a.avatar(c, theme.Idle, 88)
 			a.heading(c, a.L.T("connect.title"), t.XXL)
 			if a.Unauthorized {
-				ui.Text(c, a.L.T("connect.revoked")).FontSize(t.MD).LineHeight(1.5).TextColor(t.NeedsYou.Ink)
+				uiText(c, a.L.T("connect.revoked")).FontSize(t.MD).LineHeight(1.5).TextColor(t.NeedsYou.Ink)
 			}
-			ui.Text(c, a.L.T("connect.body")).FontSize(t.LG).LineHeight(1.55).TextColor(t.InkSoft)
+			uiText(c, a.L.T("connect.body")).FontSize(t.LG).LineHeight(1.55).TextColor(t.InkSoft)
 			a.commandBox(c, PairCommand)
 
 			a.field(c, "address", a.L.T("connect.address"), &a.conn.address, a.L.T("connect.address.placeholder"), "")
 			a.field(c, "code", a.L.T("connect.code"), &a.conn.code, a.L.T("connect.code.placeholder"), a.L.T("connect.code.hint"))
 
 			if a.conn.err != "" {
-				ui.Text(c, a.conn.err).FontSize(t.MD).LineHeight(1.5).TextColor(t.NeedsYou.Ink).Role(ui.RoleAlert)
+				uiText(c, a.conn.err).FontSize(t.MD).LineHeight(1.5).TextColor(t.NeedsYou.Ink).Role(ui.RoleAlert)
 			}
 			ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Margin(6, 0, 0, 0).Children(func() {
 				label := a.L.T("connect.go")
@@ -156,7 +156,7 @@ func (a *App) connect(c *ui.Context) {
 					a.submitConnect()
 				}
 			})
-			ui.Text(c, a.L.T("connect.safe")).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5)
+			uiText(c, a.L.T("connect.safe")).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5)
 		})
 	})
 }
@@ -165,13 +165,13 @@ func (a *App) connect(c *ui.Context) {
 func (a *App) field(c *ui.Context, key, label string, value *string, placeholder, hint string) {
 	t := a.T
 	ui.Column(c.Key("field:" + key)).Gap(t.S2).Children(func() {
-		ui.Text(c, label).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
+		uiText(c, label).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
 		ui.TextInput(c.Key("input:"+key), value).Placeholder(placeholder).Label(label).
 			Font(t.Mono).FontSize(t.MD).Padding(t.S3, t.S4).Radius(t.RadiusSM).
 			Background(t.SurfaceSunken).Border(1, t.LineSoft).
 			OnSubmit(a.submitConnect)
 		if hint != "" {
-			ui.Text(c, hint).FontSize(t.XS).TextColor(t.InkMuted)
+			uiText(c, hint).FontSize(t.XS).TextColor(t.InkMuted)
 		}
 	})
 }

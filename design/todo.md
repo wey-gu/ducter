@@ -2,6 +2,16 @@
 
 Deferred work, grouped by area, each with its trigger where it has one.
 
+## The Mac walk's leftovers (D408)
+
+- **Walk D408 in the real window.** VoiceOver on a joined title (「对话」 read as a word), an expiry typed
+  0829 and 829, Settings on 在哪儿运行 while 和你的其他 agent 通信 comes and goes, and a Telegram link
+  completed in the settings demo; with a real keyboard in every field.
+- **Ask MyGo upstream for accessible text without line-breaking joiners** (its Markdown view, and
+  `ui.Text` generally): then `uiText` and `mdSpace` go, and replies keep `keepTokens`' whole tokens.
+  Also ask whether an accessibility text insert can show in the value at once, so a driver's
+  read-back confirms it (the doubled typing, D408 (3)).
+
 ## A review that runs every so often (D394, `past.md` Ongoing, research/158)
 
 - **Live check on hel.** Everything in D394 is checked with fakes only: the brief rule, no nudge,

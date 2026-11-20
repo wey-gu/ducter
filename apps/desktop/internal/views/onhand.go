@@ -50,7 +50,7 @@ func (a *App) onHand(c *ui.Context) {
 				if empty {
 					ui.Column(c.Key("empty")).Width(640).MaxWidthPercent(100).AlignSelf(ui.Center).Padding(t.S5, t.S5).Gap(t.S3).Radius(t.RadiusXL).Border(2, t.Line).BorderStyle(ui.BorderDashed).AlignItems(ui.Center).Children(func() {
 						a.avatar(c, theme.Idle, 120)
-						ui.Text(c, a.L.T("onhand.empty", a.S.PersonaName)).FontSize(t.LG).TextColor(t.InkSoft).TextAlign(ui.Center)
+						uiText(c, a.L.T("onhand.empty", a.S.PersonaName)).FontSize(t.LG).TextColor(t.InkSoft).TextAlign(ui.Center)
 					})
 					ui.Column(c.Key("past")).Width(640).MaxWidthPercent(100).AlignSelf(ui.Center).Children(func() { a.pastEndLine(c) }) // D285
 					return
@@ -126,7 +126,7 @@ func (a *App) lensRoutines(c *ui.Context, g *lensGroup) {
 			}
 			if len(g.routines) == 0 {
 				ui.Row(c.Key("empty")).Height(56).Padding(0, t.S4+2).AlignItems(ui.Center).Children(func() {
-					ui.Text(c, a.L.T("onhand.project.empty")).FontSize(t.SM).TextColor(t.InkMuted)
+					uiText(c, a.L.T("onhand.project.empty")).FontSize(t.SM).TextColor(t.InkMuted)
 				})
 			}
 		})
@@ -264,12 +264,12 @@ func (a *App) waiterRow(c *ui.Context, w *protocol.Waiter) {
 			if w.Check != nil || w.Event != nil {
 				title = a.waitLine(w.Reason)
 			}
-			ui.Text(c, keepWords(autospace(title))).FontSize(14).FontWeight(500).TextColor(t.Ink).MaxLines(2)
+			uiText(c, keepWords(autospace(title))).FontSize(14).FontWeight(500).TextColor(t.Ink).MaxLines(2)
 			if w.Check != nil || w.Event != nil {
 				a.groove(c, w, false)
 			}
 			if line := a.waitCaption(w); line != "" {
-				ui.Text(c, line).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum").MaxLines(2)
+				uiText(c, line).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum").MaxLines(2)
 			}
 		})
 	})
@@ -288,8 +288,8 @@ func (a *App) missedRow(c *ui.Context, w *protocol.Waiter) {
 		Label(w.Reason).Children(func() {
 		a.waitBubble(c, waitGlyph(w.Check, w.Event), 32)
 		ui.Column(c).Gap(2).Grow(1).MinWidth(0).Children(func() {
-			ui.Text(c, keepWords(autospace(w.Reason))).FontSize(14).FontWeight(500).TextColor(t.Ink).MaxLines(2)
-			ui.Text(c, a.L.T("wait.missed", why)).FontSize(t.XS).TextColor(t.InkMuted).MaxLines(2)
+			uiText(c, keepWords(autospace(w.Reason))).FontSize(14).FontWeight(500).TextColor(t.Ink).MaxLines(2)
+			uiText(c, a.L.T("wait.missed", why)).FontSize(t.XS).TextColor(t.InkMuted).MaxLines(2)
 		})
 		if a.button(c, a.L.T("wait.rearm"), btnText, t.ControlSM, t.Bg) {
 			a.send(protocol.WaiterAction{T: "waiter_action", WaiterID: w.WaiterID, Action: "rearm"})
@@ -342,10 +342,10 @@ func (a *App) forecastBand(c *ui.Context, b store.Board) {
 			}
 			return out
 		}()...)).Children(func() {
-		ui.Text(c, a.L.T("onhand.next")).FontSize(t.XS).FontWeight(600).TextColor(t.InkMuted).SingleLine().Shrink(0)
+		uiText(c, a.L.T("onhand.next")).FontSize(t.XS).FontWeight(600).TextColor(t.InkMuted).SingleLine().Shrink(0)
 		// Each one reads as a phrase: its time, then what it is.
 		for _, it := range items {
-			ui.Text(c, it.when+" "+it.text).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum").SingleLine().Shrink(1).MinWidth(0)
+			uiText(c, it.when+" "+it.text).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum").SingleLine().Shrink(1).MinWidth(0)
 		}
 	})
 }
@@ -384,7 +384,7 @@ func (a *App) lane(c *ui.Context, lane store.Lane, tasks []*store.Task, grow, ba
 		}
 		if len(tasks) == 0 && len(waiters) == 0 && lane != store.LaneNeedsYou {
 			ui.Box(c).Padding(t.S4, t.S4).Radius(t.RadiusLG).Border(2, t.LineSoft).BorderStyle(ui.BorderDashed).Children(func() {
-				ui.Text(c, a.L.T("lane.empty")).FontSize(t.SM).TextColor(t.InkMuted)
+				uiText(c, a.L.T("lane.empty")).FontSize(t.SM).TextColor(t.InkMuted)
 			})
 			return
 		}
@@ -510,7 +510,7 @@ func (a *App) askerRow(c *ui.Context, task *store.Task) {
 			if hover {
 				col = t.Ink
 			}
-			tx := ui.Text(c, title).FontSize(t.SM).FontWeight(700).TextColor(col).MinWidth(0).Shrink(1).SingleLine().AccessHidden(true)
+			tx := uiText(c, title).FontSize(t.SM).FontWeight(700).TextColor(col).MinWidth(0).Shrink(1).SingleLine().AccessHidden(true)
 			if hover {
 				tx.Underline()
 			}
@@ -524,7 +524,7 @@ func (a *App) askerRow(c *ui.Context, task *store.Task) {
 			if d := a.Now().Sub(at); d >= time.Minute {
 				opened = a.L.T("time.opened", a.duration(d))
 			}
-			ui.Text(c, opened).FontSize(t.XS).TextColor(t.InkMuted).Shrink(0)
+			uiText(c, opened).FontSize(t.XS).TextColor(t.InkMuted).Shrink(0)
 		}
 	})
 }
@@ -606,7 +606,7 @@ func (a *App) defaultRow(c *ui.Context, d *store.DecisionState) {
 	}
 	ui.Row(c.Key("default")).Gap(t.S2).AlignItems(ui.Center).MinWidth(0).Children(func() {
 		ui.Box(c).Size(16, 16).Shrink(0).Draw(drawRing(t.NeedsYou.Ink.Alpha(0.45), t.Accent, frac)).AccessHidden(true)
-		ui.Text(c, words).FontSize(t.SM).TextColor(t.NeedsYou.Ink).SingleLine().MinWidth(0).Shrink(1).Tooltip(words)
+		uiText(c, words).FontSize(t.SM).TextColor(t.NeedsYou.Ink).SingleLine().MinWidth(0).Shrink(1).Tooltip(words)
 	})
 }
 
@@ -667,17 +667,17 @@ func (a *App) workingCard(c *ui.Context, task *store.Task) {
 			}
 			pop.AnimatePose(p, ui.Animation{Duration: 320 * time.Millisecond})
 		}
-		ui.Text(c, keepWords(autospace(shortTitle(task.Title())))).FontSize(t.MD).FontWeight(800).Balance()
+		uiText(c, keepWords(autospace(shortTitle(task.Title())))).FontSize(t.MD).FontWeight(800).Balance()
 		if u := task.Card; u != nil && u.Until != nil && u.Until.State == "on" {
 			// A keep-going loop (D113): its tries, then where it stands.
 			a.goal(c, u.Until, false)
 			if line := a.untilLine(u.Until); line != "" {
-				ui.Text(c, line).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft).MaxLines(3)
+				uiText(c, line).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft).MaxLines(3)
 			}
 		} else if rep := task.Report(); rep != nil && rep.Summary != "" {
-			ui.Text(c, rep.Summary).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft).MaxLines(3)
+			uiText(c, rep.Summary).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft).MaxLines(3)
 		} else if r := a.waitReason(task); r != "" {
-			ui.Text(c, r).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft)
+			uiText(c, r).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft)
 		}
 		meta := a.whereWhy(task)
 		if task.Card != nil && task.Card.FromRoutine != nil {
@@ -695,7 +695,7 @@ func (a *App) waitingCard(c *ui.Context, task *store.Task) {
 	card := ui.Column(c).Padding(t.S4, t.S4).Gap(t.S2).Radius(t.RadiusLG).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color)
 	a.cardLink(c, card, task)
 	card.Children(func() {
-		ui.Text(c, keepWords(autospace(shortTitle(task.Title())))).FontSize(t.MD).FontWeight(800).Balance()
+		uiText(c, keepWords(autospace(shortTitle(task.Title())))).FontSize(t.MD).FontWeight(800).Balance()
 		// What it waits for, said alone: the clock or the wait's bubble
 		// already says it is waiting (D291); when it comes back is its own
 		// muted time.
@@ -711,19 +711,19 @@ func (a *App) waitingCard(c *ui.Context, task *store.Task) {
 			} else {
 				a.glyph(c, 18, drawClock(t.InkMuted))
 			}
-			ui.Text(c, reason).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft).Grow(1).MinWidth(0)
+			uiText(c, reason).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft).Grow(1).MinWidth(0)
 			if back != "" {
-				ui.Text(c, back).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum").SingleLine().Shrink(0)
+				uiText(c, back).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum").SingleLine().Shrink(0)
 			}
 		})
 		if w != nil && (w.Check != nil || w.Event != nil) {
 			a.groove(c, w, false)
 			if line := a.waitCaption(w); line != "" {
-				ui.Text(c, line).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum").MaxLines(2)
+				uiText(c, line).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum").MaxLines(2)
 			}
 		}
 		if rep := task.Report(); rep != nil && rep.Summary != "" {
-			ui.Text(c, rep.Summary).FontSize(t.XS).TextColor(t.InkMuted).MaxLines(2)
+			uiText(c, rep.Summary).FontSize(t.XS).TextColor(t.InkMuted).MaxLines(2)
 		}
 	})
 }
@@ -736,10 +736,10 @@ func (a *App) doneList(c *ui.Context, tasks []*store.Task) {
 			row := ui.Column(c.Key(task.ID)).Gap(t.S2).Padding(t.S3, 0).Cursor(ui.CursorPointer).Role(ui.RoleLink).Label(task.Title())
 			row.Children(func() {
 				ui.Row(c).Gap(t.S2).AlignItems(ui.Start).Children(func() {
-					ui.Text(c, keepWords(autospace(task.Title()))).FontSize(t.MD).FontWeight(700).Grow(1).MinWidth(0).MaxLines(2).Balance()
+					uiText(c, keepWords(autospace(task.Title()))).FontSize(t.MD).FontWeight(700).Grow(1).MinWidth(0).MaxLines(2).Balance()
 					if task.Attention() == protocol.Failed {
 						// The exception, in words in its ink; no capsule.
-						ui.Text(c, a.stateLabel(protocol.Failed)).FontSize(t.XS).FontWeight(700).TextColor(t.Failed.Ink).Shrink(0)
+						uiText(c, a.stateLabel(protocol.Failed)).FontSize(t.XS).FontWeight(700).TextColor(t.Failed.Ink).Shrink(0)
 					}
 				})
 				// The result itself: its first line, and its first machine check.
@@ -748,7 +748,7 @@ func (a *App) doneList(c *ui.Context, tasks []*store.Task) {
 					return
 				}
 				if line := summaryLine(rep.Summary); line != "" {
-					ui.Text(c, line).FontSize(t.XS).LineHeight(1.45).TextColor(t.InkSoft).MaxLines(2).Tooltip(rep.Summary)
+					uiText(c, line).FontSize(t.XS).LineHeight(1.45).TextColor(t.InkSoft).MaxLines(2).Tooltip(rep.Summary)
 				}
 				if ev, ok := headlineEvidence(rep.Evidence); ok && task.Attention() != protocol.Failed {
 					a.mark(c.Key("ev"), drawCheck, ev.Label, t.InkMuted)
@@ -778,7 +778,7 @@ func (a *App) partnerDecisionCard(c *ui.Context, d *store.DecisionState) {
 		} else {
 			ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
 				a.avatar(c, theme.NeedsYou, 28)
-				ui.Text(c, a.S.PersonaName).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
+				uiText(c, a.S.PersonaName).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
 			})
 		}
 		a.heading(c, autospace(a.questionOf(d)), t.LG).LineHeight(1.4).MaxLines(4)

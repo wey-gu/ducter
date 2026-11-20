@@ -179,7 +179,7 @@ func (a *App) fileBadge(c *ui.Context, ref protocol.MediaRef, w float32) {
 		if len(ext) > 3 {
 			fs = w * 0.2
 		}
-		ui.Text(c, ext).Absolute().Left(0).Top(h * 0.66).Width(w * 1.03).Height(h * 0.28).FontSize(fs).FontWeight(800).
+		uiText(c, ext).Absolute().Left(0).Top(h * 0.66).Width(w * 1.03).Height(h * 0.28).FontSize(fs).FontWeight(800).
 			TextColor(t.FamilyOn).TextAlign(ui.Center).SingleLine()
 	})
 }
@@ -233,21 +233,21 @@ func (a *App) fileCard(c *ui.Context, ref *protocol.MediaRef) {
 					if i >= glimpseLines-2 {
 						col = t.InkSoft.Alpha(0.55 - 0.2*float32(i-(glimpseLines-2)))
 					}
-					ui.Text(c, l+" ").Font(t.Mono).FontSize(11.5).TextColor(col).SingleLine().MinWidth(0)
+					uiText(c, l+" ").Font(t.Mono).FontSize(11.5).TextColor(col).SingleLine().MinWidth(0)
 				}
 			})
 		}
 		ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Padding(t.S2+2, t.S3+2, t.S2+2, t.S3).Children(func() {
 			a.fileBadge(c, *ref, 30)
 			ui.Column(c).Grow(1).MinWidth(0).Gap(2).Children(func() {
-				ui.Text(c, name).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine().MinWidth(0).Shrink(1).Tooltip(name)
+				uiText(c, name).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine().MinWidth(0).Shrink(1).Tooltip(name)
 				pages := ""
 				if g.pages > 0 {
 					pages = a.L.T("file.pages", g.pages)
 				}
 				a.facts(c, t.XS, t.InkMuted, protocol.SizeWords(ref.Bytes), pages) // D291
 			})
-			ui.Text(c, a.L.T("media.open")).FontSize(t.SM).FontWeight(800).TextColor(t.InkSoft).Shrink(0)
+			uiText(c, a.L.T("media.open")).FontSize(t.SM).FontWeight(800).TextColor(t.InkSoft).Shrink(0)
 		})
 	})
 	if g.loading && a.Win != nil {
@@ -272,11 +272,11 @@ func (a *App) sendingFileCard(c *ui.Context, x *attach) {
 		Radius(t.RadiusMD).Background(t.Surface).Shadow(0, t.Raised.Y-1, 0, 0, t.Raised.Color).Label(x.name).Children(func() {
 		a.fileBadge(c, ref, 30)
 		ui.Column(c).Grow(1).MinWidth(0).Gap(2).Children(func() {
-			ui.Text(c, x.name).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine().MinWidth(0).Shrink(1).Tooltip(x.name)
+			uiText(c, x.name).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine().MinWidth(0).Shrink(1).Tooltip(x.name)
 			if x.failed() {
-				ui.Text(c, a.L.T("media.failed")).FontSize(t.XS).FontWeight(700).TextColor(t.Failed.Ink)
+				uiText(c, a.L.T("media.failed")).FontSize(t.XS).FontWeight(700).TextColor(t.Failed.Ink)
 			} else {
-				ui.Text(c, protocol.SizeWords(int64(len(x.file)))).FontSize(t.XS).TextColor(t.InkMuted)
+				uiText(c, protocol.SizeWords(int64(len(x.file)))).FontSize(t.XS).TextColor(t.InkMuted)
 			}
 		})
 		if !x.failed() {

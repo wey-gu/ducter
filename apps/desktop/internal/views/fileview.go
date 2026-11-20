@@ -199,8 +199,8 @@ func (a *App) fileLinkSheet(c *ui.Context, fv *fileViewState) {
 			ui.Box(c).Size(42, 42).Draw(drawFileKind(t.InkSoft, protocol.FileText))
 		})
 		ui.Column(c).Grow(1).MinWidth(0).Gap(1).Children(func() {
-			ui.Text(c, name).Font(t.Display).FontSize(t.LG).FontWeight(800).TextColor(t.Ink).SingleLine().MinWidth(0).Tooltip(name)
-			ui.Text(c, fv.link).Font(t.Mono).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().MinWidth(0).Tooltip(fv.link)
+			uiText(c, name).Font(t.Display).FontSize(t.LG).FontWeight(800).TextColor(t.Ink).SingleLine().MinWidth(0).Tooltip(name)
+			uiText(c, fv.link).Font(t.Mono).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().MinWidth(0).Tooltip(fv.link)
 		})
 		cl := ui.Box(c.Key("fv-close")).Size(t.ControlMD, t.ControlMD).Radius(t.ControlMD / 2).Role(ui.RoleButton).Shrink(0).
 			Label(a.L.T("media.close")).Cursor(ui.CursorPointer).Focusable().Draw(drawCross(t.InkSoft))
@@ -213,10 +213,10 @@ func (a *App) fileLinkSheet(c *ui.Context, fv *fileViewState) {
 	})
 	ui.Column(c.Key("fv-link")).Grow(1).MinHeight(0).AlignItems(ui.Center).Justify(ui.Center).Gap(t.S3).Padding(t.S6).Children(func() {
 		if fv.linkErr == "" {
-			ui.Text(c, a.L.T("file.loading")).FontSize(t.SM).TextColor(t.InkMuted)
+			uiText(c, a.L.T("file.loading")).FontSize(t.SM).TextColor(t.InkMuted)
 			return
 		}
-		ui.Text(c, a.fileLinkSays(fv)).FontSize(t.MD).TextColor(t.InkSoft).MaxWidth(520).TextAlign(ui.Center)
+		uiText(c, a.fileLinkSays(fv)).FontSize(t.MD).TextColor(t.InkSoft).MaxWidth(520).TextAlign(ui.Center)
 		if fv.linkErr == "offline" || fv.linkErr == "failed" {
 			if a.button(c, a.L.T("media.retry"), btnSecondary, t.ControlSM, t.Bg) {
 				a.askFileLink(fv)
@@ -513,7 +513,7 @@ func (a *App) fileHead(c *ui.Context, fv *fileViewState, kind, name string) {
 			ui.Box(c).Size(42, 42).Draw(drawFileKind(t.InkSoft, kind))
 		})
 		ui.Column(c).Grow(1).MinWidth(0).Gap(1).Children(func() {
-			ui.Text(c, name).Font(t.Display).FontSize(t.LG).FontWeight(800).TextColor(t.Ink).SingleLine().MinWidth(0).Tooltip(name)
+			uiText(c, name).Font(t.Display).FontSize(t.LG).FontWeight(800).TextColor(t.Ink).SingleLine().MinWidth(0).Tooltip(name)
 			meta := []string{strings.ToUpper(strings.TrimPrefix(fileExt(name), ".")), protocol.SizeWords(fv.ref.Bytes)}
 			if fv.text != "" && kind != protocol.FileTable {
 				meta = append(meta, a.L.T("file.lines", strings.Count(fv.text, "\n")+1))
@@ -577,7 +577,7 @@ func (a *App) fileBody(c *ui.Context, fv *fileViewState, kind string) {
 		return
 	case fv.failed:
 		ui.Column(c.Key("fv-failed")).Fill().AlignItems(ui.Center).Justify(ui.Center).Gap(t.S3).Children(func() {
-			ui.Text(c, a.L.T("file.failed")).FontSize(t.MD).TextColor(t.InkSoft)
+			uiText(c, a.L.T("file.failed")).FontSize(t.MD).TextColor(t.InkSoft)
 			if a.button(c, a.L.T("media.retry"), btnSecondary, t.ControlSM, t.Bg) {
 				a.loadFile(fv)
 			}
@@ -585,7 +585,7 @@ func (a *App) fileBody(c *ui.Context, fv *fileViewState, kind string) {
 		return
 	case fv.loading:
 		ui.Column(c.Key("fv-loading")).Fill().AlignItems(ui.Center).Justify(ui.Center).Children(func() {
-			ui.Text(c, a.L.T("file.loading")).FontSize(t.SM).TextColor(t.InkMuted)
+			uiText(c, a.L.T("file.loading")).FontSize(t.SM).TextColor(t.InkMuted)
 		})
 		return
 	}
@@ -595,7 +595,7 @@ func (a *App) fileBody(c *ui.Context, fv *fileViewState, kind string) {
 			if fv.more && !fv.cut {
 				msg = a.L.T("file.rowsCut", protocol.FileViewRows)
 			}
-			ui.Text(c.Key("fv-cut"), msg).FontSize(t.SM).TextColor(t.InkSoft).Padding(t.S2+2, t.S4).Radius(t.RadiusSM).Background(t.Sunken).TextAlign(ui.Center)
+			uiText(c.Key("fv-cut"), msg).FontSize(t.SM).TextColor(t.InkSoft).Padding(t.S2+2, t.S4).Radius(t.RadiusSM).Background(t.Sunken).TextAlign(ui.Center)
 		}
 	}
 	if kind == protocol.FilePDF {
@@ -649,7 +649,7 @@ func (a *App) fileNone(c *ui.Context, fv *fileViewState) {
 	ui.Column(c.Key("fv-none")).Fill().AlignItems(ui.Center).Justify(ui.Center).Gap(t.S4).Padding(t.S6).Children(func() {
 		ui.Column(c).Size(112, 136).Radius(18).Background(t.Surface).Shadow(0, 6, 0, 0, t.Line).AlignItems(ui.Center).Justify(ui.Center).Gap(t.S2).Children(func() {
 			ui.Box(c).Size(56, 56).Draw(drawFileKind(t.InkMuted, protocol.FileNone))
-			ui.Text(c, strings.ToUpper(strings.TrimPrefix(fileExt(fileSaveName(fv.ref)), "."))).FontSize(t.XS).FontWeight(800).TextColor(t.InkSoft)
+			uiText(c, strings.ToUpper(strings.TrimPrefix(fileExt(fileSaveName(fv.ref)), "."))).FontSize(t.XS).FontWeight(800).TextColor(t.InkSoft)
 		})
 		// D259: a file of no kind Ducter knows (a program, a script bundle,
 		// anything a person sent) is never handed to macOS to open: opening
@@ -662,7 +662,7 @@ func (a *App) fileNone(c *ui.Context, fv *fileViewState) {
 		if fv.pdfFailed {
 			said = a.L.T("file.pdfFailed.mac")
 		}
-		ui.Text(c, said).FontSize(t.MD).TextColor(t.InkSoft).MaxWidth(380).TextAlign(ui.Center)
+		uiText(c, said).FontSize(t.MD).TextColor(t.InkSoft).MaxWidth(380).TextAlign(ui.Center)
 		ui.Row(c).Gap(t.S3).Children(func() {
 			if a.button(c, a.L.T("file.save"), btnSecondary, t.ControlMD, t.Bg) {
 				a.saveFileCopy(fv.ref)
@@ -687,7 +687,7 @@ func (a *App) fileBar(c *ui.Context, fv *fileViewState, kind string) {
 		// A task this Mac doesn't hold (a linked file from an old task, D356) has no 来自.
 		if ref := fv.ref; ref.From != nil && a.S.Task(ref.From.TaskID) != nil {
 			if title := a.S.Task(ref.From.TaskID).Title(); title != "" {
-				l := ui.Text(c.Key("fv-from"), a.L.T("media.from", title)).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).SingleLine().MinWidth(0).Shrink(1).
+				l := uiText(c.Key("fv-from"), a.L.T("media.from", title)).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).SingleLine().MinWidth(0).Shrink(1).
 					Cursor(ui.CursorPointer).Role(ui.RoleLink).Focusable().Label(a.L.T("media.from", title))
 				if l.Hovered() {
 					l.TextColor(t.Ink)
@@ -865,7 +865,7 @@ func (a *App) findBar(c *ui.Context, fv *fileViewState) {
 				word = a.L.T("file.find.none")
 			}
 		}
-		ui.Text(c.Key("fv-find-n"), word).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).MinWidth(64).TextAlign(ui.Center).Shrink(0)
+		uiText(c.Key("fv-find-n"), word).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).MinWidth(64).TextAlign(ui.Center).Shrink(0)
 		for _, s := range []struct {
 			key, label string
 			d          int
@@ -948,7 +948,7 @@ func (a *App) codeBlockR(c *ui.Context, b *markdown.CodeBlockView, radius float3
 		Role(ui.RoleGroup).Label(firstNonEmpty(b.Language, a.L.T("code.block"))).Children(func() {
 		head := ui.Row(c).AlignItems(ui.Center).Padding(t.S1, t.S1, 0, t.S3)
 		head.Children(func() {
-			ui.Text(c, b.Language).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).Unselectable()
+			uiText(c, b.Language).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).Unselectable()
 			ui.Spacer(c)
 			copied := ui.Local(head, "copied", func() int64 { return 0 })
 			label := a.L.T("media.copy")

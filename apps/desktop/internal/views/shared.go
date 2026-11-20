@@ -30,7 +30,7 @@ func (a *App) dangerText(c *ui.Context, key, label, about string) bool {
 		b.Background(t.Failed.Surface)
 	}
 	b.Children(func() {
-		ui.Text(c, label).FontSize(t.SM).FontWeight(700).TextColor(t.Failed.Ink).SingleLine().AccessHidden(true)
+		uiText(c, label).FontSize(t.SM).FontWeight(700).TextColor(t.Failed.Ink).SingleLine().AccessHidden(true)
 	})
 	return b.Clicked()
 }
@@ -47,7 +47,7 @@ func (a *App) moreButton(c *ui.Context, key, label string, open bool) bool {
 		fg = t.Ink
 	}
 	b.Children(func() {
-		ui.Text(c, "⋯").FontSize(t.MD).FontWeight(800).TextColor(fg).AccessHidden(true)
+		uiText(c, "⋯").FontSize(t.MD).FontWeight(800).TextColor(fg).AccessHidden(true)
 	})
 	return b.Clicked()
 }
@@ -91,9 +91,9 @@ func (a *App) disclosureRow(c *ui.Context, key, label, help string, open bool) b
 	}
 	b.Children(func() {
 		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(2).Children(func() {
-			ui.Text(c, label).FontSize(t.MD).FontWeight(700)
+			uiText(c, label).FontSize(t.MD).FontWeight(700)
 			if help != "" {
-				ui.Text(c, help).FontSize(t.SM).TextColor(t.InkMuted)
+				uiText(c, help).FontSize(t.SM).TextColor(t.InkMuted)
 			}
 		})
 		a.glyph(c, 16, drawChevron(t.InkMuted, open))
@@ -125,13 +125,13 @@ func (a *App) candRow(c *ui.Context, key, harness, name, reason string, off, cur
 			}
 		}
 		ui.Column(c).Grow(1).MinWidth(0).Gap(2).AccessHidden(true).Children(func() {
-			ui.Text(c, name).FontSize(t.MD).FontWeight(800).SingleLine()
+			uiText(c, name).FontSize(t.MD).FontWeight(800).SingleLine()
 			if reason != "" {
-				ui.Text(c, reason).FontSize(t.SM).TextColor(t.InkMuted).MaxLines(2)
+				uiText(c, reason).FontSize(t.SM).TextColor(t.InkMuted).MaxLines(2)
 			}
 		})
 		if current {
-			ui.Text(c, a.L.T("who.now")).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).Shrink(0).AccessHidden(true)
+			uiText(c, a.L.T("who.now")).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).Shrink(0).AccessHidden(true)
 		}
 	})
 	return !off && !current && row.Clicked()
@@ -181,9 +181,9 @@ func (a *App) appTile(c *ui.Context, key, label, sub, about string, mark func(p 
 		if grey {
 			lc = t.InkMuted
 		}
-		ui.Text(c, label).FontSize(t.XS).FontWeight(700).TextColor(lc).SingleLine().MaxWidth(appTileW - 8).AccessHidden(true)
+		uiText(c, label).FontSize(t.XS).FontWeight(700).TextColor(lc).SingleLine().MaxWidth(appTileW - 8).AccessHidden(true)
 		if sub != "" {
-			ui.Text(c, sub).FontSize(t.XS).TextColor(t.InkMuted).MaxLines(2).TextAlign(ui.Center).MaxWidth(appTileW - 8).AccessHidden(true)
+			uiText(c, sub).FontSize(t.XS).TextColor(t.InkMuted).MaxLines(2).TextAlign(ui.Center).MaxWidth(appTileW - 8).AccessHidden(true)
 		}
 	})
 	return tile.Clicked()
@@ -262,7 +262,7 @@ func (a *App) choice(c *ui.Context, key, label string, on bool, tag string) bool
 		row.Background(t.SurfaceSunken)
 	}
 	row.Children(func() {
-		w := ui.Text(c, label).FontSize(t.SM).SingleLine().AccessHidden(true)
+		w := uiText(c, label).FontSize(t.SM).SingleLine().AccessHidden(true)
 		if on {
 			w.FontWeight(700).TextColor(t.Ink)
 		} else {
@@ -272,7 +272,7 @@ func (a *App) choice(c *ui.Context, key, label string, on bool, tag string) bool
 		case "suggested":
 			a.suggestedTag(c)
 		case "default":
-			ui.Text(c, a.L.T("newtask.effort.default")).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().AccessHidden(true)
+			uiText(c, a.L.T("newtask.effort.default")).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().AccessHidden(true)
 		}
 	})
 	return !on && row.Clicked()
@@ -285,7 +285,7 @@ func (a *App) listPanel(c *ui.Context, anchor ui.Element, open *bool, title stri
 	ui.PopoverBase(c, anchor, open, func(panel ui.Element) {
 		panel.Margin(t.S2, 0, 0, 0).Width(width).Padding(t.S2).Radius(t.RadiusMD).Background(t.Surface).
 			Shadow(0, t.Floating.Y, t.Floating.Blur, 0, t.Floating.Color).Border(1, t.LineSoft).Label(title)
-		ui.Text(c, title).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).Padding(t.S2, t.S3, t.S1, t.S3)
+		uiText(c, title).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).Padding(t.S2, t.S3, t.S1, t.S3)
 		ui.Scroll(c.Key("list")).MaxHeight(360).Children(func() {
 			ui.Column(c).Gap(2).Role(ui.RoleRadioGroup).Label(title).Children(body)
 		})

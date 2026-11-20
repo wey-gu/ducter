@@ -100,10 +100,10 @@ func (a *App) folderBrowser(c *ui.Context) {
 	b := nt.browse
 	r := b.res
 	line := func(key, s string, col ui.Color) {
-		ui.Text(c.Key(key), s).FontSize(t.XS).TextColor(col).Padding(t.S1, t.S3)
+		uiText(c.Key(key), s).FontSize(t.XS).TextColor(col).Padding(t.S1, t.S3)
 	}
 	if r != nil && r.OK && r.Path != "" {
-		ui.Text(c.Key("nt-find-path"), browsePath(r.Path, r.HomeDir)).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.InkSoft).SingleLine().Padding(0, t.S3, t.S1, t.S3)
+		uiText(c.Key("nt-find-path"), browsePath(r.Path, r.HomeDir)).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.InkSoft).SingleLine().Padding(0, t.S3, t.S1, t.S3)
 	}
 	switch {
 	case r == nil:
@@ -127,7 +127,7 @@ func (a *App) folderBrowser(c *ui.Context) {
 			parent := r.Parent
 			if a.menuRow(c, "nt-find-up", a.L.T("newtask.find.up"), false, false, func() {
 				a.glyph(c, 14, drawUp(t.InkMuted))
-				ui.Text(c, a.L.T("newtask.find.up")).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine()
+				uiText(c, a.L.T("newtask.find.up")).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine()
 			}) {
 				a.startBrowse(b.device, parent)
 			}
@@ -140,7 +140,7 @@ func (a *App) folderBrowser(c *ui.Context) {
 				} else {
 					a.glyph(c, 16, drawFolder(t.InkMuted))
 				}
-				ui.Text(c, f.Name).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine()
+				uiText(c, f.Name).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine()
 			}) {
 				a.startBrowse(b.device, f.Path)
 			}
@@ -160,7 +160,7 @@ func (a *App) folderBrowser(c *ui.Context) {
 	}, func() {
 		switch {
 		case nt.adding != "":
-			ui.Text(c, a.L.T("newtask.find.adding")).FontSize(t.SM).TextColor(t.InkMuted)
+			uiText(c, a.L.T("newtask.find.adding")).FontSize(t.SM).TextColor(t.InkMuted)
 		case r != nil && r.OK && r.Path != r.HomeDir:
 			if a.buttonFor(c, a.L.T("newtask.find.use"), browsePath(r.Path, r.HomeDir), btnPrimary, t.ControlSM, t.Surface) {
 				a.useBrowsed()

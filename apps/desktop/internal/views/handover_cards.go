@@ -55,7 +55,7 @@ func (a *App) setCard(c *ui.Context, e *store.Entry) {
 	card.Children(func() {
 		ui.Row(c.Key("head")).Gap(t.S2).AlignItems(ui.Baseline).Children(func() {
 			a.heading(c, subj, t.XL).Shrink(1).MinWidth(0)
-			ui.Text(c.Key("n"), a.L.T("hand.set.n", len(s.Refs))).FontSize(t.SM).TextColor(t.InkMuted).FontFeatures("tnum")
+			uiText(c.Key("n"), a.L.T("hand.set.n", len(s.Refs))).FontSize(t.SM).TextColor(t.InkMuted).FontFeatures("tnum")
 		})
 		for _, it := range s.Rows {
 			it := it
@@ -81,10 +81,10 @@ func (a *App) setCard(c *ui.Context, e *store.Entry) {
 					}
 				})
 				a.popOn(c, tick, on)
-				ui.Text(c.Key("l"), refLabel(ref)).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).FontFeatures("tnum").Shrink(0)
-				ui.Text(c.Key("t"), keepWords(autospace(it.Item.Title))).FontSize(t.SM).TextColor(t.Ink).SingleLine().Grow(1).Shrink(1).MinWidth(0).Tooltip(it.Item.Title)
+				uiText(c.Key("l"), refLabel(ref)).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).FontFeatures("tnum").Shrink(0)
+				uiText(c.Key("t"), keepWords(autospace(it.Item.Title))).FontSize(t.SM).TextColor(t.Ink).SingleLine().Grow(1).Shrink(1).MinWidth(0).Tooltip(it.Item.Title)
 				if it.Group != "do" {
-					ui.Text(c.Key("g"), a.L.T("pile.g."+it.Group)).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(0)
+					uiText(c.Key("g"), a.L.T("pile.g."+it.Group)).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(0)
 				}
 			})
 			if !handed && row.Clicked() {
@@ -92,12 +92,12 @@ func (a *App) setCard(c *ui.Context, e *store.Entry) {
 			}
 		}
 		if more := len(s.Refs) - len(s.Rows); more > 0 {
-			ui.Text(c.Key("more"), a.L.T("hand.set.more", more)).FontSize(t.SM).TextColor(t.InkMuted).Padding(0, t.S2)
+			uiText(c.Key("more"), a.L.T("hand.set.more", more)).FontSize(t.SM).TextColor(t.InkMuted).Padding(0, t.S2)
 		}
 		if handed {
 			ui.Row(c.Key("handed")).Gap(t.S2).AlignItems(ui.Center).Padding(t.S1, t.S2, 0, t.S2).Children(func() {
 				a.glyph(c, 14, drawCheck(t.Done.Ink))
-				ui.Text(c, a.L.T("hand.set.handed", name)).FontSize(t.SM).FontWeight(600).TextColor(t.Done.Ink)
+				uiText(c, a.L.T("hand.set.handed", name)).FontSize(t.SM).FontWeight(600).TextColor(t.Done.Ink)
 			})
 			return
 		}
@@ -111,7 +111,7 @@ func (a *App) setCard(c *ui.Context, e *store.Entry) {
 					a.openHandSet(s, ticks)
 				}
 			})
-			ui.Text(c.Key("or"), a.L.T("hand.set.or")).FontSize(t.SM).TextColor(t.InkMuted)
+			uiText(c.Key("or"), a.L.T("hand.set.or")).FontSize(t.SM).TextColor(t.InkMuted)
 		})
 	})
 }
@@ -220,18 +220,18 @@ func (a *App) handPlanCard(c *ui.Context, d *store.DecisionState, inGroup bool) 
 				if plan.Read.Repo != "" {
 					read = a.L.T("hand.plan.read", plan.Read.N, plan.Read.Repo)
 				}
-				ui.Text(c.Key("read"), read).FontSize(t.SM).TextColor(t.InkMuted)
+				uiText(c.Key("read"), read).FontSize(t.SM).TextColor(t.InkMuted)
 			}
 		})
 		if plan == nil {
 			if pv != nil && pv.Summary != "" {
-				ui.Text(c.Key("summary"), autospace(pv.Summary)).TextColor(t.Ink).LineHeight(a.leading(1.5))
+				uiText(c.Key("summary"), autospace(pv.Summary)).TextColor(t.Ink).LineHeight(a.leading(1.5))
 			}
-			ui.Text(c.Key("sgo"), a.L.T("hand.plan.summary.go")).FontSize(t.SM).TextColor(t.InkMuted)
+			uiText(c.Key("sgo"), a.L.T("hand.plan.summary.go")).FontSize(t.SM).TextColor(t.InkMuted)
 		} else {
 			section := func(key, label string, body func()) {
 				ui.Column(c.Key("sec:" + key)).Gap(t.S2).Children(func() {
-					ui.Text(c.Key("l"), label).FontSize(t.SM).FontWeight(700).TextColor(t.InkMuted).Role(ui.RoleText)
+					uiText(c.Key("l"), label).FontSize(t.SM).FontWeight(700).TextColor(t.InkMuted).Role(ui.RoleText)
 					body()
 				})
 			}
@@ -239,16 +239,16 @@ func (a *App) handPlanCard(c *ui.Context, d *store.DecisionState, inGroup bool) 
 				ui.Column(c.Key("p:"+key)).Gap(t.S1).Padding(t.S3, t.S4).Radius(t.RadiusMD).Background(t.SurfaceSunken).Children(func() {
 					ui.Row(c.Key("h")).Gap(t.S2).AlignItems(ui.Baseline).Children(func() {
 						if step > 0 {
-							ui.Text(c.Key("s"), fmt.Sprint(step)).FontWeight(800).TextColor(t.InkMuted).FontFeatures("tnum").Label(a.L.T("group.part", step))
+							uiText(c.Key("s"), fmt.Sprint(step)).FontWeight(800).TextColor(t.InkMuted).FontFeatures("tnum").Label(a.L.T("group.part", step))
 						}
-						ui.Text(c.Key("r"), label).FontWeight(800).TextColor(t.Ink).FontFeatures("tnum")
+						uiText(c.Key("r"), label).FontWeight(800).TextColor(t.Ink).FontFeatures("tnum")
 					})
 					if why != "" {
-						ui.Text(c.Key("w"), autospace(why)).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(a.leading(1.45))
+						uiText(c.Key("w"), autospace(why)).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(a.leading(1.45))
 					}
 					if part == "" || !waiting {
 						if n := notes[part]; n != "" {
-							ui.Text(c.Key("nt"), n).FontSize(t.SM).TextColor(t.Ink).Padding(t.S1, 0, 0, 0)
+							uiText(c.Key("nt"), n).FontSize(t.SM).TextColor(t.Ink).Padding(t.S1, 0, 0, 0)
 						}
 						return
 					}
@@ -265,7 +265,7 @@ func (a *App) handPlanCard(c *ui.Context, d *store.DecisionState, inGroup bool) 
 						}
 						return
 					}
-					link := ui.Text(c.Key("nt-link"), a.L.T("hand.itemnote")).FontSize(t.SM).TextColor(t.InkMuted).Underline().Cursor(ui.CursorPointer).Role(ui.RoleButton).Focusable()
+					link := uiText(c.Key("nt-link"), a.L.T("hand.itemnote")).FontSize(t.SM).TextColor(t.InkMuted).Underline().Cursor(ui.CursorPointer).Role(ui.RoleButton).Focusable()
 					if link.Clicked() {
 						a.setPlanNoteOpen(d.DecisionID, part, true)
 					}
@@ -310,7 +310,7 @@ func (a *App) handPlanCard(c *ui.Context, d *store.DecisionState, inGroup bool) 
 				ui.Row(c.Key("limits")).Wrap().Gap(t.S2).Children(func() {
 					for i, l := range plan.Limits {
 						ui.Row(c.Key(fmt.Sprint("lim", i))).Height(30).Padding(0, t.S3).Radius(15).AlignItems(ui.Center).Background(t.SurfaceSunken).Children(func() {
-							ui.Text(c, l).FontSize(t.SM).TextColor(t.InkSoft)
+							uiText(c, l).FontSize(t.SM).TextColor(t.InkSoft)
 						})
 					}
 				})
@@ -319,17 +319,17 @@ func (a *App) handPlanCard(c *ui.Context, d *store.DecisionState, inGroup bool) 
 		// The answer: 照这个做 / 先等等 / 回复…, or where it stands.
 		switch {
 		case stale:
-			ui.Text(c.Key("st"), a.L.T("hand.plan.replied")).FontSize(t.SM).TextColor(t.InkMuted)
+			uiText(c.Key("st"), a.L.T("hand.plan.replied")).FontSize(t.SM).TextColor(t.InkMuted)
 		case state == "going":
 			ui.Row(c.Key("st")).Gap(t.S2).AlignItems(ui.Center).Children(func() {
 				a.glyph(c, 14, drawCheck(t.Done.Ink))
-				ui.Text(c, a.L.T("hand.plan.going")).FontSize(t.SM).FontWeight(600).TextColor(t.Done.Ink)
+				uiText(c, a.L.T("hand.plan.going")).FontSize(t.SM).FontWeight(600).TextColor(t.Done.Ink)
 			})
 		case state == "planning":
-			ui.Text(c.Key("st"), a.L.T("hand.plan.replied")).FontSize(t.SM).TextColor(t.Working.Ink)
+			uiText(c.Key("st"), a.L.T("hand.plan.replied")).FontSize(t.SM).TextColor(t.Working.Ink)
 		default:
 			if state == "held" {
-				ui.Text(c.Key("st"), a.L.T("hand.plan.held")).FontSize(t.SM).TextColor(t.InkMuted)
+				uiText(c.Key("st"), a.L.T("hand.plan.held")).FontSize(t.SM).TextColor(t.InkMuted)
 			}
 			about := d.Question
 			ui.Row(c.Key("acts")).Gap(t.S2).Wrap().AlignItems(ui.Center).Children(func() {
@@ -421,13 +421,13 @@ func (a *App) handGroupFacts(c *ui.Context, g *protocol.TaskGroup, held int) {
 	}
 	ui.Row(c.Key("hand-facts")).Wrap().Gap(t.S3).AlignItems(ui.Center).Padding(0, 0, t.S1, 0).Children(func() {
 		if state != "" {
-			ui.Text(c.Key("st"), state).FontSize(t.XS).FontWeight(700).TextColor(ink).Role(ui.RoleStatus)
+			uiText(c.Key("st"), state).FontSize(t.XS).FontWeight(700).TextColor(ink).Role(ui.RoleStatus)
 		}
 		if hv.Where != nil && hv.Where.Name != "" {
-			ui.Text(c.Key("where"), hv.Where.Name).FontSize(t.XS).TextColor(t.InkMuted)
+			uiText(c.Key("where"), hv.Where.Name).FontSize(t.XS).TextColor(t.InkMuted)
 		}
 		if hv.Harness != "" {
-			ui.Text(c.Key("who"), harnessName(hv.Harness)).FontSize(t.XS).TextColor(t.InkMuted)
+			uiText(c.Key("who"), harnessName(hv.Harness)).FontSize(t.XS).TextColor(t.InkMuted)
 		}
 	})
 	// The plan itself lives in the conversation; here, Go stays in reach and 看方案 takes you to it.
@@ -558,7 +558,7 @@ func (a *App) reviewSheet(c *ui.Context) {
 			ui.Column(c).Gap(2).Shrink(1).MinWidth(0).Children(func() {
 				a.heading(c, title, t.XL)
 				if rv := r.review; rv != nil {
-					ui.Text(c.Key("sub"), a.L.T("hand.review.sub", rv.Name, len(rv.Rows))).FontSize(t.SM).TextColor(t.InkMuted)
+					uiText(c.Key("sub"), a.L.T("hand.review.sub", rv.Name, len(rv.Rows))).FontSize(t.SM).TextColor(t.InkMuted)
 				}
 			})
 			ui.Spacer(c)
@@ -571,20 +571,20 @@ func (a *App) reviewSheet(c *ui.Context) {
 				rv := r.review
 				switch {
 				case !r.got:
-					ui.Text(c.Key("looking"), a.L.T("todos.looking")).TextColor(t.InkSoft)
+					uiText(c.Key("looking"), a.L.T("todos.looking")).TextColor(t.InkSoft)
 					return
 				case rv == nil || len(rv.Rows) == 0:
-					ui.Text(c.Key("none"), firstNonEmpty(r.said, a.L.T("hand.review.none"))).TextColor(t.InkSoft)
+					uiText(c.Key("none"), firstNonEmpty(r.said, a.L.T("hand.review.none"))).TextColor(t.InkSoft)
 					return
 				}
 				ui.Row(c.Key("lede")).Wrap().Gap(t.S3).AlignItems(ui.Baseline).Children(func() {
 					if rv.PRs > 0 {
-						ui.Text(c.Key("prs"), a.nCount("hand.review.prs", rv.PRs)).FontWeight(700).TextColor(t.Ink)
+						uiText(c.Key("prs"), a.nCount("hand.review.prs", rv.PRs)).FontWeight(700).TextColor(t.Ink)
 					}
 					if rv.Fixed > 0 {
-						ui.Text(c.Key("fixed"), a.nCount("hand.review.fixed", rv.Fixed)).FontWeight(700).TextColor(t.Ink)
+						uiText(c.Key("fixed"), a.nCount("hand.review.fixed", rv.Fixed)).FontWeight(700).TextColor(t.Ink)
 					}
-					ui.Text(c.Key("then"), a.L.T("hand.review.then")).TextColor(t.InkSoft)
+					uiText(c.Key("then"), a.L.T("hand.review.then")).TextColor(t.InkSoft)
 				})
 				for _, row := range rv.Rows {
 					a.reviewRow(c, row)
@@ -593,7 +593,7 @@ func (a *App) reviewSheet(c *ui.Context) {
 		})
 		ui.Column(c.Key("rv-go")).Gap(t.S2).Padding(t.S3, t.S6, t.S5, t.S6).BorderWidth(1, 0, 0, 0).BorderColor(t.LineSoft).Children(func() {
 			if r.said != "" && r.review != nil {
-				ui.Text(c.Key("said"), r.said).FontSize(t.SM).TextColor(t.Failed.Ink).Role(ui.RoleStatus)
+				uiText(c.Key("said"), r.said).FontSize(t.SM).TextColor(t.Failed.Ink).Role(ui.RoleStatus)
 			}
 			keep := r.reviewKeep()
 			if r.review != nil {
@@ -613,7 +613,7 @@ func (a *App) reviewSheet(c *ui.Context) {
 				if len(closing) > 0 {
 					foot = a.L.T("hand.review.close", strings.Join(closing, sep))
 				}
-				ui.Text(c.Key("foot"), foot).FontSize(t.SM).TextColor(t.InkMuted)
+				uiText(c.Key("foot"), foot).FontSize(t.SM).TextColor(t.InkMuted)
 			}
 			ui.Row(c.Key("row")).Gap(10).Children(func() {
 				ui.Spacer(c)
@@ -649,9 +649,9 @@ func (a *App) reviewRow(c *ui.Context, row protocol.ReviewRow) {
 	}
 	box.Children(func() {
 		ui.Row(c.Key("h")).Gap(t.S3).AlignItems(ui.Center).Wrap().Children(func() {
-			ui.Text(c.Key("refs"), refsLabel(refs)).FontWeight(800).TextColor(t.Ink).FontFeatures("tnum")
+			uiText(c.Key("refs"), refsLabel(refs)).FontWeight(800).TextColor(t.Ink).FontFeatures("tnum")
 			if row.PR != nil {
-				l := ui.Text(c.Key("pr"), row.PR.Label).FontSize(t.SM).FontWeight(600).TextColor(t.InkSoft)
+				l := uiText(c.Key("pr"), row.PR.Label).FontSize(t.SM).FontWeight(600).TextColor(t.InkSoft)
 				if row.PR.URL != "" {
 					l.Cursor(ui.CursorPointer).Role(ui.RoleLink).Tooltip(a.L.T("hand.review.see")).Underline()
 					if l.Clicked() {
@@ -660,7 +660,7 @@ func (a *App) reviewRow(c *ui.Context, row protocol.ReviewRow) {
 				}
 			}
 			if row.FixedIn != "" {
-				ui.Text(c.Key("fixed"), a.L.T("hand.review.fixedin", row.FixedIn)).FontSize(t.SM).TextColor(t.InkSoft)
+				uiText(c.Key("fixed"), a.L.T("hand.review.fixedin", row.FixedIn)).FontSize(t.SM).TextColor(t.InkSoft)
 			}
 			if ch := row.Checks; ch != nil {
 				bg, ink, words := t.Done.Surface, t.Done.Ink, a.L.T("hand.review.checks.passed")
@@ -671,23 +671,23 @@ func (a *App) reviewRow(c *ui.Context, row protocol.ReviewRow) {
 					bg, ink, words = t.Working.Surface, t.Working.Ink, a.L.T("hand.review.checks.running")
 				}
 				ui.Row(c.Key("checks")).Height(22).Padding(0, t.S2).Radius(11).AlignItems(ui.Center).Background(bg).Children(func() {
-					ui.Text(c, words).FontSize(t.XS).FontWeight(700).TextColor(ink)
+					uiText(c, words).FontSize(t.XS).FontWeight(700).TextColor(ink)
 				})
 			}
 			if sz := row.Size; sz != nil {
 				ui.Row(c.Key("size")).Gap(t.S1).Children(func() {
-					ui.Text(c.Key("a"), fmt.Sprintf("+%d", sz.Added)).Font(t.Mono).FontSize(t.SM).TextColor(t.AddedInk)
-					ui.Text(c.Key("d"), fmt.Sprintf("−%d", sz.Removed)).Font(t.Mono).FontSize(t.SM).TextColor(t.DeletedInk)
+					uiText(c.Key("a"), fmt.Sprintf("+%d", sz.Added)).Font(t.Mono).FontSize(t.SM).TextColor(t.AddedInk)
+					uiText(c.Key("d"), fmt.Sprintf("−%d", sz.Removed)).Font(t.Mono).FontSize(t.SM).TextColor(t.DeletedInk)
 				})
 			}
 		})
 		if row.Result != "" {
-			ui.Text(c.Key("result"), autospace(row.Result)).TextColor(t.InkSoft).LineHeight(a.leading(1.45))
+			uiText(c.Key("result"), autospace(row.Result)).TextColor(t.InkSoft).LineHeight(a.leading(1.45))
 		}
 		ui.Row(c.Key("says")).Gap(t.S3).AlignItems(ui.Start).Children(func() {
 			ui.Column(c.Key("q")).Gap(2).Grow(1).Shrink(1).MinWidth(0).Padding(t.S2, t.S3).Radius(t.RadiusSM).Background(t.SurfaceSunken).Children(func() {
-				ui.Text(c.Key("l"), a.L.T("hand.review.says")).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
-				ui.Text(c.Key("t"), row.Comment).FontSize(t.SM).TextColor(t.Ink).Selectable()
+				uiText(c.Key("l"), a.L.T("hand.review.says")).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
+				uiText(c.Key("t"), row.Comment).FontSize(t.SM).TextColor(t.Ink).Selectable()
 			})
 			label, kind := a.L.T("hand.review.drop"), btnSecondary
 			if off {

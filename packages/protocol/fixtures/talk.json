@@ -1,0 +1,1113 @@
+{
+ "quiet": [
+  {
+   "heard": "帮我看看明天的天气",
+   "want": 1200
+  },
+  {
+   "heard": "然后",
+   "want": 2400
+  },
+  {
+   "heard": "我想把那个",
+   "want": 2400
+  },
+  {
+   "heard": "嗯",
+   "want": 2400
+  },
+  {
+   "heard": "remind me to call mom",
+   "want": 1200
+  },
+  {
+   "heard": "check the build and",
+   "want": 2400
+  },
+  {
+   "heard": "so",
+   "want": 2400
+  },
+  {
+   "heard": "um",
+   "want": 2400
+  }
+ ],
+ "echo": [
+  {
+   "heard": "好我去查CI为什么挂了",
+   "saying": "好，我去查 CI 为什么挂了，查清楚了告诉你。",
+   "want": ""
+  },
+  {
+   "heard": "好我去查等一下",
+   "saying": "好，我去查 CI 为什么挂了。",
+   "want": "等一下"
+  },
+  {
+   "heard": "on it checking why wait",
+   "saying": "On it: checking why CI failed.",
+   "want": "wait"
+  },
+  {
+   "heard": "停",
+   "saying": "明天会下雨，记得带伞。",
+   "want": "停"
+  },
+  {
+   "heard": "",
+   "saying": "x",
+   "want": ""
+  }
+ ],
+ "barge": [
+  {
+   "heard": "明天会下",
+   "saying": "明天会下雨，记得带伞。",
+   "asking": false,
+   "want": false
+  },
+  {
+   "heard": "明天会下雨等等",
+   "saying": "明天会下雨，记得带伞。",
+   "asking": false,
+   "want": true
+  },
+  {
+   "heard": "停",
+   "saying": "明天会下雨，记得带伞。",
+   "asking": false,
+   "want": true
+  },
+  {
+   "heard": "好",
+   "saying": "要把分支合进去吗？说「好」，或者「先等等」。",
+   "asking": true,
+   "want": false
+  },
+  {
+   "heard": "嗯",
+   "saying": "要把分支合进去吗？",
+   "asking": true,
+   "want": false
+  },
+  {
+   "heard": "好",
+   "saying": "要把分支合进去吗？",
+   "asking": true,
+   "want": true
+  },
+  {
+   "heard": "嗯好",
+   "saying": "要把分支合进去吗？",
+   "asking": true,
+   "want": true
+  },
+  {
+   "heard": "it will rain",
+   "saying": "It will rain tomorrow, take an umbrella.",
+   "asking": false,
+   "want": false
+  },
+  {
+   "heard": "actually wait",
+   "saying": "It will rain tomorrow.",
+   "asking": false,
+   "want": true
+  },
+  {
+   "heard": "ok",
+   "saying": "Merge the branch?",
+   "asking": false,
+   "want": false
+  }
+ ],
+ "answer": [
+  {
+   "heard": "好",
+   "want": "go"
+  },
+  {
+   "heard": "好的。",
+   "want": "go"
+  },
+  {
+   "heard": "嗯，好吧",
+   "want": "go"
+  },
+  {
+   "heard": "行",
+   "want": "go"
+  },
+  {
+   "heard": "可以啊",
+   "want": "go"
+  },
+  {
+   "heard": "先等等",
+   "want": "hold"
+  },
+  {
+   "heard": "等一下",
+   "want": "hold"
+  },
+  {
+   "heard": "算了吧",
+   "want": "hold"
+  },
+  {
+   "heard": "不要",
+   "want": "hold"
+  },
+  {
+   "heard": "不行",
+   "want": "hold"
+  },
+  {
+   "heard": "好，不过改成周五",
+   "want": ""
+  },
+  {
+   "heard": "OK.",
+   "want": "go"
+  },
+  {
+   "heard": "Yes please",
+   "want": "go"
+  },
+  {
+   "heard": "go ahead",
+   "want": "go"
+  },
+  {
+   "heard": "Wait.",
+   "want": "hold"
+  },
+  {
+   "heard": "not now",
+   "want": "hold"
+  },
+  {
+   "heard": "no",
+   "want": "hold"
+  },
+  {
+   "heard": "hold on",
+   "want": "hold"
+  },
+  {
+   "heard": "make it Friday",
+   "want": ""
+  },
+  {
+   "heard": "嗯",
+   "want": ""
+  },
+  {
+   "heard": "",
+   "want": ""
+  }
+ ],
+ "end": [
+  {
+   "heard": "就这样",
+   "want": true
+  },
+  {
+   "heard": "就这样吧。",
+   "want": true
+  },
+  {
+   "heard": "先这样",
+   "want": true
+  },
+  {
+   "heard": "拜拜",
+   "want": true
+  },
+  {
+   "heard": "好",
+   "want": false
+  },
+  {
+   "heard": "就这样做",
+   "want": false
+  },
+  {
+   "heard": "That's all.",
+   "want": true
+  },
+  {
+   "heard": "bye",
+   "want": true
+  },
+  {
+   "heard": "that's all I need to know about it",
+   "want": false
+  },
+  {
+   "heard": "end",
+   "want": true
+  }
+ ],
+ "stop": [
+  {
+   "heard": "停",
+   "want": true
+  },
+  {
+   "heard": "别说了",
+   "want": true
+  },
+  {
+   "heard": "Stop",
+   "want": true
+  },
+  {
+   "heard": "停车场在哪",
+   "want": false
+  }
+ ],
+ "spoken": [
+  {
+   "text": "明天北京晴，最高 12.5 度。",
+   "more": "其余的写在屏幕上了。",
+   "want": "明天北京晴，最高 12.5 度。"
+  },
+  {
+   "text": "好，我去查 CI 为什么挂了，一般十来分钟，查清楚了告诉你。",
+   "more": "其余的写在屏幕上了。",
+   "want": "好，我去查 CI 为什么挂了，一般十来分钟，查清楚了告诉你。"
+  },
+  {
+   "text": "三个选择：\n\n- **周五晚上**的航班，¥1280，直飞\n- 周六早上的，¥980，经停上海\n- 周六下午的，¥1100，直飞，但到得晚\n\n我倾向第一个，因为你周六上午有会。要订哪个？",
+   "more": "其余的写在屏幕上了。",
+   "want": "三个选择：周五晚上的航班，¥1280，直飞。周六早上的，¥980，经停上海。周六下午的，¥1100，直飞，但到得晚。我倾向第一个，因为你周六上午有会。要订哪个？"
+  },
+  {
+   "text": "Tomorrow is sunny in Beijing, 12 degrees at most.",
+   "more": "The rest is on the screen.",
+   "want": "Tomorrow is sunny in Beijing, 12 degrees at most."
+  },
+  {
+   "text": "I looked at the three failing tests. Two fail because the fixture's clock moved past midnight in UTC, which makes the date roll over before the assertion runs. The third is a real bug in how the retry counter resets after a reconnect, and it would have shipped. I can fix all three in one change, with a test for the counter. Shall I?",
+   "more": "The rest is on the screen.",
+   "want": "I looked at the three failing tests. Two fail because the fixture's clock moved past midnight in UTC, which makes the date roll over before the assertion runs. The rest is on the screen."
+  },
+  {
+   "text": "看这里：[发布说明](https://example.com/notes)\n```sh\nbun test\n```\n都绿了。",
+   "more": "其余的写在屏幕上了。",
+   "want": "看这里：发布说明。都绿了。"
+  }
+ ],
+ "floor": [
+  {
+   "card": {
+    "question": "要把分支合进 main 吗？",
+    "goLabel": "合进去"
+   },
+   "want": ""
+  },
+  {
+   "card": {
+    "question": "付 ¥1280 买这张机票？",
+    "goLabel": "付款",
+    "pay": {}
+   },
+   "want": "pay"
+  },
+  {
+   "card": {
+    "question": "去付款？",
+    "goLabel": "付好了",
+    "checkout": {}
+   },
+   "want": "pay"
+  },
+  {
+   "card": {
+    "question": "它需要一个密钥",
+    "goLabel": "给它",
+    "key": {}
+   },
+   "want": "secret"
+  },
+  {
+   "card": {
+    "question": "要删掉这 3 个旧分支吗？",
+    "goLabel": "删掉"
+   },
+   "want": "delete"
+  },
+  {
+   "card": {
+    "question": "Delete the old builds?",
+    "goLabel": "Delete"
+   },
+   "want": "delete"
+  },
+  {
+   "card": {
+    "question": "你的 Codex 想改 README",
+    "goLabel": "好",
+    "asker": {}
+   },
+   "want": "untrusted"
+  },
+  {
+   "card": {
+    "question": "打给酒店？",
+    "goLabel": "打",
+    "call": {
+     "kind": "go"
+    }
+   },
+   "want": "look"
+  },
+  {
+   "card": {
+    "question": "回复评审？",
+    "goLabel": "看草稿",
+    "draft": {
+     "first": "x"
+    }
+   },
+   "want": "look"
+  },
+  {
+   "card": {
+    "question": "把明天 3 点的会挪到 4 点？",
+    "goLabel": "挪",
+    "cal": {}
+   },
+   "want": ""
+  }
+ ],
+ "words": {
+  "hint": "说「好」，或者「先等等」。",
+  "floor": "这个要你在屏幕上点一下。",
+  "more": "其余的写在屏幕上了。",
+  "went": "好，这就去做。",
+  "held": "好，先不动。",
+  "bye": "我先不听了。"
+ },
+ "sessions": [
+  {
+   "name": "a turn, its reply said, then a quiet minute ends it",
+   "events": [
+    {
+     "k": "heard",
+     "text": "明天",
+     "at": 100
+    },
+    {
+     "k": "heard",
+     "text": "明天北京天气怎么样",
+     "at": 900
+    },
+    {
+     "k": "tick",
+     "at": 1800
+    },
+    {
+     "k": "tick",
+     "at": 2200
+    },
+    {
+     "k": "reply",
+     "text": "明天北京晴，最高 12 度。",
+     "at": 6000
+    },
+    {
+     "k": "spoken",
+     "at": 9000
+    },
+    {
+     "k": "tick",
+     "at": 60000
+    },
+    {
+     "k": "tick",
+     "at": 69100
+    },
+    {
+     "k": "spoken",
+     "at": 70500
+    }
+   ],
+   "fx": [
+    [],
+    [],
+    [],
+    [
+     {
+      "do": "relisten"
+     },
+     {
+      "do": "send",
+      "text": "明天北京天气怎么样"
+     }
+    ],
+    [
+     {
+      "do": "speak",
+      "text": "明天北京晴，最高 12 度。"
+     }
+    ],
+    [
+     {
+      "do": "relisten"
+     }
+    ],
+    [],
+    [
+     {
+      "do": "speak",
+      "text": "我先不听了。"
+     }
+    ],
+    [
+     {
+      "do": "end",
+      "by": "quiet"
+     }
+    ]
+   ],
+   "phase": "ended",
+   "endedBy": "quiet"
+  },
+  {
+   "name": "a filler waits longer before the turn ends",
+   "events": [
+    {
+     "k": "heard",
+     "text": "我想把那个",
+     "at": 0
+    },
+    {
+     "k": "tick",
+     "at": 1300
+    },
+    {
+     "k": "heard",
+     "text": "我想把那个会挪到周五",
+     "at": 1900
+    },
+    {
+     "k": "tick",
+     "at": 3200
+    }
+   ],
+   "fx": [
+    [],
+    [],
+    [],
+    [
+     {
+      "do": "relisten"
+     },
+     {
+      "do": "send",
+      "text": "我想把那个会挪到周五"
+     }
+    ]
+   ],
+   "phase": "think",
+   "endedBy": ""
+  },
+  {
+   "name": "the voice's own echo is not a turn; cutting in stops it",
+   "events": [
+    {
+     "k": "heard",
+     "text": "订机票",
+     "at": 0
+    },
+    {
+     "k": "tick",
+     "at": 1300
+    },
+    {
+     "k": "reply",
+     "text": "三个选择：周五晚上直飞 ¥1280，周六早上经停 ¥980。要订哪个？",
+     "at": 5000
+    },
+    {
+     "k": "heard",
+     "text": "三个选择周五晚上",
+     "at": 6000
+    },
+    {
+     "k": "heard",
+     "text": "三个选择周五晚上直飞等等改成周六",
+     "at": 7000
+    },
+    {
+     "k": "heard",
+     "text": "三个选择周五晚上直飞等等改成周六上午",
+     "at": 7600
+    },
+    {
+     "k": "tick",
+     "at": 8000
+    },
+    {
+     "k": "tick",
+     "at": 8900
+    }
+   ],
+   "fx": [
+    [],
+    [
+     {
+      "do": "relisten"
+     },
+     {
+      "do": "send",
+      "text": "订机票"
+     }
+    ],
+    [
+     {
+      "do": "speak",
+      "text": "三个选择：周五晚上直飞 ¥1280，周六早上经停 ¥980。要订哪个？"
+     }
+    ],
+    [],
+    [
+     {
+      "do": "hush"
+     }
+    ],
+    [],
+    [],
+    [
+     {
+      "do": "relisten"
+     },
+     {
+      "do": "send",
+      "text": "等等改成周六上午"
+     }
+    ]
+   ],
+   "phase": "think",
+   "endedBy": ""
+  },
+  {
+   "name": "停 stops the voice and sends nothing",
+   "events": [
+    {
+     "k": "reply",
+     "text": "我看了一下，明天有三个会，第一个是早上九点的站会。",
+     "at": 0
+    },
+    {
+     "k": "heard",
+     "text": "停",
+     "at": 1500
+    },
+    {
+     "k": "tick",
+     "at": 3000
+    }
+   ],
+   "fx": [
+    [
+     {
+      "do": "speak",
+      "text": "我看了一下，明天有三个会，第一个是早上九点的站会。"
+     }
+    ],
+    [
+     {
+      "do": "hush"
+     },
+     {
+      "do": "relisten"
+     }
+    ],
+    []
+   ],
+   "phase": "listen",
+   "endedBy": ""
+  },
+  {
+   "name": "a card asked aloud and answered 好",
+   "events": [
+    {
+     "k": "ask",
+     "id": "d1",
+     "question": "要把这个分支合进 main 吗？",
+     "at": 0
+    },
+    {
+     "k": "spoken",
+     "at": 4000
+    },
+    {
+     "k": "heard",
+     "text": "好",
+     "at": 5000
+    },
+    {
+     "k": "tick",
+     "at": 6300
+    },
+    {
+     "k": "spoken",
+     "at": 7500
+    }
+   ],
+   "fx": [
+    [
+     {
+      "do": "speak",
+      "text": "要把这个分支合进 main 吗？说「好」，或者「先等等」。"
+     }
+    ],
+    [
+     {
+      "do": "relisten"
+     }
+    ],
+    [],
+    [
+     {
+      "do": "relisten"
+     },
+     {
+      "do": "decide",
+      "id": "d1",
+      "option": "go"
+     },
+     {
+      "do": "speak",
+      "text": "好，这就去做。"
+     }
+    ],
+    [
+     {
+      "do": "relisten"
+     }
+    ]
+   ],
+   "phase": "listen",
+   "endedBy": ""
+  },
+  {
+   "name": "a second card has no hint; 先等等 holds it",
+   "events": [
+    {
+     "k": "ask",
+     "id": "d1",
+     "question": "要把这个分支合进 main 吗？",
+     "at": 0
+    },
+    {
+     "k": "spoken",
+     "at": 4000
+    },
+    {
+     "k": "heard",
+     "text": "好",
+     "at": 5000
+    },
+    {
+     "k": "tick",
+     "at": 6300
+    },
+    {
+     "k": "spoken",
+     "at": 7500
+    },
+    {
+     "k": "ask",
+     "id": "d2",
+     "question": "顺便把旧的预览关掉？",
+     "at": 9000
+    },
+    {
+     "k": "spoken",
+     "at": 11000
+    },
+    {
+     "k": "heard",
+     "text": "先等等",
+     "at": 12000
+    },
+    {
+     "k": "tick",
+     "at": 13300
+    }
+   ],
+   "fx": [
+    [
+     {
+      "do": "speak",
+      "text": "要把这个分支合进 main 吗？说「好」，或者「先等等」。"
+     }
+    ],
+    [
+     {
+      "do": "relisten"
+     }
+    ],
+    [],
+    [
+     {
+      "do": "relisten"
+     },
+     {
+      "do": "decide",
+      "id": "d1",
+      "option": "go"
+     },
+     {
+      "do": "speak",
+      "text": "好，这就去做。"
+     }
+    ],
+    [
+     {
+      "do": "relisten"
+     }
+    ],
+    [
+     {
+      "do": "speak",
+      "text": "顺便把旧的预览关掉？"
+     }
+    ],
+    [
+     {
+      "do": "relisten"
+     }
+    ],
+    [],
+    [
+     {
+      "do": "relisten"
+     },
+     {
+      "do": "decide",
+      "id": "d2",
+      "option": "hold"
+     },
+     {
+      "do": "speak",
+      "text": "好，先不动。"
+     }
+    ]
+   ],
+   "phase": "speak",
+   "endedBy": ""
+  },
+  {
+   "name": "something else said to a card is a message; the card stays",
+   "events": [
+    {
+     "k": "ask",
+     "id": "d1",
+     "question": "Merge this branch into main?",
+     "at": 0
+    },
+    {
+     "k": "spoken",
+     "at": 3000
+    },
+    {
+     "k": "heard",
+     "text": "make it Friday instead",
+     "at": 4000
+    },
+    {
+     "k": "tick",
+     "at": 5300
+    }
+   ],
+   "fx": [
+    [
+     {
+      "do": "speak",
+      "text": "Merge this branch into main? 说「好」，或者「先等等」。"
+     }
+    ],
+    [
+     {
+      "do": "relisten"
+     }
+    ],
+    [],
+    [
+     {
+      "do": "relisten"
+     },
+     {
+      "do": "send",
+      "text": "make it Friday instead"
+     }
+    ]
+   ],
+   "phase": "think",
+   "endedBy": ""
+  },
+  {
+   "name": "the floor: a pay card is said with its line, and 好 is never a Go",
+   "events": [
+    {
+     "k": "ask",
+     "id": "p1",
+     "question": "付 ¥1280 买周五的机票？",
+     "floor": "pay",
+     "at": 0
+    },
+    {
+     "k": "spoken",
+     "at": 4000
+    },
+    {
+     "k": "heard",
+     "text": "好",
+     "at": 5000
+    },
+    {
+     "k": "tick",
+     "at": 6300
+    }
+   ],
+   "fx": [
+    [
+     {
+      "do": "speak",
+      "text": "付 ¥1280 买周五的机票？这个要你在屏幕上点一下。"
+     }
+    ],
+    [
+     {
+      "do": "relisten"
+     }
+    ],
+    [],
+    [
+     {
+      "do": "relisten"
+     },
+     {
+      "do": "speak",
+      "text": "这个要你在屏幕上点一下。"
+     }
+    ]
+   ],
+   "phase": "speak",
+   "endedBy": ""
+  },
+  {
+   "name": "就这样 ends it",
+   "events": [
+    {
+     "k": "heard",
+     "text": "就这样",
+     "at": 0
+    },
+    {
+     "k": "tick",
+     "at": 1300
+    }
+   ],
+   "fx": [
+    [],
+    [
+     {
+      "do": "relisten"
+     },
+     {
+      "do": "end",
+      "by": "said"
+     }
+    ]
+   ],
+   "phase": "ended",
+   "endedBy": "said"
+  },
+  {
+   "name": "End tapped while it speaks",
+   "events": [
+    {
+     "k": "reply",
+     "text": "Tomorrow is sunny.",
+     "at": 0
+    },
+    {
+     "k": "end",
+     "at": 500
+    }
+   ],
+   "fx": [
+    [
+     {
+      "do": "speak",
+      "text": "Tomorrow is sunny."
+     }
+    ],
+    [
+     {
+      "do": "hush"
+     },
+     {
+      "do": "end",
+      "by": "tap"
+     }
+    ]
+   ],
+   "phase": "ended",
+   "endedBy": "tap"
+  },
+  {
+   "name": "a card answered by a tap while it is asked",
+   "events": [
+    {
+     "k": "ask",
+     "id": "d1",
+     "question": "要把这个分支合进 main 吗？",
+     "at": 0
+    },
+    {
+     "k": "answered",
+     "id": "d1",
+     "at": 1000
+    },
+    {
+     "k": "heard",
+     "text": "好",
+     "at": 2000
+    },
+    {
+     "k": "tick",
+     "at": 3300
+    }
+   ],
+   "fx": [
+    [
+     {
+      "do": "speak",
+      "text": "要把这个分支合进 main 吗？说「好」，或者「先等等」。"
+     }
+    ],
+    [
+     {
+      "do": "hush"
+     }
+    ],
+    [],
+    [
+     {
+      "do": "relisten"
+     },
+     {
+      "do": "send",
+      "text": "好"
+     }
+    ]
+   ],
+   "phase": "think",
+   "endedBy": ""
+  },
+  {
+   "name": "more words while it thinks go as their own message",
+   "events": [
+    {
+     "k": "heard",
+     "text": "帮我查一下 CI",
+     "at": 0
+    },
+    {
+     "k": "tick",
+     "at": 1300
+    },
+    {
+     "k": "heard",
+     "text": "是 ducter 那个仓库",
+     "at": 2000
+    },
+    {
+     "k": "tick",
+     "at": 3300
+    },
+    {
+     "k": "tick",
+     "at": 70000
+    }
+   ],
+   "fx": [
+    [],
+    [
+     {
+      "do": "relisten"
+     },
+     {
+      "do": "send",
+      "text": "帮我查一下 CI"
+     }
+    ],
+    [],
+    [
+     {
+      "do": "relisten"
+     },
+     {
+      "do": "send",
+      "text": "是 ducter 那个仓库"
+     }
+    ],
+    []
+   ],
+   "phase": "think",
+   "endedBy": ""
+  },
+  {
+   "name": "a reply while the person is mid-sentence waits for their turn",
+   "events": [
+    {
+     "k": "heard",
+     "text": "还有",
+     "at": 0
+    },
+    {
+     "k": "reply",
+     "text": "好的。",
+     "at": 500
+    },
+    {
+     "k": "heard",
+     "text": "还有明天的会",
+     "at": 1000
+    },
+    {
+     "k": "tick",
+     "at": 2300
+    }
+   ],
+   "fx": [
+    [],
+    [],
+    [],
+    [
+     {
+      "do": "relisten"
+     },
+     {
+      "do": "send",
+      "text": "还有明天的会"
+     },
+     {
+      "do": "speak",
+      "text": "好的。"
+     }
+    ]
+   ],
+   "phase": "speak",
+   "endedBy": ""
+  }
+ ]
+}

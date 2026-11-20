@@ -41,6 +41,7 @@ import { FindsNote } from "./finds.tsx";
 import { LaterAway, LaterBack, LaterButton, LaterTimes } from "./later.tsx";
 import { LearnedSheet, RecallLine, RecallSheet } from "./recall.tsx";
 import { MicButton, ReadingLine, useReadback, voice, VoiceSettings, VoiceStrip } from "./voice.tsx";
+import { TalkPanel, talkIfAny, useTalkFeed } from "./talk.tsx";
 import { FirstAfter, firstOpening, KeyCard, keyJustAdded } from "./first-words.tsx";
 import { CalFacts, calHold, CalSettle, DayCard, TodayRow } from "./calendar.tsx";
 import { AddPictures, DropHint, MediaBlock, Tray, useDropPaste, Viewer } from "./media.tsx";
@@ -1678,7 +1679,9 @@ function Composer({ taskId }: { taskId?: string }) {
       {(A.held?.taskId ?? "") === (taskId ?? "") && <Held />}
       <DropHint on={over} />
       {/* D305: hold to talk, over the conversation's composer. */}
-      {!taskId && <VoiceStrip />}
+      {!taskId && (talkIfAny()?.ui ?? "idle") === "idle" && !talkIfAny()?.note && <VoiceStrip />}
+      {/* D442: 放手说 / Talk hands-free, over the composer (a sheet on a phone). */}
+      {!taskId && <TalkPanel />}
       {task && <HeldChips task={task} busy={busy} steers={steers} agent={agent} />}
       <Tray where={where} />
       <div
@@ -1897,6 +1900,8 @@ export function Conversation() {
   // D305: the reply to a message sent by voice, read aloud (with the setting on).
   const lastRow = rows.at(-1);
   useReadback(lastRow ? { seq: lastRow.firstSeq, ts: lastRow.ev.ts, text: lastRow.ai?.text ?? "", partner: !!lastRow.ai } : undefined);
+  // D442: while talking hands-free, the partner's new messages and cards are said.
+  useTalkFeed(rows);
   return (
     <>
       {/* Offline is said once, in the header's line under the sleeping face (D73, D211). */}

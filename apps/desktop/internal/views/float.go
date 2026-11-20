@@ -316,6 +316,15 @@ func (a *App) floatOpen(then func()) {
 // mini window's width.
 func (a *App) floatVoice(c *ui.Context) {
 	vs := &a.vox
+	// D442: 放手说 from the mini window's microphone: the same talk, at its width.
+	if a.hf.on {
+		a.talkFeed(c)
+		a.talkPanel(c)
+		return
+	}
+	if (a.hf.ask || a.hf.off != "") && vs.phase != "listen" && vs.phase != "finishing" && a.talkAbove(c) {
+		return
+	}
 	switch vs.phase {
 	case "listen", "finishing":
 		a.listeningStrip(c)

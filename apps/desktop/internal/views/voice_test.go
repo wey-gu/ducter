@@ -162,9 +162,24 @@ func TestVoiceSlideUpSendsAndLeftDrops(t *testing.T) {
 
 func TestVoiceTapShowsHowAndEmptySaysSo(t *testing.T) {
 	r := voiceApp(t, i18n.ZH, true)
+	// D442: a tap on the mark is 放手说 / Talk hands-free (its card the first time).
 	r.hold(t, "", 0, 0, 100*time.Millisecond, true)
+	if !r.tt.HasText(r.app.L.T("talk.ask.title")) || r.rec.Listening {
+		t.Errorf("a tap shows no talk card: %v", r.tt.Texts())
+	}
+	if err := r.tt.Click(r.app.L.T("voice.ask.later")); err != nil {
+		t.Fatal(err)
+	}
+	r.frames()
+	// A tap of the key still says how to hold.
+	r = voiceApp(t, i18n.ZH, true)
+	r.tt.CodeDown(ui.Alt, ui.CodeAltRight)
+	r.frames()
+	*r.now = r.now.Add(100 * time.Millisecond)
+	r.tt.CodeUp(0, ui.CodeAltRight)
+	r.frames()
 	if !r.tt.HasText(r.app.L.T("voice.tap")) {
-		t.Errorf("a tap shows no hint: %v", r.tt.Texts())
+		t.Errorf("a key tap shows no hint: %v", r.tt.Texts())
 	}
 	*r.now = r.now.Add(3 * time.Second)
 	r.frames()

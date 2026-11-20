@@ -18,6 +18,28 @@ Deferred work, grouped by area, each with its trigger where it has one.
 - [ ] **The routes' pages and offers move** (Gemini's free models, Kimi's voucher): check them
   monthly against research/189.
 
+## Talk hands-free (D442, `voice.md`, research/190)
+
+- [ ] **The live check with a real microphone** on each platform (the Mac app installed, Chrome on a
+  Mac, Safari and the app on an iPhone, the Android app): the 1.2 s / 2.4 s gaps in zh and en, the echo
+  guard on a laptop's speakers, the phone's speaker and earphones, a recognizer session ending by
+  itself mid-talk, the screen kept on, a card answered "好" while cooking. Trigger: before calling the
+  talk more than a preview.
+- [ ] **Safari and the iPhone shell recognizing while speaking**: whether `webkitSpeechRecognition`
+  keeps running while `speechSynthesis` speaks, and whether the shell's `AVAudioSession` ducks or
+  stops the recognizer; if not, the talk listens only after the voice ends (no talking over). Trigger:
+  the live check.
+- [ ] **A partner that knows it is heard**: a note on a talked turn asking for a spoken answer, if
+  written answers cut to fifteen seconds read badly in real talks. A persona change: eval twice (D175).
+  Trigger: three talks where the spoken form lost the point.
+- [ ] **A realtime model on the person's own key** for a faster talk (research/190 §3), the partner still
+  answering. Trigger: the author asks for it after real talks.
+- [ ] **The talk on the Lock Screen / with the screen off** (an app-level audio session on iPhone and
+  Android). Trigger: driving with the phone locked comes up.
+- [ ] **Right Option after a card's button**: on the Mac, after clicking a button over the composer, the
+  key held to talk was not seen until focus went back (seen in a view test). Trigger: someone holds the
+  key right after a card.
+
 ## The mini window (D438, research/187)
 
 - [ ] **The author's review** of `.shots/float/` (over the editor, zh/en, light/dark, five lines).

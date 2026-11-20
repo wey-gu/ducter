@@ -1,6 +1,6 @@
 ---
 title: Talk by voice
-description: Hold the microphone and speak instead of typing, and have your partner's messages read aloud, using your own device's speech.
+description: Hold the microphone and speak instead of typing, tap it to talk hands-free, and have your partner's messages read aloud, using your own device's speech.
 order: 5.9
 ---
 
@@ -17,8 +17,8 @@ Beside **Send** there is a microphone.
 2. **Let go**, and the words go into the message box. Fix anything you like, then send it.
 3. **Slide up** before you let go to send it at once, or **slide left** to drop it.
 
-A quick tap does nothing; it reminds you to hold. If nothing was heard, it says so and you can try
-again.
+A quick tap starts a hands-free talk instead (below). If nothing was heard, it says so and you can
+try again.
 
 **On the Mac** you can also hold a key while Ducter is the window in front: **Right Option** at
 first. Change it in **Settings › Look and sound › Voice › Key to hold** (Fn, Right Option or None).
@@ -55,6 +55,28 @@ under the microphone the first time and in Settings:
 
 A browser can only use the microphone when Ducter is opened over https (or on the same computer).
 
+## Talk hands-free
+
+When your hands are busy (cooking, driving, walking), **tap** the microphone instead of holding it.
+Your partner keeps listening and you talk back and forth, like a call:
+
+- **Talk, then pause.** When you stop for a moment, what you said is sent. If you trail off on
+  "um" or "and", it waits a little longer.
+- **The answer is said aloud**, short: about fifteen seconds. The whole answer is in the
+  conversation as always; if it was longer, it says "The rest is on the screen."
+- **Talk over it** to cut in. Say "stop" to just stop the voice.
+- **When something needs your OK**, it asks you aloud. Say "OK" to go ahead or "wait" to hold off, or
+  tap the buttons. Anything else you say goes to your partner as a message, and the question stays.
+- **Paying, passwords and sign-ins, deleting something, and anything another agent or a stranger
+  asked** are never answered by voice: it reads the question and tells you it needs a tap on the
+  screen. **Show it** ends the talk so you can tap the card.
+- **To stop**, say "that's all" (or "bye"), tap **End**, or tap the microphone again. After a minute
+  with nothing said, it says so and stops by itself.
+
+The first time you tap, Ducter says what this is and where the sound goes; choose **Start**. It uses
+the same speech as hold to talk, so the table below applies. While it talks, the screen stays on.
+Every word you say is an ordinary message in the conversation, and nothing is sent anywhere else.
+
 ## Read aloud
 
 To hear one of your partner's messages, long press it on a phone (or right click it on a computer)
@@ -74,5 +96,4 @@ never reads anything you didn't just ask by voice.
 
 ## Coming soon
 
-- Talking with your partner as a call, hands-free, back and forth.
 - Hold to talk in a task's own message box.

@@ -103,6 +103,7 @@ type App struct {
 	// recognizer or a voice is asked for (voice.SpeechLocale).
 	PreferredLocales []string
 	vox              voiceState
+	hf               talkState // D442: 放手说 / Talk hands-free
 	// IMessage is this Mac's iMessage bridge (D277); nil hides it.
 	IMessage IMessageBridge
 	imessage imessageState
@@ -534,6 +535,7 @@ func (a *App) flushOutbox() {
 
 // View is the window's content.
 func (a *App) View(c *ui.Context) {
+	a.talkFeed(c) // D442: while talking hands-free, what came is said, on any page
 	if a.followAppearance(c) {
 		a.uiTheme = nil
 	}

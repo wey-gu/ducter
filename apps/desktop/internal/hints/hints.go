@@ -86,6 +86,8 @@ type state struct {
 	VoiceKey   string `json:"voiceKey,omitempty"`
 	VoiceAsked bool   `json:"voiceAsked,omitempty"`
 	ReadBack   bool   `json:"readBack,omitempty"`
+	// D442: TalkAsked is set once 放手说 / Talk hands-free's first card was answered.
+	TalkAsked bool `json:"talkAsked,omitempty"`
 	// D438: the mini window. FloatOpen brings it back at the next launch;
 	// FloatOffered is set once it came by itself (it never does again).
 	FloatOpen    bool `json:"floatOpen,omitempty"`
@@ -565,6 +567,18 @@ func (l *Local) SetVoiceAsked() {
 		return
 	}
 	l.st.VoiceAsked = true
+	l.save()
+}
+
+// TalkAsked reports whether the first tap's card (D442) was answered.
+func (l *Local) TalkAsked() bool { return l != nil && l.st.TalkAsked }
+
+// SetTalkAsked remembers that it was.
+func (l *Local) SetTalkAsked() {
+	if l == nil {
+		return
+	}
+	l.st.TalkAsked = true
 	l.save()
 }
 

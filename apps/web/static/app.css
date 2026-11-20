@@ -17813,3 +17813,204 @@ a.pr:hover { box-shadow: inset 0 0 0 1px var(--line-2); }
     animation: pebble-in 380ms var(--spring) both;
   }
 }
+
+/* D442: 放手说 / Talk hands-free. Over the composer like hold to talk's strip, larger: the clay
+   partner listening (leaning in with the voice), thinking (a slow sway), or speaking (two soft rings
+   from it); the words heard or said, large; a card's question with its two answers; End. */
+.talk {
+  position: absolute;
+  bottom: calc(100% - 4px);
+  left: 12px;
+  right: 12px;
+  z-index: 6;
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 16px 16px 12px;
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--base), var(--floating);
+  animation: voice-in 180ms var(--ease) both;
+}
+.talk-top {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 72px;
+}
+.talk-fig {
+  position: relative;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+}
+.talk-face {
+  position: relative;
+  z-index: 1;
+  display: block;
+  transform-origin: 50% 100%;
+  transition: transform 160ms var(--ease);
+}
+.talk-face img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.talk-face.listen {
+  transform: rotate(-9deg) translate(3px, 1px) scale(calc(1 + var(--lv, 0) * 0.06));
+}
+.talk-face.think {
+  animation: talk-sway var(--t-alive-think) var(--ease) infinite;
+}
+@keyframes talk-sway {
+  0%, 100% { transform: rotate(-4deg); }
+  50% { transform: rotate(4deg); }
+}
+.talk-rings i {
+  position: absolute;
+  inset: 6px;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+  opacity: 0;
+  animation: talk-ring 1.8s var(--ease) infinite;
+}
+.talk-rings i + i {
+  animation-delay: 0.9s;
+}
+@keyframes talk-ring {
+  0% { transform: scale(0.8); opacity: 0.45; }
+  100% { transform: scale(1.25); opacity: 0; }
+}
+.talk-words {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.talk-state {
+  font-size: var(--sm);
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+.talk-words p {
+  margin: 0;
+  font-size: var(--lg);
+  line-height: 1.45;
+  max-height: 4.4em;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+.talk-words .talk-hint {
+  font-size: var(--body);
+  color: var(--ink-muted);
+}
+.talk-card {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: var(--r-md);
+  background: var(--surface-sunken);
+}
+.talk-card .talk-q {
+  margin: 0;
+  font-size: var(--body);
+  font-weight: 600;
+  line-height: 1.45;
+}
+.talk-card .talk-floor {
+  margin: 6px 0 0;
+  font-size: var(--sm);
+  color: var(--ink-soft);
+}
+.talk-card .btns {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 10px;
+}
+.talk-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 12px;
+}
+.talk-tip {
+  font-size: var(--xs);
+  font-weight: 700;
+  color: var(--ink-muted);
+  min-width: 0;
+}
+.talk-end {
+  flex: none;
+}
+.talk-ask .voice-card-head {
+  align-items: center;
+  gap: 10px;
+}
+/* A phone on the counter or in a mount: the partner in the middle, the words under it, large. */
+@media (max-width: 640px) {
+  .talk {
+    left: 8px;
+    right: 8px;
+    padding: 20px 16px 14px;
+  }
+  .talk-top {
+    flex-direction: column;
+    text-align: center;
+    gap: 10px;
+  }
+  .talk-fig {
+    width: 104px;
+    height: 104px;
+  }
+  .talk-fig .talk-face {
+    width: 92px !important;
+    height: 92px !important;
+  }
+  .talk-words {
+    align-items: center;
+  }
+  .talk-words p {
+    font-size: 20px;
+  }
+  .talk-card .btns .btn {
+    flex: 1;
+    min-height: 48px;
+  }
+  .talk-end {
+    min-height: 44px;
+    padding-inline: 22px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .talk {
+    animation: none;
+  }
+  .talk-face.think,
+  .talk-rings i {
+    animation: none;
+  }
+  .talk-face.listen {
+    transform: rotate(-9deg) translate(3px, 1px);
+    transition: none;
+  }
+  .talk-rings i:first-child {
+    opacity: 0.35;
+  }
+}
+.talk-floor-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 6px;
+}
+.talk-floor-row .talk-floor {
+  margin: 0;
+}

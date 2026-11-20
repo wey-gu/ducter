@@ -15,7 +15,7 @@
 import { existsSync, readFileSync, renameSync, writeFileSync, chmodSync } from "node:fs";
 import { join } from "node:path";
 import { randomBytes } from "node:crypto";
-import type { Bodies, StandingAction, StandingView } from "@ducter/protocol";
+import { STANDING_ACTIONS, type Bodies, type StandingAction, type StandingView } from "@ducter/protocol";
 import type { LogStore } from "@ducter/protocol/src/internal.ts";
 
 export const STANDING_FILE = "standing.json";
@@ -30,6 +30,11 @@ export type StandingSaying =
   | { kind: "unsupported"; what: string; quote: string };
 
 const REVIEW = /(?<![a-z])(code\s*)?reviews?(?![a-z])|评审|审查|审阅|\bCR\b/i;
+/** D415: a comment on an issue ("在 issue 里留言", "comment on my issues"); a close is never in it. */
+const ISSUE_COMMENT = /(issue|议题)[^。！？!?\n]{0,12}(留言|评论|回复|说一声|说一下)|(留言|评论|回复)[^。！？!?\n]{0,8}(issue|议题)|\bcomments?\b[^.!?\n]{0,24}\bissues?\b|\bissues?\b[^.!?\n]{0,24}\bcomments?\b/i;
+/** "nowledge-co 的 issue", "nowledge-co issues": an owner named without a repository. */
+const OWNER_WORD = /(?<![\w./-])([A-Za-z0-9][\w.-]*[-.][\w.-]+|[A-Za-z0-9][\w-]{2,38})\s*(?:这个\s*)?(?:org|组织)?\s*(?:的|里的?|下的?|'s)?\s*(?:所有\s*)?(?:issues?|议题)/gi;
+const NOT_OWNER = new Set(["my", "the", "all", "these", "those", "any", "our", "your", "their", "github", "on", "in", "open", "new", "comment", "comments", "post", "leave"]);
 const NO_ASK =
   /直接(发|发布|提交|贴|发出去|发到|post)|不用(再)?(问|确认|找我|等我)|不要(再)?(问|确认)|别(再)?(问|和我确认|跟我确认|找我确认|确认|等我)|无需确认|不必(问|确认)|不需要(问|确认)|自己(发|发布)(就行|吧|就好)?|\b(don'?t|do not|no need to|never|stop) (ask|asking|confirm|check with)\b|\bwithout (asking|confirm\w*|checking with me)\b|\bjust (post|send|publish)\b|\bpost (them |it |reviews? )?(directly|right away|straight)\b/i;
 /** "review 不要直接发" / "别直接发": the other way. */
@@ -66,6 +71,19 @@ export function readStanding(text: string): StandingSaying[] {
     .join("\n");
   for (const s of sentences(own)) {
     if (QUESTION.test(s) || ONE_OFF.test(s)) continue;
+    const comment = ISSUE_COMMENT.test(s) && !REVIEW.test(s);
+    if (comment) {
+      // D415: the same reading for a comment on an issue: kept, bounded by the owners named.
+      if (NOT_DIRECT.test(s) || (!NO_ASK.test(s) && ASK_FIRST.test(s)) || /(先|还是)[^。！？!?\n]{0,6}(问|确认)[^。！？!?\n]{0,4}(再|才)?(留言|评论)/.test(s)) {
+        out.push({ kind: "revoke", action: "issue_comment", quote: clip(s) });
+        continue;
+      }
+      if (!NO_ASK.test(s) && !/(直接|自己)(留言|评论|回复)|\bjust comment\b|\bcomment (directly|right away)\b/i.test(s)) continue;
+      if (FLOOR.some(([, re]) => re.test(s))) continue;
+      const orgs = [...new Set([...[...s.matchAll(OWNER_RE)].map((m) => m[1]!.toLowerCase()), ...[...s.matchAll(OWNER_WORD)].map((m) => m[1]!.toLowerCase()).filter((x) => !NOT_OWNER.has(x))])];
+      out.push({ kind: "grant", action: "issue_comment", ...(orgs.length ? { orgs } : {}), quote: clip(s) });
+      continue;
+    }
     const review = REVIEW.test(s);
     if (review && (NOT_DIRECT.test(s) || (!NO_ASK.test(s) && ASK_FIRST.test(s)))) {
       out.push({ kind: "revoke", action: "pr_review", quote: clip(s) });
@@ -127,7 +145,7 @@ export function openStanding(o: { log: LogStore; dataDir: string; now?: () => Da
     try {
       const raw = JSON.parse(readFileSync(path, "utf8"));
       st = {
-        items: Array.isArray(raw?.items) ? raw.items.filter((x: StandingView) => x && typeof x.id === "string" && x.action === "pr_review" && typeof x.text === "string") : [],
+        items: Array.isArray(raw?.items) ? raw.items.filter((x: StandingView) => x && typeof x.id === "string" && STANDING_ACTIONS.includes(x.action) && typeof x.text === "string") : [],
         heard: raw?.heard && typeof raw.heard === "object" ? raw.heard : {},
       };
     } catch (err) {
@@ -182,7 +200,8 @@ export function openStanding(o: { log: LogStore; dataDir: string; now?: () => Da
       }
       // Bounded by the orgs named, else by where the review routine looks now (a later org asks first).
       // Said again: one permission per action, its words the newest; unbounded if either is.
-      const orgs = s.orgs ?? (o.reviewOrgs?.() ?? []).map((x) => x.toLowerCase());
+      // D415: a comment on issues names its owners or holds wherever the person's issues are.
+      const orgs = s.orgs ?? (s.action === "pr_review" ? (o.reviewOrgs?.() ?? []).map((x) => x.toLowerCase()) : []);
       const had = st.items.find((x) => x.action === s.action);
       const bound = had ? (had.orgs?.length && orgs.length ? [...new Set([...had.orgs, ...orgs])] : []) : [...new Set(orgs)];
       const kept: StandingView = {

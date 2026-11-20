@@ -4,7 +4,7 @@ import type { CoreApi, HarnessEvent, HarnessPort, HarnessSession, Runner, SendFi
 import { ADOPTED, outsideOver, NUDGE, PRECOMPACT_NOTE, REOPENED, RESUME_AFTER_RESTART, SAVE_BEFORE_COMPACT, afterCompaction, briefTurn, knownTurn, othersTurn, OTHERS_MAX, handedBack, handedOver, kickoff, movedOver, noCopyAnswer, seedThen, startedAfresh, freshRound, taskBrief, type CarryOver } from "./brief.ts";
 import { resolveModel, resolveWindows, saveBeforeAt } from "@ducter/protocol/src/harness-facts.ts";
 import { createOarHarnessPort } from "./oar.ts";
-import { cwdOf, placeProblem, planPlace, provisionPlace, type ResolvedPlace } from "./places.ts";
+import { cwdOf, planPlace, provisionPlace, startProblem, type ResolvedPlace } from "./places.ts";
 import { browserSidecar, codexComputerBrief, computerUseGuard, type BrowserGuardHit, type BrowserOptions, type BrowserSidecar, type BrowserTool, type SidecarInput } from "./browser.ts";
 import { checkEvidence } from "./evidence.ts";
 import { PREVIEW_MAX, preview } from "./normalize.ts";
@@ -125,6 +125,8 @@ interface StartCtx {
   title: string;
   persona: string;
   partnerName: string;
+  /** D415: words said to a task that never started: they go with its first turn, after the brief. */
+  then?: string;
 }
 
 interface TaskRt {
@@ -458,6 +460,11 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     t.attention = attention;
     t.residency = residency;
     core.tasks.setState(t.id, attention, residency, reason);
+  }
+
+  /** D415: its agent never started (it failed first): no session id ever, not carried from another. */
+  function neverStarted(t: TaskRt): boolean {
+    return !t.sessionId && !t.handedFrom && !Object.keys(t.past ?? {}).length && !t.outsideOver;
   }
 
   /** Attention as core sees it (reports/decisions may have moved it), else our own view. */
@@ -1858,18 +1865,23 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
    * A task that couldn't start. D395: when its place is the cause (no repository or folder there,
    * a clone that failed), core says why in the person's words and finds the fixes (another
    * computer's copy, a clone here), so the card shows the cause and what to tap, never a bare path.
+   * D415: every other failure too (a repository another git held, an agent that couldn't start, its
+   * computer gone): a word for why and 再试一次 that asks again, fresh. The raw message stays in
+   * the task's own record for whoever reads the steps.
    */
   async function startFailed(t: TaskRt, err: unknown): Promise<void> {
     const reason = preview(err instanceof Error ? err.message : String(err), 500) ?? "";
-    const problem = placeProblem(reason);
+    const problem = startProblem(reason);
     const device = t.ops.device?.id ?? "local";
-    const cant = problem ? await core.places?.cantStart(t.id, { ...problem, device }).catch(() => undefined) : undefined;
-    const { line, ...card } = cant ?? { line: undefined };
-    logEvent(t, { role: "system", from: "runner", text: `failed to start: ${reason}`, ...(cant ? { raw: { cant: card } } : {}) });
+    const fallback = (): CantStart & { line: string } => ({ why: problem.why, computer: t.ops.device?.name ?? "", what: "", ...(problem.path ? { path: problem.path } : {}), line: reason });
+    const cant = (await core.places?.cantStart(t.id, { ...problem, device }).catch(() => undefined)) ?? fallback();
+    if (problem.why === "agent" && !cant.detail) cant.detail = reason.split("\n")[0]!.replace(/^(Error: )+/, "").slice(0, 160);
+    const { line, ...card } = cant;
+    logEvent(t, { role: "system", from: "runner", text: `failed to start: ${reason}`, raw: { cant: card } });
     if (t.dropped) return;
     t.attention = "failed";
     t.residency = "archived";
-    core.tasks.setState(t.id, "failed", "archived", line ?? reason, cant ? (card as CantStart) : undefined);
+    core.tasks.setState(t.id, "failed", "archived", line || reason, card as CantStart);
   }
 
   /** Provision the place, start the session, and send the first turn (the brief, once written). */
@@ -1914,6 +1926,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       if (t.dropped) return;
       first = await withKnown(t, first, briefText);
       if (t.dropped) return;
+      if (c.then) first = seedThen(first, c.then);
       await sendTurn(t, first, "runner", false, media?.length ? media : undefined);
     } catch (err) {
       if (isOffline(err)) return deviceLost(t, true);
@@ -2185,6 +2198,20 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
         await sendTurn(t, `${held}\n\n${noCopyAnswer(text)}`, "runner", false, media);
         return { delivered: "prompted" };
       }
+      if (!t.session && neverStarted(t) && core.places && currentAttention(t) === "failed") {
+        // D415: words to a task that never started (it failed before its agent did: hel's
+        // 改进 Mem 常规设置页, 2026-11-20) start it: its place asked again, fresh (D395's 再试一次),
+        // its brief first, these words after it. Never a resume of a session that was never there.
+        logInput(t, text, from, "turn", clientId, media);
+        const p = await core.places.replan(taskId, { action: "reopen" });
+        if (!p.ok) {
+          logEvent(t, { role: "system", from: "runner", text: `couldn't start it again: ${p.message}` });
+          throw new Error(p.message);
+        }
+        const s = await runner.restartAt!(taskId, p.place, { then: { text: takeEdits(taskId, text), from: from === "ducter" ? "partner" : from, ...(clientId ? { clientId } : {}) } });
+        if (!s.ok) throw new Error(s.message ?? "It couldn't start.");
+        return { delivered: "prompted" };
+      }
       if (!t.session) {
         // Its worker is away: say so, and deliver nothing (the partner tells the user).
         if (t.ops.device && !t.ops.device.online()) throw new DeviceOfflineError(t.ops.device.name);
@@ -2289,6 +2316,14 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       await t.started.catch(() => {});
       t.dropped = false;
       if (t.session || t.sessionId || t.handedFrom) return runner.send(taskId, REOPENED, undefined, "ducter");
+      // D415: it never started: its place is asked again, fresh (a path that failed is never retried as is).
+      if (neverStarted(t) && core.places) {
+        const p = await core.places.replan(taskId, { action: "reopen" });
+        if (!p.ok) throw new Error(p.message);
+        const s = await runner.restartAt!(taskId, p.place);
+        if (!s.ok) throw new Error(s.message ?? "It couldn't start.");
+        return { delivered: "prompted" as const };
+      }
       // Never got a session (e.g. failed to start): start one from the brief.
       t.started = (async () => {
         await t.ops.provision({ place: t.card.place, cwd: t.spec.cwd });
@@ -2306,7 +2341,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
 
     // D395: a task that couldn't start (no session yet) starts in another place: another
     // computer's copy, or a clone, as core re-resolved it. Its brief and agent stay.
-    async restartAt(taskId, place) {
+    async restartAt(taskId, place, o) {
       const t = get(taskId);
       await t.started.catch(() => {});
       if (t.session || t.sessionId) return { ok: false, message: "It has started already; move it to another computer instead." };
@@ -2320,6 +2355,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       } catch (err) {
         return { ok: false, message: (err as Error).message };
       }
+      if (o?.clearLock) resolved = { ...resolved, clearLock: true };
       t.ops = ops;
       t.dropped = false;
       const body: Bodies["task_open"] = { ...opened, place: resolved.place, harness: t.base.harness, ...(t.base.model ? { model: t.base.model } : {}) };
@@ -2329,7 +2365,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       t.spec = withBrowser(t.base, t.sidecar, partnerNameOf(t.persona));
       logEvent(t, { role: "system", from: "runner", text: `starting again on ${ops.device?.name ?? "this computer"}`, raw: { restarted: { device: ops.device?.id ?? "local", ...(resolved.clone ? { clone: true } : {}) } } });
       setState(t, "queued", "provisioning");
-      t.started = launch(t, { body, later: false, briefIn: body.brief, title: t.card.title, persona: t.persona, partnerName: partnerNameOf(t.persona) }, resolved);
+      t.started = launch(t, { body, later: false, briefIn: body.brief, title: t.card.title, persona: t.persona, partnerName: partnerNameOf(t.persona), ...(o?.then ? { then: o.then.text } : {}) }, resolved);
       return { ok: true };
     },
 

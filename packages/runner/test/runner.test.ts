@@ -80,11 +80,12 @@ describe("places", () => {
     expect(card.place).toMatchObject({ kind: "repo", worktree: wt, branch: "ducter/fix-the-flaky-test", baseBranch: "main" });
     expect(seen.options.cwd).toBe(wt);
 
-    // Same title again: branch name collides, so the task id is appended.
+    // Same title again: the branch is checked out in the first task's worktree, so it is taken.
     const card2 = await runner.openTask({ persona: "p1", title: "Fix the flaky test!", brief: "b", place: { kind: "repo", device: "mac", repoPath: repo } });
     await runner.whenStarted(card2.taskId);
-    expect((card2.place as any).branch).toBe("ducter/fix-the-flaky-test-tsk00002");
-    expect((card2.place as any).worktree).toBe(join(core.dataDir, "ducter", "worktrees", "repo", "fix-the-flaky-test-tsk00002"));
+    // D415: the next free number, the same for the branch and its folder.
+    expect((card2.place as any).branch).toBe("ducter/fix-the-flaky-test-2");
+    expect((card2.place as any).worktree).toBe(join(core.dataDir, "ducter", "worktrees", "repo", "fix-the-flaky-test-2"));
     await runner.dispose();
   });
 

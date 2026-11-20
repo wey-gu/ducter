@@ -9,6 +9,7 @@
 import type { Bodies, LogEvent } from "./index.ts";
 import type { MediaRef } from "./media.ts";
 import { redact } from "./redact.ts";
+import { briefShown } from "./brief-shown.ts";
 import { backgroundStep, splitTool, stepOf, type Step } from "./steps.ts";
 import { harnessName } from "./harnesses.ts";
 import { editDiff } from "./editdiff.ts";
@@ -453,7 +454,7 @@ export function promptOf(ev: LogEvent, briefed: boolean): Block | undefined {
     const b = ev.body as Bodies["task_open"];
     // A task opened before its brief was written (D120) logs an empty one first; a retitle is a later one.
     if (briefed || !b.brief?.trim()) return undefined;
-    return { k: "brief", seq: ev.seq, ...words(b.brief.trim()), by: b.origin === "you" ? "you" : "partner", ...(b.media?.length ? { media: b.media } : {}) };
+    return { k: "brief", seq: ev.seq, ...words(briefShown(b.brief.trim())), by: b.origin === "you" ? "you" : "partner", ...(b.media?.length ? { media: b.media } : {}) };
   }
   if (ev.kind !== "task_event") return undefined;
   const b = ev.body as Bodies["task_event"];

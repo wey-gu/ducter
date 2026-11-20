@@ -140,10 +140,20 @@ export interface PileView {
    * D385: 讲的是 / Subjects: what the open ones are about, most first, each with its count (only past
    * SUBJECTS_PAST open, a subject with SUBJECT_MIN or more, at most SUBJECTS_SHOWN; absent otherwise).
    */
-  subjects?: { name: string; n: number }[];
+  subjects?: { name: string; n: number; own?: boolean }[];
   /** D385: how many more subjects there are past the ones shown. */
   subjectsMore?: number;
 }
+
+/**
+ * D415: the person's own 分类 / subjects. put: these to-dos are in this subject (made if new);
+ * take: out of every subject; rename: this subject is called `to` now (to an existing one: merged);
+ * remove: no such subject (the sort's own name for it too); make: a subject with nothing in it yet.
+ * Kept by the pile: a sort never moves a to-do the person placed, nor brings back what they removed.
+ */
+export type SubjectOp = "put" | "take" | "rename" | "remove" | "make";
+/** D415: an own subject's name, at most this long (the sort's are 1–4 words). */
+export const SUBJECT_NAME_MAX = 40;
 
 /** D359: a PR waiting for the person's review, read by the partner (read-only, the cheap model). */
 export interface PreReadSummary {
@@ -282,7 +292,11 @@ export interface SourceAsk {
    *       picks   今天能替你清掉这 {n} 件 the morning's picks, inside the note (Go hands them over)
    *       review  发出这 {n} 条？ a pre-read's drafted review comments (its Go given on the sheet)
    */
-  kind: "write" | "closed" | "trust" | "batch" | "picks" | "review" | "plan" | "where_rule" | "group_review" | "reviews";
+  /*
+   * D415: hand_comment 先在这 {n} 件下留一句，再开始？ the note asked to tell the issues first: Go
+   *                    comments (text, on each of items) and starts; the other way starts without.
+   */
+  kind: "write" | "closed" | "trust" | "batch" | "picks" | "review" | "plan" | "where_rule" | "group_review" | "reviews" | "hand_comment";
   item: SourceItemRef;
   /** write: the comment, exactly as it goes out (the card shows it whole). */
   text?: string;
@@ -354,6 +368,8 @@ export type SourcesClientFrame =
   // D396: words: the person's whole sentence ("关于 distill 的，先别动数据库"): core splits what to find
   // from the note (said) and finds by the first; none of the four: only the suggestions (suggest).
   | { t: "pile_find"; query?: string; words?: string; subject?: string; setId?: string; clientId?: string }
+  // D415: the person's own subjects (分类): answered with pile_result op "subject" (name: as kept).
+  | { t: "pile_subject"; op: SubjectOp; name: string; to?: string; refs?: string[]; clientId?: string }
   // D385: the sheet's how for the ticked set and the note so far (sent as they change).
   | { t: "pile_how"; refs: string[]; note?: string; bySubject?: boolean; subject?: string; clientId?: string }
   // D385: a plan card's answer: go (its parts open, with the notes said on them), hold, or reply (to the plan's task).
@@ -388,7 +404,7 @@ export type SourcesServerFrame =
   | { t: "source_result"; op: "add" | "set" | "remove"; ok: boolean; id?: string; reason?: "no_tool" | "signed_out" | "missing" | "exists" | "unknown" }
   | { t: "pile_items_result"; clientId?: string; group: PileGroup; items: PileItem[] }
   // D359: what a pile action did: handed (into the queue), closed (done, failed), a review sent, a pre-read made.
-  | { t: "pile_result"; clientId?: string; op: "hand" | "close" | "review" | "pre_read" | "plan" | "group_review"; ok: boolean; done?: number; failed?: number; read?: PreRead; error?: string; groupId?: string }
+  | { t: "pile_result"; clientId?: string; op: "hand" | "close" | "review" | "pre_read" | "plan" | "group_review" | "subject"; ok: boolean; done?: number; failed?: number; read?: PreRead; error?: string; groupId?: string; name?: string; asked?: string }
   // D385: a find's answer (the sheet's find field, a chip, a set card), and the sheet's how.
   | { t: "pile_find_result"; clientId?: string; query?: string; subject?: string; found: import("./handover.ts").FindSummary; items: import("./handover.ts").FoundItem[]; ticked: string[]; setId?: string; said?: import("./handover.ts").FindSaid; suggest?: string[] }
   | { t: "pile_how_result"; clientId?: string; how: import("./handover.ts").HandHow }

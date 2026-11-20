@@ -849,8 +849,13 @@ export interface TaskCard {
  * language ("没能开始：Hetzner Server 上没有 mem 的代码"), and the fixes core found for it.
  */
 export interface CantStart {
-  /** no_repo: no git repository there; no_folder: no such folder; clone_failed: cloning it there failed. */
-  why: "no_repo" | "no_folder" | "clone_failed";
+  /**
+   * no_repo: no git repository there; no_folder: no such folder; clone_failed: cloning it there failed.
+   * D415, every other start failure has a word too: busy: another git held the repository the whole
+   * time (清掉旧的再试 when the lock is one git left); agent: its agent couldn't start (its program,
+   * a sign-in); away: its computer went away; other: anything else (再试一次 asks again, fresh).
+   */
+  why: "no_repo" | "no_folder" | "clone_failed" | "busy" | "agent" | "away" | "other";
   /** The computer it was to start on, by name. */
   computer: string;
   /** The repository's or folder's own name ("mem"). */
@@ -860,6 +865,10 @@ export interface CantStart {
   elsewhere?: { device: string; name: string };
   /** Its repository is known and that computer's git can read it: 拉一份到这里 / Clone it here. */
   cloneHere?: boolean;
+  /** D415: busy: the lock git left can be cleared (清掉旧的再试 / Clear it and try again). */
+  clearLock?: boolean;
+  /** D415: agent: the agent's own words for why, one line (its sign-in, its program), shown under the reason. */
+  detail?: string;
 }
 
 export interface OnHand {
@@ -1140,7 +1149,8 @@ export type ClientFrame =
   // changes). An undo of a folder someone changed after the task finished is answered ok:false
   // with `confirm` (what would be lost); the same undo with force: true goes ahead.
   // D395: start_at (device): a task that couldn't start starts on that computer's copy; clone_here: clones it where it was to start.
-  | { t: "task_action"; taskId: string; action: "interrupt" | "drop" | "undrop" | "reopen" | "merge" | "open_pr" | "undo" | "keep" | "start_at" | "clone_here"; path?: string; force?: boolean; device?: string }
+  // D415: clear_lock: 清掉旧的再试, the lock git left is cleared (no git running) and it starts again.
+  | { t: "task_action"; taskId: string; action: "interrupt" | "drop" | "undrop" | "reopen" | "merge" | "open_pr" | "undo" | "keep" | "start_at" | "clone_here" | "clear_lock"; path?: string; force?: boolean; device?: string }
   // D142: the list behind a folder task's Changes; answered with a folder_changes frame.
   | { t: "folder_changes"; taskId: string }
   // D214: one op of the opened task's workbench (its files, changes, pages), answered with a wb

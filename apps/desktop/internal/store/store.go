@@ -250,6 +250,18 @@ func (t *Task) Attention() protocol.Attention {
 	return protocol.Queued
 }
 
+// Residency is where the task's session is now (provisioning while its place
+// is being made).
+func (t *Task) Residency() protocol.Residency {
+	switch {
+	case t.State != nil:
+		return t.State.Residency
+	case t.Card != nil:
+		return t.Card.Residency
+	}
+	return ""
+}
+
 // Cant (D395) is why it couldn't start where it was to work, and what fixes
 // it: the latest state's, else the card's.
 func (t *Task) Cant() *protocol.CantStart {

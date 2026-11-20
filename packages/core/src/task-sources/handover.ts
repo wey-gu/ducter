@@ -49,6 +49,14 @@ const W = {
     fixedIn: "已在 {where} 修好。",
     doneIn: "已在 {pr} 修好。",
     done: "做完了。",
+    oneTitle: "{title} 等 {n} 件",
+    sep: "、",
+    commentQ: "先在这 {n} 件下留一句，再开始？",
+    commentQ1: "先在 {label} 下留一句，再开始？",
+    commentGo: "留言并开始",
+    commentHold: "只开始，不留言",
+    commentDefault: "我的 Ducter agent 开始做这件了。",
+    commented: "按你说的，先在 {labels} 下留了言：「{text}」，然后开始做。",
   },
   en: {
     groupOf: "{n} handed to {name}",
@@ -64,6 +72,14 @@ const W = {
     fixedIn: "This was fixed in {where}. Closing.",
     doneIn: "Fixed in {pr}.",
     done: "Done.",
+    oneTitle: "{title} and {n} more",
+    sep: ", ",
+    commentQ: "Comment on these {n} first, then start?",
+    commentQ1: "Comment on {label} first, then start?",
+    commentGo: "Comment and start",
+    commentHold: "Start without commenting",
+    commentDefault: "My Ducter agent is starting on this.",
+    commented: "As you said, I commented on {labels} first (\u201c{text}\u201d), then started.",
   },
 };
 const fill = (s: string, v: Record<string, string | number>) => s.replace(/\{(\w+)\}/g, (_, k) => String(v[k] ?? ""));
@@ -100,7 +116,9 @@ export interface HandoverDeps {
   tell: (taskId: string, text: string) => void;
   /** Binds a task to its to-dos (the first is its chip; all are its own). */
   bind: (taskId: string, items: SourceItemRef[]) => void;
-  write: (item: SourceItemRef, op: SourceOp, how: { by: Bodies["source_write"]["by"]; decisionId?: string; taskId?: string; text?: string }) => Promise<WriteResult>;
+  write: (item: SourceItemRef, op: SourceOp, how: { by: Bodies["source_write"]["by"]; decisionId?: string; taskId?: string; text?: string; standing?: string; said?: string }) => Promise<WriteResult>;
+  /** D415: a standing permission (D413) that lets a comment on this issue go without asking. */
+  commentAllowed?: (ref: string) => { id: string; text: string } | undefined;
   /** A PR's checks (GitHub's), when they can be read. */
   checks?: (prRef: string) => Promise<ReviewRow["checks"]>;
   changed: () => void;
@@ -116,7 +134,10 @@ interface State {
   carded: Record<string, number>;
   /** The lasting wheres already asked about (device|quote). */
   asked: string[];
+  /** D415: hand-overs waiting on 先在这几件下留一句，再开始？ (decisionId → the hand-over as asked). */
+  waiting?: Record<string, HandArgs & { text: string }>;
 }
+type HandArgs = Parameters<Handover["hand"]>[0];
 const fresh = (): State => ({ sets: [], meaning: {}, carded: {}, asked: [] });
 
 export function refOfItem(i: SourceItemRef): SourceItemRef {
@@ -249,6 +270,43 @@ export function namedComputer(note: string, computers: { device: string; name: s
 /** A where said as lasting ("验证都去 haswell 上跑", "always build on haswell"), not a one-off. */
 export const lastingWhere = (note: string) => !/这次|这一次|这回|this time|just this once|for now/i.test(note) && /都|一律|以后|今后|每次|总是|一直|always|every|from now on|all (the )?(checks|builds|tests)/i.test(note);
 
+/**
+ * D415: the note asks Ducter to tell the to-dos first ("确保这些都没开始，然后在 issue 里留言说一下我的
+ * ducter agent 要开始做了", "comment on the issues that my agent is starting"): the words to leave, in
+ * the person's own words when they said them (after 说一下 / saying), else undefined text (the default
+ * line). Never when the note says not to comment.
+ */
+export function commentFirst(note: string | undefined): { text?: string } | undefined {
+  if (!note) return undefined;
+  const said = /(留言|留个言|评论|回复一下|回个话|说一声)/.exec(note) ?? (/(issue|议题|问题单)[^，,。；;]{0,8}(说一下|说一声|讲一下|告诉)/i.exec(note) ? /(说一下|说一声|讲一下|告诉)/.exec(note) : null);
+  const en = /\b(comment|leave a (note|comment|word)|post a (note|comment)|let (them|the issues?|people) know|tell (them|the issues?))\b/i.exec(note);
+  const m = said ?? en;
+  if (!m) return undefined;
+  const before = note.slice(Math.max(0, m.index - 8), m.index);
+  if (/(别|不要|不用|不许|勿|无需|不必)\s*(在|去|到)?\s*\S{0,6}$/.test(before) || /\b(don'?t|do not|never|no need to|without)\s+(\w+\s+){0,2}$/i.test(before)) return undefined;
+  const rest = note.slice(m.index + m[0].length);
+  const q = /^[^\n]*?(?:说一下|说一声|说|讲一下|写|告诉(?:他们|大家)?|[：:]|saying|to say|that)\s*[「“"']?([^\n」”"'。；;]{2,140})/i.exec(rest);
+  const text = q?.[1]?.replace(/[，,。.！!\s]+$/u, "").trim();
+  return text ? { text } : {};
+}
+
+/** D415: an issue's to-do (never a PR, never a vault line) can be commented on before the work. */
+const commentable = (i: SourceItemRef) => i.kind === "github" && !i.pr;
+
+/**
+ * D415: a hand-over task's branch says which to-do it is: `ducter/<number>-<the issue's own words>`
+ * (several: their numbers, then the first one's words), so two tasks named by one subject never
+ * collide and a branch list reads like the issues. undefined for a to-do with no number.
+ */
+export function todoBranch(items: SourceItemRef[]): string | undefined {
+  const gh = items.filter((i) => i.kind === "github" && /^#\d+$/.test(i.label));
+  if (!gh.length) return undefined;
+  const nums = gh.slice(0, 3).map((i) => i.label.slice(1)).join("-");
+  let words = gh[0]!.title.normalize("NFC").replace(/[A-Z]+/g, (x) => x.toLowerCase()).replace(/[^\p{L}\p{M}\p{N}]+/gu, "-").replace(/^[-\p{M}]+/u, "");
+  words = [...words].slice(0, 32).join("").replace(/-+$/, "");
+  return `ducter/${nums}${words ? `-${words}` : ""}`;
+}
+
 // ---------- briefs ----------
 
 function noteBlock(note: string | undefined, itemNote: string | undefined): string {
@@ -263,8 +321,9 @@ function decided(p: PileItem | undefined): string {
   return `\nIt needed the person's call ("${p.ask}"). Handing it over is their answer: go the way that is suggested or most reasonable, unless their note says otherwise, and say in your report which way you went.`;
 }
 
-export function partBrief(items: (SourceItem | SourceItemRef)[], o: { note?: string; itemNote?: string; verdicts?: (PileItem | undefined)[] }): string {
-  const head = noteBlock(o.note, o.itemNote);
+export function partBrief(items: (SourceItem | SourceItemRef)[], o: { note?: string; itemNote?: string; verdicts?: (PileItem | undefined)[]; commented?: { refs: string[]; text: string } }): string {
+  const said = o.commented?.refs.length ? `Ducter already left the comment the person's note asked for, on ${o.commented.refs.join(", ")}: "${o.commented.text}". Don't comment again.\n\n` : "";
+  const head = noteBlock(o.note, o.itemNote) + said;
   if (items.length === 1) {
     const i = items[0]!;
     const fx = fixes(i);
@@ -275,7 +334,7 @@ export function partBrief(items: (SourceItem | SourceItemRef)[], o: { note?: str
   return `${head}One task for these ${items.length} to-dos together: they are about the same thing, so fix them in one change.\n\n${all}${fx.length ? `\n\nWhen it's done, open one pull request whose description has a line for each: ${fx.map((f) => `"${f}"`).join(", ")}.` : ""}`;
 }
 
-export function planBrief(items: (SourceItem | SourceItemRef)[], o: { note?: string; subject?: string; lang: Lang; repo?: string }): string {
+export function planBrief(items: (SourceItem | SourceItemRef)[], o: { note?: string; subject?: string; lang: Lang; repo?: string; commented?: { refs: string[]; text: string } }): string {
   const lang = LANG_NAME[o.lang];
   const list = items
     .map((i) => {
@@ -284,7 +343,7 @@ export function planBrief(items: (SourceItem | SourceItemRef)[], o: { note?: str
     })
     .join("\n");
   return [
-    `${noteBlock(o.note, undefined)}You are the first part of a hand-over of ${items.length} to-dos${o.subject ? ` about ${o.subject}` : ""}: read them and plan the work. Change nothing.`,
+    `${noteBlock(o.note, undefined)}${o.commented?.refs.length ? `Ducter already left the comment the person's note asked for, on ${o.commented.refs.join(", ")}: "${o.commented.text}". Don't comment again.\n\n` : ""}You are the first part of a hand-over of ${items.length} to-dos${o.subject ? ` about ${o.subject}` : ""}: read them and plan the work. Change nothing.`,
     "",
     `Read every to-do below with its comments and linked pull requests (gh issue view <n> --repo <owner/repo> --comments)${o.repo ? `, the code of ${o.repo} at its default branch` : ", the code they are about"}, and the person's note. Do not edit files, commit, push, comment, label or close anything.`,
     "",
@@ -363,7 +422,13 @@ export const PLAN_SCHEMA = {
 export interface Handover {
   find(o: { query?: string; words?: string; subject?: string; setId?: string }): Promise<{ found: FindSummary; items: FoundItem[]; ticked: string[]; query?: string; subject?: string; setId?: string; said?: FindSaid; suggest: string[] }>;
   how(o: { refs: string[]; note?: string; bySubject?: boolean; subject?: string }): Promise<HandHow>;
-  hand(o: { refs: string[]; note?: string; notes?: Record<string, string>; shape?: HandShape; group?: string; device?: string; harness?: string; subject?: string; bySubject?: boolean; setId?: string }): Promise<{ ok: boolean; groupId?: string; taskId?: string; handed: number; shape?: HandShape; error?: string }>;
+  /**
+   * D415: commented: the comment the note asked for already went (or was declined: refs empty), so
+   * it isn't asked again; asked: the hand-over waits on that card (nothing started yet).
+   */
+  hand(o: { refs: string[]; note?: string; notes?: Record<string, string>; shape?: HandShape; group?: string; device?: string; harness?: string; subject?: string; bySubject?: boolean; setId?: string; commented?: { refs: string[]; text: string } }): Promise<{ ok: boolean; groupId?: string; taskId?: string; handed: number; shape?: HandShape; error?: string; asked?: string }>;
+  /** D415: 先在这几件下留一句，再开始？ answered. */
+  answerComment(card: Bodies["decision"], r: Bodies["decision_resolved"]): Promise<void>;
   /** The conversation's find: a set card under the partner's line. */
   set(o: { query?: string; subject?: string }): Promise<TodoSet>;
   getSet(setId: string): TodoSet | undefined;
@@ -613,11 +678,74 @@ export function createHandover(d: HandoverDeps): Handover {
     return out;
   }
 
-  async function hand(o: Parameters<Handover["hand"]>[0]): ReturnType<Handover["hand"]> {
+  /** D415: a hand-over task's place carries its to-do's branch name (a repository place not yet named). */
+  const named = (place: HeldOpen["place"], its: SourceItemRef[]): HeldOpen["place"] => {
+    if (!place || place.kind !== "repo" || place.branch || place.worktree) return place;
+    const branch = todoBranch(its);
+    return branch ? { ...place, branch } : place;
+  };
+  /** Several in one task: the first one's title (cut to leave room), and how many more. */
+  const oneTitle = (its: SourceItemRef[], lang: Lang) => {
+    if (its.length < 2) return its[0]!.title;
+    const t = [...its[0]!.title.replace(/\s+/g, " ").trim()];
+    return fill(W[lang].oneTitle, { title: t.length > 48 ? `${t.slice(0, 47).join("").trimEnd()}…` : t.join(""), n: its.length - 1 });
+  };
+
+  /** D415: the comment the note asked for, on each, through the one audited write (Done for you). */
+  async function commentOn(targets: SourceItemRef[], text: string, how: { by: "go" | "rule"; decisionId?: string; standing?: { id: string; text: string } }): Promise<{ refs: string[]; text: string }> {
+    const refs: string[] = [];
+    for (const i of targets) {
+      const r = await d.write(refOfItem(i), "comment", { by: how.by, text, ...(how.decisionId ? { decisionId: how.decisionId } : {}), ...(how.standing ? { standing: how.standing.id, said: how.standing.text } : {}) }).catch(() => ({ ok: false }) as WriteResult);
+      if (r.ok) refs.push(i.ref);
+    }
+    if (refs.length) {
+      const labels = targets.filter((i) => refs.includes(i.ref)).map((i) => i.label).join(W[d.lang()].sep);
+      d.log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: fill(W[d.lang()].commented, { labels, text }) } });
+    }
+    return { refs, text };
+  }
+
+  /** D415: 先在这几件下留一句，再开始？ answered: Go comments and starts; the other way starts without. */
+  async function answerComment(card: Bodies["decision"], r: Bodies["decision_resolved"]): Promise<void> {
+    const w = st.waiting?.[card.decisionId];
+    if (!w) return;
+    delete st.waiting![card.decisionId];
+    d.pile.release(w.refs);
+    save();
+    const { text, ...args } = w;
+    let commented: { refs: string[]; text: string } = { refs: [], text };
+    if (r.option === "go") {
+      const targets = (card.src?.items ?? []).map((x) => x.item);
+      commented = await commentOn(targets, text, { by: "go", decisionId: card.decisionId });
+    }
+    await hand({ ...args, commented });
+  }
+
+  async function hand(o: HandArgs): ReturnType<Handover["hand"]> {
     const refs = [...new Set(o.refs)].slice(0, HAND_MAX).filter((r) => !d.pile.taken(r));
     const items = (await Promise.all(refs.map(full))).filter((i): i is SourceItem => !!i && i.state !== "closed");
     if (!items.length) return { ok: false, handed: 0, error: "Those are taken already, or closed." };
     const note = o.note?.trim().slice(0, HAND_NOTE_MAX) || undefined;
+    // D415: the note asks to tell the issues first: inside a standing permission (D413) it goes now,
+    // else one card asks (留言并开始 / 只开始，不留言) and nothing starts until it is answered.
+    const ask = o.commented === undefined ? commentFirst(note) : undefined;
+    const targets = ask ? items.filter(commentable) : [];
+    if (ask && targets.length) {
+      const lang0 = d.lang();
+      const text = (ask.text ?? W[lang0].commentDefault).slice(0, 300);
+      const covered = d.commentAllowed ? targets.map((i) => d.commentAllowed!(i.ref)) : [];
+      if (covered.length === targets.length && covered.every(Boolean)) {
+        const went = await commentOn(targets, text, { by: "rule", standing: covered[0]! });
+        return hand({ ...o, commented: went });
+      }
+      const decisionId = newId("d_");
+      const w = W[lang0];
+      st.waiting = { ...(st.waiting ?? {}), [decisionId]: { ...o, text } };
+      d.pile.hold(items.map((i) => i.ref));
+      save();
+      d.log.append({ stream: "channel", origin: "partner", kind: "decision", body: { decisionId, question: targets.length === 1 ? fill(w.commentQ1, { label: `${targets[0]!.where ?? ""}${targets[0]!.label}` }) : fill(w.commentQ, { n: targets.length }), goLabel: w.commentGo, holdLabel: w.commentHold, defaultOption: "hold", reversible: false, src: { kind: "hand_comment", item: refOfItem(targets[0]!), items: targets.map((i) => ({ item: refOfItem(i), text })), text, ...(note ? { quote: note.slice(0, 200) } : {}) } } });
+      return { ok: true, handed: 0, asked: decisionId };
+    }
     const notes: Record<string, string> = {};
     for (const [k, v] of Object.entries(o.notes ?? {})) if (typeof v === "string" && v.trim()) notes[k] = v.trim().slice(0, HAND_ITEM_NOTE_MAX);
     const h = await how({ refs: items.map((i) => i.ref), ...(note ? { note } : {}), ...(o.bySubject ? { bySubject: true } : {}), ...(o.subject ? { subject: o.subject } : {}) });
@@ -632,11 +760,12 @@ export function createHandover(d: HandoverDeps): Handover {
     const verdict = (i: SourceItem) => byRef(i.ref);
     const found = await foundOn(items, device);
     const input = (its: SourceItem[], o2: { itemNote?: string; title?: string; brief?: string }): HeldOpen => {
-      const place = placeOn(its[0]!, device, places, found);
+      const place = named(placeOn(its[0]!, device, places, found), its);
       return {
         persona,
-        title: titleOf(o2.title || its[0]!.title),
-        brief: o2.brief ?? partBrief(its, { ...(note ? { note } : {}), ...(o2.itemNote ? { itemNote: o2.itemNote } : {}), verdicts: its.map(verdict) }),
+        // D415: a task is titled by its own to-do (several: the first and how many more), never the subject.
+        title: titleOf(o2.title || oneTitle(its, lang)),
+        brief: o2.brief ?? partBrief(its, { ...(note ? { note } : {}), ...(o2.itemNote ? { itemNote: o2.itemNote } : {}), verdicts: its.map(verdict), ...(o.commented ? { commented: o.commented } : {}) }),
         ...(place ? { place } : {}),
         project: projectOf(place, places),
         ...(harness ? { harness } : {}),
@@ -711,18 +840,19 @@ export function createHandover(d: HandoverDeps): Handover {
       where: { device, name: devName },
       ...(harness ? { harness } : {}),
       cap: HAND_CAP,
+      ...(o.commented?.refs.length ? { commented: o.commented } : {}),
     };
     const g = g0.create(persona, name, { order: shape === "side_by_side" ? "side_by_side" : "one_by_one", hand: hv });
     try {
       if (shape === "plan") {
         const repo = h.repo;
         const place = repo ? placeOn(items[0]!, device, places, found) : device === "local" ? { kind: "none" as const } : { kind: "none" as const, device };
-        const c = await d.open({ persona, title: titleOf(fill(W[lang].planQ, { group: name })), brief: planBrief(items, { ...(note ? { note } : {}), ...(subject ? { subject } : {}), lang, ...(repo ? { repo } : {}) }), ...(place ? { place } : {}), project: projectOf(place, places), ...(harness ? { harness } : {}), language: lang, origin: "you" });
+        const c = await d.open({ persona, title: titleOf(fill(W[lang].planQ, { group: name })), brief: planBrief(items, { ...(note ? { note } : {}), ...(subject ? { subject } : {}), lang, ...(repo ? { repo } : {}), ...(o.commented ? { commented: o.commented } : {}) }), ...(place ? { place } : {}), project: projectOf(place, places), ...(harness ? { harness } : {}), language: lang, origin: "you" });
         g0.attach(g.id, c.taskId, true);
         g0.setHand(g.id, { plan: { taskId: c.taskId, state: "planning" } });
         d.pile.hold(items.map((i) => i.ref));
       } else if (shape === "one") {
-        const c = await d.open(input(items, { title: subject || items[0]!.title }));
+        const c = await d.open(input(items, {}));
         g0.attach(g.id, c.taskId);
         d.bind(c.taskId, items.map(refOfItem));
         for (const i of items) d.pile.handed(i.ref, c.taskId);
@@ -795,13 +925,13 @@ export function createHandover(d: HandoverDeps): Handover {
     const mk = (refs: string[], part?: PlanPart): { open: HeldOpen; bind: SourceItemRef[] } | undefined => {
       const xs = refs.map((r) => by.get(r)).filter((i): i is SourceItem => !!i);
       if (!xs.length) return undefined;
-      const place = placeOn(xs[0]!, device, places, found);
+      const place = named(placeOn(xs[0]!, device, places, found), xs);
       const why = part?.why ? `\nWhy it is its own part here (from the plan): ${part.why}` : "";
       return {
         open: {
           persona: g.persona,
-          title: titleOf(part?.title || xs[0]!.title),
-          brief: partBrief(xs, { ...(note ? { note } : {}), ...(part && notes[part.id] ? { itemNote: notes[part.id] } : {}), verdicts: xs.map((i) => byRef(i.ref)) }) + why,
+          title: titleOf(part?.title || oneTitle(xs, lang)),
+          brief: partBrief(xs, { ...(note ? { note } : {}), ...(part && notes[part.id] ? { itemNote: notes[part.id] } : {}), verdicts: xs.map((i) => byRef(i.ref)), ...(hv.commented ? { commented: hv.commented } : {}) }) + why,
           ...(place ? { place } : {}),
           project: projectOf(place, places),
           ...(hv.harness ? { harness: hv.harness } : {}),
@@ -928,6 +1058,7 @@ export function createHandover(d: HandoverDeps): Handover {
     find,
     how,
     hand,
+    answerComment,
     set,
     getSet: (id) => st.sets.find((s) => s.setId === id),
     planReport(taskId, raw) {

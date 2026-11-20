@@ -230,7 +230,7 @@ func TestPileSubjectsAndDoRowOpenTheSheet(t *testing.T) {
 	app.Route = RouteOnHand
 	todoFrames(tt, 3)
 	all := strings.Join(tt.Texts(), " | ")
-	for _, want := range []string{"讲的是", "记忆提炼", "13", "还有 5 类"} {
+	for _, want := range []string{"分类", "记忆提炼", "13", "还有 5 类"} {
 		if !strings.Contains(all, want) {
 			t.Fatalf("missing %q in %s", want, all)
 		}

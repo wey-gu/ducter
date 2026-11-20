@@ -2845,6 +2845,29 @@ export const scenarios: Scenario[] = [
     expect: { msgs: [1, 1], maxChars: 100, called: [{ tool: "todos", args: { do: "hand", refs: /366/ } }], notCalled: ["task_open"], noTodoCard: true },
     rubric: "Memory distillation was handed over as one group (记忆提炼) whose plan is being made. The user says to add #366 too. It adds it to that group (todos do=hand with #366, naming the group or the set it was handed over as), not a new task or a new group; Ducter itself then tells the plan's task to read it too (that relay is right, not the partner's doing). It says one short Chinese line that it's added (the plan will take it into account). It opens no task itself and lists nothing.",
   },
+  // D415: the person's own subjects (分类), said in words: kept, never a hand-over by itself.
+  {
+    id: "subject-own-zh",
+    category: "todos",
+    lang: "zh",
+    todos: true,
+    todosPile: true,
+    seed: [{ user: "把 memory distill 相关的拉出来我们看看" }, { todoSet: { query: "memory distill", ai: "找到 9 件讲记忆提炼的。能直接交给我的 6 件先勾上了；#405 要你定一下；两件改动大，先放着。" } }],
+    steps: [{ user: "把 #412 和 #340 归到「蒸馏兜底」这个分类里" }],
+    expect: { opens: 0, msgs: [1, 1], maxChars: 80, called: [{ tool: "todos", args: { do: "subject", name: /蒸馏兜底/, refs: /412/ } }], notCalled: ["task_open"], noTodoCard: true },
+    rubric: "The user puts two of the found to-dos (#412 and #340) into a subject of their own named 蒸馏兜底. It keeps that subject (todos do=subject with the name 蒸馏兜底 and both refs; refs may be written as #412 or acme/mem#412) and says one short Chinese line that they're in it now. It hands nothing over, starts nothing, opens no task and lists nothing.",
+  },
+  {
+    id: "subject-rename-en",
+    category: "todos",
+    lang: "en",
+    todos: true,
+    todosPile: true,
+    seed: [{ user: "Pull out everything about memory distill" }, { todoSet: { query: "memory distill", ai: "Found 9 about memory distillation; the 6 I can take are ticked; #405 needs your call; two are big, left for now." } }],
+    steps: [{ user: "Rename that 记忆提炼 subject to \"Distill\", and take #366 out of it." }],
+    expect: { opens: 0, msgs: [1, 1], maxChars: 220, called: [{ tool: "todos", args: { do: "subject", op: "rename", to: /Distill/ } }], notCalled: ["task_open"], noTodoCard: true },
+    rubric: "The user renames the subject 记忆提炼 to Distill and takes #366 out of it. It renames it (todos do=subject op=rename name=记忆提炼 to=Distill) and takes #366 out (todos do=subject op=take with #366; in either order), then says one short English line that it's done. It hands nothing over, opens no task and lists nothing.",
+  },
   // ---------- calendars (D222): two accounts merged, changes behind a card ----------
   {
     id: "calendar-today-zh",

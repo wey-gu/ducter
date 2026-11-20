@@ -167,3 +167,12 @@ task by its read, not bound (a binding's end comments or closes, which a review 
 What it never does: post at hand-over, close without the sheet's Go, close a vault line (a tick says
 it was done: a closable-looking line can wait instead), give a PR a verdict (only comments), or speak
 in the evening (the day's line lives on the pile and opens the next morning's find).
+
+## 10. A comment the person asked for before the work (D415)
+
+A hand-over's note can ask Ducter to tell the issues first ("在 issue 里留言说一下我的 ducter agent 要开始做
+了"). That comment is an outward write like D341's write-backs: it goes through the same audited write
+(`source_write`, in 替你做过的), by Go on one card (**先在这 {n} 件下留一句，再开始？**) or under a
+standing permission the person said for issue comments (D413's `issue_comment`, bounded by the owners
+they named). Only issues (never a PR, never a vault line), only a comment (never a close). The tasks
+start after it, and their briefs say it went (handover.md §11).

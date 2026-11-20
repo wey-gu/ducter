@@ -48,7 +48,7 @@ Deferred work, grouped by area, each with its trigger where it has one.
   chips until a sort reuses one; a model-made merge is held. *Trigger:* the author sees one subject
   twice on the pile.
 - **People, not proxies, for the five words** (给{name}的话, 先出个方案 · 你点头再做, 合成一件做,
-  讲的是 / Subjects, 一起过目). *Trigger:* the first human panel (shared with D348's and D382's words).
+  分类 / Subjects, 一起过目). *Trigger:* the first human panel (shared with D348's and D382's words).
 - **A find by meaning on a real pile:** measure recall on hel's 49 distillation to-dos (words + labels
   + one cheapest-model call) before trusting the line 说的是同一件事的 n 件. *Trigger:* the author's home on this build.
 
@@ -2295,3 +2295,5 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] **More actions than PR reviews** (issue comments outside To-do sources' own standing go, replies in a chat app, a reply to one named person's mail). Trigger: the person says "don't ask me" about one of these (the partner already says Ducter can't keep it yet).
 - [ ] **The settled round card's footnote** (**说好之前，什么都不会发到 GitHub。**) still shows under a card whose drafts went as said. Trigger: the next pass on the round card.
 - [ ] **On hel:** check after the upgrade that the 11-19 saying was backfilled (`[standing] kept 1 …` in the log) and the next round posts with one line. Trigger: the first release carrying D413.
+
+- **D415's words and the live run.** 分类, 移出, 清掉旧的再试, 只开始，不留言 read by humans; the comment-first reading (`commentFirst`) on notes no rule catches (a model in the find's one call could read it); the hand-over replayed on the author's MacBook with his real nowledge-mem (the lock fix is checked only with a git that fakes hel's lock). *Trigger:* the next human panel, or the author's next hand-over.

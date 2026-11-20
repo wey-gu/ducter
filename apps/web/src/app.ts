@@ -3048,7 +3048,7 @@ class AppState {
   }
 
   /** D395: a task that couldn't start: start it on another computer's copy, clone it here, or ask again. */
-  cantAction(id: string, action: "start_at" | "clone_here" | "reopen", device?: string) {
+  cantAction(id: string, action: "start_at" | "clone_here" | "reopen" | "clear_lock", device?: string) {
     this.send({ t: "task_action", taskId: id, action, ...(device ? { device } : {}) });
     this.changed();
   }

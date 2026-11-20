@@ -1030,6 +1030,7 @@ export function createWsHandler(deps: WsDeps) {
             }
             case "start_at":
             case "clone_here":
+            case "clear_lock":
             case "reopen": {
               // D395: a task that couldn't start where it was to work: 再试一次 asks the computers
               // again (it never repeats the same failure), 在 X 上做 starts on X's copy, 拉一份到这里
@@ -1037,7 +1038,7 @@ export function createWsHandler(deps: WsDeps) {
               if (card.cant && core.places && r?.restartAt) {
                 const p = await core.places.replan(f.taskId, { action: f.action, ...(f.device ? { device: f.device } : {}) });
                 if (!p.ok) return result(false, p.message);
-                const s = await r.restartAt(f.taskId, p.place);
+                const s = await r.restartAt(f.taskId, p.place, f.action === "clear_lock" ? { clearLock: true } : undefined);
                 return result(s.ok, s.message);
               }
               if (f.action !== "reopen") return result(false, "That only applies to a task that couldn't start.");
@@ -1870,6 +1871,7 @@ export function createWsHandler(deps: WsDeps) {
       case "pre_read_send":
       case "pile_find":
       case "pile_how":
+      case "pile_subject":
       case "plan_answer":
       case "group_review":
       case "group_review_send": {
@@ -1892,6 +1894,12 @@ export function createWsHandler(deps: WsDeps) {
           if (!ho) return;
           const r = await ho.find({ ...(str(f.query, 200) ? { query: str(f.query, 200)! } : {}), ...(str(f.words, 400) ? { words: str(f.words, 400)! } : {}),...(str(f.subject, 60) ? { subject: str(f.subject, 60)! } : {}), ...(str(f.setId, 64) ? { setId: str(f.setId, 64)! } : {}) });
           return send(ws, { t: "pile_find_result", ...cid, ...r });
+        }
+        // D415: the person's own subjects (分类).
+        if (f.t === "pile_subject") {
+          if (!["put", "take", "rename", "remove", "make"].includes(f.op) || typeof f.name !== "string") return;
+          const r = pile.subject({ op: f.op, name: f.name, ...(str(f.to, 80) ? { to: str(f.to, 80)! } : {}), refs: refs(f.refs) });
+          return send(ws, { t: "pile_result", ...cid, op: "subject", ok: r.ok, ...(r.n !== undefined ? { done: r.n } : {}), ...(r.name ? { name: r.name } : {}), ...(r.error ? { error: r.error } : {}) });
         }
         if (f.t === "pile_how") {
           if (!ho) return;
@@ -1916,7 +1924,7 @@ export function createWsHandler(deps: WsDeps) {
         if (f.t === "pile_hand" && ho && (f.shape || f.note || f.notes || f.group || f.device || f.harness || f.setId || f.subject)) {
           const shape = (["plan", "one", "one_by_one", "side_by_side"] as const).find((s) => s === f.shape);
           const r = await ho.hand({ refs: refs(f.refs), ...(str(f.note, 2000) ? { note: str(f.note, 2000)! } : {}), ...(notesOf(f.notes) ? { notes: notesOf(f.notes)! } : {}), ...(shape ? { shape } : {}), ...(str(f.group, 64) ? { group: str(f.group, 64)! } : {}), ...(str(f.device, 64) ? { device: str(f.device, 64)! } : {}), ...(str(f.harness, 40) ? { harness: str(f.harness, 40)! } : {}), ...(str(f.subject, 60) ? { subject: str(f.subject, 60)! } : {}), ...(f.bySubject === true ? { bySubject: true } : {}), ...(str(f.setId, 64) ? { setId: str(f.setId, 64)! } : {}) });
-          return send(ws, { t: "pile_result", ...cid, op: "hand", ok: r.ok, done: r.handed, ...(r.groupId ? { groupId: r.groupId } : {}), ...(r.error ? { error: r.error } : {}) });
+          return send(ws, { t: "pile_result", ...cid, op: "hand", ok: r.ok, done: r.handed, ...(r.groupId ? { groupId: r.groupId } : {}), ...(r.asked ? { asked: r.asked } : {}), ...(r.error ? { error: r.error } : {}) });
         }
         if (f.t === "pile_hand") {
           const r = await pile.hand(refs(f.refs));

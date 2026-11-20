@@ -126,6 +126,13 @@ one to find it. **Pick one by one** is always a tap away. When there are more th
 pile also shows **Subjects**: what they're about, each with its count ("Distillation 13"); tapping one
 opens the sheet with it already found.
 
+Subjects can be your own too. **+ New subject** on that row asks for a name, then you find or pick
+what goes in it and **Put in "{name}"**. On any sheet with ticks, **Put in a subject…** files the
+ticked ones under a name, new or one you already have. A subject's own sheet has **Rename** (rename it
+to one you have and the two become one), **Remove this subject** (the to-dos stay), and **Take out** on
+each one. You can say it too: "put #412 and #340 under Distill fallback". Your subjects come first,
+show however small the pile is, and stay as you left them: sorting again never moves what you placed.
+
 Then, on the same sheet:
 
 - **A note for {name}**: how it should go, in your own words ("leave the database migrations alone;
@@ -141,6 +148,14 @@ Then, on the same sheet:
   - **Side by side**: three at a time, a pull request each.
   - **Add to "{group}"** shows first when work on the same subject is already under way.
 - **Where** and **Who does it**: filled for you, each with why; tap to change.
+
+If your note asks to tell the issues first ("comment on them that my agent is starting"), nothing starts
+until that's settled: a card shows the comment and asks **Comment and start** or **Start without
+commenting**. If you've said comments on your issues don't need asking ("comment on nowledge-co's
+issues without asking"), it just posts and says so. Either way it shows in Done for you.
+
+Each task is named after its own to-do (several in one task: the first, "and 1 more"), and its branch
+after the issue numbers, so two hand-overs never collide.
 
 **Hand these {n} to {name}** makes one group on On hand that carries them all. You can also say it in
 the conversation: "pull out everything about memory distill so we can look" shows the set there, ticked

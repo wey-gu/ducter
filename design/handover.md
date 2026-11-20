@@ -249,3 +249,73 @@ Shots: `.shots/handover-words/` (`before-*`, `after-*`; web on `apps/web/demo-ha
 the pile across nowledge-co repos; Mac from `TestHandoverWordsShots`, the traffic lights painted in).
 **Still owed:** the split read by real models on the author's own sentences, and humans on the words
 (the question, the hint, **找的是**).
+
+## 11. The author's own run, and subjects of the person's own (D415)
+
+The author on 0.0.99, after his first real hand-over: *"我随便试了 github task-aware 的 flow 就走不下去呢，到底
+是为啥？还有，你的那个分类只能是咱们自动分类？不能用户自己想发起的分类在整个 flow 里？"* hel's Log (read only,
+2026-11-20) says what happened: he tapped the 通用设置 chip, both to-dos ticked, chose 合成一件做 and wrote
+"确保这些任务都没开始，然后再 issue 里留言说一下 我的 ducter agent 要开始做了".
+
+**Who.** The heavy developer, mid-flow, with 557 open: he named a kind of thing and expected it to go.
+*Before:* a task titled 通用设置 bound to #10612 (Default-space aliases, which the sort had put under
+通用设置 too), a start that failed on a git lock with a bare path, a task page whose 你交给它的事 opened
+with Ducter's instructions to the agent, no comment on the issues as he asked, and no way to say "this
+one isn't about settings". *After:* he sees why and what to tap, the comment he asked for goes first (or
+is asked once), the task is called by its own to-do, and his own subjects stay his. The consumer and
+the fresh user meet the same words: 分类, + 新的分类, 改名, 移出.
+
+**What failed, and the fixes** (design/where.md §18 has the start's):
+- *The title.* As one task took the subject as its name. A task is titled by its own to-do (several:
+  **{first title} 等 {n} 件 / {first title} and {n} more**, the first cut to 48 characters); the group
+  carries the subject.
+- *The branch.* `ducter/通用设置` would be shared by every hand-over of that subject. Each task's branch
+  names its issues (`ducter/10612-10559-…`), set by the hand-over on the place.
+- *The lock.* The Mac's changes pane ran `git diff` in the new worktree while `git worktree add` was
+  still filling it, and took the index lock: Ducter's reads take no optional lock now, the Mac waits
+  for the place, and the add is tried again (where.md §18).
+- *The bare card.* Every start failure has its why and its taps (where.md §18).
+- *The other task.* 改进 Mem 常规设置页 had failed the day before on a guessed path; his reply to it tried
+  to resume a session that never was. Words to a task that never started start it, its place asked
+  again (where.md §18).
+- *The brief shown.* 你交给它的事 shows the person's note as written, then each to-do by its reference
+  and title (`protocol/src/brief-shown.ts`, the Mac's `briefshown.go`); the agent's plumbing (the note's
+  fence, the to-do's outside text, what not to do, the Fixes line) stays in the agent's brief only.
+- *The comment first.* A note that asks to tell the issues first ("在 issue 里留言说一下…", "comment on
+  the issues that…") is honoured before anything starts (`commentFirst`): the words after 说一下 /
+  saying are the comment (else **我的 Ducter agent 开始做这件了。 / My Ducter agent is starting on
+  this.**). Inside a standing permission for issue comments (D413's second action, **在 GitHub issue 下
+  留言不用先问**, said like "以后在 nowledge-co 的 issue 里留言不用问我") it goes at once through the one
+  audited write; else one card asks, **先在这 {n} 件下留一句，再开始？** with **留言并开始** and **只开始，
+  不留言**, and nothing starts until it is answered (no default runs: the order was the person's). Either
+  way one line says what went, and each task's brief says the comment already went (so its agent
+  doesn't comment again). A note that says not to comment never asks.
+
+**Subjects of the person's own.** The sort names a subject per to-do (D385); the person can now say
+theirs, and theirs wins:
+- *Doors.* **+ 新的分类** on the pile's subject row (the sheet in its make mode: **叫什么**, then the
+  words field or one by one, Go **放进「{name}」**); **归到分类…** on any sheet with ticks (a new name or
+  one of theirs); a subject's own set has **改名** (into one that exists: **并到「X」**, a merge),
+  **去掉这个分类**, and **移出** on each row; in words, "把这几件归到「通用设置」", "把 记忆提炼 改名叫
+  Distill", "#366 移出去" (`todos do=subject name= refs|set op=put|take|rename|remove to=`).
+- *Kept.* The pile keeps what was said (`pile.ts` `mine`): where each to-do was put (or taken out),
+  the names given to the sort's subjects (a merge is a rename into one that exists), the ones removed,
+  and the ones made (shown even before anything is in them). A sort never moves a to-do the person
+  placed, never brings back a subject they removed; their names are listed first to the sort, so a
+  new to-do about one of them lands in it by meaning.
+- *Shown.* Their subjects come first on the row, drawn with an ink hairline, on any pile (the sort's
+  still only past 20 open, of 3 or more). The row is called **分类 / Subjects** (was 讲的是: the
+  author's word, and it reads with + 新的分类).
+- *Found and handed over.* A subject's find is explicit membership plus the sort's (by `subject`), so
+  the chip opens exactly what is in it; it is handed over as a set like any (plan first by default),
+  and the group carries the person's name.
+
+**Never.** A subject change starts nothing and writes nothing outside; removing a subject never
+removes a to-do; the comment card never has a countdown.
+
+Shots: `.shots/handover-fix/` (`before-*` from main on the same demo, `after-*`;
+`apps/web/demo-handover-fix.ts`: the 557 plus hel's #10612 and #10559, a scratch nowledge-mem clone,
+the real runner with a scripted agent, a git that meets hel's lock: `DEMO_LOCK=once|stale|hold`,
+`DEMO_STAGE=hand|go|mine`; Mac shots from its view tests). **Still owed:** the words by humans
+(分类, 移出, 只开始，不留言); a model reading the comment out of a note no rule catches; the live run on the
+author's MacBook.

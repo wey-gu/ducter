@@ -13,6 +13,7 @@
 | Claude Code | 2.1.319–2.1.322 | env `CLAUDE_CODE_AUTO_COMPACT_WINDOW` (100K–1M) | env `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE`: min(⌊(W − 20K) × pct⌋, W − 33K) | env `CLAUDE_CODE_DISABLE_1M_CONTEXT=1` |
 | Codex | 0.167.0–0.169.1 (D352) | `-c model_context_window` (never above the model's own window) | `-c model_auto_compact_token_limit` (clamped to 90% of the window, INFERRED) | n/a |
 | pi | 1.4.0–1.5.1 | none per session | settings.json `compaction.reserveTokens` only (DOCUMENTED) | n/a |
+| Antigravity | 1.5.0–1.5.12, OAR's own range (D409; not run by Ducter) | none: the model's own (1M on a Gemini account) | none: agy's own | n/a |
 | DeepSeek Harness | 0.2.2-rc.1 (D177) | none: the model's window (1M for both official models) | profile layer `compaction-basic.thresholdRatio` (+ `retainTokens`), in a Ducter-owned home only; VERIFIED live | n/a |
 
 ## Claude Code 2.1.319–2.1.322
@@ -30,8 +31,9 @@
 - **Settings.** `idleCompaction`, `precomputeCompactionEnabled` (binary).
 - **PreCompact hook.** `hooks.PreCompact` (matcher `manual` / `auto`): exit 0 stdout is
   appended to the compact instructions; exit 2 blocks compaction (binary's hook catalog).
-- **Events through OAR 0.95.1.** `compact_boundary` becomes `compaction_ended` only; there is
-  no `compaction_started`.
+- **Events through OAR 0.124.0 (D409).** `compact_boundary` becomes `compaction_ended`; a system
+  `status: compacting` frame becomes `compaction_started`, once per agent (OAR #984; read in
+  OAR's source, not run live). Through 0.95.1 there was no `compaction_started`.
 - **Context reading.** The last request's input + cache read + cache write; unknown right
   after a compaction.
 - **Tool search.** MCP tools deferred by default; `ENABLE_TOOL_SEARCH=false` (the adapter sets
@@ -92,6 +94,23 @@ the ids in `DSH_PROFILE`):
 Gotcha found here: under Bun 1.3.1 a host that opens and closes several pi RPC sessions is
 SIGKILLed after a few (the eval died after 2–9 scenarios, every time; no `process.kill` from the
 host). Under the pinned Bun 1.4.4 the same runs finish. Ducter ships 1.4.4; run evals with it.
+
+## Antigravity (D409, research/167): OAR 0.124's facts, not run by Ducter
+
+- **Tasks only.** OAR refuses `disallowedTools`, `systemPrompt` and `userConfiguration:
+  "exclude"`, so no read-only partner, one-shot or quick web look runs there; it never takes a
+  task on web pages (block `no_web`), and the ranking puts it after every other agent
+  (`pickOnly`).
+- **The command line.** `agy` ≥ 1.5.0, stable only (`ANTIGRAVITY.minVersion`, OAR's floor),
+  found at `OAR_ANTIGRAVITY_BIN`, else on PATH, else `~/.local/bin/agy`. The desktop app carries
+  none. Verified range in the registry: OAR's own, 1.5.0–1.5.12.
+- **Session.** Instructions appended (`appendSystemPrompt`), again on every resume; Ducter's MCP
+  over its stdio bridge (no env or headers in an entry); steer and pictures; effort per model
+  from its list (`thought_level`); no window or compaction knob (agy compacts by itself; 1M on
+  a Gemini account); resume in the same folder only (`ResumeCwdError`).
+- **Install / update / sign-in.** Google's manifest per platform, its sha512, the binary to
+  `~/.local/bin/agy`; `agy update`; `agy acp --login` with a pasted code; `agy models` for the
+  status; `/usage` for the limits.
 
 ## Where each copy comes from, and how it updates (D156, 2026-11-10)
 

@@ -533,9 +533,9 @@ func (a *App) redoAgents(c *ui.Context, it *protocol.PastItem) {
 				}
 			}
 			chip(it.Harness, a.L.T("past.redo.same", harnessName(it.Harness)))
-			// The three coding agents (DeepSeek's harness only when it was the task's own).
+			// The three coding agents (DeepSeek's harness and Antigravity only when it was the task's own).
 			for _, h := range pastHarnesses {
-				if h != it.Harness && h != "deepseek-harness" {
+				if h != it.Harness && h != "deepseek-harness" && h != "antigravity" {
 					chip(h, harnessName(h))
 				}
 			}

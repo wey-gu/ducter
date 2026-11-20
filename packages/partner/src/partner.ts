@@ -2600,7 +2600,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         properties: {
           taskId: { type: "string" },
           step: { type: "number" },
-          harness: { type: "string", enum: ["claude-code", "codex", "pi", "deepseek-harness"] },
+          harness: { type: "string", enum: [...HARNESS_IDS] },
           model: { type: "string" },
           words: { type: "string", description: "New words for that step, if they give any" },
         },

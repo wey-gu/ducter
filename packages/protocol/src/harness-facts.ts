@@ -237,6 +237,40 @@ export const PI_READ_ONLY_TOOLS = ["read", "grep", "find", "ls", "mcp__*"] as co
 export const CLAUDE_SUMMARY_RESERVE = 20_000;
 export const CLAUDE_COMPACT_BUFFER = 13_000;
 
+/**
+ * D409: Antigravity's CLI as OAR 0.124 drives it (runtimes/antigravity, docs/runtimes/antigravity.md).
+ *  - minVersion: OAR's floor (ANTIGRAVITY_MINIMUM_VERSION): a stable agy with native ACP; below
+ *    it OAR refuses sessions and readers, but `agy update` still runs on that copy;
+ *  - bin: where the official installer puts it (OAR looks there even when it isn't on PATH);
+ *  - manifest: Google's release manifest per platform ({version, url, sha512}), what its own
+ *    installer and updater read; `{platform}` is darwin_arm64, darwin_amd64, linux_amd64,
+ *    linux_arm64 (linux_<arch>_musl on musl);
+ *  - app: the desktop app (the IDE), which carries no `agy` of its own: an app alone is "the app,
+ *    not its command line"; appLinks: the links an older app put there (dangling after an update);
+ *  - token: where agy keeps its Google sign-in when there is no keyring (presence only, never read).
+ */
+export const ANTIGRAVITY = {
+  minVersion: "1.5.0",
+  bin: [".local", "bin", "agy"],
+  manifest: "https://antigravity-cli-auto-updater-974169037036.us-central1.run.app/manifests/{platform}.json",
+  installPage: "https://antigravity.google/docs/cli",
+  app: "Antigravity.app",
+  appLinks: [".antigravity", "antigravity", "bin", "agy"],
+  token: [".gemini", "antigravity-cli", "antigravity-oauth-token"],
+  /** agy's own note when a sign-in is needed (`agy models`, 1.5.5+). */
+  signedOut: /please sign in/i,
+} as const;
+
+/** D409: the manifest's platform name for this machine (undefined: no agy build for it). */
+export function agyPlatform(platform: string, arch: string, musl = false): string | undefined {
+  const os = platform === "darwin" ? "darwin" : platform === "linux" ? "linux" : undefined;
+  const a = arch === "arm64" || arch === "aarch64" ? "arm64" : arch === "x64" || arch === "amd64" ? "amd64" : undefined;
+  if (!os || !a) return undefined;
+  return `${os}_${a}${os === "linux" && musl ? "_musl" : ""}`;
+}
+
+const AGY = (source: string): Evidence => ({ kind: "DOCUMENTED", source: `OAR 0.124.0 docs/runtimes/antigravity.md: ${source}` });
+
 export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
   "claude-code": {
     harness: "claude-code",
@@ -281,7 +315,8 @@ export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
       value: { supported: true, how: "hooks.PreCompact (matcher manual|auto): exit 0 stdout is appended as custom compact instructions; exit 2 blocks compaction" },
       evidence: cc("binary: the hook catalog's own description of PreCompact"),
     },
-    compactionEvents: { value: { started: false, ended: true }, evidence: { kind: "VERIFIED", how: "OAR 0.95.1 shared/stream-json/projection.js: compact_boundary becomes compaction_ended only", date: D, version: "oar 0.95.1" } },
+    // OAR 0.124 (D409): a `status: compacting` frame also becomes compaction_started, once per agent.
+    compactionEvents: { value: { started: true, ended: true }, evidence: { kind: "VERIFIED", how: "OAR 0.124.0 shared/stream-json/projection.js (read): compact_boundary becomes compaction_ended; a system status \"compacting\" frame compaction_started (OAR #984); not run live", date: "2026-11-20", version: "oar 0.124.0" } },
     contextReport: { value: "the last request's input + cache read + cache write (OAR contextUsage); unknown right after a compaction", evidence: cc("live, research/11 and design/context.md") },
     toolSearch: {
       value: "MCP tools are deferred behind tool search by default; ENABLE_TOOL_SEARCH=false loads all up front (the partner); the per-tool _meta anthropic/alwaysLoad keeps Ducter's own tools loaded in tasks",
@@ -556,6 +591,41 @@ export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
         date: "2026-11-18",
         version: "0.2.2-rc.3",
       },
+    },
+  },
+  // D409: never run by Ducter yet; every fact is OAR 0.124's own (its docs and shipped source).
+  antigravity: {
+    harness: "antigravity",
+    // agy prints a bare release ("1.5.13"); OAR accepts only that line (version.js).
+    version: { command: ["agy", "--version"], pattern: /^(\d+\.\d+\.\d+)\s*$/m },
+    // OAR's own range: its floor to the newest agy its docs report on (1.5.12, real Gemini sessions; its CI pins 1.5.11).
+    verified: { from: ANTIGRAVITY.minVersion, to: "1.5.12" },
+    models: { value: {}, evidence: AGY("model ids come from its own catalog (listModels opens one temporary ACP session, no prompt); 1.5.0 lists grouped ids such as gemini-3.8-flash") },
+    windowKnob: { value: { via: "none", key: "", note: "the model's own window (usage_update.size 1,048,576 on a Gemini account); no per-session setting" }, evidence: AGY("context usage: 474 updates on 1.5.12, size 1,048,576") },
+    compactAtKnob: { value: { via: "none", key: "", note: "agy compacts by itself; no setting Ducter can pass" }, evidence: AGY("no compaction setting; /compact advertised but unverified") },
+    defaultCompactAt: { value: "agy's own (seen falling from 521,323 to 13,154 tokens at a native compaction)", evidence: AGY("context usage, 1.5.12") },
+    preCompactHook: { value: { supported: false }, evidence: AGY("no hook channel") },
+    compactionEvents: { value: { started: false, ended: false }, evidence: AGY("manualCompaction unsupported: no structured completion or attribution contract") },
+    contextReport: { value: "usage_update.used, the current context size (OAR contextUsage); none after a turn ended on the quota notice", evidence: AGY("context usage, 1.5.12") },
+    toolSearch: { value: "Ducter's MCP through its stdio bridge (no credentials in the entry), named mcp_<server>_<tool>", evidence: AGY("session MCP servers: credential-free stdio and HTTP attach; entries with env or headers refused") },
+    resume: {
+      value: { supported: true, how: "session/resume by id, only in the folder it was made in (ResumeCwdError elsewhere: a fresh session from the brief and saved progress); model, effort and instructions are passed again" },
+      evidence: AGY("session creation and resume: a native session/list entry with the same saved cwd is required"),
+    },
+    browser: { value: "none Ducter uses (its tools are agy's own: run_command, read_file, edit_file, web search)", evidence: AGY("shared activity mappings") },
+    noTools: { value: { args: [] }, evidence: { kind: "INFERRED", why: "OAR refuses disallowedTools and has no allowlist for agy: it is never a one-shot (partner false)" } },
+    noWeb: { value: { how: "not offered: tool denial is refused, so it is never the partner", deny: [], args: [], rows: [] }, evidence: AGY("disallowed tools: refused before launch") },
+    webLook: { value: { supported: false, how: "not offered: no session can be held to its web tools alone", args: [], rows: [] }, evidence: AGY("disallowed tools and userConfiguration exclude refused") },
+    readOnly: { value: { how: "not possible: tool denial and leaving the person's setup out are refused, so it never carries the partner", tools: [] }, evidence: AGY("disallowed tools; user configuration") },
+    effort: {
+      value: { levels: ["low", "medium", "high"], how: "its thought_level config option, set and confirmed on open and again on resume (OAR SessionOptions.effort)", perModel: true, defaultListed: false },
+      evidence: AGY("listModels selects each model and reads its own thought_level menu (Flash: low/medium/high; Sonnet, Opus thinking and GPT-OSS none); only the current model's effort can be its default"),
+    },
+    channels: {
+      // Its own installer copies a flat binary to ~/.local/bin/agy and agy updates itself in the
+      // background; `agy update` replaces that same file. No npm, no cask, no pinned version.
+      value: { installer: { mark: "/bin/agy", update: ["agy", "update"], latest: ANTIGRAVITY.manifest } },
+      evidence: { kind: "DOCUMENTED", source: "OAR 0.124.0 runtimes/antigravity/{install,update}.js; https://antigravity.google/cli/install.sh (read 2026-11-20): the manifest, its sha512, ~/.local/bin/agy, \"automatically self-updates in the background\"" },
     },
   },
 };
@@ -851,4 +921,5 @@ export const MCP_CALL_WAIT: Record<HarnessId, Fact<number>> = {
   codex: { value: 50_000, evidence: { kind: "DOCUMENTED", source: "Codex config docs: mcp_servers.<id>.tool_timeout_sec, default 60 s" } },
   pi: { value: 50_000, evidence: { kind: "INFERRED", why: "OAR's MCP bridge for pi names no limit; kept under the shortest known (Codex's 60 s)" } },
   "deepseek-harness": { value: 50_000, evidence: { kind: "INFERRED", why: "no documented MCP call limit; kept under the shortest known (Codex's 60 s)" } },
+  antigravity: { value: 50_000, evidence: { kind: "INFERRED", why: "no documented MCP call limit; kept under the shortest known (Codex's 60 s)" } },
 };

@@ -1183,6 +1183,8 @@ func harnessName(h string) string {
 		return "pi"
 	case "deepseek-harness":
 		return "DeepSeek Harness"
+	case "antigravity":
+		return "Antigravity"
 	}
 	return h
 }
@@ -1195,6 +1197,8 @@ func harnessBadge(h string) string {
 		return "cx"
 	case "deepseek-harness":
 		return "ds"
+	case "antigravity":
+		return "ag"
 	}
 	if len(h) >= 2 {
 		return h[:2]

@@ -22,7 +22,7 @@ export interface KeyCheckOptions {
 }
 
 export function defaultCanRun(which: (cmd: string) => string | null | undefined = (c) => whichNow(c)): (h: HarnessId) => boolean {
-  return (h) => (h === "claude-code" ? !!which("claude") : h === "codex" ? !!which("codex") : h === "deepseek-harness" ? !!which("dsh") : !!(which("pi") || which("node")));
+  return (h) => (h === "claude-code" ? !!which("claude") : h === "codex" ? !!which("codex") : h === "deepseek-harness" ? !!which("dsh") : h === "antigravity" ? !!which("agy") : !!(which("pi") || which("node")));
 }
 
 type One = { kind: "ok"; checked: boolean } | { kind: "wrong" } | { kind: "trouble"; reason: KeyTrouble; detail?: string };

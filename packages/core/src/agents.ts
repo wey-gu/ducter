@@ -13,7 +13,7 @@ import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync 
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { AgentHow, AgentPhase, AgentReason, AgentStep, AgentUpdate, Bodies, DeviceHarness, Settings } from "@ducter/protocol";
-import { CASK_LATEST, HARNESS_FACTS, NPM_LATEST, versionStanding } from "@ducter/protocol/src/harness-facts.ts";
+import { CASK_LATEST, HARNESS_FACTS, NPM_LATEST, agyPlatform, versionStanding } from "@ducter/protocol/src/harness-facts.ts";
 import { isHarnessId, type HarnessId } from "@ducter/protocol/src/harnesses.ts";
 import type { LogStore } from "@ducter/protocol/src/internal.ts";
 import { compareVersions, versionIn, type AgentInstall } from "./harness-probe.ts";
@@ -51,7 +51,8 @@ export function latestUrl(h: HarnessId, how: AgentHow | undefined): string | und
   const ch = HARNESS_FACTS[h].channels.value;
   if (how === "npm" && ch.npm) return NPM_LATEST(ch.npm);
   if (how === "brew" && ch.cask) return CASK_LATEST(ch.cask);
-  if (how === "installer") return ch.installer?.latest;
+  // D409: a per-platform release list (agy's manifest) is read for this machine's platform.
+  if (how === "installer") return ch.installer?.latest.includes("{platform}") ? ch.installer.latest.replace("{platform}", agyPlatform(process.platform, process.arch) ?? "linux_amd64") : ch.installer?.latest;
 }
 
 /** Ducter can update this copy from here. */

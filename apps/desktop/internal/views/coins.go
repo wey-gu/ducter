@@ -21,6 +21,7 @@ var coinIDs = map[string]string{
 	"codex":            "codex",
 	"pi":               "pi",
 	"deepseek-harness": "deepseek_harness",
+	"antigravity":      "antigravity",
 }
 
 // coinArt names an agent's coin; off: signed out or not installed (the same

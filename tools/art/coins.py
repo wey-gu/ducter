@@ -3,7 +3,7 @@
 
 A coin is not a disc with a logo printed on it: it is the agent's mark itself made as a small
 puffy clay object, in the same clay, light and camera as the rest of Ducter's art: Claude Code's
-starburst, Codex's OpenAI knot, DeepSeek's whale, pi's blocks. The renders come from
+starburst, Codex's OpenAI knot, DeepSeek's whale, pi's blocks, Antigravity's arch. The renders come from
 the clay pipeline (design/art/assets/prompts/_style_coins.md + coin_<id>.md, the official mark
 as a reference image), are cut out (design/art/assets/tools/cut.swift) and kept as masters in
 design/art/assets/alpha/coin_<id>.png. This script makes every size the apps load from them.
@@ -51,6 +51,7 @@ COINS = {
     "codex": 0.84,
     "deepseek_harness": 0.92,
     "pi": 0.80,
+    "antigravity": 0.90,
 }
 
 # The unavailable coin's grey clay (the old coins' grey body).

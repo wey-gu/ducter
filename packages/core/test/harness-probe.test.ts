@@ -18,6 +18,9 @@ test("a machine with all four: logins read from their own commands and files", a
     home: "/h",
     dataDir: "/d",
     read: files({ "/h/.pi/agent/models.json": JSON.stringify({ providers: { minimax: { apiKey: "x" } } }), "/d/env": "DEEPSEEK_API_KEY=sk-x\n" }),
+    // D409: no Antigravity here (never this Mac's own /Applications).
+    exists: () => false,
+    dangling: () => false,
   });
   expect(r).toEqual([
     { harness: "claude-code", installed: true, loggedIn: true, canBePartner: true, billing: "plan" },
@@ -25,6 +28,7 @@ test("a machine with all four: logins read from their own commands and files", a
     { harness: "pi", installed: true, loggedIn: true, canBePartner: true, billing: "usage" }, // D177
     // D156: a copy that answers --version says it; /bin/dsh is no channel Ducter knows.
     { harness: "deepseek-harness", installed: true, loggedIn: true, canBePartner: true, billing: "usage", version: "0.2.2-rc.1", how: "unknown" },
+    { harness: "antigravity", installed: false, loggedIn: false, canBePartner: false },
   ]);
 });
 

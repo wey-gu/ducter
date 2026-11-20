@@ -653,14 +653,16 @@ func (a *App) socketDetail(c *ui.Context, dv *protocol.DeviceView, idx, n int) {
 	d := a.devState()
 	a.detailBox(c, coinKey(dv.ID, "+"), a.L.T("coin.socket"), idx, n, func() {
 		ui.Text(c, a.L.T("coin.socket.there", a.deviceNameIn(dv))).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5)
-		installable := false
+		installable, agyOnly := false, false
 		for _, h := range dv.Harnesses {
 			if h.Installed || anySetup([]protocol.DeviceHarness{h}, "installing", "queued") {
 				continue
 			}
 			// D363: Ducter puts it there itself (the Mac this app runs Ducter on keeps its own sheet).
 			if !a.manageAccount(dv, h) {
-				installable = installable || h.Installable
+				// D409: agy goes to ~/.local/bin, not Ducter's folder (its own row says so).
+				installable = installable || (h.Installable && h.Harness != "antigravity")
+				agyOnly = agyOnly || (h.Installable && h.Harness == "antigravity")
 				a.agentRow(c, dv, h, nil)
 				continue
 			}
@@ -676,7 +678,7 @@ func (a *App) socketDetail(c *ui.Context, dv *protocol.DeviceView, idx, n int) {
 		a.setupAnswer(c, dv)
 		if installable {
 			ui.Text(c, a.L.T("ag.where")).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.5)
-		} else if !(a.Backend != nil && dv.Home) {
+		} else if !agyOnly && !(a.Backend != nil && dv.Home) {
 			ui.Text(c, a.L.T("coin.there", a.deviceNameIn(dv))).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.5)
 		}
 	})

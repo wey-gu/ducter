@@ -2,7 +2,7 @@
 // (换谁来做 / Switch who does it), moves a task when the person switches it, keeps 你的规则 / Your
 // rules, and after two switches the same way asks the partner to offer a rule once.
 import type { Bodies, BodyWhy, Candidate, DeviceHarness, RuleView, KindDefault, LogEvent, Place, TaskNeeds, WorkKind } from "@ducter/protocol";
-import { HARNESSES, harnessName, isHarnessId, whichPhone, WORK_KINDS } from "@ducter/protocol";
+import { HARNESSES, HARNESS_IDS, harnessName, isHarnessId, whichPhone, WORK_KINDS } from "@ducter/protocol";
 import { effectiveBrain } from "./brain.ts";
 import { resolveModel } from "@ducter/protocol/src/harness-facts.ts";
 import type { BodyChoice, LogStore, Runner } from "@ducter/protocol/src/internal.ts";
@@ -382,7 +382,7 @@ export function registerRuleTools(mcp: CoreMcpHub, rules: RulesStore) {
       type: "object",
       properties: {
         text: { type: "string", description: 'The rule in one line, in the user\'s language, as "<kind of work> → <AI agent>", e.g. "后端的事 → Codex" or "跑腿的事 → 不用 Claude Code"' },
-        harness: { type: "string", enum: ["claude-code", "codex", "pi", "deepseek-harness"] },
+        harness: { type: "string", enum: [...HARNESS_IDS] },
         model: { type: "string", description: "Only when the user named a model" },
         device: { type: "string", description: "D157: only when the rule names a computer (\"要登录的网页都在 MacBook 上做\"): its name from the [devices] line" },
         match: { type: "array", items: { type: "string" }, description: "3–10 words that mark this kind of work in a task title or brief, in both Chinese and English (e.g. [\"后端\", \"backend\", \"api\", \"server\"])" },
@@ -430,7 +430,7 @@ export function registerSwitchTool(mcp: CoreMcpHub, o: { loadout: Loadout; tasks
       type: "object",
       properties: {
         taskId: { type: "string" },
-        harness: { type: "string", enum: ["claude-code", "codex", "pi", "deepseek-harness"], description: "Only to change the agent" },
+        harness: { type: "string", enum: [...HARNESS_IDS], description: "Only to change the agent" },
         model: { type: "string" },
         effort: { type: "string" },
         device: {
@@ -600,7 +600,7 @@ export function registerBrainSwitchTool(mcp: CoreMcpHub, o: { settings: Settings
       type: "object",
       properties: {
         model: { type: "string" },
-        harness: { type: "string", enum: ["claude-code", "codex", "pi", "deepseek-harness"], description: "Only to change the agent" },
+        harness: { type: "string", enum: HARNESS_IDS.filter((h) => HARNESSES[h].partner), description: "Only to change the agent" },
       },
     },
     async (a: { model?: unknown; harness?: unknown }) => {

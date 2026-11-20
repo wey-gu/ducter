@@ -9,7 +9,7 @@
     "test:live": "DUCTER_LIVE=1 bun test test/live.test.ts"
   },
   "dependencies": {
-    "@botiverse/oar": "0.95.1",
+    "@botiverse/oar": "0.124.0",
     "@ducter/protocol": "workspace:*"
   },
   "devDependencies": {

@@ -388,7 +388,7 @@ export function tildePath(p: string, home = process.env.HOME || ""): string {
  */
 export function probeEnv(cmd: string[], inherited: Record<string, string | undefined> = process.env): Record<string, string> {
   const name = basename(cmd[0] ?? "").replace(/\.exe$/i, "");
-  const harness = ({ claude: "claude-code", codex: "codex", pi: "pi", dsh: "deepseek-harness" } as const)[name as "claude"];
+  const harness = ({ claude: "claude-code", codex: "codex", pi: "pi", dsh: "deepseek-harness", agy: "antigravity" } as const)[name as "claude"];
   if (harness) return childEnvironment(harness, { inherited });
   if (name === "nmem") return nmemEnv(inherited);
   if (name === "git") return gitEnv(inherited);

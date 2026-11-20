@@ -46,7 +46,29 @@ func agentRowLook(h protocol.DeviceHarness) string {
 }
 
 // installOrder is the order the lend sheet offers them in.
-var installOrder = []string{"codex", "claude-code", "deepseek-harness", "pi"}
+var installOrder = []string{"codex", "claude-code", "deepseek-harness", "pi", "antigravity"}
+
+// agentTrouble is what the row says of an agent partly there (D409), and
+// what its one button does then: install, update (its own updater) or
+// reinstall. Empty word: nothing in the way.
+func (a *App) agentTrouble(h protocol.DeviceHarness) (word, button string) {
+	if h.Trouble == nil {
+		return "", "install"
+	}
+	switch h.Trouble.Kind {
+	case "too_old":
+		v := h.Version
+		if v == "" {
+			v = "?"
+		}
+		return a.L.T("ag.trouble.too_old", v, h.Trouble.Need), "update"
+	case "broken":
+		return a.L.T("ag.trouble.broken"), "reinstall"
+	case "app_only":
+		return a.L.T("ag.trouble.app_only", h.Trouble.App), "install"
+	}
+	return "", "install"
+}
 
 // offerable is what the lend sheet offers to install, and whether it starts
 // checked (Codex and Claude Code; pi signs in from that computer's terminal,
@@ -125,6 +147,9 @@ func (a *App) agentWord(dv *protocol.DeviceView, h protocol.DeviceHarness, look 
 		}
 		return a.L.T("ag.failed."+reason, a.deviceNameIn(dv))
 	}
+	if w, _ := a.agentTrouble(h); w != "" {
+		return w
+	}
 	return a.L.T("ag.missing")
 }
 
@@ -160,7 +185,14 @@ func (a *App) agentRow(c *ui.Context, dv *protocol.DeviceView, h protocol.Device
 				// The lend sheet: a switch per agent, one 装上 under them all.
 				a.switchControl(c, "ag-pick:"+dv.ID+":"+h.Harness, name, pick)
 			case look == "install":
-				if awake && a.buttonFor(c, a.L.T("ag.install"), name, btnSecondary, t.ControlSM, t.Surface) {
+				label := a.L.T("ag.install")
+				switch _, b := a.agentTrouble(h); b {
+				case "update":
+					label = a.L.T("ag.update")
+				case "reinstall":
+					label = a.L.T("ag.reinstall")
+				}
+				if awake && a.buttonFor(c, label, name, btnSecondary, t.ControlSM, t.Surface) {
 					a.agentSetupReq(dv, "install", protocol.AgentSetupReq{Harnesses: []string{h.Harness}})
 				}
 			case look == "failed":
@@ -179,6 +211,13 @@ func (a *App) agentRow(c *ui.Context, dv *protocol.DeviceView, h protocol.Device
 		// D371: its command line is big; say so before the tap.
 		if (look == "install" || look == "queued") && h.Harness == "deepseek-harness" {
 			ui.Text(c, a.L.T("ag.dsh.size")).FontSize(t.XS).TextColor(t.InkSoft).LineHeight(1.4)
+		}
+		// D409: where agy goes, before the tap; Google's own terms before the sign-in.
+		if (look == "install" || look == "queued") && h.Harness == "antigravity" && (h.Trouble == nil || h.Trouble.Kind != "too_old") {
+			ui.Text(c, a.L.T("ag.agy.size")).FontSize(t.XS).TextColor(t.InkSoft).LineHeight(1.4)
+		}
+		if h.Harness == "antigravity" && (look == "signin" || (look == "login" && h.Login != nil && h.Login.State != "done")) {
+			ui.Text(c, a.L.T("ag.agy.terms")).FontSize(t.XS).TextColor(t.InkSoft).LineHeight(1.4)
 		}
 		if look == "login" {
 			a.agentLoginPanel(c, dv, h)
@@ -231,6 +270,8 @@ func (a *App) agentLoginPanel(c *ui.Context, dv *protocol.DeviceView, h protocol
 		}
 		if h.Harness == "codex" {
 			line(a.L.T("ag.login.codex"), t.Ink)
+		} else if h.Harness == "antigravity" {
+			line(a.L.T("ag.login.agy"), t.Ink)
 		} else {
 			line(a.L.T("ag.login.claude"), t.Ink)
 		}

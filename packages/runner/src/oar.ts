@@ -3,13 +3,14 @@
 // because runtimes/kimi imports node:util getSystemErrorMap). No OAR type crosses this file's
 // exports: callers see only Ducter's HarnessPort / HarnessSession / HarnessEvent.
 //
-// D85: four first-wave harnesses, each able to carry the partner and tasks. What differs per
-// harness (research/34-harness-adapters.md) is decided here, in one place:
+// D85: four first-wave harnesses, each able to carry the partner and tasks, and (D409) Antigravity
+// for tasks only. What differs per harness (research/34-harness-adapters.md) is decided here, in one place:
 //   - the clean setup (isolateUserConfig): claude native exclude; codex `-c` overrides; pi CLI
 //     flags on its RPC process; DeepSeek Harness a Ducter-owned DSH_HOME;
 //   - the system prompt: native where OAR verified it; else AGENTS.md in the Ducter-owned home
 //     (DeepSeek Harness, isolated) or the first message (DeepSeek Harness tasks);
-//   - Ducter's MCP endpoint: HTTP with headers, or the stdio bridge (DeepSeek Harness);
+//   - Ducter's MCP endpoint: HTTP with headers, or the stdio bridge (DeepSeek Harness; Antigravity,
+//     which refuses an entry carrying env or headers);
 //   - tool denials only where the harness can honor them.
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
@@ -423,6 +424,9 @@ const defaultLoader: RuntimeLoader = async (harness, variant) => {
     case "deepseek-harness":
       rt = (await import("@botiverse/oar/runtimes/dsh")).dshRuntime as unknown as Runtime;
       break;
+    case "antigravity":
+      rt = (await import("@botiverse/oar/runtimes/antigravity")).antigravityRuntime as unknown as Runtime;
+      break;
   }
   if (rt) loaded.set(key, rt);
   return rt;
@@ -608,12 +612,7 @@ export function adaptSpec(spec: SessionSpec, ctx: { env?: Record<string, string 
     case "deepseek-harness": {
       disallowed = []; // DSH: per-session tool denial unverified (OAR refuses it)
       // Stdio only: each HTTP server becomes Ducter's bridge, its endpoint in a 0600 file.
-      mcpServers = mcpServers.map((m) => {
-        if (!("url" in m) || !m.url) return m;
-        const file = writeBridgeTarget(join(ctx.dataDir, "mcp-bridge"), { url: m.url, headers: { ...(m.headers ?? {}) } });
-        const b = bridgeCommand(file);
-        return { name: m.name, command: b.command, args: b.args };
-      });
+      mcpServers = bridged(mcpServers, ctx.dataDir);
       const instructions = [systemPrompt, appendSystemPrompt].filter(Boolean).join("\n\n");
       // Memory off in a task (harness-facts memPlugin "home"): Mem ships as a DSH profile bundle and
       // DSH has no known per-session profile switch, so the task runs under a Ducter-owned home of
@@ -661,6 +660,21 @@ export function adaptSpec(spec: SessionSpec, ctx: { env?: Record<string, string 
         preamble = instructions;
       }
       systemPrompt = appendSystemPrompt = undefined;
+      break;
+    }
+    case "antigravity": {
+      // D409 (OAR 0.124 docs/runtimes/antigravity.md). Tool denial is refused (the task keeps agy's
+      // own tools; no browser place ever comes here: candidates' no_web).
+      disallowed = [];
+      // agy writes a session's MCP entries, env and headers included, into its conversation
+      // database, and OAR refuses an entry carrying either. Ducter's endpoint goes through its
+      // stdio bridge: the entry holds only the bridge's command and the path of a 0600 file with
+      // the URL and token, so no credential reaches agy's disk. A stdio entry with its own env is
+      // left out (only a browser place's sidecar has one, and none comes here).
+      mcpServers = bridged(mcpServers, ctx.dataDir).filter((m) => !("env" in m && m.env && Object.keys(m.env).length));
+      // No replacement channel for the system prompt: instructions are appended to agy's own
+      // (_meta.antigravity.systemPrompt.append), which OAR sends again on every resume.
+      if (systemPrompt) (appendSystemPrompt = [systemPrompt, appendSystemPrompt].filter(Boolean).join("\n\n")), (systemPrompt = undefined);
       break;
     }
   }
@@ -718,6 +732,16 @@ export function adaptSpec(spec: SessionSpec, ctx: { env?: Record<string, string 
   return { options, ...(preamble ? { preamble } : {}), clean };
 }
 
+/** Each HTTP server as Ducter's stdio bridge, its endpoint (URL and headers) in a 0600 file under the data folder. */
+function bridged(servers: McpServer[], dataDir: string): McpServer[] {
+  return servers.map((m) => {
+    if (!("url" in m) || !m.url) return m;
+    const file = writeBridgeTarget(join(dataDir, "mcp-bridge"), { url: m.url, headers: { ...(m.headers ?? {}) } });
+    const b = bridgeCommand(file);
+    return { name: m.name, command: b.command, args: b.args };
+  });
+}
+
 /** D168: Claude Code settings that turn the named plugins off for this session only. */
 function pluginsOff(spec: SessionSpec): { enabledPlugins?: Record<string, false> } {
   const ids = spec.disablePlugins ?? [];
@@ -743,6 +767,8 @@ export function createOarHarnessPort(opts: OarPortOptions = {}): HarnessPort {
       const rt = await load(spec.harness, piVariant(spec));
       if (!rt) throw new Error(`harness ${spec.harness} is not supported`);
       const inst = await rt.installation?.({ env: harnessEnv(spec.harness, { env: opts.env, dataDir }) });
+      // D409: a copy OAR refuses (agy below its floor) says why, not "not installed".
+      if (inst?.kind === "unsupported") throw new Error(`harness ${spec.harness} can't run here: ${(inst as { reason?: string }).reason ?? "unsupported"}`);
       if (!inst || inst.kind !== "available") throw new Error(`harness ${spec.harness} is not installed`);
       const liveWindow = spec.model ? liveWindows.get(`${spec.harness} ${spec.model}`) : undefined;
       const a = adaptSpec(spec, { env: opts.env, dataDir, refused: (rt as { refusedSessionOptions?: Record<string, string> }).refusedSessionOptions, ...(liveWindow ? { liveWindow } : {}) });

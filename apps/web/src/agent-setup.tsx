@@ -9,7 +9,7 @@ import { Btn } from "./controls.tsx";
 import { Coin } from "./coin.tsx";
 import { harnessName } from "./format.ts";
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
-import { agentRowLook } from "./agent-setup-view.ts";
+import { agentRowLook, troubleWords } from "./agent-setup-view.ts";
 
 /** A sign-in link as one short line (Claude's runs to 400 characters; Open link opens the whole). */
 export function shortUrl(url: string): string {
@@ -40,7 +40,7 @@ export function LoginPanel({ dv, h }: { dv: DeviceView; h: DeviceHarness }) {
   if (l.key) return <KeyLogin dv={dv} h={h} code={code} setCode={setCode} />;
   return (
     <div class="ag-login">
-      <p>{t(h.harness === "codex" ? "ag.login.codex" : "ag.login.claude")}</p>
+      <p>{t(h.harness === "codex" ? "ag.login.codex" : h.harness === "antigravity" ? "ag.login.agy" : "ag.login.claude")}</p>
       {l.reason === "wrong_code" && <p class="warn">{t("ag.login.wrong_code")}</p>}
       {l.url && (
         <a class="ag-link" href={l.url} target="_blank" rel="noopener noreferrer">
@@ -109,13 +109,17 @@ export function AgentRow({ dv, h, pick }: { dv: DeviceView; h: DeviceHarness; pi
   const look = agentRowLook(h);
   const name = harnessName(h.harness);
   const awake = dv.state === "awake";
+  // D409: partly there (too old, broken, only the app): said as what it is, its button as what it does.
+  const tr = look === "install" || look === "missing" ? troubleWords(h) : undefined;
   const word =
     look === "ready" ? t("ag.ready")
     : look === "signin" || look === "login" ? t("ag.signed_out")
     : look === "installing" ? (h.setup?.pct ? `${t("ag.installing")} ${h.setup.pct}%` : t("ag.installing"))
     : look === "queued" ? t("ag.queued")
     : look === "failed" ? t(`ag.failed.${h.setup?.reason ?? "failed"}`, dv.name)
+    : tr ? t(tr.word, ...tr.args)
     : t("ag.missing");
+  const installLabel = tr?.button === "update" ? t("ag.update") : tr?.button === "reinstall" ? t("ag.reinstall") : t("ag.install");
   return (
     <div class={`ag-row ${look}`}>
       <div class="ag-head">
@@ -130,7 +134,7 @@ export function AgentRow({ dv, h, pick }: { dv: DeviceView; h: DeviceHarness; pi
         {pick && look === "install" ? (
           <input type="checkbox" class="ag-pick" checked={pick.checked} aria-label={name} onChange={(e) => pick.onChange((e.target as HTMLInputElement).checked)} />
         ) : look === "install" ? (
-          <Btn kind="secondary" size="sm" label={t("ag.install")} about={name} disabled={!awake} onClick={() => A.agentSetup(dv.id, "install", { harnesses: [h.harness] })} />
+          <Btn kind="secondary" size="sm" label={installLabel} about={name} disabled={!awake} onClick={() => A.agentSetup(dv.id, "install", { harnesses: [h.harness] })} />
         ) : look === "failed" ? (
           <Btn kind="secondary" size="sm" label={t("ag.retry")} about={name} disabled={!awake} onClick={() => A.agentSetup(dv.id, "install", { harnesses: [h.harness] })} />
         ) : look === "signin" ? (
@@ -140,6 +144,10 @@ export function AgentRow({ dv, h, pick }: { dv: DeviceView; h: DeviceHarness; pi
       {look === "failed" && h.setup?.detail && <div class="ag-detail">{h.setup.detail}</div>}
       {/* D371: its command line is big; say so before the tap. */}
       {(look === "install" || look === "queued") && h.harness === "deepseek-harness" && <div class="ag-detail">{t("ag.dsh.size")}</div>}
+      {/* D409: where agy goes (its own installer's place, not Ducter's folder), before the tap. */}
+      {(look === "install" || look === "queued") && h.harness === "antigravity" && tr?.button !== "update" && <div class="ag-detail">{t("ag.agy.size")}</div>}
+      {/* D409: Google's own terms, said before the person signs in with their Google account. */}
+      {(look === "signin" || (look === "login" && h.login?.state !== "done")) && h.harness === "antigravity" && <div class="ag-detail">{t("ag.agy.terms")}</div>}
       {look === "login" && <LoginPanel dv={dv} h={h} />}
     </div>
   );

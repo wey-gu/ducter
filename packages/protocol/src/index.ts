@@ -1927,7 +1927,19 @@ export interface DeviceHarness {
   setup?: AgentSetupState;
   /** D363: its sign-in running on that device now, or how the last one ended (absent when idle). */
   login?: AgentLoginState;
+  /** D409: why it can't run here although something of it is there (absent: nothing in the way). */
+  trouble?: AgentTrouble;
 }
+
+/**
+ * D409: what stands between an agent that is partly there and a task on it:
+ *  - too_old: its command line is below the version OAR needs (`need`; `version` says what it is);
+ *    安装 updates that copy with its own updater;
+ *  - broken: its command line is there but doesn't answer (a damaged file); 安装 puts a fresh one there;
+ *  - app_only: only its desktop app (`app`) is there, which carries no command line (or only a
+ *    link an older app left, pointing at nothing); 安装 puts the command line beside it.
+ */
+export type AgentTrouble = { kind: "too_old"; need: string } | { kind: "broken" } | { kind: "app_only"; app: string };
 
 /** D363: what an agent_setup asks of a device. */
 export type AgentSetupAction = "install" | "login" | "code" | "cancel" | "look";

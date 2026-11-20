@@ -2,6 +2,27 @@
 
 Deferred work, grouped by area, each with its trigger where it has one.
 
+## Antigravity, live (D409, research/167)
+
+- [ ] **The Mac, live.** Its card shows **只有 Antigravity 的桌面 app，没有它的命令行** (the app and the
+  dead `~/.antigravity/antigravity/bin/agy`); **安装** puts `~/.local/bin/agy` (check `agy
+  --version` ≥ 1.5.0 and that no `.zshrc` changed); **登录** opens the Google link, the pasted code
+  signs in, the row turns **可以用了**; a task named on it in a scratch repo runs a turn, calls
+  `report_to_main` through the bridge (and `sqlite3` over
+  `~/.gemini/antigravity-cli/conversations/*.db` holds no `dtk.` token); a park and resume in the
+  same folder; New task's model list and its effort menu; `/usage` limits on the card. Trigger:
+  the author installs it from the card.
+- [ ] **hel, live.** The same over the worker: install from the phone, the sign-in link opened on
+  the phone (nothing opens on hel), a task there; then `agy logout` by hand reads as 未登录 within
+  a look. Trigger: the author's deploy.
+- [ ] **Registry.** Once run: the verified range from what ran, the models' windows, whether a
+  turn's quota notice reaches the limit card, `scripts/probe-harnesses.ts` lines for agy (`--version`
+  pattern, `acp --help`), and whether `agy install`'s shell step matters for anything but PATH.
+- [ ] **A sign-out for every agent** (Antigravity's is OAR's `logout`; none of the five has one in
+  Ducter). Trigger: someone asks to sign an agent out from Ducter.
+- [ ] **DeepSeek Harness pictures** (OAR 0.124 #997 added images to its runtime): check live, then
+  `HARNESSES["deepseek-harness"].images`.
+
 ## A review that runs every so often (D394, `past.md` Ongoing, research/158)
 
 - **Live check on hel.** Everything in D394 is checked with fakes only: the brief rule, no nudge,

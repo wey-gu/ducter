@@ -58,6 +58,16 @@ there: sign in to your DeepSeek account in it, and the card turns ready by itsel
 account works without an API key. If you installed the app yourself, Ducter finds the copy inside
 it within seconds, and it updates with the app.
 
+**Antigravity.** Google's Antigravity can take tasks too (never your partner's own thinking). It's
+offered last, unchecked: Ducter puts its command line, `agy`, where Google's own installer does
+(`~/.local/bin`, about 85 MB), checked against Google's release list. The Antigravity desktop app
+alone doesn't count: it carries no command line, and the card says so with an **Install**. To sign
+in, tap **Sign in**, open the Google link on any device, and paste back the code that page gives
+you (or the address it ends on); on a server nothing opens there. Google's terms say using
+third-party software to access Antigravity can get an account suspended, so the card says that
+before you sign in: it's your call. Ducter only gives it a task when you name it ("让 Antigravity
+来做"), or when nothing else can, and never a task on web pages.
+
 **Your memory there too.** If you use [Nowledge Mem](https://mem.nowledge.co) with Ducter, tasks
 on every computer you add remember you with nothing to set up there: they use the one Nowledge Mem
 your Ducter is connected to, and its own Claude Code plugin comes with them. The computer's card

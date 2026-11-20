@@ -12,6 +12,7 @@ that the owner endorses or partners with Ducter.
 | Codex | OpenAI's mark, the six-band woven knot (Codex is OpenAI's agent; the author chose it over the Codex cloud), in charcoal clay | LobeHub icons (`@lobehub/icons-static-png@1.75.0`, `light/openai.png`) |
 | DeepSeek Harness | DeepSeek's whale, `#4D6BFE` | LobeHub icons, `deepseek-color.svg` (the same whale as `deepseek-ai`'s GitHub avatar) |
 | pi | pi's four-block logo (salmon, teal, butter) | pi's press kit, <https://pi.dev/logo.svg> |
+| Antigravity (D409) | Google Antigravity's arch, its yellow-green, coral and blue blend into pale-blue feet | OAR 0.124 `assets/brands/antigravity.svg` (LobeHub lobe-icons `antigravity-color`), rendered with `rsvg-convert`; picked from two renders (the other added a hole the mark doesn't have; both in `.shots/antigravity/coin-raw/`) |
 
 ## What the earlier rule was, and what changed
 
@@ -27,7 +28,7 @@ token (`token_ink`) with the name beside it, a one-line change in each client's 
 ## How to make or remake a coin
 
 1. Put the owner's mark, rendered flat on white at 512 px, in `design/art/assets/marks/`
-   (gitignored) as `claude.png`, `codex.png`, `deepseek.png`, `pi.png`.
+   (gitignored) as `claude.png`, `codex.png`, `deepseek.png`, `pi.png`, `antigravity.png`.
 2. Generate from `design/art/assets/batch_coins.json` (style `prompts/_style_coins.md`, one
    prompt per coin, the mark as the first reference, the clay token and the clay character for
    the style); keep the raw renders in `.shots/` and pick by putting them side by side at 20–96

@@ -1,6 +1,6 @@
 // Test fakes: an in-memory core and a scripted HarnessPort / Runner.
 import type { EventKind, LogEvent, Place, TaskCard } from "../../protocol/src/index.ts";
-import type { MemoryAdd, MemoryClient, ThreadHit } from "../src/memory.ts";
+import { aboutHits, type MemoryAdd, type MemoryClient, type ThreadHit } from "../src/memory.ts";
 import type {
   AppendInput,
   CoreApi,
@@ -210,6 +210,8 @@ export function fakeMemory(seed: { id?: string; title: string; content: string; 
   const searches: { query: string; limit: number }[] = [];
   const threadSearches: { query: string; limit: number }[] = [];
   const added: MemoryAdd[] = [];
+  const abouts: number[] = [];
+  const archived: string[] = [];
   // D304: every seeded memory has Mem's id and source (the person's words to Ducter by default).
   const all = seed.map((m, i) => ({ ...m, id: m.id ?? `mem-seed-${i + 1}`, source: m.source ?? "ducter" }));
   const memory: MemoryClient = {
@@ -229,11 +231,24 @@ export function fakeMemory(seed: { id?: string; title: string; content: string; 
       const ts = (opts.threads ?? []).filter((t) => words.some((w) => `${t.title} ${t.lines.map((l) => l.text).join(" ")}`.toLowerCase().includes(w)));
       return { ok: true, threads: ts.slice(0, limit) };
     },
+    // D444: what Mem knows about the person, by D321's rule (preferences from anyone; decisions and facts only theirs).
+    async about() {
+      abouts.push(1);
+      if (opts.down) return { ok: false, reason: "not_configured", message: "Nowledge Mem isn't installed on this machine." };
+      const hits = (["preference", "decision", "fact"] as const).flatMap((k) => aboutHits(all.filter((m) => m.kind === k), k));
+      return { ok: true, hits };
+    },
+    // D329, D444: an undone save is archived (taken back by a tap or by 别记这个).
+    async archive(id) {
+      if (opts.down) return false;
+      archived.push(id);
+      return true;
+    },
     async add(m) {
       if (opts.down) return { ok: false, reason: "not_configured", message: "Nowledge Mem isn't installed on this machine." };
       added.push(m);
       return { ok: true, id: `mem-${added.length}` };
     },
   };
-  return { memory, searches, added, threadSearches };
+  return { memory, searches, added, threadSearches, abouts, archived };
 }

@@ -337,7 +337,7 @@ each of those is one quiet line in words, and nothing to learn.
   earlier memory (`source` `ducter`, words whole) with an alike title (character-pair Dice ≥ 0.6, or one title
   holding the other at ≥ 4 characters) is linked to the new one with `nmem m supersede <old> <new>`. Never
   another tool's or the person's own. `memory_noted.replaced {id, title}`; the line says **换掉了之前那条「…」**.
-- **撤销 / Undo** (`memory_undo`, `settings.undo`): on a Noted line while the person hasn't said anything
+- **撤销 / Undo** (D444: now labelled **别记这个 / Don't keep this**, and said in words too) (`memory_undo`, `settings.undo`): on a Noted line while the person hasn't said anything
   since; no question. `nmem m archive` (never delete); a replaced memory comes back (`m show`, then a plain
   save); a save still in the outbox is dropped. `MemView.undone`; the line reads **不记了「…」**. Mem silent:
   `undid {seq, ok: false}`, **Nowledge Mem 没回应，还记着**. Afterwards, 忘掉 as in D304.
@@ -399,6 +399,38 @@ checks the ref against this turn's results and logs `memory_recalled {thread: tr
 id>}`. The line: **想起了你 {date} 和 {tool} 聊的 / Remembered your talk with {tool} on {date}**; tapped: its title,
 **你和 {tool} 的对话**, the day, **这次的回答用到了这段对话。**, **在 Nowledge Mem 里打开**. No 忘掉: the conversation is the
 tool's (a forget only hides the line). Evals: `thread-recall-en`, `thread-recall-zh` now expect the line.
+
+## Mem in the person's day (D444, built 2026-11-21)
+
+*Who:* the consumer who wonders what it knows about them; the developer whose preferences land in Mem from every
+tool; the fresh user whose first "以后都…" is the first time Ducter keeps something. *Feel:* before, a memory was
+kept out of sight (the 记下了 line folded inside Details, so most people never saw anything was kept), taking it
+back meant finding a tap, and "你都记得我些什么？" got a search for "me". After: being known, never watched. The
+moment something is kept, they see it once; they can say no in their own words; and asked, the partner answers
+like a friend who knows them. *How it starts:* nothing to set up; the first "以后都…" shows the line.
+
+- **Kept, once, quietly.** A Noted line shows under the reply it belongs to while the person hasn't said anything
+  since (D329's "fresh"), with **别记这个 / Don't keep this** (D329's undo, renamed to what a person would say).
+  Once they speak, it folds into that reply's Details with 忘掉. Web `Quiet` and Mac `messageRow`.
+- **别记这个, said.** Core (`mem-takeback.ts`, D401's way) hears a take-back and nothing else ("别记这个", "这条不用
+  记", "算了，别记这个", "forget that", "don't remember that"; at most 40 characters) the moment it lands, and undoes
+  the memories noted under the reply to the person's previous message (within 30 minutes) through Settings' undo
+  (archived, never deleted; a waiting save dropped; a replaced one restored). The partner sees under their words
+  "Ducter already took back … say it back in a few words, no memory tool", and says **好，不记了。** Longer words go
+  to the partner as they are.
+- **"你都记得我些什么？"** When the person's words this turn ask what it knows about them (`ASKS_ABOUT_ME`), the one
+  memory_search also reads what Mem knows about them (`MemoryClient.about`: `nmem m list --unit-type` preference,
+  decision, fact, D321's rule: preferences from anyone, decisions and facts only the person's own), returned as
+  `aboutYou` with the note: two or three warm sentences in its own words, the few things that matter, never a list,
+  count, title, source or "records", ending with how to correct one. One persona line points there (no tool's
+  name or description changed).
+- **The Memory pane** (walked, D432's shape kept): the head's foot now says the one thing a person needs to feel in
+  control, **哪条不想让它记，说一声「别记这个」就好。**; under 它知道的关于你, **让{name}说说它记得你什么** puts the
+  question in the composer (never sent for them): the page is the inventory, the conversation is where it feels
+  like being known.
+- **Measured:** unit tests over fakes (core `mem-takeback.test.ts`, partner `about-me.test.ts`, web
+  `mem-d444.test.ts`, Mac `memory_test.go`, `mem_d444_test.go`); eval `mem-about-me-zh`, `mem-about-me-en`,
+  `mem-take-back-zh` (D444 in `decisions.md` for the runs). No live Mem.
 
 ## Mem and tasks (D168, D169; built 2026-11-10)
 

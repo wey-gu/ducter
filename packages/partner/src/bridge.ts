@@ -72,6 +72,15 @@ export interface BridgeMessage {
   role?: string;
   /** D418: Mem's reply argv for it (`reply_args_prefix`), kept in the Log so a reply after a restart still goes Mem's way. */
   route?: string[];
+  /** D444: what it hands over from Mem (references in its words or among Mem's typed references; a shared plan's card). */
+  refs?: MessageRef[];
+}
+
+/** D444: one thing a message hands over from Nowledge Mem, before it is read. */
+export interface MessageRef {
+  uri?: string;
+  title?: string;
+  kind: "memory" | "artifact" | "thread" | "plan" | "other";
 }
 
 /** One recipient card from `bridge contacts`: an opaque handle plus who and where, as returned. */
@@ -153,6 +162,17 @@ export interface BridgeClient {
    * A failure with reason "unavailable" means the outcome is UNKNOWN (D106): recover it, never resend.
    */
   reply(messageId: string, text: string, space?: string, route?: string[]): Promise<BridgeResult<{ messageId?: string; operation?: string }>>;
+  /**
+   * D444: Mem's contact list grouped per identity (`bridge contacts` with no Space selector, nmem
+   * 0.10.121): the person's own agents by the AI tool each runs, and whether Mem says its mailbox
+   * takes messages now. Read only; one call (30 to 40 s on a wide identity).
+   */
+  mailboxes?(): Promise<BridgeResult<{ list: { harness: string; open: boolean }[] }>>;
+  /**
+   * D444: one `nowledgemem://` reference a message handed over, resolved read-only (`resources get`):
+   * Mem's title for it and its first words. undefined when Mem didn't answer.
+   */
+  resource?(uri: string): Promise<{ title?: string; text?: string } | undefined>;
   /** Read-only recipient discovery in every Space the home reads (D334; one bounded page each). */
   contacts?(query: string): Promise<BridgeResult<{ contacts: BridgeContact[]; more: boolean }>>;
   /** A new message to a contact handle the user confirmed on a card, sent in the card's Space. Failures as for `reply`. */
@@ -505,6 +525,89 @@ function teamLabel(c: any, label: string, mine: boolean): string {
 }
 
 /** Recipient cards from `bridge contacts --json`: `contacts[]` (or `cards[]`) with an opaque `contact`. */
+/** D444: the AI tool a contact card's agent runs, by its name, host or description (Ducter's harness ids). */
+export function toolOfCard(c: any): string | undefined {
+  const text = [agentOf(c), hostOf(c), str(c?.agent?.description) ?? str(c?.description), str(c?.agent?.source_app) ?? str(c?.source_app)].filter(Boolean).join(" ");
+  if (/claude[\s-]?code|\bclaude\b/i.test(text)) return "claude-code";
+  if (/\bcodex\b/i.test(text)) return "codex";
+  if (/antigravity|\bagy\b/i.test(text)) return "antigravity";
+  if (/\bpi\b/.test(text)) return "pi";
+  return undefined;
+}
+
+/**
+ * D444: the person's own agents in Mem's grouped contact list, by tool: open when any of that tool's
+ * cards says its mailbox takes messages (`mailbox_available` not false, not `unavailable`). A teammate's
+ * card, or one whose tool can't be told, is left out.
+ */
+export function mailboxesOf(j: any, me?: string): { harness: string; open: boolean }[] {
+  const list = Array.isArray(j?.contacts) ? j.contacts : Array.isArray(j?.cards) ? j.cards : [];
+  const by = new Map<string, boolean>();
+  for (const c of list) {
+    if (!c || typeof c !== "object" || !isMine(c, me)) continue;
+    const h = toolOfCard(c);
+    if (!h) continue;
+    const open = c.mailbox_available !== false && !c.unavailable;
+    by.set(h, (by.get(h) ?? false) || open);
+  }
+  return [...by].map(([harness, open]) => ({ harness, open }));
+}
+
+const REF_URI = /nowledgemem:\/\/[^\s<>"'`)\]}，。；、]+/g;
+
+/** D444: the kind of thing a `nowledgemem://` reference names, by its path. */
+export function refKind(uri: string): MessageRef["kind"] {
+  const head = uri.replace(/^nowledgemem:\/\//i, "").split(/[/?#]/)[0]!.toLowerCase();
+  if (/^memor(y|ies)$/.test(head)) return "memory";
+  if (/^(artifacts?|sources?|library|lib|files?|documents?|docs?)$/.test(head)) return "artifact";
+  if (/^threads?$|^conversations?$/.test(head)) return "thread";
+  if (/^(collab|plans?|notes)$/.test(head)) return "plan";
+  return "other";
+}
+
+/**
+ * D444: what a message hands over from Mem: `nowledgemem://` references in its words, Mem's typed
+ * references (`references` / `knowledge_references`, each `{uri, purpose, origin}`), and a shared
+ * plan's card (`shared_document`, named only). At most three, each once.
+ */
+export function refsIn(b: any, body: string): MessageRef[] {
+  const out: MessageRef[] = [];
+  const add = (r: MessageRef) => {
+    if (out.length >= 3 || (r.uri && out.some((x) => x.uri === r.uri))) return;
+    out.push(r);
+  };
+  const m = b?.message && typeof b.message === "object" ? b.message : undefined;
+  for (const list of [b?.references, b?.knowledge_references, m?.references, m?.knowledge_references])
+    if (Array.isArray(list))
+      for (const x of list) {
+        const uri = str(x?.uri) ?? str(x?.reference?.uri);
+        if (uri && /^nowledgemem:\/\//i.test(uri)) add({ uri, kind: refKind(uri), ...(str(x?.title) ? { title: clip(str(x.title)!, 80) } : {}) });
+      }
+  for (const u of body.match(REF_URI) ?? []) add({ uri: u.replace(/[.,;:!?]+$/, ""), kind: refKind(u) });
+  for (const d of [b?.shared_document, m?.shared_document]) {
+    const title = str(d?.title) ?? str(d?.document?.title);
+    if (d && typeof d === "object" && title) add({ title: clip(title, 80), kind: "plan" });
+  }
+  return out;
+}
+
+/** D444: Mem's title and first words for a resolved resource (`resources get --json`), read tolerantly. */
+export function resourceOf(out: string): { title?: string; text?: string } | undefined {
+  let j: any;
+  try {
+    j = JSON.parse(out);
+  } catch {
+    const t = out.trim();
+    return t ? { text: clip(t, 600) } : undefined;
+  }
+  const r = j?.resource && typeof j.resource === "object" ? j.resource : j;
+  const fm = r?.frontmatter && typeof r.frontmatter === "object" ? r.frontmatter : r?.metadata && typeof r.metadata === "object" ? r.metadata : {};
+  const title = str(r?.title) ?? str(fm?.title) ?? str(r?.name) ?? str(r?.memory?.title) ?? str(r?.artifact?.title);
+  const text = str(r?.body) ?? str(r?.content) ?? str(r?.text) ?? str(r?.memory?.content);
+  if (!title && !text) return undefined;
+  return { ...(title ? { title: clip(title, 80) } : {}), ...(text ? { text: clip(text, 600) } : {}) };
+}
+
 export function contactsOf(j: any, me?: string): BridgeContact[] {
   const list = Array.isArray(j?.contacts) ? j.contacts : Array.isArray(j?.cards) ? j.cards : [];
   const out: BridgeContact[] = [];
@@ -916,6 +1019,7 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
             ...(sp.id ? { space: sp.id } : {}),
             ...(sp.label ? { spaceLabel: sp.label } : {}),
             ...(shared ? { shared: true } : {}),
+            ...((refs) => (refs.length ? { refs } : {}))(refsIn(b, body)),
           });
         }
         const rd = outgoingReads(j);
@@ -1047,6 +1151,19 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
       const known = !wideNow && places.every((p) => !!p.spaceId);
       for (const c of cards) if (known && c.space && !places.some((p) => p.spaceId === c.space)) c.unheard = true;
       return { ok: true, contacts: cards, more };
+    },
+    async mailboxes() {
+      const r = await read(["contacts"]);
+      if ("missing" in r || r.code !== 0) return failure(r);
+      const j = parse(r.out);
+      if (j === undefined) return { ok: false, reason: "unavailable", message: "Bridge gave no answer." };
+      return { ok: true, list: mailboxesOf(j, await self()) };
+    },
+    async resource(uri) {
+      if (!/^nowledgemem:\/\/[^\s]{1,400}$/i.test(uri)) return undefined;
+      const r = await retried(() => run(["--agent-context", home.context, "resources", "get", "--", uri], { whole: true, limitMs: Math.min(timeoutMs, 10_000) }), false);
+      if ("missing" in r || r.code !== 0) return undefined;
+      return resourceOf(r.out);
     },
     async send(contact, text, space) {
       return sent(await write(["send", "--to", contact, "--body-file", "-"], text, ctxFor(space)));

@@ -720,6 +720,13 @@ export interface Bodies {
     ack?: boolean;
     // D418, out: the resend of an op Mem's outbox shows never went (once, with Mem's fresh route).
     retryOf?: string;
+    // D444, in: what the message hands over from Nowledge Mem, read once when it arrived: a
+    // `nowledgemem://` reference in its words or among Mem's typed references (`resources get`, read
+    // only), or a shared plan's card (named only: Ducter never joins one). title: Mem's own title for it;
+    // kind: memory, artifact (a file or document), thread, plan or other; read: false when Mem didn't
+    // answer (the line still names what came).
+    // text: its first words as Mem gave them (clipped, secrets redacted), for the partner only.
+    refs?: { uri?: string; title: string; kind: "memory" | "artifact" | "thread" | "plan" | "other"; text?: string; read?: false }[];
   };
   // The partner's own harness session, on the "partner" stream (never shown; clients skip it).
   // "recut": Ducter started a fresh session from the projection because the live context grew
@@ -2919,6 +2926,14 @@ export interface BridgeView {
    * nothing in Mem is changed from here.
    */
   notices?: true;
+  /**
+   * D444: on connected, Mem's own contact list grouped per identity (`bridge contacts` with no Space
+   * selector, nmem 0.10.121), read in the background at most every 30 minutes while the pane is
+   * looked at: the person's own agents Mem lists, by the AI tool each runs (a harness id), and whether
+   * Mem says its mailbox takes messages now (open) or not (closed). A tool Mem doesn't list is absent.
+   * at: when it was read (ms).
+   */
+  mailboxes?: { harness: string; open: boolean; at: number }[];
 }
 
 /** The choices offered for defaultAfterMin, in minutes. */

@@ -161,6 +161,8 @@ export interface CoreApi {
   docCheck?(taskId: string, body: import("./index.ts").Bodies["report"]): Promise<{ again?: string; doc?: import("./doc-bar.ts").DocCheck; media?: import("./media.ts").MediaRef[] } | undefined>;
   /** D437: the 这类不用复查 rule Ducter kept from this user message's words, for the partner's line under them. */
   noLookFrom?(seq: number): RuleView | undefined;
+  /** D444: the memories Ducter took back at this user message's words (别记这个), for the partner's line under them. */
+  takenBackFrom?(seq: number): { seq: number; title: string }[];
   /** Who does a new task (D89, core/src/loadout.ts); absent in tests and stubs (then: the runner's default). */
   bodies?: BodyChooser;
   /** D395: where a repository task works, resolved by code (core/src/repo-where.ts); absent in tests and stubs. */
@@ -336,6 +338,13 @@ export interface BridgeLinkApi {
    * inbox (nowledge-co/mem#10402), so the first context alone reads them all. Undefined while not connected.
    */
   places?(): BridgeWhere | undefined;
+  /**
+   * D444: the pane was looked at and Mem's grouped contact list is older than 30 minutes (or never
+   * read): true once, then false until it is set again. The partner's Bridge client reads it then.
+   */
+  takeMailboxWant?(): boolean;
+  /** D444: the person's own agents Mem lists, by tool, and whether their mailboxes take messages. */
+  setMailboxes?(list: { harness: string; open: boolean }[]): void;
 }
 
 /** D334: one Space the home reads the partner's mailbox in, through its own local Agent Context. */

@@ -1342,6 +1342,10 @@ a {
   white-space: normal;
   text-align: center;
 }
+/* D444: what a message handed over from Nowledge Mem, beside its line. */
+.peerline .peer-ref {
+  color: var(--ink);
+}
 .decision .q {
   font-size: var(--t20);
   line-height: 1.35;
@@ -18078,3 +18082,6 @@ a.pr:hover { box-shadow: inset 0 0 0 1px var(--line-2); }
 /* To-do sources: the chosen one's consequence rises in as the pick changes. */
 .chat-row small.what { animation: said-in var(--t-across) var(--ease-push); }
 @media (prefers-reduced-motion: reduce) { .pv-under, .pv-sample, .chat-row small.what { animation: none; } .pv-note { transition: none; } }
+/* D444: 让它说说它记得你什么, under What it knows about you's note, on the text column. */
+.mem-ask { padding: 0 var(--set-in, var(--s4)); margin: calc(-1 * var(--s1)) 0 var(--s1); }
+.mem-ask .btn.text.sm { margin-inline-start: -10px; }

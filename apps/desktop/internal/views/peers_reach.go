@@ -25,11 +25,13 @@ var (
 // install (it carries Bridge but isn't in on Device), unknown (Mem's check
 // hasn't said) or none (its plugin can't pass messages yet). Last is the
 // newest exchange with it.
+// Box (D444) is what Mem's grouped contact list says of its mailbox: "open",
+// "closed", or "" when Mem didn't list it.
 type reachRow struct {
-	Harness, Tool, Can, Device, DeviceName, Last string
+	Harness, Tool, Can, Device, DeviceName, Last, Box string
 }
 
-func reachRows(devices []protocol.DeviceView, own []string, recent []handoff) []reachRow {
+func reachRows(devices []protocol.DeviceView, own []string, recent []handoff, boxes ...protocol.BridgeMailbox) []reachRow {
 	ds := append([]protocol.DeviceView(nil), devices...)
 	sort.SliceStable(ds, func(i, j int) bool { return ds[i].Home && !ds[j].Home })
 	var out []reachRow
@@ -52,7 +54,16 @@ func reachRows(devices []protocol.DeviceView, own []string, recent []handoff) []
 		for _, o := range own {
 			found = found || o == h
 		}
-		if !found {
+		box := ""
+		for _, m := range boxes {
+			if m.Harness == h {
+				box = "closed"
+				if m.Open {
+					box = "open"
+				}
+			}
+		}
+		if !found && box == "" {
 			continue
 		}
 		tool := toolNames[h]
@@ -64,11 +75,11 @@ func reachRows(devices []protocol.DeviceView, own []string, recent []handoff) []
 				break
 			}
 		}
-		row := reachRow{Harness: h, Tool: tool, Last: last}
+		row := reachRow{Harness: h, Tool: tool, Last: last, Box: box}
 		switch {
 		case h == "pi" || h == "antigravity":
-			row.Can = "none"
-		case on || last != "":
+			row.Can, row.Box = "none", ""
+		case on || last != "" || box == "open":
 			row.Can = "yes"
 		case off != "":
 			row.Can, row.Device, row.DeviceName = "install", off, offName

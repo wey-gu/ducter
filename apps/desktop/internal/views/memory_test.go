@@ -11,9 +11,10 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
 )
 
-// The partner remembering something is one quiet line inside its reply's
-// Details, in the user's language, with Undo then Forget (D43, D104, D329): folded by
-// default, so the conversation stays the partner's words.
+// The partner remembering something is one quiet line in the user's
+// language (D43, D329). D444: fresh, it shows once under the reply with
+// 别记这个 / Don't keep this; once the person speaks again it folds into the
+// reply's Details, with Forget.
 func TestMemoryNotedLine(t *testing.T) {
 	for _, tc := range []struct {
 		lang        i18n.Lang
@@ -38,22 +39,22 @@ func TestMemoryNotedLine(t *testing.T) {
 		tt := ui.NewTesterWith(app.View, 1280, 860, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 		tt.Frame()
 		tt.Frame()
+		// D444: fresh (nothing said since), shown under the reply with 别记这个.
+		if !tt.HasText(tc.want) || !tt.HasText(app.L.T("memory.undo")) {
+			t.Errorf("%s: no %q with Don't keep this in %q", tc.lang, tc.want, tt.Texts())
+		}
+		// Once the person spoke again, folded into Details, with Forget.
+		app.Receive(protocol.ServerFrame{T: "events", Events: []protocol.LogEvent{ev(4, protocol.OriginUser, protocol.KindUserMsg, protocol.UserMsg{Text: "ok"})}})
+		tt.Frame()
 		if tt.HasText(tc.want) {
-			t.Errorf("%s: %q shows before Details is opened", tc.lang, tc.want)
+			t.Errorf("%s: %q still shows outside Details after the person spoke", tc.lang, tc.want)
 		}
 		if err := tt.Click(app.L.T("details.show")); err != nil {
 			t.Fatalf("%s: %v in %q", tc.lang, err, tt.Texts())
 		}
 		tt.Frame()
-		// D329: fresh (nothing said since), the line offers 撤销 / Undo.
-		if !tt.HasText(tc.want) || !tt.HasText(app.L.T("memory.undo")) {
-			t.Errorf("%s: no %q with Undo in %q", tc.lang, tc.want, tt.Texts())
-		}
-		// Once the person spoke again, Forget.
-		app.Receive(protocol.ServerFrame{T: "events", Events: []protocol.LogEvent{ev(4, protocol.OriginUser, protocol.KindUserMsg, protocol.UserMsg{Text: "ok"})}})
-		tt.Frame()
-		if !tt.HasText(app.L.T("partner.memory.forget")) {
-			t.Errorf("%s: no Forget after the person spoke in %q", tc.lang, tt.Texts())
+		if !tt.HasText(tc.want) || !tt.HasText(app.L.T("partner.memory.forget")) {
+			t.Errorf("%s: no %q with Forget in Details in %q", tc.lang, tc.want, tt.Texts())
 		}
 	}
 }

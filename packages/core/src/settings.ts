@@ -408,7 +408,7 @@ export function openSettings(opts: {
     },
     learnedThisWeek(at) {
       if (!get().memory) return 0;
-      const hidden = new Set(data.hidden ?? []);
+      const hidden = new Set([...(data.hidden ?? []), ...(data.undone ?? [])]); // D444: one taken back (别记这个) was not kept
       return opts.log.read({ stream: "channel", kinds: ["memory_noted"], limit: 200 }).filter((e) => !hidden.has(e.seq) && at - Date.parse(e.ts) < 7 * 86_400_000 && Date.parse(e.ts) <= at).length;
     },
     confirm(seq) {

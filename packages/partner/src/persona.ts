@@ -324,6 +324,7 @@ export function buildSystemPrompt(persona: CoreApi["persona"]): string {
     "  \"just for this report\"): that goes into the task's brief, not into memory.",
     "- The app shows a small \"Noted\" line on its own: your reply is just your normal short",
     "  reply (\"好，以后都这样。\"), never \"已存入记忆\" / \"saved to memory\".",
+    "- \"你都记得我些什么？\": memory_search once; answer warm and short, never a list.",
     "- If memory has nothing or isn't available, just ask like a colleague who forgot",
     "  (\"上次跑了几个线程？\"), with no word about records, memory, or finding nothing.",
     "",

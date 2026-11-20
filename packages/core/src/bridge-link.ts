@@ -121,6 +121,9 @@ export function httpStatusIn(out: string, err: string): number | undefined {
   return m ? Number(m[1]) : undefined;
 }
 
+/** D444: Mem's grouped contact list is read again when the pane is looked at and it is older than this. */
+export const MAILBOXES_TTL_MS = 30 * 60_000;
+
 /** D338: a Space Mem answered 404 for is tried again once a day, or when nmem's version changes. */
 export const UNREAD_RETRY_MS = 24 * 3_600_000;
 
@@ -482,6 +485,10 @@ export function createBridgeLink(opts: {
   const path = join(opts.dataDir, BRIDGE_CONNECTION_FILE);
   const listeners = new Set<() => void>();
   const changed = () => listeners.forEach((fn) => fn());
+  // D444: Mem's grouped contact list (the person's own agents and whether their mailboxes take
+  // messages), read by the partner's Bridge client when the pane was looked at and it is stale.
+  let boxes: { list: { harness: string; open: boolean }[]; at: number } | undefined;
+  let boxesWanted = false;
   const readyFns = new Set<() => void>();
 
   // A service's PATH often lacks the user's own bin folder: a `nmem` there is found once, at start.
@@ -898,7 +905,9 @@ export function createBridgeLink(opts: {
       // D334: a Space Mem refused a reader in: one quiet problem row (never a list of Spaces otherwise).
       const unread = r.unread?.length ? { unread: r.unread.map((u) => ({ label: u.spaceLabel, ...(u.code ? { code: u.code } : {}), ...(u.status ? { status: u.status } : {}) })) } : {};
       const stuck = opts.trouble?.();
-      return { state: "connected", ...(await extras()), ...base, ...(others.length ? { others: others.map(shown) } : {}), ...unread, ...(stuck ? { stuck: { code: stuck.code } } : {}), ...(r.notices ? { notices: true as const } : {}), ...(undoFailed ? { detail: undoFailed } : {}) };
+      if (!boxes || now() - boxes.at >= MAILBOXES_TTL_MS) boxesWanted = true;
+      const mailboxes = boxes?.list.length ? { mailboxes: boxes.list.map((m) => ({ ...m, at: boxes!.at })) } : {};
+      return { state: "connected", ...(await extras()), ...base, ...(others.length ? { others: others.map(shown) } : {}), ...unread, ...mailboxes, ...(stuck ? { stuck: { code: stuck.code } } : {}), ...(r.notices ? { notices: true as const } : {}), ...(undoFailed ? { detail: undoFailed } : {}) };
     }
     if (!p) {
       const plan = await freshPlan();
@@ -925,6 +934,17 @@ export function createBridgeLink(opts: {
   };
 
   const api: BridgeLink = {
+    takeMailboxWant() {
+      const w = boxesWanted && !!read()?.confirmed;
+      boxesWanted = false;
+      return w;
+    },
+    setMailboxes(list) {
+      const next = list.filter((m) => typeof m.harness === "string" && m.harness).map((m) => ({ harness: m.harness, open: !!m.open }));
+      const same = JSON.stringify(next) === JSON.stringify(boxes?.list);
+      boxes = { list: next, at: now() };
+      if (!same) changed();
+    },
     context() {
       const r = read();
       return r?.confirmed ? r.context : undefined;

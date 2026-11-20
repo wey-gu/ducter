@@ -29,6 +29,9 @@ func agentRowLook(h protocol.DeviceHarness) string {
 	switch {
 	case h.Setup != nil && h.Setup.Phase == "installing":
 		return "installing"
+	case h.Installed && h.Login != nil && (h.Login.State == "signing_out" || h.Login.Reason == "signout_failed"):
+		// D415: its own sign-out, running or refused, on a row that still reads signed in.
+		return "login"
 	case h.Setup != nil && h.Setup.Phase == "queued":
 		return "queued"
 	case h.Installed && h.LoggedIn && (h.Login == nil || h.Login.State != "done"):
@@ -203,6 +206,11 @@ func (a *App) agentRow(c *ui.Context, dv *protocol.DeviceView, h protocol.Device
 				if awake && a.buttonFor(c, a.L.T("ag.signin"), name, btnPrimary, t.ControlSM, t.Surface) {
 					a.agentSetupReq(dv, "login", protocol.AgentSetupReq{Harness: h.Harness})
 				}
+			case look == "ready" && h.Harness == "antigravity":
+				// D415: its own sign-out (HarnessInfo.signOut: Antigravity only).
+				if awake && a.buttonFor(c, a.L.T("ag.signout"), name, btnText, t.ControlSM, t.Surface) {
+					a.agentSetupReq(dv, "logout", protocol.AgentSetupReq{Harness: h.Harness})
+				}
 			}
 		})
 		if look == "failed" && h.Setup != nil && h.Setup.Detail != "" {
@@ -250,6 +258,20 @@ func (a *App) agentLoginPanel(c *ui.Context, dv *protocol.DeviceView, h protocol
 		case "done":
 			line(a.L.T("ag.login.done"), t.Done.Ink)
 			return
+		case "signing_out":
+			line(a.L.T("ag.signout.running"), t.InkMuted)
+			return
+		}
+		if l.Reason == "signout_failed" {
+			line(a.L.T("ag.signout.failed"), t.Failed.Ink)
+			ui.Row(c).Children(func() {
+				if a.buttonFor(c, a.L.T("ag.signout.ok"), name, btnText, t.ControlSM, t.Bg) {
+					a.agentSetupReq(dv, "cancel", protocol.AgentSetupReq{Harness: h.Harness})
+				}
+			})
+			return
+		}
+		switch l.State {
 		case "failed", "expired":
 			k := "ag.login.failed"
 			switch {

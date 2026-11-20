@@ -344,3 +344,30 @@ test("said: its name, its command and 反重力 name it", async () => {
   const { readSaid } = await import("../src/said.ts");
   for (const s of ["写代码的事以后都用 Antigravity。", "以后写代码都用 agy。", "写代码的事以后都用反重力。"]) expect(readSaid(s).map((p) => p.harness)).toContain("antigravity");
 });
+
+test("D415 sign-out: its own (the runner's OAR logout), the row says it's running, then reads signed out; refused says so", async () => {
+  const mk = (logout?: AgentSetupSys["logout"]) => {
+    let probes = 0;
+    const sys: AgentSetupSys = { platform: "linux", arch: "x64", home: "/h", download: async () => new Uint8Array(), run: async () => ({ code: 0, out: "" }), spawn: () => fakeLogin().proc, which: () => null, env: () => ({}), ...(logout ? { logout } : {}) };
+    const s = createAgentSetup({ dataDir: "/nonexistent-ducter", sys, probe: async () => void probes++, changed: () => {}, setTimer: () => 0, clearTimer: () => {} });
+    return { s, probes: () => probes };
+  };
+  let release!: (v: { ok: boolean }) => void;
+  const ok = mk(() => new Promise((r) => (release = r)));
+  ok.s.logout("antigravity");
+  expect(ok.s.state("antigravity").login).toEqual({ state: "signing_out" });
+  // Shown on a row that still reads signed in.
+  expect(ok.s.decorate([{ harness: "antigravity", installed: true, loggedIn: true }])[0]!.login?.state).toBe("signing_out");
+  release({ ok: true });
+  await Bun.sleep(5);
+  expect(ok.s.state("antigravity").login).toBeUndefined();
+  expect(ok.probes()).toBe(1);
+  const no = mk(async () => ({ ok: false, detail: "still_logged_in" }));
+  no.s.logout("antigravity");
+  await Bun.sleep(5);
+  expect(no.s.state("antigravity").login).toEqual({ state: "failed", reason: "signout_failed" });
+  // An agent with no sign-out Ducter can run (Codex here) is never signed out from Ducter.
+  const codex = mk(async () => ({ ok: true }));
+  codex.s.logout("codex");
+  expect(codex.s.state("codex").login).toEqual({ state: "failed", reason: "signout_failed" });
+});

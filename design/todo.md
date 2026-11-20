@@ -18,8 +18,9 @@ Deferred work, grouped by area, each with its trigger where it has one.
 - [ ] **Registry.** Once run: the verified range from what ran, the models' windows, whether a
   turn's quota notice reaches the limit card, `scripts/probe-harnesses.ts` lines for agy (`--version`
   pattern, `acp --help`), and whether `agy install`'s shell step matters for anything but PATH.
-- [ ] **A sign-out for every agent** (Antigravity's is OAR's `logout`; none of the five has one in
-  Ducter). Trigger: someone asks to sign an agent out from Ducter.
+- [ ] **A sign-out for the other agents** (D415 built Antigravity's, through OAR's `logout`;
+  Claude Code, Codex, pi and DeepSeek Harness have none in Ducter yet). Trigger: someone asks to
+  sign one of them out from Ducter.
 - [ ] **DeepSeek Harness pictures** (OAR 0.124 #997 added images to its runtime): check live, then
   `HARNESSES["deepseek-harness"].images`.
 ## The Mac walk's leftovers (D408)

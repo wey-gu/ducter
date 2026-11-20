@@ -1165,7 +1165,7 @@ export function createWsHandler(deps: WsDeps) {
         // D363: the device answers with fresh devices frames as each step happens.
         const device = String(f.device ?? "local");
         const action = f.action as import("@ducter/protocol").AgentSetupAction;
-        if (!["install", "login", "code", "cancel", "look"].includes(action)) throw new Error("unknown action");
+        if (!["install", "login", "code", "cancel", "look", "logout"].includes(action)) throw new Error("unknown action");
         watchDevices();
         ws.data.devices = true;
         const strs = (x: unknown) => (Array.isArray(x) ? x.filter((v): v is string => typeof v === "string") : undefined);

@@ -225,7 +225,8 @@ export async function cmdWorker(o: {
   const reprobe = () => probeHarnesses(t, o.dataDir, setup).then(sendAgents);
   const setup: AgentSetup = createAgentSetup({
     dataDir: o.dataDir,
-    sys: realAgentSetupSys({ platform: platform(), arch: arch(), which: (c) => whichNow(c), env: (cmd) => probeEnv([cmd]) }),
+    // D415: an agent's own sign-out through OAR (Antigravity's ACP logout), on this computer.
+    sys: { ...realAgentSetupSys({ platform: platform(), arch: arch(), which: (c) => whichNow(c), env: (cmd) => probeEnv([cmd]) }), logout: async (h: string) => (await runnerMod.createOarHarnessPort({ dataDir: o.dataDir }).logout?.(h)) ?? { ok: false } },
     probe: reprobe,
     changed: () => sendAgents(setup.decorate(rows)),
   });
@@ -318,6 +319,7 @@ export async function cmdWorker(o: {
     else if (a.action === "login") setup.login(h);
     else if (a.action === "code") setup.code(h, String(a.code ?? ""));
     else if (a.action === "cancel") setup.cancel(h);
+    else if (a.action === "logout") setup.logout(h);
     else if (a.action === "look") {
       await startAgentPath(dataDir);
       await reprobe().catch(() => {});

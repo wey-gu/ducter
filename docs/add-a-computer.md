@@ -65,8 +65,9 @@ alone doesn't count: it carries no command line, and the card says so with an **
 in, tap **Sign in**, open the Google link on any device, and paste back the code that page gives
 you (or the address it ends on); on a server nothing opens there. Google's terms say using
 third-party software to access Antigravity can get an account suspended, so the card says that
-before you sign in: it's your call. Ducter only gives it a task when you name it ("让 Antigravity
-来做"), or when nothing else can, and never a task on web pages.
+before you sign in: it's your call. **Sign out** on its card signs it out again with its own
+sign-out. Ducter only gives it a task when you name it ("让 Antigravity 来做"), or when nothing
+else can, and never a task on web pages.
 
 **Your memory there too.** If you use [Nowledge Mem](https://mem.nowledge.co) with Ducter, tasks
 on every computer you add remember you with nothing to set up there: they use the one Nowledge Mem

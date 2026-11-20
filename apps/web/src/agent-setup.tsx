@@ -10,6 +10,10 @@ import { Coin } from "./coin.tsx";
 import { harnessName } from "./format.ts";
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 import { agentRowLook, troubleWords } from "./agent-setup-view.ts";
+import { HARNESSES, isHarnessId } from "@ducter/protocol";
+
+/** D415: an agent Ducter can sign out with its own sign-out (Antigravity). */
+export const canSignOut = (h: string) => isHarnessId(h) && !!HARNESSES[h].signOut;
 
 /** A sign-in link as one short line (Claude's runs to 400 characters; Open link opens the whole). */
 export function shortUrl(url: string): string {
@@ -30,6 +34,15 @@ export function LoginPanel({ dv, h }: { dv: DeviceView; h: DeviceHarness }) {
   if (l.state === "terminal") return <div class="ag-login"><p>{t("ag.login.pi", dv.name)}</p></div>;
   if (l.state === "starting") return <div class="ag-login"><p class="soft">{t("ag.login.starting")}</p></div>;
   if (l.state === "done") return <div class="ag-login"><p class="ok">{t("ag.login.done")}</p></div>;
+  // D415: its own sign-out, running or refused.
+  if (l.state === "signing_out") return <div class="ag-login"><p class="soft">{t("ag.signout.running")}</p></div>;
+  if (l.reason === "signout_failed")
+    return (
+      <div class="ag-login">
+        <p class="warn">{t("ag.signout.failed")}</p>
+        <Btn kind="text" size="sm" label={t("ag.signout.ok")} onClick={() => A.agentSetup(dv.id, "cancel", { harness: h.harness })} />
+      </div>
+    );
   if (l.state === "failed" || l.state === "expired")
     return (
       <div class="ag-login">
@@ -139,6 +152,8 @@ export function AgentRow({ dv, h, pick }: { dv: DeviceView; h: DeviceHarness; pi
           <Btn kind="secondary" size="sm" label={t("ag.retry")} about={name} disabled={!awake} onClick={() => A.agentSetup(dv.id, "install", { harnesses: [h.harness] })} />
         ) : look === "signin" ? (
           <Btn kind="primary" size="sm" label={t("ag.signin")} about={name} disabled={!awake} onClick={() => A.agentSetup(dv.id, "login", { harness: h.harness })} />
+        ) : look === "ready" && canSignOut(h.harness) ? (
+          <Btn kind="text" size="sm" label={t("ag.signout")} about={name} disabled={!awake} onClick={() => A.agentSetup(dv.id, "logout", { harness: h.harness })} />
         ) : null}
       </div>
       {look === "failed" && h.setup?.detail && <div class="ag-detail">{h.setup.detail}</div>}

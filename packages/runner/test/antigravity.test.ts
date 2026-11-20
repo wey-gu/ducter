@@ -143,3 +143,15 @@ test("available(): signed in by agy's own authStatus; its models listed in Ducte
   ]);
   expect(listedIn).toBe(join(dir, "d"));
 });
+
+test("D415 sign-out through the port: OAR's logout, confirmed by agy's own status", async () => {
+  let asked = 0;
+  const rt = (kind: string) => ({ installation: async () => ({ kind: "available", via: "executable", command: "/h/.local/bin/agy" }), logout: async () => (asked++, kind === "logged_out" ? { kind } : { kind: "failed", reason: "still_logged_in", detail: "agy models still answers" }) });
+  const ok = createOarHarnessPort({ loadRuntime: async () => rt("logged_out") as any, dataDir: dir });
+  expect(await ok.logout!("antigravity")).toEqual({ ok: true });
+  const no = createOarHarnessPort({ loadRuntime: async () => rt("failed") as any, dataDir: dir });
+  expect(await no.logout!("antigravity")).toEqual({ ok: false, detail: "agy models still answers" });
+  const none = createOarHarnessPort({ loadRuntime: async () => ({ installation: async () => ({ kind: "available" }) }) as any, dataDir: dir });
+  expect((await none.logout!("codex")).ok).toBe(false);
+  expect(asked).toBe(2);
+});

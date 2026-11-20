@@ -1955,7 +1955,7 @@ export interface DeviceHarness {
 export type AgentTrouble = { kind: "too_old"; need: string } | { kind: "broken" } | { kind: "app_only"; app: string };
 
 /** D363: what an agent_setup asks of a device. */
-export type AgentSetupAction = "install" | "login" | "code" | "cancel" | "look";
+export type AgentSetupAction = "install" | "login" | "code" | "cancel" | "look" | "logout";
 /** D363: why putting an agent on a device didn't work: no network, no room, no build for that computer, anything else. */
 export type AgentSetupReason = "network" | "space" | "unsupported" | "failed";
 /** D363: queued: waiting its turn; installing: being put there; failed: one line and 再试一次. */
@@ -1979,7 +1979,8 @@ export interface AgentSetupState {
  *  - terminal: this agent has no sign-in Ducter can carry (pi): `command` is what to run there.
  */
 export interface AgentLoginState {
-  state: "starting" | "waiting" | "checking" | "done" | "failed" | "expired" | "terminal";
+  /** D415: signing_out: the agent's own sign-out is running there (Antigravity's, HarnessInfo.signOut). */
+  state: "starting" | "waiting" | "checking" | "done" | "failed" | "expired" | "terminal" | "signing_out";
   url?: string;
   code?: string;
   paste?: boolean;
@@ -1991,7 +1992,8 @@ export interface AgentLoginState {
   key?: boolean;
   app?: string;
   /** wrong_key: DeepSeek didn't take the key; no_balance: it did, with nothing left; offline: DeepSeek couldn't be reached from there. */
-  reason?: "device_off" | "wrong_code" | "wrong_key" | "no_balance" | "offline" | "failed";
+  /** D415: signout_failed: its own sign-out ran and it still reads signed in. */
+  reason?: "device_off" | "wrong_code" | "wrong_key" | "no_balance" | "offline" | "failed" | "signout_failed";
   command?: string;
 }
 

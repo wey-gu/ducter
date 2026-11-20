@@ -27,7 +27,7 @@ import { liveSize } from "./live.tsx";
 import { Mark, UpdateAllCard } from "./updateall.tsx";
 import { Qr } from "./phone.tsx";
 import { AddDeviceRow, LendSheet } from "./lend.tsx";
-import { AgentRow, SetupAnswer } from "./agent-setup.tsx";
+import { AgentRow, SetupAnswer, canSignOut } from "./agent-setup.tsx";
 import { MemOnDevice } from "./worker-mem.tsx";
 import { RecordsOnDevice } from "./worker-records.tsx";
 
@@ -478,7 +478,8 @@ function agentPhase(u: NonNullable<DeviceHarness["update"]>): string {
 function CoinDetail({ dv, h }: { dv: DeviceView; h: DeviceHarness }) {
   const name = harnessName(h.harness);
   // D363: being put there, or there and not signed in: its row, with 登录 and the sign-in in place.
-  if (!h.installed || !h.loggedIn)
+  // D415: its own sign-out running (or refused) shows in its row too.
+  if (!h.installed || !h.loggedIn || h.login?.state === "signing_out" || h.login?.reason === "signout_failed")
     return (
       <>
         <AgentRow dv={dv} h={h} />
@@ -525,6 +526,8 @@ function CoinDetail({ dv, h }: { dv: DeviceView; h: DeviceHarness }) {
         </div>
       )}
       {A.settings && <Toggle label={t("loadout.acct.tasks")} checked={ready} onChange={(v) => A.setSettings({ taskAccounts: { ...(A.settings?.taskAccounts ?? {}), [h.harness]: { enabled: v } } })} />}
+      {/* D415: an agent Ducter can sign out with its own sign-out (Antigravity). */}
+      {canSignOut(h.harness) && dv.state === "awake" && <Btn kind="text" size="sm" label={t("ag.signout")} about={name} onClick={() => A.agentSetup(dv.id, "logout", { harness: h.harness })} />}
       <div class="ln small">{t("coin.there", dv.name)}</div>
     </>
   );

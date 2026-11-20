@@ -15,6 +15,8 @@ export type AgentRowLook =
 export function agentRowLook(h: Pick<DeviceHarness, "installed" | "loggedIn" | "installable" | "setup" | "login" | "trouble">): AgentRowLook {
   if (h.setup?.phase === "installing") return "installing";
   if (h.setup?.phase === "queued") return "queued";
+  // D415: a sign-out running (or one that didn't take) opens the panel on a signed-in row.
+  if (h.installed && (h.login?.state === "signing_out" || h.login?.reason === "signout_failed")) return "login";
   if (h.installed && h.loggedIn && (!h.login || h.login.state !== "done")) return "ready";
   if (h.installed && h.login) return "login";
   if (h.installed) return h.loggedIn ? "ready" : "signin";

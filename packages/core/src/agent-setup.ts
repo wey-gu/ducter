@@ -37,7 +37,7 @@ import type { AgentLoginState, AgentSetupReason, AgentSetupState } from "@ducter
 import { cleanKey } from "@ducter/protocol/src/api-keys.ts";
 import { DSH_APP, DSH_KEY_PAGE, dshAppPaths, dshCredentialsFile, dshSignIns } from "@ducter/protocol/src/dsh.ts";
 import { ANTIGRAVITY, HARNESS_FACTS, agyPlatform } from "@ducter/protocol/src/harness-facts.ts";
-import { DSH_KEY_ENV, type HarnessId } from "@ducter/protocol/src/harnesses.ts";
+import { DSH_KEY_ENV, HARNESSES, isHarnessId, type HarnessId } from "@ducter/protocol/src/harnesses.ts";
 import { readKeys, writeKey } from "@ducter/protocol/src/keys.ts";
 import { toolEnv } from "@ducter/protocol/src/tool-env.ts";
 import { toolsNodeBin } from "./agent-path.ts";
@@ -108,6 +108,8 @@ export interface AgentSetupSys {
   musl?: boolean;
   /** D415: tests: make a file executable, clear macOS's quarantine. */
   chmod?: (p: string) => void;
+  /** D415: the agent's own sign-out (the runner's HarnessPort.logout); absent: none here. */
+  logout?: (h: string) => Promise<{ ok: boolean; detail?: string }>;
 }
 
 /** D415: Google's release manifest for agy on one platform. */
@@ -120,6 +122,8 @@ interface AgyRelease {
 export interface AgentSetup {
   install(hs: readonly string[]): void;
   login(h: string): void;
+  /** D415: its own sign-out, where the agent has one Ducter can run (HarnessInfo.signOut). */
+  logout(h: string): void;
   code(h: string, code: string): void;
   cancel(h: string): void;
   /** This agent's setup and sign-in now, for its row. */
@@ -506,6 +510,29 @@ export function createAgentSetup(o: {
       });
       o.changed();
     },
+    logout(h) {
+      const prev = logins.get(h);
+      if (prev?.view.state === "signing_out") return;
+      prev?.proc?.kill();
+      if (prev?.timer) clearTimer(prev.timer);
+      if (!sys.logout || !(isHarnessId(h) && HARNESSES[h].signOut)) {
+        logins.set(h, { view: { state: "failed", reason: "signout_failed" }, out: "" });
+        return o.changed();
+      }
+      const entry: Login = { view: { state: "signing_out" }, out: "" };
+      logins.set(h, entry);
+      o.changed();
+      void sys
+        .logout(h)
+        .catch(() => ({ ok: false }))
+        .then(async (r) => {
+          if (logins.get(h) !== entry) return;
+          if (r.ok) logins.delete(h);
+          else entry.view = { state: "failed", reason: "signout_failed" };
+          await o.probe().catch(() => {});
+          o.changed();
+        });
+    },
     code(h, code) {
       const l = logins.get(h);
       const c = code.trim();
@@ -536,11 +563,13 @@ export function createAgentSetup(o: {
         const s = api.state(h);
         // A sign-in that finished shows no more once the probe says signed in; a setup once it's there.
         const setup = s.setup && !(r.installed && s.setup.phase !== "failed") ? s.setup : undefined;
-        const login = s.login && !(r.loggedIn && s.login.state !== "done") ? s.login : undefined;
+        // D415: a sign-out under way, or one that didn't take, shows on a row that still reads signed in.
+        const signOut = s.login?.state === "signing_out" || s.login?.reason === "signout_failed";
+        const login = s.login && (signOut || !(r.loggedIn && s.login.state !== "done")) ? s.login : undefined;
         return { ...r, ...(setup ? { setup } : {}), ...(login ? { login } : {}), ...(!r.installed && s.installable ? { installable: true } : {}) };
       });
     },
-    busy: () => running || queue.length > 0 || [...logins.values()].some((l) => l.view.state === "starting" || l.view.state === "waiting" || l.view.state === "checking"),
+    busy: () => running || queue.length > 0 || [...logins.values()].some((l) => l.view.state === "starting" || l.view.state === "waiting" || l.view.state === "checking" || l.view.state === "signing_out"),
     stop() {
       for (const l of logins.values()) {
         l.proc?.kill();

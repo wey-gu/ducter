@@ -845,6 +845,25 @@ export function createOarHarnessPort(opts: OarPortOptions = {}): HarnessPort {
       }
     },
 
+    // D415: the agent's own sign-out (Antigravity: ACP `logout` on a fresh `agy acp`, then `agy
+    // models` decides). Never deletes a credential file itself.
+    async logout(harness) {
+      if (!(HARNESS_IDS as readonly string[]).includes(harness)) return { ok: false, detail: "unknown agent" };
+      try {
+        const h = harness as HarnessId;
+        const rt = await load(h);
+        const out = (rt as { logout?: (i: unknown, o: unknown) => Promise<{ kind: string; detail?: string; reason?: string }> } | undefined)?.logout;
+        if (!rt || !out) return { ok: false, detail: "this agent has no sign-out Ducter can run" };
+        const env = harnessEnv(h, { env: opts.env, dataDir });
+        const inst = await rt.installation?.({ env });
+        if (!inst || inst.kind !== "available") return { ok: false, detail: "not installed here" };
+        const r = await out(inst, { env, timeoutMs: 60_000 });
+        return r.kind === "logged_out" ? { ok: true } : { ok: false, detail: r.detail ?? r.reason ?? r.kind };
+      } catch (e) {
+        return { ok: false, detail: (e as Error).message };
+      }
+    },
+
     // D288: the account's usage limits, as the agent reads them itself with no model call (OAR
     // accountUsage: Claude Code's get_usage control query in --safe-mode, Codex's
     // account/rateLimits/read). Agents without a reader (pi, DeepSeek Harness) don't say.

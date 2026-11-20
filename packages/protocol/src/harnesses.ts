@@ -76,6 +76,8 @@ export interface HarnessInfo {
    * left out of a session, D241), so browsing work never goes to it (block no_web).
    */
   noWebTasks?: true;
+  /** D415: Ducter can sign it out with its own sign-out (OAR's runtime logout), from its row. */
+  signOut?: true;
 }
 
 export const HARNESSES: Record<HarnessId, HarnessInfo> = {
@@ -180,6 +182,7 @@ export const HARNESSES: Record<HarnessId, HarnessInfo> = {
     signIn: "agy acp --login (a Google sign-in: open the link anywhere, paste the code back)",
     pickOnly: true,
     noWebTasks: true,
+    signOut: true,
   },
 };
 

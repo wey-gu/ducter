@@ -1450,7 +1450,8 @@ export function startCore(opts: CoreOptions = {}): Core {
     opts.agentSetup?.sys || !agentTesting
       ? createAgentSetup({
           dataDir,
-          sys: opts.agentSetup?.sys ?? realAgentSetupSys({ platform: process.platform, arch: process.arch, which: (c) => whichNow(c) }),
+          // D415: an agent's own sign-out runs through the runner's port (OAR), once a runner is set.
+          sys: opts.agentSetup?.sys ?? { ...realAgentSetupSys({ platform: process.platform, arch: process.arch, which: (c) => whichNow(c) }), logout: async (h: string) => (await runner?.harness.logout?.(h)) ?? { ok: false } },
           probe: async () => {
             widenAgentPath({ dataDir });
             devicesView?.refresh();
@@ -1473,6 +1474,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       else if (f.action === "login") homeSetup.login(f.harness ?? "");
       else if (f.action === "code") homeSetup.code(f.harness ?? "", f.code ?? "");
       else if (f.action === "cancel") homeSetup.cancel(f.harness ?? "");
+      else if (f.action === "logout") homeSetup.logout(f.harness ?? "");
       return { ok: true };
     }
     const id = devices.list().find((x) => x.kind === "worker" && (x.id === device || x.name === device))?.id;

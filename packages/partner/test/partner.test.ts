@@ -5,6 +5,7 @@ import { join } from "node:path";
 import type { Bodies, LogEvent } from "../../protocol/src/index.ts";
 import { buildSystemPrompt, createPartner, findPaths, resolvePlace, type PlaceFs } from "../src/index.ts";
 import { FakeClock, fakeCore, fakeRunner, type Script } from "./fakes.ts";
+import { activityObject } from "../src/partner.ts";
 
 const tmp = () => mkdtempSync(join(tmpdir(), "ducter-partner-test-"));
 
@@ -618,6 +619,34 @@ describe("activity while the user waits (D104)", () => {
     user("CI 那件事怎么样了");
     await partner.idle();
     expect(seen).toEqual(["thinking", "recalling", "checking_task", null]);
+  });
+
+  test("D425: a step names its object only when the person knows it: the task's title, where it looks", async () => {
+    const seen: unknown[] = [];
+    const { fc, partner, user } = setup(async (_i, s) => {
+      s.emit({ role: "assistant", tool: { name: "mcp__ducter__task_read", input: { taskId: "t_itin" } } });
+      s.emit({ role: "assistant", tool: { name: "mcp__ducter__memory_search", input: { query: "ITIN W-7 passport" } } });
+      s.emit({ role: "assistant", tool: { name: "mcp__ducter__calendar", input: { op: "list" } } });
+      s.say("快好了。");
+      s.end();
+    });
+    fc.cards.set("t_itin", { taskId: "t_itin", persona: "p", title: "查 ITIN 的申请材料", project: "", place: { kind: "none" }, harness: "claude-code", attention: "working", residency: "hot", openedAt: "", updatedAt: "" });
+    fc.core.activity = { set: (a) => void seen.push(a ? { step: a.step, ...(a.about ? { about: a.about } : {}), ...(a.source ? { source: a.source } : {}) } : null) };
+    user("ITIN 那件查得怎么样了？");
+    await partner.idle();
+    // The search's query never shows: recalling has no object.
+    expect(seen).toEqual([{ step: "thinking" }, { step: "checking_task", about: "查 ITIN 的申请材料" }, { step: "recalling" }, { step: "looking", source: "calendar" }, null]);
+  });
+
+  test("D425: activityObject never passes a query, a path or an unknown task", () => {
+    const title = (id: string) => (id === "t1" ? "订京都的旅馆" : undefined);
+    expect(activityObject("mcp__ducter__task_send", { taskId: "t1", text: "改成两晚" }, title)).toEqual({ about: "订京都的旅馆" });
+    expect(activityObject("mcp__ducter__task_read", { taskId: "t404" }, title)).toEqual({});
+    expect(activityObject("mcp__ducter__task_open", { title: "Compare the movers' quotes", brief: "/Users/w/x" }, title)).toEqual({ about: "Compare the movers' quotes" });
+    expect(activityObject("mcp__ducter__web_look", { question: "明天上海会下雨吗" }, title)).toEqual({ about: "明天上海会下雨吗" });
+    expect(activityObject("mcp__ducter__log_search", { query: "secret plans" }, title)).toEqual({});
+    expect(activityObject("mcp__ducter__connection_call", { app: "gmail" }, title)).toEqual({ source: "accounts" });
+    expect(activityObject("mcp__ducter__todos", {}, title)).toEqual({ source: "todos" });
   });
 
   test("done? -> done: the partner's result turn confirms a claim the mechanical check left open, never a missing ref", async () => {

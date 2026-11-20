@@ -20,8 +20,10 @@ human opens them.
    with the ack, from the streamed head of its `task_open` call, not after the brief
    (`quiet-conversation.md`).
 2. **Job.** Kept as a status line by the control plane, shown inside the message's Details and
-   on On hand (D104); while the user waits, the partner's step shows as the waiting line. A
-   cheap model may write the line. The main AI sees each open job as an explicit pending
+   on On hand (D104); while the user waits, the partner's step shows as the waiting line, acted
+   out by the clay partner in the person's words (D425, `quiet-conversation.md`). A
+   job's status line may be a cheap model's; the waiting line is written by code from the call,
+   never a model (D425). The main AI sees each open job as an explicit pending
    marker.
 3. **Result.** A new message replying to the ask, rendered from the job's typed report.
 
@@ -115,7 +117,7 @@ to where the person last spoke.
   characters, up to 3 http(s) sources, a confidence, or why it isn't settled). No memory, no
   accounts, no Go cards, nothing of the person's in its folder. The Log keeps `web_look` (looking,
   then found or unsettled), which wakes the partner with the answer fenced as data; it says it in
-  one line naming the site. The waiting line **在网上查… / Looking it up on the web…** stays from
+  one line naming the site. The waiting line **在网上查：{question} / Looking it up on the web: {question}** (D425) stays from
   the ask to the answer; no card, no row in On hand. A look that can't settle it (time, sources
   that disagree, a page to read, a sign-in, nothing found) is handed to a browsing task, whose
   ack says so. Everything more than one fact (a page or link, comparing, today's discussion, a

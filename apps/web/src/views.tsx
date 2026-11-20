@@ -17,6 +17,8 @@ import { SheetFrame } from "./sheet-frame.tsx";
 import { last as lastMove } from "./nav.ts";
 import type { JSX } from "preact";
 import { AmbientLine } from "./ambient.tsx";
+import { AliveLine } from "./alive.tsx";
+import { aliveFace, aliveMotion, aliveSub, aliveWords } from "@ducter/protocol/src/alive.ts";
 import { A, candKey, effortWord, HANDHELD, placeKey, type SettingsPage } from "./app.ts";
 import { HARNESSES, isHarnessId, ownAgentSelf, TRY_LIVE, type HeldMsg } from "@ducter/protocol";
 import type { PingGroup } from "./store.ts";
@@ -902,7 +904,7 @@ function News({ it, k, owns }: { it: LivingItem; k: string; owns: boolean }) {
   }, [wait > 0]);
   // The partner is putting the result into its own words (D124): its waiting presence holds the
   // place, not a template line that its message replaces a minute later.
-  if (wait > 0) return <Presence line={t("activity.result")} />;
+  if (wait > 0) return <Presence kind="result" />;
   // D154: the task's own sentence only when it is in the reader's language; else just what came
   // of it, by its title (the opened task keeps its words).
   const said = sayable(it.text, A.readerLang(task));
@@ -964,7 +966,7 @@ function Ask({ d, taskId, buttons = true, rk, seq }: { d: DecisionState; taskId?
   }, [wait > 0]);
   // The partner is putting a task's question into its own words (D129): its waiting presence
   // holds the place; the task's own wording never shows in the conversation first.
-  if (wait > 0) return <Presence line={t("activity.relay")} />;
+  if (wait > 0) return <Presence kind="relay" />;
   // D151: a sign-in ask opens the live view instead of Go.
   // D193: a call's Go card or a question from the line: the whole card, in the conversation too.
   if (d.call)
@@ -1427,24 +1429,26 @@ function PeerLine({ b, ts, seq }: { b: Bodies["bridge_msg"]; ts: string; seq?: n
 /** While the user waits on a reply (D104): the clay partner where its words will appear, and
  *  one plain line of what it is doing, updated in place, gone when the reply lands. A step past
  *  15 s adds a reassuring line; past 45 s, that it will say when it's ready. */
-function Presence({ line }: { line?: string }) {
+function Presence({ kind }: { kind?: "result" | "relay" }) {
   useTick(1000);
   const a = A.S.activity;
   const lastUser = [...A.S.channel].reverse().find((e) => e.user);
   const since = a?.at ?? A.thinkingSince ?? (lastUser ? Date.parse(lastUser.ev.ts) : Date.now());
-  const s = (Date.now() - since) / 1000;
+  const ms = Date.now() - since;
+  // D425: the step acted out by the clay partner, its words in the person's terms.
+  const step = kind ?? a?.step ?? "thinking";
+  const w = kind ? { key: `activity.${kind}` } : aliveWords(a ?? { step: "thinking" });
   // A result being put into words has its own line and no "taking longer" (it ends in 2 minutes).
-  const sub = line ? "" : s >= 45 ? t("activity.long") : s >= 15 ? t("activity.slow") : "";
+  const sub = kind ? "" : aliveSub(ms);
+  const motion = aliveMotion(step, ms, stillMotion());
   return (
-    <div class="presence" role="status" aria-live="polite">
-      <span class="bob">
-        <Avatar size={32} state="working" still />
-      </span>
-      <span class="pline">
-        {line ?? t(`activity.${a?.step ?? "thinking"}`)}
-        {sub && <span class="sub">{sub}</span>}
-      </span>
-    </div>
+    <AliveLine
+      class="presence"
+      motion={motion}
+      words={w.arg !== undefined ? t(w.key, w.arg) : t(w.key)}
+      sub={sub ? t(sub) : undefined}
+      figure={<Avatar size={32} state={aliveFace(step)} still={motion === "still"} />}
+    />
   );
 }
 

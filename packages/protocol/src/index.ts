@@ -1868,6 +1868,14 @@ export interface PartnerActivity {
   step: ActivityStep;
   since: string; // ISO: when the turn started
   stepSince: string; // ISO: when this step started
+  /**
+   * D425: the step's object in the person's own words, when they already know it: the task's
+   * title (checking_task, messaging_task, opening_task), the question of a quick web look (web).
+   * Never a tool's name, a path, or what was read. Older clients ignore it.
+   */
+  about?: string;
+  /** D425: where a `looking` step looks, named without what it finds. */
+  source?: "calendar" | "todos" | "accounts";
 }
 
 export type Delivery = "steered" | "prompted" | "queued";

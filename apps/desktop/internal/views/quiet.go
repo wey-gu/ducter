@@ -12,7 +12,6 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 	"github.com/wey-gu/ducter/apps/desktop/internal/say"
 	"github.com/wey-gu/ducter/apps/desktop/internal/store"
-	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
 )
 
 // The quiet conversation (D104). By default the conversation is the
@@ -336,7 +335,7 @@ func (a *App) news(c *ui.Context, key string, it protocol.LivingItem, owns bool)
 		// replaces a minute later.
 		if wait := a.wordsDueIn(task); wait > 0 {
 			c.After(wait + 50*time.Millisecond)
-			a.waitingRow(c.Key("words:"+key), a.L.T("activity.result"), "")
+			a.waitingRow(c, "words:"+key, a.L.T("activity.result"), "")
 			return
 		}
 	}
@@ -369,7 +368,7 @@ func (a *App) ask(c *ui.Context, d *store.DecisionState, taskID string) {
 	if !inTask && openAsk(d) {
 		if wait := a.relayDueIn(d); wait > 0 {
 			c.After(wait + 50*time.Millisecond)
-			a.waitingRow(c.Key("relay:"+d.DecisionID), a.L.T("activity.relay"), "")
+			a.waitingRow(c, "relay:"+d.DecisionID, a.L.T("activity.relay"), "")
 			return
 		}
 	}
@@ -560,45 +559,55 @@ func (a *App) whenOf(iso string) string {
 const timeGap = 15 * time.Minute
 
 // presenceRow is shown while the user waits on a reply: the clay partner
-// where its words will appear, and one plain line of what it is doing,
-// updated in place, gone when the reply lands. A step past 15 s adds a
-// reassuring line; past 45 s, that it will say when it's ready.
+// where its words will appear, acting out the step it is on, and one
+// plain line of what it is doing in the person's terms, updated in place,
+// gone when the reply lands (D104, D425). A step past 15 s adds a
+// reassuring line; past 45 s, that it will say when it's ready, and the
+// figure only breathes.
 func (a *App) presenceRow(c *ui.Context) {
 	step, since := "thinking", a.thinkingSince
+	about, source := "", ""
 	if act := a.S.Activity; act != nil {
-		step, since = act.Step, a.S.ActivityAt
+		step, since, about, source = act.Step, a.S.ActivityAt, act.About, act.Source
 	}
 	if since.IsZero() {
 		since = a.lastUserAt()
 	}
 	el := time.Since(since)
-	sub := ""
+	sub := aliveSubFor(el)
 	switch {
-	case el >= 45*time.Second:
-		sub = a.L.T("activity.long")
-	case el >= 15*time.Second:
-		sub = a.L.T("activity.slow")
+	case el < aliveSlow:
+		c.After(aliveSlow - el) // the reassuring line comes on time
+	case el < aliveLong:
+		c.After(aliveLong - el)
 	}
-	if sub == "" && !since.IsZero() {
-		c.After(15*time.Second - el) // the reassuring line comes on time
-	} else if el < 45*time.Second {
-		c.After(45*time.Second - el)
+	key, arg := aliveWords(step, about, source)
+	line := a.L.T(key)
+	if arg != "" {
+		line = a.L.T(key, arg)
 	}
-	a.waitingRow(c.Key("presence"), a.L.T("activity."+step), sub)
+	if sub != "" {
+		sub = a.L.T(sub)
+	}
+	a.waitingStep(c.Key("presence"), "presence", step, el, line, sub)
 }
 
 // waitingRow is the clay partner at work and one plain line where its
-// words will land; sub is a second, reassuring line ("" for none).
-func (a *App) waitingRow(c *ui.Context, line, sub string) {
-	t := a.T
-	ui.Row(c).Gap(t.S3).AlignItems(ui.Center).MinHeight(40).Role(ui.RoleStatus).Label(line).Children(func() {
-		a.partnerFace(c, "presence", theme.Working, 32)
-		ui.Column(c).Gap(1).MinWidth(0).Children(func() {
-			uiText(c, line).FontSize(t.MD).TextColor(t.InkMuted)
-			if sub != "" {
-				uiText(c, sub).FontSize(t.SM).TextColor(t.InkMuted)
-			}
-		})
+// words will land, for a wait with its own words (a result or a question
+// being put into the partner's words): the reading pose.
+func (a *App) waitingRow(c *ui.Context, key, line, sub string) {
+	a.waitingStep(c.Key(key), key, "result", 0, line, sub)
+}
+
+// waitingStep is the alive line for a step el into it (D425): the clay
+// partner in the step's pose and loop, the words held for the dwell.
+func (a *App) waitingStep(c *ui.Context, key, step string, el time.Duration, line, sub string) {
+	m := aliveMotionFor(step, el, c.Preferences().ReduceMotion || a.aliveResting(c))
+	if m != aliveStill && m != aliveSettle && el < aliveSettleAfter {
+		c.After(aliveSettleAfter - el) // it calms on time
+	}
+	a.aliveLine(c, key, line, sub, func() {
+		a.aliveFigure(c, key, aliveFaceFor(step), m, 32)
 	})
 }
 

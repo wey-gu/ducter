@@ -263,7 +263,7 @@ export class Store {
   /** What the partner is doing while the user waits (D104): its step, when this client first saw
    *  that step (local clock, so a skewed server clock can't make it look slow), and the channel
    *  seq at which a turn last ended (a user message at or before it has had its turn). */
-  activity?: { step: ActivityStep; at: number };
+  activity?: { step: ActivityStep; at: number; about?: string; source?: "calendar" | "todos" | "accounts" };
   activityEndedAt = 0;
   actionResults: Extract<ServerFrame, { t: "action_result" }>[] = [];
   /** D222: what a Go on a change card ran (the connection_call with its decision id), the latest by seq. */
@@ -397,7 +397,7 @@ export class Store {
         if (!f.activity) {
           this.activity = undefined;
           this.activityEndedAt = this.channelSeq;
-        } else if (this.activity?.step !== f.activity.step) this.activity = { step: f.activity.step, at: Date.now() };
+        } else if (this.activity?.step !== f.activity.step || this.activity.about !== f.activity.about || this.activity.source !== f.activity.source) this.activity = { step: f.activity.step, at: Date.now(), ...(f.activity.about ? { about: f.activity.about } : {}), ...(f.activity.source ? { source: f.activity.source } : {}) };
         return;
       case "error": {
         this.errors.push(f.message);

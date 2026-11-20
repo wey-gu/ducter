@@ -262,6 +262,11 @@ type App struct {
 	// thinkingSince is when this app sent the message it waits on (the
 	// presence row's clock before the partner names a step, D104).
 	thinkingSince time.Time
+	// aliveShown is each waiting line on screen and since when, for its
+	// dwell; aliveActiveAt is when the window was last the active one, for
+	// the figure's rest (D425, alive.go).
+	aliveShown    map[string]aliveShown
+	aliveActiveAt time.Time
 	// LocaleFixed keeps the language as given (DUCTER_LOCALE); otherwise
 	// it follows the user's first message (localeSet once it did).
 	LocaleFixed bool

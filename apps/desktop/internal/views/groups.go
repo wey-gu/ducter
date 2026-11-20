@@ -317,7 +317,7 @@ func (a *App) groupCard(c *ui.Context, bg boardGroup) {
 					uiText(c, fmt.Sprint(r.part)).FontSize(t.XS).FontWeight(600).TextColor(t.InkSoft).FontFeatures("tnum").Width(16).Label(a.L.T("group.part", r.part))
 					fill := map[string]ui.Color{"done": t.Done.Dot, "working": t.Working.Dot, "needs": t.NeedsYou.Dot, "failed": t.Failed.Dot, "dropped": t.Failed.Dot, "held": t.InkSoft, "waiting": t.Waiting.Ink}[k]
 					if k == "working" {
-						ui.Box(c.Key("pulse")).Size(20, 20).Radius(10).Background(t.Working.Surface).Shrink(0).AccessHidden(true).Draw(drawPulse(t.Working.Dot, phaseOf(key)))
+						ui.Box(c.Key("pulse")).Size(20, 20).Radius(10).Background(t.Working.Surface).Shrink(0).AccessHidden(true).Draw(drawPulse(t.Working.Dot, phaseOf(key), a.aliveResting(c)))
 					} else {
 						ui.Box(c.Key("mark")).Size(20, 20).Shrink(0).AccessHidden(true).Draw(drawGroupMark(k, fill, t.Surface))
 					}

@@ -70,12 +70,16 @@ var zhVoice = Table{
 	"talk.floor":         "这个要你在屏幕上点一下。",
 	"talk.floor.show":    "去看看",
 	"talk.ended.quiet":   "一分钟没听到声音，先停了。",
-	"talk.say.hint":      "说「好」，或者「先等等」。",
-	"talk.say.floor":     "这个要你在屏幕上点一下。",
-	"talk.say.more":      "其余的写在屏幕上了。",
-	"talk.say.went":      "好，这就去做。",
-	"talk.say.held":      "好，先不动。",
-	"talk.say.bye":       "我先不听了。",
+	// D450: a tap on the microphone while nothing can think (D440).
+	"talk.cant.title": "还没法放手说",
+	"talk.cant.why":   "它还没有能用来想事情的 AI，听了也答不上。贴一个 API 密钥，或者登录 Claude Code、Codex，就能开始。现在按住麦克风说的话，它会先记下，有了就先回你。",
+	"talk.cant.ok":    "知道了",
+	"talk.say.hint":   "说「好」，或者「先等等」。",
+	"talk.say.floor":  "这个要你在屏幕上点一下。",
+	"talk.say.more":   "其余的写在屏幕上了。",
+	"talk.say.went":   "好，这就去做。",
+	"talk.say.held":   "好，先不动。",
+	"talk.say.bye":    "我先不听了。",
 }
 
 var enVoice = Table{
@@ -145,6 +149,9 @@ var enVoice = Table{
 	"talk.floor":         "This one needs a tap on the screen.",
 	"talk.floor.show":    "Show it",
 	"talk.ended.quiet":   "Nothing heard for a minute, so it stopped.",
+	"talk.cant.title":    "Can't talk hands-free yet",
+	"talk.cant.why":      "It has no AI to think with yet, so it couldn't answer. Paste an API key, or sign in to Claude Code or Codex, and you can start. Hold the microphone to say something now: it's kept and answered first.",
+	"talk.cant.ok":       "Got it",
 	"talk.say.hint":      "Say OK, or wait.",
 	"talk.say.floor":     "This one needs a tap on the screen.",
 	"talk.say.more":      "The rest is on the screen.",

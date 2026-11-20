@@ -14,6 +14,11 @@ var zhFloat = Table{
 	"float.key.taken":  "快捷键被别的应用占用了",
 	"float.first":      "我在这儿陪着你。按 %s 可以收起我，再按一次我就回来。",
 	"float.first.menu": "我在这儿陪着你。快捷键被别的应用占用了，在菜单栏点「小窗」可以收起我，再点一次我就回来。",
+	// D450: what another AI (or the page check) still found, one line; the
+	// partner held on its own agent (D435), where the line sits.
+	"float.look": "另一个 AI 看过：%s",
+	"float.doc":  "看过每一页：%s",
+	"float.held": "这会儿先用 %s 想事情",
 }
 
 var enFloat = Table{
@@ -27,6 +32,9 @@ var enFloat = Table{
 	"float.key.taken":  "Its shortcut is taken by another app",
 	"float.first":      "I'll stay right here. Press %s to put me away, and again to bring me back.",
 	"float.first.menu": "I'll stay right here. Another app holds my shortcut, so choose Mini window in the menu bar to put me away, and again to bring me back.",
+	"float.look":       "Another AI looked it over: %s",
+	"float.doc":        "Every page checked: %s",
+	"float.held":       "Thinks with %s for now",
 }
 
 func init() {

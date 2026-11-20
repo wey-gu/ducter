@@ -21,6 +21,7 @@ function setup(opts: { asked?: boolean; lang?: "zh" | "en" } = {}) {
   const spk = new FakeSpeaker();
   let now = 10_000;
   const h = { sent: [] as string[], decided: [] as [string, string][] };
+  const cant = { now: false };
   const ctl = new TalkCtl(rec, spk, {
     changed: () => {},
     send: (text) => (h.sent.push(text), true),
@@ -31,6 +32,7 @@ function setup(opts: { asked?: boolean; lang?: "zh" | "en" } = {}) {
     t: (k) => voiceWords[lang][k] ?? k,
     lastSeq: () => 5,
     openIds: () => ["old"],
+    cant: () => cant.now,
   });
   /** Time passes, with the page's ticks five times a second. */
   const wait = (ms: number) => {
@@ -42,7 +44,7 @@ function setup(opts: { asked?: boolean; lang?: "zh" | "en" } = {}) {
     wait(200);
     rec.hear(words);
   };
-  return { ctl, rec, spk, h, wait, say };
+  return { ctl, rec, spk, h, wait, say, cant };
 }
 
 const card = (id: string, question: string, more: Partial<DecisionState> = {}) => ({ decisionId: id, question, goLabel: "好", defaultOption: "hold", reversible: true, seq: 9, ...more }) as DecisionState;
@@ -176,6 +178,35 @@ describe("talk hands-free", () => {
     s.rec.avail = { ok: true, where: "device", mic: "denied", speech: "granted" };
     await s.ctl.start();
     expect(s.ctl.ui).toBe("denied");
+  });
+
+  // D450: a tap with nothing on the home to think with (D440): no microphone, no voice, the panel
+  // says why with the way to a key; the home losing its agent mid-talk ends it saying nothing more.
+  test("nothing can think yet: the microphone isn't opened and nothing is said; the panel says why", async () => {
+    const s = setup({ asked: false });
+    s.cant.now = true;
+    await s.ctl.start();
+    expect(s.ctl.ui).toBe("cant");
+    expect(s.rec.started).toEqual([]);
+    expect(s.spk.said).toEqual([]);
+    expect(s.ctl.firstTime()).toBe(true); // the first-use card is still to come, once it can talk
+    s.ctl.dismiss();
+    expect(s.ctl.ui).toBe("idle");
+  });
+
+  test("the home loses what it thinks with mid-talk: the voice stops and the talk ends, nothing more said", async () => {
+    const s = setup();
+    await s.ctl.start();
+    s.say("CI 怎么样了");
+    s.wait(1400);
+    s.ctl.reply(6, "还在跑，十分钟内告诉你。");
+    expect(s.spk.said.length).toBe(1);
+    s.cant.now = true;
+    s.wait(200);
+    expect(s.ctl.ui).toBe("cant");
+    expect(s.ctl.st.endedBy).toBe("cant");
+    s.ctl.reply(7, "这句我先记下了。");
+    expect(s.spk.said.length).toBe(1);
   });
 });
 

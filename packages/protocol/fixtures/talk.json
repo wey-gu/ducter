@@ -1108,6 +1108,105 @@
    ],
    "phase": "speak",
    "endedBy": ""
+  },
+  {
+   "name": "nothing can think yet: it ends at once and says nothing",
+   "events": [
+    {
+     "k": "cant",
+     "at": 0
+    },
+    {
+     "k": "heard",
+     "text": "帮我看看明天的天气",
+     "at": 500
+    },
+    {
+     "k": "tick",
+     "at": 3000
+    },
+    {
+     "k": "reply",
+     "text": "这句我先记下了。",
+     "at": 3500
+    },
+    {
+     "k": "tick",
+     "at": 90000
+    }
+   ],
+   "fx": [
+    [
+     {
+      "do": "end",
+      "by": "cant"
+     }
+    ],
+    [],
+    [],
+    [],
+    []
+   ],
+   "phase": "ended",
+   "endedBy": "cant"
+  },
+  {
+   "name": "the last agent signs out mid-talk: the voice stops, nothing more is said",
+   "events": [
+    {
+     "k": "heard",
+     "text": "CI 怎么样了",
+     "at": 0
+    },
+    {
+     "k": "tick",
+     "at": 1300
+    },
+    {
+     "k": "reply",
+     "text": "还在跑，十分钟内告诉你。",
+     "at": 4000
+    },
+    {
+     "k": "cant",
+     "at": 4500
+    },
+    {
+     "k": "reply",
+     "text": "这句我先记下了。我还没有能用来想事情的 AI。",
+     "at": 5000
+    }
+   ],
+   "fx": [
+    [],
+    [
+     {
+      "do": "relisten"
+     },
+     {
+      "do": "send",
+      "text": "CI 怎么样了"
+     }
+    ],
+    [
+     {
+      "do": "speak",
+      "text": "还在跑，十分钟内告诉你。"
+     }
+    ],
+    [
+     {
+      "do": "hush"
+     },
+     {
+      "do": "end",
+      "by": "cant"
+     }
+    ],
+    []
+   ],
+   "phase": "ended",
+   "endedBy": "cant"
   }
  ],
  "shown": [

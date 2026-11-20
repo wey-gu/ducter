@@ -85,6 +85,16 @@ report is checked on the same points only and goes on with `look` (`found`, `lef
 failure fails open; 40 looks a day; the person's 这类不用复查 is a rule (D165 notice kind
 `fresh_look`, `second_look` before D443 still read; the Log step is `raw.freshLook`, `raw.secondLook` before). The task's `report_to_main` tool and its words are unchanged.
 
+**One held round per result (D450).** When the page check (D439) finds something on a report the
+look will also read, the task hears nothing at once: the look sends one message with its points
+(under its own opening) and the document's lines (**Ducter also checked the document page by page
+and found:**), or the document's own words alone when the look finds nothing or can't read it. The
+held report carries what the document check would leave, so a missing fix, a failure or a restart
+still goes out with both lefts; the fix is checked once on the look's points, and the document
+check never sends back twice. A document first found wrong while a look waits for its fix rides on
+that round. When the look won't read the report, the document's words are the tool's answer, as
+before.
+
 ## Checkpoint (principle 13)
 
 The window writes a checkpoint after each meaningful step, while it is still healthy. It

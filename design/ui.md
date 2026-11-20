@@ -636,6 +636,12 @@ bar's mark is unchanged by it (D306). When another app holds ⌃⌥⌘Space (D44
 key and say **快捷键被别的应用占用了 / Its shortcut is taken by another app** under their name, and the
 first-time line points at the menu instead of the key. The partner in its head has 5 pt of empty box
 round it (`aliveFigureIn`, `partnerFaceIn`), so its sway and breath are never cut at the box's side.
+What the conversation says under a Go or a result stays here too (D450): under the line, one line
+at 13/600 in `NeedsYou.Ink`, **另一个 AI 看过：{first point}** (else a document's **看过每一页：
+{first}**), cut with an ellipsis, the whole on hover. While the partner's own agent is held (D435),
+nobody answering makes the line **{time} 接着回你**; another answering adds a muted 12-pt note
+**这会儿先用 {agent} 想事情** under the line. The menu bar extra's Go submenu starts with the same
+另一个 AI 看过 line, disabled, above Go.
 
 **Settings (D150).** A game's settings menu. On the left a rail (264 wide, on the chrome's cream
 with a hairline) of chunky clay tabs, 56 tall, radius 16: each the clay thing it is about at 40

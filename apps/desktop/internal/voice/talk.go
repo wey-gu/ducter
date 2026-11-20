@@ -364,11 +364,11 @@ type TalkState struct {
 	Hinted     bool
 	Echo       string
 	Closing    bool
-	EndedBy    string // "said", "quiet", "tap"
+	EndedBy    string // "said", "quiet", "tap", "cant"
 }
 
 // TalkEvent is what happened: K is "heard", "tick", "spoken", "reply",
-// "ask", "answered" or "end".
+// "ask", "answered", "end" or "cant" (nothing can think, D450).
 type TalkEvent struct {
 	K        string `json:"k"`
 	Text     string `json:"text,omitempty"`
@@ -590,6 +590,11 @@ func TalkStep(st TalkState, e TalkEvent, w TalkWords) (TalkState, []TalkEffect) 
 		return s, fx
 	case "end":
 		end("tap")
+		return s, fx
+	case "cant":
+		// D450: nothing on the home can think (D440): it ends at once, nothing
+		// said into the void; the client shows why and the way to a key.
+		end("cant")
 		return s, fx
 	}
 	return st, fx

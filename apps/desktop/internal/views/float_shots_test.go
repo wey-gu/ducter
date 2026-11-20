@@ -16,6 +16,7 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"github.com/wey-gu/ducter/apps/desktop/internal/i18n"
+	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
 )
 
@@ -199,4 +200,66 @@ func editorBackdrop(t *testing.T, code []string, w, h int, dark bool, lang i18n.
 	tt.Frame()
 	tt.Frame()
 	return tt.Image()
+}
+
+// TestD450FloatShots pictures what D450 added to the mini window: another
+// AI's point left on a Go and on a result, and the partner held on its own
+// agent (another thinking for it; nobody can until a time). zh and en,
+// light and dark, the panel alone and over the editor.
+//
+//	DUCTER_D450_SHOTS=$PWD/.shots/seams-450 go test ./internal/views -run TestD450FloatShots
+func TestD450FloatShots(t *testing.T) {
+	dir := os.Getenv("DUCTER_D450_SHOTS")
+	if dir == "" {
+		t.Skip("DUCTER_D450_SHOTS not set")
+	}
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	src, _ := os.ReadFile(filepath.Join("..", "..", "main.go"))
+	code := strings.Split(string(src), "\n")
+	code = code[:min(44, len(code))]
+	const W, H, scale = 1440, 900, 2
+	for _, lang := range []i18n.Lang{i18n.ZH, i18n.EN} {
+		for _, dark := range []bool{false, true} {
+			paper := map[bool]string{false: "light", true: "dark"}[dark]
+			back := editorBackdrop(t, code, W, H, dark, lang)
+			for _, scene := range []string{"look-ask", "look-reply", "held", "held-waits", "talk-cant"} {
+				var app *App
+				switch scene {
+				case "talk-cant":
+					// The microphone tapped with nothing to think with (D440).
+					app, _, _ = floatApp(t, lang, "quiet")
+					app.Receive(protocol.ServerFrame{T: "first_screen", First: &protocol.FirstScreen{Visit: "first", NoBrain: true, KeyRoutes: routesElsewhere}})
+					app.talkTap()
+				case "look-ask":
+					app = floatLookApp(t, lang, "ask")
+				case "look-reply":
+					app = floatLookApp(t, lang, "reply")
+				default:
+					k := heldCase(scene == "held-waits")
+					app, _, _ = floatApp(t, lang, "working")
+					app.Receive(protocol.ServerFrame{T: "settings", Settings: &protocol.Settings{Name: "Ducter", Language: "auto", Brain: k.setting}, BrainNow: k.brain})
+				}
+				tt := ui.NewTesterWith(app.FloatView, FloatW, FloatMaxH, ui.TesterOptions{Dark: dark, Preferences: ui.Preferences{ReduceMotion: true}})
+				tt.SetScale(scale)
+				tt.SetWindowActive(false)
+				for i := 0; i < 6; i++ {
+					tt.Frame()
+					tt.Advance(400 * time.Millisecond)
+				}
+				tt.SetSize(FloatW, app.float.h)
+				for i := 0; i < 3; i++ {
+					tt.Frame()
+					tt.Advance(400 * time.Millisecond)
+				}
+				img := tt.Image()
+				writePNG(t, filepath.Join(dir, fmt.Sprintf("float-%s-%s-%s.png", scene, lang, paper)), img)
+				out := image.NewRGBA(back.Bounds())
+				draw.Draw(out, out.Bounds(), back, image.Point{}, draw.Src)
+				panelOver(out, img, (W-FloatW-16)*scale, (24+12)*scale, 16*scale, dark)
+				writePNG(t, filepath.Join(dir, fmt.Sprintf("desk-%s-%s-%s.png", scene, lang, paper)), out)
+			}
+		}
+	}
 }

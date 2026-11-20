@@ -683,12 +683,17 @@ func (tm *trayMenu) refresh(force bool) {
 		if d.GoLabel != "" {
 			goLabel = l.T("tray.go", d.GoLabel)
 		}
-		sub := []*mygo.MenuItem{
+		var sub []*mygo.MenuItem
+		if d.Look != "" {
+			// D450: what another AI still found, read before Go (never a button).
+			sub = append(sub, &mygo.MenuItem{Label: d.Look, Disabled: true}, mygo.Separator())
+		}
+		sub = append(sub, []*mygo.MenuItem{
 			{Label: goLabel, Click: decide("go")},
 			{Label: l.T("tray.hold"), Click: decide("hold")},
 			mygo.Separator(),
 			{Label: l.T("tray.reply"), Click: open(func() { app.Route = views.RouteConversation })},
-		}
+		}...)
 		if task != "" {
 			sub = append(sub, &mygo.MenuItem{Label: l.T("tray.task"), Click: open(where)})
 		}

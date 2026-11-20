@@ -156,9 +156,9 @@ export interface CoreApi {
   /** D435: the partner's own agent held after a turn failed on it (core/src/brain-hold.ts); absent in tests and stubs (then: as before). */
   brainHold?: BrainHoldPort;
   /** D437: another AI's one look before a result goes out (core/src/fresh-look.ts); absent in tests and stubs. */
-  freshLook?: { take(taskId: string, body: import("./index.ts").Bodies["report"]): boolean; readonly heldWords: string };
+  freshLook?: { take(taskId: string, body: import("./index.ts").Bodies["report"], also?: { words: string; found: string }): boolean; readonly heldWords: string; readonly heldWithDocWords?: string; waiting?(taskId: string): boolean };
   /** D439: a document a done report shows, checked page by page (core/src/doc-check.ts); absent in tests and stubs. */
-  docCheck?(taskId: string, body: import("./index.ts").Bodies["report"]): Promise<{ again?: string; doc?: import("./doc-bar.ts").DocCheck; media?: import("./media.ts").MediaRef[] } | undefined>;
+  docCheck?(taskId: string, body: import("./index.ts").Bodies["report"]): Promise<{ again?: string; againFound?: string; doc?: import("./doc-bar.ts").DocCheck; media?: import("./media.ts").MediaRef[] } | undefined>;
   /** D437: the 这类不用复查 rule Ducter kept from this user message's words, for the partner's line under them. */
   noLookFrom?(seq: number): RuleView | undefined;
   /** D444: the memories Ducter took back at this user message's words (别记这个), for the partner's line under them. */

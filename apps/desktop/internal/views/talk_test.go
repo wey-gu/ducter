@@ -258,3 +258,51 @@ func TestTalkShots(t *testing.T) {
 		voiceShot(t, r, "talk-first", lang)
 	}
 }
+
+// D450: a tap while nothing on the home can think (D440): the microphone
+// isn't opened and nothing is said; the panel says why, with the way to a
+// key. The home losing what it thinks with mid-talk ends it, saying nothing
+// more.
+func TestTalkCantAnswerYet(t *testing.T) {
+	for _, lang := range []i18n.Lang{i18n.ZH, i18n.EN} {
+		r := voiceApp(t, lang, true)
+		r.app.Receive(protocol.ServerFrame{T: "first_screen", First: &protocol.FirstScreen{Visit: "first", NoBrain: true, KeyRoutes: routesElsewhere}})
+		r.frames()
+		r.tapMic(t)
+		if r.app.hf.on || r.rec.Listening || len(r.spk.Said) != 0 {
+			t.Fatalf("%s: it talked with nothing to think with (on %v, listening %v, said %v)", lang, r.app.hf.on, r.rec.Listening, r.spk.Said)
+		}
+		for _, w := range []string{r.app.L.T("talk.cant.title"), r.app.L.T("key.route.go", "Google Gemini")} {
+			if !r.tt.HasText(w) {
+				t.Errorf("%s: no %q in %v", lang, w, r.tt.Texts())
+			}
+		}
+		if err := r.tt.Click(r.app.L.T("talk.cant.ok")); err != nil {
+			t.Fatalf("%s: %v", lang, err)
+		}
+		r.frames()
+		if r.app.hf.cant || r.tt.HasText(r.app.L.T("talk.cant.title")) {
+			t.Errorf("%s: the card stayed", lang)
+		}
+	}
+}
+
+func TestTalkEndsWhenNothingCanThinkMidTalk(t *testing.T) {
+	r := talkRig(t, i18n.ZH)
+	r.tapMic(t)
+	r.rec.Hear("CI 怎么样了")
+	r.wait(1400)
+	r.event(4, protocol.KindAIMsg, protocol.AIMsg{Text: "还在跑，十分钟内告诉你。", ReplyTo: 3})
+	if len(r.spk.Said) != 1 {
+		t.Fatalf("the reply wasn't said: %v", r.spk.Said)
+	}
+	r.app.Receive(protocol.ServerFrame{T: "first_screen", First: &protocol.FirstScreen{Visit: "back", NoBrain: true, KeyRoutes: routesElsewhere}})
+	r.wait(200)
+	if r.app.hf.on || r.rec.Listening || r.spk.Speaking || !r.app.hf.cant {
+		t.Fatalf("the talk went on (on %v, listening %v, speaking %v, cant %v)", r.app.hf.on, r.rec.Listening, r.spk.Speaking, r.app.hf.cant)
+	}
+	r.event(5, protocol.KindAIMsg, protocol.AIMsg{Text: "这句我先记下了。", ReplyTo: 3})
+	if len(r.spk.Said) != 1 {
+		t.Errorf("said into the void: %v", r.spk.Said)
+	}
+}

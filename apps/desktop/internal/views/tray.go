@@ -25,6 +25,10 @@ type TrayDecision struct {
 	// InWindow (D233): answered only in the window, where its field is (a
 	// key, a pay card's security code): the menu opens Ducter instead of Go.
 	InWindow bool
+	// Look (D450): what another AI still found in what this Go sends, its
+	// first point in one line, said above Go so a Go from the menu bar is
+	// never blind to it.
+	Look string
 }
 
 // TrayView is everything the menu bar extra shows.
@@ -152,6 +156,9 @@ func (a *App) TrayDecisions(max int) []TrayDecision {
 			td.Task = t.Title()
 			td.TaskID = d.TaskID
 		}
+		if d.Look != nil && len(d.Look.Left) > 0 {
+			td.Look = oneLine(a.L.T("float.look", d.Look.Left[0]), 90)
+		}
 		out = append(out, td)
 	}
 	return out
@@ -164,7 +171,7 @@ func (a *App) TraySignature() string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "%s|%d|%s", a.L.Lang, v.State, v.Say)
 	for _, d := range v.Decisions {
-		b.WriteString("|" + d.ID)
+		b.WriteString("|" + d.ID + "~" + d.Look)
 	}
 	for _, p := range v.Partners {
 		b.WriteString("|" + p.Label)

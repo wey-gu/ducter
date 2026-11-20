@@ -177,6 +177,14 @@ It keeps listening and answers when you finish; nothing to hold. Say “that's a
 a minute of quiet stops it too.**, D305's privacy line, **开始 / Start** · **先不用 / Not now**.
 Permissions, denied and unavailable are D305's own cards and words.
 
+**Nothing to think with (D450).** A tap while the home says nothing can think (D440:
+`first_screen.noBrain`, else no agent signed in) opens no microphone, says nothing and leaves the
+first-tap card for later; in its place a card: **还没法放手说 / Can't talk hands-free yet**, why,
+that holding the microphone still keeps a message (answered first, D440), **去 {provider} 拿一个 /
+Get one on {provider}** (the home's first way to a key) and **知道了 / Got it**. If the home loses
+what it thinks with mid-talk, the reducer's `cant` ends the talk at once, the voice hushed and
+nothing more said (not even 我先不听了), and the same card shows.
+
 **The talk** (over the composer like the listening strip, larger; on a phone the partner in the
 middle at 92 pt and the words under it at 20 px): the clay face by phase (listening: tilted toward the
 mic, leaning with the level; thinking: the working pose, a slow sway; speaking: two soft rings from

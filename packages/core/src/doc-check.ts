@@ -691,10 +691,17 @@ export interface DocCheckDeps {
   read?: ReadOptions;
 }
 
+/** The opening of the doc check's words back to the task (D439). */
+export const DOC_AGAIN_OPENING = "Not sent yet: before the user sees it, Ducter checked the document page by page and found:";
+
 export interface DocCheckOutcome {
   /** Words back to the task instead of reporting (it fixes, then reports again). */
   again?: string;
-  /** What rides on the report (only when something is still so). */
+  /** D450: with `again`, only what was found (each document and its lines), for one combined
+   *  send-back with a fresh look's findings. */
+  againFound?: string;
+  /** What rides on the report (only when something is still so); with `again`, what would be
+   *  left if the task never fixed it. */
   doc?: DocCheck;
   /** The media as shown (an Office file and its PDF paired). */
   media?: MediaRef[];
@@ -737,20 +744,6 @@ export function createDocCheck(d: DocCheckDeps) {
         return m.pages && r?.pages ? { ...m, pages: { ...m.pages, n: r.pages } } : m;
       });
       const found = results.filter((x) => x.r.findings.length);
-      const key = `${taskId}`;
-      if (found.length && !asked.has(key)) {
-        asked.add(key);
-        const parts = found.map(({ m, r }) => {
-          const slides = r.format === "pptx";
-          const lines = r.findings.map((f) => `- ${docFindingForTask(f, slides)}`).join("\n");
-          const pics = r.pictures.length ? `\nIts ${r.pictures.length} ${slides ? "slides" : "pages"} as pictures, to look at one by one: ${r.pictures.length <= 12 ? r.pictures.join(", ") : `${r.pictures.slice(0, 12).join(", ")} … (in ${r.pictures[0]!.replace(/\/[^/]+$/, "")})`}` : "";
-          return `${m.name ?? "the document"}:\n${lines}${pics}`;
-        });
-        return {
-          again: `Not sent yet: before the user sees it, Ducter checked the document page by page and found:\n${parts.join("\n\n")}\n\nFix these in the same file, render it again, look at every page, and call report_to_main again with the same state and show. If one of these is wrong (the user asked for it that way), keep it and say why in one line of the summary.`,
-          media: withPages,
-        };
-      }
       if (!found.length) return { media: withPages };
       const slides = found.some((x) => x.r.format === "pptx");
       const all = found.flatMap((x) => x.r.findings);
@@ -759,6 +752,25 @@ export function createDocCheck(d: DocCheckDeps) {
         found: all,
         left: all.slice(0, DOC_LEFT_MAX).map((f) => docFindingWords(f, open?.language ?? (reads === "latin" ? "en" : reads === "han" ? "zh-CN" : undefined), slides)),
       };
+      const key = `${taskId}`;
+      if (!asked.has(key)) {
+        asked.add(key);
+        const parts = found.map(({ m, r }) => {
+          const slides = r.format === "pptx";
+          const lines = r.findings.map((f) => `- ${docFindingForTask(f, slides)}`).join("\n");
+          const pics = r.pictures.length ? `\nIts ${r.pictures.length} ${slides ? "slides" : "pages"} as pictures, to look at one by one: ${r.pictures.length <= 12 ? r.pictures.join(", ") : `${r.pictures.slice(0, 12).join(", ")} … (in ${r.pictures[0]!.replace(/\/[^/]+$/, "")})`}` : "";
+          return `${m.name ?? "the document"}:\n${lines}${pics}`;
+        });
+        const againFound = parts.join("\n\n");
+        // D450: what was found, and what would be left if it went on unfixed (the report a fresh
+        // look holds carries it, so the one round ends with what is left from both).
+        return {
+          again: `${DOC_AGAIN_OPENING}\n${againFound}\n\nFix these in the same file, render it again, look at every page, and call report_to_main again with the same state and show. If one of these is wrong (the user asked for it that way), keep it and say why in one line of the summary.`,
+          againFound,
+          doc,
+          media: withPages,
+        };
+      }
       return { doc, media: withPages };
     },
     /** A restart forgets which went back (one more round at most). */

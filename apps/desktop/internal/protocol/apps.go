@@ -24,6 +24,76 @@ type AppMeta struct {
 	// is the review board Ducter made from its template.
 	Task *AppTask `json:"task,omitempty"`
 	Kind string   `json:"kind,omitempty"`
+	// D410: the app's own line for its shelf tile (ducter.summary), its
+	// mark and clay tint (else the window and a tint from its id), pinned.
+	Summary string `json:"summary,omitempty"`
+	Icon    string `json:"icon,omitempty"`
+	Tint    string `json:"tint,omitempty"`
+	Pinned  bool   `json:"pinned,omitempty"`
+}
+
+// AppIcons are the marks an app's tile can carry (D410).
+var AppIcons = []string{"window", "coins", "check", "board", "list", "chart"}
+
+// AppTints are the shelf's clay tints (D410: the person's muted clays, D285).
+var AppTints = []string{"clay", "sand", "sage", "mist", "lilac", "stone"}
+
+// TintOf is an app's tint: its own, else one picked from its id (the same
+// hash as packages/protocol/src/apps.ts appTint).
+func (m AppMeta) TintOf() string {
+	for _, t := range AppTints {
+		if m.Tint == t {
+			return t
+		}
+	}
+	var h uint32
+	for _, ch := range m.ID {
+		h = h*31 + uint32(ch)
+	}
+	return AppTints[h%uint32(len(AppTints))]
+}
+
+// IconOf is an app's mark: its own, else the window (the review board: the board).
+func (m AppMeta) IconOf() string {
+	for _, i := range AppIcons {
+		if m.Icon == i {
+			return i
+		}
+	}
+	if m.Kind == "reviews" {
+		return "board"
+	}
+	return "window"
+}
+
+// AppIdea is a first app to make while the shelf is empty (D410): what the
+// person could say, in both languages, and why this one.
+type AppIdea struct {
+	Say  Words  `json:"say"`
+	Why  *Words `json:"why,omitempty"`
+	Icon string `json:"icon"`
+}
+
+// AppSetReq is the shelf's 「⋯」: rename, pin, stop a routine updating it (D410).
+type AppSetReq struct {
+	T      string  `json:"t"` // app_set
+	ID     string  `json:"id"`
+	Name   *string `json:"name,omitempty"`
+	Pinned *bool   `json:"pinned,omitempty"`
+	Untask bool    `json:"untask,omitempty"`
+}
+
+// AppIDReq is app_back, app_remove or app_restore (D410: 撤销 a delete).
+type AppIDReq struct {
+	T  string `json:"t"`
+	ID string `json:"id"`
+}
+
+// AppSummaryReq is the app's own line for its tile (ducter.summary, D410).
+type AppSummaryReq struct {
+	T    string `json:"t"` // app_summary
+	ID   string `json:"id"`
+	Text string `json:"text"`
 }
 
 // AppTask names the task that fills an app each round (D407).
@@ -58,7 +128,7 @@ type AppCard struct {
 	ID      string `json:"id"`
 	Name    string `json:"name"`
 	Version int    `json:"version"`
-	Change  string `json:"change"` // made | changed | data
+	Change  string `json:"change"` // made | changed | data | removed (D410)
 }
 
 // AppRef names the app a person's message is about, or that asked (Ask).
@@ -103,6 +173,7 @@ type AppAskReq struct {
 type AppsFrame struct {
 	T     string          `json:"t"`
 	Apps  []AppMeta       `json:"apps,omitempty"`
+	Ideas []AppIdea       `json:"ideas,omitempty"`
 	ID    string          `json:"id,omitempty"`
 	App   *AppOpen        `json:"app,omitempty"`
 	Gone  bool            `json:"gone,omitempty"`

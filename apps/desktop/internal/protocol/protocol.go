@@ -151,6 +151,9 @@ type AIMsg struct {
 	// App (D405): the app this message made or changed; AppAnswer: it answers an app's ask.
 	App       *AppCard   `json:"app,omitempty"`
 	AppAnswer *AppAnswer `json:"appAnswer,omitempty"`
+	// Shelf (D410): the person asked where their apps are: a card that
+	// opens 小应用 / Apps goes under these words.
+	Shelf bool `json:"shelf,omitempty"`
 }
 
 type Ack struct {
@@ -1129,6 +1132,8 @@ type Send struct {
 	Media []string `json:"media,omitempty"`
 	// Reply (D236): the one message this answers; core fills the quote.
 	Reply *ReplyWant `json:"reply,omitempty"`
+	// App (D405): the words were typed in that app's own window (its id).
+	App string `json:"app,omitempty"`
 	// Via (D277): "imessage" when the Mac app's iMessage bridge relays it.
 	Via string `json:"via,omitempty"`
 }

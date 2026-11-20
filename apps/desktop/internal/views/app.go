@@ -40,6 +40,8 @@ const (
 	RoutePast
 	// RouteDid is 替你做过的 / Done for you (D300, did.go).
 	RouteDid
+	// RouteApps is 你的小应用 / Your apps (D410, apps_shelf.go).
+	RouteApps
 )
 
 // Updater runs a function on the UI thread and draws a frame
@@ -72,6 +74,13 @@ type App struct {
 	ShowMain  func()
 	openedApp string
 	bridge    *AppBridge
+	// shelf is 你的小应用 / Your apps (D410, apps_shelf.go); appWins the apps
+	// open in their own windows (appwin.go).
+	shelf   shelfState
+	appWins map[string]*AppWin
+	wantAsk string // the app whose window opens with its edit box ready
+	// restoring are the deleted apps whose 撤销 went out (D410).
+	restoring map[string]bool
 	// Now is the clock, time.Now unless a test sets it.
 	Now func() time.Time
 	// Local is what the client knows about this Mac (first-run hints,
@@ -575,6 +584,8 @@ func (a *App) View(c *ui.Context) {
 			a.pastView(c)
 		case a.Route == RouteDid:
 			a.didView(c)
+		case a.Route == RouteApps:
+			a.appsView(c)
 		default:
 			a.conversation(c)
 		}
@@ -626,6 +637,8 @@ func (a *App) shortcuts(c *ui.Context) {
 		a.OpenDevices()
 	case c.Shortcut(ui.Cmd, ui.Key4):
 		a.OpenPartner()
+	case c.Shortcut(ui.Cmd, ui.Key5):
+		a.OpenApps() // D410: 你的小应用 / Your apps
 	case c.Shortcut(ui.Cmd, ui.KeyComma):
 		a.OpenSettings()
 	case c.Shortcut(ui.Cmd|ui.Alt, ui.KeyB):
@@ -641,6 +654,10 @@ func (a *App) shortcuts(c *ui.Context) {
 		}
 		if a.Route == RouteDid {
 			a.didEsc() // D300: clears, then goes back
+			break
+		}
+		if a.Route == RouteApps {
+			a.appsEsc() // D410: a rename or a delete asked closes, then the place
 			break
 		}
 		if a.Route == RouteConversation && a.CancelReply() {
@@ -683,6 +700,8 @@ func (a *App) Up() {
 		a.pastBack()
 	case RouteDid:
 		a.didBack()
+	case RouteApps:
+		a.appsBack()
 	}
 }
 

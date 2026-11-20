@@ -184,7 +184,7 @@ func (a *App) boardHead(c *ui.Context, b store.Board, lens string, n [4]int, str
 	ui.Row(c.Key("oh-head")).Gap(t.S4).AlignItems(ui.Center).Children(func() {
 		a.avatar(c, moodOf(n), 76)
 		ui.Column(c.Key("say-col")).Gap(t.S2 + 2).Grow(1).Shrink(1).MinWidth(0).Children(func() {
-			ui.Text(c.Key("say"), keepWords(autospace(a.headLine(b, lens, n)))).Font(t.Display).FontSize(t.XL + 2).FontWeight(700).LineHeight(1.3).TextColor(t.Ink).
+			uiText(c.Key("say"), keepWords(autospace(a.headLine(b, lens, n)))).Font(t.Display).FontSize(t.XL + 2).FontWeight(700).LineHeight(1.3).TextColor(t.Ink).
 				MaxWidth(560)
 			strip()
 		})
@@ -270,7 +270,7 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 		ui.Row(c.Key("c1")).Gap(10).AlignItems(ui.Center).Children(func() {
 			a.coinBox(c, task.ID, task.Harness(), 28, false, coinMotionOf(att))
 			// D315: a long title takes a second line rather than losing its end.
-			ui.Text(c, keepWords(autospace(shortTitle(task.Title())))).FontSize(t.MD).FontWeight(600).LineHeight(1.35).TextColor(t.Ink).MaxLines(2).Grow(1).Shrink(1).MinWidth(0).Tooltip(longTitleTip(task.Title()))
+			uiText(c, keepWords(autospace(shortTitle(task.Title())))).FontSize(t.MD).FontWeight(600).LineHeight(1.35).TextColor(t.Ink).MaxLines(2).Grow(1).Shrink(1).MinWidth(0).Tooltip(longTitleTip(task.Title()))
 			if fresh {
 				a.statusFace(c, task, st)
 			}
@@ -291,7 +291,7 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 		if s.code != "" {
 			words += "  " + s.code
 		}
-		ui.Text(c.Key("c2"), words).FontSize(t.SM).LineHeight(1.5).TextColor(ink).MaxLines(2).MinHeight(t.SM * 1.5 * 2).Tooltip(s.words)
+		uiText(c.Key("c2"), words).FontSize(t.SM).LineHeight(1.5).TextColor(ink).MaxLines(2).MinHeight(t.SM * 1.5 * 2).Tooltip(s.words)
 		ui.Box(c.Key("c-room")).Grow(1)
 		ui.Row(c.Key("c3")).Gap(10).AlignItems(ui.Center).MinHeight(20).Children(func() {
 			a.heartbeat(c, task, att)
@@ -304,10 +304,10 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 			}
 			if ch := taskChanges(task); ch != nil {
 				if ch.Adds > 0 {
-					ui.Text(c, fmt.Sprintf("+%d", ch.Adds)).Font(t.Mono).FontSize(t.XS).TextColor(t.Done.Ink).FontFeatures("tnum")
+					uiText(c, fmt.Sprintf("+%d", ch.Adds)).Font(t.Mono).FontSize(t.XS).TextColor(t.Done.Ink).FontFeatures("tnum")
 				}
 				if ch.Dels > 0 {
-					ui.Text(c, fmt.Sprintf("−%d", ch.Dels)).Font(t.Mono).FontSize(t.XS).TextColor(t.Failed.Ink).FontFeatures("tnum")
+					uiText(c, fmt.Sprintf("−%d", ch.Dels)).Font(t.Mono).FontSize(t.XS).TextColor(t.Failed.Ink).FontFeatures("tnum")
 				}
 			}
 			if act := integrated(task); act != "" {
@@ -315,12 +315,12 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 				if act == "merge" {
 					key = "onhand.pr.merged"
 				}
-				ui.Text(c.Key("pr"), a.L.T(key)).FontSize(t.XS).FontWeight(700).TextColor(t.InkSoft).Shrink(0)
+				uiText(c.Key("pr"), a.L.T(key)).FontSize(t.XS).FontWeight(700).TextColor(t.InkSoft).Shrink(0)
 			}
 			if meta := a.whereMeta(task); len(meta) > 0 {
 				ui.Row(c.Key("meta")).Gap(t.S3).AlignItems(ui.Center).Shrink(1).MinWidth(0).MaxWidth(w / 2).Children(func() { // D291: each its own element
 					for _, m := range meta {
-						ui.Text(c, m).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(1).MinWidth(0)
+						uiText(c, m).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(1).MinWidth(0)
 					}
 				})
 			}
@@ -410,7 +410,7 @@ func (a *App) compactCard(c *ui.Context, task *store.Task, quiet bool) {
 				if task.Card != nil {
 					a.partnerMark(c, task.ID, task.Card.Persona) // D312
 				}
-				ui.Text(c, keepWords(autospace(shortTitle(task.Title())))).FontSize(14).FontWeight(600).TextColor(t.Ink).SingleLine().Shrink(1).MinWidth(0).Tooltip(longTitleTip(task.Title()))
+				uiText(c, keepWords(autospace(shortTitle(task.Title())))).FontSize(14).FontWeight(600).TextColor(t.Ink).SingleLine().Shrink(1).MinWidth(0).Tooltip(longTitleTip(task.Title()))
 				if s := taskTodo(task); s != nil {
 					a.todoChip(c, "compact:"+task.ID, s.SourceItemRef) // D341
 				}
@@ -420,12 +420,12 @@ func (a *App) compactCard(c *ui.Context, task *store.Task, quiet bool) {
 				if s.tone == "failed" {
 					ink = t.Failed.Ink
 				}
-				ui.Text(c.Key("w"), keepWords(autospace(s.words))).FontSize(t.XS).TextColor(ink).SingleLine().Shrink(1).MinWidth(0).Tooltip(s.words)
+				uiText(c.Key("w"), keepWords(autospace(s.words))).FontSize(t.XS).TextColor(ink).SingleLine().Shrink(1).MinWidth(0).Tooltip(s.words)
 				if quiet && task.Card != nil {
-					ui.Text(c.Key("since"), a.tp("onhand.wait.since", a.agoLong(task.Card.UpdatedAt))).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(0)
+					uiText(c.Key("since"), a.tp("onhand.wait.since", a.agoLong(task.Card.UpdatedAt))).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(0)
 				}
 				for _, m := range a.whereMeta(task) {
-					ui.Text(c.Key("meta:"+m), m).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(0).MaxWidth(160)
+					uiText(c.Key("meta:"+m), m).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(0).MaxWidth(160)
 				}
 			})
 		})
@@ -451,7 +451,7 @@ func (a *App) compactCard(c *ui.Context, task *store.Task, quiet bool) {
 		if hover && a.rowActs(c, task, true) {
 			return
 		}
-		ui.Text(c.Key("time"), a.rowTime(task)).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum").Shrink(0).SingleLine()
+		uiText(c.Key("time"), a.rowTime(task)).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum").Shrink(0).SingleLine()
 	})
 	clicked := card.Clicked() && !acted
 	a.heroRow(card, task.ID, clicked || focus)
@@ -477,7 +477,7 @@ func (a *App) heartbeat(c *ui.Context, task *store.Task, att protocol.Attention)
 				if d == a.L.T("time.now") {
 					words = a.L.T("onhand.card.started")
 				}
-				ui.Text(c, words).FontSize(t.XS).FontWeight(600).TextColor(t.Working.Ink).FontFeatures("tnum").SingleLine()
+				uiText(c, words).FontSize(t.XS).FontWeight(600).TextColor(t.Working.Ink).FontFeatures("tnum").SingleLine()
 			}
 		})
 	case protocol.Blocked:
@@ -486,11 +486,11 @@ func (a *App) heartbeat(c *ui.Context, task *store.Task, att protocol.Attention)
 			c.After(time.Minute)
 			ui.Row(c.Key("beat")).Gap(6).AlignItems(ui.Center).Shrink(0).Children(func() {
 				ui.Box(c).Size(16, 16).Shrink(0).Draw(drawRing(t.Waiting.Ink.Alpha(0.5), t.Waiting.Ink, frac)).AccessHidden(true)
-				ui.Text(c, next).FontSize(t.XS).FontWeight(600).TextColor(t.Waiting.Ink).FontFeatures("tnum").SingleLine()
+				uiText(c, next).FontSize(t.XS).FontWeight(600).TextColor(t.Waiting.Ink).FontFeatures("tnum").SingleLine()
 			})
 			return
 		}
-		ui.Text(c.Key("beat"), a.rowTime(task)).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
+		uiText(c.Key("beat"), a.rowTime(task)).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
 	case protocol.Done, protocol.DoneClaimed, protocol.Failed:
 		if task.Card == nil {
 			return
@@ -500,7 +500,7 @@ func (a *App) heartbeat(c *ui.Context, task *store.Task, att protocol.Attention)
 			if att == protocol.Failed {
 				ink = t.Failed.Ink
 			}
-			ui.Text(c.Key("beat"), a.tp("onhand.card.done", a.soon(at))).FontSize(t.XS).FontWeight(600).TextColor(ink).FontFeatures("tnum").SingleLine()
+			uiText(c.Key("beat"), a.tp("onhand.card.done", a.soon(at))).FontSize(t.XS).FontWeight(600).TextColor(ink).FontFeatures("tnum").SingleLine()
 		}
 	}
 }
@@ -531,7 +531,7 @@ func drawPulse(col ui.Color, phase float64) func(p *ui.Painter, r ui.Rect) {
 // kept in sight.
 func (a *App) subHead(c *ui.Context, key, words string) {
 	t := a.T
-	ui.Text(c.Key("sub:"+key), words).FontSize(t.XS).FontWeight(500).TextColor(t.InkMuted).Padding(t.S2+2, t.S3+2, 0, t.S3+2)
+	uiText(c.Key("sub:"+key), words).FontSize(t.XS).FontWeight(500).TextColor(t.InkMuted).Padding(t.S2+2, t.S3+2, 0, t.S3+2)
 }
 
 // ---------- the day beside the board ----------
@@ -596,7 +596,7 @@ func (a *App) dayColumn(c *ui.Context, b store.Board, lens string) {
 		return
 	}
 	head := func(key, words string) {
-		ui.Text(c.Key("h:"+key), words).FontSize(t.XS).FontWeight(600).TextColor(t.InkMuted).Padding(t.S2, 0, 2, 22)
+		uiText(c.Key("h:"+key), words).FontSize(t.XS).FontWeight(600).TextColor(t.InkMuted).Padding(t.S2, 0, 2, 22)
 	}
 	list := func(key string, items []dayItem, isNext bool) {
 		line := t.Line
@@ -622,12 +622,12 @@ func (a *App) dayColumn(c *ui.Context, b store.Board, lens string) {
 				d.Circle(r.X+r.W/2, r.Y+r.H/2, 6)
 				p.FillPath(&d, acc)
 			})
-			ui.Text(c, i18n.Clock(a.Now())).FontSize(t.XS).FontWeight(600).TextColor(acc).FontFeatures("tnum")
-			ui.Text(c, a.L.T("onhand.day.now")).FontSize(t.XS).FontWeight(600).TextColor(acc)
+			uiText(c, i18n.Clock(a.Now())).FontSize(t.XS).FontWeight(600).TextColor(acc).FontFeatures("tnum")
+			uiText(c, a.L.T("onhand.day.now")).FontSize(t.XS).FontWeight(600).TextColor(acc)
 		})
 		head("back", a.L.T("onhand.day.back"))
 		if len(back) == 0 {
-			ui.Text(c.Key("none"), a.L.T("onhand.day.none")).FontSize(t.XS).TextColor(t.InkMuted).Padding(0, 0, 0, 22)
+			uiText(c.Key("none"), a.L.T("onhand.day.none")).FontSize(t.XS).TextColor(t.InkMuted).Padding(0, 0, 0, 22)
 			return
 		}
 		list("back", back, false)
@@ -664,10 +664,10 @@ func (a *App) dayRow(c *ui.Context, it dayItem, isNext bool) {
 			if isNext {
 				ink = t.Waiting.Ink
 			}
-			ui.Text(c, i18n.Clock(it.at)).FontSize(t.XS).FontWeight(600).TextColor(ink).FontFeatures("tnum")
-			ui.Text(c.Key("t"), keepWords(autospace(it.text))).FontSize(t.SM).FontWeight(500).TextColor(t.Ink).SingleLine().MinWidth(0)
+			uiText(c, i18n.Clock(it.at)).FontSize(t.XS).FontWeight(600).TextColor(ink).FontFeatures("tnum")
+			uiText(c.Key("t"), keepWords(autospace(it.text))).FontSize(t.SM).FontWeight(500).TextColor(t.Ink).SingleLine().MinWidth(0)
 			if it.sub != "" {
-				ui.Text(c.Key("s"), keepWords(autospace(it.sub))).FontSize(t.XS).LineHeight(1.45).TextColor(t.InkMuted).MaxLines(2)
+				uiText(c.Key("s"), keepWords(autospace(it.sub))).FontSize(t.XS).LineHeight(1.45).TextColor(t.InkMuted).MaxLines(2)
 			}
 		})
 	})

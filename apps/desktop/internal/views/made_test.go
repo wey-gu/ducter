@@ -107,7 +107,7 @@ func TestMadeTab(t *testing.T) {
 	}
 	app.Receive(madeResult(madeItems(i18n.ZH), q.ID))
 	tt.Frame()
-	for _, want := range []string{"给你做的", "kyoto-itinerary.md", keepWords(autospace("来自「排 12 月京都三日行程」")), keepWords(autospace("你问的：M4 Pro 和 M4 Max 比一下")), "已置顶", "PR", "PDF", "看那件事", "上周", "今天"} {
+	for _, want := range []string{"给你做的", "kyoto-itinerary.md", unjoin(keepWords(autospace("来自「排 12 月京都三日行程」"))), unjoin(keepWords(autospace("你问的：M4 Pro 和 M4 Max 比一下"))), "已置顶", "PR", "PDF", "看那件事", "上周", "今天"} {
 		if !tt.HasText(want) {
 			t.Errorf("no %q in %q", want, tt.Texts())
 		}

@@ -41,15 +41,15 @@ func (a *App) handsetCard(c *ui.Context, cl *protocol.ReachClient) {
 		ui.Row(c.Key("handset-using:"+cl.ID)).Gap(t.S3).AlignItems(ui.Center).Margin(t.S4, 0, 0, 0).Padding(t.S3, t.S4).
 			Radius(t.RadiusSM).Background(t.Working.Surface).Children(func() {
 			ui.Column(c).Grow(1).MinWidth(0).Gap(2).Children(func() {
-				ui.Text(c, a.L.T("handset.using", title)).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).LineHeight(1.45)
+				uiText(c, a.L.T("handset.using", title)).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).LineHeight(1.45)
 				// D331: paused by the person's lock, or asking on the phone after the unlock.
 				switch {
 				case u.Paused == "asking":
-					ui.Text(c, a.L.T("handset.paused.asking", name)).FontSize(t.XS).TextColor(t.InkSoft).LineHeight(1.45)
+					uiText(c, a.L.T("handset.paused.asking", name)).FontSize(t.XS).TextColor(t.InkSoft).LineHeight(1.45)
 				case u.Paused != "":
-					ui.Text(c, a.L.T("handset.paused", name)).FontSize(t.XS).TextColor(t.InkSoft).LineHeight(1.45)
+					uiText(c, a.L.T("handset.paused", name)).FontSize(t.XS).TextColor(t.InkSoft).LineHeight(1.45)
 				case u.Quiet:
-					ui.Text(c, a.L.T("handset.quiet", name)).FontSize(t.XS).TextColor(t.InkSoft).LineHeight(1.45)
+					uiText(c, a.L.T("handset.quiet", name)).FontSize(t.XS).TextColor(t.InkSoft).LineHeight(1.45)
 				}
 			})
 			if a.buttonFor(c, a.L.T("handset.stop"), title, btnPrimary, t.ControlSM, t.Working.Surface) {
@@ -75,9 +75,9 @@ func (a *App) handsetTaskLine(c *ui.Context, task *store.Task) {
 	line, why := a.handsetLines(h, a.handsetName(h.Device))
 	ui.Row(c.Key("handset-row")).Gap(t.S3).AlignItems(ui.Center).MinWidth(0).MaxWidth(readMeasure).Children(func() {
 		ui.Column(c).Grow(1).MinWidth(0).Gap(2).Children(func() {
-			ui.Text(c, line).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).LineHeight(1.5)
+			uiText(c, line).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).LineHeight(1.5)
 			if why != "" {
-				ui.Text(c, why).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5)
+				uiText(c, why).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5)
 			}
 		})
 		label := a.L.T("handset.stop")
@@ -163,14 +163,14 @@ func (a *App) handsetRecordButtons(c *ui.Context, d *store.DecisionState, st dec
 		}
 		ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
 			a.glyph(c, 16, drawCheck(t.InkMuted))
-			ui.Text(c, msg).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
+			uiText(c, msg).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
 		})
 		return
 	}
-	ui.Text(c, a.L.T("handset.record.what")).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft)
+	uiText(c, a.L.T("handset.record.what")).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft)
 	ui.Row(c.Key("handset-record:" + d.DecisionID)).Gap(t.S3).Wrap().AlignItems(ui.Center).Children(func() {
 		if left := a.handsetRecordLeft(c, d); left != "" {
-			ui.Text(c, left).FontSize(t.SM).TextColor(t.NeedsYou.Ink).FontFeatures("tnum")
+			uiText(c, left).FontSize(t.SM).TextColor(t.NeedsYou.Ink).FontFeatures("tnum")
 		}
 		ui.Spacer(c)
 		if a.buttonFor(c, a.L.T("handset.record.hold"), a.decisionAbout(d), btnSecondary, st.height, st.quietBg) {

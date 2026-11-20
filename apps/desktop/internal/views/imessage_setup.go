@@ -25,8 +25,8 @@ func (a *App) imessageCompare(c *ui.Context, name string) {
 	ui.Column(c.Key("imessage-compare")).Gap(t.S2).Children(func() {
 		for _, k := range [][2]string{{a.L.T("imessage.mode.partner", name), a.L.T("imessage.compare.partner", name)}, {a.L.T("imessage.mode.self"), a.L.T("imessage.compare.self")}} {
 			ui.Column(c).Gap(2).Children(func() {
-				ui.Text(c, k[0]).FontSize(t.SM).FontWeight(700).LineHeight(a.leading(1.4)).TextColor(t.InkSoft)
-				ui.Text(c, k[1]).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
+				uiText(c, k[0]).FontSize(t.SM).FontWeight(700).LineHeight(a.leading(1.4)).TextColor(t.InkSoft)
+				uiText(c, k[1]).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
 			})
 		}
 	})
@@ -42,7 +42,7 @@ func (a *App) imessageSteps(c *ui.Context, st imessage.Status, name string) {
 	is := &a.imessage
 	a.chatBody(c, "imessage-steps", func() {
 		a.chatStep(c, 1, a.L.T("imessage.step.id", name), func() {
-			ui.Text(c, a.L.T("imessage.step.id.note")).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
+			uiText(c, a.L.T("imessage.step.id.note")).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
 			ui.Row(c).Children(func() {
 				if a.quietButton(c, "imessage-make-id", a.L.T("imessage.step.id.open"), a.L.T("imessage.title"), true, 1) {
 					a.openLink(appleAccountURL)
@@ -50,7 +50,7 @@ func (a *App) imessageSteps(c *ui.Context, st imessage.Status, name string) {
 			})
 		})
 		a.chatStep(c, 2, a.L.T("imessage.step.sign", name), func() {
-			ui.Text(c, a.L.T("imessage.step.sign.note")).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
+			uiText(c, a.L.T("imessage.step.sign.note")).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
 			line, tone := a.imessageCheckLine(st, name)
 			ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
 				label := a.L.T("imessage.check")
@@ -66,7 +66,7 @@ func (a *App) imessageSteps(c *ui.Context, st imessage.Status, name string) {
 				}
 			})
 			if line != "" {
-				ui.Text(c.Key("imessage-check-line"), line).FontSize(t.SM).FontWeight(600).LineHeight(a.leading(1.5)).TextColor(a.sideInk(tone))
+				uiText(c.Key("imessage-check-line"), line).FontSize(t.SM).FontWeight(600).LineHeight(a.leading(1.5)).TextColor(a.sideInk(tone))
 			}
 		})
 		a.chatStep(c, 3, a.L.T("imessage.step.on"), func() {
@@ -78,8 +78,8 @@ func (a *App) imessageSteps(c *ui.Context, st imessage.Status, name string) {
 			if tone == sideFailed {
 				w = 600
 			}
-			ui.Text(c.Key("imessage-on-line"), note).FontSize(t.SM).FontWeight(w).LineHeight(a.leading(1.5)).TextColor(a.sideInk(tone))
-			ui.Text(c, a.L.T("imessage.step.on.other")).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
+			uiText(c.Key("imessage-on-line"), note).FontSize(t.SM).FontWeight(w).LineHeight(a.leading(1.5)).TextColor(a.sideInk(tone))
+			uiText(c, a.L.T("imessage.step.on.other")).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
 		})
 		a.chatStep(c, 4, a.L.T("imessage.step.pair", name), nil)
 	})

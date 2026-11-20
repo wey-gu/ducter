@@ -67,7 +67,7 @@ func (a *App) partnerWords(c *ui.Context, text string) {
 	t := a.T
 	rt := a.rp.next
 	a.partnerBubble(c, a.takeJoin(), func() {
-		w := ui.Text(c, autospace(text)).Selectable().CopyData(autospaceCopy).FontSize(t.PartnerSize).LineHeight(leadingFor(text, 1.5)).TextColor(t.OnPartnerBubble)
+		w := uiText(c, autospace(text)).Selectable().CopyData(autospaceCopy).FontSize(t.PartnerSize).LineHeight(leadingFor(text, 1.5)).TextColor(t.OnPartnerBubble)
 		a.replyMenu(c, w, rt, text)
 	})
 }
@@ -181,7 +181,7 @@ func (a *App) answeredLine(c *ui.Context, d *store.DecisionState) {
 	}
 	ui.Row(c.Key("said:"+d.DecisionID)).Padding(0, t.S2, 0, 0).Children(func() {
 		ui.Spacer(c)
-		ui.Text(c, autospace(a.answeredWords(d))).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.4).MaxLines(2).MaxWidthPercent(72)
+		uiText(c, autospace(a.answeredWords(d))).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.4).MaxLines(2).MaxWidthPercent(72)
 	})
 }
 
@@ -220,7 +220,7 @@ func (a *App) decisionTray(c *ui.Context, d *store.DecisionState, task *store.Ta
 		a.underBubble(c, func() {
 			ui.Row(c).Gap(t.S3).Wrap().AlignItems(ui.Center).Children(func() {
 				if line := a.defaultLine(c, d); line != "" {
-					ui.Text(c, line).FontSize(t.XS + 1).TextColor(t.InkMuted).LineHeight(1.45)
+					uiText(c, line).FontSize(t.XS + 1).TextColor(t.InkMuted).LineHeight(1.45)
 				}
 				// D382: on the default's own line: the other way than letting the time run.
 				a.laterToggle(c, d, about, t.ControlSM, t.Bg)

@@ -146,7 +146,7 @@ func (a *App) pastWhereSheet(c *ui.Context) {
 		ui.Scroll(c.Key("where-sheet")).Grow(1).MinHeight(0).Children(func() {
 			ui.Column(c).Padding(t.S5, t.S5, t.S4, t.S5).Gap(t.S4).Children(func() {
 				ui.Row(c).AlignItems(ui.Center).Children(func() {
-					ui.Text(c, a.L.T("past.where")).FontSize(t.XS).FontWeight(600).TextColor(t.InkMuted).Grow(1)
+					uiText(c, a.L.T("past.where")).FontSize(t.XS).FontWeight(600).TextColor(t.InkMuted).Grow(1)
 					if a.button(c, a.L.T("past.close"), btnText, t.ControlSM, t.Surface) {
 						ps.sheet = false
 					}
@@ -171,13 +171,13 @@ func (a *App) pastWhereColumn(c *ui.Context) {
 			if it == nil {
 				ui.Column(c.Key("none")).Grow(1).Padding(t.S6).Gap(t.S3).AlignItems(ui.Center).Justify(ui.Center).Children(func() {
 					a.pastPebble(c, "art", "look", "", 44)
-					ui.Text(c, a.L.T("past.where.none")).FontSize(t.SM).TextColor(t.InkSoft).TextAlign(ui.Center).MaxWidth(260)
+					uiText(c, a.L.T("past.where.none")).FontSize(t.SM).TextColor(t.InkSoft).TextAlign(ui.Center).MaxWidth(260)
 				})
 				return
 			}
 			ui.Scroll(c.Key("where-scroll:" + it.TaskID)).Grow(1).MinHeight(0).Children(func() {
 				ui.Column(c).Padding(t.S5, t.S5, t.S4, t.S5).Gap(t.S4).Children(func() {
-					ui.Text(c, a.L.T("past.where")).FontSize(t.XS).FontWeight(600).TextColor(t.InkMuted)
+					uiText(c, a.L.T("past.where")).FontSize(t.XS).FontWeight(600).TextColor(t.InkMuted)
 					a.pastWhereBody(c, it)
 				})
 			})
@@ -199,23 +199,23 @@ func (a *App) pastWhereBody(c *ui.Context, it *protocol.PastItem) {
 		}
 		a.pastPebble(c, "art", glyph, tint, 40)
 		ui.Column(c).Grow(1).Shrink(1).MinWidth(0).Gap(t.S1).Children(func() {
-			ui.Text(c.Key("name"), keepWords(autospace(it.Title))).FontSize(t.LG).FontWeight(700).TextColor(t.Ink).LineHeight(1.3).MaxLines(3).MinWidth(0)
+			uiText(c.Key("name"), keepWords(autospace(it.Title))).FontSize(t.LG).FontWeight(700).TextColor(t.Ink).LineHeight(1.3).MaxLines(3).MinWidth(0)
 			if it.Original != "" {
 				ui.Row(c.Key("was")).Gap(t.S2).MinWidth(0).Children(func() {
-					ui.Text(c, a.L.T("past.hit.title")).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).SingleLine().Shrink(0)
-					ui.Text(c, it.Original).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(1).MinWidth(0)
+					uiText(c, a.L.T("past.hit.title")).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).SingleLine().Shrink(0)
+					uiText(c, it.Original).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(1).MinWidth(0)
 				})
 			}
 		})
 	})
 	a.pastWherePills(c, it)
 	if f := it.From; f != nil && f.Step > 0 {
-		ui.Text(c.Key("redone"), a.L.T("past.redone", shortTitle(f.Title), f.Step)).FontSize(t.XS).FontWeight(600).TextColor(t.InkSoft).MinWidth(0)
+		uiText(c.Key("redone"), a.L.T("past.redone", shortTitle(f.Title), f.Step)).FontSize(t.XS).FontWeight(600).TextColor(t.InkSoft).MinWidth(0)
 	}
 	if it.Asking != "" {
 		ui.Column(c.Key("asking")).Gap(t.S1).Padding(t.S3, t.S3).Radius(t.RadiusMD).Background(t.NeedsYou.Surface).Children(func() {
-			ui.Text(c, a.L.T("past.asking")).FontSize(t.XS).FontWeight(700).TextColor(t.NeedsYou.Ink)
-			ui.Text(c, keepWords(autospace(it.Asking))).FontSize(t.SM).TextColor(t.Ink).LineHeight(1.5).MinWidth(0)
+			uiText(c, a.L.T("past.asking")).FontSize(t.XS).FontWeight(700).TextColor(t.NeedsYou.Ink)
+			uiText(c, keepWords(autospace(it.Asking))).FontSize(t.SM).TextColor(t.Ink).LineHeight(1.5).MinWidth(0)
 		})
 	}
 	result := strings.TrimSpace(it.Outcome)
@@ -224,17 +224,17 @@ func (a *App) pastWhereBody(c *ui.Context, it *protocol.PastItem) {
 	}
 	if result != "" {
 		a.pastWhereSection(c, "result", a.L.T("past.result"), func() {
-			ui.Text(c, keepWords(autospace(result))).FontSize(t.SM).TextColor(t.Ink).LineHeight(1.55).MaxLines(10).MinWidth(0)
+			uiText(c, keepWords(autospace(result))).FontSize(t.SM).TextColor(t.Ink).LineHeight(1.55).MaxLines(10).MinWidth(0)
 		})
 	}
 	if lw := strings.TrimSpace(it.LastWords); lw != "" && !strings.Contains(result, lw) {
 		a.pastWhereSection(c, "last", a.L.T("past.lastwords"), func() {
-			ui.Text(c, keepWords(autospace(lw))).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(1.5).MaxLines(4).MinWidth(0)
+			uiText(c, keepWords(autospace(lw))).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(1.5).MaxLines(4).MinWidth(0)
 		})
 	}
 	a.pastWhereSection(c, "steps", a.L.T("past.steps"), func() {
 		if steps == nil {
-			ui.Text(c, a.L.T("past.steps.wait")).FontSize(t.SM).TextColor(t.InkMuted)
+			uiText(c, a.L.T("past.steps.wait")).FontSize(t.SM).TextColor(t.InkMuted)
 			return
 		}
 		ui.Column(c.Key("list")).Gap(t.S2).Children(func() {
@@ -253,7 +253,7 @@ func (a *App) pastWherePills(c *ui.Context, it *protocol.PastItem) {
 		if strings.TrimSpace(text) == "" {
 			return
 		}
-		x := ui.Text(c.Key("pill:"+key), text).FontSize(t.XS).FontWeight(500).TextColor(t.InkSoft).Padding(2, t.S2).Radius(6).
+		x := uiText(c.Key("pill:"+key), text).FontSize(t.XS).FontWeight(500).TextColor(t.InkSoft).Padding(2, t.S2).Radius(6).
 			Background(t.SurfaceSunken).SingleLine().Shrink(1).MinWidth(0)
 		if mono {
 			x.Font(t.Mono)
@@ -276,10 +276,10 @@ func (a *App) pastWherePills(c *ui.Context, it *protocol.PastItem) {
 		if ch := it.Changes; ch != nil && (ch.Adds > 0 || ch.Dels > 0) {
 			ui.Row(c.Key("stat")).Gap(t.S1+1).Padding(2, t.S2).Shrink(0).Children(func() {
 				if ch.Adds > 0 {
-					ui.Text(c, fmt.Sprintf("+%d", ch.Adds)).Font(t.Mono).FontSize(t.XS).TextColor(t.Done.Ink).FontFeatures("tnum")
+					uiText(c, fmt.Sprintf("+%d", ch.Adds)).Font(t.Mono).FontSize(t.XS).TextColor(t.Done.Ink).FontFeatures("tnum")
 				}
 				if ch.Dels > 0 {
-					ui.Text(c, fmt.Sprintf("−%d", ch.Dels)).Font(t.Mono).FontSize(t.XS).TextColor(t.Failed.Ink).FontFeatures("tnum")
+					uiText(c, fmt.Sprintf("−%d", ch.Dels)).Font(t.Mono).FontSize(t.XS).TextColor(t.Failed.Ink).FontFeatures("tnum")
 				}
 			})
 		}
@@ -288,10 +288,10 @@ func (a *App) pastWherePills(c *ui.Context, it *protocol.PastItem) {
 			if g.Act == "merge" {
 				key = "onhand.pr.merged"
 			}
-			ui.Text(c.Key("pr"), a.L.T(key)).FontSize(t.XS).FontWeight(600).TextColor(t.InkSoft).SingleLine().Shrink(0)
+			uiText(c.Key("pr"), a.L.T(key)).FontSize(t.XS).FontWeight(600).TextColor(t.InkSoft).SingleLine().Shrink(0)
 		}
 		if end, ink := a.pastEndWord(it); end != "" {
-			ui.Text(c.Key("end"), end).FontSize(t.XS).FontWeight(700).TextColor(ink).SingleLine().Shrink(0)
+			uiText(c.Key("end"), end).FontSize(t.XS).FontWeight(700).TextColor(ink).SingleLine().Shrink(0)
 		}
 	})
 }
@@ -318,7 +318,7 @@ func (a *App) pastEndWord(it *protocol.PastItem) (string, ui.Color) {
 func (a *App) pastWhereSection(c *ui.Context, key, name string, body func()) {
 	t := a.T
 	ui.Column(c.Key("sec:" + key)).Gap(t.S2).Children(func() {
-		ui.Text(c, name).FontSize(t.XS).FontWeight(600).TextColor(t.InkMuted)
+		uiText(c, name).FontSize(t.XS).FontWeight(600).TextColor(t.InkMuted)
 		body()
 	})
 }
@@ -334,14 +334,14 @@ func (a *App) pastStepRow(c *ui.Context, it *protocol.PastItem, st protocol.Past
 	}
 	row.Children(func() {
 		ui.Row(c.Key("h")).Gap(t.S2).AlignItems(ui.Center).MinHeight(t.ControlSM).Children(func() {
-			ui.Text(c, a.L.T("past.step", st.N)).FontSize(t.XS).FontWeight(700).TextColor(t.Ink).SingleLine().Shrink(0)
+			uiText(c, a.L.T("past.step", st.N)).FontSize(t.XS).FontWeight(700).TextColor(t.Ink).SingleLine().Shrink(0)
 			who := a.L.T("past.step.you")
 			if st.Who == "partner" {
 				who = a.L.T("past.step.partner", a.personaName())
 			}
-			ui.Text(c, who).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(1).MinWidth(0)
+			uiText(c, who).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(1).MinWidth(0)
 			if st.Commit != "" {
-				ui.Text(c.Key("commit"), st.Commit).Font(t.Mono).FontSize(t.XS-1).TextColor(t.InkSoft).Padding(1, t.S1+2).Radius(5).
+				uiText(c.Key("commit"), st.Commit).Font(t.Mono).FontSize(t.XS-1).TextColor(t.InkSoft).Padding(1, t.S1+2).Radius(5).
 					Background(t.Surface).SingleLine().Shrink(0)
 			}
 			ui.Box(c).Grow(1)
@@ -351,9 +351,9 @@ func (a *App) pastStepRow(c *ui.Context, it *protocol.PastItem, st protocol.Past
 				}
 			}
 		})
-		ui.Text(c.Key("text"), keepWords(autospace(strings.Join(strings.Fields(st.Text), " ")))).FontSize(t.SM).TextColor(t.Ink).LineHeight(1.45).MaxLines(2).MinWidth(0).Tooltip(st.Text)
+		uiText(c.Key("text"), keepWords(autospace(strings.Join(strings.Fields(st.Text), " ")))).FontSize(t.SM).TextColor(t.Ink).LineHeight(1.45).MaxLines(2).MinWidth(0).Tooltip(st.Text)
 		if st.Came != "" {
-			ui.Text(c.Key("came"), keepWords(autospace(st.Came))).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.45).MaxLines(1).MinWidth(0).Tooltip(st.Came)
+			uiText(c.Key("came"), keepWords(autospace(st.Came))).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.45).MaxLines(1).MinWidth(0).Tooltip(st.Came)
 		}
 	})
 }
@@ -449,10 +449,10 @@ func (a *App) redoSheet(c *ui.Context) {
 			ui.Column(c).Padding(t.S5, t.S6, t.S5, t.S6).Gap(t.S4).Children(func() {
 				ui.Column(c).Gap(t.S1).Children(func() {
 					a.heading(c, title, t.XL)
-					ui.Text(c, keepWords(autospace(it.Title))).FontSize(t.SM).TextColor(t.InkMuted).SingleLine().MinWidth(0)
+					uiText(c, keepWords(autospace(it.Title))).FontSize(t.SM).TextColor(t.InkMuted).SingleLine().MinWidth(0)
 				})
 				ui.Column(c.Key("words")).Gap(t.S2).Children(func() {
-					ui.Text(c, a.L.T("past.redo.words")).FontSize(t.XS).FontWeight(600).TextColor(t.InkMuted)
+					uiText(c, a.L.T("past.redo.words")).FontSize(t.XS).FontWeight(600).TextColor(t.InkMuted)
 					ui.Row(c).Padding(t.S1, t.S3).Radius(t.RadiusMD).Background(t.SurfaceSunken).InsetShadow(0, 1.5, 2, 0, t.Line).Children(func() {
 						in := ui.TextArea(c.Key("redo-in"), &r.words).Lines(3, 8).Label(a.L.T("past.redo.words")).
 							Background(ui.Transparent).Border(0, ui.Transparent).Padding(t.S2, 0).Grow(1).FontSize(t.MD)
@@ -477,7 +477,7 @@ func (a *App) redoSheet(c *ui.Context) {
 					a.redoNote(c, "keep", a.L.T("past.redo.keep"))
 				})
 				if r.msg != "" {
-					ui.Text(c.Key("msg"), r.msg).FontSize(t.SM).TextColor(t.Failed.Ink).LineHeight(1.5).MinWidth(0)
+					uiText(c.Key("msg"), r.msg).FontSize(t.SM).TextColor(t.Failed.Ink).LineHeight(1.5).MinWidth(0)
 				}
 			})
 		})
@@ -523,7 +523,7 @@ func (a *App) redoAgents(c *ui.Context, it *protocol.PastItem) {
 					if on {
 						w = 700
 					}
-					ui.Text(c, label).FontSize(t.SM).FontWeight(w).TextColor(fg).SingleLine().AccessHidden(true)
+					uiText(c, label).FontSize(t.SM).FontWeight(w).TextColor(fg).SingleLine().AccessHidden(true)
 				})
 				if b.Clicked() {
 					r.harness = h
@@ -548,7 +548,7 @@ func (a *App) redoNote(c *ui.Context, key, line string) {
 	t := a.T
 	ui.Row(c.Key("note:" + key)).Gap(t.S2).AlignItems(ui.Start).Children(func() {
 		ui.Box(c).Size(5, 5).Radius(3).Margin(8, 0, 0, 2).Background(t.InkMuted).Shrink(0).AccessHidden(true)
-		ui.Text(c, line).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(1.5).Grow(1).MinWidth(0)
+		uiText(c, line).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(1.5).Grow(1).MinWidth(0)
 	})
 }
 

@@ -298,7 +298,7 @@ func (a *App) tuneRows(c *ui.Context, cd protocol.Candidate) {
 	// One row each: its name in a column of its own, the choices wrapping beside it.
 	line := func(key, name string, body func()) {
 		ui.Row(c.Key(key)).Gap(t.S2).AlignItems(ui.Start).Children(func() {
-			ui.Text(c, name).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).Width(64).Shrink(0).Padding(6, 0, 0, 0).SingleLine()
+			uiText(c, name).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).Width(64).Shrink(0).Padding(6, 0, 0, 0).SingleLine()
 			ui.Row(c).Grow(1).MinWidth(0).Gap(t.S1 + 2).Wrap().AlignItems(ui.Center).Role(ui.RoleRadioGroup).Label(name).Children(body)
 		})
 	}

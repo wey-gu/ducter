@@ -245,7 +245,7 @@ func (a *App) devicesView(c *ui.Context) {
 				// D161: one line per device on the left, the stage, the character sheet on the right.
 				ui.Row(c).Gap(gap).AlignItems(ui.Start).Children(func() {
 					ui.Column(c).Width(listW).Shrink(0).Gap(t.S1 + 2).Children(func() {
-						ui.Text(c, a.L.T("devices.list")).FontSize(t.SM).FontWeight(800).TextColor(t.InkMuted).Margin(t.S1, t.S2, t.S1, t.S2)
+						uiText(c, a.L.T("devices.list")).FontSize(t.SM).FontWeight(800).TextColor(t.InkMuted).Margin(t.S1, t.S2, t.S1, t.S2)
 						a.deviceCards(c, 0)
 						// D358: one way to add a device, a row like the others; its sheet asks what it's for.
 						a.addDeviceRow(c, 0)
@@ -268,7 +268,7 @@ func (a *App) devicesHeader(c *ui.Context, dev *protocol.DeviceView) {
 	if a.Status != client.Connected && len(a.S.Devices) > 0 {
 		if home := a.homeDevice(); home != nil {
 			ui.Row(c.Key("devices-offline")).Gap(t.S3).Padding(t.S3, t.S4).Radius(t.RadiusSM).Background(t.Away.Surface).AlignItems(ui.Center).Children(func() {
-				ui.Text(c, a.L.T("devices.offline", a.deviceNameIn(home))).FontSize(t.SM).FontWeight(700).TextColor(t.Away.Ink)
+				uiText(c, a.L.T("devices.offline", a.deviceNameIn(home))).FontSize(t.SM).FontWeight(700).TextColor(t.Away.Ink)
 			})
 		}
 	}
@@ -294,7 +294,7 @@ func (a *App) devicesWaiting(c *ui.Context) {
 	}
 	ui.Column(c.Key("devices-wait")).Grow(1).Justify(ui.Center).AlignItems(ui.Center).Gap(t.S3).Children(func() {
 		a.avatar(c, theme.Idle, 140)
-		ui.Text(c, msg).FontSize(t.LG).TextColor(t.InkSoft)
+		uiText(c, msg).FontSize(t.LG).TextColor(t.InkSoft)
 	})
 }
 
@@ -365,7 +365,7 @@ func (a *App) listRow(c *ui.Context, key, name, word string, ink ui.Color, updat
 		// never gives way to them, and 有更新 never runs past the row's edge
 		// (on one line it pushed the name down to "…" and spilled out).
 		ui.Column(c).Gap(1).Grow(1).MinWidth(0).Children(func() {
-			ui.Text(c, name).FontSize(t.MD).FontWeight(700).SingleLine().MinWidth(0).AccessHidden(true)
+			uiText(c, name).FontSize(t.MD).FontWeight(700).SingleLine().MinWidth(0).AccessHidden(true)
 			if word == "" && !update {
 				return
 			}
@@ -375,11 +375,11 @@ func (a *App) listRow(c *ui.Context, key, name, word string, ink ui.Color, updat
 					if ink != t.InkMuted {
 						a.stateWord(c, word, ink, t.XS, 600)
 					} else {
-						ui.Text(c, word).FontSize(t.XS).TextColor(ink).SingleLine().Shrink(1).MinWidth(0)
+						uiText(c, word).FontSize(t.XS).TextColor(ink).SingleLine().Shrink(1).MinWidth(0)
 					}
 				}
 				if update {
-					ui.Text(c, upd).FontSize(t.XS).FontWeight(800).TextColor(t.HighlightInk).SingleLine().Shrink(0)
+					uiText(c, upd).FontSize(t.XS).FontWeight(800).TextColor(t.HighlightInk).SingleLine().Shrink(0)
 				}
 			})
 		})
@@ -553,7 +553,7 @@ func (a *App) stageLine(c *ui.Context, dv *protocol.DeviceView, sw float32) {
 			if check {
 				a.glyph(c, 20, drawCheck(sc.Ink))
 			}
-			ui.Text(c, text).FontSize(t.MD).FontWeight(800).TextColor(t.Ink).MaxLines(2)
+			uiText(c, text).FontSize(t.MD).FontWeight(800).TextColor(t.Ink).MaxLines(2)
 		})
 	})
 }
@@ -563,7 +563,7 @@ func (a *App) stageLine(c *ui.Context, dv *protocol.DeviceView, sw float32) {
 func (a *App) reasonLine(c *ui.Context, text string) {
 	t := a.T
 	ui.Row(c).Gap(t.S2).Padding(t.S3, t.S3).Radius(t.RadiusSM).Background(t.SurfaceSunken).AlignItems(ui.Center).Children(func() {
-		ui.Text(c, text).FontSize(t.SM).FontWeight(600).TextColor(t.InkSoft).LineHeight(1.5)
+		uiText(c, text).FontSize(t.SM).FontWeight(600).TextColor(t.InkSoft).LineHeight(1.5)
 	})
 }
 
@@ -624,9 +624,9 @@ func (a *App) reachList(c *ui.Context) {
 				}
 			}
 			// One phrase says it (iPhone 在线 / iPhone was online 2 hours ago); no status dot.
-			ui.Text(c.Key("cl:"+cl.ID), line).FontSize(t.SM).FontWeight(700).SingleLine()
+			uiText(c.Key("cl:"+cl.ID), line).FontSize(t.SM).FontWeight(700).SingleLine()
 		}
-		ui.Text(c, a.L.T("ability.remote.cut")).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.5)
+		uiText(c, a.L.T("ability.remote.cut")).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.5)
 	})
 }
 
@@ -982,20 +982,20 @@ func (a *App) accountSheet(c *ui.Context, dv *protocol.DeviceView, sw, sh float3
 		}
 		// Signed in, and what is left of the allowance: two facts, two elements (D291).
 		ui.Row(c).Gap(t.S3).AlignItems(ui.Baseline).Wrap().Children(func() {
-			ui.Text(c, a.L.T("token.signed_in")).FontSize(t.MD).FontWeight(700)
+			uiText(c, a.L.T("token.signed_in")).FontSize(t.MD).FontWeight(700)
 			if h.Allowance != nil {
-				ui.Text(c, a.L.T("token.allowance", int(h.Allowance.Left*100+0.5))).FontSize(t.SM).TextColor(t.InkMuted)
+				uiText(c, a.L.T("token.allowance", int(h.Allowance.Left*100+0.5))).FontSize(t.SM).TextColor(t.InkMuted)
 			}
 		})
 		j := a.Backend.Job(id + ".signout")
 		switch {
 		case j != nil && j.Running():
-			ui.Text(c, a.L.T("token.signingout")).FontSize(t.SM).TextColor(t.InkMuted)
+			uiText(c, a.L.T("token.signingout")).FontSize(t.SM).TextColor(t.InkMuted)
 		default:
 			if j != nil && !j.OK() && d.refreshed[j] {
 				a.reasonLine(c, a.L.T("token.failed"))
 			}
-			ui.Text(c, a.L.T("token.signout.sure", name)).FontSize(t.SM).TextColor(t.InkSoft)
+			uiText(c, a.L.T("token.signout.sure", name)).FontSize(t.SM).TextColor(t.InkSoft)
 			if a.buttonFor(c, a.L.T("token.signout"), name, btnSecondary, t.ControlMD, t.Surface) {
 				_, _ = a.Backend.Run(id+".signout", signout)
 			}

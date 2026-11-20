@@ -376,14 +376,14 @@ func (a *App) taskWho(c *ui.Context, task *store.Task) {
 		p := task.Place()
 		tip := firstNonEmpty(p.RepoPath, p.Path)
 		for i, f := range facts {
-			tx := ui.Text(c.Key(i), f).FontSize(t.SM).TextColor(t.InkMuted).MinWidth(0).Shrink(1)
+			tx := uiText(c.Key(i), f).FontSize(t.SM).TextColor(t.InkMuted).MinWidth(0).Shrink(1)
 			if tip != "" {
 				tx.Tooltip(tip)
 			}
 		}
 		// D157: which computer, and what it uses there; why on hover.
 		if on, why := a.taskWhere(task); on != "" {
-			wt := ui.Text(c.Key("where"), on).FontSize(t.SM).TextColor(t.InkMuted).MinWidth(0).Shrink(1)
+			wt := uiText(c.Key("where"), on).FontSize(t.SM).TextColor(t.InkMuted).MinWidth(0).Shrink(1)
 			if why != "" {
 				wt.Tooltip(why)
 			}
@@ -402,9 +402,9 @@ func (a *App) outsideActs(c *ui.Context, task *store.Task) {
 		return
 	}
 	ui.Column(c.Key("outside")).Gap(t.S1).MaxWidth(readMeasure).Children(func() {
-		ui.Text(c, a.L.T("outside.title")).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
+		uiText(c, a.L.T("outside.title")).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
 		for _, act := range acts {
-			ui.Text(c.Key(act.Seq), redact.Text(act.Command)).Font(t.Mono).FontSize(t.MonoSM).LineHeight(1.45).TextColor(t.InkSoft).Selectable().MaxLines(3)
+			uiText(c.Key(act.Seq), redact.Text(act.Command)).Font(t.Mono).FontSize(t.MonoSM).LineHeight(1.45).TextColor(t.InkSoft).Selectable().MaxLines(3)
 		}
 	})
 }

@@ -201,11 +201,11 @@ func (a *App) ownPhoneCard(c *ui.Context) {
 					a.glyph(c, 18, drawCheck(t.Done.Ink))
 				case s == next:
 					ui.Row(c).Size(26, 26).Radius(13).Background(t.Accent).Justify(ui.Center).AlignItems(ui.Center).Children(func() {
-						ui.Text(c, strconv.Itoa(i+1)).FontSize(t.SM).FontWeight(800).TextColor(t.OnAccent).LineHeight(1)
+						uiText(c, strconv.Itoa(i+1)).FontSize(t.SM).FontWeight(800).TextColor(t.OnAccent).LineHeight(1)
 					})
 				default:
 					ui.Row(c).Size(26, 26).Radius(13).Background(t.Sunken).Shadow(0, 2, 0, 0, t.Line2).Justify(ui.Center).AlignItems(ui.Center).Children(func() {
-						ui.Text(c, strconv.Itoa(i+1)).FontSize(t.SM).FontWeight(800).TextColor(t.InkSoft).LineHeight(1)
+						uiText(c, strconv.Itoa(i+1)).FontSize(t.SM).FontWeight(800).TextColor(t.InkSoft).LineHeight(1)
 					})
 				}
 			}
@@ -277,14 +277,14 @@ func (a *App) ownDoneLine(s string, v *protocol.OwnPhoneView) string {
 func (a *App) ownCmd(c *ui.Context, cmd string) {
 	t := a.T
 	ui.Row(c).Children(func() {
-		ui.Text(c, cmd).Font(t.Mono).FontSize(t.SM).TextColor(t.Ink).Selectable().Padding(t.S1, t.S3).Radius(t.RadiusSM).Background(t.SurfaceSunken)
+		uiText(c, cmd).Font(t.Mono).FontSize(t.SM).TextColor(t.Ink).Selectable().Padding(t.S1, t.S3).Radius(t.RadiusSM).Background(t.SurfaceSunken)
 	})
 }
 
 func (a *App) ownInput(c *ui.Context, key, label string, value *string, placeholder string, secret bool) {
 	t := a.T
 	ui.Column(c.Key("own-field:" + key)).Gap(t.S1).Children(func() {
-		ui.Text(c, label).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
+		uiText(c, label).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
 		in := ui.TextInput(c.Key("own-input:"+key), value).Placeholder(placeholder).Label(label).
 			FontSize(t.MD).Padding(t.S3, t.S4).Radius(t.RadiusSM).Background(t.SurfaceSunken).Border(1, t.LineSoft)
 		if secret {
@@ -296,7 +296,7 @@ func (a *App) ownInput(c *ui.Context, key, label string, value *string, placehol
 func (a *App) ownBody(c *ui.Context, s string, v *protocol.OwnPhoneView) {
 	t := a.T
 	o := &a.own
-	warn := func(text string) { ui.Text(c, text).FontSize(t.SM).TextColor(t.Failed.Ink).LineHeight(a.leading(1.5)) }
+	warn := func(text string) { uiText(c, text).FontSize(t.SM).TextColor(t.Failed.Ink).LineHeight(a.leading(1.5)) }
 	look := func() {
 		if v.Looking {
 			a.note(c, a.L.T("own.looking"))
@@ -307,9 +307,9 @@ func (a *App) ownBody(c *ui.Context, s string, v *protocol.OwnPhoneView) {
 				a.ownAct(protocol.OwnPhoneAct{Action: "scan"})
 			}
 			if saw, at := a.ownLooked(v); saw != "" {
-				ui.Text(c, saw).FontSize(t.SM).TextColor(t.InkMuted).MinWidth(0)
+				uiText(c, saw).FontSize(t.SM).TextColor(t.InkMuted).MinWidth(0)
 				// research/118: the time says what it is (13:47 找的 / at 13:47), never a bare clock.
-				ui.Text(c, a.L.T("own.looked.at", at)).FontSize(t.SM).TextColor(t.InkMuted).FontFeatures("tnum")
+				uiText(c, a.L.T("own.looked.at", at)).FontSize(t.SM).TextColor(t.InkMuted).FontFeatures("tnum")
 			}
 		})
 	}
@@ -369,7 +369,7 @@ func (a *App) ownBody(c *ui.Context, s string, v *protocol.OwnPhoneView) {
 				list            []string
 			}{{"in", a.L.T("own.audio.in"), v.Audio.Input, v.Audio.Inputs}, {"out", a.L.T("own.audio.out"), v.Audio.Output, v.Audio.Outputs}} {
 				side := side
-				ui.Text(c, side.label).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
+				uiText(c, side.label).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
 				sel := -1
 				for i, d := range side.list {
 					if d == side.cur {
@@ -385,7 +385,7 @@ func (a *App) ownBody(c *ui.Context, s string, v *protocol.OwnPhoneView) {
 				}
 			}
 		}
-		ui.Text(c, a.L.T("own.parts")).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
+		uiText(c, a.L.T("own.parts")).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
 		for i := 1; i <= 4; i++ {
 			a.note(c, strconv.Itoa(i)+". "+a.L.T("own.parts."+strconv.Itoa(i)))
 		}
@@ -435,7 +435,7 @@ func (a *App) ownBody(c *ui.Context, s string, v *protocol.OwnPhoneView) {
 			a.note(c, a.L.T("own.test.playing"))
 			return
 		case "asking":
-			ui.Text(c, a.L.T("own.test.ask")).FontSize(t.MD).FontWeight(700)
+			uiText(c, a.L.T("own.test.ask")).FontSize(t.MD).FontWeight(700)
 			ui.Row(c).Gap(t.S2).Children(func() {
 				if a.buttonFor(c, a.L.T("own.test.yes"), a.L.T("own.step.test"), btnPrimary, t.ControlSM, t.Surface) {
 					yes := true

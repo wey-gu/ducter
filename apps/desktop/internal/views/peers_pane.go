@@ -66,7 +66,7 @@ func drawWay(col ui.Color, back bool) func(p *ui.Painter, r ui.Rect) {
 func (a *App) peersPicture(c *ui.Context, name string) {
 	t := a.T
 	label := func(s string) {
-		ui.Text(c, s).FontSize(t.SM).FontWeight(600).TextColor(t.InkSoft).TextAlign(ui.Center)
+		uiText(c, s).FontSize(t.SM).FontWeight(600).TextColor(t.InkSoft).TextAlign(ui.Center)
 	}
 	ui.Row(c.Key("peers-pic")).Gap(t.S3).AlignItems(ui.Center).Justify(ui.Center).Padding(t.S4, t.S5).Radius(t.RadiusLG).Background(t.SurfaceSunken).Children(func() {
 		ui.Column(c).Gap(t.S2).AlignItems(ui.Center).Shrink(0).Children(func() {

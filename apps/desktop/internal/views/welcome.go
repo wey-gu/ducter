@@ -191,7 +191,7 @@ func (a *App) firstResultLine(c *ui.Context) {
 				a.glyph(c, 24, drawCheck(t.Done.Ink))
 			}
 		}, func() {
-			line := ui.Text(c, a.L.T("firstresult.line")).FontSize(t.SM).FontWeight(700).TextColor(t.Done.Ink).
+			line := uiText(c, a.L.T("firstresult.line")).FontSize(t.SM).FontWeight(700).TextColor(t.Done.Ink).
 				LineHeight(1.45).Cursor(ui.CursorPointer)
 			if line.Clicked() && f.taskID != "" {
 				a.OpenTask(f.taskID)

@@ -10,7 +10,8 @@
 // - OOMOL with seven accounts (two Gmail, two Google Calendar, Slack, the Slack bot, a Discord bot,
 //   one left out) and Tuwa for calls;
 // - To-do sources: GitHub with 557 open, and an Obsidian vault whose name is long;
-// - Chat apps: WeChat and Telegram linked (stub adapters: nothing is sent), Slack never set up;
+// - Chat apps: WeChat and Telegram linked (stub adapters: nothing is sent; Telegram set up again
+//   links itself 2.5 s after its code shows), Slack never set up;
 // - Passwords & cards: three sign-ins, two cards, the details, two keys;
 // - quiet hours 23:00 to 08:00, three a day, autoupdate on.
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
@@ -22,7 +23,7 @@ import { noOo } from "./demo-oo.ts";
 import { demoAsk, pileIssues } from "./demo-pile.ts";
 import { createModelCatalog } from "../../packages/core/src/models.ts";
 import { httpLinker } from "../../packages/core/src/connections.ts";
-import type { Channel } from "../../packages/core/src/channels/port.ts";
+import type { Channel, ChannelEvents } from "../../packages/core/src/channels/port.ts";
 import { fakeOpenConnector } from "../../packages/core/test/fake-mcp.ts";
 import { fakeGh } from "../../packages/core/test/fake-gh-issues.ts";
 import { fakeTuwa } from "../../packages/core/test/fake-tuwa.ts";
@@ -90,10 +91,12 @@ writeFileSync(
   }),
   { mode: 0o600 },
 );
+// The stubs' readers, so the demo's Telegram can answer its own link code (below).
+const heard = new Map<string, ChannelEvents>();
 const stubChannel = (kind: "telegram" | "slack" | "wechat", bot: { id: string; name: string; handle?: string }): Channel => ({
   kind,
   caps: { buttons: true, edit: true, typing: true, files: true, maxText: 4000 } as Channel["caps"],
-  start: async () => bot,
+  start: async (on) => (heard.set(kind, on), bot),
   stop() {},
   send: async () => "m1",
   edit: async () => {},
@@ -123,6 +126,16 @@ const core = startCore({
   agents: { fetch: none as never, sys: { fetch: none as never, run: () => new Promise(() => {}), freeBytes: () => undefined, sleep: (ms: number) => Bun.sleep(ms), now: () => Date.now() }, autoEveryMs: 0 },
 } as never);
 core.setRunner(stubRunner(core));
+// D408: a chat app set up again links, as the person sending the code to the bot would: the demo's
+// Telegram sends /start with each new code 2.5 s after it is shown, so 连上了 / Linked can be reached.
+const codeFor = core.channels.code.bind(core.channels);
+core.channels.code = (kind) => {
+  const r = codeFor(kind);
+  if (r.ok && kind === "telegram") {
+    setTimeout(() => void heard.get(kind)?.message({ id: `link-${Date.now()}`, chat: "1001", from: { id: "1001", name: "Wey Gu" }, direct: true, text: `/start ${r.code}` }), 2500);
+  }
+  return r;
+};
 core.setPartner({ onTrigger() {} });
 core.settings.set({ language: zh ? "zh" : "en", quiet: { start: "23:00", end: "08:00", tz: "Asia/Shanghai" }, proactive: "three", proactiveBy: "user", autoUpdate: true, brain: { harness: "codex" } } as never);
 

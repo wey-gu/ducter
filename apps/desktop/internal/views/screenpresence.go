@@ -90,12 +90,12 @@ func (a *App) phoneAsleep(c *ui.Context, pv *store.PhoneView) {
 	t := a.T
 	ui.Column(c.Key("phone-asleep")).Margin(0, ui.Auto).AlignItems(ui.Center).Gap(t.S2).MaxWidth(320).Role(ui.RoleStatus).Children(func() {
 		a.phoneDozing(c, "phone-asleep", 168)
-		ui.Text(c, a.L.T("phoneuse.asleep.title")).FontSize(t.MD).FontWeight(800).TextColor(t.Ink)
+		uiText(c, a.L.T("phoneuse.asleep.title")).FontSize(t.MD).FontWeight(800).TextColor(t.Ink)
 		why := a.L.T("phoneuse.asleep.why", a.phoneComputer(pv))
 		if pv.TaskID != "" {
 			why = a.L.T("phoneuse.asleep.task")
 		}
-		ui.Text(c, why).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5).TextAlign(ui.Center)
+		uiText(c, why).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5).TextAlign(ui.Center)
 		label := a.L.T("phoneuse.wake")
 		if pv.Waking {
 			label = a.L.T("phoneuse.waking")
@@ -185,7 +185,7 @@ func (a *App) phoneDid(c *ui.Context, did []protocol.PhoneDid) {
 	}
 	t := a.T
 	ui.Column(c.Key("phone-did")).Gap(3).Padding(0, t.S4, t.S3, t.S4).Children(func() {
-		ui.Text(c, a.L.T("phoneuse.did.title")).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
+		uiText(c, a.L.T("phoneuse.did.title")).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
 		from := max(0, len(did)-5)
 		for i := len(did) - 1; i >= from; i-- {
 			d := did[i]
@@ -195,7 +195,7 @@ func (a *App) phoneDid(c *ui.Context, did []protocol.PhoneDid) {
 			}
 			ui.Row(c.Key(fmt.Sprintf("did:%d:%d", d.At, i))).Gap(t.S2).AlignItems(ui.Center).MinWidth(0).Children(func() {
 				a.glyph(c, 14, drawDidMark(d.Kind, t.State("working").Dot))
-				ui.Text(c, a.didWords(d)).FontSize(t.SM).TextColor(col).SingleLine()
+				uiText(c, a.didWords(d)).FontSize(t.SM).TextColor(col).SingleLine()
 			})
 		}
 	})

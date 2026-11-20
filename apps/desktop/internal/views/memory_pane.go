@@ -226,7 +226,7 @@ func (a *App) memRow(c *ui.Context, m protocol.MemItem) {
 	key, args := bySource(m)
 	var age func()
 	if s := a.agoLong(m.At); s != "" {
-		age = func() { ui.Text(c, s).FontSize(t.SM).FontWeight(600).TextColor(t.InkMuted).SingleLine() }
+		age = func() { uiText(c, s).FontSize(t.SM).FontWeight(600).TextColor(t.InkMuted).SingleLine() }
 	}
 	if a.openRow(c, "memi:"+m.ID, tile, autospace(m.Title), a.L.T(key, args...), t.InkMuted, open, age) {
 		if open {
@@ -396,7 +396,7 @@ func (a *App) toolTile(c *ui.Context, from string) func() {
 		r, _ := utf8.DecodeRuneInString(from)
 		ui.Row(c.Key("tool-tile:"+from)).Size(36, 36).Shrink(0).Radius(18).Background(t.Sunken).Shadow(0, 2, 0, 0, t.Line2).
 			Justify(ui.Center).AlignItems(ui.Center).AccessHidden(true).Children(func() {
-			ui.Text(c, strings.ToUpper(string(r))).Font(t.Display).FontSize(t.MD).FontWeight(800).TextColor(t.InkSoft).LineHeight(1)
+			uiText(c, strings.ToUpper(string(r))).Font(t.Display).FontSize(t.MD).FontWeight(800).TextColor(t.InkSoft).LineHeight(1)
 		})
 	}
 }
@@ -583,8 +583,8 @@ func (a *App) memFacts(c *ui.Context, b *protocol.BridgeView) {
 			return
 		}
 		ui.Row(c).Gap(t.S3).AlignItems(ui.Baseline).Children(func() {
-			ui.Text(c, a.L.T(k)).FontSize(t.SM).TextColor(t.InkMuted).Width(96).Shrink(0)
-			ui.Text(c, v).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.InkSoft).Selectable().MinWidth(0).Shrink(1)
+			uiText(c, a.L.T(k)).FontSize(t.SM).TextColor(t.InkMuted).Width(96).Shrink(0)
+			uiText(c, v).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.InkSoft).Selectable().MinWidth(0).Shrink(1)
 		})
 	}
 	if b == nil {
@@ -713,7 +713,7 @@ func (a *App) memFirst(c *ui.Context, phase string, b *protocol.BridgeView) {
 	ui.Column(c.Key("mem-first")).AlignItems(ui.Center).Gap(t.S2).Padding(t.S4, t.S6, t.S2, t.S6).Children(func() {
 		a.avatar(c, face, 96)
 		a.heading(c, a.L.T("mem.first.title", name), t.XL)
-		ui.Text(c, a.L.T("mem.first.body")).FontSize(t.MD).LineHeight(a.leading(1.6)).TextColor(t.InkSoft).TextAlign(ui.Center).MaxWidth(520)
+		uiText(c, a.L.T("mem.first.body")).FontSize(t.MD).LineHeight(a.leading(1.6)).TextColor(t.InkSoft).TextAlign(ui.Center).MaxWidth(520)
 	})
 	line := map[string]string{
 		"missing":    a.L.T("mem.setup.missing"),

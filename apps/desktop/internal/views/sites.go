@@ -54,7 +54,7 @@ func (a *App) tryRow(c *ui.Context, dv *protocol.DeviceView) {
 			}
 			id, title := card.TaskID, card.Title
 			ui.Row(c.Key("browsing:" + id)).Gap(t.S3).AlignItems(ui.Center).Children(func() {
-				ui.Text(c, a.L.T("live.using", title)).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(1.5).Grow(1).MinWidth(0)
+				uiText(c, a.L.T("live.using", title)).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(1.5).Grow(1).MinWidth(0)
 				if a.buttonFor(c, a.L.T("live.watch"), title, btnSecondary, t.ControlSM, t.Surface) {
 					a.OpenWatch(id)
 				}
@@ -62,7 +62,7 @@ func (a *App) tryRow(c *ui.Context, dv *protocol.DeviceView) {
 		}
 	}
 	ui.Row(c.Key("try:" + dv.ID)).Gap(t.S3).AlignItems(ui.Center).Children(func() {
-		ui.Text(c, a.L.T("web.try.about")).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(1.5).Grow(1).MinWidth(0)
+		uiText(c, a.L.T("web.try.about")).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(1.5).Grow(1).MinWidth(0)
 		if a.buttonFor(c, a.L.T("web.try"), a.L.T("ability.web"), btnSecondary, t.ControlSM, t.Surface) {
 			a.OpenTryOn(dv.ID)
 		}
@@ -80,16 +80,16 @@ func (a *App) sitesList(c *ui.Context) {
 	}
 	f := a.S.BrowserSites
 	ui.Column(c.Key("sites")).Gap(t.S2).Children(func() {
-		ui.Text(c, a.L.T("sites.title")).FontSize(t.XS).FontWeight(800).LetterSpacing(1.2).TextColor(t.InkMuted)
+		uiText(c, a.L.T("sites.title")).FontSize(t.XS).FontWeight(800).LetterSpacing(1.2).TextColor(t.InkMuted)
 		if f == nil || len(f.Sites) == 0 {
-			ui.Text(c, a.L.T("sites.none")).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5)
+			uiText(c, a.L.T("sites.none")).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5)
 			return
 		}
 		for _, site := range f.Sites {
 			a.siteRow(c, site)
 		}
 		if s.clearing {
-			ui.Text(c, a.L.T("sites.clear.ask")).FontSize(t.SM).TextColor(t.Ink).LineHeight(1.5)
+			uiText(c, a.L.T("sites.clear.ask")).FontSize(t.SM).TextColor(t.Ink).LineHeight(1.5)
 			ui.Row(c).Gap(t.S3).Children(func() {
 				if a.button(c, a.L.T("sites.keep"), btnSecondary, t.ControlSM, t.Surface) {
 					s.clearing = false
@@ -113,8 +113,8 @@ func (a *App) siteRow(c *ui.Context, site protocol.SiteView) {
 	}
 	ui.Row(c.Key("site:"+site.Site)).Gap(t.S3).AlignItems(ui.Center).Padding(t.S2, t.S3).Radius(t.RadiusSM).Background(t.SurfaceSunken).Children(func() {
 		ui.Column(c).Grow(1).MinWidth(0).Gap(2).Children(func() {
-			ui.Text(c, site.Site).FontSize(t.SM).FontWeight(700).SingleLine()
-			ui.Text(c, line).FontSize(t.XS).TextColor(t.InkMuted)
+			uiText(c, site.Site).FontSize(t.SM).FontWeight(700).SingleLine()
+			uiText(c, line).FontSize(t.XS).TextColor(t.InkMuted)
 		})
 		if a.buttonFor(c, a.L.T("sites.signout"), site.Site, btnText, t.ControlSM, t.SurfaceSunken) {
 			a.send(protocol.BrowserSitesReq{T: "browser_site_signout", Site: site.Site})

@@ -84,7 +84,7 @@ func (a *App) memPluginAction(c *ui.Context, dv *protocol.DeviceView, h protocol
 	} else {
 		// The in-place ask (design/ui.md): one bold question, what changes and where, then the button and Cancel.
 		ui.Column(c.Key("mempask:" + key)).Gap(t.S2).Padding(t.S3).Radius(t.RadiusMD).Background(t.Bg).Children(func() {
-			ui.Text(c, a.L.T("memp.ask", agent, a.deviceNameIn(dv))).FontSize(t.SM).FontWeight(800).LineHeight(1.4)
+			uiText(c, a.L.T("memp.ask", agent, a.deviceNameIn(dv))).FontSize(t.SM).FontWeight(800).LineHeight(1.4)
 			// D375: Mem's own command first where it has one for this agent and the plugin isn't there.
 			means := "memp.means"
 			if memConnectTools[h.Harness] && h.Mem.State == "absent" {

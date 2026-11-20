@@ -321,7 +321,7 @@ func (a *App) settingsRail(c *ui.Context, shown string) {
 		}
 		ui.Box(c).Grow(1)
 		// The version, quietly, where a game puts its build number.
-		ui.Text(c, "Ducter "+a.versionText()).FontSize(t.XS).TextColor(t.InkMuted).Padding(0, t.S3).SingleLine().Selectable()
+		uiText(c, "Ducter "+a.versionText()).FontSize(t.XS).TextColor(t.InkMuted).Padding(0, t.S3).SingleLine().Selectable()
 	})
 }
 
@@ -357,12 +357,12 @@ func (a *App) railTab(c *ui.Context, tab string, on bool) {
 			}
 		}
 		if badge == "" {
-			ui.Text(c, name).FontSize(t.MD).FontWeight(weight).TextColor(fg).Grow(1).MinWidth(0).MaxLines(2).AccessHidden(true)
+			uiText(c, name).FontSize(t.MD).FontWeight(weight).TextColor(fg).Grow(1).MinWidth(0).MaxLines(2).AccessHidden(true)
 			return
 		}
 		ui.Column(c).Grow(1).MinWidth(0).Gap(1).AccessHidden(true).Children(func() {
-			ui.Text(c, name).FontSize(t.MD).FontWeight(weight).TextColor(fg).SingleLine()
-			ui.Text(c, badge).FontSize(t.XS).FontWeight(700).TextColor(t.HighlightInk).SingleLine()
+			uiText(c, name).FontSize(t.MD).FontWeight(weight).TextColor(fg).SingleLine()
+			uiText(c, badge).FontSize(t.XS).FontWeight(700).TextColor(t.HighlightInk).SingleLine()
 		})
 	})
 	if b.Clicked() && !on {
@@ -492,7 +492,7 @@ func (a *App) panelHead(c *ui.Context, tab, lede string) {
 	ui.Column(c.Key("panel-head")).Gap(t.S1).Children(func() {
 		a.heading(c, a.tabName(tab), t.XXL)
 		if lede != "" {
-			ui.Text(c, lede).FontSize(t.MD).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
+			uiText(c, lede).FontSize(t.MD).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
 		}
 	})
 }
@@ -502,7 +502,7 @@ func (a *App) panelHead(c *ui.Context, tab, lede string) {
 // said once at the top, never left under the last card.
 func (a *App) ledeNote(c *ui.Context, key, text string) {
 	t := a.T
-	ui.Text(c.Key(key), text).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted).Margin(-t.S3, 0, 0, 0)
+	uiText(c.Key(key), text).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted).Margin(-t.S3, 0, 0, 0)
 }
 
 // group is one titled group of a section: its title (and a note) on the
@@ -533,9 +533,9 @@ func (a *App) row(c *ui.Context, key, label, help string, control func()) {
 	a.sep(c)
 	ui.Row(c.Key("row:"+key)).Gap(t.S5).Padding(t.S4, t.S5).MinHeight(68).AlignItems(ui.Center).Children(func() {
 		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(2).Children(func() {
-			ui.Text(c, label).FontSize(t.MD).FontWeight(700).LineHeight(1.4)
+			uiText(c, label).FontSize(t.MD).FontWeight(700).LineHeight(1.4)
 			if help != "" {
-				ui.Text(c, help).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
+				uiText(c, help).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
 			}
 		})
 		if control != nil {
@@ -580,18 +580,18 @@ func (a *App) valueRow(c *ui.Context, key, title, sub string, mark func(), value
 		ui.Row(c).Gap(t.S3).AlignItems(ui.Start).Children(func() {
 			ui.Column(c).Gap(2).Grow(1).MinWidth(0).Children(func() {
 				ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
-					ui.Text(c, title).FontSize(t.MD).FontWeight(800).SingleLine()
+					uiText(c, title).FontSize(t.MD).FontWeight(800).SingleLine()
 					if mark != nil {
 						mark()
 					}
 				})
 				if sub != "" {
-					ui.Text(c, sub).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
+					uiText(c, sub).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
 				}
 			})
 			ui.Column(c).Gap(2).AlignItems(ui.End).Shrink(0).Children(func() {
 				if value != "" {
-					ui.Text(c, value).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.InkSoft).Selectable()
+					uiText(c, value).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.InkSoft).Selectable()
 				}
 				if status != nil {
 					status()
@@ -616,9 +616,9 @@ func (a *App) stateRow(c *ui.Context, key, title, sub string, state func(), valu
 	ui.Column(c.Key("srow:"+key)).Gap(t.S3).Padding(t.S4, t.S5).Children(func() {
 		ui.Row(c).Gap(t.S5).MinHeight(36).AlignItems(ui.Center).Children(func() {
 			ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(2).Children(func() {
-				ui.Text(c, title).FontSize(t.MD).FontWeight(700).LineHeight(1.4)
+				uiText(c, title).FontSize(t.MD).FontWeight(700).LineHeight(1.4)
 				if sub != "" {
-					ui.Text(c, sub).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
+					uiText(c, sub).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
 				}
 				if state != nil {
 					state()
@@ -626,7 +626,7 @@ func (a *App) stateRow(c *ui.Context, key, title, sub string, state func(), valu
 			})
 			ui.Row(c).Shrink(0).Gap(t.S4).AlignItems(ui.Center).Children(func() {
 				if value != "" {
-					ui.Text(c, value).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.InkSoft).Selectable()
+					uiText(c, value).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.InkSoft).Selectable()
 				}
 				if action != nil {
 					action()
@@ -646,7 +646,7 @@ func (a *App) sideStatus(c *ui.Context, text string, tone sideTone) {
 	if tone == sideMuted {
 		w = 500
 	}
-	ui.Text(c, text).FontSize(t.XS).FontWeight(w).TextColor(a.sideInk(tone)).SingleLine()
+	uiText(c, text).FontSize(t.XS).FontWeight(w).TextColor(a.sideInk(tone)).SingleLine()
 }
 
 // sideLink is a valueRow's status that does something: the same words and
@@ -667,7 +667,7 @@ func (a *App) sideLink(c *ui.Context, key, text, about string, tone sideTone, ch
 		col = t.Ink
 	}
 	b.Children(func() {
-		ui.Text(c, text).FontSize(t.XS).FontWeight(700).TextColor(col).SingleLine().AccessHidden(true)
+		uiText(c, text).FontSize(t.XS).FontWeight(700).TextColor(col).SingleLine().AccessHidden(true)
 		if chevron != 0 {
 			a.glyph(c, 10, drawChevron(col, chevron > 1))
 		}
@@ -708,9 +708,9 @@ func (a *App) linkRow(c *ui.Context, key, label, help string, out bool) bool {
 	}
 	b.Children(func() {
 		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(2).Children(func() {
-			ui.Text(c, label).FontSize(t.MD).FontWeight(700).LineHeight(1.4)
+			uiText(c, label).FontSize(t.MD).FontWeight(700).LineHeight(1.4)
 			if help != "" {
-				ui.Text(c, help).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
+				uiText(c, help).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
 			}
 		})
 		mark := drawChevron(t.InkMuted, false)

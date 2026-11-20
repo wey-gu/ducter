@@ -80,9 +80,9 @@ func (a *App) heldChips(c *ui.Context, task *store.Task, working, steers bool) {
 	}
 	ui.Column(c.Key("held-q")).Gap(t.S1).Padding(0, 0, t.S2, 0).Label(head).Children(func() {
 		ui.Row(c).Gap(t.S2).AlignItems(ui.Baseline).Padding(0, t.S3).Children(func() {
-			ui.Text(c, head).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().MinWidth(0).Shrink(1)
+			uiText(c, head).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().MinWidth(0).Shrink(1)
 			if len(held) > 1 {
-				ui.Text(c, itoa(int64(len(held)))).FontSize(t.XS).TextColor(t.Faint).FontFeatures("tnum").Shrink(0)
+				uiText(c, itoa(int64(len(held)))).FontSize(t.XS).TextColor(t.Faint).FontFeatures("tnum").Shrink(0)
 			}
 		})
 		for _, h := range held {
@@ -131,7 +131,7 @@ func (a *App) heldChip(c *ui.Context, task *store.Task, h protocol.HeldMsg, work
 			return
 		}
 		words := h.Text
-		w := ui.Text(c.Key("hq-words:"+h.ID), autospace(words)).FontSize(t.MD).TextColor(t.InkSoft).SingleLine().
+		w := uiText(c.Key("hq-words:"+h.ID), autospace(words)).FontSize(t.MD).TextColor(t.InkSoft).SingleLine().
 			Padding(6, t.S3).Radius(t.RadiusSM).Grow(1).MinWidth(0).Role(ui.RoleButton).Focusable().Cursor(ui.CursorText).
 			Label(spoken(a.L, a.L.T("held.edit"), h.Text)).Tooltip(a.L.T("held.edit"))
 		if w.Hovered() {
@@ -204,6 +204,6 @@ func (a *App) steerReceipt(c *ui.Context, task *store.Task, seq int64) {
 		} else {
 			ui.Box(c).Size(6, 6).Radius(3).Background(t.Working.Dot).Shrink(0)
 		}
-		ui.Text(c, a.L.T(key)).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
+		uiText(c, a.L.T(key)).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
 	})
 }

@@ -154,8 +154,8 @@ func (a *App) optionRow(c *ui.Context, k local.Check, first bool) {
 	ui.Column(c.Key("fix:"+k.ID)).Gap(t.S2).Padding(t.S4, t.S4).MinHeight(72).Justify(ui.Center).Children(func() {
 		ui.Row(c).Gap(t.S4).AlignItems(ui.Center).Children(func() {
 			ui.Column(c).Grow(1).MinWidth(0).Gap(2).Children(func() {
-				ui.Text(c, k.Label).FontSize(t.LG).FontWeight(800)
-				ui.Text(c, a.rowStatus(k, st, j)).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(1.45)
+				uiText(c, k.Label).FontSize(t.LG).FontWeight(800)
+				uiText(c, a.rowStatus(k, st, j)).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(1.45)
 			})
 			switch st {
 			case rowRunning:
@@ -185,7 +185,7 @@ func (a *App) optionRow(c *ui.Context, k local.Check, first bool) {
 			a.signinHelp(c, k, j)
 		case st == rowFailed:
 			if last := j.Last(); last != "" && j.Trouble() == "" {
-				ui.Text(c, last).Font(t.Mono).FontSize(12).TextColor(t.InkMuted).SingleLine().Selectable()
+				uiText(c, last).Font(t.Mono).FontSize(12).TextColor(t.InkMuted).SingleLine().Selectable()
 			}
 			if a.button(c, a.L.T("fix.terminal"), btnText, t.ControlSM, t.SurfaceSunken) {
 				_ = a.Backend.RunInTerminal(k.ID, k.Fix)
@@ -289,10 +289,10 @@ func (a *App) setupOptions(c *ui.Context, blocking []local.Check) {
 		rows = append(append([]local.Check(nil), blocking...), k)
 		body = "setup.pick.body"
 	}
-	ui.Text(c, a.L.T(body)).FontSize(t.MD).LineHeight(1.55).TextColor(t.InkSoft)
+	uiText(c, a.L.T(body)).FontSize(t.MD).LineHeight(1.55).TextColor(t.InkSoft)
 	a.optionRows(c, rows)
 	a.setupKeyRow(c) // D298: no subscription needed
-	ui.Text(c, a.L.T("setup.auto.app")).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5)
+	uiText(c, a.L.T("setup.auto.app")).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5)
 }
 
 // setupReady is the short "All set" after the person fixed something: the
@@ -313,7 +313,7 @@ func (a *App) setupReady(c *ui.Context) {
 	if len(ready) > 1 {
 		key = "setup.ready.body.many"
 	}
-	ui.Text(c, a.L.T(key, andList(a.L, ready), a.personaName())).FontSize(t.LG).LineHeight(1.55).TextColor(t.InkSoft)
+	uiText(c, a.L.T(key, andList(a.L, ready), a.personaName())).FontSize(t.LG).LineHeight(1.55).TextColor(t.InkSoft)
 	left := a.setup.readyAt.Add(ReadyFor).Sub(a.Now())
 	if left > 0 {
 		c.After(left)
@@ -345,7 +345,7 @@ func (a *App) backgroundNote(c *ui.Context) {
 	}
 	t := a.T
 	ui.Row(c).Gap(10).Padding(10, 14).Radius(t.RadiusSM).Background(t.SurfaceSunken).AlignItems(ui.Center).Children(func() {
-		ui.Text(c, a.L.T("bg.note")).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(1.5).Grow(1).MinWidth(0)
+		uiText(c, a.L.T("bg.note")).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(1.5).Grow(1).MinWidth(0)
 	})
 }
 
@@ -389,12 +389,12 @@ func (a *App) backgroundLine(c *ui.Context) bool {
 				ui.Column(c).Grow(1).MinWidth(0).Gap(2).Children(func() {
 					switch {
 					case b.allowed && !b.moving:
-						ui.Text(c, a.L.T("bg.allowed.wait")).FontSize(t.MD).FontWeight(700)
+						uiText(c, a.L.T("bg.allowed.wait")).FontSize(t.MD).FontWeight(700)
 					case b.allowed:
-						ui.Text(c, a.L.T("bg.allowed")).FontSize(t.MD).FontWeight(700)
+						uiText(c, a.L.T("bg.allowed")).FontSize(t.MD).FontWeight(700)
 					default:
-						ui.Text(c, a.L.T("bg.off")).FontSize(t.MD).FontWeight(700)
-						ui.Text(c, a.L.T("bg.off.body")).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.45)
+						uiText(c, a.L.T("bg.off")).FontSize(t.MD).FontWeight(700)
+						uiText(c, a.L.T("bg.off.body")).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.45)
 					}
 				})
 				// D314: 以后再说 is quiet beside the primary; alone, 好 is the

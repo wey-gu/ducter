@@ -79,7 +79,7 @@ func (a *App) madeTab(c *ui.Context) ui.Element {
 	a.madeAsk(c)
 	res := a.madeResult()
 	name := firstNonEmpty(a.defaultName(), "Ducter")
-	ui.Text(c.Key("made-line"), a.L.T("made.line", name)).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5).MaxWidth(560).Padding(0, t.S1)
+	uiText(c.Key("made-line"), a.L.T("made.line", name)).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5).MaxWidth(560).Padding(0, t.S1)
 	var rng *protocol.PastRange
 	if res != nil {
 		rng = res.Range
@@ -127,7 +127,7 @@ func (a *App) madeChips(c *ui.Context, res *protocol.MadeFrame) {
 					w = 700
 				}
 				b.Children(func() {
-					ui.Text(c, ch.label).FontSize(t.SM).FontWeight(w).TextColor(fg).SingleLine().AccessHidden(true)
+					uiText(c, ch.label).FontSize(t.SM).FontWeight(w).TextColor(fg).SingleLine().AccessHidden(true)
 				})
 				if b.Clicked() {
 					if on {
@@ -186,16 +186,16 @@ func (a *App) madeList(c *ui.Context, res *protocol.MadeFrame, name string) {
 		ui.Column(c.Key("made-"+key)).Padding(t.S6, t.S5).Gap(t.S3).Radius(t.RadiusXL).Border(2, t.Line).BorderStyle(ui.BorderDashed).
 			AlignItems(ui.Center).Children(func() {
 			a.madeDrawn(c, "empty-art", "table", 48)
-			ui.Text(c, words).FontSize(t.MD).TextColor(t.InkSoft).TextAlign(ui.Center).LineHeight(1.6).MaxWidth(420)
+			uiText(c, words).FontSize(t.MD).TextColor(t.InkSoft).TextAlign(ui.Center).LineHeight(1.6).MaxWidth(420)
 		})
 		return
 	}
 	section := func(key, title string, n int, items []*protocol.MadeItem) {
 		ui.Column(c.Key("msec:" + key)).Gap(t.S2).Children(func() {
 			ui.Row(c).Gap(t.S2).AlignItems(ui.Center).MinHeight(24).Padding(t.S2, t.S2, 0, t.S2).Children(func() {
-				ui.Text(c, title).FontSize(t.XS).FontWeight(600).TextColor(t.InkMuted)
+				uiText(c, title).FontSize(t.XS).FontWeight(600).TextColor(t.InkMuted)
 				if n > 0 {
-					ui.Text(c, fmt.Sprint(n)).FontSize(t.XS).FontWeight(500).TextColor(t.Faint).FontFeatures("tnum")
+					uiText(c, fmt.Sprint(n)).FontSize(t.XS).FontWeight(500).TextColor(t.Faint).FontFeatures("tnum")
 				}
 			})
 			ui.Column(c.Key("cards")).Gap(t.S2 + 2).Children(func() {
@@ -258,9 +258,9 @@ func (a *App) madeCard(c *ui.Context, it *protocol.MadeItem, terms []string) {
 			a.madeFace(c, it)
 			ui.Column(c.Key("body")).Grow(1).Shrink(1).MinWidth(0).Gap(4).Children(func() {
 				ui.Row(c.Key("l1")).Gap(t.S2).AlignItems(ui.Center).MinWidth(0).Children(func() {
-					ui.Text(c, keepWords(autospace(title))).FontSize(t.MD).FontWeight(600).TextColor(t.Ink).SingleLine().Shrink(1).MinWidth(0).Tooltip(title)
+					uiText(c, keepWords(autospace(title))).FontSize(t.MD).FontWeight(600).TextColor(t.Ink).SingleLine().Shrink(1).MinWidth(0).Tooltip(title)
 					if it.Pinned {
-						ui.Text(c.Key("pinned"), a.L.T("made.pinned")).FontSize(t.XS).FontWeight(600).TextColor(t.HighlightInk).Padding(1, t.S2-1).Radius(6).
+						uiText(c.Key("pinned"), a.L.T("made.pinned")).FontSize(t.XS).FontWeight(600).TextColor(t.HighlightInk).Padding(1, t.S2-1).Radius(6).
 							Background(t.Highlight).SingleLine().Shrink(0)
 					}
 				})
@@ -271,7 +271,7 @@ func (a *App) madeCard(c *ui.Context, it *protocol.MadeItem, terms []string) {
 				}
 				ui.Row(c.Key("l3")).Gap(t.S3).AlignItems(ui.Center).MinWidth(0).Children(func() { // D291: each fact apart
 					for _, p := range nonEmpty(a.madeKindWord(it), size, a.pastDate(store.ParseTime(it.At))) {
-						ui.Text(c, p).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(1).MinWidth(0)
+						uiText(c, p).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(1).MinWidth(0)
 					}
 				})
 			})
@@ -301,7 +301,7 @@ func (a *App) madeLine2(c *ui.Context, it *protocol.MadeItem, terms []string) {
 	t := a.T
 	if h := it.Hit; h != nil && strings.TrimSpace(h.Text) != "" {
 		ui.Row(c.Key("l2")).Gap(t.S2).AlignItems(ui.Center).MinWidth(0).Children(func() {
-			ui.Text(c, a.L.T("made.hit."+h.Field)).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).SingleLine().Shrink(0)
+			uiText(c, a.L.T("made.hit."+h.Field)).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).SingleLine().Shrink(0)
 			text := strings.Join(strings.Fields(h.Text), " ")
 			ui.RichText(c, a.pastMarked(text, terms, false)...).SingleLine().Shrink(1).MinWidth(0).Tooltip(text)
 		})
@@ -317,7 +317,7 @@ func (a *App) madeLine2(c *ui.Context, it *protocol.MadeItem, terms []string) {
 		line = a.L.T("made.inconv")
 	}
 	if line != "" {
-		ui.Text(c.Key("l2"), keepWords(autospace(line))).FontSize(t.SM).TextColor(t.InkSoft).SingleLine().MinWidth(0).Tooltip(line)
+		uiText(c.Key("l2"), keepWords(autospace(line))).FontSize(t.SM).TextColor(t.InkSoft).SingleLine().MinWidth(0).Tooltip(line)
 	}
 }
 

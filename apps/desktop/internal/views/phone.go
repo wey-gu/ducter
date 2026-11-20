@@ -151,7 +151,7 @@ func (a *App) phoneSignIn(c *ui.Context) {
 			words = a.L.T("phone.signin.failed", name)
 		}
 		a.notice(c, "signin-end", noticeAlert, func() { a.glyph(c, 22, drawBang(t.Failed.Ink)) }, func() {
-			ui.Text(c, words).FontSize(t.SM).FontWeight(700).TextColor(t.Failed.Ink).MaxLines(3)
+			uiText(c, words).FontSize(t.SM).FontWeight(700).TextColor(t.Failed.Ink).MaxLines(3)
 		}, func() {
 			if a.buttonFor(c, a.L.T("phone.signin.cancel"), name, btnText, t.ControlSM, t.Failed.Surface) {
 				a.S.SignIn = nil
@@ -177,8 +177,8 @@ func (a *App) phoneSignIn(c *ui.Context) {
 			a.heading(c, autospace(a.L.T("phone.signin.title", name)), t.LG)
 			a.note(c, a.L.T("phone.signin.lede"))
 			ui.Column(c).Gap(2).Padding(t.S3, t.S4).Radius(t.RadiusMD).Background(t.SurfaceSunken).AlignSelf(ui.Start).Children(func() {
-				ui.Text(c, a.L.T("phone.signin.code")).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
-				ui.Text(c, spaced(si.UserCode)).FontSize(t.XL + 6).FontWeight(800).FontFeatures("tnum").Label(si.UserCode)
+				uiText(c, a.L.T("phone.signin.code")).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
+				uiText(c, spaced(si.UserCode)).FontSize(t.XL + 6).FontWeight(800).FontFeatures("tnum").Label(si.UserCode)
 			})
 			ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
 				a.glyph(c, 16, drawClock(t.InkMuted))
@@ -189,7 +189,7 @@ func (a *App) phoneSignIn(c *ui.Context) {
 					}
 					c.After(30 * time.Second)
 				}
-				ui.Text(c, line).FontSize(t.SM).TextColor(t.InkSoft).Shrink(1).MinWidth(0)
+				uiText(c, line).FontSize(t.SM).TextColor(t.InkSoft).Shrink(1).MinWidth(0)
 			})
 			ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
 				if a.buttonFor(c, a.L.T("phone.signin.cancel"), name, btnText, t.ControlMD, t.Surface) {
@@ -252,7 +252,7 @@ func (a *App) phoneCard(c *ui.Context, cv protocol.ConnectionView) {
 		// D291: the state word in its ink; today's calls their own muted element at the right edge.
 		line, tone := a.L.T("phone.card.ready"), sideDone
 		control := func() {
-			ui.Text(c, today).FontSize(t.SM).TextColor(t.InkMuted).FontFeatures("tnum").SingleLine()
+			uiText(c, today).FontSize(t.SM).TextColor(t.InkMuted).FontFeatures("tnum").SingleLine()
 		}
 		switch {
 		case cv.State == "unauthorized":
@@ -302,12 +302,12 @@ func (a *App) phoneCard(c *ui.Context, cv protocol.ConnectionView) {
 			ui.Column(c.Key("phone-off")).Gap(t.S2).Padding(t.S4, t.S5).Children(func() {
 				ui.Row(c).Gap(t.S3).Children(func() {
 					ui.Box(c).Width(40).Shrink(0)
-					ui.Text(c, a.L.T("phone.card.off")).FontSize(t.MD).FontWeight(700).LineHeight(a.leading(1.4))
+					uiText(c, a.L.T("phone.card.off")).FontSize(t.MD).FontWeight(700).LineHeight(a.leading(1.4))
 				})
 				for i, s := range off {
 					ui.Row(c.Key("phone-off:" + strconv.Itoa(i))).Gap(t.S3).AlignItems(ui.Center).Children(func() {
 						a.tileCol(c, func() { a.glyph(c, 14, drawCheck(t.Done.Ink)) })
-						ui.Text(c, s).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(a.leading(1.5)).Grow(1).MinWidth(0)
+						uiText(c, s).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(a.leading(1.5)).Grow(1).MinWidth(0)
 					})
 				}
 			})
@@ -445,17 +445,17 @@ func (a *App) callSheetBody(c *ui.Context, d *store.DecisionState, why bool) {
 		if s.Why == "own" {
 			key = "call.sheet.why.own" // D278: 你来打 / You call
 		}
-		ui.Text(c, autospace(a.L.T(key))).FontSize(t.SM).TextColor(t.NeedsYou.Ink).LineHeight(a.leading(1.45))
+		uiText(c, autospace(a.L.T(key))).FontSize(t.SM).TextColor(t.NeedsYou.Ink).LineHeight(a.leading(1.45))
 	}
 	row := func(key, label string, lines []string) {
 		if len(lines) == 0 {
 			return
 		}
 		ui.Row(c.Key("sheet:" + key)).Gap(t.S3).AlignItems(ui.Baseline).Children(func() {
-			ui.Text(c, label).FontSize(t.SM).TextColor(t.InkMuted).Width(84).Shrink(0)
+			uiText(c, label).FontSize(t.SM).TextColor(t.InkMuted).Width(84).Shrink(0)
 			ui.Column(c).Gap(2).Grow(1).MinWidth(0).Children(func() {
 				for i, l := range lines {
-					ui.Text(c.Key(i), autospace(l)).FontSize(t.MD).TextColor(t.Ink).LineHeight(a.leading(1.45))
+					uiText(c.Key(i), autospace(l)).FontSize(t.MD).TextColor(t.Ink).LineHeight(a.leading(1.45))
 				}
 			})
 		})
@@ -463,8 +463,8 @@ func (a *App) callSheetBody(c *ui.Context, d *store.DecisionState, why bool) {
 	ui.Column(c.Key("sheet:" + d.DecisionID)).Gap(t.S3).Children(func() {
 		ui.Column(c).Gap(t.S2).Padding(t.S3, t.S4).Radius(t.RadiusMD).Background(t.Surface).Children(func() {
 			ui.Row(c.Key("sheet:number")).Gap(t.S3).AlignItems(ui.Center).Children(func() {
-				ui.Text(c, a.L.T("call.number")).FontSize(t.SM).TextColor(t.InkMuted).Width(84).Shrink(0)
-				ui.Text(c, prettyNumber(pl.To)).FontSize(t.MD).FontWeight(700).TextColor(t.Ink).FontFeatures("tnum").Grow(1).MinWidth(0)
+				uiText(c, a.L.T("call.number")).FontSize(t.SM).TextColor(t.InkMuted).Width(84).Shrink(0)
+				uiText(c, prettyNumber(pl.To)).FontSize(t.MD).FontWeight(700).TextColor(t.Ink).FontFeatures("tnum").Grow(1).MinWidth(0)
 				label := a.L.T("call.sheet.copy")
 				if at, ok := p.copied[d.DecisionID]; ok && a.Now().Sub(at) < 2*time.Second {
 					label = a.L.T("call.sheet.copied")
@@ -478,8 +478,8 @@ func (a *App) callSheetBody(c *ui.Context, d *store.DecisionState, why bool) {
 			row("goal", a.L.T("call.goal"), []string{pl.Goal})
 		})
 		ui.Column(c.Key("sheet:open")).Gap(t.S1).Padding(t.S3, t.S4).Radius(t.RadiusMD).Background(t.SurfaceSunken).Children(func() {
-			ui.Text(c, a.L.T("call.sheet.open")).FontSize(t.XS).FontWeight(800).TextColor(t.InkMuted)
-			ui.Text(c, autospace(s.Open)).FontSize(t.LG).FontWeight(700).TextColor(t.Ink).LineHeight(a.leading(1.45))
+			uiText(c, a.L.T("call.sheet.open")).FontSize(t.XS).FontWeight(800).TextColor(t.InkMuted)
+			uiText(c, autospace(s.Open)).FontSize(t.LG).FontWeight(700).TextColor(t.Ink).LineHeight(a.leading(1.45))
 		})
 		if len(s.Ask)+len(pl.Say)+len(s.Dont)+len(s.Note) > 0 {
 			ui.Column(c).Gap(t.S2).Padding(t.S3, t.S4).Radius(t.RadiusMD).Background(t.Surface).Children(func() {
@@ -525,7 +525,7 @@ func (a *App) callSheetDial(c *ui.Context, d *store.DecisionState) {
 			if warn {
 				ink = t.Failed.Ink
 			}
-			ui.Text(c, line).FontSize(t.SM).TextColor(ink).LineHeight(a.leading(1.45)).Role(ui.RoleStatus)
+			uiText(c, line).FontSize(t.SM).TextColor(ink).LineHeight(a.leading(1.45)).Role(ui.RoleStatus)
 		}
 	})
 }
@@ -566,10 +566,10 @@ func (a *App) callPlanBody(c *ui.Context, d *store.DecisionState) {
 	if pl.Note != "" {
 		ui.Row(c).Gap(t.S2).AlignItems(ui.Start).Children(func() {
 			a.glyph(c, 16, drawBang(t.NeedsYou.Ink))
-			ui.Text(c, pl.Note).FontSize(t.SM).FontWeight(700).TextColor(t.NeedsYou.Ink).Grow(1).MinWidth(0)
+			uiText(c, pl.Note).FontSize(t.SM).FontWeight(700).TextColor(t.NeedsYou.Ink).Grow(1).MinWidth(0)
 		})
 	}
-	ui.Text(c, a.L.T("call.opens", a.S.PersonaName)).FontSize(t.SM).TextColor(t.NeedsYou.Ink).LineHeight(a.leading(1.45))
+	uiText(c, a.L.T("call.opens", a.S.PersonaName)).FontSize(t.SM).TextColor(t.NeedsYou.Ink).LineHeight(a.leading(1.45))
 	if pl.Summary != "" {
 		p := a.ph()
 		if a.disclosureRow(c, "callsum:"+d.DecisionID, a.L.T("call.summary"), "", p.summary[d.DecisionID]) {
@@ -630,15 +630,15 @@ func (a *App) providerWording(c *ui.Context, text string) {
 	t := a.T
 	rows := a.summaryRows(text)
 	if rows == nil {
-		ui.Text(c, text).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(a.leading(1.5)).Padding(0, t.S3)
+		uiText(c, text).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(a.leading(1.5)).Padding(0, t.S3)
 		return
 	}
 	ui.Column(c.Key("callsum-rows")).Gap(t.S1).Padding(t.S2, t.S3).Radius(t.RadiusMD).Background(t.SurfaceSunken).Children(func() {
 		for i, r := range rows {
 			r := r
 			ui.Row(c.Key(i)).Gap(t.S3).AlignItems(ui.Baseline).Children(func() {
-				ui.Text(c, r[0]).FontSize(t.XS).TextColor(t.InkMuted).Width(84).Shrink(0)
-				ui.Text(c, r[1]).FontSize(t.SM).TextColor(t.InkSoft).Grow(1).MinWidth(0).LineHeight(a.leading(1.45))
+				uiText(c, r[0]).FontSize(t.XS).TextColor(t.InkMuted).Width(84).Shrink(0)
+				uiText(c, r[1]).FontSize(t.SM).TextColor(t.InkSoft).Grow(1).MinWidth(0).LineHeight(a.leading(1.45))
 			})
 		}
 	})
@@ -716,8 +716,8 @@ func (a *App) callFacts(c *ui.Context, d *store.DecisionState) {
 			}
 			r := r
 			ui.Row(c.Key("fact:" + r[0])).Gap(t.S3).AlignItems(ui.Baseline).Children(func() {
-				ui.Text(c, r[0]).FontSize(t.SM).TextColor(t.InkMuted).Width(84).Shrink(0)
-				ui.Text(c, autospace(r[1])).FontSize(t.MD).TextColor(t.Ink).Grow(1).MinWidth(0).LineHeight(a.leading(1.45)).FontFeatures("tnum")
+				uiText(c, r[0]).FontSize(t.SM).TextColor(t.InkMuted).Width(84).Shrink(0)
+				uiText(c, autospace(r[1])).FontSize(t.MD).TextColor(t.Ink).Grow(1).MinWidth(0).LineHeight(a.leading(1.45)).FontFeatures("tnum")
 			})
 		}
 		why := a.callWaitWords(pl)
@@ -726,7 +726,7 @@ func (a *App) callFacts(c *ui.Context, d *store.DecisionState) {
 		}
 		open := d.Resolved == nil && d.Pending == ""
 		ui.Row(c.Key("fact:wait")).Gap(t.S3).AlignItems(ui.Center).Wrap().Padding(0, 0, 0, 84+t.S3).Children(func() {
-			ui.Text(c, autospace(why)).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(a.leading(1.45)).Grow(1).Basis(180).MinWidth(0)
+			uiText(c, autospace(why)).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(a.leading(1.45)).Grow(1).Basis(180).MinWidth(0)
 			if pl.CanNow && open && a.buttonFor(c.Key("callnow"), a.L.T("call.now"), d.Question, btnSecondary, t.ControlSM, t.Surface) {
 				a.ph().now[d.DecisionID] = true
 				d.Pending, d.AnsweredAt = "go", a.Now()
@@ -753,13 +753,13 @@ func (a *App) callQuestionBody(c *ui.Context, d *store.DecisionState) {
 		if who != "" {
 			head = a.L.T("call.q.title.who", who)
 		}
-		ui.Text(c, head).FontSize(t.SM).FontWeight(800).TextColor(t.NeedsYou.Ink)
+		uiText(c, head).FontSize(t.SM).FontWeight(800).TextColor(t.NeedsYou.Ink)
 	})
 	a.heading(c, autospace(d.Question), t.XL+2).LineHeight(1.35)
 	if d.Resolved != nil || d.Pending != "" {
 		ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
 			a.glyph(c, 16, drawCheck(t.InkMuted))
-			ui.Text(c, a.callAnswered(d)).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
+			uiText(c, a.callAnswered(d)).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
 		})
 		return
 	}
@@ -807,7 +807,7 @@ func (a *App) callQuestionBody(c *ui.Context, d *store.DecisionState) {
 		}
 	})
 	p.answer[d.DecisionID] = draft
-	ui.Text(c, a.L.T("call.q.foot")).FontSize(t.XS).TextColor(t.NeedsYou.Ink)
+	uiText(c, a.L.T("call.q.foot")).FontSize(t.XS).TextColor(t.NeedsYou.Ink)
 }
 
 // openCallQuestions are the questions from a live line nobody answered yet.
@@ -995,13 +995,13 @@ func (a *App) callRow(c *ui.Context, cl protocol.CallBody) {
 				ui.Image(c, bmp).Size(26, 36).Shrink(0).AccessHidden(true)
 			}
 			ui.Column(c).Gap(2).Grow(1).MinWidth(0).Children(func() {
-				ui.Text(c, autospace(title)).FontSize(t.MD).FontWeight(800).TextColor(ink).MaxLines(2).FontFeatures("tnum")
+				uiText(c, autospace(title)).FontSize(t.MD).FontWeight(800).TextColor(ink).MaxLines(2).FontFeatures("tnum")
 				if sub := a.callSub(cl); sub != "" {
-					ui.Text(c, autospace(sub)).FontSize(t.SM).TextColor(t.InkSoft).MaxLines(5).LineHeight(a.leading(1.45))
+					uiText(c, autospace(sub)).FontSize(t.SM).TextColor(t.InkSoft).MaxLines(5).LineHeight(a.leading(1.45))
 				}
 			})
 			if clock := callClock(cl, now); clock != "" {
-				ui.Text(c, clock).FontSize(t.SM).TextColor(t.InkMuted).FontFeatures("tnum").Shrink(0)
+				uiText(c, clock).FontSize(t.SM).TextColor(t.InkMuted).FontFeatures("tnum").Shrink(0)
 			}
 			switch {
 			case cl.State == protocol.CallWaiting:
@@ -1035,17 +1035,17 @@ func (a *App) callResult(c *ui.Context, cl protocol.CallBody) {
 	p := a.ph()
 	ui.Column(c.Key("callres:"+cl.CallID)).Gap(t.S2).Padding(t.S2, 0, 0, 39).Children(func() {
 		if cl.State == protocol.CallAutomated && cl.Outcome != "" {
-			ui.Text(c, autospace(cl.Outcome)).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(a.leading(1.5)) // the provider's words
+			uiText(c, autospace(cl.Outcome)).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(a.leading(1.5)) // the provider's words
 		}
 		if cl.Summary != "" {
-			ui.Text(c, autospace(cl.Summary)).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(a.leading(1.5))
+			uiText(c, autospace(cl.Summary)).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(a.leading(1.5))
 		}
 		if len(cl.Agreed) > 0 {
-			ui.Text(c, a.L.T("call.agreed")).FontSize(t.XS).FontWeight(800).TextColor(t.InkMuted)
+			uiText(c, a.L.T("call.agreed")).FontSize(t.XS).FontWeight(800).TextColor(t.InkMuted)
 			for _, s := range cl.Agreed {
 				ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
 					a.glyph(c, 14, drawCheck(t.Done.Ink))
-					ui.Text(c, autospace(s)).FontSize(t.SM).TextColor(t.Ink).Grow(1).MinWidth(0)
+					uiText(c, autospace(s)).FontSize(t.SM).TextColor(t.Ink).Grow(1).MinWidth(0)
 				})
 			}
 		}
@@ -1062,8 +1062,8 @@ func (a *App) callResult(c *ui.Context, cl protocol.CallBody) {
 						}
 						ln := ln
 						ui.Row(c.Key(i)).Gap(t.S3).AlignItems(ui.Baseline).Children(func() {
-							ui.Text(c, who).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).Width(52).Shrink(0)
-							ui.Text(c, autospace(ln.Text)).FontSize(t.SM).TextColor(t.Ink).Grow(1).MinWidth(0)
+							uiText(c, who).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).Width(52).Shrink(0)
+							uiText(c, autospace(ln.Text)).FontSize(t.SM).TextColor(t.Ink).Grow(1).MinWidth(0)
 						})
 					}
 				})

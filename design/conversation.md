@@ -180,10 +180,22 @@ whole message and came back as one blob (「三项安排也都没写入」), or 
   turn). A question or a failure is said at once, with its card. When the last line settles, the held
   reports wake the partner together and it says how each came out in one message (rule 5); one task
   for all the lines needs no hold. No timed release: a thing whose answer is information shows that
-  answer as its line's note at once.
+  answer as its line's note at once. D430: the hold is in the Log: each held report's seq rides in
+  the message's own `asks` event (`holding`), cleared before the release wakes anyone, and core's
+  projection rebuilds it at start, so a restart in the middle neither loses the close-out nor says it
+  twice (one stopped between the last line settling and the release says it at start, once).
 - **Follow-ups.** The partner sees the lines of a recent many-things message with their tasks,
   numbered as the person sees them, so "第二个改一下" or "the Hangzhou one" goes to that task
   (`task_send`), never to a new one (D373).
+- **回复这一条 / Reply to this one (D430).** Any line can be replied to on its own, the same way as a
+  message (D236, D256): with a mouse the reply pebble rests in the gutter left of the card, on the
+  pointed line's bottom, and says **回复这一条 / Reply to this one** on itself; a right click (a long
+  press on a touch screen, which never opens the task) gives the same word above Copy. The composer's
+  imprint quotes the line's words. The client names the message and the line's index (`ReplyWant.ask`);
+  core fills the `ReplyRef` from the latest `asks` (the line's words as the quote, `ask`, and only that
+  line's task), so the partner reads "replying to one of the lines under their earlier message (line
+  n)" with that one task and sends what was said to it (continuity first), never to the other lines'
+  tasks. A row's own click still opens its task.
 - **Who does it** is never in the conversation (D129). On the Mac a hover on a line shows the agent at
   the row's end, in the muted ink; the web does the same on a fine pointer only. On hand and the opened
   task name it already; the opened task also shows its own lines under its head.

@@ -30,7 +30,8 @@ import { HandBlock } from "./handover.tsx";
 import { Goal, Groove, limitAt, limitState, untilLine, WaitBubble, waitCaption, waitLine } from "./work.tsx";
 import { handover, isNewResult, statusOf, urgentOf, type Status } from "./seen.ts";
 import { OtherAsk, PartnerMark } from "./partners.tsx";
-import { boardGroups, foldedRows, markOf, type BoardGroup, type MemberRow } from "./groups-view.ts";
+import { boardGroups, foldedRows, groupCount, markOf, type BoardGroup, type MemberRow } from "./groups-view.ts";
+import { linesOfPart } from "./asks.tsx";
 import { Menu, MenuItem } from "./menu.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
@@ -1249,6 +1250,15 @@ function MemberMark({ k }: { k: ReturnType<typeof markOf> }) {
   );
 }
 
+/** D430: a part's name: the person's own words when it does one line of their message, else its title. */
+function partWords(r: MemberRow): string {
+  const lines = r.kind === "task" ? linesOfPart(r.taskId) : linesOfPart(undefined, r.key);
+  if (lines.length === 1) return lines[0]!.words;
+  if (r.kind === "held") return r.title;
+  const task = A.S.tasks.get(r.taskId);
+  return task ? shortTitle(title(task)) || t("task.unknown") : t("task.unknown");
+}
+
 /** What a member's row says at its right: how long it has worked, when it came back, or that it waits its turn. */
 function memberWhen(r: MemberRow, task: Task | undefined): string {
   if (r.kind === "held") return r.device ? t("group.held.on", computerName(r.device)) : t("group.held");
@@ -1262,9 +1272,10 @@ function memberWhen(r: MemberRow, task: Task | undefined): string {
 
 /**
  * D360: a group of tasks that are one piece of work, as one card: its name, how far along (beads, one
- * per part, and "3 件里做完 1 件"), its parts in order (each opens its task; one waiting its turn says
- * 排着), how they run (一件做完接下一件), and, when a part didn't work out, the person's three ways on.
- * A part that needs the person shows its question inside the card: what needs you never folds.
+ * per part, and the conversation's count, 好了 1 个，还有 2 个, D430), its parts in order (each opens its
+ * task; one waiting its turn says 排着), how they run (一个做完接下一个), and, when a part didn't work
+ * out, the person's three ways on. A part that needs the person shows its question inside the card:
+ * what needs you never folds. D430: no counter noun; a part is named by its own words (partWords).
  */
 function GroupCard({ b, room }: { b: BoardGroup; room: Room }) {
   const [menu, setMenu] = useState(false);
@@ -1274,6 +1285,9 @@ function GroupCard({ b, room }: { b: BoardGroup; room: Room }) {
   const send = (op: "rename" | "dissolve" | "order" | "move" | "next" | "drop_rest" | "remove", extra: Record<string, unknown> = {}) => A.send({ t: "task_group", op, groupId: b.g.id, ...extra } as never);
   const held = b.rows.filter((r): r is Extract<MemberRow, { kind: "held" }> => r.kind === "held");
   const live = b.rows.some((r) => r.kind === "task" && (r.attention === "working" || r.attention === "queued"));
+  const count = groupCount(b.rows);
+  const countWords = count ? t("asks.count", count.done, count.left) : "";
+  const stopWords = b.stopped ? { ended: partWords(b.rows[b.stopped.part - 1]!), next: partWords(b.rows[b.stopped.next - 1]!) } : undefined;
   const save = () => {
     const n = (draft ?? "").trim();
     if (n && n !== b.g.name) send("rename", { name: n });
@@ -1281,7 +1295,7 @@ function GroupCard({ b, room }: { b: BoardGroup; room: Room }) {
   };
   const toggle = () => (open ? groupOpen.delete(b.g.id) : groupOpen.add(b.g.id), A.changed());
   return (
-    <div class={`tgroup${live ? " live" : ""}${b.stopped ? " stopped" : ""}`} data-group={b.g.id} role="group" aria-label={spoken(A.L, b.g.name, t("group.done", b.done, b.of))}>
+    <div class={`tgroup${live ? " live" : ""}${b.stopped ? " stopped" : ""}`} data-group={b.g.id} role="group" aria-label={countWords ? spoken(A.L, b.g.name, countWords) : b.g.name}>
       <div class="ghead">
         {draft === null ? (
           <span class="gname">{b.g.name}</span>
@@ -1305,7 +1319,7 @@ function GroupCard({ b, room }: { b: BoardGroup; room: Room }) {
             <i key={r.kind === "task" ? r.taskId : r.key} class={`gbead b-${markOf(r)}`} />
           ))}
         </span>
-        {b.of > 0 && <span class="gcount">{t("group.done", b.done, b.of)}</span>}
+        {countWords && <span class="gcount">{countWords}</span>}
         <MoreButton label={t("group.menu")} open={menu} onClick={() => setMenu(!menu)} />
       </div>
       {/* D385: a hand-over's plan, its making, review together. */}
@@ -1331,16 +1345,16 @@ function GroupCard({ b, room }: { b: BoardGroup; room: Room }) {
           const hi = r.kind === "held" ? held.indexOf(r) : -1;
           return (
             <li key={r.kind === "task" ? r.taskId : r.key} class={`gpart m-${k}${task && L.focus === task.id && room !== "phone" ? " kfocus" : ""}`} data-row={task?.id}>
-              <span class="gidx" aria-label={t("group.part", r.part)}>
+              <span class="gidx" aria-hidden="true">
                 {r.part}
               </span>
               <MemberMark k={k} />
               {task ? (
                 <button class="gtitle" title={title(task)} onClick={() => ((L.focus = task.id), A.go({ name: "task", id: task.id, full: room === "full" }))}>
-                  {shortTitle(title(task)) || t("task.unknown")}
+                  {partWords(r)}
                 </button>
               ) : (
-                <span class="gtitle is-held">{r.kind === "held" ? r.title : ""}</span>
+                <span class="gtitle is-held">{r.kind === "held" ? partWords(r) : ""}</span>
               )}
               <span class="gwhen">{memberWhen(r, task)}</span>
               {hi > 0 && room !== "phone" && <Btn kind="text" size="sm" label={t("group.up")} about={r.kind === "held" ? r.title : ""} onClick={() => send("move", { member: (r as { key: string }).key, to: hi - 1 })} />}
@@ -1357,11 +1371,11 @@ function GroupCard({ b, room }: { b: BoardGroup; room: Room }) {
       {open && b.rows.length > 3 && <FoldLine words={t("onhand.fold.close")} open onToggle={toggle} />}
       {b.stopped ? (
         <div class="gstop">
-          <p>{t(`group.stopped.${b.stopped.why}${b.stopped.waiting > 1 ? ".many" : ""}`, b.stopped.part, b.stopped.waiting > 1 ? b.stopped.waiting : b.stopped.next)}</p>
+          <p>{b.stopped.waiting > 1 ? t(`group.stopped.${b.stopped.why}.many`, stopWords!.ended) : t(`group.stopped.${b.stopped.why}`, stopWords!.ended, stopWords!.next)}</p>
           <span class="gacts">
-            <Btn kind="secondary" size="sm" label={t("group.retry", b.stopped.part)} onClick={() => A.send({ t: "past_continue", taskId: b.stopped!.taskId, words: t("group.retry", b.stopped!.part) })} />
-            <Btn kind="secondary" size="sm" label={t("group.go", b.stopped.next)} onClick={() => send("next")} />
-            <Btn kind="text" size="sm" label={b.stopped.waiting > 1 ? t("group.drop.many") : t("group.drop", b.stopped.next)} onClick={() => send("drop_rest")} />
+            <Btn kind="secondary" size="sm" label={t("group.retry")} onClick={() => A.send({ t: "past_continue", taskId: b.stopped!.taskId, words: t("group.retry") })} />
+            <Btn kind="secondary" size="sm" label={t("group.go")} onClick={() => send("next")} />
+            <Btn kind="text" size="sm" label={t("group.drop")} onClick={() => send("drop_rest")} />
           </span>
         </div>
       ) : (

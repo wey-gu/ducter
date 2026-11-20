@@ -8,12 +8,14 @@ var zhAsks = Table{
 	"asks.count":  "好了 %d 个，还有 %d 个",
 	"asks.needs":  "等你定一下",
 	"asks.failed": "没做成",
+	"asks.reply":  "回复这一条",
 }
 
 var enAsks = Table{
 	"asks.count":  "%d done, %d to go",
 	"asks.needs":  "Needs you",
 	"asks.failed": "Didn't work",
+	"asks.reply":  "Reply to this one",
 }
 
 func init() {

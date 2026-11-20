@@ -31,20 +31,40 @@ type replyTo struct {
 	from   string // "you" | "partner"
 	quote  string
 	pics   int
+	// line (D430) is one line under the person's message: ask is its index.
+	line bool
+	ask  int
 }
 
 func (r *replyTo) want() *protocol.ReplyWant {
 	if r == nil {
 		return nil
 	}
-	return &protocol.ReplyWant{Seq: r.seq, FindID: r.findID}
+	w := &protocol.ReplyWant{Seq: r.seq, FindID: r.findID}
+	if r.line {
+		i := r.ask
+		w.Ask = &i
+	}
+	return w
 }
 
 func (r *replyTo) key() string {
-	if r.findID != "" {
+	switch {
+	case r.line:
+		return itoa(r.seq) + "/a" + itoa(int64(r.ask))
+	case r.findID != "":
 		return itoa(r.seq) + "/" + r.findID
 	}
 	return itoa(r.seq)
+}
+
+// replyWord is the reply's own word: 回复这一条 / Reply to this one on a
+// line under the person's message (D430), else 回复 / Reply.
+func (a *App) replyWord(r *replyTo) string {
+	if r != nil && r.line {
+		return a.L.T("asks.reply")
+	}
+	return a.L.T("reply.action")
 }
 
 // replyState is the window's part of replying.
@@ -328,6 +348,9 @@ func (a *App) imprint(c *ui.Context, key string, r *replyTo, quote string, part 
 // sentImprint is a sent reply's imprint, from what core logged with it.
 func (a *App) sentImprint(c *ui.Context, key string, ref *protocol.ReplyRef, on imprintOn, land string) ui.Element {
 	r := &replyTo{seq: ref.Seq, findID: ref.FindID, from: ref.From, pics: len(ref.Media)}
+	if ref.Ask != nil {
+		r.line, r.ask = true, *ref.Ask
+	}
 	if r.from != "you" {
 		r.from = "partner"
 	}
@@ -367,7 +390,7 @@ func (a *App) replyButton(c *ui.Context, r *replyTo, side int) ui.Element {
 	t := a.T
 	b := ui.Row(c.Key("hover-reply:" + r.key())).Height(pebbleSize).MinWidth(pebbleSize).Shrink(0).AlignItems(ui.Center).Justify(ui.Center).Gap(t.S1 + 1).
 		Radius(pebbleSize / 2).Background(t.Surface).
-		Role(ui.RoleButton).Focusable().Cursor(ui.CursorPointer).Label(a.L.T("reply.action")).Tooltip(a.L.T("reply.action"))
+		Role(ui.RoleButton).Focusable().Cursor(ui.CursorPointer).Label(a.replyWord(r)).Tooltip(a.replyWord(r))
 	on, down := b.Hovered() || b.FocusVisible(), b.Pressed()
 	if on || down {
 		a.rp.held = r.key()
@@ -400,7 +423,7 @@ func (a *App) replyButton(c *ui.Context, r *replyTo, side int) ui.Element {
 	b.Children(func() {
 		ui.Box(c).Size(16, 16).Shrink(0).Draw(drawReply(ink))
 		if words {
-			uiText(c, a.L.T("reply.action")).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine().Unselectable()
+			uiText(c, a.replyWord(r)).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine().Unselectable()
 		}
 	})
 	if b.Clicked() {
@@ -414,7 +437,7 @@ func (a *App) replyButton(c *ui.Context, r *replyTo, side int) ui.Element {
 // All with it); else the whole message, as written (copyText).
 func (a *App) replyMenu(c *ui.Context, e ui.Element, r *replyTo, text string) {
 	a.contextMenu(c, e, func(m *ui.Menu) {
-		if r != nil && m.Item(a.L.T("reply.action")).Icon(menuGlyph("reply")).Chosen() {
+		if r != nil && m.Item(a.replyWord(r)).Icon(menuGlyph("reply")).Chosen() {
 			a.StartReply(r)
 		}
 		a.readMenuItem(c, m, r, text) // D305: Read aloud, a partner's message
@@ -450,7 +473,7 @@ func (a *App) composerReply(c *ui.Context) {
 	}
 	row.Children(func() {
 		a.glyph(c, 18, drawReply(t.Accent))
-		a.imprint(c, "composer", r, r.quote, false, onComposer, false, "").Grow(1)
+		a.imprint(c, "composer", r, r.quote, r.line, onComposer, false, "").Grow(1)
 		if a.iconButton(c, a.L.T("reply.cancel"), t.ChipLG, btnText, drawCross) {
 			a.CancelReply()
 		}

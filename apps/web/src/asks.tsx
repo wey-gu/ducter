@@ -1,13 +1,14 @@
 // D426: several things in one message, line by line under the person's own words: each thing in
 // their words with its mark (the same tick, working bars, flag and cross On hand's groups draw),
 // one quiet note of what came of it, and from four lines a count. Changes in place, never posts.
-// A row opens the task that does it. Who does it (the agent) is never in the conversation; on a
+// A row opens the task that does it; D430: each line can be replied to on its own. Who does it (the agent) is never in the conversation; on a
 // pointer device it shows quietly on hover, at the row's end (D426 (3)). The Mac draws the same
 // (apps/desktop/internal/views/asks.go).
 import type { AskLine, AsksBody } from "@ducter/protocol";
 import { asksCount } from "@ducter/protocol";
 import { A } from "./app.ts";
 import { harnessName } from "./format.ts";
+import { HoverReply, replyKey, replyOfLine } from "./reply.tsx";
 import { harnessOf } from "./store.ts";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
@@ -54,8 +55,10 @@ export function AskLines({ a }: { a: AsksBody }) {
           const task = l.taskId ? A.S.tasks.get(l.taskId) : undefined;
           const who = task ? harnessName(harnessOf(task)) : "";
           const note = askNote(l);
+          // D430: 回复这一条 / Reply to this one: the pebble beside it, a long press or a right click.
+          const rk = replyKey(replyOfLine(a.msgSeq, i, l.words));
           return (
-            <li key={i} class={`asked-line s-${l.state}`}>
+            <li key={i} class={`asked-line s-${l.state}`} data-reply={rk}>
               <button type="button" class="ask-row" disabled={!l.taskId} aria-label={`${l.words}${note ? `: ${note}` : ""}`} onClick={() => l.taskId && A.openTaskPage(l.taskId)}>
                 <AskMark state={l.state} />
                 <span class="ask-text">
@@ -74,6 +77,7 @@ export function AskLines({ a }: { a: AsksBody }) {
                   </span>
                 )}
               </button>
+              <HoverReply k={rk} />
             </li>
           );
         })}
@@ -90,6 +94,20 @@ export function asksOfTask(id: string): AsksBody | undefined {
     if (a && a.lines.length >= 2 && a.lines.some((l) => l.taskId === id)) return a;
   }
   return undefined;
+}
+
+/**
+ * D430: the lines one part of a group does (a task's, or a member still held in line by its key),
+ * from the newest message that has them: On hand's group card names a part by them.
+ */
+export function linesOfPart(taskId?: string, held?: string): AskLine[] {
+  for (let i = A.S.channel.length - 1; i >= 0; i--) {
+    const a = A.S.channel[i]!.asks;
+    if (!a || a.lines.length < 2) continue;
+    const mine = a.lines.filter((l) => (taskId ? l.taskId === taskId : !!held && l.held === held));
+    if (mine.length) return mine;
+  }
+  return [];
 }
 
 /** In the opened task: the things of that message it does, with their marks (the agent is in its meta). */

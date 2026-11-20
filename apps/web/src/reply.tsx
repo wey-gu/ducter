@@ -81,7 +81,7 @@ const targets = new Map<string, Replying>();
 /** Registers a message as one the user can reply to; the key goes on its element as data-reply. */
 export function replyKey(r: Replying | undefined): string | undefined {
   if (!r) return undefined;
-  const k = `${r.seq}${r.findId ? `/${r.findId}` : ""}`;
+  const k = `${r.seq}${r.findId ? `/${r.findId}` : ""}${r.ask !== undefined ? `/a${r.ask}` : ""}`;
   targets.set(k, r);
   return k;
 }
@@ -104,6 +104,14 @@ export function replyOf(e: Entry): Replying | undefined {
   }
   return undefined;
 }
+
+/** D430: one line under the person's message: its words, pressed in as a part of what they said. */
+export function replyOfLine(seq: number, ask: number, words: string): Replying {
+  return { seq, ask, from: "you", quote: words, part: words };
+}
+
+/** The reply's own word: 回复这一条 / Reply to this one on a line, else 回复 / Reply. */
+const replyWord = (r: Replying | undefined) => t(r?.ask !== undefined ? "asks.reply" : "reply.action");
 
 /** One find of a note (D165): the note's latest revision holds every find. */
 export function replyOfFind(seq: number, findId: string, text: string): Replying {
@@ -199,14 +207,14 @@ export function useReplyGestures(scroller: { current: HTMLElement | null }): Men
     // The source when the row has one; else the words as drawn, paragraphs kept (innerText).
     const textOf = (el: HTMLElement) => {
       const e = el.dataset.reply?.includes("/") ? undefined : entryAt(el);
-      const drawn = el.querySelector<HTMLElement>(".bubble, .words") ?? el;
+      const drawn = el.querySelector<HTMLElement>(".bubble, .words, .ask-words") ?? el;
       return (sourceOf(e) ?? drawn.innerText ?? drawn.textContent ?? "").trim();
     };
     const menuAt = (el: HTMLElement, x: number, y: number, key: string, link?: string): Menu => ({ x, y, key, text: textOf(el), ts: entryAt(el)?.ev.ts, ...(link ? { link } : {}) });
     const down = (ev: PointerEvent) => {
       if (ev.button !== 0) return;
       const el = (ev.target as HTMLElement).closest<HTMLElement>("[data-reply]");
-      if (!el || (ev.target as HTMLElement).closest("button, textarea, input, .tray, .imprint")) return;
+      if (!el || (ev.target as HTMLElement).closest("button:not(.ask-row), textarea, input, .tray, .imprint")) return; // D430: a line under the person's message opens its task and still takes a long press
       // D254: a link held opens the menu with Copy link; it never swipes.
       const a = (ev.target as HTMLElement).closest<HTMLAnchorElement>("a[href]");
       const key = el.dataset.reply!;
@@ -236,14 +244,14 @@ export function useReplyGestures(scroller: { current: HTMLElement | null }): Men
         s.el.classList.add("swiping");
         s.el.style.transition = "none";
         const g = document.createElement("span");
-        g.className = `swipe-mark${s.el.matches(".user, .user-m") ? " for-user" : ""}`;
+        g.className = `swipe-mark${s.el.matches(".user, .user-m, .asked") ? " for-user" : ""}`;
         g.innerHTML = `<svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${REPLY_PATHS}</svg>`;
         s.el.parentElement?.insertBefore(g, s.el);
         const r = s.el.getBoundingClientRect();
         const pr = s.el.parentElement!.getBoundingClientRect();
         g.style.top = `${r.top - pr.top + s.el.parentElement!.scrollTop + r.height / 2 - 16}px`;
         // The mark shows where the bubble leaves room: the partner's at the screen's edge, the user's just before its own bubble.
-        g.style.left = s.el.matches(".user, .user-m") ? `${r.left - pr.left - 40}px` : `${r.left - pr.left + 6}px`;
+        g.style.left = s.el.matches(".user, .user-m, .asked") ? `${r.left - pr.left - 40}px` : `${r.left - pr.left + 6}px`;
         s.glyph = g;
       }
       ev.preventDefault();
@@ -334,7 +342,7 @@ export function ReplyMenu({ menu }: { menu?: Menu }) {
       {r && (
         <MenuItem onClick={() => (closeMenu(), A.startReply(r), A.changed())}>
           <ReplyGlyph size={18} />
-          <span>{t("reply.action")}</span>
+          <span>{replyWord(r)}</span>
         </MenuItem>
       )}
       <MenuItem onClick={() => (closeMenu(), void copyAndSay(menu.text, said))}>
@@ -414,7 +422,7 @@ export function HoverReply({ k }: { k?: string }) {
     <button
       type="button"
       class="hover-reply"
-      aria-label={t("reply.action")}
+      aria-label={replyWord(r)}
       onClick={(ev) => {
         ev.stopPropagation();
         const r = targets.get(k);
@@ -423,7 +431,7 @@ export function HoverReply({ k }: { k?: string }) {
     >
       <ReplyGlyph />
       <span class="w" aria-hidden="true">
-        {t("reply.action")}
+        {replyWord(r)}
       </span>
     </button>
     </>

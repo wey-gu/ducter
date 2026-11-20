@@ -60,6 +60,7 @@ export function resolveReply(log: LogStore, decisions: Pick<ReplyDecisions, "get
   let decisionId: string | undefined;
   let findId: string | undefined;
   let media: MediaRef[] | undefined;
+  let line: { i: number; words: string } | undefined;
   const ofDecision = (id: string) => {
     const d = decisions.get(id);
     decisionId = id;
@@ -74,6 +75,16 @@ export function resolveReply(log: LogStore, decisions: Pick<ReplyDecisions, "get
       words = b.text;
       media = b.media;
       taskIds = tasksStartedBy(log, e.seq, stream);
+      // D430: 回复这一条 / Reply to this one: one line under it, its words and its own task only.
+      if (want.ask !== undefined) {
+        const i = Math.floor(Number(want.ask));
+        const at = log.read({ stream, fromSeq: e.seq + 1, limit: Number.MAX_SAFE_INTEGER, kinds: ["asks"] }).filter((x) => (x.body as Bodies["asks"]).msgSeq === e.seq).at(-1);
+        const l = at && Number.isInteger(i) && i >= 0 ? (at.body as Bodies["asks"]).lines[i] : undefined;
+        if (l) {
+          line = { i, words: l.words };
+          taskIds = l.taskId ? [l.taskId] : [];
+        }
+      }
       break;
     }
     case "ai_msg": {
@@ -118,13 +129,14 @@ export function resolveReply(log: LogStore, decisions: Pick<ReplyDecisions, "get
       throw new Error("that can't be replied to");
   }
   const whole = flat(words);
-  // A part the user picked: only words the message really has.
-  const part = want.part ? flat(String(want.part)) : "";
-  const picked = part && whole.includes(part) ? part : "";
+  // A part the user picked: only words the message really has (or the line under it they replied to).
+  const part = line ? flat(line.words) : want.part ? flat(String(want.part)) : "";
+  const picked = line ? part : part && whole.includes(part) ? part : "";
   const q = clipQuote(picked || whole);
   const ref: ReplyRef = { seq: e.seq, from, kind, quote: q.text, ts: e.ts };
   if (picked) ref.part = true;
-  if (q.clipped || (picked && picked.length < whole.length)) ref.clipped = true;
+  if (line) ref.ask = line.i;
+  if (q.clipped || (picked && !line && picked.length < whole.length)) ref.clipped = true;
   if (taskIds.length) ref.taskIds = taskIds.slice(0, 3);
   if (decisionId) ref.decisionId = decisionId;
   if (findId) ref.findId = findId;

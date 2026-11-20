@@ -201,3 +201,30 @@ test("turnLength: plain messages batch; a reply to another message starts its ow
   // A reply and the question it answered (decision_resolved) go together.
   expect(turnLength([ev(r(5)), ev({}, "decision_resolved")])).toBe(2);
 });
+
+// D430: 回复这一条 / Reply to this one: one line under the person's message carries that line's
+// words and only its own task, so what they say goes to that task (continuity first).
+test("a reply to one line under a message carries the line's words and only its task", async () => {
+  const { core } = rig();
+  const u0 = core.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: "看一下定价页，写发布说明，再更新状态页" } });
+  for (const [id, title] of [["t_price", "定价页"], ["t_notes", "发布说明"], ["t_status", "状态页"]] as const)
+    core.log.append({ stream: `task:${id}`, origin: "partner", kind: "task_open", body: { taskId: id, title, project: "foo", place: { kind: "none" }, harness: "claude-code", brief: title } });
+  core.asks.add(u0.seq, "t_price", ["看一下定价页"]);
+  core.asks.add(u0.seq, "t_notes", ["写发布说明"]);
+  core.asks.add(u0.seq, "t_status", ["更新状态页"]);
+  const { partner, inputs } = partnerOn(core);
+  const u = logUserMessage(core.log, core.decisions, { text: "这个用英文写", reply: { seq: u0.seq, ask: 1 } });
+  const ref = (u.body as Bodies["user_msg"]).reply!;
+  expect(ref).toMatchObject({ seq: u0.seq, from: "you", kind: "message", quote: "写发布说明", part: true, ask: 1, taskIds: ["t_notes"] });
+  expect(ref.clipped).toBeUndefined();
+  await partner.idle();
+  const last = inputs().at(-1)!;
+  expect(last).toContain("replying to one of the lines under their earlier message of");
+  expect(last).toContain(`(#${u0.seq}, line 2): "写发布说明"`);
+  expect(last).toContain('task t_notes "发布说明"');
+  expect(last).toContain("about that one line only");
+  expect(last.split("[user, replying")[1]).not.toContain("t_price");
+  // An index with no line: a plain reply to the message.
+  const plain = resolveReply(core.log, core.decisions, { seq: u0.seq, ask: 7 });
+  expect(plain.ask).toBeUndefined();
+});

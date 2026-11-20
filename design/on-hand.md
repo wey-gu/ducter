@@ -134,14 +134,19 @@ you. The partner makes a group when it splits a request (`task_open` `group`) or
 Nothing is filed by hand first. A group shows from two parts; counts stay per task; while finding,
 and in the rail beside an opened task, its tasks are rows of their own.
 
-The card: the group's name (display face 15/800), beads one per part and **{n} 件里做完 {k} 件**, its
-menu (⋯ on the web, right-click on the Mac: **改名**, **改成同时做 / 改成一件做完接下一件**, **取消分组（任务都留着）**);
-then the parts numbered on a thread, each with its mark (a tick, three working bars, a flag, a ring, a
-cross, a dashed ring for **排着**) and its right-hand words (the card's heartbeat words); a part that
-needs you shows its question inside the card. More than three parts fold to what is live and the next
-in line (**还有 {n} 件**). Under the parts: **一件做完接下一件 / One after another** (or **同时做**) while
-something is held; a stopped line instead says **第 2 件没做成，第 3 件在等你决定。** with **再试第 2 件**,
-**不管它，做第 3 件** and **第 3 件也不做了** (several: **后面 {n} 件** and **后面的不做了**). A held part offers
+The card (D430: no counter noun, no 件 and no "part"): the group's name (display face 15/800), beads one
+per part and, only while something is done and something is left, the conversation's count **好了 {k}
+个，还有 {m} 个 / {k} done, {m} to go** (a part that didn't work out counts in neither; the beads say the
+rest); its menu (⋯ on the web, right-click on the Mac: **改名**, **改成同时做 / 改成一个做完接下一个**,
+**取消分组（任务都留着）**); then the parts on a thread, each with a quiet order number (not spoken),
+its mark (a tick, three working bars, a flag, a ring, a cross, a dashed ring for **排着**), its name and
+its right-hand words (the card's heartbeat words). A part's name is the person's own words when it
+does one line of their message (D426), else its task's title. A part that needs you shows its question
+inside the card. More than three parts fold to what is live and the next in line (**还有 {n} 个 / {n}
+more**). Under the parts: **一个做完接下一个 / One after another** (or **同时做**) while something is
+held; a stopped line instead names the parts by their words: **「{ended}」没做成，「{next}」在等你决定。**
+(several waiting: **「{ended}」没做成，后面的都在等你决定。**; **放下了** for one put down) with **再试一次 /
+Try it again**, **不管它，往下做 / Skip it, go on** and **后面的不做了 / Drop the rest**. A held part offers
 **提前** on hover.
 
 The line (core `task-groups.ts`): parts in the same folder on the same computer run one after another;

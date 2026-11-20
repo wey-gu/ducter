@@ -16,6 +16,7 @@ type ReplyRef struct {
 	Answers    bool       `json:"answers,omitempty"` // it answered that open question
 	FindID     string     `json:"findId,omitempty"`
 	Media      []MediaRef `json:"media,omitempty"`
+	Ask        *int       `json:"ask,omitempty"` // D430: one line under the person's message
 }
 
 // ReplyWant (D236): a client's half of a reply: the message, and a find or a
@@ -24,6 +25,9 @@ type ReplyWant struct {
 	Seq    int64  `json:"seq"`
 	FindID string `json:"findId,omitempty"`
 	Part   string `json:"part,omitempty"`
+	// Ask (D430): 回复这一条 / Reply to this one: a line under the person's
+	// message, by its index.
+	Ask *int `json:"ask,omitempty"`
 }
 
 // ReplyQuote is how many characters of a message a reply carries.

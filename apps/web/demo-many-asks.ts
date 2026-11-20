@@ -4,6 +4,7 @@
 //   DUCTER_PORT=7996 DUCTER_DATA_DIR=$(mktemp -d) DEMO_LANG=zh bun apps/web/demo-many-asks.ts
 // DEMO_STATE: working  the look-up done, the three entries at work
 //             answered three done, the Thursday one waits for a time (default)
+//             group    answered, then a message of three things in a group of three tasks (D430)
 import { startCore, stubRunner } from "./demo-core.ts";
 
 const zh = (process.env.DEMO_LANG ?? "zh") === "zh";
@@ -44,7 +45,7 @@ seed.asks.add(msg.seq, id, [
 await tick();
 const report = (r: Record<string, unknown>) => log.append({ stream: `task:${id}`, origin: "task", kind: "report", body: { taskId: id, questions: [], evidence: [], ...r } as never });
 report({ state: "progress", summary: w("下周日历上没有别的安排。", "Nothing else on next week."), asks: [{ state: "done", note: w("下周日历上没有别的安排", "Nothing else on your calendar") }] });
-if (state === "answered") {
+if (state === "answered" || state === "group") {
   report({
     state: "needs_input",
     summary: w("北京和杭州的两项记好了；周四那项缺个时间。", "Beijing and Hangzhou are in; Thursday needs a time."),
@@ -57,6 +58,34 @@ if (state === "answered") {
   });
   seed.tasks.setState(id, "needs_you", "hot");
   log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: w("北京和杭州那两项记好了，下周日历上也没有别的安排。周四跟 Tabs 上海的组织者几点见？", "Two of the three are in your calendar, and nothing else is on next week. What time is the Tabs Shanghai meeting on Thursday?"), replyTo: msg.seq } });
+}
+// D430: a later message of three things in three tasks, one group: the first done (held, no ping),
+// the other two at work. On hand's card names each part by the person's words; restarting below
+// keeps the hold (the Log has it).
+if (state === "group") {
+  const m2 = log.append({
+    stream: "channel",
+    origin: "user",
+    kind: "user_msg",
+    body: {
+      text: w("把 ducter.ai 下载页那两处旧文案改掉，写 0.1.1 的发布说明，再把 README 里 Antigravity 那段补上", "Fix the two stale lines on the ducter.ai download page, write the 0.1.1 release notes, and fill in the Antigravity section of the README"),
+    },
+  });
+  log.append({ stream: "channel", origin: "partner", kind: "ack", body: { jobId: "job_rel", text: w("好，这三个我分头去做，都好了一起告诉你。", "On it: three at once, I'll tell you when they're all done."), replyTo: m2.seq } });
+  const parts = [
+    ["t_site", w("下载页文案", "Download page copy"), w("下载页那两处旧文案", "Two stale lines on the download page")],
+    ["t_notes", w("0.1.1 发布说明", "0.1.1 release notes"), w("写 0.1.1 的发布说明", "Write the 0.1.1 release notes")],
+    ["t_readme", w("README：Antigravity", "README: Antigravity"), w("README 里 Antigravity 那段", "The Antigravity section of the README")],
+  ] as const;
+  for (const [tid, title, words] of parts) {
+    log.append({ stream: `task:${tid}`, origin: "partner", kind: "task_open", body: { taskId: tid, title, project: "ducter", place: { kind: "none" }, harness: tid === "t_notes" ? "claude-code" : "codex", brief: "" } });
+    seed.tasks.setState(tid, "working", "hot");
+    seed.asks.add(m2.seq, tid, [words]);
+  }
+  seed.taskGroups.join("default", w("0.1.1 收尾", "Wrapping up 0.1.1"), parts.map((p) => p[0]), "partner");
+  await tick();
+  log.append({ stream: "task:t_site", origin: "task", kind: "report", body: { taskId: "t_site", state: "done", summary: w("两处改好了，PR #431", "Both fixed, PR #431"), questions: [], evidence: [], asks: [{ state: "done", note: w("改好了，PR #431", "Fixed, PR #431") }] } as never });
+  seed.tasks.setState("t_site", "done", "hot");
 }
 await Bun.sleep(200);
 await seed.stop();

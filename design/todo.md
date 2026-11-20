@@ -6,20 +6,21 @@ Deferred work, grouped by area, each with its trigger where it has one.
 
 - [ ] **Live on hel.** The 11-12 calendar message and a three-issue message against the real partner:
   the lines appear with the ack, tick one by one, one close-out. Trigger: the next release on hel.
-- [ ] **The hold across a restart.** Held successes live in memory; a restart in the middle loses
-  the close-out (the lines still show every state). Rebuild the held set from the Log at start.
 - [ ] **Human raters** for the count (好了 {k} 个，还有 {m} 个 / {k} done, {m} to go) and the two state
   words; three LLM raters so far.
-- [ ] **On hand's group copy** still counts with 件 (**{n} 件里做完 {k} 件**, **第 {n} 件**, **还有 {n} 件**):
-  the author called 件 odd; move it to the same plain words with its own raters (the stopped line's
-  sentences need a rewrite, not a swap).
+- [ ] **Raters for D430's group words** (the stopped line naming parts by their words, **再试一次**,
+  **不管它，往下做**, **后面的不做了**, **还有 {n} 个**): none yet, LLM or human.
+- [ ] **件 outside this flow** (D430 left them): On hand's header and sections (**有 {n} 件要你定。**,
+  **在做 {n} 件**, **{n} 件等你**), the hand-over sheet (**找到 {n} 件**, **交给{name}这 {n} 件**), the
+  to-do pile. Decide with the author whether the no-counter rule goes app-wide; then one pass with raters.
 - [ ] **A line that leaves its task, or binds to a to-do by itself** (research/173's part as an
   object): only when a line must outlive or move between tasks (e.g. one of three entries moved to
   another computer). Until then a line is a row of its task.
 - [ ] **Review together for a split from a sentence** (D385's 一起过目 for any message with lines in
   2+ repo tasks). Trigger: the first such message on hel.
-- [ ] **Reply to one line** (D236's reply aimed at a line's words) on both clients; routing by words
-  already works.
+- [ ] **A reply to a line that waits for the person answers its task's question** (as a reply to the
+  question card does, D236 (4)): today it reaches the partner, who passes it on with task_send.
+  Trigger: the first such reply on hel.
 
 ## Antigravity, live (D416, research/171)
 

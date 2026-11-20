@@ -279,6 +279,7 @@ export interface ReplyRef {
   answers?: boolean; // that question was open: these words are its answer (core resolved it, msgSeq)
   findId?: string; // the find it was (one find of a note)
   media?: MediaRef[]; // its pictures (at most 4): the partner sees them again with the reply
+  ask?: number; // D430: one line under the person's message (its index): the quote is that line's words, taskIds its task
 }
 /** D236: how much of a message a reply carries: a bounded quote and its seq, never the whole thing. */
 export const REPLY_QUOTE = 200;
@@ -287,6 +288,8 @@ export interface ReplyWant {
   seq: number;
   findId?: string;
   part?: string;
+  /** D430: 回复这一条 / Reply to this one: one line under the person's message, by its index. */
+  ask?: number;
 }
 
 export interface Bodies {

@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.1.6 - 2026-11-21
+
+<!-- whats-new
+zh: 放手说：点一下麦克风，像打电话一样聊
+en: Talk hands-free: tap the mic and talk like a call
+-->
+
+**Talk hands-free**
+- Tap the mic once and talk turn by turn, like a call, while you cook or walk. It hears when
+  you've finished, answers briefly out loud, and stops when you speak over it. Cards are asked
+  aloud and answered with 好 or 先等等; paying is still only a tap. Holding the mic works as
+  before.
+
+**Small things**
+- Replying to a line that waits for you answers its question.
+- Done for you names your saved details in your language.
+- A handed-over to-do says its size once, not twice.
+- Agent messaging fits a phone; the key field clears once a key works.
+
 ## 0.1.5 - 2026-11-21
 
 <!-- whats-new

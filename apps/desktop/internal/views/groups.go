@@ -1,9 +1,10 @@
 package views
 
 // D360: 分组 / Groups on On hand: several tasks that are one piece of work,
-// as one card in its most urgent part's section: the name, beads and "3 件
-// 里做完 1 件", the parts in order (a part waiting its turn says 排着), how
-// they run, and a stopped line's three ways on. A part that needs the person
+// as one card in its most urgent part's section: the name, beads and the
+// conversation's count (好了 1 个，还有 2 个, D430), the parts in order (a part
+// waiting its turn says 排着), how they run, and a stopped line's three ways
+// on. D430: no counter noun; a part is named by its own words (partWords). A part that needs the person
 // shows its question inside the card. The web draws the same
 // (apps/web/src/onhand.tsx GroupCard, groups-view.ts).
 
@@ -151,6 +152,52 @@ func (a *App) boardGroups(b store.Board) []boardGroup {
 	return out
 }
 
+// groupCount is the card's count in the conversation's words (asks.count):
+// only while something is done and something is left; a part that didn't
+// work out counts in neither (D430).
+func groupCount(rows []groupRow) (done, left int, ok bool) {
+	for _, r := range rows {
+		switch groupMark(r) {
+		case "done":
+			done++
+		case "failed", "dropped":
+		default:
+			left++
+		}
+	}
+	return done, left, done > 0 && left > 0
+}
+
+// linesOfPart is the lines one part does (a task's, or a member held in
+// line by its key), from the newest message that has them (D430).
+func (a *App) linesOfPart(taskID, held string) []protocol.AskLine {
+	for i := len(a.S.Channel) - 1; i >= 0; i-- {
+		as := a.S.Channel[i].Asks
+		if as == nil || len(as.Lines) < 2 {
+			continue
+		}
+		var mine []protocol.AskLine
+		for _, l := range as.Lines {
+			if (taskID != "" && l.TaskID == taskID) || (taskID == "" && held != "" && l.Held == held) {
+				mine = append(mine, l)
+			}
+		}
+		if len(mine) > 0 {
+			return mine
+		}
+	}
+	return nil
+}
+
+// partWords names a part: the person's own words when it does one line of
+// their message, else its title (D430).
+func (a *App) partWords(r groupRow) string {
+	if ls := a.linesOfPart(r.taskID, r.key); len(ls) == 1 {
+		return ls[0].Words
+	}
+	return shortTitle(r.title)
+}
+
 // stoppedGroups counts the lines that wait for the person's word (they
 // count as needing you, D360).
 func (a *App) stoppedGroups(b store.Board) int {
@@ -291,8 +338,8 @@ func (a *App) groupCard(c *ui.Context, bg boardGroup) {
 					}
 				}
 			})
-			if len(bg.rows) > 0 {
-				uiText(c, a.L.T("group.done", bg.done, len(bg.rows))).FontSize(t.XS).FontWeight(600).TextColor(t.InkMuted).FontFeatures("tnum").SingleLine()
+			if done, left, ok := groupCount(bg.rows); ok {
+				uiText(c, a.L.T("asks.count", done, left)).FontSize(t.XS).FontWeight(600).TextColor(t.InkMuted).FontFeatures("tnum").SingleLine()
 			}
 		})
 		var held []groupRow
@@ -314,7 +361,7 @@ func (a *App) groupCard(c *ui.Context, bg boardGroup) {
 			ui.Column(c.Key("part:" + key)).Gap(t.S1).Children(func() {
 				row := ui.Row(c.Key("row")).Gap(10).AlignItems(ui.Center).MinHeight(32)
 				row.Children(func() {
-					uiText(c, fmt.Sprint(r.part)).FontSize(t.XS).FontWeight(600).TextColor(t.InkSoft).FontFeatures("tnum").Width(16).Label(a.L.T("group.part", r.part))
+					uiText(c, fmt.Sprint(r.part)).FontSize(t.XS).FontWeight(600).TextColor(t.InkSoft).FontFeatures("tnum").Width(16).AccessHidden(true)
 					fill := map[string]ui.Color{"done": t.Done.Dot, "working": t.Working.Dot, "needs": t.NeedsYou.Dot, "failed": t.Failed.Dot, "dropped": t.Failed.Dot, "held": t.InkSoft, "waiting": t.Waiting.Ink}[k]
 					if k == "working" {
 						ui.Box(c.Key("pulse")).Size(20, 20).Radius(10).Background(t.Working.Surface).Shrink(0).AccessHidden(true).Draw(drawPulse(t.Working.Dot, phaseOf(key), a.aliveResting(c)))
@@ -328,7 +375,7 @@ func (a *App) groupCard(c *ui.Context, bg boardGroup) {
 					} else if k == "done" {
 						ink = t.InkSoft
 					}
-					title := uiText(c, keepWords(autospace(shortTitle(r.title)))).FontSize(t.SM).FontWeight(600).TextColor(ink).SingleLine().Grow(1).Shrink(1).MinWidth(0).Tooltip(r.title)
+					title := uiText(c, keepWords(autospace(a.partWords(r)))).FontSize(t.SM).FontWeight(600).TextColor(ink).SingleLine().Grow(1).Shrink(1).MinWidth(0).Tooltip(r.title)
 					if task != nil {
 						title.Cursor(ui.CursorPointer).Role(ui.RoleLink)
 						if title.Clicked() {
@@ -366,24 +413,20 @@ func (a *App) groupCard(c *ui.Context, bg boardGroup) {
 		}
 		if s := bg.stopped; s != nil {
 			ui.Column(c.Key("stop")).Gap(t.S2).Padding(10, 12).Radius(14).Background(t.NeedsYou.Surface).Children(func() {
-				key := "group.stopped." + s.why
-				arg := s.next
-				if s.nWaits > 1 {
-					key, arg = key+".many", s.nWaits
+				ended := autospace(a.partWords(bg.rows[s.part-1]))
+				words := a.L.T("group.stopped."+s.why+".many", ended)
+				if s.nWaits <= 1 {
+					words = a.L.T("group.stopped."+s.why, ended, autospace(a.partWords(bg.rows[s.next-1])))
 				}
-				uiText(c, a.L.T(key, s.part, arg)).FontSize(t.SM).FontWeight(600).TextColor(t.NeedsYou.Ink).Wrap()
+				uiText(c, words).FontSize(t.SM).FontWeight(600).TextColor(t.NeedsYou.Ink).Wrap()
 				ui.Row(c.Key("acts")).Gap(6).Wrap().Children(func() {
-					if a.button(c, a.L.T("group.retry", s.part), btnSecondary, t.ControlSM, t.NeedsYou.Surface) {
-						a.send(protocol.PastContinue{T: "past_continue", TaskID: s.taskID, Words: a.L.T("group.retry", s.part)})
+					if a.button(c, a.L.T("group.retry"), btnSecondary, t.ControlSM, t.NeedsYou.Surface) {
+						a.send(protocol.PastContinue{T: "past_continue", TaskID: s.taskID, Words: a.L.T("group.retry")})
 					}
-					if a.button(c, a.L.T("group.go", s.next), btnSecondary, t.ControlSM, t.NeedsYou.Surface) {
+					if a.button(c, a.L.T("group.go"), btnSecondary, t.ControlSM, t.NeedsYou.Surface) {
 						send(protocol.TaskGroupFrame{Op: "next"})
 					}
-					drop := a.L.T("group.drop", s.next)
-					if s.nWaits > 1 {
-						drop = a.L.T("group.drop.many")
-					}
-					if a.button(c, drop, btnText, t.ControlSM, t.NeedsYou.Surface) {
+					if a.button(c, a.L.T("group.drop"), btnText, t.ControlSM, t.NeedsYou.Surface) {
 						send(protocol.TaskGroupFrame{Op: "drop_rest"})
 					}
 				})

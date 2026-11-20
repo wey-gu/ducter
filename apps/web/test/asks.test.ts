@@ -42,3 +42,20 @@ test("the store keeps the latest lines on their message, in place", () => {
   // The lines are no row of their own.
   expect(s.channel.filter((x) => !x.user && !x.ai && !x.job).length).toBe(0);
 });
+
+// D430: 回复这一条 / Reply to this one: each line can be replied to on its own (the pebble in the
+// gutter left of the card with a mouse, a long press or right click), naming the line's index.
+test("each line under the message is something to reply to, by its index, beside the card", () => {
+  const src = (f: string) => readFileSync(join(import.meta.dir, `../src/${f}`), "utf8");
+  const css = readFileSync(join(import.meta.dir, "../static/app.css"), "utf8");
+  expect(src("asks.tsx")).toMatch(/data-reply=\{rk\}[\s\S]*?<HoverReply k=\{rk\} \/>/);
+  expect(src("asks.tsx")).toContain("replyOfLine(a.msgSeq, i, l.words)");
+  expect(src("app.ts")).toContain("r.ask !== undefined ? { ask: r.ask }");
+  // A long press on the line (a button that opens its task) still opens the menu.
+  expect(src("reply.tsx")).toContain('closest("button:not(.ask-row), textarea, input, .tray, .imprint")');
+  const i = css.indexOf("\n.asked .asked-line > .hover-reply {");
+  expect(i).toBeGreaterThan(0);
+  expect(css.slice(i, css.indexOf("}", i))).toContain("right: calc(100% + 13px)");
+  expect(asksWords.zh["asks.reply"]).toBe("回复这一条");
+  expect(asksWords.en["asks.reply"]).toBe("Reply to this one");
+});

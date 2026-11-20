@@ -10,6 +10,7 @@ import { FakeClock } from "../src/clock.ts";
 import { createAsks } from "../src/asks.ts";
 import { openLog } from "../src/log.ts";
 import { createRegistry } from "../src/registry.ts";
+import { startCore, type Core } from "../src/core.ts";
 import { openTask, report, tempDir } from "./helpers.ts";
 
 let cleanups: (() => void)[] = [];
@@ -100,6 +101,112 @@ test("a held part's line takes its task when it opens; lines rebuild from the Lo
   const again = createAsks({ log, tasks });
   expect(again.forTask("t3")!.msgSeq).toBe(msg.seq);
   expect(again.recent(1)[0]!.lines[0]!.words).toBe("the third part");
+});
+
+// D430: the hold is in the Log: a restart in the middle neither loses the close-out nor says it twice.
+test("the hold across a restart: the held line is kept, the last one wakes it once, a second restart wakes nothing", () => {
+  const t = tempDir();
+  cleanups.push(t.cleanup);
+  const clock = new FakeClock(Date.parse("2026-11-12T00:31:00+08:00"));
+  const path = join(t.dir, "ducter.db");
+  const boot = () => {
+    const log = openLog({ path, persona: "default", clock });
+    const tasks = createRegistry(log, clock);
+    const released: LogEvent[] = [];
+    const woke: LogEvent[] = [];
+    const asks = createAsks({ log, tasks, release: (evs) => released.push(...evs) });
+    log.subscribe((e) => asks.onEvent(e));
+    log.subscribe((e) => {
+      if (e.kind === "report" && asks.wakes(e)) woke.push(e);
+    });
+    return { log, asks, released, woke };
+  };
+  const a = boot();
+  const msg = a.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: "check the pricing page, write the release notes, update the status page" } });
+  for (const id of ["p", "n", "s"]) openTask(a.log, id);
+  a.asks.add(msg.seq, "p", ["check the pricing page"]);
+  a.asks.add(msg.seq, "n", ["write the release notes"]);
+  a.asks.add(msg.seq, "s", ["update the status page"]);
+  const first = report(a.log, "p", { state: "done", summary: "Two fixes on the pricing page." });
+  clock.advance(5 * 60_000);
+  const second = report(a.log, "s", { state: "done", summary: "Status page updated." });
+  expect(a.woke).toEqual([]);
+  a.log.close?.();
+
+  // Ducter restarts an hour later, in the middle: both successes are still held.
+  clock.advance(60 * 60_000);
+  const b = boot();
+  expect(b.released).toEqual([]);
+  report(b.log, "n", { state: "done", summary: "Release notes written." });
+  expect(b.released.map((e) => e.seq)).toEqual([first.seq, second.seq]);
+  expect(b.woke.map((e) => (e.body as { taskId: string }).taskId)).toEqual(["n"]);
+  expect((b.log.read({ kinds: ["asks"], limit: 100 }).at(-1)!.body as AsksBody).holding).toBeUndefined();
+  b.log.close?.();
+
+  // Again: nothing is said twice.
+  const c = boot();
+  expect(c.released).toEqual([]);
+  expect(c.asks.of(msg.seq)!.map((l) => l.state)).toEqual(["done", "done", "done"]);
+  c.log.close?.();
+});
+
+test("stopped after the last line settled but before the release: it goes at start, once", () => {
+  const t = tempDir();
+  cleanups.push(t.cleanup);
+  const clock = new FakeClock(Date.parse("2026-11-12T00:31:00+08:00"));
+  const path = join(t.dir, "ducter.db");
+  const log = openLog({ path, persona: "default", clock });
+  const tasks = createRegistry(log, clock);
+  const msg = log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: "a and b" } });
+  openTask(log, "a");
+  openTask(log, "b");
+  const r = report(log, "a", { state: "done" });
+  // The Log as a crash left it: a held report, and every line settled.
+  log.append({ stream: "channel", origin: "system", kind: "asks", body: { msgSeq: msg.seq, lines: [{ words: "a", taskId: "a", state: "done" }, { words: "b", taskId: "b", state: "done" }], holding: [r.seq] } });
+  const released: LogEvent[] = [];
+  createAsks({ log, tasks, release: (evs) => released.push(...evs) });
+  expect(released.map((e) => e.seq)).toEqual([r.seq]);
+  const again: LogEvent[] = [];
+  createAsks({ log, tasks, release: (evs) => again.push(...evs) });
+  expect(again).toEqual([]);
+  log.close?.();
+});
+
+test("the whole core across a restart: the partner hears the held success with the last one, once", async () => {
+  const t = tempDir();
+  cleanups.push(t.cleanup);
+  const clock = new FakeClock(Date.parse("2026-11-12T00:31:00+08:00"));
+  const start = () => {
+    const core: Core = startCore({ dataDir: t.dir, port: 0, clock, defaultDelayMs: 60_000 });
+    const woke: LogEvent[] = [];
+    core.setPartner({ onTrigger: (e) => void woke.push(e) });
+    return { core, woke };
+  };
+  const reports = (w: LogEvent[]) => w.filter((e) => e.kind === "report").map((e) => (e.body as { taskId: string }).taskId);
+  const one = start();
+  const msg = one.core.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: "查一下定价页，再写发布说明" } });
+  openTask(one.core.log, "p");
+  openTask(one.core.log, "n");
+  one.core.asks.add(msg.seq, "p", ["查一下定价页"]);
+  one.core.asks.add(msg.seq, "n", ["写发布说明"]);
+  report(one.core.log, "p", { state: "done", summary: "定价页两处改好了" });
+  await Bun.sleep(5);
+  expect(reports(one.woke)).toEqual([]);
+  await one.core.stop();
+
+  clock.advance(30 * 60_000);
+  const two = start();
+  await Bun.sleep(5);
+  expect(reports(two.woke)).toEqual([]);
+  report(two.core.log, "n", { state: "done", summary: "发布说明写好了" });
+  await Bun.sleep(5);
+  expect(reports(two.woke).sort()).toEqual(["n", "p"]);
+  await two.core.stop();
+
+  const three = start();
+  await Bun.sleep(5);
+  expect(reports(three.woke)).toEqual([]);
+  await three.core.stop();
 });
 
 test("the count shows from four lines, once something is done, while something is left", () => {

@@ -48,7 +48,7 @@ func TestGroupCardOnTheBoard(t *testing.T) {
 	tt := ui.NewTesterWith(app.View, 1280, 900, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
 	all := strings.Join(tt.Texts(), " | ")
-	for _, want := range []string{"登录页重做", "3 件里做完 1 件", "补登录页的端到端测试", "排着", "一件做完接下一件", "把 tokio 升到 1.42"} {
+	for _, want := range []string{"登录页重做", "好了 1 个，还有 2 个", "补登录页的端到端测试", "排着", "一个做完接下一个", "把 tokio 升到 1.42"} {
 		if !strings.Contains(all, want) {
 			t.Fatalf("missing %q in %s", want, all)
 		}
@@ -72,7 +72,7 @@ func TestGroupStoppedLine(t *testing.T) {
 	tt := ui.NewTesterWith(app.View, 1280, 900, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
 	all := strings.Join(tt.Texts(), " | ")
-	for _, want := range []string{"第 2 件没做成，第 3 件在等你决定。", "再试第 2 件", "不管它，做第 3 件", "第 3 件也不做了"} {
+	for _, want := range []string{"「登录页接上短信验证码」没做成，「补登录页的端到端测试」在等你决定。", "再试一次", "不管它，往下做", "后面的不做了"} {
 		if !strings.Contains(all, want) {
 			t.Fatalf("missing %q in %s", want, all)
 		}
@@ -80,7 +80,12 @@ func TestGroupStoppedLine(t *testing.T) {
 	if n := app.stateCounts(app.S.Board(), ""); n[0] != 1 {
 		t.Fatalf("a stopped line counts as needing you: %v", n)
 	}
-	if err := tt.Click("不管它，做第 3 件"); err != nil {
+	for _, not := range []string{"件里做完", "第 2 件", "第 3 件"} {
+		if strings.Contains(all, not) {
+			t.Fatalf("the card counts with 件 (D430): %q in %s", not, all)
+		}
+	}
+	if err := tt.Click("不管它，往下做"); err != nil {
 		t.Fatal(err)
 	}
 	tt.Frame()

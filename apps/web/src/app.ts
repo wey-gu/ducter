@@ -53,11 +53,13 @@ export interface Replying {
   seq: number;
   findId?: string;
   part?: string;
+  /** D430: one line under the person's message, by its index (回复这一条 / Reply to this one). */
+  ask?: number;
   from: "you" | "partner";
   quote: string;
   pics?: number;
 }
-export const wantOf = (r: Replying): ReplyWant => ({ seq: r.seq, ...(r.findId ? { findId: r.findId } : {}), ...(r.part ? { part: r.part } : {}) });
+export const wantOf = (r: Replying): ReplyWant => ({ seq: r.seq, ...(r.findId ? { findId: r.findId } : {}), ...(r.ask !== undefined ? { ask: r.ask } : r.part ? { part: r.part } : {}) });
 
 /** The most a cursor replay sends at once (core's ws.ts REPLAY_MAX). */
 const REPLAY_MAX = 5000;

@@ -461,13 +461,14 @@ func TestGroupCardPlanAndReviewTogether(t *testing.T) {
 	app.Route = RouteOnHand
 	app.Receive(protocol.ServerFrame{T: "on_hand", OnHand: planOnHand(i18n.ZH, "going")})
 	todoFrames(tt, 3)
-	if all := strings.Join(tt.Texts(), " | "); !strings.Contains(all, "4 件里做完 0 件") {
-		t.Fatalf("going: the plan counted as a part: %s", all)
+	// D430: nothing done yet, no count (the beads say it); four parts, the plan none of them.
+	if bgs := app.boardGroups(app.S.Board()); len(bgs) != 1 || len(bgs[0].rows) != 4 || bgs[0].done != 0 {
+		t.Fatalf("going: the plan counted as a part: %+v", bgs)
 	}
 	app.Receive(protocol.ServerFrame{T: "on_hand", OnHand: planOnHand(i18n.ZH, "review")})
 	todoFrames(tt, 3)
-	if all := strings.Join(tt.Texts(), " | "); !strings.Contains(all, "4 件里做完 4 件") {
-		t.Fatalf("review: %s", all)
+	if bgs := app.boardGroups(app.S.Board()); len(bgs) != 1 || len(bgs[0].rows) != 4 || bgs[0].done != 4 {
+		t.Fatalf("review: %+v", bgs)
 	}
 	if err := tt.Click("一起过目"); err != nil {
 		t.Fatalf("%v: %s", err, strings.Join(tt.Texts(), " | "))

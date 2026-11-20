@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Attention, TaskGroupView } from "@ducter/protocol";
 import { groupWords } from "../src/i18n-groups.ts";
-import { boardGroups, foldedRows, markOf } from "../src/groups-view.ts";
+import { boardGroups, foldedRows, groupCount, markOf } from "../src/groups-view.ts";
 import { format } from "../src/i18n.ts";
 
 const mac = readFileSync(join(import.meta.dir, "../../desktop/internal/i18n/groups.go"), "utf8");
@@ -19,9 +19,15 @@ test("the web's group words are the Mac's, key for key", () => {
   expect(goTable("enGroups")).toEqual(groupWords.en);
 });
 
-test("the count reads in each language's own order", () => {
-  expect(format(groupWords.zh["group.done"]!, [1, 3])).toBe("3 件里做完 1 件");
-  expect(format(groupWords.en["group.done"]!, [1, 3])).toBe("1 of 3 done");
+// D430: no counter noun anywhere on the card; the count is the conversation's, shown only while
+// something is done and something is left.
+test("the card counts in the conversation's words, and only while something is done and something left", () => {
+  for (const v of [...Object.values(groupWords.zh), ...Object.values(groupWords.en)]) expect(v).not.toMatch(/件|\bpart\b/i);
+  const row = (attention: Attention) => ({ kind: "task" as const, taskId: "x", part: 1, attention });
+  expect(groupCount([row("done"), row("working"), row("working")])).toEqual({ done: 1, left: 2 });
+  expect(groupCount([row("working"), row("working")])).toBeUndefined();
+  expect(groupCount([row("done"), row("done")])).toBeUndefined();
+  expect(groupCount([row("done"), row("failed"), { kind: "held", key: "h", part: 3, title: "t" }])).toEqual({ done: 1, left: 1 });
   // Taking a group apart says the tasks stay (research/133: without it raters read it as deleting them).
   expect(groupWords.zh["group.ungroup"]).toContain("任务都留着");
   expect(groupWords.en["group.ungroup"]).toContain("the tasks stay");
@@ -62,8 +68,10 @@ test("a stopped line says which part ended and which is next, and stands with wh
   const [b] = boardGroups([g], (id) => (id === "a" ? 3 : 3), (id) => (id === "a" ? "done" : "failed"));
   expect(b!.lane).toBe(0);
   expect(b!.stopped).toEqual({ why: "failed", part: 2, next: 3, waiting: 2, taskId: "b" });
-  expect(format(groupWords.zh["group.stopped.failed.many"]!, [2, 2])).toBe("第 2 件没做成，后面 2 件在等你决定。");
-  expect(format(groupWords.zh["group.go"]!, [3])).toBe("不管它，做第 3 件");
+  // D430: the part is named by its own words, never by a number.
+  expect(format(groupWords.zh["group.stopped.failed.many"]!, ["更新状态页"])).toBe("「更新状态页」没做成，后面的都在等你决定。");
+  expect(format(groupWords.zh["group.stopped.failed"]!, ["更新状态页", "写发布说明"])).toBe("「更新状态页」没做成，「写发布说明」在等你决定。");
+  expect(format(groupWords.en["group.stopped.failed"]!, ["update the status page", "write the notes"])).toBe("“update the status page” didn't work out; “write the notes” is waiting for you.");
 });
 
 test("a folded card keeps what is live and the next in line, the rest as n more", () => {

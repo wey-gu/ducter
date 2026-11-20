@@ -249,7 +249,7 @@ func (a *App) handPlanCard(c *ui.Context, d *store.DecisionState, inGroup bool) 
 				ui.Column(c.Key("p:"+key)).Gap(t.S1).Padding(t.S3, t.S4).Radius(t.RadiusMD).Background(t.SurfaceSunken).Children(func() {
 					ui.Row(c.Key("h")).Gap(t.S2).AlignItems(ui.Baseline).Children(func() {
 						if step > 0 {
-							uiText(c.Key("s"), fmt.Sprint(step)).FontWeight(800).TextColor(t.InkMuted).FontFeatures("tnum").Label(a.L.T("group.part", step))
+							uiText(c.Key("s"), fmt.Sprint(step)).FontWeight(800).TextColor(t.InkMuted).FontFeatures("tnum")
 						}
 						uiText(c.Key("r"), label).FontWeight(800).TextColor(t.Ink).FontFeatures("tnum")
 					})

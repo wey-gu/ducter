@@ -59,7 +59,8 @@ func (a *App) askLines(c *ui.Context, e *store.Entry) {
 			MaxWidth(t.BubbleMeasure).MaxWidthPercent(76).Children(func() {
 			for i, l := range lines {
 				l := l
-				a.manyAskRow(c, fmt.Sprint("ask:", i), l, true)
+				rt := &replyTo{seq: e.FirstSeq, from: "you", quote: l.Words, line: true, ask: i}
+				a.manyAskRow(c, fmt.Sprint("ask:", i), l, rt)
 			}
 			if done, left, ok := protocol.AsksCount(lines); ok {
 				uiText(c, a.L.T("asks.count", done, left)).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum").Padding(2, 10, 4, 34)
@@ -68,16 +69,20 @@ func (a *App) askLines(c *ui.Context, e *store.Entry) {
 	})
 }
 
-// manyAskRow is one line: its mark, the person's words, the note under them;
-// with link set, a click opens its task and a hover shows who does it.
-func (a *App) manyAskRow(c *ui.Context, key string, l protocol.AskLine, link bool) {
+// manyAskRow is one line: its mark, the person's words, the note under them.
+// Under the message (rt set), a click opens its task, a hover shows who does
+// it and the reply pebble in the gutter left of the card, and a right click
+// says 回复这一条 / Reply to this one (D430).
+func (a *App) manyAskRow(c *ui.Context, key string, l protocol.AskLine, rt *replyTo) {
 	t := a.T
+	link := rt != nil
 	task := a.S.Task(l.TaskID)
 	if l.TaskID == "" {
 		task = nil
 	}
 	row := ui.Row(c.Key(key)).Gap(8).AlignItems(ui.Start).MinHeight(32).Padding(6, 10, 6, 6).Radius(12)
-	hov := link && task != nil && row.Hovered()
+	pointed := link && (row.Hovered() || a.rp.held == rt.key())
+	hov := pointed && task != nil
 	if hov {
 		row.Background(t.SurfaceSunken).Cursor(ui.CursorPointer)
 	}
@@ -85,12 +90,29 @@ func (a *App) manyAskRow(c *ui.Context, key string, l protocol.AskLine, link boo
 	if task != nil {
 		who = harnessName(task.Harness())
 	}
-	if link && task != nil && row.Clicked() {
+	// A click on the pebble replies; anywhere else on the row opens its task.
+	if link && task != nil && row.Clicked() && a.rp.held != rt.key() {
 		a.OpenTask(task.ID)
 	}
 	note := a.askNote(l)
 	row.Label(l.Words + map[bool]string{true: ": " + note, false: ""}[note != ""])
+	if link {
+		a.replyMenu(c, row, rt, l.Words)
+	}
 	row.Children(func() {
+		if link {
+			// D256's pebble, the person's side: in the gutter left of the
+			// card, on this line's bottom; the bridge keeps the hover while
+			// the pointer crosses the card's inset.
+			out := float32(4) + a.pebbleGap()
+			reach := out + pebbleSize + 112
+			ui.Row(c.Key("bridge")).Absolute().Left(-reach-6).Bottom(1).Width(reach).Height(pebbleSize).Padding(0, out, 0, 0).
+				Justify(ui.End).AlignItems(ui.Center).AccessHidden(!pointed).Children(func() {
+				if pointed {
+					a.replyButton(c, rt, -1)
+				}
+			})
+		}
 		k := askMarkKind(l.State)
 		if k == "working" {
 			ui.Box(c.Key("pulse")).Size(20, 20).Radius(10).Background(t.Working.Surface).Shrink(0).AccessHidden(true).Draw(drawPulse(t.Working.Dot, phaseOf(key+l.TaskID), a.aliveResting(c)))
@@ -137,7 +159,7 @@ func (a *App) taskAsks(c *ui.Context, taskID string) {
 		t := a.T
 		ui.Column(c.Key("task-asks")).Gap(1).Padding(4, 4, 4, 4).Radius(16).Background(t.Surface).Border(1, t.Line).Children(func() {
 			for j, l := range mine {
-				a.manyAskRow(c, fmt.Sprint("task-ask:", j), l, false)
+				a.manyAskRow(c, fmt.Sprint("task-ask:", j), l, nil)
 			}
 		})
 		return

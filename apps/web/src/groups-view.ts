@@ -68,6 +68,17 @@ export function foldedRows(b: BoardGroup): { shown: MemberRow[]; rest: number } 
   return { shown, rest: b.rows.length - shown.length };
 }
 
+/**
+ * D430: the card's count, in the conversation's words (asks.count): shown only while something is
+ * done and something is left (a part that didn't work out counts in neither; the beads say the rest).
+ */
+export function groupCount(rows: MemberRow[]): { done: number; left: number } | undefined {
+  const marks = rows.map(markOf);
+  const done = marks.filter((m) => m === "done").length;
+  const left = marks.filter((m) => m !== "done" && m !== "failed" && m !== "dropped").length;
+  return done && left ? { done, left } : undefined;
+}
+
 /** The member's state as its row's mark: done, at work, needs you, waits, didn't work out, put down, in line. */
 export function markOf(r: MemberRow): "done" | "working" | "needs" | "waiting" | "failed" | "dropped" | "held" {
   if (r.kind === "held") return "held";

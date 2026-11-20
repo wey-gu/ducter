@@ -241,7 +241,9 @@ export function followsLine(f: Follows): string {
 /** D236: who said the message a reply answers, and what it was, as the head of the user's line. */
 function replyHead(r: ReplyRef, short: boolean): string {
   const what =
-    r.from === "you"
+    r.from === "you" && r.ask !== undefined
+      ? "one of the lines under their earlier message"
+      : r.from === "you"
       ? "their own earlier message"
       : r.kind === "question"
         ? "your question"
@@ -249,7 +251,8 @@ function replyHead(r: ReplyRef, short: boolean): string {
           ? "something you noticed"
           : "your message";
   const quote = clip(r.quote, short ? 100 : REPLY_QUOTE);
-  return `replying to ${what} of ${hhmm(r.ts)} (#${r.seq}${r.part ? ", a part they picked" : ""}): "${quote}"`;
+  const which = r.ask !== undefined ? `, line ${r.ask + 1}` : r.part ? ", a part they picked" : "";
+  return `replying to ${what} of ${hhmm(r.ts)} (#${r.seq}${which}): "${quote}"`;
 }
 
 /** D236: one line on what the message replied to was about, so the reply goes where it belongs. */
@@ -267,6 +270,8 @@ export function replyAbout(r: ReplyRef, ctx: RenderCtx): string[] {
         : "more of that work, a fix or a change to it: task_send it there (not a new task); a question about it: answer it yourself (task_read)";
     out.push(`  (it was about task ${id}${title ? ` "${clip(title, 80)}"` : ""}${where ? `, ${where}` : ""}: ${next})`);
   }
+  // D430: a reply to one line is about that line only: its task, never the message's other lines.
+  if (r.ask !== undefined) out.push(r.taskIds?.length ? "  (about that one line only: it goes to its task above, not to the other lines' tasks)" : "  (that line has no task yet: answer about it, or open it with asks)");
   if (r.kind === "question" && r.decisionId) out.push("  (that question was already answered or has its own buttons: answer the user from what they say now)");
   if (r.kind === "find") out.push(`  (a find from their accounts${r.decisionId ? " with a next step offered" : ""}: answer about that one; if they want it done, it is work like any other (rule 2))`);
   const pics = (r.media ?? []).filter(isImage);

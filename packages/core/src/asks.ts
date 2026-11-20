@@ -11,6 +11,10 @@
 // still at work is not told to the partner; the line ticks under the message, in silence. Failures
 // and questions wake it at once. When the last line settles, everything held wakes it together, so
 // the person hears the whole message's outcome once.
+//
+// D430: the hold is in the Log. Each held report's seq is written into the message's `asks`
+// (`holding`), and cleared before the release wakes anyone; the projection rebuilds it on start,
+// so a restart neither loses the close-out nor says it twice.
 import type { AskLine, AskReport, AsksBody, Bodies, LogEvent } from "@ducter/protocol";
 import { ASK_NOTE_MAX, ASKS_MAX, askSettled, askStateOf, cutWords } from "@ducter/protocol";
 import type { LogStore, TaskRegistry } from "@ducter/protocol/src/internal.ts";
@@ -44,10 +48,15 @@ export function createAsks(d: AsksDeps): Asks {
   const byMsg = new Map<number, { stream: string; lines: AskLine[] }>();
   const held = new Map<number, LogEvent[]>();
 
-  // Rebuilt from the Log: the latest `asks` per message.
+  // Rebuilt from the Log: the latest `asks` per message, and the reports it still holds.
   for (const e of d.log.read({ fromSeq: 0, limit: Number.MAX_SAFE_INTEGER, kinds: ["asks"] })) {
     const b = e.body as AsksBody;
     byMsg.set(b.msgSeq, { stream: e.stream, lines: b.lines.map((l) => ({ ...l })) });
+    if (b.holding?.length) {
+      const evs = b.holding.map((seq) => d.log.read({ fromSeq: seq, limit: 1 })[0]).filter((x): x is LogEvent => !!x && x.kind === "report");
+      if (evs.length) held.set(b.msgSeq, evs);
+      else held.delete(b.msgSeq);
+    } else held.delete(b.msgSeq);
   }
   trim();
 
@@ -65,7 +74,8 @@ export function createAsks(d: AsksDeps): Asks {
   function log(msgSeq: number) {
     const m = byMsg.get(msgSeq);
     if (!m) return;
-    const body: AsksBody = { msgSeq, lines: m.lines.map((l) => ({ ...l })) };
+    const h = held.get(msgSeq);
+    const body: AsksBody = { msgSeq, lines: m.lines.map((l) => ({ ...l })), ...(h?.length ? { holding: h.map((e) => e.seq) } : {}) };
     d.log.append({ stream: m.stream, origin: "system", kind: "asks", body });
   }
 
@@ -134,8 +144,20 @@ export function createAsks(d: AsksDeps): Asks {
     return changed;
   }
 
+  /** Wakes what this message held: the hold is cleared in the Log first, so it goes once. */
+  function releaseHeld(msgSeq: number) {
+    const before = held.get(msgSeq);
+    if (!before?.length) return;
+    held.delete(msgSeq);
+    log(msgSeq);
+    d.release?.(before);
+  }
+
   const settled = (msgSeq: number) => !!byMsg.get(msgSeq)?.lines.every((l) => askSettled(l.state));
   const tasksOf = (msgSeq: number) => new Set(byMsg.get(msgSeq)?.lines.map((l) => l.taskId || l.held || "") ?? []);
+
+  // Ducter stopped between the last line settling and the release: it goes now (once).
+  for (const seq of [...held.keys()]) if (settled(seq)) releaseHeld(seq);
 
   return {
     add(msgSeq, taskId, words, heldKey) {
@@ -192,13 +214,12 @@ export function createAsks(d: AsksDeps): Asks {
       if (lines.some((l) => l.taskId === r.taskId && (l.state === "failed" || l.state === "needs_you"))) return true;
       if (!settled(seq)) {
         const h = held.get(seq) ?? [];
-        h.push(e);
+        if (!h.some((x) => x.seq === e.seq)) h.push(e);
         held.set(seq, h);
+        log(seq);
         return false;
       }
-      const before = held.get(seq);
-      held.delete(seq);
-      if (before?.length) d.release?.(before);
+      releaseHeld(seq);
       return true;
     },
     onEvent(e) {
@@ -214,11 +235,7 @@ export function createAsks(d: AsksDeps): Asks {
         if (seq !== undefined && apply(seq, taskId, undefined, (e.body as Bodies["task_state"]).attention)) {
           log(seq);
           // The last open line ended without a report (put down, failed by Ducter): what was held goes now.
-          if (settled(seq) && held.get(seq)?.length) {
-            const before = held.get(seq)!;
-            held.delete(seq);
-            d.release?.(before);
-          }
+          if (settled(seq)) releaseHeld(seq);
         }
       }
     },

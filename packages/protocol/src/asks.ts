@@ -27,6 +27,11 @@ export interface AsksBody {
   /** The person's message these lines are under. */
   msgSeq: number;
   lines: AskLine[];
+  /**
+   * D430: the Log seqs of the reports held for the close-out (a line done while others of this
+   * message still work). Ducter's own bookkeeping, so a restart keeps the hold; clients ignore it.
+   */
+  holding?: number[];
 }
 
 /** A report's word on each of its task's lines, in the order the task was given them. */

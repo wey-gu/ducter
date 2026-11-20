@@ -86,6 +86,11 @@ export interface MediaRef {
   preview?: string;
   /** The task that made it (a report's media): the viewer's 来自 {task} / From {task}. */
   from?: { taskId: string };
+  /**
+   * D439: the same document as pages (a PDF of this Office file the task showed with it, same
+   * name): the card's glimpse and the viewer draw these; Save keeps the file itself.
+   */
+  pages?: { id: string; k: string; bytes: number; n?: number };
 }
 
 export function isImageType(t: string | undefined): t is ImageType {

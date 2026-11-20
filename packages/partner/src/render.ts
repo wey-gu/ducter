@@ -110,6 +110,10 @@ function renderReport(r: Bodies["report"], title?: string, told?: string[], undo
   // so: the app already shows it under your message (另一个 AI 看过：…); never call this flawless.
   if (r.look?.left.length)
     lines.push(`  another AI (${harnessName(r.look.by)}) looked it over before it reached the user and says this is still so: ${r.look.left.map((x) => `"${clip(x, 80)}"`).join("; ")}. The app shows it under your message; don't repeat it word for word, and don't call the result complete. If it changes what they should do next, say so in a few words.`);
+  // D439: Ducter checked the document page by page; the task fixed what it could. Still so: the app
+  // shows it under your message (每一页都看过 / Every page checked); never call the document ready to send.
+  if (r.doc?.left.length)
+    lines.push(`  Ducter checked the document page by page before it reached the user, and this is still so: ${r.doc.left.map((x) => `"${clip(x, 80)}"`).join("; ")}. The app shows it under your message; don't repeat it word for word, and don't call the document ready to send. Offer to fix it in a few words if it matters.`);
   // D206: what it showed the user. The app puts it under your next message about this report.
   if (r.media?.length) lines.push(`  it shows the user: ${mediaWords(r.media)}. They appear under your message about this report: say what they are in a few words; never describe the path or the file name.`);
   // D142: a folder that isn't a repo. Ducter kept a copy from before; the user can undo it all.

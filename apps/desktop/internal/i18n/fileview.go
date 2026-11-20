@@ -7,6 +7,8 @@ package i18n
 var zhFile = Table{
 	"media.file":     "文件",
 	"file.save":      "存一份",
+	"file.savePdf":   "存 PDF", // D439
+	"doc.lead":       "看过每一页",
 	"file.source":    "看原文",
 	"file.formatted": "看排版",
 	"file.lines":     "%d 行",
@@ -41,6 +43,8 @@ var zhFile = Table{
 var enFile = Table{
 	"media.file":            "File",
 	"file.save":             "Save a copy",
+	"file.savePdf":          "Save the PDF", // D439
+	"doc.lead":              "Every page checked",
 	"file.source":           "Show source",
 	"file.formatted":        "Show formatted",
 	"file.lines":            "%d lines",

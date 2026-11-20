@@ -25,6 +25,35 @@ type MediaRef struct {
 	Thumb   *MediaKey  `json:"thumb,omitempty"`
 	Preview string     `json:"preview,omitempty"`
 	From    *MediaFrom `json:"from,omitempty"`
+	// Pages (D439): the same document as pages, the PDF of this Office
+	// file the task showed with it: the card's glimpse and the viewer draw
+	// these; Save keeps the file itself.
+	Pages *MediaPages `json:"pages,omitempty"`
+}
+
+// MediaPages (D439) is an Office file's PDF: its id, key and size, and its
+// page count when Ducter read it.
+type MediaPages struct {
+	ID    string `json:"id"`
+	K     string `json:"k"`
+	Bytes int64  `json:"bytes"`
+	N     int    `json:"n,omitempty"`
+}
+
+// PagesRef (D439) is the ref of an Office file's pages (its PDF), named as
+// the file with .pdf; ok is false for a file with none.
+func (m MediaRef) PagesRef() (MediaRef, bool) {
+	if m.Pages == nil {
+		return MediaRef{}, false
+	}
+	name := m.Name
+	if i := strings.LastIndexByte(name, '.'); i > 0 {
+		name = name[:i]
+	}
+	if name == "" {
+		name = "document"
+	}
+	return MediaRef{ID: m.Pages.ID, Type: "application/pdf", Bytes: m.Pages.Bytes, Name: name + ".pdf", K: m.Pages.K, From: m.From}, true
 }
 
 // MediaKey names a rendition: its id and key.

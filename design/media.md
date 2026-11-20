@@ -293,4 +293,4 @@ is read where it was handed over.
 Built by D259: files and PDFs sent by the user. Still phase 2: a share sheet into Ducter (iOS share
 extension, Android share intent); a PDF as a model's own document input through OAR; PDF text on the
 home for an agent with no PDF reader. Phase 3: video (the model sees ~6 frames), reply to a message, link previews.
-D239's later, built by D242: PDF pages drawn inside Ducter, expiring media keys, find in a long file. Still later: Office files drawn, find in a PDF.
+D239's later, built by D242: PDF pages drawn inside Ducter, expiring media keys, find in a long file. D439: an Office file a task shows with a PDF of the same name reads as its pages (`MediaRef.pages`, `documents.md`). Still later: Office files drawn without one, find in a PDF.

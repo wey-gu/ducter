@@ -1350,6 +1350,32 @@ a {
 .look-line .it {
   overflow-wrap: anywhere;
 }
+/* D439: what the page check still found: a drawn page and its lead, then each thing on its own
+   line, set in under the lead's words (no rule beside it). */
+.doc-line {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 6px 0;
+  font-size: var(--sm);
+  line-height: 1.45;
+  color: var(--ink);
+  min-width: 0;
+}
+.doc-line .lead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+  color: var(--needs-ink);
+}
+.doc-line .lead svg {
+  flex: none;
+}
+.doc-line .it {
+  padding-inline-start: 20px;
+  overflow-wrap: anywhere;
+}
 .decision .dl {
   font-size: var(--sm);
   color: var(--needs-ink);
@@ -7014,6 +7040,17 @@ dl.call-summary dd { margin: 0; }
   object-fit: cover;
   object-position: top;
   animation: fade-in var(--t-med) var(--ease);
+}
+/* D439: a slide is landscape: the whole slide, not its top strip. */
+.fc-pv.pdf.wide {
+  height: auto;
+  padding: 12px 18px;
+}
+.fc-pv.pdf.wide .fc-page {
+  min-height: 0;
+  height: auto;
+  border-radius: 4px;
+  object-fit: contain;
 }
 .fc-pv.pdf .fc-page.blank {
   animation: none;

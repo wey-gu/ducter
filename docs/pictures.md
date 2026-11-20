@@ -98,6 +98,21 @@ can't open one, it says why in one line: the file is gone, it isn't in a task's 
 over 25 MB, or that computer can't be reached right now. On a Mac with Ducter on the same Mac, a
 link to a file on that Mac opens in its own app, as before.
 
+## Documents to send
+
+Ask for a document the way you would ask a person: "make this week's progress into a one-page PDF
+for my manager", "a 5-slide pitch deck", "put the visa papers into one PDF".
+
+- **It comes back ready to send.** The task writes it in your language, with fonts that show it,
+  and looks at every page before you see it. Ducter checks the pages too: text running off a page,
+  a blank page, words left to fill in, the number of pages you asked for.
+- **Flip through it right there.** Tap the card. A slide deck or a Word file made with a PDF of
+  itself opens as its pages; **Save a copy** keeps the deck or the Word file, **Save the PDF** the PDF.
+- **If something is still off,** **Every page checked** says what, one thing a line, under the
+  result. Nothing there means the pages looked right.
+- **To change it,** just say so ("make the title shorter", "drop the team slide"); the same file
+  comes back changed.
+
 ## Good to know
 
 - Pictures stay on the computer Ducter runs on. A picture is only reachable through a link that

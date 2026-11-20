@@ -1,5 +1,5 @@
 import { randomBytes, randomUUID } from "node:crypto";
-import { HARNESS_IDS, HARNESSES as HARNESS_INFO, harnessName, isImage, kindWords, sizeWords, type MediaRef, type FileOpenError, type Attention, type Bodies, type BranchChanges, type CantStart, type Delivery, type EvidenceRef, type FolderChanges, type FolderSummary, type HeldMsg, type UndoConfirm, type LogEvent, type Place, type Question, type Residency, type TaskCard, type TaskNeeds, type WhereAsk } from "@ducter/protocol";
+import { docAsk, HARNESS_IDS, HARNESSES as HARNESS_INFO, harnessName, isImage, kindWords, sizeWords, type MediaRef, type FileOpenError, type Attention, type Bodies, type BranchChanges, type CantStart, type Delivery, type EvidenceRef, type FolderChanges, type FolderSummary, type HeldMsg, type UndoConfirm, type LogEvent, type Place, type Question, type Residency, type TaskCard, type TaskNeeds, type WhereAsk } from "@ducter/protocol";
 import type { CoreApi, HarnessEvent, HarnessPort, HarnessSession, Runner, SendFile, SendImage, SessionSpec } from "@ducter/protocol/src/internal.ts";
 import { ADOPTED, outsideOver, NUDGE, PRECOMPACT_NOTE, REOPENED, RESUME_AFTER_RESTART, SAVE_BEFORE_COMPACT, afterCompaction, briefTurn, knownTurn, othersTurn, OTHERS_MAX, handedBack, handedOver, kickoff, movedOver, noCopyAnswer, seedThen, startedAfresh, freshRound, taskBrief, type CarryOver } from "./brief.ts";
 import { HARNESS_FACTS, resolveModel, resolveWindows, saveBeforeAt } from "@ducter/protocol/src/harness-facts.ts";
@@ -1503,6 +1503,8 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
         ...(open.needs?.phone ? { phone: open.needs.phone } : {}),
         // D235: work in a Mac app gets the apps' section (the tools show when 用电脑 is on there).
         ...(open.needs?.app ? { apps: true } : {}),
+        // D439: a document the user will send (read from the ask's own words) gets its bar.
+        ...((d) => (d ? { doc: d } : {}))(docAsk(`${open.title}\n${briefed ? open.brief : ""}`)),
       }),
       mcp: [mcp],
       permissionMode: "bypass",

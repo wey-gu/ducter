@@ -151,6 +151,7 @@ func (a *App) messageRow(c *ui.Context, key string, tasks []*store.Task, detail 
 	for _, task := range tasks {
 		if finished(task) {
 			a.lookLine(c, "q:"+task.ID, reportLookLeft(task))
+			a.docLine(c, "q:"+task.ID, reportDocLeft(task)) // D439
 		}
 	}
 	ui.Row(c.Key("qrow:" + key)).Gap(t.S4).Wrap().AlignItems(ui.Center).Children(func() {

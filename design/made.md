@@ -81,6 +81,6 @@ the whole screen on a phone).
 
 ## Not yet
 
-Saving a made thing into a folder or a repo (I3's 存到… / Save to…), versions of a document,
+A document a task made to send (D439, `documents.md`) is listed once: an Office file with its PDF is one thing that opens as its pages. Saving a made thing into a folder or a repo (I3's 存到… / Save to…), versions of a document,
 sharing a link (I5), deleting one from the list, and finding by what is inside a file the home
 didn't read (only names, the report around it and a block's own cells are searched). `todo.md`.

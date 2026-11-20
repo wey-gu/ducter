@@ -8,7 +8,7 @@
 // client's own fetch (the same keyed path the pictures use), the first FILE_VIEW_BYTES of a text,
 // cut at a whole line; Save a copy takes the whole file to this device (the share sheet on a
 // phone, a download elsewhere), never by sending the person to the home's address.
-import { ANY_FILE, EXT_OF, FILE_VIEW_BYTES, FILE_VIEW_ROWS, fileLinkName, fileView, parseTable, sizeWords, tableSep, viewText, type FileOpenError, type MediaRef } from "@ducter/protocol";
+import { ANY_FILE, EXT_OF, FILE_VIEW_BYTES, FILE_VIEW_ROWS, fileLinkName, fileView, pagesRef, parseTable, sizeWords, tableSep, viewText, type FileOpenError, type MediaRef } from "@ducter/protocol";
 import { askFile, fileLinkSender } from "./filelink-ask.ts";
 import type { JSX } from "preact";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "preact/hooks";
@@ -340,7 +340,9 @@ export function FileViewer() {
   const findBox = useRef<HTMLInputElement>(null);
   const bodyEl = useRef<HTMLDivElement>(null);
   const m = fv!.ref;
-  const kind = fileView(m);
+  // D439: an Office file shown with its PDF reads as its pages; Save keeps the file itself.
+  const asPdf = pagesRef(m) as MediaRef | undefined;
+  const kind = asPdf ? "pdf" : fileView(m);
   const got = useFile(m, again);
   const name = fileName(m);
 
@@ -482,7 +484,7 @@ export function FileViewer() {
     ) : kind === "none" || (kind === "pdf" && pdfFailed) ? (
       <NoneBody m={m} said={kind === "pdf" ? t("file.pdfFailed") : undefined} />
     ) : kind === "pdf" ? (
-      <PdfBody m={m} onPages={setPages} onFail={() => setPdfFailed(true)} />
+      <PdfBody m={asPdf ?? m} onPages={setPages} onFail={() => setPdfFailed(true)} />
     ) : kind === "video" ? (
       <div class="fv-media">
         <video src={mediaUrl(m)} controls playsInline preload="metadata" />
@@ -574,7 +576,12 @@ export function FileViewer() {
               <span class="lbl">{copied ? t("media.copied") : t("media.copy")}</span>
             </button>
           )}
-          {kind !== "none" && !(kind === "pdf" && pdfFailed) && (
+          {asPdf && (
+            <button type="button" class="btn text" onClick={() => void saveCopy(asPdf)}>
+              <span class="lbl">{t("file.savePdf")}</span>
+            </button>
+          )}
+          {kind !== "none" && !(kind === "pdf" && pdfFailed && !asPdf) && (
             <button type="button" class="btn secondary" onClick={() => void saveCopy(m)}>
               <span class="lbl">{t("file.save")}</span>
             </button>

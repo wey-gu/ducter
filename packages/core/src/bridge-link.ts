@@ -251,6 +251,9 @@ export function versionConnects(v: readonly number[] | undefined): boolean {
 }
 
 /** JSON objects in nmem's output (stdout, then stderr; whole text, then line by line). */
+/** D432: the one command that puts pipx in on this home, for its own system: shown to copy, never run. */
+export const pipxCmd = (platform: string = process.platform) => (platform === "darwin" ? "brew install pipx" : "sudo apt install pipx");
+
 function jsonIn(...texts: string[]): any[] {
   const out: any[] = [];
   for (const t of texts) {
@@ -858,7 +861,7 @@ export function createBridgeLink(opts: {
     }
     if (!p) {
       const plan = await freshPlan();
-      return { state: "install_mem", identity: agent, home, canRun: !!plan, ...(plan ? {} : { need: "pipx" as const }), ...failed };
+      return { state: "install_mem", identity: agent, home, canRun: !!plan, ...(plan ? {} : { need: "pipx" as const, cmd: pipxCmd() }), ...failed };
     }
     if (!p.supported) {
       const copy = copyHere();

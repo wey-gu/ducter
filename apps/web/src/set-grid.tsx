@@ -8,6 +8,21 @@ import type { ComponentChildren } from "preact";
 import { useEffect, useState } from "preact/hooks";
 import { Btn, DangerButton } from "./controls.tsx";
 
+/** D432: a pane still being read: the shape of its first group, quietly breathing, and the word in it, so
+ *  the page never jumps from a bare line to its cards. Same on the Mac (`paneWait`). */
+export function Waiting(p: { text: string }) {
+  return (
+    <section class="set-card g-group set-wait" aria-busy="true">
+      <div class="chat-row tiled">
+        <span class="g-tile wait-tile" aria-hidden="true" />
+        <span class="grow">
+          <small role="status">{p.text}</small>
+        </span>
+      </div>
+    </section>
+  );
+}
+
 /** One raised group whose first row is the thing itself. */
 export function Group(p: { label: string; id?: string; class?: string; children: ComponentChildren }) {
   return (

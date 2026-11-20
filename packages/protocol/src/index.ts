@@ -2798,6 +2798,8 @@ export interface BridgeView {
   /** D329: mem_closed: the home can open the Nowledge Mem app itself (a Mac with the app). */
   canOpen?: boolean;
   need?: "pipx" | "app" | "other";
+  /** D432: need pipx: the one command that puts it in on the home (for its own system), shown to copy. */
+  cmd?: string;
   signIn?: "used" | "bad" | "failed";
   /** The home's nmem version, when it answered (D257: on every state where it did). */
   version?: string;

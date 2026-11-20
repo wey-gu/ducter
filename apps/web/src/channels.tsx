@@ -18,7 +18,7 @@ import { A } from "./app.ts";
 import { BrandTile } from "./brand.tsx";
 import { Btn, DangerButton, How, LinkBtn } from "./controls.tsx";
 import { Qr } from "./phone.tsx";
-import { GConfirm, Said, say } from "./set-grid.tsx";
+import { GConfirm, Said, say, Waiting } from "./set-grid.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
@@ -84,7 +84,7 @@ export function ChatAppsSettings() {
     if (A.S.welcomed) A.send({ t: "channels" });
   }, [A.S.welcomed]);
   const f = S.frame;
-  if (!f) return <div class="small">{t("conn.connecting")}</div>;
+  if (!f) return <Waiting text={t("conn.connecting")} />;
   return (
     <>
       <p class="af-lede">{t("chats.lede", A.S.personaName)}</p>

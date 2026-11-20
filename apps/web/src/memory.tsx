@@ -19,6 +19,7 @@ import { copy } from "./conv-copy.ts";
 import { Btn, DangerButton, LinkBtn, Switch } from "./controls.tsx";
 import { ago, harnessName, spoken } from "./format.ts";
 import { aboutGroups, bySource, groupNoted, MEM_MIN, memHealthLook, memPhase, memUpdate, ownsAgents, peersNamesUpdate, peersPhase, peersShown, peersSwitchOn, recentHandoffs, tryAgents, type Handoff, type MemPhase, type MemUpdate } from "./mem-view.ts";
+import { CopyLine } from "./lend.tsx";
 import { GBlock, GConfirm, GFoot, GHead, GRow, Group, Said, say, Tile } from "./set-grid.tsx";
 import { Avatar, Check } from "./views.tsx";
 
@@ -481,9 +482,10 @@ export function MemSteps({ phase, b }: { phase: "install" | "installing" | "sign
           <p>{installed ? t("mem.step.done") : t("mem.step.install")}</p>
           {!installed && (
             <>
-              <small>{busyIn ? t("bridge.mem.installing", home) : b?.canRun ? t("bridge.mem.install", home) : t("bridge.mem.install.need", home)}</small>
+              <small>{busyIn ? t("bridge.mem.installing", home) : b?.canRun ? t("bridge.mem.install", home) : t(b?.cmd ? "bridge.mem.install.need.run" : "bridge.mem.install.need", home)}</small>
               {b?.detail && !busyIn && <MemFailed detail={b.detail} kept={b.kept} install />}
-              {!b?.canRun && !busyIn && <MemMore label={t("bridge.mem.how")} text={t("bridge.mem.install.need.how")} />}
+              {/* D432: the one line to run on the home, to copy, in place of a fold to open. */}
+              {!b?.canRun && !busyIn && (b?.cmd ? <CopyLine text={b.cmd} kind="line" /> : <MemMore label={t("bridge.mem.how")} text={t("bridge.mem.install.need.how")} />)}
               {/* D404: a retry that meets the same missing tool says so, instead of the same words coming back. */}
               {tried && !b?.canRun && !busyIn && <small class="mem-tried">{t("mem.retry.same")}</small>}
               {!busyIn && <Btn kind={b?.canRun ? "primary" : "secondary"} size="sm" label={b?.canRun ? t("bridge.mem.install.go") : t("bridge.retry")} about={home} onClick={() => (setTried(!b?.canRun), A.installBridgeMem())} />}

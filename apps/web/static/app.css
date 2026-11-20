@@ -14211,6 +14211,11 @@ svg .wave.w2.on {
   background: none;
   box-shadow: none;
 }
+/* D432: its 怎么做到的 sits on the item's own edge, under the switch's words. */
+.set-page.pushed .set-item.voice-set .switch-how > .how {
+  padding: 0;
+  margin-top: var(--s1);
+}
 /* ---------- D311: a finger's 44 on the phone (research/110's open list) ---------- */
 /* Each small link or chip keeps how it looks; an invisible box around it takes the tap, 44 tall
    where the space around it allows. The boxes position at zero specificity (:where), so a rule
@@ -17419,6 +17424,16 @@ a.pr:hover { box-shadow: inset 0 0 0 1px var(--line-2); }
 .set-page.pushed .switch-how > .how { padding: 0 var(--set-in) var(--s3); margin-top: calc(-1 * var(--s3)); }
 .g-note + .how { padding: 0 var(--set-in, var(--s4)); margin: calc(-1 * var(--s1)) 0 var(--s1); }
 .lede-note + .how { margin: calc(-1 * var(--s1)) 0 var(--s1); }
+/* D432: a pane still being read: its first group's shape, the tile a soft sunken square breathing. */
+.set-wait .wait-tile { border-radius: var(--r-sm); background: var(--surface-sunken); animation: own-pulse 1.6s var(--ease) infinite; }
+@media (prefers-reduced-motion: reduce) { .set-wait .wait-tile { animation: none; } }
+/* D432: under a pushed page's lede, 怎么做到的 keeps the lede's text edge. */
+.set-page.pushed .lede-note + .how { padding: 0 var(--set-in); }
+/* D432: on a phone, a choice that drops under its row's words takes the text column's width, as
+   the default wait's does, never a short pill hanging at the right edge. */
+@media (max-width: 520px) {
+  .chat-row > .seg { flex: 1 1 100%; }
+}
 @media (pointer: coarse) { .how-tap { min-height: 44px; } }
 /* D426: several things in one message, line by line under the person's own words: each in their
    words with its drawn mark, one quiet note of what came of it, a count from four lines. The

@@ -265,7 +265,7 @@ What it needs, and what you can do today from that same section:
 - Nowledge Mem's command-line tool, 0.10.118 or later, on the computer Ducter runs on. If it's
   missing or older, the section shows **Install** or **Update**: one tap, done the way Nowledge
   Mem's own guide says (with pipx). On a Linux server where Ducter can't add pipx itself, it
-  shows the one command to run there (**How**). If the tool came with the Nowledge Mem app,
+  shows the one command to run there, with **Copy**. If the tool came with the Nowledge Mem app,
   update the app. If your copy was installed in a way that bypasses the system's Python
   protection, the section offers **Move it**: one tap puts in Nowledge Mem's recommended
   install, and you stay signed in.

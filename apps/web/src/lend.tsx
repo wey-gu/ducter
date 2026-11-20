@@ -42,7 +42,7 @@ export function LendCard() {
   );
 }
 
-function CopyLine({ text, kind }: { text: string; kind: "line" | "ask" | "check" }) {
+export function CopyLine({ text, kind }: { text: string; kind: "line" | "ask" | "check" }) {
   const [copied, setCopied] = useState(false);
   const copy = () => void navigator.clipboard?.writeText(text).then(() => (setCopied(true), setTimeout(() => setCopied(false), 1800))).catch(() => undefined);
   return (

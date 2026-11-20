@@ -69,7 +69,7 @@ func (a *App) loadingLine(c *ui.Context) bool {
 	if a.S.Settings != nil {
 		return false
 	}
-	uiText(c, a.L.T("partner.loading", a.S.PersonaName)).FontSize(a.T.MD).TextColor(a.T.InkMuted)
+	a.paneWait(c, "settings", a.L.T("partner.loading", a.S.PersonaName)) // D432
 	return true
 }
 
@@ -390,7 +390,7 @@ func (a *App) notifyPanel(c *ui.Context) {
 		}
 	})
 	a.saidLine(c, "notify") // D296
-	// D165: the same chips as on Accounts, once there is something to watch.
+	// D165: the chips, once there is something to watch; said here only (D432).
 	if (st.Proactive != "" && st.ProactiveBy != "default") || len(a.S.Connections) > 0 {
 		a.proactiveSection(c, "notify", true) // D289: a section like the others, 今天看了什么 its second row
 	}
@@ -542,10 +542,7 @@ func (a *App) accountsPanel(c *ui.Context) {
 	for _, cv := range list {
 		sources = sources || cv.Phone == nil
 	}
-	if len(list) > 0 {
-		// D289: 发现了就说 as a section, then one raised group per source.
-		a.proactiveSection(c, "acct", false)
-	}
+	// D432: 发现了就说 is said once, on Notifications (D289 had it here too).
 	if sources {
 		a.sourceCards(c, list)
 	}

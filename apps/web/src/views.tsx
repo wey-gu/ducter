@@ -2650,7 +2650,6 @@ function TalkSettings() {
         <div class="set-item talk-row">
           <span class="grow">
             <b>{t("settings.talk.row")}</b>
-            <small>{s.language === "auto" ? t("partner.talk.auto.note") : t("partner.talk.fixed.note", autonym(s.language))}</small>
           </span>
           <span class="pick">
             <Select
@@ -2697,7 +2696,8 @@ function StandingList() {
             </svg>
             <span class="grow">
               <span>{t(`standing.${x.action}`)}</span>
-              <small>{x.orgs?.length ? t("standing.where.orgs", x.orgs.join(sep)) : t("standing.where.any")}</small>
+              {/* D424: "PRs that ask for your review" is what the title already means; the owners only when bounded. */}
+              {x.orgs?.length ? <small>{t("standing.where.orgs", x.orgs.join(sep))}</small> : null}
               <small>{t("standing.said", x.text)}</small>
             </span>
             <DangerButton quiet label={t("standing.revoke")} about={t(`standing.${x.action}`)} onClick={() => (A.send({ t: "standing_revoke", id: x.id }), say("trust", t("standing.revoked")))} />
@@ -2729,8 +2729,8 @@ function TrustSettings() {
   return (
     <section class="set">
       <h3>{t("partner.trust.title")}</h3>
-      {/* As on the Mac: what the lists are is said under the heading, before them. */}
-      <p class="g-note">{t("partner.trust.note")}</p>
+      {/* D424: one clause on how a review stops asking, only until one does (the list then shows it). */}
+      {!A.standing.length && <p class="g-note">{t("partner.trust.note")}</p>}
       <div class="set-card trust-card">
         {list("partner.trust.own", "partner.trust.own", "own")}
         {list("partner.trust.asks", "partner.trust.asks", "asks")}

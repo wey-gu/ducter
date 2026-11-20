@@ -505,6 +505,68 @@ func (a *App) ledeNote(c *ui.Context, key, text string) {
 	uiText(c.Key(key), text).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted).Margin(-t.S3, 0, 0, 0)
 }
 
+// how is the quiet tap that keeps an explanation reachable without showing it (D424): 怎么做到的 /
+// How it works under a row or a note; pressed, the explanation opens under it in the muted ink
+// and the tap reads 收起 / Hide. about names what it explains, for assistive technology.
+func (a *App) how(c *ui.Context, key, about, detail string) {
+	t := a.T
+	open := a.open["how:"+key]
+	label := a.L.T("how.more")
+	if open {
+		label = a.L.T("how.less")
+	}
+	ui.Column(c.Key("how:" + key)).Gap(t.S1).Children(func() {
+		ui.Row(c).Children(func() {
+			if a.quietLink(c, "how:"+key, label, spoken(a.L, about, label)) {
+				a.open["how:"+key] = !open
+			}
+		})
+		if open {
+			uiText(c, detail).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
+		}
+	})
+}
+
+// explainedRow is a row whose words are its label, at most one short line, and the explanation
+// behind how (D424); its control at the right end.
+func (a *App) explainedRow(c *ui.Context, key, label, help, detail string, control func()) {
+	t := a.T
+	a.sep(c)
+	ui.Row(c.Key("row:"+key)).Gap(t.S5).Padding(t.S4, t.S5).MinHeight(68).AlignItems(ui.Center).Children(func() {
+		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(2).Children(func() {
+			uiText(c, label).FontSize(t.MD).FontWeight(700).LineHeight(1.4)
+			if help != "" {
+				uiText(c, help).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
+			}
+			a.how(c, key, label, detail)
+		})
+		if control != nil {
+			ui.Row(c).Shrink(0).Gap(t.S2).AlignItems(ui.Center).Children(control)
+		}
+	})
+}
+
+// ledeHow is how under a pane's lede note (D424): the note stays one short line.
+func (a *App) ledeHow(c *ui.Context, key, about, detail string) {
+	ui.Column(c.Key("ledehow:"+key)).Margin(-a.T.S4, 0, 0, 0).Children(func() {
+		a.how(c, key, about, detail)
+	})
+}
+
+// groupHow is a group whose one short note has how under it (D424), on the paper above the card.
+func (a *App) groupHow(c *ui.Context, key, title, note, detail string, body func()) {
+	t := a.T
+	ui.Column(c.Key("group:" + key)).Gap(t.S2).Children(func() {
+		a.sectionHead(c, title, note)
+		ui.Column(c).Padding(0, t.S5).Children(func() {
+			a.how(c, key, title, detail)
+		})
+		a.settings.rows = 0
+		ui.Column(c.Key("card:"+key)).Radius(t.RadiusLG).Background(t.Surface).Clip().
+			Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).Role(ui.RoleGroup).Label(title).Children(body)
+	})
+}
+
 // group is one titled group of a section: its title (and a note) on the
 // paper, then a white card on the clay base holding its rows.
 func (a *App) group(c *ui.Context, key, title, note string, body func()) {

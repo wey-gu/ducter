@@ -97,7 +97,7 @@ export function RecordsSettings() {
       {/* D365: the note under the heading, as every group's. */}
       {looks && !hidden.length && !folders.length && <p class="g-note">{t("records.past.note")}</p>}
       <div class="set-card">
-        <Toggle label={t("records.look")} help={t("records.look.help", computer)} checked={looks} onChange={setLooks} />
+        <Toggle label={t("records.look")} how={t("records.look.help", computer)} checked={looks} onChange={setLooks} />
         {looks &&
           hidden.map((a) => (
             <div class="set-row" key={a}>
@@ -173,7 +173,6 @@ export function PaperRow() {
   return (
     <div class="set-item">
       <b>{t("settings.look.mode")}</b>
-      <small>{t("settings.look.mode.help")}</small>
       <Seg label={t("settings.look.mode")} value={cur} options={(["system", "light", "dark"] as const).map((v) => ({ v, label: t(`settings.look.mode.${v}`) }))} onPick={(v) => setPaper(v)} />
     </div>
   );

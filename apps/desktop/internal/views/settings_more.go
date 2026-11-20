@@ -119,7 +119,12 @@ func (a *App) recordsGroup(c *ui.Context) {
 	}
 	// D365: the note under the heading, like every group's (D289), not stray under the card.
 	a.group(c, "records", a.L.T("records.title"), note, func() {
-		if v, ch := a.toggleRow(c, "records", a.L.T("records.look"), a.L.T("records.look.help", a.homeComputer()), looks); ch {
+		// D424: the row is its title and switch; what it reads and forgets stays one tap away.
+		v, ch := looks, false
+		a.explainedRow(c, "records", a.L.T("records.look"), "", a.L.T("records.look.help", a.homeComputer()), func() {
+			ch = a.switchControl(c, "records", a.L.T("records.look"), &v)
+		})
+		if ch {
 			f.SetLooking(v)
 			a.send(protocol.LocalAgents{T: "local_agents", On: v})
 			if v {

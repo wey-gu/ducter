@@ -95,15 +95,16 @@ At the top is your partner, its name and one line: where it lives and what it th
   talk in.
 - **What your AI agents keep.** **Read what they keep**: lists the conversations you had in Claude
   Code, Codex and pi on your home computer in Past tasks, and lets your partner find what to pick up
-  when you ask it to look. Only names, folders, times and your first and last words are read, with
-  keys hidden. Turn it off and nothing is read, and what was read is forgotten. If you chose
-  **Don't show {agent} here** or **Leave this folder out**, each is listed here with **Show again**.
-- **On its own, or asks you first.** The rules Ducter keeps, in two lists. On its own: changing
-  files in its own copy (your originals stay as they are), reading your projects and files,
-  looking things up and reading web pages (in your own Chrome when it can), and going with the
-  default on things that can be undone if you don't answer. Asks you first: anything that
-  reaches other people, anything that can't be taken back (like merging into your main line),
-  signing in to a site, and paying. You can't change these lists.
+  when you ask it to look. Tap **How it works** under the switch to see exactly what is read: only
+  names, folders, times and your first and last words, with keys hidden. Turn it off and nothing is
+  read, and what was read is forgotten. If you chose **Don't show {agent} here** or **Leave this
+  folder out**, each is listed here with **Show again**.
+- **On its own, or asks you first.** Two short lists. On its own: it edits a copy (never your
+  originals), reads your files, looks things up, and goes with defaults that can be undone if you
+  don't answer. Asks you first: anything sent to people, anything it can't undo, signing in, and
+  paying. Paying and signing in always ask. Tell your partner reviews may go without asking ("just
+  post reviews, don't ask me") and they appear under **Without asking**, with your words and **Take
+  back**.
 
 ### Who's doing a task
 

@@ -12,6 +12,7 @@ import { harnessName, spoken } from "./format.ts";
 import { askMade, M, MadeTab } from "./made.tsx";
 import { forgetSteps, Preview, PV, startRedo, type PreviewActs } from "./past-preview.tsx";
 import { ROOMY, useRoomy } from "./wide.ts";
+import { openApp } from "./apps.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
@@ -1042,6 +1043,8 @@ function OgCard({ it }: { it: OngoingItem }) {
         </span>
       </button>
       <span class="pacts on">
+        {/* D407: the small app this task keeps current: the same truth as the line above, opened whole. */}
+        {it.app && <Btn kind="secondary" size="sm" label={t("board.open", it.app.name)} onClick={() => (close(), openApp(it.app!.id))} />}
         {paused ? (
           <Btn kind="secondary" size="sm" label={t("og.resume")} onClick={() => og(it, { action: "resume" })} />
         ) : (

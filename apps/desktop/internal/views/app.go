@@ -67,8 +67,11 @@ type App struct {
 	// OpenAppWindow (D405) opens one of the person's apps in its own window
 	// (main.go: a web view on the app's own scheme); nil records it only.
 	OpenAppWindow func(id, name string)
-	openedApp     string
-	bridge        *AppBridge
+	// ShowMain (D407) brings the main window forward (an app's 看草稿 opens
+	// the draft sheet there); nil in tests.
+	ShowMain  func()
+	openedApp string
+	bridge    *AppBridge
 	// Now is the clock, time.Now unless a test sets it.
 	Now func() time.Time
 	// Local is what the client knows about this Mac (first-run hints,

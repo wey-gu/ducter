@@ -508,6 +508,12 @@ func (a *App) ongoingActs(c *ui.Context, it *protocol.OngoingItem) {
 	t := a.T
 	og := &a.past.og
 	ui.Row(c.Key("acts")).Gap(t.S1).AlignItems(ui.Center).Shrink(0).Children(func() {
+		// D407: the small app this task keeps current: the same truth as the card's line, whole.
+		if it.App != nil {
+			if _, hit := a.ogButton(c, "app", a.L.T("board.open", it.App.Name), it.Title, false); hit {
+				a.openApp(it.App.ID)
+			}
+		}
 		if it.State != "paused" && it.State != "running" && it.State != "proposed" {
 			label := a.L.T("og.run")
 			if it.Kind == "task" {

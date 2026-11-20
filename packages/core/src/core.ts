@@ -67,6 +67,7 @@ import { keepSaidAtOnce, keepSaidOnGo, openSaid, type SaidStore } from "./said.t
 import { openRules, type RulesStore } from "./rules.ts";
 import { openPins, type PinsStore } from "./pins.ts";
 import { openApps, type AppsStore } from "./apps.ts";
+import { APP_DATA_SCHEMA, createBoards } from "./boards.ts";
 import { createLoadout, isRuleHint, registerRuleTools, registerSwitchTool, registerBrainSwitchTool, type Loadout } from "./loadout.ts";
 import { createKindRetry, type KindRetry } from "./kind-retry.ts";
 import { openConnections, type ConnectionsStore, type Linker, type OoSource } from "./connections.ts";
@@ -137,7 +138,9 @@ const REVIEW_ROUND_SCHEMA = {
         type: "object",
         properties: {
           ref: { type: "string", description: "owner/repo#number" },
+          title: { type: "string", description: "The PR's title" },
           head: { type: "string", description: "The head commit you looked at (sha)" },
+          ci: { type: "string", enum: ["passing", "failing", "pending", "none"], description: "Its checks at that head" },
           changed: { type: "boolean", description: "true: its head moved and you reviewed it again this round" },
           gist: { type: "string", description: "One line in the person's language: what the PR does" },
           notes: {
@@ -724,6 +727,33 @@ export function startCore(opts: CoreOptions = {}): Core {
   let replayRef: ((o: { days?: number; web?: boolean }) => Promise<import("@ducter/protocol").ReplayReport>) | undefined;
   let calendarRef: Calendar | undefined;
   let taskSourcesRef: TaskSources | undefined;
+  // D407: a routine fills a small app: the review board written from review_report, app_data for others, the offer once.
+  let isReview: (taskId: string) => boolean = () => false;
+  const boards = createBoards({
+    log,
+    apps,
+    persona: () => persona.id,
+    lang: () => (langNow().startsWith("zh") ? "zh" : "en"),
+    title: (id) => tasks.get(id)?.title,
+    pile: () => taskSourcesRef?.pile,
+    repeats: (id) => work.waiters.views().some((w) => w.taskId === id && w.wakes === "task" && w.state === "armed" && !w.limit),
+    isReview: (id) => isReview(id),
+    tell: (id, text) => void runner?.send(id, text, undefined, "ducter").catch((e) => console.warn(`[core] couldn't tell ${id} about its app:`, (e as Error).message)),
+  });
+  // D407: a task given an app writes its data (never its file), once a round.
+  mcp.registerWhen(
+    "task",
+    "app_data",
+    "Write this round's results into the person's small app you were given (its id came in a [Ducter] message): set {key: whole JSON value}, null removes a key. Data only; the app's look is the person's. Once a round, then wait_for the next; a round that only updated the app needs no report_to_main.",
+    APP_DATA_SCHEMA,
+    async (args, ctx) => {
+      if (!ctx.taskId) throw new Error("app_data requires a task token");
+      const a = args as { app?: unknown; set?: unknown };
+      const r = apps.fill(String(a.app ?? ""), ctx.taskId, (a.set ?? {}) as Record<string, unknown>);
+      return r.ok ? `Kept: ${r.keys.join(", ")}. Every device with the app open shows it now. Now wait_for the next round and end your turn.` : r.error;
+    },
+    (ctx) => !!ctx.taskId && apps.byTask(ctx.taskId).some((m) => !m.kind),
+  );
   // D276: 聊天软件 / Chat apps: the person's own Telegram bot and Slack app, more windows on this
   // one conversation (channels/hub.ts). Their quiet hours and "notifications off" are push's.
   const channels = createChannels({
@@ -798,7 +828,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   // D372: an errand's failed report that Ducter answers by retrying it on the smartest (set below).
   let kindRetryRef: KindRetry | undefined;
   const unsubscribePartner = log.subscribe((e) => {
-    if (!triggersPartner(e) || !work.wakes(e) || (proactiveRef && !proactiveRef.wakes(e)) || (calendarRef && !calendarRef.wakes(e)) || (taskSourcesRef && !taskSourcesRef.wakes(e)) || (kindRetryRef && !kindRetryRef.wakes(e))) return;
+    if (!triggersPartner(e) || !work.wakes(e) || (proactiveRef && !proactiveRef.wakes(e)) || (calendarRef && !calendarRef.wakes(e)) || (taskSourcesRef && !taskSourcesRef.wakes(e)) || (kindRetryRef && !kindRetryRef.wakes(e)) || !boards.wakes(e)) return;
     wake(e);
   });
 
@@ -959,7 +989,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   const workFrames: typeof work.frames = { ...work.frames, waiter: (id, action) => limitWaits.act(id, action) ?? (action === "handoff" ? Promise.resolve(false) : work.frames.waiter(id, action)) };
   // D388: the pages the last noticed call rested on (a holder: the Core is a copy of api).
   const noticedSources: { links?: { label: string; url: string }[]; whys?: { text: string; why: string }[] } = {};
-  const api = { log, tasks, mcp, persona, dataDir, settings, connections, phone, bodies: loadout, said, spine: log.spine, bridgeLink, media, limits: accountUsage, workingMemory, pins, apps, noticedSources, ...(browser ? { browser: browser.port } : {}) } as CoreApi;
+  const api = { log, tasks, mcp, persona, dataDir, settings, connections, phone, bodies: loadout, said, spine: log.spine, bridgeLink, media, limits: accountUsage, workingMemory, pins, apps, boards: { makeReviewBoard: (id: string) => boards.makeReviewBoard(id), isReview: (id: string) => isReview(id), offer: (id: string, k: "reviews" | "reports") => boards.offer(id, k) }, noticedSources, ...(browser ? { browser: browser.port } : {}) } as CoreApi;
   // D312: with more than one partner, the default partner keeps to its own too, and a task's
   // brief and Mem identity are those of the partner it is for.
   const memOf = new Map<string, MemIdentity | undefined>();
@@ -1155,7 +1185,9 @@ export function startCore(opts: CoreOptions = {}): Core {
   const did = createDid({ log, tasks, uses: () => autofill.store.view().uses, deviceName: (dev) => (dev === "local" ? computers.homeName() : computers.nameOf(dev)), folder: (id) => changes.folder(id), now: () => clock.now() });
   registerDidTool(mcp, did, () => clock.now());
   // D285: 一直在跑的 / Ongoing: routines and tasks that look again on their own, paused and resumed.
-  const ongoing = createOngoing({ dataDir, log, tasks, waiters: work.waiters, routines: work.routines, marks, clock, onChange: () => ws.ongoingChanged(), reviews: (id) => taskSourcesRef?.pile.standing(id), asking: (id) => !!taskSourcesRef?.pile.asking(id) });
+  const ongoing = createOngoing({ dataDir, log, tasks, waiters: work.waiters, routines: work.routines, marks, clock, onChange: () => ws.ongoingChanged(), reviews: (id) => taskSourcesRef?.pile.standing(id), asking: (id) => !!taskSourcesRef?.pile.asking(id), app: (id) => ((m) => (m ? { id: m.id, name: m.name } : undefined))(boards.appOf(id)) });
+  // D407: an app given to a task (or taken back) changes what its Ongoing card opens.
+  apps.onChange((c) => void (c.kind === "give" && setTimeout(() => ws.ongoingChanged(), 0)));
   // D394: a review round's card asked or answered moves its task between 等你 and 等下一次.
   const roundCards = new Set<string>();
   log.subscribe((e) => {
@@ -1806,15 +1838,18 @@ export function startCore(opts: CoreOptions = {}): Core {
     reviewTasks.set(taskId, yes);
     return yes;
   };
+  isReview = isReviewTask;
   mcp.registerWhen(
     "task",
     "review_report",
-    "For a task that reviews pull requests every so often, once per round after you looked: every PR waiting on the person (ref owner/repo#number, the head commit you looked at, changed true when you reviewed it again this round because its head moved), and for each one reviewed again its drafted comments (kind problem or suggestion, path, line, text in the PR's own language). Ducter shows the drafts on those PRs and asks the person once to post them all; never post reviews yourself. Then wait_for the next round; a round that only calls this needs no report_to_main.",
+    "For a task that reviews pull requests every so often, once per round after you looked: every PR waiting on the person (ref owner/repo#number, its title, the head commit you looked at, its ci state there, changed true when you reviewed it again this round because its head moved), and for each one reviewed again its drafted comments (kind problem or suggestion, path, line, text in the PR's own language). Ducter shows the drafts on those PRs and asks the person once to post them all; never post reviews yourself. Then wait_for the next round; a round that only calls this needs no report_to_main.",
     REVIEW_ROUND_SCHEMA,
     async (args, ctx) => {
       if (!ctx.taskId) throw new Error("review_report requires a task token");
       const r = await taskSources.pile.round(ctx.taskId, args);
       if (!r.ok) return r.error ?? "Not kept.";
+      // D407: its board (when the person keeps one) is written now; after a few rounds, offered once.
+      boards.afterRound(ctx.taskId);
       return r.drafted
         ? `Kept: ${r.drafted} new draft${r.drafted === 1 ? "" : "s"}; the person sees every unsent draft on one card and Ducter posts them on Go. Now wait_for the next round and end your turn.`
         : "Kept: nothing new to ask the person. Now wait_for the next round and end your turn.";
@@ -1822,6 +1857,8 @@ export function startCore(opts: CoreOptions = {}): Core {
     (ctx) => !!ctx.taskId && isReviewTask(ctx.taskId),
   );
   taskSourcesRef = taskSources;
+  // D407: a round, a Go or a draft sent from its sheet: the review board shows it at once.
+  taskSources.pile.onBoard((id) => boards.write(id));
   if (opts.taskSources?.ask) taskSources.setAsk(opts.taskSources.ask);
   const proactive = createProactive({
     calendarIds: (a) => calendar.seenIds(a),

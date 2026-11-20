@@ -253,6 +253,9 @@ type Decision struct {
 	// Src (D341): a card about a to-do bound to a task: a write-back to
 	// its app, that it was closed there, or the standing go offered.
 	Src *SourceAsk `json:"src,omitempty"`
+	// Board (D407): 要不要把这些做成一个看板？ the offer to keep a repeating
+	// task's rounds on a small app.
+	Board *BoardAsk `json:"board,omitempty"`
 }
 
 // TrustAsk names the agent a standing-go offer is about.

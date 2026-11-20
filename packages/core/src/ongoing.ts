@@ -34,7 +34,7 @@ export interface Ongoing {
   stop(): void;
 }
 
-export function createOngoing(o: { dataDir: string; log: LogStore; tasks: CoreRegistry; waiters: Waiters; routines: Routines; marks?: Marks; clock?: Clock; onChange?: () => void; reviews?: (taskId: string) => import("@ducter/protocol").ReviewStanding | undefined; asking?: (taskId: string) => boolean }): Ongoing {
+export function createOngoing(o: { dataDir: string; log: LogStore; tasks: CoreRegistry; waiters: Waiters; routines: Routines; marks?: Marks; clock?: Clock; onChange?: () => void; reviews?: (taskId: string) => import("@ducter/protocol").ReviewStanding | undefined; asking?: (taskId: string) => boolean; app?: (taskId: string) => { id: string; name: string } | undefined }): Ongoing {
   const clock = o.clock ?? realClock;
   const file = join(o.dataDir, "paused.json");
   let paused: Record<string, Paused> = {};
@@ -137,6 +137,8 @@ export function createOngoing(o: { dataDir: string; log: LogStore; tasks: CoreRe
         runs: taskRuns(id),
         // D394: a review task's standing after its last round (the card's line).
         ...((r) => (r ? { reviews: r } : {}))(o.reviews?.(id)),
+        // D407: the small app it keeps current (the card opens it).
+        ...((a) => (a ? { app: a } : {}))(o.app?.(id)),
         taskId: id,
         startedAt: c.openedAt,
         ...(c.mark ? { mark: c.mark } : {}),

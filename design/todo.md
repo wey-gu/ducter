@@ -2235,6 +2235,13 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] **Drafts for Outlook and chat DMs** (Slack, Discord), and "answered elsewhere" from the person's
       own chat messages. Trigger: the first person with Outlook connected, or a Slack find held twice.
 
+## D407: a routine fills an app (`apps.md`)
+
+- [ ] **Run the review board on hel**: the author's routine's next rounds with `title` and `ci` in its review_report, the offer after three, the board on his phone and Mac. Trigger: this branch merged and released.
+- [ ] **CI read by Ducter, not said by the task** (the board's CI pill is the task's word at the head it looked at; a check run that turns red between rounds shows next round). Trigger: a board showing green while GitHub shows red.
+- [ ] **Other routines' boards made from a template** like the review board (a price watch, a benchmark) instead of the partner writing each one. Trigger: three boards of the same kind made by the partner.
+- [ ] **The report counter survives a restart** (the offer for reports counts in memory; the review offer counts rounds on disk). Trigger: an offer that came late after a restart.
+
 ## D405: 小应用 / Apps (`apps.md`, research/166)
 
 - [ ] **Open the Mac's app window in the real app** (the test renderer draws no web view): the scheme, the long poll, the theme, a resize, Cmd-W. Trigger: the next run of the built app.
@@ -2242,7 +2249,7 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] **Sharing an app** with someone: a link, their own data or a shared copy, viewer-pays and a first-use consent (research/166 §3). Trigger: Ducter Edge, or the first "发给她用一下".
 - [ ] **Point to change**: tap part of the app and say what to change (every reference does it). Trigger: an edit the partner applied to the wrong part twice.
 - [ ] **An app made by a coding task** (several files, a library, a build) when one file is not enough. Trigger: an app over ~60K characters, or one the partner can't fit.
-- [ ] **A routine that fills an app** (the review routine's PR board, research/166 §2): the routine's partner writes its data on each run. Trigger: the author asks for a board for a routine.
+- [x] **A routine that fills an app** (the review routine's PR board, research/166 §2): built as D407 (the review board from review_report; app_data for other routines).
 - [ ] **Offline on the phone**: the last version and data kept in the shell, writes queued. Trigger: a person who opens an app with the home away.
 - [ ] **Delete from Made for you** (`app_remove` exists; no button). Trigger: a person with an app they don't want listed.
 - [ ] **An app's card in chat apps** (Telegram, Slack, iMessage get the partner's words only, no card or link). Trigger: an app made from a chat app.

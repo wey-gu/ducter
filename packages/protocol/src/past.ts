@@ -219,6 +219,8 @@ export interface OngoingItem {
   runs: OngoingRun[];
   /** D394: a review task's standing: the requests waiting on the person after its last round. */
   reviews?: import("./task-sources.ts").ReviewStanding;
+  /** D407: the small app this task keeps current (审查看板 / Review board, or one the partner made): the card opens it. */
+  app?: { id: string; name: string };
   /** The task of a routine's run in progress, or the task itself. */
   taskId?: string;
   startedAt: string;

@@ -822,6 +822,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       const held = part - 1 === lastTask ? g.members.flatMap((m) => ("key" in m ? [m.title] : [])) : [];
       return { name: g.name, part, of: g.members.length, held };
     },
+    taskApp: (taskId) => core.apps?.list(core.persona.id).find((m) => m.task?.id === taskId)?.name,
     decision: (decisionId) => {
       const evs = core.log.read({ stream: "channel", kinds: ["decision"], limit: 500 });
       for (let i = evs.length - 1; i >= 0; i--) {
@@ -2266,7 +2267,9 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   // user_msg with app.ask) may fill it, never rewrite it: only the person's words change an app.
   if (core.apps) registerAppTool(core.apps);
   function registerAppTool(apps: NonNullable<CoreApi["apps"]>) {
-    const own = (t: TurnState) => t.triggers.some((e) => e.kind === "user_msg" && !(e.body as Bodies["user_msg"]).app?.ask && !(e.body as Bodies["user_msg"]).forwarded);
+    // D407: the person's Go on Ducter's offer to keep a routine's rounds on a board is their own word too.
+    const own = (t: TurnState) =>
+      t.triggers.some((e) => (e.kind === "user_msg" && !(e.body as Bodies["user_msg"]).app?.ask && !(e.body as Bodies["user_msg"]).forwarded) || (e.kind === "decision_resolved" && e.origin === "user" && (e.body as Bodies["decision_resolved"]).option === "go"));
     const card = (t: TurnState, m: AppMeta, change: AppCard["change"]) => {
       // A change after a make in the same turn is still that new app.
       const was = t.appCard?.id === m.id ? t.appCard.change : undefined;
@@ -2276,7 +2279,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     core.mcp.register(
       "partner",
       "app",
-      "Make or change one of the user's own small apps: one HTML file Ducter keeps; they reopen it on any device. Only when they ask for an app, tracker, tool or page to keep (a one-off answer stays a table or list). New: name + html. Change: id + edits [{find, replace}] (exact text; read: true first if unsure) or the whole html. id + data puts values into its storage when they ask you to fill it. The file: inline CSS and JS only, nothing from the internet (no CDN, fetch, web fonts or images by URL), no alert/confirm/localStorage. Keep data with ducter.get(key) / ducter.set(key, value) (JSON; on Ducter's home, the same on every device) and ducter.onChange(fn); ducter.ask(text) returns your answer as a Promise, only on the user's tap. Draw with var(--d-bg|card|sunken|ink|soft|muted|line|accent|on-accent|good|bad|radius|font); fits 360px wide; the user's language.",
+      "Make or change one of the user's own small apps: one HTML file Ducter keeps; they reopen it on any device. Only when they ask for an app, tracker, tool or page to keep (a one-off answer stays a table or list). New: name + html. Change: id + edits [{find, replace}] (exact text; read: true first if unsure) or the whole html. id + data puts values into its storage when they ask you to fill it. The file: inline CSS and JS only, nothing from the internet (no CDN, fetch, web fonts or images by URL), no alert/confirm/localStorage. Keep data with ducter.get(key) / ducter.set(key, value) (JSON; on Ducter's home, the same on every device) and ducter.onChange(fn); ducter.ask(text) returns your answer as a Promise, only on the user's tap. Draw with var(--d-bg|card|sunken|ink|soft|muted|line|accent|on-accent|good|bad|radius|font); fits 360px wide; the user's language. task: a repeating task that fills it each round (a review task: no html, Ducter's board).",
       {
         type: "object",
         properties: {
@@ -2287,9 +2290,10 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           data: { type: "object", description: "Keys to put into its storage (null deletes one)" },
           read: { type: "boolean", description: "Get its file and data back" },
           note: { type: "string", description: "What changed, in a few of their words" },
+          task: { type: "string", description: "Its id from [tasks]" },
         },
       },
-      async (a: { id?: unknown; name?: unknown; html?: unknown; edits?: unknown; data?: unknown; read?: unknown; note?: unknown }) => {
+      async (a: { id?: unknown; name?: unknown; html?: unknown; edits?: unknown; data?: unknown; read?: unknown; note?: unknown; task?: unknown }) => {
         const t = turn;
         if (!t || bridgeOnly(t)) return { ok: false, error: "Only when the user asks, in this turn." };
         const persona = core.persona.id;
@@ -2301,6 +2305,23 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         const edits = Array.isArray(a.edits) ? a.edits.filter((e): e is { find: string; replace: string } => !!e && typeof e === "object" && typeof (e as { find?: unknown }).find === "string").map((e) => ({ find: e.find, replace: String(e.replace ?? "") })) : undefined;
         const writes = html !== undefined || !!edits?.length || (!!m && typeof a.name === "string");
         if (writes && !own(t)) return { ok: false, error: "An app's own ask can't change an app: only the user's own words can. Answer it, or put data in with data." };
+        // D407: an app a repeating task keeps current (its rounds write the data, never the file).
+        // On Go for Ducter's board offer, the app is that task's even when the call leaves task out.
+        const offered = t.triggers
+          .map((e) => (e.kind === "decision_resolved" && (e.body as Bodies["decision_resolved"]).option === "go" ? core.log.read({ stream: "channel", kinds: ["decision"], limit: 300 }).find((x) => (x.body as Bodies["decision"]).decisionId === (e.body as Bodies["decision_resolved"]).decisionId) : undefined))
+          .map((x) => (x?.body as Bodies["decision"] | undefined)?.board)
+          .find((b) => b?.kind === "reports");
+        const taskId = typeof a.task === "string" && a.task.trim() ? a.task.trim() : !m && offered ? offered.taskId : "";
+        const task = taskId ? core.tasks.get(taskId) : undefined;
+        if (taskId && !task) return { ok: false, error: `No task ${taskId}: use a task id from [tasks].` };
+        if (task && !own(t)) return { ok: false, error: "Only the user's own words give an app to a task." };
+        if (task && !m && html === undefined) {
+          if (!core.boards?.isReview(task.taskId)) return { ok: false, error: "A new app needs name and html (only a review task gets Ducter's review board without one)." };
+          const r = core.boards.makeReviewBoard(task.taskId);
+          if (!r.ok) return { ok: false, error: r.error };
+          card(t, r.app, "made");
+          return { ok: true, id: r.app.id, say: `Ducter's review board, filled from that task's rounds. ${after}` };
+        }
         if (a.read === true) {
           if (!m) return { ok: false, error: "read needs an id." };
           const h = apps.html(m.id) ?? "";
@@ -2310,13 +2331,14 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         if (!m) {
           if (html === undefined) return { ok: false, error: "A new app needs name and html." };
           const ask = [...t.triggers].reverse().find((e) => e.kind === "user_msg" && !(e.body as Bodies["user_msg"]).app?.ask);
-          const r = apps.make(persona, { name: typeof a.name === "string" ? a.name : "", html, ...(ask ? { ask: (ask.body as Bodies["user_msg"]).text } : {}), ...(note ? { note } : {}) });
+          const r = apps.make(persona, { name: typeof a.name === "string" ? a.name : "", html, ...(ask ? { ask: (ask.body as Bodies["user_msg"]).text } : {}), ...(note ? { note } : {}), ...(task ? { task: { id: task.taskId, title: task.title } } : {}) });
           if (!r.ok) return { ok: false, error: r.error };
           card(t, r.app, "made");
           const lint = appLint(html);
           return { ok: true, id: r.app.id, ...(lint.length ? { fix: lint } : {}), say: (lint.length ? "Fix these with edits before you say it's ready. " : "") + after };
         }
         let changed: AppMeta | undefined;
+        if (task && m.task?.id !== task.taskId) apps.give?.(m.id, { id: task.taskId, title: task.title });
         if (writes) {
           const r = apps.change(m.id, { ...(html !== undefined ? { html } : {}), ...(edits?.length ? { edits } : {}), ...(typeof a.name === "string" ? { name: a.name } : {}), ...(note ? { note } : {}) });
           if (!r.ok) return { ok: false, error: r.error };
@@ -2332,7 +2354,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           }
           if (!changed) card(t, apps.get(m.id)!, "data");
         }
-        if (!changed && !put.length) return { ok: false, error: "Nothing to do: give html, edits, data, a new name or read: true." };
+        if (!changed && !put.length && !task) return { ok: false, error: "Nothing to do: give html, edits, data, a new name, task or read: true." };
         const lint = changed ? appLint(apps.html(m.id) ?? "") : [];
         return { ok: true, id: m.id, ...(changed ? { version: changed.version } : {}), ...(put.length ? { put } : {}), ...(lint.length ? { fix: lint } : {}), say: (lint.length ? "Fix these with edits. " : "") + after };
       },
@@ -4903,7 +4925,9 @@ export function renderApps(apps: readonly AppMeta[], data: (id: string) => Recor
       .map(([k, v]) => (Array.isArray(v) ? `${k} (${v.length})` : k))
       .join(", ");
     const name = m.name.length > 40 ? m.name.slice(0, 39) + "…" : m.name;
-    return `  ${m.id} "${name}" v${m.version}, changed ${ago(m.updated)}${m.opened ? `, opened ${ago(m.opened)}` : ""}${keys ? `; keeps: ${keys.slice(0, 200)}` : ""}`;
+    // D407: kept current by a task's rounds (the review board: from its review_report; a row's 看草稿 opens that PR's draft).
+    const by = m.task ? `; task ${m.task.id} keeps it current each round${m.kind === "reviews" ? " (Ducter's review board: each PR waiting with its CI, findings and draft; a row's 看草稿 / Read draft opens that draft)" : ""}` : "";
+    return `  ${m.id} "${name}" v${m.version}, changed ${ago(m.updated)}${m.opened ? `, opened ${ago(m.opened)}` : ""}${by}${keys ? `; keeps: ${keys.slice(0, 200)}` : ""}`;
   };
   const more = apps.length - shown.length;
   return [

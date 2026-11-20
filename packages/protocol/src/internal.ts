@@ -203,10 +203,19 @@ export interface CoreApi {
     get(id: string): import("./apps.ts").AppMeta | undefined;
     html(id: string): string | undefined;
     data(id: string): Record<string, unknown>;
-    make(persona: string, a: { name: string; html: string; ask?: string; note?: string }): { ok: true; app: import("./apps.ts").AppMeta } | { ok: false; error: string };
+    make(persona: string, a: { name: string; html: string; ask?: string; note?: string; task?: import("./apps.ts").AppTask }): { ok: true; app: import("./apps.ts").AppMeta } | { ok: false; error: string };
     change(id: string, c: { html?: string; edits?: { find: string; replace: string }[]; name?: string; note?: string }): { ok: true; app: import("./apps.ts").AppMeta } | { ok: false; error: string };
     put(id: string, key: string, value: unknown, by: "app" | "partner"): { ok: true } | { ok: false; error: string };
     answered(id: string, ref?: string): void;
+    /** D407: the routine task that keeps the app current. */
+    give?(id: string, task: import("./apps.ts").AppTask | undefined): boolean;
+  };
+  /** D407: a routine fills an app: the review board made from its template for a review task. */
+  boards?: {
+    makeReviewBoard(taskId: string): { ok: true; app: import("./apps.ts").AppMeta } | { ok: false; error: string };
+    isReview(taskId: string): boolean;
+    /** The offer, now (Ducter's own card; the eval seeds it this way). */
+    offer(taskId: string, kind: "reviews" | "reports"): string | undefined;
   };
 }
 

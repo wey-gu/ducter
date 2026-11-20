@@ -11,16 +11,19 @@ import {
   APP_ASKS_PER_HOUR,
   APP_DATA_MAX,
   APP_HTML_MAX,
+  APP_TASK_KEYS_PER_CALL,
+  APP_TASK_WRITES_PER_HOUR,
   APP_VERSIONS_KEPT,
   appDocument,
   appKeyOk,
   appName,
   APPS_MAX,
   type AppMeta,
+  type AppTask,
   type AppOpen,
 } from "@ducter/protocol";
 
-export type AppChange = { kind: "list" } | { kind: "data"; id: string; key: string; value: unknown; by: "app" | "partner" };
+export type AppChange = { kind: "list" } | { kind: "data"; id: string; key: string; value: unknown; by: "app" | "partner" | "task" } | { kind: "give"; id: string; task?: AppTask };
 
 export interface AppsStore {
   /** Newest change first, one partner's. */
@@ -30,14 +33,27 @@ export interface AppsStore {
   data(id: string): Record<string, unknown>;
   /** The document a client runs, with its data. */
   open(id: string, o: { transport: "message" | "fetch"; dark?: boolean; lang?: string }): AppOpen | undefined;
-  make(persona: string, a: { name: string; html: string; ask?: string; note?: string }): { ok: true; app: AppMeta } | { ok: false; error: string };
+  make(persona: string, a: { name: string; html: string; ask?: string; note?: string; task?: AppTask; kind?: AppMeta["kind"] }): { ok: true; app: AppMeta } | { ok: false; error: string };
+  /** D407: the routine task that keeps this app current (undefined: none any more). */
+  give(id: string, task: AppTask | undefined): boolean;
+  /** D407: the apps a task fills. */
+  byTask(taskId: string): AppMeta[];
+  /**
+   * D407: a task's round written into an app it fills (app_data): keys set (null removes) in one
+   * write, validated, capped (APP_TASK_KEYS_PER_CALL keys, APP_DATA_MAX in all) and rate-limited
+   * (APP_TASK_WRITES_PER_HOUR an hour per app). Data only: a task never touches the file.
+   */
+  fill(id: string, taskId: string, set: Record<string, unknown>): { ok: true; keys: string[] } | { ok: false; error: string };
+  /** D407: Ducter offered once to keep this task's rounds on a board (never asked twice). */
+  offered(taskId: string): boolean;
+  markOffered(taskId: string): void;
   /** A new version: the whole file, or edits (each find must match exactly once). */
   change(id: string, c: { html?: string; edits?: { find: string; replace: string }[]; name?: string; note?: string }): { ok: true; app: AppMeta } | { ok: false; error: string };
   /** 改回去: the version before comes back as a new one. */
   back(id: string): { ok: true; app: AppMeta } | { ok: false; error: string };
   remove(id: string): boolean;
   /** A key written (null deletes); by the app on a device, or by the partner. */
-  put(id: string, key: string, value: unknown, by: "app" | "partner"): { ok: true } | { ok: false; error: string };
+  put(id: string, key: string, value: unknown, by: "app" | "partner" | "task"): { ok: true } | { ok: false; error: string };
   /**
    * The web's frame: a one-app capability (a random token, 30 minutes) for GET /app-frame/<token>,
    * since the page's own policy forbids inline scripts in a srcdoc frame.
@@ -70,6 +86,15 @@ export function openApps(o: { dataDir: string; now?: () => Date }): AppsStore {
   const datas = new Map<string, Record<string, unknown>>();
   const asks = new Map<string, { waiting?: string; since?: number; times: number[] }>();
   const frames = new Map<string, { id: string; dark?: boolean; lang?: string; until: number }>();
+  const fills = new Map<string, number[]>();
+  const offersPath = join(o.dataDir, "app-offers.json");
+  let offers: Record<string, string> = {};
+  try {
+    const raw = JSON.parse(readFileSync(offersPath, "utf8"));
+    if (raw && typeof raw === "object" && !Array.isArray(raw)) offers = raw as Record<string, string>;
+  } catch {
+    /* none yet */
+  }
   if (existsSync(root)) {
     for (const id of readdirSync(root)) {
       try {
@@ -155,12 +180,63 @@ export function openApps(o: { dataDir: string; now?: () => Date }): AppsStore {
       while (metas.has(id));
       mkdirSync(dir(id), { recursive: true, mode: 0o700 });
       const at = now().toISOString();
-      const m: AppMeta = { id, name, persona, made: at, updated: at, version: 1, size: a.html.length, ...(a.ask ? { ask: a.ask.slice(0, 300) } : {}), ...(a.note ? { note: a.note.slice(0, 120) } : {}) };
+      const m: AppMeta = { id, name, persona, made: at, updated: at, version: 1, size: a.html.length, ...(a.ask ? { ask: a.ask.slice(0, 300) } : {}), ...(a.note ? { note: a.note.slice(0, 120) } : {}), ...(a.task ? { task: { id: a.task.id, title: appName(a.task.title) || a.task.id } } : {}), ...(a.kind ? { kind: a.kind } : {}) };
       write(join(dir(id), "index.html"), a.html);
       metas.set(id, m);
       saveMeta(m);
       emit({ kind: "list" });
+      if (m.task) emit({ kind: "give", id, task: m.task });
       return { ok: true, app: m };
+    },
+    give(id, task) {
+      const m = metas.get(id);
+      if (!m) return false;
+      if (task) m.task = { id: task.id, title: appName(task.title) || task.id };
+      else delete m.task;
+      saveMeta(m);
+      emit({ kind: "list" });
+      emit({ kind: "give", id, ...(m.task ? { task: m.task } : {}) });
+      return true;
+    },
+    byTask: (taskId) => [...metas.values()].filter((m) => m.task?.id === taskId),
+    fill(id, taskId, set) {
+      const m = metas.get(id);
+      if (!m || m.task?.id !== taskId) return { ok: false, error: "This app isn't one this task fills: use an id the task was given." };
+      if (m.kind) return { ok: false, error: "Ducter keeps this app's data from your review_report; nothing to write here." };
+      const entries = set && typeof set === "object" && !Array.isArray(set) ? Object.entries(set) : [];
+      if (!entries.length) return { ok: false, error: "set needs at least one key: {key: value} (null removes a key)." };
+      if (entries.length > APP_TASK_KEYS_PER_CALL) return { ok: false, error: `at most ${APP_TASK_KEYS_PER_CALL} keys a call` };
+      for (const [k, v] of entries) {
+        if (!appKeyOk(k)) return { ok: false, error: `${JSON.stringify(k)}: a key is 1–64 printable characters` };
+        try {
+          if (v !== null && JSON.stringify(v) === undefined) return { ok: false, error: `${k}: not JSON` };
+        } catch {
+          return { ok: false, error: `${k}: not JSON` };
+        }
+      }
+      const t = now().getTime();
+      const times = (fills.get(id) ?? []).filter((x) => t - x < 3600_000);
+      if (times.length >= APP_TASK_WRITES_PER_HOUR) return { ok: false, error: `this app took ${APP_TASK_WRITES_PER_HOUR} writes this hour; write once a round` };
+      const d = data(id);
+      const next: Record<string, unknown> = { ...d };
+      for (const [k, v] of entries) {
+        if (v === null || v === undefined) delete next[k];
+        else next[k] = JSON.parse(JSON.stringify(v));
+      }
+      if (JSON.stringify(next).length > APP_DATA_MAX) return { ok: false, error: `the app's data would be over ${APP_DATA_MAX} characters; keep only what stands now` };
+      fills.set(id, [...times, t]);
+      for (const k of Object.keys(d)) delete d[k];
+      Object.assign(d, next);
+      write(join(dir(id), "data.json"), JSON.stringify(d));
+      for (const [k] of entries) emit({ kind: "data", id, key: k, value: d[k] ?? null, by: "task" });
+      return { ok: true, keys: entries.map(([k]) => k) };
+    },
+    offered: (taskId) => !!offers[taskId],
+    markOffered(taskId) {
+      offers[taskId] = now().toISOString();
+      const ks = Object.keys(offers);
+      for (const k of ks.slice(0, Math.max(0, ks.length - 200))) delete offers[k];
+      write(offersPath, JSON.stringify(offers));
     },
     change(id, c) {
       const m = metas.get(id);

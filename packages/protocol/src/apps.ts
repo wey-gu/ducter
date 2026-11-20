@@ -21,6 +21,18 @@ export const APP_VERSIONS_KEPT = 10;
 export const APP_ASKS_PER_HOUR = 20;
 /** An ask's words, in characters. */
 export const APP_ASK_MAX = 2000;
+/** D407: a task's writes into an app it fills (app_data calls), at most this many an hour per app. */
+export const APP_TASK_WRITES_PER_HOUR = 60;
+/** D407: keys one app_data call may set or remove. */
+export const APP_TASK_KEYS_PER_CALL = 40;
+/** D407: after this many rounds (a review task's review_report, another repeating task's reports), Ducter offers once to keep them in a small app. */
+export const BOARD_OFFER_AFTER = 3;
+
+/** D407: the task that fills an app each round (it writes the app's data, never its code). */
+export interface AppTask {
+  id: string;
+  title: string;
+}
 
 export interface AppMeta {
   id: string;
@@ -42,6 +54,10 @@ export interface AppMeta {
   note?: string;
   /** An earlier version exists to go back to. */
   back?: true;
+  /** D407: the routine task that keeps it current (its rounds write the data). */
+  task?: AppTask;
+  /** D407: made by Ducter from a template: "reviews" = 审查看板 / Review board (its data is the review task's rounds, written by the home). */
+  kind?: "reviews";
 }
 
 /** An app as a client opens it: the document to run (the home composes it, bridge included) and its data. */
@@ -92,10 +108,51 @@ export type AppsClientFrame =
 export type AppsServerFrame =
   | { t: "apps"; apps: AppMeta[] }
   | { t: "app_open"; id: string; app?: AppOpen; gone?: true }
-  // A key changed (by the app on another device, or by the partner): by says who.
-  | { t: "app_data"; id: string; key: string; value: unknown; by: "app" | "partner" }
+  // A key changed (by the app on another device, by the partner, or by the task that fills it, D407): by says who.
+  | { t: "app_data"; id: string; key: string; value: unknown; by: "app" | "partner" | "task" }
   // An ask refused before it reached the partner (busy: one is waiting; limit: too many this hour).
   | { t: "app_ask_refused"; id: string; ref: string; why: "busy" | "limit" | "gone" | "empty" };
+
+/** D407: what ducter.open may show: one pull request's draft (owner/repo#n). */
+export function appShowRef(x: unknown): string | undefined {
+  const d = x && typeof x === "object" ? (x as { draft?: unknown }).draft : undefined;
+  return typeof d === "string" && /^[\w.-]+\/[\w.-]+#\d+$/.test(d) ? d : undefined;
+}
+
+/**
+ * D407: 审查看板 / Review board's data (the key "board"), written by the home from the review
+ * task's rounds (review_report) and the drafts' state: the same truth as the Ongoing card's line.
+ */
+export interface ReviewBoard {
+  /** The task's last round (ISO). */
+  at: string;
+  waiting: number;
+  again: number;
+  same: number;
+  /** Drafts not yet sent. */
+  drafted: number;
+  prs: ReviewBoardPr[];
+}
+
+export interface ReviewBoardPr {
+  /** owner/repo#n */
+  ref: string;
+  title?: string;
+  url?: string;
+  /** The head it looked at last (short sha). */
+  head?: string;
+  /** The pull request's checks at that head, as the task saw them. */
+  ci?: "passing" | "failing" | "pending" | "none";
+  /** Its head moved and it was reviewed again in the last round. */
+  changed: boolean;
+  gist?: string;
+  problems: number;
+  suggestions: number;
+  /** drafted: written, waiting for the person's Go; sent: posted to GitHub; none: nothing to say yet. */
+  draft: "drafted" | "sent" | "none";
+  /** When its draft was written (ISO). */
+  reviewedAt?: string;
+}
 
 /** A key the bridge accepts: short, printable. */
 export function appKeyOk(key: unknown): key is string {
@@ -157,7 +214,8 @@ const esc = (s: string) => s.replace(/</g, "\\u003c").split(LS).join("\\u2028").
  * file. The bridge is `window.ducter`:
  *   ducter.get(key) → the value (sync; the data comes with the app) · ducter.set(key, value) ·
  *   ducter.all() · ducter.onChange(fn(key, value, by)) · ducter.ask(text) → Promise<string> ·
- *   ducter.lang · ducter.dark.
+ *   ducter.lang · ducter.dark · ducter.open({ draft: "owner/repo#n" }) (D407: the person's own draft
+ *   sheet for that pull request opens over the app; nothing is sent).
  * "message": the iframe posts to its parent (the web and the phone). "fetch": the Mac's web view
  * posts to its own scheme (/bridge) and long-polls /events.
  */
@@ -181,7 +239,8 @@ get:function(k){var v=data[k];return v===undefined?null:JSON.parse(JSON.stringif
 all:function(){return JSON.parse(JSON.stringify(data));},
 set:function(k,v){if(typeof k!=="string"||!k)throw new Error("ducter.set needs a key");if(v===undefined)v=null;var s=JSON.stringify(v);if(v===null)delete data[k];else data[k]=JSON.parse(s);post({t:"put",key:k,value:v});return v;},
 onChange:function(f){subs.push(f);return function(){subs=subs.filter(function(x){return x!==f})};},
-ask:function(text){var ref="a"+(++n)+"-"+Date.now().toString(36);return new Promise(function(res,rej){asks[ref]=[res,rej];post({t:"ask",text:String(text||""),ref:ref});});}};
+ask:function(text){var ref="a"+(++n)+"-"+Date.now().toString(36);return new Promise(function(res,rej){asks[ref]=[res,rej];post({t:"ask",text:String(text||""),ref:ref});});},
+open:function(w){var d=w&&typeof w.draft==="string"?w.draft:"";if(/^[\\w.-]+\\/[\\w.-]+#\\d+$/.test(d))post({t:"show",draft:d});}};
 Object.freeze(ducter);window.ducter=ducter;
 window.addEventListener("error",function(e){post({t:"error",text:String(e.message||"error").slice(0,300)});});
 post({t:"ready"});})();`;

@@ -39,6 +39,7 @@ export * from "./app-lift.ts";
 export * from "./app-glyphs.ts";
 export * from "./reach.ts";
 export * from "./second-look.ts";
+export * from "./doc-bar.ts";
 export * from "./mem-source.ts";
 export * from "./mem-health.ts";
 export * from "./task-sources.ts";
@@ -512,6 +513,8 @@ export interface Bodies {
     asks?: import("./asks.ts").AskReport[];
     /** D437: set by Ducter (never the task): another AI read this result once before it went out. */
     look?: import("./second-look.ts").SecondLook;
+    /** D439: set by Ducter (never the task): the document it shows was checked page by page; `left` is what is still so. */
+    doc?: import("./doc-bar.ts").DocCheck;
   };
   checkpoint: { taskId: string; text: string; gitRef?: string };
   // D341: a task bound to one outside to-do (item null: unbound). by: who bound it (the person in

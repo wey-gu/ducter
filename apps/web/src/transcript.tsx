@@ -26,6 +26,7 @@ import { A, effortWord } from "./app.ts";
 import { duration, harnessName, modelName } from "./format.ts";
 import { markdown } from "./markdown.ts";
 import { MediaBlock } from "./media.tsx";
+import { DocLine } from "./doc-line.tsx";
 import { attention, effortOf, finished, harnessOf, modelOf, placeOf, title, type Task } from "./store.ts";
 import { manyComputers, taskWhere } from "./where.ts";
 import { rangeOf, topsOf } from "./vlist.ts";
@@ -617,6 +618,7 @@ function BlockView({ task, b, live, took }: { task: Task; b: Block; live?: boole
           <small>{t(k, A.S.personaName)}</small>
           {b.text}
           {b.media?.length ? <MediaBlock media={b.media} side="task" ctx={{ kind: "task", taskId: task.id }} /> : null}
+          <DocLine left={b.docLeft} />
         </div>
       );
     }

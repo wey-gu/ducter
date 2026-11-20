@@ -1,5 +1,5 @@
 // Every model-visible string the runner produces lives in this file (snapshot-tested).
-import type { Place } from "@ducter/protocol";
+import type { DocAsk, Place } from "@ducter/protocol";
 import { LANGUAGES, langName, normalizeTag, baseTag, type LangTag } from "@ducter/protocol/src/lang.ts";
 
 export interface BriefInput {
@@ -21,6 +21,8 @@ export interface BriefInput {
   phone?: boolean | "mine" | "ducter";
   /** D235: the work is in a Mac app (needs.app): Ducter's app tools, when 用电脑 is on for that Mac. */
   apps?: boolean;
+  /** D439: the ask is a document to send (docAsk read it from the title and brief): the bar it is held to. */
+  doc?: DocAsk;
 }
 
 /** D168: what the user's memory gives this task. Absent: nothing at all about memory. */
@@ -144,7 +146,26 @@ ${languageLine(b.language)}
 - Call \`checkpoint\` (same server) after each meaningful step with where the work stands and what comes next. Your context is small and is compacted when it fills up; your last checkpoint is what you carry on from afterwards. It is your own note, not a report: the user doesn't read it, so never copy it into \`summary\`. Still write it in plain sentences you could pick up cold.
 - Never ask the user questions in plain text, and never wait for a reply in text. Put every question in \`report_to_main\` with a default.
 - If you lack context, use \`log_search\` / \`log_read\` on the same server before asking.
-${memorySection(b)}${b.phone ? phoneBrief(b.partnerName, b.phone === true ? undefined : b.phone) : ""}${b.apps ? appsBrief(b.partnerName) : ""}${b.phone || b.apps ? showNotHandBrief() : ""}`;
+${memorySection(b)}${b.doc ? docBrief(b.doc) : ""}${b.phone ? phoneBrief(b.partnerName, b.phone === true ? undefined : b.phone) : ""}${b.apps ? appsBrief(b.partnerName) : ""}${b.phone || b.apps ? showNotHandBrief() : ""}`;
+}
+
+/**
+ * D439: Model-visible: the user will send what this task makes to someone (a PDF, a deck, a Word
+ * file, a one-pager), so it must be ready to send as it is (snapshot-tested).
+ */
+export function docBrief(ask: DocAsk): string {
+  const count = ask.pages ? ` It is ${ask.pages} ${ask.formats.includes("pptx") ? (ask.pages === 1 ? "slide" : "slides") : ask.pages === 1 ? "page" : "pages"}, as asked.` : ask.maxPages ? ` At most ${ask.maxPages} pages, as asked.` : "";
+  return `
+## A document the user will send
+
+The user will send what you make to someone as it is (a PDF, a slide deck, a Word file, a one-pager). Hold it to this bar:
+
+- **Make it** as an HTML draft with print CSS (\`@page\` size and margins: A4 portrait for a document, \`size: 13.333in 7.5in\` with one section a slide for a deck), then print it to PDF with a headless Chrome or Chromium (\`--headless --no-pdf-header-footer --print-to-pdf=out.pdf file://draft.html\`), unless the brief names another way. A Word file or a .pptx: make it with what you have (python-docx, python-pptx, pandoc, docx or pptxgenjs), then a PDF of it with LibreOffice (\`soffice --headless --convert-to pdf\`) where it is installed, and show both under the same name, so the user can flip through its pages.
+- **The bar:** the real content from the brief and what you found, never placeholders (lorem, TODO:, XXX, [Name], 单击此处添加标题); the user's language throughout; fonts that carry their script, named in the CSS or the file (Chinese: PingFang SC, Noto Sans CJK SC or Source Han Sans SC; never Helvetica or Arial alone); one title, clear headings, body text 10–12 pt on paper and 20 pt or more on a slide; margins of 15 mm or more; nothing past a margin or a slide's edge; no table wider than the page (narrower columns, wrapped cells, or a landscape page); no blank pages; no heading or single line stranded at a page's foot or on a page of its own.${count}
+- **Look before you report:** draw every page as a picture (\`pdftoppm -r 60 -png out.pdf page\`, or your browser's screenshot) and look at each one. Fix what is wrong, print again and look again.
+- Put the file(s) in \`show\` on your done report. Ducter checks the pages too (fonts, text past the edges, blank pages, placeholders, page count); what it finds comes back to you once, to fix in the same file.
+- When the user asks for a change ("改一下…"), change the same file and show it again under the same name.
+`;
 }
 
 /** D248: Model-visible: when the user only needs to see something, a picture, not their turn (snapshot-tested). */

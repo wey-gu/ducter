@@ -40,8 +40,11 @@ import (
 
 // fileViewState is the file viewer while open.
 type fileViewState struct {
-	open    bool
-	ref     protocol.MediaRef
+	open bool
+	ref  protocol.MediaRef
+	// office (D439): the Office file whose pages (its PDF) ref is: Save a
+	// copy keeps it, Save the PDF keeps ref.
+	office  *protocol.MediaRef
 	from    ui.Rect // the card it grew out of (empty: no card on screen)
 	loading bool
 	failed  bool
@@ -98,6 +101,10 @@ func (a *App) OpenFile(ref protocol.MediaRef, from ui.Rect) {
 		return
 	}
 	fv := &fileViewState{open: true, ref: ref, from: from}
+	if pages, ok := ref.PagesRef(); ok { // D439: read as its pages
+		office := ref
+		fv.ref, fv.office = pages, &office
+	}
 	a.fileView = fv
 	a.loadFile(fv)
 }
@@ -712,7 +719,14 @@ func (a *App) fileBar(c *ui.Context, fv *fileViewState, kind string) {
 				}
 			}
 		}
-		if kind != protocol.FileNone && !fv.pdfFailed {
+		if fv.office != nil { // D439: the PDF it reads as, and the file itself
+			if a.button(c, a.L.T("file.savePdf"), btnText, t.ControlSM, t.Surface) {
+				a.saveFileCopy(fv.ref)
+			}
+			if a.button(c, a.L.T("file.save"), btnSecondary, t.ControlSM, t.Surface) {
+				a.saveFileCopy(*fv.office)
+			}
+		} else if kind != protocol.FileNone && !fv.pdfFailed {
 			if a.button(c, a.L.T("file.save"), btnSecondary, t.ControlSM, t.Surface) {
 				a.saveFileCopy(fv.ref)
 			}

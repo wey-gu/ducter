@@ -4,7 +4,7 @@
 // glimpse of it: a PDF's first page on white paper, code's first lines in its colours, a table's
 // first rows, a video's frame with its length, a sound's waveform that plays right in the card.
 // Each glimpse is made once, only when the card comes near the screen, and kept by the file's id.
-import { durationWords, fileBadge, fileFamily, fileView, parseTable, sizeWords, tableSep, viewText, type FileFamily, type MediaRef } from "@ducter/protocol";
+import { durationWords, fileBadge, fileFamily, fileView, pagesRef, parseTable, sizeWords, tableSep, viewText, type FileFamily, type MediaRef } from "@ducter/protocol";
 import type { JSX } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { A } from "./app.ts";
@@ -339,8 +339,10 @@ export function FileCard({ m, pic, flight }: { m?: MediaRef; pic?: Pic; flight?:
   const box = useRef<HTMLDivElement>(null);
   const src = m ? sourceOf(m) : pic ? sourceOfPic(pic) : undefined;
   const meta: Pick<MediaRef, "type" | "name" | "bytes"> = m ?? src!.m;
-  const want = glimpseKind(meta);
-  const g = useGlimpse(want === "none" || want === "video" ? undefined : src, box);
+  // D439: an Office file shown with its PDF: the glimpse is its first page, the facts its pages.
+  const pages = m ? pagesRef(m) : undefined;
+  const want = pages ? "pdf" : glimpseKind(meta);
+  const g = useGlimpse(want === "none" || want === "video" ? undefined : pages ? sourceOf(pages as MediaRef) : src, box);
   // A glimpse that couldn't be made (a locked PDF, a sound this browser can't read) leaves the card plain.
   const kind = g?.kind === "none" ? "none" : want;
   const [len, setLen] = useState<number>();

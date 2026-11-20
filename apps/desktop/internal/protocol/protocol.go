@@ -764,6 +764,16 @@ type Report struct {
 	// Look (D437): set by Ducter: another AI read this result once before
 	// it went out; Left is what is still so (said on the card).
 	Look *SecondLook `json:"look,omitempty"`
+	// Doc (D439): set by Ducter: the document it shows was checked page by
+	// page; Left is what is still so (said under the result).
+	Doc *DocCheck `json:"doc,omitempty"`
+}
+
+// DocCheck (D439) is what Ducter's page check found in a document to send:
+// Left is what is still so after the task's fix, in the person's language.
+type DocCheck struct {
+	Pages int      `json:"pages,omitempty"`
+	Left  []string `json:"left"`
 }
 
 // SecondLook (D437) is what another AI found when it looked a result

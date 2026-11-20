@@ -35,6 +35,9 @@ const cardWidth = 352
 
 // glimpseKindOf is what a card shows above its line: "pdf", "code" or "".
 func glimpseKindOf(ref protocol.MediaRef) string {
+	if ref.Pages != nil { // D439: an Office file shown with its PDF
+		return "pdf"
+	}
 	switch ref.Family() {
 	case protocol.FamPDF:
 		return "pdf"
@@ -81,7 +84,11 @@ func (a *App) glimpseOf(ref protocol.MediaRef) *glimpse {
 				lines = append(lines, strings.ReplaceAll(l, "\t", "  "))
 			}
 		case "pdf":
-			data, err := home.Fetch(context.Background(), ref.Path())
+			src := ref
+			if pages, ok := ref.PagesRef(); ok { // D439
+				src = pages
+			}
+			data, err := home.Fetch(context.Background(), src.Path())
 			if err != nil {
 				return
 			}

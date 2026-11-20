@@ -44,6 +44,7 @@ import { MicButton, ReadingLine, useReadback, voice, VoiceSettings, VoiceStrip }
 import { FirstAfter, firstOpening, KeyCard, keyJustAdded } from "./first-words.tsx";
 import { CalFacts, calHold, CalSettle, DayCard, TodayRow } from "./calendar.tsx";
 import { AddPictures, DropHint, MediaBlock, Tray, useDropPaste, Viewer } from "./media.tsx";
+import { DocLine } from "./doc-line.tsx";
 import { FileLinkSheet, FileViewer } from "./fileview.tsx";
 import { NewTaskSheet } from "./newtask.tsx";
 import { MemoryPage, Notebook, PeersInvite, PeersPage, peersPageShown } from "./memory.tsx";
@@ -864,6 +865,10 @@ function Quiet({ k, tasks, detail, noted = [] }: { k: string; tasks: Task[]; det
       {/* D437: what another AI still found is never folded away either: it is what to look at. */}
       {tasks.filter(finished).map((task) => (
         <LookLine key={`look-${task.id}`} left={reportOf(task)?.look?.left} />
+      ))}
+      {/* D439: what the page check still found in a document to send, likewise. */}
+      {tasks.filter(finished).map((task) => (
+        <DocLine key={`doc-${task.id}`} left={reportOf(task)?.doc?.left} />
       ))}
       <div class="qrow">
         {tasks.map((task) => (

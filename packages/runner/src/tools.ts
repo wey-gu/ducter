@@ -173,6 +173,10 @@ export function normalizeShow(v: unknown): string[] {
 }
 
 export interface TaskToolOptions {
+  /** D439: a document the report shows is checked page by page (core's doc-check.ts): words back
+   *  to the task once instead of reporting, else what is still so (and the media paired: an Office
+   *  file with its PDF). Absent: every report as it is. */
+  docCheck?(taskId: string, body: Bodies["report"]): Promise<{ again?: string; doc?: Bodies["report"]["doc"]; media?: MediaRef[] } | undefined>;
   /** D437: another AI's one look before a result goes out (core's second-look.ts): true when it
    *  took the report (it logs it itself, now or after the task's fix). Absent: every report as it is. */
   secondLook?: { take(taskId: string, body: Bodies["report"]): boolean; readonly heldWords: string };
@@ -310,6 +314,14 @@ export function registerTaskTools(core: CoreApi, opts: TaskToolOptions = {}): vo
         const r = await opts.shown(ctx.taskId, show).catch((err) => ({ media: [] as MediaRef[], refused: [String((err as Error)?.message ?? err)] }));
         if (r?.media.length) body.media = r.media;
         refused = r?.refused ?? [];
+      }
+      // D439: a document to send is checked page by page before the user sees it; what it finds goes
+      // back to the task once (it fixes it in this turn), what is still so after that rides on the report.
+      if (body.media?.length && opts.docCheck) {
+        const dc = await opts.docCheck(ctx.taskId, body).catch(() => undefined);
+        if (dc?.media) body.media = dc.media;
+        if (dc?.again) return dc.again + (refused.length ? ` Not shown: ${refused.join("; ")}.` : "");
+        if (dc?.doc) body.doc = dc.doc;
       }
       // The mechanical check of done? -> done; a check that can't finish in time leaves refs unchecked.
       if (body.state === "done" && body.evidence.length && opts.checkEvidence) {

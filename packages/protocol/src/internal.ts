@@ -146,6 +146,8 @@ export interface CoreApi {
   brainHold?: BrainHoldPort;
   /** D437: another AI's one look before a result goes out (core/src/second-look.ts); absent in tests and stubs. */
   secondLook?: { take(taskId: string, body: import("./index.ts").Bodies["report"]): boolean; readonly heldWords: string };
+  /** D439: a document a done report shows, checked page by page (core/src/doc-check.ts); absent in tests and stubs. */
+  docCheck?(taskId: string, body: import("./index.ts").Bodies["report"]): Promise<{ again?: string; doc?: import("./doc-bar.ts").DocCheck; media?: import("./media.ts").MediaRef[] } | undefined>;
   /** D437: the 这类不用复查 rule Ducter kept from this user message's words, for the partner's line under them. */
   noLookFrom?(seq: number): RuleView | undefined;
   /** Who does a new task (D89, core/src/loadout.ts); absent in tests and stubs (then: the runner's default). */

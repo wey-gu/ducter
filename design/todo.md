@@ -336,6 +336,23 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
 - **Forget another tool's memory from Settings:** read-only there (D295); from a 想起了 line it can be
   forgotten, asking first (D304). Trigger: the author asks.
 
+## Documents you'd send (D439, `documents.md`, research/188)
+
+- [ ] **The real measure.** On the author's own asks for a week (a weekly PDF, a deck, a visa pack): how
+  often the check fires, what the task fixed, what was left, and what the person still found after a
+  clean check. The eval's documents are made to carry one known defect each, so 22/23 is an upper
+  bound. Trigger: the first release with D439 on the author's Mac.
+- [ ] **Poppler with the home** (or a pure reader for a PDF's text boxes): without it 8 of 13 PDF
+  defects go unseen. Trigger: a home without Poppler in the real measure, or the next installer change.
+- [ ] **A title Chrome shrank the page to fit** (the eval's one miss): the task's own look covers it
+  today; an AI reading the page pictures, or a size floor near 7.5 pt, if real runs show it.
+- [ ] **LibreOffice where the task works,** so every `.pptx`/`.docx` has its pages; offered on the
+  computer's card. Trigger: a deck shown without its PDF in real runs.
+- [ ] **A landscape slide's glimpse** on the card shows the top of the slide; a 16:9 glimpse box.
+  Trigger: the next file card change.
+- [ ] **Versions of a document** in Made for you (改一下 makes a new file under the same name; both
+  are listed). Trigger: the author asks for the earlier one.
+
 ## Another AI's look before a result goes out (D437, research/186)
 
 - [ ] **The real measure.** On the author's own tasks for a week: how often a look fires, finds, is

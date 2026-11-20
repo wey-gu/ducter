@@ -91,7 +91,7 @@ export type Block =
   | { k: "go"; seq: number; label: string; text: string }
   | { k: "partner"; seq: number; text: string; full?: number; media?: MediaRef[] }
   /** An earlier report to the partner (the latest is the outcome, said above the transcript). */
-  | { k: "report"; seq: number; state: Bodies["report"]["state"]; text: string; full?: number; media?: MediaRef[] }
+  | { k: "report"; seq: number; state: Bodies["report"]["state"]; text: string; full?: number; media?: MediaRef[]; /** D439: what the page check still found. */ docLeft?: string[] }
   /**
    * A runner's or harness's note that says something to a person (D207): `say` is what the clients
    * word in their i18n (`note.<say>`, `name` filled in), never the English it was logged in; `text`
@@ -559,7 +559,7 @@ export function build(harness: string, events: LogEvent[], working: boolean, ctx
         // The latest is the outcome, said above the transcript; D349: a progress report is no
         // outcome (a watcher's "nothing new"), so it stays where it was said.
         if (ev.seq === lastReport && r.state !== "progress") break;
-        out.push({ k: "report", seq: ev.seq, state: r.state, ...words(r.summary), ...(r.media?.length ? { media: r.media } : {}) });
+        out.push({ k: "report", seq: ev.seq, state: r.state, ...words(r.summary), ...(r.media?.length ? { media: r.media } : {}), ...(r.doc?.left.length ? { docLeft: r.doc.left } : {}) });
         break;
       }
       case "task_event": {

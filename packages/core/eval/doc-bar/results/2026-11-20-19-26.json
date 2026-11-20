@@ -1,0 +1,932 @@
+{
+  "summary": {
+    "at": "2026-11-20T19:26:40.237Z",
+    "chrome": "yes",
+    "poppler": "yes",
+    "soffice": "no",
+    "cases": 37,
+    "skipped": 0,
+    "withPoppler": {
+      "caught": 22,
+      "defects": 23,
+      "falseAlarms": 0,
+      "clean": 14,
+      "otherFindingsOnDefects": 0,
+      "pdf": {
+        "caught": 12,
+        "defects": 13,
+        "falseAlarms": 0,
+        "clean": 9
+      },
+      "pptx": {
+        "caught": 6,
+        "defects": 6,
+        "falseAlarms": 0,
+        "clean": 3
+      },
+      "docx": {
+        "caught": 4,
+        "defects": 4,
+        "falseAlarms": 0,
+        "clean": 2
+      },
+      "msPerDoc": 75
+    },
+    "withoutPoppler": {
+      "caught": 15,
+      "defects": 23,
+      "falseAlarms": 0,
+      "clean": 14,
+      "otherFindingsOnDefects": 0,
+      "pdf": {
+        "caught": 5,
+        "defects": 13,
+        "falseAlarms": 0,
+        "clean": 9
+      },
+      "pptx": {
+        "caught": 6,
+        "defects": 6,
+        "falseAlarms": 0,
+        "clean": 3
+      },
+      "docx": {
+        "caught": 4,
+        "defects": 4,
+        "falseAlarms": 0,
+        "clean": 2
+      },
+      "msPerDoc": 0
+    }
+  },
+  "rows": [
+    {
+      "id": "weekly-onepage",
+      "pass": "poppler",
+      "expect": [],
+      "found": [],
+      "pages": 1,
+      "ms": 269,
+      "falseAlarm": false
+    },
+    {
+      "id": "weekly-onepage",
+      "pass": "bare",
+      "expect": [],
+      "found": [],
+      "pages": 1,
+      "ms": 1,
+      "falseAlarm": false
+    },
+    {
+      "id": "weekly-spills-to-two",
+      "pass": "poppler",
+      "expect": [
+        "count"
+      ],
+      "found": [
+        "count=2"
+      ],
+      "pages": 2,
+      "ms": 201,
+      "caught": true,
+      "others": []
+    },
+    {
+      "id": "weekly-spills-to-two",
+      "pass": "bare",
+      "expect": [
+        "count"
+      ],
+      "found": [
+        "count=2"
+      ],
+      "pages": 2,
+      "ms": 1,
+      "caught": true,
+      "others": []
+    },
+    {
+      "id": "weekly-wide-table",
+      "pass": "poppler",
+      "expect": [
+        "overflow"
+      ],
+      "found": [
+        "overflow@1"
+      ],
+      "pages": 1,
+      "ms": 63,
+      "caught": true,
+      "others": []
+    },
+    {
+      "id": "weekly-wide-table",
+      "pass": "bare",
+      "expect": [
+        "overflow"
+      ],
+      "found": [],
+      "pages": 1,
+      "ms": 0,
+      "caught": false,
+      "others": []
+    },
+    {
+      "id": "weekly-title-runs-off",
+      "pass": "poppler",
+      "expect": [
+        "overflow"
+      ],
+      "found": [],
+      "pages": 1,
+      "ms": 77,
+      "caught": false,
+      "others": []
+    },
+    {
+      "id": "weekly-title-runs-off",
+      "pass": "bare",
+      "expect": [
+        "overflow"
+      ],
+      "found": [],
+      "pages": 1,
+      "ms": 1,
+      "caught": false,
+      "others": []
+    },
+    {
+      "id": "weekly-blank-page",
+      "pass": "poppler",
+      "expect": [
+        "blank"
+      ],
+      "found": [
+        "blank@2"
+      ],
+      "pages": 3,
+      "ms": 95,
+      "caught": true,
+      "others": []
+    },
+    {
+      "id": "weekly-blank-page",
+      "pass": "bare",
+      "expect": [
+        "blank"
+      ],
+      "found": [],
+      "pages": 3,
+      "ms": 1,
+      "caught": false,
+      "others": []
+    },
+    {
+      "id": "weekly-placeholders",
+      "pass": "poppler",
+      "expect": [
+        "placeholder"
+      ],
+      "found": [
+        "placeholder:[姓名]"
+      ],
+      "pages": 1,
+      "ms": 87,
+      "caught": true,
+      "others": []
+    },
+    {
+      "id": "weekly-placeholders",
+      "pass": "bare",
+      "expect": [
+        "placeholder"
+      ],
+      "found": [],
+      "pages": 1,
+      "ms": 1,
+      "caught": false,
+      "others": []
+    },
+    {
+      "id": "weekly-in-english",
+      "pass": "poppler",
+      "expect": [
+        "language"
+      ],
+      "found": [
+        "language"
+      ],
+      "pages": 1,
+      "ms": 62,
+      "caught": true,
+      "others": []
+    },
+    {
+      "id": "weekly-in-english",
+      "pass": "bare",
+      "expect": [
+        "language"
+      ],
+      "found": [],
+      "pages": 1,
+      "ms": 0,
+      "caught": false,
+      "others": []
+    },
+    {
+      "id": "weekly-tiny-text",
+      "pass": "poppler",
+      "expect": [
+        "small"
+      ],
+      "found": [
+        "small@1"
+      ],
+      "pages": 1,
+      "ms": 90,
+      "caught": true,
+      "others": []
+    },
+    {
+      "id": "weekly-tiny-text",
+      "pass": "bare",
+      "expect": [
+        "small"
+      ],
+      "found": [],
+      "pages": 1,
+      "ms": 1,
+      "caught": false,
+      "others": []
+    },
+    {
+      "id": "weekly-stub-last-page",
+      "pass": "poppler",
+      "expect": [
+        "stub"
+      ],
+      "found": [
+        "stub=1"
+      ],
+      "pages": 2,
+      "ms": 92,
+      "caught": true,
+      "others": []
+    },
+    {
+      "id": "weekly-stub-last-page",
+      "pass": "bare",
+      "expect": [
+        "stub"
+      ],
+      "found": [],
+      "pages": 2,
+      "ms": 1,
+      "caught": false,
+      "others": []
+    },
+    {
+      "id": "resume-en",
+      "pass": "poppler",
+      "expect": [],
+      "found": [],
+      "pages": 1,
+      "ms": 86,
+      "falseAlarm": false
+    },
+    {
+      "id": "resume-en",
+      "pass": "bare",
+      "expect": [],
+      "found": [],
+      "pages": 1,
+      "ms": 0,
+      "falseAlarm": false
+    },
+    {
+      "id": "visa-three-pages",
+      "pass": "poppler",
+      "expect": [],
+      "found": [],
+      "pages": 3,
+      "ms": 254,
+      "falseAlarm": false
+    },
+    {
+      "id": "visa-three-pages",
+      "pass": "bare",
+      "expect": [],
+      "found": [],
+      "pages": 3,
+      "ms": 1,
+      "falseAlarm": false
+    },
+    {
+      "id": "pitch-five-slides",
+      "pass": "poppler",
+      "expect": [],
+      "found": [],
+      "pages": 5,
+      "ms": 204,
+      "falseAlarm": false
+    },
+    {
+      "id": "pitch-five-slides",
+      "pass": "bare",
+      "expect": [],
+      "found": [],
+      "pages": 5,
+      "ms": 1,
+      "falseAlarm": false
+    },
+    {
+      "id": "pitch-six-slides",
+      "pass": "poppler",
+      "expect": [
+        "count"
+      ],
+      "found": [
+        "count=6"
+      ],
+      "pages": 6,
+      "ms": 187,
+      "caught": true,
+      "others": []
+    },
+    {
+      "id": "pitch-six-slides",
+      "pass": "bare",
+      "expect": [
+        "count"
+      ],
+      "found": [
+        "count=6"
+      ],
+      "pages": 6,
+      "ms": 1,
+      "caught": true,
+      "others": []
+    },
+    {
+      "id": "pitch-title-runs-off",
+      "pass": "poppler",
+      "expect": [
+        "overflow"
+      ],
+      "found": [
+        "overflow@1"
+      ],
+      "pages": 5,
+      "ms": 169,
+      "caught": true,
+      "others": []
+    },
+    {
+      "id": "pitch-title-runs-off",
+      "pass": "bare",
+      "expect": [
+        "overflow"
+      ],
+      "found": [],
+      "pages": 5,
+      "ms": 1,
+      "caught": false,
+      "others": []
+    },
+    {
+      "id": "latin-font-mojibake",
+      "pass": "poppler",
+      "expect": [
+        "cjk"
+      ],
+      "found": [
+        "cjk"
+      ],
+      "pages": 1,
+      "ms": 106,
+      "caught": true,
+      "others": []
+    },
+    {
+      "id": "latin-font-mojibake",
+      "pass": "bare",
+      "expect": [
+        "cjk"
+      ],
+      "found": [
+        "cjk"
+      ],
+      "pages": 1,
+      "ms": 0,
+      "caught": true,
+      "others": []
+    },
+    {
+      "id": "latin-font-boxes",
+      "pass": "poppler",
+      "expect": [
+        "cjk"
+      ],
+      "found": [
+        "cjk"
+      ],
+      "pages": 1,
+      "ms": 69,
+      "caught": true,
+      "others": []
+    },
+    {
+      "id": "latin-font-boxes",
+      "pass": "bare",
+      "expect": [
+        "cjk"
+      ],
+      "found": [
+        "cjk"
+      ],
+      "pages": 1,
+      "ms": 0,
+      "caught": true,
+      "others": []
+    },
+    {
+      "id": "latin-font-english-ok",
+      "pass": "poppler",
+      "expect": [],
+      "found": [],
+      "pages": 1,
+      "ms": 75,
+      "falseAlarm": false
+    },
+    {
+      "id": "latin-font-english-ok",
+      "pass": "bare",
+      "expect": [],
+      "found": [],
+      "pages": 1,
+      "ms": 0,
+      "falseAlarm": false
+    },
+    {
+      "id": "not-a-pdf",
+      "pass": "poppler",
+      "expect": [
+        "unreadable"
+      ],
+      "found": [
+        "unreadable"
+      ],
+      "ms": 18,
+      "caught": true,
+      "others": []
+    },
+    {
+      "id": "not-a-pdf",
+      "pass": "bare",
+      "expect": [
+        "unreadable"
+      ],
+      "found": [
+        "unreadable"
+      ],
+      "ms": 0,
+      "caught": true,
+      "others": []
+    },
+    {
+      "id": "pptx-pitch",
+      "pass": "poppler",
+      "expect": [],
+      "found": [],
+      "pages": 5,
+      "ms": 1,
+      "falseAlarm": false
+    },
+    {
+      "id": "pptx-pitch",
+      "pass": "bare",
+      "expect": [],
+      "found": [],
+      "pages": 5,
+      "ms": 0,
+      "falseAlarm": false
+    },
+    {
+      "id": "pptx-text-overflows-box",
+      "pass": "poppler",
+      "expect": [
+        "box"
+      ],
+      "found": [
+        "box@4"
+      ],
+      "pages": 5,
+      "ms": 0,
+      "caught": true,
+      "others": []
+    },
+    {
+      "id": "pptx-text-overflows-box",
+      "pass": "bare",
+      "expect": [
+        "box"
+      ],
+      "found": [
+        "box@4"
+      ],
+      "pages": 5,
+      "ms": 0,
+      "caught": true,
+      "others": []
+    },
+    {
+      "id": "pptx-long-title",
+      "pass": "poppler",
+      "expect": [
+        "box"
+      ],
+      "found": [
+        "box@1"
+      ],
+      "pages": 5,
+      "ms": 0,
+      "caught": true,
+      "others": []
+    },
+    {
+      "id": "pptx-long-title",
+      "pass": "bare",
+      "expect": [
+        "box"
+      ],
+      "found": [
+        "box@1"
+      ],
+      "pages": 5,
+      "ms": 0,
+      "caught": true,
+      "others": []
+    },
+    {
+      "id": "pptx-picture-off-slide",
+      "pass": "poppler",
+      "expect": [
+        "off"
+      ],
+      "found": [
+        "off@4"
+      ],
+      "pages": 5,
+      "ms": 0,
+      "caught": true,
+      "others": []
+    },
+    {
+      "id": "pptx-picture-off-slide",
+      "pass": "bare",
+      "expect": [
+        "off"
+      ],
+      "found": [
+        "off@4"
+      ],
+      "pages": 5,
+      "ms": 0,
+      "caught": true,
+      "others": []
+    },
+    {
+      "id": "pptx-placeholder",
+      "pass": "poppler",
+      "expect": [
+        "placeholder"
+      ],
+      "found": [
+        "placeholder:单击此处添加标题"
+      ],
+      "pages": 5,
+      "ms": 0,
+      "caught": true,
+      "others": []
+    },
+    {
+      "id": "pptx-placeholder",
+      "pass": "bare",
+      "expect": [
+        "placeholder"
+      ],
+      "found": [
+        "placeholder:单击此处添加标题"
+      ],
+      "pages": 5,
+      "ms": 0,
+      "caught": true,
+      "others": []
+    },
+    {
+      "id": "pptx-blank-slide",
+      "pass": "poppler",
+      "expect": [
+        "blank",
+        "count"
+      ],
+      "found": [
+        "blank@3",
+        "count=6"
+      ],
+      "pages": 6,
+      "ms": 0,
+      "caught": true,
+      "others": []
+    },
+    {
+      "id": "pptx-blank-slide",
+      "pass": "bare",
+      "expect": [
+        "blank",
+        "count"
+      ],
+      "found": [
+        "blank@3",
+        "count=6"
+      ],
+      "pages": 6,
+      "ms": 0,
+      "caught": true,
+      "others": []
+    },
+    {
+      "id": "pptx-seven-for-five",
+      "pass": "poppler",
+      "expect": [
+        "count"
+      ],
+      "found": [
+        "count=7"
+      ],
+      "pages": 7,
+      "ms": 0,
+      "caught": true,
+      "others": []
+    },
+    {
+      "id": "pptx-seven-for-five",
+      "pass": "bare",
+      "expect": [
+        "count"
+      ],
+      "found": [
+        "count=7"
+      ],
+      "pages": 7,
+      "ms": 0,
+      "caught": true,
+      "others": []
+    },
+    {
+      "id": "pptx-big-title-fits",
+      "pass": "poppler",
+      "expect": [],
+      "found": [],
+      "pages": 2,
+      "ms": 0,
+      "falseAlarm": false
+    },
+    {
+      "id": "pptx-big-title-fits",
+      "pass": "bare",
+      "expect": [],
+      "found": [],
+      "pages": 2,
+      "ms": 0,
+      "falseAlarm": false
+    },
+    {
+      "id": "docx-weekly",
+      "pass": "poppler",
+      "expect": [],
+      "found": [],
+      "ms": 0,
+      "falseAlarm": false
+    },
+    {
+      "id": "docx-weekly",
+      "pass": "bare",
+      "expect": [],
+      "found": [],
+      "ms": 0,
+      "falseAlarm": false
+    },
+    {
+      "id": "docx-wide-table",
+      "pass": "poppler",
+      "expect": [
+        "wide"
+      ],
+      "found": [
+        "wide"
+      ],
+      "ms": 0,
+      "caught": true,
+      "others": []
+    },
+    {
+      "id": "docx-wide-table",
+      "pass": "bare",
+      "expect": [
+        "wide"
+      ],
+      "found": [
+        "wide"
+      ],
+      "ms": 0,
+      "caught": true,
+      "others": []
+    },
+    {
+      "id": "docx-placeholder",
+      "pass": "poppler",
+      "expect": [
+        "placeholder"
+      ],
+      "found": [
+        "placeholder:[Hiring Manager Name]"
+      ],
+      "ms": 0,
+      "caught": true,
+      "others": []
+    },
+    {
+      "id": "docx-placeholder",
+      "pass": "bare",
+      "expect": [
+        "placeholder"
+      ],
+      "found": [
+        "placeholder:[Hiring Manager Name]"
+      ],
+      "ms": 0,
+      "caught": true,
+      "others": []
+    },
+    {
+      "id": "docx-english-for-zh",
+      "pass": "poppler",
+      "expect": [
+        "language"
+      ],
+      "found": [
+        "language"
+      ],
+      "ms": 0,
+      "caught": true,
+      "others": []
+    },
+    {
+      "id": "docx-english-for-zh",
+      "pass": "bare",
+      "expect": [
+        "language"
+      ],
+      "found": [
+        "language"
+      ],
+      "ms": 0,
+      "caught": true,
+      "others": []
+    },
+    {
+      "id": "docx-picture-too-wide",
+      "pass": "poppler",
+      "expect": [
+        "wide"
+      ],
+      "found": [
+        "wide"
+      ],
+      "ms": 0,
+      "caught": true,
+      "others": []
+    },
+    {
+      "id": "docx-picture-too-wide",
+      "pass": "bare",
+      "expect": [
+        "wide"
+      ],
+      "found": [
+        "wide"
+      ],
+      "ms": 0,
+      "caught": true,
+      "others": []
+    },
+    {
+      "id": "held-meeting-notes",
+      "pass": "poppler",
+      "expect": [],
+      "found": [],
+      "pages": 1,
+      "ms": 191,
+      "falseAlarm": false
+    },
+    {
+      "id": "held-meeting-notes",
+      "pass": "bare",
+      "expect": [],
+      "found": [],
+      "pages": 1,
+      "ms": 1,
+      "falseAlarm": false
+    },
+    {
+      "id": "held-wrapped-table",
+      "pass": "poppler",
+      "expect": [],
+      "found": [],
+      "pages": 1,
+      "ms": 112,
+      "falseAlarm": false
+    },
+    {
+      "id": "held-wrapped-table",
+      "pass": "bare",
+      "expect": [],
+      "found": [],
+      "pages": 1,
+      "ms": 1,
+      "falseAlarm": false
+    },
+    {
+      "id": "held-resume-zh",
+      "pass": "poppler",
+      "expect": [],
+      "found": [],
+      "pages": 1,
+      "ms": 126,
+      "falseAlarm": false
+    },
+    {
+      "id": "held-resume-zh",
+      "pass": "bare",
+      "expect": [],
+      "found": [],
+      "pages": 1,
+      "ms": 1,
+      "falseAlarm": false
+    },
+    {
+      "id": "held-pitch-en",
+      "pass": "poppler",
+      "expect": [],
+      "found": [],
+      "pages": 5,
+      "ms": 143,
+      "falseAlarm": false
+    },
+    {
+      "id": "held-pitch-en",
+      "pass": "bare",
+      "expect": [],
+      "found": [],
+      "pages": 5,
+      "ms": 0,
+      "falseAlarm": false
+    },
+    {
+      "id": "held-pptx-dense",
+      "pass": "poppler",
+      "expect": [],
+      "found": [],
+      "pages": 5,
+      "ms": 0,
+      "falseAlarm": false
+    },
+    {
+      "id": "held-pptx-dense",
+      "pass": "bare",
+      "expect": [],
+      "found": [],
+      "pages": 5,
+      "ms": 0,
+      "falseAlarm": false
+    },
+    {
+      "id": "held-docx-long",
+      "pass": "poppler",
+      "expect": [],
+      "found": [],
+      "ms": 0,
+      "falseAlarm": false
+    },
+    {
+      "id": "held-docx-long",
+      "pass": "bare",
+      "expect": [],
+      "found": [],
+      "ms": 0,
+      "falseAlarm": false
+    }
+  ]
+}

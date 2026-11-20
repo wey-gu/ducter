@@ -1351,6 +1351,32 @@ a {
 .look-line .it {
   overflow-wrap: anywhere;
 }
+/* D439: what the page check still found: a drawn page and its lead, then each thing on its own
+   line, set in under the lead's words (no rule beside it). */
+.doc-line {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 6px 0;
+  font-size: var(--sm);
+  line-height: 1.45;
+  color: var(--ink);
+  min-width: 0;
+}
+.doc-line .lead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+  color: var(--needs-ink);
+}
+.doc-line .lead svg {
+  flex: none;
+}
+.doc-line .it {
+  padding-inline-start: 20px;
+  overflow-wrap: anywhere;
+}
 .decision .dl {
   font-size: var(--sm);
   color: var(--needs-ink);

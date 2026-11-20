@@ -172,7 +172,7 @@ export interface MediaStore {
   /** A key for id, good for at least MEDIA_KEY.hours from now. */
   key(id: string): string;
   verify(id: string, k: string): boolean;
-  /** D242: v with every media ref in it (any `media` list, a ref's `thumb`) carrying a fresh key; v itself when it holds none. */
+  /** D242: v with every media ref in it (any `media` list, a ref's `thumb` and D439 `pages`) carrying a fresh key; v itself when it holds none. */
   fresh<T>(v: T): T;
   /** D242: fresh keys for the ids this home holds (others left out), at most MEDIA_KEY.perAsk. */
   keysFor(ids: unknown): Record<string, string>;
@@ -261,7 +261,8 @@ export function createMediaStore(dataDir: string, opts: MediaStoreOptions = {}):
   };
   const isRef = (v: unknown): v is { id: string; k: string } =>
     !!v && typeof v === "object" && typeof (v as { id?: unknown }).id === "string" && ID.test((v as { id: string }).id) && typeof (v as { k?: unknown }).k === "string";
-  const freshRef = (r: { id: string; k: string; thumb?: unknown }) => ({ ...r, k: key(r.id), ...(isRef(r.thumb) ? { thumb: { ...r.thumb, k: key(r.thumb.id) } } : {}) });
+  // D439: an Office file's pages (its PDF) are signed with it.
+  const freshRef = (r: { id: string; k: string; thumb?: unknown; pages?: unknown }) => ({ ...r, k: key(r.id), ...(isRef(r.thumb) ? { thumb: { ...r.thumb, k: key(r.thumb.id) } } : {}), ...(isRef(r.pages) ? { pages: { ...r.pages, k: key(r.pages.id) } } : {}) });
   /** Walks v; a list under a `media` key (or a lone ref there) is signed afresh. Unchanged parts are shared. */
   const walkFresh = (v: unknown, at: string): unknown => {
     if (!v || typeof v !== "object") return v;

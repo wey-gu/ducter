@@ -60,6 +60,7 @@ func (a *App) taskFooter(c *ui.Context, task *store.Task, detail string) {
 		a.proofLine(c, task, evs, true)
 		a.sentLine(c, task)
 		a.lookLine(c, "footer:"+task.ID, reportLookLeft(task)) // D437
+		a.docLine(c, "footer:"+task.ID, reportDocLeft(task))   // D439
 		a.resultActions(c, task)
 	})
 }
@@ -148,6 +149,50 @@ func (a *App) lookLine(c *ui.Context, key string, left []string) {
 			}
 		})
 	})
+}
+
+// docLine (D439) is what Ducter's page check still found in a document to
+// send: a drawn page and its lead in the needs-you ink, then each thing on
+// its own line (D291), set in under the lead's words (no rule beside it).
+// Nothing when the pages were clean.
+func (a *App) docLine(c *ui.Context, key string, left []string) {
+	if len(left) == 0 {
+		return
+	}
+	t := a.T
+	ui.Column(c.Key("doc:" + key)).Gap(2).MinWidth(0).Children(func() {
+		ui.Row(c).Gap(6).AlignItems(ui.Center).Children(func() {
+			ui.Box(c).Size(14, 14).Shrink(0).Draw(drawDocMark(t.NeedsYou.Ink))
+			uiText(c, a.L.T("doc.lead")).FontSize(t.SM).FontWeight(700).TextColor(t.NeedsYou.Ink)
+		})
+		for i, l := range left {
+			ui.Row(c.Key(fmt.Sprintf("it%d", i))).Padding(0, 0, 0, 20).MinWidth(0).Children(func() {
+				uiText(c, l).FontSize(t.SM).TextColor(t.Ink).LineHeight(1.45).MinWidth(0)
+			})
+		}
+	})
+}
+
+// drawDocMark is a small page with two lines on it (the web's DocLine mark).
+func drawDocMark(col ui.Color) func(p *ui.Painter, r ui.Rect) {
+	return func(p *ui.Painter, r ui.Rect) {
+		s := min(r.W, r.H) / 16
+		pt := func(x, y float32) (float32, float32) { return r.X + x*s, r.Y + y*s }
+		var pg ui.Path
+		pg.MoveTo(pt(4, 1.8)).LineTo(pt(9.5, 1.8)).LineTo(pt(12.5, 4.8)).LineTo(pt(12.5, 14.2)).LineTo(pt(4, 14.2)).Close()
+		pg.MoveTo(pt(9.5, 1.8)).LineTo(pt(9.5, 4.8)).LineTo(pt(12.5, 4.8))
+		pg.MoveTo(pt(6, 8)).LineTo(pt(10.5, 8)).MoveTo(pt(6, 10.6)).LineTo(pt(9, 10.6))
+		p.StrokePath(&pg, 1.5*s, col)
+	}
+}
+
+// reportDocLeft is what the page check still found in the task's last
+// report's document (D439).
+func reportDocLeft(task *store.Task) []string {
+	if r := task.Report(); r != nil && r.Doc != nil {
+		return r.Doc.Left
+	}
+	return nil
 }
 
 // reportLookLeft is what the task's last report's look still found (D437).

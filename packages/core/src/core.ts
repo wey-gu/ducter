@@ -4,6 +4,7 @@ import { createWbFrames } from "./workbench.ts";
 import { effectiveBrain } from "./brain.ts";
 import { createBrainHold } from "./brain-hold.ts";
 import { createSecondLook, diffFromWorkbench, keepNoLookAtOnce } from "./second-look.ts";
+import { createDocCheck } from "./doc-check.ts";
 import { createMediaStore } from "./media.ts";
 import { chmodSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
@@ -1056,7 +1057,18 @@ export function startCore(opts: CoreOptions = {}): Core {
   });
   // D437: 这类不用复查, kept as the person's rule the moment it lands.
   const noLook = keepNoLookAtOnce({ log, rules });
-  const api = { log, tasks, mcp, persona, dataDir, settings, connections, phone, bodies: loadout, said, standing, spine: log.spine, bridgeLink, media, limits: accountUsage, workingMemory, pins, apps, boards: { makeReviewBoard: (id: string) => boards.makeReviewBoard(id), isReview: (id: string) => isReview(id), offer: (id: string, k: "reviews" | "reports") => boards.offer(id, k) }, noticedSources, brainHold, secondLook, noLookFrom: (seq: number) => noLook.heardFrom(seq), ...(browser ? { browser: browser.port } : {}) } as CoreApi;
+  // D439: a document to send is checked page by page before it reaches the person; the pages are
+  // drawn into the task's own evidence folder when it works on this computer.
+  const docCheck = createDocCheck({
+    log,
+    path: (id) => media.path(id),
+    picturesDir: (id, open) => {
+      const dev = open?.place && "device" in open.place ? open.place.device : undefined;
+      return !dev || dev === "local" ? join(dataDir, "evidence", id, "pages") : undefined;
+    },
+    off: () => process.env.DUCTER_DOC_CHECK === "off",
+  });
+  const api = { log, tasks, mcp, persona, dataDir, settings, connections, phone, bodies: loadout, said, standing, spine: log.spine, bridgeLink, media, limits: accountUsage, workingMemory, pins, apps, boards: { makeReviewBoard: (id: string) => boards.makeReviewBoard(id), isReview: (id: string) => isReview(id), offer: (id: string, k: "reviews" | "reports") => boards.offer(id, k) }, noticedSources, brainHold, secondLook, noLookFrom: (seq: number) => noLook.heardFrom(seq), docCheck: (id: string, body: Bodies["report"]) => docCheck.check(id, body), ...(browser ? { browser: browser.port } : {}) } as CoreApi;
   // D312: with more than one partner, the default partner keeps to its own too, and a task's
   // brief and Mem identity are those of the partner it is for.
   const memOf = new Map<string, MemIdentity | undefined>();

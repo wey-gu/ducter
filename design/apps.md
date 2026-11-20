@@ -7,7 +7,9 @@ allows, the name test) is `research/166-own-apps.md`. Their own place, the kit a
 already filled are D410 (`research/169-apps-home.md`). Words are the glossary's (`product-model.md`);
 visuals are Pebble's (`ui.md`). D422 (`research/174-apps-bar.md`) brought them to the bar: a way up for
 apps made before the kit, marks drawn for what an app is about, one state line from one truth each,
-plain words in the foot, and the flows walked end to end (below).
+plain words in the foot, and the flows walked end to end (below). D431 (`research/181-apps-first-state.md`)
+closed its follow-ups: an empty app opens on a designed first state, an app's things live in its data and
+never in its file, and the loop was walked through a real client.
 
 ## Who and how it starts
 
@@ -73,10 +75,10 @@ words as data.
    the generic 出差花销) and made with its `data`: each item with `from` (「你的预订」), shown as a small
    tag and editable like any other. Its `note` says in a few words what it filled in. An empty make is
    answered: if you already know things for it, put them in now and name it for them. Nothing known:
-   it starts empty with a warm empty line, never invented numbers.
+   it opens on its **first state** (D431, below), never invented numbers.
 4. The home keeps it and **lints** it (a CDN script, `fetch`, `localStorage`, `alert`, `window.open`;
    D410: a native `<select>` (D421: `select.k-select` passes), `type=number`, no `k-app`; D422: a date or
-   time picker, no mark, no shelf line); anything found goes back to the partner as "fix these", said
+   time picker, no mark, no shelf line; D431: two or more rows written into the markup); anything found goes back to the partner as "fix these", said
    as what to use instead, before it says it's ready.
    **D422, answer first:** the `k-sum` on top holds the one thing they'd open it for (the total, what's
    left, the streak, how long since the last feed), `k-sum-next` the next thing; then their items;
@@ -107,7 +109,10 @@ so a small model draws a finished app without inventing a design, and never the 
 | `k-btn`, `k-btn primary`, `k-btn quiet` | clay buttons on a ledge |
 | `select.k-select` | D421: a longer choice, the kit's clay select |
 | `k-from` | where a prefilled item came from: a quiet word (D422: never a dotted pill) |
-| `k-empty` | once in the whole app: one calm line and the one first thing to do |
+| `k-empty` | once in the whole app: one calm line of what will list there (D431: over two drawn ghost rows while the app keeps nothing) |
+| `k-sum-value k-none` | D431: the answer while nothing is kept: a word (「还没记」 / "Nothing yet"), muted, never a 0 |
+| (the first state) | D431: while the app keeps nothing yet, the bridge marks the page (`data-empty`): the answer muted, k-empty's ghost rows, and the first `details.k-add` opened by itself as a card (`data-first`) right under them; it folds back once the first thing is kept |
+| (empty shells) | D431: `[hidden]` always hides (a kit class can't show what the app hid); a card round an empty list, an empty `k-sum-sub` or `k-sum-next` fold away; a `k-row-sub` beside `k-row-main` shares the row |
 | `details.k-add` > `summary` | D422: adding, last and folded; the summary is the accent button (「记一笔」) |
 | `k-sum-next` | D422: the next thing, under the total |
 | (a floor) | D422: any input, select, textarea or bare button the app left unstyled is drawn in clay (`:where()`, below anything the app says), so even an app from before the kit stops showing the system's grey |
@@ -171,6 +176,50 @@ button or is being changed, else in the foot. The foot otherwise says **只有�
 sentence). The partner's `[apps]` line carries the old look, a broken page and a failed round, so
 "fix it" and 换成新样子 have what they need.
 
+## The first state (D431)
+
+**Who:** the fresh user and the consumer who asked for "a little app to keep track of what I spend"
+with nothing Ducter knows about it. **Felt:** before, a grey ¥0, a sunken 「还没有花销，点下面「记一笔」开始。」
+and a folded button (0.1.1's own apps also showed an empty white bar where the list would go and a
+「Remove this one」 the app had hidden); the app looked unfinished and asked them to find the start.
+After, 好用 it opens on what it will be: the answer's label with **还没记 / Nothing yet** and one line of
+what shows there, two ghost rows where the items will list, and the form to add the first one already
+open under them; 顺滑 the first save turns the answer into the number and folds the form back into
+**记一笔**; 赏心悦目 nothing empty or broken shows; 放心 no number it doesn't have; 惊喜 even apps made
+before this open this way, with nothing to redo. **First time:** it is the app's own first open.
+
+- **The kit does it, so every app gets it**, old ones too: the bridge knows the data the app opened
+  with; while none of it is the person's (a number other than 0, a list with an item, a map with
+  one; the app's own settings, words and day lists don't count, and what the app writes while it
+  starts doesn't either), the page carries `data-empty`.
+- **The partner writes it** for a new app (the app tool's description): the k-sum still says what it
+  will show (its label, `k-none` in place of a number, a sub line of what shows there); k-empty one line
+  of what will list there.
+- Rated by the eval: `app-generic-en` must use `k-none` and never draw a bare 0 as the answer.
+
+## Its things live in its data (D431)
+
+**Who:** the heavy developer whose PR page (`app-prs-known-en`) the partner drew with the four PRs
+written into the file, and everyone whose app is changed later by talking. **Felt:** before, ticking
+worked but the PRs themselves were code: the partner couldn't read them back or fill them, a routine
+couldn't keep them, every change by talking rewrote them; after, the same page with its items in its
+data, on every device, readable and fillable. **First time:** nothing to see; it is how apps are kept.
+
+- **Lifted, where nothing they see changes** (`appLiftItems`, `packages/protocol/src/app-lift.ts`): a
+  list of two or more objects in a pure literal (`const PRS = [{…}, {…}]`, no names, calls or templates
+  with values), not one of the app's own settings (categories, colours, words, choices), under a key the
+  file doesn't name and the data doesn't have, goes into the data under the list's name and the file
+  reads it back (`const PRS = ducter.get("prs") || []`). A list given as the fallback of a key the data
+  lacks (`ducter.get("feeds") || […]`) goes into the data; the file stays.
+- **When:** as the partner makes it and as it changes it (the tool says which keys, so it fills them
+  with `data` from then on); and **on open** for an app made before (a version of its own, so
+  **改回去** brings the file back exactly; its place on the shelf doesn't move). Never a rewrite of
+  anything else; never a model's turn the person didn't ask for.
+- **Not liftable:** rows written into the markup itself. The lint says so as the partner writes it
+  ("writes N rows into the markup: keep the items in data…"), and the `[apps]` line carries it for an
+  existing app (`AppLive.inFile`: "N of its rows are written into its markup: when you next change it,
+  move them into data"), with no line of its own for the person.
+
 ## The flows, walked (D422)
 
 Walked in writing here. Shot (research/174, `.shots/apps-bar/`): 1 and 2 as haiku made them through the
@@ -202,6 +251,16 @@ D410's, unchanged, with its shots. Not walked: 4 end to end with a real partner,
     about it; **改回去** is in the head when there was a change.
 11. **An app from before the kit** (the author's case): **换成新样子** remakes it with the kit, filled
     from what Ducter knows, its keys kept; **改回去** undoes it.
+
+**D431, walked through a real client** (headless Chrome against `apps/web/demo-apps-walk.ts`, a
+stand-in partner doing what the app tool does; web 1400 and 390, zh and en, light and dark; shots
+`.shots/apps-2/walk-*`): made from a sentence (the card under one line), opened on its first state,
+two costs added from inside (the answer, the rows, the form folded back), the app's ask answered back
+into it, changed by talking from its line (**正在弄你说的…**, then **改好了** with the note and
+**改回去**), "where are my apps" (the shelf's card, the tile with its line), deleted by asking, and
+**撤销**. Fixed on the way: the line **发给 Ducter 了，改好会在这里刷新。** stayed after the change landed
+(web and Mac now clear it when the change lands or the partner answers); the first-state form stayed
+open as a card after the first save (it folds back).
 
 ## Changing one: by talking
 
@@ -290,8 +349,7 @@ re-read; after, one page always current on every device and a quiet conversation
 
 ## Not in v1
 
-D422 owes (`todo.md`): an empty app that still opens empty when nothing is known (it needs something
-true to show); a generated clay object as an app's mark, made once in the background where an image
+D422 owes (`todo.md`): a generated clay object as an app's mark, made once in the background where an image
 harness is signed in, the drawn mark until then; people as raters.
 
 Sharing an app with someone (a link, their own data or a shared copy, viewer-pays, a first-use

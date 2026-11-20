@@ -114,6 +114,9 @@ type AppLive struct {
 	Changing *struct{}   `json:"changing,omitempty"`
 	Broke    *AppLiveErr `json:"broke,omitempty"`
 	Old      bool        `json:"old,omitempty"`
+	// InFile: rows of the person's items written into its markup, not its
+	// data (D431; for the partner, no line of its own).
+	InFile int `json:"inFile,omitempty"`
 }
 
 // AppKept is the task that keeps an app current, as Ongoing has it.

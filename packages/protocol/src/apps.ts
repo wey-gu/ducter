@@ -5,6 +5,7 @@
 // way out is ducter.ask, which puts the app's words in the conversation for the partner, where
 // anything outward still waits for the person's Go.
 import { APP_GLYPHS, APP_ICON_WORDS } from "./app-glyphs.ts";
+import { appRowsInMarkup } from "./app-lift.ts";
 
 /** A whole app, in characters: a small app is a few thousand; this stops a runaway file. */
 export const APP_HTML_MAX = 200_000;
@@ -126,6 +127,8 @@ export interface AppLive {
   broke?: { text: string };
   /** It was made before the kit (the system's grey controls, no kit): 换成新样子 / Give it the new look. */
   old?: true;
+  /** D431: rows of the person's items written into its markup, not its data (the partner moves them when it next changes it; no line of its own). */
+  inFile?: number;
 }
 
 /**
@@ -287,6 +290,9 @@ export function appLint(html: string): string[] {
   if (/<select\b(?![^>]*\bclass\s*=\s*["'][^"']*\bk-select\b)/i.test(html)) out.push(`uses a native <select>: use the kit's chips, <div class="k-chips"><button class="k-chip" aria-pressed="true">…</button></div>, or for a longer list the kit's <select class="k-select">`);
   if (/<input\b[^>]*\btype\s*=\s*["']?number\b/i.test(html)) out.push(`uses a number stepper (type=number): use <input class="k-num" inputmode="decimal">`);
   if (/<input\b[^>]*\btype\s*=\s*["']?(date|time|datetime-local|month|week)\b/i.test(html)) out.push(`uses a date or time picker (the system's grey one): use chips (今天, 昨天, the times they said) or a k-input`);
+  // D431: the person's things live in its data (every device; the partner reads and fills them), never written in as markup.
+  const rows = appRowsInMarkup(html);
+  if (rows >= 2) out.push(`writes ${rows} rows into the markup: keep the items in data (the app tool's data) and draw the rows from ducter.get in the script`);
   if (!/class\s*=\s*["'][^"']*\bk-app\b/.test(html)) out.push(`doesn't use the kit: put it all in <main class="k-app">, the total or the state first in a .k-sum`);
   if (/<(script|link|img|iframe|source|audio|video)\b[^>]*\b(src|href)\s*=\s*["']?(https?:)?\/\//i.test(html)) out.push("loads something from the internet (a CDN script, a font, a picture by URL): nothing outside the file loads; inline it or draw it");
   if (/@import\s+url\(\s*["']?https?:/i.test(html)) out.push("imports a stylesheet from the internet: inline the CSS");
@@ -351,6 +357,17 @@ export const APP_KIT_CSS = [
   `.k-add>:not(summary){margin-top:12px}.k-add[open]{padding-bottom:4px}`,
   `.k-sum-next{display:block;margin-top:10px;padding-top:10px;border-top:1px solid var(--d-line);font-size:14px;font-weight:700;color:var(--d-ink)}`,
   `.k-empty{padding:22px 18px;border-radius:var(--d-radius);background:var(--d-sunken);color:var(--d-soft);text-align:center;font-size:14px}`,
+  // D431: the first state. While the app keeps nothing yet (html[data-empty], set by the bridge), its
+  // answer is a promise, not a bleak zero: the value muted (or a word, .k-none); k-empty shows two
+  // ghost rows of what will list there over its line; the add opens by itself right under it as a
+  // card (data-first). Empty shells an app left (a card round an empty list, an empty next line) fold away.
+  `.k-none{font-size:28px;color:var(--d-muted)}[data-empty] .k-sum-value{color:var(--d-muted)}`,
+  `[data-empty] .k-empty{position:relative;padding-top:88px;border:1.5px dashed var(--d-line);background:transparent}`,
+  `[data-empty] .k-empty::before,[data-empty] .k-empty::after{content:"";position:absolute;top:26px;height:9px;border-radius:999px;background:var(--d-line);box-shadow:0 28px 0 var(--d-line);opacity:.8}`,
+  `[data-empty] .k-empty::before{left:20px;width:46%}[data-empty] .k-empty::after{right:20px;width:16%}`,
+  `.k-add[data-first]{padding:16px 16px 18px;border-radius:20px;background:var(--d-card);box-shadow:inset 0 1.5px 0 var(--d-hi),0 4px 0 var(--d-line)}`,
+  `.k-add[data-first]>summary{min-height:0;justify-content:flex-start;padding:0 2px;background:none;box-shadow:none;color:var(--d-ink);font-size:16px;pointer-events:none}`,
+  `.k-row>.k-row-sub{flex:0 1 42%;min-width:0;text-align:right}[hidden]{display:none!important}.k-list:empty,.k-sum-sub:empty,.k-sum-next:empty{display:none}.k-card:has(>.k-list:only-child:empty){display:none}`,
   `.k-bar{height:8px;border-radius:999px;background:var(--d-sunken);overflow:hidden}`,
   `.k-bar>i{display:block;height:100%;border-radius:999px;background:var(--d-accent)}`,
   `.k-good{color:var(--d-good)}.k-bad{color:var(--d-bad)}.k-muted{color:var(--d-muted)}`,
@@ -449,12 +466,19 @@ else{window.addEventListener("message",function(e){if(e.source===parent)onMsg(e.
 var ducter={id:B.id,name:B.name,lang:B.lang,dark:B.dark,
 get:function(k){var v=data[k];return v===undefined?null:JSON.parse(JSON.stringify(v));},
 all:function(){return JSON.parse(JSON.stringify(data));},
-set:function(k,v){if(typeof k!=="string"||!k)throw new Error("ducter.set needs a key");if(v===undefined)v=null;var s=JSON.stringify(v);if(v===null)delete data[k];else data[k]=JSON.parse(s);post({t:"put",key:k,value:v});return v;},
+set:function(k,v){if(typeof k!=="string"||!k)throw new Error("ducter.set needs a key");if(v===undefined)v=null;var s=JSON.stringify(v);if(v===null)delete data[k];else data[k]=JSON.parse(s);post({t:"put",key:k,value:v});mark();return v;},
 onChange:function(f){subs.push(f);return function(){subs=subs.filter(function(x){return x!==f})};},
 ask:function(text){var ref="a"+(++n)+"-"+Date.now().toString(36);return new Promise(function(res,rej){asks[ref]=[res,rej];post({t:"ask",text:String(text||""),ref:ref});});},
 open:function(w){var d=w&&typeof w.draft==="string"?w.draft:"";if(/^[\\w.-]+\\/[\\w.-]+#\\d+$/.test(d))post({t:"show",draft:d});},
 summary:function(t){var s=String(t==null?"":t).slice(0,200);if(s===said)return;said=s;clearTimeout(st);st=setTimeout(function(){post({t:"summary",text:s});},400);}};
 Object.freeze(ducter);window.ducter=ducter;
+function kept(v,d){if(typeof v==="number")return v!==0;if(!v||typeof v!=="object"||d>4)return false;if(Array.isArray(v)){if(v.some(function(x){return x&&typeof x==="object"}))return true;return v.some(function(x){return typeof x==="number"||(typeof x==="string"&&x.trim()&&!/^\\d{4}-\\d\\d-\\d\\d/.test(x))});}for(var k in v)if(kept(v[k],d+1))return true;return false;}
+function none(){for(var k in data)if(kept(data[k],0))return false;return true;}
+var first=none(),booting=true;
+function mark(){var e=booting?first:none();if(e)return document.documentElement.setAttribute("data-empty","");document.documentElement.removeAttribute("data-empty");
+var a=document.querySelector("details.k-add[data-first]");if(a){a.removeAttribute("data-first");a.open=false;}}
+mark();subs.push(mark);
+document.addEventListener("DOMContentLoaded",function(){booting=false;if(!first)return;var a=document.querySelector("details.k-add");if(a&&!a.open){a.open=true;a.setAttribute("data-first","");}});
 window.addEventListener("error",function(e){post({t:"error",text:String(e.message||"error").slice(0,300)});});
 post({t:"ready"});})();`;
   return `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="${appCsp(o.transport)}"><meta name="viewport" content="width=device-width,initial-scale=1"><style>${style}</style><script>${bridge}</script><script>${APP_KIT_JS}</script></head><body>${a.html}</body></html>`;

@@ -1,0 +1,101 @@
+<!-- D431: a stand-in for what the partner writes now for "make me a little app to keep track of what I spend" with nothing known: its first state says what it will show (k-none, never a 0), k-empty says what will list there, and the kit opens the add by itself while it keeps nothing. Version 2 (the walk's change by talking) turns on the budget line. -->
+<main class="k-app">
+  <section class="k-sum">
+    <span class="k-sum-label" id="label"></span>
+    <span class="k-sum-value" id="total"></span>
+    <span class="k-sum-sub" id="sub"></span>
+    <span class="k-sum-next" id="next"></span>
+  </section>
+  <div class="k-bar" id="bar" hidden><i id="barFill"></i></div>
+  <h2 class="k-h" id="recentH"></h2>
+  <ul class="k-list" id="list"></ul>
+  <p class="k-empty" id="empty"></p>
+  <details class="k-add">
+    <summary id="addS"></summary>
+    <input class="k-num" id="amt" inputmode="decimal" autocomplete="off" />
+    <div class="k-chips" id="cats" role="group"></div>
+    <input class="k-input" id="what" autocomplete="off" />
+    <button class="k-btn primary" id="save" type="button"></button>
+  </details>
+  <button class="k-btn quiet" id="ask" type="button"></button>
+  <p class="k-muted" id="answer" hidden></p>
+</main>
+<script>
+  const zh = (ducter.lang || "zh").startsWith("zh");
+  const BUDGET_ON = false;
+  const W = zh
+    ? { label: "这个月花了", none: "还没记", sub: "记下第一笔，这里就是这个月的合计", next: (n) => `最大的一笔：${n}`, recent: "这个月", empty: "每一笔会按时间列在这里，最新的在上面。", add: "记一笔", amt: "多少钱", what: "花在哪（可不填）", save: "记下", ask: "问问 Ducter：这样花正常吗？", q: "按我这个月记下的花销，正常吗？一句话", n: (n) => `${n} 笔`, left: (n) => `预算还剩 ${n}`, over: (n) => `超了预算 ${n}`, cats: { eat: "吃饭", go: "交通", home: "家里", fun: "玩", other: "其他" } }
+    : { label: "Spent this month", none: "Nothing yet", sub: "Add the first and this becomes the month's total", next: (n) => `Biggest: ${n}`, recent: "This month", empty: "Each cost lists here, newest first.", add: "Add a cost", amt: "How much", what: "What for (optional)", save: "Add it", ask: "Ask Ducter: is this normal?", q: "Going by what I've logged this month, is my spending normal? One sentence", n: (n) => (n === 1 ? "1 cost" : `${n} costs`), left: (n) => `${n} left of the budget`, over: (n) => `${n} over budget`, cats: { eat: "Food", go: "Travel", home: "Home", fun: "Fun", other: "Other" } };
+  const $ = (id) => document.getElementById(id);
+  const fmt = (n) => (zh ? "¥" : "$") + Math.round(n).toLocaleString("en-US");
+  let cat = "eat";
+  const xs = () => ducter.get("costs") || [];
+  function draw() {
+    const all = xs();
+    const sum = all.reduce((a, x) => a + (Number(x.amount) || 0), 0);
+    $("label").textContent = W.label;
+    $("total").textContent = all.length ? fmt(sum) : W.none;
+    $("total").classList.toggle("k-none", !all.length);
+    const budget = BUDGET_ON ? Number(ducter.get("budget")) || 0 : 0;
+    $("sub").textContent = !all.length ? W.sub : budget ? (sum > budget ? W.over(fmt(sum - budget)) : W.left(fmt(budget - sum))) : W.n(all.length);
+    const big = all.slice().sort((a, b) => b.amount - a.amount)[0];
+    $("next").textContent = big && all.length > 1 ? W.next(`${big.what || W.cats[big.cat]} ${fmt(big.amount)}`) : "";
+    $("bar").hidden = !budget || !all.length;
+    $("barFill").style.width = Math.min(100, (sum / (budget || 1)) * 100) + "%";
+    $("barFill").style.background = sum > budget ? "var(--d-bad)" : "var(--d-accent)";
+    $("recentH").textContent = W.recent;
+    $("recentH").hidden = !all.length;
+    $("empty").textContent = W.empty;
+    $("empty").hidden = !!all.length;
+    const list = $("list");
+    list.innerHTML = "";
+    for (const x of all.slice().reverse()) {
+      const li = document.createElement("li");
+      li.className = "k-row";
+      const main = document.createElement("span");
+      main.className = "k-row-main";
+      main.textContent = x.what || W.cats[x.cat] || W.cats.other;
+      const sub = document.createElement("span");
+      sub.className = "k-row-sub";
+      sub.textContent = W.cats[x.cat] || W.cats.other;
+      main.appendChild(sub);
+      const v = document.createElement("span");
+      v.className = "k-row-value";
+      v.textContent = fmt(x.amount);
+      li.append(main, v);
+      list.appendChild(li);
+    }
+    $("addS").textContent = W.add;
+    $("amt").placeholder = W.amt;
+    $("what").placeholder = W.what;
+    $("save").textContent = W.save;
+    $("ask").textContent = W.ask;
+    $("ask").hidden = !all.length;
+    const c = $("cats");
+    c.innerHTML = "";
+    for (const [k, label] of Object.entries(W.cats)) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "k-chip";
+      b.textContent = label;
+      b.setAttribute("aria-pressed", String(k === cat));
+      b.onclick = () => ((cat = k), draw());
+      c.appendChild(b);
+    }
+    ducter.summary(all.length ? (zh ? `这个月 ${W.n(all.length)}，${fmt(sum)}` : `${W.n(all.length)} this month, ${fmt(sum)}`) : "");
+  }
+  $("save").onclick = () => {
+    const amount = Number(String($("amt").value).replace(/[^\d.]/g, ""));
+    if (!amount) return $("amt").focus();
+    ducter.set("costs", [...xs(), { amount, cat, what: $("what").value.trim(), at: new Date().toISOString() }]);
+    $("amt").value = "";
+    $("what").value = "";
+    draw();
+  };
+  $("ask").onclick = () => {
+    $("ask").disabled = true;
+    ducter.ask(W.q).then((a) => { $("answer").textContent = a; $("answer").hidden = false; }).catch(() => {}).finally(() => { $("ask").disabled = false; });
+  };
+  ducter.onChange(draw);
+  draw();
+</script>

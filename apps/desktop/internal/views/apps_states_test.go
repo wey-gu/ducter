@@ -133,3 +133,29 @@ func TestShelfStatesShots(t *testing.T) {
 		}
 	}
 }
+
+// D431: "sent to the partner" holds only while it is being changed: when the
+// change lands (a new version) or the partner answers (no longer changing),
+// the line gives way to what is true now.
+func TestAppWindowSentLineEnds(t *testing.T) {
+	app, _ := shelfApp(t, i18n.ZH, statesFixture(i18n.ZH), nil)
+	w := app.NewAppWin("a2b3c4")
+	tt := ui.NewTesterWith(app.AppWinView(w), 520, 860, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
+	tt.Frame()
+	w.sent = true
+	tt.Frame()
+	sent := unjoin(autospace(app.L.T("app.ask.sent", "Ducter")))
+	if !tt.HasText(sent) {
+		t.Fatalf("no %q while it is being changed: %q", sent, tt.Texts())
+	}
+	for i := range app.S.Apps {
+		if app.S.Apps[i].ID == "a2b3c4" {
+			app.S.Apps[i].Live = nil
+		}
+	}
+	tt.Frame()
+	tt.Frame()
+	if tt.HasText(sent) {
+		t.Errorf("%q still shows after the partner answered: %q", sent, tt.Texts())
+	}
+}

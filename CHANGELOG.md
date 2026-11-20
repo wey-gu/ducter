@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.1.1 - 2026-11-20
+
+<!-- whats-new
+zh: 交出去的待办能顺利开工了；可以自己建分类；支持 Antigravity
+en: Handed-over to-dos start reliably; make your own subjects; Antigravity joins
+-->
+
+**Handing over to-dos**
+- A hand-over now starts: each task works in its own place named after its issue, a leftover lock
+  is cleared, and if something still stops it, the card says why with a button that fixes it.
+- A task is named after its own to-dos, and "What you handed over" shows your words, not the
+  instructions given to the agent.
+- "Comment on the issues first" in your note is done before the work starts.
+- Make your own subjects: new, rename, merge, move a to-do in or out, or just say it.
+
+**Antigravity**
+- Antigravity can do tasks for you on your Mac or a server: Ducter tells you if only the desktop
+  app is there, installs its command line, signs in from any device, updates and signs out. Its
+  tasks get your Mem's context and save their threads, like the others.
+
+**Ducter itself**
+- New words for what Ducter is: a personal AI for builders, running your AI agents on your own
+  computers or servers.
+
 ## 0.1.0 - 2026-11-20
 
 <!-- whats-new

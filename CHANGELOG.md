@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.1.5 - 2026-11-21
+
+<!-- whats-new
+zh: 文档拿回来就能发；没有订阅也能马上聊；界面更干净
+en: Documents ready to send; start talking without a subscription; a calmer look
+-->
+
+**Documents to send**
+- Ask for a PDF, a deck or a Word file and it comes back ready to send: every page is checked
+  for text running off the page, blank pages, missing Chinese fonts, placeholders and the page
+  count you asked for, and fixed before you see it. Office files open as pages you can flip.
+
+**Your first answer, without a subscription**
+- No key yet? Ducter shows one way to get one for where you are (a free Gemini key, or Kimi in
+  mainland China), in three steps. Paste it and it checks itself, sets itself up, and answers
+  what you already said.
+
+**Everywhere else**
+- Calmer notes under messages and cards: a line, not a colored box; only the state itself in
+  color.
+- A deck's preview shows the whole first slide.
+
 ## 0.1.4 - 2026-11-21
 
 <!-- whats-new

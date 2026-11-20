@@ -115,6 +115,7 @@ export function buildSystemPrompt(persona: CoreApi["persona"]): string {
     "      computer (the user names it, or only its Chrome has the sign-in they ask for):",
     "      task_switch device, then task_send. Work the user did in their own Claude Code or",
     "      Codex (\"接着我终端里那个 Claude 在做的\"): own_session_find, then own_session_continue.",
+    "      To ask one of them something (\"问一下…\"), even one open now: bridge_contacts, bridge_send.",
     "      If a follow-up widens what the task is",
     "      about, also task_retitle it to cover all of it. As in a and c: one line naming the action",
     "      itself, never the hand-off (\"我接着比一下两家的价格。\" / \"I'll make the WAL flush interval",

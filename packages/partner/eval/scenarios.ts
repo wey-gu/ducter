@@ -352,7 +352,9 @@ export interface Scenario {
    * D376: the person's own sessions on the home, written in their agents' record shapes into a
    * scratch home (never this machine's ~/.claude or ~/.codex). folder: under that home.
    */
-  ownSessions?: { agent: "claude-code" | "codex" | "pi"; id: string; folder: string; title?: string; branch?: string; turns: [string, string][]; minutesAgo: number }[];
+  ownSessions?: { agent: "claude-code" | "codex" | "pi"; id: string; folder: string; title?: string; branch?: string; turns: [string, string][]; minutesAgo: number; /** D409: open in its terminal now (Claude Code's running-process file). */ open?: true }[];
+  /** D409, with `bridge`: the fake answers as this nmem does (e.g. "0.10.121": the identity inbox, grouped contacts). */
+  bridgeNmem?: string;
   /** D377: the home's name, as the records' computer (default "Weyl's Mac"). */
   homeName?: string;
   /**
@@ -1883,6 +1885,68 @@ export const scenarios: Scenario[] = [
     },
     rubric:
       "English version of asking the user's own terminal Claude. Pass if: one send card at once naming the recipient by what it is (terminal-claude; D273); the message carries what the user asked plus background, with no numbered list of extra sub-questions; after the answer the partner tells the user in one or two short English lines, addressing the user as 'you' (never 'Weyl').",
+  },
+
+  // D409: the live trial of 2026-11-20. The person's terminal Claude Code is open right now in
+  // ~/dev/ducter (its own records say so) and is on Bridge; asked to ask it something, haiku looked in
+  // their sessions, tried to carry it on, and told the person to /exit their terminal. An open
+  // session is asked through Bridge, one send card (D273); carrying on is for a closed one (D376).
+  {
+    id: "bridge-ask-open-session-zh",
+    category: "bridge",
+    lang: "zh",
+    bridge: true,
+    bridgeNmem: "0.10.121",
+    // As in the live run: the evening's first words, then several of the person's own sessions, one open now.
+    ownSessions: [
+      { agent: "claude-code", id: "fake0000-cc00-4000-8000-0000000000b1", folder: "dev/ducter", title: "bridge contacts 和 send", branch: "bridge-send", turns: [["给 bridge.ts 加上 contacts 和 send，带测试", "contacts 写好了，send 在写，5 个新测试过了 4 个。"]], minutesAgo: 2, open: true },
+      { agent: "claude-code", id: "fake0000-cc00-4000-8000-0000000000b3", folder: "dev/ducter", title: "runner live test on Linux", turns: [["看看 runner 的 live.test.ts 为什么在 Linux 上挂", "它调了 macOS 的 open。"]], minutesAgo: 90 },
+      { agent: "codex", id: "0fa0e000-0000-7000-8000-0000000000b4", folder: "dev/fakedb", turns: [["修一下不稳定的 TTL 测试", "改用假时钟，20 次都过了。"]], minutesAgo: 26 * 60 },
+    ],
+    seed: [
+      { user: "今晚我主要写 bridge 那块，别的你先帮我盯着" },
+      { ai: "好，有事我叫你。" },
+    ],
+    steps: [
+      { user: "问一下我终端里那个 Claude，bridge 那块它写到哪了，今晚能不能提 PR？" },
+      { resolve: { option: "go" } },
+      { peer: { from: "terminal-claude", answer: true, text: "写到 contacts 和 send 了。5 个新测试过了 4 个，send 的 stdin 那个还红着。修通了大概 22:00 提 PR。" } },
+    ],
+    expect: {
+      ask: true,
+      opens: 0,
+      maxChars: 200,
+      notCalled: ["own_session_continue"],
+      forbid: [/\/exit|退出/, /msg-\d{3}/],
+      proseForbid: [/Weyl/],
+      bridgeSent: { to: "terminal-claude", count: [1, 1], forbid: [OVER_ASK] },
+    },
+    rubric:
+      "The user's own terminal Claude Code is open right now (its records say so) and reachable on Bridge as terminal-claude. Asked to ask it something, the partner puts up one send card at once naming the recipient by what it is (terminal-claude); it never carries the session on and never tells the user to close or /exit it. The message carries what the user asked (status and tonight's PR) plus the background needed. After the answer arrives, the partner tells the user what it says in one or two short Chinese lines, to 你 (never 'Weyl'). A first line saying what Ducter looked at in their records is fine if it appears.",
+  },
+  {
+    id: "bridge-ask-open-again-zh",
+    category: "bridge",
+    lang: "zh",
+    bridge: true,
+    bridgeNmem: "0.10.121",
+    ownSessions: [{ agent: "claude-code", id: "fake0000-cc00-4000-8000-0000000000b2", folder: "dev/ducter", title: "bridge contacts 和 send", branch: "bridge-send", turns: [["给 bridge.ts 加上 contacts 和 send，带测试", "contacts 写好了，send 在写。"]], minutesAgo: 1, open: true }],
+    seed: [
+      { user: "问一下我终端里那个 Claude，bridge 那块它写到哪了" },
+      { ai: "它说 contacts 和 send 写好了，5 个新测试过了 4 个，send 的 stdin 那个还红着，大概 22:00 提 PR。" },
+    ],
+    steps: [{ user: "再问一下我终端里那个 Claude：昨晚 CI 那个红是不是 flaky？" }, { resolve: { option: "go" } }],
+    expect: {
+      ask: true,
+      opens: 0,
+      maxChars: 160,
+      notCalled: ["own_session_continue"],
+      forbid: [/\/exit|退出/],
+      proseForbid: [/Weyl/],
+      bridgeSent: { to: "terminal-claude", count: [1, 1], forbid: [OVER_ASK] },
+    },
+    rubric:
+      "A second question to the user's terminal Claude Code, which is still open in its terminal and reachable on Bridge as terminal-claude. Pass if: one send card at once naming terminal-claude, carrying the question (was last night's red CI flaky?) with the background needed; no own-session carry-on, no 'close it / /exit first', no prose question instead of the card. After the tap, nothing more or one short line.",
   },
 
   // D333: 查看来信, the author's own words on hel (2026-11-17): the partner reads the home's mailbox

@@ -111,9 +111,9 @@ func (a *App) AppWinView(w *AppWin) func(c *ui.Context) {
 			if w.landed {
 				ui.Row(c.Key("changed")).Margin(0, t.S4, t.S2, t.S4).Padding(t.S2, t.S3).Gap(t.S2).Radius(t.RadiusSM).
 					Background(t.Done.Surface).AlignItems(ui.Baseline).Role(ui.RoleStatus).Children(func() {
-					ui.Text(c, a.L.T("app.changed")).FontSize(t.SM).FontWeight(800).TextColor(t.Done.Ink).Shrink(0)
+					uiText(c, a.L.T("app.changed")).FontSize(t.SM).FontWeight(800).TextColor(t.Done.Ink).Shrink(0)
 					if w.changed != "" {
-						ui.Text(c, autospace(w.changed)).FontSize(t.SM).TextColor(t.Done.Ink).Grow(1).Shrink(1).MinWidth(0)
+						uiText(c, autospace(w.changed)).FontSize(t.SM).TextColor(t.Done.Ink).Grow(1).Shrink(1).MinWidth(0)
 					}
 				})
 			}
@@ -123,7 +123,7 @@ func (a *App) AppWinView(w *AppWin) func(c *ui.Context) {
 				switch {
 				case w.gone:
 					ui.Column(c).Grow(1).Justify(ui.Center).AlignItems(ui.Center).Children(func() {
-						ui.Text(c, keepWords(autospace(a.L.T("app.gone")))).FontSize(t.MD).TextColor(t.InkMuted)
+						uiText(c, keepWords(autospace(a.L.T("app.gone")))).FontSize(t.MD).TextColor(t.InkMuted)
 					})
 				case w.Web != nil:
 					ui.WebView(c, w.Web).Grow(1).Label(name)
@@ -142,7 +142,7 @@ func (a *App) appWinHead(c *ui.Context, w *AppWin, m *protocol.AppMeta, name str
 	t := a.T
 	ui.Row(c.Key("head")).Height(AppWinHeadH).Shrink(0).Padding(0, t.S3, 0, 84).Gap(t.S3).AlignItems(ui.Center).DragWindow().Children(func() {
 		a.appClay(c, "tile", 30, m, w.gone)
-		ui.Text(c.Key("name"), autospace(name)).Font(t.Display).FontSize(t.LG).FontWeight(800).TextColor(t.Ink).SingleLine().Shrink(1).MinWidth(0).Role(ui.RoleHeading)
+		uiText(c.Key("name"), autospace(name)).Font(t.Display).FontSize(t.LG).FontWeight(800).TextColor(t.Ink).SingleLine().Shrink(1).MinWidth(0).Role(ui.RoleHeading)
 		ui.Spacer(c)
 		if m == nil {
 			return
@@ -162,8 +162,8 @@ func (a *App) appWinFirst(c *ui.Context, w *AppWin) {
 		Background(t.Surface).Shadow(0, 2, 0, 0, t.Line).AlignItems(ui.Center).Role(ui.RoleStatus).Children(func() {
 		ui.Box(c.Key("face")).Shrink(0).AccessHidden(true).Children(func() { a.partnerFace(c, "appwin", a.presence(c), 32) })
 		ui.Column(c).Gap(2).Grow(1).Shrink(1).MinWidth(0).Children(func() {
-			ui.Text(c, keepWords(autospace(a.L.T("app.first", a.appsPartner())))).FontSize(t.SM).FontWeight(800).TextColor(t.Ink)
-			ui.Text(c, autospace(w.first)).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(a.leading(1.45))
+			uiText(c, keepWords(autospace(a.L.T("app.first", a.appsPartner())))).FontSize(t.SM).FontWeight(800).TextColor(t.Ink)
+			uiText(c, autospace(w.first)).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(a.leading(1.45))
 		})
 		x := ui.Box(c.Key("x")).Size(28, 28).Radius(t.RadiusXS).Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(a.L.T("nav.back")).Focusable().Shrink(0)
 		if x.Hovered() {
@@ -207,16 +207,16 @@ func (a *App) appWinFoot(c *ui.Context, w *AppWin, m *protocol.AppMeta, name str
 		})
 		ui.Row(c.Key("meta")).Gap(t.S4).Padding(0, t.S1).Wrap().Children(func() {
 			if w.sent {
-				ui.Text(c.Key("sent"), keepWords(autospace(a.L.T("app.ask.sent", partner)))).FontSize(t.XS).TextColor(t.InkMuted)
+				uiText(c.Key("sent"), keepWords(autospace(a.L.T("app.ask.sent", partner)))).FontSize(t.XS).TextColor(t.InkMuted)
 				return
 			}
 			if m.Task != nil {
-				ui.Text(c.Key("kept"), keepWords(autospace(a.L.T("app.kept", m.Task.Title)))).FontSize(t.XS).TextColor(t.InkMuted)
+				uiText(c.Key("kept"), keepWords(autospace(a.L.T("app.kept", m.Task.Title)))).FontSize(t.XS).TextColor(t.InkMuted)
 			} else {
-				ui.Text(c.Key("only"), keepWords(autospace(a.L.T("app.only", partner)))).FontSize(t.XS).TextColor(t.InkMuted)
+				uiText(c.Key("only"), keepWords(autospace(a.L.T("app.only", partner)))).FontSize(t.XS).TextColor(t.InkMuted)
 			}
 			if when := a.agoLong(m.Updated); when != "" {
-				ui.Text(c.Key("when"), keepWords(autospace(a.L.T("app.updated", when)))).FontSize(t.XS).TextColor(t.InkMuted)
+				uiText(c.Key("when"), keepWords(autospace(a.L.T("app.updated", when)))).FontSize(t.XS).TextColor(t.InkMuted)
 			}
 		})
 	})

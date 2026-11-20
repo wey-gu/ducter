@@ -117,9 +117,9 @@ func (a *App) appsView(c *ui.Context) {
 		ui.Column(c).Padding(t.S5, t.S6, t.S7, t.S6).Children(func() {
 			ui.Column(c.Key("apps-col")).Gap(t.S4).Width(pastMeasure).MaxWidthPercent(100).AlignSelf(ui.Center).Children(func() {
 				ui.Column(c.Key("apps-head")).Gap(t.S1).Padding(0, t.S1).Children(func() {
-					ui.Text(c.Key("apps-h"), autospace(a.L.T("apps.title"))).Font(t.Display).FontSize(t.XL).FontWeight(800).TextColor(t.Ink).Role(ui.RoleHeading)
+					uiText(c.Key("apps-h"), autospace(a.L.T("apps.title"))).Font(t.Display).FontSize(t.XL).FontWeight(800).TextColor(t.Ink).Role(ui.RoleHeading)
 					if len(apps) > 0 {
-						ui.Text(c.Key("apps-sub"), keepWords(autospace(a.L.T("apps.sub", a.appsPartner())))).FontSize(t.MD).TextColor(t.InkMuted)
+						uiText(c.Key("apps-sub"), keepWords(autospace(a.L.T("apps.sub", a.appsPartner())))).FontSize(t.MD).TextColor(t.InkMuted)
 					}
 				})
 				if d := sh.deleted; d != nil {
@@ -145,7 +145,7 @@ func (a *App) shelfUndo(c *ui.Context, d *protocol.AppMeta) {
 	t := a.T
 	ui.Row(c.Key("apps-undo")).Gap(t.S3).Padding(t.S2, t.S2, t.S2, t.S4).AlignItems(ui.Center).Radius(t.RadiusMD).
 		Background(t.Sunken).Role(ui.RoleStatus).Children(func() {
-		ui.Text(c, keepWords(autospace(a.L.T("apps.deleted", d.Name)))).FontSize(t.MD).TextColor(t.InkSoft).Grow(1).Shrink(1).MinWidth(0)
+		uiText(c, keepWords(autospace(a.L.T("apps.deleted", d.Name)))).FontSize(t.MD).TextColor(t.InkSoft).Grow(1).Shrink(1).MinWidth(0)
 		if a.buttonFor(c, a.L.T("apps.undo"), d.Name, btnSecondary, t.ControlSM, t.Sunken) {
 			a.send(protocol.AppIDReq{T: "app_restore", ID: d.ID})
 			a.shelf.deleted = nil
@@ -166,15 +166,15 @@ func (a *App) shelfEmpty(c *ui.Context) {
 				}
 			})
 			ui.Column(c).Gap(2).Grow(1).Shrink(1).MinWidth(0).Children(func() {
-				ui.Text(c, keepWords(autospace(a.L.T("apps.empty.h", a.appsPartner())))).Font(t.Display).FontSize(t.LG).FontWeight(800).TextColor(t.Ink)
-				ui.Text(c, keepWords(autospace(a.L.T("apps.empty.body")))).FontSize(t.MD).TextColor(t.InkMuted).LineHeight(a.leading(1.5))
+				uiText(c, keepWords(autospace(a.L.T("apps.empty.h", a.appsPartner())))).Font(t.Display).FontSize(t.LG).FontWeight(800).TextColor(t.Ink)
+				uiText(c, keepWords(autospace(a.L.T("apps.empty.body")))).FontSize(t.MD).TextColor(t.InkMuted).LineHeight(a.leading(1.5))
 			})
 		})
 		ideas := a.S.AppIdeas
 		if len(ideas) == 0 {
 			return
 		}
-		ui.Text(c.Key("e-try"), a.L.T("apps.empty.try")).FontSize(t.SM).FontWeight(700).TextColor(t.InkMuted)
+		uiText(c.Key("e-try"), a.L.T("apps.empty.try")).FontSize(t.SM).FontWeight(700).TextColor(t.InkMuted)
 		ui.Column(c.Key("e-ideas")).Gap(t.S2).Children(func() {
 			for i, idea := range ideas {
 				if i >= 3 {
@@ -203,9 +203,9 @@ func (a *App) shelfIdea(c *ui.Context, i int, idea protocol.AppIdea) {
 		m := protocol.AppMeta{ID: "idea" + itoa(int64(i)) + idea.Icon, Icon: idea.Icon}
 		a.appClay(c, "tile", 34, &m, false)
 		ui.Column(c).Gap(2).Grow(1).Shrink(1).MinWidth(0).Children(func() {
-			ui.Text(c, a.L.T("apps.idea.quote", say)).FontSize(t.MD).FontWeight(700).TextColor(t.Ink).MinWidth(0).AccessHidden(true)
+			uiText(c, a.L.T("apps.idea.quote", say)).FontSize(t.MD).FontWeight(700).TextColor(t.Ink).MinWidth(0).AccessHidden(true)
 			if idea.Why != nil {
-				ui.Text(c.Key("why"), autospace(wordsIn(a.L, *idea.Why))).FontSize(t.SM).TextColor(t.InkMuted)
+				uiText(c.Key("why"), autospace(wordsIn(a.L, *idea.Why))).FontSize(t.SM).TextColor(t.InkMuted)
 			}
 		})
 	})
@@ -252,7 +252,7 @@ func (a *App) shelfTile(c *ui.Context, m *protocol.AppMeta, width float32) {
 			if m.Pinned {
 				ui.Row(c.Key("pinned")).Gap(4).Padding(2, 8, 2, 6).Radius(t.Pill).Background(t.Highlight).AlignItems(ui.Center).Shrink(0).Children(func() {
 					a.pinGlyph(c, 12, t.HighlightInk)
-					ui.Text(c, a.L.T("apps.pinned")).FontSize(t.XS).FontWeight(700).TextColor(t.HighlightInk).SingleLine()
+					uiText(c, a.L.T("apps.pinned")).FontSize(t.XS).FontWeight(700).TextColor(t.HighlightInk).SingleLine()
 				})
 			}
 			a.appMore(c, m, false)
@@ -260,23 +260,23 @@ func (a *App) shelfTile(c *ui.Context, m *protocol.AppMeta, width float32) {
 		if sh.renaming == id {
 			a.shelfRename(c, m)
 		} else {
-			name := ui.Text(c.Key("name"), autospace(m.Name)).Font(t.Display).FontSize(t.LG).FontWeight(800).TextColor(t.Ink).
+			name := uiText(c.Key("name"), autospace(m.Name)).Font(t.Display).FontSize(t.LG).FontWeight(800).TextColor(t.Ink).
 				MaxLines(2).Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(spoken(a.L, a.L.T("app.open"), m.Name)).Focusable()
 			if name.Clicked() {
 				a.openApp(id)
 			}
 		}
 		if m.Summary != "" {
-			ui.Text(c.Key("sum"), autospace(m.Summary)).FontSize(t.MD).FontWeight(600).TextColor(t.InkSoft).FontFeatures("tnum").MaxLines(2)
+			uiText(c.Key("sum"), autospace(m.Summary)).FontSize(t.MD).FontWeight(600).TextColor(t.InkSoft).FontFeatures("tnum").MaxLines(2)
 		}
 		ui.Spacer(c)
 		ui.Column(c.Key("facts")).Gap(2).Children(func() {
 			// A routine keeps it: with its own line on top, a small pill says
 			// so (the routine by name in its tooltip); without one, the line.
 			if m.Task != nil && m.Summary == "" {
-				ui.Text(c.Key("kept"), keepWords(autospace(a.L.T("app.kept", m.Task.Title)))).FontSize(t.XS).TextColor(t.InkMuted).MaxLines(2)
+				uiText(c.Key("kept"), keepWords(autospace(a.L.T("app.kept", m.Task.Title)))).FontSize(t.XS).TextColor(t.InkMuted).MaxLines(2)
 			} else if m.Task == nil && m.Opened == "" {
-				ui.Text(c.Key("never"), a.L.T("apps.never")).FontSize(t.XS).TextColor(t.InkMuted)
+				uiText(c.Key("never"), a.L.T("apps.never")).FontSize(t.XS).TextColor(t.InkMuted)
 			}
 			ui.Row(c.Key("meta")).Gap(t.S2).Wrap().AlignItems(ui.Center).Children(func() {
 				if m.Task != nil && m.Summary != "" {
@@ -284,11 +284,11 @@ func (a *App) shelfTile(c *ui.Context, m *protocol.AppMeta, width float32) {
 					ui.Row(c.Key("auto")).Gap(4).Padding(1, 8, 1, 6).Radius(t.Pill).Background(t.Done.Surface).AlignItems(ui.Center).
 						Tooltip(kept).Label(kept).Shrink(0).Children(func() {
 						ui.Box(c.Key("dot")).Size(6, 6).Radius(3).Background(t.Done.Ink).AccessHidden(true)
-						ui.Text(c, a.L.T("apps.auto")).FontSize(t.XS).FontWeight(700).TextColor(t.Done.Ink).SingleLine().AccessHidden(true)
+						uiText(c, a.L.T("apps.auto")).FontSize(t.XS).FontWeight(700).TextColor(t.Done.Ink).SingleLine().AccessHidden(true)
 					})
 				}
 				if when := a.agoLong(m.Updated); when != "" {
-					ui.Text(c.Key("when"), keepWords(autospace(a.L.T("app.updated", when)))).FontSize(t.XS).TextColor(t.InkMuted)
+					uiText(c.Key("when"), keepWords(autospace(a.L.T("app.updated", when)))).FontSize(t.XS).TextColor(t.InkMuted)
 				}
 			})
 		})
@@ -326,8 +326,8 @@ func (a *App) shelfRename(c *ui.Context, m *protocol.AppMeta) {
 func (a *App) shelfConfirm(c *ui.Context, m *protocol.AppMeta) {
 	t := a.T
 	ui.Column(c.Key("confirm")).Gap(t.S2).Padding(t.S3).Radius(t.RadiusMD).Background(t.Failed.Surface).Role(ui.RoleAlert).Children(func() {
-		ui.Text(c, keepWords(autospace(a.L.T("apps.del.q", m.Name)))).FontSize(t.MD).FontWeight(800).TextColor(t.Failed.Ink)
-		ui.Text(c, keepWords(autospace(a.L.T("apps.del.body")))).FontSize(t.SM).TextColor(t.Failed.Ink)
+		uiText(c, keepWords(autospace(a.L.T("apps.del.q", m.Name)))).FontSize(t.MD).FontWeight(800).TextColor(t.Failed.Ink)
+		uiText(c, keepWords(autospace(a.L.T("apps.del.body")))).FontSize(t.SM).TextColor(t.Failed.Ink)
 		ui.Row(c.Key("acts")).Gap(t.S2).Justify(ui.End).Children(func() {
 			if a.buttonFor(c, a.L.T("apps.del.no"), m.Name, btnSecondary, t.ControlSM, t.Failed.Surface) {
 				a.shelf.asking = ""
@@ -443,7 +443,7 @@ func (a *App) appPins(c *ui.Context) {
 				}
 				chip.Children(func() {
 					a.appClay(c, "tile", 26, m, false)
-					ui.Text(c, autospace(m.Name)).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine().AccessHidden(true)
+					uiText(c, autospace(m.Name)).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine().AccessHidden(true)
 				})
 				if chip.Clicked() {
 					a.openApp(m.ID)
@@ -480,8 +480,8 @@ func (a *App) shelfCard(c *ui.Context, key string) {
 			}
 		})
 		ui.Column(c.Key("w")).Grow(1).Shrink(1).MinWidth(0).Gap(2).Children(func() {
-			ui.Text(c, autospace(a.L.T("apps.title"))).FontSize(t.MD).FontWeight(800).TextColor(t.Ink).SingleLine()
-			ui.Text(c, autospace(count)).FontSize(t.SM).TextColor(t.InkMuted).SingleLine()
+			uiText(c, autospace(a.L.T("apps.title"))).FontSize(t.MD).FontWeight(800).TextColor(t.Ink).SingleLine()
+			uiText(c, autospace(count)).FontSize(t.SM).TextColor(t.InkMuted).SingleLine()
 		})
 		if a.buttonFor(c, a.L.T("apps.card.open"), "", btnSecondary, t.ControlSM, t.Surface) {
 			a.OpenApps()

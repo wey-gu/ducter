@@ -547,7 +547,9 @@ type Store struct {
 	Rules []protocol.RuleView
 	// RuleDefaults: the built-in default per kind of work (D372).
 	RuleDefaults []protocol.KindDefault
-	RulesAt      time.Time
+	// Standing (D413): 不用问我的 / Without asking.
+	Standing []protocol.StandingView
+	RulesAt  time.Time
 	// Pins are 置顶 / Pinned, newest first, as the home last sent (D381);
 	// PinRefused is why the last pin didn't happen, until shown.
 	Pins       []protocol.PinView
@@ -828,6 +830,7 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 		}
 	case "rules":
 		s.Rules, s.RuleDefaults, s.RulesAt = f.Rules, f.Defaults, time.Now()
+		s.Standing = f.StandingList
 	case "pins":
 		s.Pins, s.PinRefused = f.Pins, f.Refused
 	case "apps":

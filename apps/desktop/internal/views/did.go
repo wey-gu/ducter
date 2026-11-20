@@ -531,6 +531,8 @@ func (a *App) didFacts(it *protocol.DidItem) []string {
 			out = append(out, l.T("did.go.default"))
 		case "before":
 			out = append(out, l.T("did.go.before"))
+		case "said":
+			out = append(out, l.T("did.go.said", g.Words))
 		}
 	}
 	if w := it.Where; w != nil {

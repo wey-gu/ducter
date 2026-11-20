@@ -15991,6 +15991,18 @@ svg .wave.w2.on {
 .trust.asks li svg {
   stroke: var(--needs-ink);
 }
+/* D413: 不用问我的 / Without asking, the third list: what, where and their words, each its own line. */
+.trust.without .grow {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.trust.without small {
+  font-size: var(--sm);
+  color: var(--ink-muted);
+}
 
 /* D366: Nowledge Mem on a computer for tasks: one row under its AI agents, on its card and the lend sheet. */
 .dc-mem { margin-top: 10px; padding: 4px 14px; border-radius: var(--r-md); background: var(--surface); box-shadow: inset 0 0 0 1px var(--line), 0 2px 0 var(--line); }

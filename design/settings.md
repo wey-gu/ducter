@@ -160,6 +160,10 @@ Every pane walked in the real Mac app (cua-driver, scratch bundle id and HOME) a
   says **一台一台地更新 / one computer at a time** on both (the web said "in the same order", a phrase from
   the update-all card); the Mac's versions note sits under its title like every group's.
 - 要不要先问's note and Passwords & cards' 你的资料 note sit under their headings on the web, as on the Mac.
+- **不用问我的 / Without asking (D413)** sits under 要不要先问 on the Partner page once the person has
+  said one: each row says what (**评审写完直接发到 GitHub**), where and their words on their own lines,
+  with **收回 / Take back**; the word after it is said under the group. Nothing shows before the first
+  one; 要不要先问's note says how one is made (**PR 评审你说一句“直接发，别问我”，就不再问…**).
 - The records switch speaks of the partner as 它 / it, like every Settings line; Passwords & cards' kept line
   says 解锁用的密钥在 Mac 的钥匙串里 (密钥 alone read as the API keys right above it).
 

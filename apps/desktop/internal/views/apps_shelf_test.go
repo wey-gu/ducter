@@ -68,7 +68,7 @@ func TestShelfFromTheBarAndItsTiles(t *testing.T) {
 	if app.Route != RouteApps {
 		t.Fatalf("route %v", app.Route)
 	}
-	for _, want := range []string{"北京出差 11/20–21", autospace("3 笔，合计 ¥2,036"), "审查看板", "读书打卡", "置顶", "自动更新", "还没打开过"} {
+	for _, want := range []string{"北京出差 11/20–21", unjoin(autospace("3 笔，合计 ¥2,036")), "审查看板", "读书打卡", "置顶", "自动更新", "还没打开过"} {
 		if !tt.HasText(want) {
 			t.Errorf("no %q in %q", want, tt.Texts())
 		}
@@ -124,7 +124,7 @@ func TestShelfFromTheBarAndItsTiles(t *testing.T) {
 	_ = tt.Click(app.L.T("apps.more", "北京出差"))
 	_ = tt.ChooseMenuItem("删掉")
 	tt.Frame()
-	for _, w := range []string{keepWords(autospace("删掉「北京出差」？")), keepWords("它记下的东西会一起删掉。")} {
+	for _, w := range []string{unjoin(unjoin(autospace("删掉「北京出差」？"))), unjoin("它记下的东西会一起删掉。")} {
 		if !tt.HasText(w) {
 			t.Errorf("no %q in %q", w, tt.Texts())
 		}
@@ -136,7 +136,7 @@ func TestShelfFromTheBarAndItsTiles(t *testing.T) {
 		t.Errorf("remove %#v", s)
 	}
 	tt.Frame()
-	if !tt.HasText(keepWords(autospace("删掉了「北京出差」"))) {
+	if !tt.HasText(unjoin(unjoin(autospace("删掉了「北京出差」")))) {
 		t.Errorf("no undo line %q", tt.Texts())
 	}
 	if err := tt.Click(spoken(app.L, "撤销", "北京出差")); err != nil {
@@ -157,7 +157,7 @@ func TestShelfEmptyIdeasSayIt(t *testing.T) {
 	app, sent := shelfApp(t, i18n.ZH, nil, shelfIdeas())
 	app.OpenApps()
 	tt := shelfTester(app, 1280)
-	for _, want := range []string{keepWords(autospace(app.L.T("apps.empty.h", "Ducter"))), "可以这样说", autospace("你 11/20 去北京")} {
+	for _, want := range []string{unjoin(autospace(app.L.T("apps.empty.h", "Ducter"))), "可以这样说", unjoin(autospace("你 11/20 去北京"))} {
 		if !tt.HasText(want) {
 			t.Errorf("no %q in %q", want, tt.Texts())
 		}
@@ -181,7 +181,7 @@ func TestShelfCardRemovedCardAndPins(t *testing.T) {
 		protocol.NewEvent(10, ts, "default", "channel", protocol.OriginPartner, protocol.KindAIMsg, protocol.AIMsg{Text: "Deleted the lunch splitter and its two rows.", ReplyTo: 9, App: &protocol.AppCard{ID: "a7a7a7", Name: "Team lunch splitter", Version: 2, Change: "removed"}}),
 	}})
 	tt := shelfTester(app, 1280)
-	for _, want := range []string{"3 apps", "Open Your apps", keepWords(autospace("Deleted, with what it kept.")), "Reading streak"} {
+	for _, want := range []string{"3 apps", "Open Your apps", unjoin(unjoin(autospace("Deleted, with what it kept."))), "Reading streak"} {
 		if !tt.HasText(want) {
 			t.Errorf("no %q in %q", want, tt.Texts())
 		}
@@ -218,7 +218,7 @@ func TestAppWindowFirstLineAskAndChange(t *testing.T) {
 	w := app.NewAppWin("a1b2c3")
 	tt := ui.NewTesterWith(app.AppWinView(w), 520, 860, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
-	for _, want := range []string{"北京出差 11/20–21", keepWords(autospace(app.L.T("app.first", "Ducter"))), autospace("11/20 的高铁和两晚酒店已经从你的预订里填好了。"), "改回去", keepWords(autospace(app.L.T("app.only", "Ducter")))} {
+	for _, want := range []string{"北京出差 11/20–21", unjoin(autospace(app.L.T("app.first", "Ducter"))), unjoin(autospace("11/20 的高铁和两晚酒店已经从你的预订里填好了。")), "改回去", unjoin(autospace(app.L.T("app.only", "Ducter")))} {
 		if !tt.HasText(want) {
 			t.Errorf("no %q in %q", want, tt.Texts())
 		}
@@ -232,7 +232,7 @@ func TestAppWindowFirstLineAskAndChange(t *testing.T) {
 		t.Errorf("send %#v", s)
 	}
 	tt.Frame()
-	if !tt.HasText(keepWords(autospace(app.L.T("app.ask.sent", "Ducter")))) {
+	if !tt.HasText(unjoin(autospace(app.L.T("app.ask.sent", "Ducter")))) {
 		t.Errorf("no sent line %q", tt.Texts())
 	}
 	// The partner changed it: 改好了 with its words, the page runs again.
@@ -242,7 +242,7 @@ func TestAppWindowFirstLineAskAndChange(t *testing.T) {
 	apps[0].Version, apps[0].Note = 3, "加了打车 ¥84"
 	app.Receive(protocol.ServerFrame{T: "apps", AppsF: &protocol.AppsFrame{T: "apps", Apps: apps}})
 	tt.Frame()
-	if reloads != 1 || !tt.HasText("改好了") || !tt.HasText(autospace("加了打车 ¥84")) {
+	if reloads != 1 || !tt.HasText("改好了") || !tt.HasText(unjoin(autospace("加了打车 ¥84"))) {
 		t.Errorf("reloads %d %q", reloads, tt.Texts())
 	}
 	// A second open of an app already opened has no first line.

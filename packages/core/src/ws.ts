@@ -113,6 +113,8 @@ export interface WsDeps {
   settings?: SettingsStore;
   /** Your rules and who does the tasks (D89); absent in tests that don't need them. */
   rules?: RulesStore;
+  /** D413: 不用问我的 / Without asking, listed with the rules; absent in tests that don't need it. */
+  standing?: import("./standing.ts").StandingStore;
   /** D381: 置顶 / Pinned (pins.ts); absent in tests that don't need it. */
   pins?: import("./pins.ts").PinsStore;
   /** D405: 小应用 / Apps (apps.ts); absent in tests that don't need them. */
@@ -361,7 +363,8 @@ export function createWsHandler(deps: WsDeps) {
   // D372: with the built-in default per kind of work (a probe that fails leaves them out).
   const rulesFrame = async (): Promise<ServerFrame> => {
     const defaults = (await deps.loadout?.defaults().catch(() => undefined)) ?? [];
-    return { t: "rules", rules: deps.rules!.list(), ...(defaults.length ? { defaults } : {}) };
+    const standing = deps.standing?.list() ?? [];
+    return { t: "rules", rules: deps.rules!.list(), ...(defaults.length ? { defaults } : {}), ...(standing.length ? { standing } : {}) };
   };
   // D381: the pinned blocks go to every socket on the default conversation, after the welcome and on
   // each change (a tap on any device, the partner changing one, a tick).
@@ -385,14 +388,16 @@ export function createWsHandler(deps: WsDeps) {
     const f: ServerFrame = c.kind === "list" ? appsFrame() : { t: "app_data", id: c.id, key: c.key, value: c.value, by: c.by };
     for (const ws of sockets) if (ws.data.live && !ws.data.partner) send(ws, f);
   });
-  const offRules = deps.rules?.onChange(() => {
+  const pushRules = () => {
     if (stopped) return;
     void rulesFrame()
       .then((f) => {
         for (const ws of sockets) if (!stopped && ws.data.rules) send(ws, f);
       })
       .catch(pushFailed("rules"));
-  });
+  };
+  const offRules = deps.rules?.onChange(pushRules);
+  const offStanding = deps.standing?.onChange(pushRules);
   // Connections: same pattern. The frame never carries a token.
   const connectionsFrame = (): ServerFrame => {
     const p = deps.proactive?.();
@@ -1442,6 +1447,13 @@ export function createWsHandler(deps: WsDeps) {
         if (!deps.pins.tick(String(f.id ?? ""), String(f.item ?? ""), f.on === true)) send(ws, pinsFrame("gone"));
         return;
       }
+      case "standing_revoke": {
+        if (!deps.standing || !deps.rules) throw new Error("standing permissions are not available");
+        ws.data.rules = true;
+        // A revoke pushes a fresh frame to every subscriber; an unknown id: answer this one.
+        if (!deps.standing.revoke(String(f.id ?? ""))) send(ws, await rulesFrame());
+        return;
+      }
       case "rule_remove": {
         if (!deps.rules) throw new Error("rules are not available");
         ws.data.rules = true;
@@ -2473,6 +2485,7 @@ export function createWsHandler(deps: WsDeps) {
       offDevices?.();
       offSettings?.();
       offRules?.();
+      offStanding?.();
       offConnections?.();
       offCalendar?.();
       offChannels?.();

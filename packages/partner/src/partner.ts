@@ -789,6 +789,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     },
     // D401: the rules Ducter kept from this message of the user's, by itself.
     kept: (seq) => core.said?.keptFrom?.(seq) ?? [],
+    // D413: what Ducter did with what they said about asking first (kept, taken back, the floor).
+    standing: (seq) => core.standing?.heardFrom(seq) ?? [],
     // D373: the task the conversation was on right before this message (the last task opened, or
     // finished, or continued, in the conversation), within FOLLOWS_HOURS. A follow-up carries it on.
     follows: (seq) => {

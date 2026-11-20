@@ -29,6 +29,7 @@ import { deviceArt, deviceCardShown, DevicesSection } from "./devcard.tsx";
 import { CallsSection, ProactiveChips, QuietDay, SourceCards } from "./accounts.tsx";
 import { OwnPhoneCard } from "./own-phone.tsx";
 import { Said, say } from "./set-grid.tsx";
+import { DangerButton } from "./controls.tsx";
 import { CallDecision, CallRow, PhoneCard, PhoneOffer } from "./phone.tsx";
 import { callEnded } from "@ducter/protocol";
 import { FindsNote } from "./finds.tsx";
@@ -332,6 +333,8 @@ function answeredWords(d: DecisionState): string {
   const opt = d.resolved?.option ?? (d.pending || "go");
   // D375: D169's offer closed by itself once the plugin was in.
   if (d.resolved?.settled && d.memPlugin) return t("memp.card.done");
+  // D413: a review round's drafts went under what the person said.
+  if (d.resolved?.posted) return t("standing.settled");
   if (d.resolved?.by === "default") return t("decision.resolved.default");
   if (opt === "reply") return t("decision.resolved.reply", d.resolved?.text ?? "");
   if (opt === "hold") return d.where ? t("where.ask.waited", d.where.device) : t("decision.resolved.hold");
@@ -2650,6 +2653,34 @@ function TalkSettings() {
   );
 }
 
+/** D413: 不用问我的 / Without asking: what the person said may go without asking, each with 收回 / Take back. */
+function StandingList() {
+  const xs = A.standing;
+  if (!xs.length) return null;
+  const sep = t("standing.sep");
+  // A third list in 要不要先问's card, in the done ink: the person's own word beside Ducter's two.
+  return (
+    <div class="trust own without" id="standing">
+      <b>{t("standing.title")}</b>
+      <ul>
+        {xs.map((x) => (
+          <li key={x.id}>
+            <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">
+              <path d="M5 10.5l3.5 3.5L15 6.5" />
+            </svg>
+            <span class="grow">
+              <span>{t(`standing.${x.action}`)}</span>
+              <small>{x.orgs?.length ? t("standing.where.orgs", x.orgs.join(sep)) : t("standing.where.any")}</small>
+              <small>{t("standing.said", x.text)}</small>
+            </span>
+            <DangerButton quiet label={t("standing.revoke")} about={t(`standing.${x.action}`)} onClick={() => (A.send({ t: "standing_revoke", id: x.id }), say("trust", t("standing.revoked")))} />
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 /** 要不要先问: the rules core keeps, in everyday words (read-only). */
 function TrustSettings() {
   const list = (head: string, prefix: string, cls: string) => (
@@ -2676,7 +2707,9 @@ function TrustSettings() {
       <div class="set-card trust-card">
         {list("partner.trust.own", "partner.trust.own", "own")}
         {list("partner.trust.asks", "partner.trust.asks", "asks")}
+        <StandingList />
       </div>
+      <Said k="trust" />
     </section>
   );
 }

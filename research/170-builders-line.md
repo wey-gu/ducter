@@ -1,11 +1,13 @@
-# 167 · Positioning: one line that carries both halves
+# 170 · Positioning: a personal AI for builders, on your own computers or servers
 
-Date: 2026-11-20. For D408. The author: "我觉得我们的官网和 github repo desc 上没有真的抓住我们的精髓。我们的精髓是本地的无比优雅的
+Date: 2026-11-20. For D414. The author, first: "我觉得我们的官网和 github repo desc 上没有真的抓住我们的精髓。我们的精髓是本地的无比优雅的
 Personal agent，支持各种服务器和本地电脑，同时，又是充分解决了注意力问题的 … 最强工作 agent 平台" (a reference product's
-name left out, as the author asked).
+name left out, as the author asked). Then, on the first pass's pick (§4): "不够好，personal ai + ai agent
+for builders on your own computers or servers 大概核心是这个". §1–4 are the first pass; §5 the second, on
+that core; §6 the words chosen.
 
 Tags: VERIFIED = read in Ducter's docs, code or the built site; MEASURED = from the rater runs below;
-INFERRED = judgment. No outside product is named here (D408: no reference product's name in public
+INFERRED = judgment. No outside product is named here (D414: no reference product's name in public
 copy or in git).
 
 ## 1. What was wrong with the line we had
@@ -137,30 +139,133 @@ print" framing read as hedging ("says too much, so I don't know what it does for
 sentence still matters to fresh users, so it stays on the hero as the line under the buttons.
 MEASURED (rounds 3–4); INFERRED (keeping the trust line).
 
-## 4. The words chosen
+## 4. The first pass's pick (not taken)
 
 | | English | 中文 |
 |---|---|---|
 | Line | One personal AI on your own computers, with a team of AI agents behind it. You hear only what matters. | 住在你电脑上的私人 AI，带着一群 AI 替你干活，只在要紧时找你。 |
 | Paragraph | Ducter is a personal AI you run yourself, on your Mac, a server you own, and any computer you lend it. You talk to one partner, from your phone, your desk or the chat app you already use. Behind it, as many AI agents as the work needs (Claude Code, Codex, pi and DeepSeek Harness) run at once on the plans you already pay for, and you can open any of them and steer it yourself. Finished work comes back with how it was checked. When nothing needs you, you hear nothing. | Ducter 是你自己部署的私人 AI，住在你的 Mac、你自己的服务器，和你借给它的每一台电脑上。你只跟一个伙伴说话，用手机、在电脑前，或者在你常用的聊天软件里都行。它身后，活要几个 AI 就同时开几个（Claude Code、Codex、pi、DeepSeek Harness），用的是你自己的订阅；哪一件你都能随时打开看、亲手接着做。做完了，结果连同怎么验证的一起交给你；没事的时候，它一声不响。 |
 
-The tested paragraph said "DeepSeek" and "on your own plans"; the shipped one uses the product's
-name (DeepSeek Harness) and "the plans you already pay for", the site's existing words. Humanizer
-pass: no "seamless", no "empower", no rule-of-three adjectives; each sentence says a fact a
-person can check in the app.
+The author found it not good enough: "a team of AI agents behind it" lost the builder edge, and
+"your own computers" left out servers. The second pass agrees: builders were the ones least likely
+to see that line as theirs (2.1–2.2 of 5, §5), though it was the panel's overall favourite.
+MEASURED.
+
+## 5. Second pass: the builder core
+
+Same panels and method, two changes: the raters also answered **builder** ("would someone who
+builds software or products, a developer or an indie maker, see at once that this is made for
+them", 1–5), and lines are ranked by **weighted try** (developer 0.5, consumer 0.25, fresh 0.25),
+since the builder is who this line is for. MEASURED.
+
+**Round 5, the core said plainly (n = 18 each).** WTry = weighted try; Bld = builder, all raters;
+Bld dev = the developers' own builder score.
+
+| | Line | Try dev | WTry | Bld | Bld dev | Both | Calm | Picked |
+|---|---|---|---|---|---|---|---|---|
+| B1 | A personal AI, and AI agents for builders, on your own computers or servers. | 2.50 | 2.33 | 3.78 | 3.33 | 78 % | 0 % | 0 |
+| B2 | Your personal AI, with a team of AI agents for what you build. On your own computers or servers. | 3.17 | 2.96 | 3.39 | 3.33 | 89 % | 11 % | 0 |
+| B3 | A personal AI for your life. AI agents for what you build. On your own computers or servers. | 1.83 | 2.67 | 2.61 | 2.17 | 61 % | 17 % | 2 |
+| B4 | The personal AI for builders: one partner, many AI agents, on your own computers or servers. | 3.67 | 3.29 | 4.44 | 4.50 | 67 % | 28 % | 0 |
+| B5 | A personal AI that runs your AI agents for you. Made for builders, on your own computers or servers. | 4.00 | 3.13 | 4.39 | 4.67 | 28 % | 28 % | 0 |
+| B6 | Personal AI and AI agents for builders, running on your own computers or servers. | 2.50 | 2.25 | 4.17 | 4.00 | 89 % | 0 % | 0 |
+| B7 | One personal AI that runs all your coding agents, on your own computers or servers. | 4.83 | 3.25 | 4.89 | 4.67 | 61 % | 17 % | 3 |
+| B8 | the first pass's line (control) | 3.83 | 4.12 | 2.17 | 2.67 | 61 % | 100 % | 13 |
+
+| | 中文 | Try 开发者 | WTry | Bld | Bld dev | Both | Calm | Picked |
+|---|---|---|---|---|---|---|---|---|
+| C1 | 私人 AI，加上给开发者的 AI agent，跑在你自己的电脑或服务器上。 | 2.83 | 2.67 | 3.72 | 3.83 | 67 % | 0 % | 0 |
+| C2 | 给**开发者**的私人 AI：一个伙伴带着一群 AI agent，跑在你自己的电脑或服务器上。 | 3.50 | 2.83 | **4.56** | 4.50 | 78 % | 0 % | 0 |
+| C3 | 给**做东西的人**的私人 AI：（其余同 C2） | 3.17 | 2.96 | 3.78 | 4.00 | 67 % | 0 % | 0 |
+| C4 | 给**创造者**的私人 AI：（其余同 C2） | 2.50 | 2.54 | 3.11 | 2.67 | 67 % | 0 % | 0 |
+| C5 | 生活里是你的私人 AI，做东西时是你的一群 AI agent，都跑在你自己的电脑或服务器上。 | 2.67 | 3.17 | 3.44 | 3.17 | 83 % | 6 % | 0 |
+| C6 | 你的私人 AI，替你调度所有编程 AI，跑在你自己的电脑或服务器上。 | 4.50 | 3.38 | 4.39 | 4.50 | 22 % | 11 % | 3 |
+| C7 | 私人 AI 和开发者的 AI agent 团队，都在你自己的电脑或服务器上。 | 3.33 | 2.87 | 3.89 | 4.00 | 100 % | 6 % | 1 |
+| C8 | 第一轮选的那句（对照） | 4.33 | 4.46 | 2.67 | 3.17 | 89 % | 100 % | 14 |
+
+Read: naming builders works (4.4–4.9 against the control's 2.2–2.7), and **开发者** is the zh word
+(on the same sentence: 4.56, 做东西的人 3.78, 创造者 3.11). But every plain core line lost the calm
+(0–28 %), and the control, which kept it, was still everyone's pick. The calm had to come back.
+
+**Round 6, the core plus the calm (n = 18 each).**
+
+| | Line | Try dev | WTry | Bld | Bld dev | Generic | Both | Calm | Picked |
+|---|---|---|---|---|---|---|---|---|---|
+| D1 | The personal AI for builders: one partner, a team of AI agents, on your own computers or servers. You hear only what matters. | 3.83 | 3.50 | 4.33 | 4.33 | 3.06 | 78 % | 83 % | 5 |
+| **D2** | **A personal AI for builders. It runs your AI agents on your own computers or servers, and you hear only what matters.** | **4.83** | **3.83** | 4.44 | 4.67 | 2.89 | **89 %** | 83 % | 3 |
+| D3 | A personal AI that runs your coding agents on your own computers or servers. You hear only what matters. | 4.83 | 3.25 | **4.78** | 4.67 | 2.56 | 67 % | 50 % | 3 |
+| D4 | Personal AI, plus a team of AI agents for builders, on your own computers or servers. You hear only what matters. | 3.50 | 3.04 | 3.83 | 3.83 | 3.33 | 94 % | 61 % | 0 |
+| D5 | One personal AI for builders, with a team of AI agents behind it, on your own computers or servers. | 3.17 | 2.83 | 4.39 | 4.17 | 3.22 | 89 % | 6 % | 0 |
+| D6 | Your personal AI, and the AI agents you build with, on your own computers or servers. You hear only what matters. | 3.67 | 3.25 | 3.67 | 3.50 | 2.94 | 56 % | 72 % | 2 |
+| B4 | round 5's best builder line | 3.00 | 2.71 | 4.22 | 4.00 | 3.33 | 72 % | 11 % | 0 |
+| B8 | the first pass's line (control) | 3.17 | 3.33 | 2.11 | 2.17 | 3.50 | 89 % | 83 % | 5 |
+
+| | 中文 | Try 开发者 | WTry | Bld | Bld dev | Generic | Both | Calm | Picked |
+|---|---|---|---|---|---|---|---|---|---|
+| E1 | 给开发者的私人 AI：一个伙伴带着一群 AI agent，跑在你自己的电脑或服务器上，只在要紧时找你。 | 3.67 | 3.13 | 4.22 | 3.83 | 3.06 | 67 % | 67 % | 2 |
+| E2 | 开发者的私人 AI，带着一群 AI agent 替你干活，跑在你自己的电脑或服务器上，只在要紧时找你。 | 3.67 | 3.17 | **4.50** | 4.17 | 3.00 | 72 % | 83 % | 1 |
+| E3 | 替你调度所有编程 AI 的私人 AI，跑在你自己的电脑或服务器上，只在要紧时找你。 | **4.67** | 3.33 | 4.39 | **4.67** | 2.11 | 44 % | 50 % | 5 |
+| E4 | 你的私人 AI，和你写代码用的一群 AI agent，都在你自己的电脑或服务器上，只在要紧时找你。 | 3.67 | **3.42** | 3.89 | 4.00 | 2.61 | **94 %** | 67 % | 2 |
+| E5 | 给开发者的私人 AI，带着一群 AI agent，住在你自己的电脑或服务器上。 | 3.17 | 2.75 | 4.28 | 3.83 | 3.06 | 83 % | 11 % | 0 |
+| E6 | 私人 AI，加一群给开发者的 AI agent，跑在你自己的电脑或服务器上，只在要紧时找你。 | 2.83 | 2.71 | 3.56 | 3.50 | 3.22 | 67 % | 39 % | 0 |
+| C2 | 第五轮的 C2 | 3.00 | 2.58 | 4.06 | 3.50 | 3.28 | 78 % | 6 % | 0 |
+| C8 | 第一轮选的那句（对照） | 2.67 | 3.25 | 2.06 | 2.17 | 3.61 | 67 % | 83 % | 8 |
+
+Read: with the calm back, the builder lines pass the control on weighted try (D2 3.83 vs 3.33),
+and the developers move most (4.83 vs 3.17). In Chinese no line led every column: E3 is the
+developers' favourite but only 44 % read the personal half; E4 holds both halves best but says
+写代码用的 instead of naming who it is for; E2 names 开发者 most clearly.
+
+**Round 7, the hero (line + the new paragraph), n = 18 each.** Control: the first pass's hero.
+
+| | Hero | Try dev | WTry | Bld | Bld dev | Both | Calm | Picked |
+|---|---|---|---|---|---|---|---|---|
+| H2 | D2 + paragraph | 3.67 | 3.04 | **4.50** | 4.50 | 72 % | 67 % | 0 |
+| H1 | D1 + paragraph | 3.83 | 3.25 | 4.33 | 4.17 | 61 % | 67 % | 6 |
+| H3 | D3 + paragraph | 4.17 | 3.25 | 4.28 | 4.67 | 72 % | 61 % | 6 |
+| H8 | the first pass's hero | 3.50 | 3.25 | 2.94 | 3.33 | 67 % | 94 % | 6 |
+| F1 | 给开发者的私人 AI。它在你自己的电脑或服务器上替你跑一群 AI agent，只在要紧时找你。+ 段落 | 4.00 | 3.13 | **4.61** | **4.83** | 78 % | 61 % | 1 |
+| **F2** | **开发者的私人 AI：在你自己的电脑或服务器上，带着一群 AI agent 替你干活，只在要紧时找你。+ 段落** | **4.17** | 3.29 | 4.39 | 4.50 | **83 %** | 50 % | 4 |
+| F4 | 你的私人 AI，和你写代码用的一群 AI agent，都在你自己的电脑或服务器上，只在要紧时找你。+ 段落 | 3.83 | **3.50** | 3.94 | 4.00 | 78 % | 44 % | 6 |
+| F8 | 第一轮的首屏（对照） | 3.33 | 3.33 | 3.11 | 3.00 | 78 % | 83 % | 7 |
+
+Read: with a paragraph under every line, the weighted tries bunch within the noise (3.04–3.50);
+the builder score keeps its gap (4.3–4.6 against 2.9–3.1). Several developers called the
+paragraph's mail-and-calendar sentence clutter for them; it stays, last, because the personal half
+is half of the core.
+
+## 6. The words chosen
+
+| | English | 中文 |
+|---|---|---|
+| Line | A personal AI for builders. It runs your AI agents on your own computers or servers, and you hear only what matters. | 开发者的私人 AI：在你自己的电脑或服务器上，带着一群 AI agent 替你干活，只在要紧时找你。 |
+| Paragraph | in `design/positioning.md` | 见 `design/positioning.md` |
+
+- **EN, D2.** Best weighted try on its own (3.83), the developers' top (4.83, tied with D3),
+  builder 4.44–4.67, both halves read by 89 %. Runner-ups: **D1** ("The personal AI for builders:
+  one partner, a team of AI agents, on your own computers or servers. You hear only what
+  matters.": as clear to builders, developers 3.83) and **D3** ("…runs your coding agents…": the
+  highest builder score, but the personal half fell to 67 % and fresh users to 1.2).
+- **ZH, F2.** The developers' top among lines that name 开发者 (4.17 with the paragraph), both
+  halves 83 %, builder 4.39–4.50. Runner-ups: **F1** (the twin of the English line, the best
+  builder score, 4.83 from developers, both halves 78 %) and **F4** (best weighted try and both
+  halves, but it never says who it is for).
+- Humanizer pass: no "seamless", "empower", "supercharge"; each clause is something a person can
+  check in the app.
 
 ## Implications for Ducter
 
-- The hero carries both halves in one line and one paragraph; D326's line stays only where a
-  sentence about the personal half alone is wanted (the share image's alt moved with the line).
-- The landing page gives the work half its own section with a real screen of many tasks at once
-  (On hand on a Mac, from `apps/web/demo-onhand.ts`), and the personal half keeps the morning note.
-- The literal line is what developers want; the README, written for them, keeps the paragraph
-  in full right under the line.
-- Fresh users need the money-and-messages promise in the first screen; it stays under the buttons.
+- The line names the builder, the personal AI and "your own computers or servers"; the calm ("you
+  hear only what matters") had to stay for any of them to win.
+- The landing page leads with the builder section (On hand with many tasks); the personal half
+  follows as what the same partner does for the rest of the day.
+- 开发者 is the zh word for builders; 做东西的人 and 创造者 read vague.
+- Fresh users are not who the line is for; the trust line under the buttons keeps them safe.
 
-**Summary:** D326's line read as a generic assistant and never as many agents (0–6 %). Of 14 new
-lines in English and 13 in Chinese, **"One personal AI on your own computers, with a team of AI agents behind it.
-You hear only what matters."** and **「住在你电脑上的私人 AI，带着一群 AI 替你干活，只在要紧时找你。」**
-were read as both halves by 94–100 % of raters alone, and with their paragraph were picked by 16
-and 13 of 18 raters against D326's hero (try 4.00 vs 2.67; 3.94 vs 2.61).
+**Summary:** the first pass's line ("One personal AI on your own computers, with a team of AI
+agents behind it…") was liked, but builders didn't see it as theirs (2.1–2.2 of 5). Naming
+builders and keeping the calm: **"A personal AI for builders. It runs your AI agents on your own
+computers or servers, and you hear only what matters."** (developers 4.83, weighted try 3.83 vs the
+control's 3.33, builder 4.44) and **「开发者的私人 AI：在你自己的电脑或服务器上，带着一群 AI agent
+替你干活，只在要紧时找你。」** (developers 4.17, builder 4.39, both halves 83 %). 开发者 beat 做东西的人
+and 创造者.

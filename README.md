@@ -1,16 +1,16 @@
 <h1 align="center">Ducter</h1>
 
 <p align="center">
-  <b>One personal AI on your own computers, with a team of AI agents behind it. You hear only what matters.</b>
+  <b>A personal AI for builders. It runs your AI agents on your own computers or servers, and you hear only what matters.</b>
 </p>
 
 <p align="center">
-  Ducter is a personal AI you run yourself, on your Mac, a server you own, and any computer you
-  lend it. You talk to one partner, from your phone, your desk or the chat app you already use.
-  Behind it, as many AI agents as the work needs (Claude Code, Codex, pi and DeepSeek Harness) run
-  at once on the plans you already pay for, and you can open any of them and steer it yourself.
-  Finished work comes back with how it was checked. When nothing needs you, you hear nothing.
-  Free and open source.
+  Ducter is a personal AI you run yourself, on your Mac or a server you own, and on any computer
+  you lend it. You talk to one partner, from your phone, your desk or the chat app you already use.
+  When you build, it hands the work to as many AI agents as it needs (Claude Code, Codex, pi and
+  DeepSeek Harness), side by side on the plans you already pay for, and any task is yours to open
+  and steer. Finished work comes back with how it was checked. In between it minds your mail and
+  calendar, runs errands, and stays quiet until something needs you. Free and open source.
 </p>
 
 <p align="center">
@@ -34,24 +34,10 @@
 
 ## Why Ducter
 
-Ducter is two things held as one partner: a personal AI that is yours, and a way to run many AI
-agents at once without spending your attention on them.
+Ducter is two things held as one partner: AI agents for what you build, and a personal AI for the
+rest of your day, both on your own computers or servers.
 
-**A personal AI that is yours**
-
-- **One partner, everywhere you are.** The same conversation on your Mac, your phone, iMessage,
-  WeChat, Telegram or Slack. It keeps an eye on your mail and calendar if you say yes, and each
-  morning brings you at most three things that need you, each with a next step.
-- **On your computers.** It lives on your Mac, or on a Linux server you own, at home or in the
-  cloud, so it keeps working while your laptop sleeps. Lend it more computers, or your Android
-  phone for a while, and say where a task should run.
-- **It remembers you, and you can see what it knows.** With [Nowledge Mem](https://mem.nowledge.co)
-  (optional), the AI tools you use elsewhere share that memory too.
-- **Open source and self-hosted.** Hosted agent workbenches come and go, and the best personal
-  AIs are closed. Ducter is Apache 2.0 and runs where you put it, so nobody can wind it down
-  for you ([why it exists](motivation.md)).
-
-**A team of AI agents that leaves your attention alone**
+**AI agents for what you build, without the babysitting**
 
 - **Many at once, one conversation.** You write *"Fix the flaky compaction test in HawDB and tell
   me when it's done"*, then three more things. Each becomes a task on Claude Code, Codex, pi or
@@ -63,6 +49,20 @@ agents at once without spending your attention on them.
 - **Every task is open to you.** On hand shows them all; open one to see every step, its diff
   and its browser, steer it, or hand it to another agent mid-way. Coding work gets its own
   worktree and branch, and merging is your call.
+- **On your computers or servers.** It lives on your Mac, or on a Linux server you own, at home
+  or in the cloud, so it keeps working while your laptop sleeps. Lend it more computers, or your
+  Android phone for a while, and say where a task should run.
+
+**A personal AI for the rest of your day**
+
+- **One partner, everywhere you are.** The same conversation on your Mac, your phone, iMessage,
+  WeChat, Telegram or Slack. It keeps an eye on your mail and calendar if you say yes, and each
+  morning brings you at most three things that need you, each with a next step.
+- **It remembers you, and you can see what it knows.** With [Nowledge Mem](https://mem.nowledge.co)
+  (optional), the AI tools you use elsewhere share that memory too.
+- **Open source and self-hosted.** Hosted agent workbenches come and go, and the best personal
+  AIs are closed. Ducter is Apache 2.0 and runs where you put it, so nobody can wind it down
+  for you ([why it exists](motivation.md)).
 - **Ready the first time.** One line installs it; it sets up what's missing and greets you with
   things to start from your own folders and accounts.
 

@@ -6,12 +6,12 @@ user docs rendered from `docs/` at `/docs`. What it says was audited in
 
 ## Pages
 
-- **`/`** (D326, D408) answers a visitor's questions in their order, each section with a real screen
-  of the app where it shows the product: the hero (D408's line, which carries both halves of
+- **`/`** (D326, D414) answers a visitor's questions in their order, each section with a real screen
+  of the app where it shows the product: the hero (D414's line, a personal AI for builders on your own computers or servers,
   [positioning.md](positioning.md), its paragraph as the lede, **Get started**, the trust line, the
-  real morning note and a finished errand), **For your days: a partner that looks out for you**
-  (looks out for you, does the work, runs errands), **For your work: a whole team, and you only
-  hear what matters** (On hand on a Mac with 18 tasks, `many`), **It only asks when it matters**
+  real morning note and a finished errand), **For what you build: a whole team of AI agents** (On hand on a
+  Mac with 18 tasks, `many`), **For the rest of your day: a partner that looks out for you** (looks
+  out for you, does the work, runs errands), **It only asks when it matters**
   (On hand on a phone), **On your computers, with the AI you already pay for** (the Isles, still
   drawn), **Reach it from anywhere** (Mac, iPhone and iPad, Android, a server; iMessage, WeChat,
   Telegram, Slack), **It remembers you** (Memory), **Nothing goes out without your OK** (Done for
@@ -85,7 +85,7 @@ system). They are real screens of the web client: headless Chrome against a demo
 `localStorage["ducter.notify.asked"]="1"` before load so the notification ask stays out of frame,
 and loaded once more so the conversation is read (no New messages line) and starts at the top; the
 clock is set with a time zone override so the note says a morning time.
-`many` (D408: On hand full width, `#onhand/full` at 1440 × 1000 and 2×, cropped to 1440 × 750 and saved at 1920 wide, from `DEMO_LANG=en bun apps/web/demo-onhand.ts`), `hero` (720 × 900 at 1.5×) and `onhand-phone` (390 × 844 at 2×, `#onhand`) come from
+`many` (D414: On hand full width, `#onhand/full` at 1440 × 1000 and 2×, cropped to 1440 × 750 and saved at 1920 wide, from `DEMO_LANG=en bun apps/web/demo-onhand.ts`), `hero` (720 × 900 at 1.5×) and `onhand-phone` (390 × 844 at 2×, `#onhand`) come from
 `DEMO_LANG=en bun apps/web/demo-site.ts`; `memory` (`#settings=memory`, the sheet clipped) and
 `done-for-you` (Done for you opened from On hand, clipped) from `DEMO_LANG=en DEMO_MEM=ready
 DEMO_DID=1 bun apps/web/demo.ts`. Resized to WebP (quality 82); each is under 70 KB. Retake them
@@ -101,11 +101,11 @@ when the screens they show change, then redraw the share image (below).
   `DEMO_WORKTREE_AS="~/.ducter/worktrees/t_flaky"`), `partner.webp` (`compose.py`'s crop no longer
   matches Settings). Raw captures: `.shots/d319/readme/`.
 - **Chinese.** The site and the docs are English only (kept by D326). The zh line and paragraph are
-  designed ([positioning.md](positioning.md), D408); a 中文 home and Get started come when the site
+  designed ([positioning.md](positioning.md), D414); a 中文 home and Get started come when the site
   goes bilingual, with `/download`'s mainland-China note (D78's type is already in the CSS).
 - **A mirror for mainland China.** Releases come only from GitHub; `install.sh` has no mirror. If
   one is set up, `install.sh` and `/download` say so together.
-- **The share image with D408's line** was redrawn (`og.png?v=4`, layout A) but not re-rated:
+- **The share image with D414's line** was redrawn (`og.png?v=5`, layout A) but not re-rated:
   the line is longer (five lines at 74 px), so the thumbnail test of 2026-11-18 should be run again.
 - **Docs search.** Twenty-odd pages, no search; Pagefind at build time is the cheap option.
 - **From the real Mac app** (D326): the hero in the Mac window, and a Devices picture to replace the
@@ -129,7 +129,7 @@ started? get started 足够优雅顺滑无障碍么？"
   terminal block as the way in. After: one line that says what it is and how it treats your
   attention, a real screen, seven sections that each answer one question, and one calm path to
   install.
-- **The tagline** (research/113; superseded by D408, [positioning.md](positioning.md)): **Your own
+- **The tagline** (research/113; superseded by D414, [positioning.md](positioning.md)): **Your own
   personal AI. It does the work, and asks only when it matters.** / **你自己的私人 AI：替你把事办完，只在要紧时找你。** Ten candidates scored on a rubric
   and by five naive LLM raters; it is the only one none rated below 3. The subhead says where you
   talk to it and that anything spending money or reaching people waits for your OK; "your own Mac
@@ -190,7 +190,7 @@ page had their elements), which still held joined strings.
 
 ## The share image (D346)
 
-`public/og.png` (1200 × 630, also twitter:image, linked as `og.png?v=4` (D408's line) so X and Slack fetch it
+`public/og.png` (1200 × 630, also twitter:image, linked as `og.png?v=5` (D414's line) so X and Slack fetch it
 again) is what WeChat, X, Slack and iMessage show when someone shares ducter.ai: for many people the
 first thing they ever see of Ducter. `apps/site/scripts/og.mjs` (`bun run og` in `apps/site`) draws
 it from an HTML template in headless Chrome, with the site's Bricolage, palette and clay art and the
@@ -232,8 +232,8 @@ read at thumbnail size. One run each; LLM proxies, not people.
 
   The trade flipped as expected: the developers now read "everyday errands" and tapped less, and
   everyone else read it as theirs ("made for someone like me" 1 → 4–5). The new one stays: the
-  developer's case is said on the page itself (since D408, the For your work section and its
-  On hand screen) once they tap, and the card is the first thing most people see. Every rater still read
+  developer's case is said on the page itself (since D414, the builder section that leads the
+  page and its On hand screen) once they tap, and the card is the first thing most people see. Every rater still read
   only the headline at thumbnail size.
 - Three raters found the clay character childlike for a tool and two liked it; it stays (it is the
   partner), at the size of one supporting element.
@@ -244,16 +244,15 @@ which image it picks is not documented (community reports only), so a square og.
 nothing there. Revisit if Ducter gets an official account with the JS-SDK.
 
 
-## 2026-11-20: both halves on the first screen (D408)
+## 2026-11-20: a personal AI for builders, on the first screen (D414)
 
-The author: the site and the GitHub description "没有真的抓住我们的精髓": a local, elegant personal agent
-on your own servers and computers, and at the same time the strongest platform for running many
-work agents, with the attention problem solved. The words and why are in
-[positioning.md](positioning.md) and [research/167](../research/167-two-halves.md). On the page:
-the hero's line, lede and trust line; the first section renamed **For your days**, its middle card's
-example no longer code (the work half has its own section now); a new **For your work** section
-with `many` (On hand on a Mac) and three points; the bands re-alternated (what deep, many plain,
-asks deep, devices plain, where deep, memory plain, trust ink, open deep). The hero's `<h1>` is a
-step smaller (`clamp(40px, 4.9vw, 68px)`) so Get started stays in the first screen at 1440 × 900
-with the longer line. Shots: `.shots/positioning/` (hero at 1440 and 390, light and dark, en and a
-zh rendering of the designed words; the For your work section at 1440 and 390; full pages).
+The author: the site and the GitHub description "没有真的抓住我们的精髓", and on the first pick: "personal
+ai + ai agent for builders on your own computers or servers 大概核心是这个". The words and why are in
+[positioning.md](positioning.md) and [research/170](../research/170-builders-line.md). On the page:
+the hero's line ("A personal AI for builders." and its quiet line), lede and trust line; the
+builder section first, **For what you build: a whole team of AI agents**, with `many` (On hand on a
+Mac) and three points; then **For the rest of your day**, its middle card's example no longer code;
+the bands re-alternated (many deep, what plain, asks deep, devices plain, where deep, memory plain,
+trust ink, open deep). The hero's `<h1>` is a step smaller (`clamp(40px, 4.9vw, 68px)`). Shots:
+`.shots/positioning/` (hero at 1440 and 390, light and dark, en and a zh rendering of the designed
+words; the builder section at 1440 and 390; full pages).

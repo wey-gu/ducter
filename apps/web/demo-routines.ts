@@ -73,11 +73,12 @@ waiter(rv.due + 3 * MIN + 4000, REVIEW, "w_review_last", reviewWhy, "armed", rv.
 waiter(rv.due + 3 * MIN + 8000, REVIEW, "w_review_last", reviewWhy, "cancelled", rv.due + 48 * MIN);
 state(rv.due + 3 * MIN + 8000, REVIEW, "done", "warm");
 
-// 2. The morning fare check, on the person's MacBook, asleep now: its round was due 75 min ago.
+// 2. The morning fare check, on the person's MacBook Pro (a worker), asleep now: its round was due 75 min ago;
+//    D429: the home (Ada's MacBook Air) is awake, so the card offers to run it there.
 const FARE = "fare_pek";
 const fareWhy = L("明早再看一次北京往返的价格", "look at the Beijing return fares again tomorrow morning");
 const f0 = now - 3 * DAY - 75 * MIN;
-open(f0 - MIN, FARE, L("盯北京往返机票", "Watch the Beijing return fares"), L("每天早上看一下上海到北京往返（12 月 5 日去，8 日回）的机票价格，降到 ¥2000 以下马上告诉我。", "Every morning, check the Shanghai to Beijing return fares (out Dec 5, back Dec 8) and tell me at once if they drop below ¥2,000."), "claude-code");
+open(f0 - MIN, FARE, L("盯北京往返机票", "Watch the Beijing return fares"), L("每天早上看一下上海到北京往返（12 月 5 日去，8 日回）的机票价格，降到 ¥2000 以下马上告诉我。", "Every morning, check the Shanghai to Beijing return fares (out Dec 5, back Dec 8) and tell me at once if they drop below ¥2,000."), "claude-code", "mbp");
 const fr = rounds(FARE, fareWhy, 24 * 60 - 3, f0, 3, [
   ["最低 ¥2,380（东航 MU5155 / MU5154），比昨天低 ¥120。", "Lowest ¥2,380 (China Eastern MU5155 / MU5154), ¥120 less than yesterday."],
   ["最低 ¥2,460，没变多少。", "Lowest ¥2,460, about the same."],
@@ -126,7 +127,7 @@ for (const { t, e } of q) {
 log.close();
 
 // ---------- the core on that Log ----------
-const core = startCore({ ooSource: noOo, dataDir, persona: { id: "default", name: zh ? "小鸭" : "Duckie", identity: "" }, hostname: process.env.DUCTER_HOST || "127.0.0.1" });
+const core = startCore({ newTaskComputers: { nameOf: (d) => (d === "mbp" ? "Ada's MacBook Pro" : undefined), homeName: () => "Ada's MacBook Air", folderInfo: async () => "offline" }, work: { loopsMove: async () => ({ ok: true }) }, ooSource: noOo, dataDir, persona: { id: "default", name: zh ? "小鸭" : "Duckie", identity: "" }, hostname: process.env.DUCTER_HOST || "127.0.0.1" });
 core.setRunner(stubRunner(core));
 core.setPartner({ onTrigger() {} });
 core.settings.set({ language: zh ? "zh" : "en" });
@@ -145,8 +146,8 @@ core.log.append({
   kind: "ai_msg",
   body: {
     text: L(
-      "hawdb 的 nightly 最近 3 轮都没做成：gh 读不到这个仓库了，可能是改了名或权限变了。盯机票的那个晚了 1 小时多，你的 MacBook 睡着了，醒了会补一轮。review 循环刚才被误停过，已经接着跑。其余都按时。",
-      "hawdb's nightly watch hasn't worked for its last 3 rounds: gh can't read the repo any more, maybe it was renamed or access changed. The fare check is over an hour late because your MacBook is asleep; it catches up when it wakes. The review loop was stopped by mistake earlier and is running again. The rest are on time.",
+      "hawdb 的 nightly 最近 3 轮都没做成：gh 读不到这个仓库了，可能是改了名或权限变了。盯机票的那个晚了 1 小时多：Ada's MacBook Pro 睡着了，Ada's MacBook Air 醒着，可以换过去跑。review 循环刚才被误停过，已经接着跑。其余都按时。",
+      "hawdb's nightly watch hasn't worked for its last 3 rounds: gh can't read the repo any more, maybe it was renamed or access changed. The fare check is over an hour late: Ada's MacBook Pro is asleep, and Ada's MacBook Air is awake and can run it. The review loop was stopped by mistake earlier and is running again. The rest are on time.",
     ),
   },
 });

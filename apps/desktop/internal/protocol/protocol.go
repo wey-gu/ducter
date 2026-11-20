@@ -262,6 +262,15 @@ type Decision struct {
 	// Board (D407): 要不要把这些做成一个看板？ the offer to keep a repeating
 	// task's rounds on a small app.
 	Board *BoardAsk `json:"board,omitempty"`
+	// Loop (D427): the keeper's one word about a late or failing task in
+	// rounds; Move (D429): Go runs it on that awake computer instead.
+	Loop *LoopAsk `json:"loop,omitempty"`
+}
+
+// LoopAsk is the task a loop card is about, and the computer its Go moves it to.
+type LoopAsk struct {
+	TaskID string `json:"taskId"`
+	Move   string `json:"move,omitempty"`
 }
 
 // TrustAsk names the agent a standing-go offer is about.

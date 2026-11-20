@@ -25,10 +25,10 @@ const flush = async () => {
   for (let i = 0; i < 30; i++) await tick();
 };
 
-function boot(o: { dir?: string; clock?: FakeClock; sendFails?: () => string | undefined } = {}) {
+function boot(o: { dir?: string; clock?: FakeClock; sendFails?: () => string | undefined; core?: Partial<Parameters<typeof startCore>[0]> } = {}) {
   const t = o.dir ? { dir: o.dir, cleanup: () => {} } : tempDir();
   const clock = o.clock ?? new FakeClock(START);
-  const core: Core = startCore({ dataDir: t.dir, port: 0, push: false, clock, defaultDelayMs: 60_000 });
+  const core: Core = startCore({ dataDir: t.dir, port: 0, push: false, clock, defaultDelayMs: 60_000, ...o.core });
   stops.push(t.cleanup, () => core.stop());
   core.settings.set({ language: "zh" });
   core.setPartner({ onTrigger: () => {} });
@@ -344,8 +344,10 @@ test("routine_list: a task in rounds with its rhythm, next, last line and where;
   b.clock.advance(45 * MIN);
   await flush();
   await round(b, "swj3zc4w", { state: "progress" });
-  const l = (await b.core.mcp.call({ role: "partner" } as never, "routine_list", {})) as { id: string; kind: string; rhythm?: string; health: unknown; last?: { line?: string }; where?: { harness?: string } }[];
-  expect(l[0]).toMatchObject({ id: "swj3zc4w", kind: "task in rounds", rhythm: "every 45 min", health: "on time", last: { line: "队列现有 9 个 PR。" }, where: { harness: "codex" } });
+  const l = (await b.core.mcp.call({ role: "partner" } as never, "routine_list", {})) as { id: string; kind: string; say: string; health: unknown; lastRound?: string }[];
+  // D429: its ready line in the person's language: the rhythm, the next round, on time.
+  expect(l[0]).toMatchObject({ id: "swj3zc4w", kind: "task in rounds", health: "on time", lastRound: "队列现有 9 个 PR。" });
+  expect(l[0]!.say).toMatch(/^「review nowledge-co」在跑，每 45 分钟一轮，下一轮 \d\d:\d\d，按时。$/);
   expect((await b.core.mcp.call({ role: "partner" } as never, "routine_change", { id: "swj3zc4w", action: "pause" })) as { ok: boolean }).toMatchObject({ ok: true });
   b.clock.advance(3 * 60 * MIN);
   await flush();
@@ -355,4 +357,102 @@ test("routine_list: a task in rounds with its rhythm, next, last line and where;
   b.clock.advance(SETTLE_MS + 2 * MIN);
   await flush();
   expect(b.woke).toHaveLength(2); // the paused round, once
+});
+
+// ---------- D429: the wake says a round ends with progress; the late line names the computer and offers an awake one ----------
+
+test("D429: a round's wake says it ends with progress, never done (or done only once the person's until holds); the transcript still reads it as a wake", async () => {
+  const { wakeOf } = await import("@ducter/protocol/src/transcript.ts");
+  const b = boot();
+  open(b);
+  await waitFor(b, "swj3zc4w");
+  b.clock.advance(45 * MIN);
+  await flush();
+  const text = b.woke[0]!.text;
+  expect(text).toStartWith("到时间了：「约 45 分钟后继续检查 nowledge-co 的审查请求与提及」。接着做。\n\n这是循环里的一轮");
+  expect(text).toContain("report_to_main 报 progress，不要报 done");
+  expect(wakeOf(text)).toMatchObject({ reason: "约 45 分钟后继续检查 nowledge-co 的审查请求与提及", timer: true });
+  // With the person's end condition: done only once it holds.
+  open(b, "ci_w", "每 30 分钟看一次 CI，直到 #10473 合并为止", "CI");
+  await waitFor(b, "ci_w", 30);
+  b.clock.advance(30 * MIN);
+  await flush();
+  expect(b.woke.find((w) => w.taskId === "ci_w")!.text).toContain("只有「#10473 合并」已经成立时才报 done");
+  // A one-off wait (no rounds) hears the wake alone.
+  open(b, "once", "PR 合并了告诉我", "once");
+  await waitFor(b, "once", 10);
+  b.clock.advance(10 * MIN);
+  await flush();
+  expect(b.woke.find((w) => w.taskId === "once")!.text).toBe("到时间了：「约 45 分钟后继续检查 nowledge-co 的审查请求与提及」。接着做。");
+});
+
+test("D429: asleep on a worker: the late line names it, offers the awake home, and the tap moves it and runs a round there", async () => {
+  let asleep = false;
+  const moved: { taskId: string; device: string }[] = [];
+  const b = boot({
+    sendFails: () => (asleep ? "Ada's MacBook Pro is asleep" : undefined),
+    core: {
+      newTaskComputers: { nameOf: (d: string) => (d === "mbp" ? "Ada's MacBook Pro" : undefined), homeName: () => "Mac mini", folderInfo: async () => "offline" as const },
+      work: { loopsMove: async (taskId: string, device: string) => (moved.push({ taskId, device }), { ok: true }) },
+    },
+  });
+  b.core.log.append({ stream: "task:fare", origin: "partner", kind: "task_open", body: { taskId: "fare", title: "盯北京往返机票", project: "", place: { kind: "none", device: "mbp" }, harness: "claude-code", brief: "每天早上看一下上海到北京往返的机票价格" } });
+  b.core.tasks.setState("fare", "working", "hot");
+  await waitFor(b, "fare", 60);
+  asleep = true;
+  b.clock.advance(60 * MIN);
+  await flush();
+  b.clock.advance(35 * MIN);
+  await flush();
+  const h = og(b, "fare")?.health;
+  expect(h).toMatchObject({ state: "late", why: "asleep", detail: "Ada's MacBook Pro", fix: "move", moveTo: { device: "local", name: "Mac mini" } });
+  const card = cards(b).find((d) => d.loop?.taskId === "fare")!;
+  expect(card.question).toContain("Ada's MacBook Pro 睡着了或连不上。Mac mini 醒着");
+  expect(card.goLabel).toBe("换到醒着的电脑上跑");
+  expect(card.loop).toMatchObject({ taskId: "fare", move: "local" });
+  // The routine_list line says it too.
+  const l = (await b.core.mcp.call({ role: "partner" } as never, "routine_list", {})) as { id: string; say: string; fix?: string }[];
+  expect(l.find((x) => x.id === "fare")).toMatchObject({ fix: "move" });
+  expect(l.find((x) => x.id === "fare")!.say).toContain("Ada's MacBook Pro 睡着了，醒了马上补一轮；Mac mini 醒着，可以换到它上面跑");
+  // The person's tap: moved there, and a round runs now (on the home, awake).
+  asleep = false;
+  const before = b.woke.length;
+  b.core.log.append({ stream: "channel", origin: "user", kind: "decision_resolved", body: { decisionId: card.decisionId, option: "go", by: "user" } });
+  await flush();
+  expect(moved).toEqual([{ taskId: "fare", device: "local" }]);
+  b.clock.advance(2000);
+  await flush();
+  expect(b.woke.length).toBe(before + 1);
+  expect(og(b, "fare")?.health).toBeUndefined();
+});
+
+test("D429: 换到醒着的电脑上跑 is an ongoing action too; a home task asleep with no other computer keeps Run now", async () => {
+  let asleep = false;
+  const moved: string[] = [];
+  const b = boot({ sendFails: () => (asleep ? "MacBook is asleep" : undefined), core: { work: { loopsMove: async (_t: string, d: string) => (moved.push(d), { ok: true }) } } });
+  open(b);
+  await waitFor(b, "swj3zc4w");
+  asleep = true;
+  b.clock.advance(70 * MIN);
+  await flush();
+  const h = og(b)?.health;
+  expect(h).toMatchObject({ state: "late", why: "asleep", fix: "run_now" });
+  expect(h?.detail).toBeTruthy(); // the home's own name
+  expect(h?.moveTo).toBeUndefined();
+  expect(await b.core.ongoing.act("task", "swj3zc4w", { action: "move", device: "w1" })).toMatchObject({ ok: true });
+  expect(moved).toEqual(["w1"]);
+});
+
+test("D429: routine_list's ready lines, zh and en", async () => {
+  const { sayOngoing } = await import("../src/ongoing.ts");
+  const now = Date.parse("2026-11-20T06:00:00Z");
+  const base: OngoingItem = { kind: "task", id: "r", title: "Review requests on nowledge-co", state: "resting", loop: true, everyMs: 45 * MIN, nextAt: "2026-11-20T06:44:00Z", runs: [], startedAt: "2026-11-20T00:00:00Z" };
+  expect(sayOngoing(base, "en", now, "UTC")).toBe("“Review requests on nowledge-co” is running, a round every 45 minutes; the next is at 06:44, on time.");
+  expect(sayOngoing({ ...base, title: "看评审请求" }, "zh", now, "UTC")).toBe("「看评审请求」在跑，每 45 分钟一轮，下一轮 06:44，按时。");
+  expect(sayOngoing({ ...base, everyMs: 60 * MIN, nextAt: "2026-11-21T01:00:00Z" }, "en", now, "UTC")).toBe("“Review requests on nowledge-co” is running, a round every hour; the next is tomorrow at 01:00, on time.");
+  expect(sayOngoing({ ...base, health: { state: "failing", why: "failed", fails: 3, detail: "gh can't read the repo." } }, "en", now, "UTC")).toBe("“Review requests on nowledge-co” (a round every 45 minutes) hasn't worked for its last 3 rounds: gh can't read the repo.");
+  expect(sayOngoing({ ...base, title: "盯机票", health: { state: "late", why: "asleep", lateMin: 75, detail: "Ada's MacBook Pro" } }, "zh", now, "UTC")).toBe("「盯机票」每 45 分钟一轮，这一轮晚了 1 小时 15 分钟：Ada's MacBook Pro 睡着了，醒了马上补一轮。");
+  expect(sayOngoing({ ...base, health: { state: "late", why: "quota", resetsAt: "2026-11-20T07:35:00Z" } }, "en", now, "UTC")).toBe("“Review requests on nowledge-co” (a round every 45 minutes) is out of allowance and carries on at 07:35.");
+  expect(sayOngoing({ ...base, state: "paused" }, "zh", now, "UTC")).toBe("「Review requests on nowledge-co」暂停了。");
+  expect(sayOngoing({ kind: "routine", id: "w", title: "整理上周的周报", state: "resting", cadence: "每周一 10:00（跟着你的时区）", nextAt: "2026-11-23T02:00:00Z", runs: [], startedAt: "2026-11-01T00:00:00Z" }, "zh", now, "Asia/Shanghai")).toBe("「整理上周的周报」在跑，每周一 10:00，下次 周一 10:00，按时。");
 });

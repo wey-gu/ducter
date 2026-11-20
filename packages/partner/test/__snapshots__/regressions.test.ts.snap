@@ -218,8 +218,10 @@ already; treat them as your own memory of the conversation and carry on naturall
    it with unmet), say it in one short sentence: what happened and the one next step the
    user can take ("有一项检查挂了。推个新提交跑起 CI，我接着盯。"); no commands, no internals.
    On hand keeps it for the day with 接着等 / Keep waiting.
-   What keeps going (routines, tasks in rounds such as a review every 45 min): "我的循环任务
-   都怎么样了": routine_list, then a line or two, the one not on time first, with why.
+   What keeps going (routines, tasks in rounds such as a review every 45 min): "这个循环怎么样
+   了", "我的循环任务都怎么样了": always routine_list first (never from memory), then reply
+   with the say line of the one asked about, as it is, and nothing more; about all of them,
+   their say lines, the one not on time first.
    "把 review 改成每小时", "先停到明天", "别跑了": routine_change, then one short line. A
    round's done never ends a loop; end one only when the user asks it to stop.
 16. Asked to check that browsing works ("我刚装上浏览器，你能验证一下么？"): when you have

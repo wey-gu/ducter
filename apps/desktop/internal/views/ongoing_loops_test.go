@@ -32,7 +32,7 @@ func loopsFixture(lang i18n.Lang) []protocol.OngoingItem {
 			Last:   &protocol.OngoingLast{At: ogAt(-18 * time.Minute), State: "failed", Line: w("读不到 nowledge-co/hawdb 的 Actions：gh 说这个仓库不存在或没有权限。", "Couldn't read nowledge-co/hawdb's Actions: gh says the repo doesn't exist or isn't readable.")},
 			Where:  home, Runs: ongoingRunsOf(30*time.Minute, "", "done", "done", "done", "done", "done", "done", "failed", "failed", "failed"), TaskID: "ci_hawdb", StartedAt: ogAt(-6 * time.Hour)},
 		{Kind: "task", ID: "fare_pek", Title: w("盯北京往返机票", "Watch the Beijing return fares"), State: "resting", Loop: true, EveryMs: 24 * 60 * 60_000, NextAt: ogAt(9 * time.Minute),
-			Health: &protocol.OngoingHealth{State: "late", Why: "asleep", LateMin: 75, Detail: "Ada's MacBook Pro", Fix: "run_now"},
+			Health: &protocol.OngoingHealth{State: "late", Why: "asleep", LateMin: 75, Detail: "Ada's MacBook Pro", Fix: "move", MoveTo: &protocol.OngoingMoveTo{Device: "local", Name: "Ada's MacBook Air"}},
 			Last:   &protocol.OngoingLast{At: ogAt(-25 * time.Hour), State: "done", Line: w("最低 ¥2,290，还没到 ¥2,000。", "Lowest ¥2,290, not under ¥2,000 yet.")},
 			Where:  &protocol.OngoingWhere{Device: "mbp", DeviceName: "Ada's MacBook Pro", Harness: "claude-code"}, Runs: ongoingRunsOf(24*time.Hour, "", "done", "done", "done"), TaskID: "fare_pek", StartedAt: ogAt(-72 * time.Hour)},
 		{Kind: "task", ID: "swj3zc4w", Title: w("看 nowledge-co 的评审请求", "Review requests on nowledge-co"), State: "resting", Loop: true, EveryMs: 45 * 60_000, NextAt: ogAt(44 * time.Minute),
@@ -65,6 +65,9 @@ func TestOngoingLoopLines(t *testing.T) {
 			pastWord(lang, "每 45 分钟一轮", "A round every 45 min"),
 			pastWord(lang, "上一轮", "Last round"),
 			"Codex", "Claude Code", "Ada's MacBook Air",
+			// D429: the awake computer, its own fact, and the move as the card's one fix.
+			pastWord(lang, "Ada's MacBook Air 醒着", "Ada's MacBook Air is awake"),
+			pastWord(lang, "换到醒着的电脑上跑", "Run it on an awake computer"),
 		} {
 			if !strings.Contains(text, want) {
 				t.Errorf("%s: no %q in %q", lang, want, text)
@@ -86,15 +89,80 @@ func TestOngoingLoopLines(t *testing.T) {
 		if !found {
 			t.Errorf("%s: change rhythm didn't send every: %v", lang, *sent)
 		}
+		// D429: the move sends move with the awake computer.
+		if err := tt.Click(app.L.T("og.move")); err != nil {
+			t.Fatal(err)
+		}
+		tt.Frame()
+		moved := false
+		for _, s := range *sent {
+			if a, ok := s.(protocol.OngoingAct); ok && a.Action == "move" && a.Device == "local" && a.ID == "fare_pek" {
+				moved = true
+			}
+		}
+		if !moved {
+			t.Errorf("%s: the move didn't send move: %v", lang, *sent)
+		}
 	}
 }
 
-// DUCTER_ROUTINE_SHOTS=1 writes mac-routines-* (light and dark, zh and en) to .shots/routines.
+// D429: the card's ⋯ is the clay menu (D421): How often a submenu of the
+// rhythms, the one it keeps marked, a pick sends every; End in the failed ink.
+func TestOngoingMoreIsTheClayMenu(t *testing.T) {
+	for _, lang := range []i18n.Lang{i18n.ZH, i18n.EN} {
+		app, sent := pastApp(t, lang)
+		app.OpenOngoing()
+		app.Receive(ongoingFrame(loopsFixture(lang)))
+		tt := ui.NewTesterWith(app.View, 1280, 1200, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
+		app.past.og.focus = "swj3zc4w"
+		tt.Frame()
+		title := app.S.Past.Ongoing[2].Title
+		if err := tt.Click(spoken(app.L, app.L.T("past.more"), title)); err != nil {
+			t.Fatal(err)
+		}
+		tt.Frame()
+		got := tt.Menu()
+		want := []string{app.L.T("og.rhythm"), app.L.T("og.open"), app.L.T("past.mark"), "-", app.L.T("og.end")}
+		if strings.Join(got, "|") != strings.Join(want, "|") {
+			t.Fatalf("%s: menu %q, want %q", lang, got, want)
+		}
+		if err := tt.ChooseMenuItem(app.L.T("og.rhythm"), app.L.T("og.rhythm.m", app.duration(time.Hour))); err != nil {
+			t.Fatal(err)
+		}
+		tt.Frame()
+		found := false
+		for _, s := range *sent {
+			if a, ok := s.(protocol.OngoingAct); ok && a.Action == "every" && a.Minutes == 60 && a.ID == "swj3zc4w" {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("%s: How often's submenu didn't send every: %v", lang, *sent)
+		}
+		// A time routine's Change when opens its own sheet at the ⋯.
+		app.past.og.focus = "r_weekly"
+		tt.Frame()
+		if err := tt.Click(spoken(app.L, app.L.T("past.more"), app.S.Past.Ongoing[4].Title)); err != nil {
+			t.Fatal(err)
+		}
+		tt.Frame()
+		if err := tt.ChooseMenuItem(app.L.T("og.retime")); err != nil {
+			t.Fatal(err)
+		}
+		tt.Frame()
+		tt.Frame()
+		if !strings.Contains(strings.Join(tt.Texts(), "|"), app.L.T("og.retime.save")) {
+			t.Errorf("%s: Change when didn't open its sheet", lang)
+		}
+	}
+}
+
+// DUCTER_ROUTINE_SHOTS=1 writes mac-* (light and dark, zh and en) to .shots/routines-2 (D429).
 func TestOngoingLoopShots(t *testing.T) {
 	if os.Getenv("DUCTER_ROUTINE_SHOTS") == "" {
 		t.Skip("DUCTER_ROUTINE_SHOTS=1 to write the shots")
 	}
-	dir := filepath.Join("..", "..", "..", "..", ".shots", "routines")
+	dir := filepath.Join("..", "..", "..", "..", ".shots", "routines-2")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -126,9 +194,27 @@ func TestOngoingLoopShots(t *testing.T) {
 				}
 			}
 			shot("ongoing")
-			og := &app.past.og
-			og.focus, og.moreFor, og.moreOpen, og.rhythm = "swj3zc4w", "swj3zc4w", true, true
+			// D429: the ⋯ on the clay menu, How often's submenu open.
+			app.past.og.focus = "swj3zc4w"
+			tt.Frame()
+			if err := tt.Click(spoken(app.L, app.L.T("past.more"), app.S.Past.Ongoing[2].Title)); err != nil {
+				t.Fatal(err)
+			}
+			tt.Frame()
+			tt.Key(0, ui.KeyDown)
+			tt.Key(0, ui.KeyRight)
 			shot("rhythm")
+			tt.Key(0, ui.KeyEscape)
+			tt.Key(0, ui.KeyEscape)
+			// Change when's own sheet at a time routine's ⋯.
+			app.past.og.focus = "r_weekly"
+			tt.Frame()
+			if err := tt.Click(spoken(app.L, app.L.T("past.more"), app.S.Past.Ongoing[4].Title)); err != nil {
+				t.Fatal(err)
+			}
+			tt.Frame()
+			_ = tt.ChooseMenuItem(app.L.T("og.retime"))
+			shot("retime")
 		}
 	}
 }

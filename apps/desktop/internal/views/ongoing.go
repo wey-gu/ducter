@@ -26,13 +26,12 @@ const ongoingRest = 200 * time.Millisecond
 
 type ongoingState struct {
 	asked bool
-	// The one menu open: pause (pauseFor) or ⋯ (moreFor); retime is Change
-	// when open inside the ⋯, with its every and time.
+	// The one menu open: pause (pauseFor); the ⋯ is the clay menu (D421).
+	// moreOpen is Change when's own sheet at the ⋯ (retime), with its every and time.
 	pauseFor, moreFor string
 	pauseOpen         bool
 	moreOpen          bool
 	retime            bool
-	rhythm            bool // D427: How often open inside the ⋯
 	reEvery, reTime   string
 	// mark is the item the marks popover holds (a routine or a task, as a PastItem).
 	mark *protocol.PastItem
@@ -541,6 +540,14 @@ func (a *App) ongoingActs(c *ui.Context, it *protocol.OngoingItem) {
 		if fix && a.button(c, a.L.T("og.run"), btnPrimary, t.ControlSM, t.Surface) {
 			a.ongoingAct(it, "run_now", "", nil)
 		}
+		// D429: its computer asleep and another awake: the move, on the
+		// person's tap (task_switch's move, then a round there now).
+		if h := it.Health; h != nil && h.Fix == "move" && h.MoveTo != nil && it.State != "paused" {
+			fix = true
+			if a.button(c, a.L.T("og.move"), btnPrimary, t.ControlSM, t.Surface) {
+				a.send(protocol.OngoingAct{T: "ongoing_action", Kind: it.Kind, ID: it.ID, Action: "move", Device: h.MoveTo.Device})
+			}
+		}
 		if !fix && it.State != "paused" && it.State != "running" && it.State != "proposed" {
 			label := a.L.T("og.run")
 			if it.Kind == "task" && !it.Loop {
@@ -576,64 +583,58 @@ func (a *App) ongoingActs(c *ui.Context, it *protocol.OngoingItem) {
 	})
 }
 
-// ongoingMore is the card's ⋯: Change when (a time routine), Open, End
-// (Stop checking for a task), and Mark.
+// ongoingMore is the card's ⋯ on the clay menu (D421, D429): Change when
+// (a time routine: its own small sheet at the ⋯, a time field has no place
+// in a menu), How often (a task in rounds: a submenu of the rhythms, the
+// one it keeps marked), Open, Mark, and End (Stop checking for a task).
 func (a *App) ongoingMore(c *ui.Context, it *protocol.OngoingItem) {
 	t := a.T
 	og := &a.past.og
 	ps := &a.past
-	open := og.moreOpen && og.moreFor == it.ID
 	b := ui.Box(c.Key("more")).Size(t.ControlSM, t.ControlSM).Radius(a.buttonRadius(t.ControlSM)).Label(spoken(a.L, a.L.T("past.more"), it.Title)).
-		Tooltip(a.L.T("past.more")).Role(ui.RoleButton).Cursor(ui.CursorPointer).Focusable().Expanded(open).Shrink(0)
+		Tooltip(a.L.T("past.more")).Role(ui.RoleButton).Cursor(ui.CursorPointer).Focusable().Shrink(0)
 	fg := a.buttonLook(c, b, btnText, t.ControlSM, t.Surface)
 	b.Draw(drawMore(fg))
-	if b.Clicked() {
-		og.moreFor, og.moreOpen, og.pauseOpen, og.retime, og.rhythm = it.ID, !open, false, false, false
-	}
-	if og.moreFor == it.ID {
-		timed := it.Kind == "routine" && it.Trigger != nil && it.Trigger.Kind == "time"
+	timed := it.Kind == "routine" && it.Trigger != nil && it.Trigger.Kind == "time"
+	a.menuButton(c, b, func(m *ui.Menu) {
+		if timed && m.Item(a.L.T("og.retime")).Chosen() {
+			tr := it.Trigger
+			og.moreFor, og.moreOpen, og.pauseOpen = it.ID, true, false
+			og.retime, og.reEvery, og.reTime = true, firstNonEmpty(tr.Every, "day"), firstNonEmpty(tr.Time, "09:00")
+		}
+		// D427: 多久跑一轮 / How often for a task in rounds: the rhythms, the one it keeps now marked.
+		if it.Loop && it.State != "paused" {
+			m.Submenu(a.L.T("og.rhythm"), func(m *ui.Menu) {
+				for _, n := range ongoingRhythms {
+					label := a.L.T("og.rhythm.m", a.duration(time.Duration(n)*time.Minute))
+					if m.Item(label).ID("m:" + itoa(int64(n))).Radio(it.EveryMs == int64(n)*60_000).Chosen() {
+						a.ongoingRhythmPick(it, n)
+					}
+				}
+			})
+		}
+		if it.TaskID != "" && m.Item(a.L.T("og.open")).Chosen() {
+			a.OpenTask(it.TaskID)
+			a.back = &returnTo{task: it.TaskID, route: RoutePast}
+		}
+		if m.Item(a.L.T("past.mark")).Chosen() {
+			og.mark = ongoingAsPast(it)
+			a.openMarks(og.mark, false)
+			ps.focus = ""
+		}
+		end := a.L.T("og.end")
+		if it.Kind == "task" && !it.Loop {
+			end = a.L.T("wait.cancel")
+		}
+		m.Separator()
+		if m.Item(end).Danger().Chosen() {
+			a.ongoingAct(it, "end", "", nil)
+		}
+	})
+	if timed && og.moreFor == it.ID && og.retime {
 		ui.PopoverBase(c, b, &og.moreOpen, func(panel ui.Element) {
-			w := float32(240)
-			if og.retime {
-				w = 380
-			}
-			a.ogPanel(c, panel, a.L.T("past.more"), w)
-			if timed {
-				if og.retime {
-					a.ongoingRetime(c, it)
-				} else if a.ogItem(c, "retime", a.L.T("og.retime"), false) {
-					tr := it.Trigger
-					og.retime, og.reEvery, og.reTime = true, firstNonEmpty(tr.Every, "day"), firstNonEmpty(tr.Time, "09:00")
-				}
-			}
-			// D427: 多久跑一轮 / How often for a task in rounds: the rhythms inline, the current one marked.
-			if it.Loop && it.State != "paused" {
-				if og.rhythm {
-					a.ongoingRhythm(c, it)
-				} else if a.ogItem(c, "rhythm", a.L.T("og.rhythm"), false) {
-					og.rhythm = true
-				}
-			}
-			if it.TaskID != "" && a.ogItem(c, "open", a.L.T("og.open"), false) {
-				og.moreOpen = false
-				a.OpenTask(it.TaskID)
-				a.back = &returnTo{task: it.TaskID, route: RoutePast}
-			}
-			if a.ogItem(c, "mark", a.L.T("past.mark"), false) {
-				og.moreOpen = false
-				og.mark = ongoingAsPast(it)
-				a.openMarks(og.mark, false)
-				ps.focus = ""
-			}
-			end := a.L.T("og.end")
-			if it.Kind == "task" && !it.Loop {
-				end = a.L.T("wait.cancel")
-			}
-			ui.Box(c.Key("rule")).Height(1).Margin(t.S1, t.S2).Background(t.LineSoft)
-			if a.ogItem(c, "end", end, true) {
-				og.moreOpen = false
-				a.ongoingAct(it, "end", "", nil)
-			}
+			a.ogPanel(c, panel, a.L.T("og.retime"), 380)
+			a.ongoingRetime(c, it)
 		})
 	}
 	if ps.markOpen && ps.marking == it.ID && og.mark != nil {

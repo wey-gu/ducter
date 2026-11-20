@@ -8,7 +8,8 @@
 // end (by the user) and are kept in <dataDir>/paused.json, and come back as they were on resume.
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import type { Bodies, OngoingAction, OngoingHealth, OngoingItem, OngoingRun } from "@ducter/protocol";
+import type { Bodies, LangTag, OngoingAction, OngoingHealth, OngoingItem, OngoingRun } from "@ducter/protocol";
+import { words } from "@ducter/protocol";
 import type { LogStore } from "@ducter/protocol/src/internal.ts";
 import type { Clock } from "./clock.ts";
 import { realClock } from "./clock.ts";
@@ -244,6 +245,8 @@ export function createOngoing(o: {
           return o.routines.end(id) ? { ok: true } : { ok: false, message: "It has already ended." };
         case "every":
           return { ok: false, message: "A routine on a schedule changes when it runs (retime)." };
+        case "move":
+          return { ok: false, message: "A routine's runs go where its place says." };
       }
     }
     const c = o.tasks.get(id);
@@ -288,6 +291,11 @@ export function createOngoing(o: {
       }
       case "retime":
         return { ok: false, message: "A task's wait keeps its own pace; say a new one to it." };
+      case "move": {
+        // D429: 换到醒着的电脑上跑: on the person's tap, the task moves there and runs a round now.
+        if (!loop || !o.loops) return { ok: false, message: "It doesn't run in rounds." };
+        return o.loops.move(id, String(a.device ?? ""));
+      }
       case "every": {
         if (!loop) return { ok: false, message: "It doesn't run in rounds." };
         const r = o.loops!.every(id, a.minutes, "user");
@@ -320,24 +328,118 @@ export function createOngoing(o: {
  * "我的循环任务都怎么样了" (routine_list), and "把 review 改成每小时" / "先停一下" / "别跑了"
  * (routine_change). They replace D114's routine_pause (one tool, the same budget).
  */
-export function registerOngoingTools(mcp: import("@ducter/protocol/src/internal.ts").McpHub, og: Ongoing, persona: () => string) {
+// D429: one ready line per thing that keeps going, in the person's language: its rhythm, its next
+// round, and on time or why not (and the fix that waits for their tap). The partner answers with it.
+const SAY = {
+  zh: {
+    locale: "zh-CN",
+    every: (r: string) => `${r}一轮`,
+    onTime: "「{title}」在跑，{how}，下一轮 {next}，按时。",
+    onTimeNoNext: "「{title}」在跑，{how}，按时。",
+    routineOnTime: "「{title}」在跑，{how}，下次 {next}，按时。",
+    running: "「{title}」在跑，{how}，这一轮正在跑。",
+    late: "「{title}」{how}，这一轮晚了 {late}：{why}。",
+    asleep: "{dev} 睡着了，醒了马上补一轮",
+    asleepAny: "它的电脑睡着了，醒了马上补一轮",
+    canMove: "；{to} 醒着，可以换到它上面跑",
+    lost: "还没开始，我在补",
+    stuck: "跑得太久了，可能卡住了",
+    quota: "「{title}」{how}，额度用完了，{when} 恢复后接着跑。",
+    signin: "「{title}」{how}，它的账号要重新登录。",
+    failing: "「{title}」{how}，最近 {n} 轮都没做成：{why}。",
+    back: "「{title}」在跑，{how}：{since} 被误停过，已经接着跑，下一轮 {next}。",
+    paused: "「{title}」暂停了。",
+    pausedUntil: "「{title}」暂停了，{until} 恢复。",
+    proposed: "「{title}」还在等你点头。",
+    waits: "「{title}」在等：{reason}。",
+    tomorrow: "明天 ",
+    at: (day: string, hm: string) => (day ? `${day} ${hm}` : hm),
+    min: (n: number) => `${n} 分钟`,
+    hm: (h: number, m: number) => (m ? `${h} 小时 ${m} 分钟` : `${h} 小时`),
+    rhythm: (min: number) => (min % 1440 === 0 ? (min === 1440 ? "每天" : `每 ${min / 1440} 天`) : min % 60 === 0 ? (min === 60 ? "每小时" : `每 ${min / 60} 小时`) : `每 ${min} 分钟`),
+  },
+  en: {
+    locale: "en-GB",
+    every: (r: string) => `a round ${r}`,
+    onTime: "“{title}” is running, {how}; the next is {next}, on time.",
+    onTimeNoNext: "“{title}” is running, {how}, on time.",
+    routineOnTime: "“{title}” is on, {how}; the next run is {next}, on time.",
+    running: "“{title}” is running, {how}; this round is going now.",
+    late: "“{title}” ({how}) is {late} late on this round: {why}.",
+    asleep: "{dev} is asleep, and it catches up as soon as it wakes",
+    asleepAny: "its computer is asleep, and it catches up as soon as it wakes",
+    canMove: "; {to} is awake and can run it",
+    lost: "it hasn't started yet, and I'm bringing it back",
+    stuck: "it has run far too long and may be stuck",
+    quota: "“{title}” ({how}) is out of allowance and carries on {when}.",
+    signin: "“{title}” ({how}) needs its account signed in again.",
+    failing: "“{title}” ({how}) hasn't worked for its last {n} rounds: {why}.",
+    back: "“{title}” is running again, {how}: it was stopped by mistake {since}; the next round is {next}.",
+    paused: "“{title}” is paused.",
+    pausedUntil: "“{title}” is paused; it resumes {until}.",
+    proposed: "“{title}” waits for your yes.",
+    waits: "“{title}” waits for: {reason}.",
+    tomorrow: "tomorrow",
+    at: (day: string, hm: string) => (day ? `${day} at ${hm}` : `at ${hm}`),
+    min: (n: number) => `${n} min`,
+    hm: (h: number, m: number) => (m ? `${h} h ${m} min` : `${h} h`),
+    rhythm: (min: number) => (min % 1440 === 0 ? (min === 1440 ? "every day" : `every ${min / 1440} days`) : min % 60 === 0 ? (min === 60 ? "every hour" : `every ${min / 60} hours`) : `every ${min} minutes`),
+  },
+};
+
+/** D429: the ready line for one thing that keeps going (routine_list's `say`). */
+export function sayOngoing(it: OngoingItem, lang: string, now: number, zone?: string): string {
+  const w = words(SAY, lang as LangTag);
+  const fillIn = (s: string, v: Record<string, string>) => s.replace(/\{(\w+)\}/g, (_, k: string) => v[k] ?? "");
+  const tz = zone ? { timeZone: zone } : {};
+  const ymd = (ms: number) => new Date(ms).toLocaleDateString("en-CA", tz);
+  const when = (iso?: string) => {
+    if (!iso) return "";
+    const ms = Date.parse(iso);
+    const hm = new Date(ms).toLocaleTimeString(w.locale, { hour: "2-digit", minute: "2-digit", hour12: false, ...tz });
+    if (ymd(ms) === ymd(now)) return w.at("", hm);
+    if (ymd(ms) === ymd(now + 86_400_000)) return w.at(w.tomorrow.trim(), hm);
+    const day = new Date(ms).toLocaleDateString(w.locale, Math.abs(ms - now) < 6 * 86_400_000 ? { weekday: "short", ...tz } : { month: "short", day: "numeric", ...tz });
+    return w.at(day, hm);
+  };
+  const dur = (min: number) => (min < 60 ? w.min(min) : w.hm(Math.floor(min / 60), min % 60));
+  const title = it.title;
+  const cadence = (it.cadence ?? "").replace(/\s*[（(][^（）()]*[）)]\s*$/, "").trim();
+  const how = it.kind === "routine" ? cadence : it.everyMs ? w.every(w.rhythm(Math.max(1, Math.round(it.everyMs / 60_000)))) : "";
+  const v = { title, how, next: when(it.nextAt) };
+  if (it.state === "proposed") return fillIn(w.proposed, v);
+  if (it.state === "paused") return it.pausedUntil ? fillIn(w.pausedUntil, { ...v, until: when(it.pausedUntil) }) : fillIn(w.paused, v);
+  if (it.kind === "task" && !it.loop) return fillIn(w.waits, { ...v, reason: it.reason ?? "" });
+  const h = it.health;
+  if (h?.state === "failing") return fillIn(w.failing, { ...v, n: String(h.fails ?? 3), why: (h.detail ?? "").replace(/[。.！!\s]+$/, "") });
+  if (h?.state === "late" && h.why === "quota") return fillIn(w.quota, { ...v, when: when(h.resetsAt) });
+  if (h?.state === "late" && h.why === "signin") return fillIn(w.signin, v);
+  if (h?.state === "late") {
+    const why = h.why === "asleep" ? fillIn(h.detail ? w.asleep : w.asleepAny, { dev: h.detail ?? "" }) + (h.moveTo ? fillIn(w.canMove, { to: h.moveTo.name }) : "") : h.why === "stuck" ? w.stuck : w.lost;
+    return fillIn(w.late, { ...v, late: dur(h.lateMin ?? 0), why });
+  }
+  if (it.state === "running") return fillIn(w.running, v);
+  if (h?.state === "back") return fillIn(w.back, { ...v, since: when(h.since) });
+  if (it.kind === "routine") return fillIn(it.nextAt ? w.routineOnTime : w.onTimeNoNext, v);
+  return fillIn(it.nextAt ? w.onTime : w.onTimeNoNext, v);
+}
+
+export function registerOngoingTools(mcp: import("@ducter/protocol/src/internal.ts").McpHub, og: Ongoing, persona: () => string, talk: { lang: () => string; zone?: () => string | undefined; now?: () => number } = { lang: () => "en" }) {
   const brief = (it: OngoingItem) => ({
     id: it.id,
-    kind: it.kind === "routine" ? "routine" : "task in rounds",
+    kind: it.kind === "routine" ? "routine" : it.loop ? "task in rounds" : "task waiting",
     title: it.title,
+    // D429: the answer itself: rhythm, next round, on time or why not, in the person's language.
+    say: sayOngoing(it, talk.lang(), talk.now?.() ?? Date.now(), talk.zone?.()),
     state: it.state,
-    ...(it.cadence ? { rhythm: it.cadence } : it.everyMs ? { rhythm: `every ${Math.round(it.everyMs / 60_000)} min` } : {}),
-    ...(it.reason ? { between: it.reason } : {}),
     ...(it.nextAt ? { nextAt: it.nextAt } : {}),
-    ...(it.pausedUntil ? { pausedUntil: it.pausedUntil } : {}),
-    ...(it.last ? { last: it.last } : {}),
-    ...(it.health ? { health: it.health } : { health: "on time" }),
-    ...(it.where ? { where: it.where } : {}),
+    ...(it.last?.line ? { lastRound: it.last.line } : {}),
+    ...(it.health ? { health: it.health.state, ...(it.health.fix ? { fix: it.health.fix } : {}) } : { health: "on time" }),
   });
   mcp.register(
     "partner",
     "routine_list",
-    "Routines and tasks in rounds (a review every 45 min): rhythm, next, last run's line, health (on time, late or failing with why), where. For \"我的循环任务都怎么样了\".",
+    "Routines and tasks in rounds (a review every 45 min). Each has say: its ready line in the user's language (rhythm, next round, on time or why not); reply with that line word for word. For \"这个循环怎么样了\" / \"我的循环任务都怎么样了\".",
     { type: "object", properties: {} },
     async () => og.list(persona()).map(brief),
   );

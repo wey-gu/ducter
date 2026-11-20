@@ -54,7 +54,16 @@ type OngoingHealth struct {
 	Detail   string `json:"detail,omitempty"`
 	ResetsAt string `json:"resetsAt,omitempty"`
 	Since    string `json:"since,omitempty"`
-	Fix      string `json:"fix,omitempty"` // run_now | resume
+	Fix      string `json:"fix,omitempty"` // run_now | resume | move (D429)
+	// MoveTo is an awake computer that can take its rounds while its own
+	// sleeps (D429: 换到醒着的电脑上跑).
+	MoveTo *OngoingMoveTo `json:"moveTo,omitempty"`
+}
+
+// OngoingMoveTo is the awake computer a late loop can move to (D429).
+type OngoingMoveTo struct {
+	Device string `json:"device"`
+	Name   string `json:"name"`
 }
 
 // OngoingLast is the latest run or round: when, how, its one line.
@@ -106,6 +115,7 @@ type OngoingAct struct {
 	Until   string          `json:"until,omitempty"`
 	Trigger *RoutineTrigger `json:"trigger,omitempty"`
 	Minutes int             `json:"minutes,omitempty"` // D427: every (多久跑一轮 / How often)
+	Device  string          `json:"device,omitempty"`  // D429: move (换到醒着的电脑上跑)
 }
 
 // decodeOngoing reads ongoing_result on its own (its items aren't Autofill's).

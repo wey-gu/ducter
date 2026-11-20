@@ -54,7 +54,13 @@ func (a *App) ongoingHealthLine(h *protocol.OngoingHealth) []string {
 	if h.LateMin > 0 && h.Why != "quota" {
 		late = a.L.T("og.h.late", a.duration(time.Duration(h.LateMin)*time.Minute))
 	}
-	return nonEmpty(late, why)
+	// D429: another computer awake to take it, its own fact beside the
+	// button that moves it there.
+	awake := ""
+	if h.Fix == "move" && h.MoveTo != nil {
+		awake = a.L.T("og.h.awake", h.MoveTo.Name)
+	}
+	return nonEmpty(late, why, awake)
 }
 
 // ongoingLastLine is the last run or round: when, and its one line.
@@ -124,14 +130,14 @@ func (a *App) ongoingHealthRow(c *ui.Context, it *protocol.OngoingItem) {
 		ink = t.Done.Ink
 	}
 	parts := a.ongoingHealthLine(h)
-	ui.Row(c.Key("health")).Gap(t.S2).AlignItems(ui.Center).MinWidth(0).Role(ui.RoleStatus).Label(spoken(a.L, parts...)).Children(func() {
+	ui.Row(c.Key("health")).Gap(t.S2).Wrap().AlignItems(ui.Center).MinWidth(0).Role(ui.RoleStatus).Label(spoken(a.L, parts...)).Children(func() {
 		a.glyph(c, 14, drawHealth(h.State, ink))
 		for _, p := range parts {
 			w := 600
 			if h.State == "back" {
 				w = 500
 			}
-			uiText(c, p).FontSize(t.SM).FontWeight(w).TextColor(ink).SingleLine().Shrink(1).MinWidth(0).Tooltip(p)
+			uiText(c, p).FontSize(t.SM).FontWeight(w).TextColor(ink).SingleLine().Shrink(1).MinWidth(0).Tooltip(p) // D429: the facts wrap; one too long for its line clips
 		}
 	})
 }
@@ -165,23 +171,4 @@ func ongoingWhereFacts(w *protocol.OngoingWhere) []string {
 func (a *App) ongoingRhythmPick(it *protocol.OngoingItem, minutes int) {
 	a.send(protocol.OngoingAct{T: "ongoing_action", Kind: it.Kind, ID: it.ID, Action: "every", Minutes: minutes})
 	it.EveryMs = int64(minutes) * 60_000
-}
-
-// ongoingRhythm is How often inside the ⋯: the rhythms as choices, the
-// one it keeps now selected; a pick sends every and closes the menu.
-func (a *App) ongoingRhythm(c *ui.Context, it *protocol.OngoingItem) {
-	t := a.T
-	og := &a.past.og
-	ui.Column(c.Key("rhythm")).Gap(t.S2).Padding(t.S2, t.S2, t.S1, t.S2).Children(func() {
-		uiText(c, a.L.T("og.rhythm")).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
-		ui.Row(c.Key("every")).Gap(t.S1 + 2).Wrap().Role(ui.RoleRadioGroup).Children(func() {
-			for _, m := range ongoingRhythms {
-				label := a.hanTight(a.L.T("og.rhythm.m", a.duration(time.Duration(m)*time.Minute)))
-				if a.choice(c, "m:"+itoa(int64(m)), label, it.EveryMs == int64(m)*60_000, "") {
-					og.moreOpen, og.rhythm = false, false
-					a.ongoingRhythmPick(it, m)
-				}
-			}
-		})
-	})
 }

@@ -81,8 +81,10 @@ const W = {
     back: "「{title}」{at} 被误停了，已经接着跑，下一轮 {next}。",
     asleep: "{dev} 睡着了或连不上。醒了会马上补跑一轮。",
     asleepAny: "它的电脑睡着了或连不上。醒了会马上补跑一轮。",
+    asleepMove: "{dev} 睡着了或连不上。{to} 醒着，可以先换到它上面跑；不换的话，{dev} 醒了会马上补跑一轮。",
     unknown: "还没开始。",
     runNow: "现在跑一次",
+    move: "换到醒着的电脑上跑",
   },
   en: {
     late: "“{title}” was due for a round at {due} and is {min} min late: {why}",
@@ -91,8 +93,10 @@ const W = {
     back: "“{title}” stopped by mistake at {at}. It's running again; next round {next}.",
     asleep: "{dev} is asleep or can't be reached. It catches up with one round as soon as it's back.",
     asleepAny: "its computer is asleep or can't be reached. It catches up with one round as soon as it's back.",
+    asleepMove: "{dev} is asleep or can't be reached. {to} is awake and can run it there; otherwise it catches up with one round as soon as {dev} is back.",
     unknown: "it hasn't started yet.",
     runNow: "Run it now",
+    move: "Run it on an awake computer",
   },
 };
 
@@ -112,6 +116,8 @@ export interface Loops {
   end(taskId: string, by: "user" | "partner" | "condition"): boolean;
   /** A round now, outside the rhythm (the next one follows from it). */
   runNow(taskId: string): boolean;
+  /** D429: 换到醒着的电脑上跑: the task moves to that computer (task_switch's move), then a round now. */
+  move(taskId: string, device: string): Promise<{ ok: boolean; message?: string }>;
   /** work.ts: a round's wake reached the task: a round that couldn't start has started (its rhythm counts from now). */
   woke(taskId: string): void;
   /** work.ts: a round's wake couldn't be delivered (its computer asleep, the runner not up). */
@@ -119,6 +125,14 @@ export interface Loops {
   /** Tests: one pass of the keeper and the watchdog now. */
   sweep(): void;
   stop(): void;
+}
+
+/** D429: what the keeper knows of the computers (core.ts): names, an awake one for a task, the move. */
+export interface LoopWhere {
+  nameOf(device: string): string | undefined;
+  /** Another computer, online now, that can take this task's rounds (never a folder's; a repo's only where its branch needn't move). */
+  awake(taskId: string): { device: string; name: string } | undefined;
+  move(taskId: string, device: string): Promise<{ ok: boolean; message?: string }>;
 }
 
 interface State {
@@ -148,11 +162,14 @@ export function createLoops(o: {
   lang?: () => LangTag;
   /** The person's zone, for times on the cards. */
   zone?: () => string | undefined;
+  /** D429: the computers: a name by device id ("local" is the home), another one awake that can take a task's rounds, and the move itself. */
+  where?: LoopWhere;
 }): Loops {
   const { log, tasks, waiters } = o;
   const clock = o.clock ?? realClock;
   const loops = new Map<string, State>();
   const told = new Map<string, string>(); // decisionId -> taskId (the watchdog's open cards)
+  const moveOf = new Map<string, string>(); // D429: decisionId -> the awake computer its Go moves the task to
   const firedSeen = new Set<string>(); // tasks whose own wait fired at least once (rounds)
   let stopped = false;
   // The keeper's own arms (a lost round, a retry, Run now, a new rhythm): not the task's pace.
@@ -334,7 +351,9 @@ export function createLoops(o: {
       const taskId = told.get(b.decisionId);
       if (!taskId) return;
       told.delete(b.decisionId);
-      if (b.option === "go") runNow(taskId);
+      const to = moveOf.get(b.decisionId);
+      moveOf.delete(b.decisionId);
+      if (b.option === "go") to ? void move(taskId, to) : runNow(taskId);
     }
   };
 
@@ -361,7 +380,11 @@ export function createLoops(o: {
     const grace = graceOf(b.everyMs);
     if (s.wakeFail && now - s.wakeFail.at >= 0) {
       const lateMin = Math.round((now - (s.lastFire ?? s.wakeFail.at)) / MIN);
-      if (lateMin * MIN >= grace) return { state: "late", why: s.wakeFail.asleep ? "asleep" : "lost", lateMin, ...(s.wakeFail.dev ? { detail: s.wakeFail.dev } : {}), fix: "run_now" };
+      if (lateMin * MIN >= grace) {
+        // D429: asleep, and another computer is awake to take it: that is the one fix.
+        const to = s.wakeFail.asleep ? o.where?.awake(b.taskId) : undefined;
+        return { state: "late", why: s.wakeFail.asleep ? "asleep" : "lost", lateMin, ...(s.wakeFail.dev ? { detail: s.wakeFail.dev } : {}), ...(to ? { fix: "move" as const, moveTo: to } : { fix: "run_now" as const }) };
+      }
     }
     // A round going far longer than its rhythm.
     if ((c.attention === "working" || c.attention === "queued") && s.lastFire && (s.lastHot ?? 0) >= s.lastFire && now - s.lastFire > stuckOf(b.everyMs)) return { state: "late", why: "stuck", since: iso(s.lastFire), lateMin: Math.round((now - s.lastFire) / MIN), fix: "run_now" };
@@ -382,11 +405,18 @@ export function createLoops(o: {
     let question: string;
     if (h.why === "stuck") question = fill(w.stuck, { title, since: hm(Date.parse(h.since ?? iso(now))) });
     else if (h.state === "failing") question = fill(w.failing, { title, n: String(h.fails ?? FAILS_TO_TELL), why: (h.detail ?? "").replace(/[。.！!]+$/, "") });
-    else question = fill(w.late, { title, due: hm(s.lastFire ?? now), min: String(h.lateMin ?? 0), why: h.why === "asleep" ? (h.detail ? fill(w.asleep, { dev: h.detail }) : w.asleepAny) : w.unknown });
+    else {
+      const dev = h.detail;
+      const why = h.why !== "asleep" ? w.unknown : dev && h.moveTo ? fill(w.asleepMove, { dev, to: h.moveTo.name }) : dev ? fill(w.asleep, { dev }) : w.asleepAny;
+      question = fill(w.late, { title, due: hm(s.lastFire ?? now), min: String(h.lateMin ?? 0), why });
+    }
     s.told = now;
     const decisionId = `d_${crypto.randomUUID().replaceAll("-", "").slice(0, 10)}`;
     told.set(decisionId, s.b.taskId);
-    log.append({ stream: "channel", origin: "system", kind: "decision", body: { decisionId, question, goLabel: w.runNow, defaultOption: "hold", reversible: true, loop: { taskId: s.b.taskId } } });
+    // D429: asleep with another computer awake: Go moves it there (the person's tap is the go); else Go runs a round now.
+    const move = h.fix === "move" && h.moveTo ? h.moveTo.device : undefined;
+    if (move) moveOf.set(decisionId, move);
+    log.append({ stream: "channel", origin: "system", kind: "decision", body: { decisionId, question, goLabel: move ? w.move : w.runNow, defaultOption: "hold", reversible: true, loop: { taskId: s.b.taskId, ...(move ? { move } : {}) } } });
   }
 
   function sweep() {
@@ -413,6 +443,18 @@ export function createLoops(o: {
     const w = armOwn({ reason: s.b.reason, taskId, at: iso(clock.now() + 1000), wakes: "task" });
     for (const v of before) waiters.cancel(v.waiterId, { by: "user", replacedBy: w.waiterId });
     return true;
+  }
+
+  /** D429: the person tapped 换到醒着的电脑上跑: the task moves (task_switch's move, its saved progress), then its round runs there now. */
+  async function move(taskId: string, device: string): Promise<{ ok: boolean; message?: string }> {
+    const s = loops.get(taskId);
+    if (!s || s.b.state === "ended") return { ok: false, message: "It doesn't run in rounds." };
+    if (!o.where) return { ok: false, message: "Moving a task to another computer isn't available here." };
+    const r = await o.where.move(taskId, device).catch((err: Error) => ({ ok: false, message: err.message }));
+    if (!r.ok) return r;
+    s.wakeFail = undefined;
+    runNow(taskId);
+    return { ok: true };
   }
 
   // ---------- rebuild ----------
@@ -442,12 +484,13 @@ export function createLoops(o: {
     } else if (e.kind === "decision") {
       const d = e.body as Bodies["decision"];
       if (d.loop?.taskId) told.set(d.decisionId, d.loop.taskId);
+      if (d.loop?.move) moveOf.set(d.decisionId, d.loop.move);
     } else if (e.kind === "report") {
       // Failed rounds in a row, across a restart.
       const r = e.body as Bodies["report"];
       if (r.state === "failed") failsOf.set(r.taskId, { n: (failsOf.get(r.taskId)?.n ?? 0) + 1, why: r.summary.slice(0, 160) });
       else if (r.state === "done" || r.state === "progress") failsOf.delete(r.taskId);
-    } else told.delete((e.body as Bodies["decision_resolved"]).decisionId);
+    } else told.delete((e.body as Bodies["decision_resolved"]).decisionId), moveOf.delete((e.body as Bodies["decision_resolved"]).decisionId);
   }
   for (const [taskId, s] of loops) {
     s.lastFire = firedAt.get(taskId);
@@ -546,6 +589,7 @@ export function createLoops(o: {
     },
     end: (taskId, by) => end(taskId, by),
     runNow,
+    move,
     woke(taskId) {
       const s = loops.get(taskId);
       if (s?.wakeFail) (s.wakeFail = undefined), (s.lastFire = clock.now());
@@ -554,9 +598,12 @@ export function createLoops(o: {
       const s = loops.get(taskId);
       if (!s || s.b.state !== "on") return;
       const c = tasks.get(taskId);
-      const dev = c?.place.device && c.place.device !== "local" ? o.workers?.()?.link(c.place.device) : undefined;
+      const on = c?.place.device && c.place.device !== "local" ? c.place.device : "local";
+      const dev = on !== "local" ? o.workers?.()?.link(on) : undefined;
       const asleep = !!dev && !dev.online();
-      s.wakeFail = { at: s.wakeFail?.at ?? clock.now(), error: error.slice(0, 200), asleep: asleep || /asleep|offline|can't be reached|unreachable|not connected|睡着|连不上/i.test(error), ...(dev ? { dev: dev.name } : {}) };
+      // D429: the computer by its name wherever it is known (a worker's link, else the home's list; the home itself too).
+      const name = dev?.name ?? o.where?.nameOf(on);
+      s.wakeFail = { at: s.wakeFail?.at ?? clock.now(), error: error.slice(0, 200), asleep: asleep || /asleep|offline|can't be reached|unreachable|not connected|睡着|连不上/i.test(error), ...(name ? { dev: name } : {}) };
       // Try again soon: the one catch-up round when it can start (a single timer, never a burst).
       const before = ownWaits(taskId);
       rest(taskId, s.b.reason);

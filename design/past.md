@@ -183,6 +183,31 @@ Air, Codex). A task in rounds says **每 {n} 一轮 / A round every {n}**. The p
 任务都怎么样了" from the same list (`routine_list`, the one not on time first) and changes one by
 talking (`routine_change`: pause, resume, run now, every, end). `#ongoing` opens the tab.
 
+### Saying how it's doing, and running it where it can (D429)
+
+- **"这个循环怎么样了" in one line.** `routine_list` gives each item a ready line, `say`, in the
+  person's language: the rhythm, the next round and on time, or why not and the fix waiting for
+  their tap (「看 nowledge-co 的评审请求」在跑，每 45 分钟一轮，下一轮 14:46，按时。 / “Review
+  requests on nowledge-co” is running, a round every 45 minutes; the next is at 14:46, on time.).
+  Rule 15: always `routine_list` first, then that line for the one asked about, as it is; about all
+  of them, their lines, the one not on time first. No internals ("resting between rounds") reach
+  the person because the list no longer carries them.
+- **A round knows it is a round.** The wake a task in rounds gets ends with one more paragraph:
+  **这是循环里的一轮：这一轮做完，用 report_to_main 报 progress，不要报 done；下一轮到时 Ducter 会叫你。**
+  (with the person's until: done only once 「{until}」 holds). The transcript reads it as the same
+  wake hairline.
+- **The late line names the computer** wherever it is known (a worker's name, the home's own), and
+  when that computer is asleep and another is awake to take it (the home first: it is the one
+  keeping time; else an online worker with the task's agent signed in; never a folder's task, nor
+  a repo's, whose move pushes its branch and keeps task_switch's own Go), the line adds **{name}
+  醒着 / {name} is awake** and the card's one fix becomes **换到醒着的电脑上跑 / Run it on an awake
+  computer** (`fix: "move"`, `moveTo`). The keeper's card says it too, with that Go. The tap is the
+  person's go: the task moves there with D157's move (its saved progress), then a round runs at
+  once. Nothing moves without the tap.
+- **The Mac's ⋯ is the clay menu (D421)**: 多久跑一轮 a submenu of the rhythms with the current one
+  marked; 改时间 opens its own small sheet at the ⋯ (a time field has no place in a menu); 打开,
+  标记, then 结束 in the failed ink.
+
 ## Edge cases
 
 - **The agent's session is gone** (an old Claude Code session pruned, another computer): Continue

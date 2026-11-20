@@ -1,0 +1,25 @@
+<!-- D410's "before": the generic form 0.0.99's partner wrote for 「给我做个小应用，记一下出差花销」 (re-typed from the author's screenshot, 2026-11-20). -->
+<style>
+  body { padding: 16px; font-size: 15px; }
+  h2 { font-size: 18px; margin: 0 0 12px; }
+  label { display: block; font-size: 13px; color: var(--d-muted); margin: 10px 0 4px; }
+  input, select { width: 100%; font: inherit; padding: 8px; border-radius: 8px; border: 1px solid var(--d-line); background: var(--d-card); color: var(--d-ink); box-sizing: border-box; }
+  button { margin-top: 12px; padding: 6px 14px; font: inherit; }
+  .empty { font-weight: 700; margin-top: 12px; }
+</style>
+<h2>记一笔</h2>
+<label>出差名称</label><input id="trip" placeholder="如：北京出差" />
+<label>日期</label><input id="day" type="date" />
+<label>分类</label><select id="cat"><option>交通</option><option>住宿</option><option>餐饮</option><option>其他</option></select>
+<label>金额</label><input id="amt" type="number" />
+<label>币种</label><input id="cur" value="CNY" />
+<label>备注</label><input id="note" />
+<button id="save">保存</button>
+<h2 style="margin-top:24px">花销明细</h2>
+<select id="filter"><option>全部出差</option></select>
+<p class="empty" id="list">暂无花销</p>
+<script>
+  function draw() { const xs = ducter.get("items") || []; document.getElementById("list").textContent = xs.length ? xs.map((x) => x.trip + " " + x.amt).join("\n") : "暂无花销"; }
+  document.getElementById("save").onclick = () => { const xs = ducter.get("items") || []; xs.push({ trip: document.getElementById("trip").value, amt: document.getElementById("amt").value }); ducter.set("items", xs); draw(); };
+  ducter.onChange(draw); draw();
+</script>

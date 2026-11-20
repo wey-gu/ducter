@@ -2245,12 +2245,22 @@ Codex first, once OAR is near 1.0. See `research/17`.
 ## D405: 小应用 / Apps (`apps.md`, research/166)
 
 - [ ] **Open the Mac's app window in the real app** (the test renderer draws no web view): the scheme, the long poll, the theme, a resize, Cmd-W. Trigger: the next run of the built app.
-- [ ] **The Mac window's own line to change it, and 改回去** (the web's sheet has both; the Mac sends the person to the conversation). Trigger: the window opened for real.
+- [x] **The Mac window's own line to change it, and 改回去**: built (D410 (6)).
 - [ ] **Sharing an app** with someone: a link, their own data or a shared copy, viewer-pays and a first-use consent (research/166 §3). Trigger: Ducter Edge, or the first "发给她用一下".
 - [ ] **Point to change**: tap part of the app and say what to change (every reference does it). Trigger: an edit the partner applied to the wrong part twice.
 - [ ] **An app made by a coding task** (several files, a library, a build) when one file is not enough. Trigger: an app over ~60K characters, or one the partner can't fit.
 - [x] **A routine that fills an app** (the review routine's PR board, research/166 §2): built as D407 (the review board from review_report; app_data for other routines).
 - [ ] **Offline on the phone**: the last version and data kept in the shell, writes queued. Trigger: a person who opens an app with the home away.
-- [ ] **Delete from Made for you** (`app_remove` exists; no button). Trigger: a person with an app they don't want listed.
+- [x] **Delete** an app: from 你的小应用's 「⋯」 and by asking, with 撤销 (D410 (2)).
 - [ ] **An app's card in chat apps** (Telegram, Slack, iMessage get the partner's words only, no card or link). Trigger: an app made from a chat app.
 - [ ] **Human raters for 小应用 / App** and its line (LLM proxies only so far). Trigger: the next naming round with people.
+
+## D410: 你的小应用 / Your apps (`apps.md`, research/169)
+
+- [ ] **Human raters for 你的小应用 / Your apps** against 我的小应用 and 小应用 alone (research/169 §4 is haiku, n = 6). Trigger: the next naming round with people.
+- [ ] **Bring back a deleted app after its toast or card is gone** (the home keeps it 30 days; no list yet). Trigger: a person who asks for one they deleted.
+- [ ] **Ideas from the calendar and routines** on the empty shelf (only noted bookings now). Trigger: an empty shelf with a calendar connected and no booking noted.
+- [ ] **Arrange the shelf by hand** (order, folders). Trigger: someone with more than a dozen apps.
+- [ ] **The kit on the Mac's own fonts** (an app can't load Bricolage; it falls back to the system font). Trigger: a designer review of an app window.
+- [ ] **Rename and delete inside the Mac's app window** (its 「⋯」 brings the main window's shelf forward to do them). Trigger: the author uses them from the app window.
+- [ ] **A real phone** walk of the shelf and the app sheet (shots are headless Chrome at 390). Trigger: the next iOS Simulator pass.

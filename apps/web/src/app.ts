@@ -100,7 +100,7 @@ export function morph(apply: () => void) {
 }
 /** Settings (D150) is a list of sections; page is the one pushed ("" is the list). */
 export type SettingsPage = "" | "partner" | "memory" | "peers" | "notify" | "accounts" | "todos" | "chats" | "autofill" | "devices" | "phone";
-export type Sheet = { kind: "decision"; id: string } | { kind: "settings"; page?: SettingsPage } | { kind: "newtask" } | { kind: "switch" } | { kind: "past" } | { kind: "did" } | { kind: "pins" } | { kind: "app"; id: string } | { kind: "recall"; seq: number } | { kind: "learned" } | { kind: "pile" } | { kind: "hand" } | { kind: "review"; groupId: string } | null;
+export type Sheet = { kind: "decision"; id: string } | { kind: "settings"; page?: SettingsPage } | { kind: "newtask" } | { kind: "switch" } | { kind: "past" } | { kind: "did" } | { kind: "pins" } | { kind: "app"; id: string } | { kind: "apps" } | { kind: "recall"; seq: number } | { kind: "learned" } | { kind: "pile" } | { kind: "hand" } | { kind: "review"; groupId: string } | null;
 
 /** 开一件事 / New task's sheet (D128): what the user chose and typed, and how starting went. */
 export interface NewTaskDraft {
@@ -1049,6 +1049,8 @@ class AppState {
     if (c === "next" || c === "prev") return void this.walk?.(c === "next" ? 1 : -1);
     // D300: 替你做过的 / Done for you (the Mac menu).
     if (c === "did") return void (this.sheet?.kind === "did" ? ((this.sheet = null), this.changed()) : openDid());
+    // D410: 你的小应用 / Your apps (the Mac menu, ⌘K): pressed again, closed.
+    if (c === "apps") return void (this.sheet?.kind === "apps" ? ((this.sheet = null), this.changed()) : ((this.sheet = { kind: "apps" }), this.send({ t: "apps" }), this.changed()));
     // D285: 做过的事 / Past tasks (the Mac's ⌘Y).
     if (c === "past") return void (this.sheet?.kind === "past" ? ((this.sheet = null), this.changed()) : openPast());
     // D216: ⌘O, 打开一件事 / Open a task: the switcher (pressed again, closed).
@@ -2504,6 +2506,13 @@ class AppState {
       return this.changed();
     }
     this.route = { name: "conv" };
+    // D410: #apps opens the shelf.
+    if (hash === "#apps") {
+      history.replaceState(null, "", location.pathname);
+      this.sheet = { kind: "apps" };
+      this.send({ t: "apps" });
+      return this.changed();
+    }
     // D405: #app=<id> opens one of the person's apps (a link from the Mac, a push, a bookmark).
     const app = /^#app=([a-z0-9]{1,16})$/.exec(hash);
     if (app) {

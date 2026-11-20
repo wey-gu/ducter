@@ -166,6 +166,8 @@ func (a *App) placeSegments(c *ui.Context, here Route) {
 	}{
 		{"devices", a.L.T("nav.devices"), a.L.T("nav.devices.label"), drawDevices, here == RouteDevices, a.OpenDevices},
 		{"onhand", a.L.T("nav.onhand"), a.L.T("nav.onhand"), drawOnHand, here == RouteOnHand, func() { a.Route = RouteOnHand; a.markRead() }},
+		// D410: 你的小应用 / Your apps, the app window mark.
+		{"apps", a.L.T("apps.place"), a.L.T("apps.title"), drawAppsMark, here == RouteApps, a.OpenApps},
 		{"settings", a.L.T("nav.settings"), a.L.T("nav.settings"), drawGear, inSettings, a.OpenSettings},
 	}
 	const pad, seg = float32(3), float32(28)

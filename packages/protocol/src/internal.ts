@@ -203,7 +203,11 @@ export interface CoreApi {
     get(id: string): import("./apps.ts").AppMeta | undefined;
     html(id: string): string | undefined;
     data(id: string): Record<string, unknown>;
-    make(persona: string, a: { name: string; html: string; ask?: string; note?: string; task?: import("./apps.ts").AppTask }): { ok: true; app: import("./apps.ts").AppMeta } | { ok: false; error: string };
+    make(persona: string, a: { name: string; html: string; ask?: string; note?: string; task?: import("./apps.ts").AppTask; data?: Record<string, unknown>; summary?: string; icon?: import("./apps.ts").AppIcon }): { ok: true; app: import("./apps.ts").AppMeta } | { ok: false; error: string };
+    /** D410: deleted on the person's word, kept a while to bring back (the card's 撤销 / Undo). */
+    remove?(id: string): boolean;
+    /** D410: the app's one line for its shelf tile. */
+    summarize?(id: string, text: string): boolean;
     change(id: string, c: { html?: string; edits?: { find: string; replace: string }[]; name?: string; note?: string }): { ok: true; app: import("./apps.ts").AppMeta } | { ok: false; error: string };
     put(id: string, key: string, value: unknown, by: "app" | "partner"): { ok: true } | { ok: false; error: string };
     answered(id: string, ref?: string): void;

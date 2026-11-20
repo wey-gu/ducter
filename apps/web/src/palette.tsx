@@ -112,6 +112,8 @@ const PLACES: { id: string; key: string; keys?: string; run: () => void }[] = [
   { id: "onhand", key: "palette.go.onhand", keys: "⌘2", run: () => A.command("onhand") },
   { id: "past", key: "palette.go.past", keys: "⌘Y", run: () => openPast() },
   { id: "made", key: "palette.go.made", run: () => openPast("", "made") },
+  // D410: 你的小应用 / Your apps.
+  { id: "apps", key: "apps.title", run: () => A.command("apps") },
   { id: "devices", key: "palette.go.devices", keys: "⌘3", run: () => A.command("devices") },
   { id: "settings", key: "palette.go.settings", keys: "⌘,", run: () => A.command("settings") },
 ];

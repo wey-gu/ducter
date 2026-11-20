@@ -318,6 +318,8 @@ interface RunResult {
   appCards?: { step: number; change: string; name: string; id: string }[];
   appAnswers?: number;
   appsNow?: { id: string; name: string; version: number; html: string; data: Record<string, unknown>; task?: string }[];
+  /** D410: a message carried the shelf's card. */
+  shelf?: boolean;
   appsSeeded?: { id: string; html: string }[];
   dropped?: number;
 }
@@ -827,7 +829,7 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
     for (const c of appCards.filter((x) => x.step === i)) {
       const a = core.apps.get(c.id);
       const html = core.apps.html(c.id) ?? "";
-      lines.push(`  [an app card under the message: ${c.change} \"${c.name}\", with Open] the app's file now (v${a?.version ?? "?"}, ${html.length} characters): ${html.length > 2500 ? html.slice(0, 1200) + " … " + html.slice(-1200) : html}`);
+      lines.push(`  [an app card under the message: ${c.change} \"${c.name}\", with Open] the app's file now (v${a?.version ?? "?"}, ${html.length} characters): ${html.length > 2500 ? html.slice(0, 1200) + " … " + html.slice(-1200) : html}; its data now (what it opens with): ${(() => { const d = JSON.stringify(core.apps.data(c.id)); return d.length > 1200 ? d.slice(0, 1200) + "…" : d; })()}`);
     }
     for (const b of blocks.filter((x) => x.step === i)) lines.push(`  [the message also shows a ${b.ui.type === "chart" ? `${b.ui.kind} chart` : b.ui.type} block the partner wrote] ${JSON.stringify({ ...b.ui, plain: undefined })}`);
     for (const q of recalls.filter((x) => x.step === i)) lines.push(`  [searched long-term memory (invisible to the user)] ${q.query}`);
@@ -878,13 +880,14 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   }
   if (rulesNow.length) lines.push(`--- the person's rules after the run: ${rulesNow.map((x) => `"${x.text}" (${x.never ? "never" : "always"} ${x.harness}${x.kinds?.length ? `, ${x.kinds.join("/")}` : ""})`).join("; ")}`);
   await partner.close().catch(() => {});
+  const shelf = core.log.read({ stream: "channel", kinds: ["ai_msg"], limit: 400 }).some((ev) => (ev.body as Bodies["ai_msg"]).shelf === true);
   await core.stop().catch(() => {});
   tuwa?.stop();
   const boundRefs = new Map(core.tasks.list().filter((c) => c.source).map((c) => [c.taskId, c.source!.ref] as [string, string]));
   const appsNow = core.apps.list(persona.id ?? core.persona.id).map((m) => ({ id: m.id, name: m.name, version: m.version, html: core.apps.html(m.id) ?? "", data: core.apps.data(m.id), ...(m.task ? { task: m.task.id } : {}) }));
   // D405: the apps the model wrote, kept whole for a look (the results file clips them); never committed.
-  if (process.env.DUCTER_EVAL_APPS_DIR) for (const a of appsNow) writeFileSync(join(process.env.DUCTER_EVAL_APPS_DIR, `${sc.id}-${a.id}-v${a.version}.html`), a.html);
-  return { sc, visible, dayCards, calKinds, todoCards, boundRefs, blocks, shown, appCards, appAnswers, appsNow, appsSeeded, dropped, tools, opened: fr.opened, sent, keyOf, idOf, dataDir, usage, error, ms: Date.now() - t0, transcript: lines.join("\n"), recalls, threadSearches, remembered: mem.added, memAttempts, sources, retitles, bridgeSent, work: { ...work, asks }, bodies, saidAsks, rulesNow };
+  if (process.env.DUCTER_EVAL_APPS_DIR) for (const a of appsNow) writeFileSync(join(process.env.DUCTER_EVAL_APPS_DIR, `${sc.id}-${a.id}-v${a.version}.html`), a.html), writeFileSync(join(process.env.DUCTER_EVAL_APPS_DIR, `${sc.id}-${a.id}-v${a.version}.json`), JSON.stringify({ name: a.name, data: a.data }));
+  return { sc, visible, dayCards, calKinds, todoCards, boundRefs, blocks, shown, appCards, appAnswers, appsNow, shelf, appsSeeded, dropped, tools, opened: fr.opened, sent, keyOf, idOf, dataDir, usage, error, ms: Date.now() - t0, transcript: lines.join("\n"), recalls, threadSearches, remembered: mem.added, memAttempts, sources, retitles, bridgeSent, work: { ...work, asks }, bodies, saidAsks, rulesNow };
 }
 
 const r_opened = (o: Opened[], step: number) => o.filter((x) => x.step === step);
@@ -1073,6 +1076,12 @@ function check(r: RunResult): string[] {
     const want = r.idOf.get(e.appTask);
     if (!(r.appsNow ?? []).some((a) => a.task === want)) fails.push(`no app is kept current by task ${e.appTask} (apps: ${(r.appsNow ?? []).map((a) => `${a.name}→${a.task ?? "none"}`).join(", ") || "none"})`);
   }
+  // D410: the app made for something known: its name, its data (prefilled), no grey controls; deleted; the shelf shown.
+  if (e.appName && !(r.appsNow ?? []).some((a) => e.appName!.test(a.name))) fails.push(`no app named like ${e.appName} (apps: ${(r.appsNow ?? []).map((a) => a.name).join(", ") || "none"})`);
+  if (e.appData && !(r.appsNow ?? []).some((a) => e.appData!.test(JSON.stringify(a.data)))) fails.push(`no app's data matches ${e.appData} (newest: ${newest ? JSON.stringify(newest.data).slice(0, 200) : "none"})`);
+  for (const re of e.appHtmlForbid ?? []) if ((r.appsNow ?? []).some((a) => re.test(a.html))) fails.push(`an app's file has ${re}`);
+  if (e.appsLeft !== undefined && (r.appsNow ?? []).length !== e.appsLeft) fails.push(`${(r.appsNow ?? []).length} apps left, not ${e.appsLeft}`);
+  if (e.shelf && !r.shelf) fails.push("no shelf card under a message");
   if (e.appKept) for (const s of r.appsSeeded ?? []) if ((r.appsNow ?? []).find((a) => a.id === s.id)?.html !== s.html) fails.push("a seeded app's file was changed");
   if (e.noMadeShown && (r.shown?.length || 0) > 0) fails.push(`showed ${r.shown!.join(", ")} though nothing should be`);
   for (const re of e.uiRequire ?? []) if (!re.test(blockText)) fails.push(`the block lacks ${re}`);

@@ -28,6 +28,34 @@ export const APP_TASK_KEYS_PER_CALL = 40;
 /** D407: after this many rounds (a review task's review_report, another repeating task's reports), Ducter offers once to keep them in a small app. */
 export const BOARD_OFFER_AFTER = 3;
 
+/** D410: the one line an app says of itself on its shelf tile (ducter.summary), in characters. */
+export const APP_SUMMARY_MAX = 80;
+/** D410: a deleted app can be brought back for this long (its card's 撤销 / Undo, the shelf's toast). */
+export const APP_REMOVED_DAYS = 30;
+/** D410: the marks an app's tile can carry (drawn, never an emoji), the partner's pick when it makes one. */
+export const APP_ICONS = ["window", "coins", "check", "board", "list", "chart"] as const;
+export type AppIcon = (typeof APP_ICONS)[number];
+/** D410: the tiles' clay tints: the person's muted clays (D285), never a state's colour. */
+export const APP_TINTS = ["clay", "sand", "sage", "mist", "lilac", "stone"] as const;
+export type AppTint = (typeof APP_TINTS)[number];
+/** D410: an app's tint: its own, else one picked from its id (the same on every device). */
+export function appTint(m: { id: string; tint?: string }): AppTint {
+  if (m.tint && (APP_TINTS as readonly string[]).includes(m.tint)) return m.tint as AppTint;
+  let h = 0;
+  for (const ch of m.id) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return APP_TINTS[h % APP_TINTS.length]!;
+}
+/** D410: an app's mark: its own, else the window (the review board: the board). */
+export function appIcon(m: { icon?: string; kind?: string }): AppIcon {
+  if (m.icon && (APP_ICONS as readonly string[]).includes(m.icon)) return m.icon as AppIcon;
+  return m.kind === "reviews" ? "board" : "window";
+}
+/** D410: an app's own line, cleaned: one line, clipped. */
+export function appSummary(s: unknown): string {
+  const cs = [...String(s ?? "").replace(/[\p{Cc}\p{Cf}]/gu, " ").replace(/\s+/g, " ").trim()];
+  return cs.length > APP_SUMMARY_MAX ? cs.slice(0, APP_SUMMARY_MAX - 1).join("") + "…" : cs.join("");
+}
+
 /** D407: the task that fills an app each round (it writes the app's data, never its code). */
 export interface AppTask {
   id: string;
@@ -58,6 +86,25 @@ export interface AppMeta {
   task?: AppTask;
   /** D407: made by Ducter from a template: "reviews" = 审查看板 / Review board (its data is the review task's rounds, written by the home). */
   kind?: "reviews";
+  /** D410: the one line the app says of itself (ducter.summary, or the partner's when it made or filled it): "3 笔，合计 ¥1,698". */
+  summary?: string;
+  /** D410: its mark and its clay tint on the shelf (the partner's pick; else the window and a tint from its id). */
+  icon?: AppIcon;
+  tint?: AppTint;
+  /** D410: pinned: first on the shelf, and in the strip at the top of the conversation. */
+  pinned?: true;
+}
+
+/**
+ * D410: a first app to make, while the shelf is empty: what the person could say, in both
+ * languages, drawn from what the home knows (a trip coming up, a routine that repeats), else a
+ * plain everyday one. A tap sends `say` as the person's own words.
+ */
+export interface AppIdea {
+  say: { zh: string; en: string };
+  /** Why this one: "你 11/20 去北京" (absent for an everyday one). */
+  why?: { zh: string; en: string };
+  icon: AppIcon;
 }
 
 /** An app as a client opens it: the document to run (the home composes it, bridge included) and its data. */
@@ -73,7 +120,8 @@ export interface AppCard {
   id: string;
   name: string;
   version: number;
-  change: "made" | "changed" | "data";
+  /** D410: removed: deleted on the person's word (the card offers 撤销 / Undo for APP_REMOVED_DAYS). */
+  change: "made" | "changed" | "data" | "removed";
 }
 
 /** user_msg.app: the person's words about one app (typed in its sheet), or the app's own ask (ask = its ref). */
@@ -103,10 +151,18 @@ export type AppsClientFrame =
   // 改回去 / Undo the change: the version before the last one comes back (a new version).
   | { t: "app_back"; id: string }
   // 删掉 / Delete: the app and its data go (its messages stay in the conversation as a record).
-  | { t: "app_remove"; id: string };
+  // D410: kept APP_REMOVED_DAYS to bring back (app_restore), then gone.
+  | { t: "app_remove"; id: string }
+  // D410: 撤销 / Undo a delete: the app and its data come back as they were.
+  | { t: "app_restore"; id: string }
+  // D410: the shelf's 「⋯」: 改名 / Rename, 置顶 / Pin, 不再自动更新 / Stop updating it (untask).
+  | { t: "app_set"; id: string; name?: string; pinned?: boolean; untask?: true }
+  // D410: the app's own line for its tile (ducter.summary).
+  | { t: "app_summary"; id: string; text: string };
 
 export type AppsServerFrame =
-  | { t: "apps"; apps: AppMeta[] }
+  // ideas (D410): while there are none, up to three things to say for a first one, from what the home knows.
+  | { t: "apps"; apps: AppMeta[]; ideas?: AppIdea[] }
   | { t: "app_open"; id: string; app?: AppOpen; gone?: true }
   // A key changed (by the app on another device, by the partner, or by the task that fills it, D407): by says who.
   | { t: "app_data"; id: string; key: string; value: unknown; by: "app" | "partner" | "task" }
@@ -168,6 +224,10 @@ export function appName(s: string): string {
 /** What a file may not do, said back to the partner (the sandbox blocks it anyway; these break the app silently). */
 export function appLint(html: string): string[] {
   const out: string[] = [];
+  // D410: the kit's controls, never the system's grey ones (they break the clay look).
+  if (/<select\b/i.test(html)) out.push(`uses a native <select>: use the kit's chips, <div class="k-chips"><button class="k-chip" aria-pressed="true">…</button></div>`);
+  if (/<input\b[^>]*\btype\s*=\s*["']?number\b/i.test(html)) out.push(`uses a number stepper (type=number): use <input class="k-num" inputmode="decimal">`);
+  if (!/class\s*=\s*["'][^"']*\bk-app\b/.test(html)) out.push(`doesn't use the kit: put it all in <main class="k-app">, the total or the state first in a .k-sum`);
   if (/<(script|link|img|iframe|source|audio|video)\b[^>]*\b(src|href)\s*=\s*["']?(https?:)?\/\//i.test(html)) out.push("loads something from the internet (a CDN script, a font, a picture by URL): nothing outside the file loads; inline it or draw it");
   if (/@import\s+url\(\s*["']?https?:/i.test(html)) out.push("imports a stylesheet from the internet: inline the CSS");
   if (/\bfetch\s*\(|XMLHttpRequest|new\s+WebSocket|EventSource\(/.test(html)) out.push("calls the network (fetch, XHR, WebSocket): the app has none; ask the partner with ducter.ask, or have the partner put data in with the app tool");
@@ -179,9 +239,55 @@ export function appLint(html: string): string[] {
 
 /** Pebble's tokens an app draws with (light, then dark), so it looks like Ducter and follows the theme. */
 export const APP_TOKENS = {
-  light: { bg: "#fff6ea", card: "#ffffff", sunken: "#f7ebda", ink: "#2b2118", soft: "#4a3d30", muted: "#75654f", line: "#e8d9c4", accent: "#ff8a3d", "on-accent": "#2b2118", good: "#1f5e2f", "good-bg": "#d6f5dc", bad: "#8a1f3b", "bad-bg": "#fbdde4", highlight: "#ffe9a8" },
-  dark: { bg: "#17120e", card: "#231c16", sunken: "#1d1712", ink: "#f6ebdd", soft: "#dccbb6", muted: "#a8957e", line: "#3a3027", accent: "#ff8a3d", "on-accent": "#2b2118", good: "#a6ecbb", "good-bg": "#163222", bad: "#f8a9bc", "bad-bg": "#3a1621", highlight: "#5a4512" },
+  light: { bg: "#fff6ea", card: "#ffffff", sunken: "#f7ebda", ink: "#2b2118", soft: "#4a3d30", muted: "#75654f", line: "#e8d9c4", accent: "#ff8a3d", "on-accent": "#2b2118", good: "#1f5e2f", "good-bg": "#d6f5dc", bad: "#8a1f3b", "bad-bg": "#fbdde4", highlight: "#ffe9a8", "accent-ledge": "#c9642a", hi: "rgba(255,255,255,.65)" },
+  dark: { bg: "#17120e", card: "#231c16", sunken: "#1d1712", ink: "#f6ebdd", soft: "#dccbb6", muted: "#a8957e", line: "#3a3027", accent: "#ff8a3d", "on-accent": "#2b2118", good: "#a6ecbb", "good-bg": "#163222", bad: "#f8a9bc", "bad-bg": "#3a1621", highlight: "#5a4512", "accent-ledge": "#c9642a", hi: "rgba(255,255,255,.05)" },
 } as const;
+
+/**
+ * D410: Ducter's app kit, in every app's document before its own file: Pebble's clay for the few
+ * shapes a small app needs, so a generated app looks finished without the model inventing a design
+ * (and never the system's grey select or number stepper; the home's lint rejects those). Summary
+ * first: the total or the state at the top, big. The partner's tool lists the class names.
+ *   k-app (the page) · k-sum > k-sum-label, k-sum-value, k-sum-sub · k-card · k-h · k-list > k-row >
+ *   k-row-main, k-row-sub, k-row-value · k-chips > button.k-chip[aria-pressed] · input.k-num ·
+ *   k-field > label + input.k-input · k-btn, k-btn.primary, k-btn.quiet · k-from · k-empty · k-bar > i
+ */
+export const APP_KIT_CSS = [
+  `*,*::before,*::after{box-sizing:border-box}`,
+  `button,input,textarea{font:inherit;color:inherit}`,
+  `.k-app{max-width:560px;margin:0 auto;padding:18px 16px 32px;display:flex;flex-direction:column;gap:14px;font-size:15px;line-height:1.5}`,
+  `.k-sum{position:relative;padding:16px 18px 18px;border-radius:20px;background:var(--d-card);box-shadow:inset 0 1.5px 0 var(--d-hi),0 4px 0 var(--d-line)}`,
+  `.k-sum-label{font-size:13px;font-weight:700;color:var(--d-muted)}`,
+  `.k-sum-value{display:block;margin-top:2px;font-size:40px;font-weight:800;line-height:1.1;letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:var(--d-ink)}`,
+  `.k-sum-sub{display:block;margin-top:6px;font-size:13px;color:var(--d-soft)}`,
+  `.k-card{padding:14px 16px;border-radius:var(--d-radius);background:var(--d-card);box-shadow:0 3px 0 var(--d-line);display:flex;flex-direction:column;gap:12px}`,
+  `.k-h{margin:6px 2px 0;font-size:13px;font-weight:800;letter-spacing:.02em;color:var(--d-muted)}`,
+  `.k-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}`,
+  `.k-row{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:var(--d-radius);background:var(--d-card);box-shadow:0 2px 0 var(--d-line)}`,
+  `.k-row-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;font-weight:700;overflow-wrap:anywhere}`,
+  `.k-row-sub{font-size:13px;font-weight:400;color:var(--d-muted)}`,
+  `.k-row-value{flex:none;font-weight:800;font-variant-numeric:tabular-nums}`,
+  `.k-chips{display:flex;flex-wrap:wrap;gap:8px}`,
+  `.k-chip{min-height:38px;padding:0 14px;border:0;border-radius:999px;background:var(--d-sunken);color:var(--d-soft);font-size:14px;font-weight:700;cursor:pointer;box-shadow:inset 0 0 0 1px var(--d-line)}`,
+  `.k-chip[aria-pressed=true]{background:var(--d-ink);color:var(--d-bg);box-shadow:0 2px 0 var(--d-line)}`,
+  `.k-field{display:flex;flex-direction:column;gap:6px}`,
+  `.k-field>label,.k-label{font-size:13px;font-weight:700;color:var(--d-muted)}`,
+  `.k-input,.k-num{width:100%;min-height:44px;padding:0 14px;border:0;border-radius:12px;background:var(--d-sunken);color:var(--d-ink);box-shadow:inset 0 0 0 1px var(--d-line);outline:none}`,
+  `.k-num{min-height:60px;font-size:30px;font-weight:800;letter-spacing:-.01em;font-variant-numeric:tabular-nums}`,
+  `.k-input:focus,.k-num:focus{box-shadow:inset 0 0 0 2px var(--d-accent)}`,
+  `.k-input::placeholder,.k-num::placeholder{color:var(--d-muted);opacity:.7}`,
+  `.k-btn{min-height:44px;padding:0 18px;border:0;border-radius:14px;background:var(--d-card);color:var(--d-ink);font-weight:800;cursor:pointer;box-shadow:inset 0 0 0 1px var(--d-line),0 3px 0 var(--d-line);transition:transform .08s,box-shadow .08s}`,
+  `.k-btn.primary{background:var(--d-accent);color:var(--d-on-accent);box-shadow:inset 0 1.5px 0 rgba(255,255,255,.38),0 3px 0 var(--d-accent-ledge)}`,
+  `.k-btn.quiet{background:transparent;box-shadow:none;color:var(--d-soft);min-height:36px;padding:0 10px}`,
+  `.k-btn:active{transform:translateY(3px);box-shadow:0 0 0 var(--d-line)}`,
+  `.k-btn:disabled{opacity:.45;cursor:default;transform:none}`,
+  `.k-from{display:inline-flex;align-items:center;gap:5px;padding:1px 8px;border-radius:999px;background:var(--d-sunken);color:var(--d-soft);font-size:12px;font-weight:700;white-space:nowrap}`,
+  `.k-from::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--d-accent)}`,
+  `.k-empty{padding:22px 18px;border-radius:var(--d-radius);background:var(--d-sunken);color:var(--d-soft);text-align:center;font-size:14px}`,
+  `.k-bar{height:8px;border-radius:999px;background:var(--d-sunken);overflow:hidden}`,
+  `.k-bar>i{display:block;height:100%;border-radius:999px;background:var(--d-accent)}`,
+  `.k-good{color:var(--d-good)}.k-bad{color:var(--d-bad)}.k-muted{color:var(--d-muted)}`,
+].join("");
 
 /** The policy every app runs under: nothing loads from outside the file; no network but the Mac's own scheme. */
 export function appCsp(transport: "message" | "fetch"): string {
@@ -215,7 +321,9 @@ const esc = (s: string) => s.replace(/</g, "\\u003c").split(LS).join("\\u2028").
  *   ducter.get(key) → the value (sync; the data comes with the app) · ducter.set(key, value) ·
  *   ducter.all() · ducter.onChange(fn(key, value, by)) · ducter.ask(text) → Promise<string> ·
  *   ducter.lang · ducter.dark · ducter.open({ draft: "owner/repo#n" }) (D407: the person's own draft
- *   sheet for that pull request opens over the app; nothing is sent).
+ *   sheet for that pull request opens over the app; nothing is sent) · ducter.summary(text) (D410:
+ *   the one line its shelf tile shows, "3 笔，合计 ¥1,698"; said again on every change, sent once it settles).
+ * The kit (APP_KIT_CSS) comes before the app's own styles, so the app can still restyle anything.
  * "message": the iframe posts to its parent (the web and the phone). "fetch": the Mac's web view
  * posts to its own scheme (/bridge) and long-polls /events.
  */
@@ -224,9 +332,10 @@ export function appDocument(a: { id: string; name: string; html: string; data: R
   const style =
     `:root{${vars(APP_TOKENS.light)};--d-radius:14px;--d-font:"Bricolage Grotesque","Ducter Rounded SC",-apple-system,BlinkMacSystemFont,"PingFang SC","Segoe UI",sans-serif;--d-mono:"JetBrains Mono",ui-monospace,Menlo,monospace;color-scheme:light}` +
     `:root[data-theme=dark]{${vars(APP_TOKENS.dark)};color-scheme:dark}` +
-    `html,body{margin:0;background:var(--d-bg);color:var(--d-ink);font-family:var(--d-font);-webkit-text-size-adjust:100%}`;
+    `html,body{margin:0;background:var(--d-bg);color:var(--d-ink);font-family:var(--d-font);-webkit-text-size-adjust:100%}` +
+    APP_KIT_CSS;
   const boot = JSON.stringify({ id: a.id, name: a.name, data: a.data, dark: !!o.dark, lang: o.lang ?? "en", transport: o.transport });
-  const bridge = `(function(){var B=${esc(boot)};var data=B.data||{};var subs=[];var asks={};var n=0;
+  const bridge = `(function(){var B=${esc(boot)};var data=B.data||{};var subs=[];var asks={};var n=0;var said=null,st=0;
 document.documentElement.setAttribute("data-theme",B.dark?"dark":"light");document.documentElement.lang=B.lang;
 function post(m){m.ducterApp=B.id;if(B.transport==="fetch"){fetch("/bridge",{method:"POST",body:JSON.stringify(m)}).catch(function(){});}else{parent.postMessage(m,"*");}}
 function onMsg(m){if(!m||m.ducterApp!==B.id)return;if(m.t==="data"){if(m.value===null||m.value===undefined)delete data[m.key];else data[m.key]=m.value;subs.forEach(function(f){try{f(m.key,m.value,m.by)}catch(e){}});}
@@ -240,7 +349,8 @@ all:function(){return JSON.parse(JSON.stringify(data));},
 set:function(k,v){if(typeof k!=="string"||!k)throw new Error("ducter.set needs a key");if(v===undefined)v=null;var s=JSON.stringify(v);if(v===null)delete data[k];else data[k]=JSON.parse(s);post({t:"put",key:k,value:v});return v;},
 onChange:function(f){subs.push(f);return function(){subs=subs.filter(function(x){return x!==f})};},
 ask:function(text){var ref="a"+(++n)+"-"+Date.now().toString(36);return new Promise(function(res,rej){asks[ref]=[res,rej];post({t:"ask",text:String(text||""),ref:ref});});},
-open:function(w){var d=w&&typeof w.draft==="string"?w.draft:"";if(/^[\\w.-]+\\/[\\w.-]+#\\d+$/.test(d))post({t:"show",draft:d});}};
+open:function(w){var d=w&&typeof w.draft==="string"?w.draft:"";if(/^[\\w.-]+\\/[\\w.-]+#\\d+$/.test(d))post({t:"show",draft:d});},
+summary:function(t){var s=String(t==null?"":t).slice(0,200);if(s===said)return;said=s;clearTimeout(st);st=setTimeout(function(){post({t:"summary",text:s});},400);}};
 Object.freeze(ducter);window.ducter=ducter;
 window.addEventListener("error",function(e){post({t:"error",text:String(e.message||"error").slice(0,300)});});
 post({t:"ready"});})();`;

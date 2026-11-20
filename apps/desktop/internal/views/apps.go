@@ -35,8 +35,12 @@ func (a *App) appCard(c *ui.Context, key string, card *protocol.AppCard) {
 	}
 	what := a.L.T("app.changed")
 	switch {
+	case card.Change == "removed" && now == nil:
+		what = a.L.T("app.removed")
 	case gone:
 		what = a.L.T("app.gone")
+	case card.Change == "removed": // brought back: on the shelf again
+		what = a.L.T("app.made", firstNonEmpty(a.S.PersonaName, "Ducter"))
 	case card.Change == "made":
 		what = a.L.T("app.made", firstNonEmpty(a.S.PersonaName, "Ducter"))
 	case card.Change == "data":
@@ -44,7 +48,7 @@ func (a *App) appCard(c *ui.Context, key string, card *protocol.AppCard) {
 	}
 	ui.Row(c.Key("appcard:"+key)).MaxWidth(420).MaxWidthPercent(84).Padding(t.S3).Gap(t.S3).AlignItems(ui.Center).Radius(t.RadiusMD).
 		Background(t.Surface).Shadow(0, t.Raised.Y, 0, 0, t.Raised.Color).Role(ui.RoleGroup).Label(name).Children(func() {
-		a.appFace(c, 48, gone)
+		a.appClay(c, "face", 48, now, gone || (card.Change == "removed" && now == nil))
 		ui.Column(c.Key("body")).Grow(1).Shrink(1).MinWidth(0).Gap(2).Children(func() {
 			ink := t.Ink
 			if gone {
@@ -53,7 +57,17 @@ func (a *App) appCard(c *ui.Context, key string, card *protocol.AppCard) {
 			ui.Text(c, keepWords(autospace(name))).FontSize(t.MD).FontWeight(800).TextColor(ink).SingleLine().Shrink(1).MinWidth(0).Tooltip(name)
 			ui.Text(c, keepWords(autospace(what))).FontSize(t.SM).TextColor(t.InkMuted).MinWidth(0)
 		})
-		if !gone && a.buttonFor(c, a.L.T("app.open"), name, btnSecondary, t.ControlSM, t.Surface) {
+		switch {
+		case card.Change == "removed" && now == nil:
+			// D410: deleted on the person's word; 撤销 brings it back while it can.
+			if !a.restoring[card.ID] && a.buttonFor(c, a.L.T("apps.undo"), name, btnSecondary, t.ControlSM, t.Surface) {
+				if a.restoring == nil {
+					a.restoring = map[string]bool{}
+				}
+				a.restoring[card.ID] = true
+				a.send(protocol.AppIDReq{T: "app_restore", ID: card.ID})
+			}
+		case !gone && a.buttonFor(c, a.L.T("app.open"), name, btnSecondary, t.ControlSM, t.Surface):
 			a.openApp(card.ID)
 		}
 	})
@@ -203,6 +217,9 @@ func (b *AppBridge) Post(id string, body []byte) {
 		b.do(func() { b.a.send(protocol.AppPutReq{T: "app_put", ID: id, Key: m.Key, Value: m.Value}) })
 	case "ask":
 		b.do(func() { b.a.send(protocol.AppAskReq{T: "app_ask", ID: id, Text: m.Text, Ref: m.Ref}) })
+	case "summary":
+		// D410: ducter.summary, the one line its shelf tile shows.
+		b.do(func() { b.a.send(protocol.AppSummaryReq{T: "app_summary", ID: id, Text: m.Text}) })
 	case "show":
 		// D407: ducter.open({ draft }): that PR's draft sheet, in the main
 		// window (brought forward); nothing is sent.

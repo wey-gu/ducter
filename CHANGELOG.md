@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.0.99 - 2026-11-20
+
+<!-- whats-new
+zh: 定时审查可以变成一个随时最新的看板
+en: A review routine can keep a board up to date
+-->
+
+**Small apps**
+- A routine can keep a small app up to date. After a review routine has run a few rounds, Ducter
+  offers once to turn its reports into a board: every PR waiting on you, its checks, what was
+  found, and the draft, always current on every device. Rounds with nothing to ask stay quiet.
+
+**Fixes from walking the Mac app**
+- What Ducter says after you change a setting appears right under the row you changed.
+- On hand shows your to-dos even when no task is running.
+- Agent communication stays open while it connects, so a failure shows why.
+- Adding a key says which field is missing; small apps have their own icon in Find anything.
+
 ## 0.0.98 - 2026-11-20
 
 <!-- whats-new

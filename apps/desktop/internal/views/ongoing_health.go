@@ -127,17 +127,18 @@ func (a *App) ongoingHealthRow(c *ui.Context, it *protocol.OngoingItem) {
 	case "failing":
 		ink = t.Failed.Ink
 	case "back":
-		ink = t.Done.Ink
+		ink = t.InkSoft // D441: good news is said once, quietly
 	}
 	parts := a.ongoingHealthLine(h)
 	ui.Row(c.Key("health")).Gap(t.S2).Wrap().AlignItems(ui.Center).MinWidth(0).Role(ui.RoleStatus).Label(spoken(a.L, parts...)).Children(func() {
 		a.glyph(c, 14, drawHealth(h.State, ink))
-		for _, p := range parts {
-			w := 600
-			if h.State == "back" {
-				w = 500
+		for i, p := range parts {
+			// D441: the state in its ink; what explains it in the soft ink.
+			w, col := 600, ink
+			if h.State == "back" || i > 0 {
+				w, col = 500, t.InkSoft
 			}
-			uiText(c, p).FontSize(t.SM).FontWeight(w).TextColor(ink).SingleLine().Shrink(1).MinWidth(0).Tooltip(p) // D429: the facts wrap; one too long for its line clips
+			uiText(c, p).FontSize(t.SM).FontWeight(w).TextColor(col).SingleLine().Shrink(1).MinWidth(0).Tooltip(p) // D429: the facts wrap; one too long for its line clips
 		}
 	})
 }

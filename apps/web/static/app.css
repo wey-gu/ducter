@@ -1331,21 +1331,20 @@ a {
 :lang(zh) .decision .q {
   line-height: 1.45;
 }
-/* D437: what another AI still found: its lead in its own weight, each thing on its own line. */
+/* D437: what another AI still found: its lead in the needs-you ink, each thing on its own line.
+   D441: a plain line like the others under a result, no bar down its side. */
 .look-line {
   display: flex;
   flex-direction: column;
   gap: 2px;
   margin: 6px 0;
-  padding-inline-start: 10px;
-  border-inline-start: 2px solid var(--needs-ink);
   font-size: var(--sm);
   line-height: 1.45;
   color: var(--ink);
   min-width: 0;
 }
 .look-line .lead {
-  font-weight: 700;
+  font-weight: 600;
   color: var(--needs-ink);
 }
 .look-line .it {
@@ -6403,6 +6402,7 @@ button.bcard:active {
 .pay-facts {
   display: grid;
   grid-template-columns: auto 1fr;
+  align-items: baseline;
   gap: var(--s1) var(--s3);
   margin: var(--s2) 0;
   padding: var(--s3);
@@ -6439,7 +6439,7 @@ button.bcard:active {
   letter-spacing: 4px;
 }
 /* D436: 去付款 / Go to checkout: the receipt, the items under what, the page itself as a picture. */
-.co-items {
+.pay-facts .co-items {
   margin: var(--s1) 0 0;
   padding: 0;
   list-style: none;
@@ -12981,12 +12981,14 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 /* D394: a review task's standing after its last round, under its state line. */
 .og-standing { color: var(--ink); font-size: var(--sm); }
 /* D427: a promise not kept on time says so in its state's ink, with a small drawn mark; on time says nothing. */
-.og-health { display: inline-flex; align-items: center; gap: 6px; font-size: var(--sm); font-weight: 600; min-width: 0; }
+.og-health { display: inline-flex; align-items: flex-start; gap: 6px; font-size: var(--sm); font-weight: 600; min-width: 0; }
 .og-health .facts { min-width: 0; }
+/* D441: the state in its ink; what explains it (where it runs, which computer is awake) in the soft ink. */
+.og-health .facts > span + span { color: var(--ink-soft); font-weight: 500; }
 .og-health.late { color: var(--waiting-ink); }
 .og-health.failing { color: var(--failed-ink); }
-.og-health.back { color: var(--done-ink); font-weight: 500; }
-.og-hg { flex: none; }
+.og-health.back { color: var(--ink-soft); font-weight: 500; } /* D441: good news is said once, quietly */
+.og-hg { flex: none; margin-top: 3px; }
 .og-last { display: block; color: var(--ink-soft); font-size: var(--sm); min-width: 0; }
 .og-last .facts { display: flex; flex-wrap: nowrap; max-width: 100%; }
 .og-last .facts > span:first-child { flex: none; color: var(--ink-muted); }
@@ -16988,13 +16990,13 @@ a.pr:hover { box-shadow: inset 0 0 0 1px var(--line-2); }
 .ho-fact.k-about { background: none; box-shadow: inset 0 0 0 1.5px var(--line-2); }
 .ho-fact.static { padding: 0 10px; cursor: default; min-height: 26px; font-size: var(--xs); }
 .ho-fact-undo { min-height: 32px; padding: 0 8px; border: 0; background: none; color: var(--accent); font: inherit; font-size: var(--sm); cursor: pointer; }
-.ho-unknown { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 8px 12px; border-radius: var(--r-md); background: var(--waiting-surface); color: var(--waiting-ink); font-size: var(--sm); font-weight: 600; }
-.ho-unknown small { font-weight: 500; }
-.ho-unknown .ho-chip { min-height: 30px; background: var(--surface); }
-.ho-unknown-held { flex-basis: 100%; opacity: 0.85; }
+.ho-unknown { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 2px 2px; color: var(--waiting-ink); font-size: var(--sm); font-weight: 600; } /* D441: a line, not a yellow box */
+.ho-unknown small { font-weight: 500; color: var(--ink-muted); font-size: var(--sm); }
+.ho-unknown .ho-chip { min-height: 30px; }
+.ho-unknown-held { flex-basis: 100%; }
 .ho-set-reading { display: flex; flex-wrap: wrap; gap: 5px; margin: 2px 0 6px; }
 .ho-because { min-width: 0; color: var(--ink-muted); font-size: var(--xs); overflow-wrap: anywhere; }
-.ho-maybe { padding: 1px 8px; border-radius: var(--pill); background: var(--waiting-surface); color: var(--waiting-ink); font-size: var(--xs); font-weight: 600; white-space: nowrap; }
+.ho-maybe { color: var(--waiting-ink); font-size: var(--sm); font-weight: 600; white-space: nowrap; } /* D441: a word, not a pill beside the size pill */
 .ho-heard-part { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; max-width: 100%; padding: 6px 12px; border-radius: 12px; background: var(--sunken); }
 .ho-heard-part small { font-size: var(--xs); font-weight: 700; color: var(--ink-muted); }
 .ho-heard-part b { font-weight: 700; color: var(--ink); }
@@ -17590,7 +17592,7 @@ a.pr:hover { box-shadow: inset 0 0 0 1px var(--line-2); }
 }
 @media (hover: hover) and (pointer: fine) {
   .asked .ask-row:not(:disabled):hover {
-    background: var(--working-surface);
+    background: var(--surface-sunken);
   }
   .asked .ask-row:hover .ask-who {
     opacity: 1;

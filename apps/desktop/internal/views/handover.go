@@ -649,15 +649,16 @@ func (a *App) handReading(c *ui.Context, chips []protocol.FindFacet) {
 func (a *App) handUnknown(c *ui.Context, u protocol.FindUnknown) {
 	t := a.T
 	h := &a.ho
-	ui.Column(c.Key("unk:"+u.Said)).Gap(t.S2).Padding(t.S2, t.S3).Radius(12).Background(t.Waiting.Surface).Role(ui.RoleAlert).Children(func() {
+	// D441: a line in the waiting ink, not a yellow box; the rest in the muted ink.
+	ui.Column(c.Key("unk:"+u.Said)).Gap(t.S2).Padding(2, 2).Role(ui.RoleAlert).Children(func() {
 		ui.Row(c.Key("l")).Wrap().Gap(t.S2).AlignItems(ui.Center).Children(func() {
-			uiText(c.Key("t"), a.L.T("hand.unknown", u.Said)).FontSize(t.SM).FontWeight(700).TextColor(t.Waiting.Ink)
+			uiText(c.Key("t"), a.L.T("hand.unknown", u.Said)).FontSize(t.SM).FontWeight(600).TextColor(t.Waiting.Ink)
 			if len(u.Closest) > 0 {
-				uiText(c.Key("c"), a.L.T("hand.unknown.closest")).FontSize(t.SM).TextColor(t.Waiting.Ink)
+				uiText(c.Key("c"), a.L.T("hand.unknown.closest")).FontSize(t.SM).TextColor(t.InkMuted)
 			}
 			for _, l := range u.Closest {
 				l := l
-				chip := ui.Row(c.Key("lg:"+l)).Height(28).Padding(0, t.S3).Radius(14).AlignItems(ui.Center).Background(t.Surface).
+				chip := ui.Row(c.Key("lg:"+l)).Height(28).Padding(0, t.S3).Radius(14).AlignItems(ui.Center).Background(t.Sunken).
 					Cursor(ui.CursorPointer).Role(ui.RoleButton).Focusable().Label(l)
 				chip.Children(func() {
 					uiText(c, l).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).AccessHidden(true)
@@ -668,7 +669,7 @@ func (a *App) handUnknown(c *ui.Context, u protocol.FindUnknown) {
 				}
 			}
 		})
-		uiText(c.Key("held"), a.L.T("hand.unknown.held")).FontSize(t.XS).TextColor(t.Waiting.Ink)
+		uiText(c.Key("held"), a.L.T("hand.unknown.held")).FontSize(t.SM).TextColor(t.InkMuted)
 	})
 }
 
@@ -841,9 +842,8 @@ func (a *App) handItem(c *ui.Context, it protocol.FoundItem) {
 						uiText(c.Key("because"), it.Because).FontSize(t.SM).TextColor(t.InkMuted).Shrink(1).MinWidth(0)
 					}
 					if it.Sure == "maybe" {
-						ui.Row(c.Key("maybe")).Height(20).Padding(0, t.S2).Radius(10).AlignItems(ui.Center).Background(t.Waiting.Surface).Children(func() {
-							uiText(c, a.L.T("hand.maybe")).FontSize(t.XS).FontWeight(600).TextColor(t.Waiting.Ink)
-						})
+						// D441: a word, not a pill beside the size pill.
+						uiText(c.Key("maybe"), a.L.T("hand.maybe")).FontSize(t.SM).FontWeight(600).TextColor(t.Waiting.Ink).Shrink(0)
 					}
 					// D415: 移出 / Take out of the chip's subject.
 					if h.fromChip && h.subject != "" {

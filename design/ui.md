@@ -579,6 +579,17 @@ Devices are named by their model ("iPhone", "iPad", "Pixel Fold"); the platform 
 `android-app`) says it is the app. Names paired before D291 ("iPad · Ducter") are renamed once by
 the core (the old name kept as a former name, D84) and shown without the suffix by both clients.
 
+### Lines under things, not boxes (D441)
+
+A short state said under a result, a card's row or a search (what another AI still found, a name
+no one has, a loop that is late, an unsure find) is a **line**: its lead in the state's ink at 600,
+what explains it in `ink-soft` or `ink-muted` at 500, on the same text edge as the actions under
+it. Never a bar down its side, never a tinted box round it, never a pill for one word next to
+another pill. Good news (a loop back on time) is said once in `ink-soft`, not in the done green.
+A row's hover is `surface-sunken` on both clients, whatever the row's state. A receipt's label sits
+on its value's baseline (`pay-facts`, the Mac's checkout facts), and a list inside it keeps the
+value column's edge. Before/after: `.shots/deslop/`.
+
 ## Places (D71)
 
 v1 has five places, and every one is reachable from the menu bar, a shortcut and the window:

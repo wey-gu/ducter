@@ -139,14 +139,13 @@ func (a *App) lookLine(c *ui.Context, key string, left []string) {
 		return
 	}
 	t := a.T
-	ui.Row(c.Key("look:" + key)).Gap(t.S3).AlignItems(ui.Stretch).MinWidth(0).Children(func() {
-		ui.Box(c).Width(2).AlignSelf(ui.Stretch).Background(t.NeedsYou.Ink).Shrink(0)
-		ui.Column(c).Gap(2).Grow(1).MinWidth(0).Children(func() {
-			uiText(c, a.L.T("look.lead")).FontSize(t.SM).FontWeight(700).TextColor(t.NeedsYou.Ink)
-			for i, l := range left {
-				uiText(c.Key(fmt.Sprintf("it%d", i)), l).FontSize(t.SM).TextColor(t.Ink).LineHeight(1.45).MinWidth(0)
-			}
-		})
+	// D441: a plain line like the others under a result (its lead in the
+	// needs-you ink), no bar down its side.
+	ui.Column(c.Key("look:" + key)).Gap(2).MinWidth(0).Children(func() {
+		uiText(c, a.L.T("look.lead")).FontSize(t.SM).FontWeight(600).TextColor(t.NeedsYou.Ink)
+		for i, l := range left {
+			uiText(c.Key(fmt.Sprintf("it%d", i)), l).FontSize(t.SM).TextColor(t.Ink).LineHeight(1.45).MinWidth(0)
+		}
 	})
 }
 

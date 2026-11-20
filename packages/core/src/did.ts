@@ -195,7 +195,13 @@ export function createDid(d: DidDeps): Did {
             if (!go || !inRange(go.at!)) break;
             if (b.pay) {
               items.push({ id: `e${e.seq}`, kind: "paid", sub: "card", at: go.at!, to: b.pay.site, amount: `${b.pay.currency} ${b.pay.amount}`, via: b.pay.card, ...(b.pay.what ? { line: clip(b.pay.what) } : {}), who: who(b.taskId), go, where: { kind: "browser", ...(deviceOf(b.taskId)?.name ? { name: deviceOf(b.taskId)!.name } : {}) }, ...(b.taskId ? { taskId: b.taskId } : {}) });
+            } else if (b.checkout) {
+              // D436: the errand stopped at the checkout and the person paid there themselves (付好了).
+              const c = b.checkout;
+              const amount = c.total ? `${c.currency ?? ""} ${c.total}`.trim() : undefined;
+              items.push({ id: `e${e.seq}`, kind: "paid", sub: "checkout", at: go.at!, to: c.site, ...(amount ? { amount } : {}), ...(clip(c.what) ? { line: clip(c.what) } : {}), who: who(b.taskId), go: { by: "paid", at: go.at! }, where: { kind: "browser", ...(deviceOf(b.taskId)?.name ? { name: deviceOf(b.taskId)!.name } : {}) }, ...(b.taskId ? { taskId: b.taskId } : {}) });
             } else if (b.phone?.kind === "go" || b.computer?.kind === "go") {
+
               const ask = (b.phone ?? b.computer) as { app: string; name?: string; label: string; effect: string };
               const k = byEffect(ask.effect);
               if (!k) break;

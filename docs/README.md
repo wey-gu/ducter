@@ -50,6 +50,7 @@ These pages are for using Ducter. If you want to build it or change it, start wi
   adding, moving or answering events, each behind one tap.
 - **[Your to-dos in other apps](to-do-sources.md):** the GitHub issues assigned to you and the
   to-dos in your Obsidian vault, taken on when you say, and commented on or ticked off when done.
+- **[Buying and booking](buying-and-booking.md):** ask it to book a ticket or buy what's in your cart; it goes all the way to the checkout and you pay with your own tap.
 - **[Passwords & cards](passwords-and-cards.md):** save a sign-in, a card or your travel details once, so your
   partner can book and buy for you, filling them in without seeing them, with your Go on every
   payment.

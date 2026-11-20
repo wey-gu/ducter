@@ -192,6 +192,8 @@ export interface Question {
   where?: WhereAsk;
   /** D191: one payment with a saved card (set by Ducter's browser_ask_to_pay, never by report_to_main). */
   pay?: PayAsk;
+  /** D436: the errand stopped at the checkout (set by Ducter's browser_at_checkout, never by report_to_main). */
+  checkout?: CheckoutAsk;
   /** D191: the first use of a saved sign-in or private detail on a site (set by browser_fill). */
   fill?: FillAsk;
   /** D217: a tap on Ducter's phone that commits (go), or the user's own turn on it (user); set by the phone tools only. */
@@ -259,6 +261,29 @@ export interface WhereAsk {
 export interface SignInAsk {
   site: string; // the host the user signs in to, e.g. "github.com"
   url?: string; // the sign-in page the task opened
+  /** D436: not a sign-in but another step that is the person's on this page (a CAPTCHA, a code by
+   *  text, "confirm it's you"), in the task's few words. The card reads 这一步要你来 / Your step. */
+  step?: string;
+}
+
+/**
+ * D436: 去付款 / Go to checkout. An errand stopped at the checkout page (set by Ducter's
+ * browser_at_checkout, never by report_to_main). The site is the page's host, read by code; the
+ * rest is the task's word. Go is 付好了 / I've paid (the person paid in the live view themselves);
+ * Hold is 先不买 / Not now. No default, ever: Ducter never presses pay.
+ */
+export interface CheckoutAsk {
+  site: string;
+  url: string;
+  /** What it buys, in a few words ("G7311 上海虹桥→杭州东 11-28 08:05 二等座"). */
+  what: string;
+  /** The total the page shows ("73.00") and its ISO currency, when the task read one. */
+  total?: string;
+  currency?: string;
+  /** The items, when there are several (at most 8, each a few words). */
+  items?: string[];
+  /** The page's picture when it stopped (filled fields drawn as dots). */
+  media?: MediaRef[];
 }
 
 /**
@@ -347,6 +372,7 @@ export interface Bodies {
     loop?: { taskId: string; move?: string }; // D427: the keeper's one word about a late or failing loop: Go runs a round now; D429: with move (a device id), Go runs it on that awake computer instead
     signIn?: SignInAsk; // D151: a sign-in card; Go = 好了 / Done in the live view
     pay?: PayAsk; // D191: 付款 / Pay: merchant, amount, card; Go pays once, no default
+    checkout?: CheckoutAsk; // D436: 去付款 / Go to checkout: the person pays in the live view; Go = 付好了 / I've paid, no default
     fill?: FillAsk; // D191: first use of a saved sign-in or detail on a site
     key?: KeyAsk; // D233: {task} 需要一个密钥 / {task} needs a key: Go carries the value (never logged); Hold is 不给 / Don't give; no default
     phone?: PhoneAsk; // D217: one tap on Ducter's phone that commits (Go taps it once), or the user's turn on it (Go = 好了 / Done)

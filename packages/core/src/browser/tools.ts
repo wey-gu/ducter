@@ -10,7 +10,7 @@
 //   - page text is labelled as data, not instructions.
 import { join } from "node:path";
 import { mkdirSync, writeFileSync } from "node:fs";
-import type { Bodies, BrowserAbout, Question } from "@ducter/protocol";
+import type { Bodies, BrowserAbout, CheckoutAsk, MediaRef, Question } from "@ducter/protocol";
 import type { LogStore, TaskRegistry } from "@ducter/protocol/src/internal.ts";
 import type { CoreMcpHub } from "../mcp.ts";
 import type { BrowserHost } from "./host.ts";
@@ -36,7 +36,42 @@ export const BROWSER_TOOL_NAMES = [
   "browser_tabs",
   "browser_screenshot",
   "browser_ask_sign_in",
+  "browser_at_checkout",
 ] as const;
+
+/**
+ * D436: words on a button or link that pay or place an order. Pressing one is the person's own tap
+ * (the floor); Ducter's tools refuse it unless a D191 Pay Go is open for that task on that site.
+ * "Checkout", "去结算" and "Add to cart" open the next page and are not pays.
+ */
+export const PAYS =
+  /(支付|付款|提交订单|确认下单|立即下单|立即购买|确认购买|确认订单|お支払い|購入する|注文を確定|\bpay\b(?!\s+(?:with|by|using|via|later|in\b))|place (?:your )?order|complete (?:purchase|order|payment|booking)|confirm (?:and |& )?pay|confirm (?:order|purchase|booking)|submit order|buy now)/i;
+
+export const PAY_REFUSED =
+  "That press pays or places the order, and paying is the user's own tap: Ducter never presses it. Stop here: call browser_at_checkout {what, total, currency} on this page and end your turn; the user pays in a live view of your tab.";
+
+/** A press on this element would pay: a button-like control whose own words say so. */
+export function paysAt(at: { label?: string; tag?: string; type?: string; field?: boolean }): boolean {
+  if (!at.label || !PAYS.test(at.label)) return false;
+  if (at.tag === "textarea" || at.tag === "select") return false;
+  if (at.tag === "input") return /^(submit|button|image)$/i.test(at.type ?? "");
+  return true;
+}
+
+/** The focused element's words (Enter or Space on it presses it), and a form's submit buttons' words. */
+const ACTIVE_WORDS = `(() => { const el = document.activeElement; if (!el || el === document.body) return null; const tag = el.tagName.toLowerCase(); return { tag, type: el.type || "", label: ((el.getAttribute("aria-label") || el.innerText || el.value || "") + "").replace(/\\s+/g, " ").trim().slice(0, 80) }; })()`;
+const submitWords = (ref: number) =>
+  `(() => { const el = document.querySelector('[data-ducter-ref="${ref}"]'); const f = el && el.form; if (!f) return []; return [...f.querySelectorAll('button:not([type]), button[type="submit"], input[type="submit"], input[type="image"]')].map((b) => ((b.getAttribute("aria-label") || b.innerText || b.value || "") + "").replace(/\\s+/g, " ").trim().slice(0, 80)); })()`;
+
+/** https, or this machine's own pages (tests, a fixture shop). */
+export const securePage = (url: string): boolean => {
+  try {
+    const u = new URL(url);
+    return u.protocol === "https:" || u.hostname === "127.0.0.1" || u.hostname === "localhost";
+  } catch {
+    return false;
+  }
+};
 
 /** An http(s) URL, or why not. A bare host gets https://. */
 export function pageUrl(raw: string): string {
@@ -117,6 +152,10 @@ export interface BrowserToolsDeps {
   notes?: BrowserNotes;
   /** D191: hides every saved value (Autofill) from what a browser tool answers. */
   scrub?: (text: string) => string;
+  /** D436: a D191 Pay Go is open for this task on this site (the only time a press may pay). */
+  mayPay?: (taskId: string, site: string) => boolean;
+  /** D436: keeps the checkout's picture for the card (the home's media store). */
+  media?: () => { put(bytes: Uint8Array, o?: { name?: string }): MediaRef } | undefined;
 }
 
 export function registerBrowserTools(d: BrowserToolsDeps): void {
@@ -182,12 +221,20 @@ export function registerBrowserTools(d: BrowserToolsDeps): void {
     },
   );
 
+  /** D436: a press that would pay goes only under an open D191 Pay Go for this task on this site. */
+  const refusePay = async (taskId: string, send: Send) => {
+    const url = String((await evaluate(send, "location.href").catch(() => "")) ?? "");
+    const site = hostOf(url) ?? "";
+    if (site && d.mayPay?.(taskId, site)) return;
+    throw new Error(PAY_REFUSED);
+  };
+
   const locate = async (send: Send, ref: unknown) => {
     const n = Number(ref);
     if (!Number.isInteger(n) || n < 1) throw new Error("ref must be a number from the last browser_read");
     const at = await evaluate(send, locateExpression(n));
     if (!at) throw new Error(`there is no [${n}] on the page now: browser_read again (numbers change when the page does)`);
-    return { n, ...(at as { x: number; y: number; secret: boolean; field: boolean; card?: boolean; filled?: boolean; label?: string; tag?: string; vw?: number; vh?: number }) };
+    return { n, ...(at as { x: number; y: number; secret: boolean; field: boolean; card?: boolean; filled?: boolean; label?: string; tag?: string; type?: string; vw?: number; vh?: number }) };
   };
 
   /** D190: where on the page a step lands (fractions of the viewport) and the element's own words. */
@@ -203,6 +250,7 @@ export function registerBrowserTools(d: BrowserToolsDeps): void {
     async (args, taskId) => {
       const send = await page(taskId);
       const at = await locate(send, args.ref);
+      if (paysAt(at)) await refusePay(taskId, send);
       note(taskId, { kind: "click", ...where(at) });
       for (const type of ["mouseMoved", "mousePressed", "mouseReleased"])
         await send("Input.dispatchMouseEvent", { type, x: at.x, y: at.y, button: type === "mouseMoved" ? "none" : "left", clickCount: 1 });
@@ -220,6 +268,11 @@ export function registerBrowserTools(d: BrowserToolsDeps): void {
     async (args, taskId) => {
       const send = await page(taskId);
       const at = await locate(send, args.ref);
+      // D436: Enter in a form whose only way out pays is a press on pay.
+      if (args.submit) {
+        const subs = ((await evaluate(send, submitWords(at.n)).catch(() => [])) ?? []) as string[];
+        if (subs.some((w) => PAYS.test(w))) await refusePay(taskId, send);
+      }
       if (at.secret)
         throw new Error(
           `[${at.n}] is a password or one-time-code field. Signing in is the user's: call browser_ask_sign_in with the site, and end your turn.`,
@@ -255,6 +308,15 @@ export function registerBrowserTools(d: BrowserToolsDeps): void {
     async (args, taskId) => {
       if (!isKey(args.key)) throw new Error(`unknown key ${args.key}`);
       const send = await page(taskId);
+      if (args.key === "Enter" || args.key === "Space") {
+        const active = await evaluate(send, ACTIVE_WORDS).catch(() => null);
+        if (active && paysAt(active)) await refusePay(taskId, send);
+        // Enter in a field submits its form: the same rule as browser_type's submit.
+        if (args.key === "Enter" && active && (active.tag === "input" || active.tag === "select")) {
+          const subs = ((await evaluate(send, `(() => { const f = document.activeElement && document.activeElement.form; if (!f) return []; return [...f.querySelectorAll('button:not([type]), button[type="submit"], input[type="submit"], input[type="image"]')].map((b) => ((b.getAttribute("aria-label") || b.innerText || b.value || "") + "").replace(/\\s+/g, " ").trim().slice(0, 80)); })()`).catch(() => [])) ?? []) as string[];
+          if (subs.some((w) => PAYS.test(w))) await refusePay(taskId, send);
+        }
+      }
       note(taskId, { kind: "press", key: args.key });
       await pressKey(send, args.key);
       await Bun.sleep(200);
@@ -337,12 +399,18 @@ export function registerBrowserTools(d: BrowserToolsDeps): void {
       properties: {
         url: { type: "string", description: "The site's sign-in page (or the page that asked to sign in)." },
         why: { type: "string", description: "One short sentence for the user: what you'll do once they're signed in." },
+        step: {
+          type: "string",
+          description:
+            "Instead of a sign-in: another step only the user can do on this page (a CAPTCHA or slider, a code sent to their phone, \"confirm it's you\"), in a few words in the user's language (\"输入发到你手机的验证码\"). Pass the page it is on as url. The same live view opens on your tab; carry on when they hand it back.",
+        },
       },
       required: ["url"],
     },
     async (args, taskId) => {
       const url = pageUrl(args.url);
       const site = hostOf(url)!;
+      const step = String(args.step ?? "").trim().slice(0, 120);
       const send = await page(taskId, true);
       const here = await evaluate(send, "location.href").catch(() => "");
       // Already on that page (it asked to sign in right there): keep it; else open the sign-in page.
@@ -352,11 +420,65 @@ export function registerBrowserTools(d: BrowserToolsDeps): void {
       }
       const card = d.tasks.get(taskId);
       const why = String(args.why ?? "").trim().slice(0, 300);
-      const q: Question = { id: "sign_in", text: `Sign in to ${site} in Ducter's browser`, blocking: true, default: "Signed in", reversible: false, signIn: { site, url } };
-      const body: Bodies["report"] = { taskId, state: "needs_input", summary: why || `Needs you to sign in to ${site}.`, questions: [q], evidence: [] };
+      const q: Question = step
+        ? { id: "step", text: `Your step on ${site}: ${step}`, blocking: true, default: "Done", reversible: false, signIn: { site, url, step } }
+        : { id: "sign_in", text: `Sign in to ${site} in Ducter's browser`, blocking: true, default: "Signed in", reversible: false, signIn: { site, url } };
+      const body: Bodies["report"] = { taskId, state: "needs_input", summary: why || (step ? `Needs you on ${site}: ${step}` : `Needs you to sign in to ${site}.`), questions: [q], evidence: [] };
       d.log.append({ persona: card?.persona, stream: `task:${taskId}`, origin: "task", kind: "report", body });
       d.tasks.setState(taskId, "needs_you", (card?.residency as any) ?? "hot");
-      return `Asked the user to sign in to ${site}. End your turn now. When they're done you'll get a message; then browser_read to check you're signed in.`;
+      return step
+        ? `Asked the user to do this step on ${site} themselves. End your turn now. When they're done you'll get a message; then browser_read to check, and carry on.`
+        : `Asked the user to sign in to ${site}. End your turn now. When they're done you'll get a message; then browser_read to check you're signed in.`;
+    },
+  );
+
+  reg(
+    "browser_at_checkout",
+    "The errand's stop (D436). On the checkout page, with the total shown and everything but paying done: Ducter puts one card for the user, 去付款 / Go to checkout, with what it buys, the total, this page's site (read by Ducter, never your word) and a picture of the page; the user pays in a live view of this very tab with their own tap. You never press pay (the tools refuse it). Then end your turn: a message arrives when they've paid (read the page and report the order) or said not now.",
+    {
+      type: "object",
+      properties: {
+        what: { type: "string", description: 'What it buys, in a few words in the user\'s language ("G7311 上海虹桥→杭州东 11-28 08:05 二等座", "3 items from the cart").' },
+        total: { type: "string", description: 'The total the page shows, as a number ("73.00").' },
+        currency: { type: "string", description: 'ISO code ("CNY", "USD", "JPY").' },
+        items: { type: "array", items: { type: "string" }, description: "When it buys several things: each in a few words (at most 8)." },
+      },
+      required: ["what"],
+    },
+    async (args, taskId) => {
+      const t = host.task(taskId)!;
+      const send = await page(taskId);
+      const url = String((await evaluate(send, "location.href").catch(() => "")) ?? "");
+      if (!securePage(url)) throw new Error(`${hostOf(url) ?? "this page"} isn't a secure (https) page: the user shouldn't pay here. Say so in your report instead.`);
+      const site = hostOf(url)!;
+      const what = String(args.what ?? "").trim().slice(0, 140);
+      if (!what) throw new Error("what must say in a few words what it buys");
+      const total = String(args.total ?? "").replace(/[^\d.,]/g, "").slice(0, 20);
+      const currency = String(args.currency ?? "").trim().toUpperCase().slice(0, 3);
+      const items = (Array.isArray(args.items) ? args.items : []).map((x: unknown) => String(x ?? "").trim().slice(0, 80)).filter(Boolean).slice(0, 8);
+      note(taskId, { kind: "shot" });
+      // The page as the person will find it (filled fields are drawn as dots, D191).
+      let media: MediaRef[] | undefined;
+      try {
+        const shot = await send("Page.captureScreenshot", { format: "jpeg", quality: 70 });
+        const bytes = Buffer.from(String(shot?.data ?? ""), "base64");
+        if (bytes.length) {
+          mkdirSync(t.evidenceDir, { recursive: true });
+          writeFileSync(join(t.evidenceDir, `checkout-${Date.now()}.jpg`), bytes);
+          const ref = d.media?.()?.put(new Uint8Array(bytes), { name: `${site}-checkout.jpg` });
+          if (ref) media = [ref];
+        }
+      } catch {
+        // No picture: the card still says what, how much and where.
+      }
+      const checkout: CheckoutAsk = { site, url, what, ...(total && /\d/.test(total) ? { total } : {}), ...(/^[A-Z]{3}$/.test(currency) ? { currency } : {}), ...(items.length ? { items } : {}), ...(media ? { media } : {}) };
+      const card = d.tasks.get(taskId);
+      const amount = checkout.total ? `${checkout.currency ?? ""} ${checkout.total}`.trim() : "";
+      const q: Question = { id: "checkout", text: `Ready to pay${amount ? ` ${amount}` : ""} on ${site}: ${what}`, blocking: true, reversible: false, checkout };
+      const body: Bodies["report"] = { taskId, state: "needs_input", summary: `At the checkout on ${site}${amount ? ` (${amount})` : ""}: ${what}`, questions: [q], evidence: [{ kind: "url", label: site, ref: url }] };
+      d.log.append({ persona: card?.persona, stream: `task:${taskId}`, origin: "task", kind: "report", body });
+      d.tasks.setState(taskId, "needs_you", (card?.residency as any) ?? "hot");
+      return `The user has the card now (${amount || "no total read"} on ${site}). End your turn and press nothing. You'll get a message when they've paid (then browser_read and report the order) or said not now.`;
     },
   );
 }

@@ -140,7 +140,7 @@ const rows = (h: DeviceHarness): Tier[] => {
 export function kindOf(said: unknown, needs?: TaskNeeds, place?: Place): WorkKind | undefined {
   if (isWorkKind(said)) return said;
   if (place?.kind === "repo") return "code";
-  if (needs?.browse || needs?.signedIn || needs?.phone || place?.kind === "browser") return "errand";
+  if (needs?.browse || needs?.signedIn || needs?.buy || needs?.phone || place?.kind === "browser") return "errand";
   return undefined;
 }
 
@@ -192,10 +192,11 @@ function fit(c: Computer, needs: TaskNeeds | undefined, place: Place | undefined
   if (needs?.app && !c.mac) return { block: "no_app" };
   // D217: work on an app on a phone runs where Ducter's phone is.
   if (needs?.phone && !c.phone) return { block: "no_phone" };
-  const browses = !!(needs?.browse || needs?.signedIn || place?.kind === "browser");
+  const browses = !!(needs?.browse || needs?.signedIn || needs?.buy || place?.kind === "browser");
   if (!browses) return {};
   if (!c.web?.on) return { block: needs?.signedIn ? "no_chrome" : "no_browser" };
-  if (c.web.where === "chrome") return { uses: "chrome" };
+  // D436: buying or booking runs in Ducter's own browser there, never the person's Chrome (the stop and the pay gate are code only there).
+  if (c.web.where === "chrome" && !needs?.buy) return { uses: "chrome" };
   // Ducter's own browser: the user's sign-ins only where they signed in there (D151); else they would sign in first.
   const site = needs?.site?.replace(/^www\./, "").toLowerCase();
   const signed = !!site && (c.sites ?? []).some((s) => s === site || site.endsWith("." + s));
@@ -227,7 +228,7 @@ function rank(inp: CandidateInput): { rows: Row[]; multi: boolean } {
       if (!isHarnessId(h.harness) || !HARNESSES[h.harness].task) continue;
       // D206: a picture to make goes only to an agent that makes pictures. D416: web pages only to
       // an agent whose session can be held to the browser's rules (D241).
-      const browses = !!(inp.needs?.browse || inp.needs?.signedIn || inp.place?.kind === "browser");
+      const browses = !!(inp.needs?.browse || inp.needs?.signedIn || inp.needs?.buy || inp.place?.kind === "browser");
       const blocked0 =
         blockOf(h, inp.settings) ?? (browses && HARNESSES[h.harness].noWebTasks ? ("no_web" as const) : undefined) ?? f.block ?? (inp.needs?.draw && !HARNESSES[h.harness].draws ? ("no_draw" as const) : undefined);
       for (const t of rows(h)) {

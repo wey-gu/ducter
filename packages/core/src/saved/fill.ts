@@ -121,6 +121,8 @@ export interface Fill {
   /** Whether a decision is a pay card that still needs its code. */
   needsCvc(decisionId: string): boolean;
   approvals(): ReadonlyMap<string, Omit<Approval, "cvc">>;
+  /** D436: this task's payment Go is open on this site (the only time a press may pay). */
+  mayPay(taskId: string, site: string): boolean;
   /** The security codes held for payments still open: scrubbed as whole numbers while they are. */
   codes(): string[];
   stop(): void;
@@ -313,6 +315,11 @@ export function registerFillTools(d: FillDeps): Fill {
     },
     needsCvc: (id) => !!asked.get(id)?.pay?.needsCvc,
     approvals: () => new Map([...approvals].map(([k, { cvc: _c, ...v }]) => [k, v])),
+    mayPay: (taskId, site) => {
+      const a = approvals.get(taskId);
+      return !!a && a.until >= now() && onSite(site, a.site);
+    },
+
     codes: () => [...[...approvals.values()].filter((a) => a.cvc && a.until >= now()).map((a) => a.cvc!), ...cvcs.values()],
     stop: () => unsubscribe(),
   };

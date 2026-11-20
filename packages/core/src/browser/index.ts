@@ -8,7 +8,7 @@ import { createLive, type Live, type LiveDeps } from "./live.ts";
 import { createSites, type Sites } from "./sites.ts";
 import { registerBrowserTools } from "./tools.ts";
 import { checkBrowser, checkLine } from "./check.ts";
-import type { BrowserAbout, BrowserCheck } from "@ducter/protocol";
+import type { BrowserAbout, BrowserCheck, MediaRef, TaskNeeds } from "@ducter/protocol";
 import { profileName } from "@ducter/protocol/src/browser-profile.ts";
 import type { WorkerLinks } from "@ducter/protocol/src/internal.ts";
 import { remoteBrowserHost, routedHost, splitProfile } from "./remote.ts";
@@ -57,7 +57,11 @@ export interface DucterBrowserOptions extends HostOptions {
   /** D191: hides saved values (Autofill) from what the browser tools answer. */
   scrub?: (text: string) => string;
   /** D191: a task that fills from Autofill (runs on this browser wherever it can start). */
-  wants?: (taskId: string, brief?: string) => boolean;
+  wants?: (taskId: string, brief?: string, needs?: TaskNeeds) => boolean;
+  /** D436: a D191 Pay Go is open for this task on this site (the only time a press may pay). */
+  mayPay?: (taskId: string, site: string) => boolean;
+  /** D436: the home's media store, for the checkout's picture. */
+  media?: () => { put(bytes: Uint8Array, o?: { name?: string }): MediaRef } | undefined;
 }
 
 export function createDucterBrowser(o: DucterBrowserOptions): DucterBrowser {
@@ -76,7 +80,7 @@ export function createDucterBrowser(o: DucterBrowserOptions): DucterBrowser {
   const notes = createBrowserNotes();
   const live = createLive({ host, decisions: o.decisions, tasks: o.tasks as LiveDeps["tasks"], persona: o.persona, notes, ...(o.tell ? { tell: o.tell } : {}) });
   const sites = createSites(host);
-  registerBrowserTools({ mcp: o.mcp, host, log: o.log, tasks: o.tasks as any, notes, ...(o.scrub ? { scrub: o.scrub } : {}) });
+  registerBrowserTools({ mcp: o.mcp, host, log: o.log, tasks: o.tasks as any, notes, ...(o.scrub ? { scrub: o.scrub } : {}), ...(o.mayPay ? { mayPay: o.mayPay } : {}), ...(o.media ? { media: o.media } : {}) });
   const fns = new Set<() => void>();
   const changed = () => fns.forEach((f) => f());
   let installing: Promise<InstallResult> | undefined;
@@ -130,7 +134,7 @@ export function createDucterBrowser(o: DucterBrowserOptions): DucterBrowser {
     },
     attach: (taskId, a) => host.attach(taskId, a),
     release: (taskId) => host.release(taskId),
-    wants: (taskId, brief) => o.wants?.(taskId, brief) ?? false,
+    wants: (taskId, brief, needs) => o.wants?.(taskId, brief, needs) ?? false,
   };
 
   const profile = () => profileName(o.persona);

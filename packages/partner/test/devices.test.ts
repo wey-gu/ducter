@@ -21,6 +21,9 @@ test("needs from the model: only the known fields, a site as its host", () => {
   expect(parseNeeds({})).toBeUndefined();
   expect(parseNeeds({ browse: true, signedIn: true, site: "https://www.Taobao.com/orders", long: "yes", extra: 1 })).toEqual({ browse: true, signedIn: true, site: "taobao.com" });
   expect(parseNeeds({ app: " Keynote ", long: true })).toEqual({ app: "Keynote", long: true });
+  // D436: buying or booking is web work in Ducter's own browser.
+  expect(parseNeeds({ buy: true, signedIn: true, site: "taobao.com" })).toEqual({ buy: true, browse: true, signedIn: true, site: "taobao.com" });
+  expect(parseNeeds({ buy: "yes" })).toBeUndefined();
   // D251: which phone; "any" and the old true are either; anything else is dropped.
   expect(parseNeeds({ phone: "mine" })).toEqual({ phone: "mine" });
   expect(parseNeeds({ phone: "ducter" })).toEqual({ phone: "ducter" });

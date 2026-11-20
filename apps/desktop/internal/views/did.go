@@ -533,6 +533,12 @@ func (a *App) didFacts(it *protocol.DidItem) []string {
 			out = append(out, l.T("did.go.before"))
 		case "said":
 			out = append(out, l.T("did.go.said", g.Words))
+		case "paid": // D436: the person paid it themselves at the checkout
+			at := store.ParseTime(g.At)
+			if at.IsZero() {
+				at = store.ParseTime(it.At)
+			}
+			out = append(out, l.T("did.go.paid", i18n.Clock(at)))
 		}
 	}
 	if w := it.Where; w != nil {

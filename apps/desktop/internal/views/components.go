@@ -722,10 +722,19 @@ type decisionStyle struct {
 // the decision was resolved.
 func (a *App) decisionButtons(c *ui.Context, d *store.DecisionState, st decisionStyle) {
 	t := a.T
+	if d.Checkout != nil {
+		a.checkoutButtons(c, d, st) // D436: 去付款 opens the checkout live; the person pays
+		return
+	}
+	if d.SignIn != nil && d.SignIn.Step != "" {
+		a.stepButtons(c, d, st) // D436: a step on the page that's the person's
+		return
+	}
 	if d.SignIn != nil {
 		a.signInButtons(c, d, st) // D151: Sign in opens the live view
 		return
 	}
+
 	if d.Phone != nil {
 		a.phoneButtons(c, d, st) // D217: a Go for one tap, or the user's turn on the phone
 		return

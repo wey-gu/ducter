@@ -71,6 +71,12 @@ func (a *App) signInButtons(c *ui.Context, d *store.DecisionState, st decisionSt
 // questionOf is a decision's question as the user reads it: a sign-in
 // card's own words (the task's are English), else the task's question.
 func (a *App) questionOf(d *store.DecisionState) string {
+	if d.Checkout != nil {
+		return a.checkoutTitle(d.Checkout.Site) // D436
+	}
+	if d.SignIn != nil && d.SignIn.Step != "" {
+		return a.L.T("step.title", d.SignIn.Site)
+	}
 	if d.SignIn != nil {
 		return a.L.T("signin.title", d.SignIn.Site)
 	}
@@ -178,6 +184,9 @@ func (a *App) liveTitle(lv *store.LiveView) string {
 	}
 	if lv.Watch() {
 		return a.L.T("live.watch.title")
+	}
+	if title, _, _, _, ok := a.liveCardWords(lv); ok {
+		return title // D436: a checkout or a step
 	}
 	return a.L.T("signin.title", lv.Site)
 }
@@ -379,6 +388,14 @@ func (a *App) liveView(c *ui.Context) {
 				a.CloseLive(false)
 			}
 		})
+		// D436: paying is theirs: said once above the page.
+		if _, band, _, _, ok := a.liveCardWords(lv); ok && band != "" {
+			w := t.State("blocked")
+			ui.Row(c.Key("live-band-co")).Gap(6).Justify(ui.Center).AlignItems(ui.Center).Padding(t.S2, t.S4).Background(w.Surface).Role(ui.RoleStatus).Children(func() {
+				a.glyph(c, 14, drawEyeShut(w.Ink))
+				uiText(c, band).FontSize(t.SM).TextColor(w.Ink)
+			})
+		}
 		// D190: the user's turn of a watch, said plainly, once, above the page.
 		if watch && mine {
 			w := t.State("blocked")
@@ -499,12 +516,17 @@ func (a *App) liveView(c *ui.Context) {
 					a.CloseLive(true)
 				}
 			default:
-				if a.buttonFor(c, a.L.T("live.notnow"), host, btnSecondary, t.ControlMD, t.Bg) {
+				hold, done := a.L.T("live.notnow"), a.L.T("live.done")
+				if _, _, h, d, ok := a.liveCardWords(lv); ok {
+					hold, done = h, d // D436: 还没付 · 付好了, or a step's Not now · Done
+				}
+				if a.buttonFor(c, hold, host, btnSecondary, t.ControlMD, t.Bg) {
 					a.CloseLive(false)
 				}
-				if a.buttonFor(c, a.L.T("live.done"), host, btnPrimary, t.ControlMD, t.Bg) {
+				if a.buttonFor(c, done, host, btnPrimary, t.ControlMD, t.Bg) {
 					a.CloseLive(true)
 				}
+
 			}
 		})
 	})

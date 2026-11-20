@@ -1209,12 +1209,12 @@ so the main process holds one.
   The sandbox stays on; Ducter never falls back to `--no-sandbox` for a normal user. Then one
   headless start that must answer CDP. Devices drives it (`setAbility web on`), and so does `ducter ability add browser`.
 - **Tools (`tools.ts`):** `browser_open, _read, _click, _type, _press, _scroll, _back, _tabs,
-  _screenshot, _ask_sign_in` on Ducter's MCP, `registerWhen` only for tasks the runner attached
+  _screenshot, _ask_sign_in, _at_checkout` (D436; `_ask_sign_in` takes `step` for any step that is the person's) on Ducter's MCP, `registerWhen` only for tasks the runner attached
   (`DucterBrowserPort.attach` in the sidecar's `ready`, `release` on done). Each task works in
   tabs of its own (pages its tabs open join them). Reads come from an in-page walker
   (`reader.ts`) that numbers what can be acted on and never returns a password or
   one-time-code field's value; typing into those is refused; only http(s) URLs open; reads are
-  labelled as the page's own text. Downloads go to the task's scratch folder.
+  labelled as the page's own text. Downloads go to the task's scratch folder. A press that pays or places an order (a click, Enter or Space on one, a submit from its form) is refused unless a D191 Pay Go is open for that task on that site (D436, `errand.md`).
 - **Runner (`browser.ts`):** on Linux (or `DUCTER_BROWSER_DRIVER=ducter`) a browser place's
   sidecar is the `ducter` driver: no stdio MCP, `ducterBrowserBrief`, the clean per-harness
   setup as for other browser places, no Codex Computer Use rules. Not ready: the task can't

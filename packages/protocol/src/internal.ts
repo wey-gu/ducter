@@ -489,7 +489,7 @@ export interface DucterBrowserPort {
   release(taskId: string): Promise<boolean>;
   /** D191: this task fills from Autofill (its brief names a saved handle): Ducter's own browser
    *  first, wherever it runs, since only there is a fill by reference possible. */
-  wants?(taskId: string, brief?: string): boolean;
+  wants?(taskId: string, brief?: string, needs?: import("./loadout.ts").TaskNeeds): boolean;
 }
 
 export interface WorkerLinks {

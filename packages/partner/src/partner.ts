@@ -1946,7 +1946,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     "task_open",
     "Open a task: a separate working session in its own place (repo, folder, browser) for anything that needs a place, writes, or takes more than ~10s. A follow-up on a task's work (the same errand or goal, builds on what it found or changed, needs its sign-ins, files or branch) is NOT a new task: task_send it to that task, even when done; it keeps its session, place and agent. Open a new task only for separate work, or when the user asks for a new one; if it must build on an unmerged task branch, set place.baseBranch to that branch. Write the one-sentence ack BEFORE calling this. Fill the fields in this order: title, kind, needs (only when it needs something of a computer), place ({\"kind\":\"none\"} when it has none), then brief last: the task starts as soon as its title and place are written. Ducter picks the computer a task runs on from its needs (and says where on the task); name a computer in place.device only when the user named one. The brief must quote the user's words verbatim and list decisions, done-criteria, out of scope, and the place. " +
       'Choose place {"kind":"browser"} when the work happens on the web: looking something up, checking or reading a page or site, comparing products, filling a form. Codex and Claude Code tasks work in the user\'s own Chrome with their own browser tools (signed in as the user, in a window of their own) and never sign in, submit, post or pay without the user\'s Go; otherwise the task uses Ducter\'s own browser, which keeps its sign-ins between tasks. Any Codex task can also operate apps on this Mac with its Computer Use; say so when a task will. ' +
-      "A browser task never signs in, submits, posts, buys, or pays by itself: it stops and asks the user with a question, so put that in the brief's out of scope. " +
+      "A browser task never signs in, submits, posts, buys, or pays by itself: it stops and asks the user with a question, so put that in the brief's out of scope. To buy or book (a ticket, a hotel, a cart): one task with needs.buy; it does everything up to the checkout and stops there with one card, and the user pays with their own tap. " +
       "Returns at once; the task reports back on its own. Never wait on it.",
     () => ({
       type: "object",
@@ -1982,6 +1982,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
             browse: { type: "boolean", description: "It works on web pages (public pages need no sign-in: Ducter's own browser does them)" },
             signedIn: { type: "boolean", description: "It needs sites the user is signed in to (their orders, their inbox on the web, an account page)" },
             site: { type: "string", description: 'With signedIn: the site, when known ("taobao.com")' },
+            buy: { type: "boolean", description: "It buys or books something (a ticket, a hotel, what is in a cart): it does everything up to the checkout in Ducter's own browser and stops there for the user to pay with their own tap" },
             app: { type: "string", description: 'A Mac app it works in ("Keynote", "Xcode")' },
             long: { type: "boolean", description: "Long or ongoing work (an hour or more, a loop, a wait): better on a computer that doesn't sleep" },
             draw: { type: "boolean", description: "It makes a picture (画一张…, draw, generate an image): only an agent that generates images takes it" },
@@ -5114,6 +5115,7 @@ export function parseNeeds(raw: unknown): TaskNeeds | undefined {
     ...(str(r.app) ? { app: str(r.app) } : {}),
     ...(r.long === true ? { long: true } : {}),
     ...(r.draw === true ? { draw: true } : {}),
+    ...(r.buy === true ? { buy: true, browse: true } : {}), // D436: buying or booking is web work in Ducter's own browser
     // D251: which phone; true (before D251) and "any" are either.
     ...(r.phone === "mine" || r.phone === "ducter" ? { phone: r.phone } : r.phone === true || r.phone === "any" ? { phone: true } : {}),
   };

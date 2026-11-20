@@ -604,6 +604,22 @@ Screen and Dynamic Island (`apps/ios/LiveShared/Glance.swift`: the same pebble m
 card, 18 compact, 16 minimal; the paper, the ink and the accent from Pebble) and in Android's
 notification shade (the pebble as a one-colour icon).
 
+**The mini window (D438, research/187).** 小窗 / Mini window: the partner beside whatever the person
+works in. A Mac panel 380 wide, frameless, radius 16, on `Bg`, above every app's windows on every
+Space (MyGo `Panel`), shown with `ShowInactive` so it never takes the keyboard; its height follows
+what it shows (128–520), top edge kept; its place and whether it was open are remembered. At first
+it sits at the top right of the screen, 16 in and 12 under the menu bar, under the menu bar's own
+partner. Its head moves it: the clay partner at 44 (its presence face; while the person waits on a
+reply, the waiting line's figure and loop, D425), then the name (13/700, `InkMuted`), the count
+pill **{n} 个等你** (`NeedsYou.Surface`, a 7-pt `NeedsYou.Dot`, 12/700 `NeedsYou.Ink`; only while
+something needs the person; the window's only accent) and **收起** (a ControlSM text icon button);
+under them one line at 15/1.45, at most two lines, held and cross-faded like the waiting line (the
+partner's words and a question in `Ink`, the rest `InkSoft`). Under the head the field: a `Surface`
+card, radius LG, the Raised shadow, the conversation's draft (1–4 lines), the mic (D305) and Send.
+Hold to talk's strip and cards sit between the head and the field and the window grows for them.
+⌃⌥⌘Space or **小窗 / Mini Window** (View; the menu bar extra's menu) shows and hides it. The menu
+bar's mark is unchanged by it (D306).
+
 **Settings (D150).** A game's settings menu. On the left a rail (264 wide, on the chrome's cream
 with a hairline) of chunky clay tabs, 56 tall, radius 16: each the clay thing it is about at 40
 (the partner's face; `wait_clock`; `wait_mail`; Pebble's paper, accent and ink as three clay

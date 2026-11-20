@@ -325,6 +325,13 @@ func main() {
 		lc.menu = appMenu(app, app.L, win, lc)
 		mygo.App.SetMenu(lc.menu)
 		tray = newTray(app, win)
+		// D438: the mini window; the menus' check follows it.
+		floatWin := installFloat(app, func() {
+			if it := lc.menu.ItemByID("float"); it != nil {
+				it.SetChecked(app.FloatShown())
+			}
+			tray.refresh(true)
+		})
 		app.OnLanguage = func(l *i18n.Strings) {
 			mygo.App.SetLocale(mygoLocale(l.Lang))
 			lc.l = l
@@ -378,6 +385,7 @@ func main() {
 				win.Update(func() {
 					app.Receive(f)
 					updateBadge()
+					floatWin.Invalidate() // D438: the mini window says what changed too
 					// D410: the apps' own windows draw what changed (a new version, a rename).
 					if f.T == "apps" || f.T == "events" {
 						for _, w := range app.AppWins() {
@@ -529,6 +537,9 @@ func appMenu(app *views.App, l *i18n.Strings, win *mygo.Window, lc *lifecycle) *
 			{Label: l.T("past.menu"), Accelerator: "CmdOrCtrl+Y", Click: show(func() { app.OpenPast("") })},
 			{Label: l.T("did.menu"), Accelerator: "CmdOrCtrl+Shift+Y", Click: show(app.OpenDid)}, // D300
 			{Label: l.T("apps.title"), Accelerator: "CmdOrCtrl+5", Click: show(app.OpenApps)},    // D410
+			// D438: the mini window, beside whatever the person works in; never brings this window forward.
+			{ID: "float", Label: l.T("float.name"), Type: mygo.MenuItemCheckbox, Checked: app.FloatShown(), Accelerator: views.FloatKey,
+				Click: func(*mygo.MenuItem, *mygo.Window) { win.Update(app.ToggleFloat) }},
 			// D244: the next and the previous task, in On hand's order.
 			{Label: l.T("onhand.walk.next"), Accelerator: "CmdOrCtrl+Shift+]", Click: show(func() { app.WalkTask(1) })},
 			{Label: l.T("onhand.walk.prev"), Accelerator: "CmdOrCtrl+Shift+[", Click: show(func() { app.WalkTask(-1) })},
@@ -681,6 +692,9 @@ func (tm *trayMenu) refresh(force bool) {
 	}
 	items = append(items,
 		mygo.Separator(),
+		// D438: the mini window, from the menu bar too (the key shown, never needed).
+		&mygo.MenuItem{Label: l.T("float.name"), Type: mygo.MenuItemCheckbox, Checked: app.FloatShown(), Accelerator: views.FloatKey,
+			Click: func(*mygo.MenuItem, *mygo.Window) { tm.win.Update(app.ToggleFloat) }},
 		&mygo.MenuItem{Label: l.T("tray.open"), Click: open(nil)},
 		&mygo.MenuItem{Label: l.T("menu.settings"), Click: open(app.OpenSettings)},
 		&mygo.MenuItem{Label: l.T("tray.hide"), Click: func(*mygo.MenuItem, *mygo.Window) {

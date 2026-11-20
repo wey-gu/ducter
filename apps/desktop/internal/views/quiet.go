@@ -565,6 +565,13 @@ const timeGap = 15 * time.Minute
 // reassuring line; past 45 s, that it will say when it's ready, and the
 // figure only breathes.
 func (a *App) presenceRow(c *ui.Context) {
+	step, el, line, sub := a.presenceNow(c)
+	a.waitingStep(c.Key("presence"), "presence", step, el, line, sub)
+}
+
+// presenceNow is the waiting line's step, how long it has been on it, and
+// its words: the conversation's and the mini window's (D438).
+func (a *App) presenceNow(c *ui.Context) (step string, el time.Duration, line, sub string) {
 	step, since := "thinking", a.thinkingSince
 	about, source := "", ""
 	if act := a.S.Activity; act != nil {
@@ -573,8 +580,8 @@ func (a *App) presenceRow(c *ui.Context) {
 	if since.IsZero() {
 		since = a.lastUserAt()
 	}
-	el := time.Since(since)
-	sub := aliveSubFor(el)
+	el = time.Since(since)
+	sub = aliveSubFor(el)
 	switch {
 	case el < aliveSlow:
 		c.After(aliveSlow - el) // the reassuring line comes on time
@@ -582,14 +589,14 @@ func (a *App) presenceRow(c *ui.Context) {
 		c.After(aliveLong - el)
 	}
 	key, arg := aliveWords(step, about, source)
-	line := a.L.T(key)
+	line = a.L.T(key)
 	if arg != "" {
 		line = a.L.T(key, arg)
 	}
 	if sub != "" {
 		sub = a.L.T(sub)
 	}
-	a.waitingStep(c.Key("presence"), "presence", step, el, line, sub)
+	return step, el, line, sub
 }
 
 // waitingRow is the clay partner at work and one plain line where its

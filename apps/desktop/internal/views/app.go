@@ -71,7 +71,10 @@ type App struct {
 	OpenAppWindow func(id, name string)
 	// ShowMain (D407) brings the main window forward (an app's 看草稿 opens
 	// the draft sheet there); nil in tests.
-	ShowMain  func()
+	ShowMain func()
+	// Float (D438) is the mini window's hands (main.go); float its state.
+	Float     FloatHands
+	float     floatState
 	openedApp string
 	bridge    *AppBridge
 	// shelf is 你的小应用 / Your apps (D410, apps_shelf.go); appWins the apps

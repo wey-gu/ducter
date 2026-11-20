@@ -72,6 +72,24 @@ var UILangs = func() []string {
 	return out
 }()
 
+// Samples is the partner's one-line reply in each common language (Look and
+// sound's preview answer), shown under Replies in so the person sees the
+// voice they pick (D445; packages/protocol/src/languages.json's samples).
+var Samples = map[string]string{
+	"zh":      "好，明天 9:00 叫你。",
+	"zh-Hant": "好，明天 9:00 叫你。",
+	"en":      "Sure, I'll ping you at 9:00 tomorrow.",
+	"ja":      "はい、明日の 9:00 にお知らせします。",
+	"ko":      "네, 내일 9:00에 알려 드릴게요.",
+	"es":      "Vale, te aviso mañana a las 9:00.",
+	"fr":      "D'accord, je te préviens demain à 9:00.",
+	"de":      "Gut, ich melde mich morgen um 9:00.",
+	"pt":      "Certo, te aviso amanhã às 9:00.",
+	"it":      "Va bene, ti avviso domani alle 9:00.",
+	"ru":      "Хорошо, напомню завтра в 9:00.",
+	"ar":      "حسنًا، سأذكّرك غدًا الساعة 9:00.",
+}
+
 // Known says whether Ducter names this tag's language in its table.
 func Known(tag string) bool {
 	_, ok := info(tag)

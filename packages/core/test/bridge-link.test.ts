@@ -720,3 +720,13 @@ describe("D400: nmem 0.10.121", () => {
     expect((await r.link.view())?.notices).toBeUndefined();
   });
 });
+
+test("D445: the line to copy names the home's own package manager (Debian, Fedora, Arch, openSUSE, a Mac)", () => {
+  const has = (...tools: string[]) => (tool: string) => tools.includes(tool);
+  expect(pipxCmd("darwin", has("apt-get"))).toBe("brew install pipx");
+  expect(pipxCmd("linux", has("apt-get", "dnf"))).toBe("sudo apt install pipx");
+  expect(pipxCmd("linux", has("dnf"))).toBe("sudo dnf install pipx");
+  expect(pipxCmd("linux", has("pacman"))).toBe("sudo pacman -S python-pipx");
+  expect(pipxCmd("linux", has("zypper"))).toBe("sudo zypper install python3-pipx");
+  expect(pipxCmd("linux")).toBe("sudo apt install pipx");
+});

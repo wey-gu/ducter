@@ -31,9 +31,10 @@ import { AddRow, AppsMark, Btn, Chev, Choice, DevicesMark, Facts, Gear, NavBtn, 
 import { deviceArt, deviceCardShown, DevicesSection } from "./devcard.tsx";
 import { CallsSection, ProactiveChips, QuietDay, SourceCards } from "./accounts.tsx";
 import { OwnPhoneCard } from "./own-phone.tsx";
-import { Said, say } from "./set-grid.tsx";
+import { Said, say, Waiting } from "./set-grid.tsx";
 import { DangerButton } from "./controls.tsx";
 import { Select } from "./menu.tsx";
+import { cheer, LookPreview, NotifyPreview, TalkSample } from "./settings-delight.tsx";
 import { AskLines, TaskAsks } from "./asks.tsx";
 import { CallDecision, CallRow, PhoneCard, PhoneOffer } from "./phone.tsx";
 import { callEnded } from "@ducter/protocol";
@@ -2734,6 +2735,8 @@ function TalkSettings() {
         <div class="set-item talk-row">
           <span class="grow">
             <b>{t("settings.talk.row")}</b>
+            {/* D445: the picker says which language; its voice shows under the title. */}
+            <TalkSample language={other ? "" : s.language} />
           </span>
           <span class="pick">
             <Select
@@ -2827,16 +2830,19 @@ function TrustSettings() {
 
 function NotifySettings() {
   const s = A.settings;
-  if (!s) return <div class="small">{t("conn.connecting")}</div>;
+  // D445: the page's shape while it reads, as To-do sources and Chat apps (D432), never a bare line.
+  if (!s) return <Waiting text={t("conn.connecting")} />;
   const quiet = s.quiet;
-  const setQuiet = (start: string, end: string) => (A.setSettings({ quiet: { start, end, tz: quiet?.tz ?? tz() } }), say("notify", t("said.quiet", start, end)));
+  const setQuiet = (start: string, end: string) => (A.setSettings({ quiet: { start, end, tz: quiet?.tz ?? tz() } }), say("notify", t("said.quiet", start, end)), cheer());
   return (
     <>
+      {/* D445: the notification itself, live with every choice below (D43: shown, not explained). */}
+      <NotifyPreview />
       <section class="set">
         <h3>{t("partner.notify.title")}</h3>
         <div class="set-card">
-        <Toggle label={t("partner.notify.on")} help={t(s.notify ? "partner.notify.on.note" : "partner.notify.off.note")} checked={s.notify} onChange={(notify) => A.setSettings({ notify })} />
-        {s.notify && <Toggle label={t("partner.quiet")} help={t("partner.quiet.note")} checked={!!quiet} onChange={(on) => (A.setSettings({ quiet: on ? { start: "23:00", end: "08:00", tz: tz() } : null }), say("notify", on ? t("said.quiet", "23:00", "08:00") : t("said.quiet.off")))} />}
+        <Toggle label={t("partner.notify.on")} help={t(s.notify ? "partner.notify.on.note" : "partner.notify.off.note")} checked={s.notify} onChange={(notify) => (A.setSettings({ notify }), cheer())} />
+        {s.notify && <Toggle label={t("partner.quiet")} help={t("partner.quiet.note")} checked={!!quiet} onChange={(on) => (A.setSettings({ quiet: on ? { start: "23:00", end: "08:00", tz: tz() } : null }), say("notify", on ? t("said.quiet", "23:00", "08:00") : t("said.quiet.off")), cheer())} />}
         {s.notify && quiet && (
           <div class="quiet-range">
             <input type="time" aria-label={t("partner.quiet")} value={quiet.start} onChange={(e) => setQuiet((e.target as HTMLInputElement).value || quiet.start, quiet.end)} />
@@ -2863,7 +2869,7 @@ function NotifySettings() {
               label={t("partner.default.line")}
               value={s.defaultAfterMin}
               options={[10, 30, 60, 120].map((v) => ({ v, label: v < 60 ? t("partner.default.min", v) : t("partner.default.hour", v / 60) }))}
-              onPick={(defaultAfterMin) => (A.setSettings({ defaultAfterMin }), say("default", t("said.default", defaultAfterMin < 60 ? t("partner.default.min", defaultAfterMin) : t("partner.default.hour", defaultAfterMin / 60))))}
+              onPick={(defaultAfterMin) => (A.setSettings({ defaultAfterMin }), say("default", t("said.default", defaultAfterMin < 60 ? t("partner.default.min", defaultAfterMin) : t("partner.default.hour", defaultAfterMin / 60))), cheer())}
             />
           </div>
         </div>
@@ -3191,18 +3197,21 @@ function PhonePush() {
 /** 这台手机 / This phone: its own language and how Details show. */
 function PhoneSettings() {
   return (
+    <>
+    {/* D445: Look and sound's preview stage, as the Mac's: a choice here shows at once. */}
+    <LookPreview />
     <section class="set">
       <div class="set-card">
         <PaperRow />
         <div class="set-item">
           <b>{t("settings.lang.title")}</b>
           <small>{t("settings.lang.help")}</small>
-          <Seg label={t("settings.lang.title")} value={A.uiLang} options={(["auto", "zh", "en"] as const).map((v) => ({ v, label: t(`settings.lang.${v}`) }))} onPick={(v) => A.setUiLang(v)} />
+          <Seg label={t("settings.lang.title")} value={A.uiLang} options={(["auto", "zh", "en"] as const).map((v) => ({ v, label: t(`settings.lang.${v}`) }))} onPick={(v) => (A.setUiLang(v), cheer())} />
         </div>
         <div class="set-item">
           <b>{t("settings.details.title")}</b>
           <small>{t("settings.details.note")}</small>
-          <Seg label={t("settings.details.title")} value={A.details} options={(["folded", "shown"] as const).map((v) => ({ v, label: t(`settings.details.${v}`) }))} onPick={(v) => A.setDetails(v)} />
+          <Seg label={t("settings.details.title")} value={A.details} options={(["folded", "shown"] as const).map((v) => ({ v, label: t(`settings.details.${v}`) }))} onPick={(v) => (A.setDetails(v), cheer())} />
         </div>
         <VoiceSettings />
         {/* D342: inside the Android app, its own version and 检查更新. */}
@@ -3210,6 +3219,7 @@ function PhoneSettings() {
       </div>
       {/* D432: the page's title (这台手机 / 这台电脑) already says whose look this is: no note under the card. */}
     </section>
+    </>
   );
 }
 

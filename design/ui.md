@@ -479,8 +479,11 @@ A new control is added to the set (and to this table) before it is used.
 | 怎么做到的 / How it works: an explanation one quiet tap away, under a row, a group's note or a pane's lede note (D424) | `how`, `explainedRow`, `groupHow`, `ledeHow` (`settings.go`) | `How`; `Toggle`'s `how` |
 | Segmented choice | `choices` (`partner.go`) | `Seg` |
 | A choice of a few as a row: its title on the text column, the choice at the right edge, on a phone under the words at the text column's width (D432) | `tileRow` with `choices` | `chat-row` with `Seg` |
-| A pane still being read: its first group's shape, a soft sunken square and the word (D432) | `paneWait` (`settings_rows.go`) | `Waiting` (`set-grid.tsx`) |
+| A pane still being read: its first group's shape, a soft sunken square and the word; the square breathes (1.6 s, still under reduced motion) on both (D432, D445) | `paneWait` (`settings_rows.go`) | `Waiting` (`set-grid.tsx`) |
 | A line to copy (a command to run on a computer) with 复制 → 已复制 (D432) | `lendCopy` (`lend.go`) | `CopyLine` (`lend.tsx`) |
+| A row's words beside its control while they keep 160, else the control under them on the text edge (D445) | `wordsThenControl` (`settings_rows.go`; `row`, `tileRow`, `headRow`) | `chat-row` / `set-item` (D273); `Seg` stacks when its own words overflow |
+| A live preview stage on the paper: the page's choices drawn as the thing they change, the partner smiling a moment after a change (D150, D445) | `lookPreview`, `notifyPreview` (`settings_delight.go`), `cheer` | `LookPreview`, `NotifyPreview`, `cheer` (`settings-delight.tsx`) |
+| The partner's voice under a language choice: a small partner bubble in that language (D445) | `talkSample` | `TalkSample` |
 | Choice row (a theme, Remove's plan) | `selectRow` (`shared.go`) | — |
 | A value row's side link (检查更新 and its 正在检查…, 没能更新 ›; D167) | `sideLink` inside `valueRow` (`settings.go`) | the `Versions` line under the device list (`Btn` kind `text`) |
 | Disclosure row (素材和致谢) and link row | `disclosureRow` (`shared.go`), `linkRow` (`settings.go`) | — |
@@ -495,7 +498,7 @@ A new control is added to the set (and to this table) before it is used.
 | One line in a list of devices | `listRow` (`abilities.go`) | `ListRow` |
 | An app a source can read, on the accounts card (D166; the dashed 再连一个 too) | `appTile` (`shared.go`) | `AppTile` |
 | A candidate row in 换谁来做 | `candRow` (`shared.go`) | the `cand` row in `SwitchList` |
-| A property pill that opens a short list, and that list's rows (New task's where, branch, computer, who, when; D185) | `pill`, `menuRow` (`shared.go`; the list is `listPanel`) | `Pill`, `MenuRow` |
+| A property pill that opens a short list, and that list's rows (New task's where, branch, computer, who, when; D185) | `pill`, `menuRow`, `menuRowEl` (the row too, to bring the chosen one into sight; `shared.go`; the list is `listPanel`) | `Pill`, `MenuRow` |
 | One short choice in a row of them, the chosen one raised (New task's model and effort under the chosen agent; D202) | `choice` (`shared.go`) | `Choice` |
 | A group's name that folds it, with its count (By project; D244) | `foldHead` (`shared.go`) | the folding `Section` in `onhand.tsx` |
 | Back to the list | the chrome's crumb | `BackRow` |

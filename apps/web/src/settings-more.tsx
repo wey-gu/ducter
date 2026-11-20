@@ -9,6 +9,7 @@ import { A } from "./app.ts";
 import { Btn, Seg, Toggle } from "./controls.tsx";
 import { KeyCard } from "./first-words.tsx";
 import { Said, say } from "./set-grid.tsx";
+import { cheer } from "./settings-delight.tsx";
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
 const AGENT_NAMES: Record<string, string> = { "claude-code": "Claude Code", codex: "Codex", pi: "pi" };
@@ -173,7 +174,7 @@ export function PaperRow() {
   return (
     <div class="set-item">
       <b>{t("settings.look.mode")}</b>
-      <Seg label={t("settings.look.mode")} value={cur} options={(["system", "light", "dark"] as const).map((v) => ({ v, label: t(`settings.look.mode.${v}`) }))} onPick={(v) => setPaper(v)} />
+      <Seg label={t("settings.look.mode")} value={cur} options={(["system", "light", "dark"] as const).map((v) => ({ v, label: t(`settings.look.mode.${v}`) }))} onPick={(v) => (setPaper(v), cheer())} />
     </div>
   );
 }

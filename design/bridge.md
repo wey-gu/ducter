@@ -70,7 +70,7 @@ highlighted card there); D332: 和你的其他 agent 通信 walks the same insta
 | The home | The row | The tap runs |
 |---|---|---|
 | no `nmem` | **装上 / Install** (free, Mem's own route) | the first route here (D229): `pipx install nmem-cli`, `uv tool install nmem-cli`, pipx from the system first when that needs no password (`brew install pipx`; `apt-get`/`dnf install -y pipx` as root or with `sudo -n`), then `python3 -m pip install --user nmem-cli` only under an unmarked Python; never past the system's PEP 668 mark |
-| no `nmem`, none of those | the line says a small tool is missing and this computer won't let Ducter add it; **怎么装 / How** holds `sudo apt install pipx`; **再试一次** | the same check again |
+| no `nmem`, none of those | the line says a small tool is missing and this computer won't let Ducter add it; the one line to copy is for the home's own system (D432, D445: `brew`, `apt`, `dnf`, `pacman` or `zypper`); **再试一次** | the same check again |
 | `nmem` older than 0.10.118 | **更新 / Update**, with the version | the same source it came from: pipx, uv, or pip (a venv's own python; the user's site under an unmarked Python). A pip copy past the mark (hel) is **moved** instead (below) |
 | a pip copy in the user's site under a marked Python, working (D229) | a quiet line under the row: **{home} 上的 Nowledge Mem 可以换成它官方推荐的装法…登录不变，记忆不动。**, **细节**, **换一下 / Move it** | pipx got first if needed; the old copy out (`pip uninstall`, past the mark); `pipx install --force nmem-cli` in; on failure the old copy back (**原来那份还在…**). `~/.nowledge-mem` untouched |
 | Mem says a newer `nmem` is out (`status.update`) | a quiet **更新 / Update** under the row | the copy's own source |

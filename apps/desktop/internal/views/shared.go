@@ -224,6 +224,12 @@ func (a *App) pill(c *ui.Context, key, about string, open bool, body func()) (ui
 // on hover, the chosen one sunken with a check at its end; off is greyed
 // and can't be picked. body draws its words. It reports a pick.
 func (a *App) menuRow(c *ui.Context, key, label string, on, off bool, body func()) bool {
+	_, hit := a.menuRowEl(c, key, label, on, off, body)
+	return hit
+}
+
+// menuRowEl is menuRow, with its row (to bring the chosen one into sight).
+func (a *App) menuRowEl(c *ui.Context, key, label string, on, off bool, body func()) (ui.Element, bool) {
 	t := a.T
 	row := ui.Row(c.Key(key)).MinHeight(t.ControlSM).Padding(t.S1+2, t.S3).Gap(t.S3).Radius(t.RadiusSM).AlignItems(ui.Center).
 		Role(ui.RoleRadio).Label(label).AccessSelected(on)
@@ -243,7 +249,7 @@ func (a *App) menuRow(c *ui.Context, key, label string, on, off bool, body func(
 			a.glyph(c, 14, drawCheck(t.Ink))
 		}
 	})
-	return !off && row.Clicked()
+	return row, !off && row.Clicked()
 }
 
 // choice is one short choice in a row of them (New task's model and

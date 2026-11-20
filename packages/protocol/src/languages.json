@@ -39,5 +39,20 @@
     { "tag": "ms", "name": "Bahasa Melayu", "en": "Malay" },
     { "tag": "fil", "name": "Filipino", "en": "Filipino" },
     { "tag": "sw", "name": "Kiswahili", "en": "Swahili" }
-  ]
+  ],
+  "_samples": "D445: the partner's reply to Look and sound's preview message, in each common language: what Replies in shows under its choice, so a person sees the voice they pick. The Go copy (apps/desktop/internal/lang) is checked against it.",
+  "samples": {
+    "zh": "好，明天 9:00 叫你。",
+    "zh-Hant": "好，明天 9:00 叫你。",
+    "en": "Sure, I'll ping you at 9:00 tomorrow.",
+    "ja": "はい、明日の 9:00 にお知らせします。",
+    "ko": "네, 내일 9:00에 알려 드릴게요.",
+    "es": "Vale, te aviso mañana a las 9:00.",
+    "fr": "D'accord, je te préviens demain à 9:00.",
+    "de": "Gut, ich melde mich morgen um 9:00.",
+    "pt": "Certo, te aviso amanhã às 9:00.",
+    "it": "Va bene, ti avviso domani alle 9:00.",
+    "ru": "Хорошо, напомню завтра в 9:00.",
+    "ar": "حسنًا، سأذكّرك غدًا الساعة 9:00."
+  }
 }

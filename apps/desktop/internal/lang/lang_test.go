@@ -107,6 +107,7 @@ func TestLanguagesMatchJSON(t *testing.T) {
 			Common bool   `json:"common"`
 			HasUI  bool   `json:"hasUI"`
 		} `json:"languages"`
+		Samples map[string]string `json:"samples"`
 	}
 	if err := json.Unmarshal(data, &f); err != nil {
 		t.Fatal(err)
@@ -117,6 +118,9 @@ func TestLanguagesMatchJSON(t *testing.T) {
 	}
 	if !reflect.DeepEqual(Languages, want) {
 		t.Errorf("Languages differs from languages.json:\n got %v\nwant %v", Languages, want)
+	}
+	if !reflect.DeepEqual(Samples, f.Samples) {
+		t.Errorf("Samples differs from languages.json:\n got %v\nwant %v", Samples, f.Samples)
 	}
 	if !reflect.DeepEqual(UILangs, []string{"zh", "en"}) {
 		t.Errorf("UILangs = %v", UILangs)

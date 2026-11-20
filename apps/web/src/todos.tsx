@@ -473,14 +473,19 @@ function SourceCard({ v }: { v: SourceView }) {
       <div class="chat-row">
         <span class="grow">
           <b>{t("todos.new")}</b>
-          {v.standing?.take && v.whenNew === "take" && <small>{t("todos.standing")}</small>}
+          {/* D445: what the chosen one does, in the source's own terms; a standing go speaks for itself instead. */}
+          {v.standing?.take && v.whenNew === "take" ? <small>{t("todos.standing")}</small> : <small key={v.whenNew} class="what">{t(`todos.what.new.${v.whenNew}`)}</small>}
         </span>
         <Seg label={t("todos.new")} value={v.whenNew} options={(["tell", "take", "quiet"] as const).map((x) => ({ v: x, label: t(`todos.new.${x}`) }))} onPick={(x) => set({ whenNew: x })} />
       </div>
       <div class="chat-row">
         <span class="grow">
           <b>{t("todos.done")}</b>
-          {v.standing?.write && v.whenDone !== "ask" && <small>{t("todos.standing.write")}</small>}
+          {v.standing?.write && v.whenDone !== "ask" && v.whenDone !== "leave" ? (
+            <small>{t("todos.standing.write")}</small>
+          ) : (
+            <small key={v.whenDone} class="what">{t(`todos.what.done.${v.whenDone}${v.kind === "obsidian" && v.whenDone === "ask" ? ".obsidian" : ""}`)}</small>
+          )}
         </span>
         <Seg label={t("todos.done")} value={v.whenDone} options={done.map((x) => ({ v: x, label: t(`todos.done.${x}`) }))} onPick={(x) => set({ whenDone: x })} />
       </div>

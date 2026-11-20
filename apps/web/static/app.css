@@ -1331,6 +1331,26 @@ a {
 :lang(zh) .decision .q {
   line-height: 1.45;
 }
+/* D437: what another AI still found: its lead in its own weight, each thing on its own line. */
+.look-line {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 6px 0;
+  padding-inline-start: 10px;
+  border-inline-start: 2px solid var(--needs-ink);
+  font-size: var(--sm);
+  line-height: 1.45;
+  color: var(--ink);
+  min-width: 0;
+}
+.look-line .lead {
+  font-weight: 700;
+  color: var(--needs-ink);
+}
+.look-line .it {
+  overflow-wrap: anywhere;
+}
 .decision .dl {
   font-size: var(--sm);
   color: var(--needs-ink);

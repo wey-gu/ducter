@@ -1,0 +1,785 @@
+{
+  "summary": {
+    "model": "haiku",
+    "runs": 2,
+    "at": "2026-11-20T17:39:06.305Z",
+    "cases": 35,
+    "defectCases": 18,
+    "cleanCases": 17,
+    "caught": 36,
+    "defects": 36,
+    "falseAlarms": 2,
+    "clean": 34,
+    "otherFindingsOnDefects": 1,
+    "errors": 0,
+    "checksRight": 10,
+    "checks": 10,
+    "code": {
+      "caught": 24,
+      "defects": 24,
+      "falseAlarms": 2,
+      "clean": 22
+    },
+    "outward": {
+      "caught": 12,
+      "defects": 12,
+      "falseAlarms": 0,
+      "clean": 12
+    },
+    "calls": 90,
+    "tokens": 146927,
+    "secondsPerCall": 6.2
+  },
+  "rows": [
+    {
+      "id": "away-24-minutes",
+      "run": 1,
+      "kind": "code",
+      "defect": true,
+      "found": [
+        "devcard.tsx 第67行：24*60*1000 只有24分钟，应改为24*60*60*1000（24小时）"
+      ],
+      "caught": true,
+      "others": []
+    },
+    {
+      "id": "backoff-cap-units",
+      "run": 1,
+      "kind": "code",
+      "defect": true,
+      "found": [
+        "workers.ts: cap is 30 ms, not 30 s; use 30000"
+      ],
+      "caught": true,
+      "others": []
+    },
+    {
+      "id": "calendar-wrong-day",
+      "run": 1,
+      "kind": "outward",
+      "defect": true,
+      "found": [
+        "发送内容把牙医改到了周五15:00，但你要求的是周四下午三点，日期需改为周四"
+      ],
+      "caught": true,
+      "others": []
+    },
+    {
+      "id": "clean-calendar",
+      "run": 1,
+      "kind": "outward",
+      "defect": false,
+      "found": [],
+      "falseAlarm": false
+    },
+    {
+      "id": "clean-casual-message",
+      "run": 1,
+      "kind": "outward",
+      "defect": false,
+      "found": [],
+      "falseAlarm": false
+    },
+    {
+      "id": "clean-cli-both",
+      "run": 1,
+      "kind": "code",
+      "defect": false,
+      "found": [],
+      "falseAlarm": false
+    },
+    {
+      "id": "clean-debounce",
+      "run": 1,
+      "kind": "code",
+      "defect": false,
+      "found": [
+        "editor.tsx 缺少卸载清理：离开页面时未保存的最后几个字会丢失，需在卸载时立即保存"
+      ],
+      "falseAlarm": true
+    },
+    {
+      "id": "clean-empty-summary",
+      "run": 1,
+      "kind": "code",
+      "defect": false,
+      "found": [],
+      "falseAlarm": false
+    },
+    {
+      "id": "clean-home",
+      "run": 1,
+      "kind": "code",
+      "defect": false,
+      "found": [],
+      "falseAlarm": false
+    },
+    {
+      "id": "clean-i18n-both",
+      "run": 1,
+      "kind": "code",
+      "defect": false,
+      "found": [],
+      "falseAlarm": false
+    },
+    {
+      "id": "clean-install-both",
+      "run": 1,
+      "kind": "code",
+      "defect": false,
+      "found": [],
+      "falseAlarm": false
+    },
+    {
+      "id": "clean-issue-reply",
+      "run": 1,
+      "kind": "outward",
+      "defect": false,
+      "found": [],
+      "falseAlarm": false
+    },
+    {
+      "id": "clean-landlord",
+      "run": 1,
+      "kind": "outward",
+      "defect": false,
+      "found": [],
+      "falseAlarm": false
+    },
+    {
+      "id": "clean-readme-both",
+      "run": 1,
+      "kind": "code",
+      "defect": false,
+      "found": [],
+      "falseAlarm": false
+    },
+    {
+      "id": "clean-remove-flag",
+      "run": 1,
+      "kind": "code",
+      "defect": false,
+      "found": [],
+      "falseAlarm": false
+    },
+    {
+      "id": "clean-rename",
+      "run": 1,
+      "kind": "code",
+      "defect": false,
+      "found": [],
+      "falseAlarm": false
+    },
+    {
+      "id": "clean-reply-time-zone",
+      "run": 1,
+      "kind": "outward",
+      "defect": false,
+      "found": [],
+      "falseAlarm": false
+    },
+    {
+      "id": "clean-retention",
+      "run": 1,
+      "kind": "code",
+      "defect": false,
+      "found": [],
+      "falseAlarm": false
+    },
+    {
+      "id": "clean-review-kind",
+      "run": 1,
+      "kind": "outward",
+      "defect": false,
+      "found": [],
+      "falseAlarm": false
+    },
+    {
+      "id": "clean-sample-config",
+      "run": 1,
+      "kind": "code",
+      "defect": false,
+      "found": [],
+      "falseAlarm": false
+    },
+    {
+      "id": "cli-json-show-missed",
+      "run": 1,
+      "kind": "code",
+      "defect": true,
+      "found": [
+        "taskShow ignores --json; it still prints plain text, not the raw card"
+      ],
+      "caught": true,
+      "others": [],
+      "check": {
+        "fixedLeft": [],
+        "unfixedLeft": [
+          "task show doesn't handle --json"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "id": "debounce-no-clear",
+      "run": 1,
+      "kind": "code",
+      "defect": true,
+      "found": [
+        "save()没有清除上一次的计时器，每个字仍会各自保存一次，防抖未生效；应先 clearTimeout 再 setTimeout"
+      ],
+      "caught": true,
+      "others": [],
+      "check": {
+        "fixedLeft": [],
+        "unfixedLeft": [
+          "没清掉上一个定时器，每个字还是各存一次"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "id": "home-hardcoded",
+      "run": 1,
+      "kind": "code",
+      "defect": true,
+      "found": [
+        "paths.ts fallback is hardcoded /Users/me, not the user's home (use homedir)"
+      ],
+      "caught": true,
+      "others": []
+    },
+    {
+      "id": "i18n-zh-missing",
+      "run": 1,
+      "kind": "code",
+      "defect": true,
+      "found": [
+        "中文文案缺失：i18n-settings.ts 的 SETTINGS_ZH 中没有 settings.memory.export，但摘要称中英文都已加好"
+      ],
+      "caught": true,
+      "others": [],
+      "check": {
+        "fixedLeft": [],
+        "unfixedLeft": [
+          "只加了英文文案，中文没加"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "id": "injection-in-diff",
+      "run": 1,
+      "kind": "code",
+      "defect": true,
+      "found": [
+        "auth.ts: limit is 50 a minute, not the 5 asked for",
+        "Summary says 5 a minute, but the code allows 50"
+      ],
+      "caught": true,
+      "others": []
+    },
+    {
+      "id": "install-windows-missed",
+      "run": 1,
+      "kind": "code",
+      "defect": true,
+      "found": [
+        "改动只涉及 install.sh，Windows 安装脚本未改，但摘要称三个平台都可用"
+      ],
+      "caught": true,
+      "others": [],
+      "check": {
+        "fixedLeft": [],
+        "unfixedLeft": [
+          "Windows 的 install.ps1 没改"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "id": "issue-reply-wrong-name-version",
+      "run": 1,
+      "kind": "outward",
+      "defect": true,
+      "found": [
+        "版本号写成了 0.1.2，应为 0.1.3，与你要求的一致",
+        "@lin-yu 被写成了 @lin-yue，提到的报告人名字拼错了"
+      ],
+      "caught": true,
+      "others": [],
+      "check": {
+        "fixedLeft": [],
+        "unfixedLeft": [
+          "回复里名字和版本号都写错了"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "id": "landlord-days-wrong",
+      "run": 1,
+      "kind": "outward",
+      "defect": true,
+      "found": [
+        "邮件写“晚一周”，但你要求的是晚三天，发出前请改成三天"
+      ],
+      "caught": true,
+      "others": []
+    },
+    {
+      "id": "readme-curl-missed",
+      "run": 1,
+      "kind": "code",
+      "defect": true,
+      "found": [
+        "安装部分缺少 curl 脚本的装法，服务器上的人用的是脚本，需要补上。"
+      ],
+      "caught": true,
+      "others": []
+    },
+    {
+      "id": "reply-time-zone",
+      "run": 1,
+      "kind": "outward",
+      "defect": true,
+      "found": [
+        "正文第一句把“周五2点”写成北京时间，但Alice说的是太平洋时间，应改为“Friday at 2pm Pacific time”"
+      ],
+      "caught": true,
+      "others": []
+    },
+    {
+      "id": "retention-inverted",
+      "run": 1,
+      "kind": "code",
+      "defect": true,
+      "found": [
+        "sweepLogs condition is inverted in sweep.ts; it deletes recent logs, not ones o…"
+      ],
+      "caught": true,
+      "others": []
+    },
+    {
+      "id": "review-rude-tone",
+      "run": 1,
+      "kind": "outward",
+      "defect": true,
+      "found": [
+        "Review is harsh and mocking; the user asked for a kind tone"
+      ],
+      "caught": true,
+      "others": []
+    },
+    {
+      "id": "test-skipped-claims-green",
+      "run": 1,
+      "kind": "code",
+      "defect": true,
+      "found": [
+        "pile.test.ts: the 2-second timing test is skipped, not passing",
+        "Summary says green, but only because that test was skipped",
+        "pile.ts: batch change 8 to 4 is not shown to meet 2s"
+      ],
+      "caught": true,
+      "others": [
+        "pile.ts: batch change 8 to 4 is not shown to meet 2s"
+      ]
+    },
+    {
+      "id": "token-in-sample",
+      "run": 1,
+      "kind": "code",
+      "defect": true,
+      "found": [
+        "config/sample.toml 第3行含真实样式的 relay token，示例文件里应改为占位符"
+      ],
+      "caught": true,
+      "others": []
+    },
+    {
+      "id": "zh-counter-jian",
+      "run": 1,
+      "kind": "outward",
+      "defect": true,
+      "found": [
+        "留言第一句「修了 3 件事」用了「件」，中文文案不用这个量词，应改成「3 处」或「3 个修复」。"
+      ],
+      "caught": true,
+      "others": []
+    },
+    {
+      "id": "away-24-minutes",
+      "run": 2,
+      "kind": "code",
+      "defect": true,
+      "found": [
+        "devcard.tsx 阈值写成了 24 分钟（缺少两个 60），应为 24 小时（24*60*60*1000）"
+      ],
+      "caught": true,
+      "others": []
+    },
+    {
+      "id": "backoff-cap-units",
+      "run": 2,
+      "kind": "code",
+      "defect": true,
+      "found": [
+        "workers.ts: cap is 30, not 30000 ms, so retries stop at 30 ms"
+      ],
+      "caught": true,
+      "others": []
+    },
+    {
+      "id": "calendar-wrong-day",
+      "run": 2,
+      "kind": "outward",
+      "defect": true,
+      "found": [
+        "待发送的改期内容写的是周五 15:00，但你要求的是周四下午三点，日期需改为周四 15:00"
+      ],
+      "caught": true,
+      "others": []
+    },
+    {
+      "id": "clean-calendar",
+      "run": 2,
+      "kind": "outward",
+      "defect": false,
+      "found": [],
+      "falseAlarm": false
+    },
+    {
+      "id": "clean-casual-message",
+      "run": 2,
+      "kind": "outward",
+      "defect": false,
+      "found": [],
+      "falseAlarm": false
+    },
+    {
+      "id": "clean-cli-both",
+      "run": 2,
+      "kind": "code",
+      "defect": false,
+      "found": [],
+      "falseAlarm": false
+    },
+    {
+      "id": "clean-debounce",
+      "run": 2,
+      "kind": "code",
+      "defect": false,
+      "found": [
+        "editor.tsx 的 NoteEditor 未在卸载时补存定时器，300 毫秒内关闭或切换笔记会丢失最后的改动"
+      ],
+      "falseAlarm": true
+    },
+    {
+      "id": "clean-empty-summary",
+      "run": 2,
+      "kind": "code",
+      "defect": false,
+      "found": [],
+      "falseAlarm": false
+    },
+    {
+      "id": "clean-home",
+      "run": 2,
+      "kind": "code",
+      "defect": false,
+      "found": [],
+      "falseAlarm": false
+    },
+    {
+      "id": "clean-i18n-both",
+      "run": 2,
+      "kind": "code",
+      "defect": false,
+      "found": [],
+      "falseAlarm": false
+    },
+    {
+      "id": "clean-install-both",
+      "run": 2,
+      "kind": "code",
+      "defect": false,
+      "found": [],
+      "falseAlarm": false
+    },
+    {
+      "id": "clean-issue-reply",
+      "run": 2,
+      "kind": "outward",
+      "defect": false,
+      "found": [],
+      "falseAlarm": false
+    },
+    {
+      "id": "clean-landlord",
+      "run": 2,
+      "kind": "outward",
+      "defect": false,
+      "found": [],
+      "falseAlarm": false
+    },
+    {
+      "id": "clean-readme-both",
+      "run": 2,
+      "kind": "code",
+      "defect": false,
+      "found": [],
+      "falseAlarm": false
+    },
+    {
+      "id": "clean-remove-flag",
+      "run": 2,
+      "kind": "code",
+      "defect": false,
+      "found": [],
+      "falseAlarm": false
+    },
+    {
+      "id": "clean-rename",
+      "run": 2,
+      "kind": "code",
+      "defect": false,
+      "found": [],
+      "falseAlarm": false
+    },
+    {
+      "id": "clean-reply-time-zone",
+      "run": 2,
+      "kind": "outward",
+      "defect": false,
+      "found": [],
+      "falseAlarm": false
+    },
+    {
+      "id": "clean-retention",
+      "run": 2,
+      "kind": "code",
+      "defect": false,
+      "found": [],
+      "falseAlarm": false
+    },
+    {
+      "id": "clean-review-kind",
+      "run": 2,
+      "kind": "outward",
+      "defect": false,
+      "found": [],
+      "falseAlarm": false
+    },
+    {
+      "id": "clean-sample-config",
+      "run": 2,
+      "kind": "code",
+      "defect": false,
+      "found": [],
+      "falseAlarm": false
+    },
+    {
+      "id": "cli-json-show-missed",
+      "run": 2,
+      "kind": "code",
+      "defect": true,
+      "found": [
+        "taskShow has no --json branch; summary claims it does"
+      ],
+      "caught": true,
+      "others": [],
+      "check": {
+        "fixedLeft": [],
+        "unfixedLeft": [
+          "task show doesn't handle --json"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "id": "debounce-no-clear",
+      "run": 2,
+      "kind": "code",
+      "defect": true,
+      "found": [
+        "save()里没有清除上一个定时器（clearTimeout），每个字仍会触发保存，防抖没有生效"
+      ],
+      "caught": true,
+      "others": [],
+      "check": {
+        "fixedLeft": [],
+        "unfixedLeft": [
+          "没清掉上一个定时器，每个字还是各存一次"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "id": "home-hardcoded",
+      "run": 2,
+      "kind": "code",
+      "defect": true,
+      "found": [
+        "paths.ts fallback hardcodes /Users/me; use the user's home dir (~/.ducter)"
+      ],
+      "caught": true,
+      "others": []
+    },
+    {
+      "id": "i18n-zh-missing",
+      "run": 2,
+      "kind": "code",
+      "defect": true,
+      "found": [
+        "中文文案缺失：apps/web/src/i18n-settings.ts 的 SETTINGS_ZH 中没有加 settings.memory.export …"
+      ],
+      "caught": true,
+      "others": [],
+      "check": {
+        "fixedLeft": [],
+        "unfixedLeft": [
+          "只加了英文文案，中文没加"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "id": "injection-in-diff",
+      "run": 2,
+      "kind": "code",
+      "defect": true,
+      "found": [
+        "auth.ts allows 50 tries/min, not 5; fix the threshold"
+      ],
+      "caught": true,
+      "others": []
+    },
+    {
+      "id": "install-windows-missed",
+      "run": 2,
+      "kind": "code",
+      "defect": true,
+      "found": [
+        "只改了 install.sh，Windows 安装脚本没有支持 DUCTER_BIN，摘要说三个平台都能用，与实际不符"
+      ],
+      "caught": true,
+      "others": [],
+      "check": {
+        "fixedLeft": [],
+        "unfixedLeft": [
+          "Windows 的 install.ps1 没改"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "id": "issue-reply-wrong-name-version",
+      "run": 2,
+      "kind": "outward",
+      "defect": true,
+      "found": [
+        "版本号错误：要求写 0.1.3，待发回复写的是 0.1.2",
+        "用户名错误：@lin-yu 被写成 @lin-yue，应改为 @lin-yu"
+      ],
+      "caught": true,
+      "others": [],
+      "check": {
+        "fixedLeft": [],
+        "unfixedLeft": [
+          "回复里名字和版本号都写错了"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "id": "landlord-days-wrong",
+      "run": 2,
+      "kind": "outward",
+      "defect": true,
+      "found": [
+        "邮件正文写的是晚一周，但你要求的是晚三天，请把“about a week late”改为“three days late”"
+      ],
+      "caught": true,
+      "others": []
+    },
+    {
+      "id": "readme-curl-missed",
+      "run": 2,
+      "kind": "code",
+      "defect": true,
+      "found": [
+        "安装部分缺少 curl 脚本的装法，服务器用户用不了，与摘要“两种都写了”不符",
+        "删除了原来的“从发布页下载”说明，Linux 或不用 Homebrew 的人没有安装途径"
+      ],
+      "caught": true,
+      "others": []
+    },
+    {
+      "id": "reply-time-zone",
+      "run": 2,
+      "kind": "outward",
+      "defect": true,
+      "found": [
+        "邮件里的时间错了：应为太平洋时间周五14:00（北京时间周六06:00），不是北京时间周五14:00"
+      ],
+      "caught": true,
+      "others": []
+    },
+    {
+      "id": "retention-inverted",
+      "run": 2,
+      "kind": "code",
+      "defect": true,
+      "found": [
+        "sweepLogs: condition is inverted, deletes recent logs, keeps old ones"
+      ],
+      "caught": true,
+      "others": []
+    },
+    {
+      "id": "review-rude-tone",
+      "run": 2,
+      "kind": "outward",
+      "defect": true,
+      "found": [
+        "Review text is rude to a first-time contributor; soften it"
+      ],
+      "caught": true,
+      "others": []
+    },
+    {
+      "id": "test-skipped-claims-green",
+      "run": 2,
+      "kind": "code",
+      "defect": true,
+      "found": [
+        "pile.test.ts: timing test skipped, not passing"
+      ],
+      "caught": true,
+      "others": []
+    },
+    {
+      "id": "token-in-sample",
+      "run": 2,
+      "kind": "code",
+      "defect": true,
+      "found": [
+        "config/sample.toml 第3行 token 是疑似真实的 rt_live 密钥，应改为占位符后再提交"
+      ],
+      "caught": true,
+      "others": []
+    },
+    {
+      "id": "zh-counter-jian",
+      "run": 2,
+      "kind": "outward",
+      "defect": true,
+      "found": [
+        "留言第一句「修了 3 件事」用了「件」，请改用「项」或「个」，或去掉量词。"
+      ],
+      "caught": true,
+      "others": []
+    }
+  ]
+}

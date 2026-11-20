@@ -394,6 +394,7 @@ func (a *App) outcome(c *ui.Context, task *store.Task) {
 			a.proofLine(c, task, evs, false)
 		}
 		a.sentLine(c, task)
+		a.lookLine(c, "outcome:"+task.ID, reportLookLeft(task)) // D437
 		if k := task.Cant(); task.Attention() == protocol.Failed && k != nil {
 			a.cantStart(c, task, k)
 			return

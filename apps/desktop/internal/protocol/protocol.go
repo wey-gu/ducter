@@ -265,6 +265,8 @@ type Decision struct {
 	// Loop (D427): the keeper's one word about a late or failing task in
 	// rounds; Move (D429): Go runs it on that awake computer instead.
 	Loop *LoopAsk `json:"loop,omitempty"`
+	// Look (D437): what another AI still found in what this Go sends.
+	Look *DecisionLook `json:"look,omitempty"`
 }
 
 // LoopAsk is the task a loop card is about, and the computer its Go moves it to.
@@ -753,6 +755,24 @@ type Report struct {
 	Folder *FolderSummary `json:"folder,omitempty"`
 	// Media (D206): what the task chose to show the user.
 	Media []MediaRef `json:"media,omitempty"`
+	// Look (D437): set by Ducter: another AI read this result once before
+	// it went out; Left is what is still so (said on the card).
+	Look *SecondLook `json:"look,omitempty"`
+}
+
+// SecondLook (D437) is what another AI found when it looked a result
+// over: Found the first time, Left after the task's fix.
+type SecondLook struct {
+	By    string   `json:"by"`
+	Model string   `json:"model,omitempty"`
+	Found []string `json:"found"`
+	Left  []string `json:"left"`
+}
+
+// DecisionLook (D437) is what another AI still found in what a Go sends.
+type DecisionLook struct {
+	By   string   `json:"by"`
+	Left []string `json:"left"`
 }
 
 // BranchChanges is a task branch against its base: commits only it has,

@@ -680,6 +680,8 @@ const zh: Record<string, string> = {
   "result.acting.merge": "正在合进 %s…",
   "result.acting.open_pr": "正在开草稿 PR…",
   "result.unsure": "不确定成功了没有，你看一眼",
+  // D437: another AI read the result (or what a Go sends) once; this is what is still so.
+  "look.lead": "另一个 AI 看过",
   "result.merged": "已经合进 %s",
   "result.merged.toast": "已把「%s」合进去了（%s）",
   "result.pr.toast": "开好了草稿 PR %s",
@@ -1608,6 +1610,7 @@ const en: Record<string, string> = {
   "result.acting.merge": "Merging into %s…",
   "result.acting.open_pr": "Opening a draft PR…",
   "result.unsure": "Not sure it went through — check",
+  "look.lead": "Another AI looked it over",
   "result.merged": "Merged into %s",
   "result.merged.toast": "Merged “%s” (%s)",
   "result.pr.toast": "Opened draft PR %s",

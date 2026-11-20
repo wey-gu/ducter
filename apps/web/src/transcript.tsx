@@ -1072,6 +1072,8 @@ function promptLine(p: Extract<Block, { k: "wake" } | { k: "told" }>): string {
   if (p.say === "taken_back" || p.say === "given_back" || p.say === "loan_lost") return t(`told.${p.say}`, shownDeviceName(p.name ?? ""));
   if (p.say === "returned") return p.name ? t("told.returned.name", p.name) : t("told.returned");
   if (p.say === "other") return t("told.other", A.S.personaName);
+  // D437: the name is the AI that looked (Claude Code, Codex).
+  if (p.say === "looked") return t("told.looked", p.name ?? "");
   return t(`told.${p.say}`);
 }
 

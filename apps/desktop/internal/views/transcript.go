@@ -167,6 +167,8 @@ var tolds = []struct {
 	{regexp.MustCompile(`^The user (?:said no to lending you their phone|said not now to using their own phone)`), "declined"},
 	{regexp.MustCompile(`^The user pressed 停下 / Stop`), "stopped"},
 	{regexp.MustCompile(`^The user reopened this task\.`), "reopened"},
+	// D437: another AI looked the result over first and found something; name = that AI.
+	{regexp.MustCompile(`^Before your result goes to the user, another AI \((.+?)\) read it`), "looked"},
 	// D299: a session from outside Ducter, carried on here.
 	{regexp.MustCompile(`^The user picked this session up again in Ducter`), "adopted"},
 	// D280: a loan of the person's own phone ended: taken back, given back

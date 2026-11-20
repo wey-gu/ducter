@@ -317,6 +317,25 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
 - **Forget another tool's memory from Settings:** read-only there (D295); from a 想起了 line it can be
   forgotten, asking first (D304). Trigger: the author asks.
 
+## Another AI's look before a result goes out (D437, research/186)
+
+- [ ] **The real measure.** On the author's own tasks for a week: how often a look fires, finds, is
+  fixed, is left; what the person still pointed out after a clean look (a miss), and what they
+  dismissed (noise). The eval's cases are written to be findable from the diff, so its 36/36 is an
+  upper bound. Trigger: the first release with D437 on hel and the author's Mac.
+- [ ] **Misses outside the diff** (a place the change should have touched and didn't, a behaviour
+  only a run shows): a look with read-only tools over the worktree, behind the same ceiling. Trigger:
+  the real measure shows such misses.
+- [ ] **Noise on what the brief didn't name** (the eval's two false alarms: a placeholder address, an
+  unmount edge): a sharper "outside the request" line in the prompt. Trigger: the same noise in real
+  runs.
+- [ ] **D413's standing posts**: a review the person lets go without asking is read too (it goes
+  through report_to_main first), but a draft written by core itself (D341's write-back comments, the
+  group's review comments of D385) is not looked at. Trigger: a write-back the person had to fix.
+- [ ] **Taking 这类不用复查 back by saying so** ("还是复查一下吧"): today only 不要这条 on the Partner page
+  removes it. Trigger: the person asks for it.
+- [ ] **A cost line**: the looks' tokens in Settings › Partner's usage. Trigger: a look ceiling hit.
+
 ## Usage limits (D297, research/101)
 
 - Prove it on a real limit hit: Claude Code's 5-hour window and Codex's, the reset read, the

@@ -3,6 +3,7 @@ import { createPreviews, loopbackOf } from "./preview.ts";
 import { createWbFrames } from "./workbench.ts";
 import { effectiveBrain } from "./brain.ts";
 import { createBrainHold } from "./brain-hold.ts";
+import { createSecondLook, diffFromWorkbench, keepNoLookAtOnce } from "./second-look.ts";
 import { createMediaStore } from "./media.ts";
 import { chmodSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
@@ -1036,7 +1037,23 @@ export function startCore(opts: CoreOptions = {}): Core {
   const workFrames: typeof work.frames = { ...work.frames, waiter: (id, action) => limitWaits.act(id, action) ?? (action === "handoff" ? Promise.resolve(false) : work.frames.waiter(id, action)) };
   // D388: the pages the last noticed call rested on (a holder: the Core is a copy of api).
   const noticedSources: { links?: { label: string; url: string }[]; whys?: { text: string; why: string }[] } = {};
-  const api = { log, tasks, mcp, persona, dataDir, settings, connections, phone, bodies: loadout, said, standing, spine: log.spine, bridgeLink, media, limits: accountUsage, workingMemory, pins, apps, boards: { makeReviewBoard: (id: string) => boards.makeReviewBoard(id), isReview: (id: string) => isReview(id), offer: (id: string, k: "reviews" | "reports") => boards.offer(id, k) }, noticedSources, brainHold, ...(browser ? { browser: browser.port } : {}) } as CoreApi;
+  // D437: another AI's one look before a result goes out: its agent is the home's, its turn tool-less.
+  const secondLook = createSecondLook({
+    log,
+    tasks,
+    rules: () => rules.list(),
+    home: () => devicesView?.harnessesNow(),
+    ask: (who, prompt) => createHarnessAsk({ harness: () => runner?.harness, pick: () => who, dataDir, cheap: false, dir: "second-look", timeoutMs: 120_000, system: "You answer with one line of JSON and nothing else. You never use tools." })(prompt),
+    diff: async (id) => {
+      const r = runner;
+      return r?.workbench ? diffFromWorkbench((req) => r.workbench!(id, req)) : undefined;
+    },
+    send: (id, text) => (runner ? runner.send(id, text, "queue", "ducter") : Promise.reject(new Error("no runner yet"))),
+    off: () => process.env.DUCTER_SECOND_LOOK === "off",
+  });
+  // D437: 这类不用复查, kept as the person's rule the moment it lands.
+  const noLook = keepNoLookAtOnce({ log, rules });
+  const api = { log, tasks, mcp, persona, dataDir, settings, connections, phone, bodies: loadout, said, standing, spine: log.spine, bridgeLink, media, limits: accountUsage, workingMemory, pins, apps, boards: { makeReviewBoard: (id: string) => boards.makeReviewBoard(id), isReview: (id: string) => isReview(id), offer: (id: string, k: "reviews" | "reports") => boards.offer(id, k) }, noticedSources, brainHold, secondLook, noLookFrom: (seq: number) => noLook.heardFrom(seq), ...(browser ? { browser: browser.port } : {}) } as CoreApi;
   // D312: with more than one partner, the default partner keeps to its own too, and a task's
   // brief and Mem identity are those of the partner it is for.
   const memOf = new Map<string, MemIdentity | undefined>();
@@ -2208,6 +2225,8 @@ export function startCore(opts: CoreOptions = {}): Core {
       work.stop();
       limitWaits.stop();
       brainHold.stop();
+      secondLook.stop();
+      noLook.stop();
       proactive.stop();
       calendar.stop();
       taskSources.stop();

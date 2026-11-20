@@ -420,6 +420,7 @@ export function DecisionBody({ d, taskId }: { d: DecisionState; taskId?: string 
     <>
       {open && <LaterBack d={d} />}
       <div class="q">{wa?.question ?? (d.closing ? closingWords(d.closing).question : d.memPlugin ? t("memp.card.question", harnessName(d.memPlugin.harness), d.memPlugin.deviceName) : d.question)}</div>
+      {open && <LookLine left={d.look?.left} />}
       {d.routineId && <RoutineFacts routineId={d.routineId} />}
       {d.cal && <CalFacts c={d.cal} />}
       {d.src && <SourceCardBody src={d.src} />}
@@ -684,6 +685,25 @@ function prFailure(task: Task): string {
 }
 
 
+/**
+ * D437: what another AI still found when it looked the result over (or what a Go would send), said
+ * plainly where the person decides: its lead, then each thing on its own line (D291). Nothing when
+ * the look was clean or the task fixed what it found.
+ */
+export function LookLine({ left }: { left?: string[] }) {
+  if (!left?.length) return null;
+  return (
+    <div class="look-line" role="note">
+      <span class="lead">{t("look.lead")}</span>
+      {left.map((l, i) => (
+        <span key={i} class="it" dir="auto">
+          {l}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 function PrFailure({ task }: { task: Task }) {
   const why = prFailure(task);
   // No remote is how the repo is, not something that went wrong: muted, not the failed ink.
@@ -696,6 +716,7 @@ function ResultActions({ task, inTask }: { task: Task; inTask?: boolean }) {
   const base = p.baseBranch || "main";
   return (
     <>
+    {inTask && <LookLine left={reportOf(task)?.look?.left} />}
     <div class="btns">
       {task.acting ? (
         <span class="small">{t(`result.acting.${task.acting}`, base)}</span>
@@ -833,6 +854,10 @@ function Quiet({ k, tasks, detail, noted = [] }: { k: string; tasks: Task[]; det
       {/* What went out is never folded away (D104): the exception that matters to trust. */}
       {tasks.filter(finished).map((task) => (
         <SentLine key={task.id} task={task} />
+      ))}
+      {/* D437: what another AI still found is never folded away either: it is what to look at. */}
+      {tasks.filter(finished).map((task) => (
+        <LookLine key={`look-${task.id}`} left={reportOf(task)?.look?.left} />
       ))}
       <div class="qrow">
         {tasks.map((task) => (
@@ -1026,6 +1051,8 @@ function Ask({ d, taskId, buttons = true, rk, seq }: { d: DecisionState; taskId?
       {/* D341: a write-back to a to-do's app: the comment whole, as it goes out. */}
       {d.src && <SourceCardBody src={d.src} />}
       {d.board && <BoardOfferFacts b={d.board} />}
+      {/* D437: what another AI still found in what this Go sends. */}
+      {open && <LookLine left={d.look?.left} />}
       {/* A routine's proposal card (D29, D114): what it would do, before one Go. */}
       {d.routineId && open && <RoutineFacts routineId={d.routineId} />}
       {open && d.later ? (

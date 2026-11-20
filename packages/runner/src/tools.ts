@@ -173,6 +173,9 @@ export function normalizeShow(v: unknown): string[] {
 }
 
 export interface TaskToolOptions {
+  /** D437: another AI's one look before a result goes out (core's second-look.ts): true when it
+   *  took the report (it logs it itself, now or after the task's fix). Absent: every report as it is. */
+  secondLook?: { take(taskId: string, body: Bodies["report"]): boolean; readonly heldWords: string };
   /** D206: copies the files a report shows into the home's media store (the runner's shown):
    *  what could be shown, and a line for each that couldn't. */
   shown?(taskId: string, paths: string[]): Promise<{ media: MediaRef[]; refused: string[] } | undefined>;
@@ -319,6 +322,11 @@ export function registerTaskTools(core: CoreApi, opts: TaskToolOptions = {}): vo
       if (sameWaitAgain(core, ctx.taskId, body)) {
         core.tasks.setState(ctx.taskId, ATTENTION[body.state], card?.residency ?? "hot");
         return "Already reported: this says the same as your last report, and the user hasn't written since, so nothing new was sent to them. End your turn now; any answer will arrive as a new message.";
+      }
+      // D437: a result that changed code, or something a Go would send, is read once by another AI first.
+      if (opts.secondLook?.take(ctx.taskId, body)) {
+        const notShown = refused.length ? ` Not shown: ${refused.join("; ")}.` : "";
+        return `${opts.secondLook.heldWords}${notShown}`;
       }
       core.log.append({ persona, stream: `task:${ctx.taskId}`, origin: "task", kind: "report", body });
       // No reason text: task_state.reason is user-facing copy (decisions.ts sets blocked/failed ones).

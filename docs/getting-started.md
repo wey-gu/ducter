@@ -159,6 +159,14 @@ partner is reading what the task did so it can tell you in its own words.
 If anything left your computer, a line marked ↗ says what, above that row. It is never hidden
 behind Details.
 
+When a task changed code or files, or is about to send something for you (a reply, a comment, a
+pull request, a message), another AI you're signed in to reads it once against what you asked
+before you see it. Anything it finds goes back to the task to fix first. If something is still
+off, one line says so under the result or on the card you'd tap Go on, such as *"Another AI looked
+it over: the reply says 0.1.2; you said 0.1.3"*. When it finds nothing, it says nothing. Don't want
+it for some kind of work? Say so, for example *"no need to double-check docs changes"*, and it
+stops for that kind; the rule shows on the Partner page, where you can remove it.
+
 In our own runs, a small "fix the failing tests" task came back done in under a minute.
 
 ## What happens next

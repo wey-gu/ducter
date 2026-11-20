@@ -444,6 +444,13 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       }
       return;
     }
+    if (e.kind === "task_event") {
+      // D437: the report went to another AI's look first (core logs it after): it was reported.
+      const look = (e.body as { taskId: string; raw?: { secondLook?: { phase?: string } } }).raw?.secondLook;
+      const t = look && (look.phase === "looking" || look.phase === "checking") ? tasks.get((e.body as { taskId: string }).taskId) : undefined;
+      if (t) t.reportedThisTurn = true;
+      return;
+    }
     if (e.kind !== "report") return;
     const body = e.body as Bodies["report"];
     const t = tasks.get(body.taskId);

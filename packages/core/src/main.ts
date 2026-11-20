@@ -150,6 +150,8 @@ export async function main(mods: BootModules = {}) {
           folderChanges: (id: string) => (runner as { folderReport?(id: string): Promise<unknown> } | undefined)?.folderReport?.(id),
           // D206: the files a report shows, read where the task runs and copied into the home's media.
           shown: (id: string, paths: string[]) => (runner as { shown?(id: string, paths: string[]): Promise<unknown> } | undefined)?.shown?.(id, paths),
+          // D437: another AI reads a result that changed code, or what a Go would send, once first.
+          ...(core.secondLook ? { secondLook: core.secondLook } : {}),
         });
       else console.warn("[ducter] runner has no registerTaskTools: tasks cannot report_to_main");
       runner = await runnerMod.createRunner(core);

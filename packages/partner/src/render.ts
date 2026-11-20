@@ -106,6 +106,10 @@ function renderReport(r: Bodies["report"], title?: string, told?: string[], undo
     );
   }
   if (r.state === "done" && (r.evidence ?? []).length === 0 && !r.media?.length) lines.push("  (no evidence attached)");
+  // D437: another AI read it once before it reached the user. Fixed or clean: nothing to say. Still
+  // so: the app already shows it under your message (另一个 AI 看过：…); never call this flawless.
+  if (r.look?.left.length)
+    lines.push(`  another AI (${harnessName(r.look.by)}) looked it over before it reached the user and says this is still so: ${r.look.left.map((x) => `"${clip(x, 80)}"`).join("; ")}. The app shows it under your message; don't repeat it word for word, and don't call the result complete. If it changes what they should do next, say so in a few words.`);
   // D206: what it showed the user. The app puts it under your next message about this report.
   if (r.media?.length) lines.push(`  it shows the user: ${mediaWords(r.media)}. They appear under your message about this report: say what they are in a few words; never describe the path or the file name.`);
   // D142: a folder that isn't a repo. Ducter kept a copy from before; the user can undo it all.
@@ -166,6 +170,8 @@ export interface RenderCtx {
   kept?(seq: number): { text: string; harness: string; never?: boolean; kinds?: string[] }[];
   /** D413: what Ducter did with this user message's words about asking first (不用问我的 / Without asking). */
   standing?(seq: number): StandingHeard[];
+  /** D437: the 这类不用复查 rule Ducter kept from this user message (no second look for that kind of work). */
+  noLook?(seq: number): { text: string; kinds?: string[] } | undefined;
   /** D426: the lines a task's many-things message asked for (all of them, any task), and that message's seq. */
   asksOf?(taskId: string): { msgSeq: number; lines: AskLine[] } | undefined;
   /** D426: the newest many-things message before this one (seq) with its lines, within a day. */
@@ -205,6 +211,12 @@ export function standingLine(h: StandingHeard[]): string {
       return `  (They asked not to be asked before "${clip(x.what, 40)}". Ducter can keep that only for posting PR reviews so far, so this one still asks each time. Say that plainly as the real reason (what Ducter can't do yet), not as a rule.)`;
     })
     .join("\n");
+}
+
+/** D437: one line under the user's words: Ducter kept their 这类不用复查 as a rule by itself. */
+export function noLookLine(r: { text: string; kinds?: string[] }): string {
+  const what = r.kinds?.length ? `${r.kinds.join(", ")} work` : "any work";
+  return `  (Ducter already kept this as the user's rule, on the Partner page: "${clip(r.text, 90)}": another AI no longer looks over results of ${what} before they reach the user. It holds from now on. No rule_save, no card: say it back in one short line in their words, e.g. "好，这类以后不再让另一个 AI 复查。")`;
 }
 
 /** D401: one line under the user's words: what Ducter already kept as their rule from them. */
@@ -376,7 +388,9 @@ export function renderTrigger(e: LogEvent, ctx: RenderCtx): string {
       // D426: the lines a recent many-things message asked for, so "第二个改一下" lands on its task.
       const ab = e.seq > 0 ? ctx.asksBefore?.(e.seq) : undefined;
       const al = ab && ab.lines.length >= 2 ? `\n  (the lines under their earlier message, as they see them: ${asksLines(ab, ctx)}. A follow-up about one of them ("the second one", its words) goes to its task with task_send; a new thing for the same message: task_send or task_open with asks)` : "";
-      return `[user] ${b.text}${pics}${kept.length ? `\n${keptLine(kept)}` : ""}${sl}${al}${f ? `\n${followsLine(f)}` : ""}`;
+      // D437: 这类不用复查, kept by Ducter.
+      const nl = e.seq > 0 ? ctx.noLook?.(e.seq) : undefined;
+      return `[user] ${b.text}${pics}${kept.length ? `\n${keptLine(kept)}` : ""}${nl ? `\n${noLookLine(nl)}` : ""}${sl}${al}${f ? `\n${followsLine(f)}` : ""}`;
     }
     case "report": {
       const r = e.body as Bodies["report"];

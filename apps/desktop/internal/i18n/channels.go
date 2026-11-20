@@ -87,6 +87,7 @@ var zhChannels = Table{
 	"chats.wx.open":          "现在能在微信里找你",
 	"chats.wx.closed":        "在微信里跟它说句话，它才能找你",
 	"chats.wx.rule":          "你说话后的一天里，它能回你几条；要定的事，回「好」或「先等等」。",
+	"chats.wx.rule.how":      "过了这一天，它就改在 Ducter 里告诉你。",
 	"chats.wx.forget":        "断开微信",
 }
 
@@ -171,6 +172,7 @@ var enChannels = Table{
 	"chats.wx.open":          "It can reach you in WeChat now",
 	"chats.wx.closed":        "Say something to it in WeChat so it can reach you",
 	"chats.wx.rule":          "For a day after you write, it can reply a few times; to decide, reply “ok” or “wait”.",
+	"chats.wx.rule.how":      "After that day, it tells you in Ducter instead.",
 	"chats.wx.forget":        "Disconnect WeChat",
 }
 

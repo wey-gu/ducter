@@ -17,7 +17,7 @@ const values = (text: string, key: string) =>
 
 const KEYS = [
   "how.more", "how.less", "partner.trust.note", "records.look.help", "records.past.note", "handoff.help", "loadout.tasks.how",
-  "chats.goes", "chats.goes.how", "chats.wx.rule", "chats.wx.who", "af.lede", "af.kept.short", "af.kept.keychain", "af.kept.file",
+  "chats.goes", "chats.goes.how", "chats.wx.rule", "chats.wx.rule.how", "chats.wx.who", "af.lede", "af.kept.short", "af.kept.keychain", "af.kept.file",
   "af.d.note", "af.d.how", "af.card.why", "af.keys.ask.help", "settings.versions.night.quiet", "settings.versions.night.note",
   "settings.versions.night.how", "settings.details.note", "mem.first.body", "peers.invite", "peers.mem.what", "settings.lede.peers",
   "bridge.mem.install.need", "bridge.mem.install.need.how", "cal.first", "own.away.nodial", "todos.own",

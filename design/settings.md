@@ -349,7 +349,7 @@ that names it; **请你评审的 PR** under a title that means it). The rule, on
   clause. A line the control already says is dropped (the language picker, 浅色和深色).
 - **An explanation a careful person may want sits behind 怎么做到的 / How it works ›**, a quiet link
   under the row or note; pressed, the words open in place in the muted ink and it reads **收起 / Hide**.
-  Used for: what the records switch reads and forgets; when a chat app is written to; where a saved
+  Used for: what the records switch reads and forgets; when a chat app is written to; where WeChat's words go after its day; where a saved
   thing's key is kept; what the details' fields it can read; which versions the night's update takes.
   Never for a word the control already says, never a ⓘ or a popover. Mac `how`, `explainedRow`,
   `groupHow`, `ledeHow` (`settings.go`); web `How`, `Toggle`'s `how` (`controls.tsx`), outside the

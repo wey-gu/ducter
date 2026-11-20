@@ -148,12 +148,13 @@ function Head(p: { kind: string; name: string; line: string; tone?: string; chil
 }
 
 /** A row on the text column: a title, one muted line, its control at the right edge. */
-function Row(p: { title: string; line?: string; children?: ComponentChildren }) {
+function Row(p: { title: string; line?: string; how?: string; children?: ComponentChildren }) {
   return (
     <div class="chat-row">
       <span class="grow">
         <b>{p.title}</b>
         {p.line && <small>{p.line}</small>}
+        {p.how && <How about={p.title} detail={p.how} />}
       </span>
       {p.children}
     </div>
@@ -375,7 +376,7 @@ function WechatCard({ v }: { v: ChannelView }) {
       {(v.state === "linked" || v.state === "starting" || (v.state === "cant_connect" && v.reason !== "token")) && (
         <>
           {v.state === "linked" && <Row title={t("chats.wx.linked")} line={t("chats.linked.goes", name)} />}
-          {v.state === "linked" && <Row title={t(open ? "chats.wx.open" : "chats.wx.closed")} line={t("chats.wx.rule")} />}
+          {v.state === "linked" && <Row title={t(open ? "chats.wx.open" : "chats.wx.closed")} line={t("chats.wx.rule")} how={t("chats.wx.rule.how")} />}
           <ForgetFoot kind="wechat" name={name} note={t("chats.wx.who")} label={t("chats.wx.forget")} />
         </>
       )}

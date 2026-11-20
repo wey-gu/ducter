@@ -236,6 +236,11 @@ func (a *App) chatStep(c *ui.Context, n int, text string, aside func()) {
 // chatRow is a row on the text column: a title, one muted line, its
 // control at the right edge.
 func (a *App) chatRow(c *ui.Context, key, title, line string, control func()) {
+	a.chatRowHow(c, key, title, line, "", control)
+}
+
+// chatRowHow is a chatRow whose line has 怎么做到的 under it (D424) when detail is set.
+func (a *App) chatRowHow(c *ui.Context, key, title, line, detail string, control func()) {
 	t := a.T
 	a.sep(c)
 	ui.Row(c.Key("chat-row:"+key)).Gap(t.S3).Padding(t.S4, t.S5).MinHeight(64).AlignItems(ui.Center).Children(func() {
@@ -244,6 +249,9 @@ func (a *App) chatRow(c *ui.Context, key, title, line string, control func()) {
 			uiText(c, title).FontSize(t.MD).FontWeight(700).LineHeight(a.leading(1.4))
 			if line != "" {
 				uiText(c, line).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
+			}
+			if detail != "" {
+				a.how(c, key, title, detail)
 			}
 		})
 		if control != nil {

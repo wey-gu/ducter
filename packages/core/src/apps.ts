@@ -13,8 +13,13 @@ import {
   APP_HTML_MAX,
   APP_TASK_KEYS_PER_CALL,
   APP_TASK_WRITES_PER_HOUR,
+  APP_REMOVED_DAYS,
   APP_VERSIONS_KEPT,
   appDocument,
+  appSummary,
+  appTint,
+  type AppIcon,
+  type AppTint,
   appKeyOk,
   appName,
   APPS_MAX,
@@ -33,7 +38,15 @@ export interface AppsStore {
   data(id: string): Record<string, unknown>;
   /** The document a client runs, with its data. */
   open(id: string, o: { transport: "message" | "fetch"; dark?: boolean; lang?: string }): AppOpen | undefined;
-  make(persona: string, a: { name: string; html: string; ask?: string; note?: string; task?: AppTask; kind?: AppMeta["kind"] }): { ok: true; app: AppMeta } | { ok: false; error: string };
+  make(persona: string, a: { name: string; html: string; ask?: string; note?: string; task?: AppTask; kind?: AppMeta["kind"]; data?: Record<string, unknown>; summary?: string; icon?: AppIcon; tint?: AppTint }): { ok: true; app: AppMeta } | { ok: false; error: string };
+  /** D410: the shelf's 「⋯」: a new name, pinned or not, no task keeping it current any more. */
+  set(id: string, c: { name?: string; pinned?: boolean; untask?: boolean }): { ok: true; app: AppMeta } | { ok: false; error: string };
+  /** D410: the app's own line for its tile (ducter.summary, or the partner's). */
+  summarize(id: string, text: string): boolean;
+  /** D410: a deleted app comes back (within APP_REMOVED_DAYS), its data with it. */
+  restore(id: string): { ok: true; app: AppMeta } | { ok: false; error: string };
+  /** D410: deleted and still restorable. */
+  removed(id: string): AppMeta | undefined;
   /** D407: the routine task that keeps this app current (undefined: none any more). */
   give(id: string, task: AppTask | undefined): boolean;
   /** D407: the apps a task fills. */
@@ -97,6 +110,7 @@ export function openApps(o: { dataDir: string; now?: () => Date }): AppsStore {
   }
   if (existsSync(root)) {
     for (const id of readdirSync(root)) {
+      if (id.startsWith(".")) continue;
       try {
         const m = JSON.parse(readFileSync(join(root, id, "meta.json"), "utf8")) as AppMeta;
         if (m && m.id === id && typeof m.name === "string" && existsSync(join(root, id, "index.html"))) metas.set(id, m);
@@ -157,6 +171,23 @@ export function openApps(o: { dataDir: string; now?: () => Date }): AppsStore {
           .map((x) => Number(x[1]))
           .sort((a, b) => b - a)
       : [];
+  // D410: deleted apps wait in apps/.removed/<id>/ (meta with removedAt) for APP_REMOVED_DAYS.
+  const bin = join(root, ".removed");
+  const removedMeta = (id: string): (AppMeta & { removedAt?: string }) | undefined => {
+    if (!/^a[0-9a-f]{1,15}$/.test(id)) return undefined;
+    try {
+      const m = JSON.parse(readFileSync(join(bin, id, "meta.json"), "utf8")) as AppMeta & { removedAt?: string };
+      if (!m || m.id !== id) return undefined;
+      if (m.removedAt && now().getTime() - Date.parse(m.removedAt) > APP_REMOVED_DAYS * 86_400_000) {
+        rmSync(join(bin, id), { recursive: true, force: true });
+        return undefined;
+      }
+      return m;
+    } catch {
+      return undefined;
+    }
+  };
+  if (existsSync(bin)) for (const id of readdirSync(bin)) removedMeta(id);
   const store: AppsStore = {
     list: (persona) => [...metas.values()].filter((m) => m.persona === persona).sort((a, b) => b.updated.localeCompare(a.updated)),
     get: (id) => metas.get(id),
@@ -180,8 +211,19 @@ export function openApps(o: { dataDir: string; now?: () => Date }): AppsStore {
       while (metas.has(id));
       mkdirSync(dir(id), { recursive: true, mode: 0o700 });
       const at = now().toISOString();
-      const m: AppMeta = { id, name, persona, made: at, updated: at, version: 1, size: a.html.length, ...(a.ask ? { ask: a.ask.slice(0, 300) } : {}), ...(a.note ? { note: a.note.slice(0, 120) } : {}), ...(a.task ? { task: { id: a.task.id, title: appName(a.task.title) || a.task.id } } : {}), ...(a.kind ? { kind: a.kind } : {}) };
+      let seed: Record<string, unknown> | undefined;
+      if (a.data && typeof a.data === "object" && !Array.isArray(a.data)) {
+        seed = {};
+        for (const [k, v] of Object.entries(a.data).slice(0, 40)) if (appKeyOk(k) && v !== null && v !== undefined) seed[k] = JSON.parse(JSON.stringify(v));
+        if (JSON.stringify(seed).length > APP_DATA_MAX) return { ok: false, error: `its data is over ${APP_DATA_MAX} characters` };
+      }
+      const summary = a.summary ? appSummary(a.summary) : "";
+      const m: AppMeta = { id, name, persona, made: at, updated: at, version: 1, size: a.html.length, ...(a.ask ? { ask: a.ask.slice(0, 300) } : {}), ...(a.note ? { note: a.note.slice(0, 120) } : {}), ...(a.task ? { task: { id: a.task.id, title: appName(a.task.title) || a.task.id } } : {}), ...(a.kind ? { kind: a.kind } : {}), ...(summary ? { summary } : {}), ...(a.icon ? { icon: a.icon } : {}), tint: appTint({ id, ...(a.tint ? { tint: a.tint } : {}) }) };
       write(join(dir(id), "index.html"), a.html);
+      if (seed && Object.keys(seed).length) {
+        write(join(dir(id), "data.json"), JSON.stringify(seed));
+        datas.set(id, seed);
+      }
       metas.set(id, m);
       saveMeta(m);
       emit({ kind: "list" });
@@ -289,10 +331,64 @@ export function openApps(o: { dataDir: string; now?: () => Date }): AppsStore {
       return { ok: true, app: m };
     },
     remove(id) {
-      if (!metas.delete(id)) return false;
+      const m = metas.get(id);
+      if (!m) return false;
+      metas.delete(id);
       datas.delete(id);
       asks.delete(id);
-      rmSync(dir(id), { recursive: true, force: true });
+      // D410: kept a while to bring back (撤销 / Undo), then gone for good.
+      try {
+        mkdirSync(bin, { recursive: true, mode: 0o700 });
+        rmSync(join(bin, id), { recursive: true, force: true });
+        renameSync(dir(id), join(bin, id));
+        write(join(bin, id, "meta.json"), JSON.stringify({ ...m, removedAt: now().toISOString() }, null, 2) + "\n");
+      } catch {
+        rmSync(dir(id), { recursive: true, force: true });
+      }
+      emit({ kind: "list" });
+      return true;
+    },
+    removed: (id) => {
+      const m = removedMeta(id);
+      if (!m) return undefined;
+      const { removedAt: _, ...meta } = m;
+      return meta;
+    },
+    restore(id) {
+      const m = store.removed(id);
+      if (!m || metas.has(id)) return { ok: false, error: "it can't be brought back any more" };
+      if ([...metas.values()].filter((x) => x.persona === m.persona).length >= APPS_MAX) return { ok: false, error: `${APPS_MAX} apps already` };
+      renameSync(join(bin, id), dir(id));
+      metas.set(id, m);
+      saveMeta(m);
+      emit({ kind: "list" });
+      return { ok: true, app: m };
+    },
+    set(id, c) {
+      const m = metas.get(id);
+      if (!m) return { ok: false, error: "gone" };
+      if (c.name !== undefined) {
+        const name = appName(c.name);
+        if (!name) return { ok: false, error: "an app needs a short name" };
+        m.name = name;
+      }
+      if (c.pinned === true) m.pinned = true;
+      else if (c.pinned === false) delete m.pinned;
+      const untask = c.untask && m.task;
+      if (untask) delete m.task;
+      saveMeta(m);
+      emit({ kind: "list" });
+      if (untask) emit({ kind: "give", id });
+      return { ok: true, app: m };
+    },
+    summarize(id, text) {
+      const m = metas.get(id);
+      if (!m) return false;
+      const s = appSummary(text);
+      if ((m.summary ?? "") === s) return true;
+      if (s) m.summary = s;
+      else delete m.summary;
+      saveMeta(m);
       emit({ kind: "list" });
       return true;
     },

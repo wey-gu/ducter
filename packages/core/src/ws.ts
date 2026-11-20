@@ -36,6 +36,7 @@ import { profileName } from "@ducter/protocol/src/browser-profile.ts";
 import { DEFAULT_PARTNER, channelOf, partnerOfStream } from "@ducter/protocol/src/partners.ts";
 import type { Partners } from "./partners.ts";
 import { actAs } from "./acting.ts";
+import { appIdeas } from "./app-ideas.ts";
 
 export interface WsData {
   live: boolean;
@@ -375,7 +376,13 @@ export function createWsHandler(deps: WsDeps) {
   // D405: the apps list goes with the pins (default conversation), and a key an app or the partner
   // wrote reaches every device that may have it open.
   const appsPersona = () => deps.past?.persona() ?? "";
-  const appsFrame = (): ServerFrame => ({ t: "apps", apps: deps.apps!.list(appsPersona()) });
+  // D410: an empty shelf comes with up to three first ideas from what the home noted (a trip coming up).
+  const appsFrame = (): ServerFrame => {
+    const apps = deps.apps!.list(appsPersona());
+    if (apps.length) return { t: "apps", apps };
+    const p = deps.proactive?.();
+    return { t: "apps", apps, ideas: appIdeas(p?.ledger.all() ?? [], Date.now(), p?.clientZone()) };
+  };
   const offApps = deps.apps?.onChange((c) => {
     if (c.kind === "give") return; // its list frame went with it
     const f: ServerFrame = c.kind === "list" ? appsFrame() : { t: "app_data", id: c.id, key: c.key, value: c.value, by: c.by };
@@ -1408,6 +1415,31 @@ export function createWsHandler(deps: WsDeps) {
       case "app_remove": {
         if (!deps.apps) throw new Error("apps are not available");
         deps.apps.remove(String(f.id ?? ""));
+        return;
+      }
+      case "app_restore": {
+        // D410: 撤销 / Undo a delete (the shelf's toast, the card's Undo).
+        if (!deps.apps) throw new Error("apps are not available");
+        const r = deps.apps.restore(String(f.id ?? ""));
+        if (!r.ok) throw new Error(r.error);
+        return;
+      }
+      case "app_set": {
+        // D410: the shelf's 「⋯」: rename, pin, stop a routine updating it.
+        if (!deps.apps) throw new Error("apps are not available");
+        const id = String(f.id ?? "");
+        const m = deps.apps.get(id);
+        if (!m || m.persona !== appsPersona()) throw new Error("gone");
+        const r = deps.apps.set(id, { ...(typeof f.name === "string" ? { name: f.name } : {}), ...(typeof f.pinned === "boolean" ? { pinned: f.pinned } : {}), ...(f.untask === true ? { untask: true } : {}) });
+        if (!r.ok) throw new Error(r.error);
+        return;
+      }
+      case "app_summary": {
+        // D410: the app's own line for its tile (ducter.summary), from whichever device has it open.
+        if (!deps.apps) return;
+        const id = String(f.id ?? "");
+        const m = deps.apps.get(id);
+        if (m && m.persona === appsPersona()) deps.apps.summarize(id, String(f.text ?? ""));
         return;
       }
       case "pin_tick": {

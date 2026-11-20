@@ -378,6 +378,14 @@ func main() {
 				win.Update(func() {
 					app.Receive(f)
 					updateBadge()
+					// D410: the apps' own windows draw what changed (a new version, a rename).
+					if f.T == "apps" || f.T == "events" {
+						for _, w := range app.AppWins() {
+							if w.Invalidate != nil {
+								w.Invalidate()
+							}
+						}
+					}
 				})
 			},
 			OnStatus: func(st client.Status, err error) {
@@ -520,6 +528,7 @@ func appMenu(app *views.App, l *i18n.Strings, win *mygo.Window, lc *lifecycle) *
 			{Label: l.T("switch.menu"), Accelerator: "CmdOrCtrl+O", Click: show(app.OpenSwitcher)},
 			{Label: l.T("past.menu"), Accelerator: "CmdOrCtrl+Y", Click: show(func() { app.OpenPast("") })},
 			{Label: l.T("did.menu"), Accelerator: "CmdOrCtrl+Shift+Y", Click: show(app.OpenDid)}, // D300
+			{Label: l.T("apps.title"), Accelerator: "CmdOrCtrl+5", Click: show(app.OpenApps)},    // D410
 			// D244: the next and the previous task, in On hand's order.
 			{Label: l.T("onhand.walk.next"), Accelerator: "CmdOrCtrl+Shift+]", Click: show(func() { app.WalkTask(1) })},
 			{Label: l.T("onhand.walk.prev"), Accelerator: "CmdOrCtrl+Shift+[", Click: show(func() { app.WalkTask(-1) })},

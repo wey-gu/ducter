@@ -84,6 +84,7 @@ func (a *App) palPlaces() []palPlace {
 		{"onhand", a.L.T("pal.go.onhand"), "⌘2"},
 		{"past", a.L.T("pal.go.past"), "⌘Y"},
 		{"made", a.L.T("pal.go.made"), ""},
+		{"apps", a.L.T("pal.go.apps"), "⌘5"}, // D410
 		{"devices", a.L.T("pal.go.devices"), "⌘3"},
 		{"settings", a.L.T("pal.go.settings"), "⌘,"},
 	}
@@ -211,6 +212,8 @@ func (a *App) palGoTo(id string) {
 		a.OpenPast("")
 		a.past.tab = "made"
 		a.askMade()
+	case "apps":
+		a.OpenApps()
 	case "devices":
 		a.OpenDevices()
 	case "settings":

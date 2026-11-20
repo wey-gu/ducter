@@ -62,7 +62,7 @@ chat tables only with it, research/152 §4).
 
 - **Field:** **名字、PDF、表格、截图、哪天… / A name, a PDF, a table, a day…**, the words shared
   with the Past tab; time words said under it (**上周 · 11月9日–15日**).
-- **Chips:** **全部 / All** and each kind present: **小应用 / Apps** (D405), **文件 / Files**, **图片 / Pictures**,
+- **Chips:** **全部 / All** and each kind present: **小应用 / Apps** (D405; an app also lives in its own place, 你的小应用 / Your apps, D410), **文件 / Files**, **图片 / Pictures**,
   **表格 / Tables**, **图表 / Charts**, **清单 / Lists**, **链接 / Links**.
 - **List:** by date (Past's own groups) without words; one ranked list with words
   (**找到 n 个 / n found**).

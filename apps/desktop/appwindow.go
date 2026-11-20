@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -13,6 +14,7 @@ import (
 	"time"
 
 	"github.com/egoist/mygo"
+	"github.com/egoist/mygo/ui"
 
 	"github.com/wey-gu/ducter/apps/desktop/internal/views"
 )
@@ -92,30 +94,55 @@ func installApps(app *views.App) {
 		if name == "" {
 			name = "Ducter"
 		}
+		// D410: native UI around the app: its head (改回去, 「⋯」), the
+		// partner's first line, 改好了, and the foot's 让{name}改…; the app
+		// itself in an untrusted web view on its own scheme, as before.
+		aw := app.NewAppWin(id)
 		w := mygo.NewWindow(mygo.WindowOptions{
-			Title:           name,
-			Width:           520,
-			Height:          820,
-			MinWidth:        360,
-			MinHeight:       480,
-			URL:             "ducter-app://" + id + "/",
-			BackgroundColor: "light-dark(#FFF6EA, #17120E)",
-			StateKey:        "app-" + id,
-			Page:            mygo.PageOptions{Untrusted: true},
+			Title:                name,
+			Width:                520,
+			Height:               860,
+			MinWidth:             380,
+			MinHeight:            520,
+			TitleBarStyle:        mygo.TitleBarHidden,
+			TrafficLightPosition: &mygo.Point{X: 20, Y: int((views.AppWinHeadH - 14) / 2)},
+			TitleBarHeight:       views.AppWinHeadH,
+			BackgroundColor:      "light-dark(#FFF6EA, #17120E)",
+			StateKey:             "app-" + id,
+			Content:              ui.View(app.AppWinView(aw)),
 		})
+		web, err := w.NewWebView(mygo.WebViewOptions{
+			URL:             "ducter-app://" + id + "/",
+			Page:            mygo.PageOptions{Untrusted: true},
+			BackgroundColor: "light-dark(#FFF6EA, #17120E)",
+		})
+		if err != nil {
+			log.Printf("ducter: the app's page: %v", err)
+		} else {
+			aw.Web = web
+			aw.Reload = func() { web.Page().Reload() }
+		}
+		aw.Invalidate = w.Invalidate
+		w.Invalidate()
 		open[id] = w
 		// A developer's look (DUCTER_APP_SHOT_DIR): the page as it drew, a few seconds in.
 		if dir := os.Getenv("DUCTER_APP_SHOT_DIR"); dir != "" {
 			go func() {
 				time.Sleep(4 * time.Second)
+				// The whole window (head, page, foot), and the page alone.
 				if png, err := w.CapturePage(); err == nil {
 					_ = os.WriteFile(filepath.Join(dir, "mac-app-window-"+id+".png"), png, 0o644)
 				}
+				if web != nil {
+					if png, err := web.CapturePage(); err == nil {
+						_ = os.WriteFile(filepath.Join(dir, "mac-app-page-"+id+".png"), png, 0o644)
+					}
+				}
 				// The bridge both ways: a key written, an ask, and its answer back in the page.
-				if os.Getenv("DUCTER_APP_PROBE") != "" {
-					_, _ = w.Page().Eval(`ducter.set("probe", 1); ducter.ask("probe from the Mac window").then(t => { document.title = "answered: " + t; })`)
+				if os.Getenv("DUCTER_APP_PROBE") != "" && web != nil {
+					_, _ = web.Page().Eval(`ducter.set("probe", 1); ducter.ask("probe from the Mac window").then(t => { document.title = "answered: " + t; })`)
 					time.Sleep(4 * time.Second)
-					if v, err := w.Page().Eval(`document.title`); err == nil {
+					if v, err := web.Page().Eval(`document.title`); err == nil {
 						_ = os.WriteFile(filepath.Join(dir, "mac-app-probe-"+id+".txt"), []byte(fmt.Sprint(v)), 0o644)
 					}
 				}
@@ -125,6 +152,7 @@ func installApps(app *views.App) {
 			mu.Lock()
 			delete(open, id)
 			mu.Unlock()
+			app.Win.Update(func() { app.CloseAppWin(id) })
 		})
 	}
 }

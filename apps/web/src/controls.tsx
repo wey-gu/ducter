@@ -90,6 +90,16 @@ export const DevicesMark = () => (
   </svg>
 );
 
+/** D410: 你的小应用 / Your apps' mark: a small shelf of four rounded tiles, one of them filled. */
+export const AppsMark = () => (
+  <svg class="nav-g" viewBox="0 0 18 18" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round">
+    <rect x="2" y="2" width="6" height="6" rx="1.8" fill="currentColor" />
+    <rect x="10" y="2" width="6" height="6" rx="1.8" />
+    <rect x="2" y="10" width="6" height="6" rx="1.8" />
+    <rect x="10" y="10" width="6" height="6" rx="1.8" />
+  </svg>
+);
+
 /** The drawn marks of the bar (D262): Settings' gear, New task's ＋, the update pebble. */
 export const Gear = () => {
   return (

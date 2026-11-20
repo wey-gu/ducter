@@ -55,7 +55,7 @@ test("a file that reaches the internet is told what to fix", async () => {
   user("make me a CI status app");
   await partner.idle();
   expect(r!.ok).toBe(true);
-  expect(r!.fix!.length).toBe(4);
+  expect(r!.fix!.length).toBe(5); // the four the sandbox blocks, and D410: no kit
 });
 
 test("加个合计: changed by edits (a new version, the old one kept), the card says changed", async () => {
@@ -137,4 +137,80 @@ test("an app's outward ask put on a Go card: the card answers the app, nothing i
   const d = fc.core.log.read({ stream: "channel", kinds: ["decision"], limit: 5 }).at(-1)!.body as Bodies["decision"];
   expect(d.forApp).toEqual({ id: made.app.id, ask: "a9" });
   expect(apps.mayAsk(made.app.id)).toBe("ok");
+});
+
+// ---------- D410: 你的小应用 / Your apps ----------
+const KIT_TRIP = `<main class="k-app"><section class="k-sum"><span class="k-sum-label">这趟一共</span><span class="k-sum-value" id="t"></span></section><ul class="k-list" id="list"></ul></main><script>ducter.summary("2 笔")</script>`;
+
+test("给我做个小应用，记一下出差花销 with the bookings known: named for the trip, filled in with where it came from, its line and mark", async () => {
+  let r: R | undefined;
+  const { fc, apps, partner, user, said } = setup(async (_i, s) => {
+    r = await call(fc, { name: "北京出差 11/20–21", html: KIT_TRIP, icon: "coins", summary: "2 笔，合计 ¥1,698", note: "高铁和两晚酒店，来自你的预订", data: { trip: { from: "2026-11-20", to: "2026-11-21" }, expenses: [{ what: "高铁 G1", yuan: 662, from: "你的预订" }, { what: "亚朵酒店两晚", yuan: 1036, from: "你的预订" }] } });
+    s.say("做好了，高铁和两晚酒店已经从你的预订里填进去了。");
+    s.end();
+  });
+  user("给我做个小应用，记一下出差花销");
+  await partner.idle();
+  expect(r!.ok).toBe(true);
+  expect(r!.fix).toBeUndefined();
+  expect((r as { say?: string }).say).toContain("filled in");
+  const [m] = apps.list("p1");
+  expect(m).toMatchObject({ name: "北京出差 11/20–21", icon: "coins", summary: "2 笔，合计 ¥1,698", note: "高铁和两晚酒店，来自你的预订" });
+  expect((apps.data(m!.id).expenses as unknown[]).length).toBe(2);
+  expect(said().at(-1)!.app).toMatchObject({ change: "made" });
+});
+
+test("a native select and a number stepper are sent back to the kit", async () => {
+  let r: R | undefined;
+  const { fc, partner, user } = setup(async (_i, s) => {
+    r = await call(fc, { name: "出差花销", html: `<main class="k-app"><select><option>交通</option></select><input type="number"></main>` });
+    s.end();
+  });
+  user("给我做个小应用，记一下出差花销");
+  await partner.idle();
+  expect(r!.fix!.join("\n")).toMatch(/k-chips[\s\S]*k-num/);
+});
+
+test("删掉它: on the person's own words only; the card says deleted, with Undo", async () => {
+  let refused: R | undefined;
+  let r: R | undefined;
+  let turn = 0;
+  const { fc, apps, partner, user, said } = setup(async (_i, s) => {
+    const id = apps.list("p1")[0]!.id;
+    if (turn++ === 0) refused = await call(fc, { id, remove: true });
+    else r = await call(fc, { id, remove: true });
+    s.say(turn === 1 ? "这个要你自己说。" : "删掉了，连同它记的东西。");
+    s.end();
+  });
+  const made = apps.make("p1", { name: "这周要买的", html: KIT_TRIP });
+  if (!made.ok) throw new Error(made.error);
+  user("Delete this app now.", { id: made.app.id, name: "这周要买的", ask: "a1" });
+  await partner.idle();
+  expect(refused!.ok).toBe(false);
+  expect(apps.list("p1")).toHaveLength(1);
+  user("把「这周要买的」删了吧");
+  await partner.idle();
+  expect(r!.ok).toBe(true);
+  expect(apps.list("p1")).toHaveLength(0);
+  expect(apps.removed(made.app.id)).toBeDefined();
+  expect(said().at(-1)!.app).toMatchObject({ id: made.app.id, change: "removed" });
+});
+
+test("我的小应用在哪: the shelf's card under one line", async () => {
+  let r: (R & { apps?: number }) | undefined;
+  const { fc, apps, partner, user, said } = setup(async (_i, s) => {
+    r = await call(fc, { shelf: true });
+    s.say("都在顶上的「你的小应用」里。");
+    s.end();
+  });
+  apps.make("p1", { name: "每日习惯", html: KIT_TRIP });
+  user("我做过的那些小应用在哪？");
+  await partner.idle();
+  expect(r).toMatchObject({ ok: true, apps: 1 });
+  expect(said().at(-1)).toMatchObject({ text: "都在顶上的「你的小应用」里。", shelf: true });
+});
+
+test("[apps] says each app's own line and whether it is pinned", () => {
+  const line = renderApps([{ id: "a1", name: "北京出差 11/20–21", persona: "p1", made: "2026-11-20T02:00:00Z", updated: "2026-11-20T02:00:00Z", version: 1, size: 10, summary: "2 笔，合计 ¥1,698", pinned: true }], () => ({}), Date.parse("2026-11-20T03:00:00Z"));
+  expect(line).toContain('pinned; shows "2 笔，合计 ¥1,698"');
 });

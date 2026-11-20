@@ -117,6 +117,7 @@ func (a *App) conversation(c *ui.Context) {
 	a.followBefore(rows) // D254: the divider, what is new since the reader left the end
 	a.header(c)
 	a.pinStrip(c) // D381: what is pinned, under the bar
+	a.appPins(c)  // D410: the pinned apps, one line of chips
 	a.list.Key = func(i int) any {
 		if i >= len(rows) {
 			return i
@@ -622,6 +623,10 @@ func (a *App) entry(c *ui.Context, e *store.Entry) {
 			// D405: the app this message made or changed, under its words.
 			if e.AI.App != nil {
 				a.appCard(c, itoa(e.FirstSeq), e.AI.App)
+			}
+			// D410: 你的小应用, one click from the words that say where they are.
+			if e.AI.Shelf {
+				a.shelfCard(c, itoa(e.FirstSeq))
 			}
 			if e.AI.First != nil {
 				a.firstWordsAfter(c, e) // D298: what they offer, where they were read, a key

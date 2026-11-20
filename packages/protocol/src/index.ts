@@ -304,7 +304,8 @@ export interface Bodies {
   // ui (D303): the blocks the partner put in its words (a table, a chart, a checklist, choices),
   // each standing in for its plain text in `text`; uiDropped: how many it wrote that weren't valid.
   // app (D405): the app this message made or changed (its card under the words); appAnswer: it answers an app's ask.
-  ai_msg: { text: string; replyTo?: number; decisionId?: string; media?: MediaRef[]; cal?: CalGlance; first?: FirstWords; ui?: RichUi[]; uiDropped?: number; app?: AppCard; appAnswer?: AppAnswer };
+  // shelf (D410): the person asked where their apps are: a card that opens 小应用 / Apps under these words.
+  ai_msg: { text: string; replyTo?: number; decisionId?: string; media?: MediaRef[]; cal?: CalGlance; first?: FirstWords; ui?: RichUi[]; uiDropped?: number; app?: AppCard; appAnswer?: AppAnswer; shelf?: true };
   ack: { jobId: string; text: string; replyTo: number }; // names the action, never the outcome
   // D380: a quick web look for one live fact (the weather, a version, one price), run beside the
   // conversation by a session that holds only web tools. "looking" when the partner asks it (no

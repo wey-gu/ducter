@@ -34,6 +34,35 @@ type autofillState struct {
 	keyVal  map[string]string
 	keyOnce map[string]bool
 	sentAt  time.Time
+	// missing is the field Save was tapped without (the Mac walk of
+	// 0.0.98: a Save that did nothing, silently), said under the form.
+	missing string
+}
+
+// firstMissing is the label key of the first field that is missing, given
+// as pairs of (missing, key), or "".
+func firstMissing(pairs ...any) string {
+	for i := 0; i+1 < len(pairs); i += 2 {
+		if pairs[i].(bool) {
+			return pairs[i+1].(string)
+		}
+	}
+	return ""
+}
+
+// afMissing answers a Save that can't go yet: the first field still
+// missing (need, its label's key), named in the failed ink, until it is
+// filled.
+func (a *App) afMissing(c *ui.Context, need string) {
+	s := &a.af
+	if need == "" {
+		s.missing = ""
+	}
+	if s.missing == "" {
+		return
+	}
+	s.missing = need
+	ui.Text(c, a.L.T("af.fill", a.L.T(need))).FontSize(a.T.SM).FontWeight(600).TextColor(a.T.Failed.Ink).Role(ui.RoleStatus)
 }
 
 // expRe reads a card's expiry as people type it (D404): 08/29, 08-29, 08 29,
@@ -237,7 +266,7 @@ func (a *App) afRow(c *ui.Context, key string, glyph func(ui.Color) func(p *ui.P
 func (a *App) clearForm() {
 	s := &a.af
 	s.site, s.user, s.password, s.name, s.number, s.exp = "", "", "", "", "", ""
-	s.keyEnv = ""
+	s.keyEnv, s.missing = "", ""
 	s.details = nil
 }
 
@@ -276,12 +305,14 @@ func (a *App) afForm(c *ui.Context, kind string, x *protocol.SavedView) {
 	}
 	ui.Column(c.Key("af-form:"+kind)).Gap(t.S3).Padding(t.S4, t.S5).Children(func() {
 		var ok bool
+		var need string
 		var put protocol.SavedInput
 		if kind == "signin" {
 			a.afInput(c, "site", a.L.T("af.signin.site"), &s.site, "github.com", false)
 			a.afInput(c, "user", a.L.T("af.signin.user"), &s.user, "", false)
 			a.afInput(c, "password", a.L.T("af.signin.password"), &s.password, keep, true)
 			ok = s.site != "" && s.user != "" && (x != nil || s.password != "")
+			need = firstMissing(s.site == "", "af.signin.site", s.user == "", "af.signin.user", x == nil && s.password == "", "af.signin.password")
 			put = protocol.SavedInput{Kind: "signin", Site: s.site, Username: s.user, Password: s.password}
 		} else {
 			ph := "4242 4242 4242 4242"
@@ -294,6 +325,7 @@ func (a *App) afForm(c *ui.Context, kind string, x *protocol.SavedView) {
 			ui.Text(c, a.L.T("af.card.nocvc")).FontSize(t.SM).TextColor(t.InkMuted)
 			mm, yy, good := parseExp(s.exp)
 			ok = good && s.name != "" && (x != nil || s.number != "")
+			need = firstMissing(x == nil && s.number == "", "af.card.number", !good, "af.card.exp", s.name == "", "af.card.name")
 			if good {
 				put = protocol.SavedInput{Kind: "card", Name: s.name, Number: s.number, ExpMonth: mm, ExpYear: yy}
 			}
@@ -304,6 +336,7 @@ func (a *App) afForm(c *ui.Context, kind string, x *protocol.SavedView) {
 		if f := a.savedFrame(); f != nil && !s.sentAt.IsZero() && f.Reason != "" {
 			ui.Text(c, a.L.T("af.err."+f.Reason)+" ("+f.Message+")").FontSize(t.SM).TextColor(t.Failed.Ink)
 		}
+		a.afMissing(c, need)
 		ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
 			if x != nil {
 				if s.sure {
@@ -320,9 +353,13 @@ func (a *App) afForm(c *ui.Context, kind string, x *protocol.SavedView) {
 				s.editing = ""
 				a.clearForm()
 			}
-			if a.button(c, a.L.T("af.save"), btnPrimary, t.ControlSM, t.Surface) && ok {
-				a.send(protocol.SavedPut{T: "saved_put", Item: put})
-				s.sentAt = a.Now()
+			if a.button(c, a.L.T("af.save"), btnPrimary, t.ControlSM, t.Surface) {
+				if !ok {
+					s.missing = need
+				} else {
+					a.send(protocol.SavedPut{T: "saved_put", Item: put})
+					s.sentAt = a.Now()
+				}
 			}
 		})
 	})

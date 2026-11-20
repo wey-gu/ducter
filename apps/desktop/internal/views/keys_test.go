@@ -102,4 +102,24 @@ func TestKeysInSettings(t *testing.T) {
 			t.Errorf("missing %q in %q", want, tt.Texts())
 		}
 	}
+	// The Mac walk of 0.0.98: Save with the variable name left empty said
+	// nothing and sent nothing; now it names what is missing.
+	if err := tt.Click("添加密钥"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	app.af.name, app.af.password = "Hetzner 的 API 令牌", "demo-hetzner-not-a-token"
+	tt.Frame()
+	if err := tt.Click("保存"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if !tt.HasText("「变量名」还没填好。") {
+		t.Errorf("a Save that can't go says nothing: %q", tt.Texts())
+	}
+	app.af.keyEnv = "HCLOUD_TOKEN"
+	tt.Frame()
+	if tt.HasText("「变量名」还没填好。") {
+		t.Error("the line stays once the field is filled")
+	}
 }

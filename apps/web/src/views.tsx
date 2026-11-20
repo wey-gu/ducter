@@ -2857,7 +2857,7 @@ function Accounts() {
   return (
     <section class="set accounts">
       <h3>{t("acct.title")}</h3>
-      <div class="small sub">{t("acct.lede")}</div>
+      <div class="small sub">{t("acct.lede", A.S.personaName)}</div>
       {offer && <OoOffer oo={oo!} />}
       {!offer && oo?.selfHosted && !usedOo && (
         <div class="acct-oo">

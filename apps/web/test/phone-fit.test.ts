@@ -160,4 +160,8 @@ describe("research/123: the 0.0.69 Settings panes on the iPhone", () => {
   test("怎么装 inside a setup step is the quiet 44-tall disclosure", () => {
     expect(blocks(".chat-step .mem-more summary").join("")).toMatch(/min-height:\s*44px/);
   });
+  // research/165: at 390 再试一次 sat 16px above step 2's mark, its clay edge eating half of it.
+  test("a step that ends on its button keeps clear of the next step", () => {
+    expect(blocks(".chat-step .grow > .btn:last-child").join("")).toMatch(/margin-bottom:\s*var\(--s3\)/);
+  });
 });

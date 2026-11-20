@@ -279,6 +279,57 @@ func firstEvents(en bool) []protocol.LogEvent {
 // readCount is how much was read, said anywhere (D173 forbids it on screen).
 var readCount = regexp.MustCompile(`看了[^。；]*\d|\d+\s*封信|(?i)\bread \d+|\d+ emails|有 \d+ 件值得`)
 
+// The Mac walk of 0.0.98: a watch switch is named with its account (two
+// Gmail switches never share a name), and the partner's line lands under
+// the row that moved, not under the group's last line past the fold.
+func TestWatchSaidUnderItsRow(t *testing.T) {
+	app, sent := iaApp(t, i18n.ZH)
+	app.Status = client.Connected
+	acctFrames(app, "three")
+	app.openTab(TabAccounts)
+	tt := ui.NewTesterWith(app.View, 1280, 1400, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
+	tt.Frame()
+	*sent = nil
+	// Named with its account, so it is found by that name alone.
+	sw, ok := tt.AccessByRole(ui.RoleSwitch, "Gmail 里的 wey@home.example.com, 自己留意")
+	if !ok {
+		var names []string
+		for _, a := range tt.AccessAll() {
+			if a.Role == ui.RoleSwitch {
+				names = append(names, a.Name)
+			}
+		}
+		t.Fatalf("no switch named with its account: %q", names)
+	}
+	tt.ClickAt(sw.Bounds.X+sw.Bounds.W/2, sw.Bounds.Y+sw.Bounds.H/2)
+	tt.Frame()
+	said := "好，Gmail 里的 wey@home.example.com 你问起来我再看。"
+	at, ok := tt.Find(said)
+	if !ok {
+		t.Fatalf("no said line: %q", tt.Texts())
+	}
+	row, _ := tt.Find("wey@home.example.com")
+	cal, _ := tt.Find("日历")
+	if at.Y <= row.Y || at.Y >= cal.Y {
+		t.Errorf("said at y=%v, its row at %v, the next row at %v", at.Y, row.Y, cal.Y)
+	}
+	if len(*sent) == 0 {
+		t.Error("the switch sent nothing")
+	}
+}
+
+// research/165: a watch switch's line names the app with the account, so
+// a mail and a calendar on one address never read the same.
+func TestWatchWhat(t *testing.T) {
+	a := &App{L: i18n.New(i18n.ZH)}
+	if got := a.L.T("said.watch.off", a.watchWhat("日历", "w@nowledge-labs.ai")); got != "好，日历里的 w@nowledge-labs.ai 你问起来我再看。" {
+		t.Errorf("with an account: %q", got)
+	}
+	if got := a.watchWhat("Slack bot", ""); got != "Slack bot" {
+		t.Errorf("no account: %q", got)
+	}
+}
+
 // D192: a tile's account says whose it is in a few letters, and two
 // tiles of one app never read the same.
 func TestShortAccount(t *testing.T) {

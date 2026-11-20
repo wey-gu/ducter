@@ -260,11 +260,45 @@ The partner's word after a change (above) now also covers: a source stopped
 (**好，OOMOL 停了：它连着的账号我都不看了。想再用，重新连上就好。**), a chat app disconnected
 (**好，Telegram 断开了。你们的对话还在这里。**), linked (**连上了。以后在 Telegram 里找我也行。**), and a new name.
 
+## Pass 4 follow-up: the real Mac app (D406)
+
+The Mac app built from source, run against demo cores on their own ports and data folders
+(`demo-settings-real.ts`, `demo-bridge.ts` failed, `demo-apps.ts`, `demo-handover.ts`), driven in the
+background with cua-driver at its own 1280 × 860 window, light and dark, zh and en (`.shots/mac-real-walk`).
+The test renderer had passed every one of these flows; what only the real window showed:
+
+| Flow | Seen in the real window | Now |
+|---|---|---|
+| Accounts, a watch switch on the fourth of seven rows | the partner's line said under the group's last line, ~400 pt below the fold, gone after 4 s; two switches named **日历, 自己留意** alike | said under the row that moved, naming app and account; the switch's name too |
+| Web, every said line (seen beside the Mac's) | no style at all: the body's ink, flush to the card edge, no pebble | the Mac's pebble and soft ink |
+| Passwords & cards, add a key | Save with the variable name empty did nothing (its placeholder **DO_TOKEN** reads like a value) | **「变量名」还没填好。** under the form |
+| Agent messaging, 改由这台收 → failed | connecting hid the page from the rail: the window jumped to Partner and the failure was never said | the page stays once opened; **没连上：…** with **再试一次** |
+| Memory, 再试一次 then Agent messaging | **刚又试了一次** followed to the other page minutes later | only on the page it was tried on |
+| On hand, no task and 571 to-dos sorted | **手头没事** while the partner said "都放在手头的事里了": the board asked for the to-dos only once it had a task | the pile, its groups and the hand-over sheet |
+| ⌘K, a small app | a pencil mark | the small window mark its card and Made for you use |
+| Accounts with no source | **让 Ducter 帮你看…** under a page that says **小满能看的…** | the partner's name |
+| Add a computer, a kind chosen | title and back row the same words (pass 4's leftover) | titled by the kind: **加一台 Linux 服务器** |
+
+Same in both (no change): rename (old name replaced on typing, **好，以后我就叫小满。**), Codex's six models
+and the switch line, Telegram disconnect asks in place then says its line, a wrong bot key clears the
+field with **这串密钥不对，再拷贝一次试试。** (as the web), a card typed 0829 saves as 08/29, quiet hours by
+the arrow keys with **好，22:00 到 08:00 我不吵你…**, the language switch in place, dark mode on every
+page walked, the small app's window and its ask answered both in the app and in the conversation,
+⌘K by keyboard, the hand-over sheet words first with the subject's 117 found.
+
+Not changed, noted: the Mac doesn't reshape an expiry as typed (it parses 0829 on Save; the web shapes
+for phone keyboards); a pile's partner sentence and the demo's repeated issue titles are fixture data;
+an accessible static text on the Mac carries the U+2060 word joiners its line breaking adds
+(**对⁠话**), which a screen reader may spell; the driver's synthetic keystrokes typed each character
+twice into the app's fields (AX set-value didn't), unverified with a real keyboard.
+
 ## Not done
 
 - A comprehension pass with people on the said lines and on a row with no state word.
 - The web has no AI accounts row on Accounts (the phone has no Devices page of its own there);
   its Partner page keeps the tray-less lists (D89).
 - The iPhone keyboard over a sheet seen with a real keyboard (the Simulator can't be tapped from the
-  shell); the Mac app driven through the same flows rather than the test renderer.
-- The add-a-computer page's back label repeats its title; at 390 **再试一次** sits close to step 2.
+  shell).
+- The Mac: typing into its fields with a real keyboard after the driver's doubled keystrokes; its
+  accessible text without the U+2060 joiners; a chat app's link completed (the demo's stub never
+  sends the code back).

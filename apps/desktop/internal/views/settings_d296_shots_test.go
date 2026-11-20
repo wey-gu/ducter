@@ -86,7 +86,14 @@ func TestSettingsD296Shots(t *testing.T) {
 	// The partner's word after a change, a moment after it.
 	h.app.openTab(TabAccounts)
 	shot("said-accounts", 1280, 1300, func() {
-		h.app.say("watch:c_oomol", h.app.L.T("said.watch.off", "Slack bot"))
+		// Under the row that moved (the Mac walk of 0.0.98): the Slack bot's.
+		for _, cv := range h.app.S.Connections {
+			for _, w := range tilesOf(cv) {
+				if w.Service == "slackbot" {
+					h.app.say("watch:"+cv.ID+"|"+tileKey(w), h.app.L.T("said.watch.off", h.app.watchWhat("Slack bot", w.Account)))
+				}
+			}
+		}
 	})
 	h.app.openTab(TabNotify)
 	shot("said-notify", 1280, 1000, func() {

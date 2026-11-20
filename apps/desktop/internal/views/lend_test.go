@@ -132,6 +132,10 @@ func TestLendFlow(t *testing.T) {
 	}
 	app.Receive(lendWaitingFrame(false))
 	lendFrame(tt)
+	// research/165: the kind's step is titled by the kind, never the question's words again.
+	if !tt.HasText("加一台 Linux 服务器") || tt.HasText("加一台做事的电脑") {
+		t.Errorf("the line's title: %q", tt.Texts())
+	}
 	for _, w := range []string{lendLineText, "复制这一行", "粘到它的终端里", "它会自己连上来", "这个码还能用 10 分钟，只能用一次。", "在等它连上…", "让你的 AI agent 来装", "没连上？"} {
 		if !tt.HasText(w) {
 			t.Errorf("waiting: no %q in %q", w, tt.Texts())

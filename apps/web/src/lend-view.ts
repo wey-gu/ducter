@@ -45,6 +45,18 @@ export function lendStep(l: LendState, now: number): LendStep {
   return "line";
 }
 
+/**
+ * The sheet's back row and title, as word keys (research/165: never the same words twice). The first
+ * step goes back to 你的设备; a kind's steps are titled by the kind (加一台 Mac) and go back to the
+ * question (加一台做事的电脑); the last ones back to 加一台设备.
+ */
+export function lendHead(l: LendState, step: LendStep): { back: string; title: string } {
+  const first = step === "add" || (step === "ask" && !l.fromAdd);
+  const back = first ? "devices.title" : l.kind && step !== "joined" && step !== "here" ? "lend.title" : "add.back";
+  const title = step === "add" ? "add.title" : step === "pair" ? "add.talk" : l.kind ? `lend.title.${l.kind}` : "lend.title";
+  return { back, title };
+}
+
 /** Whole minutes the code has left, at least 1 while it still works. */
 export function minutesLeft(f: Pick<LendFrame, "expiresAt">, now: number): number {
   return Math.max(1, Math.ceil((Date.parse(f.expiresAt) - now) / 60_000));

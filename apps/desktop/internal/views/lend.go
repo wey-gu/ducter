@@ -249,10 +249,7 @@ func (a *App) lendSheet(c *ui.Context) {
 		w, h = 1040, 760
 	}
 	open := true
-	title := a.L.T("lend.title")
-	if a.lend.add {
-		title = a.L.T("add.title")
-	}
+	title := a.lendTitle()
 	ui.DialogBase(c, &open, func(back, panel ui.Element) {
 		back.Background(t.Scrim)
 		panel.Width(min(w-2*t.S6, 600)).MaxHeight(sheetBack(c, back, h)).Radius(t.RadiusXL).
@@ -282,6 +279,19 @@ func (a *App) lendSheet(c *ui.Context) {
 	if !open {
 		a.lend.open = false
 	}
+}
+
+// lendTitle is the sheet's title: a kind's steps are titled by the kind
+// (加一台 Mac), so they never repeat the question's words, 加一台做事的电脑
+// (research/165).
+func (a *App) lendTitle() string {
+	switch {
+	case a.lend.add:
+		return a.L.T("add.title")
+	case a.lend.kind != "":
+		return a.L.T("lend.title." + a.lend.kind)
+	}
+	return a.L.T("lend.title")
 }
 
 // lendBack is the back arrow's name, or "" when the sheet is at its start.

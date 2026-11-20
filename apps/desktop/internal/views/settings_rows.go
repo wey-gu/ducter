@@ -356,6 +356,26 @@ func (a *App) say(key, text string) {
 // few seconds. Never a toast, never what a switch already shows: only
 // where the change has a consequence worth hearing.
 func (a *App) saidLine(c *ui.Context, key string) {
+	a.saidLineAt(c, key, a.T.S5)
+}
+
+// saidLineIn is the partner's word inside a group, under the row it is
+// about, on the group's text column: where the person's eyes are when a
+// row's switch moved, not under a long group's last line, past the window's
+// edge (the Mac walk of 0.0.98).
+func (a *App) saidLineIn(c *ui.Context, key string) {
+	t := a.T
+	if w, ok := a.settings.said[key]; !ok || w.text == "" || a.Now().Sub(w.at) >= saidFor {
+		a.saidLine(c, key) // forgets it once it has settled
+		return
+	}
+	ui.Row(c.Key("said-in:"+key)).Gap(t.S3).Padding(0, t.S5, t.S3, t.S5).Children(func() {
+		ui.Box(c).Width(40).Shrink(0)
+		a.saidLineAt(c, key, 0)
+	})
+}
+
+func (a *App) saidLineAt(c *ui.Context, key string, pad float32) {
 	t := a.T
 	w, ok := a.settings.said[key]
 	text := w.text
@@ -369,7 +389,7 @@ func (a *App) saidLine(c *ui.Context, key string) {
 	}
 	c.After(left)
 	an := t.Nav.Across
-	row := ui.Row(c.Key("said:"+key)).Gap(t.S2).Padding(0, t.S5).AlignItems(ui.Center).
+	row := ui.Row(c.Key("said:"+key)).Gap(t.S2).Padding(0, pad).AlignItems(ui.Center).
 		Transition(ui.ElementTransition{Animation: &an, ExitDuration: t.Nav.Leave, Enter: &ui.Motion{Y: 4}, Exit: &ui.Motion{}}).
 		Role(ui.RoleStatus).Label(text)
 	row.Children(func() {

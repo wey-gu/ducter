@@ -28,7 +28,8 @@ func (a *App) onHand(c *ui.Context) {
 		}
 	})
 	var find ui.Element
-	empty := a.boardEmpty(b) && len(a.partnerDecisions()) == 0 && len(a.shownCalls()) == 0
+	a.askTodos()
+	empty := a.boardEmpty(b) && len(a.partnerDecisions()) == 0 && len(a.shownCalls()) == 0 && !a.todosToShow()
 	// D261: the project lens (a column, or a row of names when narrow), then
 	// the board by state under its strip of counts.
 	groups := a.lensGroups(b)

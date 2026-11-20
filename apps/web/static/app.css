@@ -13112,6 +13112,8 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 .mem-first p { margin: 0; max-width: 34em; font-size: var(--md); line-height: 1.6; color: var(--ink-soft); }
 .chat-step .grow small { display: block; font-size: var(--sm); line-height: 1.5; color: var(--ink-muted); }
 .chat-step .grow > .btn { align-self: flex-start; }
+/* research/165: a step that ends on its button keeps clear of the next step's mark (its clay edge counts). */
+.chat-step .grow > .btn:last-child { margin-bottom: var(--s3); }
 .mem-reach b { display: block; font-size: var(--md); font-weight: 700; line-height: 1.5; }
 .mem-reach small { display: block; font-size: var(--sm); line-height: 1.5; color: var(--ink-muted); }
 .mem-facts { margin: 0; display: flex; flex-direction: column; gap: 4px; }
@@ -16903,3 +16905,12 @@ a.pr:hover { box-shadow: inset 0 0 0 1px var(--line-2); }
   .sheet-frame { bottom: var(--kb, 0px); max-height: calc(88vh - var(--kb, 0px)); transition: bottom var(--t-fast) var(--ease); }
 }
 .mem-tried { color: var(--ink-soft) !important; }
+/* D296, the Mac walk of 0.0.98: the partner's word after a change, as the Mac draws it: a small clay
+   pebble on the done ink pops in, then the line in the soft ink on the text edge. Under a group it sits
+   on the group's edge; under a row (in) on the row's text column. */
+.said-line { display: flex; align-items: center; gap: var(--s2); padding: var(--s2) var(--set-in, var(--s4)); font-size: var(--sm); font-weight: 600; line-height: 1.5; color: var(--ink-soft); animation: said-in var(--t-across) var(--ease-push); }
+.said-line.in { padding: 0 var(--set-in, var(--s4)) var(--s3) calc(var(--set-in, var(--s4)) + var(--chat-col)); }
+.said-line .said-dot { flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--done-ink); box-shadow: inset 0 -1.5px 0 color-mix(in srgb, var(--done-ink) 65%, var(--ink)), 0 0 0 2px var(--done-surface); animation: said-pop var(--t-pop) var(--spring); }
+@keyframes said-in { from { opacity: 0; transform: translateY(4px); } }
+@keyframes said-pop { from { transform: scale(0.2); } }
+@media (prefers-reduced-motion: reduce) { .said-line, .said-line .said-dot { animation: none; } }

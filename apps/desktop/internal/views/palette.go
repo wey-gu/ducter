@@ -470,8 +470,13 @@ func (a *App) palRowView(c *ui.Context, r palRow, q string, on bool, pick func()
 			a.coinBox(c, "c", r.item.Harness, 24, false, coinStill)
 		case palOwnRow:
 			a.coinBox(c, "c", r.own.Agent, 24, true, coinStill)
+		case palMadeRow:
+			// Its kind's own mark, as on its card and in Made for you (a small
+			// app is a small window, never a pencil: the Mac walk of 0.0.98).
+			kind := r.made.Kind
+			a.pastPebbleDraw(c, "art", "", 24, func(col ui.Color) func(*ui.Painter, ui.Rect) { return drawMadeKind(kind, col) })
 		default:
-			glyph := map[palKind]string{palMadeRow: "write", palGo: "look", palTell: "talk", palNew: "build"}[r.kind]
+			glyph := map[palKind]string{palGo: "look", palTell: "talk", palNew: "build"}[r.kind]
 			a.pastPebble(c, "art", glyph, "", 24)
 		}
 		ui.Column(c.Key("main")).Grow(1).Shrink(1).MinWidth(0).Gap(2).Children(func() {

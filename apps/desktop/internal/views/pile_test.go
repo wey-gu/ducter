@@ -9,6 +9,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/egoist/mygo/ui"
+
+	"github.com/wey-gu/ducter/apps/desktop/internal/client"
 	"github.com/wey-gu/ducter/apps/desktop/internal/i18n"
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 )
@@ -65,6 +68,30 @@ func TestPileArtBuckets(t *testing.T) {
 		if got := pileArt(n); got != want {
 			t.Fatalf("%d: %s, want %s", n, got, want)
 		}
+	}
+}
+
+// The Mac walk of 0.0.98: no task on the board and 557 to-dos sorted. The
+// partner said they were all on hand; On hand said 手头没事, since it asked
+// for the to-dos only once it had a task to show. Now the pile is there.
+func TestPileOnAnEmptyBoard(t *testing.T) {
+	app, sent := iaApp(t, i18n.ZH)
+	app.Status = client.Connected
+	app.LocaleFixed = true
+	app.Receive(settingsFrame())
+	app.Route = RouteOnHand
+	tt := ui.NewTesterWith(app.View, 1280, 1000, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
+	todoFrames(tt, 2)
+	if !tt.HasText(app.L.T("onhand.empty", app.S.PersonaName)) {
+		t.Fatalf("not an empty board: %q", tt.Texts())
+	}
+	if _, ok := lastSent[protocol.SourcesReq](*sent); !ok {
+		t.Fatalf("an empty board never asked for the to-dos: %+v", *sent)
+	}
+	app.Receive(pileFrame(i18n.ZH, 557, 0, 0, 0))
+	todoFrames(tt, 3)
+	if tt.HasText(app.L.T("onhand.empty", app.S.PersonaName)) || !tt.HasText("557") {
+		t.Fatalf("the pile is missing from an empty board: %q", tt.Texts())
 	}
 }
 

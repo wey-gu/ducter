@@ -100,7 +100,9 @@ const saidWords = new Map<string, { text: string; at: number }>();
 const saidListeners = new Set<() => void>();
 
 /** Keep the partner's word for a change you made, for <Said> to show. The Mac's `say`. */
-export function say(key: string, text: string) {
+export function say(key: string, text: string, replaces?: string) {
+  // One line per place: a newer word under another row of the same group replaces it.
+  if (replaces) for (const k of [...saidWords.keys()]) if (k.startsWith(replaces)) saidWords.delete(k);
   saidWords.set(key, { text, at: Date.now() });
   for (const f of saidListeners) f();
 }
@@ -110,7 +112,7 @@ export function say(key: string, text: string) {
  * line in its voice, on the text edge; it settles away by itself. Never a toast, never what a switch
  * already shows. The Mac's `saidLine`.
  */
-export function Said(p: { k: string }) {
+export function Said(p: { k: string; in?: boolean }) {
   const [, bump] = useState(0);
   useEffect(() => {
     const f = () => bump((n) => n + 1);
@@ -126,7 +128,7 @@ export function Said(p: { k: string }) {
   }, [w?.at]);
   if (!w || left <= 0) return null;
   return (
-    <div class="said" role="status" key={w.at}>
+    <div class={p.in ? "said said-line in" : "said said-line"} role="status" key={w.at}>
       <span class="said-dot" aria-hidden="true" />
       <span>{w.text}</span>
     </div>

@@ -14,6 +14,39 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 )
 
+// The Mac walk of 0.0.98: "Tried again just now" belongs to the page it
+// was tried on; it followed the person to Agent messaging minutes later.
+func TestMemTriedStaysOnItsPage(t *testing.T) {
+	app, _ := iaApp(t, i18n.EN)
+	app.openTab(TabMemory)
+	app.settings.memTried = true
+	app.openTab(TabMemory)
+	if !app.settings.memTried {
+		t.Fatal("the same page forgot it was tried")
+	}
+	app.openTab(TabPeers)
+	if app.settings.memTried {
+		t.Fatal("another page says it was tried just now")
+	}
+}
+
+// The Mac walk of 0.0.98: 改由这台收 put the bridge in connecting, which
+// hid Agent messaging from the rail, and the window jumped to Partner
+// with the failure it was about to say. An open page stays.
+func TestPeersPageStaysWhileOpen(t *testing.T) {
+	app, _ := iaApp(t, i18n.ZH)
+	app.Receive(settingsFrame())
+	app.S.Bridge = &protocol.BridgeView{State: "elsewhere", Identity: "ducter", Home: "hel"}
+	app.openTab(TabPeers)
+	if app.settingsTab() != TabPeers {
+		t.Fatalf("not on the page: %q", app.settingsTab())
+	}
+	app.S.Bridge = &protocol.BridgeView{State: "connecting", Identity: "ducter", Home: "hel"}
+	if app.settingsTab() != TabPeers {
+		t.Fatalf("the page went away under the person: %q", app.settingsTab())
+	}
+}
+
 // D257: where the memory stands, the one update worth saying, the rail's
 // line, when 和你的其他 agent 通信 shows, and the noted lines by when. The same cases
 // as the web's (apps/web/test/memory.test.ts).

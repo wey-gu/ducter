@@ -9,6 +9,7 @@ import { join } from "node:path";
 import { A } from "../src/app.ts";
 import { strings } from "../src/i18n.ts";
 import { parseExp, shapeExp } from "../src/autofill.tsx";
+import { watchWhat } from "../src/accounts.tsx";
 import { chatLinkedNow, stateLine } from "../src/channels.tsx";
 import { keyboardInset } from "../src/keyboard.ts";
 import { FAILED_DETAILS, failedLine } from "../src/memory.tsx";
@@ -84,6 +85,12 @@ describe("Accounts: connect a source, stop it (D404)", () => {
       expect(c.view().length).toBe(1);
       expect(c.remove(c.view()[0]!.id)).toBe(true);
       expect(c.view()).toEqual([]);
+      // research/165: a watch line names the app with the account (one address is both mail and calendar).
+      expect(zh.t("said.watch.off", watchWhat("日历", "w@nowledge-labs.ai"))).toBe("好，日历里的 w@nowledge-labs.ai 你问起来我再看。");
+      A.L = en;
+      expect(en.t("said.watch.on", watchWhat("Gmail", "w@nowledge-labs.ai"))).toBe("Got it: I'll keep an eye on w@nowledge-labs.ai (Gmail) myself.");
+      A.L = zh;
+      expect(watchWhat("Slack bot")).toBe("Slack bot");
       expect(zh.t("said.acct.stop", "OOMOL")).toBe("好，OOMOL 停了：它连着的账号我都不看了。想再用，重新连上就好。");
       // Both clients answer the stop where it happened.
       expect(src("apps/web/src/accounts.tsx")).toContain('say("acct-stop"');
@@ -93,6 +100,24 @@ describe("Accounts: connect a source, stop it (D404)", () => {
       oc.stop();
       t.cleanup();
     }
+  });
+});
+
+// The Mac walk of 0.0.98: the web's said line had no style at all (no pebble, the body's ink, flush to
+// the card's edge), and a watch switch's line sat under a seven-row group, past the fold.
+describe("The partner's word, as the Mac draws it", () => {
+  test("the pebble and the soft ink are styled, with tokens only", () => {
+    const css = src("apps/web/static/app.css");
+    const block = css.slice(css.indexOf(".said-line {"), css.indexOf("@keyframes said-pop"));
+    expect(block).toContain(".said-line .said-dot {");
+    expect(block).toContain("color: var(--ink-soft)");
+    expect(block).not.toMatch(/#[0-9a-fA-F]{3,8}\b|rgb\(/);
+  });
+  test("a watch line lands under its row, one per source; the switch is named with its account", () => {
+    const acc = src("apps/web/src/accounts.tsx");
+    expect(acc).toContain("<Said k={`watch:${c.id}|${key(w)}`} in />");
+    expect(acc).not.toContain("<Said k={`watch:${c.id}`} />");
+    expect(acc).toContain("label: `${watchWhat(title, w.account)}, ${t(\"tile.watch\")}`");
   });
 });
 

@@ -159,6 +159,17 @@ func (a *App) openTab(tab string) {
 	} else {
 		a.settings.railFrom = ""
 	}
+	if tab == TabPeers {
+		// Once open, the page stays in the rail for the session: a move
+		// that goes to connecting (or fails) must not take the page, and
+		// what it says, away under the person (the Mac walk of 0.0.98).
+		a.peersAsked = true
+	}
+	if tab != a.settings.tab {
+		// "Tried again just now" belongs to the page it was tried on (the
+		// Mac walk of 0.0.98: it followed to Agent messaging, minutes later).
+		a.settings.memTried = false
+	}
 	a.Route, a.settings.tab = RouteSettings, tab
 	a.send(protocol.SettingsReq{T: "settings"})
 	a.send(protocol.RulesReq{T: "rules"}) // Your rules (D89)

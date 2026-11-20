@@ -18,7 +18,7 @@ var zhIA = Table{
 
 	// 它能看的账号 / Accounts it can read (D96); same keys as the phone.
 	"acct.title":                  "它能看的账号",
-	"acct.lede":                   "让 Ducter 帮你看邮件、日历和 GitHub：你问起来，它自己去看。看没关系；要发出去或改东西，都先问你。",
+	"acct.lede":                   "让 %s 帮你看邮件、日历和 GitHub：你问起来，它自己去看。看没关系；要发出去或改东西，都先问你。",
 	"acct.none":                   "还没有。加上以后，你问它邮件、日程的事，它自己去看。",
 	"acct.src.oomol":              "OOMOL 托管，邮件和登录经过 OOMOL 的服务器",
 	"acct.src.self":               "自己部署的，留在你自己的电脑或服务器上",
@@ -224,7 +224,7 @@ var zhIA = Table{
 var enIA = Table{
 	// Accounts it can read (D96); same keys as the phone.
 	"acct.title":                  "Accounts it can read",
-	"acct.lede":                   "Let Ducter read your mail, calendar and GitHub, so when you ask, it looks for itself. Reading is fine; sending or changing anything asks you first.",
+	"acct.lede":                   "Let %s read your mail, calendar and GitHub, so when you ask, it looks for itself. Reading is fine; sending or changing anything asks you first.",
 	"acct.none":                   "None yet. Once one is here, ask it about your mail or calendar and it looks for itself.",
 	"acct.src.oomol":              "Hosted by OOMOL; your mail and sign-ins pass through OOMOL's servers",
 	"acct.src.self":               "Self-hosted; stays on your own computer or server",

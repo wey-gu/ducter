@@ -347,7 +347,6 @@ func (a *App) sourceCard(c *ui.Context, cv protocol.ConnectionView) {
 		}
 		a.connActions(c, cv, name)
 	})
-	a.saidLine(c, "watch:"+cv.ID) // D296
 }
 
 // connLine is where what a source reads passes (D192): worded by the apps
@@ -499,6 +498,16 @@ func mailShort(acc string) string {
 	return dom
 }
 
+// watchWhat is what a watch switch's said line names: the app and the
+// account (Gmail 里的 w@…), since one address is often both a mail and a
+// calendar here; the app alone when there is no account (research/165).
+func (a *App) watchWhat(title, account string) string {
+	if account == "" {
+		return title
+	}
+	return a.L.T("said.watch.what", title, account)
+}
+
 // serviceRows are the apps and accounts a source can read, one row each
 // (D289, after D166's tray): the app's mark in the tile column, the app as
 // the title, the whole account as its one line, and at the right edge
@@ -523,17 +532,21 @@ func (a *App) serviceRows(c *ui.Context, cv protocol.ConnectionView) {
 			}
 			if sw {
 				v := w.Watch
-				if a.switchControl(c, "watch:"+cv.ID+"|"+k, title+", "+a.L.T("tile.watch"), &v) {
+				// The switch names the account too: two calendars read 日历 alike.
+				what := a.watchWhat(title, w.Account)
+				if a.switchControl(c, "watch:"+cv.ID+"|"+k, what+", "+a.L.T("tile.watch"), &v) {
 					a.send(protocol.AppWatchSet{T: "app_watch", ID: cv.ID, Service: w.Service, Account: w.Account, Watch: &v})
-					// D296: the switch moved; the partner says what that means, once.
-					what := title
-					if w.Account != "" {
-						what = w.Account
+					// D296: the switch moved; the partner says what that means, once,
+					// under that row (one line per source: a newer one replaces it).
+					for key := range a.settings.said {
+						if strings.HasPrefix(key, "watch:"+cv.ID+"|") {
+							delete(a.settings.said, key)
+						}
 					}
 					if v {
-						a.say("watch:"+cv.ID, a.L.T("said.watch.on", what))
+						a.say("watch:"+cv.ID+"|"+k, a.L.T("said.watch.on", what))
 					} else {
-						a.say("watch:"+cv.ID, a.L.T("said.watch.off", what))
+						a.say("watch:"+cv.ID+"|"+k, a.L.T("said.watch.off", what))
 					}
 				}
 			}
@@ -545,6 +558,7 @@ func (a *App) serviceRows(c *ui.Context, cv protocol.ConnectionView) {
 				cs.tile[cv.ID] = k
 			}
 		}
+		a.saidLineIn(c, "watch:"+cv.ID+"|"+k)
 		if open == k {
 			a.textBlock(c, "detail:"+cv.ID+"|"+k, func() { a.tileDetail(c, cv, w) })
 		}

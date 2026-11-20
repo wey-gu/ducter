@@ -506,7 +506,7 @@ func (a *App) accountsPanel(c *ui.Context) {
 		a.sourceCards(c, list)
 	}
 	a.saidLine(c, "acct-stop") // D404: a source stopped is answered once, where it was
-	title, lede := a.L.T("acct.title"), a.L.T("acct.lede")
+	title, lede := a.L.T("acct.title"), a.L.T("acct.lede", a.personaName())
 	if sources {
 		title, lede = "", ""
 	}

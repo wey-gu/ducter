@@ -6,7 +6,7 @@ import { existsSync, readFileSync } from "node:fs";
 import type { LendFrame } from "@ducter/protocol";
 import { strings } from "../src/i18n.ts";
 import { lendWords } from "../src/i18n-lend.ts";
-import { applyLend, arrived, LEND_WAIT_MS, lendError, lendStep, minutesLeft, type LendState } from "../src/lend-view.ts";
+import { applyLend, arrived, LEND_WAIT_MS, lendError, lendHead, lendStep, minutesLeft, type LendState } from "../src/lend-view.ts";
 
 const src = (f: string) => readFileSync(new URL(`../src/${f}`, import.meta.url), "utf8");
 const NOW = Date.parse("2026-11-18T10:00:00Z");
@@ -84,6 +84,18 @@ describe("the sheet's steps", () => {
     const sheet = src("lend.tsx");
     expect(sheet).toContain('step === "failed"');
     expect(sheet).toContain('"lend.retry"');
+  });
+
+  // research/165: ‹ 加一台做事的电脑 over 加一台做事的电脑 read as one step twice.
+  test("the back row never says the title's words, on any step", () => {
+    const at = (l: LendState) => lendHead(l, lendStep(l, NOW));
+    const zh = strings("zh");
+    const cases: LendState[] = [{ add: true }, { pair: "asking" }, {}, { fromAdd: true }, { kind: "mac" }, { kind: "linux", awaiting: true, askedAt: NOW }, applyLend({ kind: "linux", awaiting: true }, waiting)!, applyLend({ kind: "mac", awaiting: true }, { ...waiting, state: "here", device: "d1" })!];
+    for (const l of cases) {
+      const h = at(l);
+      expect(zh.t(h.back)).not.toBe(zh.t(h.title, "Ducter"));
+    }
+    expect(at({ kind: "mac", awaiting: true })).toEqual({ back: "lend.title", title: "lend.title.mac" });
   });
 
   test("no address: the step that offers From outside", () => {

@@ -90,9 +90,11 @@ func (a *App) keyForm(c *ui.Context, x *protocol.KeyView) {
 		}
 		a.afInput(c, "key-value", a.L.T("af.key.value"), &s.password, ph, true)
 		ok := keyEnvRe.MatchString(s.keyEnv) && (x != nil || strings.TrimSpace(s.password) != "")
+		need := firstMissing(!keyEnvRe.MatchString(s.keyEnv), "af.key.env", x == nil && strings.TrimSpace(s.password) == "", "af.key.value")
 		if f := a.savedFrame(); f != nil && !s.sentAt.IsZero() && f.Reason != "" {
 			ui.Text(c, a.L.T("af.err."+f.Reason)+" ("+f.Message+")").FontSize(t.SM).TextColor(t.Failed.Ink)
 		}
+		a.afMissing(c, need)
 		ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
 			if x != nil {
 				if s.sure {
@@ -109,13 +111,17 @@ func (a *App) keyForm(c *ui.Context, x *protocol.KeyView) {
 				s.editing = ""
 				a.clearForm()
 			}
-			if a.button(c, a.L.T("af.save"), btnPrimary, t.ControlSM, t.Surface) && ok {
-				in := protocol.KeyInput{Kind: "key", Name: s.name, Env: s.keyEnv, Value: s.password}
-				if x != nil {
-					in.ID = x.ID
+			if a.button(c, a.L.T("af.save"), btnPrimary, t.ControlSM, t.Surface) {
+				if !ok {
+					s.missing = need // the Mac walk of 0.0.98: never a Save that silently does nothing
+				} else {
+					in := protocol.KeyInput{Kind: "key", Name: s.name, Env: s.keyEnv, Value: s.password}
+					if x != nil {
+						in.ID = x.ID
+					}
+					a.send(protocol.KeyPut{T: "saved_put", Item: in})
+					s.sentAt = a.Now()
 				}
-				a.send(protocol.KeyPut{T: "saved_put", Item: in})
-				s.sentAt = a.Now()
 			}
 		})
 	})

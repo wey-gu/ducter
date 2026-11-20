@@ -135,6 +135,14 @@ export function tileWords(w: AppWatch, siblings: string[] = []): [string, string
   return [title, shortAccount(w.account, siblings)];
 }
 
+/**
+ * What a watch switch's said line names: the app and the account (Gmail 里的 w@…), since one address
+ * is often both a mail and a calendar here; the app alone when there is no account (research/165).
+ */
+export function watchWhat(title: string, account?: string): string {
+  return account ? t("said.watch.what", title, account) : title;
+}
+
 /** Mail domains anyone can sign up at: there the name before @ says whose it is; anywhere else the domain does (D192). */
 const PUBLIC_MAIL = new Set(["gmail.com", "googlemail.com", "outlook.com", "hotmail.com", "live.com", "msn.com", "icloud.com", "me.com", "mac.com", "yahoo.com", "aol.com", "proton.me", "protonmail.com", "qq.com", "foxmail.com", "163.com", "126.com", "yeah.net", "sina.com"]);
 const mailLocal = (a: string) => (a.lastIndexOf("@") > 0 ? a.slice(0, a.lastIndexOf("@")) : a);
@@ -435,8 +443,10 @@ export function SourceCard({ c }: { c: ConnectionView }) {
               state={state ? { text: state, tone: bad ? "bad" : watching ? "done" : undefined } : undefined}
               open={isOpen}
               onClick={() => (k === "calendar" && retireFirst(tiles.filter((x) => kindOf(x.service) === "calendar").map((x) => `${c.id}:${key(x)}`)), setOpen(isOpen ? "" : key(w)))}
-              sw={k !== "other" && !w.excluded && !down(c) ? { label: `${title}, ${t("tile.watch")}`, on: w.watch, onChange: (v) => (A.setApp(c.id, w.service, w.account, { watch: v }), say(`watch:${c.id}`, t(v ? "said.watch.on" : "said.watch.off", w.account || title))) } : undefined}
+              sw={k !== "other" && !w.excluded && !down(c) ? { label: `${watchWhat(title, w.account)}, ${t("tile.watch")}`, on: w.watch, onChange: (v) => (A.setApp(c.id, w.service, w.account, { watch: v }), say(`watch:${c.id}|${key(w)}`, t(v ? "said.watch.on" : "said.watch.off", watchWhat(title, w.account)), `watch:${c.id}|`)) } : undefined}
             />
+            {/* The Mac walk of 0.0.98: the word lands under the row that moved, not past a long group's fold. */}
+            <Said k={`watch:${c.id}|${key(w)}`} in />
             {isOpen && <TileDetail c={c} w={w} />}
           </Fragment>
         );
@@ -457,7 +467,6 @@ export function SourceCard({ c }: { c: ConnectionView }) {
         <GConfirm ask={t("card.stop.ask")} keep={t("card.stop.keep")} go={t("card.stop.go")} about={name} onKeep={() => setStopping(false)} onGo={() => (setStopping(false), A.removeConnection(c.id), say("acct-stop", t("said.acct.stop", name)))} />
       )}
     </Group>
-    <Said k={`watch:${c.id}`} />
     </>
   );
 }

@@ -194,14 +194,33 @@ func todoCounts(sources []protocol.SourceView, glance []protocol.SourceGlance) (
 	return open, atLeast, review, max(0, open-shown)
 }
 
-// todoGroup is the group on the board, under all or its source's lens.
-func (a *App) todoGroup(c *ui.Context, lens string) {
-	t := a.T
+// askTodos asks the home for the to-do sources once per state.
+func (a *App) askTodos() {
 	f := &a.todos.fold
 	if f.askedOn != a.S && a.S.Welcomed {
 		f.askedOn = a.S
 		a.send(protocol.SourcesReq{T: "sources"})
 	}
+}
+
+// todosToShow is whether the to-dos have anything for the board: then On
+// hand is never 手头没事 (the Mac walk of 0.0.98: no task running and 571
+// to-dos sorted, the partner said they were all on hand, and the board said
+// nothing was, since it asked for the to-dos only once it had tasks).
+func (a *App) todosToShow() bool {
+	v := a.S.Sources
+	if v == nil || len(v.Sources) == 0 {
+		return false
+	}
+	_, _, review, rest := todoCounts(v.Sources, v.Glance)
+	return len(v.Glance) > 0 || rest > 0 || review > 0 || (v.Pile != nil && (v.Pile.Open > 0 || v.Pile.ClearedToday > 0))
+}
+
+// todoGroup is the group on the board, under all or its source's lens.
+func (a *App) todoGroup(c *ui.Context, lens string) {
+	t := a.T
+	f := &a.todos.fold
+	a.askTodos()
 	a.takeFold()
 	v := a.S.Sources
 	if v == nil || len(v.Sources) == 0 {

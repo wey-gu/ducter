@@ -12,7 +12,7 @@ import { BackRow, Btn, ListRow } from "./controls.tsx";
 import { Coin } from "./coin.tsx";
 import { harnessName } from "./format.ts";
 import { Qr } from "./phone.tsx";
-import { arrived, lendStep, minutesLeft, type LendKind } from "./lend-view.ts";
+import { arrived, lendHead, lendStep, minutesLeft, type LendKind } from "./lend-view.ts";
 import type { DeviceView } from "@ducter/protocol";
 import { AgentRow, SetupAnswer } from "./agent-setup.tsx";
 import { anyInstalling, anyReady, offerable } from "./agent-setup-view.ts";
@@ -374,8 +374,9 @@ export function LendSheet() {
   const home = homeName();
   const kind = l.kind === "mac" ? "laptop" : "server";
   const first = step === "add" || (step === "ask" && !l.fromAdd);
-  const backTo = first ? t("devices.title") : l.kind && step !== "joined" && step !== "here" ? t("lend.title") : t("add.back");
-  const title = step === "add" ? t("add.title") : step === "pair" ? t("add.talk", A.S.personaName) : t("lend.title");
+  const head = lendHead(l, step);
+  const backTo = t(head.back);
+  const title = t(head.title, A.S.personaName);
   return (
     <section class="set devices lend">
       <BackRow label={backTo} onClick={() => (first || step === "here" ? A.closeLend() : A.lendBack())} />

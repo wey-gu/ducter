@@ -18,6 +18,23 @@ Deferred work, grouped by area, each with its trigger where it has one.
 - [ ] **Registry.** Once run: the verified range from what ran, the models' windows, whether a
   turn's quota notice reaches the limit card, `scripts/probe-harnesses.ts` lines for agy (`--version`
   pattern, `acp --help`), and whether `agy install`'s shell step matters for anything but PATH.
+- [ ] **Mem's steps, live (D417, research/172 §5).** With agy installed and Mem connected: a task on
+  the Mac in a scratch repo, then on hel. Check (a) `~/.gemini/antigravity-cli/brain/<id>/.system_generated/logs/transcript.jsonl`
+  exists after a turn with no hook configured, and `<id>` is the task's session id in the Log;
+  (b) the first turn led with `<nowledge_context_bundle>` (agy's own transcript) and its size;
+  (c) the thread appears in Mem (`nmem --json t list --source antigravity`) as the persona, once,
+  and grows after a second turn without doubling; (d) on hel it went through the relay (the task's
+  "reached Mem through the home" line) and `sqlite3` over `~/.gemini/antigravity-cli/conversations/*.db`
+  holds no `dmr.`. If (a) fails, save from Ducter's Log instead (`nmem t import` of the turns) and
+  record why. Trigger: the first Antigravity live check above.
+- [ ] **Memory off vs the person's own agy Mem plugin (D417).** Ducter can't switch it off for one
+  session (agy has no per-session plugin switch; OAR refuses `userConfiguration: exclude`), and
+  Mem's `plugins inspect` has no `google-antigravity` host, so the device card can't say it's
+  there. Trigger: Mem's check lists `google-antigravity` (then a `memPlugin` fact for Antigravity,
+  never an install offer) or agy gains a per-session plugin switch.
+- [ ] **Mem's skills in an agy task (D417 cut them).** Distill and handoff stay with the partner
+  (`remember`). Trigger: agy loads a plugin or skills folder for one session (a flag, or OAR's
+  `userConfiguration` verified for it).
 - [ ] **A sign-out for the other agents** (D416 built Antigravity's, through OAR's `logout`;
   Claude Code, Codex, pi and DeepSeek Harness have none in Ducter yet). Trigger: someone asks to
   sign one of them out from Ducter.

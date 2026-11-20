@@ -510,12 +510,22 @@ Three parts, nothing else:
 - **The floor** is D168's, unchanged: recall in the first turn and `memory_search` for an agent the
   home carries no plugin for (Codex, pi, DeepSeek Harness); its nmem still reaches Mem through the
   relay.
+- **Mem's two steps, run by Ducter** (D417, `runner/src/mem-steps.ts`, research/172) for an agent
+  that can't load a plugin for one session (harness-facts `memSteps`: Antigravity, whose plugins
+  load only from folders in the repository or `~/.gemini`, and whose Mem plugin would write the key
+  into its MCP config). On the computer the agent runs on, with Mem's own nmem and the session's env:
+  `nmem context --source-app google-antigravity` before a new session's first turn, put in front of
+  its first message as Mem's plugin puts it; `nmem t save --from antigravity` after each turn ends
+  (Mem's own transcript reader). Search stays the floor's. Neither runs where the person's own
+  Mem plugin for agy is there, with memory off, or with no nmem there. Nothing is installed or
+  written in `~/.gemini`; the key is in the env only.
 
 **The computer card** says **这里的任务也记得你** while the home carries Mem; that computer's own sign-in
 is for the person's own sessions, offered quietly (below). **Sandboxes:** two variables and a URL,
 minted per task; outbound HTTPS to the home, and an nmem and python3 for the plugin's hooks (else
 the floor). Nothing is kept. **Not yet:** a real Mem behind the relay; Codex's plugin (an overlay
-needs a marketplace of Ducter's: `todo.md`).
+needs a marketplace of Ducter's: `todo.md`); Antigravity's steps live (D417: agy's transcript where
+nmem reads it, `todo.md`).
 
 ## Mem's own health (D375, built 2026-11-19)
 

@@ -76,6 +76,13 @@ export interface HarnessFacts {
   /** D168/D169: the user's Nowledge Mem plugin for this agent, and how Ducter turns it off in one session (research/48 M3, M4). */
   memPlugin?: Fact<MemPluginFact>;
   /**
+   * D417: an agent with no way to load Mem's plugin for one session: Ducter runs the plugin's two
+   * lifecycle steps itself with Mem's own CLI (contextApp: `nmem context --source-app`;
+   * threadFrom: `nmem t save --from`), unless the person's own Mem plugin is there (plugin: its
+   * manifest name, which then does both itself).
+   */
+  memSteps?: Fact<{ contextApp: string; threadFrom: string; plugin: string }>;
+  /**
    * D175 (3), research/48 F8: how a one-shot session (the judge, the digest writer) runs with no
    * tools at all, built-ins included. Launch args for the agent; empty: none known, so the named
    * built-ins are denied one by one instead (the old way).
@@ -620,6 +627,10 @@ export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
     effort: {
       value: { levels: ["low", "medium", "high"], how: "its thought_level config option, set and confirmed on open and again on resume (OAR SessionOptions.effort)", perModel: true, defaultListed: false },
       evidence: AGY("listModels selects each model and reads its own thought_level menu (Flash: low/medium/high; Sonnet, Opus thinking and GPT-OSS none); only the current model's effort can be its default"),
+    },
+    memSteps: {
+      value: { contextApp: "google-antigravity", threadFrom: "antigravity", plugin: "nowledge-mem-google-antigravity" },
+      evidence: { kind: "DOCUMENTED", source: "research/172: Mem's Antigravity plugin 0.1.3 (PreInvocation reads `nmem context --source-app google-antigravity`, Stop saves agy's transcript; loaded only from .agents/plugins or ~/.gemini/config/plugins, no per-session flag); `nmem t save --help` 0.10.121 (`--from antigravity` reads agy's brain/<conversationId>/.system_generated/logs/transcript.jsonl)" },
     },
     channels: {
       // Its own installer copies a flat binary to ~/.local/bin/agy and agy updates itself in the

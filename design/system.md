@@ -217,7 +217,9 @@ changes.
   home's `/mem` relay) and `NMEM_API_KEY` (a per-task key that dies with the task); the relay puts
   on the home's own credential, which never leaves it; only Mem's data paths pass. A Claude Code
   task there without the person's own plugin gets Mem's plugin from the home by `--plugin-url`, for
-  that session only.
+  that session only. An Antigravity task (no per-session plugin) gets Mem's two steps from Ducter
+  instead, on its own computer with Mem's nmem: the Context Bundle before its first turn, its thread
+  saved after each turn (D417).
 - **Nowledge Mem in the user's agents, per computer (D169).** Ducter reads Mem's own local
   check per computer, shows one line per agent in its coin detail, and recommends it once
   where it is missing; it installs only through a task the user starts (Go on the card, or

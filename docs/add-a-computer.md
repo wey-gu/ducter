@@ -71,7 +71,9 @@ else can, and never a task on web pages.
 
 **Your memory there too.** If you use [Nowledge Mem](https://mem.nowledge.co) with Ducter, tasks
 on every computer you add remember you with nothing to set up there: they use the one Nowledge Mem
-your Ducter is connected to, and its own Claude Code plugin comes with them. The computer's card
+your Ducter is connected to, and its own Claude Code plugin comes with them. An Antigravity task
+remembers you too: it starts with what Nowledge Mem knows about you, and its conversation is saved
+to your memory after each turn, with nothing added to Antigravity's own settings. The computer's card
 says **Tasks here remember you too**. Your Nowledge Mem key stays where Ducter runs.
 
 If you also want the AIs you open on that computer yourself (outside Ducter) to remember you, the

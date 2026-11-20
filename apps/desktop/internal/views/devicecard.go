@@ -644,14 +644,17 @@ func (a *App) coinDetail(c *ui.Context, dv *protocol.DeviceView, h protocol.Devi
 			})
 		} else {
 			// D415: an agent Ducter can sign out with its own sign-out (Antigravity).
-			if h.Harness == "antigravity" && dv.State == protocol.DeviceAwake {
-				ui.Row(c).Justify(ui.End).Children(func() {
-					if a.buttonFor(c, a.L.T("ag.signout"), name, btnText, t.ControlSM, t.Surface) {
-						a.agentSetupReq(dv, "logout", protocol.AgentSetupReq{Harness: h.Harness})
-					}
-				})
+			if h.Harness == "antigravity" {
+				if dv.State == protocol.DeviceAwake {
+					ui.Row(c).Justify(ui.End).Children(func() {
+						if a.buttonFor(c, a.L.T("ag.signout"), name, btnText, t.ControlSM, t.Surface) {
+							a.agentSetupReq(dv, "logout", protocol.AgentSetupReq{Harness: h.Harness})
+						}
+					})
+				}
+			} else {
+				uiText(c, a.L.T("coin.there", a.deviceNameIn(dv))).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.5)
 			}
-			uiText(c, a.L.T("coin.there", a.deviceNameIn(dv))).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.5)
 		}
 	})
 }

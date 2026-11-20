@@ -527,8 +527,11 @@ function CoinDetail({ dv, h }: { dv: DeviceView; h: DeviceHarness }) {
       )}
       {A.settings && <Toggle label={t("loadout.acct.tasks")} checked={ready} onChange={(v) => A.setSettings({ taskAccounts: { ...(A.settings?.taskAccounts ?? {}), [h.harness]: { enabled: v } } })} />}
       {/* D415: an agent Ducter can sign out with its own sign-out (Antigravity). */}
-      {canSignOut(h.harness) && dv.state === "awake" && <Btn kind="text" size="sm" label={t("ag.signout")} about={name} onClick={() => A.agentSetup(dv.id, "logout", { harness: h.harness })} />}
-      <div class="ln small">{t("coin.there", dv.name)}</div>
+      {canSignOut(h.harness) ? (
+        dv.state === "awake" && <Btn kind="text" size="sm" label={t("ag.signout")} about={name} onClick={() => A.agentSetup(dv.id, "logout", { harness: h.harness })} />
+      ) : (
+        <div class="ln small">{t("coin.there", dv.name)}</div>
+      )}
     </>
   );
 }

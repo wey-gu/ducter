@@ -3,8 +3,9 @@
 The first voice slice. The person holds the mic and speaks; their words land in the composer,
 or go at once when they slide up. A partner's message can be read aloud in its own language.
 Both use the platform's own speech engines: nothing new is installed, no key is needed, and
-Ducter's home never hears the sound. A full spoken conversation (a call with the partner) is
-later (`todo.md`); D218's realtime voice loop is for phone calls and stays there.
+Ducter's home never hears the sound. A tap on the same microphone starts **放手说 / Talk
+hands-free** (D442, below): a talk with the partner turn by turn, nothing held. D218's realtime voice
+loop is for phone calls and stays there.
 
 Evidence: `research/106-voice.md` (what each platform's recognizer and voice do, and where).
 
@@ -29,7 +30,8 @@ the iPhone and Android apps through the same page). Not in an opened task's comp
 slice (`todo.md`).
 
 **The mark:** a drawn microphone, a quiet round icon button just before Send. Its tooltip and
-accessible name: 按住说话 / Hold to talk (the Mac with a key: 按住 {key} 说话 / Hold {key} to talk).
+accessible name: 按住说话，点一下放手说 / Hold to talk, tap to talk hands-free (the Mac with a key:
+按住 {key} 说话 / Hold {key} to talk; while a talk is on: 结束 / End).
 
 **The gesture** (`packages/protocol/src/voice.ts`, `holdIntent`):
 
@@ -38,7 +40,7 @@ accessible name: 按住说话 / Hold to talk (the Mac with a key: 按住 {key} �
 | holding, not slid | the words go into the composer, after what is typed (`joinHeard`), not sent | 松开，放进输入框 / Let go to put it in the box |
 | slid up ≥ 56 pt | sends at once (the words, plus anything typed) | 松开，直接发出去 / Let go to send it now |
 | slid left ≥ 72 pt | drops what was heard | 松开，这段不要了 / Let go to drop it |
-| a tap (< 250 ms) | nothing; a hint 要按住说，松开就好。/ Hold it while you talk, then let go. | |
+| a tap (< 250 ms) | starts 放手说 / Talk hands-free (D442, below); a tap of the Mac's key shows 按住说一段；点一下，放手说。/ Hold to say one message; tap to talk hands-free. | |
 | Esc while holding | drops it | |
 
 Sliding back under a line disarms it; nothing is decided until the press ends. The two cues
@@ -145,9 +147,93 @@ each with a fake for tests. The bundle's Info.plist carries `NSSpeechRecognition
 beside the microphone's; run outside the bundle, the app says 装好的 Ducter 应用才能用麦克风。
 rather than let macOS end it.
 
+## Talk hands-free (D442)
+
+Evidence: `research/190-talk-hands-free.md`. The person talks to the partner like a call while
+cooking, driving or walking: it listens, knows when they have finished, answers aloud in a short
+spoken form, can be talked over, asks a card that waits for a Go and takes "好" / "先等等", and ends
+when they say so, tap End, or after a quiet minute.
+
+**Who and how it feels.** The consumer at the stove with wet hands ("牛腩要炖多久？"): before, they
+wiped a hand to type or held the mic for each message; after, they just talk, hear the answer, and
+say 好 to the reminder it offers. The developer walking to lunch, phone in a pocket and earphones in:
+"CI 怎么样了？", the answer read short, a Go answered without looking. The fresh user taps the
+microphone instead of holding it (most people tap first) and meets one card that says what this is.
+好用: one tap, nothing held. 顺滑: a pause ends a turn, a reply comes back in the voice, talking over
+it is heard. 赏心悦目: the clay partner leans in to listen, sways while it thinks, two soft rings
+while it speaks. 放心: a card that pays, signs in, deletes or came from a stranger is said, never
+answered by voice; the screen shows every word; the home never hears sound. 惊喜: a Go said aloud
+while cooking.
+
+**Where it lives.** The conversation's microphone on every client (web wide and phone, the iPhone and
+Android apps through the page, the Mac app, the Mac's mini window). **A tap is the talk, a hold is
+hold to talk**: D305's tap used to show 要按住说; now a tap (< 250 ms) starts the talk (the key held on
+the Mac still says how to hold). A tap while it talks ends it. Not in a task's composer.
+
+**First tap** (per device; web `localStorage` `ducter.talk.asked`, the Mac `desktop.json`
+`talkAsked`): a card over the composer, nothing listening: **放手说，像打电话一样 / Talk hands-free,
+like a call**, **它一直听着，你说完它就回答，不用按住。说「就这样」或点「结束」就停，一分钟没声音也会停。 /
+It keeps listening and answers when you finish; nothing to hold. Say “that's all” or tap End to stop;
+a minute of quiet stops it too.**, D305's privacy line, **开始 / Start** · **先不用 / Not now**.
+Permissions, denied and unavailable are D305's own cards and words.
+
+**The talk** (over the composer like the listening strip, larger; on a phone the partner in the
+middle at 92 pt and the words under it at 20 px): the clay face by phase (listening: tilted toward the
+mic, leaning with the level; thinking: the working pose, a slow sway; speaking: two soft rings from
+it), the phase **在听 / Listening**, **在想 / Thinking**, **在说 / Speaking**, under it the words
+heard or said (three lines at most), or **说吧，说完停一下就好。/ Go ahead; pause when you're done.**,
+**想好了会说给你听。/ It will say it when it's ready.**; a card while one is asked; the foot's tip
+**说「就这样」就停 / Say “that's all” to stop** (while it speaks **直接说话就能打断 / Just talk to cut
+in**) and **结束 / End**. Esc ends it on a computer. The screen is kept on while it talks (the web's
+Wake Lock, where there is one). Every turn is an ordinary message in the conversation and every
+reply is there in full.
+
+**Turns** (`packages/protocol/src/talk.ts`, the Mac's `internal/voice/talk.go`, one fixture
+`fixtures/talk.json`): one reducer, `talkStep`, driven by the recognizer's words so far, a tick five
+times a second, the voice's end, the partner's messages and cards; it answers with what to do (send,
+decide, speak, hush, listen again, end).
+- A turn ends after **1.2 s** with no change in the words heard, **2.4 s** when they end on a filler or
+  a joining word (嗯, 然后, 还有, 因为, "and", "so", "um"). It goes as the person's message.
+- Words said while the partner waits for its reply go as their own message.
+- A reply that comes while the person is mid-sentence waits for their turn to end.
+
+**The spoken form** (`spokenReply`): the message's words as read (`speakable`), whole sentences up to
+about fifteen seconds (a Han character weighs 1, another word 1.5, 60 in all), the first always
+whole; cut short, **其余的写在屏幕上了。/ The rest is on the screen.** A card's own message is said as
+the card. Only what comes after the talk began is said. No partner persona change: it already writes
+short (research/190 §4).
+
+**Talking over it**: while it speaks, what is heard has the voice's own words taken off its front
+(`afterEcho`); two units or more, **停 / stop**, or (while a card is asked) an answer, stops the voice.
+"停" alone sends nothing. The talk listens afresh after everything it says.
+
+**A card by voice**: a card asked after the talk began is said: its question (the partner's words for
+it when there are), the first time with **说「好」，或者「先等等」。/ Say OK, or wait.** The talk shows
+it with **好 / OK** and **先等等 / Wait**. A few words answer it, matched whole (`heardAnswer`:
+好, 好的, 行, 可以, 没问题, 去吧, OK, yes, go ahead… / 先等等, 等一下, 不要, 算了, 不行, wait, not now, no…);
+it says **好，这就去做。/ OK, going ahead.** or **好，先不动。/ OK, holding off.** Anything else is a
+message to the partner and the card stays. Answered by a tap anywhere, it is not asked again.
+
+**The floor stays a tap** (`talkFloor`): Pay and checkout; keys, sign-ins and saved details; a Go that
+deletes (D340's words); what one of the person's own agents or a stranger asked (D170, D334); what
+must be seen (a written draft, a tap on a phone or in the person's apps, a phone call's Go, the
+person's own phone lent). Said as its question and **这个要你在屏幕上点一下。/ This one needs a tap on
+the screen.**; "好" to it gets that line again and is never a Go or a message. The talk shows the
+line and **去看看 / Show it**, which ends the talk so the card is in sight.
+
+**Ending**: "就这样", "先这样", "不说了", "拜拜", "that's all", "bye"… as the whole turn; **结束 / End**;
+a tap on the microphone; Esc; or a quiet minute while it listens (two while it waits for a reply),
+when it says **我先不听了。/ I'll stop listening now.** and shows **一分钟没听到声音，先停了。/ Nothing
+heard for a minute, so it stopped.** for 2.4 s.
+
+**Engines**: D305's, unchanged: macOS's Speech framework and voice, the iPhone and Android apps' own
+through the bridge (`voice.start` per turn), the Web Speech API in a browser. A recognizer session that
+ends on its own is started again. No realtime model (research/190 §3).
+
 ## Never
 
-- Never listens without a press held; never a wake word; never records or keeps the sound;
+- Never listens without a press held or a talk the person started with a tap (D442), which shows
+  while it listens and ends itself after a quiet minute; never a wake word; never records or keeps the sound;
   the home never receives audio, only the words the person chose to send.
 - Never reads a task's transcript, a card or a block's markup aloud; never reads aloud on its own
   except the reply to a message the person just sent by voice, with the setting on.

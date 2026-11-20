@@ -12,6 +12,7 @@ import { HOLD_TAP_MS, holdIntent, joinHeard, meterBars, readLang, smoothLevel, s
 import { A } from "./app.ts";
 import { Toggle } from "./controls.tsx";
 import { haptic, inApp } from "./native.ts";
+import { talk, talkIfAny } from "./talk.tsx";
 import { AppRecognizer, appHasVoice, AppSpeaker, FakeRecognizer, FakeSpeaker, WebRecognizer, WebSpeaker, type Avail, type Recognizer, type Speaker } from "./voice-engine.ts";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
@@ -77,6 +78,8 @@ export class VoiceCtl {
   /** The draft holds words that came by voice. */
   voiceDraft = false;
   private pressing = false;
+  /** D442: pressed while a talk is on: letting go ends the talk, nothing listens for a hold. */
+  private tapOnly = false;
   private t0 = 0;
   private x0 = 0;
   private y0 = 0;
@@ -96,6 +99,9 @@ export class VoiceCtl {
       lang(): string;
       focus(): void;
       now(): number;
+      /** D442: a tap on the mark (not a hold): 放手说 / Talk hands-free starts, or ends. */
+      tap?(): void;
+      talking?(): boolean;
     },
   ) {}
 
@@ -133,6 +139,7 @@ export class VoiceCtl {
 
   async press(x: number, y: number) {
     if (this.pressing || this.phase === "listening" || this.phase === "finishing") return;
+    if (this.host.talking?.()) return void (this.tapOnly = true);
     this.pressing = true;
     this.releaseWanted = false;
     this.t0 = this.host.now();
@@ -148,7 +155,7 @@ export class VoiceCtl {
     if (!a.ok) return this.unavailable(a.why ?? "error");
     if (a.mic === "denied") return this.deny("mic");
     if (a.speech === "denied") return this.deny("speech");
-    if (!this.pressing && this.host.now() - this.t0 < HOLD_TAP_MS) return this.set("tap");
+    if (!this.pressing && this.host.now() - this.t0 < HOLD_TAP_MS) return this.tapped();
     this.level = 0;
     this.set("listening");
     const r = await this.rec.start(loc, {
@@ -192,6 +199,7 @@ export class VoiceCtl {
   }
 
   async release() {
+    if (this.tapOnly) return (this.tapOnly = false), this.host.tap?.();
     if (!this.pressing && !this.releaseWanted) return;
     this.pressing = false;
     if (this.phase !== "listening") {
@@ -203,7 +211,7 @@ export class VoiceCtl {
     const held = this.host.now() - this.t0;
     if (held < HOLD_TAP_MS) {
       this.rec.cancel();
-      return this.set("tap");
+      return this.tapped();
     }
     if (this.intent === "drop") {
       this.rec.cancel();
@@ -234,6 +242,13 @@ export class VoiceCtl {
       this.host.focus();
     }
     this.set("idle");
+  }
+
+  /** A tap, not a hold: D442's talk when the page has one, else how to hold. */
+  private tapped() {
+    if (!this.host.tap) return this.set("tap");
+    this.set("idle");
+    this.host.tap();
   }
 
   /** The press left (Esc, the pointer taken away): nothing is put anywhere. */
@@ -330,9 +345,16 @@ export function voice(): VoiceCtl {
     lang: () => A.convLang ?? A.L.locale,
     focus: () => requestAnimationFrame(() => document.getElementById("composer")?.focus()),
     now: () => Date.now(),
+    // D442: a tap starts 放手说 / Talk hands-free on the same engines (a second tap ends it).
+    tap: () => {
+      const c = talk(() => ({ rec, spk }));
+      if (c.on) c.end();
+      else void c.start();
+    },
+    talking: () => !!talk(() => ({ rec, spk })).on,
   });
   // `?voice-fake`: the demo's shots drive the fakes from the page (never the real microphone).
-  if (rec instanceof FakeRecognizer) (globalThis as unknown as { ducterVoiceFake?: unknown }).ducterVoiceFake = { ctl, rec, spk };
+  if (rec instanceof FakeRecognizer) (globalThis as unknown as { ducterVoiceFake?: unknown }).ducterVoiceFake = { ctl, rec, spk, talk: talk(() => ({ rec, spk })) };
   return ctl;
 }
 
@@ -364,13 +386,14 @@ export function MicButton() {
   useEffect(() => void (v.avail === undefined && v.look()), []);
   const off = v.avail?.ok === false;
   const live = v.phase === "listening" || v.phase === "finishing";
+  const talking = !!talkIfAny()?.on;
   return (
     <button
       type="button"
-      class={`btn secondary icon mic${live ? " hearing" : ""}${off ? " off" : ""}`}
-      aria-label={t("voice.hold")}
-      title={t("voice.hold")}
-      aria-pressed={live}
+      class={`btn secondary icon mic${live || talking ? " hearing" : ""}${off ? " off" : ""}`}
+      aria-label={talking ? t("talk.end") : t("voice.hold.both")}
+      title={talking ? t("talk.end") : t("voice.hold.both")}
+      aria-pressed={live || talking}
       onPointerDown={(ev) => {
         if (ev.button !== 0) return;
         ev.preventDefault();

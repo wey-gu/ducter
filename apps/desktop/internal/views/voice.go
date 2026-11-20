@@ -44,6 +44,8 @@ type voiceState struct {
 	// speaking is the seq of the message being read aloud.
 	speaking int64
 	asked    bool
+	// tapOnly: pressed while a talk is on (D442): letting go ends it.
+	tapOnly bool
 }
 
 const voiceNoteFor = 2400 * time.Millisecond
@@ -67,6 +69,10 @@ func (a *App) voiceKeyName() string {
 func (a *App) voiceBegin(byKey bool, x, y float32) {
 	vs := &a.vox
 	if vs.phase == "listen" {
+		return
+	}
+	if a.hf.on && !byKey {
+		vs.tapOnly = true // D442: a press on the mark while talking ends the talk
 		return
 	}
 	if a.Voice == nil {
@@ -159,6 +165,13 @@ func (a *App) voiceSlide(x, y float32) {
 // go at once, or are dropped.
 func (a *App) voiceEnd(canceled bool) {
 	vs := &a.vox
+	if vs.tapOnly {
+		vs.tapOnly = false
+		if !canceled {
+			a.talkTap()
+		}
+		return
+	}
 	if vs.phase != "listen" {
 		return
 	}
@@ -168,7 +181,11 @@ func (a *App) voiceEnd(canceled bool) {
 		a.voiceDrop()
 	case held < voice.HoldTapMS*time.Millisecond:
 		a.voiceDrop()
-		a.voiceNote("voice.tap")
+		if vs.byKey {
+			a.voiceNote("voice.tap")
+		} else {
+			a.talkTap() // D442: a tap on the mark is 放手说 / Talk hands-free
+		}
 	default:
 		vs.phase = "finishing"
 		a.Voice.Stop() // Final follows
@@ -278,14 +295,17 @@ func (a *App) voiceObserve(ev ui.InputEvent) {
 // micButton is the composer's microphone: press and hold to talk.
 func (a *App) micButton(c *ui.Context) {
 	t := a.T
-	label := a.L.T("voice.hold")
+	label := a.L.T("voice.hold.both")
 	if k := a.voiceKeyName(); k != "" {
 		label = a.L.T("voice.hold.key", k)
+	}
+	if a.hf.on {
+		label = a.L.T("talk.end") // D442: a tap ends the talk
 	}
 	size := t.ControlLG
 	b := ui.Box(c.Key("mic")).Size(size, size).Radius(a.buttonRadius(size)).Label(label).Tooltip(label).
 		Role(ui.RoleButton).Cursor(ui.CursorPointer).Focusable().Shrink(0)
-	listening := a.vox.phase == "listen"
+	listening := a.vox.phase == "listen" || a.hf.on
 	kind := btnSecondary
 	if listening {
 		kind = btnAccent
@@ -324,6 +344,9 @@ func (a *App) micButton(c *ui.Context) {
 // passing line.
 func (a *App) voiceAbove(c *ui.Context) {
 	vs := &a.vox
+	if vs.phase != "listen" && vs.phase != "finishing" && a.talkAbove(c) {
+		return // D442: the talk, its first card or why not
+	}
 	switch vs.phase {
 	case "listen", "finishing":
 		// D305: in over 180 ms, out over 140 (its copy settling down and

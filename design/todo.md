@@ -217,6 +217,24 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
   Mac's rename of another partner; the stone's comprehension test with naive raters, then a clay
   character per partner. Trigger: the author reviews the preview.
 
+## Trusted at a glance (D433, `bridge.md` "Trusted at a glance", research/183)
+
+- [ ] A read-only live check of `bridge connections list --include-activity` on the author's Mac or hel: the real
+      field names (`last_seen_at_ms`, `activity_available`) and where they sit. Trigger: the next live Bridge pass.
+- [ ] **已读 / Read** on Recently once Mem says which verb returns a sent message's `read_recipients`. Trigger: Mem
+      answers research/183 §4 item 2.
+- [ ] Reach backed by Mem (`bridge contacts`, `mailbox_available` per agent) in the background, so **能找到** means the
+      mailbox answers, not only that the plugin is in. Trigger: contacts answers in under 5 s, or a person's agent
+      shows **能找到** and can't.
+- [ ] pi and Antigravity (and Cursor) can talk to the partner once Mem's plugins carry `bridge`. Trigger: Mem ships it
+      (research/183 §4 item 3); then they move to Claude Code's rows.
+- [ ] **在 Nowledge Mem 里打开** opens that conversation (a `nowledgemem://` thread link). Trigger: Mem names one.
+- [ ] `feed` for the Memory page's this week (every tool's), `resources get` for a link in an agent's message,
+      `collab` / `--shared-document` for a plan handed over, native sessions for asking one open terminal session.
+      Trigger: each one's scenario comes up in the author's use.
+- [ ] The 390-wide web shots through a phone-sized viewport (headless Chrome clips at its minimum window width) and
+      the iOS Simulator. Trigger: the next phone-UI pass.
+
 ## Your own agents, as yours (D418, `bridge.md` "Your own agents, as yours")
 
 - [ ] The live run on hel once it updates: the next contact test from the author's Codex answered by code within the

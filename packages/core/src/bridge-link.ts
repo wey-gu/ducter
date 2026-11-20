@@ -346,6 +346,21 @@ export interface MemConnection {
   connectionId: string;
   label: string;
   active: boolean;
+  /** D433: when Mem last saw that connection's computer (ms), from `--include-activity`; advisory. */
+  seenAt?: number;
+}
+
+/**
+ * D433: Mem's advisory last-seen time on one connection of `connections list --include-activity`
+ * (nmem 0.10.121's "version two" presentation; the field names are read off the binary, INFERRED in
+ * research/183): `last_seen_at_ms` on the connection or under its `activity`, only when Mem says the
+ * activity is there. Undefined otherwise: never a guess.
+ */
+export function seenAtOf(c: any): number | undefined {
+  const a = c?.activity && typeof c.activity === "object" ? c.activity : c;
+  if (a?.activity_available === false || c?.activity_available === false) return undefined;
+  const v = a?.last_seen_at_ms ?? c?.last_seen_at_ms;
+  return typeof v === "number" && Number.isFinite(v) && v > 0 ? v : undefined;
 }
 
 /** D329: the Nowledge Mem app's bundle, as macOS keeps it in Applications. */
@@ -509,7 +524,7 @@ export function createBridgeLink(opts: {
       .filter((c) => c.active && !ownConn(c, r, agent))
       .map((c) => {
         const h = labelHome(c.label, agent);
-        return { label: c.label, connectionId: c.connectionId, ...(h ? { home: h.home } : {}), ...(stuck.has(c.connectionId) ? { stuck: true as const } : {}) };
+        return { label: c.label, connectionId: c.connectionId, ...(h ? { home: h.home } : {}), ...(stuck.has(c.connectionId) ? { stuck: true as const } : {}), ...(c.seenAt ? { seenAt: c.seenAt } : {}) };
       });
   const pinned = () => env.DUCTER_BRIDGE === "1" && !!env.DUCTER_BRIDGE_CONTEXT?.trim();
   const agentNow = () => opts.identity() ?? opts.fallbackIdentity?.() ?? "ducter";
@@ -559,21 +574,36 @@ export function createBridgeLink(opts: {
       // D324: every connection Mem holds for the identity in that place (read-only): which homes answer it.
       const r = read();
       const where = r ? { space: r.spaceId, agent: r.agentId } : space ? { space: space.id, agent: agentNow() } : undefined;
-      const conns = signedIn && where ? await listConns(where.space, where.agent) : undefined;
+      const conns = signedIn && where ? await listConns(where.space, where.agent, shortVersion) : undefined;
       return (probe = { at: now(), version: shortVersion, supported, signedIn, ...(backend ? { backend } : {}), ...(space ? { space } : {}), ...(updateAvailable ? { updateAvailable } : {}), ...(latest ? { latest } : {}), ...(conns ? { conns } : {}) });
     })().finally(() => (probing = undefined));
     return probing;
   }
 
   /** Mem's whole list for the identity in one place; undefined when it can't be told (a failure, a partial page). */
-  async function listConns(spaceId: string, agentId: string): Promise<MemConnection[] | undefined> {
-    const l = await run(["bridge", "connections", "list", "--space-id", spaceId, "--agent-id", agentId]);
+  // D433: whether this nmem's list takes --include-activity (its help says so), read once per version.
+  const activityBy = new Map<string, boolean>();
+  async function listConns(spaceId: string, agentId: string, version?: string): Promise<MemConnection[] | undefined> {
+    const base = ["bridge", "connections", "list", "--space-id", spaceId, "--agent-id", agentId];
+    const ver = version ?? probe?.version ?? "";
+    let activity = activityBy.get(ver);
+    if (activity === undefined) {
+      const h = await run(["bridge", "connections", "list", "--help"]);
+      activity = !!h && h.code === 0 && /--include-activity/.test(`${h.out}\n${h.err}`);
+      activityBy.set(ver, activity);
+    }
+    let l = await run(activity ? [...base, "--include-activity"] : base);
+    // An activity read Mem refuses never costs the list: once more without it.
+    if (activity && (!l || l.code !== 0)) l = await run(base);
     if (!l || l.code !== 0) return undefined;
     const j = jsonIn(l.out)[0];
     if (!Array.isArray(j?.connections) || j.next_connection_id) return undefined; // a partial page proves nothing
     return j.connections
       .filter((c: any) => typeof c?.connection_id === "string" && (c.agent_id === undefined || c.agent_id === agentId))
-      .map((c: any) => ({ connectionId: c.connection_id, label: typeof c.client_label === "string" ? c.client_label : "", active: c.state === "active" }));
+      .map((c: any) => {
+        const seenAt = seenAtOf(c);
+        return { connectionId: c.connection_id, label: typeof c.client_label === "string" ? c.client_label : "", active: c.state === "active", ...(seenAt ? { seenAt } : {}) };
+      });
   }
 
   // A connection revoked somewhere else (Mem's own list) is dropped here. D324: the list is read with
@@ -812,7 +842,7 @@ export function createBridgeLink(opts: {
   const memAppHere = opts.memApp ?? (() => (sys.platform !== "darwin" ? undefined : [join("/Applications", MEM_APP), join(sys.home, "Applications", MEM_APP)].find(sys.exists)));
   let opening = false;
 
-  const shown = (o: { label: string; home?: string; stuck?: true }) => ({ label: o.label, ...(o.home ? { home: o.home } : {}), ...(o.stuck ? { stuck: true as const } : {}) });
+  const shown = (o: { label: string; home?: string; stuck?: true; seenAt?: number }) => ({ label: o.label, ...(o.home ? { home: o.home } : {}), ...(o.stuck ? { stuck: true as const } : {}), ...(o.seenAt ? { seenAt: o.seenAt } : {}) });
   /** D324: end other homes' connections for the identity (on the person's tap); one Mem won't end from here stays, marked stuck. */
   async function revokeOthers(r: BridgeConnectionRecord) {
     const conns = await listConns(r.spaceId, r.agentId);

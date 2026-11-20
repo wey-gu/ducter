@@ -2,6 +2,7 @@ package views
 
 import (
 	"strings"
+	"time"
 
 	"github.com/egoist/mygo/ui"
 
@@ -130,6 +131,7 @@ func (a *App) peersCard(c *ui.Context, st *protocol.Settings) {
 		a.peersStuck(c, b, name)
 		a.peersNotices(c, b, name)
 		a.peersRecent(c, name)
+		a.peersReach(c, name)
 		a.peersTry(c, name)
 	} else {
 		a.peersPicture(c, name)
@@ -284,6 +286,11 @@ func (a *App) peersProblem(c *ui.Context, b *protocol.BridgeView, name string) {
 		stuck := false
 		if b.State == "elsewhere" {
 			ask, goLabel, title, line = a.L.T("peers.elsewhere.ask", where, name), a.L.T("peers.elsewhere.go"), a.L.T("peers.elsewhere", name, where), ""
+			// D433: the other home Mem hasn't seen for over a day: its messages wait there.
+			if len(b.Others) == 1 && awayFor(b.Others[0].SeenAt, a.Now()) {
+				title = a.L.T("peers.elsewhere.away", name, where)
+				line = a.L.T("peers.away", where, a.agoLong(time.UnixMilli(b.Others[0].SeenAt).UTC().Format(time.RFC3339)))
+			}
 		} else {
 			for _, o := range b.Others {
 				stuck = stuck || o.Stuck

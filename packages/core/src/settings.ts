@@ -390,7 +390,9 @@ export function openSettings(opts: {
       // D304: a 想起了 line forgets the memory it names, the same way.
       const e = opts.log.read({ stream: "channel", kinds: ["memory_noted", "memory_recalled"], limit: 1000 }).find((x) => x.seq === seq);
       if (!e) return undefined;
-      const id = (e.body as Bodies["memory_noted"] | Bodies["memory_recalled"]).memoryId;
+      const b = e.body as Bodies["memory_noted"] | Bodies["memory_recalled"];
+      // D433: a line about a past conversation with another tool only leaves the list: that conversation is the tool's.
+      const id = "thread" in b && b.thread ? undefined : b.memoryId;
       let how: "mem" | "hidden" = "hidden";
       if (id && forgetter) {
         try {

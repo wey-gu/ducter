@@ -13,7 +13,7 @@
 // never reads or writes the user's real Nowledge Mem.
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { basename, join, resolve } from "node:path";
 import { HARNESSES, HARNESS_IDS, isHarnessId, type Bodies, type HarnessId, type LogEvent, type Place, type ReplyWant, type TaskCard, type TaskNeeds } from "../../protocol/src/index.ts";
 import type { HarnessEvent, HarnessPort, HarnessSession, Runner } from "../../protocol/src/internal.ts";
 import { startCore, type Core } from "../../core/src/index.ts";
@@ -1286,12 +1286,15 @@ async function pool<T, R>(items: T[], n: number, fn: (t: T) => Promise<R>): Prom
   return out;
 }
 
-function cleanupProjects(before: Set<string>) {
+// Only this run's folders: Claude names a project after its path, and every scenario of this run lives
+// under `root` ("ducter-eval-run-XXXXXX"), so another eval running at the same time keeps its own.
+function cleanupProjects(before: Set<string>, root: string) {
   const projects = join(HOME, ".claude", "projects");
   if (!existsSync(projects)) return 0;
+  const mine = basename(root);
   let n = 0;
   for (const d of readdirSync(projects)) {
-    if (!before.has(d) && d.includes("ducter-eval-")) {
+    if (!before.has(d) && d.includes(mine)) {
       rmSync(join(projects, d), { recursive: true, force: true });
       n++;
     }
@@ -1321,7 +1324,7 @@ async function main() {
       console.log(`${pass ? "PASS" : "FAIL"} ${sc.id.padEnd(22)} ${(r.ms / 1000).toFixed(0).padStart(3)}s  ${[...det, ...(j && !j.pass ? [`judge: ${j.reason}`] : [])].join("; ")}`);
     });
   } finally {
-    const removed = cleanupProjects(before);
+    const removed = cleanupProjects(before, root);
     rmSync(root, { recursive: true, force: true });
     console.log(`cleaned ${removed} ~/.claude/projects folder(s) and the scratch dir`);
   }

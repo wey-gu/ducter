@@ -1,0 +1,86 @@
+package views
+
+import (
+	"regexp"
+	"sort"
+	"strings"
+	"time"
+
+	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
+)
+
+// D433: 能找到{name}的 / Who can reach {name}, and the other home Mem hasn't
+// seen for a day. The web's: reachRows and awayFor (apps/web/src/mem-view.ts).
+
+// bridgeTools are the tools whose Nowledge Mem plugin carries Bridge today
+// (research/66 §10, research/183); noBridgeTools share the memory but can't
+// pass a message yet.
+var (
+	bridgeTools   = []string{"claude-code", "codex"}
+	noBridgeTools = []string{"pi", "antigravity"}
+	toolNames     = map[string]string{"claude-code": "Claude Code", "codex": "Codex", "pi": "pi", "antigravity": "Antigravity"}
+)
+
+// reachRow is one tool: Can is yes (its plugin carries Bridge and is in),
+// install (it carries Bridge but isn't in on Device), unknown (Mem's check
+// hasn't said) or none (its plugin can't pass messages yet). Last is the
+// newest exchange with it.
+type reachRow struct {
+	Harness, Tool, Can, Device, DeviceName, Last string
+}
+
+func reachRows(devices []protocol.DeviceView, own []string, recent []handoff) []reachRow {
+	ds := append([]protocol.DeviceView(nil), devices...)
+	sort.SliceStable(ds, func(i, j int) bool { return ds[i].Home && !ds[j].Home })
+	var out []reachRow
+	for _, h := range append(append([]string(nil), bridgeTools...), noBridgeTools...) {
+		found, on, off, offName := false, false, "", ""
+		for _, d := range ds {
+			for _, x := range d.Harnesses {
+				if x.Harness != h || !x.Installed || !x.LoggedIn {
+					continue
+				}
+				found = true
+				if x.Mem != nil && (x.Mem.State == "installed" || x.Mem.State == "update") {
+					on = true
+				}
+				if x.Mem != nil && x.Mem.State == "absent" && off == "" {
+					off, offName = d.ID, d.Name
+				}
+			}
+		}
+		for _, o := range own {
+			found = found || o == h
+		}
+		if !found {
+			continue
+		}
+		tool := toolNames[h]
+		re := regexp.MustCompile(`(?i)\b` + strings.ReplaceAll(regexp.QuoteMeta(tool), " ", `\s*`) + `\b`)
+		last := ""
+		for _, r := range recent {
+			if r.Host == tool || re.MatchString(r.Agent) {
+				last = r.At
+				break
+			}
+		}
+		row := reachRow{Harness: h, Tool: tool, Last: last}
+		switch {
+		case h == "pi" || h == "antigravity":
+			row.Can = "none"
+		case on || last != "":
+			row.Can = "yes"
+		case off != "":
+			row.Can, row.Device, row.DeviceName = "install", off, offName
+		default:
+			row.Can = "unknown"
+		}
+		out = append(out, row)
+	}
+	return out
+}
+
+// awayFor: Mem last saw that computer over a day ago (0: Mem didn't say).
+func awayFor(seenAt int64, now time.Time) bool {
+	return seenAt > 0 && now.Sub(time.UnixMilli(seenAt)) > 24*time.Hour
+}

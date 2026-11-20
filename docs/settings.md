@@ -159,6 +159,11 @@ It never lists what it looked through, only the one thing that mattered, and onl
 to see that memory, who it is from and when, with **Forget** (it asks first; forgetting reaches
 Nowledge Mem, so your other tools won't recall it either) and **Open in Nowledge Mem**.
 
+When the answer came from one of your past conversations with another AI tool that Nowledge Mem
+keeps, the line says so: **Remembered your talk with Codex on Nov 12**. Tapping it shows that
+conversation's title and day, and **Open in Nowledge Mem**; the conversation stays with that tool,
+so there is nothing to forget here.
+
 ### What it noted, in the conversation
 
 When your partner notes something about you, its reply's **Details** shows **Noted** with what it
@@ -189,8 +194,17 @@ once in the conversation.
 When it's on, the page shows **Recently**: what your agents handed over and what your partner asked
 or answered, newest first; tap one to open it. **Try it** shows two short examples, one each way:
 what you'd say to Codex and what your partner then does, and what you'd say to your partner and what
-it brings back. The small copy button on each sentence copies it. Where Claude Code or Codex still
-needs the Nowledge Mem plugin to hear them, a row says so, with **Install**.
+it brings back. The small copy button on each sentence copies it.
+
+**Who can reach** lists each AI tool you use: Claude Code and Codex say **Can reach** your partner,
+with when one last came, or, where the Nowledge Mem plugin isn't in yet, offer **Install**. pi and
+Antigravity say **Its Nowledge Mem plugin can't pass messages yet**: they share your memory, but
+messaging between them and your partner is coming soon.
+
+A message your partner sent that hasn't plainly gone says so in **Recently** where the time would be:
+**Sending**, **Checking it went**, **Couldn't confirm it went** or **Didn't go**. When another
+computer of yours receives your partner's messages and Nowledge Mem hasn't seen it for over a day,
+the page says when it was last online, with **Receive here instead**.
 
 Each row in **Recently** names the agent by the name it has in Nowledge Mem. One of your own that has
 no name there is called by what its message says it is, for example **your Codex (Mem helper)**, or

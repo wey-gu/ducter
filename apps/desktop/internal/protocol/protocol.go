@@ -721,6 +721,8 @@ type MemoryRecalled struct {
 	Date     string `json:"date,omitempty"`
 	AboutSeq int64  `json:"aboutSeq"`
 	ReplyTo  int64  `json:"replyTo,omitempty"`
+	// Thread (D433): a past conversation with another AI tool (From), not a memory.
+	Thread bool `json:"thread,omitempty"`
 }
 
 // Waiter states.
@@ -1795,6 +1797,8 @@ type BridgeOther struct {
 	Label string `json:"label"`
 	Home  string `json:"home,omitempty"`
 	Stuck bool   `json:"stuck,omitempty"`
+	// SeenAt (D433): when Mem last saw that computer (ms), when it says.
+	SeenAt int64 `json:"seenAt,omitempty"`
 }
 
 // BridgeUpkeep is D229's quiet upkeep of the home's Mem: Kind "move" or

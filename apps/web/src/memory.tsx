@@ -18,7 +18,7 @@ import { Coin } from "./coin.tsx";
 import { copy } from "./conv-copy.ts";
 import { Btn, DangerButton, LinkBtn, Switch } from "./controls.tsx";
 import { ago, harnessName, spoken } from "./format.ts";
-import { aboutGroups, bySource, groupNoted, MEM_MIN, memHealthLook, memPhase, memUpdate, ownsAgents, peersNamesUpdate, peersPhase, peersShown, peersSwitchOn, recentHandoffs, tryAgents, type Handoff, type MemPhase, type MemUpdate } from "./mem-view.ts";
+import { aboutGroups, bySource, groupNoted, MEM_MIN, memHealthLook, memPhase, memUpdate, ownsAgents, peersNamesUpdate, peersPhase, peersShown, peersSwitchOn, awayFor, reachRows, recentHandoffs, type Handoff, type MemPhase, type MemUpdate } from "./mem-view.ts";
 import { CopyLine } from "./lend.tsx";
 import { GBlock, GConfirm, GFoot, GHead, GRow, Group, Said, say, Tile } from "./set-grid.tsx";
 import { Avatar, Check } from "./views.tsx";
@@ -707,7 +707,7 @@ function openHandoff(h: Handoff) {
  * message; before the first one, a calm row that waits for it.
  */
 function PeersRecent({ name }: { name: string }) {
-  const list = recentHandoffs(A.S.channel);
+  const list = recentHandoffs(A.S.channel, 5, A.S.outOps);
   return (
     <section class="set mem-sec">
       <h3>{t("peers.recent.title")}</h3>
@@ -720,7 +720,7 @@ function PeersRecent({ name }: { name: string }) {
               <b dir="auto">{h.words}</b>
               <small>{capWho(t(`peers.recent.${h.way}`, whoOf(h), name))}</small>
             </span>
-            <span class="g-state">{ago(A.L, h.at)}</span>
+            {h.state ? <span class={`g-state${h.state === "failed" || h.state === "unconfirmed" ? " tone-bad" : ""}`}>{t(`peers.out.${h.state}`)}</span> : <span class="g-state">{ago(A.L, h.at)}</span>}
           </button>
         ))}
       </Group>
@@ -729,11 +729,31 @@ function PeersRecent({ name }: { name: string }) {
 }
 
 /**
+ * D433: 能找到{name}的 / Who can reach {name}: each AI tool the person runs, whether it can reach the
+ * partner through Nowledge Mem, the one fix when there is one (装上), and when it last came.
+ */
+function PeersReach({ name }: { name: string }) {
+  const rows = reachRows(A.devices ?? [], A.ownAgents, recentHandoffs(A.S.channel, 50));
+  if (!rows.length) return null;
+  return (
+    <section class="set mem-sec">
+      <h3>{t("peers.reach.title", name)}</h3>
+      <Group class="mem-g" label={t("peers.reach.title", name)}>
+        {rows.map((r) => (
+          <GRow key={r.harness} tile={<Tile faded={r.can === "none"}><Coin harness={r.harness} size={36} /></Tile>} title={r.tool} line={r.can === "none" ? t("peers.reach.none") : t(`peers.reach.${r.can}`, name)}>
+            {r.can === "install" && r.device ? <Btn kind="secondary" size="sm" label={t("peers.try.plugin.go")} about={r.deviceName ?? r.device} onClick={() => A.installMem(r.device!, r.harness)} /> : r.last && r.can === "yes" ? <span class="g-state">{ago(A.L, r.last)}</span> : null}
+          </GRow>
+        ))}
+      </Group>
+    </section>
+  );
+}
+
+/**
  * D321, D332: 试试看 / Try it: two example exchanges, one each way, as a tiny conversation in the clay
- * style; then each agent missing Mem's plugin, one row with its fix (装上).
+ * style (D433: the agents missing Mem's plugin are under 能找到{name}的 now).
  */
 function PeersTry({ name }: { name: string }) {
-  const missing = tryAgents(A.devices ?? []).filter((x) => x.plugin === "off" && x.device);
   return (
     <section class="set mem-sec">
       <h3>{t("peers.try.title")}</h3>
@@ -745,15 +765,6 @@ function PeersTry({ name }: { name: string }) {
           </div>
         </GBlock>
       </Group>
-      {missing.length > 0 && (
-        <Group class="mem-g" label={t("peers.try.plugin.title")}>
-          {missing.map((x) => (
-            <GRow key={x.harness} tile={<Tile><Coin harness={x.harness} size={36} /></Tile>} title={x.harness === "codex" ? "Codex" : "Claude Code"} line={t("peers.try.plugin.off", name)}>
-              <Btn kind="secondary" size="sm" label={t("peers.try.plugin.go")} about={x.device} onClick={() => A.installMem(x.device!, x.harness)} />
-            </GRow>
-          ))}
-        </Group>
-      )}
     </section>
   );
 }
@@ -779,8 +790,10 @@ function PeersProblem({ b, name }: { b: BridgeView; name: string }) {
   }
   if (b.state === "elsewhere") {
     if (A.bridgeHere) return <GConfirm ask={t("peers.elsewhere.ask", otherWhere(b), name)} keep={t("bridge.undo.keep")} go={t("peers.elsewhere.go")} about={b.identity} onKeep={() => ((A.bridgeHere = false), A.changed())} onGo={() => A.onlyHereBridge()} />;
+    // D433: the other home Mem hasn't seen for over a day: its messages wait there, said plainly.
+    const away = b.others?.length === 1 && awayFor(b.others[0]!.seenAt) ? b.others[0]! : undefined;
     return (
-      <GRow tile={<CoinsTile faded />} title={t("peers.elsewhere", name, otherWhere(b))}>
+      <GRow tile={<CoinsTile faded />} title={away ? t("peers.elsewhere.away", name, otherWhere(b)) : t("peers.elsewhere", name, otherWhere(b))} line={away ? t("peers.away", otherWhere(b), ago(A.L, new Date(away.seenAt!).toISOString())) : undefined}>
         <Btn kind="secondary" size="sm" label={t("peers.elsewhere.go")} about={b.identity} onClick={() => A.onlyHereBridge()} />
       </GRow>
     );
@@ -849,6 +862,7 @@ export function PeersPage() {
           {b?.stuck && <PeersStuck code={b.stuck.code} name={name} />}
           {b?.state === "connected" && b.notices && <PeersNotices name={name} />}
           <PeersRecent name={name} />
+          <PeersReach name={name} />
           <PeersTry name={name} />
         </>
       ) : (

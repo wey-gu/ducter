@@ -14,6 +14,8 @@ const flat = (s: string) => s.replace(/\s+/g, " ").trim();
 export interface ReplyDecisions {
   get(decisionId: string): Bodies["decision"] | undefined;
   isPending(decisionId: string): boolean;
+  /** D443: a task's open questions (decisions.ts); absent in older stubs. */
+  pendingOf?(taskId: string): string[];
   decide(decisionId: string, option: "go" | "hold" | "reply", text?: string, extra?: { msgSeq?: number }): unknown;
 }
 
@@ -49,7 +51,7 @@ function taskOfJob(log: LogStore, jobId: string, from: number, stream = "channel
  * The ReplyRef for what the client named, read from the Log. Throws when it names nothing the
  * user could have replied to (a task's own stream, a seq that isn't there).
  */
-export function resolveReply(log: LogStore, decisions: Pick<ReplyDecisions, "get">, want: ReplyWant, stream = "channel"): ReplyRef {
+export function resolveReply(log: LogStore, decisions: Pick<ReplyDecisions, "get" | "pendingOf">, want: ReplyWant, stream = "channel"): ReplyRef {
   const seq = Math.floor(Number(want.seq));
   const e = Number.isFinite(seq) && seq > 0 ? log.read({ fromSeq: seq, limit: 1 })[0] : undefined;
   if (!e || e.seq !== seq || e.stream !== stream) throw new Error("that message isn't in the conversation");
@@ -83,6 +85,16 @@ export function resolveReply(log: LogStore, decisions: Pick<ReplyDecisions, "get
         if (l) {
           line = { i, words: l.words };
           taskIds = l.taskId ? [l.taskId] : [];
+          // D443: a line that waits for the person waits on its task's question: a reply to the line
+          // is that question's answer (as a reply to its card is, D236), when there is exactly one
+          // plain question open; otherwise it stays words to the partner.
+          if (l.state === "needs_you" && l.taskId) {
+            const open = (decisions.pendingOf?.(l.taskId) ?? []).filter((id) => {
+              const d = decisions.get(id);
+              return !!d && plainDecision(d);
+            });
+            if (open.length === 1) decisionId = open[0];
+          }
         }
       }
       break;

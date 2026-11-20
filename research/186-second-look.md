@@ -1,5 +1,9 @@
 # 186: A second look before a result goes out (D437)
 
+> D443 renamed the code so it no longer shares D373's "second look": `core/src/fresh-look.ts`,
+> `FreshLook`, `createFreshLook`, `packages/core/eval/fresh-look/`, the rule kind `fresh_look` and the
+> Log step `raw.freshLook` (the old kind and key are still read). The names below are as of D437.
+
 research/184 ranked "a look over its own result before it goes out" seventh: before a task's
 result reaches the person, or before the Go card of something it would send for them is shown, a
 second agent with a clean context reads it once against what they asked. This report is what was

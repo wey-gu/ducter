@@ -8,7 +8,7 @@
 // A done one ticks the count down with a page lifting off (reduced motion: the number changes in place).
 // A PR waiting for review that the partner read says so on its card (我看过了), and opens its comments.
 import type { PileGroup, PileItem, PileView, PreRead, SourceGlance, SourcesServerFrame } from "@ducter/protocol";
-import { PILE_CAP, PILE_HAND_DEFAULT } from "@ducter/protocol";
+import { PILE_CAP, PILE_HAND_DEFAULT, sizeSaid } from "@ducter/protocol";
 import { useEffect, useRef } from "preact/hooks";
 import { A } from "./app.ts";
 import { BrandMark } from "./brand.tsx";
@@ -278,11 +278,12 @@ function ItemHead({ p }: { p: PileItem }) {
   );
 }
 
-function ItemFacts({ p }: { p: PileItem }) {
+/** D443: `line` is the one line shown with the to-do; when it already says the size, no pill repeats it. */
+function ItemFacts({ p, line }: { p: PileItem; line?: string }) {
   return (
     <span class="pile-item-facts">
       <SourceChip src={p.item} small states={false} plain />
-      {p.size && <span class="todo-label">{t(`pile.size.${p.size}`)}</span>}
+      {p.size && !sizeSaid(line, p.size) && <span class="todo-label">{t(`pile.size.${p.size}`)}</span>}
       {(p.item.labels ?? []).slice(0, 2).map((l) => (
         <span key={l} class="todo-label">
           {l}
@@ -307,7 +308,7 @@ function DoSheet({ items }: { items: PileItem[] }) {
               <span class="pile-item-body">
                 <ItemHead p={p} />
                 <span class="pile-why">{p.why}</span>
-                <ItemFacts p={p} />
+                <ItemFacts p={p} line={p.why} />
               </span>
             </label>
           );
@@ -338,7 +339,7 @@ function DecideSheet({ items }: { items: PileItem[] }) {
             <div key={p.item.ref} class={`pile-item decide${done ? " done" : ""}`}>
               <span class="pile-item-body">
                 <ItemHead p={p} />
-                <ItemFacts p={p} />
+                <ItemFacts p={p} line={p.ask ?? p.why} />
                 <span class="pile-ask">{p.ask ?? p.why}</span>
                 {done ? (
                   <span class="pile-picked">{t(`pile.picked.${done}`, name)}</span>
@@ -382,7 +383,7 @@ function CloseSheet({ items }: { items: PileItem[] }) {
               <span class="pile-item-body">
                 <ItemHead p={p} />
                 <span class="pile-why">{p.why}</span>
-                <ItemFacts p={p} />
+                <ItemFacts p={p} line={p.why} />
                 {!kept && p.comment && (
                   <span class="pile-says">
                     <span class="pile-says-label">{t("pile.close.says")}</span>

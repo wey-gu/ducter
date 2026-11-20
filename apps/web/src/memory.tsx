@@ -783,7 +783,7 @@ function PeersProblem({ b, name }: { b: BridgeView; name: string }) {
     const stuck = b.others.some((o) => o.stuck);
     if (A.bridgeHere) return <GConfirm ask={t("peers.twice.ask", where, name)} keep={t("bridge.undo.keep")} go={t("peers.twice.go")} about={b.identity} onKeep={() => ((A.bridgeHere = false), A.changed())} onGo={() => A.onlyHereBridge()} />;
     return (
-      <GRow title={t("peers.twice.title", name, where)} line={stuck ? t("peers.twice.stuck", where) : t("peers.twice.line")}>
+      <GRow cls="act-under" title={t("peers.twice.title", name, where)} line={stuck ? t("peers.twice.stuck", where) : t("peers.twice.line")}>
         {!stuck && <Btn kind="secondary" size="sm" label={t("peers.twice.go")} about={b.identity} onClick={() => A.onlyHereBridge()} />}
       </GRow>
     );
@@ -793,7 +793,7 @@ function PeersProblem({ b, name }: { b: BridgeView; name: string }) {
     // D433: the other home Mem hasn't seen for over a day: its messages wait there, said plainly.
     const away = b.others?.length === 1 && awayFor(b.others[0]!.seenAt) ? b.others[0]! : undefined;
     return (
-      <GRow tile={<CoinsTile faded />} title={away ? t("peers.elsewhere.away", name, otherWhere(b)) : t("peers.elsewhere", name, otherWhere(b))} line={away ? t("peers.away", otherWhere(b), ago(A.L, new Date(away.seenAt!).toISOString())) : undefined}>
+      <GRow cls="act-under" tile={<CoinsTile faded />} title={away ? t("peers.elsewhere.away", name, otherWhere(b)) : t("peers.elsewhere", name, otherWhere(b))} line={away ? t("peers.away", otherWhere(b), ago(A.L, new Date(away.seenAt!).toISOString())) : undefined}>
         <Btn kind="secondary" size="sm" label={t("peers.elsewhere.go")} about={b.identity} onClick={() => A.onlyHereBridge()} />
       </GRow>
     );
@@ -811,7 +811,7 @@ function PeersProblem({ b, name }: { b: BridgeView; name: string }) {
   const note = b.state === "refused" ? t(`bridge.refused.${b.reason ?? "control_denied"}`, b.identity) : b.state === "unconfirmed" ? t("bridge.unconfirmed", b.identity) : failedLine(b.detail);
   const tryNewer = b.newer !== undefined;
   return (
-    <GRow tile={<CoinsTile faded />} title={tryNewer ? `${note}\n${t("peers.mem.newer")}` : note}>
+    <GRow cls="act-under" tile={<CoinsTile faded />} title={tryNewer ? `${note}\n${t("peers.mem.newer")}` : note}>
       {tryNewer && toMemory}
       <Btn kind="secondary" size="sm" label={t("bridge.retry")} about={b.identity} onClick={() => A.connectBridge()} />
     </GRow>

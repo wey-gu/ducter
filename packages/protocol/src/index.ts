@@ -39,7 +39,7 @@ export * from "./apps.ts";
 export * from "./app-lift.ts";
 export * from "./app-glyphs.ts";
 export * from "./reach.ts";
-export * from "./second-look.ts";
+export * from "./fresh-look.ts";
 export * from "./doc-bar.ts";
 export * from "./mem-source.ts";
 export * from "./mem-health.ts";
@@ -513,7 +513,7 @@ export interface Bodies {
     /** D426: its word on each of its lines (what the person asked for), in the order it was given them. */
     asks?: import("./asks.ts").AskReport[];
     /** D437: set by Ducter (never the task): another AI read this result once before it went out. */
-    look?: import("./second-look.ts").SecondLook;
+    look?: import("./fresh-look.ts").FreshLook;
     /** D439: set by Ducter (never the task): the document it shows was checked page by page; `left` is what is still so. */
     doc?: import("./doc-bar.ts").DocCheck;
   };

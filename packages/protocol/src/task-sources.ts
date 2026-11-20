@@ -96,6 +96,19 @@ export const PILE_GROUPS = ["do", "decide", "close", "later"] as const;
 export type PileGroup = (typeof PILE_GROUPS)[number];
 export type PilePick = "hand" | "close" | "later";
 
+/** D443: does the to-do's one line already say its size (说得清楚，改动小 / a small change)? Then the
+ *  size pill would only repeat it, and is left off. The Mac's protocol/pile.go SizeSaid passes the
+ *  same cases (fixtures/size-said.json). */
+const SIZE_WORDS: Record<"small" | "medium" | "large", RegExp> = {
+  small: /改动(很|比较|都|也)?(小|不大)|小改动|小修|改得少|一行的事|\b(small|tiny|minor|trivial|one-line|quick)\s+(change|fix|edit|tweak)\b|\btiny\b|\btrivial\b|^\s*(small|tiny)\b/i,
+  medium: /改动(中等|适中)|中等/i,
+  large: /改动(很|比较|挺)?大|大改|\b(big|large|sizable|major)\s+(change|rewrite|one)\b|^\s*(big|large)\b/i,
+};
+export function sizeSaid(why: string | undefined, size: PileItem["size"] | "" | undefined): boolean {
+  if (!why || !size) return false;
+  return SIZE_WORDS[size].test(why);
+}
+
 /** D359: one open to-do as the sort left it: its group, why in one line, and what goes with it. */
 export interface PileItem {
   item: SourceItem;

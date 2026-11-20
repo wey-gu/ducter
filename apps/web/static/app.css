@@ -13395,6 +13395,12 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   .chat-row.one-line { flex-wrap: nowrap; }
   .chat-row.one-line .grow { flex-basis: 0; }
 }
+/* D443: a state row whose fix is a long button (改由这台收 / Receive here instead, 重试 with its
+   note) would squeeze its words into a sliver beside it at 390: the button goes under the words. */
+@media (max-width: 520px) {
+  .mem-g .chat-row.act-under { flex-wrap: wrap; }
+  .mem-g .chat-row.act-under .grow { flex-basis: calc(100% - 40px - var(--s3)); }
+}
 .chat-head > .grow { flex: 1; min-width: 0; }
 .set-page .mem-first h3 { margin: var(--s1) 0 0; padding: 0; font-family: var(--head); font-size: var(--xl); font-weight: 800; color: var(--ink); }
 /* D299: 也在这台电脑上 / Also on this computer: the sessions the person ran in their own agents,

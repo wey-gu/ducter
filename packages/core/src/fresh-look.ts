@@ -16,11 +16,11 @@
 // What gets one: a done report that changed code or files beyond a trivial edit, and a question
 // whose Go sends something outward (a PR, a reply, a comment, a message). Never a payment, a
 // sign-in, a key or a tap (those have their own gates), never a plain answer. The person's
-// 这类不用复查 keeps a rule (D165's notice rules, kind "second_look") that skips it for that kind of
+// 这类不用复查 keeps a rule (D165's notice rules, kind "fresh_look"; "second_look" before D443) that skips it for that kind of
 // work. A ceiling per day, one look and one check per result, and every failure fails open: the
 // report goes on as the task wrote it, never held up by the look.
 import { createHash } from "node:crypto";
-import { HARNESS_IDS, HARNESSES, harnessName, LOOK_ASK_OPENING, LOOK_FINDING_CHARS, LOOK_FINDINGS_MAX, NO_LOOK_KIND, type Attention, type Bodies, type HarnessId, type LangTag, type RuleView, type SecondLook, type WorkKind } from "@ducter/protocol";
+import { HARNESS_IDS, HARNESSES, harnessName, LOOK_ASK_OPENING, LOOK_FINDING_CHARS, LOOK_FINDINGS_MAX, NO_LOOK_KIND, isNoLookKind, lookStepOf, type Attention, type Bodies, type HarnessId, type LangTag, type RuleView, type FreshLook, type WorkKind } from "@ducter/protocol";
 import type { LogStore, TaskRegistry } from "@ducter/protocol/src/internal.ts";
 
 /** A change this small (lines added and removed, one file) is a trivial edit: no look. */
@@ -64,7 +64,7 @@ export function lookRuledOff(rules: RuleView[], work: { title: string; brief?: s
   const hay = `${work.title}\n${work.brief ?? ""}`.toLowerCase();
   for (let i = rules.length - 1; i >= 0; i--) {
     const r = rules[i]!;
-    if (r.notice?.kind !== NO_LOOK_KIND) continue;
+    if (!isNoLookKind(r.notice?.kind)) continue;
     const kinds = r.kinds ?? [];
     if (!kinds.length && !r.match.length) return r;
     if (work.kind && kinds.includes(work.kind)) return r;
@@ -207,7 +207,7 @@ export interface LookDeps {
   now?: () => Date;
   fixWaitMs?: number;
   perDay?: number;
-  /** DUCTER_SECOND_LOOK=off turns it off for the home. */
+  /** DUCTER_FRESH_LOOK=off (DUCTER_SECOND_LOOK=off before D443) turns it off for the home. */
   off?: () => boolean;
 }
 
@@ -222,7 +222,7 @@ interface Round {
 
 type LookRaw = { phase: "looking" | "asked" | "checking" | "done"; by?: string; model?: string; found?: string[]; left?: string[]; held?: Bodies["report"]; what?: LookWhat; hash?: string; skipped?: string };
 
-export interface SecondLookApi {
+export interface FreshLookApi {
   /**
    * A report about to be logged. True: the look took it (it logs it itself, now or after the fix);
    * false: log it as it is. Never throws.
@@ -237,7 +237,7 @@ export interface SecondLookApi {
 
 export const HELD_WORDS = "Reported. Before the user sees it, another AI reads it once against what they asked. If it finds something to change, it comes to you as a new message; otherwise it goes to them as it is. End your turn now.";
 
-export function createSecondLook(d: LookDeps): SecondLookApi {
+export function createFreshLook(d: LookDeps): FreshLookApi {
   const now = () => (d.now ?? (() => new Date()))().getTime();
   const rounds = new Map<string, Round>();
   const timers = new Map<string, ReturnType<typeof setTimeout>>();
@@ -249,9 +249,9 @@ export function createSecondLook(d: LookDeps): SecondLookApi {
   const stream = (id: string) => `task:${id}`;
   const note = (taskId: string, raw: LookRaw) => {
     const persona = d.tasks.get(taskId)?.persona;
-    d.log.append({ persona, stream: stream(taskId), origin: "task", kind: "task_event", body: { taskId, role: "system", from: "runner", raw: { secondLook: raw } } });
+    d.log.append({ persona, stream: stream(taskId), origin: "task", kind: "task_event", body: { taskId, role: "system", from: "runner", raw: { freshLook: raw } } });
   };
-  const release = (taskId: string, body: Bodies["report"], look?: SecondLook) => {
+  const release = (taskId: string, body: Bodies["report"], look?: FreshLook) => {
     const b: Bodies["report"] = look ? { ...body, look } : body;
     const card = d.tasks.get(taskId);
     d.log.append({ persona: card?.persona, stream: stream(taskId), origin: "task", kind: "report", body: b });
@@ -274,7 +274,7 @@ export function createSecondLook(d: LookDeps): SecondLookApi {
       if (!r || r.phase !== "asked") return;
       // No fix came in time: the result goes on as the task wrote it, with what was found.
       rounds.delete(taskId);
-      const look: SecondLook = { by: r.by.harness, ...(r.by.model ? { model: r.by.model } : {}), found: r.found, left: r.found };
+      const look: FreshLook = { by: r.by.harness, ...(r.by.model ? { model: r.by.model } : {}), found: r.found, left: r.found };
       note(taskId, { phase: "done", by: r.by.harness, found: r.found, left: r.found });
       release(taskId, r.held, look);
     }, Math.max(0, ms));
@@ -287,7 +287,7 @@ export function createSecondLook(d: LookDeps): SecondLookApi {
     const evs = d.log.read({ kinds: ["task_event", "report"], beforeSeq: d.log.head() + 1, limit: 20_000 });
     const last = new Map<string, { raw: LookRaw; at: number }>();
     for (const e of evs) {
-      const b = e.body as { taskId?: string; raw?: { secondLook?: LookRaw } };
+      const b = e.body as { taskId?: string; raw?: unknown };
       if (!b.taskId) continue;
       if (e.kind === "report") {
         const l = last.get(b.taskId);
@@ -295,7 +295,8 @@ export function createSecondLook(d: LookDeps): SecondLookApi {
         if (l && l.raw.phase !== "asked") last.delete(b.taskId);
         continue;
       }
-      if (b.raw?.secondLook) last.set(b.taskId, { raw: b.raw.secondLook, at: Date.parse(e.ts) });
+      const step = lookStepOf<LookRaw>(b.raw);
+      if (step) last.set(b.taskId, { raw: step, at: Date.parse(e.ts) });
     }
     for (const [taskId, { raw, at }] of last) {
       if (raw.phase === "done" || !raw.held) continue;
@@ -314,7 +315,7 @@ export function createSecondLook(d: LookDeps): SecondLookApi {
   try {
     restore();
   } catch (err) {
-    console.warn("[second-look] couldn't read the Log's looks:", (err as Error).message);
+    console.warn("[fresh-look] couldn't read the Log's looks:", (err as Error).message);
   }
 
   const inputFor = async (taskId: string, body: Bodies["report"], what: LookWhat): Promise<LookInput & { hash: string }> => {
@@ -333,11 +334,11 @@ export function createSecondLook(d: LookDeps): SecondLookApi {
     return { asked: `${open?.title ?? card?.title ?? ""}\n${open?.brief ?? ""}`.trim(), told, summary: body.summary, ...(sends.length ? { sends } : {}), ...(diff ? { diff } : {}), ...(lang ? { lang } : {}), hash };
   };
 
-  /** The last hash a look read for this task: the same result again gets no second look. */
+  /** The last hash a look read for this task: the same result again gets no look. */
   const lastHash = (taskId: string): string | undefined => {
     const evs = d.log.read({ stream: stream(taskId), kinds: ["task_event"], beforeSeq: d.log.head() + 1, limit: 2000 });
     for (let i = evs.length - 1; i >= 0; i--) {
-      const raw = (evs[i]!.body as { raw?: { secondLook?: LookRaw } }).raw?.secondLook;
+      const raw = lookStepOf<LookRaw>((evs[i]!.body as { raw?: unknown }).raw);
       if (raw?.hash) return raw.hash;
     }
     return undefined;
@@ -362,11 +363,11 @@ export function createSecondLook(d: LookDeps): SecondLookApi {
       }
       found = parseLook((await d.ask!(by, lookPrompt(input))).text);
     } catch (err) {
-      console.warn(`[second-look] ${taskId}: the look didn't finish; the result goes on as it is:`, (err as Error).message);
+      console.warn(`[fresh-look] ${taskId}: the look didn't finish; the result goes on as it is:`, (err as Error).message);
       note(taskId, { phase: "done", by: by.harness, skipped: "failed", hash });
       return release(taskId, body);
     }
-    const lookOf = (left: string[]): SecondLook => ({ by: by.harness, ...(by.model ? { model: by.model } : {}), found, left });
+    const lookOf = (left: string[]): FreshLook => ({ by: by.harness, ...(by.model ? { model: by.model } : {}), found, left });
     if (!found.length || !d.send) {
       note(taskId, { phase: "done", by: by.harness, ...(by.model ? { model: by.model } : {}), found, left: found, hash });
       return release(taskId, body, lookOf(found));
@@ -379,7 +380,7 @@ export function createSecondLook(d: LookDeps): SecondLookApi {
       await d.send(taskId, fixAsk(by.harness, found));
     } catch (err) {
       // The task can't hear it (gone, offline): the result goes on with what was found.
-      console.warn(`[second-look] ${taskId}: couldn't tell the task; the result goes on with what was found:`, (err as Error).message);
+      console.warn(`[fresh-look] ${taskId}: couldn't tell the task; the result goes on with what was found:`, (err as Error).message);
       clearTimer(taskId);
       rounds.delete(taskId);
       note(taskId, { phase: "done", by: by.harness, found, left: found });
@@ -393,7 +394,7 @@ export function createSecondLook(d: LookDeps): SecondLookApi {
       const input = await inputFor(taskId, body, r.what);
       left = parseCheck((await d.ask!(r.by, checkPrompt({ ...input, found: r.found }))).text, r.found);
     } catch (err) {
-      console.warn(`[second-look] ${taskId}: the check didn't finish; what was found stands:`, (err as Error).message);
+      console.warn(`[fresh-look] ${taskId}: the check didn't finish; what was found stands:`, (err as Error).message);
     }
     note(taskId, { phase: "done", by: r.by.harness, ...(r.by.model ? { model: r.by.model } : {}), found: r.found, left });
     release(taskId, body, { by: r.by.harness, ...(r.by.model ? { model: r.by.model } : {}), found: r.found, left });
@@ -447,7 +448,7 @@ export function createSecondLook(d: LookDeps): SecondLookApi {
             return look(taskId, body, what, by, input);
           })()
             .catch((err) => {
-              console.warn(`[second-look] ${taskId}:`, (err as Error).message);
+              console.warn(`[fresh-look] ${taskId}:`, (err as Error).message);
               release(taskId, body);
             })
             .finally(() => {
@@ -456,7 +457,7 @@ export function createSecondLook(d: LookDeps): SecondLookApi {
         );
         return true;
       } catch (err) {
-        console.warn(`[second-look] ${taskId}: not looked at:`, (err as Error).message);
+        console.warn(`[fresh-look] ${taskId}: not looked at:`, (err as Error).message);
         return false;
       }
     },
@@ -518,7 +519,7 @@ const NO_LOOK_KINDS: [WorkKind, RegExp][] = [
   ["errand", /跑腿|订|买|回复|消息|邮件|评论|留言|\berrands?\b|\brepl(y|ies)\b|\bmessages?\b|\bemails?\b|\bcomments?\b/i],
 ];
 
-/** What one message of the person's says about the second look, if it says so explicitly. */
+/** What one message of the person's says about the look before a result goes out, if it says so explicitly. */
 export function readNoLook(text: string): { quote: string; kinds: WorkKind[]; all: boolean; these: boolean } | undefined {
   const own = text
     .split("\n")
@@ -563,7 +564,7 @@ export function keepNoLookAtOnce(o: { log: LogStore; rules: { addNotice(r: { tex
     try {
       heard.set(e.seq, o.rules.addNotice({ text: said.quote, kind: NO_LOOK_KIND, kinds }));
     } catch (err) {
-      console.warn("[second-look] couldn't keep the rule:", (err as Error).message);
+      console.warn("[fresh-look] couldn't keep the rule:", (err as Error).message);
     }
   });
   return { heardFrom: (seq) => heard.get(seq), stop };

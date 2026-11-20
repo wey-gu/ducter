@@ -763,7 +763,7 @@ type Report struct {
 	Media []MediaRef `json:"media,omitempty"`
 	// Look (D437): set by Ducter: another AI read this result once before
 	// it went out; Left is what is still so (said on the card).
-	Look *SecondLook `json:"look,omitempty"`
+	Look *FreshLook `json:"look,omitempty"`
 	// Doc (D439): set by Ducter: the document it shows was checked page by
 	// page; Left is what is still so (said under the result).
 	Doc *DocCheck `json:"doc,omitempty"`
@@ -776,9 +776,9 @@ type DocCheck struct {
 	Left  []string `json:"left"`
 }
 
-// SecondLook (D437) is what another AI found when it looked a result
+// FreshLook (D437) is what another AI found when it looked a result
 // over: Found the first time, Left after the task's fix.
-type SecondLook struct {
+type FreshLook struct {
 	By    string   `json:"by"`
 	Model string   `json:"model,omitempty"`
 	Found []string `json:"found"`

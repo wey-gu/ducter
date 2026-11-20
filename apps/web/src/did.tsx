@@ -82,6 +82,16 @@ export function DidGlyph({ k, sub, size = 20 }: { k: DidKind; sub?: string; size
 // ---------- words ----------
 
 /** The card's line, from the table by kind and sub-kind (design/did.md). */
+/** D443: the row's own words; a filled detail is named in the person's language (电话, not "Phone"). */
+export function didOwn(it: DidItem): string | undefined {
+  if (it.detail) {
+    const k = `did.detail.${it.detail}`;
+    const s = t(k);
+    if (s !== k) return s;
+  }
+  return it.line;
+}
+
 export function lineOf(it: DidItem): string {
   const app = it.via || t("did.app");
   switch (`${it.kind}.${it.sub}`) {
@@ -169,7 +179,7 @@ function Card({ it }: { it: DidItem }) {
             <span class="pt">{lineOf(it)}</span>
             {it.amount && <span class="did-amount">{it.amount}</span>}
           </span>
-          {it.line && <span class="pl2 did-what">{it.line}</span>}
+          {didOwn(it) && <span class="pl2 did-what">{didOwn(it)}</span>}
           <Facts
             class="did-facts"
             items={[

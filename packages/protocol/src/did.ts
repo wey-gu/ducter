@@ -78,6 +78,9 @@ export interface DidItem {
   /** The action itself as it was said then (the card's sentence, a message's start, an event's
    *  title), at most DID_LINE characters. Never a secret, never a read's content. */
   line?: string;
+  /** filled, detail: which of the person's details went (D443): clients name it in their own
+   *  language (电话, not the store's "Phone"); `line` keeps the store's words for older clients. */
+  detail?: import("./saved.ts").DetailKey;
   /** calendar: what was done to the event. */
   cal?: "create" | "move" | "respond" | "cancel";
   /** paid: "USD 128.00". */

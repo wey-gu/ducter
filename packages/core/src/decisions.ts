@@ -19,6 +19,8 @@ export interface Decisions {
   decide(decisionId: string, option: "go" | "hold" | "reply", text?: string, extra?: { delivered?: boolean; msgSeq?: number }): LogEvent<"decision_resolved">;
   get(decisionId: string): Bodies["decision"] | undefined;
   isPending(decisionId: string): boolean;
+  /** D443: a task's questions still open (oldest first), for a reply to its line under a message. */
+  pendingOf(taskId: string): string[];
   /**
    * D382: 晚点再问我 / Ask me later: put an open question off to `until` (ms), or bring it back
    * now (null, 现在就定 / Decide now). Throws in the person's terms when it can't.
@@ -485,6 +487,7 @@ export function createDecisions(opts: {
     takeUnforwarded: () => unforwarded.splice(0),
     get: (id) => all.get(id),
     isPending: (id) => all.has(id) && !resolved.has(id),
+    pendingOf: (taskId) => tasks.pendingDecisions(taskId).filter((id) => all.has(id) && !resolved.has(id)),
     setHook: (fn) => void (hook = fn),
     stop() {
       unsubscribe();

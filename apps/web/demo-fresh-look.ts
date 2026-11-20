@@ -3,7 +3,7 @@
 // the Windows script, and the README still names the old folder, said under the partner's result;
 // then a reply on an issue whose Go card says what the look still found in it. For screenshots and
 // manual checks (the partner itself is a stub: its words are written as the real one says them).
-//   DUCTER_PORT=7974 DUCTER_DATA_DIR=/tmp/x DEMO_LANG=zh bun apps/web/demo-second-look.ts
+//   DUCTER_PORT=7974 DUCTER_DATA_DIR=/tmp/x DEMO_LANG=zh bun apps/web/demo-fresh-look.ts
 import { startCore, stubRunner } from "./demo-core.ts";
 import { noOo } from "./demo-oo.ts";
 
@@ -77,4 +77,4 @@ log.append({ stream: `task:${task2}`, origin: "task", kind: "report", body: { ta
 await tick();
 const d = log.read({ stream: "channel", kinds: ["decision"], limit: 50 }).find((e) => (e.body as { taskId?: string }).taskId === task2);
 if (d) log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: w.said2, decisionId: (d.body as { decisionId: string }).decisionId } });
-console.log(`demo-second-look on ${core.url} · ${zh ? "zh" : "en"}`);
+console.log(`demo-fresh-look on ${core.url} · ${zh ? "zh" : "en"}`);

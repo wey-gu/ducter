@@ -43,6 +43,9 @@ interface Raw {
   repository_url?: string;
   user?: { login?: string };
   comments?: number;
+  created_at?: string;
+  assignees?: { login?: string }[];
+  milestone?: { title?: string } | null;
 }
 
 const repoOf = (r: Raw): string => r.repository?.full_name ?? r.repository_url?.replace(/^.*\/repos\//, "") ?? "";
@@ -51,6 +54,7 @@ export function itemOf(source: string, r: Raw): SourceItem {
   const repo = repoOf(r);
   const body = (r.body ?? "").trim();
   const labels = (r.labels ?? []).map((l) => (typeof l === "string" ? l : (l.name ?? ""))).filter(Boolean);
+  const assignees = (r.assignees ?? []).map((a) => a.login ?? "").filter(Boolean);
   return {
     source,
     kind: "github",
@@ -65,8 +69,33 @@ export function itemOf(source: string, r: Raw): SourceItem {
     ...(r.updated_at ? { updatedAt: r.updated_at } : {}),
     ...(labels.length ? { labels } : {}),
     ...(r.user?.login ? { author: r.user.login } : {}),
+    ...(assignees.length ? { assignees } : {}),
+    ...(r.created_at ? { createdAt: r.created_at } : {}),
+    ...(r.milestone?.title ? { milestone: r.milestone.title } : {}),
     ...(typeof r.comments === "number" && r.comments > 0 ? { comments: r.comments } : {}),
   };
+}
+
+/**
+ * D428: who assigned each open to-do to the person: GitHub's issue list doesn't say, its timeline does
+ * (the last AssignedEvent naming them). One GraphQL search page of 100 per call, at most ASSIGNERS_PAGES.
+ */
+export const ASSIGNERS_PAGES = 7;
+export const ASSIGNERS_QUERY = `query($q: String!, $c: String) { viewer { login } search(query: $q, type: ISSUE, first: 100, after: $c) { pageInfo { endCursor hasNextPage } nodes { ... on Issue { number repository { nameWithOwner } timelineItems(last: 5, itemTypes: [ASSIGNED_EVENT]) { nodes { ... on AssignedEvent { actor { login } assignee { ... on User { login } } } } } } ... on PullRequest { number repository { nameWithOwner } timelineItems(last: 5, itemTypes: [ASSIGNED_EVENT]) { nodes { ... on AssignedEvent { actor { login } assignee { ... on User { login } } } } } } } } }`;
+type AssignPage = { data?: { viewer?: { login?: string }; search?: { pageInfo?: { endCursor?: string; hasNextPage?: boolean }; nodes?: { number?: number; repository?: { nameWithOwner?: string }; timelineItems?: { nodes?: { actor?: { login?: string } | null; assignee?: { login?: string } | null }[] } }[] } } };
+/** One page's ref → who assigned it to `me` (the last such event), and the next cursor. */
+export function assignersOf(page: AssignPage, me?: string): { by: Map<string, string>; me?: string; next?: string } {
+  const who = (me ?? page.data?.viewer?.login ?? "").toLowerCase();
+  const by = new Map<string, string>();
+  for (const n of page.data?.search?.nodes ?? []) {
+    const repo = n.repository?.nameWithOwner;
+    if (!repo || typeof n.number !== "number") continue;
+    const ev = (n.timelineItems?.nodes ?? []).filter((e) => e.actor?.login && (!who || e.assignee?.login?.toLowerCase() === who));
+    const last = ev.at(-1)?.actor?.login;
+    if (last) by.set(`${repo}#${n.number}`, last);
+  }
+  const pi = page.data?.search?.pageInfo;
+  return { by, ...(page.data?.viewer?.login ? { me: page.data.viewer.login } : {}), ...(pi?.hasNextPage && pi.endCursor ? { next: pi.endCursor } : {}) };
 }
 
 /** D359: a PR's diff is cut here before a model reads it (the pre-read says when it was cut). */
@@ -323,6 +352,27 @@ export function createGitHub(o: GitHubOpts): SourceAdapter & { login(): string |
       }
       const more = !ended || items.length > max;
       if (items.length > max) items.length = max;
+      // D428: who assigned each one (the finder's 「100gle 分给你的」). A failure leaves it unsaid, never the list.
+      try {
+        const by = new Map<string, string>();
+        let me = login;
+        let cursor: string | undefined;
+        for (let p = 0; p < ASSIGNERS_PAGES; p++) {
+          const r = await gh(["api", "graphql", "-f", `query=${ASSIGNERS_QUERY}`, "-f", `q=assignee:${login ?? "@me"} is:open archived:false`, ...(cursor ? ["-f", `c=${cursor}`] : [])]);
+          if (r.code !== 0) break;
+          const got = assignersOf(JSON.parse(r.out) as AssignPage, me);
+          me ??= got.me;
+          for (const [k, v] of got.by) by.set(k, v);
+          if (!got.next) break;
+          cursor = got.next;
+        }
+        for (const it of items) {
+          const a = by.get(it.ref);
+          if (a) it.assignedBy = a;
+        }
+      } catch (err) {
+        console.warn("[github] who assigned them couldn't be read:", (err as Error).message);
+      }
       return { items, more };
     },
     // D359: a PR's diff, for the pre-read (cut at DIFF_MAX).

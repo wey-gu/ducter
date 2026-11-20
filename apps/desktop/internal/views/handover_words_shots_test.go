@@ -112,7 +112,7 @@ func wordsApp(t *testing.T, lang i18n.Lang, w, h int, scene string) (*App, *[]an
 func TestHandWordsFirst(t *testing.T) {
 	app, sent, tt := wordsApp(t, i18n.ZH, 1000, 720, "found")
 	all := strings.Join(tt.Texts(), " | ")
-	for _, want := range []string{"想交给小鸭哪些？", "找的是", "memory distill", "给小鸭的话已写进右边", "找到 9 件讲记忆提炼的", "在哪儿做", "haswell", "你写了 haswell", "先出个方案", "交给小鸭这 6 件"} {
+	for _, want := range []string{"想交给小鸭哪些？", "找的是", "memory distill", "给小鸭的话已写进右边", "找到 9 件讲「记忆提炼」的", "在哪儿做", "haswell", "你写了 haswell", "先出个方案", "交给小鸭这 6 件"} {
 		if !strings.Contains(all, want) {
 			t.Fatalf("missing %q in %s", want, all)
 		}

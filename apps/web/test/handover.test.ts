@@ -2,7 +2,7 @@
 // the shapes offered (加进「…」 first), their lines, the plan's sections, a group's state, review's keep.
 import { expect, test } from "bun:test";
 import type { FoundItem, GroupHandView, HandHow, HandPlan } from "@ducter/protocol";
-import { foundLine, handState, oneRepoOf, planSections, planTasks, refLabel, refsLabel, reviewKeep, sections, setTicks, shapeChoices, shapeLine, suggestedShape } from "../src/handover-view.ts";
+import { foundLine, readingChips, handState, oneRepoOf, planSections, planTasks, refLabel, refsLabel, reviewKeep, sections, setTicks, shapeChoices, shapeLine, suggestedShape } from "../src/handover-view.ts";
 import { handoverWords } from "../src/i18n-handover.ts";
 
 const fmt = (s: string, args: unknown[]) => {
@@ -20,12 +20,21 @@ test("sections follow do, decide, later, close and leave empty groups out", () =
   expect(s[0]!.items.map((p) => p.item.label)).toEqual(["#2", "#4"]);
 });
 
-test("the find's line: the head, then each way it was found as its own fact; none when it says nothing new", () => {
-  expect(foundLine({ n: 9, subject: "记忆提炼", inTitle: 6, byLabel: 0, byMeaning: 3 }, tz)).toEqual({ head: "找到 9 件讲记忆提炼的", facts: ["标题里写着的 6 件", "说的是同一件事的 3 件"] });
-  expect(foundLine({ n: 4, subject: "memory distillation", inTitle: 4, byLabel: 0, byMeaning: 0 }, te)).toEqual({ head: "4 about memory distillation", facts: [] });
+test("the find's line (D428): the head in their words, then what was ticked when not all, and the unsure ones; never joined", () => {
+  expect(foundLine({ n: 5, subject: "UI/UX 问题走查", inTitle: 0, byLabel: 0, byMeaning: 5, within: 5, maybe: 1 }, tz, 4)).toEqual({ head: "找到 5 件讲「UI/UX 问题走查」的", facts: ["1 件不太确定，没勾"] });
+  expect(foundLine({ n: 23, subject: "UI review", inTitle: 0, byLabel: 0, byMeaning: 23, cut: 13 }, te, 10)).toEqual({ head: "23 about “UI review”", facts: ["Ticked the 10 likeliest"] });
   expect(foundLine({ n: 0, inTitle: 0, byLabel: 0, byMeaning: 0 }, tz).head).toBe("找到 0 件");
-  // D291: no fact carries a joined dot.
-  for (const f of foundLine({ n: 9, subject: "x", inTitle: 3, byLabel: 2, byMeaning: 4 }, tz).facts) expect(f).not.toContain("·");
+  for (const f of foundLine({ n: 23, subject: "x", inTitle: 3, byLabel: 2, byMeaning: 4, cut: 13, maybe: 2 }, tz, 10).facts) expect(f).not.toContain("·");
+});
+
+test("the reading's chips (D428): every fact, the about last; the about alone is the words typed, so none", () => {
+  const facets = [
+    { key: "person:100gle:assigned", kind: "person" as const, text: "100gle 分给你的", said: "100gle", by: "code" as const },
+    { key: "about", kind: "about" as const, text: "关于 UI 走查", said: "UI 走查", by: "code" as const },
+  ];
+  expect(readingChips({ about: "UI 走查", by: "code", facets }).map((c) => c.text)).toEqual(["100gle 分给你的", "关于 UI 走查"]);
+  expect(readingChips({ about: "distill", by: "code", facets: [facets[1]!] })).toEqual([]);
+  expect(readingChips(undefined)).toEqual([]);
 });
 
 const how = (o: Partial<HandHow> = {}): HandHow => ({ shape: "plan", shapes: ["plan", "one", "one_by_one", "side_by_side"], repo: "acme/mem", where: { device: "local", name: "Mac", why: "home" }, wheres: [], who: { why: "usual" }, whos: [], cap: 3, ...o });

@@ -650,6 +650,11 @@ export function createTaskSources(d: TaskSourcesDeps): TaskSources {
           const a = s ? adapterOf(s) : undefined;
           return a?.checks ? a.checks(prRef) : undefined;
         },
+        // D428: 我 / me in a find: the GitHub login a source reads as.
+        me: () => {
+          const s = okSources().find((x) => x.kind === "github");
+          return (s ? status.get(s.id)?.account : undefined) ?? foundGh?.login;
+        },
         changed: () => changed(),
       })
     : undefined;

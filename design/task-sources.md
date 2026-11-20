@@ -119,7 +119,11 @@ place (the same inode: Obsidian and the syncs keep following the file):
   or every 10 min (D351), with the newest three review requests and assigned mentions for On hand
   (D357); the fold's pages (D357): `/issues?filter=assigned&page=n` while nothing narrows, else search
   (`assignee:`/`review-requested:`, `repo:`, `label:`, the words), 30 a page, each kept 2 min, the
-  rate limit said as such; `/repos/{o}/{r}/issues/{n}`, comment and close through `--input -`), `obsidian.ts` (parser, the
+  rate limit said as such; `/repos/{o}/{r}/issues/{n}`, comment and close through `--input -`; D428: each item
+  keeps who opened it, who it is assigned to, `created_at` and its milestone, and the sort's read of every
+  open one (`all()`) asks GitHub's timeline once, through GraphQL search, 100 a page, who assigned each to
+  the person (`assignedBy`; a failure leaves it unsaid, never the list); the pile keeps a body's first
+  300 characters for the hand-over's finder, handover.md §12), `obsidian.ts` (parser, the
   write above, Obsidian's own vault list), `index.ts` (the store `task-sources.json`, looks every 2 min
   and each bound to-do every 5 min while its task is live, bindings, the cards and their Go, the standing
   goes, the tick on done).

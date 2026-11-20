@@ -16686,7 +16686,6 @@ textarea.wmem-paste { display: block; box-sizing: border-box; height: auto; widt
 .ho-ask { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }
 .ho-sug { flex: none; padding: 1px 8px; border-radius: var(--pill); background: var(--needs-surface); color: var(--needs-ink); font-size: var(--xs); font-weight: 700; white-space: nowrap; }
 .ho-carry { font-size: var(--sm); font-weight: 500; color: var(--ink-muted); }
-.ho-meaning { padding: 1px 8px; border-radius: var(--pill); background: var(--waiting-surface); color: var(--waiting-ink); font-size: var(--xs); font-weight: 600; white-space: nowrap; }
 .ho-note-link { align-self: flex-start; margin-left: 36px; padding: 2px 0; border: 0; background: none; color: var(--ink-muted); font: inherit; font-size: var(--sm); cursor: pointer; text-decoration: underline; text-decoration-color: var(--line-2); text-underline-offset: 3px; min-height: 32px; }
 .ho-note-link:hover { color: var(--ink); }
 .ho-itemnote { margin-left: 36px; padding: 8px 10px; border: 0; border-radius: 12px; background: var(--sunken); color: var(--ink); font: inherit; font-size: var(--sm); line-height: 1.5; resize: none; field-sizing: content; min-height: 2.6em; max-height: 40vh; outline: 0; box-shadow: inset 0 0 0 1px var(--line); animation: ho-settle 200ms var(--ease) both; }
@@ -16860,7 +16859,7 @@ a.pr:hover { box-shadow: inset 0 0 0 1px var(--line-2); }
 @keyframes ho-in-next { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: none; } }
 @keyframes ho-in-back { from { opacity: 0; transform: translateX(-24px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) {
-  .ho-item, .ho-right > *, .ho-chip, .ho-set, .ho-plan, .ho-plan-sec, .ho-rv, .ho-review-ready, .ho-itemnote, .ho-picks, .ho-reply, .ho-shape .t em, .ho-sheet.thin .ho-cols.one > * { animation: none; }
+  .ho-item, .ho-right > *, .ho-chip, .ho-fact, .ho-set, .ho-plan, .ho-plan-sec, .ho-rv, .ho-review-ready, .ho-itemnote, .ho-picks, .ho-reply, .ho-shape .t em, .ho-sheet.thin .ho-cols.one > * { animation: none; }
   .ho-box, .ho-box.on, .ho-box svg path, .ho-dot, .ho-shape, .ho-list { animation: none; transition: none; }
   .ho-breath i, .ho-skel i { animation: none; opacity: 0.6; }
 }
@@ -16903,6 +16902,24 @@ a.pr:hover { box-shadow: inset 0 0 0 1px var(--line-2); }
 .ho-words-x:hover { background: var(--sunken); color: var(--ink); }
 .ho-heard { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; animation: ho-settle 240ms var(--ease) both; }
 .ho-heard-moved { padding: 0 4px; font-size: var(--sm); color: var(--ink-muted); }
+/* D428: the reading, one chip per fact; a tap removes it and finds again. */
+.ho-reading { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.ho-reading > small { padding: 0 4px 0 2px; font-size: var(--sm); color: var(--ink-muted); }
+.ho-fact { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; max-width: 100%; padding: 0 6px 0 12px; border: 0; border-radius: var(--pill); background: var(--sunken); color: var(--ink); font: inherit; font-size: var(--sm); font-weight: 650; cursor: pointer; transition: background 140ms var(--ease), box-shadow 140ms var(--ease); animation: ho-settle 240ms var(--ease) both; animation-delay: calc(var(--i, 0) * 30ms); }
+.ho-fact > span:first-child { min-width: 0; overflow-wrap: anywhere; }
+.ho-fact .x { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; color: var(--ink-muted); font-weight: 500; line-height: 1; }
+.ho-fact:hover { background: var(--surface); box-shadow: inset 0 0 0 1px var(--line-2); }
+.ho-fact:hover .x { background: var(--sunken); color: var(--ink); }
+.ho-fact.k-about { background: none; box-shadow: inset 0 0 0 1.5px var(--line-2); }
+.ho-fact.static { padding: 0 10px; cursor: default; min-height: 26px; font-size: var(--xs); }
+.ho-fact-undo { min-height: 32px; padding: 0 8px; border: 0; background: none; color: var(--accent); font: inherit; font-size: var(--sm); cursor: pointer; }
+.ho-unknown { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 8px 12px; border-radius: var(--r-md); background: var(--waiting-surface); color: var(--waiting-ink); font-size: var(--sm); font-weight: 600; }
+.ho-unknown small { font-weight: 500; }
+.ho-unknown .ho-chip { min-height: 30px; background: var(--surface); }
+.ho-unknown-held { flex-basis: 100%; opacity: 0.85; }
+.ho-set-reading { display: flex; flex-wrap: wrap; gap: 5px; margin: 2px 0 6px; }
+.ho-because { min-width: 0; color: var(--ink-muted); font-size: var(--xs); overflow-wrap: anywhere; }
+.ho-maybe { padding: 1px 8px; border-radius: var(--pill); background: var(--waiting-surface); color: var(--waiting-ink); font-size: var(--xs); font-weight: 600; white-space: nowrap; }
 .ho-heard-part { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; max-width: 100%; padding: 6px 12px; border-radius: 12px; background: var(--sunken); }
 .ho-heard-part small { font-size: var(--xs); font-weight: 700; color: var(--ink-muted); }
 .ho-heard-part b { font-weight: 700; color: var(--ink); }

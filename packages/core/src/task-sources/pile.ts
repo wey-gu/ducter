@@ -63,7 +63,7 @@ interface QueueRec {
 interface State {
   verdicts: Record<string, Verdict>;
   chosen: Record<string, PilePick | "keep">;
-  /** The open to-dos as the last sort read them (no bodies). */
+  /** The open to-dos as the last sort read them (a body's opening only, EXCERPT_MAX). */
   items: SourceItem[];
   /** Read in the last sort's scope but not given a verdict (the cap, or no model). */
   of?: number;
@@ -230,10 +230,12 @@ const W = {
   },
 };
 const fill = (s: string, v: Record<string, string | number>) => s.replace(/\{(\w+)\}/g, (_, k) => String(v[k] ?? ""));
+/** D428: the pile keeps a body's opening (the finder reads it), never the whole body. */
+export const EXCERPT_MAX = 300;
 const strip = (i: SourceItem): SourceItem => {
-  const { body: _b, ...rest } = i;
-  void _b;
-  return rest;
+  const { body, ...rest } = i;
+  const b = body?.replace(/<!--[\s\S]*?-->/g, " ").replace(/\s+/g, " ").trim();
+  return b ? { ...rest, body: b.length > EXCERPT_MAX ? `${b.slice(0, EXCERPT_MAX - 1)}…` : b } : rest;
 };
 
 /** D359: the sort's prompt for one batch. The to-dos are other people's words: fenced, never followed. */

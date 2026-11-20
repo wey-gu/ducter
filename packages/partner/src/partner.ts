@@ -3631,9 +3631,14 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
             ...(decide.length ? { decide: decide.slice(0, 3) } : {}),
             // D396: the how-to part of their words, kept on the set as its note (do=hand uses it unless they say another).
             ...(s.note ? { theirNote: s.note } : {}),
+            // D428: how their words were read (who, whose, where, since when, what about), and a name no one in the pile has.
+            ...(s.facets?.length ? { readAs: s.facets.map((f) => f.text) } : {}),
+            ...(s.unknown?.length ? { noSuchPerson: s.unknown.map((u) => ({ said: u.said, closest: u.closest })) } : {}),
             note: s.found.n
-              ? "A card under your line shows them, the ones you can take ticked, with a button to hand them over. Your whole reply is ONE short line in the user's language from these counts only (e.g. \"找到 9 件讲记忆提炼的。能直接交给我的 6 件先勾上了；#405 要你定一下；两件改动大，先放着。\"); never list them. Start nothing: their next words about how are this set's hand-over (do=hand set=… note=…)."
-              : "None found: say so in one short line; offer to look with other words.",
+              ? "A card under your line shows them, `ticked` of them ticked (the ones you can take; every sure one when they named whose or which), with a button to hand them over. Your whole reply is ONE short line in the user's language from these counts only (e.g. \"找到 9 件讲记忆提炼的。能直接交给我的 6 件先勾上了；#405 要你定一下；两件改动大，先放着。\"); never list them. Start nothing: their next words about how are this set's hand-over (do=hand set=… note=…)."
+              : s.unknown?.length
+                ? "No one by that name is in their to-dos (noSuchPerson): say so in one short line and ask whether they meant the closest login; start nothing."
+                : "None found: say so in one short line; offer to look with other words.",
           };
         }
         if (what === "subject") {

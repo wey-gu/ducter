@@ -10,7 +10,8 @@ import { join } from "node:path";
 import type { Bodies, Runner, TaskCard } from "@ducter/protocol";
 import { canBeOne, defaultShape } from "@ducter/protocol";
 import { startCore } from "../src/core.ts";
-import { aboutOf, codeMatch, lastingWhere, namedComputer, parseFind, parsePlan, queryWords, splitWords } from "../src/task-sources/handover.ts";
+import { aboutOf, lastingWhere, namedComputer, parsePlan, splitWords } from "../src/task-sources/handover.ts";
+import { parseMeaning } from "../src/task-sources/find.ts";
 import type { Ask } from "../src/task-sources/pile.ts";
 import { fakeGh, type FakeIssue } from "./fake-gh-issues.ts";
 import { tempDir } from "./helpers.ts";
@@ -42,10 +43,11 @@ function issues(): FakeIssue[] {
 /** The fake cheapest model: sorts by words (with a subject), and finds by meaning (anything about distilling, in either language). */
 function fakeAsk(calls: { finds: number }): Ask {
   return async (prompt) => {
-    if (prompt.includes("<query>")) {
+    if (prompt.includes("<logins>")) return { text: "{}", tokens: 500 };
+    if (prompt.includes("<about>")) {
       calls.finds++;
       const rows = JSON.parse(/<todos>\n([\s\S]*)\n<\/todos>/.exec(prompt)![1]!) as { id: number; title: string; subject?: string }[];
-      return { text: JSON.stringify({ subject: "记忆提炼", ids: rows.filter((r) => /distill|提炼|facts/i.test(r.title)).map((r) => r.id) }), tokens: 3000 };
+      return { text: JSON.stringify({ found: rows.filter((r) => /distill|提炼|facts/i.test(r.title)).map((r) => ({ id: r.id, sure: "high", why: "讲记忆提炼" })) }), tokens: 3000 };
     }
     const rows = JSON.parse(/<todos>\n([\s\S]*)\n<\/todos>/.exec(prompt)![1]!) as { id: number; title: string }[];
     return {
@@ -152,17 +154,11 @@ test("the shape by code's table: one is one task; errands as one; a subject or 4
   expect(canBeOne([gh("a/b"), gh("a/b")])).toBe(true);
 });
 
-test("code's match: a number, every word in the title (a word may start a longer one), a label; the model's answer read strictly", () => {
-  const q = queryWords("memory distill #405");
-  expect(q).toEqual({ words: ["memory", "distill"], numbers: ["405"] });
-  const it = (title: string, label = "#1", labels?: string[]) => ({ item: { source: "s", kind: "github" as const, ref: `a/b${label}`, label, title, state: "open" as const, ...(labels ? { labels } : {}) } });
-  expect(codeMatch(it("x", "#405"), q)).toBe("ref");
-  expect(codeMatch(it("Memory distillation is slow"), queryWords("memory distill"))).toBe("title");
-  expect(codeMatch(it("Packet code is slow", "#2", ["component/distillation"]), queryWords("distill"))).toBe("label");
-  expect(codeMatch(it("长对话的自动提炼总是失败"), queryWords("提炼"))).toBe("title");
-  expect(codeMatch(it("Login is slow"), queryWords("distill"))).toBeUndefined();
-  expect(parseFind('x {"subject":"记忆提炼","ids":[0,2,2,9,"1"]} y', 3)).toEqual({ subject: "记忆提炼", ids: [0, 2] });
-  expect(parseFind("nope", 3)).toBeUndefined();
+test("D428 the model's meaning is read strictly: ids in range, once each, sure or maybe, a short why", () => {
+  expect(parseMeaning('x {"found":[{"id":0,"sure":"high","why":"讲记忆提炼"},{"id":2,"sure":"maybe"},{"id":2},{"id":9},{"id":"1"}]} y', 3)).toEqual({ found: [{ id: 0, sure: "high", why: "讲记忆提炼" }, { id: 2, sure: "maybe" }] });
+  // The 0.1.1 answer ({ids}) still reads, every one sure.
+  expect(parseMeaning('{"ids":[1]}', 3)).toEqual({ found: [{ id: 1, sure: "high" }] });
+  expect(parseMeaning("nope", 3)).toBeUndefined();
 });
 
 test("where from the note's own words: a computer named as a word; a lasting where is told from a one-off", () => {
@@ -195,20 +191,21 @@ test("the sort names a subject per to-do; the pile shows 讲的是 past 20 open,
   expect(v.subjects!.every((s) => s.n >= 3)).toBe(true);
 });
 
-test("find: code's match on words and labels, then meaning across languages in one cached call; every sort group; do ones ticked", async () => {
+test("find: meaning across languages in one cached call, each with why; every sort group; the sure ones ticked; the subject is their words", async () => {
   const b = boot();
   await sorted(b);
   const r = await b.ho.find({ query: "distill" });
   const refs = r.items.map((p) => p.item.ref);
   expect(refs).toContain("acme/mem#366"); // Chinese title: by meaning
-  expect(refs).toContain("acme/mem#351"); // by its label only
+  expect(refs).toContain("acme/mem#351"); // its label says distillation, its title doesn't: the model's, never code's
   expect(r.items.find((p) => p.item.ref === "acme/mem#366")!.by).toBe("meaning");
-  expect(r.items.find((p) => p.item.ref === "acme/mem#351")!.by).toBe("label");
+  expect(r.items.find((p) => p.item.ref === "acme/mem#351")!.by).toBe("meaning");
+  expect(r.items.every((p) => p.because === "讲记忆提炼" && p.sure === "high")).toBe(true);
   expect(new Set(r.items.map((p) => p.group))).toEqual(new Set(["do", "decide", "later"]));
   expect(r.items[0]!.group).toBe("do"); // do first
+  // D428: a kind of thing (no facts) ticks the sure do ones, at most TICK_MAX.
   expect(r.ticked).toEqual(r.items.filter((p) => p.group === "do").map((p) => p.item.ref));
-  expect(r.found).toMatchObject({ n: 8, subject: "记忆提炼", byLabel: 1 });
-  expect(r.found.inTitle + r.found.byLabel + r.found.byMeaning).toBe(8);
+  expect(r.found).toMatchObject({ n: 8, subject: "distill", byLabel: 0 });
   await b.ho.find({ query: "distill" });
   expect(b.calls.finds).toBe(1); // cached until the next sort
   const chip = await b.ho.find({ subject: "记忆提炼" });
@@ -226,14 +223,13 @@ test("D396 the words split by clause: what to find, and the note word for word; 
   expect(splitWords("关于登录的")).toEqual({ about: "登录" });
   expect(splitWords("#405")).toEqual({ about: "#405" });
   expect(aboutOf("the ones about the importer")).toBe("importer");
-  expect(parseFind('{"subject":"x","ids":[0],"about":"distill","note":"先别动数据库"}', 1)).toEqual({ subject: "x", ids: [0], about: "distill", note: "先别动数据库" });
 });
 
 test("D396 find by words: the subject by code, the note beside it; the model's split kept only when it is their words; suggestions put what they handed over first", async () => {
   const b = boot();
   await sorted(b);
   const r = await b.ho.find({ words: "关于 distill 的，先别动数据库" });
-  expect(r.said).toEqual({ about: "distill", note: "先别动数据库", by: "code" });
+  expect(r.said).toMatchObject({ about: "distill", note: "先别动数据库", by: "code", facets: [{ key: "about", kind: "about", text: "关于 distill" }] });
   expect(r.query).toBe("distill");
   expect(r.found.n).toBe(8);
   expect(r.suggest).toContain("记忆提炼"); // the pile's biggest subjects

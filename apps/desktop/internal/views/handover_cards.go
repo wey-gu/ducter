@@ -57,6 +57,16 @@ func (a *App) setCard(c *ui.Context, e *store.Entry) {
 			a.heading(c, subj, t.XL).Shrink(1).MinWidth(0)
 			uiText(c.Key("n"), a.L.T("hand.set.n", len(s.Refs))).FontSize(t.SM).TextColor(t.InkMuted).FontFeatures("tnum")
 		})
+		// D428: how the words were read, one chip per fact (changed on the sheet).
+		if chips := readingChips(&protocol.FindSaid{Facets: s.Facets}); len(chips) > 0 && !handed {
+			ui.Row(c.Key("reading")).Wrap().Gap(6).Children(func() {
+				for _, f := range chips {
+					ui.Row(c.Key("fc:"+f.Key)).Height(24).Padding(0, t.S2).Radius(12).AlignItems(ui.Center).Background(t.SurfaceSunken).Children(func() {
+						uiText(c, f.Text).FontSize(t.XS).FontWeight(650).TextColor(t.InkSoft)
+					})
+				}
+			})
+		}
 		for _, it := range s.Rows {
 			it := it
 			ref := it.Item.Ref

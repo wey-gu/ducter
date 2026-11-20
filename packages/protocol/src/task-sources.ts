@@ -54,6 +54,14 @@ export interface SourceItem extends SourceItemRef {
   taskId?: string;
   /** github: who opened it (a review request's author). */
   author?: string;
+  /** D428: github: who it is assigned to (logins; the person is one of them for an assigned one). */
+  assignees?: string[];
+  /** D428: github: who assigned it to the person (the last assignment's actor), when GitHub's timeline was read. */
+  assignedBy?: string;
+  /** D428: github created_at. */
+  createdAt?: string;
+  /** D428: github: its milestone's title. */
+  milestone?: string;
   /**
    * github: a pull request waiting for the person's review (review requested, not assigned). It is
    * opened, never taken (D341 offers only what is assigned).
@@ -367,7 +375,7 @@ export type SourcesClientFrame =
   // set card's refs: every sort group, each item with how it was found.
   // D396: words: the person's whole sentence ("关于 distill 的，先别动数据库"): core splits what to find
   // from the note (said) and finds by the first; none of the four: only the suggestions (suggest).
-  | { t: "pile_find"; query?: string; words?: string; subject?: string; setId?: string; clientId?: string }
+  | { t: "pile_find"; query?: string; words?: string; subject?: string; setId?: string; clientId?: string; drop?: string[] }
   // D415: the person's own subjects (分类): answered with pile_result op "subject" (name: as kept).
   | { t: "pile_subject"; op: SubjectOp; name: string; to?: string; refs?: string[]; clientId?: string }
   // D385: the sheet's how for the ticked set and the note so far (sent as they change).

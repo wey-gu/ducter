@@ -50,6 +50,28 @@ type FindSummary struct {
 	ByLabel   int    `json:"byLabel"`
 	ByMeaning int    `json:"byMeaning"`
 	NoMeaning string `json:"noMeaning,omitempty"`
+	// D428: the ones the reading's hard facts left; sure ones past the
+	// tick cap (not ticked); unsure ones (shown, never ticked).
+	Within *int `json:"within,omitempty"`
+	Cut    int  `json:"cut,omitempty"`
+	Maybe  int  `json:"maybe,omitempty"`
+}
+
+// FindFacet is one fact read out of the sentence (D428), shown as its own
+// chip: 「100gle 提的」「分给你的」「关于 UI 走查」. Kind: person | mine | repo |
+// label | ref | since | pr | about. Tapping one drops it (PileFindReq.Drop).
+type FindFacet struct {
+	Key  string `json:"key"`
+	Kind string `json:"kind"`
+	Text string `json:"text"`
+	Said string `json:"said"`
+	By   string `json:"by"`
+}
+
+// FindUnknown is a name the pile doesn't have, with the closest logins.
+type FindUnknown struct {
+	Said    string   `json:"said"`
+	Closest []string `json:"closest"`
 }
 
 // FindSaid is how core heard the words (D396): what it looked for (About)
@@ -58,13 +80,24 @@ type FindSaid struct {
 	About string `json:"about"`
 	Note  string `json:"note,omitempty"`
 	By    string `json:"by"`
+	// D428: the reading, one chip per fact (the about last); names it
+	// couldn't find; the chips the person dropped.
+	Facets  []FindFacet   `json:"facets,omitempty"`
+	Unknown []FindUnknown `json:"unknown,omitempty"`
+	Dropped []string      `json:"dropped,omitempty"`
 }
+
+// TickMax is how many found ones are ticked without asking (D428).
+const TickMax = 10
 
 // FoundItem is one to-do in a find, and how it was found:
 // title | label | meaning | subject | ref.
 type FoundItem struct {
 	PileItem
 	By string `json:"by"`
+	// D428: why it is here in a few words; high (ticked) or maybe (never ticked).
+	Because string `json:"because,omitempty"`
+	Sure    string `json:"sure,omitempty"`
 }
 
 // HandWhere is 在哪儿做 / Where: a computer and why it was chosen
@@ -119,6 +152,8 @@ type TodoSet struct {
 	GroupID string      `json:"groupId,omitempty"`
 	// D396: the how-to part of the words it was found by: the hand-over's note.
 	Note string `json:"note,omitempty"`
+	// D428: the reading's chips.
+	Facets []FindFacet `json:"facets,omitempty"`
 }
 
 // PlanPart is one part of a plan: one task for these to-dos.
@@ -276,6 +311,8 @@ type PileFindReq struct {
 	Subject  string `json:"subject,omitempty"`
 	SetID    string `json:"setId,omitempty"`
 	ClientID string `json:"clientId,omitempty"`
+	// D428: the reading's chips the person removed (their keys).
+	Drop []string `json:"drop,omitempty"`
 }
 
 // PileHowReq asks the sheet's how for the ticked set and the note so far.

@@ -19,6 +19,7 @@ import { computeruse } from "./i18n-computeruse.ts";
 import { channelWords } from "./i18n-channels.ts";
 import { todoWords } from "./i18n-todos.ts";
 import { groupWords } from "./i18n-groups.ts";
+import { asksWords } from "./i18n-asks.ts";
 import { handoverWords } from "./i18n-handover.ts";
 import { handset } from "./i18n-handset.ts";
 import { fileWords } from "./i18n-fileview.ts";
@@ -3207,6 +3208,9 @@ Object.assign(TABLES.en, todoWords.en);
 // D360: 分组 / Groups on On hand (i18n-groups.ts).
 Object.assign(TABLES.zh, groupWords.zh);
 Object.assign(TABLES.en, groupWords.en);
+// D425: several things in one message, under it (i18n-asks.ts).
+Object.assign(TABLES.zh, asksWords.zh);
+Object.assign(TABLES.en, asksWords.en);
 // D385: handing several over (i18n-handover.ts).
 Object.assign(TABLES.zh, handoverWords.zh);
 Object.assign(TABLES.en, handoverWords.en);

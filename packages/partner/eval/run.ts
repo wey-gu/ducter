@@ -322,6 +322,8 @@ interface RunResult {
   shelf?: boolean;
   appsSeeded?: { id: string; html: string }[];
   dropped?: number;
+  /** D425: how many lines stand under the user's message at the end. */
+  linesNow?: number;
 }
 
 // ---------- fake Bridge (scenario.bridge): the fake nmem CLI over one JSON mailbox file ----------
@@ -654,6 +656,9 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
       appsSeeded.push({ id: r.app.id, html: core.apps.html(r.app.id) ?? "", name: r.app.name });
     } else if ("boardOffer" in s) {
       if (!core.boards!.offer(idOf.get(s.boardOffer.task)!, s.boardOffer.kind)) throw new Error("boardOffer seed: not offered");
+    } else if ("asks" in s) {
+      // D425: the lines under the last seeded user message, each with its seeded task.
+      for (const l of s.asks.lines) core.asks.add(lastUser, idOf.get(l.task)!, [l.words]);
     } else if ("bound" in s) {
       const it = await core.taskSources.item(s.bound.ref);
       if (!it) throw new Error(`fake GitHub: no ${s.bound.ref}`);
@@ -793,6 +798,7 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
     else if ("boardOffer" in s) lines.push(`(earlier) Ducter offered on its own card: keep task "${s.boardOffer.task}"'s rounds on a board?`);
     else if ("bound" in s) lines.push(`(earlier) Ducter bound task "${s.bound.task}" to the GitHub issue ${s.bound.ref} (the user took it from their to-dos)`);
     else if ("todoSet" in s) lines.push(`(earlier) the partner found the to-dos about "${s.todoSet.query}" and said: ${s.todoSet.ai} (a set card under it shows them, the takeable ones ticked)`);
+    else if ("asks" in s) lines.push(`(earlier) under that message the app shows its lines: ${s.asks.lines.map((l, i) => `${i + 1}. ${l.words} (task "${l.task}")`).join("; ")}`);
     else if ("handSet" in s) lines.push(`(earlier) that set was handed over as one group; a plan is being made first (nothing else started)${s.handSet.note ? `; the user's note: ${s.handSet.note}` : ""}`);
     else lines.push(`(earlier) reminder set: ${s.waiterArmed.reason}`);
   }
@@ -885,6 +891,9 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   } catch {
     /* none */
   }
+  // D425: the lines under the user's message as the run left them (the newest asks event of the run).
+  const asksNow = core.log.read({ kinds: ["asks"], fromSeq: startSeq + 1, limit: 1000 }).at(-1)?.body as Bodies["asks"] | undefined;
+  if (asksNow) lines.push(`--- under the user's message: ${asksNow.lines.map((l, i) => `${i + 1}. ${l.words} (${l.state})`).join("; ")}`);
   if (rulesNow.length) lines.push(`--- the person's rules after the run: ${rulesNow.map((x) => `"${x.text}" (${x.never ? "never" : "always"} ${x.harness}${x.kinds?.length ? `, ${x.kinds.join("/")}` : ""})`).join("; ")}`);
   await partner.close().catch(() => {});
   const shelf = core.log.read({ stream: "channel", kinds: ["ai_msg"], limit: 400 }).some((ev) => (ev.body as Bodies["ai_msg"]).shelf === true);
@@ -894,7 +903,7 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   const appsNow = core.apps.list(persona.id ?? core.persona.id).map((m) => ({ id: m.id, name: m.name, version: m.version, html: core.apps.html(m.id) ?? "", data: core.apps.data(m.id), ...(m.task ? { task: m.task.id } : {}) }));
   // D405: the apps the model wrote, kept whole for a look (the results file clips them); never committed.
   if (process.env.DUCTER_EVAL_APPS_DIR) for (const a of appsNow) writeFileSync(join(process.env.DUCTER_EVAL_APPS_DIR, `${sc.id}-${a.id}-v${a.version}.html`), a.html), writeFileSync(join(process.env.DUCTER_EVAL_APPS_DIR, `${sc.id}-${a.id}-v${a.version}.json`), JSON.stringify({ name: a.name, data: a.data }));
-  return { sc, visible, dayCards, calKinds, todoCards, boundRefs, blocks, shown, appCards, appAnswers, appsNow, shelf, appsSeeded, dropped, tools, opened: fr.opened, sent, keyOf, idOf, dataDir, usage, error, ms: Date.now() - t0, transcript: lines.join("\n"), recalls, threadSearches, remembered: mem.added, memAttempts, sources, retitles, bridgeSent, work: { ...work, asks }, bodies, saidAsks, rulesNow };
+  return { sc, visible, dayCards, calKinds, todoCards, boundRefs, blocks, shown, appCards, appAnswers, appsNow, shelf, appsSeeded, dropped, tools, opened: fr.opened, sent, keyOf, idOf, dataDir, usage, error, ms: Date.now() - t0, transcript: lines.join("\n"), recalls, threadSearches, remembered: mem.added, memAttempts, sources, retitles, bridgeSent, work: { ...work, asks }, bodies, saidAsks, rulesNow, linesNow: asksNow?.lines.length ?? 0 };
 }
 
 const r_opened = (o: Opened[], step: number) => o.filter((x) => x.step === step);
@@ -1173,6 +1182,11 @@ function check(r: RunResult): string[] {
     if (!hit) fails.push(`no ${c.tool}${c.args ? ` with ${Object.entries(c.args).map(([k, v]) => `${k}=${v}`).join(", ")}` : ""}`);
   }
   for (const n of e.notCalled ?? []) if (r.tools.some((t) => t.name === n || t.name.endsWith(`__${n}`))) fails.push(`called ${n}`);
+  // D425: the lines under the user's message at the end (named in asks, or one per task by its title).
+  if (e.asks) {
+    const n = r.linesNow ?? 0;
+    if (n < e.asks[0] || n > e.asks[1]) fails.push(`lines under the message ×${n} (want ${e.asks[0] === e.asks[1] ? e.asks[0] : `${e.asks[0]}-${e.asks[1]}`})`);
+  }
   // D360: a split opened as its parts, all under one group name.
   if (e.groupParts !== undefined) {
     // Each call once (a call can show as its stream events and its end), counted by title.

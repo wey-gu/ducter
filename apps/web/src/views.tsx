@@ -31,6 +31,7 @@ import { OwnPhoneCard } from "./own-phone.tsx";
 import { Said, say } from "./set-grid.tsx";
 import { DangerButton } from "./controls.tsx";
 import { Select } from "./menu.tsx";
+import { AskLines, TaskAsks } from "./asks.tsx";
 import { CallDecision, CallRow, PhoneCard, PhoneOffer } from "./phone.tsx";
 import { callEnded } from "@ducter/protocol";
 import { FindsNote } from "./finds.tsx";
@@ -1251,7 +1252,20 @@ function RichWords({ e, ans, rk }: { e: Entry; ans?: { seq: number; quote: strin
   );
 }
 
-function EntryView({ e, chipOwner, livingItems, join, prevUser }:{ e: Entry; chipOwner: Map<string, number>; livingItems: (e: Entry) => LivingItem[]; join?: boolean; prevUser?: number }) {
+function EntryView(p: { e: Entry; chipOwner: Map<string, number>; livingItems: (e: Entry) => LivingItem[]; join?: boolean; prevUser?: number }) {
+  // D425: the several things a message asked for stand under its words, line by line.
+  const a = p.e.user ? p.e.asks : undefined;
+  if (a && a.lines.length >= 2)
+    return (
+      <>
+        <EntryBody {...p} />
+        <AskLines a={a} />
+      </>
+    );
+  return <EntryBody {...p} />;
+}
+
+function EntryBody({ e, chipOwner, livingItems, join, prevUser }: { e: Entry; chipOwner: Map<string, number>; livingItems: (e: Entry) => LivingItem[]; join?: boolean; prevUser?: number }) {
   const rk = replyKey(replyOf(e));
   if (e.user) {
     // D405: an app's ask, or words typed in an app's sheet: a small line names the app (a tap opens it).
@@ -2416,6 +2430,8 @@ export function TaskView({ id, full }: { id: string; full?: boolean }) {
           </div>
           {headline && <p class="headline">{headline}</p>}
         </div>
+        {/* D425: the things of a many-things message this task does, each with its mark. */}
+        <TaskAsks id={id} />
         {(detail || watchable || phoning) && (
           <div class={`outcome${watchable || phoning ? " watch-row" : ""}`}>
             {detail && <div class="said">{safe(detail)}</div>}

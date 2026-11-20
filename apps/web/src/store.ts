@@ -30,6 +30,8 @@ export interface Entry {
   peer?: Bodies["bridge_msg"]; // D170: one quiet line about the user's other agents
   /** D385: a set of to-dos the partner found (todos do=find): its card; a later one with the same setId updates it. */
   set?: Bodies["todo_set"];
+  /** D425: on a user's message: the several things it asked for, line by line (the latest `asks`). */
+  asks?: Bodies["asks"];
 }
 
 export type DecisionState = Bodies["decision"] & {
@@ -223,6 +225,8 @@ export class Store {
   welcomed = false;
   channel: Entry[] = [];
   bySeq = new Map<number, Entry | null>();
+  /** D425: lines that came before their message was loaded (history paging), kept until it is. */
+  asksWaiting = new Map<number, Bodies["asks"]>();
   jobs = new Map<string, Job>();
   decisions = new Map<string, DecisionState>();
   tasks = new Map<string, Task>();
@@ -504,9 +508,23 @@ export class Store {
     if (ev.kind !== "read_receipt") this.channelSeq = Math.max(this.channelSeq, ev.seq);
     const entry = (e: Partial<Entry>) => this.add({ ev, firstSeq: ev.seq, revision: 0, ...e });
     switch (ev.kind) {
-      case "user_msg":
+      case "user_msg": {
         this.lastUserSeq = Math.max(this.lastUserSeq, ev.seq);
-        return entry({ user: ev.body as Bodies["user_msg"] });
+        const waiting = this.asksWaiting.get(ev.seq);
+        if (waiting) this.asksWaiting.delete(ev.seq);
+        return entry({ user: ev.body as Bodies["user_msg"], ...(waiting ? { asks: waiting } : {}) });
+      }
+      case "asks": {
+        // D425: the latest lines win, drawn under their message; the event itself is no row.
+        const b = ev.body as Bodies["asks"];
+        this.bySeq.set(ev.seq, null);
+        const at = this.bySeq.get(b.msgSeq);
+        if (at?.user) {
+          at.asks = b;
+          at.revision++;
+        } else this.asksWaiting.set(b.msgSeq, b);
+        return;
+      }
       case "finds": {
         const b = ev.body as Bodies["finds"];
         // A quiet morning (D173): nothing sent, nothing shown, not even a header line.

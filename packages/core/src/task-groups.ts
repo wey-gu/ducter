@@ -68,6 +68,8 @@ export interface TaskGroupsDeps {
   newId?: () => string;
   /** D385: a held part opened as this task (bind it to its to-dos). */
   opened?: (taskId: string, bind: SourceItemRef[], group: TaskGroupView) => void;
+  /** D425: a held member opened as this task (its lines under the message go with it). */
+  heldOpened?: (key: string, taskId: string) => void;
 }
 
 const clean = (s: unknown) => String(s ?? "").replace(/\s+/g, " ").trim().slice(0, GROUP_NAME_MAX);
@@ -206,6 +208,7 @@ export function createTaskGroups(d: TaskGroupsDeps): TaskGroups {
               g.members[i] = { taskId: opened.taskId, ...(m.line ? { line: m.line } : {}) };
               touched = true;
               if (m.bind?.length) d.opened?.(opened.taskId, m.bind, view(g));
+              d.heldOpened?.(m.key, opened.taskId);
             } catch (err) {
               console.warn(`[groups] couldn't open "${m.title}" in "${g.name}":`, (err as Error).message);
               break;

@@ -1,0 +1,28 @@
+{
+  "about": "D425: the author's 11-12 message done the new way, as both clients fold it: one look-up and three calendar entries, one browser task, the lines under the message revised in place; and lines that arrive before their message (a history page).",
+  "events": [
+    { "seq": 1, "ts": "2026-11-12T00:31:00.000Z", "persona": "default", "stream": "channel", "origin": "user", "kind": "user_msg", "body": { "text": "我下周有什么预约么 帮我在 gmail 日历记录我 20 号要去北京 agibar 参加一个分享，这个周日要去杭州 coscon 参加 bof，下周四要参加 Tabs 上海和组织者见面" } },
+    { "seq": 2, "ts": "2026-11-12T00:31:02.000Z", "persona": "default", "stream": "channel", "origin": "partner", "kind": "ack", "body": { "jobId": "job_cal", "text": "好，我去看下周的安排，再把这三项记进日历，弄好了告诉你。", "replyTo": 1 } },
+    { "seq": 3, "ts": "2026-11-12T00:31:03.000Z", "persona": "default", "stream": "channel", "origin": "system", "kind": "asks", "body": { "msgSeq": 1, "lines": [
+      { "words": "我下周有什么预约", "taskId": "t_cal", "state": "working" },
+      { "words": "20 号北京 agibar 分享", "taskId": "t_cal", "state": "working" },
+      { "words": "周日杭州 COSCon BoF", "taskId": "t_cal", "state": "working" },
+      { "words": "下周四 Tabs 上海见组织者", "taskId": "t_cal", "state": "working" }
+    ] } },
+    { "seq": 4, "ts": "2026-11-12T00:33:40.000Z", "persona": "default", "stream": "channel", "origin": "system", "kind": "asks", "body": { "msgSeq": 1, "lines": [
+      { "words": "我下周有什么预约", "taskId": "t_cal", "state": "done", "note": "下周日历上没有别的安排" },
+      { "words": "20 号北京 agibar 分享", "taskId": "t_cal", "state": "done", "note": "记好了，11 月 20 日" },
+      { "words": "周日杭州 COSCon BoF", "taskId": "t_cal", "state": "done", "note": "记好了，11 月 15 日" },
+      { "words": "下周四 Tabs 上海见组织者", "taskId": "t_cal", "state": "needs_you", "note": "几点见？说个时间我就记上" }
+    ] } },
+    { "seq": 9, "ts": "2026-11-12T00:40:00.000Z", "persona": "default", "stream": "channel", "origin": "system", "kind": "asks", "body": { "msgSeq": 10, "lines": [
+      { "words": "check the pricing page", "taskId": "t_p", "state": "done" },
+      { "words": "write the release notes", "taskId": "t_n", "state": "working" }
+    ] } },
+    { "seq": 10, "ts": "2026-11-12T00:39:00.000Z", "persona": "default", "stream": "channel", "origin": "user", "kind": "user_msg", "body": { "text": "check the pricing page and write the release notes" } }
+  ],
+  "want": {
+    "1": { "states": ["done", "done", "done", "needs_you"], "count": [3, 1] },
+    "10": { "states": ["done", "working"] }
+  }
+}

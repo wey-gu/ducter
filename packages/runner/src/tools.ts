@@ -1,6 +1,6 @@
 // Task-role Ducter MCP tools: report_to_main and checkpoint. Core serves them at /mcp; this
 // registers the handlers. Call once at wiring time (main.ts) unless core registers its own.
-import { MEDIA_LIMITS, type Attention, type Bodies, type BranchChanges, type EvidenceRef, type FolderSummary, type MediaRef, type Question, type RememberNote } from "@ducter/protocol";
+import { ASK_NOTE_MAX, ASKS_MAX, MEDIA_LIMITS, type AskReport, type Attention, type Bodies, type BranchChanges, type EvidenceRef, type FolderSummary, type MediaRef, type Question, type RememberNote } from "@ducter/protocol";
 import type { CoreApi } from "@ducter/protocol/src/internal.ts";
 
 const SUMMARY_MAX = 600;
@@ -45,6 +45,15 @@ export const reportToMainSchema = {
           ref: { type: "string" },
         },
         required: ["kind", "label", "ref"],
+      },
+    },
+    asks: {
+      type: "array",
+      description: "Only when your brief lists the things asked: each one's state, in that order, with a short note of what came of it.",
+      items: {
+        type: "object",
+        properties: { state: { type: "string", enum: STATES }, note: { type: "string" } },
+        required: ["state"],
       },
     },
     show: {
@@ -149,7 +158,11 @@ export function normalizeReport(taskId: string, raw: any): Bodies["report"] {
       }))
     : [];
   const remember = normalizeRemember(args?.remember);
-  return { taskId, state, summary, questions, evidence, ...(remember.length ? { remember } : {}) };
+  // D425: its word on each of the things asked, in the brief's order.
+  const asks: AskReport[] = Array.isArray(args?.asks)
+    ? args.asks.slice(0, ASKS_MAX).map((a: any) => ({ state: (STATES as readonly string[]).includes(a?.state) ? a.state : state, ...(a?.note ? { note: cut(String(a.note), ASK_NOTE_MAX) } : {}) }))
+    : [];
+  return { taskId, state, summary, questions, evidence, ...(remember.length ? { remember } : {}), ...(asks.length ? { asks } : {}) };
 }
 
 /** D206: the paths a report shows, cut to the limit; empty ones dropped. */

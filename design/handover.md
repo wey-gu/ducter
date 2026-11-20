@@ -43,6 +43,11 @@ Every door opens the same sheet with its set pre-ticked; the conversation's set 
 set, and words said after it are its note. One to-do (W10) skips the how part: it is one task, as
 today.
 
+A sentence that names several to-dos outright ("把 #10559 #10560 #10571 修了") is not a door to this
+sheet: the partner opens their tasks at once (one `group`), each a line under the message (D425,
+`conversation.md` §Several things in one message), and binds each by its ref (D341). The sheet stays
+the door for a set found by words or meaning, where a note, a shape and a plan earn their place.
+
 ## 3. The sheet
 
 **What (D396: words first, §10).** The sheet asks **想交给{name}哪些？ / What should {name} take on?**

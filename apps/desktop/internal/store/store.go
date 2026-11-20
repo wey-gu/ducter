@@ -33,6 +33,9 @@ type Entry struct {
 	// Set (D385) is a set of to-dos found in the conversation; a later
 	// todo_set with the same SetID (handed over) revises it in place.
 	Set *protocol.TodoSet
+	// Asks (D425), on a user's message: the several things it asked for,
+	// line by line (the latest asks event for it).
+	Asks *protocol.Asks
 	// Revision counts how often a living message was superseded in place,
 	// for the re-settle motion.
 	Revision int
@@ -453,6 +456,9 @@ type Store struct {
 	LastUserSeq int64
 	notes       map[string]*Entry
 	sets        map[string]*Entry
+	// asksWaiting (D425) holds lines that came before their message was
+	// loaded (a history page), until it is.
+	asksWaiting map[int64]*protocol.Asks
 	OnHand      *protocol.OnHand
 	// Waiters are the waiters known, by id (from waiter events and the
 	// snapshot's armed list).
@@ -1191,7 +1197,25 @@ func (s *Store) ApplyEvent(ev protocol.LogEvent) {
 	switch b := body.(type) {
 	case *protocol.UserMsg:
 		s.LastUserSeq = max(s.LastUserSeq, ev.Seq)
-		s.add(&Entry{Event: ev, User: b})
+		e := &Entry{Event: ev, User: b}
+		if w := s.asksWaiting[ev.Seq]; w != nil {
+			e.Asks = w
+			delete(s.asksWaiting, ev.Seq)
+		}
+		s.add(e)
+	case *protocol.Asks:
+		// D425: the latest lines win, drawn under their message; the event
+		// itself is no row.
+		s.bySeq[ev.Seq] = nil
+		if at := s.bySeq[b.MsgSeq]; at != nil && at.User != nil {
+			at.Asks = b
+			at.Revision++
+			return
+		}
+		if s.asksWaiting == nil {
+			s.asksWaiting = map[int64]*protocol.Asks{}
+		}
+		s.asksWaiting[b.MsgSeq] = b
 	case *protocol.Finds:
 		s.addFinds(ev, b)
 	case *protocol.TodoSet:

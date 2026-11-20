@@ -93,6 +93,7 @@ import { createGhInstaller, useOwnTools, type GhInstaller } from "./gh-install.t
 import { ducterFolder } from "@ducter/protocol/src/ducter-folder.ts";
 import { createProjects } from "./projects.ts";
 import { createTaskGroups, type TaskGroups } from "./task-groups.ts";
+import { createAsks, type Asks } from "./asks.ts";
 import { PLAN_SCHEMA } from "./task-sources/handover.ts";
 import { createReleaseWatch, type Fetch as ReleaseFetch, type ReleaseWatch } from "./release.ts";
 import { createUpdates, type Updates, type UpdatesDeps } from "./updates.ts";
@@ -340,6 +341,8 @@ export interface Core extends CoreApi {
   taskSources: TaskSources;
   /** D360: groups of tasks that are one piece of work, and the members held in line. */
   taskGroups: TaskGroups;
+  /** D425: what one message asked for, line by line, under it; and the hold on single lines' successes. */
+  asks: Asks;
   /** D299: the sessions the person ran in their own agents here; D376: found and carried on from the conversation. */
   outside: import("./outside.ts").Outside;
   /** D383: 给你做的 / Made for you: what Ducter made, found again by words, kind and time (read from the Log). */
@@ -717,7 +720,9 @@ export function startCore(opts: CoreOptions = {}): Core {
     onCalling: () => devicesView?.changed(), // D199: the home's 打电话
   });
   // D360: groups of tasks that are one piece of work; the later members of a line are held here.
-  const taskGroups = createTaskGroups({ dataDir, tasks, runner: () => runner, now: () => clock.now(), changed: () => onHandChanged(), opened: (taskId, bind, group) => taskSourcesRef?.handover?.opened(taskId, bind, group) });
+  // D425: the lines one message asked for; a held part that opens takes its lines with it.
+  let asksRef: Asks | undefined;
+  const taskGroups = createTaskGroups({ dataDir, tasks, runner: () => runner, now: () => clock.now(), changed: () => onHandChanged(), opened: (taskId, bind, group) => taskSourcesRef?.handover?.opened(taskId, bind, group), heldOpened: (key, taskId) => asksRef?.heldOpened(key, taskId) });
   log.subscribe((e) => taskGroups.onEvent(e));
   tasks.setDecorator((o) => {
     const on = decorateBrowsing(changes.decorate(limitsDecorate(work.decorate(o))));
@@ -835,8 +840,12 @@ export function startCore(opts: CoreOptions = {}): Core {
   };
   // D372: an errand's failed report that Ducter answers by retrying it on the smartest (set below).
   let kindRetryRef: KindRetry | undefined;
+  // D425: before the wake below, so a report's lines are counted before it decides to hold it.
+  const asks = createAsks({ log, tasks, release: (evs) => evs.forEach((e) => wake(e)) });
+  asksRef = asks;
+  log.subscribe((e) => asks.onEvent(e));
   const unsubscribePartner = log.subscribe((e) => {
-    if (!triggersPartner(e) || !work.wakes(e) || (proactiveRef && !proactiveRef.wakes(e)) || (calendarRef && !calendarRef.wakes(e)) || (taskSourcesRef && !taskSourcesRef.wakes(e)) || (kindRetryRef && !kindRetryRef.wakes(e)) || !boards.wakes(e)) return;
+    if (!triggersPartner(e) || !asks.wakes(e) || !work.wakes(e) || (proactiveRef && !proactiveRef.wakes(e)) || (calendarRef && !calendarRef.wakes(e)) || (taskSourcesRef && !taskSourcesRef.wakes(e)) || (kindRetryRef && !kindRetryRef.wakes(e)) || !boards.wakes(e)) return;
     wake(e);
   });
 
@@ -2058,6 +2067,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     calendar,
     taskSources,
     taskGroups,
+    asks,
     outside,
     made,
     past,

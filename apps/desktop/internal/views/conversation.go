@@ -555,6 +555,8 @@ func (a *App) entry(c *ui.Context, e *store.Entry) {
 	defer func() { a.rp.next, a.rp.tab = nil, nil }()
 	switch {
 	case e.User != nil:
+		// D425: the several things it asked for stand under its words, line by line.
+		defer a.askLines(c, e)
 		if len(e.User.Media) > 0 {
 			// D206: the pictures first, then the words, on the user's side.
 			// D256: one pebble beside the whole message, on its last line;

@@ -1,0 +1,26 @@
+package i18n
+
+// D425: several things in one message, line by line under it. The same keys
+// and words as the web client (apps/web/src/i18n-asks.ts);
+// apps/web/test/asks.test.ts keeps them equal.
+
+var zhAsks = Table{
+	"asks.count":  "好了 %d 个，还有 %d 个",
+	"asks.needs":  "等你定一下",
+	"asks.failed": "没做成",
+}
+
+var enAsks = Table{
+	"asks.count":  "%d done, %d to go",
+	"asks.needs":  "Needs you",
+	"asks.failed": "Didn't work",
+}
+
+func init() {
+	for k, v := range zhAsks {
+		zh[k] = v
+	}
+	for k, v := range enAsks {
+		en[k] = v
+	}
+}

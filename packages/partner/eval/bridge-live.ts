@@ -91,7 +91,11 @@ const nmem = join(binDir, "nmem");
 const state = join(root, "bridge-state.json");
 const raw = join(OUT, `raw-${STAMP}`);
 if (LIVE) {
-  // A tee in front of the real CLI: every call's argv, stdout and stderr, for the record.
+  // A tee in front of the real CLI: every call's argv, stdout and stderr, for the record. D409: a call
+  // the client gives up on (its time limit) ends the real nmem too, not only this wrapper (2026-11-20:
+  // killed inbox reads went on writing their answers half a minute later), and says so in its .err.
+  // stdin is passed on through fd 3: an `&` command's own is /dev/null, and a send's body comes by
+  // `--body-file -`.
   const real = Bun.which(process.env.NMEM_CLI_PATH ?? "nmem");
   if (!real) {
     console.error("nmem is not on PATH (or NMEM_CLI_PATH). Install Nowledge Mem first.");
@@ -100,7 +104,7 @@ if (LIVE) {
   mkdirSync(raw, { recursive: true });
   writeFileSync(
     nmem,
-    `#!/bin/sh\nn=$(ls "${raw}" | grep -c '\\.argv$')\nf="${raw}/$(printf %03d "$n")"\nprintf '%s\\n' "$*" > "$f.argv"\n"${real}" "$@" > "$f.json" 2> "$f.err"\ncode=$?\ncat "$f.json"\ncat "$f.err" >&2\nexit $code\n`,
+    `#!/bin/sh\nn=$(ls "${raw}" | grep -c '\\.argv$')\nf="${raw}/$(printf %03d "$n")"\nprintf '%s\\n' "$*" > "$f.argv"\nexec 3<&0\n"${real}" "$@" <&3 > "$f.json" 2> "$f.err" &\npid=$!\ntrap 'kill $pid 2>/dev/null; echo "(killed: the caller gave up)" >> "$f.err"; exit 143' TERM INT HUP\nwait $pid\ncode=$?\ncat "$f.json"\ncat "$f.err" >&2\nexit $code\n`,
   );
 } else {
   writeFileSync(nmem, `#!/bin/sh\nexec bun ${resolve(import.meta.dir, "fake-bridge-nmem.ts")} "$@"\n`);
@@ -373,6 +377,10 @@ async function main() {
   const bridge = createNmemBridge({ context: CTX, bin: nmem, env });
   const partner = createPartner(core, fr.runner, { model: MODEL, now: clock.now, persistState: false, turnTimeoutMs: 180_000, memory: fakeMemory([]).memory, bridge, bridgeIntervalMs: 0, bridgeRecoverMs: 0, onError: (e) => say(`  (error) ${e instanceof Error ? e.message : e}`) });
   core.setPartner(partner);
+  // D409: the start mark (B14, D170: what is already in the mailbox isn't a request) is taken before the
+  // terminal's first turn, so it can never swallow what this run sends. Live, a read takes ~50 s.
+  await partner.checkBridge();
+  say(`  (Ducter's mailbox read once before the run: what is there now is not a request)`);
   let seq = core.log.head();
   const t0 = Date.now();
   const stamp = () => `${((Date.now() - t0) / 1000).toFixed(1)}s`;

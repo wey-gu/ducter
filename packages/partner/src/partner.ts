@@ -2722,7 +2722,9 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
             (first.length ? ` Ducter just told the user in one line what it read and where (this first time only): don't say it again.` : "") +
             (others.length ? ` ${and(others)}'s records aren't read until the user says yes on its card in Your devices (读它们留下的记录 / Read what they keep): if it isn't here, say it may be there.` : "") +
             (found.off.length ? ` The user said stop looking on ${and(found.off)}: don't look there or ask.` : "") +
-            (found.unread.length ? ` ${and(found.unread)} couldn't be read now (its Ducter is older, or it didn't answer).` : ""),
+            (found.unread.length ? ` ${and(found.unread)} couldn't be read now (its Ducter is older, or it didn't answer).` : "") +
+            // D409: one open now is asked through Bridge (one card, D273), never told to close (live trial, 2026-11-20).
+            (bridge && items.some((s) => s.open === "running") ? " One open in its terminal now can't be carried on until it's closed; if the user wants to ask or tell it something, that is bridge_contacts then bridge_send now, not this." : ""),
         };
       },
     );
@@ -2751,6 +2753,9 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         const r = await own.adopt(runner, core.persona.id, agent, id, undefined, undefined, { ...(ask ? { ask } : {}), ...(a.closed === true ? { closed: true } : {}) });
         if (!r.ok || !r.taskId) {
           t.pending = null; // a line written before it ("我接着做…") would say what didn't happen
+          // D409: open in its terminal and the user wants something asked or told: Bridge reaches it as it is.
+          if (r.open === "running" && bridge)
+            return { ok: false, open: r.open, error: `Not carried on: it is open in its terminal now. If the user wants to ask or tell it something, call bridge_contacts then bridge_send now (one card; it can answer while open), and don't tell them to close it. Only if they asked to carry its work on here: "${r.message ?? ""}" in one line.` };
           return { ok: false, ...(r.open ? { open: r.open } : {}), error: `${r.message ?? "It couldn't be carried on."} Say it in one line, in the user's language.${r.open === "recent" ? " If they say it is closed, call again with closed: true." : ""}` };
         }
         if (r.reused) {

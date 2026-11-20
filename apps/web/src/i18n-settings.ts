@@ -22,7 +22,7 @@ export const settingsMore: { zh: Record<string, string>; en: Record<string, stri
     "said.records.folder": "好，%s 又会看了。",
     "handoff.title": "额度用完的时候",
     "handoff.row": "直接换别的 AI agent 接着做",
-    "handoff.help": "不等额度恢复：同一台电脑上另一个登录了的 AI agent 从做到的地方接着做。关着的话，等恢复后接着做。",
+    "handoff.help": "不等额度恢复，同一台电脑上的另一个接着做。",
     "said.handoff.on": "好，额度用完时我直接换别的 AI agent 接着做。",
     "said.handoff.off": "好，额度用完时我等它恢复，再接着做。",
     "settings.look.mode": "浅色和深色",
@@ -30,7 +30,6 @@ export const settingsMore: { zh: Record<string, string>; en: Record<string, stri
     "settings.look.mode.light": "浅色",
     "settings.look.mode.dark": "深色",
     // D365: 这台电脑 / This phone says what each choice does, as the Mac's Look and sound.
-    "settings.look.mode.help": "跟随系统时，系统换成深色，这里也跟着换。",
   },
   en: {
     "key.settings.row": "Paste an API key",
@@ -51,13 +50,12 @@ export const settingsMore: { zh: Record<string, string>; en: Record<string, stri
     "said.records.folder": "Got it: %s is back in.",
     "handoff.title": "When a limit runs out",
     "handoff.row": "Hand it to another AI agent right away",
-    "handoff.help": "No waiting for the reset: another signed-in AI agent on the same computer carries on from where it got to. Off, it waits and carries on then.",
+    "handoff.help": "No waiting for the reset: another one on the same computer carries on.",
     "said.handoff.on": "Got it: when a limit runs out, I'll hand the task to another AI agent right away.",
     "said.handoff.off": "Got it: when a limit runs out, I'll wait for it to come back and carry on.",
     "settings.look.mode": "Light and dark",
     "settings.look.mode.system": "Follow the system",
     "settings.look.mode.light": "Light",
     "settings.look.mode.dark": "Dark",
-    "settings.look.mode.help": "Following the system, this turns dark when your device does.",
   },
 };

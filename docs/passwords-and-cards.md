@@ -90,7 +90,7 @@ says in its report which key it needs (coming soon).
 
 Everything is kept on the computer Ducter runs on, locked. On a Mac the key is in that Mac's
 keychain; on a Linux server it's in a file only Ducter can read. It's never copied to your phone
-or other computers. The bottom of the Passwords & cards page says which.
+or other computers. The top of the Passwords & cards page says where; tap **How it works** for where its key is.
 
 ## Where it was used
 

@@ -102,7 +102,8 @@ func (a *App) autofillPanel(c *ui.Context) {
 		if f.KeptIn == "keychain" {
 			where = "af.kept.keychain"
 		}
-		a.ledeNote(c, "af-kept", a.L.T(where, a.homeName()))
+		a.ledeNote(c, "af-kept", a.L.T("af.kept.short", a.homeName()))
+		a.ledeHow(c, "af-kept", a.L.T("af.kept.short", a.homeName()), a.L.T(where))
 	}
 	if f == nil {
 		uiText(c, a.L.T("conn.connecting")).FontSize(t.SM).TextColor(t.InkMuted)
@@ -153,7 +154,7 @@ func (a *App) autofillPanel(c *ui.Context) {
 			}
 		}
 	})
-	a.group(c, "af-details", a.L.T("af.details"), a.L.T("af.d.note"), func() {
+	a.groupHow(c, "af-details", a.L.T("af.details"), a.L.T("af.d.note"), a.L.T("af.d.how"), func() {
 		if s.editing == "details" {
 			a.afDetails(c, f.SavedDetails)
 			return

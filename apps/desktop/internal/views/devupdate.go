@@ -510,7 +510,11 @@ func (a *App) updateSection(c *ui.Context) {
 			a.versionRow(c, dv, dv == home)
 		}
 		if auto := a.S.Settings; auto != nil {
-			if v, ch := a.toggleRow(c, "autoupdate", a.L.T("settings.versions.night"), a.nightNote(), auto.AutoUpdate); ch {
+			v, ch := auto.AutoUpdate, false
+			a.explainedRow(c, "autoupdate", a.L.T("settings.versions.night"), a.nightNote(), a.L.T("settings.versions.night.how"), func() {
+				ch = a.switchControl(c, "autoupdate", a.L.T("settings.versions.night"), &v)
+			})
+			if ch {
 				a.send(protocol.SettingsSet{T: "settings_set", Patch: protocol.SettingsPatch{AutoUpdate: &v}})
 			}
 		}

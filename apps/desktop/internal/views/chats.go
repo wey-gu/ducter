@@ -81,6 +81,7 @@ func (a *App) chatsPanel(c *ui.Context) {
 	a.panelHead(c, TabChats, a.L.T("chats.lede", a.personaName()))
 	// D399: what reaches a chat app is true of all of them: under the lede, not under the last card.
 	a.ledeNote(c, "chats-goes", a.L.T("chats.goes"))
+	a.ledeHow(c, "chats-goes", a.L.T("chats.goes"), a.L.T("chats.goes.how"))
 	f := a.S.Channels
 	if f == nil {
 		uiText(c, a.L.T("chats.state.starting")).FontSize(t.MD).TextColor(t.InkMuted)

@@ -16,7 +16,7 @@ import { Fragment, type ComponentChildren } from "preact";
 import { useEffect, useState } from "preact/hooks";
 import { A } from "./app.ts";
 import { BrandTile } from "./brand.tsx";
-import { Btn, DangerButton, LinkBtn } from "./controls.tsx";
+import { Btn, DangerButton, How, LinkBtn } from "./controls.tsx";
 import { Qr } from "./phone.tsx";
 import { GConfirm, Said, say } from "./set-grid.tsx";
 
@@ -89,6 +89,7 @@ export function ChatAppsSettings() {
     <>
       <p class="af-lede">{t("chats.lede", A.S.personaName)}</p>
       <p class="small lede-note">{t("chats.goes")}</p>
+      <How about={t("chats.goes")} detail={t("chats.goes.how")} />
       {f.channels.map((v) => (
         <Fragment key={v.kind}>
           {v.kind === "wechat" ? <WechatCard v={v} /> : <ChannelCard v={v} manifest={f.slackManifest} />}

@@ -50,7 +50,7 @@ func TestPartnerPage(t *testing.T) {
 	tt := ui.NewTesterWith(app.View, 1280, 900, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
 	tt.Frame()
-	for _, want := range []string{"小鸭", "怎么说话", "跟着我", "先问你", "付钱：永远是你来付"} {
+	for _, want := range []string{"小鸭", "怎么说话", "跟着我", "先问你", "付钱"} {
 		if !tt.HasText(want) {
 			t.Errorf("no %q in %q", want, tt.Texts())
 		}

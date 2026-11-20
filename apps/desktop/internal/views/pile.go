@@ -13,7 +13,7 @@ import (
 // D359: the pile at the head of 你的待办 / Your to-dos (design/task-sources.md
 // §9, research/130), the same as the web's (apps/web/src/pile.tsx): the
 // partner beside a stack of pages whose height is the count's bucket, the
-// count literal beside it (还有 557 件), what was cleared today, the queue,
+// count literal beside it (还有 557 个), what was cleared today, the queue,
 // and the sort's groups as rows, each with its own count and one action. A
 // cleared one rolls the number down (reduced motion: in place). The sheets:
 // tick what to hand over (six by default), answer each decide (the suggested

@@ -106,7 +106,7 @@ func TestFileLink(t *testing.T) {
 	asks = fileAsks(sent)
 	app.Receive(protocol.ServerFrame{T: "file_open", ID: asks[len(asks)-1].ID, WbError: "outside"})
 	tt.Frame()
-	if got := texts(tt); !strings.Contains(got, "这个文件不在任何一件事自己的文件夹里，Ducter 不会打开它。") {
+	if got := texts(tt); !strings.Contains(got, "这个文件不在任何一个任务自己的文件夹里，Ducter 不会打开它。") {
 		t.Errorf("outside: %s", got)
 	}
 	// A late answer to an older ask never replaces it.

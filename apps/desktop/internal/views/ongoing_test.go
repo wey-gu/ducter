@@ -195,7 +195,7 @@ func TestOngoingCountOnHand(t *testing.T) {
 	app.Route = RouteOnHand
 	tt := ui.NewTesterWith(app.View, 1280, 820, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
-	if err := tt.Click("一直在跑的 3 件"); err != nil {
+	if err := tt.Click("一直在跑的 3 个"); err != nil {
 		t.Fatalf("On hand's line: %v (%q)", err, tt.Texts())
 	}
 	if app.Route != RoutePast || app.past.tab != "ongoing" {
@@ -252,7 +252,7 @@ func TestOngoingShots(t *testing.T) {
 		app.S.Past.Ongoing = nil
 		app.Route = RouteOnHand
 		shot("onhand-end", 1280, 820)
-		if !strings.Contains(strings.Join(tt.Texts(), " "), pastWord(lang, "一直在跑的 3 件", "3 ongoing")) {
+		if !strings.Contains(strings.Join(tt.Texts(), " "), pastWord(lang, "一直在跑的 3 个", "3 ongoing")) {
 			t.Errorf("%s: no Ongoing line on On hand: %q", lang, tt.Texts())
 		}
 	}

@@ -8,14 +8,14 @@ var zhIsles = Table{
 	// D157: the words on a parcel: waiting at the bridge, moved here.
 	"isles.tag.waits": "在等",
 	"isles.tag.moved": "已转到 %s",
-	// Another computer (D84) while tasks run on it: 另一台电脑 · 在做 1 件事.
-	"device.other.working":     "在做 %d 件事",
-	"device.other.working.one": "在做 1 件事",
+	// Another computer (D84) while tasks run on it: 另一台电脑 · 在做 1 个任务.
+	"device.other.working":     "在做 %d 个任务",
+	"device.other.working.one": "在做 1 个任务",
 	// What the chosen device can do now, in one line.
 	"devices.can": "%s 会：%s",
 	// Under an island: a task running there.
-	"isles.working":     "在做 %d 件事",
-	"isles.working.one": "在做 1 件事",
+	"isles.working":     "在做 %d 个任务",
+	"isles.working.one": "在做 1 个任务",
 	// An AI account on more than one device: its limit is shared.
 	"token.shared": "%d 台设备共用",
 	// The accounts in the device card.

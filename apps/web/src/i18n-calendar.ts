@@ -52,10 +52,10 @@ export const calendarWords: { zh: Record<string, string>; en: Record<string, str
     "cal.held": "没有改动",
     "cal.open": "在 Google 日历中打开",
     // §6.3 the greeting
-    "cal.today.many": "今天还有 %d 件事，下一件 %s「%s」",
-    "cal.today.one": "今天还有一件事：%s「%s」",
-    "cal.today.count": "今天还有 %d 件事",
-    "cal.today.clash": "，有两件时间重叠",
+    "cal.today.many": "今天还有 %d 个日程，下一个 %s「%s」",
+    "cal.today.one": "今天还有一个日程：%s「%s」",
+    "cal.today.count": "今天还有 %d 个日程",
+    "cal.today.clash": "，有两个时间重叠",
     "cal.today.ask": "我今天还有什么安排？",
     // §4 Accounts
     "cal.list.title": "看哪些日历",

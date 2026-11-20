@@ -136,7 +136,7 @@ if (stage === "mine") {
   ts.pile.subject({ op: "put", name: zh ? "通用设置" : "General settings", refs: ["nowledge-co/mem#10611"] });
 }
 if (stage === "hand" || stage === "go") {
-  // As the author did: the 通用设置 chip, both ticked, 合成一件做, his note word for word.
+  // As the author did: the 通用设置 chip, both ticked, 合成一个任务做, his note word for word.
   const ho = ts.handover!;
   const f = await ho.find({ subject: zh ? "通用设置" : "General settings" });
   const r = await ho.hand({ refs: f.items.map((p) => p.item.ref), shape: "one", subject: zh ? "通用设置" : "General settings", bySubject: true, note: zh ? "确保这些任务都没开始，然后再 issue 里留言说一下 我的 ducter agent 要开始做了" : "Make sure none of these were started, then comment on the issues that my Ducter agent is starting on them" });

@@ -40,7 +40,7 @@ describe("lang", () => {
     expect(autonym("ja")).toBe("日本語");
     expect(words({ zh: { a: "好" }, en: { a: "OK" } }, "zh-TW").a).toBe("好");
     expect(words({ zh: { a: "好" }, en: { a: "OK" } }, "ko").a).toBe("OK");
-    expect(fill("接了：「{title}」，{n} 件", { title: "周报", n: 2 })).toBe("接了：「周报」，2 件");
+    expect(fill("接了：「{title}」，{n} 个", { title: "周报", n: 2 })).toBe("接了：「周报」，2 个");
     expect(fill("{missing}", {})).toBe("{missing}");
     expect(plural("en", 1)).toBe("one");
     expect(plural("en", 2)).toBe("other");

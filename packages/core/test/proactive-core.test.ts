@@ -103,7 +103,7 @@ test("the one tap, the first-account moment, the card's frames and its controls,
   c.send({ t: "connections" });
   const frame = await c.until<Extract<ServerFrame, { t: "connections" }>>((f) => f.t === "connections" && !!(f.connections[0] as ConnectionView | undefined)?.look);
   const look = frame.connections[0]!.look!;
-  expect(look.watching).toBe(true); // D250: on the default (每天最多 3 件) before the cadence is answered
+  expect(look.watching).toBe(true); // D250: on the default (每天最多 3 条) before the cadence is answered
   expect(look.apps.map((a) => [a.service, a.account])).toEqual([
     ["gmail", "wey@example.com"],
     ["discord", "wey"],

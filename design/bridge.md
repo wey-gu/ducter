@@ -426,7 +426,7 @@ Why the others wait:
 - *What crosses:* only the user's chosen option or typed words. Never the Log, other tasks, memories or files; the
   reply is redacted like every other.
 - *Volume:* at most three open asks per sender in Needs you; a fourth folds into the third's card as
-  **还有 <n> 件 / <n> more**. Every sender has the daily quota in the table below.
+  **还有 <n> 个 / <n> more**. Every sender has the daily quota in the table below.
 - *Not a work request:* a message that asks for work is S1 (a Go/Hold card that opens a task), never X1.
 
 ### X2 · "直接接": a standing go for one of your own agents

@@ -44,7 +44,7 @@ export async function runDots(mode: ProactiveMode, o: { ask?: string } = {}) {
   return { r, said, asked };
 }
 
-test("每天最多 3 件: the four things dots said, and the stuck user and the failing job, each said once, in time; the noise never", async () => {
+test("每天最多 3 条: the four things dots said, and the stuck user and the failing job, each said once, in time; the noise never", async () => {
   const { said, r } = await runDots("three", { ask: "2026-11-13T11:00:00+08:00" });
   for (const w of DOTS_SAY) {
     const hit = said.find((s) => s.kind === w.kind && s.text.includes(w.contains));

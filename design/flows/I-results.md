@@ -135,7 +135,7 @@ The result message, as rendered (zh first, en below):
 │ ┌ 改动 · HawDB ─────────────────────────────────────────┐
 │ │ src/config.rs   +2 −2      tests/checkpoint.rs  +10 −2 │   (tap → diff at that file)
 │ └───────────────────────────────────────────────────────┘
-│ 要开草稿 PR 到 hawdb/main 吗？  这件不会自己动，等你定（组织仓库）
+│ 要开草稿 PR 到 hawdb/main 吗？  这个不会自己动，等你定（组织仓库）
 │ [开草稿 PR]  [先等等]  [回复…]
 └ ● HawDB checkpoint 间隔 · 做完了
 ```
@@ -181,7 +181,7 @@ refs[], snapshot?, version}`. The result message is rendered from it plus the re
 | `result.checking_chip` | 做完了 · 在检查 | Done · checking |
 | `result.check_failed_chip` | 检查没过：{reason}，它接着弄 | Check didn't pass: {reason}; it's back on it |
 | `result.fixed_after_check` | 上次说做完了，检查时发现{reason}，现在补好了。 | I said it was done, but the check found {reason}. It's fixed now. |
-| `result.batch_opening` | {n} 件刚做完： | {n} just finished: |
+| `result.batch_opening` | {n} 个刚做完： | {n} just finished: |
 | `result.interpreted` | 我理解成了：{reading} | I took this to mean: {reading} |
 | `result.new_below` | 新结果 ↓ | New result ↓ |
 | `evidence.before_after` | 之前 {before} → 之后 {after} | {before} before → {after} after |

@@ -36,7 +36,7 @@ func d327Events(lang i18n.Lang) (protocol.LogEvent, protocol.LogEvent) {
 		}},
 	})
 	answer := protocol.NewEvent(2, now.Format(time.RFC3339Nano), "default", "channel", protocol.OriginPartner, protocol.KindAIMsg, protocol.AIMsg{
-		Text: pick("我看了看 Ada 的 MacBook Air 上你的 Claude Code 和 Codex 最近在做的事，这几件要不要接着来？", "I had a look at what your Claude Code and Codex worked on lately on Ada’s MacBook Air. Want to pick one of these up?"),
+		Text: pick("我看了看 Ada 的 MacBook Air 上你的 Claude Code 和 Codex 最近在做的事，这几个要不要接着来？", "I had a look at what your Claude Code and Codex worked on lately on Ada’s MacBook Air. Want to pick one of these up?"),
 		First: &protocol.FirstWords{Look: true, Computer: "Ada’s MacBook Air", Looked: []string{"claude-code", "codex"}, Starts: []protocol.FirstStart{
 			{ID: "local:claude-code:1", From: "claude-code", Path: "~/src/hawdb", At: at, Words: pick("昨天你在 hawdb 里做「Raft 快照恢复时卡在 apply」，要我接着看看吗？", "Yesterday you were on “Raft snapshot stuck in apply” in hawdb. Want me to pick it up?"), Draft: "hawdb"},
 			{ID: "local:codex:2", From: "codex", Path: "~/work/billing-api", At: at, Words: pick("3 天前你在 billing-api 里用过 Codex，要我看看那儿现在怎么样吗？", "3 days ago you used Codex in billing-api. Want me to see where it stands?"), Draft: "billing"},

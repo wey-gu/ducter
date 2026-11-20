@@ -130,6 +130,16 @@ func (a *App) whoOf(from string) string {
 	return firstNonEmpty(a.S.PersonaName, "Ducter")
 }
 
+// replyLabel names what the composer replies to (D434): another's line is
+// 回复 {name} / Reply to {name}; the person's own line is 接着说 / Add to
+// this, never 回复你.
+func (a *App) replyLabel(from string) string {
+	if from == "you" {
+		return a.L.T("reply.own")
+	}
+	return a.L.T("reply.to", a.whoOf(from))
+}
+
 // replyOf is what replying to this row of the conversation names.
 func (a *App) replyOf(e *store.Entry) *replyTo {
 	switch {
@@ -461,7 +471,7 @@ func (a *App) composerReply(c *ui.Context) {
 		return
 	}
 	row := ui.Row(c.Key("replying:"+r.key())).Gap(t.S2).AlignItems(ui.Center).MinWidth(0).Padding(t.S1, 0, 0, 0).
-		Role(ui.RoleGroup).Label(a.L.T("reply.to", a.whoOf(r.from)))
+		Role(ui.RoleGroup).Label(a.replyLabel(r.from))
 	if !c.Preferences().ReduceMotion {
 		in := ui.Local(row, "in", func() bool { return false })
 		p := ui.Pose{}

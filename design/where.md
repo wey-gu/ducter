@@ -46,7 +46,7 @@ design.
 | **Who, in this moment** | A server home, a MacBook worker, repos on both, Claude Code only on the Mac, a phone. Starts five tasks an evening, some from New task | One Mac at home, plus (later) a small server the partner suggested so it stays up; one AI subscription; uses Ducter for errands on signed-in sites and for Keynote | One computer. Has never heard of a worker |
 | **Before** | "Did it run on the Mac or hel? Will it die when I close the lid? Did it use my Chrome, where I'm signed in to the bank?" Today the answer is in a log, or found by failure (research/43: Cursor's silent cloud default) | "Can it do this while my laptop is off?" and "Is it logging in as me?" | Nothing. Any mention of "which computer" would be a concept to learn |
 | **After** | 放心: every task says where in three words; the pick matches what they would have done; one tap moves it, with the cost said. 惊喜: closing the lid doesn't stop the work, because long work was never on the lid | 好用: errands that need their sign-ins just happen in their Chrome; when the Mac sleeps, one plain question with a sensible default. 放心: it never quietly uses their Chrome when it didn't need to | 顺滑: nothing changes. No device word appears anywhere until a second computer exists |
-| **How it starts** | The moment they turn on D155's **让这台 Mac 也替 hel 做事**, the switch's confirmation line adds **以后每件事会写明在哪台电脑上做。** From then on the meta line shows **在 hel 上** on every task | The first errand that needs a sign-in, or the first time the Mac sleeps with a task that needs it. The question is the lesson | Never; or the day they add a second computer, as for the developer |
+| **How it starts** | The moment they turn on D155's **让这台 Mac 也替 hel 做事**, the switch's confirmation line adds **以后每个任务都会写明在哪台电脑上做。** From then on the meta line shows **在 hel 上** on every task | The first errand that needs a sign-in, or the first time the Mac sleeps with a task that needs it. The question is the lesson | Never; or the day they add a second computer, as for the developer |
 
 **North star check** (INFERRED, to be judged on the prototype): 好用, the default is right and
 needs no choice in W1, W2, W4, W5; 顺滑, one quiet line, no new place, no new picker in the
@@ -197,7 +197,7 @@ today's. With two or more:
 - **Picking a row on another computer** shows what moving does, in one line above Go:
   **从最近保存的进度接着做；分支会先推到 GitHub。** If it widens access, a second line:
   **会用你的 Chrome，你登录着的网站它都能用。** Go reads **换到 MacBook 上接着做**.
-- **只这件 / 以后这类都用** stays (pin or rule), now able to name a computer.
+- **只这个 / 以后这类都用** stays (pin or rule), now able to name a computer.
 
 ### 6.3 New task: the machine appears only when there's a choice
 
@@ -270,7 +270,7 @@ its pushed branch; uncommitted work never moves. What this note adds:
 | `where.ask.default` | 不回的话就等它醒，什么都不会丢 | If you don't answer, it waits. Nothing is lost |
 | `where.waits.only` | 得用 {device} 上的 {thing}，它醒了我就开始。 | This needs {thing} on {device}. I'll start when it wakes. |
 | `where.pin_blocked` | {agent} 只在 {device} 上，它现在连不上。等它，还是换个来做？ | {agent} is only on {device}, and it can't be reached. Wait, or have someone else do it? |
-| `where.first_line` | 以后每件事会写明在哪台电脑上做。 | From now on, every task says which computer it's on. |
+| `where.first_line` | 以后每个任务都会写明在哪台电脑上做。 | From now on, every task says which computer it's on. |
 | `newtask.computer` | 在哪台电脑上做 | On which computer |
 | `newtask.computer.always_on` | 一直醒着 | Always awake |
 | `newtask.computer.chrome_apps` | 有你的 Chrome 和 Mac 应用 | Has your Chrome and Mac apps |
@@ -290,7 +290,7 @@ its pushed branch; uncommitted work never moves. What this note adds:
 | `rule.where.restate` | 规则：{kind} 都在 {device} 上做。对吗？ | Rule: {kind} runs on {device}. Right? |
 
 Existing keys reused unchanged: **睡着了 / Asleep**, **连不上 / Can't reach**, **叫醒它 / Wake it**,
-**在等 · {device} 睡着了**, **换谁来做**, **现在 / Now**, **推荐 / Suggested**, **只这件 / 以后这类都用**,
+**在等 · {device} 睡着了**, **换谁来做**, **现在 / Now**, **推荐 / Suggested**, **只这个 / 以后这类都用**,
 **搬到 {dst} 上接着做了** (E3 `move.done`), D151's sign-in card.
 
 ## 9. Motion: the parcel on the islands
@@ -334,7 +334,7 @@ test of the stage (D81's open item) should include one Lands and one Moves clip 
 | Ducter on that computer is too old for browser or app tasks | greyed: **{device} 上的 Ducter 旧了，更新一下就能用** with **更新** (D148) | — |
 | The site needs a sign-in in Ducter's own browser | D151's card **需要你登录一下 {site}** | the user signs in themselves; the agent is blind meanwhile |
 | A move can't push the branch | E3 `move.need_push` | ask |
-| Nobody can do it anywhere | **现在没有 AI agent 能接这件事。** (D128) | the reason per computer in the sheet |
+| Nobody can do it anywhere | **现在没有 AI agent 能接这个任务。** (D128) | the reason per computer in the sheet |
 
 ## 12. Safety
 

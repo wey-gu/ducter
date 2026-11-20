@@ -3,9 +3,9 @@ package views
 // D385: 交给{name} / Hand to {name}, the one sheet every door opens
 // (design/handover.md §3): what (a find field over the whole pile, the found
 // line as separate facts, the to-dos by sort group, ticked by default the do
-// ones), 给{name}的话 / A note for {name} (and 给这件的话… per to-do), and how
+// ones), 给{name}的话 / A note for {name} (and 给这个的话… per to-do), and how
 // (a shape with 建议 and its line, 在哪儿做 / Where and 谁来做 / Who does it,
-// each saying why). Go is 交给{name}这 n 件 with its shape beneath (never
+// each saying why). Go is 交给{name}这 n 个 with its shape beneath (never
 // joined, D291). Wide: two columns; narrow: what, then 下一步：怎么做. The web
 // draws the same (apps/web/src/pile.tsx).
 
@@ -44,7 +44,7 @@ type handState struct {
 	suggest  []string
 	noteAuto string
 	// D428: the reading's chips removed for these words (dropFor), and how
-	// many the last find ticked (先勾了最像的 n 件).
+	// many the last find ticked (先勾了最像的 n 个).
 	drop        []string
 	dropFor     string
 	foundTicked int
@@ -304,7 +304,7 @@ func (h *handState) handShape() string {
 	return h.how.Shape
 }
 
-// handGo sends 交给{name}这 n 件.
+// handGo sends 交给{name}这 n 个.
 func (a *App) handGo() {
 	h := &a.ho
 	refs := h.handTicked()
@@ -727,7 +727,7 @@ func (a *App) handSuggest(c *ui.Context, center bool) {
 	})
 }
 
-// handBrowseLink is 一件件挑 / Pick one by one, with how many the do group holds.
+// handBrowseLink is 一个个挑 / Pick one by one, with how many the do group holds.
 func (a *App) handBrowseLink(c *ui.Context, center bool) {
 	t := a.T
 	h := &a.ho
@@ -768,7 +768,7 @@ func (a *App) handSkeleton(c *ui.Context, n int, h float32) {
 }
 
 // handItem is one to-do: its tick, title, why (a decide's question with 建议),
-// facts, and 给这件的话….
+// facts, and 给这个的话….
 func (a *App) handItem(c *ui.Context, it protocol.FoundItem) {
 	t := a.T
 	h := &a.ho
@@ -857,7 +857,7 @@ func (a *App) handItem(c *ui.Context, it protocol.FoundItem) {
 		if row.Clicked() {
 			h.ticked[ref] = !on
 		}
-		// 给这件的话…: a quiet link, then the note's own field (only for a ticked one).
+		// 给这个的话…: a quiet link, then the note's own field (only for a ticked one).
 		if on {
 			ui.Column(c.Key("note")).Padding(0, 14, 10, 50).Children(func() {
 				if h.noteOpen[ref] || h.notes[ref] != "" {
@@ -1123,7 +1123,7 @@ func (a *App) pickLine(c *ui.Context, key, label string, on bool) bool {
 	return row.Clicked()
 }
 
-// handFoot is 勾了 n 件 and the Go, its shape on its own line beneath.
+// handFoot is 勾了 n 个 and the Go, its shape on its own line beneath.
 func (a *App) handFoot(c *ui.Context, wide bool) {
 	t := a.T
 	h := &a.ho

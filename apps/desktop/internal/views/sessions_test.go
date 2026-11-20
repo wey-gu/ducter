@@ -248,7 +248,7 @@ func TestPastPreviewAndRedo(t *testing.T) {
 	it := app.pastItemFor("s_compaction_pr")
 	app.openRedo(it, app.S.Past.Steps["s_compaction_pr"].Steps[2])
 	tt.Frame()
-	if !hasT(tt, "从第 3 步开新任务") || !hasT(tt, "代码从这一步之前的样子开始（d27fe03，"+app.redoWhen(app.S.Past.Steps["s_compaction_pr"].Steps[2].At)+"）。之后的改动留在原来那件里。") || !hasT(tt, "原来那件不动。") {
+	if !hasT(tt, "从第 3 步开新任务") || !hasT(tt, "代码从这一步之前的样子开始（d27fe03，"+app.redoWhen(app.S.Past.Steps["s_compaction_pr"].Steps[2].At)+"）。之后的改动留在原来那个里。") || !hasT(tt, "原来那个不动。") {
 		t.Fatalf("redo sheet %q", tt.Texts())
 	}
 	if err := tt.Click("Codex"); err != nil {

@@ -1,4 +1,4 @@
-// 开一件事 / New task (D128): the user opens a task themselves, from On hand (the card, ⌘N) or
+// 开一个任务 / New task (D128): the user opens a task themselves, from On hand (the card, ⌘N) or
 // the command line (`ducter task`). One path for both: the user's words go to the task as they
 // are, as its brief (no partner rewrite); the title is their first sentence, short; the Log
 // records task_open with origin "you". Nothing is said in the conversation: the partner reads a

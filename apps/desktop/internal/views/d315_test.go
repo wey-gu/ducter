@@ -34,7 +34,7 @@ func TestHeadLineSaysWhatTheStripCant(t *testing.T) {
 			t.Errorf("%v: %q, want %q", c.n, got, c.want)
 		}
 		for _, k := range c.n {
-			if k > 1 && k != c.n[0] && strings.Contains(app.headLine(b, "", c.n), "件在") {
+			if k > 1 && k != c.n[0] && strings.Contains(app.headLine(b, "", c.n), "个在") {
 				t.Errorf("%v: the line says a count: %q", c.n, app.headLine(b, "", c.n))
 			}
 		}

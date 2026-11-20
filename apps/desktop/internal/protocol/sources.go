@@ -154,7 +154,7 @@ type SourceAsk struct {
 	DeviceName string    `json:"deviceName,omitempty"`
 	Quote      string    `json:"quote,omitempty"`
 	Harness    string    `json:"harness,omitempty"`
-	// D415: hand_comment (先在这 n 件下留一句，再开始？): Text goes on each of
+	// D415: hand_comment (先在这 n 个下面留一句，再开始？): Text goes on each of
 	// Items; Quote is the person's note that asked for it.
 }
 

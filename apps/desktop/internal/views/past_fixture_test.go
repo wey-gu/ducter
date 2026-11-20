@@ -73,7 +73,7 @@ func pastSeeds() []pastSeed {
 		{id: "t_newsletter", title: "写这个月的 Nowledge 通讯", project: "mem", harness: "claude-code", ago: 35*day + 2*time.Hour, att: d, outcome: "写好了，讲同步和导出两个新功能，配了两张截图。", kind: "write"},
 		{id: "t_visa", title: "查日本签证要准备的材料", project: "", harness: "pi", ago: 37*day + 4*time.Hour, att: d, outcome: "列了 7 样材料，在职证明需要盖章，建议 11 月 20 日前递交。", kind: "errand"},
 		{id: "t_metrics", title: "给 compaction 加 Prometheus 指标", project: "hawdb", harness: "claude-code", ago: 39*day + 3*time.Hour, att: d, outcome: "加了 5 个指标：积压字节、每层文件数、耗时、写放大、暂停次数。", kind: "data", adds: 88, dels: 3, act: "merge"},
-		{id: "t_login", title: "网页端登录后偶尔白屏", project: "ducter", harness: "codex", ago: 41*day + 6*time.Hour, att: protocol.Superseded, outcome: "换成另一件事接着查了。", kind: "fix"},
+		{id: "t_login", title: "网页端登录后偶尔白屏", project: "ducter", harness: "codex", ago: 41*day + 6*time.Hour, att: protocol.Superseded, outcome: "换成另一个任务接着查了。", kind: "fix"},
 		{id: "t_plan", title: "想想 v2 的路线图", project: "ducter", harness: "claude-code", ago: 44*day + 2*time.Hour, att: d, outcome: "三个阶段：先把手机做完整，再做团队共享，最后开放插件。", kind: "idea"},
 		{id: "t_pay", title: "交这个季度的物业费", project: "", harness: "pi", ago: 46*day + 3*time.Hour, att: d, outcome: "交了 1860 元，收据存在了文件夹里。", kind: "errand"},
 		{id: "t_raft", title: "读一遍 Raft 论文里的成员变更", project: "hawdb", harness: "codex", ago: 48*day + 5*time.Hour, att: d, outcome: "整理了 joint consensus 的要点和我们实现里缺的两步。", kind: "look"},

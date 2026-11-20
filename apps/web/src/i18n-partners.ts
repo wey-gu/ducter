@@ -28,7 +28,7 @@ export const partnersWords: { zh: Record<string, string>; en: Record<string, str
     "partners.asks.from": "%s 问你",
     "partners.added": "%s 来了。",
     "partners.switch": "换到%s",
-    "partners.switch.asks": "换到%s，有 %d 件等你",
+    "partners.switch.asks": "换到%s，有 %d 个等你",
   },
   en: {
     "partners.title": "Your partners",

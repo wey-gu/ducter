@@ -13,7 +13,7 @@ export const contextWords: { zh: Record<string, string>; en: Record<string, stri
     "ctx.auto": "到 %s 会自动压缩",
     "ctx.near": "快满了：它会先存一下进度，再自动压缩",
     "ctx.turn": "上一轮",
-    "ctx.total": "这件事合计",
+    "ctx.total": "这个任务合计",
     "ctx.in": "输入 %s",
     "ctx.cached": "其中缓存 %s",
     "ctx.out": "输出 %s",

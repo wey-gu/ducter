@@ -26,7 +26,7 @@ var zhWhere = Table{
 	"where.reason.you":         "你说的，在 %s 上做",
 	"where.reason.rule":        "你的规则：%s",
 	"where.reason.home":        "Ducter 就在 %s 上运行",
-	"where.first_line":         "以后每件事会写明在哪台电脑上做。",
+	"where.first_line":         "以后每个任务都会写明在哪台电脑上做。",
 	"where.ask.asleep":         "%[1]s 睡着了。等它醒了再做，还是现在在 %[2]s 上做？",
 	"where.ask.asleep.chrome":  "%[1]s 睡着了。等它醒了用你的 Chrome 做，还是现在在 %[2]s 上做？",
 	"where.ask.away":           "%[1]s 连不上。等它回来再做，还是现在在 %[2]s 上做？",

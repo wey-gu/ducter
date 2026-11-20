@@ -3635,7 +3635,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
             ...(s.facets?.length ? { readAs: s.facets.map((f) => f.text) } : {}),
             ...(s.unknown?.length ? { noSuchPerson: s.unknown.map((u) => ({ said: u.said, closest: u.closest })) } : {}),
             note: s.found.n
-              ? "A card under your line shows them, `ticked` of them ticked (the ones you can take; every sure one when they named whose or which), with a button to hand them over. Your whole reply is ONE short line in the user's language from these counts only (e.g. \"找到 9 件讲记忆提炼的。能直接交给我的 6 件先勾上了；#405 要你定一下；两件改动大，先放着。\"); never list them. Start nothing: their next words about how are this set's hand-over (do=hand set=… note=…)."
+              ? "A card under your line shows them, `ticked` of them ticked (the ones you can take; every sure one when they named whose or which), with a button to hand them over. Your whole reply is ONE short line in the user's language from these counts only (e.g. \"找到 9 个讲记忆提炼的。能直接交给我的 6 个先勾上了；#405 要你定一下；两个改动大，先放着。\"); never list them. Start nothing: their next words about how are this set's hand-over (do=hand set=… note=…)."
               : s.unknown?.length
                 ? "No one by that name is in their to-dos (noSuchPerson): say so in one short line and ask whether they meant the closest login; start nothing."
                 : "None found: say so in one short line; offer to look with other words.",
@@ -3653,7 +3653,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           const refs = [...new Set([...(set?.ticked ?? []), ...given.map(full)])];
           const r = todos.pile.subject({ op: op === "put" && !refs.length ? "make" : op, name, ...(s_(a.to) ? { to: s_(a.to) } : {}), refs });
           if (!r.ok) return { ok: false, error: r.error ?? "Couldn't change that subject." };
-          return { ok: true, ...(r.name ? { subject: r.name } : {}), ...(r.n !== undefined ? { inIt: r.n } : {}), note: "Kept: it shows as a chip on On hand's to-dos and finds by its name; a sort never moves what the user placed. Say it in one short line (e.g. \"好，归到「通用设置」了，现在 3 件。\"); start nothing." };
+          return { ok: true, ...(r.name ? { subject: r.name } : {}), ...(r.n !== undefined ? { inIt: r.n } : {}), note: "Kept: it shows as a chip on On hand's to-dos and finds by its name; a sort never moves what the user placed. Say it in one short line (e.g. \"好，归到「通用设置」了，现在 3 个。\"); start nothing." };
         }
         if (what === "hand") {
           // Rule 2's line comes before the call: what was said already is this hand-over's reply.

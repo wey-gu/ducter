@@ -29,7 +29,7 @@ var pebbleRun = map[i18n.Lang]pebbleWords{
 		fixed:   "TTL 测试修好了：它用真实计时去等 1 秒过期，机器一忙就抢跑，现在改成假时钟。",
 		pic:     "这个报错是什么意思？",
 		picAns:  "是 Xcode 找不到签名证书：钥匙串里那张开发证书上周过期了。",
-		opening: "早。有两件事：",
+		opening: "早。有两个任务：",
 		find1:   "王磊周二问的 HawDB 报价，你还没回。",
 		find2:   "ducter.dev 11 月 20 日到期，Cloudflare 上自动续费的那张卡过期了。",
 		go2:     "去续费",

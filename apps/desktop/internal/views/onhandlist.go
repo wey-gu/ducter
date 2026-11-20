@@ -878,7 +878,7 @@ func (a *App) switchList(q string) []*store.Task {
 	return out
 }
 
-// OpenSwitcher opens 打开一件事 / Open a task (⌘O), or closes it.
+// OpenSwitcher opens 打开任务 / Open a task (⌘O), or closes it.
 func (a *App) OpenSwitcher() {
 	if a.nt.open {
 		return

@@ -42,7 +42,7 @@ type TrayView struct {
 	Label     string
 	Decisions []TrayDecision
 	// Partners (D309) are the other partners with something waiting, each
-	// a line naming it ("换到小家，有 1 件等你"); a click shows its conversation.
+	// a line naming it ("换到小家，有 1 个等你"); a click shows its conversation.
 	Partners []TrayPartner
 }
 

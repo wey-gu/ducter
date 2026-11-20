@@ -452,7 +452,7 @@ with what it can do.**
    deadline or ETA the user is relying on; or it has been asleep > 30 min with the user active
    elsewhere. The partner then offers **one decision per device**, not per task (artboard
    `ATaskAsleep`):
-   - "MacBook 睡着了，上面有 2 件事停着。/ MacBook is asleep with 2 tasks paused."
+   - "MacBook 睡着了，上面有 2 个任务停着。/ MacBook is asleep with 2 tasks paused."
    - **好，换到 vps-1 接着做 / Go, continue on vps-1** — shown only if vps-1 has the repo (or can
      clone it) and the task's branch was pushed at its last checkpoint. That's a handoff
      (principle 13); the card says what is lost ("最后 4 分钟没保存的改动会留在 MacBook 上").
@@ -524,8 +524,8 @@ with what it can do.**
 | `task.wait.device_asleep` | 在等 · {device} 睡着了 | Waiting · {device} is asleep |
 | `task.wait.device_unreachable` | 在等 · 连不上 {device} | Waiting · can't reach {device} |
 | `device.battery.note` | {device} 用电池时合上盖子会睡着，活会停下来。插上电它会一直醒着干活。 | {device} sleeps when its lid closes on battery, and work pauses. Plugged in, it stays awake to work. |
-| `device.asleep.decision` | {device} 睡着了，上面有 {n} 件事停着。 | {device} is asleep with {n} tasks paused. |
-| `device.unreachable.decision` | 连不上 {device} {duration} 了，上面有 {n} 件事停着。 | Can't reach {device} for {duration}; {n} tasks are paused. |
+| `device.asleep.decision` | {device} 睡着了，上面有 {n} 个任务停着。 | {device} is asleep with {n} tasks paused. |
+| `device.unreachable.decision` | 连不上 {device} {duration} 了，上面有 {n} 个任务停着。 | Can't reach {device} for {duration}; {n} tasks are paused. |
 | `device.move` | 好，换到 {device} 接着做 | Go, continue on {device} |
 | `device.move.loss` | 最后 {min} 分钟没保存的改动会留在 {device} 上 | The last {min} minutes of unsaved changes stay on {device} |
 | `device.wake` | 叫醒它 | Wake it |
@@ -611,7 +611,7 @@ Silence is allowed only for step 1, because it changes nothing about *who* does 
    Waiting · Claude quota back at 21:40**. No message. On reset, tasks resume; the living message
    updates timings only if they slipped.
 4. **Reset later:** one decision in the conversation (artboard `AQuotaDecision`):
-   - "Opus 的额度用完了，22:50 才恢复。手上 3 件事停着。/ Opus's quota is used up until 22:50.
+   - "Opus 的额度用完了，22:50 才恢复。手上 3 个任务停着。/ Opus's quota is used up until 22:50.
      3 tasks are paused." The limit is named at the level it applies: a model (Opus weekly
      limit) or the whole subscription (5-hour window). A whole-subscription limit skips rung 2.
    - **好，换成 Sonnet 接着做 / Go, continue on Sonnet** — default, with a 10-min countdown,
@@ -640,7 +640,7 @@ code).
 **H-2: at task start.** Body selection filters out signed-out harnesses, so usually the user never
 sees it. Visible only when:
 - a pin or rule demands that harness → one line with a default: "你的规则是用 Codex，但 vps-1 上的
-  Codex 没登录。用 Claude Code 做这件，还是先登录？" **好，用 Claude Code** · **去登录** · Reply.
+  Codex 没登录。用 Claude Code 做这个，还是先登录？" **好，用 Claude Code** · **去登录** · Reply.
 - nothing else qualifies → the task is `queued` with "在等 · vps-1 上的 Claude Code 没登录" and a
   **登录** action on the card.
 
@@ -666,7 +666,7 @@ sees it. Visible only when:
 | Key | zh | en |
 |---|---|---|
 | `task.wait.quota` | 在等 · {harness} 额度 {time} 恢复 | Waiting · {harness} quota back at {time} |
-| `quota.out.decision` | {limit} 的额度用完了，{time} 才恢复。手上 {n} 件事停着。 | {limit}'s quota is used up until {time}. {n} tasks are paused. |
+| `quota.out.decision` | {limit} 的额度用完了，{time} 才恢复。手上 {n} 个任务停着。 | {limit}'s quota is used up until {time}. {n} tasks are paused. |
 | `quota.other_ok` | {model} 的额度还剩不少 | {model} still has plenty of quota |
 | `quota.switch_model` | 好，换成 {model} 接着做 | Go, continue on {model} |
 | `quota.hold_until` | 等到 {time} | Wait until {time} |
@@ -685,7 +685,7 @@ sees it. Visible only when:
 | `harness.sign_in.device_code` | 在 {url} 输入这个码 | Enter this code at {url} |
 | `harness.sign_in.done` | {harness} 登录好了 | {harness} is signed in |
 | `task.wait.signed_out` | 在等 · {device} 上的 {harness} 没登录 | Waiting · {harness} on {device} isn't signed in |
-| `rule.cant_honor.harness` | 你的规则是用 {harness}，但 {reason}。用 {other} 做这件，还是 {alt}？ | Your rule says {harness}, but {reason}. Use {other} for this one, or {alt}? |
+| `rule.cant_honor.harness` | 你的规则是用 {harness}，但 {reason}。用 {other} 做这个，还是 {alt}？ | Your rule says {harness}, but {reason}. Use {other} for this one, or {alt}? |
 
 ### Motion
 - Quota wait: a small **hourglass-free** treatment: the waiting pebble shows a thin ring that
@@ -756,7 +756,7 @@ sees it. Visible only when:
      line says "连上 Mem 后它会记得更多" (open question 1).
 4. **好，叫醒 {name} / Go, bring {name} in.** The face pops out of the paper (same as cartoon scene
    1, shortened), the app switches to the new conversation, and the new partner speaks first,
-   from its sentence: "我是小满。账单、学校、预约这些交给我。先说一件这周要办的？"
+   from its sentence: "我是小满。账单、学校、预约这些交给我。先说一样这周要办的？"
 5. **Switching.** Header face → menu of faces (each with its unread/needs-you count). On phone:
    swipe on the header face. On hand already shows every partner's cards with their faces;
    a **伙伴** filter appears only once there are two.
@@ -792,7 +792,7 @@ sees it. Visible only when:
 | `partner.switch` | 换个伙伴 | Switch partner |
 | `partner.pause` | 暂停 | Pause |
 | `partner.delete` | 删掉 | Delete |
-| `partner.delete.open_tasks` | {name} 手头还有 {n} 件事。交给 {other}，还是放下？ | {name} has {n} tasks open. Hand them to {other}, or drop them? |
+| `partner.delete.open_tasks` | {name} 手头还有 {n} 个任务。交给 {other}，还是放下？ | {name} has {n} tasks open. Hand them to {other}, or drop them? |
 | `onhand.filter.partner` | 伙伴 | Partner |
 
 ### Motion

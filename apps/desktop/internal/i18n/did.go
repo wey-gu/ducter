@@ -7,7 +7,7 @@ var zhDid = Table{
 	"did.title":     "替你做过的",
 	"did.link":      "替你做过的",
 	"did.menu":      "替你做过的…",
-	"did.find":      "找一件：发给谁、付给谁、哪个任务…",
+	"did.find":      "找一条：发给谁、付给谁、哪个任务…",
 	"did.all":       "全部",
 	"did.f.sent":    "发出的",
 	"did.f.paid":    "付款",

@@ -3,7 +3,7 @@ export const didWords: { zh: Record<string, string>; en: Record<string, string> 
   zh: {
     "did.title": "替你做过的",
     "did.link": "替你做过的",
-    "did.find": "找一件：发给谁、付给谁、哪个任务…",
+    "did.find": "找一条：发给谁、付给谁、哪个任务…",
     "did.k.all": "全部",
     "did.k.sent": "发出的",
     "did.k.paid": "付款",

@@ -139,7 +139,7 @@ func TestNamesWordsPlurals(t *testing.T) {
 	tables := map[string]string{"zh": "好", "en": "OK"}
 	eq(Words(tables, "zh-TW"), "好")
 	eq(Words(tables, "ko"), "OK")
-	eq(Fill("接了：「{title}」，{n} 件", map[string]string{"title": "周报", "n": "2"}), "接了：「周报」，2 件")
+	eq(Fill("接了：「{title}」，{n} 个", map[string]string{"title": "周报", "n": "2"}), "接了：「周报」，2 个")
 	eq(Fill("{missing}", nil), "{missing}")
 	eq(Plural("en", 1), "one")
 	eq(Plural("en", 2), "other")

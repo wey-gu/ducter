@@ -86,7 +86,7 @@ func TestOpenedTaskMem(t *testing.T) {
 
 // D268: a finished turn folds its work under how long it took, keeping its
 // last words; opened, each run of steps is one line ("搜了 3 次，看了 1 个文
-// 件，还做了 1 件别的") that opens on a click; the probes in it say "not
+// 件，还做了 1 样别的") that opens on a click; the probes in it say "not
 // there" in plain words, never 出错; a real failure is its own line with
 // its words under it.
 func TestOpenedTaskMemStretches(t *testing.T) {
@@ -94,7 +94,7 @@ func TestOpenedTaskMemStretches(t *testing.T) {
 		i18n.ZH: {"没找到 nmem", "没全找到：python3 pip3 uv", "还没有 .nowledge-mem/config.json", "请求 cloud.nowledge.co", "隐藏了一段密钥", "你交给它的事"},
 		i18n.EN: {"No nmem here", "Not all found: python3 pip3 uv", "No .nowledge-mem/config.json yet", "Requested cloud.nowledge.co", "A key is hidden", "What you asked"},
 	}
-	fold := map[i18n.Lang]string{i18n.ZH: "搜了 3 次，看了 1 个文件，还做了 1 件别的", i18n.EN: "Searched 3 times, read a file, and 1 other thing"}
+	fold := map[i18n.Lang]string{i18n.ZH: "搜了 3 次，看了 1 个文件，还做了 1 样别的", i18n.EN: "Searched 3 times, read a file, and 1 other thing"}
 	for _, lang := range []i18n.Lang{i18n.ZH, i18n.EN} {
 		app, tt := memTask(t, lang, "done")
 		all := texts(tt)

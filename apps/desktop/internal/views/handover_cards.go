@@ -35,7 +35,7 @@ func (a *App) setTicks(s *protocol.TodoSet) map[string]bool {
 }
 
 // setCard is a set found in the conversation: its subject and count, the first
-// rows to tick, 还有 n 件, and the way to the sheet (or, handed, where it went).
+// rows to tick, 还有 n 个, and the way to the sheet (or, handed, where it went).
 func (a *App) setCard(c *ui.Context, e *store.Entry) {
 	t := a.T
 	s := e.Set
@@ -179,7 +179,7 @@ func (a *App) planAnswer(d *store.DecisionState, option, text string) {
 }
 
 // handPlanCard is {group}：方案: what it read, the plan in the shapes' own words
-// (each part with 给这件的话…), the note's limits as separate facts, and 照这个做
+// (each part with 给这个的话…), the note's limits as separate facts, and 照这个做
 // / 先等等 / 回复…. No default runs on it: it has no countdown.
 func (a *App) handPlanCard(c *ui.Context, d *store.DecisionState, inGroup bool) {
 	t := a.T

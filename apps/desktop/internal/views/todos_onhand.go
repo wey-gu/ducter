@@ -19,7 +19,7 @@ import (
 // (GitHub 上标给你的 / Assigned to you on GitHub) or 你的待办 when there are
 // several. At most three stand as cards, chosen by the home to save
 // attention (a PR waiting for review, an assigned one that mentions the
-// person, a line due soon, the newest); the rest fold under 还有 n 件 / n
+// person, a line due soon, the newest); the rest fold under 还有 n 个 / n
 // more, which opens in place: Find, chips on a sunk track, low cards, a
 // page at a time. 交给{name} / Hand to {name} opens a task bound to it the
 // way New task's pick does; the card then moves into the board with its chip.
@@ -436,7 +436,7 @@ func (a *App) todoMark(c *ui.Context, kind string, size float32) {
 }
 
 // todoFoldBody is the fold opened in place: Find, the chips, the low cards,
-// and 再看 n 件.
+// and 再看 n 个.
 func (a *App) todoFoldBody(c *ui.Context, sources []protocol.SourceView, shown []string) {
 	t := a.T
 	f := &a.todos.fold

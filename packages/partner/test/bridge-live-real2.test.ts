@@ -145,7 +145,7 @@ describe("D412 (3): one follow-through line per silent agent", () => {
     ];
     expect(followLine(items, at, "zh")).toBe("你自己的一个 agent 还没回你 2 小时前问的「昨晚 CI 那个红是不是 flaky？」和「bridge 那块它写到哪了，今晚能不能提 PR？」，它可能停了。回了我马上告诉你。");
     expect(followLine(items, at, "en")).toBe('One of your own agents hasn\'t answered what you asked 2 hours ago ("昨晚 CI 那个红是不是 flaky？" and "bridge 那块它写到哪了，今晚能不能提 PR？"); it may have stopped. I\'ll tell you as soon as it does.');
-    expect(followLine([...items, { op: op(25, "Weyl 问：发版了吗？"), asked: undefined }], at, "zh")).toContain("问的「发版了吗？」等 3 件事，");
+    expect(followLine([...items, { op: op(25, "Weyl 问：发版了吗？"), asked: undefined }], at, "zh")).toContain("问的「发版了吗？」等 3 条，");
     // One alone reads as before; "问问我那个 Codex bridge 写到哪了，…" keeps its question.
     expect(followLine(S2, at, "zh", false, "问问我那个 Codex bridge 写到哪了，今晚能不能提 PR")).toContain("「问问我那个 Codex bridge 写到哪了，今晚能不能提 PR」");
   });

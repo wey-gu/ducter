@@ -281,7 +281,7 @@ stage, the tray in front; two cards beside it; the four D71 cards below).
    effect from the next message (principle 9: the next turn's projection starts a session on the
    new harness; no state moves). The result line: "Ducter 现在用 Codex 想事情了 / Ducter thinks
    with Codex now". Only accounts on the home Mac can go in (said once, quietly).
-2. **谁来做事 / Who does the tasks** (proposal). One sentence for the default: "每件事 Ducter
+2. **谁来做事 / Who does the tasks** (proposal). One sentence for the default: "每个任务 Ducter
    挑一个：最合适、额度最够的那个。/ For each task Ducter picks one: the best fit with the most
    limit left." Tapping a token opens its line: limit, where it's signed in, the reserve, **按用量
    付费 / Pay per use** for API-billed harnesses, and a switch **用它做事 / Use it for tasks**
@@ -426,7 +426,7 @@ longer without them doing anything.
   rule for that kind is as new, or the saying was answered; newest per agent. When one changes who
   does it (a never moved it off the default's pick, an always put it on the one named, or the
   partner's pin follows it), `body_selected` says why `said` with the person's words (**你说过「…」 /
-  you said “…”**), and Ducter, not the model, puts one card under the ack: **你之前说过「{words}」，这件
+  you said “…”**), and Ducter, not the model, puts one card under the ack: **你之前说过「{words}」，这个
   就交给了 {agent}。记成一条规则吗？** with **记成规则** (Go: their words become a rule with its kind
   and never) and **只这次** (Hold, the default, no time: nothing kept, and it no longer applies), with **不选也照你说的做，只是不记成规则。** under it.
   Unanswered, it keeps applying and is not asked again; answered, never again for that saying,

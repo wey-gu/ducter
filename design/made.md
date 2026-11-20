@@ -71,7 +71,7 @@ chat tables only with it, research/152 §4).
   line why: where the words matched, else **你问的：{ask} / You asked: {ask}**, else
   **来自「{task}」 / From “{task}”**, else **在对话里 / In the conversation**; then its facts, each
   its own element (D291): the file's own letters (PDF, MD) or the kind, its size, its day. At the
-  right **看那件事 / See the task** when a task made it.
+  right **看那个任务 / See the task** when a task made it.
 - **Empty:** **还没有给你做的东西。让{name}查点什么、做个表格，做好的会在这里。/ Nothing made for you
   yet. Ask {name} to look something up or make a table, and it shows up here.** None for the
   words: **没找到。换几个字，或者直接问{name}。/ Nothing found. Try other words, or just ask {name}.**

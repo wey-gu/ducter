@@ -1,4 +1,4 @@
-// 0.0.75's "0 件没做完": GitHub connected, 50+ issues assigned, and the pane said 0. gh's answer to
+// 0.0.75's "0 个没做完": GitHub connected, 50+ issues assigned, and the pane said 0. gh's answer to
 // the list is ~700 KB; the gh runner kept only its last 8000 characters, so the status line and the
 // blank line were gone, the body read as "", and "" became an empty list, which looked like a good
 // look. These run the real runner (realGhRun) against a gh that is a script on PATH printing a page

@@ -51,7 +51,7 @@ a.OpenFile(ref, card)
 
 ---
 
-这件事不用你做什么；下次任务交来的文件，点一下就在这里读。
+这个任务不用你做什么；下次任务交来的文件，点一下就在这里读。
 `
   : `# Investigation: why opening a file opened a link on home-server
 

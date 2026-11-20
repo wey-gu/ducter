@@ -80,7 +80,7 @@ func TestGroupStoppedLine(t *testing.T) {
 	if n := app.stateCounts(app.S.Board(), ""); n[0] != 1 {
 		t.Fatalf("a stopped line counts as needing you: %v", n)
 	}
-	for _, not := range []string{"件里做完", "第 2 件", "第 3 件"} {
+	for _, not := range []string{"件里做完", "第 2 个", "第 3 个"} {
 		if strings.Contains(all, not) {
 			t.Fatalf("the card counts with 件 (D430): %q in %s", not, all)
 		}

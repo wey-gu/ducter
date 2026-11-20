@@ -103,7 +103,7 @@ test("a reply to one find of a note carries that find", async () => {
     body: {
       noteId: "n1",
       rung: "morning",
-      opening: "早。两件事：",
+      opening: "早。两个任务：",
       finds: [
         { findId: "f1", kind: "reply", text: "王磊周二问的报价还没回。", how: [] },
         { findId: "f2", kind: "bill", text: "ducter.dev 11 月 20 日到期，自动续费的卡过期了。", how: [], decisionId: "d_f2", goLabel: "去续费" },
@@ -167,9 +167,9 @@ test("a reply to a message with pictures shows the pictures to the partner again
 
 test("a part the user picked is quoted only when the message has those words; nonsense names nothing", () => {
   const { core } = rig();
-  const m = core.log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: "两件事：**CI 挂了**，在修；另外 `values()` 已经合进去了。" } });
+  const m = core.log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: "两个任务：**CI 挂了**，在修；另外 `values()` 已经合进去了。" } });
   expect(resolveReply(core.log, core.decisions, { seq: m.seq, part: "CI 挂了，在修" })).toMatchObject({ quote: "CI 挂了，在修", part: true, clipped: true });
-  expect(resolveReply(core.log, core.decisions, { seq: m.seq, part: "made up words" })).toMatchObject({ quote: "两件事：CI 挂了，在修；另外 values() 已经合进去了。" });
+  expect(resolveReply(core.log, core.decisions, { seq: m.seq, part: "made up words" })).toMatchObject({ quote: "两个任务：CI 挂了，在修；另外 values() 已经合进去了。" });
   expect(() => resolveReply(core.log, core.decisions, { seq: 99_999 })).toThrow();
   const inTask = core.log.append({ stream: "task:t9", origin: "task", kind: "task_event", body: { taskId: "t9", role: "assistant", text: "x" } });
   expect(() => resolveReply(core.log, core.decisions, { seq: inTask.seq })).toThrow();

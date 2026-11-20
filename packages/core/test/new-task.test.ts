@@ -1,4 +1,4 @@
-// 开一件事 / New task (D128): the opening path the card and `ducter task` share, its frames,
+// 开一个任务 / New task (D128): the opening path the card and `ducter task` share, its frames,
 // open_task, and the cached diff stat for On hand by project.
 import { afterEach, expect, test } from "bun:test";
 import { mkdirSync, realpathSync, writeFileSync } from "node:fs";

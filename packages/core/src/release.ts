@@ -36,7 +36,7 @@ export const NOTE_MAX = { zh: 40, en: 80 } as const;
  * (an HTML comment, so the release page doesn't show it twice):
  *
  *     <!-- whats-new
- *     zh: 每件事都说清楚在哪台电脑上做。
+ *     zh: 每个任务都说清楚在哪台电脑上做。
  *     en: Each task says which computer it runs on.
  *     -->
  *

@@ -1088,7 +1088,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   const brainInUse = (): { harness: HarnessId; model?: string } => api.partnerFallback?.() ?? settings.get().brain;
   // D380: a quick web look runs on the agent the partner thinks with, holding only its web tools.
   api.webLook = opts.webLook ?? createWebLook({ harness: () => runner?.harness, pick: brainInUse, dataDir });
-  // 开一件事 / New task (D128): the one opening path the card and `ducter task` share.
+  // 开一个任务 / New task (D128): the one opening path the card and `ducter task` share.
   // D204: the home's own Ducter folder (~/ducter, or <dataDir>/ducter for a Ducter with a data
   // folder of its own) and the projects in it; clones go there with this computer's own git.
   const homeFolder = () => ducterFolder({ dataDir }).path;

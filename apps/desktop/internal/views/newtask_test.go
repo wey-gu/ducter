@@ -15,7 +15,7 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 )
 
-// 开一件事 / New task (D128): the card, On hand by project, the Changes
+// 开一个任务 / New task (D128): the card, On hand by project, the Changes
 // header, and `ducter open` reaching the app. Realistic work in three
 // repos (Ducter, HawDB, tinycart) and one task of no place.
 
@@ -42,7 +42,7 @@ func newTaskApp(t *testing.T, lang i18n.Lang) (*App, *[]any, *ui.Tester) {
 	cards := []protocol.TaskCard{
 		{TaskID: "t_asc", Title: w("准备 Ducter iOS 在 App Store Connect 上的上架资料（截图、描述、隐私问卷）", "Prepare Ducter iOS in App Store Connect (screenshots, description, privacy)"), Project: "ducter",
 			Place: repo("/Users/someone/dev/ducter", "ducter/app-store-connect"), Harness: "codex", Attention: protocol.NeedsYou, OpenedAt: ago(31 * time.Minute), UpdatedAt: ago(8 * time.Minute), Changes: stat(4, 118, 12)},
-		{TaskID: "t_newtask", Title: w("开一件事的卡片和按项目分组", "The New task card and By project"), Project: "ducter", OpenedBy: "you",
+		{TaskID: "t_newtask", Title: w("开一个任务的卡片和按项目分组", "The New task card and By project"), Project: "ducter", OpenedBy: "you",
 			Place: repo("/Users/someone/dev/ducter", "ducter/new-task-ui"), Harness: "claude-code", Model: "opus", Attention: protocol.Working, OpenedAt: ago(12 * time.Minute), UpdatedAt: ago(time.Minute), Changes: stat(7, 412, 38)},
 		{TaskID: "t_flaky", Title: w("修 compaction 偶发失败的测试", "Fix the flaky compaction test"), Project: "HawDB",
 			Place: repo("/Users/someone/dev/hawdb", "ducter/compaction-fix"), Harness: "claude-code", Attention: protocol.Done, OpenedAt: ago(58 * time.Minute), UpdatedAt: ago(45 * time.Minute), Changes: stat(2, 31, 9)},

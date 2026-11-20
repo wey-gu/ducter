@@ -120,7 +120,7 @@ func TestMorningNoteInTheConversation(t *testing.T) {
 	tt := ui.NewTesterWith(app.View, 1100, 1200, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
 	tt.Frame()
-	for _, want := range []string{"好，打开续费页", "先等等", "怎么知道的", "有用", "这类不用告诉我", "两件事对不上"} {
+	for _, want := range []string{"好，打开续费页", "先等等", "怎么知道的", "有用", "这类不用告诉我", "两处对不上"} {
 		if !tt.HasText(want) {
 			t.Errorf("no %q in %q", want, tt.Texts())
 		}
@@ -268,7 +268,7 @@ func morningEventsEN() []protocol.LogEvent {
 
 func firstEvents(en bool) []protocol.LogEvent {
 	offer := "已经能看你的 Gmail、日历、GitHub、Discord 了。要不要我现在看一眼最近两周，挑出要你管的？"
-	answer := "有 1 件要你管："
+	answer := "有 1 条要你管："
 	find := "Lina 4 天前问你「#2141 什么时候能 review」，今天又问了一次。"
 	label := "先帮我读一遍"
 	if en {
@@ -384,7 +384,7 @@ func TestQuietDayUnderTheSwitch(t *testing.T) {
 		t.Fatal("the counts show before the button is pressed")
 	}
 	got := strings.Join(app.dayLines(app.S.Day), "\n")
-	for _, want := range []string{"看了 152 封信、3 个日程", "12 封通知和收据，看标题就知道", "跟你说了 0 件", "2 件不急，没说（你选了只说急的）", "手机和浏览器都没开通知：说了也只在 Ducter 里看得到"} {
+	for _, want := range []string{"看了 152 封信、3 个日程", "12 封通知和收据，看标题就知道", "跟你说了 0 条", "2 条不急，没说（你选了只说急的）", "手机和浏览器都没开通知：说了也只在 Ducter 里看得到"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("no %q in %q", want, got)
 		}
@@ -402,7 +402,7 @@ func TestQuietDayUnderTheSwitch(t *testing.T) {
 	}
 	// Opened: the groups in order, the rules' leftovers softer.
 	groups := app.dayGroups(app.S.Day)
-	if len(groups) != 4 || groups[0][0].text != "看了 152 封信、3 个日程" || !groups[0][1].soft || groups[1][len(groups[1])-1].text != "跟你说了 0 件" || groups[2][0].text != "2 件不急，没说（你选了只说急的）" {
+	if len(groups) != 4 || groups[0][0].text != "看了 152 封信、3 个日程" || !groups[0][1].soft || groups[1][len(groups[1])-1].text != "跟你说了 0 条" || groups[2][0].text != "2 条不急，没说（你选了只说急的）" {
 		t.Errorf("groups %+v", groups)
 	}
 }

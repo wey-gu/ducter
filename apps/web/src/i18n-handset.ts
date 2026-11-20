@@ -16,7 +16,7 @@ export const handset: { zh: Record<string, string>; en: Record<string, string> }
     "handset.off.keep": "留着",
     "handset.off.ask": "以后不借给任务了？",
     "handset.chip.about": "任务要用手机时，会先问你借不借。",
-    "handset.status.lent": "正借给一件事",
+    "handset.status.lent": "正借给一个任务",
     "handset.status.ready": "随时能借给任务",
     "chip.handset": "用这台手机",
     "ability.handset.about": "任务要用手机上的应用时，可以借这台手机用一会儿：先问你；借出去的时候，顶上一直显示它在用，随时能停下。",

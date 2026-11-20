@@ -1,4 +1,4 @@
-// D388: 一件事的几个说法 / one coming plan, every source side by side. The calendar's hold, a mail
+// D388: 同一个安排的几个说法 / one coming plan, every source side by side. The calendar's hold, a mail
 // that mentions it, the confirmation, what the person said in the conversation and a public page
 // a web look read are each one source's word on the plan: its day, and its time and place when
 // it gives them. Code puts the words on one sheet per plan and reads two things off it:

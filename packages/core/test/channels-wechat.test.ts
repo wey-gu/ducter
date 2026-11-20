@@ -122,7 +122,7 @@ test("it writes on its own only inside the window: not before their words, not a
   await waitFor(() => wx.texts().some((t) => t.startsWith("又看了一眼。")));
   expect(hub.claimed("n:n2")).toBe(true);
   // Its few messages for this window: then it stops, and says so to Settings.
-  for (let i = 0; i < WECHAT_WINDOW_SENDS + 3; i++) rig.say(`第 ${i} 件`, u.seq);
+  for (let i = 0; i < WECHAT_WINDOW_SENDS + 3; i++) rig.say(`第 ${i} 个`, u.seq);
   await waitFor(() => wx.texts().length >= WECHAT_WINDOW_SENDS);
   await new Promise((r) => setTimeout(r, 50));
   await hub.idle();

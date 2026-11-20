@@ -184,7 +184,7 @@ if (kindDemo) {
     log.append({ stream: "channel", origin: "partner", kind: "job_status", body: { jobId: "j_flight", text: zh ? "在做" : "Working", state: "running", taskId: "t_flight" } });
     await task("t_flight", flight, browser, flight, "claude-code", "sonnet", { kind: "kind", work: "errand", keeps: { harness: "claude-code", model: "opus" } }, "");
     log.append({ stream: "task:t_flight", origin: "system", kind: "body_selected", body: { taskId: "t_flight", harness: "claude-code", model: "opus", why: { kind: "retry", from: "claude-code", fromModel: "sonnet", work: "errand" } } });
-    ev("t_flight", { role: "user", from: "ducter", text: zh ? "Claude Code（sonnet）没做下来（携程页面一直超时）。Ducter 把这件事交给你接着做一次。" : "Claude Code (sonnet) didn't get this done (Ctrip kept timing out). Ducter moved the task to you once." });
+    ev("t_flight", { role: "user", from: "ducter", text: zh ? "Claude Code（sonnet）没做下来（携程页面一直超时）。Ducter 把这个任务交给你接着做一次。" : "Claude Code (sonnet) didn't get this done (Ctrip kept timing out). Ducter moved the task to you once." });
     if (kindDemo === "never" && multi) core.rules.add({ text: zh ? "跑腿的事 → 不用 Claude Code" : "Errands → not Claude Code", harness: "claude-code", match: [], kinds: ["errand"], never: true });
   }
 }

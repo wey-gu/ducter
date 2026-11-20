@@ -215,7 +215,7 @@ export function canLine(i: FirstScreenInput): Words {
     const list = en.length > 2 ? `${en.slice(0, -1).join(", ")} and ${en.at(-1)}` : en.join(" and ");
     return { zh: space(`${zh.join("、")}，都可以交给我。${tail.zh}`), en: `${list[0]!.toUpperCase()}${list.slice(1)}: hand them to me. ${tail.en}` };
   }
-  return { zh: `查点东西、记件事、到点提醒你，说一句就行。${tail.zh}`, en: `Ask me to look something up, keep track of things or remind you on time. ${tail.en}` };
+  return { zh: `查点东西、记点事、到点提醒你，说一句就行。${tail.zh}`, en: `Ask me to look something up, keep track of things or remind you on time. ${tail.en}` };
 }
 
 /** One timely line for a returning person, only when there is something real. */

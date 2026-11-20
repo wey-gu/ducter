@@ -263,7 +263,7 @@ if (state === "author") {
   for (let i = 0; i < many; i++) {
     const id = `t_m${i}`;
     const p = projects[i % 3]!;
-    await open(id, w(`第 ${i + 1} 件：整理 ${p} 的 issue #${300 + i}`, `No. ${i + 1}: triage ${p} issue #${300 + i}`), p, repo(p, `issue-${300 + i}`), i % 2 ? "codex" : "claude-code", i % 2 ? "gpt-5.5" : "sonnet");
+    await open(id, w(`第 ${i + 1} 个：整理 ${p} 的 issue #${300 + i}`, `No. ${i + 1}: triage ${p} issue #${300 + i}`), p, repo(p, `issue-${300 + i}`), i % 2 ? "codex" : "claude-code", i % 2 ? "gpt-5.5" : "sonnet");
     tool(id, "Bash", { command: `gh issue view ${300 + i}` }, "ok");
     if (i % 4 === 1) report(id, { state: "done", summary: w(`#${300 + i} 是重复的，关掉了。`, `#${300 + i} was a duplicate; closed it.`), evidence: [] }), seed.tasks.setState(id, "done", "parked");
     diffs.set(id, { commits: 1, uncommitted: false, files: 1 + (i % 4), adds: 3 + ((i * 7) % 90), dels: (i * 3) % 20 });

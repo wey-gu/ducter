@@ -21,7 +21,7 @@ const W = {
     trustQuestion: "以后{agent}发来的事，直接接下？",
     trustGo: "直接接下",
     // D379: a saying never saved as a rule decided who does a task: asked once.
-    saidQuestion: "你之前说过「{quote}」，这件就交给了 {agent}。记成一条规则吗？",
+    saidQuestion: "你之前说过「{quote}」，这个就交给了 {agent}。记成一条规则吗？",
     saidGo: "记成规则",
     saidHold: "只这次",
     sendQuestion: "发给{who}？\n「{gist}」{whose}",

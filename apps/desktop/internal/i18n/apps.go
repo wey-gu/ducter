@@ -17,7 +17,7 @@ var zhApps = Table{
 	"app.ask.sent":       "发给%s了，改好会在这里刷新。",
 	"app.ask.limit":      "这个小应用这一小时问得太多了，过会儿再试。",
 	"app.ask.busy":       "它上一个问题还在等回答。",
-	"app.ask.go":         "这件事要你在和%s的对话里点「好」才会做。",
+	"app.ask.go":         "这一步要你在和%s的对话里点「好」才会做。",
 	"app.private":        "只有你看得到，每台设备上都一样。",
 	"app.live.changing":  "%s正在弄你说的…",
 	"app.live.broke":     "它打开时出了点问题",

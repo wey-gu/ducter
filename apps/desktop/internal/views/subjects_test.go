@@ -151,7 +151,7 @@ func TestPutTickedInASubject(t *testing.T) {
 func TestHandCommentCardAndAskedToast(t *testing.T) {
 	app, _, _ := todoApp(t, i18n.ZH, 1000, 800)
 	item := ghRef(10612, "Default 空间合并遗留同名别名无法清除")
-	d := &store.DecisionState{Decision: protocol.Decision{DecisionID: "d_c", Question: "先在这 2 件下留一句，再开始？", GoLabel: "留言并开始", HoldLabel: "只开始，不留言",
+	d := &store.DecisionState{Decision: protocol.Decision{DecisionID: "d_c", Question: "先在这 2 个下面留一句，再开始？", GoLabel: "留言并开始", HoldLabel: "只开始，不留言",
 		Src: &protocol.SourceAsk{Kind: "hand_comment", Item: item, Text: "我的 ducter agent 要开始做了", Items: []protocol.SourceAskItem{{Item: item}, {Item: ghRef(10559, "Improve general setting page")}}}}}
 	tt := ui.NewTesterWith(func(c *ui.Context) { a := app; ui.Column(c).Children(func() { a.todoAskBody(c, d) }) }, 900, 400, ui.TesterOptions{})
 	tt.Frame()

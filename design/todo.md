@@ -19,9 +19,9 @@ Deferred work, grouped by area, each with its trigger where it has one.
   words; three LLM raters so far.
 - [ ] **Raters for D430's group words** (the stopped line naming parts by their words, **再试一次**,
   **不管它，往下做**, **后面的不做了**, **还有 {n} 个**): none yet, LLM or human.
-- [ ] **件 outside this flow** (D430 left them): On hand's header and sections (**有 {n} 件要你定。**,
-  **在做 {n} 件**, **{n} 件等你**), the hand-over sheet (**找到 {n} 件**, **交给{name}这 {n} 件**), the
-  to-do pile. Decide with the author whether the no-counter rule goes app-wide; then one pass with raters.
+- [ ] **Raters for D434's counts** (app-wide, no 件: **有一个要你定。**, **{n} 个在做**, **交给{name}这 {n} 个**,
+  **今天做完 {n} 个**, **每天最多 3 条**, **一个个挑**, **接着说…** on one's own line): none yet, LLM or
+  human. Trigger: the next release on hel; also the partner's own free words (it may still say 件).
 - [ ] **A line that leaves its task, or binds to a to-do by itself** (research/173's part as an
   object): only when a line must outlive or move between tasks (e.g. one of three entries moved to
   another computer). Until then a line is a row of its task.
@@ -114,7 +114,7 @@ Deferred work, grouped by area, each with its trigger where it has one.
 - **D396: the words' split by a real model.** Code's clause rule and a fake model were checked; the
   cheapest real model on the author's own sentences (zh, en, mixed; one clause holding both) is not.
   *Trigger:* the author's home on this build, or the first split that reads wrong.
-- **D396: humans on the question's words** (**想交给{name}哪些？**, the hint, **找的是**, **一件件挑**).
+- **D396: humans on the question's words** (**想交给{name}哪些？**, the hint, **找的是**, **一个个挑**).
   *Trigger:* the next rater panel.
 - **D396: the phone's disclosure rows in call cards** (`phone.go` callPlanBody, callResult) highlight a
   square inside a rounded card (not at its edge). *Trigger:* the next pass on Use a phone.
@@ -131,10 +131,10 @@ Deferred work, grouped by area, each with its trigger where it has one.
 - **Subjects merge only by spelling.** Two names for one thing ("Distillation", "记忆提炼") stay two
   chips until a sort reuses one; a model-made merge is held. *Trigger:* the author sees one subject
   twice on the pile.
-- **People, not proxies, for the five words** (给{name}的话, 先出个方案 · 你点头再做, 合成一件做,
+- **People, not proxies, for the five words** (给{name}的话, 先出个方案 · 你点头再做, 合成一个任务做,
   分类 / Subjects, 一起过目). *Trigger:* the first human panel (shared with D348's and D382's words).
 - **A find by meaning on a real pile:** measure recall on hel's 49 distillation to-dos (words + labels
-  + one cheapest-model call) before trusting the line 说的是同一件事的 n 件. *Trigger:* the author's home on this build.
+  + one cheapest-model call) before trusting the line 说的是同一回事的 n 个. *Trigger:* the author's home on this build.
 
 ## Models an agent adds (D352, `harnesses.md`)
 
@@ -677,7 +677,7 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
       tasks untouched. Trigger: the first time a folder's name isn't the name the author wants.
 - [x] **Projects: add a folder on the server itself, or from the phone (D186).** Done by D203:
       找一个文件夹… on any computer of the home, from any client.
-- [ ] **New task: "every time something happens" (D185).** The card's 等某件事发生 is one-shot;
+- [ ] **New task: "every time something happens" (D185).** The card's 等某事发生 is one-shot;
       a repeating condition still goes through the partner (its check is compiled by a model).
       Trigger: the first time the author wants a watcher without saying it.
 - [x] **New task: By project on the phone (D128).** Built as D261's project lens: a row of names on the phone.
@@ -2224,7 +2224,7 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [x] **The web's cheer matches the Mac's**: it swells from rest to ~1.02 and back (D315). Waiting for the view transition to finish is still open. Trigger: the next On hand pass.
 
 ## D315: On hand after the review (2026-11-17)
-- [ ] **The conversation's header in one word order** (「1 件等你　在做 2 件」 → 「1 件等你　2 件在做」), both clients and their tests. Trigger: the next header change.
+- [ ] **The conversation's header in one word order** (「1 个等你　在做 2 个」 → 「1 个等你　2 个在做」), both clients and their tests. Trigger: the next header change.
 - [ ] **今天做完's section and the strip count the same** (a done only claimed is listed but not counted, D310). Trigger: the author sees 「今天做完 1」 over a strip without it.
 - [ ] **A demo with two computers** in `demo-onhand.ts`, so the shots show where on the one card that runs elsewhere. Trigger: the next On hand shots.
 - [ ] **On hand in front of people**: the author, then a consumer who has never heard "agent" (research/95). Trigger: D315 reviewed.

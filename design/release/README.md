@@ -61,7 +61,7 @@ which GitHub's release page doesn't render:
 ## 0.0.8 - 2026-11-10
 
 <!-- whats-new
-zh: 每件事都说清楚在哪台电脑上做
+zh: 每个任务都说清楚在哪台电脑上做
 en: Each task says which computer it runs on
 -->
 

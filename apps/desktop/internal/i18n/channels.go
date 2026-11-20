@@ -11,7 +11,7 @@ var zhChannels = Table{
 	"settings.list.chats":    "在微信、Telegram、Slack 和 iMessage 里也能说话",
 	"chats.lede":             "在你常用的聊天软件里也能找 %s，还是同一段对话。",
 	"chats.goes":             "付款、密码这类事不会发到这里。",
-	"chats.goes.how":         "它自己来找你时，只发到你最后说话的地方，一件只说一次，也守你的免打扰时间。",
+	"chats.goes.how":         "它自己来找你时，只发到你最后说话的地方，每条只说一次，也守你的免打扰时间。",
 	"chats.telegram":         "Telegram",
 	"chats.slack":            "Slack",
 	"chats.state.off":        "还没连上",

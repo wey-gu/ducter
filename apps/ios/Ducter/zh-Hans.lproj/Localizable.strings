@@ -18,7 +18,7 @@
 "decision.go" = "好";
 "decision.hold" = "先等等";
 "decision.reply" = "回复…";
-"decision.reply.placeholder" = "回复这件事…";
+"decision.reply.placeholder" = "说说你的想法…";
 "composer.send" = "发送";
 "notify.action.failed" = "没能发送。打开 Ducter 在那里回复。";
 /* D159：苹果和通知中转只带这一句；真正的内容由手机自己解开（DucterNotify）。 */
@@ -33,7 +33,7 @@
 "menu.partner" = "伙伴";
 "menu.composer" = "跟 %@ 说";
 "menu.find" = "找什么都行…";
-"menu.switch" = "打开一件事…";
+"menu.switch" = "打开任务…";
 /* D200: the home runs an older Ducter than this app. */
 "home.older" = "%1$@ 上的 Ducter 还是 %2$@，比这个 App 旧，有些新东西要等它更新。";
 "home.older.unknown" = "%@ 上的 Ducter 比这个 App 旧，有些新东西要等它更新。";

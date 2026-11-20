@@ -120,7 +120,7 @@ sheet, a centred panel when wide, the whole screen on a phone. Not a Settings pa
 | The Mac's menu | **替你做过的… / Done for You…** (⌘⇧Y) in the same menu as Past Tasks |
 | The partner | "你今天替我发了什么？" answered from the same list (the `did_list` tool), in one or two lines |
 
-The top: the title; one large field **找一件：发给谁、付给谁、哪个任务… / Find one: who it went to,
+The top: the title; one large field **找一条：发给谁、付给谁、哪个任务… / Find one: who it went to,
 who was paid, which task…** (searches as you type); one row of filters on a sunk track (the chosen
 one the knob, D270): **全部 / All · 发出的 / Sent · 付款 / Paid · 电话 / Calls · 登录和填写 /
 Sign-ins and fills · 改动 / Changed · 删除 / Deleted · 看过的 / Looked at**, each with its count

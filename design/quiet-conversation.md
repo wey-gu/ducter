@@ -51,7 +51,7 @@ one tap away · 惊喜 the partner visibly working the moment you send.
      by the action (**好，rebase**, 36pt, D76); under the tray the default as one small grey
      line (**10 分钟后你没回，我就 rebase，之后还能改回来。** · can't be undone: **你说好，我再做。
      / I'll do it once you say so.**) with Details. Only the ask whose default comes soonest
-     carries the tray; the others gather in one line, **还有 1 件等你定 › / 1 more waiting on
+     carries the tray; the others gather in one line, **还有 1 个等你定 › / 1 more waiting on
      you ›** and **都按默认 · 2 / Go on all defaults · 2**. Opening the line shows them all. An
      answered ask keeps its question and the tray becomes one tiny line on the user's side in
      their own words: **你说：好，rebase / You said: Rebase** (by default: **你没回，我照原计划做了
@@ -61,7 +61,7 @@ one tap away · 惊喜 the partner visibly working the moment you send.
      wording moves to Details (**它的原话：… / In its words: …**). Until the words come (up to
      60 s, while connected) the place shows the waiting presence, **在看它想问你什么… / Reading
      what it's asking…**; past that, or offline, the task's wording stands in.
-   - Work under way and waits are not said: the header line ("2 件等你 · 在做 1 件") and On hand
+   - Work under way and waits are not said: the header line ("2 个等你 · 在做 1 个") and On hand
      carry them. The count of asks shows only in the header.
 5. **Time lines** like a messaging app: before the first message and wherever 15 minutes passed.
    **Pictures (D206):** the user's stand above their words; what a task showed stands under the
@@ -84,7 +84,7 @@ measured 2–4 ms), so the first feedback never waits on the server.
 | thinking | 在想… | Thinking… | think: a slow sway, blinking | turn start, before any tool |
 | recalling | 在翻之前聊过的… | Looking back at what we said… | glance: one side, the other | log_search, log_read, memory_search, task_find, did_list |
 | checking_task | 在看「{title}」做到哪了… (without a title: 在看做到哪了…) | Checking how “{title}” is going… (Checking on that task…) | read: the book, a nod | task_read |
-| opening_task | 在安排「{title}」… (在安排一件事去做…) | Setting up “{title}”… (Setting up a task…) | lean | task_open, task_fork |
+| opening_task | 在安排「{title}」… (在安排一个任务去做…) | Setting up “{title}”… (Setting up a task…) | lean | task_open, task_fork |
 | messaging_task | 在把你的话带给「{title}」… (在转告它…) | Passing your words on to “{title}”… (Passing it on…) | lean | task_send |
 | planning | 在想怎么安排… | Working out the timing… | think | wait_until, ask |
 | looking | 在看你的日程… · 在看你的待办… · 在你连上的账号里查… · else 在查… | Looking at your calendar… · Looking at your to-dos… · Looking in your connected accounts… · else Looking into it… | glance | calendar, todos, a connection, any other tool |
@@ -116,7 +116,7 @@ moment it lands: what the partner is starting, that it will say when it's clear,
 usually takes only when something grounds it ("好，我去查 CI 为什么挂了，一般十来分钟，查清楚了告诉你" /
 "On it: checking why CI failed, usually about 10 min; I'll tell you when it's clear"). The partner
 sends `activity: null` with the ack, so no step flashes after it. The task starts with the
-sentence, not after the brief: its card (so the header's **在做 1 件**) and its session open from
+sentence, not after the brief: its card (so the header's **在做 1 个**) and its session open from
 the streamed title and place of the `task_open` call while the partner is still writing the
 brief, which becomes the session's first turn. Then silence until the result, which arrives as a
 message (and a notification when away). Measured live, warm session, one run each: sonnet ack

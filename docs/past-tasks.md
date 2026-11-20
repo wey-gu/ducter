@@ -14,7 +14,7 @@ and tasks that keep looking for something.
 
 ## Opening it
 
-- At the end of On hand, tap **做过的事 ›** (or **一直在跑的 n 件 ›**).
+- At the end of On hand, tap **做过的事 ›** (or **一直在跑的 n 个 ›**).
 - In On hand's search, when nothing there matches, tap **在做过的事里找「…」** to look for the
   same words in every earlier task.
 - In the Mac app: **做过的事… / Past Tasks…** in the menu, or ⌘Y.
@@ -61,7 +61,7 @@ remember which task made it.
 - **Or look.** Type a name, a kind or a day (`PDF`, `表格`, `截图`, `上周`), or tap a kind
   (**文件 / Files**, **图片 / Pictures**, **表格 / Tables**, **清单 / Lists**, **链接 / Links**).
   Tap one to open it: a file or picture opens in the viewer, a table opens in place, a link in the
-  browser. **看那件事 / See the task** opens the task that made it.
+  browser. **看那个任务 / See the task** opens the task that made it.
 
 A file a task wrote on another computer opens only while that computer is reachable; if it was
 moved or deleted since, Ducter says so and can make it again.

@@ -104,7 +104,7 @@ export function morph(apply: () => void) {
 export type SettingsPage = "" | "partner" | "memory" | "peers" | "notify" | "accounts" | "todos" | "chats" | "autofill" | "devices" | "phone";
 export type Sheet = { kind: "decision"; id: string } | { kind: "settings"; page?: SettingsPage } | { kind: "newtask" } | { kind: "switch" } | { kind: "past" } | { kind: "did" } | { kind: "pins" } | { kind: "app"; id: string } | { kind: "apps" } | { kind: "recall"; seq: number } | { kind: "learned" } | { kind: "pile" } | { kind: "hand" } | { kind: "review"; groupId: string } | null;
 
-/** 开一件事 / New task's sheet (D128): what the user chose and typed, and how starting went. */
+/** 开一个任务 / New task's sheet (D128): what the user chose and typed, and how starting went. */
 export interface NewTaskDraft {
   words: string;
   /** D285: 带着它开新任务 / New task from this: the earlier task its brief carries findings from. */
@@ -1008,7 +1008,7 @@ class AppState {
     this.changed();
   }
 
-  /** 开一件事 / New task (D128): opens the sheet, at a place when given, asking what it offers. */
+  /** 开一个任务 / New task (D128): opens the sheet, at a place when given, asking what it offers. */
   openNewTask(at?: Place) {
     this.nt = freshDraft(this.nt.words);
     let ask: Place | undefined;
@@ -1049,7 +1049,7 @@ class AppState {
       return this.openNewTask(task ? placeOf(task) : undefined);
     }
     if (c === "conv") return (this.sheet = null), this.go({ name: c });
-    // D244: ⌘⇧] / ⌘⇧[, 下一件事 / 上一件事: the next or the previous task in On hand's order.
+    // D244: ⌘⇧] / ⌘⇧[, 下一个任务 / 上一个任务: the next or the previous task in On hand's order.
     if (c === "next" || c === "prev") return void this.walk?.(c === "next" ? 1 : -1);
     // D300: 替你做过的 / Done for you (the Mac menu).
     if (c === "did") return void (this.sheet?.kind === "did" ? ((this.sheet = null), this.changed()) : openDid());
@@ -1057,7 +1057,7 @@ class AppState {
     if (c === "apps") return void (this.sheet?.kind === "apps" ? ((this.sheet = null), this.changed()) : ((this.sheet = { kind: "apps" }), this.send({ t: "apps" }), this.changed()));
     // D285: 做过的事 / Past tasks (the Mac's ⌘Y).
     if (c === "past") return void (this.sheet?.kind === "past" ? ((this.sheet = null), this.changed()) : openPast());
-    // D216: ⌘O, 打开一件事 / Open a task: the switcher (pressed again, closed).
+    // D216: ⌘O, 打开任务 / Open a task: the switcher (pressed again, closed).
     if (c === "switch") {
       if (this.sheet?.kind === "newtask") return;
       this.sheet = this.sheet?.kind === "switch" ? null : { kind: "switch" };

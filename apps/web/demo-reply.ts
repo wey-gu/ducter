@@ -24,7 +24,7 @@ const w = zh
       ack2: "我去给 foo 的 Cache 加 values()。",
       title2: "foo：给 Cache 加 values()",
       done2: "加好了：values() 只返回没过期的值，加了 2 个测试。",
-      opening: "早。有两件事：",
+      opening: "早。有两个任务：",
       find1: "王磊周二问的 HawDB 报价，你还没回。",
       find2: "ducter.dev 11 月 20 日到期，Cloudflare 上自动续费的那张卡过期了。",
       go2: "去续费",

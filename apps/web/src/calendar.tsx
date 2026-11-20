@@ -334,7 +334,7 @@ function shortReason(s: string): string {
 
 // ---------- 6.3 the greeting ----------
 
-/** 今天还有 3 件事，下一件 14:00「Design sync」: one quiet row under the greeting; a tap fills the composer. */
+/** 今天还有 3 个日程，下一个 14:00「Design sync」: one quiet row under the greeting; a tap fills the composer. */
 export function TodayRow({ today }: { today: CalToday }) {
   if (!today.left) return null;
   const next = today.next;

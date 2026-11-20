@@ -41,7 +41,7 @@ test("the morning note: at the end of quiet hours, at most 3, most costly first,
   expect(r.sent[0]).toMatchObject({ title: "Ducter", level: "passive" });
   // The finds themselves, never an "N things" summary (D173).
   expect(r.sent[0]!.body).toStartWith("11/21 的 CA929");
-  expect(r.sent[0]!.body).not.toMatch(/\d+ 件/);
+  expect(r.sent[0]!.body).not.toMatch(/\d+ [件条个]/);
   // Nothing is said twice: the next look finds the same things, and says nothing.
   await r.p.lookNow(40);
   expect(r.notes()).toHaveLength(1);
@@ -63,7 +63,7 @@ test("only when I ask: nothing watches, nothing is said", async () => {
   expect(r.notes()).toHaveLength(0);
 });
 
-test("D250: never chosen is 每天最多 3 件; its first morning note carries the chips once, the next ones don't", async () => {
+test("D250: never chosen is 每天最多 3 条; its first morning note carries the chips once, the next ones don't", async () => {
   const r = make({}); // proactive never chosen
   expect(r.settings.get()).toMatchObject({ proactive: "three", proactiveBy: "default" });
   await r.p.lookNow(40);

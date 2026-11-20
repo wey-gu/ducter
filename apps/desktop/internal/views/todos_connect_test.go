@@ -97,7 +97,7 @@ func TestTodosConnectGitHub(t *testing.T) {
 	app.Receive(ghFrame(cid, "signed_in", func(r *protocol.ServerFrame) { r.Account = "lin-dev" }))
 	app.Receive(connectedFrame())
 	todoFrames(tt, 2)
-	if app.todos.login != nil || !tt.HasText("已用 lin-dev 连上 GitHub。") || !tt.HasText("4 件没做完") {
+	if app.todos.login != nil || !tt.HasText("已用 lin-dev 连上 GitHub。") || !tt.HasText("4 个没做完") {
 		t.Fatalf("connected isn't said with the count: %q", tt.Texts())
 	}
 	if strings.Count(strings.Join(tt.Texts(), "\n"), "分给你的 GitHub issue") != 0 {

@@ -104,7 +104,7 @@ func TestConversationBubbles(t *testing.T) {
 		if !strings.Contains(all, w.ask) {
 			t.Errorf("%s: the ask doesn't show: %q", lang, all)
 		}
-		for _, not := range []string{"这件不会自己动", "等你定", "won't go ahead on this without you"} {
+		for _, not := range []string{"这个不会自己动", "等你定", "won't go ahead on this without you"} {
 			if strings.Contains(all, not) {
 				t.Errorf("%s: the old note %q shows", lang, not)
 			}

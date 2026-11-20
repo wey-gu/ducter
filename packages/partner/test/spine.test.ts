@@ -350,7 +350,7 @@ test("partner: a cold session reads digests, the ledger and the window; digests 
     await partner.spine!.idle();
   };
   await say("数据库就用 SQLite，别上服务器。" + "背景".repeat(40));
-  for (let k = 0; k < 8; k++) await say(`第 ${k} 件事：` + "细节".repeat(40));
+  for (let k = 0; k < 8; k++) await say(`第 ${k} 个任务：` + "细节".repeat(40));
   expect(store.records.length).toBeGreaterThan(0); // written in the background after turns
   // Cold: two hours later the next turn starts fresh and reads the spine first.
   clock.advance(2 * 3600_000);

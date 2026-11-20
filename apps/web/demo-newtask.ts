@@ -1,4 +1,4 @@
-// A demo core for 开一件事 / New task (D128): real core (Log, task_new_options, task_new, open_task,
+// A demo core for 开一个任务 / New task (D128): real core (Log, task_new_options, task_new, open_task,
 // the diff stats on On hand), a runner that opens tasks the way the real one logs them, scratch
 // git repos with branches, and work in three of them. For screenshots and manual checks.
 //   DUCTER_PORT=7971 DUCTER_DATA_DIR=/tmp/x DEMO_LANG=zh bun apps/web/demo-newtask.ts
@@ -129,7 +129,7 @@ async function task(id: string, title: string, project: string, place: Place, ha
   await tick();
 }
 const w = (z: string, e: string) => (zh ? z : e);
-await task("t_newtask", w("开一件事的卡片和按项目分组", "The New task card and By project"), "ducter", repo("ducter", "ducter/new-task-ui"), "claude-code", "working", [7, 412, 38], "you");
+await task("t_newtask", w("开一个任务的卡片和按项目分组", "The New task card and By project"), "ducter", repo("ducter", "ducter/new-task-ui"), "claude-code", "working", [7, 412, 38], "you");
 await task("t_asc", w("准备 Ducter iOS 在 App Store Connect 上的上架资料", "Prepare Ducter iOS in App Store Connect"), "ducter", repo("ducter", "ducter/app-store-connect"), "codex", "working", [4, 118, 12]);
 await task("t_wal", w("WAL 回放的基准测试", "Benchmark WAL replay"), "HawDB", repo("hawdb", "ducter/wal-bench"), "codex", "working");
 await task("t_flaky", w("修 compaction 偶发失败的测试", "Fix the flaky compaction test"), "HawDB", repo("hawdb", "ducter/compaction-fix"), "claude-code", "done", [2, 31, 9]);

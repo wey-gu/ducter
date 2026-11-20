@@ -128,7 +128,7 @@ test("fixed: 只说急的 says the flight change and the invoice now; the rest i
   expect(d.nextNote).toBeUndefined(); // 只说急的 has no morning note
 });
 
-test("每天最多 3 件: the morning note leads with what costs most; the talk's two dates are one find", async () => {
+test("每天最多 3 条: the morning note leads with what costs most; the talk's two dates are one find", async () => {
   const r = make({ mode: "three", fx: helDay() });
   await r.settle();
   expect(r.p.day().held.find((h) => h.reason === "for_morning")?.n).toBeGreaterThanOrEqual(3);

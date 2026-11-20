@@ -164,13 +164,13 @@ func TestTodosPane(t *testing.T) {
 		t.Fatal("opening the pane doesn't subscribe to the sources")
 	}
 	todoFrames(tt, 4)
-	for _, want := range []string{"待办来源", "GitHub", "标给 lin-dev 的 issue 和 PR", "Life", "整个库", "3 件没做完", "1 件在做", "你接下过两次以后定的",
+	for _, want := range []string{"待办来源", "GitHub", "标给 lin-dev 的 issue 和 PR", "Life", "整个库", "3 个没做完", "1 个在做", "你接下过两次以后定的",
 		"新的来了", "做完以后", "勾掉", "还能加上", "Work notes", "加上一个 Obsidian 库…", "Jira", "即将推出"} {
 		if !tt.HasText(want) {
 			t.Errorf("no %q in %q", want, tt.Texts())
 		}
 	}
-	if tt.HasText("3 件没做完 · 1 件在做") {
+	if tt.HasText("3 个没做完 · 1 个在做") {
 		t.Error("the counts are joined with a dot (D291)")
 	}
 	// GitHub is added: it isn't offered again; the vault already added isn't either.
@@ -258,7 +258,7 @@ func TestTodosCountOnlyAfterALook(t *testing.T) {
 				t.Errorf("%s: no %q in %q", lang, want, tt.Texts())
 			}
 		}
-		if tt.HasText(w("0 件没做完", "0 open")) {
+		if tt.HasText(w("0 个没做完", "0 open")) {
 			t.Errorf("%s: a count no look read: %q", lang, tt.Texts())
 		}
 		*sent = nil
@@ -278,7 +278,7 @@ func TestTodosCountOnlyAfterALook(t *testing.T) {
 			{ID: "src_gh", Kind: "github", Name: "lin-dev", State: "ok", WhenNew: "tell", WhenDone: "ask", CheckedAt: at},
 		}}}})
 		todoFrames(tt, 2)
-		if !tt.HasText(w("0 件没做完", "0 open")) || tt.HasText(w("正在看…", "Looking…")) {
+		if !tt.HasText(w("0 个没做完", "0 open")) || tt.HasText(w("正在看…", "Looking…")) {
 			t.Errorf("%s: a look that read nothing: %q", lang, tt.Texts())
 		}
 		// The true total (not the page of 50), PRs waiting for review apart; a lower bound says so.
@@ -287,7 +287,7 @@ func TestTodosCountOnlyAfterALook(t *testing.T) {
 			{ID: "src_x", Kind: "github", Name: "lin-dev", State: "ok", WhenNew: "tell", WhenDone: "ask", CheckedAt: at, Open: 50, AtLeast: true},
 		}}}})
 		todoFrames(tt, 2)
-		for _, want := range []string{w("557 件没做完", "557 open"), w("4 个 PR 等你 review", "4 PRs waiting for your review"), w("至少 50 件没做完", "At least 50 open")} {
+		for _, want := range []string{w("557 个没做完", "557 open"), w("4 个 PR 等你 review", "4 PRs waiting for your review"), w("至少 50 个没做完", "At least 50 open")} {
 			if !tt.HasText(want) {
 				t.Errorf("%s: no %q in %q", lang, want, tt.Texts())
 			}
@@ -388,7 +388,7 @@ func TestTodoPick(t *testing.T) {
 		t.Fatalf("%v in %q", err, tt.Texts())
 	}
 	todoFrames(tt, 2)
-	if app.nt.words != "导出 CSV 时日期列是空的" || app.nt.item == nil || !tt.HasText("不用这件") {
+	if app.nt.words != "导出 CSV 时日期列是空的" || app.nt.item == nil || !tt.HasText("不用这个") {
 		t.Fatalf("the pick: words %q item %+v", app.nt.words, app.nt.item)
 	}
 	app.StartNewTask()

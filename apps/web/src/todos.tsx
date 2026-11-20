@@ -319,7 +319,7 @@ function problem(v: SourceView): string | undefined {
 
 /**
  * The count line's state: counted only after a look that read the list; before one, 正在看… / Looking….
- * (A failed look shows its problem instead, so 0 件没做完 is never a guess.)
+ * (A failed look shows its problem instead, so 0 个没做完 is never a guess.)
  */
 export function countOf(v: Pick<SourceView, "state" | "open" | "checkedAt">): "looking" | "counted" | "failed" {
   if (v.state !== "ok") return "failed";

@@ -14,7 +14,7 @@ export const firstWords: { zh: Record<string, string>; en: Record<string, string
     "first.how.from": "%s 的记录",
     "first.how.on": "在 %s 上",
     "first.how.leave": "这个文件夹别看了",
-    "first.how.left": "好，%s 以后不看了，这件也忘了。",
+    "first.how.left": "好，%s 以后不看了，这个也忘了。",
     "key.paste.title": "贴一个 API 密钥，我就能开始",
     "key.paste.body": "DeepSeek、Kimi、智谱 GLM、OpenAI、Anthropic、OpenRouter 的密钥都行。它只存在这台电脑上的 Ducter 里，不进聊天记录。",
     "key.paste.field": "API 密钥",

@@ -6,7 +6,7 @@
 import { fill, words, type FindKind, type LangTag, type ReadProblem } from "@ducter/protocol";
 
 export const KIND_WORDS: Record<FindKind, { zh: string; en: string }> = {
-  mismatch: { zh: "两件事对不上", en: "Two things don't match" },
+  mismatch: { zh: "两处对不上", en: "Two things don't match" },
   waiting_on_you: { zh: "在等你回", en: "Waiting on you" },
   waiting_on_them: { zh: "你在等别人回", en: "You're waiting on someone" },
   promised: { zh: "你答应过的", en: "Something you promised" },
@@ -27,11 +27,11 @@ const T = {
     notices: "{n} 封通知和收据，看标题就知道",
     promo: "{n} 封像推销，没理它",
     muted: "{n} 封是你说过不用告诉你的",
-    more: "还有 {n} 件没说",
+    more: "还有 {n} 条没说",
     leftOut: "没说的：{xs}。",
     leftOutJoin: "；",
     firstOffer: "已经能看你的 {apps} 了。要不要我现在看一眼最近两周，挑出要你管的？",
-    firstSome: (k: number) => `有 ${k} 件要你管：`,
+    firstSome: (k: number) => `有 ${k} 条要你管：`,
     firstNone: "最近两周没有要你管的。",
     agent: "我用来想事情的 AI agent",
     not_installed: "我没法细读你的信：这台电脑上没装 {a}。现在只看得到标题，所以什么都没跟你说。",
@@ -40,7 +40,7 @@ const T = {
     failing: "我细读你的信时 {a} 一直出错。现在只看得到标题，所以什么都没跟你说。",
     firstLater: "好，先不看。",
     keepNote: "早上那条还要吗？",
-    noteAgain: "现在我能提前告诉你航班、维护、扣费这些了。要每天早上说几件吗？",
+    noteAgain: "现在我能提前告诉你航班、维护、扣费这些了。要每天早上说几条吗？",
     budget: "{name} 这个月的额度用完了，这个月剩下的日子我只说急的。",
     ooAccounts: "oo 里的账号",
     calendar: "日历",
@@ -85,7 +85,7 @@ export const W = {
    * was read ("看了 214 封信"): restraint; the things themselves follow.
    */
   open: (lang: LangTag) => words(T, lang).open,
-  /** 没说的：12 封通知和收据，看标题就知道；1 封像推销，没理它；还有 2 件没说。 (more: worth saying, over one note's cap) */
+  /** 没说的：12 封通知和收据，看标题就知道；1 封像推销，没理它；还有 2 条没说。 (more: worth saying, over one note's cap) */
   leftOut(lang: LangTag, l: { notices: number; promo: number; muted: number; more?: number }): string | undefined {
     const t = words(T, lang);
     const xs = [l.notices ? fill(t.notices, { n: l.notices }) : "", l.promo ? fill(t.promo, { n: l.promo }) : "", l.muted ? fill(t.muted, { n: l.muted }) : "", l.more ? fill(t.more, { n: l.more }) : ""].filter(Boolean);

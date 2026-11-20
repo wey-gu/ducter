@@ -9,8 +9,8 @@ import type { PileItem, SourceItemRef } from "./task-sources.ts";
 /**
  * The four shapes (the words are the glossary's; never "一起做 / Together", read as side by side):
  *   plan          先出个方案 / Plan first: a read-only first part proposes the rest; nothing else starts until Go
- *   one           合成一件做 / As one task: one task, one PR that "Fixes" each (one repository, or errands)
- *   one_by_one    一件做完接下一件 / One after another (D360): each from the one before's branch
+ *   one           合成一个任务做 / As one task: one task, one PR that "Fixes" each (one repository, or errands)
+ *   one_by_one    一个做完接下一个 / One after another (D360): each from the one before's branch
  *   side_by_side  同时做 / Side by side (D360): HAND_CAP at a time, a PR each
  */
 export const HAND_SHAPES = ["plan", "one", "one_by_one", "side_by_side"] as const;
@@ -110,7 +110,7 @@ export interface HandHow {
   lasting?: boolean;
 }
 
-/** The find's line, as separate facts: 找到 9 件讲{subject}的 · 标题里写着的 6 件 · 说的是同一件事的 3 件. */
+/** The find's line, as separate facts: 找到 9 个讲{subject}的 · 标题里写着的 6 个 · 说的是同一回事的 3 个. */
 export interface FindSummary {
   n: number;
   /** What they're about, in the person's language (the model's name for it, a chip's, or the words asked). */
@@ -124,7 +124,7 @@ export interface FindSummary {
   noMeaning?: "no_model" | "error";
   /** D428: the ones the reading's hard facts left (「100gle 提的」…), before what it is about narrowed them. */
   within?: number;
-  /** D428: found and sure, but past TICK_MAX: not ticked (找到 23 件，先勾了最像的 10 件). */
+  /** D428: found and sure, but past TICK_MAX: not ticked (找到 23 个，先勾了最像的 10 个). */
   cut?: number;
   /** D428: found but not sure (shown, never ticked). */
   maybe?: number;
@@ -193,7 +193,7 @@ export interface TodoSet {
   refs: string[];
   /** Ticked by default (the do ones). */
   ticked: string[];
-  /** The rows the card shows (the first few), the rest said as 还有 n 件 / n more. */
+  /** The rows the card shows (the first few), the rest said as 还有 n 个 / n more. */
   rows: FoundItem[];
   /** Handed over: the group it became. */
   groupId?: string;
@@ -246,7 +246,7 @@ export interface GroupPlanView {
   plan?: HandPlan;
   /** The plan card (a decision) while it waits. */
   decisionId?: string;
-  /** Per-part notes the person added on the card (给这件的话…), by part id. */
+  /** Per-part notes the person added on the card (给这个的话…), by part id. */
   notes?: Record<string, string>;
   /** The plan's own words when it came without a typed plan (Go then runs them one after another). */
   summary?: string;

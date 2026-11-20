@@ -14,8 +14,8 @@ describe("the character sheet (D161)", () => {
   test("one status line: the role or the state, never the kind", () => {
     const home = dev({ id: "local", name: "hel", kind: "server", home: true });
     expect(statusLine(zh, home, { persona: "小鸭", home: "hel", running: 0 })).toEqual({ text: "小鸭在这台上运行", tone: "" });
-    expect(statusLine(zh, home, { persona: "小鸭", home: "hel", running: 3 }).text).toBe("小鸭在这儿做着 3 件事");
-    expect(statusLine(zh, dev({}), { persona: "小鸭", home: "hel", running: 2 })).toEqual({ text: "在帮小鸭做 2 件事", tone: "working" });
+    expect(statusLine(zh, home, { persona: "小鸭", home: "hel", running: 3 }).text).toBe("小鸭在这儿做着 3 个任务");
+    expect(statusLine(zh, dev({}), { persona: "小鸭", home: "hel", running: 2 })).toEqual({ text: "在帮小鸭做 2 个任务", tone: "working" });
     expect(statusLine(en, dev({}), { persona: "Ducter", home: "hel", running: 2 }).text).toBe("Doing 2 tasks for Ducter");
     expect(statusLine(zh, dev({}), { persona: "小鸭", home: "hel", running: 0 }).text).toBe("帮小鸭做事");
     // D291: the state is its own word (drawn with its dot), the line under it its own element.
@@ -25,7 +25,7 @@ describe("the character sheet (D161)", () => {
   });
 
   test("the list says one word of state", () => {
-    expect(listWord(zh, dev({}), { persona: "Ducter", running: 2 })).toEqual({ text: "在做 2 件事", tone: "working" });
+    expect(listWord(zh, dev({}), { persona: "Ducter", running: 2 })).toEqual({ text: "在做 2 个任务", tone: "working" });
     expect(listWord(en, dev({}), { persona: "Ducter", running: 1 }).text).toBe("Doing 1 task");
     expect(listWord(zh, dev({ home: true }), { persona: "Ducter", running: 0 }).text).toBe("Ducter 在这台上运行");
     expect(listWord(en, dev({ state: "asleep" }), { persona: "Ducter", running: 0 }).text).toBe("Asleep");

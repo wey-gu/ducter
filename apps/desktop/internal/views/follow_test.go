@@ -78,7 +78,7 @@ func followApp(t *testing.T, lang i18n.Lang) (*App, *ui.Tester) {
 		{"那就这么改", "Do that"},
 		{"改好了，这是改动的那一行：\n\n```\nrecord: process.env.CI ? \"on-failure\" : \"always\"\n```\n\n我在本地跑过一遍 e2e，18 分钟降到 9 分钟。", "Done. The one line that changed:\n\n```\nrecord: process.env.CI ? \"on-failure\" : \"always\"\n```\n\nI ran the e2e locally: 18 minutes down to 9."},
 		{"漂亮", "Nice"},
-		{"发版说明的草稿写好了，放在 PR #412 里。一共 6 条，最上面是回到最新和拷贝这两件。", "The release notes draft is in PR #412. Six items; Jump to latest and Copy are at the top."},
+		{"发版说明的草稿写好了，放在 PR #412 里。一共 6 条，最上面是回到最新和拷贝这两个。", "The release notes draft is in PR #412. Six items; Jump to latest and Copy are at the top."},
 		{"还有一件：Cloudflare 上 ducter.dev 自动续费的那张卡 11 月底过期，要我提醒你换吗？", "One more: the card that auto-renews ducter.dev on Cloudflare expires at the end of November. Want a reminder to change it?"},
 		{"另外，王磊周二问的 HawDB 报价你还没回，他今天上午又问了一次。", "Also, Wang Lei's HawDB quote from Tuesday is still unanswered; he asked again this morning."},
 		{"我先把报价单按上次的格式填好了，数字等你看过再发。", "I filled in the quote in last time's format; the numbers wait for your look before it goes."},

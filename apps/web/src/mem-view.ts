@@ -229,17 +229,21 @@ export const TOOL_NAME: Record<string, string> = { "claude-code": "Claude Code",
  * install: it carries Bridge but isn't in on that device (one tap); unknown: Mem's check hasn't said;
  * none: its Mem plugin can't pass messages yet (Mem's to add). last: the newest exchange with it.
  */
-export type ReachRow = { harness: string; tool: string; can: "yes" | "install" | "unknown" | "none"; device?: string; deviceName?: string; last?: string };
+// D444: box, from Mem's grouped contact list: its mailbox takes messages (open) or not (closed); absent when Mem didn't list it.
+export type ReachRow = { harness: string; tool: string; can: "yes" | "install" | "unknown" | "none"; device?: string; deviceName?: string; last?: string; box?: "open" | "closed" };
 export function reachRows(
   devices: { id: string; name: string; home?: boolean; harnesses: { harness: string; installed: boolean; loggedIn: boolean; mem?: { state: string } }[] }[],
   ownAgents: readonly string[],
   recent: readonly Pick<Handoff, "agent" | "host" | "at">[],
+  boxes: readonly { harness: string; open: boolean }[] = [],
 ): ReachRow[] {
   const ds = [...devices].sort((a, b) => Number(!!b.home) - Number(!!a.home));
   const out: ReachRow[] = [];
   for (const h of [...BRIDGE_TOOLS, ...NO_BRIDGE_TOOLS] as string[]) {
     const here = ds.flatMap((d) => d.harnesses.filter((x) => x.harness === h && x.installed && x.loggedIn).map((x) => ({ d, x })));
-    if (!here.length && !ownAgents.includes(h)) continue;
+    const mb = boxes.find((x) => x.harness === h);
+    const box = mb ? { box: mb.open ? ("open" as const) : ("closed" as const) } : {};
+    if (!here.length && !ownAgents.includes(h) && !mb) continue;
     const tool = TOOL_NAME[h]!;
     const last = recent.find((r) => r.host === tool || new RegExp(`\\b${tool.replace(/ /g, "\\s*")}\\b`, "i").test(r.agent))?.at;
     const at = last ? { last } : {};
@@ -247,12 +251,13 @@ export function reachRows(
       out.push({ harness: h, tool, can: "none", ...at });
       continue;
     }
-    if (here.some((v) => v.x.mem?.state === "installed" || v.x.mem?.state === "update") || last) {
-      out.push({ harness: h, tool, can: "yes", ...at });
+    // D444: Mem listing its mailbox as open is the plainest proof it can reach the partner.
+    if (here.some((v) => v.x.mem?.state === "installed" || v.x.mem?.state === "update") || last || mb?.open) {
+      out.push({ harness: h, tool, can: "yes", ...at, ...box });
       continue;
     }
     const off = here.find((v) => v.x.mem?.state === "absent");
-    out.push(off ? { harness: h, tool, can: "install", device: off.d.id, deviceName: off.d.name } : { harness: h, tool, can: "unknown" });
+    out.push(off ? { harness: h, tool, can: "install", device: off.d.id, deviceName: off.d.name, ...box } : { harness: h, tool, can: "unknown", ...box });
   }
   return out;
 }

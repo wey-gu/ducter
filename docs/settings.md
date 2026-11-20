@@ -133,7 +133,9 @@ What your partner remembers about you has its own section, **Memory**.
   **What you decided** and **What it knows**. Each line says where it came from (**You told it**,
   **Saved by Codex**, **You saved it**, or **Nowledge Mem drew it from your conversations**). Tap a
   line to **Fix** its words or **Forget** it; forgetting asks first and reaches Nowledge Mem, so your
-  other AI tools won't recall it either. **Search what it remembers** finds one thing.
+  other AI tools won't recall it either. **Search what it remembers** finds one thing. **Ask {name}
+  what it remembers about you** goes back to your conversation with that question ready to send; your
+  partner answers in a few lines of its own, and you can tell it what's wrong there.
 - **Check this week's**, under the switch, opens what it noted about you in the last seven days.
 - **Your other AI tools share this memory** says which tools, like Claude Code, Codex or Cursor,
   wrote to the same Nowledge Mem this week and how many working notes. Those notes are about their
@@ -168,11 +170,12 @@ so there is nothing to forget here.
 
 ### What it noted, in the conversation
 
-When your partner notes something about you, its reply's **Details** shows **Noted** with what it
-noted. If you'd said the same thing before, the line says **In place of** the old one: it replaces
-what it remembered instead of keeping both. Right after, **Undo** takes it back at once (the memory
-is set aside in Nowledge Mem, never deleted, and anything it replaced comes back); later, **Forget**
-asks first. If Nowledge Mem is away just then, the line says **Goes into Nowledge Mem once it's
+When your partner notes something about you, one quiet line under its reply says **Noted** with what
+it noted, once: after you say anything next, it moves into that reply's **Details**. If you'd said
+the same thing before, the line says **In place of** the old one: it replaces what it remembered
+instead of keeping both. Right after, **Don't keep this** takes it back at once, and so does just
+saying "don't remember that" (the memory is set aside in Nowledge Mem, never deleted, and anything it
+replaced comes back); later, **Forget** asks first. If Nowledge Mem is away just then, the line says **Goes into Nowledge Mem once it's
 back**, and it does, by itself.
 
 Once a week, in the first morning note of the week, one line offers to show what it noted about you
@@ -201,7 +204,14 @@ it brings back. The small copy button on each sentence copies it.
 **Who can reach** lists each AI tool you use: Claude Code and Codex say **Can reach** your partner,
 with when one last came, or, where the Nowledge Mem plugin isn't in yet, offer **Install**. pi and
 Antigravity say **Its Nowledge Mem plugin can't pass messages yet**: they share your memory, but
-messaging between them and your partner is coming soon.
+messaging between them and your partner is coming soon. When Nowledge Mem's own list of your agents
+has been read (when you look at this page, at most every half hour), a row also says whether your
+partner can reach that agent: **Can reach your partner, and your partner can reach it**, or **…but
+Nowledge Mem says your partner can't reach it right now**.
+
+When one of your agents hands your partner something kept in Nowledge Mem, such as a checklist or a
+note, its line in the conversation names it by its title (**With "HawDB 0.9 release checklist"**),
+and your partner reads it before it answers. A shared plan is named, not opened.
 
 A message your partner sent that hasn't plainly gone says so in **Recently** where the time would be:
 **Sending**, **Checking it went**, **Couldn't confirm it went** or **Didn't go**. When another

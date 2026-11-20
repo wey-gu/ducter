@@ -574,6 +574,8 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
     search: (q: string, n: number) => (recalls.push({ query: q, step: cur.step }), mem.memory.search(q, n)),
     add: (m: MemoryAdd) => mem.memory.add(m),
     threads: (q: string, n: number) => (threadSearches.push({ query: q, step: cur.step }), mem.memory.threads!(q, n)),
+    about: () => mem.memory.about!(),
+    archive: (id: string) => mem.memory.archive!(id),
   };
   // D395: where a repository is, from the scenario (never this machine's disk or git).
   {

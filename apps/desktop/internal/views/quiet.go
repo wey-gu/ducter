@@ -154,6 +154,20 @@ func (a *App) messageRow(c *ui.Context, key string, tasks []*store.Task, detail 
 			a.docLine(c, "q:"+task.ID, reportDocLeft(task)) // D439
 		}
 	}
+	// D444: what it just noted shows once, quietly, under the reply, until
+	// the person says anything next; then it folds into Details.
+	var folded []noted
+	for _, n := range notes {
+		if a.S.LastUserSeq < n.seq {
+			a.notedLine(c, n)
+		} else {
+			folded = append(folded, n)
+		}
+	}
+	if len(tasks) == 0 && len(folded) == 0 {
+		return
+	}
+	notes = folded
 	ui.Row(c.Key("qrow:" + key)).Gap(t.S4).Wrap().AlignItems(ui.Center).Children(func() {
 		for _, task := range tasks {
 			a.mergeAction(c, task)

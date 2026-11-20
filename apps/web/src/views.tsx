@@ -857,8 +857,23 @@ export function NotedLine({ n }: { n: { seq: number; title: string; replaced?: s
 function Quiet({ k, tasks, detail, noted = [] }: { k: string; tasks: Task[]; detail?: string; noted?: { seq: number; title: string; replaced?: string; waiting?: true }[] }) {
   if (!tasks.length && !noted.length) return null;
   const open = A.detailsOpen(k);
+  // D444: what it just noted shows once, quietly, under the reply, until the person says anything
+  // next (then it folds into Details like the rest); 别记这个 is one tap while it shows.
+  const shown = noted.filter((n) => A.notedState(n.seq).fresh);
+  const folded = noted.filter((n) => !shown.includes(n));
+  if (!tasks.length && !folded.length)
+    return (
+      <>
+        {shown.map((n) => (
+          <NotedLine key={n.seq} n={n} />
+        ))}
+      </>
+    );
   return (
     <>
+      {shown.map((n) => (
+        <NotedLine key={n.seq} n={n} />
+      ))}
       {/* What went out is never folded away (D104): the exception that matters to trust. */}
       {tasks.filter(finished).map((task) => (
         <SentLine key={task.id} task={task} />
@@ -882,7 +897,7 @@ function Quiet({ k, tasks, detail, noted = [] }: { k: string; tasks: Task[]; det
           {tasks.map((task) => (
             <ResultDetails key={task.id} task={task} detail={detail} />
           ))}
-          {noted.map((n) => (
+          {folded.map((n) => (
             <NotedLine key={n.seq} n={n} />
           ))}
         </div>
@@ -1488,11 +1503,32 @@ export function askerText(a: { agent: string; where?: string }): string {
 function PeerLine({ b, ts, seq }: { b: Bodies["bridge_msg"]; ts: string; seq?: number }) {
   const n = b.state === "set_aside" ? A.S.setAside.get(`${b.from}|${ts.slice(0, 10)}`)?.n : undefined;
   const ping = b.state === "ping" && seq !== undefined ? A.S.pings.get(seq) : undefined;
+  // D444: what it handed over from Nowledge Mem, each its own element, by Mem's title.
+  const refs = b.direction === "in" && !b.state ? (b.refs ?? []) : [];
   return (
-    <div class={ping ? "peerline wrap" : "peerline"} role="status">
-      <span>{peerLineText(b, ts, n, ping)}</span>
+    <div class={ping || refs.length ? "peerline wrap" : "peerline"} role="status">
+      <span>{peerLineText(refs.length ? { ...b, text: withRefTitles(b.text, refs) } : b, ts, n, ping)}</span>
+      {refs.filter((r) => !(r.uri && r.title && b.text.includes(r.uri))).map((r, i) => (
+        <span key={i} class="peer-ref">
+          {refWords(r)}
+        </span>
+      ))}
     </div>
   );
+}
+
+/** D444: a `nowledgemem://` address in the words reads as the thing's title (never the raw address). */
+export function withRefTitles(text: string, refs: NonNullable<Bodies["bridge_msg"]["refs"]>): string {
+  return text.replace(/nowledgemem:\/\/[^\s<>"'`)\]}，。；、]+/g, (u) => {
+    const r = refs.find((x) => x.uri && u.replace(/[.,;:!?]+$/, "") === x.uri);
+    return r?.title ? t("peers.ref.inline", r.title) : "";
+  }).replace(/\s{2,}/g, " ");
+}
+
+/** D444: one thing a message handed over, by Mem's title (a shared plan says so), else by its kind. */
+export function refWords(r: NonNullable<Bodies["bridge_msg"]["refs"]>[number]): string {
+  if (!r.title) return t(`peers.ref.none.${r.kind}`);
+  return r.kind === "plan" ? t("peers.ref.plan", r.title) : t("peers.ref", r.title);
 }
 
 /** While the user waits on a reply (D104): the clay partner where its words will appear, and

@@ -303,6 +303,15 @@ func (a *App) memAbout(c *ui.Context) {
 	}
 	ui.Column(c.Key("mem-about")).Gap(t.S2).Children(func() {
 		a.sectionHead(c, a.L.T("mem.about.title"), a.L.T("mem.about.note", a.personaName()))
+		// D444: what it knows, said back in its own words: the question goes
+		// to the conversation's composer (never sent for the person).
+		if len(aboutGroups(items)) > 0 && a.S.MemQuery == "" {
+			ui.Row(c.Key("mem-ask")).Padding(0, t.S4+t.S2).Children(func() {
+				if a.quietButton(c, "mem-ask", a.L.T("mem.about.ask", a.personaName()), "", false, 1) {
+					a.askAboutMe()
+				}
+			})
+		}
 		ui.Column(c).Padding(0, 0).Children(func() { a.memSearch(c) })
 	})
 	if q := a.S.MemQuery; q != "" {
@@ -825,4 +834,12 @@ func (a *App) memSteps(c *ui.Context, phase string, b *protocol.BridgeView) {
 			})
 		})
 	})
+}
+
+// askAboutMe goes back to the conversation with 你都记得我些什么？ in the
+// composer (D444); the person sends it, and the partner answers from Mem.
+func (a *App) askAboutMe() {
+	a.Route = RouteConversation
+	a.draft = a.L.T("mem.about.ask.words")
+	a.focusComposer = true
 }

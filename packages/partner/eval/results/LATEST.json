@@ -1,9 +1,9 @@
 {
-  "file": "2026-11-21-haiku-d436-run3.md",
+  "file": "2026-11-21-haiku-d444-run2.md",
   "date": "2026-11-21",
   "harness": "claude-code",
   "model": "haiku",
-  "pass": "188/236",
-  "persona": "62af8f2c08daca28",
+  "pass": "183/239",
+  "persona": "2323b2c505780eb5",
   "tools": "65cfcad9885f2cb3"
 }

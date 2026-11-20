@@ -945,6 +945,18 @@ type BridgeMsg struct {
 	// D418: an own agent's contact test answered by code (in: State "ping";
 	// out: Ack), folded into one quiet line.
 	Ack bool `json:"ack,omitempty"`
+	// D444, in: what it hands over from Nowledge Mem, read once when it came.
+	Refs []BridgeRef `json:"refs,omitempty"`
+}
+
+// BridgeRef is one thing a message handed over from Nowledge Mem (D444):
+// Mem's title for it, its kind (memory, artifact, thread, plan, other), and
+// Read false when Mem didn't open it. Its words are for the partner only.
+type BridgeRef struct {
+	URI   string `json:"uri,omitempty"`
+	Title string `json:"title"`
+	Kind  string `json:"kind"`
+	Read  *bool  `json:"read,omitempty"`
 }
 
 // NewEvent builds an event with body encoded from v (for the mock server
@@ -1819,6 +1831,16 @@ type BridgeView struct {
 	// D400: Notices, on "connected": Nowledge Mem itself also tells the
 	// person about mail to the partner's identity (bridge notices status).
 	Notices bool `json:"notices,omitempty"`
+	// D444: Mailboxes, on "connected": the person's own agents in Mem's
+	// grouped contact list, by tool, and whether each mailbox takes messages.
+	Mailboxes []BridgeMailbox `json:"mailboxes,omitempty"`
+}
+
+// BridgeMailbox is one tool's mailbox as Mem's contact list says (D444).
+type BridgeMailbox struct {
+	Harness string `json:"harness"`
+	Open    bool   `json:"open"`
+	At      int64  `json:"at,omitempty"`
 }
 
 // BridgeStuck is Mem's word that a mailbox needs sorting out on its side (D369).

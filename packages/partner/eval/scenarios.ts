@@ -426,6 +426,12 @@ const RELEASE_CC: SeedMemory = {
   kind: "procedure",
   source: "claude-code",
 };
+// D444: what Mem knows about the person beside the background: their own preferences and a person.
+const ABOUT_ME: SeedMemory[] = [
+  { title: "JS 项目一律用 pnpm", content: "Weyl 说的：他所有 JS 项目都用 pnpm，不用 npm。", date: "2026-11-12", kind: "preference", source: "ducter" },
+  { title: "测试统一用假时钟", content: "Weyl 的规矩：测试里一律用假时钟，不等真实时间。", date: "2026-11-09", kind: "preference", source: "ducter" },
+  { ...ALICE, source: "ducter" },
+];
 // D368: the author's day as Mem's Working Memory would hold it, and two past Codex conversations.
 const WM_RELEASE: NonNullable<Scenario["workingMemory"]> = {
   focus: [
@@ -1799,6 +1805,38 @@ export const scenarios: Scenario[] = [
     steps: [{ user: "In two sentences: what's a write-ahead log for?" }],
     expect: { opens: 0, msgs: [1, 1], maxChars: 400, require: [/log|durab|crash/i], forbid: [NO_MEM_TALK], sourceLines: 0 },
     rubric: "A general question memory has nothing to add to: answered directly in about two short English sentences (durability: changes are written to a log before the data files, so a crash can be recovered). No task, no talk about memory, and no source line under the reply.",
+  },
+  // D444: "what do you know about me?" answered from what Mem knows about them, warm and short; and
+  // 别记这个 right after a Noted line, taken back by Ducter at the word, said back in a few words.
+  {
+    id: "mem-about-me-zh",
+    category: "memory",
+    lang: "zh",
+    memories: [...MEM_BACKGROUND, WEEKLY_REPORT, ...ABOUT_ME],
+    steps: [{ user: "你都记得我些什么？" }],
+    expect: { recall: true, opens: 0, msgs: [1, 1], maxChars: 200, require: [/周五|周报|pnpm|假时钟|邮件|Alice/i], forbid: [NO_MEM_TALK, /^\s*[-•*\d]/m, /\d+\s*条/, /记录/] },
+    rubric:
+      "The user asks what the partner remembers about them. Pass if it answers warmly in two or three short, natural Chinese sentences, as a friend who knows them, naming a few real things from what it knows (e.g. the weekly report goes out Friday afternoon to the product team, pnpm not npm, a fake clock in tests, the partners-not-hierarchy wording) in its own words, and ends with a short line inviting them to say if something is wrong or shouldn't be kept. Fail on a list or bullets, a count of memories, quoting titles, dates or sources, or talk about records, memory, saving or searching.",
+  },
+  {
+    id: "mem-about-me-en",
+    category: "memory",
+    lang: "en",
+    memories: [...MEM_BACKGROUND, WEEKLY_REPORT, ...ABOUT_ME],
+    steps: [{ user: "What do you actually know about me?" }],
+    expect: { recall: true, opens: 0, msgs: [1, 1], maxChars: 420, require: [/Friday|weekly|pnpm|fake clock|email|Alice/i], forbid: [NO_MEM_TALK, /^\s*[-•*\d]/m, /\b\d+ (memories|things|items)\b/i, /\brecords?\b/i] },
+    rubric:
+      "The user asks what the partner knows about them. Pass if it answers warmly in two or three short English sentences with a few real things it knows (the weekly report goes out Friday afternoon to the product team, pnpm over npm, fake clocks in tests) in its own words, and ends with one short line that they can tell it if something is wrong or shouldn't be kept. Fail on a list, a count, quoted titles, dates or sources, or talk about memory, records, saving or searching.",
+  },
+  {
+    id: "mem-take-back-zh",
+    category: "memory",
+    lang: "zh",
+    memories: MEM_BACKGROUND,
+    steps: [{ user: "以后我的 commit message 都用英文写。" }, { user: "算了，别记这个" }],
+    expect: { opens: 0, msgs: [1, 2], maxChars: 60, forbid: [NO_MEM_TALK] },
+    rubric:
+      "Step 1: a lasting preference, saved (memory_add) with a short natural Chinese reply. Step 2: the user says not to keep it; Ducter has already taken it back and tells the partner so under the user's words. Pass if the partner's last reply is a few natural Chinese words saying it won't keep it (e.g. \"好，不记了。\"), with no second memory_add and no talk about memory, records or saving.",
   },
 
   // D368 (G2): the person's Working Memory (their day's focus in Mem) is background: it shapes what the

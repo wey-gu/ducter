@@ -165,7 +165,11 @@ func (a *App) peersTry(c *ui.Context, name string) {
 // PeersReach (apps/web/src/memory.tsx).
 func (a *App) peersReach(c *ui.Context, name string) {
 	t := a.T
-	rows := reachRows(a.S.Devices, a.S.OwnAgents, recentHandoffs(a.S.Channel, 50))
+	var boxes []protocol.BridgeMailbox
+	if a.S.Bridge != nil {
+		boxes = a.S.Bridge.Mailboxes
+	}
+	rows := reachRows(a.S.Devices, a.S.OwnAgents, recentHandoffs(a.S.Channel, 50), boxes...)
 	if len(rows) == 0 {
 		return
 	}
@@ -186,7 +190,10 @@ func (a *App) peersReach(c *ui.Context, name string) {
 				}
 			}
 			line := a.L.T("peers.reach.none")
-			if r.Can != "none" {
+			switch {
+			case r.Can == "yes" && r.Box != "":
+				line = a.L.T("peers.reach.yes."+r.Box, name) // D444
+			case r.Can != "none":
 				line = a.L.T("peers.reach."+r.Can, name)
 			}
 			a.tileRow(c, "reach:"+r.Harness, a.clayTile(c, coinArt(r.Harness, r.Can == "none"), false), r.Tool, line, control)

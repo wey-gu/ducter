@@ -68,6 +68,7 @@ import { createWorkingMemory } from "./working-memory.ts";
 import { identityIdFor, readMemIdentity } from "./mem-identity.ts";
 import { keepSaidAtOnce, keepSaidOnGo, openSaid, type SaidStore } from "./said.ts";
 import { keepStandingAtOnce, openStanding, type StandingStore } from "./standing.ts";
+import { takeBackAtOnce } from "./mem-takeback.ts";
 import { openRules, type RulesStore } from "./rules.ts";
 import { openPins, type PinsStore } from "./pins.ts";
 import { openApps, type AppsStore } from "./apps.ts";
@@ -575,6 +576,8 @@ export function startCore(opts: CoreOptions = {}): Core {
   // same way; bounded by where the review routine looks now. Earlier sayings: after the to-do sources.
   const standing = openStanding({ log, dataDir, reviewOrgs: () => taskSourcesRef?.pile.reviewOrgs() ?? [] });
   keepStandingAtOnce(log, standing);
+  // D444: 别记这个, said right after the partner noted something, takes it back the moment it lands.
+  const takeBack = takeBackAtOnce({ log, undo: (seq) => settings.undo(seq) });
   try {
     const back = said.backfill();
     if (back.length) console.log(`[said] kept ${back.length} rule(s) from what you said earlier: ${back.map((r) => r.text).join(" | ")}`);
@@ -1071,7 +1074,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     },
     off: () => process.env.DUCTER_DOC_CHECK === "off",
   });
-  const api = { log, tasks, mcp, persona, dataDir, settings, connections, phone, bodies: loadout, said, standing, spine: log.spine, bridgeLink, media, limits: accountUsage, workingMemory, pins, apps, boards: { makeReviewBoard: (id: string) => boards.makeReviewBoard(id), isReview: (id: string) => isReview(id), offer: (id: string, k: "reviews" | "reports") => boards.offer(id, k) }, noticedSources, brainHold, freshLook, noLookFrom: (seq: number) => noLook.heardFrom(seq), docCheck: (id: string, body: Bodies["report"]) => docCheck.check(id, body), ...(browser ? { browser: browser.port } : {}) } as CoreApi;
+  const api = { log, tasks, mcp, persona, dataDir, settings, connections, phone, bodies: loadout, said, standing, spine: log.spine, bridgeLink, media, limits: accountUsage, workingMemory, pins, apps, boards: { makeReviewBoard: (id: string) => boards.makeReviewBoard(id), isReview: (id: string) => isReview(id), offer: (id: string, k: "reviews" | "reports") => boards.offer(id, k) }, noticedSources, brainHold, freshLook, noLookFrom: (seq: number) => noLook.heardFrom(seq), takenBackFrom: (seq: number) => takeBack.heardFrom(seq), docCheck: (id: string, body: Bodies["report"]) => docCheck.check(id, body), ...(browser ? { browser: browser.port } : {}) } as CoreApi;
   // D312: with more than one partner, the default partner keeps to its own too, and a task's
   // brief and Mem identity are those of the partner it is for.
   const memOf = new Map<string, MemIdentity | undefined>();
@@ -2258,6 +2261,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       brainHold.stop();
       freshLook.stop();
       noLook.stop();
+      takeBack.stop();
       proactive.stop();
       calendar.stop();
       taskSources.stop();

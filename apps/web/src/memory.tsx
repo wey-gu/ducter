@@ -18,7 +18,7 @@ import { Coin } from "./coin.tsx";
 import { copy } from "./conv-copy.ts";
 import { Btn, DangerButton, LinkBtn, Switch } from "./controls.tsx";
 import { ago, harnessName, spoken } from "./format.ts";
-import { aboutGroups, bySource, groupNoted, MEM_MIN, memHealthLook, memPhase, memUpdate, ownsAgents, peersNamesUpdate, peersPhase, peersShown, peersSwitchOn, awayFor, reachRows, recentHandoffs, type Handoff, type MemPhase, type MemUpdate } from "./mem-view.ts";
+import { aboutGroups, bySource, groupNoted, MEM_MIN, memHealthLook, memPhase, memUpdate, ownsAgents, peersNamesUpdate, peersPhase, peersShown, peersSwitchOn, awayFor, reachRows, recentHandoffs, type Handoff, type ReachRow, type MemPhase, type MemUpdate } from "./mem-view.ts";
 import { CopyLine } from "./lend.tsx";
 import { GBlock, GConfirm, GFoot, GHead, GRow, Group, Said, say, Tile } from "./set-grid.tsx";
 import { Avatar, Check } from "./views.tsx";
@@ -238,6 +238,12 @@ function MemAbout() {
     <section class="set mem-sec">
       <h3>{t("mem.about.title")}</h3>
       <p class="g-note">{t("mem.about.note", name)}</p>
+      {/* D444: what it knows, said back in its own words: the question goes to the conversation. */}
+      {groups.length > 0 && !A.memQuery && (
+        <div class="mem-ask">
+          <Btn kind="text" size="sm" chev label={t("mem.about.ask", name)} onClick={() => A.askAboutMe(t("mem.about.ask.words"))} />
+        </div>
+      )}
       <MemFind />
       {A.memQuery ? (
         <Group class="mem-g" label={t("mem.find.title")}>
@@ -732,15 +738,22 @@ function PeersRecent({ name }: { name: string }) {
  * D433: 能找到{name}的 / Who can reach {name}: each AI tool the person runs, whether it can reach the
  * partner through Nowledge Mem, the one fix when there is one (装上), and when it last came.
  */
+/** D444: a row's line, with what Mem's own contact list says of its mailbox when it says. */
+export function reachLine(r: ReachRow, name: string): string {
+  if (r.can === "none") return t("peers.reach.none");
+  if (r.can === "yes" && r.box) return t(`peers.reach.yes.${r.box}`, name);
+  return t(`peers.reach.${r.can}`, name);
+}
+
 function PeersReach({ name }: { name: string }) {
-  const rows = reachRows(A.devices ?? [], A.ownAgents, recentHandoffs(A.S.channel, 50));
+  const rows = reachRows(A.devices ?? [], A.ownAgents, recentHandoffs(A.S.channel, 50), A.bridge?.mailboxes);
   if (!rows.length) return null;
   return (
     <section class="set mem-sec">
       <h3>{t("peers.reach.title", name)}</h3>
       <Group class="mem-g" label={t("peers.reach.title", name)}>
         {rows.map((r) => (
-          <GRow key={r.harness} tile={<Tile faded={r.can === "none"}><Coin harness={r.harness} size={36} /></Tile>} title={r.tool} line={r.can === "none" ? t("peers.reach.none") : t(`peers.reach.${r.can}`, name)}>
+          <GRow key={r.harness} tile={<Tile faded={r.can === "none"}><Coin harness={r.harness} size={36} /></Tile>} title={r.tool} line={reachLine(r, name)}>
             {r.can === "install" && r.device ? <Btn kind="secondary" size="sm" label={t("peers.try.plugin.go")} about={r.deviceName ?? r.device} onClick={() => A.installMem(r.device!, r.harness)} /> : r.last && r.can === "yes" ? <span class="g-state">{ago(A.L, r.last)}</span> : null}
           </GRow>
         ))}

@@ -296,15 +296,28 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
       field names (`last_seen_at_ms`, `activity_available`) and where they sit. Trigger: the next live Bridge pass.
 - [ ] **已读 / Read** on Recently once Mem says which verb returns a sent message's `read_recipients`. Trigger: Mem
       answers research/183 §4 item 2.
-- [ ] Reach backed by Mem (`bridge contacts`, `mailbox_available` per agent) in the background, so **能找到** means the
-      mailbox answers, not only that the plugin is in. Trigger: contacts answers in under 5 s, or a person's agent
-      shows **能找到** and can't.
+- [x] Reach backed by Mem (`bridge contacts`, `mailbox_available` per agent) in the background. Done as D444: read when
+      the pane was looked at and the last read is over 30 minutes old; a live read of the card fields is owed (below).
 - [ ] pi and Antigravity (and Cursor) can talk to the partner once Mem's plugins carry `bridge`. Trigger: Mem ships it
       (research/183 §4 item 3); then they move to Claude Code's rows.
 - [ ] **在 Nowledge Mem 里打开** opens that conversation (a `nowledgemem://` thread link). Trigger: Mem names one.
-- [ ] `feed` for the Memory page's this week (every tool's), `resources get` for a link in an agent's message,
-      `collab` / `--shared-document` for a plan handed over, native sessions for asking one open terminal session.
-      Trigger: each one's scenario comes up in the author's use.
+- [x] `resources get` for a link in an agent's message, and a shared plan's card named. Done as D444 (read only, once,
+      by title). Still open: `feed` for the Memory page's this week (every tool's), reading a shared plan (needs a
+      read-only `collab` look, research/191 §asks 4), native sessions for asking one open terminal session (needs a
+      session's own name on its card, §asks 3). Trigger: each one's scenario comes up in the author's use, or Mem answers.
+
+## Mem in the person's day (D444, `memory.md` "Mem in the person's day", research/191)
+
+- [ ] A read-only live check against the real Mem of what D444 reads by INFERRED shapes: `bridge contacts` (grouped)
+      cards' `mailbox_available` / `unavailable` and member, `resources get --json`'s title and body fields, and where a
+      received message's `KnowledgeReference`s sit on `bridge open`. Trigger: the next live Bridge pass.
+- [ ] A spoken 别记这个 whose take-back Mem refuses says so (today only the tap's failure has a line; the spoken one
+      leaves the Noted line as kept). Trigger: it happens once.
+- [ ] 别记这个 for a second partner's conversation (D309): today the take-back reads the default partner's channel only.
+      Trigger: the second partner leaves preview.
+- [ ] The partner's reply to "你都记得我些什么？" offering the one row to fix (a tap opening that memory on the Memory
+      page). Trigger: the author asks to fix something right after asking.
+- [ ] Send research/191 §asks to Mem. Trigger: the author approves the draft.
 - [x] The 390-wide web shots through a phone-sized viewport (headless Chrome clips at its minimum window width).
       Done as D443 with Chrome's device emulation over CDP (`.shots/followups-443/`): no overflow; X
       **改由这台收** squeezed its words into a sliver and now drops under them. The iOS Simulator is still owed.

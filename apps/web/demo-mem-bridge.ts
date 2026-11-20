@@ -4,7 +4,8 @@
 // DEMO_STAGE: reach (connected: who can reach the partner, and Recently with one reply that didn't go and
 //   one still being checked; open #settings=peers) · away (another computer, hel, receives the partner's
 //   mail and Mem last saw it 3 days ago; #settings=peers) · recall (a reply that leaned on a past
-//   conversation with Codex: 想起了你 11月12日 和 Codex 聊的; the conversation).
+//   conversation with Codex: 想起了你 11月12日 和 Codex 聊的; the conversation) · boxes (D444: as reach, with
+//   Mem's grouped contact list read: Codex's mailbox open, Claude Code's closed; #settings=peers).
 import { startCore, stubRunner } from "./demo-core.ts";
 import { noOo } from "./demo-oo.ts";
 
@@ -51,7 +52,7 @@ const core = startCore({
     kind: async () => "laptop",
   },
   // Mem's own check, faked: Codex has the plugin, Claude Code doesn't yet (nothing is installed by the demo).
-  memPlugins: { inspectLocal: async () => ({ "claude-code": { state: "absent" }, codex: { state: "installed", version: "0.7.34" } }), everyMs: 0, connected: () => true },
+  memPlugins: { inspectLocal: async () => ({ "claude-code": { state: stage === "boxes" ? "installed" : "absent" }, codex: { state: "installed", version: "0.7.34" } }), everyMs: 0, connected: () => true },
 });
 core.setRunner(stubRunner(core));
 core.setPartner({ onTrigger() {} });
@@ -61,7 +62,7 @@ core.settings.set({ language: zh ? "zh" : "en" });
 const log = core.log;
 const tick = () => Bun.sleep(30);
 
-if (stage === "reach") {
+if (stage === "reach" || stage === "boxes") {
   void core.bridgeLink.connect();
   const who = { from: "another agent", mine: true, agent: "Codex", role: zh ? "Mem 协作" : "Mem helper", selfNamed: true, space: SPACE };
   const ask = zh ? "PR #412 的 benchmark 重跑完了，帮我看下结果有没有回退" : "The benchmark rerun for PR #412 is done; check whether it regressed";
@@ -78,6 +79,8 @@ if (stage === "reach") {
   const cc = { from: "another agent", mine: true, agent: "Claude Code", role: zh ? "终端" : "terminal", selfNamed: true, space: SPACE };
   log.append({ stream: "channel", origin: "partner", kind: "bridge_msg", body: { direction: "out", messageId: "", to: "another agent", ...cc, text: zh ? "收到，我接着盯 CI。" : "Got it, I'll keep an eye on CI.", opId: "o3", state: "failed" } as never });
 }
+// D444: what Mem's grouped contact list said (as the partner's Bridge client would set it).
+if (stage === "boxes") core.bridgeLink.setMailboxes?.([{ harness: "codex", open: true }, { harness: "claude-code", open: false }]);
 if (stage === "recall") {
   const u = log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: zh ? "我上次怎么修的那个 recall 测试老挂的问题？" : "How did I fix that flaky recall test last time?" } });
   const m = log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: zh ? "是索引还没建好就开始查了。你让测试先等 indexReady()，再发第一个查询，之后就没再挂过。" : "It queried before the index was built. You made the test await indexReady() before its first query, and it hasn't failed since.", replyTo: u.seq } });

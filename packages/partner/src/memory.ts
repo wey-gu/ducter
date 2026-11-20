@@ -15,6 +15,7 @@
 //     source metadata (--source-msg, kept under metadata.source_message_id), never in the text.
 //   - Tests inject a fake MemoryClient or point `bin` at a stub; nothing in tests reaches the
 //     user's real Mem.
+import { aboutSource } from "../../protocol/src/mem-source.ts";
 
 /** What nmem needs from Ducter's environment: paths, user, locale, temp folder, proxies, CA bundles. */
 const NMEM_BASICS = new Set([
@@ -129,6 +130,12 @@ export interface MemoryClient {
    * `nmem m update` sets its title and text to them. True when Mem took it.
    */
   correct?(id: string, title: string): Promise<boolean>;
+  /**
+   * D444: what Mem knows about the person, for "你都记得我些什么？": their preferences (from anyone Mem
+   * names), and the decisions and facts they saved or told the partner (another tool's are its working
+   * notes), newest first, ABOUT_PER_KIND each (`nmem m list --unit-type`, read only; D321's rule).
+   */
+  about?(): Promise<MemoryResult<{ hits: MemoryHit[] }>>;
   /** D329: 撤销 / Undo on a Noted line: `nmem m archive` (hidden from recall, kept audit-readable; never deleted). */
   archive?(id: string): Promise<boolean>;
   /** D329: an undone save's replaced memory comes back: its words read (`nmem m show`) and written again. */
@@ -311,6 +318,28 @@ export function createNmemClient(opts: NmemOptions = {}): MemoryClient {
       }
       return { ok: true, ...(id ? { id: String(id) } : {}), ...(replaced ? { replaced } : {}) };
     },
+    async about() {
+      const who = opts.identity?.();
+      const sc = who?.space ? ["--space", who.space] : [];
+      const kinds = ["preference", "decision", "fact"] as const;
+      const rs = await Promise.all(kinds.map((k) => run(["m", "list", "--unit-type", k, "-n", k === "preference" ? "16" : "40", ...sc])));
+      const hits: MemoryHit[] = [];
+      let any = false;
+      kinds.forEach((k, i) => {
+        const r = rs[i]!;
+        if ("missing" in r || r.code !== 0) return;
+        let list: any[] = [];
+        try {
+          const j = JSON.parse(r.out);
+          list = Array.isArray(j?.memories) ? j.memories : Array.isArray(j) ? j : [];
+        } catch {
+          return;
+        }
+        any = true;
+        hits.push(...aboutHits(list, k));
+      });
+      return any ? { ok: true, hits } : failure(rs[0]!);
+    },
     async archive(id) {
       if (!SAFE_ID.test(id)) return false;
       const r = await run(["m", "archive", "--reason", "Undone in Ducter", "--", id]);
@@ -347,6 +376,25 @@ export function createNmemClient(opts: NmemOptions = {}): MemoryClient {
     },
   };
   return client;
+}
+
+/** At most this many of each kind about the person (D321's page shows as many). */
+export const ABOUT_PER_KIND = 8;
+
+/**
+ * D444, D321's rule: from one kind's list, what is about the person: a preference from anyone Mem
+ * names; a decision or a fact only when the person saved it or told the partner.
+ */
+export function aboutHits(list: any[], kind: "preference" | "decision" | "fact"): MemoryHit[] {
+  const out: MemoryHit[] = [];
+  for (const m of list) {
+    if (out.length >= ABOUT_PER_KIND) break;
+    if (typeof m?.title !== "string" || !m.title.trim()) continue;
+    const who = aboutSource(m?.source);
+    if (!who || (kind !== "preference" && who.by !== "said" && who.by !== "you")) continue;
+    out.push({ ...compactHit({ ...m, unit_type: kind }, 200), kind });
+  }
+  return out;
 }
 
 /** Mem switched off (DUCTER_MEMORY=off) or absent: every call says so, the partner carries on. */

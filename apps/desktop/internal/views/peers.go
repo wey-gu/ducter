@@ -302,7 +302,19 @@ func (a *App) peerAsked(messageID string) bool {
 // peerLine draws that line, small and centred, with the agent's coin.
 func (a *App) peerLine(c *ui.Context, b *protocol.BridgeMsg, setAside int, ping *store.PingGroup, ts string) {
 	t := a.T
-	text := a.peerLineText(b)
+	// D444: what it handed over from Nowledge Mem: an address in its words
+	// reads as the thing's title; the rest are each their own element.
+	var refs []protocol.BridgeRef
+	if b.Direction == "in" && b.State == "" {
+		refs = b.Refs
+	}
+	shown := b
+	if len(refs) > 0 {
+		cp := *b
+		cp.Text = withRefTitles(a, b.Text, refs)
+		shown = &cp
+	}
+	text := a.peerLineText(shown)
 	lines := 1
 	if b.State == "set_aside" {
 		text = capPeer(a.L.T("peer.set_aside", a.peerWhoOf(b), itoa(int64(setAside))))
@@ -314,6 +326,41 @@ func (a *App) peerLine(c *ui.Context, b *protocol.BridgeMsg, setAside int, ping 
 	ui.Row(c).Justify(ui.Center).Children(func() {
 		ui.Row(c).Gap(t.S1+2).AlignItems(ui.Center).Padding(3, t.S3).Radius(999).Background(t.SurfaceSunken).Children(func() {
 			uiText(c, text).FontSize(t.XS).TextColor(t.InkMuted).MaxLines(lines)
+			for i, r := range refs {
+				if r.URI != "" && r.Title != "" && strings.Contains(b.Text, r.URI) {
+					continue
+				}
+				uiText(c.Key(i), refWords(a, r)).FontSize(t.XS).TextColor(t.Ink).MaxLines(1)
+			}
 		})
 	})
+}
+
+var refURI = regexp.MustCompile("nowledgemem://[^\\s<>\"'`)\\]}，。；、]+")
+
+// withRefTitles reads a nowledgemem:// address in a message's words as the
+// thing's title (D444), never the raw address.
+func withRefTitles(a *App, text string, refs []protocol.BridgeRef) string {
+	out := refURI.ReplaceAllStringFunc(text, func(u string) string {
+		u = strings.TrimRight(u, ".,;:!?")
+		for _, r := range refs {
+			if r.URI == u && r.Title != "" {
+				return a.L.T("peers.ref.inline", r.Title)
+			}
+		}
+		return ""
+	})
+	return strings.Join(strings.Fields(out), " ")
+}
+
+// refWords is one thing a message handed over, by Mem's title (a shared
+// plan says so), else by its kind (D444).
+func refWords(a *App, r protocol.BridgeRef) string {
+	if r.Title == "" {
+		return a.L.T("peers.ref.none." + r.Kind)
+	}
+	if r.Kind == "plan" {
+		return a.L.T("peers.ref.plan", r.Title)
+	}
+	return a.L.T("peers.ref", r.Title)
 }

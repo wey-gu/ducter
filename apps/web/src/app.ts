@@ -977,6 +977,17 @@ class AppState {
     this.changed();
   }
 
+  /**
+   * D444: 问问它记得你什么 / Ask what it remembers about you: back to the conversation with the question
+   * in the composer (never sent: the person sends it, and the partner answers from Mem in a few lines).
+   */
+  askAboutMe(words: string) {
+    this.sheet = null;
+    this.draft = words;
+    this.changed();
+    queueMicrotask(() => document.getElementById("composer")?.focus());
+  }
+
   /** The settings, Your rules and this Mac's AI agents (each socket asks for itself). */
   askLoadout() {
     this.send({ t: "settings" });

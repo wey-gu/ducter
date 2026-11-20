@@ -11,9 +11,9 @@ const ev = (body: object, seq = ++n): LogEvent => ({ seq, ts: new Date(1_763_000
 const card = (held?: TaskCard["held"]): TaskCard => ({ taskId: "t1", persona: "p", title: "Ship it", project: "", place: { kind: "none" }, harness: "claude-code", attention: "working", residency: "hot", openedAt: "2026-11-17T10:00:00Z", updatedAt: "2026-11-17T10:00:00Z", ...(held ? { held } : {}) }) as TaskCard;
 
 describe("words", () => {
-  test("every agent says whether it takes a steer (OAR 0.95.1: all four do)", () => {
+  test("every agent says whether it takes a steer (OAR 0.95.1: all four do; 0.124, D416: Antigravity too)", () => {
     for (const h of HARNESS_IDS) expect(typeof HARNESSES[h].steer).toBe("boolean");
-    expect(HARNESS_IDS.filter((h) => HARNESSES[h].steer)).toEqual(["claude-code", "codex", "pi", "deepseek-harness"]);
+    expect(HARNESS_IDS.filter((h) => HARNESSES[h].steer)).toEqual(["claude-code", "codex", "pi", "deepseek-harness", "antigravity"]);
   });
 });
 

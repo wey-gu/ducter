@@ -18,6 +18,7 @@ import { existsSync, readFileSync, readdirSync, statSync, writeFileSync, mkdirSy
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { DSH_APP_CLI, dshAppPaths, dshCredentialsFile } from "@ducter/protocol/src/dsh.ts";
+import { ANTIGRAVITY } from "@ducter/protocol/src/harness-facts.ts";
 
 export interface AgentPathFs {
   exists(p: string): boolean;
@@ -171,7 +172,7 @@ export function agentSignature(o: { dataDir: string; home?: string; env?: Record
         return undefined;
       }
     });
-  const cmds = ["claude", "codex", "pi", "dsh", "node"].map((c) => {
+  const cmds = ["claude", "codex", "pi", "dsh", "agy", "node"].map((c) => {
     const p = o.which(c);
     return `${c}=${p ?? ""}@${p ? (mtime(p) ?? "") : ""}`;
   });
@@ -183,6 +184,11 @@ export function agentSignature(o: { dataDir: string; home?: string; env?: Record
     join(env.PI_CODING_AGENT_DIR || join(home, ".pi", "agent"), "models.json"),
     // D371: DeepSeek Harness's own (its desktop app's 登录 or a key saved there lands here).
     dshCredentialsFile(env, home),
+    // D416: agy at its official place (found even off PATH), its sign-in token where it keeps one
+    // as a file, and the desktop app (so "the app, not its command line" changes when either does).
+    join(home, ...ANTIGRAVITY.bin),
+    join(env.GEMINI_HOME || join(home, ".gemini"), ...ANTIGRAVITY.token.slice(1)),
+    join("/Applications", ANTIGRAVITY.app),
     join(o.dataDir, "keys.env"),
   ].map((f) => `${f}@${mtime(f) ?? ""}`);
   return [...cmds, ...files].join("|");

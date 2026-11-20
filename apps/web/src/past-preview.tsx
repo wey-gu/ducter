@@ -14,7 +14,7 @@ type Steps = Extract<ServerFrame, { t: "past_steps_result" }>;
 type Forked = Extract<ServerFrame, { t: "past_forked" }>;
 
 /** Agents a redo or a switch can pick (the same list Continue with another agent offers). */
-export const AGENTS = ["claude-code", "codex", "pi", "deepseek-harness"];
+export const AGENTS = ["claude-code", "codex", "pi", "deepseek-harness", "antigravity"];
 
 /** What the preview and the redo sheet hold between renders. */
 export const PV = {

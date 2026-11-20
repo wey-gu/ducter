@@ -625,6 +625,8 @@ export interface HarnessPort {
   /** D288: the account's usage limits as the agent reports them (OAR accountUsage, no model
    *  call), or why not. Never throws. */
   accountUsage?(harness: string): Promise<{ usage?: AccountUsage; why?: "unsupported" | "signed_out" | "unavailable" }>;
+  /** D416: the agent's own sign-out (OAR runtime logout: Antigravity's ACP logout), confirmed by its own status. Never throws. */
+  logout?(harness: string): Promise<{ ok: boolean; detail?: string }>;
 }
 
 /** D202: one model as an AI agent lists it (OAR listModels), the disabled ones left out. */

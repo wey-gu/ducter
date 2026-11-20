@@ -385,7 +385,7 @@ function Card({ it, wide }: { it: PastItem; wide: boolean }) {
 
 function More({ it }: { it: PastItem }) {
   const [others, setOthers] = useState(false);
-  const harnesses = ["claude-code", "codex", "pi", "deepseek-harness"].filter((h) => h !== it.harness);
+  const harnesses = ["claude-code", "codex", "pi", "deepseek-harness", "antigravity"].filter((h) => h !== it.harness);
   const shut = () => ((P.moreFor = ""), A.changed());
   return (
     <div class="pmenu" role="menu">
@@ -781,7 +781,7 @@ function OutsideCard({ it }: { it: OutsideItem }) {
   const more = P.moreFor === key;
   const busy = P.adopting === `${it.agent}:${it.id}`;
   const hitLabel = it.hit ? t(`past.hit.${it.hit.field}`) : "";
-  const others = ["claude-code", "codex", "pi", "deepseek-harness"].filter((h) => h !== it.agent);
+  const others = ["claude-code", "codex", "pi", "deepseek-harness", "antigravity"].filter((h) => h !== it.agent);
   return (
     <div class={`pcard out${on ? " on" : ""}${more ? " open" : ""}${it.gone ? " gone" : ""}`} data-id={key} onMouseEnter={() => P.focus !== key && ((P.focus = key), A.changed())}>
       <button class="pmain" onClick={() => carryOut(it)} aria-label={it.title} disabled={busy}>

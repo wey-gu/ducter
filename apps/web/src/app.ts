@@ -2151,7 +2151,7 @@ class AppState {
     this.changed();
   }
   /** D363: put agents on a device, sign one in there, a pasted code, cancel, or look again. */
-  agentSetup(device: string, action: "install" | "login" | "code" | "cancel" | "look", o: { harnesses?: string[]; harness?: string; code?: string } = {}) {
+  agentSetup(device: string, action: "install" | "login" | "code" | "cancel" | "look" | "logout", o: { harnesses?: string[]; harness?: string; code?: string } = {}) {
     if (action !== "look") this.setupAnswer = undefined;
     this.send({ t: "agent_setup", device, action, ...o });
     if (action !== "look") this.changed();

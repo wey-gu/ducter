@@ -1904,6 +1904,17 @@ type DeviceHarness struct {
 	Installable bool             `json:"installable,omitempty"`
 	Setup       *AgentSetupState `json:"setup,omitempty"`
 	Login       *AgentLoginState `json:"login,omitempty"`
+	// D416: why it can't run although something of it is there.
+	Trouble *AgentTrouble `json:"trouble,omitempty"`
+}
+
+// AgentTrouble is an agent partly there (D416): too_old (Need: the version
+// it must reach), broken (its command line doesn't answer), app_only (only
+// its desktop app App, no command line).
+type AgentTrouble struct {
+	Kind string `json:"kind"`
+	Need string `json:"need,omitempty"`
+	App  string `json:"app,omitempty"`
 }
 
 // AgentSetupState is an agent being put on a device (D363): queued |

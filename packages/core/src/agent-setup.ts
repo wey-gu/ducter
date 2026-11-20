@@ -8,6 +8,11 @@
 //      `npm install -g` with that node as the prefix, so its bin lands in <data>/tools/node/bin.
 // Nothing outside <data>/tools is written; deleting that folder undoes it. The copies read as
 // npm-installed under that prefix (harness-probe agentHow), so D156's updates reach them.
+// D416: Antigravity's agy is no npm package. It goes where its own installer puts it
+// (~/.local/bin/agy, where OAR looks even off PATH), the way that installer does it: Google's
+// release manifest for this platform, the build it names, its sha512 checked, the flat binary
+// copied in; never the installer's shell-profile step. A copy below OAR's floor is updated with
+// its own `agy update`; one that doesn't answer is replaced; one that works is left alone.
 // One agent at a time, in the order asked, so they arrive on the card one by one.
 //
 // Sign in, with each agent's own sign-in, run on that computer and carried to the person:
@@ -16,23 +21,28 @@
 //   - pi: no sign-in that runs without its own screen: the row says what to run there;
 //   - DeepSeek Harness (D371): its Mac app opened there when it has one (its 登录: the DeepSeek
 //     account, or a key), and a DeepSeek API key pasted in the row, checked and kept in that
-//     computer's keys.env (0600) like any key (D102); the row turns signed in either way.
+//     computer's keys.env (0600) like any key (D102); the row turns signed in either way;
+//   - Antigravity (D416): `agy acp --login`: a Google link to open on any device; the code that
+//     page gives (or the address it lands on) is pasted back and written to the sign-in's input.
+//     On Linux its own browser launch is a no-op (a server has none), as OAR does it.
 // The pasted DeepSeek key is the one secret that passes: home to that computer over its own
 // socket, once, into its key file; never logged, never shown again, never in a frame back.
 // Otherwise secrets never pass through: the link and Codex's code are not secrets (they only work for the
 // person who signs in with them); Claude's pasted code is written to the sign-in's stdin, never kept.
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { dirname, join } from "node:path";
 import type { AgentLoginState, AgentSetupReason, AgentSetupState } from "@ducter/protocol";
 import { cleanKey } from "@ducter/protocol/src/api-keys.ts";
 import { DSH_APP, DSH_KEY_PAGE, dshAppPaths, dshCredentialsFile, dshSignIns } from "@ducter/protocol/src/dsh.ts";
-import { HARNESS_FACTS } from "@ducter/protocol/src/harness-facts.ts";
-import { DSH_KEY_ENV, type HarnessId } from "@ducter/protocol/src/harnesses.ts";
+import { ANTIGRAVITY, HARNESS_FACTS, agyPlatform } from "@ducter/protocol/src/harness-facts.ts";
+import { DSH_KEY_ENV, HARNESSES, isHarnessId, type HarnessId } from "@ducter/protocol/src/harnesses.ts";
 import { readKeys, writeKey } from "@ducter/protocol/src/keys.ts";
 import { toolEnv } from "@ducter/protocol/src/tool-env.ts";
 import { toolsNodeBin } from "./agent-path.ts";
 import { checkDeepSeekKey } from "./api-key.ts";
+import { agyPaths, agyVersion, compareVersions } from "./harness-probe.ts";
 
 /** Node.js Ducter puts in its tools folder for the agents' npm packages (an LTS line every agent supports). */
 export const NODE_RELEASE = {
@@ -46,8 +56,8 @@ export const NODE_RELEASE = {
   } as Record<string, { file: string; sha256: string }>,
 };
 
-/** The agents Ducter can put on a computer, in the order a sheet lists them (D371: DeepSeek Harness's command line too). */
-export const INSTALLABLE: readonly HarnessId[] = ["codex", "claude-code", "pi", "deepseek-harness"];
+/** The agents Ducter can put on a computer, in the order a sheet lists them (D371: DeepSeek Harness's command line too; D416: Antigravity's agy). */
+export const INSTALLABLE: readonly HarnessId[] = ["codex", "claude-code", "pi", "deepseek-harness", "antigravity"];
 /** Pre-checked on the lend sheet's 装上哪些 AI？ (pi's sign-in needs that computer's terminal). */
 export const SUGGESTED: readonly HarnessId[] = ["codex", "claude-code"];
 
@@ -92,11 +102,28 @@ export interface AgentSetupSys {
   checkKey?: (key: string) => Promise<{ ok: true } | { ok: false; reason: "wrong_key" | "no_balance" | "offline" | "failed" }>;
   /** D371: where DeepSeek Harness.app may be (default: /Applications, ~/Applications). */
   dshApps?: () => string[];
+  /** D416: the person's home folder there (agy goes in its ~/.local/bin). Default: os.homedir(). */
+  home?: string;
+  /** D416: this Linux is musl (Alpine): agy's musl build. Default: its loader is there. */
+  musl?: boolean;
+  /** D416: tests: make a file executable, clear macOS's quarantine. */
+  chmod?: (p: string) => void;
+  /** D416: the agent's own sign-out (the runner's HarnessPort.logout); absent: none here. */
+  logout?: (h: string) => Promise<{ ok: boolean; detail?: string }>;
+}
+
+/** D416: Google's release manifest for agy on one platform. */
+interface AgyRelease {
+  version: string;
+  url: string;
+  sha512: string;
 }
 
 export interface AgentSetup {
   install(hs: readonly string[]): void;
   login(h: string): void;
+  /** D416: its own sign-out, where the agent has one Ducter can run (HarnessInfo.signOut). */
+  logout(h: string): void;
   code(h: string, code: string): void;
   cancel(h: string): void;
   /** This agent's setup and sign-in now, for its row. */
@@ -127,7 +154,7 @@ const lastLine = (text: string) =>
 export function parseLogin(h: string, text: string): { url?: string; code?: string } {
   const plain = text.replace(ANSI, "");
   const urls = [...plain.matchAll(/https:\/\/[^\s"'<>]+/g)].map((m) => m[0].replace(/[).,]+$/, ""));
-  const url = h === "claude-code" ? urls.find((u) => /oauth|authorize|claude\.(ai|com)/.test(u)) : urls.find((u) => /auth\.openai\.com|chatgpt\.com|openai\.com/.test(u)) ?? urls[0];
+  const url = h === "claude-code" ? urls.find((u) => /oauth|authorize|claude\.(ai|com)/.test(u)) : h === "antigravity" ? urls.find((u) => /^https:\/\/accounts\.google\.com\//.test(u)) : urls.find((u) => /auth\.openai\.com|chatgpt\.com|openai\.com/.test(u)) ?? urls[0];
   const code = h === "codex" ? /\b([A-Z0-9]{4}-[A-Z0-9]{4,6})\b/.exec(plain.split(url ?? "\u0000").slice(1).join(" ") || plain)?.[1] : undefined;
   return { ...(url ? { url } : {}), ...(code ? { code } : {}) };
 }
@@ -209,7 +236,88 @@ export function createAgentSetup(o: {
     return { ok: true };
   };
 
+  /** D416: agy where its own installer puts it, or the copy there made to run (see the header). */
+  const installAgy = async (): Promise<void> => {
+    const h = "antigravity";
+    const home = sys.home ?? homedir();
+    const target = join(home, ...ANTIGRAVITY.bin);
+    const env = { ...sys.env("agy"), AGY_CLI_DISABLE_AUTO_UPDATE: "true" };
+    const versionOf = async (bin: string) => {
+      const r = await sys.run([bin, "--version"], { env, timeoutMs: 30_000 });
+      return r.code === 0 ? agyVersion(r.out) : undefined;
+    };
+    const atFloor = (v: string | undefined) => !!v && (compareVersions(v, ANTIGRAVITY.minVersion) ?? -1) >= 0;
+    // A copy that answers: fine as it is, or too old and updated by itself (its own updater).
+    for (const bin of agyPaths({ which: sys.which, env: { ...process.env, ...env }, home, exists })) {
+      const v = await versionOf(bin);
+      if (atFloor(v)) return void setups.delete(h);
+      if (!v) continue; // doesn't answer: a fresh copy goes in its place below (when it is ours to replace)
+      setups.set(h, { phase: "installing" });
+      o.changed();
+      const r = await sys.run([bin, "update"], { env: sys.env("agy"), timeoutMs: 10 * 60_000 });
+      const after = await versionOf(bin);
+      if (atFloor(after)) return void setups.delete(h);
+      return fail(h, r.code === 0 ? "failed" : reasonOf(r.out), lastLine(r.out) ?? `agy ${after ?? v} is below ${ANTIGRAVITY.minVersion}`);
+    }
+    const platform = agyPlatform(sys.platform, sys.arch, sys.musl ?? (exists("/lib/libc.musl-x86_64.so.1") || exists("/lib/libc.musl-aarch64.so.1")));
+    if (!platform) return fail(h, "unsupported");
+    setups.set(h, { phase: "installing", pct: 0 });
+    o.changed();
+    let rel: AgyRelease;
+    try {
+      const j = JSON.parse(new TextDecoder().decode(await sys.download(ANTIGRAVITY.manifest.replace("{platform}", platform))));
+      if (typeof j?.version !== "string" || typeof j?.url !== "string" || !/^https:\/\//.test(j.url) || typeof j?.sha512 !== "string") return fail(h, "failed", "agy's release list didn't say what to download");
+      rel = j;
+    } catch (e) {
+      return fail(h, "network", lastLine(String((e as Error)?.message ?? e)));
+    }
+    if (!atFloor(rel.version)) return fail(h, "failed", `agy ${rel.version} is below ${ANTIGRAVITY.minVersion}`);
+    let last = -1;
+    let bytes: Uint8Array;
+    try {
+      bytes = await sys.download(rel.url, (p) => {
+        const pct = Math.round(p * 0.95);
+        if (pct === last || setups.get(h)?.phase !== "installing") return;
+        last = pct;
+        setups.set(h, { phase: "installing", pct });
+        o.changed();
+      });
+    } catch (e) {
+      return fail(h, "network", lastLine(String((e as Error)?.message ?? e)));
+    }
+    if (createHash("sha512").update(bytes).digest("hex") !== rel.sha512.toLowerCase()) return fail(h, "failed", "the download didn't match its checksum");
+    // Staged beside the target, then renamed over it: never a half-written agy.
+    const dir = dirname(target);
+    const stage = join(dir, `.agy-new-${process.pid}`);
+    const tarball = /\.tar\.gz(\?|$)/.test(rel.url);
+    try {
+      rmSync(stage, { recursive: true, force: true });
+      mkdirSync(stage, { recursive: true });
+      writeFile(join(stage, tarball ? "agy.tar.gz" : "antigravity"), bytes);
+    } catch (e) {
+      return fail(h, reasonOf(String(e)), lastLine(String((e as Error)?.message ?? e)));
+    }
+    try {
+      if (tarball) {
+        const r = await sys.run(["tar", "-xzf", join(stage, "agy.tar.gz"), "-C", stage, "antigravity"], { env: sys.env("tar"), timeoutMs: 5 * 60_000 });
+        if (r.code !== 0) return fail(h, reasonOf(r.out), lastLine(r.out));
+      }
+      const bin = join(stage, "antigravity");
+      (sys.chmod ?? ((p: string) => chmodSync(p, 0o755)))(bin);
+      if (sys.platform === "darwin") await sys.run(["xattr", "-d", "com.apple.quarantine", bin], { env: sys.env("xattr"), timeoutMs: 15_000 }).catch(() => undefined);
+      renameSync(bin, target);
+    } catch (e) {
+      return fail(h, reasonOf(String(e)), lastLine(String((e as Error)?.message ?? e)));
+    } finally {
+      try {
+        rmSync(stage, { recursive: true, force: true });
+      } catch {}
+    }
+    setups.delete(h);
+  };
+
   const installOne = async (h: HarnessId) => {
+    if (h === "antigravity") return installAgy();
     const pin = agentPin(h);
     if (!pin) return fail(h, "unsupported");
     setups.set(h, { phase: "installing" });
@@ -315,6 +423,25 @@ export function createAgentSetup(o: {
     o.changed();
   };
 
+  /**
+   * D416: agy's sign-in environment. agy ignores BROWSER and starts the platform's launcher
+   * itself; on Linux it finds `xdg-open` on PATH, so a folder holding one that does nothing goes
+   * first (OAR's login-browser.ts does the same): the link is opened wherever the person is.
+   */
+  const agyLoginEnv = (): Record<string, string> => {
+    const env = sys.env("agy");
+    if (sys.platform !== "linux") return env;
+    const dir = join(tools, "no-browser");
+    try {
+      mkdirSync(dir, { recursive: true });
+      writeFile(join(dir, "xdg-open"), new TextEncoder().encode("#!/bin/sh\nexit 0\n"));
+      (sys.chmod ?? ((p: string) => chmodSync(p, 0o755)))(join(dir, "xdg-open"));
+    } catch {
+      return env;
+    }
+    return { ...env, PATH: [dir, env.PATH ?? ""].filter(Boolean).join(":") };
+  };
+
   const api: AgentSetup = {
     install(hs) {
       for (const h of hs) {
@@ -333,15 +460,15 @@ export function createAgentSetup(o: {
         return o.changed();
       }
       if (h === "deepseek-harness") return dshLogin();
-      const argv = h === "codex" ? ["codex", "login", "--device-auth"] : h === "claude-code" ? ["claude", "auth", "login"] : undefined;
-      const bin = argv ? sys.which(argv[0]!) : null;
+      const argv = h === "codex" ? ["codex", "login", "--device-auth"] : h === "claude-code" ? ["claude", "auth", "login"] : h === "antigravity" ? ["agy", "acp", "--login"] : undefined;
+      const bin = h === "antigravity" ? (agyPaths({ which: sys.which, env: process.env, home: sys.home ?? homedir(), exists })[0] ?? null) : argv ? sys.which(argv[0]!) : null;
       if (!argv || !bin) {
         logins.set(h, { view: { state: "failed", reason: "failed" }, out: "" });
         return o.changed();
       }
       let proc: LoginProc;
       try {
-        proc = sys.spawn([bin, ...argv.slice(1)], sys.env(argv[0]!));
+        proc = sys.spawn([bin, ...argv.slice(1)], h === "antigravity" ? agyLoginEnv() : sys.env(argv[0]!));
       } catch {
         logins.set(h, { view: { state: "failed", reason: "failed" }, out: "" });
         return o.changed();
@@ -364,7 +491,7 @@ export function createAgentSetup(o: {
           return o.changed();
         }
         if (got.url && entry.view.state === "starting" && (h !== "codex" || got.code)) {
-          entry.view = { state: "waiting", url: got.url, ...(got.code ? { code: got.code } : {}), ...(h === "claude-code" ? { paste: true } : {}) };
+          entry.view = { state: "waiting", url: got.url, ...(got.code ? { code: got.code } : {}), ...(h === "claude-code" || h === "antigravity" ? { paste: true } : {}) };
           o.changed();
         }
       });
@@ -382,6 +509,29 @@ export function createAgentSetup(o: {
         o.changed();
       });
       o.changed();
+    },
+    logout(h) {
+      const prev = logins.get(h);
+      if (prev?.view.state === "signing_out") return;
+      prev?.proc?.kill();
+      if (prev?.timer) clearTimer(prev.timer);
+      if (!sys.logout || !(isHarnessId(h) && HARNESSES[h].signOut)) {
+        logins.set(h, { view: { state: "failed", reason: "signout_failed" }, out: "" });
+        return o.changed();
+      }
+      const entry: Login = { view: { state: "signing_out" }, out: "" };
+      logins.set(h, entry);
+      o.changed();
+      void sys
+        .logout(h)
+        .catch(() => ({ ok: false }))
+        .then(async (r) => {
+          if (logins.get(h) !== entry) return;
+          if (r.ok) logins.delete(h);
+          else entry.view = { state: "failed", reason: "signout_failed" };
+          await o.probe().catch(() => {});
+          o.changed();
+        });
     },
     code(h, code) {
       const l = logins.get(h);
@@ -404,7 +554,8 @@ export function createAgentSetup(o: {
     state(h) {
       const s = setups.get(h);
       const l = logins.get(h)?.view;
-      return { ...(s ? { setup: s } : {}), ...(l ? { login: l } : {}), installable: !!agentPin(h as HarnessId) && !!NODE_RELEASE.assets[`${sys.platform}-${sys.arch}`] };
+      const installable = h === "antigravity" ? !!agyPlatform(sys.platform, sys.arch) : !!agentPin(h as HarnessId) && !!NODE_RELEASE.assets[`${sys.platform}-${sys.arch}`];
+      return { ...(s ? { setup: s } : {}), ...(l ? { login: l } : {}), installable };
     },
     decorate(rows) {
       return rows.map((r) => {
@@ -412,11 +563,13 @@ export function createAgentSetup(o: {
         const s = api.state(h);
         // A sign-in that finished shows no more once the probe says signed in; a setup once it's there.
         const setup = s.setup && !(r.installed && s.setup.phase !== "failed") ? s.setup : undefined;
-        const login = s.login && !(r.loggedIn && s.login.state !== "done") ? s.login : undefined;
+        // D416: a sign-out under way, or one that didn't take, shows on a row that still reads signed in.
+        const signOut = s.login?.state === "signing_out" || s.login?.reason === "signout_failed";
+        const login = s.login && (signOut || !(r.loggedIn && s.login.state !== "done")) ? s.login : undefined;
         return { ...r, ...(setup ? { setup } : {}), ...(login ? { login } : {}), ...(!r.installed && s.installable ? { installable: true } : {}) };
       });
     },
-    busy: () => running || queue.length > 0 || [...logins.values()].some((l) => l.view.state === "starting" || l.view.state === "waiting" || l.view.state === "checking"),
+    busy: () => running || queue.length > 0 || [...logins.values()].some((l) => l.view.state === "starting" || l.view.state === "waiting" || l.view.state === "checking" || l.view.state === "signing_out"),
     stop() {
       for (const l of logins.values()) {
         l.proc?.kill();
@@ -436,7 +589,7 @@ export function realAgentSetupSys(o: { platform: string; arch: string; which: (c
     arch: o.arch,
     which: o.which,
     // The basics and the agents' own homes, never Ducter's keys (tool-env.ts).
-    env: o.env ?? (() => toolEnv({ extra: ["CODEX_HOME", "CLAUDE_CONFIG_DIR", "PI_CODING_AGENT_DIR", "NVM_DIR", "NPM_CONFIG_PREFIX"] })),
+    env: o.env ?? (() => toolEnv({ extra: ["CODEX_HOME", "CLAUDE_CONFIG_DIR", "PI_CODING_AGENT_DIR", "NVM_DIR", "NPM_CONFIG_PREFIX", "GEMINI_HOME", "OAR_ANTIGRAVITY_BIN"] })),
     async download(url, onProgress) {
       const r = await fetch(url, { signal: AbortSignal.timeout(30 * 60_000) });
       if (!r.ok || !r.body) throw new Error(`${url}: HTTP ${r.status}`);

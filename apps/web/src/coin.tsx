@@ -12,6 +12,7 @@ const COINS: Record<string, string> = {
   codex: "codex",
   pi: "pi",
   "deepseek-harness": "deepseek_harness",
+  antigravity: "antigravity",
 };
 
 /** Coins whose clay would vanish on the dark ground have a dark-theme rendition (D213): the same

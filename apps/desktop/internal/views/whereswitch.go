@@ -40,6 +40,8 @@ func (a *App) whereCandReason(cd protocol.Candidate) string {
 		return a.L.T("switch.cant.app")
 	case "no_draw":
 		return a.L.T("switch.cant.draw")
+	case "no_web":
+		return a.L.T("switch.cant.webpages")
 	case "elsewhere":
 		return a.L.T("switch.cant.folder")
 	}

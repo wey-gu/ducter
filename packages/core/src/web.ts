@@ -56,6 +56,8 @@ import coinPi from "../../../apps/web/static/art/coin_pi.webp" with { type: "fil
 import coinPiOff from "../../../apps/web/static/art/coin_pi_off.webp" with { type: "file" };
 import coinDeepseekHarness from "../../../apps/web/static/art/coin_deepseek_harness.webp" with { type: "file" };
 import coinDeepseekHarnessOff from "../../../apps/web/static/art/coin_deepseek_harness_off.webp" with { type: "file" };
+import coinAntigravity from "../../../apps/web/static/art/coin_antigravity.webp" with { type: "file" };
+import coinAntigravityOff from "../../../apps/web/static/art/coin_antigravity_off.webp" with { type: "file" };
 // Work over time (D112): Ducter waiting, and the clay things it waits for.
 import artWaiting from "../../../apps/web/static/art/waiting.webp" with { type: "file" };
 import waitPr from "../../../apps/web/static/art/wait_pr.webp" with { type: "file" };
@@ -132,6 +134,8 @@ const ASSETS: Record<string, [string, string]> = {
   "art/coin_pi_off.webp": [coinPiOff, "image/webp"],
   "art/coin_deepseek_harness.webp": [coinDeepseekHarness, "image/webp"],
   "art/coin_deepseek_harness_off.webp": [coinDeepseekHarnessOff, "image/webp"],
+  "art/coin_antigravity.webp": [coinAntigravity, "image/webp"],
+  "art/coin_antigravity_off.webp": [coinAntigravityOff, "image/webp"],
   "art/waiting.webp": [artWaiting, "image/webp"],
   "art/wait_pr.webp": [waitPr, "image/webp"],
   "art/wait_ci.webp": [waitCi, "image/webp"],

@@ -9,14 +9,18 @@
 //   DeepSeek Harness: `dsh --version` at or above OAR's floor; signed in = a DeepSeek key in the
 //                     env, Ducter's key file (<dataDir>/keys.env, D102), or DSH's own credential file,
 //                     or (D371) the DeepSeek account its desktop app signed in with
+//   Antigravity:      (D416) `agy --version` at or above OAR's floor (OAR_ANTIGRAVITY_BIN, else `agy`
+//                     on PATH, else ~/.local/bin/agy, as OAR looks); signed in = `agy models`
+//                     answers (agy's own check, a remote call); a copy too old, one that doesn't
+//                     answer, or only the desktop app is said as `trouble`
 // Every probe reads presence only, never a secret's value into any output.
 // D156: each installed agent also gets its version (its own --version) and how it was installed
 // (`how`, from where its binary really lives; research/42).
-import { existsSync, readFileSync, realpathSync } from "node:fs";
+import { existsSync, lstatSync, readFileSync, realpathSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { CLAUDE_TOKEN_ENV, DSH_KEY_ENV, HARNESS_KEYS, deviceHarness, type AgentHow, type DeviceHarness } from "@ducter/protocol";
-import { HARNESS_FACTS } from "@ducter/protocol/src/harness-facts.ts";
+import { ANTIGRAVITY, HARNESS_FACTS } from "@ducter/protocol/src/harness-facts.ts";
 import type { HarnessId } from "@ducter/protocol/src/harnesses.ts";
 import { readKeys } from "@ducter/protocol/src/keys.ts";
 import { dshCredentialsFile, dshSignIns } from "@ducter/protocol/src/dsh.ts";
@@ -39,6 +43,10 @@ export interface HarnessProbeEnv {
   exists?: (p: string) => boolean;
   /** D156: the pi that ships inside Ducter, when this Ducter runs one (its version); see bundledPiVersion. */
   piBundled?: () => string | undefined;
+  /** D416: a link that is there but points at nothing (default: the file system's). */
+  dangling?: (p: string) => boolean;
+  /** D416: where a Mac's apps are (default /Applications and ~/Applications). */
+  apps?: string[];
 }
 
 // ---------- versions and how each copy was installed (D156) ----------
@@ -117,7 +125,7 @@ export async function detectAgent(h: HarnessId, o: Pick<HarnessProbeEnv, "exec" 
     if (v) return { version: v, how: "ducter" };
   }
   const cmd = HARNESS_FACTS[h].version.command[0]!;
-  const path = (h === "deepseek-harness" ? o.env?.OAR_DSH_BIN : undefined) || o.which(cmd);
+  const path = h === "antigravity" ? agyPaths(o)[0] : (h === "deepseek-harness" ? o.env?.OAR_DSH_BIN : undefined) || o.which(cmd);
   if (!path) return undefined;
   const r = await o.exec([path, ...HARNESS_FACTS[h].version.command.slice(1)], 15_000);
   const version = r.code === 0 ? versionIn(r.out) : undefined;
@@ -127,6 +135,32 @@ export async function detectAgent(h: HarnessId, o: Pick<HarnessProbeEnv, "exec" 
 
 /** OAR's floor for DeepSeek Harness (runtimes/dsh/version.ts). */
 export const DSH_MIN = "0.2.1-rc.5";
+
+/**
+ * D416: where agy may be, in OAR's order (runtimes/antigravity/installation.js): the override
+ * alone when set; else `agy` on PATH, then the official installer's ~/.local/bin/agy (OAR falls
+ * back to it when the PATH copy is too old, so both are looked at).
+ */
+export function agyPaths(o: { which: (cmd: string) => string | null; env?: Record<string, string | undefined>; home?: string; exists?: (p: string) => boolean }): string[] {
+  const pinned = o.env?.OAR_ANTIGRAVITY_BIN;
+  if (pinned) return [pinned];
+  const official = join(o.home ?? o.env?.HOME ?? homedir(), ...ANTIGRAVITY.bin);
+  const onPath = o.which("agy");
+  return [...new Set([onPath, (o.exists ?? existsSync)(official) ? official : null].filter((p): p is string => !!p))];
+}
+
+/** D416: agy's own version line: a bare stable release, as OAR accepts it (prereleases are refused). */
+export function agyVersion(out: string): string | undefined {
+  return /^(\d+\.\d+\.\d+)$/.exec(out.trim())?.[1];
+}
+
+const danglingLink = (p: string) => {
+  try {
+    return lstatSync(p).isSymbolicLink() && !existsSync(p);
+  } catch {
+    return false;
+  }
+};
 
 const readSafe = (p: string) => {
   try {
@@ -205,11 +239,43 @@ export async function probeHarnesses(o: HarnessProbeEnv): Promise<DeviceHarness[
     const loggedIn = has(DSH_KEY_ENV) || own.key || own.account;
     return { harness: "deepseek-harness", installed: ok, loggedIn: ok && loggedIn };
   };
+  // D416: agy, as OAR would pick it: the first copy that answers at or above OAR's floor.
+  const agy = async (): Promise<RawHarness> => {
+    const exists = o.exists ?? existsSync;
+    let trouble: RawHarness["trouble"];
+    let old: string | undefined;
+    for (const bin of agyPaths({ which: o.which, env, home, exists })) {
+      const v = await o.exec([bin, "--version"], 30_000);
+      const version = v.code === 0 ? agyVersion(v.out) : undefined;
+      if (!version) {
+        trouble ??= { kind: "broken" };
+        continue;
+      }
+      if ((compareVersions(version, ANTIGRAVITY.minVersion) ?? -1) < 0) {
+        (trouble = { kind: "too_old", need: ANTIGRAVITY.minVersion }), (old ??= version);
+        continue;
+      }
+      // Signed in: agy's own `agy models` (a remote call; OAR's authStatus reads the same). It says
+      // "Please sign in" when it isn't; anything else (no network) falls back to its token file.
+      const m = await o.exec([bin, "models"], 20_000);
+      const loggedIn = m.code === 0 || (!ANTIGRAVITY.signedOut.test(m.out) && exists(join(env.GEMINI_HOME || join(home, ".gemini"), ...ANTIGRAVITY.token.slice(1))));
+      return { harness: "antigravity", installed: true, loggedIn };
+    }
+    if (!trouble) {
+      // Only the desktop app, or the link an older app left behind (pointing at nothing now).
+      const apps = o.apps ?? ["/Applications", join(home, "Applications")];
+      const app = apps.map((d) => join(d, ANTIGRAVITY.app)).find((p) => exists(p));
+      const link = (o.dangling ?? danglingLink)(join(home, ...ANTIGRAVITY.appLinks));
+      if (app || link) trouble = { kind: "app_only", app: "Antigravity" };
+    }
+    return { harness: "antigravity", installed: false, loggedIn: false, ...(trouble ? { trouble } : {}), ...(old ? { version: old } : {}) };
+  };
   const probes: [string, () => Promise<RawHarness>][] = [
     ["claude-code", claude],
     ["codex", codex],
     ["pi", pi],
     ["deepseek-harness", dsh],
+    ["antigravity", agy],
   ];
   // D156: an installed copy that answers --version says which version it is and how it updates.
   const withVersion = async (h: RawHarness): Promise<RawHarness> => {

@@ -3,6 +3,8 @@
 // git repos with branches, and work in three of them. For screenshots and manual checks.
 //   DUCTER_PORT=7971 DUCTER_DATA_DIR=/tmp/x DEMO_LANG=zh bun apps/web/demo-newtask.ts
 // DEMO_FAIL=offline|failed: every task_new is refused that way (the card's error line).
+// D416 DEMO_AGY=app_only|too_old|broken|signin|login|ready: Antigravity on the home in that state
+// (its card row; ready: on New task's agent list with its own models and effort menu).
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { startCore } from "./demo-core.ts";
@@ -45,6 +47,22 @@ const harnesses: DeviceHarness[] = [
   { harness: "pi", installed: true, loggedIn: false, canBePartner: false },
   { harness: "deepseek-harness", installed: true, loggedIn: true, canBePartner: false, billing: "usage" },
 ];
+const agy = process.env.DEMO_AGY;
+if (agy) {
+  const ok = agy === "ready" || agy === "signin" || agy === "login";
+  harnesses.push({
+    harness: "antigravity",
+    installed: ok,
+    loggedIn: agy === "ready",
+    canBePartner: false,
+    ...(ok ? { version: "1.5.13", how: "installer" as const, billing: "plan" as const } : {}),
+    ...(agy === "ready" ? { models: [{ id: "gemini-3.8-flash", label: "Gemini 3.8 Flash" }, { id: "gemini-3.8-pro", label: "Gemini 3.8 Pro" }] } : {}),
+    ...(agy === "app_only" ? { trouble: { kind: "app_only" as const, app: "Antigravity" }, installable: true } : {}),
+    ...(agy === "too_old" ? { trouble: { kind: "too_old" as const, need: "1.5.0" }, version: "1.4.9", installable: true } : {}),
+    ...(agy === "broken" ? { trouble: { kind: "broken" as const }, installable: true } : {}),
+    ...(agy === "login" ? { login: { state: "waiting" as const, url: "https://accounts.google.com/o/oauth2/v2/auth?client_id=demo&scope=openid%20email&response_type=code", paste: true } } : {}),
+  });
+}
 
 // D202: each agent's own model list, as Claude Code 2.1.322 and Codex 0.167.1 gave it (trimmed).
 const E = ["low", "medium", "high", "xhigh", "max"];
@@ -64,6 +82,12 @@ const lists: Record<string, ListedModel[]> = {
     { id: "gpt-6.1-terra", label: "GPT-6.1 Terra", efforts: [...E, "ultra"], defaultEffort: "low", default: true },
     { id: "gpt-6.1-sol", label: "GPT-6.1-Sol", efforts: [...E, "ultra"], defaultEffort: "low" },
     { id: "gpt-6-luna", label: "GPT-6-Luna", efforts: E, defaultEffort: "medium" },
+  ],
+  // D416: an Antigravity listing as OAR 0.124 describes it (Flash with low/medium/high; Pro's menu read from its own).
+  antigravity: [
+    { id: "gemini-3.8-flash", label: "Gemini 3.8 Flash", efforts: ["low", "medium", "high"] },
+    { id: "gemini-3.8-pro", label: "Gemini 3.8 Pro", efforts: ["low", "high"] },
+    { id: "claude-sonnet-5-5", label: "Claude Sonnet 5.5 (Thinking)" },
   ],
 };
 

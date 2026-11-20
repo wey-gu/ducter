@@ -225,8 +225,11 @@ function rank(inp: CandidateInput): { rows: Row[]; multi: boolean } {
     const f = fit(c, inp.needs, inp.place);
     for (const h of c.harnesses) {
       if (!isHarnessId(h.harness) || !HARNESSES[h.harness].task) continue;
-      // D206: a picture to make goes only to an agent that makes pictures.
-      const blocked0 = blockOf(h, inp.settings) ?? f.block ?? (inp.needs?.draw && !HARNESSES[h.harness].draws ? ("no_draw" as const) : undefined);
+      // D206: a picture to make goes only to an agent that makes pictures. D416: web pages only to
+      // an agent whose session can be held to the browser's rules (D241).
+      const browses = !!(inp.needs?.browse || inp.needs?.signedIn || inp.place?.kind === "browser");
+      const blocked0 =
+        blockOf(h, inp.settings) ?? (browses && HARNESSES[h.harness].noWebTasks ? ("no_web" as const) : undefined) ?? f.block ?? (inp.needs?.draw && !HARNESSES[h.harness].draws ? ("no_draw" as const) : undefined);
       for (const t of rows(h)) {
         const out = nevers.find((r) => rulesOut(r, t));
         const blocked = blocked0 ?? (out ? ("ruled_out" as const) : undefined);
@@ -240,7 +243,8 @@ function rank(inp: CandidateInput): { rows: Row[]; multi: boolean } {
         const access = f.uses === "ducter" && !f.needsSignIn ? 2 : f.uses === "chrome" ? 1 : inp.needs?.app && c.computer ? 1 : 0;
         // Strongest (D372: the tier for this kind of work); plan before pay-per-use; then the most
         // limit left (the agent's own rank, D89).
-        const agent = tierScore(t, inp.work.kind) + (h.billing === "usage" ? -30 : 0) + (left ?? 0.5) * 20;
+        // D416: an agent that is picked, never chosen, comes after every other one that can take it.
+        const agent = tierScore(t, inp.work.kind) + (h.billing === "usage" ? -30 : 0) + (left ?? 0.5) * 20 - (HARNESSES[h.harness].pickOnly ? 1000 : 0);
         const key = [blocked ? 0 : 1, waits ? 0 : 1, word, access, inp.needs?.long && c.alwaysOn ? 1 : 0, inp.current?.device && isComputer(c, inp.current.device) ? 1 : 0, agent, c.home ? 1 : 0];
         const reason: Candidate["reason"] = ruled ? { kind: "rule", ruleId: rule!.id, text: rule!.text } : { kind: t.kind === "smart" ? "fit" : "fast" };
         all.push({
@@ -309,6 +313,7 @@ const BLOCK_WORDS: Record<CandidateBlock, string> = {
   no_app: "it needs a Mac app, and it isn't on a Mac",
   elsewhere: "the folder is on another computer",
   no_draw: "it can't make pictures (only Codex can)",
+  no_web: "it can't work on web pages (its own setup can't be left out of a session that reads them)",
   no_phone: "it needs a phone, and none is set up yet: the user adds 用这台手机 / Use this phone on their Android phone (in the Ducter app there), or 用手机 / Use a phone on their Mac in 设备 / Devices (a one-time download of about 2.3 GB)",
 };
 

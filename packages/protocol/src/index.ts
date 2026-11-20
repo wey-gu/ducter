@@ -1950,10 +1950,22 @@ export interface DeviceHarness {
   setup?: AgentSetupState;
   /** D363: its sign-in running on that device now, or how the last one ended (absent when idle). */
   login?: AgentLoginState;
+  /** D416: why it can't run here although something of it is there (absent: nothing in the way). */
+  trouble?: AgentTrouble;
 }
 
+/**
+ * D416: what stands between an agent that is partly there and a task on it:
+ *  - too_old: its command line is below the version OAR needs (`need`; `version` says what it is);
+ *    安装 updates that copy with its own updater;
+ *  - broken: its command line is there but doesn't answer (a damaged file); 安装 puts a fresh one there;
+ *  - app_only: only its desktop app (`app`) is there, which carries no command line (or only a
+ *    link an older app left, pointing at nothing); 安装 puts the command line beside it.
+ */
+export type AgentTrouble = { kind: "too_old"; need: string } | { kind: "broken" } | { kind: "app_only"; app: string };
+
 /** D363: what an agent_setup asks of a device. */
-export type AgentSetupAction = "install" | "login" | "code" | "cancel" | "look";
+export type AgentSetupAction = "install" | "login" | "code" | "cancel" | "look" | "logout";
 /** D363: why putting an agent on a device didn't work: no network, no room, no build for that computer, anything else. */
 export type AgentSetupReason = "network" | "space" | "unsupported" | "failed";
 /** D363: queued: waiting its turn; installing: being put there; failed: one line and 再试一次. */
@@ -1977,7 +1989,8 @@ export interface AgentSetupState {
  *  - terminal: this agent has no sign-in Ducter can carry (pi): `command` is what to run there.
  */
 export interface AgentLoginState {
-  state: "starting" | "waiting" | "checking" | "done" | "failed" | "expired" | "terminal";
+  /** D416: signing_out: the agent's own sign-out is running there (Antigravity's, HarnessInfo.signOut). */
+  state: "starting" | "waiting" | "checking" | "done" | "failed" | "expired" | "terminal" | "signing_out";
   url?: string;
   code?: string;
   paste?: boolean;
@@ -1989,7 +2002,8 @@ export interface AgentLoginState {
   key?: boolean;
   app?: string;
   /** wrong_key: DeepSeek didn't take the key; no_balance: it did, with nothing left; offline: DeepSeek couldn't be reached from there. */
-  reason?: "device_off" | "wrong_code" | "wrong_key" | "no_balance" | "offline" | "failed";
+  /** D416: signout_failed: its own sign-out ran and it still reads signed in. */
+  reason?: "device_off" | "wrong_code" | "wrong_key" | "no_balance" | "offline" | "failed" | "signout_failed";
   command?: string;
 }
 

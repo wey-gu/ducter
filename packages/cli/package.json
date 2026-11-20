@@ -11,7 +11,7 @@
     "build": "sh ./build.sh"
   },
   "dependencies": {
-    "@botiverse/oar": "0.95.1",
+    "@botiverse/oar": "0.124.0",
     "@ducter/core": "workspace:*",
     "@ducter/partner": "workspace:*",
     "@ducter/protocol": "workspace:*",

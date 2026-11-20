@@ -76,6 +76,7 @@ export function whereCandReason(c: Candidate): string {
   if (c.blocked === "no_browser") return t("switch.cant.web", name);
   if (c.blocked === "no_app") return t("switch.cant.app");
   if (c.blocked === "no_draw") return t("switch.cant.draw");
+  if (c.blocked === "no_web") return t("switch.cant.webpages");
   if (c.blocked === "no_phone") return t("switch.cant.phone", name);
   if (c.blocked === "elsewhere") return t("switch.cant.folder");
   if (!c.blocked && c.waits) return t(c.waits === "asleep" ? "switch.waits" : "switch.waits.away");

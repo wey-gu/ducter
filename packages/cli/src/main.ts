@@ -1,5 +1,7 @@
 #!/usr/bin/env bun
 // `ducter`: the one command a person runs. up · open · doctor · status · version.
+import { keyRoutes } from "@ducter/protocol/src/key-routes.ts";
+import { preparePi } from "./key-cmd.ts";
 import { appendFileSync, existsSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
@@ -152,7 +154,8 @@ async function cmdDoctor(ctx: Ctx): Promise<number> {
   } catch {}
   const appCli = ["/Applications/Ducter.app", join(homedir(), "Applications", "Ducter.app")].map((a) => join(a, "Contents", "Helpers", "ducter")).find((p) => existsSync(p));
   report.checks.push(...cliChecks(ctx.t, { dataDir: ctx.dataDir, realExecPath: real, compiled: ctx.host.compiled, platform: process.platform, appInstalled: Boolean(appCli), ...(appCli ? { appCli } : {}) }));
-  if (ctx.args.json) console.log(JSON.stringify(report, null, 2));
+  // D440: nothing to think with: the Mac's first run shows the fastest ways to a key from here.
+  if (ctx.args.json) console.log(JSON.stringify(report.harnessReady ? report : { ...report, keyRoutes: keyRoutes({ tz: Intl.DateTimeFormat().resolvedOptions().timeZone, lang: detectLocale() }) }, null, 2));
   else console.log(formatReport(report, ctx.t, ctx.style));
   if (report.ok) writeFileSync(join(ctx.dataDir, DOCTOR_MARKER), new Date().toISOString());
   return report.ok ? 0 : 1;
@@ -611,6 +614,8 @@ export async function run(argv: string[]): Promise<number | "running"> {
         lang: detectLocale(),
         json: args.json,
         rest: args.rest ?? [],
+        // D440: a good key that needs pi here puts pi in Ducter's own tools folder (no Terminal).
+        prepare: (h) => preparePi(dataDir, h),
         signedIn: async () => {
           const hs = await probeHarnesses({
             exec: async (argv, ms) => {

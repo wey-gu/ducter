@@ -19,13 +19,24 @@ export interface KeyCheckOptions {
   timeoutMs?: number;
   /** Don't keep it (a check only). */
   dryRun?: boolean;
+  /**
+   * D440: put the agent this key needs on this computer when it can't run here yet (pi into
+   * Ducter's own tools folder, D363's install: no Terminal, no administrator password). True: it
+   * runs now. Absent: the result says what is needed, as before.
+   */
+  prepare?: (h: HarnessId) => Promise<boolean>;
+  /** D440: told once, before prepare runs, with the result so far (ok, preparing). */
+  onPreparing?: (r: KeyResult) => void;
 }
+
+/** D440 (research/189 §1): an OpenRouter key with no credit bought thinks on a free model that calls tools. */
+export const OPENROUTER_FREE_MODEL = "openrouter/google/gemma-4-31b-it:free";
 
 export function defaultCanRun(which: (cmd: string) => string | null | undefined = (c) => whichNow(c)): (h: HarnessId) => boolean {
   return (h) => (h === "claude-code" ? !!which("claude") : h === "codex" ? !!which("codex") : h === "deepseek-harness" ? !!which("dsh") : h === "antigravity" ? !!which("agy") : !!(which("pi") || which("node")));
 }
 
-type One = { kind: "ok"; checked: boolean } | { kind: "wrong" } | { kind: "trouble"; reason: KeyTrouble; detail?: string };
+type One = { kind: "ok"; checked: boolean; free?: boolean } | { kind: "wrong" } | { kind: "trouble"; reason: KeyTrouble; detail?: string };
 
 const NET = /ENOTFOUND|EAI_AGAIN|getaddrinfo|ECONNREFUSED|ECONNRESET|ETIMEDOUT|EHOSTUNREACH|ENETUNREACH|FailedToOpenSocket|ConnectionRefused|ConnectionClosed|timed? ?out|abort|network|certificate|TLS|socket/i;
 
@@ -70,6 +81,8 @@ async function checkOne(p: KeyProvider, key: string, o: KeyCheckOptions): Promis
   }
   if (c.balance === "openrouter") {
     const left = body?.data?.limit_remaining;
+    // D440: a free account has no limit to spend down; it thinks on a free model instead.
+    if (body?.data?.is_free_tier === true) return { kind: "ok", checked: true, free: true };
     if (typeof left === "number" && left <= 0) return { kind: "trouble", reason: "no_balance" };
   }
   return { kind: "ok", checked: true };
@@ -113,13 +126,15 @@ export async function addKey(raw: string, o: KeyCheckOptions): Promise<KeyResult
     const harness = info.harnesses.find((h) => can(h)) ?? info.harnesses.at(-1);
     if (!harness) return { ...base, ok: false, reason: "unsupported" };
     if (!o.dryRun) writeKey(o.dataDir, info.env, key);
-    const model = harness === "pi" ? info.pi?.model : undefined;
-    return {
-      ...base,
-      harness,
-      ...(model ? { model } : {}),
-      ...(!can(harness) && harness === "pi" ? { needs: "pi" as const, install: PI_INSTALL } : {}),
-    };
+    const model = harness === "pi" ? (one.free && p === "openrouter" ? OPENROUTER_FREE_MODEL : info.pi?.model) : undefined;
+    const ready: KeyResult = { ...base, harness, ...(model ? { model } : {}) };
+    if (can(harness) || harness !== "pi") return ready;
+    // D440: pi can't run here yet: the home puts it in its own tools folder, when it can.
+    if (o.prepare) {
+      o.onPreparing?.({ ...ready, preparing: true });
+      if ((await o.prepare(harness).catch(() => false)) && can(harness)) return ready;
+    }
+    return { ...ready, needs: "pi" as const, install: PI_INSTALL };
   }
   if (firstTrouble) {
     // Unreachable. When a provider inside China was unreachable too and none answered at all, it's

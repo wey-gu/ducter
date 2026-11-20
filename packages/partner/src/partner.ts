@@ -1891,11 +1891,31 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     if (n < HOLD_TRIES) return void queue.unshift(...batch);
     onError(new Error(`partner turn failed on ${hit.harness} ${n} times; left for the next trigger`));
   }
+  /** D440: nothing on the home can think at all yet (no agent signed in, no key it can use). */
+  const blindNow = () => holdable() && !!core.brainHold!.blind?.();
+  /**
+   * D440: a message while nothing can think: kept, and said once by code that it is kept and will
+   * be answered as soon as there is something to think with (never tried on an agent that isn't
+   * there). Not said again while the last thing the partner said is this line.
+   */
+  const tellBlind = (batch: LogEvent[]) => {
+    if (!batch.some((e) => e.kind === "user_msg")) return;
+    const line = said(userLang() ?? NO_WORDS_YET, "blind", {});
+    const last = core.log.read({ stream: "channel", kinds: ["ai_msg"], beforeSeq: core.log.head() + 1, limit: 1 }).at(-1);
+    if ((last?.body as Bodies["ai_msg"] | undefined)?.text === line) return;
+    tellUser(line);
+  };
   async function drain() {
     const tries = new Map<number, number>();
     // D435: what waited goes first once someone can answer (once per pass: what this pass sets aside stays).
-    if (deferred.length && !(holdable() && core.brainHold!.now()?.waits)) queue.unshift(...deferred.splice(0));
+    if (deferred.length && !(holdable() && core.brainHold!.now()?.waits) && !blindNow()) queue.unshift(...deferred.splice(0));
     while (queue.length && !closed) {
+      // D440: nothing to think with at all: everything waits for the first key or sign-in, in order.
+      if (blindNow()) {
+        tellBlind(queue);
+        deferred.push(...queue.splice(0));
+        break;
+      }
       // D435: nobody can answer now: everything waits for the hold's time, in order.
       const hold = holdable() ? core.brainHold!.now() : undefined;
       if (hold?.waits) {
@@ -1918,7 +1938,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   }
   // D435: the hold's time came (or it ended): what waited is answered now, in order.
   const offHold = core.brainHold?.onChange(() => {
-    if (closed || !deferred.length || core.brainHold!.now()?.waits) return;
+    if (closed || !deferred.length || core.brainHold!.now()?.waits || blindNow()) return;
     queue.unshift(...deferred.splice(0));
     kick();
   });

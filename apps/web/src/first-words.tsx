@@ -7,7 +7,7 @@
 import { words, type FirstWords, type KeyResult } from "@ducter/protocol";
 import { useState } from "preact/hooks";
 import { A } from "./app.ts";
-import { Btn } from "./controls.tsx";
+import { Btn, LinkBtn } from "./controls.tsx";
 import { ago } from "./format.ts";
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
@@ -127,7 +127,8 @@ function pickUp() {
   const r = A.S.keyResults.get(pending);
   if (!r) return;
   A.S.keyResults.delete(pending);
-  pending = "";
+  // D440: "works, putting pi in place" is shown while the final answer is still awaited.
+  if (!r.preparing) pending = "";
   last = { r, at: Date.now() };
   if (r.ok) setTimeout(() => A.changed(), SHOWN_MS + 50);
 }
@@ -147,8 +148,8 @@ export function KeyCard({ inSettings = false }: { inSettings?: boolean } = {}) {
   pickUp();
   const r = last?.r;
   const waiting = !!pending;
-  const submit = () => {
-    const v = key.trim();
+  const submit = (raw = key) => {
+    const v = raw.trim();
     if (!v || waiting) return;
     pending = `key-${Date.now()}`;
     last = undefined;
@@ -157,7 +158,7 @@ export function KeyCard({ inSettings = false }: { inSettings?: boolean } = {}) {
     A.changed();
   };
   const mine = from === here;
-  if (mine && r?.ok && !r.needs && last && Date.now() - last.at < SHOWN_MS)
+  if (mine && r?.ok && !r.needs && !r.preparing && last && Date.now() - last.at < SHOWN_MS)
     return (
       <div class="key-card done" role="status">
         <p class="key-say">{say(r)}</p>
@@ -182,15 +183,78 @@ export function KeyCard({ inSettings = false }: { inSettings?: boolean } = {}) {
           placeholder={t("key.paste.eg")}
           value={key}
           onInput={(e) => setKey((e.currentTarget as HTMLInputElement).value)}
+          onPaste={(e) => {
+            // D440: a key pasted whole checks by itself.
+            const v = (e.clipboardData?.getData("text") ?? "").trim();
+            if (v.length < 20 || /\s/.test(v)) return;
+            e.preventDefault();
+            setKey(v);
+            submit(v);
+          }}
         />
-        <Btn kind="primary" label={waiting ? t("key.paste.checking") : t("key.paste.check")} onClick={submit} disabled={waiting} />
+        <Btn kind="primary" label={waiting ? t(mine && r?.preparing ? "key.paste.preparing" : "key.paste.checking") : t("key.paste.check")} onClick={() => submit()} disabled={waiting} />
       </form>
+      {mine && r?.preparing && waiting && (
+        <p class="key-say ok" role="status">
+          {say(r)}
+        </p>
+      )}
+      {!waiting && !r && <KeyRoutes />}
       {mine && r && !waiting && (
         <p class={`key-say${r.ok ? " ok" : " bad"}`} role={r.ok ? "status" : "alert"}>
           {say(r)}
         </p>
       )}
       {mine && r?.ok && r.needs === "pi" && r.install && <code class="key-install">{r.install}</code>}
+    </div>
+  );
+}
+
+/** D440: which way to a key the person is looking at (0: the best for where the home is). */
+let routeAt = 0;
+
+/**
+ * D440: 还没有密钥？/ No key yet?, under the field while nothing can think: one way at a time,
+ * the provider, what it costs and needs, three steps, one honest note, its own key page opened in
+ * the browser, and the other way as a quiet link. The person makes the key there; Ducter never does.
+ */
+export function KeyRoutes() {
+  const routes = A.S.first?.noBrain ? (A.S.first.keyRoutes ?? []) : [];
+  if (!routes.length) return null;
+  const rt = routes[routeAt % routes.length]!;
+  const other = routes.length > 1 ? routes[(routeAt + 1) % routes.length]! : undefined;
+  return (
+    <div class="key-routes">
+      <h4>{t("key.route.none")}</h4>
+      <div class="key-route-head">
+        <b>{words(rt.name, A.L.lang)}</b>
+        <span>{words(rt.line, A.L.lang)}</span>
+      </div>
+      <ol class="key-route-steps">
+        {rt.steps.map((s, i) => (
+          <li key={`${rt.id}:${i}`}>
+            <span class="key-route-n" aria-hidden="true">
+              {i + 1}
+            </span>
+            <span>{words(s, A.L.lang)}</span>
+          </li>
+        ))}
+      </ol>
+      {rt.note && <p class="key-route-note">{words(rt.note, A.L.lang)}</p>}
+      <div class="key-route-acts">
+        <LinkBtn kind="secondary" href={rt.url} label={t("key.route.go", words(rt.name, A.L.lang))} />
+        {other && (
+          <Btn
+            kind="text"
+            size="sm"
+            label={t("key.route.other", words(other.name, A.L.lang))}
+            onClick={() => {
+              routeAt = (routeAt + 1) % routes.length;
+              A.changed();
+            }}
+          />
+        )}
+      </div>
     </div>
   );
 }

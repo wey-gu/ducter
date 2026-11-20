@@ -154,6 +154,18 @@ Shots: `.shots/d298/mac/first-words-*.png`, `.shots/d298/web/first-words-{wide,p
 
 ## A key instead (D298)
 
+**No key yet (D440).** For the consumer and the fresh user with no plan and no key: under the card's
+field, **还没有密钥？/ No key yet?**, one way at a time picked by where the home is (its time zone):
+Google Gemini (free, a Google account) then OpenRouter's free models; in mainland China Kimi (¥15 for
+a mainland mobile number) then DeepSeek (an ID check and a small top-up); where Gemini isn't offered,
+OpenRouter then DeepSeek. Each: the provider's name, one line of what it needs, three steps, one honest
+note (Gemini's free tier may train on what is sent), **去 {provider} 拿一个 / Get one on {provider}**
+(its own page) and **或者用 {provider} / Or use {provider}**. A key pasted whole checks itself. A good
+key whose pi isn't on the home yet is said to work at once, pi is put in Ducter's tools folder (D363's
+install), **正在装上… / Setting up…**, then ready. A message sent before anything can think is kept,
+said once (**这句我先记下了。…**), and answered first the moment something can. Why these and not a
+local model: research/189. Shots: `.shots/first-answer/`.
+
 No subscription needed. In the Mac's first run, under the agents to install and sign in: **或者，
 贴一个 API 密钥 / Or paste an API key**; in the conversation (Mac, web, phone) whenever nothing on
 the home can think: the same card. One masked field and **检查 / Check**; the key is recognised by

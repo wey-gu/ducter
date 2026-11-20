@@ -2,6 +2,22 @@
 
 Deferred work, grouped by area, each with its trigger where it has one.
 
+## A first answer with no plan (D440, research/189)
+
+- [ ] **A real walk**: a bare Mac (no Node, no agent), a real free Gemini key and a Kimi voucher key
+  made by a person, the key pasted, pi put in place by D363's install, the first message answered.
+  Fakes only so far. Trigger: a throwaway account the author makes (Ducter never makes one).
+- [ ] **The author's review** of `.shots/first-answer/`.
+- [ ] **A local model as a private mode** (Ollama with a tool-capable 4–8B model, through pi's own
+  `models.json`): only when the person asks for it, labelled lighter. Trigger: someone asks to keep
+  everything on the Mac.
+- [ ] **Zhipu's free GLM-4.7-Flash** as a mainland way (free, tools): needs pi to speak to Zhipu's
+  general endpoint. Trigger: pi adds it, or Ducter writes its own provider for pi.
+- [ ] **Kimi K2 retires at the end of December 2026**: move `moonshot-cn`'s model to a K3 one.
+  Trigger: before 2026-12-31.
+- [ ] **The routes' pages and offers move** (Gemini's free models, Kimi's voucher): check them
+  monthly against research/189.
+
 ## The mini window (D438, research/187)
 
 - [ ] **The author's review** of `.shots/float/` (over the editor, zh/en, light/dark, five lines).

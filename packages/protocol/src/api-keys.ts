@@ -149,7 +149,8 @@ export const KEY_PROVIDER_INFO: Record<KeyProvider, KeyProviderInfo> = {
     name: both("Google Gemini"),
     env: "GEMINI_API_KEY",
     harnesses: ["pi"],
-    pi: { provider: "google", model: "google/gemini-3.5-flash" },
+    // D440 (research/189 §1): a model on Gemini's free tier, so a free key thinks at once (3.5 Flash is paid only).
+    pi: { provider: "google", model: "google/gemini-3.8-flash" },
     check: { url: "https://generativelanguage.googleapis.com/v1beta/models?pageSize=1", auth: "query" },
     homeInChina: false,
   },
@@ -234,6 +235,8 @@ export interface KeyResult {
   harness?: HarnessId;
   /** ok, but this computer has no way to run that agent yet (pi needs node or pi). */
   needs?: "pi";
+  /** D440: ok, and the home is putting pi in its own tools folder now; a second result follows when it is done. */
+  preparing?: true;
   /** The command that installs what is needed (pi's own installer), for a Terminal. */
   install?: string;
   /** The model the partner starts on. */
@@ -262,6 +265,11 @@ export const keyName = (p: KeyProvider, lang: LangTag) => words(KEY_PROVIDER_INF
 export function keyWords(r: KeyResult): { zh: string; en: string } {
   const zn = r.provider ? keyName(r.provider, "zh") : "";
   const en = r.provider ? keyName(r.provider, "en") : "";
+  if (r.ok && r.preparing)
+    return {
+      zh: `这把 ${zn} 的密钥能用。我在这台电脑上装好用它要的东西，一两分钟就好；想问什么，现在就可以发给我。`,
+      en: `That ${en} key works. I'm setting up what I need to use it on this computer, a minute or two. You can send me your question now.`,
+    };
   if (r.ok && r.needs === "pi")
     return {
       zh: `这把 ${zn} 的密钥能用，我先替你收好了。还差一步：这台电脑要装上 pi 才能用它。`,

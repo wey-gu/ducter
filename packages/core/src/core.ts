@@ -125,7 +125,7 @@ import { addWay, bookHas, createReach, removeWay, viaOf, type ReachWatch } from 
 import { CHALLENGE_PATH } from "@ducter/protocol/src/reach.ts";
 import { proveHome } from "@ducter/protocol/src/reach-verify.ts";
 import { whichNow } from "@ducter/protocol/src/which.ts";
-import { createAgentSetup, realAgentSetupSys } from "./agent-setup.ts";
+import { createAgentSetup, installAndWait, realAgentSetupSys } from "./agent-setup.ts";
 import { agentSignature, widenAgentPath } from "./agent-path.ts";
 
 declare const DUCTER_COMMIT: string | undefined; // set by packages/cli/build.sh via --define
@@ -234,6 +234,9 @@ export interface CoreOptions {
   /** D298 test seams for a pasted key: the network, and which agents this computer can run. */
   keyFetch?: typeof fetch;
   keyCanRun?: (h: HarnessId) => boolean;
+  /** D440 test seams: putting the agent a key needs on the home (default: D363's install of pi into its tools folder), and its time zone. */
+  keyPrepare?: (h: HarnessId) => Promise<boolean>;
+  keyTz?: () => string | undefined;
   /** D204 test seam: the home's own Ducter folder and its projects (default: <Ducter folder>/projects here). */
   homeRepos?: () => FolderProjects;
   /** D395 test seam: the home's own clones of a repository, and whether its git can read it (default: this computer's code folders; none in tests). */
@@ -1344,7 +1347,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       socketsChanged: () => reachRef?.refresh(),
     },
     partners,
-    core: api, workbench, bridgeLink, decisions, runner: () => runner, devices: () => devicesView, lend: () => lendRef, settings, connections, phone, rules, standing, pins, apps, loadout, models: modelCatalog, accountUsage, closing, work: workFrames, newTask, updates: () => updatesRef, agents: () => agentsRef, agentSetup: (device, f) => agentSetupOp(device, f), memSetup: (device, action, link) => memSetupOp(device, action, link), recordsAllow: (device, on) => recordsAllowOp(device, on), updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, memHealth, anywhere: () => anywhereRef, channels, proactive: () => proactiveRef, replay: (o) => replayRef?.(o) ?? Promise.reject(new Error("not ready yet")), calendar: () => calendarRef, taskSources: () => taskSourcesRef, taskGroups: () => taskGroups, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets, past: { ...past, marks, persona: () => persona.id, ongoing, outside, made, redo }, keys: { dataDir, ...(opts.keyFetch ? { fetch: opts.keyFetch } : {}), ...(opts.keyCanRun ? { canRun: opts.keyCanRun } : {}) }, ...(firstWordsDeps ? { firstWords: firstWordsDeps } : {}), did, ownAgents });
+    core: api, workbench, bridgeLink, decisions, runner: () => runner, devices: () => devicesView, lend: () => lendRef, settings, connections, phone, rules, standing, pins, apps, loadout, models: modelCatalog, accountUsage, closing, work: workFrames, newTask, updates: () => updatesRef, agents: () => agentsRef, agentSetup: (device, f) => agentSetupOp(device, f), memSetup: (device, action, link) => memSetupOp(device, action, link), recordsAllow: (device, on) => recordsAllowOp(device, on), updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, memHealth, anywhere: () => anywhereRef, channels, proactive: () => proactiveRef, replay: (o) => replayRef?.(o) ?? Promise.reject(new Error("not ready yet")), calendar: () => calendarRef, taskSources: () => taskSourcesRef, taskGroups: () => taskGroups, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets, past: { ...past, marks, persona: () => persona.id, ongoing, outside, made, redo }, keys: { dataDir, ...(opts.keyFetch ? { fetch: opts.keyFetch } : {}), ...(opts.keyCanRun ? { canRun: opts.keyCanRun } : {}), prepare: (h) => keyPrepare(h), ...(opts.keyTz ? { tz: opts.keyTz } : {}) }, ...(firstWordsDeps ? { firstWords: firstWordsDeps } : {}), did, ownAgents });
   handsets.onChange(() => (devicesView?.changed(), ws.onHandChanged()));
   onHandChanged = ws.onHandChanged;
   // D156: a partner turn in flight keeps an update of the agent it thinks with waiting.
@@ -1371,6 +1374,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   let lendRef: import("./lend.ts").Lend | undefined;
   let updatesRef: Updates | undefined;
   let agentsRef: AgentUpdates | undefined;
+  let keyPrepare: (h: HarnessId) => Promise<boolean> = async () => false;
   let agentSetupOp: (device: string, f: { action: import("@ducter/protocol").AgentSetupAction; harnesses?: string[]; harness?: string; code?: string }) => Promise<{ ok: boolean; reason?: "away" | "unknown" | "failed" }> = async () => ({ ok: false, reason: "failed" });
   let updateAllRef: UpdateAll | undefined;
   let memPluginsRef: MemPlugins | undefined;
@@ -1554,6 +1558,16 @@ export function startCore(opts: CoreOptions = {}): Core {
           changed: () => devicesView?.changed(),
         })
       : undefined;
+  // D440: a pasted key whose agent can't run here yet: pi goes into the home's own tools folder (no Terminal).
+  keyPrepare =
+    opts.keyPrepare ??
+    (async (h) => {
+      if (!homeSetup) return false;
+      const ok = await installAndWait(homeSetup, h);
+      widenAgentPath({ dataDir });
+      devicesView?.refresh();
+      return ok;
+    });
   agentSetupOp = async (device, f) => {
     const isHome = device === "local" || device === "" || (await devicesView?.frame())?.devices.some((d) => d.home && d.id === device);
     if (isHome) {
@@ -1693,6 +1707,8 @@ export function startCore(opts: CoreOptions = {}): Core {
   updateAll.onChange(() => devicesView?.changed());
   connections.onChange(() => devicesView?.changed()); // D199: 打电话 signed in, signed out, removed
   agents.onChange(() => devicesView?.changed());
+  // D440: a home that couldn't think and now can (a key, a sign-in): what the person said meanwhile is answered.
+  devicesView.onChange(() => brainHold.seen());
   // D169: Nowledge Mem in the user's own agents, per device. Checked at start, each day, when a
   // computer comes online, and after a sign-in or an agent update (both refresh the devices).
   const mp = opts.memPlugins ?? {};

@@ -39,7 +39,17 @@ reached from where you are (from mainland China, OpenAI, Anthropic and Google us
 DeepSeek, Kimi and Zhipu don't). Your partner then thinks with it, through DeepSeek Harness or pi.
 The key stays in Ducter on that computer, in a private file, and never appears in the conversation.
 
-If the computer doesn't have pi yet, Ducter keeps the key and opens pi's own installer in Terminal.
+No key at all? Under the field, **No key yet?** shows the quickest way to get one from where your
+Ducter runs: a free Google Gemini key with a Google account (on the free tier, Google may use what
+you send to improve its models, so don't send anything sensitive), or OpenRouter's free models
+(about fifty questions a day); in mainland China, Kimi's ¥15 of trial credit for a mainland mobile
+number, or DeepSeek with a small top-up. You make the key on the provider's own page; Ducter never
+does. Anything you write to your partner before the key works is kept, and answered first as soon
+as it does.
+
+If the computer doesn't have pi yet, Ducter puts it in its own folder by itself (no Terminal, no
+administrator password) and says **Setting up…** meanwhile; only if that fails does it open pi's own
+installer in Terminal.
 Alibaba Cloud Model Studio (Qwen) keys are recognised but can't be used yet: that's coming soon. On
 a server, `ducter key add < key.txt` does the same from the terminal (see [Install](install.md)).
 

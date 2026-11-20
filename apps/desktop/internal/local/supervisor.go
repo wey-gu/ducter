@@ -15,6 +15,8 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 )
 
 // Check is one row of `ducter doctor --json` (packages/cli/src/doctor.ts).
@@ -37,6 +39,9 @@ type Report struct {
 	Checks       []Check `json:"checks"`
 	OK           bool    `json:"ok"`
 	HarnessReady bool    `json:"harnessReady"`
+	// KeyRoutes (D440): nothing here can think; the ways to a key from
+	// where this Mac is (the doctor's own pick, key-routes.ts).
+	KeyRoutes []protocol.KeyRoute `json:"keyRoutes,omitempty"`
 }
 
 // Blocking are the required checks that failed: what stops Ducter.

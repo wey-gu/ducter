@@ -4,6 +4,7 @@
 
 export * from "./harnesses.ts";
 export * from "./api-keys.ts";
+export * from "./key-routes.ts";
 export * from "./lang.ts";
 import type { LangTag } from "./lang.ts";
 import type { HarnessId } from "./harnesses.ts";
@@ -1895,6 +1896,8 @@ export interface FirstScreen {
   looks?: boolean;
   /** D298: nothing on the home can think yet (no agent signed in, no key): the clients offer to paste a key. */
   noBrain?: boolean;
+  /** D440: with nothing to think with, the fastest ways to a key from where the home is (key-routes.ts), best first. */
+  keyRoutes?: import("./key-routes.ts").KeyRoute[];
   /** D307: the agents whose own conversations Past tasks doesn't show (D299's 不再显示), for Settings' way back. */
   outsideHidden?: import("./past.ts").OutsideAgent[];
   /** D327: folders the person left out (这个文件夹别看了), `~/…`: neither the first words nor Past tasks read them. */

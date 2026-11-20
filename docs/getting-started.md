@@ -49,9 +49,16 @@ Ducter then looks around your Mac for a few seconds:
   **Sign in** and finish in your browser. *"This continues by itself"*: when it's done, you see
   **All set**. If something goes wrong, the row says what happened in plain words, with **Try
   again** and **Do it in Terminal**.
-- **No subscription?** Under the two rows, choose **Paste a key**, paste an API key and click
-  **Check**. Ducter says in a second or two whether it works (or why not: the key is wrong, the
+- **No subscription?** Under the two rows, choose **Paste a key** and paste an API key: it checks
+  itself. Ducter says in a second or two whether it works (or why not: the key is wrong, the
   account is empty, or the provider can't be reached from here), and goes on by itself when it does.
+  If something it needs to use the key isn't on your Mac yet, it says **Setting up…** and puts it in
+  place itself, a minute or two, no Terminal.
+- **No key either?** Under the field, **No key yet?** shows the quickest way to get one from where
+  you are, in three steps: outside mainland China, a free Google Gemini key with your Google account
+  (no card, about a minute); in mainland China, Kimi, which gives ¥15 of trial credit to a mainland
+  mobile number. **Get one on …** opens that provider's own page; you make the key there, copy it and
+  paste it back. **Or use …** shows the other way. Ducter never makes an account or a key for you.
   [More about keys](faq.md#can-i-use-it-without-a-claude-or-chatgpt-subscription).
 - **"What should I be called?"** Give your partner a name, or keep Ducter. (If you use
   [Nowledge Mem](https://mem.nowledge.co), your partner already has a name and this is skipped.)

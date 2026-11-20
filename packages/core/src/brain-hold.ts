@@ -40,8 +40,12 @@ export interface BrainHold {
   hit(h: BrainHit): Promise<{ now?: HoldNow; tell: boolean }>;
   /** A turn on this agent went through: its hold, if any, is over. */
   ok(harness: string): void;
-  /** A hold was set or ended, or its time came. */
+  /** A hold was set or ended, or its time came (D440: or something to think with arrived). */
   onChange(fn: () => void): () => void;
+  /** D440: nothing on the home can think: its agents were read and none that may be the partner is installed and signed in. */
+  blind(): boolean;
+  /** D440: the home's agents were read again (core calls it on every devices change): a home that could not think and now can wakes what waited. */
+  seen(): void;
   stop(): void;
 }
 
@@ -51,7 +55,7 @@ export interface BrainHoldDeps {
   /** What the partner thinks with before any hold (brain.ts effectiveBrain's harness). */
   base: () => HarnessId;
   /** The home's agents as last read (signed in or not); undefined before the first read. */
-  home: () => { harness: string; loggedIn: boolean }[] | undefined;
+  home: () => { harness: string; loggedIn: boolean; installed?: boolean }[] | undefined;
   /** The person's rules: a never rule with no words and no kind of work rules an agent out here too. */
   rules?: () => RuleView[];
   /** D288: an agent whose account says its limit is used up doesn't take over. */
@@ -188,8 +192,22 @@ export function createBrainHold(o: BrainHoldDeps): BrainHold {
     );
   }
 
+  /** D440: the agents were read and none that may be the partner can run and is signed in. */
+  const blind = (): boolean => {
+    const home = o.home();
+    return !!home && !home.some((x) => isHarness(x.harness) && HARNESSES[x.harness].partner && x.loggedIn && x.installed !== false);
+  };
+  let wasBlind = blind();
+
   return {
     now: view,
+    blind,
+    seen() {
+      const b = blind();
+      if (b === wasBlind) return;
+      wasBlind = b;
+      if (!b && !stopped) emit();
+    },
     async hit(hit) {
       if (!isHarness(hit.harness)) return { tell: false };
       const harness = hit.harness;

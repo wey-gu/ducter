@@ -20,8 +20,13 @@ export interface BrainHoldPort {
   hit(h: { harness: string; failure: "quota" | "rate_limited" | "error"; resetsAt?: string; source?: string; said?: string }): Promise<{ now?: ReturnType<BrainHoldPort["now"]>; tell: boolean }>;
   /** A turn on this agent went through: its hold, if any, is over. */
   ok(harness: string): void;
-  /** A hold was set or ended, or its time came. */
+  /** A hold was set or ended, or its time came (D440: or something to think with arrived). */
   onChange(fn: () => void): () => void;
+  /**
+   * D440: nothing on the home can think at all (its agents were read, and none that may be the
+   * partner is installed and signed in): a message waits for the first one, said once by code.
+   */
+  blind?(): boolean;
 }
 
 export interface AppendInput<K extends EventKind = EventKind> {

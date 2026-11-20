@@ -646,3 +646,20 @@ export function realAgentSetupSys(o: { platform: string; arch: string; which: (c
     },
   };
 }
+
+/**
+ * D440: install one agent and wait for it (a pasted key that needs pi): true once it is there,
+ * false when the install failed or took longer than `timeoutMs`. Polls the setup's own state.
+ */
+export async function installAndWait(setup: Pick<AgentSetup, "install" | "state">, h: HarnessId, o: { timeoutMs?: number; pollMs?: number; sleep?: (ms: number) => Promise<void> } = {}): Promise<boolean> {
+  const sleep = o.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
+  const until = Date.now() + (o.timeoutMs ?? 8 * 60_000);
+  setup.install([h]);
+  for (;;) {
+    const st = setup.state(h).setup;
+    if (st?.phase === "failed") return false;
+    if (!st) return true;
+    if (Date.now() > until) return false;
+    await sleep(o.pollMs ?? 400);
+  }
+}

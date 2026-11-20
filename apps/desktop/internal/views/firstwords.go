@@ -28,8 +28,15 @@ type keyPaste struct {
 	open    bool   // the first run's "or paste a key" row is open
 	pending string // the clientId waiting for its answer (the home's key_add)
 	busy    bool   // the first run's `ducter key add` is running
-	result  *protocol.KeyResult
-	at      time.Time // when the result came
+	// D440: when the first run's key add started (past a few seconds it
+	// is putting pi in place: the button says so), the way to a key the
+	// person is looking at (0 the first), and the field's length a frame
+	// ago (a paste checks by itself).
+	busySince time.Time
+	route     int
+	lastLen   int
+	result    *protocol.KeyResult
+	at        time.Time // when the result came
 	// from (D307): where the key was pasted; one from Settings is answered
 	// there, not again over the composer. "" is the conversation's.
 	from string
@@ -272,7 +279,11 @@ func (a *App) keyResultNow() {
 	}
 	if r, ok := a.S.KeyResults[k.pending]; ok {
 		delete(a.S.KeyResults, k.pending)
-		k.pending, k.result, k.at = "", r, a.Now()
+		// D440: "works, putting pi in place": shown, and the final answer still awaited.
+		if !r.Preparing {
+			k.pending = ""
+		}
+		k.result, k.at = r, a.Now()
 		if r.OK {
 			k.key = ""
 		}
@@ -300,6 +311,13 @@ func (a *App) keyCardIn(c *ui.Context, submit func(key string), from string) {
 	if !mine {
 		r = nil
 	}
+	// D440: a key pasted whole checks by itself (no spaces, key-long, all at once).
+	if v := strings.TrimSpace(k.key); !waiting && len(v)-k.lastLen >= 20 && !strings.ContainsAny(v, " \t\n") {
+		k.lastLen = len(v)
+		submit(v)
+		waiting = true
+	}
+	k.lastLen = len(strings.TrimSpace(k.key))
 	bg := t.SurfaceSunken
 	card := ui.Column(c.Key("key-card")).Gap(t.S3)
 	if from == "" {
@@ -312,7 +330,7 @@ func (a *App) keyCardIn(c *ui.Context, submit func(key string), from string) {
 		field = t.SurfaceSunken
 	}
 	card.Children(func() {
-		if r != nil && r.OK && r.Needs == "" && a.Now().Sub(k.at) < KeyShownFor {
+		if r != nil && r.OK && r.Needs == "" && !r.Preparing && a.Now().Sub(k.at) < KeyShownFor {
 			c.After(KeyShownFor - a.Now().Sub(k.at))
 			uiText(c, a.keySay(r)).FontSize(t.MD).LineHeight(1.5).TextColor(t.Done.Ink).FontWeight(700)
 			return
@@ -334,13 +352,27 @@ func (a *App) keyCardIn(c *ui.Context, submit func(key string), from string) {
 			label := a.L.T("key.paste.check")
 			if waiting {
 				label = a.L.T("key.paste.checking")
+				// D440: past a few seconds the first run is putting pi in place.
+				if k.busy && !k.busySince.IsZero() && a.Now().Sub(k.busySince) > 4*time.Second || r != nil && r.Preparing {
+					label = a.L.T("key.paste.preparing")
+				}
 				c.After(250 * time.Millisecond)
 			}
 			if a.button(c, label, btnPrimary, t.ControlMD, bg) {
 				submitNow()
 			}
 		})
+		if waiting && r != nil && r.Preparing {
+			uiText(c, a.keySay(r)).FontSize(t.SM).LineHeight(1.5).TextColor(t.Done.Ink)
+			return
+		}
+		if k.busy && !k.busySince.IsZero() && a.Now().Sub(k.busySince) > 4*time.Second {
+			uiText(c, a.L.T("key.paste.preparing.line")).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft)
+		}
 		if r == nil || waiting {
+			if !waiting && r == nil {
+				a.keyRoutesBlock(c, bg)
+			}
 			return
 		}
 		ink := t.Failed.Ink
@@ -399,7 +431,7 @@ func (a *App) setupKeyRow(c *ui.Context) {
 		return
 	}
 	a.keyCard(c, func(key string) {
-		k.busy, k.result = true, nil
+		k.busy, k.result, k.busySince = true, nil, a.Now()
 		var out []byte
 		var err error
 		a.async(func() { out, err = adder.AddKey(key) }, func() {
@@ -423,4 +455,67 @@ func (a *App) setupKeyRow(c *ui.Context) {
 	if a.button(c, a.L.T("key.paste.back"), btnText, t.ControlSM, t.Surface) {
 		k.open = false
 	}
+}
+
+// keyRoutes are the ways to a key the home (or, before Ducter runs, this
+// Mac's doctor) offered: only while nothing can think (D440).
+func (a *App) keyRoutes() []protocol.KeyRoute {
+	if a.S.First != nil && a.S.First.NoBrain && len(a.S.First.KeyRoutes) > 0 {
+		return a.S.First.KeyRoutes
+	}
+	if a.setupActive() && !a.setup.report.HarnessReady {
+		return a.setup.report.KeyRoutes
+	}
+	return nil
+}
+
+// keyRoutesBlock is 还没有密钥？/ No key yet? under the field (D440): one
+// way to a key at a time, best for where the home is first: the
+// provider, what it costs and needs, three steps, one honest note,
+// 去 {provider} 拿一个 / Get one on {provider} (its own key page, in the
+// browser), and the other way as a quiet link. Ducter never makes an
+// account or a key: the person does, on the provider's page.
+func (a *App) keyRoutesBlock(c *ui.Context, bg ui.Color) {
+	routes := a.keyRoutes()
+	if len(routes) == 0 {
+		return
+	}
+	t := a.T
+	k := &a.kp
+	if k.route >= len(routes) {
+		k.route = 0
+	}
+	rt := routes[k.route]
+	ui.Box(c).Height(1).Background(t.LineSoft).Margin(t.S1, 0)
+	ui.Column(c.Key("key-routes")).Gap(t.S3).Children(func() {
+		uiText(c, a.L.T("key.route.none")).FontSize(t.MD).FontWeight(800)
+		ui.Column(c).Gap(2).Children(func() {
+			uiText(c, a.words(rt.Name)).FontSize(t.MD).FontWeight(700)
+			uiText(c, autospace(a.words(rt.Line))).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft)
+		})
+		ui.Column(c.Key("steps:" + rt.ID)).Gap(t.S2).Children(func() {
+			for i, s := range rt.Steps {
+				ui.Row(c).Gap(t.S2).AlignItems(ui.Start).Children(func() {
+					ui.Box(c).Size(20, 20).Shrink(0).Radius(10).Background(t.Surface).AlignItems(ui.Center).Justify(ui.Center).AccessHidden(true).Children(func() {
+						uiText(c, fmt.Sprint(i+1)).FontSize(t.XS).FontWeight(800).TextColor(t.InkSoft)
+					})
+					uiText(c, autospace(a.words(s))).FontSize(t.SM).LineHeight(1.45).Grow(1).MinWidth(0)
+				})
+			}
+		})
+		if rt.Note != nil {
+			uiText(c, autospace(a.words(*rt.Note))).FontSize(t.XS).LineHeight(1.5).TextColor(t.InkMuted)
+		}
+		ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
+			if a.button(c, a.L.T("key.route.go", a.words(rt.Name)), btnSecondary, t.ControlMD, bg) {
+				a.openLink(rt.URL)
+			}
+			if len(routes) > 1 {
+				other := routes[(k.route+1)%len(routes)]
+				if a.button(c, a.L.T("key.route.other", a.words(other.Name)), btnText, t.ControlSM, bg) {
+					k.route = (k.route + 1) % len(routes)
+				}
+			}
+		})
+	})
 }

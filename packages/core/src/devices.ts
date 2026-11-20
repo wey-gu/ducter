@@ -126,7 +126,7 @@ export interface DevicesView {
   refresh(): void;
   /** This machine's AI agents as last probed (undefined before the first probe); a stale
    *  result starts a fresh probe in the background. */
-  harnessesNow(): { harness: string; loggedIn: boolean; version?: string }[] | undefined;
+  harnessesNow(): { harness: string; loggedIn: boolean; installed?: boolean; version?: string }[] | undefined;
   stop(): void;
 }
 

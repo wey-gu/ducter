@@ -22,6 +22,8 @@ const W = {
     waitQuotaSoon: "{from}的额度用完了，别的 AI 也接不上。我隔一会儿试一次，好了就接着回你。",
     waitThrottle: "{from}这会儿太忙了，别的 AI 也接不上。过一会儿好了我就接着回你。",
     waitError: "{from}这会儿出错了，别的 AI 也接不上。我过几分钟再试，好了就接着回你。",
+    // D440: a message while nothing on the home can think yet: kept, answered first once there is something.
+    blind: "这句我先记下了。我还没有能用来想事情的 AI：贴一个 API 密钥，或者登录 Claude Code、Codex，有了我就先回你这句。",
     // D376: the first time the partner looks in the person's own sessions, said once.
     ownLook: "我看了 {computer} 上你在 {agents} 里的对话记录：只看名字、文件夹、时间和你说的头一句，不看代码和文件。",
     // D377: the person's own records on a computer for tasks wait for their yes on its card.
@@ -58,6 +60,7 @@ const W = {
     waitQuotaSoon: "{from} is out of credit and no other AI can take over. I'll keep trying and answer as soon as it's back.",
     waitThrottle: "{from} is too busy right now and no other AI can take over. I'll answer as soon as it eases.",
     waitError: "{from} isn't working right now and no other AI can take over. I'll try again in a few minutes and answer then.",
+    blind: "I've kept this. I have nothing to think with yet: paste an API key, or sign in to Claude Code or Codex, and answering you is the first thing I do.",
     ownLook: "I looked at your {agents} conversations on {computer}: only their names, folders, times and your first words, no code or files.",
     ownAsk: "You used {agents} on {computer} lately, and I haven't read its records yet. Open {computer} in Your devices and tap Read what they keep, and I'll look.",
     yourAgent: "your {agent}",

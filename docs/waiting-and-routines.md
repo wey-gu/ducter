@@ -54,13 +54,15 @@ back by itself. Only you end it: **End** on its card, or say "stop the review lo
 it an end ("until #10473 merges"), it stops there.
 
 In Past tasks › Ongoing each card says how it is keeping its time, and only when it isn't:
-**1 h late: its computer is asleep; it catches up as soon as it wakes**, **Its last 3 rounds
+**1 h late: Ada's MacBook Pro is asleep; it catches up as soon as it wakes**, **Its last 3 rounds
 didn't work**, **Out of allowance; carries on at 20:53**, or, for a day after it was stopped by
 mistake, **Stopped by mistake at 15:12, running again**. When there is something to do, the card's
-button is **Run now**; when a round is late or keeps failing, you also get one card in the
-conversation with the same button, once. Under it: the last round and what came of it, and
+button is **Run now**; when its computer is asleep and another of yours is awake, the card says
+so (**Ada's MacBook Air is awake**) and its button is **Run it on an awake computer**: one tap
+moves it there and runs a round. When a round is late or keeps failing, you also get one card in
+the conversation with the same button, once. Under it: the last round and what came of it, and
 which computer and which AI agent run it. **⋯ › How often** sets it (every 15 minutes
-to every 4 hours). You can ask too: "how are my loops doing?", "make the review every hour",
+to every 4 hours). You can ask too: "how is my loop doing?" (one line back: how often, the next round, on time or not), "make the review every hour",
 "pause it until tomorrow", "stop it".
 
 ## "Remind me …" and what you said you'd do

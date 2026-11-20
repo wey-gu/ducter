@@ -284,7 +284,7 @@ export interface CoreOptions {
   /** The machine's platform as Devices sees it (tests: "linux"). */
   platform?: string;
   /** Work over time test seams (D112-D114): fake commands, a lower look floor, the judge. */
-  work?: { exec?: import("@ducter/protocol/src/checks-run.ts").Exec; minEveryMs?: number; judgeMinMs?: number; restartLookMs?: number; defaultZone?: string; judge?: import("./waiters.ts").Judge; connectionFetch?: (url: string, init: RequestInit) => Promise<Response> };
+  work?: { exec?: import("@ducter/protocol/src/checks-run.ts").Exec; /** D429 test seam: the move of a late loop to an awake computer (the real one is task_switch's). */ loopsMove?: import("./loops.ts").LoopWhere["move"]; minEveryMs?: number; judgeMinMs?: number; restartLookMs?: number; defaultZone?: string; judge?: import("./waiters.ts").Judge; connectionFetch?: (url: string, init: RequestInit) => Promise<Response> };
   /** D165 test seams: the cheap triage and the bar (faked in tests; real ones need the runner's harness), the month's budget. */
   proactive?: { triage?: Triage; judge?: FindJudge; drafter?: import("./proactive/reply.ts").Drafter; monthTokens?: number; zone?: string };
   /** D276 test seams for 聊天软件 / Chat apps: the adapters against fake servers, the outbox's sleep. */
@@ -595,6 +595,29 @@ export function startCore(opts: CoreOptions = {}): Core {
     restartLookMs: opts.work?.restartLookMs,
     defaultZone: opts.work?.defaultZone,
     lang: () => langNow(),
+    // D429: the late line names the computer, and offers another awake one (the home first: it is the one keeping time).
+    loopsWhere: {
+      nameOf: (dev) => (dev === "local" ? computers.homeName() : computers.nameOf(dev)),
+      awake(taskId) {
+        const c = tasks.get(taskId);
+        // A folder lives on its computer; a repo's move pushes its branch, which waits for its own Go (task_switch).
+        if (!c || c.place.kind === "folder" || c.place.kind === "repo") return undefined;
+        const on = c.place.device && c.place.device !== "local" ? c.place.device : "local";
+        if (on !== "local") return { device: "local", name: computers.homeName() };
+        const fits = (hs?: { id: string; installed: boolean; loggedIn: boolean }[]) => !hs?.length || hs.some((h) => h.id === c.harness && h.installed && h.loggedIn);
+        const w = (workersRef?.list() ?? []).find((x) => x.id !== on && x.online && fits(x.harnesses));
+        return w ? { device: w.id, name: w.name } : undefined;
+      },
+      async move(taskId, device) {
+        if (opts.work?.loopsMove) return opts.work.loopsMove(taskId, device);
+        const c = tasks.get(taskId);
+        if (!c) return { ok: false, message: "I can't find that task." };
+        const comps = (await loadout.computers()) ?? [];
+        const to = device === "local" ? comps.find((x) => x.home) : comps.find((x) => x.id === device || x.name === device);
+        if (!to) return { ok: false, message: "That computer isn't one of this home's any more." };
+        return loadout.switchTask(taskId, c.harness, c.model, runner, to.id);
+      },
+    },
   });
   workRef = work;
   const waiters = work.waiters;
@@ -1207,7 +1230,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   registerDidTool(mcp, did, () => clock.now());
   // D285: 一直在跑的 / Ongoing: routines and tasks that look again on their own, paused and resumed.
   const ongoing = createOngoing({ dataDir, log, tasks, waiters: work.waiters, routines: work.routines, marks, clock, onChange: () => (ws.ongoingChanged(), apps.liveMoved()), reviews: (id) => taskSourcesRef?.pile.standing(id), asking: (id) => !!taskSourcesRef?.pile.asking(id), app: (id) => ((m) => (m ? { id: m.id, name: m.name } : undefined))(boards.appOf(id)), loops: work.loops, deviceName: (dev) => (dev === "local" ? computers.homeName() : computers.nameOf(dev)) });
-  registerOngoingTools(mcp, ongoing, () => persona.id);
+  registerOngoingTools(mcp, ongoing, () => persona.id, { lang: () => langNow(), zone: () => opts.work?.defaultZone, now: () => clock.now() }); // D429: its ready lines in the person's language
   // D407: an app given to a task (or taken back) changes what its Ongoing card opens.
   apps.onChange((c) => void (c.kind === "give" && setTimeout(() => ws.ongoingChanged(), 0)));
   // D422: an app's state has one truth each. Kept current: the Ongoing card of the task that keeps

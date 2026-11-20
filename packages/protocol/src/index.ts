@@ -343,7 +343,7 @@ export interface Bodies {
     // the task. Hold (不用了 / No thanks, the default) keeps everything as it is. Never asked twice.
     board?: { taskId: string; title: string; kind: "reviews" | "reports" };
     unsure?: boolean; // D245: with routineId: its watch saw something it isn't sure of; Go runs it once
-    loop?: { taskId: string }; // D427: the keeper's one word about a late or failing loop: Go runs a round now
+    loop?: { taskId: string; move?: string }; // D427: the keeper's one word about a late or failing loop: Go runs a round now; D429: with move (a device id), Go runs it on that awake computer instead
     signIn?: SignInAsk; // D151: a sign-in card; Go = 好了 / Done in the live view
     pay?: PayAsk; // D191: 付款 / Pay: merchant, amount, card; Go pays once, no default
     fill?: FillAsk; // D191: first use of a saved sign-in or detail on a site

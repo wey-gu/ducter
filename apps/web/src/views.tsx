@@ -302,6 +302,7 @@ export function goLabel(d: DecisionState): string {
   if (d.memPlugin) return t("memp.card.go");
   if (d.cal) return d.goLabel; // D222: the action itself (添加到日历 / Add to calendar)
   if (d.src) return d.goLabel; // D341: 留言 / Comment, 停下 / Stop, as the card's code said it
+  if (d.loop?.move) return d.goLabel; // D429: 换到醒着的电脑上跑 / Run it on an awake computer, whole
   if (d.computer?.kind === "user") return t("computeruse.user.done"); // D235: their own turn in an app
   return shortGo(d.goLabel);
 }

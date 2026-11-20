@@ -242,7 +242,9 @@ export interface OngoingItem {
  *   back     it had stopped by mistake and Ducter brought it back (shown a day, said once)
  * why: asleep (its computer is asleep or away), quota (its agent's allowance; resetsAt), signin,
  * stuck (a round has run far longer than its rhythm), failed, lost (its next round went missing).
- * fix: what the card's one button does: run_now (a round now), resume, or none (it fixes itself).
+ * fix: what the card's one button does: run_now (a round now), resume, move (D429: its computer is
+ * asleep and moveTo, another computer awake, can take its rounds), or none (it fixes itself).
+ * detail: for asleep, the computer's name (D429: named wherever it is known).
  */
 export interface OngoingHealth {
   state: "late" | "failing" | "back";
@@ -252,7 +254,9 @@ export interface OngoingHealth {
   detail?: string;
   resetsAt?: string;
   since?: string;
-  fix?: "run_now" | "resume";
+  fix?: "run_now" | "resume" | "move";
+  /** D429: an awake computer that can take its rounds while its own sleeps (换到醒着的电脑上跑). */
+  moveTo?: { device: string; name: string };
 }
 
 /** What 暂停 / Pause, 恢复 / Resume, 现在跑一次 / Run now and 改时间 / Change when do. */
@@ -263,6 +267,8 @@ export type OngoingAction =
   | { action: "retime"; trigger: Extract<RoutineTrigger, { kind: "time" }> }
   // D427: 多久跑一轮 / How often: a task in rounds goes every this many minutes from its next round.
   | { action: "every"; minutes: number }
+  // D429: 换到醒着的电脑上跑 / Run it on an awake computer: a task in rounds moves there (task_switch's move) and runs a round now.
+  | { action: "move"; device: string }
   | { action: "end" };
 
 export type PastClientFrame =

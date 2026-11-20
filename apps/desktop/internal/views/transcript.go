@@ -128,10 +128,12 @@ var wakes = []struct {
 	// D297 (core work.ts limitWake): the agent's limit came back; the reason is the agent.
 	{regexp.MustCompile(`^(.+?) 的额度恢复了，接着做刚才没做完的。$`), true, true},
 	{regexp.MustCompile(`^(.+?)'s usage limit has reset\. Carry on where you left off\.$`), true, true},
-	{regexp.MustCompile(`^到时间了：「([\s\S]+?)」。接着做。$`), true, false},
-	{regexp.MustCompile(`^It's time: "([\s\S]+?)"\. Carry on\.$`), true, false},
-	{regexp.MustCompile(`^等到了：「([\s\S]+?)」(?:（[^（）]*）)?。接着做。$`), false, false},
-	{regexp.MustCompile(`^The wait is over: "([\s\S]+?)"(?: \([^()]*\))?\. Carry on\.$`), false, false},
+	// D429: a task in rounds hears one more line after its wake (a round
+	// ends with progress): kept off the hairline.
+	{regexp.MustCompile(`^到时间了：「([\s\S]+?)」。接着做。(?:\n\n这是循环里的一轮[\s\S]*)?$`), true, false},
+	{regexp.MustCompile(`^It's time: "([\s\S]+?)"\. Carry on\.(?:\n\nThis is one round[\s\S]*)?$`), true, false},
+	{regexp.MustCompile(`^等到了：「([\s\S]+?)」(?:（[^（）]*）)?。接着做。(?:\n\n这是循环里的一轮[\s\S]*)?$`), false, false},
+	{regexp.MustCompile(`^The wait is over: "([\s\S]+?)"(?: \([^()]*\))?\. Carry on\.(?:\n\nThis is one round[\s\S]*)?$`), false, false},
 }
 
 // wakeOf is a wake as Ducter sends it (D271): the wait's reason and

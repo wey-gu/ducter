@@ -947,7 +947,8 @@ export function healthLine(h: NonNullable<OngoingItem["health"]>): string[] {
     : h.detail ?? "";
   // Its why is the last round's line, right under it.
   if (h.state === "failing") return [t("og.h.failing", h.fails ?? 3)];
-  return [h.lateMin && h.why !== "quota" ? t("og.h.late", interval(h.lateMin * 60_000)) : "", why].filter(Boolean);
+  // D429: another computer awake to take it: said as its own fact, beside the button that moves it.
+  return [h.lateMin && h.why !== "quota" ? t("og.h.late", interval(h.lateMin * 60_000)) : "", why, h.fix === "move" && h.moveTo ? t("og.h.awake", h.moveTo.name) : ""].filter(Boolean);
 }
 
 /** D427: the last run or round, when, and its one line. */
@@ -1112,12 +1113,14 @@ function OgCard({ it }: { it: OngoingItem }) {
         {it.app && <Btn kind="secondary" size="sm" label={t("board.open", it.app.name)} onClick={() => (close(), openApp(it.app!.id))} />}
         {/* D427: its one fix, right where it says what's wrong. */}
         {it.health?.fix === "run_now" && !paused && <Btn kind="primary" size="sm" label={t("og.run")} about={it.title} onClick={() => og(it, { action: "run_now" })} />}
+        {/* D429: its computer asleep, another awake: the move, on the person's tap (task_switch's move, then a round there). */}
+        {it.health?.fix === "move" && it.health.moveTo && !paused && <Btn kind="primary" size="sm" label={t("og.move")} about={it.title} onClick={() => og(it, { action: "move", device: it.health!.moveTo!.device })} />}
         {paused ? (
           <Btn kind="secondary" size="sm" label={t("og.resume")} onClick={() => og(it, { action: "resume" })} />
         ) : (
           <Btn kind="text" size="sm" label={t("og.pause")} expanded={pausing} onClick={() => ((P.ogPause = pausing ? "" : it.id), (P.ogMenu = ""), A.changed())} />
         )}
-        {it.state !== "running" && it.state !== "proposed" && it.health?.fix !== "run_now" && <Btn kind="text" size="sm" label={t(it.kind === "routine" || it.loop ? "og.run" : "wait.look")} onClick={() => og(it, { action: "run_now" })} />}
+        {it.state !== "running" && it.state !== "proposed" && it.health?.fix !== "run_now" && it.health?.fix !== "move" && <Btn kind="text" size="sm" label={t(it.kind === "routine" || it.loop ? "og.run" : "wait.look")} onClick={() => og(it, { action: "run_now" })} />}
         <button class={`more-btn${menu ? " open" : ""}`} aria-label={t("past.mark")} aria-expanded={menu} onClick={() => ((P.ogMenu = menu ? "" : it.id), (P.ogPause = ""), A.changed())}>
           ⋯
         </button>

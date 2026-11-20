@@ -176,10 +176,11 @@ const WAKES: [RegExp, boolean, true?][] = [
   // D297 (core work.ts limitWake): the agent's limit came back; the reason is the agent.
   [/^(.+?) 的额度恢复了，接着做刚才没做完的。$/, true, true],
   [/^(.+?)'s usage limit has reset\. Carry on where you left off\.$/, true, true],
-  [/^到时间了：「([\s\S]+?)」。接着做。$/, true],
-  [/^It's time: "([\s\S]+?)"\. Carry on\.$/, true],
-  [/^等到了：「([\s\S]+?)」(?:（[^（）]*）)?。接着做。$/, false],
-  [/^The wait is over: "([\s\S]+?)"(?: \([^()]*\))?\. Carry on\.$/, false],
+  // D429: a task in rounds hears one more line after its wake (a round ends with progress): kept off the hairline.
+  [/^到时间了：「([\s\S]+?)」。接着做。(?:\n\n这是循环里的一轮[\s\S]*)?$/, true],
+  [/^It's time: "([\s\S]+?)"\. Carry on\.(?:\n\nThis is one round[\s\S]*)?$/, true],
+  [/^等到了：「([\s\S]+?)」(?:（[^（）]*）)?。接着做。(?:\n\n这是循环里的一轮[\s\S]*)?$/, false],
+  [/^The wait is over: "([\s\S]+?)"(?: \([^()]*\))?\. Carry on\.(?:\n\nThis is one round[\s\S]*)?$/, false],
 ];
 
 /** A wake as Ducter sends it (D271): the wait's reason and whether it was a timer, or undefined. */

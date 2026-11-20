@@ -52,6 +52,8 @@ export interface WorkOptions {
   defaultZone?: string;
   /** D427: the language the person talks in now (the keeper's cards). */
   lang?: () => import("@ducter/protocol").LangTag;
+  /** D429: the computers, for the keeper: names, an awake one to move a late loop to, the move. */
+  loopsWhere?: import("./loops.ts").LoopWhere;
 }
 
 const expand = (p: string) => (p.startsWith("~/") ? homedir() + p.slice(1) : p === "~" ? homedir() : p);
@@ -86,6 +88,9 @@ const W = {
     overSeen: "等到了：「{reason}」（{seen}）。接着做。",
     deadline: "等到最后也没等到：{reason}",
     wont: "没等到：「{reason}」，{unmet}。看看接下来怎么做。",
+    // D429: a task in rounds: a round's end is progress, never done (Ducter brings the next one).
+    round: "这是循环里的一轮：这一轮做完，用 report_to_main 报 progress，不要报 done；下一轮到时 Ducter 会叫你。",
+    roundUntil: "这是循环里的一轮：这一轮做完，用 report_to_main 报 progress；只有「{until}」已经成立时才报 done。下一轮到时 Ducter 会叫你。",
   },
   en: {
     time: 'It\'s time: "{reason}". Carry on.',
@@ -93,6 +98,8 @@ const W = {
     overSeen: 'The wait is over: "{reason}" ({seen}). Carry on.',
     deadline: "Waited until the deadline: {reason}",
     wont: 'This won\'t happen: "{reason}": {unmet}. Decide what to do next.',
+    round: "This is one round of your rounds: when it is done, report_to_main with state progress, never done; Ducter wakes you for the next one.",
+    roundUntil: 'This is one round of your rounds: when it is done, report_to_main with state progress; report done only once "{until}" holds. Ducter wakes you for the next one.',
   },
 };
 const wordsOf = (reason: string) => words(W, langOfText(reason));
@@ -188,7 +195,7 @@ export function createWork(o: WorkOptions): Work {
   const waiters = createWaiters({ log, clock: o.clock, check, readEvent, fetchWatch, minEveryMs: o.minEveryMs, judgeMinMs: o.judgeMinMs, restartLookMs: o.restartLookMs });
   const untils = createUntils({ log, tasks, runner: o.runner, check });
   const routines = createRoutines({ log, tasks, waiters, runner: o.runner, clock: o.clock, persona: o.persona, defaultZone: o.defaultZone });
-  const loops = createLoops({ log, tasks, waiters, runner: o.runner, workers: o.workers, clock: o.clock, lang: o.lang, zone: () => o.defaultZone });
+  const loops = createLoops({ log, tasks, waiters, runner: o.runner, workers: o.workers, clock: o.clock, lang: o.lang, zone: () => o.defaultZone, ...(o.loopsWhere ? { where: o.loopsWhere } : {}) });
 
   // A task's own wait: it rests on Waiting while armed, and carries on when the wait is over.
   const unsubscribe = log.subscribe((e) => {
@@ -207,7 +214,10 @@ export function createWork(o: WorkOptions): Work {
       // D271: a bare number (a clock's epoch a check printed) tells the agent nothing: left out.
       const seen = w.observed?.trim() && !/^\d+$/.test(w.observed.trim()) ? w.observed.trim() : "";
       // D297: the agent's usage limit reset (or it is time to try again): the same session carries on.
-      const text = w.limit ? limitWake(w.limit.harness, w.reason) : fill(timer ? c.time : seen ? c.overSeen : c.over, { reason: w.reason, seen });
+      const wake = w.limit ? limitWake(w.limit.harness, w.reason) : fill(timer ? c.time : seen ? c.overSeen : c.over, { reason: w.reason, seen });
+      // D429: a round of a task in rounds says how a round ends (progress; done only for the person's until).
+      const loop = !w.limit ? loops.get(w.taskId) : undefined;
+      const text = loop?.state === "on" ? `${wake}\n\n${loop.until ? fill(c.roundUntil, { until: loop.until }) : c.round}` : wake;
       const r = o.runner();
       // D427: a round that can't start (its computer asleep, the runner not up yet) is tried again by the keeper.
       if (!r) loops.wakeFailed(w.taskId, "the runner isn't up yet");

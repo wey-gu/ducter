@@ -12889,7 +12889,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   .past-list { padding: 4px 16px 24px; }
   .pcard { flex-wrap: wrap; }
   .pmain { padding: 12px 12px 4px 12px; flex-basis: 100%; }
-  .pacts { opacity: 1; padding: 0 10px 10px 60px; width: 100%; }
+  .pacts { opacity: 1; padding: 0 10px 10px 60px; width: 100%; flex-wrap: wrap; row-gap: 4px; } /* D429: a long fix (换到醒着的电脑上跑) wraps, never widens the page */
   .pcard.on, .pcard.open { transform: none; }
   .pmark, .pmenu { left: 8px; right: 8px; width: auto; }
 }

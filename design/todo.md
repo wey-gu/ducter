@@ -2415,10 +2415,17 @@ Codex first, once OAR is near 1.0. See `research/17`.
 ## D427: a task in rounds is kept (`core/src/loops.ts`, research/177)
 
 - [ ] **See it on hel after the upgrade.** The review loop is recorded as a loop with nothing said (it already runs since 10:37); watch one round report done and stay on 等下一次. Trigger: the next release on hel.
-- [ ] **Say a round, not "done", in the report tool.** A task in rounds could be told in its wake text that a round's end is `progress` (D427 makes "done" harmless, but the words would match). Default: add one line to the wake for a task in rounds. Trigger: a task tool change with its eval.
-- [ ] **A computer's name on the late card for a worker.** The keeper names it only when the place names a paired worker; a home's own task says "its computer". Trigger: the first late loop on a worker Mac.
-- [ ] **Move a late loop to a computer that is awake** (the late card's second choice, D157). Default: offer it when the loop's place can move. Trigger: a loop late twice in a week for the same sleep.
+- [x] **Say a round, not "done", in the report tool.** A task in rounds could be told in its wake text that a round's end is `progress` (D427 makes "done" harmless, but the words would match). Default: add one line to the wake for a task in rounds. Trigger: a task tool change with its eval. Done as D429 (the wake's round paragraph).
+- [x] **A computer's name on the late card for a worker.** The keeper names it only when the place names a paired worker; a home's own task says "its computer". Trigger: the first late loop on a worker Mac. Done as D429 (named wherever known, the home too).
+- [x] **Move a late loop to a computer that is awake** (the late card's second choice, D157). Default: offer it when the loop's place can move. Trigger: a loop late twice in a week for the same sleep. Done as D429 (换到醒着的电脑上跑; not for repo or folder tasks).
 - [ ] **Condition loops live.** `look` re-arms a check, event or judge loop; none seen live yet ("CI 挂了告诉我" as a task in rounds). Trigger: the first one on hel.
-- [ ] **Mac ⋯ on the clay menu (D421).** The card's ⋯ is still the popover that holds 改时间 and 多久跑一轮 inline; move it to `menuButton` with a 多久跑一轮 submenu once 改时间 has a sheet of its own. Trigger: the next Ongoing pass.
+- [x] **Mac ⋯ on the clay menu (D421).** The card's ⋯ is still the popover that holds 改时间 and 多久跑一轮 inline; move it to `menuButton` with a 多久跑一轮 submenu once 改时间 has a sheet of its own. Trigger: the next Ongoing pass. Done as D429.
 - [ ] **The iOS Simulator** for the phone card (web shots at 390 only). Trigger: before the next iPhone build.
-- [ ] **"How is my loop doing?" in one line.** `loop-status-en` failed both haiku runs and `loop-status-zh` once (too long, the rhythm left out, other tasks' news added). Default: routine_list returns a ready line per item (rhythm, next, health in words) and rule 15 says to answer only about the one asked. Trigger: the next persona or tool change with its eval.
+- [x] **"How is my loop doing?" in one line.** `loop-status-en` failed both haiku runs and `loop-status-zh` once (too long, the rhythm left out, other tasks' news added). Default: routine_list returns a ready line per item (rhythm, next, health in words) and rule 15 says to answer only about the one asked. Trigger: the next persona or tool change with its eval. Done as D429 (routine_list's say; eval numbers in D429).
+
+## D429: a loop in one line, and run where it can (`core/src/{ongoing,loops,work}.ts`)
+
+- [ ] **Move a repo task's loop too.** A repo task is never offered 换到醒着的电脑上跑 (its move pushes the branch, task_switch's own Go). Default: the card's Go names the push ("推送分支并换到 {name} 上跑") and passes confirmed. Trigger: the first late repo loop on a sleeping worker.
+- [ ] **Check the home's agent before offering it.** The home is offered for a worker's task without knowing the task's agent is signed in there (the move says so if not). Default: read the devices frame's harnesses once per sweep and offer only where it is. Trigger: a move that fails for a sign-in.
+- [ ] **Move back when it wakes.** After a move the task stays on the awake computer. Default: say nothing; the card's where shows it, and task_switch moves it back. Trigger: the author asks for it back twice.
+- [ ] **See the move live on hel** with a worker Mac asleep. Trigger: the next release on hel.

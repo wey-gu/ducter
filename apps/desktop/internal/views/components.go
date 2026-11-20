@@ -893,6 +893,9 @@ func (a *App) goLabel(d *store.DecisionState) string {
 	if d.Src != nil && d.GoLabel != "" {
 		return d.GoLabel // D341: 留言 / 留言并关掉 / 停下, as the card's code said it
 	}
+	if d.Loop != nil && d.Loop.Move != "" && d.GoLabel != "" {
+		return d.GoLabel // D429: 换到醒着的电脑上跑 / Run it on an awake computer, whole
+	}
 	if d.Computer != nil && d.Computer.Kind == "user" {
 		return a.L.T("computeruse.user.done") // D235: their own turn in an app: 好了 / Done
 	}

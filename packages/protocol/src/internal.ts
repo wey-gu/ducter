@@ -543,6 +543,13 @@ export interface SessionSpec {
   disablePlugins?: string[];
   /** D393: plugins this session loads for itself only, by URL (Claude Code `--plugin-url`): Mem's plugin the home carries where the computer has none. */
   pluginUrls?: string[];
+  /**
+   * D417: Mem's two lifecycle steps, run by Ducter around a session whose agent can't load Mem's
+   * plugin for one session (harness-facts memSteps: Antigravity): the Context Bundle read before
+   * the first turn, the thread saved after each turn ends, both by Mem's own `nmem` on the
+   * computer the agent runs on, in the session's env (runner/src/mem-steps.ts).
+   */
+  memSteps?: boolean;
   /** D175 (3): a one-shot that needs no tools at all (the judge, the digest writer); the adapter maps it per harness (harness-facts noTools). */
   noTools?: boolean;
   // Tasks only (D135): what the harness keeps when it compacts (Claude Code's PreCompact hook

@@ -2,7 +2,7 @@ import { randomBytes, randomUUID } from "node:crypto";
 import { HARNESS_IDS, HARNESSES as HARNESS_INFO, harnessName, isImage, kindWords, sizeWords, type MediaRef, type FileOpenError, type Attention, type Bodies, type BranchChanges, type CantStart, type Delivery, type EvidenceRef, type FolderChanges, type FolderSummary, type HeldMsg, type UndoConfirm, type LogEvent, type Place, type Question, type Residency, type TaskCard, type TaskNeeds, type WhereAsk } from "@ducter/protocol";
 import type { CoreApi, HarnessEvent, HarnessPort, HarnessSession, Runner, SendFile, SendImage, SessionSpec } from "@ducter/protocol/src/internal.ts";
 import { ADOPTED, outsideOver, NUDGE, PRECOMPACT_NOTE, REOPENED, RESUME_AFTER_RESTART, SAVE_BEFORE_COMPACT, afterCompaction, briefTurn, knownTurn, othersTurn, OTHERS_MAX, handedBack, handedOver, kickoff, movedOver, noCopyAnswer, seedThen, startedAfresh, freshRound, taskBrief, type CarryOver } from "./brief.ts";
-import { resolveModel, resolveWindows, saveBeforeAt } from "@ducter/protocol/src/harness-facts.ts";
+import { HARNESS_FACTS, resolveModel, resolveWindows, saveBeforeAt } from "@ducter/protocol/src/harness-facts.ts";
 import { createOarHarnessPort } from "./oar.ts";
 import { cwdOf, planPlace, provisionPlace, startProblem, type ResolvedPlace } from "./places.ts";
 import { browserSidecar, codexComputerBrief, computerUseGuard, type BrowserGuardHit, type BrowserOptions, type BrowserSidecar, type BrowserTool, type SidecarInput } from "./browser.ts";
@@ -1489,6 +1489,8 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
         // D168: the user's Nowledge Mem plugin where it is on that computer, else Ducter's own
         // read-only memory; a browser task gets none (as with the Log, D62).
         ...((m) => (m === "plugin" || m === "ducter" ? { memory: m } : {}))(memoryMode(open.place, open.harness)),
+        // D417: where Ducter runs Mem's two steps itself, the brief says what they bring.
+        ...(memSteps(open.place, open.harness) ? { memSteps: true } : {}),
         // D217: work on Ducter's phone gets the phone's section (its tools are on the same server).
         // D251: and says which phone ("mine": the user's own; "ducter": Ducter's; true: either).
         ...(open.needs?.phone ? { phone: open.needs.phone } : {}),
@@ -1534,6 +1536,9 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
         if (env) spec.env = { ...(spec.env ?? {}), ...env };
         if (carriedKit(open.place, open.harness)) spec.pluginUrls = carry.kitFor(id, open.harness, base);
       }
+      // D417: an agent that can't load Mem's plugin for one session (Antigravity): Ducter runs its
+      // two steps there with Mem's own nmem (the Context Bundle first, the thread after each turn).
+      if (memSteps(open.place, open.harness)) spec.memSteps = true;
     } else {
       // D168: memory is off in Ducter: the plugin is off in this session too (their other plugins
       // stay), so the switch holds inside tasks.
@@ -1566,6 +1571,11 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     if (core.memPluginIn?.(device, harness)) return "plugin";
     if (carriedKit(place, harness)) return "plugin";
     return core.taskMemory ? "ducter" : "none";
+  }
+
+  /** D417: Mem's two steps run by Ducter: memory on, not a browser place, and an agent the registry says has no per-session plugin (harness-facts memSteps). */
+  function memSteps(place: Place, harness: string): boolean {
+    return !!HARNESS_FACTS[harness as HarnessId]?.memSteps && memoryMode(place, harness) !== "none";
   }
 
   /**

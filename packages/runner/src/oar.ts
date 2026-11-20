@@ -25,6 +25,7 @@ import type { Runtime, Session, SessionOptions, McpServer } from "@botiverse/oar
 import { Normalizer } from "./normalize.ts";
 import { nativeUsage } from "./native-usage.ts";
 import { bridgeCommand, writeBridgeTarget } from "./mcp-bridge.ts";
+import { nmemOf, readContext, realExec, saveThread, theirMemPlugin, threadSaver, type MemStepsExec } from "./mem-steps.ts";
 import { childEnvOverlay } from "./child-env.ts";
 import { taskCredentials } from "./task-credentials.ts";
 import { CODEX_NATIVE_MCP, CODEX_NATIVE_PLUGINS } from "@ducter/protocol/src/native-browser.ts";
@@ -446,6 +447,8 @@ export interface OarPortOptions {
   codexMcpList?: CodexMcpList;
   /** Test seam (D352): Codex's own catalog (`codex debug models`), for the windows of models the registry doesn't know. */
   codexCatalog?: (command: string, env: Record<string, string>) => Promise<string>;
+  /** Test seam (D417): how Mem's steps run nmem, which nmem, whose home holds agy's plugins, and the save's waits. */
+  memSteps?: { exec?: MemStepsExec; nmem?: string; home?: string; after?: number; retry?: number };
 }
 
 /** A harness env overlay (null: unset) over this process's env, as a child's whole env. */
@@ -779,8 +782,15 @@ export function createOarHarnessPort(opts: OarPortOptions = {}): HarnessPort {
         const off = typeof command === "string" ? codexLeftoverServers(command, [...launchArgs], a.options.env ?? {}, spec.mcp.map((m) => m.name), opts.codexMcpList) : [];
         if (off.length) launchArgs = [...launchArgs, ...codexServersOff(off)];
       }
-      const session = await rt.session(inst, { ...a.options, ...(launchArgs ? { launchArgs } : {}), retainedBytes: opts.retainedBytes ?? 8 * 1024 * 1024 });
-      return wrapSession(session, spec.resumeSessionId ? undefined : a.preamble, spec.harness);
+      // D417: Mem's two steps around an agent that can't load Mem's plugin for one session; the
+      // bundle is read while the session opens, so a slow Mem delays it at most CONTEXT_MS.
+      const steps = memStepsFor(spec, a.options.env ?? {}, opts.memSteps);
+      const [session, bundle] = await Promise.all([
+        rt.session(inst, { ...a.options, ...(launchArgs ? { launchArgs } : {}), retainedBytes: opts.retainedBytes ?? 8 * 1024 * 1024 }),
+        steps && !spec.resumeSessionId ? readContext(steps.exec, steps.nmem, steps.fact.contextApp, steps.env) : Promise.resolve(undefined),
+      ]);
+      const saver = steps ? threadSaver(() => saveThread(steps.exec, steps.nmem, steps.fact.threadFrom, session.id, spec.cwd, steps.env), opts.memSteps) : undefined;
+      return wrapSession(session, spec.resumeSessionId ? undefined : a.preamble, spec.harness, { ...(bundle ? { lead: bundle } : {}), ...(saver ? { turnEnded: () => saver.turnEnded() } : {}) });
     },
 
     async available() {
@@ -946,7 +956,23 @@ export function contextTokensOf(c: { tokens: number | null; contextWindow: numbe
   return c.tokens;
 }
 
-function wrapSession(s: Session, preamble?: string, harness?: HarnessId): HarnessSessionExt {
+/**
+ * D417: what Mem's steps need for this session, or undefined: not asked for (memory off, a browser
+ * place, an agent with its own way), no fact for the agent, no nmem in the session's env, or the
+ * person's own Mem plugin for it there (it does both itself; never both).
+ */
+function memStepsFor(spec: SessionSpec, overlay: Record<string, string | null>, seam: OarPortOptions["memSteps"]) {
+  const fact = HARNESS_FACTS[spec.harness]?.memSteps?.value;
+  if (!spec.memSteps || !fact) return undefined;
+  const env = fullEnv(overlay);
+  const nmem = seam?.nmem ?? nmemOf(env);
+  if (!nmem) return undefined;
+  const home = seam?.home ?? env.HOME ?? homedir();
+  if (theirMemPlugin(fact.plugin, home, spec.cwd)) return undefined;
+  return { fact, env, nmem, exec: seam?.exec ?? realExec };
+}
+
+function wrapSession(s: Session, preamble?: string, harness?: HarnessId, mem: { lead?: string; turnEnded?: () => void } = {}): HarnessSessionExt {
   // At turn_ended OAR has already folded the turn's usage (live, claude 2.1.319: contextUsage()
   // read in the turn_ended callback equals the usage record that follows it).
   const normalizer = new Normalizer(() => {
@@ -963,6 +989,7 @@ function wrapSession(s: Session, preamble?: string, harness?: HarnessId): Harnes
   let wake: (() => void) | undefined;
   let ended = false;
   let firstSend = preamble;
+  let lead = mem.lead;
   const push = (evs: HarnessEvent[]) => {
     if (evs.length === 0) return;
     buf.push(...evs);
@@ -986,6 +1013,7 @@ function wrapSession(s: Session, preamble?: string, harness?: HarnessId): Harnes
   };
   const unsubscribe = s.events((ev) => {
     if (ev.kind === "compaction_ended" && !ev.agentPath.length) normalizer.native({ compact: nativeOf(ev.seq)?.compact });
+    if (ev.kind === "turn_ended" && !ev.agentPath.length) mem.turnEnded?.();
     push(normalizer.push(ev as any));
     if (ev.kind === "exited") {
       push(normalizer.flush());
@@ -999,6 +1027,8 @@ function wrapSession(s: Session, preamble?: string, harness?: HarnessId): Harnes
     if (r.kind === "rejected") throw new Error(`${what} rejected: ${r.reason ?? "unknown"}`);
   };
   const framed = (text: string) => {
+    // D417: Mem's Context Bundle in front of the first message, as Mem's plugin puts it there.
+    if (lead) (text = `${lead}\n\n${text}`), (lead = undefined);
     if (!firstSend) return text;
     const t = withPreamble(firstSend, text);
     firstSend = undefined;

@@ -324,8 +324,8 @@ Once the switch is on and the app is back, Android asks once whether Ducter may 
   may turn itself off, never on; D238's **移除** retired); can't reach: the failed tint and why;
   not added: dashed, its ⓘ **在 {phone} 的 Ducter 里加上：安卓要你在手机上亲手开一个开关。**
 - D398: under the chip, while lent, **「{task}」正在用这台手机** with **停下** (primary); once added,
-  three marked promises (**只在借出去时看屏幕、点、打字** · **发送、付款、删除，先等你点 Go** ·
-  **银行、钱包、密码、验证器都碰不到**), never the old paragraph.
+  what it can and can't touch as two plain sentences in a soft tray, no marks (D420):
+  **只在借出去时看屏幕、点、打字，发送、付款、删除先等你点 Go。银行、钱包、密码、验证器它都碰不到。**
 - The opened task: **正在用你的 {phone} / On your {phone}** · **停下**; D331: paused, asking on the phone, or a Go waiting (for the unlock, out of reach and why, starting), each its own line with **不借了** before the loan is on (§4.5). D339: a calm row in the task's head (the line, the line under it, the button), never in the window's title bar.
 - D339: the task's head says where it works, **在你的 {phone} 上 / on your {phone}**, once the task asked for the person's phone (the ask in its stream, or the loan on its card), in place of the computer and its browser; 看它上网 / Watch it browse (the header and the workbench) only once it opened a page in Ducter's browser.
 - D339, as D398 shows it: lending it while not holding it is an optional row, **锁屏时也能借给任务 ›**, opening in place to three steps (search Settings for **延长解锁**, **Smart Lock** on some phones; confirm the screen lock when Android asks; turn on **随身检测 / On-body detection** or **可信地点 / Trusted places**) and **锁屏密码只给安卓，Ducter 从来不要。**

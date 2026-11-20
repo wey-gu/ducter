@@ -6,7 +6,7 @@
 import { KeyRow } from "./settings-more.tsx";
 import { PhoneBlock, PhoneInfo, startInstall } from "./phone-use.tsx";
 import { ComputerBlock, ComputerInfo } from "./computer-use.tsx";
-import { HandsetBody, HandsetChip, Promises } from "./handset.tsx";
+import { Guard, HandsetBody, HandsetChip } from "./handset.tsx";
 import { updatingWords } from "./agent-progress.ts";
 import type { DeviceHarness, DeviceUpdate, DeviceVia, DeviceView, ReachWay } from "@ducter/protocol";
 import { inApp } from "./native.ts";
@@ -250,15 +250,8 @@ function DeviceSheet({ dv, folded, go }: { dv: DeviceView; folded: Client[]; go:
       {/* D307: on the home's card, a key instead of a subscription (D298), beside its AI agents. */}
       {dv.home && <KeyRow instead />}
       <Chips dv={dv} go={go} />
-      {/* D398: what a computer for tasks touches and never sees. */}
-      {!dv.home && (
-        <Promises
-          list={[
-            ["folder", t("worker.g.uses")],
-            ["chat", t("worker.g.chat", A.S.personaName)],
-          ]}
-        />
-      )}
+      {/* D398, D420: what a computer for tasks uses and never sees; on the home, where the conversation is kept. */}
+      <Guard words={t(dv.home ? "home.g" : "worker.g", A.S.personaName)} />
       <DucterLine dv={dv} />
       {/* D293, D398: the home's addresses, or how a worker is connected and its one 断开, folded at the foot. */}
       {dv.home && <Ways home={dv.name} />}

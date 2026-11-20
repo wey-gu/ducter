@@ -225,7 +225,7 @@ export function HandsetChip({ cl }: { cl: Client }) {
 
 /**
  * D398: under the chip, once the phone is added: the task using it now and 停下 (the one action the
- * moment calls for), what it can and can't touch as three marked lines, and the optional lock step
+ * moment calls for), what it can and can't touch as two plain sentences (D420), and the optional lock step
  * as a row that opens in place. The same as the Mac's handsetCard (views/handset.go).
  */
 export function HandsetBody({ cl }: { cl: Client }) {
@@ -245,68 +245,28 @@ export function HandsetBody({ cl }: { cl: Client }) {
           <Btn kind="primary" size="sm" label={t("handset.stop")} about={h.using.title} onClick={() => A.send({ t: "handset_stop", taskId: h.using!.taskId })} />
         </div>
       )}
-      <Promises
-        list={[
-          ["eye", t("handset.g.look")],
-          ["go", t("handset.g.go")],
-          ["lock", t("handset.g.off")],
-        ]}
-      />
+      <Guard words={t("handset.g")} />
       <LockStep />
     </>
   );
 }
 
-type PromiseMark = "eye" | "go" | "lock" | "folder" | "chat";
-
-/** One drawn mark for a promise line (never a symbol from a font, D211). */
-export function PromiseMark({ m }: { m: PromiseMark | "moon" }) {
+/** The lock step's drawn mark (never a symbol from a font, D211). */
+function MoonMark() {
   const s = { fill: "none", stroke: "currentColor", "stroke-width": 1.6, "stroke-linecap": "round", "stroke-linejoin": "round" } as const;
   return (
     <svg class="pm" width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
-      {m === "eye" && (
-        <>
-          <path d="M1.5 9C4.5 4 13.5 4 16.5 9C13.5 14 4.5 14 1.5 9Z" {...s} />
-          <circle cx="9" cy="9" r="2.3" fill="currentColor" />
-        </>
-      )}
-      {m === "go" && (
-        <>
-          <rect x="2" y="4" width="14" height="10" rx="4" {...s} />
-          <path d="M6 9l2.2 2.2L12.2 6.8" {...s} />
-        </>
-      )}
-      {m === "lock" && (
-        <>
-          <path d="M5 8V5.5C5 1.8 13 1.8 13 5.5V8" {...s} />
-          <rect x="3" y="8" width="12" height="8.5" rx="2.2" {...s} />
-          <circle cx="9" cy="12.2" r="1.3" fill="currentColor" />
-        </>
-      )}
-      {m === "folder" && <path d="M2.2 4.5h4.5l1.7 1.7h7.4v8H2.2Z" {...s} />}
-      {m === "chat" && (
-        <>
-          <path d="M5 3h8a3 3 0 0 1 3 3v4a3 3 0 0 1-3 3H8l-3.5 3v-3A2.6 2.6 0 0 1 2 10V6a3 3 0 0 1 3-3Z" {...s} />
-          <path d="M3 15.5L15.5 1.5" {...s} />
-        </>
-      )}
-      {m === "moon" && <path d="M11 2C3 2.5 3 15.5 11 16c2 0 4-1 5-2.5C10 14 6.5 9.5 7 6.5 7.4 4 9 2.5 11 2Z" {...s} />}
+      <path d="M11 2C3 2.5 3 15.5 11 16c2 0 4-1 5-2.5C10 14 6.5 9.5 7 6.5 7.4 4 9 2.5 11 2Z" {...s} />
     </svg>
   );
 }
 
-/** A device's promises: what it can and can't touch, short lines with a drawn mark each. */
-export function Promises({ list }: { list: [PromiseMark, string][] }) {
-  return (
-    <ul class="dc-promises">
-      {list.map(([m, words]) => (
-        <li key={m}>
-          <PromiseMark m={m} />
-          <span>{words}</span>
-        </li>
-      ))}
-    </ul>
-  );
+/**
+ * D420: what a device uses and what stays private, said once as plain sentences in one soft tray:
+ * no marks, no list. The same on every kind of device, as the Mac's guard (views/devguard.go).
+ */
+export function Guard({ words }: { words: string }) {
+  return <p class="dc-guard">{words}</p>;
 }
 
 /** 锁屏时也能借给任务 › (D339, D398): one optional row; open, three steps with the setting's real names. */
@@ -314,7 +274,7 @@ function LockStep() {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <StepRow mark={<PromiseMark m="moon" />} title={t("handset.lock.row")} sub={t("handset.lock.sub")} open={open} onClick={() => setOpen(!open)} />
+      <StepRow mark={<MoonMark />} title={t("handset.lock.row")} sub={t("handset.lock.sub")} open={open} onClick={() => setOpen(!open)} />
       {open && (
         <div class="hs-lock-steps" role="group" aria-label={t("handset.lock.row")}>
           <div class="small sub">{t("handset.lock.why")}</div>
@@ -331,7 +291,6 @@ function LockStep() {
             </li>
           </ol>
           <div class="hs-never">
-            <PromiseMark m="lock" />
             <small class="grow">{t("handset.lock.never")}</small>
             <Btn kind="secondary" size="sm" label={t("handset.user.done")} onClick={() => setOpen(false)} />
           </div>

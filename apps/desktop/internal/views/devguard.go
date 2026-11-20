@@ -9,35 +9,21 @@ import (
 // D398, the devices pass: every device's card answers in one order. What it
 // is to Ducter now (the hero, the name, one status line); what you can do
 // (its coins and chips, and the one action a moment calls for, 停下 while a
-// task has the phone); what it can and can't touch (a few short promises,
-// each with a drawn mark, never a paragraph); one optional step as a row
+// task has the phone); what it can and can't touch (D420: a sentence or
+// two in one soft tray, no marks); one optional step as a row
 // that opens in place (锁屏时也能借给任务 ›); and the rest folded at the foot
 // (how it's connected, its connections, and the one destructive action,
 // 断开这台 {device}). The same order and words as the web
 // (apps/web/src/devcard.tsx, handset.tsx).
 
-// promise is one line of what a device can or can't touch: its mark and
-// its words.
-type promise struct {
-	mark func(col ui.Color) func(p *ui.Painter, r ui.Rect)
-	key  string
-	arg  []any
-}
-
-// promises draws a device's promises as one soft group of short rows.
-func (a *App) promises(c *ui.Context, key string, list []promise) {
-	if len(list) == 0 {
-		return
-	}
+// guard is what a device uses and what stays private, said once as plain
+// sentences in one soft tray (D420): no marks, no list. The person lending
+// a computer or a phone reads it like a sentence from the partner, the
+// same words on every kind of device.
+func (a *App) guard(c *ui.Context, key, words string) {
 	t := a.T
-	ui.Column(c.Key("promises:"+key)).Gap(t.S2+2).Margin(t.S4, 0, 0, 0).Padding(t.S3, t.S4).Radius(t.RadiusSM).Background(t.Bg).
-		Role(ui.RoleList).Children(func() {
-		for i, p := range list {
-			ui.Row(c.Key("promise:" + itoa(int64(i)))).Gap(t.S3).AlignItems(ui.Center).Role(ui.RoleListItem).Children(func() {
-				a.glyph(c, 18, p.mark(t.InkSoft))
-				uiText(c, a.L.T(p.key, p.arg...)).FontSize(t.SM).FontWeight(600).TextColor(t.InkSoft).LineHeight(1.4).Grow(1).MinWidth(0)
-			})
-		}
+	ui.Column(c.Key("guard:"+key)).Margin(t.S4, 0, 0, 0).Padding(t.S3, t.S4).Radius(t.RadiusSM).Background(t.Bg).Children(func() {
+		uiText(c, words).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(a.leading(1.55))
 	})
 }
 
@@ -174,14 +160,10 @@ func (a *App) handsetStatus(cl *protocol.ReachClient) (string, ui.Color, bool) {
 	return "", a.T.InkMuted, false
 }
 
-// handsetPromises are what a lent phone can and can't touch, in three
-// lines (D238's rules, unchanged).
-func (a *App) handsetPromises(c *ui.Context, cl *protocol.ReachClient) {
-	a.promises(c, "hs:"+cl.ID, []promise{
-		{mark: drawPromiseEye, key: "handset.g.look"},
-		{mark: drawPromiseGo, key: "handset.g.go"},
-		{mark: drawPromiseLock, key: "handset.g.off"},
-	})
+// handsetGuard is what a lent phone can and can't touch (D238's rules,
+// unchanged), as two plain sentences (D420).
+func (a *App) handsetGuard(c *ui.Context, cl *protocol.ReachClient) {
+	a.guard(c, "hs:"+cl.ID, a.L.T("handset.g"))
 }
 
 // lockStep is 锁屏时也能借给任务 › (D339, D398): an optional step as one row;
@@ -221,7 +203,6 @@ func (a *App) lockStep(c *ui.Context, cl *protocol.ReachClient) {
 			})
 		}
 		ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
-			a.glyph(c, 16, drawPromiseLock(t.InkMuted))
 			uiText(c, a.L.T("handset.lock.never")).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.45).Grow(1).MinWidth(0)
 			if a.button(c, a.L.T("handset.user.done"), btnSecondary, t.ControlSM, t.Bg) {
 				s.lockSteps = ""
@@ -254,89 +235,17 @@ func (a *App) extraStep(c *ui.Context, key string, mark func(col ui.Color) func(
 	return row.Clicked()
 }
 
-// workerPromises are what a computer doing tasks touches, and what it never
-// sees (the old helper's two facts, as marks).
-func (a *App) workerPromises(c *ui.Context, dv *protocol.DeviceView) {
-	a.promises(c, "dev:"+dv.ID, []promise{
-		{mark: drawFolder, key: "worker.g.uses"},
-		{mark: drawPromiseChat, key: "worker.g.chat", arg: []any{a.personaName()}},
-	})
+// workerGuard is what a computer doing tasks uses and never sees; on the
+// home, where the conversation is kept (D420).
+func (a *App) workerGuard(c *ui.Context, dv *protocol.DeviceView) {
+	key := "worker.g"
+	if dv.Home {
+		key = "home.g"
+	}
+	a.guard(c, "dev:"+dv.ID, a.L.T(key, a.personaName()))
 }
 
 // ---------- the marks ----------
-
-// drawPromiseEye is an open eye: it looks only while lent.
-func drawPromiseEye(col ui.Color) func(p *ui.Painter, r ui.Rect) {
-	return func(p *ui.Painter, r ui.Rect) {
-		s := r.W / 18
-		cx, cy := r.X+r.W/2, r.Y+r.H/2
-		var m ui.Path
-		m.MoveTo(cx-7.5*s, cy)
-		m.CubeTo(cx-4.5*s, cy-5*s, cx+4.5*s, cy-5*s, cx+7.5*s, cy)
-		m.CubeTo(cx+4.5*s, cy+5*s, cx-4.5*s, cy+5*s, cx-7.5*s, cy)
-		m.Close()
-		p.StrokePath(&m, 1.6, col)
-		var dot ui.Path
-		dot.Circle(cx, cy, 2.3*s)
-		p.FillPath(&dot, col)
-	}
-}
-
-// drawPromiseGo is a button with a check on it: it waits for your Go.
-func drawPromiseGo(col ui.Color) func(p *ui.Painter, r ui.Rect) {
-	return func(p *ui.Painter, r ui.Rect) {
-		s := r.W / 18
-		p.Stroke(ui.Rect{X: r.X + 2*s, Y: r.Y + 4*s, W: 14 * s, H: 10 * s}, col, 4*s, 1.6)
-		cx, cy := r.X+r.W/2, r.Y+9*s
-		var m ui.Path
-		m.MoveTo(cx-3*s, cy)
-		m.LineTo(cx-0.8*s, cy+2.2*s)
-		m.LineTo(cx+3.2*s, cy-2.2*s)
-		p.StrokePath(&m, 1.7, col)
-	}
-}
-
-// drawPromiseLock is a padlock: what it can't open.
-func drawPromiseLock(col ui.Color) func(p *ui.Painter, r ui.Rect) {
-	return func(p *ui.Painter, r ui.Rect) {
-		s := r.W / 18
-		cx := r.X + r.W/2
-		var m ui.Path
-		m.MoveTo(cx-4*s, r.Y+8*s)
-		m.LineTo(cx-4*s, r.Y+5.5*s)
-		m.CubeTo(cx-4*s, r.Y+1.5*s, cx+4*s, r.Y+1.5*s, cx+4*s, r.Y+5.5*s)
-		m.LineTo(cx+4*s, r.Y+8*s)
-		p.StrokePath(&m, 1.6, col)
-		p.Stroke(ui.Rect{X: cx - 6*s, Y: r.Y + 8*s, W: 12 * s, H: 8.5 * s}, col, 2.2*s, 1.6)
-		var dot ui.Path
-		dot.Circle(cx, r.Y+12.2*s, 1.3*s)
-		p.FillPath(&dot, col)
-	}
-}
-
-// drawPromiseChat is a speech bubble with a line through it: your
-// conversations stay out of its sight.
-func drawPromiseChat(col ui.Color) func(p *ui.Painter, r ui.Rect) {
-	return func(p *ui.Painter, r ui.Rect) {
-		s := r.W / 18
-		x, y := r.X, r.Y
-		var m ui.Path
-		m.MoveTo(x+5*s, y+3*s)
-		m.LineTo(x+13*s, y+3*s)
-		m.CubeTo(x+15*s, y+3*s, x+16*s, y+4*s, x+16*s, y+6*s)
-		m.LineTo(x+16*s, y+10*s)
-		m.CubeTo(x+16*s, y+12*s, x+15*s, y+13*s, x+13*s, y+13*s)
-		m.LineTo(x+8*s, y+13*s)
-		m.LineTo(x+4.5*s, y+16*s)
-		m.LineTo(x+4.5*s, y+13*s)
-		m.CubeTo(x+3*s, y+13*s, x+2*s, y+12*s, x+2*s, y+10*s)
-		m.LineTo(x+2*s, y+6*s)
-		m.CubeTo(x+2*s, y+4*s, x+3*s, y+3*s, x+5*s, y+3*s)
-		m.Close()
-		p.StrokePath(&m, 1.5, col)
-		p.Line(x+3*s, y+15.5*s, x+15.5*s, y+1.5*s, 1.6, col)
-	}
-}
 
 // drawPromiseMoon is a crescent: the screen gone dark, the phone locked.
 func drawPromiseMoon(col ui.Color) func(p *ui.Painter, r ui.Rect) {

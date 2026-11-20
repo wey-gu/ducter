@@ -520,7 +520,7 @@ Three parts, nothing else:
   Mem plugin for agy is there, with memory off, or with no nmem there. Nothing is installed or
   written in `~/.gemini`; the key is in the env only.
 
-**The computer card** says **这里的任务也记得你** while the home carries Mem; that computer's own sign-in
+**The computer card** says **和 {home} 用同一份记忆，不用设置** while the home carries Mem (D420); that computer's own sign-in
 is for the person's own sessions, offered quietly (below). **Sandboxes:** two variables and a URL,
 minted per task; outbound HTTPS to the home, and an nmem and python3 for the plugin's hooks (else
 the floor). Nothing is kept. **Not yet:** a real Mem behind the relay; Codex's plugin (an overlay
@@ -551,12 +551,12 @@ the consumer whose sign-in expired. The fresh user never meets it (no Mem, nothi
 
 ## Mem on a computer for tasks (D366, built 2026-11-18; re-scoped by D393)
 
-**D393:** while the home carries Mem, tasks there need none of this. The row then says **这里的任务也记得你
-/ Tasks here remember you too** with **用的是 {home} 上那一份记忆，这台电脑上什么都不用设置。**, and what
-follows is offered for the person's own sessions there (outside Ducter), quietly: a secondary **装上**
-under **你自己在 {device} 上开的 AI 也想记得你，就在这里装上 Nowledge Mem。**, or a secondary **登录** that
-opens the paste box only when tapped, under **你自己在 {device} 上开的 AI 也想记得你，就登录一次。**; Mem's
-health there is a soft line, never a failure. Ducter's own nmem there (D386) still matters to tasks:
+**D393:** while the home carries Mem, tasks there need none of this. The row then says, as its title and one line
+(D420), **和 {home} 用同一份记忆，不用设置 / Same memory as {home}, nothing to set up**, and what follows
+is offered for the person's own sessions there (outside Ducter), quietly: a secondary **装上** under
+**想让你在这台电脑上自己开的 AI 也记得你，就装上。**, or a secondary **登录** that opens the paste box only
+when tapped, under **想让你在这台电脑上自己开的 AI 也记得你，就登录一次。**; Mem's health there is a soft
+line, never a failure, and comes first, so the line matches the button. Ducter's own nmem there (D386) still matters to tasks:
 Mem's carried plugin needs one for its hooks.
 
 *Who:* the developer whose haswell got Codex and Claude Code from D363 and whose tasks there should

@@ -5612,9 +5612,8 @@ button.dev-name {
 .dc-foot { display: flex; flex-direction: column; margin-top: 16px; padding-top: 10px; border-top: 1px solid var(--line-soft); align-items: flex-start; }
 .dc-foot .dev-cut { align-self: stretch; }
 /* D398: what a device can and can't touch, short lines each with a drawn mark, in one soft group. */
-.dc-promises { display: flex; flex-direction: column; gap: 10px; margin: 16px 0 0; padding: 12px 16px; border-radius: 12px; background: var(--bg); list-style: none; }
-.dc-promises li { display: flex; align-items: center; gap: 12px; font-size: var(--sm); font-weight: 600; line-height: 1.4; color: var(--ink-soft); }
-.dc-promises .pm, .hs-lock .pm, .hs-never .pm { flex: none; color: var(--ink-soft); }
+.dc-guard { margin: 16px 0 0; padding: 12px 16px; border-radius: 12px; background: var(--bg); font-size: var(--sm); line-height: 1.55; color: var(--ink-soft); }
+.hs-lock .pm { flex: none; color: var(--ink-soft); }
 .hs-lock .chev-g, .dc-fold-row .chev-g { flex: none; color: var(--ink-muted); }
 /* D398: the task using the phone now, and 停下, the one action the moment calls for. */
 .hs-using { display: flex; align-items: center; gap: 12px; margin-top: 16px; padding: 12px 16px; border-radius: 12px; background: var(--working-surface); }
@@ -16121,7 +16120,8 @@ textarea.wmem-paste { display: block; box-sizing: border-box; height: auto; widt
   .pin-strip.settle { animation: none; }
 }
 /* D382: 晚点再问我 / Ask me later: the times as chips, each with its own time; one line under them. */
-.later { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; min-width: 0; }
+/* D420: never the ability chip's own .later (its 以后会有 look), which this turned into a column. */
+.later:not(.ach) { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; min-width: 0; }
 .later-times, .later-pick { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; min-width: 0; }
 .later-times .nt-chip { font-weight: 700; color: var(--ink); background: var(--surface); box-shadow: 0 0 0 1px var(--line-2), 0 2px 0 var(--line-2); }
 .later-times .nt-chip:hover { background: var(--surface-sunken); }

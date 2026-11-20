@@ -57,7 +57,7 @@ func (a *App) handsetCard(c *ui.Context, cl *protocol.ReachClient) {
 			}
 		})
 	}
-	a.handsetPromises(c, cl)
+	a.handsetGuard(c, cl)
 	a.lockStep(c, cl)
 }
 

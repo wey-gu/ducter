@@ -257,11 +257,12 @@ func TestMemCarriedCard(t *testing.T) {
 	tt := ui.NewTesterWith(app.View, 1440, 900, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
 	tt.Frame()
-	if _, ok := tt.Find("这里的任务也记得你"); !ok {
-		t.Fatal("no carried line")
+	// D420: the title and one line, nothing restating it.
+	if _, ok := tt.Find("和 Hetzner Server 用同一份记忆，不用设置"); !ok {
+		t.Fatalf("no carried line: %q", tt.Texts())
 	}
-	if _, ok := tt.Find("用的是 Hetzner Server 上那一份记忆，这台电脑上什么都不用设置。"); !ok {
-		t.Fatal("no where-from line")
+	if tt.HasText("这里的任务也记得你") {
+		t.Fatal("the old subtitle is back")
 	}
 	if _, ok := tt.Find("装好了，还差登录"); ok {
 		t.Fatal("a sign-in asked for although the home carries Mem")

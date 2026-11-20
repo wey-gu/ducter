@@ -5,7 +5,9 @@ keeps it on every device, changes it by talking, and lets the partner act inside
 Decided in D405; the evidence (what the author already does, what others do, what this codebase
 allows, the name test) is `research/166-own-apps.md`. Their own place, the kit and apps that open
 already filled are D410 (`research/169-apps-home.md`). Words are the glossary's (`product-model.md`);
-visuals are Pebble's (`ui.md`).
+visuals are Pebble's (`ui.md`). D422 (`research/174-apps-bar.md`) brought them to the bar: a way up for
+apps made before the kit, marks drawn for what an app is about, one state line from one truth each,
+plain words in the foot, and the flows walked end to end (below).
 
 ## Who and how it starts
 
@@ -29,6 +31,20 @@ so every device opens the same app and the same numbers. The sandbox is the defa
 the app can't reach anything but its own storage and the partner, and the partner treats the app's
 words as data.
 
+**D422, the same three, after living with apps a while:**
+
+- **The consumer** (the author's own case): before, the expense app from last week still a grey form
+  with a placeholder mark, 「6 小时前更新」 and a sentence about the internet; they feel it was a demo.
+  After, its tile says **它还是旧样子** with **换成新样子**; one tap, the partner remakes it from what it
+  knows (the booked train and hotel in it), and the tile now leads with 「2 笔，合计 ¥1,698」 under a
+  suitcase. 惊喜: old things come up to the new bar. First time: the tile itself offers it.
+- **The heavy developer**: before, the board and the fare check looked the same as a dead app; a
+  failed round was silent. After, the board's tile says when it updates next; the fare check's says its
+  round failed with **现在再试一次**; a change they asked for shows **Ducter 正在弄你说的…** until it lands.
+  放心: one line, one truth, one button.
+- **The fresh user**: never sees a state word until something is true; their first app's tile shows
+  what it says and a mark that means it (a bottle for feeds). 好用 with zero concepts.
+
 ## What an app is
 
 | | |
@@ -37,7 +53,8 @@ words as data.
 | **Belongs to** | one partner (persona); a second partner (preview) has none yet |
 | **Lives** | on the home: `apps/<id>/` in the data folder: `meta.json`, `index.html`, `data.json`, the last ten versions `v<n>.html` |
 | **Found** | **你的小应用 / Your apps** (the bar's 小应用 mark, ⌘K, the Mac's menu, `#apps`, the partner's card); its card under the partner's words; pinned, at the top of the conversation; Made for you (**小应用 / Apps** chip); the partner's `[apps]` line |
-| **Looks** | its mark (window, coins, check, board, list, chart: the partner's pick) on one of the person's six muted clays (from its id); the one line it says of itself (`ducter.summary`) |
+| **Looks** | its mark, drawn for what it is about (D422: 28 in `app-glyphs.ts`, shared with the Mac; the partner's pick, else the one its name or sentence points to, so 出差花销 is a suitcase; never an emoji), pressed into one of the person's six muted clays (from its id); the one line it says of itself (`ducter.summary`), big |
+| **Is doing** | D422: one state, worked out by the home on every list (`AppMeta.live`, `appState`): kept current, being changed, broke, the old look (below, "What it is doing") |
 | **Opens** | the web and the phone: a sheet (the whole screen on a phone) with the app in a frame; the Mac: its own window |
 | **Keeps** | what it writes through `ducter.set`, on the home (at most 500,000 characters of JSON per app) |
 | **Can't** | load anything from outside the file, reach the network, keep browser storage, open windows or links, show alert/confirm/prompt, navigate the page around it |
@@ -58,8 +75,14 @@ words as data.
    answered: if you already know things for it, put them in now and name it for them. Nothing known:
    it starts empty with a warm empty line, never invented numbers.
 4. The home keeps it and **lints** it (a CDN script, `fetch`, `localStorage`, `alert`, `window.open`;
-   D410: a native `<select>`, `type=number`, no `k-app`); anything found goes back to the partner as
-   "fix these", said as what to use instead, before it says it's ready.
+   D410: a native `<select>` (D421: `select.k-select` passes), `type=number`, no `k-app`; D422: a date or
+   time picker, no mark, no shelf line); anything found goes back to the partner as "fix these", said
+   as what to use instead, before it says it's ready.
+   **D422, answer first:** the `k-sum` on top holds the one thing they'd open it for (the total, what's
+   left, the streak, how long since the last feed), `k-sum-next` the next thing; then their items;
+   adding last and folded (`details.k-add`); one empty line for the whole app; each fact its own
+   element (D291); no delete on every row. What the person just said goes into its data too (「今天
+   6:10 喝了 120ml」 opens with today's 210ml).
 5. One short line that says what it filled in (「做好了，就叫「北京出差 11/20–21」。高铁和两晚酒店已经从你的
    预订里填进去了。」), then the card: the app's clay tile, its name, **{name}给你做的小应用，放在「你的小
    应用」里，随时再打开。 / An app {name} made for you. It stays in Your apps; open it any time.**,
@@ -82,8 +105,12 @@ so a small model draws a finished app without inventing a design, and never the 
 | `input.k-num` (`inputmode=decimal`) | a big number (never `type=number`) |
 | `k-field` > `label` + `input.k-input` | a field |
 | `k-btn`, `k-btn primary`, `k-btn quiet` | clay buttons on a ledge |
-| `k-from` | where a prefilled item came from |
-| `k-empty` | a warm line while there is nothing yet |
+| `select.k-select` | D421: a longer choice, the kit's clay select |
+| `k-from` | where a prefilled item came from: a quiet word (D422: never a dotted pill) |
+| `k-empty` | once in the whole app: one calm line and the one first thing to do |
+| `details.k-add` > `summary` | D422: adding, last and folded; the summary is the accent button (「记一笔」) |
+| `k-sum-next` | D422: the next thing, under the total |
+| (a floor) | D422: any input, select, textarea or bare button the app left unstyled is drawn in clay (`:where()`, below anything the app says), so even an app from before the kit stops showing the system's grey |
 | `k-bar` > `i` | a bar |
 
 ## 你的小应用 / Your apps: the shelf (D410)
@@ -95,9 +122,10 @@ research/169 §4 (空间 / Space read as Nowledge Mem's Spaces by every rater; t
 - **Where:** a drawn mark (four rounded tiles) in every bar's places, beside On hand, named **小应用 /
   Apps**, its place **你的小应用 / Your apps**; ⌘K; the Mac's menu; `#apps`; "我的小应用在哪" puts its card
   under one line (the app tool's `shelf`).
-- **A tile:** its mark on its clay, its name, its own line (`ducter.summary`, else **「{task}」每一轮都会更新
-  它**, else **还没打开过 / Not opened yet**), **置顶 / Pinned**, **自动更新 / Kept current** (a routine
-  keeps it and it has its own line), **{time} 更新 / Updated {time}**. Pinned first, then the most recently
+- **A tile (D422):** its mark on its clay; its name, smaller; **its own line, big** (`ducter.summary`:
+  「2 笔，合计 ¥1,698」), else **还没打开过 / Not opened yet** for one never opened; **置顶 / Pinned**; its
+  state line (below), else **{time} 更新 / Updated {time}**; when the state asks for something, its
+  one button at the tile's foot. Pinned first, then the most recently
   changed or opened. Wide: as many columns as fit; a phone: two, the whole screen. A tap opens it.
 - **「⋯」** (on the tile and in the app's head): **改名 / Rename** (in place), **让{name}改… / Ask {name}
   to change it…** (opens it, its line focused), **改回去 / Undo the change** (when there is one),
@@ -115,6 +143,65 @@ research/169 §4 (空间 / Space read as Nowledge Mem's Spaces by every rater; t
   to three ideas from the home (`AppIdea`): a trip in the next three weeks from the noted bookings first
   (**做个小应用，记一下这趟北京出差的花销**, **你 11/20 去北京**), then everyday ones (this month's spending,
   a habit tracker, a shopping list). A tap says it as the person's words and goes to the conversation.
+
+## What it is doing: one state, one truth each (D422)
+
+**Who:** all three. **Felt:** before, a tile said only when it changed, and a routine's board, a
+change asked for, a page that threw, a round that failed all looked the same; after, one line says
+what is happening and the one button fixes what's wrong. **First time:** the first app with
+something to say says it on its tile; nothing to learn.
+
+The home works it out on every list, never stores it (`AppMeta.live`; `appState` and the Mac's
+`StateOf` order it the same, the most urgent first):
+
+| State | From (the one truth) | Line | Its button |
+|---|---|---|---|
+| being changed | the person's words about it are in (`user_msg.app`, not an app's own ask) and the partner hasn't answered (its next message clears it; 10 minutes at most) | **{name}正在弄你说的… / {name} is on it…**, a calm track sliding (never a blink; still under reduced motion) | none |
+| broke | its page's own error on this version (the bridge's `error` → `app_error`; the next version clears it) | **它打开时出了点问题 / Something went wrong in it** | **让{name}修好它 / Ask {name} to fix it**: the person's words about it, the error in them |
+| its round failed | the Ongoing card of its task: the last run failed | **「{task}」上一轮没更新成 / “{task}” couldn't update it last round** | **现在再试一次 / Try again now** (Ongoing's run now) |
+| paused | the Ongoing card: paused | **「{task}」暂停了，先不会更新它 / “{task}” is paused, so it won't update for now** | **恢复 / Resume** |
+| updating | the Ongoing card: running | **「{task}」正在更新它 / “{task}” is updating it** | none |
+| the old look | its file fails the kit's look rules (`appKitIssues`) | **它还是旧样子 / It still has the old look** | **换成新样子 / Give it the new look**: **把「{app}」换成新样子，能填的先帮我填好** as the person's words about it |
+| next round | the Ongoing card: resting | **「{task}」{time} 会再更新它 / “{task}” updates it again {time}** and when it last did | none |
+| plain | nothing to say | **{time} 更新 / Updated {time}** | none |
+
+The tile says it under its own line; the open app says it in a strip over the app when it has a
+button or is being changed, else in the foot. The foot otherwise says **只有你看得到，每台设备上都一样。
+/ Only you can see it, and it's the same on every device.** (D422, in place of D405's sandbox
+sentence). The partner's `[apps]` line carries the old look, a broken page and a failed round, so
+"fix it" and 换成新样子 have what they need.
+
+## The flows, walked (D422)
+
+Walked in writing here. Shot (research/174, `.shots/apps-bar/`): 1 and 2 as haiku made them through the
+real tool, 4's strip, 5, 10 and 11 on the web wide and phone (headless Chrome, the iPhone Simulator)
+and the Mac (its test renderer), against `demo-apps-home.ts` (`DEMO_STAGE=states`); 3, 6, 8 and 9 are
+D410's, unchanged, with its shots. Not walked: 4 end to end with a real partner, 5's attach by words.
+
+1. **Made from a sentence.** "做个小应用记宝宝喝奶。今天 6:10 喝了 120ml，9:05 喝了 90ml": the partner
+   writes it now (the app tool), with both feeds in its data, a bottle for its mark, 「今天 210ml，上次
+   9:05」 for its line; one line and its card under it.
+2. **First open.** It opens on what it is for (today's 210ml), the feeds under it, 记一笔 folded last;
+   **{name}先填好了** with its note once, when it filled in something the person didn't type.
+3. **Use.** A tap adds a feed; `ducter.set` keeps it on the home; every device with it open hears it;
+   its line on the tile follows (`ducter.summary`).
+4. **Change by talking**, from the app's line or the conversation: the strip says **{name}正在弄你说的…**
+   at once; the partner changes it (edits or a new file); the open app runs again with **改好了** and the
+   partner's few words; **改回去** brings the version before back (ten kept). The conversation shows the
+   partner's line and the card, never the code.
+5. **A routine keeps it current** ("每天早上看一眼机票，放进这个小应用"): the partner gives it to the task
+   (`task`); its tile says when it updates next; a failed round says so with **现在再试一次**; **不再让
+   「{task}」更新它** in 「⋯」 lets go (D410).
+6. **Pin:** 「⋯」 → **置顶**: first on the shelf and a chip at the top of the conversation (D410).
+7. **On the phone:** nothing to share: every app lives on the home, so the phone's 你的小应用 already
+   has it, the same data, the same state (the bar's mark, `#apps`, `#app=<id>`). Sharing with another
+   person stays "Not in v1".
+8. **Rename** in place from 「⋯」 (D410).
+9. **Delete** from 「⋯」 or by asking: asked first, **撤销** after, kept 30 days (D410).
+10. **It broke:** its tile and window say so; **让{name}修好它** sends the error as the person's words
+    about it; **改回去** is in the head when there was a change.
+11. **An app from before the kit** (the author's case): **换成新样子** remakes it with the kit, filled
+    from what Ducter knows, its keys kept; **改回去** undoes it.
 
 ## Changing one: by talking
 
@@ -202,6 +289,10 @@ re-read; after, one page always current on every device and a quiet conversation
 | The home | keys are short and printable, data is capped, asks are rate-limited, a frame token is one app's and expires; an app of another partner is never opened. |
 
 ## Not in v1
+
+D422 owes (`todo.md`): an empty app that still opens empty when nothing is known (it needs something
+true to show); a generated clay object as an app's mark, made once in the background where an image
+harness is signed in, the drawn mark until then; people as raters.
 
 Sharing an app with someone (a link, their own data or a shared copy, viewer-pays, a first-use
 consent); an app calling a connected account or the web by itself (only through the partner, behind

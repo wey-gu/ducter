@@ -1,4 +1,4 @@
-# 174 · Several things in one message: an ablation of what to add, the words, and when to speak
+# 175 · Several things in one message: an ablation of what to add, the words, and when to speak
 
 Date: 2026-11-20, on main after D421. Follows research/173 (the proposal) and the author's three
 answers to it: (1) "用消融实验仔细分析是否需要引入新的概念，能否用其他好理解自然地方式表达；件是一个很奇怪的

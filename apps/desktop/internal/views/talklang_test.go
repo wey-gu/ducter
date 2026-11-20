@@ -57,7 +57,8 @@ func TestReplyLanguageAnyLanguage(t *testing.T) {
 		t.Fatalf("picking Svenska sent %+v", set)
 	}
 	tt.Frame()
-	if !tt.HasText("Svenska") || !tt.HasText(app.L.T("partner.talk.fixed.note", "Svenska")) {
+	// D424: the picker says it; no line under the row repeats it.
+	if !tt.HasText("Svenska") || tt.HasText("Svenska 回") || tt.HasText("answers in Svenska") {
 		t.Errorf("a saved language from the rest doesn't show by its name: %q", tt.Texts())
 	}
 }

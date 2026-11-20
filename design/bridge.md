@@ -653,7 +653,7 @@ and a gated dependency.
 |---|---|---|
 | Persona's Agent mailbox | Mem | The address. One per persona identity and Space |
 | Agent Context | user's nmem | Named selector of identity plus exact Space, created and approved by the user. Ducter knows only its name (`DUCTER_BRIDGE_CONTEXT`) |
-| `bridge_msg` event | Log, channel | `{direction: in\|out, messageId, from?, to?, text, inReplyTo?, sentAt?}`. Origin `peer` for in, `partner` for out |
+| `bridge_msg` event | Log, channel | `{direction: in\|out, messageId, from?, to?, text, inReplyTo?, sentAt?}`. Origin `peer` for in, `partner` for out. D418: `selfNamed` + `role` (an own agent named by its own words), `first` (the first message that ever came), `route` (Mem's reply argv), `state: "ping"` / `ack` (a contact test answered by code), `retryOf` (a resend of an op Mem never took) |
 | Origin `peer` | protocol | Another agent through Bridge. Never `user` |
 | `bridge_reply` tool | partner MCP | Registered only when Bridge is on |
 | `bridge_check` tool | partner MCP | D333: the home reads its mailbox now, on the user's ask; registered only when Bridge is on |
@@ -1073,6 +1073,54 @@ mark; it stays a watch item for the human test (`todo.md`).
 
 **Built (D321):** web `memory.tsx` (`PeersTry`, `Say`), `views.tsx` (`FirstPeerNote`), `mem-view.ts`
 (`tryAgents`, `handoffPhase`); the Mac's panes the same; demo `DEMO_PEER=first`.
+
+## Your own agents, as yours (D418, 2026-11-20)
+
+**What happened on hel** (its Log and files, read only): on 11-17 the author said in iMessage 「用 Bridge 查看来信，
+回复 Mem 协作 Codex 的联络测试。」 and the partner found nothing. On 11-20 at 06:24:51Z three contact tests from his own
+Codex (「我是 Wey 的 Mem 协作 Codex」, sent days apart in the Space Everyone) arrived at once, each shown as
+**一个没留名字的 agent 发来请求** under a **第一次** note; the partner put up a card to answer them (Go, default hold);
+after the Go (and a restart for 0.1.0) each reply went **sending → unknown** in about 3 s, and none is in any outbox.
+
+**Why** (VERIFIED unless marked):
+
+| What | Why | Whose |
+|---|---|---|
+| Three days late, all at once | hel's connection is Only me and the mail was in Everyone. Before 01:25Z on 11-20 hel's nmem read only the context's own Space (INFERRED from its install time); from then nmem 0.10.121's identity inbox reads every Space in 45 to 52 s, and Ducter 0.0.99 gave a call 20 s (D409 came in 0.1.0), so reads were killed until one came back in time (INFERRED) | ours, fixed by D400 and D409; Mem's pace |
+| 一个没留名字的 agent | 0.10.121 names a native session's agent "Bridge agent" (generic) and the member by id; the message's own words were not read | ours |
+| A card for a ping | an own agent's message is a request to the partner, which asks first; 11-17's words were not in its input | ours |
+| "unknown", no message id | Mem's reply argv lived only in the client's memory; after the restart the reply went by the bare id with Only me's context, Mem refused (its words unseen, INFERRED), and the refusal matched no pattern, so "no answer". Recovery read the outbox, whose ops are `{operation, phase}` only, inspected none, and never came back on its own | ours |
+
+**What it does now.**
+
+- **Named by its own words.** An own agent (`mine`) Mem doesn't name is named by what its message says it is, when
+  that names a tool the person runs: **你的 Codex（Mem 协作） / your Codex (Mem 协作)**. One that is theirs and says
+  nothing of itself: **你自己的一个 agent / one of your own agents**. **一个没留名字的 agent / an unnamed agent** only
+  when nothing says it is theirs. A teammate's agent is never named from its text. The first note reads
+  **第一次：你的 Codex（Mem 协作）通过 Nowledge Mem 连上了 Ducter。…** and marks the first message that ever came.
+- **A contact test from your own agent is answered by code** (`pingOf` in `packages/protocol/src/peer-self.ts`): a
+  test that asks only to be acknowledged gets what it asks back ("Ducter 已收到 3590a347df。我正在运行。"), with no
+  card and no partner turn. Anything more goes to the partner as before.
+- **Late or together, said once.** One quiet line: **你的 Codex（Mem 协作）发来 3 条联络测试，最早的是 3 天前发的，都回了**.
+  When the person had asked for them in the last 7 days, or an answer didn't go, the partner says one line in its
+  place: **你的 Codex（Mem 协作）的 3 条联络测试刚到，最早的是 3 天前发的。按你 3 天前说的，都回了。**
+- **A reply goes Mem's way, and is sent or plainly not.** The reply route is kept with the message in the Log; without
+  one the inbox is read again for it. A refusal is failed, not unknown. Recovery inspects the outbox's bare ops in
+  every Space an op went out in, comes back by itself (30 s, 2 min, 10 min) until each settles, and sends once more
+  an op that an outbox Mem calls whole doesn't hold. Shots: `.shots/bridge-own/`.
+
+**For Mem (for Weizhen; draft, not sent):**
+
+1. `bridge reply <bare message id>` with a context of another Space than the message's: what does it answer? On hel it
+   failed in about 3 s; a JSON error with `error_code` and `outcome_unknown: false` would let a client say "not sent".
+2. The outbox lists an op as `{operation, phase}` only: a `reply_to` and the body's hash on each would let a client
+   find its own op without one `inspect` per op.
+3. The identity inbox takes 45 to 52 s across eight Spaces: a client that waits less loses every read. A first page
+   that answers sooner (or `--watch` lines that carry the new entries) would make mail arrive in seconds.
+4. An open message carries no send time (`sent_at` / `created_at`); Ducter derives it from `expires_at_ms` less 7 days.
+5. The personal Space's paging gap (sequence 21 to 25 on no page, D409) is still open.
+6. A native session's agent is always "Bridge agent": the session's own name (or its host) on the sender would name
+   it without reading its words.
 
 ## Open questions
 

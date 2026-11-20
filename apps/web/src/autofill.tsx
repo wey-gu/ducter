@@ -8,7 +8,7 @@ import { DETAIL_CLASS, KEY_ENV } from "@ducter/protocol";
 import { useEffect, useState } from "preact/hooks";
 import { A } from "./app.ts";
 import { title, type DecisionState } from "./store.ts";
-import { Btn, DangerButton, Seg, Toggle } from "./controls.tsx";
+import { Btn, DangerButton, How, Seg, Toggle } from "./controls.tsx";
 import { ago } from "./format.ts";
 import { TABLES } from "./i18n.ts";
 
@@ -231,7 +231,8 @@ export function AutofillSettings() {
   return (
     <>
       <p class="af-lede">{t("af.lede")}</p>
-      <p class="small lede-note">{t(f.keptIn === "keychain" ? "af.kept.keychain" : "af.kept.file", A.homeName || "")}</p>
+      <p class="small lede-note">{t("af.kept.short", A.homeName || "")}</p>
+      <How about={t("af.kept.short", A.homeName || "")} detail={t(f.keptIn === "keychain" ? "af.kept.keychain" : "af.kept.file")} />
       <section class="set">
         <h3>{t("af.signins")}</h3>
         <div class="set-card">
@@ -321,6 +322,7 @@ export function AutofillSettings() {
         <h3>{t("af.details")}</h3>
         {/* As on the Mac: what it sees and what it only fills, said once under the heading. */}
         <p class="g-note">{t("af.d.note")}</p>
+        <How about={t("af.details")} detail={t("af.d.how")} />
         <div class="set-card">
           {editing?.kind === "details" ? (
             <div class="set-item">

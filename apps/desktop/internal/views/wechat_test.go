@@ -89,7 +89,7 @@ func TestWechatLinked(t *testing.T) {
 			t.Errorf("missing %q in %q", want, tt.Texts())
 		}
 	}
-	if !hasTextLike(tt.Texts(), "There are no buttons in WeChat") {
+	if !hasTextLike(tt.Texts(), "to decide, reply") {
 		t.Errorf("the rule is missing: %q", tt.Texts())
 	}
 	_, _, tt = chatsApp(t, i18n.EN, []protocol.ChannelView{{Kind: "telegram", State: "off"}, {Kind: "slack", State: "off"}, {Kind: "wechat", State: "off", Reason: "expired"}})

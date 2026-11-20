@@ -161,9 +161,9 @@ Every pane walked in the real Mac app (cua-driver, scratch bundle id and HOME) a
   the update-all card); the Mac's versions note sits under its title like every group's.
 - 要不要先问's note and Passwords & cards' 你的资料 note sit under their headings on the web, as on the Mac.
 - **不用问我的 / Without asking (D413)** sits under 要不要先问 on the Partner page once the person has
-  said one: each row says what (**评审写完直接发到 GitHub**), where and their words on their own lines,
-  with **收回 / Take back**; the word after it is said under the group. Nothing shows before the first
-  one; 要不要先问's note says how one is made (**PR 评审你说一句“直接发，别问我”，就不再问…**).
+  said one: each row says what (**评审写完直接发到 GitHub**) and their words, the owners only when it is
+  bounded (D424), with **收回 / Take back**; the word after it is said under the group. Nothing shows
+  before the first one; until then 要不要先问's note says how one is made (**评审想直接发，跟它说一声就行。**, D424).
 - The records switch speaks of the partner as 它 / it, like every Settings line; Passwords & cards' kept line
   says 解锁用的密钥在 Mac 的钥匙串里 (密钥 alone read as the API keys right above it).
 
@@ -338,6 +338,30 @@ passes above, on the device card:
   (**你和 {name} 的对话都存在这台电脑上。**). A phone that is only a window has none.
 - **The role once.** The chip that says **帮 {name} 做事** is the role; the line under the name then
   says **待命** while idle.
+
+## Read at a glance (D424)
+
+The author on 0.1.1's Partner page: "这里好多文字啊，我完全看不进去". Five paragraphs on one page, the
+trust lists wrapping onto two lines an item, and the same thing said twice (the language under a picker
+that names it; **请你评审的 PR** under a title that means it). The rule, on every pane:
+
+- **A row is its title and at most one short line.** A group's note and a pane's lede note are one
+  clause. A line the control already says is dropped (the language picker, 浅色和深色).
+- **An explanation a careful person may want sits behind 怎么做到的 / How it works ›**, a quiet link
+  under the row or note; pressed, the words open in place in the muted ink and it reads **收起 / Hide**.
+  Used for: what the records switch reads and forgets; when a chat app is written to; where WeChat's words go after its day; where a saved
+  thing's key is kept; what the details' fields it can read; which versions the night's update takes.
+  Never for a word the control already says, never a ⓘ or a popover. Mac `how`, `explainedRow`,
+  `groupHow`, `ledeHow` (`settings.go`); web `How`, `Toggle`'s `how` (`controls.tsx`), outside the
+  switch's label so a tap never flips it.
+- **Lists are short phrases** (4–8 characters in zh): 改副本，不动原件 · 读项目和文件 · 查资料、看网页 ·
+  能撤销的按默认做; 发给别人的东西 · 改不回来的事 · 登录网站 · 付钱.
+- **Said once.** 要不要先问's note is one clause on how a review stops asking (**评审想直接发，跟它说一声就行。**),
+  only until one is standing; a standing permission is its title and **你说：「…」**, the owners only when
+  it is bounded.
+
+Before and after, per pane, are in D424; shots `.shots/settings-trim/{before,after}` (Mac 1000, web 390,
+zh and en, light and dark; `-open` with the tap pressed).
 
 ## Not done
 

@@ -18,7 +18,8 @@ import { last as lastMove } from "./nav.ts";
 import type { JSX } from "preact";
 import { AmbientLine } from "./ambient.tsx";
 import { A, candKey, effortWord, HANDHELD, placeKey, type SettingsPage } from "./app.ts";
-import { HARNESSES, isHarnessId, TRY_LIVE, type HeldMsg } from "@ducter/protocol";
+import { HARNESSES, isHarnessId, ownAgentSelf, TRY_LIVE, type HeldMsg } from "@ducter/protocol";
+import type { PingGroup } from "./store.ts";
 import { closingWords, computerApart, computerOf, computers, computerState, manyComputers, whereAsk, watchesBrowser, whereCandReason } from "./where.ts";
 import { ago, behind, cjkPad, deviceLabel, duration, harnessName, inPlaceTune, modelName, padEnd, phaseLine as phaseWords, sameWords, splitOutcome, spoken, when } from "./format.ts";
 import { markdown } from "./markdown.ts";
@@ -1359,10 +1360,11 @@ function EntryBody({ e, chipOwner, livingItems, join, prevUser }: { e: Entry; ch
     // A question it asked shows once, as its card (which already says who asks).
     const asked = e.peer.direction === "in" && [...A.S.decisions.values()].some((d) => d.asker?.messageId === e.peer!.messageId);
     // D321: the very first message from another agent explains itself once, under its line (or before its card).
-    const first = e.peer.direction === "in" && A.S.channel.find((x) => x.peer?.direction === "in") === e;
+    // D418: the partner marks that one (`first`); a window of the Log can't tell which is first.
+    const first = e.peer.direction === "in" && !!e.peer.first;
     return (
       <>
-        {!asked && <PeerLine b={e.peer} ts={e.ev.ts} />}
+        {!asked && !(e.peer.state === "ping" && A.S.pings.get(e.ev.seq)?.told) && <PeerLine b={e.peer} ts={e.ev.ts} seq={e.ev.seq} />}
         {first && <FirstPeerNote b={e.peer} />}
       </>
     );
@@ -1373,19 +1375,22 @@ function EntryBody({ e, chipOwner, livingItems, join, prevUser }: { e: Entry; ch
 /** D321: the first time another agent reaches the partner: who, how, and where the answers go. Shown once, by place. */
 function FirstPeerNote({ b }: { b: Bodies["bridge_msg"] }) {
   const who = peerName(b);
+  // D418: one of the person's own agents reads as theirs, connected, not a stranger that found Ducter.
   return (
     <div class="peer-first" role="note">
       <Coin harness={peerHarness(who)} size={28} />
-      <p>{t("peer.first.note", who, A.settings?.name ?? "Ducter")}</p>
+      <p>{capFirst(t(b.mine ? "peer.first.own" : "peer.first.note", who, A.settings?.name ?? "Ducter"))}</p>
     </div>
   );
 }
 
 /** One quiet line about the user's other agents (D170, J-Q5): who, and what, never Bridge words. */
-export function peerLineText(b: Bodies["bridge_msg"], ts: string, setAside?: number): string {
-  // D273: an agent is named by what it is ("Claude Code"), never 你的 / other; Mem may not say
-  // who sent it (nmem stores "another agent"): then the tool it runs in, else 一个没留名字的 agent.
+export function peerLineText(b: Bodies["bridge_msg"], ts: string, setAside?: number, ping?: PingGroup): string {
+  // D273: an agent is named by what it is ("Claude Code"); D418: one of the person's own agents named
+  // by its own words reads as theirs (你的 Codex（Mem 协作）); Mem may not say who sent it (nmem stores
+  // "another agent"): then the tool it runs in, else 你自己的一个 agent when it is theirs, else 一个没留名字的 agent.
   const who = peerName(b);
+  if (b.direction === "in" && b.state === "ping" && ping) return capFirst(pingText(who, ping, Date.parse(ts)));
   if (b.direction === "in" && b.state === "set_aside") return capFirst(t("peer.set_aside", who, String(setAside ?? 1)));
   if (b.direction === "in") {
     const gist = b.text.replace(/\s+/g, " ").trim();
@@ -1397,13 +1402,25 @@ export function peerLineText(b: Bodies["bridge_msg"], ts: string, setAside?: num
 
 /** What an agent Ducter didn't start is called (D273): its own name, else the tool it runs in
  *  (Claude Code 里的 agent / an agent in Claude Code), else 一个没留名字的 agent / an unnamed agent. */
-export function peerName(b: { agent?: string; from?: string; to?: string; host?: string; direction?: "in" | "out" }): string {
+export function peerName(b: { agent?: string; from?: string; to?: string; host?: string; direction?: "in" | "out"; mine?: boolean; selfNamed?: boolean; role?: string; text?: string }): string {
+  // D418: an own agent by its own words; a message logged before D418 is read the same way here.
+  const self = b.mine && b.selfNamed && b.agent ? { agent: b.agent, ...(b.role ? { role: b.role } : {}) } : b.mine && !b.agent && !b.host && b.direction === "in" && b.text ? ownAgentSelf(b.text) : undefined;
+  if (self) return self.role ? t("peer.yours.role", self.agent, self.role) : t("peer.yours", self.agent);
   const w = peerCalled(b, b.direction ?? (b.from ? "in" : "out"));
-  return w.name ?? (w.host ? t("peer.in.host", w.host) : t("peer.someone"));
+  return w.name ?? (w.host ? t("peer.in.host", w.host) : b.mine ? t("peer.own.someone") : t("peer.someone"));
 }
 
-/** "an unnamed agent asks you" starts a line as "An unnamed agent …"; an agent's own name stays as it is. */
-const capFirst = (s: string) => (s.startsWith("an unnamed agent") || s.startsWith("an agent in ") ? "A" + s.slice(1) : s);
+/** D418: the folded line for an own agent's contact tests: how many, the earliest's age when late, and whether answered. */
+export function pingText(who: string, g: PingGroup, at: number, now = Date.now()): string {
+  const done = g.sent.size + g.failed.size;
+  const status = g.failed.size ? (g.failed.size === g.n ? t("peer.ping.failed") : t("peer.ping.failed.some", g.failed.size)) : done < g.n ? t("peer.ping.answering") : t(g.n > 1 ? "peer.ping.answered.many" : "peer.ping.answered.one");
+  const late = g.earliest !== undefined && at - g.earliest >= 60 * 60_000 ? ago(A.L, new Date(g.earliest).toISOString(), now) : "";
+  if (g.n > 1) return late ? t("peer.ping.many.late", who, g.n, late, status) : t("peer.ping.many", who, g.n, status);
+  return late ? t("peer.ping.one.late", who, late, status) : t("peer.ping.one", who, status);
+}
+
+/** "an unnamed agent asks you" starts a line as "An unnamed agent …" (D418: "your …", "one of your own …" too); an agent's own name stays as it is. */
+const capFirst = (s: string) => (/^(an unnamed agent|an agent in |your |one of your own )/.test(s) ? s[0]!.toUpperCase() + s.slice(1) : s).replace(/） /g, "）");
 
 /** Who asks on a card (D273): "Claude Code（~/dev/ducter）问你" / "Claude Code (~/dev/ducter) asks you". */
 export function askerText(a: { agent: string; where?: string }): string {
@@ -1411,11 +1428,12 @@ export function askerText(a: { agent: string; where?: string }): string {
   return capFirst(a.where ? t("peer.asks.where", who, a.where) : t("peer.asks", who));
 }
 
-function PeerLine({ b, ts }: { b: Bodies["bridge_msg"]; ts: string }) {
+function PeerLine({ b, ts, seq }: { b: Bodies["bridge_msg"]; ts: string; seq?: number }) {
   const n = b.state === "set_aside" ? A.S.setAside.get(`${b.from}|${ts.slice(0, 10)}`)?.n : undefined;
+  const ping = b.state === "ping" && seq !== undefined ? A.S.pings.get(seq) : undefined;
   return (
-    <div class="peerline" role="status">
-      <span>{peerLineText(b, ts, n)}</span>
+    <div class={ping ? "peerline wrap" : "peerline"} role="status">
+      <span>{peerLineText(b, ts, n, ping)}</span>
     </div>
   );
 }
@@ -2648,7 +2666,6 @@ function TalkSettings() {
         <div class="set-item talk-row">
           <span class="grow">
             <b>{t("settings.talk.row")}</b>
-            <small>{s.language === "auto" ? t("partner.talk.auto.note") : t("partner.talk.fixed.note", autonym(s.language))}</small>
           </span>
           <span class="pick">
             <Select
@@ -2695,7 +2712,8 @@ function StandingList() {
             </svg>
             <span class="grow">
               <span>{t(`standing.${x.action}`)}</span>
-              <small>{x.orgs?.length ? t("standing.where.orgs", x.orgs.join(sep)) : t("standing.where.any")}</small>
+              {/* D424: "PRs that ask for your review" is what the title already means; the owners only when bounded. */}
+              {x.orgs?.length ? <small>{t("standing.where.orgs", x.orgs.join(sep))}</small> : null}
               <small>{t("standing.said", x.text)}</small>
             </span>
             <DangerButton quiet label={t("standing.revoke")} about={t(`standing.${x.action}`)} onClick={() => (A.send({ t: "standing_revoke", id: x.id }), say("trust", t("standing.revoked")))} />
@@ -2727,8 +2745,8 @@ function TrustSettings() {
   return (
     <section class="set">
       <h3>{t("partner.trust.title")}</h3>
-      {/* As on the Mac: what the lists are is said under the heading, before them. */}
-      <p class="g-note">{t("partner.trust.note")}</p>
+      {/* D424: one clause on how a review stops asking, only until one does (the list then shows it). */}
+      {!A.standing.length && <p class="g-note">{t("partner.trust.note")}</p>}
       <div class="set-card trust-card">
         {list("partner.trust.own", "partner.trust.own", "own")}
         {list("partner.trust.asks", "partner.trust.asks", "asks")}

@@ -55,7 +55,7 @@ test("a file that reaches the internet is told what to fix", async () => {
   user("make me a CI status app");
   await partner.idle();
   expect(r!.ok).toBe(true);
-  expect(r!.fix!.length).toBe(5); // the four the sandbox blocks, and D410: no kit
+  expect(r!.fix!.length).toBe(7); // the four the sandbox blocks, D410: no kit, and D422: no mark, no shelf line
 });
 
 test("加个合计: changed by edits (a new version, the old one kept), the card says changed", async () => {

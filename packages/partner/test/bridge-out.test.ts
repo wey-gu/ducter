@@ -680,7 +680,7 @@ describe("nmem client: contacts, send, recovery (stub binary)", () => {
     chmodSync(bin, 0o755);
     const c = createNmemBridge({ context: "ducter-main", bin, me: "m-weyl" });
     expect(await c.send!("ct-1", "hi")).toMatchObject({ ok: false, reason: "unavailable", operation: "op-3" });
-    expect(await c.outbox!()).toEqual({ ok: true, ops: [{ operation: "op-3", state: "pending", inReplyTo: "bm-1" }] });
+    expect(await c.outbox!()).toEqual({ ok: true, ops: [{ operation: "op-3", state: "pending", inReplyTo: "bm-1" }], complete: false });
     expect(await c.inspect!("op-3")).toEqual({ ok: true, op: { operation: "op-3", state: "pending", body: "hi" } });
     expect(await c.resume!("op-3")).toEqual({ ok: true, messageId: "bm-3" });
     expect(opOf({ id: "x", state: "Delivered", message_id: "m" })).toEqual({ operation: "x", state: "sent", messageId: "m" });
@@ -1053,7 +1053,7 @@ describe("D334: the address is the identity, not the Space (the fake nmem with S
 
   test("a message sent in a team Space is read there and answered there", async () => {
     const f = rig();
-    f.deliver("codex-mem-in-everyone", "联络测试：收到请回一句「收到」。", "ws-everyone");
+    f.deliver("codex-mem-in-everyone", "bridge 那块今晚能合吗？收到请回一句「收到」。", "ws-everyone");
     f.deliver("codex-mem", "Only me 里的一条。");
     const r = await f.client.check(new Set());
     expect(r.ok).toBe(true);
@@ -1081,7 +1081,7 @@ describe("D334: the address is the identity, not the Space (the fake nmem with S
       s.end();
     }, { ...world([]), bridge: f.client });
     await t.partner.checkBridge(); // B14's mark: what was there before is not a request
-    f.deliver("codex-mem-in-everyone", "联络测试：收到请回一句「收到」。", "ws-everyone");
+    f.deliver("codex-mem-in-everyone", "bridge 那块今晚能合吗？收到请回一句「收到」。", "ws-everyone");
     await t.partner.checkBridge();
     await t.partner.idle();
     expect(r[0]).toMatchObject({ ok: true });

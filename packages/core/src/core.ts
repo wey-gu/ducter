@@ -1202,9 +1202,28 @@ export function startCore(opts: CoreOptions = {}): Core {
   const did = createDid({ log, tasks, uses: () => autofill.store.view().uses, deviceName: (dev) => (dev === "local" ? computers.homeName() : computers.nameOf(dev)), folder: (id) => changes.folder(id), now: () => clock.now() });
   registerDidTool(mcp, did, () => clock.now());
   // D285: 一直在跑的 / Ongoing: routines and tasks that look again on their own, paused and resumed.
-  const ongoing = createOngoing({ dataDir, log, tasks, waiters: work.waiters, routines: work.routines, marks, clock, onChange: () => ws.ongoingChanged(), reviews: (id) => taskSourcesRef?.pile.standing(id), asking: (id) => !!taskSourcesRef?.pile.asking(id), app: (id) => ((m) => (m ? { id: m.id, name: m.name } : undefined))(boards.appOf(id)) });
+  const ongoing = createOngoing({ dataDir, log, tasks, waiters: work.waiters, routines: work.routines, marks, clock, onChange: () => (ws.ongoingChanged(), apps.liveMoved()), reviews: (id) => taskSourcesRef?.pile.standing(id), asking: (id) => !!taskSourcesRef?.pile.asking(id), app: (id) => ((m) => (m ? { id: m.id, name: m.name } : undefined))(boards.appOf(id)) });
   // D407: an app given to a task (or taken back) changes what its Ongoing card opens.
   apps.onChange((c) => void (c.kind === "give" && setTimeout(() => ws.ongoingChanged(), 0)));
+  // D422: an app's state has one truth each. Kept current: the Ongoing card of the task that keeps
+  // it (running, resting until its next time, paused, its last round failed). Being changed: the
+  // person's words about it are in and the partner hasn't answered yet.
+  apps.keptBy((taskId) => {
+    const it = ongoing.list(persona.id).find((i) => i.id === taskId || i.taskId === taskId);
+    if (!it) return undefined;
+    const runs = [...it.runs].reverse();
+    const lastRun = runs.find((r) => r.state !== "running" && r.state !== "skipped");
+    const lastGood = runs.find((r) => r.state === "done" || r.state === "met" || r.state === "looked");
+    const state = it.state === "running" ? "running" : it.state === "paused" ? "paused" : lastRun?.state === "failed" ? "failed" : "resting";
+    const why = state === "failed" ? lastRun?.line : state === "paused" ? it.pauseWhy : undefined;
+    return { task: taskId, title: it.title, state, of: { kind: it.kind, id: it.id }, ...(lastGood ? { last: lastGood.at } : {}), ...(it.nextAt && state !== "paused" ? { next: it.nextAt } : {}), ...(why ? { why: why.slice(0, 140) } : {}) };
+  });
+  log.subscribe((e) => {
+    if (e.kind === "user_msg" && e.origin === "user") {
+      const a = (e.body as Bodies["user_msg"]).app;
+      if (a && !a.ask) apps.changing(a.id, true);
+    } else if (e.kind === "ai_msg" && e.stream === "channel") apps.answeredAll();
+  });
   // D394: a review round's card asked or answered moves its task between 等你 and 等下一次.
   const roundCards = new Set<string>();
   log.subscribe((e) => {

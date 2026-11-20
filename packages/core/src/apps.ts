@@ -16,6 +16,8 @@ import {
   APP_REMOVED_DAYS,
   APP_VERSIONS_KEPT,
   appDocument,
+  appKitIssues,
+  type AppLive,
   appSummary,
   appTint,
   type AppIcon,
@@ -40,7 +42,7 @@ export interface AppsStore {
   open(id: string, o: { transport: "message" | "fetch"; dark?: boolean; lang?: string }): AppOpen | undefined;
   make(persona: string, a: { name: string; html: string; ask?: string; note?: string; task?: AppTask; kind?: AppMeta["kind"]; data?: Record<string, unknown>; summary?: string; icon?: AppIcon; tint?: AppTint }): { ok: true; app: AppMeta } | { ok: false; error: string };
   /** D410: the shelf's 「⋯」: a new name, pinned or not, no task keeping it current any more. */
-  set(id: string, c: { name?: string; pinned?: boolean; untask?: boolean }): { ok: true; app: AppMeta } | { ok: false; error: string };
+  set(id: string, c: { name?: string; pinned?: boolean; untask?: boolean; icon?: AppIcon }): { ok: true; app: AppMeta } | { ok: false; error: string };
   /** D410: the app's own line for its tile (ducter.summary, or the partner's). */
   summarize(id: string, text: string): boolean;
   /** D410: a deleted app comes back (within APP_REMOVED_DAYS), its data with it. */
@@ -82,6 +84,16 @@ export interface AppsStore {
   answered(id: string, ref?: string): void;
   /** The ask still waiting, if any. */
   waiting(id: string): string | undefined;
+  /** D422: its page threw on this version: kept until the next version, shown with a fix. */
+  broke(id: string, version: number, text: string): boolean;
+  /** D422: the person asked for a change and the partner hasn't answered yet (on), or it answered (off). */
+  changing(id: string, on: boolean): void;
+  /** D422: every app being changed now goes back to plain (the partner answered). */
+  answeredAll(): void;
+  /** D422: how a repeating task keeps an app current (from Ongoing); core wires it once Ongoing exists. */
+  keptBy(fn: (taskId: string) => AppLive["kept"] | undefined): void;
+  /** D422: Ongoing moved: the list goes out again when an app is kept by a task. */
+  liveMoved(): void;
   onChange(fn: (c: AppChange) => void): () => void;
 }
 
@@ -188,8 +200,36 @@ export function openApps(o: { dataDir: string; now?: () => Date }): AppsStore {
     }
   };
   if (existsSync(bin)) for (const id of readdirSync(bin)) removedMeta(id);
+  // D422: what each app is doing now, worked out on every list from one truth each: Ongoing for the
+  // task that keeps it, the person's words not yet answered, its own page, its file's look.
+  const changing = new Map<string, number>();
+  const looks = new Map<string, { version: number; old: boolean }>();
+  let kept: (taskId: string) => AppLive["kept"] | undefined = () => undefined;
+  const liveOf = (m: AppMeta): AppLive | undefined => {
+    const l: AppLive = {};
+    const k = m.task ? kept(m.task.id) : undefined;
+    if (k) l.kept = k;
+    const since = changing.get(m.id);
+    // A change nobody answered stops showing after 10 minutes (the partner failed quietly).
+    if (since !== undefined && now().getTime() - since < 10 * 60_000) l.changing = { since: new Date(since).toISOString() };
+    if (m.broke && m.broke.version === m.version) l.broke = { text: m.broke.text };
+    let look = looks.get(m.id);
+    if (!look || look.version !== m.version) {
+      look = { version: m.version, old: !m.kind && appKitIssues(html(m.id) ?? "").length > 0 };
+      looks.set(m.id, look);
+    }
+    if (look.old) l.old = true;
+    return Object.keys(l).length ? l : undefined;
+  };
   const store: AppsStore = {
-    list: (persona) => [...metas.values()].filter((m) => m.persona === persona).sort((a, b) => b.updated.localeCompare(a.updated)),
+    list: (persona) =>
+      [...metas.values()]
+        .filter((m) => m.persona === persona)
+        .sort((a, b) => b.updated.localeCompare(a.updated))
+        .map((m) => {
+          const live = liveOf(m);
+          return live ? { ...m, live } : m;
+        }),
     get: (id) => metas.get(id),
     html,
     data: (id) => (metas.has(id) ? data(id) : {}),
@@ -308,6 +348,8 @@ export function openApps(o: { dataDir: string; now?: () => Date }): AppsStore {
       keepOld(m);
       write(join(dir(id), "index.html"), next);
       Object.assign(m, { name: name || m.name, updated: now().toISOString(), version: m.version + 1, size: next.length, back: true as const });
+      delete m.broke;
+      changing.delete(id);
       if (c.note) m.note = c.note.slice(0, 120);
       else delete m.note;
       saveMeta(m);
@@ -323,6 +365,7 @@ export function openApps(o: { dataDir: string; now?: () => Date }): AppsStore {
       rmSync(join(dir(id), `v${v}.html`), { force: true });
       write(join(dir(id), "index.html"), prev);
       Object.assign(m, { updated: now().toISOString(), version: m.version + 1, size: prev.length });
+      delete m.broke;
       delete m.note;
       if (olds(id).length) m.back = true;
       else delete m.back;
@@ -372,6 +415,7 @@ export function openApps(o: { dataDir: string; now?: () => Date }): AppsStore {
         if (!name) return { ok: false, error: "an app needs a short name" };
         m.name = name;
       }
+      if (c.icon) m.icon = c.icon;
       if (c.pinned === true) m.pinned = true;
       else if (c.pinned === false) delete m.pinned;
       const untask = c.untask && m.task;
@@ -450,6 +494,33 @@ export function openApps(o: { dataDir: string; now?: () => Date }): AppsStore {
       if (a && (!ref || a.waiting === ref)) delete a.waiting;
     },
     waiting: (id) => asks.get(id)?.waiting,
+    broke(id, version, text) {
+      const m = metas.get(id);
+      const t = String(text ?? "").replace(/\s+/g, " ").trim().slice(0, 200);
+      if (!m || version !== m.version || !t || m.broke?.version === version) return false;
+      m.broke = { text: t, at: now().toISOString(), version };
+      saveMeta(m);
+      emit({ kind: "list" });
+      return true;
+    },
+    changing(id, on) {
+      if (!metas.has(id)) return;
+      if (on === changing.has(id)) return;
+      if (on) changing.set(id, now().getTime());
+      else changing.delete(id);
+      emit({ kind: "list" });
+    },
+    answeredAll() {
+      if (!changing.size) return;
+      changing.clear();
+      emit({ kind: "list" });
+    },
+    keptBy(fn) {
+      kept = fn;
+    },
+    liveMoved() {
+      if ([...metas.values()].some((m) => m.task)) emit({ kind: "list" });
+    },
     onChange(fn) {
       listeners.add(fn);
       return () => listeners.delete(fn);

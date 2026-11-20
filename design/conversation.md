@@ -149,7 +149,7 @@ to where the person last spoke.
 
 ## Several things in one message (D425)
 
-*Who and how it starts (research/174):* anyone who writes the way people write to a colleague,
+*Who and how it starts (research/175):* anyone who writes the way people write to a colleague,
 several things in one message ("看看我下周有什么预约，再把这三个记进日历"; "修了 #10559 #10560 #10571，再查下
 main 的 CI"). Nothing to address or tick: the first time, they see their own words come back under their
 message as a few lines, each with a mark that changes as it gets done. Before D425 one task took the
@@ -172,7 +172,7 @@ whole message and came back as one blob (「三项安排也都没写入」), or 
   own state, moves all its open lines at once. Core logs `asks` `{msgSeq, lines}` whenever one changes
   (`core/src/asks.ts`); clients keep the latest per message. A second task opened for one message with
   none named puts each task's title under it (the floor).
-- **When the partner speaks** (from the motivation and principle 7, research/174 §4). A line done
+- **When the partner speaks** (from the motivation and principle 7, research/175 §4). A line done
   while other lines of the same message still work is not told: its tick is the evidence, and a ping
   for one of several is the stream of pings Ducter exists to end. Core holds that report (no partner
   turn). A question or a failure is said at once, with its card. When the last line settles, the held

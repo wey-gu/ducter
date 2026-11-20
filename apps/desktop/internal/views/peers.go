@@ -3,9 +3,11 @@ package views
 import (
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/egoist/mygo/ui"
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
+	"github.com/wey-gu/ducter/apps/desktop/internal/store"
 )
 
 // The user's other agents (D170, design/bridge.md X1): agents Ducter didn't
@@ -63,9 +65,55 @@ func (a *App) peerWho(agent string) string {
 	return a.peerCalledText(agent, "")
 }
 
-// peerWhoOf is peerWho for a message, with the tool it runs in.
+// peerWhoOf is peerWho for a message, with the tool it runs in. D418: one
+// of the person's own agents named by its own words reads as theirs (你的
+// Codex（Mem 协作）); one Mem names in no way is 你自己的一个 agent.
 func (a *App) peerWhoOf(b *protocol.BridgeMsg) string {
-	return a.peerCalledText(peerCalled(b))
+	if b.Mine && b.SelfNamed && b.Agent != "" {
+		if b.Role != "" {
+			return a.L.T("peer.yours.role", b.Agent, b.Role)
+		}
+		return a.L.T("peer.yours", b.Agent)
+	}
+	name, host := peerCalled(b)
+	if b.Mine && name == "" && host == "" {
+		return a.L.T("peer.own.someone")
+	}
+	return a.peerCalledText(name, host)
+}
+
+// pingText is the folded line for an own agent's contact tests (D418): how
+// many, the earliest's age when late, and whether they were answered.
+func (a *App) pingText(who string, g *store.PingGroup, ts string) string {
+	status := a.L.T("peer.ping.answered.one")
+	switch {
+	case len(g.Failed) > 0 && len(g.Failed) == g.N:
+		status = a.L.T("peer.ping.failed")
+	case len(g.Failed) > 0:
+		status = a.L.T("peer.ping.failed.some", len(g.Failed))
+	case len(g.Sent) < g.N:
+		status = a.L.T("peer.ping.answering")
+	case g.N > 1:
+		status = a.L.T("peer.ping.answered.many")
+	}
+	late := ""
+	if at := store.ParseTime(ts); !g.Earliest.IsZero() && at.Sub(g.Earliest) >= time.Hour {
+		d := a.Now().Sub(g.Earliest)
+		if d >= 36*time.Hour {
+			late = a.L.T("time.ago.day", int(d.Hours()/24+0.5))
+		} else {
+			late = a.L.T("time.ago.hour", int(d.Hours()))
+		}
+	}
+	switch {
+	case g.N > 1 && late != "":
+		return a.L.T("peer.ping.many.late", who, g.N, late, status)
+	case g.N > 1:
+		return a.L.T("peer.ping.many", who, g.N, status)
+	case late != "":
+		return a.L.T("peer.ping.one.late", who, late, status)
+	}
+	return a.L.T("peer.ping.one", who, status)
 }
 
 func (a *App) peerCalledText(name, host string) string {
@@ -81,8 +129,11 @@ func (a *App) peerCalledText(name, host string) string {
 // capPeer starts a line "An unnamed agent …" or "An agent in …"; an
 // agent's own name stays as it is.
 func capPeer(s string) string {
-	if strings.HasPrefix(s, "an unnamed agent") || strings.HasPrefix(s, "an agent in ") {
-		return "A" + s[1:]
+	s = strings.ReplaceAll(s, "） ", "）")
+	for _, p := range []string{"an unnamed agent", "an agent in ", "your ", "one of your own "} {
+		if strings.HasPrefix(s, p) {
+			return strings.ToUpper(s[:1]) + s[1:]
+		}
 	}
 	return s
 }
@@ -249,15 +300,20 @@ func (a *App) peerAsked(messageID string) bool {
 }
 
 // peerLine draws that line, small and centred, with the agent's coin.
-func (a *App) peerLine(c *ui.Context, b *protocol.BridgeMsg, setAside int) {
+func (a *App) peerLine(c *ui.Context, b *protocol.BridgeMsg, setAside int, ping *store.PingGroup, ts string) {
 	t := a.T
 	text := a.peerLineText(b)
+	lines := 1
 	if b.State == "set_aside" {
 		text = capPeer(a.L.T("peer.set_aside", a.peerWhoOf(b), itoa(int64(setAside))))
 	}
+	if b.State == "ping" && ping != nil {
+		text = capPeer(a.pingText(a.peerWhoOf(b), ping, ts))
+		lines = 2 // D418: its facts wrap, never cut
+	}
 	ui.Row(c).Justify(ui.Center).Children(func() {
 		ui.Row(c).Gap(t.S1+2).AlignItems(ui.Center).Padding(3, t.S3).Radius(999).Background(t.SurfaceSunken).Children(func() {
-			uiText(c, text).FontSize(t.XS).TextColor(t.InkMuted).MaxLines(1)
+			uiText(c, text).FontSize(t.XS).TextColor(t.InkMuted).MaxLines(lines)
 		})
 	})
 }

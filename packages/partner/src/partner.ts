@@ -57,8 +57,9 @@ import { resolveWindows, WINDOW_MAX, WINDOW_MIN } from "../../protocol/src/harne
 
 /** D385: the partner's line before a plan-first hand-over, when the model said none. */
 const PLAN_FIRST_LINE = { zh: "好，我先看一遍，出个方案给你，你点头再做。", en: "OK. I'll read them first and show you a plan; nothing starts until you say so." };
+import { pingOf } from "../../protocol/src/peer-self.ts";
 import { bridgeFor, bridgeKeyFor, type BridgeClient, type BridgeContact, type BridgeOp, type BridgeResult } from "./bridge.ts";
-import { claimText, fixedOutcome, followCandidates, followGroup, followLine, foldOut, inQuiet, langOfRequest, lostLine, mayHaveGone, namesForUser, overAsks, peerAnswer, whoForModel, whoForUser, AFTER_SEND_MS, CHECK_EVERY_MS, DAY_MS, FOLLOW_ACTIVE_MS, LIVE_CHECK_MS, LIVE_MS, WAIT_RETRY_MS, WATCH_BACKOFF_MAX_MS, WATCH_BACKOFF_MS, WATCH_TRIES, WAIT_S, WAITING_EVERY_MS, STUCK_EVERY_MS, PEER_ASKS_OPEN, PEER_NOT_YET_MS, SENDER_DAILY, TRUST_AFTER, TRUST_WINDOW_MS, TRUSTED_DAILY, type OutKind, type OutOp, type OutState } from "./bridge-out.ts";
+import { claimText, fixedOutcome, followCandidates, followGroup, followLine, foldOut, inQuiet, langOfRequest, lostLine, mayHaveGone, namesForUser, overAsks, peerAnswer, pingLine, recipientKey, whoForModel, whoForUser, PING_LATE_MS, PING_SAID_MS, AFTER_SEND_MS, CHECK_EVERY_MS, DAY_MS, FOLLOW_ACTIVE_MS, LIVE_CHECK_MS, LIVE_MS, WAIT_RETRY_MS, WATCH_BACKOFF_MAX_MS, WATCH_BACKOFF_MS, WATCH_TRIES, WAIT_S, WAITING_EVERY_MS, STUCK_EVERY_MS, PEER_ASKS_OPEN, PEER_NOT_YET_MS, SENDER_DAILY, TRUST_AFTER, TRUST_WINDOW_MS, TRUSTED_DAILY, type OutKind, type OutOp, type OutState } from "./bridge-out.ts";
 import { createNmemClient, noMemory, THREADS_MAX, type MemoryClient, type MemoryHit, type Replaced, type ThreadHit } from "./memory.ts";
 import { withOutbox } from "./outbox.ts";
 import { AI_TOOLS, memSource } from "../../protocol/src/mem-source.ts";
@@ -2338,7 +2339,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     core.mcp.register(
       "partner",
       "app",
-      "Make or change one of the user's own small apps: one HTML file Ducter keeps in their 你的小应用 / Your apps; they reopen it on any device. Only when they ask for an app, tracker, tool or page to keep (a one-off answer stays a table or list). New: name + html (+ icon). Change: id + edits [{find, replace}] (exact text; read: true first if unsure) or the whole html. data puts values into its storage (a new one, or when they ask you to fill it). remove: only when they say to delete it. About something you know (a trip on their calendar, what you booked or paid for, a task's numbers): name it for that (\"北京出差 11/20–21\"), put what you know into data, each item with from (\"你的预订\"; they can edit it), and note one short line of what you filled in. The file: inline CSS and JS only, nothing from the internet (no CDN, fetch, web fonts or images by URL), no alert/confirm/localStorage. ducter.get(key) / ducter.set(key, value) (JSON, the same on every device), ducter.onChange(fn); ducter.ask(text) returns your answer as a Promise, only on the user's tap; ducter.summary(text) on every change: its shelf line (\"3 笔，合计 ¥1,698\"). Draw with Ducter's kit, never a native select or number input: <main class=\"k-app\">, a .k-sum first (k-sum-label, k-sum-value: the total or the state, big; k-sum-sub), k-h, k-card, k-list > k-row (k-row-main, k-row-sub, k-row-value), k-chips > button.k-chip[aria-pressed], input.k-num inputmode=decimal, k-field > label + input.k-input, k-btn / k-btn primary, k-from, k-empty (a warm line while there is nothing yet); colours var(--d-bg|card|sunken|ink|soft|muted|line|accent|good|bad). 360px wide first; the user's language. task: a repeating task that fills it each round (a review task: no html, Ducter's board).",
+      "Make or change one of the user's own small apps: one HTML file Ducter keeps in their 你的小应用 / Your apps; they reopen it on any device. Only when they ask for an app, tracker, tool or page to keep (a one-off answer stays a table or list). New: name + html + icon + summary. Change: id + edits [{find, replace}] (exact text; read: true first if unsure) or the whole html. data puts values into its storage (a new one, or when they ask you to fill it). remove: only when they say to delete it. It opens filled: what they just told you and what you know (a trip on their calendar, what you booked or paid for, a task's numbers) goes into data in the same call, items you knew with from (\"你的预订\"); name it for that (\"北京出差 11/20–21\"); note one short line of what you filled in. Answer first: the k-sum on top holds the one thing they'd open it for (the total, what's left, the streak, since the last feed), k-sum-next the next thing; then their items; adding last, folded: <details class=\"k-add\"><summary>记一笔</summary>…</details>. The file: inline CSS and JS only, nothing from the internet (no CDN, fetch, web fonts or images by URL), no alert/confirm/localStorage. ducter.get(key) / ducter.set(key, value) (JSON, the same on every device), ducter.onChange(fn); ducter.ask(text) returns your answer as a Promise, only on the user's tap; ducter.summary(text) on every change: its shelf line (\"3 笔，合计 ¥1,698\"). Draw with Ducter's kit, never the system's select, number, date or time input: <main class=\"k-app\">, k-sum (k-sum-label, k-sum-value, k-sum-sub), k-h, k-card, k-list > k-row (k-row-main, k-row-sub, k-row-value), k-chips > button.k-chip[aria-pressed] (a longer list: select.k-select), input.k-num inputmode=decimal, k-field > label + input.k-input, k-btn / k-btn primary, k-from, k-empty (once in the whole app, one calm line and the one first thing to do); each fact its own element, never joined with ·; no delete button on every row (tap a row to change or remove it); colours var(--d-bg|card|sunken|ink|soft|muted|line|accent|good|bad). 360px wide first; the user's language. task: a repeating task that fills it each round (a review task: no html, Ducter's board).",
       {
         type: "object",
         properties: {
@@ -2348,7 +2349,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           edits: { type: "array", items: { type: "object", properties: { find: { type: "string" }, replace: { type: "string" } }, required: ["find", "replace"] } },
           data: { type: "object", description: "Keys to put into its storage (null deletes one)" },
           read: { type: "boolean", description: "Get its file and data back" },
-          icon: { type: "string", enum: [...APP_ICONS], description: "Its mark on the shelf" },
+          icon: { type: "string", enum: [...APP_ICONS], description: "Its mark, by what it's about" },
           summary: { type: "string", description: "Its shelf line, when you fill it" },
           remove: { type: "boolean" },
           shelf: { type: "boolean", description: "Where are my apps: their shelf under your line" },
@@ -2413,7 +2414,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           const r = apps.make(persona, { name: typeof a.name === "string" ? a.name : "", html, ...(ask ? { ask: (ask.body as Bodies["user_msg"]).text } : {}), ...(note ? { note } : {}), ...(task ? { task: { id: task.taskId, title: task.title } } : {}), ...(seed ? { data: seed } : {}), ...(summary ? { summary } : {}), ...(icon ? { icon } : {}) });
           if (!r.ok) return { ok: false, error: r.error };
           card(t, r.app, "made");
-          const lint = appLint(html);
+          // D422: its tile needs its mark and its line from the start (the shelf shows both).
+          const lint = [...appLint(html), ...(icon ? [] : ["no icon: call again with this id and icon, the mark for what it's about"]), ...(summary || /ducter\.summary\(/.test(html) ? [] : ["no shelf line: call ducter.summary(...) on every change in the file, or give summary"])];
           return { ok: true, id: r.app.id, ...(lint.length ? { fix: lint } : {}), say: (lint.length ? "Fix these with edits before you say it's ready. " : "") + (seed ? "Your line says what you already filled in and from where (\"做好了，11/20 的高铁和两晚酒店已经从你的预订里填进去了。\"). " : "It is empty. If you already know things for it (a trip this conversation booked or its calendar has, its costs and dates; a task's numbers), first call again with this id: data (each item with from) and a name for that, then say what you filled in. ") + after };
         }
         let changed: AppMeta | undefined;
@@ -2434,7 +2436,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           if (!changed) card(t, apps.get(m.id)!, "data");
         }
         if (summary) apps.summarize?.(m.id, summary);
-        if (!changed && !put.length && !task && !summary) return { ok: false, error: "Nothing to do: give html, edits, data, a new name, task or read: true." };
+        if (icon && icon !== m.icon) apps.set?.(m.id, { icon });
+        if (!changed && !put.length && !task && !summary && !icon) return { ok: false, error: "Nothing to do: give html, edits, data, a new name, task or read: true." };
         const lint = changed ? appLint(apps.html(m.id) ?? "") : [];
         return { ok: true, id: m.id, ...(changed ? { version: changed.version } : {}), ...(put.length ? { put } : {}), ...(lint.length ? { fix: lint } : {}), say: (lint.length ? "Fix these with edits. " : "") + after };
       },
@@ -3819,7 +3822,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     return (all.find((e) => !e.body.state) ?? all[0])?.body;
   }
   /** Who an outgoing message to the sender of `m` goes to, as logged on each of its events (D334: in its Space). */
-  const peerOf = (m: Bodies["bridge_msg"]) => ({ to: m.from, ...(m.agent ? { agent: m.agent } : {}), ...(m.host ? { host: m.host } : {}), ...(m.mine ? { mine: true } : {}), ...(m.space ? { space: m.space } : {}), ...(m.spaceLabel ? { spaceLabel: m.spaceLabel } : {}) });
+  const peerOf = (m: Bodies["bridge_msg"]) => ({ to: m.from, ...(m.agent ? { agent: m.agent } : {}), ...(m.selfNamed ? { selfNamed: true } : {}), ...(m.role ? { role: m.role } : {}), ...(m.host ? { host: m.host } : {}), ...(m.mine ? { mine: true } : {}), ...(m.space ? { space: m.space } : {}), ...(m.spaceLabel ? { spaceLabel: m.spaceLabel } : {}) });
   /** The request a task was opened for, while its outcome hasn't been sent back (J-Q7). */
   function bridgeOwed(taskId: string): Bodies["bridge_msg"] | undefined {
     const ops = [...foldOut(loggedBridge()).values()];
@@ -3836,8 +3839,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
 
   // What the code told the user (not the model), carried into the next turn's input.
   const codeSaid: string[] = [];
-  function tellUser(text: string) {
-    core.log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text } });
+  function tellUser(text: string, pings?: string[]) {
+    core.log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text, ...(pings?.length ? { pings } : {}) } });
     codeSaid.push(text);
   }
 
@@ -3859,7 +3862,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     const first = [...foldOut(loggedBridge()).values()].find((x) => x.last.taskId === o.last.taskId);
     return first?.opId === o.opId ? "claim" : "result";
   }
-  async function deliver(base: OutBase, kind: "send" | "reply"): Promise<OutState> {
+  async function deliver(base: OutBase, kind: "send" | "reply", quiet = false): Promise<OutState> {
     if (!bridge) return "failed";
     const op = { ...base, opId: base.opId ?? newId("bo") };
     inFlight.add(op.opId);
@@ -3869,7 +3872,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       // routes it to that sender, the only address Ducter has for an agent Mem doesn't name.
       const via = kind === "send" ? replyHandle(op.contact) : undefined;
       // D334: in the Space it goes out in: the message's own for a reply, the card's for a send.
-      const r = via ? await bridge.reply(via, op.text, bridgeIn(via)?.space ?? op.space) : kind === "send" ? await bridge.send!(op.contact!, op.text, op.space) : await bridge.reply(op.inReplyTo!, op.text, op.space ?? bridgeIn(op.inReplyTo!)?.space);
+      // D418: Mem's own reply route for that message, kept in the Log (a restart empties the client's map).
+      const r = via ? await bridge.reply(via, op.text, bridgeIn(via)?.space ?? op.space, bridgeIn(via)?.route) : kind === "send" ? await bridge.send!(op.contact!, op.text, op.space) : await bridge.reply(op.inReplyTo!, op.text, op.space ?? bridgeIn(op.inReplyTo!)?.space, bridgeIn(op.inReplyTo!)?.route);
       if (r.ok) {
         logOut(op, "sent", { messageId: r.messageId ?? "", ...(r.operation ? { operation: r.operation } : {}) });
         watchFor(r.messageId ?? ""); // D335: its answer is looked for soon, not at the next period
@@ -3880,7 +3884,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         // short bounded retry: definitely not sent, so the user may simply ask again.
         logOut(op, "failed");
         const o = foldOut(loggedBridge()).get(op.opId)!;
-        tellUser(lostLine(o, userLang() ?? NO_WORDS_YET, r.reason === "busy" ? "busy" : "failed", outKind(o)));
+        if (!quiet) tellUser(lostLine(o, userLang() ?? NO_WORDS_YET, r.reason === "busy" ? "busy" : "failed", outKind(o)));
         return "failed";
       }
       logOut(op, "unknown", r.operation ? { operation: r.operation } : {});
@@ -3890,9 +3894,10 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       inFlight.delete(op.opId);
     }
   }
-  function scheduleRecovery() {
-    const ms = opts.bridgeRecoverMs ?? 30_000;
-    if (ms <= 0 || recoverTimer || closed) return;
+  function scheduleRecovery(after?: number) {
+    const base = opts.bridgeRecoverMs ?? 30_000;
+    if (base <= 0 || recoverTimer || closed) return;
+    const ms = after ?? base;
     recoverTimer = setTimeout(() => {
       recoverTimer = null;
       void recoverOutbox().catch(onError);
@@ -3909,6 +3914,10 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     return (recovering ??= (async () => {
       const ops = [...foldOut(loggedBridge()).values()].filter((o) => (o.state === "unknown" || o.state === "sending") && !inFlight.has(o.opId));
       let outbox: BridgeOp[] | undefined;
+      let complete = false; // D418: Mem said its outbox is the whole of it (`outcome_unknown: false`, no next page)
+      const looked = new Map<string, BridgeOp | null>(); // D418: each op inspected once per round
+      const told = new Set<string>(); // D418: one line per agent per round
+      const resend: OutOp[] = [];
       for (const o of ops) {
         const base = { ...o.last, opId: o.opId };
         const text = o.last.text.trim();
@@ -3916,21 +3925,43 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         let found: BridgeOp | undefined;
         if (!sel && bridge.outbox) {
           if (!outbox) {
-            const r = await bridge.outbox();
+            // D418: every Space an op went out in (a reply goes back in its message's Space).
+            const r = await bridge.outbox([...new Set(ops.map((x) => x.last.space).filter((x): x is string => !!x))]);
             outbox = r.ok ? r.ops : [];
+            complete = r.ok && r.complete === true;
           }
-          const same = outbox.filter((x) => (o.last.inReplyTo ? x.inReplyTo === o.last.inReplyTo : !x.inReplyTo));
+          // D418: nmem 0.10.121 lists an op as `{operation, phase}` only: such a one may be it, and only inspect says.
+          const same = outbox.filter((x) => x.bare || (o.last.inReplyTo ? x.inReplyTo === o.last.inReplyTo : !x.inReplyTo));
           const byBody = same.filter((x) => x.body !== undefined && x.body.trim() === text);
+          let all = true; // every candidate was looked at
           if (byBody.length === 1) found = byBody[0];
-          else if (!byBody.length && bridge.inspect)
-            for (const x of same.filter((y) => y.body === undefined).slice(0, 5)) {
-              const i = await bridge.inspect(x.operation, x.space);
-              if (i.ok && i.op.body?.trim() === text) {
-                found = i.op;
+          else if (!byBody.length && bridge.inspect) {
+            const open = same.filter((y) => y.body === undefined);
+            if (open.length > 12) all = false;
+            for (const x of open.slice(0, 12)) {
+              let i = looked.get(x.operation);
+              if (i === undefined) {
+                const got = await bridge.inspect(x.operation, x.space);
+                i = got.ok ? got.op : null;
+                if (!got.ok) all = false;
+                looked.set(x.operation, i);
+              }
+              if (i && i.body?.trim() === text && (!o.last.inReplyTo || !i.inReplyTo || i.inReplyTo === o.last.inReplyTo)) {
+                found = i;
                 break;
               }
             }
+          }
           sel = found?.operation;
+          // D418: Mem's whole outbox, every op in it looked at, and this one not there: Mem never took it.
+          // Nothing went out, so sending it once more is no second copy (hel, 2026-11-20: three replies
+          // stuck at "unknown" were in no outbox at all). Once only: a resend that fails is told.
+          if (!found && complete && all && !o.last.retryOf) {
+            logOut(base, "failed");
+            recoverTries.delete(o.opId);
+            resend.push(o);
+            continue;
+          }
         } else if (sel && bridge.inspect) {
           const i = await bridge.inspect(sel, o.last.space);
           if (i.ok) found = i.op;
@@ -3947,7 +3978,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           }
         } else if (found?.state === "failed") {
           logOut(base, "failed", { operation: found.operation });
-          tellUser(lostLine(o, userLang() ?? NO_WORDS_YET, "failed", outKind(o)));
+          if (!told.has(recipientKey(o))) tellUser(lostLine(o, userLang() ?? NO_WORDS_YET, "failed", outKind(o)));
+          told.add(recipientKey(o));
           state = "failed";
         }
         if (state) {
@@ -3959,9 +3991,23 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         recoverTries.set(o.opId, n);
         if (n >= 3 || !bridge.outbox) {
           logOut(base, "unconfirmed", sel ? { operation: sel } : {});
-          tellUser(lostLine(o, userLang() ?? NO_WORDS_YET, "unconfirmed", outKind(o)));
+          if (!told.has(recipientKey(o))) tellUser(lostLine(o, userLang() ?? NO_WORDS_YET, "unconfirmed", outKind(o)));
+          told.add(recipientKey(o));
           recoverTries.delete(o.opId);
         }
+      }
+      // D418: the ones Mem never took, once more (a reply with Mem's route read again from the inbox).
+      for (const o of resend) {
+        const { opId: _old, state: _s, messageId: _m, direction: _d, operation: _op, ...rest } = o.last;
+        const st = await deliver({ ...rest, opId: newId("bo"), retryOf: o.opId }, o.last.decisionId ? "send" : "reply", told.has(recipientKey(o)));
+        if (st === "failed") told.add(recipientKey(o));
+      }
+      // D418: until every op is settled, recovery comes back by itself (30 s, 2 min, 10 min): with
+      // `inbox --watch` a check runs only when mail arrives, so on hel three stayed "unknown" for good.
+      const left = [...foldOut(loggedBridge()).values()].filter((o) => o.state === "unknown" || o.state === "sending");
+      if (left.length && !closed) {
+        const tries = Math.max(0, ...left.map((o) => recoverTries.get(o.opId) ?? 0));
+        scheduleRecovery([30_000, 120_000, 600_000][Math.min(tries, 2)]!);
       }
     })().finally(() => {
       recovering = null;
@@ -4332,6 +4378,53 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     const answered = new Set(evs.filter((e) => e.body.direction === "in" && e.body.inReplyTo).map((e) => e.body.inReplyTo!));
     return evs.some((e) => e.body.direction === "out" && !!e.body.decisionId && !e.body.inReplyTo && !!e.body.messageId && !answered.has(e.body.messageId) && t - Date.parse(e.ts) < 7 * DAY_MS);
   }
+  /**
+   * D418: the answers to an own agent's contact tests, by code, one agent at a time, each once more if
+   * Mem didn't take it (the reply reads Mem's route again). The conversation's quiet line folds them
+   * (how many, the earliest's age when late, answered); the partner says one line in its place only
+   * when the person asked for them (「用 Bridge 查看来信，回复 Mem 协作 Codex 的联络测试」) or an answer
+   * didn't go.
+   */
+  async function answerPings(pings: { m: { messageId: string; sentAt?: string }; body: Bodies["bridge_msg"]; reply: string }[]) {
+    const groups = new Map<string, typeof pings>();
+    for (const p of pings) {
+      const k = `${p.body.agent ?? p.body.from ?? ""}|${p.body.role ?? ""}|${p.body.host ?? ""}`;
+      groups.set(k, [...(groups.get(k) ?? []), p]);
+    }
+    for (const g of groups.values()) {
+      let sent = 0;
+      for (const p of g) {
+        const base = { ...peerOf(p.body), text: p.reply, inReplyTo: p.m.messageId, ack: true };
+        const opId = newId("bo");
+        let st = await deliver({ ...base, opId }, "reply", true);
+        if (st === "failed") st = await deliver({ ...base, opId: newId("bo"), retryOf: opId }, "reply", true);
+        if (st !== "failed") sent++;
+      }
+      const t = now();
+      const sentAts = g.map((p) => (p.m.sentAt ? Date.parse(p.m.sentAt) : NaN)).filter((x) => Number.isFinite(x));
+      const earliest = sentAts.length ? Math.min(...sentAts) : undefined;
+      const said = saidAboutPings(g[0]!.body, t);
+      // The quiet line says it all (how many, how late, answered), unless the person asked for these
+      // (their ask gets its answer) or an answer didn't go (said plainly): then this line, once.
+      if (said === undefined && sent === g.length) continue;
+      tellUser(pingLine({ who: { ...g[0]!.body, to: g[0]!.body.from }, n: g.length, ...(earliest !== undefined ? { earliest } : {}), now: t, ...(said !== undefined ? { said } : {}), sent, lang: userLang() ?? NO_WORDS_YET }), g.map((p) => p.m.messageId));
+    }
+  }
+  /** D418: when the person last asked for these contact tests to be answered (their words in the last 7 days), if they did. */
+  function saidAboutPings(who: Bodies["bridge_msg"], t: number): number | undefined {
+    const names = [who.role, who.agent].filter((x): x is string => !!x && x.length >= 2);
+    const evs = core.log.read({ stream: "channel", kinds: ["user_msg"], beforeSeq: core.log.head() + 1, limit: 300 });
+    for (let i = evs.length - 1; i >= 0; i--) {
+      const e = evs[i]!;
+      const at = Date.parse(e.ts);
+      if (t - at > PING_SAID_MS) break;
+      const text = (e.body as Bodies["user_msg"]).text ?? "";
+      const test = /(联络|联调|通信|连通|收发)测试|测试(一下)?(通信|联络|连接|连通)|\b(contact|connectivity|connection|bridge)[- ]tests?\b|\bping\b/i.test(text);
+      const reply = /(回复|回一下|回他|回它|reply|answer)/i.test(text) && names.some((n) => text.includes(n));
+      if (test || reply) return at;
+    }
+    return undefined;
+  }
   async function checkBridge(): Promise<number> {
     if (!bridge || closed) return 0;
     if (bridgeChecking) return bridgeChecking; // one check at a time
@@ -4353,9 +4446,15 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       lastOutcome = "ok";
       if (r.reads) lastReads = { ...lastReads, ...r.reads };
       let n = 0;
+      // D418: the very first message any agent sent this persona carries the one-time note (a client's
+      // window of the Log can't tell which is first: on hel it said 「第一次」 a week after the first).
+      let first = r.messages.length > 0 && !loggedBridge().some((e) => e.body.direction === "in" && (!e.body.state || e.body.state === "held" || e.body.state === "ping"));
+      const pings: { m: (typeof r.messages)[number]; body: Bodies["bridge_msg"]; reply: string }[] = [];
       for (const m of r.messages) {
         if (known.has(m.messageId)) continue;
         known.add(m.messageId);
+        // D418: an own agent named by its own words, and Mem's reply route for it, on every event about it.
+        const self = { ...(m.selfNamed ? { selfNamed: true } : {}), ...(m.role ? { role: m.role } : {}), ...(m.route ? { route: m.route } : {}) };
         // A sender over its daily quota is logged (so it is never opened again) and set aside: it
         // doesn't wake the partner (D163). The client shows one quiet line for the day.
         // Settings (D170): a muted sender, or a teammate's agent while only the user's own may
@@ -4376,7 +4475,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         // D334: a teammate's agent (not one of the person's own) the person hasn't let through yet:
         // what it sends is kept, held, and its first message is one card (答应 / 不理, default 不理).
         if (peers && !answersOurs && !m.mine && !(peers.allowed ?? []).includes(m.from)) {
-          core.log.append({ stream: "channel", origin: "peer", kind: "bridge_msg", body: { direction: "in", messageId: m.messageId, from: m.from, ...(m.agent ? { agent: m.agent } : {}), ...(m.host ? { host: m.host } : {}), ...where, text: redactSecrets(m.text), ...(m.sentAt ? { sentAt: m.sentAt } : {}), state: "held" } });
+          core.log.append({ stream: "channel", origin: "peer", kind: "bridge_msg", body: { direction: "in", messageId: m.messageId, from: m.from, ...(m.agent ? { agent: m.agent } : {}), ...(m.host ? { host: m.host } : {}), ...where, text: redactSecrets(m.text), ...(m.sentAt ? { sentAt: m.sentAt } : {}), ...(m.route ? { route: m.route } : {}), ...(first ? { first: true } : {}), state: "held" } });
+          first = false;
           askSender(m);
           continue;
         }
@@ -4386,16 +4486,31 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           from: m.from,
           ...(m.agent ? { agent: m.agent } : {}), ...(m.host ? { host: m.host } : {}),
           ...(m.mine ? { mine: true } : {}),
+          ...self,
           text: redactSecrets(m.text),
           ...(m.sentAt ? { sentAt: m.sentAt } : {}),
           ...(m.inReplyTo ? { inReplyTo: m.inReplyTo } : {}),
           ...(m.linked ? { linked: true } : {}),
           ...where,
+          ...(first ? { first: true } : {}),
         };
+        first = false;
+        // D418: a contact or liveness test from one of the person's own agents that asks only to be
+        // acknowledged is answered by code, with no card and no partner turn (hel, 2026-11-20: the
+        // partner asked Go to answer the author's own Codex's three pings, which he had asked for on
+        // 11-17). Replies only: anything that asks for more goes to the partner as before (D61's floor).
+        const ping = m.mine && !m.inReplyTo ? pingOf(m.text) : undefined;
+        if (ping) {
+          const pb: Bodies["bridge_msg"] = { ...body, state: "ping" };
+          core.log.append({ stream: "channel", origin: "peer", kind: "bridge_msg", body: pb });
+          pings.push({ m, body: pb, reply: ping.reply });
+          continue;
+        }
         const e = core.log.append({ stream: "channel", origin: "peer", kind: "bridge_msg", body });
         n++;
         api.onTrigger(e); // core forwards it too; onTrigger dedupes by seq
       }
+      if (pings.length) await answerPings(pings).catch(onError);
       if (!n) followThrough();
       await notYetPeers().catch(onError);
       return n;
@@ -5044,7 +5159,10 @@ export function renderApps(apps: readonly AppMeta[], data: (id: string) => Recor
     const name = m.name.length > 40 ? m.name.slice(0, 39) + "…" : m.name;
     // D407: kept current by a task's rounds (the review board: from its review_report; a row's 看草稿 opens that PR's draft).
     const by = m.task ? `; task ${m.task.id} keeps it current each round${m.kind === "reviews" ? " (Ducter's review board: each PR waiting with its CI, findings and draft; a row's 看草稿 / Read draft opens that draft)" : ""}` : "";
-    return `  ${m.id} "${name}" v${m.version}, changed ${ago(m.updated)}${m.opened ? `, opened ${ago(m.opened)}` : ""}${m.pinned ? ", pinned" : ""}${by}${m.summary ? `; shows "${m.summary}"` : ""}${keys ? `; keeps: ${keys.slice(0, 200)}` : ""}`;
+    // D422: what is wrong with it now, so "fix it" / "换成新样子" has what it needs.
+    const l = m.live;
+    const state = `${l?.old ? "; drawn before the kit (asked for the new look: rewrite it whole with the kit, keep its keys, fill it from what you know)" : ""}${l?.broke ? `; its page broke: ${JSON.stringify(l.broke.text.slice(0, 120))}` : ""}${l?.kept?.state === "failed" ? "; its task's last round failed" : ""}`;
+    return `  ${m.id} "${name}" v${m.version}, changed ${ago(m.updated)}${m.opened ? `, opened ${ago(m.opened)}` : ""}${m.pinned ? ", pinned" : ""}${by}${m.summary ? `; shows "${m.summary}"` : ""}${keys ? `; keeps: ${keys.slice(0, 200)}` : ""}${state}`;
   };
   const more = apps.length - shown.length;
   return [

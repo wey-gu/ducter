@@ -273,12 +273,11 @@ func (a *App) talkCard(c *ui.Context, st *protocol.Settings) {
 	a.group(c, "talk", a.L.T("partner.talk.title"), "", func() {
 		cur := lang.NormalizeTag(st.Language) // "" is auto
 		name := a.L.T("partner.talk.auto")
-		help := a.L.T("partner.talk.auto.note")
 		if cur != "" {
 			name = lang.Autonym(cur)
-			help = a.L.T("partner.talk.fixed.note", name)
 		}
-		a.row(c, "talk", a.L.T("settings.talk.row"), help, func() {
+		// D424: the picker says which language; no line under the row repeats it.
+		a.row(c, "talk", a.L.T("settings.talk.row"), "", func() {
 			e, click := a.pill(c, "talk-lang", spoken(a.L, a.L.T("partner.talk.title"), name), ps.talkOpen, func() {
 				uiText(c, name).FontSize(t.MD).TextColor(t.Ink).SingleLine().AccessHidden(true)
 			})
@@ -452,7 +451,12 @@ func (a *App) drainForgot() {
 // D62, D130, D132).
 func (a *App) trustCard(c *ui.Context) {
 	t := a.T
-	a.group(c, "trust", a.L.T("partner.trust.title"), a.L.T("partner.trust.note"), func() {
+	// D424: one clause on how a review stops asking, only until one does (the list then shows it).
+	note := a.L.T("partner.trust.note")
+	if len(a.S.Standing) > 0 {
+		note = ""
+	}
+	a.group(c, "trust", a.L.T("partner.trust.title"), note, func() {
 		list := func(head string, prefix string, sc theme.StateColors, glyph func(ui.Color) func(*ui.Painter, ui.Rect)) {
 			ui.Column(c).Gap(t.S3).Grow(1).Basis(0).MinWidth(240).Children(func() {
 				uiText(c, head).FontSize(t.MD).FontWeight(800).TextColor(sc.Ink)
@@ -487,7 +491,7 @@ func (a *App) standingList(c *ui.Context) {
 		uiText(c, a.L.T("standing.title")).FontSize(t.MD).FontWeight(800).TextColor(t.Done.Ink)
 		for _, x := range a.S.Standing {
 			x := x
-			where := a.L.T("standing.where.any")
+			where := "" // D424: "PRs that ask for your review" is what the title already means
 			if len(x.Orgs) > 0 {
 				where = a.L.T("standing.where.orgs", strings.Join(x.Orgs, sep))
 			}
@@ -496,7 +500,9 @@ func (a *App) standingList(c *ui.Context) {
 				ui.Box(c).Size(20, 20).Draw(drawCheck(t.Done.Ink)).Shrink(0).Margin(1, 0, 0, 0)
 				ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(2).Children(func() {
 					uiText(c, title).FontSize(t.MD).LineHeight(a.leading(1.45))
-					uiText(c, where).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
+					if where != "" {
+						uiText(c, where).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
+					}
 					uiText(c, a.L.T("standing.said", x.Text)).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
 				})
 				if a.quietDanger(c, "standing:"+x.ID, a.L.T("standing.revoke"), title) {

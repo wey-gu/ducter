@@ -70,7 +70,40 @@ const user = (text: string) => log.append({ stream: "channel", origin: "user", k
 const tiny = (title: string, line: string) => `<main class="k-app"><section class="k-sum"><span class="k-sum-label">${title}</span><span class="k-sum-value">${line}</span></section></main>`;
 
 let id = "";
-if (stage !== "empty") {
+// D422: DEMO_STAGE=states: the shelf with every state an app can be in, from one truth each: the
+// author's old app (made before the kit), the trip app pinned, the review board a task keeps (next
+// round tomorrow 9:00), a fare check whose last round failed, a baby-feeds app being changed now,
+// and a habit tracker whose page broke. Ongoing is stood in for by keptBy (no real task runs here).
+if (stage === "states") {
+  const S = zh
+    ? { feeds: { name: "宝宝喝奶", summary: "今天 210ml，上次 9:05" }, fare: { name: "东京机票", summary: "往返 ¥2,480，比昨天便宜 ¥160", task: "每天早上看一眼上海到东京的机票" }, err: "Cannot read properties of null (reading 'streak')" }
+    : { feeds: { name: "Baby feeds", summary: "210ml today, last at 9:05" }, fare: { name: "Tokyo fares", summary: "¥2,480 return, ¥160 less than yesterday", task: "Check Shanghai to Tokyo fares each morning" }, err: "Cannot read properties of null (reading 'streak')" };
+  const at = (h: number) => new Date(Date.now() + h * 3600_000).toISOString();
+  const old = core.apps.make(persona, { name: w.before.name, html: file("demo-apps-trip-before.html"), ask: w.ask });
+  const trip = core.apps.make(persona, { name: w.after.name, html: file("demo-apps-trip-v2.html"), ask: w.ask, summary: w.after.summary, icon: "suitcase", data: { trip: { from: "2026-11-20", to: "2026-11-21", currency: "CNY" }, expenses: w.xs } });
+  const board = core.apps.make(persona, { name: w.board.name, html: tiny(w.board.name, w.board.summary), icon: "pr", summary: w.board.summary, task: { id: "t_reviews", title: w.board.task } });
+  const fare = core.apps.make(persona, { name: S.fare.name, html: tiny(S.fare.name, S.fare.summary), icon: "plane", summary: S.fare.summary, task: { id: "t_fares", title: S.fare.task } });
+  const feeds = core.apps.make(persona, { name: S.feeds.name, html: tiny(S.feeds.name, S.feeds.summary), icon: "bottle", summary: S.feeds.summary });
+  const habit = core.apps.make(persona, { name: w.habit.name, html: tiny(w.habit.name, w.habit.summary), icon: "flame", summary: w.habit.summary });
+  if (!old.ok || !trip.ok || !board.ok || !fare.ok || !feeds.ok || !habit.ok) throw new Error("demo apps");
+  core.apps.set(trip.app.id, { pinned: true });
+  for (const a of [trip, board, fare, feeds, habit]) core.apps.touch(a.app.id);
+  core.apps.keptBy((taskId) =>
+    taskId === "t_reviews"
+      ? { task: taskId, title: w.board.task, state: "resting", last: at(-2), next: new Date(new Date().setHours(33, 0, 0, 0)).toISOString(), of: { kind: "task", id: taskId } }
+      : taskId === "t_fares"
+        ? { task: taskId, title: S.fare.task, state: "failed", last: at(-26), why: zh ? "航司的网站没打开" : "The airline's site didn't load", of: { kind: "task", id: taskId } }
+        : undefined,
+  );
+  say(w.morning);
+  core.settings.set({ language: zh ? "zh" : "en" });
+  // The person's words about the feeds app are in; the partner hasn't answered yet.
+  log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: zh ? "加一个按钮：记一笔 120ml" : "Add a button for a 120ml feed", app: { id: feeds.app.id, name: feeds.app.name } } });
+  core.apps.changing(feeds.app.id, true);
+  core.apps.broke(habit.app.id, 1, S.err);
+  id = old.app.id;
+}
+if (stage !== "empty" && stage !== "states") {
   say(w.morning);
   const b = user(w.book);
   say(w.booked, { replyTo: b.seq });

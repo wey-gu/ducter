@@ -650,10 +650,12 @@ func (a *App) entry(c *ui.Context, e *store.Entry) {
 		}
 	case e.Peer != nil:
 		// D321: the very first message from another agent explains itself once.
-		first := e.Peer.Direction == "in" && a.firstPeer() == e.Peer
-		if !(e.Peer.Direction == "in" && a.peerAsked(e.Peer.MessageID)) {
+		// D418: the partner marks the first one; a window of the Log can't tell.
+		first := e.Peer.Direction == "in" && e.Peer.First
+		told := e.Peer.State == "ping" && a.S.Pings[e.Event.Seq] != nil && a.S.Pings[e.Event.Seq].Told
+		if !(e.Peer.Direction == "in" && a.peerAsked(e.Peer.MessageID)) && !told {
 			// A question it asked shows once, as its card (which says who asks).
-			a.peerLine(c, e.Peer, a.S.SetAside[e.Peer.From+"|"+dayOf(e.Event.TS)])
+			a.peerLine(c, e.Peer, a.S.SetAside[e.Peer.From+"|"+dayOf(e.Event.TS)], a.S.Pings[e.Event.Seq], e.Event.TS)
 		}
 		if first {
 			a.firstPeerNote(c, e.Peer)

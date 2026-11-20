@@ -52,7 +52,9 @@ func TestSettingsPass3Shots(t *testing.T) {
 	}
 	settle := func() {
 		for i := 0; i < 8; i++ {
-			h.until("frames", func() bool { return true })
+			// D424: a little real time too, so a pane that asks the home (chat apps, passwords & cards) has its answer.
+			start := time.Now()
+			h.until("frames", func() bool { return time.Since(start) > 60*time.Millisecond })
 			h.tt.Advance(200 * time.Millisecond)
 		}
 	}

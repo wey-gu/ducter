@@ -47,6 +47,7 @@
 // from page one. Contacts take the grouped default (one card per identity) first, `--all-spaces` after.
 import type { BridgePlace, BridgeWhere } from "../../protocol/src/internal.ts";
 import { nmemEnv } from "./memory.ts";
+import { ownAgentSelf } from "../../protocol/src/peer-self.ts";
 
 export interface BridgeMessage {
   messageId: string; // the CLI's message handle (what `open` and `reply` take)
@@ -66,6 +67,11 @@ export interface BridgeMessage {
   spaceLabel?: string;
   shared?: boolean; // D334: it came in a Space the person shares with others (not their own place)
   member?: string; // D334: the sender's member by name, when Mem names one (never an id)
+  /** D418: an own agent Mem doesn't name, by what its message says it is: `agent` its tool, `role` the rest. */
+  selfNamed?: true;
+  role?: string;
+  /** D418: Mem's reply argv for it (`reply_args_prefix`), kept in the Log so a reply after a restart still goes Mem's way. */
+  route?: string[];
 }
 
 /** One recipient card from `bridge contacts`: an opaque handle plus who and where, as returned. */
@@ -86,6 +92,8 @@ export interface BridgeContact {
 /** One outgoing operation as `bridge outbox` / `inspect` report it (tolerant; research/37 B8). */
 export interface BridgeOp {
   operation: string; // the selector `inspect` and `resume` take
+  /** D418: Mem listed this op with nothing but its selector and phase (nmem 0.10.121's outbox): only inspect tells what it is. */
+  bare?: true;
   state: "sent" | "pending" | "failed" | "unknown";
   messageId?: string;
   inReplyTo?: string;
@@ -144,13 +152,13 @@ export interface BridgeClient {
    * Reply to a received message; the CLI derives the recipient from that original.
    * A failure with reason "unavailable" means the outcome is UNKNOWN (D106): recover it, never resend.
    */
-  reply(messageId: string, text: string, space?: string): Promise<BridgeResult<{ messageId?: string; operation?: string }>>;
+  reply(messageId: string, text: string, space?: string, route?: string[]): Promise<BridgeResult<{ messageId?: string; operation?: string }>>;
   /** Read-only recipient discovery in every Space the home reads (D334; one bounded page each). */
   contacts?(query: string): Promise<BridgeResult<{ contacts: BridgeContact[]; more: boolean }>>;
   /** A new message to a contact handle the user confirmed on a card, sent in the card's Space. Failures as for `reply`. */
   send?(contact: string, text: string, space?: string): Promise<BridgeResult<{ messageId?: string; operation?: string }>>;
   /** Recovery after an unknown outcome (D106): recent outgoing operations, then the one original. */
-  outbox?(): Promise<BridgeResult<{ ops: BridgeOp[] }>>;
+  outbox?(spaces?: string[]): Promise<BridgeResult<{ ops: BridgeOp[]; complete?: boolean }>>;
   inspect?(operation: string, space?: string): Promise<BridgeResult<{ op: BridgeOp }>>;
   /** Recover the exact operation; the CLI never sends a replacement. */
   resume?(operation: string, space?: string): Promise<BridgeResult<{ messageId?: string }>>;
@@ -234,6 +242,8 @@ const MAX_TEXT = 4000;
  * killed every inbox read, so nothing sent to the partner was ever seen. Twice the slowest seen.
  */
 export const CALL_TIMEOUT_MS = 120_000;
+/** D418: how long Mem keeps a message (an entry's `expires_at_ms` is 7 days after its send, VERIFIED research/161 §9). */
+export const MEM_TTL_MS = 7 * 86_400_000;
 const clip = (s: string, n: number) => (s.length <= n ? s : s.slice(0, n - 1) + "…");
 const str = (v: unknown): string | undefined => (typeof v === "string" && v.trim() ? v.trim() : typeof v === "number" ? String(v) : undefined);
 
@@ -539,7 +549,9 @@ export function opOf(o: any): BridgeOp | undefined {
   const messageId = str(o?.message) ?? str(o?.message_id);
   const inReplyTo = str(o?.in_reply_to) ?? str(o?.reply_to);
   const body = str(o?.body) ?? str(o?.text) ?? str(o?.original?.body);
-  return { operation, state: opState(o?.state ?? o?.status), ...(messageId ? { messageId } : {}), ...(inReplyTo ? { inReplyTo } : {}), ...(body ? { body } : {}) };
+  // D418: nmem 0.10.121's outbox lists `{operation, phase}` only (VERIFIED on hel 2026-11-20); inspect has the rest.
+  const bare = !messageId && !inReplyTo && !body;
+  return { operation, state: opState(o?.state ?? o?.status ?? o?.phase), ...(messageId ? { messageId } : {}), ...(inReplyTo ? { inReplyTo } : {}), ...(body ? { body } : {}), ...(bare ? { bare: true as const } : {}) };
 }
 
 /** The operation selector in a send/reply answer, even a failed one (stdout or stderr JSON). */
@@ -636,8 +648,13 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
     if (e.unknown === true) return { ok: false, reason: "unavailable", message: "Nowledge Mem didn't say whether it went out.", ...op };
     if (e.unknown === false && transient(e)) return { ok: false, reason: "busy", message: "Nowledge Mem can't take messages right now; nothing went out.", ...op };
     if (e.unknown === false && e.code && !/agent_context|not_configured/.test(e.code)) return { ok: false, reason: "refused", message: "Nowledge Mem didn't take it; nothing went out.", ...op };
+    // D418: Mem said plainly it didn't go (`outcome_unknown: false`), with no code to say why: refused, not unknown.
+    if (e.unknown === false && !e.code) return { ok: false, reason: "refused", message: "Nowledge Mem didn't take it; nothing went out.", ...op };
     if (/not admitted|denied|forbidden|role_insufficient|403|refus/i.test(text)) return { ok: false, reason: "refused", message: "Bridge refused this connection.", ...op };
     if (/agent context|not configured|api key|401|unknown context/i.test(text)) return { ok: false, reason: "not_configured", message: "Bridge isn't set up for this partner.", ...op };
+    // D418: the CLI turned the call down before reaching Mem (clap's usage error, exit 2), or Mem said the
+    // message isn't there or is past its time: nothing went out.
+    if (r.code === 2 || /\b(not found|no such message|unknown message|expired|not eligible|invalid value|unexpected argument)\b/i.test(text)) return { ok: false, reason: "refused", message: `Nowledge Mem didn't take it (${clip(text.trim(), 120)}).`, ...op };
     return { ok: false, reason: "unavailable", message: `Bridge didn't answer (${clip((r.err || r.out || `exit ${r.code}`).trim(), 120)}).`, ...op };
   };
   // A feature-denied Bridge exits 0 with empty stdout: a skipped capability, not an empty inbox.
@@ -712,6 +729,21 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
   };
   let waitCap: number | undefined; // D400: the bound a refused wait named
   const replyBy = new Map<string, string[]>(); // D400: Mem's reply argv prefix per message handle (this run)
+  /** D418: Mem's reply argv for a message, from a fresh read of the inbox (its entry stays listed until it expires). */
+  const routeFor = async (messageId: string): Promise<string[] | undefined> => {
+    for (const { pl, args } of await inboxes()) {
+      const got = await readInbox(args, pl.context);
+      if ("fail" in got) continue;
+      const list = Array.isArray(got.j?.messages) ? got.j.messages : [];
+      for (const m of list) {
+        const id = typeof m === "object" ? (str(m?.message) ?? str(m?.message_id) ?? str(m?.id)) : undefined;
+        const r = id && typeof m === "object" ? memArgv(m?.reply_args_prefix, "reply") : undefined;
+        if (id && r) replyBy.set(id, r);
+      }
+      if (replyBy.has(messageId)) return replyBy.get(messageId);
+    }
+    return undefined;
+  };
   const sent = (r: { code: number; out: string; err: string } | { missing: true }): BridgeResult<{ messageId?: string; operation?: string }> => {
     if ("missing" in r || r.code !== 0) return failure(r);
     const j = parse(r.out);
@@ -841,7 +873,10 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
           const b = parse(o.out);
           const body = str(b?.body) ?? str(b?.message?.body) ?? str(b?.text);
           if (!body) continue;
-          const sentAt = str(b?.sent_at) ?? str(b?.created_at) ?? str(b?.message?.created_at);
+          // D418: nmem 0.10.121's `open` carries no time; its entry's `expires_at_ms` is 7 days after the send
+          // (VERIFIED, research/161 §9), so a message read late still says when it was sent.
+          const exp = typeof e0 === "object" && typeof e0?.expires_at_ms === "number" ? e0.expires_at_ms : undefined;
+          const sentAt = str(b?.sent_at) ?? str(b?.created_at) ?? str(b?.message?.created_at) ?? (typeof e0 === "object" ? str(e0?.sent_at) ?? str(e0?.created_at) : undefined) ?? (exp ? new Date(exp - MEM_TTL_MS).toISOString() : undefined);
           // nmem 0.10.118's `open` (VERIFIED): `{message, body, reply_to, outgoing}`, where `reply_to` is
           // the handle `reply` takes, the message's own id. Only a different one names a parent.
           const handle = str(b?.reply_to);
@@ -863,14 +898,17 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
           // D334: a teammate's agent is told by its Space ("reviewer (dev team)", "AI agent (Everyone)").
           const shared = !personal && !!sp.id;
           const from = senderOf(who);
+          // D418: an own agent Mem doesn't name, by what it says it is ("我是 Wey 的 Mem 协作 Codex"); never a teammate's.
+          const self = own && !agent ? ownAgentSelf(body) : undefined;
           const named = !own && sp.label ? `${agent ?? (from === "another agent" ? "AI agent" : from)} (${sp.label})` : from;
           messages.push({
             messageId: id,
             from: named,
             ...(!own && said.name && !memberIdLabel(said.name) && said.name !== agent ? { member: said.name } : {}),
-            ...(agent ? { agent } : {}),
-            ...(!agent && hostOf(who) ? { host: hostOf(who) } : {}),
+            ...(agent ? { agent } : self ? { agent: self.agent, selfNamed: true as const, ...(self.role ? { role: self.role } : {}) } : {}),
+            ...(!agent && !self && hostOf(who) ? { host: hostOf(who) } : {}),
             ...(own ? { mine: true } : {}),
+            ...(replyArgs ? { route: replyArgs } : {}),
             text: clip(body, MAX_TEXT),
             ...(sentAt ? { sentAt } : {}),
             ...(inReplyTo ? { inReplyTo } : {}),
@@ -973,10 +1011,16 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
         ended,
       };
     },
-    async reply(messageId, text, space) {
+    async reply(messageId, text, space, route) {
       // Body through stdin (--body-file -): text starting with "-" can't parse as a flag.
       // D400: Mem's own reply argv when the inbox gave one (it keeps the original's Context and Space).
-      const pre = replyBy.get(messageId);
+      // D418: the one kept in the Log with the message first (this run's map is empty after a restart);
+      // with neither, on an identity-inbox nmem, the inbox is read again for it: the bare id with the
+      // home's context is not how 0.10.121 replies (on hel, 2026-11-20, three replies to mail in another
+      // Space went that way and Mem took none of them).
+      let pre = memArgv(route, "reply") ?? replyBy.get(messageId);
+      // (Only once this run has read the inbox's shape: a check always comes before a reply.)
+      if (!pre && shapeNow && (await shapeNow)?.identity) pre = await routeFor(messageId);
       if (pre) return sent(await writeWhole([...pre, "--body-file", "-", ...(namesTarget(pre) ? [] : [messageId])], text));
       // D334: in the Space the message came in, with that Space's context.
       return sent(await write(["reply", "--body-file", "-", messageId], text, ctxFor(space)));
@@ -1008,25 +1052,38 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
       return sent(await write(["send", "--to", contact, "--body-file", "-"], text, ctxFor(space)));
     },
     // Recovery of an unknown outcome (D106): read-only, then resume the same original.
-    async outbox() {
+    async outbox(spaces) {
       const ops: BridgeOp[] = [];
       let answered = false;
+      let complete = true;
       let lastFail: BridgeFailure | undefined;
       await inboxShape();
-      for (const pl of wideNow ? [home] : places) {
-        const r = await read(["outbox"], pl.context);
+      // D418 (wide): the home's outbox, and each other Space an op went out in by Mem's Space selector
+      // (`--resolved-space-id <id>` with the home's context answers that Space's, VERIFIED read-only on hel).
+      const home0 = (await placeOf(home.context)).space ?? home.spaceId;
+      const reads: { ctx: string; args: string[]; space?: string }[] = wideNow
+        ? [{ ctx: home.context, args: ["outbox"] }, ...[...new Set(spaces ?? [])].filter((x) => x && x !== home0).map((x) => ({ ctx: home.context, args: ["--resolved-space-id", x, "outbox"], space: x }))]
+        : places.map((pl) => ({ ctx: pl.context, args: ["outbox"], ...(pl.spaceId ? { space: pl.spaceId } : {}) }));
+      for (const at of reads) {
+        const r = await read(at.args, at.ctx);
         if ("missing" in r || r.code !== 0) {
           lastFail = failure(r);
+          complete = false;
           continue;
         }
         const j = parse(r.out);
-        if (j === undefined) continue;
+        if (j === undefined) {
+          complete = false;
+          continue;
+        }
         answered = true;
+        // D418: only Mem's own word that this is the whole of it lets a missing op count as never sent.
+        if (j?.outcome_unknown !== false || !!str(j?.next)) complete = false;
         const list = Array.isArray(j?.operations) ? j.operations : Array.isArray(j?.outgoing) ? j.outgoing : Array.isArray(j?.items) ? j.items : Array.isArray(j) ? j : [];
-        for (const o of list.map(opOf).filter((o: BridgeOp | undefined): o is BridgeOp => !!o)) ops.push({ ...o, ...(pl.spaceId && !wideNow ? { space: pl.spaceId } : {}) });
+        for (const o of list.map(opOf).filter((o: BridgeOp | undefined): o is BridgeOp => !!o)) ops.push({ ...o, ...(at.space ? { space: at.space } : {}) });
       }
       if (!answered) return lastFail ?? { ok: false, reason: "unavailable", message: "Bridge gave no answer." };
-      return { ok: true, ops };
+      return { ok: true, ops, complete };
     },
     async inspect(operation, space) {
       const r = await read(["inspect", operation], ctxFor(space));

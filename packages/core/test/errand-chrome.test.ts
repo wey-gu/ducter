@@ -140,4 +140,36 @@ run("An errand to the checkout on a fixture shop (D436)", () => {
     // The buyer's details never reached the model.
     for (const v of ["林小满", "13800138000"]) expect(said.join("\n")).not.toContain(v);
   }, 120_000);
+
+  test("D446: a pay button with no words is refused too (its form asks for a card, or posts to pay, or an icon names it)", async () => {
+    const icon = startFixtureShop({ lang: "zh", pay: "icon" });
+    try {
+      for (const q of ["数据线", "咖啡"]) {
+        const found = await call("browser_open", { url: `${icon.url}/search?q=${encodeURIComponent(q)}` });
+        await call("browser_click", { ref: refOf(found, q === "咖啡" ? "云南小粒咖啡豆" : "USB-C 数据线") });
+        await call("browser_click", { ref: refOf(await call("browser_read"), "加入购物车") });
+      }
+      const co = await call("browser_open", { url: `${icon.url}/checkout` });
+      expect(co).not.toContain("立即支付"); // nothing on the button says pay
+      const { b, sessionId } = await core.ducterBrowser!.host.tab("t_buy");
+      const page = async (expression: string) => (await b.cdp.send("Runtime.evaluate", { expression, returnByValue: true }, sessionId)).result.value;
+      const go = Number(await page(`document.getElementById("go").getAttribute("data-ducter-ref")`));
+      expect(go).toBeGreaterThan(0);
+      // The arrow submits a form that asks for a card: a click, Enter on it, a submit from a field.
+      await expect(core.mcp.call(ctx, "browser_click", { ref: go })).rejects.toThrow(/paying is the user's own tap/);
+      await page(`document.getElementById("go").focus()`);
+      await expect(core.mcp.call(ctx, "browser_press", { key: "Enter" })).rejects.toThrow(/paying is the user's own tap/);
+      await expect(core.mcp.call(ctx, "browser_type", { ref: refOf(co, "收货人"), text: "x", submit: true })).rejects.toThrow(/paying is the user's own tap/);
+      // No card asked, but the form posts to a pay address.
+      await page(`document.querySelectorAll("#cc, #csc").forEach((e) => e.remove()); document.querySelector("form[action='/order']").setAttribute("action", "/checkout/place-order"); true`);
+      await expect(core.mcp.call(ctx, "browser_click", { ref: go })).rejects.toThrow(/paying is the user's own tap/);
+      // Neither, but the icon is named: its svg's title.
+      await page(`document.querySelector("form").setAttribute("action", "/order"); const s = document.querySelector("#go svg"); const t = document.createElementNS("http://www.w3.org/2000/svg", "title"); t.textContent = "立即支付"; s.prepend(t); true`);
+      await expect(core.mcp.call(ctx, "browser_click", { ref: go })).rejects.toThrow(/paying is the user's own tap/);
+      await Bun.sleep(300);
+      expect(icon.presses).toHaveLength(0);
+    } finally {
+      icon.stop();
+    }
+  }, 120_000);
 });

@@ -37,6 +37,14 @@ func TestTalkFixture(t *testing.T) {
 			Card map[string]any
 			Want string
 		}
+		Shown []struct {
+			Saying string
+			Card   *struct {
+				Question string
+				Floor    bool
+			}
+			Floor, Want string
+		}
 		Words    TalkWords
 		Sessions []struct {
 			Name    string
@@ -94,6 +102,18 @@ func TestTalkFixture(t *testing.T) {
 			Asker: has("asker"), Sender: has("sender"), Trust: has("trust"), Draft: has("draft"), Handset: has("handset"), Phone: has("phone"), Computer: has("computer"), Call: has("call")}
 		if got := TalkFloor(card); got != c.Want {
 			t.Errorf("TalkFloor(%v) = %q, want %q", c.Card, got, c.Want)
+		}
+	}
+	if len(f.Shown) == 0 {
+		t.Fatal("no shown cases")
+	}
+	for _, c := range f.Shown {
+		q, fl := "", false
+		if c.Card != nil {
+			q, fl = c.Card.Question, c.Card.Floor
+		}
+		if got := TalkShown(c.Saying, q, fl, c.Floor); got != c.Want {
+			t.Errorf("TalkShown(%q, %q, %v) = %q, want %q", c.Saying, q, fl, got, c.Want)
 		}
 	}
 	for _, ss := range f.Sessions {

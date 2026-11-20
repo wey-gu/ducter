@@ -1916,6 +1916,15 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         deferred.push(...queue.splice(0));
         break;
       }
+      // D446: a task on the home already waits for this agent's reset: read the account before the
+      // turn, so a used-up account is held now instead of failing one turn first.
+      if (holdable() && core.brainHold!.ahead) {
+        const r = await core.brainHold!.ahead().catch((err) => (onError(err), undefined));
+        if (r?.held) {
+          await dropSession();
+          if (r.tell && r.now) tellUser(heldWords(r.now));
+        }
+      }
       // D435: nobody can answer now: everything waits for the hold's time, in order.
       const hold = holdable() ? core.brainHold!.now() : undefined;
       if (hold?.waits) {

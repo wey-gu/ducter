@@ -218,6 +218,24 @@ func SayAfter(a, b string) string {
 	return a + " " + b
 }
 
+// TalkShown is the big line over a talk's card: what is being said, unless
+// the card already shows it (D446): its question (with the hint or floor line
+// said after it), or on a floor card the floor line said again after a "好".
+// Empty means the line shows only who speaks. See talkShown in
+// packages/protocol/src/talk.ts; both pass the fixture's "shown".
+func TalkShown(saying, question string, floorCard bool, floor string) string {
+	if question == "" && !floorCard {
+		return saying
+	}
+	if question != "" && strings.HasPrefix(saying, question) {
+		return ""
+	}
+	if floorCard && floor != "" && Plain(saying) == Plain(floor) {
+		return ""
+	}
+	return saying
+}
+
 // SpokenReply is what of a partner's message is said in a talk: whole
 // sentences up to about fifteen seconds, the first always whole; cut short,
 // more follows.

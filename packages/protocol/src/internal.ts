@@ -18,6 +18,12 @@ export interface BrainHoldPort {
   now(): { from: HarnessId; why: "quota" | "rate_limited" | "error"; until: string; resetKnown: boolean; waits?: true; to?: HarnessId } | undefined;
   /** A turn failed on its agent (a limit as D297 reads it, or an error): hold it. tell: say it once. */
   hit(h: { harness: string; failure: "quota" | "rate_limited" | "error"; resetsAt?: string; source?: string; said?: string }): Promise<{ now?: ReturnType<BrainHoldPort["now"]>; tell: boolean }>;
+  /**
+   * D446: before a turn: a task on the home already waits for the reset of the same agent's
+   * account, so the account is read and the agent held now, not after one failed turn. held: a hold
+   * was made just now.
+   */
+  ahead?(): Promise<{ now?: ReturnType<BrainHoldPort["now"]>; tell: boolean; held: boolean }>;
   /** A turn on this agent went through: its hold, if any, is over. */
   ok(harness: string): void;
   /** A hold was set or ended, or its time came (D440: or something to think with arrived). */

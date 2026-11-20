@@ -1536,6 +1536,8 @@ export function Places({ here, onHand = true }: { here?: "devices" | "onhand" | 
         <NavBtn
           label={running ? t("nav.updating") : n > 1 ? t("nav.update.n", n) : t("nav.update")}
           about={t("nav.update.about")}
+          cls="update"
+          short={!running && n > 1 ? String(n) : undefined}
           glyph={<UpdatePebble />}
           onClick={() => A.openSettings("devices")}
         />

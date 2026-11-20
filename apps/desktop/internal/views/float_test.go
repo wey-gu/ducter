@@ -1,6 +1,7 @@
 package views
 
 import (
+	"math"
 	"strings"
 	"testing"
 	"time"
@@ -245,6 +246,30 @@ func TestFloatComesOnceWithTheEditor(t *testing.T) {
 	}
 }
 
+// D446: another app holds ⌃⌥⌘Space. The menu items say so in place of the
+// key (and are the way in); the first line points at the menu, not the key.
+func TestFloatKeyTakenSaysSo(t *testing.T) {
+	app, _, _ := floatApp(t, i18n.ZH, "working")
+	if accel, sub := app.FloatMenu(); accel != FloatKey || sub != "" {
+		t.Fatalf("free key: %q %q", accel, sub)
+	}
+	app.FloatKeyTaken = true
+	if accel, sub := app.FloatMenu(); accel != "" || sub != "快捷键被别的应用占用了" {
+		t.Fatalf("taken key: %q %q", accel, sub)
+	}
+	app.OpenFolder = func(with, path string) error { return nil }
+	app.openFolder("/Applications/Zed.app", "/tmp")
+	tt := floatTester(app, false)
+	if tt.HasText("⌃⌥⌘空格") || !tt.HasText("我在这儿陪着你。快捷键被别的应用占用了，在菜单栏点「小窗」可以收起我，再点一次我就回来。") {
+		t.Errorf("the first line with the key taken: %q", tt.Texts())
+	}
+	en, _, _ := floatApp(t, i18n.EN, "working")
+	en.FloatKeyTaken = true
+	if _, sub := en.FloatMenu(); sub != "Its shortcut is taken by another app" {
+		t.Errorf("en: %q", sub)
+	}
+}
+
 // Its height follows what it shows, top edge kept; hold to talk's first
 // card makes it taller and it comes back.
 func TestFloatFitsWhatItShows(t *testing.T) {
@@ -288,5 +313,47 @@ func TestFloatKeyListens(t *testing.T) {
 	app.voiceKey("ropt", true)
 	if app.vox.phase == "" {
 		t.Errorf("the mini window with the keyboard didn't listen")
+	}
+}
+
+// D446: the mini window's partner is never cut at its box's edge. A part
+// painted again alone (the figure, while it sways and breathes) is cut at its
+// box, and a face that fills its box's width went past it. Every loop's keys
+// with the breath at its widest, about the feet as alivePose and idlePose
+// turn it: the art's sides and top (the round body's extremes) stay inside
+// the box floatRoom gives; with no room they don't.
+func TestFloatPartnerHasRoomToMove(t *testing.T) {
+	theme.LoadFonts()
+	const w = 44
+	reach := func(face theme.Presence, room float64) (over float64) {
+		bmp, idle := theme.Face(face, w*2), theme.Face(theme.Idle, w*2)
+		iw, ih := idle.Size()
+		h := w * float64(ih) / float64(iw)
+		box := ui.Rect{W: float32(w + 2*room), H: float32(h + room)}
+		at := fitIn(bmp, artRect(box, float32(room)))
+		at.Y = box.H - at.H
+		px, py := float64(at.X+at.W/2), float64(at.Y+at.H) // the feet
+		// The sides' and the top's middles, from the feet, breathing at their widest.
+		pts := [][2]float64{{-float64(at.W) / 2 * 1.012, -float64(at.H) / 2 * 1.03}, {float64(at.W) / 2 * 1.012, -float64(at.H) / 2 * 1.03}, {0, -float64(at.H) * 1.03}}
+		for _, loop := range aliveLoops {
+			for _, k := range loop.keys {
+				rad := k.deg * math.Pi / 180
+				for _, p := range pts {
+					x, y := p[0], p[1]*k.sy
+					x, y = x*math.Cos(rad)-y*math.Sin(rad), x*math.Sin(rad)+y*math.Cos(rad)
+					x, y = px+x+k.x, py+y+k.y
+					over = max(over, -x, x-float64(box.W), -y)
+				}
+			}
+		}
+		return over
+	}
+	for _, face := range []theme.Presence{theme.Idle, theme.Working, theme.NeedsYou, theme.Waiting, theme.Done, theme.Napping} {
+		if o := reach(face, floatRoom); o > 0 {
+			t.Errorf("%s reaches %.1fpt past its box", face, o)
+		}
+	}
+	if reach(theme.Idle, 0) <= 0 {
+		t.Errorf("the check sees nothing without room")
 	}
 }

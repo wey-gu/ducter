@@ -118,12 +118,16 @@ describe("talk hands-free", () => {
     await s.ctl.start();
     s.ctl.cards([card("p1", "付 ¥1280 买周五的机票？", { pay: { merchant: "x" } as never })]);
     expect(s.spk.said.at(-1)!.text).toBe("付 ¥1280 买周五的机票？这个要你在屏幕上点一下。");
+    expect(s.ctl.shown()).toBeUndefined(); // D446: the question is on the card, not above it too
     s.spk.finish();
     s.say("好");
     s.wait(1400);
     expect(s.h.decided).toEqual([]);
     expect(s.h.sent).toEqual([]);
     expect(s.spk.said.at(-1)!.text).toBe("这个要你在屏幕上点一下。");
+    expect(s.ctl.st.phase).toBe("speak");
+    expect(s.ctl.shown()).toBeUndefined(); // nor its floor line, said again
+    s.spk.finish();
     s.ctl.answer("go"); // no Go button on a floor card either
     expect(s.h.decided).toEqual([]);
   });

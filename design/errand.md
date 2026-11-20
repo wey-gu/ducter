@@ -82,6 +82,13 @@ Not yet** (closes the view, the card stays open) and **付好了 / I've paid**.
   "pay", "place order", "complete purchase", "buy now", "confirm and pay", "submit order"), Enter or
   Space while one is focused, and a `submit` into a form whose submit button says so. Allowed only
   while a D191 Pay Go is open for that task on that page's site.
+- **A pay button with no words (D446).** The words are read from every name the control has, not only
+  its text: `aria-label`, `aria-labelledby`, `title`, an icon's label or `<title>`, an image's `alt`
+  (`reader.ts` `PAY_FACTS`). A control that submits a form is also refused when the form (or its own
+  `formaction`) posts to a pay address (`/pay`, `/place-order`, `/submit-order`, `/purchase`,
+  `/buy-now`; not `/checkout`, `/payment-methods` or `/paypal`) or when the form holds a card's
+  number or code: an arrow alone on a card form is a pay (`tools.ts` `paysAt`, `PAY_ACTION`). A
+  pay button with no name, posting nowhere telling and with no card in its form still gets through.
 - The answer tells the task to call `browser_at_checkout`. "去结算 / Checkout" and "加入购物车 / Add to
   cart" are not pays; they open the next page.
 - `browser_at_checkout` needs a secure page (https, or this machine's own for tests); the merchant is

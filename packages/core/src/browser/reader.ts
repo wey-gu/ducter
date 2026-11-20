@@ -138,6 +138,29 @@ export function readExpression(maxLines = 600): string {
 }
 
 /** Where an element is now (scrolled into view first), and whether it is a secret field. */
+/**
+ * D446: what tells a press would pay beyond the control's own words, read in the page (source of a
+ * function of an element): every name it has (aria-label, aria-labelledby, title, value, an icon's
+ * label or an image's alt inside it), whether it submits a form, that form's action (or the
+ * button's own formaction), and whether the form holds a card's number or code. tools.ts paysAt
+ * judges them; an icon-only pay button has no words but has these.
+ */
+export const PAY_FACTS = `(el) => {
+  const t = (s) => ((s == null ? "" : s) + "").replace(/\\s+/g, " ").trim().slice(0, 80);
+  const words = [];
+  const add = (s) => { s = t(s); if (s && !words.includes(s) && words.length < 12) words.push(s); };
+  const attr = (x, k) => (x && x.getAttribute ? x.getAttribute(k) : "");
+  add(attr(el, "aria-label")); add(el.innerText); add(el.value); add(attr(el, "title")); add(attr(el, "alt"));
+  for (const id of (attr(el, "aria-labelledby") || "").split(/\\s+/)) { const x = id && document.getElementById(id); if (x) add(x.innerText || x.textContent); }
+  if (el.querySelectorAll) for (const x of el.querySelectorAll("[aria-label], [title], img[alt], svg title")) { add(attr(x, "aria-label")); add(attr(x, "title")); add(attr(x, "alt")); if (x.tagName.toLowerCase() === "title") add(x.textContent); }
+  const tag = el.tagName.toLowerCase();
+  const submit = (tag === "button" && (!attr(el, "type") || (el.type || "").toLowerCase() === "submit")) || (tag === "input" && /^(submit|image)$/i.test(el.type || ""));
+  const f = submit ? el.form : null;
+  const action = f ? t(attr(el, "formaction") || attr(f, "action") || "") : "";
+  const cardForm = !!(f && [...f.querySelectorAll("input")].some((i) => { const ac = (i.autocomplete || "").toLowerCase(); return ac.includes("cc-number") || ac.includes("cc-csc") || /card.?num|cc.?num|cardnumber|cvc|cvv|csc|security.?code/i.test(i.name + " " + i.id); }));
+  return { words, submit, action, cardForm };
+}`;
+
 export function locateExpression(ref: number): string {
   return `(() => {
     const el = document.querySelector('[data-ducter-ref="${ref}"]');
@@ -153,7 +176,7 @@ export function locateExpression(ref: number): string {
     // D190: what the watcher's line names (a field's label or placeholder, never its value), and the page's size for where.
     const field_ = field ? (el.labels && el.labels[0] ? el.labels[0].innerText : "") || el.getAttribute("aria-label") || el.placeholder || "" : "";
     const label = ((field ? field_ : el.getAttribute("aria-label") || el.innerText || el.value || el.title || el.alt || "") + "").replace(/\\s+/g, " ").trim().slice(0, 40);
-    return { x: r.left + r.width / 2, y: r.top + r.height / 2, secret, field, card, filled: !!el.getAttribute("data-ducter-filled"), tag: el.tagName.toLowerCase(), type: el.type || "", label, vw: innerWidth, vh: innerHeight };
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2, secret, field, card, filled: !!el.getAttribute("data-ducter-filled"), tag: el.tagName.toLowerCase(), type: el.type || "", label, pay: (${PAY_FACTS})(el), vw: innerWidth, vh: innerHeight };
   })()`;
 }
 

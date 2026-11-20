@@ -31,6 +31,24 @@ test("the words that pay, and the ones that only open the next page", () => {
   expect(paysAt({ label: "支付方式", tag: "select" })).toBe(false);
 });
 
+test("D446: a pay button with no words is still a pay: its other names, its form's address, a card in its form", () => {
+  const icon = { label: "", tag: "button", type: "submit" };
+  // Its names other than its text: aria-label, title, an icon's label, an image's alt.
+  for (const w of ["立即支付", "Pay ¥154.70", "Place order"]) expect(paysAt({ ...icon, pay: { words: [w], submit: true } })).toBe(true);
+  expect(paysAt({ ...icon, pay: { words: ["→"], submit: true } })).toBe(false);
+  // A submit whose form posts to a pay address (or its own formaction).
+  for (const a of ["/pay", "https://shop.example/checkout/place-order", "/order/submit_order?x=1", "/api/purchase", "/buy-now"]) expect(paysAt({ ...icon, pay: { submit: true, action: a } })).toBe(true);
+  for (const a of ["/checkout", "/payment-methods", "/paypal/redirect", "/cart/add", "/search", ""]) expect(paysAt({ ...icon, pay: { submit: true, action: a } })).toBe(false);
+  // A submit inside a form that holds a card's number or code.
+  expect(paysAt({ ...icon, pay: { submit: true, cardForm: true } })).toBe(true);
+  expect(paysAt({ label: "¥154.70", tag: "input", type: "submit", pay: { submit: true, cardForm: true } })).toBe(true);
+  // Not a submit (a plain button, a link): the form says nothing about it.
+  expect(paysAt({ label: "", tag: "button", type: "button", pay: { submit: false, cardForm: true, action: "/pay" } })).toBe(false);
+  expect(paysAt({ label: "", tag: "a", pay: { submit: false } })).toBe(false);
+  // A field in a card form is typed into, never pressed.
+  expect(paysAt({ label: "卡号", tag: "input", type: "text", field: true, pay: { submit: false, cardForm: true } })).toBe(false);
+});
+
 test("the checkout question becomes one card with no default; its answers tell the task what happened", () => {
   const t = tempDir();
   const core = startCore({ dataDir: t.dir, port: 0, batchMs: 5, browser: false });

@@ -154,6 +154,8 @@ type AppBridge struct {
 	mu    sync.Mutex
 	opens map[string][]chan *protocol.AppsFrame
 	q     map[string]*appQueue
+	// look is the last appearance told to the pages: 0 none yet, 1 light, 2 dark.
+	look int8
 }
 
 type appQueue struct {
@@ -287,6 +289,31 @@ func (b *AppBridge) Events(id string, after int, wait time.Duration) ([]json.Raw
 		case <-deadline:
 			return nil, after
 		}
+	}
+}
+
+// Theme tells every app page the Mac's appearance now (D446): a page opens
+// in the look of its moment (Open's dark) and follows a live switch, as the
+// web's frame does with its own theme message. Every page's queue gets it,
+// so one opened again replays its events to the look of now.
+func (b *AppBridge) Theme(dark bool) {
+	look := int8(1)
+	if dark {
+		look = 2
+	}
+	b.mu.Lock()
+	if b.look == look {
+		b.mu.Unlock()
+		return
+	}
+	b.look = look
+	ids := make([]string, 0, len(b.q))
+	for id := range b.q {
+		ids = append(ids, id)
+	}
+	b.mu.Unlock()
+	for _, id := range ids {
+		b.push(id, map[string]any{"ducterApp": id, "t": "theme", "dark": dark})
 	}
 }
 

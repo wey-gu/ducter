@@ -104,6 +104,10 @@ One table (`packages/protocol/src/harnesses.ts`), one adapter (`packages/runner/
   DeepSeek Harness, pi: `PARTNER_FALLBACK`, D150, D177). The
   partner reads it at each session start; a session id never crosses harnesses (the prompt
   hash covers the harness; Claude Code keeps the prompt-only hash so upgrades still resume).
+- **Read before the turn (D446).** When a task on the home already waits for the reset of the
+  partner's own agent's account (D297's armed limit wait), the account is read before the partner's
+  next turn (`BrainHold.ahead`): used up (or unread, with the task's reset known), the agent is held
+  at once with the same line, so no turn fails first; room left, the turn goes as it is.
 - **The brain held (D435).** A partner turn that fails on its own agent before saying anything
   (OAR's `quota` or `rate_limited`, read by D297's `limit-hit.ts`, now in `@ducter/protocol`;
   any other failed turn, a stream that ends empty, a session that won't start) holds that agent

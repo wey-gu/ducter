@@ -138,6 +138,41 @@ func TestAppsBridge(t *testing.T) {
 	}
 }
 
+// D446: an open app window follows a live switch of the Mac's appearance:
+// each switch reaches every page's long poll as the theme message the page
+// already reads (the web's frame posts the same), once per change.
+func TestAppsBridgeFollowsTheMacsLook(t *testing.T) {
+	app, _ := appsApp(t, i18n.EN)
+	b := app.Bridge()
+	// Two pages are open (their long polls made their queues).
+	for _, id := range []string{"a1", "a2"} {
+		if evs, _ := b.Events(id, 0, 5*time.Millisecond); len(evs) != 0 {
+			t.Fatalf("%s: %v", id, evs)
+		}
+	}
+	look := func(id string, after int) ([]map[string]any, int) {
+		evs, next := b.Events(id, after, 20*time.Millisecond)
+		out := make([]map[string]any, len(evs))
+		for i, e := range evs {
+			_ = json.Unmarshal(e, &out[i])
+		}
+		return out, next
+	}
+	b.Theme(true)
+	b.Theme(true) // the same look again (another preference changed): nothing new
+	for _, id := range []string{"a1", "a2"} {
+		evs, _ := look(id, 0)
+		if len(evs) != 1 || evs[0]["t"] != "theme" || evs[0]["dark"] != true || evs[0]["ducterApp"] != id {
+			t.Fatalf("%s: dark %v", id, evs)
+		}
+	}
+	b.Theme(false)
+	evs, next := look("a1", 1)
+	if len(evs) != 1 || evs[0]["t"] != "theme" || evs[0]["dark"] != false || next != 2 {
+		t.Fatalf("light %v next %d", evs, next)
+	}
+}
+
 // The Mac screens of D405, zh and en, light and dark, 1280 and 720 wide:
 //
 //	DUCTER_APPS_SHOTS=1 DUCTER_SHOTS_DIR=<repo>/.shots/apps/mac go test ./internal/views -run AppsShots

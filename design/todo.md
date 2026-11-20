@@ -20,6 +20,9 @@ Deferred work, grouped by area, each with its trigger where it has one.
 
 ## Talk hands-free (D442, `voice.md`, research/190)
 
+- [x] **A floor card's question shown twice** (the big line and the card). Done as D446 (`talkShown`:
+  what the card shows is never the big line too; the floor line said again after a "好" either).
+
 - [ ] **The live check with a real microphone** on each platform (the Mac app installed, Chrome on a
   Mac, Safari and the app on an iPhone, the Android app): the 1.2 s / 2.4 s gaps in zh and en, the echo
   guard on a laptop's speakers, the phone's speaker and earphones, a recognizer session ending by
@@ -45,8 +48,11 @@ Deferred work, grouped by area, each with its trigger where it has one.
 - [ ] **The author's review** of `.shots/float/` (over the editor, zh/en, light/dark, five lines).
 - [ ] **Natively over a full-screen app, on another Space and with Stage Manager**: the panel should
   stay above and never take the keyboard (one native run so far: shown, not focused). Trigger: a signed build.
-- [ ] **A changeable key** (Settings › Look and sound), and saying so when ⌃⌥⌘Space is held by another
-  app (today it fails quietly and only the menus work). Trigger: the first person whose key collides.
+- [ ] **A changeable key** (Settings › Look and sound). Trigger: the first person whose key collides.
+  Saying so when ⌃⌥⌘Space is held by another app is done as D446 (both menu items say it, the first line
+  points at the menu).
+- [x] **The partner cut at its side while waiting** in the mini window (its sway past its box). Done as D446
+  (5 pt of room round it).
 - [ ] **Pictures** dropped or pasted into its field, and the reply being written shown quoted in it
   (today: the placeholder says what it replies to). Trigger: the author asks from the mini window.
 - [ ] **Answering a question from it** (Go / Hold on the line, as the menu bar extra can). Trigger: the
@@ -64,8 +70,10 @@ Deferred work, grouped by area, each with its trigger where it has one.
 - [ ] **A real phone paying in the live view**: a wallet or a QR page, 3-D Secure, a bank's own app
   opening from the page (it may leave the view: say what then).
 - [ ] **The pay words on real checkouts**: the gate's list (zh, en, ja) read against five real
-  checkout pages; a pay button named only by an icon or an image gets through today. Trigger: the
-  live proof, or any real checkout the gate missed.
+  checkout pages. A pay button named only by an icon or an image is caught since D446 (its other names,
+  a pay address, a card in its form); one with no name, posting nowhere telling and no card in its
+  form (a card in another site's frame) still gets through. Trigger: the live proof, or any real
+  checkout the gate missed.
 - [ ] **The person's own Chrome, when they ask for it** ("用我自己的 Chrome"): not offered; the stop
   and the gate would be the brief's word only there. Trigger: the author asks.
 - [x] **Detail labels in the person's language in Done for you** ("Phone", "Full name" in a zh
@@ -308,9 +316,9 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
 - [x] The 390-wide web shots through a phone-sized viewport (headless Chrome clips at its minimum window width).
       Done as D443 with Chrome's device emulation over CDP (`.shots/followups-443/`): no overflow; X
       **改由这台收** squeezed its words into a sliver and now drops under them. The iOS Simulator is still owed.
-- [ ] **The phone's head with an update pill** (seen in the same 390 shots, not this pane's): **1 个等你** wraps to
+- [x] **The phone's head with an update pill** (seen in the same 390 shots, not this pane's): **1 个等你** wraps to
       a narrow column beside **3 项更新** and the four icons. Default: on a phone the update pill shrinks to its mark
-      with the count. Trigger: the next phone-UI pass.
+      with the count. Trigger: the next phone-UI pass. Done as D446 (up to 600 wide; a count never breaks inside).
 
 ## Your own agents, as yours (D418, `bridge.md` "Your own agents, as yours")
 
@@ -421,8 +429,8 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
 - Prove it on a real limit hit: Claude Code's 5-hour window and Codex's, the reset read, the
   wait, the resume in the same session, and the hand-off (all checked only with fakes).
 - **D435 follow-ups (the partner's own agent held):** prove it on a real limit hit of the partner's
-  own Claude Code (rides on the first item); read the account before the turn when a task on the
-  same account already waits on its reset (today the partner's turn fails once, fast, first); a
+  own Claude Code (rides on the first item); ~~read the account before the turn when a task on the
+  same account already waits on its reset~~ (done as D446, `BrainHold.ahead`); a
   restart while a fallback answers starts the fallback's session fresh (the Log carries it, the
   native session does not); an eval scenario where the fallback agent picks the conversation up from
   the projection mid-thread; a comprehension pass with people on the one line (换回来 / Back to).
@@ -2553,7 +2561,8 @@ Codex first, once OAR is near 1.0. See `research/17`.
 
 - [ ] **The first state from something true.** An empty spending app could open on this month's payments from Done for you (behind a confirm), not only an outline. Trigger: a person with payments in Done for you who makes a spending app.
 - [ ] **Rows written into the markup, moved.** Today they are linted and named in `[apps]`; the partner moves them only when it next changes the app. Default: offer it under 换成新样子's words when such an app is opened. Trigger: an app with its items in the markup that the person ticks and loses on another device.
-- [ ] **An app window follows the Mac's appearance live** (D443 found it): the Mac tells the page dark or light
+- [x] **An app window follows the Mac's appearance live** (D443 found it; done as D446: `AppBridge.Theme`
+  on mygo's theme change): the Mac tells the page dark or light
   once, when it opens (`app_open`'s `dark`, checked in dark in `.shots/followups-443/`: it reads right); switching
   the Mac's appearance with the window open leaves the app in the old look (the web posts `theme`). Default: send
   `{t:"theme"}` through the bridge's events on mygo's theme change. Trigger: the next app window change.

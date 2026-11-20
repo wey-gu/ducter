@@ -31,6 +31,9 @@ const (
 	// editor's parameter hints, ⌥⌘Space Finder's search: all three
 	// modifiers and Space are free of them.
 	FloatKey = "Ctrl+Alt+Cmd+Space"
+	// floatRoom is the empty box round the mini window's partner (its
+	// waiting sway leans up to 6° about its feet).
+	floatRoom = 5
 	// floatFresh is how long the partner's newest words stay the line.
 	floatFresh = 30 * time.Minute
 	// floatReplyChars is how much of them the line shows (two lines).
@@ -58,6 +61,18 @@ type FloatHands struct {
 	Resize func(h int)
 	// Redraw draws the main window again (the draft, a message sent here).
 	Redraw func()
+}
+
+// FloatMenu is what the mini window's menu items (the app's View menu, the
+// menu bar's) show beside their name: the shortcut, or, when another app
+// holds it (D446), no shortcut and a line saying so, so a press that does
+// nothing is explained where the person looks next, and the item itself is
+// the way in.
+func (a *App) FloatMenu() (accel, sub string) {
+	if a.FloatKeyTaken {
+		return "", a.L.T("float.key.taken")
+	}
+	return FloatKey, ""
 }
 
 // FloatShown reports whether the mini window is on screen.
@@ -123,6 +138,9 @@ func (a *App) floatSay(c *ui.Context) floatLine {
 		return floatLine{kind: "wait", words: line, sub: sub, step: step, el: el}
 	}
 	if a.float.first {
+		if a.FloatKeyTaken { // D446: no key to promise; the menu is the way
+			return floatLine{kind: "first", words: a.L.T("float.first.menu")}
+		}
 		return floatLine{kind: "first", words: a.L.T("float.first", a.L.T("float.key"))}
 	}
 	if words, at := a.newestWords(); words != "" {
@@ -213,14 +231,17 @@ func (a *App) FloatView(c *ui.Context) {
 func (a *App) floatHead(c *ui.Context) {
 	t := a.T
 	line := a.floatSay(c)
-	head := ui.Row(c.Key("float-head")).Gap(t.S3).AlignItems(ui.Start).Padding(t.S1, 0, 0, t.S1).DragWindow()
+	// D446: the partner gets floatRoom of empty box round it, so its sway
+	// and breath are never cut at its box's side; the head's padding and gap
+	// give that room back, so the words stand where they did.
+	head := ui.Row(c.Key("float-head")).Gap(t.S3-floatRoom).AlignItems(ui.Start).Padding(t.S1, 0, 0, max(t.S1-floatRoom, 0)).DragWindow()
 	open := func(e ui.Element) {
 		if e.Clicked() {
 			a.floatOpen(func() { a.Route = RouteConversation })
 		}
 	}
 	head.Children(func() {
-		fig := ui.Box(c.Key("float-fig")).Padding(t.S1, 0, 0, 0).Shrink(0).Cursor(ui.CursorPointer).Role(ui.RoleButton).
+		fig := ui.Box(c.Key("float-fig")).Padding(max(t.S1-floatRoom, 0), 0, 0, 0).Shrink(0).Cursor(ui.CursorPointer).Role(ui.RoleButton).
 			Label(spoken(a.L, a.S.PersonaName, a.L.T("float.open"))).Tooltip(a.L.T("float.open"))
 		fig.Children(func() {
 			if line.kind == "wait" {
@@ -228,9 +249,9 @@ func (a *App) floatHead(c *ui.Context) {
 				if m != aliveStill && m != aliveSettle && line.el < aliveSettleAfter {
 					c.After(aliveSettleAfter - line.el)
 				}
-				a.aliveFigure(c, "float", aliveFaceFor(line.step), m, 44)
+				a.aliveFigureIn(c, "float", aliveFaceFor(line.step), m, 44, floatRoom)
 			} else {
-				a.partnerFace(c, "float", a.presence(c), 44)
+				a.partnerFaceIn(c, "float", a.presence(c), 44, floatRoom)
 			}
 		})
 		open(fig)

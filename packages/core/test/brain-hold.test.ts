@@ -21,14 +21,14 @@ afterEach(() => {
   stops = [];
 });
 
-function setup(o: { home?: string[]; rules?: RuleView[]; usage?: AccountUsageBook; dir?: string } = {}) {
+function setup(o: { home?: string[]; rules?: RuleView[]; usage?: AccountUsageBook; dir?: string; waits?: () => { harness: string; at?: string; resetKnown: boolean }[] } = {}) {
   const t = o.dir ? { dir: o.dir, cleanup: () => {} } : tempDir();
   const clock = new FakeClock(START);
   const log = openLog({ path: join(t.dir, "ducter.db"), persona: "default", clock });
   const home = (o.home ?? ["claude-code", "codex", "pi"]).map((h) => ({ harness: h, loggedIn: true }));
   const changes: number[] = [];
   const mk = () => {
-    const hold = createBrainHold({ log, clock, base: () => "claude-code", home: () => home, rules: () => o.rules ?? [], ...(o.usage ? { usage: o.usage } : {}) });
+    const hold = createBrainHold({ log, clock, base: () => "claude-code", home: () => home, rules: () => o.rules ?? [], ...(o.usage ? { usage: o.usage } : {}), ...(o.waits ? { waits: o.waits } : {}) });
     hold.onChange(() => changes.push(clock.now()));
     stops.push(() => hold.stop());
     return hold;
@@ -115,4 +115,48 @@ test("what every client is told: the agent answering meanwhile, or the held one 
   expect(brainNow({ harness: "codex" }, true, [cc, cx], undefined, { from: "claude-code", why: "quota", until: RESET, resetKnown: true, waits: true }).held).toBeUndefined();
   const waits = brainNow({ harness: "claude-code", model: "opus" }, true, [cc], undefined, { from: "claude-code", why: "quota", until: RESET, resetKnown: true, waits: true });
   expect(waits).toMatchObject({ harness: "claude-code", model: "opus", held: { waits: true } });
+});
+
+// D446: a task on the home already waits for Claude Code's reset (D297). Before the partner's next
+// turn the account is read, so its turn never fails first: held now, Codex answers, said once.
+test("a task waits for the same account's reset: the account is read before the turn and the agent held at once", async () => {
+  let reads = 0;
+  const usage = {
+    get: async (h: string) => (h === "claude-code" ? (reads++, { usage: { windows: [{ id: "5h", used: 1, resetsAt: RESET }], limited: true } }) : {}),
+    seen: () => {},
+  } as unknown as AccountUsageBook;
+  const waits: { harness: string; at?: string; resetKnown: boolean }[] = [];
+  const s = setup({ usage, waits: () => waits });
+  const hold = s.mk();
+  // No task waiting: nothing read, nothing held.
+  expect(await hold.ahead()).toEqual({ tell: false, held: false });
+  expect(reads).toBe(0);
+  // A task waits on another agent's account: still nothing.
+  waits.push({ harness: "codex", at: "2026-11-21T12:00:00.000Z", resetKnown: true });
+  expect((await hold.ahead()).held).toBe(false);
+  expect(reads).toBe(0);
+  // A task waits on Claude Code's, and the account says it is used up: held now, until its reset.
+  waits.push({ harness: "claude-code", at: new Date(Date.parse(RESET) + RESET_GRACE_MS).toISOString(), resetKnown: true });
+  const r = await hold.ahead();
+  expect(r).toEqual({ held: true, tell: true, now: { from: "claude-code", why: "quota", until: RESET, resetKnown: true, to: "codex" } });
+  expect(reads).toBeGreaterThan(0);
+  // Held already: the next turn reads nothing again and says nothing again.
+  const n = reads;
+  expect(await hold.ahead()).toEqual({ tell: false, held: false });
+  expect(reads).toBe(n);
+});
+
+test("the account says there is room (another window): the turn goes on its own agent; unread with no reset known: it tries", async () => {
+  const roomy = { get: async () => ({ usage: { windows: [{ id: "5h", used: 0.3, resetsAt: RESET }], limited: false } }), seen: () => {} } as unknown as AccountUsageBook;
+  const later = new Date(Date.parse(RESET) + RESET_GRACE_MS).toISOString();
+  const a = setup({ usage: roomy, waits: () => [{ harness: "claude-code", at: later, resetKnown: true }] });
+  expect((await a.mk().ahead()).held).toBe(false);
+  // No reading at all (no usage book): the task's known reset is enough to hold.
+  const b = setup({ waits: () => [{ harness: "claude-code", at: later, resetKnown: true }] });
+  const rb = await b.mk().ahead();
+  expect(rb.held).toBe(true);
+  expect(rb.now?.until).toBe(RESET);
+  // No reading and only a retry time (no reset known): a guess, so the turn tries.
+  const c = setup({ waits: () => [{ harness: "claude-code", at: later, resetKnown: false }] });
+  expect((await c.mk().ahead()).held).toBe(false);
 });

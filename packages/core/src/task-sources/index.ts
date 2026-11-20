@@ -10,7 +10,7 @@ import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { randomBytes } from "node:crypto";
-import type { Bodies, LogEvent, SourceAsk, SourceGlance, SourceItem, SourceItemRef, SourceKind, SourceOp, SourcesFound, SourcesView, SourceView, TaskCard, WhenDone, WhenNew } from "@ducter/protocol";
+import type { Bodies, LogEvent, SourceAsk, SourceGlance, SourceItem, SourceItemRef, SourceKind, SourceOp, SourcesFound, SourcesView, SourceView, StandingView, TaskCard, WhenDone, WhenNew } from "@ducter/protocol";
 import { BROWSE_PAGE, DEFAULT_WHEN, GLANCE_MAX, WHEN_DONE } from "@ducter/protocol";
 import { isActive as isActiveAttention } from "../registry.ts";
 import type { LogStore, TaskRegistry } from "@ducter/protocol/src/internal.ts";
@@ -145,6 +145,8 @@ export interface TaskSourcesDeps {
   computer?: () => string | undefined;
   /** Tell a task something in Ducter's words (runner.send(..., "ducter")). */
   tell?: (taskId: string, text: string) => void;
+  /** D410: what the person said may go without asking (不用问我的): the review posting it covers. */
+  standing?: { allows(ref: string, o?: { mention?: boolean }): StandingView | undefined; firstUse(id: string): boolean };
   /** Stop a task (Go on "closed there; stop?"). */
   stop?: (taskId: string) => Promise<void>;
   /** Today in the person's zone (the Tasks ✅ date). */
@@ -369,7 +371,7 @@ export function createTaskSources(d: TaskSourcesDeps): TaskSources {
   };
 
   // ---------- writes: the only path out ----------
-  async function write(item: SourceItemRef, op: SourceOp, how: { by: Bodies["source_write"]["by"]; decisionId?: string; taskId?: string; text?: string }): Promise<WriteResult> {
+  async function write(item: SourceItemRef, op: SourceOp, how: { by: Bodies["source_write"]["by"]; decisionId?: string; taskId?: string; text?: string; standing?: string }): Promise<WriteResult> {
     const s = byId(item.source);
     let r: WriteResult;
     if (!s) r = { ok: false, error: "that to-do source was removed" };
@@ -391,6 +393,7 @@ export function createTaskSources(d: TaskSourcesDeps): TaskSources {
         by: how.by,
         ...(how.decisionId ? { decisionId: how.decisionId } : {}),
         ...(how.taskId ? { taskId: how.taskId } : {}),
+        ...(how.standing ? { standing: how.standing } : {}),
         ...(how.text ? { text: how.text.slice(0, 600) } : {}),
         ...(r.link ? { link: r.link } : {}),
         ...(r.error ? { error: r.refused ? `${r.refused}: ${r.error}` : r.error } : {}),
@@ -605,6 +608,7 @@ export function createTaskSources(d: TaskSourcesDeps): TaskSources {
       return { open: xs.reduce((n, x) => n + (x.open ?? 0), 0), ...(xs.some((x) => x.atLeast) ? { atLeast: true } : {}) };
     },
     write: (item, op, how) => write(item, op, how),
+    ...(d.standing ? { standing: d.standing } : {}),
     ...(d.openTask
       ? {
           openTask: async (item: SourceItem, brief: string) => {

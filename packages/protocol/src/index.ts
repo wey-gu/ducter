@@ -39,11 +39,13 @@ export * from "./mem-source.ts";
 export * from "./mem-health.ts";
 export * from "./task-sources.ts";
 export * from "./handover.ts";
+export * from "./standing.ts";
 import type { DeviceVia, HomeKey, ReachWay } from "./reach.ts";
 import type { PastClientFrame, PastMark, PastServerFrame } from "./past.ts";
 import type { DidClientFrame, DidServerFrame } from "./did.ts";
 import type { RichUi } from "./rich.ts";
 import type { PinView } from "./pins.ts";
+import type { StandingView } from "./standing.ts";
 import type { MadeClientFrame, MadeServerFrame } from "./made.ts";
 import type { AppAnswer, AppCard, AppRef, AppsClientFrame, AppsServerFrame } from "./apps.ts";
 import type { ChannelClientFrame, ChannelKind, ChannelServerFrame } from "./channels.ts";
@@ -494,6 +496,8 @@ export interface Bodies {
     by: "go" | "rule" | "undo";
     decisionId?: string;
     taskId?: string;
+    /** D410: by "rule" under a standing permission the person said (不用问我的): its id. */
+    standing?: string;
     /** comment: the words that went out (cut to 600). */
     text?: string;
     /** What the app gave back (the comment's address). */
@@ -1266,6 +1270,8 @@ export type ClientFrame =
   // Rules are added only by saying them in the conversation (the partner's rule_save tool).
   | { t: "rules" }
   | { t: "rule_remove"; id: string }
+  // D410: 收回 / Take back a standing permission (不用问我的 / Without asking); a fresh rules frame follows.
+  | { t: "standing_revoke"; id: string }
   // D381: 置顶 / Pin. pin: a block of a partner message (its seq, the block's index) goes to the top;
   // unpin takes it off (the message keeps it); pin_tick ticks a pinned checklist's item, by its
   // words, on the home. Every socket on the default conversation gets a fresh pins frame after each.
@@ -1618,7 +1624,8 @@ export type ServerFrame =
   // D321: what Mem found for Settings › 记忆's search (ok false: Mem didn't answer).
   | { t: "mem_found"; q: string; ok: boolean; items: MemItem[] }
   // D372: defaults: the built-in default per kind of work, when it differs between kinds.
-  | { t: "rules"; rules: RuleView[]; defaults?: KindDefault[] }
+  // D410: standing: what the person said Ducter may do without asking (不用问我的 / Without asking).
+  | { t: "rules"; rules: RuleView[]; defaults?: KindDefault[]; standing?: StandingView[] }
   // D381: what is pinned in the default conversation, newest first; after the welcome and on every
   // change. refused (to the asking socket only): why a pin didn't happen (full: PINS_MAX already;
   // gone: no such block; kind: choices and the lend card aren't pinned).

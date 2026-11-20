@@ -51,6 +51,7 @@
 //   that arrived while down) are queued again; user messages that already got a reply are not.
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import type { AliveSource } from "../../protocol/src/alive.ts";
 import { callWakes, fileView, harnessName, HARNESSES, HARNESS_IDS, isHarnessId, isImage, isWorkKind, WORK_KINDS, type WorkKind, MEDIA_LIMITS, viewText, type MediaRef, type ActivityStep, type Bodies, type BodyWhy, type Brain, type CalEvent, type CalGlance, type EventKind, type HarnessId, type LogEvent, type Place, type TaskCard, type TaskGroupFrame, type TaskGroupView, type TaskNeeds } from "../../protocol/src/index.ts";
 import type { CoreApi, HarnessEvent, HarnessSession, Partner, Runner, SendImage, WebLookPort, WorkingMemoryView } from "../../protocol/src/internal.ts";
 import { resolveWindows, WINDOW_MAX, WINDOW_MIN } from "../../protocol/src/harness-facts.ts";
@@ -335,6 +336,43 @@ export function activityStep(tool: string): ActivityStep | undefined {
       return undefined; // housekeeping: not a step the user would recognise
     default:
       return "looking";
+  }
+}
+/**
+ * D425: what the waiting line may name for a tool call: a task's own title (the person's words for
+ * it), the question of a quick web look, or where it looks (your calendar, your to-dos, your
+ * connected accounts). Never what was read, never a tool's name, a path or a query.
+ */
+export function activityObject(tool: string, input: unknown, titleOf: (taskId: string) => string | undefined): { about?: string; source?: AliveSource } {
+  const name = tool.split("__").pop() ?? tool;
+  const i = (input ?? {}) as { taskId?: unknown; title?: unknown; question?: unknown };
+  const str = (v: unknown) => (typeof v === "string" && v.trim() ? v.replace(/\s+/g, " ").trim().slice(0, 120) : undefined);
+  switch (name) {
+    case "task_read":
+    case "task_send":
+    case "task_fork": {
+      const id = str(i.taskId);
+      const about = id ? str(titleOf(id)) : undefined;
+      return about ? { about } : {};
+    }
+    case "task_open": {
+      const about = str(i.title);
+      return about ? { about } : {};
+    }
+    case "web_look": {
+      const about = str(i.question);
+      return about ? { about } : {};
+    }
+    case "calendar":
+      return { source: "calendar" };
+    case "todos":
+      return { source: "todos" };
+    case "connection_call":
+    case "connection_search":
+    case "connections_list":
+      return { source: "accounts" };
+    default:
+      return {};
   }
 }
 const QUIET_TOOL_RE = /(^ToolSearch$)|((^|__)(log_search|log_read|task_read|memory_search|memory_add|task_retitle|task_switch|own_session_find|own_session_continue|made_find|task_find|task_fork)$)/;
@@ -1154,26 +1192,33 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   // ---------- what the user sees while waiting (D104) ----------
   // Only a turn the user is waiting on (it answers their message) shows; each tool call becomes a
   // plain step; the tool's name never leaves this process.
-  let shown: { since: string; step: ActivityStep } | null = null;
-  /** D380: quick web looks out now, by id: when each started, and the promise the eval and tests wait on. */
-  const looks = new Map<string, { since: string; done: Promise<void> }>();
+  let shown: { since: string; step: ActivityStep; about?: string; source?: AliveSource } | null = null;
+  /** D380: quick web looks out now, by id: when each started, its question (D425), and the promise the eval and tests wait on. */
+  const looks = new Map<string, { since: string; question: string; done: Promise<void> }>();
   function endWaiting() {
     if (!shown) return;
     // D380: a quick web look still out: the line says so until its answer is said.
     if (looks.size) {
-      const since = [...looks.values()].map((l) => l.since).sort()[0]!;
+      const first = [...looks.values()].sort((a, b) => a.since.localeCompare(b.since))[0]!;
+      const since = first.since;
       if (shown.step === "web" && shown.since === since) return;
-      shown = { since, step: "web" };
-      core.activity?.set({ step: "web", since, stepSince: new Date(now()).toISOString() });
+      shown = { since, step: "web", about: first.question };
+      core.activity?.set({ step: "web", since, stepSince: new Date(now()).toISOString(), about: first.question });
       return;
     }
     shown = null;
     core.activity?.set(null);
   }
-  const showStep = (step: ActivityStep) => {
-    if (!shown || shown.step === step) return;
-    shown.step = step;
-    core.activity?.set({ step, since: shown.since, stepSince: new Date(now()).toISOString() });
+  // D425: the step's object, when the person already knows it: a task's own title, the question
+  // of a web look, where it looks. A later event of the same call (its input in full) can add it.
+  const showStep = (step: ActivityStep, obj: { about?: string; source?: AliveSource } = {}) => {
+    if (!shown) return;
+    const same = shown.step === step;
+    if (same && (!obj.about || obj.about === shown.about) && (!obj.source || obj.source === shown.source)) return;
+    const about = obj.about ?? (same ? shown.about : undefined);
+    const source = obj.source ?? (same ? shown.source : undefined);
+    shown = { since: shown.since, step, ...(about ? { about } : {}), ...(source ? { source } : {}) };
+    core.activity?.set({ step, since: shown.since, stepSince: new Date(now()).toISOString(), ...(about ? { about } : {}), ...(source ? { source } : {}) });
   };
 
   // ---------- harness events ----------
@@ -1189,7 +1234,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     // "Setting up a task…" flashes before it.
     if (ev.tool && !(TASK_OPEN_RE.test(ev.tool.name) && turn.pending?.trim())) {
       const step = activityStep(ev.tool.name);
-      if (step) showStep(step);
+      if (step) showStep(step, activityObject(ev.tool.name, ev.tool.input, (id) => core.tasks.get(id)?.title));
     }
     if (ev.role === "assistant" && ev.text !== undefined && !ev.tool) {
       flushPending();
@@ -2247,7 +2292,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           core.log.append({ stream: "channel", origin: "system", kind: "web_look", body: { lookId, question, replyTo, ...r } });
         };
         const done = port.look({ question, lang: lang ?? "the language of the question" }).then(settle, () => settle({ state: "unsettled", why: "failed" }));
-        looks.set(lookId, { since: new Date(now()).toISOString(), done });
+        looks.set(lookId, { since: new Date(now()).toISOString(), question, done });
         return { ok: true, note: "Looking it up now (at most about 30 s); the user sees that you're looking. End your turn now and say nothing more: the answer comes back to you as [web look] to say." };
       },
     );

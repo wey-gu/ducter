@@ -927,7 +927,7 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 		case f.Activity == nil:
 			s.Activity = nil
 			s.ActivityEndedAt = s.ChannelSeq
-		case s.Activity == nil || s.Activity.Step != f.Activity.Step:
+		case s.Activity == nil || s.Activity.Step != f.Activity.Step || s.Activity.About != f.Activity.About || s.Activity.Source != f.Activity.Source:
 			s.Activity, s.ActivityAt = f.Activity, time.Now()
 		}
 	case "past_result", "past_marked", "ongoing_result", "outside_adopted", "outside_hidden":

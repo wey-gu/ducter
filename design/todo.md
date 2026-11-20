@@ -40,6 +40,23 @@ Deferred work, grouped by area, each with its trigger where it has one.
   sign one of them out from Ducter.
 - [ ] **DeepSeek Harness pictures** (OAR 0.124 #997 added images to its runtime): check live, then
   `HARNESSES["deepseek-harness"].images`.
+## The waiting line, alive (D425, research/176)
+
+- [ ] **The iOS Simulator and a phone's frame rate**: the loops and the line's change on Mobile
+  Safari in the iPhone Simulator (and the Android app's web view), timed with the performance
+  panel. Trigger: the next iOS build.
+- [ ] **A live partner turn timed with the dwell**: how often a step waits its turn, and whether
+  1.4 s reads right on real steps. Trigger: a live run with a signed-in harness.
+- [ ] **A partner-written step line** (the reference's 整理申请路线: the partner names its own
+  step in a few words). Needs a persona change, a tool field, and its eval (D175); the code-written
+  objects stay the fallback. Trigger: raters or the author find the code's words too plain.
+- [ ] **Eyes that follow** (research/176's C): eye layers for each pose (`tools/art/eyes.py` makes
+  the closed ones), the gaze toward the line while it looks. Trigger: the art round after this one.
+- [ ] **Human raters** for the figure's loops (only LLM proxies read descriptions so far).
+  Trigger: the first user study.
+- [ ] **One message, many asks**: its rows take `AliveLine` / `aliveLine` with the agent's coin.
+  Trigger: that branch merges.
+
 ## The Mac walk's leftovers (D408)
 
 - **Walk D408 in the real window.** VoiceOver on a joined title (「对话」 read as a word), an expiry typed

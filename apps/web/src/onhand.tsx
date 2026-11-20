@@ -6,6 +6,7 @@
 // keys and selection only where a keyboard and a pointer are.
 import type { ComponentChildren } from "preact";
 import { memo } from "preact/compat";
+import { useDwell, useResting } from "./alive.tsx";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { callEnded, type Bodies, type LogEvent, type Place } from "@ducter/protocol";
 import { blocksOf, type Block } from "@ducter/protocol/src/transcript.ts";
@@ -820,18 +821,24 @@ const TaskCard = memo(function TaskCard({ task, room, focus, sel }: RowProps) {
     A.go({ name: "task", id: task.id, full: room === "full" });
   };
   const at = task.card?.updatedAt;
+  // D425: what it is on changes like the waiting line (held for the dwell, a short entrance), and
+  // the coin rests with it when the person has been away a while.
+  const words = useDwell(s.words);
+  const rest = useResting();
   return (
-    <div class={`tcard a-${a}${focus ? " kfocus" : ""}${sel ? " sel" : ""}${fresh ? " unseen" : ""}${cheer ? " cheer" : ""}${arrived ? " arrived" : ""}`} data-row={task.id}>
+    <div class={`tcard a-${a}${focus ? " kfocus" : ""}${sel ? " sel" : ""}${fresh ? " unseen" : ""}${cheer ? " cheer" : ""}${arrived ? " arrived" : ""}${rest ? " resting" : ""}`} data-row={task.id}>
       <button class="cmain" onClick={onClick} title={title(task)}>
         <span class="c1">
-          <Coin harness={harnessOf(task)} size={28} motion={working ? "working" : a === "needs_you" ? "needs_you" : "still"} />
+          <Coin harness={harnessOf(task)} size={28} motion={rest ? "still" : working ? "working" : a === "needs_you" ? "needs_you" : "still"} />
           <span class="t">{shortTitle(title(task)) || t("task.unknown")}</span>
           <PartnerMark persona={task.card?.persona} />
           {fresh && <StatusFace s="new" failed={a === "failed"} handing={handover(task.id, st)} />}
         </span>
         <span class={`c2${s.tone ? ` ${s.tone}` : ""}${fresh && !s.tone ? " result" : ""}`}>
           {s.mark && <StepMark k={s.mark} />}
-          <span class="w">{s.words}</span>
+          <span key={working ? words : ""} class={working ? "w say" : "w"}>
+            {working ? words : s.words}
+          </span>
           {s.code && <code class="c">{s.code}</code>}
         </span>
         <span class="c3">

@@ -75,24 +75,35 @@ every removed line is in Details, On hand or the task.
 ## While it's busy: the waiting line
 
 While the user waits on a reply, the partner's own place in the conversation shows the clay
-partner (its working face, breathing, D77) and one plain line, updated in place and gone when
+partner acting out the step it is on (D425) and one plain line, updated in place and gone when
 the reply lands. It shows the moment the message is sent (the client's own state, 0 ms; web
 measured 2–4 ms), so the first feedback never waits on the server.
 
-| Step (protocol) | zh | en | From the partner's |
-|---|---|---|---|
-| thinking | 在想… | Thinking… | turn start, before any tool |
-| recalling | 在翻之前聊过的… | Looking back at what we said… | log_search, log_read, memory_search |
-| checking_task | 在看做到哪了… | Checking on that task… | task_read |
-| opening_task | 在安排一件事去做… | Setting up a task… | task_open |
-| messaging_task | 在把你的话带过去… | Passing it on… | task_send |
-| planning | 在想怎么安排… | Working out the timing… | wait_until, ask |
-| looking | 在查… | Looking into it… | any other tool |
+| Step (protocol) | zh | en | The figure (D425) | From the partner's |
+|---|---|---|---|---|
+| thinking | 在想… | Thinking… | think: a slow sway, blinking | turn start, before any tool |
+| recalling | 在翻之前聊过的… | Looking back at what we said… | glance: one side, the other | log_search, log_read, memory_search, task_find, did_list |
+| checking_task | 在看「{title}」做到哪了… (without a title: 在看做到哪了…) | Checking how “{title}” is going… (Checking on that task…) | read: the book, a nod | task_read |
+| opening_task | 在安排「{title}」… (在安排一件事去做…) | Setting up “{title}”… (Setting up a task…) | lean | task_open, task_fork |
+| messaging_task | 在把你的话带给「{title}」… (在转告它…) | Passing your words on to “{title}”… (Passing it on…) | lean | task_send |
+| planning | 在想怎么安排… | Working out the timing… | think | wait_until, ask |
+| looking | 在看你的日程… · 在看你的待办… · 在你连上的账号里查… · else 在查… | Looking at your calendar… · Looking at your to-dos… · Looking in your connected accounts… · else Looking into it… | glance | calendar, todos, a connection, any other tool |
+| web (D380) | 在网上查：{question} (在网上查…) | Looking it up on the web: {question} | look: about, a little lift | web_look |
 
-Housekeeping (ToolSearch, memory_add, task_retitle) keeps the current step. Tool names never
-reach a client. One step past 15 s adds **比平时久一点，还在处理 / Taking a bit longer than usual**;
-past 45 s, **还在处理。你可以先忙别的，好了告诉你 / Still on it. Carry on with something else; I'll
-say when it's ready**. The clock is per step, on the client's own clock.
+The object in braces is only ever what the person already knows: the task's own title, the
+question they asked, where it looks; clipped at 34 columns (a Chinese character takes two, whatever the language of the app); written by code from the
+call (`activityObject`), carried as `about` / `source`. Never a tool's name, a path, a query or
+what it read. Housekeeping (ToolSearch, memory_add, task_retitle) keeps the current step. One step
+past 15 s adds **比平时久一点，还在处理 / Taking a bit longer than usual**; past 45 s, **还在处理。你可以先忙别的，好了告诉你 /
+Still on it. Carry on with something else; I'll say when it's ready**, and the figure only
+breathes. The clock is per step, on the client's own clock.
+
+**Cadence and the end (D425).** A line stays at least 1.4 s; a newer step sooner waits, only the
+newest. It changes with a 240-ms cross-fade and a 3-pt rise, the figure's loop changing in the same
+moment (so a new action means it moved on). The reply lands where the line stood; the line goes at
+once, the reply's row glides up. Still while the window is hidden and after 90 s with no input;
+reduced motion: the step's pose, still, a plain cross-fade. Model and numbers:
+`packages/protocol/src/alive.ts`; the look: `ui.md`; why: research/176.
 
 **Mechanics.** A new unlogged server frame `{t:"activity", activity: {step, since, stepSince} |
 null}` (presence, not history): the partner sets it only for a turn that answers the user,

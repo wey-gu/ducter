@@ -1,0 +1,54 @@
+{
+  "_": "D425: the waiting line, alive (an object is clipped to 34 columns, a wide character two). The same cases for the web (packages/protocol/src/alive.ts) and the Mac (apps/desktop/internal/views/alive.go). words: the line's i18n key and argument for a step; motion: the figure's loop at stepMs (still wins); face: the pose a step wears; sub: the reassurance; cadence: what the line shows at now, given what it shows since shownAt and the line wanted.",
+  "words": [
+    { "in": { "step": "thinking" }, "key": "activity.thinking" },
+    { "in": { "step": "recalling", "about": "ignored" }, "key": "activity.recalling" },
+    { "in": { "step": "checking_task", "about": "查 ITIN 的申请材料" }, "key": "activity.checking_task.about", "arg": "查 ITIN 的申请材料" },
+    { "in": { "step": "checking_task" }, "key": "activity.checking_task" },
+    { "in": { "step": "checking_task", "about": "  " }, "key": "activity.checking_task" },
+    { "in": { "step": "messaging_task", "about": "订京都的旅馆" }, "key": "activity.messaging_task.about", "arg": "订京都的旅馆" },
+    { "in": { "step": "opening_task", "about": "Compare the movers' quotes" }, "key": "activity.opening_task.about", "arg": "Compare the movers' quotes" },
+    { "in": { "step": "web", "about": "明天（11 月 20 日）上海会下雨吗？" }, "key": "activity.web.about", "arg": "明天（11 月 20 日）上海会下雨吗" },
+    { "in": { "step": "web", "about": "Will it rain in   Shanghai tomorrow (Nov 20)?" }, "key": "activity.web.about", "arg": "Will it rain in Shanghai tomorrow…" },
+    { "in": { "step": "checking_task", "about": "把下个月去京都和大阪的酒店、新干线和寺庙门票都订好" }, "key": "activity.checking_task.about", "arg": "把下个月去京都和大阪的酒店、新干…" },
+    { "in": { "step": "looking", "source": "calendar" }, "key": "activity.looking.calendar" },
+    { "in": { "step": "looking", "source": "todos" }, "key": "activity.looking.todos" },
+    { "in": { "step": "looking", "source": "accounts" }, "key": "activity.looking.accounts" },
+    { "in": { "step": "looking" }, "key": "activity.looking" },
+    { "in": { "step": "planning" }, "key": "activity.planning" }
+  ],
+  "motion": [
+    { "step": "thinking", "stepMs": 0, "want": "think" },
+    { "step": "planning", "stepMs": 2000, "want": "think" },
+    { "step": "recalling", "stepMs": 500, "want": "glance" },
+    { "step": "looking", "stepMs": 500, "want": "glance" },
+    { "step": "checking_task", "stepMs": 500, "want": "read" },
+    { "step": "result", "stepMs": 500, "want": "read" },
+    { "step": "relay", "stepMs": 500, "want": "read" },
+    { "step": "opening_task", "stepMs": 500, "want": "lean" },
+    { "step": "messaging_task", "stepMs": 500, "want": "lean" },
+    { "step": "web", "stepMs": 44999, "want": "look" },
+    { "step": "web", "stepMs": 45000, "want": "settle" },
+    { "step": "thinking", "stepMs": 0, "still": true, "want": "still" }
+  ],
+  "face": [
+    { "step": "thinking", "want": "idle" },
+    { "step": "recalling", "want": "idle" },
+    { "step": "checking_task", "want": "working" },
+    { "step": "result", "want": "working" },
+    { "step": "messaging_task", "want": "idle" },
+    { "step": "web", "want": "idle" }
+  ],
+  "sub": [
+    { "stepMs": 0, "want": "" },
+    { "stepMs": 14999, "want": "" },
+    { "stepMs": 15000, "want": "activity.slow" },
+    { "stepMs": 45000, "want": "activity.long" }
+  ],
+  "cadence": [
+    { "name": "first line shows at once", "shownAt": 0, "wanted": "a", "now": 0, "line": "a", "changed": true, "waitMs": 0 },
+    { "name": "same line", "shown": "a", "shownAt": 0, "wanted": "a", "now": 100, "line": "a", "changed": false, "waitMs": 0 },
+    { "name": "a newer step too soon waits its turn", "shown": "a", "shownAt": 1000, "wanted": "b", "now": 1500, "line": "a", "changed": false, "waitMs": 900 },
+    { "name": "after the dwell it changes", "shown": "a", "shownAt": 1000, "wanted": "b", "now": 2400, "line": "b", "changed": true, "waitMs": 0 }
+  ]
+}

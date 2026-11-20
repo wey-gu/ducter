@@ -2836,6 +2836,11 @@ type PartnerActivity struct {
 	Step      string `json:"step"`
 	Since     string `json:"since"`
 	StepSince string `json:"stepSince"`
+	// About is the step's object in the person's own words, when they
+	// know it already (a task's title, a web look's question); Source is
+	// where a looking step looks: calendar | todos | accounts (D425).
+	About  string `json:"about,omitempty"`
+	Source string `json:"source,omitempty"`
 }
 
 // Delivery is how a task_send reached its task: steered in mid-turn, as

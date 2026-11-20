@@ -153,7 +153,8 @@ In our own runs, a small "fix the failing tests" task came back done in under a 
 ## What happens next
 
 - **Your partner shows it's on it.** The moment you send something, your partner appears where
-  its reply will come, with a short line of what it is doing, such as *Thinking…*. For real
+  its reply will come, busy at what it is doing, with a short line that says it in your words,
+  such as *Thinking…* or *Checking how "Look into the ITIN application" is going…*. For real
   work, a sentence follows within a couple of seconds, such as *"On it: checking why CI failed,
   usually about 10 min; I'll tell you when it's clear"*, and the work is already under way when
   you read it. Then it stays quiet until there is a result.

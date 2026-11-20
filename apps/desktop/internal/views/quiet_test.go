@@ -22,6 +22,7 @@ func chEv(seq int64, origin protocol.Origin, kind string, body any) protocol.Log
 func TestPresenceWhileWaiting(t *testing.T) {
 	app, _ := iaApp(t, i18n.ZH)
 	tt := ui.NewTesterWith(app.View, 1280, 900, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
+	app.Now = tt.Now
 	tt.Frame()
 	app.SendMessage("帮我看下 #1592 的 CI")
 	tt.Frame()
@@ -31,6 +32,9 @@ func TestPresenceWhileWaiting(t *testing.T) {
 	app.Receive(protocol.ServerFrame{T: "events", Events: []protocol.LogEvent{chEv(1, protocol.OriginUser, protocol.KindUserMsg, protocol.UserMsg{Text: "帮我看下 #1592 的 CI", ClientID: app.pending[0].clientID})}})
 	now := time.Now().UTC().Format(time.RFC3339)
 	app.Receive(protocol.ServerFrame{T: "activity", Activity: &protocol.PartnerActivity{Step: "recalling", Since: now, StepSince: now}})
+	tt.Frame()
+	// D425: the line holds for its dwell, then the step replaces it.
+	tt.Advance(aliveDwell)
 	tt.Frame()
 	if !tt.HasText("在翻之前聊过的…") || tt.HasText("在想…") {
 		t.Fatalf("the step didn't replace the line: %q", tt.Texts())

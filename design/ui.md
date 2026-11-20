@@ -296,6 +296,7 @@ selection, **全部拷贝** (secondary) and **完成** (primary) under them.
 | Thing | Idle motion |
 |---|---|
 | the clay partner | breathes (scale 1.012 × 1.03 from its feet, 3.8 s); blinks (150 ms, every 3–6 s, sometimes twice): the same render with its eyes closed (each eye filled from the clay round it, `tools/art/eyes.py`) shows through an upper lid that comes down and a lower lid that rises late, a crease riding the upper lid's edge; it differs from the open face only inside the lids, so no patch can show. The phone swaps to that closed frame. Reduced motion: no blink |
+| the clay partner while you wait (D425) | acts out the step it is on: think, glance, read, lean, look (the waiting line, above); only breathes past 45 s on one step; still when the window is hidden, after 90 s with no input, and under reduced motion |
 | an awake device | floats 5pt (5.6 s) |
 | a cloud machine | drifts ±4pt (11 s) |
 | a sleeping device | its blanket rises and falls (scale-y 1.045 from the bottom, 4.8 s) |
@@ -442,10 +443,23 @@ keeps its question and says the outcome once. Time lines (12pt, centered, muted)
 the first message and wherever 15 minutes passed. Short code tokens in a message never break
 mid-word; only a long path may wrap.
 
-**The waiting line (D104).** While the user waits on a reply, the clay partner (32pt, working
-face, breathing) and one 15pt muted line sit where the reply will land, from the moment of
-sending; the line follows the partner's step and a 13pt reassurance joins it past 15 s and
-45 s on one step. Words in `design/quiet-conversation.md`. The header no longer says 在想….
+**The waiting line (D104, D425).** While the user waits on a reply, the clay partner (32pt) and
+one 15pt muted line sit where the reply will land, from the moment of sending; the line follows
+the partner's step and a 13pt reassurance joins it past 15 s and 45 s on one step. Words in
+`design/quiet-conversation.md`. The header no longer says 在想…. **The partner acts out the step**
+(D425): a loop of its own per step on its own art, about its feet, transform only, at most 6° and
+2pt, starting and ending at rest: **think** (the idle face blinking; a sway −3° / +2.5° with a 1-pt
+lift, `--t-alive-think` 2.8 s), **glance** (to −5° and 1.5pt left, a hold, to +4° right, a hold,
+`--t-alive-glance` 3.6 s), **read** (the reading pose; still, then a nod of 2.5° and 1.5pt down
+with a 2% squash, `--t-alive-read` 2.2 s), **lean** (in to 6° and 2pt, a hold, back,
+`--t-alive-lean` 2.4 s), **look** (−6° and +6° each with a 2-pt lift, `--t-alive-look` 3.2 s);
+past 45 s on one step only the breath. Mac: `aliveLoops` in `alive.go`, the same keyframes,
+eased between keys, at the idle 30 fps. A new line comes in over `--t-say` (240 ms) on `--ease`:
+opacity 0 → 1 and 3pt up; a line stays at least 1.4 s. Still while the page or window is hidden
+and after 90 s with no input; reduced motion: the step's pose, still, the words cross-fade only.
+The same line, with its figure as a slot (`AliveLine`, `aliveLine`), is every row that waits: On
+hand's working card holds and fades what the task is on the same way and rests its coin and bars
+with it; one message's many asks are each a row with its own figure (the agent's coin at 20).
 
 ### Shared controls (D161)
 

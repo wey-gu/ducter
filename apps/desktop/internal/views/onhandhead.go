@@ -268,7 +268,11 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 	}
 	card.Children(func() {
 		ui.Row(c.Key("c1")).Gap(10).AlignItems(ui.Center).Children(func() {
-			a.coinBox(c, task.ID, task.Harness(), 28, false, coinMotionOf(att))
+			cm := coinMotionOf(att)
+			if a.aliveResting(c) {
+				cm = coinMotionOf(protocol.Done) // D425: away a while: the coin rests
+			}
+			a.coinBox(c, task.ID, task.Harness(), 28, false, cm)
 			// D315: a long title takes a second line rather than losing its end.
 			uiText(c, keepWords(autospace(shortTitle(task.Title())))).FontSize(t.MD).FontWeight(600).LineHeight(1.35).TextColor(t.Ink).MaxLines(2).Grow(1).Shrink(1).MinWidth(0).Tooltip(longTitleTip(task.Title()))
 			if fresh {
@@ -291,7 +295,21 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 		if s.code != "" {
 			words += "  " + s.code
 		}
-		uiText(c.Key("c2"), words).FontSize(t.SM).LineHeight(1.5).TextColor(ink).MaxLines(2).MinHeight(t.SM * 1.5 * 2).Tooltip(s.words)
+		// D425: what a working task is on changes like the waiting line:
+		// held for the dwell, a short entrance (a fade only under reduced
+		// motion).
+		if working {
+			held, k := a.aliveHeld(c, "card:"+task.ID, words)
+			box := ui.Box(c.Key("c2-say:" + held)).Opacity(k)
+			if !still {
+				box.Translate(0, 3*(1-k))
+			}
+			box.Children(func() {
+				uiText(c.Key("c2"), held).FontSize(t.SM).LineHeight(1.5).TextColor(ink).MaxLines(2).MinHeight(t.SM * 1.5 * 2).Tooltip(s.words)
+			})
+		} else {
+			uiText(c.Key("c2"), words).FontSize(t.SM).LineHeight(1.5).TextColor(ink).MaxLines(2).MinHeight(t.SM * 1.5 * 2).Tooltip(s.words)
+		}
 		ui.Box(c.Key("c-room")).Grow(1)
 		ui.Row(c.Key("c3")).Gap(10).AlignItems(ui.Center).MinHeight(20).Children(func() {
 			a.heartbeat(c, task, att)
@@ -471,7 +489,7 @@ func (a *App) heartbeat(c *ui.Context, task *store.Task, att protocol.Attention)
 	switch att {
 	case protocol.Working, protocol.Queued:
 		ui.Row(c.Key("beat")).Gap(6).AlignItems(ui.Center).Shrink(0).Children(func() {
-			ui.Box(c.Key("pulse")).Size(13, 12).Shrink(0).AccessHidden(true).Draw(drawPulse(t.Working.Dot, phaseOf(task.ID)))
+			ui.Box(c.Key("pulse")).Size(13, 12).Shrink(0).AccessHidden(true).Draw(drawPulse(t.Working.Dot, phaseOf(task.ID), a.aliveResting(c)))
 			if d := a.rowTime(task); d != "" {
 				words := a.tp("onhand.card.working", d)
 				if d == a.L.T("time.now") {
@@ -507,9 +525,9 @@ func (a *App) heartbeat(c *ui.Context, task *store.Task, att protocol.Attention)
 
 // drawPulse is three soft bars rising and falling out of step (still
 // under reduced motion).
-func drawPulse(col ui.Color, phase float64) func(p *ui.Painter, r ui.Rect) {
+func drawPulse(col ui.Color, phase float64, rest bool) func(p *ui.Painter, r ui.Rect) {
 	return func(p *ui.Painter, r ui.Rect) {
-		still := p.Preferences().ReduceMotion
+		still := p.Preferences().ReduceMotion || rest // D425: resting with the coin
 		for i := range 3 {
 			h := float32(0.7)
 			if !still {

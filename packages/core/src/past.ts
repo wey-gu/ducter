@@ -684,14 +684,14 @@ export function createPast(d: PastDeps): Past {
 /** D391: the brief of a task redoing a step of another one, per language. */
 const FORK = {
   zh: {
-    head: "这件事是把之前的「{title}」（{agent}）从第 {n} 步重做一遍。原来那件不动。到这一步之前的经过：",
+    head: "这个任务是把之前的「{title}」（{agent}）从第 {n} 步重做一遍。原来那个不动。到这一步之前的经过：",
     step: "第 {n} 步，{who}：",
     you: "对方说",
     partner: "伙伴替对方说",
     came: "结果：",
     earlier: "（更早的 {n} 步略过了。）",
     fromStart: "（从头重做：没有之前的步骤。）",
-    code: "代码已经在这一步之前的样子：提交 {sha}（{at}）。之后的改动在原来那件里，这里没有。",
+    code: "代码已经在这一步之前的样子：提交 {sha}（{at}）。之后的改动在原来那个里，这里没有。",
     codeStart: "代码是它开始时的样子：这一步之前它没有提交过。",
     now: "上面是要你从这一步重做的事。不要照搬原来之后的做法，按这一步的要求重新来。",
   },
@@ -712,7 +712,7 @@ const FORK = {
 /** The brief a continued task carries about the one it picks up from (D285), per language (D292). */
 const SEED = {
   zh: {
-    head: "这件事接着之前的一件：「{title}」（{where}）。它当时发现和做到的：",
+    head: "这个任务接着之前的一个：「{title}」（{where}）。它当时发现和做到的：",
     sep: "，",
     noReport: "- 它没有留下报告。",
     branch: "它的分支：{branch}{merged}",

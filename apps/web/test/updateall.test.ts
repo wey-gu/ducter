@@ -23,7 +23,7 @@ describe("Update all (D224)", () => {
     expect(itemName(item({}))).toBe("hel 上的 Ducter");
     expect(itemName(item({ kind: "agent", harness: "claude-code", deviceName: "MacBook" }))).toBe("MacBook 上的 Claude Code");
     expect(stateWords(item({}))).toBe("排队中");
-    expect(stateWords(item({ kind: "agent", harness: "codex", state: "waiting", busy: 2 }))).toBe("等用它的 2 件事停下");
+    expect(stateWords(item({ kind: "agent", harness: "codex", state: "waiting", busy: 2 }))).toBe("等用它的 2 个任务停下");
     expect(stateWords(item({ state: "running", phase: "downloading", progress: 0.42 }))).toBe("在下载 0.0.31… 42%");
     expect(stateWords(item({ state: "running", phase: "restarting" }))).toBe("在重启…");
     expect(stateWords(item({ state: "done" }))).toBe("已更新到 0.0.31");

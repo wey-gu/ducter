@@ -105,7 +105,7 @@ test("resume: the size is kept in state.json and restored, so a resumed session 
 
 test("no digests (DUCTER_DIGEST=off): a warm session past the size re-cuts onto the window and a pointer to the rest", async () => {
   const w = setup(reporting([1_000, 1_000, 1_000, 1_000, 1_000, 125_000, 5_000]));
-  for (let k = 0; k < 6; k++) await w.say(`第 ${k} 件事`);
+  for (let k = 0; k < 6; k++) await w.say(`第 ${k} 个任务`);
   expect(w.fr.sessions.length).toBe(1);
   await w.say("最后一件");
   expect(w.partner.stats.recuts).toBe(1);
@@ -113,8 +113,8 @@ test("no digests (DUCTER_DIGEST=off): a warm session past the size re-cuts onto 
   // historyLimit 4: the last few lines verbatim, with seqs, and where the older ones are.
   expect(seed).toMatch(/\(#1–#\d+ are not shown here; log_read or log_search them when you need them\)/);
   expect(seed).toMatch(/#\d+ \[2026-/);
-  expect(seed).toContain("第 5 件事");
-  expect(seed).not.toContain("第 0 件事");
+  expect(seed).toContain("第 5 个任务");
+  expect(seed).not.toContain("第 0 个任务");
   expect(seed).not.toMatch(/reset|restart|lost|重置|重启/i);
   expect(w.sessionEvents()[0]).toMatchObject({ event: "recut", digested: false, contextTokens: 125_000 });
   await w.partner.close();
@@ -126,7 +126,7 @@ test("a failing digest writer: the session re-cuts anyway, onto the verbatim win
   const w = setup(reporting([2_000, 2_000, 2_000, 2_000, 2_000, 2_000, 2_000, 2_000, 125_000, 5_000]), {
     spine: { writer: failing, store, cut: { hiTokens: 120, loTokens: 40, minTokens: 30, quietMs: 3600_000, gapMs: 30 * 60_000 }, pokeMs: 0 },
   });
-  for (let k = 0; k < 9; k++) await w.say(`第 ${k} 件事：` + "细节".repeat(20));
+  for (let k = 0; k < 9; k++) await w.say(`第 ${k} 个任务：` + "细节".repeat(20));
   await w.partner.spine!.idle();
   expect(store.records.length).toBe(0); // nothing frozen: the writer never got one through
   expect(w.fr.sessions.length).toBe(1);
@@ -135,7 +135,7 @@ test("a failing digest writer: the session re-cuts anyway, onto the verbatim win
   const seed = w.fr.sessions[1]!.inputs[0]!;
   expect(seed).not.toContain("<earlier_conversation>");
   expect(seed).toMatch(/are not shown here; log_read or log_search them/);
-  expect(seed).toContain("第 8 件事");
+  expect(seed).toContain("第 8 个任务");
   expect(w.sessionEvents()[0]).toMatchObject({ event: "recut", digested: false });
   await w.partner.close();
 });

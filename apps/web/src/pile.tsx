@@ -1,6 +1,6 @@
 // D359: the pile on On hand (design/task-sources.md §9, research/130). The person's open to-dos as
 // one clay object: the partner beside a stack of pages whose height is the count's bucket, the count
-// itself literal beside it (还有 557 件 / 557 still open), what was cleared today, and the sort's few
+// itself literal beside it (还有 557 个 / 557 still open), what was cleared today, and the sort's few
 // honest groups, each its own row with its own count and one action:
 //   可以交给{name}做的 → a sheet: tick what to hand over (six by default), three run at a time;
 //   要你拿主意的       → a sheet: one question each, the suggested answer picked already;

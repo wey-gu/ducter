@@ -19,7 +19,7 @@ var zhLimits = Table{
 	"limit.met":           "额度恢复了，接着做",
 	"limit.group":         "%s 的额度 %s 恢复",
 	"limit.group.unknown": "%s 的额度用完了",
-	"limit.group.n":       "这 %d 件到时一起接着做",
+	"limit.group.n":       "这 %d 个到时一起接着做",
 	"note.limit":          "%s 的额度用完了",
 	"wake.limit":          "%s 的额度恢复了，接着做",
 }

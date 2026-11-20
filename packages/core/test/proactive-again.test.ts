@@ -58,7 +58,7 @@ test("不再需要 before D243: offered back once when they next write; 好 brin
   expect(r.notes()).toHaveLength(2); // nothing said at start
   await say(r, "帮我看看日程");
   const again = r.lastNote()!;
-  expect(again).toMatchObject({ rung: "morning", ask: "note_again", finds: [], opening: "现在我能提前告诉你航班、维护、扣费这些了。要每天早上说几件吗？" });
+  expect(again).toMatchObject({ rung: "morning", ask: "note_again", finds: [], opening: "现在我能提前告诉你航班、维护、扣费这些了。要每天早上说几条吗？" });
   expect(r.sent).toHaveLength(0); // a line in the conversation, never a notification
   await say(r, "还有呢");
   expect(r.notes().filter((e) => e.body.ask === "note_again")).toHaveLength(1); // once
@@ -115,5 +115,5 @@ test("D292: a Korean conversation hears the offer in English (no Korean table ye
 
   const hant = make({ dir: await before(true, "zh-Hant"), language: "zh-Hant" });
   await say(hant, "幫我看看行程");
-  expect(hant.lastNote()).toMatchObject({ ask: "note_again", opening: "现在我能提前告诉你航班、维护、扣费这些了。要每天早上说几件吗？" });
+  expect(hant.lastNote()).toMatchObject({ ask: "note_again", opening: "现在我能提前告诉你航班、维护、扣费这些了。要每天早上说几条吗？" });
 });

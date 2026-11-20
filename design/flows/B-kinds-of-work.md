@@ -34,7 +34,7 @@ Shared status-line keys (used by all flows):
 | `job.status.done_checking` | 做完了 · 在检查 | Done · checking |
 | `job.status.failed` | 没成 · {reason} | Didn't work · {reason} |
 | `job.status.dropped` | 放下了 | Dropped |
-| `job.followup.receipt` | 收到，已经转给这件事 | Got it, passed on to this task |
+| `job.followup.receipt` | 收到，已经转给这个任务 | Got it, passed on to this task |
 | `job.cancel.ack` | 好，放下了 | OK, dropped |
 
 ---
@@ -310,7 +310,7 @@ lease; archived on merge. Intent: `pending → approved → done`.
 
 Branches:
 - **2a. Second repo discovered mid-task:** adding a repo *extends* the place (no handoff). The
-  status line shows "加了 ducter 到这件事 / Added ducter to this task"; the Where chip grows a
+  status line shows "加了 ducter 到这个任务 / Added ducter to this task"; the Where chip grows a
   segment. If the new repo is only read, no worktree.
 - **2b. Repos on different devices:** v1 keeps one task on one device. If ducter is not on the
   MacBook: decision "把 ducter 克隆到 MacBook？ / Clone ducter to MacBook?" (asked once per
@@ -329,7 +329,7 @@ As B3, with one lease per repo write set; `blocked` if either lease is busy.
 | `b4.ack` | 我改 {repoA} 的 {changeA}，再改 {repoB} 的 {changeB}。 | I'll change {changeA} in {repoA}, then {changeB} in {repoB}. |
 | `place.chip.multi` | {repoA} + {repoB} · {device} | {repoA} + {repoB} · {device} |
 | `b4.status.repo` | 在做 · {repo}：{doing} | Working · {repo}: {doing} |
-| `place.added_repo` | 加了 {repo} 到这件事 | Added {repo} to this task |
+| `place.added_repo` | 加了 {repo} 到这个任务 | Added {repo} to this task |
 | `clone.q` | 把 {repo} 克隆到 {device}？ | Clone {repo} to {device}? |
 | `intent.pr_draft_multi.q` | 开 {n} 个草稿 PR（{first} 先合，{second} 依赖它）？ | Open {n} draft PRs ({first} merges first; {second} depends on it)? |
 | `intent.pr_draft_multi.go` | 开 {n} 个草稿 PR | Open {n} draft PRs |

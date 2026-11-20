@@ -457,7 +457,7 @@ test("D415: as one task: titled by its own to-dos (the first, and how many more)
   await sorted(b);
   const r = await b.ho.hand({ refs: ["acme/mem#398", "acme/mem#412"], shape: "one", subject: "通用设置", bySubject: true });
   expect(r.ok).toBe(true);
-  expect(b.opened[0]!.title).toBe("Automatic distillation: the error says nothing… 等 1 件");
+  expect(b.opened[0]!.title).toBe("Automatic distillation: the error says nothing… 等 1 个");
   expect(b.opened[0]!.title).not.toContain("通用设置");
   expect(b.opened[0]!.place).toMatchObject({ kind: "repo", branch: "ducter/398-412-automatic-distillation-the-error" });
   const g = b.core.taskGroups.get(r.groupId!)!;
@@ -478,7 +478,7 @@ test("D415: a note that asks to comment first: one card, nothing starts; Go comm
   expect(r.asked).toBeTruthy();
   expect(b.opened.length).toBe(0);
   const card = decisions(b).find((d) => d.decisionId === r.asked)!;
-  expect(card).toMatchObject({ question: "先在这 2 件下留一句，再开始？", goLabel: "留言并开始", holdLabel: "只开始，不留言", src: { kind: "hand_comment", text: "我的 ducter agent 要开始做了" } });
+  expect(card).toMatchObject({ question: "先在这 2 个下面留一句，再开始？", goLabel: "留言并开始", holdLabel: "只开始，不留言", src: { kind: "hand_comment", text: "我的 ducter agent 要开始做了" } });
   expect(card.src!.items!.map((x) => x.item.ref)).toEqual(["acme/mem#398", "acme/mem#412"]);
   // Held while it asks: not on the pile to be handed twice.
   expect(b.ts.pile.all().some((p) => p.item.ref === "acme/mem#398")).toBe(false);
@@ -520,7 +520,7 @@ test("D415: own subjects: put, find by membership, take out, rename, merge, remo
   const b = boot();
   await sorted(b);
   const pile = b.ts.pile;
-  // "把这几件归到「通用设置」": a new subject, first among the chips, shown whatever its size.
+  // "把这几个归到「通用设置」": a new subject, first among the chips, shown whatever its size.
   expect(pile.subject({ op: "put", name: "「通用设置」", refs: ["acme/mem#1002", "acme/mem#1006"] })).toMatchObject({ ok: true, name: "通用设置", n: 2 });
   expect(b.ts.view().pile!.subjects![0]).toEqual({ name: "通用设置", n: 2, own: true });
   const f = await b.ho.find({ subject: "通用设置" });

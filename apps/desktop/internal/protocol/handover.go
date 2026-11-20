@@ -41,8 +41,8 @@ type PileSubjectReq struct {
 	ClientID string   `json:"clientId,omitempty"`
 }
 
-// FindSummary is the find's line as separate facts: 找到 n 件讲{subject}的,
-// 标题里写着的 n 件, 说的是同一件事的 n 件. NoMeaning: no_model | error.
+// FindSummary is the find's line as separate facts: 找到 n 个讲{subject}的,
+// 标题里写着的 n 个, 说的是同一回事的 n 个. NoMeaning: no_model | error.
 type FindSummary struct {
 	N         int    `json:"n"`
 	Subject   string `json:"subject,omitempty"`
@@ -283,7 +283,7 @@ type SourceAskItem struct {
 
 // ---------- client → home ----------
 
-// PileHandReq is 交给{name}这 n 件 / Hand these n to {name}: the ticked
+// PileHandReq is 交给{name}这 n 个 / Hand these n to {name}: the ticked
 // to-dos, the note (给{name}的话), a note per to-do, the shape, where and
 // who; Group: into that live group; SetID: the set card it came from.
 type PileHandReq struct {

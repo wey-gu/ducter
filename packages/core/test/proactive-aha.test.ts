@@ -20,7 +20,7 @@ const run = async (mode: ProactiveMode, o: Parameters<typeof runAha>[1] = {}) =>
   return x;
 };
 
-test("每天最多 3 件: the contradiction before travel, the time filled once, the quota and the two old aha moments; never the agreeing meetup or their own words", async () => {
+test("每天最多 3 条: the contradiction before travel, the time filled once, the quota and the two old aha moments; never the agreeing meetup or their own words", async () => {
   const { said, r, look } = await run("three");
   for (const w of AHA_SAY) {
     const h = hit(said, w);

@@ -88,7 +88,7 @@ func TestPartnerTabShowsTheBrainInUse(t *testing.T) {
 	tt := ui.NewTesterWith(app.View, 1280, 1400, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
 	tt.Frame()
-	for _, want := range []string{"在 hel 上运行，用 Codex 想事情", "现在每件事都由 Codex 来做。"} {
+	for _, want := range []string{"在 hel 上运行，用 Codex 想事情", "现在每个任务都由 Codex 来做。"} {
 		if !tt.HasText(want) {
 			t.Errorf("no %q in %q", want, tt.Texts())
 		}

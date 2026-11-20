@@ -3,7 +3,7 @@
 //   look (watch.ts, code) → rules (stage1.ts, code) → triage (triage.ts, the cheapest model, in
 //   batches) → the facts ledger (ledger.ts, pointers only) → the seven kinds (detect.ts, code) →
 //   the bar (judge.ts, the partner's model) → said once, on one rung of the ladder:
-//     the morning note at the end of quiet hours (≤ 3 with 每天最多 3 件, one passive notification;
+//     the morning note at the end of quiet hours (≤ 3 with 每天最多 3 条, one passive notification;
 //       a quiet day sends nothing and only changes the header line)
 //     a fold-in to today's note while the person is in the app (never re-notified)
 //     "now" for what costs them if it waits until tomorrow (time-sensitive, inside the cap; at
@@ -17,7 +17,7 @@
 // Never: send, reply, pay, delete, archive, label, mark read (the broker refuses every write for
 // the watch caller; tasks only read), act on what mail says (fenced as data), keep mail (the
 // ledger holds typed facts), or wake them unasked. D250: connecting an account is consent to read it;
-// a home that never chose is on 每天最多 3 件, and its first morning note carries the chips.
+// a home that never chose is on 每天最多 3 条, and its first morning note carries the chips.
 // Mem gets only what the partner distills itself (memory_add, 记下了): nothing here writes Mem.
 import { createHash } from "node:crypto";
 import { chmodSync, existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
@@ -38,8 +38,8 @@ const OWN = {
     join: "",
     saidUser: (q: string) => `你说的：「${q}」`,
     saidMe: (q: string) => `我说的：「${q}」`,
-    today: (at: string, reason: string, more: number) => zhSpace(`今天 ${at}：${reason}${more ? `，还有 ${more} 件` : ""}。`),
-    waiting: (n: number, days: number) => zhSpace(`还有 ${n} 件等你定，最早的是${days <= 1 ? "昨天" : `${days} 天前`}的。`),
+    today: (at: string, reason: string, more: number) => zhSpace(`今天 ${at}：${reason}${more ? `，还有 ${more} 个` : ""}。`),
+    waiting: (n: number, days: number) => zhSpace(`还有 ${n} 个等你定，最早的是${days <= 1 ? "昨天" : `${days} 天前`}的。`),
   },
   en: {
     gap: " ",
@@ -497,7 +497,7 @@ export function createProactive(o: ProactiveOptions): Proactive {
     }
     save();
   };
-  /** The setting (D250: never chosen is 每天最多 3 件). A source over its budget is "only urgent" on its own (sourcesOver), never the whole mode (P4). */
+  /** The setting (D250: never chosen is 每天最多 3 条). A source over its budget is "only urgent" on its own (sourcesOver), never the whole mode (P4). */
   const mode = (): ProactiveMode => o.settings.get().proactive ?? "off";
   /** D250: where the mode came from; undefined: set before D250. */
   const modeBy = () => o.settings.get().proactiveBy;

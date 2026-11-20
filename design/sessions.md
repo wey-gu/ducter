@@ -53,7 +53,7 @@ Three ways back into a task, each with one meaning:
 The name was tested (research/155 §4): 从这一步重来 / Redo from here read as changing the original
 (3 of 5 raters); the literal one, the twin of 带着它开新任务 / New task from this, read as a new task
 that leaves the original alone. The sheet: **从第 {n} 步开新任务 / New task from step {n}**, the step's
-words in a field, the agent chips, the code line, **原来那件不动。/ The original stays as it is.**,
+words in a field, the agent chips, the code line, **原来那个不动。/ The original stays as it is.**,
 **开始 / Start** and **取消 / Cancel**.
 
 What the new task gets:
@@ -64,7 +64,7 @@ What the new task gets:
    out; never anything after step n.
 3. **Its code** (repo tasks on the home): a new worktree on a new branch off the newest commit
    the task made before step n began; none made yet: where the task began (its base). Said
-   on the sheet before Start: **代码从这一步之前的样子开始（{commit}，{time}）。之后的改动留在原来那件里。**
+   on the sheet before Start: **代码从这一步之前的样子开始（{commit}，{time}）。之后的改动留在原来那个里。**
    or **这一步之前它没提交过，代码从它开始时的样子开始。** Uncommitted work at that moment is not
    recoverable: no harness forks code with a session (research/155 A), and Ducter takes no
    per-turn snapshot yet (todo, with its trigger).

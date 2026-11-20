@@ -196,15 +196,15 @@ failed ink. Hold settles as **没有改动 / Nothing changed**.
 ### 6.3 The greeting (D149)
 
 Under the greeting's line, when the last read shows something still ahead today: one quiet row
-with a small drawn calendar glyph: **今天还有 3 件事，下一件 14:00「Design sync」 / 3 more today ·
-next at 14:00, Design sync**; with a clash today: **，有两件时间重叠 / · two overlap**. Tap fills
+with a small drawn calendar glyph: **今天还有 3 个日程，下一个 14:00「Design sync」 / 3 more today ·
+next at 14:00, Design sync**; with a clash today: **，有两个时间重叠 / · two overlap**. Tap fills
 the composer with **我今天还有什么安排？ / What's left today?**. Nothing when nothing is ahead
 (silence). The morning note gets no calendar-only line: a calendar speaks there only through a
 find (a clash, a plan that changed, before a meeting).
 
 ### 6.4 Proactive
 
-- **两件事对不上 / Two things don't match** gains the clash: two busy timed events overlapping
+- **两处对不上 / Two things don't match** gains the clash: two busy timed events overlapping
   today or tomorrow, in any calendars (one event in both calendars is not a clash), worded
   **明天 10:00「HawDB 周会」和「看牙」撞了。 / “HawDB weekly” and “Dentist” overlap tomorrow at
   10:00.** Same-day clashes are urgent (cost 75), tomorrow's go to the morning note (65). No next

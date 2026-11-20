@@ -1,4 +1,4 @@
-// 开一件事 / New task, the phone's and the browser's sheet (D128, redone by D185;
+// 开一个任务 / New task, the phone's and the browser's sheet (D128, redone by D185;
 // design/new-task.md). The words first, then one row of pills: where (recent folders and the
 // projects added on the Mac, D186), its branch, the computer when the choice is real (D157),
 // who does it, and when it starts (现在 / Now unless set: a time, a schedule, when something
@@ -53,7 +53,7 @@ const Clock = () => (
   </svg>
 );
 
-/** The when pill's words: 现在 / Now, 明天 9:00, 工作日 9:00, 等某件事发生. */
+/** The when pill's words: 现在 / Now, 明天 9:00, 工作日 9:00, 等某个任务发生. */
 function whenLabel(): string {
   const nt = A.nt;
   const clock = (parseClock(nt.atTime) || (nt.atTime ?? "").trim()).replace(/^0(\d)/, "$1");

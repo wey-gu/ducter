@@ -422,7 +422,7 @@ export interface Bodies {
     language?: LangTag;
     // D206: the pictures the brief carries (the user's, handed on); the first turn gives them to the agent.
     media?: MediaRef[];
-    // D128: "you" = the user opened it themselves (开一件事 / New task, `ducter task`); the brief
+    // D128: "you" = the user opened it themselves (开一个任务 / New task, `ducter task`); the brief
     // is their words as they are. Absent = the partner opened it.
     origin?: "you";
     // D285: opened with 带着它开新任务 / New task from this: the task its brief carries findings from.
@@ -1416,7 +1416,7 @@ export type ClientFrame =
   | { t: "waiter_action"; waiterId: string; action: "look" | "cancel" | "rearm" | "handoff" } // handoff (D297): a limit wait's task goes to its handTo agent now
   | { t: "routine_action"; routineId: string; action: "pause" | "resume" | "end" }
   | { t: "until_action"; taskId: string; action: "stop" }
-  // 开一件事 / New task (D128). task_new_options: what the card offers (places, recent first,
+  // 开一个任务 / New task (D128). task_new_options: what the card offers (places, recent first,
   // and who could do it at `place`, best first); answered with a task_new_options frame.
   // task_new: open a task with the user's words as they are, as its brief (no partner rewrite);
   // answered with task_new_result. place absent = 不用特定的地方 / No particular place; a repo
@@ -2624,7 +2624,7 @@ export interface Settings {
   autoUpdate?: boolean;
   /**
    * D165: 发现了就说 / When it notices something. D250: a current core always sets it: never
-   * chosen is 每天最多 3 件 (proactiveBy "default"). Absent only from a core before D250.
+   * chosen is 每天最多 3 条 (proactiveBy "default"). Absent only from a core before D250.
    */
   proactive?: ProactiveMode;
   /** D250: where the mode came from (absent: chosen before the source was kept). Clients never set it. */

@@ -327,7 +327,7 @@ type App struct {
 	pile       pileState                    // D359: the pile's sheet
 	ho         handState                    // D385: 交给{name}, the hand-over sheet (handover.go)
 	sets       map[string]map[string]bool   // D385: a set card's ticks, by set
-	planNotes  map[string]map[string]string // D385: a plan card's 给这件的话…, by decision then part
+	planNotes  map[string]map[string]string // D385: a plan card's 给这个的话…, by decision then part
 	planReply  map[string]*string           // D385: a plan card's 回复… draft, by decision
 	planJump   int64                        // D385: 看方案: the plan card's seq to find in the conversation
 	draftJump  string                       // D403: 看草稿: the find to find in the conversation
@@ -349,7 +349,7 @@ type App struct {
 	PlayTitle func() TitleSound
 	// lo is what the partner thinks with and who does the tasks (D89).
 	lo loadoutState
-	// nt is 开一件事 / New task's card (D128); back is where Esc goes from
+	// nt is 开一个任务 / New task's card (D128); back is where Esc goes from
 	// a task opened by it or by `ducter open`.
 	nt   newTaskState
 	back *returnTo
@@ -598,7 +598,7 @@ func (a *App) View(c *ui.Context) {
 	}))
 	if a.S.Welcomed {
 		a.newTaskCard(c)
-		a.switcher(c) // D216: ⌘O, 打开一件事
+		a.switcher(c) // D216: ⌘O, 打开任务
 		a.liveView(c)
 		a.phoneInstallSheet(c) // D217
 		a.lendSheet(c)         // D347

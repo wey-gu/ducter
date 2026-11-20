@@ -3,7 +3,7 @@ package i18n
 // D271: the end line says only what state proves; a wake and what Ducter
 // itself told the task are hairlines; the locator. The same keys and words
 // as the phone (apps/web/src/i18n.ts). Glossary: design/product-model.md
-// (在等 / Waiting, 等到了 / Wait over, 这件事的经过 / What happened in this task).
+// (在等 / Waiting, 等到了 / Wait over, 这个任务的经过 / What happened in this task).
 // D291: a hairline's time, and when a wait comes back, are their own muted
 // element beside the words, never joined to them.
 var zhLoop = Table{
@@ -19,13 +19,13 @@ var zhLoop = Table{
 	"told.returned.name": "%s 又能用了",
 	"told.declined":      "你没把手机借给它",
 	"told.stopped":       "你让它停下了",
-	"told.reopened":      "你重新打开了这件事",
+	"told.reopened":      "你重新打开了这个任务",
 	"told.adopted":       "在 Ducter 里接着做",
 	"told.other":         "%s 提醒了它一句",
 	"told.taken_back":    "你收回了 %s",
 	"told.given_back":    "它把 %s 还给你了",
 	"told.loan_lost":     "%s 断开了，借用结束了",
-	"locator.name":       "这件事的经过",
+	"locator.name":       "这个任务的经过",
 	"locator.brief":      "交给它的事",
 	"locator.quiet":      "%d 条提示",
 	// D325: the locator's list: a report, the marks of a session, what someone sent without words.

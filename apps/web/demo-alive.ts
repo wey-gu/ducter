@@ -34,7 +34,7 @@ step("assistant", { text: w("在看 IRS 的 W-7 说明和材料清单。", "Read
 log.append({ stream: "task:t_itin", origin: "task", kind: "report", body: { taskId: "t_itin", state: "progress", summary: w("在比较三条路：寄 IRS、找认证代理、去 IRS 办公室当面办", "Comparing three routes: mail to the IRS, a certifying agent, or an IRS office in person"), questions: [], evidence: [] } });
 
 // Now: "how is it going?"
-const u1 = say("user", w("ITIN 那件查得怎么样了？", "How's the ITIN one going?"));
+const u1 = say("user", w("ITIN 那个查得怎么样了？", "How's the ITIN one going?"));
 const reply = w("材料基本清楚了：W-7 表、护照原件或公证件、加上今年的报税表一起交。最快是找认证代理，不用寄护照。它在比较三条路的时间，十分钟内给你结论。", "The documents are mostly clear: Form W-7, your passport (original or certified copy) and this year's return, sent together. The quickest is a certifying agent, so your passport never goes in the mail. It's comparing how long each route takes; you'll have the answer within ten minutes.");
 
 const at = (msAgo = 0) => new Date(Date.now() - msAgo).toISOString();

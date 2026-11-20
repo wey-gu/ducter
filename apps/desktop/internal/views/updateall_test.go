@@ -71,7 +71,7 @@ func TestUpdateAllRunningAndFinished(t *testing.T) {
 	items[2].State, items[2].Busy = "waiting", 2
 	plan := &protocol.UpdateAllPlan{ID: "ua-1", By: "user", Items: items}
 	_, tt, sent := uaApp(t, i18n.ZH, &protocol.UpdateAllView{Plan: plan}, false)
-	for _, w := range []string{"正在全部更新", "已更新到 0.0.31", "等用它的 2 件事停下", "排队中"} {
+	for _, w := range []string{"正在全部更新", "已更新到 0.0.31", "等用它的 2 个任务停下", "排队中"} {
 		if !tt.HasText(w) {
 			t.Errorf("running: no %q in %q", w, tt.Texts())
 		}

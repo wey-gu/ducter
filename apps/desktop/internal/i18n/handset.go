@@ -18,7 +18,7 @@ var zhHandset = Table{
 	"handset.off.keep":     "留着",
 	"handset.off.ask":      "以后不借给任务了？",
 	"handset.chip.about":   "任务要用手机时，会先问你借不借。",
-	"handset.status.lent":  "正借给一件事",
+	"handset.status.lent":  "正借给一个任务",
 	"handset.status.ready": "随时能借给任务",
 	"chip.handset":         "用这台手机",
 	"handset.elsewhere":    "在 %s 的 Ducter 里加上：安卓要你在手机上亲手开一个开关。",

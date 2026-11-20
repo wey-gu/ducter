@@ -36,9 +36,9 @@ same lens, whose head names it and goes back. The column never stands beside the
    phone) in the pose for the whole (its flag when anything needs you > reading while anything
    works > on its bench while all waits > smiling when what is left came back done > idle), and
    D315: **one short line** in its voice (`onhand.line.*`, the display face 22/700) that says what
-   the strip can't: **有 n 件要你定。** when anything needs you; else **没有要你定的，我在做。**
+   the strip can't: **有 n 个要你定。** when anything needs you; else **没有要你定的，我在做。**
    while anything works; else, when all waits, **没有要你定的。最早 9:06 回来。** (one wait:
-   **在等的那件 9:06 回来。**; none coming back on its own: **在等的都没有新动静。**); else
+   **在等的那个 9:06 回来。**; none coming back on its own: **在等的都没有新动静。**); else
    **都做完了。** or **手上没有事。** It never repeats a count. The long sentence (`headSay`, D287) stays
    the menu bar's, where there is no strip.
 2. D315: under the line, the strip of **only the states there are** (a zero is never drawn), and
@@ -97,10 +97,10 @@ result shows its time, and on hover its one next step.
 
 | Fold | What goes in | Line | Opens |
 |---|---|---|---|
-| Quiet waits | A waiting task whose card and looks haven't changed for 24 h | 还有 n 件，一天多没有动静 / n more, quiet for over a day | Tap (this session), Find, or 在等 in the strip |
-| Seen results | Done today that isn't a new result, missed waits, ended calls | 还有 n 件，你都看过了 / n more you've seen | Tap (kept per device), Find, or 今天做完 in the strip |
+| Quiet waits | A waiting task whose card and looks haven't changed for 24 h | 还有 n 个，一天多没有动静 / n more, quiet for over a day | Tap (this session), Find, or 在等 in the strip |
+| Seen results | Done today that isn't a new result, missed waits, ended calls | 还有 n 个，你都看过了 / n more you've seen | Tap (kept per device), Find, or 今天做完 in the strip |
 
-| Your to-dos (D357) | Open to-dos in the person's own apps beyond the three shown | 还有 n 件 / n more | Tap (this session), or a count in Settings › 待办来源 |
+| Your to-dos (D357) | Open to-dos in the person's own apps beyond the three shown | 还有 n 个 / n more | Tap (this session), or a count in Settings › 待办来源 |
 
 What needs you never folds. Folded cards are not in the keys' walk. D287: a fold folds from three;
 one or two stay in sight under a quiet caption (**一天多没有动静 / Quiet for over a day**, **你看过的 /
@@ -112,16 +112,16 @@ section's. At most three stand as cards of the same language, the app's mark whe
 coin: a PR waiting for review, a mention, a line due soon, the newest (the home's choice, never a
 model; none with a live task). Each card opens the to-do in its app and offers **交给{name} / Hand to
 {name}** (a review request: **在 GitHub 里打开**); handed over, it comes back as a task on the board with
-its chip. The rest fold under **还有 n 件 / n more**: opened in place, On hand's Find, chips on a sunk
+its chip. The rest fold under **还有 n 个 / n more**: opened in place, On hand's Find, chips on a sunk
 track, low cards, pages of 30 (`task-sources.md` §6). Nothing shows for someone with no source, under
 a project's lens, with a filter on, or while finding.
 
 D359: at the group's head (under All, or a lone source's lens) stands **the pile**: the partner in clay
-beside a stack of pages whose height is the count's bucket, the count itself literal (**还有 557 件 /
-557 still open**, which replaces the heading's count), **今天替你清掉 n 件**, **在做 n 件** and **排着 n 件**
-apart, then the sort's groups as rows, each with its count and one button (**交给{name}**, **一件件定**,
+beside a stack of pages whose height is the count's bucket, the count itself literal (**还有 557 个 /
+557 still open**, which replaces the heading's count), **今天替你清掉 n 个**, **在做 n 个** and **排着 n 个**
+apart, then the sort's groups as rows, each with its count and one button (**交给{name}**, **一个个定**,
 **过目**), **可以先放着的** and **还没细看的** as quiet rows, and **{ago}理过** with **再理一遍**. While it sorts,
-**正在一件件看…** and a bar; before any sort, one line and **理一理**. A review request the partner read
+**正在一个个看…** and a bar; before any sort, one line and **理一理**. A review request the partner read
 carries **我看过了** with its counts on its card. The pile counts as something on hand (the empty
 state doesn't show over it). Its sheets and their Go: `task-sources.md` §9.
 
@@ -160,7 +160,7 @@ lines under the person's message in the conversation (their words, a mark, a not
 task, and the opened task, which shows its own lines under its head. Who does each line is named here
 and in the opened task, never in the conversation (a hover on the Mac only).
 
-D285: under the sections, On hand's last line leads on: **一直在跑的 n 件 ›** (when something keeps
+D285: under the sections, On hand's last line leads on: **一直在跑的 n 个 ›** (when something keeps
 going on its own) and **做过的事 ›**, where every finished task stays, findable and marked
 (`past.md`). D315: the line wraps, so nothing is clipped from 900 to 1280. A Find that matches
 nothing here offers **在做过的事里找「{q}」**.
@@ -205,14 +205,14 @@ en, light and dark; before and after in `.shots/d315/` (`mac-before-author-*`, `
 
 | Element | Heavy developer | Consumer | Fresh user | What was wrong |
 |---|---|---|---|---|
-| The head sentence 「现在没有要你定的。4 件在等：最早 9:06 回来，2 件一天多没有动静；今天做完 1 件。」 | reads it once, then skips it: the strip says the same numbers | a paragraph to parse before a glance | long, bold, and the first thing; feels like a status report, not a partner | Hierarchy: a 40-character bold sentence is the loudest thing on the page and says nothing the strip and sections don't. Redundancy: every count three times (sentence, strip, section head). Wording: a report, not the partner's voice. |
+| The head sentence 「现在没有要你定的。4 个在等：最早 9:06 回来，2 个一天多没有动静；今天做完 1 个。」 | reads it once, then skips it: the strip says the same numbers | a paragraph to parse before a glance | long, bold, and the first thing; feels like a status report, not a partner | Hierarchy: a 40-character bold sentence is the loudest thing on the page and says nothing the strip and sections don't. Redundancy: every count three times (sentence, strip, section head). Wording: a report, not the partner's voice. |
 | The strip 「0 等你 0 在做 4 在等 1 今天做完」 | the zeros are noise to skip | "0 等你" in faint grey reads as disabled, or as something missing | four labels to learn on day one | Zero states drawn as faint cells take half the track; with one state there the strip filters nothing. |
 | 在等 cards | good: coin, title, ring, time | 放心: says when it's back | clear | The title cut at one line ("你能帮我准备好能 review nowledge-co 这…") lost the part that says what it is. Two cards side by side of different heights. |
 | 一天多没有动静 rows | "is anything stuck?" with no way to act from here | grey rows read as broken, or as hers to fix, with no next step | doesn't know what to do | A different language from the cards above (flat rows, receded ink), no action: the board raised a worry and offered nothing. |
 | 「Hetzner Server」 on every row and card | noise: every task runs there | a word they don't know repeated | same | Where was said for every task, though it only matters when it differs. 其他 / Other said on every errand says nothing. |
 | 今天做完 as a plain row | fine | the good news looks the same as the stale | — | Mixed card and row styles for the same kind of thing. |
 | Section names 「在等 4」 (12/600 muted) | fine | hard to find the parts of the page | the page has no landmarks | Hierarchy inverted: the sentence shouts, the sections whisper. |
-| The links 「做过的事 › 替你做过的 › 一直在跑的 1 件 ›」 | — | — | — | At narrower widths (0.0.64) the right ones were clipped: the row didn't wrap. |
+| The links 「做过的事 › 替你做过的 › 一直在跑的 1 个 ›」 | — | — | — | At narrower widths (0.0.64) the right ones were clipped: the row didn't wrap. |
 | 接下来 / Next line at 900 | — | — | — | Said 「今天 20:41」 for both waits: the end of the watch, not the next look the cards say (9:11, 9:26). The same fact disagreed on one screen. |
 | The locator's focus | in a long task, a dark stack where the eye lands | reads as a broken scrollbar | — | The ticks in view turned to ink at 75% and grew 2 pt on a dense rail (8-pt pitch): stacked dark bars over a faint clay pill. |
 | The rail's first row | — | a cloud-like icon nobody can name | — | A wait's raised bubble (its glyph on a cloud) drawn beside the face in a 300-wide rail. |
@@ -254,8 +254,8 @@ web's cheer swelling from rest (D313's todo).
 
 ### Proposed, not built
 
-- The conversation's header says 「1 件等你　在做 2 件」: two word orders side by side. One order
-  (「1 件等你　2 件在做」) needs the header keys on both clients and their tests.
+- The conversation's header says 「1 个等你　在做 2 个」: two word orders side by side. One order
+  (「1 个等你　2 个在做」) needs the header keys on both clients and their tests.
 - 今天做完's section counts the rows (a done only claimed included) while the strip counts D310's
   Done today: one task can show 「今天做完 1」 over a strip without it. Either the section says its
   claimed ones apart, or D310 counts what is listed.

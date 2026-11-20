@@ -72,7 +72,7 @@ func TestTodoGroupOnHand(t *testing.T) {
 		app.Route = RouteOnHand
 		todoFrames(tt, 4)
 		for _, want := range []string{w("GitHub 上标给你的", "Assigned to you on GitHub"), "557", w("等你 review", "Waiting for your review"), w("提到了你", "Mentions you"),
-			w("mei-chen 提的", "By mei-chen"), w("还有 555 件", "555 more"), app.L.T("onhand.todos.hand", app.personaName()), app.L.T("todos.chip.open", "GitHub")} {
+			w("mei-chen 提的", "By mei-chen"), w("还有 555 个", "555 more"), app.L.T("onhand.todos.hand", app.personaName()), app.L.T("todos.chip.open", "GitHub")} {
 			if !tt.HasText(want) {
 				t.Errorf("%s: no %q in %q", lang, want, tt.Texts())
 			}
@@ -111,7 +111,7 @@ func TestTodoFold(t *testing.T) {
 	app.Receive(todoGlanceFrame(i18n.ZH))
 	app.Route = RouteOnHand
 	todoFrames(tt, 3)
-	if err := tt.Click("还有 555 件"); err != nil {
+	if err := tt.Click("还有 555 个"); err != nil {
 		t.Fatalf("%v in %q", err, tt.Texts())
 	}
 	r, ok := lastSent[protocol.SourceItemsReq](*sent)
@@ -120,12 +120,12 @@ func TestTodoFold(t *testing.T) {
 	}
 	app.Receive(todoFoldPage(i18n.ZH, r.ClientID, 1, true))
 	todoFrames(tt, 3)
-	for _, want := range []string{"找标题或编号…", "全部", "等你 review 4", "web", "api", "infra", "深色模式下日期选择器还是白的", "再看 30 件"} {
+	for _, want := range []string{"找标题或编号…", "全部", "等你 review 4", "web", "api", "infra", "深色模式下日期选择器还是白的", "再看 30 个"} {
 		if !tt.HasText(want) {
 			t.Errorf("no %q in %q", want, tt.Texts())
 		}
 	}
-	if err := tt.Click("再看 30 件"); err != nil {
+	if err := tt.Click("再看 30 个"); err != nil {
 		t.Fatal(err)
 	}
 	r2, _ := lastSent[protocol.SourceItemsReq](*sent)
@@ -139,7 +139,7 @@ func TestTodoFold(t *testing.T) {
 	if n := len(app.todos.fold.items); n != 8 {
 		t.Errorf("two pages hold %d", n)
 	}
-	if tt.HasText("再看 30 件") {
+	if tt.HasText("再看 30 个") {
 		t.Error("more offered after the last page")
 	}
 	if err := tt.Click("等你 review 4"); err != nil {

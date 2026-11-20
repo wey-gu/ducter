@@ -59,7 +59,7 @@ func w(zh, en string) protocol.Words { return protocol.Words{ZH: zh, EN: en} }
 
 var (
 	firstNew = &protocol.FirstScreen{Visit: "first",
-		Line: w("查点东西、记件事、到点提醒你，说一句就行。需要你的时候，我再来问你。", "Ask me to look something up, keep track of things or remind you on time. I'll come to you only when it needs you."),
+		Line: w("查点东西、记点事、到点提醒你，说一句就行。需要你的时候，我再来问你。", "Ask me to look something up, keep track of things or remind you on time. I'll come to you only when it needs you."),
 		Starters: []protocol.Starter{
 			{ID: "everyday:reminder", Kind: "everyday", Words: w("周五下午提醒我交水电费", "Remind me on Friday afternoon to pay the utility bill")},
 			{ID: "everyday:mail", Kind: "everyday", Words: w("帮我回封邮件，把周五的会推到下周", "Reply to an email and move Friday's meeting to next week")},
@@ -108,7 +108,7 @@ func TestFirstScreenGreetsInThePartnersName(t *testing.T) {
 		composer   string
 		noDevLinks bool
 	}{
-		{i18n.ZH, firstNew, "早上好，我是小鸭。", "查点东西、记件事、到点提醒你，说一句就行。需要你的时候，我再来问你。", "跟小鸭说", true},
+		{i18n.ZH, firstNew, "早上好，我是小鸭。", "查点东西、记点事、到点提醒你，说一句就行。需要你的时候，我再来问你。", "跟小鸭说", true},
 		{i18n.ZH, firstDev, "早上好，小鸭在呢。", "邮件、电脑上的文件、代码，都可以交给我。需要你的时候，我再来问你。", "跟小鸭说", true},
 		{i18n.EN, firstNew, "Good morning, I'm 小鸭.", "Ask me to look something up, keep track of things or remind you on time. I'll come to you only when it needs you.", "Talk to 小鸭", true},
 	} {
@@ -223,7 +223,7 @@ func finish(h *harness, id, title string) {
 func TestTheFirstResultIsCelebratedOnce(t *testing.T) {
 	dir := hintsDir(t, hintsJSON)
 	h := newWelcome(t, i18n.ZH, dir, false)
-	line := "第一件事做完了。以后做完的事都会这样告诉你，也会说我是怎么确认的。"
+	line := "第一个任务做完了。以后做完的事都会这样告诉你，也会说我是怎么确认的。"
 	finish(h, "t1", "修好 ducter 里没过的测试")
 	if !h.tt.HasText(line) {
 		t.Fatalf("no first-result line: %q", h.tt.Texts())

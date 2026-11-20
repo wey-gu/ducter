@@ -489,7 +489,7 @@ new state; it is a Needs-you decision without a default.
 | `browser.submit.go` | 提交 | Submit |
 | `browser.post.go` | 发布 | Post |
 | `browser.write_stop` | {site} 连着两次没发成，我先停下 | {site} refused twice in a row, so I stopped |
-| `browser.never_pays` | 付款、输密码这两件事，{name} 从来不替你做。 | Paying and typing passwords are two things {name} never does for you. |
+| `browser.never_pays` | 付款、输密码这两样，{name} 从来不替你做。 | Paying and typing passwords are two things {name} never does for you. |
 
 `browser.never_pays` appears once, on the first pay card, as the one-time line [I].
 
@@ -543,8 +543,8 @@ lists only effects that left the task's own place, plus sign-ins, secret uses, a
 
 ```
 "今天你都发出去了什么？" ──► M answers in one line + the record card:
-    "今天发出去的 4 件：推了 2 个分支，开了 1 个草稿 PR，用了一次 Cloudflare 账号。都能撤回。"
-On hand header (quiet, muted text): "今天发出去的 4 件 → / Sent out today: 4 →"   (or "今天发出去的：没有")
+    "今天发出去的 4 个：推了 2 个分支，开了 1 个草稿 PR，用了一次 Cloudflare 账号。都能撤回。"
+On hand header (quiet, muted text): "今天发出去的 4 个 → / Sent out today: 4 →"   (or "今天发出去的：没有")
   ──► the record view (inside On hand, like All results):
       发出去的 / Went out
         09:12  推送 ducter/secret-guard → wey-gu/ducter          对话框拦住密钥          [撤销]
@@ -560,7 +560,7 @@ On hand header (quiet, muted text): "今天发出去的 4 件 → / Sent out tod
 ```
 
 **Empty day** [I]: "今天什么都没发出去。/ Nothing was sent out today." with the day's
-task count beneath ("做完了 6 件，都在你的设备上 / 6 tasks finished, all on your devices").
+task count beneath ("做完了 6 个，都在你的设备上 / 6 tasks finished, all on your devices").
 The empty state is designed as carefully as the full one.
 
 **Other days:** a day switcher (yesterday, a date). Weeks later the same question works in
@@ -584,9 +584,9 @@ gate is complete) `seen_command` derived from tool calls [I].
 
 | i18n key | zh | en |
 |---|---|---|
-| `record.ask_answer` | 今天发出去的 {n} 件：{summary}。{undo_note} | Sent out today: {n}. {summary}. {undo_note} |
+| `record.ask_answer` | 今天发出去的 {n} 条：{summary}。{undo_note} | Sent out today: {n}. {summary}. {undo_note} |
 | `record.all_undoable` | 都能撤回。 | All of it can be undone. |
-| `record.entry` | 今天发出去的 {n} 件 → | Sent out today: {n} → |
+| `record.entry` | 今天发出去的 {n} 条 → | Sent out today: {n} → |
 | `record.entry_none` | 今天发出去的：没有 | Sent out today: nothing |
 | `record.title` | {name} 今天发出去的做了什么 | What {name} did outside today |
 | `record.group.went_out` | 发出去的 | Went out |
@@ -595,7 +595,7 @@ gate is complete) `seen_command` derived from tool calls [I].
 | `record.group.spent` | 花掉的 | Spent |
 | `record.group.seen` | 它的记录里看到的 | Seen in its log |
 | `record.empty` | 今天什么都没发出去。 | Nothing was sent out today. |
-| `record.empty_sub` | 做完了 {n} 件，都在你的设备上 | {n} tasks finished, all on your devices |
+| `record.empty_sub` | 做完了 {n} 个，都在你的设备上 | {n} tasks finished, all on your devices |
 | `record.coverage_note` | 这里是经过 {name} 的；在你 Mac 上直接跑的命令，我从对话记录里尽量找出来了。 | This lists what went through {name}; for commands run directly on your Mac, I've picked out what I could from the transcripts. |
 | `record.day.yesterday` | 昨天 | Yesterday |
 | `record.money` | 钱：{amount} | Money: {amount} |

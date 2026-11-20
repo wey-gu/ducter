@@ -102,7 +102,7 @@ test("a folder left out goes from Past tasks and the offers, and its offer is fo
   // Both folders out: the answer says it forgot.
   const none = forgetFirstWords(next, { folder: "~/src", home: ADA })!;
   expect(none.first.starts).toEqual([]);
-  expect(none.text).toBe("从 Claude Code 和 Codex 的记录里看到的几件事，按你说的忘掉了。");
+  expect(none.text).toBe("从 Claude Code 和 Codex 的记录里看到的那些，按你说的忘掉了。");
   // Looking off: Past tasks lists nothing at all.
   const off = createOutside({ reader, dataDir: data, log, tasks, home: ADA, looks: () => false });
   expect(off.list({})).toEqual({ items: [], sources: [] });

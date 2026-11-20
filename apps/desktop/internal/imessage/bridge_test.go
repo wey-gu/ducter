@@ -408,7 +408,7 @@ func TestQuietHoursHoldCardsForTheMorning(t *testing.T) {
 	r.now = time.Date(2026, 11, 17, 0, 30, 0, 0, time.UTC) // 08:30
 	r.step()
 	got := r.sender.texts()
-	if len(got) != 1 || !strings.HasPrefix(got[0], "夜里有 2 件事等你定") || !strings.Contains(got[0], "第二件？") {
+	if len(got) != 1 || !strings.HasPrefix(got[0], "夜里有 2 个等你定") || !strings.Contains(got[0], "第二件？") {
 		t.Fatalf("morning: %q", got)
 	}
 	r.step()

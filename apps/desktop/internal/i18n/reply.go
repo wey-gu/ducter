@@ -12,6 +12,7 @@ var zhReply = Table{
 	"reply.copied": "已拷贝",
 	"reply.pics":   "%d 张图片",
 	"reply.to":     "回复 %s",
+	"reply.own":    "接着说",
 	"reply.jump":   "回到 %s 的这条",
 	"reply.gone":   "那条在更早的对话里，这里翻不到了。",
 }
@@ -25,6 +26,7 @@ var enReply = Table{
 	"reply.copied": "Copied",
 	"reply.pics":   "%d picture(s)",
 	"reply.to":     "Reply to %s",
+	"reply.own":    "Add to this",
 	"reply.jump":   "Back to this message from %s",
 	"reply.gone":   "That message is further back than this screen goes.",
 }

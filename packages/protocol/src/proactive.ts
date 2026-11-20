@@ -4,7 +4,7 @@
 /**
  * The ten kinds of finds (§4; coming_up, service and update: D243). Each has a plain name on screen (i18n `kind.<id>`), and is what
  * the person reacts to ("这类不用告诉我 / Don't tell me this kind").
- *   mismatch         两件事对不上 / Two things don't match (joins over the facts ledger)
+ *   mismatch         两处对不上 / Two things don't match (joins over the facts ledger)
  *   waiting_on_you   在等你回 / Waiting on you (people only; 2 working days, or asked again)
  *   waiting_on_them  你在等别人回 / You're waiting on someone (3 working days, when it mattered)
  *   promised         你答应过的 / Something you promised (said on the due morning)
@@ -24,7 +24,7 @@ export const isFindKind = (k: unknown): k is FindKind => typeof k === "string" &
  * 发现了就说 / When it notices something (§5): one chip row, single choice.
  *   urgent  只说急的 / Only urgent: only "now" finds, no morning note (D243: a trip, a
  *           production maintenance window or a correction within ~30 hours is urgent)
- *   three   每天最多 3 件 / Up to 3 a day: the default (D250), also before the person chose
+ *   three   每天最多 3 条 / Up to 3 a day: the default (D250), also before the person chose
  *   useful  有用就说 / Whenever useful: no cap, still batched
  *   off     不用主动找我 / Only when I ask: nothing watches
  */
@@ -35,7 +35,7 @@ export const DEFAULT_PROACTIVE: ProactiveMode = "three";
 
 /**
  * D250: where the mode came from.
- *   default    never chosen: 每天最多 3 件 (connecting an account is consent to read; the first
+ *   default    never chosen: 每天最多 3 条 (connecting an account is consent to read; the first
  *              morning note says how it works, with the chips)
  *   chosen     the person picked it (the chips, in a note or in Settings; or answered a re-offer)
  *   keep_note  they said 不再需要 / No more to 早上那条还要吗？ after three unread mornings: only

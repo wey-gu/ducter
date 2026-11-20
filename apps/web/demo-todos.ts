@@ -188,7 +188,7 @@ if (pile) {
   const say = (origin: "user" | "partner", text: string) => core.log.append({ stream: "channel", origin, kind: origin === "user" ? "user_msg" : "ai_msg", body: { text } } as never);
 
   say("user", zh ? "GitHub 上有什么分给我的？" : "Anything assigned to me on GitHub?");
-  say("partner", zh ? "有 4 件。最急的是 acme/web #12：登录后回不到原来的页面。要我接这件吗？" : "Four. The most pressing is acme/web #12: sign-in loses the page you came from. Want me to take it?");
+  say("partner", zh ? "有 4 个。最急的是 acme/web #12：登录后回不到原来的页面。要我接这个吗？" : "Four. The most pressing is acme/web #12: sign-in loses the page you came from. Want me to take it?");
   say("user", zh ? "接 #12，顺便把 #14 也做了" : "Take #12, and #14 too");
 
   const i12 = items.find((i) => i.ref === "acme/web#12")!;

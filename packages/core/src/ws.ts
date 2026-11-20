@@ -134,7 +134,7 @@ export interface WsDeps {
   ownNumber?: import("./phone-own/index.ts").OwnPhone;
   /** Work over time (D112-D114): waiters, until loops, routines; absent in tests that don't need it. */
   work?: WorkFrames;
-  /** 开一件事 / New task (D128, newtask.ts); absent in tests that don't need it. */
+  /** 开一个任务 / New task (D128, newtask.ts); absent in tests that don't need it. */
   newTask?: NewTaskFrames;
   /** D148: updating devices in place (updates.ts); absent in tests that don't need it. */
   updates?: () => import("./updates.ts").Updates | undefined;

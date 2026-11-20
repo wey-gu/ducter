@@ -37,8 +37,8 @@ The same rules as every chat app (research/88 §7.1), as the Mac app carries the
 | A turn started in an app | as usual | **not mirrored** |
 | What Ducter starts itself (a finding, a card) | always | only if the person's **last words came from iMessage** and the Ducter window is not in front; once; under quiet hours |
 | A card a reply may answer | the full card | the question, then **回「好」就{go}，回「先等等」就先放着（点赞、点踩也行）** |
-| A card that reaches people, phones, computers, another agent | the full card | the question, then **这件得在 Ducter 里定：打开 Ducter 看看。** |
-| Money, a sign-in, a saved detail, a key | the full card | **有件事要你在 Ducter 里亲自定，这里不方便说。** (never the content) |
+| A card that reaches people, phones, computers, another agent | the full card | the question, then **这个得在 Ducter 里定：打开 Ducter 看看。** |
+| Money, a sign-in, a saved detail, a key | the full card | **有个决定要你在 Ducter 里亲自定，这里不方便说。** (never the content) |
 
 **Each thing reaches the person once.** The Mac app tells the home how the bridge stands
 (`channel_status`); while some socket says `on` and the last `user_msg` came via iMessage, the
@@ -57,7 +57,7 @@ nothing more is said and a late 好 is just words.
 
 **Quiet hours.** The partner's own quiet hours (Settings › Notifications). Inside them nothing
 Ducter starts goes to iMessage: findings are dropped (they are in the app), cards wait; at the end
-the newest still-open card goes once, led by **夜里有 {n} 件事等你定，这是最新的一件：** when more
+the newest still-open card goes once, led by **夜里有 {n} 个等你定，这是最新的一个：** when more
 than one waited. Answers to a turn the person started are not held: they asked.
 
 **What it says.** Markdown is flattened (bold, code, headings, links as "words url"), anything

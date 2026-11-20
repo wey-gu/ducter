@@ -66,7 +66,7 @@ bottom:
    (1, 2, 4 or 8, round the clock) and the time; When something happens: **等到** and what it
    waits for; Keep going until: **做到** and what must hold (Return starts).
 4. **The foot:** one line on the left (what didn't work, in the failed ink; or **开始了：「X」** with
-   **打开 / Open** after ⇧⌘⏎; or the keys **⌘⏎ 开始 · ⇧⌘⏎ 开始并新建下一件**), then **取消 /
+   **打开 / Open** after ⇧⌘⏎; or the keys **⌘⏎ 开始 · ⇧⌘⏎ 开始并新建下一个**), then **取消 /
    Cancel** and **开始 / Start** (**安排 / Schedule** for a time or a schedule) at one height.
 
 **⌘⏎** (anywhere in the card) starts: `task_new`, then on `task_new_result` ok it opens that task
@@ -188,7 +188,7 @@ folder of the computer the path is on, read from the path (`/Users/<name>`, `/ho
 from this Mac's own home.
 
 Inside an opened task, ⌘N opens the card with that task's place prefilled. On hand's group
-header "+" (By project) is 在这儿开一件 / New task here, prefilling that place.
+header "+" (By project) is 在这儿新建 / New task here, prefilling that place.
 
 `open_task` (`ducter open`): the desktop opens the task as if tapped and brings its window
 forward; the phone shows it. Esc (or back) returns to where the user was. Both say
@@ -202,7 +202,7 @@ only; remembered per client (local storage), not a setting. By project:
 - Groups by the card's `project` (an added project's name, D186, else a folder's name), else
   the folder's name, else 其他 / Other; then the projects added by hand with nothing yet
   (**还没有事。/ Nothing here yet.**). The header has the group's path as ~/… and "+"
-  (在这儿开一件 / New task here). At the foot, on the Mac whose Ducter runs here or that does tasks for it (D197), **＋ 添加文件夹 /
+  (在这儿新建 / New task here). At the foot, on the Mac whose Ducter runs here or that does tasks for it (D197), **＋ 添加文件夹 /
   Add a folder** (D186).
 - A row is `title · kind · branch · +adds −dels · state`: kind is what it waits for (**等 …**) or
   which try of a loop it is (**第 n 次**), else nothing; `place.branch`, `changes.adds` /

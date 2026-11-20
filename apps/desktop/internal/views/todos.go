@@ -688,7 +688,7 @@ func (a *App) askPick() {
 
 // todoPick is New task's 从待办里选 / Pick from your to-dos: a quiet text
 // button that opens a small list (a field to find one, then the open
-// to-dos, newest first); the one picked shows as its chip with 不用这件,
+// to-dos, newest first); the one picked shows as its chip with 不用这个,
 // and the words become its title.
 func (a *App) todoPick(c *ui.Context) {
 	nt := &a.nt

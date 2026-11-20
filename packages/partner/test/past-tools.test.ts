@@ -59,7 +59,7 @@ test("task_find: their words and the computer; a computer that isn't a name here
 test("task_fork: step 3 with Codex as a new task, its line the one said before the call", async () => {
   let r: R | undefined;
   const { fc, partner, user, forks } = setup(async (_i, s) => {
-    s.say("我从第 3 步换 Codex 重做 WAL 那件。");
+    s.say("我从第 3 步换 Codex 重做 WAL 那个。");
     r = (await fc.callTool("task_fork", { taskId: "t_wal", step: 3, harness: "codex" })) as R;
     s.end();
   });
@@ -68,7 +68,7 @@ test("task_fork: step 3 with Codex as a new task, its line the one said before t
   expect(r!.ok).toBe(true);
   expect(forks).toEqual([{ taskId: "t_wal", step: 3, harness: "codex" }]);
   const acks = fc.core.log.read({ stream: "channel", kinds: ["ack"], limit: 10 }).map((e) => (e.body as Bodies["ack"]).text);
-  expect(acks).toEqual(["我从第 3 步换 Codex 重做 WAL 那件。"]);
+  expect(acks).toEqual(["我从第 3 步换 Codex 重做 WAL 那个。"]);
   const jobs = fc.core.log.read({ stream: "channel", kinds: ["job_status"], limit: 10 }).map((e) => e.body as Bodies["job_status"]);
   expect(jobs.map((j) => [j.taskId, j.state])).toEqual([["t_redo", "running"]]);
 });

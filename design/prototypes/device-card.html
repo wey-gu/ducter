@@ -448,8 +448,8 @@ const st = (k, init) => (S[k] ??= Object.assign({ pop: null, via: false, stopAsk
 function statusLine(d, v) {
   if (v.unreach) return [L("连不上 · 最后在线 2 小时前", "Can't reach · last seen 2 h ago"), "unreach"];
   if (v.asleep) return [L("睡着了 · 醒来就接着做", "Asleep · carries on when it wakes"), "asleep"];
-  if (d.home) return [L(`${PARTNER} 住这儿`, `${PARTNER} lives here`) + (d.working ? L(` · 在做 ${d.working} 件事`, ` · ${d.working} tasks under way`) : ""), ""];
-  if (d.worker && v.workerOn !== false) return d.working ? [L(`在替 hel 做 ${d.working} 件事`, `Doing ${d.working} tasks for hel`), "working"] : [L("替 hel 做事", "Does tasks for hel"), ""];
+  if (d.home) return [L(`${PARTNER} 住这儿`, `${PARTNER} lives here`) + (d.working ? L(` · 在做 ${d.working} 个任务`, ` · ${d.working} tasks under way`) : ""), ""];
+  if (d.worker && v.workerOn !== false) return d.working ? [L(`在替 hel 做 ${d.working} 个任务`, `Doing ${d.working} tasks for hel`), "working"] : [L("替 hel 做事", "Does tasks for hel"), ""];
   if (v.self) return [L("你正在用的这台", "The one you're using"), ""];
   if (d.phone) return [L("现在连着", "Connected now"), ""];
   return [L("你正在用的这台", "The one you're using"), ""];
@@ -457,7 +457,7 @@ function statusLine(d, v) {
 function shortState(d, v) {
   if (v && v.asleep) return [L("睡着了", "asleep"), "asleep"];
   if (d.home) return [L("住这儿", "home"), ""];
-  if (d.worker) return [L(`在做 ${d.working} 件`, `${d.working} tasks`), "working"];
+  if (d.worker) return [L(`在做 ${d.working} 个`, `${d.working} tasks`), "working"];
   if (d.phone) return [L("现在连着", "connected"), ""];
   return ["", ""];
 }
@@ -486,7 +486,7 @@ function card(key, d, v = {}) {
     return `<button class="ach ${cls} ${s.squish === c.id ? "squish" : ""}" data-k="${key}" data-chip="${c.id}" aria-pressed="${on}"><img src="${c.icon}" alt="">${c.label}<i class="i ${s.info === c.id ? "show" : ""}" data-k="${key}" data-info="${c.id}">i</i></button>`;
   }).join("") + (v.addChip ? `<button class="ach add">+ ${v.addChip}</button>` : "");
   const info = s.info ? `<div class="note">${d.chips.find((c) => c.id === s.info).info}</div>` : "";
-  const stop = s.stopAsk ? `<div class="note">${L(`${d.name} 上还有 ${d.working} 件事在做。停下来，还是做完再停？`, `${d.name} still has ${d.working} tasks under way. Stop now, or after they finish?`)}
+  const stop = s.stopAsk ? `<div class="note">${L(`${d.name} 上还有 ${d.working} 个任务在做。停下来，还是做完再停？`, `${d.name} still has ${d.working} tasks under way. Stop now, or after they finish?`)}
       <div class="acts"><button class="btn text sm" data-k="${key}" data-stop="now">${L("现在停", "Stop now")}</button><button class="btn primary sm" data-k="${key}" data-stop="after">${L("做完再停", "After they finish")}</button></div></div>` : "";
   const fail = v.fail ? `<div class="note fail">${L("没开成：hel 没回应（连接被拒绝）", "Didn't start: hel didn't answer (connection refused)")} · <button class="btn text sm" style="height:24px;color:inherit;padding:0 4px" data-k="${key}" data-log>${L("看日志", "See the log")}</button>${s.log ? `<div style="margin-top:4px"><code>~/.ducter/worker.log</code></div>` : ""}</div>` : "";
   let via = "";
@@ -585,7 +585,7 @@ function before() {
   const fixes = [
     L("段落 → ⓘ 后面；日志路径只在出错时出现；「还没验证过」只在点开那个币时说一次。", "Paragraphs → behind ⓘ; the log path only on failure; \"not checked yet\" said once, in that coin's detail."),
     L("层级：大的泥塑设备 → 名字 28 → 一行状态 → 币 → 能力。四层，一眼读完。", "Hierarchy: the big clay device → name 28 → one status line → coins → abilities. Four levels, one glance."),
-    L("身份不再打架：是什么交给泥塑，状态行只说一件事（在替 hel 做 2 件事）。", "No identity clash: the clay says what it is; the status line says one thing (Doing 2 tasks for hel)."),
+    L("身份不再打架：是什么交给泥塑，状态行只说一样（在替 hel 做 2 个任务）。", "No identity clash: the clay says what it is; the status line says one thing (Doing 2 tasks for hel)."),
     L("一行「通过 app 和命令行连着 ⋯」，⋯ 原地展开，不浮在内容上；底部只有一个「断开这台 MacBook」。", "One line \"Connected through the app and the command line ⋯\"; ⋯ opens in place, never over content; one Disconnect this MacBook at the foot."),
     L("每个 AI 从 4 行变成一枚币；更新是币上一个小点。", "Each AI goes from 4 lines to one coin; an update is one small dot on it."),
     L("「2 台设备共用」→ 详情里一句「和 hel 共用一个账号的额度」。", "\"Shared by 2 devices\" → one detail line \"Shares one account's limit with hel\"."),
@@ -630,7 +630,7 @@ function states() {
       chips: [{ id: "web", icon: ART.web, label: L("上网", "Browse"), on: true, info: L("用你的 Chrome 上网。", "Browses in your Chrome.") }], via: null }, { addChip: L("用电脑", "Use apps"), fresh: true }, L("新用户：Ducter 就住在这台 Mac 上，一枚币，一个能力，一个可以加的。", "A fresh user: Ducter lives on this Mac; one coin, one ability, one to add.")],
     ["s_sleep", D.mbp, { asleep: true }, L("MacBook 合上了：泥塑盖着毯子，状态行是暮色的字。", "MacBook closed: the clay under its blanket, the status line in dusk ink.")],
     ["s_unreach", D.mbp, { unreach: true, fail: "worker" }, L("连不上，而且「替 hel 做事」没开成：日志路径点了才出现。", "Can't reach, and Do tasks for hel didn't start: the log path appears only when asked.")],
-    ["s_stop", D.mbp, { init: { stopAsk: true, chips: {} } }, L("关「替 hel 做事」时还有 2 件事在做：一句话问，默认做完再停。", "Turning off Do tasks for hel with 2 tasks running: one line asks, default after they finish.")],
+    ["s_stop", D.mbp, { init: { stopAsk: true, chips: {} } }, L("关「替 hel 做事」时还有 2 个任务在做：一句话问，默认做完再停。", "Turning off Do tasks for hel with 2 tasks running: one line asks, default after they finish.")],
   ];
   const el = document.getElementById("states");
   el.innerHTML = items.map(([k], i) => `<div><div class="frame" id="${k}"></div><p class="cap" id="${k}_cap"></p></div>`).join("");
@@ -666,7 +666,7 @@ let sw = { sel: "hel-codex", scope: "one" };
 function sheet() {
   const D = devices();
   const rows = {
-    hel: [["hel-codex", "codex", L("一直醒着，合上 MacBook 也不停", "Always awake; keeps going when MacBook closes"), true], ["hel-claude", "claude", L("最适合这件事", "Best fit for this")]],
+    hel: [["hel-codex", "codex", L("一直醒着，合上 MacBook 也不停", "Always awake; keeps going when MacBook closes"), true], ["hel-claude", "claude", L("最适合这个任务", "Best fit for this")]],
     mbp: [["mbp-claude", "claude", L("能用你的 Chrome 看 CI 的页面", "Can use your Chrome for the CI pages")], ["mbp-codex", "codex", L("和 hel 共用一个账号的额度", "Shares one account's limit with hel")], ["mbp-pi", "pi", L("你关了「用它做事」", "Use it for tasks is off"), false, true]],
   };
   const where = sw.sel.startsWith("mbp") ? "mbp" : "hel";
@@ -695,7 +695,7 @@ function sheet() {
     <div class="sub">${L("换谁，也可以换一台电脑", "Someone else, or another computer")}</div>
     ${strip}${grp("hel")}${grp("mbp")}
     ${moving ? `<div class="consq"><p>${L("从最近保存的进度接着做；分支会先推到 GitHub。", "Continues from its last saved progress; the branch is pushed to GitHub first.")}</p>${ag === "claude" ? `<p class="widen">${L("会用你的 Chrome，你登录着的网站它都能用。", "It will use your Chrome, with every site you're signed in to.")}</p>` : ""}</div>` : ""}
-    <div class="sfoot"><div class="seg"><button aria-pressed="${sw.scope === "one"}" data-scope="one">${L("只这件", "Just this task")}</button><button aria-pressed="${sw.scope === "all"}" data-scope="all">${L("以后这类都用", "For tasks like this")}</button></div></div>
+    <div class="sfoot"><div class="seg"><button aria-pressed="${sw.scope === "one"}" data-scope="one">${L("只这个", "Just this task")}</button><button aria-pressed="${sw.scope === "all"}" data-scope="all">${L("以后这类都用", "For tasks like this")}</button></div></div>
     <div class="sfoot"><span class="sp"></span><button class="btn text">${L("取消", "Cancel")}</button><button class="btn primary">${moving ? L("换到 MacBook 上接着做", "Continue on MacBook") : sw.sel === "hel-codex" ? L("好", "Go") : L("换过去", "Switch")}</button></div>`;
 }
 function ask() {
@@ -723,11 +723,11 @@ function phoneSheet() {
     <div class="bsheet"><div class="grab"></div><div style="font:800 20px var(--head)">${L("换谁来做", "Switch who does it")}</div><div style="font-size:13px;color:var(--ink-muted)">${L("换谁，也可以换一台电脑", "Someone else, or another computer")}</div>
       <div class="grp"><div class="gh"><img src="${ART.server}" alt=""><b>hel</b><small>· ${L(`${PARTNER} 住这儿`, `${PARTNER} lives here`)}</small></div>
         <button class="cand sel"><img src="${ART.coin.codex}" alt=""><span><b>Codex · gpt-6</b><small>${L("一直醒着，合上 MacBook 也不停", "Always awake; keeps going when MacBook closes")}</small></span><span class="now">${L("现在", "Now")}</span></button>
-        <button class="cand"><img src="${ART.coin.claude}" alt=""><span><b>Claude Code · Opus</b><small>${L("最适合这件事", "Best fit for this")}</small></span><span></span></button></div>
+        <button class="cand"><img src="${ART.coin.claude}" alt=""><span><b>Claude Code · Opus</b><small>${L("最适合这个任务", "Best fit for this")}</small></span><span></span></button></div>
       <div class="grp"><div class="gh"><img src="${ART.laptopAsleep}" alt=""><b>MacBook</b><small class="asleep">· ${L("睡着了 · 醒来就接着做", "Asleep · carries on when it wakes")}</small></div>
         <button class="cand no"><img src="${ART.coin.claude}" alt=""><span><b>Claude Code · Opus</b><small>${L("睡着了 · 醒了再做", "Asleep · starts when it wakes")}</small></span><span></span></button>
         <button class="cand no"><img src="${ART.coinOff.pi}" alt=""><span><b>pi</b><small>${L("你关了「用它做事」", "Use it for tasks is off")}</small></span><span></span></button></div>
-      <div class="sfoot"><div class="seg"><button aria-pressed="true">${L("只这件", "Just this task")}</button><button aria-pressed="false">${L("以后这类都用", "For tasks like this")}</button></div></div>
+      <div class="sfoot"><div class="seg"><button aria-pressed="true">${L("只这个", "Just this task")}</button><button aria-pressed="false">${L("以后这类都用", "For tasks like this")}</button></div></div>
       <div class="sfoot"><button class="btn text" style="flex:1">${L("取消", "Cancel")}</button><button class="btn primary" style="flex:1">${L("好", "Go")}</button></div></div>`;
 }
 

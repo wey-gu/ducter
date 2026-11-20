@@ -431,7 +431,7 @@ function waitsAhead(lens: string, now = Date.now()): { first: number; quiet: num
 
 /** The partner's one sentence over the board, in its own voice and only from what is there (never a
  *  model): whether anything needs you, then what works, what waits and when the first comes back,
- *  and what got done today. "现在没有要你定的。4 件在等：最早 22:40 回来，2 件一天多没有动静；今天做完 1 件。" */
+ *  and what got done today. "现在没有要你定的。4 个在等：最早 22:40 回来，2 个一天多没有动静；今天做完 1 个。" */
 export function headSay(lens: string, n = stateCounts(lens), now = Date.now()): string {
   const p = SAY_MARKS[A.L.lang];
   const first = n[0] ? (n[0] === 1 ? t("onhand.say.needs.one") : t("onhand.say.needs", n[0])) : t("onhand.say.none");
@@ -1412,7 +1412,7 @@ const LineGlyph = ({ side }: { side: boolean }) => (
  * D357: 你的待办 / Your to-dos (GitHub 上标给你的 / Assigned to you on GitHub when it is the only
  * source): only while a source is on, under All or that source's lens. At most three stand as
  * cards (GLANCE_MAX: a review request, a mention, a due line, the newest); the rest fold under
- * 还有 n 件 / n more, which opens in place with Find, chips and pages. Nothing for someone with no source.
+ * 还有 n 个 / n more, which opens in place with Find, chips and pages. Nothing for someone with no source.
  */
 function TodoGroup({ lens }: { lens: string }) {
   useEffect(() => {

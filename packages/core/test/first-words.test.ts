@@ -127,7 +127,7 @@ test("the home says them once, in the Log, to an app's first hello; 别再看了
     expect(JSON.parse(readFileSync(join(data, "settings.json"), "utf8")).localAgents).toBe(false);
     const forgotten = core.log.read({ stream: "channel", kinds: ["ai_msg"] }).at(-1)!.body as { text: string; first: { starts: unknown[]; forgot?: boolean } };
     expect(forgotten.first).toMatchObject({ starts: [], forgot: true });
-    expect(forgotten.text).toBe("从 Claude Code 和 Codex 的记录里看到的几件事，按你说的忘掉了。");
+    expect(forgotten.text).toBe("从 Claude Code 和 Codex 的记录里看到的那些，按你说的忘掉了。");
     expect(core.log.search("hawdb")).toEqual([]);
     expect(core.log.search("compaction")).toEqual([]);
     // Off is off: a look now reads nothing and says nothing.

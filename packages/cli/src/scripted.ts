@@ -79,7 +79,7 @@ async function turn(t: ScriptedTurn) {
   const trig = lastTrigger(t.input);
   const cn = zh(trig.text);
   if (trig.kind === "report") {
-    t.say(cn ? "那件事做完了。（演示模式）" : "That task is done. (Scripted demo.)");
+    t.say(cn ? "那个任务做完了。（演示模式）" : "That task is done. (Scripted demo.)");
     return;
   }
   const said = trig.text;

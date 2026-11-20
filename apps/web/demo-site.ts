@@ -15,7 +15,7 @@ const log = core.log;
 const tick = () => Bun.sleep(30);
 const w = zh
   ? {
-      opening: "早。有两件事要你看一眼：",
+      opening: "早。有两个任务要你看一眼：",
       find1: "ducter.dev 11 月 16 日到期，还没续费。",
       go1: "打开续费页",
       find2: "你 11 月 21 日到东京，那晚还没订住处：酒店从 22 日开始。",

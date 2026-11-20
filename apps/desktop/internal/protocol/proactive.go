@@ -9,7 +9,7 @@ const (
 	KindFindState = "find_state"
 )
 
-// The proactive chips: 只说急的 · 每天最多 3 件 · 有用就说 · 不用主动找我.
+// The proactive chips: 只说急的 · 每天最多 3 条 · 有用就说 · 不用主动找我.
 var ProactiveModes = []string{"urgent", "three", "useful", "off"}
 
 // FindHow is one mail, event or thread a find rests on (怎么知道的).

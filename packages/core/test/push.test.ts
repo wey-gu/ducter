@@ -294,7 +294,7 @@ describe("the pusher", () => {
     s.clock.advance(15 * 60_000);
     await s.pusher.idle();
     expect(s.sent.length).toBe(2);
-    expect(JSON.parse(await decrypt(s.sent[1]!.body, r)).body).toBe("2 件等你");
+    expect(JSON.parse(await decrypt(s.sent[1]!.body, r)).body).toBe("2 个等你");
   });
 
   test("quiet hours: nothing breaks through; one push at the end if it still waits", async () => {
@@ -309,7 +309,7 @@ describe("the pusher", () => {
     s.clock.advance(5 * 3600_000 + 120_000); // past 08:00
     await s.pusher.idle();
     expect(s.sent.length).toBe(1);
-    expect(JSON.parse(await decrypt(s.sent[0]!.body, r)).body).toBe("早上好。1 件等你。");
+    expect(JSON.parse(await decrypt(s.sent[0]!.body, r)).body).toBe("早上好。1 个等你。");
   });
 
   test("D382: put off, nothing goes out; back at its time, one push; brought back by the person, none", async () => {

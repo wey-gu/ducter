@@ -207,7 +207,7 @@ func (h *hub) sleep(d time.Duration) { time.Sleep(time.Duration(float64(d) / h.s
 func (h *hub) seed() {
 	past := func(m int) time.Time { return time.Now().Add(-time.Duration(m) * time.Minute) }
 	ch := "channel"
-	h.emitAt(past(90), ch, protocol.OriginPartner, protocol.KindAIMsg, protocol.AIMsg{Text: "晚上好。手头有三件事在转：**原则英译**在写，**周报草稿**在等数据，**Mem #8762** 已经确认恢复了。有事直接说就行。"}, 0)
+	h.emitAt(past(90), ch, protocol.OriginPartner, protocol.KindAIMsg, protocol.AIMsg{Text: "晚上好。手头有三个任务在转：**原则英译**在写，**周报草稿**在等数据，**Mem #8762** 已经确认恢复了。有事直接说就行。"}, 0)
 
 	open := func(at time.Time, id, title, project, harness, model, reason string, place protocol.Place) {
 		h.emitAt(at, protocol.TaskStream(id), protocol.OriginSystem, protocol.KindTaskOpen, protocol.TaskOpen{TaskID: id, Title: title, Project: project, Place: place,
@@ -323,7 +323,7 @@ func (r *run) first(brief string) {
 	h := r.h
 	h.sleep(700 * time.Millisecond)
 	h.emit("channel", protocol.OriginPartner, protocol.KindAck, protocol.Ack{JobID: r.job, ReplyTo: r.userSeq,
-		Text: h.l("好，我去看 CI 为什么挂了。这件事单独开一件来做，好了告诉你。", "On it: I'll find out why CI fails. I'm giving it its own task and will tell you when it's done.")}, 0)
+		Text: h.l("好，我去看 CI 为什么挂了。这个单独开一个任务来做，好了告诉你。", "On it: I'll find out why CI fails. I'm giving it its own task and will tell you when it's done.")}, 0)
 	r.repo = makeRepo(r.n)
 	place := protocol.Place{Kind: "none"}
 	if r.repo != "" {

@@ -91,10 +91,10 @@ name; normal states in muted ink, exceptions in their state's ink, never a dot:
 | Device | Line (zh / en) | Ink |
 |---|---|---|
 | the home, idle | **Ducter 住这儿 / Ducter lives here** | muted |
-| the home, working | **Ducter 住这儿 · 在做 3 件事 / Ducter lives here · 3 tasks under way** | muted |
+| the home, working | **Ducter 住这儿 · 在做 3 个任务 / Ducter lives here · 3 tasks under way** | muted |
 | this Mac, not doing tasks | **你正在用的这台 / The one you're using** | muted |
 | a computer doing tasks, idle | **替 hel 做事 / Does tasks for hel** | muted |
-| a computer doing tasks, working | **在替 hel 做 2 件事 / Doing 2 tasks for hel** | working ink |
+| a computer doing tasks, working | **在替 hel 做 2 个任务 / Doing 2 tasks for hel** | working ink |
 | asleep | **睡着了 · 醒来就接着做 / Asleep · carries on when it wakes** | dusk ink |
 | can't reach | **连不上 · 最后在线 2 小时前 / Can't reach · last seen 2 h ago** | failed ink |
 | a phone, now | **现在连着 / Connected now** | muted |
@@ -155,7 +155,7 @@ One line, one idea: the role or the state, never the kind and never how it conne
   the old helper text moved here (**hel 能把事派到这台 Mac 上，用这里登录的 AI 和这里的代码
   仓库。它只做事，看不到你们的对话。**).
 - **Turning one off with nothing at stake is one tap.** When something would stop, the chip
-  asks in one line under the row, default safe: **MacBook 上还有 2 件事在做。停下来，还是做完再停？**
+  asks in one line under the row, default safe: **MacBook 上还有 2 个任务在做。停下来，还是做完再停？**
   **做完再停** (default) · **现在停**. A browser sign-in, a domain, a code to pair: the chip opens
   its existing flow (D151, D143, D83).
 - **Log paths only on failure**: the chip turns to the failed tint with **没开成** and one
@@ -262,7 +262,7 @@ covers: **换谁，也可以换一台电脑 / Someone else, or another computer*
 - Picking a row on another computer shows the move line above Go (**从最近保存的进度接着做；分支
   会先推到 GitHub。**) and, when access widens, the accent line **会用你的 Chrome，你登录着的网站它
   都能用。**
-- **只这件 / 以后这类都用** (D89) as a segmented control above Go; default **只这件**.
+- **只这个 / 以后这类都用** (D89) as a segmented control above Go; default **只这个**.
 
 ### 6.3 How the user's intent gets in (all existing, laid out once)
 
@@ -270,7 +270,7 @@ covers: **换谁，也可以换一台电脑 / Someone else, or another computer*
 |---|---|
 | Autonomy by default | the task's one line; the reason on tap |
 | Words ("在 MacBook 上做", "用我的 Chrome") | the partner's ack restates the pin |
-| Tap to switch | 换谁来做 with **只这件 / 以后这类都用** |
+| Tap to switch | 换谁来做 with **只这个 / 以后这类都用** |
 | Learned rules (two moves the same way propose one) | Settings › 伙伴 › **你的规则** lists them, each with the computer's or agent's coin and **删除** |
 | Per-agent toggle | the coin popover's **用它做事** |
 | Per-computer toggle | the card's **替 hel 做事** chip |
@@ -300,7 +300,7 @@ Nothing animates on its own except the art (D77): the update dot never pulses.
 | ★ `card.status.home` | Ducter 住这儿 | Ducter lives here |
 | ★ `card.status.this_mac` | 你正在用的这台 | The one you're using |
 | `device.other.does` | 替 {home} 做事 | Does tasks for {home} |
-| ★ `card.status.working_for` | 在替 {home} 做 {n} 件事 | Doing {n} tasks for {home} |
+| ★ `card.status.working_for` | 在替 {home} 做 {n} 个任务 | Doing {n} tasks for {home} |
 | `device.state.asleep` | 睡着了 · 醒来就接着做 | Asleep · carries on when it wakes |
 | `device.unreachable.line` | 连不上 · 最后在线 {time} | Can't reach · last seen {time} |
 | ★ `card.via` | 通过 {ways} 连着 | Connected through {ways} |
@@ -309,14 +309,14 @@ Nothing animates on its own except the art (D77): the update dot never pulses.
 | ★ `coin.installed_with` | 用 npm 装的 · 用 Homebrew 装的 · 它自己装的 | installed with npm · with Homebrew · by its own installer |
 | ★ `coin.shared` | 和 {device} 共用一个账号的额度 | Shares one account's limit with {device} |
 | `token.use_for_tasks` | 用它做事 | Use it for tasks |
-| ★ `chip.stop.ask` | {device} 上还有 {n} 件事在做。停下来，还是做完再停？ | {device} still has {n} tasks under way. Stop now, or after they finish? |
+| ★ `chip.stop.ask` | {device} 上还有 {n} 个任务在做。停下来，还是做完再停？ | {device} still has {n} tasks under way. Stop now, or after they finish? |
 | ★ `chip.stop.after` · `chip.stop.now` | 做完再停 · 现在停 | After they finish · Stop now |
 | ★ `chip.failed` · `chip.log` | 没开成 · 看日志 | Didn't start · See the log |
 | ★ `switch.sub` | 换谁，也可以换一台电脑 | Someone else, or another computer |
 | ★ `chip.web` · `chip.computer` · `chip.remote` · `chip.worker` | 上网 · 用电脑 · 从外面连 · 替 {home} 做事 | Browse · Use the computer · From outside · Tasks for {home} |
 | ★ `coin.socket` | 再登录一个 | Add an AI |
 | ★ `coin.signin.why` | 登录以后，{device} 上的事也能交给它。 | Sign in and {device}'s tasks can go to it too. |
-| ★ `list.state.*` | 住这儿 · 在做 {n} 件 · 睡着了 · 连不上 · 现在连着 | home · {n} tasks · asleep · can't reach · connected |
+| ★ `list.state.*` | 住这儿 · 在做 {n} 个 · 睡着了 · 连不上 · 现在连着 | home · {n} tasks · asleep · can't reach · connected |
 | ★ `rule.learned` | 你换过两次以后定的 | Set after you switched twice |
 | ★ `rules.lede` | 你说过的，和你换过两次以后定下的。 | What you said, and what you settled after switching twice. |
 
@@ -364,7 +364,7 @@ The seven issues, checked on the shots:
 |---|---|---|
 | 1 | Default card: name, one status line, coin names, chip labels, the connection line, Disconnect: five lines of text. No path, no paragraph, "not checked" once and only inside pi's or Claude Code's detail | yes |
 | 2 | Four clear levels: clay 150, name 28/26, status 15, then the tray and chips | yes |
-| 3 | The kind line is gone; the status line says one thing (在替 hel 做 2 件事) | yes |
+| 3 | The kind line is gone; the status line says one thing (在替 hel 做 2 个任务) | yes |
 | 4 | ⋯ and the coin's detail both open in place; one 断开这台 MacBook at the foot | yes |
 | 5 | Each agent is one coin; the update is one dot | yes |
 | 6 | **和 hel 共用一个账号的额度** in Codex's detail | yes, but it is still a sentence about limits a fresh user won't need: it only appears when the same account is signed in on two computers |

@@ -207,7 +207,7 @@ export interface ReviewStanding {
 
 /** D357: never more than this many to-dos stand on On hand; the rest are folded. */
 export const GLANCE_MAX = 3;
-/** D357: a page of the fold (more come with 再看 {n} 件 / Show {n} more). */
+/** D357: a page of the fold (more come with 再看 {n} 个 / Show {n} more). */
 export const BROWSE_PAGE = 30;
 
 /** 新的来了 / When a new one comes. tell: the partner offers it; take: it starts without asking (the standing go); quiet: only when asked. */
@@ -291,17 +291,17 @@ export type SourceOp = "comment" | "close" | "tick" | "untick" | "review";
 /**
  * A card about a bound to-do (Bodies.decision.src).
  *   write   在 {where}#{n} 下留言？/ Comment on …? (close: and close it). Go writes it once, by core.
- *   closed  {label} 在 {app} 上关掉了。这件事停下吗？/ … was closed in {app}. Stop this task? Go stops it (reversible: the default after the wait).
+ *   closed  {label} 在 {app} 上关掉了。这个任务停下吗？/ … was closed in {app}. Stop this task? Go stops it (reversible: the default after the wait).
  *   trust   以后 {app} 上…直接接下？/ the standing go offered once (take) or 直接留言 (write).
  */
 export interface SourceAsk {
   /*
-   * D359: batch   关掉这 {n} 件，各留一句？ the reviewed close batch (its Go given on the sheet that showed every line)
-   *       picks   今天能替你清掉这 {n} 件 the morning's picks, inside the note (Go hands them over)
+   * D359: batch   关掉这 {n} 个，各留一句？ the reviewed close batch (its Go given on the sheet that showed every line)
+   *       picks   今天能替你清掉这 {n} 个 the morning's picks, inside the note (Go hands them over)
    *       review  发出这 {n} 条？ a pre-read's drafted review comments (its Go given on the sheet)
    */
   /*
-   * D415: hand_comment 先在这 {n} 件下留一句，再开始？ the note asked to tell the issues first: Go
+   * D415: hand_comment 先在这 {n} 个下面留一句，再开始？ the note asked to tell the issues first: Go
    *                    comments (text, on each of items) and starts; the other way starts without.
    */
   kind: "write" | "closed" | "trust" | "batch" | "picks" | "review" | "plan" | "where_rule" | "group_review" | "reviews" | "hand_comment";
@@ -326,7 +326,7 @@ export interface SourceAsk {
    * D385: plan         {group}：方案 / {group}: the plan: 照这个做 / Go with this (its parts open), 先等等 /
    *                    Hold, 回复… / Reply… (to the plan's own task, which plans again). No default runs on it.
    *       where_rule   以后写代码的事都去 {computer} 上做？ the note's lasting where, asked once (Go keeps it as a rule).
-   *       group_review 在这 {n} 件下留言 / Comment on these {n}: review together's batch (its Go given on the sheet).
+   *       group_review 在这 {n} 个下面留言 / Comment on these {n}: review together's batch (its Go given on the sheet).
    */
   groupId?: string;
   plan?: import("./handover.ts").HandPlan;
@@ -354,8 +354,8 @@ export type SourcesClientFrame =
   // D359: the pile. pile_sort: sort again now (再理一遍). pile_items: one group's to-dos.
   | { t: "pile_sort" }
   | { t: "pile_items"; group: PileGroup; clientId?: string }
-  // 交给{name}这 {n} 件 / Hand these {n} to {name}. D385: with the sheet's note (给{name}的话), a note
-  // per to-do (给这件的话…), the shape, where and who; group: into that live group (加进「{group}」);
+  // 交给{name}这 {n} 个 / Hand these {n} to {name}. D385: with the sheet's note (给{name}的话), a note
+  // per to-do (给这个的话…), the shape, where and who; group: into that live group (加进「{group}」);
   // subject: the set's name (the group's); setId: the conversation's set card it came from.
   | {
       t: "pile_hand";

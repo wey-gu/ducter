@@ -2,7 +2,7 @@
 // and the person's own words, shaped like the author's real week of 2026-11-18 (no real mail: every
 // company, person, domain and address is made up; example.com/.org/.net).
 //
-//   1. 两件事对不上 / the plan sheet: the calendar holds "AGI Bar 北京分享" all day Saturday 11-21,
+//   1. 两处对不上 / the plan sheet: the calendar holds "AGI Bar 北京分享" all day Saturday 11-21,
 //      time not set; a colleague's weekly report (a mail that mentions it, not its confirmation)
 //      says Friday 11-20. Said before travel is booked, with what it doesn't know (the time).
 //   2. The follow-up that fills the gap it named: half an hour or more later a quick web look finds

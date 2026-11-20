@@ -25,7 +25,7 @@ No field is synced both ways: each has one owner, and the other side only reads 
 | Field | Owner | What Ducter does |
 |---|---|---|
 | Title, body, labels, assignee, due date, priority | the app | Reads them when the task is opened (the brief carries them, fenced as outside text: never instructions). An edit there is told to the running task (`changeNote`), and the chip shows the new title |
-| Open / closed (done) | the app | Never inferred from Ducter's own state. Closed there while the task works: the task is told, and one card asks **{label} 在 {app} 上关掉了。这件事停下吗？** (Go 停下, Hold 接着做, default Stop after 30 min: reversible, the task can be continued). Reopened, gone (deleted, the line removed): the task is told, the chip says it |
+| Open / closed (done) | the app | Never inferred from Ducter's own state. Closed there while the task works: the task is told, and one card asks **{label} 在 {app} 上关掉了。这个任务停下吗？** (Go 停下, Hold 接着做, default Stop after 30 min: reversible, the task can be continued). Reopened, gone (deleted, the line removed): the task is told, the chip says it |
 | The task's title, session, transcript, reports, branch, PR | Ducter | Never written to the app as state. A comment carries the result once, when done |
 | Comments | both, append-only | Ducter adds its own (signed "Written with Ducter"); others' comments are read only when the task looks at the issue itself |
 
@@ -77,8 +77,8 @@ place (the same inode: Obsidian and the syncs keep following the file):
 ## 6. Where it shows
 
 - **Settings › 待办来源 / To-do sources** (after 账号 / Accounts): the lede; one card per source (its mark,
-  its name, whose or which folder, counts **{n} 件没做完** **{n} 件在做** as separate facts (D351: only after a look
-  that read the list; GitHub's is the true total, **至少 {n} 件没做完** when only a bound is known, and
+  its name, whose or which folder, counts **{n} 个没做完** **{n} 个在做** as separate facts (D351: only after a look
+  that read the list; GitHub's is the true total, **至少 {n} 个没做完** when only a bound is known, and
   **{n} 个 PR 等你 review** apart; before a look **正在看…**; a failed look **没能读到 {app}。**, its reason
   apart, and **再试一次**), **新的来了** and
   **做完以后** as segments, which part it reads as labelled 44-tall fields saved on Return or leaving them (D348:
@@ -99,9 +99,9 @@ place (the same inode: Obsidian and the syncs keep following the file):
   Obsidian line due by the day after tomorrow, then the newest a source at a time; none with a live
   task. Each says why, its chip and labels apart (D291), when it changed, and **交给{name} / Hand to
   {name}** (New task's pick without the card: `task_new` with `handed`; D395: where it works is the
-  one resolver's answer, `core/src/repo-where.ts`, see design/where.md §18). The rest fold under **还有 {n} 件 / {n} more**, opened in place: Find,
+  one resolver's answer, `core/src/repo-where.ts`, see design/where.md §18). The rest fold under **还有 {n} 个 / {n} more**, opened in place: Find,
   chips (sources, **等你 review {n}**, repositories, a vault's folders and tags), low cards, pages of 30.
-  Settings' **{n} 件没做完 ›** and **{n} 个 PR 等你 review ›** open it there; no list in Settings.
+  Settings' **{n} 个没做完 ›** and **{n} 个 PR 等你 review ›** open it there; no list in Settings.
 - **On hand by source:** after the projects in the lens column (and the row of names on a phone), under
   **来自 / From**, one row per source with a bound task (its mark and name); it narrows the board the way a
   project does (`src:<id>`, kept per device).
@@ -145,15 +145,15 @@ three (§6) only showed it. Evidence for the look and the words: `research/130-t
 
 | Step | When | What the person sees | What runs |
 |---|---|---|---|
-| Sort | the first look that reads a source's list, once a day after, **再理一遍 / Sort again**, or "帮我理一理" (`todos do=sort`) | **正在一件件看…** with a bar, **看了 n 件** · **共 n 件** apart; then one sentence in the conversation (on connect and when asked only) and the groups on the pile | GitHub's list in pages of 100 (at most 600), batches of 25 to the harness's cheapest model (`createHarnessAsk`, cheap), the text fenced and redacted; code's rules first (a duplicate or won't-fix label); a verdict kept until the issue's `updated_at` changes; stopped at 300k weighted tokens (`failed: budget`, the rest **还没细看的**) |
-| Hand over | **交给{name}** on the do row | a sheet, small ones first, six ticked, **一次做 3 件，做完一件接下一件。**; **交给{name}这 6 件** | a queue in `task-sources-pile.json`: `PILE_CAP` (3) tasks at a time, each opened like New task's pick with "Fixes owner/repo#n" in its brief and bound by the person; the next on any task's end. Never offers the standing go. Nothing is posted |
-| Decide | **一件件定** | one question each, **交给{name} · 可以关掉 · 先放着**, the suggestion marked **建议** | `pile_choose`: handed over, moved to the closable ones, or left. Never a Log decision |
-| Close | **过目** | each closable one with **会留一句** and **留着**; **关掉这 n 件，各留一句** | one `decision` (src `batch`, every line) resolved Go by the person where it was given; per issue a comment then a close as *not planned*, each a `source_write` (`by: go`); the count drops at each close |
+| Sort | the first look that reads a source's list, once a day after, **再理一遍 / Sort again**, or "帮我理一理" (`todos do=sort`) | **正在一个个看…** with a bar, **看了 n 个** · **共 n 个** apart; then one sentence in the conversation (on connect and when asked only) and the groups on the pile | GitHub's list in pages of 100 (at most 600), batches of 25 to the harness's cheapest model (`createHarnessAsk`, cheap), the text fenced and redacted; code's rules first (a duplicate or won't-fix label); a verdict kept until the issue's `updated_at` changes; stopped at 300k weighted tokens (`failed: budget`, the rest **还没细看的**) |
+| Hand over | **交给{name}** on the do row | a sheet, small ones first, six ticked, **一次做 3 个，一个做完接下一个。**; **交给{name}这 6 个** | a queue in `task-sources-pile.json`: `PILE_CAP` (3) tasks at a time, each opened like New task's pick with "Fixes owner/repo#n" in its brief and bound by the person; the next on any task's end. Never offers the standing go. Nothing is posted |
+| Decide | **一个个定** | one question each, **交给{name} · 可以关掉 · 先放着**, the suggestion marked **建议** | `pile_choose`: handed over, moved to the closable ones, or left. Never a Log decision |
+| Close | **过目** | each closable one with **会留一句** and **留着**; **关掉这 n 个，各留一句** | one `decision` (src `batch`, every line) resolved Go by the person where it was given; per issue a comment then a close as *not planned*, each a `source_write` (`by: go`); the count drops at each close |
 | Pre-read | the two newest PRs waiting for review, by themselves (at most 6 a day), or **看看** | on the card **我看过了** · **2 处问题** · **1 条建议**; the sheet with the drafted comments, **不发这条**, **发出这 n 条** | the PR's diff (cut at 60 KB) and the repository's own review guide when its folder is on the home, to the cheapest model; sent as one `COMMENT` review (`source_write` op `review`), never a verdict on the PR (only comments) |
-| Morning | the morning note, unless 只说急的 or 不用主动找我 | a find **你的待办**: **昨天替你清掉了 4 件。今天能替你清掉这 3 件。**, the three under 怎么知道的, Go **交给{name}** | `proactive.morningFinds` → `pile.morning`: once a day; two unanswered in a row stop it until a hand-over; a yes in words is `todos do=hand picks=true` |
+| Morning | the morning note, unless 只说急的 or 不用主动找我 | a find **你的待办**: **昨天替你清掉了 4 个。今天能替你清掉这 3 个。**, the three under 怎么知道的, Go **交给{name}** | `proactive.morningFinds` → `pile.morning`: once a day; two unanswered in a row stop it until a hand-over; a yes in words is `todos do=hand picks=true` |
 
 The numbers: the pile's count is GitHub's search total (§7), ticked down at once by each close or
-tick Ducter writes; **今天替你清掉 n 件** counts the to-dos Ducter closed or ticked for the person that
+tick Ducter writes; **今天替你清掉 n 个** counts the to-dos Ducter closed or ticked for the person that
 day (their day, their zone); every group count is code's count of verdicts still open and not handed
 over. None is a number a model wrote.
 
@@ -176,7 +176,7 @@ in the evening (the day's line lives on the pile and opens the next morning's fi
 
 A hand-over's note can ask Ducter to tell the issues first ("在 issue 里留言说一下我的 ducter agent 要开始做
 了"). That comment is an outward write like D341's write-backs: it goes through the same audited write
-(`source_write`, in 替你做过的), by Go on one card (**先在这 {n} 件下留一句，再开始？**) or under a
+(`source_write`, in 替你做过的), by Go on one card (**先在这 {n} 个下面留一句，再开始？**) or under a
 standing permission the person said for issue comments (D413's `issue_comment`, bounded by the owners
 they named). Only issues (never a PR, never a vault line), only a comment (never a close). The tasks
 start after it, and their briefs say it went (handover.md §11).

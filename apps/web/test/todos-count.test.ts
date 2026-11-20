@@ -1,4 +1,4 @@
-// To-do sources' count is never a guess (0.0.75 said "0 件没做完" with 50+ assigned): it shows only
+// To-do sources' count is never a guess (0.0.75 said "0 个没做完" with 50+ assigned): it shows only
 // after a look that read the list; before one it says 正在看… / Looking…; a failed look says it
 // couldn't read the app, gh's reason, and 再试一次 / Try again. The words are the Mac's
 // (apps/desktop/internal/views/todos_test.go, TestTodosCountOnlyAfterALook).
@@ -25,8 +25,8 @@ describe("to-do sources' count", () => {
     const { strings } = await import("../src/i18n.ts");
     const { countWords } = await import("../src/todos.tsx");
     A.L = strings("zh");
-    expect(countWords({ open: 557, review: 4 })).toEqual(["557 件没做完", false, "4 个 PR 等你 review"]);
-    expect(countWords({ open: 50, openAtLeast: true, taken: 1 })).toEqual(["至少 50 件没做完", "1 件在做", false]);
+    expect(countWords({ open: 557, review: 4 })).toEqual(["557 个没做完", false, "4 个 PR 等你 review"]);
+    expect(countWords({ open: 50, openAtLeast: true, taken: 1 })).toEqual(["至少 50 个没做完", "1 个在做", false]);
     A.L = strings("en");
     expect(countWords({ open: 557, review: 1 })).toEqual(["557 open", false, "1 PR waiting for your review"]);
   });

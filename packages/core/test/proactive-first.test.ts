@@ -1,5 +1,5 @@
 // D165 step 8: the first account (§11). The partner speaks in the conversation, asks once. D250:
-// no answer = 每天最多 3 件 (connecting is consent to read), and the quiet look back waits half an
+// no answer = 每天最多 3 条 (connecting is consent to read), and the quiet look back waits half an
 // hour for the offer's answer. Yes: a 3-day look answered within a minute, then the one cadence
 // question; meanwhile, silently, 60 days into the ledger.
 import { afterEach, expect, test } from "bun:test";
@@ -50,7 +50,7 @@ test("好，看一眼: 3 days in full and two weeks that may hold a fact, what n
   expect(answer.rung).toBe("first");
   expect(answer.ask).toBe("cadence");
   // D232: not only who is waiting: anything that needs the person, at most 3, most costly first.
-  expect(answer.opening).toBe("有 3 件要你管："); // D173: what matters, never "I read N emails"
+  expect(answer.opening).toBe("有 3 条要你管："); // D173: what matters, never "I read N emails"
   expect(answer.finds.map((f) => f.kind)).toEqual(["mismatch", "waiting_on_you", "waiting_on_them"]);
   expect(answer.finds[1]!.text).toContain("Lina");
   // The first look read the last 3 days in full, then two weeks of facty subjects; then the quiet
@@ -72,7 +72,7 @@ test("好，看一眼: 3 days in full and two weeks that may hold a fact, what n
   expect(r.settings.get().proactiveBy).toBe("chosen");
 });
 
-test("先不用: still the one question; D250: no answer leaves it at 每天最多 3 件", async () => {
+test("先不用: still the one question; D250: no answer leaves it at 每天最多 3 条", async () => {
   const r = make({ start: Date.parse("2026-11-10T09:00:00+08:00"), language: "en" });
   r.p.added("conn_oo");
   expect(r.lastNote()!.opening).toBe("I can read your Gmail, calendar, GitHub and Discord now. Want me to look through the last two weeks for anything that needs you?");

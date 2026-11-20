@@ -102,7 +102,7 @@ core.setRunner({
   branchChanges: async () => undefined,
 } as unknown as Runner);
 if (!empty) {
-  core.log.append({ stream: "task:t_card", origin: "system", kind: "task_open", body: { taskId: "t_card", title: zh ? "开一件事的卡片" : "The New task card", project: "ducter", place: { kind: "repo", device: "local", repoPath: srv, branch: "ducter/t_card", baseBranch: "main" }, harness: "codex", brief: "x", origin: "you" } });
+  core.log.append({ stream: "task:t_card", origin: "system", kind: "task_open", body: { taskId: "t_card", title: zh ? "开一个任务的卡片" : "The New task card", project: "ducter", place: { kind: "repo", device: "local", repoPath: srv, branch: "ducter/t_card", baseBranch: "main" }, harness: "codex", brief: "x", origin: "you" } });
   core.tasks.setState("t_card", "done", "warm");
 }
 

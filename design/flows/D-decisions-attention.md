@@ -193,7 +193,7 @@ See Q1–Q4 at the end (lock-screen buttons, typing grace, Hold semantics, re-as
 - **Feels after:** read one message top to bottom in under a minute, answer two things, go.
   惊喜 at how short it is; 放心 because everything done says how Ducter knows.
 - **First time:** the first time the user returns to more than 3 items. No intro; the
-  message itself opens with one plain sentence: "你不在的时候：3 件等你，其余都有着落。/
+  message itself opens with one plain sentence: "你不在的时候：3 个等你，其余都有着落。/
   While you were away: 3 need you, the rest are handled." [I]
 
 ### 2. Flow and order
@@ -208,7 +208,7 @@ Order inside the message (refines `conversation.md` [I], adding the default-fire
 3. **停下了 / Stopped**: 没成 / Didn't work, and 在等 / Waiting past its deadline, each with
    its reason in plain words.
 4. **做完了 / Done**, one line each with evidence chips; `done?` shows "在检查 / checking".
-   More than 3 done items compress into "还有 {n} 件也做完了 / {n} more finished" (expand
+   More than 3 done items compress into "还有 {n} 个也做完了 / {n} more finished" (expand
    in place).
 
 The example in artboard `DHarvest` (8 items, the user's real work):
@@ -261,13 +261,13 @@ report verbatim [doc].
 
 | i18n key | zh | en |
 |---|---|---|
-| `harvest.opening` | 你不在的时候：{n} 件等你，其余都有着落。 | While you were away: {n} need you, the rest are handled. |
+| `harvest.opening` | 你不在的时候：{n} 个等你，其余都有着落。 | While you were away: {n} need you, the rest are handled. |
 | `harvest.opening_none` | 你不在的时候都顺利，没有要你定的。 | All went fine while you were away. Nothing needs you. |
 | `harvest.group.needs_you` | 等你 | Needs you |
 | `harvest.group.defaulted` | 按默认做了 | Went with the default |
 | `harvest.group.stopped` | 停下了 | Stopped |
 | `harvest.group.done` | 做完了 | Done |
-| `harvest.more_done` | 还有 {n} 件也做完了 | {n} more finished |
+| `harvest.more_done` | 还有 {n} 个也做完了 | {n} more finished |
 | `harvest.go_all` | 都按默认（{n}） | Go on all defaults ({n}) |
 | `harvest.go_all_skips` | #{list} 要你亲自定 | #{list} needs you |
 | `harvest.go_all_echo` | 按默认定了 #{list}。#{rest} 还等你。 | Went with the defaults for #{list}. #{rest} still needs you. |
@@ -393,9 +393,9 @@ the card says so plainly (principle 14: never skip silently) [I].
 |---|---|---|
 | `quiet.propose` | 晚上我先替你攒着，早上 {time} 一起给你？能自己往下走的照常走。 | Shall I hold things overnight and give you everything at {time}? Anything that can safely carry on will. |
 | `quiet.band_label` | 免打扰 {start}–{end} | Quiet hours {start}–{end} |
-| `quiet.held_count` | 攒着 {n} 件，{time} 给你 | {n} held until {time} |
+| `quiet.held_count` | 攒着 {n} 个，{time} 给你 | {n} held until {time} |
 | `quiet.moved_deadline` | 那时你在休息，我改到 {time} 再定 | You'll be resting then, so I moved it to {time} |
-| `push.morning` | 早上好。{n} 件等你，最早的 {time} 到点。 | Morning. {n} need you; the first is due at {time}. |
+| `push.morning` | 早上好。{n} 个等你，最早的 {time} 到点。 | Morning. {n} need you; the first is due at {time}. |
 | `mute.menu` | 这类别告诉我了 | Don't tell me about these |
 | `mute.propose` | 以后{kind}做完了我不单独说，只记在「手头的事」里。需要你定的时候照样找你。 | From now on I won't mention it when {kind} finishes; it'll just be in On hand. I'll still come to you when you need to decide something. |
 | `mute.scope.this` | 只这个{thing} | Just this {thing} |
@@ -557,7 +557,7 @@ C: same normalized error N=3 times (circuit breaker) | environment unrecoverable
   user:
     ├─ 再试一次 / Try again (or named: "换 Linux 那台再试 / Try again on the Linux box")
     │     ──► M opens a NEW task from the old checkpoint + a brief that names the failure;
-    │         old card stays 没成 with "再试的那件 → / The retry →"; new card says
+    │         old card stays 没成 with "再试的那个 → / The retry →"; new card says
     │         "接着 {old} 再试 / Retrying {old}" [doc: a retry is a new window]
     ├─ 放下 / Drop ──► old task stays 没成 (already terminal); archived lazily
     └─ 回复… / Reply… ──► M steers the retry brief or answers
@@ -601,7 +601,7 @@ C: task Working, no events for T_stall (default 20 min [I]) and no waiter ──
 | `failed.kept` | 做到一半的都留着：{refs} | Everything so far is kept: {refs} |
 | `failed.retry` | 再试一次 | Try again |
 | `failed.retry_named` | 换{device}再试 | Try again on {device} |
-| `failed.retry_link` | 再试的那件 | The retry |
+| `failed.retry_link` | 再试的那个 | The retry |
 | `failed.retry_of` | 接着「{task}」再试 | Retrying "{task}" |
 | `failed.drop` | 放下 | Drop |
 | `stall.looking` | 我去看看 | Looking into it |

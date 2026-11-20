@@ -267,14 +267,14 @@ const T = {
   title: ["在哪台电脑上做", "Where a task runs"],
   subtitle: ["D157 · design/where.md · hel 是家（服务器），MacBook 替 hel 做事", "D157 · design/where.md · hel is the home (a server), MacBook does tasks for it"],
   motionFull: ["动起来", "Motion"], motionStill: ["静止", "Still"],
-  ntH: ["开一件事：只有真有得选，才出现电脑", "New task: the computer appears only when there's a choice"],
+  ntH: ["开一个任务：只有真有得选，才出现电脑", "New task: the computer appears only when there's a choice"],
   ntP: ["左：只有一台电脑，卡片和今天一模一样。右：两台电脑，「不用文件夹」带上电脑那一段；谁来做里，只在 MacBook 上的 Claude Code 也在，点它，电脑跟着换过去。", "Left: one computer, the card is exactly today's. Right: two computers; No folder gains a computer part, and Claude Code, which lives only on MacBook, is in the Who row: picking it brings its computer along."],
   nt1Cap: ["新用户、只有一台电脑：不出现任何「电脑」的字眼。", "A fresh user with one computer: no word about computers anywhere."],
   nt2Cap: ["点电脑那一段打开「在哪台电脑上做」；点 Claude Code 试试一次换两样。", "Click the computer part to open On which computer; click Claude Code to see one pick change both."],
   metaH: ["打开的任务：一行说清在哪儿", "The opened task: one line says where"],
-  metaP: ["两台电脑以后，每件事都写；鼠标停在「在 … 上」看为什么。", "With two computers, every task says it; hover the where part for why."],
+  metaP: ["两台电脑以后，每个任务都写；鼠标停在「在 … 上」看为什么。", "With two computers, every task says it; hover the where part for why."],
   swH: ["换谁来做：谁和在哪儿，一次选", "Switch who does it: who and where in one pick"],
-  swP: ["上面是用户认识的小岛：岛上的币就是这台电脑上登录着的 AI；任务的小包裹在它干活的岛上。下面是同一件事的文字清单。选 MacBook 上的一行，看换过去会怎样。", "On top, the islands the user knows: a coin on an island is an AI signed in on that computer; the task's parcel sits where it works. Below, the same as a literal list. Pick a MacBook row to see what moving does."],
+  swP: ["上面是用户认识的小岛：岛上的币就是这台电脑上登录着的 AI；任务的小包裹在它干活的岛上。下面是同一个任务的文字清单。选 MacBook 上的一行，看换过去会怎样。", "On top, the islands the user knows: a coin on an island is an AI signed in on that computer; the task's parcel sits where it works. Below, the same as a literal list. Pick a MacBook row to see what moving does."],
   swCap: ["选另一台电脑的一行：上面的包裹会跳过去（经过家）；底下一句话说清代价，扩大权限时多一句。", "Pick a row on the other computer: the parcel travels (by way of home); one line says the cost, and a second when access widens."],
   widenCap: ["往更大的权限搬（Ducter 自己的浏览器 → 你的 Chrome），永远是你点了才算，并且明说。", "Moving toward more access (Ducter's own browser → your Chrome) only ever happens on your tap, and says so."],
   swPhoneCap: ["手机上只有清单，没有小岛（窄屏）；这一张是 MacBook 睡着的时候。", "On the phone the sheet is the list alone (narrow); this one is while MacBook sleeps."],
@@ -319,7 +319,7 @@ function ntCard(el, two) {
   const words = one
     ? L("把这周的读书笔记整理成一页", "Turn this week's reading notes into one page")
     : L("把 hawdb 的 README 改得更好读一点，然后做成 Keynote 讲稿", "Make hawdb's README easier to read, then turn it into a Keynote talk");
-  el.innerHTML = `<h3>${L("开一件事", "New task")}</h3>
+  el.innerHTML = `<h3>${L("开一个任务", "New task")}</h3>
     <div class="r"><label>${L("在哪儿做", "Where")}</label><div class="chips">${where}</div></div>
     <div class="r"><label>${L("谁来做", "Who does it")}</label><div><div class="chips">${agents}</div>${under}</div></div>
     <div class="r"><label>${L("做什么", "What")}</label><div><div class="field">${words}</div><div class="under">${L("原话会交给它", "It gets your words as they are")}</div></div></div>
@@ -458,7 +458,7 @@ async function play(kind) {
       const st = document.getElementById("big"); const p = parcel(st, title);
       if (reduced()) { at(p, MAC_END); p.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200 }); }
       else { at(p, { x: 356, y: 296 }); await along(p, MAC_D, 0, 100, 900); await squash(p); }
-      setLine(L("在做 1 件事", "Working on 1 task"), false); await sleep(1200); p.querySelector(".ptag").style.opacity = 0; flowOn(st, true);
+      setLine(L("在做 1 个任务", "Working on 1 task"), false); await sleep(1200); p.querySelector(".ptag").style.opacity = 0; flowOn(st, true);
     }
     if (kind === "wait") {
       big = { ...big, macAsleep: true, macLine: L("睡着了 · 醒来就接着做", "Asleep · carries on when it wakes"), chosen: "mac" }; renderBig();
@@ -469,10 +469,10 @@ async function play(kind) {
       big = { ...big, macAsleep: false, macLine: "", chosen: "mac" }; renderBig();
       const st = document.getElementById("big"); const p = parcel(st, title);
       if (reduced()) { at(p, MAC_END); } else { at(p, { x: 352, y: 294 }); await along(p, MAC_D, 0, 100, 900); await squash(p); }
-      setLine(L("在做 1 件事", "Working on 1 task"), false); await sleep(1000); p.querySelector(".ptag").style.opacity = 0; flowOn(st, true);
+      setLine(L("在做 1 个任务", "Working on 1 task"), false); await sleep(1000); p.querySelector(".ptag").style.opacity = 0; flowOn(st, true);
     }
     if (kind === "move") {
-      big = { ...big, macAsleep: false, macLine: L("在做 1 件事", "Working on 1 task"), chosen: "home" }; renderBig();
+      big = { ...big, macAsleep: false, macLine: L("在做 1 个任务", "Working on 1 task"), chosen: "home" }; renderBig();
       const st = document.getElementById("big"); const p = parcel(st, title); at(p, MAC_END);
       if (reduced()) {
         p.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 200, fill: "forwards" }); await sleep(200); at(p, ON_HOME); p.querySelector(".ptag").textContent = L("搬到 hel 上了", "Now on hel");
@@ -503,7 +503,7 @@ function sheet() {
       { key: "home-codex-luna", coin: ART.codex, name: "Codex · gpt-6-luna", why: L("快，省额度", "Fast, uses less of the limit") },
     ],
     mac: [
-      { key: "mac-claude", coin: ART.claude, name: "Claude Code · Opus", why: L("最适合这件事", "Best fit for this") },
+      { key: "mac-claude", coin: ART.claude, name: "Claude Code · Opus", why: L("最适合这个任务", "Best fit for this") },
       { key: "mac-codex", coin: ART.codex, name: "Codex · gpt-6", why: L("改动在 MacBook 上", "The changes are on MacBook") },
     ],
   };
@@ -516,7 +516,7 @@ function sheet() {
     <div class="grp"><div class="gh"><img src="${ART.laptop}" alt="">MacBook <small>· ${L("醒着", "Awake")}</small></div>${rows.mac.map(row).join("")}
       <div class="cand no"><img src="${ART.claudeOff}" alt=""><div><b>Claude Code · Sonnet</b><small>${L("你关了「用它做事」", "Use it for tasks is off")}</small></div><span></span></div></div>
     ${onMac ? `<div class="consq"><p>${L("从最近保存的进度接着做；分支会先推到 GitHub。", "Continues from its last saved progress; the branch is pushed to GitHub first.")}</p><p>${L("MacBook 合上盖子会睡着，到时候它会停下来等。", "MacBook sleeps when its lid closes; it would pause then and wait.")}</p></div>
-      <div class="scope"><button class="chip on">${L("只这件", "Just this task")}</button><button class="chip">${L("以后这类都用", "For tasks like this")}</button></div>` : ""}
+      <div class="scope"><button class="chip on">${L("只这个", "Just this task")}</button><button class="chip">${L("以后这类都用", "For tasks like this")}</button></div>` : ""}
     <div class="foot"><button class="btn text">${L("取消", "Cancel")}</button>${onMac ? `<button class="btn primary">${L("换到 MacBook 上接着做", "Continue on MacBook")}</button>` : ""}</div>`;
   const wrap = el.querySelector("#miniWrap"); fitStage(wrap);
   const st = el.querySelector("#mini");

@@ -13,7 +13,7 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
 )
 
-// 开一件事 / New task (D128, redone by D185, design/new-task.md): the user
+// 开一个任务 / New task (D128, redone by D185, design/new-task.md): the user
 // starts a task with their own words. The words come first (focused), then
 // one row of pills: where (a folder, recent first; 加一个文件夹… makes a
 // project, D186), its branch, the computer when the choice is real (D157),

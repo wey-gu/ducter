@@ -116,7 +116,7 @@ func findApp(t *testing.T, w, h int, scene string) (*App, *[]any, *ui.Tester) {
 func TestHandFindReading(t *testing.T) {
 	app, sent, tt := findApp(t, 1000, 720, "author2")
 	all := strings.Join(tt.Texts(), " | ")
-	for _, want := range []string{"找的是", "100gle 分给你的", "100gle 提的", "关于 UI 走查", "找到 5 件讲「UI 走查」的", "1 件不太确定，没勾", "高级搜索里多余的说明", "不太确定"} {
+	for _, want := range []string{"找的是", "100gle 分给你的", "100gle 提的", "关于 UI 走查", "找到 5 个讲「UI 走查」的", "1 个不太确定，没勾", "高级搜索里多余的说明", "不太确定"} {
 		if !strings.Contains(all, want) {
 			t.Fatalf("missing %q in %s", want, all)
 		}
@@ -133,7 +133,7 @@ func TestHandFindReading(t *testing.T) {
 	}
 	_, _, tu := findApp(t, 1000, 720, "typo")
 	u := strings.Join(tu.Texts(), " | ")
-	for _, want := range []string{"这些待办里没有叫 100gel 的人", "100gle", "名字对上之前，一件都不勾"} {
+	for _, want := range []string{"这些待办里没有叫 100gel 的人", "100gle", "名字对上之前，一个都不勾"} {
 		if !strings.Contains(u, want) {
 			t.Fatalf("missing %q in %s", want, u)
 		}

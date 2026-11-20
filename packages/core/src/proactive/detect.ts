@@ -294,7 +294,7 @@ function waitingOnYou(facts: Fact[], c: DetectCtx): Candidate[] {
     if (wroteTo(from, Date.parse(last.at))) continue;
     const ago = daysUntil(first.at, c.now, c.zone);
     const whenZh = ago >= 0 ? "今天" : ago === -1 ? "昨天" : `${-ago} 天前`;
-    const zh = `${who} ${whenZh}问你${first.what ? `「${first.what}」` : "一件事"}${again ? `，${daysUntil(last.at, c.now, c.zone) === 0 ? "今天" : ""}又问了一次。` : `，还没回。`}`;
+    const zh = `${who} ${whenZh}问你${first.what ? `「${first.what}」` : "点事"}${again ? `，${daysUntil(last.at, c.now, c.zone) === 0 ? "今天" : ""}又问了一次。` : `，还没回。`}`;
     const en = `${who} asked you${first.what ? ` "${first.what}"` : " something"} ${ago >= 0 ? "today" : ago === -1 ? "yesterday" : `${-ago} days ago`}${again ? ", and asked again." : ", not answered yet."}`;
     out.push({
       key: `wait_you:${k}:${list.length}`,
@@ -417,7 +417,7 @@ export function meetingPrep(ledger: Ledger, c: DetectCtx, withinMs = 12 * 60_000
       people: m.with,
       how: [howOf(m), ...items.flatMap((x) => x.how)].slice(0, 4),
       words: {
-        zh: `${hm(m.start, c.zone)}「${m.title}」${names ? `和 ${names}` : ""}：${first.words.zh.replace(/。$/, "")}${items.length > 1 ? `，还有 ${items.length - 1} 件` : ""}。`,
+        zh: `${hm(m.start, c.zone)}「${m.title}」${names ? `和 ${names}` : ""}：${first.words.zh.replace(/。$/, "")}${items.length > 1 ? `，还有 ${items.length - 1} 个` : ""}。`,
         en: `"${m.title}" at ${hm(m.start, c.zone)}${names ? ` with ${names}` : ""}: ${first.words.en.replace(/\.$/, "")}${items.length > 1 ? `; ${items.length - 1} more` : ""}.`,
       },
       facts: [m.id, ...items.flatMap((x) => x.facts)],

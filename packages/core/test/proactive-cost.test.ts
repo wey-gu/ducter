@@ -111,7 +111,7 @@ test("有用就说: one note holds at most NOTE_MAX; the partner knows how many 
   await r.advance(HOUR + 2 * MIN);
   const note = r.notes().map((e) => e.body).find((b) => b.rung === "morning")!;
   expect(note.finds.length).toBe(NOTE_MAX);
-  expect(note.leftOut).toMatch(/还有 \d+ 件没说/);
+  expect(note.leftOut).toMatch(/还有 \d+ 条没说/);
 });
 
 test("the model's prompt holds at most JUDGE_MAX candidates however many there are, urgent first", async () => {
@@ -203,6 +203,6 @@ test("D173: no proactive text, to the person or to the partner, says how much wa
     expect(W.open(zh)).not.toMatch(READ_COUNT);
     expect(W.firstAnswer(zh, 2)).not.toMatch(READ_COUNT);
     expect(W.firstAnswer(zh, 0)).not.toMatch(READ_COUNT);
-    expect(W.lockBody(zh, ["Lina 问你 #2141。", "CA929 改了。"])).not.toMatch(/\d+ 件|\d+ worth/);
+    expect(W.lockBody(zh, ["Lina 问你 #2141。", "CA929 改了。"])).not.toMatch(/\d+ [件条个]|\d+ worth/);
   }
 });

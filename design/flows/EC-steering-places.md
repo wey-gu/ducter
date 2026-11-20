@@ -125,7 +125,7 @@
      through the task's own `repo_checkout` tool.
    - **Different device, base branch, or replaces the repo** → that is a handoff (E3).
    - **Unrelated, or would roughly double the task** → a **new task**, linked as a sibling.
-   - **Unclear** → one line with a default: "放进「修 CI」还是另开一件？" default: 另开
+   - **Unclear** → one line with a default: "放进「修 CI」还是另开一个？" default: 另开
      (cheaper to merge later than to untangle, see E5).
 4. If the task is `done` → it reopens (`done → working`), same task, same branch.
 5. If the task is `done?` → verification stops; the new criterion is added; work resumes.
@@ -143,8 +143,8 @@ case. Lease may extend to new path globs (may hit C4).
 | `scope.added` | 加进「{task}」了 | Added to "{task}" |
 | `scope.finish_line` | 现在算做完：{criteria} | Done now means: {criteria} |
 | `scope.added_repo` | 「{task}」现在也会用到 {repo} | "{task}" will now use {repo} too |
-| `scope.ask_fold_or_new` | 放进「{task}」，还是另开一件事？ | Add to "{task}", or start a new task? |
-| `scope.ask.default_new` | 不回的话另开一件 | If you don't reply: a new task |
+| `scope.ask_fold_or_new` | 放进「{task}」，还是另开一个任务？ | Add to "{task}", or start a new task? |
+| `scope.ask.default_new` | 不回的话另开一个 | If you don't reply: a new task |
 | `scope.new_sibling` | 另开了「{new}」，和「{task}」挨着 | Started "{new}", next to "{task}" |
 | `scope.reopened` | 「{task}」重新做起来了 | "{task}" is back in progress |
 | `scope.pr_updated` | 同一个 PR 里接着改 | Continuing in the same PR |
@@ -186,7 +186,7 @@ case. Lease may extend to new path globs (may hit C4).
    - **Candidates** (top 3 from `fw_candidates`) with one-line reasons: quota pace, warm
      cache, history, cost. Unavailable ones are shown greyed with the reason ("没登录 /
      Not signed in").
-   - **Scope of the choice:** `只这件 / Just this task` (pin) or `以后这类都用 / For tasks
+   - **Scope of the choice:** `只这个 / Just this task` (pin) or `以后这类都用 / For tasks
      like this` (rule, restated in one line for confirmation).
    - **What happens:** "从最近的检查点接着做，还在同一个副本里 / Continues from the latest
      checkpoint, in the same copy" — the handoff explained in one sentence.
@@ -235,7 +235,7 @@ checkpoint.
 | `body.candidates` | 也可以用 | Could also use |
 | `body.unavailable.signed_out` | 没登录 | Not signed in |
 | `body.unavailable.quota` | 额度 {time} 后恢复 | Quota back in {time} |
-| `body.scope.pin` | 只这件 | Just this task |
+| `body.scope.pin` | 只这个 | Just this task |
 | `body.scope.rule` | 以后这类都用 | For tasks like this |
 | `body.rule.restate` | 规则：{kind} 都用 {model}。对吗？ | Rule: {kind} uses {model}. Right? |
 | `body.handoff.explain` | 从最近的检查点接着做，还在同一个副本里 | Continues from the latest checkpoint, in the same copy |
@@ -409,8 +409,8 @@ B `→ superseded`; A stays; C `queued → working`. No new states.
 |---|---|---|
 | `task.merge.propose` | 把「{b}」并进「{a}」？{b} 做过的会带过去 | Merge "{b}" into "{a}"? What {b} did comes along |
 | `task.merge.branches` | {b} 的改动会先合到 {a} 的分支上 | {b}'s changes go onto {a}'s branch first |
-| `task.merge.done` | 现在是一件事了：「{a}」 | It's one task now: "{a}" |
-| `task.split.propose` | 把「{part}」拆成一件新事？ | Split "{part}" into a new task? |
+| `task.merge.done` | 现在是一个任务了：「{a}」 | It's one task now: "{a}" |
+| `task.split.propose` | 把「{part}」拆成一个新任务？ | Split "{part}" into a new task? |
 | `task.split.done` | 拆出了「{c}」 | Split off "{c}" |
 | `task.split_from` | 拆自「{a}」 | Split from "{a}" |
 | `task.merged_into` † | 已并进「{a}」 | Merged into "{a}" |
@@ -589,7 +589,7 @@ The full set is `apps/desktop/internal/i18n/folder.go` (the web client has the s
    - title "HawDB 这样准备可以吗？";
    - plain-language steps first ("装依赖 · 起数据库 · 复制 .env"), commands collapsed;
    - proof: "在新副本上跑通了 · 2 分 10 秒";
-   - needs: "占用端口 5432（一次一件事）";
+   - needs: "占用端口 5432（一次一个任务）";
    - a checkbox: "也提交到仓库里 / Also commit to the repo" (off by default, D26);
    - `好 / Go`, `先等等 / Hold`, `回复… / Reply…`.
    - Default if no reply in 10 min: **use it for this task only** (reversible), ask again
@@ -619,7 +619,7 @@ Setup job inside the task; task `queued` (reason: setup) → `needs-you` (propos
 | `recipe.word` † | 准备步骤 | Setup |
 | `recipe.proved` | 在新副本上跑通了 · {time} | Ran clean on a fresh copy · {time} |
 | `recipe.imported` | 照着 {file} 改的 | Based on {file} |
-| `recipe.exclusive` | 占用 {resource}（一次只给一件事用） | Uses {resource} (one task at a time) |
+| `recipe.exclusive` | 占用 {resource}（一次只给一个任务用） | Uses {resource} (one task at a time) |
 | `recipe.commit_offer` | 也提交到仓库里 | Also commit to the repo |
 | `recipe.default` | 不回的话这次先这样用 | If you don't reply: use it for this task |
 | `recipe.failed` | 准备失败：{reason} | Setup failed: {reason} |
@@ -725,7 +725,7 @@ the tether snaps loose and B rolls to Working.
 6. Merge: the human merges, or a rule allows Ducter (shown on the card: "规则：绿了就合").
 7. Merged → the task is `done` and **auto-archives** (worktree removed by its runner on next
    wake, branch kept). One success line: "PR #1601 合进去了，「修 CI」收好了".
-8. Closed without merge → "PR 关掉了。这件也放下？" default: 放下.
+8. Closed without merge → "PR 关掉了。这个也放下？" default: 放下.
 
 ### States touched
 `working → blocked` (CI / review waiters) `→ needs-you` (rebase) `→ working → done`;
@@ -742,7 +742,7 @@ residency `→ archived`. Intents: open PR, (merge under rule), close PR.
 | `pr.rebase.default` | 不回的话 {time} 自动 rebase · 可撤销 | If you don't reply: rebase at {time} · undoable |
 | `pr.merge.rule` | 规则：{rule} | Rule: {rule} |
 | `pr.merged` | {pr} 合进去了，「{task}」收好了 | {pr} merged; "{task}" is put away |
-| `pr.closed.ask` | PR 关掉了。这件也放下？ | The PR was closed. Drop this task too? |
+| `pr.closed.ask` | PR 关掉了。这个也放下？ | The PR was closed. Drop this task too? |
 | `pr.never_merge` | 不会自己合，等你来 | Won't merge on its own; that's yours |
 
 ### Motion
@@ -778,7 +778,7 @@ archived after 1.5 s. Rebase Go: press-and-settle, a checkpoint tick appears on 
 1. The runner reports per-task bytes and the reclaimable share.
 2. **Automatic, silent:** regenerable dirs of done tasks after 12 h; archived worktrees.
 3. Over budget after that → a decision in the living message:
-   "MacBook 只剩 6 GB。删掉 3 件已放下的事留下的副本，能腾出 9 GB" `Go` / `先等等` /
+   "MacBook 只剩 6 GB。删掉 3 个已放下的任务留下的副本，能腾出 9 GB" `Go` / `先等等` /
    `看是哪些`. Never removes dirty work without a backup commit; never touches the user's
    own checkouts.
 4. A task can't start because of disk → `queued`, **在等 · 磁盘不够 / Waiting · low disk**,
@@ -791,7 +791,7 @@ archived after 1.5 s. Rebase Go: press-and-settle, a checkpoint tick appears on 
 ### Copy
 | Key | zh | en |
 |---|---|---|
-| `disk.low.ask` | {device} 只剩 {free}。删掉 {n} 件已放下的事留下的副本，能腾出 {gain} | {device} has {free} left. Removing copies from {n} dropped tasks frees {gain} |
+| `disk.low.ask` | {device} 只剩 {free}。删掉 {n} 个已放下的事留下的副本，能腾出 {gain} | {device} has {free} left. Removing copies from {n} dropped tasks frees {gain} |
 | `disk.show_which` | 看是哪些 | Show which |
 | `disk.waiting` | 在等 · 磁盘不够 | Waiting · low disk |
 | `disk.other_device` | 换到 {device} 上做？ | Do it on {device} instead? |

@@ -65,7 +65,7 @@ const report = (id: string, r: Omit<Bodies["report"], "taskId">) => log.append({
 // 1. A result that came back: the flaky compaction test.
 const ask = zh ? "HawDB compaction 那个偶发失败的测试，帮我修一下，修好告诉我" : "Fix the flaky compaction test in HawDB and tell me when it's done";
 const u = log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: ask } });
-log.append({ stream: "channel", origin: "partner", kind: "ack", body: { jobId: "j1", text: zh ? "好，我开一件事去修，在 MacBook 上的 hawdb 里。" : "On it. I'm opening a task in hawdb on the MacBook.", replyTo: u.seq } });
+log.append({ stream: "channel", origin: "partner", kind: "ack", body: { jobId: "j1", text: zh ? "好，我开一个任务去修，在 MacBook 上的 hawdb 里。" : "On it. I'm opening a task in hawdb on the MacBook.", replyTo: u.seq } });
 const flakyTitle = zh ? "修 compaction 偶发失败的测试" : "Fix the flaky compaction test";
 // DEMO_WORKTREE: a real checkout of the fix, so the clients can show its changes.
 await task("t_flaky", flakyTitle, { ...repo("~/dev/hawdb", "ducter/compaction-fix"), ...(process.env.DEMO_WORKTREE ? { worktree: process.env.DEMO_WORKTREE } : {}) }, ask);
@@ -332,7 +332,7 @@ core.setPartner({
     setTimeout(() => core.activity?.set({ step: "recalling", since, stepSince: at() }), 400);
     setTimeout(() => core.activity?.set({ step: "opening_task", since, stepSince: at() }), 1500);
     setTimeout(() => {
-      const text = zh ? "好，我开一件事去查，在 MacBook 上。一般十来分钟，查清楚了告诉你。" : "On it. I'm opening a task to look into it on the MacBook. That usually takes about ten minutes; I'll tell you what I find.";
+      const text = zh ? "好，我开一个任务去查，在 MacBook 上。一般十来分钟，查清楚了告诉你。" : "On it. I'm opening a task to look into it on the MacBook. That usually takes about ten minutes; I'll tell you what I find.";
       log.append({ stream: "channel", origin: "partner", kind: "ack", body: { jobId: `j${e.seq}`, text, replyTo: e.seq } });
       core.activity?.set(null);
     }, Number(process.env.DEMO_REPLY_MS ?? 2300));

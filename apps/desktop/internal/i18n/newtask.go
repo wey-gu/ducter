@@ -1,6 +1,6 @@
 package i18n
 
-// 开一件事 / New task (D128, design/new-task.md): the card, On hand's
+// 开一个任务 / New task (D128, design/new-task.md): the card, On hand's
 // grouping by project, and the opened task's Changes header. Its own
 // table, folded into zh and en by init. The phone (apps/web/src/i18n.ts)
 // uses the same keys for the same words.
@@ -19,7 +19,7 @@ var zhNewTask = Table{
 	"newtask.suggested":      "推荐",
 	"newtask.picked":         "%s，是你选的",
 	"newtask.loading":        "稍等…",
-	"newtask.nobody":         "现在没有 AI agent 能接这件事。",
+	"newtask.nobody":         "现在没有 AI agent 能接这个任务。",
 	"newtask.branch.title":   "从哪个分支开始",
 	"newtask.branch.default": "默认",
 	// D202: under the chosen agent, its model and its reasoning effort.
@@ -40,7 +40,7 @@ var zhNewTask = Table{
 	"newtask.starting":       "在交给它…",
 	"newtask.err.empty":      "先写一句要它做什么。",
 	"newtask.err.conn":       "还没连上 Ducter，连上了再新建。",
-	"newtask.err.no_agent":   "现在没有 AI agent 能接这件事。",
+	"newtask.err.no_agent":   "现在没有 AI agent 能接这个任务。",
 	"newtask.err.not_repo":   "这个文件夹不是 git 仓库。",
 
 	"newtask.err.ducter_data": "这是 Ducter 自己放数据的文件夹，任务不在这里做。换一个文件夹，或者选「不用文件夹」。", // D207

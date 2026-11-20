@@ -253,8 +253,12 @@ func TestReplyEscCancels(t *testing.T) {
 	app.StartReply(app.replyOf(app.S.Channel[0]))
 	tt.Frame()
 	tt.Frame()
-	if count(tt, app.L.T("reply.to", app.L.T("reply.you"))) < 2 {
+	if count(tt, app.replyLabel("you")) < 2 {
 		t.Fatalf("not replying: %q", texts(tt))
+	}
+	// D434: one's own line is added to, never "Reply to You".
+	if strings.Contains(texts(tt), "Reply to You") {
+		t.Fatalf("own line: %q", texts(tt))
 	}
 	replyShot(t, tt, "mac-en-composer-replying")
 	tt.Key(0, ui.KeyEscape)
@@ -262,7 +266,7 @@ func TestReplyEscCancels(t *testing.T) {
 	if app.rp.replying != nil {
 		t.Fatalf("Esc didn't put the reply away")
 	}
-	if !tt.HasText(app.L.T("composer.label", "Ducter")) || tt.HasText(app.L.T("reply.to", app.L.T("reply.you"))) {
+	if !tt.HasText(app.L.T("composer.label", "Ducter")) || tt.HasText(app.replyLabel("you")) {
 		t.Errorf("the placeholder didn't come back: %q", texts(tt))
 	}
 	// The drawn × does the same.

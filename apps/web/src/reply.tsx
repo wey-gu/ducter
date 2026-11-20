@@ -40,6 +40,8 @@ function Cross() {
 
 /** Who said the quoted words, in the literal words of the label. */
 export const whoOf = (from: "you" | "partner") => (from === "you" ? t("reply.you") : A.S.personaName || "Ducter");
+/** What the composer replies to (D434): another's line is 回复 {name}; the person's own is 接着说 / Add to this, never 回复你. */
+export const replyLabel = (from: "you" | "partner") => (from === "you" ? t("reply.own") : t("reply.to", whoOf(from)));
 
 /** The imprint: who, then the quote, in a small copy of that voice's bubble pressed into this one. */
 export function Imprint({ from, quote, pics, part, seq, onTap, still }: { from: "you" | "partner"; quote: string; pics?: number; part?: boolean; seq?: number; onTap?: () => void; still?: boolean }) {
@@ -124,7 +126,7 @@ export function ComposerReply() {
   const r = A.replying;
   if (!r) return null;
   return (
-    <div class="replying" key={`${r.seq}/${r.findId ?? ""}/${r.part ?? ""}`} role="group" aria-label={t("reply.to", whoOf(r.from))}>
+    <div class="replying" key={`${r.seq}/${r.findId ?? ""}/${r.part ?? ""}`} role="group" aria-label={replyLabel(r.from)}>
       <ReplyGlyph size={18} />
       <Imprint from={r.from} quote={r.part ?? r.quote} pics={r.pics} part={!!r.part} seq={r.seq} />
       <button type="button" class="btn text icon x" aria-label={t("reply.cancel")} onClick={() => A.cancelReply()}>

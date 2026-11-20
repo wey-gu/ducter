@@ -336,19 +336,19 @@ const T = {
   fP: ["不是 toast。伙伴在对话里说一句，给一个立刻的小收获（看最近两周有没有要你管的），然后只问一个问题，带默认。点按钮试试。", "Not a toast. The partner says one thing in the conversation, offers a small win right away (anything that needs you from the last two weeks), then asks one question with a default. Try the buttons."],
   fCap: ["Mac：点「好，看一眼」→ 一分钟内回答 → 最后一个问题。没回答就什么都不盯。", "Mac: Take a look → an answer within a minute → the one question. No answer means nothing watches."],
   phfCap: ["手机上同一段对话。", "The same moment on the phone."],
-  mH: ["早上那条：最多 3 件，没声音；没事的日子什么都不发", "The morning note: up to 3, no sound; nothing at all on a quiet day"],
-  mP: ["免打扰结束时，一条消息、一个静音通知。不说看了多少（D173：克制），一句「早。」就是事情本身；每件事两句话以内加一个下一步。没说的，你问起来才说。", "At the end of quiet hours, one message and one silent notification. It never says how much it read (D173: restraint): \"Morning.\" and then the things themselves, each in two sentences or fewer with one next step. What it left out, only if you ask."],
-  lockCap: ["锁屏：静音（被动级别）。正文就是那几件事本身，不写「有 N 件」；预览跟着手机自己的设置走。", "Lock screen: silent (the passive level). The body is the things themselves, never \"N things\"; previews follow the phone's own setting."],
-  noteCap: ["点开：一屏放得下。每件事下面有「有用」和「这类不用告诉我」。", "Opened: fits one screen. Each find has Useful and Don't tell me this kind."],
+  mH: ["早上那条：最多 3 条，没声音；没事的日子什么都不发", "The morning note: up to 3, no sound; nothing at all on a quiet day"],
+  mP: ["免打扰结束时，一条消息、一个静音通知。不说看了多少（D173：克制），一句「早。」就是事情本身；每条两句话以内加一个下一步。没说的，你问起来才说。", "At the end of quiet hours, one message and one silent notification. It never says how much it read (D173: restraint): \"Morning.\" and then the things themselves, each in two sentences or fewer with one next step. What it left out, only if you ask."],
+  lockCap: ["锁屏：静音（被动级别）。正文就是那几条本身，不写「有 N 条」；预览跟着手机自己的设置走。", "Lock screen: silent (the passive level). The body is the things themselves, never \"N things\"; previews follow the phone's own setting."],
+  noteCap: ["点开：一屏放得下。每条下面有「有用」和「这类不用告诉我」。", "Opened: fits one screen. Each find has Useful and Don't tell me this kind."],
   quietCap: ["没事的日子：不发消息、不通知，哪儿都不显示（D173）：没动静就是一切都好。", "A quiet day: no message, no notification, nothing shown anywhere (D173): silence means all is well."],
-  aH: ["两件事对不上：从发现到一个要你点「好」的任务", "Two things don't match: from a find to a task that waits for your Go"],
+  aH: ["两处对不上：从发现到一个要你点「好」的任务", "Two things don't match: from a find to a task that waits for your Go"],
   aP: ["航班和酒店差一晚。点「好，看看能不能提前」才开任务（上网，在 MacBook 上）；改订和付钱都是你自己的。下面的「这类不用告诉我」会变成一条规则。", "The flight and the hotel are a night apart. Only Go opens a task (browsing, on the MacBook); changing the booking and paying stay yours. Don't tell me this kind becomes a rule."],
   ahaCap: ["点「好，看看能不能提前」看任务走完。", "Tap Check for that night and watch the task run."],
   rulesCap: ["设置 › 伙伴 › 你的规则：点了「这类不用告诉我」，多一条，随时「不要这条」。", "Settings › Partner › Your rules: Don't tell me this kind adds one, removable any time."],
   kH: ["其他几类：在等你回、你在等别人、你答应过的、开会前、计划变了", "The other kinds: waiting on you, waiting on someone, promised, before a meeting, a plan changed"],
   kP: ["每一类都是一句话加一个下一步。开会前只在有事没了的时候说；计划变了并且影响今天，才算「急的」，可以穿过免打扰以外的时间。", "Each kind is a sentence and one next step. Before a meeting speaks only when something is open; a plan that changed and affects today is the only kind of urgent, and still never breaks quiet hours unless you asked."],
   kindsCap: ["对话里的样子（Mac）。", "In the conversation (Mac)."],
-  nowCap: ["「急的」：时效通知（手机可以按 app 关掉），算在每天 3 件里。", "Urgent: a time-sensitive notification (the phone lets you turn that off per app), counted within the 3 a day."],
+  nowCap: ["「急的」：时效通知（手机可以按 app 关掉），算在每天 3 条里。", "Urgent: a time-sensitive notification (the phone lets you turn that off per app), counted within the 3 a day."],
   pH: ["Mac 的设置 › 账号：四种来源，四张角色卡", "The Mac's Settings › Accounts: four sources, four character sheets"],
   pP: ["oo、OOMOL 托管、自己部署的 OpenConnector、另一个账号服务。上面一排是「发现了就说」。点 app、点 ⋯、点开关、点最下面的按钮都能试。", "oo, Hosted by OOMOL, a self-hosted OpenConnector, another account service. The chips on top say how it tells you. Apps, ⋯, switches and the foot all work."],
   phH: ["手机：设置 › 账号", "The phone: Settings › Accounts"],
@@ -473,9 +473,9 @@ function sourceCard(key, src, o = {}) {
     ${foot}</div>`;
 }
 function proChips(key) {
-  const opts = [L("只说急的", "Only urgent"), L("每天最多 3 件", "Up to 3 a day"), L("有用就说", "Whenever useful"), L("不用主动找我", "Only when I ask")];
+  const opts = [L("只说急的", "Only urgent"), L("每天最多 3 条", "Up to 3 a day"), L("有用就说", "Whenever useful"), L("不用主动找我", "Only when I ask")];
   const notes = [L("只在拖到明天就来不及的时候找你，没有早上那条。", "Only when tomorrow would be too late; no morning note."),
-    L("早上把值得说的放在一条里，最多 3 件；急的随时说。", "One note in the morning with up to 3 things; urgent ones right away."),
+    L("早上把值得说的放在一条里，最多 3 条；急的随时说。", "One note in the morning with up to 3 things; urgent ones right away."),
     L("不设上限，还是放在早上那条和你在用的时候说。", "No cap, still in the morning note and while you're here."),
     L("它不自己看了，你问起来才去看。", "It stops looking on its own; it reads only when you ask.")];
   return `<div><div class="ptitle">${L("发现了就说", "When it notices something")}</div>
@@ -513,15 +513,15 @@ function firstBody(phone) {
     ${FIRST === 0 ? `<div class="acts"><button class="btn primary sm" data-first="go">${L("好，看一眼", "Take a look")}</button><button class="btn text sm" data-first="no">${L("先不用", "Not now")}</button></div>` : ""}</div>`);
   if (FIRST >= 1) parts.push(`<div class="bub you">${L("好，看一眼", "Take a look")}</div>`);
   if (FIRST === 1) parts.push(`<div class="waitline"><img src="${ART.working}" alt="">${L("在看过去 3 天的信", "Reading the last 3 days")} <span class="dots"><i></i><i></i><i></i></span></div>`);
-  if (FIRST >= 2) parts.push(`<div class="bub partner"><p>${L("有 1 件要你管：Lina 周一问你 nowledge-co/mem #2141 什么时候能 review，今天上午又问了一次。改了 4 个文件，测试都过了。", "One thing needs you: Lina asked on Monday when you can review nowledge-co/mem #2141, and asked again this morning. 4 files changed, tests pass.")}</p>
+  if (FIRST >= 2) parts.push(`<div class="bub partner"><p>${L("有 1 条要你管：Lina 周一问你 nowledge-co/mem #2141 什么时候能 review，今天上午又问了一次。改了 4 个文件，测试都过了。", "One thing needs you: Lina asked on Monday when you can review nowledge-co/mem #2141, and asked again this morning. 4 files changed, tests pass.")}</p>
       <div class="acts"><button class="btn secondary sm">${L("好，先帮我读一遍", "Read it first")}</button><button class="btn text sm">${L("先等等", "Hold")}</button></div>
       <details class="how"><summary>${L("怎么知道的", "How I know")}</summary><ul><li>${L("11/9 GitHub 通知《Review requested》", "GitHub notification \"Review requested\", 11/9")}</li><li>${L("今天 09:12 Lina 在 PR 下的评论", "Lina's comment on the PR, today 09:12")}</li></ul></details>
-      <div class="find" style="border:0;padding:0;margin-top:14px"><p>${L("以后我自己留意着：每天早上把值得说的放在一条里，最多 3 件；急的随时说。这样行吗？", "From now on I'll keep an eye out: one note each morning with up to 3 things, and anything urgent right away. OK?")}</p>
+      <div class="find" style="border:0;padding:0;margin-top:14px"><p>${L("以后我自己留意着：每天早上把值得说的放在一条里，最多 3 条；急的随时说。这样行吗？", "From now on I'll keep an eye out: one note each morning with up to 3 things, and anything urgent right away. OK?")}</p>
       ${FIRST === 2 ? `<div class="acts"><button class="btn primary sm" data-pick="1">${L("好", "Sounds good")}</button><button class="btn text sm" data-pick="0">${L("只说急的", "Only urgent")}</button><button class="btn text sm" data-pick="3">${L("不用主动找我", "Only when I ask")}</button></div>` : ""}</div></div>`);
   if (FIRST === 3) {
     const t = { 0: L("只说急的", "Only urgent"), 1: L("好", "Sounds good"), 3: L("不用主动找我", "Only when I ask") }[FIRSTPICK];
     parts.push(`<div class="bub you">${t}</div>`);
-    parts.push(`<div class="sysline">${FIRSTPICK === 3 ? L("它不会自己去看。设置 › 账号 里随时改。", "It won't look on its own. Change it any time in Settings › Accounts.") : FIRSTPICK === 0 ? L("只说急的。设置 › 账号 里随时改。", "Only urgent. Change it any time in Settings › Accounts.") : L("每天最多 3 件，早上 8 点。设置 › 账号 里随时改。", "Up to 3 a day, at 8 in the morning. Change it any time in Settings › Accounts.")}</div>`);
+    parts.push(`<div class="sysline">${FIRSTPICK === 3 ? L("它不会自己去看。设置 › 账号 里随时改。", "It won't look on its own. Change it any time in Settings › Accounts.") : FIRSTPICK === 0 ? L("只说急的。设置 › 账号 里随时改。", "Only urgent. Change it any time in Settings › Accounts.") : L("每天最多 3 条，早上 8 点。设置 › 账号 里随时改。", "Up to 3 a day, at 8 in the morning. Change it any time in Settings › Accounts.")}</div>`);
   }
   return parts.join("");
 }
@@ -537,7 +537,7 @@ function finds() {
     { id: "domain", k: L("快到期 · 要花钱", "Deadlines and money"),
       tx: L("ducter.dev 11/16 到期。Cloudflare 10/17 发了续费通知（$10.44），之后没有付款收据，自动续费那张卡 10 月也过期了。", "ducter.dev expires on 11/16. Cloudflare sent a renewal notice on 10/17 ($10.44); I haven't seen a receipt since, and the auto-renew card expired in October."),
       go: L("好，打开续费页", "Open the renewal page"), how: [L("10/17 的邮件《Your domain renews soon》", "email \"Your domain renews soon\", 10/17"), L("10/02 的邮件《Card expiring》", "email \"Card expiring\", 10/02"), L("之后没有收据", "no receipt after")] },
-    { id: "hotel", k: L("两件事对不上", "Two things don't match"),
+    { id: "hotel", k: L("两处对不上", "Two things don't match"),
       tx: L("11/21 的 CA929 晚上 21:40 到成田，新宿的酒店却是 11/22 才入住，那晚还没地方住。", "Your CA929 on 11/21 lands at Narita at 21:40, but the Shinjuku hotel starts on 11/22; you have nowhere to stay that night."),
       go: L("好，看看能不能提前", "Check for that night"), how: [L("11/02 的订票确认", "flight confirmation, 11/02"), L("10/28 的酒店确认", "hotel confirmation, 10/28")] },
     { id: "pr", k: L("在等你回", "Waiting on you"),
@@ -582,12 +582,12 @@ function renderAha() {
   if (AHA === 2) parts.push(`<div class="bub partner"><p>${L("能加：11/21 那晚还有同样的房型，¥1,180，要在官网的「我的预订」里改。我把那一页留在 Ducter 的浏览器里了，改和付钱你来。", "It can: the same room type is free on 11/21 at ¥1,180, changed under My bookings on their site. I left that page open in Ducter's browser; changing it and paying are yours.")}</p>
     <div class="acts"><button class="btn secondary sm">${L("打开那一页", "Open that page")}</button></div>
     <details class="how"><summary>${L("怎么知道的", "How I know")}</summary><ul><li>${L("酒店官网 11/21 的房态（截图）", "the hotel's availability for 11/21 (screenshot)")}</li><li>${L("没有登录、没有改任何东西", "not signed in; nothing changed")}</li></ul></details></div>`);
-  document.getElementById("aha").innerHTML = `<div class="bar"><img src="${AHA === 1 ? ART.working : ART.idle}" alt=""><div><b>${NAME}</b><small>${AHA === 1 ? L("在做 1 件事", "1 task under way") : L("手头没事，随时说", "Nothing on hand; just say")}</small></div></div><div class="body convo">${parts.join("")}</div>`;
+  document.getElementById("aha").innerHTML = `<div class="bar"><img src="${AHA === 1 ? ART.working : ART.idle}" alt=""><div><b>${NAME}</b><small>${AHA === 1 ? L("在做 1 个任务", "1 task under way") : L("手头没事，随时说", "Nothing on hand; just say")}</small></div></div><div class="body convo">${parts.join("")}</div>`;
   const rows = [
     [L("Codex 做前端的事", "Codex does front-end work"), L("你说过的", "You said this")],
     [L("航班改了，夜里也叫我", "Wake me at night for flight changes"), L("你说过的 · 免打扰时也说", "You said this · even in quiet hours")],
   ];
-  if (RULE_NEW) rows.push([L("「两件事对不上」这类不用告诉我", "Don't tell me about \"two things don't match\""), L("你刚才点的", "You just tapped this")]);
+  if (RULE_NEW) rows.push([L("「两处对不上」这类不用告诉我", "Don't tell me about \"two things don't match\""), L("你刚才点的", "You just tapped this")]);
   document.getElementById("rules").innerHTML = `<h3 style="font-size:20px;font-weight:800;margin:0 0 4px 4px">${L("你的规则", "Your rules")}</h3>
     <p style="font-size:13px;color:var(--ink-muted);margin:0 0 10px 4px">${L("你说过的，和你换过两次以后定下的。", "What you said, and what you settled after switching twice.")}</p>
     <div class="rcard">${rows.map((r, i) => `<div class="rrow ${RULE_NEW && i === rows.length - 1 ? "new" : ""}"><div class="tx"><b>${r[0]}</b><small>${r[1]}</small></div><button class="btn text sm">${L("不要这条", "Remove")}</button></div>`).join("")}</div>`;
@@ -604,7 +604,7 @@ function renderKinds() {
     ${k(L("你在等别人回", "You're waiting on someone"), L("你 11/5 问 OOMOL 的 Kevin，托管版的钥匙能不能只给读的权限，4 个工作日了还没回。", "On 11/5 you asked Kevin at OOMOL whether a hosted key can be read-only; 4 working days, no reply."), L("好，写一句跟进", "Write a follow-up"), [L("11/5 你发的《Read-only keys?》", "your email \"Read-only keys?\", 11/5"), L("之后这个线程里没有新邮件", "nothing new in the thread since")])}
     ${k(L("你答应过的", "Something you promised"), L("你 11/6 跟 Lina 说「下周二前把 Bridge 的试用说明发你」。今天就是周二，我还没看到你发过。", "On 11/6 you told Lina \"I'll send the Bridge trial notes by next Tuesday\". It's Tuesday, and I haven't seen them go out."), L("好，按之前的邮件起个草稿", "Draft it from the thread"), [L("11/6 你发给 Lina 的邮件", "your email to Lina, 11/6"), L("之后你发的邮件里没有附件或说明", "no notes or attachment in what you sent since")])}
     <div class="sysline">${L("10:20 · 开会前", "10:20 · before a meeting")}</div>
-    ${k(L("开会前", "Before a meeting"), L("10 分钟后和 Lina 的 1:1。#2141 你还没回她；答应今天给她的 Bridge 试用说明也还没发。", "Your 1:1 with Lina is in 10 minutes. You haven't answered her on #2141, and the Bridge trial notes you promised today haven't gone out."), "", [L("日历：10:30 Lina / Wey 1:1", "Calendar: 10:30 Lina / Wey 1:1"), L("上面两件", "the two above")])}
+    ${k(L("开会前", "Before a meeting"), L("10 分钟后和 Lina 的 1:1。#2141 你还没回她；答应今天给她的 Bridge 试用说明也还没发。", "Your 1:1 with Lina is in 10 minutes. You haven't answered her on #2141, and the Bridge trial notes you promised today haven't gone out."), "", [L("日历：10:30 Lina / Wey 1:1", "Calendar: 10:30 Lina / Wey 1:1"), L("上面两个", "the two above")])}
   </div>`;
   document.getElementById("ph-now").innerHTML = `<div class="lock"><div class="time">13:02</div><div class="date">${L("11月21日 星期六", "Saturday, November 21")}</div>
     <div class="notif"><img src="${ART.icon}" alt=""><div class="h">${NAME}<small>${L("现在", "now")}</small></div><div class="lvl">${L("时效通知", "Time Sensitive")}</div>

@@ -1502,7 +1502,7 @@ func (a *App) pastWalk(by int) {
 // pastEndLine is On hand's quiet last line, 做过的事 ›.
 func (a *App) pastEndLine(c *ui.Context) {
 	t := a.T
-	// Quiet as On hand's fold lines, and lined up with them; 一直在跑的 n 件
+	// Quiet as On hand's fold lines, and lined up with them; 一直在跑的 n 个
 	// beside it while something keeps going.
 	n := a.ongoingCount()
 	ui.Row(c.Key("past-end")).Gap(t.S5).Wrap().Padding(t.S2, t.S2, 0, t.S2).Children(func() { // D315: wraps, never clipped on a narrow window

@@ -325,7 +325,8 @@ reply away (**不回复了 / Cancel reply**).
 **The look: the imprint (research/72).** The message replied to appears as a small copy of its
 own bubble (its voice's colour, its tail corner) pressed into the reply like a pebble into clay:
 in the composer while writing (with the drawn reply mark beside it and the placeholder **回复
-{who}… / Reply to {who}…**), inside the top of the sent bubble after. Its first line is literal:
+{who}… / Reply to {who}…**; on the person's own line **接着说… / Add to this…**, never 回复你,
+D434), inside the top of the sent bubble after. Its first line is literal:
 **Ducter** (the persona's name) or **你 / You**; then at most two lines of the quote; a part the
 user picked is in quotation marks. Tapping it brings the original into view and finds it: its own
 tint deepens once and settles (never a glow ring). One no longer on this screen says **那条在更早的

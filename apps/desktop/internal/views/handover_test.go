@@ -153,7 +153,7 @@ func memNote(lang i18n.Lang) string {
 func TestHandSheetHandsOverWithNoteAndShape(t *testing.T) {
 	app, sent, tt := handApp(t, i18n.ZH, 1400, 1000, memNote(i18n.ZH))
 	all := strings.Join(tt.Texts(), " | ")
-	for _, want := range []string{"交给小鸭", "找到 9 件讲「记忆提炼」的", "可以交给小鸭做的", "要你拿主意的", "给小鸭的话", "怎么做", "先出个方案", "你点头再做", "建议", "合成一件做", "一个任务，一个 PR 修好这几件", "在 acme/mem 里排着，每件从上一件的分支接着做", "一次 3 件，各自一个 PR", "在哪儿做", "haswell", "你写了 haswell", "谁来做", "Codex", "勾了 7 件", "交给小鸭这 7 件"} {
+	for _, want := range []string{"交给小鸭", "找到 9 个讲「记忆提炼」的", "可以交给小鸭做的", "要你拿主意的", "给小鸭的话", "怎么做", "先出个方案", "你点头再做", "建议", "合成一个任务做", "一个任务，一个 PR 修好这几个", "在 acme/mem 里排着，每个从上一个的分支接着做", "一次 3 个，各自一个 PR", "在哪儿做", "haswell", "你写了 haswell", "谁来做", "Codex", "勾了 7 个", "交给小鸭这 7 个"} {
 		if !strings.Contains(all, want) {
 			t.Fatalf("missing %q in %s", want, all)
 		}
@@ -218,7 +218,7 @@ func TestHandSheetNarrowTwoSteps(t *testing.T) {
 	}
 	todoFrames(tt, 3)
 	all = strings.Join(tt.Texts(), " | ")
-	if app.ho.step != 1 || !strings.Contains(all, "给小鸭的话") || !strings.Contains(all, "交给小鸭这 7 件") {
+	if app.ho.step != 1 || !strings.Contains(all, "给小鸭的话") || !strings.Contains(all, "交给小鸭这 7 个") {
 		t.Fatalf("step two: %s", all)
 	}
 }
@@ -250,12 +250,12 @@ func TestPileSubjectsAndDoRowOpenTheSheet(t *testing.T) {
 	}
 	todoFrames(tt, 2)
 	all = strings.Join(tt.Texts(), " | ")
-	for _, want := range []string{"想交给小鸭哪些？", "说一类就行：讲这件事的我都找出来，你再删减。", "一件件挑", "在哪儿做"} {
+	for _, want := range []string{"想交给小鸭哪些？", "说一类就行：讲这个的我都找出来，你再删减。", "一个个挑", "在哪儿做"} {
 		if !strings.Contains(all, want) {
 			t.Fatalf("missing %q in %s", want, all)
 		}
 	}
-	if err := tt.Click("一件件挑"); err != nil {
+	if err := tt.Click("一个个挑"); err != nil {
 		t.Fatal(err)
 	}
 	tt.Frame()
@@ -287,7 +287,7 @@ func memPlan(lang i18n.Lang) *protocol.HandPlan {
 	return &protocol.HandPlan{
 		Fixed:  []protocol.PlanFixed{{Ref: "acme/mem#351", Where: "PR #360"}},
 		One:    []protocol.PlanPart{{ID: "p1", Refs: []string{"acme/mem#398", "acme/mem#412", "acme/mem#405"}, Title: w("失败时退一步，并重试一次", "Step back on failure, and retry once"), Why: w("都是自动提炼失败时怎么退一步，改的是同一处；加上一次有限的重试（你定的）", "All about how distillation steps back when it fails, in the same place; plus one bounded retry (your call)")}},
-		Line:   []protocol.PlanPart{{ID: "p2", Refs: []string{"acme/mem#377"}, Why: w("先做：后面两件都用到它改的组包", "First: the other two use the packet code it changes"), Step: 1}, {ID: "p3", Refs: []string{"acme/mem#340"}, Why: w("从 #377 的分支接着做", "From #377's branch"), Step: 2}, {ID: "p4", Refs: []string{"acme/mem#322"}, Why: w("最后：把暂停的样子放进任务记录", "Last: the pause shown in Task History"), Step: 3}},
+		Line:   []protocol.PlanPart{{ID: "p2", Refs: []string{"acme/mem#377"}, Why: w("先做：后面两个都用到它改的组包", "First: the other two use the packet code it changes"), Step: 1}, {ID: "p3", Refs: []string{"acme/mem#340"}, Why: w("从 #377 的分支接着做", "From #377's branch"), Step: 2}, {ID: "p4", Refs: []string{"acme/mem#322"}, Why: w("最后：把暂停的样子放进任务记录", "Last: the pause shown in Task History"), Step: 3}},
 		Limits: []string{w("都在 haswell 上验证", "Every check on haswell"), w("不动数据库迁移", "No database migrations")},
 		Read:   protocol.PlanRead{N: 7, Repo: "acme/mem"},
 	}
@@ -339,7 +339,7 @@ func convApp(t *testing.T, lang i18n.Lang, w, h int, stage string) (*App, *[]any
 	words := todoWords(lang)
 	evs := []protocol.LogEvent{
 		ev("channel", protocol.KindUserMsg, protocol.UserMsg{Text: words("把 memory distill 相关的拉出来我们看看", "Pull out everything about memory distill so we can look")}),
-		ev("channel", protocol.KindAIMsg, protocol.AIMsg{Text: words("找到 9 件讲记忆提炼的。能直接交给我的 6 件先勾上了；#405 要你定一下；两件改动大，先放着。", "9 are about memory distillation. I ticked the 6 I can take now; #405 needs your call; two are big, so they wait.")}),
+		ev("channel", protocol.KindAIMsg, protocol.AIMsg{Text: words("找到 9 个讲记忆提炼的。能直接交给我的 6 个先勾上了；#405 要你定一下；两个改动大，先放着。", "9 are about memory distillation. I ticked the 6 I can take now; #405 needs your call; two are big, so they wait.")}),
 	}
 	gid := ""
 	if stage == "plan" {
@@ -364,7 +364,7 @@ func convApp(t *testing.T, lang i18n.Lang, w, h int, stage string) (*App, *[]any
 func TestSetCardOpensTheSheet(t *testing.T) {
 	app, sent, tt := convApp(t, i18n.ZH, 1180, 1000, "")
 	all := strings.Join(tt.Texts(), " | ")
-	for _, want := range []string{"记忆提炼", "9 件", "#412", "还有 5 件", "交给小鸭这 6 件…", "也可以直接说怎么做"} {
+	for _, want := range []string{"记忆提炼", "9 个", "#412", "还有 5 个", "交给小鸭这 6 个…", "也可以直接说怎么做"} {
 		if !strings.Contains(all, want) {
 			t.Fatalf("missing %q in %s", want, all)
 		}
@@ -373,7 +373,7 @@ func TestSetCardOpensTheSheet(t *testing.T) {
 		t.Fatal(err)
 	}
 	tt.Frame()
-	if err := tt.Click("交给小鸭这 5 件…"); err != nil {
+	if err := tt.Click("交给小鸭这 5 个…"); err != nil {
 		t.Fatal(err)
 	}
 	tt.Frame()
@@ -388,7 +388,7 @@ func TestSetCardOpensTheSheet(t *testing.T) {
 func TestPlanCardGoesWithNotes(t *testing.T) {
 	app, sent, tt := convApp(t, i18n.ZH, 1180, 1800, "plan")
 	all := strings.Join(tt.Texts(), " | ")
-	for _, want := range []string{"记忆提炼：方案", "看了这 7 件和 acme/mem 的代码", "已经修好了，只差关掉", "在 PR #360 里已经修好了", "合成一件做", "#398 + #412 + #405", "一件做完接下一件", "#377", "都在 haswell 上验证", "不动数据库迁移", "照这个做", "先等等", "回复…", "交给小鸭了"} {
+	for _, want := range []string{"记忆提炼：方案", "看了这 7 个和 acme/mem 的代码", "已经修好了，只差关掉", "在 PR #360 里已经修好了", "合成一个任务做", "#398 + #412 + #405", "一个做完接下一个", "#377", "都在 haswell 上验证", "不动数据库迁移", "照这个做", "先等等", "回复…", "交给小鸭了"} {
 		if !strings.Contains(all, want) {
 			t.Fatalf("missing %q in %s", want, all)
 		}
@@ -481,14 +481,14 @@ func TestGroupCardPlanAndReviewTogether(t *testing.T) {
 	app.Receive(protocol.ServerFrame{T: "group_review_result", Sources: &protocol.SourcesFrame{ClientID: r.ClientID, PileOp: "group_review_read", Review: memReview(i18n.ZH)}})
 	todoFrames(tt, 3)
 	all = strings.Join(tt.Texts(), " | ")
-	for _, want := range []string{"一起过目", "3 个 PR 等你合并", "1 件本来就修好了", "PR #420", "检查都过了", "1 项没过", "+212", "会留一句", "不留这条", "在这 6 件下留言", "#351 留言后关掉"} {
+	for _, want := range []string{"一起过目", "3 个 PR 等你合并", "1 个本来就修好了", "PR #420", "检查都过了", "1 项没过", "+212", "会留一句", "不留这条", "在这 6 个下面留言", "#351 留言后关掉"} {
 		if !strings.Contains(all, want) {
 			t.Fatalf("missing %q in %s", want, all)
 		}
 	}
 	app.rv.dropped["acme/mem#340"] = true
 	tt.Frame()
-	if err := tt.Click("在这 5 件下留言"); err != nil {
+	if err := tt.Click("在这 5 个下面留言"); err != nil {
 		t.Fatal(err)
 	}
 	tt.Frame()

@@ -71,10 +71,10 @@ test("the lines as the partner reads them", () => {
       lines: [
         { words: "我下周有什么预约", taskId: "t1", state: "done", note: "下周三 10:00 看牙" },
         { words: "20 号北京 agibar 分享", taskId: "t1", state: "failed" },
-        { words: "第三件", taskId: "", held: "k", state: "working" },
+        { words: "第三个", taskId: "", held: "k", state: "working" },
       ],
     },
     { taskTitle: () => undefined },
   );
-  expect(s).toBe('1. "我下周有什么预约" task t1: done (下周三 10:00 看牙); 2. "20 号北京 agibar 分享" task t1: didn\'t work; 3. "第三件" held in line: still at work');
+  expect(s).toBe('1. "我下周有什么预约" task t1: done (下周三 10:00 看牙); 2. "20 号北京 agibar 分享" task t1: didn\'t work; 3. "第三个" held in line: still at work');
 });

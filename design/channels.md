@@ -66,14 +66,14 @@ The model never chooses a channel.
 |---|---|
 | Reversible, none of the kinds below | the question, its default line in italics, buttons **好，{Go} / Go: {Go}** (primary) and **先等等 / Hold** |
 | Not reversible (merges, sends as you), a phone, the computer, the person's own phone, a call, a calendar change, a tunnel, an install, another agent's ask, a trust rule, a find's step | the question in one sentence plus **在 Ducter 里看看 / Open in Ducter** (a link button when the home has an https address, D228; else the words) |
-| Money, a sign-in, a key, a saved thing's first use | never its content: **有件事要你在 Ducter 里确认。/ Something needs you in Ducter.** plus Open in Ducter |
+| Money, a sign-in, a key, a saved thing's first use | never its content: **有个决定要你在 Ducter 里确认。/ Something needs you in Ducter.** plus Open in Ducter |
 
 A task's question waits up to 20 s (`WORDS_MS`) for the partner's own words about it (D129),
 then uses its own. **Answered anywhere, settled everywhere:** when a card resolves (the app, the
 chat, a default), the chat message is edited to its end state, buttons gone: **你说：好，{Go} /
 You said: Go: {Go}**, **你说：先等等 / You said: Hold**, **你没回，我照原计划做了 / No answer, so I
-went ahead**; a never-card to **这件定了。/ That's settled.** A stale tap gets Telegram's toast
-**这件已经定了 / Already decided**.
+went ahead**; a never-card to **这个定了。/ That's settled.** A stale tap gets Telegram's toast
+**这个已经定了 / Already decided**.
 
 ## 5. The living message and typing (D276 (4))
 

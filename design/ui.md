@@ -437,7 +437,7 @@ task that didn't work is one sentence in the partner's voice with Details; work 
 waits are not said. Each ask is the partner's words (18, regular), then its default in one 13pt
 line in the needs-you ink with Details, then, on the ask whose default comes soonest only, one
 36pt row: Reply… (text) · Hold (secondary) · Go-as-the-action (primary, last; zh "好，rebase").
-The other open asks gather in one 13pt line, "还有 1 件等你定 › / 1 more waiting on you ›" and
+The other open asks gather in one 13pt line, "还有 1 个等你定 › / 1 more waiting on you ›" and
 "都按默认 · 2 / Go on all defaults · 2". The count shows only in the header. An answered ask
 keeps its question and says the outcome once. Time lines (12pt, centered, muted) stand before
 the first message and wherever 15 minutes passed. Short code tokens in a message never break
@@ -552,7 +552,7 @@ with a separator.** Each fact is its own element with its own role:
 | The thing's name | The title, alone. Never a kind or brand appended to it | iPhone (not "iPhone · Ducter") |
 | What it is doing, said | One secondary line, only when it reads as a natural phrase or sentence in the partner's voice | 14 小时前在线 / Online 14 hours ago; 在 hel 上跑 / Running on hel |
 | State | A state word in its color with its dot, its own element (`StateTag`, a dot) | 连不上 / Can't reach in the failed ink |
-| A count or a time | Its own muted element, right-aligned in a row or after the line, tabular figures | 3 件 / 3; 21:59 |
+| A count or a time | Its own muted element, right-aligned in a row or after the line, tabular figures | 3 个 / 3; 21:59 |
 | A kind | The icon or the art (a device's art already says it is the Ducter app) | the iPad art, no "Ducter app" words |
 | A group of metadata | Separate small elements spaced by a gap token (`facts` / `Facts`, S3), free to wrap | Claude Code  Opus  深入 |
 | Provenance, a source | A quiet chip or a small label of its own | 经过 oo |
@@ -777,8 +777,8 @@ width), **rail | task | workbench (520)**: the rail `clamp(22% of the window, 30
 `bg-deep` with no hairline, from 1100 pt; all three from 1560; narrower with the workbench open,
 task | workbench; under 1100 the task alone. It stands beside any opened task when there is room;
 with no task open On hand stays the 760 list. Rail and workbench slide their widths (260 ms,
-Pebble's ease; snap under reduced motion). **⌘⇧] / ⌘⇧[** (the View menu's **下一件事 / Next
-Task** · **上一件事 / Previous Task**) open the next and previous task in the rail's order from
+Pebble's ease; snap under reduced motion). **⌘⇧] / ⌘⇧[** (the View menu's **下一个任务 / Next
+Task** · **上一个任务 / Previous Task**) open the next and previous task in the rail's order from
 anywhere, the composer included; j/k when no field has the keys. **The rail row** is D216's
 two-line row, narrower (13/16 padding; no branch, computer or agent on line two). Line one ends
 in **one status place**, needs you > working > new result: the partner's own clay face at 24 pt,
@@ -790,7 +790,7 @@ time, and that row does not recede. **The handover:** a row seen working that tu
 result plays once: the reading face sinks 5pt and fades as the done face pops from 0.55 on a
 back-out curve (about 560 ms); under reduced motion a cross-fade only. **Folded groups:** By
 project's groups fold from their name (a drawn chevron); a folded group carries its most urgent
-task's face, its counts on hover (**1 件等你 · 2 件在做 · 3 个新结果**).
+task's face, its counts on hover (**1 个等你 · 2 个在做 · 3 个新结果**).
 
 **On hand is one list (D216).** The phone, the pane beside the conversation, the whole screen and
 the rail draw the same rows (`apps/web/src/onhand.tsx`, `apps/desktop/internal/views/onhandlist.go`).
@@ -880,7 +880,7 @@ it slides up once and goes with either button. Simulator shot: `.shots/d200/`.
       1.6, or 1.75 when the text holds Han, autospaced (paragraphs 10 apart, list items 4, h1/h2
       body+3/body+1 at 600, inline code a step down in mono on a faint fill, code blocks radius
       8), and between them **each run of steps as one summary line**: the tally in at most two
-      phrases by priority, then the rest counted (**看了 9 个文件，跑了 2 条命令，还做了 3 件别的 /
+      phrases by priority, then the rest counted (**看了 9 个文件，跑了 2 条命令，还做了 3 样别的 /
       Read 9 files, ran 2 commands, and 3 other things**; a service by its name, **用了 GitHub 9 次
       / Used GitHub 9 times**); a single step keeps its own line. A step line: min 24, gap 6,
       a 16 glyph in muted ink, the words at 13 in InkSoft, its subject (command, path) in mono

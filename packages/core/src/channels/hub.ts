@@ -53,9 +53,9 @@ const HUB_WORDS = {
   zh: {
     linked: "连上了。以后在这儿跟我说就行。",
     open: "在 Ducter 里看看",
-    never: "有件事要你在 Ducter 里确认。",
-    settled: "这件定了。",
-    already: "这件已经定了",
+    never: "有个决定要你在 Ducter 里确认。",
+    settled: "这个定了。",
+    already: "这个已经定了",
     hold: "先等等",
     go: "好，{label}",
     goPlain: "就这样",

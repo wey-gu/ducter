@@ -19,7 +19,7 @@ var zhFile = Table{
 	"file.failed":    "没能打开这个文件。",
 	// D356: a link to a file on the home or a worker, and why it didn't open.
 	"file.link.missing":     "这个文件已经不在了。",
-	"file.link.outside":     "这个文件不在任何一件事自己的文件夹里，Ducter 不会打开它。",
+	"file.link.outside":     "这个文件不在任何一个任务自己的文件夹里，Ducter 不会打开它。",
 	"file.link.too_big":     "这个文件超过 25 MB，在这里打不开。",
 	"file.link.offline":     "这个文件所在的电脑现在连不上。",
 	"file.link.unsupported": "这个 Ducter 还打不开链接里的文件。更新以后再试。",

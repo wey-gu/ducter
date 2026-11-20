@@ -38,7 +38,7 @@ const W = {
     followUnread: "{who}还没回你{when}问的{gists}，它可能停了。回了我马上告诉你。",
     quoted: "「{gist}」",
     and: "和",
-    more: "等 {all} 件事",
+    more: "等 {all} 条",
     what: { message: "你让我发的消息", claim: "「接了」的回复", result: "任务的结果", reply: "回复" },
     failed: "{what}没能发给{who}：被拒绝了。",
     unconfirmed: "没能确认{what}是否到了{who}那里。我没有重发；需要的话再跟我说一次。",

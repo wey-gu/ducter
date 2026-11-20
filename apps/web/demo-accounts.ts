@@ -3,7 +3,7 @@
 // inbox in packages/core/test/fixtures/inbox.ts (no real mail), recorded triage (no model).
 //   DUCTER_PORT=7966 DUCTER_DATA_DIR=$(mktemp -d) DEMO_ACCOUNTS=morning bun apps/web/demo-accounts.ts
 // DEMO_ACCOUNTS: first (the offer after the one tap) | answered (the 3-day look and the question) |
-// morning (the note, chips at 每天最多 3 件) | quiet (a quiet morning: only the header line).
+// morning (the note, chips at 每天最多 3 条) | quiet (a quiet morning: only the header line).
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { startCore, stubRunner } from "./demo-core.ts";

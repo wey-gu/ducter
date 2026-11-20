@@ -33,8 +33,8 @@ test("what's new: each language's own short lines from the whats-new block, whol
   // The author's zh card showed "Your tasks know which computer to run on / With more than one computer (say a server and a MacBook that does tasks f…".
   const body = "**Your tasks know which computer to run on**\n- With more than one computer (say a server and a MacBook that does tasks for it), your partner picks\n";
   expect(whatsNew(body)).toEqual({}); // the English body is never the notes
-  const block = body + "\n<!-- whats-new\nzh: 每件事都说清楚在哪台电脑上做\nzh：合电脑时，一张卡片就搬好\nzh: 第三行不显示\nen: Each task says which computer it runs on\nen: " + "x".repeat(81) + "\n-->\n";
-  expect(whatsNew(block)).toEqual({ zh: ["每件事都说清楚在哪台电脑上做", "合电脑时，一张卡片就搬好"], en: ["Each task says which computer it runs on"] });
+  const block = body + "\n<!-- whats-new\nzh: 每个任务都说清楚在哪台电脑上做\nzh：合电脑时，一张卡片就搬好\nzh: 第三行不显示\nen: Each task says which computer it runs on\nen: " + "x".repeat(81) + "\n-->\n";
+  expect(whatsNew(block)).toEqual({ zh: ["每个任务都说清楚在哪台电脑上做", "合电脑时，一张卡片就搬好"], en: ["Each task says which computer it runs on"] });
   expect(whatsNew("<!-- whats-new\nen: Only English\n-->")).toEqual({ en: ["Only English"] }); // a zh card then shows none
   expect(isSecurity("## Security\n- fix")).toBe(true);
   expect(isSecurity("- faster", "0.0.4")).toBe(false);

@@ -31,7 +31,7 @@ export interface TaskGroupView {
   members: GroupMember[];
   /**
    * The line stopped: a member ended without being done (it failed, or the person put it down); what
-   * is held after it waits for the person: 接着做下一件 / Go on with the next, or 后面的不做了 / Drop the
+   * is held after it waits for the person: 接着做下一个 / Go on with the next, or 后面的不做了 / Drop the
    * rest. Cleared when that task is done after all (continued) or the person decides.
    */
   stopped?: { taskId: string; why: "failed" | "dropped" };

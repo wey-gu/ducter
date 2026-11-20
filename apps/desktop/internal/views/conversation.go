@@ -937,7 +937,7 @@ func (a *App) composer(c *ui.Context) {
 				a.addPicturesButton(c, "conv")
 				ph, label := a.L.T("composer.placeholder", a.S.PersonaName), a.L.T("composer.label", a.S.PersonaName)
 				if r := a.rp.replying; r != nil {
-					label = a.L.T("reply.to", a.whoOf(r.from))
+					label = a.replyLabel(r.from)
 					ph = label + "…"
 				}
 				ta := ui.TextArea(c.Key("composer"), &a.draft).Lines(1, 8).MinHeight(0).Placeholder(ph).

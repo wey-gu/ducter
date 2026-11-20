@@ -58,7 +58,7 @@ A family that needs privacy from each other needs separate homes.
 - **Whose it is, said where it matters.** A push names the partner when there is more than one:
   a task's title reads **小家：约牙医 / Home: Book the dentist**; a partner's own question carries
   its name as the title. The menu bar lists each other partner with something waiting:
-  **换到小家，有 1 件等你 / Switch to Home, 1 need you**, a click shows its conversation. The Mac's
+  **换到小家，有 1 个等你 / Switch to Home, 1 need you**, a click shows its conversation. The Mac's
   needs-you notice names the partner whose questions wait.
 
 ## Switching (zero concepts)

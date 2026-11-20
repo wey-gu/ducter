@@ -28,7 +28,7 @@ import type { WriteResult } from "./adapter.ts";
 import { aboutTokens, chips, codeBecause, filterBy, keyOf, labelHit, meaningPrompt, meaningRows, mergeFacets, parseMeaning, parseRead, pileFacts, readFacets, readPrompt, titleHas, type Facet } from "./find.ts";
 
 export const HANDOVER_FILE = "task-sources-handover.json";
-/** The set card shows this many rows; the rest are 还有 n 件 / n more. */
+/** The set card shows this many rows; the rest are 还有 n 个 / n more. */
 export const SET_ROWS = 4;
 /** A find reads at most this many titles in its one model call. */
 export const FIND_MAX = 600;
@@ -37,26 +37,26 @@ type Lang = "zh" | "en";
 
 const W = {
   zh: {
-    groupOf: "交给{name}的 {n} 件",
+    groupOf: "交给{name}的 {n} 个",
     planQ: "{group}：方案",
     planGo: "照这个做",
     planHold: "先等等",
     whereQ: "以后写代码的事都去 {computer} 上做？",
     whereGo: "记成规则",
     whereHold: "只这次",
-    reviewQ: "在这 {n} 件下留言？",
+    reviewQ: "在这 {n} 个下面留言？",
     reviewGo: "留言",
     reviewHold: "先不留",
     fixedIn: "已在 {where} 修好。",
     doneIn: "已在 {pr} 修好。",
     done: "做完了。",
-    oneTitle: "{title} 等 {n} 件",
+    oneTitle: "{title} 等 {n} 个",
     sep: "、",
-    commentQ: "先在这 {n} 件下留一句，再开始？",
+    commentQ: "先在这 {n} 个下面留一句，再开始？",
     commentQ1: "先在 {label} 下留一句，再开始？",
     commentGo: "留言并开始",
     commentHold: "只开始，不留言",
-    commentDefault: "我的 Ducter agent 开始做这件了。",
+    commentDefault: "我的 Ducter agent 开始做这个了。",
     commented: "按你说的，先在 {labels} 下留了言：「{text}」，然后开始做。",
   },
   en: {
@@ -139,7 +139,7 @@ interface State {
   carded: Record<string, number>;
   /** The lasting wheres already asked about (device|quote). */
   asked: string[];
-  /** D415: hand-overs waiting on 先在这几件下留一句，再开始？ (decisionId → the hand-over as asked). */
+  /** D415: hand-overs waiting on 先在这几个下面留一句，再开始？ (decisionId → the hand-over as asked). */
   waiting?: Record<string, HandArgs & { text: string }>;
 }
 type HandArgs = Parameters<Handover["hand"]>[0];
@@ -379,7 +379,7 @@ export interface Handover {
    * it isn't asked again; asked: the hand-over waits on that card (nothing started yet).
    */
   hand(o: { refs: string[]; note?: string; notes?: Record<string, string>; shape?: HandShape; group?: string; device?: string; harness?: string; subject?: string; bySubject?: boolean; setId?: string; commented?: { refs: string[]; text: string } }): Promise<{ ok: boolean; groupId?: string; taskId?: string; handed: number; shape?: HandShape; error?: string; asked?: string }>;
-  /** D415: 先在这几件下留一句，再开始？ answered. */
+  /** D415: 先在这几个下面留一句，再开始？ answered. */
   answerComment(card: Bodies["decision"], r: Bodies["decision_resolved"]): Promise<void>;
   /** The conversation's find: a set card under the partner's line. */
   set(o: { query?: string; subject?: string }): Promise<TodoSet>;
@@ -732,7 +732,7 @@ export function createHandover(d: HandoverDeps): Handover {
     return { refs, text };
   }
 
-  /** D415: 先在这几件下留一句，再开始？ answered: Go comments and starts; the other way starts without. */
+  /** D415: 先在这几个下面留一句，再开始？ answered: Go comments and starts; the other way starts without. */
   async function answerComment(card: Bodies["decision"], r: Bodies["decision_resolved"]): Promise<void> {
     const w = st.waiting?.[card.decisionId];
     if (!w) return;

@@ -35,7 +35,7 @@ the card that shows the accounts is a settings row.
 | **The cascade** watch → rules → cheap triage → partner (D97) | prose (§5.1 of Draft 3) | no | **no**: no triage, no stage-1 rules, no partner judge over finds anywhere in `packages/` (`grep triage` → 0) | no | no |
 | Watching a connection | prose | no | **partly**: an *event wait* or a routine's condition can read OpenConnector Provider Triggers (`connections.ts:811 readTrigger`, `waiters.ts` `event`), only when the user asked for a wait or a routine. **oo can't be watched at all**: `OO_NOT_WATCHABLE` (`connections.ts:383`, refused at :807) | waiters: `waiters.test.ts`, `work-over-time.test.ts` (fake triggers) | never against a live OpenConnector |
 | The attention bar (three tests) | prose | no | no | no | no |
-| At most 3 a day, batched into a morning message | prose | no | **no** for finds. What exists: the push coalescer sends **早上好。{n} 件等你。** for *decisions* left waiting over quiet hours (`push.ts:283`, `deliver` :486) | `push.test.ts` :267 | yes (decisions only) |
+| At most 3 a day, batched into a morning message | prose | no | **no** for finds. What exists: the push coalescer sends **早上好。{n} 个等你。** for *decisions* left waiting over quiet hours (`push.ts:283`, `deliver` :486) | `push.test.ts` :267 | yes (decisions only) |
 | Quiet hours | yes (D59) | yes | yes: `push.ts:135` (23:00–08:00 default), `inQuiet` :254; hold everything, release one push at the end | yes | yes |
 | Per-kind exception at night ("wake me for flight changes") | prose | no | no | no | no |
 | Opt-in watching at sign-in, one question with a default | prose | no | **no**: adding sends `connection_result` and a toast; the partner says nothing (`ws.ts:544–553`) | — | no |
@@ -230,7 +230,7 @@ first three are Draft 3's bar, the fourth is new):
   twice. A find said once and ignored is not said again unless something changed.
 - **Never wake the person** except for a kind they asked to be woken for.
 - **Never keep quiet about watching.** Connecting an account is consent to read it (D250): a
-  home that never chose is on **每天最多 3 件**, the first add still asks once with that default
+  home that never chose is on **每天最多 3 条**, the first add still asks once with that default
   shown, and the first morning message on the default carries the chips. Restraint is in what is
   said (D243), never in whether it looks.
 
@@ -241,7 +241,7 @@ Each find is typed (stage 2 extracts, stage 3 judges; 你说过的 is read by co
 
 | Kind (zh / en) | What it is | Sources | When it is said | Next step it offers | On by default |
 |---|---|---|---|---|---|
-| **两件事对不上 / Two things don't match** (the aha) | Two facts that contradict or leave a gap: a flight lands the night before the hotel starts; a renewal notice with no payment after it and the card expired; an invoice with no matching bank mail; a meeting during a flight; two meetings at once in any of their calendars, today or tomorrow (D222); the calendar and a confirmation mail naming the same thing on different days, within two weeks (D226); any two of one plan's sources on different days: the calendar's hold or event, a confirmation, a mail that mentions it, the person's own words, a public page (D388, §4.1) | mail + calendar + the conversation, joined through the ledger (§9) over 60 days | the morning note; **now** only if it costs something today | a 上网 task that looks it up (Go), never the change itself | yes |
+| **两处对不上 / Two things don't match** (the aha) | Two facts that contradict or leave a gap: a flight lands the night before the hotel starts; a renewal notice with no payment after it and the card expired; an invoice with no matching bank mail; a meeting during a flight; two meetings at once in any of their calendars, today or tomorrow (D222); the calendar and a confirmation mail naming the same thing on different days, within two weeks (D226); any two of one plan's sources on different days: the calendar's hold or event, a confirmation, a mail that mentions it, the person's own words, a public page (D388, §4.1) | mail + calendar + the conversation, joined through the ledger (§9) over 60 days | the morning note; **now** only if it costs something today | a 上网 task that looks it up (Go), never the change itself | yes |
 | **在等你回 / Waiting on you** | A real person asked you something (a question, a request, a review) and you haven't answered in 2 working days, or they asked again; D403: only when worth a tap (§4.2: not a relay or a stranger's role address, an ask with words, last asked within 10 working days, nothing sent them since) | mail, GitHub review requests, Discord DMs and @-mentions | the morning note (never "now" by itself; 只说急的: one who asked again or waited 3 working days) | mail: the reply already written in the card, editable, **好，发出去** after 30 s with **撤回** (§4.2); GitHub: read it first (a task, Go) | yes, people only (no lists, no bulk, no noreply) |
 | **你在等别人回 / You're waiting on someone** | You asked a question or made a request, and nobody answered in 3 working days, and it mattered (a deadline, money, a person who matters, Mem) | your sent mail | the morning note | a short follow-up draft (Go) | yes |
 | **你答应过的 / Something you promised** | A commitment in your own sent mail or messages ("我周五前发给你") with nothing showing it was kept | sent mail (14 days, research/46) | the morning of the due day | find the related draft or files; a draft reply (Go) | yes |
@@ -358,7 +358,7 @@ mirrored in Settings › 通知 (什么时候找你):
 | Chip (zh / en) | Means |
 |---|---|
 | **只说急的 / Only urgent** | Only the "Now" rung and 开会前 (D226); no morning note |
-| **每天最多 3 件 / Up to 3 a day** (default, also before the person chose: D250) | Morning note with ≤ 3, plus "Now" in its own room of 3 (D243) |
+| **每天最多 3 条 / Up to 3 a day** (default, also before the person chose: D250) | Morning note with ≤ 3, plus "Now" in its own room of 3 (D243) |
 | **有用就说 / Whenever useful** | No daily cap; still batched into the note and fold-ins, at most 5 a note (D174), the rest counted for when they ask |
 | **不用主动找我 / Only when I ask** | Nothing proactive; it reads only when asked. Watching stops (no cost) |
 
@@ -381,8 +381,8 @@ is broken. *First time:* under the chips in Settings › 通知 / Notifications,
   {agent}，现在只看得到标题。** (also `signed_out`, `no_agent`, `failed`).
 - **Open** (in place, the sunken panel 看了哪些 uses), counts only, one line each, only lines
   with something: **看了 152 封信、3 个日程** · **12 封通知和收据，看标题就知道** · **细读了 20 封，记下 4
-  件事** · **跟你说了 0 件** · what is held now, each under its one reason (**不急，没说（你选了只说急的）**
-  · **留到早上 08:00 那条** · **不值得打扰你** · **今天已经说满 3 件** · **你说过这类不用告诉你的** ·
+  个任务** · **跟你说了 0 个** · what is held now, each under its one reason (**不急，没说（你选了只说急的）**
+  · **留到早上 08:00 那条** · **不值得打扰你** · **今天已经说满 3 条** · **你说过这类不用告诉你的** ·
   **这个月的额度用完了** · **急的在免打扰时间里**) · **手机和浏览器都没开通知** · **正在补看之前的信** ·
   the honest line **这里只有数字，不留信的内容。**
 - The reasons are computed live by the same tests the note uses (`engine.ts` `day()`), so the
@@ -392,7 +392,7 @@ is broken. *First time:* under the chips in Settings › 通知 / Notifications,
 - What dots surfaced for its first users (public hands-on reports, Sept–Oct 2026, DOCUMENTED):
   a speaking engagement on one date in the calendar while the confirmation said another (Fast
   Company), and a warranty mail that needed an answer (The Neuron). The first is now one of
-  两件事对不上's joins (§4, D226); the second is 在等你回 only when a person wrote (unchanged until
+  两处对不上's joins (§4, D226); the second is 在等你回 only when a person wrote (unchanged until
   the eval shows the bar is too strict).
 
 ## 6. The morning note
@@ -412,7 +412,7 @@ is broken. *First time:* under the chips in Settings › 通知 / Notifications,
   it looked, and says so if asked.
 - **Ducter's own side (D281):** after the greeting, one line only when it holds something: the
   reminders the partner set for today (**今天 15:00：提醒你交水电费。 / At 15:00 today: remind you to
-  pay the utility bill.**) and cards waiting on the person for over 12 hours (**还有 {n} 件等你定，最早的是
+  pay the utility bill.**) and cards waiting on the person for over 12 hours (**还有 {n} 个等你定，最早的是
   {when}的。 / {n} things are waiting on you, the oldest since {when}.**), each card named once,
   never again. A day with only this line still sends the note (passive). What finished overnight is
   not repeated: the partner said it when it happened.
@@ -460,7 +460,7 @@ Asks raised by background work **expire into Passed** with the find's date (the 
   "anything for me?" is answered from the same finds in every mode.
 - **Offered back once (D250)** when what the notes can notice changed materially (`NOTES_REV`; 1 =
   D243): a home on 只说急的 by `keep_note` hears, the next time the person writes, **现在我能提前告诉你
-  航班、维护、扣费这些了。要每天早上说几件吗？** with **好 / Yes** · **不用 / No thanks**. No answer keeps
+  航班、维护、扣费这些了。要每天早上说几条吗？** with **好 / Yes** · **不用 / No thanks**. No answer keeps
   只说急的; 好 restores the mode before; either answer is a choice and is never offered again. A
   mode the person chose is never re-offered.
 - People: who the person answers fast, who reviews whose PRs, what money they watch, goes to Mem
@@ -514,15 +514,15 @@ says so once. "Only when I ask" costs nothing.
    **已经能看你的 Gmail、日历、Discord 和 GitHub 了。要不要我现在看一眼最近两周，挑出要你管的？**
    · **好，看一眼 / Take a look** (the default) · **以后再说 / Not now**.
 2. Go: a read-only look (stages 1–3 over 3 days), said within about a minute:
-   **有 1 件要你管：Lina 周一问你 #2141 什么时候能 review，今天又问了一次。**
+   **有 1 条要你管：Lina 周一问你 #2141 什么时候能 review，今天又问了一次。**
    (with its next step), or **最近两周没有要你管的。** Never how much it read (D173). Meanwhile, silently, the
    60-day backfill fills the ledger with bookings, renewals and commitments (no message).
 3. Right under the answer, the one question, with a default:
-   **以后我自己留意着：每天早上把值得说的放在一条里，最多 3 件；急的随时说。这样行吗？**
-   · the chip row, with **每天最多 3 件** already selected (D250).
+   **以后我自己留意着：每天早上把值得说的放在一条里，最多 3 条；急的随时说。这样行吗？**
+   · the chip row, with **每天最多 3 条** already selected (D250).
    The answer is the chip row's value; the partner says nothing more about it.
 4. **Silence is yes (D250):** watching starts when the account is added (new mail only), on
-   **每天最多 3 件**. The quiet look back waits half an hour for the offer's answer, so a yes runs
+   **每天最多 3 条**. The quiet look back waits half an hour for the offer's answer, so a yes runs
    the look the person is waiting for first; then it goes on its own. What can't wait may be
    said "now" meanwhile. A home that never saw the question gets it once, under its first
    morning message.
@@ -621,22 +621,22 @@ the desktop's own renderer, phone from a scratch core with a fake oo).
 | Key | zh | en |
 |---|---|---|
 | ★ `proactive.title` | 发现了就说 | When it notices something |
-| ★ `proactive.urgent` · `.three` · `.useful` · `.off` | 只说急的 · 每天最多 3 件 · 有用就说 · 不用主动找我 | Only urgent · Up to 3 a day · Whenever useful · Only when I ask |
+| ★ `proactive.urgent` · `.three` · `.useful` · `.off` | 只说急的 · 每天最多 3 条 · 有用就说 · 不用主动找我 | Only urgent · Up to 3 a day · Whenever useful · Only when I ask |
 | ★ `note.open` | 早。 | Morning. |
-| ★ `note.left_out` (the partner's, said only when asked; never on screen) | 没说的：{list}；还有 {n} 件没说 | Left out: {list}; {n} more not said |
+| ★ `note.left_out` (the partner's, said only when asked; never on screen) | 没说的：{list}；还有 {n} 条没说 | Left out: {list}; {n} more not said |
 | ★ `find.useful` · `find.mute` | 有用 · 这类不用告诉我 | Useful · Don't tell me this kind |
 | ★ `find.muted` | 好，这类以后不说了。 | OK, I won't mention this kind again. |
 | ★ `find.passed` | 过了 | Passed |
-| ★ `kind.*` | 两件事对不上 · 在等你回 · 你在等别人回 · 你答应过的 · 快到期和要花钱的 · 计划变了 · 开会前 | Two things don't match · Waiting on you · You're waiting on someone · Something you promised · Deadlines and money · A plan changed · Before a meeting |
+| ★ `kind.*` | 两处对不上 · 在等你回 · 你在等别人回 · 你答应过的 · 快到期和要花钱的 · 计划变了 · 开会前 | Two things don't match · Waiting on you · You're waiting on someone · Something you promised · Deadlines and money · A plan changed · Before a meeting |
 | ★ `first.offer` | 已经能看你的 {apps} 了。要不要我现在看一眼最近两周，挑出要你管的？ | I can read your {apps} now. Want me to look through the last two weeks for anything that needs you? |
 | ★ `first.go` · `first.no` | 好，看一眼 · 以后再说 | Take a look · Not now |
-| ★ `first.ask` | 以后我自己留意着：每天早上把值得说的放在一条里，最多 3 件；急的随时说。这样行吗？ | From now on I'll keep an eye out: one note each morning with up to 3 things, and anything urgent right away. OK? |
+| ★ `first.ask` | 以后我自己留意着：每天早上把值得说的放在一条里，最多 3 条；急的随时说。这样行吗？ | From now on I'll keep an eye out: one note each morning with up to 3 things, and anything urgent right away. OK? |
 | ★ `note.pause` | 早上那条还要吗？ | Keep the morning note? |
 | `note.keep` · `note.no_more` | 保留 · 不再需要 | Keep · No more |
-| ★ `proactive.note.default` (D250) | 你还没选过，先这样：早上把值得说的放在一条里，最多 3 件；急的随时说。 | You haven't chosen yet, so for now: one note each morning with up to 3 things; anything urgent right away. |
-| ★ the re-offer (D250; core words) · `note.again_yes` · `note.again_no` | 现在我能提前告诉你航班、维护、扣费这些了。要每天早上说几件吗？ · 好 · 不用 | I can now tell you about flights, maintenance and billing changes ahead of time. Want a few each morning? · Yes · No thanks |
+| ★ `proactive.note.default` (D250) | 你还没选过，先这样：早上把值得说的放在一条里，最多 3 条；急的随时说。 | You haven't chosen yet, so for now: one note each morning with up to 3 things; anything urgent right away. |
+| ★ the re-offer (D250; core words) · `note.again_yes` · `note.again_no` | 现在我能提前告诉你航班、维护、扣费这些了。要每天早上说几条吗？ · 好 · 不用 | I can now tell you about flights, maintenance and billing changes ahead of time. Want a few each morning? · Yes · No thanks |
 | ★ `card.status.watching` · `card.status.paused` | 在留意 · 已暂停 | Keeping an eye out · Paused |
-| ★ `first.answer` | 有 {k} 件要你管： · 最近两周没有要你管的。 | {k} things need you: · Nothing in the last two weeks needs you. |
+| ★ `first.answer` | 有 {k} 条要你管： · 最近两周没有要你管的。 | {k} things need you: · Nothing in the last two weeks needs you. |
 | ★ `card.status.asked` | 你问起来才去看 | Reads only when you ask |
 | ★ `card.oo_out` | oo 退出登录了 · 在终端里运行 oo login | oo is signed out · run oo login in a terminal |
 | ★ `tile.reads` · `tile.asks` | 会看：{what} · 先问你：{what} | Reads: {what} · Asks you first: {what} |

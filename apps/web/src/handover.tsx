@@ -41,7 +41,7 @@ export const HS: {
   heard?: FindSaid;
   /** D428: the reading's chips the person removed for these words (pile_find drop). */
   drop?: string[];
-  /** D428: how many the last find ticked (先勾了最像的 n 件). */
+  /** D428: how many the last find ticked (先勾了最像的 n 个). */
   foundTicked?: number;
   /** The field's suggestions (recent subjects first). */
   suggest?: string[];
@@ -49,7 +49,7 @@ export const HS: {
   noteAuto?: string;
   /** Picking one by one (the do group's list) instead of saying it. */
   browse: boolean;
-  /** How many the do group holds (the 一件件挑 link's count). */
+  /** How many the do group holds (the 一个个挑 link's count). */
   doCount?: number;
   finding: boolean;
   subject?: string;
@@ -112,7 +112,7 @@ export function openHand(o: { door: "do" | "subject" | "set" | "find" | "make"; 
   A.changed();
 }
 
-/** 一件件挑 / Pick one by one: the do group's list, the first few ticked (the old door, now secondary). */
+/** 一个个挑 / Pick one by one: the do group's list, the first few ticked (the old door, now secondary). */
 function browse(on: boolean) {
   HS.browse = on;
   HS.picking = undefined;
@@ -1150,7 +1150,7 @@ function answer(groupId: string, option: "go" | "hold" | "reply", text?: string)
 }
 const answering = (groupId: string) => [...PN.pending.values()].includes(groupId);
 
-/** 给这件的话… on a plan's part: the quiet link in its head row, the field under it once opened. */
+/** 给这个的话… on a plan's part: the quiet link in its head row, the field under it once opened. */
 function PartNote({ groupId, partId, live, slot }: { groupId: string; partId: string; live: boolean; slot: "link" | "field" }) {
   const k = `${groupId}:${partId}`;
   const notes = PN.notes.get(groupId) ?? {};

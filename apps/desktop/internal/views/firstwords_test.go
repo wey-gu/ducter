@@ -26,10 +26,10 @@ import (
 func firstWordsEvent(lang i18n.Lang) protocol.LogEvent {
 	if lang == i18n.ZH {
 		return protocol.NewEvent(1, time.Now().UTC().Format(time.RFC3339Nano), "default", "channel", protocol.OriginPartner, protocol.KindAIMsg, protocol.AIMsg{
-			Text: "晚上好，我是小鸭。我看了看这台电脑上你的 Claude Code 和 Codex 最近在做的事，这几件要不要接着来？",
+			Text: "晚上好，我是小鸭。我看了看这台电脑上你的 Claude Code 和 Codex 最近在做的事，这几个要不要接着来？",
 			First: &protocol.FirstWords{Looked: []string{"claude-code", "codex"}, Starts: []protocol.FirstStart{
-				{ID: "local:codex:1", From: "codex", Words: "今天你在 website 里做「把博客换成新主题」，要我接着看看吗？", Draft: "接着 website 里「把博客换成新主题」这件事：先看看它停在哪儿，再跟我说下一步。（文件夹：~/dev/website）"},
-				{ID: "local:claude-code:2", From: "claude-code", Words: "昨天你在 hawdb 里做「修 compaction 那个不稳定的测试」，要我接着看看吗？", Draft: "接着 hawdb 里「修 compaction 那个不稳定的测试」这件事：先看看它停在哪儿，再跟我说下一步。（文件夹：~/dev/hawdb）"},
+				{ID: "local:codex:1", From: "codex", Words: "今天你在 website 里做「把博客换成新主题」，要我接着看看吗？", Draft: "接着 website 里的「把博客换成新主题」：先看看它停在哪儿，再跟我说下一步。（文件夹：~/dev/website）"},
+				{ID: "local:claude-code:2", From: "claude-code", Words: "昨天你在 hawdb 里做「修 compaction 那个不稳定的测试」，要我接着看看吗？", Draft: "接着 hawdb 里的「修 compaction 那个不稳定的测试」：先看看它停在哪儿，再跟我说下一步。（文件夹：~/dev/hawdb）"},
 				{ID: "everyday:2", From: "everyday", Words: "周五下午提醒我交水电费", Draft: "周五下午提醒我交水电费"},
 			}},
 		})

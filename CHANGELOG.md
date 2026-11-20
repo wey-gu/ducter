@@ -3,7 +3,7 @@
 ## 0.1.2 - 2026-11-20
 
 <!-- whats-new
-zh: 交待办能听懂是谁的；循环任务不再悄悄停；一句话说多件事
+zh: 交待办能听懂是谁的；循环任务不再悄悄停；一句话交代好几样
 en: Hand-over finds what you meant; loops never quietly stop; several asks at once
 -->
 

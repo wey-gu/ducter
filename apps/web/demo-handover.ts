@@ -154,11 +154,11 @@ function planFor(refs: string[]) {
     fixed: has(351) ? [{ ref: "nowledge-co/mem#351", where: "PR #360", comment: "This was fixed in #360 (merged): newer facts now replace older ones by when they were said. Closing." }] : [],
     one: R([398, 412, 405]).length ? [{ refs: R([398, 412, 405]), title: zh ? "失败时退一步，并重试一次" : "Step back on failure, and retry once", why: zh ? "都是自动提炼失败时怎么退一步，改的是同一处；加上一次有限的重试（你定的）" : "All about how distillation steps back when it fails, in the same place; plus one bounded retry (your call)" }] : [],
     line: [
-      ...(has(377) ? [{ refs: ["nowledge-co/mem#377"], title: zh ? "长对话的组包变快" : "Faster packets on long threads", why: zh ? "先做：后面两件都用到它改的组包" : "First: the other two use the packet code it changes" }] : []),
+      ...(has(377) ? [{ refs: ["nowledge-co/mem#377"], title: zh ? "长对话的组包变快" : "Faster packets on long threads", why: zh ? "先做：后面两个都用到它改的组包" : "First: the other two use the packet code it changes" }] : []),
       ...(has(340) ? [{ refs: ["nowledge-co/mem#340"], title: zh ? "第一次就能提炼成功" : "Succeed on the first try", why: zh ? "从 #377 的分支接着做" : "From #377's branch" }] : []),
       ...(has(322) ? [{ refs: ["nowledge-co/mem#322"], title: zh ? "暂停时在任务记录里说一声" : "Say when it paused, in Task History", why: zh ? "最后：把暂停的样子放进任务记录" : "Last: the pause shown in Task History" }] : []),
     ],
-    side: R([384, 331]).map((r) => ({ refs: [r], title: "", why: zh ? "跟其他几件不相干" : "Independent of the rest" })),
+    side: R([384, 331]).map((r) => ({ refs: [r], title: "", why: zh ? "跟其他几个不相干" : "Independent of the rest" })),
     later: [],
     limits: zh ? ["都在 haswell 上验证", "不动数据库迁移"] : ["Every check on haswell", "No database migrations"],
   };
@@ -182,7 +182,7 @@ function runner(): Runner {
           if (planning) {
             const refs = [...input.brief.matchAll(/^- (nowledge-co\/[\w-]+#\d+):/gm)].map((m) => m[1]!);
             ho.planReport(taskId, planFor(refs));
-            core.log.append({ stream: `task:${taskId}`, origin: "task", kind: "report", body: { taskId, state: "done", summary: zh ? "看完了：一件已经修好，其余排好了。" : "Read them all: one is already fixed, the rest are planned.", questions: [], evidence: [] } });
+            core.log.append({ stream: `task:${taskId}`, origin: "task", kind: "report", body: { taskId, state: "done", summary: zh ? "看完了：一个已经修好，其余排好了。" : "Read them all: one is already fixed, the rest are planned.", questions: [], evidence: [] } });
             core.tasks.setState(taskId, "done", "cold");
             return;
           }
@@ -215,7 +215,7 @@ if (stage === "conv" || stage === "plan" || stage === "review") {
   say("user", zh ? "把 memory distill 相关的拉出来我们看看" : "Pull out everything about memory distill so we can look");
   const s = await ho.set({ query: "memory distill" });
   const decide = s.refs.filter((r) => !s.ticked.includes(r));
-  say("partner", zh ? `找到 ${s.found.n} 件讲记忆提炼的。能直接交给我的 ${s.ticked.length} 件先勾上了；#405 要你定一下；两件改动大，先放着。` : `${s.found.n} are about memory distillation. I ticked the ${s.ticked.length} I can take now; #405 needs your call; two are big, so they wait.`);
+  say("partner", zh ? `找到 ${s.found.n} 个讲记忆提炼的。能直接交给我的 ${s.ticked.length} 个先勾上了；#405 要你定一下；两个改动大，先放着。` : `${s.found.n} are about memory distillation. I ticked the ${s.ticked.length} I can take now; #405 needs your call; two are big, so they wait.`);
   void decide;
   if (stage !== "conv") {
     say("user", zh ? "就这几个，#405 也加上，按你的建议。先别动数据库迁移，验证都去 haswell 上跑。" : "Just these, plus #405 your way. Leave the database migrations alone and run every check on haswell.");

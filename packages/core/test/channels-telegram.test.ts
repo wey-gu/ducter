@@ -135,7 +135,7 @@ test("a reversible card gets buttons; a tap decides it and the message is edited
   expect(edit.reply_markup).toEqual({ inline_keyboard: [] });
   // A second tap on the stale button: a toast, nothing decided twice.
   tg.taps(PERSON, cardId, `g:${id}`);
-  await waitFor(() => tg.sent("answerCallbackQuery").some((a) => a.text === "这件已经定了"));
+  await waitFor(() => tg.sent("answerCallbackQuery").some((a) => a.text === "这个已经定了"));
   // The push for this card is the chat's: it is claimed.
   expect(hub.claimed(`d:${id}`)).toBe(true);
 });
@@ -173,7 +173,7 @@ test("people, devices and merges get one sentence and Open in Ducter; money and 
   expect(card.text).toBe("把这封信发给老王？");
   expect(card.reply_markup.inline_keyboard[0]).toEqual([{ text: "在 Ducter 里看看", url: `https://home.example.com/app#d=${send}` }]);
   rig.ask({ question: "用尾号 1881 的卡付 ¥89？", goLabel: "付", reversible: false, defaultAt: undefined, defaultOption: "hold", pay: { merchant: "x", amount: "¥89", card: "1881" } as never });
-  const pay = await waitFor(() => tg.sent("sendMessage").find((m) => m.text.startsWith("有件事要你在 Ducter 里确认")));
+  const pay = await waitFor(() => tg.sent("sendMessage").find((m) => m.text.startsWith("有个决定要你在 Ducter 里确认")));
   expect(JSON.stringify(pay)).not.toContain("1881");
   expect(JSON.stringify(pay)).not.toContain("¥89");
 });
@@ -185,7 +185,7 @@ test("long words are split at 4096; a 429 waits retry_after and sends again", as
   tg.says(PERSON, "写长一点");
   const [u] = await waitFor(() => (rig!.userMsgs().length ? rig!.userMsgs() : undefined));
   tg.failNext("sendMessage", { ok: false, error_code: 429, description: "Too Many Requests: retry after 3", parameters: { retry_after: 3 } }, 429);
-  const para = "这一段说的是一件事。".repeat(40);
+  const para = "这一段说的是一个任务。".repeat(40);
   rig.say(Array.from({ length: 14 }, () => para).join("\n\n"), u!.seq);
   await waitFor(() => tg.sent("sendMessage").filter((m) => m.text.startsWith("这一段")).length >= 2);
   await rig.hub.idle();
@@ -269,7 +269,7 @@ test("with notifications off, nothing Ducter starts itself goes to the chat app;
   clock.advance(20 * 60_000);
   const before = tg.sent("sendMessage").length;
   const id = (rig.ask({ question: "顺便清理一下缓存？", goLabel: "清理" }).body as { decisionId: string }).decisionId;
-  rig.say("昨天那件做完了。", u.seq);
+  rig.say("昨天那个做完了。", u.seq);
   await new Promise((r) => setTimeout(r, 50));
   await hub.idle();
   expect(tg.sent("sendMessage").length).toBe(before);

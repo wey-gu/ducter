@@ -72,7 +72,7 @@ describe("folded groups (D244)", () => {
     expect(o.foldCounts(["new", "new", ""])).toBe("2 new results");
     expect(o.foldCounts(["", ""])).toBe("");
     A.L = strings("zh");
-    expect(o.foldCounts(["needs", "new", "new"])).toBe("1 件等你，2 个新结果");
+    expect(o.foldCounts(["needs", "new", "new"])).toBe("1 个等你，2 个新结果");
   });
 });
 

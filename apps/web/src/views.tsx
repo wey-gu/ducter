@@ -59,7 +59,7 @@ import { ChatAppsSettings } from "./channels.tsx";
 import { SourceCardBody, TodoSourcesSettings, TS } from "./todos.tsx";
 import { HandoffSettings, PaperRow, RecordsSettings } from "./settings-more.tsx";
 import { AddSection, noBrain, TasksSection, ThinksSection } from "./partner-story.tsx";
-import { ComposerReply, HoverReply, Imprint, PartReply, ReplyMenu, replyKey, replyOf, SelectText, SentImprint, useReplyGestures, whoOf as replyWho } from "./reply.tsx";
+import { ComposerReply, HoverReply, Imprint, PartReply, ReplyMenu, replyKey, replyOf, SelectText, SentImprint, useReplyGestures, replyLabel } from "./reply.tsx";
 import { dividerSeq, NewDivider, useFollow, WayBack } from "./conv-follow.tsx";
 import { isImage, plainWords, type MediaRef } from "@ducter/protocol";
 import { FillButton, forecast, FullTop, NextLine } from "./board.tsx";
@@ -1618,7 +1618,7 @@ function Composer({ taskId }: { taskId?: string }) {
   const canSend = !!value.trim() || !!pics.length;
   const agent = task ? harnessOf(task) : "";
   const steers = !isHarnessId(agent) || HARNESSES[agent].steer;
-  const place = !taskId ? (A.replying ? `${t("reply.to", replyWho(A.replying.from))}…` : t("composer.placeholder", A.S.personaName)) : !busy || coarse() ? t("composer.task") : steers ? t("composer.steer.place") : t("composer.nosteer.place", harnessName(agent));
+  const place = !taskId ? (A.replying ? `${replyLabel(A.replying.from)}…` : t("composer.placeholder", A.S.personaName)) : !busy || coarse() ? t("composer.task") : steers ? t("composer.steer.place") : t("composer.nosteer.place", harnessName(agent));
   return (
     <div class="composer-wrap" ref={wrap}>
       {(A.held?.taskId ?? "") === (taskId ?? "") && <Held />}
@@ -3285,7 +3285,7 @@ function SettingsSheet() {
   );
 }
 
-// ---------- 开一件事 / New task (D128, D185): the sheet is in newtask.tsx ----------
+// ---------- 开一个任务 / New task (D128, D185): the sheet is in newtask.tsx ----------
 
 export function Sheets() {
   const main = SheetsMain();

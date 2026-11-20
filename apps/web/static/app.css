@@ -4852,7 +4852,7 @@ ol.tries b {
   text-wrap: pretty;
 }
 
-/* ---------- 开一件事 / New task (D128): a quiet ＋ on On hand, a bottom sheet ---------- */
+/* ---------- 开一个任务 / New task (D128): a quiet ＋ on On hand, a bottom sheet ---------- */
 .top .plus {
   width: 44px;
   height: 44px;
@@ -7954,7 +7954,7 @@ dl.call-summary dd { margin: 0; }
 .beside-rail > .task-page {
   padding-top: 24px;
 }
-/* 打开一件事 / Open a task (⌘O): one field and the tasks under it, over everything. */
+/* 打开任务 / Open a task (⌘O): one field and the tasks under it, over everything. */
 .switcher {
   position: fixed;
   z-index: 21;
@@ -15275,7 +15275,7 @@ svg .wave.w2.on {
   .lh-ring { display: none; }
 }
 /* D359: the pile at the head of 你的待办 (research/130): the partner beside a stack of pages whose
-   height is the count's bucket, the count itself literal (还有 557 件), the day's line, the queue,
+   height is the count's bucket, the count itself literal (还有 557 个), the day's line, the queue,
    and the sort's groups as rows, each with its own count and one action. A cleared one rolls the
    number down and lifts a page off; reduced motion changes the number in place. */
 .pile {

@@ -21,9 +21,9 @@ test("sections follow do, decide, later, close and leave empty groups out", () =
 });
 
 test("the find's line (D428): the head in their words, then what was ticked when not all, and the unsure ones; never joined", () => {
-  expect(foundLine({ n: 5, subject: "UI/UX 问题走查", inTitle: 0, byLabel: 0, byMeaning: 5, within: 5, maybe: 1 }, tz, 4)).toEqual({ head: "找到 5 件讲「UI/UX 问题走查」的", facts: ["1 件不太确定，没勾"] });
+  expect(foundLine({ n: 5, subject: "UI/UX 问题走查", inTitle: 0, byLabel: 0, byMeaning: 5, within: 5, maybe: 1 }, tz, 4)).toEqual({ head: "找到 5 个讲「UI/UX 问题走查」的", facts: ["1 个不太确定，没勾"] });
   expect(foundLine({ n: 23, subject: "UI review", inTitle: 0, byLabel: 0, byMeaning: 23, cut: 13 }, te, 10)).toEqual({ head: "23 about “UI review”", facts: ["Ticked the 10 likeliest"] });
-  expect(foundLine({ n: 0, inTitle: 0, byLabel: 0, byMeaning: 0 }, tz).head).toBe("找到 0 件");
+  expect(foundLine({ n: 0, inTitle: 0, byLabel: 0, byMeaning: 0 }, tz).head).toBe("找到 0 个");
   for (const f of foundLine({ n: 23, subject: "x", inTitle: 3, byLabel: 2, byMeaning: 4, cut: 13, maybe: 2 }, tz, 10).facts) expect(f).not.toContain("·");
 });
 
@@ -46,10 +46,10 @@ test("shapes: add to a live group first and suggested; plan first always says yo
   expect(suggestedShape(how())).toBe("plan");
   expect(shapeChoices(how({ shape: undefined, shapes: [] }))).toEqual([]);
   expect(shapeLine("plan", how(), tz, false)).toBe("你点头再做");
-  expect(shapeLine("one_by_one", how(), tz, false)).toBe("在 acme/mem 里排着，每件从上一件的分支接着做");
+  expect(shapeLine("one_by_one", how(), tz, false)).toBe("在 acme/mem 里排着，每个从上一个的分支接着做");
   expect(shapeLine("side_by_side", how(), te, false)).toBe("3 at a time, a PR each");
   expect(shapeLine("one", how(), te, true)).toBe("One task that does them in order");
-  expect(shapeLine("add", h, tz, false)).toBe("它正在做 4 件");
+  expect(shapeLine("add", h, tz, false)).toBe("它正在做 4 个");
   // Never "一起做 / Together" for a shape (research/153: read as side by side).
   for (const k of ["ho.shape.plan", "ho.shape.one", "ho.shape.one_by_one", "ho.shape.side_by_side"]) {
     expect(handoverWords.zh[k]).not.toBe("一起做");

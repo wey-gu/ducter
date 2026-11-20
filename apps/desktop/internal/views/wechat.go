@@ -102,7 +102,7 @@ func (a *App) wechatCard(c *ui.Context, v protocol.ChannelView) {
 			if open {
 				key = "chats.wx.open"
 			}
-			a.chatRow(c, "window:wechat", a.L.T(key), a.L.T("chats.wx.rule"), nil)
+			a.chatRowHow(c, "window:wechat", a.L.T(key), a.L.T("chats.wx.rule"), a.L.T("chats.wx.rule.how"), nil)
 		}
 		// D289: a destructive action is quiet until hovered, and asks in place.
 		if s.forgetting == "wechat" {

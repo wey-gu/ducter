@@ -116,8 +116,6 @@ describe("replies in any language (D292)", () => {
     A.L = strings("zh");
     expect(v.talkOptions("auto")[0]!.label).toBe("跟着我");
     expect(v.talkOptions("auto").at(-1)!.label).toBe("其他语言…");
-    expect(A.L.t("partner.talk.fixed.note", "한국어")).toBe("不管你用什么语言说，它都用 한국어 回。");
-    expect(A.L.t("partner.talk.fixed.note", "简体中文")).toBe("不管你用什么语言说，它都用简体中文回。");
     A.L = strings("en");
   });
 });

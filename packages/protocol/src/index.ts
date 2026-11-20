@@ -27,6 +27,7 @@ export * from "./handset.ts";
 export * from "./channels.ts";
 export * from "./past.ts";
 export * from "./did.ts";
+export * from "./peer-self.ts";
 export * from "./did-glyphs.ts";
 export * from "./computer-name.ts";
 export * from "./done-today.ts";
@@ -306,7 +307,9 @@ export interface Bodies {
   // each standing in for its plain text in `text`; uiDropped: how many it wrote that weren't valid.
   // app (D405): the app this message made or changed (its card under the words); appAnswer: it answers an app's ask.
   // shelf (D410): the person asked where their apps are: a card that opens 小应用 / Apps under these words.
-  ai_msg: { text: string; replyTo?: number; decisionId?: string; media?: MediaRef[]; cal?: CalGlance; first?: FirstWords; ui?: RichUi[]; uiDropped?: number; app?: AppCard; appAnswer?: AppAnswer; shelf?: true };
+  // D418 `pings`: the own agent's contact tests (message ids) this line tells about; clients show
+  // this line in place of their folded quiet line, so it is said once.
+  ai_msg: { text: string; replyTo?: number; decisionId?: string; media?: MediaRef[]; cal?: CalGlance; first?: FirstWords; ui?: RichUi[]; uiDropped?: number; app?: AppCard; appAnswer?: AppAnswer; shelf?: true; pings?: string[] };
   ack: { jobId: string; text: string; replyTo: number }; // names the action, never the outcome
   // D380: a quick web look for one live fact (the weather, a version, one price), run beside the
   // conversation by a session that holds only web tools. "looking" when the partner asks it (no
@@ -640,7 +643,7 @@ export interface Bodies {
     // Settings doesn't let reach the partner; none wakes the partner. Absent = a message to read.
     // D334, in: "held" = a teammate's agent's message kept while the person answers its sender card
     // (答应 logs it again without a state, so it wakes the partner; 不理 leaves it held).
-    state?: "pending" | "held" | "sending" | "sent" | "failed" | "unknown" | "unconfirmed" | "followed" | "early" | "set_aside" | "muted";
+    state?: "pending" | "held" | "sending" | "sent" | "failed" | "unknown" | "unconfirmed" | "followed" | "early" | "set_aside" | "muted" | "ping";
     opId?: string;
     contact?: string;
     operation?: string;
@@ -649,6 +652,22 @@ export interface Bodies {
     // D334: the Space it came in (in), or goes out in (out): a reply goes back in its message's Space.
     space?: string;
     spaceLabel?: string;
+    // D418, in: one of the person's own agents named by its own words ("我是 Wey 的 Mem 协作 Codex"):
+    // `agent` is the tool it said ("Codex"), `role` the rest of its words for itself ("Mem 协作"); read
+    // as 你的 Codex（Mem 协作）/ your Codex (Mem 协作). Only with `mine` (peer-self.ts ownAgentSelf).
+    selfNamed?: boolean;
+    role?: string;
+    // D418, in: the first message any other agent ever sent this persona (the one-time note's place;
+    // a client's window of the Log can't tell which is first).
+    first?: boolean;
+    // D418, in: Mem's own reply argv for it (nmem 0.10.121 `reply_args_prefix`, ending in its `bm1:`
+    // reference), kept so a reply after a restart goes the way Mem said, not by the bare id.
+    route?: string[];
+    // D418: an own agent's contact test answered by code: the "in" (state "ping", never wakes the
+    // partner) and the "out" that answers it (`ack`). Clients fold them into one quiet line.
+    ack?: boolean;
+    // D418, out: the resend of an op Mem's outbox shows never went (once, with Mem's fresh route).
+    retryOf?: string;
   };
   // The partner's own harness session, on the "partner" stream (never shown; clients skip it).
   // "recut": Ducter started a fresh session from the projection because the live context grew

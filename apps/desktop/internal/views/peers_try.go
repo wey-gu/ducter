@@ -183,7 +183,11 @@ func (a *App) firstPeerNote(c *ui.Context, b *protocol.BridgeMsg) {
 	ui.Row(c.Key("peer-first")).Justify(ui.Center).Padding(t.S2, 0, t.S3, 0).Children(func() {
 		ui.Row(c).Gap(t.S3).AlignItems(ui.Start).MaxWidth(560).Padding(t.S3, t.S4).Radius(t.RadiusLG).Background(t.SurfaceSunken).Children(func() {
 			a.peerTile(c, n, h)()
-			uiText(c, autospace(a.L.T("peer.first.note", who, a.personaName()))).FontSize(t.SM).LineHeight(a.leading(1.6)).TextColor(t.InkSoft).Grow(1).Basis(0).MinWidth(0)
+			key := "peer.first.note"
+			if b.Mine {
+				key = "peer.first.own" // D418: theirs, connected, not a stranger that found Ducter
+			}
+			uiText(c, autospace(capPeer(a.L.T(key, who, a.personaName())))).FontSize(t.SM).LineHeight(a.leading(1.6)).TextColor(t.InkSoft).Grow(1).Basis(0).MinWidth(0)
 		})
 	})
 }

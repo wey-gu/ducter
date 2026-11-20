@@ -6,7 +6,7 @@ package i18n
 var zhKeys = Table{
 	"af.keys":           "密钥",
 	"af.keys.ask":       "让任务向我要密钥",
-	"af.keys.ask.help":  "任务要用 API 密钥或部署密钥时，会在对话里问你要。关掉后，它只在报告里说需要哪一个。",
+	"af.keys.ask.help":  "任务要密钥时，在对话里问你要。",
 	"af.key.add":        "添加密钥",
 	"af.key.why":        "任务的命令要用的密钥，比如部署密钥。只在要用的那条命令里用，不进对话，也不进记录。",
 	"af.key.name":       "它是什么",
@@ -37,7 +37,7 @@ var zhKeys = Table{
 var enKeys = Table{
 	"af.keys":           "Keys",
 	"af.keys.ask":       "Let tasks ask me for keys",
-	"af.keys.ask.help":  "When a task needs an API or deploy key, it asks you in the conversation. Off: it only says in its report which one it needs.",
+	"af.keys.ask.help":  "When a task needs a key, it asks you in the conversation.",
 	"af.key.add":        "Add a key",
 	"af.key.why":        "A key a task's commands use, like a deploy key. It goes only into the command that needs it, never into the conversation or the history.",
 	"af.key.name":       "What it is",

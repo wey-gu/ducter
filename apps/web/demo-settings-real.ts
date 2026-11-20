@@ -196,6 +196,8 @@ S.put({ kind: "detail", values: { name: "Wey Gu", email: "weyl.gu@gmail.com", ph
 S.put({ kind: "key", name: zh ? "DigitalOcean 部署用的令牌" : "DigitalOcean deploy token", env: "DO_TOKEN", value: "demo-do-not-a-token" });
 S.put({ kind: "key", name: zh ? "Cloudflare 的 API 令牌（ducter.ai）" : "Cloudflare API token (ducter.ai)", env: "CLOUDFLARE_API_TOKEN", value: "demo-cf-not-a-token" });
 
+// D413: one standing permission, in the author's own words (hel, 2026-11-19), so 不用问我的 shows.
+if (!core.standing.list().length) core.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: zh ? "review 做好了直接发别和我确认" : "Just post the reviews when they're done, don't ask me." } });
 core.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: zh ? "把设置里的东西都过一遍" : "Let's go through Settings" } });
 await Bun.sleep(300);
 console.log(`[demo-settings-real] http://127.0.0.1:${core.port}/app · ${zh ? "zh" : "en"} · data ${dataDir}`);

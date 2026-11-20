@@ -59,8 +59,24 @@ func TestSettingsPartnerMoreRows(t *testing.T) {
 		if tt.HasText(L.T("records.hidden", "Codex")) {
 			t.Errorf("%s: Codex still listed as hidden", lang)
 		}
+		// D424: what it reads is one quiet tap away, not on the row.
+		detail := L.T("records.look.help", L.T("first.here"))
+		if tt.HasText(detail) {
+			t.Errorf("%s: the records row still shows its paragraph", lang)
+		}
+		if err := tt.Click(spoken(L, L.T("records.look"), L.T("how.more"))); err != nil {
+			t.Fatalf("%s: %v in %q", lang, err, tt.Texts())
+		}
+		tt.Frame()
+		if !tt.HasText(detail) {
+			t.Fatalf("%s: 怎么做到的 opens nothing: %q", lang, tt.Texts())
+		}
+		if err := tt.Click(spoken(L, L.T("records.look"), L.T("how.less"))); err != nil {
+			t.Fatal(err)
+		}
+		tt.Frame()
 		// Stop looking, from Settings (D327: off everywhere, so the finer rows go with it).
-		flip(L.T("records.look"), L.T("records.look.help", L.T("first.here")))
+		flip(L.T("records.look"), L.T("how.more"))
 		tt.Frame()
 		if v, ok := lastSent[protocol.LocalAgents](*sent); !ok || v.On {
 			t.Errorf("%s: looking sent %+v", lang, v)

@@ -170,8 +170,8 @@ export function AddRow(p: { label: string; help?: string; onClick: () => void })
 }
 
 /** The one switch, with its words and an optional note. */
-export function Toggle(p: { label: string; help?: string; checked: boolean; onChange: (v: boolean) => void; disabled?: boolean; lead?: ComponentChildren }) {
-  return (
+export function Toggle(p: { label: string; help?: string; checked: boolean; onChange: (v: boolean) => void; disabled?: boolean; lead?: ComponentChildren; how?: string }) {
+  const row = (
     <label class={`switch${p.lead ? " lead" : ""}`}>
       {p.lead}
       <span>
@@ -180,6 +180,32 @@ export function Toggle(p: { label: string; help?: string; checked: boolean; onCh
       </span>
       <input type="checkbox" role="switch" checked={p.checked} disabled={p.disabled} onChange={(e) => p.onChange((e.target as HTMLInputElement).checked)} />
     </label>
+  );
+  // D424: the explanation one quiet tap away, outside the label so the tap never flips the switch.
+  if (!p.how) return row;
+  return (
+    <div class="switch-how">
+      {row}
+      <How about={p.label} detail={p.how} />
+    </div>
+  );
+}
+
+/** 怎么做到的 / How it works (D424): an explanation kept reachable, not shown. The quiet link with
+ *  its drawn chevron; pressed, the words open under it in the muted ink and it reads 收起 / Hide. */
+export function How(p: { about: string; detail: string }) {
+  const [open, setOpen] = useState(false);
+  const label = t(open ? "how.less" : "how.more");
+  return (
+    <div class={`how${open ? " open" : ""}`}>
+      <button type="button" class="qlink how-tap" aria-expanded={open} aria-label={spoken(A.L, p.about, label)} onClick={() => setOpen(!open)}>
+        {label}
+        <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
+          <path d={open ? "M3 4.5l3 3 3-3" : "M4.5 3l3 3-3 3"} />
+        </svg>
+      </button>
+      {open && <p class="how-text">{p.detail}</p>}
+    </div>
   );
 }
 

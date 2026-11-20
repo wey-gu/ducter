@@ -1300,6 +1300,15 @@ a {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* D418: the folded line for an own agent's contact tests carries its facts (how many, how late,
+   answered): it wraps on a narrow screen, never cut. */
+.peerline.wrap {
+  border-radius: 14px;
+}
+.peerline.wrap span {
+  white-space: normal;
+  text-align: center;
+}
 .decision .q {
   font-size: var(--t20);
   line-height: 1.35;
@@ -17240,3 +17249,19 @@ a.pr:hover { box-shadow: inset 0 0 0 1px var(--line-2); }
 .dselect-list [role="option"][aria-selected="true"] { font-weight: 700; }
 @media (pointer: coarse) { .dselect-list [role="option"] { min-height: 44px; font-size: var(--md); } }
 @media (prefers-reduced-motion: reduce) { .dselect-list { animation: none; } }
+/* D424: 怎么做到的 / How it works, an explanation one quiet tap away. The link with its drawn
+   chevron; open, the words in the muted ink under it. Under a switch it sits on the row's text edge. */
+.how { display: flex; flex-direction: column; align-items: flex-start; gap: var(--s1); }
+.how-tap { display: inline-flex; align-items: center; gap: 2px; min-height: 24px; }
+.how-tap svg { flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.how-text { margin: 0; font-size: var(--sm); line-height: 1.5; color: var(--ink-muted); max-width: 40em; }
+.switch-how { display: flex; flex-direction: column; }
+.switch-how > .switch { margin-bottom: 0; }
+.switch-how > .how { padding: 0 16px 12px; margin-top: -10px; }
+/* In a group's card the switch and its tap are one flat row (the switch keeps no clay of its own). */
+.set-card > .switch-how > .switch,
+.set-page.pushed .set-card > .switch-how > .switch { margin: 0; border-radius: 0; background: none; box-shadow: none; }
+.set-page.pushed .switch-how > .how { padding: 0 var(--set-in) var(--s3); margin-top: calc(-1 * var(--s3)); }
+.g-note + .how { padding: 0 var(--set-in, var(--s4)); margin: calc(-1 * var(--s1)) 0 var(--s1); }
+.lede-note + .how { margin: calc(-1 * var(--s1)) 0 var(--s1); }
+@media (pointer: coarse) { .how-tap { min-height: 44px; } }

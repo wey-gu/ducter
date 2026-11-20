@@ -11,6 +11,19 @@ const W = {
   zh: {
     unnamed: "一个没留名字的 agent",
     inHost: "{host} 里的 agent",
+    // D418: one of the person's own agents: by its own words, else that it is theirs.
+    yours: "你的 {agent}",
+    yoursRole: "你的 {agent}（{role}）",
+    ownSomeone: "你自己的一个 agent",
+    pingMany: "{who}的 {n} 条联络测试刚到，最早的是{late}发的。{done}",
+    pingOne: "{who}的联络测试刚到，是{late}发的。{done}",
+    pingManyNow: "{who}的 {n} 条联络测试到了。{done}",
+    pingOneNow: "{who}的联络测试到了。{done}",
+    pingDoneMany: "{said}都回了。",
+    pingDoneOne: "{said}回了。",
+    pingSaid: "按你{when}说的，",
+    pingSomeFailed: "回了 {k} 条，{f} 条没回成：Nowledge Mem 没收下。",
+    pingAllFailed: "没回成：Nowledge Mem 没收下。",
     claim: "接了：「{title}」。做完把结果回你。",
     outcome: "「{title}」：{state}。",
     done: "做完了",
@@ -34,6 +47,18 @@ const W = {
   en: {
     unnamed: "an unnamed agent",
     inHost: "an agent in {host}",
+    yours: "your {agent}",
+    yoursRole: "your {agent} ({role})",
+    ownSomeone: "one of your own agents",
+    pingMany: "{n} contact tests from {who} just arrived; the earliest was sent {late}. {done}",
+    pingOne: "A contact test from {who} just arrived; it was sent {late}. {done}",
+    pingManyNow: "{n} contact tests from {who} arrived. {done}",
+    pingOneNow: "A contact test from {who} arrived. {done}",
+    pingDoneMany: "I answered them all{said}.",
+    pingDoneOne: "I answered it{said}.",
+    pingSaid: ", as you asked {when}",
+    pingSomeFailed: "I answered {k}; {f} didn't go: Nowledge Mem didn't take them.",
+    pingAllFailed: "My answer didn't go: Nowledge Mem didn't take it.",
     claim: 'Taken: "{title}". I\'ll send you the result when it\'s done.',
     outcome: '"{title}": {state}.',
     done: "done",
@@ -88,9 +113,12 @@ export const UNNAMED_OWN = { zh: W.zh.unnamed, en: W.en.unnamed } as const;
 /** What the user reads for another agent (D273): what it is, by its own name ("Claude Code"),
  *  never "你的 …"; one Mem doesn't name is called by the tool it runs in when Mem says ("Claude Code
  *  里的 agent" / "an agent in Claude Code"), else "一个没留名字的 agent" / "an unnamed agent". */
-export function whoForUser(b: { mine?: boolean; agent?: string; host?: string; label?: string; from?: string; to?: string }, lang: LangTag): string {
+export function whoForUser(b: { mine?: boolean; agent?: string; host?: string; label?: string; from?: string; to?: string; selfNamed?: boolean; role?: string }, lang: LangTag): string {
+  // D418: an own agent named by its own words ("我是 Wey 的 Mem 协作 Codex") is theirs: 你的 Codex（Mem 协作）.
+  if (b.mine && b.selfNamed && b.agent) return b.role ? say(lang, "yoursRole", { agent: b.agent, role: b.role }) : say(lang, "yours", { agent: b.agent });
   if (b.mine && b.agent) return b.agent;
-  const nameless = b.host ? say(lang, "inHost", { host: b.host }) : words(W, lang).unnamed;
+  // D418: one Mem says is theirs but names in no way is still theirs, never "unnamed".
+  const nameless = b.host ? say(lang, "inHost", { host: b.host }) : b.mine ? words(W, lang).ownSomeone : words(W, lang).unnamed;
   if (b.mine && unnamed(b)) return nameless;
   return (unnamed(b) ? "" : b.label || b.from || b.to) || nameless;
 }
@@ -122,7 +150,9 @@ export function namesForUser(ownBodies: string[], identity = "", skip: string[] 
 }
 
 /** The same agent in the partner's input, with how to call it when talking to the user. */
-export function whoForModel(b: { mine?: boolean; agent?: string; host?: string; label?: string; from?: string; to?: string }): string {
+export function whoForModel(b: { mine?: boolean; agent?: string; host?: string; label?: string; from?: string; to?: string; selfNamed?: boolean; role?: string }): string {
+  if (b.mine && b.selfNamed && b.agent)
+    return `${b.agent}${b.role ? ` (${b.role})` : ""} (the user's own agent, as its message says: call it 你的 ${b.agent}${b.role ? `（${b.role}）` : ""} / your ${b.agent}${b.role ? ` (${b.role})` : ""}, never by the user's name)`;
   if (b.mine && b.agent) return `${b.agent} (the user's own agent: call it 你的 ${b.agent} / your ${b.agent}, never by the user's name)`;
   if (b.mine && unnamed(b) && b.host) return `one of the user's own AI agents, in ${b.host} (unnamed: call it 你 ${b.host} 里的 agent / your agent in ${b.host}, never by the user's name)`;
   if (b.mine && unnamed(b))
@@ -285,10 +315,11 @@ export function followCandidates(events: LogEvent[], now: number): OutOp[] {
     .sort((a, b) => a.seq - b.seq);
 }
 
-function ago(ms: number, lang: LangTag): string {
+function ago(ms: number, lang: LangTag, round = false): string {
   const h = Math.floor(ms / 3_600_000);
   if (h < 24) return fill(words(W, lang).hours, { n: h, s: h === 1 ? "" : "s" });
-  const d = Math.floor(h / 24);
+  // D418: days to the nearest one for when a message was sent (2 days 22 hours reads "3 天前").
+  const d = round ? Math.max(1, Math.round(ms / 86_400_000)) : Math.floor(h / 24);
   if (d === 1) return words(W, lang).yesterday;
   return fill(words(W, lang).days, { n: d });
 }
@@ -350,8 +381,33 @@ export function followLine(op: OutOp | { op: OutOp; asked?: string }[], now: num
   const oldest = Math.min(...items.map((i) => Date.parse(i.op.sentTs!)));
   const when = ago(now - oldest, lang);
   // D273: an agent's own name stays as it is; the unnamed one starts the sentence capitalised.
-  const Who = who === UNNAMED_OWN.en || who.startsWith("an agent in ") ? "A" + who.slice(1) : who;
+  const Who = capWho(who);
   return say(lang, read ? "followRead" : "followUnread", { who: Who, when, gists });
+}
+
+/** A sentence that starts with who: "an unnamed agent" / "your Codex" / "one of your own agents", capitalised. */
+const capWho = (who: string) => (/^(an |your |one of )/.test(who) ? who[0]!.toUpperCase() + who.slice(1) : who);
+
+// ---------- D418: an own agent's contact tests, answered by code ----------
+
+export const PING_LATE_MS = 60 * 60_000; // a contact test sent this long before it arrived is late: the line says when
+export const PING_SAID_MS = 7 * DAY_MS; // what the person said about it this recently counts
+
+/**
+ * D418: the one line about contact tests from one of the person's own agents that Ducter answered
+ * itself, folded: how many, the earliest's age when they came late, that it was what the person asked
+ * for, and whether every answer went. Said only when the person asked for them or an answer didn't
+ * go; otherwise the quiet line in the conversation is all (silence means success).
+ */
+export function pingLine(p: { who: Msg; n: number; earliest?: number; now: number; said?: number; sent: number; lang: LangTag }): string {
+  const { lang } = p;
+  const who = whoForUser({ ...p.who, label: p.who.to }, lang);
+  const said = p.said !== undefined ? say(lang, "pingSaid", { when: ago(p.now - p.said, lang, true) }) : "";
+  const failed = p.n - p.sent;
+  const done = !failed ? say(lang, p.n > 1 ? "pingDoneMany" : "pingDoneOne", { said }) : p.sent ? say(lang, "pingSomeFailed", { k: p.sent, f: failed }) : say(lang, "pingAllFailed");
+  const late = p.earliest !== undefined && p.now - p.earliest >= PING_LATE_MS ? ago(p.now - p.earliest, lang, true) : undefined;
+  const key = p.n > 1 ? (late ? "pingMany" : "pingManyNow") : late ? "pingOne" : "pingOneNow";
+  return capWho(say(lang, key, { who, n: p.n, late: late ?? "", done }));
 }
 
 // ---------- what the user is told when an outgoing message can't be confirmed (D106) ----------

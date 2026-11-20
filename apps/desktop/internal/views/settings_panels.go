@@ -51,7 +51,7 @@ func (a *App) lookPanel(c *ui.Context) {
 				msel = i
 			}
 		}
-		a.row(c, "appearance", a.L.T("settings.look.mode"), a.L.T("settings.look.mode.help"), func() {
+		a.row(c, "appearance", a.L.T("settings.look.mode"), "", func() {
 			labels := []string{a.L.T("settings.look.mode.system"), a.L.T("settings.look.mode.light"), a.L.T("settings.look.mode.dark")}
 			if i := a.choices(c, "appearance", a.L.T("settings.look.mode"), labels, msel); i >= 0 {
 				a.SetAppearance(modes[i])

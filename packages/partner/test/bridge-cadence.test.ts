@@ -223,7 +223,7 @@ describe("D335 with D334: one long-poll per Space context", () => {
     expect(waits.map((w) => w.ctx)).toEqual(["ducter", "ducter-in-team"]);
     await timers.advance(2 * 60 * S);
     expect(at()).toEqual([0]); // every place waits: no minute checks
-    box.push({ ...OWN, messageId: "bm-t1", text: "联络测试：收到请回一句「收到」。", space: "ws-team", spaceLabel: "Team" });
+    box.push({ ...OWN, messageId: "bm-t1", text: "bridge 那块今晚能合吗？收到请回一句「收到」。", space: "ws-team", spaceLabel: "Team" });
     waits[1]!.res({ ok: true, ids: ["bm-t1"] });
     await timers.advance(0);
     expect(at()).toEqual([0, 120]);

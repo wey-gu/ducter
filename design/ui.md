@@ -462,6 +462,7 @@ A new control is added to the set (and to this table) before it is used.
 | Quiet text button and link (检查更新, 看日志) | `quietButton`, `quietLink` (`quiet.go`) | `Btn` kind `text` |
 | A button that opens a page elsewhere in a new tab (打开 Cloudflare, the sign-in link of 从外面连; D228; as a quiet text link with its chevron, 打开 BotFather, D283) | `button` then `openLink` (`abilities.go`); `quietLink` then `openLink` | `LinkBtn` (kind `text` for the quiet link) |
 | Switch | `switchControl` (`shared.go`), inside `switchRow`, `toggleRow` | `Toggle` |
+| 怎么做到的 / How it works: an explanation one quiet tap away, under a row, a group's note or a pane's lede note (D424) | `how`, `explainedRow`, `groupHow`, `ledeHow` (`settings.go`) | `How`; `Toggle`'s `how` |
 | Segmented choice | `choices` (`partner.go`) | `Seg` |
 | Choice row (a theme, Remove's plan) | `selectRow` (`shared.go`) | — |
 | A value row's side link (检查更新 and its 正在检查…, 没能更新 ›; D167) | `sideLink` inside `valueRow` (`settings.go`) | the `Versions` line under the device list (`Btn` kind `text`) |

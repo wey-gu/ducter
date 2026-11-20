@@ -16,6 +16,15 @@ export interface Job {
   status?: Bodies["job_status"];
 }
 
+/** D418: contact tests from one own agent, folded: how many, the earliest's send time, which were answered. */
+export interface PingGroup {
+  n: number;
+  earliest?: number;
+  sent: Set<string>;
+  failed: Set<string>;
+  told?: boolean; // the partner said it in a line of its own: the quiet line steps aside
+}
+
 export interface Entry {
   ev: LogEvent;
   firstSeq: number;
@@ -247,6 +256,10 @@ export class Store {
   private notes = new Map<string, Entry>();
   /** Senders set aside per day (D163): how many, and the seq of the one line that says so. */
   setAside = new Map<string, { n: number; seq: number }>();
+  /** D418: an own agent's contact tests answered by code, folded into one line: by the first one's seq. */
+  pings = new Map<number, PingGroup>();
+  private pingAt = new Map<string, number>(); // a test's message id → its group's seq
+  private lastPing: { key: string; seq: number; at: number } | undefined;
   /** What the partner is doing while the user waits (D104): its step, when this client first saw
    *  that step (local clock, so a skewed server clock can't make it look slow), and the channel
    *  seq at which a turn last ended (a user message at or before it has had its turn). */
@@ -531,6 +544,16 @@ export class Store {
       }
       case "ai_msg": {
         const b = ev.body as Bodies["ai_msg"];
+        // D418: the partner's line about an own agent's contact tests stands in for their quiet line.
+        for (const id of b.pings ?? []) {
+          const seq = this.pingAt.get(id);
+          const g = seq !== undefined ? this.pings.get(seq) : undefined;
+          if (g && !g.told) {
+            g.told = true;
+            const old = this.bySeq.get(seq!);
+            if (old) old.revision++;
+          }
+        }
         // A task's question in the partner's words (D129) is that question's words, not a
         // message of its own.
         if (b.decisionId) {
@@ -636,6 +659,39 @@ export class Store {
             return void this.bySeq.set(ev.seq, null);
           }
           return entry({ peer: b });
+        }
+        // D418: contact tests that arrive together (a few minutes apart at most) from one of the person's
+        // own agents are one line, and the answers Ducter sent them are only that line's last word.
+        if (b.direction === "in" && b.state === "ping") {
+          const key = `${b.agent ?? b.from ?? ""}|${b.role ?? ""}|${b.host ?? ""}`;
+          const at = Date.parse(ev.ts);
+          const sent = b.sentAt ? Date.parse(b.sentAt) : undefined;
+          const last = this.lastPing;
+          const g = last && last.key === key && at - last.at <= 10 * 60_000 ? this.pings.get(last.seq) : undefined;
+          if (g && last) {
+            g.n++;
+            if (sent !== undefined && (g.earliest === undefined || sent < g.earliest)) g.earliest = sent;
+            this.pingAt.set(b.messageId, last.seq);
+            last.at = at;
+            const old = this.bySeq.get(last.seq);
+            if (old) old.revision++;
+            return void this.bySeq.set(ev.seq, null);
+          }
+          this.pings.set(ev.seq, { n: 1, ...(sent !== undefined ? { earliest: sent } : {}), sent: new Set(), failed: new Set() });
+          this.pingAt.set(b.messageId, ev.seq);
+          this.lastPing = { key, seq: ev.seq, at };
+          return entry({ peer: b });
+        }
+        if (b.direction === "out" && b.ack) {
+          const seq = b.inReplyTo ? this.pingAt.get(b.inReplyTo) : undefined;
+          const g = seq !== undefined ? this.pings.get(seq) : undefined;
+          if (g && b.inReplyTo) {
+            if (b.state === "sent") (g.sent.add(b.inReplyTo), g.failed.delete(b.inReplyTo));
+            else if (b.state === "failed" || b.state === "unconfirmed") g.failed.add(b.inReplyTo);
+            const old = this.bySeq.get(seq!);
+            if (old) old.revision++;
+          }
+          return void this.bySeq.set(ev.seq, null);
         }
         const show = b.direction === "in" ? !b.state && !b.inReplyTo : b.state === "sent" && !!b.text;
         return show ? entry({ peer: b }) : void this.bySeq.set(ev.seq, null);

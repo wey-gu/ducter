@@ -29,6 +29,7 @@ import { MediaBlock } from "./media.tsx";
 import { attention, effortOf, finished, harnessOf, modelOf, placeOf, title, type Task } from "./store.ts";
 import { manyComputers, taskWhere } from "./where.ts";
 import { rangeOf, topsOf } from "./vlist.ts";
+import { Menu, MenuItem } from "./menu.tsx";
 
 export { goRelay } from "@ducter/protocol/src/transcript.ts";
 
@@ -1467,11 +1468,11 @@ export function TaskMore({ task }: { task: Task }) {
         </svg>
       </button>
       {open && (
-        <div class="menu" role="menu">
-          <button role="menuitem" class="danger" onClick={() => (setOpen(false), A.drop(task.id))}>
+        <Menu class="menu" onClose={() => setOpen(false)}>
+          <MenuItem danger onClick={() => (setOpen(false), A.drop(task.id))}>
             {t("task.action.drop")}
-          </button>
-        </div>
+          </MenuItem>
+        </Menu>
       )}
     </span>
   );

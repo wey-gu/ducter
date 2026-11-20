@@ -6400,7 +6400,8 @@ dl.call-summary dd { margin: 0; }
 .own-body .small { line-height: 1.5; }
 .own-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px; }
 .own-row .acct-field { flex: 1 1 180px; min-width: 0; }
-.own-pick select { width: 100%; padding: 10px 12px; border-radius: 12px; border: 0; background: var(--surface-sunken); color: var(--ink); font: inherit; font-size: var(--md); }
+.own-pick .dselect, .own-pick .dselect-btn { width: 100%; justify-content: space-between; }
+.own-pick .dselect-btn { min-height: 42px; border-radius: 12px; font-size: var(--md); font-weight: 500; }
 .own-cmd { align-self: flex-start; max-width: 100%; overflow-x: auto; padding: 6px 10px; border-radius: 10px; background: var(--surface-sunken); font-family: var(--mono); font-size: var(--sm); color: var(--ink); user-select: all; }
 .own-parts { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
 .own-parts ol { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; color: var(--ink-soft); }
@@ -8336,7 +8337,8 @@ dl.call-summary dd { margin: 0; }
 .wb-where { min-width: 0; display: flex; flex-direction: column; }
 .wb-where .nm { font-weight: 800; font-size: var(--sm); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .wb-where .dir { font-size: var(--xs); color: var(--ink-muted); }
-.wb-select { max-width: 60%; min-height: 36px; padding: 0 10px; border-radius: var(--r-sm); border: 1px solid var(--line); background: var(--surface); color: var(--ink); font: inherit; font-size: var(--sm); }
+.wb-pick { max-width: 60%; }
+.wb-pick .dselect-list { left: 0; right: auto; }
 .seg.sm { padding: 3px; gap: 2px; }
 .seg.sm button { min-height: 30px; padding: 0 10px; font-size: var(--xs); flex: none; }
 .wb-icon { width: 36px; height: 36px; display: grid; place-items: center; border-radius: var(--r-sm); color: var(--ink-soft); }
@@ -14214,12 +14216,10 @@ svg .wave.w2.on {
   display: inline-flex;
   align-items: center;
 }
-.set-item .pick select {
-  appearance: none;
-  -webkit-appearance: none;
+.set-item .pick .dselect-btn {
   min-height: 36px;
   max-width: 220px;
-  padding: 0 32px 0 14px;
+  padding: 0 12px 0 14px;
   border: 0;
   border-radius: var(--r-md);
   background: var(--surface-sunken);
@@ -14229,7 +14229,7 @@ svg .wave.w2.on {
   font-weight: 600;
   cursor: pointer;
 }
-.set-item .pick select:focus-visible {
+.set-item .pick .dselect-btn:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
@@ -14244,10 +14244,11 @@ svg .wave.w2.on {
     flex-direction: column;
     align-items: stretch;
   }
-  .set-item .pick select {
+  .set-item .pick, .set-item .pick .dselect, .set-item .pick .dselect-btn {
     width: 100%;
     max-width: none;
   }
+  .set-item .pick .dselect-btn { justify-content: space-between; }
 }
 /* D329: a Noted line's facts, each its own element (D291): what it replaced, that it waits for Mem, a refused undo. */
 .noted-line .nq { color: var(--ink-muted); }
@@ -16920,7 +16921,7 @@ a.pr:hover { box-shadow: inset 0 0 0 1px var(--line-2); }
    count link reach 44 through an invisible margin. */
 @media (pointer: coarse) {
   .seg button { min-height: 44px; min-width: 44px; }
-  .set-item .pick select { min-height: 44px; }
+  .set-item .pick .dselect-btn, .dselect-btn { min-height: 44px; }
   .nt-chip, .danger-text { position: relative; }
   .nt-chip::before, .danger-text::before { content: ""; position: absolute; inset: -7px -2px; }
   .past-link::before { inset: -6px 0; }
@@ -17133,3 +17134,79 @@ a.pr:hover { box-shadow: inset 0 0 0 1px var(--line-2); }
 .ho-item:hover .ho-take, .ho-take:focus-visible { opacity: 1; }
 .ho-take:hover { background: var(--sunken); color: var(--ink); }
 @media (hover: none) { .ho-take { opacity: 1; } }
+
+/* D421: the one menu (src/menu.tsx). Every menu panel carries .dmenu beside its own placing class
+   (pmenu, reply-menu, …): the clay card, rows that warm on hover, keyboard focus and press, danger
+   in the failed ink, an optional drawn glyph, a hairline between groups. Light and dark from tokens. */
+.dmenu { outline: none; }
+.dmenu [role^="menuitem"], .dmenu [role="option"] {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  cursor: pointer;
+  transition: background var(--t-fast) var(--ease);
+}
+.dselect-list [role="option"] { border: 0; background: transparent; color: var(--ink); font: inherit; text-align: left; }
+.dmenu [role^="menuitem"]:hover, .dmenu [role="option"]:hover,
+.dmenu [role^="menuitem"]:focus-visible, .dmenu [role="option"]:focus-visible { background: var(--sunken); outline: none; }
+.dmenu [role^="menuitem"]:active, .dmenu [role="option"]:active { background: var(--line-soft); }
+.dmenu [role^="menuitem"]:disabled { color: var(--ink-muted); cursor: default; background: transparent; }
+.dmenu .danger, .dmenu .danger-text { color: var(--failed-ink); }
+.dmenu .danger:hover, .dmenu .danger:focus-visible, .dmenu .danger-text:hover, .dmenu .danger-text:focus-visible { background: var(--failed-surface); }
+.dmenu-glyph { flex: none; display: inline-flex; width: 18px; height: 18px; color: var(--ink-soft); }
+.dmenu-glyph svg { width: 18px; height: 18px; }
+.dmenu .danger .dmenu-glyph { color: inherit; }
+.dmenu-sep { flex: none; border: 0; border-top: 1px solid var(--line-soft); margin: 4px 6px; }
+.dmenu-head { padding: 8px 12px 2px; font-size: var(--xs); font-weight: 700; color: var(--ink-muted); }
+.dmenu-w { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.dmenu-check { flex: none; width: 14px; height: 14px; color: var(--ink); }
+/* Placed above its opener when the window has no room below (keepInside). */
+.dmenu.dmenu-up { top: auto; bottom: calc(100% + 6px); }
+/* The clay select: the choice and a drawn caret on the sunken tint; its list is the clay menu. */
+.dselect { position: relative; display: inline-flex; max-width: 100%; }
+.dselect-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  max-width: 100%;
+  padding: 0 12px 0 14px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: var(--sunken);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--sm);
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px var(--line-soft);
+  transition: background var(--t-fast) var(--ease);
+}
+.dselect-btn:hover { background: var(--surface-sunken); }
+.dselect-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.dselect.open .dselect-btn { background: var(--surface); box-shadow: inset 0 0 0 1.5px var(--ink); }
+.dselect-v { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dselect-v.ph { color: var(--ink-muted); font-weight: 500; }
+.dselect-caret { flex: none; width: 10px; height: 10px; color: var(--ink-muted); }
+.dselect-list {
+  position: fixed;
+  z-index: 80;
+  top: calc(100% + 6px);
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  min-width: max(100%, 180px);
+  max-width: min(360px, calc(100vw - 24px));
+  max-height: min(360px, 60vh);
+  overflow-y: auto;
+  padding: 6px;
+  border-radius: var(--r-md);
+  background: var(--surface);
+  box-shadow: var(--floating), 0 0 0 1px var(--line-soft);
+  animation: menu-in var(--t-fast) var(--ease) both;
+}
+.dselect-list [role="option"] { min-height: 36px; padding: 0 12px; border-radius: var(--r-sm); font-size: var(--sm); }
+.dselect-list [role="option"][aria-selected="true"] { font-weight: 700; }
+@media (pointer: coarse) { .dselect-list [role="option"] { min-height: 44px; font-size: var(--md); } }
+@media (prefers-reduced-motion: reduce) { .dselect-list { animation: none; } }

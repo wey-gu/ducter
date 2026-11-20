@@ -9,6 +9,7 @@ import { APP_SANDBOX, appIcon, appShowRef, appTint, type AppCard, type AppIcon, 
 import { A } from "./app.ts";
 import { stamp } from "./format.ts";
 import { url } from "./media.tsx";
+import { Menu, MenuItem, MenuSep } from "./menu.tsx";
 
 /** D407: the draft sheet, set by pile.tsx (imported there, not here: app.ts loads this file early). */
 export const appHooks: { showDraft?: (ref: string, back: () => void) => void } = {};
@@ -310,31 +311,31 @@ export function AppMenu({ m, rename, close, inSheet }: { m: AppMeta; rename: () 
       </div>
     );
   return (
-    <div class="pmenu app-menu" role="menu">
-      <button role="menuitem" onClick={shut(rename)}>
+    <Menu class="pmenu app-menu" label={m.name} onClose={close}>
+      <MenuItem onClick={shut(rename)}>
         {t("apps.m.rename")}
-      </button>
-      <button role="menuitem" onClick={shut(() => openApp(m.id, { focus: true }))}>
+      </MenuItem>
+      <MenuItem onClick={shut(() => openApp(m.id, { focus: true }))}>
         {inSheet ? t("apps.m.change", partner).replace(/[…]$/, "") : t("apps.m.change", partner)}
-      </button>
+      </MenuItem>
       {m.back && (
-        <button role="menuitem" onClick={shut(() => A.send({ t: "app_back", id: m.id }))}>
+        <MenuItem onClick={shut(() => A.send({ t: "app_back", id: m.id }))}>
           {t("app.back")}
-        </button>
+        </MenuItem>
       )}
-      <button role="menuitem" onClick={shut(() => A.send({ t: "app_set", id: m.id, pinned: !m.pinned }))}>
+      <MenuItem onClick={shut(() => A.send({ t: "app_set", id: m.id, pinned: !m.pinned }))}>
         {m.pinned ? t("apps.m.unpin") : t("apps.m.pin")}
-      </button>
+      </MenuItem>
       {m.task && (
-        <button role="menuitem" onClick={shut(() => A.send({ t: "app_set", id: m.id, untask: true }))}>
+        <MenuItem onClick={shut(() => A.send({ t: "app_set", id: m.id, untask: true }))}>
           {t("apps.m.untask", m.task.title)}
-        </button>
+        </MenuItem>
       )}
-      <hr />
-      <button role="menuitem" class="danger-text" onClick={() => setAsking(true)}>
+      <MenuSep />
+      <MenuItem danger onClick={() => setAsking(true)}>
         {t("apps.m.delete")}
-      </button>
-    </div>
+      </MenuItem>
+    </Menu>
   );
 }
 

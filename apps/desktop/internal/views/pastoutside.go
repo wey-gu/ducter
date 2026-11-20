@@ -154,7 +154,7 @@ func (a *App) outsideMore(c *ui.Context, it *protocol.OutsideItem) {
 		Tooltip(a.L.T("past.out.more")).Role(ui.RoleButton).Cursor(ui.CursorPointer).Focusable().Shrink(0)
 	fg := a.buttonLook(c, b, btnText, t.ControlSM, t.Surface)
 	b.Draw(drawMore(fg))
-	b.Menu(func(m *ui.Menu) {
+	a.menuButton(c, b, func(m *ui.Menu) {
 		if !it.Gone {
 			m.Submenu(a.L.T("past.other.agent"), func(m *ui.Menu) {
 				for _, h := range pastHarnesses {

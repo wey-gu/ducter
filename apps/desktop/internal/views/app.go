@@ -222,6 +222,8 @@ type App struct {
 	// join: the row being drawn stacks its first bubble on the one before (D129).
 	join    bool
 	uiTheme *ui.Theme
+	// menuTheme is the clay menu's theme, made from menuThemeOf (menu.go).
+	menuTheme, menuThemeOf *ui.Theme
 	// appear is the window's light or dark and the move between them (D302).
 	appear appearanceState
 	// ApplyAppearance tells macOS the appearance chosen in Settings
@@ -387,7 +389,6 @@ type App struct {
 	openFailed string
 	// D220: 工作副本 / Working copy: its panel open, and when its path was copied.
 	infoOpen   bool
-	moreOpen   bool              // D268: the opened task's ⋯
 	ctune      composerTuneState // D354: the model and effort chips under the task's composer
 	infoCopied time.Time
 	past       pastState // D285: 做过的事 / Past tasks (past.go)

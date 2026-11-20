@@ -27,6 +27,7 @@ import { computerName, watchesBrowser } from "./where.ts";
 import { SimScreen } from "./sim.tsx";
 import { driverFor, screenFor } from "./workbench-screens.ts";
 import { ask, wbSender } from "./workbench-ask.ts";
+import { Select } from "./menu.tsx";
 
 wbSender((f) => A.send(f));
 
@@ -1008,13 +1009,13 @@ function PreviewPage({ task }: { task: Task }) {
     <div class="wb-preview">
       <div class="wb-bar">
         {ports.length > 1 ? (
-          <select class="wb-select" aria-label={t("wb.preview.pages")} value={p?.port} onChange={(e) => void openPreview(task, Number(e.currentTarget.value))}>
-            {ports.map((x) => (
-              <option key={x.port} value={x.port}>
-                {x.title ? t("wb.preview.opt", x.title, x.port) : String(x.port)}
-              </option>
-            ))}
-          </select>
+          <Select
+            class="wb-pick"
+            label={t("wb.preview.pages")}
+            value={String(p?.port ?? "")}
+            options={ports.map((x) => ({ v: String(x.port), label: x.title ? t("wb.preview.opt", x.title, x.port) : String(x.port) }))}
+            onPick={(v) => void openPreview(task, Number(v))}
+          />
         ) : (
           <div class="wb-where">
             <span class="nm">{cur?.title ?? `localhost:${cur?.port ?? ""}`}</span>

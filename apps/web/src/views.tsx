@@ -30,6 +30,7 @@ import { CallsSection, ProactiveChips, QuietDay, SourceCards } from "./accounts.
 import { OwnPhoneCard } from "./own-phone.tsx";
 import { Said, say } from "./set-grid.tsx";
 import { DangerButton } from "./controls.tsx";
+import { Select } from "./menu.tsx";
 import { CallDecision, CallRow, PhoneCard, PhoneOffer } from "./phone.tsx";
 import { callEnded } from "@ducter/protocol";
 import { FindsNote } from "./finds.tsx";
@@ -2634,32 +2635,26 @@ function TalkSettings() {
             <small>{s.language === "auto" ? t("partner.talk.auto.note") : t("partner.talk.fixed.note", autonym(s.language))}</small>
           </span>
           <span class="pick">
-            <select aria-label={t("settings.talk.row")} value={other ? TALK_OTHER : s.language} onChange={(e) => {
-              const v = (e.target as HTMLSelectElement).value;
-              v === TALK_OTHER ? setOther(true) : pick(v);
-            }}>
-              {talkOptions(s.language).map((o) => (
-                <option key={o.v} value={o.v}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-            <Chev open />
+            <Select
+              label={t("settings.talk.row")}
+              value={other ? TALK_OTHER : s.language}
+              options={talkOptions(s.language).map((o) => ({ v: o.v, label: o.label }))}
+              onPick={(v) => (v === TALK_OTHER ? setOther(true) : pick(v))}
+            />
           </span>
         </div>
         {other && (
           <div class="set-item talk-other">
-            <label class="acct-field own-pick">
+            <div class="acct-field own-pick">
               <span class="small">{t("partner.talk.other.label")}</span>
-              <select value="" onChange={(e) => (e.target as HTMLSelectElement).value && pick((e.target as HTMLSelectElement).value)}>
-                <option value="">{t("partner.talk.other.pick")}</option>
-                {LANGUAGES.filter((l) => !l.common).map((l) => (
-                  <option key={l.tag} value={l.tag}>
-                    {l.name}
-                  </option>
-                ))}
-              </select>
-            </label>
+              <Select
+                label={t("partner.talk.other.label")}
+                value=""
+                placeholder={t("partner.talk.other.pick")}
+                options={LANGUAGES.filter((l) => !l.common).map((l) => ({ v: l.tag, label: l.name }))}
+                onPick={pick}
+              />
+            </div>
           </div>
         )}
       </div>

@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "preact/hooks";
 import { A } from "./app.ts";
 import { Btn, Facts } from "./controls.tsx";
 import { harnessName } from "./format.ts";
+import { Menu, MenuHead, MenuItem } from "./menu.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
@@ -223,17 +224,17 @@ function AgentMenu({ it, acts }: { it: PastItem; acts: PreviewActs }) {
         ⋯
       </button>
       {open && (
-        <div class="pmenu up" role="menu">
-          <button role="menuitem" onClick={() => (setOpen(false), acts.seed())}>
+        <Menu class="pmenu up" onClose={() => setOpen(false)}>
+          <MenuItem onClick={() => (setOpen(false), acts.seed())}>
             {t("past.seed")}
-          </button>
-          <div class="pmenu-k">{t("past.other.agent")}</div>
+          </MenuItem>
+          <MenuHead>{t("past.other.agent")}</MenuHead>
           {AGENTS.filter((h) => h !== it.harness).map((h) => (
-            <button role="menuitem" class="sub" key={h} onClick={() => (setOpen(false), acts.carryOn(h))}>
+            <MenuItem class="sub" key={h} onClick={() => (setOpen(false), acts.carryOn(h))}>
               {t("past.with", harnessName(h))}
-            </button>
+            </MenuItem>
           ))}
-        </div>
+        </Menu>
       )}
     </span>
   );

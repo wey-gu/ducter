@@ -100,7 +100,7 @@ func (a *App) openIn(c *ui.Context, task *store.Task) {
 		uiText(c, a.L.T("task.open")).FontSize(t.SM).FontWeight(700).TextColor(fg).SingleLine().AccessHidden(true)
 		ui.Box(c).Size(10, 10).Shrink(0).Draw(drawCaret(fg)).AccessHidden(true)
 	})
-	b.Menu(func(m *ui.Menu) {
+	a.menuButton(c, b, func(m *ui.Menu) {
 		if m.Item(a.L.T("task.open.finder")).Chosen() {
 			a.openFolder("finder", path)
 		}

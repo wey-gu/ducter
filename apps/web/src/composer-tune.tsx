@@ -13,6 +13,7 @@ import { A, effortWord } from "./app.ts";
 import { inPlaceTune, spoken } from "./format.ts";
 import { usePlaced } from "./pop-place.ts";
 import { attention, effortOf, harnessOf, modelOf, placeOf, type Task } from "./store.ts";
+import { Menu } from "./menu.tsx";
 
 const t = (k: string, ...a: unknown[]) => A.L.t(k, ...a);
 
@@ -254,7 +255,7 @@ function TuneCard(p: { task: Task; models: ModelChoice[]; model: ModelChoice; ef
             ) : null}
             <small>{t("newtask.model")}</small>
           </div>
-          <div class="tp-list" role="menu" aria-label={t("newtask.model")}>
+          <Menu class="tp-list" label={t("newtask.model")} ownKeys>
             {models.map((m) => {
               const on = m.id === model.id;
               return (
@@ -279,7 +280,7 @@ function TuneCard(p: { task: Task; models: ModelChoice[]; model: ModelChoice; ef
                 </button>
               );
             })}
-          </div>
+          </Menu>
         </>
       )}
       {p.said && (

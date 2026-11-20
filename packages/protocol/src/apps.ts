@@ -225,7 +225,8 @@ export function appName(s: string): string {
 export function appLint(html: string): string[] {
   const out: string[] = [];
   // D410: the kit's controls, never the system's grey ones (they break the clay look).
-  if (/<select\b/i.test(html)) out.push(`uses a native <select>: use the kit's chips, <div class="k-chips"><button class="k-chip" aria-pressed="true">…</button></div>`);
+  // D421: a select is the kit's clay one (<select class="k-select">), never the system's grey one.
+  if (/<select\b(?![^>]*\bclass\s*=\s*["'][^"']*\bk-select\b)/i.test(html)) out.push(`uses a native <select>: use the kit's chips, <div class="k-chips"><button class="k-chip" aria-pressed="true">…</button></div>, or for a longer list the kit's <select class="k-select">`);
   if (/<input\b[^>]*\btype\s*=\s*["']?number\b/i.test(html)) out.push(`uses a number stepper (type=number): use <input class="k-num" inputmode="decimal">`);
   if (!/class\s*=\s*["'][^"']*\bk-app\b/.test(html)) out.push(`doesn't use the kit: put it all in <main class="k-app">, the total or the state first in a .k-sum`);
   if (/<(script|link|img|iframe|source|audio|video)\b[^>]*\b(src|href)\s*=\s*["']?(https?:)?\/\//i.test(html)) out.push("loads something from the internet (a CDN script, a font, a picture by URL): nothing outside the file loads; inline it or draw it");
@@ -250,7 +251,7 @@ export const APP_TOKENS = {
  * first: the total or the state at the top, big. The partner's tool lists the class names.
  *   k-app (the page) · k-sum > k-sum-label, k-sum-value, k-sum-sub · k-card · k-h · k-list > k-row >
  *   k-row-main, k-row-sub, k-row-value · k-chips > button.k-chip[aria-pressed] · input.k-num ·
- *   k-field > label + input.k-input · k-btn, k-btn.primary, k-btn.quiet · k-from · k-empty · k-bar > i
+ *   k-field > label + input.k-input · select.k-select (D421) · k-btn, k-btn.primary, k-btn.quiet · k-from · k-empty · k-bar > i
  */
 export const APP_KIT_CSS = [
   `*,*::before,*::after{box-sizing:border-box}`,
@@ -287,7 +288,37 @@ export const APP_KIT_CSS = [
   `.k-bar{height:8px;border-radius:999px;background:var(--d-sunken);overflow:hidden}`,
   `.k-bar>i{display:block;height:100%;border-radius:999px;background:var(--d-accent)}`,
   `.k-good{color:var(--d-good)}.k-bad{color:var(--d-bad)}.k-muted{color:var(--d-muted)}`,
+  // D421: the clay select. Closed, a field with a drawn caret; open, the kit's clay list (APP_KIT_JS) where
+  // there is a mouse, the phone's own picker under a finger.
+  `.k-select{appearance:none;-webkit-appearance:none;width:100%;min-height:44px;padding:0 38px 0 14px;border:0;border-radius:12px;background:var(--d-sunken) no-repeat right 14px center/10px 10px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M2 3.5 5 6.7 8 3.5' fill='none' stroke='%2375654f' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");color:var(--d-ink);font-weight:700;box-shadow:inset 0 0 0 1px var(--d-line);outline:none;cursor:pointer}`,
+  `.k-select:focus-visible{box-shadow:inset 0 0 0 2px var(--d-accent)}`,
+  `.k-menu{position:fixed;z-index:50;display:flex;flex-direction:column;max-height:min(320px,60vh);overflow-y:auto;padding:6px;border-radius:16px;background:var(--d-card);box-shadow:0 10px 32px rgba(43,33,24,.18),0 0 0 1px var(--d-line)}`,
+  `.k-menu button{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:38px;padding:0 12px;border:0;border-radius:10px;background:transparent;color:var(--d-ink);font-size:14px;text-align:left;white-space:nowrap;cursor:pointer}`,
+  `.k-menu button:hover,.k-menu button:focus-visible{background:var(--d-sunken);outline:none}`,
+  `.k-menu button[aria-selected=true]{font-weight:800}.k-menu button[aria-selected=true]::after{content:"";width:10px;height:6px;margin-top:-3px;border:solid currentColor;border-width:0 0 2px 2px;transform:rotate(-45deg)}`,
 ].join("");
+
+/**
+ * D421: the kit's clay select at work. With a mouse, a press on a select.k-select opens the kit's own
+ * list (.k-menu: role listbox, Up/Down/Home/End, Enter, Escape, a first letter) in place of the
+ * system's grey pop-up; the choice sets the select's value and fires its input and change events, so
+ * the app reads it as from any select. Under a finger the phone's own picker stays.
+ */
+export const APP_KIT_JS = `(function(){if(!window.matchMedia||!matchMedia("(pointer:fine)").matches)return;var open=null;
+function shut(back){if(!open)return;var o=open;open=null;o.m.remove();document.removeEventListener("mousedown",away,true);if(back)o.s.focus();}
+function away(e){if(open&&!open.m.contains(e.target)&&e.target!==open.s)shut(false);}
+function show(s){shut(false);var m=document.createElement("div");m.className="k-menu";m.setAttribute("role","listbox");if(s.getAttribute("aria-label"))m.setAttribute("aria-label",s.getAttribute("aria-label"));
+[].forEach.call(s.options,function(o,i){if(o.hidden)return;var b=document.createElement("button");b.type="button";b.setAttribute("role","option");b.textContent=o.textContent;b.disabled=o.disabled;b.setAttribute("aria-selected",i===s.selectedIndex?"true":"false");
+b.onclick=function(){var ch=s.selectedIndex!==i;s.selectedIndex=i;shut(true);if(ch){s.dispatchEvent(new Event("input",{bubbles:true}));s.dispatchEvent(new Event("change",{bubbles:true}));}};m.appendChild(b);});
+document.body.appendChild(m);var r=s.getBoundingClientRect();m.style.minWidth=r.width+"px";var h=m.offsetHeight,w=m.offsetWidth,top=r.bottom+6;if(top+h>innerHeight-8&&r.top-6-h>8)top=r.top-6-h;
+m.style.top=Math.max(8,Math.min(top,innerHeight-8-h))+"px";m.style.left=Math.max(8,Math.min(r.left,innerWidth-8-w))+"px";open={s:s,m:m};document.addEventListener("mousedown",away,true);
+var all=[].slice.call(m.querySelectorAll("button:not([disabled])"));(m.querySelector("[aria-selected=true]")||all[0]||m).focus();
+m.onkeydown=function(e){var i=all.indexOf(document.activeElement),k=e.key,go=function(n){e.preventDefault();all[(n+all.length)%all.length].focus();};
+if(k==="ArrowDown")return go(i+1);if(k==="ArrowUp")return go(i-1);if(k==="Home")return go(0);if(k==="End")return go(all.length-1);if(k==="Escape"||k==="Tab"){e.preventDefault();return shut(true);}
+if(k.length===1){for(var n=1;n<=all.length;n++){var b=all[(i+n)%all.length];if(b.textContent.trim().toLowerCase().indexOf(k.toLowerCase())===0)return go(all.indexOf(b));}}};}
+document.addEventListener("mousedown",function(e){var s=e.target&&e.target.closest&&e.target.closest("select.k-select");if(!s||s.disabled)return;e.preventDefault();open&&open.s===s?shut(true):show(s);},true);
+document.addEventListener("keydown",function(e){var s=document.activeElement;if(!s||!s.matches||!s.matches("select.k-select")||open)return;if(e.key==="ArrowDown"||e.key==="ArrowUp"||e.key===" "||e.key==="Enter"){e.preventDefault();show(s);}},true);
+addEventListener("resize",function(){shut(false)});})();`;
 
 /** The policy every app runs under: nothing loads from outside the file; no network but the Mac's own scheme. */
 export function appCsp(transport: "message" | "fetch"): string {
@@ -354,5 +385,5 @@ summary:function(t){var s=String(t==null?"":t).slice(0,200);if(s===said)return;s
 Object.freeze(ducter);window.ducter=ducter;
 window.addEventListener("error",function(e){post({t:"error",text:String(e.message||"error").slice(0,300)});});
 post({t:"ready"});})();`;
-  return `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="${appCsp(o.transport)}"><meta name="viewport" content="width=device-width,initial-scale=1"><style>${style}</style><script>${bridge}</script></head><body>${a.html}</body></html>`;
+  return `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="${appCsp(o.transport)}"><meta name="viewport" content="width=device-width,initial-scale=1"><style>${style}</style><script>${bridge}</script><script>${APP_KIT_JS}</script></head><body>${a.html}</body></html>`;
 }

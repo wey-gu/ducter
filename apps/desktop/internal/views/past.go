@@ -968,7 +968,7 @@ func (a *App) pastMore(c *ui.Context, it *protocol.PastItem) {
 	fg := a.buttonLook(c, b, btnText, t.ControlSM, t.Surface)
 	b.Draw(drawMore(fg))
 	starred := it.Mark != nil && it.Mark.Starred
-	b.Menu(func(m *ui.Menu) {
+	a.menuButton(c, b, func(m *ui.Menu) {
 		m.Submenu(a.L.T("past.other.agent"), func(m *ui.Menu) {
 			for _, h := range pastHarnesses {
 				if h == it.Harness {

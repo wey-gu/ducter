@@ -489,6 +489,40 @@ A new control is added to the set (and to this table) before it is used.
 | Words someone may edit in place before they go out (a reply already written in a find, D403) | `ui.TextArea` in a sunken well (`findDraft`) | `TextBox` |
 | The drawn chevron of anything that opens more (D213) | `drawChevron` through `glyph` (`quiet.go`) | `Chev` |
 | A group of separate facts, spaced, wrapping (D291) | `facts` (`facts.go`) | `Facts` |
+| Any menu: a ⋯, a right-click or long-press menu, a short pop-up choice (D421) | `menuButton`, `contextMenu` (`menu.go`) | `Menu`, `MenuItem`, `MenuSep`, `MenuHead`, `Select` (`menu.tsx`) |
+
+### One menu (D421)
+
+The author, on the Mac's 你的小应用 ⋯ (a grey system menu, the system font, 删掉 unmarked):
+"我们好多下拉菜单忘了样式哈". Every menu and every short pop-up choice in both clients is **one
+clay component per client**, and a test fails on any other:
+
+- **Look, from tokens:** the card's `Surface`, a `LineSoft` hairline, `RadiusMD` corners, the
+  `Floating` shadow, `S1+2` padding (the same as `listPanel` and the Ongoing popovers); rows of
+  the `SM` type with `S2`×`S3` padding and `RadiusXS` corners that warm to `SurfaceSunken` on
+  hover, keyboard focus and press (never the accent's fill); a destructive row in `Failed.Ink`
+  (Mac `Danger()`, web `danger`); an optional leading glyph, drawn (Mac `menuGlyph`, web
+  `glyph`), never an emoji; a `LineSoft` hairline between groups. Light and dark from the same
+  tokens. Labels size the menu (no width cap that cuts a short label).
+- **Keys and roles:** Up/Down, Home/End, a first letter, Enter/Space, Escape back to the opener;
+  the Mac's drawn menus read as menu button, menu and menu item (MyGo `PopoverMenuButton` /
+  `PopoverMenu` under `menu.go`'s theme); the web's `role="menu"`/`menuitem`, `listbox`/`option`
+  for `Select`.
+- **Placement:** inside the window. The Mac menu flips to the side with room; the web panel goes
+  above its opener or slides in from an edge (`keepInside`), and `Select`'s list floats on the
+  page's top layer, pinned to its control, so no card clips it.
+- **Native only where macOS expects it:** the menu bar and the menu bar extra (`main.go`), and a
+  text field's own editing menu. Under a finger on the phone, a small app's `k-select` opens the
+  phone's own picker.
+- **The small-app kit:** `select.k-select` is the kit's clay select (closed: a sunken field with a
+  drawn caret; opened with a mouse: the kit's `.k-menu` list, `APP_KIT_JS`). The home's lint
+  rejects any other `<select>`.
+- **Guards:** Mac `TestMenusGoThroughTheClayMenu` (no `Menu(`, `ContextMenu(`, `PopoverMenu*(`
+  or `ui.MenuBase` outside `menu.go`); web `apps/web/test/menus.test.ts` (no `role="menu"` or
+  `<select` outside `menu.tsx`, and the kit's lint).
+- **Not menus:** pickers that hold more than rows (the pills' `listPanel` lists with their
+  checks, the Marks popover, Ongoing's ⋯ that unfolds the 改时间 form in place) stay clay
+  popovers of their own.
 
 ### No joined text (D291)
 

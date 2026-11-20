@@ -1300,6 +1300,15 @@ a {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* D418: the folded line for an own agent's contact tests carries its facts (how many, how late,
+   answered): it wraps on a narrow screen, never cut. */
+.peerline.wrap {
+  border-radius: 14px;
+}
+.peerline.wrap span {
+  white-space: normal;
+  text-align: center;
+}
 .decision .q {
   font-size: var(--t20);
   line-height: 1.35;

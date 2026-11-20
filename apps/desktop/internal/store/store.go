@@ -17,6 +17,16 @@ import (
 )
 
 // Entry is one item of the conversation.
+// PingGroup is an own agent's contact tests folded into one line (D418):
+// how many, the earliest's send time, and which were answered.
+type PingGroup struct {
+	N        int
+	Earliest time.Time
+	Sent     map[string]bool
+	Failed   map[string]bool
+	Told     bool // the partner said it in a line of its own
+}
+
 type Entry struct {
 	Event protocol.LogEvent
 	// One of these is set, by Event.Kind.
@@ -412,6 +422,15 @@ type Store struct {
 	// SetAside counts, per sender and day ("from|2026-11-10"), the messages
 	// over its daily quota (D163); one quiet line says how many.
 	SetAside map[string]int
+	// Pings folds an own agent's contact tests answered by code (D418) into
+	// one line, by the first one's seq.
+	Pings    map[int64]*PingGroup
+	pingAt   map[string]int64
+	lastPing struct {
+		key string
+		seq int64
+		at  time.Time
+	}
 	// ActionResults are action_result frames not yet shown to the user.
 	ActionResults []protocol.ServerFrame
 	// First is the empty conversation's words from the home (D149); nil
@@ -1219,6 +1238,13 @@ func (s *Store) ApplyEvent(ev protocol.LogEvent) {
 		}
 		s.bySeq[ev.Seq] = nil
 	case *protocol.AIMsg:
+		// D418: the partner's line about an own agent's contact tests stands in
+		// for their quiet line.
+		for _, id := range b.Pings {
+			if g := s.Pings[s.pingAt[id]]; g != nil {
+				g.Told = true
+			}
+		}
 		// A task's question in the partner's words (D129) is that question's
 		// words, not a message of its own.
 		if b.DecisionID != "" {
@@ -1337,6 +1363,46 @@ func (s *Store) ApplyEvent(ev protocol.LogEvent) {
 				return
 			}
 			s.add(&Entry{Event: ev, Peer: b})
+			return
+		}
+		// D418: contact tests arriving together from one own agent are one line;
+		// the answers Ducter sent are only its last word.
+		if b.Direction == "in" && b.State == "ping" {
+			if s.Pings == nil {
+				s.Pings, s.pingAt = map[int64]*PingGroup{}, map[string]int64{}
+			}
+			key := b.Agent + "|" + b.From + "|" + b.Role + "|" + b.Host
+			at := ParseTime(ev.TS)
+			sent := ParseTime(b.SentAt)
+			if g := s.Pings[s.lastPing.seq]; g != nil && s.lastPing.key == key && at.Sub(s.lastPing.at) <= 10*time.Minute {
+				g.N++
+				if !sent.IsZero() && (g.Earliest.IsZero() || sent.Before(g.Earliest)) {
+					g.Earliest = sent
+				}
+				s.pingAt[b.MessageID] = s.lastPing.seq
+				s.lastPing.at = at
+				s.bySeq[ev.Seq] = nil
+				return
+			}
+			s.Pings[ev.Seq] = &PingGroup{N: 1, Earliest: sent, Sent: map[string]bool{}, Failed: map[string]bool{}}
+			s.pingAt[b.MessageID] = ev.Seq
+			s.lastPing.key, s.lastPing.seq, s.lastPing.at = key, ev.Seq, at
+			s.add(&Entry{Event: ev, Peer: b})
+			return
+		}
+		if b.Direction == "out" && b.Ack {
+			if seq, ok := s.pingAt[b.InReplyTo]; ok && b.InReplyTo != "" {
+				if g := s.Pings[seq]; g != nil {
+					switch b.State {
+					case "sent":
+						g.Sent[b.InReplyTo] = true
+						delete(g.Failed, b.InReplyTo)
+					case "failed", "unconfirmed":
+						g.Failed[b.InReplyTo] = true
+					}
+				}
+			}
+			s.bySeq[ev.Seq] = nil
 			return
 		}
 		show := (b.Direction == "in" && b.State == "" && b.InReplyTo == "") || (b.Direction == "out" && b.State == "sent" && b.Text != "")

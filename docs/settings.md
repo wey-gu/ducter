@@ -191,9 +191,11 @@ what you'd say to Codex and what your partner then does, and what you'd say to y
 it brings back. The small copy button on each sentence copies it. Where Claude Code or Codex still
 needs the Nowledge Mem plugin to hear them, a row says so, with **Install**.
 
-Each row in **Recently** names the agent by the name it has in Nowledge Mem. One that has no name
-there is called by the app it runs in, for example **an agent in Claude Code**, or else **an
-unnamed agent**, with a small drawn agent in place of its app's mark. An older Nowledge Mem can't
+Each row in **Recently** names the agent by the name it has in Nowledge Mem. One of your own that has
+no name there is called by what its message says it is, for example **your Codex (Mem helper)**, or
+by the app it runs in, for example **an agent in Claude Code**, or else **one of your own agents**;
+one that isn't yours and has no name is **an unnamed agent**, with a small drawn agent in place of
+its app's mark. An older Nowledge Mem can't
 say which agent wrote, nor which message answers what your partner asked; while a newer one is out,
 the page says so with **Update** (it only swaps the program: you stay signed in, and your memories
 don't move).
@@ -203,7 +205,13 @@ One switch, **Let agents connected to Nowledge Mem reach {name}**, turns it all 
 the one fix. If you told your partner to stop listening to an agent, that agent has a row with
 **Undo**. In the conversation each agent is called by what it is and where it works, for example
 **Claude Code (~/dev/ducter) asks you**; the first time one reaches your partner, a short note says
-what happened.
+what happened. One of your own agents that says who it is in its message is called that way, for
+example **your Codex (Mem helper)**.
+
+When one of your own agents only checks that your partner is there (a contact test that asks for a
+plain reply), your partner answers it right away, without asking you. Several that arrive together
+show as one line, with how long ago the earliest was sent. If you had asked for that reply, or a
+reply didn't go, your partner tells you in one line instead.
 
 Nowledge Mem can also tell you itself when a message comes in. If it does that for your partner's
 messages, one quiet line says so: the same message may then reach you twice, once from Nowledge Mem

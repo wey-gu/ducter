@@ -134,8 +134,11 @@ type UserMsg struct {
 }
 
 type AIMsg struct {
-	Text    string `json:"text"`
-	ReplyTo int64  `json:"replyTo,omitempty"`
+	Text string `json:"text"`
+	// Pings (D418): the own agent's contact tests this line tells about; it
+	// stands in for their folded quiet line.
+	Pings   []string `json:"pings,omitempty"`
+	ReplyTo int64    `json:"replyTo,omitempty"`
 	// DecisionID: a task's question in the partner's own words (D129); it
 	// shows as that decision's question, not as a message of its own.
 	DecisionID string `json:"decisionId,omitempty"`
@@ -884,6 +887,15 @@ type BridgeMsg struct {
 	OpID       string `json:"opId,omitempty"`
 	Contact    string `json:"contact,omitempty"`
 	Operation  string `json:"operation,omitempty"`
+	// D418: one of the person's own agents named by its own words ("我是 Wey 的
+	// Mem 协作 Codex"): Agent is its tool, Role the rest (你的 Codex（Mem 协作）).
+	SelfNamed bool   `json:"selfNamed,omitempty"`
+	Role      string `json:"role,omitempty"`
+	// D418: the first message any agent sent this persona (the one-time note).
+	First bool `json:"first,omitempty"`
+	// D418: an own agent's contact test answered by code (in: State "ping";
+	// out: Ack), folded into one quiet line.
+	Ack bool `json:"ack,omitempty"`
 }
 
 // NewEvent builds an event with body encoded from v (for the mock server

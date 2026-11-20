@@ -107,6 +107,14 @@ You don't have to open Ducter to know how things stand.
   **Go** or **Hold** right there, or **Open the Task**), and **Open Ducter**. If you'd rather not
   have it, choose **Don't Show in the Menu Bar**; turn it back on in Settings › Look and sound ›
   **Show in the menu bar**.
+- **Beside your work, on a Mac**, keep your partner in a **mini window** that floats over your
+  editor or browser, on every desktop. Press **⌃⌥⌘Space** anywhere, or choose **Mini Window** in
+  the menu bar pebble's menu or in View. It shows your partner, one line (what it's doing while
+  you wait, what it just said, or what needs you), how many things need you (click to see them in
+  On hand), and a field to say something or hold to talk. It never takes the keyboard from what
+  you're typing in until you click its field. Press the same keys, click **Hide**, or press Esc in
+  an empty field to put it away; it remembers where you put it. The first time you open a task's
+  folder in your editor or terminal, it comes along by itself, once.
 - **On a phone**, open a task that's under way and tap **Show on the Lock Screen** (iPhone) or
   **Show in notifications** (Android). Only whether it's working, waiting or needs you shows
   there, and for how long, never what it says. It goes away by itself when it's done. A call

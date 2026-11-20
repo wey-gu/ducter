@@ -2,6 +2,20 @@
 
 Deferred work, grouped by area, each with its trigger where it has one.
 
+## The mini window (D438, research/187)
+
+- [ ] **The author's review** of `.shots/float/` (over the editor, zh/en, light/dark, five lines).
+- [ ] **Natively over a full-screen app, on another Space and with Stage Manager**: the panel should
+  stay above and never take the keyboard (one native run so far: shown, not focused). Trigger: a signed build.
+- [ ] **A changeable key** (Settings › Look and sound), and saying so when ⌃⌥⌘Space is held by another
+  app (today it fails quietly and only the menus work). Trigger: the first person whose key collides.
+- [ ] **Pictures** dropped or pasted into its field, and the reply being written shown quoted in it
+  (today: the placeholder says what it replies to). Trigger: the author asks from the mini window.
+- [ ] **Answering a question from it** (Go / Hold on the line, as the menu bar extra can). Trigger: the
+  author opens On hand from its count more than once a day.
+- [ ] **Fn held to talk** while only the mini window has the keyboard (`voice.WatchFn` watches while a
+  window of the app is in front; right Option works). Trigger: someone on Fn uses the mini window.
+
 ## Settings polish (D432, research/182)
 
 - [ ] **The author's review** of `.shots/settings-polish/after` against `before`, pane by pane.

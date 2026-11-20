@@ -86,6 +86,10 @@ type state struct {
 	VoiceKey   string `json:"voiceKey,omitempty"`
 	VoiceAsked bool   `json:"voiceAsked,omitempty"`
 	ReadBack   bool   `json:"readBack,omitempty"`
+	// D438: the mini window. FloatOpen brings it back at the next launch;
+	// FloatOffered is set once it came by itself (it never does again).
+	FloatOpen    bool `json:"floatOpen,omitempty"`
+	FloatOffered bool `json:"floatOffered,omitempty"`
 }
 
 // StartLang is the window's language at launch (a BCP 47 tag the strings
@@ -274,6 +278,31 @@ func (l *Local) SetMenuBar(on bool) {
 		return
 	}
 	l.st.MenuBarOff = !on
+	l.save()
+}
+
+// FloatOpen reports whether the mini window was on screen (D438): it comes
+// back at the next launch.
+func (l *Local) FloatOpen() bool { return l != nil && l.st.FloatOpen }
+
+// SetFloatOpen remembers whether the mini window is on screen.
+func (l *Local) SetFloatOpen(on bool) {
+	if l == nil || l.st.FloatOpen == on {
+		return
+	}
+	l.st.FloatOpen = on
+	l.save()
+}
+
+// FloatOffered reports whether the mini window already came by itself.
+func (l *Local) FloatOffered() bool { return l != nil && l.st.FloatOffered }
+
+// MarkFloatOffered remembers that it did.
+func (l *Local) MarkFloatOffered() {
+	if l == nil {
+		return
+	}
+	l.st.FloatOffered = true
 	l.save()
 }
 

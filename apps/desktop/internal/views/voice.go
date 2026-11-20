@@ -236,7 +236,8 @@ func (a *App) voiceSent(text string) {
 
 // voiceKey is the chosen key going down or up while the window is in front.
 func (a *App) voiceKey(which string, down bool) {
-	if a.Local.VoiceKey() != which || a.Route != RouteConversation {
+	// D438: the mini window with the keyboard listens too, wherever the main one is.
+	if a.Local.VoiceKey() != which || (a.Route != RouteConversation && !a.float.keys) {
 		return
 	}
 	if down {

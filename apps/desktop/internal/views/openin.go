@@ -128,6 +128,11 @@ func (a *App) openIn(c *ui.Context, task *store.Task) {
 // openFolder hands the folder to macOS off the window's thread; a failure
 // is said once, as a toast.
 func (a *App) openFolder(with, path string) {
+	// D438: off to an editor or a terminal: the first time, the partner
+	// comes along in its mini window.
+	if with != "finder" {
+		a.offerFloat()
+	}
 	fail := func(err error) {
 		if err != nil {
 			a.openFailed = strings.TrimSpace(err.Error())

@@ -481,10 +481,7 @@ func (a *App) standingList(c *ui.Context) {
 		return
 	}
 	t := a.T
-	sep := ", "
-	if a.L.Lang == "zh" {
-		sep = "、"
-	}
+	sep := a.L.T("standing.sep")
 	ui.Box(c).Height(1).Margin(0, t.S5).Background(t.LineSoft).Shrink(0)
 	ui.Column(c.Key("standing")).Gap(t.S3).Padding(t.S4, t.S5, t.S5, t.S5).Children(func() {
 		uiText(c, a.L.T("standing.title")).FontSize(t.MD).FontWeight(800).TextColor(t.Done.Ink)

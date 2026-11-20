@@ -158,6 +158,7 @@ const W = {
     // Said just now, with drafts waiting: the partner's own line says the rest; this is what went.
     standingNow: "刚才等着的 {n} 份评审已经发到 GitHub：{links}",
     standingNow1: "刚才等着的那份评审已经发到 GitHub：{links}",
+    listSep: "、",
     reviewQ: "在 {where}{label} 下发出这 {n} 条 review 评论？",
     reviewGo: "发出",
     reviewHold: "先不发",
@@ -193,6 +194,7 @@ const W = {
     standingFirst1: "As you said, this review went straight to GitHub: {links}. From now on they go without a word; every one is in Done for you. Say so to take it back.",
     standingNow: "The {n} reviews that were waiting are on GitHub now: {links}",
     standingNow1: "The review that was waiting is on GitHub now: {links}",
+    listSep: ", ",
     reviewQ: "Send these {n} review comments on {where}{label}?",
     reviewGo: "Send",
     reviewHold: "Not now",
@@ -709,7 +711,7 @@ export function createPile(d: PileDeps): Pile {
     if (first.length) {
       const lang = d.lang();
       const mine = went.filter((x) => first.includes(x.standing));
-      const links = mine.map((x) => `[${x.ref.replace(/^[^/]+\//, "")}](${x.link})`).join(lang === "zh" ? "、" : ", ");
+      const links = mine.map((x) => `[${x.ref.replace(/^[^/]+\//, "")}](${x.link})`).join(W[lang].listSep);
       const w = W[lang];
       const text = fill(justSaid ? (mine.length === 1 ? w.standingNow1 : w.standingNow) : mine.length === 1 ? w.standingFirst1 : w.standingFirst, { n: mine.length, links });
       d.log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text } } as never);

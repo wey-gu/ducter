@@ -2657,7 +2657,7 @@ function TalkSettings() {
 function StandingList() {
   const xs = A.standing;
   if (!xs.length) return null;
-  const sep = A.L.lang.startsWith("zh") ? "、" : ", ";
+  const sep = t("standing.sep");
   // A third list in 要不要先问's card, in the done ink: the person's own word beside Ducter's two.
   return (
     <div class="trust own without" id="standing">

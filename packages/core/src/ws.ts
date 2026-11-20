@@ -1443,6 +1443,14 @@ export function createWsHandler(deps: WsDeps) {
         if (m && m.persona === appsPersona()) deps.apps.summarize(id, String(f.text ?? ""));
         return;
       }
+      case "app_error": {
+        // D418: the app's page threw on a device: kept on that version, its tile and window say so with a fix.
+        if (!deps.apps) return;
+        const id = String(f.id ?? "");
+        const m = deps.apps.get(id);
+        if (m && m.persona === appsPersona() && typeof f.version === "number") deps.apps.broke(id, f.version, String(f.text ?? ""));
+        return;
+      }
       case "pin_tick": {
         if (!deps.pins) throw new Error("pins are not available");
         if (!deps.pins.tick(String(f.id ?? ""), String(f.item ?? ""), f.on === true)) send(ws, pinsFrame("gone"));

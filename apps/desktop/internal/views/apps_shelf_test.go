@@ -68,7 +68,7 @@ func TestShelfFromTheBarAndItsTiles(t *testing.T) {
 	if app.Route != RouteApps {
 		t.Fatalf("route %v", app.Route)
 	}
-	for _, want := range []string{"北京出差 11/20–21", unjoin(autospace("3 笔，合计 ¥2,036")), "审查看板", "读书打卡", "置顶", "自动更新", "还没打开过"} {
+	for _, want := range []string{"北京出差 11/20–21", unjoin(autospace("3 笔，合计 ¥2,036")), "审查看板", "读书打卡", "置顶", unjoin(autospace(app.L.T("app.kept", "看 nowledge-co 里请我 review 的 PR")))} {
 		if !tt.HasText(want) {
 			t.Errorf("no %q in %q", want, tt.Texts())
 		}
@@ -218,7 +218,7 @@ func TestAppWindowFirstLineAskAndChange(t *testing.T) {
 	w := app.NewAppWin("a1b2c3")
 	tt := ui.NewTesterWith(app.AppWinView(w), 520, 860, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
-	for _, want := range []string{"北京出差 11/20–21", unjoin(autospace(app.L.T("app.first", "Ducter"))), unjoin(autospace("11/20 的高铁和两晚酒店已经从你的预订里填好了。")), "改回去", unjoin(autospace(app.L.T("app.only", "Ducter")))} {
+	for _, want := range []string{"北京出差 11/20–21", unjoin(autospace(app.L.T("app.first", "Ducter"))), unjoin(autospace("11/20 的高铁和两晚酒店已经从你的预订里填好了。")), "改回去", unjoin(autospace(app.L.T("app.private")))} {
 		if !tt.HasText(want) {
 			t.Errorf("no %q in %q", want, tt.Texts())
 		}

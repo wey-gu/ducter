@@ -2647,6 +2647,27 @@ export const scenarios: Scenario[] = [
     expect: { opens: 0, msgs: [1, 1], maxChars: 80, shelf: true, called: [{ tool: "app", args: { shelf: true } }], noAppCard: true, appKept: true, notCalled: ["task_open"] },
     rubric: "The user asks where the little apps the partner made for them are. The partner answers in one short Chinese line that they're all in 「你的小应用」 at the top, and puts the shelf's card under it (the app tool with shelf). It doesn't list every app at length, change any app, or open a task.",
   },
+  // ---------- D418: an app answers first and opens filled with what the person already said ----------
+  {
+    id: "app-baby-zh",
+    category: "apps",
+    lang: "zh",
+    steps: [{ user: "做个小应用记宝宝喝奶。今天早上 6:10 喝了 120ml，9:05 喝了 90ml" }],
+    expect: { opens: 0, msgs: [1, 2], maxChars: 160, called: [{ tool: "app" }], appCard: "made", appData: /120[\s\S]*90|90[\s\S]*120/, appHtml: /k-app/, appHtmlForbid: [/<select\b/i, /type\s*=\s*["']?number/i, /type\s*=\s*["']?(date|time)/i], notCalled: ["task_open"], forbid: [/```|<script|<div/i] },
+    rubric: "A parent asks for a little app to keep their baby's feeds and already said two: 6:10 120ml and 9:05 90ml today. The partner makes it now with the app tool, in Chinese, with those two feeds already in its data (not an empty app), and the app answers first: today's total (210ml) or how long since the last feed at the top, the feeds below, adding one in a tap or two (no native select, number, date or time inputs). Its one short Chinese line says it's ready and that today's two feeds are in. No code, no feature list, no question first, no task. One short line before it, saying it is making it, is fine.",
+  },
+  {
+    id: "app-prs-known-en",
+    category: "apps",
+    lang: "en",
+    seed: [
+      { user: "which of my PRs are still waiting on someone?" },
+      { ai: "Four: wey-gu/ducter#412 (compaction cut) waits on Weizhen's review since Monday; nowledge-co/mem#10287 (retry on 502) on CI, failing; nowledge-co/hawdb#1592 (flaky compaction test) on Alice since Tuesday; wey-gu/ducter#418 (apps bar) is a draft." },
+    ],
+    steps: [{ user: "make that a little page I can keep and tick off as they land" }],
+    expect: { opens: 0, msgs: [1, 2], maxChars: 220, called: [{ tool: "app" }], appCard: "made", appData: /412[\s\S]*10287|10287[\s\S]*412/, appHtml: /k-app/, appHtmlForbid: [/<select\b/i, /type\s*=\s*["']?number/i], notCalled: ["task_open"], forbid: [/```|<script|<div/i] },
+    rubric: "The developer was just told which four PRs wait on someone (ducter#412 on Weizhen's review, mem#10287 on failing CI, hawdb#1592 on Alice, ducter#418 a draft) and asks for a little page to keep and tick off as they land. The partner makes it now with the app tool, in English, with those four PRs already in its data (who or what each waits on), the count still waiting at the top, a tap to mark one landed. One or two short lines say it's ready with the four in it. No code, no feature list, no question first, no task.",
+  },
   // D347: the person wants another computer to do tasks: the Add a computer for tasks card, never a how-to.
   {
     id: "lend-lan-zh",

@@ -1,64 +1,65 @@
 package views
 
 import (
+	"sync"
+
 	"github.com/egoist/mygo/ui"
 
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
 )
 
-// D410: an app's mark and its clay tile. The marks are drawn on a 20-unit
-// grid at the same stroke as Made for you's (drawMadeKind), never an emoji:
-// window (the default), coins (spending), check (a habit), board (columns
-// of cards), list, chart. The tile is the app's muted clay tint (the
-// person's tints of D285, never a state's colour), the mark in its ink, on
-// its clay ledge.
+// D410, D418: an app's mark and its clay tile. The marks are the web's
+// (packages/protocol/src/app-glyphs.ts through fixtures/app-glyphs.json, held
+// equal by TestAppGlyphsMatchTheFixture): SVG path data on a 20-point grid,
+// chosen by what the app is about, never an emoji. On its tile the mark is
+// pressed into the clay: a light edge above, a soft ledge below, the ink
+// between. The tile is the app's muted clay tint (the person's tints of D285,
+// never a state's colour), on its clay ledge.
 
-// drawAppIcon draws icon in col inside r.
-func drawAppIcon(icon string, col ui.Color) func(p *ui.Painter, r ui.Rect) {
-	switch icon {
-	case "list", "chart":
-		return drawMadeKind(icon, col)
-	case "coins", "check", "board":
-	default:
-		return drawMadeKind("app", col)
+var (
+	appPathMu sync.Mutex
+	appPaths  = map[string]*ui.Path{}
+)
+
+// appGlyphPath is the parsed path of a mark (the window for an unknown one).
+func appGlyphPath(icon string) *ui.Path {
+	d, ok := protocol.AppGlyphs[icon]
+	if !ok {
+		icon, d = "window", protocol.AppGlyphs["window"]
 	}
+	appPathMu.Lock()
+	defer appPathMu.Unlock()
+	if p, ok := appPaths[icon]; ok {
+		return p
+	}
+	p, _ := ui.ParsePath(d)
+	appPaths[icon] = p
+	return p
+}
+
+// drawAppIcon draws icon in col inside r; hi and ledge (when not
+// transparent) press it into the clay.
+func drawAppIcon(icon string, col, hi, ledge ui.Color) func(p *ui.Painter, r ui.Rect) {
 	return func(p *ui.Painter, r ui.Rect) {
-		s := min(r.W, r.H) / 20
-		P := func(x, y float32) (float32, float32) { return r.X + x*s, r.Y + y*s }
-		var m ui.Path
-		w := 1.6 * s
-		switch icon {
-		case "coins": // a stack of coins seen from the side, and one coin face on
-			for _, y := range []float32{12.6, 8.6, 4.6} {
-				x0, y0 := P(2.4, y)
-				roundRect(&m, x0, y0, 8.4*s, 3.4*s, 1.7*s)
-			}
-			cx, cy := P(14.4, 12.2)
-			m.Circle(cx, cy, 3.8*s)
-			m.Circle(cx, cy, 1.4*s)
-		case "check": // a rounded box and its tick
-			x0, y0 := P(3.5, 3.5)
-			roundRect(&m, x0, y0, 13*s, 13*s, 3.6*s)
-			m.MoveTo(P(6.6, 10.2))
-			m.LineTo(P(9, 12.6))
-			m.LineTo(P(13.6, 7.6))
-		case "board": // three columns, cards in two
-			x0, y0 := P(3, 4)
-			roundRect(&m, x0, y0, 14*s, 12*s, 2.6*s)
-			m.MoveTo(P(7.7, 4))
-			m.LineTo(P(7.7, 16))
-			m.MoveTo(P(12.3, 4))
-			m.LineTo(P(12.3, 16))
-			m.MoveTo(P(4.8, 7.4))
-			m.LineTo(P(5.9, 7.4))
-			m.MoveTo(P(9.4, 7.4))
-			m.LineTo(P(10.6, 7.4))
-			m.MoveTo(P(9.4, 10.4))
-			m.LineTo(P(10.6, 10.4))
+		path := appGlyphPath(icon)
+		if path == nil {
+			return
 		}
-		m.Cap(ui.RoundCap)
-		p.StrokePath(&m, w, col)
+		s := min(r.W, r.H) / 20
+		x0, y0 := r.X+(r.W-20*s)/2, r.Y+(r.H-20*s)/2
+		at := func(dy float32, c ui.Color) {
+			p.Transform(ui.Scaling(s, s).Then(ui.Translation(x0, y0+dy*s)), 0, 0, func() {
+				p.StrokePath(path, protocol.AppGlyphStroke, c)
+			})
+		}
+		if ledge != ui.Transparent {
+			at(0.7, ledge)
+		}
+		if hi != ui.Transparent {
+			at(-0.45, hi)
+		}
+		at(0, col)
 	}
 }
 
@@ -82,8 +83,9 @@ func (a *App) appClay(c *ui.Context, key string, size float32, m *protocol.AppMe
 	k := size / 48
 	tn := a.appTint(m)
 	bg, ink, ledge := tn.Ground, tn.Ink, tn.Ledge
+	hi := t.PressSecondary.Hi
 	if gone {
-		bg, ink, ledge = t.SurfaceSunken, t.InkMuted, t.SurfaceSunken
+		bg, ink, ledge, hi = t.SurfaceSunken, t.InkMuted, t.SurfaceSunken, ui.Transparent
 	}
 	icon := "window"
 	if m != nil {
@@ -92,7 +94,7 @@ func (a *App) appClay(c *ui.Context, key string, size float32, m *protocol.AppMe
 	ui.Box(c.Key(key)).Size(size, size).Shrink(0).AccessHidden(true).Radius(14*k).Background(bg).
 		Shadow(0, 3*k, 0, 0, ledge).Draw(func(p *ui.Painter, r ui.Rect) {
 		g := size * 0.56
-		drawAppIcon(icon, ink)(p, ui.Rect{X: r.X + (r.W-g)/2, Y: r.Y + (r.H-g)/2, W: g, H: g})
+		drawAppIcon(icon, ink, hi, ink.Alpha(0.22))(p, ui.Rect{X: r.X + (r.W-g)/2, Y: r.Y + (r.H-g)/2, W: g, H: g})
 	})
 }
 

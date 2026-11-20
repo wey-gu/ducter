@@ -117,6 +117,9 @@ func (a *App) AppWinView(w *AppWin) func(c *ui.Context) {
 					}
 				})
 			}
+			if m != nil && !w.gone && a.appStripShown(m) {
+				a.appWinStrip(c, m)
+			}
 			stage := ui.Column(c.Key("stage")).Grow(1).MinHeight(0).Margin(0, t.S4, 0, t.S4).Radius(t.RadiusMD).Clip().
 				Background(t.Bg).Border(1, t.Line)
 			stage.Children(func() {
@@ -210,15 +213,38 @@ func (a *App) appWinFoot(c *ui.Context, w *AppWin, m *protocol.AppMeta, name str
 				uiText(c.Key("sent"), keepWords(autospace(a.L.T("app.ask.sent", partner)))).FontSize(t.XS).TextColor(t.InkMuted)
 				return
 			}
-			if m.Task != nil {
-				uiText(c.Key("kept"), keepWords(autospace(a.L.T("app.kept", m.Task.Title)))).FontSize(t.XS).TextColor(t.InkMuted)
-			} else {
-				uiText(c.Key("only"), keepWords(autospace(a.L.T("app.only", partner)))).FontSize(t.XS).TextColor(t.InkMuted)
+			// D418: a plain app says who sees it and when it changed; any
+			// other state is said in the strip over the app, or here.
+			if s := m.StateOf(); s == "plain" || a.appStripShown(m) {
+				uiText(c.Key("private"), keepWords(autospace(a.L.T("app.private")))).FontSize(t.XS).TextColor(t.InkMuted)
+				if when := a.agoLong(m.Updated); s == "plain" && when != "" {
+					uiText(c.Key("when"), keepWords(autospace(a.L.T("app.updated", when)))).FontSize(t.XS).TextColor(t.InkMuted)
+				}
+				return
 			}
-			if when := a.agoLong(m.Updated); when != "" {
-				uiText(c.Key("when"), keepWords(autospace(a.L.T("app.updated", when)))).FontSize(t.XS).TextColor(t.InkMuted)
-			}
+			a.appStateLine(c, "state", m)
 		})
+	})
+}
+
+// appStripShown: the state asks for something (a fix, the new look, a
+// retry, resume) or it is being changed now, so it is said over the app.
+func (a *App) appStripShown(m *protocol.AppMeta) bool {
+	label, _ := a.appStateAction(m)
+	return label != "" || m.StateOf() == "changing"
+}
+
+// appWinStrip is the state over the app, with its one button (D418).
+func (a *App) appWinStrip(c *ui.Context, m *protocol.AppMeta) {
+	t := a.T
+	ui.Row(c.Key("strip")).Margin(0, t.S4, t.S2, t.S4).Padding(t.S2, t.S2, t.S2, t.S3).Gap(t.S3).Radius(t.RadiusMD).
+		Background(t.Surface).Shadow(0, 2, 0, 0, t.Line).AlignItems(ui.Center).Role(ui.RoleStatus).Children(func() {
+		ui.Column(c).Grow(1).Shrink(1).MinWidth(0).Children(func() { a.appStateLine(c, "state", m) })
+		if label, run := a.appStateAction(m); label != "" {
+			if a.buttonFor(c, label, m.Name, btnSecondary, t.ControlSM, t.Surface) {
+				run()
+			}
+		}
 	})
 }
 

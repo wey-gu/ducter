@@ -260,38 +260,30 @@ func (a *App) shelfTile(c *ui.Context, m *protocol.AppMeta, width float32) {
 		if sh.renaming == id {
 			a.shelfRename(c, m)
 		} else {
-			name := uiText(c.Key("name"), autospace(m.Name)).Font(t.Display).FontSize(t.LG).FontWeight(800).TextColor(t.Ink).
+			// D418: the name over what the app says of itself, which leads.
+			name := uiText(c.Key("name"), autospace(m.Name)).Font(t.Display).FontSize(t.MD).FontWeight(800).TextColor(t.InkSoft).
 				MaxLines(2).Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(spoken(a.L, a.L.T("app.open"), m.Name)).Focusable()
 			if name.Clicked() {
 				a.openApp(id)
 			}
 		}
 		if m.Summary != "" {
-			uiText(c.Key("sum"), autospace(m.Summary)).FontSize(t.MD).FontWeight(600).TextColor(t.InkSoft).FontFeatures("tnum").MaxLines(2)
+			uiText(c.Key("sum"), autospace(m.Summary)).Font(t.Display).FontSize(t.LG).FontWeight(800).TextColor(t.Ink).FontFeatures("tnum").MaxLines(2)
+		} else if m.Opened == "" {
+			uiText(c.Key("never"), a.L.T("apps.never")).FontSize(t.XS).TextColor(t.InkMuted)
 		}
 		ui.Spacer(c)
-		ui.Column(c.Key("facts")).Gap(2).Children(func() {
-			// A routine keeps it: with its own line on top, a small pill says
-			// so (the routine by name in its tooltip); without one, the line.
-			if m.Task != nil && m.Summary == "" {
-				uiText(c.Key("kept"), keepWords(autospace(a.L.T("app.kept", m.Task.Title)))).FontSize(t.XS).TextColor(t.InkMuted).MaxLines(2)
-			} else if m.Task == nil && m.Opened == "" {
-				uiText(c.Key("never"), a.L.T("apps.never")).FontSize(t.XS).TextColor(t.InkMuted)
-			}
-			ui.Row(c.Key("meta")).Gap(t.S2).Wrap().AlignItems(ui.Center).Children(func() {
-				if m.Task != nil && m.Summary != "" {
-					kept := a.L.T("app.kept", m.Task.Title)
-					ui.Row(c.Key("auto")).Gap(4).Padding(1, 8, 1, 6).Radius(t.Pill).Background(t.Done.Surface).AlignItems(ui.Center).
-						Tooltip(kept).Label(kept).Shrink(0).Children(func() {
-						ui.Box(c.Key("dot")).Size(6, 6).Radius(3).Background(t.Done.Ink).AccessHidden(true)
-						uiText(c, a.L.T("apps.auto")).FontSize(t.XS).FontWeight(700).TextColor(t.Done.Ink).SingleLine().AccessHidden(true)
-					})
-				}
-				if when := a.agoLong(m.Updated); when != "" {
-					uiText(c.Key("when"), keepWords(autospace(a.L.T("app.updated", when)))).FontSize(t.XS).TextColor(t.InkMuted)
+		// D418: one state line (who keeps it current and when next, being
+		// changed, broken, the old look; else when it changed), and when the
+		// state asks for something, the one button that does it.
+		a.appStateLine(c, "state", m)
+		if label, run := a.appStateAction(m); label != "" {
+			ui.Row(c.Key("act")).Children(func() {
+				if a.buttonFor(c, label, m.Name, btnSecondary, t.ControlSM, t.Surface) {
+					run()
 				}
 			})
-		})
+		}
 		if sh.asking == id {
 			a.shelfConfirm(c, m)
 		}

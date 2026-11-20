@@ -5,9 +5,9 @@
 // goes into the conversation and its answer comes back), and a line under the app asks the
 // partner to change it. Facts are separate elements (D291), never joined.
 import { useEffect, useRef, useState } from "preact/hooks";
-import { APP_SANDBOX, appIcon, appShowRef, appTint, type AppCard, type AppIcon, type AppIdea, type AppMeta, type AppOpen, type Bodies, type LogEvent, type ServerFrame } from "@ducter/protocol";
+import { APP_GLYPH_STROKE, APP_GLYPHS, APP_SANDBOX, appIcon, appState, appShowRef, appTint, type AppCard, type AppIcon, type AppIdea, type AppMeta, type AppOpen, type Bodies, type LogEvent, type ServerFrame } from "@ducter/protocol";
 import { A } from "./app.ts";
-import { stamp } from "./format.ts";
+import { stamp, when } from "./format.ts";
 import { url } from "./media.tsx";
 
 /** D407: the draft sheet, set by pile.tsx (imported there, not here: app.ts loads this file early). */
@@ -35,50 +35,24 @@ export const APP_GLYPH = (size = 22) => (
   </svg>
 );
 
-/** D410: each app's own mark (drawn, never an emoji), on 20×20 like APP_GLYPH. */
-export function AppIconGlyph({ icon, size = 22 }: { icon: AppIcon; size?: number }) {
-  const p = { fill: "none", stroke: "currentColor", "stroke-width": 1.6, "stroke-linecap": "round" as const, "stroke-linejoin": "round" as const };
+/**
+ * D410, D418: each app's own mark, chosen by what it is about (APP_GLYPHS, shared with the Mac), drawn
+ * pressed into its clay: a light edge above, the tint's ledge below, the ink between. Never an emoji.
+ */
+export function AppIconGlyph({ icon, size = 22, flat }: { icon: AppIcon; size?: number; flat?: boolean }) {
+  const d = APP_GLYPHS[icon] ?? APP_GLYPHS.window;
+  const p = { d, fill: "none", "stroke-width": APP_GLYPH_STROKE, "stroke-linecap": "round" as const, "stroke-linejoin": "round" as const };
   return (
     <svg class="app-glyph" width={size} height={size} viewBox="0 0 20 20" aria-hidden="true">
-      {icon === "coins" ? (
-        <g {...p}>
-          {/* A stack of coins from the side, and one coin face on (the Mac's appicons.go draws the same). */}
-          <rect x="2.4" y="4.6" width="8.4" height="3.4" rx="1.7" />
-          <rect x="2.4" y="8.6" width="8.4" height="3.4" rx="1.7" />
-          <rect x="2.4" y="12.6" width="8.4" height="3.4" rx="1.7" />
-          <circle cx="14.4" cy="12.2" r="3.8" />
-          <circle cx="14.4" cy="12.2" r="1.4" />
-        </g>
-      ) : icon === "check" ? (
-        <g {...p}>
-          <rect x="3.5" y="3.5" width="13" height="13" rx="3.5" />
-          <path d="M7 10.2l2.2 2.2L13.4 8" />
-        </g>
-      ) : icon === "board" ? (
-        <g {...p}>
-          <rect x="3" y="4" width="14" height="12" rx="2.6" />
-          <path d="M8 4v12M12.5 4v12M5 7.5h1.4M9.6 7.5h1.4M14 7.5h1.2M5 10.5h1.4M9.6 10.5h1.4" />
-        </g>
-      ) : icon === "list" ? (
-        <g {...p}>
-          <path d="M3.5 6.2l1.4 1.4 2.3-2.6M3.5 11.7l1.4 1.4 2.3-2.6M10 6.3h6.5M10 11.8h6.5M10 15.6h6.5" />
-        </g>
-      ) : icon === "chart" ? (
-        <g {...p}>
-          <path d="M3.5 16h13M6 16v-5M10 16V6M14 16V9" />
-        </g>
-      ) : (
-        <g {...p}>
-          <rect x="3.5" y="4" width="13" height="12" rx="3" />
-          <path d="M3.5 7.6h13M6.5 10.6h4M6.5 13h7" />
-        </g>
-      )}
+      {!flat && <path {...p} class="app-glyph-ledge" transform="translate(0 .7)" />}
+      {!flat && <path {...p} class="app-glyph-hi" transform="translate(0 -.45)" />}
+      <path {...p} stroke="currentColor" />
     </svg>
   );
 }
 
 /** D410: the app's clay tile: its mark on its own tint (the person's muted clays, never a state's colour). */
-export function AppFace({ m, size = 48, gone }: { m?: Pick<AppMeta, "id" | "icon" | "tint" | "kind">; size?: number; gone?: boolean }) {
+export function AppFace({ m, size = 48, gone }: { m?: Pick<AppMeta, "id" | "icon" | "tint" | "kind"> & { name?: string; ask?: string }; size?: number; gone?: boolean }) {
   const sm = size < 40;
   return (
     <span class={`app-face${sm ? " sm" : ""}${m && !gone ? ` tinted tint-${appTint(m)}` : ""}`} style={size !== 48 && size !== 34 ? { width: size, height: size, borderRadius: Math.round(size * 0.3) } : undefined}>
@@ -194,9 +168,62 @@ function onMessage(e: MessageEvent) {
     lastShow = now;
     const back = o.id;
     appHooks.showDraft?.(ref, () => openApp(back));
+  } else if (m.t === "error" && o.app) {
+    // D418: its page threw: the home keeps it on this version, and the tile and the window say so with a fix.
+    A.send({ t: "app_error", id: o.id, version: o.app.version, text: String(m.text ?? "").slice(0, 300) });
   }
 }
 let lastShow = 0;
+
+/** D418: words about one app, said as the person's own (its fix, its new look): the partner answers in the conversation. */
+function sayAbout(m: AppMeta, text: string) {
+  A.send({ t: "send", text, clientId: `p${Date.now().toString(36)}app`, app: m.id });
+}
+
+/** D418: the one thing to do about an app's state, when there is one. */
+export function stateAction(m: AppMeta): { label: string; run: () => void } | undefined {
+  const partner = A.defaultName() || "Ducter";
+  const k = m.live?.kept;
+  switch (appState(m)) {
+    case "broke":
+      return { label: t("app.live.fix", partner), run: () => sayAbout(m, t("app.live.fix.say", m.name, m.live?.broke?.text ?? "")) };
+    case "old":
+      return { label: t("app.live.renew"), run: () => sayAbout(m, t("app.live.renew.say", m.name)) };
+    case "kept_failed":
+      return k ? { label: t("app.kept.retry"), run: () => A.send({ t: "ongoing_action", kind: k.of.kind, id: k.of.id, action: "run_now" }) } : undefined;
+    case "kept_paused":
+      return k ? { label: t("app.kept.resume"), run: () => A.send({ t: "ongoing_action", kind: k.of.kind, id: k.of.id, action: "resume" }) } : undefined;
+    default:
+      return undefined;
+  }
+}
+
+/**
+ * D418: what an app is doing, in one line of the partner's voice (each fact its own element, D291):
+ * being changed, broken, kept current by a task (running, failed, paused, next), the old look; else
+ * when it last changed. The tile and the window say the same.
+ */
+export function StateLine({ m }: { m: AppMeta }) {
+  const partner = A.defaultName() || "Ducter";
+  const k = m.live?.kept;
+  const s = appState(m);
+  const words =
+    s === "changing" ? t("app.live.changing", partner)
+    : s === "broke" ? t("app.live.broke")
+    : s === "kept_failed" ? t("app.kept.failed", k!.title)
+    : s === "kept_paused" ? t("app.kept.paused", k!.title)
+    : s === "kept_running" ? t("app.kept.running", k!.title)
+    : s === "old" ? t("app.live.old")
+    : s === "kept_next" ? (k!.next ? t("app.kept.next", k!.title, when(A.L, k!.next)) : t("app.kept", k!.title))
+    : m.task ? t("app.kept", m.task.title) : ""; // a home from before D418 sends no state: a task still keeps it
+  return (
+    <span class={`app-state s-${s}`}>
+      {s === "changing" && <span class="app-state-track" aria-hidden="true" />}
+      {words && <span class="app-state-words">{words}</span>}
+      {(s === "plain" || s === "kept_next" || s === "old") && <span class="app-state-when">{t("app.updated", stamp(A.L, k?.last ?? m.updated))}</span>}
+    </span>
+  );
+}
 
 /** D407: the board offer's few words: what goes in it (its own card's body, under the question). */
 export function BoardOfferFacts({ b }: { b: NonNullable<Bodies["decision"]["board"]> }) {
@@ -350,6 +377,21 @@ export function removeApp(m: AppMeta) {
   A.changed();
 }
 
+/** D418: over the app, when its state asks for something: the words and the one thing to do. */
+function StateStrip({ m }: { m: AppMeta }) {
+  const a = stateAction(m);
+  return (
+    <div class={`app-strip s-${appState(m)}`} role="status">
+      <StateLine m={m} />
+      {a && (
+        <button type="button" class="btn sm secondary" onClick={a.run}>
+          <span class="lbl">{a.label}</span>
+        </button>
+      )}
+    </div>
+  );
+}
+
 /** The app's sheet: its name, the app itself, a line to ask the partner to change it. */
 export function AppSheet({ id }: { id: string }) {
   const o = AP.open;
@@ -442,7 +484,6 @@ export function AppSheet({ id }: { id: string }) {
         </div>
         {o?.first && !o.changed && (
           <p class="app-first">
-            <span class="app-first-dot" aria-hidden="true" />
             <span class="app-first-word">{t("app.first", partner)}</span>
             <span class="app-first-note">{o.first}</span>
           </p>
@@ -453,6 +494,7 @@ export function AppSheet({ id }: { id: string }) {
             {o.changed.note && <span class="app-changed-note">{o.changed.note}</span>}
           </p>
         )}
+        {meta && (stateAction(meta) || appState(meta) === "changing") && <StateStrip m={meta} />}
         <div class="app-stage">
           {o?.gone ? (
             <p class="past-none">{t("app.gone")}</p>
@@ -478,14 +520,18 @@ export function AppSheet({ id }: { id: string }) {
           </button>
         </div>
         <p class="app-meta">
-          {sent ? (
+          {sent && (!meta || appState(meta) !== "changing") ? (
             <span>{t("app.ask.sent", partner)}</span>
-          ) : (
+          ) : meta && appState(meta) === "plain" ? (
             <>
-              {meta?.task ? <span>{t("app.kept", meta.task.title)}</span> : <span>{t("app.only", partner)}</span>}
-              {meta && <span class="app-when">{t("app.updated", stamp(A.L, meta.updated))}</span>}
+              <span>{t("app.private")}</span>
+              <span class="app-when">{t("app.updated", stamp(A.L, meta.updated))}</span>
             </>
-          )}
+          ) : meta && !stateAction(meta) && appState(meta) !== "changing" ? (
+            <StateLine m={meta} />
+          ) : meta ? (
+            <span>{t("app.private")}</span>
+          ) : null}
         </p>
       </div>
     </>

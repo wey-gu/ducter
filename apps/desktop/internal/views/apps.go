@@ -220,6 +220,18 @@ func (b *AppBridge) Post(id string, body []byte) {
 	case "summary":
 		// D410: ducter.summary, the one line its shelf tile shows.
 		b.do(func() { b.a.send(protocol.AppSummaryReq{T: "app_summary", ID: id, Text: m.Text}) })
+	case "error":
+		// D418: its page threw: the home keeps it on this version; the tile
+		// and the window say so with a fix.
+		b.do(func() {
+			if am := b.a.appByID(id); am != nil {
+				text := m.Text
+				if len(text) > 300 {
+					text = text[:300]
+				}
+				b.a.send(protocol.AppErrorReq{T: "app_error", ID: id, Version: am.Version, Text: text})
+			}
+		})
 	case "show":
 		// D407: ducter.open({ draft }): that PR's draft sheet, in the main
 		// window (brought forward); nothing is sent.

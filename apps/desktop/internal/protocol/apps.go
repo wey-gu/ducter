@@ -1,6 +1,11 @@
 package protocol
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"regexp"
+	"strings"
+	"sync"
+)
 
 // D405: 小应用 / Apps (packages/protocol/src/apps.ts). An app the partner
 // made: its card under the partner's words, its row in Made for you, and its
@@ -30,10 +35,10 @@ type AppMeta struct {
 	Icon    string `json:"icon,omitempty"`
 	Tint    string `json:"tint,omitempty"`
 	Pinned  bool   `json:"pinned,omitempty"`
+	// D418: its page threw on a version; what it is doing now (the home's).
+	Broke *AppBroke `json:"broke,omitempty"`
+	Live  *AppLive  `json:"live,omitempty"`
 }
-
-// AppIcons are the marks an app's tile can carry (D410).
-var AppIcons = []string{"window", "coins", "check", "board", "list", "chart"}
 
 // AppTints are the shelf's clay tints (D410: the person's muted clays, D285).
 var AppTints = []string{"clay", "sand", "sage", "mist", "lilac", "stone"}
@@ -53,17 +58,114 @@ func (m AppMeta) TintOf() string {
 	return AppTints[h%uint32(len(AppTints))]
 }
 
-// IconOf is an app's mark: its own, else the window (the review board: the board).
+// IconOf is an app's mark (D418, the web's appIcon): its own, else the
+// review board's board, else the one its name or the sentence it was made
+// from points to (出差花销: a suitcase), else the window.
 func (m AppMeta) IconOf() string {
-	for _, i := range AppIcons {
-		if m.Icon == i {
-			return i
-		}
+	if _, ok := AppGlyphs[m.Icon]; ok && m.Icon != "window" {
+		return m.Icon
 	}
 	if m.Kind == "reviews" {
 		return "board"
 	}
+	if i := AppIconFor(m.Name); i != "" {
+		return i
+	}
+	if i := AppIconFor(m.Ask); i != "" {
+		return i
+	}
 	return "window"
+}
+
+var (
+	iconWordsOnce sync.Once
+	iconWords     []*regexp.Regexp
+)
+
+// AppIconFor is the mark some words point to (AppIconWords, in order), or "".
+func AppIconFor(words string) string {
+	if strings.TrimSpace(words) == "" {
+		return ""
+	}
+	iconWordsOnce.Do(func() {
+		for _, w := range AppIconWords {
+			iconWords = append(iconWords, regexp.MustCompile("(?i)"+w[1]))
+		}
+	})
+	for i, re := range iconWords {
+		if re.MatchString(words) {
+			return AppIconWords[i][0]
+		}
+	}
+	return ""
+}
+
+// AppBroke is an app's page throwing on a version (D418).
+type AppBroke struct {
+	Text    string `json:"text"`
+	At      string `json:"at"`
+	Version int    `json:"version"`
+}
+
+// AppLive is what an app is doing now, worked out by the home (D418, the
+// web's AppLive): kept current by a task, being changed, broken, the old look.
+type AppLive struct {
+	Kept     *AppKept    `json:"kept,omitempty"`
+	Changing *struct{}   `json:"changing,omitempty"`
+	Broke    *AppLiveErr `json:"broke,omitempty"`
+	Old      bool        `json:"old,omitempty"`
+}
+
+// AppKept is the task that keeps an app current, as Ongoing has it.
+type AppKept struct {
+	Task  string `json:"task"`
+	Title string `json:"title"`
+	State string `json:"state"` // running | resting | paused | failed
+	Last  string `json:"last,omitempty"`
+	Next  string `json:"next,omitempty"`
+	Why   string `json:"why,omitempty"`
+	Of    struct {
+		Kind string `json:"kind"`
+		ID   string `json:"id"`
+	} `json:"of"`
+}
+
+// AppLiveErr is the first words of what broke.
+type AppLiveErr struct {
+	Text string `json:"text"`
+}
+
+// StateOf is the one thing an app's tile and window say (D418, the web's
+// appState), the most urgent first.
+func (m AppMeta) StateOf() string {
+	l := m.Live
+	switch {
+	case l == nil:
+		return "plain"
+	case l.Changing != nil:
+		return "changing"
+	case l.Broke != nil:
+		return "broke"
+	case l.Kept != nil && l.Kept.State == "failed":
+		return "kept_failed"
+	case l.Kept != nil && l.Kept.State == "paused":
+		return "kept_paused"
+	case l.Kept != nil && l.Kept.State == "running":
+		return "kept_running"
+	case l.Old:
+		return "old"
+	case l.Kept != nil:
+		return "kept_next"
+	}
+	return "plain"
+}
+
+// AppErrorReq is the app's page throwing (D418): kept on that version.
+type AppErrorReq struct {
+	T       string `json:"t"` // app_error
+	ID      string `json:"id"`
+	Version int    `json:"version"`
+	Text    string `json:"text"`
 }
 
 // AppIdea is a first app to make while the shelf is empty (D410): what the

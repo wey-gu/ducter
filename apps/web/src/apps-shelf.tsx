@@ -8,7 +8,7 @@ import { useState } from "preact/hooks";
 import type { AppMeta } from "@ducter/protocol";
 import { A } from "./app.ts";
 import { stamp } from "./format.ts";
-import { AP, AppFace, AppMenu, openApp, shelfOrder } from "./apps.tsx";
+import { AP, AppFace, AppMenu, StateLine, openApp, shelfOrder, stateAction } from "./apps.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
@@ -21,14 +21,15 @@ function close() {
 function Tile({ m }: { m: AppMeta }) {
   const [menu, setMenu] = useState(false);
   const [name, setName] = useState<string | undefined>(undefined);
-  const line = m.summary || (m.task ? t("app.kept", m.task.title) : !m.opened ? t("apps.never") : "");
+  // D418: the headline is what the app says of itself (its total, what's left), big; under it its state.
+  const act = stateAction(m);
   const save = () => {
     const v = (name ?? "").trim();
     if (v && v !== m.name) A.send({ t: "app_set", id: m.id, name: v });
     setName(undefined);
   };
   return (
-    <li class={`shelf-tile${m.pinned ? " pinned" : ""}${menu ? " menu-open" : ""}`}>
+    <li class={`shelf-tile${m.pinned ? " pinned" : ""}${menu ? " menu-open" : ""}${act ? " has-act" : ""}`}>
       {name !== undefined ? (
         <div class="shelf-open renaming">
           <AppFace m={m} size={56} />
@@ -50,13 +51,17 @@ function Tile({ m }: { m: AppMeta }) {
           <AppFace m={m} size={56} />
           <span class="shelf-words">
             <span class="shelf-name">{m.name}</span>
-            {line && <span class={`shelf-line${m.summary ? " says" : ""}`}>{line}</span>}
+            {m.summary ? <span class="shelf-head">{m.summary}</span> : !m.opened && <span class="shelf-line">{t("apps.never")}</span>}
             <span class="shelf-meta">
               {m.pinned && <span class="shelf-pin">{t("apps.pinned")}</span>}
-              {m.task && m.summary && <span class="shelf-pin" title={t("app.kept", m.task.title)}>{t("apps.auto")}</span>}
-              <span class="shelf-when">{t("app.updated", stamp(A.L, m.updated))}</span>
+              <StateLine m={m} />
             </span>
           </span>
+        </button>
+      )}
+      {act && name === undefined && (
+        <button type="button" class="btn sm secondary shelf-act" onClick={act.run}>
+          <span class="lbl">{act.label}</span>
         </button>
       )}
       <button type="button" class={`more-btn shelf-more${menu ? " open" : ""}`} aria-label={t("apps.more", m.name)} aria-expanded={menu} onClick={() => setMenu(!menu)}>

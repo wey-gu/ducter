@@ -4,6 +4,7 @@
 // goes through ducter.get/set (on the home, so every device sees the same numbers), and the one
 // way out is ducter.ask, which puts the app's words in the conversation for the partner, where
 // anything outward still waits for the person's Go.
+import { APP_GLYPHS, APP_ICON_WORDS } from "./app-glyphs.ts";
 
 /** A whole app, in characters: a small app is a few thousand; this stops a runaway file. */
 export const APP_HTML_MAX = 200_000;
@@ -32,9 +33,12 @@ export const BOARD_OFFER_AFTER = 3;
 export const APP_SUMMARY_MAX = 80;
 /** D410: a deleted app can be brought back for this long (its card's 撤销 / Undo, the shelf's toast). */
 export const APP_REMOVED_DAYS = 30;
-/** D410: the marks an app's tile can carry (drawn, never an emoji), the partner's pick when it makes one. */
-export const APP_ICONS = ["window", "coins", "check", "board", "list", "chart"] as const;
-export type AppIcon = (typeof APP_ICONS)[number];
+/**
+ * D410, D418: the marks an app's tile can carry (drawn, never an emoji; app-glyphs.ts), the partner's
+ * pick by what the app is about; else the one its own words point to (appIcon).
+ */
+export type AppIcon = keyof typeof APP_GLYPHS;
+export const APP_ICONS = Object.keys(APP_GLYPHS) as AppIcon[];
 /** D410: the tiles' clay tints: the person's muted clays (D285), never a state's colour. */
 export const APP_TINTS = ["clay", "sand", "sage", "mist", "lilac", "stone"] as const;
 export type AppTint = (typeof APP_TINTS)[number];
@@ -45,10 +49,19 @@ export function appTint(m: { id: string; tint?: string }): AppTint {
   for (const ch of m.id) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
   return APP_TINTS[h % APP_TINTS.length]!;
 }
-/** D410: an app's mark: its own, else the window (the review board: the board). */
-export function appIcon(m: { icon?: string; kind?: string }): AppIcon {
-  if (m.icon && (APP_ICONS as readonly string[]).includes(m.icon)) return m.icon as AppIcon;
-  return m.kind === "reviews" ? "board" : "window";
+/**
+ * D410, D418: an app's mark: its own, else the review board's board, else the one its name or the
+ * sentence it was made from points to (出差花销: a suitcase), else the window.
+ */
+export function appIcon(m: { icon?: string; kind?: string; name?: string; ask?: string }): AppIcon {
+  if (m.icon && m.icon in APP_GLYPHS && m.icon !== "window") return m.icon as AppIcon;
+  if (m.kind === "reviews") return "board";
+  return appIconFor(m.name ?? "") ?? appIconFor(m.ask ?? "") ?? "window";
+}
+/** D418: the mark some words point to (APP_ICON_WORDS, in order), or none. */
+export function appIconFor(words: string): AppIcon | undefined {
+  if (!words.trim()) return undefined;
+  return APP_ICON_WORDS.find(([, re]) => re.test(words))?.[0];
 }
 /** D410: an app's own line, cleaned: one line, clipped. */
 export function appSummary(s: unknown): string {
@@ -93,6 +106,49 @@ export interface AppMeta {
   tint?: AppTint;
   /** D410: pinned: first on the shelf, and in the strip at the top of the conversation. */
   pinned?: true;
+  /** D418: its page threw when it ran (that version; a new version clears it): the first words of the error. */
+  broke?: { text: string; at: string; version: number };
+  /** D418: what it is doing now, worked out by the home on every list (never kept): AppLive. */
+  live?: AppLive;
+}
+
+/**
+ * D418: an app's state, one truth for its tile, its window and the partner. The home works it out
+ * from Ongoing (the task that keeps it current), the conversation (a change asked for and not yet
+ * answered) and the app itself (its page threw; it was made before the kit). Absent: nothing to say.
+ */
+export interface AppLive {
+  /** A repeating task keeps it current: which, how it stands, when it last updated it and when it will next. */
+  kept?: { task: string; title: string; state: "running" | "resting" | "paused" | "failed"; last?: string; next?: string; why?: string; of: { kind: "routine" | "task"; id: string } };
+  /** The person asked the partner to change it and the answer hasn't come yet (since when). */
+  changing?: { since: string };
+  /** Its page threw when it ran: the first words of the error (fixes: ask the partner, or go back a version). */
+  broke?: { text: string };
+  /** It was made before the kit (the system's grey controls, no kit): 换成新样子 / Give it the new look. */
+  old?: true;
+}
+
+/**
+ * D418: the one thing an app's tile and window say about its state, the most urgent first: being
+ * changed now; its page broke; its task failed or is paused or running; it still has the old look;
+ * a task will update it next; else nothing (plain: when it last changed). The Mac's StateOf is the same.
+ */
+export type AppState = "changing" | "broke" | "kept_failed" | "kept_paused" | "kept_running" | "old" | "kept_next" | "plain";
+export function appState(m: Pick<AppMeta, "live">): AppState {
+  const l = m.live;
+  if (l?.changing) return "changing";
+  if (l?.broke) return "broke";
+  if (l?.kept?.state === "failed") return "kept_failed";
+  if (l?.kept?.state === "paused") return "kept_paused";
+  if (l?.kept?.state === "running") return "kept_running";
+  if (l?.old) return "old";
+  if (l?.kept) return "kept_next";
+  return "plain";
+}
+
+/** D418: a file's look problems only (the lint's kit rules): an app made before the kit has some. */
+export function appKitIssues(html: string): string[] {
+  return appLint(html).filter((x) => /native <select>|number stepper|date or time picker|doesn't use the kit/.test(x));
 }
 
 /**
@@ -158,7 +214,9 @@ export type AppsClientFrame =
   // D410: the shelf's 「⋯」: 改名 / Rename, 置顶 / Pin, 不再自动更新 / Stop updating it (untask).
   | { t: "app_set"; id: string; name?: string; pinned?: boolean; untask?: true }
   // D410: the app's own line for its tile (ducter.summary).
-  | { t: "app_summary"; id: string; text: string };
+  | { t: "app_summary"; id: string; text: string }
+  // D418: the app's page threw (the bridge's error): kept on that version, shown with a fix.
+  | { t: "app_error"; id: string; version: number; text: string };
 
 export type AppsServerFrame =
   // ideas (D410): while there are none, up to three things to say for a first one, from what the home knows.
@@ -227,6 +285,7 @@ export function appLint(html: string): string[] {
   // D410: the kit's controls, never the system's grey ones (they break the clay look).
   if (/<select\b/i.test(html)) out.push(`uses a native <select>: use the kit's chips, <div class="k-chips"><button class="k-chip" aria-pressed="true">…</button></div>`);
   if (/<input\b[^>]*\btype\s*=\s*["']?number\b/i.test(html)) out.push(`uses a number stepper (type=number): use <input class="k-num" inputmode="decimal">`);
+  if (/<input\b[^>]*\btype\s*=\s*["']?(date|time|datetime-local|month|week)\b/i.test(html)) out.push(`uses a date or time picker (the system's grey one): use chips (今天, 昨天, the times they said) or a k-input`);
   if (!/class\s*=\s*["'][^"']*\bk-app\b/.test(html)) out.push(`doesn't use the kit: put it all in <main class="k-app">, the total or the state first in a .k-sum`);
   if (/<(script|link|img|iframe|source|audio|video)\b[^>]*\b(src|href)\s*=\s*["']?(https?:)?\/\//i.test(html)) out.push("loads something from the internet (a CDN script, a font, a picture by URL): nothing outside the file loads; inline it or draw it");
   if (/@import\s+url\(\s*["']?https?:/i.test(html)) out.push("imports a stylesheet from the internet: inline the CSS");
@@ -281,12 +340,25 @@ export const APP_KIT_CSS = [
   `.k-btn.quiet{background:transparent;box-shadow:none;color:var(--d-soft);min-height:36px;padding:0 10px}`,
   `.k-btn:active{transform:translateY(3px);box-shadow:0 0 0 var(--d-line)}`,
   `.k-btn:disabled{opacity:.45;cursor:default;transform:none}`,
-  `.k-from{display:inline-flex;align-items:center;gap:5px;padding:1px 8px;border-radius:999px;background:var(--d-sunken);color:var(--d-soft);font-size:12px;font-weight:700;white-space:nowrap}`,
-  `.k-from::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--d-accent)}`,
+  // D418: where a prefilled item came from: a quiet word, never a dotted pill.
+  `.k-from{font-size:12px;font-weight:700;color:var(--d-muted);white-space:nowrap}`,
+  // D418: rows inside a card are one list (no ledge on a ledge).
+  `.k-card .k-list{gap:0}.k-card .k-row{padding:11px 2px;border-radius:0;background:transparent;box-shadow:none;border-top:1px solid var(--d-line)}.k-card .k-row:first-child{border-top:0}`,
+  // D418: adding comes last and folded: <details class="k-add"><summary>记一笔</summary>…</details>.
+  `.k-add{border-radius:var(--d-radius)}.k-add>summary{list-style:none;display:flex;align-items:center;justify-content:center;min-height:48px;border-radius:14px;background:var(--d-accent);color:var(--d-on-accent);font-weight:800;cursor:pointer;box-shadow:inset 0 1.5px 0 rgba(255,255,255,.38),0 3px 0 var(--d-accent-ledge)}`,
+  `.k-add>summary::-webkit-details-marker{display:none}.k-add[open]>summary{background:var(--d-card);color:var(--d-soft);box-shadow:inset 0 0 0 1px var(--d-line),0 3px 0 var(--d-line)}`,
+  `.k-add>:not(summary){margin-top:12px}.k-add[open]{padding-bottom:4px}`,
+  `.k-sum-next{display:block;margin-top:10px;padding-top:10px;border-top:1px solid var(--d-line);font-size:14px;font-weight:700;color:var(--d-ink)}`,
   `.k-empty{padding:22px 18px;border-radius:var(--d-radius);background:var(--d-sunken);color:var(--d-soft);text-align:center;font-size:14px}`,
   `.k-bar{height:8px;border-radius:999px;background:var(--d-sunken);overflow:hidden}`,
   `.k-bar>i{display:block;height:100%;border-radius:999px;background:var(--d-accent)}`,
   `.k-good{color:var(--d-good)}.k-bad{color:var(--d-bad)}.k-muted{color:var(--d-muted)}`,
+  // D418: a floor under every control the app didn't style (an app made before the kit, or a model
+  // that forgot it): clay, never the system's grey. :where() keeps it below anything the app says.
+  `:where(input:not([type=checkbox],[type=radio],[type=range],[type=color]),select,textarea){min-height:44px;padding:0 12px;border:0;border-radius:12px;background-color:var(--d-sunken);color:var(--d-ink);box-shadow:inset 0 0 0 1px var(--d-line);font:inherit;-webkit-appearance:none;appearance:none}`,
+  `:where(textarea){padding:10px 12px}:where(select){padding-right:34px;background-image:linear-gradient(45deg,transparent 50%,var(--d-muted) 50%),linear-gradient(135deg,var(--d-muted) 50%,transparent 50%);background-position:calc(100% - 19px) 52%,calc(100% - 14px) 52%;background-size:5px 5px;background-repeat:no-repeat}`,
+  `input::-webkit-inner-spin-button,input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}input[type=number]{-moz-appearance:textfield}`,
+  `:where(button:not([class])){min-height:44px;padding:0 18px;border:0;border-radius:14px;background:var(--d-card);color:var(--d-ink);font:inherit;font-weight:800;cursor:pointer;box-shadow:inset 0 0 0 1px var(--d-line),0 3px 0 var(--d-line)}`,
 ].join("");
 
 /** The policy every app runs under: nothing loads from outside the file; no network but the Mac's own scheme. */

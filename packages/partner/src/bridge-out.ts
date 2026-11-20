@@ -21,8 +21,11 @@ const W = {
     hours: "{n} 小时前",
     yesterday: "昨天",
     days: "{n} 天前",
-    followRead: "{who}看过你{when}问的「{gist}」，还没回。回了我马上告诉你。",
-    followUnread: "{who}还没回你{when}问的「{gist}」，它可能停了。回了我马上告诉你。",
+    followRead: "{who}看过你{when}问的{gists}，还没回。回了我马上告诉你。",
+    followUnread: "{who}还没回你{when}问的{gists}，它可能停了。回了我马上告诉你。",
+    quoted: "「{gist}」",
+    and: "和",
+    more: "等 {all} 件事",
     what: { message: "你让我发的消息", claim: "「接了」的回复", result: "任务的结果", reply: "回复" },
     failed: "{what}没能发给{who}：被拒绝了。",
     unconfirmed: "没能确认{what}是否到了{who}那里。我没有重发；需要的话再跟我说一次。",
@@ -41,8 +44,11 @@ const W = {
     hours: "{n} hour{s} ago",
     yesterday: "yesterday",
     days: "{n} days ago",
-    followRead: '{who} read what you asked {when} ("{gist}") but hasn\'t answered yet. I\'ll tell you as soon as it does.',
-    followUnread: '{who} hasn\'t answered what you asked {when} ("{gist}"); it may have stopped. I\'ll tell you as soon as it does.',
+    followRead: '{who} read what you asked {when} ({gists}) but hasn\'t answered yet. I\'ll tell you as soon as it does.',
+    followUnread: '{who} hasn\'t answered what you asked {when} ({gists}); it may have stopped. I\'ll tell you as soon as it does.',
+    quoted: '"{gist}"',
+    and: " and ",
+    more: " and {rest} more",
     what: { message: "the message you asked me to send", claim: "the reply saying I took it", result: "the task's result", reply: "the reply" },
     failed: "I couldn't send {what} to {who}: it was refused.",
     unconfirmed: "I couldn't confirm {what} reached {who}. I didn't resend it; ask me again if you need it.",
@@ -87,6 +93,32 @@ export function whoForUser(b: { mine?: boolean; agent?: string; host?: string; l
   const nameless = b.host ? say(lang, "inHost", { host: b.host }) : words(W, lang).unnamed;
   if (b.mine && unnamed(b)) return nameless;
   return (unnamed(b) ? "" : b.label || b.from || b.to) || nameless;
+}
+
+// Words that are tools, products or the agents themselves, never a person (D412).
+const NOT_A_PERSON = new Set(["Claude", "Code", "Codex", "Cursor", "Ducter", "Bridge", "Mem", "Nowledge", "Task", "Background", "Goal", "Scope", "GitHub", "Linux", "Ubuntu", "Mac", "Me", "You", "The", "This", "Decision", "Agent", "Gemini", "Pi"]);
+
+/**
+ * D412: the names that stand for the person in their own agents' mail. Mem names no member
+ * (nmem 0.10.121: "Member <id>"), so the 2026-11-20 card took "Weyl" from the body ("Task (from
+ * Weyl, via Claude Code …)") and said 「Weyl 那边的 Claude Code」 to Weyl. An own agent works for the
+ * person, so the one its first line says a request is from, or who asks or wants it, is them; the persona's
+ * own identity may name them too ("You are Ducter, Weyl's personal AI partner").
+ */
+export function namesForUser(ownBodies: string[], identity = "", skip: string[] = []): string[] {
+  const out = new Set<string>();
+  const N = "(\\p{Lu}[\\p{Ll}]{1,20})";
+  const pats = [
+    new RegExp(`\\b(?:from|on behalf of)\\s+${N}\\b`, "gu"),
+    new RegExp(`\\b${N}\\s+(?:says|said|asks|asked|wants|wanted|needs|is at|left)\\b`, "gu"),
+    new RegExp(`${N}\\s*(?:说|问|让|要我|想|在)`, "gu"),
+  ];
+  // Only the message's first line, where an agent says whose request it carries ("Task (from Weyl, …)"):
+  // a name further down may be someone else's ("Alex asked for this in review").
+  for (const t of ownBodies) for (const re of pats) for (const m of (t.split("\n").find((l) => l.trim()) ?? "").matchAll(re)) out.add(m[1]!);
+  for (const m of identity.matchAll(new RegExp(`${N}['’]s\\s+(?:personal|own)\\b`, "gu"))) out.add(m[1]!);
+  const no = new Set([...NOT_A_PERSON, ...skip.flatMap((x) => x.split(/\s+/))]);
+  return [...out].filter((n) => !no.has(n));
 }
 
 /** The same agent in the partner's input, with how to call it when talking to the user. */
@@ -237,7 +269,7 @@ export function followCandidates(events: LogEvent[], now: number): OutOp[] {
     if (b.direction === "in" && b.inReplyTo) answered.add(b.inReplyTo);
     // D364: a message Mem marks as linkable (it carried `in_reply_to`) and that has no parent answers nothing.
     if (b.direction === "in" && !b.inReplyTo && !b.linked && b.mine && !b.agent && !b.state && e.ts > unlinked) unlinked = e.ts;
-    if (b.direction === "out" && b.state === "followed") followed.add(b.messageId);
+    if (b.direction === "out" && b.state === "followed") for (const id of [b.messageId, ...(b.alsoFollowed ?? [])]) followed.add(id);
   }
   // nmem 0.10.118/0.10.119 link no reply to what it answers and name no sender: after a message to such
   // an agent, anything an unnamed own agent wrote since may be the answer. Unsure, Ducter stays quiet.
@@ -275,22 +307,51 @@ export function zhJoin(...parts: string[]): string {
   }, "");
 }
 
+/** Who an outgoing message went to, to say one line per agent (D412). */
+export const recipientKey = (o: OutOp): string => o.last.contact || o.last.to || o.last.agent || "";
+
 /**
- * The one line (D110). It reports silence and never claims the other side was reminded: Bridge
- * wakes nobody. Read and unread are different facts, said only when the inbox told us.
+ * D412: the candidates one follow-through line covers: every due message to the same agent as the
+ * first. The 2026-11-20 live trial asked the terminal twice in an afternoon; one line named the
+ * older question, and an hour later a second line named the newer one, to the same silent agent.
  */
-export function followLine(op: OutOp, now: number, lang: LangTag, read?: boolean, asked?: string): string {
-  const who = whoForUser({ ...op.last, label: op.last.to }, lang);
-  // The user's own words when we have them ("问问它：<question>" → the question), else ours.
+export function followGroup(due: OutOp[]): OutOp[] {
+  if (!due.length) return [];
+  const key = recipientKey(due[0]!);
+  return due.filter((o) => recipientKey(o) === key);
+}
+
+// "问一下我终端里那个 Claude，<question>" / "ask my terminal Claude: <question>": the question (the
+// agent named last, right before the comma, so "问问我那个 Codex bridge 写到哪了，…" stays whole).
+const ASK_PREFIX = /^\s*(?:再|也|帮我|麻烦)?(?:问一下|问问|问下|去问)[^，,：:]{0,24}?(?:Claude|Codex|Cursor|Gemini|agent|Agent|AI|它)\s*[，,：:]\s*|^\s*(?:please\s+)?(?:also\s+)?ask\s+(?:my|the|your)\s+[^,:?]{0,30}?(?:Claude|Codex|agent|AI|session)\s*[,:]\s*/iu;
+
+/** What the user asked, short: their own words when we have them ("问问它：<question>" → the question), else ours. */
+function gistOf(op: OutOp, asked?: string): string {
   const src = asked ?? op.last.text;
   const line = src.split("\n").find((l) => l.trim())?.trim() ?? src;
-  const colon = line.search(/[：:]/);
-  const first = colon >= 0 && colon < 40 && line.slice(colon + 1).trim() ? line.slice(colon + 1).trim() : line;
-  const gist = [...first].length > 36 ? [...first].slice(0, 35).join("") + "…" : first;
-  const when = ago(now - Date.parse(op.sentTs!), lang);
+  const bare = asked ? line.replace(ASK_PREFIX, "").trim() || line : line;
+  const colon = bare.search(/[：:]/);
+  const first = colon >= 0 && colon < 40 && bare.slice(colon + 1).trim() ? bare.slice(colon + 1).trim() : bare;
+  return [...first].length > 36 ? [...first].slice(0, 35).join("") + "…" : first;
+}
+
+/**
+ * The one line (D110). It reports silence and never claims the other side was reminded: Bridge
+ * wakes nobody. Read and unread are different facts, said only when the inbox told us. D412: one
+ * line for every unanswered message to the same agent, newest first, aged by the oldest.
+ */
+export function followLine(op: OutOp | { op: OutOp; asked?: string }[], now: number, lang: LangTag, read?: boolean, asked?: string): string {
+  const items = Array.isArray(op) ? [...op].sort((a, b) => b.op.seq - a.op.seq) : [{ op, asked }];
+  const first = items[0]!.op;
+  const who = whoForUser({ ...first.last, label: first.last.to }, lang);
+  const w = words(W, lang);
+  const q = items.map((i) => fill(w.quoted, { gist: gistOf(i.op, i.asked) }));
+  const gists = q.length === 1 ? q[0]! : q.length === 2 ? q[0]! + w.and + q[1]! : q[0]! + fill(w.more, { all: q.length, rest: q.length - 1 });
+  const oldest = Math.min(...items.map((i) => Date.parse(i.op.sentTs!)));
+  const when = ago(now - oldest, lang);
   // D273: an agent's own name stays as it is; the unnamed one starts the sentence capitalised.
   const Who = who === UNNAMED_OWN.en || who.startsWith("an agent in ") ? "A" + who.slice(1) : who;
-  return say(lang, read ? "followRead" : "followUnread", { who: Who, when, gist });
+  return say(lang, read ? "followRead" : "followUnread", { who: Who, when, gists });
 }
 
 // ---------- what the user is told when an outgoing message can't be confirmed (D106) ----------

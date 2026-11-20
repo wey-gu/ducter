@@ -58,7 +58,7 @@ import { resolveWindows, WINDOW_MAX, WINDOW_MIN } from "../../protocol/src/harne
 /** D385: the partner's line before a plan-first hand-over, when the model said none. */
 const PLAN_FIRST_LINE = { zh: "好，我先看一遍，出个方案给你，你点头再做。", en: "OK. I'll read them first and show you a plan; nothing starts until you say so." };
 import { bridgeFor, bridgeKeyFor, type BridgeClient, type BridgeContact, type BridgeOp, type BridgeResult } from "./bridge.ts";
-import { claimText, fixedOutcome, followCandidates, followLine, foldOut, inQuiet, langOfRequest, lostLine, mayHaveGone, overAsks, peerAnswer, whoForModel, whoForUser, AFTER_SEND_MS, CHECK_EVERY_MS, DAY_MS, FOLLOW_ACTIVE_MS, LIVE_CHECK_MS, LIVE_MS, WAIT_RETRY_MS, WATCH_BACKOFF_MAX_MS, WATCH_BACKOFF_MS, WATCH_TRIES, WAIT_S, WAITING_EVERY_MS, STUCK_EVERY_MS, PEER_ASKS_OPEN, PEER_NOT_YET_MS, SENDER_DAILY, TRUST_AFTER, TRUST_WINDOW_MS, TRUSTED_DAILY, type OutKind, type OutOp, type OutState } from "./bridge-out.ts";
+import { claimText, fixedOutcome, followCandidates, followGroup, followLine, foldOut, inQuiet, langOfRequest, lostLine, mayHaveGone, namesForUser, overAsks, peerAnswer, whoForModel, whoForUser, AFTER_SEND_MS, CHECK_EVERY_MS, DAY_MS, FOLLOW_ACTIVE_MS, LIVE_CHECK_MS, LIVE_MS, WAIT_RETRY_MS, WATCH_BACKOFF_MAX_MS, WATCH_BACKOFF_MS, WATCH_TRIES, WAIT_S, WAITING_EVERY_MS, STUCK_EVERY_MS, PEER_ASKS_OPEN, PEER_NOT_YET_MS, SENDER_DAILY, TRUST_AFTER, TRUST_WINDOW_MS, TRUSTED_DAILY, type OutKind, type OutOp, type OutState } from "./bridge-out.ts";
 import { createNmemClient, noMemory, THREADS_MAX, type MemoryClient, type MemoryHit, type Replaced, type ThreadHit } from "./memory.ts";
 import { withOutbox } from "./outbox.ts";
 import { AI_TOOLS, memSource } from "../../protocol/src/mem-source.ts";
@@ -2958,11 +2958,17 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         if (want !== undefined && !inLanguage(args.question, want))
           return { ok: false, error: `The user reads ${langName(want)}: write this card (question and goLabel) in ${langName(want)}, whatever language the other agent used. Call ask again.` };
         // D108: the user's own agent is "你的 <agent>"; the card never names the user to the user.
-        for (const e of turn!.triggers) {
+        // D412: Mem names no member, so the name is the one the agent's own words give the user.
+        const own = turn!.triggers.filter((e) => e.kind === "bridge_msg" && (e.body as Bodies["bridge_msg"]).mine);
+        for (const e of own) {
           const b = e.body as Bodies["bridge_msg"];
-          const member = e.kind === "bridge_msg" && b.mine ? /\(([^()]+)\)\s*$/.exec(b.from ?? "")?.[1] : undefined;
-          if (member && args.question.includes(member))
-            return { ok: false, error: `This card is for ${member}, the user: don't name them. Call the agent "${said(want ?? NO_WORDS_YET, "yourAgent", { agent: b.agent ?? "" })}" and ask again.` };
+          const member = /\(([^()]+)\)\s*$/.exec(b.from ?? "")?.[1];
+          const names = [...(member ? [member] : []), ...namesForUser([b.text], core.persona?.identity, [b.agent ?? "", core.persona?.name ?? ""])];
+          const hit = names.find((n) => new RegExp(`(?<![\\p{L}])${n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![\\p{L}])`, "u").test(args.question));
+          if (hit) {
+            const agent = b.agent ? said(want ?? NO_WORDS_YET, "yourAgent", { agent: b.agent }) : whoForUser(b, want ?? NO_WORDS_YET);
+            return { ok: false, error: `This card is for ${hit}, the user: don't name them (write 你 / you). Call the agent "${agent}" and ask again.` };
+          }
         }
       }
       // D170 (X1): a question one of the user's own agents sent for the user. Only from their own
@@ -4168,13 +4174,20 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     const lastUser = core.log.read({ stream: "channel", kinds: ["user_msg", "decision_resolved"], beforeSeq: core.log.head() + 1, limit: 20 }).filter((e) => e.origin === "user");
     const at = lastUser.length ? Date.parse(lastUser[lastUser.length - 1]!.ts) : NaN;
     if (!(t - at <= FOLLOW_ACTIVE_MS)) return;
-    const due = followCandidates(loggedBridge(), t)[0]; // one at a time: never a burst of lines
+    // One agent at a time, never a burst of lines; D412: one line covers all that agent hasn't answered.
+    const group = followGroup(followCandidates(loggedBridge(), t));
+    const due = group.at(-1);
     if (!due) return;
-    // The user's own words that led to the card, when the Log has them.
-    const card = core.log.read({ stream: "channel", kinds: ["decision"], limit: 2000 }).find((e) => (e.body as Bodies["decision"]).decisionId === due.last.decisionId);
-    const asked = card ? core.log.read({ stream: "channel", kinds: ["user_msg"], beforeSeq: card.seq, limit: 1 })[0] : undefined;
-    const line = followLine(due, t, userLang() ?? NO_WORDS_YET, lastReads[due.last.messageId], (asked?.body as Bodies["user_msg"] | undefined)?.text);
-    core.log.append({ stream: "channel", origin: "partner", kind: "bridge_msg", body: { ...due.last, direction: "out", state: "followed", text: line } });
+    // The user's own words that led to each card, when the Log has them.
+    const cards = core.log.read({ stream: "channel", kinds: ["decision"], limit: 2000 });
+    const items = group.map((op) => {
+      const card = cards.find((e) => (e.body as Bodies["decision"]).decisionId === op.last.decisionId);
+      const asked = card ? core.log.read({ stream: "channel", kinds: ["user_msg"], beforeSeq: card.seq, limit: 1 })[0] : undefined;
+      return { op, asked: (asked?.body as Bodies["user_msg"] | undefined)?.text };
+    });
+    const line = followLine(items, t, userLang() ?? NO_WORDS_YET, group.every((o) => lastReads[o.last.messageId]));
+    const also = group.filter((o) => o !== due).map((o) => o.last.messageId);
+    core.log.append({ stream: "channel", origin: "partner", kind: "bridge_msg", body: { ...due.last, direction: "out", state: "followed", text: line, ...(also.length ? { alsoFollowed: also } : {}) } });
     tellUser(line);
     stats.bridgeFollowed = (stats.bridgeFollowed ?? 0) + 1;
   }

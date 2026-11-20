@@ -12,6 +12,7 @@
 //   - anything else passes to the real CLI (BRIDGE_GUARD_REAL, the trial's recording tee).
 // A refusal answers like Mem's own (JSON on stdout, exit 1) and says what to do instead.
 import { appendFileSync, existsSync, readFileSync } from "node:fs";
+import { refMessage } from "./bridge-trial.ts";
 
 const argv = process.argv.slice(2);
 const real = process.env.BRIDGE_GUARD_REAL;
@@ -65,7 +66,8 @@ if (at >= 0) {
   const verb = positional[0];
   if (verb && !["contacts", "send", "inbox", "open", "reply", "setup", "session", "--help"].includes(verb)) refuse(`The trial allows only contacts, send, inbox, open and reply; \`${verb}\` would change the person's own mailbox.`);
   if (verb === "open" || verb === "reply") {
-    const id = verb === "open" ? positional[1] : positional.at(-1);
+    // D412: Mem's own argv names the message by its `bm1:` reference; the allow list holds ids.
+    const id = refMessage(verb === "open" ? positional[1] : positional.at(-1));
     const file = process.env.BRIDGE_GUARD_ALLOW;
     const allowed = file && existsSync(file) ? readFileSync(file, "utf8").split("\n").map((l) => l.trim()).filter(Boolean) : [];
     if (!id || !allowed.includes(id))

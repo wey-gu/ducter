@@ -425,6 +425,11 @@ export function AppSheet({ id }: { id: string }) {
   useEffect(() => {
     if (o) o.frame = frame.current ?? undefined;
   });
+  // D431: the change landed (or the partner answered): its sent line gives way to what is true now.
+  const landed = o?.changed?.version;
+  useEffect(() => void (landed !== undefined && setSent(false)), [landed]);
+  const busy = !!meta && appState(meta) === "changing";
+  useEffect(() => void (!busy && setSent(false)), [busy]);
   const keys = (e: KeyboardEvent) => {
     if (e.key !== "Escape") return;
     e.preventDefault(), e.stopPropagation();

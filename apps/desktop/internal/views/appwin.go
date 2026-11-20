@@ -36,11 +36,14 @@ type AppWin struct {
 	first     string
 	firstShut bool
 	// version is the version the page runs; changed the note of a change that landed.
-	version  int
-	changed  string
-	landed   bool
-	said     string
-	sent     bool
+	version int
+	changed string
+	landed  bool
+	said    string
+	sent    bool
+	// busy: it was being changed (D422) at the last frame; when that ends,
+	// the sent line gives way to what is true now (D431).
+	busy     bool
 	focusAsk bool
 	gone     bool
 }
@@ -92,12 +95,19 @@ func (a *App) AppWinView(w *AppWin) func(c *ui.Context) {
 		}
 		// A change landed while open: the page runs again as it is now.
 		if m != nil && w.version != 0 && m.Version != w.version {
-			w.version, w.changed, w.landed, w.first = m.Version, m.Note, true, ""
+			w.version, w.changed, w.landed, w.first, w.sent = m.Version, m.Note, true, "", false
 			if w.Reload != nil {
 				w.Reload()
 			}
 		} else if m != nil && w.version == 0 {
 			w.version = m.Version
+		}
+		if m != nil {
+			busy := m.StateOf() == "changing"
+			if w.busy && !busy {
+				w.sent = false
+			}
+			w.busy = busy
 		}
 		name := ""
 		if m != nil {

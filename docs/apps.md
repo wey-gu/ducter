@@ -21,6 +21,11 @@ while you're on a trip your partner booked, and it opens named for that trip wit
 already in it, each marked **From your bookings**; the first time you open it, a line at the top says
 what your partner filled in. Add the rest as you go: the total stays at the top.
 
+If there's nothing to fill in yet, it opens ready for your first one: the top says what it will show
+("Spent this month: Nothing yet"), a faint outline shows where your entries will list, and the form
+to add the first is already open. Once you've added one, the top shows the real number and the form
+folds back into its button.
+
 ## Your apps
 
 Every app your partner made for you lives in **Your apps**: the **Apps** mark at the top of the

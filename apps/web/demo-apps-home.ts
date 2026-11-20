@@ -128,7 +128,7 @@ if (stage !== "empty" && stage !== "states") {
     const ev = process.env.DEMO_EVAL_APP;
     const evApp = ev ? (JSON.parse(readFileSync(`${ev}.json`, "utf8")) as { name: string; data: Record<string, unknown> }) : undefined;
     const r = evApp
-      ? core.apps.make(persona, { name: evApp.name, html: readFileSync(`${ev}.html`, "utf8"), ask: w.ask, note: w.after.note, data: evApp.data })
+      ? core.apps.make(persona, { name: evApp.name, html: readFileSync(`${ev}.html`, "utf8"), ask: w.ask, ...(Object.keys(evApp.data ?? {}).length ? { note: w.after.note } : {}), data: evApp.data })
       : core.apps.make(persona, { name: w.after.name, html: file("demo-apps-trip-v2.html"), ask: w.ask, note: w.after.note, summary: w.after.summary, icon: "coins", data: { trip: { from: "2026-11-20", to: "2026-11-21", currency: "CNY" }, expenses: w.xs } });
     if (!r.ok) throw new Error(r.error);
     id = r.app.id;

@@ -2726,7 +2726,7 @@ export const scenarios: Scenario[] = [
       { ai: "订好了：11/20 G1 07:00 上海虹桥到北京南，¥662；亚朵酒店（望京）11/20 和 11/21 两晚，¥1,036。" },
     ],
     steps: [{ user: "给我做个小应用，记一下出差花销" }],
-    expect: { opens: 0, msgs: [1, 2], maxChars: 160, called: [{ tool: "app" }], appCard: "made", appName: /北京/, appData: /662[\s\S]*1,?036|1,?036[\s\S]*662/, appHtml: /k-app/, appHtmlForbid: [/<select\b/i, /type\s*=\s*["']?number/i], require: [/预订|填/], notCalled: ["task_open"], forbid: [/```|<script|<div/i] },
+    expect: { opens: 0, msgs: [1, 2], maxChars: 160, called: [{ tool: "app" }], appCard: "made", appName: /北京/, appData: /662[\s\S]*1,?036|1,?036[\s\S]*662/, appHtml: /k-app/, appHtmlForbid: [/<select\b/i, /type\s*=\s*["']?number/i, /\b662\b|1,?036/], require: [/预订|填/], notCalled: ["task_open"], forbid: [/```|<script|<div/i] },
     rubric: "The user is on a Beijing trip the partner booked (the conversation above: the G1 train for ¥662 and two hotel nights for ¥1,036, and today's agibar talk in Beijing). They ask for a little app to keep their trip costs. The partner makes it now with the app tool, named for this trip (e.g. 北京出差 11/20–21), with the train and the hotel already in its data marked as from their bookings, drawn with Ducter's kit (no native select or number inputs), the total at the top. Its one short Chinese line says it's ready and what it already filled in (the train and the two hotel nights from their bookings); it never pastes code, lists features, asks questions first or opens a task. One short line before it, saying it is making it, is fine.",
   },
   {
@@ -2734,8 +2734,9 @@ export const scenarios: Scenario[] = [
     category: "apps",
     lang: "en",
     steps: [{ user: "make me a little app to keep track of what I spend" }],
-    expect: { opens: 0, msgs: [1, 2], maxChars: 220, called: [{ tool: "app" }], appCard: "made", appHtml: /k-app/, appHtmlForbid: [/<select\b/i, /type\s*=\s*["']?number/i], notCalled: ["task_open"], forbid: [/```|<script|<div/i] },
-    rubric: "The user asks for a little spending tracker and nothing in the conversation says what they spend on. The partner makes it now with the app tool, in English, drawn with Ducter's kit (the total at the top, no native select or number inputs), with no invented costs in it (an empty list with a warm empty line is right). One or two short English lines say it's ready; no code, no feature list, no question first, no task. One short line before it, saying it is making it, is fine.",
+    // D431: nothing known, so its first state says what it will show (k-none), never a bare 0.
+    expect: { opens: 0, msgs: [1, 2], maxChars: 220, called: [{ tool: "app" }], appCard: "made", appHtml: /k-none/, appHtmlForbid: [/<select\b/i, /type\s*=\s*["']?number/i, /k-sum-value[^>]*>\s*[$¥€£]?\s*0(\.00)?\s*</], notCalled: ["task_open"], forbid: [/```|<script|<div/i] },
+    rubric: "The user asks for a little spending tracker and nothing in the conversation says what they spend on. The partner makes it now with the app tool, in English, drawn with Ducter's kit (no native select or number inputs), with no invented costs in it: while it's empty the top says what it will show (e.g. 'Spent this month' with 'Nothing yet' rather than a bare 0) and one calm line says what will list there. One or two short English lines say it's ready; no code, no feature list, no question first, no task. One short line before it, saying it is making it, is fine.",
   },
   {
     id: "app-delete-zh",
@@ -2779,7 +2780,8 @@ export const scenarios: Scenario[] = [
       { ai: "Four: wey-gu/ducter#412 (compaction cut) waits on Weizhen's review since Monday; nowledge-co/mem#10287 (retry on 502) on CI, failing; nowledge-co/hawdb#1592 (flaky compaction test) on Alice since Tuesday; wey-gu/ducter#418 (apps bar) is a draft." },
     ],
     steps: [{ user: "make that a little page I can keep and tick off as they land" }],
-    expect: { opens: 0, msgs: [1, 2], maxChars: 220, called: [{ tool: "app" }], appCard: "made", appData: /412[\s\S]*10287|10287[\s\S]*412/, appHtml: /k-app/, appHtmlForbid: [/<select\b/i, /type\s*=\s*["']?number/i], notCalled: ["task_open"], forbid: [/```|<script|<div/i] },
+    // D431: the four PRs live in its data, never written into its file.
+    expect: { opens: 0, msgs: [1, 2], maxChars: 220, called: [{ tool: "app" }], appCard: "made", appData: /412[\s\S]*10287|10287[\s\S]*412/, appHtml: /k-app/, appHtmlForbid: [/<select\b/i, /type\s*=\s*["']?number/i, /10287|1592/], notCalled: ["task_open"], forbid: [/```|<script|<div/i] },
     rubric: "The developer was just told which four PRs wait on someone (ducter#412 on Weizhen's review, mem#10287 on failing CI, hawdb#1592 on Alice, ducter#418 a draft) and asks for a little page to keep and tick off as they land. The partner makes it now with the app tool, in English, with those four PRs already in its data (who or what each waits on), the count still waiting at the top, a tap to mark one landed. One or two short lines say it's ready with the four in it. No code, no feature list, no question first, no task.",
   },
   {

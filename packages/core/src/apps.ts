@@ -17,6 +17,8 @@ import {
   APP_VERSIONS_KEPT,
   appDocument,
   appKitIssues,
+  appLiftItems,
+  appRowsInMarkup,
   type AppLive,
   appSummary,
   appTint,
@@ -40,7 +42,7 @@ export interface AppsStore {
   data(id: string): Record<string, unknown>;
   /** The document a client runs, with its data. */
   open(id: string, o: { transport: "message" | "fetch"; dark?: boolean; lang?: string }): AppOpen | undefined;
-  make(persona: string, a: { name: string; html: string; ask?: string; note?: string; task?: AppTask; kind?: AppMeta["kind"]; data?: Record<string, unknown>; summary?: string; icon?: AppIcon; tint?: AppTint }): { ok: true; app: AppMeta } | { ok: false; error: string };
+  make(persona: string, a: { name: string; html: string; ask?: string; note?: string; task?: AppTask; kind?: AppMeta["kind"]; data?: Record<string, unknown>; summary?: string; icon?: AppIcon; tint?: AppTint }): { ok: true; app: AppMeta; lifted?: string[] } | { ok: false; error: string };
   /** D410: the shelf's 「⋯」: a new name, pinned or not, no task keeping it current any more. */
   set(id: string, c: { name?: string; pinned?: boolean; untask?: boolean; icon?: AppIcon }): { ok: true; app: AppMeta } | { ok: false; error: string };
   /** D410: the app's own line for its tile (ducter.summary, or the partner's). */
@@ -63,7 +65,7 @@ export interface AppsStore {
   offered(taskId: string): boolean;
   markOffered(taskId: string): void;
   /** A new version: the whole file, or edits (each find must match exactly once). */
-  change(id: string, c: { html?: string; edits?: { find: string; replace: string }[]; name?: string; note?: string }): { ok: true; app: AppMeta } | { ok: false; error: string };
+  change(id: string, c: { html?: string; edits?: { find: string; replace: string }[]; name?: string; note?: string }): { ok: true; app: AppMeta; lifted?: string[] } | { ok: false; error: string };
   /** 改回去: the version before comes back as a new one. */
   back(id: string): { ok: true; app: AppMeta } | { ok: false; error: string };
   remove(id: string): boolean;
@@ -163,6 +165,12 @@ export function openApps(o: { dataDir: string; now?: () => Date }): AppsStore {
     return d;
   };
   const sizeOk = (h: string) => (h.trim() ? (h.length <= APP_HTML_MAX ? undefined : `the file is ${h.length} characters; an app is at most ${APP_HTML_MAX}`) : "the file is empty");
+  /** D431: lifted items written into an app's data at once (every device with it open hears each key). */
+  const putAll = (id: string, d: Record<string, unknown>, keys: string[]) => {
+    datas.set(id, d);
+    write(join(dir(id), "data.json"), JSON.stringify(d));
+    for (const k of keys) emit({ kind: "data", id, key: k, value: d[k] ?? null, by: "partner" });
+  };
   /** Keep the file it replaces as v<old version>.html; drop the oldest past APP_VERSIONS_KEPT. */
   const keepOld = (m: AppMeta) => {
     const cur = html(m.id);
@@ -203,7 +211,7 @@ export function openApps(o: { dataDir: string; now?: () => Date }): AppsStore {
   // D422: what each app is doing now, worked out on every list from one truth each: Ongoing for the
   // task that keeps it, the person's words not yet answered, its own page, its file's look.
   const changing = new Map<string, number>();
-  const looks = new Map<string, { version: number; old: boolean }>();
+  const looks = new Map<string, { version: number; old: boolean; rows: number }>();
   let kept: (taskId: string) => AppLive["kept"] | undefined = () => undefined;
   const liveOf = (m: AppMeta): AppLive | undefined => {
     const l: AppLive = {};
@@ -215,10 +223,12 @@ export function openApps(o: { dataDir: string; now?: () => Date }): AppsStore {
     if (m.broke && m.broke.version === m.version) l.broke = { text: m.broke.text };
     let look = looks.get(m.id);
     if (!look || look.version !== m.version) {
-      look = { version: m.version, old: !m.kind && appKitIssues(html(m.id) ?? "").length > 0 };
+      const h = html(m.id) ?? "";
+      look = { version: m.version, old: !m.kind && appKitIssues(h).length > 0, rows: m.kind ? 0 : appRowsInMarkup(h) };
       looks.set(m.id, look);
     }
     if (look.old) l.old = true;
+    if (look.rows >= 2) l.inFile = look.rows;
     return Object.keys(l).length ? l : undefined;
   };
   const store: AppsStore = {
@@ -235,8 +245,20 @@ export function openApps(o: { dataDir: string; now?: () => Date }): AppsStore {
     data: (id) => (metas.has(id) ? data(id) : {}),
     open(id, t) {
       const m = metas.get(id);
-      const h = html(id);
+      let h = html(id);
       if (!m || h === undefined) return undefined;
+      // D431: an app made before its items went into data: lifted now, where it changes nothing they
+      // see (appLiftItems), as a version of its own so 改回去 still brings the file back as it was.
+      const lift = m.kind ? undefined : appLiftItems(h, data(id));
+      if (lift && !sizeOk(lift.html) && JSON.stringify(lift.data).length <= APP_DATA_MAX) {
+        keepOld(m);
+        write(join(dir(id), "index.html"), lift.html);
+        putAll(id, lift.data, lift.keys);
+        Object.assign(m, { version: m.version + 1, size: lift.html.length, back: true as const });
+        saveMeta(m);
+        emit({ kind: "list" });
+        h = lift.html;
+      }
       const d = data(id);
       return { ...m, doc: appDocument({ id, name: m.name, html: h, data: d }, t), data: d };
     },
@@ -257,9 +279,13 @@ export function openApps(o: { dataDir: string; now?: () => Date }): AppsStore {
         for (const [k, v] of Object.entries(a.data).slice(0, 40)) if (appKeyOk(k) && v !== null && v !== undefined) seed[k] = JSON.parse(JSON.stringify(v));
         if (JSON.stringify(seed).length > APP_DATA_MAX) return { ok: false, error: `its data is over ${APP_DATA_MAX} characters` };
       }
+      // D431: the person's items written into the file as a list go into its data, read back from there.
+      const lift = a.kind ? undefined : appLiftItems(a.html, seed ?? {});
+      const file = lift?.html ?? a.html;
+      if (lift) seed = lift.data;
       const summary = a.summary ? appSummary(a.summary) : "";
-      const m: AppMeta = { id, name, persona, made: at, updated: at, version: 1, size: a.html.length, ...(a.ask ? { ask: a.ask.slice(0, 300) } : {}), ...(a.note ? { note: a.note.slice(0, 120) } : {}), ...(a.task ? { task: { id: a.task.id, title: appName(a.task.title) || a.task.id } } : {}), ...(a.kind ? { kind: a.kind } : {}), ...(summary ? { summary } : {}), ...(a.icon ? { icon: a.icon } : {}), tint: appTint({ id, ...(a.tint ? { tint: a.tint } : {}) }) };
-      write(join(dir(id), "index.html"), a.html);
+      const m: AppMeta = { id, name, persona, made: at, updated: at, version: 1, size: file.length, ...(a.ask ? { ask: a.ask.slice(0, 300) } : {}), ...(a.note ? { note: a.note.slice(0, 120) } : {}), ...(a.task ? { task: { id: a.task.id, title: appName(a.task.title) || a.task.id } } : {}), ...(a.kind ? { kind: a.kind } : {}), ...(summary ? { summary } : {}), ...(a.icon ? { icon: a.icon } : {}), tint: appTint({ id, ...(a.tint ? { tint: a.tint } : {}) }) };
+      write(join(dir(id), "index.html"), file);
       if (seed && Object.keys(seed).length) {
         write(join(dir(id), "data.json"), JSON.stringify(seed));
         datas.set(id, seed);
@@ -268,7 +294,7 @@ export function openApps(o: { dataDir: string; now?: () => Date }): AppsStore {
       saveMeta(m);
       emit({ kind: "list" });
       if (m.task) emit({ kind: "give", id, task: m.task });
-      return { ok: true, app: m };
+      return { ok: true, app: m, ...(lift ? { lifted: lift.keys } : {}) };
     },
     give(id, task) {
       const m = metas.get(id);
@@ -343,10 +369,15 @@ export function openApps(o: { dataDir: string; now?: () => Date }): AppsStore {
         emit({ kind: "list" });
         return { ok: true, app: m };
       }
+      // D431: a list of the person's items the new file writes in goes into its data instead.
+      const lift = m.kind ? undefined : appLiftItems(next, data(id));
+      if (lift) next = lift.html;
       const bad = sizeOk(next);
       if (bad) return { ok: false, error: bad };
+      if (lift && JSON.stringify(lift.data).length > APP_DATA_MAX) return { ok: false, error: `its data would be over ${APP_DATA_MAX} characters` };
       keepOld(m);
       write(join(dir(id), "index.html"), next);
+      if (lift) putAll(id, lift.data, lift.keys);
       Object.assign(m, { name: name || m.name, updated: now().toISOString(), version: m.version + 1, size: next.length, back: true as const });
       delete m.broke;
       changing.delete(id);
@@ -354,7 +385,7 @@ export function openApps(o: { dataDir: string; now?: () => Date }): AppsStore {
       else delete m.note;
       saveMeta(m);
       emit({ kind: "list" });
-      return { ok: true, app: m };
+      return { ok: true, app: m, ...(lift ? { lifted: lift.keys } : {}) };
     },
     back(id) {
       const m = metas.get(id);

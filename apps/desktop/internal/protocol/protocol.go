@@ -151,6 +151,9 @@ type AIMsg struct {
 	// App (D405): the app this message made or changed; AppAnswer: it answers an app's ask.
 	App       *AppCard   `json:"app,omitempty"`
 	AppAnswer *AppAnswer `json:"appAnswer,omitempty"`
+	// Shelf (D410): the person asked where their apps are: a card that
+	// opens 小应用 / Apps goes under these words.
+	Shelf bool `json:"shelf,omitempty"`
 }
 
 type Ack struct {
@@ -381,6 +384,8 @@ type DecisionResolved struct {
 	// Settled (D375): closed by what happened, not by an answer (D169's
 	// offer once Mem's check sees the plugin in): it reads as done.
 	Settled bool `json:"settled,omitempty"`
+	// Posted (D413): settled because its drafts went under a standing permission.
+	Posted bool `json:"posted,omitempty"`
 }
 
 type ReadReceipt struct {
@@ -1129,6 +1134,8 @@ type Send struct {
 	Media []string `json:"media,omitempty"`
 	// Reply (D236): the one message this answers; core fills the quote.
 	Reply *ReplyWant `json:"reply,omitempty"`
+	// App (D405): the words were typed in that app's own window (its id).
+	App string `json:"app,omitempty"`
 	// Via (D277): "imessage" when the Mac app's iMessage bridge relays it.
 	Via string `json:"via,omitempty"`
 }
@@ -1893,11 +1900,11 @@ type DeviceHarness struct {
 	Installable bool             `json:"installable,omitempty"`
 	Setup       *AgentSetupState `json:"setup,omitempty"`
 	Login       *AgentLoginState `json:"login,omitempty"`
-	// D409: why it can't run although something of it is there.
+	// D415: why it can't run although something of it is there.
 	Trouble *AgentTrouble `json:"trouble,omitempty"`
 }
 
-// AgentTrouble is an agent partly there (D409): too_old (Need: the version
+// AgentTrouble is an agent partly there (D415): too_old (Need: the version
 // it must reach), broken (its command line doesn't answer), app_only (only
 // its desktop app App, no command line).
 type AgentTrouble struct {
@@ -2489,8 +2496,10 @@ type ServerFrame struct {
 	Pins    []PinView `json:"pins,omitempty"`
 	Refused string    `json:"refused,omitempty"`
 	// Defaults: the built-in default per kind of work (rules frame, D372).
-	Defaults   []KindDefault `json:"defaults,omitempty"`
-	Candidates []Candidate   `json:"candidates,omitempty"`
+	Defaults []KindDefault `json:"defaults,omitempty"`
+	// StandingList (D413): 不用问我的 / Without asking (rules frame).
+	StandingList []StandingView `json:"standing,omitempty"`
+	Candidates   []Candidate    `json:"candidates,omitempty"`
 	// connections: the user's connections and what oo is set up with;
 	// connection_result: OK, ID, Reason, and Readable (D158): what the
 	// added connection can read now; non-nil and empty means connected, but

@@ -131,36 +131,36 @@ func (a *App) pileBlock(c *ui.Context, pv *protocol.PileView) {
 			}
 			ui.Column(c.Key("pile-facts")).Gap(4).Padding(0, 0, 6, 0).Shrink(1).MinWidth(0).Children(func() {
 				if pv.Open == 0 {
-					ui.Text(c.Key("clear"), a.L.T("pile.clear")).Font(t.Display).FontSize(t.XL).FontWeight(700).TextColor(t.Ink)
+					uiText(c.Key("clear"), a.L.T("pile.clear")).Font(t.Display).FontSize(t.XL).FontWeight(700).TextColor(t.Ink)
 				} else {
 					ui.Row(c.Key("count")).Gap(6).AlignItems(ui.Baseline).Role(ui.RoleStatus).Children(func() {
 						if w := a.L.T("pile.left.before"); w != "" {
-							ui.Text(c.Key("before"), w).Font(t.Display).FontSize(t.MD).FontWeight(600).TextColor(t.InkSoft)
+							uiText(c.Key("before"), w).Font(t.Display).FontSize(t.MD).FontWeight(600).TextColor(t.InkSoft)
 						}
 						n := fmt.Sprint(pv.Open)
 						if pv.AtLeast {
 							n += "+"
 						}
-						num := ui.Text(c.Key("n"), n).Font(t.Display).FontSize(34).FontWeight(800).TextColor(t.Ink).FontFeatures("tnum")
+						num := uiText(c.Key("n"), n).Font(t.Display).FontSize(34).FontWeight(800).TextColor(t.Ink).FontFeatures("tnum")
 						// The roll: the new number drops in from above (none under reduced motion).
 						if !still && time.Since(a.pile.tickAt) < 300*time.Millisecond {
 							k := float32(time.Since(a.pile.tickAt)) / float32(300*time.Millisecond)
 							num.Translate(0, -14*(1-k)).Opacity(0.3 + 0.7*k)
 							c.Invalidate()
 						}
-						ui.Text(c.Key("after"), a.L.T("pile.left.after")).Font(t.Display).FontSize(t.MD).FontWeight(600).TextColor(t.InkSoft)
+						uiText(c.Key("after"), a.L.T("pile.left.after")).Font(t.Display).FontSize(t.MD).FontWeight(600).TextColor(t.InkSoft)
 					})
 				}
 				if pv.ClearedToday > 0 {
-					ui.Text(c.Key("day"), a.L.T("pile.today", pv.ClearedToday)).FontSize(t.MD).FontWeight(600).TextColor(t.Done.Ink)
+					uiText(c.Key("day"), a.L.T("pile.today", pv.ClearedToday)).FontSize(t.MD).FontWeight(600).TextColor(t.Done.Ink)
 				}
 				if pv.Queue.Running > 0 || pv.Queue.Waiting > 0 {
 					ui.Row(c.Key("queue")).Gap(12).Children(func() {
 						if pv.Queue.Running > 0 {
-							ui.Text(c.Key("run"), a.L.T("pile.running", pv.Queue.Running)).FontSize(t.SM).FontWeight(600).TextColor(t.Working.Ink)
+							uiText(c.Key("run"), a.L.T("pile.running", pv.Queue.Running)).FontSize(t.SM).FontWeight(600).TextColor(t.Working.Ink)
 						}
 						if pv.Queue.Waiting > 0 {
-							ui.Text(c.Key("wait"), a.L.T("pile.waiting", pv.Queue.Waiting)).FontSize(t.SM).TextColor(t.InkMuted)
+							uiText(c.Key("wait"), a.L.T("pile.waiting", pv.Queue.Waiting)).FontSize(t.SM).TextColor(t.InkMuted)
 						}
 					})
 				}
@@ -170,14 +170,14 @@ func (a *App) pileBlock(c *ui.Context, pv *protocol.PileView) {
 		switch {
 		case pv.Sorting != nil:
 			ui.Column(c.Key("sorting")).Gap(6).Role(ui.RoleStatus).Children(func() {
-				ui.Text(c.Key("line"), a.L.T("pile.sorting")).FontWeight(600).TextColor(t.Working.Ink)
+				uiText(c.Key("line"), a.L.T("pile.sorting")).FontWeight(600).TextColor(t.Working.Ink)
 				frac := float32(pv.Sorting.Read) / float32(max(1, pv.Sorting.Of))
 				ui.Box(c.Key("bar")).Height(8).Radius(4).Background(t.Sunken).Children(func() {
 					ui.Box(c.Key("fill")).Height(8).Radius(4).WidthPercent(100 * frac).Background(t.Working.Dot)
 				})
 				ui.Row(c.Key("facts")).Gap(12).Children(func() {
-					ui.Text(c.Key("r"), a.L.T("pile.sorting.read", pv.Sorting.Read)).FontSize(t.SM).TextColor(t.InkMuted).FontFeatures("tnum")
-					ui.Text(c.Key("o"), a.L.T("pile.sorting.of", pv.Sorting.Of)).FontSize(t.SM).TextColor(t.InkMuted).FontFeatures("tnum")
+					uiText(c.Key("r"), a.L.T("pile.sorting.read", pv.Sorting.Read)).FontSize(t.SM).TextColor(t.InkMuted).FontFeatures("tnum")
+					uiText(c.Key("o"), a.L.T("pile.sorting.of", pv.Sorting.Of)).FontSize(t.SM).TextColor(t.InkMuted).FontFeatures("tnum")
 				})
 			})
 		case sorted:
@@ -202,18 +202,18 @@ func (a *App) pileBlock(c *ui.Context, pv *protocol.PileView) {
 			})
 		case pv.Open > 0:
 			ui.Row(c.Key("first")).Gap(12).AlignItems(ui.Center).Children(func() {
-				ui.Text(c.Key("lede"), a.L.T("pile.first.lede", name)).TextColor(t.InkSoft).Grow(1).Shrink(1).MinWidth(0)
+				uiText(c.Key("lede"), a.L.T("pile.first.lede", name)).TextColor(t.InkSoft).Grow(1).Shrink(1).MinWidth(0)
 				if a.button(c, a.L.T("pile.first"), btnPrimary, t.ControlMD, t.Surface) {
 					a.send(protocol.PileReq{T: "pile_sort"})
 				}
 			})
 		}
 		if pv.Failed != "" && pv.Sorting == nil {
-			ui.Text(c.Key("failed"), a.L.T("pile.failed."+pv.Failed)).FontSize(t.SM).TextColor(t.Waiting.Ink)
+			uiText(c.Key("failed"), a.L.T("pile.failed."+pv.Failed)).FontSize(t.SM).TextColor(t.Waiting.Ink)
 		}
 		if sorted && pv.Sorting == nil {
 			ui.Row(c.Key("foot")).Gap(12).AlignItems(ui.Center).Children(func() {
-				ui.Text(c.Key("when"), a.L.T("pile.sorted", a.agoLong(pv.SortedAt))).FontSize(t.SM).TextColor(t.InkMuted)
+				uiText(c.Key("when"), a.L.T("pile.sorted", a.agoLong(pv.SortedAt))).FontSize(t.SM).TextColor(t.InkMuted)
 				ui.Spacer(c)
 				if a.button(c, a.L.T("pile.again"), btnText, t.ControlMD, t.Surface) {
 					a.send(protocol.PileReq{T: "pile_sort"})
@@ -233,16 +233,16 @@ func (a *App) pileRow(c *ui.Context, key string, n int, label, note, act string,
 			if muted {
 				ink = t.InkMuted
 			}
-			ui.Text(c.Key("label"), label).FontWeight(600).TextColor(ink)
+			uiText(c.Key("label"), label).FontWeight(600).TextColor(ink)
 			if note != "" {
-				ui.Text(c.Key("note"), note).FontSize(t.XS).TextColor(t.InkMuted)
+				uiText(c.Key("note"), note).FontSize(t.XS).TextColor(t.InkMuted)
 			}
 		})
 		ink := t.Ink
 		if muted {
 			ink = t.InkMuted
 		}
-		ui.Text(c.Key("n"), fmt.Sprint(n)).Font(t.Display).FontSize(t.LG).FontWeight(800).TextColor(ink).FontFeatures("tnum")
+		uiText(c.Key("n"), fmt.Sprint(n)).Font(t.Display).FontSize(t.LG).FontWeight(800).TextColor(ink).FontFeatures("tnum")
 		if act == "" {
 			ui.Box(c.Key("gap")).Width(96)
 			return
@@ -268,22 +268,22 @@ func (a *App) pileReadLine(c *ui.Context, g protocol.SourceGlance) {
 	r := g.Read
 	row := ui.Row(c.Key("read")).Gap(10).AlignItems(ui.Center).MinHeight(44).Padding(6, 12).Radius(t.RadiusSM).Background(t.Sunken).Cursor(ui.CursorPointer).Role(ui.RoleButton).Focusable().Label(a.L.T("pile.read.line"))
 	row.Children(func() {
-		ui.Text(c.Key("who"), a.L.T("pile.read.line")).FontSize(t.SM).FontWeight(700).TextColor(t.Ink)
+		uiText(c.Key("who"), a.L.T("pile.read.line")).FontSize(t.SM).FontWeight(700).TextColor(t.Ink)
 		switch {
 		case r.State == "sent":
-			ui.Text(c.Key("sent"), a.L.T("pile.read.sent")).FontSize(t.SM).TextColor(t.InkSoft)
+			uiText(c.Key("sent"), a.L.T("pile.read.sent")).FontSize(t.SM).TextColor(t.InkSoft)
 		case r.Problems+r.Suggestions == 0:
-			ui.Text(c.Key("clean"), a.L.T("pile.read.clean")).FontSize(t.SM).TextColor(t.InkSoft)
+			uiText(c.Key("clean"), a.L.T("pile.read.clean")).FontSize(t.SM).TextColor(t.InkSoft)
 		default:
 			if r.Problems > 0 {
-				ui.Text(c.Key("p"), a.nCount("pile.read.problems", r.Problems)).FontSize(t.SM).FontWeight(600).TextColor(t.NeedsYou.Ink)
+				uiText(c.Key("p"), a.nCount("pile.read.problems", r.Problems)).FontSize(t.SM).FontWeight(600).TextColor(t.NeedsYou.Ink)
 			}
 			if r.Suggestions > 0 {
-				ui.Text(c.Key("s"), a.nCount("pile.read.suggestions", r.Suggestions)).FontSize(t.SM).TextColor(t.InkSoft)
+				uiText(c.Key("s"), a.nCount("pile.read.suggestions", r.Suggestions)).FontSize(t.SM).TextColor(t.InkSoft)
 			}
 		}
 		ui.Spacer(c)
-		ui.Text(c.Key("see"), a.L.T("pile.read.see")).FontSize(t.SM).FontWeight(600).TextColor(t.Ink)
+		uiText(c.Key("see"), a.L.T("pile.read.see")).FontSize(t.SM).FontWeight(600).TextColor(t.Ink)
 	})
 	if row.Clicked() {
 		a.openPreRead(g.Ref)
@@ -317,7 +317,7 @@ func (a *App) pileSheet(c *ui.Context) {
 		ui.Row(c.Key("pile-head")).Gap(t.S2).AlignItems(ui.Center).Padding(t.S5, t.S6, t.S2, t.S6).Children(func() {
 			a.heading(c, title, t.XL).Shrink(1).MinWidth(0)
 			if p.got && p.group != "" {
-				ui.Text(c.Key("n"), fmt.Sprint(len(p.items))).Font(t.Display).FontSize(t.LG).TextColor(t.InkMuted).FontFeatures("tnum")
+				uiText(c.Key("n"), fmt.Sprint(len(p.items))).Font(t.Display).FontSize(t.LG).TextColor(t.InkMuted).FontFeatures("tnum")
 			}
 			ui.Spacer(c)
 			if a.button(c, a.L.T("pile.close.x"), btnText, t.ControlMD, t.Bg) {
@@ -330,9 +330,9 @@ func (a *App) pileSheet(c *ui.Context) {
 				case p.review != "":
 					a.pileReadBody(c)
 				case !p.got:
-					ui.Text(c.Key("looking"), a.L.T("todos.looking")).TextColor(t.InkSoft)
+					uiText(c.Key("looking"), a.L.T("todos.looking")).TextColor(t.InkSoft)
 				case len(p.items) == 0:
-					ui.Text(c.Key("empty"), a.L.T("pile.empty")).TextColor(t.InkSoft)
+					uiText(c.Key("empty"), a.L.T("pile.empty")).TextColor(t.InkSoft)
 				default:
 					a.pileItemsBody(c)
 				}
@@ -350,7 +350,7 @@ func (a *App) pileItemsBody(c *ui.Context) {
 	p := &a.pile
 	name := a.personaName()
 	lede := map[string]string{"do": a.L.T("pile.do.lede", protocol.PileCap), "decide": a.L.T("pile.decide.lede"), "close": a.L.T("pile.close.lede")}[p.group]
-	ui.Text(c.Key("lede"), lede).TextColor(t.InkSoft).LineHeight(1.5)
+	uiText(c.Key("lede"), lede).TextColor(t.InkSoft).LineHeight(1.5)
 	for _, it := range p.items {
 		it := it
 		ref := it.Item.Ref
@@ -378,34 +378,34 @@ func (a *App) pileItemsBody(c *ui.Context) {
 			ui.Column(c.Key("body")).Gap(6).Grow(1).Shrink(1).MinWidth(0).Children(func() {
 				ui.Row(c.Key("head")).Gap(8).AlignItems(ui.Center).Children(func() {
 					a.todoMark(c, it.Item.Kind, 22)
-					ui.Text(c.Key("title"), keepWords(autospace(it.Item.Title))).FontWeight(600).TextColor(t.Ink).MaxLines(2).Shrink(1).MinWidth(0)
+					uiText(c.Key("title"), keepWords(autospace(it.Item.Title))).FontWeight(600).TextColor(t.Ink).MaxLines(2).Shrink(1).MinWidth(0)
 				})
 				if p.group == "decide" {
 					ask := it.Ask
 					if ask == "" {
 						ask = it.Why
 					}
-					ui.Text(c.Key("ask"), ask).FontWeight(600).TextColor(t.Ink)
+					uiText(c.Key("ask"), ask).FontWeight(600).TextColor(t.Ink)
 				} else {
-					ui.Text(c.Key("why"), it.Why).TextColor(t.InkSoft)
+					uiText(c.Key("why"), it.Why).TextColor(t.InkSoft)
 				}
 				ui.Row(c.Key("facts")).Wrap().Gap(10).AlignItems(ui.Center).Children(func() {
 					a.todoChip(c, "pile:"+ref, it.Item.SourceItemRef)
 					if it.Size != "" {
 						ui.Row(c.Key("size")).Height(20).Padding(0, t.S2).Radius(10).AlignItems(ui.Center).Background(t.SurfaceSunken).Children(func() {
-							ui.Text(c, a.L.T("pile.size."+it.Size)).FontSize(t.XS).TextColor(t.InkMuted)
+							uiText(c, a.L.T("pile.size."+it.Size)).FontSize(t.XS).TextColor(t.InkMuted)
 						})
 					}
 				})
 				if p.group == "close" && !p.kept[ref] && it.Comment != "" {
 					ui.Column(c.Key("says")).Gap(2).Padding(8, 10).Radius(t.RadiusSM).Background(t.Sunken).Children(func() {
-						ui.Text(c.Key("l"), a.L.T("pile.close.says")).FontSize(t.XS).FontWeight(600).TextColor(t.InkMuted)
-						ui.Text(c.Key("t"), it.Comment).TextColor(t.Ink)
+						uiText(c.Key("l"), a.L.T("pile.close.says")).FontSize(t.XS).FontWeight(600).TextColor(t.InkMuted)
+						uiText(c.Key("t"), it.Comment).TextColor(t.Ink)
 					})
 				}
 				if p.group == "decide" {
 					if ch := p.chosen[ref]; ch != "" {
-						ui.Text(c.Key("picked"), a.L.T("pile.picked."+ch, name)).FontWeight(600).TextColor(t.Done.Ink)
+						uiText(c.Key("picked"), a.L.T("pile.picked."+ch, name)).FontWeight(600).TextColor(t.Done.Ink)
 					} else {
 						ui.Row(c.Key("picks")).Wrap().Gap(8).Children(func() {
 							for _, k := range []string{"hand", "close", "later"} {
@@ -419,7 +419,7 @@ func (a *App) pileItemsBody(c *ui.Context) {
 								}
 								// The suggested answer says so beside it, its own element (D291).
 								if it.Pick == k {
-									ui.Text(c.Key("sugg:"+k), a.L.T("pile.decide.suggested")).FontSize(t.XS).FontWeight(600).TextColor(t.InkMuted).AlignSelf(ui.Center)
+									uiText(c.Key("sugg:"+k), a.L.T("pile.decide.suggested")).FontSize(t.XS).FontWeight(600).TextColor(t.InkMuted).AlignSelf(ui.Center)
 								}
 							}
 						})
@@ -452,17 +452,17 @@ func (a *App) pileReadBody(c *ui.Context) {
 	t := a.T
 	p := &a.pile
 	if p.reading {
-		ui.Text(c.Key("reading"), a.L.T("pile.read.reading")).TextColor(t.InkSoft)
+		uiText(c.Key("reading"), a.L.T("pile.read.reading")).TextColor(t.InkSoft)
 		return
 	}
 	r := p.read
 	if r == nil {
-		ui.Text(c.Key("none"), a.L.T("pile.read.none")).TextColor(t.InkSoft)
+		uiText(c.Key("none"), a.L.T("pile.read.none")).TextColor(t.InkSoft)
 		return
 	}
-	ui.Text(c.Key("title"), r.Title).FontWeight(600).TextColor(t.Ink)
+	uiText(c.Key("title"), r.Title).FontWeight(600).TextColor(t.Ink)
 	if r.Gist != "" {
-		ui.Text(c.Key("gist"), r.Gist).TextColor(t.InkSoft)
+		uiText(c.Key("gist"), r.Gist).TextColor(t.InkSoft)
 	}
 	for i, n := range r.Notes {
 		i, n := i, n
@@ -479,17 +479,17 @@ func (a *App) pileReadBody(c *ui.Context) {
 						bg, ink = t.NeedsYou.Surface, t.NeedsYou.Ink
 					}
 					ui.Row(c.Key("kind")).Height(20).Padding(0, t.S2).Radius(10).AlignItems(ui.Center).Background(bg).Children(func() {
-						ui.Text(c, a.L.T("pile.read."+n.Kind)).FontSize(t.XS).FontWeight(700).TextColor(ink)
+						uiText(c, a.L.T("pile.read."+n.Kind)).FontSize(t.XS).FontWeight(700).TextColor(ink)
 					})
 					if n.Path != "" {
 						where := n.Path
 						if n.Line > 0 {
 							where = fmt.Sprintf("%s:%d", n.Path, n.Line)
 						}
-						ui.Text(c.Key("where"), where).Font(t.Mono).FontSize(t.XS).TextColor(t.InkMuted)
+						uiText(c.Key("where"), where).Font(t.Mono).FontSize(t.XS).TextColor(t.InkMuted)
 					}
 				})
-				ui.Text(c.Key("text"), n.Text).TextColor(t.Ink).LineHeight(1.5)
+				uiText(c.Key("text"), n.Text).TextColor(t.Ink).LineHeight(1.5)
 			})
 			if r.State == "drafted" {
 				label, kind := a.L.T("pile.read.drop"), btnSecondary
@@ -511,7 +511,7 @@ func (a *App) pileGo(c *ui.Context) {
 	name := a.personaName()
 	ui.Column(c.Key("pile-go")).Gap(t.S2).Padding(t.S3, t.S6, t.S5, t.S6).BorderWidth(1, 0, 0, 0).BorderColor(t.LineSoft).Children(func() {
 		if p.said != "" {
-			ui.Text(c.Key("said"), p.said).FontSize(t.SM).TextColor(t.Failed.Ink).Role(ui.RoleStatus)
+			uiText(c.Key("said"), p.said).FontSize(t.SM).TextColor(t.Failed.Ink).Role(ui.RoleStatus)
 		}
 		switch {
 		case p.group == "do" && p.got:
@@ -546,7 +546,7 @@ func (a *App) pileGo(c *ui.Context) {
 					p.open = false // the pile is watched ticking down underneath
 				}
 			})
-			ui.Text(c.Key("foot"), a.L.T("pile.close.foot")).FontSize(t.SM).TextColor(t.InkMuted)
+			uiText(c.Key("foot"), a.L.T("pile.close.foot")).FontSize(t.SM).TextColor(t.InkMuted)
 		case p.review != "" && p.read != nil && p.read.State == "drafted" && len(p.read.Notes) > 0:
 			keep := []int{}
 			for i := range p.read.Notes {
@@ -563,7 +563,7 @@ func (a *App) pileGo(c *ui.Context) {
 					a.send(protocol.PreReadSendReq{T: "pre_read_send", Ref: p.read.Ref, Keep: keep, ClientID: p.cid})
 				}
 			})
-			ui.Text(c.Key("foot"), a.L.T("pile.read.foot")).FontSize(t.SM).TextColor(t.InkMuted)
+			uiText(c.Key("foot"), a.L.T("pile.read.foot")).FontSize(t.SM).TextColor(t.InkMuted)
 		}
 	})
 }

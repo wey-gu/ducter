@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.1.0 - 2026-11-20
+
+<!-- whats-new
+zh: 说一次"直接发"，评审就不再问你；小应用有了自己的家
+en: Say "just post them" once and reviews stop asking; your apps get a home
+-->
+
+**Without asking**
+- Tell Ducter once that something may happen without asking, like posting your PR reviews, and it
+  keeps that: routines post directly and list each one in Done for you. Settings › Partner shows
+  what you've allowed, with Take back. Payments, passwords and anything an untrusted source asks
+  for always wait for you.
+
+**Your apps**
+- Small apps have their own place: one tap from the top bar, each with what's in it and when it
+  changed; rename, change by asking, go back to an earlier version, pin, or delete with undo.
+- A new app about something Ducter knows opens already filled in (a trip from your bookings), with
+  the total first and Ducter's own clay look. The app window on the Mac has its own edit box.
+
+**Other agents (Nowledge Bridge)**
+- Works end to end with your own terminal sessions on Nowledge Mem 0.10.121: hand work to Ducter
+  and get the result back, ask an open session something and hear its answer, one follow-up when
+  it goes quiet.
+
+**Mac**
+- Screen readers read whole words; a card's expiry shapes as you type; the window never changes
+  page on its own.
+
 ## 0.0.99 - 2026-11-20
 
 <!-- whats-new

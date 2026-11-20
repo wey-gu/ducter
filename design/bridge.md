@@ -305,7 +305,9 @@ stays parked as X5.
   - *Value:* 放心: someone holds the thread, and it doesn't nag.
 - **Rules (built).**
   - Only messages the user confirmed on a card; at most one line each, never earlier than 2 h after it went out,
-    nothing after 7 days.
+    nothing after 7 days. One line covers every unanswered message to the same agent (D412): "…还没回你 2 小时前
+    问的「昨晚 CI 那个红是不是 flaky？」和「bridge 那块写到哪了？」…", newest first; another agent gets its own line
+    on a later turn.
   - Only while the user is around (they did something in the last 15 minutes), never in quiet hours, one line
     per moment.
   - Said by code before the partner answers the user's message; the partner's input carries it, so it isn't
@@ -814,6 +816,30 @@ made (revoke, `agents context clear`, `agents delete`); `--cleanup` removes what
 own partner and mailbox are never used, so it runs any time; D258's guard and `--share-mailbox` are gone. Built
 and tested with the fake nmem only; whether Mem connects a freshly enrolled identity at once is INFERRED until
 the first real run (research/66 §9).
+
+**Status 2026-11-20, after the second live run (D412, research/161 §10): 10/17, the rest fixed, ready to rerun.**
+The rerun with D409 (nmem 0.10.121, Mem Cloud, haiku both sides, 868 s) worked end to end on Mem: the terminal's
+request reached Ducter, one card, a task on Go, the claim and the outcome back to the terminal; Ducter sent to an
+open session once; X1's card and the answer back by code; Mem marks originals; `open` and `reply` work after
+passive setup's `enable_needed`. What failed: (1) the terminal never opened Ducter's mail (S1, X1, and with it all
+of S2's answer): the trial's guard knew Ducter's mail by id while the peer opened it, as Mem's `open_args` say, by
+its `bm1:` reference; the trial's, fixed there. (2) S1's card said 「Weyl 那边的 Claude Code」 to Weyl: Mem names no
+member, the name came from the request's first line; a card that names the person from an own agent's words or
+the persona's identity is now refused. (3) S3: two questions to the same silent terminal got two lines an hour
+apart; now one line covers both. Still Mem's: the personal Space's `sequence` 21 to 25 on no page, and one
+`/spaces returned 500` (a database restart) on `contacts`.
+
+**Status 2026-11-20, after the live run (D409, research/161 §9): fixed on Ducter's side, ready to rerun.** The
+first real run as the trial's own identity (nmem 0.10.121, Mem Cloud, haiku both sides, 873 s) failed every
+scenario: S1 0/4, S2 0/5, S3 1/3, X1 0/3. Mem's side worked: the peer's personal Space reads again (all 8
+`observed`), the peer's request reached the trial's inbox (`mine: true`, `pending`, Mem's sender, in "Before the
+team", where the peer's card resolved it). Ducter's side had two faults. (1) Every nmem call had 20 s and the
+identity inbox answers in 45 to 52 s, so every read was killed and nothing was ever opened (S1, X1); now 120 s.
+(2) Asked "问一下我终端里那个 Claude…", the partner went down the own-session path, found the author's open Claude
+Code session and told him to /exit it (S2, S3); rule 2d now says asking one of the person's agents, even one open
+now, is `bridge_contacts` then `bridge_send` (eval 1/6 before, 6/6 after on the two new scenarios). The peer's
+"none yet" was true: Ducter had sent it nothing. Still open on Mem's side: a `sequence` gap across inbox pages
+(21 to 25 on no page) and whether `open`/`reply` need `--enable` after passive setup's `enable_needed`.
 
 **Status 2026-11-19 (D400, research/161 §8): still blocked on Mem, narrower.** One read-only read with the
 author's nmem 0.10.121 (`--agent-context <the peer's native-session context> bridge inbox`, and that session's

@@ -170,7 +170,7 @@ export type CandidateBlock = "not_installed" | "signed_out" | "off" | "reserve" 
  * has none; no_app: it needs a Mac app and that computer isn't a Mac; elsewhere: the folder or
  * repo is on another computer (place); no_draw (D206): the task makes a picture and this agent
  * can't (only Codex generates images); no_phone (D217): it needs Ducter's phone and 用手机 isn't on there;
- * no_web (D409): the task reads web pages and this agent can't be held to Ducter's rules there (Antigravity).
+ * no_web (D415): the task reads web pages and this agent can't be held to Ducter's rules there (Antigravity).
  */
 export type WhereBlock = "no_browser" | "no_chrome" | "no_app" | "elsewhere" | "no_draw" | "no_phone" | "no_web";
 

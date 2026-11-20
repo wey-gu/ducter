@@ -83,7 +83,7 @@ func (a *App) taskInfo(c *ui.Context, task *store.Task) {
 		if a.compactBar() {
 			cut = 18 // D262: a narrow bar keeps room for the task's name
 		}
-		ui.Text(c, midCut(label, cut)).Font(t.Mono).FontSize(t.MonoSM).TextColor(fg).SingleLine().AccessHidden(true)
+		uiText(c, midCut(label, cut)).Font(t.Mono).FontSize(t.MonoSM).TextColor(fg).SingleLine().AccessHidden(true)
 		ui.Box(c).Size(10, 10).Shrink(0).Draw(drawCaret(fg)).AccessHidden(true)
 	})
 	if b.Clicked() {
@@ -101,7 +101,7 @@ func (a *App) infoRow(c *ui.Context, key, mark, label string, body func()) {
 	ui.Row(c.Key("info:"+key)).Gap(t.S3).Padding(t.S2+1, t.S2).AlignItems(ui.Start).Children(func() {
 		ui.Row(c).Width(96).Shrink(0).Gap(t.S1 + 3).AlignItems(ui.Center).Children(func() {
 			a.glyph(c, 14, drawInfoMark(mark, t.InkMuted))
-			ui.Text(c, label).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).SingleLine()
+			uiText(c, label).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).SingleLine()
 		})
 		ui.Column(c).Grow(1).MinWidth(0).Gap(3).Children(body)
 	})
@@ -118,11 +118,11 @@ func (a *App) taskInfoBody(c *ui.Context, task *store.Task) {
 	ui.Column(c.Key("info-rows")).Dividers(1, t.LineSoft).Children(func() {
 		a.infoRow(c, "computer", "computer", a.L.T("info.computer"), func() {
 			on, _ := a.taskWhere(task)
-			ui.Text(c, firstNonEmpty(on, a.taskComputerName(task))).FontSize(t.SM).TextColor(t.Ink)
+			uiText(c, firstNonEmpty(on, a.taskComputerName(task))).FontSize(t.SM).TextColor(t.Ink)
 		})
 		if path != "" {
 			a.infoRow(c, "folder", "folder", a.L.T("info.folder"), func() {
-				ui.Text(c.Key("path"), tildePath(path)).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.Ink).Selectable().Wrap()
+				uiText(c.Key("path"), tildePath(path)).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.Ink).Selectable().Wrap()
 				ui.Row(c).Gap(t.S3).Children(func() {
 					copied := a.infoCopied.After(a.Now().Add(-1600 * time.Millisecond))
 					word := a.L.T("info.copy")
@@ -148,14 +148,14 @@ func (a *App) taskInfoBody(c *ui.Context, task *store.Task) {
 		}
 		if p.Kind == "repo" && p.Branch != "" {
 			a.infoRow(c, "branch", "branch", a.L.T("info.branch"), func() {
-				ui.Text(c.Key("branch"), p.Branch).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.Ink).Selectable().Wrap()
-				ui.Text(c, a.L.T("info.branch.from", base)).FontSize(t.XS).TextColor(t.InkMuted)
+				uiText(c.Key("branch"), p.Branch).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.Ink).Selectable().Wrap()
+				uiText(c, a.L.T("info.branch.from", base)).FontSize(t.XS).TextColor(t.InkMuted)
 			})
 		}
 		a.infoRow(c, "changes", "changes", a.L.T("info.changes"), func() {
 			files, adds, dels := a.infoStat(task)
 			if files == 0 {
-				ui.Text(c, a.L.T("info.changes.none")).FontSize(t.XS).TextColor(t.InkMuted)
+				uiText(c, a.L.T("info.changes.none")).FontSize(t.XS).TextColor(t.InkMuted)
 				return
 			}
 			against := a.L.T("info.changes.folder")
@@ -165,13 +165,13 @@ func (a *App) taskInfoBody(c *ui.Context, task *store.Task) {
 			r := ui.Row(c.Key("info-changes")).Gap(t.S2).AlignItems(ui.Center).Cursor(ui.CursorPointer).Role(ui.RoleButton).
 				Label(a.L.T("info.changes.open")).Tooltip(a.L.T("info.changes.open")).Focusable()
 			r.Children(func() {
-				ui.Text(c, against).FontSize(t.SM).TextColor(t.Ink)
-				ui.Text(c, a.L.T("info.changes.files", files)).FontSize(t.SM).TextColor(t.InkSoft)
+				uiText(c, against).FontSize(t.SM).TextColor(t.Ink)
+				uiText(c, a.L.T("info.changes.files", files)).FontSize(t.SM).TextColor(t.InkSoft)
 				if adds > 0 {
-					ui.Text(c, fmt.Sprintf("+%d", adds)).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.Done.Ink)
+					uiText(c, fmt.Sprintf("+%d", adds)).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.Done.Ink)
 				}
 				if dels > 0 {
-					ui.Text(c, fmt.Sprintf("−%d", dels)).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.Failed.Ink)
+					uiText(c, fmt.Sprintf("−%d", dels)).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.Failed.Ink)
 				}
 				a.glyph(c, 10, drawChevron(t.InkMuted, false))
 			})
@@ -189,7 +189,7 @@ func (a *App) taskInfoBody(c *ui.Context, task *store.Task) {
 		ui.Column(c.Key("info-who")).Gap(t.S2).Padding(t.S2+2, t.S2, t.S1, t.S2).BorderWidth(1, 0, 0, 0).BorderColor(t.LineSoft).Children(func() {
 			ui.Row(c).Gap(t.S1 + 3).AlignItems(ui.Center).Children(func() {
 				a.glyph(c, 14, drawInfoMark("who", t.InkMuted))
-				ui.Text(c, a.L.T("info.who")).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
+				uiText(c, a.L.T("info.who")).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
 			})
 			for i, w := range who {
 				last := i == len(who)-1
@@ -205,7 +205,7 @@ func (a *App) taskInfoBody(c *ui.Context, task *store.Task) {
 					// D291: the agent, the model, the effort, each its own small element.
 					ui.Row(c.Key("nm")).Gap(t.S2).Grow(1).MinWidth(0).AlignItems(ui.Center).Children(func() {
 						for j, p := range parts {
-							tx := ui.Text(c.Key(j), p).FontSize(t.SM).TextColor(t.Ink).SingleLine().MinWidth(0)
+							tx := uiText(c.Key(j), p).FontSize(t.SM).TextColor(t.Ink).SingleLine().MinWidth(0)
 							if last {
 								tx.FontWeight(700)
 							}
@@ -217,7 +217,7 @@ func (a *App) taskInfoBody(c *ui.Context, task *store.Task) {
 							when = ts.Local().Format("15:04")
 						}
 					}
-					ui.Text(c, when).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum")
+					uiText(c, when).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum")
 				})
 			}
 		})
@@ -274,9 +274,9 @@ func (a *App) infoActs(c *ui.Context, task *store.Task, base string) {
 		}
 		switch {
 		case task.Acting != "":
-			ui.Text(c, a.L.TFamily("result.acting."+task.Acting, base)).FontSize(t.SM).TextColor(t.InkMuted)
+			uiText(c, a.L.TFamily("result.acting."+task.Acting, base)).FontSize(t.SM).TextColor(t.InkMuted)
 		case merged:
-			ui.Text(c, a.L.T("result.merged", base)).FontSize(t.SM).FontWeight(700).TextColor(t.Done.Ink)
+			uiText(c, a.L.T("result.merged", base)).FontSize(t.SM).FontWeight(700).TextColor(t.Done.Ink)
 		default:
 			if pr != "" {
 				if a.button(c, a.L.T("info.pr.open"), btnSecondary, t.ControlSM, t.Surface) {

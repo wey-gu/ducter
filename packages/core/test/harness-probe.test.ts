@@ -18,7 +18,7 @@ test("a machine with all four: logins read from their own commands and files", a
     home: "/h",
     dataDir: "/d",
     read: files({ "/h/.pi/agent/models.json": JSON.stringify({ providers: { minimax: { apiKey: "x" } } }), "/d/env": "DEEPSEEK_API_KEY=sk-x\n" }),
-    // D409: no Antigravity here (never this Mac's own /Applications).
+    // D415: no Antigravity here (never this Mac's own /Applications).
     exists: () => false,
     dangling: () => false,
   });

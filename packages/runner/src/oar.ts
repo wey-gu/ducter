@@ -3,7 +3,7 @@
 // because runtimes/kimi imports node:util getSystemErrorMap). No OAR type crosses this file's
 // exports: callers see only Ducter's HarnessPort / HarnessSession / HarnessEvent.
 //
-// D85: four first-wave harnesses, each able to carry the partner and tasks, and (D409) Antigravity
+// D85: four first-wave harnesses, each able to carry the partner and tasks, and (D415) Antigravity
 // for tasks only. What differs per harness (research/34-harness-adapters.md) is decided here, in one place:
 //   - the clean setup (isolateUserConfig): claude native exclude; codex `-c` overrides; pi CLI
 //     flags on its RPC process; DeepSeek Harness a Ducter-owned DSH_HOME;
@@ -663,7 +663,7 @@ export function adaptSpec(spec: SessionSpec, ctx: { env?: Record<string, string 
       break;
     }
     case "antigravity": {
-      // D409 (OAR 0.124 docs/runtimes/antigravity.md). Tool denial is refused (the task keeps agy's
+      // D415 (OAR 0.124 docs/runtimes/antigravity.md). Tool denial is refused (the task keeps agy's
       // own tools; no browser place ever comes here: candidates' no_web).
       disallowed = [];
       // agy writes a session's MCP entries, env and headers included, into its conversation
@@ -767,7 +767,7 @@ export function createOarHarnessPort(opts: OarPortOptions = {}): HarnessPort {
       const rt = await load(spec.harness, piVariant(spec));
       if (!rt) throw new Error(`harness ${spec.harness} is not supported`);
       const inst = await rt.installation?.({ env: harnessEnv(spec.harness, { env: opts.env, dataDir }) });
-      // D409: a copy OAR refuses (agy below its floor) says why, not "not installed".
+      // D415: a copy OAR refuses (agy below its floor) says why, not "not installed".
       if (inst?.kind === "unsupported") throw new Error(`harness ${spec.harness} can't run here: ${(inst as { reason?: string }).reason ?? "unsupported"}`);
       if (!inst || inst.kind !== "available") throw new Error(`harness ${spec.harness} is not installed`);
       const liveWindow = spec.model ? liveWindows.get(`${spec.harness} ${spec.model}`) : undefined;

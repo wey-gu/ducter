@@ -9,7 +9,7 @@
 //   DeepSeek Harness: `dsh --version` at or above OAR's floor; signed in = a DeepSeek key in the
 //                     env, Ducter's key file (<dataDir>/keys.env, D102), or DSH's own credential file,
 //                     or (D371) the DeepSeek account its desktop app signed in with
-//   Antigravity:      (D409) `agy --version` at or above OAR's floor (OAR_ANTIGRAVITY_BIN, else `agy`
+//   Antigravity:      (D415) `agy --version` at or above OAR's floor (OAR_ANTIGRAVITY_BIN, else `agy`
 //                     on PATH, else ~/.local/bin/agy, as OAR looks); signed in = `agy models`
 //                     answers (agy's own check, a remote call); a copy too old, one that doesn't
 //                     answer, or only the desktop app is said as `trouble`
@@ -43,9 +43,9 @@ export interface HarnessProbeEnv {
   exists?: (p: string) => boolean;
   /** D156: the pi that ships inside Ducter, when this Ducter runs one (its version); see bundledPiVersion. */
   piBundled?: () => string | undefined;
-  /** D409: a link that is there but points at nothing (default: the file system's). */
+  /** D415: a link that is there but points at nothing (default: the file system's). */
   dangling?: (p: string) => boolean;
-  /** D409: where a Mac's apps are (default /Applications and ~/Applications). */
+  /** D415: where a Mac's apps are (default /Applications and ~/Applications). */
   apps?: string[];
 }
 
@@ -137,7 +137,7 @@ export async function detectAgent(h: HarnessId, o: Pick<HarnessProbeEnv, "exec" 
 export const DSH_MIN = "0.2.1-rc.5";
 
 /**
- * D409: where agy may be, in OAR's order (runtimes/antigravity/installation.js): the override
+ * D415: where agy may be, in OAR's order (runtimes/antigravity/installation.js): the override
  * alone when set; else `agy` on PATH, then the official installer's ~/.local/bin/agy (OAR falls
  * back to it when the PATH copy is too old, so both are looked at).
  */
@@ -149,7 +149,7 @@ export function agyPaths(o: { which: (cmd: string) => string | null; env?: Recor
   return [...new Set([onPath, (o.exists ?? existsSync)(official) ? official : null].filter((p): p is string => !!p))];
 }
 
-/** D409: agy's own version line: a bare stable release, as OAR accepts it (prereleases are refused). */
+/** D415: agy's own version line: a bare stable release, as OAR accepts it (prereleases are refused). */
 export function agyVersion(out: string): string | undefined {
   return /^(\d+\.\d+\.\d+)$/.exec(out.trim())?.[1];
 }
@@ -239,7 +239,7 @@ export async function probeHarnesses(o: HarnessProbeEnv): Promise<DeviceHarness[
     const loggedIn = has(DSH_KEY_ENV) || own.key || own.account;
     return { harness: "deepseek-harness", installed: ok, loggedIn: ok && loggedIn };
   };
-  // D409: agy, as OAR would pick it: the first copy that answers at or above OAR's floor.
+  // D415: agy, as OAR would pick it: the first copy that answers at or above OAR's floor.
   const agy = async (): Promise<RawHarness> => {
     const exists = o.exists ?? existsSync;
     let trouble: RawHarness["trouble"];

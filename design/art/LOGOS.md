@@ -12,7 +12,7 @@ that the owner endorses or partners with Ducter.
 | Codex | OpenAI's mark, the six-band woven knot (Codex is OpenAI's agent; the author chose it over the Codex cloud), in charcoal clay | LobeHub icons (`@lobehub/icons-static-png@1.75.0`, `light/openai.png`) |
 | DeepSeek Harness | DeepSeek's whale, `#4D6BFE` | LobeHub icons, `deepseek-color.svg` (the same whale as `deepseek-ai`'s GitHub avatar) |
 | pi | pi's four-block logo (salmon, teal, butter) | pi's press kit, <https://pi.dev/logo.svg> |
-| Antigravity (D409) | Google Antigravity's arch, its yellow-green, coral and blue blend into pale-blue feet | OAR 0.124 `assets/brands/antigravity.svg` (LobeHub lobe-icons `antigravity-color`), rendered with `rsvg-convert`; picked from two renders (the other added a hole the mark doesn't have; both in `.shots/antigravity/coin-raw/`) |
+| Antigravity (D415) | Google Antigravity's arch, its yellow-green, coral and blue blend into pale-blue feet | OAR 0.124 `assets/brands/antigravity.svg` (LobeHub lobe-icons `antigravity-color`), rendered with `rsvg-convert`; picked from two renders (the other added a hole the mark doesn't have; both in `.shots/antigravity/coin-raw/`) |
 
 ## What the earlier rule was, and what changed
 

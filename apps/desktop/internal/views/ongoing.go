@@ -113,7 +113,7 @@ func (a *App) pastTabs(c *ui.Context) {
 					if on {
 						w = 700
 					}
-					ui.Text(c, tab.label).FontSize(t.SM + 1).FontWeight(w).TextColor(fg).SingleLine().AccessHidden(true)
+					uiText(c, tab.label).FontSize(t.SM + 1).FontWeight(w).TextColor(fg).SingleLine().AccessHidden(true)
 				})
 				if b.Clicked() && !on {
 					ps.tab = tab.key
@@ -170,7 +170,7 @@ func (a *App) ongoingList(c *ui.Context) {
 		ui.Column(c.Key("og-empty")).Padding(t.S6, t.S5).Gap(t.S3).Radius(t.RadiusXL).Border(2, t.Line).BorderStyle(ui.BorderDashed).
 			AlignItems(ui.Center).Children(func() {
 			a.pastPebble(c, "empty-art", "repeat", "", 48)
-			ui.Text(c, a.L.T("og.empty")).FontSize(t.MD).TextColor(t.InkSoft).TextAlign(ui.Center).LineHeight(1.6).MaxWidth(460)
+			uiText(c, a.L.T("og.empty")).FontSize(t.MD).TextColor(t.InkSoft).TextAlign(ui.Center).LineHeight(1.6).MaxWidth(460)
 		})
 		return
 	}
@@ -186,8 +186,8 @@ func (a *App) ongoingList(c *ui.Context) {
 				if i == 0 {
 					ink = t.NeedsYou.Ink
 				}
-				ui.Text(c, names[i]).FontSize(t.XS).FontWeight(600).TextColor(ink)
-				ui.Text(c, itoa(int64(len(sec)))).FontSize(t.XS).FontWeight(500).TextColor(t.Faint).FontFeatures("tnum")
+				uiText(c, names[i]).FontSize(t.XS).FontWeight(600).TextColor(ink)
+				uiText(c, itoa(int64(len(sec)))).FontSize(t.XS).FontWeight(500).TextColor(t.Faint).FontFeatures("tnum")
 			})
 			ui.Column(c.Key("cards")).Gap(t.S2 + 2).Children(func() {
 				for _, it := range sec {
@@ -251,7 +251,7 @@ func (a *App) ongoingCard(c *ui.Context, it *protocol.OngoingItem) {
 			peb.Translate(0, 2*r).Opacity(1 - 0.45*r)
 		})
 		ui.Column(c.Key("main")).Grow(1).Shrink(1).MinWidth(0).Gap(5).Children(func() {
-			title := ui.Text(c, keepWords(autospace(it.Title))).FontSize(t.MD).FontWeight(600).TextColor(t.Ink).SingleLine().MinWidth(0).Tooltip(it.Title)
+			title := uiText(c, keepWords(autospace(it.Title))).FontSize(t.MD).FontWeight(600).TextColor(t.Ink).SingleLine().MinWidth(0).Tooltip(it.Title)
 			if paused {
 				title.TextColor(t.InkSoft)
 			}
@@ -267,13 +267,13 @@ func (a *App) ongoingCard(c *ui.Context, it *protocol.OngoingItem) {
 					a.glyph(c, 14, drawClock(t.InkMuted))
 				}
 				for _, p := range a.ongoingLine(it) {
-					ui.Text(c, p).FontSize(t.SM).TextColor(ink).SingleLine().Shrink(1).MinWidth(0).FontFeatures("tnum")
+					uiText(c, p).FontSize(t.SM).TextColor(ink).SingleLine().Shrink(1).MinWidth(0).FontFeatures("tnum")
 				}
 			})
 			if it.Reviews != nil {
 				ui.Row(c.Key("standing")).Gap(t.S2).AlignItems(ui.Center).MinWidth(0).Children(func() {
 					for _, p := range a.reviewLine(it.Reviews) {
-						ui.Text(c, p).FontSize(t.SM).TextColor(t.Ink).SingleLine().Shrink(1).MinWidth(0).FontFeatures("tnum").Tooltip(p)
+						uiText(c, p).FontSize(t.SM).TextColor(t.Ink).SingleLine().Shrink(1).MinWidth(0).FontFeatures("tnum").Tooltip(p)
 					}
 				})
 			}
@@ -356,7 +356,14 @@ func (a *App) reviewLine(r *protocol.ReviewStanding) []string {
 	} else if r.Drafted > 1 {
 		drafted = a.L.T("og.rev.drafted", r.Drafted)
 	}
-	return nonEmpty(head, drafted)
+	// D413: posted without asking this round, as the person said.
+	posted := ""
+	if r.Posted == 1 {
+		posted = a.L.T("og.rev.posted.1")
+	} else if r.Posted > 1 {
+		posted = a.L.T("og.rev.posted", r.Posted)
+	}
+	return nonEmpty(head, posted, drafted)
 }
 
 // hanTight drops a space between two Chinese characters ("每 45 分钟 看一次"
@@ -421,7 +428,7 @@ func (a *App) ongoingRuns(c *ui.Context, it *protocol.OngoingItem) {
 				}
 			}
 		}
-		ui.Text(c, a.L.T("og.runs", len(it.Runs))).FontSize(t.XS).TextColor(t.Faint).MarginStart(t.S1).SingleLine()
+		uiText(c, a.L.T("og.runs", len(it.Runs))).FontSize(t.XS).TextColor(t.Faint).MarginStart(t.S1).SingleLine()
 	})
 }
 
@@ -449,7 +456,7 @@ func (a *App) ogButton(c *ui.Context, key, label, about string, open bool) (ui.E
 		b.Background(t.Ink.Alpha(0.08))
 	}
 	b.Children(func() {
-		ui.Text(c, label).FontSize(t.SM).FontWeight(700).TextColor(fg).SingleLine().AccessHidden(true)
+		uiText(c, label).FontSize(t.SM).FontWeight(700).TextColor(fg).SingleLine().AccessHidden(true)
 	})
 	return b, b.Clicked()
 }
@@ -461,7 +468,7 @@ func (a *App) ogItem(c *ui.Context, key, label string, danger bool) bool {
 	if danger {
 		ink, hov = t.Failed.Ink, t.Failed.Surface.Alpha(0.6)
 	}
-	it := ui.Text(c.Key("item:"+key), label).FontSize(t.SM).TextColor(ink).Padding(t.S2, t.S3).Radius(t.RadiusXS).
+	it := uiText(c.Key("item:"+key), label).FontSize(t.SM).TextColor(ink).Padding(t.S2, t.S3).Radius(t.RadiusXS).
 		Role(ui.RoleButton).Focusable().Cursor(ui.CursorPointer).Label(label).SingleLine()
 	if it.Hovered() {
 		it.Background(hov)
@@ -628,7 +635,7 @@ func (a *App) ongoingRetime(c *ui.Context, it *protocol.OngoingItem) {
 	t := a.T
 	og := &a.past.og
 	ui.Column(c.Key("retime")).Gap(t.S3).Padding(t.S2, t.S2, t.S1, t.S2).Children(func() {
-		ui.Text(c, a.L.T("og.retime")).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
+		uiText(c, a.L.T("og.retime")).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
 		ui.Row(c.Key("every")).Gap(t.S1 + 2).Wrap().Role(ui.RoleRadioGroup).Children(func() {
 			for _, e := range []string{"day", "weekday", "week", "hours"} {
 				if a.choice(c, "e:"+e, a.L.T("og.e."+e), og.reEvery == e, "") {

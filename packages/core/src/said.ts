@@ -40,7 +40,7 @@ const AGENTS: [HarnessId, string][] = [
   ["codex", "codex"],
   ["deepseek-harness", "deep\\s*seek"],
   ["pi", "(?<![a-z0-9])pi(?![a-z0-9])"],
-  // D409: its own name, its command and the Chinese name people say for it.
+  // D415: its own name, its command and the Chinese name people say for it.
   ["antigravity", "anti[\\s_-]*gravity|(?<![a-z0-9])agy(?![a-z0-9])|反重力"],
 ];
 

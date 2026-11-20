@@ -23,7 +23,7 @@ export function agentRowLook(h: Pick<DeviceHarness, "installed" | "loggedIn" | "
 }
 
 /**
- * D409: what the row says of an agent partly there (its command line too old, broken, or only its
+ * D415: what the row says of an agent partly there (its command line too old, broken, or only its
  * desktop app), and what its one button does then: 更新 (its own updater) or 重新安装.
  */
 export function troubleWords(h: Pick<DeviceHarness, "trouble" | "version">): { word: string; args: string[]; button: "install" | "update" | "reinstall" } | undefined {
@@ -34,7 +34,7 @@ export function troubleWords(h: Pick<DeviceHarness, "trouble" | "version">): { w
   return { word: "ag.trouble.app_only", args: [tr.app], button: "install" };
 }
 
-/** The agents the lend sheet offers to install, and which start checked (Codex and Claude Code; D371: DeepSeek Harness offered, not checked; D409: Antigravity last, not checked). */
+/** The agents the lend sheet offers to install, and which start checked (Codex and Claude Code; D371: DeepSeek Harness offered, not checked; D415: Antigravity last, not checked). */
 export function offerable(hs: readonly DeviceHarness[]): { harness: string; checked: boolean }[] {
   const order = ["codex", "claude-code", "deepseek-harness", "pi", "antigravity"];
   return order

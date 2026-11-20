@@ -106,7 +106,7 @@ func overlaps(a, b ui.Rect) bool {
 // one pebble that shows.
 func hoverPebble(t *testing.T, app *App, tt *ui.Tester, words string) (ui.Rect, ui.Rect) {
 	t.Helper()
-	r, ok := tt.Find(autospace(words))
+	r, ok := tt.Find(unjoin(autospace(words)))
 	if !ok {
 		t.Fatalf("%q isn't on the screen: %q", words, texts(tt))
 	}
@@ -169,7 +169,7 @@ func TestReplyPebblePlacement(t *testing.T) {
 					card := []string{w.find1, w.opening, app.L.T("kind.waiting_on_you"), app.L.T("find.useful"), app.L.T("find.mute"), app.L.T("find.how")}
 					right := r.X + r.W
 					for _, s := range card {
-						if q, ok := tt.Find(autospace(s)); ok {
+						if q, ok := tt.Find(unjoin(autospace(s))); ok {
 							if overlaps(p, q) {
 								t.Errorf("find: the pebble %+v covers %q at %+v", p, s, q)
 							}

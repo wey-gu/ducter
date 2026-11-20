@@ -3,7 +3,7 @@
 // git repos with branches, and work in three of them. For screenshots and manual checks.
 //   DUCTER_PORT=7971 DUCTER_DATA_DIR=/tmp/x DEMO_LANG=zh bun apps/web/demo-newtask.ts
 // DEMO_FAIL=offline|failed: every task_new is refused that way (the card's error line).
-// D409 DEMO_AGY=app_only|too_old|broken|signin|login|ready: Antigravity on the home in that state
+// D415 DEMO_AGY=app_only|too_old|broken|signin|login|ready: Antigravity on the home in that state
 // (its card row; ready: on New task's agent list with its own models and effort menu).
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -83,7 +83,7 @@ const lists: Record<string, ListedModel[]> = {
     { id: "gpt-6.1-sol", label: "GPT-6.1-Sol", efforts: [...E, "ultra"], defaultEffort: "low" },
     { id: "gpt-6-luna", label: "GPT-6-Luna", efforts: E, defaultEffort: "medium" },
   ],
-  // D409: an Antigravity listing as OAR 0.124 describes it (Flash with low/medium/high; Pro's menu read from its own).
+  // D415: an Antigravity listing as OAR 0.124 describes it (Flash with low/medium/high; Pro's menu read from its own).
   antigravity: [
     { id: "gemini-3.8-flash", label: "Gemini 3.8 Flash", efforts: ["low", "medium", "high"] },
     { id: "gemini-3.8-pro", label: "Gemini 3.8 Pro", efforts: ["low", "high"] },

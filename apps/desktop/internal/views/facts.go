@@ -28,7 +28,7 @@ func (a *App) facts(c *ui.Context, size float32, col ui.Color, parts ...string) 
 	ui.Row(c).Gap(t.S3).Wrap().AlignItems(ui.Center).MinWidth(0).Children(func() {
 		for _, p := range parts {
 			if strings.TrimSpace(p) != "" {
-				ui.Text(c, p).FontSize(size).TextColor(col).MinWidth(0)
+				uiText(c, p).FontSize(size).TextColor(col).MinWidth(0)
 			}
 		}
 	})

@@ -87,14 +87,14 @@ func (a *App) limitCard(c *ui.Context, w *protocol.Waiter) {
 			ui.Box(c.Key("ring")).Size(size, size).Shrink(0).Role(ui.RoleImage).Label(a.limitState(w)).Draw(a.drawLookRing(frac, breath, false, 0)).Children(func() {
 				if inside != "" {
 					ui.Column(c).Grow(1).Justify(ui.Center).AlignItems(ui.Center).Children(func() {
-						ui.Text(c, inside).FontSize(t.XS).FontWeight(700).TextColor(t.InkSoft).FontFeatures("tnum").SingleLine().AccessHidden(true)
+						uiText(c, inside).FontSize(t.XS).FontWeight(700).TextColor(t.InkSoft).FontFeatures("tnum").SingleLine().AccessHidden(true)
 					})
 				}
 			})
 			ui.Column(c.Key("words")).Gap(4).MinWidth(0).Children(func() {
-				ui.Text(c, a.L.T("limit.head", harnessName(l.Harness))).FontSize(t.MD).FontWeight(600).TextColor(t.Ink)
+				uiText(c, a.L.T("limit.head", harnessName(l.Harness))).FontSize(t.MD).FontWeight(600).TextColor(t.Ink)
 				if back != "" {
-					ui.Text(c, back).FontSize(t.SM).TextColor(t.InkSoft).FontFeatures("tnum")
+					uiText(c, back).FontSize(t.SM).TextColor(t.InkSoft).FontFeatures("tnum")
 				}
 			})
 		})
@@ -112,7 +112,7 @@ func (a *App) limitCard(c *ui.Context, w *protocol.Waiter) {
 			on := w.LimitAuto
 			// A quiet line with its switch at the right, not a settings row.
 			ui.Row(c.Key("limitauto")).Gap(t.S3).AlignItems(ui.Center).Padding(0, 4).Children(func() {
-				ui.Text(c, a.L.T("limit.auto")).FontSize(t.SM).TextColor(t.InkMuted).Shrink(1).MinWidth(0).AccessHidden(true)
+				uiText(c, a.L.T("limit.auto")).FontSize(t.SM).TextColor(t.InkMuted).Shrink(1).MinWidth(0).AccessHidden(true)
 				if a.switchControl(c, "limitauto", a.L.T("limit.auto"), &on) {
 					a.send(protocol.SettingsSet{T: "settings_set", Patch: protocol.SettingsPatch{LimitHandoff: &on}})
 				}
@@ -170,9 +170,9 @@ func (a *App) limitGroupHead(c *ui.Context, g limitGroup) {
 	_, f := a.limitNext(g.w)
 	ui.Row(c.Key("limithead:"+g.harness)).Gap(6).AlignItems(ui.Center).Padding(6, 14).Children(func() {
 		ui.Box(c.Key("ring")).Size(12, 12).Shrink(0).AccessHidden(true).Draw(drawRing(t.InkMuted.Alpha(0.5), t.Waiting.Ink, f))
-		ui.Text(c, words).FontSize(t.XS).FontWeight(600).TextColor(t.InkSoft).FontFeatures("tnum").SingleLine()
+		uiText(c, words).FontSize(t.XS).FontWeight(600).TextColor(t.InkSoft).FontFeatures("tnum").SingleLine()
 		ui.Box(c).Grow(1)
-		ui.Text(c, a.L.T("limit.group.n", len(g.tasks))).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
+		uiText(c, a.L.T("limit.group.n", len(g.tasks))).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
 	})
 }
 

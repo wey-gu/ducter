@@ -210,7 +210,7 @@ func (a *App) benchSimView(c *ui.Context, task *store.Task, b *benchTask, sim *p
 				} else if s.err != "" {
 					line = s.err
 				}
-				ui.Text(c, line).FontSize(t.SM).TextColor(t.InkMuted)
+				uiText(c, line).FontSize(t.SM).TextColor(t.InkMuted)
 				return
 			}
 			ph := float32(a.winH - ChromeH - 230)
@@ -290,7 +290,7 @@ func (a *App) benchSimView(c *ui.Context, task *store.Task, b *benchTask, sim *p
 			}
 		})
 	}
-	ui.Text(c, a.L.T("wb.sim.viewonly", where)).FontSize(t.XS).TextColor(t.InkMuted).Wrap()
+	uiText(c, a.L.T("wb.sim.viewonly", where)).FontSize(t.XS).TextColor(t.InkMuted).Wrap()
 }
 
 func toggleStr(cur, v string) string {

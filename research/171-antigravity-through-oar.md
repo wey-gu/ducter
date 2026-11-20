@@ -1,6 +1,6 @@
-# 167: Antigravity through OAR 0.124, and the 0.95.1 → 0.124.0 bump
+# 171: Antigravity through OAR 0.124, and the 0.95.1 → 0.124.0 bump
 
-> 2026-11-20 · For D409. Sources: `@botiverse/oar` 0.124.0 as installed (its `dist/` and
+> 2026-11-20 · For D415. Sources: `@botiverse/oar` 0.124.0 as installed (its `dist/` and
 > `docs/runtimes/antigravity.md`), the OAR repository's history `v0.95.1..v0.124.0` (175
 > commits under `packages/oar`, read only, cloned into the session scratchpad), Google's
 > `https://antigravity.google/cli/install.sh` and its release manifests (read, never run),
@@ -98,7 +98,7 @@ So "installed" here means the app, and the card must say that plainly.
 
 OAR runs agy's own login and its own ACP server rather than the credential, and leaves the call
 to the host and the user (decided for Raft by its owner). Ducter does the same, and says it on
-the card before the sign-in (D409).
+the card before the sign-in (D415).
 
 ## Implications for Ducter
 
@@ -115,7 +115,7 @@ the card before the sign-in (D409).
    where OAR looks; too old → its own `agy update`; broken → replaced; the app alone → said.
 6. **Resume elsewhere** falls back to the runner's existing fresh start from the brief and saved
    progress (`resume_rejected`).
-7. **Live checks owed** (agy not run here): the list in D409 and `design/todo.md`.
+7. **Live checks owed** (agy not run here): the list in D415 and `design/todo.md`.
 
 **Summary.** OAR 0.124 drives Google's `agy` CLI ≥ 1.5.0 over native ACP with steer, images,
 per-model effort, resume in the same folder, credential-free MCP, its own Google sign-in and

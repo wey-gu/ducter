@@ -165,7 +165,7 @@ export interface NmemBridgeOptions {
   places?: BridgePlace[];
   wide?: boolean;
   bin?: string; // default NMEM_CLI_PATH or "nmem"
-  timeoutMs?: number; // per call, default 20 s
+  timeoutMs?: number; // per call, default CALL_TIMEOUT_MS (D409)
   maxOpen?: number; // bodies opened per check, default 5
   inboxPages?: number; // D367: inbox pages read per inbox, default 25 (20 messages each in nmem 0.10.120)
   /**
@@ -227,6 +227,13 @@ export const transient = (e: MailboxError) => e.http === 503 || e.http === 429 |
 const GENERIC_AGENT = /^bridge agent$/i;
 
 const MAX_TEXT = 4000;
+/**
+ * D409: how long one nmem call may take before it is given up. nmem 0.10.121's identity inbox reads
+ * every authorized Space in one call: against Mem Cloud with eight Spaces it took 44 to 52 s, and
+ * `contacts` 31 to 40 s (VERIFIED, the live trial of 2026-11-20, research/161 §9). The old 20 s
+ * killed every inbox read, so nothing sent to the partner was ever seen. Twice the slowest seen.
+ */
+export const CALL_TIMEOUT_MS = 120_000;
 const clip = (s: string, n: number) => (s.length <= n ? s : s.slice(0, n - 1) + "…");
 const str = (v: unknown): string | undefined => (typeof v === "string" && v.trim() ? v.trim() : typeof v === "number" ? String(v) : undefined);
 
@@ -433,6 +440,24 @@ export function mergeInboxPages(a: any, b: any): any {
   };
   const out: any = { ...a, ...b };
   for (const f of ["messages", "incoming"]) if (Array.isArray(a?.[f]) || Array.isArray(b?.[f])) out[f] = join(a?.[f], b?.[f]);
+  // D409: nmem 0.10.121 reports each Space's read under `spaces[]` (our sent mail's read status in its
+  // `outgoing`), and a later page lists only the Spaces that had more: every Space stays, the later
+  // page's word on it wins, and its `outgoing` keeps what an earlier page said.
+  if (Array.isArray(a?.spaces) || Array.isArray(b?.spaces)) {
+    const sid = (x: any) => str(x?.space_id) ?? str(x?.space?.id);
+    const by = new Map<string, any>();
+    const rest: any[] = [];
+    for (const x of [...(Array.isArray(a?.spaces) ? a.spaces : []), ...(Array.isArray(b?.spaces) ? b.spaces : [])]) {
+      const k = sid(x);
+      if (!k) {
+        rest.push(x);
+        continue;
+      }
+      const was = by.get(k);
+      by.set(k, was ? { ...was, ...x, outgoing: [...(Array.isArray(was.outgoing) ? was.outgoing : []), ...(Array.isArray(x?.outgoing) ? x.outgoing : [])] } : x);
+    }
+    out.spaces = [...by.values(), ...rest];
+  }
   for (const f of ["outgoing", "sent"])
     if (Array.isArray(a?.[f]) || Array.isArray(b?.[f])) {
       const later = Array.isArray(b?.[f]) ? b[f] : [];
@@ -444,7 +469,10 @@ export function mergeInboxPages(a: any, b: any): any {
 
 /** Read status of our own sent messages, from the inbox's outgoing refresh (when present). */
 export function outgoingReads(j: any): Record<string, boolean> | undefined {
-  const list = Array.isArray(j?.outgoing) ? j.outgoing : Array.isArray(j?.sent) ? j.sent : undefined;
+  const top = Array.isArray(j?.outgoing) ? j.outgoing : Array.isArray(j?.sent) ? j.sent : undefined;
+  // D409: nmem 0.10.121 (VERIFIED 2026-11-20): `spaces[].outgoing`, one list per Space, none at the top.
+  const per = Array.isArray(j?.spaces) ? j.spaces.filter((x: any) => Array.isArray(x?.outgoing)).flatMap((x: any) => x.outgoing) : [];
+  const list = top || per.length ? [...(top ?? []), ...per] : undefined;
   if (!list) return undefined;
   const out: Record<string, boolean> = {};
   for (const m of list) {
@@ -531,7 +559,7 @@ function operationIn(text: string): string | undefined {
 export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
   const env = opts.env ?? process.env;
   const bin = opts.bin ?? env.NMEM_CLI_PATH ?? "nmem";
-  const timeoutMs = opts.timeoutMs ?? 20_000;
+  const timeoutMs = opts.timeoutMs ?? CALL_TIMEOUT_MS;
   const maxOpen = opts.maxOpen ?? 5;
   const inboxPages = Math.max(1, opts.inboxPages ?? 25);
   // D334: the home's own context first; every other Space it reads after it, each once.

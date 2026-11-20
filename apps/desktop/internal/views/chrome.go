@@ -69,7 +69,7 @@ const barText = 14
 // in muted ink at the bar's one size.
 func (a *App) crumb(c *ui.Context, label string, to Route) {
 	t := a.T
-	l := ui.Text(c.Key("crumb:"+label), label).FontSize(barText).FontWeight(600).TextColor(t.InkMuted).Cursor(ui.CursorPointer).
+	l := uiText(c.Key("crumb:"+label), label).FontSize(barText).FontWeight(600).TextColor(t.InkMuted).Cursor(ui.CursorPointer).
 		Role(ui.RoleButton).Focusable().Padding(t.S1+2, t.S2).Radius(t.RadiusSM).SingleLine().Shrink(0)
 	// A text button of the chrome: muted ink, the secondary hover tint.
 	switch {
@@ -81,14 +81,14 @@ func (a *App) crumb(c *ui.Context, label string, to Route) {
 	if l.Clicked() {
 		a.Route = to
 	}
-	ui.Text(c, "/").FontSize(barText).TextColor(t.Faint).Shrink(0).AccessHidden(true)
+	uiText(c, "/").FontSize(barText).TextColor(t.Faint).Shrink(0).AccessHidden(true)
 }
 
 // chromeTitle is the current level's name in the bar (D270): the same size
 // and weight as the crumbs before it, in full ink, and not a button.
 func (a *App) chromeTitle(c *ui.Context, title string) ui.Element {
 	t := a.T
-	return ui.Text(c.Key("crumb:here"), autospace(title)).FontSize(barText).FontWeight(600).TextColor(t.Ink).
+	return uiText(c.Key("crumb:here"), autospace(title)).FontSize(barText).FontWeight(600).TextColor(t.Ink).
 		Padding(t.S1+2, t.S2).SingleLine().Shrink(1).MinWidth(0)
 }
 
@@ -166,6 +166,8 @@ func (a *App) placeSegments(c *ui.Context, here Route) {
 	}{
 		{"devices", a.L.T("nav.devices"), a.L.T("nav.devices.label"), drawDevices, here == RouteDevices, a.OpenDevices},
 		{"onhand", a.L.T("nav.onhand"), a.L.T("nav.onhand"), drawOnHand, here == RouteOnHand, func() { a.Route = RouteOnHand; a.markRead() }},
+		// D410: 你的小应用 / Your apps, the app window mark.
+		{"apps", a.L.T("apps.place"), a.L.T("apps.title"), drawAppsMark, here == RouteApps, a.OpenApps},
 		{"settings", a.L.T("nav.settings"), a.L.T("nav.settings"), drawGear, inSettings, a.OpenSettings},
 	}
 	const pad, seg = float32(3), float32(28)

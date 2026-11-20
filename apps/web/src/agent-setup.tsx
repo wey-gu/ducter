@@ -109,7 +109,7 @@ export function AgentRow({ dv, h, pick }: { dv: DeviceView; h: DeviceHarness; pi
   const look = agentRowLook(h);
   const name = harnessName(h.harness);
   const awake = dv.state === "awake";
-  // D409: partly there (too old, broken, only the app): said as what it is, its button as what it does.
+  // D415: partly there (too old, broken, only the app): said as what it is, its button as what it does.
   const tr = look === "install" || look === "missing" ? troubleWords(h) : undefined;
   const word =
     look === "ready" ? t("ag.ready")
@@ -144,9 +144,9 @@ export function AgentRow({ dv, h, pick }: { dv: DeviceView; h: DeviceHarness; pi
       {look === "failed" && h.setup?.detail && <div class="ag-detail">{h.setup.detail}</div>}
       {/* D371: its command line is big; say so before the tap. */}
       {(look === "install" || look === "queued") && h.harness === "deepseek-harness" && <div class="ag-detail">{t("ag.dsh.size")}</div>}
-      {/* D409: where agy goes (its own installer's place, not Ducter's folder), before the tap. */}
+      {/* D415: where agy goes (its own installer's place, not Ducter's folder), before the tap. */}
       {(look === "install" || look === "queued") && h.harness === "antigravity" && tr?.button !== "update" && <div class="ag-detail">{t("ag.agy.size")}</div>}
-      {/* D409: Google's own terms, said before the person signs in with their Google account. */}
+      {/* D415: Google's own terms, said before the person signs in with their Google account. */}
       {(look === "signin" || (look === "login" && h.login?.state !== "done")) && h.harness === "antigravity" && <div class="ag-detail">{t("ag.agy.terms")}</div>}
       {look === "login" && <LoginPanel dv={dv} h={h} />}
     </div>

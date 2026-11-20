@@ -44,7 +44,7 @@ const HARNESS_CONFIG: Record<HarnessId, RegExp> = {
   codex: /^(?:CODEX_|OPENAI_|BROWSER_USE_ACCESS_(?:PIPE_PATH|EXECUTOR_ID|VERIFYING_IDENTITY)$)/,
   pi: /^PI_/,
   "deepseek-harness": /^DSH_/,
-  // D409: where agy is and keeps its state (OAR_ANTIGRAVITY_BIN, GEMINI_HOME) and its own AGY_* switches.
+  // D415: where agy is and keeps its state (OAR_ANTIGRAVITY_BIN, GEMINI_HOME) and its own AGY_* switches.
   antigravity: /^(?:OAR_ANTIGRAVITY_BIN$|GEMINI_HOME$|AGY_|ANTIGRAVITY_)/,
 };
 

@@ -238,7 +238,7 @@ export const CLAUDE_SUMMARY_RESERVE = 20_000;
 export const CLAUDE_COMPACT_BUFFER = 13_000;
 
 /**
- * D409: Antigravity's CLI as OAR 0.124 drives it (runtimes/antigravity, docs/runtimes/antigravity.md).
+ * D415: Antigravity's CLI as OAR 0.124 drives it (runtimes/antigravity, docs/runtimes/antigravity.md).
  *  - minVersion: OAR's floor (ANTIGRAVITY_MINIMUM_VERSION): a stable agy with native ACP; below
  *    it OAR refuses sessions and readers, but `agy update` still runs on that copy;
  *  - bin: where the official installer puts it (OAR looks there even when it isn't on PATH);
@@ -261,7 +261,7 @@ export const ANTIGRAVITY = {
   signedOut: /please sign in/i,
 } as const;
 
-/** D409: the manifest's platform name for this machine (undefined: no agy build for it). */
+/** D415: the manifest's platform name for this machine (undefined: no agy build for it). */
 export function agyPlatform(platform: string, arch: string, musl = false): string | undefined {
   const os = platform === "darwin" ? "darwin" : platform === "linux" ? "linux" : undefined;
   const a = arch === "arm64" || arch === "aarch64" ? "arm64" : arch === "x64" || arch === "amd64" ? "amd64" : undefined;
@@ -315,7 +315,7 @@ export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
       value: { supported: true, how: "hooks.PreCompact (matcher manual|auto): exit 0 stdout is appended as custom compact instructions; exit 2 blocks compaction" },
       evidence: cc("binary: the hook catalog's own description of PreCompact"),
     },
-    // OAR 0.124 (D409): a `status: compacting` frame also becomes compaction_started, once per agent.
+    // OAR 0.124 (D415): a `status: compacting` frame also becomes compaction_started, once per agent.
     compactionEvents: { value: { started: true, ended: true }, evidence: { kind: "VERIFIED", how: "OAR 0.124.0 shared/stream-json/projection.js (read): compact_boundary becomes compaction_ended; a system status \"compacting\" frame compaction_started (OAR #984); not run live", date: "2026-11-20", version: "oar 0.124.0" } },
     contextReport: { value: "the last request's input + cache read + cache write (OAR contextUsage); unknown right after a compaction", evidence: cc("live, research/11 and design/context.md") },
     toolSearch: {
@@ -593,7 +593,7 @@ export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
       },
     },
   },
-  // D409: never run by Ducter yet; every fact is OAR 0.124's own (its docs and shipped source).
+  // D415: never run by Ducter yet; every fact is OAR 0.124's own (its docs and shipped source).
   antigravity: {
     harness: "antigravity",
     // agy prints a bare release ("1.5.13"); OAR accepts only that line (version.js).

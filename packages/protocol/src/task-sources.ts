@@ -180,6 +180,8 @@ export interface ReviewStanding {
   again: number;
   /** Of those, unchanged since they were reviewed. */
   same: number;
+  /** D413: posted this round without asking, under a standing permission the person said. */
+  posted?: number;
   /** Drafted reviews not yet sent (on the round's card). */
   drafted: number;
   at: string;

@@ -13,7 +13,7 @@
 | Claude Code | 2.1.319–2.1.322 | env `CLAUDE_CODE_AUTO_COMPACT_WINDOW` (100K–1M) | env `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE`: min(⌊(W − 20K) × pct⌋, W − 33K) | env `CLAUDE_CODE_DISABLE_1M_CONTEXT=1` |
 | Codex | 0.167.0–0.169.1 (D352) | `-c model_context_window` (never above the model's own window) | `-c model_auto_compact_token_limit` (clamped to 90% of the window, INFERRED) | n/a |
 | pi | 1.4.0–1.5.1 | none per session | settings.json `compaction.reserveTokens` only (DOCUMENTED) | n/a |
-| Antigravity | 1.5.0–1.5.12, OAR's own range (D409; not run by Ducter) | none: the model's own (1M on a Gemini account) | none: agy's own | n/a |
+| Antigravity | 1.5.0–1.5.12, OAR's own range (D415; not run by Ducter) | none: the model's own (1M on a Gemini account) | none: agy's own | n/a |
 | DeepSeek Harness | 0.2.2-rc.1 (D177) | none: the model's window (1M for both official models) | profile layer `compaction-basic.thresholdRatio` (+ `retainTokens`), in a Ducter-owned home only; VERIFIED live | n/a |
 
 ## Claude Code 2.1.319–2.1.322
@@ -31,7 +31,7 @@
 - **Settings.** `idleCompaction`, `precomputeCompactionEnabled` (binary).
 - **PreCompact hook.** `hooks.PreCompact` (matcher `manual` / `auto`): exit 0 stdout is
   appended to the compact instructions; exit 2 blocks compaction (binary's hook catalog).
-- **Events through OAR 0.124.0 (D409).** `compact_boundary` becomes `compaction_ended`; a system
+- **Events through OAR 0.124.0 (D415).** `compact_boundary` becomes `compaction_ended`; a system
   `status: compacting` frame becomes `compaction_started`, once per agent (OAR #984; read in
   OAR's source, not run live). Through 0.95.1 there was no `compaction_started`.
 - **Context reading.** The last request's input + cache read + cache write; unknown right
@@ -95,7 +95,7 @@ Gotcha found here: under Bun 1.3.1 a host that opens and closes several pi RPC s
 SIGKILLed after a few (the eval died after 2–9 scenarios, every time; no `process.kill` from the
 host). Under the pinned Bun 1.4.4 the same runs finish. Ducter ships 1.4.4; run evals with it.
 
-## Antigravity (D409, research/167): OAR 0.124's facts, not run by Ducter
+## Antigravity (D415, research/171): OAR 0.124's facts, not run by Ducter
 
 - **Tasks only.** OAR refuses `disallowedTools`, `systemPrompt` and `userConfiguration:
   "exclude"`, so no read-only partner, one-shot or quick web look runs there; it never takes a

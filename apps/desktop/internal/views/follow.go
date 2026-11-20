@@ -202,7 +202,7 @@ func (a *App) newDivider(c *ui.Context) {
 	label := a.L.T("conv.divider")
 	ui.Row(c.Key("newdivider")).AlignItems(ui.Center).Gap(t.S2+2).Padding(t.S3, 0, t.S2, 0).Role(ui.RoleSeparator).Label(label).Children(func() {
 		ui.Box(c).Grow(1).Height(1).Background(t.Accent.Alpha(0.35))
-		ui.Text(c, label).FontSize(t.XS).FontWeight(700).TextColor(t.Accent).SingleLine().Unselectable()
+		uiText(c, label).FontSize(t.XS).FontWeight(700).TextColor(t.Accent).SingleLine().Unselectable()
 		ui.Box(c).Grow(1).Height(1).Background(t.Accent.Alpha(0.35))
 	})
 }
@@ -254,7 +254,7 @@ func (a *App) wayBack(c *ui.Context, rows []row) {
 		b.Children(func() {
 			ui.Box(c).Size(16, 16).Draw(drawDown(t.Accent))
 			if words != "" {
-				ui.Text(c.Key("n:"+words), words).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine().Unselectable()
+				uiText(c.Key("n:"+words), words).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine().Unselectable()
 			}
 		})
 		if b.Clicked() {

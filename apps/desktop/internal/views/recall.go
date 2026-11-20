@@ -113,13 +113,13 @@ func (a *App) recalledUnder(c *ui.Context, seq int64) {
 
 func (a *App) recallCard(c *ui.Context, key string, r *store.Recalled) {
 	t := a.T
-	ui.Text(c, a.L.T("recall.title")).FontSize(t.XS).FontWeight(800).TextColor(t.InkMuted)
-	ui.Text(c, autospace(r.Title)).FontSize(t.MD).FontWeight(700).LineHeight(a.leading(1.4)).TextColor(t.Ink)
+	uiText(c, a.L.T("recall.title")).FontSize(t.XS).FontWeight(800).TextColor(t.InkMuted)
+	uiText(c, autospace(r.Title)).FontSize(t.MD).FontWeight(700).LineHeight(a.leading(1.4)).TextColor(t.Ink)
 	// Who it is from and when: two facts, two elements (D291).
 	ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Wrap().Children(func() {
-		ui.Text(c, recallFrom(a.L, r.MemoryRecalled)).FontSize(t.SM).TextColor(t.InkSoft)
+		uiText(c, recallFrom(a.L, r.MemoryRecalled)).FontSize(t.SM).TextColor(t.InkSoft)
 		if d := recallDate(a.L.Lang, r.Date, a.Now()); d != "" {
-			ui.Text(c, d).FontSize(t.SM).TextColor(t.InkMuted)
+			uiText(c, d).FontSize(t.SM).TextColor(t.InkMuted)
 		}
 	})
 	a.note(c, a.L.T("recall.why"))
@@ -128,7 +128,7 @@ func (a *App) recallCard(c *ui.Context, key string, r *store.Recalled) {
 		if r.By == "tool" && r.From != "" {
 			ask = a.L.T("recall.forget.tool", r.Title, r.From)
 		}
-		ui.Text(c, ask).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.Ink)
+		uiText(c, ask).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.Ink)
 		ui.Row(c).Gap(t.S1).AlignItems(ui.Center).Children(func() {
 			if a.quietButton(c, key+":keep", a.L.T("mem.forget.keep"), r.Title, false, 0) {
 				a.recall.asking = false
@@ -186,7 +186,7 @@ func (a *App) learnedLine(c *ui.Context, key string, n *protocol.Finds) {
 			if n.Learned.Count > 1 {
 				line = a.L.T("learned.line", strconv.Itoa(n.Learned.Count))
 			}
-			ui.Text(c, line).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkSoft).MinWidth(0).Shrink(1)
+			uiText(c, line).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkSoft).MinWidth(0).Shrink(1)
 			chev := 1
 			if open {
 				chev = 2
@@ -239,7 +239,7 @@ func (a *App) learnedCard(c *ui.Context, key string) {
 		if a.recall.said != "" {
 			ui.Row(c).Gap(t.S1 + 2).AlignItems(ui.Center).Children(func() {
 				a.glyph(c, 16, drawCheck(t.Done.Ink))
-				ui.Text(c, a.recall.said).FontSize(t.SM).TextColor(t.InkSoft)
+				uiText(c, a.recall.said).FontSize(t.SM).TextColor(t.InkSoft)
 			})
 		}
 		rows := a.learnedRows()
@@ -280,7 +280,7 @@ func (a *App) learnedRow(c *ui.Context, n protocol.Noted) {
 				}
 			})
 		case rs.forgetAsk == n.Seq:
-			ui.Text(c, a.L.T("mem.forget.ask", title)).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.Ink)
+			uiText(c, a.L.T("mem.forget.ask", title)).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.Ink)
 			ui.Row(c).Gap(t.S1).AlignItems(ui.Center).Children(func() {
 				if a.quietButton(c, key+":keep", a.L.T("mem.forget.keep"), title, false, 0) {
 					rs.forgetAsk = 0
@@ -291,12 +291,12 @@ func (a *App) learnedRow(c *ui.Context, n protocol.Noted) {
 				}
 			})
 		default:
-			ui.Text(c, autospace(title)).FontSize(t.MD).LineHeight(a.leading(1.45)).TextColor(t.Ink)
+			uiText(c, autospace(title)).FontSize(t.MD).LineHeight(a.leading(1.45)).TextColor(t.Ink)
 			ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Wrap().Children(func() {
 				checked := n.Confirmed || rs.confirmed[n.Seq]
 				fixed := n.Corrected || rs.fixed[n.Seq] != ""
 				if fixed {
-					ui.Text(c, a.L.T("learned.fixed")).FontSize(t.SM).TextColor(t.InkMuted)
+					uiText(c, a.L.T("learned.fixed")).FontSize(t.SM).TextColor(t.InkMuted)
 				} else if checked {
 					a.markIn(c, drawCheck, t.Done.Ink, a.L.T("learned.checked"), t.InkMuted)
 				}

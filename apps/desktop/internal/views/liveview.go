@@ -53,11 +53,11 @@ func (a *App) signInButtons(c *ui.Context, d *store.DecisionState, st decisionSt
 		}
 		ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
 			a.glyph(c, 16, drawCheck(t.InkMuted))
-			ui.Text(c, msg).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
+			uiText(c, msg).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
 		})
 		return
 	}
-	ui.Text(c, a.L.T("signin.why")).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft)
+	uiText(c, a.L.T("signin.why")).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft)
 	ui.Row(c.Key("signin:" + d.DecisionID)).Gap(t.S3).Wrap().AlignItems(ui.Center).Children(func() {
 		if a.buttonFor(c, a.L.T("signin.later"), site, btnSecondary, st.height, st.quietBg) {
 			a.Decide(d.DecisionID, "hold", "")
@@ -361,7 +361,7 @@ func (a *App) liveView(c *ui.Context) {
 						a.live.editing, a.live.addr = true, redact.Text(lv.URL)
 					}
 				} else {
-					ui.Text(c, host).FontSize(t.MD).FontWeight(800).SingleLine()
+					uiText(c, host).FontSize(t.MD).FontWeight(800).SingleLine()
 				}
 				ui.Row(c).Gap(6).AlignItems(ui.Center).Children(func() {
 					if !lv.Try() && !watch {
@@ -384,7 +384,7 @@ func (a *App) liveView(c *ui.Context) {
 			w := t.State("blocked")
 			ui.Row(c.Key("live-band")).Gap(6).Justify(ui.Center).AlignItems(ui.Center).Padding(t.S2, t.S4).Background(w.Surface).Role(ui.RoleStatus).Children(func() {
 				a.glyph(c, 14, drawEyeShut(w.Ink))
-				ui.Text(c, a.L.T("live.yourturn")).FontSize(t.SM).TextColor(w.Ink)
+				uiText(c, a.L.T("live.yourturn")).FontSize(t.SM).TextColor(w.Ink)
 			})
 		}
 		align := ui.Start
@@ -394,13 +394,13 @@ func (a *App) liveView(c *ui.Context) {
 		ui.Row(c).Grow(1).MinHeight(0).Justify(ui.Center).AlignItems(align).Background(t.SurfaceSunken).Children(func() {
 			if a.live.bmp == nil {
 				if watch && lv.Open {
-					ui.Text(c, a.L.T("live.nopage")).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5).TextAlign(ui.Center).MaxWidth(360).Margin(t.S6, t.S4, 0, t.S4)
+					uiText(c, a.L.T("live.nopage")).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5).TextAlign(ui.Center).MaxWidth(360).Margin(t.S6, t.S4, 0, t.S4)
 					return
 				}
 				if !a.live.at.IsZero() && a.Now().Sub(a.live.at) >= liveStuckAfter {
 					// No page: say so, and offer the same open again.
 					ui.Column(c.Key("live-stuck")).Gap(t.S3).AlignItems(ui.Center).MaxWidth(420).Margin(t.S6, t.S4, 0, t.S4).Children(func() {
-						ui.Text(c, a.L.T("live.stuck", a.liveDevice(lv))).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(1.5).TextAlign(ui.Center)
+						uiText(c, a.L.T("live.stuck", a.liveDevice(lv))).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(1.5).TextAlign(ui.Center)
 						if a.buttonFor(c, a.L.T("live.retry"), lv.Site, btnSecondary, t.ControlSM, t.SurfaceSunken) {
 							a.retryLive(lv)
 						}
@@ -412,7 +412,7 @@ func (a *App) liveView(c *ui.Context) {
 				if what == "" && lv.Task != nil {
 					what = lv.Task.Title
 				}
-				ui.Text(c, a.L.T("live.opening", what)).FontSize(t.SM).TextColor(t.InkMuted).Margin(t.S6, 0, 0, 0)
+				uiText(c, a.L.T("live.opening", what)).FontSize(t.SM).TextColor(t.InkMuted).Margin(t.S6, 0, 0, 0)
 				return
 			}
 			pw, ph := float32(lv.Width), float32(lv.Height)
@@ -482,7 +482,7 @@ func (a *App) liveView(c *ui.Context) {
 						ui.Box(c.Key("live-pulse")).Size(8, 8).Shrink(0).Radius(4).Background(t.State("working").Dot)
 					}
 					if line != "" {
-						ui.Text(c, line).FontSize(t.SM).TextColor(col).SingleLine()
+						uiText(c, line).FontSize(t.SM).TextColor(col).SingleLine()
 					}
 				})
 				if mine {
@@ -494,7 +494,7 @@ func (a *App) liveView(c *ui.Context) {
 				}
 			case lv.Try():
 				// Try it has nothing to answer: what this is, and Done.
-				ui.Text(c, a.L.T("live.try.note", a.liveDevice(lv))).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(1.45).Grow(1).MinWidth(0)
+				uiText(c, a.L.T("live.try.note", a.liveDevice(lv))).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(1.45).Grow(1).MinWidth(0)
 				if a.buttonFor(c, a.L.T("live.done"), host, btnPrimary, t.ControlMD, t.Bg) {
 					a.CloseLive(true)
 				}

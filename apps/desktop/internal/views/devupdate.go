@@ -216,7 +216,7 @@ func (a *App) cardName(c *ui.Context, id, name, real string, renamable bool) {
 			if a.button(c, a.L.T("device.rename.cancel"), btnText, t.ControlSM, t.Surface) {
 				r.device = ""
 			}
-			ui.Text(c, a.L.T("device.rename.keys")).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
+			uiText(c, a.L.T("device.rename.keys")).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
 		})
 		switch r.failed {
 		case "":
@@ -301,7 +301,7 @@ func (a *App) checkNow(c *ui.Context, device string) {
 	t := a.T
 	d := a.devState()
 	if d.card.checking {
-		ui.Text(c, a.L.T("devup.checking")).FontSize(t.SM).TextColor(t.InkMuted)
+		uiText(c, a.L.T("devup.checking")).FontSize(t.SM).TextColor(t.InkMuted)
 		return
 	}
 	if a.quietButton(c, "checknow:"+device, a.L.T("devup.checknow"), "", false, 0) {
@@ -459,6 +459,7 @@ func (a *App) workRestarting(id string) bool {
 // opens and checks.
 func (a *App) updateThisMac() {
 	if a.Updates != nil && a.Updates.Status().State == update.Ready && a.RestartToUpdate != nil {
+		a.restartClicked = a.Now()
 		a.RestartToUpdate()
 		return
 	}
@@ -470,7 +471,7 @@ func (a *App) disconnectConfirm(c *ui.Context, id, name, means string) {
 	t := a.T
 	d := a.devState()
 	ui.Column(c.Key("cut:"+id)).Gap(t.S2).Margin(t.S2, 0, 0, 0).Padding(t.S3).Radius(t.RadiusMD).Background(t.Bg).Children(func() {
-		ui.Text(c, a.L.T("device.disconnect.ask", name)).FontSize(t.SM).FontWeight(800).LineHeight(1.4)
+		uiText(c, a.L.T("device.disconnect.ask", name)).FontSize(t.SM).FontWeight(800).LineHeight(1.4)
 		a.note(c, a.L.T(means))
 		ui.Row(c).Gap(t.S2).Children(func() {
 			if a.buttonFor(c, a.L.T("device.disconnect.ok"), name, btnSecondary, t.ControlSM, t.Bg) {

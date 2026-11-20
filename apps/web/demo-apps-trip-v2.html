@@ -1,0 +1,117 @@
+<main class="k-app" id="app">
+  <section class="k-sum">
+    <span class="k-sum-label" id="sumLabel"></span>
+    <span class="k-sum-value" id="total"></span>
+    <span class="k-sum-sub" id="sumSub"></span>
+    <div class="k-bar" id="split" style="margin-top:14px;display:flex"></div>
+    <div class="legend" id="legend"></div>
+  </section>
+
+  <div id="list"></div>
+
+  <section class="k-card" aria-labelledby="addH">
+    <div class="k-h" id="addH" style="margin:0"></div>
+    <input class="k-num" id="amt" inputmode="decimal" autocomplete="off" />
+    <input class="k-input" id="what" autocomplete="off" />
+    <div class="k-chips" id="cats" role="group"></div>
+    <div class="k-chips" id="days" role="group"></div>
+    <button class="k-btn primary" id="add" type="button"></button>
+  </section>
+</main>
+<style>
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 10px; font-size: 12px; color: var(--d-soft); }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend b { width: 8px; height: 8px; border-radius: 3px; display: inline-block; }
+  #split { gap: 2px; background: transparent; }
+  #split i { border-radius: 999px; }
+  .day { display: flex; align-items: baseline; justify-content: space-between; margin: 10px 4px 8px; }
+  .day .k-h { margin: 0; }
+  .day small { font-size: 13px; font-weight: 700; color: var(--d-soft); font-variant-numeric: tabular-nums; }
+  .dot { width: 10px; height: 10px; border-radius: 4px; flex: none; }
+  .k-row-sub { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .x { border: 0; background: none; color: var(--d-muted); font-size: 13px; font-weight: 700; cursor: pointer; padding: 6px 4px; }
+  .x:hover { color: var(--d-bad); }
+</style>
+<script>
+  const zh = (ducter.lang || "zh").startsWith("zh");
+  const W = zh
+    ? { total: "这趟一共", add: "记一笔", amt: "金额", what: "花在哪（如：打车去会场）", save: "记下", from: "来自你的预订", n: (n) => `${n} 笔`, left: (n) => `${n} 笔是你的预订，其余自己记`, none: "还没有花销。记第一笔吧，记完自动加总。", del: "删", cats: { go: "交通", stay: "住宿", eat: "吃饭", other: "其他" } }
+    : { total: "This trip so far", add: "Add a cost", amt: "Amount", what: "What for (e.g. taxi to the venue)", save: "Add it", from: "From your bookings", n: (n) => (n === 1 ? "1 cost" : `${n} costs`), left: (n) => `${n} from your bookings, the rest added by you`, none: "No costs yet. Add the first; it totals itself.", del: "Remove", cats: { go: "Travel", stay: "Stay", eat: "Food", other: "Other" } };
+  const COL = { go: "#4ba8f0", stay: "#ff8a3d", eat: "#7fd99a", other: "#c9b79f" };
+  const $ = (id) => document.getElementById(id);
+  let cat = "go";
+  let day = "";
+  const trip = () => ducter.get("trip") || {};
+  const xs = () => ducter.get("expenses") || [];
+  const cur = () => (trip().currency === "USD" ? "$" : "¥");
+  const fmt = (n) => cur() + Math.round(n).toLocaleString("en-US");
+  const md = (d) => { const [, m, dd] = String(d).split("-"); return `${Number(m)}/${Number(dd)}`; };
+  const days = () => { const t = trip(); const out = []; if (!t.from) return out; for (let d = new Date(t.from + "T12:00:00"); d <= new Date((t.to || t.from) + "T12:00:00"); d.setDate(d.getDate() + 1)) out.push(d.toISOString().slice(0, 10)); return out; };
+  function chips(el, items, on, pick) {
+    el.innerHTML = "";
+    for (const [k, label] of items) {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "k-chip"; b.textContent = label;
+      b.setAttribute("aria-pressed", String(k === on));
+      b.onclick = () => pick(k);
+      el.appendChild(b);
+    }
+  }
+  function draw() {
+    const all = xs();
+    const sum = all.reduce((a, x) => a + (Number(x.yuan) || 0), 0);
+    $("sumLabel").textContent = W.total;
+    $("total").textContent = fmt(sum);
+    const booked = all.filter((x) => x.from).length;
+    $("sumSub").textContent = all.length ? (booked ? W.left(booked) : W.n(all.length)) : "";
+    const by = {}; for (const x of all) by[x.cat || "other"] = (by[x.cat || "other"] || 0) + (Number(x.yuan) || 0);
+    $("split").innerHTML = ""; $("legend").innerHTML = "";
+    for (const k of Object.keys(W.cats)) if (by[k]) {
+      const i = document.createElement("i"); i.style.flex = String(by[k]); i.style.background = COL[k]; $("split").appendChild(i);
+      const s = document.createElement("span"); const b = document.createElement("b"); b.style.background = COL[k]; s.append(b, `${W.cats[k]} ${fmt(by[k])}`); $("legend").appendChild(s);
+    }
+    $("split").style.display = sum ? "flex" : "none";
+    $("addH").textContent = W.add;
+    $("amt").placeholder = W.amt; $("what").placeholder = W.what; $("add").textContent = W.save;
+    chips($("cats"), Object.entries(W.cats), cat, (k) => ((cat = k), draw()));
+    const ds = days(); if (!day || !ds.includes(day)) day = ds.includes(new Date().toISOString().slice(0, 10)) ? new Date().toISOString().slice(0, 10) : ds[0] || "";
+    $("days").style.display = ds.length > 1 ? "flex" : "none";
+    chips($("days"), ds.map((d) => [d, md(d)]), day, (k) => ((day = k), draw()));
+    const list = $("list"); list.innerHTML = "";
+    if (!all.length) { const e = document.createElement("p"); e.className = "k-empty"; e.textContent = W.none; list.appendChild(e); }
+    const groups = {}; for (const x of all) (groups[x.day || ""] ||= []).push(x);
+    for (const d of Object.keys(groups).sort()) {
+      const h = document.createElement("div"); h.className = "day";
+      const t = document.createElement("div"); t.className = "k-h"; t.textContent = d ? md(d) : "";
+      const s = document.createElement("small"); s.textContent = fmt(groups[d].reduce((a, x) => a + (Number(x.yuan) || 0), 0));
+      h.append(t, s); list.appendChild(h);
+      const ul = document.createElement("ul"); ul.className = "k-list";
+      for (const x of groups[d]) {
+        const li = document.createElement("li"); li.className = "k-row";
+        const dot = document.createElement("span"); dot.className = "dot"; dot.style.background = COL[x.cat] || COL.other;
+        const main = document.createElement("span"); main.className = "k-row-main"; main.textContent = x.what;
+        const sub = document.createElement("span"); sub.className = "k-row-sub";
+        const c = document.createElement("span"); c.textContent = W.cats[x.cat] || W.cats.other; sub.appendChild(c);
+        if (x.from) { const f = document.createElement("span"); f.className = "k-from"; f.textContent = W.from; sub.appendChild(f); }
+        main.appendChild(sub);
+        const v = document.createElement("span"); v.className = "k-row-value"; v.textContent = fmt(x.yuan);
+        const del = document.createElement("button"); del.className = "x"; del.type = "button"; del.textContent = W.del;
+        del.onclick = () => ducter.set("expenses", xs().filter((y) => y.id !== x.id));
+        li.append(dot, main, v, del); ul.appendChild(li);
+      }
+      list.appendChild(ul);
+    }
+    ducter.summary(!all.length ? "" : zh ? `${W.n(all.length)}，合计 ${fmt(sum)}` : `${W.n(all.length)}, ${fmt(sum)} in all`);
+  }
+  $("add").onclick = () => {
+    const yuan = Number(String($("amt").value).replace(/[^\d.]/g, ""));
+    if (!yuan) return $("amt").focus();
+    const all = xs();
+    all.push({ id: Date.now(), what: $("what").value.trim() || W.cats[cat], yuan, cat, day });
+    ducter.set("expenses", all);
+    $("amt").value = ""; $("what").value = "";
+    draw();
+  };
+  ducter.onChange(draw);
+  draw();
+</script>

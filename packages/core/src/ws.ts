@@ -36,6 +36,7 @@ import { profileName } from "@ducter/protocol/src/browser-profile.ts";
 import { DEFAULT_PARTNER, channelOf, partnerOfStream } from "@ducter/protocol/src/partners.ts";
 import type { Partners } from "./partners.ts";
 import { actAs } from "./acting.ts";
+import { appIdeas } from "./app-ideas.ts";
 
 export interface WsData {
   live: boolean;
@@ -112,6 +113,8 @@ export interface WsDeps {
   settings?: SettingsStore;
   /** Your rules and who does the tasks (D89); absent in tests that don't need them. */
   rules?: RulesStore;
+  /** D413: 不用问我的 / Without asking, listed with the rules; absent in tests that don't need it. */
+  standing?: import("./standing.ts").StandingStore;
   /** D381: 置顶 / Pinned (pins.ts); absent in tests that don't need it. */
   pins?: import("./pins.ts").PinsStore;
   /** D405: 小应用 / Apps (apps.ts); absent in tests that don't need them. */
@@ -360,7 +363,8 @@ export function createWsHandler(deps: WsDeps) {
   // D372: with the built-in default per kind of work (a probe that fails leaves them out).
   const rulesFrame = async (): Promise<ServerFrame> => {
     const defaults = (await deps.loadout?.defaults().catch(() => undefined)) ?? [];
-    return { t: "rules", rules: deps.rules!.list(), ...(defaults.length ? { defaults } : {}) };
+    const standing = deps.standing?.list() ?? [];
+    return { t: "rules", rules: deps.rules!.list(), ...(defaults.length ? { defaults } : {}), ...(standing.length ? { standing } : {}) };
   };
   // D381: the pinned blocks go to every socket on the default conversation, after the welcome and on
   // each change (a tap on any device, the partner changing one, a tick).
@@ -372,20 +376,28 @@ export function createWsHandler(deps: WsDeps) {
   // D405: the apps list goes with the pins (default conversation), and a key an app or the partner
   // wrote reaches every device that may have it open.
   const appsPersona = () => deps.past?.persona() ?? "";
-  const appsFrame = (): ServerFrame => ({ t: "apps", apps: deps.apps!.list(appsPersona()) });
+  // D410: an empty shelf comes with up to three first ideas from what the home noted (a trip coming up).
+  const appsFrame = (): ServerFrame => {
+    const apps = deps.apps!.list(appsPersona());
+    if (apps.length) return { t: "apps", apps };
+    const p = deps.proactive?.();
+    return { t: "apps", apps, ideas: appIdeas(p?.ledger.all() ?? [], Date.now(), p?.clientZone()) };
+  };
   const offApps = deps.apps?.onChange((c) => {
     if (c.kind === "give") return; // its list frame went with it
     const f: ServerFrame = c.kind === "list" ? appsFrame() : { t: "app_data", id: c.id, key: c.key, value: c.value, by: c.by };
     for (const ws of sockets) if (ws.data.live && !ws.data.partner) send(ws, f);
   });
-  const offRules = deps.rules?.onChange(() => {
+  const pushRules = () => {
     if (stopped) return;
     void rulesFrame()
       .then((f) => {
         for (const ws of sockets) if (!stopped && ws.data.rules) send(ws, f);
       })
       .catch(pushFailed("rules"));
-  });
+  };
+  const offRules = deps.rules?.onChange(pushRules);
+  const offStanding = deps.standing?.onChange(pushRules);
   // Connections: same pattern. The frame never carries a token.
   const connectionsFrame = (): ServerFrame => {
     const p = deps.proactive?.();
@@ -1405,9 +1417,41 @@ export function createWsHandler(deps: WsDeps) {
         deps.apps.remove(String(f.id ?? ""));
         return;
       }
+      case "app_restore": {
+        // D410: 撤销 / Undo a delete (the shelf's toast, the card's Undo).
+        if (!deps.apps) throw new Error("apps are not available");
+        const r = deps.apps.restore(String(f.id ?? ""));
+        if (!r.ok) throw new Error(r.error);
+        return;
+      }
+      case "app_set": {
+        // D410: the shelf's 「⋯」: rename, pin, stop a routine updating it.
+        if (!deps.apps) throw new Error("apps are not available");
+        const id = String(f.id ?? "");
+        const m = deps.apps.get(id);
+        if (!m || m.persona !== appsPersona()) throw new Error("gone");
+        const r = deps.apps.set(id, { ...(typeof f.name === "string" ? { name: f.name } : {}), ...(typeof f.pinned === "boolean" ? { pinned: f.pinned } : {}), ...(f.untask === true ? { untask: true } : {}) });
+        if (!r.ok) throw new Error(r.error);
+        return;
+      }
+      case "app_summary": {
+        // D410: the app's own line for its tile (ducter.summary), from whichever device has it open.
+        if (!deps.apps) return;
+        const id = String(f.id ?? "");
+        const m = deps.apps.get(id);
+        if (m && m.persona === appsPersona()) deps.apps.summarize(id, String(f.text ?? ""));
+        return;
+      }
       case "pin_tick": {
         if (!deps.pins) throw new Error("pins are not available");
         if (!deps.pins.tick(String(f.id ?? ""), String(f.item ?? ""), f.on === true)) send(ws, pinsFrame("gone"));
+        return;
+      }
+      case "standing_revoke": {
+        if (!deps.standing || !deps.rules) throw new Error("standing permissions are not available");
+        ws.data.rules = true;
+        // A revoke pushes a fresh frame to every subscriber; an unknown id: answer this one.
+        if (!deps.standing.revoke(String(f.id ?? ""))) send(ws, await rulesFrame());
         return;
       }
       case "rule_remove": {
@@ -2441,6 +2485,7 @@ export function createWsHandler(deps: WsDeps) {
       offDevices?.();
       offSettings?.();
       offRules?.();
+      offStanding?.();
       offConnections?.();
       offCalendar?.();
       offChannels?.();

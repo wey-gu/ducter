@@ -24,11 +24,12 @@ import { ago, behind, cjkPad, deviceLabel, duration, harnessName, inPlaceTune, m
 import { markdown } from "./markdown.ts";
 import { Coin } from "./coin.tsx";
 import { EyeShut, liveSize } from "./live.tsx";
-import { AddRow, Btn, Chev, Choice, DevicesMark, Facts, Gear, NavBtn, OnHandMark, PlaceSeg, PlusMark, Seg, Toggle, UpdatePebble } from "./controls.tsx";
+import { AddRow, AppsMark, Btn, Chev, Choice, DevicesMark, Facts, Gear, NavBtn, OnHandMark, PlaceSeg, PlusMark, Seg, Toggle, UpdatePebble } from "./controls.tsx";
 import { deviceArt, deviceCardShown, DevicesSection } from "./devcard.tsx";
 import { CallsSection, ProactiveChips, QuietDay, SourceCards } from "./accounts.tsx";
 import { OwnPhoneCard } from "./own-phone.tsx";
 import { Said, say } from "./set-grid.tsx";
+import { DangerButton } from "./controls.tsx";
 import { CallDecision, CallRow, PhoneCard, PhoneOffer } from "./phone.tsx";
 import { callEnded } from "@ducter/protocol";
 import { FindsNote } from "./finds.tsx";
@@ -63,7 +64,8 @@ import { Palette } from "./palette.tsx";
 import { PV, RedoSheet } from "./past-preview.tsx";
 import { DidSheet } from "./did.tsx";
 import { PinsSheet, PinStrip } from "./pins.tsx";
-import { APP_GLYPH, AppCardView, AppSheet, BoardOfferFacts, openApp } from "./apps.tsx";
+import { APP_GLYPH, AppCardView, AppSheet, BoardOfferFacts, openApp, openShelf, ShelfCard } from "./apps.tsx";
+import { AppsShelf, PinnedApps } from "./apps-shelf.tsx";
 import { PileSheet } from "./pile.tsx";
 import { HandSheet, PlanCard, ReviewSheet, SetCard } from "./handover.tsx";
 import { RichBlock } from "./rich.tsx";
@@ -331,6 +333,8 @@ function answeredWords(d: DecisionState): string {
   const opt = d.resolved?.option ?? (d.pending || "go");
   // D375: D169's offer closed by itself once the plugin was in.
   if (d.resolved?.settled && d.memPlugin) return t("memp.card.done");
+  // D413: a review round's drafts went under what the person said.
+  if (d.resolved?.posted) return t("standing.settled");
   if (d.resolved?.by === "default") return t("decision.resolved.default");
   if (opt === "reply") return t("decision.resolved.reply", d.resolved?.text ?? "");
   if (opt === "hold") return d.where ? t("where.ask.waited", d.where.device) : t("decision.resolved.hold");
@@ -1298,7 +1302,7 @@ function EntryView({ e, chipOwner, livingItems, join, prevUser }:{ e: Entry; chi
             pictures under the words never move it). */}
         {e.ai.ui?.length ? (
           <RichWords e={e} ans={ans} rk={rk} />
-        ) : (e.ai.text || (!e.ai.cal && !e.ai.app)) && (ans ? (
+        ) : (e.ai.text || (!e.ai.cal && !e.ai.app && !e.ai.shelf)) && (ans ? (
           <div class="bubble has-reply">
             <Imprint from="you" quote={ans.quote} seq={ans.seq} />
             <div dir="auto" dangerouslySetInnerHTML={{ __html: markdown(e.ai.text, t("reply.copy")) }} />
@@ -1316,6 +1320,7 @@ function EntryView({ e, chipOwner, livingItems, join, prevUser }:{ e: Entry; chi
         {e.ai.media?.length ? <MediaBlock media={e.ai.media} side="partner" ctx={{ kind: "conv" }} /> : null}
         {/* D405: the app this message made or changed, under its words. */}
         {e.ai.app && <AppCardView c={e.ai.app} />}
+        {e.ai.shelf && <ShelfCard />}
         {e.ai.first && <FirstAfter fw={e.ai.first} />}
         <RecallLine seq={e.firstSeq} />
         <ReadingLine seq={e.firstSeq} />
@@ -1429,7 +1434,7 @@ function Presence({ line }: { line?: string }) {
 /** D262: the way to the other places, at the end of every bar: 更新 while something waits to be
  *  updated, then the places (devices, On hand, Settings; on a phone's task and On hand without On
  *  hand). D270: always the drawn marks, at every width; here: the place shown, the knob. */
-export function Places({ here, onHand = true }: { here?: "devices" | "onhand" | "settings"; onHand?: boolean }) {
+export function Places({ here, onHand = true }: { here?: "devices" | "onhand" | "apps" | "settings"; onHand?: boolean }) {
   const ua = A.updateAll;
   const running = !!ua?.plan && !ua.plan.finishedAt;
   const n = ua?.offer.length ?? 0;
@@ -1447,6 +1452,8 @@ export function Places({ here, onHand = true }: { here?: "devices" | "onhand" | 
         segs={[
           { key: "devices", label: t("nav.devices"), about: t("nav.devices.label"), glyph: <DevicesMark />, on: here === "devices", go: () => A.openSettings("devices") },
           ...(onHand ? [{ key: "onhand", label: t("nav.onhand"), about: t("nav.onhand"), glyph: <OnHandMark />, on: here === "onhand", go: () => A.go({ name: "onhand" }) }] : []),
+          // D410: 你的小应用 / Your apps, one tap from every bar.
+          { key: "apps", label: t("apps.place"), about: t("apps.place.about"), glyph: <AppsMark />, on: here === "apps", go: () => openShelf() },
           { key: "settings", label: t("nav.settings"), about: t("nav.settings"), glyph: <Gear />, on: here === "settings", go: () => A.openSettings() },
         ]}
       />
@@ -1805,6 +1812,8 @@ export function Conversation() {
       <Top />
       {/* D381: what is pinned, under the bar. */}
       <PinStrip />
+      {/* D410: pinned apps, one tap each. */}
+      <PinnedApps />
       <main class="scroll" ref={scroller} role="log" aria-label={t("conv.log", A.S.personaName || "Ducter")} onScroll={(e) => follow.onScroll(e.currentTarget as HTMLDivElement)}>
         <div class="spacer" />
         <DropHint on={dropping} />
@@ -2644,6 +2653,34 @@ function TalkSettings() {
   );
 }
 
+/** D413: 不用问我的 / Without asking: what the person said may go without asking, each with 收回 / Take back. */
+function StandingList() {
+  const xs = A.standing;
+  if (!xs.length) return null;
+  const sep = t("standing.sep");
+  // A third list in 要不要先问's card, in the done ink: the person's own word beside Ducter's two.
+  return (
+    <div class="trust own without" id="standing">
+      <b>{t("standing.title")}</b>
+      <ul>
+        {xs.map((x) => (
+          <li key={x.id}>
+            <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">
+              <path d="M5 10.5l3.5 3.5L15 6.5" />
+            </svg>
+            <span class="grow">
+              <span>{t(`standing.${x.action}`)}</span>
+              <small>{x.orgs?.length ? t("standing.where.orgs", x.orgs.join(sep)) : t("standing.where.any")}</small>
+              <small>{t("standing.said", x.text)}</small>
+            </span>
+            <DangerButton quiet label={t("standing.revoke")} about={t(`standing.${x.action}`)} onClick={() => (A.send({ t: "standing_revoke", id: x.id }), say("trust", t("standing.revoked")))} />
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 /** 要不要先问: the rules core keeps, in everyday words (read-only). */
 function TrustSettings() {
   const list = (head: string, prefix: string, cls: string) => (
@@ -2670,7 +2707,9 @@ function TrustSettings() {
       <div class="set-card trust-card">
         {list("partner.trust.own", "partner.trust.own", "own")}
         {list("partner.trust.asks", "partner.trust.asks", "asks")}
+        <StandingList />
       </div>
+      <Said k="trust" />
     </section>
   );
 }
@@ -3224,6 +3263,7 @@ function SheetsMain() {
   if (A.sheet.kind === "did") return <DidSheet />;
   if (A.sheet.kind === "pins") return <PinsSheet />;
   if (A.sheet.kind === "app") return <AppSheet id={A.sheet.id} />;
+  if (A.sheet.kind === "apps") return <AppsShelf />;
   if (A.sheet.kind === "recall") return <RecallSheet seq={A.sheet.seq} />;
   if (A.sheet.kind === "learned") return <LearnedSheet />;
   if (A.sheet.kind === "pile") return <PileSheet />;

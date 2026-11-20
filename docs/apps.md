@@ -16,14 +16,35 @@ It answers in a line, and a card with the app's name and **Open** goes under it.
 yours: type into it, tick things, add costs. What you put in stays, and it's the same on your Mac,
 in the browser and on your phone.
 
-## Finding it again
+If it's about something your partner already knows, it starts filled in. Ask for a trip expense app
+while you're on a trip your partner booked, and it opens named for that trip with your train and hotel
+already in it, each marked **From your bookings**; the first time you open it, a line at the top says
+what your partner filled in. Add the rest as you go: the total stays at the top.
 
-Every app your partner made is in **Past tasks › Made for you** (the **Apps** chip shows only
-apps). Or just ask: "open my trip expenses app".
+## Your apps
+
+Every app your partner made for you lives in **Your apps**: the **Apps** mark at the top of the
+screen (four little tiles), or ⌘K. Each tile shows what's in the app right now ("2 costs, ¥1,698 in
+all"), when it last changed, and whether something keeps it up to date. Tap one to open it. Its **⋯**
+lets you:
+
+- **Rename** it
+- **Ask your partner to change it**
+- **Undo the change** (when there was one)
+- **Pin to the top**: pinned apps come first and sit at the top of your conversation, one tap away
+- **Stop** a repeating task from updating it
+- **Delete** it: you're asked first, and what it keeps goes with it. **Undo** brings it back.
+
+You can also just ask: "where are my apps?" or "open my trip expenses app". Apps are also listed in
+**Past tasks › Made for you**.
+
+No apps yet? **Your apps** suggests a few to start with, your own coming trip first. Tap one and your
+partner makes it.
 
 ## Changing it
 
-Say what you want, in the conversation or in the line under the app ("Ask Ducter to change it…"):
+Say what you want, in the conversation or in the line under the app ("Ask Ducter to change it…"),
+in the browser, on your phone or in the app's own window on your Mac:
 
 - "Add a total at the top"
 - "Make it green"
@@ -32,7 +53,8 @@ Say what you want, in the conversation or in the line under the app ("Ask Ducter
 Your partner changes the app in place; if it's open, it refreshes and says what changed. Don't like
 the change? **Undo the change** at the top of the app brings back the one before (up to ten back).
 
-Your partner can also fill it in for you: "add today's taxi rides to my trip app".
+Your partner can also fill it in for you: "add today's taxi rides to my trip app". Or delete it: "delete
+my shopping list app" (its card has **Undo**).
 
 ## Asking your partner from inside an app
 
@@ -67,4 +89,4 @@ An app runs closed off, for your safety:
 ## Coming soon
 
 Sharing an app with someone, using an app with no connection to your Ducter, changing an app by
-pointing at part of it, and deleting an app from Made for you.
+pointing at part of it, and arranging your apps by hand.

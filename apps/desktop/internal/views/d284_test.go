@@ -82,7 +82,7 @@ func TestLocatorGlides(t *testing.T) {
 		if !hoverLocator(app, tt) {
 			t.Fatal("no locator")
 		}
-		line := autospace(entries[0].line)
+		line := unjoin(autospace(entries[0].line))
 		if err := tt.Click(line); err != nil {
 			t.Fatalf("reduce=%v: %v (%q)", reduce, err, texts(tt))
 		}
@@ -159,7 +159,7 @@ func TestD284Shots(t *testing.T) {
 	shot(tt, "long-locator-zh")
 	task := app.S.Task("long1")
 	entries := locatorWords(app, task)
-	_ = tt.Click(autospace(entries[len(entries)/3].line))
+	_ = tt.Click(unjoin(autospace(entries[len(entries)/3].line)))
 	for i := 0; i < 8; i++ {
 		tt.Advance(16 * time.Millisecond)
 		tt.Frame()

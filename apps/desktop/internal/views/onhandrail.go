@@ -302,7 +302,7 @@ func (a *App) onHandRail(c *ui.Context, w float32) {
 					ink = t.Ink
 				}
 				h.Children(func() {
-					ui.Text(c, name).FontSize(t.MD).FontWeight(800).TextColor(ink).SingleLine().MinWidth(0).AccessHidden(true)
+					uiText(c, name).FontSize(t.MD).FontWeight(800).TextColor(ink).SingleLine().MinWidth(0).AccessHidden(true)
 				})
 				if h.Clicked() {
 					a.Route = RouteOnHand

@@ -238,8 +238,8 @@ func (a *App) memOnDevice(c *ui.Context, dv *protocol.DeviceView) {
 				}
 			}
 			ui.Column(c).Gap(1).Grow(1).MinWidth(0).Children(func() {
-				ui.Text(c, "Nowledge Mem").FontSize(t.MD).FontWeight(800)
-				ui.Text(c, word).FontSize(t.XS).TextColor(ink)
+				uiText(c, "Nowledge Mem").FontSize(t.MD).FontWeight(800)
+				uiText(c, word).FontSize(t.XS).TextColor(ink)
 			})
 			installKind := btnPrimary
 			if carried {
@@ -284,7 +284,7 @@ func (a *App) memOnDevice(c *ui.Context, dv *protocol.DeviceView) {
 			}
 		})
 		if look == "failed" && m.Step.Detail != "" {
-			ui.Text(c, m.Step.Detail).FontSize(t.XS).TextColor(t.InkSoft).LineHeight(1.4)
+			uiText(c, m.Step.Detail).FontSize(t.XS).TextColor(t.InkSoft).LineHeight(1.4)
 		}
 		if carried {
 			a.infoText(c, a.L.T("wmem.carried.why", home))
@@ -298,17 +298,17 @@ func (a *App) memOnDevice(c *ui.Context, dv *protocol.DeviceView) {
 				soft = a.L.T("wmem.health."+health, name)
 			}
 			if soft != "" {
-				ui.Text(c, soft).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.4)
+				uiText(c, soft).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.4)
 			}
 		}
 		switch {
 		case carried && look == "absent":
 		case carried && look == "ready":
-			ui.Text(c, a.memReadyWords(dv)).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.4)
+			uiText(c, a.memReadyWords(dv)).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.4)
 		case look == "absent":
 			if m.Installable {
 				a.infoText(c, a.L.T("wmem.absent.why", name))
-				ui.Text(c, a.L.T("ag.where")).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.4)
+				uiText(c, a.L.T("ag.where")).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.4)
 			} else {
 				a.infoText(c, a.L.T("wmem.absent.none", name))
 			}
@@ -323,13 +323,13 @@ func (a *App) memOnDevice(c *ui.Context, dv *protocol.DeviceView) {
 				a.infoText(c, a.L.T("wmem.theirs.why", name))
 			}
 			if theirs == "using" {
-				ui.Text(c, a.L.T("wmem.theirs.using", name)).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.4)
+				uiText(c, a.L.T("wmem.theirs.using", name)).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.4)
 			}
 			if cmd := theirUpdateCommand(m); cmd != "" {
-				ui.Text(c, a.L.T("wmem.theirs.cmd", name)).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.4)
-				ui.Text(c, cmd).Font(t.Mono).FontSize(t.XS).TextColor(t.Ink).Selectable()
+				uiText(c, a.L.T("wmem.theirs.cmd", name)).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.4)
+				uiText(c, cmd).Font(t.Mono).FontSize(t.XS).TextColor(t.Ink).Selectable()
 			} else {
-				ui.Text(c, a.L.T("wmem.theirs.guide")).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.4)
+				uiText(c, a.L.T("wmem.theirs.guide")).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.4)
 			}
 		}
 		if awake && theirs != "old" && ((look == "sign_in" && health != "unreachable" && health != "old" && (!m.Carried || own)) || (look == "failed" && m.State == "sign_in")) {
@@ -340,7 +340,7 @@ func (a *App) memOnDevice(c *ui.Context, dv *protocol.DeviceView) {
 			if r.Reason == "away" {
 				k = "ag.away"
 			}
-			ui.Text(c, a.L.T(k, name)).FontSize(t.SM).TextColor(t.Failed.Ink).LineHeight(1.5)
+			uiText(c, a.L.T(k, name)).FontSize(t.SM).TextColor(t.Failed.Ink).LineHeight(1.5)
 		}
 	})
 }
@@ -371,7 +371,7 @@ func (a *App) memSignIn(c *ui.Context, dv *protocol.DeviceView) {
 			}
 			how = a.L.T("wmem.signin.local", home, a.deviceNameIn(dv))
 		}
-		ui.Text(c, how).FontSize(t.SM).TextColor(t.Ink).LineHeight(1.5)
+		uiText(c, how).FontSize(t.SM).TextColor(t.Ink).LineHeight(1.5)
 		ui.Row(c).Gap(t.S2).AlignItems(ui.End).Children(func() {
 			ui.TextArea(c.Key("wmem-link:"+dv.ID), &v).Lines(2, 4).Placeholder(a.L.T("wmem.signin.ph")).Label(a.L.T("wmem.signin.link")).
 				FontSize(t.SM).Padding(t.S2, t.S3).Radius(t.RadiusSM).Background(t.SurfaceSunken).Border(1, t.LineSoft).Grow(1).MinWidth(0)

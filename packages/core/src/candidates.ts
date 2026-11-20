@@ -225,7 +225,7 @@ function rank(inp: CandidateInput): { rows: Row[]; multi: boolean } {
     const f = fit(c, inp.needs, inp.place);
     for (const h of c.harnesses) {
       if (!isHarnessId(h.harness) || !HARNESSES[h.harness].task) continue;
-      // D206: a picture to make goes only to an agent that makes pictures. D409: web pages only to
+      // D206: a picture to make goes only to an agent that makes pictures. D415: web pages only to
       // an agent whose session can be held to the browser's rules (D241).
       const browses = !!(inp.needs?.browse || inp.needs?.signedIn || inp.place?.kind === "browser");
       const blocked0 =
@@ -243,7 +243,7 @@ function rank(inp: CandidateInput): { rows: Row[]; multi: boolean } {
         const access = f.uses === "ducter" && !f.needsSignIn ? 2 : f.uses === "chrome" ? 1 : inp.needs?.app && c.computer ? 1 : 0;
         // Strongest (D372: the tier for this kind of work); plan before pay-per-use; then the most
         // limit left (the agent's own rank, D89).
-        // D409: an agent that is picked, never chosen, comes after every other one that can take it.
+        // D415: an agent that is picked, never chosen, comes after every other one that can take it.
         const agent = tierScore(t, inp.work.kind) + (h.billing === "usage" ? -30 : 0) + (left ?? 0.5) * 20 - (HARNESSES[h.harness].pickOnly ? 1000 : 0);
         const key = [blocked ? 0 : 1, waits ? 0 : 1, word, access, inp.needs?.long && c.alwaysOn ? 1 : 0, inp.current?.device && isComputer(c, inp.current.device) ? 1 : 0, agent, c.home ? 1 : 0];
         const reason: Candidate["reason"] = ruled ? { kind: "rule", ruleId: rule!.id, text: rule!.text } : { kind: t.kind === "smart" ? "fit" : "fast" };

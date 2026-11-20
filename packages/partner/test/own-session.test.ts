@@ -37,7 +37,7 @@ function port(o: { looks?: boolean; open?: "running" | "recent" } = {}) {
   return { p, adopted };
 }
 
-function setup(script: Script, o: Parameters<typeof port>[0] = {}) {
+function setup(script: Script, o: Parameters<typeof port>[0] & { bridge?: true } = {}) {
   const clock = new FakeClock();
   clock.t = NOW;
   const fc = fakeCore(clock, mkdtempSync(join(tmpdir(), "ducter-own-")));
@@ -46,7 +46,9 @@ function setup(script: Script, o: Parameters<typeof port>[0] = {}) {
   (fc.core as unknown as { outside: OwnSessionsPort }).outside = p;
   const fr = fakeRunner(script);
   fr.bindCards(fc.cards);
-  const partner = createPartner(fc.core, fr.runner, { now: clock.now, persistState: false, onError: () => {} });
+  // D409: Bridge on (a client that never brings anything; only its presence matters here).
+  const bridge = o.bridge ? { check: async () => ({ ok: true as const, messages: [] }), reply: async () => ({ ok: false as const, reason: "unavailable" as const, message: "" }) } : undefined;
+  const partner = createPartner(fc.core, fr.runner, { now: clock.now, persistState: false, onError: () => {}, ...(bridge ? { bridge, bridgeIntervalMs: 0, bridgeStartMark: false } : {}) });
   const user = (text: string) => partner.onTrigger(fc.core.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text } }));
   return { fc, partner, user, adopted };
 }
@@ -119,6 +121,29 @@ test("still open in its terminal: listed as open, not carried on, no line put up
   expect(adopted).toEqual([]);
   expect(fc.events.some((e) => e.kind === "job_status")).toBe(false);
   expect(fc.events.some((e) => e.kind === "ai_msg")).toBe(true);
+});
+
+// D409 (the live trial, 2026-11-20): with Bridge on, a session open now is asked through Bridge; neither
+// tool's answer sends the person to /exit it first.
+test("still open, Bridge on: the find and the refusal both point to bridge_contacts and bridge_send", async () => {
+  let found: R | undefined;
+  let went: R | undefined;
+  const { fc, partner, user, adopted } = setup(
+    async (_i, s) => {
+      found = await call(fc, "own_session_find", { agent: "claude-code" });
+      went = await call(fc, "own_session_continue", { agent: "claude-code", id: "fake-cc-0001" });
+      s.end();
+    },
+    { open: "running", bridge: true },
+  );
+  user("问一下我终端里那个 Claude 写到哪了");
+  await partner.idle();
+  expect(found!.note).toContain("bridge_contacts then bridge_send");
+  expect(went).toMatchObject({ ok: false, open: "running" });
+  expect(went!.error).toContain("bridge_contacts then bridge_send");
+  expect(went!.error).toContain("don't tell them to close it");
+  expect(adopted).toEqual([]);
+  await partner.close();
 });
 
 test("written a moment ago: carried on once the person says it is closed", async () => {

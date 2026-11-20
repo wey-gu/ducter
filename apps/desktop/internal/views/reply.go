@@ -316,8 +316,8 @@ func (a *App) imprint(c *ui.Context, key string, r *replyTo, quote string, part 
 		box.Role(ui.RoleButton).Cursor(ui.CursorPointer).Focusable().Label(a.L.T("reply.jump", name))
 	}
 	box.Children(func() {
-		ui.Text(c, name).FontSize(t.XXS).FontWeight(800).LetterSpacing(0.22).TextColor(who).SingleLine().AccessHidden(!still)
-		ui.Text(c, autospace(words)).FontSize(t.XS).LineHeight(leadingFor(words, 1.4)).TextColor(ink).MaxLines(2).AccessHidden(!still)
+		uiText(c, name).FontSize(t.XXS).FontWeight(800).LetterSpacing(0.22).TextColor(who).SingleLine().AccessHidden(!still)
+		uiText(c, autospace(words)).FontSize(t.XS).LineHeight(leadingFor(words, 1.4)).TextColor(ink).MaxLines(2).AccessHidden(!still)
 	})
 	if !still && box.Clicked() {
 		a.jumpTo(c, r.seq, r.findID)
@@ -400,7 +400,7 @@ func (a *App) replyButton(c *ui.Context, r *replyTo, side int) ui.Element {
 	b.Children(func() {
 		ui.Box(c).Size(16, 16).Shrink(0).Draw(drawReply(ink))
 		if words {
-			ui.Text(c, a.L.T("reply.action")).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine().Unselectable()
+			uiText(c, a.L.T("reply.action")).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine().Unselectable()
 		}
 	})
 	if b.Clicked() {

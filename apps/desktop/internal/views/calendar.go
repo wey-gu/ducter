@@ -211,8 +211,8 @@ func (a *App) dayCard(c *ui.Context, key string, g *protocol.CalGlance) {
 					ui.Box(c).Height(1).Background(t.LineSoft)
 				}
 				ui.Row(c.Key("calempty:" + d.Date)).Gap(t.S2).Wrap().AlignItems(ui.Baseline).Children(func() {
-					ui.Text(c, words).FontSize(t.SM).FontWeight(700).TextColor(t.InkMuted)
-					ui.Text(c, a.L.T("cal.nothing")).FontSize(t.SM).TextColor(t.InkMuted)
+					uiText(c, words).FontSize(t.SM).FontWeight(700).TextColor(t.InkMuted)
+					uiText(c, a.L.T("cal.nothing")).FontSize(t.SM).TextColor(t.InkMuted)
 				})
 				i = j
 				continue
@@ -255,13 +255,13 @@ func (a *App) calDay(c *ui.Context, d protocol.CalDay, loc *time.Location, now t
 	}
 	ui.Column(c.Key("calday:" + d.Date)).Gap(0).Children(func() {
 		ui.Column(c).Gap(2).Padding(0, 0, t.S2, 0).Children(func() {
-			ui.Text(c, a.calDayHead(at, now)).Font(t.Display).FontSize(t.MD).FontWeight(800).TextColor(t.Ink)
+			uiText(c, a.calDayHead(at, now)).Font(t.Display).FontSize(t.MD).FontWeight(800).TextColor(t.Ink)
 			if len(d.Marks) > 0 {
 				a.facts(c, t.XS, t.InkMuted, d.Marks...)
 			}
 		})
 		if len(evs) == 0 {
-			ui.Text(c, a.L.T("cal.nothing")).FontSize(t.SM).TextColor(t.InkMuted)
+			uiText(c, a.L.T("cal.nothing")).FontSize(t.SM).TextColor(t.InkMuted)
 		}
 		for i, e := range evs {
 			up := i > 0 && calIn(clash[e.Ref], evs[i-1].Ref)
@@ -311,7 +311,7 @@ func (a *App) calNowLine(c *ui.Context, lead, bracket bool) {
 func (a *App) calChip(c *ui.Context, text string, bg, ink ui.Color) {
 	t := a.T
 	ui.Row(c).Height(20).Padding(0, t.S2).Radius(t.Pill).Background(bg).AlignItems(ui.Center).Shrink(0).Children(func() {
-		ui.Text(c, text).FontSize(t.XS - 1).FontWeight(700).TextColor(ink).SingleLine()
+		uiText(c, text).FontSize(t.XS - 1).FontWeight(700).TextColor(ink).SingleLine()
 	})
 }
 
@@ -414,11 +414,11 @@ func (a *App) calRow(c *ui.Context, e protocol.CalEvent, loc *time.Location, now
 	row.Children(func() {
 		ui.Column(c).Width(a.calTimeW()).Shrink(0).Gap(1).AccessHidden(true).Children(func() {
 			if e.AllDay {
-				ui.Text(c, a.L.T("cal.allday")).FontSize(t.SM).TextColor(t.InkSoft).SingleLine()
+				uiText(c, a.L.T("cal.allday")).FontSize(t.SM).TextColor(t.InkSoft).SingleLine()
 				return
 			}
-			ui.Text(c, i18n.CalClock(s)).FontSize(t.SM).FontWeight(600).TextColor(t.InkSoft).FontFeatures("tnum").SingleLine()
-			ui.Text(c, i18n.CalClock(en)).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum").SingleLine()
+			uiText(c, i18n.CalClock(s)).FontSize(t.SM).FontWeight(600).TextColor(t.InkSoft).FontFeatures("tnum").SingleLine()
+			uiText(c, i18n.CalClock(en)).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum").SingleLine()
 		})
 		ui.Box(c).Width(3).Radius(1.5).Background(a.calColor(e.Color)).Shrink(0).AccessHidden(true)
 		ui.Column(c).Grow(1).MinWidth(0).Gap(2).AccessHidden(true).Children(func() {
@@ -427,7 +427,7 @@ func (a *App) calRow(c *ui.Context, e protocol.CalEvent, loc *time.Location, now
 				if e.Free {
 					ink = t.InkSoft
 				}
-				ui.Text(c, autospace(e.Title)).FontSize(t.MD).FontWeight(600).TextColor(ink).SingleLine().MinWidth(0).Shrink(1)
+				uiText(c, autospace(e.Title)).FontSize(t.MD).FontWeight(600).TextColor(ink).SingleLine().MinWidth(0).Shrink(1)
 				if unanswered {
 					a.calChip(c, a.L.T("cal.unanswered"), t.Waiting.Surface, t.Waiting.Ink)
 				}
@@ -467,30 +467,30 @@ func (a *App) calChangeBlock(c *ui.Context, d *store.DecisionState) {
 	now := a.Now().In(loc)
 	indent := 3 + t.S3
 	line := func(text string, ink ui.Color) {
-		ui.Text(c, autospace(text)).FontSize(t.SM).TextColor(ink).LineHeight(a.leading(1.45)).MarginStart(indent)
+		uiText(c, autospace(text)).FontSize(t.SM).TextColor(ink).LineHeight(a.leading(1.45)).MarginStart(indent)
 	}
 	ui.Column(c.Key("calchange:"+d.DecisionID)).MaxWidth(t.BubbleMeasure).MaxWidthPercent(84).Gap(t.S1+2).Padding(t.S3, t.S4).
 		Radius(t.RadiusSM).Background(t.Sunken).Children(func() {
 		// 1. the rail in the calendar's colour, and the title.
 		ui.Row(c).Gap(t.S3).AlignItems(ui.Stretch).Children(func() {
 			ui.Box(c).Width(3).Radius(1.5).Background(a.calColor(ch.Color)).Shrink(0)
-			ui.Text(c, autospace(ch.Title)).FontSize(t.MD).FontWeight(700).TextColor(t.Ink).LineHeight(a.leading(1.4)).Grow(1).MinWidth(0)
+			uiText(c, autospace(ch.Title)).FontSize(t.MD).FontWeight(700).TextColor(t.Ink).LineHeight(a.leading(1.4)).Grow(1).MinWidth(0)
 		})
 		// 2. when; a move shows where it was, struck through, and an arrow.
 		when := a.calWhen(ch.Start, ch.End, ch.AllDay, loc)
 		if ch.Kind == "move" && ch.Was != nil {
 			ui.Row(c).Gap(t.S2).Wrap().AlignItems(ui.Center).MarginStart(indent).Children(func() {
-				ui.Text(c, a.L.T("cal.change.was")).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
+				uiText(c, a.L.T("cal.change.was")).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
 				was := a.calWhen(ch.Was.Start, ch.Was.End, ch.AllDay, loc)
 				if ws, ns := calTime(ch.Was.Start, loc), calTime(ch.Start, loc); !ch.AllDay && sameDay(ws, ns) {
 					was = i18n.CalClock(ws) + "–" + i18n.CalClock(calTime(ch.Was.End, loc)) // the same day: the time is what moved
 				}
-				ui.Text(c, autospace(was)).FontSize(t.SM).TextColor(t.InkMuted).Strikethrough().FontFeatures("tnum")
+				uiText(c, autospace(was)).FontSize(t.SM).TextColor(t.InkMuted).Strikethrough().FontFeatures("tnum")
 				a.glyph(c, 16, drawArrow(t.InkSoft))
-				ui.Text(c, autospace(when)).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).FontFeatures("tnum")
+				uiText(c, autospace(when)).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).FontFeatures("tnum")
 			})
 		} else {
-			ui.Text(c, autospace(when)).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).FontFeatures("tnum").MarginStart(indent)
+			uiText(c, autospace(when)).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).FontFeatures("tnum").MarginStart(indent)
 		}
 		// 3. the other side, when their zone differs.
 		if ch.TheirZone != "" && !ch.AllDay {
@@ -511,15 +511,15 @@ func (a *App) calChangeBlock(c *ui.Context, d *store.DecisionState) {
 			if ch.Kind == "create" {
 				label = a.L.T("cal.change.in.create")
 			}
-			ui.Text(c, label).FontSize(t.SM).TextColor(t.InkMuted)
+			uiText(c, label).FontSize(t.SM).TextColor(t.InkMuted)
 			ui.Box(c).Size(8, 8).Radius(4).Background(a.calColor(ch.Color)).Shrink(0)
 			cal := ch.Calendar
 			if cal == "" {
 				cal = a.L.T("cal.main")
 			}
-			ui.Text(c, autospace(cal)).FontSize(t.SM).TextColor(t.Ink)
+			uiText(c, autospace(cal)).FontSize(t.SM).TextColor(t.Ink)
 			if ch.Account != "" {
-				ui.Text(c, mailShort(ch.Account)).FontSize(t.SM).TextColor(t.InkMuted)
+				uiText(c, mailShort(ch.Account)).FontSize(t.SM).TextColor(t.InkMuted)
 			}
 		})
 		// 5. who hears.
@@ -603,7 +603,7 @@ func (a *App) calSettled(c *ui.Context, d *store.DecisionState) {
 			if g := draw(ink); g != nil {
 				a.glyph(c, 16, g)
 			}
-			ui.Text(c, text).FontSize(t.SM).FontWeight(700).TextColor(ink)
+			uiText(c, text).FontSize(t.SM).FontWeight(700).TextColor(ink)
 			if link != "" {
 				if a.quietLink(c, "calopen:"+d.DecisionID, a.L.T("cal.open"), spoken(a.L, a.L.T("cal.open"), d.Cal.Title)) {
 					a.openLink(link)
@@ -611,7 +611,7 @@ func (a *App) calSettled(c *ui.Context, d *store.DecisionState) {
 			}
 		})
 		if why != "" {
-			ui.Text(c, why).FontSize(t.SM).TextColor(t.Failed.Ink).LineHeight(a.leading(1.45)).MaxLines(2)
+			uiText(c, why).FontSize(t.SM).TextColor(t.Failed.Ink).LineHeight(a.leading(1.45)).MaxLines(2)
 		}
 	})
 }
@@ -623,9 +623,9 @@ func (a *App) calSettled(c *ui.Context, d *store.DecisionState) {
 func (a *App) calendarsBand(c *ui.Context, cv protocol.ConnectionView, w protocol.AppWatch) {
 	t := a.T
 	ui.Column(c.Key("cals:" + cv.ID + "|" + tileKey(w))).Gap(t.S2).Children(func() {
-		ui.Text(c, a.L.T("cal.list.label")).FontSize(t.SM).FontWeight(700).TextColor(t.InkMuted)
+		uiText(c, a.L.T("cal.list.label")).FontSize(t.SM).FontWeight(700).TextColor(t.InkMuted)
 		if w.Calendars == nil {
-			ui.Text(c, a.L.T("cal.list.loading")).FontSize(t.SM).TextColor(t.InkMuted)
+			uiText(c, a.L.T("cal.list.loading")).FontSize(t.SM).TextColor(t.InkMuted)
 			return
 		}
 		for _, r := range w.Calendars {
@@ -641,9 +641,9 @@ func (a *App) calendarsBand(c *ui.Context, cv protocol.ConnectionView, w protoco
 			ui.Row(c.Key("cal:" + r.ID)).Gap(t.S3).AlignItems(ui.Center).Children(func() {
 				ui.Box(c).Size(8, 8).Radius(4).Background(a.calColor(r.Color)).Shrink(0).AccessHidden(true)
 				ui.Column(c).Grow(1).MinWidth(0).Gap(1).Children(func() {
-					ui.Text(c, autospace(name)).FontSize(t.MD).TextColor(t.Ink).SingleLine()
+					uiText(c, autospace(name)).FontSize(t.MD).TextColor(t.Ink).SingleLine()
 					if note != "" {
-						ui.Text(c, note).FontSize(t.XS).TextColor(t.InkMuted)
+						uiText(c, note).FontSize(t.XS).TextColor(t.InkMuted)
 					}
 				})
 				v := r.Seen
@@ -790,7 +790,7 @@ func (a *App) calTodayLine(c *ui.Context, td *protocol.CalToday) {
 	}
 	row.Children(func() {
 		a.glyph(c, 16, drawCalendar(t.InkMuted))
-		ui.Text(c, text).FontSize(t.MD).TextColor(t.InkSoft).AccessHidden(true)
+		uiText(c, text).FontSize(t.MD).TextColor(t.InkSoft).AccessHidden(true)
 	})
 	if row.Clicked() {
 		a.draft = a.L.T("cal.today.prefill")

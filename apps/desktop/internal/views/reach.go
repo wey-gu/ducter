@@ -29,7 +29,7 @@ func viaLineKey(v *protocol.DeviceVia) string {
 // reachHeader is a group's small header, on the group's text edge.
 func (a *App) reachHeader(c *ui.Context, text string) {
 	t := a.T
-	ui.Text(c, text).FontSize(t.XS).FontWeight(700).TextColor(t.InkSoft).Margin(t.S4, 0, 6, t.S3)
+	uiText(c, text).FontSize(t.XS).FontWeight(700).TextColor(t.InkSoft).Margin(t.S4, 0, 6, t.S3)
 }
 
 // reachRow is one row: a title, one muted line under it, and a word at the
@@ -38,11 +38,11 @@ func (a *App) reachRow(c *ui.Context, key, title, line, word string, ink ui.Colo
 	t := a.T
 	ui.Row(c.Key(key)).Gap(t.S3).AlignItems(ui.Center).Padding(t.S2, t.S3).MinHeight(52).Children(func() {
 		ui.Column(c).Gap(2).Grow(1).MinWidth(0).Children(func() {
-			ui.Text(c, title).FontSize(t.SM).FontWeight(700).TextColor(t.Ink)
-			ui.Text(c, line).FontSize(t.XS).TextColor(lineInk).LineHeight(1.45)
+			uiText(c, title).FontSize(t.SM).FontWeight(700).TextColor(t.Ink)
+			uiText(c, line).FontSize(t.XS).TextColor(lineInk).LineHeight(1.45)
 		})
 		if word != "" {
-			ui.Text(c, word).FontSize(t.SM).FontWeight(700).TextColor(ink).SingleLine()
+			uiText(c, word).FontSize(t.SM).FontWeight(700).TextColor(ink).SingleLine()
 		}
 	})
 }
@@ -110,7 +110,7 @@ func (a *App) homeWays(c *ui.Context, dv *protocol.DeviceView) {
 			}
 		})
 		if tunnel {
-			ui.Text(c, a.L.T("reach.note.tunnel")).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.5).Margin(6, t.S3, 0, t.S3)
+			uiText(c, a.L.T("reach.note.tunnel")).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.5).Margin(6, t.S3, 0, t.S3)
 		}
 	})
 }

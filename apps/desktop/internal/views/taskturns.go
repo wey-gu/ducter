@@ -154,7 +154,7 @@ func (a *App) workedFold(c *ui.Context, key, label string, open bool) bool {
 		if hover {
 			ink = t.InkSoft
 		}
-		ui.Text(c, label).FontSize(stepSize).TextColor(ink).SingleLine().Shrink(0).AccessHidden(true)
+		uiText(c, label).FontSize(stepSize).TextColor(ink).SingleLine().Shrink(0).AccessHidden(true)
 		ui.Box(c).Size(12, 12).Shrink(0).Draw(drawChevron(t.Faint, open))
 		ui.Box(c).Height(1).Grow(1).Background(t.LineSoft)
 	})
@@ -170,8 +170,8 @@ func (a *App) promptCard(c *ui.Context, task *store.Task, b *Block, label string
 	open := a.open[key]
 	long := strings.Count(b.Text, "\n") > 2 || len([]rune(b.Text)) > 180
 	ui.Column(c.Key("prompt")).Gap(t.S2).Padding(t.S3, t.S4).Radius(t.RadiusMD).Background(t.SurfaceSunken).Children(func() {
-		ui.Text(c, label).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
-		tx := ui.Text(c, b.Text).FontSize(t.SM).LineHeight(leadingFor(b.Text, 1.55)).TextColor(t.InkSoft).Selectable()
+		uiText(c, label).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
+		tx := uiText(c, b.Text).FontSize(t.SM).LineHeight(leadingFor(b.Text, 1.55)).TextColor(t.InkSoft).Selectable()
 		if !open && long {
 			tx.MaxLines(3)
 		}
@@ -184,7 +184,7 @@ func (a *App) promptCard(c *ui.Context, task *store.Task, b *Block, label string
 				if redact.Has(b.Text) {
 					ui.Row(c).Gap(t.S1).AlignItems(ui.Center).Children(func() {
 						a.glyph(c, 14, drawKey(t.InkMuted))
-						ui.Text(c, a.L.T("secret.hidden")).FontSize(t.XS).TextColor(t.InkMuted)
+						uiText(c, a.L.T("secret.hidden")).FontSize(t.XS).TextColor(t.InkMuted)
 					})
 				}
 				ui.Spacer(c)
@@ -193,7 +193,7 @@ func (a *App) promptCard(c *ui.Context, task *store.Task, b *Block, label string
 					if open {
 						more = a.L.T("task.asked.less")
 					}
-					l := ui.Text(c.Key("more"), more).FontSize(t.XS).FontWeight(700).TextColor(t.InkSoft).Cursor(ui.CursorPointer).Role(ui.RoleButton).Focusable().Label(more)
+					l := uiText(c.Key("more"), more).FontSize(t.XS).FontWeight(700).TextColor(t.InkSoft).Cursor(ui.CursorPointer).Role(ui.RoleButton).Focusable().Label(more)
 					if l.Hovered() {
 						l.TextColor(t.Ink)
 					}
@@ -229,8 +229,8 @@ func (a *App) block(c *ui.Context, task *store.Task, b *Block) {
 	case "plan":
 		a.planCard(c, b)
 	case "report":
-		ui.Text(c, a.reportLabel(&protocol.Report{State: b.State})).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
-		ui.Text(c, autospace(b.Text)).FontSize(taskProse).LineHeight(leadingFor(b.Text, 1.6)).TextColor(t.InkSoft).Selectable()
+		uiText(c, a.reportLabel(&protocol.Report{State: b.State})).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
+		uiText(c, autospace(b.Text)).FontSize(taskProse).LineHeight(leadingFor(b.Text, 1.6)).TextColor(t.InkSoft).Selectable()
 		a.messageMedia(c, fmt.Sprint("r", b.Seq), b.Media, nil, false, "task:"+task.ID)
 		if b.Full > 0 {
 			a.showAll(c, task, b.Seq, b.Full, false)
@@ -266,7 +266,7 @@ func (a *App) block(c *ui.Context, task *store.Task, b *Block) {
 			if b.Bad {
 				tip = b.Text
 			}
-			tx := ui.Text(c, line).FontSize(stepSize).TextColor(t.InkSoft).SingleLine().MinWidth(0).Shrink(1)
+			tx := uiText(c, line).FontSize(stepSize).TextColor(t.InkSoft).SingleLine().MinWidth(0).Shrink(1)
 			if tip != "" {
 				tx.Tooltip(tip)
 			}
@@ -280,7 +280,7 @@ func (a *App) divider(c *ui.Context, label string) {
 	t := a.T
 	ui.Row(c).Gap(t.S2).MinHeight(24).AlignItems(ui.Center).Children(func() {
 		ui.Box(c).Height(1).Grow(1).Background(t.LineSoft)
-		ui.Text(c, label).FontSize(t.XXS).TextColor(t.InkMuted).SingleLine().Shrink(0)
+		uiText(c, label).FontSize(t.XXS).TextColor(t.InkMuted).SingleLine().Shrink(0)
 		ui.Box(c).Height(1).Grow(1).Background(t.LineSoft)
 	})
 }
@@ -298,9 +298,9 @@ func (a *App) planCard(c *ui.Context, b *Block) {
 	}
 	ui.Column(c.Key("plan")).Gap(t.S1).Padding(t.S3, t.S4).Radius(t.RadiusMD).Background(t.Surface).Border(1, t.LineSoft).Children(func() {
 		ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
-			ui.Text(c, a.L.T("plan.title")).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
+			uiText(c, a.L.T("plan.title")).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
 			ui.Spacer(c)
-			ui.Text(c, a.L.T("plan.progress", done, len(b.Items))).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum")
+			uiText(c, a.L.T("plan.progress", done, len(b.Items))).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum")
 		})
 		for i, it := range b.Items {
 			ui.Row(c.Key(i)).Gap(t.S2).MinHeight(24).AlignItems(ui.Center).MinWidth(0).Children(func() {
@@ -315,7 +315,7 @@ func (a *App) planCard(c *ui.Context, b *Block) {
 				default:
 					a.glyph(c, 16, drawPlanTodo(t.Faint))
 				}
-				ui.Text(c, autospace(it.Text)).FontSize(stepSize).LineHeight(leadingFor(it.Text, 1.45)).TextColor(ink).MinWidth(0).Shrink(1)
+				uiText(c, autospace(it.Text)).FontSize(stepSize).LineHeight(leadingFor(it.Text, 1.45)).TextColor(ink).MinWidth(0).Shrink(1)
 			})
 		}
 	})
@@ -383,7 +383,7 @@ func (a *App) groupLine(c *ui.Context, task *store.Task, l *Line, live bool) {
 				kind = tallyKindGlyph(l.Tally[0].Kind)
 			}
 			a.stepIcon(c, kind, live)
-			ui.Text(c, words).FontSize(stepSize).TextColor(t.InkSoft).SingleLine().MinWidth(0).Shrink(1).AccessHidden(true)
+			uiText(c, words).FontSize(stepSize).TextColor(t.InkSoft).SingleLine().MinWidth(0).Shrink(1).AccessHidden(true)
 		}) {
 			a.open[key] = !open
 		}
@@ -455,27 +455,27 @@ func (a *App) stepRow(c *ui.Context, task *store.Task, r *StepRow, live bool) {
 			if quiet {
 				ink = t.InkMuted
 			}
-			ui.Text(c, words).FontSize(stepSize).TextColor(ink).SingleLine().MinWidth(0).Shrink(0.35).Tooltip(words).AccessHidden(true)
+			uiText(c, words).FontSize(stepSize).TextColor(ink).SingleLine().MinWidth(0).Shrink(0.35).Tooltip(words).AccessHidden(true)
 			if code != "" {
 				// The subject: a command or a path, in mono, in ink.
-				ui.Text(c, code).Font(t.Mono).FontSize(12).TextColor(t.Ink).SingleLine().MinWidth(0).Shrink(1).Tooltip(code).AccessHidden(true)
+				uiText(c, code).Font(t.Mono).FontSize(12).TextColor(t.Ink).SingleLine().MinWidth(0).Shrink(1).Tooltip(code).AccessHidden(true)
 			}
 			if r.N > 1 {
-				ui.Text(c, fmt.Sprintf("×%d", r.N)).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum").Shrink(0)
+				uiText(c, fmt.Sprintf("×%d", r.N)).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum").Shrink(0)
 			}
 			if r.Added > 0 {
-				ui.Text(c, fmt.Sprintf("+%d", r.Added)).Font(t.Mono).FontSize(12).TextColor(t.Done.Ink).Shrink(0)
+				uiText(c, fmt.Sprintf("+%d", r.Added)).Font(t.Mono).FontSize(12).TextColor(t.Done.Ink).Shrink(0)
 			}
 			if r.Removed > 0 {
-				ui.Text(c, fmt.Sprintf("−%d", r.Removed)).Font(t.Mono).FontSize(12).TextColor(t.Failed.Ink).Shrink(0)
+				uiText(c, fmt.Sprintf("−%d", r.Removed)).Font(t.Mono).FontSize(12).TextColor(t.Failed.Ink).Shrink(0)
 			}
 			if r.Step != nil && r.Step.Kind == "delegated" && r.Ms != nil && !live {
 				// A subagent's row: done, and how long it took.
 				a.glyph(c, 14, drawCheck(t.InkMuted))
-				ui.Text(c, a.shortDur(time.Duration(*r.Ms)*time.Millisecond)).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum").Shrink(0)
+				uiText(c, a.shortDur(time.Duration(*r.Ms)*time.Millisecond)).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum").Shrink(0)
 			}
 			if bad {
-				ui.Text(c, a.L.T("step.label.error")).FontSize(t.XS).FontWeight(600).TextColor(t.Failed.Ink.Alpha(0.85)).Shrink(0)
+				uiText(c, a.L.T("step.label.error")).FontSize(t.XS).FontWeight(600).TextColor(t.Failed.Ink.Alpha(0.85)).Shrink(0)
 			}
 		})
 		if clicked {
@@ -484,14 +484,14 @@ func (a *App) stepRow(c *ui.Context, task *store.Task, r *StepRow, live bool) {
 		if bad && !open {
 			// The failure in words, one quiet line; the raw text when opened.
 			if w := a.failWords(r); w != "" {
-				ui.Text(c, autospace(w)).FontSize(stepSize).LineHeight(leadingFor(w, 1.5)).TextColor(t.InkSoft).MaxLines(2).MinWidth(0).
+				uiText(c, autospace(w)).FontSize(stepSize).LineHeight(leadingFor(w, 1.5)).TextColor(t.InkSoft).MaxLines(2).MinWidth(0).
 					Padding(0, 0, 2, 22).Tooltip(r.Hint).Selectable()
 			}
 		}
 		switch {
 		case open && r.Step == nil:
 			// Its thinking, indented, quiet.
-			ui.Text(c, autospace(r.Thought)).FontSize(stepSize).LineHeight(1.5).TextColor(t.InkMuted).
+			uiText(c, autospace(r.Thought)).FontSize(stepSize).LineHeight(1.5).TextColor(t.InkMuted).
 				Padding(2, 0, t.S1, 22).MinWidth(0).Selectable()
 		case open && len(r.Diff) > 0:
 			a.diffPanel(c, r)
@@ -523,7 +523,7 @@ func (a *App) diffPanel(c *ui.Context, r *StepRow) {
 			case strings.HasPrefix(l, "-"):
 				text, ink, bg = "−"+l[1:], t.Failed.Ink, &t.Failed.Surface
 			}
-			line := ui.Text(c.Key(i), text).Font(t.Mono).FontSize(12).LineHeight(1.5).Padding(0, t.S3).MinWidth(0).TextColor(ink)
+			line := uiText(c.Key(i), text).Font(t.Mono).FontSize(12).LineHeight(1.5).Padding(0, t.S3).MinWidth(0).TextColor(ink)
 			if bg != nil {
 				line.Background(bg.Alpha(0.55))
 			}
@@ -532,7 +532,7 @@ func (a *App) diffPanel(c *ui.Context, r *StepRow) {
 			}
 		}
 		if r.DiffMore > 0 {
-			ui.Text(c.Key("more"), a.L.T("step.lines.more", r.DiffMore)).FontSize(t.XS).TextColor(t.InkMuted).Padding(t.S1, t.S3, 0, t.S3)
+			uiText(c.Key("more"), a.L.T("step.lines.more", r.DiffMore)).FontSize(t.XS).TextColor(t.InkMuted).Padding(t.S1, t.S3, 0, t.S3)
 		}
 	})
 }
@@ -548,10 +548,10 @@ func (a *App) outputPanel(c *ui.Context, key, detail string) {
 		shown = strings.Join(lines[:outputLines], "\n")
 	}
 	ui.Column(c.Key("out")).Gap(t.S1).Margin(t.S1, 0, t.S2, 22).Padding(t.S2, t.S3).Radius(8).Background(t.Sunken).MinWidth(0).Children(func() {
-		ui.Text(c, shown).Font(t.Mono).FontSize(12).LineHeight(1.5).TextColor(t.InkSoft).Selectable()
+		uiText(c, shown).Font(t.Mono).FontSize(12).LineHeight(1.5).TextColor(t.InkSoft).Selectable()
 		if !all && len(lines) > outputLines {
 			more := a.L.T("step.lines.more", len(lines)-outputLines)
-			l := ui.Text(c.Key("more"), more).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).Cursor(ui.CursorPointer).Role(ui.RoleButton).Focusable().Label(more)
+			l := uiText(c.Key("more"), more).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).Cursor(ui.CursorPointer).Role(ui.RoleButton).Focusable().Label(more)
 			if l.Hovered() {
 				l.TextColor(t.Ink)
 			}
@@ -714,7 +714,7 @@ func (a *App) workingLine(c *ui.Context, task *store.Task, turns []Turn, blocks 
 		ui.Spacer(c)
 		if at := store.ParseTime(since); !at.IsZero() {
 			c.After(time.Second)
-			ui.Text(c, a.shortDur(a.Now().Sub(at))).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum").Shrink(0)
+			uiText(c, a.shortDur(a.Now().Sub(at))).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum").Shrink(0)
 		}
 	})
 }
@@ -723,7 +723,7 @@ func (a *App) workingLine(c *ui.Context, task *store.Task, turns []Turn, blocks 
 // once every 1.8 s; still under reduced motion.
 func (a *App) shimmerText(c *ui.Context, text string, size float32, col ui.Color) ui.Element {
 	t := a.T
-	tx := ui.Text(c, text).FontSize(size).FixedLineHeight(18).TextColor(col.Alpha(0.55)).SingleLine().Shrink(1).MinWidth(0)
+	tx := uiText(c, text).FontSize(size).FixedLineHeight(18).TextColor(col.Alpha(0.55)).SingleLine().Shrink(1).MinWidth(0)
 	if c.Preferences().ReduceMotion {
 		return tx.TextColor(col)
 	}
@@ -794,8 +794,8 @@ func (a *App) taskFoot(c *ui.Context, task *store.Task, blocks []Block) {
 	if a.yourTurn(task) {
 		a.aboveComposer(c, func() {
 			ui.Row(c.Key("foot")).Gap(t.S2).MinHeight(t.ControlSM).Padding(0, t.S3).AlignItems(ui.Center).MinWidth(0).Role(ui.RoleStatus).Children(func() {
-				ui.Text(c, a.L.T("task.your.turn")).FontSize(t.SM).FontWeight(800).TextColor(t.State(string(protocol.NeedsYou)).Ink).Shrink(0)
-				ui.Text(c, a.L.T("task.your.turn.hint")).FontSize(t.SM).TextColor(t.InkMuted).MinWidth(0).Shrink(1)
+				uiText(c, a.L.T("task.your.turn")).FontSize(t.SM).FontWeight(800).TextColor(t.State(string(protocol.NeedsYou)).Ink).Shrink(0)
+				uiText(c, a.L.T("task.your.turn.hint")).FontSize(t.SM).TextColor(t.InkMuted).MinWidth(0).Shrink(1)
 			})
 		})
 		return
@@ -803,7 +803,7 @@ func (a *App) taskFoot(c *ui.Context, task *store.Task, blocks []Block) {
 	if task.Attention() == protocol.Working && a.escArmed(c, task.ID) {
 		a.aboveComposer(c, func() {
 			ui.Row(c.Key("foot")).Gap(t.S2).MinHeight(t.ControlSM).Padding(0, t.S3).AlignItems(ui.Center).MinWidth(0).Role(ui.RoleStatus).Children(func() {
-				ui.Text(c, a.L.T("foot.esc")).FontSize(t.SM).TextColor(t.InkMuted).MinWidth(0).Shrink(1)
+				uiText(c, a.L.T("foot.esc")).FontSize(t.SM).TextColor(t.InkMuted).MinWidth(0).Shrink(1)
 				ui.Spacer(c)
 				if a.button(c, a.L.T("foot.keep"), btnText, t.ControlSM, t.Bg) {
 					a.escAt, a.escTask = time.Time{}, ""

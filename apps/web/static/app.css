@@ -12756,7 +12756,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   .past-sheet, .pcard, .pstar.pop, .pstar-btn.on svg, .ptag.drop, .pmenu, .pmark { animation: none; transition: none; }
 }
 /* D285: the marks popover stands over the sheet's middle, so it is never cut off at its foot. */
-.pmark { position: fixed; z-index: 30; top: 50%; left: 50%; right: auto; transform: translate(-50%, -50%); box-shadow: var(--floating), 0 0 0 1px var(--line), 0 0 0 100vmax rgba(60, 40, 20, 0.12); }
+.pmark { position: fixed; z-index: 30; top: 50%; left: 50%; right: auto; transform: translate(-50%, -50%); box-shadow: var(--floating), 0 0 0 1px var(--line), 0 0 0 100vmax var(--scrim); }
 .pm-pics, .pm-row.top { background: none; }
 @media (max-width: 640px) { .pmark { left: 50%; right: auto; width: calc(100vw - 24px); } }
 /* D285: 一直在跑的 / Ongoing beside 做过的事 / Past: the two tabs, a card's runs as pebbles. */
@@ -15991,6 +15991,18 @@ svg .wave.w2.on {
 .trust.asks li svg {
   stroke: var(--needs-ink);
 }
+/* D413: 不用问我的 / Without asking, the third list: what, where and their words, each its own line. */
+.trust.without .grow {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.trust.without small {
+  font-size: var(--sm);
+  color: var(--ink-muted);
+}
 
 /* D366: Nowledge Mem on a computer for tasks: one row under its AI agents, on its card and the lend sheet. */
 .dc-mem { margin-top: 10px; padding: 4px 14px; border-radius: var(--r-md); background: var(--surface); box-shadow: inset 0 0 0 1px var(--line), 0 2px 0 var(--line); }
@@ -16920,3 +16932,171 @@ a.pr:hover { box-shadow: inset 0 0 0 1px var(--line-2); }
 @keyframes said-in { from { opacity: 0; transform: translateY(4px); } }
 @keyframes said-pop { from { transform: scale(0.2); } }
 @media (prefers-reduced-motion: reduce) { .said-line, .said-line .said-dot { animation: none; } }
+
+/* ---------- D410: 你的小应用 / Your apps (apps-shelf.tsx, design/apps.md) ---------- */
+/* An app's tile in its own tint (the person's muted clays, D285), its mark in ink; the old accent
+   clay stays for a face drawn without an app (the shelf card's empty stack). */
+.app-face.tinted { background: var(--tint); color: var(--tint-ink); box-shadow: inset 0 1.5px 0 var(--hi-secondary), 0 3px 0 color-mix(in srgb, var(--tint) 62%, var(--ink) 14%); }
+.app-face.tinted.sm { box-shadow: inset 0 1px 0 var(--hi-secondary), 0 2px 0 color-mix(in srgb, var(--tint) 62%, var(--ink) 14%); }
+.app-face.ghost { width: 44px; height: 44px; border-radius: 14px; opacity: 0.85; }
+
+.apps-shelf { width: min(860px, calc(100vw - 32px)); }
+.shelf-head h2 { font-size: 24px; }
+.shelf-sub { margin: 2px 28px 0; font-size: var(--sm); color: var(--ink-muted); }
+.shelf-body { flex: 1; min-height: 0; overflow-y: auto; padding: 18px 28px 28px; }
+.shelf-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+.shelf-tile { position: relative; animation: cal-rise 220ms var(--ease) backwards; }
+.shelf-tile.menu-open { z-index: 2; }
+.shelf-open {
+  width: 100%;
+  min-height: 148px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 16px 16px 14px;
+  border: 0;
+  border-radius: var(--r-lg, 20px);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: var(--base);
+  transition: transform var(--t-fast, 120ms) var(--ease), box-shadow var(--t-fast, 120ms) var(--ease);
+}
+.shelf-open:hover { transform: translateY(-2px); box-shadow: 0 6px 0 var(--line), var(--drop); }
+.shelf-open:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--line); }
+.shelf-open:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.shelf-open.renaming { cursor: default; }
+.shelf-open.renaming:hover { transform: none; box-shadow: var(--base); }
+.shelf-words { display: flex; flex-direction: column; gap: 4px; min-width: 0; width: 100%; }
+.shelf-name { font-family: var(--head); font-size: var(--lg); font-weight: 800; line-height: 1.25; overflow-wrap: anywhere; padding-right: 26px; }
+.shelf-line { font-size: var(--sm); color: var(--ink-muted); line-height: 1.4; }
+.shelf-line.says { color: var(--ink-soft); font-weight: 700; font-variant-numeric: tabular-nums; }
+.shelf-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin-top: 2px; font-size: var(--xs); color: var(--ink-muted); }
+.shelf-pin { padding: 1px 8px; border-radius: 999px; background: var(--sunken); color: var(--ink-soft); font-weight: 700; }
+.shelf-more { position: absolute; top: 14px; right: 12px; height: 30px; min-width: 30px; }
+.shelf-tile .pmenu { top: 46px; right: 8px; }
+.app-rename {
+  width: 100%;
+  min-width: 0;
+  height: 40px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: var(--sunken);
+  color: var(--ink);
+  font: inherit;
+  font-family: var(--head);
+  font-size: var(--lg);
+  font-weight: 800;
+  box-shadow: inset 0 0 0 2px var(--accent);
+  outline: 0;
+}
+.app-head .app-rename { font-size: 20px; max-width: 420px; }
+.app-more { position: relative; flex: none; }
+.app-more .pmenu { top: 34px; right: -4px; }
+.app-menu .danger-text { height: auto; text-align: left; color: var(--failed-ink); font-weight: 700; }
+.app-del { gap: 8px; padding: 14px 14px 12px; width: 280px; }
+.app-del-q { font-family: var(--head); font-size: var(--md); }
+.app-del-body { font-size: var(--sm); color: var(--ink-soft); line-height: 1.45; }
+.app-del-acts { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; }
+.pmenu.app-del button { text-align: center; }
+.btn.danger { --fill: var(--failed-surface); --fill-top: var(--failed-surface); --on: var(--failed-ink); --ledge-c: color-mix(in srgb, var(--failed-surface) 60%, var(--failed-ink) 30%); --hi: var(--hi-accent); --rim-c: transparent; --seam: transparent; }
+
+/* The empty shelf: three ghost tiles, what lives here, what to say (a tap says it). */
+.shelf-empty { max-width: 520px; margin: 20px auto 0; display: flex; flex-direction: column; align-items: center; text-align: center; }
+.shelf-ghosts { display: flex; gap: 10px; margin-bottom: 18px; }
+.shelf-ghosts .ghost:nth-child(2) { transform: translateY(-6px) rotate(4deg); }
+.shelf-ghosts .ghost:nth-child(1) { transform: rotate(-5deg); }
+.shelf-empty h3 { margin: 0; font-family: var(--head); font-size: var(--t20); font-weight: 800; }
+.shelf-empty p { margin: 8px 0 0; font-size: var(--md); color: var(--ink-soft); line-height: var(--lh-read); }
+.shelf-try { align-self: stretch; margin: 26px 2px 8px; text-align: left; font-size: var(--xs); font-weight: 800; letter-spacing: 0.02em; color: var(--ink-muted); }
+.shelf-ideas { list-style: none; margin: 0; padding: 0; align-self: stretch; display: flex; flex-direction: column; gap: 8px; }
+.shelf-idea {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 0;
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 3px 0 var(--line);
+}
+.shelf-idea:hover { box-shadow: 0 3px 0 var(--line), 0 0 0 2px var(--accent) inset; }
+.shelf-idea:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--line); }
+.shelf-idea-words { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.shelf-idea-say { font-size: var(--md); font-weight: 700; line-height: 1.4; }
+.shelf-idea-why { font-size: var(--xs); color: var(--ink-muted); }
+
+/* The shelf card under "where are my apps": a small stack of tiles. */
+.shelf-stack { display: flex; flex: none; }
+.shelf-stack .app-face + .app-face { margin-left: -12px; }
+.shelf-stack .app-face { box-shadow: 0 0 0 2px var(--surface), 0 2px 0 var(--line); }
+
+/* The first time an app opens: the partner's line of what it already filled in. */
+.app-first {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  margin: 4px 28px 0;
+  padding: 9px 14px;
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--ink-soft);
+  font-size: var(--sm);
+  box-shadow: 0 2px 0 var(--line);
+  animation: cal-rise 260ms var(--ease) both;
+}
+.app-first-dot { align-self: center; flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px var(--needs-surface); }
+.app-first-word { font-weight: 800; color: var(--ink); flex: none; }
+.app-first-note { min-width: 0; overflow-wrap: anywhere; }
+
+/* Pinned apps at the top of the conversation, beside D381's pins. */
+.pin-apps { flex: none; display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; padding: 6px 16px 2px; }
+.pin-app {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 320px;
+  height: 34px;
+  padding: 0 12px 0 6px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--sm);
+  cursor: pointer;
+  box-shadow: 0 2px 0 var(--line);
+}
+.pin-app .app-face { border-radius: 8px; }
+.pin-app-name { font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pin-app-line { color: var(--ink-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+
+@media (max-width: 640px) {
+  .apps-shelf { width: 100vw; }
+  .shelf-sub { margin: 0 16px; }
+  .shelf-body { padding: 14px 16px calc(24px + var(--safe-bottom, 0px)); }
+  .shelf-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .shelf-open { min-height: 136px; padding: 14px 12px 12px; gap: 12px; }
+  .shelf-name { font-size: var(--md); }
+  .shelf-more { top: 10px; right: 6px; }
+  /* A phone: the tile's 「⋯」 rises from the foot, whole, whichever column it is in. */
+  .shelf-tile .pmenu { position: fixed; z-index: 30; top: auto; left: 12px; right: 12px; bottom: calc(12px + var(--safe-bottom, 0px)); width: auto; box-shadow: var(--floating), 0 0 0 1px var(--line), 0 0 0 100vmax var(--scrim); }
+  .shelf-tile .pmenu button { padding: 13px 14px; font-size: var(--md); }
+  .app-first { margin: 4px 16px 0; }
+  .pin-apps { padding: 4px 12px 2px; }
+  .pin-app-line { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .shelf-tile, .app-first { animation: none; }
+  .shelf-open, .shelf-open:hover { transition: none; transform: none; }
+}

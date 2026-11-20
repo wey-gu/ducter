@@ -8,7 +8,7 @@
 //      `npm install -g` with that node as the prefix, so its bin lands in <data>/tools/node/bin.
 // Nothing outside <data>/tools is written; deleting that folder undoes it. The copies read as
 // npm-installed under that prefix (harness-probe agentHow), so D156's updates reach them.
-// D409: Antigravity's agy is no npm package. It goes where its own installer puts it
+// D415: Antigravity's agy is no npm package. It goes where its own installer puts it
 // (~/.local/bin/agy, where OAR looks even off PATH), the way that installer does it: Google's
 // release manifest for this platform, the build it names, its sha512 checked, the flat binary
 // copied in; never the installer's shell-profile step. A copy below OAR's floor is updated with
@@ -22,7 +22,7 @@
 //   - DeepSeek Harness (D371): its Mac app opened there when it has one (its 登录: the DeepSeek
 //     account, or a key), and a DeepSeek API key pasted in the row, checked and kept in that
 //     computer's keys.env (0600) like any key (D102); the row turns signed in either way;
-//   - Antigravity (D409): `agy acp --login`: a Google link to open on any device; the code that
+//   - Antigravity (D415): `agy acp --login`: a Google link to open on any device; the code that
 //     page gives (or the address it lands on) is pasted back and written to the sign-in's input.
 //     On Linux its own browser launch is a no-op (a server has none), as OAR does it.
 // The pasted DeepSeek key is the one secret that passes: home to that computer over its own
@@ -56,7 +56,7 @@ export const NODE_RELEASE = {
   } as Record<string, { file: string; sha256: string }>,
 };
 
-/** The agents Ducter can put on a computer, in the order a sheet lists them (D371: DeepSeek Harness's command line too; D409: Antigravity's agy). */
+/** The agents Ducter can put on a computer, in the order a sheet lists them (D371: DeepSeek Harness's command line too; D415: Antigravity's agy). */
 export const INSTALLABLE: readonly HarnessId[] = ["codex", "claude-code", "pi", "deepseek-harness", "antigravity"];
 /** Pre-checked on the lend sheet's 装上哪些 AI？ (pi's sign-in needs that computer's terminal). */
 export const SUGGESTED: readonly HarnessId[] = ["codex", "claude-code"];
@@ -102,15 +102,15 @@ export interface AgentSetupSys {
   checkKey?: (key: string) => Promise<{ ok: true } | { ok: false; reason: "wrong_key" | "no_balance" | "offline" | "failed" }>;
   /** D371: where DeepSeek Harness.app may be (default: /Applications, ~/Applications). */
   dshApps?: () => string[];
-  /** D409: the person's home folder there (agy goes in its ~/.local/bin). Default: os.homedir(). */
+  /** D415: the person's home folder there (agy goes in its ~/.local/bin). Default: os.homedir(). */
   home?: string;
-  /** D409: this Linux is musl (Alpine): agy's musl build. Default: its loader is there. */
+  /** D415: this Linux is musl (Alpine): agy's musl build. Default: its loader is there. */
   musl?: boolean;
-  /** D409: tests: make a file executable, clear macOS's quarantine. */
+  /** D415: tests: make a file executable, clear macOS's quarantine. */
   chmod?: (p: string) => void;
 }
 
-/** D409: Google's release manifest for agy on one platform. */
+/** D415: Google's release manifest for agy on one platform. */
 interface AgyRelease {
   version: string;
   url: string;
@@ -232,7 +232,7 @@ export function createAgentSetup(o: {
     return { ok: true };
   };
 
-  /** D409: agy where its own installer puts it, or the copy there made to run (see the header). */
+  /** D415: agy where its own installer puts it, or the copy there made to run (see the header). */
   const installAgy = async (): Promise<void> => {
     const h = "antigravity";
     const home = sys.home ?? homedir();
@@ -420,7 +420,7 @@ export function createAgentSetup(o: {
   };
 
   /**
-   * D409: agy's sign-in environment. agy ignores BROWSER and starts the platform's launcher
+   * D415: agy's sign-in environment. agy ignores BROWSER and starts the platform's launcher
    * itself; on Linux it finds `xdg-open` on PATH, so a folder holding one that does nothing goes
    * first (OAR's login-browser.ts does the same): the link is opened wherever the person is.
    */

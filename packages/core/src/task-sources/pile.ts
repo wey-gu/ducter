@@ -11,7 +11,7 @@
 import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { randomBytes } from "node:crypto";
-import type { Bodies, FindHow, LogEvent, ReviewBoard, ReviewBoardPr, PileGroup, PileItem, PilePick, PileView, PreRead, PreReadNote, ReviewStanding, SourceItem, SourceItemRef, SourceOp, TaskCard } from "@ducter/protocol";
+import type { Bodies, FindHow, LogEvent, ReviewBoard, ReviewBoardPr, PileGroup, PileItem, PilePick, PileView, PreRead, PreReadNote, ReviewStanding, SourceItem, SourceItemRef, SourceOp, StandingView, TaskCard } from "@ducter/protocol";
 import { PILE_CAP, PILE_GROUPS, SUBJECT_MIN, SUBJECTS_PAST, SUBJECTS_SHOWN } from "@ducter/protocol";
 import { redact } from "@ducter/protocol/src/redact.ts";
 import type { LogStore, TaskRegistry } from "@ducter/protocol/src/internal.ts";
@@ -85,7 +85,7 @@ interface State {
 }
 
 /** D407: one pull request as the review task's last round saw it (the board's row). */
-type RoundPr = { ref: string; title?: string; head?: string; ci?: ReviewBoardPr["ci"]; changed: boolean; gist?: string };
+type RoundPr = { ref: string; title?: string; head?: string; ci?: ReviewBoardPr["ci"]; changed: boolean; gist?: string; mention?: boolean };
 
 const fresh = (): State => ({ verdicts: {}, chosen: {}, items: [], queue: [], handed: {}, reads: {} });
 
@@ -110,7 +110,9 @@ export interface PileDeps {
   /** The open count across them (GitHub's true total), from the service's last look. */
   open: () => { open: number; atLeast?: boolean };
   /** The service's one path out: a write, logged as source_write (Done for you). */
-  write: (item: SourceItemRef, op: SourceOp, how: { by: Bodies["source_write"]["by"]; decisionId?: string; taskId?: string; text?: string }) => Promise<WriteResult>;
+  write: (item: SourceItemRef, op: SourceOp, how: { by: Bodies["source_write"]["by"]; decisionId?: string; taskId?: string; text?: string; standing?: string; said?: string }) => Promise<WriteResult>;
+  /** D413: what the person said may go without asking (不用问我的): the review posting it covers. */
+  standing?: { allows(ref: string, o?: { mention?: boolean }): StandingView | undefined; firstUse(id: string): boolean };
   /** Open a task for a to-do and bind it (the person handed it over). */
   openTask?: (item: SourceItem, brief: string) => Promise<{ ok: boolean; taskId?: string; error?: string }>;
   /** The repository's own review guide, when its folder is on this computer (a review skill, REVIEW.md). */
@@ -150,6 +152,13 @@ const W = {
     roundQ1: "1 个 PR 的评审写好了，发到 GitHub？",
     roundGo: "发到 GitHub",
     roundHold: "先不发",
+    // D413: the first time reviews go under what the person said, once; after that, silence.
+    standingFirst: "按你说的，这 {n} 份评审直接发到 GitHub 了：{links}。以后照这样发，不再一一说；都在「替你做过的」里，想收回说一声。",
+    standingFirst1: "按你说的，这份评审直接发到 GitHub 了：{links}。以后照这样发，不再一一说；都在「替你做过的」里，想收回说一声。",
+    // Said just now, with drafts waiting: the partner's own line says the rest; this is what went.
+    standingNow: "刚才等着的 {n} 份评审已经发到 GitHub：{links}",
+    standingNow1: "刚才等着的那份评审已经发到 GitHub：{links}",
+    listSep: "、",
     reviewQ: "在 {where}{label} 下发出这 {n} 条 review 评论？",
     reviewGo: "发出",
     reviewHold: "先不发",
@@ -181,6 +190,11 @@ const W = {
     roundQ1: "1 PR review is written. Post it to GitHub?",
     roundGo: "Post to GitHub",
     roundHold: "Not now",
+    standingFirst: "As you said, these {n} reviews went straight to GitHub: {links}. From now on they go without a word; every one is in Done for you. Say so to take it back.",
+    standingFirst1: "As you said, this review went straight to GitHub: {links}. From now on they go without a word; every one is in Done for you. Say so to take it back.",
+    standingNow: "The {n} reviews that were waiting are on GitHub now: {links}",
+    standingNow1: "The review that was waiting is on GitHub now: {links}",
+    listSep: ", ",
     reviewQ: "Send these {n} review comments on {where}{label}?",
     reviewGo: "Send",
     reviewHold: "Not now",
@@ -321,7 +335,8 @@ export function parseRound(raw: unknown): { ok: true; prs: (RoundPr & { notes: P
     const gist = typeof x.gist === "string" && x.gist.trim() ? x.gist.trim().slice(0, 160) : undefined;
     const title = typeof x.title === "string" && x.title.trim() ? x.title.trim().replace(/\s+/g, " ").slice(0, 200) : undefined;
     const ci = x.ci === "passing" || x.ci === "failing" || x.ci === "pending" || x.ci === "none" ? x.ci : undefined;
-    prs.push({ ref, ...(title ? { title } : {}), ...(head ? { head } : {}), ...(ci ? { ci } : {}), changed: x.changed === true, ...(gist ? { gist } : {}), notes });
+    // D413: a PR that only mentions the person (didn't ask for their review) is never posted without asking.
+    prs.push({ ref, ...(title ? { title } : {}), ...(head ? { head } : {}), ...(ci ? { ci } : {}), changed: x.changed === true, ...(gist ? { gist } : {}), ...(x.mention === true ? { mention: true } : {}), notes });
   }
   return { ok: true, prs };
 }
@@ -358,7 +373,11 @@ export interface Pile {
    * D394: a review task's round: every request waiting on the person, the ones reviewed again with
    * their drafted comments. The drafts become those PRs' pre-reads; one card asks to post them all.
    */
-  round(taskId: string, raw: unknown): Promise<{ ok: boolean; error?: string; drafted?: number; standing?: ReviewStanding }>;
+  round(taskId: string, raw: unknown): Promise<{ ok: boolean; error?: string; drafted?: number; posted?: { ref: string; link?: string }[]; asking?: number; standing?: ReviewStanding }>;
+  /** D413: a standing permission was just said: post every waiting draft it covers now (its card shrinks or settles). */
+  postWaiting(): Promise<{ taskId: string; posted: { ref: string; link?: string }[] }[]>;
+  /** D413: the GitHub owners the review rounds look at now (a standing permission said without one is bounded by them). */
+  reviewOrgs(): string[];
   /** D394: the round card's answer: Go posts each drafted review once. */
   answerRound(card: Bodies["decision"], r: Bodies["decision_resolved"]): Promise<{ done: number; failed: number }>;
   /** D394: a review task's standing (the Ongoing card's line). */
@@ -640,6 +659,65 @@ export function createPile(d: PileDeps): Pile {
 
   const newId = () => `d_${randomBytes(6).toString("hex")}`;
   const srcOf = () => d.sources().find((x) => x.kind === "github")?.id ?? "github";
+  const prItem = (x: { ref: string; title: string; url?: string }): SourceItemRef => ({ source: srcOf(), kind: "github", ref: x.ref, label: `#${x.ref.split("#")[1] ?? ""}`, where: x.ref.split("#")[0], title: x.title, ...(x.url ? { url: x.url } : {}), pr: true });
+  /**
+   * D394: the one card a round: the earlier one, still open, is settled (this one carries its
+   * drafts too); none when nothing is left to ask. Its id, if one stands.
+   */
+  const roundCard = (taskId: string, prevId: string | undefined, unsent: PreRead[]): string | undefined => {
+    if (prevId) {
+      // D413: every draft it carried went under what the person said: the card says so, not "no answer".
+      const was = d.log.read({ kinds: ["decision"], beforeSeq: d.log.head() + 1, limit: 2000 }).find((e) => (e.body as Bodies["decision"]).decisionId === prevId)?.body as Bodies["decision"] | undefined;
+      const refs = (was?.src?.items ?? []).map((x) => x.item.ref);
+      const posted = refs.length > 0 && refs.every((r) => st.reads[r]?.state === "sent");
+      d.log.append({ stream: "channel", origin: "partner", kind: "decision_resolved", body: { decisionId: prevId, option: "hold", by: "default", settled: true, ...(posted ? { posted: true as const } : {}) } });
+    }
+    if (!unsent.length) return undefined;
+    const items = unsent.map((x) => ({ item: prItem(x) }));
+    const w = W[d.lang()];
+    const n = items.length;
+    const body: Bodies["decision"] = {
+      decisionId: newId(),
+      question: n === 1 ? w.roundQ1 : fill(w.roundQ, { n }),
+      goLabel: w.roundGo,
+      holdLabel: w.roundHold,
+      defaultOption: "hold",
+      reversible: false,
+      src: { kind: "reviews", item: items[0]!.item, taskId, items },
+    };
+    d.log.append({ stream: "channel", origin: "partner", kind: "decision", body });
+    return body.decisionId;
+  };
+  /**
+   * D413: post this task's unsent drafts that a standing permission covers (the person said reviews
+   * go without asking, on these orgs; never a PR that only mentions them), through the one audited
+   * write. The first time a permission is used, one line in the conversation lists what went.
+   */
+  const postStanding = async (taskId: string, mentionOf: (ref: string) => boolean | undefined, justSaid = false): Promise<{ ref: string; link?: string }[]> => {
+    if (!d.standing) return [];
+    const went: { ref: string; link?: string; standing: string }[] = [];
+    for (const x of Object.values(st.reads)) {
+      if (x.byTask !== taskId || x.state !== "drafted" || !x.notes.length) continue;
+      const s = d.standing.allows(x.ref, { mention: mentionOf(x.ref) === true });
+      if (!s) continue;
+      const w = await d.write(prItem(x), "review", { by: "rule", taskId, standing: s.id, said: s.text, text: JSON.stringify({ notes: x.notes }) });
+      if (!w.ok) continue; // it stays drafted: the card asks for it
+      x.state = "sent";
+      went.push({ ref: x.ref, link: w.link ?? x.url ?? `https://github.com/${x.ref.replace("#", "/pull/")}`, standing: s.id });
+    }
+    if (!went.length) return [];
+    save();
+    const first = [...new Set(went.map((x) => x.standing))].filter((id) => d.standing!.firstUse(id));
+    if (first.length) {
+      const lang = d.lang();
+      const mine = went.filter((x) => first.includes(x.standing));
+      const links = mine.map((x) => `[${x.ref.replace(/^[^/]+\//, "")}](${x.link})`).join(W[lang].listSep);
+      const w = W[lang];
+      const text = fill(justSaid ? (mine.length === 1 ? w.standingNow1 : w.standingNow) : mine.length === 1 ? w.standingFirst1 : w.standingFirst, { n: mine.length, links });
+      d.log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text } } as never);
+    }
+    return went.map(({ ref, link }) => ({ ref, ...(link ? { link } : {}) }));
+  };
 
   return {
     view() {
@@ -846,7 +924,6 @@ export function createPile(d: PileDeps): Pile {
     async round(taskId, raw) {
       const r = parseRound(raw);
       if (!r.ok) return { ok: false, error: r.error };
-      const lang = d.lang();
       const at = new Date(d.now()).toISOString();
       const drafted: string[] = [];
       for (const pr of r.prs) {
@@ -874,14 +951,18 @@ export function createPile(d: PileDeps): Pile {
       }
       const keys = Object.keys(st.reads);
       for (const k of keys.slice(0, Math.max(0, keys.length - 40))) delete st.reads[k];
-      // Every draft of this task still unsent goes on the one card (an earlier round's too).
-      const unsent = Object.values(st.reads).filter((x) => x.byTask === taskId && x.state === "drafted");
       const rounds = (st.rounds ??= {});
       const prev = rounds[taskId];
+      // D413: what the person said may go without asking goes now; the rest waits on one card.
+      const mentionOf = (ref: string) => r.prs.find((p) => p.ref === ref)?.mention ?? prev?.prs?.find((p) => p.ref === ref)?.mention;
+      const posted = await postStanding(taskId, mentionOf);
+      // Every draft of this task still unsent goes on the one card (an earlier round's too).
+      const unsent = Object.values(st.reads).filter((x) => x.byTask === taskId && x.state === "drafted");
       const standing: ReviewStanding & { decisionId?: string; n?: number; prs?: RoundPr[] } = {
         waiting: r.prs.length,
         again: r.prs.filter((p) => p.changed).length,
         same: r.prs.filter((p) => !p.changed).length,
+        ...(posted.length ? { posted: posted.length } : {}),
         drafted: unsent.length,
         at,
         n: (prev?.n ?? 0) + 1,
@@ -891,29 +972,35 @@ export function createPile(d: PileDeps): Pile {
           return { ...p, ...(title ? { title } : {}) };
         }),
       };
-      if (drafted.length) {
-        // The earlier round's card, still open, is settled: this one carries its drafts too.
-        if (prev?.decisionId) d.log.append({ stream: "channel", origin: "partner", kind: "decision_resolved", body: { decisionId: prev.decisionId, option: "hold", by: "default", settled: true } });
-        const items = unsent.map((x) => ({ item: { source: srcOf(), kind: "github" as const, ref: x.ref, label: `#${x.ref.split("#")[1] ?? ""}`, where: x.ref.split("#")[0], title: x.title, ...(x.url ? { url: x.url } : {}), pr: true } }));
-        const w = W[lang];
-        const n = items.length;
-        const body: Bodies["decision"] = {
-          decisionId: newId(),
-          question: n === 1 ? w.roundQ1 : fill(w.roundQ, { n }),
-          goLabel: w.roundGo,
-          holdLabel: w.roundHold,
-          defaultOption: "hold",
-          reversible: false,
-          src: { kind: "reviews", item: items[0]!.item, taskId, items },
-        };
-        d.log.append({ stream: "channel", origin: "partner", kind: "decision", body });
-        standing.decisionId = body.decisionId;
-      } else if (prev?.decisionId) standing.decisionId = prev.decisionId;
+      const card = drafted.length || posted.length ? roundCard(taskId, prev?.decisionId, unsent) : prev?.decisionId;
+      if (card) standing.decisionId = card;
       rounds[taskId] = standing;
       save();
       boardSubs.forEach((fn) => fn(taskId));
       const { decisionId: _d, n: _n, prs: _p, ...out } = standing;
-      return { ok: true, drafted: drafted.length, standing: out };
+      return { ok: true, drafted: drafted.length, posted, asking: unsent.length, standing: out };
+    },
+    reviewOrgs() {
+      const refs = Object.values(st.rounds ?? {}).flatMap((x) => (x.prs ?? []).map((p) => p.ref));
+      return [...new Set(refs.map((r) => r.split("/")[0]!.toLowerCase()))];
+    },
+    async postWaiting() {
+      const out: { taskId: string; posted: { ref: string; link?: string }[] }[] = [];
+      for (const [taskId, s0] of Object.entries(st.rounds ?? {})) {
+        if (!s0.drafted) continue;
+        const posted = await postStanding(taskId, (ref) => s0.prs?.find((p) => p.ref === ref)?.mention, true);
+        if (!posted.length) continue;
+        const unsent = Object.values(st.reads).filter((x) => x.byTask === taskId && x.state === "drafted");
+        const card = roundCard(taskId, s0.decisionId, unsent);
+        if (card) s0.decisionId = card;
+        else delete s0.decisionId;
+        s0.drafted = unsent.length;
+        s0.posted = (s0.posted ?? 0) + posted.length;
+        save();
+        boardSubs.forEach((fn) => fn(taskId));
+        out.push({ taskId, posted });
+      }
+      return out;
     },
     async answerRound(card, r) {
       const src = card.src;

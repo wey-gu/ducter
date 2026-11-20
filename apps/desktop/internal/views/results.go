@@ -140,7 +140,7 @@ func (a *App) sentLine(c *ui.Context, task *store.Task) {
 	ui.Row(c.Key("sent:" + task.ID)).Gap(t.S3).AlignItems(ui.Center).MinWidth(0).Children(func() {
 		a.mark(c.Key("sentmk"), drawOut, line, t.InkMuted)
 		if more > 0 {
-			ui.Text(c, a.L.T("result.more", more)).FontSize(t.SM).TextColor(t.InkMuted).FontFeatures("tnum").Shrink(0)
+			uiText(c, a.L.T("result.more", more)).FontSize(t.SM).TextColor(t.InkMuted).FontFeatures("tnum").Shrink(0)
 		}
 	})
 }
@@ -185,16 +185,16 @@ func (a *App) resultActions(c *ui.Context, task *store.Task) {
 			a.TaskAction(task.ID, action)
 		}
 		if task.Acting != "" {
-			ui.Text(c.Key("acting"), a.L.TFamily("result.acting."+task.Acting, base)).FontSize(t.SM).TextColor(t.InkMuted)
+			uiText(c.Key("acting"), a.L.TFamily("result.acting."+task.Acting, base)).FontSize(t.SM).TextColor(t.InkMuted)
 		} else if task.Unsure != "" {
 			// The result was lost with the connection and the Log doesn't
 			// show it done: say so, offer to try again, never claim a failure.
-			ui.Text(c.Key("unsure"), a.L.T("result.unsure")).FontSize(t.SM).TextColor(t.InkMuted)
+			uiText(c.Key("unsure"), a.L.T("result.unsure")).FontSize(t.SM).TextColor(t.InkMuted)
 			if a.buttonFor(c, a.L.T("task.action.retry"), task.Title(), btnSecondary, t.ControlMD, t.Surface) {
 				a.RetryAction(task)
 			}
 		} else if done := task.Acted; done != nil && done.OK && done.Action == "merge" {
-			ui.Text(c.Key("acted"), a.L.T("result.merged", base)).FontSize(t.SM).FontWeight(700).TextColor(t.Done.Ink)
+			uiText(c.Key("acted"), a.L.T("result.merged", base)).FontSize(t.SM).FontWeight(700).TextColor(t.Done.Ink)
 		} else {
 			// The primary last, as macOS orders a group (D76). No remote,
 			// no PR to open: only Merge.
@@ -218,7 +218,7 @@ func (a *App) prFailureLine(c *ui.Context, task *store.Task) {
 		if noRemote(task) {
 			col = a.T.InkMuted
 		}
-		ui.Text(c.Key("prfail:"+task.ID), why).FontSize(a.T.SM).LineHeight(1.5).TextColor(col).Selectable()
+		uiText(c.Key("prfail:"+task.ID), why).FontSize(a.T.SM).LineHeight(1.5).TextColor(col).Selectable()
 	}
 }
 

@@ -5,7 +5,7 @@
 // goes into the conversation and its answer comes back), and a line under the app asks the
 // partner to change it. Facts are separate elements (D291), never joined.
 import { useEffect, useRef, useState } from "preact/hooks";
-import { APP_SANDBOX, appShowRef, type AppCard, type AppMeta, type AppOpen, type Bodies, type LogEvent, type ServerFrame } from "@ducter/protocol";
+import { APP_SANDBOX, appIcon, appShowRef, appTint, type AppCard, type AppIcon, type AppIdea, type AppMeta, type AppOpen, type Bodies, type LogEvent, type ServerFrame } from "@ducter/protocol";
 import { A } from "./app.ts";
 import { stamp } from "./format.ts";
 import { url } from "./media.tsx";
@@ -18,7 +18,13 @@ const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 /** What the web holds of the person's apps, and the one open now. */
 export const AP = {
   list: [] as AppMeta[],
-  open: undefined as undefined | { id: string; app?: AppOpen; gone?: boolean; asks: Set<string>; sent: Map<string, string>; frame?: HTMLIFrameElement; changed?: { version: number; note?: string } },
+  /** D410: while there are none, what the person could say for a first one (the home's). */
+  ideas: [] as AppIdea[],
+  /** D410: the list has come from the home at least once (an empty shelf is really empty). */
+  seen: false,
+  // first (D410): the partner's line of what it filled in, shown the first time it is opened.
+  // focus: the line to change it is focused (the shelf's 「让…改」).
+  open: undefined as undefined | { id: string; app?: AppOpen; gone?: boolean; asks: Set<string>; sent: Map<string, string>; frame?: HTMLIFrameElement; changed?: { version: number; note?: string }; first?: string; focus?: boolean },
 };
 
 /** The app mark, drawn (never an emoji): a small window with a title bar and two rows. */
@@ -29,6 +35,58 @@ export const APP_GLYPH = (size = 22) => (
   </svg>
 );
 
+/** D410: each app's own mark (drawn, never an emoji), on 20×20 like APP_GLYPH. */
+export function AppIconGlyph({ icon, size = 22 }: { icon: AppIcon; size?: number }) {
+  const p = { fill: "none", stroke: "currentColor", "stroke-width": 1.6, "stroke-linecap": "round" as const, "stroke-linejoin": "round" as const };
+  return (
+    <svg class="app-glyph" width={size} height={size} viewBox="0 0 20 20" aria-hidden="true">
+      {icon === "coins" ? (
+        <g {...p}>
+          {/* A stack of coins from the side, and one coin face on (the Mac's appicons.go draws the same). */}
+          <rect x="2.4" y="4.6" width="8.4" height="3.4" rx="1.7" />
+          <rect x="2.4" y="8.6" width="8.4" height="3.4" rx="1.7" />
+          <rect x="2.4" y="12.6" width="8.4" height="3.4" rx="1.7" />
+          <circle cx="14.4" cy="12.2" r="3.8" />
+          <circle cx="14.4" cy="12.2" r="1.4" />
+        </g>
+      ) : icon === "check" ? (
+        <g {...p}>
+          <rect x="3.5" y="3.5" width="13" height="13" rx="3.5" />
+          <path d="M7 10.2l2.2 2.2L13.4 8" />
+        </g>
+      ) : icon === "board" ? (
+        <g {...p}>
+          <rect x="3" y="4" width="14" height="12" rx="2.6" />
+          <path d="M8 4v12M12.5 4v12M5 7.5h1.4M9.6 7.5h1.4M14 7.5h1.2M5 10.5h1.4M9.6 10.5h1.4" />
+        </g>
+      ) : icon === "list" ? (
+        <g {...p}>
+          <path d="M3.5 6.2l1.4 1.4 2.3-2.6M3.5 11.7l1.4 1.4 2.3-2.6M10 6.3h6.5M10 11.8h6.5M10 15.6h6.5" />
+        </g>
+      ) : icon === "chart" ? (
+        <g {...p}>
+          <path d="M3.5 16h13M6 16v-5M10 16V6M14 16V9" />
+        </g>
+      ) : (
+        <g {...p}>
+          <rect x="3.5" y="4" width="13" height="12" rx="3" />
+          <path d="M3.5 7.6h13M6.5 10.6h4M6.5 13h7" />
+        </g>
+      )}
+    </svg>
+  );
+}
+
+/** D410: the app's clay tile: its mark on its own tint (the person's muted clays, never a state's colour). */
+export function AppFace({ m, size = 48, gone }: { m?: Pick<AppMeta, "id" | "icon" | "tint" | "kind">; size?: number; gone?: boolean }) {
+  const sm = size < 40;
+  return (
+    <span class={`app-face${sm ? " sm" : ""}${m && !gone ? ` tinted tint-${appTint(m)}` : ""}`} style={size !== 48 && size !== 34 ? { width: size, height: size, borderRadius: Math.round(size * 0.3) } : undefined}>
+      {m ? <AppIconGlyph icon={appIcon(m)} size={Math.round(size * 0.54)} /> : APP_GLYPH(Math.round(size * 0.54))}
+    </span>
+  );
+}
+
 const dark = () => {
   const th = document.documentElement.dataset.theme;
   return th ? th === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
@@ -38,8 +96,10 @@ function ask(id: string) {
   A.send({ t: "app_open", id, transport: "message", dark: dark(), lang: A.L.lang });
 }
 
-export function openApp(id: string) {
-  AP.open = { id, asks: new Set(), sent: new Map() };
+export function openApp(id: string, o: { focus?: boolean } = {}) {
+  const meta = AP.list.find((a) => a.id === id);
+  // D410: the first time it opens, the partner's line of what it already filled in.
+  AP.open = { id, asks: new Set(), sent: new Map(), ...(meta && !meta.opened && meta.note ? { first: meta.note } : {}), ...(o.focus ? { focus: true } : {}) };
   A.sheet = { kind: "app", id };
   ask(id);
   A.changed();
@@ -60,6 +120,8 @@ const post = (m: object) => {
 export function onAppsFrame(f: ServerFrame): boolean {
   if (f.t === "apps") {
     AP.list = f.apps;
+    AP.ideas = f.ideas ?? [];
+    AP.seen = true;
     const o = AP.open;
     const now = o && f.apps.find((a) => a.id === o.id);
     // The partner changed the open app: it runs again as it is now, with a word of what changed.
@@ -121,6 +183,9 @@ function onMessage(e: MessageEvent) {
   } else if (m.t === "ask" && typeof m.ref === "string") {
     o.asks.add(m.ref);
     A.send({ t: "app_ask", id: o.id, text: String(m.text ?? ""), ref: m.ref });
+  } else if (m.t === "summary") {
+    // D410: ducter.summary: the line its shelf tile shows.
+    A.send({ t: "app_summary", id: o.id, text: String(m.text ?? "").slice(0, 200) });
   } else if (m.t === "show") {
     // D407: ducter.open({ draft }): that PR's draft sheet over the app; closing it comes back here.
     const ref = appShowRef(m);
@@ -149,10 +214,32 @@ export function BoardOfferFacts({ b }: { b: NonNullable<Bodies["decision"]["boar
 /** The card under the partner's words: the app's mark, its name, what happened, 打开 / Open. */
 export function AppCardView({ c }: { c: AppCard }) {
   const now = AP.list.find((a) => a.id === c.id);
-  const gone = AP.list.length > 0 && !now ? true : false;
+  // D410: deleted on the person's word: the card says so, with 撤销 / Undo while it can come back.
+  if (c.change === "removed") {
+    const back = !!now;
+    return (
+      <div class={`app-card${back ? "" : " gone"}`} role="group" aria-label={c.name}>
+        <AppFace m={now ?? { id: c.id }} gone={!back} />
+        <span class="app-body">
+          <span class="app-name">{now?.name ?? c.name}</span>
+          <span class="app-what">{back ? t("app.made", A.defaultName() || "Ducter") : t("app.removed")}</span>
+        </span>
+        {back ? (
+          <button type="button" class="btn sm app-open" onClick={() => openApp(c.id)}>
+            <span class="lbl">{t("app.open")}</span>
+          </button>
+        ) : (
+          <button type="button" class="btn sm app-open" onClick={() => A.send({ t: "app_restore", id: c.id })}>
+            <span class="lbl">{t("apps.undo")}</span>
+          </button>
+        )}
+      </div>
+    );
+  }
+  const gone = AP.seen && !now ? true : false;
   return (
     <div class={`app-card${gone ? " gone" : ""}`} role="group" aria-label={c.name}>
-      <span class="app-face">{APP_GLYPH(26)}</span>
+      <AppFace m={now ?? { id: c.id }} gone={gone} />
       <span class="app-body">
         <span class="app-name">{now?.name ?? c.name}</span>
         <span class="app-what">{gone ? t("app.gone") : c.change === "made" ? t("app.made", A.defaultName() || "Ducter") : c.change === "data" ? t("app.filled") : t("app.changed")}</span>
@@ -166,13 +253,118 @@ export function AppCardView({ c }: { c: AppCard }) {
   );
 }
 
+/** D410: under "我的小应用在哪": the shelf, one tap away: up to three tiles, how many, 打开「小应用」. */
+export function ShelfCard() {
+  const list = shelfOrder(AP.list);
+  const n = list.length;
+  return (
+    <div class="app-card shelf-card" role="group" aria-label={t("apps.place")}>
+      <span class="shelf-stack" aria-hidden="true">
+        {n ? list.slice(0, 3).map((m) => <AppFace key={m.id} m={m} size={34} />) : <AppFace size={34} />}
+      </span>
+      <span class="app-body">
+        <span class="app-name">{t("apps.place")}</span>
+        <span class="app-what">{n === 0 ? t("apps.card.none") : n === 1 ? t("apps.card.one") : t("apps.card.n", n)}</span>
+      </span>
+      <button type="button" class="btn sm app-open" onClick={() => openShelf()}>
+        <span class="lbl">{t("apps.card.open")}</span>
+      </button>
+    </div>
+  );
+}
+
+/** D410: the shelf's order: pinned first, then the newest change or open. */
+export function shelfOrder(list: readonly AppMeta[]): AppMeta[] {
+  const at = (m: AppMeta) => Math.max(Date.parse(m.updated), m.opened ? Date.parse(m.opened) : 0);
+  return [...list].sort((a, b) => Number(!!b.pinned) - Number(!!a.pinned) || at(b) - at(a));
+}
+
+/** D410: 小应用 / Apps, the shelf (apps-shelf.tsx draws it). */
+export function openShelf() {
+  A.sheet = { kind: "apps" };
+  A.send({ t: "apps" });
+  A.changed();
+}
+
+/**
+ * D410: an app's 「⋯」, the same on its tile and in its sheet's head: 改名, 让{name}改…, 改回去,
+ * 置顶, 不再让「task」更新它, 删掉 (asked first; its data goes, 撤销 for a while after).
+ */
+export function AppMenu({ m, rename, close, inSheet }: { m: AppMeta; rename: () => void; close: () => void; inSheet?: boolean }) {
+  const partner = A.defaultName() || "Ducter";
+  const [asking, setAsking] = useState(false);
+  const shut = (fn: () => void) => () => (close(), fn());
+  if (asking)
+    return (
+      <div class="pmenu app-del" role="alertdialog" aria-label={t("apps.del.q", m.name)}>
+        <b class="app-del-q">{t("apps.del.q", m.name)}</b>
+        <span class="app-del-body">{t("apps.del.body")}</span>
+        <span class="app-del-acts">
+          <button type="button" class="btn sm secondary" onClick={() => setAsking(false)}>
+            <span class="lbl">{t("apps.del.no")}</span>
+          </button>
+          <button type="button" class="btn sm danger" onClick={shut(() => removeApp(m))}>
+            <span class="lbl">{t("apps.del.go")}</span>
+          </button>
+        </span>
+      </div>
+    );
+  return (
+    <div class="pmenu app-menu" role="menu">
+      <button role="menuitem" onClick={shut(rename)}>
+        {t("apps.m.rename")}
+      </button>
+      <button role="menuitem" onClick={shut(() => openApp(m.id, { focus: true }))}>
+        {inSheet ? t("apps.m.change", partner).replace(/[…]$/, "") : t("apps.m.change", partner)}
+      </button>
+      {m.back && (
+        <button role="menuitem" onClick={shut(() => A.send({ t: "app_back", id: m.id }))}>
+          {t("app.back")}
+        </button>
+      )}
+      <button role="menuitem" onClick={shut(() => A.send({ t: "app_set", id: m.id, pinned: !m.pinned }))}>
+        {m.pinned ? t("apps.m.unpin") : t("apps.m.pin")}
+      </button>
+      {m.task && (
+        <button role="menuitem" onClick={shut(() => A.send({ t: "app_set", id: m.id, untask: true }))}>
+          {t("apps.m.untask", m.task.title)}
+        </button>
+      )}
+      <hr />
+      <button role="menuitem" class="danger-text" onClick={() => setAsking(true)}>
+        {t("apps.m.delete")}
+      </button>
+    </div>
+  );
+}
+
+/** D410: 删掉, then 撤销 for a while (the home keeps it APP_REMOVED_DAYS). */
+export function removeApp(m: AppMeta) {
+  if (AP.open?.id === m.id) {
+    AP.open = undefined;
+    if (A.sheet?.kind === "app") A.sheet = { kind: "apps" };
+  }
+  AP.list = AP.list.filter((x) => x.id !== m.id);
+  A.send({ t: "app_remove", id: m.id });
+  A.toast(t("apps.deleted", m.name), { label: t("apps.undo"), run: () => A.send({ t: "app_restore", id: m.id }) }, 8000);
+  A.changed();
+}
+
 /** The app's sheet: its name, the app itself, a line to ask the partner to change it. */
 export function AppSheet({ id }: { id: string }) {
   const o = AP.open;
   const meta = AP.list.find((a) => a.id === id);
   const frame = useRef<HTMLIFrameElement>(null);
+  const askRef = useRef<HTMLInputElement>(null);
   const [said, setSaid] = useState("");
   const [sent, setSent] = useState(false);
+  const [menu, setMenu] = useState(false);
+  const [renaming, setRenaming] = useState<string | undefined>(undefined);
+  useEffect(() => {
+    if (!o?.focus) return;
+    o.focus = false;
+    askRef.current?.focus();
+  });
   useEffect(() => {
     window.addEventListener("message", onMessage);
     // The theme follows Ducter's while it is open.
@@ -210,18 +402,51 @@ export function AppSheet({ id }: { id: string }) {
       <div class="past-sheet app-sheet" role="dialog" aria-modal="true" aria-label={name} onKeyDown={keys}>
         <div class="past-head app-head">
           <h2>
-            <span class="app-face sm">{APP_GLYPH(20)}</span>
-            <span class="app-title">{name}</span>
+            <AppFace m={meta ?? { id }} size={34} />
+            {renaming !== undefined && meta ? (
+              <input
+                class="app-rename"
+                value={renaming}
+                aria-label={t("apps.m.rename")}
+                ref={(el) => void (el && document.activeElement !== el && el.focus())}
+                onInput={(e) => setRenaming((e.currentTarget as HTMLInputElement).value)}
+                onBlur={() => setRenaming(undefined)}
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") return e.stopPropagation(), setRenaming(undefined);
+                  if (e.key !== "Enter" || e.isComposing) return;
+                  const v = renaming.trim();
+                  if (v && v !== meta.name) A.send({ t: "app_set", id, name: v });
+                  setRenaming(undefined);
+                }}
+              />
+            ) : (
+              <span class="app-title">{name}</span>
+            )}
           </h2>
           {meta?.back && (
             <button type="button" class="btn text sm" onClick={() => A.send({ t: "app_back", id })}>
               <span class="lbl">{t("app.back")}</span>
             </button>
           )}
+          {meta && (
+            <span class="app-more">
+              <button type="button" class={`more-btn${menu ? " open" : ""}`} aria-label={t("apps.more", name)} aria-expanded={menu} onClick={() => setMenu(!menu)}>
+                ⋯
+              </button>
+              {menu && <AppMenu m={meta} inSheet close={() => setMenu(false)} rename={() => setRenaming(meta.name)} />}
+            </span>
+          )}
           <button class="past-x" aria-label={t("nav.back")} onClick={close}>
             ×
           </button>
         </div>
+        {o?.first && !o.changed && (
+          <p class="app-first">
+            <span class="app-first-dot" aria-hidden="true" />
+            <span class="app-first-word">{t("app.first", partner)}</span>
+            <span class="app-first-note">{o.first}</span>
+          </p>
+        )}
         {o?.changed && (
           <p class="app-changed" key={o.changed.version}>
             <span class="app-changed-word">{t("app.changed")}</span>
@@ -239,6 +464,7 @@ export function AppSheet({ id }: { id: string }) {
         </div>
         <div class="app-foot">
           <input
+            ref={askRef}
             class="app-ask"
             dir="auto"
             value={said}

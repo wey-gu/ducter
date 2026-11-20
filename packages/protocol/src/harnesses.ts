@@ -20,7 +20,7 @@ export function isHarnessId(s: unknown): s is HarnessId {
  *               --no-prompt-templates --no-themes
  *  - home:      a Ducter-owned harness home (DSH_HOME, DSH_AGENTS_HOME); the key comes from the env
  *  - none:      no verified way (Antigravity: OAR refuses userConfiguration "exclude"), so it
- *               never carries the partner, a one-shot or a page-reading task (D409)
+ *               never carries the partner, a one-shot or a page-reading task (D415)
  */
 export type IsolationMethod = "native" | "overrides" | "flags" | "home" | "none";
 
@@ -44,7 +44,7 @@ export interface HarnessInfo {
    * that says it took them in. OAR 0.95.1, by its source: Claude Code writes a user message into
    * the running stream-json turn and replays it (--replay-user-messages); Codex `turn/steer` on
    * its app-server, a userMessage item; pi its SDK `steer`, the message in its conversation;
-   * DeepSeek Harness its bridge `steer`, a user turn item; (OAR 0.124, D409) Antigravity a second
+   * DeepSeek Harness its bridge `steer`, a user turn item; (OAR 0.124, D415) Antigravity a second
    * ACP prompt into the running loop, the newest answer settling the turn. false: words sent while it works wait
    * for the turn to end (Ducter holds them), and the composer says so.
    */
@@ -52,7 +52,7 @@ export interface HarnessInfo {
   /** D206: it makes pictures itself (Codex's image_generation, kept on for tasks). */
   draws?: boolean;
   isolation: IsolationMethod;
-  /** replace: native system prompt; home-file: AGENTS.md in the Ducter-owned home; none: no replacement channel (Antigravity, D409). */
+  /** replace: native system prompt; home-file: AGENTS.md in the Ducter-owned home; none: no replacement channel (Antigravity, D415). */
   systemPrompt: "replace" | "home-file" | "none";
   taskInstructions: "append" | "first-turn";
   /** http: native HTTP MCP with headers; stdio-bridge: Ducter's stdio bridge to its HTTP endpoint. */
@@ -67,12 +67,12 @@ export interface HarnessInfo {
   install?: string;
   signIn?: string;
   /**
-   * D409: picked, never chosen. The ranking puts it after every other agent that can take the
+   * D415: picked, never chosen. The ranking puts it after every other agent that can take the
    * work, so it runs a task only when the person (or a rule) names it, or nothing else can.
    */
   pickOnly?: true;
   /**
-   * D409: it can't hold a task that reads web pages to Ducter's rules (its own setup can't be
+   * D415: it can't hold a task that reads web pages to Ducter's rules (its own setup can't be
    * left out of a session, D241), so browsing work never goes to it (block no_web).
    */
   noWebTasks?: true;
@@ -157,7 +157,7 @@ export const HARNESSES: Record<HarnessId, HarnessInfo> = {
     install: "npm install -g @deepseek-ai/dsh",
     signIn: "a DeepSeek API key (DEEPSEEK_API_KEY)",
   },
-  // D409: Google's Antigravity CLI (agy) over its native ACP, OAR 0.124 (runtimes/antigravity).
+  // D415: Google's Antigravity CLI (agy) over its native ACP, OAR 0.124 (runtimes/antigravity).
   // Tasks only: OAR refuses tool denial, a replaced system prompt and leaving the person's own
   // setup out, so a read-only partner can't be held there (principle 6).
   antigravity: {
@@ -233,7 +233,7 @@ export const HARNESS_KEYS: Readonly<Record<HarnessId, readonly string[]>> = {
   codex: ["OPENAI_API_KEY", "CODEX_API_KEY"],
   pi: PI_PROVIDER_ENV,
   "deepseek-harness": [DSH_KEY_ENV],
-  // D409: agy's Gemini API provider reads it (OAR's local-provider fixture); a Google sign-in needs none.
+  // D415: agy's Gemini API provider reads it (OAR's local-provider fixture); a Google sign-in needs none.
   antigravity: ["GEMINI_API_KEY"],
 };
 

@@ -66,7 +66,7 @@ func (a *App) imessageGroup(c *ui.Context) {
 				ui.Row(c).Gap(t.S3).AlignItems(ui.Start).Children(func() {
 					ui.Box(c).Width(40).Shrink(0)
 					ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(t.S3).Children(func() {
-						ui.Text(c, a.L.T("imessage.who")).FontSize(t.MD).FontWeight(700)
+						uiText(c, a.L.T("imessage.who")).FontSize(t.MD).FontWeight(700)
 						labels := []string{a.L.T("imessage.mode.partner", name), a.L.T("imessage.mode.self")}
 						sel := 0
 						if is.self {
@@ -114,14 +114,14 @@ func (a *App) imessageGroup(c *ui.Context) {
 						if st.Mode == imessage.ModeSelf {
 							line = a.L.T("imessage.code.self")
 						}
-						ui.Text(c, line).FontSize(t.MD).LineHeight(a.leading(1.5))
-						ui.Text(c, st.Code).Font(t.Mono).FontSize(t.XXL).FontWeight(700).LetterSpacing(2).Selectable()
+						uiText(c, line).FontSize(t.MD).LineHeight(a.leading(1.5))
+						uiText(c, st.Code).Font(t.Mono).FontSize(t.XXL).FontWeight(700).LetterSpacing(2).Selectable()
 						left := int(time.Until(st.CodeUntil).Minutes()) + 1
 						if left < 1 {
 							left = 1
 						}
 						ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
-							ui.Text(c, a.L.T("imessage.code.left", left)).FontSize(t.SM).TextColor(t.InkMuted)
+							uiText(c, a.L.T("imessage.code.left", left)).FontSize(t.SM).TextColor(t.InkMuted)
 							if a.quietButton(c, "imessage-new-code", a.L.T("imessage.code.new"), title, true, 0) {
 								br.NewCode()
 							}
@@ -207,7 +207,7 @@ func (a *App) imessagePermissions(c *ui.Context, st imessage.Status, name string
 	perm := func(key, label, help string, on bool, pane string, ask bool) {
 		a.chatRow(c, key, label, help, func() {
 			if on {
-				ui.Text(c, a.L.T("imessage.perm.on")).FontSize(t.SM).FontWeight(700).TextColor(t.Done.Ink).SingleLine()
+				uiText(c, a.L.T("imessage.perm.on")).FontSize(t.SM).FontWeight(700).TextColor(t.Done.Ink).SingleLine()
 				return
 			}
 			if a.buttonFor(c, a.L.T("imessage.perm.ask"), label, btnSecondary, t.ControlSM, t.Surface) {

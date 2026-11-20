@@ -1,4 +1,4 @@
-// D409: Antigravity's sessions through OAR 0.124, on OAR's own declared contract (its runtime's
+// D415: Antigravity's sessions through OAR 0.124, on OAR's own declared contract (its runtime's
 // refusedSessionOptions, held by a scripted runtime that refuses by presence what agy refuses).
 // No agy runs: what each spec becomes, Ducter's MCP over its stdio bridge with no credential in
 // the entry, the brief appended to agy's own instructions (again on every resume), and a resume

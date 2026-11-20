@@ -440,7 +440,7 @@ function CoinTray({ dv }: { dv: DeviceView }) {
               ))}
               <SetupAnswer dv={dv} />
               {/* D363: Ducter puts them there itself; only one it can't install is left to that computer. */}
-              {/* D409: agy goes to ~/.local/bin, not Ducter's folder (its own row says so). */}
+              {/* D415: agy goes to ~/.local/bin, not Ducter's folder (its own row says so). */}
               {(missing.some((h) => h.installable && h.harness !== "antigravity") || !missing.some((h) => h.installable)) && (
                 <div class="ln small">{t(missing.some((h) => h.installable && h.harness !== "antigravity") ? "ag.where" : "coin.there", dv.name)}</div>
               )}

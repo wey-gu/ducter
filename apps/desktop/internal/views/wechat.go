@@ -68,7 +68,7 @@ func (a *App) wechatCard(c *ui.Context, v protocol.ChannelView) {
 				if s.bad["wechat"] == "network" {
 					ui.Row(c).Gap(t.S3).Children(func() {
 						ui.Box(c).Width(40).Shrink(0)
-						ui.Text(c, a.L.T("chats.bad.network")).FontSize(t.SM).FontWeight(600).TextColor(t.Failed.Ink)
+						uiText(c, a.L.T("chats.bad.network")).FontSize(t.SM).FontWeight(600).TextColor(t.Failed.Ink)
 					})
 				}
 			})
@@ -134,13 +134,13 @@ func (a *App) wechatScan(c *ui.Context, sc *protocol.ChannelScan) {
 		ui.Row(c).Gap(t.S3).AlignItems(ui.Start).Children(func() {
 			ui.Box(c).Width(40).Shrink(0)
 			ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(t.S2).Children(func() {
-				ui.Text(c, a.L.T("chats.wx.scan")).FontSize(t.MD).LineHeight(a.leading(1.5)).TextColor(t.Ink)
-				ui.Text(c, a.L.T("chats.wx.scan.phone")).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
+				uiText(c, a.L.T("chats.wx.scan")).FontSize(t.MD).LineHeight(a.leading(1.5)).TextColor(t.Ink)
+				uiText(c, a.L.T("chats.wx.scan.phone")).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
 				if sc.Step == "verify" {
 					code := s.token["wechat"]
 					ui.Row(c).Gap(t.S3).AlignItems(ui.End).Children(func() {
 						ui.Column(c.Key("chat-field:wx-verify")).Gap(t.S1).Width(200).Children(func() {
-							ui.Text(c, a.L.T("chats.wx.verify")).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
+							uiText(c, a.L.T("chats.wx.verify")).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
 							in := ui.TextInput(c.Key("chat-input:wx-verify"), &code).Label(a.L.T("chats.wx.verify")).
 								FontSize(t.MD).Height(t.ControlMD).Padding(0, t.S4).Radius(t.RadiusSM).Background(t.Surface)
 							edge := t.Line2

@@ -343,7 +343,7 @@ func (a *App) workbench(c *ui.Context, task *store.Task, width float32) {
 						tb.Background(t.Surface).Shadow(0, 2, 0, 0, t.Line2)
 					}
 					tb.Children(func() {
-						w := ui.Text(c, label).FontSize(t.SM).TextColor(t.InkMuted)
+						w := uiText(c, label).FontSize(t.SM).TextColor(t.InkMuted)
 						if on {
 							w.FontWeight(800).TextColor(t.Ink)
 						} else {
@@ -390,20 +390,20 @@ func contains(xs []string, x string) bool {
 }
 
 func (a *App) benchNote(c *ui.Context, s string) {
-	ui.Text(c, s).FontSize(a.T.SM).TextColor(a.T.InkMuted)
+	uiText(c, s).FontSize(a.T.SM).TextColor(a.T.InkMuted)
 }
 
 func (a *App) benchCounts(c *ui.Context, adds, dels int, binary bool) {
 	t := a.T
 	if binary {
-		ui.Text(c, a.L.T("wb.status.binary")).FontSize(t.XS).TextColor(t.InkMuted)
+		uiText(c, a.L.T("wb.status.binary")).FontSize(t.XS).TextColor(t.InkMuted)
 		return
 	}
 	if adds > 0 {
-		ui.Text(c, fmt.Sprintf("+%d", adds)).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.Done.Ink)
+		uiText(c, fmt.Sprintf("+%d", adds)).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.Done.Ink)
 	}
 	if dels > 0 {
-		ui.Text(c, fmt.Sprintf("−%d", dels)).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.Failed.Ink)
+		uiText(c, fmt.Sprintf("−%d", dels)).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.Failed.Ink)
 	}
 }
 
@@ -412,7 +412,7 @@ func (a *App) benchBack(c *ui.Context, label string) bool {
 	r := ui.Row(c.Key("back:" + label)).Gap(t.S1).AlignItems(ui.Center).Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(label).Focusable()
 	r.Children(func() {
 		a.glyph(c, 12, drawBack(t.InkSoft))
-		ui.Text(c, label).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
+		uiText(c, label).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
 	})
 	return r.Clicked()
 }
@@ -438,14 +438,14 @@ func (a *App) benchChanges(c *ui.Context, task *store.Task, b *benchTask) {
 		dels += f.Dels
 	}
 	ui.Row(c.Key("sum")).Gap(t.S2).AlignItems(ui.Center).Children(func() {
-		ui.Text(c, a.L.T("wb.changes.files", len(ch.Files)+ch.More)).FontSize(t.SM).FontWeight(700).TextColor(t.Ink)
+		uiText(c, a.L.T("wb.changes.files", len(ch.Files)+ch.More)).FontSize(t.SM).FontWeight(700).TextColor(t.Ink)
 		a.benchCounts(c, adds, dels, false)
 		ui.Spacer(c)
 		base := a.L.T("wb.changes.folder")
 		if ch.Kind == "repo" && ch.Base != "" {
 			base = a.L.T("wb.changes.base", ch.Base)
 		}
-		ui.Text(c, base).FontSize(t.XS).TextColor(t.InkMuted)
+		uiText(c, base).FontSize(t.XS).TextColor(t.InkMuted)
 	})
 	ui.Column(c.Key("files")).Radius(t.RadiusLG).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).Clip().
 		Dividers(1, t.LineSoft).Children(func() {
@@ -465,12 +465,12 @@ func (a *App) benchChanges(c *ui.Context, task *store.Task, b *benchTask) {
 					ink = t.Failed.Ink
 				}
 				ui.Box(c).Size(6, 6).Radius(3).Background(ink).Shrink(0)
-				ui.Text(c, f.Path).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.Ink).Grow(1).MinWidth(0).SingleLine()
+				uiText(c, f.Path).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.Ink).Grow(1).MinWidth(0).SingleLine()
 				switch f.Status {
 				case "added":
-					ui.Text(c, a.L.T("wb.status.added")).FontSize(t.XS).TextColor(t.InkMuted)
+					uiText(c, a.L.T("wb.status.added")).FontSize(t.XS).TextColor(t.InkMuted)
 				case "deleted":
-					ui.Text(c, a.L.T("wb.status.deleted")).FontSize(t.XS).TextColor(t.InkMuted)
+					uiText(c, a.L.T("wb.status.deleted")).FontSize(t.XS).TextColor(t.InkMuted)
 				}
 				a.benchCounts(c, f.Adds, f.Dels, f.Binary)
 			})
@@ -499,7 +499,7 @@ func (a *App) benchDiffView(c *ui.Context, task *store.Task, b *benchTask) {
 		return
 	}
 	ui.Row(c.Key("dhead")).Gap(t.S2).AlignItems(ui.Center).Children(func() {
-		ui.Text(c, path).Font(t.Mono).FontSize(t.MD).FontWeight(800).TextColor(t.Ink).Grow(1).MinWidth(0).SingleLine()
+		uiText(c, path).Font(t.Mono).FontSize(t.MD).FontWeight(800).TextColor(t.Ink).Grow(1).MinWidth(0).SingleLine()
 		if change != nil {
 			a.benchCounts(c, change.Adds, change.Dels, change.Binary)
 		}
@@ -519,7 +519,7 @@ func (a *App) benchDiffView(c *ui.Context, task *store.Task, b *benchTask) {
 	})
 	if b.revert == path {
 		ui.Column(c.Key("confirm")).Gap(t.S2).Padding(t.S3, t.S4).Radius(t.RadiusMD).Background(t.Surface).Children(func() {
-			ui.Text(c, a.L.T("wb.revert.ask", path)).FontSize(t.SM).TextColor(t.Ink)
+			uiText(c, a.L.T("wb.revert.ask", path)).FontSize(t.SM).TextColor(t.Ink)
 			ui.Row(c).Gap(t.S2).Children(func() {
 				ui.Spacer(c)
 				if a.button(c, a.L.T("wb.cancel"), btnText, t.ControlSM, t.Surface) {
@@ -566,10 +566,10 @@ func (a *App) benchFiles(c *ui.Context, task *store.Task, b *benchTask) {
 			return
 		}
 		ui.Row(c.Key("fhead")).Gap(t.S2).AlignItems(ui.Center).Children(func() {
-			ui.Text(c, f.path).Font(t.Mono).FontSize(t.MD).FontWeight(800).TextColor(t.Ink).Grow(1).MinWidth(0).SingleLine()
+			uiText(c, f.path).Font(t.Mono).FontSize(t.MD).FontWeight(800).TextColor(t.Ink).Grow(1).MinWidth(0).SingleLine()
 			if f.st != nil {
 				if f.st.Buffer.Modified() {
-					ui.Text(c, a.L.T("wb.unsaved")).FontSize(t.XS).FontWeight(700).TextColor(t.Waiting.Ink)
+					uiText(c, a.L.T("wb.unsaved")).FontSize(t.XS).FontWeight(700).TextColor(t.Waiting.Ink)
 				}
 				label := a.L.T("wb.save")
 				if f.saving {
@@ -582,7 +582,7 @@ func (a *App) benchFiles(c *ui.Context, task *store.Task, b *benchTask) {
 		})
 		if f.conflict {
 			ui.Column(c.Key("conflict")).Gap(t.S2).Padding(t.S3, t.S4).Radius(t.RadiusMD).Background(t.Surface).Children(func() {
-				ui.Text(c, a.L.T("wb.conflict")).FontSize(t.SM).TextColor(t.Ink)
+				uiText(c, a.L.T("wb.conflict")).FontSize(t.SM).TextColor(t.Ink)
 				ui.Row(c).Gap(t.S2).Children(func() {
 					ui.Spacer(c)
 					if a.button(c, a.L.T("wb.conflict.theirs"), btnText, t.ControlSM, t.Surface) {
@@ -661,7 +661,7 @@ func (a *App) benchFiles(c *ui.Context, task *store.Task, b *benchTask) {
 				case "deleted":
 					ink = t.Failed.Ink
 				}
-				w := ui.Text(c, e.Name).Font(t.Mono).FontSize(t.MonoSM).TextColor(ink).Grow(1).MinWidth(0).SingleLine()
+				w := uiText(c, e.Name).Font(t.Mono).FontSize(t.MonoSM).TextColor(ink).Grow(1).MinWidth(0).SingleLine()
 				if e.Kind == "d" {
 					w.FontWeight(600)
 				}
@@ -712,8 +712,8 @@ func (a *App) benchPreview(c *ui.Context, task *store.Task, b *benchTask) {
 				if title == "" {
 					title = fmt.Sprintf("localhost:%d", p.Port)
 				}
-				ui.Text(c, title).FontSize(t.MD).FontWeight(800).TextColor(t.Ink).SingleLine()
-				ui.Text(c, a.L.T("wb.preview.on", where, p.Port)).FontSize(t.XS).TextColor(t.InkMuted)
+				uiText(c, title).FontSize(t.MD).FontWeight(800).TextColor(t.Ink).SingleLine()
+				uiText(c, a.L.T("wb.preview.on", where, p.Port)).FontSize(t.XS).TextColor(t.InkMuted)
 			})
 			if a.button(c, a.L.T("wb.preview.open"), btnSecondary, t.ControlSM, t.Surface) {
 				id := task.ID

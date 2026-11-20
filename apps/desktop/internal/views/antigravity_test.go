@@ -13,7 +13,7 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 )
 
-// D409: hel, a Linux worker, with Antigravity in each of its states.
+// D415: hel, a Linux worker, with Antigravity in each of its states.
 func helWith(agy protocol.DeviceHarness) protocol.DeviceView {
 	agy.Harness = "antigravity"
 	return protocol.DeviceView{ID: "hel", Name: "hel", Kind: "server", State: protocol.DeviceAwake, Platform: "linux-x64", Harnesses: []protocol.DeviceHarness{

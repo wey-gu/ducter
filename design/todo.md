@@ -2,7 +2,7 @@
 
 Deferred work, grouped by area, each with its trigger where it has one.
 
-## Antigravity, live (D409, research/167)
+## Antigravity, live (D415, research/171)
 
 - [ ] **The Mac, live.** Its card shows **只有 Antigravity 的桌面 app，没有它的命令行** (the app and the
   dead `~/.antigravity/antigravity/bin/agy`); **安装** puts `~/.local/bin/agy` (check `agy
@@ -22,6 +22,15 @@ Deferred work, grouped by area, each with its trigger where it has one.
   Ducter). Trigger: someone asks to sign an agent out from Ducter.
 - [ ] **DeepSeek Harness pictures** (OAR 0.124 #997 added images to its runtime): check live, then
   `HARNESSES["deepseek-harness"].images`.
+## The Mac walk's leftovers (D408)
+
+- **Walk D408 in the real window.** VoiceOver on a joined title (「对话」 read as a word), an expiry typed
+  0829 and 829, Settings on 在哪儿运行 while 和你的其他 agent 通信 comes and goes, and a Telegram link
+  completed in the settings demo; with a real keyboard in every field.
+- **Ask MyGo upstream for accessible text without line-breaking joiners** (its Markdown view, and
+  `ui.Text` generally): then `uiText` and `mdSpace` go, and replies keep `keepTokens`' whole tokens.
+  Also ask whether an accessibility text insert can show in the value at once, so a driver's
+  read-back confirms it (the doubled typing, D408 (3)).
 
 ## A review that runs every so often (D394, `past.md` Ongoing, research/158)
 
@@ -1579,7 +1588,22 @@ Codex first, once OAR is near 1.0. See `research/17`.
       `next: null`), and what `bridge notices status --json` really prints for a home's connection (D400 (7)
       reads it tolerantly). Then clear the per-Space contexts D334 made (`agents context clear --name
       <…-in-<space>>`, the person's Go) and fold `oneSpaceEach` away once the grouped contacts are seen live.
-      Trigger: the personal Space's `…_unreconciled` cleared (B19), or a trial without it.
+      Trigger: the personal Space's `…_unreconciled` cleared (B19), or a trial without it (met 2026-11-20: it reads again, research/161 §9).
+- [x] D409: rerun the live trial with the 120 s limit and rule 2d. Done 2026-11-20 02:58 UTC: 10/17; `open` and
+      `reply` work after `enable_needed` (4 to 13 s each); what was left is D412's (research/161 §10).
+- [ ] D412: rerun the live trial (`bun run bridge:live -- --connected --real`) with the guard reading Mem's `bm1:`
+      references, the card's name check and one follow-through line per agent. Read in its raw output: a peer
+      `open` under its own context for each of Ducter's claim, result and answer; the peer's `reply` linked to
+      Ducter's question (S2); whether `--watch` brings the arrival before the minute check.
+      Trigger: the coordinator merges D412.
+- [ ] D409: the start mark (B14) is the first inbox read that *works*: if it fails until mail has arrived (the
+      2026-11-20 run, every read timed out), the first real request is taken for old mail and never opened. Mark
+      only entries sent before the first attempt (0.10.121 gives no send time; `expires_at_ms` minus Mem's 7 days
+      would, INFERRED) or skip only already-read ones. Trigger: a home whose first reads fail, or Mem gives a time.
+- [ ] D409: ask Mem (draft in the D409 report, not posted) why the identity inbox's pages skip `sequence` 21 to 25
+      of a Space (VERIFIED three times on the peer's mailbox), whether Bridge mail in a shared Space ("Before the
+      team", 6 readers) is readable by anyone but the recipient, and whether 50 s for an eight-Space inbox is
+      expected. Trigger: the author's go to send it.
 - [ ] D400: if Mem notifies the person for mail the partner handles (the Settings line shows), ask Nowledge how
       to turn that off per connection (research/161 §6 (c)), then offer it on that line. Trigger: the line seen on
       a real home.
@@ -2266,12 +2290,28 @@ Codex first, once OAR is near 1.0. See `research/17`.
 ## D405: 小应用 / Apps (`apps.md`, research/166)
 
 - [ ] **Open the Mac's app window in the real app** (the test renderer draws no web view): the scheme, the long poll, the theme, a resize, Cmd-W. Trigger: the next run of the built app.
-- [ ] **The Mac window's own line to change it, and 改回去** (the web's sheet has both; the Mac sends the person to the conversation). Trigger: the window opened for real.
+- [x] **The Mac window's own line to change it, and 改回去**: built (D410 (6)).
 - [ ] **Sharing an app** with someone: a link, their own data or a shared copy, viewer-pays and a first-use consent (research/166 §3). Trigger: Ducter Edge, or the first "发给她用一下".
 - [ ] **Point to change**: tap part of the app and say what to change (every reference does it). Trigger: an edit the partner applied to the wrong part twice.
 - [ ] **An app made by a coding task** (several files, a library, a build) when one file is not enough. Trigger: an app over ~60K characters, or one the partner can't fit.
 - [x] **A routine that fills an app** (the review routine's PR board, research/166 §2): built as D407 (the review board from review_report; app_data for other routines).
 - [ ] **Offline on the phone**: the last version and data kept in the shell, writes queued. Trigger: a person who opens an app with the home away.
-- [ ] **Delete from Made for you** (`app_remove` exists; no button). Trigger: a person with an app they don't want listed.
+- [x] **Delete** an app: from 你的小应用's 「⋯」 and by asking, with 撤销 (D410 (2)).
 - [ ] **An app's card in chat apps** (Telegram, Slack, iMessage get the partner's words only, no card or link). Trigger: an app made from a chat app.
 - [ ] **Human raters for 小应用 / App** and its line (LLM proxies only so far). Trigger: the next naming round with people.
+
+## D410: 你的小应用 / Your apps (`apps.md`, research/169)
+
+- [ ] **Human raters for 你的小应用 / Your apps** against 我的小应用 and 小应用 alone (research/169 §4 is haiku, n = 6). Trigger: the next naming round with people.
+- [ ] **Bring back a deleted app after its toast or card is gone** (the home keeps it 30 days; no list yet). Trigger: a person who asks for one they deleted.
+- [ ] **Ideas from the calendar and routines** on the empty shelf (only noted bookings now). Trigger: an empty shelf with a calendar connected and no booking noted.
+- [ ] **Arrange the shelf by hand** (order, folders). Trigger: someone with more than a dozen apps.
+- [ ] **The kit on the Mac's own fonts** (an app can't load Bricolage; it falls back to the system font). Trigger: a designer review of an app window.
+- [ ] **Rename and delete inside the Mac's app window** (its 「⋯」 brings the main window's shelf forward to do them). Trigger: the author uses them from the app window.
+- [ ] **A real phone** walk of the shelf and the app sheet (shots are headless Chrome at 390). Trigger: the next iOS Simulator pass.
+
+## D413: 不用问我的 / Without asking (`core/src/standing.ts`)
+
+- [ ] **More actions than PR reviews** (issue comments outside To-do sources' own standing go, replies in a chat app, a reply to one named person's mail). Trigger: the person says "don't ask me" about one of these (the partner already says Ducter can't keep it yet).
+- [ ] **The settled round card's footnote** (**说好之前，什么都不会发到 GitHub。**) still shows under a card whose drafts went as said. Trigger: the next pass on the round card.
+- [ ] **On hel:** check after the upgrade that the 11-19 saying was backfilled (`[standing] kept 1 …` in the log) and the next round posts with one line. Trigger: the first release carrying D413.

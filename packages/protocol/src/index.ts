@@ -39,11 +39,13 @@ export * from "./mem-source.ts";
 export * from "./mem-health.ts";
 export * from "./task-sources.ts";
 export * from "./handover.ts";
+export * from "./standing.ts";
 import type { DeviceVia, HomeKey, ReachWay } from "./reach.ts";
 import type { PastClientFrame, PastMark, PastServerFrame } from "./past.ts";
 import type { DidClientFrame, DidServerFrame } from "./did.ts";
 import type { RichUi } from "./rich.ts";
 import type { PinView } from "./pins.ts";
+import type { StandingView } from "./standing.ts";
 import type { MadeClientFrame, MadeServerFrame } from "./made.ts";
 import type { AppAnswer, AppCard, AppRef, AppsClientFrame, AppsServerFrame } from "./apps.ts";
 import type { ChannelClientFrame, ChannelKind, ChannelServerFrame } from "./channels.ts";
@@ -302,7 +304,8 @@ export interface Bodies {
   // ui (D303): the blocks the partner put in its words (a table, a chart, a checklist, choices),
   // each standing in for its plain text in `text`; uiDropped: how many it wrote that weren't valid.
   // app (D405): the app this message made or changed (its card under the words); appAnswer: it answers an app's ask.
-  ai_msg: { text: string; replyTo?: number; decisionId?: string; media?: MediaRef[]; cal?: CalGlance; first?: FirstWords; ui?: RichUi[]; uiDropped?: number; app?: AppCard; appAnswer?: AppAnswer };
+  // shelf (D410): the person asked where their apps are: a card that opens 小应用 / Apps under these words.
+  ai_msg: { text: string; replyTo?: number; decisionId?: string; media?: MediaRef[]; cal?: CalGlance; first?: FirstWords; ui?: RichUi[]; uiDropped?: number; app?: AppCard; appAnswer?: AppAnswer; shelf?: true };
   ack: { jobId: string; text: string; replyTo: number }; // names the action, never the outcome
   // D380: a quick web look for one live fact (the weather, a version, one price), run beside the
   // conversation by a session that holds only web tools. "looking" when the partner asks it (no
@@ -377,7 +380,9 @@ export interface Bodies {
   // msgSeq (D236): the reply message that answered it (its words show as that bubble, not on the card).
   // settled (D375): closed by what happened, not by an answer (D169's offer once Mem's check sees the
   // plugin in): it reads as done (已装好 / Installed), never as a default taken.
-  decision_resolved: { decisionId: string; option: "go" | "hold" | "reply"; text?: string; by: "user" | "default"; now?: boolean; delivered?: boolean; msgSeq?: number; settled?: true };
+  // D413 posted: a review round's card settled because every draft on it went under a standing
+  // permission the person said (shown 按你说的，直接发了 / Posted, as you said).
+  decision_resolved: { decisionId: string; option: "go" | "hold" | "reply"; text?: string; by: "user" | "default"; now?: boolean; delivered?: boolean; msgSeq?: number; settled?: true; posted?: true };
   // D382: 晚点再问我 / Ask me later: the person put a waiting question off to `until`. It stays
   // open (answering it still works) but out of Needs you; its countdown stops.
   decision_later: { decisionId: string; until: string; by: "user" };
@@ -494,6 +499,9 @@ export interface Bodies {
     by: "go" | "rule" | "undo";
     decisionId?: string;
     taskId?: string;
+    /** D413: by "rule" under a standing permission the person said (不用问我的): its id, and their words. */
+    standing?: string;
+    said?: string;
     /** comment: the words that went out (cut to 600). */
     text?: string;
     /** What the app gave back (the comment's address). */
@@ -635,6 +643,8 @@ export interface Bodies {
     opId?: string;
     contact?: string;
     operation?: string;
+    // D412, "followed": the other unanswered messages to the same agent that one line also covered.
+    alsoFollowed?: string[];
     // D334: the Space it came in (in), or goes out in (out): a reply goes back in its message's Space.
     space?: string;
     spaceLabel?: string;
@@ -1266,6 +1276,8 @@ export type ClientFrame =
   // Rules are added only by saying them in the conversation (the partner's rule_save tool).
   | { t: "rules" }
   | { t: "rule_remove"; id: string }
+  // D413: 收回 / Take back a standing permission (不用问我的 / Without asking); a fresh rules frame follows.
+  | { t: "standing_revoke"; id: string }
   // D381: 置顶 / Pin. pin: a block of a partner message (its seq, the block's index) goes to the top;
   // unpin takes it off (the message keeps it); pin_tick ticks a pinned checklist's item, by its
   // words, on the home. Every socket on the default conversation gets a fresh pins frame after each.
@@ -1618,7 +1630,8 @@ export type ServerFrame =
   // D321: what Mem found for Settings › 记忆's search (ok false: Mem didn't answer).
   | { t: "mem_found"; q: string; ok: boolean; items: MemItem[] }
   // D372: defaults: the built-in default per kind of work, when it differs between kinds.
-  | { t: "rules"; rules: RuleView[]; defaults?: KindDefault[] }
+  // D413: standing: what the person said Ducter may do without asking (不用问我的 / Without asking).
+  | { t: "rules"; rules: RuleView[]; defaults?: KindDefault[]; standing?: StandingView[] }
   // D381: what is pinned in the default conversation, newest first; after the welcome and on every
   // change. refused (to the asking socket only): why a pin didn't happen (full: PINS_MAX already;
   // gone: no such block; kind: choices and the lend card aren't pinned).
@@ -1927,12 +1940,12 @@ export interface DeviceHarness {
   setup?: AgentSetupState;
   /** D363: its sign-in running on that device now, or how the last one ended (absent when idle). */
   login?: AgentLoginState;
-  /** D409: why it can't run here although something of it is there (absent: nothing in the way). */
+  /** D415: why it can't run here although something of it is there (absent: nothing in the way). */
   trouble?: AgentTrouble;
 }
 
 /**
- * D409: what stands between an agent that is partly there and a task on it:
+ * D415: what stands between an agent that is partly there and a task on it:
  *  - too_old: its command line is below the version OAR needs (`need`; `version` says what it is);
  *    安装 updates that copy with its own updater;
  *  - broken: its command line is there but doesn't answer (a damaged file); 安装 puts a fresh one there;

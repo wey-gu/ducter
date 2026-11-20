@@ -233,7 +233,7 @@ func (a *App) laterTimes(c *ui.Context, d *store.DecisionState, bg ui.Color) {
 		case "far":
 			note = a.L.T("later.bad.far")
 		}
-		ui.Text(c, note).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.45)
+		uiText(c, note).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.45)
 	})
 }
 
@@ -249,7 +249,7 @@ func (a *App) laterAway(c *ui.Context, d *store.DecisionState, bg ui.Color) bool
 		when = a.when(at.Local())
 	}
 	ui.Row(c.Key("later-away:" + d.DecisionID)).Gap(t.S3).Wrap().AlignItems(ui.Center).Role(ui.RoleStatus).Children(func() {
-		ui.Text(c, a.tp("later.away", when)).FontSize(t.SM).TextColor(t.InkMuted)
+		uiText(c, a.tp("later.away", when)).FontSize(t.SM).TextColor(t.InkMuted)
 		if a.buttonFor(c, a.L.T("later.now"), a.decisionAbout(d), btnText, t.ControlSM, bg) {
 			a.Later(d.DecisionID, nil)
 		}
@@ -263,7 +263,7 @@ func (a *App) laterBack(c *ui.Context, d *store.DecisionState) {
 		return
 	}
 	t := a.T
-	ui.Text(c, a.L.T("later.back")).FontSize(t.SM).FontWeight(700).TextColor(t.NeedsYou.Ink)
+	uiText(c, a.L.T("later.back")).FontSize(t.SM).FontWeight(700).TextColor(t.NeedsYou.Ink)
 }
 
 // laterRow is a put-off ask's line on On hand: when it asks again, and what.

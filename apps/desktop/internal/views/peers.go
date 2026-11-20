@@ -140,7 +140,7 @@ func (a *App) peerAskerRow(c *ui.Context, d *protocol.PeerAsk) {
 		text = a.L.T("peer.asks.where", a.peerWho(d.Agent), d.Where)
 	}
 	ui.Row(c.Key("peer-asker")).Gap(t.S2).AlignItems(ui.Center).Children(func() {
-		ui.Text(c, capPeer(text)).FontSize(t.SM).FontWeight(700).TextColor(t.NeedsYou.Ink).MaxLines(1)
+		uiText(c, capPeer(text)).FontSize(t.SM).FontWeight(700).TextColor(t.NeedsYou.Ink).MaxLines(1)
 	})
 }
 
@@ -257,7 +257,7 @@ func (a *App) peerLine(c *ui.Context, b *protocol.BridgeMsg, setAside int) {
 	}
 	ui.Row(c).Justify(ui.Center).Children(func() {
 		ui.Row(c).Gap(t.S1+2).AlignItems(ui.Center).Padding(3, t.S3).Radius(999).Background(t.SurfaceSunken).Children(func() {
-			ui.Text(c, text).FontSize(t.XS).TextColor(t.InkMuted).MaxLines(1)
+			uiText(c, text).FontSize(t.XS).TextColor(t.InkMuted).MaxLines(1)
 		})
 	})
 }

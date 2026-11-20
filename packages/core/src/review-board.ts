@@ -12,7 +12,7 @@ export const REVIEW_BOARD_NAME = { zh: "审查看板", en: "Review board" } as c
 export const REVIEW_BOARD_HTML = `<style>
 *{box-sizing:border-box}
 body{padding:18px 16px 28px;line-height:1.45}
-.wrap{max-width:860px;margin:0 auto}
+.wrap.k-app{display:block;max-width:860px;margin:0 auto;padding:0;font-size:inherit;line-height:inherit}
 .stand{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 10px;margin:0 0 4px}
 .big{font-size:34px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
 .what{font-size:15px;color:var(--d-soft);font-weight:600}
@@ -54,13 +54,13 @@ body{padding:18px 16px 28px;line-height:1.45}
 .none{background:var(--d-card);border-radius:var(--d-radius);padding:28px 18px;text-align:center;color:var(--d-soft)}
 .note{font-size:13px;color:var(--d-muted);margin:18px 2px 0;text-align:center}
 </style>
-<div class="wrap">
+<main class="k-app wrap">
   <div class="stand" id="stand"></div>
   <div class="when" id="when"></div>
   <div class="chips" id="chips" role="group"></div>
   <div class="list" id="list"></div>
   <p class="note" id="note"></p>
-</div>
+</main>
 <script>
 (function () {
   var zh = String(ducter.lang || "").indexOf("zh") === 0;

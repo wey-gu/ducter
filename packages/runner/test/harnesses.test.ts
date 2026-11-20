@@ -32,7 +32,7 @@ const spec = (harness: SessionSpec["harness"], over: Partial<SessionSpec> = {}):
   ...over,
 });
 
-test("the capability table covers the four and (D409) Antigravity, each task-capable", () => {
+test("the capability table covers the four and (D415) Antigravity, each task-capable", () => {
   expect([...HARNESS_IDS]).toEqual(["claude-code", "codex", "pi", "deepseek-harness", "antigravity"]);
   for (const id of HARNESS_IDS) expect(HARNESSES[id]).toMatchObject({ id, task: true });
   // D177: all four may be the partner; pi and DeepSeek Harness passed the eval (research/50 §5).

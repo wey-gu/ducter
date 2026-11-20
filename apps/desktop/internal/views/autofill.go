@@ -62,7 +62,7 @@ func (a *App) afMissing(c *ui.Context, need string) {
 		return
 	}
 	s.missing = need
-	ui.Text(c, a.L.T("af.fill", a.L.T(need))).FontSize(a.T.SM).FontWeight(600).TextColor(a.T.Failed.Ink).Role(ui.RoleStatus)
+	uiText(c, a.L.T("af.fill", a.L.T(need))).FontSize(a.T.SM).FontWeight(600).TextColor(a.T.Failed.Ink).Role(ui.RoleStatus)
 }
 
 // expRe reads a card's expiry as people type it (D404): 08/29, 08-29, 08 29,
@@ -105,7 +105,7 @@ func (a *App) autofillPanel(c *ui.Context) {
 		a.ledeNote(c, "af-kept", a.L.T(where, a.homeName()))
 	}
 	if f == nil {
-		ui.Text(c, a.L.T("conn.connecting")).FontSize(t.SM).TextColor(t.InkMuted)
+		uiText(c, a.L.T("conn.connecting")).FontSize(t.SM).TextColor(t.InkMuted)
 		return
 	}
 	// A save answered: close the form, drop what was typed.
@@ -249,13 +249,13 @@ func (a *App) afRow(c *ui.Context, key string, glyph func(ui.Color) func(p *ui.P
 			}
 		})
 		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(2).Children(func() {
-			ui.Text(c, title).FontSize(t.MD).FontWeight(700).SingleLine()
+			uiText(c, title).FontSize(t.MD).FontWeight(700).SingleLine()
 			if help != "" {
-				ui.Text(c, help).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(a.leading(1.5))
+				uiText(c, help).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(a.leading(1.5))
 			}
 		})
 		if mark != "" {
-			ui.Text(c, mark).FontSize(t.SM).TextColor(t.InkMuted).AccessHidden(true)
+			uiText(c, mark).FontSize(t.SM).TextColor(t.InkMuted).AccessHidden(true)
 		}
 	})
 	if r.Clicked() {
@@ -284,14 +284,85 @@ func (a *App) afEdit(kind string, x *protocol.SavedView) {
 
 func (a *App) afInput(c *ui.Context, key, label string, v *string, placeholder string, secret bool) {
 	t := a.T
+	// An expiry takes its slash as it is typed (D404, D408): 0829 and 829
+	// read 08/29 at once, as on the web, not only once saved.
+	was, shaped := *v, false
+	if key == "exp" {
+		if s := shapeExp(*v); s != *v {
+			*v, shaped = s, true
+		}
+	}
 	ui.Column(c.Key("af-field:" + key)).Gap(t.S1).Children(func() {
-		ui.Text(c, label).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
+		uiText(c, label).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
 		in := ui.TextInput(c.Key("af-input:"+key), v).Placeholder(placeholder).Label(label).
 			FontSize(t.MD).Padding(t.S3, t.S4).Radius(t.RadiusSM).Background(t.SurfaceSunken).Border(1, t.LineSoft)
 		if secret {
 			in.Password()
 		}
+		if shaped {
+			// The caret stays after the digit it was after: the end, as typed.
+			// (829's month gains its leading 0, a digit before them all.)
+			_, at := in.TextAnchorCaret()
+			n := digitsBefore(was, at)
+			if n > 0 {
+				n += digitsBefore(*v, len([]rune(*v))) - digitsBefore(was, len([]rune(was)))
+			}
+			n = caretAfterDigits(*v, n)
+			in.SetTextSelection(n, n)
+		}
 	})
+}
+
+var expDigits = regexp.MustCompile(`^\d{3,4}$`)
+
+// shapeExp puts an expiry's slash in once its digits can only mean one
+// month and year (D404, the web's shapeExp): four digits (0829 → 08/29),
+// or three starting 2 to 9, a one-digit month (829 → 08/29). Anything
+// else stays as typed; parseExp still reads it on Save.
+func shapeExp(s string) string {
+	if !expDigits.MatchString(s) {
+		return s
+	}
+	if len(s) == 4 {
+		return s[:2] + "/" + s[2:]
+	}
+	if s[0] >= '2' {
+		return "0" + s[:1] + "/" + s[1:]
+	}
+	return s
+}
+
+// digitsBefore counts the digits before rune at of s.
+func digitsBefore(s string, at int) int {
+	n := 0
+	for i, r := range []rune(s) {
+		if i >= at {
+			break
+		}
+		if r >= '0' && r <= '9' {
+			n++
+		}
+	}
+	return n
+}
+
+// caretAfterDigits is the rune offset in s just after its nth digit (0:
+// the start), the end when s has fewer.
+func caretAfterDigits(s string, n int) int {
+	rs := []rune(s)
+	if n == 0 {
+		return 0
+	}
+	seen := 0
+	for i, r := range rs {
+		if r >= '0' && r <= '9' {
+			seen++
+			if seen == n {
+				return i + 1
+			}
+		}
+	}
+	return len(rs)
 }
 
 // afForm adds or changes one sign-in or card.
@@ -322,7 +393,7 @@ func (a *App) afForm(c *ui.Context, kind string, x *protocol.SavedView) {
 			a.afInput(c, "number", a.L.T("af.card.number"), &s.number, ph, false)
 			a.afInput(c, "exp", a.L.T("af.card.exp"), &s.exp, "08/29", false)
 			a.afInput(c, "name", a.L.T("af.card.name"), &s.name, "", false)
-			ui.Text(c, a.L.T("af.card.nocvc")).FontSize(t.SM).TextColor(t.InkMuted)
+			uiText(c, a.L.T("af.card.nocvc")).FontSize(t.SM).TextColor(t.InkMuted)
 			mm, yy, good := parseExp(s.exp)
 			ok = good && s.name != "" && (x != nil || s.number != "")
 			need = firstMissing(x == nil && s.number == "", "af.card.number", !good, "af.card.exp", s.name == "", "af.card.name")
@@ -334,7 +405,7 @@ func (a *App) afForm(c *ui.Context, kind string, x *protocol.SavedView) {
 			put.ID = x.ID
 		}
 		if f := a.savedFrame(); f != nil && !s.sentAt.IsZero() && f.Reason != "" {
-			ui.Text(c, a.L.T("af.err."+f.Reason)+" ("+f.Message+")").FontSize(t.SM).TextColor(t.Failed.Ink)
+			uiText(c, a.L.T("af.err."+f.Reason)+" ("+f.Message+")").FontSize(t.SM).TextColor(t.Failed.Ink)
 		}
 		a.afMissing(c, need)
 		ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
@@ -440,15 +511,15 @@ func (a *App) afUse(c *ui.Context, i int, u protocol.SavedUse) {
 	// D289: a line of the group, not a card in it; D291: the site its own element.
 	ui.Row(c.Key("af-use:"+strconv.Itoa(i))).Gap(t.S3).Padding(t.S1, 0).AlignItems(ui.Center).Children(func() {
 		ui.Column(c).Grow(1).MinWidth(0).Gap(2).Children(func() {
-			ui.Text(c, what).FontSize(t.SM).FontWeight(700).TextColor(ink)
+			uiText(c, what).FontSize(t.SM).FontWeight(700).TextColor(ink)
 			if u.Site != "" {
-				ui.Text(c, u.Site).FontSize(t.XS).TextColor(t.InkMuted)
+				uiText(c, u.Site).FontSize(t.XS).TextColor(t.InkMuted)
 			}
 			if u.Task != "" {
-				ui.Text(c, a.L.T("af.use.task", u.Task)).FontSize(t.XS).TextColor(t.InkMuted)
+				uiText(c, a.L.T("af.use.task", u.Task)).FontSize(t.XS).TextColor(t.InkMuted)
 			}
 		})
-		ui.Text(c, a.agoLong(u.At)).FontSize(t.XS).TextColor(t.InkMuted)
+		uiText(c, a.agoLong(u.At)).FontSize(t.XS).TextColor(t.InkMuted)
 	})
 }
 
@@ -461,11 +532,11 @@ func (a *App) payButtons(c *ui.Context, d *store.DecisionState, st decisionStyle
 	ui.Column(c.Key("pay:" + d.DecisionID)).Gap(t.S2).Padding(t.S3).Radius(t.RadiusSM).Background(t.SurfaceSunken).Children(func() {
 		fact := func(k, v string) {
 			ui.Row(c).Gap(t.S3).Children(func() {
-				ui.Text(c, a.L.T(k)).FontSize(t.SM).TextColor(t.InkMuted).Width(72)
-				ui.Text(c, v).FontSize(t.SM).FontWeight(700).Grow(1).MinWidth(0)
+				uiText(c, a.L.T(k)).FontSize(t.SM).TextColor(t.InkMuted).Width(72)
+				uiText(c, v).FontSize(t.SM).FontWeight(700).Grow(1).MinWidth(0)
 			})
 		}
-		ui.Text(c, amount).FontSize(t.XL).FontWeight(800)
+		uiText(c, amount).FontSize(t.XL).FontWeight(800)
 		if p.What != "" {
 			fact("pay.what", p.What)
 		}
@@ -474,7 +545,7 @@ func (a *App) payButtons(c *ui.Context, d *store.DecisionState, st decisionStyle
 			// D296: its own line under the merchant, never joined to it.
 			ui.Row(c).Gap(t.S3).Children(func() {
 				ui.Box(c).Width(72).Shrink(0)
-				ui.Text(c, a.L.T("pay.first")).FontSize(t.SM).FontWeight(600).TextColor(t.InkSoft).Grow(1).MinWidth(0)
+				uiText(c, a.L.T("pay.first")).FontSize(t.SM).FontWeight(600).TextColor(t.InkSoft).Grow(1).MinWidth(0)
 			})
 		}
 		fact("pay.card", p.Card)
@@ -484,7 +555,7 @@ func (a *App) payButtons(c *ui.Context, d *store.DecisionState, st decisionStyle
 		if (d.Resolved != nil && d.Resolved.Option == "go") || d.Pending == "go" {
 			msg = a.L.T("pay.resolved", amount)
 		}
-		ui.Text(c, msg).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
+		uiText(c, msg).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
 		return
 	}
 	if a.af.cvc == nil {
@@ -495,7 +566,7 @@ func (a *App) payButtons(c *ui.Context, d *store.DecisionState, st decisionStyle
 		a.afInput(c, "cvc:"+d.DecisionID, a.L.T("pay.cvc", p.Last4), &code, "", true)
 		a.af.cvc[d.DecisionID] = code
 	}
-	ui.Text(c, a.L.T("pay.why")).FontSize(t.XS).TextColor(t.InkMuted)
+	uiText(c, a.L.T("pay.why")).FontSize(t.XS).TextColor(t.InkMuted)
 	ready := !p.NeedsCvc || regexp.MustCompile(`^\d{3,4}$`).MatchString(code)
 	ui.Row(c.Key("pay-go:" + d.DecisionID)).Gap(t.S3).AlignItems(ui.Center).Children(func() {
 		if a.buttonFor(c, a.L.T("pay.hold"), p.Site, btnSecondary, st.height, st.quietBg) {
@@ -520,13 +591,13 @@ func (a *App) fillButtons(c *ui.Context, d *store.DecisionState, st decisionStyl
 	if f.Kind == "signin" {
 		why = "fill.why.signin"
 	}
-	ui.Text(c, a.L.T(why)).FontSize(t.SM).TextColor(t.InkMuted)
+	uiText(c, a.L.T(why)).FontSize(t.SM).TextColor(t.InkMuted)
 	if d.Resolved != nil || d.Pending != "" {
 		msg := a.L.T("fill.resolved.hold")
 		if (d.Resolved != nil && d.Resolved.Option == "go") || d.Pending == "go" {
 			msg = a.L.T("fill.resolved")
 		}
-		ui.Text(c, msg).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
+		uiText(c, msg).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
 		return
 	}
 	ui.Row(c.Key("fill-go:" + d.DecisionID)).Gap(t.S3).AlignItems(ui.Center).Children(func() {

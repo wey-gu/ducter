@@ -64,13 +64,13 @@ func (a *App) pairSign(c *ui.Context, v view, spot *isle, all []isle, sw, sh flo
 	}
 	sign.Children(func() {
 		ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
-			ui.Text(c, a.L.T("pair.code")).FontSize(t.XS).FontWeight(800).TextColor(t.InkMuted).Grow(1).MinWidth(0)
+			uiText(c, a.L.T("pair.code")).FontSize(t.XS).FontWeight(800).TextColor(t.InkMuted).Grow(1).MinWidth(0)
 			if a.button(c, a.L.T("pair.close"), btnText, t.ControlSM, t.Surface) {
 				d.pair.open, d.pair.known = false, nil
 			}
 		})
 		if pc == nil {
-			ui.Text(c, a.L.T("devices.loading")).FontSize(t.SM).TextColor(t.InkMuted)
+			uiText(c, a.L.T("devices.loading")).FontSize(t.SM).TextColor(t.InkMuted)
 			return
 		}
 		exp := store.ParseTime(pc.ExpiresAt)
@@ -90,22 +90,22 @@ func (a *App) pairSign(c *ui.Context, v view, spot *isle, all []isle, sw, sh flo
 				qrBox(c, pc.QR, 88, t.Ink, t.Surface)
 			}
 			ui.Column(c).Gap(2).Grow(1).MinWidth(0).Children(func() {
-				ui.Text(c, pc.Code).Font(t.Mono).FontSize(t.XL).FontWeight(800).LetterSpacing(1).Selectable()
+				uiText(c, pc.Code).Font(t.Mono).FontSize(t.XL).FontWeight(800).LetterSpacing(1).Selectable()
 				mins := int(math.Ceil(left.Minutes()))
-				ui.Text(c, a.L.T("pair.once", mins)).FontSize(t.XS).TextColor(t.InkMuted)
+				uiText(c, a.L.T("pair.once", mins)).FontSize(t.XS).TextColor(t.InkMuted)
 			})
 		})
 		// One code, two ways to use it (D83): a phone or an app window
 		// opens the address; another computer runs one command.
 		if pc.Address != "" {
-			ui.Text(c, pc.Address).Font(t.Mono).FontSize(t.XS).TextColor(t.InkSoft).Selectable().MaxLines(2)
-			ui.Text(c, a.L.T("pair.scan")).FontSize(t.XS).LineHeight(1.5).TextColor(t.InkSoft)
-			ui.Text(c, a.L.T("pair.computer", a.S.PersonaName)).FontSize(t.XS).LineHeight(1.5).TextColor(t.InkSoft)
+			uiText(c, pc.Address).Font(t.Mono).FontSize(t.XS).TextColor(t.InkSoft).Selectable().MaxLines(2)
+			uiText(c, a.L.T("pair.scan")).FontSize(t.XS).LineHeight(1.5).TextColor(t.InkSoft)
+			uiText(c, a.L.T("pair.computer", a.S.PersonaName)).FontSize(t.XS).LineHeight(1.5).TextColor(t.InkSoft)
 			a.commandBoxSized(c, workerCommand(pc.Address, pc.Code), t.XS)
 		} else {
 			a.pairNoAddress(c)
 		}
-		ui.Text(c, a.L.T("pair.waiting")).FontSize(t.SM).FontWeight(800).TextColor(t.Ink)
+		uiText(c, a.L.T("pair.waiting")).FontSize(t.SM).FontWeight(800).TextColor(t.Ink)
 	})
 	if h := sign.Bounds().H; h > 0 && h != d.signH {
 		d.signH = h
@@ -192,9 +192,9 @@ func (a *App) pairNoAddress(c *ui.Context) {
 	}
 	switch {
 	case any != nil && (any.State == "setup" || any.State == "starting"):
-		ui.Text(c, a.L.T("phone.anywhere.steps")).FontSize(t.XS).LineHeight(1.5).TextColor(t.InkSoft)
+		uiText(c, a.L.T("phone.anywhere.steps")).FontSize(t.XS).LineHeight(1.5).TextColor(t.InkSoft)
 	default:
-		ui.Text(c, a.L.T("pair.noaddress")).FontSize(t.XS).LineHeight(1.5).TextColor(t.InkSoft)
+		uiText(c, a.L.T("pair.noaddress")).FontSize(t.XS).LineHeight(1.5).TextColor(t.InkSoft)
 		if home := a.homeDevice(); home != nil && home.State == protocol.DeviceAwake {
 			if any != nil && any.State == "off" {
 				if a.button(c, a.L.T("anywhere.turnOnLong"), btnSecondary, t.ControlSM, t.Surface) {

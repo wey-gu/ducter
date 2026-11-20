@@ -82,8 +82,8 @@ func (a *App) oldRows(c *ui.Context, only string) {
 		a.menuRow(c, "nt-old:"+d.ID, spoken(a.L, label, a.L.T("newtask.old.why")), false, true, func() {
 			a.glyph(c, 16, drawPlus(t.InkSoft))
 			ui.Column(c).Grow(1).MinWidth(0).Gap(1).Children(func() {
-				ui.Text(c, label).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).SingleLine()
-				ui.Text(c, a.L.T("newtask.old.why")).FontSize(t.XS).TextColor(t.InkMuted)
+				uiText(c, label).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).SingleLine()
+				uiText(c, a.L.T("newtask.old.why")).FontSize(t.XS).TextColor(t.InkMuted)
 			})
 		})
 	}
@@ -172,16 +172,16 @@ func (a *App) cloneField(c *ui.Context) {
 		in.Focus()
 		k.focus = false
 	}
-	ui.Text(c.Key("nt-clone-where"), a.L.T("newtask.clone.where", into, name)).FontSize(t.XS).TextColor(t.InkMuted).Padding(t.S1, t.S3)
+	uiText(c.Key("nt-clone-where"), a.L.T("newtask.clone.where", into, name)).FontSize(t.XS).TextColor(t.InkMuted).Padding(t.S1, t.S3)
 	a.githubLine(c, k)
 	if busy {
 		ui.Row(c.Key("nt-clone-busy")).Gap(t.S2).AlignItems(ui.Center).Padding(t.S1, t.S3).Children(func() {
 			ui.Spinner(c).Size(12, 12)
-			ui.Text(c, a.L.T("newtask.clone.busy")).FontSize(t.XS).TextColor(t.InkMuted)
+			uiText(c, a.L.T("newtask.clone.busy")).FontSize(t.XS).TextColor(t.InkMuted)
 		})
 	}
 	if k.err != "" {
-		ui.Text(c.Key("nt-clone-err"), k.err).FontSize(t.XS).TextColor(t.Failed.Ink).Padding(t.S1, t.S3)
+		uiText(c.Key("nt-clone-err"), k.err).FontSize(t.XS).TextColor(t.Failed.Ink).Padding(t.S1, t.S3)
 		if s := a.ghState(k.device); k.access && !busy && (s == nil || s.State == "signed_out") {
 			a.signInButton(c, k.device)
 		}

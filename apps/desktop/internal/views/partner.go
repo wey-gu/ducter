@@ -69,7 +69,7 @@ func (a *App) loadingLine(c *ui.Context) bool {
 	if a.S.Settings != nil {
 		return false
 	}
-	ui.Text(c, a.L.T("partner.loading", a.S.PersonaName)).FontSize(a.T.MD).TextColor(a.T.InkMuted)
+	uiText(c, a.L.T("partner.loading", a.S.PersonaName)).FontSize(a.T.MD).TextColor(a.T.InkMuted)
 	return true
 }
 
@@ -89,7 +89,7 @@ func (a *App) partnerToast(c *ui.Context) {
 		glyph = drawAsk(t.InkSoft)
 	}
 	a.notice(c, "partner-toast", ps.toastTone, func() { a.glyph(c, 22, glyph) }, func() {
-		ui.Text(c, ps.toast).FontSize(t.SM).FontWeight(700).MaxLines(2)
+		uiText(c, ps.toast).FontSize(t.SM).FontWeight(700).MaxLines(2)
 	}, nil)
 }
 
@@ -110,6 +110,7 @@ func (a *App) partnerPanel(c *ui.Context, w float32) {
 	a.talkCard(c, st)
 	a.recordsGroup(c) // D307: their records (D298, D299)
 	a.trustCard(c)
+	a.saidLine(c, "trust")
 	a.peersInvite(c) // D332: one quiet line, for someone not seen running agents of their own
 	// D257: what it remembers and 和你的其他 agent 通信 are tabs of their own (memory.go).
 }
@@ -131,7 +132,7 @@ func (a *App) partnerHero(c *ui.Context) {
 		a.avatar(c, shown, 64)
 		ui.Column(c).Grow(1).MinWidth(0).Gap(t.S1).Children(func() {
 			a.partnerName(c)
-			ui.Text(c, line).FontSize(t.MD).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
+			uiText(c, line).FontSize(t.MD).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
 		})
 	})
 }
@@ -205,7 +206,7 @@ func (a *App) sheetCardNoted(c *ui.Context, key, title, note string, body func()
 // note is a quiet explanation line.
 func (a *App) note(c *ui.Context, text string) {
 	t := a.T
-	ui.Text(c, text).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
+	uiText(c, text).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
 }
 
 // choices is a segmented clay control (D76): a sunken track, the chosen
@@ -233,7 +234,7 @@ func (a *App) choices(c *ui.Context, key, name string, labels []string, sel int)
 					fg = t.InkSoft
 				}
 				b.Children(func() {
-					ui.Text(c, l).FontSize(t.MD).FontWeight(weight).TextColor(fg).SingleLine().AccessHidden(true)
+					uiText(c, l).FontSize(t.MD).FontWeight(weight).TextColor(fg).SingleLine().AccessHidden(true)
 				})
 				if b.Clicked() && !on {
 					hit = i
@@ -253,7 +254,7 @@ func (a *App) switchRow(c *ui.Context, key, label, note string, on bool) (bool, 
 	changed := false
 	ui.Row(c.Key("switch:" + key)).Gap(t.S4).AlignItems(ui.Center).Children(func() {
 		ui.Column(c).Grow(1).MinWidth(0).Gap(2).Children(func() {
-			ui.Text(c, label).FontSize(t.MD).FontWeight(700)
+			uiText(c, label).FontSize(t.MD).FontWeight(700)
 			if note != "" {
 				a.note(c, note)
 			}
@@ -279,7 +280,7 @@ func (a *App) talkCard(c *ui.Context, st *protocol.Settings) {
 		}
 		a.row(c, "talk", a.L.T("settings.talk.row"), help, func() {
 			e, click := a.pill(c, "talk-lang", spoken(a.L, a.L.T("partner.talk.title"), name), ps.talkOpen, func() {
-				ui.Text(c, name).FontSize(t.MD).TextColor(t.Ink).SingleLine().AccessHidden(true)
+				uiText(c, name).FontSize(t.MD).TextColor(t.Ink).SingleLine().AccessHidden(true)
 			})
 			if click {
 				ps.talkOpen, ps.talkMore = !ps.talkOpen, false
@@ -297,7 +298,7 @@ func (a *App) talkCard(c *ui.Context, st *protocol.Settings) {
 			}
 			row := func(tag, label string) {
 				if a.menuRow(c, "talk:"+tag, label, tag == cur, false, func() {
-					ui.Text(c, label).FontSize(t.MD).TextColor(t.Ink).SingleLine().Grow(1).MinWidth(0)
+					uiText(c, label).FontSize(t.MD).TextColor(t.Ink).SingleLine().Grow(1).MinWidth(0)
 				}) && tag != cur {
 					pick(tag)
 				}
@@ -317,13 +318,13 @@ func (a *App) talkCard(c *ui.Context, st *protocol.Settings) {
 				if !ps.talkMore {
 					other := a.L.T("partner.talk.other")
 					if a.menuRow(c, "talk:other", other, false, false, func() {
-						ui.Text(c, other).FontSize(t.MD).TextColor(t.InkSoft).SingleLine().Grow(1).MinWidth(0)
+						uiText(c, other).FontSize(t.MD).TextColor(t.InkSoft).SingleLine().Grow(1).MinWidth(0)
 					}) {
 						ps.talkMore = true
 					}
 					return
 				}
-				ui.Text(c, a.L.T("partner.talk.more")).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).Padding(t.S2, t.S3, t.S1, t.S3)
+				uiText(c, a.L.T("partner.talk.more")).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).Padding(t.S2, t.S3, t.S1, t.S3)
 				for _, l := range lang.Languages {
 					if !l.Common {
 						row(l.Tag, l.Name)
@@ -377,7 +378,7 @@ func (a *App) notifyPanel(c *ui.Context) {
 			}
 			a.row(c, "quiet-range", a.L.T("settings.quiet.hours"), "", func() {
 				s := ui.TimeInput(c.Key("quiet-start"), &ps.qStart).Label(a.L.T("partner.quiet"))
-				ui.Text(c, a.L.T("partner.quiet.to")).FontSize(t.MD).TextColor(t.InkMuted)
+				uiText(c, a.L.T("partner.quiet.to")).FontSize(t.MD).TextColor(t.InkMuted)
 				e := ui.TimeInput(c.Key("quiet-end"), &ps.qEnd).Label(spoken(a.L, a.L.T("partner.quiet"), a.L.T("partner.quiet.to")))
 				if s.Changed() || e.Changed() {
 					nq := &protocol.QuietHours{Start: ps.qStart.Format("15:04"), End: ps.qEnd.Format("15:04"), TZ: q.TZ}
@@ -454,11 +455,11 @@ func (a *App) trustCard(c *ui.Context) {
 	a.group(c, "trust", a.L.T("partner.trust.title"), a.L.T("partner.trust.note"), func() {
 		list := func(head string, prefix string, sc theme.StateColors, glyph func(ui.Color) func(*ui.Painter, ui.Rect)) {
 			ui.Column(c).Gap(t.S3).Grow(1).Basis(0).MinWidth(240).Children(func() {
-				ui.Text(c, head).FontSize(t.MD).FontWeight(800).TextColor(sc.Ink)
+				uiText(c, head).FontSize(t.MD).FontWeight(800).TextColor(sc.Ink)
 				for i := 1; i <= 4; i++ {
 					ui.Row(c).Gap(t.S3).AlignItems(ui.Start).Children(func() {
 						ui.Box(c).Size(20, 20).Draw(glyph(sc.Ink)).Shrink(0).Margin(1, 0, 0, 0)
-						ui.Text(c, a.L.T(prefix+itoa(int64(i)))).FontSize(t.MD).LineHeight(a.leading(1.45)).Grow(1).MinWidth(0)
+						uiText(c, a.L.T(prefix+itoa(int64(i)))).FontSize(t.MD).LineHeight(a.leading(1.45)).Grow(1).MinWidth(0)
 					})
 				}
 			})
@@ -467,6 +468,43 @@ func (a *App) trustCard(c *ui.Context) {
 			list(a.L.T("partner.trust.own"), "partner.trust.own.", t.Done, drawCheck)
 			list(a.L.T("partner.trust.asks"), "partner.trust.asks.", t.NeedsYou, drawAsk)
 		})
+		a.standingList(c)
+	})
+}
+
+// standingList is 不用问我的 / Without asking (D413), the third list in
+// 要不要先问's card, in the done ink: what the person said may go without
+// asking, where, in their words, each with 收回 / Take back. Nothing at
+// all until they say one.
+func (a *App) standingList(c *ui.Context) {
+	if len(a.S.Standing) == 0 {
+		return
+	}
+	t := a.T
+	sep := a.L.T("standing.sep")
+	ui.Box(c).Height(1).Margin(0, t.S5).Background(t.LineSoft).Shrink(0)
+	ui.Column(c.Key("standing")).Gap(t.S3).Padding(t.S4, t.S5, t.S5, t.S5).Children(func() {
+		uiText(c, a.L.T("standing.title")).FontSize(t.MD).FontWeight(800).TextColor(t.Done.Ink)
+		for _, x := range a.S.Standing {
+			x := x
+			where := a.L.T("standing.where.any")
+			if len(x.Orgs) > 0 {
+				where = a.L.T("standing.where.orgs", strings.Join(x.Orgs, sep))
+			}
+			title := a.L.T("standing." + x.Action)
+			ui.Row(c.Key("standing:" + x.ID)).Gap(t.S3).AlignItems(ui.Start).Children(func() {
+				ui.Box(c).Size(20, 20).Draw(drawCheck(t.Done.Ink)).Shrink(0).Margin(1, 0, 0, 0)
+				ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(2).Children(func() {
+					uiText(c, title).FontSize(t.MD).LineHeight(a.leading(1.45))
+					uiText(c, where).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
+					uiText(c, a.L.T("standing.said", x.Text)).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
+				})
+				if a.quietDanger(c, "standing:"+x.ID, a.L.T("standing.revoke"), title) {
+					a.send(protocol.StandingRevoke{T: "standing_revoke", ID: x.ID})
+					a.say("trust", a.L.T("standing.revoked"))
+				}
+			})
+		}
 	})
 }
 
@@ -672,7 +710,7 @@ func (a *App) ooOffer(c *ui.Context, oo *protocol.OoDetect) {
 		ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
 			ui.Box(c).Size(36, 58).Draw(a.drawMailbox("oo")).Shrink(0).AccessHidden(true)
 			ui.Column(c).Grow(1).MinWidth(0).Gap(2).Children(func() {
-				ui.Text(c, a.L.T("acct.oo.title")).FontSize(t.MD).FontWeight(700)
+				uiText(c, a.L.T("acct.oo.title")).FontSize(t.MD).FontWeight(700)
 				a.note(c, a.L.T("acct.oo.lede"))
 			})
 		})
@@ -686,7 +724,7 @@ func (a *App) ooOffer(c *ui.Context, oo *protocol.OoDetect) {
 				for _, app := range oo.Apps {
 					app := app
 					ui.Row(c.Key("ooapp:" + app.Service)).Gap(t.S3).AlignItems(ui.Baseline).Children(func() {
-						ui.Text(c, app.Title).FontSize(t.MD).FontWeight(700).Width(112).Shrink(0).SingleLine()
+						uiText(c, app.Title).FontSize(t.MD).FontWeight(700).Width(112).Shrink(0).SingleLine()
 						ui.Row(c).Grow(1).MinWidth(0).Children(func() { a.facts(c, t.SM, t.InkSoft, app.Accounts...) })
 					})
 				}
@@ -713,7 +751,7 @@ func (a *App) ooOffer(c *ui.Context, oo *protocol.OoDetect) {
 func (a *App) acctField(c *ui.Context, key, label string, value *string, secret, wrong bool, submit func()) {
 	t := a.T
 	ui.Column(c.Key("field:" + key)).Gap(t.S2).Children(func() {
-		ui.Text(c, label).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
+		uiText(c, label).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
 		border := t.LineSoft
 		if wrong {
 			border = t.Failed.Strong
@@ -747,7 +785,7 @@ func (a *App) acctKey(c *ui.Context, submit func()) {
 		if ps.acctNoKey {
 			ui.Row(c.Key("acct-nokey")).Gap(t.S1).AlignItems(ui.Center).Role(ui.RoleAlert).Children(func() {
 				a.glyph(c, 18, drawBang(t.Failed.Ink))
-				ui.Text(c, a.L.T("acct.err.no_key")).FontSize(t.SM).FontWeight(700).TextColor(t.Failed.Ink)
+				uiText(c, a.L.T("acct.err.no_key")).FontSize(t.SM).FontWeight(700).TextColor(t.Failed.Ink)
 			})
 		}
 	})
@@ -759,9 +797,9 @@ func (a *App) oomolSteps(c *ui.Context) {
 	t := a.T
 	step := func(n int, text string, link func()) {
 		ui.Row(c.Key("oomol-step:" + itoa(int64(n)))).Gap(t.S3).AlignItems(ui.Baseline).Children(func() {
-			ui.Text(c, itoa(int64(n))+".").FontSize(t.MD).FontWeight(700).TextColor(t.InkSoft).Width(18).Shrink(0)
+			uiText(c, itoa(int64(n))+".").FontSize(t.MD).FontWeight(700).TextColor(t.InkSoft).Width(18).Shrink(0)
 			ui.Column(c).Grow(1).MinWidth(0).Gap(t.S1).Children(func() {
-				ui.Text(c, text).FontSize(t.MD).LineHeight(a.leading(1.45))
+				uiText(c, text).FontSize(t.MD).LineHeight(a.leading(1.45))
 				if link != nil {
 					link()
 				}
@@ -801,7 +839,7 @@ func (a *App) acctRefusal(c *ui.Context, hosted bool) {
 		}
 	}
 	a.notice(c, "acct-refusal", noticeAlert, func() { a.glyph(c, 22, drawBang(t.Failed.Ink)) }, func() {
-		ui.Text(c, a.L.T("acct.err."+reason)).FontSize(t.SM).FontWeight(700).TextColor(t.Failed.Ink).MaxLines(3)
+		uiText(c, a.L.T("acct.err."+reason)).FontSize(t.SM).FontWeight(700).TextColor(t.Failed.Ink).MaxLines(3)
 	}, actions)
 }
 

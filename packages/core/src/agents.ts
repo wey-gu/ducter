@@ -51,7 +51,7 @@ export function latestUrl(h: HarnessId, how: AgentHow | undefined): string | und
   const ch = HARNESS_FACTS[h].channels.value;
   if (how === "npm" && ch.npm) return NPM_LATEST(ch.npm);
   if (how === "brew" && ch.cask) return CASK_LATEST(ch.cask);
-  // D409: a per-platform release list (agy's manifest) is read for this machine's platform.
+  // D415: a per-platform release list (agy's manifest) is read for this machine's platform.
   if (how === "installer") return ch.installer?.latest.includes("{platform}") ? ch.installer.latest.replace("{platform}", agyPlatform(process.platform, process.arch) ?? "linux_amd64") : ch.installer?.latest;
 }
 

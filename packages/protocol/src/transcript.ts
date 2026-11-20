@@ -200,7 +200,7 @@ const TOLD: [RegExp, ToldSay][] = [
   [/^The user (?:said no to lending you their phone|said not now to using their own phone)/, "declined"],
   [/^The user pressed 停下 \/ Stop/, "stopped"],
   [/^The user reopened this task\./, "reopened"],
-  // D437: another AI looked the result over first and found something (second-look.ts fixAsk): name = that AI.
+  // D437: another AI looked the result over first and found something (fresh-look.ts fixAsk): name = that AI.
   [/^Before your result goes to the user, another AI \((.+?)\) read it/, "looked"],
   // D299: a session from outside Ducter, carried on here.
   [/^The user picked this session up again in Ducter/, "adopted"],

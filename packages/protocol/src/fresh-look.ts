@@ -6,7 +6,7 @@
 // shows nothing on any card.
 
 /** What a look found, as Ducter keeps it on the report (set by Ducter, never by the task). */
-export interface SecondLook {
+export interface FreshLook {
   /** The agent that looked (a HarnessId), and its model when one was named. */
   by: string;
   model?: string;
@@ -16,16 +16,25 @@ export interface SecondLook {
   left: string[];
 }
 
-/** The look's step on a task, logged as a runner task_event's `raw.secondLook`. */
-export type SecondLookPhase = "looking" | "asked" | "checking" | "done";
+/** The look's step on a task, logged as a runner task_event's `raw.freshLook`. */
+export type FreshLookPhase = "looking" | "asked" | "checking" | "done";
 
 /** At most this many findings are kept and said (the rest would be noise). */
 export const LOOK_FINDINGS_MAX = 3;
 /** One finding's length on the card, in characters. */
 export const LOOK_FINDING_CHARS = 80;
 
-/** D437: the rule kind (D165's notice rules) for 这类不用复查 / no second look for this kind. */
-export const NO_LOOK_KIND = "second_look";
+/** D437: the rule kind (D165's notice rules) for 这类不用复查 / no look for this kind of work. */
+export const NO_LOOK_KIND = "fresh_look";
+/** D443: D437 shipped as "second_look" (and the Log's `raw.secondLook`), the same words as D373's
+ *  second look at a task to continue; renamed, and the old names are still read. */
+export const NO_LOOK_KIND_OLD = "second_look";
+export const isNoLookKind = (kind: string | undefined): boolean => kind === NO_LOOK_KIND || kind === NO_LOOK_KIND_OLD;
+/** A task_event's look step, under its key since D443 (`freshLook`) or the one before (`secondLook`). */
+export function lookStepOf<T = { phase?: FreshLookPhase; hash?: string }>(raw: unknown): T | undefined {
+  const r = raw as { freshLook?: T; secondLook?: T } | undefined;
+  return r?.freshLook ?? r?.secondLook;
+}
 
 /**
  * Ducter's words to the task with what was found (D271's "told"): the transcript says it as a

@@ -1,11 +1,11 @@
-// D437: another AI's one look before a result goes out (second-look.ts), on a real Log with fake
+// D437: another AI's one look before a result goes out (fresh-look.ts), on a real Log with fake
 // agents: which results get one, who looks, a clean look says nothing, a finding goes back to the
 // task once and its fix is checked against the same points, what is left rides on the report (and
 // so on the card), every failure fails open, the person's 这类不用复查 rule, the ceiling, a restart.
 import { afterEach, expect, test } from "bun:test";
 import { join } from "node:path";
 import type { Bodies, HarnessId, RuleView, TaskCard } from "@ducter/protocol";
-import { checkPrompt, createSecondLook, diffFromWorkbench, fixAsk, keepNoLookAtOnce, lookPrompt, lookRuledOff, lookWhat, parseCheck, parseLook, pickLooker, readNoLook, type LookDeps } from "../src/second-look.ts";
+import { checkPrompt, createFreshLook, diffFromWorkbench, fixAsk, keepNoLookAtOnce, lookPrompt, lookRuledOff, lookWhat, parseCheck, parseLook, pickLooker, readNoLook, type LookDeps } from "../src/fresh-look.ts";
 import { openRules } from "../src/rules.ts";
 import { openLog } from "../src/log.ts";
 import { tempDir } from "./helpers.ts";
@@ -45,7 +45,7 @@ function setup(o: { answers?: string[]; home?: string[]; rules?: RuleView[]; wor
   const asked: { who: { harness: HarnessId; model?: string }; prompt: string }[] = [];
   const sent: string[] = [];
   const answers = [...(o.answers ?? [])];
-  const look = createSecondLook({
+  const look = createFreshLook({
     log,
     tasks: { get: (id: string) => cards.get(id), list: () => [...cards.values()], onHand: () => ({}) as never, setState: (_id: string, a: string) => void states.push(a) },
     rules: () => o.rules ?? [],
@@ -64,7 +64,7 @@ function setup(o: { answers?: string[]; home?: string[]; rules?: RuleView[]; wor
   stops.push(() => look.stop());
   stops.push(() => log.close?.());
   const reports = () => log.read({ stream: "task:t1", kinds: ["report"], beforeSeq: log.head() + 1, limit: 100 }).map((e) => e.body as Bodies["report"]);
-  const looks = () => log.read({ stream: "task:t1", kinds: ["task_event"], beforeSeq: log.head() + 1, limit: 100 }).map((e) => (e.body as { raw?: { secondLook?: Record<string, unknown> } }).raw?.secondLook).filter(Boolean);
+  const looks = () => log.read({ stream: "task:t1", kinds: ["task_event"], beforeSeq: log.head() + 1, limit: 100 }).map((e) => (e.body as { raw?: { freshLook?: Record<string, unknown> } }).raw?.freshLook).filter(Boolean);
   return { log, look, asked, sent, states, reports, looks, dir: t.dir };
 }
 
@@ -203,7 +203,7 @@ test("no fix in time: the result goes on with what was found", async () => {
   expect(s.reports()[0]!.look?.left).toEqual(["漏了 Windows"]);
 });
 
-test("the same result again gets no second look", async () => {
+test("the same result again gets no look", async () => {
   const s = setup({ answers: ['{"ok": true}', '{"ok": true}'] });
   s.look.take("t1", done());
   await s.look.idle();
@@ -214,8 +214,11 @@ test("the same result again gets no second look", async () => {
 });
 
 test("这类不用复查: a rule for the kind of work (or its words) skips the look", () => {
-  const rule = (kinds: string[], match: string[] = []) => ({ id: "r", text: "写代码这类不用复查", harness: "", match, kinds, createdAt: "", notice: { kind: "second_look" } }) as RuleView;
+  const rule = (kinds: string[], match: string[] = [], kind = "fresh_look") => ({ id: "r", text: "写代码这类不用复查", harness: "", match, kinds, createdAt: "", notice: { kind } }) as RuleView;
   expect(lookRuledOff([rule(["code"])], { title: "x", kind: "code" })).toBeTruthy();
+  // D443: a rule kept before the rename (kind "second_look") still skips the look.
+  expect(lookRuledOff([rule(["code"], [], "second_look")], { title: "x", kind: "code" })).toBeTruthy();
+  expect(lookRuledOff([rule(["code"], [], "other")], { title: "x", kind: "code" })).toBeUndefined();
   expect(lookRuledOff([rule(["writing"])], { title: "x", kind: "code" })).toBeUndefined();
   expect(lookRuledOff([rule([], ["文档"])], { title: "改文档", kind: "writing" })).toBeTruthy();
   expect(lookRuledOff([rule([])], { title: "x" })).toBeTruthy();
@@ -226,9 +229,13 @@ test("这类不用复查: a rule for the kind of work (or its words) skips the l
 test("a restart: a result cut off while looking goes on; one waiting for its fix keeps waiting and is checked", async () => {
   const a = setup({ answers: [] });
   // Logged as a look began, then Ducter stopped before it answered.
-  a.log.append({ stream: "task:t1", origin: "task", kind: "task_event", body: { taskId: "t1", role: "system", from: "runner", raw: { secondLook: { phase: "looking", by: "claude-code", held: done(), what: "code" } } } });
+  a.log.append({ stream: "task:t1", origin: "task", kind: "task_event", body: { taskId: "t1", role: "system", from: "runner", raw: { freshLook: { phase: "looking", by: "claude-code", held: done(), what: "code" } } } });
   const a2 = setup({ dir: a.dir, answers: [] });
   expect(a2.reports().length).toBe(1);
+  // D443: the same step logged before the rename (raw.secondLook) is read the same way.
+  const o = setup({ answers: [] });
+  o.log.append({ stream: "task:t1", origin: "task", kind: "task_event", body: { taskId: "t1", role: "system", from: "runner", raw: { secondLook: { phase: "looking", by: "claude-code", held: done(), what: "code" } } } });
+  expect(setup({ dir: o.dir, answers: [] }).reports().length).toBe(1);
 
   const b = setup({ answers: ['{"ok": false, "must": ["漏了 Windows"]}'] });
   b.look.take("t1", done());
@@ -266,8 +273,8 @@ test("这类 points at the last result another AI looked over; kept at once as a
   log.append({ stream: "task:w1", origin: "task", kind: "report", body: { ...done({ taskId: "w1" }), look: { by: "claude-code", found: ["x"], left: ["x"] } } });
   const m1 = log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: "这类不用复查了哈" } });
   const r = k.heardFrom(m1.seq)!;
-  expect(r).toMatchObject({ text: "这类不用复查", kinds: ["writing"], notice: { kind: "second_look" } });
-  expect(rules.list().filter((x) => x.notice?.kind === "second_look").length).toBe(1);
+  expect(r).toMatchObject({ text: "这类不用复查", kinds: ["writing"], notice: { kind: "fresh_look" } });
+  expect(rules.list().filter((x) => x.notice?.kind === "fresh_look").length).toBe(1);
   expect(lookRuledOff(rules.list(), { title: "改 docs", kind: "writing" })).toBeTruthy();
   expect(lookRuledOff(rules.list(), { title: "修 bug", kind: "code" })).toBeUndefined();
 });

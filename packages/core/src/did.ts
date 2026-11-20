@@ -5,9 +5,11 @@
 //
 // It never carries a secret (Autofill uses carry none), a read's content (reads are counts), or a
 // message's whole text (DID_LINE characters of its start).
-import type { Bodies, CalChange, EventKind, DidGo, DidItem, DidKind, DidQuery, DidSub, DidWhere, DidWho, FolderSummary, LogEvent, SavedUse } from "@ducter/protocol";
-import { DID_KINDS, DID_LINE, OWN_PHONE } from "@ducter/protocol";
+import type { Bodies, CalChange, EventKind, DidGo, DidItem, DidKind, DidQuery, DidSub, DidWhere, DidWho, DetailKey, FolderSummary, LogEvent, SavedUse } from "@ducter/protocol";
+import { DETAIL_KEYS, DID_KINDS, DID_LINE, OWN_PHONE } from "@ducter/protocol";
 import type { LogStore, TaskRegistry } from "@ducter/protocol/src/internal.ts";
+
+const isDetailKey = (k: string): k is DetailKey => (DETAIL_KEYS as string[]).includes(k);
 
 export interface DidDeps {
   log: LogStore;
@@ -337,7 +339,7 @@ export function createDid(d: DidDeps): Did {
           const ok = oks.find((o) => o.handle === u.handle && o.site === u.site && o.taskId === u.taskId);
           const go: DidGo = ok ? { by: "you", at: ok.at } : { by: "before" };
           const signin = u.handle.startsWith("signin:");
-          items.push({ id: `u${u.at}:${i}`, kind: "filled", sub: signin ? "signin" : "detail", at: u.at, to: u.site, ...(!signin && u.label ? { line: clip(u.label) } : {}), who: u.taskId ? who(u.taskId) : { by: "you" }, go, where: { kind: "browser", ...(deviceOf(u.taskId)?.name ? { name: deviceOf(u.taskId)!.name } : {}) }, ...(u.taskId ? { taskId: u.taskId } : {}) });
+          items.push({ id: `u${u.at}:${i}`, kind: "filled", sub: signin ? "signin" : "detail", at: u.at, to: u.site, ...(!signin && u.label ? { line: clip(u.label) } : {}), ...(!signin && u.handle.startsWith("me.") && isDetailKey(u.handle.slice(3)) ? { detail: u.handle.slice(3) as DetailKey } : {}), who: u.taskId ? who(u.taskId) : { by: "you" }, go, where: { kind: "browser", ...(deviceOf(u.taskId)?.name ? { name: deviceOf(u.taskId)!.name } : {}) }, ...(u.taskId ? { taskId: u.taskId } : {}) });
         } else if (u.what === "given") {
           items.push({ id: `u${u.at}:${i}`, kind: "filled", sub: "key", at: u.at, to: u.label, who: u.taskId ? who(u.taskId) : { by: "you" }, go: { by: "you", at: u.at }, ...(u.taskId ? { taskId: u.taskId } : {}) });
         }

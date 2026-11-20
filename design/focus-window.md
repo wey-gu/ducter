@@ -74,7 +74,7 @@ The report is the only way a window wakes the main AI. Reads never wake anyone.
 
 **Another AI looks it over first (D437, research/186).** A done report that changed code or files
 beyond a trivial edit, and a `needs_input` whose question would send something outward, are read
-once by a verifier with a clean context before they are logged (`core/src/second-look.ts`, handed to
+once by a verifier with a clean context before they are logged (`core/src/fresh-look.ts`, handed to
 `report_to_main` by `main.ts`): another agent signed in on the home than the worker, on its
 cheapest model, tool-less (else a fresh session of the worker's own). It reads the brief, the
 person's own words in the task, the summary, what the Go sends and the diff from the workbench, and
@@ -83,7 +83,7 @@ report is held, the task hears it once as Ducter's words, fixes what is right an
 report is checked on the same points only and goes on with `look` (`found`, `left`). Clients say only
 `left`: **另一个 AI 看过 / Another AI looked it over** under the result and on the Go card. Every
 failure fails open; 40 looks a day; the person's 这类不用复查 is a rule (D165 notice kind
-`second_look`). The task's `report_to_main` tool and its words are unchanged.
+`fresh_look`, `second_look` before D443 still read; the Log step is `raw.freshLook`, `raw.secondLook` before). The task's `report_to_main` tool and its words are unchanged.
 
 ## Checkpoint (principle 13)
 

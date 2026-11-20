@@ -181,3 +181,12 @@ test("the partner's did_list: today's items in short form, and an empty day said
   expect(none.items).toEqual([]);
   expect(none.note).toContain("nothing");
 });
+
+test("D443: a filled detail carries its key, so each client names it in its own language", () => {
+  const { core, did } = boot();
+  core.autofill.store.record({ at: new Date(NOW - 60_000).toISOString(), handle: "me.phone", label: "Phone", site: "shop.example", what: "filled", taskId: "t_hotel" });
+  core.autofill.store.record({ at: new Date(NOW - 50_000).toISOString(), handle: "me.unknown", label: "Odd", site: "shop.example", what: "filled", taskId: "t_hotel" });
+  const details = by(did.query(today()).items, "filled", "detail").filter((i) => i.to === "shop.example");
+  expect(details.find((i) => i.line === "Phone")).toMatchObject({ detail: "phone" });
+  expect(details.find((i) => i.line === "Odd")?.detail).toBeUndefined();
+});

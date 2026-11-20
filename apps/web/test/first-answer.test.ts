@@ -23,3 +23,33 @@ test("the first screen carries the ways; both answers to one key reach the store
   s.apply({ t: "key_add_result", clientId: "k1", result: { ok: true, provider: "google", harness: "pi" } });
   expect(s.keyResults.get("k1")?.preparing).toBeUndefined();
 });
+
+test("D443: a good key clears the field (as the Mac does), a refused one stays to be fixed", async () => {
+  const { A } = await import("../src/app.ts");
+  const { keyJustAdded, keyTyped, submitKey, typeKey } = await import("../src/first-words.tsx");
+  const sent: unknown[] = [];
+  const send = A.send;
+  const changed = A.changed;
+  A.send = ((f: unknown) => void sent.push(f)) as typeof A.send;
+  A.changed = (() => {}) as typeof A.changed;
+  try {
+    typeKey("not-a-real-key-at-all-0000");
+    const bad = submitKey(keyTyped(), "conv")!;
+    expect(sent.length).toBe(1);
+    A.S.keyResults.set(bad, { ok: false, reason: "refused" } as never);
+    keyJustAdded();
+    expect(keyTyped()).toBe("not-a-real-key-at-all-0000");
+    typeKey("not-a-real-key-at-all-1111");
+    const good = submitKey(keyTyped(), "conv")!;
+    A.S.keyResults.set(good, { ok: true, provider: "google", preparing: true } as never);
+    keyJustAdded();
+    expect(keyTyped()).toBe("");
+    expect(submitKey("again-while-preparing-xxxx", "conv")).toBeUndefined(); // the final answer is still awaited
+    A.S.keyResults.set(good, { ok: true, provider: "google", harness: "pi" } as never);
+    keyJustAdded();
+    expect(keyTyped()).toBe("");
+  } finally {
+    A.send = send;
+    A.changed = changed;
+  }
+});

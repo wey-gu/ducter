@@ -51,7 +51,7 @@ func lookApp(t *testing.T, lang i18n.Lang) (*App, *ui.Tester) {
 		at(5*time.Minute, ts, protocol.OriginTask, protocol.KindTaskEvent, protocol.TaskEvent{TaskID: id, Role: "user", From: "ducter", Text: fix}),
 		at(3*time.Minute, ts, protocol.OriginTask, protocol.KindReport, protocol.Report{TaskID: id, State: "done", Summary: w.said,
 			Branch: &protocol.BranchChanges{Commits: 2, Files: &files, Adds: &adds, Dels: &dels},
-			Look:   &protocol.SecondLook{By: "claude-code", Found: []string{"install.ps1", w.left}, Left: []string{w.left}}}),
+			Look:   &protocol.FreshLook{By: "claude-code", Found: []string{"install.ps1", w.left}, Left: []string{w.left}}}),
 		at(3*time.Minute, ts, protocol.OriginSystem, protocol.KindTaskState, protocol.TaskState{TaskID: id, Attention: protocol.Done}),
 		at(3*time.Minute, "channel", protocol.OriginPartner, protocol.KindJobStatus, protocol.JobStatus{JobID: "j1", Text: w.title, State: "done", TaskID: id}),
 		at(2*time.Minute, "channel", protocol.OriginPartner, protocol.KindAIMsg, protocol.AIMsg{Text: w.said, ReplyTo: 1}),
@@ -67,7 +67,7 @@ func lookApp(t *testing.T, lang i18n.Lang) (*App, *ui.Tester) {
 	return app, tt
 }
 
-func TestSecondLookSaidUnderTheResultAndOnTheCard(t *testing.T) {
+func TestFreshLookSaidUnderTheResultAndOnTheCard(t *testing.T) {
 	for _, lang := range []i18n.Lang{i18n.ZH, i18n.EN} {
 		w := lookWords[lang]
 		app, tt := lookApp(t, lang)
@@ -88,15 +88,15 @@ func TestSecondLookSaidUnderTheResultAndOnTheCard(t *testing.T) {
 	}
 }
 
-func TestSecondLookFixAskIsAHairline(t *testing.T) {
+func TestFreshLookFixAskIsAHairline(t *testing.T) {
 	say, name, ok := toldOf("Before your result goes to the user, another AI (Codex) read it once against what they asked, with a clean context. It found:\n1. x", "ducter")
 	if !ok || say != "looked" || name != "Codex" {
 		t.Fatalf("toldOf: %q %q %v", say, name, ok)
 	}
 }
 
-// DUCTER_D437_SHOTS=<dir> go test ./internal/views -run TestD437SecondLookShots
-func TestD437SecondLookShots(t *testing.T) {
+// DUCTER_D437_SHOTS=<dir> go test ./internal/views -run TestD437FreshLookShots
+func TestD437FreshLookShots(t *testing.T) {
 	dir := os.Getenv("DUCTER_D437_SHOTS")
 	if dir == "" {
 		t.Skip("DUCTER_D437_SHOTS not set")

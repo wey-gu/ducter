@@ -832,7 +832,12 @@ func (a *App) handItem(c *ui.Context, it protocol.FoundItem) {
 							c.OpenURL(it.Item.URL)
 						}
 					}
-					if it.Size != "" {
+					// D443: the size once: no pill when the line above already says it.
+					shown := it.Why
+					if it.Group == "decide" && it.Ask != "" {
+						shown = it.Ask
+					}
+					if it.Size != "" && !protocol.SizeSaid(shown, it.Size) {
 						ui.Row(c.Key("size")).Height(20).Padding(0, t.S2).Radius(10).AlignItems(ui.Center).Background(t.SurfaceSunken).Children(func() {
 							uiText(c, a.L.T("pile.size."+it.Size)).FontSize(t.XS).TextColor(t.InkMuted)
 						})

@@ -31,6 +31,27 @@ func didNoJoined(t *testing.T, texts []string) {
 	}
 }
 
+// D443: a filled detail is named in the person's language, not the store's
+// English label; an unknown key or an older home's row keeps its line.
+func TestDidDetailInOwnLanguage(t *testing.T) {
+	for _, c := range []struct {
+		lang         i18n.Lang
+		detail, line string
+		want         string
+	}{
+		{i18n.ZH, "phone", "Phone", "电话"},
+		{i18n.ZH, "name", "Full name", "姓名"},
+		{i18n.EN, "phone", "Phone", "Phone"},
+		{i18n.ZH, "", "Phone", "Phone"},
+		{i18n.ZH, "nope", "Odd", "Odd"},
+	} {
+		app, _ := pastApp(t, c.lang)
+		if got := app.didOwn(&protocol.DidItem{Kind: "filled", Sub: "detail", Detail: c.detail, Line: c.line}); got != c.want {
+			t.Errorf("%v %q: %q, want %q", c.lang, c.detail, got, c.want)
+		}
+	}
+}
+
 func TestDidFrameDecodes(t *testing.T) {
 	f, err := protocol.DecodeServerFrame([]byte(`{"t":"did_result","id":"did2","items":[{"id":"e7","kind":"paid","sub":"card","at":"2026-11-19T02:41:00Z","to":"hotel-okura.jp","amount":"USD 128.00","who":{"by":"task","taskId":"t1","title":"Book"},"go":{"by":"you","at":"2026-11-19T02:40:00Z"},"where":{"kind":"browser","name":"Mac"},"taskId":"t1"},{"id":"e8","kind":"changed","sub":"files","at":"2026-11-19T02:00:00Z","count":3,"files":{"added":1,"changed":2,"removed":0},"who":{"by":"task"},"undo":{"kind":"folder","taskId":"t2","until":"2026-11-25T00:00:00Z"}}],"counts":{"paid":1,"changed":1},"since":"2026-11-13T00:00:00Z","before":"2026-11-20T00:00:00Z","more":true}`))
 	if err != nil {

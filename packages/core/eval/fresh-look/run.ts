@@ -1,5 +1,5 @@
 // research/186: another AI's one look (D437) on task results with known defects and clean ones.
-//   bun packages/core/eval/second-look/run.ts --model haiku [--runs 2] [--only <id>]
+//   bun packages/core/eval/fresh-look/run.ts --model haiku [--runs 2] [--only <id>]
 // The look is exactly what Ducter sends (lookPrompt, then parseLook); the check of a fix is
 // checkPrompt / parseCheck on the case's fixed and unfixed next result. The model is
 // `claude -p --model <m>` with no tools, no MCP, no settings, no session; its scratch cwd is
@@ -9,7 +9,7 @@
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { checkPrompt, lookPrompt, parseCheck, parseLook } from "../../src/second-look.ts";
+import { checkPrompt, lookPrompt, parseCheck, parseLook } from "../../src/fresh-look.ts";
 import { CASES, type LookCase } from "./cases.ts";
 
 const arg = (k: string) => {

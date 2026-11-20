@@ -195,7 +195,10 @@ whole message and came back as one blob (「三项安排也都没写入」), or 
   core fills the `ReplyRef` from the latest `asks` (the line's words as the quote, `ask`, and only that
   line's task), so the partner reads "replying to one of the lines under their earlier message (line
   n)" with that one task and sends what was said to it (continuity first), never to the other lines'
-  tasks. A row's own click still opens its task.
+  tasks. A row's own click still opens its task. A reply to a line that waits for the person
+  (**needs_you**) is its task's answer when that task has exactly one plain question open (D443): core
+  resolves it as a reply to that question's card would (D236 (4)), so the task hears it without the
+  partner passing it on; with none or several open, it stays words to the partner.
 - **Who does it** is never in the conversation (D129). On the Mac a hover on a line shows the agent at
   the row's end, in the muted ink; the web does the same on a fine pointer only. On hand and the opened
   task name it already; the opened task also shows its own lines under its head.

@@ -151,7 +151,7 @@ export async function main(mods: BootModules = {}) {
           // D206: the files a report shows, read where the task runs and copied into the home's media.
           shown: (id: string, paths: string[]) => (runner as { shown?(id: string, paths: string[]): Promise<unknown> } | undefined)?.shown?.(id, paths),
           // D437: another AI reads a result that changed code, or what a Go would send, once first.
-          ...(core.secondLook ? { secondLook: core.secondLook } : {}),
+          ...(core.freshLook ? { freshLook: core.freshLook } : {}),
           // D439: a document to send is checked page by page first.
           ...(core.docCheck ? { docCheck: core.docCheck } : {}),
         });

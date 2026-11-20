@@ -206,6 +206,27 @@ func TestHandSheetPicksShapeAndWhere(t *testing.T) {
 	}
 }
 
+// D443: a row says its size once. 说得清楚，改动小 carries no 小改动 pill; a
+// line that doesn't say it (说得清楚，改一处) keeps its 中等.
+func TestHandSheetSizeSaidOnce(t *testing.T) {
+	for _, lang := range []i18n.Lang{i18n.ZH, i18n.EN} {
+		app, _, tt := handApp(t, lang, 1400, 1000, "")
+		small, medium := app.L.T("pile.size.small"), app.L.T("pile.size.medium")
+		var nSmall, nMedium int
+		for _, s := range tt.Texts() {
+			switch s {
+			case small:
+				nSmall++
+			case medium:
+				nMedium++
+			}
+		}
+		if nSmall != 0 || nMedium == 0 {
+			t.Fatalf("%v: %d %q pills (want 0), %d %q (want some): %s", lang, nSmall, small, nMedium, medium, strings.Join(tt.Texts(), " | "))
+		}
+	}
+}
+
 // A narrow window: what, then 下一步：怎么做, then the note and how with Go.
 func TestHandSheetNarrowTwoSteps(t *testing.T) {
 	app, _, tt := handApp(t, i18n.ZH, 760, 1000, "")

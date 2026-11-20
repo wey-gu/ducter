@@ -61,7 +61,8 @@ type DidItem struct {
 	To     string    `json:"to,omitempty"`
 	Via    string    `json:"via,omitempty"`
 	Line   string    `json:"line,omitempty"`
-	Cal    string    `json:"cal,omitempty"` // create | move | respond | cancel
+	Detail string    `json:"detail,omitempty"` // D443: filled detail's key (name, phone, …), named by the client
+	Cal    string    `json:"cal,omitempty"`    // create | move | respond | cancel
 	Amount string    `json:"amount,omitempty"`
 	Count  int       `json:"count,omitempty"`
 	Files  *DidFiles `json:"files,omitempty"`

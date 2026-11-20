@@ -6,7 +6,7 @@
 // Plan first's card (in the conversation and inside its group on On hand) and 一起过目 / Review
 // together live here too. Core decides every default (pile_how); this file only draws and asks.
 import type { FindSaid, FindSummary, FoundItem, GroupHandView, GroupReview, HandHow, HandShape, PileItem, SourcesServerFrame, SubjectOp, TaskGroupView, TodoSet } from "@ducter/protocol";
-import { PILE_HAND_DEFAULT } from "@ducter/protocol";
+import { PILE_HAND_DEFAULT, sizeSaid } from "@ducter/protocol";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { A } from "./app.ts";
 import { BrandMark } from "./brand.tsx";
@@ -454,7 +454,8 @@ function ItemRow({ p, i }: { p: FoundItem; i: number }) {
           )}
           <span class="pile-item-facts">
             <span class="ho-num">{p.item.kind === "github" && p.item.where ? `${p.item.where.split("/")[1]}${p.item.label}` : p.item.where ?? p.item.label}</span>
-            {p.size && <span class="todo-label">{t(`pile.size.${p.size}`)}</span>}
+            {/* D443: the size once: no pill when the line above already says it (说得清楚，改动小). */}
+            {p.size && !sizeSaid(p.group === "decide" && p.ask ? p.ask : p.why, p.size) && <span class="todo-label">{t(`pile.size.${p.size}`)}</span>}
             {/* D428: why it is here, in a few words; an unsure one says so (never ticked by itself). */}
             {p.because && (
               <span class="ho-because" dir="auto">

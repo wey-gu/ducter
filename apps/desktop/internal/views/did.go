@@ -594,7 +594,7 @@ func (a *App) didCard(c *ui.Context, it *protocol.DidItem) {
 				ui.Spacer(c)
 				uiText(c.Key("at"), i18n.Clock(store.ParseTime(it.At))).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum").SingleLine().Shrink(0)
 			})
-			if s := strings.TrimSpace(it.Line); s != "" {
+			if s := strings.TrimSpace(a.didOwn(it)); s != "" {
 				uiText(c.Key("own"), keepWords(autospace(s))).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(leadingFor(s, 1.45)).MaxLines(2).MinWidth(0)
 			}
 			// The facts, then the card's ways on at the row's end.
@@ -674,4 +674,16 @@ func (a *App) didLink(c *ui.Context, key string) {
 	if a.quietButton(c, key, a.L.T("did.link"), "", false, 1) {
 		a.OpenDid()
 	}
+}
+
+// didOwn is a row's own words; a filled detail is named in the person's
+// language (电话, not the store's "Phone") (D443).
+func (a *App) didOwn(it *protocol.DidItem) string {
+	if it.Detail != "" {
+		k := "did.detail." + it.Detail
+		if s := a.L.T(k); s != k {
+			return s
+		}
+	}
+	return it.Line
 }

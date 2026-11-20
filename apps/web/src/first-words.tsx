@@ -121,6 +121,25 @@ let pending = "";
 let last: { r: KeyResult; at: number } | undefined;
 /** D307: where the key was pasted. One from Settings is answered there, not again in the conversation. */
 let from: "conv" | "settings" = "conv";
+/** D443: what is in the field, kept beside the answer so a good key clears it (as the Mac's
+ *  keyResultNow does): the masked dots of a key that already went in are never left behind. */
+let typed = "";
+export const keyTyped = () => typed;
+export function typeKey(v: string) {
+  typed = v;
+}
+
+/** Sends the key once (key_add) and returns its clientId; nothing while an answer is awaited. */
+export function submitKey(raw: string, here: "conv" | "settings"): string | undefined {
+  const v = raw.trim();
+  if (!v || pending) return undefined;
+  pending = `key-${Date.now()}`;
+  last = undefined;
+  from = here;
+  A.send({ t: "key_add", key: v, clientId: pending });
+  A.changed();
+  return pending;
+}
 
 function pickUp() {
   if (!pending) return;
@@ -130,6 +149,7 @@ function pickUp() {
   // D440: "works, putting pi in place" is shown while the final answer is still awaited.
   if (!r.preparing) pending = "";
   last = { r, at: Date.now() };
+  if (r.ok) typed = "";
   if (r.ok) setTimeout(() => A.changed(), SHOWN_MS + 50);
 }
 
@@ -144,19 +164,16 @@ const say = (r: KeyResult) => (r.say ? words(r.say, A.L.lang) : r.ok ? t("key.pa
  *  In Settings (D307) the row above it already says what it is: no title, and its answer stays there. */
 export function KeyCard({ inSettings = false }: { inSettings?: boolean } = {}) {
   const here = inSettings ? "settings" : "conv";
-  const [key, setKey] = useState("");
+  const [, redraw] = useState(0);
   pickUp();
+  const key = typed;
+  const setKey = (v: string) => {
+    typed = v;
+    redraw((n) => n + 1);
+  };
   const r = last?.r;
   const waiting = !!pending;
-  const submit = (raw = key) => {
-    const v = raw.trim();
-    if (!v || waiting) return;
-    pending = `key-${Date.now()}`;
-    last = undefined;
-    from = here;
-    A.send({ t: "key_add", key: v, clientId: pending });
-    A.changed();
-  };
+  const submit = (raw = key) => void submitKey(raw, here);
   const mine = from === here;
   if (mine && r?.ok && !r.needs && !r.preparing && last && Date.now() - last.at < SHOWN_MS)
     return (

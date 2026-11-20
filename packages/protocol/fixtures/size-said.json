@@ -1,0 +1,22 @@
+{
+  "_": "D443: a to-do's size pill is left off when its one line already says the size (the model's own words read better than a pill repeating them). The web (task-sources.ts sizeSaid) and the Mac (protocol/pile.go SizeSaid) pass the same cases.",
+  "cases": [
+    { "why": "说得清楚，改动小", "size": "small", "said": true },
+    { "why": "小改动，测试已有", "size": "small", "said": true },
+    { "why": "改动很小，一行的事", "size": "small", "said": true },
+    { "why": "改动不大，范围清楚", "size": "small", "said": true },
+    { "why": "Clear ask, a small change", "size": "small", "said": true },
+    { "why": "A tiny fix in one file", "size": "small", "said": true },
+    { "why": "范围清楚，改动大", "size": "large", "said": true },
+    { "why": "A big change across the runner", "size": "large", "said": true },
+    { "why": "Big; find the cause first", "size": "large", "said": true },
+    { "why": "A big customer asked for it", "size": "large", "said": false },
+    { "why": "改动中等，要动两个包", "size": "medium", "said": true },
+    { "why": "说得清楚，有复现步骤", "size": "small", "said": false },
+    { "why": "Clear steps to reproduce", "size": "small", "said": false },
+    { "why": "说得清楚，改动小", "size": "large", "said": false },
+    { "why": "改动不大，范围清楚", "size": "large", "said": false },
+    { "why": "大家都在等这个", "size": "large", "said": false },
+    { "why": "说得清楚，改动小", "size": "", "said": false }
+  ]
+}

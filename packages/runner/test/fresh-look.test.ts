@@ -1,4 +1,4 @@
-// D437: report_to_main hands a result to another AI's look first (core's second-look.ts, a fake
+// D437: report_to_main hands a result to another AI's look first (core's fresh-look.ts, a fake
 // here): the task is told it was reported and to end its turn, nothing is logged yet, the turn that
 // ends on it owes no nudge, and Ducter's words with what was found reach it as a new turn.
 import { afterEach, beforeEach, expect, test } from "bun:test";
@@ -18,13 +18,13 @@ beforeEach(() => {
   core = createFakeCore(join(dir, "data"));
   taken.length = 0;
   registerTaskTools(core, {
-    secondLook: {
+    freshLook: {
       heldWords: "Reported. Before the user sees it, another AI reads it once. End your turn now.",
       take(taskId, body) {
         if (body.state !== "done") return false;
         taken.push(body);
         // What core's look logs as it begins (the runner hears it as reported).
-        core.log.append({ stream: `task:${taskId}`, origin: "task", kind: "task_event", body: { taskId, role: "system", from: "runner", raw: { secondLook: { phase: "looking", by: "claude-code", held: body, what: "code" } } } });
+        core.log.append({ stream: `task:${taskId}`, origin: "task", kind: "task_event", body: { taskId, role: "system", from: "runner", raw: { freshLook: { phase: "looking", by: "claude-code", held: body, what: "code" } } } });
         return true;
       },
     },

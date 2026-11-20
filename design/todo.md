@@ -68,8 +68,9 @@ Deferred work, grouped by area, each with its trigger where it has one.
   live proof, or any real checkout the gate missed.
 - [ ] **The person's own Chrome, when they ask for it** ("用我自己的 Chrome"): not offered; the stop
   and the gate would be the brief's word only there. Trigger: the author asks.
-- [ ] **Detail labels in the person's language in Done for you** ("Phone", "Full name" in a zh
+- [x] **Detail labels in the person's language in Done for you** ("Phone", "Full name" in a zh
   list): the fill records the store's English label (seen in `.shots/errand-checkout/`, before D436).
+  Done as D443: the row carries the detail's key and each client names it (电话, 姓名).
 - [ ] **The ack and the relay, tuned on haiku**: the train ask is opened at once in one run and asked back ("which Friday") in the other; the ack doesn't always say it stops at payment; the checkout relay once ended on "要付款吗？". Trigger: a persona pass on errands, or the live proof.
 - [ ] **Human raters** for 到 {site} 的付款这一步了, 去付款, 先不买, 付好了, 还没付, 这一步要你来, 去处理.
 
@@ -98,9 +99,10 @@ Deferred work, grouped by area, each with its trigger where it has one.
   another computer). Until then a line is a row of its task.
 - [ ] **Review together for a split from a sentence** (D385's 一起过目 for any message with lines in
   2+ repo tasks). Trigger: the first such message on hel.
-- [ ] **A reply to a line that waits for the person answers its task's question** (as a reply to the
+- [x] **A reply to a line that waits for the person answers its task's question** (as a reply to the
   question card does, D236 (4)): today it reaches the partner, who passes it on with task_send.
-  Trigger: the first such reply on hel.
+  Trigger: the first such reply on hel. Done as D443 (exactly one plain question open; else words to
+  the partner as before). Owed: seeing it live on hel.
 
 ## Antigravity, live (D416, research/171)
 
@@ -303,8 +305,12 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
 - [ ] `feed` for the Memory page's this week (every tool's), `resources get` for a link in an agent's message,
       `collab` / `--shared-document` for a plan handed over, native sessions for asking one open terminal session.
       Trigger: each one's scenario comes up in the author's use.
-- [ ] The 390-wide web shots through a phone-sized viewport (headless Chrome clips at its minimum window width) and
-      the iOS Simulator. Trigger: the next phone-UI pass.
+- [x] The 390-wide web shots through a phone-sized viewport (headless Chrome clips at its minimum window width).
+      Done as D443 with Chrome's device emulation over CDP (`.shots/followups-443/`): no overflow; X
+      **改由这台收** squeezed its words into a sliver and now drops under them. The iOS Simulator is still owed.
+- [ ] **The phone's head with an update pill** (seen in the same 390 shots, not this pane's): **1 个等你** wraps to
+      a narrow column beside **3 项更新** and the four icons. Default: on a phone the update pill shrinks to its mark
+      with the count. Trigger: the next phone-UI pass.
 
 ## Your own agents, as yours (D418, `bridge.md` "Your own agents, as yours")
 
@@ -386,8 +392,8 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
   today; an AI reading the page pictures, or a size floor near 7.5 pt, if real runs show it.
 - [ ] **LibreOffice where the task works,** so every `.pptx`/`.docx` has its pages; offered on the
   computer's card. Trigger: a deck shown without its PDF in real runs.
-- [ ] **A landscape slide's glimpse** on the card shows the top of the slide; a 16:9 glimpse box.
-  Trigger: the next file card change.
+- [x] **A landscape slide's glimpse** on the card shows the top of the slide; a 16:9 glimpse box.
+  Trigger: the next file card change. Done in D439's merge (a landscape page is shown whole, web and Mac).
 - [ ] **Versions of a document** in Made for you (改一下 makes a new file under the same name; both
   are listed). Trigger: the author asks for the earlier one.
 
@@ -2547,6 +2553,10 @@ Codex first, once OAR is near 1.0. See `research/17`.
 
 - [ ] **The first state from something true.** An empty spending app could open on this month's payments from Done for you (behind a confirm), not only an outline. Trigger: a person with payments in Done for you who makes a spending app.
 - [ ] **Rows written into the markup, moved.** Today they are linted and named in `[apps]`; the partner moves them only when it next changes the app. Default: offer it under 换成新样子's words when such an app is opened. Trigger: an app with its items in the markup that the person ticks and loses on another device.
+- [ ] **An app window follows the Mac's appearance live** (D443 found it): the Mac tells the page dark or light
+  once, when it opens (`app_open`'s `dark`, checked in dark in `.shots/followups-443/`: it reads right); switching
+  the Mac's appearance with the window open leaves the app in the old look (the web posts `theme`). Default: send
+  `{t:"theme"}` through the bridge's events on mygo's theme change. Trigger: the next app window change.
 - [ ] **The walk on the real Mac app and a real phone.** D431 walked web wide and phone (headless Chrome) and the Mac's window in its test renderer; the Mac's web view and the iPhone were not driven. Trigger: the next run of the built app.
 - [ ] **People as raters for the first state** (LLM proxies only). Trigger: the next naming round with people.
 

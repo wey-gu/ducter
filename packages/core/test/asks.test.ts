@@ -216,3 +216,33 @@ test("the count shows from four lines, once something is done, while something i
   expect(asksCount([l("done"), l("failed"), l("working"), l("needs_you")])).toEqual({ done: 1, left: 2 });
   expect(asksCount([l("done"), l("failed"), l("done"), l("done")])).toBeUndefined();
 });
+
+// D443: a reply to a line that waits for the person answers its task's question (as a reply to the
+// question card does, D236 (4)); a line that is still working stays words to the partner.
+test("a reply to a waiting line is its task's answer; to a working line, words to the partner", async () => {
+  const t = tempDir();
+  cleanups.push(t.cleanup);
+  const clock = new FakeClock(Date.parse("2026-11-12T00:31:00+08:00"));
+  const core: Core = startCore({ dataDir: t.dir, port: 0, clock, defaultDelayMs: 60_000 });
+  core.setPartner({ onTrigger() {} });
+  const msg = core.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: "记 20 号北京的分享，再查下周四的会" } });
+  openTask(core.log, "cal");
+  openTask(core.log, "look");
+  core.asks.add(msg.seq, "cal", ["20 号北京的分享"]);
+  core.asks.add(msg.seq, "look", ["下周四的会"]);
+  report(core.log, "cal", { state: "needs_input", summary: "要你定几点", questions: [{ id: "q", text: "几点开始？", blocking: true, reversible: true }], asks: [{ state: "needs_input", note: "要你定一下几点" }] });
+  await Bun.sleep(5);
+  const q = core.decisions.pendingOf("cal");
+  expect(q.length).toBe(1);
+  const { logUserMessage } = await import("../src/reply.ts");
+  const e = logUserMessage(core.log, core.decisions, { text: "下午两点", reply: { seq: msg.seq, ask: 0 } });
+  expect(e.body.reply).toMatchObject({ ask: 0, taskIds: ["cal"], decisionId: q[0], answers: true });
+  expect(core.decisions.isPending(q[0]!)).toBe(false);
+  const r = core.log.read({ kinds: ["decision_resolved"], limit: 10 }).at(-1)!.body as { option: string; text: string };
+  expect(r).toMatchObject({ option: "reply", text: "下午两点" });
+  // The other line is still at work: a reply to it answers nothing.
+  const w = logUserMessage(core.log, core.decisions, { text: "顺便看下地点", reply: { seq: msg.seq, ask: 1 } });
+  expect(w.body.reply?.decisionId).toBeUndefined();
+  expect(w.body.reply?.answers).toBeUndefined();
+  await core.stop();
+});

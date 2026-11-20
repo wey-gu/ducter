@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.1.7 - 2026-11-21
+
+<!-- whats-new
+zh: 记下了什么会说一声，说「别记这个」就撤回；设置更好看好用
+en: See what it kept and say "forget that"; settings that show what they do
+-->
+
+**What it remembers about you**
+- When your partner keeps something about you, it says so once under its reply, with 别记这个
+  to take it back; saying "别记这个" works too.
+- Ask "你都记得我些什么？" for a short, warm answer from Nowledge Mem, and correct anything wrong.
+- Agent messaging checks who can reach your partner with Nowledge Mem's own contacts, and a
+  message that points at something in Mem shows what it is.
+
+**Settings**
+- Notifications shows the notification it would send; This phone and This computer preview their
+  look; the reply language speaks a line in it.
+- Long choices are a dropdown, quiet hours use 24-hour time, each to-do choice says what it does,
+  and rows on a narrow Mac window no longer squeeze their words.
+
+**Small things**
+- Talk hands-free shows a card's words once; the phone header reads on one line; an open app
+  follows your Mac's light or dark look; icon-only pay buttons are refused too.
+
 ## 0.1.6 - 2026-11-21
 
 <!-- whats-new

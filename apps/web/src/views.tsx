@@ -28,7 +28,7 @@ import { AddRow, AppsMark, Btn, Chev, Choice, DevicesMark, Facts, Gear, NavBtn, 
 import { deviceArt, deviceCardShown, DevicesSection } from "./devcard.tsx";
 import { CallsSection, ProactiveChips, QuietDay, SourceCards } from "./accounts.tsx";
 import { OwnPhoneCard } from "./own-phone.tsx";
-import { Group, GRow, Said, say } from "./set-grid.tsx";
+import { Said, say } from "./set-grid.tsx";
 import { DangerButton } from "./controls.tsx";
 import { CallDecision, CallRow, PhoneCard, PhoneOffer } from "./phone.tsx";
 import { callEnded } from "@ducter/protocol";
@@ -2658,14 +2658,26 @@ function StandingList() {
   const xs = A.standing;
   if (!xs.length) return null;
   const sep = A.L.lang.startsWith("zh") ? "、" : ", ";
+  // A third list in 要不要先问's card, in the done ink: the person's own word beside Ducter's two.
   return (
-    <Group label={t("standing.title")} id="standing">
-      {xs.map((x) => (
-        <GRow key={x.id} title={t(`standing.${x.action}`)} line={[x.orgs?.length ? t("standing.where.orgs", x.orgs.join(sep)) : t("standing.where.any"), t("standing.said", x.text)].join("\n")}>
-          <DangerButton quiet label={t("standing.revoke")} about={t(`standing.${x.action}`)} onClick={() => (A.send({ t: "standing_revoke", id: x.id }), say("trust", t("standing.revoked")))} />
-        </GRow>
-      ))}
-    </Group>
+    <div class="trust own without" id="standing">
+      <b>{t("standing.title")}</b>
+      <ul>
+        {xs.map((x) => (
+          <li key={x.id}>
+            <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">
+              <path d="M5 10.5l3.5 3.5L15 6.5" />
+            </svg>
+            <span class="grow">
+              <span>{t(`standing.${x.action}`)}</span>
+              <small>{x.orgs?.length ? t("standing.where.orgs", x.orgs.join(sep)) : t("standing.where.any")}</small>
+              <small>{t("standing.said", x.text)}</small>
+            </span>
+            <DangerButton quiet label={t("standing.revoke")} about={t(`standing.${x.action}`)} onClick={() => (A.send({ t: "standing_revoke", id: x.id }), say("trust", t("standing.revoked")))} />
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
@@ -2695,8 +2707,8 @@ function TrustSettings() {
       <div class="set-card trust-card">
         {list("partner.trust.own", "partner.trust.own", "own")}
         {list("partner.trust.asks", "partner.trust.asks", "asks")}
+        <StandingList />
       </div>
-      <StandingList />
       <Said k="trust" />
     </section>
   );

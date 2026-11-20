@@ -2287,3 +2287,9 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] **The kit on the Mac's own fonts** (an app can't load Bricolage; it falls back to the system font). Trigger: a designer review of an app window.
 - [ ] **Rename and delete inside the Mac's app window** (its 「⋯」 brings the main window's shelf forward to do them). Trigger: the author uses them from the app window.
 - [ ] **A real phone** walk of the shelf and the app sheet (shots are headless Chrome at 390). Trigger: the next iOS Simulator pass.
+
+## D411: 不用问我的 / Without asking (`core/src/standing.ts`)
+
+- [ ] **More actions than PR reviews** (issue comments outside To-do sources' own standing go, replies in a chat app, a reply to one named person's mail). Trigger: the person says "don't ask me" about one of these (the partner already says Ducter can't keep it yet).
+- [ ] **The settled round card's footnote** (**说好之前，什么都不会发到 GitHub。**) still shows under a card whose drafts went as said. Trigger: the next pass on the round card.
+- [ ] **On hel:** check after the upgrade that the 11-19 saying was backfilled (`[standing] kept 1 …` in the log) and the next round posts with one line. Trigger: the first release carrying D411.

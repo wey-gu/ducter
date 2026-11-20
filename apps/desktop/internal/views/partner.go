@@ -110,7 +110,6 @@ func (a *App) partnerPanel(c *ui.Context, w float32) {
 	a.talkCard(c, st)
 	a.recordsGroup(c) // D307: their records (D298, D299)
 	a.trustCard(c)
-	a.standingCard(c)
 	a.saidLine(c, "trust")
 	a.peersInvite(c) // D332: one quiet line, for someone not seen running agents of their own
 	// D257: what it remembers and 和你的其他 agent 通信 are tabs of their own (memory.go).
@@ -469,21 +468,26 @@ func (a *App) trustCard(c *ui.Context) {
 			list(a.L.T("partner.trust.own"), "partner.trust.own.", t.Done, drawCheck)
 			list(a.L.T("partner.trust.asks"), "partner.trust.asks.", t.NeedsYou, drawAsk)
 		})
+		a.standingList(c)
 	})
 }
 
-// standingCard is 不用问我的 / Without asking (D411): what the person said
-// may go without asking, where, in their words, each with 收回 / Take back.
-// Nothing at all until they say one.
-func (a *App) standingCard(c *ui.Context) {
+// standingList is 不用问我的 / Without asking (D411), the third list in
+// 要不要先问's card, in the done ink: what the person said may go without
+// asking, where, in their words, each with 收回 / Take back. Nothing at
+// all until they say one.
+func (a *App) standingList(c *ui.Context) {
 	if len(a.S.Standing) == 0 {
 		return
 	}
+	t := a.T
 	sep := ", "
 	if a.L.Lang == "zh" {
 		sep = "、"
 	}
-	a.group(c, "standing", a.L.T("standing.title"), "", func() {
+	ui.Box(c).Height(1).Margin(0, t.S5).Background(t.LineSoft).Shrink(0)
+	ui.Column(c.Key("standing")).Gap(t.S3).Padding(t.S4, t.S5, t.S5, t.S5).Children(func() {
+		ui.Text(c, a.L.T("standing.title")).FontSize(t.MD).FontWeight(800).TextColor(t.Done.Ink)
 		for _, x := range a.S.Standing {
 			x := x
 			where := a.L.T("standing.where.any")
@@ -491,7 +495,13 @@ func (a *App) standingCard(c *ui.Context) {
 				where = a.L.T("standing.where.orgs", strings.Join(x.Orgs, sep))
 			}
 			title := a.L.T("standing." + x.Action)
-			a.row(c, "standing:"+x.ID, title, where+"\n"+a.L.T("standing.said", x.Text), func() {
+			ui.Row(c.Key("standing:" + x.ID)).Gap(t.S3).AlignItems(ui.Start).Children(func() {
+				ui.Box(c).Size(20, 20).Draw(drawCheck(t.Done.Ink)).Shrink(0).Margin(1, 0, 0, 0)
+				ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(2).Children(func() {
+					ui.Text(c, title).FontSize(t.MD).LineHeight(a.leading(1.45))
+					uiText(c, where).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
+					uiText(c, a.L.T("standing.said", x.Text)).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
+				})
 				if a.quietDanger(c, "standing:"+x.ID, a.L.T("standing.revoke"), title) {
 					a.send(protocol.StandingRevoke{T: "standing_revoke", ID: x.ID})
 					a.say("trust", a.L.T("standing.revoked"))

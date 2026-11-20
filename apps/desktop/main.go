@@ -284,6 +284,11 @@ func main() {
 			e.PreventDefault()
 			win.Hide()
 		})
+		// D407: an app window's 看草稿 opens the draft sheet here, in front.
+		app.ShowMain = func() {
+			win.Show()
+			win.Focus()
+		}
 		mygo.App.OnActivate(func(visible bool) {
 			if !visible || !win.IsVisible() {
 				win.Show()

@@ -33,3 +33,28 @@ test("the frame comes from the home, sandboxed, never srcdoc", () => {
   expect(apps).not.toContain("srcdoc=");
   expect(APP_SANDBOX).toBe("allow-scripts allow-forms");
 });
+
+// D407: a routine fills a small app; the review board's 看草稿 opens that PR's draft sheet.
+const pile = readFileSync(join(import.meta.dir, "..", "src", "pile.tsx"), "utf8");
+const past = readFileSync(join(import.meta.dir, "..", "src", "past.tsx"), "utf8");
+
+test("an app's ducter.open({draft}) opens that PR's draft sheet, and closing it comes back to the app", () => {
+  const at = apps.indexOf('m.t === "show"');
+  expect(at).toBeGreaterThan(0);
+  const branch = apps.slice(at, at + 500);
+  expect(branch).toContain("appShowRef(m)");
+  expect(branch).toContain("appHooks.showDraft?.(ref, () => openApp(back))");
+  expect(pile).toMatch(/appHooks\.showDraft = \(ref, back\) => \{\s*openRead\(ref\);\s*PL\.back = back;/);
+  // Only the open app's own frame is heard (the bridge's one gate, before any branch).
+  expect(apps.indexOf("e.source !== o.frame.contentWindow")).toBeLessThan(at);
+  const close = /function closeSheet\(\) \{([\s\S]*?)\n\}/.exec(pile)?.[1] ?? "";
+  expect(close).toContain("if (back) return back();");
+});
+
+test("the Ongoing card opens the app its task keeps current; the offer card says what goes in it", () => {
+  expect(past).toMatch(/it\.app && <Btn[^>]*board\.open/);
+  expect(views.match(/d\.board && <BoardOfferFacts/g)?.length).toBe(2);
+  const mine = css.split("\n").filter((l) => l.startsWith(".board-offer"));
+  expect(mine.length).toBeGreaterThan(2);
+  for (const r of mine) expect(r).not.toMatch(/#[0-9a-fA-F]{3,8}\b|rgb\(/);
+});

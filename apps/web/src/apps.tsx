@@ -5,10 +5,13 @@
 // goes into the conversation and its answer comes back), and a line under the app asks the
 // partner to change it. Facts are separate elements (D291), never joined.
 import { useEffect, useRef, useState } from "preact/hooks";
-import { APP_SANDBOX, type AppCard, type AppMeta, type AppOpen, type Bodies, type LogEvent, type ServerFrame } from "@ducter/protocol";
+import { APP_SANDBOX, appShowRef, type AppCard, type AppMeta, type AppOpen, type Bodies, type LogEvent, type ServerFrame } from "@ducter/protocol";
 import { A } from "./app.ts";
 import { stamp } from "./format.ts";
 import { url } from "./media.tsx";
+
+/** D407: the draft sheet, set by pile.tsx (imported there, not here: app.ts loads this file early). */
+export const appHooks: { showDraft?: (ref: string, back: () => void) => void } = {};
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
@@ -118,7 +121,29 @@ function onMessage(e: MessageEvent) {
   } else if (m.t === "ask" && typeof m.ref === "string") {
     o.asks.add(m.ref);
     A.send({ t: "app_ask", id: o.id, text: String(m.text ?? ""), ref: m.ref });
+  } else if (m.t === "show") {
+    // D407: ducter.open({ draft }): that PR's draft sheet over the app; closing it comes back here.
+    const ref = appShowRef(m);
+    const now = Date.now();
+    if (!ref || now - lastShow < 800) return;
+    lastShow = now;
+    const back = o.id;
+    appHooks.showDraft?.(ref, () => openApp(back));
   }
+}
+let lastShow = 0;
+
+/** D407: the board offer's few words: what goes in it (its own card's body, under the question). */
+export function BoardOfferFacts({ b }: { b: NonNullable<Bodies["decision"]["board"]> }) {
+  return (
+    <div class="board-offer">
+      <span class="app-face sm">{APP_GLYPH(18)}</span>
+      <span class="board-offer-words">
+        <span class="dl">{t("board.offer.what", b.title)}</span>
+        {b.kind === "reviews" && <small class="muted">{t("board.offer.reviews")}</small>}
+      </span>
+    </div>
+  );
 }
 
 /** The card under the partner's words: the app's mark, its name, what happened, 打开 / Open. */
@@ -231,7 +256,7 @@ export function AppSheet({ id }: { id: string }) {
             <span>{t("app.ask.sent", partner)}</span>
           ) : (
             <>
-              <span>{t("app.only", partner)}</span>
+              {meta?.task ? <span>{t("app.kept", meta.task.title)}</span> : <span>{t("app.only", partner)}</span>}
               {meta && <span class="app-when">{t("app.updated", stamp(A.L, meta.updated))}</span>}
             </>
           )}

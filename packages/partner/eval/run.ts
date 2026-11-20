@@ -317,7 +317,7 @@ interface RunResult {
   /** D405: app cards under messages, answers to an app's ask, and the apps as they are at the end. */
   appCards?: { step: number; change: string; name: string; id: string }[];
   appAnswers?: number;
-  appsNow?: { id: string; name: string; version: number; html: string; data: Record<string, unknown> }[];
+  appsNow?: { id: string; name: string; version: number; html: string; data: Record<string, unknown>; task?: string }[];
   appsSeeded?: { id: string; html: string }[];
   dropped?: number;
 }
@@ -637,6 +637,14 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
       if (!set) throw new Error("handSet: no set seeded");
       const r = await core.taskSources.handover!.hand({ refs: set.ticked, setId: set.setId, bySubject: true, ...(s.handSet.note ? { note: s.handSet.note } : {}), ...(s.handSet.subject ? { subject: s.handSet.subject } : {}) });
       if (!r.ok) throw new Error(`handSet: ${r.error}`);
+    } else if ("board" in s) {
+      // D407: the review board, as Ducter makes it for a review task, with its rows.
+      const r = core.boards!.makeReviewBoard(idOf.get(s.board.task)!);
+      if (!r.ok) throw new Error(`board seed: ${r.error}`);
+      for (const [k, v] of Object.entries(s.board.data)) core.apps.put(r.app.id, k, v, "app");
+      appsSeeded.push({ id: r.app.id, html: core.apps.html(r.app.id) ?? "", name: r.app.name });
+    } else if ("boardOffer" in s) {
+      if (!core.boards!.offer(idOf.get(s.boardOffer.task)!, s.boardOffer.kind)) throw new Error("boardOffer seed: not offered");
     } else if ("bound" in s) {
       const it = await core.taskSources.item(s.bound.ref);
       if (!it) throw new Error(`fake GitHub: no ${s.bound.ref}`);
@@ -772,6 +780,8 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
     else if ("callQuestion" in s) lines.push(`(earlier) a call to ${s.callQuestion.name} is live; the other side asked "${s.callQuestion.question}" and that question's card (Yes / No / reply) is on screen`);
     else if ("finds" in s) lines.push(`(earlier) Ducter's own note from the user's accounts: ${s.finds.opening} ${s.finds.finds.map((f) => `[${f.kind}] ${f.text}${f.goLabel ? ` (next step offered: ${f.goLabel})` : ""}`).join(" | ")}`);
     else if ("chatter" in s) lines.push(`(earlier) ${s.chatter} short exchanges about moving the stand-up (filler)`);
+    else if ("board" in s) lines.push(`(earlier) Ducter made the review board for task "${s.board.task}"; it shows every PR waiting, filled from each round`);
+    else if ("boardOffer" in s) lines.push(`(earlier) Ducter offered on its own card: keep task "${s.boardOffer.task}"'s rounds on a board?`);
     else if ("bound" in s) lines.push(`(earlier) Ducter bound task "${s.bound.task}" to the GitHub issue ${s.bound.ref} (the user took it from their to-dos)`);
     else if ("todoSet" in s) lines.push(`(earlier) the partner found the to-dos about "${s.todoSet.query}" and said: ${s.todoSet.ai} (a set card under it shows them, the takeable ones ticked)`);
     else if ("handSet" in s) lines.push(`(earlier) that set was handed over as one group; a plan is being made first (nothing else started)${s.handSet.note ? `; the user's note: ${s.handSet.note}` : ""}`);
@@ -871,7 +881,7 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   await core.stop().catch(() => {});
   tuwa?.stop();
   const boundRefs = new Map(core.tasks.list().filter((c) => c.source).map((c) => [c.taskId, c.source!.ref] as [string, string]));
-  const appsNow = core.apps.list(persona.id ?? core.persona.id).map((m) => ({ id: m.id, name: m.name, version: m.version, html: core.apps.html(m.id) ?? "", data: core.apps.data(m.id) }));
+  const appsNow = core.apps.list(persona.id ?? core.persona.id).map((m) => ({ id: m.id, name: m.name, version: m.version, html: core.apps.html(m.id) ?? "", data: core.apps.data(m.id), ...(m.task ? { task: m.task.id } : {}) }));
   // D405: the apps the model wrote, kept whole for a look (the results file clips them); never committed.
   if (process.env.DUCTER_EVAL_APPS_DIR) for (const a of appsNow) writeFileSync(join(process.env.DUCTER_EVAL_APPS_DIR, `${sc.id}-${a.id}-v${a.version}.html`), a.html);
   return { sc, visible, dayCards, calKinds, todoCards, boundRefs, blocks, shown, appCards, appAnswers, appsNow, appsSeeded, dropped, tools, opened: fr.opened, sent, keyOf, idOf, dataDir, usage, error, ms: Date.now() - t0, transcript: lines.join("\n"), recalls, threadSearches, remembered: mem.added, memAttempts, sources, retitles, bridgeSent, work: { ...work, asks }, bodies, saidAsks, rulesNow };
@@ -1059,6 +1069,10 @@ function check(r: RunResult): string[] {
   if (e.appAnswer && !r.appAnswers) fails.push("no reply answered the app's ask");
   const newest = [...(r.appsNow ?? [])].sort((a, b) => b.version - a.version)[0];
   if (e.appHtml && !(r.appsNow ?? []).some((a) => e.appHtml!.test(a.html))) fails.push(`no app's file matches ${e.appHtml} (newest: ${newest ? `${newest.name} v${newest.version}, ${newest.html.length} chars` : "none"})`);
+  if (e.appTask) {
+    const want = r.idOf.get(e.appTask);
+    if (!(r.appsNow ?? []).some((a) => a.task === want)) fails.push(`no app is kept current by task ${e.appTask} (apps: ${(r.appsNow ?? []).map((a) => `${a.name}→${a.task ?? "none"}`).join(", ") || "none"})`);
+  }
   if (e.appKept) for (const s of r.appsSeeded ?? []) if ((r.appsNow ?? []).find((a) => a.id === s.id)?.html !== s.html) fails.push("a seeded app's file was changed");
   if (e.noMadeShown && (r.shown?.length || 0) > 0) fails.push(`showed ${r.shown!.join(", ")} though nothing should be`);
   for (const re of e.uiRequire ?? []) if (!re.test(blockText)) fails.push(`the block lacks ${re}`);

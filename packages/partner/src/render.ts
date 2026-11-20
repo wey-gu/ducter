@@ -144,6 +144,8 @@ export interface RenderCtx {
   /** D348: the folder changes this task's previous report said could be undone, if any. */
   undoBefore?(taskId: string, reportSeq: number): Bodies["report"]["folder"];
   decision(decisionId: string): Bodies["decision"] | undefined;
+  /** D407: the user's app this task keeps current each round, if any. */
+  taskApp?(taskId: string): string | undefined;
   /** A repo task's base branch, so "merged into its base branch" names it (eval: "can't tell if that's main"). */
   taskBase?(taskId: string): string | undefined;
   /** The user merged this task's work (by button): new work after that is a new task. */
@@ -327,7 +329,10 @@ export function renderTrigger(e: LogEvent, ctx: RenderCtx): string {
     case "report": {
       const r = e.body as Bodies["report"];
       const src = r.state === "done" ? ctx.taskSource?.(r.taskId) : undefined;
-      return renderReport(r, ctx.taskTitle(r.taskId), ctx.told?.(r.taskId, e.seq), r.folder?.undo === "open" ? ctx.undoBefore?.(r.taskId, e.seq) : undefined) + (src ? `\n${sourceLine(r.taskId, src)}` : "");
+      // D407: a task that keeps one of the user's apps current: its rounds show there, not in words.
+      const app = r.state === "done" ? ctx.taskApp?.(r.taskId) : undefined;
+      const quiet = app ? `\n[this task keeps the user's app "${clip(app, 40)}" current: they see each round there. If this report only says a round was done or the app updated (nothing for them to decide or fix), send no message at all: end your turn without words.]` : "";
+      return renderReport(r, ctx.taskTitle(r.taskId), ctx.told?.(r.taskId, e.seq), r.folder?.undo === "open" ? ctx.undoBefore?.(r.taskId, e.seq) : undefined) + (src ? `\n${sourceLine(r.taskId, src)}` : "") + quiet;
     }
     case "source_seen": {
       // D341: new to-dos in a source the user wants told, or taken under their standing go.
@@ -532,12 +537,20 @@ export function renderHistoryLine(e: LogEvent, ctx: RenderCtx): string | null {
       // D385: Ducter's own cards for a hand-over: shown whole to the user with their buttons; never restated.
       if (d.src?.kind === "plan") return `[${t} the plan card for "${clip(d.src.group ?? "", 40)}" (group ${d.src.groupId}): the user sees the plan whole with 照这个做 / 先等等 / 回复… (Go with this / Hold / Reply); a reply goes to the plan itself. Never restate it.]`;
       if (d.src?.kind === "where_rule") return `[${t} Ducter asked once whether to keep "${clip(d.src.quote ?? "", 80)}" as a rule (its own card)]`;
+      // D407: Ducter's one offer to keep a repeating task's rounds on a board (its own card).
+      if (d.board) return `[${t} Ducter offered once, on its own card, to keep task ${d.board.taskId}'s repeating ${d.board.kind === "reviews" ? "review rounds" : "reports"} on a small app (要不要把这些做成一个看板？ / Keep these on a board?). Never restate it.]`;
       if (d.src?.kind === "group_review") return `[${t} the user sent the review-together comments for group ${d.src.groupId} (${d.src.items?.length ?? 0})]`;
       return `[${t} ${d.taskId ? `task ${d.taskId} asks` : "you asked (ask)"}] ${clip(d.question, 300)} (Go: ${d.goLabel}, default ${d.defaultOption})`;
     }
     case "decision_resolved": {
       const b = e.body as Bodies["decision_resolved"];
       const d = ctx.decision(b.decisionId);
+      // D407: Go on the board offer: the review board is Ducter's (made, its card is up); other reports: you make it now.
+      if (d?.board && b.option === "go")
+        return d.board.kind === "reviews"
+          ? `[${t} the user said Go on keeping task ${d.board.taskId}'s review rounds on a board: Ducter made the review board (its card is up). Say nothing more.]`
+          : `[${t} the user said Go on keeping task ${d.board.taskId}'s repeating reports ("${clip(d.board.title, 60)}") on a board] Now, in this turn, call the app tool yourself (never a task): name in their words, html that reads those reports' fields from its data with ducter.get and ducter.onChange (one row per round or item, newest first), task: "${d.board.taskId}". Its rounds fill it from now on. Then a few words that it's ready, nothing about its layout.`;
+      if (d?.board) return `[${t} the user said no to the board for task ${d.board.taskId}: nothing changes. Say nothing.]`;
       return `[${t} decision resolved: ${b.option}${b.by === "default" ? " by default" : ""}]${d ? ` "${clip(d.question, 120)}"` : ""}${b.text ? ` ${clip(b.text, 300)}` : ""}`;
     }
     case "bridge_msg": {

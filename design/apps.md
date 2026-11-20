@@ -76,6 +76,7 @@ ducter.all()
 ducter.onChange((key, value, by) => …)   // by: "app" (another device) | "partner"
 ducter.ask(text)           // → Promise<string>: the partner's answer
 ducter.lang, ducter.dark   // the theme follows Ducter's while it is open
+ducter.open({ draft: "owner/repo#n" })   // D407: that PR's draft sheet opens over the app; nothing is sent
 ```
 
 **An app's ask** goes into the conversation as the person's message *from that app* (they tapped in
@@ -87,6 +88,43 @@ and go back into the app. One waits at a time (**它上一个问题还在等回�
 the person's own words change an app. **Anything outward** an app asks for (send, pay, post, book) is
 never done on its word, whatever it claims ("already approved"): it goes on an ask card for the
 person's own Go, and the app is told it waits for their Go.
+
+## A routine fills an app (D407)
+
+A task that repeats can keep one of the person's apps current instead of writing the same report
+each round. **Who:** the heavy developer whose review routine wrote 309 same-format reports in four
+days (research/166 §2); the consumer whose morning fare check says the same thing every day; the
+fresh user, who meets it only when a routine of theirs repeats. **Felt:** before, the same paragraphs
+re-read; after, one page always current on every device and a quiet conversation between rounds.
+
+- **Data only.** An app can name the task that keeps it current (`AppMeta.task`). That task gets the
+  **`app_data`** tool: `{ app, set: {key: whole JSON value, null removes} }`, at most 40 keys a call,
+  the app's 500,000 characters in all, 60 writes an hour. It never touches the file; the look is the
+  person's (they change it by talking, as any app). It hears once, when given the app, which keys the
+  app reads and to write once a round.
+- **The review board reuses the review report.** **审查看板 / Review board** is Ducter's own template
+  (`core/src/review-board.ts`): its one key `board` is written by the home from D394's `review_report`
+  (which now also carries each PR's `title` and `ci`) and from the drafts' state, after every round,
+  every Go on the round card and every draft sent from its sheet. The review task never writes it;
+  the Ongoing card's line and the board read the same state.
+- **The offer, once.** After a review task's third round, or another repeating task's third done
+  report, with no app yet, one card: **要不要把这些做成一个看板？ / Keep these on a board?**, **做成看板 /
+  Make a board**, **不用了 / No thanks** (the default, no countdown), with what goes in it. Go on
+  reviews makes the board at once (**做好了。每一轮都会更新它，不用再读一遍报告。**, its card); Go on
+  other reports wakes the partner, who makes the app with the `app` tool and `task`. Never asked again.
+  Asked in words ("把这些做成看板"), the partner does the same; a review task with no file gets the board.
+- **Silent rounds.** A done report with no question from a task that keeps an app wakes nobody; a
+  question, a block or a failure does. D394's round card stays the one thing that asks.
+- **Where it shows.** The Ongoing card: **打开「{name}」 / Open “{name}”**. The app's sheet: **「{task}」每一轮都会更新它
+  / “{task}” updates it each round**. The partner's `[apps]` line names the task.
+- **The board.** How many wait and when the last round was; filters **全部 / All**, **有草稿 /
+  Drafts**, **CI 没过 / CI failing**, each with its count; one card per PR, drafts first: repo and
+  number, a CI pill (**CI 通过 / 没过 / 在跑**), the title, **有新提交 / New commits**, findings by
+  severity (**2 个问题 / 2 problems**, **1 条建议 / 1 suggestion**, **没发现问题 / No problems
+  found**), **看的是 {sha} / Looked at {sha}**, **等你说好 / Waits for your Go** or **已发到 GitHub /
+  Posted to GitHub**, and **看草稿 / Read draft**, which opens the person's own draft sheet (web: over the
+  app, back to it on close; Mac: the main window, in front). Under it: **草稿要你说好才会发到 GitHub。 /
+  A draft goes to GitHub only after your Go.** One column on a phone, two from 760 px.
 
 ## The sandbox
 
@@ -103,6 +141,6 @@ Sharing an app with someone (a link, their own data or a shared copy, viewer-pay
 consent); an app calling a connected account or the web by itself (only through the partner, behind
 Go); pointing at part of an app to change it; an app made by a coding task (several files, a build);
 offline on the phone (the frame needs the home); an app's own notification or schedule (a routine
-filling it is the way); the Mac window's own "ask to change" line and 改回去 (in the conversation and on
+filling it is the way, D407); the Mac window's own "ask to change" line and 改回去 (in the conversation and on
 the web for now); deleting from Made for you (`app_remove` exists, no button yet); the Android and
 iPhone shells' native bridges (the web's frame serves them). `todo.md`.

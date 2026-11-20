@@ -20,6 +20,30 @@ type AppMeta struct {
 	Ask     string `json:"ask,omitempty"`
 	Note    string `json:"note,omitempty"`
 	Back    bool   `json:"back,omitempty"`
+	// Task (D407): the routine task that keeps it current; Kind "reviews"
+	// is the review board Ducter made from its template.
+	Task *AppTask `json:"task,omitempty"`
+	Kind string   `json:"kind,omitempty"`
+}
+
+// AppTask names the task that fills an app each round (D407).
+type AppTask struct {
+	ID    string `json:"id"`
+	Title string `json:"title"`
+}
+
+// BoardAsk is Ducter's one offer to keep a repeating task's rounds on a
+// board (D407): kind "reviews" (the review board, made on Go) or "reports".
+type BoardAsk struct {
+	TaskID string `json:"taskId"`
+	Title  string `json:"title"`
+	Kind   string `json:"kind"`
+}
+
+// OngoingApp is the app an Ongoing card opens (D407).
+type OngoingApp struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
 }
 
 // AppOpen is an app as a client opens it: its document (bridge included) and data.

@@ -34,6 +34,8 @@ type OngoingItem struct {
 	Mark        *PastMark       `json:"mark,omitempty"`
 	// D394: a review task's standing after its last round.
 	Reviews *ReviewStanding `json:"reviews,omitempty"`
+	// D407: the small app this task keeps current (the card opens it).
+	App *OngoingApp `json:"app,omitempty"`
 }
 
 // ReviewStanding is where a review task's requests stand after its last

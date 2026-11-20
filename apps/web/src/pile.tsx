@@ -16,6 +16,7 @@ import { Btn } from "./controls.tsx";
 import { ago } from "./format.ts";
 import { SourceChip } from "./todos.tsx";
 import { openHand, SubjectChips } from "./handover.tsx";
+import { appHooks } from "./apps.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
@@ -38,6 +39,8 @@ export const PL: {
   /** The count as last drawn, and a tick in flight (557 → 556). */
   shown?: number;
   tick?: { from: number; to: number; at: number };
+  /** D407: opened from a small app's 看草稿: closing the sheet goes back to that app. */
+  back?: () => void;
 } = { items: {}, cid: "", picked: new Set(), kept: new Set(), chosen: {}, sending: false, dropped: new Set() };
 
 /** The art's bucket: the stack's height says roughly how much; the number says exactly. */
@@ -58,6 +61,7 @@ export function openPile(group: PileGroup) {
 }
 
 export function openRead(ref: string) {
+  PL.back = undefined;
   PL.group = undefined;
   PL.review = ref;
   PL.read = undefined;
@@ -70,9 +74,18 @@ export function openRead(ref: string) {
   A.changed();
 }
 
+// D407: a small app's 看草稿 (ducter.open): this PR's draft sheet; closing it goes back to the app.
+appHooks.showDraft = (ref, back) => {
+  openRead(ref);
+  PL.back = back;
+};
+
 function closeSheet() {
   A.sheet = null;
   PL.review = undefined;
+  const back = PL.back;
+  PL.back = undefined;
+  if (back) return back();
   A.changed();
 }
 

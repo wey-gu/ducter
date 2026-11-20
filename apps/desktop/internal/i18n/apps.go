@@ -23,6 +23,11 @@ var zhApps = Table{
 	"app.about":     "关于「%s」",
 	"made.c.app":    "小应用",
 	"made.k.app":    "小应用",
+	// D407: a routine fills an app.
+	"app.kept":            "「%s」每一轮都会更新它",
+	"board.offer.what":    "「%s」的每一轮都写进同一个看板，随时打开都是最新的。",
+	"board.offer.reviews": "每个在等你的 PR、它的 CI、找到的问题和草稿，一直是最新的；轮次之间不再出声。",
+	"board.open":          "打开「%s」",
 }
 
 var enApps = Table{
@@ -45,6 +50,11 @@ var enApps = Table{
 	"app.about":     "About “%s”",
 	"made.c.app":    "Apps",
 	"made.k.app":    "App",
+	// D407: a routine fills an app.
+	"app.kept":            "“%s” updates it each round",
+	"board.offer.what":    "Each round of “%s” goes into one board, current whenever you open it.",
+	"board.offer.reviews": "Every PR waiting on you, its CI, what the review found and its draft, always current; nothing to read between rounds.",
+	"board.open":          "Open “%s”",
 }
 
 func init() {

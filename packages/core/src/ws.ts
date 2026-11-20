@@ -374,6 +374,7 @@ export function createWsHandler(deps: WsDeps) {
   const appsPersona = () => deps.past?.persona() ?? "";
   const appsFrame = (): ServerFrame => ({ t: "apps", apps: deps.apps!.list(appsPersona()) });
   const offApps = deps.apps?.onChange((c) => {
+    if (c.kind === "give") return; // its list frame went with it
     const f: ServerFrame = c.kind === "list" ? appsFrame() : { t: "app_data", id: c.id, key: c.key, value: c.value, by: c.by };
     for (const ws of sockets) if (ws.data.live && !ws.data.partner) send(ws, f);
   });

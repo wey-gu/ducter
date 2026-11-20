@@ -43,6 +43,19 @@ into the app. Your partner treats what an app asks as a question, not as you say
 that goes out (sending an email, paying, posting) still waits for your own **Go** in the
 conversation, whatever the app says.
 
+## A board that keeps itself up to date
+
+Some things your partner does again and again: reviewing the pull requests waiting on you, checking
+train fares every morning, running a benchmark every night. After a few rounds that look the same,
+your partner asks once: **Keep these on a board?** Say **Make a board** and you get a small app that
+each round updates by itself, so there's nothing to read in the conversation between rounds. You can
+also just ask: "make these into a board".
+
+For pull request reviews it's the **Review board**: every pull request waiting on you, its CI, what
+the review found, and whether the draft is waiting for your Go or already posted. **Read draft** opens
+the draft itself; nothing goes to GitHub until you say Go. You'll also find it from **Past tasks ›
+Ongoing**, on the review's card (**Open “Review board”**).
+
 ## What an app can't do
 
 An app runs closed off, for your safety:

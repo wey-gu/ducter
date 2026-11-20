@@ -2,6 +2,7 @@ package views
 
 import (
 	"encoding/json"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -189,6 +190,7 @@ func (b *AppBridge) Post(id string, body []byte) {
 		Value json.RawMessage `json:"value"`
 		Text  string          `json:"text"`
 		Ref   string          `json:"ref"`
+		Draft string          `json:"draft"`
 	}
 	if json.Unmarshal(body, &m) != nil {
 		return
@@ -201,7 +203,37 @@ func (b *AppBridge) Post(id string, body []byte) {
 		b.do(func() { b.a.send(protocol.AppPutReq{T: "app_put", ID: id, Key: m.Key, Value: m.Value}) })
 	case "ask":
 		b.do(func() { b.a.send(protocol.AppAskReq{T: "app_ask", ID: id, Text: m.Text, Ref: m.Ref}) })
+	case "show":
+		// D407: ducter.open({ draft }): that PR's draft sheet, in the main
+		// window (brought forward); nothing is sent.
+		if !draftRefRe.MatchString(m.Draft) {
+			return
+		}
+		b.do(func() {
+			b.a.openPreRead(m.Draft)
+			if b.a.ShowMain != nil {
+				b.a.ShowMain()
+			}
+		})
 	}
+}
+
+// draftRefRe is what ducter.open may show: one pull request (owner/repo#n).
+var draftRefRe = regexp.MustCompile(`^[\w.-]+/[\w.-]+#\d+$`)
+
+// boardOfferBody is the board offer's few words under its question (D407):
+// the app's tile, what goes in it, and for reviews what each row holds.
+func (a *App) boardOfferBody(c *ui.Context, b *protocol.BoardAsk) {
+	t := a.T
+	ui.Row(c.Key("board-offer")).Gap(t.S3).AlignItems(ui.Start).MinWidth(0).Children(func() {
+		a.appFace(c, 34, false)
+		ui.Column(c.Key("w")).Gap(2).Grow(1).Shrink(1).MinWidth(0).Children(func() {
+			ui.Text(c, keepWords(autospace(a.L.T("board.offer.what", b.Title)))).FontSize(t.MD).TextColor(t.Ink).MinWidth(0)
+			if b.Kind == "reviews" {
+				ui.Text(c, keepWords(autospace(a.L.T("board.offer.reviews")))).FontSize(t.SM).TextColor(t.InkMuted).MinWidth(0)
+			}
+		})
+	})
 }
 
 // Events returns what happened to the app after event number after (data

@@ -63,7 +63,7 @@ import { Palette } from "./palette.tsx";
 import { PV, RedoSheet } from "./past-preview.tsx";
 import { DidSheet } from "./did.tsx";
 import { PinsSheet, PinStrip } from "./pins.tsx";
-import { APP_GLYPH, AppCardView, AppSheet, openApp } from "./apps.tsx";
+import { APP_GLYPH, AppCardView, AppSheet, BoardOfferFacts, openApp } from "./apps.tsx";
 import { PileSheet } from "./pile.tsx";
 import { HandSheet, PlanCard, ReviewSheet, SetCard } from "./handover.tsx";
 import { RichBlock } from "./rich.tsx";
@@ -413,6 +413,7 @@ export function DecisionBody({ d, taskId }: { d: DecisionState; taskId?: string 
       {d.routineId && <RoutineFacts routineId={d.routineId} />}
       {d.cal && <CalFacts c={d.cal} />}
       {d.src && <SourceCardBody src={d.src} />}
+      {d.board && <BoardOfferFacts b={d.board} />}
       {open && wa && wa.lines.map((l, i) => <div key={i} class={`dl${l.widen ? " widen" : ""}`}>{l.text}</div>)}
       {open && !wa && !d.cal && (d.asker ? <div class="dl">{t("peer.default")}</div> : <DefaultRow d={d} />)}
       {open ? (
@@ -1014,6 +1015,7 @@ function Ask({ d, taskId, buttons = true, rk, seq }: { d: DecisionState; taskId?
       {d.cal && <CalFacts c={d.cal} />}
       {/* D341: a write-back to a to-do's app: the comment whole, as it goes out. */}
       {d.src && <SourceCardBody src={d.src} />}
+      {d.board && <BoardOfferFacts b={d.board} />}
       {/* A routine's proposal card (D29, D114): what it would do, before one Go. */}
       {d.routineId && open && <RoutineFacts routineId={d.routineId} />}
       {open && d.later ? (

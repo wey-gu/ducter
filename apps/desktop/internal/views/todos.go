@@ -809,6 +809,9 @@ func (a *App) pickTodo(it protocol.SourceItem) {
 // (selectable), and 然后关掉它 when it closes it too; for closed and trust,
 // the to-do's chip.
 func (a *App) todoAskBody(c *ui.Context, d *store.DecisionState) {
+	if d.Board != nil {
+		a.boardOfferBody(c, d.Board)
+	}
 	src := d.Src
 	if src == nil {
 		return

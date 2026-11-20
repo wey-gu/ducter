@@ -35,6 +35,7 @@ export * from "./rich.ts";
 export * from "./pins.ts";
 export * from "./made.ts";
 export * from "./apps.ts";
+export * from "./app-glyphs.ts";
 export * from "./reach.ts";
 export * from "./mem-source.ts";
 export * from "./mem-health.ts";

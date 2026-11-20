@@ -78,7 +78,7 @@ test("the document: the policy before anything, the bridge, the app's file after
   expect(doc).toContain("connect-src 'none'");
   expect(doc).toContain("default-src 'none'");
   // Data can't close the bridge's script element.
-  expect(doc.split("</script>").length).toBe(2);
+  expect(doc.split("</script>").length).toBe(3); // the bridge, and D421: the kit's select
   expect(doc.endsWith("<body><p>hi</p></body></html>")).toBe(true);
   expect(appDocument({ id: "a1", name: "x", html: "", data: {} }, { transport: "fetch" })).toContain("connect-src 'self'");
 });

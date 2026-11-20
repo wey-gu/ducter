@@ -2288,7 +2288,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     core.mcp.register(
       "partner",
       "app",
-      "Make or change one of the user's own small apps: one HTML file Ducter keeps in their 你的小应用 / Your apps; they reopen it on any device. Only when they ask for an app, tracker, tool or page to keep (a one-off answer stays a table or list). New: name + html (+ icon). Change: id + edits [{find, replace}] (exact text; read: true first if unsure) or the whole html. data puts values into its storage (a new one, or when they ask you to fill it). remove: only when they say to delete it. About something you know (a trip on their calendar, what you booked or paid for, a task's numbers): name it for that (\"北京出差 11/20–21\"), put what you know into data, each item with from (\"你的预订\"; they can edit it), and note one short line of what you filled in. The file: inline CSS and JS only, nothing from the internet (no CDN, fetch, web fonts or images by URL), no alert/confirm/localStorage. ducter.get(key) / ducter.set(key, value) (JSON, the same on every device), ducter.onChange(fn); ducter.ask(text) returns your answer as a Promise, only on the user's tap; ducter.summary(text) on every change: its shelf line (\"3 笔，合计 ¥1,698\"). Draw with Ducter's kit, never a native select or number input: <main class=\"k-app\">, a .k-sum first (k-sum-label, k-sum-value: the total or the state, big; k-sum-sub), k-h, k-card, k-list > k-row (k-row-main, k-row-sub, k-row-value), k-chips > button.k-chip[aria-pressed], input.k-num inputmode=decimal, k-field > label + input.k-input, k-btn / k-btn primary, k-from, k-empty (a warm line while there is nothing yet); colours var(--d-bg|card|sunken|ink|soft|muted|line|accent|good|bad). 360px wide first; the user's language. task: a repeating task that fills it each round (a review task: no html, Ducter's board).",
+      "Make or change one of the user's own small apps: one HTML file Ducter keeps in their 你的小应用 / Your apps; they reopen it on any device. Only when they ask for an app, tracker, tool or page to keep (a one-off answer stays a table or list). New: name + html + icon + summary. Change: id + edits [{find, replace}] (exact text; read: true first if unsure) or the whole html. data puts values into its storage (a new one, or when they ask you to fill it). remove: only when they say to delete it. It opens filled: what they just told you and what you know (a trip on their calendar, what you booked or paid for, a task's numbers) goes into data in the same call, items you knew with from (\"你的预订\"); name it for that (\"北京出差 11/20–21\"); note one short line of what you filled in. Answer first: the k-sum on top holds the one thing they'd open it for (the total, what's left, the streak, since the last feed), k-sum-next the next thing; then their items; adding last, folded: <details class=\"k-add\"><summary>记一笔</summary>…</details>. The file: inline CSS and JS only, nothing from the internet (no CDN, fetch, web fonts or images by URL), no alert/confirm/localStorage. ducter.get(key) / ducter.set(key, value) (JSON, the same on every device), ducter.onChange(fn); ducter.ask(text) returns your answer as a Promise, only on the user's tap; ducter.summary(text) on every change: its shelf line (\"3 笔，合计 ¥1,698\"). Draw with Ducter's kit, never the system's select, number, date or time input: <main class=\"k-app\">, k-sum (k-sum-label, k-sum-value, k-sum-sub), k-h, k-card, k-list > k-row (k-row-main, k-row-sub, k-row-value), k-chips > button.k-chip[aria-pressed] (a longer list: select.k-select), input.k-num inputmode=decimal, k-field > label + input.k-input, k-btn / k-btn primary, k-from, k-empty (once in the whole app, one calm line and the one first thing to do); each fact its own element, never joined with ·; no delete button on every row (tap a row to change or remove it); colours var(--d-bg|card|sunken|ink|soft|muted|line|accent|good|bad). 360px wide first; the user's language. task: a repeating task that fills it each round (a review task: no html, Ducter's board).",
       {
         type: "object",
         properties: {
@@ -2298,7 +2298,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           edits: { type: "array", items: { type: "object", properties: { find: { type: "string" }, replace: { type: "string" } }, required: ["find", "replace"] } },
           data: { type: "object", description: "Keys to put into its storage (null deletes one)" },
           read: { type: "boolean", description: "Get its file and data back" },
-          icon: { type: "string", enum: [...APP_ICONS], description: "Its mark on the shelf" },
+          icon: { type: "string", enum: [...APP_ICONS], description: "Its mark, by what it's about" },
           summary: { type: "string", description: "Its shelf line, when you fill it" },
           remove: { type: "boolean" },
           shelf: { type: "boolean", description: "Where are my apps: their shelf under your line" },
@@ -2363,7 +2363,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           const r = apps.make(persona, { name: typeof a.name === "string" ? a.name : "", html, ...(ask ? { ask: (ask.body as Bodies["user_msg"]).text } : {}), ...(note ? { note } : {}), ...(task ? { task: { id: task.taskId, title: task.title } } : {}), ...(seed ? { data: seed } : {}), ...(summary ? { summary } : {}), ...(icon ? { icon } : {}) });
           if (!r.ok) return { ok: false, error: r.error };
           card(t, r.app, "made");
-          const lint = appLint(html);
+          // D422: its tile needs its mark and its line from the start (the shelf shows both).
+          const lint = [...appLint(html), ...(icon ? [] : ["no icon: call again with this id and icon, the mark for what it's about"]), ...(summary || /ducter\.summary\(/.test(html) ? [] : ["no shelf line: call ducter.summary(...) on every change in the file, or give summary"])];
           return { ok: true, id: r.app.id, ...(lint.length ? { fix: lint } : {}), say: (lint.length ? "Fix these with edits before you say it's ready. " : "") + (seed ? "Your line says what you already filled in and from where (\"做好了，11/20 的高铁和两晚酒店已经从你的预订里填进去了。\"). " : "It is empty. If you already know things for it (a trip this conversation booked or its calendar has, its costs and dates; a task's numbers), first call again with this id: data (each item with from) and a name for that, then say what you filled in. ") + after };
         }
         let changed: AppMeta | undefined;
@@ -2384,7 +2385,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           if (!changed) card(t, apps.get(m.id)!, "data");
         }
         if (summary) apps.summarize?.(m.id, summary);
-        if (!changed && !put.length && !task && !summary) return { ok: false, error: "Nothing to do: give html, edits, data, a new name, task or read: true." };
+        if (icon && icon !== m.icon) apps.set?.(m.id, { icon });
+        if (!changed && !put.length && !task && !summary && !icon) return { ok: false, error: "Nothing to do: give html, edits, data, a new name, task or read: true." };
         const lint = changed ? appLint(apps.html(m.id) ?? "") : [];
         return { ok: true, id: m.id, ...(changed ? { version: changed.version } : {}), ...(put.length ? { put } : {}), ...(lint.length ? { fix: lint } : {}), say: (lint.length ? "Fix these with edits. " : "") + after };
       },
@@ -5106,7 +5108,10 @@ export function renderApps(apps: readonly AppMeta[], data: (id: string) => Recor
     const name = m.name.length > 40 ? m.name.slice(0, 39) + "…" : m.name;
     // D407: kept current by a task's rounds (the review board: from its review_report; a row's 看草稿 opens that PR's draft).
     const by = m.task ? `; task ${m.task.id} keeps it current each round${m.kind === "reviews" ? " (Ducter's review board: each PR waiting with its CI, findings and draft; a row's 看草稿 / Read draft opens that draft)" : ""}` : "";
-    return `  ${m.id} "${name}" v${m.version}, changed ${ago(m.updated)}${m.opened ? `, opened ${ago(m.opened)}` : ""}${m.pinned ? ", pinned" : ""}${by}${m.summary ? `; shows "${m.summary}"` : ""}${keys ? `; keeps: ${keys.slice(0, 200)}` : ""}`;
+    // D422: what is wrong with it now, so "fix it" / "换成新样子" has what it needs.
+    const l = m.live;
+    const state = `${l?.old ? "; drawn before the kit (asked for the new look: rewrite it whole with the kit, keep its keys, fill it from what you know)" : ""}${l?.broke ? `; its page broke: ${JSON.stringify(l.broke.text.slice(0, 120))}` : ""}${l?.kept?.state === "failed" ? "; its task's last round failed" : ""}`;
+    return `  ${m.id} "${name}" v${m.version}, changed ${ago(m.updated)}${m.opened ? `, opened ${ago(m.opened)}` : ""}${m.pinned ? ", pinned" : ""}${by}${m.summary ? `; shows "${m.summary}"` : ""}${keys ? `; keeps: ${keys.slice(0, 200)}` : ""}${state}`;
   };
   const more = apps.length - shown.length;
   return [

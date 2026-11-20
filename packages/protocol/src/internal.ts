@@ -217,6 +217,8 @@ export interface CoreApi {
     answered(id: string, ref?: string): void;
     /** D407: the routine task that keeps the app current. */
     give?(id: string, task: import("./apps.ts").AppTask | undefined): boolean;
+    /** D422: a new mark for an app the partner changes. */
+    set?(id: string, c: { icon?: import("./apps.ts").AppIcon }): { ok: boolean };
   };
   /** D407: a routine fills an app: the review board made from its template for a review task. */
   boards?: {

@@ -2357,3 +2357,11 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - **D415's words and the live run.** 分类, 移出, 清掉旧的再试, 只开始，不留言 read by humans; the comment-first reading (`commentFirst`) on notes no rule catches (a model in the find's one call could read it); the hand-over replayed on the author's MacBook with his real nowledge-mem (the lock fix is checked only with a git that fakes hel's lock). *Trigger:* the next human panel, or the author's next hand-over.
 - [ ] **Name the kit's `k-select` in the partner's app tool** (D421): the description still offers only the chips for a choice; adding it needs a fresh partner eval (D175). Trigger: the small-apps branch next changes the tool.
 - [ ] **Look at the clay menus on a real Mac and iPhone** (D421; headless shots only so far): a menu near the window's edge, VoiceOver on a drawn menu, a long-press menu in the iOS Simulator. Trigger: the next release's walk.
+
+## D422: small apps to the bar (`apps.md`, research/174)
+
+- [ ] **An empty app that answers first.** With nothing known, a new app still opens on a zero and a form (LLM raters 1–3 of 5). Give it something true: the month so far from Done for you's payments, a first sample the person confirms. Trigger: the next apps pass, or a person's empty app.
+- [ ] **A generated clay mark.** Made once in the background after an app is kept, where Codex or Antigravity is signed in (the trial: 85 s, 19–44K tokens, a cut-out step), the drawn mark until it lands and when it fails; never blocks the make. Trigger: the author asks for it, or an image harness Ducter already runs.
+- [ ] **Walk 4 and 5 end to end with a real partner** (change by talking with the strip; a routine given by words). Trigger: before the next release that touches apps.
+- [ ] **People as raters** for first-open value and the marks (LLM proxies only). Trigger: the next naming round with people.
+- [ ] **Known items into `data`, not the file.** `app-prs-known-en` drew the four PRs into the HTML both runs (they can't be ticked across devices or read by the partner); `app-renew-zh` left out `from`. Trigger: the next app-tool change (a lint: literal list items in the file with an empty `data`).

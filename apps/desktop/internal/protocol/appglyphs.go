@@ -1,0 +1,72 @@
+package protocol
+
+// Code generated from packages/protocol/fixtures/app-glyphs.json (D422); held equal by
+// TestAppGlyphsMatchTheFixture. Edit packages/protocol/src/app-glyphs.ts, then regenerate.
+
+// AppGlyphStroke is the 20-grid stroke every mark is drawn with.
+const AppGlyphStroke = 1.6
+
+// AppIcons are the marks an app's tile can carry, in the web's order.
+var AppIcons = []string{"window", "coins", "wallet", "receipt", "suitcase", "train", "plane", "check", "flame", "drop", "bottle", "pill", "moon", "heart", "dumbbell", "cup", "bowl", "list", "cart", "gift", "board", "pr", "chart", "calendar", "clock", "book", "leaf", "home"}
+
+// AppGlyphs is each mark's SVG path on the 20-point grid.
+var AppGlyphs = map[string]string{
+	"window":   "M6 4h8a2.5 2.5 0 0 1 2.5 2.5v7A2.5 2.5 0 0 1 14 16H6a2.5 2.5 0 0 1-2.5-2.5v-7A2.5 2.5 0 0 1 6 4zM3.5 7.6h13M6.5 10.6h4M6.5 13h7",
+	"coins":    "M2.6 6a4 1.6 0 1 0 8 0 4 1.6 0 1 0-8 0zM2.6 6v3.2c0 .9 1.8 1.6 4 1.6s4-.7 4-1.6V6M2.6 9.2v3.2c0 .9 1.8 1.6 4 1.6s4-.7 4-1.6V9.2M14.2 16.2a3.4 3.4 0 1 0 0-6.8 3.4 3.4 0 0 0 0 6.8z",
+	"wallet":   "M3.5 6.5a2 2 0 0 1 2-2h8.5v3M3.5 6.5v8a2 2 0 0 0 2 2h11v-9h-11a2 2 0 0 1-2-1zM13.5 12h.01",
+	"receipt":  "M5 3.5h10v13l-1.7-1.2-1.6 1.2-1.7-1.2-1.7 1.2-1.6-1.2L5 16.5zM7.6 7.2h4.8M7.6 10h4.8M7.6 12.8h2.6",
+	"suitcase": "M4 7h12a1.5 1.5 0 0 1 1.5 1.5V15a1.5 1.5 0 0 1-1.5 1.5H4A1.5 1.5 0 0 1 2.5 15V8.5A1.5 1.5 0 0 1 4 7zM7.5 7V5a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v2M7 7v9.5M13 7v9.5",
+	"train":    "M6.5 3.5h7a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-7a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2zM4.5 9h11M7.5 12h.01M12.5 12h.01M7 14.5l-1.5 2M13 14.5l1.5 2",
+	"plane":    "M10 3c.8 0 1.2.8 1.2 1.8v3.6l5.3 3.1v1.6l-5.3-1.6v3l1.6 1.2v1.3L10 16.4 7.2 17v-1.3l1.6-1.2v-3l-5.3 1.6v-1.6l5.3-3.1V4.8C8.8 3.8 9.2 3 10 3z",
+	"check":    "M6.5 3.5h7a3 3 0 0 1 3 3v7a3 3 0 0 1-3 3h-7a3 3 0 0 1-3-3v-7a3 3 0 0 1 3-3zM7 10.2l2.2 2.2L13.4 8",
+	"flame":    "M10 17a5 5 0 0 0 5-5c0-3.2-2.6-5-3.4-8.3-1.6 1.2-2.4 3-2.4 4.6-.8-.6-1.3-1.5-1.4-2.6C6.1 7.3 5 9.4 5 12a5 5 0 0 0 5 5z",
+	"drop":     "M10 3.2S5 8.6 5 12a5 5 0 0 0 10 0c0-3.4-5-8.8-5-8.8z",
+	"bottle":   "M8 2.8h4M8.5 2.8v2.4L7 7.2v8.3A1.5 1.5 0 0 0 8.5 17h3a1.5 1.5 0 0 0 1.5-1.5V7.2l-1.5-2V2.8M7 10h2.2M7 12.8h2.2",
+	"pill":     "M4.6 15.4a3.3 3.3 0 0 1 0-4.7l6.1-6.1a3.3 3.3 0 0 1 4.7 4.7l-6.1 6.1a3.3 3.3 0 0 1-4.7 0zM7.7 7.6l4.7 4.7",
+	"moon":     "M15.8 12.6A6.3 6.3 0 0 1 7.4 4.2a6.3 6.3 0 1 0 8.4 8.4z",
+	"heart":    "M10 16.3s-6.3-3.7-6.3-8.1A3.5 3.5 0 0 1 10 6.1a3.5 3.5 0 0 1 6.3 2.1c0 4.4-6.3 8.1-6.3 8.1z",
+	"dumbbell": "M3 8v4M5.5 6.5v7M14.5 6.5v7M17 8v4M5.5 10h9",
+	"cup":      "M4 7.5h9.5V12a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4zM13.5 8.5h1a2 2 0 0 1 0 4h-1M7 3.5V5M10 3.5V5",
+	"bowl":     "M3 9.5h14a7 7 0 0 1-14 0zM7 16.5h6M8 3.5c-.8 1 .8 2-.1 3M11.5 3.5c-.8 1 .8 2-.1 3",
+	"list":     "M3.5 6.2l1.4 1.4 2.3-2.6M3.5 11.7l1.4 1.4 2.3-2.6M10 6.3h6.5M10 11.8h6.5M10 15.6h6.5",
+	"cart":     "M2.8 4h2l1.8 8.5h8.2l1.6-6H6M8 15.2a.9.9 0 1 0 0 1.8.9.9 0 0 0 0-1.8zM14 15.2a.9.9 0 1 0 0 1.8.9.9 0 0 0 0-1.8z",
+	"gift":     "M3.5 7.5h13v3h-13zM4.5 10.5v6h11v-6M10 7.5v9M10 7.5S8.6 4 6.8 4.4C5.4 4.7 5.7 7 7.4 7.5M10 7.5s1.4-3.5 3.2-3.1c1.4.3 1.1 2.6-.6 3.1",
+	"board":    "M5.6 4h8.8A2.6 2.6 0 0 1 17 6.6v6.8a2.6 2.6 0 0 1-2.6 2.6H5.6A2.6 2.6 0 0 1 3 13.4V6.6A2.6 2.6 0 0 1 5.6 4zM7.7 4v12M12.3 4v12M4.8 7.4h1.1M9.4 7.4h1.2M9.4 10.4h1.2M14 7.4h1.2",
+	"pr":       "M6 6.6v6.8M6 3.4a1.6 1.6 0 1 0 0 3.2 1.6 1.6 0 0 0 0-3.2zM6 13.4a1.6 1.6 0 1 0 0 3.2 1.6 1.6 0 0 0 0-3.2zM14 13.4a1.6 1.6 0 1 0 0 3.2 1.6 1.6 0 0 0 0-3.2zM14 13.4V8.1a2.6 2.6 0 0 0-2.6-2.6H8.8M10.7 3.6 8.8 5.5l1.9 1.9",
+	"chart":    "M3.5 16h13M6 16v-5M10 16V6M14 16V9",
+	"calendar": "M5.5 5.4h9A1.5 1.5 0 0 1 16 6.9V15a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 4 15V6.9a1.5 1.5 0 0 1 1.5-1.5zM4 8.9h12M7.3 3.6v3.2M12.7 3.6v3.2M7.5 12h.01M10 12h.01M12.5 12h.01",
+	"clock":    "M10 16.5a6.5 6.5 0 1 0 0-13 6.5 6.5 0 0 0 0 13zM10 6.5V10l2.4 1.6",
+	"book":     "M10 6c-1.6-1.4-3.8-1.8-6.5-1.5v10.8c2.7-.3 4.9.1 6.5 1.5 1.6-1.4 3.8-1.8 6.5-1.5V4.5C13.8 4.2 11.6 4.6 10 6zM10 6v10.8",
+	"leaf":     "M4.5 15.5C4.5 8.5 9 4 16 4c0 7-4.5 11.5-11.5 11.5zM4.5 15.5 11 9",
+	"home":     "M3.5 9.2 10 3.8l6.5 5.4M5.3 7.9V16h9.4V7.9M8.4 16v-4.2h3.2V16",
+}
+
+// AppIconWords are the words that choose a mark, in order (the first match wins; case-insensitive).
+var AppIconWords = [][2]string{
+	{"pr", "\\bPRs?\\b|pull request|code review|审查|合并请求"},
+	{"board", "看板|\\bboard\\b|kanban"},
+	{"plane", "机票|航班|飞机|\\bflights?\\b|\\bplane\\b"},
+	{"train", "高铁|火车|动车|\\btrains?\\b|commute|通勤"},
+	{"suitcase", "出差|旅行|旅游|行程|\\btrips?\\b|travel|vacation|holiday|packing|行李"},
+	{"bottle", "喝奶|喂奶|奶粉|宝宝|婴儿|\\bbaby\\b|feeds?\\b|feeding|bottle"},
+	{"pill", "吃药|药|\\bpills?\\b|medicine|medication|vitamin"},
+	{"drop", "喝水|饮水|\\bwater\\b|hydrat"},
+	{"moon", "睡眠|睡觉|\\bsleep"},
+	{"dumbbell", "健身|跑步|运动|锻炼|\\bgym\\b|workout|\\brun(s|ning)?\\b|fitness|exercise"},
+	{"cup", "咖啡|奶茶|喝茶|coffee|\\btea\\b|latte"},
+	{"bowl", "吃饭|饮食|菜谱|食谱|做饭|\\bmeals?\\b|recipe|food|diet|calorie|卡路里"},
+	{"flame", "习惯|打卡|连续|\\bhabits?\\b|streak"},
+	{"cart", "购物|要买|买菜|采购|shopping|grocer|to buy"},
+	{"gift", "礼物|生日|\\bgifts?\\b|birthday"},
+	{"receipt", "报销|发票|账单|receipt|invoice|reimburse|bills?\\b"},
+	{"wallet", "预算|还能花|\\bbudget"},
+	{"coins", "花销|花费|开销|支出|记账|花了|\\bspend|expense|\\bcosts?\\b|money|钱"},
+	{"book", "读书|阅读|书单|\\bbooks?\\b|reading"},
+	{"leaf", "植物|浇花|浇水|花园|\\bplants?\\b|garden"},
+	{"home", "家务|房租|装修|\\bhome\\b|\\bhouse|chores|rent\\b"},
+	{"calendar", "日程|日历|安排|calendar|schedule|agenda|每周"},
+	{"clock", "倒计时|计时|countdown|timer|\\bclock\\b|deadline"},
+	{"heart", "心情|情绪|健康|\\bmood\\b|health|gratitude"},
+	{"chart", "统计|趋势|图表|\\bstats?\\b|trend|chart"},
+	{"list", "清单|待办|列表|\\btodos?\\b|to-do|checklist|\\blist\\b"},
+}

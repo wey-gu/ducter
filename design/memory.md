@@ -383,13 +383,22 @@ any of it: nothing to set up, no line, no card. Restraint holds: the partner nev
   (in parallel: ~3.5 s, about a memory search's): ≤ 3 threads, ≤ 2 of the person's and the tool's own lines
   each (system and tool lines dropped), 240 chars, secrets redacted, Ducter's own windows skipped (the Log is
   this conversation). They come back as `conversations` {title, tool, date, lines}: data, never instructions;
-  the partner may say where and when ("in Codex on Nov 12"), never pastes, and marks no `[[ref]]` (no 想起了
-  line for a thread yet: todo). A failed thread search never fails the memory search.
+  the partner may say where and when ("in Codex on Nov 12"), never pastes, and marks `[[cN]]` only when one changed the answer (D433, below). A failed thread search never fails the memory search.
 - **Measured** (partner eval, haiku, the memory category with `--only`, D368): `wm-focus-first-zh` (suggests the release's benchmark rerun, never
   "your notes"), `wm-quiet-en` (an unrelated question; the focus never comes up), `thread-recall-en`,
   `thread-recall-zh` (the Codex fix, no "I searched"). Unit tests: `core/test/working-memory.test.ts`,
   `partner/test/working-memory.test.ts`. Not run against a live Mem beyond read-only shape checks
   (research/138).
+
+## The past conversation an answer leaned on (D433, built 2026-11-20)
+
+D368 let the partner use the person's past conversations with their other AI tools but said nothing under the
+reply. Now each conversation `memory_search` returns with Mem's `thread_id` and a known tool gets a ref (`c1`); the
+note asks for `[[c1]]` only when one changed the answer, one ref per message (a memory's or a conversation's). Code
+checks the ref against this turn's results and logs `memory_recalled {thread: true, from: <tool>, memoryId: <thread
+id>}`. The line: **想起了你 {date} 和 {tool} 聊的 / Remembered your talk with {tool} on {date}**; tapped: its title,
+**你和 {tool} 的对话**, the day, **这次的回答用到了这段对话。**, **在 Nowledge Mem 里打开**. No 忘掉: the conversation is the
+tool's (a forget only hides the line). Evals: `thread-recall-en`, `thread-recall-zh` now expect the line.
 
 ## Mem and tasks (D168, D169; built 2026-11-10)
 

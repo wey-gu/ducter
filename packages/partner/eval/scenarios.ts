@@ -436,6 +436,7 @@ const WM_RELEASE: NonNullable<Scenario["workingMemory"]> = {
   rulings: ["Tag 0.9 without an RC?"],
 };
 const FLAKY_THREAD: import("../src/memory.ts").ThreadHit = {
+  id: "t_flaky_recall",
   title: "recall test flaky on CI",
   source: "codex",
   date: "2026-11-12",
@@ -445,6 +446,7 @@ const FLAKY_THREAD: import("../src/memory.ts").ThreadHit = {
   ],
 };
 const OTHER_THREAD: import("../src/memory.ts").ThreadHit = {
+  id: "t_hawdb_ckpt",
   title: "HawDB checkpoint interval",
   source: "claude-code",
   date: "2026-11-04",
@@ -1827,9 +1829,9 @@ export const scenarios: Scenario[] = [
     memories: MEM_BACKGROUND,
     threads: [FLAKY_THREAD, OTHER_THREAD],
     steps: [{ user: "How did I fix that flaky recall test in Codex last week?" }],
-    expect: { recall: true, threadSearch: true, opens: [0, 1], maxChars: 320, require: [/index/i, /await|wait/i], forbid: [NO_MEM_TALK] },
+    expect: { recall: true, threadSearch: true, opens: [0, 1], maxChars: 320, require: [/index/i, /await|wait/i], forbid: [NO_MEM_TALK], sourceLines: 1, sourceOf: { title: /recall test/i, by: "tool" } },
     rubric:
-      "Only a past Codex conversation (Nov 12) knows: the recall test raced the index build, and the fix was making the test await indexReady() before its first query. Pass if the partner says so briefly in English (naming Codex or the day is fine), as someone who remembers, without saying it searched, and without pasting the conversation.",
+      "Only a past Codex conversation (Nov 12) knows: the recall test raced the index build, and the fix was making the test await indexReady() before its first query. Pass if the partner says so briefly in English (naming Codex or the day is fine), as someone who remembers, without saying it searched, and without pasting the conversation. The app's quiet source line under the reply (D433: the past conversation it leaned on) is not the partner's prose and is expected here.",
   },
   {
     id: "thread-recall-zh",
@@ -1838,7 +1840,7 @@ export const scenarios: Scenario[] = [
     memories: MEM_BACKGROUND,
     threads: [FLAKY_THREAD, OTHER_THREAD],
     steps: [{ user: "我上次怎么修的那个 recall 测试老挂的问题？" }],
-    expect: { recall: true, threadSearch: true, opens: [0, 1], maxChars: 160, require: [/index|索引/i], forbid: [NO_MEM_TALK] },
+    expect: { recall: true, threadSearch: true, opens: [0, 1], maxChars: 160, require: [/index|索引/i], forbid: [NO_MEM_TALK], sourceLines: 1, sourceOf: { title: /recall test/i, by: "tool" } },
     rubric:
       "Only a past Codex conversation (Nov 12) knows: the recall test raced the index build; the fix was making the test await indexReady() before its first query. Pass if the partner says so in a few short Chinese sentences as someone who remembers (naming Codex is fine), without saying it searched or pasting the conversation.",
   },

@@ -1122,6 +1122,25 @@ after the Go (and a restart for 0.1.0) each reply went **sending → unknown** i
 6. A native session's agent is always "Bridge agent": the session's own name (or its host) on the sender would name
    it without reading its words.
 
+## Trusted at a glance (D433, 2026-11-20)
+
+The connected pane answers three questions without a click: **who can reach the partner**, **did what it sent go**,
+and **is the computer that receives its mail alive**. Evidence: `research/183` (nmem 0.10.121, the Mem app's Rust
+CLI, read from help and the binary only).
+
+- **能找到{name}的 / Who can reach {name}**, after 最近: one row per AI tool the person runs (Claude Code, Codex, pi,
+  Antigravity), from Mem's plugin check per agent (D169), their own records (D332) and the last exchange. Claude Code
+  and Codex: **能找到{name}** (with when it last came), else **装上 Nowledge Mem 插件就能找到{name}** with **装上**, else
+  **接上 Nowledge Mem 就能找到{name}**. pi and Antigravity: **它的 Nowledge Mem 插件还不会传话** (their Mem plugins carry no
+  `bridge` skill; Mem's to add). No `bridge contacts` call per view (31 to 40 s each).
+- **最近 says what hasn't gone.** Each outgoing message's latest word, by its op: **正在送**, **还在确认送到没有**,
+  **没能确认送到**, **没送出去** in place of the time.
+- **An away home.** `bridge connections list --include-activity` when the help offers it; Mem's `last_seen_at_ms`
+  (field INFERRED) as `others[].seenAt`; over a day quiet: **Ducter 的消息还在 hel 上收** / **hel 上次在线是 3 天前，消息会在
+  那边等着**, with **改由这台收**.
+- **Not yet:** **已读** (the binary has `read_recipients`; no verb is known to return them), contacts-backed reach,
+  native sessions, shared documents. Asked of Mem in research/183 §4.
+
 ## Open questions
 
 These are in `flows/OPEN-QUESTIONS.md` §J, each with a default.

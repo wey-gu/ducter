@@ -1,6 +1,7 @@
 package views
 
 import (
+	"sort"
 	"strings"
 	"time"
 
@@ -283,23 +284,48 @@ type handoff struct {
 	Way    string // in | sent | replied
 	Words  string
 	TaskID string
+	State  string // D433, out: sending | unknown | unconfirmed | failed; "" = went
 }
 
 // recentHandoffs is the latest exchanges both ways, newest first; only
 // what really went (web: recentHandoffs).
-func recentHandoffs(ch []*store.Entry, limit int) []handoff {
+func recentHandoffs(ch []*store.Entry, limit int, outOps ...map[string]*store.Entry) []handoff {
+	// D433: what went out and hasn't plainly gone yet joins the list with its state.
+	if len(outOps) > 0 && len(outOps[0]) > 0 {
+		var unsent []*store.Entry
+		for _, e := range outOps[0] {
+			if e.Peer != nil && e.Peer.State != "sent" {
+				unsent = append(unsent, e)
+			}
+		}
+		if len(unsent) > 0 {
+			all := append(append([]*store.Entry(nil), ch...), unsent...)
+			sort.SliceStable(all, func(i, j int) bool { return all[i].Event.Seq < all[j].Event.Seq })
+			ch = all
+		}
+	}
 	var out []handoff
 	for i := len(ch) - 1; i >= 0 && len(out) < limit; i-- {
 		p := ch[i].Peer
 		if p == nil {
 			continue
 		}
+		state := ""
 		if p.Direction == "in" {
-			if p.State == "early" || p.State == "set_aside" || p.State == "muted" {
+			if p.State == "early" || p.State == "set_aside" || p.State == "muted" || p.State == "ping" {
 				continue
 			}
-		} else if p.State != "" && p.State != "sent" && p.State != "followed" {
-			continue
+		} else {
+			switch p.State {
+			case "", "sent", "followed":
+			case "sending", "unknown", "unconfirmed", "failed":
+				state = p.State
+			default:
+				continue
+			}
+			if p.Ack {
+				continue
+			}
 		}
 		words := strings.Join(strings.Fields(p.Text), " ")
 		if words == "" {
@@ -313,7 +339,7 @@ func recentHandoffs(ch []*store.Entry, limit int) []handoff {
 				way = "sent"
 			}
 		}
-		out = append(out, handoff{Seq: ch[i].Event.Seq, At: ch[i].Event.TS, Agent: agent, Host: host, Way: way, Words: words, TaskID: p.TaskID})
+		out = append(out, handoff{Seq: ch[i].Event.Seq, At: ch[i].Event.TS, Agent: agent, Host: host, Way: way, Words: words, TaskID: p.TaskID, State: state})
 	}
 	return out
 }

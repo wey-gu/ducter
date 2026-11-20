@@ -15,12 +15,16 @@ const SEED = [
   { id: "m_cc", title: "HawDB release: bump Cargo.toml and CHANGELOG.md together", content: "Before tagging…", date: "2026-11-15", kind: "procedure", source: "claude-code" },
 ];
 
-function setup(script: Script) {
+const THREADS = [
+  { id: "t_flaky", title: "Fix flaky recall test", source: "codex", date: "2026-11-12", lines: [{ who: "user" as const, text: "the recall test is flaky again" }, { who: "assistant" as const, text: "It raced the index build; await indexReady() first." }] },
+];
+
+function setup(script: Script, threads?: typeof THREADS) {
   const clock = new FakeClock();
   const fc = fakeCore(clock, mkdtempSync(join(tmpdir(), "ducter-recall-src-")));
   const fr = fakeRunner(script);
   fr.bindCards(fc.cards);
-  const mem = fakeMemory(SEED);
+  const mem = fakeMemory(SEED, threads ? { threads } : {});
   const partner = createPartner(fc.core, fr.runner, { now: clock.now, persistState: false, onError: () => {}, memory: mem.memory });
   const user = (text: string) => {
     const e = fc.core.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text } });
@@ -37,6 +41,7 @@ describe("takeRecallMark", () => {
     expect(takeRecallMark("Friday [[ M1 ]] afternoon.")).toEqual({ text: "Friday afternoon.", mark: "m1" });
     expect(takeRecallMark("A [[m1, m3]]")).toEqual({ text: "A", mark: "m1" });
     expect(takeRecallMark("no mark [[wiki]] here")).toEqual({ text: "no mark [[wiki]] here" });
+    expect(takeRecallMark("Await it first. [[c1]]")).toEqual({ text: "Await it first.", mark: "c1" });
   });
 });
 
@@ -69,6 +74,38 @@ describe("the source line", () => {
     await partner.idle();
     const line = channel().find((e) => e.kind === "memory_recalled")!.body as Bodies["memory_recalled"];
     expect(line).toMatchObject({ memoryId: "m_cc", by: "tool", from: "Claude Code" });
+  });
+
+  // D433: a past conversation with another AI tool leaned on: the same quiet line, naming the tool and the day.
+  test("a past conversation: [[c1]] says which, by its tool and day, never its lines", async () => {
+    let r: any;
+    const { partner, user, fc, channel } = setup(async (_i, s) => {
+      r = await fc.callTool("memory_search", { query: "recall test flaky" });
+      s.say("It raced the index build: the test now awaits indexReady() first. [[c1]]");
+      s.end();
+    }, THREADS);
+    const u = user("How did I fix that flaky recall test in Codex?");
+    await partner.idle();
+    expect(r.conversations[0]).toMatchObject({ ref: "c1", tool: "Codex", date: "2026-11-12" });
+    expect(r.conversations[0].id).toBeUndefined();
+    const msgs = channel().filter((e) => e.kind === "ai_msg");
+    expect((msgs[0]!.body as Bodies["ai_msg"]).text).toBe("It raced the index build: the test now awaits indexReady() first.");
+    const line = channel().find((e) => e.kind === "memory_recalled")!.body as Bodies["memory_recalled"];
+    expect(line).toEqual({ memoryId: "t_flaky", title: "Fix flaky recall test", by: "tool", from: "Codex", thread: true, date: "2026-11-12", aboutSeq: msgs[0]!.seq, replyTo: u.seq });
+  });
+
+  test("a conversation with no thread id or an unknown tool: no ref, no line", async () => {
+    let r: any;
+    const { partner, user, fc, channel } = setup(async (_i, s) => {
+      r = await fc.callTool("memory_search", { query: "recall test flaky" });
+      s.say("Await the index first. [[c1]]");
+      s.end();
+    }, [{ ...THREADS[0]!, id: undefined as unknown as string }, { ...THREADS[0]!, id: "t2", source: "some-cli" }]);
+    user("How did I fix that flaky recall test in Codex?");
+    await partner.idle();
+    expect(r.conversations.every((c: any) => !c.ref)).toBe(true);
+    expect(channel().some((e) => e.kind === "memory_recalled")).toBe(false);
+    expect((channel().find((e) => e.kind === "ai_msg")!.body as Bodies["ai_msg"]).text).toBe("Await the index first.");
   });
 
   test("no mark: no line; a mark for a ref nobody returned: no line, and no mark shown", async () => {

@@ -172,7 +172,9 @@ export function peersPhase(b: BridgeView | undefined, switchOn: boolean): PeersP
 }
 
 /** D332: one exchange with another agent, as 最近 / Recently lists it: who (its name, else the tool it runs in), which way, its words, when, where it leads. */
-export type Handoff = { seq: number; at: string; agent: string; host?: string; way: "in" | "sent" | "replied"; words: string; taskId?: string; mine?: boolean; role?: string; selfNamed?: boolean };
+export type Handoff = { seq: number; at: string; agent: string; host?: string; way: "in" | "sent" | "replied"; words: string; taskId?: string; mine?: boolean; role?: string; selfNamed?: boolean; state?: OutState };
+/** D433: an outgoing message that hasn't plainly gone: still going, being checked, given up on, or refused. */
+export type OutState = "sending" | "unknown" | "unconfirmed" | "failed";
 
 /**
  * What another agent is called, in this order: its own name in Mem (the sender's agent, else the readable
@@ -193,21 +195,74 @@ export function peerCalled(b: { agent?: string; from?: string; to?: string; host
 export function recentHandoffs(
   channel: { ev: { seq: number; ts: string }; peer?: { direction: "in" | "out"; agent?: string; host?: string; from?: string; to?: string; text: string; taskId?: string; decisionId?: string; state?: string; mine?: boolean; role?: string; selfNamed?: boolean } }[],
   limit = 5,
+  outOps?: ReadonlyMap<string, { seq: number; ts: string; b: { direction: "in" | "out"; agent?: string; host?: string; to?: string; text: string; taskId?: string; decisionId?: string; state?: string; mine?: boolean; role?: string; selfNamed?: boolean } }>,
 ): Handoff[] {
   const out: Handoff[] = [];
+  // D433: what went out and hasn't plainly gone yet joins the list with its state, so the person sees it.
+  const unsent: typeof channel = [];
+  for (const o of outOps?.values() ?? []) if (o.b.state && o.b.state !== "sent") unsent.push({ ev: { seq: o.seq, ts: o.ts }, peer: o.b });
+  if (unsent.length) channel = [...channel, ...unsent].sort((a, b) => a.ev.seq - b.ev.seq);
   for (let i = channel.length - 1; i >= 0 && out.length < limit; i--) {
     const e = channel[i]!;
     const p = e.peer;
     if (!p) continue;
     // D418: a contact test answered by code (and its answer) is a check, not an exchange worth listing.
-    if (p.direction === "in" ? p.state === "early" || p.state === "set_aside" || p.state === "muted" || p.state === "ping" : (p.state !== undefined && p.state !== "sent" && p.state !== "followed") || (p as { ack?: boolean }).ack) continue;
+    const pending = p.direction === "out" && (p.state === "sending" || p.state === "unknown" || p.state === "unconfirmed" || p.state === "failed") ? (p.state as OutState) : undefined;
+    if (p.direction === "in" ? p.state === "early" || p.state === "set_aside" || p.state === "muted" || p.state === "ping" : (p.state !== undefined && p.state !== "sent" && p.state !== "followed" && !pending) || (p as { ack?: boolean }).ack) continue;
     const words = p.text.replace(/\s+/g, " ").trim();
     if (!words) continue;
     const who = peerCalled(p, p.direction);
-    out.push({ seq: e.ev.seq, at: e.ev.ts, agent: who.name ?? "", ...(who.host ? { host: who.host } : {}), way: p.direction === "in" ? "in" : p.decisionId ? "sent" : "replied", words, ...(p.taskId ? { taskId: p.taskId } : {}), ...(p.mine ? { mine: true } : {}), ...(p.selfNamed ? { selfNamed: true } : {}), ...(p.role ? { role: p.role } : {}) });
+    out.push({ seq: e.ev.seq, at: e.ev.ts, agent: who.name ?? "", ...(who.host ? { host: who.host } : {}), way: p.direction === "in" ? "in" : p.decisionId ? "sent" : "replied", words, ...(p.taskId ? { taskId: p.taskId } : {}), ...(p.mine ? { mine: true } : {}), ...(p.selfNamed ? { selfNamed: true } : {}), ...(p.role ? { role: p.role } : {}), ...(pending ? { state: pending } : {}) });
   }
   return out;
 }
+
+/** D433: the tools whose Nowledge Mem plugin carries Bridge today (research/66 §10, research/183): they can reach the partner. */
+export const BRIDGE_TOOLS = ["claude-code", "codex"] as const;
+/** D433: tools the person may run whose Mem plugin has no Bridge yet: they share the memory but can't pass a message. */
+export const NO_BRIDGE_TOOLS = ["pi", "antigravity"] as const;
+export const TOOL_NAME: Record<string, string> = { "claude-code": "Claude Code", codex: "Codex", pi: "pi", antigravity: "Antigravity" };
+
+/**
+ * D433: 能找到{name}的 / Who can reach {name}: one row per AI tool the person runs (on any computer of
+ * theirs, or their own records here), in a fixed order. can: its Mem plugin carries Bridge and is in;
+ * install: it carries Bridge but isn't in on that device (one tap); unknown: Mem's check hasn't said;
+ * none: its Mem plugin can't pass messages yet (Mem's to add). last: the newest exchange with it.
+ */
+export type ReachRow = { harness: string; tool: string; can: "yes" | "install" | "unknown" | "none"; device?: string; deviceName?: string; last?: string };
+export function reachRows(
+  devices: { id: string; name: string; home?: boolean; harnesses: { harness: string; installed: boolean; loggedIn: boolean; mem?: { state: string } }[] }[],
+  ownAgents: readonly string[],
+  recent: readonly Pick<Handoff, "agent" | "host" | "at">[],
+): ReachRow[] {
+  const ds = [...devices].sort((a, b) => Number(!!b.home) - Number(!!a.home));
+  const out: ReachRow[] = [];
+  for (const h of [...BRIDGE_TOOLS, ...NO_BRIDGE_TOOLS] as string[]) {
+    const here = ds.flatMap((d) => d.harnesses.filter((x) => x.harness === h && x.installed && x.loggedIn).map((x) => ({ d, x })));
+    if (!here.length && !ownAgents.includes(h)) continue;
+    const tool = TOOL_NAME[h]!;
+    const last = recent.find((r) => r.host === tool || new RegExp(`\\b${tool.replace(/ /g, "\\s*")}\\b`, "i").test(r.agent))?.at;
+    const at = last ? { last } : {};
+    if (!(BRIDGE_TOOLS as readonly string[]).includes(h)) {
+      out.push({ harness: h, tool, can: "none", ...at });
+      continue;
+    }
+    if (here.some((v) => v.x.mem?.state === "installed" || v.x.mem?.state === "update") || last) {
+      out.push({ harness: h, tool, can: "yes", ...at });
+      continue;
+    }
+    const off = here.find((v) => v.x.mem?.state === "absent");
+    out.push(off ? { harness: h, tool, can: "install", device: off.d.id, deviceName: off.d.name } : { harness: h, tool, can: "unknown" });
+  }
+  return out;
+}
+
+/**
+ * D433: when the other computer that receives the partner's mail was last seen by Nowledge Mem
+ * (`bridge connections list --include-activity`): quiet for over a day reads as away.
+ */
+export const AWAY_MS = 24 * 3_600_000;
+export const awayFor = (seenAt: number | undefined, now = Date.now()): boolean => seenAt !== undefined && now - seenAt > AWAY_MS;
 
 /** The noted lines by when: today (this computer's day), this week (the last 7 days), earlier. */
 export type NotedGroup<T> = { when: "today" | "week" | "earlier"; items: T[] };
@@ -230,7 +285,9 @@ export function groupNoted<T extends { at: string }>(noted: T[], now: Date = new
  * D304: the 想起了 / Remembered line's key and arguments: who it is from (the person's words to the
  * partner, another AI tool, the person's own note), and the day, when Mem has it.
  */
-export function recallLine(r: { by: "said" | "tool" | "you"; from?: string }, date: string): { key: string; args: string[] } {
+export function recallLine(r: { by: "said" | "tool" | "you"; from?: string; thread?: true }, date: string): { key: string; args: string[] } {
+  // D433: a past conversation with another AI tool: 想起了你 11月12日 和 Codex 聊的.
+  if (r.thread && r.from) return { key: `recall.thread${date ? "" : ".any"}`, args: [r.from, ...(date ? [date] : [])] };
   const by = r.by === "tool" && !r.from ? "you" : r.by;
   const key = `recall.${by}${date ? "" : ".any"}`;
   const args = by === "tool" ? [r.from!, ...(date ? [date] : [])] : date ? [date] : [];

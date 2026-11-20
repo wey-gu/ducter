@@ -112,7 +112,7 @@ func (a *App) handoffDot(c *ui.Context) func() {
 // first one, a calm row that waits for it.
 func (a *App) peersRecent(c *ui.Context, name string) {
 	t := a.T
-	list := recentHandoffs(a.S.Channel, 5)
+	list := recentHandoffs(a.S.Channel, 5, a.S.OutOps)
 	a.group(c, "peers-recent", a.L.T("peers.recent.title"), "", func() {
 		if len(list) == 0 {
 			a.tileRow(c, "peers-wait", a.handoffDot(c), a.L.T("peers.wait.title"), a.L.T("peers.wait.line"), nil)
@@ -121,7 +121,15 @@ func (a *App) peersRecent(c *ui.Context, name string) {
 		for _, h := range list {
 			h := h
 			var age func()
-			if s := a.agoLong(h.At); s != "" {
+			if h.State != "" {
+				// D433: one that hasn't plainly gone says so where the time would be.
+				ink := t.InkMuted
+				if h.State == "failed" || h.State == "unconfirmed" {
+					ink = t.Failed.Ink
+				}
+				s := a.L.T("peers.out." + h.State)
+				age = func() { uiText(c, s).FontSize(t.SM).FontWeight(600).TextColor(ink).SingleLine() }
+			} else if s := a.agoLong(h.At); s != "" {
 				age = func() { uiText(c, s).FontSize(t.SM).FontWeight(600).TextColor(t.InkMuted).SingleLine() }
 			}
 			who := a.peerCalledText(h.Agent, h.Host)
@@ -149,27 +157,39 @@ func (a *App) peersTry(c *ui.Context, name string) {
 			})
 		})
 	})
-	var missing []tryAgent
-	for _, x := range tryAgents(a.S.Devices) {
-		if x.Plugin == "off" && x.Device != "" {
-			missing = append(missing, x)
-		}
-	}
-	if len(missing) == 0 {
+}
+
+// peersReach is 能找到{name}的 / Who can reach {name} (D433): each AI tool
+// the person runs, whether it can reach the partner through Nowledge Mem,
+// the one fix when there is one (装上), and when it last came. The web's:
+// PeersReach (apps/web/src/memory.tsx).
+func (a *App) peersReach(c *ui.Context, name string) {
+	t := a.T
+	rows := reachRows(a.S.Devices, a.S.OwnAgents, recentHandoffs(a.S.Channel, 50))
+	if len(rows) == 0 {
 		return
 	}
-	a.group(c, "peers-plugin", "", "", func() {
-		for _, x := range missing {
-			x := x
-			tool := "Claude Code"
-			if x.Harness == "codex" {
-				tool = "Codex"
-			}
-			a.tileRow(c, "try-agent:"+x.Harness, a.toolTile(c, tool), tool, a.L.T("peers.try.plugin.off", name), func() {
-				if a.buttonFor(c, a.L.T("peers.try.plugin.go"), x.DeviceName, btnSecondary, t.ControlSM, t.Surface) {
-					a.send(protocol.MemPluginInstall{T: "mem_plugin_install", Device: x.Device, Harness: x.Harness})
+	a.group(c, "peers-reach", a.L.T("peers.reach.title", name), "", func() {
+		for _, r := range rows {
+			r := r
+			var control func()
+			switch {
+			case r.Can == "install" && r.Device != "":
+				control = func() {
+					if a.buttonFor(c, a.L.T("peers.try.plugin.go"), r.DeviceName, btnSecondary, t.ControlSM, t.Surface) {
+						a.send(protocol.MemPluginInstall{T: "mem_plugin_install", Device: r.Device, Harness: r.Harness})
+					}
 				}
-			})
+			case r.Can == "yes" && r.Last != "":
+				if s := a.agoLong(r.Last); s != "" {
+					control = func() { uiText(c, s).FontSize(t.SM).FontWeight(600).TextColor(t.InkMuted).SingleLine() }
+				}
+			}
+			line := a.L.T("peers.reach.none")
+			if r.Can != "none" {
+				line = a.L.T("peers.reach."+r.Can, name)
+			}
+			a.tileRow(c, "reach:"+r.Harness, a.clayTile(c, coinArt(r.Harness, r.Can == "none"), false), r.Tool, line, control)
 		}
 	})
 }

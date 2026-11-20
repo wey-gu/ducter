@@ -577,6 +577,10 @@ type Store struct {
 	// Recalled is the one 想起了 / Remembered line under a message, by the
 	// seq of the message it stands under (D304).
 	Recalled map[int64]*Recalled
+	// OutOps (D433) is each outgoing Bridge message's latest word, by its op:
+	// sending, sent, failed, unknown or unconfirmed, so 最近 / Recently can
+	// say one that hasn't gone, not only the ones that did.
+	OutOps map[string]*Entry
 	// Rules are 你的规则 / Your rules, as last sent (nil until a rules
 	// frame; RulesAt says one came). Candidates are who could do a task,
 	// by task id, as last asked; SwitchResults the switch answers not yet
@@ -1413,6 +1417,15 @@ func (s *Store) ApplyEvent(ev protocol.LogEvent) {
 			s.lastPing.key, s.lastPing.seq, s.lastPing.at = key, ev.Seq, at
 			s.add(&Entry{Event: ev, Peer: b})
 			return
+		}
+		if b.Direction == "out" && !b.Ack && b.OpID != "" && b.Text != "" {
+			switch b.State {
+			case "sending", "sent", "failed", "unknown", "unconfirmed":
+				if s.OutOps == nil {
+					s.OutOps = map[string]*Entry{}
+				}
+				s.OutOps[b.OpID] = &Entry{Event: ev, Peer: b}
+			}
 		}
 		if b.Direction == "out" && b.Ack {
 			if seq, ok := s.pingAt[b.InReplyTo]; ok && b.InReplyTo != "" {

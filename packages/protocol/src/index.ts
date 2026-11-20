@@ -604,7 +604,8 @@ export interface Bodies {
   // "tool" (another AI tool saved it; from: its name, "Claude Code"), "you" (the person saved it
   // themselves: the CLI, the app, a clip). date: YYYY-MM-DD it was recorded. Titles only; the
   // memory's text never leaves Mem.
-  memory_recalled: { memoryId: string; title: string; by: RecallBy; from?: string; date?: string; aboutSeq: number; replyTo?: number };
+  // D433: thread: the person's past conversation with another AI tool (from: the tool; memoryId: Mem's thread id), not a memory.
+  memory_recalled: { memoryId: string; title: string; by: RecallBy; from?: string; date?: string; aboutSeq: number; replyTo?: number; thread?: true };
   // D148: one step of a device's update, on the "devices" stream (origin "system"). device is
   // "local" for the home or a paired device id; name is its name then. Clients show the latest
   // on the device's card; the partner reads it only when asked.
@@ -2791,7 +2792,8 @@ export interface BridgeView {
    * now; on connected: a second reader of the same mailbox). home: the computer its label names (a
    * label from before D324 names none); stuck: Mem wouldn't end it from here, so it is ended there.
    */
-  others?: { label: string; home?: string; stuck?: true }[];
+  // D433: seenAt (ms): when Mem last saw that connection's computer (`connections list --include-activity`), when it says.
+  others?: { label: string; home?: string; stuck?: true; seenAt?: number }[];
   /** D340: on ready, this home connects only when asked (not the person's own home): the switch shows off until flipped. */
   asks?: true;
   canRun?: boolean;

@@ -340,10 +340,20 @@ if (verb === "connections") {
     });
     process.exit(0);
   }
+  // D433 (research/183): 0.10.121's `list --include-activity` (help VERIFIED; the answer's field names read off
+  // the binary, INFERRED): each connection's advisory `last_seen_at_ms`. NMEM_FAKE_SEEN="<label>=<ms>,…" sets them.
+  if (sub === "list" && argv.includes("--help")) {
+    console.log(`Read one bounded page in an exact Space; follow the returned cursor\n\nUsage: nmem bridge connections list [OPTIONS] --space-id <SPACE_ID>\n\nOptions:\n      --space-id <SPACE_ID>\n      --agent-id <AGENT_ID>\n  -j, --json\n      --after-connection-id <AFTER_CONNECTION_ID>\n${IDENT ? "      --include-activity\n          Include advisory device activity in the version two JSON presentation\n" : ""}  -h, --help`);
+    process.exit(0);
+  }
   if (sub === "list") {
     const space = flag("--space-id");
     const agent = flag("--agent-id");
-    const list = s.connections.filter((x) => x.space_id === space && (!agent || x.agent_id === agent)).map(({ space_id: _sp, ...c }) => c);
+    const seen = new Map((process.env.NMEM_FAKE_SEEN ?? "").split(",").filter(Boolean).map((kv) => [kv.slice(0, kv.lastIndexOf("=")), Number(kv.slice(kv.lastIndexOf("=") + 1))] as const));
+    const withActivity = IDENT && argv.includes("--include-activity");
+    const list = s.connections
+      .filter((x) => x.space_id === space && (!agent || x.agent_id === agent))
+      .map(({ space_id: _sp, ...c }) => (withActivity ? { ...c, activity_available: seen.has(c.client_label), ...(seen.has(c.client_label) ? { last_seen_at_ms: seen.get(c.client_label) } : {}) } : c));
     out({ schema_version: 1, connections: list, next_connection_id: null });
     process.exit(0);
   }

@@ -248,6 +248,11 @@ export class Store {
   errors: string[] = [];
   /** 记下了 / Noted lines in the channel, shown inside the Details of the reply they belong to (D104). */
   noted: { seq: number; title: string; memoryId?: string; replyTo?: number; replaced?: string; waiting?: true }[] = [];
+  /**
+   * D433: each outgoing Bridge message's latest word (by its op): sending, sent, failed, unknown or
+   * unconfirmed, so 最近 / Recently can say one that hasn't gone, not only the ones that did.
+   */
+  outOps = new Map<string, { seq: number; ts: string; b: Bodies["bridge_msg"] }>();
   /** D304: the 想起了 / Remembered line under a message, by the seq of the message it stands under. */
   recalled = new Map<number, Bodies["memory_recalled"] & { seq: number }>();
   /** D165: each find's latest change, and the user's latest message. */
@@ -700,6 +705,7 @@ export class Store {
           this.lastPing = { key, seq: ev.seq, at };
           return entry({ peer: b });
         }
+        if (b.direction === "out" && !b.ack && b.opId && b.text && b.state && ["sending", "sent", "failed", "unknown", "unconfirmed"].includes(b.state)) this.outOps.set(b.opId, { seq: ev.seq, ts: ev.ts, b });
         if (b.direction === "out" && b.ack) {
           const seq = b.inReplyTo ? this.pingAt.get(b.inReplyTo) : undefined;
           const g = seq !== undefined ? this.pings.get(seq) : undefined;

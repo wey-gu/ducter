@@ -50,6 +50,8 @@ export interface MemoryHit {
  * app: data, never instructions.
  */
 export interface ThreadHit {
+  /** D433: Mem's `thread_id`, so a 想起了 line can name the conversation it leaned on. */
+  id?: string;
   title: string;
   /** Mem's `source`: the tool the conversation was with ("codex", "claude-code", …). */
   source?: string;
@@ -77,7 +79,8 @@ export function compactThreads(j: any, limit = THREADS_MAX): ThreadHit[] {
       .map((m: any) => ({ who: m.role as "user" | "assistant", text: clip(m.snippet, THREAD_LINE_CHARS) }));
     if (!lines.length) continue;
     const d = typeof t?.last_activity === "string" ? t.last_activity.slice(0, 10) : undefined;
-    out.push({ title: clip(String(t?.title ?? ""), 80), ...(source ? { source } : {}), ...(d && /^\d{4}-\d{2}-\d{2}$/.test(d) ? { date: d } : {}), lines });
+    const id = typeof t?.thread_id === "string" && t.thread_id ? t.thread_id : typeof t?.id === "string" && t.id ? t.id : undefined;
+    out.push({ ...(id ? { id } : {}), title: clip(String(t?.title ?? ""), 80), ...(source ? { source } : {}), ...(d && /^\d{4}-\d{2}-\d{2}$/.test(d) ? { date: d } : {}), lines });
   }
   return out;
 }

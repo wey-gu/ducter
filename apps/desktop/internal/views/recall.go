@@ -50,6 +50,12 @@ func recallDate(l i18n.Lang, date string, now time.Time) string {
 // recallLineText is the quiet line's words for one recalled memory.
 func recallLineText(L *i18n.Strings, r protocol.MemoryRecalled, now time.Time) string {
 	d := recallDate(L.Lang, r.Date, now)
+	if r.Thread && r.From != "" { // D433: a past conversation with another AI tool
+		if d != "" {
+			return L.T("recall.thread", r.From, d)
+		}
+		return L.T("recall.thread.any", r.From)
+	}
 	by := r.By
 	if by != "said" && by != "tool" {
 		by = "you"
@@ -71,6 +77,9 @@ func recallLineText(L *i18n.Strings, r protocol.MemoryRecalled, now time.Time) s
 
 // recallFrom is who the memory is from, as its own fact on the card.
 func recallFrom(L *i18n.Strings, r protocol.MemoryRecalled) string {
+	if r.Thread && r.From != "" {
+		return L.T("recall.from.thread", r.From)
+	}
 	if r.By == "tool" && r.From != "" {
 		return L.T("recall.from.tool", r.From)
 	}
@@ -122,6 +131,14 @@ func (a *App) recallCard(c *ui.Context, key string, r *store.Recalled) {
 			uiText(c, d).FontSize(t.SM).TextColor(t.InkMuted)
 		}
 	})
+	if r.Thread && r.From != "" {
+		// D433: the conversation is the tool's: nothing to forget here, only where to read it.
+		a.note(c, a.L.T("recall.thread.why"))
+		if a.quietLink(c, key+":open", a.L.T("recall.open"), a.L.T("recall.open")) {
+			c.OpenURL(memSite)
+		}
+		return
+	}
 	a.note(c, a.L.T("recall.why"))
 	if a.recall.asking {
 		ask := a.L.T("mem.forget.ask", r.Title)

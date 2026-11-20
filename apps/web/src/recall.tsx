@@ -58,7 +58,8 @@ export function RecallSheet({ seq }: { seq: number }) {
   const r = [...A.S.recalled.values()].find((x) => x.seq === seq);
   if (!r) return null;
   const tool = r.by === "tool" && r.from ? r.from : undefined;
-  const from = tool ? t("recall.from.tool", tool) : r.by === "said" ? t("recall.from.said") : t("recall.from.you");
+  const thread = !!r.thread && !!tool;
+  const from = thread ? t("recall.from.thread", tool) : tool ? t("recall.from.tool", tool) : r.by === "said" ? t("recall.from.said") : t("recall.from.you");
   const coin = tool ? COINS[tool] : undefined;
   return (
     <>
@@ -78,8 +79,13 @@ export function RecallSheet({ seq }: { seq: number }) {
               <Facts class="recall-facts" items={[from, calDay(A.L, r.date)]} />
             </div>
           </div>
-          <p class="recall-why">{t("recall.why")}</p>
-          {asking ? (
+          <p class="recall-why">{thread ? t("recall.thread.why") : t("recall.why")}</p>
+          {thread ? (
+            // D433: the conversation is the tool's: nothing to forget here, only where to read it.
+            <div class="recall-acts">
+              <LinkBtn kind="secondary" size="sm" href={MEM_SITE} label={t("recall.open")} />
+            </div>
+          ) : asking ? (
             <div class="recall-ask" role="alert">
               <p>{tool ? t("recall.forget.tool", r.title, tool) : t("mem.forget.ask", r.title)}</p>
               <div class="recall-acts">

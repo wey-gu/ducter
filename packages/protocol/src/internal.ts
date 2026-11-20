@@ -12,6 +12,18 @@ import type { RuleView } from "./loadout.ts";
 
 // ---------- core ----------
 
+/** D435: what the partner reaches of core's hold on its own agent (core/src/brain-hold.ts). */
+export interface BrainHoldPort {
+  /** The hold on the agent it thinks with: who answers meanwhile (to), or nobody (waits). */
+  now(): { from: HarnessId; why: "quota" | "rate_limited" | "error"; until: string; resetKnown: boolean; waits?: true; to?: HarnessId } | undefined;
+  /** A turn failed on its agent (a limit as D297 reads it, or an error): hold it. tell: say it once. */
+  hit(h: { harness: string; failure: "quota" | "rate_limited" | "error"; resetsAt?: string; source?: string; said?: string }): Promise<{ now?: ReturnType<BrainHoldPort["now"]>; tell: boolean }>;
+  /** A turn on this agent went through: its hold, if any, is over. */
+  ok(harness: string): void;
+  /** A hold was set or ended, or its time came. */
+  onChange(fn: () => void): () => void;
+}
+
 export interface AppendInput<K extends EventKind = EventKind> {
   persona?: string; // default persona if omitted
   stream: string;
@@ -130,6 +142,8 @@ export interface CoreApi {
    *  isn't signed in here: the first signed-in agent of PARTNER_FALLBACK, so a Codex-only (D143)
    *  or DeepSeek-only (D177) server just works. */
   partnerFallback?(): { harness: HarnessId; model?: string } | undefined;
+  /** D435: the partner's own agent held after a turn failed on it (core/src/brain-hold.ts); absent in tests and stubs (then: as before). */
+  brainHold?: BrainHoldPort;
   /** Who does a new task (D89, core/src/loadout.ts); absent in tests and stubs (then: the runner's default). */
   bodies?: BodyChooser;
   /** D395: where a repository task works, resolved by code (core/src/repo-where.ts); absent in tests and stubs. */

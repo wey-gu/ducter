@@ -206,6 +206,8 @@ export function partnerView(o: PartnerViewOptions): CoreApi {
     ...(core.workers ? { workers: core.workers } : {}),
     ...(settings ? { settings } : {}),
     ...(core.partnerFallback ? { partnerFallback: () => core.partnerFallback!() } : {}),
+    // D435: one hold per agent account, whichever partner's turn found it out.
+    ...(core.brainHold ? { brainHold: core.brainHold } : {}),
     ...(core.bodies ? { bodies: core.bodies } : {}),
     ...(core.connections ? { connections: core.connections } : {}),
     ...(o.activity ? { activity: o.activity } : {}),

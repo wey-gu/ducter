@@ -411,6 +411,15 @@ func (a *App) summary(b store.Board) string {
 // what needs the user, what is being worked on, what came back.
 func (a *App) countParts(b store.Board) []string {
 	var parts []string
+	// D435: nobody can answer until its own agent is back: said first, so a
+	// message sent meanwhile is never met by silence alone.
+	if h := a.brainHeld(); h != nil && h.Waits {
+		if at := a.heldAt(h); at != "" {
+			parts = append(parts, a.L.T("header.held", at))
+		} else {
+			parts = append(parts, a.L.T("header.held.soon"))
+		}
+	}
 	if n := a.needsAcross(b); n > 0 {
 		parts = append(parts, a.L.T("header.needs", n))
 	}
@@ -437,6 +446,11 @@ func (a *App) thinking() bool {
 		if !anyFailed(p.atts) {
 			return true
 		}
+	}
+	// D435: nobody can answer until its own agent is back: the messages
+	// wait, it isn't thinking (the header says when).
+	if h := a.brainHeld(); h != nil && h.Waits {
+		return false
 	}
 	// D380: a quick web look is out: its line stays under the words that
 	// named it, until the answer.

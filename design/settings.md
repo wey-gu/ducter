@@ -121,6 +121,7 @@ sunken tray and a 128-pt coin breaking D289's grid; three stacked lines under th
 | **Several agents** | The agent with **换一个** (the others listed in place, each **用它**), the model's choice with its one phrase, the reassurance as the group's last line | A row per signed-in agent (limit, **Ducter 想事情也用它** on the one it thinks with) with its **用它做事** switch; how it picks as the section's note; the rules; **打开任何一个任务，都能换别的 AI agent 接着做。** | **多一个，Ducter 挑的时候就多一个选择。** and the key | The switch |
 | **On a server** | Same rows; the header says **住在 hel 上**, sign-in rows say **在 hel 上登录** | Same | The buttons go to Devices, where the server's card signs it in | Same |
 | **A pay-per-use key only** | The agent the key runs (DeepSeek Harness) with **用你贴的 API 密钥，按用量付费** | One line, as with one agent | The subscription agents, and the key row again (a second key) | As with one agent |
+| **Its own agent held** (D435: out of credit, too busy, or failing) | Another answers: that agent, its first line **Claude Code 的额度用完了，这会儿先用它，20:53 换回去** (D150's **你选的…现在用不了** not said on top); none: the held agent with **额度用完了，20:53 恢复。别的 AI 也接不上，这期间发来的消息到时按顺序回** in place of its limit line. The header: **这会儿先用 Codex 想事情** / **20:53 接着回你** | Unchanged (the one answering is marked **Ducter 想事情也用它**) | Unchanged | Unchanged (D297 is about tasks) |
 
 ### The order, and why
 

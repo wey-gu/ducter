@@ -343,7 +343,7 @@ export function createWsHandler(deps: WsDeps) {
     const home = devicesView() ? (await devicesView()!.frame()).devices.find((d) => d.home)?.harnesses : undefined;
     // D390: the partner's models from its agent's live list on the home, as last read (no wait);
     // a read under way, or one the list is due for, pushes a fresh frame when it lands with news.
-    const now = brainNow(v.settings.brain, deps.settings!.brainChosen(), home, (h) => deps.models?.peek?.("local", h));
+    const now = brainNow(v.settings.brain, deps.settings!.brainChosen(), home, (h) => deps.models?.peek?.("local", h), deps.core.brainHold?.now());
     refreshBrainModels(now.harness);
     const bridge = await deps.bridgeLink?.view().catch(() => undefined);
     const own = deps.ownAgents?.() ?? [];
@@ -357,6 +357,11 @@ export function createWsHandler(deps: WsDeps) {
       .catch(pushFailed("settings"));
   };
   const offSettings = deps.settings?.onChange(() => {
+    const subs = [...sockets].filter((ws) => ws.data.settings);
+    if (subs.length) pushSettings(subs);
+  });
+  // D435: the partner's own agent held, back, or its time came: Settings › Partner and the header say so.
+  const offBrainHold = deps.core.brainHold?.onChange(() => {
     const subs = [...sockets].filter((ws) => ws.data.settings);
     if (subs.length) pushSettings(subs);
   });
@@ -2500,6 +2505,7 @@ export function createWsHandler(deps: WsDeps) {
       offApps?.();
       offDevices?.();
       offSettings?.();
+      offBrainHold?.();
       offRules?.();
       offStanding?.();
       offConnections?.();

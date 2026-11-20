@@ -1841,6 +1841,21 @@ type BrainNow struct {
 	// Models are the ones it may think with on the home (D150); none: its
 	// own default model.
 	Models []BrainModel `json:"models,omitempty"`
+	// Held is D435: its own agent ran out (or its turns fail) and is held
+	// until Until; Why "held" when another agent answers meanwhile.
+	Held *BrainHeld `json:"held,omitempty"`
+}
+
+// BrainHeld is the partner's own agent held after a turn failed on it
+// (D435): From, held for Why ("quota", "rate_limited", "error") until
+// Until (the reset when ResetKnown, else Ducter's next try). Waits: no
+// other agent can answer, so messages are answered at Until, in order.
+type BrainHeld struct {
+	From       string `json:"from"`
+	Why        string `json:"why"`
+	Until      string `json:"until"`
+	ResetKnown bool   `json:"resetKnown"`
+	Waits      bool   `json:"waits,omitempty"`
 }
 
 // BrainModel is one model the partner may think with: Kind smart or fast

@@ -154,6 +154,21 @@ Ducter only tells you about a limit when it matters: when the agent doesn't say 
 and nobody else can take the work. If a task carried on overnight, Ducter may mention it with
 the result.
 
+### When your partner's own AI agent runs out
+
+Your partner thinks with an AI agent too, and that one can run out of its limit (or stop working
+for a while) right when you write. Your partner doesn't go quiet. If another AI agent that can be
+your partner is signed in, that one answers at once, and your partner says so in one line first:
+**Claude Code 的额度用完了，这会儿先用 Codex 答你，20:53 换回来。/ Claude Code is out of
+credit, so Codex is answering you for now. Back to Claude Code at 20:53.** Its name, what it
+remembers and your conversation stay the same. At that time it goes back by itself; you don't
+do anything.
+
+If nothing else can answer, it says that once, with when it's back. What you send meanwhile
+isn't lost: it is answered then, in order. Until then the header under its name says when it
+answers again (**20:53 接着回你 / Answers at 20:53**), and **Settings › Partner** says what
+happened. Ducter never takes over with an AI agent you told it never to use.
+
 ## Without saying it: from New task
 
 You can set up all of this yourself, without the conversation. Open **New task** (**⌘N**),

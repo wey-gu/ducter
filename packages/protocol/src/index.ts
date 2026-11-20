@@ -691,8 +691,11 @@ export interface Bodies {
   // anyway, although it is bounded above the re-cut (research/11 §7.3.7); its summary now
   // competes with the spine, so it is recorded to be seen.
   partner_session: {
-    event: "recut" | "harness_compacted";
+    // D435: brain_held, the partner's own agent (harness) is held until held.until; brain_back,
+    // a turn on it went through again (or the person chose another agent), and the hold is over.
+    event: "recut" | "harness_compacted" | "brain_held" | "brain_back";
     harness: string;
+    held?: { why: "quota" | "rate_limited" | "error"; until: string; resetKnown: boolean; since: string; source?: string; said?: string; told?: string };
     sessionId?: string;
     contextTokens?: number; // what the context held, by the harness's count when it gave one
     digested?: boolean; // recut: onto digests (true) or onto the window and pointers only (false)
@@ -2676,9 +2679,12 @@ export interface Brain {
  * PARTNER_FALLBACK instead (why: "only_codex" for Codex, "only_signed_in" for the others, D177).
  */
 export interface BrainNow extends Brain {
-  /** auto: the user never chose; core picked it. why: the reason when it isn't the setting. */
+  /** auto: the user never chose; core picked it. why: the reason when it isn't the setting
+   *  ("held": D435, its own agent is held and this one answers meanwhile). */
   auto: boolean;
-  why?: "only_codex" | "only_signed_in";
+  why?: "only_codex" | "only_signed_in" | "held";
+  /** D435: the agent it thinks with ran out (or its turns fail) and is held until it comes back. */
+  held?: BrainHeld;
   /**
    * The models it may think with on the home: the agent's own live list where core has read it
    * (D202's catalog, the one the task composer shows), else the home's listed ones, else Ducter's
@@ -2687,6 +2693,23 @@ export interface BrainNow extends Brain {
    * when no model is named.
    */
   models: { id: string; label: string; kind?: "smart" | "fast"; default?: true }[];
+}
+
+/**
+ * D435: the partner's own agent hit its usage limit, a throttle, or turns that fail, and core holds
+ * it until it is tried again. While held, the next signed-in agent that may be the partner answers
+ * (BrainNow.harness); with none, messages wait (waits) and are answered at `until`, in order.
+ */
+export interface BrainHeld {
+  /** The agent that is held: what it thinks with again from `until`. */
+  from: HarnessId;
+  /** quota: out of credit; rate_limited: throttled; error: its turns fail. */
+  why: "quota" | "rate_limited" | "error";
+  /** When it is tried again, ISO: the reset when resetKnown, else Ducter's next try. */
+  until: string;
+  resetKnown: boolean;
+  /** No other agent can answer now: messages sent meanwhile are answered at `until`. */
+  waits?: true;
 }
 
 export type SettingsPatch = Partial<Settings>;

@@ -126,7 +126,9 @@ own (D267) and carries on in the same session, resumed by id; tasks on one accou
 reset; with no reset known it tries again (10 min after a throttle, else hourly, for a day).
 **Hand it to {agent} now** moves it through D282's in-task switch with its progress; the person
 can choose, on that card, to hand off right away every time (`Settings.limitHandoff`). The
-partner is told only when no reset is known and nobody else can take it.
+partner is told only when no reset is known and nobody else can take it. The partner's own turns
+are read the same way (D435, `system.md` "The brain held"): the next signed-in agent answers, or
+the message waits for the reset.
 
 ## Choosing a body (principle 14)
 

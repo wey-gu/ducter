@@ -58,7 +58,7 @@ import { AutofillSettings, FillBody, fillTitle, KeyBody, keyTask, PayBody } from
 import { ChatAppsSettings } from "./channels.tsx";
 import { SourceCardBody, TodoSourcesSettings, TS } from "./todos.tsx";
 import { HandoffSettings, PaperRow, RecordsSettings } from "./settings-more.tsx";
-import { AddSection, noBrain, TasksSection, ThinksSection } from "./partner-story.tsx";
+import { AddSection, brainHeld, heldAt, noBrain, TasksSection, ThinksSection } from "./partner-story.tsx";
 import { ComposerReply, HoverReply, Imprint, PartReply, ReplyMenu, replyKey, replyOf, SelectText, SentImprint, useReplyGestures, replyLabel } from "./reply.tsx";
 import { dividerSeq, NewDivider, useFollow, WayBack } from "./conv-follow.tsx";
 import { isImage, plainWords, type MediaRef } from "@ducter/protocol";
@@ -2598,6 +2598,9 @@ export function cantLine(c: CantStart): string {
  *  Settings list's hero says the same, never an agent when none can be used. */
 function partnerLede(): string {
   const brain = A.brainNow ?? A.settings?.brain;
+  // D435: its own agent held: who thinks meanwhile, or when it answers again.
+  const held = brainHeld();
+  if (A.homeName && held && brain) return held.waits ? (heldAt(held) ? t("partner.header.wait", A.homeName, heldAt(held)) : t("partner.header.wait.soon", A.homeName)) : t("partner.header.held", A.homeName, harnessName(brain.harness));
   return !A.homeName ? "" : noBrain() ? t("partner.header.none", A.homeName) : brain ? t("partner.header", A.homeName, harnessName(brain.harness)) : "";
 }
 

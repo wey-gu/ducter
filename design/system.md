@@ -104,6 +104,19 @@ One table (`packages/protocol/src/harnesses.ts`), one adapter (`packages/runner/
   DeepSeek Harness, pi: `PARTNER_FALLBACK`, D150, D177). The
   partner reads it at each session start; a session id never crosses harnesses (the prompt
   hash covers the harness; Claude Code keeps the prompt-only hash so upgrades still resume).
+- **The brain held (D435).** A partner turn that fails on its own agent before saying anything
+  (OAR's `quota` or `rate_limited`, read by D297's `limit-hit.ts`, now in `@ducter/protocol`;
+  any other failed turn, a stream that ends empty, a session that won't start) holds that agent
+  in core (`core/src/brain-hold.ts`, `partner_session` `brain_held` / `brain_back` on the
+  `partner` stream, so a restart keeps it) until the reset it named, else the account's used-up
+  window, else 10 min (throttle, error) or 1 h (quota). Meanwhile `partnerFallback` (and so
+  `brainNow`, the web look) is the next of `PARTNER_FALLBACK` signed in on the home, may be the
+  partner, not itself held, not spent by its own account, not ruled out by a never rule with no
+  words and no kind of work. The same triggers run again on it at once, from the projection (a
+  fresh session). With none, the drain keeps the triggers (handledSeq stays, so a restart finds
+  them) and runs them in order when the hold's time comes; a turn on the held agent that goes
+  through ends it. The person hears one line by code (`words.ts` held*/wait*) when a time out
+  starts and when nobody can answer any more; the eval's own harness (`opts.harness`) is never held.
 - **Tasks** take the partner's choice, else the top of `fw_candidates` (D89: rules, then the tier
   table) among the accounts `Settings.taskAccounts` leaves on. Its limit-left step needs a
   limit a harness reports; none does yet (D133).

@@ -21,7 +21,7 @@ import { haptic, inApp, nativeCall, nativeInfo, tellReach, tellWays } from "./na
 import { copy } from "./conv-copy.ts";
 import { applyLend, LEND_WAIT_MS, lendError, type LendKind, type LendState } from "./lend-view.ts";
 import { attention, doneTodayOf, finished, LANE, laneOf, looksSecret, olderPage, placeOf, Store, title, windowAsk, type DecisionState, type Entry } from "./store.ts";
-import { harnessName, learnModelLabels, modelName, shownDeviceName, spoken, withoutStaleAgentUpdate, withoutStaleFailure } from "./format.ts";
+import { harnessName, learnModelLabels, modelName, shownDeviceName, spoken, stamp, withoutStaleAgentUpdate, withoutStaleFailure } from "./format.ts";
 import { canFillNow, wideNow } from "./fold.ts";
 import { kindOf, navMove } from "./nav.ts";
 import { forgetGlance, keepEvents, saveGlance, type Glance } from "./glance.ts";
@@ -928,8 +928,9 @@ class AppState {
       if (this.route.name === "task") this.history(this.route.id, true);
       // Settings are pushed only to sockets that asked: ask again on a new one.
       if (this.settings || this.sheet?.kind === "settings") this.askLoadout();
-      // D157: every task says which computer it runs on once there are two: know them.
-      else this.send({ t: "devices" });
+      // D157: every task says which computer it runs on once there are two: know them. D435: and the
+      // settings, so the header says when the partner answers again while its own agent is held.
+      else this.send({ t: "devices" }), this.send({ t: "settings" });
       if (this.connections || this.sheet?.kind === "settings") this.send({ t: "connections" });
       // D226: the day, and the reading problem that shows without opening, once asked: a
       // restarted home may read again (or no longer).
@@ -3104,6 +3105,8 @@ class AppState {
   thinking(): boolean {
     // A message held for a picture that didn't go up isn't with the partner yet (D206).
     if (this.pending.some((p) => !p.failed)) return true;
+    // D435: nobody can answer until its own agent is back: the messages wait, it isn't thinking (the header says when).
+    if (this.brainNow?.held?.waits) return false;
     // D380: a quick web look is out: its line stays under the words that named it, until the answer.
     if (this.S.activity?.step === "web") return true;
     for (let i = this.S.channel.length - 1; i >= 0; i--) {
@@ -3120,8 +3123,8 @@ class AppState {
     if (this.S.openDecisions().length) return "needsyou";
     const b = this.S.board();
     if (b.lanes[LANE.working]!.length || this.thinking()) return "working";
-    // Nothing moving, something it waits for (D112): it sits and looks out.
-    if (b.lanes[LANE.waiting]!.length || this.S.armedWaiters().some((w) => w.check || w.event)) return "waiting";
+    // Nothing moving, something it waits for (D112): it sits and looks out. D435: its own agent, too.
+    if (this.brainNow?.held?.waits || b.lanes[LANE.waiting]!.length || this.S.armedWaiters().some((w) => w.check || w.event)) return "waiting";
     if (this.doneAt && Date.now() - this.doneAt < DONE_GLOW_MS) {
       setTimeout(() => this.changed(), DONE_GLOW_MS);
       return "done";
@@ -3151,6 +3154,10 @@ class AppState {
     const kinds: number[] = [];
     const add = (kind: number, words: string) => (parts.push(words), kinds.push(kind));
     // D309: one count across partners: On hand is everyone's already; the others' own questions join it.
+    // D435: nobody can answer now (its own agent held, no other to take over): said first, so a message
+    // sent meanwhile is never met by silence alone.
+    const held = this.brainNow?.held;
+    if (held?.waits) add(0, held.resetKnown ? L.t("header.held", stamp(L, held.until)) : L.t("header.held.soon"));
     const needs = needsAcross(b.lanes[LANE.needs]!.length + this.S.partnerDecisions().length, this.partners, this.S.persona || this.partnerShown);
     if (needs) add(1, L.t("header.needs", needs));
     // Thinking is said where the reply will appear (Presence, D104), not here.

@@ -765,7 +765,7 @@ func promptOf(ev *protocol.LogEvent, briefed bool) (Block, bool) {
 		if b.Origin == "you" {
 			by = "you"
 		}
-		text, full := clipWords(strings.TrimSpace(b.Brief))
+		text, full := clipWords(briefShown(strings.TrimSpace(b.Brief)))
 		return Block{K: "brief", Seq: ev.Seq, Text: text, Full: full, By: by, Media: b.Media}, true
 	case *protocol.TaskEvent:
 		if b.Role != "user" || len(b.Thinking) > 0 || b.Tool != nil {

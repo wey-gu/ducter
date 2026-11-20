@@ -28,6 +28,15 @@ The Mac app runs the same check-up by itself when it starts, and shows only what
 
 ## Common problems
 
+### A task says "Couldn't start"
+
+The card says why and offers what fixes it. **Another git kept the repository busy**: something (an
+editor, another git program) had the repository locked the whole time. Ducter already waited and tried
+again; **Clear it and try again** removes only the lock file git left, and only while no git is
+running. **{agent} didn't start**: the line under it is the agent's own reason (often a sign-in).
+**Try again** always looks for where to start afresh, and a message you send to a task that never
+started starts it.
+
 ### "Ducter" Not Opened
 
 Your copy of the app wasn't signed with an Apple Developer ID by whoever built it, so macOS asks

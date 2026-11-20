@@ -560,6 +560,34 @@ again** re-resolves. 换谁来做 stays in the head's meta line. The living line
 The clone, when it happens at open, is said by Ducter's code under the ack, once: **{repo} 的代码还
 没在哪台电脑上，我先在 {computer} 上拉一份。**
 
+**Every start failure has a card (D415).** hel, 2026-11-20: a hand-over's task failed on the MacBook
+with git's own text (`fatal: Unable to create '…/.git/worktrees/通用设置/index.lock': File exists`)
+and the card said only 没能开始 and a path. The runner now reads every start failure into a word
+(`startProblem`): the place's three above, **busy** (another git kept the repository's lock the whole
+time), **agent** (its agent didn't start: its program, a sign-in, a session), **away** (its computer
+went away), **other**. Each has its line, a muted line under it (the agent's own words; what the fix
+does), and its taps: **清掉旧的再试 / Clear it and try again** for a lock git left (removed only when
+no git is running on that computer), **在 X 上做** when another computer has the copy, and **再试一次**,
+which asks the computers again, fresh. The raw message stays in the task's own steps.
+
+**A worktree is made so it can't collide (D415).** Its branch names its to-do: `ducter/<issue
+number>-<the issue's own words>` (several: their numbers, then the first one's words), never a
+group's subject. A branch already there is used again only when it carries nothing (no commit past
+its base, checked out nowhere: what a start that failed left); one with work on it, or checked out,
+gets the next free `-2`, `-3` (the folder the same). A `git worktree add` that meets another git's
+lock is tried again (four times, waits growing); a lock older than ten minutes with no git running
+is one a dead git left and is cleared; a fresh one that stays is the card's busy. Ducter's own reads
+of a worktree (the Mac's changes, the workbench) run with `GIT_OPTIONAL_LOCKS=0`, so a diff never
+takes the index lock, and the Mac reads nothing while a task's place is still being made: hel's lock
+was the Mac app's own changes pane reading the new worktree while git was filling it. Nothing else in
+the person's repository is touched (no `worktree prune`, no other lock).
+
+**Words to a task that never started start it (D415).** hel's 改进 Mem 常规设置页 failed yesterday on
+a path the partner guessed; the author's reply today was taken as a resume of a session that never
+existed (`Codex session directory does not exist`). Now a message (or 再试一次) to a task whose agent
+never started asks the computers again (as 再试一次 does) and starts it there: its brief first, the
+person's words after it as the latest message.
+
 **Effort in words.** 「仔细」「认真」「好好做」/ "carefully", "thoroughly" open the task at high
 effort (D387's highest level that isn't extreme; a model without it takes medium), and its brief
 asks it to check its work before reporting; 「快速」「随便看看」/ "quick look" open it at low.

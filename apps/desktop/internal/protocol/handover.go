@@ -24,6 +24,21 @@ const HandCap = 3
 type PileSubject struct {
 	Name string `json:"name"`
 	N    int    `json:"n"`
+	// D415: one the person made or named (分类): drawn first, on any pile.
+	Own bool `json:"own,omitempty"`
+}
+
+// PileSubjectReq (D415) changes the person's own subjects: put (these
+// to-dos in it, made if new), take (out of every subject), rename (To; into
+// an existing one merges), remove, make. Answered by pile_result op
+// "subject" (Done: how many are in it now; Name: as kept).
+type PileSubjectReq struct {
+	T        string   `json:"t"` // "pile_subject"
+	Op       string   `json:"op"`
+	Name     string   `json:"name"`
+	To       string   `json:"to,omitempty"`
+	Refs     []string `json:"refs,omitempty"`
+	ClientID string   `json:"clientId,omitempty"`
 }
 
 // FindSummary is the find's line as separate facts: 找到 n 件讲{subject}的,

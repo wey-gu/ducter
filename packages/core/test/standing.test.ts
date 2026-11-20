@@ -209,3 +209,18 @@ async function until(ok: () => unknown, ms = 3000) {
     await new Promise((r) => setTimeout(r, 10));
   }
 }
+
+// D415: a comment on the person's issues is a second action a standing permission can cover.
+test("read (D415): a comment on issues without asking is kept, bounded by the owners named; a hand-over's own note is not one", () => {
+  expect(readStanding("以后在 nowledge-co 的 issue 里留言不用问我")).toEqual([{ kind: "grant", action: "issue_comment", orgs: ["nowledge-co"], quote: "以后在 nowledge-co 的 issue 里留言不用问我" }]);
+  expect(readStanding("Comment on my issues without asking.")[0]).toMatchObject({ kind: "grant", action: "issue_comment" });
+  expect(readStanding("Comment on my issues without asking.")[0]).not.toHaveProperty("orgs");
+  expect(readStanding("在 nowledge-co/mem 的 issue 下直接留言就行")[0]).toMatchObject({ kind: "grant", action: "issue_comment", orgs: ["nowledge-co"] });
+  expect(readStanding("issue 里留言之前先问我")[0]).toMatchObject({ kind: "revoke", action: "issue_comment" });
+  // This once, a question, or the hand-over's note ("留言说一下…" is what to do now, not a standing permission).
+  expect(readStanding("这次直接在 issue 里留言吧")).toEqual([]);
+  expect(readStanding("能直接在 issue 里留言吗？")).toEqual([]);
+  expect(readStanding("确保这些任务都没开始，然后再 issue 里留言说一下 我的 ducter agent 要开始做了")).toEqual([]);
+  // A review is still a review.
+  expect(readStanding("review 做好了直接发别和我确认")[0]).toMatchObject({ action: "pr_review" });
+});

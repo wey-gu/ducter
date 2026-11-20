@@ -2527,17 +2527,31 @@ const tz = () => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
  * the computers again, so it never repeats the same failure.
  */
 export function CantStartView({ task, c }: { task: Task; c: CantStart }) {
-  const fixes = !!c.elsewhere || !!c.cloneHere;
+  const fixes = !!c.elsewhere || !!c.cloneHere || !!c.clearLock;
+  // D415: every why has its words; a place's own fixes keep 再试一次 off (D395), the rest keep it.
+  const placeWhy = c.why === "no_repo" || c.why === "no_folder" || c.why === "clone_failed";
+  const retry = !fixes || !placeWhy;
+  const hint = c.why === "busy" ? t("cant.busy.hint") : c.why === "other" || c.why === "away" ? t("cant.retry.hint") : undefined;
   return (
     <div class="cant">
-      <p class="cant-line">{t(`cant.${c.why}`, c.computer, c.what)}</p>
+      <p class="cant-line">{cantLine(c)}</p>
+      {c.detail && <p class="cant-hint">{c.detail}</p>}
+      {hint && <p class="cant-hint">{hint}</p>}
       <div class="btns">
         {c.elsewhere && <Btn kind="primary" label={t("cant.on", c.elsewhere.name)} about={safe(title(task))} onClick={() => A.cantAction(task.id, "start_at", c.elsewhere!.device)} />}
-        {c.cloneHere && <Btn kind={c.elsewhere ? "secondary" : "primary"} label={t("cant.clone_here")} about={safe(title(task))} onClick={() => A.cantAction(task.id, "clone_here")} />}
-        {!fixes && <Btn kind="primary" label={t("task.action.retry")} about={safe(title(task))} onClick={() => A.cantAction(task.id, "reopen")} />}
+        {c.clearLock && <Btn kind={c.elsewhere ? "secondary" : "primary"} label={t("cant.clear_lock")} about={safe(title(task))} onClick={() => A.cantAction(task.id, "clear_lock")} />}
+        {c.cloneHere && <Btn kind={c.elsewhere || c.clearLock ? "secondary" : "primary"} label={t("cant.clone_here")} about={safe(title(task))} onClick={() => A.cantAction(task.id, "clone_here")} />}
+        {retry && <Btn kind={fixes ? "secondary" : "primary"} label={t("task.action.retry")} about={safe(title(task))} onClick={() => A.cantAction(task.id, "reopen")} />}
       </div>
     </div>
   );
+}
+
+/** D415: the card's line, each why with the words it takes. */
+export function cantLine(c: CantStart): string {
+  if (c.why === "away") return t("cant.away", c.computer);
+  if (c.why === "other") return t("cant.other");
+  return t(`cant.${c.why}`, c.computer, c.what);
 }
 
 /** D322: where it lives and what it thinks with, one line under the name (the Mac's header). The

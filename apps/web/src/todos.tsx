@@ -636,7 +636,31 @@ export function TodoPick(p: { picked?: SourceItemRef; onPick: (it: SourceItem | 
 export function SourceCardBody({ src }: { src: NonNullable<import("@ducter/protocol").Bodies["decision"]["src"]> }) {
   return (
     <div class="src-card">
-      {src.kind !== "where_rule" && src.kind !== "group_review" && src.kind !== "reviews" && <SourceChip src={src.item} states={false} />}
+      {src.kind !== "where_rule" && src.kind !== "group_review" && src.kind !== "reviews" && src.kind !== "hand_comment" && <SourceChip src={src.item} states={false} />}
+      {/* D415: the hand-over's note asked to tell the issues first: each one, then the line as it goes out. */}
+      {src.kind === "hand_comment" && (
+        <>
+          <ul class="src-reviews">
+            {(src.items ?? [{ item: src.item }]).map(({ item }) => (
+              <li key={item.ref} class="src-review">
+                <SourceChip src={item} small states={false} />
+                <span class="grow src-review-title" dir="auto">
+                  {item.title}
+                </span>
+              </li>
+            ))}
+          </ul>
+          {src.text && (
+            <>
+              <small class="muted">{t("todos.card.says")}</small>
+              <blockquote class="src-quote" dir="auto">
+                {src.text}
+              </blockquote>
+            </>
+          )}
+          <small class="muted">{t("ho.comment.then")}</small>
+        </>
+      )}
       {src.kind === "write" && src.text && (
         <>
           <small class="muted">{t("todos.card.says")}</small>

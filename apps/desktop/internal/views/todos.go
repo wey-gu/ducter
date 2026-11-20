@@ -828,6 +828,24 @@ func (a *App) todoAskBody(c *ui.Context, d *store.DecisionState) {
 		})
 		return
 	}
+	if src.Kind == "hand_comment" {
+		// D415: the note asked to tell the issues first: each to-do, then the line that goes on each, whole.
+		ui.Column(c.Key("todo-hc")).Gap(t.S2).Children(func() {
+			ui.Row(c.Key("chips")).Wrap().Gap(t.S2).Children(func() {
+				for _, x := range src.Items {
+					a.todoChip(c, "hc:"+d.DecisionID+":"+x.Item.Ref, x.Item)
+				}
+			})
+			uiText(c, a.L.T("hand.comment.will")).FontSize(t.SM).FontWeight(700).TextColor(t.NeedsYou.Ink)
+			if src.Text != "" {
+				ui.Row(c.Key("quote")).Gap(t.S3).Padding(t.S3, t.S4).Radius(t.RadiusMD).Background(t.Surface.Alpha(0.75)).Children(func() {
+					ui.Box(c).Width(3).Radius(2).AlignSelf(ui.Stretch).Background(t.NeedsYou.Ink.Alpha(0.35)).Shrink(0).AccessHidden(true)
+					uiText(c, src.Text).FontSize(t.MD).LineHeight(a.leading(1.55)).TextColor(t.Ink).Grow(1).MinWidth(0).Selectable()
+				})
+			}
+		})
+		return
+	}
 	if src.Kind == "reviews" {
 		// D394: a review task's round: each drafted review, opened as its PR's pre-read.
 		ui.Column(c.Key("todo-reviews")).Gap(t.S1).Children(func() {

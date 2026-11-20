@@ -1826,6 +1826,14 @@ a {
   color: var(--ink);
   overflow-wrap: anywhere;
 }
+/* D415: the agent's own words, then what the fix does: muted, under the reason. */
+.cant-hint {
+  margin: -4px 0 0;
+  font-size: var(--sm);
+  line-height: 1.5;
+  color: var(--ink-muted);
+  overflow-wrap: anywhere;
+}
 .sec-title {
   margin: 0 2px;
   font-size: var(--t20);
@@ -17100,3 +17108,28 @@ a.pr:hover { box-shadow: inset 0 0 0 1px var(--line-2); }
   .shelf-tile, .app-first { animation: none; }
   .shelf-open, .shelf-open:hover { transition: none; transform: none; }
 }
+
+/* D415: the person's own subjects (分类): theirs sit first with an ink hairline, a quiet + chip makes one,
+   the sheet names one, a subject's own set renames or removes it, a row leaves it. */
+.ho-chip.is-own { background: var(--surface); box-shadow: inset 0 0 0 1.5px var(--ink-soft); }
+.ho-chip.is-own:hover { box-shadow: inset 0 0 0 1.5px var(--ink), 0 2px 0 var(--line-2); }
+.ho-chip.is-new { background: none; box-shadow: inset 0 0 0 1px var(--line-2); color: var(--ink-soft); font-weight: 600; }
+.ho-chip.is-new:hover { background: var(--surface); color: var(--ink); }
+.ho-make { flex: none; display: flex; flex-direction: column; gap: 6px; padding: 6px 28px 10px; }
+.ho-make-f { font-size: var(--t20); font-weight: 700; letter-spacing: -0.2px; }
+.ho-make-hint { color: var(--ink-muted); font-size: var(--sm); line-height: 1.5; }
+.ho-subj-bar { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin: 10px 30px 0; }
+.ho-subj-bar.open { gap: 8px; }
+.ho-subj-bar.open .field { flex: 1 1 180px; min-width: 0; }
+.ho-subj-name { font-weight: 700; color: var(--ink); overflow-wrap: anywhere; }
+.ho-subj-merge { display: flex; flex-wrap: wrap; gap: 6px; flex-basis: 100%; }
+.ho-subj-merge .ho-chip { min-height: 30px; padding: 0 11px; animation: none; }
+.ho-put-link { border: 0; background: none; padding: 4px 2px; font: inherit; font-size: var(--sm); font-weight: 600; color: var(--ink-soft); cursor: pointer; text-decoration: underline; text-decoration-color: var(--line-2); text-underline-offset: 3px; }
+.ho-put-link:hover { color: var(--ink); text-decoration-color: var(--ink-soft); }
+.ho-put-link.quiet { font-weight: 500; color: var(--ink-muted); }
+.ho-put { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 0 12px; border-bottom: 1px solid var(--line-soft); margin-bottom: 10px; }
+.ho-put .field { flex: 1 1 200px; min-width: 0; }
+.ho-take { align-self: flex-end; margin: -6px 0 0; border: 0; background: none; padding: 4px 6px; border-radius: var(--pill); font: inherit; font-size: var(--xs); font-weight: 600; color: var(--ink-muted); cursor: pointer; opacity: 0; transition: opacity 140ms var(--ease), background 140ms var(--ease); }
+.ho-item:hover .ho-take, .ho-take:focus-visible { opacity: 1; }
+.ho-take:hover { background: var(--sunken); color: var(--ink); }
+@media (hover: none) { .ho-take { opacity: 1; } }

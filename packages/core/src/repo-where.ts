@@ -14,7 +14,7 @@
 // A place the caller gave is kept when it is that repository on that computer (it exists, is a
 // git repository, and its origin is the repository); a given path that isn't is replaced.
 import { basename } from "node:path";
-import type { CantStart, Place, RuleView, TaskCard } from "@ducter/protocol";
+import { harnessName, type CantStart, type Place, type RuleView, type TaskCard } from "@ducter/protocol";
 import type { FolderInfo } from "@ducter/protocol/src/folder-info.ts";
 import { remoteKey, type ClonesAnswer } from "@ducter/protocol/src/clones.ts";
 import { originOf, type RepoHint } from "@ducter/protocol/src/repos.ts";
@@ -238,12 +238,20 @@ const LINES = {
     no_repo: "没能开始：{computer} 上没有 {what} 的代码",
     no_folder: "没能开始：{computer} 上没有 {what} 这个文件夹",
     clone_failed: "没能开始：{what} 的代码没能拉到 {computer} 上",
+    busy: "没能开始：{computer} 上 {what} 的仓库一直被另一个 git 占着",
+    agent: "没能开始：{what} 没能在 {computer} 上启动",
+    away: "没能开始：{computer} 连不上了",
+    other: "没能开始：开始的时候出了问题",
     cloning: "{what} 的代码还没在哪台电脑上，我先在 {computer} 上拉一份。",
   },
   en: {
     no_repo: "Couldn't start: {computer} has no copy of {what}",
     no_folder: "Couldn't start: {computer} has no folder {what}",
     clone_failed: "Couldn't start: {what} couldn't be cloned onto {computer}",
+    busy: "Couldn't start: another git kept {what}'s repository busy on {computer}",
+    agent: "Couldn't start: {what} didn't start on {computer}",
+    away: "Couldn't start: {computer} can't be reached",
+    other: "Couldn't start: something went wrong as it started",
     cloning: "{what}'s code isn't on any of your computers yet, so I'm cloning it on {computer} first.",
   },
 } as const;
@@ -321,13 +329,17 @@ export function createPlaces(d: PlacesDeps): PlacesPort {
       const lang = lang2(o?.language ?? d.lang());
       const computer = nameOf(p.device);
       const remote = remoteOfTask(c, o ? [o.title, o.brief] : []);
-      const what = remote ? repoName(remote) : basename(p.path) || p.path;
-      const cant: CantStart = { why: p.why, computer, what, ...(p.path ? { path: p.path } : {}) };
+      // D415: the agent's own name when it is the agent that didn't start; a repository's name for a
+      // lock (the lock's own path is never the card's word); else the repository or the folder.
+      const repoOf = c?.place.kind === "repo" ? basename(c.place.repoPath) : "";
+      const what = p.why === "agent" ? harnessName(c?.harness ?? "") : remote ? repoName(remote) : p.why === "busy" ? repoOf || "this" : basename(p.path) || p.path || repoOf;
+      const cant: CantStart = { why: p.why, computer, what, ...(p.path && p.why !== "busy" ? { path: p.path } : {}) };
+      if (p.why === "busy" && p.path.endsWith(".lock")) cant.clearLock = true;
       if (remote && p.why !== "no_folder") {
         const r = await d.where.resolve({ remote }).catch(() => undefined);
         if (r?.ok && r.how !== "clone" && !isHere(d.computers().find((x) => x.id === r.place.device) ?? ({ id: r.place.device, home: false } as WhereComputer), p.device)) cant.elsewhere = { device: r.place.device, name: r.computer };
         const here = d.computers().find((x) => isHere(x, p.device));
-        if (p.why !== "clone_failed" && here?.online) cant.cloneHere = true;
+        if ((p.why === "no_repo" || p.why === "other") && here?.online) cant.cloneHere = true;
       }
       return { ...cant, line: line(lang, p.why, { computer, what }) };
     },
@@ -338,6 +350,8 @@ export function createPlaces(d: PlacesDeps): PlacesPort {
       const remote = remoteOfTask(c, o ? [o.title, o.brief] : []);
       const dev = c.place.kind === "repo" || c.place.kind === "folder" ? c.place.device || "local" : "local";
       const keep = c.place.kind === "repo" && c.place.baseBranch ? { baseBranch: c.place.baseBranch } : {};
+      // D415: 清掉旧的再试 is 再试一次 in the same place (the runner clears the lock before its first try).
+      if (how.action === "clear_lock") how = { action: "reopen" };
       if (how.action === "clone_here") {
         if (!remote) return { ok: false, message: "Ducter doesn't know which repository this is, so it can't clone it." };
         const here = d.computers().find((x) => isHere(x, dev));

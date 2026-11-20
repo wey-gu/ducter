@@ -146,7 +146,7 @@ export interface TaskSourcesDeps {
   /** Tell a task something in Ducter's words (runner.send(..., "ducter")). */
   tell?: (taskId: string, text: string) => void;
   /** D413: what the person said may go without asking (不用问我的): the review posting it covers. */
-  standing?: { allows(ref: string, o?: { mention?: boolean }): StandingView | undefined; firstUse(id: string): boolean };
+  standing?: { allows(ref: string, o?: { mention?: boolean }): StandingView | undefined; firstUse(id: string): boolean; allowsComment?(ref: string): StandingView | undefined };
   /** Stop a task (Go on "closed there; stop?"). */
   stop?: (taskId: string) => Promise<void>;
   /** Today in the person's zone (the Tasks ✅ date). */
@@ -644,6 +644,7 @@ export function createTaskSources(d: TaskSourcesDeps): TaskSources {
           if (items[0]) api!.bind(taskId, items[0], "you");
         },
         write: (item, op, how) => write(item, op, how),
+        ...(d.standing?.allowsComment ? { commentAllowed: (ref: string) => d.standing!.allowsComment!(ref) } : {}),
         checks: async (prRef) => {
           const s = okSources().find((x) => x.kind === "github");
           const a = s ? adapterOf(s) : undefined;
@@ -702,6 +703,8 @@ export function createTaskSources(d: TaskSourcesDeps): TaskSources {
       return;
     }
     if (src.kind === "where_rule") return handover?.answerRule(card, r);
+    // D415: the note's 先留言再开始: Go comments and starts; the other way starts without.
+    if (src.kind === "hand_comment") return handover?.answerComment(card, r);
     if (src.kind === "group_review") return;
     // D394: a review task's round: Go posts each drafted review once; the task hears what went.
     if (src.kind === "reviews") {

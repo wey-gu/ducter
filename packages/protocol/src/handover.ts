@@ -222,6 +222,8 @@ export interface GroupHandView {
   cap?: number;
   /** Each part's to-dos (taskId → refs), as it opened. */
   parts?: Record<string, string[]>;
+  /** D415: the comment the note asked for went on these first (each part's brief says so). */
+  commented?: { refs: string[]; text: string };
 }
 
 // ---------- review together ----------

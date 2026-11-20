@@ -954,6 +954,10 @@ type CantStart struct {
 	Path      string         `json:"path,omitempty"`
 	Elsewhere *CantElsewhere `json:"elsewhere,omitempty"`
 	CloneHere bool           `json:"cloneHere,omitempty"`
+	// D415: busy: the lock git left can be cleared (清掉旧的再试).
+	ClearLock bool `json:"clearLock,omitempty"`
+	// D415: agent: the agent's own words for why, one line.
+	Detail string `json:"detail,omitempty"`
 }
 
 // CantElsewhere is another computer that has the task's repository.

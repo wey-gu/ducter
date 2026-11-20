@@ -677,7 +677,8 @@ export interface Runner {
   // Optional: resume (or start) a finished/dropped task's session and tell it to carry on.
   reopen?(taskId: string): Promise<{ delivered: Delivery }>;
   /** D395: a task that couldn't start starts in this place instead (its brief and agent stay). */
-  restartAt?(taskId: string, place: Place): Promise<{ ok: boolean; message?: string }>;
+  /** D415: clearLock: 清掉旧的再试, the lock git left there is cleared first (when no git is running). */
+  restartAt?(taskId: string, place: Place, o?: { clearLock?: boolean; then?: { text: string; from: "user" | "partner"; clientId?: string } }): Promise<{ ok: boolean; message?: string }>;
   // Optional: Undo a drop; merge the task branch into its base in the user's checkout; push +
   // open a draft PR (an outside effect). Each resolves with a user-facing message.
   undrop?(taskId: string): Promise<{ ok: boolean; message: string; ref?: string }>;
@@ -772,5 +773,5 @@ export interface PlacesPort {
   /** Why a task couldn't start and the fixes, in the task's language (the runner asks before it marks it failed). */
   cantStart(taskId: string, p: { why: import("./index.ts").CantStart["why"]; path: string; device: string }): Promise<import("./index.ts").CantStart & { line: string }>;
   /** 再试一次 / 在 X 上做 / 拉一份到这里 on a task that couldn't start: the place it starts in now. */
-  replan(taskId: string, how: { action: "reopen" | "start_at" | "clone_here"; device?: string }): Promise<{ ok: true; place: Place } | { ok: false; message: string }>;
+  replan(taskId: string, how: { action: "reopen" | "start_at" | "clone_here" | "clear_lock"; device?: string }): Promise<{ ok: true; place: Place } | { ok: false; message: string }>;
 }

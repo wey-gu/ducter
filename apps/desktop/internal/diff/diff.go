@@ -23,6 +23,9 @@ type Result struct {
 
 func run(ctx context.Context, dir string, args ...string) (string, error) {
 	cmd := exec.CommandContext(ctx, "git", append([]string{"-C", dir}, args...)...)
+	// D415: a read never takes an optional lock (a diff refreshes the index
+	// otherwise): it can't hold index.lock while the task's worktree is made.
+	cmd.Env = append(os.Environ(), "GIT_OPTIONAL_LOCKS=0")
 	var out, errb bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &out, &errb
 	err := cmd.Run()

@@ -5,7 +5,7 @@
 // two columns; a phone: two screens (what, then the note and how). Go makes a group for two or more.
 // Plan first's card (in the conversation and inside its group on On hand) and 一起过目 / Review
 // together live here too. Core decides every default (pile_how); this file only draws and asks.
-import type { FindSaid, FindSummary, FoundItem, GroupHandView, GroupReview, HandHow, HandShape, PileItem, SourcesServerFrame, TaskGroupView, TodoSet } from "@ducter/protocol";
+import type { FindSaid, FindSummary, FoundItem, GroupHandView, GroupReview, HandHow, HandShape, PileItem, SourcesServerFrame, SubjectOp, TaskGroupView, TodoSet } from "@ducter/protocol";
 import { PILE_HAND_DEFAULT } from "@ducter/protocol";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { A } from "./app.ts";
@@ -67,7 +67,17 @@ export const HS: {
   sending: boolean;
   said?: string;
   error?: boolean;
-} = { cid: "", findCid: "", howCid: "", known: new Map(), words: "", browse: false, finding: false, bySubject: false, note: "", notes: {}, noteOpen: new Set(), step: 1, sending: false };
+  /** D415: + 新的分类 / + New subject: the name being made (the ticked ones go in it). */
+  make?: string;
+  /** D415: opened from a subject chip: its bar (rename, remove) and each row's 移出. */
+  door?: "do" | "subject" | "set" | "find" | "make";
+  /** D415: 归到分类… / Put in a subject…, and 改名 / Rename: their open field. */
+  putOpen?: boolean;
+  putName: string;
+  renaming?: boolean;
+  renameTo: string;
+  subjCid: string;
+} = { cid: "", findCid: "", howCid: "", known: new Map(), words: "", browse: false, finding: false, bySubject: false, note: "", notes: {}, noteOpen: new Set(), step: 1, sending: false, putName: "", renameTo: "", subjCid: "" };
 
 let findTimer: ReturnType<typeof setTimeout> | undefined;
 let howTimer: ReturnType<typeof setTimeout> | undefined;
@@ -80,11 +90,11 @@ const SETT = new Map<string, Set<string>>();
  * on the empty words field with its suggestions (one by one stays a link away); a subject chip and a
  * set card open with their words already in the field and their set found, ticked as they came.
  */
-export function openHand(o: { door: "do" | "subject" | "set" | "find"; subject?: string; setId?: string; ticked?: string[]; query?: string; note?: string; doCount?: number }) {
+export function openHand(o: { door: "do" | "subject" | "set" | "find" | "make"; subject?: string; setId?: string; ticked?: string[]; query?: string; note?: string; doCount?: number }) {
   const now = Date.now();
   const words = o.door === "subject" ? o.subject ?? "" : o.door === "set" ? o.query ?? o.subject ?? "" : o.query ?? "";
   const note = o.note?.trim() ?? "";
-  Object.assign(HS, { cid: `hand-${now}`, findCid: "", howCid: "", items: undefined, found: undefined, known: new Map(), words, findWords: undefined, heard: undefined, said: undefined, suggest: undefined, noteAuto: note || undefined, browse: false, doCount: o.doCount, finding: false, subject: o.subject, bySubject: o.door === "subject" || o.door === "set", setId: o.setId, ticked: o.door === "do" || (o.door === "find" && !o.query) ? new Set<string>() : undefined, carried: o.ticked, note, notes: {}, noteOpen: new Set(), how: undefined, shape: undefined, device: undefined, harness: undefined, picking: undefined, step: 1, sending: false, error: false });
+  Object.assign(HS, { cid: `hand-${now}`, findCid: "", howCid: "", items: undefined, found: undefined, known: new Map(), words, findWords: undefined, heard: undefined, said: undefined, suggest: undefined, noteAuto: note || undefined, browse: false, doCount: o.doCount, finding: false, subject: o.subject, bySubject: o.door === "subject" || o.door === "set", setId: o.setId, ticked: o.door === "do" || (o.door === "find" && !o.query) ? new Set<string>() : undefined, carried: o.ticked, note, notes: {}, noteOpen: new Set(), how: undefined, shape: undefined, device: undefined, harness: undefined, picking: undefined, step: 1, sending: false, error: false, door: o.door, make: o.door === "make" ? "" : undefined, putOpen: false, putName: "", renaming: false, renameTo: "", subjCid: "" });
   if (o.door === "subject" || o.door === "set") {
     HS.finding = true;
     A.send({ t: "pile_find", ...(o.subject ? { subject: o.subject } : {}), ...(o.setId ? { setId: o.setId } : {}), clientId: HS.cid });
@@ -119,7 +129,7 @@ function browse(on: boolean) {
 }
 
 /**
- * A link straight to the sheet: #hand?subject=记忆提炼 (a chip's door), #hand?words=… (the words said,
+ * A link straight to the sheet: #hand?subject=记忆提炼 (a chip's door), #hand?make=1&name=…&words=… (D415: + 新的分类), #hand?words=… (the words said,
  * found as typed), #hand?door=do (the empty words field), #hand?browse=1 (one by one); &step=2: its
  * how; &note=…: the note written in, never sent. Opens the sheet once the home answered; nothing is
  * handed over without the person's Go on it. Used by the demo's shots, and by any link that names one.
@@ -129,14 +139,17 @@ function handLink() {
   const q = new URLSearchParams(location.hash.slice("#hand?".length));
   const subject = q.get("subject")?.trim();
   const words = q.get("words")?.trim();
-  if (!subject && !words && !q.get("door") && !q.get("browse")) return;
+  if (!subject && !words && !q.get("door") && !q.get("browse") && !q.get("make")) return;
   const tick = setInterval(() => {
     if (!A?.S?.welcomed) return;
     clearInterval(tick);
     history.replaceState(null, "", location.pathname + location.search);
-    if (subject) openHand({ door: "subject", subject });
+    if (q.get("make")) openHand({ door: "make" });
+    else if (subject) openHand({ door: "subject", subject });
     else openHand({ door: "find", ...(words ? { query: words } : {}) });
     if (q.get("browse")) browse(true);
+    if (q.get("make") && q.get("name")) HS.make = q.get("name")!.slice(0, 40);
+    if (q.get("make") && words) find(words, true);
     const note = q.get("note");
     if (note) HS.note = note.slice(0, 2000);
     if (q.get("step") === "2") HS.step = 2;
@@ -264,8 +277,36 @@ export function onHandFrame(f: SourcesServerFrame): boolean {
     A.changed();
     return true;
   }
+  // D415: a subject the person changed: said in a toast; the sheet follows it.
+  if (f.t === "pile_result" && f.op === "subject" && f.clientId && f.clientId === HS.subjCid) {
+    HS.sending = false;
+    if (!f.ok) return (HS.said = f.error ?? t("newtask.err.failed")), A.changed(), true;
+    const what = subjAsk;
+    subjAsk = undefined;
+    if (what?.op === "remove") {
+      closeHand();
+      A.toast(t("ho.subject.removed", what.name), undefined, 3600);
+      return true;
+    }
+    if (what?.op === "take") {
+      for (const r of what.refs ?? []) HS.ticked?.delete(r);
+      HS.items = HS.items?.filter((p) => !what.refs?.includes(p.item.ref));
+      A.toast(t("ho.subject.taken", what.name), undefined, 2600);
+      return A.changed(), true;
+    }
+    const now = f.name ?? what?.name ?? "";
+    A.toast(what?.op === "rename" ? t("ho.subject.renamed", now) : t("ho.put.done", now, f.done ?? 0), undefined, 3200);
+    // The sheet becomes that subject's set: hand it over now, or just close it.
+    openHand({ door: "subject", subject: now });
+    return true;
+  }
   if (f.t === "pile_result" && f.clientId && f.clientId === HS.cid && f.op === "hand") {
     HS.sending = false;
+    if (f.ok && f.asked) {
+      closeHand();
+      A.toast(t("ho.handed.asked"), undefined, 4200);
+      return true;
+    }
     if (f.ok) {
       const plan = HS.how && (HS.shape ?? suggestedShape(HS.how)) === "plan" && ticked().size > 1;
       closeHand();
@@ -301,8 +342,23 @@ export function onHandFrame(f: SourcesServerFrame): boolean {
   return false;
 }
 
+/** D415: what the last subject change asked (its toast and what follows). */
+let subjAsk: { op: SubjectOp; name: string; refs?: string[] } | undefined;
+/** D415: the person's own subjects: put, take out, rename (into one that exists: merged), remove. */
+function subjectDo(op: SubjectOp, name: string, o: { refs?: string[]; to?: string } = {}) {
+  if (!name.trim() || HS.sending) return;
+  HS.subjCid = `subj-${Date.now()}`;
+  HS.sending = true;
+  HS.said = undefined;
+  subjAsk = { op, name: name.trim(), ...(o.refs ? { refs: o.refs } : {}) };
+  A.send({ t: "pile_subject", op, name: name.trim(), ...(o.to ? { to: o.to.trim() } : {}), ...(o.refs ? { refs: o.refs } : {}), clientId: HS.subjCid });
+  A.changed();
+}
+const ownSubjects = () => (TS.frame?.pile?.subjects ?? []).map((s) => s.name);
+
 function go() {
   const refs = [...ticked()];
+  if (HS.make !== undefined) return subjectDo("put", HS.make, { refs });
   if (!refs.length || HS.sending) return;
   const how = HS.how;
   const shape = HS.shape ?? suggestedShape(how);
@@ -396,6 +452,12 @@ function ItemRow({ p, i }: { p: FoundItem; i: number }) {
           </span>
         </span>
       </label>
+      {/* D415: in a subject's own set, a to-do can leave the subject (not the pile). */}
+      {HS.door === "subject" && HS.subject && p.subject && (
+        <button class="ho-take" aria-label={t("ho.subject.take.label", p.item.title, HS.subject)} onClick={() => subjectDo("take", HS.subject!, { refs: [p.item.ref] })}>
+          {t("ho.subject.take")}
+        </button>
+      )}
       {on &&
         (noteOpen ? (
           <textarea
@@ -559,7 +621,9 @@ function What() {
     );
   return (
     <div class="ho-left">
+      {HS.make !== undefined && <MakeName />}
       {ask}
+      {HS.door === "subject" && HS.subject && HS.make === undefined && <SubjectBar />}
       {!said && !HS.setId && !HS.subject ? (
         <div class="ho-start">
           <p class="ho-hint">{t("ho.ask.hint")}</p>
@@ -714,6 +778,12 @@ function GoButton({ wide }: { wide?: boolean }) {
   const n = ticked().size;
   const how = HS.how;
   const shape = HS.shape ?? suggestedShape(how);
+  if (HS.make !== undefined)
+    return (
+      <div class="ho-go">
+        <Btn kind="primary" grow={wide} label={HS.make.trim() ? t("ho.make.go", HS.make.trim()) : t("ho.make.title")} disabled={!n || !HS.make.trim() || HS.sending} onClick={go} />
+      </div>
+    );
   return (
     <div class="ho-go">
       <Btn kind="primary" grow={wide} label={n > 1 ? t("ho.go", name(), n) : n === 1 ? t("ho.go.one", name()) : t("ho.title", name())} disabled={!n || HS.sending} onClick={go} />
@@ -753,7 +823,7 @@ export function HandSheet() {
       }
     }
   };
-  const title = t("ho.title", name());
+  const title = HS.make !== undefined ? t("ho.make.title") : t("ho.title", name());
   return (
     <>
       <div class="scrim" onClick={closeHand} />
@@ -785,10 +855,16 @@ export function HandSheet() {
         )}
         <div class="ho-foot">
           {HS.said && <p class="small tone-bad">{HS.said}</p>}
+          {HS.putOpen && <PutIn />}
           <div class="ho-foot-row">
             <span class="ho-count" aria-live="polite">
               {n ? t("ho.picked", n) : t("ho.picked.none")}
             </span>
+            {n > 0 && HS.make === undefined && !HS.putOpen && (
+              <button class="ho-put-link" onClick={() => ((HS.putOpen = true), (HS.putName = ""), A.changed(), setTimeout(() => document.getElementById("ho-put")?.focus(), 30))}>
+                {t("ho.put")}
+              </button>
+            )}
             {thin && HS.step === 1 ? <Btn kind="primary" label={t("ho.next")} disabled={!n} onClick={() => ((HS.step = 2), A.changed())} /> : <GoButton wide={!thin} />}
           </div>
         </div>
@@ -799,12 +875,12 @@ export function HandSheet() {
 
 // ---------- 讲的是 / Subjects on the pile ----------
 
-export function SubjectChips({ subjects, more }: { subjects: { name: string; n: number }[]; more?: number }) {
+export function SubjectChips({ subjects, more }: { subjects: { name: string; n: number; own?: boolean }[]; more?: number }) {
   return (
     <div class="ho-subjects" role="group" aria-label={t("ho.subjects")}>
       <small>{t("ho.subjects")}</small>
       {subjects.map((s, i) => (
-        <button key={s.name} class="ho-chip" style={{ "--i": i } as never} aria-label={t("ho.subject.open", s.name, s.n)} onClick={() => openHand({ door: "subject", subject: s.name })}>
+        <button key={s.name} class={`ho-chip${s.own ? " is-own" : ""}`} style={{ "--i": i } as never} aria-label={s.own ? t("ho.subject.open.own", s.name, s.n) : t("ho.subject.open", s.name, s.n)} onClick={() => openHand({ door: "subject", subject: s.name })}>
           <b>{s.name}</b>
           <span class="n">{A.L.num(s.n)}</span>
         </button>
@@ -814,6 +890,113 @@ export function SubjectChips({ subjects, more }: { subjects: { name: string; n: 
           <span class="n">{t("ho.subjects.more", more)}</span>
         </button>
       ) : null}
+      {/* D415: a subject of the person's own, made on the sheet: name it, find or pick, put the ticked ones in. */}
+      <button class="ho-chip is-new" style={{ "--i": subjects.length } as never} onClick={() => openHand({ door: "make" })}>
+        <span>{t("ho.subject.new")}</span>
+      </button>
+    </div>
+  );
+}
+
+/** D415: + 新的分类: its name, over the words field that finds what goes in it. */
+function MakeName() {
+  return (
+    <div class="ho-make">
+      <label class="ho-say-h" for="ho-make">
+        {t("ho.make.name")}
+      </label>
+      <input
+        id="ho-make"
+        class="field ho-make-f"
+        value={HS.make}
+        maxLength={40}
+        placeholder={t("ho.make.ph")}
+        autoComplete="off"
+        ref={(el) => void (el && !HS.make && document.activeElement?.id !== "ho-words" && document.activeElement !== el && setTimeout(() => el.focus({ preventScroll: true }), 40))}
+        onInput={(e) => ((HS.make = (e.target as HTMLInputElement).value), A.changed())}
+      />
+      <small class="ho-make-hint">{t("ho.make.hint")}</small>
+    </div>
+  );
+}
+
+/** D415: a subject's own set: 改名 (into an existing one merges), 去掉这个分类. */
+function SubjectBar() {
+  const s = HS.subject!;
+  const others = ownSubjects().filter((x) => x !== s).slice(0, 6);
+  if (HS.renaming)
+    return (
+      <div class="ho-subj-bar open" role="group" aria-label={t("ho.subject.rename")}>
+        <input
+          id="ho-rename"
+          class="field"
+          value={HS.renameTo}
+          maxLength={40}
+          aria-label={t("ho.subject.rename")}
+          onInput={(e) => ((HS.renameTo = (e.target as HTMLInputElement).value), A.changed())}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") e.preventDefault(), HS.renameTo.trim() && subjectDo("rename", s, { to: HS.renameTo });
+            if (e.key === "Escape") e.stopPropagation(), (HS.renaming = false), A.changed();
+          }}
+        />
+        <Btn kind="primary" size="sm" label={t("ho.subject.rename.go")} disabled={!HS.renameTo.trim() || HS.renameTo.trim() === s} onClick={() => subjectDo("rename", s, { to: HS.renameTo })} />
+        <Btn kind="text" size="sm" label={t("ho.cancel")} onClick={() => ((HS.renaming = false), A.changed())} />
+        {others.length > 0 && (
+          <div class="ho-subj-merge">
+            {others.map((o) => (
+              <button key={o} class="ho-chip" onClick={() => subjectDo("rename", s, { to: o })}>
+                <span>{t("ho.subject.merge", o)}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  return (
+    <div class="ho-subj-bar" role="group" aria-label={t("ho.subject.this", s)}>
+      <span class="ho-subj-name" dir="auto">
+        {s}
+      </span>
+      <button class="ho-put-link" onClick={() => ((HS.renaming = true), (HS.renameTo = s), A.changed(), setTimeout(() => (document.getElementById("ho-rename") as HTMLInputElement | null)?.select(), 30))}>
+        {t("ho.subject.rename")}
+      </button>
+      <button class="ho-put-link quiet" onClick={() => subjectDo("remove", s)}>
+        {t("ho.subject.remove")}
+      </button>
+    </div>
+  );
+}
+
+/** D415: 归到分类… / Put in a subject…: a name (new or one already there) for the ticked ones. */
+function PutIn() {
+  const names = ownSubjects().slice(0, 8);
+  const refs = [...ticked()];
+  return (
+    <div class="ho-put" role="group" aria-label={t("ho.put")}>
+      <input
+        id="ho-put"
+        class="field"
+        value={HS.putName}
+        maxLength={40}
+        placeholder={t("ho.put.ph")}
+        aria-label={t("ho.put.ph")}
+        onInput={(e) => ((HS.putName = (e.target as HTMLInputElement).value), A.changed())}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") e.preventDefault(), HS.putName.trim() && subjectDo("put", HS.putName, { refs });
+          if (e.key === "Escape") e.stopPropagation(), (HS.putOpen = false), A.changed();
+        }}
+      />
+      <Btn kind="primary" size="sm" label={t("ho.put.go", refs.length)} disabled={!HS.putName.trim() || !refs.length} onClick={() => subjectDo("put", HS.putName, { refs })} />
+      <Btn kind="text" size="sm" label={t("ho.cancel")} onClick={() => ((HS.putOpen = false), A.changed())} />
+      {names.length > 0 && (
+        <div class="ho-subj-merge">
+          {names.map((o) => (
+            <button key={o} class="ho-chip" onClick={() => subjectDo("put", o, { refs })}>
+              <b dir="auto">{o}</b>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

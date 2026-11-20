@@ -437,24 +437,66 @@ func (a *App) outcome(c *ui.Context, task *store.Task) {
 // instead of repeating.
 func (a *App) cantStart(c *ui.Context, task *store.Task, k *protocol.CantStart) {
 	t := a.T
-	uiText(c.Key("cant-line"), a.L.T("cant."+k.Why, k.Computer, k.What)).FontSize(t.MD).LineHeight(1.5).TextColor(t.Ink).MaxWidth(readMeasure)
+	uiText(c.Key("cant-line"), a.cantLine(k)).FontSize(t.MD).LineHeight(1.5).TextColor(t.Ink).MaxWidth(readMeasure)
+	// D415: the agent's own words, then what the fix does, muted under the reason.
+	if k.Detail != "" {
+		uiText(c.Key("cant-detail"), k.Detail).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkMuted).MaxWidth(readMeasure)
+	}
+	hint := ""
+	switch k.Why {
+	case "busy":
+		hint = a.L.T("cant.busy.hint")
+	case "other", "away":
+		hint = a.L.T("cant.retry.hint")
+	}
+	if hint != "" {
+		uiText(c.Key("cant-hint"), hint).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkMuted).MaxWidth(readMeasure)
+	}
+	fixes := k.Elsewhere != nil || k.CloneHere || k.ClearLock
+	placeWhy := k.Why == "no_repo" || k.Why == "no_folder" || k.Why == "clone_failed"
 	ui.Row(c.Key("cant-btns")).Gap(t.S3).Wrap().AlignItems(ui.Center).Padding(t.S2, 0, 0, 0).Children(func() {
 		if k.Elsewhere != nil && a.buttonFor(c, a.L.T("cant.on", k.Elsewhere.Name), task.Title(), btnPrimary, t.ControlMD, t.Bg) {
 			a.CantAction(task.ID, "start_at", k.Elsewhere.Device)
 		}
-		if k.CloneHere {
+		if k.ClearLock {
 			kind := btnPrimary
 			if k.Elsewhere != nil {
+				kind = btnSecondary
+			}
+			if a.buttonFor(c, a.L.T("cant.clear_lock"), task.Title(), kind, t.ControlMD, t.Bg) {
+				a.CantAction(task.ID, "clear_lock", "")
+			}
+		}
+		if k.CloneHere {
+			kind := btnPrimary
+			if k.Elsewhere != nil || k.ClearLock {
 				kind = btnSecondary
 			}
 			if a.buttonFor(c, a.L.T("cant.clone_here"), task.Title(), kind, t.ControlMD, t.Bg) {
 				a.CantAction(task.ID, "clone_here", "")
 			}
 		}
-		if k.Elsewhere == nil && !k.CloneHere && a.buttonFor(c, a.L.T("task.action.retry"), task.Title(), btnPrimary, t.ControlMD, t.Bg) {
-			a.CantAction(task.ID, "reopen", "")
+		if !fixes || !placeWhy {
+			kind := btnPrimary
+			if fixes {
+				kind = btnSecondary
+			}
+			if a.buttonFor(c, a.L.T("task.action.retry"), task.Title(), kind, t.ControlMD, t.Bg) {
+				a.CantAction(task.ID, "reopen", "")
+			}
 		}
 	})
+}
+
+// cantLine (D415) is the card's line, each why with the words it takes.
+func (a *App) cantLine(k *protocol.CantStart) string {
+	switch k.Why {
+	case "away":
+		return a.L.T("cant.away", k.Computer)
+	case "other":
+		return a.L.T("cant.other")
+	}
+	return a.L.T("cant."+k.Why, k.Computer, k.What)
 }
 
 // decisionAnswered is an ask already answered: one quiet line.
@@ -762,6 +804,11 @@ func (a *App) refreshDiff(id string) {
 	// A remote Ducter's worktree path is on the server: never run git on that
 	// path here (it may name some other repo on this Mac, chosen by a model).
 	if p.Kind != "repo" || p.Worktree == "" || !a.onThisMachine() {
+		return
+	}
+	// D415: its worktree is still being made: nothing to read yet, and a git
+	// there now would race the one making it (hel, 2026-11-20: index.lock).
+	if task.Residency() == protocol.Provisioning {
 		return
 	}
 	pane := a.diffs[id]

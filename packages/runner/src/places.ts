@@ -5,7 +5,7 @@
 //   folder -> the folder as given
 //   none   -> scratch dir <dataDir>/scratch/<taskId>
 //   browser-> scratch dir too; the browser is a cua-driver MCP sidecar (browser.ts)
-import { mkdirSync, existsSync, readdirSync, realpathSync } from "node:fs";
+import { mkdirSync, existsSync, readdirSync, realpathSync, rmdirSync, statSync, unlinkSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, join, resolve } from "node:path";
 import type { Place } from "@ducter/protocol";
@@ -54,7 +54,9 @@ export function slugify(title: string, max = 40): string {
 
 export async function git(cwd: string, args: string[]): Promise<{ ok: boolean; out: string; err: string }> {
   // D102: git in the user's repo gets the basics and its own GIT_* settings, never Ducter's keys.
-  const p = Bun.spawn(["git", "-C", cwd, ...args], { env: gitEnv(), stdout: "pipe", stderr: "pipe", stdin: "ignore" });
+  // D415: and never an optional lock: Ducter's own reads (a status, a diff) don't refresh the
+  // index, so they can't hold index.lock while a worktree is being made (hel, 2026-11-20).
+  const p = Bun.spawn(["git", "-C", cwd, ...args], { env: { ...gitEnv(), GIT_OPTIONAL_LOCKS: "0" }, stdout: "pipe", stderr: "pipe", stdin: "ignore" });
   const [out, err, code] = await Promise.all([new Response(p.stdout).text(), new Response(p.stderr).text(), p.exited]);
   return { ok: code === 0, out: out.trim(), err: err.trim() };
 }
@@ -68,27 +70,48 @@ export interface ResolvedPlace {
   folder?: string;
   /** D395: the repository is cloned into repoPath first (no computer had it). */
   clone?: { address: string; dataDir: string };
+  /** D415: 清掉旧的再试 / Clear it and try again: a lock git left is removed when no git is running. */
+  clearLock?: boolean;
 }
 
 /**
  * D395: a start that failed because of its place, read from its message (a worker's error comes
  * back as its words alone): no repository there, no folder, or a clone that failed.
  */
-export function placeProblem(message: string): { why: "no_repo" | "no_folder" | "clone_failed"; path: string } | undefined {
+export function placeProblem(message: string): { why: PlaceWhy; path: string } | undefined {
   const m = /^(?:Error: )?not a git repository: (.+)$/m.exec(message);
   if (m) return { why: "no_repo", path: m[1]!.trim() };
   const f = /^(?:Error: )?folder does not exist: (.+)$/m.exec(message);
   if (f) return { why: "no_folder", path: f[1]!.trim() };
   const c = /^(?:Error: )?couldn't clone ([^\s:]+)/m.exec(message) ?? /^(?:Error: )?cloned (\S+) into/m.exec(message);
   if (c) return { why: "clone_failed", path: c[1]!.trim() };
+  // D415: git said another git holds the repository (a lock file it found there).
+  const l = /Unable to create '([^']+\.lock)': File exists/.exec(message) ?? /^(?:Error: )?the repository is busy: (.+)$/m.exec(message);
+  if (l) return { why: "busy", path: l[1]!.trim() };
   return undefined;
+}
+
+export type PlaceWhy = "no_repo" | "no_folder" | "clone_failed" | "busy";
+export type StartWhy = PlaceWhy | "agent" | "away" | "other";
+
+/**
+ * D415: every start failure, read into a word the card can say: its place (above), the agent that
+ * couldn't start (its program, a sign-in, its session), its computer gone away, or something else
+ * (said plainly, with 再试一次). The card never shows a bare git or stack message.
+ */
+export function startProblem(message: string): { why: StartWhy; path: string } {
+  const p = placeProblem(message);
+  if (p) return p;
+  if (/can't be reached|is offline|not connected|went away|disconnected/i.test(message)) return { why: "away", path: "" };
+  if (/session|harness|not installed|command not found|ENOENT|spawn|signed? in|log ?in|auth|api key|quota|rate.?limit/i.test(message)) return { why: "agent", path: "" };
+  return { why: "other", path: "" };
 }
 
 /** D395: a place that can't be used as it is: the reason in a word, for the task's card. */
 export class PlaceError extends Error {
   override name = "PlaceError";
   constructor(
-    readonly why: "no_repo" | "no_folder" | "clone_failed",
+    readonly why: PlaceWhy,
     readonly path: string,
     message: string,
   ) {
@@ -127,18 +150,17 @@ export async function planPlace(place: Place | undefined, taskId: string, title:
         if (isDucterData(wt, dataDir)) throw new DucterDataError(wt);
         return { place: { ...p, repoPath, worktree: wt, ...hasRemote }, cwd: wt };
       }
-      let branch = p.branch ?? `ducter/${slugify(title)}`;
-      if (!p.branch && existsSync(repoPath)) {
-        const taken = await git(repoPath, ["rev-parse", "--verify", "--quiet", `refs/heads/${branch}`]);
-        if (taken.ok) branch = `${branch}-${taskId}`;
-      }
-      const folder = ducterFolder({ dataDir }).path;
-      const worktree = worktreeFor(dataDir, repoPath, branch, folder);
       let baseBranch = p.baseBranch;
       if (!baseBranch && existsSync(repoPath)) {
         const head = await git(repoPath, ["rev-parse", "--abbrev-ref", "HEAD"]);
         baseBranch = head.ok && head.out !== "HEAD" ? head.out : undefined;
       }
+      // D415: a name already there is used again only when it carries nothing (a start that failed).
+      const want = p.branch ?? `ducter/${slugify(title)}`;
+      const branch = existsSync(repoPath) ? await freeBranch(repoPath, want, baseBranch) : want;
+      void taskId;
+      const folder = ducterFolder({ dataDir }).path;
+      const worktree = worktreeFor(dataDir, repoPath, branch, folder);
       return { place: { ...p, repoPath, worktree, branch, baseBranch, ...hasRemote }, cwd: worktree, folder, ...(p.clone && !existsSync(repoPath) ? { clone: { address: p.clone, dataDir } } : {}) };
     }
     case "browser":
@@ -146,6 +168,29 @@ export async function planPlace(place: Place | undefined, taskId: string, title:
       return { place: { ...p, device: p.device || "local", profile: p.profile || "default" }, cwd: join(dataDir, "scratch", taskId) };
   }
 }
+
+/**
+ * D415: the branch a new task gets. Free: used as is. Already there but carrying nothing (no commit
+ * past its base, checked out nowhere: what a start that failed left behind): used again. Taken
+ * (checked out in a worktree, or with work on it): the next free `-2`, `-3`, never someone else's.
+ */
+export async function freeBranch(repoPath: string, want: string, base?: string): Promise<string> {
+  const list = await git(repoPath, ["worktree", "list", "--porcelain"]);
+  const out = new Set(list.ok ? [...list.out.matchAll(/^branch refs\/heads\/(.+)$/gm)].map((m) => m[1]!) : []);
+  const usable = async (b: string) => {
+    if (out.has(b) || plannedBranches.has(`${repoPath}|${b}`)) return false;
+    if (!(await git(repoPath, ["rev-parse", "--verify", "--quiet", `refs/heads/${b}`])).ok) return true;
+    const ahead = await git(repoPath, ["rev-list", "--count", `${base ?? "HEAD"}..refs/heads/${b}`]);
+    return ahead.ok && ahead.out === "0";
+  };
+  let name = want;
+  for (let n = 2; !(await usable(name)) && n < 100; n++) name = `${want}-${n}`;
+  plannedBranches.add(`${repoPath}|${name}`);
+  if (plannedBranches.size > 256) plannedBranches.delete(plannedBranches.values().next().value!);
+  return name;
+}
+/** Branches planned in this process and not made yet: two tasks planned at once never share one. */
+const plannedBranches = new Set<string>();
 
 /** Paths planned in this process and not yet on disk: two tasks planned at once never share one. */
 const planned = new Set<string>();
@@ -227,12 +272,74 @@ export async function provisionPlace(r: ResolvedPlace): Promise<void> {
       const got = await git(p.repoPath, ["fetch", "origin", `${p.branch}:${p.branch}`]);
       if (!got.ok && !(await git(p.repoPath, ["rev-parse", "--verify", "--quiet", `refs/heads/${p.branch}`])).ok) throw new Error(`couldn't fetch ${p.branch} from origin: ${got.err.split("\n")[0]}`);
     }
-    const branchExists = p.branch ? (await git(p.repoPath, ["rev-parse", "--verify", "--quiet", `refs/heads/${p.branch}`])).ok : false;
-    const args = branchExists
-      ? ["worktree", "add", r.cwd, p.branch!]
-      : ["worktree", "add", r.cwd, "-b", p.branch!, p.baseBranch ?? "HEAD"];
-    const res = await git(p.repoPath, args);
-    if (!res.ok) throw new Error(`git worktree add failed: ${res.err}`);
+    // D415: a lock another git holds for a moment (an editor's status, a reader of the new
+    // worktree) is waited out; one a dead git left is cleared when no git is running; only a lock
+    // that stays is the card's 仓库正忙 / The repository is busy, with 清掉旧的再试.
+    let last = "";
+    for (let attempt = 0; attempt < LOCK_TRIES; attempt++) {
+      const branchExists = p.branch ? (await git(p.repoPath, ["rev-parse", "--verify", "--quiet", `refs/heads/${p.branch}`])).ok : false;
+      const args = branchExists ? ["worktree", "add", r.cwd, p.branch!] : ["worktree", "add", r.cwd, "-b", p.branch!, p.baseBranch ?? "HEAD"];
+      const res = await git(p.repoPath, args);
+      // The branch is on disk now (or the add failed for good): git says from here whether it is taken.
+      plannedBranches.delete(`${p.repoPath}|${p.branch}`);
+      if (res.ok) return;
+      last = res.err;
+      const lock = lockIn(res.err);
+      if (!lock) throw new Error(`git worktree add failed: ${res.err}`);
+      // What the failed add left of Ducter's own: an empty folder (git removes its own record). The
+      // person's other worktree records are theirs: never pruned from here.
+      try {
+        if (existsSync(r.cwd) && !existsSync(join(r.cwd, ".git")) && readdirSync(r.cwd).length === 0) rmdirSync(r.cwd);
+      } catch {}
+      const cleared = await clearStaleLock(lock, { force: !!r.clearLock });
+      if (attempt < LOCK_TRIES - 1) await Bun.sleep(cleared ? 50 : LOCK_WAIT_MS * (attempt + 1));
+    }
+    const lock = lockIn(last) ?? p.repoPath;
+    throw new PlaceError("busy", lock, `the repository is busy: ${lock}`);
+  }
+}
+
+const lockIn = (err: string) => /Unable to create '([^']+\.lock)': File exists/.exec(err)?.[1];
+
+/** D415: how many times a worktree add meets a lock before the card says the repository is busy. */
+export const LOCK_TRIES = 4;
+export const LOCK_WAIT_MS = 400;
+/** A lock older than this, with no git running, was left by a git that died: cleared by itself. */
+export const STALE_LOCK_MS = 10 * 60_000;
+
+/** Is a git running on this computer now (whatever lock it holds is never cleared)? */
+export async function gitRunning(): Promise<boolean> {
+  try {
+    const p = Bun.spawn(["pgrep", "-x", "git"], { stdout: "pipe", stderr: "ignore", stdin: "ignore" });
+    const [out, code] = await Promise.all([new Response(p.stdout).text(), p.exited]);
+    if (code > 1) return true; // pgrep itself failed: assume one is, and never clear
+    return out.trim().length > 0;
+  } catch {
+    return true;
+  }
+}
+
+/**
+ * D415: clear a lock git left, only when it is safe: a `.lock` file inside a repository's git folder,
+ * no git running on this computer, and either old (STALE_LOCK_MS: its git died long ago) or the
+ * person tapped 清掉旧的再试 (`force`). Only that file, never while a git could be holding it.
+ * True when it was cleared (or is gone already).
+ */
+export async function clearStaleLock(lock: string, o: { force?: boolean; now?: number; running?: () => Promise<boolean> } = {}): Promise<boolean> {
+  if (!lock.endsWith(".lock") || !/\/\.git\//.test(lock)) return false;
+  let at: number;
+  try {
+    at = statSync(lock).mtimeMs;
+  } catch {
+    return true; // gone already: the next try goes ahead
+  }
+  if (!o.force && (o.now ?? Date.now()) - at < STALE_LOCK_MS) return false;
+  if (await (o.running ?? gitRunning)()) return false;
+  try {
+    unlinkSync(lock);
+    return true;
+  } catch {
+    return false;
   }
 }
 

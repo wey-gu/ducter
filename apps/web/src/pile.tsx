@@ -204,7 +204,7 @@ export function PileBlock({ pile }: { pile: PileView }) {
         </div>
       </div>
       {/* D385: 讲的是 / Subjects: what the open ones are about, each a way into the hand-over sheet. */}
-      {!pile.sorting && pile.subjects?.length ? <SubjectChips subjects={pile.subjects} more={pile.subjectsMore} /> : null}
+      {!pile.sorting && (pile.subjects?.length || pile.read) ? <SubjectChips subjects={pile.subjects ?? []} more={pile.subjectsMore} /> : null}
       {pile.sorting ? (
         <div class="pile-sorting" role="status">
           <span class="pile-sorting-line">{t("pile.sorting")}</span>

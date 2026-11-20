@@ -453,3 +453,116 @@ test("D395: no computer has it: the sheet's Where says it is cloned on the compu
   await b.ho.hand({ refs: ["acme/mem#398"] });
   expect(b.opened[0]!.place).toMatchObject({ kind: "repo", device: "w-mac", clone: "acme/mem" });
 });
+
+// ---------- D415: the author on 0.0.99 ("github task-aware 的 flow 就走不下去", "分类只能是自动分类？") ----------
+
+test("D415: as one task: titled by its own to-dos (the first, and how many more), the group carries the subject; its branch names the issues", async () => {
+  const b = boot();
+  await sorted(b);
+  const r = await b.ho.hand({ refs: ["acme/mem#398", "acme/mem#412"], shape: "one", subject: "通用设置", bySubject: true });
+  expect(r.ok).toBe(true);
+  expect(b.opened[0]!.title).toBe("Automatic distillation: the error says nothing… 等 1 件");
+  expect(b.opened[0]!.title).not.toContain("通用设置");
+  expect(b.opened[0]!.place).toMatchObject({ kind: "repo", branch: "ducter/398-412-automatic-distillation-the-error" });
+  const g = b.core.taskGroups.get(r.groupId!)!;
+  expect(g.name).toBe("通用设置");
+  expect(g.hand!.subject).toBe("通用设置");
+  // One to-do: its own title and its own number on the branch.
+  await b.ho.hand({ refs: ["acme/mem#377"] });
+  expect(b.opened[1]!).toMatchObject({ title: "Distillation gets slow on very long threads", place: { branch: "ducter/377-distillation-gets-slow-on-very-l" } });
+});
+
+const NOTE = "确保这些任务都没开始，然后再 issue 里留言说一下 我的 ducter agent 要开始做了";
+
+test("D415: a note that asks to comment first: one card, nothing starts; Go comments on each, then starts, and the brief says it went", async () => {
+  const b = boot();
+  await sorted(b);
+  const r = await b.ho.hand({ refs: ["acme/mem#398", "acme/mem#412"], shape: "one", note: NOTE });
+  expect(r).toMatchObject({ ok: true, handed: 0 });
+  expect(r.asked).toBeTruthy();
+  expect(b.opened.length).toBe(0);
+  const card = decisions(b).find((d) => d.decisionId === r.asked)!;
+  expect(card).toMatchObject({ question: "先在这 2 件下留一句，再开始？", goLabel: "留言并开始", holdLabel: "只开始，不留言", src: { kind: "hand_comment", text: "我的 ducter agent 要开始做了" } });
+  expect(card.src!.items!.map((x) => x.item.ref)).toEqual(["acme/mem#398", "acme/mem#412"]);
+  // Held while it asks: not on the pile to be handed twice.
+  expect(b.ts.pile.all().some((p) => p.item.ref === "acme/mem#398")).toBe(false);
+  b.core.log.append({ stream: "channel", origin: "user", kind: "decision_resolved", body: { decisionId: r.asked!, option: "go", by: "user" } });
+  await until(() => b.opened.length === 1);
+  expect(b.gh.comments.map((c) => c.number)).toEqual([398, 412]);
+  for (const c of b.gh.comments) expect(c.body.startsWith("我的 ducter agent 要开始做了")).toBe(true);
+  expect(b.opened[0]!.brief).toContain('Ducter already left the comment the person\'s note asked for, on acme/mem#398, acme/mem#412: "我的 ducter agent 要开始做了". Don\'t comment again.');
+  const said = b.core.log.read({ stream: "channel", kinds: ["ai_msg"], limit: 20 }).map((e) => (e.body as Bodies["ai_msg"]).text);
+  expect(said.at(-1)).toBe("按你说的，先在 #398、#412 下留了言：「我的 ducter agent 要开始做了」，然后开始做。");
+  const writes = b.core.log.read({ stream: "channel", kinds: ["source_write"], limit: 20 }).map((e) => e.body as Bodies["source_write"]);
+  expect(writes.map((w) => [w.op, w.by, w.decisionId])).toEqual([["comment", "go", r.asked], ["comment", "go", r.asked]]);
+});
+
+test("D415: 只开始，不留言 starts without a comment; inside a standing permission (D413) the comment goes without a card", async () => {
+  const b = boot();
+  await sorted(b);
+  const r = await b.ho.hand({ refs: ["acme/mem#398"], note: "先在 issue 里留言说一声再开始" });
+  expect(decisions(b).find((d) => d.decisionId === r.asked)!.question).toBe("先在 acme/mem#398 下留一句，再开始？");
+  b.core.log.append({ stream: "channel", origin: "user", kind: "decision_resolved", body: { decisionId: r.asked!, option: "hold", by: "user" } });
+  await until(() => b.opened.length === 1);
+  expect(b.gh.comments.length).toBe(0);
+  expect(b.opened[0]!.brief).not.toContain("already left the comment");
+  // "在 acme 的 issue 里留言不用问我": kept at once; the next such note comments without asking.
+  b.core.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: "以后在 acme 的 issue 里留言不用问我，直接发" } });
+  await until(() => b.core.standing.list().some((s) => s.action === "issue_comment"));
+  expect(b.core.standing.list().find((s) => s.action === "issue_comment")!.orgs).toEqual(["acme"]);
+  const n = decisions(b).length;
+  const r2 = await b.ho.hand({ refs: ["acme/mem#377"], note: "comment on the issue first saying my agent is on it" });
+  expect(r2).toMatchObject({ ok: true, handed: 1 });
+  expect(decisions(b).length).toBe(n);
+  expect(b.gh.comments.map((c) => c.number)).toEqual([377]);
+  expect(b.gh.comments[0]!.body.startsWith("my agent is on it")).toBe(true);
+  const w = b.core.log.read({ stream: "channel", kinds: ["source_write"], limit: 20 }).map((e) => e.body as Bodies["source_write"]).at(-1)!;
+  expect(w).toMatchObject({ op: "comment", by: "rule", standing: expect.any(String) });
+});
+
+test("D415: own subjects: put, find by membership, take out, rename, merge, remove; a re-sort never undoes them", async () => {
+  const b = boot();
+  await sorted(b);
+  const pile = b.ts.pile;
+  // "把这几件归到「通用设置」": a new subject, first among the chips, shown whatever its size.
+  expect(pile.subject({ op: "put", name: "「通用设置」", refs: ["acme/mem#1002", "acme/mem#1006"] })).toMatchObject({ ok: true, name: "通用设置", n: 2 });
+  expect(b.ts.view().pile!.subjects![0]).toEqual({ name: "通用设置", n: 2, own: true });
+  const f = await b.ho.find({ subject: "通用设置" });
+  expect(f.items.map((p) => [p.item.ref, p.by])).toEqual(expect.arrayContaining([["acme/mem#1002", "subject"], ["acme/mem#1006", "subject"]]));
+  expect(f.items.length).toBe(2);
+  // Out of a subject: the to-do carries none (not its old sort subject either).
+  pile.subject({ op: "take", name: "通用设置", refs: ["acme/mem#1006"] });
+  expect(pile.subjectOf("acme/mem#1006")).toBeUndefined();
+  expect(b.ts.view().pile!.subjects![0]).toEqual({ name: "通用设置", n: 1, own: true });
+  // Rename the sort's own subject, then merge it into the person's.
+  const typos = b.ts.view().pile!.subjects!.find((s) => s.name === "错字")!.n;
+  pile.subject({ op: "rename", name: "错字", to: "文案" });
+  expect(b.ts.view().pile!.subjects!.find((s) => s.name === "文案")).toEqual({ name: "文案", n: typos, own: true });
+  pile.subject({ op: "rename", name: "文案", to: "通用设置" });
+  expect(b.ts.view().pile!.subjects!.find((s) => s.name === "通用设置")!.n).toBe(typos + 1);
+  expect(b.ts.view().pile!.subjects!.some((s) => s.name === "文案" || s.name === "错字")).toBe(false);
+  // Remove one of the sort's: gone from the chips and from its to-dos.
+  pile.subject({ op: "remove", name: "页面" });
+  expect(b.ts.view().pile!.subjects!.some((s) => s.name === "页面")).toBe(false);
+  // A re-sort (another language reads every to-do again): what the person said stands.
+  b.core.settings.set({ language: "en" });
+  await pile.sort("asked");
+  b.core.settings.set({ language: "zh" });
+  await pile.sort("asked");
+  const v = b.ts.view().pile!;
+  expect(v.subjects![0]).toMatchObject({ name: "通用设置", own: true, n: typos + 1 });
+  expect(v.subjects!.some((s) => s.name === "页面")).toBe(false);
+  expect(pile.subjectOf("acme/mem#1006")).toBeUndefined();
+  // Handed over as a set: the group carries the person's subject.
+  const set = await b.ho.find({ subject: "通用设置" });
+  const r = await b.ho.hand({ refs: set.ticked.slice(0, 2), subject: "通用设置", bySubject: true, shape: "side_by_side" });
+  expect(b.core.taskGroups.get(r.groupId!)!.name).toBe("通用设置");
+});
+
+test("D415: an own subject shows on a small pile too; one made with nothing in it yet is kept", async () => {
+  const b = boot();
+  await sorted(b);
+  b.ts.pile.subject({ op: "make", name: "设置页" });
+  expect(b.ts.view().pile!.subjects!.find((s) => s.name === "设置页")).toEqual({ name: "设置页", n: 0, own: true });
+  expect(b.ts.pile.subject({ op: "put", name: "", refs: ["acme/mem#1002"] })).toMatchObject({ ok: false });
+});

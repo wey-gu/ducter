@@ -4,9 +4,14 @@
 // can honour through its audited write path are kept; the floor (paying, passwords and sign-ins,
 // anything an untrusted source asked for, deleting) is never a standing permission.
 
-/** The outward actions a standing permission can cover (each with a write path that honours it). */
-export type StandingAction = "pr_review";
-export const STANDING_ACTIONS: readonly StandingAction[] = ["pr_review"];
+/**
+ * The outward actions a standing permission can cover (each with a write path that honours it).
+ * pr_review: post a PR review (the review routine, D413). issue_comment (D415): leave a comment on
+ * an issue the person handed over ("在 nowledge-co 的 issue 里留言不用问我"), e.g. the hand-over note's
+ * "tell them my agent is starting"; never a close, never someone else's PR.
+ */
+export type StandingAction = "pr_review" | "issue_comment";
+export const STANDING_ACTIONS: readonly StandingAction[] = ["pr_review", "issue_comment"];
 
 export interface StandingView {
   id: string;

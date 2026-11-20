@@ -64,6 +64,15 @@ type handState struct {
 	focusFind              bool
 	// seeded: the ticks came with the door (a set card's) and the first answer keeps them.
 	seeded bool
+	// D415: the person's own subjects. making: + 新的分类 (makeName over the
+	// words); fromChip: opened from a chip (the rename/remove bar, 移出 on
+	// rows); filing: 归到分类… open (fileName); subjCid answers the last
+	// change (subjOp), subjTaken the row taken out.
+	making, fromChip, filing, renaming bool
+	makeName, fileName, renameTo       string
+	focusName, focusFile, focusRename  bool
+	subjCid, subjOp, subjTaken         string
+	subjSending                        bool
 }
 
 // handDebounce is how long the sheet waits after a key before it asks again.
@@ -91,7 +100,7 @@ func (a *App) openHandDo() {
 // ticked, its name in the words field.
 func (a *App) openHandSubject(name string) {
 	h := a.newHand()
-	h.subject, h.bySubject, h.finding = name, true, true
+	h.subject, h.bySubject, h.finding, h.fromChip = name, true, true, true
 	h.query, h.sentQuery, h.focusFind = name, name, false
 	a.send(protocol.PileFindReq{T: "pile_find", Subject: name, ClientID: h.cid})
 }
@@ -192,11 +201,16 @@ func (a *App) takeHand() {
 			h.how = r.How
 		}
 	}
+	a.takeSubject()
 	if r := a.S.SourceItems[h.goCid]; r != nil && h.goCid != "" {
 		delete(a.S.SourceItems, h.goCid)
 		h.sending = false
 		if r.OK {
 			h.open = false
+			// D415: the note asked to comment first: a card asks; nothing started yet.
+			if r.Asked != "" {
+				a.toast(a.L.T("hand.asked.comment"))
+			}
 		} else {
 			h.said = r.Error
 			if h.said == "" {
@@ -224,6 +238,7 @@ func (a *App) handPump(c *ui.Context) {
 	now := a.Now()
 	q := strings.TrimSpace(strings.ReplaceAll(h.query, "\n", " "))
 	if q != h.sentQuery && !h.browse {
+		h.fromChip = false // other words: no longer the chip's subject
 		if wait := handDebounce - now.Sub(h.queryAt); wait > 0 {
 			c.After(wait + 10*time.Millisecond)
 		} else {
@@ -442,6 +457,9 @@ func (a *App) handWhat(c *ui.Context, wide bool) {
 		a.handList(c)
 		return
 	}
+	if h.making {
+		a.handMakeName(c)
+	}
 	uiText(c.Key("ask"), a.L.T("hand.ask", name)).Font(t.Display).FontSize(t.LG).FontWeight(800).TextColor(t.Ink).Padding(t.S1, t.S1, t.S1, t.S1).Role(ui.RoleText)
 	field := ui.Row(c.Key("find")).Gap(t.S2).AlignItems(ui.Center).MinHeight(56).Padding(0, t.S2, 0, t.S4).Radius(t.RadiusLG).Background(t.Surface).Border(2, t.Line2).Shadow(0, 3, 0, 0, t.Line2)
 	field.Children(func() {
@@ -511,6 +529,10 @@ func (a *App) handWhat(c *ui.Context, wide bool) {
 				uiText(c.Key("nomodel"), a.L.T("hand.found.nomodel")).FontSize(t.SM).TextColor(t.Waiting.Ink)
 			}
 		})
+	}
+	// D415: a chip's subject can be renamed (or merged) and removed here.
+	if h.fromChip && h.subject != "" && !h.finding {
+		a.handSubjectBar(c)
 	}
 	switch {
 	case !h.got || (h.finding && len(h.items) == 0):
@@ -711,6 +733,12 @@ func (a *App) handItem(c *ui.Context, it protocol.FoundItem) {
 						ui.Row(c.Key("meaning")).Height(20).Padding(0, t.S2).Radius(10).AlignItems(ui.Center).Background(t.Asleep.Surface).Children(func() {
 							uiText(c, a.L.T("hand.meaning")).FontSize(t.XS).FontWeight(600).TextColor(t.Asleep.Ink)
 						})
+					}
+					// D415: 移出 / Take out of the chip's subject.
+					if h.fromChip && h.subject != "" {
+						if a.quietButton(c, "take:"+ref, a.L.T("hand.subject.take"), a.L.T("hand.subject.take.label", it.Item.Title), false, 0) {
+							a.handSubject("take", h.subject, "", []string{ref})
+						}
 					}
 				})
 			})
@@ -990,6 +1018,9 @@ func (a *App) handFoot(c *ui.Context, wide bool) {
 	h := &a.ho
 	name := a.personaName()
 	refs := h.handTicked()
+	if h.filing && !h.making && len(refs) > 0 {
+		a.handFiling(c)
+	}
 	ui.Row(c.Key("hand-foot")).Gap(t.S3).AlignItems(ui.Center).Padding(t.S3, t.S6, t.S4, t.S6).BorderWidth(1, 0, 0, 0).BorderColor(t.LineSoft).Children(func() {
 		ui.Column(c.Key("l")).Gap(2).Grow(1).Shrink(1).MinWidth(0).Children(func() {
 			uiText(c.Key("n"), a.L.T("hand.picked", len(refs))).FontSize(t.SM).TextColor(t.InkMuted).FontFeatures("tnum").Role(ui.RoleStatus)
@@ -997,6 +1028,23 @@ func (a *App) handFoot(c *ui.Context, wide bool) {
 				uiText(c.Key("said"), h.said).FontSize(t.SM).TextColor(t.Failed.Ink).Role(ui.RoleStatus)
 			}
 		})
+		// D415: make mode: the primary puts the ticked ones in the new subject.
+		if h.making {
+			name := strings.TrimSpace(h.makeName)
+			label := a.L.T("hand.subject.putin.none")
+			if name != "" {
+				label = a.L.T("hand.subject.putin", name)
+			}
+			if a.button(c, label, btnPrimary, t.ControlLG, t.Bg) && name != "" && len(refs) > 0 {
+				a.handSubject("put", name, "", refs)
+			}
+			return
+		}
+		if len(refs) > 0 && !h.filing && (wide || h.step == 0) {
+			if a.quietButton(c, "file", a.L.T("hand.subject.file"), "", false, 0) {
+				h.filing, h.focusFile = true, true
+			}
+		}
 		if !wide && h.step == 1 {
 			if a.button(c, a.L.T("hand.back"), btnText, t.ControlLG, t.Bg) {
 				h.step = 0
@@ -1043,10 +1091,16 @@ func (a *App) pileSubjects(c *ui.Context, pv *protocol.PileView) {
 	t := a.T
 	ui.Row(c.Key("subjects")).Wrap().Gap(t.S2).AlignItems(ui.Center).Padding(t.S1, 0, t.S1, 0).Role(ui.RoleGroup).Label(a.L.T("hand.subjects")).Children(func() {
 		uiText(c.Key("l"), a.L.T("hand.subjects")).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).Padding(0, t.S1, 0, 0)
-		for _, s := range pv.Subjects {
+		// D415: the person's own first (core sends them so; kept here too).
+		subs := append([]protocol.PileSubject(nil), pv.Subjects...)
+		sort.SliceStable(subs, func(i, j int) bool { return subs[i].Own && !subs[j].Own })
+		for _, s := range subs {
 			s := s
 			chip := ui.Row(c.Key("sj:"+s.Name)).Height(30).Padding(0, t.S3).Gap(t.S2).Radius(15).AlignItems(ui.Center).Background(t.SurfaceSunken).
 				Cursor(ui.CursorPointer).Role(ui.RoleButton).Focusable().Label(fmt.Sprintf("%s %d", s.Name, s.N))
+			if s.Own {
+				chip.Background(t.Surface).Border(1.5, t.Accent).Tooltip(a.L.T("hand.subject.own"))
+			}
 			if chip.Hovered() {
 				chip.Background(t.Surface).Shadow(0, 2, 0, 0, t.Line2)
 			}
@@ -1060,6 +1114,19 @@ func (a *App) pileSubjects(c *ui.Context, pv *protocol.PileView) {
 		}
 		if pv.SubjectsMore > 0 {
 			uiText(c.Key("more"), a.L.T("hand.subjects.more", pv.SubjectsMore)).FontSize(t.SM).TextColor(t.InkMuted)
+		}
+		// D415: + 新的分类 / + New subject.
+		add := ui.Row(c.Key("sj-new")).Height(30).Padding(0, t.S3, 0, t.S2).Gap(t.S1).Radius(15).AlignItems(ui.Center).Border(1, t.Line2).
+			Cursor(ui.CursorPointer).Role(ui.RoleButton).Focusable().Label(a.L.T("hand.subject.new"))
+		if add.Hovered() {
+			add.Background(t.Surface).Shadow(0, 2, 0, 0, t.Line2)
+		}
+		add.Children(func() {
+			a.glyph(c, 14, drawPlus(t.InkSoft))
+			uiText(c, a.L.T("hand.subject.new")).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).AccessHidden(true)
+		})
+		if add.Clicked() {
+			a.openHandMake()
 		}
 	})
 }

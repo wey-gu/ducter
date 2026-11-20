@@ -80,7 +80,7 @@ test("D201: a Chinese task gets a Chinese branch and folder that git really make
   await provisionPlace(r);
   expect(existsSync(r.cwd)).toBe(true);
   expect((await git(r.cwd, ["rev-parse", "--abbrev-ref", "HEAD"])).out).toBe("ducter/修复登录页的闪退");
-  // The same title again: the branch is taken, so the task id is added, as before.
+  // The same title again: the branch is checked out in the first one's worktree: the next free number (D415).
   const again = await planPlace({ kind: "repo", device: "local", repoPath: repo }, "t2", "修复登录页的闪退", data);
-  expect(again.place).toMatchObject({ branch: "ducter/修复登录页的闪退-t2" });
+  expect(again.place).toMatchObject({ branch: "ducter/修复登录页的闪退-2", worktree: join(data, "ducter", "worktrees", "repo", "修复登录页的闪退-2") });
 });

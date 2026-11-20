@@ -154,6 +154,8 @@ type SourceAsk struct {
 	DeviceName string    `json:"deviceName,omitempty"`
 	Quote      string    `json:"quote,omitempty"`
 	Harness    string    `json:"harness,omitempty"`
+	// D415: hand_comment (先在这 n 件下留一句，再开始？): Text goes on each of
+	// Items; Quote is the person's note that asked for it.
 }
 
 // SourcesFrame is what a sources, source_items_result or source_result
@@ -202,6 +204,10 @@ type SourcesFrame struct {
 	Said    *FindSaid
 	Suggest []string
 	Review  *GroupReview
+	// D415: pile_result op subject: the subject as kept (Name); op hand:
+	// Asked, the card that asks to comment first (nothing started yet).
+	Name  string
+	Asked string
 }
 
 // SourcesReq subscribes to the sources (T "sources").
@@ -275,6 +281,8 @@ func decodeSources(data []byte, f ServerFrame) (ServerFrame, error) {
 		Read     *PreRead       `json:"read"`
 		Error    string         `json:"error"`
 		GroupID  string         `json:"groupId"`
+		Name     string         `json:"name"`
+		Asked    string         `json:"asked"`
 	}
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return f, err
@@ -293,6 +301,7 @@ func decodeSources(data []byte, f ServerFrame) (ServerFrame, error) {
 	}
 	if f.T == "pile_result" {
 		s.PileOp, s.Done, s.Failed, s.Read, s.Error, s.GroupID = raw.Op, raw.Done, raw.Failed, raw.Read, raw.Error, raw.GroupID
+		s.Name, s.Asked = raw.Name, raw.Asked
 	}
 	// D385: a find's answer, the sheet's how, a review together.
 	switch f.T {

@@ -1761,7 +1761,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     platform: opts.platform ?? process.platform,
     computer: () => savedHomeName(dataDir) ?? thisComputer(opts.update?.homeName),
     tell: (taskId, text) => void runner?.send(taskId, text, undefined, "ducter").catch((e) => console.warn(`[core] couldn't tell ${taskId} its to-do changed:`, (e as Error).message)),
-    standing: { allows: (ref, o) => standing.allows("pr_review", ref, o), firstUse: (id) => standing.firstUse(id) },
+    standing: { allows: (ref, o) => standing.allows("pr_review", ref, o), firstUse: (id) => standing.firstUse(id), allowsComment: (ref) => standing.allows("issue_comment", ref) },
     stop: async (taskId) => {
       await runner?.drop(taskId).catch(() => {});
       const c = tasks.get(taskId);

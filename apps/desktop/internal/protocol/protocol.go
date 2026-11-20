@@ -2749,6 +2749,9 @@ type FirstScreen struct {
 	// its first words; NoBrain: nothing there can think yet (offer a key).
 	Looks   *bool `json:"looks,omitempty"`
 	NoBrain bool  `json:"noBrain,omitempty"`
+	// KeyRoutes (D440): with nothing to think with, the fastest ways to a
+	// key from where the home is, best first.
+	KeyRoutes []KeyRoute `json:"keyRoutes,omitempty"`
 	// OutsideHidden (D307): the agents whose own conversations Past tasks
 	// doesn't show (D299), for Settings' way back.
 	OutsideHidden []string `json:"outsideHidden,omitempty"`

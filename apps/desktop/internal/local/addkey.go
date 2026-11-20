@@ -13,7 +13,7 @@ import (
 // an argument: those show in the process list) and returns its JSON (D298).
 // Exit 1 just means the key didn't work; the JSON says why.
 func (s *Supervisor) AddKey(key string) ([]byte, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute) // D440: a key that needs pi puts it in place first
 	defer cancel()
 	cmd := exec.CommandContext(ctx, s.CLI, "key", "add", "--json")
 	cmd.Env = s.env()

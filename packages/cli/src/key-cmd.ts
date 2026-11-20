@@ -23,6 +23,8 @@ export interface KeyCmd {
   canRun?: (h: HarnessId) => boolean;
   /** Whether some agent here is already signed in (then the partner's own choice is left alone). */
   signedIn?: () => Promise<boolean>;
+  /** D440: put the agent a good key needs on this computer (pi into Ducter's tools folder). */
+  prepare?: (h: HarnessId) => Promise<boolean>;
   print?: (s: string) => void;
 }
 
@@ -57,7 +59,7 @@ export async function cmdKey(c: KeyCmd): Promise<number> {
   if (!raw) result = { ok: false, reason: "shape" };
   else {
     const blind = c.signedIn ? !(await c.signedIn().catch(() => false)) : true;
-    result = await addKey(raw, { dataDir: c.dataDir, lang: c.lang, ...(c.fetch ? { fetch: c.fetch } : {}), ...(c.canRun ? { canRun: c.canRun } : {}) });
+    result = await addKey(raw, { dataDir: c.dataDir, lang: c.lang, ...(c.fetch ? { fetch: c.fetch } : {}), ...(c.canRun ? { canRun: c.canRun } : {}), ...(c.prepare ? { prepare: c.prepare } : {}) });
     if (result.ok && result.harness && !result.needs && blind) brainFromKeyFile(c.dataDir, result.harness, result.model);
   }
   const said = keyWords(result);
@@ -67,4 +69,23 @@ export async function cmdKey(c: KeyCmd): Promise<number> {
     if (result.needs === "pi" && result.install) print(`  ${result.install}`);
   }
   return result.ok ? 0 : 1;
+}
+
+/**
+ * D440: pi for a pasted key, before Ducter runs (the Mac's first run): D363's install into
+ * <data>/tools (Node's own build, checked, then pi's npm package), the same as the home does.
+ */
+export async function preparePi(dataDir: string, h: HarnessId): Promise<boolean> {
+  if (h !== "pi") return false;
+  const { createAgentSetup, installAndWait, realAgentSetupSys } = await import("@ducter/core/src/agent-setup.ts");
+  const { widenAgentPath } = await import("@ducter/core/src/agent-path.ts");
+  const { whichNow } = await import("@ducter/protocol/src/which.ts");
+  const setup = createAgentSetup({ dataDir, sys: realAgentSetupSys({ platform: process.platform, arch: process.arch, which: (c) => whichNow(c) }), probe: async () => void widenAgentPath({ dataDir }), changed: () => {} });
+  try {
+    const ok = await installAndWait(setup, h);
+    widenAgentPath({ dataDir });
+    return ok;
+  } finally {
+    setup.stop();
+  }
 }

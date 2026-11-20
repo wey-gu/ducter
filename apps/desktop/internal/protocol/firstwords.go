@@ -74,10 +74,13 @@ type KeyResult struct {
 	Name     string `json:"name,omitempty"`
 	Harness  string `json:"harness,omitempty"`
 	// Needs "pi": the key is good and kept; this computer needs pi to use it.
-	Needs   string `json:"needs,omitempty"`
-	Install string `json:"install,omitempty"`
-	Model   string `json:"model,omitempty"`
-	Checked *bool  `json:"checked,omitempty"`
+	Needs string `json:"needs,omitempty"`
+	// Preparing (D440): good, and the home is putting pi in its own tools
+	// folder now; a second result with the same clientId follows.
+	Preparing bool   `json:"preparing,omitempty"`
+	Install   string `json:"install,omitempty"`
+	Model     string `json:"model,omitempty"`
+	Checked   *bool  `json:"checked,omitempty"`
 	// Reason: shape | wrong | no_balance | limited | blocked | offline |
 	// unsupported | failed.
 	Reason string `json:"reason,omitempty"`
@@ -85,4 +88,20 @@ type KeyResult struct {
 	Abroad bool   `json:"abroad,omitempty"`
 	// Say is the partner's words for it (the CLI's --json adds them).
 	Say *Words `json:"say,omitempty"`
+}
+
+// KeyRoute is one way to get a key for someone with no AI plan and no
+// key (D440, packages/protocol/src/key-routes.ts): the provider's own key
+// page, what it costs and needs, three steps and one honest note. The
+// home picks them by where it is (first_screen.keyRoutes); before Ducter
+// runs, `ducter doctor --json` does (Report.KeyRoutes).
+type KeyRoute struct {
+	ID       string  `json:"id"`
+	Provider string  `json:"provider"`
+	Name     Words   `json:"name"`
+	URL      string  `json:"url"`
+	Free     bool    `json:"free"`
+	Line     Words   `json:"line"`
+	Steps    []Words `json:"steps"`
+	Note     *Words  `json:"note,omitempty"`
 }

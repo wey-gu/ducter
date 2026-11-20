@@ -22,6 +22,10 @@ export const firstWords: { zh: Record<string, string>; en: Record<string, string
     "key.paste.check": "检查",
     "key.paste.checking": "在检查…",
     "key.paste.failed": "没检查成：%s",
+    "key.paste.preparing": "正在装上…",
+    "key.route.none": "还没有密钥？",
+    "key.route.go": "去 %s 拿一个",
+    "key.route.other": "或者用 %s",
   },
   en: {
     "first.from": "I read only each conversation's name, folder and time, and your first and last words in it: no code, no files, and keys stay hidden. Read only on %s; no one but you and the AI you use sees it.",
@@ -43,5 +47,9 @@ export const firstWords: { zh: Record<string, string>; en: Record<string, string
     "key.paste.check": "Check",
     "key.paste.checking": "Checking…",
     "key.paste.failed": "The check didn't go through: %s",
+    "key.paste.preparing": "Setting up…",
+    "key.route.none": "No key yet?",
+    "key.route.go": "Get one on %s",
+    "key.route.other": "Or use %s",
   },
 };

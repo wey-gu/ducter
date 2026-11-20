@@ -1,7 +1,7 @@
 // Client WebSocket protocol (ClientFrame / ServerFrame) over Bun's built-in WS.
 import { DUCTER_VERSION } from "@ducter/protocol/src/version.ts";
 import { brainNow } from "./brain.ts";
-import { CLIENT_SHAPES, harnessName, isHarnessId, isProactiveYesNo, PILE_GROUPS, shapeOfModel, TRY_LIVE, WATCH_LIVE } from "@ducter/protocol";
+import { CLIENT_SHAPES, HARNESSES, harnessName, isHarnessId, isProactiveYesNo, PILE_GROUPS, shapeOfModel, TRY_LIVE, WATCH_LIVE } from "@ducter/protocol";
 import type { ServerWebSocket } from "bun";
 import type { Bodies, ClientFrame, ClientKind, Delivery, FileOpenError, LogEvent, MediaRef, OoApp, PartnerActivity, Place, ServerFrame, UndoConfirm } from "@ducter/protocol";
 import type { NewTaskInput, NewTaskResult } from "./newtask.ts";
@@ -9,7 +9,7 @@ import type { CoreApi, Runner } from "@ducter/protocol/src/internal.ts";
 import type { Decisions } from "./decisions.ts";
 import { logUserMessage } from "./reply.ts";
 import { talkLang } from "./lang.ts";
-import { words as wordsIn, APP_ASK_MAX } from "@ducter/protocol";
+import { words as wordsIn, APP_ASK_MAX, keyRoutes } from "@ducter/protocol";
 
 /** Said when no runner is up, in the conversation's language (a zh screen never reads it in English). */
 const NO_RUNNER = { en: "Tasks can't run right now.", zh: "现在开不了任务。" };
@@ -202,7 +202,7 @@ export interface WsDeps {
   /** D332: the AI agents the person runs themselves here (their records, by file times alone); [] when not looking. */
   ownAgents?: () => import("./local-agents/index.ts").LocalAgent[];
   /** D298: pasted API keys (api-key.ts): where they are kept, and the network and agent seams for tests. */
-  keys?: { dataDir: string; fetch?: typeof fetch; canRun?: (h: import("@ducter/protocol").HarnessId) => boolean };
+  keys?: { dataDir: string; fetch?: typeof fetch; canRun?: (h: import("@ducter/protocol").HarnessId) => boolean; /** D440: put the agent a key needs on the home (pi, into its tools folder). */ prepare?: (h: import("@ducter/protocol").HarnessId) => Promise<boolean>; /** D440: tests: the home's time zone. */ tz?: () => string | undefined };
   batchMs?: number;
 }
 
@@ -603,6 +603,15 @@ export function createWsHandler(deps: WsDeps) {
     }
   };
 
+  /**
+   * D440: where the home is, for the ways to a key: the key is used from the home's network, so its
+   * own time zone; a server on UTC says nothing, so then the app's.
+   */
+  const keyZone = (clientTz?: string): string | undefined => {
+    const own = deps.keys?.tz?.() ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
+    return own && !/^(?:Etc\/)?(?:UTC|GMT|Universal|Zulu)$/i.test(own) ? own : clientTz;
+  };
+
   // D149: what the empty conversation says, from names and metadata the home already has.
   const firstScreenFor = async (tz?: string): Promise<FirstScreen> => {
     const noted = deps.settings ? (await deps.settings.view()).mem.noted : [];
@@ -635,13 +644,16 @@ export function createWsHandler(deps: WsDeps) {
     const folders = o ? o.hiddenFolders().map((p) => o.tilde(p)) : [];
     const computer = deps.firstWords?.computer?.();
     const lookDone = log.read({ stream: "channel", kinds: ["ai_msg"], limit: 200 }).some((e) => (e.body as Bodies["ai_msg"]).first?.look);
-    return { ...fs, ...(deps.firstWords && deps.settings ? { looks: deps.settings.localAgents() } : {}), ...(nb ? { noBrain: true } : {}), ...(hidden.length ? { outsideHidden: hidden } : {}), ...(folders.length ? { outsideFolders: folders } : {}), ...(computer ? { computer } : {}), ...(lookDone ? { lookDone: true as const } : {}) };
+    return { ...fs, ...(deps.firstWords && deps.settings ? { looks: deps.settings.localAgents() } : {}), ...(nb ? { noBrain: true, keyRoutes: keyRoutes({ tz: keyZone(tz) }) } : {}), ...(hidden.length ? { outsideHidden: hidden } : {}), ...(folders.length ? { outsideFolders: folders } : {}), ...(computer ? { computer } : {}), ...(lookDone ? { lookDone: true as const } : {}) };
   };
 
-  /** D298: nothing on the home can think: its agents were probed and none is signed in. */
+  /**
+   * D298: nothing on the home can think: its agents were probed and none is signed in. D440: and
+   * can run here and may be the partner (a key kept for a pi that isn't there yet thinks nothing).
+   */
   const noBrain = (): boolean => {
     const h = devicesView()?.harnessesNow();
-    return !!h && !h.some((x) => x.loggedIn);
+    return !!h && !h.some((x) => x.loggedIn && x.installed !== false && isHarnessId(x.harness) && HARNESSES[x.harness].partner);
   };
 
   /**
@@ -892,7 +904,14 @@ export function createWsHandler(deps: WsDeps) {
         if (!k) throw new Error("Keys can't be added here");
         const lang = ws.data.locale ?? "en";
         const wasBlind = noBrain();
-        const result = await addKey(typeof f.key === "string" ? f.key : "", { dataDir: k.dataDir, lang, ...(k.fetch ? { fetch: k.fetch } : {}), ...(k.canRun ? { canRun: k.canRun } : {}) });
+        // D440: a good key that needs pi here: the person hears it works at once, then pi is put in the home's tools folder.
+        const result = await addKey(typeof f.key === "string" ? f.key : "", {
+          dataDir: k.dataDir,
+          lang,
+          ...(k.fetch ? { fetch: k.fetch } : {}),
+          ...(k.canRun ? { canRun: k.canRun } : {}),
+          ...(k.prepare ? { prepare: k.prepare, onPreparing: (r: import("@ducter/protocol").KeyResult) => send(ws, { t: "key_add_result", clientId, result: { ...r, say: keyWords(r) } }) } : {}),
+        });
         if (result.ok && result.harness && !result.needs) {
           // The person's own choice stays; with nothing chosen and nothing signed in, think with this.
           if (wasBlind) deps.settings?.brainFromKey(result.harness, result.model);

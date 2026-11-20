@@ -13523,6 +13523,69 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 .key-row .btn {
   flex: 0 0 auto;
 }
+/* D440: 还没有密钥？/ No key yet?: one way to a key, three steps, its own page. */
+.key-routes {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line-soft);
+}
+.key-routes h4 {
+  margin: 0;
+  font-size: var(--md);
+  font-weight: 800;
+}
+.key-route-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.key-route-head b {
+  font-size: var(--md);
+}
+.key-route-head span {
+  font-size: var(--sm);
+  color: var(--ink-soft);
+  line-height: 1.5;
+}
+.key-card ol.key-route-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.key-route-steps li {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  font-size: var(--sm);
+  line-height: 1.45;
+}
+.key-route-n {
+  flex: 0 0 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--ink-soft);
+  font-size: var(--xs);
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.key-card p.key-route-note {
+  font-size: var(--xs);
+  color: var(--ink-muted);
+}
+.key-route-acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+}
 /* ---------- D300: 替你做过的 / Done for you (did.tsx, design/did.md) ---------- */
 /* Day sections like a diary: the day, its counts as separate facts, then one card per action. */
 .did-dayhead { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 20px 4px 10px; }

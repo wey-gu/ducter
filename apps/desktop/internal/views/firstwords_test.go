@@ -201,10 +201,11 @@ func TestFirstRunTakesAKeyInsteadOfASubscription(t *testing.T) {
 		h.has(instead)
 		h.shot("d298-setup-key-closed-" + string(lang))
 		h.click(map[i18n.Lang]string{i18n.ZH: "贴密钥", i18n.EN: "Paste a key"}[lang])
-		h.app.kp.key = "sk-0123456789abcdef0123456789abcdef"
 		h.has(map[i18n.Lang]string{i18n.ZH: "贴一个 API 密钥，我就能开始", i18n.EN: "Paste an API key and I can start"}[lang])
 		h.shot("d298-setup-key-open-" + string(lang))
-		h.click(map[i18n.Lang]string{i18n.ZH: "检查", i18n.EN: "Check"}[lang])
+		// D440: a key pasted whole checks by itself, no 检查 needed.
+		h.app.kp.key = "sk-0123456789abcdef0123456789abcdef"
+		h.tt.Frame()
 		h.tt.Frame()
 		if len(f.keys) != 1 || f.keys[0] != "sk-0123456789abcdef0123456789abcdef" {
 			t.Fatalf("%s: keys %q", lang, f.keys)

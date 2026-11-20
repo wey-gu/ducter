@@ -550,6 +550,37 @@ describe("S3 / D110: follow-through on silence", () => {
     expect(t.partner.stats.bridgeFollowed).toBe(1);
   });
 
+  test("D412: two questions to the same silent agent: one line for both, and none an hour later", async () => {
+    const t = setup(async (_i, s, n) => {
+      // Go sends by code (no turn): turns 0 and 1 are the two questions.
+      if (n <= 1) {
+        await t.fc.callTool("bridge_contacts", { query: "codex" });
+        await t.fc.callTool("bridge_send", { contact: "ct-codex", text: n === 0 ? "bridge 那块写到哪了？" : "昨晚 CI 那个红是不是 flaky？" });
+      } else s.say("好。");
+      s.end();
+    }, world([]));
+    t.user("问问我那个 Codex：bridge 那块写到哪了");
+    await t.partner.idle();
+    t.tap(t.card().decisionId);
+    await t.partner.idle();
+    t.user("再问一下我那个 Codex：昨晚 CI 那个红是不是 flaky？");
+    await t.partner.idle();
+    t.tap(t.card().decisionId);
+    await t.partner.idle();
+    expect(t.sent()).toHaveLength(2);
+    t.clock.advance(125 * 60_000);
+    t.user("在吗，CI 那边怎么样");
+    await t.partner.idle();
+    const lines = t.said().filter((x) => x.includes("还没回"));
+    expect(lines).toEqual(["codex-mem 还没回你 2 小时前问的「昨晚 CI 那个红是不是 flaky？」和「bridge 那块写到哪了」，它可能停了。回了我马上告诉你。"]);
+    t.clock.advance(HOUR);
+    t.user("好");
+    await t.partner.idle();
+    await t.partner.checkBridge();
+    expect(t.said().filter((x) => x.includes("还没回"))).toHaveLength(1);
+    expect(t.fc.events.filter((e) => e.kind === "bridge_msg" && (e.body as Bodies["bridge_msg"]).state === "followed")).toHaveLength(1);
+  });
+
   test("answered, or in quiet hours: nothing", async () => {
     const t = await sentAndWait();
     t.w.deliver({ messageId: "bm-9", from: "codex-mem (Weyl)", agent: "codex-mem", mine: true, text: "写到 send 了", inReplyTo: "bm-o1" });

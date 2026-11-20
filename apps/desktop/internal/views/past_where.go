@@ -378,7 +378,7 @@ func (a *App) pastWhereActs(c *ui.Context, it *protocol.PastItem) {
 			Tooltip(a.L.T("past.more")).Role(ui.RoleButton).Cursor(ui.CursorPointer).Focusable().Shrink(0)
 		fg := a.buttonLook(c, b, btnText, t.ControlSM, t.Surface)
 		b.Draw(drawMore(fg))
-		b.Menu(func(m *ui.Menu) {
+		a.menuButton(c, b, func(m *ui.Menu) {
 			if m.Item(a.L.T("past.seed")).Chosen() {
 				ps.sheet = false
 				a.pastSeed(it)

@@ -18,6 +18,7 @@ import { Btn, DangerButton, Facts, OpenRow, Seg, Toggle } from "./controls.tsx";
 import { GBlock, GConfirm, GFoot, GHead, GRow, Group, Tag, Tile } from "./set-grid.tsx";
 import { clock, shownDeviceName } from "./format.ts";
 import { CallArt } from "./phone.tsx";
+import { Select } from "./menu.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 const money = (n: number) => `$${n.toFixed(2)}`;
@@ -142,17 +143,10 @@ function NumberField({ v }: { v: OwnPhoneView }) {
 
 function Picker({ label, list, value, on }: { label: string; list: string[]; value?: string; on: (v: string) => void }) {
   return (
-    <label class="acct-field own-pick">
+    <div class="acct-field own-pick">
       <span class="small">{label}</span>
-      <select value={value ?? ""} onChange={(e) => on((e.target as HTMLSelectElement).value)}>
-        {!value && <option value="">{t("own.audio.pick")}</option>}
-        {list.map((d) => (
-          <option key={d} value={d}>
-            {d}
-          </option>
-        ))}
-      </select>
-    </label>
+      <Select label={label} value={value ?? ""} placeholder={t("own.audio.pick")} options={list.map((d) => ({ v: d, label: d }))} onPick={on} class="own-select" />
+    </div>
   );
 }
 

@@ -413,8 +413,8 @@ func (a *App) replyButton(c *ui.Context, r *replyTo, side int) ui.Element {
 // selected in it, Copy is the selection's (the system's own items, Select
 // All with it); else the whole message, as written (copyText).
 func (a *App) replyMenu(c *ui.Context, e ui.Element, r *replyTo, text string) {
-	e.ContextMenu(func(m *ui.Menu) {
-		if r != nil && m.Item(a.L.T("reply.action")).Chosen() {
+	a.contextMenu(c, e, func(m *ui.Menu) {
+		if r != nil && m.Item(a.L.T("reply.action")).Icon(menuGlyph("reply")).Chosen() {
 			a.StartReply(r)
 		}
 		a.readMenuItem(c, m, r, text) // D305: Read aloud, a partner's message
@@ -422,7 +422,7 @@ func (a *App) replyMenu(c *ui.Context, e ui.Element, r *replyTo, text string) {
 			m.EditItems()
 			return
 		}
-		if m.Item(a.L.T("reply.copy")).Chosen() {
+		if m.Item(a.L.T("reply.copy")).Icon(menuGlyph("copy")).Chosen() {
 			c.WriteClipboard(copyText(text))
 			c.Toast(a.L.T("reply.copied"))
 		}

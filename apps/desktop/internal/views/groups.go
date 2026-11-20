@@ -236,7 +236,7 @@ func (a *App) groupCard(c *ui.Context, bg boardGroup) {
 	}
 	card := ui.Column(c.Key("group:"+g.ID)).Gap(t.S2).Padding(14, 16, 12, 16).Radius(20).Background(t.Surface).
 		Shadow(0, 2, 0, 0, ledge).Shadow(0, 8, 18, -12, t.Ink.Alpha(0.22)).Role(ui.RoleGroup).Label(g.Name)
-	card.ContextMenu(func(m *ui.Menu) {
+	a.contextMenu(c, card, func(m *ui.Menu) {
 		if m.Item(a.L.T("group.rename")).Chosen() {
 			a.oh.groupRename, a.oh.groupDraft = g.ID, g.Name
 		}

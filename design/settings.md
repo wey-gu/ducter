@@ -324,6 +324,21 @@ The walk's other leftovers are D408 (below).
   each new code 2.5 s after it is shown, so **连上了。以后在 Telegram 里找我也行。** can be reached
   (checked over the demo's socket: forget, connect, code, linked).
 
+## Your devices, a card trimmed (D420)
+
+The author on 0.1.0 with his worker Mac chosen read three lines about Nowledge Mem saying one thing,
+**帮 Ducter 做事** twice, and two outline icons beside a negative sentence. The same grammar as the
+passes above, on the device card:
+
+- **One line per fact.** Mem is its title and one line (carried: **和 {home} 用同一份记忆，不用设置**);
+  a second, soft line only when something asks for the person (an agent to connect, their own
+  sessions, trouble), and trouble comes first so the line matches the button beside it.
+- **Trust as a sentence, not a list.** What a device uses and never sees is one or two plain sentences
+  in the card's soft tray, no marks: the computer for tasks, the phone lent to tasks, and the home
+  (**你和 {name} 的对话都存在这台电脑上。**). A phone that is only a window has none.
+- **The role once.** The chip that says **帮 {name} 做事** is the role; the line under the name then
+  says **待命** while idle.
+
 ## Not done
 
 - A comprehension pass with people on the said lines and on a row with no state word.

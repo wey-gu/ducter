@@ -13,6 +13,7 @@ import { when } from "./format.ts";
 import { copyText, COPY_GLYPH, forReading } from "./markdown.ts";
 import { haptic } from "./native.ts";
 import type { Entry } from "./store.ts";
+import { Menu as DMenu, MenuItem } from "./menu.tsx";
 import { readingNow, SpeakerGlyph, toggleRead } from "./voice.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
@@ -324,48 +325,48 @@ export function ReplyMenu({ menu }: { menu?: Menu }) {
   const y = Math.min(menu.y + 8, window.innerHeight - 24 - items * 44 - (menu.ts ? 28 : 0));
   const said = (ok: boolean) => A.toast(t(ok ? "conv.copied" : "conv.copy.failed"));
   return (
-    <div class="reply-menu" role="menu" style={{ left: `${Math.max(12, x)}px`, top: `${Math.max(12, y)}px` }} onPointerDown={(e) => e.stopPropagation()}>
+    <DMenu class="reply-menu" style={{ left: `${Math.max(12, x)}px`, top: `${Math.max(12, y)}px` }} onPointerDown={(e) => e.stopPropagation()}>
       {menu.ts && (
         <div class="menu-when" role="presentation">
           {when(A.L, menu.ts)}
         </div>
       )}
       {r && (
-        <button type="button" role="menuitem" onClick={() => (closeMenu(), A.startReply(r), A.changed())}>
+        <MenuItem onClick={() => (closeMenu(), A.startReply(r), A.changed())}>
           <ReplyGlyph size={18} />
           <span>{t("reply.action")}</span>
-        </button>
+        </MenuItem>
       )}
-      <button type="button" role="menuitem" onClick={() => (closeMenu(), void copyAndSay(menu.text, said))}>
+      <MenuItem onClick={() => (closeMenu(), void copyAndSay(menu.text, said))}>
         <span class="menu-glyph" dangerouslySetInnerHTML={{ __html: COPY_GLYPH }} />
         <span>{t("reply.copy")}</span>
-      </button>
+      </MenuItem>
       {/* D305: 朗读 / Read aloud, a partner's words in their own language. */}
       {r?.from === "partner" && (
-        <button type="button" role="menuitem" onClick={() => (closeMenu(), toggleRead(r.seq, menu.text))}>
+        <MenuItem onClick={() => (closeMenu(), toggleRead(r.seq, menu.text))}>
           <SpeakerGlyph size={18} on={readingNow(r.seq)} />
           <span>{t(readingNow(r.seq) ? "voice.read.stop" : "voice.read")}</span>
-        </button>
+        </MenuItem>
       )}
       {menu.link && (
-        <button type="button" role="menuitem" onClick={() => (closeMenu(), void copyAndSay(menu.link!, said))}>
+        <MenuItem onClick={() => (closeMenu(), void copyAndSay(menu.link!, said))}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1" />
             <path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1" />
           </svg>
           <span>{t("conv.copy.link")}</span>
-        </button>
+        </MenuItem>
       )}
       {coarse() && (
-        <button type="button" role="menuitem" onClick={() => (closeMenu(), (selecting = forReading(menu.text)), A.changed())}>
+        <MenuItem onClick={() => (closeMenu(), (selecting = forReading(menu.text)), A.changed())}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M5 6h14M5 12h9M5 18h11" />
             <path d="M18 14v7" />
           </svg>
           <span>{t("conv.select")}</span>
-        </button>
+        </MenuItem>
       )}
-    </div>
+    </DMenu>
   );
 }
 

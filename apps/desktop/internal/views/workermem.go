@@ -227,7 +227,7 @@ func (a *App) memOnDevice(c *ui.Context, dv *protocol.DeviceView) {
 		word, ink = a.memFailedWords(reason, name), t.Failed.Ink
 	}
 	if carried {
-		word, ink = a.L.T("wmem.carried"), t.Done.Ink
+		word, ink = a.L.T("wmem.carried", home), t.Done.Ink
 	}
 	ui.Column(c.Key("wmem:"+dv.ID)).Gap(t.S2).Padding(t.S2, 0).Children(func() {
 		ui.Row(c).Gap(t.S3).AlignItems(ui.Center).MinHeight(t.ControlMD).Children(func() {
@@ -287,15 +287,15 @@ func (a *App) memOnDevice(c *ui.Context, dv *protocol.DeviceView) {
 			uiText(c, m.Step.Detail).FontSize(t.XS).TextColor(t.InkSoft).LineHeight(1.4)
 		}
 		if carried {
-			a.infoText(c, a.L.T("wmem.carried.why", home))
+			// D420: the line under the title says it all; only what asks something of the person follows.
 			soft := ""
 			switch {
-			case look == "absent" && m.Installable:
-				soft = a.L.T("wmem.own.absent", name)
-			case look == "sign_in" && !own && theirs != "old":
-				soft = a.L.T("wmem.own.signin", name)
-			case health != "":
+			case health != "": // D420: trouble first, so the line matches the button beside it
 				soft = a.L.T("wmem.health."+health, name)
+			case look == "absent" && m.Installable:
+				soft = a.L.T("wmem.own.absent")
+			case look == "sign_in" && !own && theirs != "old":
+				soft = a.L.T("wmem.own.signin")
 			}
 			if soft != "" {
 				uiText(c, soft).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.4)
@@ -304,7 +304,10 @@ func (a *App) memOnDevice(c *ui.Context, dv *protocol.DeviceView) {
 		switch {
 		case carried && look == "absent":
 		case carried && look == "ready":
-			uiText(c, a.memReadyWords(dv)).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.4)
+			// D420: which agents use it goes unsaid; one not connected yet is the one thing to know (with 接上).
+			if left := memUnconnected(dv); len(left) > 0 {
+				uiText(c, a.L.T("wmem.ready.left", a.memAgentsWords(left))).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.4)
+			}
 		case look == "absent":
 			if m.Installable {
 				a.infoText(c, a.L.T("wmem.absent.why", name))

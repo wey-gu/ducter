@@ -68,9 +68,10 @@ top to bottom like a character in a game:
     has it yet; tap it to read what it is. Add it on an Apple silicon Mac and the chip points
     there instead. A server shows no **Use the computer** of its own: it has no screen, so that
     one is always on a Mac.
-- **What it can and can't touch:** a few short lines, each with a small mark. A computer that does
-  tasks uses the AI and code on it and never sees your conversations; a phone you lend says what
-  it does only while lent, what waits for your Go, and what it never touches.
+- **What it can and can't touch:** a sentence or two in a soft box. A computer that does tasks uses
+  the AI and code on it and never sees your conversations; a phone you lend says what it does only
+  while lent, what waits for your Go, and what it never touches; the computer Ducter runs on says
+  your conversations are kept there.
 - At the foot, folded, the things you rarely need. Open **How it's connected** (its summary says
   the way, such as *Through your domain*) for:
 - **How it's connected:** for a device that is connected now, which way it reaches Ducter

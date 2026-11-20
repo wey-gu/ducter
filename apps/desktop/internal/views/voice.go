@@ -554,12 +554,12 @@ func (a *App) readMenuItem(c *ui.Context, m *ui.Menu, r *replyTo, text string) {
 		return
 	}
 	if a.vox.speaking == r.seq {
-		if m.Item(a.L.T("voice.read.stop")).Chosen() {
+		if m.Item(a.L.T("voice.read.stop")).Icon(menuGlyph("read")).Chosen() {
 			a.speakStop()
 		}
 		return
 	}
-	if m.Item(a.L.T("voice.read")).Chosen() {
+	if m.Item(a.L.T("voice.read")).Icon(menuGlyph("read")).Chosen() {
 		a.readAloud(c, r.seq, text)
 	}
 }

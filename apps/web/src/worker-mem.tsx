@@ -48,7 +48,7 @@ export function MemOnDevice({ dv }: { dv: DeviceView }) {
   const installed = dv.harnesses.filter((h) => h.installed && (h.harness === "codex" || h.harness === "claude-code")).map((h) => h.harness);
   const carried = !!m.carried && look !== "installing" && look !== "connecting" && look !== "failed";
   const word =
-    carried ? t("wmem.carried")
+    carried ? t("wmem.carried", home)
     : look === "ready" ? t("wmem.ready")
     : look === "installing" ? (m.step?.pct ? `${t("wmem.installing")} ${m.step.pct}%` : t("wmem.installing"))
     : look === "connecting" ? t("wmem.connecting", dv.name)
@@ -92,12 +92,13 @@ export function MemOnDevice({ dv }: { dv: DeviceView }) {
         ) : null}
       </div>
       {look === "failed" && m.step?.detail && <div class="ag-detail">{m.step.detail}</div>}
-      {carried && <p class="wmem-why">{t("wmem.carried.why", home)}</p>}
-      {carried && look === "absent" && m.installable && <p class="wmem-why soft">{t("wmem.own.absent", dv.name)}</p>}
-      {carried && look === "sign_in" && !signIn && theirs !== "old" && <p class="wmem-why soft">{t("wmem.own.signin", dv.name)}</p>}
+      {carried && look === "absent" && m.installable && !health && <p class="wmem-why soft">{t("wmem.own.absent")}</p>}
+      {carried && look === "sign_in" && !signIn && theirs !== "old" && !health && <p class="wmem-why soft">{t("wmem.own.signin")}</p>}
       {!carried && look === "absent" && <p class="wmem-why">{t(m.installable ? "wmem.absent.why" : "wmem.absent.none", dv.name)}</p>}
       {!carried && look === "absent" && m.installable && <p class="wmem-why soft">{t("ag.where")}</p>}
-      {look === "ready" && <p class={`wmem-why${carried ? " soft" : ""}`}>{readyWords(dv.name, installed, left)}</p>}
+      {look === "ready" && !carried && <p class="wmem-why">{readyWords(dv.name, installed, left)}</p>}
+      {/* D420: carried, the line under the title says it all; an agent not connected yet is the one thing to know. */}
+      {look === "ready" && carried && left.length > 0 && <p class="wmem-why soft">{t("wmem.ready.left", agentsWords(left))}</p>}
       {carried && health && <p class="wmem-why soft">{t(`wmem.health.${health}`, dv.name)}</p>}
       {health === "old" && !m.ours && <p class="wmem-why">{t("wmem.health.old.how", dv.name)}</p>}
       {theirs === "old" && look !== "installing" && m.installable && <p class="wmem-why">{t("wmem.theirs.why", dv.name)}</p>}

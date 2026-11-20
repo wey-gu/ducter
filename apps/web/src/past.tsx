@@ -13,6 +13,7 @@ import { askMade, M, MadeTab } from "./made.tsx";
 import { forgetSteps, Preview, PV, startRedo, type PreviewActs } from "./past-preview.tsx";
 import { ROOMY, useRoomy } from "./wide.ts";
 import { openApp } from "./apps.tsx";
+import { Menu, MenuHead, MenuItem, MenuSep } from "./menu.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
@@ -388,27 +389,27 @@ function More({ it }: { it: PastItem }) {
   const harnesses = ["claude-code", "codex", "pi", "deepseek-harness", "antigravity"].filter((h) => h !== it.harness);
   const shut = () => ((P.moreFor = ""), A.changed());
   return (
-    <div class="pmenu" role="menu">
-      <button role="menuitem" onClick={() => (shut(), seedFrom(it))}>
+    <Menu class="pmenu" onClose={shut}>
+      <MenuItem onClick={() => (shut(), seedFrom(it))}>
         {t("past.seed")}
-      </button>
-      <button role="menuitem" onClick={() => (shut(), startRedo(it))}>
+      </MenuItem>
+      <MenuItem onClick={() => (shut(), startRedo(it))}>
         {t("pv.redo.any")}
-      </button>
-      <button role="menuitem" aria-expanded={others} onClick={() => setOthers(!others)}>
+      </MenuItem>
+      <MenuItem expanded={others} onClick={() => setOthers(!others)}>
         {t("past.other.agent")}
-      </button>
+      </MenuItem>
       {others &&
         harnesses.map((h) => (
-          <button role="menuitem" class="sub" key={h} onClick={() => (shut(), carryOn(it, h))}>
+          <MenuItem class="sub" key={h} onClick={() => (shut(), carryOn(it, h))}>
             {t("past.with", harnessName(h))}
-          </button>
+          </MenuItem>
         ))}
-      <hr />
-      <button role="menuitem" onClick={() => ((P.moreFor = ""), (P.markFor = it.taskId), A.changed())}>
+      <MenuSep />
+      <MenuItem onClick={() => ((P.moreFor = ""), (P.markFor = it.taskId), A.changed())}>
         {t("past.mark")}
-      </button>
-    </div>
+      </MenuItem>
+    </Menu>
   );
 }
 
@@ -816,22 +817,22 @@ function OutsideCard({ it }: { it: OutsideItem }) {
         </button>
       </span>
       {more && (
-        <div class="pmenu" role="menu">
-          {!it.gone && <div class="pmenu-k">{t("past.other.agent")}</div>}
+        <Menu class="pmenu" onClose={() => ((P.moreFor = ""), A.changed())}>
+          {!it.gone && <MenuHead>{t("past.other.agent")}</MenuHead>}
           {!it.gone &&
             others.map((h) => (
-              <button role="menuitem" class="sub" key={h} onClick={() => ((P.moreFor = ""), carryOut(it, h))}>
+              <MenuItem class="sub" key={h} onClick={() => ((P.moreFor = ""), carryOut(it, h))}>
                 {t("past.with", harnessName(h))}
-              </button>
+              </MenuItem>
             ))}
-          {!it.gone && <hr />}
-          <button role="menuitem" onClick={() => hideAgent(it.agent, true)}>
+          {!it.gone && <MenuSep />}
+          <MenuItem onClick={() => hideAgent(it.agent, true)}>
             {t("past.out.hide", harnessName(it.agent))}
-          </button>
-          <button role="menuitem" onClick={() => leaveFolder(it.cwd)}>
+          </MenuItem>
+          <MenuItem onClick={() => leaveFolder(it.cwd)}>
             {t("past.out.leave")}
-          </button>
-        </div>
+          </MenuItem>
+        </Menu>
       )}
     </div>
   );
@@ -1058,34 +1059,34 @@ function OgCard({ it }: { it: OngoingItem }) {
         </button>
       </span>
       {pausing && (
-        <div class="pmenu" role="menu">
+        <Menu class="pmenu" onClose={() => ((P.ogPause = ""), A.changed())}>
           {(["hour", "morning", "week"] as const).map((k) => (
-            <button key={k} role="menuitem" onClick={() => og(it, { action: "pause", until: pauseUntil(k) })}>
+            <MenuItem key={k} onClick={() => og(it, { action: "pause", until: pauseUntil(k) })}>
               {t(`og.pause.${k}`)}
-            </button>
+            </MenuItem>
           ))}
-          <button role="menuitem" onClick={() => og(it, { action: "pause" })}>
+          <MenuItem onClick={() => og(it, { action: "pause" })}>
             {t("og.pause.open")}
-          </button>
-        </div>
+          </MenuItem>
+        </Menu>
       )}
       {menu && (
-        <div class="pmenu" role="menu">
+        <Menu class="pmenu" onClose={() => ((P.ogMenu = ""), A.changed())}>
           {it.kind === "routine" && it.trigger?.kind === "time" && (
-            <button role="menuitem" onClick={() => ((P.ogEdit = it.id), (P.ogMenu = ""), A.changed())}>
+            <MenuItem onClick={() => ((P.ogEdit = it.id), (P.ogMenu = ""), A.changed())}>
               {t("og.retime")}
-            </button>
+            </MenuItem>
           )}
           {openTask && (
-            <button role="menuitem" onClick={() => (close(), A.go({ name: "task", id: openTask }))}>
+            <MenuItem onClick={() => (close(), A.go({ name: "task", id: openTask }))}>
               {t("og.open")}
-            </button>
+            </MenuItem>
           )}
-          <hr />
-          <button role="menuitem" class="danger" onClick={() => og(it, { action: "end" })}>
+          <MenuSep />
+          <MenuItem danger onClick={() => og(it, { action: "end" })}>
             {t(it.kind === "routine" ? "og.end" : "wait.cancel")}
-          </button>
-        </div>
+          </MenuItem>
+        </Menu>
       )}
       {editing && <Retime it={it} />}
     </div>

@@ -9,7 +9,8 @@
 > `design/where.md`).
 
 > **Amended by D398 (2026-11-19, `research/160`).** The card keeps this order and adds, after the
-> chips, a device's promises (short lines with drawn marks) and an optional step as a framed row;
+> chips, what a device can and can't touch (D420: one or two plain sentences in a soft tray, no marks;
+> the home's says where the conversation is kept) and an optional step as a framed row;
 > §3.5's connection line and §3.6's **断开这台 {device}** now sit in one fold at the foot (**怎么连着**,
 > its summary the way), the one destructive action last inside it; the home's addresses fold the
 > same way. §4's idle word for a computer is **待命 / Ready**; a phone that can be lent says so. On the

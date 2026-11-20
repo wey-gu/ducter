@@ -1569,11 +1569,13 @@ Codex first, once OAR is near 1.0. See `research/17`.
       reads it tolerantly). Then clear the per-Space contexts D334 made (`agents context clear --name
       <…-in-<space>>`, the person's Go) and fold `oneSpaceEach` away once the grouped contacts are seen live.
       Trigger: the personal Space's `…_unreconciled` cleared (B19), or a trial without it (met 2026-11-20: it reads again, research/161 §9).
-- [ ] D409: rerun the live trial (`bun run bridge:live -- --connected --real`) with the 120 s limit and rule 2d.
-      Read in its raw output: that `open` and `reply` work for a connection passive setup calls `enable_needed`
-      (if `open` refuses for that, the connection has to be enabled: a decision for core's connect, not a
-      partner call); the time of `open` and `reply`; whether `--watch` brings the arrival before the minute check.
-      Trigger: the coordinator merges D409.
+- [x] D409: rerun the live trial with the 120 s limit and rule 2d. Done 2026-11-20 02:58 UTC: 10/17; `open` and
+      `reply` work after `enable_needed` (4 to 13 s each); what was left is D411's (research/161 §10).
+- [ ] D411: rerun the live trial (`bun run bridge:live -- --connected --real`) with the guard reading Mem's `bm1:`
+      references, the card's name check and one follow-through line per agent. Read in its raw output: a peer
+      `open` under its own context for each of Ducter's claim, result and answer; the peer's `reply` linked to
+      Ducter's question (S2); whether `--watch` brings the arrival before the minute check.
+      Trigger: the coordinator merges D411.
 - [ ] D409: the start mark (B14) is the first inbox read that *works*: if it fails until mail has arrived (the
       2026-11-20 run, every read timed out), the first real request is taken for old mail and never opened. Mark
       only entries sent before the first attempt (0.10.121 gives no send time; `expires_at_ms` minus Mem's 7 days

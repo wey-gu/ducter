@@ -635,6 +635,8 @@ export interface Bodies {
     opId?: string;
     contact?: string;
     operation?: string;
+    // D411, "followed": the other unanswered messages to the same agent that one line also covered.
+    alsoFollowed?: string[];
     // D334: the Space it came in (in), or goes out in (out): a reply goes back in its message's Space.
     space?: string;
     spaceLabel?: string;

@@ -52,6 +52,23 @@ export function peerInboxBlocked(r: { code: number; out: string; err: string }):
 
 const TRIAL = /^ducter-trial-\d{12}-[0-9a-f]{4}$/;
 /** Whether an id is a trial's own (the only kind removeTrial touches). */
+/**
+ * D411: the message a peer's `open`/`reply` names. Mem's own argv (`open_args`, `reply_args_prefix`,
+ * nmem 0.10.121) names it by its `bm1:` reference, whose JSON carries the message id; the trial knows
+ * only the ids Ducter's sends returned. In the 2026-11-20 run the guard compared the reference with
+ * those ids and refused the peer every open of Ducter's mail (research/161 §10). Trial-side only: the
+ * product never reads into Mem's references.
+ */
+export function refMessage(ref: string | undefined): string | undefined {
+  if (!ref?.startsWith("bm1:")) return ref;
+  try {
+    const id = JSON.parse(Buffer.from(ref.slice(4), "base64url").toString("utf8"))?.message;
+    return typeof id === "string" && id ? id : ref;
+  } catch {
+    return ref;
+  }
+}
+
 export const isTrialId = (id: string) => TRIAL.test(id);
 
 /** `ducter-trial-<yyyymmddhhmm>-<4 hex>`, UTC. */

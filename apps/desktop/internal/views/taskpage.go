@@ -503,6 +503,8 @@ func (a *App) promptLine(p *Block) string {
 		return a.L.T("told." + p.Say)
 	case "taken_back", "given_back", "loan_lost": // D280: the loan of the person's phone ended
 		return a.L.T("told."+p.Say, phoneShort(p.Name))
+	case "looked": // D437: another AI looked the result over first; the name is that AI
+		return a.L.T("told.looked", p.Name)
 	}
 	return a.L.T("told.other", a.S.PersonaName)
 }

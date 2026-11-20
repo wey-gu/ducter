@@ -147,6 +147,12 @@ func (a *App) quiet(c *ui.Context, key string, tasks []*store.Task, detail strin
 // messageRow is the quiet row and, when open, Details, under a bubble.
 func (a *App) messageRow(c *ui.Context, key string, tasks []*store.Task, detail string, notes []noted, about string) {
 	t := a.T
+	// D437: what another AI still found is never folded away: it is what to look at.
+	for _, task := range tasks {
+		if finished(task) {
+			a.lookLine(c, "q:"+task.ID, reportLookLeft(task))
+		}
+	}
 	ui.Row(c.Key("qrow:" + key)).Gap(t.S4).Wrap().AlignItems(ui.Center).Children(func() {
 		for _, task := range tasks {
 			a.mergeAction(c, task)
@@ -382,6 +388,10 @@ func (a *App) ask(c *ui.Context, d *store.DecisionState, taskID string) {
 			a.peerAskerRow(c, d.Asker) // X1: who asks, before the question
 		}
 		a.partnerWords(c, words)
+		// D437: what another AI still found in what this Go sends.
+		if d.Look != nil && openAsk(d) {
+			a.underBubble(c, func() { a.lookLine(c, "ask:"+d.DecisionID, d.Look.Left) })
+		}
 		// D341: a write-back's comment, whole as it goes out, or the to-do's chip.
 		if (d.Src != nil || d.Board != nil) && openAsk(d) { // D407: the board offer's few words too
 			ui.Column(c.Key("todo")).MaxWidth(t.BubbleMeasure).Padding(t.S4, t.S4).Radius(t.RadiusLG).Background(t.NeedsYou.Surface).Shadow(0, t.Raised.Y, 0, 0, t.NeedsYou.Ledge).Children(func() {

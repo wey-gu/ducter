@@ -101,6 +101,12 @@ If you give Ducter an API key or a sign-in token, it's kept in a private file in
 handed only to the AI agent that signs in with it, never to the others or to every task. A task
 doesn't get the keys or tokens from the environment Ducter was started in, either.
 
+Before a result that changed code or files, or something a task would send for you, reaches you,
+another AI agent you're signed in to on the same computer reads it once: what you asked, what the
+task says it did, and what it changed. It reads on that agent's smallest model, with no tools; what
+it reads goes to that agent's provider as any of your tasks would, and nowhere else. At most 40 such
+looks a day.
+
 Tasks use your plan's limits like any other session would. Your agent's own settings, skills and
 tools apply to tasks too, so a Ducter task in your project behaves the way your own session
 there does, including your Nowledge Mem plugin (below).

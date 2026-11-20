@@ -1,6 +1,7 @@
 package views
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/egoist/mygo/ui"
@@ -58,6 +59,7 @@ func (a *App) taskFooter(c *ui.Context, task *store.Task, detail string) {
 		}
 		a.proofLine(c, task, evs, true)
 		a.sentLine(c, task)
+		a.lookLine(c, "footer:"+task.ID, reportLookLeft(task)) // D437
 		a.resultActions(c, task)
 	})
 }
@@ -126,6 +128,34 @@ func (a *App) proofLine(c *ui.Context, task *store.Task, evs []protocol.Evidence
 			}
 		}
 	})
+}
+
+// lookLine (D437) is what another AI still found when it looked the result
+// (or what a Go sends) over: its lead in the needs-you ink, then each thing
+// on its own line (D291), set in from a rule. Nothing when the look was
+// clean or the task fixed what it found.
+func (a *App) lookLine(c *ui.Context, key string, left []string) {
+	if len(left) == 0 {
+		return
+	}
+	t := a.T
+	ui.Row(c.Key("look:" + key)).Gap(t.S3).AlignItems(ui.Stretch).MinWidth(0).Children(func() {
+		ui.Box(c).Width(2).AlignSelf(ui.Stretch).Background(t.NeedsYou.Ink).Shrink(0)
+		ui.Column(c).Gap(2).Grow(1).MinWidth(0).Children(func() {
+			uiText(c, a.L.T("look.lead")).FontSize(t.SM).FontWeight(700).TextColor(t.NeedsYou.Ink)
+			for i, l := range left {
+				uiText(c.Key(fmt.Sprintf("it%d", i)), l).FontSize(t.SM).TextColor(t.Ink).LineHeight(1.45).MinWidth(0)
+			}
+		})
+	})
+}
+
+// reportLookLeft is what the task's last report's look still found (D437).
+func reportLookLeft(task *store.Task) []string {
+	if r := task.Report(); r != nil && r.Look != nil {
+		return r.Look.Left
+	}
+	return nil
 }
 
 // sentLine is what went out, only when something did: a drawn ↗ and the

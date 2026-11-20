@@ -114,7 +114,7 @@ export type Block =
   | { k: "told"; seq: number; say: ToldSay; name?: string; text: string };
 
 /** What Ducter told the agent (D271). */
-export type ToldSay = "adopted" | "lent" | "returned" | "stopped" | "declined" | "reopened" | "taken_back" | "given_back" | "loan_lost" | "other";
+export type ToldSay = "adopted" | "lent" | "returned" | "stopped" | "declined" | "reopened" | "taken_back" | "given_back" | "loan_lost" | "looked" | "other";
 
 /** What a note says (D207). Every other system line (session started, memory recalled, a retry, an archive) says nothing. */
 export type NoteSay = "earlier" | "limit" | "compacted" | "compact_failed" | "interrupted" | "retry" | "stalled" | "offline" | "reconnecting" | "back" | "waiting_device" | "fresh" | "moved" | "switched" | "retuned" | "effort_dropped" | "guard" | "to_own_browser" | "error" | "error_delivery" | "error_start" | "error_resume";
@@ -200,6 +200,8 @@ const TOLD: [RegExp, ToldSay][] = [
   [/^The user (?:said no to lending you their phone|said not now to using their own phone)/, "declined"],
   [/^The user pressed 停下 \/ Stop/, "stopped"],
   [/^The user reopened this task\./, "reopened"],
+  // D437: another AI looked the result over first and found something (second-look.ts fixAsk): name = that AI.
+  [/^Before your result goes to the user, another AI \((.+?)\) read it/, "looked"],
   // D299: a session from outside Ducter, carried on here.
   [/^The user picked this session up again in Ducter/, "adopted"],
   // D280: a loan of the person's own phone ended: they took it back (Stop, a lock, Android's switch,

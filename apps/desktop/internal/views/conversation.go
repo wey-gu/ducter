@@ -835,6 +835,9 @@ func (a *App) decisionBody(c *ui.Context, d *store.DecisionState, taskID string)
 	}
 	question := a.questionOf(d)
 	a.heading(c, autospace(question), t.XL).LineHeight(1.35)
+	if d.Look != nil && d.Resolved == nil {
+		a.lookLine(c, "card:"+d.DecisionID, d.Look.Left) // D437
+	}
 	a.todoAskBody(c, d) // D341: the comment as it goes out, or the to-do's chip
 	if d.RoutineID != "" && d.Resolved == nil {
 		a.routineFacts(c, d.RoutineID, t.NeedsYou.Ink)

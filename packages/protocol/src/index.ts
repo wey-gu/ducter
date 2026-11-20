@@ -38,6 +38,7 @@ export * from "./apps.ts";
 export * from "./app-lift.ts";
 export * from "./app-glyphs.ts";
 export * from "./reach.ts";
+export * from "./second-look.ts";
 export * from "./mem-source.ts";
 export * from "./mem-health.ts";
 export * from "./task-sources.ts";
@@ -386,6 +387,9 @@ export interface Bodies {
     // D341: a card about a to-do bound to a task (待办来源 / To-do sources): a write-back to its app,
     // the to-do closed there while the task works, or a standing go offered once.
     src?: SourceAsk;
+    // D437: another AI read what this Go sends before the card was shown, and this is still so
+    // (the person's language, one line each): 另一个 AI 看过：漏了 Windows 那一处.
+    look?: { by: string; left: string[] };
   };
   // now (D208): a call's Go given as 现在就打 / Call now, over the callee's courtesy hours.
   // delivered (D233): the task already has the answer (it came back in the tool call it was waiting
@@ -480,6 +484,8 @@ export interface Bodies {
     media?: MediaRef[];
     /** D426: its word on each of its lines (what the person asked for), in the order it was given them. */
     asks?: import("./asks.ts").AskReport[];
+    /** D437: set by Ducter (never the task): another AI read this result once before it went out. */
+    look?: import("./second-look.ts").SecondLook;
   };
   checkpoint: { taskId: string; text: string; gitRef?: string };
   // D341: a task bound to one outside to-do (item null: unbound). by: who bound it (the person in

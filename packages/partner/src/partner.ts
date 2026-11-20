@@ -857,6 +857,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     },
     // D401: the rules Ducter kept from this message of the user's, by itself.
     kept: (seq) => core.said?.keptFrom?.(seq) ?? [],
+    // D437: 这类不用复查, kept by Ducter from these words.
+    noLook: (seq) => core.noLookFrom?.(seq),
     // D413: what Ducter did with what they said about asking first (kept, taken back, the floor).
     standing: (seq) => core.standing?.heardFrom(seq) ?? [],
     // D426: the lines a many-things message asked for (core/src/asks.ts).

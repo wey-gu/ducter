@@ -15,7 +15,7 @@ export interface RulesStore {
   /** D372: kinds: the kinds of work it covers; never: never this agent (model) for that work. */
   add(r: { text: string; harness: string; model?: string; match: string[]; device?: string; kinds?: string[]; never?: boolean }): RuleView;
   /** D165: a rule about what it tells the person (这类不用告诉我, or a kind that may wake them). */
-  addNotice(r: { text: string; kind: string; sender?: string; wake?: boolean }): RuleView;
+  addNotice(r: { text: string; kind: string; sender?: string; wake?: boolean; kinds?: WorkKind[]; match?: string[] }): RuleView;
   remove(id: string): boolean;
   onChange(fn: () => void): () => void;
 }
@@ -70,12 +70,16 @@ export function openRules(dataDir: string, now: () => Date = () => new Date()): 
       if (!text) throw new Error("a rule needs its words");
       const sender = r.sender?.replace(/[\u0000-\u001f\u007f]/g, "").trim().slice(0, 80) || undefined;
       const notice = { kind: r.kind, ...(sender ? { sender } : {}), ...(r.wake ? { wake: true } : {}) };
-      // The same kind (and sender) said again replaces the older rule.
-      rules = rules.filter((x) => !(x.notice && x.notice.kind === notice.kind && (x.notice.sender ?? "") === (notice.sender ?? "") && Boolean(x.notice.wake) === Boolean(notice.wake)));
-      const rule: RuleView = { id: `rule_${randomBytes(5).toString("hex")}`, text, harness: "", match: [], createdAt: now().toISOString(), notice };
+      // D437: a 这类不用复查 rule covers kinds of work or words (none: everything).
+      const kinds = [...new Set((r.kinds ?? []).filter(isWorkKind))];
+      const match = [...new Set((r.match ?? []).map((m) => String(m).trim().toLowerCase()).filter((m) => m.length > 0 && m.length <= 40))].slice(0, 16);
+      const sameScope = (x: RuleView) => (x.kinds ?? []).join() === kinds.join() && x.match.join() === match.join();
+      // The same kind (and sender, and scope) said again replaces the older rule.
+      rules = rules.filter((x) => !(x.notice && x.notice.kind === notice.kind && (x.notice.sender ?? "") === (notice.sender ?? "") && Boolean(x.notice.wake) === Boolean(notice.wake) && sameScope(x)));
+      const rule: RuleView = { id: `rule_${randomBytes(5).toString("hex")}`, text, harness: "", match, ...(kinds.length ? { kinds } : {}), createdAt: now().toISOString(), notice };
       rules = [...rules, rule].slice(-MAX_RULES);
       save();
-      return { ...rule, notice: { ...notice } };
+      return { ...rule, match: [...match], ...(kinds.length ? { kinds: [...kinds] } : {}), notice: { ...notice } };
     },
     remove(id) {
       const before = rules.length;

@@ -2295,3 +2295,10 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] **More actions than PR reviews** (issue comments outside To-do sources' own standing go, replies in a chat app, a reply to one named person's mail). Trigger: the person says "don't ask me" about one of these (the partner already says Ducter can't keep it yet).
 - [ ] **The settled round card's footnote** (**说好之前，什么都不会发到 GitHub。**) still shows under a card whose drafts went as said. Trigger: the next pass on the round card.
 - [ ] **On hel:** check after the upgrade that the 11-19 saying was backfilled (`[standing] kept 1 …` in the log) and the next round posts with one line. Trigger: the first release carrying D413.
+
+## Positioning (D414)
+
+- [ ] **Apply the GitHub description and topics** in `design/positioning.md` (by hand, `gh repo edit`). Trigger: the author approves D414.
+- [ ] **Re-rate the share image** with D414's longer line at thumbnail size (the 2026-11-18 five raters). Trigger: before the next launch post.
+- [ ] **Human raters for D414's line and paragraph** (LLM proxies only so far). Trigger: the next round with people.
+- [ ] **Name more agents in the paragraph** as they are verified end to end (`apps/site/src/lib/agents.ts`; none named before then). Trigger: an agent moved to `today`.

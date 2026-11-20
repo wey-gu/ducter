@@ -1,16 +1,18 @@
 ---
 title: Ducter docs
-description: How to install Ducter and work with your partner on your own computers.
+description: How to install Ducter and work with your partner and its AI agents, on your own computers or servers.
 order: 0
 ---
 
 # Ducter docs
 
-Ducter is a personal AI that runs on your own Mac or server. You talk to one partner, in one
-conversation. It hands the work to an AI agent you already use
-([which ones](faq.md#which-ai-agents-does-it-work-with)), on the plan you already pay for,
-and comes back when the work is done, with how it checked. It asks you only when a decision is
-yours to make.
+Ducter is a personal AI for people who build things, on your own computers or servers: your Mac,
+a server you own, and any computer you lend it. You talk to one partner, in one conversation. When
+you build, it hands the work to as many AI agents as it needs
+([which ones](faq.md#which-ai-agents-does-it-work-with)), side by side on the plans you already
+pay for, and any task is yours to open and steer. Finished work comes back with how it was
+checked. In between it minds your mail and calendar and runs errands, and it asks you only when
+a decision is yours to make.
 
 These pages are for using Ducter. If you want to build it or change it, start with the
 [README](../README.md) and [CONTRIBUTING](../CONTRIBUTING.md) in the repository instead.

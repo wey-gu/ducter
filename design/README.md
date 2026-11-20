@@ -26,6 +26,7 @@ renders it at `/docs`.
 | [`conversation.md`](conversation.md) | The conversation surface: jobs and the living message |
 | [`focus-window.md`](focus-window.md) | Tasks: brief, report, checkpoint, where they run |
 | [`ai-loadout.md`](ai-loadout.md) | Draft proposal: what the partner thinks with, who does the tasks, switching a task |
+| [`positioning.md`](positioning.md) | D414: what Ducter is in one line and one paragraph (zh, en): a personal AI for builders on your own computers or servers, the GitHub description |
 | [`where.md`](where.md) | D157: which computer a task runs on, how it's said and changed together with who |
 | [`focus-window-states.md`](focus-window-states.md) | The task state machine |
 | [`system.md`](system.md) | Harness adapter, identity and Mem, safety and trust, storage, server mode, workers |

@@ -1,10 +1,16 @@
 <h1 align="center">Ducter</h1>
 
 <p align="center">
-  <b>Your own personal AI. It does the work, and asks only when it matters.</b><br>
-  Talk to it from your phone, your computer or the chat apps you already use. It runs on your own
-  Mac or server, with the AI you already pay for (Claude Code, Codex, pi or DeepSeek Harness), and
-  anything that spends your money or reaches other people waits for your OK. Free and open source.
+  <b>A personal AI for builders. It runs your AI agents on your own computers or servers, and you hear only what matters.</b>
+</p>
+
+<p align="center">
+  Ducter is a personal AI you run yourself, on your Mac or a server you own, and on any computer
+  you lend it. You talk to one partner, from your phone, your desk or the chat app you already use.
+  When you build, it hands the work to as many AI agents as it needs (Claude Code, Codex, pi and
+  DeepSeek Harness), side by side on the plans you already pay for, and any task is yours to open
+  and steer. Finished work comes back with how it was checked. In between it minds your mail and
+  calendar, runs errands, and stays quiet until something needs you. Free and open source.
 </p>
 
 <p align="center">
@@ -23,18 +29,37 @@
   <img src=".github/readme/hero.webp" width="100%" alt="Ducter on a Mac and a phone. On the Mac, the conversation: you asked it to fix the flaky compaction test in HawDB; it says it's fixed, with Merge into main and its proof (50 of 50 runs pass, 412 workspace tests pass, a two-file diff). Below, a question with a default: rebase fix-ci, with Reply, Hold and Rebase. The same question is open on the phone.">
 </p>
 
+> **Early preview.** Everything below runs today on a Mac and on a Linux server; the iPhone app is
+> in public beta. Expect rough edges and breaking changes. See the [changelog](CHANGELOG.md).
+
 ## Why Ducter
 
-- **One partner, not a wall of sessions.** You write *"Fix the flaky compaction test in HawDB
-  and tell me when it's done."* Your partner starts the task, watches it, and comes back with
-  the result, its proof and **Merge into main**. You can open any task and steer it yourself.
-- **Your agents, your subscriptions.** Tasks run on Claude Code, Codex, pi or DeepSeek Harness,
-  signed in as you, with your own skills and settings. No Ducter account, no API key to start.
-- **Your computers.** It lives on your Mac, or on a Linux server you own, at home or in the
-  cloud, so it keeps working while your laptop sleeps. Lend it more computers to run tasks on.
+Ducter is two things held as one partner: AI agents for what you build, and a personal AI for the
+rest of your day, both on your own computers or servers.
+
+**AI agents for what you build, without the babysitting**
+
+- **Many at once, one conversation.** You write *"Fix the flaky compaction test in HawDB and tell
+  me when it's done"*, then three more things. Each becomes a task on Claude Code, Codex, pi or
+  DeepSeek Harness, signed in as you, with your own skills and settings. No Ducter account, no
+  API key to start.
 - **Quiet until it matters.** Done comes with proof, a question comes with a default it will
   take if you don't answer, and on a quiet day you hear nothing. Reply to a task's result and
   that task carries on.
+- **Every task is open to you.** On hand shows them all; open one to see every step, its diff
+  and its browser, steer it, or hand it to another agent mid-way. Coding work gets its own
+  worktree and branch, and merging is your call.
+- **On your computers or servers.** It lives on your Mac, or on a Linux server you own, at home
+  or in the cloud, so it keeps working while your laptop sleeps. Lend it more computers, or your
+  Android phone for a while, and say where a task should run.
+
+**A personal AI for the rest of your day**
+
+- **One partner, everywhere you are.** The same conversation on your Mac, your phone, iMessage,
+  WeChat, Telegram or Slack. It keeps an eye on your mail and calendar if you say yes, and each
+  morning brings you at most three things that need you, each with a next step.
+- **It remembers you, and you can see what it knows.** With [Nowledge Mem](https://mem.nowledge.co)
+  (optional), the AI tools you use elsewhere share that memory too.
 - **Open source and self-hosted.** Hosted agent workbenches come and go, and the best personal
   AIs are closed. Ducter is Apache 2.0 and runs where you put it, so nobody can wind it down
   for you ([why it exists](motivation.md)).
@@ -145,9 +170,6 @@ Building from source, the walkthroughs and every command: [Install](docs/install
   carry on with it; pause and resume what runs on its own ([Past tasks](docs/past-tasks.md)).
 - **What you already decided.** With [Nowledge Mem](https://mem.nowledge.co) (optional), your
   partner and its tasks share one memory with the AI tools you use elsewhere.
-
-> **Early preview.** Expect rough edges and breaking changes. See the
-> [changelog](CHANGELOG.md).
 
 ## Under the hood
 

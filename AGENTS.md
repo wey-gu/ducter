@@ -92,6 +92,7 @@ Design notes:
 - `made.md`: 给你做的 / Made for you, what Ducter made found again: asked for, or browsed in Past tasks (D383).
 - `apps.md`: 小应用 / Apps, small apps the partner makes from one sentence: kept on the home, sandboxed, changed by talking, asking the partner from inside (D405); their place 你的小应用 / Your apps, the kit, apps that open already filled (D410).
 - `handover.md`: handing over several to-dos: one sheet with a note and a shape, a group on Go, plan first for a subject, review together (D385, built).
+- `positioning.md`: what Ducter is in one line and one paragraph, zh and en: a personal AI for builders, on your own computers or servers; the GitHub description (D414).
 - `site.md`: the website (ducter.ai): the landing page, `/download`, the docs' rendering, and what's owed (D319).
 - `product-model.md`: see above.
 

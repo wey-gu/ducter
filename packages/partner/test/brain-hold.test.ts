@@ -175,3 +175,35 @@ test("a restart while another agent answers: it keeps answering on Codex, and th
   expect(w.state.ran).toEqual(["claude-code", "codex", "codex"]);
   expect(partnerSaid(w.fc.events).filter((x) => x.text.includes("额度"))).toHaveLength(1);
 });
+
+test("D446: a task already waits for Claude Code's reset: the account is read first, no turn fails, Codex answers at once", async () => {
+  const w = world({ home: ["claude-code", "codex"] });
+  // D297: a task on the home rests until the same account's reset; the account says it is used up.
+  const waits = [{ harness: "claude-code", at: new Date(Date.parse(RESET) + 60_000).toISOString(), resetKnown: true }];
+  let reads = 0;
+  const usage = { get: async (h: string) => (h === "claude-code" ? (reads++, { usage: { windows: [{ id: "5h", used: 1, resetsAt: RESET }], limited: true } }) : {}), seen: () => {} };
+  const hold = createBrainHold({ log: w.fc.core.log, clock: w.clock, base: () => "claude-code", home: () => [{ harness: "claude-code", loggedIn: true }, { harness: "codex", loggedIn: true }], usage: usage as never, waits: () => waits });
+  const { partner, user } = boot(w, hold);
+  const m1 = user("今天下午有什么安排？");
+  await settle(partner);
+  // Claude Code never ran: no failed turn first.
+  expect(w.state.ran).toEqual(["codex"]);
+  expect(reads).toBeGreaterThan(0);
+  const said = partnerSaid(w.fc.events);
+  expect(said).toHaveLength(2);
+  expect(said[0]!.text).toBe(`Claude Code 的额度用完了，这会儿先用 Codex 答你，${clockWords("zh", RESET, START)} 换回来。`);
+  expect(said[1]!.text).toContain("(codex) 答：今天下午有什么安排？");
+  expect(said[1]!.replyTo).toBe(m1.seq);
+  // The next message: Codex again, nothing said again.
+  user("那明天呢？");
+  await settle(partner);
+  expect(w.state.ran).toEqual(["codex", "codex"]);
+  expect(partnerSaid(w.fc.events).filter((b) => b.text.includes("额度"))).toHaveLength(1);
+  // The reset comes and the task's wait is over: Claude Code answers again.
+  w.state.out = false;
+  waits.length = 0;
+  w.clock.advance(Date.parse(RESET) - START + 61_000);
+  user("好的");
+  await settle(partner);
+  expect(w.state.ran.at(-1)).toBe("claude-code");
+});

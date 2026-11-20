@@ -2,7 +2,7 @@
 // same fixture (apps/desktop/internal/voice/talk_test.go).
 import { describe, expect, test } from "bun:test";
 import fx from "../fixtures/talk.json" with { type: "json" };
-import { afterEcho, heardAnswer, heardEnd, heardStop, isBargeIn, quietFor, spokenReply, talkFloor, talkStart, talkStep, type TalkCard, type TalkEffect, type TalkEvent, type TalkWords } from "../src/talk.ts";
+import { afterEcho, heardAnswer, heardEnd, heardStop, isBargeIn, quietFor, spokenReply, talkFloor, talkShown, talkStart, talkStep, type TalkCard, type TalkEffect, type TalkEvent, type TalkWords } from "../src/talk.ts";
 
 describe("talk fixture", () => {
   test("a turn ends after a quiet gap, longer after a filler", () => {
@@ -26,6 +26,10 @@ describe("talk fixture", () => {
   });
   test("the floor", () => {
     for (const c of fx.floor) expect(talkFloor(c.card as TalkCard) ?? "").toBe(c.want);
+  });
+  test("the big line never repeats the card (D446)", () => {
+    expect(fx.shown.length).toBeGreaterThan(0);
+    for (const c of fx.shown) expect(talkShown(c.saying, (c as { card?: { question: string; floor: boolean } }).card, c.floor)).toBe(c.want);
   });
   test("scripted talks: turns, barge-in, cards, the floor, silence", () => {
     for (const ss of fx.sessions) {

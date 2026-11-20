@@ -1109,5 +1109,84 @@
    "phase": "speak",
    "endedBy": ""
   }
+ ],
+ "shown": [
+  {
+   "saying": "小火炖一个半小时。",
+   "floor": "这个要你在屏幕上点一下。",
+   "want": "小火炖一个半小时。"
+  },
+  {
+   "saying": "付 ¥73 买周六 8:05 去杭州的车票？这个要你在屏幕上点一下。",
+   "card": {
+    "question": "付 ¥73 买周六 8:05 去杭州的车票？",
+    "floor": true
+   },
+   "floor": "这个要你在屏幕上点一下。",
+   "want": ""
+  },
+  {
+   "saying": "这个要你在屏幕上点一下。",
+   "card": {
+    "question": "付 ¥73 买周六 8:05 去杭州的车票？",
+    "floor": true
+   },
+   "floor": "这个要你在屏幕上点一下。",
+   "want": ""
+  },
+  {
+   "saying": "一个半小时后提醒你关火？说「好」，或者「先等等」。",
+   "card": {
+    "question": "一个半小时后提醒你关火？",
+    "floor": false
+   },
+   "floor": "这个要你在屏幕上点一下。",
+   "want": ""
+  },
+  {
+   "saying": "周六早上 8:05 去杭州的那班还有二等座，¥73。",
+   "card": {
+    "question": "付 ¥73 买周六 8:05 去杭州的车票？",
+    "floor": true
+   },
+   "floor": "这个要你在屏幕上点一下。",
+   "want": "周六早上 8:05 去杭州的那班还有二等座，¥73。"
+  },
+  {
+   "saying": "Pay ¥73 for the 8:05 to Hangzhou on Saturday? This one needs a tap on the screen.",
+   "card": {
+    "question": "Pay ¥73 for the 8:05 to Hangzhou on Saturday?",
+    "floor": true
+   },
+   "floor": "This one needs a tap on the screen.",
+   "want": ""
+  },
+  {
+   "saying": "This one needs a tap on the screen.",
+   "card": {
+    "question": "Pay ¥73 for the 8:05 to Hangzhou on Saturday?",
+    "floor": true
+   },
+   "floor": "This one needs a tap on the screen.",
+   "want": ""
+  },
+  {
+   "saying": "这个要你在屏幕上点一下。",
+   "card": {
+    "question": "一个半小时后提醒你关火？",
+    "floor": false
+   },
+   "floor": "这个要你在屏幕上点一下。",
+   "want": "这个要你在屏幕上点一下。"
+  },
+  {
+   "saying": "好的。",
+   "card": {
+    "question": "",
+    "floor": false
+   },
+   "floor": "这个要你在屏幕上点一下。",
+   "want": "好的。"
+  }
  ]
 }

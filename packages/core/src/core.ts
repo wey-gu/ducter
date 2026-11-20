@@ -1040,7 +1040,14 @@ export function startCore(opts: CoreOptions = {}): Core {
   const limitWaits = createLimitWaits({ log, tasks, waiters: work.waiters, loadout, settings, usage: accountUsage, runner: () => runner, clock });
   limitsDecorate = (o) => ({ ...o, waiters: o.waiters.map((w) => limitWaits.decorate(w)) });
   // D435: the partner's own agent, held after a turn failed on it; another signed-in agent answers meanwhile.
-  const brainHold = createBrainHold({ log, clock, base: () => effectiveBrain(settings.get().brain, settings.brainChosen(), devicesView?.harnessesNow()).harness as HarnessId, home: () => devicesView?.harnessesNow(), rules: () => rules.list(), usage: accountUsage });
+  const brainHold = createBrainHold({ log, clock, base: () => effectiveBrain(settings.get().brain, settings.brainChosen(), devicesView?.harnessesNow()).harness as HarnessId, home: () => devicesView?.harnessesNow(), rules: () => rules.list(), usage: accountUsage,
+    // D446: tasks on the home waiting for their agent's reset share the partner's account there.
+    waits: () =>
+      work.waiters
+        .views()
+        .filter((w) => w.state === "armed" && w.limit && w.taskId && ((tasks.get(w.taskId)?.place as { device?: string } | undefined)?.device ?? "local") === "local")
+        .map((w) => ({ harness: w.limit!.harness, ...(w.at ? { at: w.at } : {}), resetKnown: w.limit!.resetKnown })),
+  });
   const workFrames: typeof work.frames = { ...work.frames, waiter: (id, action) => limitWaits.act(id, action) ?? (action === "handoff" ? Promise.resolve(false) : work.frames.waiter(id, action)) };
   // D388: the pages the last noticed call rested on (a holder: the Core is a copy of api).
   const noticedSources: { links?: { label: string; url: string }[]; whys?: { text: string; why: string }[] } = {};

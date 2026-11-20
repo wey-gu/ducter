@@ -12,7 +12,7 @@
 // browser's, or the fakes under `?voice-fake` and in tests). The home never receives sound.
 import { useEffect } from "preact/hooks";
 import { readLang, speechLocale, type VoiceWhere, type VoiceWhy } from "@ducter/protocol/src/voice.ts";
-import { talkFloor, talkStart, talkStep, type TalkEffect, type TalkEvent, type TalkState, type TalkWords } from "@ducter/protocol/src/talk.ts";
+import { talkFloor, talkShown, talkStart, talkStep, type TalkEffect, type TalkEvent, type TalkState, type TalkWords } from "@ducter/protocol/src/talk.ts";
 import { A } from "./app.ts";
 import { haptic } from "./native.ts";
 import type { DecisionState } from "./store.ts";
@@ -242,6 +242,12 @@ export class TalkCtl {
     this.dispatch({ k: "end", at: this.host.now() });
   }
 
+  /** The big line while it speaks: what is said, unless the card under it shows it (D446). */
+  shown(): string | undefined {
+    const said = this.st.saying?.text;
+    return said ? talkShown(said, this.card, talkWords(this.host.t).floor) || undefined : undefined;
+  }
+
   seenSeq() {
     return this.seen;
   }
@@ -390,8 +396,9 @@ export function TalkPanel() {
   const st = c.st;
   const phase = st.phase === "ended" ? "listen" : st.phase;
   const card = c.card;
-  // The card's question is on the card: while it is said, the line above shows only who speaks.
-  const saying = card && st.saying?.text.startsWith(card.question) ? undefined : st.saying?.text;
+  // What the card shows (its question, its floor line) isn't shown again above it: while it is
+  // said, the line above shows only who speaks (D446).
+  const saying = c.shown();
   const state = phase === "speak" ? "talk.speaking" : phase === "think" && !st.heard ? "talk.thinking" : "talk.listening";
   return (
     <div class={`talk talk-${phase}`} role="region" aria-label={t("talk.name")} style={{ "--lv": String(c.level) }}>

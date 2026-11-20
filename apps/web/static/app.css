@@ -1027,6 +1027,32 @@ a {
   width: 36px;
   padding: 0;
 }
+/* D446: on a phone the update pill is its pebble with the count (its words are the tooltip and
+   the accessible name), so the counts under the partner's name keep their line beside it. */
+.btn.nav .lbl-short {
+  display: none;
+}
+@media (max-width: 600px) {
+  .top .btn.nav.update {
+    min-width: 36px;
+    padding: 0 10px 0 7px;
+  }
+  .top .btn.nav.update:not(:has(.lbl-short)) {
+    width: 36px;
+    padding: 0;
+  }
+  .top .btn.nav.update .lbl {
+    display: none;
+  }
+  .top .btn.nav.update .lbl-short {
+    display: inline;
+    font-variant-numeric: tabular-nums;
+  }
+}
+/* D446: a count in the bar is never broken inside (1 个 / 等你): each fact wraps whole. */
+.top .who .sum .facts > span {
+  white-space: nowrap;
+}
 .btn.nav.is-here {
   --fill: var(--surface-sunken);
   --fill-top: var(--surface-sunken);

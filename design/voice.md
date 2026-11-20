@@ -219,7 +219,10 @@ deletes (D340's words); what one of the person's own agents or a stranger asked 
 must be seen (a written draft, a tap on a phone or in the person's apps, a phone call's Go, the
 person's own phone lent). Said as its question and **这个要你在屏幕上点一下。/ This one needs a tap on
 the screen.**; "好" to it gets that line again and is never a Go or a message. The talk shows the
-line and **去看看 / Show it**, which ends the talk so the card is in sight.
+line and **去看看 / Show it**, which ends the talk so the card is in sight. **Shown once (D446):** what
+the card shows is not shown again as the big line above it (`talkShown`, the Mac's `TalkShown`, one
+fixture): while its question (with the hint or floor line after it) is said, and while a floor card's
+line is said again after a "好", the big line shows only who speaks (在说 / Speaking).
 
 **Ending**: "就这样", "先这样", "不说了", "拜拜", "that's all", "bye"… as the whole turn; **结束 / End**;
 a tap on the microphone; Esc; or a quiet minute while it listens (two while it waits for a reply),

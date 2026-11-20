@@ -270,6 +270,19 @@ export function sayAfter(a: string, b: string): string {
   return HAN.test(a.slice(-1)) || /[。！？，：；）」』]$/.test(a) ? `${a}${b}` : `${a} ${b}`;
 }
 
+/**
+ * The big line over a talk's card: what is being said, unless the card already shows it (D446). A
+ * card's question (and the hint or floor line said after it) is on the card; on a floor card, its
+ * floor line ("这个要你在屏幕上点一下。") is on the card too, so said again after a "好" it isn't
+ * shown twice. Empty means the line shows only who speaks.
+ */
+export function talkShown(saying: string, card: { question: string; floor: boolean } | undefined, floor: string): string {
+  if (!card) return saying;
+  if (card.question && saying.startsWith(card.question)) return "";
+  if (card.floor && floor && plain(saying) === plain(floor)) return "";
+  return saying;
+}
+
 export function talkStart(at: number): TalkState {
   return { phase: "listen", heard: "", changedAt: at, quietSince: at, waiting: false, queue: [], hinted: false, closing: false };
 }

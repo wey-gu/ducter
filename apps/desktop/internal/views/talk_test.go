@@ -2,6 +2,7 @@ package views
 
 import (
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -142,10 +143,30 @@ func TestTalkCardByVoiceAndTheFloor(t *testing.T) {
 	if !r.tt.HasText(r.app.L.T("talk.floor.show")) || r.app.hf.card == nil || !r.app.hf.card.floor {
 		t.Errorf("the floor card shows a Go: %v", r.tt.Texts())
 	}
+	// D446: the question and the floor line are on the card, once each, not again above it.
+	shownOnce := func(when string) {
+		t.Helper()
+		r.frames()
+		for _, s := range []string{"付 ¥73 买周六 8:05 去杭州的车票？", r.app.L.T("talk.floor")} {
+			// In the talk's panel (after its label), not the conversation under it.
+			n, in := 0, false
+			for _, x := range r.tt.Texts() {
+				in = in || x == r.app.L.T("talk.name")
+				if in {
+					n += strings.Count(x, s)
+				}
+			}
+			if n != 1 {
+				t.Errorf("%s: %q shown %d times: %v", when, s, n, r.tt.Texts())
+			}
+		}
+	}
+	shownOnce("asked")
 	r.spk.Finish()
 	r.frames()
 	r.rec.Hear("好")
 	r.wait(1400)
+	shownOnce("好 to it")
 	if d := decides(r.snt); len(d) != 1 {
 		t.Fatalf("好 paid: %+v", d)
 	}

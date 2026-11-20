@@ -31,10 +31,10 @@ export function Btn(p: { kind: "primary" | "secondary" | "text" | "accent"; size
 /** D262: a button of the shell's bar (a place's own action, the way to another place): the
  *  secondary clay at the small size, a drawn glyph before its word. here: the place shown, pressed
  *  into the bar (sunken, no ledge). icon: the glyph alone, its name the tooltip and the label. */
-export function NavBtn(p: { label: string; onClick: () => void; glyph?: ComponentChildren; here?: boolean; icon?: boolean; about?: string }) {
+export function NavBtn(p: { label: string; onClick: () => void; glyph?: ComponentChildren; here?: boolean; icon?: boolean; about?: string; cls?: string; short?: string }) {
   return (
     <button
-      class={`btn secondary sm nav${p.here ? " is-here" : ""}${p.icon ? " icon" : ""}`}
+      class={`btn secondary sm nav${p.here ? " is-here" : ""}${p.icon ? " icon" : ""}${p.cls ? ` ${p.cls}` : ""}`}
       onClick={() => !p.here && p.onClick()}
       aria-current={p.here ? "page" : undefined}
       aria-label={p.icon ? p.label : p.about}
@@ -42,6 +42,12 @@ export function NavBtn(p: { label: string; onClick: () => void; glyph?: Componen
     >
       {p.glyph}
       {!p.icon && <span class="lbl">{p.label}</span>}
+      {/* D446: what a phone shows in place of the words (the update pill's count). */}
+      {!p.icon && p.short && (
+        <span class="lbl-short" aria-hidden="true">
+          {p.short}
+        </span>
+      )}
     </button>
   );
 }

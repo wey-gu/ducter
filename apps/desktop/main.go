@@ -332,6 +332,12 @@ func main() {
 			}
 			tray.refresh(true)
 		})
+		if app.FloatKeyTaken {
+			// D446: the menus were built with the key; say it's taken instead.
+			lc.menu = appMenu(app, app.L, win, lc)
+			mygo.App.SetMenu(lc.menu)
+			tray.refresh(true)
+		}
 		app.OnLanguage = func(l *i18n.Strings) {
 			mygo.App.SetLocale(mygoLocale(l.Lang))
 			lc.l = l
@@ -488,6 +494,7 @@ func mygoLocale(l i18n.Lang) string {
 
 func appMenu(app *views.App, l *i18n.Strings, win *mygo.Window, lc *lifecycle) *mygo.Menu {
 	ours := lc.host != nil
+	floatAccel, floatSub := app.FloatMenu()
 	show := func(fn func()) func(*mygo.MenuItem, *mygo.Window) {
 		return func(*mygo.MenuItem, *mygo.Window) {
 			win.Update(func() {
@@ -538,7 +545,8 @@ func appMenu(app *views.App, l *i18n.Strings, win *mygo.Window, lc *lifecycle) *
 			{Label: l.T("did.menu"), Accelerator: "CmdOrCtrl+Shift+Y", Click: show(app.OpenDid)}, // D300
 			{Label: l.T("apps.title"), Accelerator: "CmdOrCtrl+5", Click: show(app.OpenApps)},    // D410
 			// D438: the mini window, beside whatever the person works in; never brings this window forward.
-			{ID: "float", Label: l.T("float.name"), Type: mygo.MenuItemCheckbox, Checked: app.FloatShown(), Accelerator: views.FloatKey,
+			// D446: with its shortcut held by another app, the item says so and has no key.
+			{ID: "float", Label: l.T("float.name"), Type: mygo.MenuItemCheckbox, Checked: app.FloatShown(), Accelerator: floatAccel, Subtitle: floatSub,
 				Click: func(*mygo.MenuItem, *mygo.Window) { win.Update(app.ToggleFloat) }},
 			// D244: the next and the previous task, in On hand's order.
 			{Label: l.T("onhand.walk.next"), Accelerator: "CmdOrCtrl+Shift+]", Click: show(func() { app.WalkTask(1) })},
@@ -646,6 +654,7 @@ func (tm *trayMenu) refresh(force bool) {
 			})
 		}
 	}
+	floatAccel, floatSub := app.FloatMenu()
 	// The one sentence, always first (D287: counts and times only).
 	items := []*mygo.MenuItem{{Label: v.Say, Disabled: true}}
 	if len(v.Decisions) > 0 {
@@ -693,7 +702,7 @@ func (tm *trayMenu) refresh(force bool) {
 	items = append(items,
 		mygo.Separator(),
 		// D438: the mini window, from the menu bar too (the key shown, never needed).
-		&mygo.MenuItem{Label: l.T("float.name"), Type: mygo.MenuItemCheckbox, Checked: app.FloatShown(), Accelerator: views.FloatKey,
+		&mygo.MenuItem{Label: l.T("float.name"), Type: mygo.MenuItemCheckbox, Checked: app.FloatShown(), Accelerator: floatAccel, Subtitle: floatSub,
 			Click: func(*mygo.MenuItem, *mygo.Window) { tm.win.Update(app.ToggleFloat) }},
 		&mygo.MenuItem{Label: l.T("tray.open"), Click: open(nil)},
 		&mygo.MenuItem{Label: l.T("menu.settings"), Click: open(app.OpenSettings)},

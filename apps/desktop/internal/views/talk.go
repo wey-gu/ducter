@@ -383,8 +383,8 @@ func (a *App) talkPanel(c *ui.Context) {
 	saying := ""
 	if tk.st.Saying != nil {
 		saying = tk.st.Saying.Text
-		if cd != nil && strings.HasPrefix(saying, cd.question) {
-			saying = "" // the card's question is on the card
+		if cd != nil { // what the card shows isn't shown again above it (D446)
+			saying = voice.TalkShown(saying, cd.question, cd.floor, a.talkWords().Floor)
 		}
 	}
 	state := "talk.listening"

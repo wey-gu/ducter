@@ -29,6 +29,25 @@ describe("the shell (D262)", () => {
     expect(places).toMatch(/nav\.update/);
   });
 
+  test("on a phone the update pill is its pebble and count, so the counts keep their line (D446)", () => {
+    const views = src("views.tsx");
+    const places = views.slice(views.indexOf("export function Places("), views.indexOf("function Top("));
+    expect(places).toMatch(/cls="update"/);
+    expect(places).toMatch(/short=\{!running && n > 1 \? String\(n\) : undefined\}/);
+    const css = readFileSync(new URL("../static/app.css", import.meta.url), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+    // The count is hidden by default; inside a phone-width block the words go and the count shows.
+    expect(css).toMatch(/\.btn\.nav \.lbl-short \{\s*display: none;\s*\}/);
+    const at = css.search(/@media \(max-width: \d+px\) \{\s*\.top \.btn\.nav\.update \{/);
+    expect(at).toBeGreaterThan(-1);
+    const width = Number(css.slice(at).match(/max-width: (\d+)px/)![1]);
+    expect(width).toBeGreaterThanOrEqual(430); // the widest phones too
+    const block = css.slice(at, css.indexOf("\n}", at));
+    expect(block).toMatch(/\.top \.btn\.nav\.update \.lbl \{\s*display: none;/);
+    expect(block).toMatch(/\.top \.btn\.nav\.update \.lbl-short \{\s*display: inline;/);
+    // A count never breaks inside (1 个 / 等你).
+    expect(css).toMatch(/\.top \.who \.sum \.facts > span \{\s*white-space: nowrap;/);
+  });
+
   test("a page opens in the language it followed last, not the system's", async () => {
     const store = new Map<string, string>();
     (globalThis as { localStorage?: unknown }).localStorage = {

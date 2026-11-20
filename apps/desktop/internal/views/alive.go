@@ -198,6 +198,14 @@ func alivePose(m aliveMotion, now time.Time, phase float64) (ui.Transform, bool)
 // loop about its feet, and inside it the breath (and the idle face's
 // blink). Still draws the pose and nothing else.
 func (a *App) aliveFigure(c *ui.Context, key string, face theme.Presence, m aliveMotion, w float32) ui.Element {
+	return a.aliveFigureIn(c, key, face, m, w, 0)
+}
+
+// aliveFigureIn is aliveFigure with room points of empty box round the art
+// (its sides and top; it stands on the bottom edge): a figure that fills its
+// box sways and breathes past it, and a part painted again alone is cut at
+// its box (D446: the mini window's partner, cut at its side while waiting).
+func (a *App) aliveFigureIn(c *ui.Context, key string, face theme.Presence, m aliveMotion, w, room float32) ui.Element {
 	bmp := theme.Face(face, w*2)
 	idle := theme.Face(theme.Idle, w*2)
 	h := w
@@ -206,12 +214,12 @@ func (a *App) aliveFigure(c *ui.Context, key string, face theme.Presence, m aliv
 		h = w * float32(ih) / float32(iw)
 	}
 	phase := phaseOf(key)
-	box := ui.Box(c.Key("alive:"+key)).Size(w, h).Shrink(0).AccessHidden(true)
+	box := ui.Box(c.Key("alive:"+key)).Size(w+2*room, h+room).Shrink(0).AccessHidden(true)
 	box.Draw(func(pt *ui.Painter, r ui.Rect) {
 		if bmp == nil {
 			return
 		}
-		at := fitIn(bmp, r)
+		at := fitIn(bmp, artRect(r, room))
 		at.Y = r.Y + r.H - at.H
 		var lids *blinkArt
 		if face == theme.Idle && m != aliveStill {

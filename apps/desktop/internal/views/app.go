@@ -73,10 +73,13 @@ type App struct {
 	// the draft sheet there); nil in tests.
 	ShowMain func()
 	// Float (D438) is the mini window's hands (main.go); float its state.
-	Float     FloatHands
-	float     floatState
-	openedApp string
-	bridge    *AppBridge
+	Float FloatHands
+	float floatState
+	// FloatKeyTaken (D446): another app holds the mini window's shortcut;
+	// its menu items say so (FloatMenu) and are the way to it.
+	FloatKeyTaken bool
+	openedApp     string
+	bridge        *AppBridge
 	// shelf is 你的小应用 / Your apps (D410, apps_shelf.go); appWins the apps
 	// open in their own windows (appwin.go).
 	shelf   shelfState

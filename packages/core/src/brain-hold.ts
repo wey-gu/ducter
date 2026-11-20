@@ -38,6 +38,13 @@ export interface BrainHold {
   now(): HoldNow | undefined;
   /** A partner turn failed on its agent: hold it. tell: the person hasn't heard this yet (say it once). */
   hit(h: BrainHit): Promise<{ now?: HoldNow; tell: boolean }>;
+  /**
+   * D446: before a partner turn. A task on the home waits for the reset of the same agent's account
+   * (D297): the account is read, and when it says its limit is used up (or can't say, and the task's
+   * reset is still to come) the agent is held now, as hit() would after one failed turn. held: a
+   * hold was made just now (the partner drops its session and says it, when tell).
+   */
+  ahead(): Promise<{ now?: HoldNow; tell: boolean; held: boolean }>;
   /** A turn on this agent went through: its hold, if any, is over. */
   ok(harness: string): void;
   /** A hold was set or ended, or its time came (D440: or something to think with arrived). */
@@ -60,6 +67,8 @@ export interface BrainHoldDeps {
   rules?: () => RuleView[];
   /** D288: an agent whose account says its limit is used up doesn't take over. */
   usage?: AccountUsageBook;
+  /** D446: the limit waits of tasks on the home (D297's armed waits: whose account, when it wakes, whether that is the reset). */
+  waits?: () => { harness: string; at?: string; resetKnown: boolean }[];
 }
 
 interface Hold {
@@ -199,9 +208,27 @@ export function createBrainHold(o: BrainHoldDeps): BrainHold {
   };
   let wasBlind = blind();
 
-  return {
+  const api: BrainHold = {
     now: view,
     blind,
+    async ahead() {
+      const none = { tell: false, held: false };
+      const base = o.base();
+      const now = clock.now();
+      if (active(holds.get(base), now)) return none;
+      const waits = (o.waits?.() ?? []).filter((w) => w.harness === base && Date.parse(w.at ?? "") > now);
+      if (!waits.length) return none;
+      // The account itself, as last read (or read now): room left means the turn goes as it is.
+      const read = o.usage ? (await o.usage.get(base).catch(() => undefined))?.usage : undefined;
+      if (read && !read.limited) return none;
+      // The reset: the account's used-up window, else the task's own known reset (its wait wakes a little after).
+      const known = waits.filter((w) => w.resetKnown).map((w) => Date.parse(w.at!) - RESET_GRACE_MS);
+      const reset = usageReset(read?.windows, now) ?? (known.length ? Math.max(...known) : undefined);
+      // Nothing read and no reset known: only a guess; the turn tries (and is held if it fails).
+      if (!read && reset === undefined) return none;
+      const r = await api.hit({ harness: base, failure: "quota", ...(reset !== undefined && reset > now ? { resetsAt: new Date(reset).toISOString() } : {}), source: "account" });
+      return { ...r, held: true };
+    },
     seen() {
       const b = blind();
       if (b === wasBlind) return;
@@ -270,4 +297,5 @@ export function createBrainHold(o: BrainHoldDeps): BrainHold {
       subs.clear();
     },
   };
+  return api;
 }

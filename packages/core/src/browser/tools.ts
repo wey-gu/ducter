@@ -15,7 +15,7 @@ import type { LogStore, TaskRegistry } from "@ducter/protocol/src/internal.ts";
 import type { CoreMcpHub } from "../mcp.ts";
 import type { BrowserHost } from "./host.ts";
 import { isKey, pressKey } from "./keys.ts";
-import { focusExpression, locateExpression, narrow, readExpression } from "./reader.ts";
+import { focusExpression, locateExpression, narrow, PAY_FACTS, readExpression } from "./reader.ts";
 import type { BrowserNotes } from "./notes.ts";
 
 const READ_CHARS = 16_000;
@@ -50,18 +50,49 @@ export const PAYS =
 export const PAY_REFUSED =
   "That press pays or places the order, and paying is the user's own tap: Ducter never presses it. Stop here: call browser_at_checkout {what, total, currency} on this page and end your turn; the user pays in a live view of your tab.";
 
-/** A press on this element would pay: a button-like control whose own words say so. */
-export function paysAt(at: { label?: string; tag?: string; type?: string; field?: boolean }): boolean {
-  if (!at.label || !PAYS.test(at.label)) return false;
-  if (at.tag === "textarea" || at.tag === "select") return false;
-  if (at.tag === "input") return /^(submit|button|image)$/i.test(at.type ?? "");
-  return true;
+/**
+ * D446: a form's address that pays or places the order (its path's own words: /pay, /place-order,
+ * /checkout/submit-order, /purchase, /buy-now). "/checkout", "/payment-methods" and "/paypal" only
+ * open the next page or choose how to pay.
+ */
+export const PAY_ACTION = /(?:^|[/_.-])(?:pay|place[-_]?order|submit[-_]?order|confirm[-_]?(?:order|payment|purchase)|complete[-_]?(?:order|purchase|payment)|purchase|buy[-_]?now)(?:$|[/_.?#-])/i;
+
+/** What the page says of a control beyond its label (reader.ts PAY_FACTS). */
+export interface PayFacts {
+  words?: string[];
+  submit?: boolean;
+  action?: string;
+  cardForm?: boolean;
 }
 
-/** The focused element's words (Enter or Space on it presses it), and a form's submit buttons' words. */
-const ACTIVE_WORDS = `(() => { const el = document.activeElement; if (!el || el === document.body) return null; const tag = el.tagName.toLowerCase(); return { tag, type: el.type || "", label: ((el.getAttribute("aria-label") || el.innerText || el.value || "") + "").replace(/\\s+/g, " ").trim().slice(0, 80) }; })()`;
-const submitWords = (ref: number) =>
-  `(() => { const el = document.querySelector('[data-ducter-ref="${ref}"]'); const f = el && el.form; if (!f) return []; return [...f.querySelectorAll('button:not([type]), button[type="submit"], input[type="submit"], input[type="image"]')].map((b) => ((b.getAttribute("aria-label") || b.innerText || b.value || "") + "").replace(/\\s+/g, " ").trim().slice(0, 80)); })()`;
+const actionPath = (a: string): string => {
+  try {
+    return new URL(a, "https://x.invalid/").pathname;
+  } catch {
+    return a;
+  }
+};
+
+/**
+ * A press on this element would pay: a button-like control whose words say so (its label, or any
+ * other name it has: aria-label, aria-labelledby, title, an icon's label or an image's alt), or,
+ * for one that submits a form, a form that posts to a pay address or holds a card's number or code
+ * (D446: an icon-only pay button has no words to read).
+ */
+export function paysAt(at: { label?: string; tag?: string; type?: string; field?: boolean; pay?: PayFacts }): boolean {
+  if (at.tag === "textarea" || at.tag === "select") return false;
+  if (at.tag === "input" && !/^(submit|button|image)$/i.test(at.type ?? "")) return false;
+  const p = at.pay ?? {};
+  if ([at.label, ...(p.words ?? [])].some((w) => !!w && PAYS.test(w))) return true;
+  if (!p.submit) return false;
+  return (!!p.action && PAY_ACTION.test(actionPath(p.action))) || !!p.cardForm;
+}
+
+/** The focused element (Enter or Space on it presses it), and a form's submit buttons, as paysAt reads them. */
+const ACTIVE_FACTS = `(() => { const el = document.activeElement; if (!el || el === document.body) return null; const tag = el.tagName.toLowerCase(); return { tag, type: el.type || "", label: ((el.getAttribute("aria-label") || el.innerText || el.value || "") + "").replace(/\\s+/g, " ").trim().slice(0, 80), pay: (${PAY_FACTS})(el) }; })()`;
+const SUBMITS = (form: string) =>
+  `(() => { const f = ${form}; if (!f) return []; return [...f.querySelectorAll('button:not([type]), button[type="submit"], input[type="submit"], input[type="image"]')].map((b) => ({ tag: b.tagName.toLowerCase(), type: b.type || "", pay: (${PAY_FACTS})(b) })); })()`;
+const submitFacts = (ref: number) => SUBMITS(`(() => { const el = document.querySelector('[data-ducter-ref="${ref}"]'); return el && el.form; })()`);
 
 /** https, or this machine's own pages (tests, a fixture shop). */
 export const securePage = (url: string): boolean => {
@@ -270,8 +301,8 @@ export function registerBrowserTools(d: BrowserToolsDeps): void {
       const at = await locate(send, args.ref);
       // D436: Enter in a form whose only way out pays is a press on pay.
       if (args.submit) {
-        const subs = ((await evaluate(send, submitWords(at.n)).catch(() => [])) ?? []) as string[];
-        if (subs.some((w) => PAYS.test(w))) await refusePay(taskId, send);
+        const subs = ((await evaluate(send, submitFacts(at.n)).catch(() => [])) ?? []) as Parameters<typeof paysAt>[0][];
+        if (subs.some(paysAt)) await refusePay(taskId, send);
       }
       if (at.secret)
         throw new Error(
@@ -309,12 +340,12 @@ export function registerBrowserTools(d: BrowserToolsDeps): void {
       if (!isKey(args.key)) throw new Error(`unknown key ${args.key}`);
       const send = await page(taskId);
       if (args.key === "Enter" || args.key === "Space") {
-        const active = await evaluate(send, ACTIVE_WORDS).catch(() => null);
+        const active = await evaluate(send, ACTIVE_FACTS).catch(() => null);
         if (active && paysAt(active)) await refusePay(taskId, send);
         // Enter in a field submits its form: the same rule as browser_type's submit.
         if (args.key === "Enter" && active && (active.tag === "input" || active.tag === "select")) {
-          const subs = ((await evaluate(send, `(() => { const f = document.activeElement && document.activeElement.form; if (!f) return []; return [...f.querySelectorAll('button:not([type]), button[type="submit"], input[type="submit"], input[type="image"]')].map((b) => ((b.getAttribute("aria-label") || b.innerText || b.value || "") + "").replace(/\\s+/g, " ").trim().slice(0, 80)); })()`).catch(() => [])) ?? []) as string[];
-          if (subs.some((w) => PAYS.test(w))) await refusePay(taskId, send);
+          const subs = ((await evaluate(send, SUBMITS("document.activeElement && document.activeElement.form")).catch(() => [])) ?? []) as Parameters<typeof paysAt>[0][];
+          if (subs.some(paysAt)) await refusePay(taskId, send);
         }
       }
       note(taskId, { kind: "press", key: args.key });

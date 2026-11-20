@@ -69,8 +69,10 @@ func installFloat(app *views.App, changed func()) *mygo.Window {
 	if err := mygo.GlobalShortcut.RegisterWith(views.FloatKey, mygo.GlobalShortcutOptions{Description: "Ducter"}, func() {
 		app.ToggleFloat()
 	}); err != nil {
-		// Another app holds the keys: the menus still show and hide it.
+		// Another app holds the keys: the menus still show and hide it, and
+		// say so (D446: views.App.FloatMenu; main.go builds them again).
 		log.Printf("ducter: the mini window's shortcut: %v", err)
+		app.FloatKeyTaken = true
 	}
 	if app.Local.FloatOpen() {
 		w.ShowInactive()

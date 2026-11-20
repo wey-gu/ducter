@@ -36,14 +36,18 @@ const ITEMS: Record<"zh" | "en", ShopItem[]> = {
 };
 
 const W = {
-  zh: { shop: "鹅卵石小铺", search: "搜索", searchPh: "搜商品", results: "搜到 {n} 样", add: "加入购物车", added: "已加入购物车", cart: "购物车", checkout: "去结算", empty: "购物车是空的", total: "合计", buyer: "收货人", phone: "手机号", addr: "收货地址", addrValue: "上海市徐汇区漕溪北路 88 号 12 楼", pay: "立即支付", verifyTitle: "请先完成安全验证", verifyBody: "为了确认是你本人在下单，请点一下下面的按钮。", verifyBtn: "我不是机器人", paid: "支付成功", order: "订单号", ship: "预计 11 月 24 日送达" },
-  en: { shop: "Pebble Market", search: "Search", searchPh: "Search the shop", results: "{n} found", add: "Add to cart", added: "Added to your cart", cart: "Cart", checkout: "Checkout", empty: "Your cart is empty", total: "Total", buyer: "Name", phone: "Phone", addr: "Delivery address", addrValue: "12F, 88 Caoxi North Rd, Xuhui, Shanghai", pay: "Pay", verifyTitle: "Quick security check", verifyBody: "To make sure it's really you placing this order, tap the button below.", verifyBtn: "I'm not a robot", paid: "Payment received", order: "Order", ship: "Arrives Nov 24" },
+  zh: { shop: "鹅卵石小铺", search: "搜索", searchPh: "搜商品", results: "搜到 {n} 样", add: "加入购物车", added: "已加入购物车", cart: "购物车", checkout: "去结算", empty: "购物车是空的", total: "合计", buyer: "收货人", phone: "手机号", addr: "收货地址", addrValue: "上海市徐汇区漕溪北路 88 号 12 楼", cardNo: "卡号", cardCode: "安全码", pay: "立即支付", verifyTitle: "请先完成安全验证", verifyBody: "为了确认是你本人在下单，请点一下下面的按钮。", verifyBtn: "我不是机器人", paid: "支付成功", order: "订单号", ship: "预计 11 月 24 日送达" },
+  en: { shop: "Pebble Market", search: "Search", searchPh: "Search the shop", results: "{n} found", add: "Add to cart", added: "Added to your cart", cart: "Cart", checkout: "Checkout", empty: "Your cart is empty", total: "Total", buyer: "Name", phone: "Phone", addr: "Delivery address", addrValue: "12F, 88 Caoxi North Rd, Xuhui, Shanghai", cardNo: "Card number", cardCode: "Security code", pay: "Pay", verifyTitle: "Quick security check", verifyBody: "To make sure it's really you placing this order, tap the button below.", verifyBtn: "I'm not a robot", paid: "Payment received", order: "Order", ship: "Arrives Nov 24" },
 };
 
 const yuan = (n: number) => `¥${n.toFixed(2)}`;
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 
-export function startFixtureShop(o: { lang?: "zh" | "en"; verify?: boolean; hostname?: string; tls?: { cert: string; key: string } } = {}): FixtureShop {
+/**
+ * `pay: "icon"` (D446): the checkout posts to /order and asks for a card (number and code, never
+ * filled by a test), and its pay button is an arrow with no words at all, as some shops draw it.
+ */
+export function startFixtureShop(o: { lang?: "zh" | "en"; verify?: boolean; hostname?: string; tls?: { cert: string; key: string }; pay?: "words" | "icon" } = {}): FixtureShop {
   const lang = o.lang ?? "zh";
   const w = W[lang];
   const items = ITEMS[lang];
@@ -111,15 +115,16 @@ input.f{box-sizing:border-box;width:100%;font:inherit;padding:9px 12px;border:1p
         return page(
           w.checkout,
           `<h1>${w.checkout}</h1><div class="card">${state.cart.map((id) => `<div class="row"><span>${esc(byId(id)!.name)}</span><span>${yuan(byId(id)!.price)}</span></div>`).join("")}</div>
-<form class="card" method="post" action="/pay">
+<form class="card" method="post" action="${o.pay === "icon" ? "/order" : "/pay"}">
 <label for="buyer">${w.buyer}</label><input class="f" id="buyer" name="buyer" autocomplete="name">
 <label for="tel">${w.phone}</label><input class="f" id="tel" name="tel" autocomplete="tel" inputmode="tel">
 <label>${w.addr}</label><div class="muted">${w.addrValue}</div>
-<div class="row" style="margin-top:16px"><span class="total">${w.total} ${yuan(total())}</span><button type="submit">${w.pay} ${yuan(total())}</button></div>
+${o.pay === "icon" ? `<label for="cc">${w.cardNo}</label><input class="f" id="cc" name="cc" autocomplete="cc-number" inputmode="numeric"><label for="csc">${w.cardCode}</label><input class="f" id="csc" name="csc" autocomplete="cc-csc" inputmode="numeric">` : ""}
+<div class="row" style="margin-top:16px"><span class="total">${w.total} ${yuan(total())}</span>${o.pay === "icon" ? `<button id="go" type="submit"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>` : `<button type="submit">${w.pay} ${yuan(total())}</button>`}</div>
 </form>`,
         );
       }
-      if (p === "/pay" && req.method === "POST") {
+      if ((p === "/pay" || p === "/order") && req.method === "POST") {
         state.presses.push(Object.fromEntries([...(await req.formData()).entries()].map(([k, v]) => [k, String(v)])));
         return page(w.paid, `<div class="card"><h1>${w.paid}</h1><p>${w.order} EM-20261121-0042</p><p>${w.total} ${yuan(total())}</p><p class="muted">${w.ship}</p></div>`);
       }

@@ -286,7 +286,7 @@ ducter.set(key, value)     // kept on the home; every device with it open hears 
 ducter.all()
 ducter.onChange((key, value, by) => …)   // by: "app" (another device) | "partner"
 ducter.ask(text)           // → Promise<string>: the partner's answer
-ducter.lang, ducter.dark   // the theme follows Ducter's while it is open
+ducter.lang, ducter.dark   // the theme follows Ducter's while it is open (the Mac's window too, D446)
 ducter.open({ draft: "owner/repo#n" })   // D407: that PR's draft sheet opens over the app; nothing is sent
 ducter.summary(text)       // D410: its shelf line ("2 笔，合计 ¥1,698"), said on every change, sent once it settles
 ```

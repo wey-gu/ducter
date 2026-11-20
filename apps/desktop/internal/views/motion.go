@@ -178,6 +178,18 @@ func fitIn(bmp *ui.Bitmap, r ui.Rect) ui.Rect {
 // points wide (its height follows the art): it breathes, and blinks while
 // idle (D77). A face of another presence cross-fades in.
 func (a *App) partnerFace(c *ui.Context, key string, p theme.Presence, w float32) ui.Element {
+	return a.partnerFaceIn(c, key, p, w, 0)
+}
+
+// artRect is the art's own rect in a figure's box with room round it (its
+// sides and top).
+func artRect(r ui.Rect, room float32) ui.Rect {
+	return ui.Rect{X: r.X + room, Y: r.Y + room, W: r.W - 2*room, H: r.H - room}
+}
+
+// partnerFaceIn is partnerFace with room points of empty box round the art
+// (see aliveFigureIn): its breath never reaches the box's edge.
+func (a *App) partnerFaceIn(c *ui.Context, key string, p theme.Presence, w, room float32) ui.Element {
 	bmp := theme.Face(p, w*2)
 	idle := theme.Face(theme.Idle, w*2)
 	h := w
@@ -187,14 +199,14 @@ func (a *App) partnerFace(c *ui.Context, key string, p theme.Presence, w float32
 	}
 	label := a.L.T(presenceLabel[p], a.S.PersonaName)
 	phase := phaseOf(key)
-	box := ui.Box(c.Key("face:"+key)).Size(w, h).Role(ui.RoleImage).Label(label).Shrink(0)
+	box := ui.Box(c.Key("face:"+key)).Size(w+2*room, h+room).Role(ui.RoleImage).Label(label).Shrink(0)
 	box.Draw(func(pt *ui.Painter, r ui.Rect) {
 		if bmp == nil {
 			return
 		}
 		// Each face fills the box's width or height, standing on its
 		// bottom edge.
-		at := fitIn(bmp, r)
+		at := fitIn(bmp, artRect(r, room))
 		at.Y = r.Y + r.H - at.H
 		var lids *blinkArt
 		if p == theme.Idle {

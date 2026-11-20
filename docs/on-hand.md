@@ -109,7 +109,8 @@ You don't have to open Ducter to know how things stand.
   **Show in the menu bar**.
 - **Beside your work, on a Mac**, keep your partner in a **mini window** that floats over your
   editor or browser, on every desktop. Press **⌃⌥⌘Space** anywhere, or choose **Mini Window** in
-  the menu bar pebble's menu or in View. It shows your partner, one line (what it's doing while
+  the menu bar pebble's menu or in View (if another app already uses those keys, the menu item says
+  so, and the menu is the way to it). It shows your partner, one line (what it's doing while
   you wait, what it just said, or what needs you), how many things need you (click to see them in
   On hand), and a field to say something or hold to talk. It never takes the keyboard from what
   you're typing in until you click its field. Press the same keys, click **Hide**, or press Esc in

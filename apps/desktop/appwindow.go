@@ -72,6 +72,9 @@ func installApps(app *views.App) {
 			http.Error(w, "not found", http.StatusNotFound)
 		}
 	})
+	// D446: an open app follows a live switch of the Mac's appearance (or
+	// of Ducter's own Look setting), as its first frame did.
+	mygo.Theme.OnUpdated(func() { b.Theme(mygo.Theme.IsDark()) })
 	// A developer's switch (DUCTER_OPEN_APP=<id>): open that app once the app has connected.
 	if id := os.Getenv("DUCTER_OPEN_APP"); appIDRe.MatchString(id) {
 		mygo.App.WhenReady(func() {

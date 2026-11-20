@@ -11,7 +11,9 @@ var zhFloat = Table{
 	"float.open":       "打开对话",
 	"float.needs.open": "在手头的事里看",
 	"float.key":        "⌃⌥⌘空格",
+	"float.key.taken":  "快捷键被别的应用占用了",
 	"float.first":      "我在这儿陪着你。按 %s 可以收起我，再按一次我就回来。",
+	"float.first.menu": "我在这儿陪着你。快捷键被别的应用占用了，在菜单栏点「小窗」可以收起我，再点一次我就回来。",
 }
 
 var enFloat = Table{
@@ -22,7 +24,9 @@ var enFloat = Table{
 	"float.open":       "Open the conversation",
 	"float.needs.open": "See them in On hand",
 	"float.key":        "⌃⌥⌘Space",
+	"float.key.taken":  "Its shortcut is taken by another app",
 	"float.first":      "I'll stay right here. Press %s to put me away, and again to bring me back.",
+	"float.first.menu": "I'll stay right here. Another app holds my shortcut, so choose Mini window in the menu bar to put me away, and again to bring me back.",
 }
 
 func init() {

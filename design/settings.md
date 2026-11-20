@@ -48,6 +48,9 @@ with the author's accounts laid over it (`.shots/d296/before`, `.shots/d296/afte
 | The partner's one word after a change | `say` / `saidLine` (`settings_rows.go`) | `say` / `Said` (`set-grid.tsx`) | Quiet hours, the default wait, a service's watch switch |
 | A list of names of one kind | `listWords` (、 / , ) | `t("acct.sep")` | oo's accounts; your details |
 | A thing never set up, resting until chosen (D337, D365) | `chatHeadWith` + `chatSetUp` (`chats.go`); the own number's group | `Resting` (`channels.tsx`); `own-phone.tsx` | Chat apps (Telegram, Slack, WeChat); calls from your own number |
+| A choice of a few as a row, the choice at the right edge (D432) | `tileRow` with `choices` | `chat-row` with `Seg` | 等多久再按默认做, 每天最多, To-do sources' 新的来了 and 做完以后 |
+| A pane still being read (D432) | `paneWait` | `Waiting` | Partner and Notifications (Mac), To-do sources, Chat apps (web), Passwords & cards |
+| A line to copy (D432) | `lendCopy` | `CopyLine` | Memory's and Agent messaging's missing tool |
 | A group's note: under its heading, never under the card (D289, D365) | `group(…, note, …)` | `<p class="g-note">` after the heading | To-do sources' empty line; what your AI agents keep; the trust lists |
 | The rail's chosen tab | the knob under the tabs, sliding (`railKnob`, `Nav.Across`) | — (the phone's list pushes, D290) | Every move between panes |
 | A pane coming in | `paneEnter`: a short rise from the side the knob came from | the pushed page from the trailing side, the list back from the leading side (D290) | Every move between panes |
@@ -362,6 +365,30 @@ that names it; **请你评审的 PR** under a title that means it). The rule, on
 
 Before and after, per pane, are in D424; shots `.shots/settings-trim/{before,after}` (Mac 1000, web 390,
 zh and en, light and dark; `-open` with the tap pressed).
+
+## Polished pane by pane (D432)
+
+After D424 the words were short; what still made a person think was shape (research/182, every pane on the
+Mac at 1400 and 760 and the web at 1400 and 390, zh and en, light and dark). The rules it leaves:
+
+- **A choice of a few is a row.** Its title on the text column, the segmented choice at the right edge, a
+  standing go or a consequence as the row's line: 等多久再按默认做, 每天最多, and now To-do sources'
+  **新的来了** and **做完以后** (Mac `tileRow`, web `chat-row` with `Seg`). On a phone a choice that drops
+  under its words takes the text column's width.
+- **A step outside Ducter is one line to copy**, for the person's system, never two systems in a sentence:
+  Memory's and Agent messaging's missing tool (**{home} 上还缺一个小工具。在它的终端里运行这一行，再点「再试一次」。**
+  over `brew install pipx` or `sudo apt install pipx`, the bridge view's `cmd`), with **复制 → 已复制**
+  (Mac `lendCopy`, web `CopyLine`).
+- **A setting lives on one pane.** **发现了就说** is Notifications' (with 今天看了什么); Accounts starts
+  with **它能看的**.
+- **A waiting pane keeps its shape**: its first group with a soft sunken square in the tile column and the
+  word on the text column (Mac `paneWait`, web `Waiting`), never a bare grey line on the paper.
+- **One text edge.** Under a pushed page's lede, 怎么做到的 keeps the lede's edge (web).
+- **A title is not said again under its card.** This phone / This computer lost **只改这台手机上的样子。**; its
+  voice switch lost the **语音** heading; where the voice goes is behind 怎么做到的 while it works.
+
+Where it runs and About already read in a look and are unchanged. The Mac's quiet-hours fields follow the
+region's hour cycle (MyGo's `TimeInput`), so a 24-hour Mac shows 23:00.
 
 ## Not done
 

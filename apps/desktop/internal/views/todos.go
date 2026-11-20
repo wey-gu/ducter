@@ -120,14 +120,13 @@ func sourceName(s protocol.SourceView) string {
 }
 
 func (a *App) todosPanel(c *ui.Context) {
-	t := a.T
 	a.todosInit()
 	a.panelHead(c, TabTodos, a.L.T("todos.lede", a.personaName()))
 	// Who owns what, one small line on the lede's edge, close under it.
 	a.ledeNote(c, "todos-own", a.L.T("todos.own", a.personaName()))
 	v := a.S.Sources
 	if v == nil {
-		uiText(c, a.L.T("todos.pick.loading")).FontSize(t.MD).TextColor(t.InkMuted).Padding(0, t.S5)
+		a.paneWait(c, "todos", a.L.T("todos.pick.loading"))
 		return
 	}
 	for _, s := range v.Sources {
@@ -197,7 +196,7 @@ func (a *App) todoSourceGroup(c *ui.Context, s protocol.SourceView) {
 				uiText(c, a.L.T("todos.looking")).FontSize(t.SM).TextColor(t.InkMuted)
 			})
 		}
-		a.textBlock(c, "src-when:"+s.ID, func() { a.todoChoices(c, s) })
+		a.todoChoices(c, s)
 		a.textBlock(c, "src-filter:"+s.ID, func() { a.todoFilters(c, s) })
 		if a.todos.removing == s.ID {
 			keep, rm := a.confirmRow(c, "src-remove:"+s.ID, a.L.T("todos.remove.ask", name), a.L.T("todos.remove.no"), a.L.T("todos.remove.yes"), name)
@@ -264,10 +263,10 @@ func (a *App) todoProblem(c *ui.Context, s protocol.SourceView) {
 }
 
 // todoChoices are 新的来了 / When a new one comes and 做完以后 / When it's
-// done, each a segmented choice (D76) under its small title; a standing go
-// says how it came under its choice.
+// done, each a row with its segmented choice (D76) at the right edge, as
+// Notifications' 等多久再按默认做 (D432); a standing go says how it came as
+// the row's line.
 func (a *App) todoChoices(c *ui.Context, s protocol.SourceView) {
-	t := a.T
 	news := []string{"tell", "take", "quiet"}
 	dones := []string{"ask", "comment", "close"}
 	if s.Kind == "obsidian" {
@@ -278,16 +277,9 @@ func (a *App) todoChoices(c *ui.Context, s protocol.SourceView) {
 		for i, v := range vals {
 			labels[i] = a.L.T(prefix + v)
 		}
-		ui.Column(c.Key(key)).Gap(t.S2).Children(func() {
-			uiText(c, title).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).LineHeight(a.leading(1.4))
+		a.tileRow(c, key+":"+s.ID, nil, title, standing, func() {
 			if i := a.choices(c, key+":"+s.ID, title, labels, slices.Index(vals, cur)); i >= 0 {
 				pick(vals[i])
-			}
-			if standing != "" {
-				ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
-					a.glyph(c, 14, drawCheck(t.Done.Ink))
-					uiText(c, standing).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(a.leading(1.5))
-				})
 			}
 		})
 	}

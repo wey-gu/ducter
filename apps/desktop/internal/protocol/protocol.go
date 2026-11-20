@@ -1746,6 +1746,8 @@ type BridgeView struct {
 	// D329: CanOpen: on mem_closed, the home can open the Nowledge Mem app.
 	CanOpen bool   `json:"canOpen,omitempty"`
 	Need    string `json:"need,omitempty"`
+	// D432: Cmd: on need pipx, the one command that puts it in on the home.
+	Cmd     string `json:"cmd,omitempty"`
 	SignIn  string `json:"signIn,omitempty"`
 	Version string `json:"version,omitempty"`
 	// D295: Where Mem keeps the memories: cloud, local (the Mem app or a

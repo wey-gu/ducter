@@ -478,6 +478,9 @@ A new control is added to the set (and to this table) before it is used.
 | Switch | `switchControl` (`shared.go`), inside `switchRow`, `toggleRow` | `Toggle` |
 | 怎么做到的 / How it works: an explanation one quiet tap away, under a row, a group's note or a pane's lede note (D424) | `how`, `explainedRow`, `groupHow`, `ledeHow` (`settings.go`) | `How`; `Toggle`'s `how` |
 | Segmented choice | `choices` (`partner.go`) | `Seg` |
+| A choice of a few as a row: its title on the text column, the choice at the right edge, on a phone under the words at the text column's width (D432) | `tileRow` with `choices` | `chat-row` with `Seg` |
+| A pane still being read: its first group's shape, a soft sunken square and the word (D432) | `paneWait` (`settings_rows.go`) | `Waiting` (`set-grid.tsx`) |
+| A line to copy (a command to run on a computer) with 复制 → 已复制 (D432) | `lendCopy` (`lend.go`) | `CopyLine` (`lend.tsx`) |
 | Choice row (a theme, Remove's plan) | `selectRow` (`shared.go`) | — |
 | A value row's side link (检查更新 and its 正在检查…, 没能更新 ›; D167) | `sideLink` inside `valueRow` (`settings.go`) | the `Versions` line under the device list (`Btn` kind `text`) |
 | Disclosure row (素材和致谢) and link row | `disclosureRow` (`shared.go`), `linkRow` (`settings.go`) | — |

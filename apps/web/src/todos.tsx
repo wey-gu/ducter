@@ -11,7 +11,7 @@ import { useEffect, useState } from "preact/hooks";
 import { A } from "./app.ts";
 import { BrandMark, BrandTile } from "./brand.tsx";
 import { AddRow, Btn, Chev, DangerButton, Facts, Seg } from "./controls.tsx";
-import { SecHead, Tag } from "./set-grid.tsx";
+import { SecHead, Tag, Waiting } from "./set-grid.tsx";
 import { GhSignIn } from "./gh-signin.tsx";
 import { onPileFrame, openRead, ReadLine } from "./pile.tsx";
 import { onHandFrame } from "./handover.tsx";
@@ -361,7 +361,7 @@ export function TodoSourcesSettings() {
     if (A.S.welcomed) A.send({ t: "sources" });
   }, [A.S.welcomed]);
   const f = TS.frame;
-  if (!f) return <div class="small">{t("conn.connecting")}</div>;
+  if (!f) return <Waiting text={t("todos.pick.loading")} />;
   const gh = f.found.github;
   // D345: GitHub is always offered while it isn't added: 连上 signs in (and puts gh there) in place.
   const canGh = !f.sources.some((s) => s.kind === "github");

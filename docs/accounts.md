@@ -121,7 +121,7 @@ first time, it asks whether to look through the last two weeks for anything that
 things, with **Up to 3 a day** already chosen. If you don't answer, that's what it does; the
 first morning message shows the same choice under it, so you can change it there.
 
-The same choice is the first section of **Accounts**, and under **Notifications**:
+You can change the same choice any time in **Settings › Notifications**:
 
 - **Only urgent**: only what costs you something if it waits until tomorrow: a flight or train
   in the next day or so, maintenance or an outage on your production systems, money that changes

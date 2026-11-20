@@ -106,7 +106,7 @@ func (a *App) autofillPanel(c *ui.Context) {
 		a.ledeHow(c, "af-kept", a.L.T("af.kept.short", a.homeName()), a.L.T(where))
 	}
 	if f == nil {
-		uiText(c, a.L.T("conn.connecting")).FontSize(t.SM).TextColor(t.InkMuted)
+		a.paneWait(c, "autofill", a.L.T("conn.connecting"))
 		return
 	}
 	// A save answered: close the form, drop what was typed.

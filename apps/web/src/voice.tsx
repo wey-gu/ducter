@@ -581,9 +581,9 @@ export function VoiceSettings() {
   const v = voice();
   return (
     <div class="set-item voice-set">
-      <b>{t("voice.settings")}</b>
-      <Toggle label={t("voice.settings.readback")} help={t("voice.settings.readback.help")} checked={v.readback()} onChange={(on) => v.setReadback(on)} />
-      {v.avail && <small class="voice-privacy">{v.avail.ok ? t(privacyKey(v.avail.where)) : v.avail.why === "lang" ? t("voice.why.lang", autonym(A.convLang ?? A.L.locale)) : t(`voice.why.${v.avail.why ?? "error"}`)}</small>}
+      {/* D432: the switch's words name it (no 语音 heading over them); where the voice goes is behind 怎么做到的 while it works, said plainly only when it can't. */}
+      <Toggle label={t("voice.settings.readback")} help={t("voice.settings.readback.help")} checked={v.readback()} onChange={(on) => v.setReadback(on)} how={v.avail?.ok ? t(privacyKey(v.avail.where)) : undefined} />
+      {v.avail && !v.avail.ok && <small class="voice-privacy">{v.avail.why === "lang" ? t("voice.why.lang", autonym(A.convLang ?? A.L.locale)) : t(`voice.why.${v.avail.why ?? "error"}`)}</small>}
     </div>
   );
 }

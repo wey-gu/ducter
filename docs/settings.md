@@ -232,7 +232,7 @@ and once from your partner. Ducter doesn't change Nowledge Mem's own settings.
   by itself.
 - **When it notices something** (once you have accounts): how your partner tells you what it
   noticed by itself: **Only urgent**, **Up to 3 a day** (until you choose), **Whenever useful** or **Only when I
-  ask**. The same row sits on Accounts; see [When it notices something](accounts.md#when-it-notices-something).
+  ask**; see [When it notices something](accounts.md#when-it-notices-something).
   Under it, **What it looked at today** shows, in numbers only, what it looked at, what it read
   closely and why it said nothing about the rest (not urgent, waiting for the morning message,
   not worth interrupting you for, today's three already said). If it can't read your mail

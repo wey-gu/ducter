@@ -7,7 +7,7 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import type { ServerFrame } from "@ducter/protocol";
-import { BRIDGE_CONNECTION_FILE, createBridgeLink, whereCard, errorCodeIn, httpStatusIn, nmemCall, parseNmemVersion, personalSpace, REFUSALS, versionConnects, type MemExec, type NmemCall } from "../src/bridge-link.ts";
+import { BRIDGE_CONNECTION_FILE, createBridgeLink, whereCard, errorCodeIn, httpStatusIn, nmemCall, parseNmemVersion, pipxCmd, personalSpace, REFUSALS, versionConnects, type MemExec, type NmemCall } from "../src/bridge-link.ts";
 import { connectLinkOk, installPlan, type MemSys } from "../src/mem-cli.ts";
 import { startCore } from "../src/core.ts";
 import { tempDir } from "./helpers.ts";
@@ -512,7 +512,7 @@ describe("D225: the home's own nmem, put in or updated on the tap", () => {
     await ok.link.installMem();
     expect(installs(ok.execs)[0]).toEqual(["sudo", "-n", "env", "DEBIAN_FRONTEND=noninteractive", "/usr/bin/apt-get", "install", "-y", "-q", "pipx"]);
     const no = homeRig({ tools: { python3: "/usr/bin/python3", "apt-get": "/usr/bin/apt-get" }, sudo: false, python: "managed" });
-    expect(await no.link.view()).toEqual({ state: "install_mem", identity: "ducter", home: "hel", canRun: false, need: "pipx" });
+    expect(await no.link.view()).toEqual({ state: "install_mem", identity: "ducter", home: "hel", canRun: false, need: "pipx", cmd: pipxCmd() });
     await no.link.installMem();
     expect(installs(no.execs)).toEqual([]);
   });
@@ -525,7 +525,7 @@ describe("D225: the home's own nmem, put in or updated on the tap", () => {
 
   test("no nmem, no pipx or uv, pip refused by the system: one line naming pipx, nothing installed", async () => {
     const r = homeRig({ tools: { python3: "/usr/bin/python3" }, python: "managed" });
-    expect(await r.link.view()).toEqual({ state: "install_mem", identity: "ducter", home: "hel", canRun: false, need: "pipx" });
+    expect(await r.link.view()).toEqual({ state: "install_mem", identity: "ducter", home: "hel", canRun: false, need: "pipx", cmd: pipxCmd() });
     await r.link.installMem();
     expect(installs(r.execs)).toEqual([]);
   });

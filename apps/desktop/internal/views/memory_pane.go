@@ -756,6 +756,8 @@ func (a *App) memSteps(c *ui.Context, phase string, b *protocol.BridgeView) {
 				switch {
 				case busy:
 					help = a.L.T("bridge.mem.installing", home)
+				case b != nil && !b.CanRun && b.Cmd != "":
+					help = a.L.T("bridge.mem.install.need.run", home) // D432: the one line to run, to copy, under the words
 				case b != nil && !b.CanRun:
 					help = a.L.T("bridge.mem.install.need.below", home) + "\n" + a.L.T("bridge.mem.install.need.how") // D399: the Mac has no 怎么装 fold; the step is right below
 				}
@@ -769,6 +771,9 @@ func (a *App) memSteps(c *ui.Context, phase string, b *protocol.BridgeView) {
 				a.note(c, help)
 				if busy {
 					return
+				}
+				if b != nil && !b.CanRun && b.Cmd != "" {
+					a.lendCopy(c, "mem-cmd", b.Cmd, true)
 				}
 				label, kind := a.L.T("bridge.mem.install.go"), btnPrimary
 				if b == nil || !b.CanRun {

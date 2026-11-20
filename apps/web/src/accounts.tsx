@@ -471,12 +471,11 @@ export function SourceCard({ c }: { c: ConnectionView }) {
   );
 }
 
-/** D289: 发现了就说 as a section, the sources one group each under 它能看的, then 打电话 with the calls. */
+/** D289: the sources one group each under 它能看的, then 打电话 with the calls; 发现了就说 is on Notifications only (D432). */
 export function SourceCards({ list, add }: { list: ConnectionView[]; add?: preact.ComponentChildren }) {
   const sources = list.filter((c) => !c.phone);
   return (
     <>
-      <ProactiveChips />
       {sources.length > 0 && (
         <section class="set src-cards">
           <h3>{t("acct.sec.read")}</h3>

@@ -2,6 +2,15 @@
 
 Deferred work, grouped by area, each with its trigger where it has one.
 
+## Settings polish (D432, research/182)
+
+- [ ] **The author's review** of `.shots/settings-polish/after` against `before`, pane by pane.
+- [ ] **The missing-tool line on a real home**: `sudo apt install pipx` on hel's Debian is right; a home on
+  Fedora or Arch would want its own (`dnf`, `pacman`). Trigger: a home that isn't Debian-like or a Mac.
+- [ ] **The Mac's quiet hours on a real zh Mac** (24-hour region): 23:00 in the fields, as the line says.
+- [ ] **The Mac's waiting square breathes** as the web's does (MyGo has no keyframes here; a timer-driven
+  opacity). Trigger: anyone sees the Mac's waiting pane for more than a moment.
+
 ## Several things in one message (D426, research/175)
 
 - [ ] **Live on hel.** The 11-12 calendar message and a three-issue message against the real partner:

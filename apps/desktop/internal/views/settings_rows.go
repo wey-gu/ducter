@@ -96,6 +96,19 @@ func (a *App) tileRow(c *ui.Context, key string, tile func(), title, line string
 	})
 }
 
+// paneWait is a pane still being read (D432): the shape of its first group,
+// a soft sunken square in the tile column and the word on the text column,
+// so the page never jumps from a bare line on the paper to its cards. The
+// web's `Waiting` (set-grid.tsx).
+func (a *App) paneWait(c *ui.Context, key, text string) {
+	t := a.T
+	a.group(c, "wait:"+key, "", "", func() {
+		a.tileRow(c, "wait:"+key, func() {
+			ui.Box(c).Width(40).Height(40).Radius(t.RadiusSM).Background(t.SurfaceSunken)
+		}, "", text, nil)
+	})
+}
+
 // textBlock is a block of a group on the text column (past the tile
 // column), the hairline above: a list, a form, what a row opened.
 func (a *App) textBlock(c *ui.Context, key string, body func()) {

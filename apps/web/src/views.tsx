@@ -2783,7 +2783,7 @@ function NotifySettings() {
         </div>
         <Said k="notify" />
       </section>
-      {/* D165: the same chips as on Accounts, once there is something to watch. */}
+      {/* D165: the chips, once there is something to watch; said here only (D432). */}
       {((s.proactive && s.proactiveBy !== "default") || !!A.connections?.length) && (
         <ProactiveChips>
           <QuietDay />
@@ -3144,7 +3144,7 @@ function PhoneSettings() {
         {/* D342: inside the Android app, its own version and 检查更新. */}
         <AppUpdateRow />
       </div>
-      <div class="small sub">{t("settings.phone.note")}</div>
+      {/* D432: the page's title (这台手机 / 这台电脑) already says whose look this is: no note under the card. */}
     </section>
   );
 }

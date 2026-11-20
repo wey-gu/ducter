@@ -10,6 +10,7 @@ import { A } from "./app.ts";
 import { title, type DecisionState } from "./store.ts";
 import { Btn, DangerButton, How, Seg, Toggle } from "./controls.tsx";
 import { ago } from "./format.ts";
+import { Waiting } from "./set-grid.tsx";
 import { TABLES } from "./i18n.ts";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
@@ -222,7 +223,7 @@ export function AutofillSettings() {
   }, [A.S.welcomed]);
   const [editing, setEditing] = useState<Editing>(null);
   const f = A.saved;
-  if (!f) return <div class="small">{t("conn.connecting")}</div>;
+  if (!f) return <Waiting text={t("conn.connecting")} />;
   const done = () => setEditing(null);
   const signins = f.items.filter((x) => x.kind === "signin");
   const cards = f.items.filter((x) => x.kind === "card");

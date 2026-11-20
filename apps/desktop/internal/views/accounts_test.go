@@ -55,7 +55,11 @@ func TestAccountsCardSheet(t *testing.T) {
 	tt := ui.NewTesterWith(app.View, 1280, 1400, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
 	tt.Frame()
-	for _, want := range []string{"发现了就说", "每天最多 3 件", "oo 里的账号", "在留意", "你的邮件、日程、消息和 GitHub 通知会经过 oo 和 OOMOL 的服务器。", i18n.New(i18n.ZH).T("card.stop", "oo 里的账号"), "连不上", "再连一个账号服务", "日历", "Discord"} {
+	// D432: 发现了就说 is said once, on Notifications; Accounts is what it can read.
+	if tt.HasText("发现了就说") {
+		t.Errorf("Accounts still shows 发现了就说")
+	}
+	for _, want := range []string{"oo 里的账号", "在留意", "你的邮件、日程、消息和 GitHub 通知会经过 oo 和 OOMOL 的服务器。", i18n.New(i18n.ZH).T("card.stop", "oo 里的账号"), "连不上", "再连一个账号服务", "日历", "Discord"} {
 		if !tt.HasText(want) {
 			t.Errorf("no %q in %q", want, tt.Texts())
 		}
@@ -68,7 +72,10 @@ func TestAccountsCardSheet(t *testing.T) {
 			t.Errorf("tile detail: no %q", want)
 		}
 	}
-	// The chips change the setting.
+	// The chips change the setting, on Notifications.
+	app.openTab(TabNotify)
+	tt.Frame()
+	tt.Frame()
 	*sent = nil
 	tt.Click("只说急的")
 	tt.Frame()
@@ -82,6 +89,8 @@ func TestAccountsCardSheet(t *testing.T) {
 		t.Errorf("the chip didn't set proactive: %#v", *sent)
 	}
 	// The one destructive asks in place first.
+	app.openTab(TabAccounts)
+	tt.Frame()
 	app.cards().stopping = "c1"
 	tt.Frame()
 	if !tt.HasText("停用以后，它就看不到这些账号了；记下的事还在「记忆」里，可以忘掉。") {

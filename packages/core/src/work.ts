@@ -17,6 +17,7 @@ import type { CoreMcpHub } from "./mcp.ts";
 import { isActive, type CoreRegistry } from "./registry.ts";
 import { createRoutines, type Routines } from "./routines.ts";
 import { createUntils, type Untils } from "./until.ts";
+import { createLoops, type Loops } from "./loops.ts";
 import { createWaiters, kindOf, type Judge, type WaiterDeps, type Waiters } from "./waiters.ts";
 import type { WorkFrames } from "./ws.ts";
 
@@ -24,6 +25,8 @@ export interface Work {
   waiters: Waiters;
   untils: Untils;
   routines: Routines;
+  /** D426: tasks in rounds, kept going by Ducter. */
+  loops: Loops;
   frames: WorkFrames;
   /** On hand plus what only these parts know (looks, routine views). */
   decorate(o: OnHand): OnHand;
@@ -47,6 +50,8 @@ export interface WorkOptions {
   judgeMinMs?: number;
   restartLookMs?: number;
   defaultZone?: string;
+  /** D426: the language the person talks in now (the keeper's cards). */
+  lang?: () => import("@ducter/protocol").LangTag;
 }
 
 const expand = (p: string) => (p.startsWith("~/") ? homedir() + p.slice(1) : p === "~" ? homedir() : p);
@@ -183,6 +188,7 @@ export function createWork(o: WorkOptions): Work {
   const waiters = createWaiters({ log, clock: o.clock, check, readEvent, fetchWatch, minEveryMs: o.minEveryMs, judgeMinMs: o.judgeMinMs, restartLookMs: o.restartLookMs });
   const untils = createUntils({ log, tasks, runner: o.runner, check });
   const routines = createRoutines({ log, tasks, waiters, runner: o.runner, clock: o.clock, persona: o.persona, defaultZone: o.defaultZone });
+  const loops = createLoops({ log, tasks, waiters, runner: o.runner, workers: o.workers, clock: o.clock, lang: o.lang, zone: () => o.defaultZone });
 
   // A task's own wait: it rests on Waiting while armed, and carries on when the wait is over.
   const unsubscribe = log.subscribe((e) => {
@@ -202,7 +208,14 @@ export function createWork(o: WorkOptions): Work {
       const seen = w.observed?.trim() && !/^\d+$/.test(w.observed.trim()) ? w.observed.trim() : "";
       // D297: the agent's usage limit reset (or it is time to try again): the same session carries on.
       const text = w.limit ? limitWake(w.limit.harness, w.reason) : fill(timer ? c.time : seen ? c.overSeen : c.over, { reason: w.reason, seen });
-      void o.runner()?.send(w.taskId, text, undefined, "partner").catch((err) => console.warn(`[work] could not wake ${w.taskId}: ${(err as Error).message}`));
+      const r = o.runner();
+      // D426: a round that can't start (its computer asleep, the runner not up yet) is tried again by the keeper.
+      if (!r) loops.wakeFailed(w.taskId, "the runner isn't up yet");
+      else
+        void r.send(w.taskId, text, undefined, "partner").then(() => loops.woke(w.taskId!)).catch((err) => {
+          console.warn(`[work] could not wake ${w.taskId}: ${(err as Error).message}`);
+          loops.wakeFailed(w.taskId!, (err as Error).message);
+        });
     } else if (w.state === "expired") {
       tasks.setState(w.taskId, "needs_you", card.residency, fill(wordsOf(w.reason).deadline, { reason: w.reason }));
     } else if (w.state === "cancelled" && card.attention === "blocked" && !w.replacedBy) {
@@ -266,6 +279,9 @@ export function createWork(o: WorkOptions): Work {
     } else at = now + Math.max(1, Number(a.afterMinutes)) * 60_000;
     if (at <= now) return { ok: false, error: "that time is already past" };
     if (at - now > 7 * 86_400_000) return { ok: false, error: "at most 7 days ahead; for longer, report blocked with what you wait for" };
+    // D426: the person set this task's rhythm ("改成每小时"): its rounds follow it, whatever the task asked.
+    const rhythm = loops.rhythm(taskId);
+    if (rhythm && !a.atISO) at = now + rhythm;
     try {
       // D394: a task has one timer of its own, the newest. A round started by another wake (a
       // nudge, a compaction, a restart's re-run) re-arms it instead of starting a second cadence
@@ -278,7 +294,11 @@ export function createWork(o: WorkOptions): Work {
         waiterId: w.waiterId,
         at: w.at,
         ...(before.length ? { replaced: before.map((v) => v.at) } : {}),
-        note: "Armed; it replaces any timer you had. End your turn now; you will be woken then, and nobody needs a report from a round that found nothing new. To repeat, call wait_for again when you wake.",
+        ...(rhythm ? { rhythm: `every ${Math.round(rhythm / 60_000)} min, as the person set it` } : {}),
+        note:
+          loops.get(taskId)?.state === "on"
+            ? "Armed; it replaces any timer you had. End your turn now; you will be woken then, and nobody needs a report from a round that found nothing new. Ducter keeps this task going in rounds until the person says stop: a round's report never ends it."
+            : "Armed; it replaces any timer you had. End your turn now; you will be woken then, and nobody needs a report from a round that found nothing new. To repeat, call wait_for again when you wake.",
       };
     } catch (err) {
       return { ok: false, error: (err as Error).message };
@@ -434,21 +454,12 @@ export function createWork(o: WorkOptions): Work {
       }
     },
   );
-  mcp.register(
-    "partner",
-    "routine_pause",
-    "Pause a routine (the user asked, or its reports go unread). Only the user can resume it, from its card.",
-    { type: "object", properties: { routineId: { type: "string" } }, required: ["routineId"] },
-    async (a: { routineId: string }) => ({ ok: routines.pause(String(a.routineId), "partner", "asked") }),
-  );
-  mcp.register("partner", "routine_list", "The user's routines: name, trigger in words, state, next firing, latest run.", { type: "object", properties: {} }, async () =>
-    routines.views().map((v) => ({ routineId: v.routineId, name: v.name, triggerWords: v.triggerWords, state: v.state, ...(v.pauseReason ? { pauseReason: v.pauseReason } : {}), ...(v.nextAt ? { nextAt: v.nextAt } : {}), ...(v.lastRun ? { lastRun: { state: v.lastRun.state, taskId: v.lastRun.taskId, at: v.lastRun.at, ...(v.lastRun.lateMin ? { lateMin: v.lastRun.lateMin } : {}), ...(v.lastRun.retryAt ? { retryAt: v.lastRun.retryAt } : {}) } } : {}), ...(v.backoff ? { cantRun: { why: v.backoff.trouble, reason: v.backoff.reason, nextTryAt: v.backoff.nextTryAt } } : {}) })),
-  );
 
   return {
     waiters,
     untils,
     routines,
+    loops,
     frames: {
       zone: (tz) => routines.setUserZone(tz),
       waiter: (id, action) => (action === "look" ? waiters.look(id) : action === "rearm" ? Promise.resolve(waiters.rearm(id)) : action === "handoff" ? Promise.resolve(false) : Promise.resolve(waiters.cancel(id, { by: "user" }))),
@@ -475,6 +486,7 @@ export function createWork(o: WorkOptions): Work {
     },
     stop() {
       unsubscribe();
+      loops.stop();
       routines.stop();
       untils.stopAll();
       waiters.stop();

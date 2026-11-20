@@ -104,6 +104,8 @@ export function createDecisions(opts: {
   holds?: (taskId: string) => boolean;
   /** D279: a task resting on a wait of its own: a progress report leaves it on Waiting. */
   rests?: (taskId: string) => boolean;
+  /** D426: a task in rounds: a round's done or failed report ends the round, never the task. */
+  keeps?: (taskId: string) => boolean;
 }): Decisions {
   const { log, tasks } = opts;
   const clock = opts.clock ?? realClock;
@@ -214,6 +216,8 @@ export function createDecisions(opts: {
         case "blocked":
           return setAttention(r.taskId, "blocked", r.summary.slice(0, 120));
         case "failed":
+          // D426: a failed round of a loop: the next round still comes (the keeper counts it).
+          if (opts.keeps?.(r.taskId)) return setAttention(r.taskId, opts.rests?.(r.taskId) ? "blocked" : "working");
           return setAttention(r.taskId, "failed", r.summary.slice(0, 120));
         case "progress":
           // D279: a progress report written after it armed its own wait (a loop's "back at
@@ -223,6 +227,8 @@ export function createDecisions(opts: {
         case "done":
           // A try of a keep-going loop (D113): the loop decides when it is done, not the try.
           if (opts.holds?.(r.taskId)) return setAttention(r.taskId, "working");
+          // D426: a round of a loop is done, not the loop (hel, round 185: its "done" ended the review loop).
+          if (opts.keeps?.(r.taskId)) return setAttention(r.taskId, opts.rests?.(r.taskId) ? "blocked" : "working");
           // C checks evidence mechanically (the runner set each ref's `check` before the report
           // was logged): a ref verified and none missing -> done. Otherwise it stays "Done ·
           // checking" until the partner confirms it in its result (evidenceConfirmable).

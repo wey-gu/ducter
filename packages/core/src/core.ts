@@ -28,7 +28,7 @@ import { bridgeOnWords, connectsByItself, createBridgeAuto } from "./bridge-auto
 import { createDid } from "./did.ts";
 import { registerDidTool } from "./did-tool.ts";
 import { recentFolders } from "./first-words.ts";
-import { createOngoing } from "./ongoing.ts";
+import { createOngoing, registerOngoingTools } from "./ongoing.ts";
 import { registerCoreTools } from "./tools.ts";
 import type { Waiters } from "./waiters.ts";
 import { createWork, type Work } from "./work.ts";
@@ -307,6 +307,8 @@ export interface Core extends CoreApi {
   waiters: Waiters;
   /** Waiters, until loops and routines (D112-D114). */
   work: Work;
+  /** D285, D426: 一直在跑的 / Ongoing (routines and tasks in rounds, their health). */
+  ongoing: import("./ongoing.ts").Ongoing;
   push: PushStore;
   pusher: Pusher;
   /** D276: 聊天软件 / Chat apps (channels/). */
@@ -533,6 +535,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     delayMs: () => settings.defaultAfterMs(),
     holds: (taskId) => Boolean(workRef?.untils.active(taskId)),
     rests: (taskId) => Boolean(workRef?.waiters.views().some((w) => w.taskId === taskId && w.state === "armed" && (w.check || w.event || w.watch || w.judge || w.wakes === "task"))),
+    keeps: (taskId) => Boolean(workRef?.loops.keeps(taskId)),
     onDecision: async (taskId, text, r) => {
       if (!runner) return console.warn(`[core] no runner: decision for ${taskId} not forwarded`);
       await runner.send(taskId, text, undefined, forwardFrom(r)); // D284: a Go relayed is Ducter's words, a reply the person's
@@ -588,6 +591,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     judgeMinMs: opts.work?.judgeMinMs,
     restartLookMs: opts.work?.restartLookMs,
     defaultZone: opts.work?.defaultZone,
+    lang: () => langNow(),
   });
   workRef = work;
   const waiters = work.waiters;
@@ -1193,7 +1197,8 @@ export function startCore(opts: CoreOptions = {}): Core {
   const did = createDid({ log, tasks, uses: () => autofill.store.view().uses, deviceName: (dev) => (dev === "local" ? computers.homeName() : computers.nameOf(dev)), folder: (id) => changes.folder(id), now: () => clock.now() });
   registerDidTool(mcp, did, () => clock.now());
   // D285: 一直在跑的 / Ongoing: routines and tasks that look again on their own, paused and resumed.
-  const ongoing = createOngoing({ dataDir, log, tasks, waiters: work.waiters, routines: work.routines, marks, clock, onChange: () => (ws.ongoingChanged(), apps.liveMoved()), reviews: (id) => taskSourcesRef?.pile.standing(id), asking: (id) => !!taskSourcesRef?.pile.asking(id), app: (id) => ((m) => (m ? { id: m.id, name: m.name } : undefined))(boards.appOf(id)) });
+  const ongoing = createOngoing({ dataDir, log, tasks, waiters: work.waiters, routines: work.routines, marks, clock, onChange: () => (ws.ongoingChanged(), apps.liveMoved()), reviews: (id) => taskSourcesRef?.pile.standing(id), asking: (id) => !!taskSourcesRef?.pile.asking(id), app: (id) => ((m) => (m ? { id: m.id, name: m.name } : undefined))(boards.appOf(id)), loops: work.loops, deviceName: (dev) => (dev === "local" ? computers.homeName() : computers.nameOf(dev)) });
+  registerOngoingTools(mcp, ongoing, () => persona.id);
   // D407: an app given to a task (or taken back) changes what its Ongoing card opens.
   apps.onChange((c) => void (c.kind === "give" && setTimeout(() => ws.ongoingChanged(), 0)));
   // D422: an app's state has one truth each. Kept current: the Ongoing card of the task that keeps
@@ -2057,6 +2062,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     devicesView,
     waiters,
     work,
+    ongoing,
     push,
     pusher,
     partners,

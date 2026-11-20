@@ -386,6 +386,8 @@ export function renderTrigger(e: LogEvent, ctx: RenderCtx): string {
         const what = b.option === "go" ? "it is on now and runs by itself; nothing to do" : b.option === "hold" ? "it stays off" : "the user replied instead";
         return `[routine card answered: ${b.option}${by}] "${d.question}": ${what}${b.text ? ` · user: ${b.text}` : ""}`;
       }
+      // D426: the keeper's word about a late or failing loop: Go ran a round now; Ducter did it.
+      if (d?.loop) return `[loop card answered: ${b.option}${by}] "${d.question}": ${b.option === "go" ? "a round is starting now; say nothing" : b.option === "hold" ? "it keeps its rhythm; say nothing" : `the user replied instead · user: ${b.text ?? ""}`}`;
       if (d?.call) {
         // D193: Ducter acts on a call's cards itself: Go dials (or waits for the allowed hour), a
         // question's answer goes to the line. Nothing to say unless the user replied with a change.
@@ -570,6 +572,8 @@ export function renderHistoryLine(e: LogEvent, ctx: RenderCtx): string | null {
       if (d.src?.kind === "where_rule") return `[${t} Ducter asked once whether to keep "${clip(d.src.quote ?? "", 80)}" as a rule (its own card)]`;
       // D407: Ducter's one offer to keep a repeating task's rounds on a board (its own card).
       if (d.board) return `[${t} Ducter offered once, on its own card, to keep task ${d.board.taskId}'s repeating ${d.board.kind === "reviews" ? "review rounds" : "reports"} on a small app (要不要把这些做成一个看板？ / Keep these on a board?). Never restate it.]`;
+      // D426: the keeper's one word about a task in rounds that is late or failing (its own card).
+      if (d.loop) return `[${t} Ducter said once, on its own card, that task ${d.loop.taskId}'s rounds aren't keeping time: "${clip(d.question, 200)}" (Go runs a round now). Never restate it.]`;
       if (d.src?.kind === "group_review") return `[${t} the user sent the review-together comments for group ${d.src.groupId} (${d.src.items?.length ?? 0})]`;
       return `[${t} ${d.taskId ? `task ${d.taskId} asks` : "you asked (ask)"}] ${clip(d.question, 300)} (Go: ${d.goLabel}, default ${d.defaultOption})`;
     }

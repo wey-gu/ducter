@@ -12910,6 +12910,21 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 .og-line.paused { color: var(--ink-muted); }
 /* D394: a review task's standing after its last round, under its state line. */
 .og-standing { color: var(--ink); font-size: var(--sm); }
+/* D426: a promise not kept on time says so in its state's ink, with a small drawn mark; on time says nothing. */
+.og-health { display: inline-flex; align-items: center; gap: 6px; font-size: var(--sm); font-weight: 600; min-width: 0; }
+.og-health .facts { min-width: 0; }
+.og-health.late { color: var(--waiting-ink); }
+.og-health.failing { color: var(--failed-ink); }
+.og-health.back { color: var(--done-ink); font-weight: 500; }
+.og-hg { flex: none; }
+.og-last { display: block; color: var(--ink-soft); font-size: var(--sm); min-width: 0; }
+.og-last .facts { display: flex; flex-wrap: nowrap; max-width: 100%; }
+.og-last .facts > span:first-child { flex: none; color: var(--ink-muted); }
+.og-last .facts > span:last-child { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.og-health { display: flex; }
+.pcard.og .pmain { min-width: 0; }
+.og-where { color: var(--ink-muted); }
+.og-now { width: 7px; height: 7px; margin-left: auto; border-radius: 40%; background: var(--accent); box-shadow: inset 0 -1px 0 rgba(43, 33, 24, 0.18); }
 .og-runs { display: inline-flex; align-items: center; gap: 4px; margin-left: 2px; }
 .og-run { width: 10px; height: 10px; border-radius: 40%; background: var(--faint); box-shadow: inset 0 -1.5px 0 rgba(43, 33, 24, 0.12); }
 .og-run.link { cursor: pointer; }

@@ -36,6 +36,39 @@ type OngoingItem struct {
 	Reviews *ReviewStanding `json:"reviews,omitempty"`
 	// D407: the small app this task keeps current (the card opens it).
 	App *OngoingApp `json:"app,omitempty"`
+	// D426: a task in rounds Ducter keeps going; its health (absent: on
+	// time), its last run, and where it runs with which agent.
+	Loop   bool           `json:"loop,omitempty"`
+	Health *OngoingHealth `json:"health,omitempty"`
+	Last   *OngoingLast   `json:"last,omitempty"`
+	Where  *OngoingWhere  `json:"where,omitempty"`
+}
+
+// OngoingHealth is an ongoing thing not keeping its time (D426): late,
+// failing, or back after a stop by mistake; why, and its one fix.
+type OngoingHealth struct {
+	State    string `json:"state"` // late | failing | back
+	Why      string `json:"why,omitempty"`
+	LateMin  int    `json:"lateMin,omitempty"`
+	Fails    int    `json:"fails,omitempty"`
+	Detail   string `json:"detail,omitempty"`
+	ResetsAt string `json:"resetsAt,omitempty"`
+	Since    string `json:"since,omitempty"`
+	Fix      string `json:"fix,omitempty"` // run_now | resume
+}
+
+// OngoingLast is the latest run or round: when, how, its one line.
+type OngoingLast struct {
+	At    string `json:"at"`
+	State string `json:"state"`
+	Line  string `json:"line,omitempty"`
+}
+
+// OngoingWhere is where the rounds run and which agent does them.
+type OngoingWhere struct {
+	Device     string `json:"device,omitempty"`
+	DeviceName string `json:"deviceName,omitempty"`
+	Harness    string `json:"harness,omitempty"`
 }
 
 // ReviewStanding is where a review task's requests stand after its last
@@ -72,6 +105,7 @@ type OngoingAct struct {
 	Action  string          `json:"action"`
 	Until   string          `json:"until,omitempty"`
 	Trigger *RoutineTrigger `json:"trigger,omitempty"`
+	Minutes int             `json:"minutes,omitempty"` // D426: every (多久跑一轮 / How often)
 }
 
 // decodeOngoing reads ongoing_result on its own (its items aren't Autofill's).

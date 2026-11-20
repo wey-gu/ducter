@@ -144,6 +144,44 @@ pebble settled 2 pt; it lifts back on resume.
 | **现在跑一次 / Run now** · **现在就去看一次 / Check now** | one run now (also while paused) | one look now |
 | **改时间 / Change when** | every day, weekdays, every week, every few hours, and the time | (a wait keeps its own pace) |
 | **结束 / End** · **不用再去看了 / Stop checking** | ends it | ends the waits |
+| **多久跑一轮 / How often** (D426, a task in rounds) | (改时间) | every 15, 30, 45 min, 1, 2, 4 h, from the round waiting now |
+
+### A task in rounds is a promise Ducter keeps (D426)
+
+A task that rests on its own wait between rounds ("每 45 分钟 review 一轮", "每天早上看一下机票")
+is a **loop**: Ducter keeps it (`core/src/loops.ts`, a `task_loop` record on the task's stream,
+rebuilt on every start), not the agent's habit of calling `wait_for` again. It is known from the
+person's words in the brief (每 45 分钟, 每天, 一直, every morning, keep checking) when it first
+rests on its own wait, or from its rounds (it rested again after a wake). Then:
+
+- **Only the person ends it**: dropping the task, **结束 / End** on its card, "别跑了" through the
+  partner (`routine_change end`), or a stop said to the task itself; or the end condition they
+  gave in the brief ("直到 #10473 合并"), which the task's done then means.
+- **Nothing else does.** A round's done or failed report ends the round (the card stays on 等下一次);
+  a crashed harness, a card marked done, a turn that forgot to re-arm, a lost wait, a restart or an
+  upgrade bring the next round back by itself: at its time, or once soon when that is behind (one
+  catch-up, never a burst). A round that can't start (its computer asleep, the runner not up) is
+  tried again every 10 min. The person's own rhythm (**多久跑一轮**, or "把 review 改成每小时") wins over
+  the task's: its later waits follow it.
+- **The watchdog says it once.** A round overdue by half its rhythm (between 15 min and an hour),
+  a round running three rhythms (at least two hours), or three failed rounds in a row: one card,
+  plainly, with its Go **现在跑一次 / Run it now** (`decision.loop`), at most once in 12 hours,
+  never when the task already asks (the runner's "asleep" card). An agent out of allowance says
+  nothing more: D297's wait carries on at the reset.
+
+**The card's health line** (only when it isn't on time; silence means fine), in its state's ink
+with a small drawn mark, each fact its own element: **晚了 {n} / {n} late** with why
+(**{computer} 睡着了，醒了马上补一轮 / {computer} is asleep; it catches up as soon as it wakes**,
+**这一轮跑得太久了 / This round is taking far too long**, **这一轮还没开始 / Its round hasn't started
+yet**), **额度用完了，{time} 恢复后接着跑 / Out of allowance; carries on at {time}**, **它的账号要重新
+登录 / Its account needs signing in again**, **最近 {n} 轮都没做成 / Its last {n} rounds didn't work**,
+and for a day after a stop by mistake **{time} 被误停，已经接着跑了 / Stopped by mistake at {time},
+running again**. Its one fix, **现在跑一次 / Run now**, is the card's primary button (kept in sight on
+the Mac). Under it **上一轮 {time} / Last round {time}** (a routine: **上次 / Last run**) and that
+round's one line, clipped; with the pebbles, **where it runs** and **which agent** (Ada's MacBook
+Air, Codex). A task in rounds says **每 {n} 一轮 / A round every {n}**. The partner answers "我的循环
+任务都怎么样了" from the same list (`routine_list`, the one not on time first) and changes one by
+talking (`routine_change`: pause, resume, run now, every, end). `#ongoing` opens the tab.
 
 ## Edge cases
 

@@ -2382,3 +2382,14 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] **Walk 4 and 5 end to end with a real partner** (change by talking with the strip; a routine given by words). Trigger: before the next release that touches apps.
 - [ ] **People as raters** for first-open value and the marks (LLM proxies only). Trigger: the next naming round with people.
 - [ ] **Known items into `data`, not the file.** `app-prs-known-en` drew the four PRs into the HTML both runs (they can't be ticked across devices or read by the partner); `app-renew-zh` left out `from`. Trigger: the next app-tool change (a lint: literal list items in the file with an empty `data`).
+
+## D426: a task in rounds is kept (`core/src/loops.ts`, research/177)
+
+- [ ] **See it on hel after the upgrade.** The review loop is recorded as a loop with nothing said (it already runs since 10:37); watch one round report done and stay on 等下一次. Trigger: the next release on hel.
+- [ ] **Say a round, not "done", in the report tool.** A task in rounds could be told in its wake text that a round's end is `progress` (D426 makes "done" harmless, but the words would match). Default: add one line to the wake for a task in rounds. Trigger: a task tool change with its eval.
+- [ ] **A computer's name on the late card for a worker.** The keeper names it only when the place names a paired worker; a home's own task says "its computer". Trigger: the first late loop on a worker Mac.
+- [ ] **Move a late loop to a computer that is awake** (the late card's second choice, D157). Default: offer it when the loop's place can move. Trigger: a loop late twice in a week for the same sleep.
+- [ ] **Condition loops live.** `look` re-arms a check, event or judge loop; none seen live yet ("CI 挂了告诉我" as a task in rounds). Trigger: the first one on hel.
+- [ ] **Mac ⋯ on the clay menu (D421).** The card's ⋯ is still the popover that holds 改时间 and 多久跑一轮 inline; move it to `menuButton` with a 多久跑一轮 submenu once 改时间 has a sheet of its own. Trigger: the next Ongoing pass.
+- [ ] **The iOS Simulator** for the phone card (web shots at 390 only). Trigger: before the next iPhone build.
+- [ ] **"How is my loop doing?" in one line.** `loop-status-en` failed both haiku runs and `loop-status-zh` once (too long, the rhythm left out, other tasks' news added). Default: routine_list returns a ready line per item (rhythm, next, health in words) and rule 15 says to answer only about the one asked. Trigger: the next persona or tool change with its eval.

@@ -1036,7 +1036,7 @@ class AppState {
   /** D391: the find-anything field's own answers and its reset (palette.tsx sets them; no import cycle). */
   palette?: { frame: (f: Extract<ServerFrame, { t: "past_result" } | { t: "made_result" }>) => void; reset: () => void };
   /** D391: past.tsx registers its opener, so a link (#past, #past=words) opens Past tasks. */
-  openPast?: (q?: string) => void;
+  openPast?: (q?: string, tab?: "past" | "made" | "ongoing") => void;
   onPastWelcome?: () => void;
 
   command(c: string) {
@@ -2500,6 +2500,13 @@ class AppState {
     if (hash === "#onhand/full") return this.applyRoute({ name: "onhand", full: true });
     // D391: links straight to Past tasks (with words) and to 找什么都行 / Find anything.
     const past = /^#past(?:=(.*))?$/.exec(hash);
+    // D426: #ongoing opens 一直在跑的 / Ongoing (the partner's link, a shot).
+    if (hash === "#ongoing" && this.openPast) {
+      this.route = { name: "conv" };
+      history.replaceState(null, "", location.pathname);
+      this.openPast("", "ongoing");
+      return this.changed();
+    }
     if ((past || hash === "#find") && this.openPast) {
       this.route = { name: "conv" };
       history.replaceState(null, "", location.pathname);

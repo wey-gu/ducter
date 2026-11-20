@@ -321,7 +321,7 @@ export function activityStep(tool: string): ActivityStep | undefined {
     case "ask":
     case "keep_going":
     case "routine_propose":
-    case "routine_pause":
+    case "routine_change":
     case "wait_cancel":
       return "planning";
     case "wait_for": // D112: it takes a first look before it arms

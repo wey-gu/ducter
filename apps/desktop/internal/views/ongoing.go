@@ -32,6 +32,7 @@ type ongoingState struct {
 	pauseOpen         bool
 	moreOpen          bool
 	retime            bool
+	rhythm            bool // D426: How often open inside the ⋯
 	reEvery, reTime   string
 	// mark is the item the marks popover holds (a routine or a task, as a PastItem).
 	mark *protocol.PastItem
@@ -270,6 +271,9 @@ func (a *App) ongoingCard(c *ui.Context, it *protocol.OngoingItem) {
 					uiText(c, p).FontSize(t.SM).TextColor(ink).SingleLine().Shrink(1).MinWidth(0).FontFeatures("tnum")
 				}
 			})
+			// D426: only when it isn't keeping its time; then its last run, one line.
+			a.ongoingHealthRow(c, it)
+			a.ongoingLastRow(c, it)
 			if it.Reviews != nil {
 				ui.Row(c.Key("standing")).Gap(t.S2).AlignItems(ui.Center).MinWidth(0).Children(func() {
 					for _, p := range a.reviewLine(it.Reviews) {
@@ -279,7 +283,8 @@ func (a *App) ongoingCard(c *ui.Context, it *protocol.OngoingItem) {
 			}
 			a.ongoingRuns(c, it)
 		})
-		if hover {
+		// D426: a card with a fix keeps its buttons in sight; the rest show them on hover.
+		if hover || (it.Health != nil && it.Health.Fix != "" && it.State != "paused") {
 			a.ongoingActs(c, it)
 		}
 	})
@@ -323,7 +328,11 @@ func (a *App) ongoingLine(it *protocol.OngoingItem) []string {
 	}
 	how := it.Cadence
 	if it.Kind == "task" && it.EveryMs > 0 {
-		how = a.hanTight(a.L.T("og.every", a.duration(time.Duration(it.EveryMs)*time.Millisecond)))
+		key := "og.every"
+		if it.Loop {
+			key = "og.round.every"
+		}
+		how = a.hanTight(a.L.T(key, a.duration(time.Duration(it.EveryMs)*time.Millisecond)))
 	}
 	next := ""
 	if at := store.ParseTime(it.NextAt); !at.IsZero() {
@@ -387,10 +396,14 @@ func (a *App) hanTight(s string) string {
 // its state's colours; a run with a task opens it.
 func (a *App) ongoingRuns(c *ui.Context, it *protocol.OngoingItem) {
 	t := a.T
-	if len(it.Runs) == 0 {
+	if len(it.Runs) == 0 && it.Where == nil {
 		return
 	}
 	ui.Row(c.Key("runs")).Gap(4).AlignItems(ui.Center).Children(func() {
+		// D426: where its rounds run and which agent, each its own fact, before the pebbles.
+		for i, f := range ongoingWhereFacts(it.Where) {
+			uiText(c.Key("where:"+itoa(int64(i))), f).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().MarginEnd(t.S2)
+		}
 		for i, r := range it.Runs {
 			run := r
 			fill, edge := t.Done.Dot, t.Done.Strong
@@ -428,7 +441,9 @@ func (a *App) ongoingRuns(c *ui.Context, it *protocol.OngoingItem) {
 				}
 			}
 		}
-		uiText(c, a.L.T("og.runs", len(it.Runs))).FontSize(t.XS).TextColor(t.Faint).MarginStart(t.S1).SingleLine()
+		if len(it.Runs) > 0 {
+			uiText(c, a.L.T("og.runs", len(it.Runs))).FontSize(t.XS).TextColor(t.Faint).MarginStart(t.S1).SingleLine()
+		}
 	})
 }
 
@@ -521,9 +536,14 @@ func (a *App) ongoingActs(c *ui.Context, it *protocol.OngoingItem) {
 				a.openApp(it.App.ID)
 			}
 		}
-		if it.State != "paused" && it.State != "running" && it.State != "proposed" {
+		// D426: its one fix, where it says what's wrong: the primary button.
+		fix := it.Health != nil && it.Health.Fix == "run_now" && it.State != "paused"
+		if fix && a.button(c, a.L.T("og.run"), btnPrimary, t.ControlSM, t.Surface) {
+			a.ongoingAct(it, "run_now", "", nil)
+		}
+		if !fix && it.State != "paused" && it.State != "running" && it.State != "proposed" {
 			label := a.L.T("og.run")
-			if it.Kind == "task" {
+			if it.Kind == "task" && !it.Loop {
 				label = a.L.T("wait.look")
 			}
 			if _, hit := a.ogButton(c, "run", label, it.Title, false); hit {
@@ -568,7 +588,7 @@ func (a *App) ongoingMore(c *ui.Context, it *protocol.OngoingItem) {
 	fg := a.buttonLook(c, b, btnText, t.ControlSM, t.Surface)
 	b.Draw(drawMore(fg))
 	if b.Clicked() {
-		og.moreFor, og.moreOpen, og.pauseOpen, og.retime = it.ID, !open, false, false
+		og.moreFor, og.moreOpen, og.pauseOpen, og.retime, og.rhythm = it.ID, !open, false, false, false
 	}
 	if og.moreFor == it.ID {
 		timed := it.Kind == "routine" && it.Trigger != nil && it.Trigger.Kind == "time"
@@ -586,6 +606,14 @@ func (a *App) ongoingMore(c *ui.Context, it *protocol.OngoingItem) {
 					og.retime, og.reEvery, og.reTime = true, firstNonEmpty(tr.Every, "day"), firstNonEmpty(tr.Time, "09:00")
 				}
 			}
+			// D426: 多久跑一轮 / How often for a task in rounds: the rhythms inline, the current one marked.
+			if it.Loop && it.State != "paused" {
+				if og.rhythm {
+					a.ongoingRhythm(c, it)
+				} else if a.ogItem(c, "rhythm", a.L.T("og.rhythm"), false) {
+					og.rhythm = true
+				}
+			}
 			if it.TaskID != "" && a.ogItem(c, "open", a.L.T("og.open"), false) {
 				og.moreOpen = false
 				a.OpenTask(it.TaskID)
@@ -598,7 +626,7 @@ func (a *App) ongoingMore(c *ui.Context, it *protocol.OngoingItem) {
 				ps.focus = ""
 			}
 			end := a.L.T("og.end")
-			if it.Kind == "task" {
+			if it.Kind == "task" && !it.Loop {
 				end = a.L.T("wait.cancel")
 			}
 			ui.Box(c.Key("rule")).Height(1).Margin(t.S1, t.S2).Background(t.LineSoft)

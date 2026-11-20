@@ -101,12 +101,11 @@ describe("What it knows about you (D321)", () => {
     expect(zh["peers.switch.on"]).toContain("对话");
     expect(en["peers.switch.on"]).toContain("conversation");
     // The other states say the same thing: Mem, and any agent connected to it.
-    for (const k of ["peers.joining", "peers.none", "peers.mem.what", "peers.switch.off"]) {
+    // peers.mem.what sits right under the "Nowledge Mem" heading, so it doesn't repeat the name (D424).
+    for (const k of ["peers.joining", "peers.none", "peers.switch.off"]) {
       expect(zh[k]).toContain("Nowledge Mem");
       expect(en[k]).toContain("Nowledge Mem");
     }
-    expect(zh["peers.mem.what"]).toContain("Nowledge Bridge");
-    expect(en["peers.mem.what"]).toContain("Nowledge Bridge");
     // D291: no dot-joined facts.
     for (const v of [...Object.values(zh), ...Object.values(en)]) expect(v).not.toContain(" · ");
     // The sender's fallbacks, the same on the Mac.

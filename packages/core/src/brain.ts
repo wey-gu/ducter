@@ -1,7 +1,7 @@
 // What the partner thinks with right now (D150): the one place core decides it, used by the
 // partner's runner (through partnerFallback) and by the settings frame every client shows, so no
 // client computes it a second time.
-import { HARNESSES, PARTNER_FALLBACK, type Brain, type BrainNow, type DeviceHarness } from "@ducter/protocol";
+import { HARNESSES, PARTNER_FALLBACK, type Brain, type BrainHeld, type BrainNow, type DeviceHarness, type HarnessId } from "@ducter/protocol";
 import type { ListedModel } from "@ducter/protocol/src/internal.ts";
 import { brainModelRows, tierOf } from "./candidates.ts";
 import { defaultModelOf, ROW_MAX, shortModels } from "./models.ts";
@@ -19,6 +19,17 @@ export function effectiveBrain(set: Brain, chosen: boolean, home: Pick<DeviceHar
     if (next) return { harness: next, auto: true, why: next === "codex" ? "only_codex" : "only_signed_in" };
   }
   return { harness: set.harness, ...(set.model ? { model: set.model } : {}), auto: !chosen };
+}
+
+/**
+ * D435: its own agent held: the agent answering meanwhile (no model of the setting's: its own
+ * default), or, with none, the same agent with the hold, so every client can say when it is back.
+ */
+export function withHold(e: Omit<BrainNow, "models">, hold: (BrainHeld & { to?: HarnessId }) | undefined): Omit<BrainNow, "models"> {
+  if (!hold || hold.from !== e.harness) return e;
+  const { to, ...held } = hold;
+  if (to) return { harness: to, auto: e.auto, why: "held", held };
+  return { ...e, held };
 }
 
 /**
@@ -45,8 +56,8 @@ export function liveBrainRows(harness: string, list: ListedModel[], current?: st
  * The brain in use with the models its harness offers on the home (never a client's own list).
  * listed: the agent's live list as core last read it on the home (D390), when there is one.
  */
-export function brainNow(set: Brain, chosen: boolean, home: DeviceHarness[] | undefined, listed?: (harness: string) => ListedModel[] | undefined): BrainNow {
-  const e = effectiveBrain(set, chosen, home);
+export function brainNow(set: Brain, chosen: boolean, home: DeviceHarness[] | undefined, listed?: (harness: string) => ListedModel[] | undefined, hold?: (BrainHeld & { to?: HarnessId }) | undefined): BrainNow {
+  const e = withHold(effectiveBrain(set, chosen, home), hold);
   const live = listed?.(e.harness);
   if (live?.length) return { ...e, models: liveBrainRows(e.harness, live, e.model) };
   const h = home?.find((x) => x.harness === e.harness);

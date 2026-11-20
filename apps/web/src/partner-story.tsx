@@ -10,7 +10,7 @@ import { A } from "./app.ts";
 import { Coin } from "./coin.tsx";
 import { AddRow, Btn, Choice, DangerButton, Seg, Switch } from "./controls.tsx";
 import { KeyCard } from "./first-words.tsx";
-import { harnessName, modelName, padEnd, when } from "./format.ts";
+import { harnessName, modelName, padEnd, stamp, when } from "./format.ts";
 import { GBlock, GFoot, GHead, GRow, Group, Said, say, Tile } from "./set-grid.tsx";
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 const pct = (f: number) => Math.round(f * 100);
@@ -24,6 +24,24 @@ export function readyAgents(): DeviceHarness[] {
 export function noBrain(): boolean {
   const hs = A.agents ?? [];
   return hs.length > 0 && !hs.some((h) => h.installed && h.loggedIn && h.canBePartner);
+}
+
+/** D435: its own agent held (the home's settings.brainNow.held), or undefined. */
+export function brainHeld() {
+  return A.brainNow?.held;
+}
+
+/** D435: when it answers on its own agent again, in words ("20:53", "明天 9:00"); "" with no time known. */
+export function heldAt(h: NonNullable<ReturnType<typeof brainHeld>>): string {
+  return h.resetKnown ? stamp(A.L, h.until) : "";
+}
+
+/** D435: the one line under what it thinks with while its own agent is held. */
+export function heldLine(h: NonNullable<ReturnType<typeof brainHeld>>): string {
+  const at = heldAt(h);
+  if (h.waits) return h.why === "quota" ? (at ? t("loadout.brain.wait.quota", at) : t("loadout.brain.wait.quota.soon")) : t(h.why === "rate_limited" ? "loadout.brain.wait.throttle" : "loadout.brain.wait.error");
+  const from = harnessName(h.from);
+  return h.why === "quota" ? (at ? t("loadout.brain.held.quota", from, at) : t("loadout.brain.held.quota.soon", from)) : t(h.why === "rate_limited" ? "loadout.brain.held.throttle" : "loadout.brain.held.error", from);
 }
 
 function brainNow() {
@@ -76,11 +94,14 @@ export function ThinksSection() {
   // D150: the models come from the home (settings.brainNow), never a list of the phone's own.
   const models = A.brainNow?.harness === b.harness ? A.brainNow.models : [];
   const lines: string[] = [];
+  // D435: its own agent held: that comes first, said plainly (the person may be wondering why it changed).
+  const held = brainHeld();
+  if (held) lines.push(heldLine(held));
   if (!models.length) lines.push(t("loadout.model.default.line"));
   // Auto: the person never chose; the setting is only Ducter's default.
-  if (A.brainNow && !A.brainNow.auto && s.brain?.harness && s.brain.harness !== b.harness) lines.push(t("loadout.brain.fallback", harnessName(s.brain.harness)));
+  if (!held && A.brainNow && !A.brainNow.auto && s.brain?.harness && s.brain.harness !== b.harness) lines.push(t("loadout.brain.fallback", harnessName(s.brain.harness)));
   if (h?.billing === "usage") lines.push(t("loadout.brain.key"));
-  else if (h?.allowance) lines.push(h.allowance.left > PARTNER_RESERVE ? t("loadout.left.kept", pct(h.allowance.left), A.S.personaName) : limitWords(h, true));
+  else if (h?.allowance && !held?.waits) lines.push(h.allowance.left > PARTNER_RESERVE ? t("loadout.left.kept", pct(h.allowance.left), A.S.personaName) : limitWords(h, true));
   const setBrain = (harness: string, model?: string, label?: string) => {
     const m = model ?? (A.agents ?? []).find((x) => x.harness === harness)?.models?.[0]?.id;
     A.setSettings({ brain: { harness: harness as never, ...(m ? { model: m } : {}) } });

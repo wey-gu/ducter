@@ -307,7 +307,13 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
 
 - Prove it on a real limit hit: Claude Code's 5-hour window and Codex's, the reset read, the
   wait, the resume in the same session, and the hand-off (all checked only with fakes).
-- The partner's own harness hitting its limit (the partner is not a task: no wait today).
+- **D435 follow-ups (the partner's own agent held):** prove it on a real limit hit of the partner's
+  own Claude Code (rides on the first item); read the account before the turn when a task on the
+  same account already waits on its reset (today the partner's turn fails once, fast, first); a
+  restart while a fallback answers starts the fallback's session fresh (the Log carries it, the
+  native session does not); an eval scenario where the fallback agent picks the conversation up from
+  the projection mid-thread; a comprehension pass with people on the one line (换回来 / Back to).
+  Trigger: the first real limit hit on hel or the author's Mac.
 - A task on a worker: its agent's limits are read on the home today; read them where it runs.
 - An eval scenario for the morning line ("昨晚 Claude Code 额度用完，3:12 恢复后接着做完了").
 - OAR upstream: carry Codex's reset on the `quota` failure, and `rate_limit_event` as an event.

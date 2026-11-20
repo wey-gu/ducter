@@ -24,7 +24,7 @@ func (a *App) presence(c *ui.Context) theme.Presence {
 		return theme.NeedsYou
 	case len(b.Lanes[store.LaneWorking]) > 0 || a.thinking():
 		return theme.Working
-	case len(b.Lanes[store.LaneWaiting]) > 0 || a.watching():
+	case len(b.Lanes[store.LaneWaiting]) > 0 || a.watching() || (a.brainHeld() != nil && a.brainHeld().Waits):
 		// Nothing moving, something it waits for (D112): on its bench, looking out.
 		return theme.Waiting
 	}

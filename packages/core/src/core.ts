@@ -2,6 +2,7 @@
 import { createPreviews, loopbackOf } from "./preview.ts";
 import { createWbFrames } from "./workbench.ts";
 import { effectiveBrain } from "./brain.ts";
+import { createBrainHold } from "./brain-hold.ts";
 import { createMediaStore } from "./media.ts";
 import { chmodSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
@@ -1030,10 +1031,12 @@ export function startCore(opts: CoreOptions = {}): Core {
   // D297: a task whose agent hits its usage limit waits for the reset (or is handed on) and carries on.
   const limitWaits = createLimitWaits({ log, tasks, waiters: work.waiters, loadout, settings, usage: accountUsage, runner: () => runner, clock });
   limitsDecorate = (o) => ({ ...o, waiters: o.waiters.map((w) => limitWaits.decorate(w)) });
+  // D435: the partner's own agent, held after a turn failed on it; another signed-in agent answers meanwhile.
+  const brainHold = createBrainHold({ log, clock, base: () => effectiveBrain(settings.get().brain, settings.brainChosen(), devicesView?.harnessesNow()).harness as HarnessId, home: () => devicesView?.harnessesNow(), rules: () => rules.list(), usage: accountUsage });
   const workFrames: typeof work.frames = { ...work.frames, waiter: (id, action) => limitWaits.act(id, action) ?? (action === "handoff" ? Promise.resolve(false) : work.frames.waiter(id, action)) };
   // D388: the pages the last noticed call rested on (a holder: the Core is a copy of api).
   const noticedSources: { links?: { label: string; url: string }[]; whys?: { text: string; why: string }[] } = {};
-  const api = { log, tasks, mcp, persona, dataDir, settings, connections, phone, bodies: loadout, said, standing, spine: log.spine, bridgeLink, media, limits: accountUsage, workingMemory, pins, apps, boards: { makeReviewBoard: (id: string) => boards.makeReviewBoard(id), isReview: (id: string) => isReview(id), offer: (id: string, k: "reviews" | "reports") => boards.offer(id, k) }, noticedSources, ...(browser ? { browser: browser.port } : {}) } as CoreApi;
+  const api = { log, tasks, mcp, persona, dataDir, settings, connections, phone, bodies: loadout, said, standing, spine: log.spine, bridgeLink, media, limits: accountUsage, workingMemory, pins, apps, boards: { makeReviewBoard: (id: string) => boards.makeReviewBoard(id), isReview: (id: string) => isReview(id), offer: (id: string, k: "reviews" | "reports") => boards.offer(id, k) }, noticedSources, brainHold, ...(browser ? { browser: browser.port } : {}) } as CoreApi;
   // D312: with more than one partner, the default partner keeps to its own too, and a task's
   // brief and Mem identity are those of the partner it is for.
   const memOf = new Map<string, MemIdentity | undefined>();
@@ -1081,6 +1084,9 @@ export function startCore(opts: CoreOptions = {}): Core {
   }
   // D150: the one helper (brain.ts) the runner and the settings frame share.
   api.partnerFallback = () => {
+    // D435: its own agent held, the next that can answer does (none: it waits, the drain holds the messages).
+    const held = brainHold.now();
+    if (held?.to) return { harness: held.to };
     const e = effectiveBrain(settings.get().brain, settings.brainChosen(), devicesView?.harnessesNow());
     return e.why ? { harness: e.harness } : undefined;
   };
@@ -2201,6 +2207,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       living.stop();
       work.stop();
       limitWaits.stop();
+      brainHold.stop();
       proactive.stop();
       calendar.stop();
       taskSources.stop();

@@ -8,6 +8,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
+	"github.com/wey-gu/ducter/apps/desktop/internal/i18n"
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 	"github.com/wey-gu/ducter/apps/desktop/internal/store"
 	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
@@ -56,6 +57,56 @@ func (a *App) brain() protocol.Brain {
 		return *st.Brain
 	}
 	return protocol.Brain{Harness: "claude-code", Model: "opus"}
+}
+
+// brainHeld is D435's hold on its own agent as the home says it; nil when
+// there is none.
+func (a *App) brainHeld() *protocol.BrainHeld {
+	if bn := a.S.BrainNow; bn != nil {
+		return bn.Held
+	}
+	return nil
+}
+
+// heldAt is when it answers on its own agent again: "20:53" today, else
+// with its day ("明天 9:00"); "" with no time known.
+func (a *App) heldAt(h *protocol.BrainHeld) string {
+	at := store.ParseTime(h.Until)
+	if !h.ResetKnown || at.IsZero() {
+		return ""
+	}
+	if at.Local().YearDay() == a.Now().Local().YearDay() && at.Local().Year() == a.Now().Local().Year() {
+		return i18n.Clock(at)
+	}
+	return a.when(at)
+}
+
+// brainHeldLine is the one line under what it thinks with while its own agent
+// is held (D435): who answers meanwhile and until when, or that messages
+// wait and are answered then.
+func (a *App) brainHeldLine(h *protocol.BrainHeld) string {
+	at := a.heldAt(h)
+	if h.Waits {
+		switch {
+		case h.Why == "quota" && at != "":
+			return a.L.T("loadout.brain.wait.quota", at)
+		case h.Why == "quota":
+			return a.L.T("loadout.brain.wait.quota.soon")
+		case h.Why == "rate_limited":
+			return a.L.T("loadout.brain.wait.throttle")
+		}
+		return a.L.T("loadout.brain.wait.error")
+	}
+	from := harnessName(h.From)
+	switch {
+	case h.Why == "quota" && at != "":
+		return a.L.T("loadout.brain.held.quota", from, at)
+	case h.Why == "quota":
+		return a.L.T("loadout.brain.held.quota.soon", from)
+	case h.Why == "rate_limited":
+		return a.L.T("loadout.brain.held.throttle", from)
+	}
+	return a.L.T("loadout.brain.held.error", from)
 }
 
 // BrainMark is the one mark on Devices (D89): on the Mac Ducter runs on,
@@ -382,17 +433,22 @@ func (a *App) thinksGroup(c *ui.Context) {
 	others := a.brainOthers(b)
 	models := a.brainModels(b, h)
 	var lines []string
+	// D435: its own agent held comes first, said plainly.
+	held := a.brainHeld()
+	if held != nil {
+		lines = append(lines, a.brainHeldLine(held))
+	}
 	if len(models) == 0 {
 		lines = append(lines, a.L.T("loadout.model.default.line"))
 	}
-	if st, bn := a.S.Settings, a.S.BrainNow; st != nil && st.Brain != nil && st.Brain.Harness != "" && st.Brain.Harness != b.Harness && lo.pending == nil && bn != nil && !bn.Auto {
+	if st, bn := a.S.Settings, a.S.BrainNow; held == nil && st != nil && st.Brain != nil && st.Brain.Harness != "" && st.Brain.Harness != b.Harness && lo.pending == nil && bn != nil && !bn.Auto {
 		// D150/D177: the person chose another, and it can't think now
 		// (Auto: they never chose; the setting is only Ducter's default).
 		lines = append(lines, a.L.T("loadout.brain.fallback", harnessName(st.Brain.Harness)))
 	}
 	if h != nil && h.Billing == "usage" {
 		lines = append(lines, a.L.T("loadout.brain.key"))
-	} else if l := a.limitWords(h, true); l != "" {
+	} else if l := a.limitWords(h, true); l != "" && (held == nil || !held.Waits) {
 		if h.Allowance.Left > protocol.PartnerReserve {
 			l = a.L.T("loadout.left.kept", pct(h.Allowance.Left), a.S.PersonaName)
 		}

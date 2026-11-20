@@ -128,6 +128,17 @@ func (a *App) partnerHero(c *ui.Context) {
 	if a.noBrain() {
 		line = a.L.T("partner.header.none", a.homeName())
 	}
+	// D435: its own agent held: who thinks meanwhile, or when it answers again.
+	if h := a.brainHeld(); h != nil {
+		switch {
+		case !h.Waits:
+			line = a.L.T("partner.header.held", a.homeName(), harnessName(a.brain().Harness))
+		case a.heldAt(h) != "":
+			line = a.L.T("partner.header.wait", a.homeName(), a.heldAt(h))
+		default:
+			line = a.L.T("partner.header.wait.soon", a.homeName())
+		}
+	}
 	ui.Row(c.Key("partner-hero")).Gap(t.S4).AlignItems(ui.Center).Children(func() {
 		a.avatar(c, shown, 64)
 		ui.Column(c).Grow(1).MinWidth(0).Gap(t.S1).Children(func() {

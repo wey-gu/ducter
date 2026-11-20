@@ -86,7 +86,8 @@ interface RedoPort {
   fork(input: PastForkInput): Promise<{ ok: true; card: TaskCard; step: number } | { ok: false; step: number; message: string }>;
 }
 import { detect, inLanguage, langName, languageOfTexts, normalizeTag, words, type LangTag } from "../../protocol/src/lang.ts";
-import { NO_WORDS_YET, said } from "./words.ts";
+import { clockWords, NO_WORDS_YET, said } from "./words.ts";
+import { limitHit, mergeLimits } from "../../protocol/src/limit-hit.ts";
 import { isConnectCode, redactWith } from "../../protocol/src/redact.ts";
 import type { SpineStore } from "../../protocol/src/internal.ts";
 import { autoRecall, renderRecall } from "./spine/recall.ts";
@@ -162,6 +163,9 @@ export interface PartnerHandle extends Partner {
   checkBridge(): Promise<number>;
 }
 
+/** D435: a partner turn that failed on its own agent, as core's hold takes it. */
+type HoldHit = Parameters<NonNullable<CoreApi["brainHold"]>["hit"]>[0];
+
 interface TurnState {
   triggers: LogEvent[];
   /** D373: finished tasks this turn sent a follow-up to (each back at work under its own line). */
@@ -198,6 +202,12 @@ interface TurnState {
   relayed?: boolean; // a task question was said this turn
   results?: number; // done reports in this turn (several = one combined message)
   lang: LangTag | undefined; // D292: the language the user reads, when known (any language)
+  /** D435: the turn ended failed on the partner's own agent (OAR's failure class, its reset and words). */
+  failed?: { failure?: string; resetsAt?: string; reason?: string };
+  /** D435: the limits the session said during the turn (Claude Code's rate_limit_event, Codex's rate limits). */
+  limitsSeen?: HarnessEvent["limits"];
+  /** D435: the agent said or did something this turn (a failure after it is not a silent turn). */
+  spoke?: boolean;
   recalls: number; // memory_search calls this turn
   /** D304: what memory_search returned this turn, by the ref the partner saw ("m1"); a reply names one it leaned on. */
   recalled?: Map<string, MemoryHit>;
@@ -615,7 +625,9 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     const envH = process.env.DUCTER_PARTNER_HARNESS;
     const fallback: Brain = isHarnessId(envH) && HARNESSES[envH].partner && envH !== "claude-code" ? { harness: envH } : { harness: "claude-code", model: "opus" };
     const set = core.settings?.get().brain;
-    const brain = core.partnerFallback?.() ?? (set && isHarnessId(set.harness) && HARNESSES[set.harness].partner ? set : fallback);
+    // D435: its own agent held: the one answering meanwhile (core's partnerFallback says the same).
+    const held = opts.harness ? undefined : core.brainHold?.now()?.to;
+    const brain = (held ? { harness: held } : undefined) ?? core.partnerFallback?.() ?? (set && isHarnessId(set.harness) && HARNESSES[set.harness].partner ? set : fallback);
     const harness = opts.harness ?? brain.harness;
     const model =
       opts.model ?? process.env.DUCTER_PARTNER_MODEL ?? (harness === brain.harness ? brain.model : undefined) ?? (harness === "claude-code" ? "opus" : undefined);
@@ -1268,6 +1280,11 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     if (ev.usage?.contextTokens) contextTokens = ev.usage.contextTokens;
     if ((ev.raw as { kind?: string } | undefined)?.kind === "compaction_ended") onHarnessCompacted(ev.raw as { outcome?: string; trigger?: string });
     if (!turn) return;
+    // D435: what the turn's end and the session's limits say, for a turn that fails on the agent itself.
+    if (ev.limits) turn.limitsSeen = turn.limitsSeen ? mergeLimits(turn.limitsSeen, ev.limits) : ev.limits;
+    const end = ev.raw as { kind?: string; outcome?: string; failure?: string; resetsAt?: string; reason?: string } | undefined;
+    if (ev.turnEnd && end?.kind === "turn_ended" && end.outcome === "failed") turn.failed = { ...(end.failure ? { failure: end.failure } : {}), ...(end.resetsAt ? { resetsAt: end.resetsAt } : {}), ...(end.reason ? { reason: end.reason } : {}) };
+    if ((ev.role === "assistant" && ev.text?.trim()) || ev.tool) turn.spoke = true;
     // A task_open after its line: the ack goes out now and ends the waiting line (D120), so no
     // "Setting up a task…" flashes before it.
     if (ev.tool && !(TASK_OPEN_RE.test(ev.tool.name) && turn.pending?.trim())) {
@@ -1439,6 +1456,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       ...(resumeSessionId ? { resumeSessionId } : {}),
     });
     session = s;
+    liveHarness = run.harness;
     iter = null;
     harnessCompacted = false;
     // A resumed session keeps the size it had (state.json); a fresh one starts empty.
@@ -1449,6 +1467,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     lastSessionId = s.id || resumeSessionId;
     stats.sessionId = lastSessionId;
   }
+  /** D435: the agent the live session runs on. */
+  let liveHarness: string | undefined;
   async function dropSession() {
     const s = session;
     session = null;
@@ -1657,7 +1677,10 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       if (r.done) {
         iter = null;
         // A stream that ends without delivering anything means the session is gone.
-        if (!sawEvent) await dropSession();
+        if (!sawEvent) {
+          if (turn && !turn.failed) turn.failed = { failure: "gone" };
+          await dropSession();
+        }
         return;
       }
       sawEvent = true;
@@ -1701,7 +1724,18 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     return { media, unknown };
   }
 
-  async function runTurn(batch: LogEvent[]) {
+  /** D435: a turn that failed on the agent is held and run again (or waits) only when core holds agents, never in the eval. */
+  const holdable = () => !opts.harness && !!core.brainHold;
+  /** D435: what a turn that failed on its agent hands to core: D297's limit reading, else an error. */
+  function hitOf(harness: string, t: Pick<TurnState, "failed" | "limitsSeen">): HoldHit {
+    const f = t.failed ?? {};
+    const limit = limitHit(harness, { outcome: "failed", ...f }, t.limitsSeen, now());
+    if (limit) return { harness, failure: limit.failure, ...(limit.resetsAt ? { resetsAt: limit.resetsAt } : {}), source: limit.source, ...(limit.said ? { said: limit.said } : {}) };
+    return { harness, failure: "error", ...(f.reason ? { said: f.reason.slice(0, 300) } : f.failure ? { said: f.failure } : {}) };
+  }
+
+  /** A turn's outcome for drain: undefined when it was answered; a hit when its agent failed it before saying anything. */
+  async function runTurn(batch: LogEvent[]): Promise<HoldHit | undefined> {
     const userEvents = batch.filter((e) => e.kind === "user_msg");
     const userTexts = userEvents.map((e) => (e.body as Bodies["user_msg"]).text);
     let replyTo: number | undefined = userEvents[userEvents.length - 1]?.seq;
@@ -1737,7 +1771,16 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       shown = { since: at, step: "web" };
       core.activity.set({ step: "web", since: at, stepSince: at });
     }
-    const fresh = await ensureSession();
+    let fresh: boolean;
+    try {
+      fresh = await ensureSession();
+    } catch (err) {
+      // D435: the agent wouldn't even start (signed out under us, gone): held like a failed turn.
+      if (!holdable()) throw err;
+      onError(err);
+      endWaiting();
+      return { harness: partnerRun().harness, failure: "error", said: String((err as Error).message ?? err).slice(0, 300) };
+    }
     const redo = carried && batch.some((e) => carried!.seqs.has(e.seq)) ? carried : undefined;
     if (redo) carried = undefined;
     const input = buildInput(batch, fresh, redo?.note);
@@ -1760,6 +1803,18 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       const reading = readTurn();
       await session!.send(input, "turn", picturesOf(batch));
       await reading;
+      // D435: the turn failed on the agent itself before anything reached the person: core holds
+      // that agent and drain runs the same triggers again on the next one (or keeps them for later).
+      const ranOn = liveHarness ?? partnerRun().harness;
+      if (turn.failed && holdable()) {
+        const said = core.log.read({ stream: "channel", fromSeq: turnFrom + 1, limit: 50, kinds: ["ai_msg", "ack", "decision", "job_status"] }).some((e) => e.origin === "partner");
+        if (!turn.spoke && !said && !turn.pending?.trim()) {
+          if (redo) carried = redo; // its triggers run again: what the cut-off turn did is still carried
+          return hitOf(ranOn, turn);
+        }
+        // It said something first: this turn stands; the agent is held for the next one.
+        void core.brainHold!.hit(hitOf(ranOn, turn)).catch(onError);
+      } else if (!turn.failed) core.brainHold?.ok(ranOn);
       flushPending();
       // D373: taken up again and nothing said after it: the task still moves under this turn.
       if (turn.lateContinue) continueJob(turn, turn.lateContinue, newId("job")), (turn.lateContinue = undefined);
@@ -1808,21 +1863,63 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     }
   }
 
+  // D435: what waits while no agent can answer (its own agent held, nobody else signed in that can
+  // take over), answered in order when the hold's time comes. Not in state.json: a restart finds
+  // the same triggers unanswered in the Log (handledSeq) and holds them again.
+  const deferred: LogEvent[] = [];
+  /** D435: tries of the same triggers on one agent after another, so a home where every one fails never spins. */
+  const HOLD_TRIES = 4;
+  const heldWords = (h: NonNullable<ReturnType<NonNullable<CoreApi["brainHold"]>["now"]>>): string => {
+    const lang = userLang() ?? NO_WORDS_YET;
+    const vars = { from: harnessName(h.from), to: h.to ? harnessName(h.to) : "", at: clockWords(lang, h.until, now()) };
+    if (h.to) return said(lang, h.why === "quota" ? (h.resetKnown ? "heldQuota" : "heldQuotaSoon") : h.why === "rate_limited" ? "heldThrottle" : "heldError", vars);
+    return said(lang, h.why === "quota" ? (h.resetKnown ? "waitQuota" : "waitQuotaSoon") : h.why === "rate_limited" ? "waitThrottle" : "waitError", vars);
+  };
+  /** D435: the batch's agent failed it before it said anything: hold the agent, say it once, run it on the next or keep it. */
+  async function heldTurn(batch: LogEvent[], hit: HoldHit, tries: Map<number, number>): Promise<void> {
+    const r = await core.brainHold!.hit(hit);
+    // The session on the held agent is no use to the next turn: the next one starts from the projection.
+    await dropSession();
+    if (r.tell && r.now) tellUser(heldWords(r.now));
+    const key = batch[0]?.seq ?? 0;
+    const n = (tries.get(key) ?? 0) + 1;
+    tries.set(key, n);
+    if (r.now?.waits || (r.now && n >= HOLD_TRIES)) return void deferred.push(...batch);
+    // Another agent answers now (or the hold isn't on what it thinks with: tried again as it is).
+    if (n < HOLD_TRIES) return void queue.unshift(...batch);
+    onError(new Error(`partner turn failed on ${hit.harness} ${n} times; left for the next trigger`));
+  }
   async function drain() {
+    const tries = new Map<number, number>();
+    // D435: what waited goes first once someone can answer (once per pass: what this pass sets aside stays).
+    if (deferred.length && !(holdable() && core.brainHold!.now()?.waits)) queue.unshift(...deferred.splice(0));
     while (queue.length && !closed) {
+      // D435: nobody can answer now: everything waits for the hold's time, in order.
+      const hold = holdable() ? core.brainHold!.now() : undefined;
+      if (hold?.waits) {
+        deferred.push(...queue.splice(0));
+        break;
+      }
       // Settlement batch (I-results rule 3, research/16): tasks that finish within a moment of
       // each other become one turn, so one message. Only when nothing from the user waits.
       if (settleMs > 0 && !queue.some((e) => e.kind === "user_msg" || e.seq < 0)) await Bun.sleep(settleMs);
       // D236: replies to different messages are separate turns, each answering its own.
       const batch = queue.splice(0, turnLength(queue));
       try {
-        await runTurn(batch);
+        const hit = await runTurn(batch);
+        if (hit) await heldTurn(batch, hit, tries);
       } catch (err) {
         onError(err);
         await dropSession();
       }
     }
   }
+  // D435: the hold's time came (or it ended): what waited is answered now, in order.
+  const offHold = core.brainHold?.onChange(() => {
+    if (closed || !deferred.length || core.brainHold!.now()?.waits) return;
+    queue.unshift(...deferred.splice(0));
+    kick();
+  });
   function kick() {
     if (running || closed) return;
     running = drain().finally(() => {
@@ -5025,6 +5122,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     async close() {
       outbox?.stop();
       closed = true;
+      offHold?.();
       offBridgeLink?.();
       if (bridgeTimer) timers.clearTimeout(bridgeTimer);
       for (const h of waitPauses) timers.clearTimeout(h);

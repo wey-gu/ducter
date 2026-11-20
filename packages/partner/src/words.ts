@@ -13,6 +13,15 @@ const W = {
     trustedBrief: "（你的 {agent} 让我做的；你说过它的活直接接。）",
     // D372: the first errand Ducter's default put on a faster model, said once.
     kindFirst: "这类跑腿的事我先交给 {fast}：更快，也给 {smart} 留着额度。想换就说。",
+    // D435: the partner's own agent ran out (or fails): said once, by code, before the answer.
+    heldQuota: "{from}的额度用完了，这会儿先用{to}答你，{at}换回来。",
+    heldQuotaSoon: "{from}的额度用完了，这会儿先用{to}答你，{from}恢复了就换回来。",
+    heldThrottle: "{from}这会儿太忙了，先用{to}答你，过一会儿换回来。",
+    heldError: "{from}这会儿出错了，先用{to}答你，过一会儿再换回来试试。",
+    waitQuota: "{from}的额度用完了，别的 AI 也接不上。{at}恢复后我接着回你，这期间发来的也按顺序回。",
+    waitQuotaSoon: "{from}的额度用完了，别的 AI 也接不上。我隔一会儿试一次，好了就接着回你。",
+    waitThrottle: "{from}这会儿太忙了，别的 AI 也接不上。过一会儿好了我就接着回你。",
+    waitError: "{from}这会儿出错了，别的 AI 也接不上。我过几分钟再试，好了就接着回你。",
     // D376: the first time the partner looks in the person's own sessions, said once.
     ownLook: "我看了 {computer} 上你在 {agents} 里的对话记录：只看名字、文件夹、时间和你说的头一句，不看代码和文件。",
     // D377: the person's own records on a computer for tasks wait for their yes on its card.
@@ -41,6 +50,14 @@ const W = {
     lookAck: "A quick look didn't settle it, so a task is checking properly: {title}",
     trustedBrief: "(Your {agent} asked for this; you let its work start without asking.)",
     kindFirst: "Errands like this go to {fast} first: it's faster, and {smart}'s limit is kept for harder work. Say if you'd rather not.",
+    heldQuota: "{from} is out of credit, so {to} is answering you for now. Back to {from} at {at}.",
+    heldQuotaSoon: "{from} is out of credit, so {to} is answering you for now, until {from} is back.",
+    heldThrottle: "{from} is too busy right now, so {to} is answering you for a little while.",
+    heldError: "{from} isn't working right now, so {to} is answering you for a little while.",
+    waitQuota: "{from} is out of credit and no other AI can take over. It's back at {at}; I'll answer then, and anything you send meanwhile, in order.",
+    waitQuotaSoon: "{from} is out of credit and no other AI can take over. I'll keep trying and answer as soon as it's back.",
+    waitThrottle: "{from} is too busy right now and no other AI can take over. I'll answer as soon as it eases.",
+    waitError: "{from} isn't working right now and no other AI can take over. I'll try again in a few minutes and answer then.",
     ownLook: "I looked at your {agents} conversations on {computer}: only their names, folders, times and your first words, no code or files.",
     ownAsk: "You used {agents} on {computer} lately, and I haven't read its records yet. Open {computer} in Your devices and tap Read what they keep, and I'll look.",
     yourAgent: "your {agent}",
@@ -75,4 +92,24 @@ export function said(lang: LangTag | undefined, key: PartnerWord, vars: Record<s
   const tpl = words(W, lang)[key];
   if (pickTag(lang, ["zh", "en"]) !== "zh") return fill(tpl, vars);
   return zhJoin(...tpl.split(/(\{\w+\})/).map((p) => (/^\{\w+\}$/.test(p) ? fill(p, vars) : p)));
+}
+
+const CLOCK = {
+  zh: { tomorrow: "明天 {clock}", date: "{m} 月 {d} 日 {clock}" },
+  en: { tomorrow: "tomorrow {clock}", date: "{mon} {d}, {clock}" },
+};
+const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+/**
+ * D435: a time the person will meet again, as the clients write one: "20:53" today, "明天 9:00" /
+ * "tomorrow 9:00", else the date ("11 月 23 日 9:00" / "Nov 23, 9:00"), in the home's own time.
+ */
+export function clockWords(lang: LangTag | undefined, iso: string, now: number): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  const day = (t: Date) => new Date(t.getFullYear(), t.getMonth(), t.getDate()).getTime();
+  const days = Math.round((day(d) - day(new Date(now))) / 86_400_000);
+  const clock = `${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`; // the clients' own clock (apps/web format.ts clock)
+  if (days <= 0) return clock;
+  const w = words(CLOCK, lang);
+  return fill(days === 1 ? w.tomorrow : w.date, { clock, m: d.getMonth() + 1, d: d.getDate(), mon: MON[d.getMonth()]! });
 }

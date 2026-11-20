@@ -46,7 +46,9 @@ At the top is your partner, its name and one line: where it lives and what it th
 - **What it thinks with.** The AI agent your partner itself runs on (Claude Code, Codex,
   DeepSeek Harness or pi, whichever are signed in there), with how much of its limit is left. When
   you haven't picked one, your partner uses Claude Code if it is signed in, else Codex, else
-  DeepSeek Harness, else pi. With Claude Code, pick **Opus** or **Sonnet**; the line under the
+  DeepSeek Harness, else pi. When the one it thinks with runs out of its limit, another signed-in
+  one answers meanwhile and this row says which, why, and when it goes back; with no other, it
+  says when your partner answers again. With Claude Code, pick **Opus** or **Sonnet**; the line under the
   choice says what the one you picked is like (Opus thinks the deepest, Sonnet answers faster);
   with DeepSeek Harness, or pi signed in to DeepSeek, pick DeepSeek's **V4 Pro** (smartest) or
   **Flash** (faster replies). When another AI agent is signed in there, **Switch** lists it with

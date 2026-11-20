@@ -50,8 +50,8 @@ func (a *App) appCard(c *ui.Context, key string, card *protocol.AppCard) {
 			if gone {
 				ink = t.InkMuted
 			}
-			ui.Text(c, keepWords(autospace(name))).FontSize(t.MD).FontWeight(800).TextColor(ink).SingleLine().Shrink(1).MinWidth(0).Tooltip(name)
-			ui.Text(c, keepWords(autospace(what))).FontSize(t.SM).TextColor(t.InkMuted).MinWidth(0)
+			uiText(c, keepWords(autospace(name))).FontSize(t.MD).FontWeight(800).TextColor(ink).SingleLine().Shrink(1).MinWidth(0).Tooltip(name)
+			uiText(c, keepWords(autospace(what))).FontSize(t.SM).TextColor(t.InkMuted).MinWidth(0)
 		})
 		if !gone && a.buttonFor(c, a.L.T("app.open"), name, btnSecondary, t.ControlSM, t.Surface) {
 			a.openApp(card.ID)
@@ -89,7 +89,7 @@ func (a *App) userAppLine(c *ui.Context, key string, ref *protocol.AppRef) {
 			Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(words).Focusable()
 		b.Children(func() {
 			ui.Box(c.Key("g")).Size(14, 14).AccessHidden(true).Draw(drawMadeKind("app", t.InkSoft))
-			ui.Text(c, keepWords(autospace(words))).FontSize(t.XS).FontWeight(700).TextColor(t.InkSoft).SingleLine()
+			uiText(c, keepWords(autospace(words))).FontSize(t.XS).FontWeight(700).TextColor(t.InkSoft).SingleLine()
 		})
 		if b.Clicked() {
 			a.openApp(ref.ID)
@@ -107,13 +107,13 @@ func (a *App) appAskBubble(c *ui.Context, key string, ref *protocol.AppRef, text
 			Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(words).Focusable()
 		b.Children(func() {
 			ui.Box(c.Key("g")).Size(14, 14).AccessHidden(true).Draw(drawMadeKind("app", t.InkSoft))
-			ui.Text(c, keepWords(autospace(words))).FontSize(t.XS).FontWeight(700).TextColor(t.InkSoft).SingleLine()
+			uiText(c, keepWords(autospace(words))).FontSize(t.XS).FontWeight(700).TextColor(t.InkSoft).SingleLine()
 		})
 		if b.Clicked() {
 			a.openApp(ref.ID)
 		}
 		ui.Column(c.Key("w")).Padding(10, 14).Radius(t.RadiusMD).Background(t.Sunken).InsetShadow(0, 0, 0, 1, t.Line).MinWidth(0).Children(func() {
-			ui.Text(c, autospace(text)).Selectable().FontSize(t.Bubble).LineHeight(leadingFor(text, 1.5)).TextColor(t.InkSoft)
+			uiText(c, autospace(text)).Selectable().FontSize(t.Bubble).LineHeight(leadingFor(text, 1.5)).TextColor(t.InkSoft)
 		})
 	})
 }
@@ -228,9 +228,9 @@ func (a *App) boardOfferBody(c *ui.Context, b *protocol.BoardAsk) {
 	ui.Row(c.Key("board-offer")).Gap(t.S3).AlignItems(ui.Start).MinWidth(0).Children(func() {
 		a.appFace(c, 34, false)
 		ui.Column(c.Key("w")).Gap(2).Grow(1).Shrink(1).MinWidth(0).Children(func() {
-			ui.Text(c, keepWords(autospace(a.L.T("board.offer.what", b.Title)))).FontSize(t.MD).TextColor(t.Ink).MinWidth(0)
+			uiText(c, keepWords(autospace(a.L.T("board.offer.what", b.Title)))).FontSize(t.MD).TextColor(t.Ink).MinWidth(0)
 			if b.Kind == "reviews" {
-				ui.Text(c, keepWords(autospace(a.L.T("board.offer.reviews")))).FontSize(t.SM).TextColor(t.InkMuted).MinWidth(0)
+				uiText(c, keepWords(autospace(a.L.T("board.offer.reviews")))).FontSize(t.SM).TextColor(t.InkMuted).MinWidth(0)
 			}
 		})
 	})

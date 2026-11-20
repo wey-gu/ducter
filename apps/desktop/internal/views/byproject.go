@@ -108,12 +108,12 @@ func (a *App) projectRoutineRow(c *ui.Context, r *protocol.Routine) {
 		ui.Box(c.Key("face")).Size(32, 36).Shrink(0).AlignItems(ui.Center).Justify(ui.Center).Children(func() {
 			a.calendarBadge(c, r, 30)
 		})
-		name := ui.Text(c, keepWords(autospace(r.Name))).FontSize(t.MD).FontWeight(700).SingleLine().Grow(1).Shrink(1).MinWidth(0).Tooltip(r.Name)
+		name := uiText(c, keepWords(autospace(r.Name))).FontSize(t.MD).FontWeight(700).SingleLine().Grow(1).Shrink(1).MinWidth(0).Tooltip(r.Name)
 		if paused {
 			name.TextColor(t.InkMuted)
 		}
-		ui.Text(c, r.TriggerWords).FontSize(t.XS).TextColor(t.InkSoft).SingleLine().Shrink(2).MinWidth(0).MaxWidth(260)
-		ui.Text(c, a.routineState(r)).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).Shrink(0).TextAlign(ui.End).SingleLine()
+		uiText(c, r.TriggerWords).FontSize(t.XS).TextColor(t.InkSoft).SingleLine().Shrink(2).MinWidth(0).MaxWidth(260)
+		uiText(c, a.routineState(r)).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).Shrink(0).TextAlign(ui.End).SingleLine()
 	})
 }
 

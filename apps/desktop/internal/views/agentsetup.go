@@ -145,7 +145,7 @@ func (a *App) agentRow(c *ui.Context, dv *protocol.DeviceView, h protocol.Device
 			}
 			a.coinBox(c, "ag:"+dv.ID, h.Harness, 36, look != "ready" && look != "installing", motion)
 			ui.Column(c).Gap(1).Grow(1).MinWidth(0).Children(func() {
-				ui.Text(c, name).FontSize(t.MD).FontWeight(800)
+				uiText(c, name).FontSize(t.MD).FontWeight(800)
 				ink := t.InkMuted
 				switch look {
 				case "failed":
@@ -153,7 +153,7 @@ func (a *App) agentRow(c *ui.Context, dv *protocol.DeviceView, h protocol.Device
 				case "ready":
 					ink = t.Done.Ink
 				}
-				ui.Text(c, a.agentWord(dv, h, look)).FontSize(t.XS).TextColor(ink)
+				uiText(c, a.agentWord(dv, h, look)).FontSize(t.XS).TextColor(ink)
 			})
 			switch {
 			case pick != nil && look == "install":
@@ -174,11 +174,11 @@ func (a *App) agentRow(c *ui.Context, dv *protocol.DeviceView, h protocol.Device
 			}
 		})
 		if look == "failed" && h.Setup != nil && h.Setup.Detail != "" {
-			ui.Text(c, h.Setup.Detail).FontSize(t.XS).TextColor(t.InkSoft).LineHeight(1.4)
+			uiText(c, h.Setup.Detail).FontSize(t.XS).TextColor(t.InkSoft).LineHeight(1.4)
 		}
 		// D371: its command line is big; say so before the tap.
 		if (look == "install" || look == "queued") && h.Harness == "deepseek-harness" {
-			ui.Text(c, a.L.T("ag.dsh.size")).FontSize(t.XS).TextColor(t.InkSoft).LineHeight(1.4)
+			uiText(c, a.L.T("ag.dsh.size")).FontSize(t.XS).TextColor(t.InkSoft).LineHeight(1.4)
 		}
 		if look == "login" {
 			a.agentLoginPanel(c, dv, h)
@@ -193,7 +193,7 @@ func (a *App) agentLoginPanel(c *ui.Context, dv *protocol.DeviceView, h protocol
 	name := harnessName(h.Harness)
 	key := coinKey(dv.ID, h.Harness)
 	ui.Column(c.Key("ag-login:"+key)).Gap(t.S2).Padding(t.S3, t.S3).Radius(t.RadiusSM).Background(t.Bg).Children(func() {
-		line := func(s string, ink ui.Color) { ui.Text(c, s).FontSize(t.SM).TextColor(ink).LineHeight(1.5) }
+		line := func(s string, ink ui.Color) { uiText(c, s).FontSize(t.SM).TextColor(ink).LineHeight(1.5) }
 		again := func() {
 			ui.Row(c).Children(func() {
 				if a.buttonFor(c, a.L.T("ag.retry"), name, btnSecondary, t.ControlSM, t.Bg) {
@@ -238,11 +238,11 @@ func (a *App) agentLoginPanel(c *ui.Context, dv *protocol.DeviceView, h protocol
 			line(a.L.T("ag.login.wrong_code"), t.Failed.Ink)
 		}
 		if l.URL != "" {
-			ui.Text(c, shortURL(l.URL)).FontSize(t.XS).TextColor(t.Accent).SingleLine()
+			uiText(c, shortURL(l.URL)).FontSize(t.XS).TextColor(t.Accent).SingleLine()
 		}
 		if l.Code != "" {
 			ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
-				ui.Text(c, l.Code).Font(t.Mono).FontSize(22).FontWeight(800).TextColor(t.Ink).Selectable()
+				uiText(c, l.Code).Font(t.Mono).FontSize(22).FontWeight(800).TextColor(t.Ink).Selectable()
 				if a.buttonFor(c, a.L.T("ag.login.copy"), name, btnSecondary, t.ControlSM, t.Bg) {
 					c.WriteClipboard(l.Code)
 				}
@@ -352,7 +352,7 @@ func (a *App) setupAnswer(c *ui.Context, dv *protocol.DeviceView) {
 	if r.Reason == "away" {
 		k = "ag.away"
 	}
-	ui.Text(c, a.L.T(k, a.deviceNameIn(dv))).FontSize(a.T.SM).TextColor(a.T.Failed.Ink).LineHeight(1.5)
+	uiText(c, a.L.T(k, a.deviceNameIn(dv))).FontSize(a.T.SM).TextColor(a.T.Failed.Ink).LineHeight(1.5)
 }
 
 // lendAgents is the AI agents on the computer that just came (the lend
@@ -372,7 +372,7 @@ func (a *App) lendAgents(c *ui.Context, dv *protocol.DeviceView) (asking bool) {
 	name := a.deviceNameIn(dv)
 	ui.Column(c.Key("lend-agents:" + dv.ID)).Gap(t.S1).Children(func() {
 		if ready {
-			ui.Text(c, a.L.T("lend.ready", name)).FontSize(t.MD).FontWeight(800).TextColor(t.Done.Ink)
+			uiText(c, a.L.T("lend.ready", name)).FontSize(t.MD).FontWeight(800).TextColor(t.Done.Ink)
 		}
 		byOrder := func(keep func(h protocol.DeviceHarness) bool, each func(h protocol.DeviceHarness)) int {
 			n := 0
@@ -387,7 +387,7 @@ func (a *App) lendAgents(c *ui.Context, dv *protocol.DeviceView) (asking bool) {
 			return n
 		}
 		if ask {
-			ui.Text(c, a.L.T("lend.setup.q")).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
+			uiText(c, a.L.T("lend.setup.q")).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
 			byOrder(func(h protocol.DeviceHarness) bool { return h.Installed }, func(h protocol.DeviceHarness) { a.agentRow(c, dv, h, nil) })
 			var chosen []string
 			for _, id := range ids {

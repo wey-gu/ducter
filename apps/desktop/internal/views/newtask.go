@@ -679,7 +679,7 @@ func (a *App) placePill(c *ui.Context, places []protocol.PlaceChoice, chosen pro
 	name := a.placeName(chosen)
 	e, click := a.pill(c, "nt-place", spoken(a.L, a.L.T("newtask.where"), name), nt.placeOpen, func() {
 		a.glyph(c, 16, drawFolder(t.InkMuted))
-		ui.Text(c, name).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine().MaxWidth(200).AccessHidden(true)
+		uiText(c, name).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine().MaxWidth(200).AccessHidden(true)
 		if nt.adding != "" {
 			ui.Spinner(c).Size(12, 12)
 		}
@@ -786,13 +786,13 @@ func (a *App) placePill(c *ui.Context, places []protocol.PlaceChoice, chosen pro
 			if a.menuRow(c, "nt-place:"+k, name, k == ck, false, func() {
 				a.glyph(c, 16, drawFolder(t.InkMuted))
 				ui.Column(c).Grow(1).MinWidth(0).Gap(1).Children(func() {
-					ui.Text(c, name).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine()
+					uiText(c, name).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine()
 					if path, on := placeLine(p); path != "" {
 						// The path in mono, its computer beside it as its own word (D291).
 						ui.Row(c).Gap(t.S3).AlignItems(ui.Center).MinWidth(0).Children(func() {
-							ui.Text(c, path).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.InkMuted).SingleLine().Shrink(1).MinWidth(0)
+							uiText(c, path).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.InkMuted).SingleLine().Shrink(1).MinWidth(0)
 							if on != "" {
-								ui.Text(c, on).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(0)
+								uiText(c, on).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(0)
 							}
 						})
 					}
@@ -809,7 +809,7 @@ func (a *App) placePill(c *ui.Context, places []protocol.PlaceChoice, chosen pro
 			if only != "" {
 				empty = a.L.T("newtask.find.empty", onlyName)
 			}
-			ui.Text(c.Key("nt-place-empty"), empty).FontSize(t.XS).TextColor(t.InkMuted).Padding(t.S1, t.S3)
+			uiText(c.Key("nt-place-empty"), empty).FontSize(t.XS).TextColor(t.InkMuted).Padding(t.S1, t.S3)
 		}
 		mode, _ := a.folderAdd()
 		ui.Box(c.Key("nt-add-rule")).Height(1).Background(t.LineSoft).Margin(t.S1, t.S2)
@@ -822,8 +822,8 @@ func (a *App) placePill(c *ui.Context, places []protocol.PlaceChoice, chosen pro
 			if a.menuRow(c, "nt-place:none-on", spoken(a.L, a.L.T("newtask.nowhere"), a.L.T("newtask.agent.elsewhere", onlyName)), false, false, func() {
 				a.glyph(c, 16, drawFolder(t.Faint))
 				ui.Column(c).Grow(1).MinWidth(0).Gap(1).Children(func() {
-					ui.Text(c, a.L.T("newtask.nowhere")).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine()
-					ui.Text(c, a.L.T("newtask.agent.elsewhere", onlyName)).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
+					uiText(c, a.L.T("newtask.nowhere")).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine()
+					uiText(c, a.L.T("newtask.agent.elsewhere", onlyName)).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
 				})
 			}) {
 				a.pickPlace(protocol.PlaceChoice{Place: protocol.Place{Kind: "none"}})
@@ -833,7 +833,7 @@ func (a *App) placePill(c *ui.Context, places []protocol.PlaceChoice, chosen pro
 			k := placeKey(none.Place)
 			if a.menuRow(c, "nt-place:"+k, a.placeName(none), k == ck, false, func() {
 				a.glyph(c, 16, drawFolder(t.Faint))
-				ui.Text(c, a.placeName(none)).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine()
+				uiText(c, a.placeName(none)).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine()
 			}) {
 				a.pickPlace(none)
 			}
@@ -847,8 +847,8 @@ func (a *App) placePill(c *ui.Context, places []protocol.PlaceChoice, chosen pro
 			a.menuRow(c, "nt-add-folder", spoken(a.L, a.L.T("newtask.addfolder"), why), false, true, func() {
 				a.glyph(c, 16, drawPlus(t.InkSoft))
 				ui.Column(c).Grow(1).MinWidth(0).Gap(1).Children(func() {
-					ui.Text(c, a.L.T("newtask.addfolder")).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).SingleLine()
-					ui.Text(c, why).FontSize(t.XS).TextColor(t.InkMuted)
+					uiText(c, a.L.T("newtask.addfolder")).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).SingleLine()
+					uiText(c, why).FontSize(t.XS).TextColor(t.InkMuted)
 				})
 			})
 		}
@@ -893,7 +893,7 @@ func (a *App) branchPill(c *ui.Context, p protocol.PlaceChoice) {
 	}
 	e, click := a.pill(c, "nt-branch", spoken(a.L, a.L.T("newtask.branch.title"), branch), nt.branchOpen, func() {
 		a.glyph(c, 14, drawBranch(t.InkMuted))
-		ui.Text(c, branch).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.InkSoft).SingleLine().MaxWidth(180).AccessHidden(true)
+		uiText(c, branch).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.InkSoft).SingleLine().MaxWidth(180).AccessHidden(true)
 	})
 	if click && len(p.Branches) > 0 {
 		nt.shut("branch")
@@ -905,9 +905,9 @@ func (a *App) branchPill(c *ui.Context, p protocol.PlaceChoice) {
 		for _, b := range p.Branches {
 			b := b
 			if a.menuRow(c, "nt-branch:"+b, b, b == branch, false, func() {
-				ui.Text(c, b).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.Ink).SingleLine().Grow(1).MinWidth(0)
+				uiText(c, b).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.Ink).SingleLine().Grow(1).MinWidth(0)
 				if b == p.DefaultBranch {
-					ui.Text(c, a.L.T("newtask.branch.default")).FontSize(t.XS).TextColor(t.InkMuted).Shrink(0)
+					uiText(c, a.L.T("newtask.branch.default")).FontSize(t.XS).TextColor(t.InkMuted).Shrink(0)
 				}
 			}) {
 				nt.branch, nt.branchOpen = b, false
@@ -937,7 +937,7 @@ func (a *App) computerPill(c *ui.Context, place protocol.PlaceChoice) {
 	}
 	e, click := a.pill(c, "nt-comp", spoken(a.L, a.L.T("newtask.computer"), d.Name), nt.computerOpen, func() {
 		a.glyph(c, 14, drawScreen(t.InkMuted))
-		ui.Text(c.Key("nt-comp-part"), d.Name).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine().AccessHidden(true)
+		uiText(c.Key("nt-comp-part"), d.Name).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine().AccessHidden(true)
 	})
 	if click {
 		nt.shut("computer")
@@ -958,7 +958,7 @@ func (a *App) whoPill(c *ui.Context) {
 	o := a.S.NewTaskOptions
 	if o == nil {
 		ui.Row(c.Key("nt-who-wait")).Height(t.ControlSM).Padding(0, t.S3).AlignItems(ui.Center).Children(func() {
-			ui.Text(c, a.L.T("newtask.loading")).FontSize(t.SM).TextColor(t.InkMuted)
+			uiText(c, a.L.T("newtask.loading")).FontSize(t.SM).TextColor(t.InkMuted)
 		})
 		return
 	}
@@ -966,7 +966,7 @@ func (a *App) whoPill(c *ui.Context) {
 	cands, elsewhere := a.ntCands(o.Candidates)
 	if chosen == nil && len(elsewhere) == 0 {
 		ui.Row(c.Key("nt-who-none")).Height(t.ControlSM).Padding(0, t.S3).AlignItems(ui.Center).Children(func() {
-			ui.Text(c, a.L.T("newtask.nobody")).FontSize(t.SM).TextColor(t.InkSoft)
+			uiText(c, a.L.T("newtask.nobody")).FontSize(t.SM).TextColor(t.InkSoft)
 		})
 		return
 	}
@@ -979,9 +979,9 @@ func (a *App) whoPill(c *ui.Context) {
 	e, click := a.pill(c, "nt-who", spoken(a.L, a.L.T("newtask.who"), name), nt.whoOpen, func() {
 		// The agent's name alone: a 22-point coin in a pill reads as an emoji (D213). Its model
 		// and effort follow as facts of their own, never joined by a separator (D291).
-		ui.Text(c, parts[0]).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine().AccessHidden(true)
+		uiText(c, parts[0]).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine().AccessHidden(true)
 		for _, p := range parts[1:] {
-			ui.Text(c, p).FontSize(t.SM).TextColor(t.InkSoft).SingleLine().AccessHidden(true)
+			uiText(c, p).FontSize(t.SM).TextColor(t.InkSoft).SingleLine().AccessHidden(true)
 		}
 		if chosen != nil && !picked && a.tuneIsDefault(*chosen) {
 			a.suggestedTag(c)
@@ -1023,20 +1023,20 @@ func (a *App) whoPill(c *ui.Context) {
 				}
 				ui.Column(c).Grow(1).MinWidth(0).Gap(1).Children(func() {
 					ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
-						ui.Text(c, cname).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine().Shrink(1).MinWidth(0)
+						uiText(c, cname).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine().Shrink(1).MinWidth(0)
 						if away {
-							ui.Text(c, a.L.T("newtask.agent.elsewhere", cd.DeviceName)).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
+							uiText(c, a.L.T("newtask.agent.elsewhere", cd.DeviceName)).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
 						}
 						if best {
 							a.suggestedTag(c)
 						}
 					})
 					if why != "" {
-						ui.Text(c, why).FontSize(t.XS).TextColor(t.InkMuted).MaxLines(2)
+						uiText(c, why).FontSize(t.XS).TextColor(t.InkMuted).MaxLines(2)
 					}
 					// D206: the card holds pictures and this one can't see them.
 					if cd.NoImages && len(a.med().trays["nt"]) > 0 {
-						ui.Text(c, a.L.T("media.noImages")).FontSize(t.XS).FontWeight(700).TextColor(t.InkSoft)
+						uiText(c, a.L.T("media.noImages")).FontSize(t.XS).FontWeight(700).TextColor(t.InkSoft)
 					}
 				})
 			}) {
@@ -1068,7 +1068,7 @@ func (a *App) awayLine(cd protocol.Candidate, place protocol.PlaceChoice) string
 func (a *App) suggestedTag(c *ui.Context) {
 	t := a.T
 	ui.Row(c.Key("nt-suggested")).Shrink(0).AccessHidden(true).Children(func() {
-		ui.Text(c, a.L.T("newtask.suggested")).FontSize(t.XS).FontWeight(700).TextColor(t.HighlightInk).SingleLine()
+		uiText(c, a.L.T("newtask.suggested")).FontSize(t.XS).FontWeight(700).TextColor(t.HighlightInk).SingleLine()
 	})
 }
 
@@ -1111,7 +1111,7 @@ func (a *App) whenPill(c *ui.Context) {
 	label := a.whenLabel()
 	e, click := a.pill(c, "nt-when", spoken(a.L, a.L.T("newtask.when"), label), nt.whenOpen, func() {
 		a.glyph(c, 14, drawClock(t.InkMuted))
-		ui.Text(c, label).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine().MaxWidth(220).AccessHidden(true)
+		uiText(c, label).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine().MaxWidth(220).AccessHidden(true)
 	})
 	if click {
 		nt.shut("when")
@@ -1125,8 +1125,8 @@ func (a *App) whenPill(c *ui.Context) {
 			key := firstNonEmpty(k, "now")
 			if a.menuRow(c, "nt-when:"+key, a.L.T("newtask.when."+key), nt.when == k, false, func() {
 				ui.Column(c).Grow(1).MinWidth(0).Gap(1).Children(func() {
-					ui.Text(c, a.L.T("newtask.when."+key)).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine()
-					ui.Text(c, a.L.T("newtask.when."+key+".help")).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
+					uiText(c, a.L.T("newtask.when."+key)).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine()
+					uiText(c, a.L.T("newtask.when."+key+".help")).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
 				})
 			}) {
 				nt.when, nt.whenOpen = k, false
@@ -1184,7 +1184,7 @@ func (a *App) whenDetail(c *ui.Context) {
 				timeField()
 			}
 		case "when", "until":
-			ui.Text(c, a.L.T("newtask.cond.label."+nt.when)).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).Shrink(0)
+			uiText(c, a.L.T("newtask.cond.label."+nt.when)).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).Shrink(0)
 			in := ui.TextInput(c.Key(fmt.Sprintf("nt-cond:%s:%d", nt.when, nt.seq)), &nt.condition).Placeholder(a.L.T("newtask.cond."+nt.when)).
 				Label(a.L.T("newtask.cond.label."+nt.when)).Height(t.ControlMD).Grow(1).Basis(0).MinWidth(220).Padding(0, t.S4).Radius(t.RadiusMD).
 				Background(t.Bg).Border(1, t.LineSoft).FontSize(t.MD).OnSubmit(func() { a.StartNewTask() })
@@ -1235,7 +1235,7 @@ func (a *App) wordsField(c *ui.Context) {
 		}
 		a.picTray(c, "nt")
 		ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
-			ui.Text(c, a.L.T("newtask.verbatim")).FontSize(t.XS).TextColor(t.InkMuted).Grow(1)
+			uiText(c, a.L.T("newtask.verbatim")).FontSize(t.XS).TextColor(t.InkMuted).Grow(1)
 			a.addPicturesButton(c, "nt")
 		})
 	})
@@ -1254,10 +1254,10 @@ func (a *App) newTaskFoot(c *ui.Context) {
 		ui.Row(c.Key("nt-foot-line")).Grow(1).MinWidth(0).Gap(t.S2).AlignItems(ui.Center).Children(func() {
 			switch {
 			case nt.err != "":
-				ui.Text(c.Key("nt-err"), nt.err).FontSize(t.SM).LineHeight(1.45).TextColor(t.Failed.Ink).Shrink(1).MinWidth(0).MaxLines(2).Role(ui.RoleStatus)
+				uiText(c.Key("nt-err"), nt.err).FontSize(t.SM).LineHeight(1.45).TextColor(t.Failed.Ink).Shrink(1).MinWidth(0).MaxLines(2).Role(ui.RoleStatus)
 			case nt.started != "":
 				a.glyph(c, 14, drawCheck(t.Done.Ink))
-				ui.Text(c.Key("nt-started"), nt.started).FontSize(t.SM).FontWeight(600).TextColor(t.Done.Ink).Shrink(1).MinWidth(0).SingleLine().Role(ui.RoleStatus)
+				uiText(c.Key("nt-started"), nt.started).FontSize(t.SM).FontWeight(600).TextColor(t.Done.Ink).Shrink(1).MinWidth(0).SingleLine().Role(ui.RoleStatus)
 				if nt.startedTask != "" && a.quietLink(c, "nt-open-started", a.L.T("newtask.open"), spoken(a.L, a.L.T("newtask.open"), nt.started)) {
 					id := nt.startedTask
 					nt.open, nt.started, nt.startedTask = false, "", ""
@@ -1266,14 +1266,14 @@ func (a *App) newTaskFoot(c *ui.Context) {
 			default:
 				// Two shortcuts, two elements spaced by a gap (D291); the buttons say them aloud.
 				ui.Row(c).Gap(t.S3).Shrink(1).MinWidth(0).AccessHidden(true).Children(func() {
-					ui.Text(c, a.L.T("newtask.keys", start)).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(0)
-					ui.Text(c, a.L.T("newtask.keys.more")).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(1).MinWidth(0)
+					uiText(c, a.L.T("newtask.keys", start)).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(0)
+					uiText(c, a.L.T("newtask.keys.more")).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(1).MinWidth(0)
 				})
 			}
 		})
 		if nt.sending != "" {
 			ui.Spinner(c).Size(16, 16)
-			ui.Text(c, a.L.T("newtask.starting")).FontSize(t.MD).FontWeight(700).TextColor(t.InkMuted).Shrink(0)
+			uiText(c, a.L.T("newtask.starting")).FontSize(t.MD).FontWeight(700).TextColor(t.InkMuted).Shrink(0)
 			return
 		}
 		if a.button(c, a.L.T("newtask.cancel"), btnText, t.ControlMD, t.Surface) {

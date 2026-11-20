@@ -137,6 +137,7 @@ func (a *App) appUpdateSection(c *ui.Context) {
 		case st.State == update.Ready && a.RestartToUpdate != nil:
 			a.actions(c, "update", nil, func() {
 				if a.button(c, a.L.T("update.restart"), btnPrimary, t.ControlMD, t.Surface) {
+					a.restartClicked = a.Now()
 					a.RestartToUpdate()
 				}
 				a.notesLink(c, "app", st.Version) // D344: the version's full notes
@@ -175,10 +176,22 @@ func (a *App) puttingInView(c *ui.Context) {
 
 // UpdateFailed is Restart to update when the copy failed its check: back
 // from the putting-in screen to Settings' update card, which says why.
+//
+// Only after the person's own Restart to update here (D408): a restart
+// asked from the phone (D187) or by an Update all plan finishing minutes
+// later never moves the window to another page; its update card and the
+// bar's 更新 still say why.
 func (a *App) UpdateFailed() {
 	a.PuttingIn = false
-	a.openTab(TabAbout)
+	if !a.restartClicked.IsZero() && a.Now().Sub(a.restartClicked) < restartOwn {
+		a.restartClicked = time.Time{}
+		a.openTab(TabAbout)
+	}
 }
+
+// restartOwn is how long a failed restart is still the answer to the
+// person's own click: the password, the check and the calm screen.
+const restartOwn = 2 * time.Minute
 
 // sayInstalled says once, quietly, which version the last swap put in.
 func (a *App) sayInstalled(c *ui.Context) {

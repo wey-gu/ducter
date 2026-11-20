@@ -92,7 +92,7 @@ func (a *App) keyForm(c *ui.Context, x *protocol.KeyView) {
 		ok := keyEnvRe.MatchString(s.keyEnv) && (x != nil || strings.TrimSpace(s.password) != "")
 		need := firstMissing(!keyEnvRe.MatchString(s.keyEnv), "af.key.env", x == nil && strings.TrimSpace(s.password) == "", "af.key.value")
 		if f := a.savedFrame(); f != nil && !s.sentAt.IsZero() && f.Reason != "" {
-			ui.Text(c, a.L.T("af.err."+f.Reason)+" ("+f.Message+")").FontSize(t.SM).TextColor(t.Failed.Ink)
+			uiText(c, a.L.T("af.err."+f.Reason)+" ("+f.Message+")").FontSize(t.SM).TextColor(t.Failed.Ink)
 		}
 		a.afMissing(c, need)
 		ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
@@ -135,8 +135,8 @@ func (a *App) keyButtons(c *ui.Context, d *store.DecisionState, st decisionStyle
 	ui.Column(c.Key("key:" + d.DecisionID)).Gap(t.S2).Padding(t.S3).Radius(t.RadiusSM).Background(t.SurfaceSunken).Children(func() {
 		fact := func(label, v string, mono bool) {
 			ui.Row(c).Gap(t.S3).Children(func() {
-				ui.Text(c, a.L.T(label)).FontSize(t.SM).TextColor(t.InkMuted).Width(72)
-				tx := ui.Text(c, v).FontSize(t.SM).FontWeight(700).Grow(1).MinWidth(0)
+				uiText(c, a.L.T(label)).FontSize(t.SM).TextColor(t.InkMuted).Width(72)
+				tx := uiText(c, v).FontSize(t.SM).FontWeight(700).Grow(1).MinWidth(0)
 				if mono {
 					tx.Font(t.Mono)
 				}
@@ -155,7 +155,7 @@ func (a *App) keyButtons(c *ui.Context, d *store.DecisionState, st decisionStyle
 		}
 		ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
 			a.glyph(c, 16, drawCheck(t.InkMuted))
-			ui.Text(c, msg).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
+			uiText(c, msg).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
 		})
 		return
 	}
@@ -166,7 +166,7 @@ func (a *App) keyButtons(c *ui.Context, d *store.DecisionState, st decisionStyle
 	a.afInput(c, "key:"+d.DecisionID, a.L.T("key.field"), &v, "", true)
 	a.af.keyVal[d.DecisionID] = v
 	if k.Saved {
-		ui.Text(c, a.L.T("key.replaces")).FontSize(t.XS).TextColor(t.InkMuted)
+		uiText(c, a.L.T("key.replaces")).FontSize(t.XS).TextColor(t.InkMuted)
 	}
 	once := a.af.keyOnce[d.DecisionID]
 	sel := 0
@@ -177,7 +177,7 @@ func (a *App) keyButtons(c *ui.Context, d *store.DecisionState, st decisionStyle
 		a.af.keyOnce[d.DecisionID] = hit == 1
 		once = hit == 1
 	}
-	ui.Text(c, a.L.T("key.note")).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(a.leading(1.5))
+	uiText(c, a.L.T("key.note")).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(a.leading(1.5))
 	goLabel := a.L.T("key.go")
 	if once {
 		goLabel = a.L.T("key.go.once")

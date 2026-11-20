@@ -336,7 +336,7 @@ const BRIDGE_IDENTITIES = {
   "alex-reviewer": { agent: "reviewer", member: "Alex", member_id: "m-alex", description: "Alex's long-running code reviewer" },
   "codex-mem": { agent: "codex-mem", member: "Weyl", member_id: "m-weyl", description: "Weyl's Codex in another app on the Mac" },
 };
-function fakeBridge(dir: string, spaces = false) {
+function fakeBridge(dir: string, spaces = false, nmem?: string) {
   const bin = join(dir, "nmem");
   writeFileSync(bin, `#!/bin/sh\nexec bun ${resolve(import.meta.dir, "fake-bridge-nmem.ts")} "$@"\n`);
   chmodSync(bin, 0o755);
@@ -344,7 +344,9 @@ function fakeBridge(dir: string, spaces = false) {
   const identities = spaces ? { ...BRIDGE_IDENTITIES, "ducter-main-in-everyone": { ...BRIDGE_IDENTITIES["ducter-main"], space: "ws-everyone" }, "alex-reviewer": { ...BRIDGE_IDENTITIES["alex-reviewer"], space: "ws-everyone" } } : BRIDGE_IDENTITIES;
   writeFileSync(state, JSON.stringify({ seq: 0, messages: [], identities, ...(spaces ? { spaces: SPACES, everywhere: ["Ducter"] } : {}) }));
   // "named": senders carry agent and member (teammates, D162), which nmem 0.10.118 doesn't show yet (D249).
-  const env = { ...process.env, NMEM_FAKE_BRIDGE_STATE: state, DUCTER_BRIDGE_MEMBER: "m-weyl", NMEM_FAKE_SHAPE: "named" } as Record<string, string>;
+  // D409: `nmem` (scenario.bridgeNmem): the fake answers in that CLI's own shapes (0.10.121: the identity
+  // inbox with Mem's sender, grouped contacts), not the richer "named" one.
+  const env = { ...process.env, NMEM_FAKE_BRIDGE_STATE: state, DUCTER_BRIDGE_MEMBER: "m-weyl", ...(nmem ? { NMEM_FAKE_VERSION: nmem } : { NMEM_FAKE_SHAPE: "named" }) } as Record<string, string>;
   const read = () => JSON.parse(readFileSync(state, "utf8")) as { seq: number; messages: FakeMsg[]; identities: Record<string, { space?: string }> };
   const places = SPACES.map((sp, i) => ({ context: HOME_CONTEXTS[i]!, spaceId: sp.id, spaceLabel: sp.label, kind: sp.kind }));
   return {
@@ -436,6 +438,11 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
     mkdirSync(cwd, { recursive: true });
     const updatedAt = new Date(Date.now() - s.minutesAgo * 60_000);
     writeSession(ownHome, { agent: s.agent, id: s.id, cwd, turns: s.turns, ...(s.title ? { title: s.title } : {}), ...(s.branch ? { branch: s.branch } : {}), startedAt: new Date(updatedAt.getTime() - 3600_000), updatedAt });
+    // D409: open in its terminal now: Claude Code's own running-process file, naming a live pid (this one).
+    if (s.open && s.agent === "claude-code") {
+      mkdirSync(join(ownHome, ".claude", "sessions"), { recursive: true });
+      writeFileSync(join(ownHome, ".claude", "sessions", `${process.pid}.json`), JSON.stringify({ pid: process.pid, sessionId: s.id, cwd, status: "idle" }));
+    }
   }
   // D380: a quick web look answers from the scenario's fake (never the web), a beat later.
   const look = sc.webLook;
@@ -594,7 +601,7 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   core.setRunner(fr.runner);
   if (sc.brainCodex) core.settings.set({ brain: { harness: "codex" } });
   core.setPartner({ onTrigger() {} }); // history is background, not new work
-  const fb = sc.bridge ? fakeBridge(dataDir, !!sc.spaces) : undefined;
+  const fb = sc.bridge ? fakeBridge(dataDir, !!sc.spaces, sc.bridgeNmem) : undefined;
 
   const idOf = new Map<string, string>(); // key -> taskId
   const keyOf = new Map<string, string>();

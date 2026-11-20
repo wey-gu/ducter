@@ -35,7 +35,7 @@ func (a *App) promises(c *ui.Context, key string, list []promise) {
 		for i, p := range list {
 			ui.Row(c.Key("promise:" + itoa(int64(i)))).Gap(t.S3).AlignItems(ui.Center).Role(ui.RoleListItem).Children(func() {
 				a.glyph(c, 18, p.mark(t.InkSoft))
-				ui.Text(c, a.L.T(p.key, p.arg...)).FontSize(t.SM).FontWeight(600).TextColor(t.InkSoft).LineHeight(1.4).Grow(1).MinWidth(0)
+				uiText(c, a.L.T(p.key, p.arg...)).FontSize(t.SM).FontWeight(600).TextColor(t.InkSoft).LineHeight(1.4).Grow(1).MinWidth(0)
 			})
 		}
 	})
@@ -55,10 +55,10 @@ func (a *App) sheetFold(c *ui.Context, key, title, summary string, force bool, b
 		row.Background(t.Sunken)
 	}
 	row.Children(func() {
-		ui.Text(c, title).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).SingleLine().Shrink(0).AccessHidden(true)
+		uiText(c, title).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).SingleLine().Shrink(0).AccessHidden(true)
 		ui.Box(c).Grow(1).MinWidth(t.S2)
 		if summary != "" {
-			ui.Text(c, summary).FontSize(t.SM).TextColor(t.InkMuted).SingleLine().Shrink(1).MinWidth(0).AccessHidden(true)
+			uiText(c, summary).FontSize(t.SM).TextColor(t.InkMuted).SingleLine().Shrink(1).MinWidth(0).AccessHidden(true)
 		}
 		a.glyph(c, 12, drawChevron(t.InkMuted, open))
 	})
@@ -144,7 +144,7 @@ func (a *App) handsetOffAsk(c *ui.Context, cl *protocol.ReachClient, note func(k
 		return
 	}
 	note("handset-off", false, func() {
-		ui.Text(c, a.L.T("handset.off.ask")).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).LineHeight(1.4)
+		uiText(c, a.L.T("handset.off.ask")).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).LineHeight(1.4)
 		a.note(c, a.L.T("handset.remove.means"))
 		ui.Row(c).Gap(t.S2).Justify(ui.End).Children(func() {
 			if a.button(c, a.L.T("handset.off.keep"), btnText, t.ControlSM, t.Bg) {
@@ -210,19 +210,19 @@ func (a *App) lockStep(c *ui.Context, cl *protocol.ReachClient) {
 			ui.Row(c.Key("lock-step:" + k)).Gap(t.S3).AlignItems(ui.Start).Children(func() {
 				ui.Row(c).Size(22, 22).Radius(11).Background(t.Surface).InsetShadow(0, 0, 0, 1.2, t.Line2).AlignItems(ui.Center).Justify(ui.Center).Shrink(0).
 					AccessHidden(true).Children(func() {
-					ui.Text(c, itoa(int64(i+1))).FontSize(t.XS).FontWeight(800).TextColor(t.InkSoft)
+					uiText(c, itoa(int64(i+1))).FontSize(t.XS).FontWeight(800).TextColor(t.InkSoft)
 				})
 				ui.Column(c).Gap(2).Grow(1).MinWidth(0).Children(func() {
-					ui.Text(c, a.L.T(k)).FontSize(t.SM).FontWeight(600).TextColor(t.Ink).LineHeight(1.45)
+					uiText(c, a.L.T(k)).FontSize(t.SM).FontWeight(600).TextColor(t.Ink).LineHeight(1.45)
 					if k == "handset.lock.s1" {
-						ui.Text(c, a.L.T("handset.lock.s1.alt")).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.45)
+						uiText(c, a.L.T("handset.lock.s1.alt")).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.45)
 					}
 				})
 			})
 		}
 		ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
 			a.glyph(c, 16, drawPromiseLock(t.InkMuted))
-			ui.Text(c, a.L.T("handset.lock.never")).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.45).Grow(1).MinWidth(0)
+			uiText(c, a.L.T("handset.lock.never")).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.45).Grow(1).MinWidth(0)
 			if a.button(c, a.L.T("handset.user.done"), btnSecondary, t.ControlSM, t.Bg) {
 				s.lockSteps = ""
 			}
@@ -244,9 +244,9 @@ func (a *App) extraStep(c *ui.Context, key string, mark func(col ui.Color) func(
 	row.Children(func() {
 		a.glyph(c, 18, mark(t.InkSoft))
 		ui.Column(c).Gap(1).Grow(1).MinWidth(0).Children(func() {
-			ui.Text(c, title).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine().AccessHidden(true)
+			uiText(c, title).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine().AccessHidden(true)
 			if sub != "" {
-				ui.Text(c, sub).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().AccessHidden(true)
+				uiText(c, sub).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().AccessHidden(true)
 			}
 		})
 		a.glyph(c, 12, drawChevron(t.InkMuted, open))

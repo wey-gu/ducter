@@ -833,7 +833,7 @@ func (a *App) switchTuneRows(c *ui.Context, h string, models []protocol.ModelCho
 	t := a.T
 	line := func(key, name string, body func()) {
 		ui.Row(c.Key(key)).Gap(t.S2).AlignItems(ui.Start).Children(func() {
-			ui.Text(c, name).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).Width(64).Shrink(0).Padding(6, 0, 0, 0).SingleLine()
+			uiText(c, name).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).Width(64).Shrink(0).Padding(6, 0, 0, 0).SingleLine()
 			ui.Row(c).Grow(1).MinWidth(0).Gap(t.S1 + 2).Wrap().AlignItems(ui.Center).Role(ui.RoleRadioGroup).Label(name).Children(body)
 		})
 	}
@@ -950,7 +950,7 @@ func (a *App) switchSheet(c *ui.Context, task *store.Task) {
 				a.glyph(c, 22, drawCheck(t.Done.Ink))
 			}
 		}, func() {
-			ui.Text(c, lo.switchMsg).FontSize(t.SM).FontWeight(700).MaxLines(2)
+			uiText(c, lo.switchMsg).FontSize(t.SM).FontWeight(700).MaxLines(2)
 		}, nil)
 	}
 	if lo.switchFor != task.ID {
@@ -967,7 +967,7 @@ func (a *App) switchSheet(c *ui.Context, task *store.Task) {
 				a.heading(c, a.L.T("who.switch"), t.LG)
 				// D161 (6): with two or more computers the sheet says it covers where too.
 				if a.manyComputers() {
-					ui.Text(c, a.L.T("switch.sub")).FontSize(t.SM).TextColor(t.InkMuted)
+					uiText(c, a.L.T("switch.sub")).FontSize(t.SM).TextColor(t.InkMuted)
 				}
 			})
 			if a.button(c, a.L.T("loadout.cancel"), btnText, t.ControlSM, t.Surface) {
@@ -1018,13 +1018,13 @@ func (a *App) switchSheet(c *ui.Context, task *store.Task) {
 						if dv != nil {
 							a.deviceClay(c, "grp:"+dev, dv).Size(36, 28).Shrink(0)
 						}
-						ui.Text(c, name).FontSize(t.MD).FontWeight(800).TextColor(t.Ink)
+						uiText(c, name).FontSize(t.MD).FontWeight(800).TextColor(t.Ink)
 						if s := a.computerState(dv); s != "" {
 							ink := t.InkMuted
 							if dv != nil && dv.State == protocol.DeviceAsleep {
 								ink = t.Asleep.Ink
 							}
-							ui.Text(c, s).FontSize(t.SM).TextColor(ink) // its own element (D296)
+							uiText(c, s).FontSize(t.SM).TextColor(ink) // its own element (D296)
 						}
 					})
 				}
@@ -1077,7 +1077,7 @@ func (a *App) switchSheet(c *ui.Context, task *store.Task) {
 				label = a.L.T("switch.move.go", chosen.DeviceName)
 			}
 			if lo.switching != "" {
-				ui.Text(c, label+"…").FontSize(t.SM).FontWeight(700).TextColor(t.InkMuted)
+				uiText(c, label+"…").FontSize(t.SM).FontWeight(700).TextColor(t.InkMuted)
 				return
 			}
 			if a.buttonFor(c, label, task.Title(), btnPrimary, t.ControlMD, t.Surface) {

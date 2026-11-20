@@ -68,10 +68,10 @@ func (a *App) exchange(c *ui.Context, key, to, words, then string) {
 		c.After(1600*time.Millisecond - a.Now().Sub(ps.copiedAt))
 	}
 	ui.Column(c.Key("ex:" + key)).Gap(6).Grow(1).Basis(240).MinWidth(0).Children(func() {
-		ui.Text(c, to).FontSize(t.SM).FontWeight(600).TextColor(t.InkSoft)
+		uiText(c, to).FontSize(t.SM).FontWeight(600).TextColor(t.InkSoft)
 		ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
 			ui.Row(c).Padding(t.S2+2, t.S3+2).Radius(t.RadiusLG).Background(t.UserBubble).Grow(1).Basis(0).MinWidth(0).Children(func() {
-				ui.Text(c, autospace(words)).FontSize(t.MD).LineHeight(a.leading(1.5)).TextColor(t.OnUserBubble).Selectable().Grow(1).Basis(0).MinWidth(0)
+				uiText(c, autospace(words)).FontSize(t.MD).LineHeight(a.leading(1.5)).TextColor(t.OnUserBubble).Selectable().Grow(1).Basis(0).MinWidth(0)
 			})
 			label, draw, ink := a.L.T("peers.try.copy"), drawCopy, t.InkMuted
 			if copied {
@@ -85,7 +85,7 @@ func (a *App) exchange(c *ui.Context, key, to, words, then string) {
 		ui.Box(c).Width(12).Height(16).Margin(0, 0, 0, t.S4).AccessHidden(true).Draw(drawDown(t.InkMuted))
 		ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
 			a.avatar(c, theme.Idle, 22)
-			ui.Text(c, then).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkSoft).Grow(1).Basis(0).MinWidth(0)
+			uiText(c, then).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkSoft).Grow(1).Basis(0).MinWidth(0)
 		})
 	})
 }
@@ -122,7 +122,7 @@ func (a *App) peersRecent(c *ui.Context, name string) {
 			h := h
 			var age func()
 			if s := a.agoLong(h.At); s != "" {
-				age = func() { ui.Text(c, s).FontSize(t.SM).FontWeight(600).TextColor(t.InkMuted).SingleLine() }
+				age = func() { uiText(c, s).FontSize(t.SM).FontWeight(600).TextColor(t.InkMuted).SingleLine() }
 			}
 			who := a.peerCalledText(h.Agent, h.Host)
 			if a.openRow(c, "handoff:"+itoa(h.Seq), a.peerTile(c, h.Agent, h.Host), autospace(h.Words), capPeer(a.L.T("peers.recent."+h.Way, who, name)), t.InkMuted, false, age) {
@@ -183,7 +183,7 @@ func (a *App) firstPeerNote(c *ui.Context, b *protocol.BridgeMsg) {
 	ui.Row(c.Key("peer-first")).Justify(ui.Center).Padding(t.S2, 0, t.S3, 0).Children(func() {
 		ui.Row(c).Gap(t.S3).AlignItems(ui.Start).MaxWidth(560).Padding(t.S3, t.S4).Radius(t.RadiusLG).Background(t.SurfaceSunken).Children(func() {
 			a.peerTile(c, n, h)()
-			ui.Text(c, autospace(a.L.T("peer.first.note", who, a.personaName()))).FontSize(t.SM).LineHeight(a.leading(1.6)).TextColor(t.InkSoft).Grow(1).Basis(0).MinWidth(0)
+			uiText(c, autospace(a.L.T("peer.first.note", who, a.personaName()))).FontSize(t.SM).LineHeight(a.leading(1.6)).TextColor(t.InkSoft).Grow(1).Basis(0).MinWidth(0)
 		})
 	})
 }

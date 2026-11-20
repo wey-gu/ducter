@@ -144,13 +144,13 @@ func (a *App) taskLine(c *ui.Context, t *store.Task, detail string) {
 	hover := row.Hovered()
 	row.Children(func() {
 		ui.Box(c).Size(16, 16).Draw(stateMark(att)(th.InkMuted)).Shrink(0)
-		tl := ui.Text(c, title).FontSize(th.SM).FontWeight(700).TextColor(th.InkSoft).AccessHidden(true)
+		tl := uiText(c, title).FontSize(th.SM).FontWeight(700).TextColor(th.InkSoft).AccessHidden(true)
 		if hover {
 			tl.TextColor(th.Ink).Underline()
 		}
 		for _, f := range append([]string{detail}, who...) {
 			if f != "" {
-				ui.Text(c, f).FontSize(th.SM).TextColor(th.InkMuted).AccessHidden(true)
+				uiText(c, f).FontSize(th.SM).TextColor(th.InkMuted).AccessHidden(true)
 			}
 		}
 		a.glyph(c, 12, drawChevron(th.InkMuted, false))
@@ -190,7 +190,7 @@ func (a *App) quietLink(c *ui.Context, key, text, name string) bool {
 		if hover {
 			col = t.Ink
 		}
-		l := ui.Text(c, text).FontSize(t.SM).FontWeight(700).TextColor(col).MinWidth(0).Shrink(1).AccessHidden(true)
+		l := uiText(c, text).FontSize(t.SM).FontWeight(700).TextColor(col).MinWidth(0).Shrink(1).AccessHidden(true)
 		if hover {
 			l.Underline()
 		}
@@ -214,7 +214,7 @@ func (a *App) markIn(c *ui.Context, draw func(ui.Color) func(*ui.Painter, ui.Rec
 		if draw != nil {
 			ui.Box(c).Size(16, 16).Draw(draw(glyph)).Shrink(0)
 		}
-		ui.Text(c, text).FontSize(t.SM).TextColor(col).MinWidth(0)
+		uiText(c, text).FontSize(t.SM).TextColor(col).MinWidth(0)
 	})
 	return row
 }
@@ -336,7 +336,7 @@ func (a *App) buttonFor(c *ui.Context, label, about string, kind btnKind, height
 		Justify(ui.Center).AlignItems(ui.Center).Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(name).Focusable().Shrink(0)
 	fg := a.buttonLook(c, b, kind, h, onSurface)
 	b.Children(func() {
-		ui.Text(c, label).FontSize(size).FontWeight(700).TextColor(fg).SingleLine().AccessHidden(about != "")
+		uiText(c, label).FontSize(size).FontWeight(700).TextColor(fg).SingleLine().AccessHidden(about != "")
 	})
 	return b.Clicked()
 }
@@ -502,7 +502,7 @@ func (a *App) navButton(c *ui.Context, key, label, name string, glyph func(), he
 			glyph()
 		}
 		if label != "" {
-			ui.Text(c, label).FontSize(t.SM).FontWeight(700).TextColor(fg).SingleLine().AccessHidden(true)
+			uiText(c, label).FontSize(t.SM).FontWeight(700).TextColor(fg).SingleLine().AccessHidden(true)
 		}
 	})
 	return b.Clicked() && !here
@@ -750,7 +750,7 @@ func (a *App) decisionButtons(c *ui.Context, d *store.DecisionState, st decision
 		msg := a.answeredWords(d)
 		ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
 			a.glyph(c, 16, drawCheck(t.InkMuted))
-			ui.Text(c, msg).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
+			uiText(c, msg).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
 		})
 		return
 	}
@@ -758,7 +758,7 @@ func (a *App) decisionButtons(c *ui.Context, d *store.DecisionState, st decision
 	// conversation, where the words are); never Send away from the card.
 	if d.Draft != nil && d.FindID != "" {
 		if d.Draft.First != "" {
-			ui.Text(c, d.Draft.First).FontSize(t.SM).TextColor(t.InkMuted).SingleLine()
+			uiText(c, d.Draft.First).FontSize(t.SM).TextColor(t.InkMuted).SingleLine()
 		}
 		ui.Row(c.Key("draft-acts:" + d.DecisionID)).Gap(t.S2).AlignItems(ui.Center).Children(func() {
 			if a.buttonFor(c, a.L.T("decision.hold"), d.Question, btnSecondary, st.height, st.quietBg) {
@@ -804,7 +804,7 @@ func (a *App) decisionButtons(c *ui.Context, d *store.DecisionState, st decision
 		}
 	})
 	if d.Asker != nil && d.Asker.Suggests {
-		ui.Text(c, a.L.T("peer.suggests", d.GoLabel)).FontSize(t.XS).FontWeight(700).TextColor(t.NeedsYou.Ink)
+		uiText(c, a.L.T("peer.suggests", d.GoLabel)).FontSize(t.XS).FontWeight(700).TextColor(t.NeedsYou.Ink)
 	}
 	a.laterTimes(c, d, st.quietBg)
 	if a.replyOpen[d.DecisionID] {

@@ -346,7 +346,7 @@ func (a *App) taskHead(c *ui.Context, task *store.Task, m *taskMemo) {
 		a.watchCard(c, task, m)
 		a.tryStrip(c, task)
 		if len(m.blocks) == 0 && len(task.Sends) == 0 {
-			ui.Text(c, a.L.T("task.loading")).FontSize(t.SM).TextColor(t.InkMuted)
+			uiText(c, a.L.T("task.loading")).FontSize(t.SM).TextColor(t.InkMuted)
 		}
 	})
 }
@@ -372,7 +372,7 @@ func (a *App) taskTail(c *ui.Context, task *store.Task, m *taskMemo) {
 					}
 					if anyFailed(w.atts) {
 						ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
-							ui.Text(c, a.L.T("media.failed")).FontSize(t.XS).FontWeight(700).TextColor(t.Failed.Ink)
+							uiText(c, a.L.T("media.failed")).FontSize(t.XS).FontWeight(700).TextColor(t.Failed.Ink)
 							if a.button(c, a.L.T("media.retry"), btnText, t.ControlSM, t.Bg) {
 								a.retryPictures(w.atts)
 							}
@@ -451,9 +451,9 @@ func (a *App) waitLine2(c *ui.Context, task *store.Task, w *protocol.Waiter) {
 	ui.Column(c.Key("waitline")).MinWidth(0).Role(ui.RoleStatus).Children(func() {
 		if a.stepLine(c, spoken(a.L, words, back), expandable, open, func(ui.Element) {
 			a.glyph(c, 16, drawClock(t.InkMuted))
-			ui.Text(c, words).FontSize(stepSize).TextColor(t.InkSoft).SingleLine().MinWidth(0).Shrink(1).Tooltip(words).AccessHidden(true)
+			uiText(c, words).FontSize(stepSize).TextColor(t.InkSoft).SingleLine().MinWidth(0).Shrink(1).Tooltip(words).AccessHidden(true)
 			if back != "" {
-				ui.Text(c, back).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum").SingleLine().Shrink(0).AccessHidden(true)
+				uiText(c, back).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum").SingleLine().Shrink(0).AccessHidden(true)
 			}
 		}) {
 			a.open[key] = !open
@@ -463,12 +463,12 @@ func (a *App) waitLine2(c *ui.Context, task *store.Task, w *protocol.Waiter) {
 		}
 		row := func(label string, body func()) {
 			ui.Column(c.Key(label)).Gap(2).MinWidth(0).Children(func() {
-				ui.Text(c, label).FontSize(t.XS).FontWeight(600).TextColor(t.InkMuted)
+				uiText(c, label).FontSize(t.XS).FontWeight(600).TextColor(t.InkMuted)
 				body()
 			})
 		}
 		value := func(s string) {
-			ui.Text(c, s).FontSize(stepSize).LineHeight(leadingFor(s, 1.5)).TextColor(t.InkSoft).Selectable()
+			uiText(c, s).FontSize(stepSize).LineHeight(leadingFor(s, 1.5)).TextColor(t.InkSoft).Selectable()
 		}
 		ui.Column(c.Key("waitdetail")).Gap(t.S3).Padding(t.S2, 0, t.S1, 22).MinWidth(0).Children(func() {
 			// When it last looked is said under how often (waitCadence).
@@ -527,9 +527,9 @@ func (a *App) goChip(c *ui.Context, task *store.Task, p *Block) {
 	words := a.goWords(p)
 	ui.Row(c.Key("go")).Justify(ui.End).MinWidth(0).Children(func() {
 		ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Padding(4, 10).Radius(999).Background(t.SurfaceSunken).Label(words).Tooltip(p.Text).Children(func() {
-			ui.Text(c, words).FontSize(stepSize).TextColor(t.InkSoft).SingleLine().AccessHidden(true)
+			uiText(c, words).FontSize(stepSize).TextColor(t.InkSoft).SingleLine().AccessHidden(true)
 			if at := clock(a.tsOf(task, p.Seq)); at != "" {
-				ui.Text(c, at).FontSize(t.XXS).TextColor(t.InkMuted).FontFeatures("tnum").SingleLine().AccessHidden(true)
+				uiText(c, at).FontSize(t.XXS).TextColor(t.InkMuted).FontFeatures("tnum").SingleLine().AccessHidden(true)
 			}
 		})
 	})
@@ -541,12 +541,12 @@ func (a *App) dividerTip(c *ui.Context, label, at, tip string) {
 	t := a.T
 	ui.Row(c.Key("hair")).Gap(t.S2).MinHeight(24).AlignItems(ui.Center).Label(spoken(a.L, label, at)).Children(func() {
 		ui.Box(c).Height(1).Grow(1).Background(t.LineSoft)
-		tx := ui.Text(c, label).FontSize(t.XXS).TextColor(t.InkMuted).SingleLine().Shrink(0).AccessHidden(true)
+		tx := uiText(c, label).FontSize(t.XXS).TextColor(t.InkMuted).SingleLine().Shrink(0).AccessHidden(true)
 		if tip != "" {
 			tx.Tooltip(tip)
 		}
 		if at != "" {
-			ui.Text(c, at).FontSize(t.XXS).TextColor(t.InkMuted.Alpha(0.8)).SingleLine().Shrink(0).FontFeatures("tnum").AccessHidden(true)
+			uiText(c, at).FontSize(t.XXS).TextColor(t.InkMuted.Alpha(0.8)).SingleLine().Shrink(0).FontFeatures("tnum").AccessHidden(true)
 		}
 		ui.Box(c).Height(1).Grow(1).Background(t.LineSoft)
 	})
@@ -561,7 +561,7 @@ func (a *App) voice(c *ui.Context, task *store.Task, b *Block) {
 	hover := col.Hovered()
 	took := a.tpage.took
 	col.Children(func() {
-		markdown.View(c, autospace(b.Text), a.mdFor(b.Text))
+		markdown.View(c, mdSpace(b.Text), a.mdFor(b.Text))
 		if b.Full > 0 {
 			a.showAll(c, task, b.Seq, b.Full, false) // D320: cut at its most
 		}
@@ -576,7 +576,7 @@ func (a *App) voice(c *ui.Context, task *store.Task, b *Block) {
 		meta.Children(func() {
 			ink := t.InkMuted.Alpha(0.8)
 			if b.Saved {
-				ui.Text(c, a.L.T("task.saved")).FontSize(t.XXS).TextColor(ink).Shrink(0)
+				uiText(c, a.L.T("task.saved")).FontSize(t.XXS).TextColor(ink).Shrink(0)
 			}
 			if !hover {
 				return
@@ -584,11 +584,11 @@ func (a *App) voice(c *ui.Context, task *store.Task, b *Block) {
 			// D291: its time and how long it worked, each its own small element.
 			for i, s := range []string{clock(a.tsOf(task, b.Seq)), took} {
 				if s != "" {
-					ui.Text(c.Key(i), s).FontSize(t.XXS).TextColor(ink).FontFeatures("tnum").Shrink(0)
+					uiText(c.Key(i), s).FontSize(t.XXS).TextColor(ink).FontFeatures("tnum").Shrink(0)
 				}
 			}
 			label := a.L.T("reply.copy")
-			cp := ui.Text(c.Key("copy"), label).FontSize(t.XXS).FontWeight(600).TextColor(t.InkSoft).Cursor(ui.CursorPointer).Role(ui.RoleButton).Focusable().Label(label)
+			cp := uiText(c.Key("copy"), label).FontSize(t.XXS).FontWeight(600).TextColor(t.InkSoft).Cursor(ui.CursorPointer).Role(ui.RoleButton).Focusable().Label(label)
 			if cp.Hovered() {
 				cp.TextColor(t.Ink)
 			}
@@ -607,9 +607,9 @@ func (a *App) savedLine(c *ui.Context, task *store.Task, b *Block) {
 	row := ui.Row(c.Key("saved")).Gap(t.S2).MinHeight(16).AlignItems(ui.Center).MinWidth(0)
 	hover := row.Hovered()
 	row.Children(func() {
-		ui.Text(c, a.L.T("task.saved")).FontSize(t.XXS).TextColor(ink).Shrink(0)
+		uiText(c, a.L.T("task.saved")).FontSize(t.XXS).TextColor(ink).Shrink(0)
 		if at := clock(a.tsOf(task, b.Seq)); hover && at != "" {
-			ui.Text(c.Key("at"), at).FontSize(t.XXS).TextColor(ink).FontFeatures("tnum").Shrink(0)
+			uiText(c.Key("at"), at).FontSize(t.XXS).TextColor(ink).FontFeatures("tnum").Shrink(0)
 		}
 	})
 }
@@ -1009,16 +1009,16 @@ func (a *App) locator(c *ui.Context, task *store.Task, turns []Turn, ls *ui.List
 						// D291: the brief's quiet label, the words, and apart its time.
 						if w.tag != "" {
 							ui.Box(c.Key("tag")).Padding(1, 6).Radius(999).Background(t.SurfaceSunken).Shrink(0).Children(func() {
-								ui.Text(c, w.tag).FontSize(t.XXS).FontWeight(600).TextColor(t.InkMuted).SingleLine().AccessHidden(true)
+								uiText(c, w.tag).FontSize(t.XXS).FontWeight(600).TextColor(t.InkMuted).SingleLine().AccessHidden(true)
 							})
 						}
-						tx := ui.Text(c, line).FontSize(size).TextColor(ink).SingleLine().MinWidth(0).Shrink(1).AccessHidden(true)
+						tx := uiText(c, line).FontSize(size).TextColor(ink).SingleLine().MinWidth(0).Shrink(1).AccessHidden(true)
 						if here && !w.quiet && lm.K != "report" {
 							tx.FontWeight(600)
 						}
 						if w.at != "" {
 							ui.Box(c).Grow(1)
-							ui.Text(c, w.at).FontSize(t.XXS).TextColor(t.InkMuted).FontFeatures("tnum").SingleLine().Shrink(0).AccessHidden(true)
+							uiText(c, w.at).FontSize(t.XXS).TextColor(t.InkMuted).FontFeatures("tnum").SingleLine().Shrink(0).AccessHidden(true)
 						}
 					})
 					if row.Clicked() {

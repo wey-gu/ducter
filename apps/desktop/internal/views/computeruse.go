@@ -92,8 +92,8 @@ func (a *App) computerPerms(c *ui.Context, dv *protocol.DeviceView, ab *protocol
 			state, ink = a.L.T("computeruse.perm.on"), t.InkSoft
 		}
 		ui.Row(c.Key("perm:" + row.key)).Gap(t.S3).AlignItems(ui.Center).Children(func() {
-			ui.Text(c, a.L.T(row.key)).FontSize(t.SM).TextColor(t.Ink).LineHeight(1.5).Grow(1).MinWidth(0)
-			ui.Text(c, state).FontSize(t.SM).FontWeight(700).TextColor(ink)
+			uiText(c, a.L.T(row.key)).FontSize(t.SM).TextColor(t.Ink).LineHeight(1.5).Grow(1).MinWidth(0)
+			uiText(c, state).FontSize(t.SM).FontWeight(700).TextColor(ink)
 		})
 	}
 	a.infoText(c, a.L.T("computeruse.perms.how"))
@@ -160,7 +160,7 @@ func (a *App) computerNotes(c *ui.Context, dv *protocol.DeviceView, note func(ke
 				if app != "" {
 					line = a.L.T("computeruse.using", title, app)
 				}
-				ui.Text(c, line).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(1.5).Grow(1).MinWidth(0)
+				uiText(c, line).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(1.5).Grow(1).MinWidth(0)
 				if a.buttonFor(c, a.L.T("computeruse.stop"), title, btnSecondary, t.ControlSM, t.Bg) {
 					a.send(protocol.ComputerStopReq{T: "computer_stop", TaskID: id})
 				}
@@ -185,7 +185,7 @@ func (a *App) computerTaskLine(c *ui.Context, task *store.Task) {
 	if cu.App != "" {
 		line = a.L.T("computeruse.task", name, cu.App)
 	}
-	ui.Text(c, line).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(1.5)
+	uiText(c, line).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(1.5)
 	if a.buttonFor(c, a.L.T("computeruse.stop"), line, btnSecondary, t.ControlSM, t.Chrome) {
 		a.send(protocol.ComputerStopReq{T: "computer_stop", TaskID: task.ID})
 	}

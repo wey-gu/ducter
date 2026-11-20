@@ -713,7 +713,7 @@ func (a *App) mediaTile(c *ui.Context, key string, it mediaItem, x, y, w, h floa
 		if more > 0 {
 			ui.Box(c).Absolute().Left(0).Top(0).Size(w, h).Background(t.Lightbox.Alpha(0.5)).Children(func() {
 				ui.Row(c).Fill().Justify(ui.Center).AlignItems(ui.Center).Children(func() {
-					ui.Text(c, fmt.Sprintf("+%d", more)).FontSize(t.XL).FontWeight(700).TextColor(t.LightboxInk)
+					uiText(c, fmt.Sprintf("+%d", more)).FontSize(t.XL).FontWeight(700).TextColor(t.LightboxInk)
 				})
 			})
 		}
@@ -789,14 +789,14 @@ func (a *App) picTray(c *ui.Context, tray string) {
 		}
 		if anyFailed(list) {
 			ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
-				ui.Text(c, a.L.T("media.failed")).FontSize(t.XS).FontWeight(700).TextColor(t.Failed.Ink)
+				uiText(c, a.L.T("media.failed")).FontSize(t.XS).FontWeight(700).TextColor(t.Failed.Ink)
 				if a.button(c, a.L.T("media.retry"), btnText, t.ControlSM, t.Surface) {
 					a.retryPictures(list)
 				}
 			})
 		}
 		if note != "" {
-			ui.Text(c, note).FontSize(t.XS).TextColor(t.InkMuted).Role(ui.RoleStatus)
+			uiText(c, note).FontSize(t.XS).TextColor(t.InkMuted).Role(ui.RoleStatus)
 		}
 	})
 }
@@ -826,7 +826,7 @@ func (a *App) trayTile(c *ui.Context, tray string, x *attach) {
 			if x.file != nil {
 				ui.Column(c).Size(w, s).Padding(t.S2, t.S2, t.S2, t.S2).Gap(3).Justify(ui.Center).Label(x.name).Children(func() {
 					a.fileBadge(c, attRef(x), 17)
-					ui.Text(c, x.name).FontSize(t.XS).FontWeight(700).TextColor(t.Ink).MaxLines(2).MinWidth(0).Tooltip(x.name)
+					uiText(c, x.name).FontSize(t.XS).FontWeight(700).TextColor(t.Ink).MaxLines(2).MinWidth(0).Tooltip(x.name)
 				})
 			}
 			if !x.ready() || x.failed() {
@@ -935,7 +935,7 @@ func drawPicture(col ui.Color) func(p *ui.Painter, r ui.Rect) {
 // dropHint is the one line over a composer while files are dragged over.
 func (a *App) dropHint(c *ui.Context) {
 	t := a.T
-	ui.Text(c, a.L.T("media.drop")).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).Padding(t.S2, 0, 0, 0)
+	uiText(c, a.L.T("media.drop")).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).Padding(t.S2, 0, 0, 0)
 }
 
 // ---------- sending to a task ----------
@@ -1102,7 +1102,7 @@ func (a *App) viewer(c *ui.Context) {
 			bl, br := chromeInset(c)
 			ui.Row(c).Height(ChromeH).Padding(0, br, 0, bl).AlignItems(ui.Center).Gap(t.S3).Children(func() {
 				if len(v.items) > 1 {
-					ui.Text(c, a.L.T("media.count", v.i+1, len(v.items))).FontSize(t.SM).TextColor(t.LightboxInk.Alpha(0.7))
+					uiText(c, a.L.T("media.count", v.i+1, len(v.items))).FontSize(t.SM).TextColor(t.LightboxInk.Alpha(0.7))
 				}
 				ui.Spacer(c)
 				cl := ui.Box(c.Key("v-close")).Size(t.ControlMD, t.ControlMD).Radius(t.ControlMD / 2).Role(ui.RoleButton).
@@ -1122,7 +1122,7 @@ func (a *App) viewer(c *ui.Context) {
 				if ref.From != nil {
 					title := a.S.Task(ref.From.TaskID).Title()
 					if title != "" {
-						l := ui.Text(c.Key("v-from"), a.L.T("media.from", title)).FontSize(t.SM).FontWeight(700).TextColor(t.LightboxInk).
+						l := uiText(c.Key("v-from"), a.L.T("media.from", title)).FontSize(t.SM).FontWeight(700).TextColor(t.LightboxInk).
 							Cursor(ui.CursorPointer).Role(ui.RoleLink).Focusable().Label(a.L.T("media.from", title))
 						if l.Clicked() {
 							v.open = false
@@ -1169,7 +1169,7 @@ func (a *App) closeViewer(c *ui.Context, v *viewerState) {
 
 func (a *App) viewerButton(c *ui.Context, label string) bool {
 	t := a.T
-	b := ui.Text(c.Key("vb:"+label), label).FontSize(t.SM).FontWeight(700).TextColor(t.LightboxInk).Padding(t.S2, t.S3).
+	b := uiText(c.Key("vb:"+label), label).FontSize(t.SM).FontWeight(700).TextColor(t.LightboxInk).Padding(t.S2, t.S3).
 		Radius(t.RadiusSM).Role(ui.RoleButton).Cursor(ui.CursorPointer).Focusable().Label(label)
 	if b.Hovered() {
 		b.Background(t.LightboxInk.Alpha(0.12))

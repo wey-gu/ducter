@@ -175,11 +175,11 @@ func (a *App) dropItem(c *ui.Context, task *store.Task) {
 	t := a.T
 	switch task.Attention() {
 	case protocol.Failed, protocol.Dropped, protocol.Done, protocol.DoneClaimed, protocol.Superseded:
-		ui.Text(c, a.L.T("task.more")).FontSize(t.SM).TextColor(t.InkMuted).Padding(t.S2, t.S3)
+		uiText(c, a.L.T("task.more")).FontSize(t.SM).TextColor(t.InkMuted).Padding(t.S2, t.S3)
 		return
 	}
 	label := a.L.T("task.action.drop")
-	it := ui.Text(c.Key("drop"), label).FontSize(t.SM).TextColor(t.Failed.Ink).Padding(t.S2, t.S3).Radius(t.RadiusXS).
+	it := uiText(c.Key("drop"), label).FontSize(t.SM).TextColor(t.Failed.Ink).Padding(t.S2, t.S3).Radius(t.RadiusXS).
 		Role(ui.RoleButton).Focusable().Cursor(ui.CursorPointer).Label(label)
 	if it.Hovered() {
 		it.Background(t.Failed.Surface.Alpha(0.6))
@@ -217,9 +217,9 @@ func (a *App) taskStanding(c *ui.Context, task *store.Task) {
 	ui.Column(c.Key("meta")).Gap(2).Children(func() {
 		// D291: the state word in its ink, and apart, its clock in muted figures.
 		ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
-			ui.Text(c, state).FontSize(t.SM).FontWeight(800).TextColor(t.State(string(att)).Ink)
+			uiText(c, state).FontSize(t.SM).FontWeight(800).TextColor(t.State(string(att)).Ink)
 			if when != "" {
-				ui.Text(c, when).FontSize(t.SM).TextColor(t.InkMuted).FontFeatures("tnum").MinWidth(0)
+				uiText(c, when).FontSize(t.SM).TextColor(t.InkMuted).FontFeatures("tnum").MinWidth(0)
 			}
 			a.todoHead(c, task) // D341: the to-do it is bound to, and its state word
 		})
@@ -394,7 +394,7 @@ func (a *App) outcome(c *ui.Context, task *store.Task) {
 			head, rest := headline(redact.Text(rep.Summary))
 			a.heading(c, autospace(head), t.Title).LineHeight(1.18).Balance().MaxWidth(headMeasure)
 			if rest != "" {
-				ui.Text(c, autospace(rest)).FontSize(t.PartnerSize).LineHeight(leadingFor(rest, 1.65)).TextColor(t.InkSoft).MaxWidth(readMeasure)
+				uiText(c, autospace(rest)).FontSize(t.PartnerSize).LineHeight(leadingFor(rest, 1.65)).TextColor(t.InkSoft).MaxWidth(readMeasure)
 			}
 		}
 		// D206: what it showed: its pictures and files, under the outcome.
@@ -437,7 +437,7 @@ func (a *App) outcome(c *ui.Context, task *store.Task) {
 // instead of repeating.
 func (a *App) cantStart(c *ui.Context, task *store.Task, k *protocol.CantStart) {
 	t := a.T
-	ui.Text(c.Key("cant-line"), a.L.T("cant."+k.Why, k.Computer, k.What)).FontSize(t.MD).LineHeight(1.5).TextColor(t.Ink).MaxWidth(readMeasure)
+	uiText(c.Key("cant-line"), a.L.T("cant."+k.Why, k.Computer, k.What)).FontSize(t.MD).LineHeight(1.5).TextColor(t.Ink).MaxWidth(readMeasure)
 	ui.Row(c.Key("cant-btns")).Gap(t.S3).Wrap().AlignItems(ui.Center).Padding(t.S2, 0, 0, 0).Children(func() {
 		if k.Elsewhere != nil && a.buttonFor(c, a.L.T("cant.on", k.Elsewhere.Name), task.Title(), btnPrimary, t.ControlMD, t.Bg) {
 			a.CantAction(task.ID, "start_at", k.Elsewhere.Device)
@@ -464,9 +464,9 @@ func (a *App) decisionAnswered(c *ui.Context, d *store.DecisionState) {
 	ui.Row(c.Key("answered")).Gap(t.S2).AlignItems(ui.Center).Children(func() {
 		a.glyph(c, 16, drawCheck(t.InkMuted))
 		// D291: what was answered, then its time as its own muted element.
-		ui.Text(c, strings.TrimRight(msg, "：: ")).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).Shrink(0)
-		ui.Text(c, d.AnsweredAt.Local().Format("15:04")).FontSize(t.SM).TextColor(t.InkMuted).FontFeatures("tnum").Shrink(0)
-		ui.Text(c, a.questionOf(d)).FontSize(t.SM).TextColor(t.InkMuted).SingleLine().Grow(1).MinWidth(0)
+		uiText(c, strings.TrimRight(msg, "：: ")).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).Shrink(0)
+		uiText(c, d.AnsweredAt.Local().Format("15:04")).FontSize(t.SM).TextColor(t.InkMuted).FontFeatures("tnum").Shrink(0)
+		uiText(c, a.questionOf(d)).FontSize(t.SM).TextColor(t.InkMuted).SingleLine().Grow(1).MinWidth(0)
 	})
 }
 
@@ -592,12 +592,12 @@ func (a *App) taskComposer(c *ui.Context, task *store.Task) {
 						return
 					}
 					if !steers {
-						ui.Text(c, a.L.T("composer.nosteer.hint", harnessName(agent))).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().MinWidth(0).Shrink(1)
+						uiText(c, a.L.T("composer.nosteer.hint", harnessName(agent))).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().MinWidth(0).Shrink(1)
 						return
 					}
-					ui.Text(c, a.L.T("composer.steer.hint")).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().MinWidth(0).Shrink(1)
+					uiText(c, a.L.T("composer.steer.hint")).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().MinWidth(0).Shrink(1)
 					ui.Spacer(c)
-					ui.Text(c, a.L.T("composer.queue.hint")).FontSize(t.XS).TextColor(t.Faint).SingleLine().Shrink(0)
+					uiText(c, a.L.T("composer.queue.hint")).FontSize(t.XS).TextColor(t.Faint).SingleLine().Shrink(0)
 				})
 			}
 		})
@@ -644,7 +644,7 @@ func (a *App) sentBubble(c *ui.Context, text string, sd *store.Send, queued bool
 		}
 		{
 			r := t.BubbleRadius
-			b := ui.Text(c, autospace(text)).FontSize(taskProse).LineHeight(leadingFor(text, 1.5)).TextColor(t.OnUserBubble).Background(t.UserBubble).
+			b := uiText(c, autospace(text)).FontSize(taskProse).LineHeight(leadingFor(text, 1.5)).TextColor(t.OnUserBubble).Background(t.UserBubble).
 				Padding(9, t.S3).Radius(r[0]*0.8, r[1]*0.8, r[2], r[3]*0.8).MaxWidthPercent(80).Selectable()
 			switch {
 			case queued:
@@ -665,7 +665,7 @@ func (a *App) sentBubble(c *ui.Context, text string, sd *store.Send, queued bool
 			} else if !waiting {
 				ui.Box(c).Size(16, 16).Draw(drawCheck(t.InkMuted))
 			}
-			nt := ui.Text(c, note).FontSize(t.XS).FontWeight(700).TextColor(col)
+			nt := uiText(c, note).FontSize(t.XS).FontWeight(700).TextColor(col)
 			if tip != "" {
 				nt.Tooltip(tip)
 			}
@@ -870,9 +870,9 @@ func (a *App) changes(c *ui.Context, task *store.Task) {
 				files, added, deleted = counted.Files, counted.Adds, counted.Dels
 			}
 			if files > 0 {
-				ui.Text(c, a.filesLabel(files)).FontSize(t.SM).TextColor(t.InkMuted).FontFeatures("tnum")
-				ui.Text(c, fmt.Sprintf("+%d", added)).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.Done.Ink).Margin(0, 0, 0, t.S1)
-				ui.Text(c, fmt.Sprintf("−%d", deleted)).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.Failed.Ink)
+				uiText(c, a.filesLabel(files)).FontSize(t.SM).TextColor(t.InkMuted).FontFeatures("tnum")
+				uiText(c, fmt.Sprintf("+%d", added)).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.Done.Ink).Margin(0, 0, 0, t.S1)
+				uiText(c, fmt.Sprintf("−%d", deleted)).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.Failed.Ink)
 			}
 			ui.Spacer(c)
 			if pane != nil && pane.loading {
@@ -884,11 +884,11 @@ func (a *App) changes(c *ui.Context, task *store.Task) {
 		})
 		switch {
 		case pane == nil || (pane.loading && pane.files == nil):
-			ui.Text(c, a.L.T("task.loading")).FontSize(t.SM).TextColor(t.InkMuted)
+			uiText(c, a.L.T("task.loading")).FontSize(t.SM).TextColor(t.InkMuted)
 		case pane.err != "":
-			ui.Text(c, a.L.T("task.changes.error", pane.err)).FontSize(t.SM).TextColor(t.InkMuted)
+			uiText(c, a.L.T("task.changes.error", pane.err)).FontSize(t.SM).TextColor(t.InkMuted)
 		case len(pane.files) == 0:
-			ui.Text(c, a.L.T("task.changes.none")).FontSize(t.SM).TextColor(t.InkMuted)
+			uiText(c, a.L.T("task.changes.none")).FontSize(t.SM).TextColor(t.InkMuted)
 		default:
 			ui.Column(c).Radius(t.RadiusLG).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).Clip().
 				Dividers(1, t.LineSoft).Children(func() {
@@ -914,9 +914,9 @@ func (a *App) fileRow(c *ui.Context, task *store.Task, f *diffFile) {
 		}
 		row.Children(func() {
 			a.glyph(c, 12, drawChevron(t.InkMuted, open))
-			ui.Text(c, f.name).Font(t.Mono).FontSize(t.MonoSM).Grow(1).MinWidth(0).SingleLine().AccessHidden(true)
-			ui.Text(c, fmt.Sprintf("+%d", f.added)).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.Done.Ink)
-			ui.Text(c, fmt.Sprintf("−%d", f.deleted)).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.Failed.Ink)
+			uiText(c, f.name).Font(t.Mono).FontSize(t.MonoSM).Grow(1).MinWidth(0).SingleLine().AccessHidden(true)
+			uiText(c, fmt.Sprintf("+%d", f.added)).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.Done.Ink)
+			uiText(c, fmt.Sprintf("−%d", f.deleted)).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.Failed.Ink)
 		})
 		if row.Clicked() {
 			a.open[key] = !open
@@ -939,12 +939,12 @@ func (a *App) waitFacts(c *ui.Context, task *store.Task) {
 	t := a.T
 	row := func(label string, body func()) {
 		ui.Column(c.Key(label)).Gap(t.S1).MaxWidth(readMeasure).Children(func() {
-			ui.Text(c, label).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
+			uiText(c, label).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
 			body()
 		})
 	}
 	value := func(s string) {
-		ui.Text(c, s).FontSize(t.SM).LineHeight(leadingFor(s, 1.5)).TextColor(t.InkSoft).Selectable()
+		uiText(c, s).FontSize(t.SM).LineHeight(leadingFor(s, 1.5)).TextColor(t.InkSoft).Selectable()
 	}
 	ui.Column(c.Key("waitfacts")).Gap(t.S3).Children(func() { a.waitRows(c, task, true, row, value) })
 }

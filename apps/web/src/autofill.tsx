@@ -32,10 +32,14 @@ export function parseExp(s: string): { month: number; year: number } | undefined
   return month >= 1 && month <= 12 ? { month, year: year < 100 ? 2000 + year : year } : undefined;
 }
 
-/** D404: digits typed without a slash read back as MM/YY once there are enough of them (0829 → 08/29). */
+/**
+ * D404, D408: digits typed without a slash read back as MM/YY once they can only mean one month and year:
+ * four digits (0829 → 08/29), or three starting 2 to 9, a one-digit month (829 → 08/29). The Mac's shapeExp is the same.
+ */
 export function shapeExp(s: string): string {
-  if (!/^\d{4}$/.test(s)) return s;
-  return `${s.slice(0, 2)}/${s.slice(2)}`;
+  if (/^\d{4}$/.test(s)) return `${s.slice(0, 2)}/${s.slice(2)}`;
+  if (/^[2-9]\d{2}$/.test(s)) return `0${s.slice(0, 1)}/${s.slice(1)}`;
+  return s;
 }
 
 function Field(p: { id: string; label: string; value: string; onInput: (v: string) => void; type?: string; mode?: "numeric" | "email" | "tel" | "url" | "text"; placeholder?: string; auto?: string; wrong?: boolean; first?: boolean }) {

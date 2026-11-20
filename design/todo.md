@@ -2,6 +2,16 @@
 
 Deferred work, grouped by area, each with its trigger where it has one.
 
+## The Mac walk's leftovers (D408)
+
+- **Walk D408 in the real window.** VoiceOver on a joined title (「对话」 read as a word), an expiry typed
+  0829 and 829, Settings on 在哪儿运行 while 和你的其他 agent 通信 comes and goes, and a Telegram link
+  completed in the settings demo; with a real keyboard in every field.
+- **Ask MyGo upstream for accessible text without line-breaking joiners** (its Markdown view, and
+  `ui.Text` generally): then `uiText` and `mdSpace` go, and replies keep `keepTokens`' whole tokens.
+  Also ask whether an accessibility text insert can show in the value at once, so a driver's
+  read-back confirms it (the doubled typing, D408 (3)).
+
 ## A review that runs every so often (D394, `past.md` Ongoing, research/158)
 
 - **Live check on hel.** Everything in D394 is checked with fakes only: the brief rule, no nudge,
@@ -1558,7 +1568,20 @@ Codex first, once OAR is near 1.0. See `research/17`.
       `next: null`), and what `bridge notices status --json` really prints for a home's connection (D400 (7)
       reads it tolerantly). Then clear the per-Space contexts D334 made (`agents context clear --name
       <…-in-<space>>`, the person's Go) and fold `oneSpaceEach` away once the grouped contacts are seen live.
-      Trigger: the personal Space's `…_unreconciled` cleared (B19), or a trial without it.
+      Trigger: the personal Space's `…_unreconciled` cleared (B19), or a trial without it (met 2026-11-20: it reads again, research/161 §9).
+- [ ] D409: rerun the live trial (`bun run bridge:live -- --connected --real`) with the 120 s limit and rule 2d.
+      Read in its raw output: that `open` and `reply` work for a connection passive setup calls `enable_needed`
+      (if `open` refuses for that, the connection has to be enabled: a decision for core's connect, not a
+      partner call); the time of `open` and `reply`; whether `--watch` brings the arrival before the minute check.
+      Trigger: the coordinator merges D409.
+- [ ] D409: the start mark (B14) is the first inbox read that *works*: if it fails until mail has arrived (the
+      2026-11-20 run, every read timed out), the first real request is taken for old mail and never opened. Mark
+      only entries sent before the first attempt (0.10.121 gives no send time; `expires_at_ms` minus Mem's 7 days
+      would, INFERRED) or skip only already-read ones. Trigger: a home whose first reads fail, or Mem gives a time.
+- [ ] D409: ask Mem (draft in the D409 report, not posted) why the identity inbox's pages skip `sequence` 21 to 25
+      of a Space (VERIFIED three times on the peer's mailbox), whether Bridge mail in a shared Space ("Before the
+      team", 6 readers) is readable by anyone but the recipient, and whether 50 s for an eight-Space inbox is
+      expected. Trigger: the author's go to send it.
 - [ ] D400: if Mem notifies the person for mail the partner handles (the Settings line shows), ask Nowledge how
       to turn that off per connection (research/161 §6 (c)), then offer it on that line. Trigger: the line seen on
       a real home.

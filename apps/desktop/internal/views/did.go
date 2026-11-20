@@ -170,7 +170,7 @@ func (a *App) didView(c *ui.Context) {
 	ui.Scroll(c.Key("did-scroll")).Grow(1).MinHeight(0).Children(func() {
 		ui.Column(c).Padding(t.S5, t.S6, t.S7, t.S6).Children(func() {
 			ui.Column(c.Key("did-col")).Gap(t.S4).Width(pastMeasure).MaxWidthPercent(100).AlignSelf(ui.Center).Children(func() {
-				ui.Text(c.Key("did-h"), a.L.T("did.title")).Font(t.Display).FontSize(t.XL).FontWeight(800).TextColor(t.Ink).
+				uiText(c.Key("did-h"), a.L.T("did.title")).Font(t.Display).FontSize(t.XL).FontWeight(800).TextColor(t.Ink).
 					Padding(0, t.S1).Role(ui.RoleHeading)
 				field = a.didField(c)
 				if res != nil {
@@ -271,9 +271,9 @@ func (a *App) didChips(c *ui.Context, res *protocol.DidFrame) {
 						if on {
 							w = 700
 						}
-						ui.Text(c, label).FontSize(t.SM).FontWeight(w).TextColor(fg).SingleLine().AccessHidden(true)
+						uiText(c, label).FontSize(t.SM).FontWeight(w).TextColor(fg).SingleLine().AccessHidden(true)
 						if n > 0 {
-							ui.Text(c.Key("n"), fmt.Sprint(n)).FontSize(t.XS).FontWeight(600).TextColor(nfg).FontFeatures("tnum").SingleLine().AccessHidden(true)
+							uiText(c.Key("n"), fmt.Sprint(n)).FontSize(t.XS).FontWeight(600).TextColor(nfg).FontFeatures("tnum").SingleLine().AccessHidden(true)
 						}
 					})
 					if b.Clicked() {
@@ -356,7 +356,7 @@ func (a *App) didList(c *ui.Context, res *protocol.DidFrame) {
 		if a.quietButton(c, "did-earlier", a.L.T("did.earlier"), "", false, 1) {
 			a.did.days += didDays
 		}
-		ui.Text(c.Key("did-coverage"), a.L.T("did.coverage")).FontSize(t.XS).TextColor(t.InkMuted).TextAlign(ui.Center).
+		uiText(c.Key("did-coverage"), a.L.T("did.coverage")).FontSize(t.XS).TextColor(t.InkMuted).TextAlign(ui.Center).
 			LineHeight(1.6).MaxWidth(460)
 	})
 }
@@ -367,7 +367,7 @@ func (a *App) didNone(c *ui.Context) {
 	ui.Column(c.Key("did-none")).Padding(t.S6, t.S5).Gap(t.S3).Radius(t.RadiusXL).Border(2, t.Line).BorderStyle(ui.BorderDashed).
 		AlignItems(ui.Center).Children(func() {
 		a.pastPebble(c, "none-art", "look", "", 48)
-		ui.Text(c, a.L.T("did.none")).FontSize(t.MD).TextColor(t.InkSoft).TextAlign(ui.Center)
+		uiText(c, a.L.T("did.none")).FontSize(t.MD).TextColor(t.InkSoft).TextAlign(ui.Center)
 		if a.button(c, a.L.T("did.all"), btnSecondary, t.ControlSM, t.Bg) {
 			a.did.q, a.did.kind = "", ""
 		}
@@ -398,7 +398,7 @@ func (a *App) didDaySection(c *ui.Context, g didDayGroup, now time.Time) {
 	isToday := pastDayDiff(g.day, now) == 0
 	ui.Column(c.Key("day:" + g.day.Format("2006-01-02"))).Gap(t.S3).Children(func() {
 		ui.Row(c.Key("head")).Gap(t.S3).AlignItems(ui.Center).MinHeight(24).Padding(0, t.S2).Wrap().Children(func() {
-			ui.Text(c, a.didDayName(g.day, now)).Font(t.Display).FontSize(t.MD).FontWeight(800).TextColor(t.Ink).SingleLine()
+			uiText(c, a.didDayName(g.day, now)).Font(t.Display).FontSize(t.MD).FontWeight(800).TextColor(t.Ink).SingleLine()
 			for _, k := range []struct {
 				kind string
 				n    string
@@ -406,14 +406,14 @@ func (a *App) didDaySection(c *ui.Context, g didDayGroup, now time.Time) {
 				if counts[k.kind] == 0 {
 					continue
 				}
-				ui.Text(c.Key("n:"+k.kind), k.n).FontSize(t.XS).FontWeight(600).TextColor(t.InkSoft).FontFeatures("tnum").
+				uiText(c.Key("n:"+k.kind), k.n).FontSize(t.XS).FontWeight(600).TextColor(t.InkSoft).FontFeatures("tnum").
 					Padding(2, t.S2).Radius(t.RadiusXS).Background(t.SurfaceSunken).SingleLine()
 			}
 		})
 		if isToday && outward == 0 && !a.didNarrowed() {
 			a.didEmptyDay(c, g.items)
 		} else if outward == 0 && counts["read"] == len(g.items) && len(g.items) > 0 {
-			ui.Text(c.Key("reads-only"), a.L.T("did.reads.only")).FontSize(t.SM).TextColor(t.InkMuted).Padding(0, t.S2)
+			uiText(c.Key("reads-only"), a.L.T("did.reads.only")).FontSize(t.SM).TextColor(t.InkMuted).Padding(0, t.S2)
 		}
 		if len(g.items) > 0 {
 			ui.Column(c.Key("cards")).Gap(t.S2 + 2).Children(func() {
@@ -442,10 +442,10 @@ func (a *App) didEmptyDay(c *ui.Context, items []*protocol.DidItem) {
 	ui.Column(c.Key("did-empty")).Padding(t.S5, t.S5, t.S6, t.S5).Gap(t.S3).Radius(t.RadiusXL).Border(2, t.Line).BorderStyle(ui.BorderDashed).
 		AlignItems(ui.Center).Children(func() {
 		a.avatar(c, theme.Idle, 112)
-		ui.Text(c, a.L.T("did.empty")).FontSize(t.MD).FontWeight(600).TextColor(t.Ink).TextAlign(ui.Center).LineHeight(1.5).MaxWidth(440)
+		uiText(c, a.L.T("did.empty")).FontSize(t.MD).FontWeight(600).TextColor(t.Ink).TextAlign(ui.Center).LineHeight(1.5).MaxWidth(440)
 		ui.Row(c.Key("facts")).Gap(t.S2).Justify(ui.Center).Wrap().Children(func() {
 			fact := func(key, text string) {
-				ui.Text(c.Key(key), text).FontSize(t.SM).TextColor(t.InkSoft).Padding(3, t.S3).Radius(t.Pill).Background(t.SurfaceSunken).SingleLine()
+				uiText(c.Key(key), text).FontSize(t.SM).TextColor(t.InkSoft).Padding(3, t.S3).Radius(t.Pill).Background(t.SurfaceSunken).SingleLine()
 			}
 			if n := len(accounts); n > 0 {
 				fact("read", a.L.N("did.empty.read", n, n))
@@ -574,20 +574,20 @@ func (a *App) didCard(c *ui.Context, it *protocol.DidItem) {
 		ui.Column(c.Key("main")).Grow(1).Shrink(1).MinWidth(0).Gap(t.S1 + 1).Children(func() {
 			// The line, the amount beside it, the time at the end.
 			ui.Row(c.Key("l1")).Gap(t.S2).AlignItems(ui.Center).MinWidth(0).MinHeight(22).Children(func() {
-				ui.Text(c, keepWords(autospace(line))).FontSize(t.MD).FontWeight(600).TextColor(t.Ink).SingleLine().Shrink(1).MinWidth(0).Tooltip(line)
+				uiText(c, keepWords(autospace(line))).FontSize(t.MD).FontWeight(600).TextColor(t.Ink).SingleLine().Shrink(1).MinWidth(0).Tooltip(line)
 				if it.Amount != "" {
-					ui.Text(c.Key("amount"), it.Amount).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).FontFeatures("tnum").
+					uiText(c.Key("amount"), it.Amount).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).FontFeatures("tnum").
 						Padding(1, t.S2).Radius(t.RadiusXS).Background(t.SurfaceSunken).SingleLine().Shrink(0)
 				}
 				if it.Unsure != "" {
-					ui.Text(c.Key("unsure"), a.L.T("did.unsure."+it.Unsure)).FontSize(t.XS).FontWeight(700).TextColor(t.NeedsYou.Ink).
+					uiText(c.Key("unsure"), a.L.T("did.unsure."+it.Unsure)).FontSize(t.XS).FontWeight(700).TextColor(t.NeedsYou.Ink).
 						Padding(1, t.S2).Radius(t.RadiusXS).Background(t.NeedsYou.Surface).SingleLine().Shrink(0)
 				}
 				ui.Spacer(c)
-				ui.Text(c.Key("at"), i18n.Clock(store.ParseTime(it.At))).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum").SingleLine().Shrink(0)
+				uiText(c.Key("at"), i18n.Clock(store.ParseTime(it.At))).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum").SingleLine().Shrink(0)
 			})
 			if s := strings.TrimSpace(it.Line); s != "" {
-				ui.Text(c.Key("own"), keepWords(autospace(s))).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(leadingFor(s, 1.45)).MaxLines(2).MinWidth(0)
+				uiText(c.Key("own"), keepWords(autospace(s))).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(leadingFor(s, 1.45)).MaxLines(2).MinWidth(0)
 			}
 			// The facts, then the card's ways on at the row's end.
 			facts := a.didFacts(it)

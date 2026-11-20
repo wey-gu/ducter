@@ -109,6 +109,14 @@ type App struct {
 	// peersAsked (D332): 和你的其他 agent 通信 was opened from the Partner page's
 	// one line, so the rail lists it for now.
 	peersAsked bool
+	// peersRailed (D408): the rail has listed 和你的其他 agent 通信 this
+	// session, so it keeps it: a tab leaving moves every tab under it up,
+	// and a click meant for 在哪儿运行 lands on 关于.
+	peersRailed bool
+	// restartClicked (D408): when the person last pressed Restart to update
+	// here (Settings' button, a device card's 更新): only a restart that
+	// fails within restartOwn of it opens Updates and about to say why.
+	restartClicked time.Time
 	// D321: Settings › 记忆's own state (memory_pane.go).
 	memPage memPageState
 	// bridgeLink: the connect link being pasted on the row (D225); never kept.

@@ -65,7 +65,7 @@ func (a *App) benchLauncher(c *ui.Context, task *store.Task) {
 		{"made", a.L.T("wb.tab.made"), a.L.T("wb.launcher.made"), drawPicture},
 	}
 	ui.Row(c.Key("bench-head")).Padding(t.S3, t.S4).Gap(t.S2).AlignItems(ui.Center).MinHeight(56).Children(func() {
-		ui.Text(c, a.L.T("wb.launcher")).FontSize(t.MD).FontWeight(800).TextColor(t.Ink)
+		uiText(c, a.L.T("wb.launcher")).FontSize(t.MD).FontWeight(800).TextColor(t.Ink)
 		ui.Spacer(c)
 		if a.button(c, a.L.T("wb.close"), btnText, t.ControlSM, t.BgDeep) {
 			a.bench.open = false
@@ -99,11 +99,11 @@ func (a *App) benchLauncher(c *ui.Context, task *store.Task) {
 						a.glyph(c, 20, x.mark(ink))
 					})
 					ui.Column(c.Key("w")).Grow(1).MinWidth(0).Gap(2).Children(func() {
-						w := ui.Text(c, x.title).FontSize(t.MD).FontWeight(700)
+						w := uiText(c, x.title).FontSize(t.MD).FontWeight(700)
 						if !on {
 							w.TextColor(t.InkSoft)
 						}
-						ui.Text(c, x.when).FontSize(t.SM).TextColor(t.InkMuted)
+						uiText(c, x.when).FontSize(t.SM).TextColor(t.InkMuted)
 					})
 				})
 				if on && card.Clicked() {

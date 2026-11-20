@@ -92,9 +92,9 @@ func (a *App) addRows(c *ui.Context, only string) bool {
 		if a.menuRow(c, "nt-add:"+d.ID, label, false, false, func() {
 			a.glyph(c, 16, drawPlus(t.InkSoft))
 			ui.Column(c).Grow(1).MinWidth(0).Gap(1).Children(func() {
-				ui.Text(c, a.L.T("newtask.add")).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).SingleLine()
+				uiText(c, a.L.T("newtask.add")).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).SingleLine()
 				if named {
-					ui.Text(c, a.L.T("newtask.find.on", d.Name)).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
+					uiText(c, a.L.T("newtask.find.on", d.Name)).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
 				}
 			})
 		}) {
@@ -121,8 +121,8 @@ func (a *App) addPanel(c *ui.Context) {
 		return a.menuRow(c, key, title, false, false, func() {
 			a.glyph(c, 16, glyph)
 			ui.Column(c).Grow(1).MinWidth(0).Gap(1).Children(func() {
-				ui.Text(c, title).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine()
-				ui.Text(c, line).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
+				uiText(c, title).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine()
+				uiText(c, line).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
 			})
 		})
 	}
@@ -251,9 +251,9 @@ func (a *App) newFolderField(c *ui.Context) {
 	if n := strings.TrimSpace(k.name); n != "" {
 		where += "/" + n
 	}
-	ui.Text(c.Key("nt-new-where"), a.L.T("newtask.new.where", where)).FontSize(t.XS).TextColor(t.InkMuted).Padding(t.S1, t.S3)
+	uiText(c.Key("nt-new-where"), a.L.T("newtask.new.where", where)).FontSize(t.XS).TextColor(t.InkMuted).Padding(t.S1, t.S3)
 	if k.err != "" {
-		ui.Text(c.Key("nt-new-err"), k.err).FontSize(t.XS).TextColor(t.Failed.Ink).Padding(t.S1, t.S3)
+		uiText(c.Key("nt-new-err"), k.err).FontSize(t.XS).TextColor(t.Failed.Ink).Padding(t.S1, t.S3)
 	}
 	a.panelFoot(c, "nt-new-foot", func() {
 		if !busy && a.button(c, a.L.T("newtask.find.back"), btnText, t.ControlSM, t.Surface) {
@@ -499,7 +499,7 @@ func (a *App) githubLine(c *ui.Context, k *ntClone) {
 	t := a.T
 	name := a.computerName(k.device)
 	if a.nt.ghDone != "" {
-		ui.Text(c.Key("nt-gh-done"), a.nt.ghDone).FontSize(t.XS).TextColor(t.InkSoft).Padding(t.S1, t.S3)
+		uiText(c.Key("nt-gh-done"), a.nt.ghDone).FontSize(t.XS).TextColor(t.InkSoft).Padding(t.S1, t.S3)
 		return
 	}
 	if !githubish(k.address) {
@@ -511,21 +511,21 @@ func (a *App) githubLine(c *ui.Context, k *ntClone) {
 	}
 	switch s.State {
 	case "signed_in":
-		ui.Text(c.Key("nt-gh-as"), a.L.T("newtask.gh.as", name, s.Account)).FontSize(t.XS).TextColor(t.InkMuted).Padding(t.S1, t.S3)
+		uiText(c.Key("nt-gh-as"), a.L.T("newtask.gh.as", name, s.Account)).FontSize(t.XS).TextColor(t.InkMuted).Padding(t.S1, t.S3)
 	case "signed_out":
 		if k.err != "" && k.access {
 			return // the error line says it, with the button
 		}
-		ui.Text(c.Key("nt-gh-out"), a.L.T("newtask.gh.out", name)).FontSize(t.XS).TextColor(t.InkSoft).Padding(t.S1, t.S3)
+		uiText(c.Key("nt-gh-out"), a.L.T("newtask.gh.out", name)).FontSize(t.XS).TextColor(t.InkSoft).Padding(t.S1, t.S3)
 		a.signInButton(c, k.device)
 	case "no_gh":
 		if s.GhInstall != nil {
 			// D345: the home can put gh there itself: the sign-in offers it.
-			ui.Text(c.Key("nt-gh-out"), a.L.T("newtask.gh.out", name)).FontSize(t.XS).TextColor(t.InkSoft).Padding(t.S1, t.S3)
+			uiText(c.Key("nt-gh-out"), a.L.T("newtask.gh.out", name)).FontSize(t.XS).TextColor(t.InkSoft).Padding(t.S1, t.S3)
 			a.signInButton(c, k.device)
 			return
 		}
-		ui.Text(c.Key("nt-gh-nogh"), a.L.T("newtask.gh.nogh", name)).FontSize(t.XS).TextColor(t.InkSoft).Padding(t.S1, t.S3)
+		uiText(c.Key("nt-gh-nogh"), a.L.T("newtask.gh.nogh", name)).FontSize(t.XS).TextColor(t.InkSoft).Padding(t.S1, t.S3)
 		ui.Row(c.Key("nt-gh-recheck")).Padding(0, t.S2).Children(func() {
 			if a.button(c, a.L.T("newtask.gh.recheck"), btnSecondary, t.ControlSM, t.Surface) {
 				a.askGitHub(k.device)
@@ -557,7 +557,7 @@ func (a *App) loginPanel(c *ui.Context, g *ntLogin, key string) {
 		name = a.todoHome()
 	}
 	line := func(k, s string, col ui.Color) {
-		ui.Text(c.Key(key+k), s).FontSize(t.XS).TextColor(col).LineHeight(a.leading(1.5)).Padding(t.S1, t.S3)
+		uiText(c.Key(key+k), s).FontSize(t.XS).TextColor(col).LineHeight(a.leading(1.5)).Padding(t.S1, t.S3)
 	}
 	codeSize := t.XL
 	if g.todos {
@@ -567,7 +567,7 @@ func (a *App) loginPanel(c *ui.Context, g *ntLogin, key string) {
 	case "starting":
 		ui.Row(c.Key(key+"-starting")).Gap(t.S2).AlignItems(ui.Center).Padding(t.S2, t.S3).Children(func() {
 			ui.Spinner(c).Size(12, 12)
-			ui.Text(c, a.L.T("newtask.gh.starting")).FontSize(t.XS).TextColor(t.InkMuted)
+			uiText(c, a.L.T("newtask.gh.starting")).FontSize(t.XS).TextColor(t.InkMuted)
 		})
 	case "offer":
 		if g.install != nil && g.install.How == "brew" {
@@ -583,23 +583,23 @@ func (a *App) loginPanel(c *ui.Context, g *ntLogin, key string) {
 				if g.install == nil || g.install.How != "brew" {
 					s = a.L.T("newtask.gh.installing", int(max(0, g.progress)))
 				}
-				ui.Text(c, s).FontSize(t.XS).TextColor(t.InkMuted).Role(ui.RoleStatus)
+				uiText(c, s).FontSize(t.XS).TextColor(t.InkMuted).Role(ui.RoleStatus)
 			})
 			if g.install == nil || g.install.How != "brew" {
 				a.progressBar(c, max(0.04, g.progress/100))
 			}
 		})
 	case "code":
-		ui.Text(c.Key(key+"-s1"), "1  "+a.L.T("newtask.gh.step1")).FontSize(t.XS).FontWeight(700).TextColor(t.InkSoft).Padding(t.S2, t.S3, 0, t.S3)
+		uiText(c.Key(key+"-s1"), "1  "+a.L.T("newtask.gh.step1")).FontSize(t.XS).FontWeight(700).TextColor(t.InkSoft).Padding(t.S2, t.S3, 0, t.S3)
 		ui.Row(c.Key(key+"-url")).Gap(t.S2).AlignItems(ui.Center).Padding(t.S1, t.S2, t.S1, t.S3).Children(func() {
-			ui.Text(c, strings.TrimPrefix(g.url, "https://")).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.Ink).SingleLine().Grow(1).MinWidth(0)
+			uiText(c, strings.TrimPrefix(g.url, "https://")).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.Ink).SingleLine().Grow(1).MinWidth(0)
 			if a.buttonFor(c, a.L.T("newtask.gh.open"), g.url, btnSecondary, t.ControlSM, t.Surface) {
 				c.OpenURL(g.url)
 			}
 		})
-		ui.Text(c.Key(key+"-s2"), "2  "+a.L.T("newtask.gh.step2")).FontSize(t.XS).FontWeight(700).TextColor(t.InkSoft).Padding(t.S2, t.S3, 0, t.S3)
+		uiText(c.Key(key+"-s2"), "2  "+a.L.T("newtask.gh.step2")).FontSize(t.XS).FontWeight(700).TextColor(t.InkSoft).Padding(t.S2, t.S3, 0, t.S3)
 		ui.Row(c.Key(key+"-code")).Gap(t.S2).AlignItems(ui.Center).Padding(t.S1, t.S2, t.S1, t.S3).Children(func() {
-			ui.Text(c, g.code).Font(t.Mono).FontSize(codeSize).FontWeight(700).TextColor(t.Ink).SingleLine().Grow(1).MinWidth(0).Label(g.code)
+			uiText(c, g.code).Font(t.Mono).FontSize(codeSize).FontWeight(700).TextColor(t.Ink).SingleLine().Grow(1).MinWidth(0).Label(g.code)
 			label := a.L.T("newtask.gh.copy")
 			if g.copied {
 				label = a.L.T("newtask.gh.copied")
@@ -611,7 +611,7 @@ func (a *App) loginPanel(c *ui.Context, g *ntLogin, key string) {
 		})
 		ui.Row(c.Key(key+"-wait")).Gap(t.S2).AlignItems(ui.Start).Padding(t.S2, t.S3, t.S1, t.S3).Children(func() {
 			ui.Spinner(c).Size(12, 12)
-			ui.Text(c, a.L.T("newtask.gh.waiting")).FontSize(t.XS).TextColor(t.InkMuted).Grow(1).MinWidth(0)
+			uiText(c, a.L.T("newtask.gh.waiting")).FontSize(t.XS).TextColor(t.InkMuted).Grow(1).MinWidth(0)
 		})
 	case "token":
 		ui.Row(c.Key(key+"-make")).Padding(t.S1, t.S2, 0, t.S2).Children(func() {

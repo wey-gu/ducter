@@ -204,10 +204,10 @@ func (a *App) whereAskLines(c *ui.Context, w *protocol.WhereAsk) {
 		if w.Site != "" {
 			line = a.L.T("where.ask.signin", w.Other, w.Site)
 		}
-		ui.Text(c.Key("w-signin"), line).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(1.45)
+		uiText(c.Key("w-signin"), line).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(1.45)
 	}
 	if w.Widens {
-		ui.Text(c.Key("w-widens"), a.L.T("switch.move.widens")).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).LineHeight(1.45)
+		uiText(c.Key("w-widens"), a.L.T("switch.move.widens")).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).LineHeight(1.45)
 	}
 	a.mark(c.Key("default"), drawClock, a.L.T("where.ask.default"), t.NeedsYou.Ink)
 }

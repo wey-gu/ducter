@@ -397,10 +397,10 @@ func (a *App) contextCard(c *ui.Context, task *store.Task, m ContextMeter) {
 	f, at := meterFracs(m)
 	ui.Column(c.Key("ctx-card")).Gap(t.S2).MinWidth(0).Children(func() {
 		ui.Row(c).AlignItems(ui.Baseline).Gap(t.S3).Children(func() {
-			ui.Text(c, a.L.T("ctx.title")).Font(t.Display).FontSize(t.MD).FontWeight(800).TextColor(t.Ink)
+			uiText(c, a.L.T("ctx.title")).Font(t.Display).FontSize(t.MD).FontWeight(800).TextColor(t.Ink)
 			ui.Spacer(c)
 			if m.Tokens != nil && m.Window != nil {
-				ui.Text(c, tokensShort(*m.Tokens)+" / "+tokensShort(*m.Window)).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.InkSoft)
+				uiText(c, tokensShort(*m.Tokens)+" / "+tokensShort(*m.Window)).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.InkSoft)
 			}
 		})
 		fill := a.meterColors(m)
@@ -421,18 +421,18 @@ func (a *App) contextCard(c *ui.Context, task *store.Task, m ContextMeter) {
 		case m.Compactions > 0:
 			line = a.L.T("ctx.unknown")
 		}
-		ui.Text(c, line).FontSize(t.SM).TextColor(t.Ink).Wrap()
+		uiText(c, line).FontSize(t.SM).TextColor(t.Ink).Wrap()
 		if m.CompactAt != nil {
 			sub := a.L.T("ctx.auto", tokensShort(*m.CompactAt))
 			if m.Level == "near" {
 				sub = a.L.T("ctx.near")
 			}
-			ui.Text(c, sub).FontSize(t.XS).TextColor(t.InkMuted).Wrap()
+			uiText(c, sub).FontSize(t.XS).TextColor(t.InkMuted).Wrap()
 		}
 		ui.Column(c.Key("ctx-rows")).Dividers(1, t.LineSoft).BorderWidth(1, 0, 0, 0).BorderColor(t.LineSoft).Children(func() {
 			row := func(key, label string, body func()) {
 				ui.Row(c.Key("ctx:"+key)).Gap(t.S3).Padding(t.S2, 0).AlignItems(ui.Start).Children(func() {
-					ui.Text(c, label).Width(96).Shrink(0).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
+					uiText(c, label).Width(96).Shrink(0).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
 					ui.Column(c).Grow(1).MinWidth(0).Children(body)
 				})
 			}
@@ -461,9 +461,9 @@ func (a *App) contextCard(c *ui.Context, task *store.Task, m ContextMeter) {
 				row("compacted", label, func() {
 					switch {
 					case m.Last != nil && m.Last.From > 0 && m.Last.To > 0:
-						ui.Text(c, a.L.T("ctx.last", tokensShort(m.Last.From), tokensShort(m.Last.To))).FontSize(t.SM).TextColor(t.InkSoft)
+						uiText(c, a.L.T("ctx.last", tokensShort(m.Last.From), tokensShort(m.Last.To))).FontSize(t.SM).TextColor(t.InkSoft)
 					case m.Last != nil && m.Last.From > 0:
-						ui.Text(c, a.L.T("ctx.last.from", tokensShort(m.Last.From))).FontSize(t.SM).TextColor(t.InkSoft)
+						uiText(c, a.L.T("ctx.last.from", tokensShort(m.Last.From))).FontSize(t.SM).TextColor(t.InkSoft)
 					}
 				})
 			}
@@ -480,7 +480,7 @@ func (a *App) contextCard(c *ui.Context, task *store.Task, m ContextMeter) {
 						what = a.L.T("ctx.compact.later")
 					}
 				}
-				ui.Text(c, what).FontSize(t.XS).TextColor(t.InkMuted).Wrap().Grow(1).MinWidth(0)
+				uiText(c, what).FontSize(t.XS).TextColor(t.InkMuted).Wrap().Grow(1).MinWidth(0)
 				if !asked && a.button(c, a.L.T("ctx.compact"), btnSecondary, t.ControlSM, t.Surface) {
 					// The person's /compact, as if typed (Claude Code runs its own;
 					// every other agent gets OAR's); mid-turn it waits for the turn.
@@ -495,7 +495,7 @@ func (a *App) contextCard(c *ui.Context, task *store.Task, m ContextMeter) {
 		}
 		if h := task.Harness(); h != "" {
 			ui.Column(c.Key("ctx-acct")).Gap(t.S1+2).Padding(t.S2, 0, 0, 0).BorderWidth(1, 0, 0, 0).BorderColor(t.LineSoft).Children(func() {
-				ui.Text(c, a.L.T("ctx.account", harnessName(h))).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
+				uiText(c, a.L.T("ctx.account", harnessName(h))).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
 				a.accountLimits(c, h)
 			})
 		}
@@ -510,7 +510,7 @@ func (a *App) accountLimits(c *ui.Context, harness string) {
 		if ok && ans.Why != "" {
 			words = a.L.T("ctx.why."+ans.Why, harnessName(harness))
 		}
-		ui.Text(c, words).FontSize(t.XS).TextColor(t.InkMuted).Wrap()
+		uiText(c, words).FontSize(t.XS).TextColor(t.InkMuted).Wrap()
 		return
 	}
 	u := ans.Usage
@@ -533,7 +533,7 @@ func (a *App) accountLimits(c *ui.Context, harness string) {
 		w := u.Windows[i]
 		main := i == tight
 		ui.Row(c.Key(fmt.Sprintf("lim:%d", i))).Gap(t.S2).AlignItems(ui.Baseline).Children(func() {
-			nm := ui.Text(c, a.limitName(w)).FontSize(t.SM).TextColor(t.InkSoft)
+			nm := uiText(c, a.limitName(w)).FontSize(t.SM).TextColor(t.InkSoft)
 			left := a.L.T("ctx.left", fmt.Sprintf("%d%%", max(0, int(math.Round((1-w.Used)*100)))))
 			col := t.InkSoft
 			switch {
@@ -542,13 +542,13 @@ func (a *App) accountLimits(c *ui.Context, harness string) {
 			case w.Used >= 0.8:
 				col = t.Waiting.Ink
 			}
-			lt := ui.Text(c, left).FontSize(t.SM).TextColor(col)
+			lt := uiText(c, left).FontSize(t.SM).TextColor(col)
 			if main {
 				nm.FontWeight(700).TextColor(t.Ink)
 				lt.FontWeight(700)
 			}
 			if at, err := time.Parse(time.RFC3339, w.ResetsAt); err == nil && w.ResetsAt != "" {
-				ui.Text(c, a.L.T("ctx.resets", a.when(at.Local()))).FontSize(t.XS).TextColor(t.InkMuted)
+				uiText(c, a.L.T("ctx.resets", a.when(at.Local()))).FontSize(t.XS).TextColor(t.InkMuted)
 			}
 		})
 	}

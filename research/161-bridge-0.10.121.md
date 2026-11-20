@@ -130,6 +130,51 @@ entry with `eligible: false` is never opened, a Space `unavailable` with D369's 
 rest are read, labels come from passive `setup`, and the trial's preflight stops on that Space (its mail lives
 there). The fake answers in this shape at 0.10.121.
 
+## 9. The live trial (2026-11-20, D409)
+
+`bun run bridge:live -- --connected --real`, run by the coordinator with the author's go: nmem 0.10.121 against
+Mem Cloud, haiku on both sides, the trial's own identity connected in Only me, the peer a native Claude Code
+session bound by `session prepare`; 873 s. Transcript and every call's raw output are outside git
+(`~/dev/ducter-evidence/bridge/live-2026-11-20T01-30-55-761Z-trial-haiku.md`, `raw-…/`); ids are not repeated
+here. **Result: FAIL, S1 0/4, S2 0/5, S3 1/3, X1 0/3.**
+
+**What Mem did** (every fact read in the raw output):
+
+| Fact | Tag |
+|---|---|
+| The peer's personal Space now reads: all 8 Spaces `observed`, no `cloud_mailbox_own_source_unreconciled` (§8's stuck Space is clear). | VERIFIED |
+| Call times (argv written at start, answer at end): the trial's identity inbox **45, 52, 52 and 48 s**; the peer's first page 41 to 50 s, its second 7 to 15 s; `contacts --query` 31 to 40 s; `send` 9 to 15 s; passive `setup` 2 s; `connections connect` 4 s. | VERIFIED |
+| Passive `setup` with the trial's connected context: `state: "enable_needed"`, the identity under `endpoint.address` ("Enable explicitly to reuse its mailbox; no credential will be created"). Its inbox read works all the same (the next row). Whether `open` and `reply` need `--enable` is not shown: none ran. | VERIFIED, open |
+| The peer's message to the trial was in the trial's inbox at the first check after it: one entry, `mine: true`, `state: "pending"`, `eligible: true`, `expires_at_ms` (7 days after the send), `sequence: 1`, `sender {actor_id, member: "Member <id>", agent: "Bridge agent", agent_id}`, `in_reply_to: null`, `space_id: "default"`, `reference` and Mem's `open_args` / `reply_args_prefix`. | VERIFIED |
+| It is in **"Before the team"** (`default`), not Only me where the trial is connected: plain `contacts` answers both `cards[]` (one per Space, `bc1:` handles, each with its `space` and the grouped `identity_contact`) and `contacts[]` (one per identity, a `bi1:` handle, `spaces[]`, `send_args_prefix`), and the peer took the first per-Space card. | VERIFIED |
+| Our sent mail's read status is no longer at the top: each `spaces[]` entry carries its own `outgoing` (`{message, status, read_recipients, recipients}`). | VERIFIED |
+| Paging: the top-level `next` is a `bip1:` cursor (the Space roster and the Spaces still pending); each Space has its own `next_cursor`; a later page lists only the Spaces with more, and `incomplete` is true until the last page. | VERIFIED |
+| The peer's mailbox (26 older entries from the person's own partner, `ducter`, all `state: "pending"`, plus one expired): page 1 shows the personal Space's `sequence` 1 to 20, page 2 shows 26 and 27; **21 to 25 are on no page**, the same on three reads. Hidden by design (acknowledged, archived) or lost at the page boundary is not shown. | VERIFIED (the gap), open (why) |
+| The peer's first two sends failed on its own argv (an inline body Mem couldn't confirm; a `--resolved-space-id` it took from an old hint); the third went (`delivered`, `queued`). | VERIFIED |
+
+**Why each scenario failed:**
+
+1. **Ducter never saw its mail (S1, X1).** Its client gave every nmem call 20 s; the identity inbox takes about
+   50 s, so every read was killed. The start mark (B14) read at startup was killed, so each later check tried the
+   mark again and that read was killed too: the raw output has exactly one `inbox` per check and never an `open`
+   or a `setup` for the member. Nothing in the inbox's shape, Space, paging or `enable_needed` was the cause;
+   the entry parses as the person's own agent's request (`mine`, its Space, Mem's argv). VERIFIED (raw output,
+   and the fake replays it: `packages/partner/test/bridge-live-replay.test.ts`).
+2. **The partner told the person to /exit their terminal (S2, S3).** For "问一下我终端里那个 Claude…" haiku looked
+   in the person's own records (`own_session_find`, on the author's Mac), found a Claude Code session open in
+   ~/dev/ducter, tried to carry it on (`own_session_continue`, refused: still open) and relayed D376's refusal.
+   It never called `bridge_contacts` (no `contacts` with the trial's context in the raw output). The persona's
+   rule 2d named own sessions for "接着我终端里那个 Claude 在做的" and nothing for asking one. The eval reproduces
+   it once the conversation and records look like the run's (1 of 6 before the change, 6 of 6 after). VERIFIED.
+3. **The peer never reached the newest mail (all).** The harness counted right: "this run's on none yet" is true,
+   because Ducter sent nothing (1 and 2). The peer paged to the end each time (two pages). The gap in
+   `sequence` above is Mem's to explain; it did not hide anything of this run. VERIFIED (harness), open (gap).
+
+What changed in D409: a 120 s limit per call, our sent mail's read status from `spaces[].outgoing` (and kept
+across pages), the trial's start mark read before the terminal's first turn and its tee killing the real nmem
+when a call is given up; rule 2d says asking one of the person's agents, even one open now, is
+`bridge_contacts` then `bridge_send`, and both own-session tools say so for an open session while Bridge is on.
+
 ## 7. Implications for Ducter
 
 1. 0.10.121 does not unblock the trial; Mem's server might. One read-only inbox read decides it.
@@ -137,6 +182,10 @@ there). The fake answers in this shape at 0.10.121.
    double-reads and mislabels Spaces on any multi-Space identity.
 3. D335's 25 s wait is refused; `--watch` is the real long-poll, `--wait` tops out at 5 s.
 4. Mem now owns arrival notices for agent sessions; Ducter must not end up as a second voice for the same mail.
+5. (§9) The identity inbox is slow: about 50 s per read with eight Spaces. A client limit has to be sized to Mem's
+   measured pace, not to a guess, and a check must survive one that long.
+6. (§9) Asking a session that is open now is Bridge's job; carrying one on is the own-session path's, only once
+   it is closed. The persona has to say which, in the person's words for each.
 
 ## Summary
 
@@ -148,4 +197,7 @@ identity. `inbox --wait` exists but only 1–5 s, so Ducter's 25 s long-poll is 
 `inbox --watch` streams changes. New `bridge notices` lets the Mem app and plugin hooks remind sessions and the
 person of mail. Proposed: detect the identity inbox by its help text, use Mem's open/reply argv, long-poll via
 `--watch` (or `--wait 5`), label connections by device, check notices; rerun the trial after one read-only inbox
-read shows the mailbox is clear; Weizhen's message drafted.
+read shows the mailbox is clear; Weizhen's message drafted. The live trial of 2026-11-20 (§9) failed every scenario for two reasons on
+Ducter's side: a 20 s limit on calls the identity inbox answers in about 50 s, and a persona that sent "ask my
+terminal Claude" down the own-session path, which refuses an open session; both fixed (D409). Mem's side: a
+`sequence` gap across pages to explain, and whether `open`/`reply` need `--enable` after `enable_needed`.

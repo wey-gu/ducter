@@ -110,7 +110,7 @@ func (a *App) Tray(max int) TrayView {
 		Label:     a.trayLabel(state),
 		Working:   n[1],
 		Needs:     needs,
-		Say:       autospace(a.headSay(b, "", n)),
+		Say:       unjoin(autospace(a.headSay(b, "", n))), // a native menu line: no joiners (D408)
 		Decisions: a.TrayDecisions(max),
 		Partners:  a.trayPartners(),
 	}

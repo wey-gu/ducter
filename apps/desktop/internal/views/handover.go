@@ -430,7 +430,7 @@ func (a *App) handWhat(c *ui.Context, wide bool) {
 		}
 		back.Children(func() {
 			a.glyph(c, 16, drawBack(t.Ink))
-			ui.Text(c, a.L.T("hand.browse.back")).FontWeight(600).TextColor(t.Ink).AccessHidden(true)
+			uiText(c, a.L.T("hand.browse.back")).FontWeight(600).TextColor(t.Ink).AccessHidden(true)
 		})
 		if back.Clicked() {
 			a.handBrowse(false)
@@ -442,7 +442,7 @@ func (a *App) handWhat(c *ui.Context, wide bool) {
 		a.handList(c)
 		return
 	}
-	ui.Text(c.Key("ask"), a.L.T("hand.ask", name)).Font(t.Display).FontSize(t.LG).FontWeight(800).TextColor(t.Ink).Padding(t.S1, t.S1, t.S1, t.S1).Role(ui.RoleText)
+	uiText(c.Key("ask"), a.L.T("hand.ask", name)).Font(t.Display).FontSize(t.LG).FontWeight(800).TextColor(t.Ink).Padding(t.S1, t.S1, t.S1, t.S1).Role(ui.RoleText)
 	field := ui.Row(c.Key("find")).Gap(t.S2).AlignItems(ui.Center).MinHeight(56).Padding(0, t.S2, 0, t.S4).Radius(t.RadiusLG).Background(t.Surface).Border(2, t.Line2).Shadow(0, 3, 0, 0, t.Line2)
 	field.Children(func() {
 		a.glyph(c, 18, drawMagnifier(t.InkSoft))
@@ -475,13 +475,13 @@ func (a *App) handWhat(c *ui.Context, wide bool) {
 				if !wide {
 					moved = a.L.T("hand.said.moved.narrow", name)
 				}
-				ui.Text(c.Key("moved"), moved).FontSize(t.SM).TextColor(t.InkMuted).Padding(0, t.S1)
+				uiText(c.Key("moved"), moved).FontSize(t.SM).TextColor(t.InkMuted).Padding(0, t.S1)
 			}
 		})
 	}
 	if !said && h.subject == "" && h.setID == "" {
 		ui.Column(c.Key("start")).Gap(t.S4).Padding(t.S3, t.S1, 0, t.S1).Children(func() {
-			ui.Text(c.Key("hint"), a.L.T("hand.ask.hint")).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(a.leading(1.5))
+			uiText(c.Key("hint"), a.L.T("hand.ask.hint")).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(a.leading(1.5))
 			a.handSuggest(c, false)
 			a.handBrowseLink(c, false)
 		})
@@ -489,7 +489,7 @@ func (a *App) handWhat(c *ui.Context, wide bool) {
 	}
 	// The found line: its facts apart (D291).
 	if h.finding {
-		ui.Text(c.Key("finding"), a.L.T("hand.finding")).FontSize(t.SM).TextColor(t.InkMuted).Role(ui.RoleStatus).Padding(t.S2, t.S1)
+		uiText(c.Key("finding"), a.L.T("hand.finding")).FontSize(t.SM).TextColor(t.InkMuted).Role(ui.RoleStatus).Padding(t.S2, t.S1)
 	} else if f := h.found; f != nil && f.N > 0 {
 		ui.Row(c.Key("found")).Wrap().Gap(t.S3).AlignItems(ui.Baseline).Padding(t.S2, t.S1, 0, t.S1).Role(ui.RoleStatus).Children(func() {
 			subj := firstNonEmpty(f.Subject, h.subject)
@@ -497,18 +497,18 @@ func (a *App) handWhat(c *ui.Context, wide bool) {
 			if subj != "" {
 				head = a.L.T("hand.found", f.N, subj)
 			}
-			ui.Text(c.Key("head"), head).Font(t.Display).FontSize(t.LG).FontWeight(800).TextColor(t.Ink)
+			uiText(c.Key("head"), head).Font(t.Display).FontSize(t.LG).FontWeight(800).TextColor(t.Ink)
 			if f.InTitle > 0 && f.InTitle < f.N {
-				ui.Text(c.Key("title"), a.nCount("hand.found.title", f.InTitle)).FontSize(t.SM).TextColor(t.InkMuted)
+				uiText(c.Key("title"), a.nCount("hand.found.title", f.InTitle)).FontSize(t.SM).TextColor(t.InkMuted)
 			}
 			if f.ByLabel > 0 {
-				ui.Text(c.Key("label"), a.nCount("hand.found.label", f.ByLabel)).FontSize(t.SM).TextColor(t.InkMuted)
+				uiText(c.Key("label"), a.nCount("hand.found.label", f.ByLabel)).FontSize(t.SM).TextColor(t.InkMuted)
 			}
 			if f.ByMeaning > 0 && f.ByMeaning < f.N {
-				ui.Text(c.Key("meaning"), a.nCount("hand.found.meaning", f.ByMeaning)).FontSize(t.SM).TextColor(t.InkMuted)
+				uiText(c.Key("meaning"), a.nCount("hand.found.meaning", f.ByMeaning)).FontSize(t.SM).TextColor(t.InkMuted)
 			}
 			if f.NoMeaning != "" {
-				ui.Text(c.Key("nomodel"), a.L.T("hand.found.nomodel")).FontSize(t.SM).TextColor(t.Waiting.Ink)
+				uiText(c.Key("nomodel"), a.L.T("hand.found.nomodel")).FontSize(t.SM).TextColor(t.Waiting.Ink)
 			}
 		})
 	}
@@ -521,8 +521,8 @@ func (a *App) handWhat(c *ui.Context, wide bool) {
 			about = h.heard.About
 		}
 		ui.Column(c.Key("none")).Gap(t.S2).AlignItems(ui.Center).Padding(t.S7, t.S4, 0, t.S4).Children(func() {
-			ui.Text(c.Key("h"), a.L.T("hand.found.none", "「"+about+"」")).Font(t.Display).FontSize(t.MD).FontWeight(800).TextColor(t.Ink).TextAlign(ui.Center)
-			ui.Text(c.Key("or"), a.L.T("hand.none.or")).FontSize(t.SM).TextColor(t.InkMuted).TextAlign(ui.Center)
+			uiText(c.Key("h"), a.L.T("hand.found.none", "「"+about+"」")).Font(t.Display).FontSize(t.MD).FontWeight(800).TextColor(t.Ink).TextAlign(ui.Center)
+			uiText(c.Key("or"), a.L.T("hand.none.or")).FontSize(t.SM).TextColor(t.InkMuted).TextAlign(ui.Center)
 			ui.Box(c).Height(t.S2)
 			a.handSuggest(c, true)
 			a.handBrowseLink(c, true)
@@ -550,7 +550,7 @@ func (a *App) handList(c *ui.Context) {
 		if g == "do" {
 			label = a.L.T("pile.g.do", a.personaName())
 		}
-		ui.Text(c.Key("gh:"+g), label).FontSize(t.SM).FontWeight(700).TextColor(t.InkMuted).Padding(t.S4, t.S1, 0, t.S1).Role(ui.RoleText)
+		uiText(c.Key("gh:"+g), label).FontSize(t.SM).FontWeight(700).TextColor(t.InkMuted).Padding(t.S4, t.S1, 0, t.S1).Role(ui.RoleText)
 		for _, it := range its {
 			a.handItem(c, it)
 		}
@@ -561,8 +561,8 @@ func (a *App) handList(c *ui.Context) {
 func (a *App) heardPart(c *ui.Context, key, label, words string) {
 	t := a.T
 	ui.Row(c.Key("hp:"+key)).Wrap().Gap(t.S2).AlignItems(ui.Baseline).Padding(t.S2, t.S3).Radius(12).Background(t.SurfaceSunken).Shrink(1).MinWidth(0).AlignSelf(ui.Start).Children(func() {
-		ui.Text(c.Key("l"), label).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
-		ui.Text(c.Key("w"), words).FontWeight(700).TextColor(t.Ink).Shrink(1).MinWidth(0)
+		uiText(c.Key("l"), label).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
+		uiText(c.Key("w"), words).FontWeight(700).TextColor(t.Ink).Shrink(1).MinWidth(0)
 	})
 }
 
@@ -578,7 +578,7 @@ func (a *App) handSuggest(c *ui.Context, center bool) {
 		align, justify = ui.Center, ui.Center
 	}
 	ui.Column(c.Key("suggest")).Gap(t.S2).AlignItems(align).Children(func() {
-		ui.Text(c.Key("l"), a.L.T("hand.ask.recent")).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
+		uiText(c.Key("l"), a.L.T("hand.ask.recent")).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
 		ui.Row(c.Key("chips")).Wrap().Gap(t.S2).Justify(justify).Children(func() {
 			for _, s := range h.suggest {
 				s := s
@@ -588,7 +588,7 @@ func (a *App) handSuggest(c *ui.Context, center bool) {
 					chip.Background(t.Surface).Shadow(0, 2, 0, 0, t.Line2)
 				}
 				chip.Children(func() {
-					ui.Text(c, s).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).AccessHidden(true)
+					uiText(c, s).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).AccessHidden(true)
 				})
 				if chip.Clicked() {
 					h.query, h.queryAt, h.focusFind = s, a.Now().Add(-handDebounce), true
@@ -617,9 +617,9 @@ func (a *App) handBrowseLink(c *ui.Context, center bool) {
 		link.Background(t.Surface).Shadow(0, 2, 0, 0, t.Line2)
 	}
 	link.Children(func() {
-		ui.Text(c, a.L.T("hand.browse")).FontWeight(700).TextColor(t.Ink).AccessHidden(true)
+		uiText(c, a.L.T("hand.browse")).FontWeight(700).TextColor(t.Ink).AccessHidden(true)
 		if n > 0 {
-			ui.Text(c, a.L.T("hand.browse.n", a.personaName(), n)).FontSize(t.SM).TextColor(t.InkMuted).FontFeatures("tnum").AccessHidden(true)
+			uiText(c, a.L.T("hand.browse.n", a.personaName(), n)).FontSize(t.SM).TextColor(t.InkMuted).FontFeatures("tnum").AccessHidden(true)
 		}
 		a.glyph(c, 14, drawChevron(t.InkMuted, false))
 	})
@@ -670,24 +670,24 @@ func (a *App) handItem(c *ui.Context, it protocol.FoundItem) {
 			ui.Column(c.Key("body")).Gap(6).Grow(1).Shrink(1).MinWidth(0).Children(func() {
 				ui.Row(c.Key("head")).Gap(8).AlignItems(ui.Center).Children(func() {
 					a.todoMark(c, it.Item.Kind, 20)
-					ui.Text(c.Key("title"), keepWords(autospace(it.Item.Title))).FontWeight(600).TextColor(t.Ink).MaxLines(2).Shrink(1).MinWidth(0)
+					uiText(c.Key("title"), keepWords(autospace(it.Item.Title))).FontWeight(600).TextColor(t.Ink).MaxLines(2).Shrink(1).MinWidth(0)
 				})
 				if it.Group == "decide" {
 					ask := it.Ask
 					if ask == "" {
 						ask = it.Why
 					}
-					ui.Text(c.Key("ask"), ask).TextColor(t.Ink).LineHeight(a.leading(1.45))
+					uiText(c.Key("ask"), ask).TextColor(t.Ink).LineHeight(a.leading(1.45))
 					if it.Pick != "" {
 						ui.Row(c.Key("sugg")).Gap(t.S2).AlignItems(ui.Center).Children(func() {
 							ui.Row(c.Key("tag")).Height(20).Padding(0, t.S2).Radius(10).AlignItems(ui.Center).Background(t.NeedsYou.Surface).Children(func() {
-								ui.Text(c, a.L.T("hand.suggested")).FontSize(t.XS).FontWeight(700).TextColor(t.NeedsYou.Ink)
+								uiText(c, a.L.T("hand.suggested")).FontSize(t.XS).FontWeight(700).TextColor(t.NeedsYou.Ink)
 							})
-							ui.Text(c.Key("pick"), a.L.TFamily("pile.pick."+it.Pick, a.personaName())).FontSize(t.SM).TextColor(t.InkSoft)
+							uiText(c.Key("pick"), a.L.TFamily("pile.pick."+it.Pick, a.personaName())).FontSize(t.SM).TextColor(t.InkSoft)
 						})
 					}
 				} else {
-					ui.Text(c.Key("why"), it.Why).TextColor(t.InkSoft)
+					uiText(c.Key("why"), it.Why).TextColor(t.InkSoft)
 				}
 				ui.Row(c.Key("facts")).Wrap().Gap(10).AlignItems(ui.Center).Children(func() {
 					// Where it is, as plain words (its app's mark is on the title already).
@@ -695,7 +695,7 @@ func (a *App) handItem(c *ui.Context, it protocol.FoundItem) {
 					if it.Item.Kind == "github" && it.Item.Where != "" {
 						where = it.Item.Where + it.Item.Label
 					}
-					wl := ui.Text(c.Key("where"), where).FontSize(t.SM).FontWeight(600).TextColor(t.InkSoft).FontFeatures("tnum")
+					wl := uiText(c.Key("where"), where).FontSize(t.SM).FontWeight(600).TextColor(t.InkSoft).FontFeatures("tnum")
 					if it.Item.URL != "" {
 						wl.Cursor(ui.CursorPointer).Role(ui.RoleLink).Label(spoken(a.L, where, a.L.T("todos.chip.open", protocol.SourceKindName(it.Item.Kind))))
 						if wl.Clicked() {
@@ -704,12 +704,12 @@ func (a *App) handItem(c *ui.Context, it protocol.FoundItem) {
 					}
 					if it.Size != "" {
 						ui.Row(c.Key("size")).Height(20).Padding(0, t.S2).Radius(10).AlignItems(ui.Center).Background(t.SurfaceSunken).Children(func() {
-							ui.Text(c, a.L.T("pile.size."+it.Size)).FontSize(t.XS).TextColor(t.InkMuted)
+							uiText(c, a.L.T("pile.size."+it.Size)).FontSize(t.XS).TextColor(t.InkMuted)
 						})
 					}
 					if it.By == "meaning" {
 						ui.Row(c.Key("meaning")).Height(20).Padding(0, t.S2).Radius(10).AlignItems(ui.Center).Background(t.Asleep.Surface).Children(func() {
-							ui.Text(c, a.L.T("hand.meaning")).FontSize(t.XS).FontWeight(600).TextColor(t.Asleep.Ink)
+							uiText(c, a.L.T("hand.meaning")).FontSize(t.XS).FontWeight(600).TextColor(t.Asleep.Ink)
 						})
 					}
 				})
@@ -734,7 +734,7 @@ func (a *App) handItem(c *ui.Context, it protocol.FoundItem) {
 					}
 					return
 				}
-				link := ui.Text(c.Key("note-link"), a.L.T("hand.itemnote")).FontSize(t.SM).TextColor(t.InkMuted).Underline().Cursor(ui.CursorPointer).Role(ui.RoleButton).Focusable()
+				link := uiText(c.Key("note-link"), a.L.T("hand.itemnote")).FontSize(t.SM).TextColor(t.InkMuted).Underline().Cursor(ui.CursorPointer).Role(ui.RoleButton).Focusable()
 				if link.Clicked() {
 					h.noteOpen[ref] = true
 				}
@@ -754,7 +754,7 @@ func (a *App) handHowCol(c *ui.Context) {
 	n := len(h.handTicked())
 	sec := ui.Column(c.Key("note")).Gap(t.S2)
 	sec.Children(func() {
-		ui.Text(c.Key("h"), a.L.T("hand.note", name)).Font(t.Display).FontSize(t.MD).FontWeight(800).TextColor(t.Ink).Role(ui.RoleText)
+		uiText(c.Key("h"), a.L.T("hand.note", name)).Font(t.Display).FontSize(t.MD).FontWeight(800).TextColor(t.Ink).Role(ui.RoleText)
 		ta := ui.TextArea(c.Key("note-in"), &h.note).Lines(3, 8).MinHeight(0).Placeholder(a.L.T("hand.note.ph")).Label(a.L.T("hand.note", name)).
 			Background(t.Surface).Border(2, t.Line2).Radius(16).Padding(t.S3, t.S4).FontSize(t.Bubble).LineHeight(a.leading(1.55))
 		if ta.Focused() {
@@ -774,7 +774,7 @@ func (a *App) handHowCol(c *ui.Context) {
 					ui.Box(c.Key("sep")).Height(1).Background(t.LineSoft).Margin(0, t.S4)
 				}
 				ui.Row(c.Key(fmt.Sprint("w", i))).Gap(t.S3).AlignItems(ui.Center).MinHeight(60).Padding(0, t.S4).Children(func() {
-					ui.Text(c, l).FontSize(t.SM).FontWeight(700).TextColor(t.InkMuted).Width(84).Shrink(0)
+					uiText(c, l).FontSize(t.SM).FontWeight(700).TextColor(t.InkMuted).Width(84).Shrink(0)
 					ui.Box(c).Height(14).Width(140).Radius(7).Background(t.SurfaceSunken)
 				})
 			}
@@ -849,7 +849,7 @@ func (a *App) handHowCol(c *ui.Context) {
 	}
 	shapes := ui.Column(c.Key("how")).Gap(t.S2).Role(ui.RoleRadioGroup).Label(a.L.T("hand.how"))
 	shapes.Children(func() {
-		ui.Text(c.Key("h"), a.L.T("hand.how")).Font(t.Display).FontSize(t.MD).FontWeight(800).TextColor(t.Ink).Padding(0, 0, t.S1, 0)
+		uiText(c.Key("h"), a.L.T("hand.how")).Font(t.Display).FontSize(t.MD).FontWeight(800).TextColor(t.Ink).Padding(0, 0, t.S1, 0)
 		chosen := h.handShape()
 		if how.AddTo != nil {
 			line := a.L.T("hand.addto.line", how.AddTo.N)
@@ -914,16 +914,16 @@ func (a *App) shapeCard(c *ui.Context, key, name, line, why string, on, suggeste
 		}
 		ui.Column(c.Key("t")).Gap(3).Grow(1).Shrink(1).MinWidth(0).Children(func() {
 			ui.Row(c.Key("n")).Gap(t.S2).AlignItems(ui.Center).Children(func() {
-				ui.Text(c, name).FontWeight(700).TextColor(t.Ink)
+				uiText(c, name).FontWeight(700).TextColor(t.Ink)
 				if suggested {
 					ui.Row(c.Key("sugg")).Height(20).Padding(0, t.S2).Radius(10).AlignItems(ui.Center).Background(t.NeedsYou.Surface).Children(func() {
-						ui.Text(c, a.L.T("hand.suggested")).FontSize(t.XS).FontWeight(700).TextColor(t.NeedsYou.Ink)
+						uiText(c, a.L.T("hand.suggested")).FontSize(t.XS).FontWeight(700).TextColor(t.NeedsYou.Ink)
 					})
 				}
 			})
-			ui.Text(c.Key("line"), line).FontSize(t.SM).TextColor(t.InkMuted)
+			uiText(c.Key("line"), line).FontSize(t.SM).TextColor(t.InkMuted)
 			if why != "" && on {
-				ui.Text(c.Key("why"), why).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(a.leading(1.5)).Padding(t.S1, 0, 0, 0)
+				uiText(c.Key("why"), why).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(a.leading(1.5)).Padding(t.S1, 0, 0, 0)
 			}
 		})
 	})
@@ -947,11 +947,11 @@ func (a *App) howRow(c *ui.Context, key, label, value, why string, can bool) boo
 		}
 	}
 	row.Children(func() {
-		ui.Text(c.Key("l"), label).FontSize(t.SM).FontWeight(700).TextColor(t.InkMuted).Width(84).Shrink(0).AccessHidden(true)
+		uiText(c.Key("l"), label).FontSize(t.SM).FontWeight(700).TextColor(t.InkMuted).Width(84).Shrink(0).AccessHidden(true)
 		ui.Column(c.Key("v")).Gap(2).Grow(1).Shrink(1).MinWidth(0).Children(func() {
-			ui.Text(c.Key("v"), value).FontWeight(700).TextColor(t.Ink).MaxLines(2).AccessHidden(true)
+			uiText(c.Key("v"), value).FontWeight(700).TextColor(t.Ink).MaxLines(2).AccessHidden(true)
 			if why != "" {
-				ui.Text(c.Key("why"), why).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(a.leading(1.4)).AccessHidden(true)
+				uiText(c.Key("why"), why).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(a.leading(1.4)).AccessHidden(true)
 			}
 		})
 		if can {
@@ -976,7 +976,7 @@ func (a *App) pickLine(c *ui.Context, key, label string, on bool) bool {
 		if on {
 			ink = t.Ink
 		}
-		ui.Text(c, label).FontSize(t.SM).FontWeight(600).TextColor(ink).Grow(1).Shrink(1).MinWidth(0)
+		uiText(c, label).FontSize(t.SM).FontWeight(600).TextColor(ink).Grow(1).Shrink(1).MinWidth(0)
 		if on {
 			a.glyph(c, 14, drawCheck(t.Ink))
 		}
@@ -992,9 +992,9 @@ func (a *App) handFoot(c *ui.Context, wide bool) {
 	refs := h.handTicked()
 	ui.Row(c.Key("hand-foot")).Gap(t.S3).AlignItems(ui.Center).Padding(t.S3, t.S6, t.S4, t.S6).BorderWidth(1, 0, 0, 0).BorderColor(t.LineSoft).Children(func() {
 		ui.Column(c.Key("l")).Gap(2).Grow(1).Shrink(1).MinWidth(0).Children(func() {
-			ui.Text(c.Key("n"), a.L.T("hand.picked", len(refs))).FontSize(t.SM).TextColor(t.InkMuted).FontFeatures("tnum").Role(ui.RoleStatus)
+			uiText(c.Key("n"), a.L.T("hand.picked", len(refs))).FontSize(t.SM).TextColor(t.InkMuted).FontFeatures("tnum").Role(ui.RoleStatus)
 			if h.said != "" {
-				ui.Text(c.Key("said"), h.said).FontSize(t.SM).TextColor(t.Failed.Ink).Role(ui.RoleStatus)
+				uiText(c.Key("said"), h.said).FontSize(t.SM).TextColor(t.Failed.Ink).Role(ui.RoleStatus)
 			}
 		})
 		if !wide && h.step == 1 {
@@ -1027,7 +1027,7 @@ func (a *App) handFoot(c *ui.Context, wide bool) {
 				sub = a.L.T("hand.shape." + h.handShape())
 			}
 			if sub != "" && len(refs) > 0 {
-				ui.Text(c.Key("shape"), sub).FontSize(t.SM).TextColor(t.InkMuted)
+				uiText(c.Key("shape"), sub).FontSize(t.SM).TextColor(t.InkMuted)
 			}
 		})
 	})
@@ -1042,7 +1042,7 @@ func (a *App) pileSubjects(c *ui.Context, pv *protocol.PileView) {
 	}
 	t := a.T
 	ui.Row(c.Key("subjects")).Wrap().Gap(t.S2).AlignItems(ui.Center).Padding(t.S1, 0, t.S1, 0).Role(ui.RoleGroup).Label(a.L.T("hand.subjects")).Children(func() {
-		ui.Text(c.Key("l"), a.L.T("hand.subjects")).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).Padding(0, t.S1, 0, 0)
+		uiText(c.Key("l"), a.L.T("hand.subjects")).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).Padding(0, t.S1, 0, 0)
 		for _, s := range pv.Subjects {
 			s := s
 			chip := ui.Row(c.Key("sj:"+s.Name)).Height(30).Padding(0, t.S3).Gap(t.S2).Radius(15).AlignItems(ui.Center).Background(t.SurfaceSunken).
@@ -1051,15 +1051,15 @@ func (a *App) pileSubjects(c *ui.Context, pv *protocol.PileView) {
 				chip.Background(t.Surface).Shadow(0, 2, 0, 0, t.Line2)
 			}
 			chip.Children(func() {
-				ui.Text(c.Key("n"), s.Name).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).AccessHidden(true)
-				ui.Text(c.Key("c"), fmt.Sprint(s.N)).FontSize(t.SM).TextColor(t.InkMuted).FontFeatures("tnum").AccessHidden(true)
+				uiText(c.Key("n"), s.Name).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).AccessHidden(true)
+				uiText(c.Key("c"), fmt.Sprint(s.N)).FontSize(t.SM).TextColor(t.InkMuted).FontFeatures("tnum").AccessHidden(true)
 			})
 			if chip.Clicked() {
 				a.openHandSubject(s.Name)
 			}
 		}
 		if pv.SubjectsMore > 0 {
-			ui.Text(c.Key("more"), a.L.T("hand.subjects.more", pv.SubjectsMore)).FontSize(t.SM).TextColor(t.InkMuted)
+			uiText(c.Key("more"), a.L.T("hand.subjects.more", pv.SubjectsMore)).FontSize(t.SM).TextColor(t.InkMuted)
 		}
 	})
 }

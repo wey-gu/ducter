@@ -220,7 +220,7 @@ func (a *App) emptyConversation(c *ui.Context) {
 			// What it can do, then its promise: a line each, never broken mid-thought.
 			ui.Column(c).AlignItems(ui.Center).Children(func() {
 				for _, s := range sentences(autospace(a.canLine())) {
-					ui.Text(c, s).FontSize(t.LG).TextAlign(ui.Center).TextColor(t.InkSoft).LineHeight(leadingFor(s, 1.55)).Balance()
+					uiText(c, s).FontSize(t.LG).TextAlign(ui.Center).TextColor(t.InkSoft).LineHeight(leadingFor(s, 1.55)).Balance()
 				}
 			})
 		})
@@ -229,7 +229,7 @@ func (a *App) emptyConversation(c *ui.Context) {
 			ui.Column(c).Margin(t.S3, 0, 0, 0).AlignItems(ui.Center).Children(func() { a.calTodayLine(c, f.Today) })
 		}
 		ui.Column(c).Gap(t.S3).Margin(t.S6, 0, 0, 0).AlignItems(ui.Stretch).Width(640).MaxWidthPercent(100).Children(func() {
-			ui.Text(c, a.L.T("empty.try")).FontSize(t.XS).FontWeight(800).TextColor(t.InkMuted).LetterSpacing(0.5).Margin(0, 0, 0, 2)
+			uiText(c, a.L.T("empty.try")).FontSize(t.XS).FontWeight(800).TextColor(t.InkMuted).LetterSpacing(0.5).Margin(0, 0, 0, 2)
 			ui.Row(c).Wrap().Gap(t.S3).AlignItems(ui.Stretch).Children(func() {
 				for n, text := range a.suggestions() {
 					text := autospace(text)
@@ -238,7 +238,7 @@ func (a *App) emptyConversation(c *ui.Context) {
 						Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(text).Focusable()
 					a.buttonLook(c, chip, btnSecondary, t.ControlLG, t.Surface)
 					chip.Children(func() {
-						ui.Text(c, text).FontSize(t.MD).LineHeight(leadingFor(text, 1.45)).Grow(1).MinWidth(0)
+						uiText(c, text).FontSize(t.MD).LineHeight(leadingFor(text, 1.45)).Grow(1).MinWidth(0)
 					})
 					if chip.Clicked() {
 						a.draft = unautospace(text)
@@ -258,7 +258,7 @@ func (a *App) helloNews(c *ui.Context, n *protocol.FirstNews) {
 	r := t.BubbleRadius
 	ui.Column(c).AlignItems(ui.Center).Gap(t.S2).Margin(t.S2, 0, 0, 0).Children(func() {
 		ui.Column(c).Background(t.PartnerBubble).Padding(t.S2+2, t.S4).Radius(r[1], r[0], r[3], r[2]).MaxWidth(t.BubbleMeasure).Children(func() {
-			ui.Text(c, text).FontSize(t.PartnerSize).LineHeight(leadingFor(text, 1.5)).TextColor(t.OnPartnerBubble)
+			uiText(c, text).FontSize(t.PartnerSize).LineHeight(leadingFor(text, 1.5)).TextColor(t.OnPartnerBubble)
 		})
 		if a.button(c, a.L.T("hello.news.open"), btnText, t.ControlSM, t.Bg) {
 			if n.TaskID != "" {
@@ -296,7 +296,7 @@ func (a *App) header(c *ui.Context) {
 			}
 			face.Children(func() { a.partnerFace(c, "bar", a.presence(c), 44) })
 			ui.Column(c).Gap(0).MinWidth(0).Children(func() {
-				name := ui.Text(c.Key("who-name"), a.S.PersonaName).FontSize(barText).FontWeight(600).TextColor(t.Ink).LineHeight(1.25).SingleLine().
+				name := uiText(c.Key("who-name"), a.S.PersonaName).FontSize(barText).FontWeight(600).TextColor(t.Ink).LineHeight(1.25).SingleLine().
 					Padding(1, t.S1+2).Radius(t.RadiusXS).Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(spoken(a.L, a.L.T("nav.partner"), a.S.PersonaName)).
 					Focusable().Tooltip(about).AlignSelf(ui.Start)
 				if name.Hovered() || name.Pressed() || face.Hovered() || face.Pressed() {
@@ -326,7 +326,7 @@ func (a *App) header(c *ui.Context) {
 						l.Children(func() {
 							ui.Row(c).Gap(t.S3).AlignItems(ui.Center).AccessHidden(true).Children(func() {
 								for _, p := range parts {
-									ui.Text(c, p).FontSize(t.XS).TextColor(ink).SingleLine()
+									uiText(c, p).FontSize(t.XS).TextColor(ink).SingleLine()
 								}
 							})
 						})
@@ -337,7 +337,7 @@ func (a *App) header(c *ui.Context) {
 						}
 						return
 					}
-					ui.Text(c, words).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Padding(1, t.S1+2)
+					uiText(c, words).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Padding(1, t.S1+2)
 				})
 			})
 			a.partnerSwitch(c) // D309: the other partners, a click away
@@ -480,7 +480,7 @@ func (a *App) pendingRow(c *ui.Context, p *pendingMsg) {
 		}
 		if anyFailed(p.atts) {
 			ui.Row(c.Key("pfail:" + p.clientID)).Gap(t.S2).AlignItems(ui.Center).Children(func() {
-				ui.Text(c, a.L.T("media.failed")).FontSize(t.XS).FontWeight(700).TextColor(t.Failed.Ink)
+				uiText(c, a.L.T("media.failed")).FontSize(t.XS).FontWeight(700).TextColor(t.Failed.Ink)
 				if a.button(c, a.L.T("media.retry"), btnText, t.ControlSM, t.Bg) {
 					a.retryPictures(p.atts)
 				}
@@ -513,7 +513,7 @@ func (a *App) userReplyBubble(c *ui.Context, text string, pending bool, ref *pro
 			tr = t.BubbleJoin
 		}
 		if ref == nil && still == nil {
-			b := ui.Text(c, autospace(text)).Selectable().CopyData(autospaceCopy).SelectionColor(t.Highlight).FontSize(t.Bubble).LineHeight(leadingFor(text, 1.5)).
+			b := uiText(c, autospace(text)).Selectable().CopyData(autospaceCopy).SelectionColor(t.Highlight).FontSize(t.Bubble).LineHeight(leadingFor(text, 1.5)).
 				TextColor(t.OnUserBubble).Padding(t.S2+2, t.S4-2).Radius(r[0], tr, r[2], r[3]).
 				MaxWidth(t.BubbleMeasure).MaxWidthPercent(76).TransformOrigin(1, 0.5)
 			b.Background(a.found(c, b, rt, t.UserBubble, t.Reply.FoundUser, 0.025))
@@ -538,7 +538,7 @@ func (a *App) userReplyBubble(c *ui.Context, text string, pending bool, ref *pro
 				a.imprint(c, "pending", still, still.quote, false, onUser, true, "")
 			}
 			if strings.TrimSpace(text) != "" {
-				w := ui.Text(c, autospace(text)).Selectable().CopyData(autospaceCopy).SelectionColor(t.Highlight).FontSize(t.Bubble).LineHeight(leadingFor(text, 1.5)).
+				w := uiText(c, autospace(text)).Selectable().CopyData(autospaceCopy).SelectionColor(t.Highlight).FontSize(t.Bubble).LineHeight(leadingFor(text, 1.5)).
 					TextColor(t.OnUserBubble).Padding(0, t.S4-2-imprintInset)
 				a.replyMenu(c, w, rt, text)
 			}
@@ -609,7 +609,7 @@ func (a *App) entry(c *ui.Context, e *store.Entry) {
 					// menu is Ducter's: Reply, then Copy (the selection, or the message).
 					box := ui.Column(c).Selectable().CopyData(autospaceCopy).SelectionColor(t.Highlight).MinWidth(0)
 					a.replyMenu(c, box, rt, e.AI.Text)
-					box.Children(func() { markdown.View(c, autospace(e.AI.Text), &a.md) })
+					box.Children(func() { markdown.View(c, mdSpace(e.AI.Text), &a.md) })
 				})
 			}
 			a.readingLine(c, e.FirstSeq) // D305: Stop while it is read aloud
@@ -706,7 +706,7 @@ func (a *App) job(c *ui.Context, e *store.Entry) {
 			if st.State == "failed" {
 				col = t.Failed.Ink
 			}
-			a.underBubble(c, func() { ui.Text(c, st.Text).FontSize(t.SM).TextColor(col) })
+			a.underBubble(c, func() { uiText(c, st.Text).FontSize(t.SM).TextColor(col) })
 		}
 		var tasks []*store.Task
 		detail := ""
@@ -778,7 +778,7 @@ func (a *App) decisionCard(c *ui.Context, d *store.DecisionState, taskID string)
 		if d.Asker != nil {
 			a.peerAskerRow(c, d.Asker)
 		} else if task := a.S.Task(firstNonEmpty(taskID, d.TaskID)); task != nil && task.Title() != "" {
-			ui.Text(c, task.Title()).FontSize(t.SM).FontWeight(700).TextColor(t.NeedsYou.Ink)
+			uiText(c, task.Title()).FontSize(t.SM).FontWeight(700).TextColor(t.NeedsYou.Ink)
 		}
 		a.decisionBody(c, d, taskID)
 	})
@@ -817,7 +817,7 @@ func (a *App) decisionBody(c *ui.Context, d *store.DecisionState, taskID string)
 		a.routineFacts(c, d.RoutineID, t.NeedsYou.Ink)
 	}
 	if d.Resolved == nil && d.SignIn == nil {
-		ui.Text(c, a.defaultLine(c, d)).FontSize(t.SM).TextColor(t.NeedsYou.Ink)
+		uiText(c, a.defaultLine(c, d)).FontSize(t.SM).TextColor(t.NeedsYou.Ink)
 	}
 	st := decisionStyle{height: t.ControlMD, quietBg: t.NeedsYou.Surface}
 	if id := firstNonEmpty(taskID, d.TaskID); id != "" && !(a.Route == RouteTask && a.TaskID == id) {
@@ -855,9 +855,9 @@ func (a *App) livingLine(c *ui.Context, it protocol.LivingItem) {
 		} else if it.Title != "" {
 			// D291: the task's name is its own element, then what it said.
 			text = said
-			ui.Text(c, it.Title).FontSize(t.MD).FontWeight(600).TextColor(t.Ink).SingleLine().Shrink(2).MinWidth(0).MaxWidth(240)
+			uiText(c, it.Title).FontSize(t.MD).FontWeight(600).TextColor(t.Ink).SingleLine().Shrink(2).MinWidth(0).MaxWidth(240)
 		}
-		tx := ui.Text(c, text).FontSize(t.MD).TextColor(t.InkSoft).Grow(1).MinWidth(0).LineHeight(1.45).MaxLines(3).Tooltip(text)
+		tx := uiText(c, text).FontSize(t.MD).TextColor(t.InkSoft).Grow(1).MinWidth(0).LineHeight(1.45).MaxLines(3).Tooltip(text)
 		if line.Hovered() {
 			tx.TextColor(t.Ink)
 		}
@@ -987,7 +987,7 @@ func (a *App) heldLine(c *ui.Context) {
 	a.notice(c, "held", noticeAlert, func() {
 		a.glyph(c, 18, drawBang(t.Failed.Ink))
 	}, func() {
-		ui.Text(c, a.L.T("secret.held")).FontSize(t.SM).FontWeight(700).LineHeight(1.45).TextColor(t.Failed.Ink)
+		uiText(c, a.L.T("secret.held")).FontSize(t.SM).FontWeight(700).LineHeight(1.45).TextColor(t.Failed.Ink)
 	}, func() {
 		if a.button(c, a.L.T("secret.send"), btnText, t.ControlSM, t.Surface) {
 			a.SendHeld()

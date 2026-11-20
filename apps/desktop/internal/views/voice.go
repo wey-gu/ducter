@@ -351,7 +351,7 @@ func (a *App) voiceAbove(c *ui.Context) {
 			c.After(left)
 			a.aboveComposer(c, func() {
 				a.notice(c, "voice-note", noticeInfo, func() { a.glyph(c, 18, drawMic(a.T.InkSoft)) }, func() {
-					ui.Text(c, a.L.T(vs.note)).FontSize(a.T.SM).LineHeight(1.45).TextColor(a.T.InkSoft)
+					uiText(c, a.L.T(vs.note)).FontSize(a.T.SM).LineHeight(1.45).TextColor(a.T.InkSoft)
 				}, func() {})
 			})
 		} else {
@@ -388,18 +388,18 @@ func (a *App) listeningStrip(c *ui.Context) {
 		a.voiceMeter(c, vs.level, vs.intent, still)
 		ui.Column(c).Gap(2).Grow(1).MinWidth(0).Children(func() {
 			if vs.heard != "" {
-				ui.Text(c, autospace(vs.heard)).FontSize(t.MD).LineHeight(1.45).TextColor(t.Ink).MaxLines(2)
+				uiText(c, autospace(vs.heard)).FontSize(t.MD).LineHeight(1.45).TextColor(t.Ink).MaxLines(2)
 			} else {
-				ui.Text(c, a.L.T("voice.listening")).FontSize(t.MD).LineHeight(1.45).TextColor(t.InkMuted).MaxLines(1)
+				uiText(c, a.L.T("voice.listening")).FontSize(t.MD).LineHeight(1.45).TextColor(t.InkMuted).MaxLines(1)
 			}
 			ink := t.InkMuted
 			if vs.intent != voice.Keep {
 				ink = t.InkSoft
 			}
-			ui.Text(c, line).FontSize(t.SM).FontWeight(600).TextColor(ink).SingleLine()
+			uiText(c, line).FontSize(t.SM).FontWeight(600).TextColor(ink).SingleLine()
 		})
 		if vs.byKey {
-			ui.Text(c, a.L.T("voice.cue.key", a.voiceKeyName())).FontSize(t.XS).TextColor(t.InkMuted).MaxWidth(220).Shrink(0)
+			uiText(c, a.L.T("voice.cue.key", a.voiceKeyName())).FontSize(t.XS).TextColor(t.InkMuted).MaxWidth(220).Shrink(0)
 			return
 		}
 		ui.Row(c).Gap(t.S2).Shrink(0).Children(func() {
@@ -416,7 +416,7 @@ func (a *App) voiceCue(c *ui.Context, key string, armed bool) {
 	if armed {
 		bg, ink = t.Accent, t.OnAccent
 	}
-	ui.Text(c, a.L.T(key)).FontSize(t.XS).FontWeight(700).TextColor(ink).Background(bg).
+	uiText(c, a.L.T(key)).FontSize(t.XS).FontWeight(700).TextColor(ink).Background(bg).
 		Padding(t.S1, t.S2+2).Radius(t.RadiusSM).SingleLine()
 }
 
@@ -458,9 +458,9 @@ func (a *App) voiceAskCard(c *ui.Context) {
 	t := a.T
 	a.notice(c, "voice-ask", noticeInfo, func() { a.glyph(c, 20, drawMic(t.Accent)) }, func() {
 		ui.Column(c).Gap(2).Grow(1).MinWidth(200).Children(func() {
-			ui.Text(c, a.L.T("voice.ask.title")).FontSize(t.SM).FontWeight(700).LineHeight(1.45).TextColor(t.Ink)
-			ui.Text(c, a.L.T("voice.ask.why")).FontSize(t.SM).LineHeight(1.45).TextColor(t.InkSoft)
-			ui.Text(c, a.voicePrivacy()).FontSize(t.SM).LineHeight(1.45).TextColor(t.InkMuted)
+			uiText(c, a.L.T("voice.ask.title")).FontSize(t.SM).FontWeight(700).LineHeight(1.45).TextColor(t.Ink)
+			uiText(c, a.L.T("voice.ask.why")).FontSize(t.SM).LineHeight(1.45).TextColor(t.InkSoft)
+			uiText(c, a.voicePrivacy()).FontSize(t.SM).LineHeight(1.45).TextColor(t.InkMuted)
 		})
 	}, func() {
 		if a.button(c, a.L.T("voice.ask.later"), btnSecondary, t.ControlSM, t.Surface) {
@@ -480,7 +480,7 @@ func (a *App) voiceDenied(c *ui.Context) {
 		key = "voice.denied.speech"
 	}
 	a.notice(c, "voice-denied", noticeAlert, func() { a.glyph(c, 18, drawMic(t.Failed.Ink)) }, func() {
-		ui.Text(c, a.L.T(key)).FontSize(t.SM).FontWeight(700).LineHeight(1.45).TextColor(t.Failed.Ink)
+		uiText(c, a.L.T(key)).FontSize(t.SM).FontWeight(700).LineHeight(1.45).TextColor(t.Failed.Ink)
 	}, func() {
 		if a.button(c, a.L.T("voice.denied.open"), btnSecondary, t.ControlSM, t.Surface) {
 			c.OpenURL(voice.SettingsURL(a.vox.why))
@@ -505,8 +505,8 @@ func (a *App) voiceOff(c *ui.Context) {
 	}
 	a.notice(c, "voice-off", noticeInfo, func() { a.glyph(c, 18, drawMic(t.InkMuted)) }, func() {
 		ui.Column(c).Gap(2).Grow(1).MinWidth(200).Children(func() {
-			ui.Text(c, a.L.T("voice.off")).FontSize(t.SM).FontWeight(700).LineHeight(1.45).TextColor(t.Ink)
-			ui.Text(c, words).FontSize(t.SM).LineHeight(1.45).TextColor(t.InkSoft)
+			uiText(c, a.L.T("voice.off")).FontSize(t.SM).FontWeight(700).LineHeight(1.45).TextColor(t.Ink)
+			uiText(c, words).FontSize(t.SM).LineHeight(1.45).TextColor(t.InkSoft)
 		})
 	}, func() {
 		if a.iconButton(c, a.L.T("media.close"), t.ChipLG, btnText, drawCross) {
@@ -723,7 +723,7 @@ func (a *App) hoverRead(c *ui.Context, r *replyTo, show bool) {
 	b.Children(func() {
 		ui.Box(c).Size(16, 16).Shrink(0).Draw(drawSpeaker(ink, on))
 		if words {
-			ui.Text(c, label).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine().Unselectable()
+			uiText(c, label).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine().Unselectable()
 		}
 	})
 	if b.Clicked() {

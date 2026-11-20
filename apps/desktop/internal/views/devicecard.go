@@ -268,7 +268,7 @@ func (a *App) sheetState(c *ui.Context, word string, ink ui.Color, more bool) {
 func (a *App) stateWord(c *ui.Context, word string, ink ui.Color, size float32, weight int) {
 	ui.Row(c).Gap(5).AlignItems(ui.Center).MinWidth(0).Shrink(1).Children(func() {
 		ui.Box(c).Size(7, 7).Radius(3.5).Background(ink).Shrink(0).AccessHidden(true)
-		ui.Text(c, word).FontSize(size).FontWeight(weight).TextColor(ink).SingleLine().Shrink(1).MinWidth(0)
+		uiText(c, word).FontSize(size).FontWeight(weight).TextColor(ink).SingleLine().Shrink(1).MinWidth(0)
 	})
 }
 
@@ -278,7 +278,7 @@ func (a *App) statusLine(c *ui.Context, line string, ink ui.Color, strong bool) 
 	if strong {
 		w = 700
 	}
-	ui.Text(c, line).FontSize(t.MD).FontWeight(w).TextColor(ink).TextAlign(ui.Center).LineHeight(1.5).Margin(2, 0, t.S4, 0)
+	uiText(c, line).FontSize(t.MD).FontWeight(w).TextColor(ink).TextAlign(ui.Center).LineHeight(1.5).Margin(2, 0, t.S4, 0)
 }
 
 // ---------- what it carries: the coins ----------
@@ -444,7 +444,7 @@ func (a *App) coinTile(c *ui.Context, dv *protocol.DeviceView, h protocol.Device
 			col, w = t.InkMuted, 600
 		}
 		// D398: a long name (DeepSeek Harness) takes two lines, never "DeepSeek…".
-		ui.Text(c, name).FontSize(t.XS).FontWeight(w).TextColor(col).TextAlign(ui.Center).LineHeight(1.25).MaxLines(2).AccessHidden(true)
+		uiText(c, name).FontSize(t.XS).FontWeight(w).TextColor(col).TextAlign(ui.Center).LineHeight(1.25).MaxLines(2).AccessHidden(true)
 	})
 	if tile.Clicked() {
 		if sel {
@@ -485,7 +485,7 @@ func (a *App) socketTile(c *ui.Context, dv *protocol.DeviceView, sel bool) {
 			plus.Cap(ui.RoundCap)
 			p.StrokePath(&plus, 2.5, t.InkMuted)
 		})
-		ui.Text(c, label).FontSize(t.XS).FontWeight(600).TextColor(t.InkMuted).SingleLine().AccessHidden(true)
+		uiText(c, label).FontSize(t.XS).FontWeight(600).TextColor(t.InkMuted).SingleLine().AccessHidden(true)
 	})
 	if tile.Clicked() {
 		if sel {
@@ -566,16 +566,16 @@ func (a *App) coinDetail(c *ui.Context, dv *protocol.DeviceView, h protocol.Devi
 			a.agentRow(c, dv, h, nil)
 			a.setupAnswer(c, dv)
 			if h.Installed && h.Login == nil {
-				ui.Text(c, a.L.T("coin.signin.why", a.deviceNameIn(dv))).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5)
+				uiText(c, a.L.T("coin.signin.why", a.deviceNameIn(dv))).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5)
 			}
 			return
 		}
 		if !h.LoggedIn {
 			ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Wrap().Children(func() {
-				ui.Text(c, name).FontSize(t.MD).FontWeight(800)
-				ui.Text(c, a.L.T("coin.signed_out")).FontSize(t.SM).TextColor(t.InkMuted)
+				uiText(c, name).FontSize(t.MD).FontWeight(800)
+				uiText(c, a.L.T("coin.signed_out")).FontSize(t.SM).TextColor(t.InkMuted)
 			})
-			ui.Text(c, a.L.T("coin.signin.why", a.deviceNameIn(dv))).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5)
+			uiText(c, a.L.T("coin.signin.why", a.deviceNameIn(dv))).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5)
 			if manage {
 				ui.Row(c).Justify(ui.End).Margin(t.S1, 0, 0, 0).Children(func() {
 					if a.buttonFor(c, a.L.T("token.signin"), name, btnPrimary, t.ControlSM, t.Surface) {
@@ -583,7 +583,7 @@ func (a *App) coinDetail(c *ui.Context, dv *protocol.DeviceView, h protocol.Devi
 					}
 				})
 			} else {
-				ui.Text(c, a.L.T("coin.there", a.deviceNameIn(dv))).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5)
+				uiText(c, a.L.T("coin.there", a.deviceNameIn(dv))).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5)
 			}
 			return
 		}
@@ -593,12 +593,12 @@ func (a *App) coinDetail(c *ui.Context, dv *protocol.DeviceView, h protocol.Devi
 			model = modelLabel(&h, a.brain().Model)
 		}
 		ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Wrap().Children(func() {
-			ui.Text(c, name).FontSize(t.MD).FontWeight(800)
+			uiText(c, name).FontSize(t.MD).FontWeight(800)
 			if model != "" {
-				ui.Text(c, model).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
+				uiText(c, model).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
 			}
 			if m := a.BrainMark(dv, h.Harness); m != "" {
-				ui.Text(c, m).FontSize(t.SM).TextColor(t.InkMuted)
+				uiText(c, m).FontSize(t.SM).TextColor(t.InkMuted)
 			}
 		})
 		if h.Version != "" {
@@ -606,18 +606,18 @@ func (a *App) coinDetail(c *ui.Context, dv *protocol.DeviceView, h protocol.Devi
 			a.facts(c, t.SM, t.InkSoft, a.L.T("agentv.version", h.Version), a.coinHow(h))
 		}
 		if h.How == "unknown" {
-			ui.Text(c, a.L.T("agentv.how.unknown")).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5)
+			uiText(c, a.L.T("agentv.how.unknown")).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5)
 		}
 		if h.Standing == "newer" || h.Standing == "older" {
-			ui.Text(c, a.L.T("agentv.unverified")).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5)
+			uiText(c, a.L.T("agentv.unverified")).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5)
 		}
 		if who := a.sharedWith(dv, h.Harness); who != "" && h.Allowance != nil && h.Allowance.SharedBy > 1 {
-			ui.Text(c, a.L.T("coin.shared", who)).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5)
+			uiText(c, a.L.T("coin.shared", who)).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5)
 		}
 		// The slot for more per-agent lines (the next is its 记忆 / memory line, from a protocol field).
 		for _, line := range coinLines {
 			if s := line(a, dv, h); s != "" {
-				ui.Text(c, s).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5)
+				uiText(c, s).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5)
 			}
 		}
 		for _, act := range coinActions {
@@ -641,7 +641,7 @@ func (a *App) coinDetail(c *ui.Context, dv *protocol.DeviceView, h protocol.Devi
 				}
 			})
 		} else {
-			ui.Text(c, a.L.T("coin.there", a.deviceNameIn(dv))).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.5)
+			uiText(c, a.L.T("coin.there", a.deviceNameIn(dv))).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.5)
 		}
 	})
 }
@@ -652,7 +652,7 @@ func (a *App) socketDetail(c *ui.Context, dv *protocol.DeviceView, idx, n int) {
 	t := a.T
 	d := a.devState()
 	a.detailBox(c, coinKey(dv.ID, "+"), a.L.T("coin.socket"), idx, n, func() {
-		ui.Text(c, a.L.T("coin.socket.there", a.deviceNameIn(dv))).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5)
+		uiText(c, a.L.T("coin.socket.there", a.deviceNameIn(dv))).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5)
 		installable := false
 		for _, h := range dv.Harnesses {
 			if h.Installed || anySetup([]protocol.DeviceHarness{h}, "installing", "queued") {
@@ -667,7 +667,7 @@ func (a *App) socketDetail(c *ui.Context, dv *protocol.DeviceView, idx, n int) {
 			name := harnessName(h.Harness)
 			ui.Row(c.Key("missing:" + h.Harness)).Gap(t.S3).AlignItems(ui.Center).MinHeight(t.ControlSM).Children(func() {
 				a.coinBox(c, "missing:"+dv.ID, h.Harness, 28, true, coinStill)
-				ui.Text(c, name).FontSize(t.MD).FontWeight(700).Grow(1).MinWidth(0)
+				uiText(c, name).FontSize(t.MD).FontWeight(700).Grow(1).MinWidth(0)
 				if a.manageAccount(dv, h) && a.buttonFor(c, a.L.T("token.install"), name, btnSecondary, t.ControlSM, t.Surface) {
 					d.account = h.Harness
 				}
@@ -675,9 +675,9 @@ func (a *App) socketDetail(c *ui.Context, dv *protocol.DeviceView, idx, n int) {
 		}
 		a.setupAnswer(c, dv)
 		if installable {
-			ui.Text(c, a.L.T("ag.where")).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.5)
+			uiText(c, a.L.T("ag.where")).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.5)
 		} else if !(a.Backend != nil && dv.Home) {
-			ui.Text(c, a.L.T("coin.there", a.deviceNameIn(dv))).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.5)
+			uiText(c, a.L.T("coin.there", a.deviceNameIn(dv))).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.5)
 		}
 	})
 }
@@ -711,15 +711,15 @@ func (a *App) agentUpdate(c *ui.Context, dv *protocol.DeviceView, h protocol.Dev
 					case "failed":
 						ink = t.Failed.Ink
 					}
-					ui.Text(c, line).FontSize(t.MD).FontWeight(700).TextColor(ink).LineHeight(1.4)
+					uiText(c, line).FontSize(t.MD).FontWeight(700).TextColor(ink).LineHeight(1.4)
 					if u.Phase == "failed" && u.Reason != "" {
-						ui.Text(c, a.agentWhy(u.Reason)).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.4)
+						uiText(c, a.agentWhy(u.Reason)).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.4)
 					}
 				case behindNow:
-					ui.Text(c, a.L.T("agentv.available", h.Latest)).FontSize(t.MD).FontWeight(700).LineHeight(1.4)
+					uiText(c, a.L.T("agentv.available", h.Latest)).FontSize(t.MD).FontWeight(700).LineHeight(1.4)
 				}
 				if (behindNow || failedButBehind) && h.LatestVerified != nil && !*h.LatestVerified {
-					ui.Text(c, a.L.T("agentv.latest.unverified", h.Latest)).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.4)
+					uiText(c, a.L.T("agentv.latest.unverified", h.Latest)).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.4)
 				}
 			})
 			if (behindNow || failedButBehind) && dv.State == protocol.DeviceAwake {
@@ -734,10 +734,10 @@ func (a *App) agentUpdate(c *ui.Context, dv *protocol.DeviceView, h protocol.Dev
 			}
 		})
 		if (behindNow || failedButBehind) && dv.State != protocol.DeviceAwake {
-			ui.Text(c, a.L.T("agentv.away", a.deviceNameIn(dv))).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.4)
+			uiText(c, a.L.T("agentv.away", a.deviceNameIn(dv))).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.4)
 		}
 		if mine {
-			ui.Text(c, a.agentWhy(ans.Reason)).FontSize(t.XS).FontWeight(600).TextColor(t.InkSoft).LineHeight(1.4)
+			uiText(c, a.agentWhy(ans.Reason)).FontSize(t.XS).FontWeight(600).TextColor(t.InkSoft).LineHeight(1.4)
 		}
 	})
 }
@@ -797,7 +797,7 @@ func (a *App) chipRow(c *ui.Context, card string, dv *protocol.DeviceView, cl *p
 // infoText is an ⓘ note's sentence.
 func (a *App) infoText(c *ui.Context, s string) {
 	t := a.T
-	ui.Text(c, s).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(a.leading(1.55))
+	uiText(c, s).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(a.leading(1.55))
 }
 
 // chipSpecs are the chips a device gets, in order: 帮 {name} 做事 first on
@@ -1278,12 +1278,12 @@ func (a *App) abilityChip(c *ui.Context, card string, sp chipSpec) {
 			})
 			artR = box.Bounds()
 		}
-		ui.Text(c, label).FontSize(14).FontWeight(700).TextColor(fg).SingleLine().AccessHidden(true)
+		uiText(c, label).FontSize(14).FontWeight(700).TextColor(fg).SingleLine().AccessHidden(true)
 		if sp.look == chipLater {
-			ui.Text(c, a.L.T("chip.state.later")).FontSize(t.XS).FontWeight(600).TextColor(t.InkMuted).SingleLine().AccessHidden(true)
+			uiText(c, a.L.T("chip.state.later")).FontSize(t.XS).FontWeight(600).TextColor(t.InkMuted).SingleLine().AccessHidden(true)
 		}
 		if sp.look == chipElsewhere {
-			ui.Text(c, sp.where).FontSize(t.XS).FontWeight(600).TextColor(t.InkMuted).SingleLine().MaxWidth(150).AccessHidden(true)
+			uiText(c, sp.where).FontSize(t.XS).FontWeight(600).TextColor(t.InkMuted).SingleLine().MaxWidth(150).AccessHidden(true)
 			ink := t.InkMuted
 			ui.Box(c.Key("chip-go:"+key)).Size(6, 10).AccessHidden(true).Draw(func(p *ui.Painter, r ui.Rect) {
 				var m ui.Path
@@ -1299,7 +1299,7 @@ func (a *App) abilityChip(c *ui.Context, card string, sp chipSpec) {
 				i.Opacity(0)
 			}
 			i.Children(func() {
-				ui.Text(c, "i").FontSize(11).FontWeight(700).TextColor(t.InkMuted).TextAlign(ui.Center).LineHeight(18 / 11.0).AccessHidden(true)
+				uiText(c, "i").FontSize(11).FontWeight(700).TextColor(t.InkMuted).TextAlign(ui.Center).LineHeight(18 / 11.0).AccessHidden(true)
 			})
 			if i.Clicked() {
 				infoHit = true
@@ -1378,13 +1378,13 @@ func (a *App) chipNotes(c *ui.Context, card string, dv *protocol.DeviceView, cl 
 		case w.failed != "":
 			note("failed", true, func() {
 				ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Wrap().Children(func() {
-					ui.Text(c, w.failed).FontSize(t.SM).FontWeight(700).TextColor(t.Failed.Ink).LineHeight(1.5)
+					uiText(c, w.failed).FontSize(t.SM).FontWeight(700).TextColor(t.Failed.Ink).LineHeight(1.5)
 					if a.quietButton(c, "worker-log", a.L.T("chip.log"), "", true, 0) {
 						s.log = !s.log
 					}
 				})
 				if s.log {
-					ui.Text(c, a.MacWorker.Log()).Font(t.Mono).FontSize(t.XS).TextColor(t.InkSoft).Selectable()
+					uiText(c, a.MacWorker.Log()).Font(t.Mono).FontSize(t.XS).TextColor(t.InkSoft).Selectable()
 				}
 			})
 		}
@@ -1408,7 +1408,7 @@ func (a *App) chipNotes(c *ui.Context, card string, dv *protocol.DeviceView, cl 
 	for _, id := range []string{protocol.AbilityWeb, protocol.AbilityComputer, protocol.AbilityRemote} {
 		if r, ok := d.refused[dv.ID+"/"+id]; ok {
 			note("refused-"+id, true, func() {
-				ui.Text(c, a.L.T("chip.failed")+"："+a.reasonText(r.Reason)).FontSize(t.SM).FontWeight(700).TextColor(t.Failed.Ink).LineHeight(1.5)
+				uiText(c, a.L.T("chip.failed")+"："+a.reasonText(r.Reason)).FontSize(t.SM).FontWeight(700).TextColor(t.Failed.Ink).LineHeight(1.5)
 			})
 		}
 	}
@@ -1501,7 +1501,7 @@ func (a *App) viaLine(c *ui.Context, card, computer string, self *protocol.Reach
 	only := self != nil && len(list) == 1
 	open := s.via == card && !only
 	ui.Row(c.Key("via:"+card)).Gap(6).AlignItems(ui.Center).Margin(t.S2, t.S2, 0, t.S2).Children(func() {
-		ui.Text(c, text).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5)
+		uiText(c, text).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5)
 		if only {
 			return
 		}
@@ -1539,8 +1539,8 @@ func (a *App) viaLine(c *ui.Context, card, computer string, self *protocol.Reach
 			}
 			when, _ := a.clientState(cl)
 			ui.Row(c.Key("conn:"+id)).Gap(t.S2).AlignItems(ui.Center).Padding(t.S1, t.S3).MinHeight(t.ControlSM).Children(func() {
-				ui.Text(c, nm).FontSize(t.SM).FontWeight(800).SingleLine()
-				ui.Text(c, when).FontSize(t.SM).TextColor(t.InkMuted).SingleLine().Grow(1).MinWidth(0)
+				uiText(c, nm).FontSize(t.SM).FontWeight(800).SingleLine()
+				uiText(c, when).FontSize(t.SM).TextColor(t.InkMuted).SingleLine().Grow(1).MinWidth(0)
 				if a.dangerText(c, "conn-cut-btn:"+id, a.L.T("device.disconnect"), confirmName) {
 					d.card.cutting, d.card.cutFailed = id, ""
 				}
@@ -1584,7 +1584,7 @@ func (a *App) ducterLine(c *ui.Context, dv *protocol.DeviceView) {
 			} else if behind(dv) {
 				text = a.L.T("card.ducter.update", u.Latest)
 			}
-			ui.Text(c, text).FontSize(t.SM).FontWeight(700).TextColor(ink).LineHeight(1.45).Grow(1).MinWidth(0)
+			uiText(c, text).FontSize(t.SM).FontWeight(700).TextColor(ink).LineHeight(1.45).Grow(1).MinWidth(0)
 			if offer && canTap {
 				label := a.L.T("devup.button")
 				if u.Phase == "failed" {
@@ -1601,14 +1601,14 @@ func (a *App) ducterLine(c *ui.Context, dv *protocol.DeviceView) {
 			}
 		})
 		if u.Phase == "failed" && u.Reason != "" {
-			ui.Text(c, a.updateReason(u.Reason)).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.45)
+			uiText(c, a.updateReason(u.Reason)).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.45)
 		}
 		if u.Phase == "downloading" && u.Progress > 0 {
 			a.progressBar(c, u.Progress)
 		}
 		// Each line is whole and short (the release keeps it so): it wraps, never cut.
 		for _, n := range a.notesIf(behind(dv) && u.How == "self", u) {
-			ui.Text(c, n).FontSize(t.XS).LineHeight(1.45).TextColor(t.InkMuted)
+			uiText(c, n).FontSize(t.XS).LineHeight(1.45).TextColor(t.InkMuted)
 		}
 		if behind(dv) {
 			a.notesLink(c, dv.ID, u.Latest)

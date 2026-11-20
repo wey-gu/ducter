@@ -166,7 +166,7 @@ func (a *App) islandStrip(c *ui.Context, task *store.Task, cands []protocol.Cand
 				if dv.State != protocol.DeviceAwake {
 					col = t.InkMuted
 				}
-				ui.Text(c, dv.Name).FontSize(t.SM).FontWeight(800).TextColor(col)
+				uiText(c, dv.Name).FontSize(t.SM).FontWeight(800).TextColor(col)
 			})
 		}
 	})
@@ -181,12 +181,12 @@ func (a *App) moveLines(c *ui.Context, task *store.Task, chosen protocol.Candida
 	if task.Place().Kind == "repo" {
 		explain = a.L.T("switch.move.explain")
 	}
-	ui.Text(c.Key("move-explain"), explain).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(1.45)
+	uiText(c.Key("move-explain"), explain).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(1.45)
 	if chosen.NeedsSignIn {
-		ui.Text(c.Key("move-signin"), a.L.T("switch.move.signin")).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(1.45)
+		uiText(c.Key("move-signin"), a.L.T("switch.move.signin")).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(1.45)
 	}
 	if chosen.Widens {
-		ui.Text(c.Key("move-widens"), a.L.T("switch.move.widens")).FontSize(t.SM).FontWeight(800).TextColor(t.Ink).LineHeight(1.45)
+		uiText(c.Key("move-widens"), a.L.T("switch.move.widens")).FontSize(t.SM).FontWeight(800).TextColor(t.Ink).LineHeight(1.45)
 	}
 }
 

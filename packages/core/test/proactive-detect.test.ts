@@ -137,3 +137,19 @@ test("a clash today or tomorrow, across calendars, is a mismatch; one event in b
   expect(clashes[0]!.words.zh).toMatch(/^(今天|明天) 10:30「看牙」和「HawDB 周会」撞了。$/);
   expect(clashes[0]!.words.en).toContain("overlap");
 });
+
+test("coming up: a title that already says where gets no second place (agibar 分享（北京）, never （北京）（北京）)", () => {
+  const l = ledger();
+  l.add([
+    { ref: ref("ab"), label: "AGI Bar · 分享", at: "2026-11-09T12:00:00+08:00", type: "booking", what: "other", name: "agibar 分享（北京）", place: "北京", start: "2026-11-10T09:00:00+08:00" },
+    { ref: ref("dn"), label: "Okura · dinner", at: "2026-11-09T12:00:00+08:00", type: "booking", what: "other", name: "Dinner with Lina", place: "Okura", start: "2026-11-10T19:00:00+08:00" },
+  ]);
+  const found = detect(l, { now: MORNING, zone: ZONE, kinds: ["coming_up"] });
+  const zh = found.map((c) => c.words.zh).join("\n");
+  const en = found.map((c) => c.words.en).join("\n");
+  expect(zh).toContain("09:00 agibar 分享（北京）。");
+  expect(zh).not.toContain("（北京）（北京）");
+  expect(en).not.toContain("(北京)");
+  // A place the title doesn't say is still said once.
+  expect(zh).toContain("Dinner with Lina（Okura）。");
+});

@@ -167,7 +167,7 @@ func (a *App) lendCard(c *ui.Context, at richAt) {
 	t := a.T
 	a.richCard(c, at.key, a.L.T("lend.card")).Children(func() {
 		a.richTitle(c, a.L.T("lend.card"))
-		ui.Text(c, a.L.T("lend.entry.why")).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft)
+		uiText(c, a.L.T("lend.entry.why")).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft)
 		ui.Row(c).Children(func() {
 			if a.button(c, a.L.T("lend.card.go"), btnPrimary, t.ControlMD, t.Surface) {
 				a.openLend()
@@ -181,7 +181,7 @@ func (a *App) lendCopy(c *ui.Context, key, text string, mono bool) {
 	t := a.T
 	box := ui.Row(c.Key("lend-copy:"+key)).Gap(t.S3).Padding(t.S2, t.S2, t.S2, t.S3).Radius(t.RadiusSM).Background(t.Sunken).AlignItems(ui.Center)
 	box.Children(func() {
-		tx := ui.Text(c, text).FontSize(t.SM).LineHeight(1.45).TextColor(t.Ink).Grow(1).Basis(0).MinWidth(0).Selectable()
+		tx := uiText(c, text).FontSize(t.SM).LineHeight(1.45).TextColor(t.Ink).Grow(1).Basis(0).MinWidth(0).Selectable()
 		if mono {
 			tx.Font(t.Mono).FontSize(t.XS)
 		}
@@ -209,7 +209,7 @@ func (a *App) lendFold(c *ui.Context, key, label string, open *bool) {
 		if b.Hovered() {
 			ink = t.Ink
 		}
-		ui.Text(c, label).FontSize(t.SM).FontWeight(700).TextColor(ink)
+		uiText(c, label).FontSize(t.SM).FontWeight(700).TextColor(ink)
 		a.glyph(c, 12, drawChevron(ink, *open))
 	})
 	if b.Clicked() {
@@ -322,7 +322,7 @@ func (a *App) lendGoBack() {
 func (a *App) addBody(c *ui.Context) {
 	t := a.T
 	name := a.personaName()
-	ui.Text(c, a.L.T("add.question")).FontSize(t.MD).FontWeight(700).TextColor(t.InkSoft)
+	uiText(c, a.L.T("add.question")).FontSize(t.MD).FontWeight(700).TextColor(t.InkSoft)
 	ui.Row(c.Key("add-cards")).Gap(t.S3).AlignItems(ui.Stretch).Children(func() {
 		if a.clayCard(c, "talk", []string{"tablet", "phone"}, a.L.T("add.talk", name), a.L.T("add.talk.sub")) {
 			a.lend.open = false
@@ -344,9 +344,9 @@ func (a *App) clayCard(c *ui.Context, key string, arts []string, title, sub stri
 	a.selectable(c, card, false)
 	card.Children(func() {
 		a.clayStage(c, "claycard:"+key, arts, 120, idleFloat, 1, false)
-		ui.Text(c, title).FontSize(t.MD).FontWeight(800).TextColor(t.Ink).LineHeight(1.35)
+		uiText(c, title).FontSize(t.MD).FontWeight(800).TextColor(t.Ink).LineHeight(1.35)
 		if sub != "" {
-			ui.Text(c, sub).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft)
+			uiText(c, sub).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft)
 		}
 	})
 	return card.Clicked()
@@ -449,14 +449,14 @@ func (a *App) lendCaption(c *ui.Context, key, text string, dots bool, ink ui.Col
 		if dots {
 			a.lendDots(c)
 		}
-		ui.Text(c, text).FontSize(t.MD).FontWeight(800).TextColor(ink).AccessHidden(true)
+		uiText(c, text).FontSize(t.MD).FontWeight(800).TextColor(ink).AccessHidden(true)
 	})
 }
 
 func (a *App) lendBody(c *ui.Context) {
 	t := a.T
 	if a.lend.kind == "" {
-		ui.Text(c, a.L.T("lend.question")).FontSize(t.MD).FontWeight(700).TextColor(t.InkSoft)
+		uiText(c, a.L.T("lend.question")).FontSize(t.MD).FontWeight(700).TextColor(t.InkSoft)
 		ui.Row(c.Key("lend-kinds")).Gap(t.S3).AlignItems(ui.Stretch).Children(func() {
 			for _, k := range []struct{ id, art string }{{"linux", "server_awake"}, {"mac", "laptop_awake"}} {
 				if a.clayCard(c, "kind:"+k.id, []string{k.art}, a.L.T("lend.kind."+k.id), a.L.T("lend.kind."+k.id+".sub")) {
@@ -482,7 +482,7 @@ func (a *App) lendBody(c *ui.Context) {
 	case "loading":
 		if why := a.lendFailed(a.Now()); why != "" {
 			// D353's words, said under the clay as one sentence and one way on.
-			ui.Text(c.Key("lend-failed"), a.L.T("lend.fail."+why, home)).FontSize(t.MD).FontWeight(700).LineHeight(1.5).TextColor(t.Ink).Role(ui.RoleAlert)
+			uiText(c.Key("lend-failed"), a.L.T("lend.fail."+why, home)).FontSize(t.MD).FontWeight(700).LineHeight(1.5).TextColor(t.Ink).Role(ui.RoleAlert)
 			ui.Row(c).Justify(ui.Center).Children(func() {
 				if a.button(c, a.L.T("lend.retry"), btnPrimary, t.ControlMD, t.Surface) {
 					a.askLend()
@@ -499,7 +499,7 @@ func (a *App) lendBody(c *ui.Context) {
 			c.After(left + 50*time.Millisecond)
 		}
 	case "noaddress":
-		ui.Text(c.Key("lend-noaddress"), a.L.T("lend.noaddress", home)).FontSize(t.MD).FontWeight(700).LineHeight(1.5).TextColor(t.Ink)
+		uiText(c.Key("lend-noaddress"), a.L.T("lend.noaddress", home)).FontSize(t.MD).FontWeight(700).LineHeight(1.5).TextColor(t.Ink)
 		if hd := a.homeDevice(); hd != nil && hd.State == protocol.DeviceAwake {
 			ui.Row(c).Justify(ui.Center).Children(func() {
 				if any := a.anywhere(); any != nil && any.State == "off" {
@@ -537,9 +537,9 @@ func (a *App) lendSteps(c *ui.Context) {
 			ui.Row(c.Key("lend-step:" + k)).Gap(t.S2).Grow(1).Basis(0).MinWidth(0).AlignItems(ui.Center).Children(func() {
 				n := string(rune('1' + i))
 				ui.Row(c).Size(26, 26).Shrink(0).Radius(13).Background(t.Sunken).Justify(ui.Center).AlignItems(ui.Center).AccessHidden(true).Children(func() {
-					ui.Text(c, n).FontSize(t.SM).FontWeight(800).TextColor(t.InkSoft)
+					uiText(c, n).FontSize(t.SM).FontWeight(800).TextColor(t.InkSoft)
 				})
-				ui.Text(c, a.L.T(k)).FontSize(t.SM).FontWeight(700).LineHeight(1.35).TextColor(t.Ink).Grow(1).MinWidth(0)
+				uiText(c, a.L.T(k)).FontSize(t.SM).FontWeight(700).LineHeight(1.35).TextColor(t.Ink).Grow(1).MinWidth(0)
 			})
 		}
 	})
@@ -549,32 +549,32 @@ func (a *App) lendWaiting(c *ui.Context, l *protocol.ServerFrame, home string) {
 	t := a.T
 	a.lendCaption(c, "waiting", a.L.T("lend.waiting"), true, t.Working.Ink)
 	if a.lend.kind == "mac" {
-		ui.Text(c, a.L.T("lend.mac.app", home, a.L.T("work.mac.title", a.personaName()))).FontSize(t.SM).LineHeight(1.55).TextColor(t.InkSoft)
+		uiText(c, a.L.T("lend.mac.app", home, a.L.T("work.mac.title", a.personaName()))).FontSize(t.SM).LineHeight(1.55).TextColor(t.InkSoft)
 	}
 	a.lendSteps(c)
 	a.commandBoxSized(c, l.LendLine, t.SM)
 	facts := ui.Column(c.Key("lend-facts")).Gap(t.S1)
 	facts.Children(func() {
 		if left := store.ParseTime(l.ExpiresAt).Sub(a.Now()); left > 0 {
-			ui.Text(c.Key("lend-left"), a.L.T("lend.left", int(math.Ceil(left.Minutes())))).FontSize(t.XS).LineHeight(1.5).TextColor(t.InkMuted)
+			uiText(c.Key("lend-left"), a.L.T("lend.left", int(math.Ceil(left.Minutes())))).FontSize(t.XS).LineHeight(1.5).TextColor(t.InkMuted)
 			c.After(min(left, time.Minute))
 		}
-		ui.Text(c, a.L.T("lend.does")).FontSize(t.XS).LineHeight(1.5).TextColor(t.InkMuted)
+		uiText(c, a.L.T("lend.does")).FontSize(t.XS).LineHeight(1.5).TextColor(t.InkMuted)
 		if l.SameNetwork {
-			ui.Text(c.Key("lend-samenet"), a.L.T("lend.samenet", home)).FontSize(t.SM).LineHeight(1.5).TextColor(t.Ink)
+			uiText(c.Key("lend-samenet"), a.L.T("lend.samenet", home)).FontSize(t.SM).LineHeight(1.5).TextColor(t.Ink)
 		}
 	})
 	a.lendFold(c, "agent", a.L.T("lend.agent"), &a.lend.agentOpen)
 	if a.lend.agentOpen {
-		ui.Text(c, a.L.T("lend.agent.how")).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft)
+		uiText(c, a.L.T("lend.agent.how")).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft)
 		a.lendCopy(c, "agent", a.L.T("lend.agent.ask", l.LendLine), false)
 	}
 	a.lendFold(c, "help", a.L.T("lend.help"), &a.lend.helpOpen)
 	if a.lend.helpOpen {
 		item := func(key, what, do string, more func()) {
 			ui.Column(c.Key("lend-help:"+key)).Gap(t.S1).Padding(t.S2, 0).Children(func() {
-				ui.Text(c, what).FontSize(t.SM).FontWeight(800).TextColor(t.Ink)
-				ui.Text(c, do).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft)
+				uiText(c, what).FontSize(t.SM).FontWeight(800).TextColor(t.Ink)
+				uiText(c, do).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft)
 				if more != nil {
 					more()
 				}
@@ -611,7 +611,7 @@ func (a *App) lendHere(c *ui.Context, l *protocol.ServerFrame) {
 	if dv != nil {
 		name = a.deviceName(dv)
 	}
-	ui.Text(c.Key("lend-here"), a.L.T("lend.here", name)).FontSize(t.MD).FontWeight(800).TextColor(t.Working.Ink)
+	uiText(c.Key("lend-here"), a.L.T("lend.here", name)).FontSize(t.MD).FontWeight(800).TextColor(t.Working.Ink)
 	real := name
 	if dv != nil {
 		real = dv.Name
@@ -621,10 +621,10 @@ func (a *App) lendHere(c *ui.Context, l *protocol.ServerFrame) {
 		osName, arch := a.lendOS(dv.Platform)
 		if osName != "" {
 			ui.Row(c.Key("lend-os")).Gap(t.S3).AlignItems(ui.Center).Children(func() {
-				ui.Text(c, a.L.T("lend.os")).FontSize(t.SM).TextColor(t.InkMuted).Width(120).Shrink(0)
-				ui.Text(c, osName).FontSize(t.SM).FontWeight(700).TextColor(t.Ink)
+				uiText(c, a.L.T("lend.os")).FontSize(t.SM).TextColor(t.InkMuted).Width(120).Shrink(0)
+				uiText(c, osName).FontSize(t.SM).FontWeight(700).TextColor(t.Ink)
 				if arch != "" {
-					ui.Text(c, arch).FontSize(t.SM).TextColor(t.InkMuted)
+					uiText(c, arch).FontSize(t.SM).TextColor(t.InkMuted)
 				}
 			})
 		}

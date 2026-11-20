@@ -25,7 +25,7 @@ func (a *App) findsEntry(c *ui.Context, e *store.Entry) {
 	ui.Column(c.Key(key)).Gap(t.S1).Children(func() {
 		a.partnerBubble(c, a.takeJoin(), func() {
 			if n.Opening != "" {
-				ui.Text(c, autospace(n.Opening)).Selectable().FontSize(t.PartnerSize).LineHeight(leadingFor(n.Opening, 1.5)).TextColor(t.OnPartnerBubble)
+				uiText(c, autospace(n.Opening)).Selectable().FontSize(t.PartnerSize).LineHeight(leadingFor(n.Opening, 1.5)).TextColor(t.OnPartnerBubble)
 			}
 			for i, f := range n.Finds {
 				if i > 0 || n.Opening != "" {
@@ -54,13 +54,13 @@ func (a *App) findBlock(c *ui.Context, f protocol.FindView, seq int64) {
 		col.Background(t.PartnerBubble.Mix(t.Reply.FoundPartner, k))
 	}
 	col.Children(func() {
-		ui.Text(c, a.L.T("kind."+f.Kind)).FontSize(t.XS).FontWeight(800).TextColor(t.InkMuted)
+		uiText(c, a.L.T("kind."+f.Kind)).FontSize(t.XS).FontWeight(800).TextColor(t.InkMuted)
 		// D256: the find's words, and its pebble outside the note card in the
 		// gutter, resting on their last line; never on the card. The bridge
 		// (transparent, from the card's edge to the pebble) keeps the hover
 		// while the pointer crosses the card's inset.
 		ui.Column(c.Key("words:" + f.FindID)).Children(func() {
-			ft := ui.Text(c, autospace(f.Text)).Selectable().FontSize(t.PartnerSize).LineHeight(leadingFor(f.Text, 1.5)).TextColor(t.OnPartnerBubble)
+			ft := uiText(c, autospace(f.Text)).Selectable().FontSize(t.PartnerSize).LineHeight(leadingFor(f.Text, 1.5)).TextColor(t.OnPartnerBubble)
 			a.replyMenu(c, ft, rt, f.Text)
 			out := t.S4 - 2 + a.pebbleGap()
 			// Wide enough for the pebble with its word; it grows away from the card.
@@ -86,7 +86,7 @@ func (a *App) findBlock(c *ui.Context, f protocol.FindView, seq int64) {
 		if d != nil && !drafted {
 			switch {
 			case st != nil && st.State == "passed":
-				ui.Text(c, a.L.T("find.passed")).FontSize(t.SM).TextColor(t.InkMuted)
+				uiText(c, a.L.T("find.passed")).FontSize(t.SM).TextColor(t.InkMuted)
 			case openAsk(d):
 				ui.Row(c.Key("step:" + f.FindID)).Gap(t.S2).AlignItems(ui.Center).Children(func() {
 					if a.buttonFor(c, a.L.T("decision.go.label", f.GoLabel), "", btnSecondary, t.ControlSM, t.PartnerBubble) {
@@ -97,9 +97,9 @@ func (a *App) findBlock(c *ui.Context, f protocol.FindView, seq int64) {
 					}
 				})
 			case st != nil && st.State == "go":
-				ui.Text(c, a.L.T("find.going")).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
+				uiText(c, a.L.T("find.going")).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
 			default:
-				ui.Text(c, a.L.T("find.held")).FontSize(t.SM).TextColor(t.InkMuted)
+				uiText(c, a.L.T("find.held")).FontSize(t.SM).TextColor(t.InkMuted)
 			}
 		}
 		open := a.open["how:"+f.FindID]
@@ -110,9 +110,9 @@ func (a *App) findBlock(c *ui.Context, f protocol.FindView, seq int64) {
 			ui.Box(c).Grow(1)
 			switch {
 			case st != nil && st.State == "muted":
-				ui.Text(c, a.L.T("find.muted")).FontSize(t.SM).TextColor(t.InkSoft)
+				uiText(c, a.L.T("find.muted")).FontSize(t.SM).TextColor(t.InkSoft)
 			case st != nil && st.State == "useful":
-				ui.Text(c, a.L.T("find.thanked")).FontSize(t.SM).TextColor(t.InkSoft)
+				uiText(c, a.L.T("find.thanked")).FontSize(t.SM).TextColor(t.InkSoft)
 			default:
 				if a.quietButton(c, "useful:"+f.FindID, a.L.T("find.useful"), f.Text, false, 0) {
 					a.send(protocol.FindReact{T: "find_react", FindID: f.FindID, Reaction: "useful"})
@@ -129,29 +129,29 @@ func (a *App) findBlock(c *ui.Context, f protocol.FindView, seq int64) {
 				for i, h := range f.How {
 					ui.Row(c.Key("h" + itoa(int64(i)))).Gap(t.S2).Children(func() {
 						if h.Src != "" {
-							ui.Text(c, a.L.T("find.src."+h.Src)).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).Shrink(0)
+							uiText(c, a.L.T("find.src."+h.Src)).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).Shrink(0)
 						}
-						ui.Text(c, a.whenOf(h.At)).FontSize(t.SM).TextColor(t.InkMuted).Shrink(0)
+						uiText(c, a.whenOf(h.At)).FontSize(t.SM).TextColor(t.InkMuted).Shrink(0)
 						if h.From != "" {
-							ui.Text(c, h.From).FontSize(t.SM).TextColor(t.InkMuted).Shrink(0).MaxWidth(160).SingleLine()
+							uiText(c, h.From).FontSize(t.SM).TextColor(t.InkMuted).Shrink(0).MaxWidth(160).SingleLine()
 						}
 						if h.URL != "" {
 							if a.quietButton(c, "hl:"+f.FindID+itoa(int64(i)), h.What, "", false, 0) {
 								c.OpenURL(h.URL)
 							}
 						} else {
-							ui.Text(c, h.What).FontSize(t.SM).TextColor(t.InkSoft).Shrink(1).MinWidth(0).MaxLines(2)
+							uiText(c, h.What).FontSize(t.SM).TextColor(t.InkSoft).Shrink(1).MinWidth(0).MaxLines(2)
 						}
 						if h.Says != "" {
-							ui.Text(c, h.Says).FontSize(t.SM).TextColor(t.Ink).Grow(1).MinWidth(0).MaxLines(2)
+							uiText(c, h.Says).FontSize(t.SM).TextColor(t.Ink).Grow(1).MinWidth(0).MaxLines(2)
 						}
 					})
 				}
 				if f.Unknown != "" {
-					ui.Text(c, a.L.T("find.unknown", f.Unknown)).FontSize(t.SM).TextColor(t.InkMuted)
+					uiText(c, a.L.T("find.unknown", f.Unknown)).FontSize(t.SM).TextColor(t.InkMuted)
 				}
 				if f.Untouched != "" {
-					ui.Text(c, f.Untouched).FontSize(t.SM).TextColor(t.InkMuted)
+					uiText(c, f.Untouched).FontSize(t.SM).TextColor(t.InkMuted)
 				}
 			})
 		}
@@ -174,7 +174,7 @@ func (a *App) noteAsk(c *ui.Context, n *protocol.Finds) {
 			if n.Answered == "yes" {
 				label = a.L.T(yes)
 			}
-			ui.Text(c, a.L.T("note.answered", label)).FontSize(t.SM).TextColor(t.InkMuted)
+			uiText(c, a.L.T("note.answered", label)).FontSize(t.SM).TextColor(t.InkMuted)
 			return
 		}
 		ui.Row(c.Key("ask:" + n.NoteID)).Gap(t.S2).AlignItems(ui.Center).Children(func() {
@@ -187,9 +187,9 @@ func (a *App) noteAsk(c *ui.Context, n *protocol.Finds) {
 		})
 	case "cadence":
 		ui.Box(c).Height(1).Background(t.LineSoft).Margin(t.S1, 0)
-		ui.Text(c, autospace(a.L.T("first.ask"))).FontSize(t.PartnerSize).LineHeight(1.5).TextColor(t.OnPartnerBubble)
+		uiText(c, autospace(a.L.T("first.ask"))).FontSize(t.PartnerSize).LineHeight(1.5).TextColor(t.OnPartnerBubble)
 		if n.Answered != "" {
-			ui.Text(c, a.L.T("first.chosen", a.L.T("proactive."+n.Answered))).FontSize(t.SM).TextColor(t.InkMuted)
+			uiText(c, a.L.T("first.chosen", a.L.T("proactive."+n.Answered))).FontSize(t.SM).TextColor(t.InkMuted)
 			return
 		}
 		a.proactiveChips(c, "note-"+n.NoteID)
@@ -210,17 +210,17 @@ func (a *App) findDraft(c *ui.Context, f protocol.FindView, d *store.DecisionSta
 	}
 	open := openAsk(d)
 	ui.Column(c.Key(key)).Gap(t.S1 + 2).Children(func() {
-		ui.Text(c, a.L.T("draft.to", dr.To)).FontSize(t.SM).TextColor(t.InkMuted)
+		uiText(c, a.L.T("draft.to", dr.To)).FontSize(t.SM).TextColor(t.InkMuted)
 		if open {
 			ui.TextArea(c.Key("draft-text:"+f.FindID), &text).Lines(2, 16).Label(a.L.T("draft.edit", dr.To)).
 				Background(t.Sunken).Border(1, t.LineSoft).Radius(t.RadiusSM).Padding(t.S2, t.S3).FontSize(t.PartnerSize).TextColor(t.Ink)
 		} else {
 			ui.Box(c.Key("draft-well:"+f.FindID)).Background(t.Sunken).Radius(t.RadiusSM).Padding(t.S2, t.S3).Children(func() {
-				ui.Text(c, text).Selectable().FontSize(t.PartnerSize).LineHeight(leadingFor(text, 1.5)).TextColor(t.InkSoft)
+				uiText(c, text).Selectable().FontSize(t.PartnerSize).LineHeight(leadingFor(text, 1.5)).TextColor(t.InkSoft)
 			})
 		}
 		if open && dr.Check != "" {
-			ui.Text(c, a.L.T("draft.check", dr.Check)).FontSize(t.SM).TextColor(t.InkMuted)
+			uiText(c, a.L.T("draft.check", dr.Check)).FontSize(t.SM).TextColor(t.InkMuted)
 		}
 		switch {
 		case open:
@@ -229,7 +229,7 @@ func (a *App) findDraft(c *ui.Context, f protocol.FindView, d *store.DecisionSta
 				if send.Error == "no_send" {
 					k = "draft.no_send"
 				}
-				ui.Text(c, a.L.T(k)).FontSize(t.SM).TextColor(t.InkMuted)
+				uiText(c, a.L.T(k)).FontSize(t.SM).TextColor(t.InkMuted)
 			}
 			ui.Row(c.Key("draft-step:" + f.FindID)).Gap(t.S2).AlignItems(ui.Center).Children(func() {
 				label := f.GoLabel
@@ -253,13 +253,13 @@ func (a *App) findDraft(c *ui.Context, f protocol.FindView, d *store.DecisionSta
 				c.After(time.Second)
 			}
 			ui.Row(c.Key("draft-undo:" + f.FindID)).Gap(t.S2).AlignItems(ui.Center).Children(func() {
-				ui.Text(c, a.L.T("draft.sending", strconv.Itoa(left))).FontSize(t.SM).TextColor(t.InkMuted)
+				uiText(c, a.L.T("draft.sending", strconv.Itoa(left))).FontSize(t.SM).TextColor(t.InkMuted)
 				if a.buttonFor(c, a.L.T("draft.undo"), dr.To, btnText, t.ControlSM, t.PartnerBubble) {
 					a.send(protocol.FindUndo{T: "find_undo", FindID: f.FindID})
 				}
 			})
 		case send != nil && send.State == "sent":
-			ui.Text(c, a.L.T("draft.sent", dr.To)).FontSize(t.SM).TextColor(t.InkMuted)
+			uiText(c, a.L.T("draft.sent", dr.To)).FontSize(t.SM).TextColor(t.InkMuted)
 		}
 	})
 	a.replyDraft[key] = text

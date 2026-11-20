@@ -182,8 +182,8 @@ func (a *App) otherAskRow(c *ui.Context, x protocol.PartnerAsk) {
 	row.Children(func() {
 		a.stone(c, "oask-"+x.DecisionID, p.Look, 32)
 		ui.Column(c.Key("w")).Gap(2).Grow(1).Shrink(1).MinWidth(0).Children(func() {
-			ui.Text(c, a.L.T("partners.asks.from", p.Name)).FontSize(t.XS).TextColor(t.InkSoft)
-			ui.Text(c, x.Question).FontSize(14).TextColor(t.Ink).MaxLines(2)
+			uiText(c, a.L.T("partners.asks.from", p.Name)).FontSize(t.XS).TextColor(t.InkSoft)
+			uiText(c, x.Question).FontSize(14).TextColor(t.Ink).MaxLines(2)
 		})
 	})
 	if row.Clicked() {
@@ -269,9 +269,9 @@ func (a *App) partnersGroup(c *ui.Context) {
 				ui.Row(c.Key("partner-row:"+p.ID)).Gap(t.S4).AlignItems(ui.Center).Padding(t.S3, t.S5).Children(func() {
 					a.stone(c, "row-"+p.ID, p.Look, 40)
 					ui.Column(c).Grow(1).MinWidth(0).Gap(t.S1).Children(func() {
-						ui.Text(c, p.Name).FontSize(t.MD).FontWeight(700).TextColor(t.Ink).SingleLine()
+						uiText(c, p.Name).FontSize(t.MD).FontWeight(700).TextColor(t.Ink).SingleLine()
 						if p.ID == shown {
-							ui.Text(c, a.L.T("partners.talking")).FontSize(t.SM).TextColor(t.InkMuted)
+							uiText(c, a.L.T("partners.talking")).FontSize(t.SM).TextColor(t.InkMuted)
 						}
 						if l := a.lookPick(c, p.ID, p.Look); l != "" && l != p.Look {
 							a.send(protocol.PartnerSet{T: "partner_set", ID: id, Look: l})
@@ -317,7 +317,7 @@ func (a *App) partnersGroup(c *ui.Context) {
 			ui.Row(c).Gap(t.S4).AlignItems(ui.Center).Children(func() {
 				a.stone(c, "add", ps.look, 48)
 				ui.Column(c).Grow(1).Gap(t.S1).Children(func() {
-					ui.Text(c, a.L.T("partners.add.name")).FontSize(t.SM).TextColor(t.InkMuted)
+					uiText(c, a.L.T("partners.add.name")).FontSize(t.SM).TextColor(t.InkMuted)
 					in := ui.TextInput(c.Key("input:partner-add"), &ps.name).Placeholder(a.L.T("partners.add.placeholder")).Label(a.L.T("partners.add.name")).
 						FontSize(t.MD).Padding(t.S2, t.S3).Radius(t.RadiusSM).Background(t.Surface).Border(1, t.Line).Width(260).OnSubmit(add)
 					if !ps.focused {
@@ -326,12 +326,12 @@ func (a *App) partnersGroup(c *ui.Context) {
 					}
 				})
 			})
-			ui.Text(c, a.L.T("partners.look")).FontSize(t.SM).TextColor(t.InkMuted)
+			uiText(c, a.L.T("partners.look")).FontSize(t.SM).TextColor(t.InkMuted)
 			if l := a.lookPick(c, "add", ps.look); l != "" {
 				ps.look = l
 			}
 			if ans := a.S.PartnerAnswer; ans != nil && ans.ClientID == ps.cid && ans.WbError != "" {
-				ui.Text(c, a.L.T("partners.error."+ans.WbError)).FontSize(t.SM).TextColor(t.Failed.Ink).Role(ui.RoleAlert)
+				uiText(c, a.L.T("partners.error."+ans.WbError)).FontSize(t.SM).TextColor(t.Failed.Ink).Role(ui.RoleAlert)
 			}
 			ui.Row(c).Gap(t.S2).Children(func() {
 				if a.button(c, a.L.T("partners.add.cancel"), btnText, t.ControlMD, t.Surface) {

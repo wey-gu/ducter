@@ -76,8 +76,8 @@ func (a *App) recordsOnDevice(c *ui.Context, dv *protocol.DeviceView) {
 				}
 			})
 			ui.Column(c).Gap(1).Grow(1).MinWidth(0).Children(func() {
-				ui.Text(c, a.L.T("wrec.title")).FontSize(t.MD).FontWeight(800)
-				ui.Text(c, a.L.T("wrec."+r.State)).FontSize(t.XS).TextColor(ink)
+				uiText(c, a.L.T("wrec.title")).FontSize(t.MD).FontWeight(800)
+				uiText(c, a.L.T("wrec."+r.State)).FontSize(t.XS).TextColor(ink)
 			})
 		})
 		if on {
@@ -85,7 +85,7 @@ func (a *App) recordsOnDevice(c *ui.Context, dv *protocol.DeviceView) {
 		} else {
 			a.infoText(c, a.L.T("wrec.why", name, words, a.S.PersonaName))
 		}
-		ui.Text(c, a.L.T("wrec.scope")).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.4)
+		uiText(c, a.L.T("wrec.scope")).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.4)
 		// The one thing to do, under what it means (the card's column is narrow for a long label).
 		label, kind := a.L.T("wrec.allow"), btnPrimary
 		if on {
@@ -101,7 +101,7 @@ func (a *App) recordsOnDevice(c *ui.Context, dv *protocol.DeviceView) {
 			if ans.Reason == "away" {
 				k = "wrec.away"
 			}
-			ui.Text(c, a.L.T(k, name)).FontSize(t.SM).TextColor(t.Failed.Ink).LineHeight(1.5)
+			uiText(c, a.L.T(k, name)).FontSize(t.SM).TextColor(t.Failed.Ink).LineHeight(1.5)
 		}
 	})
 }

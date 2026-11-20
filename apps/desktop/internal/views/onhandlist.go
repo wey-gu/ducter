@@ -390,7 +390,7 @@ func (a *App) onHandList(c *ui.Context, b store.Board) {
 	add(show(4), newer)
 	add(show(4) && doneOpen, seen)
 	if q != "" && len(needs)+len(working)+len(waiting)+len(done)+len(inGroup) == 0 {
-		ui.Text(c.Key("none"), a.L.T("onhand.find.none")).FontSize(t.MD).TextColor(t.InkMuted)
+		uiText(c.Key("none"), a.L.T("onhand.find.none")).FontSize(t.MD).TextColor(t.InkMuted)
 		a.pastFindLink(c, q) // D285
 		return
 	}
@@ -525,17 +525,17 @@ func (a *App) listSection(c *ui.Context, key, name string, n int, body func()) {
 	ui.Column(c.Key("sec:" + key)).Gap(t.S1).Children(func() {
 		ui.Row(c).Gap(t.S2).AlignItems(ui.Baseline).MinHeight(28).Padding(0, padX).Children(func() {
 			if a.oh.room == "rail" {
-				ui.Text(c, name).FontSize(t.XS).FontWeight(600).TextColor(t.InkMuted)
+				uiText(c, name).FontSize(t.XS).FontWeight(600).TextColor(t.InkMuted)
 				if n > 0 {
-					ui.Text(c, fmt.Sprint(n)).FontSize(t.XS).FontWeight(500).TextColor(t.Faint).FontFeatures("tnum")
+					uiText(c, fmt.Sprint(n)).FontSize(t.XS).FontWeight(500).TextColor(t.Faint).FontFeatures("tnum")
 				}
 			} else {
 				// D315: on the board a section's name is a heading in the
 				// display face, its count beside it in muted figures, as
 				// the board's first drawings had it.
-				ui.Text(c, name).Font(t.Display).FontSize(t.LG).FontWeight(700).TextColor(t.Ink)
+				uiText(c, name).Font(t.Display).FontSize(t.LG).FontWeight(700).TextColor(t.Ink)
 				if n > 0 {
-					ui.Text(c, fmt.Sprint(n)).Font(t.Display).FontSize(t.LG).FontWeight(600).TextColor(t.InkMuted).FontFeatures("tnum")
+					uiText(c, fmt.Sprint(n)).Font(t.Display).FontSize(t.LG).FontWeight(600).TextColor(t.InkMuted).FontFeatures("tnum")
 				}
 			}
 			if key == "needs" && a.oh.room != "rail" {
@@ -607,7 +607,7 @@ func (a *App) taskRow(c *ui.Context, task *store.Task, state bool) {
 				if task.Card != nil {
 					a.partnerMark(c, task.ID, task.Card.Persona) // D312
 				}
-				title := ui.Text(c, keepWords(autospace(shortTitle(task.Title())))).FontSize(14).FontWeight(500).TextColor(t.Ink).SingleLine().Grow(1).Shrink(1).MinWidth(0).Tooltip(longTitleTip(task.Title()))
+				title := uiText(c, keepWords(autospace(shortTitle(task.Title())))).FontSize(14).FontWeight(500).TextColor(t.Ink).SingleLine().Grow(1).Shrink(1).MinWidth(0).Tooltip(longTitleTip(task.Title()))
 				// Finished rows recede, unless they are a new result.
 				if ((att == protocol.Done || att == protocol.DoneClaimed) && st != stNew) || (!rail && a.quietWait(task)) {
 					title.TextColor(t.Ink.Alpha(0.7)).FontWeight(400) // D268: settled rows recede
@@ -622,10 +622,10 @@ func (a *App) taskRow(c *ui.Context, task *store.Task, state bool) {
 				if ch := taskChanges(task); ch != nil {
 					ui.Row(c.Key("stat")).Gap(t.S1 + 2).Shrink(0).Children(func() {
 						if ch.Adds > 0 {
-							ui.Text(c, fmt.Sprintf("+%d", ch.Adds)).Font(t.Mono).FontSize(t.XS).TextColor(t.Done.Ink).FontFeatures("tnum")
+							uiText(c, fmt.Sprintf("+%d", ch.Adds)).Font(t.Mono).FontSize(t.XS).TextColor(t.Done.Ink).FontFeatures("tnum")
 						}
 						if ch.Dels > 0 {
-							ui.Text(c, fmt.Sprintf("−%d", ch.Dels)).Font(t.Mono).FontSize(t.XS).TextColor(t.Failed.Ink).FontFeatures("tnum")
+							uiText(c, fmt.Sprintf("−%d", ch.Dels)).Font(t.Mono).FontSize(t.XS).TextColor(t.Failed.Ink).FontFeatures("tnum")
 						}
 					})
 				}
@@ -634,7 +634,7 @@ func (a *App) taskRow(c *ui.Context, task *store.Task, state bool) {
 					if act == "merge" {
 						key = "onhand.pr.merged"
 					}
-					ui.Text(c.Key("pr"), a.L.T(key)).FontSize(t.XS).FontWeight(700).TextColor(t.InkSoft).Shrink(0)
+					uiText(c.Key("pr"), a.L.T(key)).FontSize(t.XS).FontWeight(700).TextColor(t.InkSoft).Shrink(0)
 				}
 				if state {
 					ink := t.InkMuted
@@ -644,13 +644,13 @@ func (a *App) taskRow(c *ui.Context, task *store.Task, state bool) {
 					case protocol.Failed:
 						ink = t.Failed.Ink
 					}
-					ui.Text(c.Key("st"), a.stateLabel(att)).FontSize(t.XS).FontWeight(700).TextColor(ink).Shrink(0).SingleLine()
+					uiText(c.Key("st"), a.stateLabel(att)).FontSize(t.XS).FontWeight(700).TextColor(ink).Shrink(0).SingleLine()
 				}
 				if face {
 					a.statusFace(c, task, st)
 				}
 				if rail || !a.quietWait(task) {
-					ui.Text(c.Key("time"), a.rowTime(task)).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum").Shrink(0).MinWidth(44).TextAlign(ui.End).SingleLine()
+					uiText(c.Key("time"), a.rowTime(task)).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum").Shrink(0).MinWidth(44).TextAlign(ui.End).SingleLine()
 				}
 			})
 			ui.Row(c.Key("l2")).Gap(t.S2).AlignItems(ui.Center).Children(func() {
@@ -672,9 +672,9 @@ func (a *App) taskRow(c *ui.Context, task *store.Task, state bool) {
 					}
 					a.glyph(c, 14, draw(mk))
 				}
-				ui.Text(c.Key("w"), keepWords(autospace(s.words))).FontSize(t.XS).TextColor(ink).SingleLine().Shrink(1).MinWidth(0).Tooltip(s.words)
+				uiText(c.Key("w"), keepWords(autospace(s.words))).FontSize(t.XS).TextColor(ink).SingleLine().Shrink(1).MinWidth(0).Tooltip(s.words)
 				if s.code != "" {
-					ui.Text(c.Key("code"), s.code).Font(t.Mono).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(3).MinWidth(0)
+					uiText(c.Key("code"), s.code).Font(t.Mono).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(3).MinWidth(0)
 				}
 				if rail {
 					return // the rail is narrow: where and who are in the task beside it
@@ -685,12 +685,12 @@ func (a *App) taskRow(c *ui.Context, task *store.Task, state bool) {
 					w := a.S.WaiterFor(task.ID)
 					if a.quietWait(task) {
 						since := a.agoLong(task.Card.UpdatedAt)
-						ui.Text(c.Key("quiet"), a.tp("onhand.wait.since", since)).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(0)
+						uiText(c.Key("quiet"), a.tp("onhand.wait.since", since)).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(0)
 					} else if next, frac := a.waitNext(w); next != "" {
 						c.After(time.Minute)
 						ui.Row(c.Key("next")).Gap(t.S1 + 1).AlignItems(ui.Center).Shrink(0).Children(func() {
 							ui.Box(c).Size(12, 12).Shrink(0).Draw(drawRing(t.InkMuted.Alpha(0.5), t.Waiting.Ink, frac)).AccessHidden(true)
-							ui.Text(c, next).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum").SingleLine()
+							uiText(c, next).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum").SingleLine()
 						})
 					}
 				}
@@ -699,7 +699,7 @@ func (a *App) taskRow(c *ui.Context, task *store.Task, state bool) {
 				// and its computer when there are two or more. Who does it and
 				// its branch are in the task.
 				for _, m := range a.whereMeta(task) {
-					ui.Text(c.Key("meta:"+m), m).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(0).MaxWidth(200)
+					uiText(c.Key("meta:"+m), m).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(0).MaxWidth(200)
 				}
 			})
 			if u := task.Card; !rail && u != nil && u.Until != nil && u.Until.State == "on" {
@@ -735,7 +735,7 @@ func (a *App) rowActs(c *ui.Context, task *store.Task, hover bool) bool {
 	att := task.Attention()
 	p := task.Place()
 	if task.Acting != "" {
-		ui.Text(c.Key("busy"), a.L.TFamily("result.acting."+task.Acting, p.BaseBranch)).FontSize(t.XS).TextColor(t.InkMuted).Shrink(0)
+		uiText(c.Key("busy"), a.L.TFamily("result.acting."+task.Acting, p.BaseBranch)).FontSize(t.XS).TextColor(t.InkMuted).Shrink(0)
 		return true
 	}
 	finished := att == protocol.Done || att == protocol.DoneClaimed || att == protocol.Failed

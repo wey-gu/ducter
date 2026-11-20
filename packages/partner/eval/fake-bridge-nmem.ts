@@ -76,6 +76,7 @@
 //   NMEM_FAKE_CURSOR_STALE=1            the first `--cursor` read answers "Identity inbox cursor no longer
 //                                       matches this Context or Space roster; restart the inbox" (once)
 //   NMEM_FAKE_WATCH=exit                every `--watch` exits at once with Mem's 503
+//   NMEM_FAKE_LATENCY=<verb>:<ms>,...   D409: that verb answers only after <ms> (Mem Cloud's pace, 2026-11-20)
 // `contacts` without a Space selector groups one `identity_contact` card per identity (no Space; a send
 // resolves it in the sender's Space); `--all-spaces` keeps the per-Space view. `connections connect`
 // takes `--device-label` (kept on the connection); before 0.10.121 it is an unexpected argument.
@@ -460,9 +461,21 @@ const lose = (kind: "send" | "reply", m: Msg): boolean => {
 };
 const opView = (m: Msg) => ({ operation: m.op, state: m.pending ? "pending" : "sent", message: m.pending ? undefined : m.id, to: card(m.to), ...(m.in_reply_to ? { in_reply_to: m.in_reply_to } : {}), created_at: m.created_at });
 
+// D409: Mem Cloud's own pace (the live trial, 2026-11-20: the identity inbox 44 to 52 s, contacts 31 to 40 s).
+// NMEM_FAKE_LATENCY=<verb>:<ms>[,<verb>:<ms>] holds that verb's answer that long first.
+{
+  const ms = (process.env.NMEM_FAKE_LATENCY ?? "").split(",").map((x) => x.split(":")).find(([v]) => v === verb)?.[1];
+  if (ms && Number(ms) > 0) await Bun.sleep(Number(ms));
+}
 switch (verb) {
   case "setup": {
     // Passive inspect only; the fake never enables anything.
+    // D409: nmem 0.10.121 for a context `connections connect` saved (VERIFIED, the live trial of
+    // 2026-11-20): `enable_needed`, the identity under `endpoint.address`. Its inbox still reads.
+    if (IDENT) {
+      out({ state: "enable_needed", endpoint: { scope: { space_id: spaceOf(me) }, address: { custodian_id: memberId(me), agent_id: s.identities[me]!.agent }, membership_generation: 1 }, detail: "This connection is authorized as this Agent in this Space. Enable explicitly to reuse its mailbox; no credential will be created.", next_args: [`--agent-context=${me}`, "bridge", "setup", "--enable"] });
+      break;
+    }
     out({ schema_version: 1, state: "ready", space_id: SPACE.id, identity: { custodian_id: memberId(me), agent_id: s.identities[me]!.agent }, registration_confirmed: true, messaging_confirmed: false, receiving_confirmed: false });
     break;
   }
@@ -633,23 +646,46 @@ switch (verb) {
     // 0.10.118: handles only; our own sent messages' read status beside them.
     const outgoing = s.messages.filter((m) => m.from === me && !m.pending).map((m) => ({ message: m.id, status: m.read_at ? "read" : "delivered", read_recipients: m.read_at ? 1 : 0, recipients: 1 }));
     if (IDENT) {
-      // D400: nmem 0.10.121's identity inbox as read live on 2026-11-19 (research/161 §6): each entry its
-      // Space by id alone, a `bm1:` reference, Mem's open/reply argv ending in that reference, a state and
-      // whether it may be opened; no sender (that comes with `open`); `spaces[]` says each Space's read.
+      // D400, D409: nmem 0.10.121's identity inbox as read live (2026-11-19, research/161 §8; the live
+      // trial's raw answers of 2026-11-20, §9): each entry its Space by id alone, `mine` (the sender is
+      // the reader's own member; null on an expired one), `state: "pending"` on every live entry (opened
+      // or not: the trial's peer mailbox), whether it may be opened, `expires_at_ms`, Mem #10278's
+      // `sender` and `in_reply_to` (null on an original), a `bm1:` reference and Mem's open/reply argv
+      // ending in it. Our own sent messages' read status is under each Space (`spaces[].outgoing`), not
+      // at the top; a later page lists only the Spaces that had more.
       const stuck = (process.env.NMEM_FAKE_SPACE_STUCK ?? "").split(",").filter(Boolean);
       const expired = (process.env.NMEM_FAKE_EXPIRED ?? "").split(",").filter(Boolean);
       const shown = mine.filter((m) => !stuck.includes(msgSpace(m)));
       const ref = (m: Msg) => `bm1:${Buffer.from(JSON.stringify({ message: m.id })).toString("base64url")}`;
-      const spaces = (s.spaces?.length ? s.spaces : [SPACE]).map((x) => (stuck.includes(x.id) ? { space_id: x.id, status: "unavailable", error_code: "cloud_mailbox_own_source_unreconciled" } : { space_id: x.id, status: "observed", next_cursor: "", outgoing: [] }));
+      const sentIn = (id: string) => s.messages.filter((m) => m.from === me && !m.pending && msgSpace(m) === id).map((m) => ({ message: m.id, status: m.read_at ? "read" : "delivered", read_recipients: m.read_at ? 1 : 0, recipients: 1 }));
+      const more = (id: string) => all.slice(at + size).some((m) => msgSpace(m) === id);
+      const spaces = (s.spaces?.length ? s.spaces : [SPACE])
+        .filter((x) => cursor === undefined || more(x.id) || shown.some((m) => msgSpace(m) === x.id))
+        .map((x) => (stuck.includes(x.id) ? { space_id: x.id, status: "unavailable", error_code: "cloud_mailbox_own_source_unreconciled" } : { space_id: x.id, status: "observed", next_cursor: more(x.id) ? `sc-${x.id}` : "", outgoing: cursor === undefined ? sentIn(x.id) : [] }));
+      const created = (m: Msg) => Date.parse(m.created_at) || Date.now();
       out({
-        messages: shown.map((m, i) => ({ message: m.id, mine: null, state: expired.includes(m.id) ? "expired" : m.read_at ? "read" : "delivered", eligible: !expired.includes(m.id), sequence: at + i + 1, space_id: msgSpace(m), reference: ref(m), open_args: ["nmem", "--api-url=https://cloud.example/remote-api", `--agent-context=${me}`, "bridge", "open", ref(m)], reply_args_prefix: ["nmem", "--api-url=https://cloud.example/remote-api", `--agent-context=${me}`, "bridge", "reply", ref(m)] })),
+        messages: shown.map((m, i) => {
+          const dead = expired.includes(m.id);
+          return {
+            message: m.id,
+            mine: dead ? null : memberId(m.from) === memberId(me),
+            state: dead ? "expired" : "pending",
+            eligible: !dead,
+            expires_at_ms: created(m) + 7 * 86_400_000,
+            sequence: at + i + 1,
+            ...(dead ? {} : { sender: sender(m.from), in_reply_to: m.in_reply_to ?? null }),
+            space_id: msgSpace(m),
+            reference: ref(m),
+            open_args: ["nmem", "--api-url=https://cloud.example/remote-api", `--agent-context=${me}`, "bridge", "open", ref(m)],
+            reply_args_prefix: ["nmem", "--api-url=https://cloud.example/remote-api", `--agent-context=${me}`, "bridge", "reply", ref(m)],
+          };
+        }),
         spaces,
         next: next || null,
-        incomplete: stuck.length > 0,
+        incomplete: stuck.length > 0 || !!next,
         coverage_scope: "current_space_batch",
         outcome_unknown: false,
         identity: agentOfCtx(me),
-        outgoing,
       });
       break;
     }

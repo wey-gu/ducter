@@ -318,6 +318,8 @@ interface RunResult {
   appCards?: { step: number; change: string; name: string; id: string }[];
   appAnswers?: number;
   appsNow?: { id: string; name: string; version: number; html: string; data: Record<string, unknown>; task?: string }[];
+  /** D410: a message carried the shelf's card. */
+  shelf?: boolean;
   appsSeeded?: { id: string; html: string }[];
   dropped?: number;
 }
@@ -336,7 +338,7 @@ const BRIDGE_IDENTITIES = {
   "alex-reviewer": { agent: "reviewer", member: "Alex", member_id: "m-alex", description: "Alex's long-running code reviewer" },
   "codex-mem": { agent: "codex-mem", member: "Weyl", member_id: "m-weyl", description: "Weyl's Codex in another app on the Mac" },
 };
-function fakeBridge(dir: string, spaces = false) {
+function fakeBridge(dir: string, spaces = false, nmem?: string) {
   const bin = join(dir, "nmem");
   writeFileSync(bin, `#!/bin/sh\nexec bun ${resolve(import.meta.dir, "fake-bridge-nmem.ts")} "$@"\n`);
   chmodSync(bin, 0o755);
@@ -344,7 +346,9 @@ function fakeBridge(dir: string, spaces = false) {
   const identities = spaces ? { ...BRIDGE_IDENTITIES, "ducter-main-in-everyone": { ...BRIDGE_IDENTITIES["ducter-main"], space: "ws-everyone" }, "alex-reviewer": { ...BRIDGE_IDENTITIES["alex-reviewer"], space: "ws-everyone" } } : BRIDGE_IDENTITIES;
   writeFileSync(state, JSON.stringify({ seq: 0, messages: [], identities, ...(spaces ? { spaces: SPACES, everywhere: ["Ducter"] } : {}) }));
   // "named": senders carry agent and member (teammates, D162), which nmem 0.10.118 doesn't show yet (D249).
-  const env = { ...process.env, NMEM_FAKE_BRIDGE_STATE: state, DUCTER_BRIDGE_MEMBER: "m-weyl", NMEM_FAKE_SHAPE: "named" } as Record<string, string>;
+  // D409: `nmem` (scenario.bridgeNmem): the fake answers in that CLI's own shapes (0.10.121: the identity
+  // inbox with Mem's sender, grouped contacts), not the richer "named" one.
+  const env = { ...process.env, NMEM_FAKE_BRIDGE_STATE: state, DUCTER_BRIDGE_MEMBER: "m-weyl", ...(nmem ? { NMEM_FAKE_VERSION: nmem } : { NMEM_FAKE_SHAPE: "named" }) } as Record<string, string>;
   const read = () => JSON.parse(readFileSync(state, "utf8")) as { seq: number; messages: FakeMsg[]; identities: Record<string, { space?: string }> };
   const places = SPACES.map((sp, i) => ({ context: HOME_CONTEXTS[i]!, spaceId: sp.id, spaceLabel: sp.label, kind: sp.kind }));
   return {
@@ -436,6 +440,11 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
     mkdirSync(cwd, { recursive: true });
     const updatedAt = new Date(Date.now() - s.minutesAgo * 60_000);
     writeSession(ownHome, { agent: s.agent, id: s.id, cwd, turns: s.turns, ...(s.title ? { title: s.title } : {}), ...(s.branch ? { branch: s.branch } : {}), startedAt: new Date(updatedAt.getTime() - 3600_000), updatedAt });
+    // D409: open in its terminal now: Claude Code's own running-process file, naming a live pid (this one).
+    if (s.open && s.agent === "claude-code") {
+      mkdirSync(join(ownHome, ".claude", "sessions"), { recursive: true });
+      writeFileSync(join(ownHome, ".claude", "sessions", `${process.pid}.json`), JSON.stringify({ pid: process.pid, sessionId: s.id, cwd, status: "idle" }));
+    }
   }
   // D380: a quick web look answers from the scenario's fake (never the web), a beat later.
   const look = sc.webLook;
@@ -594,7 +603,7 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   core.setRunner(fr.runner);
   if (sc.brainCodex) core.settings.set({ brain: { harness: "codex" } });
   core.setPartner({ onTrigger() {} }); // history is background, not new work
-  const fb = sc.bridge ? fakeBridge(dataDir, !!sc.spaces) : undefined;
+  const fb = sc.bridge ? fakeBridge(dataDir, !!sc.spaces, sc.bridgeNmem) : undefined;
 
   const idOf = new Map<string, string>(); // key -> taskId
   const keyOf = new Map<string, string>();
@@ -827,7 +836,7 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
     for (const c of appCards.filter((x) => x.step === i)) {
       const a = core.apps.get(c.id);
       const html = core.apps.html(c.id) ?? "";
-      lines.push(`  [an app card under the message: ${c.change} \"${c.name}\", with Open] the app's file now (v${a?.version ?? "?"}, ${html.length} characters): ${html.length > 2500 ? html.slice(0, 1200) + " … " + html.slice(-1200) : html}`);
+      lines.push(`  [an app card under the message: ${c.change} \"${c.name}\", with Open] the app's file now (v${a?.version ?? "?"}, ${html.length} characters): ${html.length > 2500 ? html.slice(0, 1200) + " … " + html.slice(-1200) : html}; its data now (what it opens with): ${(() => { const d = JSON.stringify(core.apps.data(c.id)); return d.length > 1200 ? d.slice(0, 1200) + "…" : d; })()}`);
     }
     for (const b of blocks.filter((x) => x.step === i)) lines.push(`  [the message also shows a ${b.ui.type === "chart" ? `${b.ui.kind} chart` : b.ui.type} block the partner wrote] ${JSON.stringify({ ...b.ui, plain: undefined })}`);
     for (const q of recalls.filter((x) => x.step === i)) lines.push(`  [searched long-term memory (invisible to the user)] ${q.query}`);
@@ -878,13 +887,14 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   }
   if (rulesNow.length) lines.push(`--- the person's rules after the run: ${rulesNow.map((x) => `"${x.text}" (${x.never ? "never" : "always"} ${x.harness}${x.kinds?.length ? `, ${x.kinds.join("/")}` : ""})`).join("; ")}`);
   await partner.close().catch(() => {});
+  const shelf = core.log.read({ stream: "channel", kinds: ["ai_msg"], limit: 400 }).some((ev) => (ev.body as Bodies["ai_msg"]).shelf === true);
   await core.stop().catch(() => {});
   tuwa?.stop();
   const boundRefs = new Map(core.tasks.list().filter((c) => c.source).map((c) => [c.taskId, c.source!.ref] as [string, string]));
   const appsNow = core.apps.list(persona.id ?? core.persona.id).map((m) => ({ id: m.id, name: m.name, version: m.version, html: core.apps.html(m.id) ?? "", data: core.apps.data(m.id), ...(m.task ? { task: m.task.id } : {}) }));
   // D405: the apps the model wrote, kept whole for a look (the results file clips them); never committed.
-  if (process.env.DUCTER_EVAL_APPS_DIR) for (const a of appsNow) writeFileSync(join(process.env.DUCTER_EVAL_APPS_DIR, `${sc.id}-${a.id}-v${a.version}.html`), a.html);
-  return { sc, visible, dayCards, calKinds, todoCards, boundRefs, blocks, shown, appCards, appAnswers, appsNow, appsSeeded, dropped, tools, opened: fr.opened, sent, keyOf, idOf, dataDir, usage, error, ms: Date.now() - t0, transcript: lines.join("\n"), recalls, threadSearches, remembered: mem.added, memAttempts, sources, retitles, bridgeSent, work: { ...work, asks }, bodies, saidAsks, rulesNow };
+  if (process.env.DUCTER_EVAL_APPS_DIR) for (const a of appsNow) writeFileSync(join(process.env.DUCTER_EVAL_APPS_DIR, `${sc.id}-${a.id}-v${a.version}.html`), a.html), writeFileSync(join(process.env.DUCTER_EVAL_APPS_DIR, `${sc.id}-${a.id}-v${a.version}.json`), JSON.stringify({ name: a.name, data: a.data }));
+  return { sc, visible, dayCards, calKinds, todoCards, boundRefs, blocks, shown, appCards, appAnswers, appsNow, shelf, appsSeeded, dropped, tools, opened: fr.opened, sent, keyOf, idOf, dataDir, usage, error, ms: Date.now() - t0, transcript: lines.join("\n"), recalls, threadSearches, remembered: mem.added, memAttempts, sources, retitles, bridgeSent, work: { ...work, asks }, bodies, saidAsks, rulesNow };
 }
 
 const r_opened = (o: Opened[], step: number) => o.filter((x) => x.step === step);
@@ -1073,6 +1083,12 @@ function check(r: RunResult): string[] {
     const want = r.idOf.get(e.appTask);
     if (!(r.appsNow ?? []).some((a) => a.task === want)) fails.push(`no app is kept current by task ${e.appTask} (apps: ${(r.appsNow ?? []).map((a) => `${a.name}→${a.task ?? "none"}`).join(", ") || "none"})`);
   }
+  // D410: the app made for something known: its name, its data (prefilled), no grey controls; deleted; the shelf shown.
+  if (e.appName && !(r.appsNow ?? []).some((a) => e.appName!.test(a.name))) fails.push(`no app named like ${e.appName} (apps: ${(r.appsNow ?? []).map((a) => a.name).join(", ") || "none"})`);
+  if (e.appData && !(r.appsNow ?? []).some((a) => e.appData!.test(JSON.stringify(a.data)))) fails.push(`no app's data matches ${e.appData} (newest: ${newest ? JSON.stringify(newest.data).slice(0, 200) : "none"})`);
+  for (const re of e.appHtmlForbid ?? []) if ((r.appsNow ?? []).some((a) => re.test(a.html))) fails.push(`an app's file has ${re}`);
+  if (e.appsLeft !== undefined && (r.appsNow ?? []).length !== e.appsLeft) fails.push(`${(r.appsNow ?? []).length} apps left, not ${e.appsLeft}`);
+  if (e.shelf && !r.shelf) fails.push("no shelf card under a message");
   if (e.appKept) for (const s of r.appsSeeded ?? []) if ((r.appsNow ?? []).find((a) => a.id === s.id)?.html !== s.html) fails.push("a seeded app's file was changed");
   if (e.noMadeShown && (r.shown?.length || 0) > 0) fails.push(`showed ${r.shown!.join(", ")} though nothing should be`);
   for (const re of e.uiRequire ?? []) if (!re.test(blockText)) fails.push(`the block lacks ${re}`);

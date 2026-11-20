@@ -34,7 +34,7 @@ func TestBoardOfferCard(t *testing.T) {
 		}
 		texts := strings.Join(tt.Texts(), " ")
 		d := boardOfferCard(lang)
-		for _, want := range []string{d.Question, keepWords(autospace(app.L.T("board.offer.what", d.Board.Title))), keepWords(autospace(app.L.T("board.offer.reviews"))), d.HoldLabel} {
+		for _, want := range []string{d.Question, unjoin(keepWords(autospace(app.L.T("board.offer.what", d.Board.Title)))), unjoin(keepWords(autospace(app.L.T("board.offer.reviews")))), d.HoldLabel} {
 			if !strings.Contains(texts, want) {
 				t.Errorf("%s: the offer lacks %q: %q", lang, want, texts)
 			}

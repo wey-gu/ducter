@@ -106,11 +106,11 @@ func (a *App) folderChanges(c *ui.Context, task *store.Task) {
 		ui.Row(c).Gap(t.S3).AlignItems(ui.Baseline).Wrap().Children(func() {
 			a.sectionTitle(c, a.L.T("task.side.changes"))
 			if s := a.folderSentence(f); s != "" && f.Undo != "undone" {
-				ui.Text(c, s).FontSize(t.MD).LineHeight(leadingFor(s, 1.5)).TextColor(t.Ink)
+				uiText(c, s).FontSize(t.MD).LineHeight(leadingFor(s, 1.5)).TextColor(t.Ink)
 			}
 		})
 		if line := a.folderUntil(task, f); line != "" {
-			ui.Text(c, line).FontSize(t.SM).TextColor(t.InkMuted)
+			uiText(c, line).FontSize(t.SM).TextColor(t.InkMuted)
 		}
 		if !open {
 			return
@@ -131,7 +131,7 @@ func (a *App) folderChanges(c *ui.Context, task *store.Task) {
 			msg := a.L.T(key, cf.Count, strings.Join(names, a.L.T("folder.sep")))
 			ui.Column(c.Key("folder-confirm")).Gap(t.S3).Padding(t.S3, t.S4).Radius(t.RadiusLG).Background(t.Surface).
 				Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).Children(func() {
-				ui.Text(c, msg).FontSize(t.MD).LineHeight(leadingFor(msg, 1.5)).TextColor(t.Ink).MaxWidth(readMeasure)
+				uiText(c, msg).FontSize(t.MD).LineHeight(leadingFor(msg, 1.5)).TextColor(t.Ink).MaxWidth(readMeasure)
 				ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
 					if a.button(c.Key("fc-go"), a.L.T("folder.confirm.go"), btnPrimary, t.ControlSM, t.Surface) {
 						delete(a.folderConfirm, task.ID)
@@ -176,7 +176,7 @@ func (a *App) folderList(c *ui.Context, task *store.Task) {
 	}
 	l := task.Folder
 	if l == nil {
-		ui.Text(c, a.L.T("task.loading")).FontSize(t.SM).TextColor(t.InkMuted)
+		uiText(c, a.L.T("task.loading")).FontSize(t.SM).TextColor(t.InkMuted)
 		return
 	}
 	ui.Column(c.Key("folder-rows")).Radius(t.RadiusLG).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).Clip().
@@ -186,7 +186,7 @@ func (a *App) folderList(c *ui.Context, task *store.Task) {
 		}
 		if l.More > 0 {
 			ui.Row(c).Padding(t.S3, t.S4).Children(func() {
-				ui.Text(c, a.L.T("folder.more", l.More)).FontSize(t.SM).TextColor(t.InkMuted)
+				uiText(c, a.L.T("folder.more", l.More)).FontSize(t.SM).TextColor(t.InkMuted)
 			})
 		}
 	})
@@ -217,7 +217,7 @@ func (a *App) folderRow(c *ui.Context, task *store.Task, f protocol.FolderChange
 	}
 	row := ui.Row(c).Gap(t.S3).Padding(t.S2, t.S4).AlignItems(ui.Center)
 	row.Children(func() {
-		ui.Text(c, text).FontSize(t.SM).TextColor(col).Grow(1).MinWidth(0).SingleLine().Selectable()
+		uiText(c, text).FontSize(t.SM).TextColor(col).Grow(1).MinWidth(0).SingleLine().Selectable()
 		if undo && !f.Dir && row.Hovered() {
 			if a.quietLink(c, "restore:"+task.ID+":"+f.Path, a.L.T("folder.row.restore"), spoken(a.L, a.L.T("folder.row.restore"), lastPart(f.Path))) {
 				a.send(protocol.TaskAction{T: "task_action", TaskID: task.ID, Action: "undo", Path: f.Path})

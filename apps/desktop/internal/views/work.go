@@ -153,7 +153,7 @@ func (a *App) groove(c *ui.Context, w *protocol.Waiter, big bool) {
 		// Captions by time: "now" under Ducter. Near the start it takes the start's place
 		// (the head says when it started); near the deadline it gives way.
 		cap := func(s string) ui.Element {
-			return ui.Text(c, s).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum").Shrink(0)
+			return uiText(c, s).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum").Shrink(0)
 		}
 		nowText := a.tp("wait.now", (i18n.Clock(a.Now())))
 		start := a.tp("wait.started", (i18n.Clock(from)))
@@ -202,8 +202,8 @@ func (a *App) calendarBadge(c *ui.Context, r *protocol.Routine, size float32) {
 		ui.Image(c, bmp).Size(w, h).AccessHidden(true)
 		// The page's face, under the binding, a little left of center (the pages behind).
 		ui.Column(c.Key("face")).Absolute().Left(w * 0.06).Top(h * 0.31).Width(w * 0.74).AlignItems(ui.Center).Gap(0).Children(func() {
-			ui.Text(c, big).FontSize(size * 0.31).LineHeight(1.05).FontWeight(800).TextColor(t.Ink).FontFeatures("tnum").AccessHidden(true)
-			ui.Text(c, sub).FontSize(max(9, size*0.17)).LineHeight(1.1).TextColor(t.InkMuted).AccessHidden(true)
+			uiText(c, big).FontSize(size * 0.31).LineHeight(1.05).FontWeight(800).TextColor(t.Ink).FontFeatures("tnum").AccessHidden(true)
+			uiText(c, sub).FontSize(max(9, size*0.17)).LineHeight(1.1).TextColor(t.InkMuted).AccessHidden(true)
 		})
 	})
 }
@@ -288,9 +288,9 @@ func (a *App) goal(c *ui.Context, u *protocol.Until, big bool) {
 			}
 		}
 		if try != "" {
-			ui.Text(c, try).FontSize(t.SM).FontWeight(600).TextColor(t.InkSoft).FontFeatures("tnum").Shrink(0)
+			uiText(c, try).FontSize(t.SM).FontWeight(600).TextColor(t.InkSoft).FontFeatures("tnum").Shrink(0)
 		}
-		ui.Text(c, autospace(line)).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft).Shrink(1).MinWidth(0)
+		uiText(c, autospace(line)).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft).Shrink(1).MinWidth(0)
 	})
 }
 
@@ -337,10 +337,10 @@ func (a *App) tryStrip(c *ui.Context, task *store.Task) {
 				if x.Progress != nil {
 					words = a.countWords(x.Progress.Done, x.Progress.Total, x.Progress.Unit)
 				}
-				ui.Text(c.Key(x.N), a.L.T("until.n", x.N)+"  "+words).FontSize(t.SM).TextColor(t.InkMuted)
+				uiText(c.Key(x.N), a.L.T("until.n", x.N)+"  "+words).FontSize(t.SM).TextColor(t.InkMuted)
 			}
 		})
-		ui.Text(c, a.L.T("until.rule", u.MaxTries)).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkMuted).MaxWidth(readMeasure)
+		uiText(c, a.L.T("until.rule", u.MaxTries)).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkMuted).MaxWidth(readMeasure)
 		if u.State == "on" {
 			ui.Row(c.Key("stop")).Children(func() {
 				if a.button(c, a.L.T("until.stop"), btnText, t.ControlSM, t.Bg) {
@@ -360,11 +360,11 @@ func (a *App) waitRows(c *ui.Context, task *store.Task, until bool, row func(str
 	if u := task.Card; until && u != nil && u.Until != nil {
 		row(a.L.T("wait.how.title"), func() {
 			if u.Until.Check != nil {
-				ui.Text(c, strings.Join(u.Until.Check.Argv, " ")).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.InkSoft).Selectable()
+				uiText(c, strings.Join(u.Until.Check.Argv, " ")).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.InkSoft).Selectable()
 			} else {
 				value(a.L.T("until.judge.report"))
 			}
-			ui.Text(c, a.L.T("until.stops.v", u.Until.MaxTries)).FontSize(t.SM).TextColor(t.InkMuted)
+			uiText(c, a.L.T("until.stops.v", u.Until.MaxTries)).FontSize(t.SM).TextColor(t.InkMuted)
 		})
 	}
 	w := a.S.WaiterFor(task.ID)
@@ -373,24 +373,24 @@ func (a *App) waitRows(c *ui.Context, task *store.Task, until bool, row func(str
 	}
 	row(a.L.T("wait.how.title"), func() {
 		if w.Check != nil {
-			ui.Text(c, strings.Join(w.Check.Argv, " ")).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.InkSoft).Selectable()
+			uiText(c, strings.Join(w.Check.Argv, " ")).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.InkSoft).Selectable()
 			// A long predicate (a regex over a clock) says nothing to a person: the
 			// reason above says what it waits for; only a short one is shown.
 			if d := describePredicate(w.Check.SucceedWhen); len([]rune(d)) <= 60 {
-				ui.Text(c, a.L.T("wait.met_when", d)).FontSize(t.SM).TextColor(t.InkMuted)
+				uiText(c, a.L.T("wait.met_when", d)).FontSize(t.SM).TextColor(t.InkMuted)
 			}
 		} else {
 			value(a.L.T("wait.event", w.Event.Connection, w.Event.Trigger))
 		}
 		if w.Judge != "" {
-			ui.Text(c, a.L.T("wait.judge", w.Judge)).FontSize(t.SM).TextColor(t.InkMuted)
+			uiText(c, a.L.T("wait.judge", w.Judge)).FontSize(t.SM).TextColor(t.InkMuted)
 		}
 	})
 	row(a.L.T("wait.often"), func() {
 		often, last := a.waitCadence(w)
 		value(often)
 		if last != "" {
-			ui.Text(c, last).FontSize(t.SM).TextColor(t.InkMuted).FontFeatures("tnum")
+			uiText(c, last).FontSize(t.SM).TextColor(t.InkMuted).FontFeatures("tnum")
 		}
 	})
 	var looks []protocol.WaiterLook
@@ -407,7 +407,7 @@ func (a *App) waitRows(c *ui.Context, task *store.Task, until bool, row func(str
 		row(a.L.T("wait.looks"), func() {
 			value(a.L.T("wait.looks.v", max(w.Looks, len(looks)), len(looks)))
 			for i, l := range looks[max(0, len(looks)-6):] {
-				ui.Text(c.Key(i), l.Summary).FontSize(t.SM).TextColor(t.InkMuted).Selectable()
+				uiText(c.Key(i), l.Summary).FontSize(t.SM).TextColor(t.InkMuted).Selectable()
 			}
 		})
 	}
@@ -591,7 +591,7 @@ func (a *App) watchCard(c *ui.Context, task *store.Task, m *taskMemo) {
 				d := r.W * pop
 				a.drawLookRing(1, 1, true, tick)(p, ui.Rect{X: r.X + (r.W-d)/2, Y: r.Y + (r.H-d)/2, W: d, H: d})
 			})
-			ui.Text(c, label).FontSize(t.MD).FontWeight(600).TextColor(t.Ink).AccessHidden(true)
+			uiText(c, label).FontSize(t.MD).FontWeight(600).TextColor(t.Ink).AccessHidden(true)
 		})
 		return
 	}
@@ -659,15 +659,15 @@ func (a *App) watchCard(c *ui.Context, task *store.Task, m *taskMemo) {
 			ui.Box(c.Key("ring")).Size(size, size).Shrink(0).Role(ui.RoleImage).Label(a.backWords(w)).Draw(a.drawLookRing(frac, breath, false, 0)).Children(func() {
 				if inside != "" {
 					ui.Column(c).Grow(1).Justify(ui.Center).AlignItems(ui.Center).Children(func() {
-						ui.Text(c, inside).FontSize(t.XS).FontWeight(700).TextColor(t.InkSoft).FontFeatures("tnum").SingleLine().AccessHidden(true)
+						uiText(c, inside).FontSize(t.XS).FontWeight(700).TextColor(t.InkSoft).FontFeatures("tnum").SingleLine().AccessHidden(true)
 					})
 				}
 			})
 			ui.Column(c.Key("words")).Gap(t.S1 + 2).MinWidth(0).Shrink(1).Children(func() {
 				ui.Row(c.Key("next")).Gap(t.S3).AlignItems(ui.Center).Wrap().Children(func() {
-					ui.Text(c, head).FontSize(t.MD).FontWeight(700).TextColor(t.Ink).FontFeatures("tnum")
+					uiText(c, head).FontSize(t.MD).FontWeight(700).TextColor(t.Ink).FontFeatures("tnum")
 					if head != rhythm {
-						ui.Text(c.Key("often"), rhythm).FontSize(t.SM).TextColor(t.InkSoft).FontFeatures("tnum")
+						uiText(c.Key("often"), rhythm).FontSize(t.SM).TextColor(t.InkSoft).FontFeatures("tnum")
 					}
 				})
 				if len(tally) > 0 {
@@ -676,7 +676,7 @@ func (a *App) watchCard(c *ui.Context, task *store.Task, m *taskMemo) {
 							a.pebbles(c, wakes, w.Looks)
 						}
 						for i, s := range tally {
-							ui.Text(c.Key(i), s).FontSize(t.SM).TextColor(t.InkMuted).FontFeatures("tnum").SingleLine()
+							uiText(c.Key(i), s).FontSize(t.SM).TextColor(t.InkMuted).FontFeatures("tnum").SingleLine()
 						}
 					})
 				}
@@ -870,13 +870,13 @@ func (a *App) routineCard(c *ui.Context, r *protocol.Routine) {
 			a.waitBubble(c, waitGlyph(r.Trigger.Check, r.Trigger.Event), 40)
 		}
 		ui.Column(c).Gap(2).Grow(1).MinWidth(0).Children(func() {
-			name := ui.Text(c, keepWords(autospace(r.Name))).FontSize(t.MD).FontWeight(800).MaxLines(2).Balance()
+			name := uiText(c, keepWords(autospace(r.Name))).FontSize(t.MD).FontWeight(800).MaxLines(2).Balance()
 			if paused {
 				name.TextColor(t.InkMuted)
 			}
 			// A condition routine's name already says its condition.
 			if r.Trigger.Kind == "time" && !strings.Contains(r.Name, r.TriggerWords) {
-				ui.Text(c, r.TriggerWords).FontSize(t.XS).TextColor(t.InkMuted).MaxLines(2)
+				uiText(c, r.TriggerWords).FontSize(t.XS).TextColor(t.InkMuted).MaxLines(2)
 			}
 			// D291: where it stands, when it runs next, how the last one went: each its own fact.
 			var lines []string
@@ -945,11 +945,11 @@ func (a *App) routineFacts(c *ui.Context, id string, ink ui.Color) {
 	ui.Column(c.Key("facts:" + id)).Gap(t.S2).Children(func() {
 		row := func(label string, body func()) {
 			ui.Row(c.Key(label)).Gap(t.S3).AlignItems(ui.Baseline).Children(func() {
-				ui.Text(c, label).FontSize(t.SM).TextColor(ink).Width(76).Shrink(0)
+				uiText(c, label).FontSize(t.SM).TextColor(ink).Width(76).Shrink(0)
 				ui.Column(c).Gap(2).Grow(1).MinWidth(0).Children(body)
 			})
 		}
-		text := func(s string) { ui.Text(c, s).FontSize(t.MD).LineHeight(1.45).TextColor(t.InkSoft) }
+		text := func(s string) { uiText(c, s).FontSize(t.MD).LineHeight(1.45).TextColor(t.InkSoft) }
 		row(a.L.T("routine.when"), func() {
 			text(r.TriggerWords)
 			if r.Trigger.Kind == "time" {

@@ -35,8 +35,12 @@ func (a *App) appCard(c *ui.Context, key string, card *protocol.AppCard) {
 	}
 	what := a.L.T("app.changed")
 	switch {
+	case card.Change == "removed" && now == nil:
+		what = a.L.T("app.removed")
 	case gone:
 		what = a.L.T("app.gone")
+	case card.Change == "removed": // brought back: on the shelf again
+		what = a.L.T("app.made", firstNonEmpty(a.S.PersonaName, "Ducter"))
 	case card.Change == "made":
 		what = a.L.T("app.made", firstNonEmpty(a.S.PersonaName, "Ducter"))
 	case card.Change == "data":
@@ -44,16 +48,26 @@ func (a *App) appCard(c *ui.Context, key string, card *protocol.AppCard) {
 	}
 	ui.Row(c.Key("appcard:"+key)).MaxWidth(420).MaxWidthPercent(84).Padding(t.S3).Gap(t.S3).AlignItems(ui.Center).Radius(t.RadiusMD).
 		Background(t.Surface).Shadow(0, t.Raised.Y, 0, 0, t.Raised.Color).Role(ui.RoleGroup).Label(name).Children(func() {
-		a.appFace(c, 48, gone)
+		a.appClay(c, "face", 48, now, gone || (card.Change == "removed" && now == nil))
 		ui.Column(c.Key("body")).Grow(1).Shrink(1).MinWidth(0).Gap(2).Children(func() {
 			ink := t.Ink
 			if gone {
 				ink = t.InkMuted
 			}
-			ui.Text(c, keepWords(autospace(name))).FontSize(t.MD).FontWeight(800).TextColor(ink).SingleLine().Shrink(1).MinWidth(0).Tooltip(name)
-			ui.Text(c, keepWords(autospace(what))).FontSize(t.SM).TextColor(t.InkMuted).MinWidth(0)
+			uiText(c, keepWords(autospace(name))).FontSize(t.MD).FontWeight(800).TextColor(ink).SingleLine().Shrink(1).MinWidth(0).Tooltip(name)
+			uiText(c, keepWords(autospace(what))).FontSize(t.SM).TextColor(t.InkMuted).MinWidth(0)
 		})
-		if !gone && a.buttonFor(c, a.L.T("app.open"), name, btnSecondary, t.ControlSM, t.Surface) {
+		switch {
+		case card.Change == "removed" && now == nil:
+			// D410: deleted on the person's word; 撤销 brings it back while it can.
+			if !a.restoring[card.ID] && a.buttonFor(c, a.L.T("apps.undo"), name, btnSecondary, t.ControlSM, t.Surface) {
+				if a.restoring == nil {
+					a.restoring = map[string]bool{}
+				}
+				a.restoring[card.ID] = true
+				a.send(protocol.AppIDReq{T: "app_restore", ID: card.ID})
+			}
+		case !gone && a.buttonFor(c, a.L.T("app.open"), name, btnSecondary, t.ControlSM, t.Surface):
 			a.openApp(card.ID)
 		}
 	})
@@ -89,7 +103,7 @@ func (a *App) userAppLine(c *ui.Context, key string, ref *protocol.AppRef) {
 			Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(words).Focusable()
 		b.Children(func() {
 			ui.Box(c.Key("g")).Size(14, 14).AccessHidden(true).Draw(drawMadeKind("app", t.InkSoft))
-			ui.Text(c, keepWords(autospace(words))).FontSize(t.XS).FontWeight(700).TextColor(t.InkSoft).SingleLine()
+			uiText(c, keepWords(autospace(words))).FontSize(t.XS).FontWeight(700).TextColor(t.InkSoft).SingleLine()
 		})
 		if b.Clicked() {
 			a.openApp(ref.ID)
@@ -107,13 +121,13 @@ func (a *App) appAskBubble(c *ui.Context, key string, ref *protocol.AppRef, text
 			Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(words).Focusable()
 		b.Children(func() {
 			ui.Box(c.Key("g")).Size(14, 14).AccessHidden(true).Draw(drawMadeKind("app", t.InkSoft))
-			ui.Text(c, keepWords(autospace(words))).FontSize(t.XS).FontWeight(700).TextColor(t.InkSoft).SingleLine()
+			uiText(c, keepWords(autospace(words))).FontSize(t.XS).FontWeight(700).TextColor(t.InkSoft).SingleLine()
 		})
 		if b.Clicked() {
 			a.openApp(ref.ID)
 		}
 		ui.Column(c.Key("w")).Padding(10, 14).Radius(t.RadiusMD).Background(t.Sunken).InsetShadow(0, 0, 0, 1, t.Line).MinWidth(0).Children(func() {
-			ui.Text(c, autospace(text)).Selectable().FontSize(t.Bubble).LineHeight(leadingFor(text, 1.5)).TextColor(t.InkSoft)
+			uiText(c, autospace(text)).Selectable().FontSize(t.Bubble).LineHeight(leadingFor(text, 1.5)).TextColor(t.InkSoft)
 		})
 	})
 }
@@ -203,6 +217,9 @@ func (b *AppBridge) Post(id string, body []byte) {
 		b.do(func() { b.a.send(protocol.AppPutReq{T: "app_put", ID: id, Key: m.Key, Value: m.Value}) })
 	case "ask":
 		b.do(func() { b.a.send(protocol.AppAskReq{T: "app_ask", ID: id, Text: m.Text, Ref: m.Ref}) })
+	case "summary":
+		// D410: ducter.summary, the one line its shelf tile shows.
+		b.do(func() { b.a.send(protocol.AppSummaryReq{T: "app_summary", ID: id, Text: m.Text}) })
 	case "show":
 		// D407: ducter.open({ draft }): that PR's draft sheet, in the main
 		// window (brought forward); nothing is sent.
@@ -228,9 +245,9 @@ func (a *App) boardOfferBody(c *ui.Context, b *protocol.BoardAsk) {
 	ui.Row(c.Key("board-offer")).Gap(t.S3).AlignItems(ui.Start).MinWidth(0).Children(func() {
 		a.appFace(c, 34, false)
 		ui.Column(c.Key("w")).Gap(2).Grow(1).Shrink(1).MinWidth(0).Children(func() {
-			ui.Text(c, keepWords(autospace(a.L.T("board.offer.what", b.Title)))).FontSize(t.MD).TextColor(t.Ink).MinWidth(0)
+			uiText(c, keepWords(autospace(a.L.T("board.offer.what", b.Title)))).FontSize(t.MD).TextColor(t.Ink).MinWidth(0)
 			if b.Kind == "reviews" {
-				ui.Text(c, keepWords(autospace(a.L.T("board.offer.reviews")))).FontSize(t.SM).TextColor(t.InkMuted).MinWidth(0)
+				uiText(c, keepWords(autospace(a.L.T("board.offer.reviews")))).FontSize(t.SM).TextColor(t.InkMuted).MinWidth(0)
 			}
 		})
 	})

@@ -129,7 +129,7 @@ func (a *App) quietDay(c *ui.Context) {
 		if d.Problem.Why == "nothing_kept" { // D232: no agent named
 			line = a.L.T("day.problem.nothing_kept")
 		}
-		ui.Text(c.Key("quiet-day-problem"), line).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.Failed.Ink).Padding(0, t.S5, t.S4, t.S5)
+		uiText(c.Key("quiet-day-problem"), line).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.Failed.Ink).Padding(0, t.S5, t.S4, t.S5)
 	}
 	if !cs.day || d == nil {
 		return
@@ -145,11 +145,11 @@ func (a *App) quietDay(c *ui.Context) {
 					if line.soft {
 						ink = t.InkMuted
 					}
-					ui.Text(c.Key("day:"+itoa(int64(g))+":"+itoa(int64(i))), line.text).FontSize(t.SM).TextColor(ink).LineHeight(a.leading(1.5))
+					uiText(c.Key("day:"+itoa(int64(g))+":"+itoa(int64(i))), line.text).FontSize(t.SM).TextColor(ink).LineHeight(a.leading(1.5))
 				}
 			})
 		}
-		ui.Text(c, a.L.T("day.honest")).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(a.leading(1.5))
+		uiText(c, a.L.T("day.honest")).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(a.leading(1.5))
 	})
 }
 
@@ -528,7 +528,7 @@ func (a *App) serviceRows(c *ui.Context, cv protocol.ConnectionView) {
 			// D296: the word only where the row differs from what the
 			// group's first row already says (its switch says the rest).
 			if state != "" {
-				ui.Text(c, state).FontSize(t.SM).FontWeight(600).TextColor(ink).SingleLine()
+				uiText(c, state).FontSize(t.SM).FontWeight(600).TextColor(ink).SingleLine()
 			}
 			if sw {
 				v := w.Watch
@@ -677,7 +677,7 @@ func (a *App) tileDetail(c *ui.Context, cv protocol.ConnectionView, w protocol.A
 		}
 		if cv.Source == "oo" {
 			ui.Box(c).Grow(1)
-			ui.Text(c, a.L.T("tile.signout_oo")).FontSize(t.SM).TextColor(t.InkMuted).SingleLine()
+			uiText(c, a.L.T("tile.signout_oo")).FontSize(t.SM).TextColor(t.InkMuted).SingleLine()
 		}
 	})
 }
@@ -687,8 +687,8 @@ func (a *App) tileDetail(c *ui.Context, cv protocol.ConnectionView, w protocol.A
 func (a *App) factRow(c *ui.Context, label, text string) {
 	t := a.T
 	ui.Row(c).Gap(t.S3).AlignItems(ui.Baseline).Children(func() {
-		ui.Text(c, label).FontSize(t.SM).FontWeight(700).TextColor(t.InkMuted).Width(a.factW()).Shrink(0)
-		ui.Text(c, text).FontSize(t.SM).TextColor(t.Ink).LineHeight(a.leading(1.5)).Grow(1).Basis(0).MinWidth(0)
+		uiText(c, label).FontSize(t.SM).FontWeight(700).TextColor(t.InkMuted).Width(a.factW()).Shrink(0)
+		uiText(c, text).FontSize(t.SM).TextColor(t.Ink).LineHeight(a.leading(1.5)).Grow(1).Basis(0).MinWidth(0)
 	})
 }
 
@@ -707,7 +707,7 @@ func (a *App) readsList(c *ui.Context, cv protocol.ConnectionView) {
 	reads := a.S.ConnReads[cv.ID]
 	ui.Column(c.Key("readlist:" + cv.ID)).Gap(t.S1).Children(func() {
 		if len(reads) == 0 {
-			ui.Text(c, a.L.T("card.read.none")).FontSize(t.SM).TextColor(t.InkSoft)
+			uiText(c, a.L.T("card.read.none")).FontSize(t.SM).TextColor(t.InkSoft)
 		}
 		for i, r := range reads {
 			if i >= 8 {
@@ -726,14 +726,14 @@ func (a *App) readsList(c *ui.Context, cv protocol.ConnectionView) {
 				acct = shortAccount(r.Account, sibs) // D291: the account its own muted element
 			}
 			ui.Row(c.Key("read:" + itoa(int64(i)))).Gap(t.S3).AlignItems(ui.Baseline).Children(func() {
-				ui.Text(c, clockOf(r.At)).FontSize(t.SM).TextColor(t.InkMuted).Width(44).Shrink(0)
-				ui.Text(c, a.L.T("read."+r.What, app, r.Items)).FontSize(t.SM).TextColor(t.Ink).Grow(1).MinWidth(0).SingleLine()
+				uiText(c, clockOf(r.At)).FontSize(t.SM).TextColor(t.InkMuted).Width(44).Shrink(0)
+				uiText(c, a.L.T("read."+r.What, app, r.Items)).FontSize(t.SM).TextColor(t.Ink).Grow(1).MinWidth(0).SingleLine()
 				if acct != "" {
-					ui.Text(c, acct).FontSize(t.SM).TextColor(t.InkMuted).SingleLine().Shrink(0)
+					uiText(c, acct).FontSize(t.SM).TextColor(t.InkMuted).SingleLine().Shrink(0)
 				}
 			})
 		}
-		ui.Text(c, a.L.T("acct.honest")).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(a.leading(1.5)).Padding(t.S1, 0, 0, 0)
+		uiText(c, a.L.T("acct.honest")).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(a.leading(1.5)).Padding(t.S1, 0, 0, 0)
 	})
 }
 

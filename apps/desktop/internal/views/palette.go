@@ -84,6 +84,7 @@ func (a *App) palPlaces() []palPlace {
 		{"onhand", a.L.T("pal.go.onhand"), "⌘2"},
 		{"past", a.L.T("pal.go.past"), "⌘Y"},
 		{"made", a.L.T("pal.go.made"), ""},
+		{"apps", a.L.T("pal.go.apps"), "⌘5"}, // D410
 		{"devices", a.L.T("pal.go.devices"), "⌘3"},
 		{"settings", a.L.T("pal.go.settings"), "⌘,"},
 	}
@@ -211,6 +212,8 @@ func (a *App) palGoTo(id string) {
 		a.OpenPast("")
 		a.past.tab = "made"
 		a.askMade()
+	case "apps":
+		a.OpenApps()
 	case "devices":
 		a.OpenDevices()
 	case "settings":
@@ -370,7 +373,7 @@ func (a *App) palette(c *ui.Context) {
 				})
 			in.Focus()
 			if q != "" && q != a.pal.sent {
-				ui.Text(c.Key("busy"), a.L.T("pal.searching")).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(0)
+				uiText(c.Key("busy"), a.L.T("pal.searching")).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(0)
 			}
 		})
 		ui.Box(c.Key("rule")).Height(1).Background(t.LineSoft)
@@ -406,7 +409,7 @@ func (a *App) palette(c *ui.Context) {
 func (a *App) palHead(c *ui.Context, group string) {
 	t := a.T
 	key := map[string]string{"recent": "pal.g.recent", "onhand": "pal.g.onhand", "earlier": "pal.g.earlier", "made": "pal.g.made", "own": "pal.g.own", "go": "pal.g.go"}[group]
-	ui.Text(c.Key("head:"+group), a.L.T(key)).FontSize(t.XS).FontWeight(600).TextColor(t.InkMuted).Padding(t.S3, t.S3, t.S1, t.S3).SingleLine()
+	uiText(c.Key("head:"+group), a.L.T(key)).FontSize(t.XS).FontWeight(600).TextColor(t.InkMuted).Padding(t.S3, t.S3, t.S1, t.S3).SingleLine()
 }
 
 // palRowView is one row: its picture, its name, the line under it (where
@@ -484,21 +487,21 @@ func (a *App) palRowView(c *ui.Context, r palRow, q string, on bool, pick func()
 			if r.kind == palTell || r.kind == palNew {
 				w = 700
 			}
-			ui.Text(c.Key("t"), keepWords(autospace(shortTitle(title)))).FontSize(t.MD).FontWeight(w).TextColor(t.Ink).SingleLine().MinWidth(0).Tooltip(title)
+			uiText(c.Key("t"), keepWords(autospace(shortTitle(title)))).FontSize(t.MD).FontWeight(w).TextColor(t.Ink).SingleLine().MinWidth(0).Tooltip(title)
 			if line != "" {
 				ui.Row(c.Key("l2")).Gap(t.S2).AlignItems(ui.Center).MinWidth(0).Children(func() {
 					if hitField != "" {
-						ui.Text(c, a.L.T("past.hit."+pastHitKey(hitField))).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).SingleLine().Shrink(0)
+						uiText(c, a.L.T("past.hit."+pastHitKey(hitField))).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).SingleLine().Shrink(0)
 						ui.RichText(c, a.pastMarked(line, pastTerms(q), hitField == "file" || hitField == "branch")...).SingleLine().Shrink(1).MinWidth(0)
 					} else {
-						ui.Text(c, keepWords(autospace(line))).FontSize(t.SM).TextColor(t.InkSoft).SingleLine().Shrink(1).MinWidth(0)
+						uiText(c, keepWords(autospace(line))).FontSize(t.SM).TextColor(t.InkSoft).SingleLine().Shrink(1).MinWidth(0)
 					}
 				})
 			}
 			if len(parts) > 0 {
 				ui.Row(c.Key("l3")).Gap(t.S3).AlignItems(ui.Center).MinWidth(0).Children(func() { // D291: each fact apart
 					for i, p := range parts {
-						tx := ui.Text(c.Key(fmt.Sprintf("f%d", i)), p).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(1).MinWidth(0)
+						tx := uiText(c.Key(fmt.Sprintf("f%d", i)), p).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(1).MinWidth(0)
 						if strings.HasPrefix(p, "ducter/") || strings.Contains(p, "/") && !strings.Contains(p, " ") {
 							tx.Font(t.Mono)
 						}
@@ -517,7 +520,7 @@ func (a *App) palRowView(c *ui.Context, r palRow, q string, on bool, pick func()
 			case protocol.Failed:
 				ink = t.Failed.Ink
 			}
-			ui.Text(c.Key("st"), stateWord).FontSize(t.XS).FontWeight(700).TextColor(ink).SingleLine().Shrink(0)
+			uiText(c.Key("st"), stateWord).FontSize(t.XS).FontWeight(700).TextColor(ink).SingleLine().Shrink(0)
 		}
 	})
 	if on {
@@ -554,7 +557,7 @@ func (a *App) palFoot(c *ui.Context, acts []palAct) {
 			}
 			fg := a.buttonLook(c, b, kind, t.ControlSM, t.Surface)
 			b.Children(func() {
-				ui.Text(c, x.label).FontSize(t.SM).FontWeight(700).TextColor(fg).SingleLine().AccessHidden(true)
+				uiText(c, x.label).FontSize(t.SM).FontWeight(700).TextColor(fg).SingleLine().AccessHidden(true)
 				a.keycap(c, "k", x.keys)
 			})
 			if b.Clicked() {
@@ -575,7 +578,7 @@ func (a *App) keycap(c *ui.Context, key, keys string) {
 	ui.Row(c.Key("kc:"+key)).Gap(1).Padding(1, t.S1+2).Radius(5).AlignItems(ui.Center).
 		Background(t.SurfaceSunken).InsetShadow(0, -1, 0, 0, t.Line).Shrink(0).AccessHidden(true).Children(func() {
 		if mods != "" {
-			ui.Text(c.Key("m"), mods).FontSize(t.XS).FontWeight(600).TextColor(t.InkMuted).SingleLine()
+			uiText(c.Key("m"), mods).FontSize(t.XS).FontWeight(600).TextColor(t.InkMuted).SingleLine()
 		}
 		if ret {
 			a.glyph(c.Key("r"), 12, drawReturn(t.InkMuted))

@@ -30,24 +30,24 @@ func (a *App) firstRun(c *ui.Context) {
 				a.sleepyFace(c, 72)
 			}
 			a.heading(c, a.L.T("firstrun.title"), t.XXL)
-			ui.Text(c, a.L.T("firstrun.body")).FontSize(t.LG).LineHeight(1.55).TextColor(t.InkSoft)
+			uiText(c, a.L.T("firstrun.body")).FontSize(t.LG).LineHeight(1.55).TextColor(t.InkSoft)
 			a.commandBox(c, StartCommand)
 			ui.Box(c).Height(1).Background(t.LineSoft).Margin(4, 0)
 			ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
 				ui.Column(c).Grow(1).MinWidth(0).Gap(2).Children(func() {
-					ui.Text(c, a.retryLine(c)).FontSize(t.MD).FontWeight(700)
+					uiText(c, a.retryLine(c)).FontSize(t.MD).FontWeight(700)
 					if a.URL != "" && isLocalURL(a.URL) {
 						// Someone who has never heard of a WebSocket: say where, not the URL.
-						ui.Text(c, a.L.T("firstrun.where.local")).FontSize(t.SM).TextColor(t.InkMuted).SingleLine()
+						uiText(c, a.L.T("firstrun.where.local")).FontSize(t.SM).TextColor(t.InkMuted).SingleLine()
 					} else if a.URL != "" {
-						ui.Text(c, a.L.T("firstrun.where", a.URL)).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.InkMuted).SingleLine()
+						uiText(c, a.L.T("firstrun.where", a.URL)).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.InkMuted).SingleLine()
 					}
 				})
 				if a.RetryNow != nil && a.button(c, a.L.T("firstrun.retry"), btnSecondary, t.ControlMD, t.Bg) {
 					a.RetryNow()
 				}
 			})
-			ui.Text(c, a.L.T("firstrun.auto")).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5)
+			uiText(c, a.L.T("firstrun.auto")).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5)
 			if a.Pair != nil {
 				ui.Box(c).Height(1).Background(t.LineSoft).Margin(4, 0)
 				if a.button(c, a.L.T("firstrun.elsewhere"), btnText, t.ControlMD, t.Surface) {
@@ -97,8 +97,8 @@ func (a *App) commandBoxSized(c *ui.Context, cmd string, size float32) {
 	box := ui.Row(c.Key("cmd")).Gap(t.S3).Padding(t.S2, t.S2, t.S2, t.S4).Radius(t.RadiusSM).Background(t.Ink).AlignItems(ui.Center)
 	copied := ui.Local(box, "copied", func() time.Time { return time.Time{} })
 	box.Children(func() {
-		ui.Text(c, "$").Font(t.Mono).FontSize(t.MD).TextColor(t.Accent)
-		ui.Text(c, cmd).Font(t.Mono).FontSize(size).FontWeight(700).TextColor(t.Bg).Grow(1).Selectable()
+		uiText(c, "$").Font(t.Mono).FontSize(t.MD).TextColor(t.Accent)
+		uiText(c, cmd).Font(t.Mono).FontSize(size).FontWeight(700).TextColor(t.Bg).Grow(1).Selectable()
 		label := a.L.T("firstrun.copy")
 		if since := a.Now().Sub(*copied); !copied.IsZero() && since < 2*time.Second {
 			label = a.L.T("firstrun.copied")
@@ -112,7 +112,7 @@ func (a *App) commandBoxSized(c *ui.Context, cmd string, size float32) {
 		}
 		a.sink(c, b, b.Pressed())
 		b.Children(func() {
-			ui.Text(c, label).FontSize(t.SM).FontWeight(700).TextColor(t.Bg)
+			uiText(c, label).FontSize(t.SM).FontWeight(700).TextColor(t.Bg)
 		})
 		if b.Clicked() {
 			c.WriteClipboard(cmd)

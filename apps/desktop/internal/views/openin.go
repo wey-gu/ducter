@@ -97,7 +97,7 @@ func (a *App) openIn(c *ui.Context, task *store.Task) {
 		AlignItems(ui.Center).Cursor(ui.CursorPointer).Label(a.L.T("task.open.about")).Shrink(0)
 	fg := a.buttonLook(c, b, btnText, h, t.Chrome)
 	b.Children(func() {
-		ui.Text(c, a.L.T("task.open")).FontSize(t.SM).FontWeight(700).TextColor(fg).SingleLine().AccessHidden(true)
+		uiText(c, a.L.T("task.open")).FontSize(t.SM).FontWeight(700).TextColor(fg).SingleLine().AccessHidden(true)
 		ui.Box(c).Size(10, 10).Shrink(0).Draw(drawCaret(fg)).AccessHidden(true)
 	})
 	b.Menu(func(m *ui.Menu) {
@@ -154,6 +154,6 @@ func (a *App) workFolderLine(c *ui.Context, task *store.Task) {
 		return
 	}
 	shown := tildePath(path)
-	ui.Text(c.Key("workfolder"), shown).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.InkMuted).
+	uiText(c.Key("workfolder"), shown).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.InkMuted).
 		Selectable().MinWidth(0).Label(a.L.T("task.folder.about", shown))
 }

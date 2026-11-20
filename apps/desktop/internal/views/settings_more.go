@@ -31,11 +31,11 @@ func (a *App) deviceKeyRow(c *ui.Context) {
 			ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
 				ui.Column(c).Grow(1).MinWidth(0).Gap(2).Children(func() {
 					if signed {
-						ui.Text(c, a.L.T("key.paste.instead")).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
+						uiText(c, a.L.T("key.paste.instead")).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
 						return
 					}
-					ui.Text(c, a.L.T("key.paste.instead")).FontSize(t.MD).FontWeight(700)
-					ui.Text(c, a.L.T("key.paste.instead.note")).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
+					uiText(c, a.L.T("key.paste.instead")).FontSize(t.MD).FontWeight(700)
+					uiText(c, a.L.T("key.paste.instead.note")).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
 				})
 				if a.button(c, a.L.T("key.paste.check.open"), btnSecondary, t.ControlSM, t.Surface) {
 					a.openKeyRow("devices")
@@ -64,7 +64,7 @@ func (a *App) keyRowOpen(c *ui.Context, where string, on ui.Color) {
 	if where == "devices" {
 		title = a.L.T("key.paste.instead")
 	}
-	ui.Text(c, title).FontSize(t.MD).FontWeight(700)
+	uiText(c, title).FontSize(t.MD).FontWeight(700)
 	a.keyCardIn(c, func(key string) {
 		a.sendKey(key)
 		k.from = where

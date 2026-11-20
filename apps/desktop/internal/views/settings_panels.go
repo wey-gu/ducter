@@ -36,7 +36,7 @@ func (a *App) lookPanel(c *ui.Context) {
 					}
 				})
 				ui.Column(c).Gap(2).Grow(1).MinWidth(0).Children(func() {
-					ui.Text(c, a.L.T("settings.look.pebble")).FontSize(t.MD).FontWeight(700)
+					uiText(c, a.L.T("settings.look.pebble")).FontSize(t.MD).FontWeight(700)
 					a.note(c, a.L.T("settings.look.pebble.note"))
 				})
 			})
@@ -177,11 +177,11 @@ func (a *App) lookPreview(c *ui.Context) {
 			r := t.BubbleRadius
 			ui.Row(c).Children(func() {
 				ui.Spacer(c)
-				ui.Text(c, a.L.T("settings.preview.user")).FontSize(t.Bubble).LineHeight(a.leading(1.5)).TextColor(t.OnUserBubble).
+				uiText(c, a.L.T("settings.preview.user")).FontSize(t.Bubble).LineHeight(a.leading(1.5)).TextColor(t.OnUserBubble).
 					Padding(t.S2+2, t.S4-2).Radius(r[0], r[1], r[2], r[3]).Background(t.UserBubble).MaxWidthPercent(84)
 			})
 			ui.Row(c).Children(func() {
-				ui.Text(c, a.L.T("settings.preview.reply")).FontSize(t.PartnerSize).LineHeight(a.leading(1.5)).TextColor(t.OnPartnerBubble).
+				uiText(c, a.L.T("settings.preview.reply")).FontSize(t.PartnerSize).LineHeight(a.leading(1.5)).TextColor(t.OnPartnerBubble).
 					Padding(t.S2+2, t.S4-2).Radius(r[1], r[0], r[3], r[2]).Background(t.PartnerBubble).Shadow(0, 2, 0, 0, t.Line).MaxWidthPercent(84)
 				ui.Spacer(c)
 			})
@@ -191,7 +191,7 @@ func (a *App) lookPreview(c *ui.Context) {
 					return
 				}
 				ui.Row(c).Gap(t.S1).AlignItems(ui.Center).Children(func() {
-					ui.Text(c, a.L.T("details.show")).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
+					uiText(c, a.L.T("details.show")).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
 					a.glyph(c, 12, drawChevron(t.InkSoft, false))
 				})
 			})
@@ -299,8 +299,8 @@ func (a *App) placeRow(c *ui.Context, art, place, line string) {
 func (a *App) askStopHereCard(c *ui.Context, host string) {
 	t := a.T
 	ui.Column(c.Key("ask-stop-here")).Gap(t.S2).Padding(t.S3, t.S4).Radius(t.RadiusMD).Background(t.SurfaceSunken).Children(func() {
-		ui.Text(c, a.L.T("settings.home.ask")).FontSize(t.MD).FontWeight(700).LineHeight(1.4)
-		ui.Text(c, a.L.T("settings.home.ask.body", host)).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkSoft)
+		uiText(c, a.L.T("settings.home.ask")).FontSize(t.MD).FontWeight(700).LineHeight(1.4)
+		uiText(c, a.L.T("settings.home.ask.body", host)).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkSoft)
 		ui.Row(c).Gap(t.S2).Justify(ui.End).Children(func() {
 			if a.button(c, a.L.T("settings.home.stop"), btnSecondary, t.ControlMD, t.SurfaceSunken) {
 				a.askStopHere = false
@@ -335,7 +335,7 @@ func (a *App) dataGroup(c *ui.Context) {
 		})
 		a.row(c, "check", a.L.T("settings.data.check.row"), a.L.T("settings.data.check.help"), func() {
 			if ss.checking {
-				ui.Text(c, a.L.T("settings.data.checking")).FontSize(t.SM).FontWeight(700).TextColor(t.InkMuted)
+				uiText(c, a.L.T("settings.data.checking")).FontSize(t.SM).FontWeight(700).TextColor(t.InkMuted)
 				return
 			}
 			if a.button(c, a.L.T("settings.data.run"), btnSecondary, t.ControlSM, t.Surface) {
@@ -374,7 +374,7 @@ func (a *App) checkRows(c *ui.Context, r local.Report) {
 		all = all && k.Status == "ok"
 	}
 	if all {
-		ui.Text(c, a.L.T("settings.data.allgood")).FontSize(t.MD).FontWeight(800).TextColor(t.Done.Ink)
+		uiText(c, a.L.T("settings.data.allgood")).FontSize(t.MD).FontWeight(800).TextColor(t.Done.Ink)
 	}
 	ui.Column(c.Key("checks")).Gap(t.S2).Children(func() {
 		for _, k := range r.Checks {
@@ -393,9 +393,9 @@ func (a *App) checkRows(c *ui.Context, r local.Report) {
 			ui.Row(c.Key("check:" + k.ID)).Gap(t.S3).AlignItems(ui.Start).Children(func() {
 				ui.Box(c).Size(20, 20).Draw(glyph).Shrink(0)
 				ui.Column(c).Gap(1).Grow(1).MinWidth(0).Children(func() {
-					ui.Text(c, k.Label).FontSize(t.MD).FontWeight(700)
+					uiText(c, k.Label).FontSize(t.MD).FontWeight(700)
 					if k.Detail != "" {
-						ui.Text(c, k.Detail).FontSize(t.SM).TextColor(t.InkMuted).MaxLines(2)
+						uiText(c, k.Detail).FontSize(t.SM).TextColor(t.InkMuted).MaxLines(2)
 					}
 				})
 			})
@@ -426,7 +426,7 @@ func (a *App) removeEntry(c *ui.Context) {
 	a.group(c, "remove", a.L.T("remove.title"), a.L.T("remove.body"), func() {
 		if r.done {
 			a.rowBlock(c, "done", func() {
-				ui.Text(c, a.L.T("remove.done")).FontSize(t.MD).FontWeight(800)
+				uiText(c, a.L.T("remove.done")).FontSize(t.MD).FontWeight(800)
 			})
 			return
 		}
@@ -439,7 +439,7 @@ func (a *App) removeEntry(c *ui.Context) {
 				for _, o := range opts {
 					on := o.all == r.all
 					if a.selectRow(c, "rm:"+o.name, o.name, on, true, func() {
-						ui.Text(c, o.name).FontSize(t.MD).FontWeight(700)
+						uiText(c, o.name).FontSize(t.MD).FontWeight(700)
 						a.note(c, o.sub)
 					}) && !on {
 						r.all, r.word = o.all, ""
@@ -456,13 +456,13 @@ func (a *App) removeEntry(c *ui.Context) {
 					a.reasonLine(c, w.Detail)
 				}
 				if len(p.Remove) > 0 {
-					ui.Text(c, a.L.T("remove.removes")).FontSize(t.SM).FontWeight(800).TextColor(t.InkMuted)
+					uiText(c, a.L.T("remove.removes")).FontSize(t.SM).FontWeight(800).TextColor(t.InkMuted)
 					for _, it := range p.Remove {
 						a.planLine(c, "rmi:"+it.Path, it.What, tildeHome(it.Path), true)
 					}
 				}
 				if len(p.Keep) > 0 {
-					ui.Text(c, a.L.T("remove.keeps")).FontSize(t.SM).FontWeight(800).TextColor(t.InkMuted)
+					uiText(c, a.L.T("remove.keeps")).FontSize(t.SM).FontWeight(800).TextColor(t.InkMuted)
 					for _, k := range p.Keep {
 						a.planLine(c, "rmk:"+k.What, k.What, tildeHome(k.Detail), false)
 					}
@@ -497,9 +497,9 @@ func (a *App) removeEntry(c *ui.Context) {
 func (a *App) planLine(c *ui.Context, key, what, where string, path bool) {
 	t := a.T
 	ui.Column(c.Key(key)).Gap(1).Children(func() {
-		ui.Text(c, what).FontSize(t.SM).FontWeight(600).MaxLines(2)
+		uiText(c, what).FontSize(t.SM).FontWeight(600).MaxLines(2)
 		if where != "" {
-			w := ui.Text(c, where).FontSize(t.XS).TextColor(t.InkMuted).MaxLines(2).Selectable()
+			w := uiText(c, where).FontSize(t.XS).TextColor(t.InkMuted).MaxLines(2).Selectable()
 			if path {
 				w.Font(t.Mono)
 			}
@@ -562,8 +562,8 @@ func (a *App) aboutPanel(c *ui.Context) {
 		a.avatar(c, theme.Idle, 112)
 		ui.Column(c).Gap(t.S1).Grow(1).MinWidth(0).Children(func() {
 			a.heading(c, "Ducter", t.Title)
-			ui.Text(c, a.L.T("settings.about.version", a.versionText())).FontSize(t.MD).FontWeight(700).TextColor(t.InkSoft).Selectable()
-			ui.Text(c, a.L.T("settings.about.made")).FontSize(t.MD).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
+			uiText(c, a.L.T("settings.about.version", a.versionText())).FontSize(t.MD).FontWeight(700).TextColor(t.InkSoft).Selectable()
+			uiText(c, a.L.T("settings.about.made")).FontSize(t.MD).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
 		})
 	})
 	a.updateAllSection(c) // D224: 全部更新 / Update all, first: one tap for everything behind
@@ -590,7 +590,7 @@ func (a *App) aboutPanel(c *ui.Context) {
 			ss.credits = !ss.credits
 		}
 		if ss.credits {
-			ui.Text(c, a.L.T("settings.sound.credits")).FontSize(t.SM).LineHeight(a.leading(1.6)).TextColor(t.InkSoft).
+			uiText(c, a.L.T("settings.sound.credits")).FontSize(t.SM).LineHeight(a.leading(1.6)).TextColor(t.InkSoft).
 				Padding(0, t.S5, t.S4, t.S5).Selectable()
 		}
 	})

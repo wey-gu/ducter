@@ -67,7 +67,7 @@ func (a *App) richWords(c *ui.Context, e *store.Entry, rt *replyTo) {
 			a.partnerBubble(c, join, func() {
 				box := ui.Column(c).Selectable().CopyData(autospaceCopy).SelectionColor(a.T.Highlight).MinWidth(0)
 				a.replyMenu(c, box, menu, e.AI.Text)
-				box.Children(func() { markdown.View(c, autospace(words), &a.md) })
+				box.Children(func() { markdown.View(c, mdSpace(words), &a.md) })
 			})
 		})
 		first = false
@@ -103,7 +103,7 @@ func (a *App) richCard(c *ui.Context, key, label string) ui.Element {
 
 func (a *App) richTitle(c *ui.Context, s string) {
 	if s != "" {
-		ui.Text(c, s).Font(a.T.Display).FontSize(a.T.MD).FontWeight(800).TextColor(a.T.Ink)
+		uiText(c, s).Font(a.T.Display).FontSize(a.T.MD).FontWeight(800).TextColor(a.T.Ink)
 	}
 }
 
@@ -151,7 +151,7 @@ func (a *App) richTable(c *ui.Context, m protocol.RichModel, at richAt) {
 				role = ui.RoleRowHeader
 			}
 			ui.Column(c).Grow(grow(j)).Basis(0).MinWidth(0).AlignItems(al).Role(role).Label(s).Children(func() {
-				w := ui.Text(c, s).TextAlign(al).AccessHidden(true)
+				w := uiText(c, s).TextAlign(al).AccessHidden(true)
 				switch {
 				case head:
 					w.FontSize(t.SM).FontWeight(700).TextColor(t.InkMuted)
@@ -211,7 +211,7 @@ func (a *App) richChart(c *ui.Context, m protocol.RichModel, at richAt) {
 	a.richCard(c, at.key, label).Children(func() {
 		ui.Column(c).Gap(2).Children(func() {
 			a.richHead(c, m.Title, at)
-			ui.Text(c, m.Summary).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(1.45)
+			uiText(c, m.Summary).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(1.45)
 		})
 		chart := ui.Column(c).Gap(6).Padding(richLabelH, 0, 0, 0).Role(ui.RoleImage).Label(richChartWords(m, a.L.T("rich.join")))
 		chart.Children(func() {
@@ -220,7 +220,7 @@ func (a *App) richChart(c *ui.Context, m protocol.RichModel, at richAt) {
 				ui.Box(c).Width(richTickW).Height(H).Shrink(0).Children(func() {
 					for _, k := range m.Ticks {
 						f := float32((k.Value - m.Lo) / span)
-						ui.Text(c, k.Label).Absolute().Right(0).Top((1-f)*H - 8).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum").SingleLine()
+						uiText(c, k.Label).Absolute().Right(0).Top((1-f)*H - 8).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum").SingleLine()
 					}
 				})
 				plot := ui.Row(c).Grow(1).Basis(0).MinWidth(0).Height(H)
@@ -261,7 +261,7 @@ func (a *App) richChart(c *ui.Context, m protocol.RichModel, at richAt) {
 						ui.Column(c.Key(fmt.Sprint("pt", i))).Grow(1).Basis(0).MinWidth(0).Height(H).AlignItems(ui.Center).Children(func() {
 							value := func() {
 								if m.Values {
-									ui.Text(c, q.Text).Height(richLabelH).FontSize(t.XS).FontWeight(700).TextColor(t.InkSoft).FontFeatures("tnum").SingleLine()
+									uiText(c, q.Text).Height(richLabelH).FontSize(t.XS).FontWeight(700).TextColor(t.InkSoft).FontFeatures("tnum").SingleLine()
 								}
 							}
 							lab := float32(0)
@@ -290,7 +290,7 @@ func (a *App) richChart(c *ui.Context, m protocol.RichModel, at richAt) {
 			ui.Row(c).Padding(0, 0, 0, richTickW+6).AccessHidden(true).Children(func() {
 				for i, q := range m.Points {
 					ui.Row(c.Key(fmt.Sprint("x", i))).Grow(1).Basis(0).MinWidth(0).Justify(ui.Center).Children(func() {
-						ui.Text(c, q.Label).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
+						uiText(c, q.Label).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
 					})
 				}
 			})
@@ -356,7 +356,7 @@ func (a *App) richChecklist(c *ui.Context, m protocol.RichModel, at richAt) {
 					} else {
 						box.Background(t.Bg).Border(1.5, t.Line2).Shadow(0, 2, 0, 0, t.Line)
 					}
-					w := ui.Text(c, x).FontSize(t.MD).LineHeight(1.45).AccessHidden(true)
+					w := uiText(c, x).FontSize(t.MD).LineHeight(1.45).AccessHidden(true)
 					if ticked {
 						w.TextColor(t.InkMuted).Strikethrough()
 					} else {
@@ -420,7 +420,7 @@ func (a *App) richChoices(c *ui.Context, m protocol.RichModel, at richAt) {
 					chip.Background(t.SurfaceSunken)
 				}
 				chip.Children(func() {
-					ui.Text(c, o).FontSize(t.MD).FontWeight(700).TextColor(fg).SingleLine().AccessHidden(true)
+					uiText(c, o).FontSize(t.MD).FontWeight(700).TextColor(fg).SingleLine().AccessHidden(true)
 				})
 			})
 		}

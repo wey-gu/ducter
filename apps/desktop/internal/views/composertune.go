@@ -148,7 +148,7 @@ func (a *App) composerTune(c *ui.Context, task *store.Task) {
 				a.tuneEffort(c, model, levels, shown, eWord, pick)
 			}
 			if ct.saidFor == task.ID && ct.said != "" && a.Now().Sub(ct.saidAt) < tuneSaidFor {
-				ui.Text(c.Key("ct-said-in"), ct.said).FontSize(t.XS).TextColor(t.InkMuted).Margin(t.S2, 0, 0, 0).Role(ui.RoleAlert)
+				uiText(c.Key("ct-said-in"), ct.said).FontSize(t.XS).TextColor(t.InkMuted).Margin(t.S2, 0, 0, 0).Role(ui.RoleAlert)
 			}
 		})
 	}
@@ -158,7 +158,7 @@ func (a *App) composerTune(c *ui.Context, task *store.Task) {
 	if !ct.open && ct.saidFor == task.ID && ct.said != "" {
 		if left := tuneSaidFor - a.Now().Sub(ct.saidAt); left > 0 {
 			c.After(left)
-			ui.Text(c.Key("ct-said"), ct.said).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().MinWidth(0).Shrink(1).Role(ui.RoleAlert)
+			uiText(c.Key("ct-said"), ct.said).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().MinWidth(0).Shrink(1).Role(ui.RoleAlert)
 		} else {
 			ct.said = ""
 		}
@@ -188,12 +188,12 @@ func (a *App) tuneChip(c *ui.Context, task *store.Task, model *protocol.ModelCho
 		e.Background(t.SurfaceSunken)
 	}
 	e.Children(func() {
-		ui.Text(c, model.Label).FontSize(t.XS).FontWeight(650).TextColor(ink).SingleLine().Shrink(1).MinWidth(0).AccessHidden(true)
+		uiText(c, model.Label).FontSize(t.XS).FontWeight(650).TextColor(ink).SingleLine().Shrink(1).MinWidth(0).AccessHidden(true)
 		if len(levels) > 0 {
 			if bars := tuneMarkBars(shown, len(levels)); bars > 0 {
 				ui.Box(c).Size(12, 10).Shrink(0).Draw(drawLevelMark(bars, muted, t.Faint)).AccessHidden(true)
 			}
-			ui.Text(c, eWord).FontSize(t.XS).FontWeight(500).TextColor(muted).SingleLine().Shrink(0).AccessHidden(true)
+			uiText(c, eWord).FontSize(t.XS).FontWeight(500).TextColor(muted).SingleLine().Shrink(0).AccessHidden(true)
 		}
 		ui.Box(c).Size(8, 8).Shrink(0).Draw(drawCaret(muted)).AccessHidden(true)
 	})
@@ -214,11 +214,11 @@ func (a *App) tuneEffort(c *ui.Context, model *protocol.ModelChoice, levels []st
 	back := tuneResetTo(model, cur)
 	ui.Row(c.Key("tp-head")).AlignItems(ui.Start).Gap(t.S2).Children(func() {
 		ui.Column(c).Grow(1).MinWidth(0).Gap(2).Children(func() {
-			ui.Text(c, a.L.T("newtask.effort")).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
+			uiText(c, a.L.T("newtask.effort")).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
 			ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
 				a.heading(c, eWord, 20).TextColor(t.Ink)
 				if isDefault {
-					ui.Text(c, a.L.T("newtask.effort.default")).FontSize(t.XS).FontWeight(600).TextColor(t.InkMuted).
+					uiText(c, a.L.T("newtask.effort.default")).FontSize(t.XS).FontWeight(600).TextColor(t.InkMuted).
 						Padding(1, 7).Radius(9).Background(t.SurfaceSunken)
 				}
 			})
@@ -256,17 +256,17 @@ func (a *App) tuneEffort(c *ui.Context, model *protocol.ModelChoice, levels []st
 	def := slices.Index(levels, model.DefaultEffort)
 	s.Draw(drawSteps(t, n, shown, def, f, s.Focused()))
 	ui.Row(c.Key("tp-ends")).Padding(t.S1+2, 2, 0, 2).AccessHidden(true).Children(func() {
-		ui.Text(c, a.effortWord(levels[0])).FontSize(t.XS).TextColor(t.InkMuted)
+		uiText(c, a.effortWord(levels[0])).FontSize(t.XS).TextColor(t.InkMuted)
 		ui.Spacer(c)
-		ui.Text(c, a.effortWord(levels[n-1])).FontSize(t.XS).TextColor(t.InkMuted)
+		uiText(c, a.effortWord(levels[n-1])).FontSize(t.XS).TextColor(t.InkMuted)
 	})
 	ui.Box(c).Height(1).Background(t.LineSoft).Margin(t.S2+2, 0, 0, 0)
 	m := ui.Row(c.Key("tp-model")).MinHeight(40).Gap(t.S2).AlignItems(ui.Center).Padding(t.S1, 2, 0, 2).
 		Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(spoken(a.L, a.L.T("tune.change.model"), model.Label)).Focusable()
 	m.Children(func() {
-		ui.Text(c, a.L.T("newtask.model")).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).Shrink(0).AccessHidden(true)
+		uiText(c, a.L.T("newtask.model")).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).Shrink(0).AccessHidden(true)
 		ui.Spacer(c)
-		ui.Text(c, model.Label).FontSize(t.SM).FontWeight(650).TextColor(t.Ink).SingleLine().Shrink(1).MinWidth(0).AccessHidden(true)
+		uiText(c, model.Label).FontSize(t.SM).FontWeight(650).TextColor(t.Ink).SingleLine().Shrink(1).MinWidth(0).AccessHidden(true)
 		a.glyph(c, 10, drawChevron(t.InkMuted, false))
 	})
 	if m.Clicked() {
@@ -289,14 +289,14 @@ func (a *App) tuneModels(c *ui.Context, models []protocol.ModelChoice, model *pr
 				ct.models = false
 			}
 		}
-		ui.Text(c, mName).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
+		uiText(c, mName).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
 	})
 	ui.Scroll(c.Key("tp-list")).MaxHeight(320).Children(func() {
 		ui.Column(c).Gap(2).Role(ui.RoleRadioGroup).Label(mName).Children(func() {
 			for _, m := range models {
 				on := m.ID == model.ID
 				if a.menuRow(c, "ct-model:"+m.ID, m.Label, on, false, func() {
-					ui.Text(c, m.Label).FontSize(t.SM).TextColor(t.Ink).SingleLine().Shrink(1).MinWidth(0)
+					uiText(c, m.Label).FontSize(t.SM).TextColor(t.Ink).SingleLine().Shrink(1).MinWidth(0)
 				}) {
 					if on {
 						ct.open = false

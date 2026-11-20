@@ -27,10 +27,10 @@ func (a *App) sectionHead(c *ui.Context, title, note string) {
 	}
 	ui.Column(c).Gap(2).Padding(0, t.S5).Children(func() {
 		if title != "" {
-			ui.Text(c, title).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).LineHeight(a.leading(1.4)).Role(ui.RoleHeading)
+			uiText(c, title).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).LineHeight(a.leading(1.4)).Role(ui.RoleHeading)
 		}
 		if note != "" {
-			ui.Text(c, note).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
+			uiText(c, note).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
 		}
 	})
 }
@@ -38,7 +38,7 @@ func (a *App) sectionHead(c *ui.Context, title, note string) {
 // paperNote is a note on the paper after a section's group, on the text edge.
 func (a *App) paperNote(c *ui.Context, text string) {
 	t := a.T
-	ui.Text(c, text).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted).Padding(0, t.S5)
+	uiText(c, text).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted).Padding(0, t.S5)
 }
 
 // tileCol is a row's 40 tile column: the tile, or nothing, so the words
@@ -60,13 +60,13 @@ func (a *App) headRow(c *ui.Context, key string, tile func(), name, line string,
 	ui.Row(c.Key("head:"+key)).Gap(t.S3).Padding(t.S4, t.S5).MinHeight(72).AlignItems(ui.Center).Children(func() {
 		a.tileCol(c, tile)
 		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(2).Children(func() {
-			ui.Text(c, name).Font(t.Display).FontSize(t.LG).FontWeight(800).LineHeight(1.3)
+			uiText(c, name).Font(t.Display).FontSize(t.LG).FontWeight(800).LineHeight(1.3)
 			if line != "" {
 				w := 600
 				if tone == sideMuted {
 					w = 500
 				}
-				ui.Text(c, line).FontSize(t.SM).FontWeight(w).LineHeight(a.leading(1.5)).TextColor(a.sideInk(tone))
+				uiText(c, line).FontSize(t.SM).FontWeight(w).LineHeight(a.leading(1.5)).TextColor(a.sideInk(tone))
 			}
 		})
 		if control != nil {
@@ -84,10 +84,10 @@ func (a *App) tileRow(c *ui.Context, key string, tile func(), title, line string
 		a.tileCol(c, tile)
 		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(2).Children(func() {
 			if title != "" {
-				ui.Text(c, title).FontSize(t.MD).FontWeight(700).LineHeight(a.leading(1.4))
+				uiText(c, title).FontSize(t.MD).FontWeight(700).LineHeight(a.leading(1.4))
 			}
 			if line != "" {
-				ui.Text(c, line).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
+				uiText(c, line).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
 			}
 		})
 		if control != nil {
@@ -114,7 +114,7 @@ func (a *App) footRow(c *ui.Context, key, note string, actions func()) {
 	a.sep(c)
 	ui.Row(c.Key("foot:"+key)).Gap(t.S3).Padding(t.S3, t.S5, t.S4, t.S5).MinHeight(56).AlignItems(ui.Center).Children(func() {
 		ui.Box(c).Width(40).Shrink(0)
-		ui.Text(c, note).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted).Grow(1).Basis(0).MinWidth(0)
+		uiText(c, note).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted).Grow(1).Basis(0).MinWidth(0)
 		if actions != nil {
 			ui.Row(c).Shrink(0).Gap(t.S1).AlignItems(ui.Center).Children(actions)
 		}
@@ -130,7 +130,7 @@ func (a *App) confirmRow(c *ui.Context, key, ask, keep, goLabel, about string) (
 	a.sep(c)
 	ui.Row(c.Key("confirm:"+key)).Gap(t.S3).Padding(t.S3, t.S5, t.S4, t.S5).MinHeight(56).AlignItems(ui.Center).Children(func() {
 		ui.Box(c).Width(40).Shrink(0)
-		ui.Text(c, ask).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.Ink).Grow(1).Basis(0).MinWidth(0)
+		uiText(c, ask).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.Ink).Grow(1).Basis(0).MinWidth(0)
 		ui.Row(c).Shrink(0).Gap(t.S1).AlignItems(ui.Center).Children(func() {
 			k = a.quietButton(c, "confirm-keep:"+key, keep, about, false, 0)
 			g = a.dangerText(c, "confirm-go:"+key, goLabel, about)
@@ -220,9 +220,9 @@ func (a *App) addRow(c *ui.Context, key, title, line string) bool {
 	b.Children(func() {
 		a.tileCol(c, func() { a.glyph(c, 18, drawPlus(t.InkSoft)) })
 		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(2).AccessHidden(true).Children(func() {
-			ui.Text(c, title).FontSize(t.MD).FontWeight(700).LineHeight(a.leading(1.4))
+			uiText(c, title).FontSize(t.MD).FontWeight(700).LineHeight(a.leading(1.4))
 			if line != "" {
-				ui.Text(c, line).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
+				uiText(c, line).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
 			}
 		})
 	})
@@ -250,11 +250,11 @@ func (a *App) openRow(c *ui.Context, key string, tile func(), title, line string
 			a.tileCol(c, tile)
 			ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(2).AccessHidden(true).Children(func() {
 				ui.Row(c).Gap(t.S1).AlignItems(ui.Center).Children(func() {
-					ui.Text(c, title).FontSize(t.MD).FontWeight(700).LineHeight(a.leading(1.4)).SingleLine().Shrink(1).MinWidth(0)
+					uiText(c, title).FontSize(t.MD).FontWeight(700).LineHeight(a.leading(1.4)).SingleLine().Shrink(1).MinWidth(0)
 					a.glyph(c, 12, drawChevron(t.InkMuted, open))
 				})
 				if line != "" {
-					ui.Text(c, line).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(lineInk).SingleLine()
+					uiText(c, line).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(lineInk).SingleLine()
 				}
 			})
 		})
@@ -270,7 +270,7 @@ func (a *App) openRow(c *ui.Context, key string, tile func(), title, line string
 // soon): a sunken chip, never pressable.
 func (a *App) quietTag(c *ui.Context, text string) {
 	t := a.T
-	ui.Text(c, text).FontSize(t.XS).FontWeight(700).TextColor(t.InkSoft).Padding(t.S1, t.S2).Radius(t.RadiusXS).Background(t.SurfaceSunken).SingleLine()
+	uiText(c, text).FontSize(t.XS).FontWeight(700).TextColor(t.InkSoft).Padding(t.S1, t.S2).Radius(t.RadiusXS).Background(t.SurfaceSunken).SingleLine()
 }
 
 // quietDanger is a destructive action before it is confirmed (断开 Tuwa,
@@ -287,7 +287,7 @@ func (a *App) quietDanger(c *ui.Context, key, label, about string) bool {
 		ink = t.Failed.Ink
 	}
 	b.Children(func() {
-		ui.Text(c, label).FontSize(t.SM).FontWeight(700).TextColor(ink).SingleLine().AccessHidden(true)
+		uiText(c, label).FontSize(t.SM).FontWeight(700).TextColor(ink).SingleLine().AccessHidden(true)
 	})
 	return b.Clicked()
 }
@@ -313,9 +313,9 @@ func (a *App) tileLinkRow(c *ui.Context, key string, tile func(), title, line st
 	b.Children(func() {
 		a.tileCol(c, tile)
 		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(2).AccessHidden(true).Children(func() {
-			ui.Text(c, title).FontSize(t.MD).FontWeight(700).LineHeight(a.leading(1.4))
+			uiText(c, title).FontSize(t.MD).FontWeight(700).LineHeight(a.leading(1.4))
 			if line != "" {
-				ui.Text(c, line).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
+				uiText(c, line).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
 			}
 		})
 		mark := drawChevron(t.InkMuted, false)
@@ -400,7 +400,7 @@ func (a *App) saidLineAt(c *ui.Context, key string, pad float32) {
 			pop := t.Bouncy
 			dot.Transition(ui.ElementTransition{Animation: &pop, Enter: &ui.Motion{Scale: 0.2}})
 		}
-		ui.Text(c, text).FontSize(t.SM).FontWeight(600).TextColor(t.InkSoft).LineHeight(a.leading(1.5)).AccessHidden(true)
+		uiText(c, text).FontSize(t.SM).FontWeight(600).TextColor(t.InkSoft).LineHeight(a.leading(1.5)).AccessHidden(true)
 	})
 }
 

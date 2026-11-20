@@ -130,7 +130,7 @@ func (a *App) webSheet(c *ui.Context, dv *protocol.DeviceView, sw, sh float32) {
 	a.enter(c, sheet)
 	sheet.Children(func() {
 		ui.Row(c).Gap(10).AlignItems(ui.Center).Children(func() {
-			ui.Text(c, a.L.T("web.title")).FontSize(t.LG).FontWeight(800).Grow(1).MinWidth(0)
+			uiText(c, a.L.T("web.title")).FontSize(t.LG).FontWeight(800).Grow(1).MinWidth(0)
 			if a.button(c, a.L.T("ask.later"), btnText, t.ControlSM, t.Surface) {
 				a.web.open = false
 			}
@@ -156,7 +156,7 @@ func (a *App) webSetup(c *ui.Context, dv *protocol.DeviceView) {
 	}
 	st := w.cua
 	if !w.checked {
-		ui.Text(c, a.L.T("web.checking")).FontSize(t.SM).TextColor(t.InkMuted)
+		uiText(c, a.L.T("web.checking")).FontSize(t.SM).TextColor(t.InkMuted)
 		return
 	}
 	if st.Ready() {
@@ -182,7 +182,7 @@ func (a *App) webSetup(c *ui.Context, dv *protocol.DeviceView) {
 		}
 	})
 	if current != "driver" {
-		ui.Text(c, a.L.T("web.why")).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.5)
+		uiText(c, a.L.T("web.why")).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.5)
 	}
 }
 
@@ -203,16 +203,16 @@ func (a *App) webStep(c *ui.Context, id string, n int, current string, done bool
 				mark.Draw(drawCheck(t.Ink))
 			} else {
 				mark.Children(func() {
-					ui.Text(c, strconv.Itoa(n)).FontSize(t.SM).FontWeight(800).TextColor(t.InkMuted).Margin(ui.Auto)
+					uiText(c, strconv.Itoa(n)).FontSize(t.SM).FontWeight(800).TextColor(t.InkMuted).Margin(ui.Auto)
 				})
 			}
 			ui.Column(c).Grow(1).MinWidth(0).Gap(2).Children(func() {
-				tt := ui.Text(c, a.L.T(title)).FontSize(t.MD).FontWeight(800)
+				tt := uiText(c, a.L.T(title)).FontSize(t.MD).FontWeight(800)
 				if !isCur {
 					tt.TextColor(t.InkMuted)
 				}
 				if isCur {
-					ui.Text(c, a.webStatus(id)).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(1.45)
+					uiText(c, a.webStatus(id)).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(1.45)
 				}
 			})
 			if isCur {
@@ -330,7 +330,7 @@ func (a *App) webDriverExtra(c *ui.Context) {
 	}
 	ui.Column(c).Gap(t.S1).Padding(0, 0, 0, 32).Children(func() {
 		if last := j.Last(); last != "" && j.Trouble() == "" {
-			ui.Text(c, last).Font(t.Mono).FontSize(12).TextColor(t.InkMuted).SingleLine().Selectable()
+			uiText(c, last).Font(t.Mono).FontSize(12).TextColor(t.InkMuted).SingleLine().Selectable()
 		}
 		ui.Row(c).Margin(0, -10).Children(func() {
 			if a.button(c, a.L.T("fix.terminal"), btnText, t.ControlSM, t.SurfaceSunken) {
@@ -347,10 +347,10 @@ func (a *App) switchArt(c *ui.Context, pane string) {
 	t := a.T
 	ui.Column(c).Gap(t.S2).Padding(t.S3, t.S3).Radius(t.RadiusSM).Background(t.Surface).Border(1, t.LineSoft).Role(ui.RoleImage).
 		Label(a.L.T("web.art", pane)).Children(func() {
-		ui.Text(c, a.L.T("web.art.where", pane)).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
+		uiText(c, a.L.T("web.art.where", pane)).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
 		ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Padding(t.S2, t.S2).Radius(t.RadiusXS).Background(t.SurfaceSunken).Children(func() {
 			ui.Box(c).Size(20, 20).Radius(5).Background(t.Ink).Shrink(0)
-			ui.Text(c, "CuaDriver").FontSize(t.SM).FontWeight(700).Grow(1)
+			uiText(c, "CuaDriver").FontSize(t.SM).FontWeight(700).Grow(1)
 			// The switch, on: what the person is looking for.
 			ui.Box(c).Size(34, 20).Shrink(0).Draw(func(p *ui.Painter, r ui.Rect) {
 				p.Fill(r, t.Awake.Dot, r.H/2)
@@ -395,7 +395,7 @@ func (a *App) webReady(c *ui.Context, dv *protocol.DeviceView) {
 		if bmp := theme.Art(theme.Done, 72); bmp != nil {
 			ui.Image(c, bmp).Size(36, 36).Shrink(0)
 		}
-		ui.Text(c, a.L.T("web.ready", a.deviceNameIn(dv))).FontSize(t.SM).FontWeight(700).TextColor(t.Done.Ink).Grow(1).MinWidth(0).LineHeight(1.45)
+		uiText(c, a.L.T("web.ready", a.deviceNameIn(dv))).FontSize(t.SM).FontWeight(700).TextColor(t.Done.Ink).Grow(1).MinWidth(0).LineHeight(1.45)
 	})
 }
 

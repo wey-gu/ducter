@@ -46,7 +46,7 @@ func (a *App) quietButton(c *ui.Context, key, label, about string, strong bool, 
 		if hover {
 			col = t.Ink
 		}
-		ui.Text(c, label).FontSize(t.SM).FontWeight(w).TextColor(col).SingleLine().AccessHidden(about != "")
+		uiText(c, label).FontSize(t.SM).FontWeight(w).TextColor(col).SingleLine().AccessHidden(about != "")
 		if chevron != 0 {
 			a.glyph(c, 12, drawChevron(col, chevron > 1))
 		}
@@ -190,7 +190,7 @@ func (a *App) mergeAction(c *ui.Context, task *store.Task) {
 	}
 	switch {
 	case task.Acting != "":
-		ui.Text(c.Key("acting:"+task.ID), a.L.TFamily("result.acting."+task.Acting, base)).FontSize(t.SM).TextColor(t.InkMuted)
+		uiText(c.Key("acting:"+task.ID), a.L.TFamily("result.acting."+task.Acting, base)).FontSize(t.SM).TextColor(t.InkMuted)
 	case task.Unsure != "":
 		if a.quietButton(c, "retry:"+task.ID, a.L.T("task.action.retry"), a.L.T("result.unsure"), true, 0) {
 			a.RetryAction(task)
@@ -198,7 +198,7 @@ func (a *App) mergeAction(c *ui.Context, task *store.Task) {
 	case task.Acted != nil && task.Acted.OK && task.Acted.Action == "merge":
 		ui.Row(c.Key("merged:" + task.ID)).Gap(t.S1 + 2).AlignItems(ui.Center).Children(func() {
 			a.glyph(c, 14, drawCheck(t.Done.Ink))
-			ui.Text(c, a.L.T("result.merged", base)).FontSize(t.SM).FontWeight(700).TextColor(t.Done.Ink)
+			uiText(c, a.L.T("result.merged", base)).FontSize(t.SM).FontWeight(700).TextColor(t.Done.Ink)
 		})
 	default:
 		if a.quietButton(c, "merge:"+task.ID, a.L.T("result.merge", base), task.Title(), true, 0) {
@@ -242,18 +242,18 @@ func (a *App) notedLine(c *ui.Context, n noted) {
 	t := a.T
 	ui.Row(c.Key(n.seq)).Gap(t.S3).Wrap().AlignItems(ui.Center).Children(func() {
 		if a.notedUndone(n.seq) {
-			ui.Text(c, a.L.T("memory.undone", n.title)).FontSize(t.SM).TextColor(t.InkMuted).MinWidth(0)
+			uiText(c, a.L.T("memory.undone", n.title)).FontSize(t.SM).TextColor(t.InkMuted).MinWidth(0)
 			return
 		}
-		ui.Text(c, a.L.T("memory.noted", n.title)).FontSize(t.SM).TextColor(t.InkMuted).MinWidth(0)
+		uiText(c, a.L.T("memory.noted", n.title)).FontSize(t.SM).TextColor(t.InkMuted).MinWidth(0)
 		if n.replaced != "" {
-			ui.Text(c.Key("replaced"), a.L.T("memory.replaced", n.replaced)).FontSize(t.SM).TextColor(t.InkMuted).MinWidth(0)
+			uiText(c.Key("replaced"), a.L.T("memory.replaced", n.replaced)).FontSize(t.SM).TextColor(t.InkMuted).MinWidth(0)
 		}
 		if a.notedWaiting(n.seq) {
-			ui.Text(c.Key("waiting"), a.L.T("memory.waiting")).FontSize(t.SM).TextColor(t.InkMuted).MinWidth(0)
+			uiText(c.Key("waiting"), a.L.T("memory.waiting")).FontSize(t.SM).TextColor(t.InkMuted).MinWidth(0)
 		}
 		if a.S.UndoFailed == n.seq {
-			ui.Text(c.Key("undo-failed"), a.L.T("memory.undo.failed")).FontSize(t.SM).TextColor(t.Failed.Ink).MinWidth(0)
+			uiText(c.Key("undo-failed"), a.L.T("memory.undo.failed")).FontSize(t.SM).TextColor(t.Failed.Ink).MinWidth(0)
 		}
 		if a.S.LastUserSeq < n.seq {
 			if a.quietButton(c, "undo", a.L.T("memory.undo"), n.title, false, 0) {
@@ -427,7 +427,7 @@ func (a *App) ask(c *ui.Context, d *store.DecisionState, taskID string) {
 				a.detailsPane(c, key, func() {
 					a.taskLine(c, task, "")
 					if d.Said != "" && d.Question != "" {
-						ui.Text(c, a.L.T("decision.its_words", d.Question)).Selectable().FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5)
+						uiText(c, a.L.T("decision.its_words", d.Question)).Selectable().FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5)
 					}
 				})
 			})
@@ -527,7 +527,7 @@ func (a *App) timeLine(c *ui.Context, parts ...string) {
 		// Each part its own element, a time in tabular figures (D291).
 		for _, p := range parts {
 			if p != "" {
-				ui.Text(c, p).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum").SingleLine()
+				uiText(c, p).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum").SingleLine()
 			}
 		}
 	})
@@ -594,9 +594,9 @@ func (a *App) waitingRow(c *ui.Context, line, sub string) {
 	ui.Row(c).Gap(t.S3).AlignItems(ui.Center).MinHeight(40).Role(ui.RoleStatus).Label(line).Children(func() {
 		a.partnerFace(c, "presence", theme.Working, 32)
 		ui.Column(c).Gap(1).MinWidth(0).Children(func() {
-			ui.Text(c, line).FontSize(t.MD).TextColor(t.InkMuted)
+			uiText(c, line).FontSize(t.MD).TextColor(t.InkMuted)
 			if sub != "" {
-				ui.Text(c, sub).FontSize(t.SM).TextColor(t.InkMuted)
+				uiText(c, sub).FontSize(t.SM).TextColor(t.InkMuted)
 			}
 		})
 	})

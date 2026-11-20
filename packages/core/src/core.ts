@@ -64,6 +64,7 @@ import { createMemRelay, homeClaudeMemPlugin, readMemCredential } from "./mem-re
 import { createWorkingMemory } from "./working-memory.ts";
 import { identityIdFor, readMemIdentity } from "./mem-identity.ts";
 import { keepSaidAtOnce, keepSaidOnGo, openSaid, type SaidStore } from "./said.ts";
+import { keepStandingAtOnce, openStanding, type StandingStore } from "./standing.ts";
 import { openRules, type RulesStore } from "./rules.ts";
 import { openPins, type PinsStore } from "./pins.ts";
 import { openApps, type AppsStore } from "./apps.ts";
@@ -143,6 +144,7 @@ const REVIEW_ROUND_SCHEMA = {
           ci: { type: "string", enum: ["passing", "failing", "pending", "none"], description: "Its checks at that head" },
           changed: { type: "boolean", description: "true: its head moved and you reviewed it again this round" },
           gist: { type: "string", description: "One line in the person's language: what the PR does" },
+          mention: { type: "boolean", description: "true when it only mentions or assigns the person and didn't ask for their review" },
           notes: {
             type: "array",
             description: "Only when changed: your drafted review comments, at most 6",
@@ -321,6 +323,8 @@ export interface Core extends CoreApi {
   apps: AppsStore;
   /** D379: who does which work, said and never saved as a rule. */
   said: SaidStore;
+  /** D413: 不用问我的 / Without asking: what the person said may go without asking. */
+  standing: StandingStore;
   loadout: Loadout;
   /** The user's connections (D96). */
   connections: ConnectionsStore;
@@ -555,6 +559,10 @@ export function startCore(opts: CoreOptions = {}): Core {
   // D401: what the person says about who does which work is their rule the moment it lands (before
   // the partner's turn); what they said before this was built is kept now.
   keepSaidAtOnce(log, said);
+  // D413: what the person says may go without asking (不用问我的) is kept the moment it lands, the
+  // same way; bounded by where the review routine looks now. Earlier sayings: after the to-do sources.
+  const standing = openStanding({ log, dataDir, reviewOrgs: () => taskSourcesRef?.pile.reviewOrgs() ?? [] });
+  keepStandingAtOnce(log, standing);
   try {
     const back = said.backfill();
     if (back.length) console.log(`[said] kept ${back.length} rule(s) from what you said earlier: ${back.map((r) => r.text).join(" | ")}`);
@@ -989,7 +997,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   const workFrames: typeof work.frames = { ...work.frames, waiter: (id, action) => limitWaits.act(id, action) ?? (action === "handoff" ? Promise.resolve(false) : work.frames.waiter(id, action)) };
   // D388: the pages the last noticed call rested on (a holder: the Core is a copy of api).
   const noticedSources: { links?: { label: string; url: string }[]; whys?: { text: string; why: string }[] } = {};
-  const api = { log, tasks, mcp, persona, dataDir, settings, connections, phone, bodies: loadout, said, spine: log.spine, bridgeLink, media, limits: accountUsage, workingMemory, pins, apps, boards: { makeReviewBoard: (id: string) => boards.makeReviewBoard(id), isReview: (id: string) => isReview(id), offer: (id: string, k: "reviews" | "reports") => boards.offer(id, k) }, noticedSources, ...(browser ? { browser: browser.port } : {}) } as CoreApi;
+  const api = { log, tasks, mcp, persona, dataDir, settings, connections, phone, bodies: loadout, said, standing, spine: log.spine, bridgeLink, media, limits: accountUsage, workingMemory, pins, apps, boards: { makeReviewBoard: (id: string) => boards.makeReviewBoard(id), isReview: (id: string) => isReview(id), offer: (id: string, k: "reviews" | "reports") => boards.offer(id, k) }, noticedSources, ...(browser ? { browser: browser.port } : {}) } as CoreApi;
   // D312: with more than one partner, the default partner keeps to its own too, and a task's
   // brief and Mem identity are those of the partner it is for.
   const memOf = new Map<string, MemIdentity | undefined>();
@@ -1242,7 +1250,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       socketsChanged: () => reachRef?.refresh(),
     },
     partners,
-    core: api, workbench, bridgeLink, decisions, runner: () => runner, devices: () => devicesView, lend: () => lendRef, settings, connections, phone, rules, pins, apps, loadout, models: modelCatalog, accountUsage, closing, work: workFrames, newTask, updates: () => updatesRef, agents: () => agentsRef, agentSetup: (device, f) => agentSetupOp(device, f), memSetup: (device, action, link) => memSetupOp(device, action, link), recordsAllow: (device, on) => recordsAllowOp(device, on), updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, memHealth, anywhere: () => anywhereRef, channels, proactive: () => proactiveRef, replay: (o) => replayRef?.(o) ?? Promise.reject(new Error("not ready yet")), calendar: () => calendarRef, taskSources: () => taskSourcesRef, taskGroups: () => taskGroups, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets, past: { ...past, marks, persona: () => persona.id, ongoing, outside, made, redo }, keys: { dataDir, ...(opts.keyFetch ? { fetch: opts.keyFetch } : {}), ...(opts.keyCanRun ? { canRun: opts.keyCanRun } : {}) }, ...(firstWordsDeps ? { firstWords: firstWordsDeps } : {}), did, ownAgents });
+    core: api, workbench, bridgeLink, decisions, runner: () => runner, devices: () => devicesView, lend: () => lendRef, settings, connections, phone, rules, standing, pins, apps, loadout, models: modelCatalog, accountUsage, closing, work: workFrames, newTask, updates: () => updatesRef, agents: () => agentsRef, agentSetup: (device, f) => agentSetupOp(device, f), memSetup: (device, action, link) => memSetupOp(device, action, link), recordsAllow: (device, on) => recordsAllowOp(device, on), updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, memHealth, anywhere: () => anywhereRef, channels, proactive: () => proactiveRef, replay: (o) => replayRef?.(o) ?? Promise.reject(new Error("not ready yet")), calendar: () => calendarRef, taskSources: () => taskSourcesRef, taskGroups: () => taskGroups, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets, past: { ...past, marks, persona: () => persona.id, ongoing, outside, made, redo }, keys: { dataDir, ...(opts.keyFetch ? { fetch: opts.keyFetch } : {}), ...(opts.keyCanRun ? { canRun: opts.keyCanRun } : {}) }, ...(firstWordsDeps ? { firstWords: firstWordsDeps } : {}), did, ownAgents });
   handsets.onChange(() => (devicesView?.changed(), ws.onHandChanged()));
   onHandChanged = ws.onHandChanged;
   // D156: a partner turn in flight keeps an update of the agent it thinks with waiting.
@@ -1753,6 +1761,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     platform: opts.platform ?? process.platform,
     computer: () => savedHomeName(dataDir) ?? thisComputer(opts.update?.homeName),
     tell: (taskId, text) => void runner?.send(taskId, text, undefined, "ducter").catch((e) => console.warn(`[core] couldn't tell ${taskId} its to-do changed:`, (e as Error).message)),
+    standing: { allows: (ref, o) => standing.allows("pr_review", ref, o), firstUse: (id) => standing.firstUse(id) },
     stop: async (taskId) => {
       await runner?.drop(taskId).catch(() => {});
       const c = tasks.get(taskId);
@@ -1842,7 +1851,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   mcp.registerWhen(
     "task",
     "review_report",
-    "For a task that reviews pull requests every so often, once per round after you looked: every PR waiting on the person (ref owner/repo#number, its title, the head commit you looked at, its ci state there, changed true when you reviewed it again this round because its head moved), and for each one reviewed again its drafted comments (kind problem or suggestion, path, line, text in the PR's own language). Ducter shows the drafts on those PRs and asks the person once to post them all; never post reviews yourself. Then wait_for the next round; a round that only calls this needs no report_to_main.",
+    "For a task that reviews pull requests every so often, once per round after you looked: every PR waiting on the person (ref owner/repo#number, its title, the head commit you looked at, its ci state there, changed true when you reviewed it again this round because its head moved), and for each one reviewed again its drafted comments (kind problem or suggestion, path, line, text in the PR's own language). Ducter posts the drafts the person said may go without asking, shows the rest on those PRs and asks once for them; never post reviews yourself. Then wait_for the next round; a round that only calls this needs no report_to_main.",
     REVIEW_ROUND_SCHEMA,
     async (args, ctx) => {
       if (!ctx.taskId) throw new Error("review_report requires a task token");
@@ -1850,13 +1859,35 @@ export function startCore(opts: CoreOptions = {}): Core {
       if (!r.ok) return r.error ?? "Not kept.";
       // D407: its board (when the person keeps one) is written now; after a few rounds, offered once.
       boards.afterRound(ctx.taskId);
-      return r.drafted
-        ? `Kept: ${r.drafted} new draft${r.drafted === 1 ? "" : "s"}; the person sees every unsent draft on one card and Ducter posts them on Go. Now wait_for the next round and end your turn.`
+      // D413: what the person said may go without asking went now; only the rest is on the card.
+      const went = r.posted?.length ? `${r.posted.length} review${r.posted.length === 1 ? "" : "s"} went to GitHub without asking, as the person said (${r.posted.map((p) => p.ref).join(", ")}). ` : "";
+      const asks = r.asking && (went || r.drafted) ? `${r.asking} unsent draft${r.asking === 1 ? "" : "s"} wait on one card; Ducter posts them on Go. ` : "";
+      return went || r.drafted
+        ? `Kept. ${went}${asks}Don't post or ask yourself. Now wait_for the next round and end your turn.`
         : "Kept: nothing new to ask the person. Now wait_for the next round and end your turn.";
     },
     (ctx) => !!ctx.taskId && isReviewTask(ctx.taskId),
   );
   taskSourcesRef = taskSources;
+  // D413: a standing permission said: every draft that waits inside it goes now (its card shrinks or
+  // settles), and the review task hears that Ducter posts from now on. Then the Log's earlier sayings.
+  standing.onGrant(() => {
+    void taskSources.pile
+      .postWaiting()
+      .then((went) => {
+        for (const w of went)
+          runner
+            ?.send(w.taskId, `[Ducter] The person said reviews go to GitHub without asking: ${w.posted.length} of your drafts went now. From now on Ducter posts what your review_report drafts inside that, and asks only for the rest; don't post them yourself and don't ask about them.`, undefined, "ducter")
+            .catch(() => {});
+      })
+      .catch((err) => console.warn("[standing] couldn't post what waits:", (err as Error).message));
+  });
+  try {
+    const back = standing.backfill();
+    if (back.length) console.log(`[standing] kept ${back.length} standing permission(s) from what you said earlier: ${back.map((x) => x.text).join(" | ")}`);
+  } catch (err) {
+    console.warn("[standing] couldn't keep earlier sayings:", (err as Error).message);
+  }
   // D407: a round, a Go or a draft sent from its sheet: the review board shows it at once.
   taskSources.pile.onBoard((id) => boards.write(id));
   if (opts.taskSources?.ask) taskSources.setAsk(opts.taskSources.ask);
@@ -2015,6 +2046,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     pins,
     apps,
     said,
+    standing,
     loadout,
     connections,
     phone,

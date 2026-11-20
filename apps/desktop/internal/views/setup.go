@@ -118,7 +118,7 @@ func (a *App) setupResting(c *ui.Context) {
 	name := a.personaName()
 	a.avatar(c, theme.Napping, 100)
 	a.heading(c, a.L.T("rest.title", name), t.XXL)
-	ui.Text(c, a.L.T("rest.body")).FontSize(t.LG).LineHeight(1.55).TextColor(t.InkSoft)
+	uiText(c, a.L.T("rest.body")).FontSize(t.LG).LineHeight(1.55).TextColor(t.InkSoft)
 	if a.button(c, a.L.T("rest.wake", name), btnPrimary, t.ControlLG, t.Surface) {
 		a.Wake()
 	}
@@ -380,7 +380,7 @@ func (a *App) setupWaiting(c *ui.Context, p theme.Presence, title, body string) 
 	ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
 		a.heading(c, title, t.XXL).Grow(1).MinWidth(0)
 	})
-	ui.Text(c, body).FontSize(t.LG).LineHeight(1.55).TextColor(t.InkSoft)
+	uiText(c, body).FontSize(t.LG).LineHeight(1.55).TextColor(t.InkSoft)
 }
 
 // watchActive checks a blocked Mac again when the person comes back to
@@ -424,7 +424,7 @@ func (a *App) setupBlocked(c *ui.Context) {
 		title = a.L.T("setup.blocked.many", len(blocking))
 	}
 	a.heading(c, title, t.XXL)
-	ui.Text(c, a.L.T("setup.blocked.body")).FontSize(t.LG).LineHeight(1.55).TextColor(t.InkSoft)
+	uiText(c, a.L.T("setup.blocked.body")).FontSize(t.LG).LineHeight(1.55).TextColor(t.InkSoft)
 	var fixable []local.Check
 	for _, k := range blocking {
 		if k.Action != "" && a.Backend != nil {
@@ -444,8 +444,8 @@ func (a *App) setupBlocked(c *ui.Context) {
 		}
 		ui.Column(c.Key("fix:"+k.ID)).Gap(t.S3).Padding(t.S4, t.S4).Radius(t.RadiusLG).Background(t.SurfaceSunken).Children(func() {
 			ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
-				ui.Text(c, k.Label).FontSize(t.MD).FontWeight(800)
-				ui.Text(c, k.Detail).FontSize(t.MD).TextColor(t.InkSoft).Grow(1).MinWidth(0)
+				uiText(c, k.Label).FontSize(t.MD).FontWeight(800)
+				uiText(c, k.Detail).FontSize(t.MD).TextColor(t.InkSoft).Grow(1).MinWidth(0)
 			})
 			if k.Fix == "" {
 				return
@@ -483,12 +483,12 @@ func (a *App) setupBlocked(c *ui.Context) {
 		}
 		sep := a.L.T("words.sep")
 		if len(names) > 0 {
-			ui.Text(c, a.L.T("setup.later", strings.Join(names, sep))).FontSize(t.SM).TextColor(t.InkMuted)
+			uiText(c, a.L.T("setup.later", strings.Join(names, sep))).FontSize(t.SM).TextColor(t.InkMuted)
 		}
 	}
 	ui.Box(c).Height(1).Background(t.LineSoft).Margin(4, 0)
 	ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
-		ui.Text(c, a.L.T("setup.auto")).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5).Grow(1).MinWidth(0)
+		uiText(c, a.L.T("setup.auto")).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5).Grow(1).MinWidth(0)
 		label := a.L.T("setup.recheck")
 		if a.setup.busy {
 			label = a.L.T("setup.rechecking")
@@ -503,7 +503,7 @@ func (a *App) setupName(c *ui.Context) {
 	t := a.T
 	a.avatar(c, theme.Idle, 120)
 	a.heading(c, a.L.T("setup.name.title", "Ducter"), t.XXL)
-	ui.Text(c, a.L.T("setup.name.body")).FontSize(t.LG).LineHeight(1.55).TextColor(t.InkSoft)
+	uiText(c, a.L.T("setup.name.body")).FontSize(t.LG).LineHeight(1.55).TextColor(t.InkSoft)
 	submit := func() { a.SaveName(a.setup.name) }
 	in := ui.TextInput(c.Key("input:name"), &a.setup.name).Placeholder("Ducter").Label(a.L.T("setup.name.body")).
 		FontSize(t.LG).Padding(t.S3, t.S4).Radius(t.RadiusSM).Background(t.SurfaceSunken).Border(1, t.LineSoft).
@@ -531,11 +531,11 @@ func (a *App) setupFailed(c *ui.Context) {
 	}
 	a.heading(c, a.L.T(key, a.personaName()), t.XXL)
 	if a.setup.err != "" {
-		ui.Text(c, a.L.T("setup.failed.body")).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
-		ui.Text(c, a.setup.err).Font(t.Mono).FontSize(t.MonoSM).LineHeight(1.5).TextColor(t.InkSoft).
+		uiText(c, a.L.T("setup.failed.body")).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
+		uiText(c, a.setup.err).Font(t.Mono).FontSize(t.MonoSM).LineHeight(1.5).TextColor(t.InkSoft).
 			Padding(t.S3, t.S3).Radius(t.RadiusSM).Background(t.SurfaceSunken).Selectable()
 	}
-	ui.Text(c, a.L.T("setup.failed.log", tildeHome(a.Backend.LogPath()))).FontSize(t.SM).TextColor(t.InkMuted).Selectable()
+	uiText(c, a.L.T("setup.failed.log", tildeHome(a.Backend.LogPath()))).FontSize(t.SM).TextColor(t.InkMuted).Selectable()
 	if a.button(c, a.L.T("setup.retry"), btnPrimary, t.ControlLG, t.Surface) {
 		a.setup.everUp = false
 		a.StartLocal()
@@ -580,8 +580,8 @@ func (a *App) cliOfferLine(c *ui.Context) {
 		switch o.result {
 		case "":
 			a.notice(c, "clioffer", noticeInfo, glyph, func() {
-				ui.Text(c, a.L.T("cli.offer")).FontSize(t.SM).FontWeight(700)
-				ui.Text(c, a.L.T("cli.offer.body")).FontSize(t.XS).LineHeight(1.45).TextColor(t.InkMuted)
+				uiText(c, a.L.T("cli.offer")).FontSize(t.SM).FontWeight(700)
+				uiText(c, a.L.T("cli.offer.body")).FontSize(t.XS).LineHeight(1.45).TextColor(t.InkMuted)
 			}, func() {
 				if a.button(c, a.L.T("cli.offer.no"), btnText, t.ControlSM, t.Surface) {
 					a.Local.SetCLIOffer("declined")
@@ -603,7 +603,7 @@ func (a *App) cliOfferLine(c *ui.Context) {
 			})
 		case "path":
 			a.notice(c, "clioffer", noticeInfo, glyph, func() {
-				ui.Text(c, a.L.T("cli.done.path")).FontSize(t.SM).LineHeight(1.45).TextColor(t.InkSoft)
+				uiText(c, a.L.T("cli.done.path")).FontSize(t.SM).LineHeight(1.45).TextColor(t.InkSoft)
 			}, func() {
 				if a.button(c, a.L.T("cli.ok"), btnText, t.ControlSM, t.Surface) {
 					o.closed = true
@@ -614,7 +614,7 @@ func (a *App) cliOfferLine(c *ui.Context) {
 			ui.Box(c).Height(t.S2)
 		default:
 			a.notice(c, "clioffer", noticeAlert, glyph, func() {
-				ui.Text(c, a.L.T("cli.failed", o.result)).FontSize(t.SM).LineHeight(1.45).TextColor(t.Failed.Ink)
+				uiText(c, a.L.T("cli.failed", o.result)).FontSize(t.SM).LineHeight(1.45).TextColor(t.Failed.Ink)
 			}, func() {
 				if a.button(c, a.L.T("cli.ok"), btnText, t.ControlSM, t.Surface) {
 					o.closed = true

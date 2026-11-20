@@ -452,7 +452,7 @@ func (a *App) pastChips(c *ui.Context, res *protocol.PastFrame) {
 							if on {
 								w = 700
 							}
-							ui.Text(c, ch.label).FontSize(t.SM).FontWeight(w).TextColor(fg).SingleLine().AccessHidden(true)
+							uiText(c, ch.label).FontSize(t.SM).FontWeight(w).TextColor(fg).SingleLine().AccessHidden(true)
 						})
 						if b.Clicked() {
 							ps.focus, ps.sel = "", ""
@@ -606,7 +606,7 @@ func (a *App) pastList(c *ui.Context, res *protocol.PastFrame) {
 		ui.Column(c.Key("past-"+key)).Padding(t.S6, t.S5).Gap(t.S3).Radius(t.RadiusXL).Border(2, t.Line).BorderStyle(ui.BorderDashed).
 			AlignItems(ui.Center).Children(func() {
 			a.pastPebble(c, "empty-art", "idea", "", 48)
-			ui.Text(c, words).FontSize(t.MD).TextColor(t.InkSoft).TextAlign(ui.Center).LineHeight(1.6).MaxWidth(420)
+			uiText(c, words).FontSize(t.MD).TextColor(t.InkSoft).TextAlign(ui.Center).LineHeight(1.6).MaxWidth(420)
 		})
 		return
 	}
@@ -628,9 +628,9 @@ func (a *App) pastSection(c *ui.Context, key, name string, n int, items []*proto
 	t := a.T
 	ui.Column(c.Key("sec:" + key)).Gap(t.S2).Children(func() {
 		ui.Row(c).Gap(t.S2).AlignItems(ui.Center).MinHeight(24).Padding(t.S2, t.S2, 0, t.S2).Children(func() {
-			ui.Text(c, name).FontSize(t.XS).FontWeight(600).TextColor(t.InkMuted)
+			uiText(c, name).FontSize(t.XS).FontWeight(600).TextColor(t.InkMuted)
 			if n > 0 {
-				ui.Text(c, fmt.Sprint(n)).FontSize(t.XS).FontWeight(500).TextColor(t.Faint).FontFeatures("tnum")
+				uiText(c, fmt.Sprint(n)).FontSize(t.XS).FontWeight(500).TextColor(t.Faint).FontFeatures("tnum")
 			}
 		})
 		ui.Column(c.Key("cards")).Gap(t.S2 + 2).Children(func() {
@@ -738,14 +738,14 @@ func (a *App) pastPebble(c *ui.Context, key, glyph, tint string, size float32) u
 func (a *App) pastLine1(c *ui.Context, it *protocol.PastItem) {
 	t := a.T
 	ui.Row(c.Key("l1")).Gap(t.S2).AlignItems(ui.Center).MinWidth(0).Children(func() {
-		ui.Text(c, keepWords(autospace(it.Title))).FontSize(t.MD).FontWeight(600).TextColor(t.Ink).SingleLine().Shrink(1).MinWidth(0).Tooltip(it.Title)
+		uiText(c, keepWords(autospace(it.Title))).FontSize(t.MD).FontWeight(600).TextColor(t.Ink).SingleLine().Shrink(1).MinWidth(0).Tooltip(it.Title)
 		m := it.Mark
 		if m != nil && m.Starred {
 			a.pastStar(c, it.TaskID, 14, true, t.Accent)
 		}
 		if m != nil {
 			for _, tg := range m.Tags {
-				ui.Text(c.Key("tag:"+tg), tg).FontSize(t.XS).FontWeight(500).TextColor(t.InkSoft).Padding(1, t.S2-1).Radius(6).
+				uiText(c.Key("tag:"+tg), tg).FontSize(t.XS).FontWeight(500).TextColor(t.InkSoft).Padding(1, t.S2-1).Radius(6).
 					Background(t.SurfaceSunken).SingleLine().Shrink(0)
 			}
 		}
@@ -773,7 +773,7 @@ func (a *App) pastLine2(c *ui.Context, it *protocol.PastItem, terms []string) {
 	if h := it.Hit; h != nil && a.pastSearching() && h.Field != "name" && strings.TrimSpace(h.Text) != "" {
 		label := a.L.T("past.hit." + pastHitKey(h.Field))
 		ui.Row(c.Key("l2")).Gap(t.S2).AlignItems(ui.Center).MinWidth(0).Children(func() {
-			ui.Text(c, label).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).SingleLine().Shrink(0)
+			uiText(c, label).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).SingleLine().Shrink(0)
 			text := strings.Join(strings.Fields(h.Text), " ")
 			spans := a.pastMarked(text, terms, h.Field == "file" || h.Field == "branch")
 			ui.RichText(c, spans...).SingleLine().Shrink(1).MinWidth(0).Tooltip(text)
@@ -784,7 +784,7 @@ func (a *App) pastLine2(c *ui.Context, it *protocol.PastItem, terms []string) {
 	if line == "" {
 		return
 	}
-	ui.Text(c.Key("l2"), keepWords(autospace(line))).FontSize(t.SM).TextColor(t.InkSoft).SingleLine().MinWidth(0).Tooltip(it.Outcome)
+	uiText(c.Key("l2"), keepWords(autospace(line))).FontSize(t.SM).TextColor(t.InkSoft).SingleLine().MinWidth(0).Tooltip(it.Outcome)
 }
 
 // pastHitKey is a field's label key.
@@ -867,16 +867,16 @@ func (a *App) pastMeta(c *ui.Context, it *protocol.PastItem) {
 	ui.Row(c.Key("l3")).Gap(t.S2).AlignItems(ui.Center).MinWidth(0).Children(func() {
 		ui.Row(c.Key("where")).Gap(t.S3).AlignItems(ui.Center).Shrink(1).MinWidth(0).Children(func() { // D291: each fact apart
 			for _, p := range parts {
-				ui.Text(c, p).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(1).MinWidth(0)
+				uiText(c, p).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(1).MinWidth(0)
 			}
 		})
 		if ch := it.Changes; ch != nil && (ch.Adds > 0 || ch.Dels > 0) {
 			ui.Row(c.Key("stat")).Gap(t.S1 + 1).Shrink(0).Children(func() {
 				if ch.Adds > 0 {
-					ui.Text(c, fmt.Sprintf("+%d", ch.Adds)).Font(t.Mono).FontSize(t.XS - 1).TextColor(t.Done.Ink).FontFeatures("tnum")
+					uiText(c, fmt.Sprintf("+%d", ch.Adds)).Font(t.Mono).FontSize(t.XS - 1).TextColor(t.Done.Ink).FontFeatures("tnum")
 				}
 				if ch.Dels > 0 {
-					ui.Text(c, fmt.Sprintf("−%d", ch.Dels)).Font(t.Mono).FontSize(t.XS - 1).TextColor(t.Failed.Ink).FontFeatures("tnum")
+					uiText(c, fmt.Sprintf("−%d", ch.Dels)).Font(t.Mono).FontSize(t.XS - 1).TextColor(t.Failed.Ink).FontFeatures("tnum")
 				}
 			})
 		}
@@ -885,15 +885,15 @@ func (a *App) pastMeta(c *ui.Context, it *protocol.PastItem) {
 			if g.Act == "merge" {
 				key = "onhand.pr.merged"
 			}
-			ui.Text(c.Key("pr"), a.L.T(key)).FontSize(t.XS).FontWeight(600).TextColor(t.InkSoft).SingleLine().Shrink(0)
+			uiText(c.Key("pr"), a.L.T(key)).FontSize(t.XS).FontWeight(600).TextColor(t.InkSoft).SingleLine().Shrink(0)
 		}
 		if f := it.From; f != nil && f.Step > 0 {
 			// D391: redone from a step of another task.
-			ui.Text(c.Key("redone"), a.L.T("past.redone", shortTitle(f.Title), f.Step)).FontSize(t.XS).FontWeight(600).TextColor(t.InkSoft).SingleLine().Shrink(1).MinWidth(0)
+			uiText(c.Key("redone"), a.L.T("past.redone", shortTitle(f.Title), f.Step)).FontSize(t.XS).FontWeight(600).TextColor(t.InkSoft).SingleLine().Shrink(1).MinWidth(0)
 		}
 		if o := it.Outside; o != nil {
 			// D299: carried on from a session the person ran outside Ducter.
-			ui.Text(c.Key("outside"), a.L.T("past.out.from", harnessName(o.Agent))).FontSize(t.XS).FontWeight(600).TextColor(t.InkSoft).SingleLine().Shrink(0)
+			uiText(c.Key("outside"), a.L.T("past.out.from", harnessName(o.Agent))).FontSize(t.XS).FontWeight(600).TextColor(t.InkSoft).SingleLine().Shrink(0)
 		}
 		end, ink := "", t.InkMuted
 		switch {
@@ -907,7 +907,7 @@ func (a *App) pastMeta(c *ui.Context, it *protocol.PastItem) {
 			end, ink = a.L.T("past.end.active"), t.InkSoft
 		}
 		if end != "" {
-			ui.Text(c.Key("end"), end).FontSize(t.XS).FontWeight(600).TextColor(ink).SingleLine().Shrink(0)
+			uiText(c.Key("end"), end).FontSize(t.XS).FontWeight(600).TextColor(ink).SingleLine().Shrink(0)
 		}
 	})
 }
@@ -1073,7 +1073,7 @@ func (a *App) pastFromChip(c *ui.Context) {
 				}
 			}
 			a.pastPebble(c, "art", glyph, tint, 20)
-			ui.Text(c, a.L.T("past.seed.chip", shortTitle(f.Title))).FontSize(t.SM).FontWeight(600).TextColor(t.InkSoft).SingleLine().Shrink(1).MinWidth(0)
+			uiText(c, a.L.T("past.seed.chip", shortTitle(f.Title))).FontSize(t.SM).FontWeight(600).TextColor(t.InkSoft).SingleLine().Shrink(1).MinWidth(0)
 			x := ui.Box(c.Key("x")).Size(22, 22).Radius(6).Shrink(0).Cursor(ui.CursorPointer).Role(ui.RoleButton).
 				Label(a.L.T("past.seed.drop")).Tooltip(a.L.T("past.seed.drop")).Focusable()
 			col := t.InkMuted
@@ -1240,7 +1240,7 @@ func (a *App) marksPopover(c *ui.Context, anchor ui.Element, it *protocol.PastIt
 
 func (a *App) marksLabel(c *ui.Context, key string) {
 	t := a.T
-	ui.Text(c, a.L.T(key)).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
+	uiText(c, a.L.T(key)).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
 }
 
 func (a *App) marksName(c *ui.Context, it *protocol.PastItem) {
@@ -1299,7 +1299,7 @@ func (a *App) marksTags(c *ui.Context, it *protocol.PastItem) {
 			for _, tg := range tags {
 				ui.Row(c.Key("t:"+tg)).Height(26).Padding(0, 2, 0, t.S2).Gap(2).Radius(t.RadiusXS).AlignItems(ui.Center).
 					Background(t.SurfaceSunken).Children(func() {
-					ui.Text(c, tg).FontSize(t.SM).FontWeight(600).TextColor(t.InkSoft).SingleLine()
+					uiText(c, tg).FontSize(t.SM).FontWeight(600).TextColor(t.InkSoft).SingleLine()
 					x := ui.Box(c.Key("x")).Size(20, 20).Radius(6).Cursor(ui.CursorPointer).Role(ui.RoleButton).
 						Label(a.L.T("past.tag.remove", tg)).Focusable()
 					col := t.InkMuted
@@ -1342,7 +1342,7 @@ func (a *App) marksTags(c *ui.Context, it *protocol.PastItem) {
 				}
 				seen[s] = true
 				shown++
-				b := ui.Text(c.Key("s:"+s), "+ "+s).FontSize(t.XS).FontWeight(600).TextColor(t.InkMuted).Padding(3, t.S2).Radius(t.RadiusXS).
+				b := uiText(c.Key("s:"+s), "+ "+s).FontSize(t.XS).FontWeight(600).TextColor(t.InkMuted).Padding(3, t.S2).Radius(t.RadiusXS).
 					Cursor(ui.CursorPointer).Role(ui.RoleButton).Focusable()
 				if b.Hovered() {
 					b.Background(t.SurfaceSunken).TextColor(t.Ink)

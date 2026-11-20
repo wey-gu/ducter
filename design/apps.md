@@ -3,7 +3,8 @@
 How a person gets their own small app from one sentence ("给我做个小应用，记一下这趟北京出差的花销"),
 keeps it on every device, changes it by talking, and lets the partner act inside it when asked.
 Decided in D405; the evidence (what the author already does, what others do, what this codebase
-allows, the name test) is `research/166-own-apps.md`. Words are the glossary's (`product-model.md`);
+allows, the name test) is `research/166-own-apps.md`. Their own place, the kit and apps that open
+already filled are D410 (`research/169-apps-home.md`). Words are the glossary's (`product-model.md`);
 visuals are Pebble's (`ui.md`).
 
 ## Who and how it starts
@@ -16,11 +17,14 @@ visuals are Pebble's (`ui.md`).
   §2). Before: the same shape re-read as paragraphs. After: "make it a little board" and a page they
   keep open, which the routine's partner fills.
 - **The fresh user** never meets a concept: they asked for "a little thing", a card says what it is and
-  where it stays (**放在「给你做的」里，随时再打开**), one button opens it.
+  where it stays (**放在「你的小应用」里，随时再打开**), one button opens it. Before their first, the bar's
+  小应用 mark opens an empty shelf that offers their own trip first (D410).
 
-**First principles.** An app is something made for the person, so it lives where made things live
-(D71: Made for you is the lens, D383); a new place would be one more thing to learn for what most
-people make once or twice. The file stays on the home, not in a message (a message carries its card),
+**First principles.** An app is something made for the person, but unlike a made file it is lived
+with: reopened, written into, changed again, filled by a routine every round. So it has a place of its
+own, **你的小应用 / Your apps** (D410, superseding D405's "a lens of Made for you"; Made for you still
+lists apps). An app opens finished: drawn with Ducter's kit, its total or state first, and already
+filled with what Ducter knows about its subject. The file stays on the home, not in a message (a message carries its card),
 so every device opens the same app and the same numbers. The sandbox is the default, not a setting:
 the app can't reach anything but its own storage and the partner, and the partner treats the app's
 words as data.
@@ -32,7 +36,8 @@ words as data.
 | **Is** | one HTML file the partner wrote (markup, `<style>`, `<script>`), at most 200,000 characters |
 | **Belongs to** | one partner (persona); a second partner (preview) has none yet |
 | **Lives** | on the home: `apps/<id>/` in the data folder: `meta.json`, `index.html`, `data.json`, the last ten versions `v<n>.html` |
-| **Found** | its card under the partner's words; Made for you (**小应用 / Apps** chip; the kind word "app", "小应用", "工具", "tracker" in the field); the partner's `[apps]` line |
+| **Found** | **你的小应用 / Your apps** (the bar's 小应用 mark, ⌘K, the Mac's menu, `#apps`, the partner's card); its card under the partner's words; pinned, at the top of the conversation; Made for you (**小应用 / Apps** chip); the partner's `[apps]` line |
+| **Looks** | its mark (window, coins, check, board, list, chart: the partner's pick) on one of the person's six muted clays (from its id); the one line it says of itself (`ducter.summary`) |
 | **Opens** | the web and the phone: a sheet (the whole screen on a phone) with the app in a frame; the Mac: its own window |
 | **Keeps** | what it writes through `ducter.set`, on the home (at most 500,000 characters of JSON per app) |
 | **Can't** | load anything from outside the file, reach the network, keep browser storage, open windows or links, show alert/confirm/prompt, navigate the page around it |
@@ -44,12 +49,72 @@ words as data.
 2. The partner writes the file itself with the **app** tool, now, in the turn (never a task: an app
    should be seconds, not a harness's minutes). The tool's description carries the rules: inline CSS
    and JS only, nothing from the internet, `ducter.get/set` for data, `ducter.ask` only on the person's
-   tap, Pebble's `--d-*` variables, 360 px wide first, the person's language.
-3. The home keeps it and **lints** it (a CDN script, `fetch`, `localStorage`, `alert`, `window.open`);
-   anything found goes back to the partner as "fix these", before it says it's ready.
-4. One short line, then the card: the app's clay tile (a small window drawn in the accent clay), its
-   name, **{name}给你做的小应用，放在「给你做的」里，随时再打开。 / An app {name} made for you. It stays in
-   Made for you; open it any time.**, **打开 / Open**. Never the code, never a feature list.
+   tap, `ducter.summary` for its shelf line, **Ducter's kit** (below), 360 px wide first, the person's
+   language.
+3. **What Ducter knows goes in (D410).** An app about something Ducter knows (a trip on the calendar,
+   what the partner booked or paid for, a task's numbers) is named for it (**北京出差 11/20–21**, never
+   the generic 出差花销) and made with its `data`: each item with `from` (「你的预订」), shown as a small
+   tag and editable like any other. Its `note` says in a few words what it filled in. An empty make is
+   answered: if you already know things for it, put them in now and name it for them. Nothing known:
+   it starts empty with a warm empty line, never invented numbers.
+4. The home keeps it and **lints** it (a CDN script, `fetch`, `localStorage`, `alert`, `window.open`;
+   D410: a native `<select>`, `type=number`, no `k-app`); anything found goes back to the partner as
+   "fix these", said as what to use instead, before it says it's ready.
+5. One short line that says what it filled in (「做好了，就叫「北京出差 11/20–21」。高铁和两晚酒店已经从你的
+   预订里填进去了。」), then the card: the app's clay tile, its name, **{name}给你做的小应用，放在「你的小
+   应用」里，随时再打开。 / An app {name} made for you. It stays in Your apps; open it any time.**,
+   **打开 / Open**. Never the code, never a feature list.
+6. **The first time it opens**, a line over it: **{name}先填好了 / {name} filled in** and the note
+   (「高铁和两晚酒店，来自你的预订」). Once.
+
+### The kit (D410)
+
+Every app's document carries `APP_KIT_CSS` before the app's own file (the app may restyle anything),
+so a small model draws a finished app without inventing a design, and never the system's grey controls:
+
+| Class | What |
+|---|---|
+| `k-app` | the page: 560 px at most, a 14 px rhythm |
+| `k-sum` > `k-sum-label`, `k-sum-value`, `k-sum-sub` | **first**: the total or the state, big and tabular, on a raised clay card |
+| `k-card`, `k-h` | a card; a quiet section head |
+| `k-list` > `k-row` > `k-row-main` (`k-row-sub`), `k-row-value` | rows with a value at the end |
+| `k-chips` > `button.k-chip[aria-pressed]` | a choice (never a `<select>`) |
+| `input.k-num` (`inputmode=decimal`) | a big number (never `type=number`) |
+| `k-field` > `label` + `input.k-input` | a field |
+| `k-btn`, `k-btn primary`, `k-btn quiet` | clay buttons on a ledge |
+| `k-from` | where a prefilled item came from |
+| `k-empty` | a warm line while there is nothing yet |
+| `k-bar` > `i` | a bar |
+
+## 你的小应用 / Your apps: the shelf (D410)
+
+**Who:** anyone with more than one app, and the routine owner whose board updates itself. **Felt:**
+every app and its state in one glance; care (rename, pin, undo, delete) one 「⋯」 away. The name:
+research/169 §4 (空间 / Space read as Nowledge Mem's Spaces by every rater; the possessive read clearest).
+
+- **Where:** a drawn mark (four rounded tiles) in every bar's places, beside On hand, named **小应用 /
+  Apps**, its place **你的小应用 / Your apps**; ⌘K; the Mac's menu; `#apps`; "我的小应用在哪" puts its card
+  under one line (the app tool's `shelf`).
+- **A tile:** its mark on its clay, its name, its own line (`ducter.summary`, else **「{task}」每一轮都会更新
+  它**, else **还没打开过 / Not opened yet**), **置顶 / Pinned**, **自动更新 / Kept current** (a routine
+  keeps it and it has its own line), **{time} 更新 / Updated {time}**. Pinned first, then the most recently
+  changed or opened. Wide: as many columns as fit; a phone: two, the whole screen. A tap opens it.
+- **「⋯」** (on the tile and in the app's head): **改名 / Rename** (in place), **让{name}改… / Ask {name}
+  to change it…** (opens it, its line focused), **改回去 / Undo the change** (when there is one),
+  **置顶 / Pin to the top** · **取消置顶 / Unpin**, **不再让「{task}」更新它 / Stop “{task}” updating it**,
+  **删掉 / Delete**.
+- **Delete** asks first: **删掉「{name}」？ / Delete “{name}”?**, **它记下的东西会一起删掉。 / What it keeps
+  goes with it.**, **不删 / Keep it**, **删掉 / Delete**; then **删掉了「{name}」 / Deleted “{name}”** with
+  **撤销 / Undo**. The home keeps a deleted app and its data 30 days (`apps/.removed/<id>/`), then it is
+  gone. The partner deletes one only on the person's own words; its card says **删掉了，连同它记下的东西。
+  / Deleted, with what it kept.** with **撤销 / Undo**.
+- **Pinned** apps also sit as small chips at the top of the conversation, beside D381's pins: the tile,
+  the name, its line on a wide screen.
+- **Empty:** three ghost tiles, **这里放{name}给你做的小应用 / Apps {name} makes for you live here**,
+  **说一句想记什么、看什么，它就做一个，一直放在这里，每台设备上都一样。**, **可以这样说 / Try saying** and up
+  to three ideas from the home (`AppIdea`): a trip in the next three weeks from the noted bookings first
+  (**做个小应用，记一下这趟北京出差的花销**, **你 11/20 去北京**), then everyday ones (this month's spending,
+  a habit tracker, a shopping list). A tap says it as the person's words and goes to the conversation.
 
 ## Changing one: by talking
 
@@ -62,8 +127,8 @@ words as data.
 - The partner changes it with edits (find and replace, each matching once) or a whole new file; the
   card says **改好了 / Changed**; an app open on any device runs again as it is now, with a green line
   **改好了** and the partner's few words of what changed.
-- **改回去 / Undo the change** in the sheet's head brings the version before back (as a new version),
-  as far as ten back.
+- **改回去 / Undo the change** in the sheet's head (the web, the phone and the Mac's window) brings the
+  version before back (as a new version), as far as ten back.
 - The partner can also **fill** an app ("把我今天的打车记进去"): it writes keys into its data; the card
   says **填好了 / Filled in**.
 
@@ -77,6 +142,7 @@ ducter.onChange((key, value, by) => …)   // by: "app" (another device) | "part
 ducter.ask(text)           // → Promise<string>: the partner's answer
 ducter.lang, ducter.dark   // the theme follows Ducter's while it is open
 ducter.open({ draft: "owner/repo#n" })   // D407: that PR's draft sheet opens over the app; nothing is sent
+ducter.summary(text)       // D410: its shelf line ("2 笔，合计 ¥1,698"), said on every change, sent once it settles
 ```
 
 **An app's ask** goes into the conversation as the person's message *from that app* (they tapped in
@@ -132,7 +198,7 @@ re-read; after, one page always current on every device and a quiet conversation
 |---|---|
 | The policy (all clients) | `default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; media-src data: blob:; connect-src 'none'` (the Mac: `'self'`, its own scheme); `form-action`, `base-uri`, `frame-src`, `worker-src`, `object-src` none. In the document before anything else, and as a header. |
 | The web and the phone | the page's own policy forbids inline scripts in a `srcdoc` frame, so the home serves the app at `/app-frame/<token>` (a one-app capability, 30 minutes, minted on each open) with the policy and `sandbox allow-scripts allow-forms`: an opaque origin (no cookies, no storage, no reading the page around it), no popups, no top navigation, no modals. The page frames only its own origin (`frame-src 'self'`). The frame talks by `postMessage`; the page takes only messages from that frame, for that app. |
-| The Mac | its own window: a web view whose page is someone else's (MyGo's `Untrusted`: no Go methods, no other origin, no window, no download) on `ducter-app://<id>/`, served from Go: `/` the document, `POST /bridge` what it writes or asks, `GET /events` a long poll for what changed elsewhere. |
+| The Mac | its own window (D410: a native head with its tile, name, 改回去 and 「⋯」, the first-open and 改好了 lines, and a foot with the line to change it; the app between them): a web view whose page is someone else's (MyGo's `Untrusted`: no Go methods, no other origin, no window, no download) on `ducter-app://<id>/`, served from Go: `/` the document, `POST /bridge` what it writes or asks, `GET /events` a long poll for what changed elsewhere. |
 | The home | keys are short and printable, data is capped, asks are rate-limited, a frame token is one app's and expires; an app of another partner is never opened. |
 
 ## Not in v1
@@ -141,6 +207,7 @@ Sharing an app with someone (a link, their own data or a shared copy, viewer-pay
 consent); an app calling a connected account or the web by itself (only through the partner, behind
 Go); pointing at part of an app to change it; an app made by a coding task (several files, a build);
 offline on the phone (the frame needs the home); an app's own notification or schedule (a routine
-filling it is the way, D407); the Mac window's own "ask to change" line and 改回去 (in the conversation and on
-the web for now); deleting from Made for you (`app_remove` exists, no button yet); the Android and
-iPhone shells' native bridges (the web's frame serves them). `todo.md`.
+filling it is the way, D407); reordering the shelf by hand, folders; a list of deleted apps to bring
+back after the toast or card is gone (the home keeps them 30 days); ideas from the calendar and
+routines on the empty shelf (only noted bookings so far); the Android and iPhone shells' native
+bridges (the web's frame serves them). `todo.md`.

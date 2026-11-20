@@ -177,7 +177,7 @@ func (a *App) projectColumn(c *ui.Context, b store.Board, groups []lensGroup, le
 				}
 				// D341: 来自 / From: the to-do sources with tasks, after the projects.
 				if srcs > 0 {
-					ui.Text(c.Key("src-head"), a.L.T("todos.lens")).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).
+					uiText(c.Key("src-head"), a.L.T("todos.lens")).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).
 						Padding(t.S4, t.S3, t.S1, t.S3).Role(ui.RoleHeading)
 					for _, g := range groups {
 						if g.kind != "" {
@@ -229,14 +229,14 @@ func (a *App) lensRow(c *ui.Context, key, name string, tasks []*store.Task, on, 
 			if other && !on {
 				ink = t.InkMuted
 			}
-			ui.Text(c, name).FontSize(14).FontWeight(600).TextColor(ink).SingleLine().MinWidth(0).AccessHidden(true)
+			uiText(c, name).FontSize(14).FontWeight(600).TextColor(ink).SingleLine().MinWidth(0).AccessHidden(true)
 			if adds, dels := groupStat(tasks); adds+dels > 0 {
 				ui.Row(c.Key("stat")).Gap(t.S1 + 2).Children(func() {
 					if adds > 0 {
-						ui.Text(c, fmt.Sprintf("+%d", adds)).Font(t.Mono).FontSize(t.XS).TextColor(t.Done.Ink).FontFeatures("tnum")
+						uiText(c, fmt.Sprintf("+%d", adds)).Font(t.Mono).FontSize(t.XS).TextColor(t.Done.Ink).FontFeatures("tnum")
 					}
 					if dels > 0 {
-						ui.Text(c, fmt.Sprintf("−%d", dels)).Font(t.Mono).FontSize(t.XS).TextColor(t.Failed.Ink).FontFeatures("tnum")
+						uiText(c, fmt.Sprintf("−%d", dels)).Font(t.Mono).FontSize(t.XS).TextColor(t.Failed.Ink).FontFeatures("tnum")
 					}
 				})
 			}
@@ -248,7 +248,7 @@ func (a *App) lensRow(c *ui.Context, key, name string, tasks []*store.Task, on, 
 		if len(tasks) > 0 {
 			n = fmt.Sprint(len(tasks))
 		}
-		ui.Text(c.Key("n"), n).FontSize(t.SM).FontWeight(700).TextColor(t.InkMuted).FontFeatures("tnum").MinWidth(20).TextAlign(ui.End).Shrink(0).AccessHidden(true)
+		uiText(c.Key("n"), n).FontSize(t.SM).FontWeight(700).TextColor(t.InkMuted).FontFeatures("tnum").MinWidth(20).TextAlign(ui.End).Shrink(0).AccessHidden(true)
 	})
 	if r.Clicked() {
 		a.Local.SetLens(key)
@@ -277,7 +277,7 @@ func (a *App) lensTabs(c *ui.Context, groups []lensGroup, lens string) {
 				if on {
 					ink = t.Ink
 				}
-				ui.Text(c, name).FontSize(t.SM).FontWeight(700).TextColor(ink).SingleLine().AccessHidden(true)
+				uiText(c, name).FontSize(t.SM).FontWeight(700).TextColor(ink).SingleLine().AccessHidden(true)
 				if of != nil && st != stWorking {
 					ui.Box(c.Key("mark")).Size(20, 20).Shrink(0).Children(func() {
 						stillFace(c, "f", statusPresence(of, st), 20)
@@ -435,8 +435,8 @@ func (a *App) stripCell(c *ui.Context, i int, name string, n int) {
 		if on {
 			lab = t.Ink
 		}
-		ui.Text(c, fmt.Sprint(n)).FontSize(t.SM + 1).FontWeight(600).TextColor(num).FontFeatures("tnum").AccessHidden(true)
-		ui.Text(c, name).FontSize(t.SM).FontWeight(500).TextColor(lab).SingleLine().AccessHidden(true)
+		uiText(c, fmt.Sprint(n)).FontSize(t.SM + 1).FontWeight(600).TextColor(num).FontFeatures("tnum").AccessHidden(true)
+		uiText(c, name).FontSize(t.SM).FontWeight(500).TextColor(lab).SingleLine().AccessHidden(true)
 	})
 	if n > 0 && cell.Clicked() {
 		if on {

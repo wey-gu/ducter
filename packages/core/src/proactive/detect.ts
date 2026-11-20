@@ -513,8 +513,10 @@ function comingUp(facts: Fact[], c: DetectCtx): Candidate[] {
       zh = `${when} ${name}${from ? ` 从${from}` : ""}出发${place ? `去${place}` : ""}；${leave} 前到站。`;
       en = `${name} leaves${from ? ` ${from}` : ""} at ${hm(b.start, c.zone)} ${dayEn(b.start, c)}${place ? ` for ${place}` : ""}. Be at the station by ${leave}.`;
     } else {
-      zh = `${when} ${name}${b.place ? `（${b.place}）` : ""}。`;
-      en = `${name} at ${hm(b.start, c.zone)} ${dayEn(b.start, c)}${b.place ? ` (${b.place})` : ""}.`;
+      // A title that already says where ("agibar 分享（北京）") gets no second (北京).
+      const at = b.place && !norm(name).replace(/\s+/g, "").includes(norm(b.place).replace(/\s+/g, "")) ? b.place : "";
+      zh = `${when} ${name}${at ? `（${at}）` : ""}。`;
+      en = `${name} at ${hm(b.start, c.zone)} ${dayEn(b.start, c)}${at ? ` (${at})` : ""}.`;
     }
     const trip = b.what !== "other";
     const mailed = twins.find((x) => x.ref.service !== "googlecalendar" && !/calendar/.test(x.ref.service));

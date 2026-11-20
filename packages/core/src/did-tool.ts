@@ -9,7 +9,7 @@ const hm = (iso: string) => {
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 };
 
-const ALLOWED = { you: "the user agreed", default: "nobody answered; it went ahead as the card said it would", before: "agreed there earlier" } as const;
+const ALLOWED = { you: "the user agreed", default: "nobody answered; it went ahead as the card said it would", before: "agreed there earlier", said: "the user said it goes without asking" } as const;
 
 /** One action as the partner reads it: short, no ids it can't use. */
 function compact(it: DidItem, withDay: boolean): Record<string, unknown> {
@@ -24,7 +24,7 @@ function compact(it: DidItem, withDay: boolean): Record<string, unknown> {
     ...(it.count ? { count: it.count } : {}),
     ...(it.unsure ? { unsure: it.unsure } : {}),
     asked: it.who.by === "you" ? "the user" : it.who.by === "routine" ? `routine ${it.who.routine ?? ""}`.trim() : `task ${it.who.title ?? it.who.taskId ?? ""}`.trim(),
-    ...(it.go ? { allowed: ALLOWED[it.go.by] } : {}),
+    ...(it.go ? { allowed: it.go.words ? `${ALLOWED[it.go.by]}: "${it.go.words}"` : ALLOWED[it.go.by] } : {}),
     ...(it.where?.name ? { where: it.where.name } : it.where ? { where: it.where.kind } : {}),
     ...(it.undo ? { undo_until: it.undo.until.slice(0, 10) } : {}),
   };

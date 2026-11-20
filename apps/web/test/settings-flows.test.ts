@@ -133,6 +133,8 @@ describe("Passwords & cards: a card typed on a phone (D404)", () => {
     expect(parseExp("08/2")).toBeUndefined();
     expect(shapeExp("0130")).toBe("01/30");
     expect(shapeExp("013")).toBe("013");
+    expect(shapeExp("829")).toBe("08/29"); // D408: a one-digit month can't grow a fourth digit
+    expect(shapeExp("129")).toBe("129"); // 1/29 or 12/9…: wait for the fourth
     expect(shapeExp("01/30")).toBe("01/30");
 
     const t = tempDir();

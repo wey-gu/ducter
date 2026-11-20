@@ -141,6 +141,29 @@ func tokenLen(rs []rune, i int) int {
 	return r - l + 1
 }
 
+// uiText is every text the views draw (ui.Text): a text holding the word
+// joiners keepWords and keepTokens put in for line breaking keeps them on
+// screen, and gives assistive technology its words without them, as its
+// name. A screen reader spells a word with a joiner inside it letter by
+// letter (D408; the Mac walk of 0.0.99). The autospace gap, a real space,
+// stays: it reads as the space it is.
+func uiText(c *ui.Context, s string) ui.Element {
+	e := ui.Text(c, s)
+	if strings.ContainsRune(s, wordJoiner) {
+		e.Label(unjoin(s))
+	}
+	return e
+}
+
+// unjoin is s without the word joiners line breaking put in.
+func unjoin(s string) string { return strings.ReplaceAll(s, string(wordJoiner), "") }
+
+// mdSpace is autospace for Markdown, which MyGo's view draws and reads
+// out itself: the gaps without keepTokens' joiners, which its paragraphs
+// would give a screen reader (D408). A short token in a reply may then
+// wrap at its hyphen or slash.
+func mdSpace(s string) string { return unjoin(autospace(s)) }
+
 // unautospace takes autospace's gaps and joiners out again.
 func unautospace(s string) string {
 	return strings.NewReplacer(string(autospaceGap), "", string(wordJoiner), "").Replace(s)
@@ -198,7 +221,7 @@ func (a *App) heading(c *ui.Context, text string, size float32) ui.Element {
 	if size < 28 {
 		lh = 1.3
 	}
-	return ui.Text(c, text).Font(a.T.Display).FontSize(headSize(text, size)).FontWeight(800).
+	return uiText(c, text).Font(a.T.Display).FontSize(headSize(text, size)).FontWeight(800).
 		LetterSpacing(headTracking(text, size)).LineHeight(lh)
 }
 

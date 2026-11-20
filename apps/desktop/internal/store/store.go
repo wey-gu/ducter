@@ -547,13 +547,17 @@ type Store struct {
 	Rules []protocol.RuleView
 	// RuleDefaults: the built-in default per kind of work (D372).
 	RuleDefaults []protocol.KindDefault
-	RulesAt      time.Time
+	// Standing (D413): 不用问我的 / Without asking.
+	Standing []protocol.StandingView
+	RulesAt  time.Time
 	// Pins are 置顶 / Pinned, newest first, as the home last sent (D381);
 	// PinRefused is why the last pin didn't happen, until shown.
 	Pins       []protocol.PinView
 	PinRefused string
 	// Apps (D405) are the person's apps (the default conversation's), newest change first.
-	Apps       []protocol.AppMeta
+	Apps []protocol.AppMeta
+	// AppIdeas (D410): while there are no apps, first ones to say, from what the home knows.
+	AppIdeas   []protocol.AppIdea
 	Candidates map[string][]protocol.Candidate
 	// AccountUsage is each agent's account limits as the home last
 	// answered (D288), by harness.
@@ -826,11 +830,12 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 		}
 	case "rules":
 		s.Rules, s.RuleDefaults, s.RulesAt = f.Rules, f.Defaults, time.Now()
+		s.Standing = f.StandingList
 	case "pins":
 		s.Pins, s.PinRefused = f.Pins, f.Refused
 	case "apps":
 		if f.AppsF != nil {
-			s.Apps = f.AppsF.Apps
+			s.Apps, s.AppIdeas = f.AppsF.Apps, f.AppsF.Ideas
 		}
 	case "candidates":
 		if s.Candidates == nil {

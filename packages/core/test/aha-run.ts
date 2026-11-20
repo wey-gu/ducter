@@ -19,7 +19,7 @@ export interface AhaSaid {
 }
 
 /** A fake quick web look: the event page, or nothing settled; every question it was asked is kept. */
-export function fakeLook(o: { found?: boolean } = {}): WebLookPort & { asked: string[] } {
+export function fakeLook(o: { found?: boolean; day?: string } = {}): WebLookPort & { asked: string[] } {
   const asked: string[] = [];
   return {
     asked,
@@ -27,7 +27,7 @@ export function fakeLook(o: { found?: boolean } = {}): WebLookPort & { asked: st
     async look(q) {
       asked.push(q.question);
       if (o.found === false) return { state: "unsettled", why: "not_found" };
-      return { state: "found", answer: "2026-11-21 19:00 开门（doors open at 19:00）；议程没写分享人几点上场。", sources: [AGIBAR_PAGE], confidence: "high" };
+      return { state: "found", answer: `${o.day ?? "2026-11-21"} 19:00 开门（doors open at 19:00）；议程没写分享人几点上场。`, sources: [AGIBAR_PAGE], confidence: "high" };
     },
   };
 }

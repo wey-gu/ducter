@@ -57,7 +57,8 @@ test("the replay says the contradiction and fills the time, from fresh scratch, 
   settings.set({ language: "zh", quiet: { start: at(hourThere + 3), end: at(hourThere + 4), tz: ZONE } });
   const rules = openRules(home.dir);
   const acc = fakeAccounts(fx);
-  const look = fakeLook();
+  // The page names the event's own day: the fixture is relative to now, so a fixed date would go stale.
+  const look = fakeLook({ day: sat });
   const before = readdirSync(home.dir).sort();
   const headBefore = log.read({ stream: "channel" }).length;
   const r = await replayProactive({ connections: acc.store, settings, rules, log, persona, zone: () => ZONE, harness: () => undefined, pick: () => ({ harness: "claude-code" }), webLook: () => look, triage: recordedTriage(fx.triage), judge: barJudge }, { days: 3 });

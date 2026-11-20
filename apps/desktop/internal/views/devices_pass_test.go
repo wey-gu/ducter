@@ -70,7 +70,7 @@ func TestDevicesPassPhoneCard(t *testing.T) {
 		sheet := &app.devState().card.sheet
 		app.devState().selClient = "pix"
 		lendFrame(tt)
-		for _, want := range []string{L.T("handset.status.ready"), L.T("chip.handset"), L.T("handset.g.look"), L.T("handset.g.go"), L.T("handset.g.off"), L.T("handset.lock.row"), L.T("reach.how")} {
+		for _, want := range []string{L.T("handset.status.ready"), L.T("chip.handset"), L.T("handset.g"), L.T("handset.lock.row"), L.T("reach.how")} {
 			if !tt.HasText(want) {
 				t.Fatalf("%s: the card misses %q: %q", lang, want, tt.Texts())
 			}

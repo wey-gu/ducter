@@ -106,10 +106,8 @@ func (a *App) deviceDetail(c *ui.Context, dv *protocol.DeviceView) {
 			a.deviceKeyRow(c) // D307: a key instead of a subscription (D298), beside its AI agents
 		}
 		a.chipRow(c, "dev:"+dv.ID, dv, nil)
-		// D398: what a computer for tasks touches and never sees.
-		if !dv.Home {
-			a.workerPromises(c, dv)
-		}
+		// D398, D420: what a computer for tasks uses and never sees; on the home, where the conversation is kept.
+		a.workerGuard(c, dv)
 		a.ducterLine(c, dv)
 		// D293, D398: the home's addresses, or how a worker is connected and
 		// its one 断开, folded at the foot.
@@ -246,6 +244,11 @@ func (a *App) sheetStatus(dv *protocol.DeviceView) (state, line string, ink ui.C
 		return "", a.L.T("card.status.working.one", home), t.Working.Ink, true
 	case n > 1:
 		return "", a.L.T("card.status.working", home, n), t.Working.Ink, true
+	}
+	// D420: this Mac's card has the 帮 {name} 做事 chip, which says its role;
+	// the line under the name says only that it is free, as the list does.
+	if a.isThisMac(deviceComputer(dv)) && a.canWork() {
+		return "", a.L.T("list.state.ready"), t.InkMuted, false
 	}
 	return "", a.L.T("card.status.does", home), t.InkMuted, false
 }

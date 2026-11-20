@@ -6,8 +6,8 @@ package i18n
 // one line per device. Glossary: design/product-model.md;
 // design/ui-devices-card.md §8.
 var zhDeviceCard = Table{
-	"worker.g.chat":                "看不到你和 %s 的对话",
-	"worker.g.uses":                "用这台电脑上登录的 AI 和代码",
+	"worker.g":                     "这里的任务用这台电脑上登录的 AI 和代码，看不到你和 %s 的对话。",
+	"home.g":                       "你和 %s 的对话都存在这台电脑上。",
 	"list.state.lent":              "借出去了",
 	"list.state.lendable":          "能借给任务",
 	"list.state.ready":             "待命",
@@ -127,8 +127,8 @@ var zhDeviceCard = Table{
 }
 
 var enDeviceCard = Table{
-	"worker.g.chat":                "Never sees your conversations with %s",
-	"worker.g.uses":                "Uses the AI and code on this computer",
+	"worker.g":                     "Tasks here use the AI and code on this computer. They never see your conversations with %s.",
+	"home.g":                       "Your conversations with %s are kept on this computer.",
 	"list.state.lent":              "Lent now",
 	"list.state.lendable":          "Can be lent",
 	"list.state.ready":             "Ready",

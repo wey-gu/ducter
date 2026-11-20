@@ -27,7 +27,8 @@ func (a *App) checkoutButtons(c *ui.Context, d *store.DecisionState, st decision
 	open := d.Resolved == nil && d.Pending == ""
 	ui.Column(c.Key("co:" + d.DecisionID)).Gap(t.S2).Padding(t.S3).Radius(t.RadiusSM).Background(t.SurfaceSunken).Children(func() {
 		fact := func(k, v string, big bool) {
-			ui.Row(c).Gap(t.S3).AlignItems(ui.Start).Children(func() {
+			// D441: the label sits on the value's baseline (the total is bigger).
+			ui.Row(c).Gap(t.S3).AlignItems(ui.Baseline).Children(func() {
 				uiText(c, a.L.T(k)).FontSize(t.SM).TextColor(t.InkMuted).Width(72)
 				size, weight := t.SM, 700
 				if big {

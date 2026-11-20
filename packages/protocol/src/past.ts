@@ -225,6 +225,34 @@ export interface OngoingItem {
   taskId?: string;
   startedAt: string;
   mark?: PastMark;
+  /** D427: a task in rounds that Ducter keeps going (a loop), not a one-off wait. */
+  loop?: boolean;
+  /** D427: how it is keeping its promise. Absent: on time (silence means fine). */
+  health?: OngoingHealth;
+  /** D427: the latest run or round: when, how it went, its one line. */
+  last?: { at: string; state: OngoingRun["state"]; line?: string };
+  /** D427: where its rounds run and which agent does them. */
+  where?: { device?: string; deviceName?: string; harness?: string };
+}
+
+/**
+ * D427: an ongoing thing that isn't keeping its time, with why and the one fix.
+ *   late     its round was due and hasn't started (lateMin minutes); why says what holds it
+ *   failing  its last rounds didn't work (fails in a row), why from the last one
+ *   back     it had stopped by mistake and Ducter brought it back (shown a day, said once)
+ * why: asleep (its computer is asleep or away), quota (its agent's allowance; resetsAt), signin,
+ * stuck (a round has run far longer than its rhythm), failed, lost (its next round went missing).
+ * fix: what the card's one button does: run_now (a round now), resume, or none (it fixes itself).
+ */
+export interface OngoingHealth {
+  state: "late" | "failing" | "back";
+  why?: "asleep" | "quota" | "signin" | "stuck" | "failed" | "lost";
+  lateMin?: number;
+  fails?: number;
+  detail?: string;
+  resetsAt?: string;
+  since?: string;
+  fix?: "run_now" | "resume";
 }
 
 /** What 暂停 / Pause, 恢复 / Resume, 现在跑一次 / Run now and 改时间 / Change when do. */
@@ -233,6 +261,8 @@ export type OngoingAction =
   | { action: "resume" }
   | { action: "run_now" }
   | { action: "retime"; trigger: Extract<RoutineTrigger, { kind: "time" }> }
+  // D427: 多久跑一轮 / How often: a task in rounds goes every this many minutes from its next round.
+  | { action: "every"; minutes: number }
   | { action: "end" };
 
 export type PastClientFrame =

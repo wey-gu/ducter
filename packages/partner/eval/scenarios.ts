@@ -42,7 +42,9 @@ export type Seed =
   // D407: Ducter's one offer to keep that task's rounds on a board (its own card, open).
   | { boardOffer: { task: string; kind: "reviews" | "reports" } }
   // D426: the lines under the last seeded user message, each done by the seeded task with that key.
-  | { asks: { lines: { words: string; task: string }[] } };
+  | { asks: { lines: { words: string; task: string }[] } }
+  // D427: the seeded task with this key runs in rounds (its own timer, re-armed after a wake): Ducter keeps it as a loop.
+  | { loop: { task: string; everyMin: number; reason: string } };
 
 /** D236: a reply names an earlier message by words it has (the latest one that has them). */
 export interface UserSay {
@@ -2611,6 +2613,63 @@ export const scenarios: Scenario[] = [
     steps: [{ user: "mem#10287 的草稿在哪看？", app: "about" }],
     expect: { opens: 0, msgs: [1, 1], maxChars: 120, noAppCard: true, appKept: true, require: [/看草稿/], notCalled: ["task_open", "task_send"], forbid: [/batch_size|```/] },
     rubric: "In their review board's sheet, the user asks where to read mem#10287's draft. The board already has a 看草稿 button on that PR's row that opens the draft. The partner says so in one or two short Chinese sentences (tap 看草稿 on #10287's row; adding that nothing goes to GitHub before their Go is fine); it doesn't change the app, invent the draft's content or where on screen the button is, post anything, or open a task.",
+  },
+  // ---------- D427: what keeps going, from the conversation: how it's doing, a new rhythm, a stop ----------
+  {
+    id: "loop-status-zh",
+    category: "routines",
+    lang: "zh",
+    seed: [
+      { user: "每 45 分钟帮我看一下 nowledge-co 里请我 review 的 PR，按 mem 的 review skill 来审。" },
+      { task: REVIEW_TASK },
+      { loop: { task: "rev", everyMin: 45, reason: "约 45 分钟后继续检查 nowledge-co 的审查请求与提及" } },
+      { ai: "好，每 45 分钟去看一轮。" },
+    ],
+    steps: [{ user: "这个循环怎么样了" }],
+    expect: { opens: 0, msgs: [1, 1], maxChars: 160, called: [{ tool: "routine_list" }], notCalled: ["task_open", "task_send", "routine_change"], forbid: [/routine_list|taskId|wait_for/] },
+    rubric: "The user asks how their review loop is doing. The partner looks (routine_list) and answers in one or two short Chinese sentences from what it shows: it is running every 45 minutes, when the next round is, and that it is on time. It doesn't open a task, message the task, change anything, or name tools or internals.",
+  },
+  {
+    id: "loop-every-hour-zh",
+    category: "routines",
+    lang: "zh",
+    seed: [
+      { user: "每 45 分钟帮我看一下 nowledge-co 里请我 review 的 PR，按 mem 的 review skill 来审。" },
+      { task: REVIEW_TASK },
+      { loop: { task: "rev", everyMin: 45, reason: "约 45 分钟后继续检查 nowledge-co 的审查请求与提及" } },
+      { ai: "好，每 45 分钟去看一轮。" },
+    ],
+    steps: [{ user: "把 review 改成每小时" }],
+    expect: { opens: 0, msgs: [1, 1], maxChars: 100, called: [{ tool: "routine_change", args: { action: "every", minutes: 60 } }], notCalled: ["task_open", "routine_propose"], noAsk: true },
+    rubric: "The user changes the review loop's rhythm to every hour. The partner changes it (routine_change every 60) and says so in one short Chinese line (from the next round on, every hour; the next time is fine). No new task, no routine proposal card, no question back.",
+  },
+  {
+    id: "loop-stop-zh",
+    category: "routines",
+    lang: "zh",
+    seed: [
+      { user: "每 45 分钟帮我看一下 nowledge-co 里请我 review 的 PR，按 mem 的 review skill 来审。" },
+      { task: REVIEW_TASK },
+      { loop: { task: "rev", everyMin: 45, reason: "约 45 分钟后继续检查 nowledge-co 的审查请求与提及" } },
+      { ai: "好，每 45 分钟去看一轮。" },
+    ],
+    steps: [{ user: "review 那个别跑了" }],
+    expect: { opens: 0, msgs: [1, 1], maxChars: 100, called: [{ tool: "routine_change", args: { action: "end" } }], notCalled: ["task_open"], noAsk: true },
+    rubric: "The user tells the partner to stop the review loop. The partner ends it (routine_change end) and says so in one short Chinese line (pausing instead, or asking 'are you sure', is wrong: they said stop). No new task.",
+  },
+  {
+    id: "loop-status-en",
+    category: "routines",
+    lang: "en",
+    seed: [
+      { user: "Every 45 minutes, look at the PRs on nowledge-co that ask for my review, and review them the way mem's review skill says." },
+      { task: { ...REVIEW_TASK, title: "Review requests on nowledge-co", ack: "OK, a round every 45 minutes." } },
+      { loop: { task: "rev", everyMin: 45, reason: "look at nowledge-co's review requests again in about 45 minutes" } },
+      { ai: "OK, a round every 45 minutes." },
+    ],
+    steps: [{ user: "Is my review loop still running?" }],
+    expect: { opens: 0, msgs: [1, 1], maxChars: 220, called: [{ tool: "routine_list" }], notCalled: ["task_open", "task_send", "routine_change"] },
+    rubric: "The user asks whether their review loop is still running. The partner looks (routine_list) and says in one or two short English sentences that it is, every 45 minutes, when the next round is, and that it is on time. No task, no change, no internals.",
   },
   // ---------- D405: 小应用 / Apps: made from one sentence, changed by talking, an app's ask answered ----------
   {

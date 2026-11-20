@@ -340,6 +340,7 @@ export interface Bodies {
     // the task. Hold (不用了 / No thanks, the default) keeps everything as it is. Never asked twice.
     board?: { taskId: string; title: string; kind: "reviews" | "reports" };
     unsure?: boolean; // D245: with routineId: its watch saw something it isn't sure of; Go runs it once
+    loop?: { taskId: string }; // D427: the keeper's one word about a late or failing loop: Go runs a round now
     signIn?: SignInAsk; // D151: a sign-in card; Go = 好了 / Done in the live view
     pay?: PayAsk; // D191: 付款 / Pay: merchant, amount, card; Go pays once, no default
     fill?: FillAsk; // D191: first use of a saved sign-in or detail on a site
@@ -573,6 +574,10 @@ export interface Bodies {
   until_try: { taskId: string; n: number; verdict: "met" | "better" | "same" | "worse" | "unknown"; summary: string; by: "check" | "judge"; tokens?: number; progress?: Progress };
   // D114: a routine (例行). One snapshot per change; the latest wins.
   routine: RoutineBody;
+  // D427: a task that keeps going in rounds (it rests on its own wait between them). Ducter keeps
+  // the rhythm: a round's done or failure, a restart or a lost wait never ends it; only the person
+  // (or the end condition they gave) does. One snapshot per change; the latest wins.
+  task_loop: TaskLoopBody;
   // A firing: "started" opens a run task; "skipped" records a firing that could not run (with how
   // many were coalesced into it); "done"/"failed" close a run from its task's final report.
   // D245: lateMin: it started that many minutes after its time (>= 15; its brief said so).
@@ -1049,6 +1054,29 @@ export type RoutineTrigger =
 
 /** D245: an account error a run hit: signed out (an AI agent or an app), or out of allowance. */
 export type RoutineTrouble = "signin" | "quota";
+
+/** D427: a task in rounds, as Ducter keeps it (`task_loop` on the task's stream). */
+export interface TaskLoopBody {
+  taskId: string;
+  /** on: Ducter keeps its next round armed; paused: the person paused it; ended: the person (or its end condition) ended it. */
+  state: "on" | "paused" | "ended";
+  /** What it waits for between rounds, in the person's words (the wait's reason). */
+  reason: string;
+  /** A timer loop's rhythm: from one round's wake to the next. */
+  everyMs?: number;
+  /** Who set the rhythm last: the task's own waits, or the person ("改成每小时"), which the task's waits then follow. */
+  rhythmBy?: "task" | "user";
+  /** A condition loop: the wait it re-arms between rounds (a check, an event, a judge, how often to look). */
+  look?: { check?: CheckSpec; event?: EventSpec; judge?: string; everyMs?: number };
+  /** An end condition the person gave ("直到 #10473 合并"), in their words: a done report then ends it. */
+  until?: string;
+  since: string;
+  /** How Ducter knew it repeats: the person's words in its brief, or its own rounds (it re-armed after a wake). */
+  by: "brief" | "rounds";
+  endedBy?: "user" | "partner" | "condition";
+  /** Ducter brought it back: a round's done read as the loop's end, a failed round, a lost wait, a restart. */
+  back?: { at: string; from: "done" | "failed" | "lost" | "restart"; stoppedAt?: string };
+}
 
 export interface RoutineBody {
   routineId: string;

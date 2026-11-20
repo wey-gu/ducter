@@ -654,6 +654,15 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
       if (!r.ok) throw new Error(`board seed: ${r.error}`);
       for (const [k, v] of Object.entries(s.board.data)) core.apps.put(r.app.id, k, v, "app");
       appsSeeded.push({ id: r.app.id, html: core.apps.html(r.app.id) ?? "", name: r.app.name });
+    } else if ("loop" in s) {
+      // D427: the seeded task runs in rounds: two of its own timers, the first fired; Ducter keeps it as a loop.
+      const taskId = idOf.get(s.loop.task)!;
+      const every = s.loop.everyMin * 60_000;
+      const w1 = { waiterId: "w_" + crypto.randomUUID().slice(0, 10), reason: s.loop.reason, taskId, wakes: "task" as const, at: new Date(Date.now()).toISOString() };
+      core.log.append({ stream: "channel", origin: "waiter", kind: "waiter", body: { ...w1, state: "armed" } });
+      core.log.append({ stream: "channel", origin: "waiter", kind: "waiter", body: { ...w1, state: "fired" } });
+      core.log.append({ stream: "channel", origin: "waiter", kind: "waiter", body: { waiterId: "w_" + crypto.randomUUID().slice(0, 10), reason: s.loop.reason, taskId, wakes: "task", state: "armed", at: new Date(Date.now() + every).toISOString() } });
+      if (!core.work.loops.get(taskId)) throw new Error("loop seed: not kept as a loop");
     } else if ("boardOffer" in s) {
       if (!core.boards!.offer(idOf.get(s.boardOffer.task)!, s.boardOffer.kind)) throw new Error("boardOffer seed: not offered");
     } else if ("asks" in s) {
@@ -794,6 +803,7 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
     else if ("callQuestion" in s) lines.push(`(earlier) a call to ${s.callQuestion.name} is live; the other side asked "${s.callQuestion.question}" and that question's card (Yes / No / reply) is on screen`);
     else if ("finds" in s) lines.push(`(earlier) Ducter's own note from the user's accounts: ${s.finds.opening} ${s.finds.finds.map((f) => `[${f.kind}] ${f.text}${f.goLabel ? ` (next step offered: ${f.goLabel})` : ""}`).join(" | ")}`);
     else if ("chatter" in s) lines.push(`(earlier) ${s.chatter} short exchanges about moving the stand-up (filler)`);
+    else if ("loop" in s) lines.push(`(earlier) task "${s.loop.task}" runs in rounds, every ${s.loop.everyMin} min (it rests on "${s.loop.reason}" between them)`);
     else if ("board" in s) lines.push(`(earlier) Ducter made the review board for task "${s.board.task}"; it shows every PR waiting, filled from each round`);
     else if ("boardOffer" in s) lines.push(`(earlier) Ducter offered on its own card: keep task "${s.boardOffer.task}"'s rounds on a board?`);
     else if ("bound" in s) lines.push(`(earlier) Ducter bound task "${s.bound.task}" to the GitHub issue ${s.bound.ref} (the user took it from their to-dos)`);

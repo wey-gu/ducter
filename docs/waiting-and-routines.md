@@ -48,6 +48,21 @@ looked before, still asks. Paying, passwords and sign-ins, and deleting always a
 its card also says where your requests stand, like "8 requests wait on you: 3 had new commits and
 are reviewed again, 5 unchanged".
 
+Something that runs in rounds keeps going until you say stop. A round that finishes, a round that
+fails, a restart or an update never ends it; if its next round goes missing, Ducter brings it
+back by itself. Only you end it: **End** on its card, or say "stop the review loop". If you gave
+it an end ("until #10473 merges"), it stops there.
+
+In Past tasks › Ongoing each card says how it is keeping its time, and only when it isn't:
+**1 h late: its computer is asleep; it catches up as soon as it wakes**, **Its last 3 rounds
+didn't work**, **Out of allowance; carries on at 20:53**, or, for a day after it was stopped by
+mistake, **Stopped by mistake at 15:12, running again**. When there is something to do, the card's
+button is **Run now**; when a round is late or keeps failing, you also get one card in the
+conversation with the same button, once. Under it: the last round and what came of it, and
+which computer and which AI agent run it. **⋯ › How often** sets it (every 15 minutes
+to every 4 hours). You can ask too: "how are my loops doing?", "make the review every hour",
+"pause it until tomorrow", "stop it".
+
 ## "Remind me …" and what you said you'd do
 
 > Remind me at 3 this afternoon to pay the landlord.

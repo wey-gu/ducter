@@ -9,7 +9,7 @@
 //             (world); condition triggers reuse a waiter (check / event / judge / change) that
 //             fires on the change to met (a change watch: on any change) and re-arms. Each firing
 //             opens a fresh task: a run.
-//   paused    by the user, by the partner (routine_pause), or by Ducter after 3 failed runs in a
+//   paused    by the user, by the partner (routine_change), or by Ducter after 3 failed runs in a
 //             row, 3 unread reports in a row, the month's budget, or the review date. Only the
 //             user resumes (routine_action resume); a review asks "还要吗？/ Keep this?".
 //

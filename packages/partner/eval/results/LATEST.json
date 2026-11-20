@@ -1,9 +1,9 @@
 {
-  "file": "2026-11-20-haiku-many-asks-merged-run1.md",
+  "file": "2026-11-20-haiku-d427-run2.md",
   "date": "2026-11-20",
   "harness": "claude-code",
   "model": "haiku",
-  "pass": "181/228",
-  "persona": "0491225d58d60cbf",
-  "tools": "1d222a710f1568ec"
+  "pass": "179/232",
+  "persona": "7a0623f64b2d68c8",
+  "tools": "edb4da8f2c07c9b1"
 }

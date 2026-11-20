@@ -38,6 +38,8 @@ export const P = {
   ogMenu: "",
   ogPause: "",
   ogEdit: "",
+  /** D427: the card whose 多久跑一轮 / How often menu is open. */
+  ogRhythm: "",
   settling: "",
   /** D299: the outside session being carried on (agent:id), opened when its task is there. */
   adopting: "",
@@ -52,17 +54,17 @@ const ACTIVE = new Set(["queued", "working", "needs_you", "blocked", "done_claim
 
 /** Opens 做过的事, with words when given (On hand's Find, the switcher); or 一直在跑的 / Ongoing. */
 queueMicrotask(() => {
-  A.openPast = (q) => openPast(q ?? "");
+  A.openPast = (q, tab) => openPast(q ?? "", tab);
   A.onPastWelcome = () => void (A.sheet?.kind === "past" && (ask(true), askMade(P.q, true)));
   // Opened from a link before this registered (the first load): follow it now.
-  if (typeof location !== "undefined" && /^#(past|find)/.test(location.hash)) A.fromHash();
+  if (typeof location !== "undefined" && /^#(past|find|ongoing)/.test(location.hash)) A.fromHash();
 });
 
 export function openPast(q = "", tab: "past" | "made" | "ongoing" = "past") {
   P.q = q;
   P.tab = tab;
   P.filter = { kind: "all" };
-  P.focus = P.markFor = P.moreFor = P.ogMenu = P.ogPause = P.ogEdit = P.sel = "";
+  P.focus = P.markFor = P.moreFor = P.ogMenu = P.ogPause = P.ogEdit = P.ogRhythm = P.sel = "";
   P.computer = P.ended = undefined;
   PV.sheet = "";
   forgetSteps();
@@ -873,7 +875,7 @@ const RANK: Record<OngoingItem["state"], number> = { needs_you: 0, running: 1, r
 
 function og(it: OngoingItem, a: OngoingAction) {
   A.send({ t: "ongoing_action", kind: it.kind, id: it.id, ...a });
-  P.ogMenu = P.ogPause = P.ogEdit = "";
+  P.ogMenu = P.ogPause = P.ogEdit = P.ogRhythm = "";
   // The card settles (pause) or lifts (resume) at once; the home's ongoing_result follows.
   if (a.action === "pause") (it.state = "paused"), (P.settling = it.id), a.until ? (it.pausedUntil = a.until) : delete it.pausedUntil, delete it.nextAt;
   if (a.action === "resume") (it.state = "resting"), (P.settling = ""), delete it.pausedUntil;
@@ -929,8 +931,41 @@ function stateLine(it: OngoingItem): string[] {
   if (it.state === "running") return [t("og.s.running")];
   if (it.state === "needs_you") return [t("og.s.needs_you")];
   if (it.state === "proposed") return [t("og.s.proposed")];
-  const how = it.kind === "routine" ? (it.cadence ?? "") : it.everyMs ? t("og.every", interval(it.everyMs)) : "";
+  const how = it.kind === "routine" ? (it.cadence ?? "") : it.everyMs ? t(it.loop ? "og.round.every" : "og.every", interval(it.everyMs)) : "";
   return [how, it.nextAt ? t("og.next", soon(it.nextAt)) : ""].filter(Boolean);
+}
+
+/** D427: when it isn't keeping its time: how late or how many failed, and why, each its own fact. On time says nothing. */
+export function healthLine(h: NonNullable<OngoingItem["health"]>): string[] {
+  if (h.state === "back") return [t("og.h.back", h.since ? ago(h.since) : "")];
+  const why =
+    h.why === "asleep" ? (h.detail ? t("og.h.asleep", h.detail) : t("og.h.asleep.any"))
+    : h.why === "quota" ? (h.resetsAt ? t("og.h.quota", soon(h.resetsAt)) : t("og.h.quota.any"))
+    : h.why === "signin" ? t("og.h.signin")
+    : h.why === "stuck" ? t("og.h.stuck")
+    : h.why === "lost" ? t("og.h.lost")
+    : h.detail ?? "";
+  // Its why is the last round's line, right under it.
+  if (h.state === "failing") return [t("og.h.failing", h.fails ?? 3)];
+  return [h.lateMin && h.why !== "quota" ? t("og.h.late", interval(h.lateMin * 60_000)) : "", why].filter(Boolean);
+}
+
+/** D427: the last run or round, when, and its one line. */
+function lastLine(it: OngoingItem): string[] {
+  const l = it.last;
+  if (!l || it.state === "running") return [];
+  return [t(it.kind === "routine" ? "og.last.run" : "og.last", ago(l.at)), l.line ?? t(`og.run.${l.state}`)];
+}
+
+/** D427: the rhythms a task in rounds can take, in minutes. */
+const RHYTHMS = [15, 30, 45, 60, 120, 240];
+
+/** A time behind: the clock today, else the day with it. */
+function ago(iso: string): string {
+  const d = new Date(iso);
+  const f = DATES[A.L.lang];
+  const hm = d.toLocaleTimeString(f.intl, { hour: "2-digit", minute: "2-digit", hour12: false });
+  return Date.parse(iso) >= startOfDay(Date.now()) ? hm : `${f.day(d)} ${hm}`;
 }
 
 /** D394: a review task's standing after its last round, each its own fact (D291). */
@@ -952,6 +987,19 @@ const RepeatGlyph = ({ task }: { task: boolean }) => (
       <path d="M10 16a6 6 0 1 0 0-12 6 6 0 0 0 0 12zM10 7v3.2l2.2 1.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
     ) : (
       <path d="M5 9.5a5 5 0 0 1 8.6-3.4L15 7.5M15 4.5v3h-3M15 10.5a5 5 0 0 1-8.6 3.4L5 12.5M5 15.5v-3h3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+    )}
+  </svg>
+);
+
+/** D427: the health line's small drawn mark: a clock running behind, a crack, or a pebble set back in place. */
+const HealthGlyph = ({ state }: { state: NonNullable<OngoingItem["health"]>["state"] }) => (
+  <svg class="og-hg" width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
+    {state === "late" ? (
+      <path d="M7 12.2A5.2 5.2 0 1 0 7 1.8a5.2 5.2 0 0 0 0 10.4zM7 4.3V7l2 1.3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+    ) : state === "failing" ? (
+      <path d="M7 1.8 12.4 11.6H1.6L7 1.8zM7 5.6v2.6M7 10v.1" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+    ) : (
+      <path d="M2.4 7.4a4.6 4.6 0 1 0 1.5-3.6M2.2 2.4v2.4h2.4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
     )}
   </svg>
 );
@@ -1034,6 +1082,18 @@ function OgCard({ it }: { it: OngoingItem }) {
             <span class="pt">{it.title}</span>
           </span>
           <span class={`pl2 og-line${paused ? " paused" : ""}`}><Facts items={stateLine(it)} /></span>
+          {/* D427: only when it isn't keeping its time; on time says nothing. */}
+          {it.health && !paused && (
+            <span class={`pl2 og-health ${it.health.state}`} role="status">
+              <HealthGlyph state={it.health.state} />
+              <Facts items={healthLine(it.health)} />
+            </span>
+          )}
+          {lastLine(it).length > 0 && (
+            <span class="pl2 og-last">
+              <Facts items={lastLine(it)} />
+            </span>
+          )}
           {it.reviews && (
             <span class="pl2 og-standing">
               <Facts items={reviewLine(it.reviews)} />
@@ -1041,6 +1101,8 @@ function OgCard({ it }: { it: OngoingItem }) {
           )}
           <span class="pl3">
             {it.project && <span>{it.project}</span>}
+            {/* D427: where its rounds run and which agent does them, each its own fact. */}
+            {it.where && <Facts class="og-where" items={[it.where.deviceName, it.where.harness ? harnessName(it.where.harness) : ""]} />}
             <Runs runs={it.runs} />
           </span>
         </span>
@@ -1048,12 +1110,14 @@ function OgCard({ it }: { it: OngoingItem }) {
       <span class="pacts on">
         {/* D407: the small app this task keeps current: the same truth as the line above, opened whole. */}
         {it.app && <Btn kind="secondary" size="sm" label={t("board.open", it.app.name)} onClick={() => (close(), openApp(it.app!.id))} />}
+        {/* D427: its one fix, right where it says what's wrong. */}
+        {it.health?.fix === "run_now" && !paused && <Btn kind="primary" size="sm" label={t("og.run")} about={it.title} onClick={() => og(it, { action: "run_now" })} />}
         {paused ? (
           <Btn kind="secondary" size="sm" label={t("og.resume")} onClick={() => og(it, { action: "resume" })} />
         ) : (
           <Btn kind="text" size="sm" label={t("og.pause")} expanded={pausing} onClick={() => ((P.ogPause = pausing ? "" : it.id), (P.ogMenu = ""), A.changed())} />
         )}
-        {it.state !== "running" && it.state !== "proposed" && <Btn kind="text" size="sm" label={t(it.kind === "routine" ? "og.run" : "wait.look")} onClick={() => og(it, { action: "run_now" })} />}
+        {it.state !== "running" && it.state !== "proposed" && it.health?.fix !== "run_now" && <Btn kind="text" size="sm" label={t(it.kind === "routine" || it.loop ? "og.run" : "wait.look")} onClick={() => og(it, { action: "run_now" })} />}
         <button class={`more-btn${menu ? " open" : ""}`} aria-label={t("past.mark")} aria-expanded={menu} onClick={() => ((P.ogMenu = menu ? "" : it.id), (P.ogPause = ""), A.changed())}>
           ⋯
         </button>
@@ -1077,6 +1141,11 @@ function OgCard({ it }: { it: OngoingItem }) {
               {t("og.retime")}
             </MenuItem>
           )}
+          {it.loop && it.state !== "paused" && (
+            <MenuItem onClick={() => ((P.ogRhythm = it.id), (P.ogMenu = ""), A.changed())}>
+              {t("og.rhythm")}
+            </MenuItem>
+          )}
           {openTask && (
             <MenuItem onClick={() => (close(), A.go({ name: "task", id: openTask }))}>
               {t("og.open")}
@@ -1084,8 +1153,19 @@ function OgCard({ it }: { it: OngoingItem }) {
           )}
           <MenuSep />
           <MenuItem danger onClick={() => og(it, { action: "end" })}>
-            {t(it.kind === "routine" ? "og.end" : "wait.cancel")}
+            {t(it.kind === "routine" || it.loop ? "og.end" : "wait.cancel")}
           </MenuItem>
+        </Menu>
+      )}
+      {P.ogRhythm === it.id && (
+        <Menu class="pmenu" onClose={() => ((P.ogRhythm = ""), A.changed())}>
+          <MenuHead>{t("og.rhythm")}</MenuHead>
+          {RHYTHMS.map((m) => (
+            <MenuItem key={m} onClick={() => og(it, { action: "every", minutes: m })}>
+              {t("og.rhythm.m", interval(m * 60_000))}
+              {it.everyMs === m * 60_000 && <span class="og-now" aria-hidden="true" />}
+            </MenuItem>
+          ))}
         </Menu>
       )}
       {editing && <Retime it={it} />}
@@ -1094,6 +1174,12 @@ function OgCard({ it }: { it: OngoingItem }) {
 }
 
 function OngoingList() {
+  // D427: opened from a link before the socket was up (#ongoing): ask again until the list comes.
+  useEffect(() => {
+    if (P.og) return;
+    const again = setInterval(() => (P.og ? clearInterval(again) : A.send({ t: "ongoing", id: "og" })), 1000);
+    return () => clearInterval(again);
+  }, []);
   const items = [...(P.og ?? [])].sort((a, b) => RANK[a.state] - RANK[b.state]);
   const secs: { key: string; label: string; items: OngoingItem[] }[] = [];
   const name = (s: OngoingItem["state"]) => (s === "needs_you" ? t("lane.needs_you") : s === "running" ? t("og.s.running") : s === "paused" ? t("og.sec.paused") : t("og.sec.next"));

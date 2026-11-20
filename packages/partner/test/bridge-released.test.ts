@@ -56,9 +56,9 @@ esac`;
     expect(outgoingReads({ outgoing: [{ message: "a", status: "delivered", read_recipients: 0, recipients: 1 }, { message: "b", status: "read", read_recipients: 1, recipients: 1 }] })).toEqual({ a: false, b: true });
   });
 
-  test("an own agent Mem doesn't name: unnamed to the user (D273), told to the model as the user's own", () => {
-    expect(whoForUser({ mine: true, from: "another agent" }, "zh")).toBe("一个没留名字的 agent");
-    expect(whoForUser({ mine: true, label: "" }, "en")).toBe("an unnamed agent");
+  test("an own agent Mem doesn't name: theirs to the user (D418), told to the model as the user's own", () => {
+    expect(whoForUser({ mine: true, from: "another agent" }, "zh")).toBe("你自己的一个 agent");
+    expect(whoForUser({ mine: true, label: "" }, "en")).toBe("one of your own agents");
     expect(whoForUser({ from: "another agent" }, "zh")).toBe("一个没留名字的 agent");
     expect(whoForModel({ mine: true, from: "another agent" })).toContain("one of the user's own AI agents");
   });
@@ -140,7 +140,7 @@ describe("D249: reaching the agent that wrote, over the released shapes", () => 
     expect(got[0].wroteLately[0]).toMatchObject({ contact: "reply:msg-001" });
     expect(got[0].wroteLately[0].who).toContain("Task: fix the Linux failure");
     expect(got[0].contacts.map((c: { who: string }) => c.who)).toContain("Claude 收尾协调 (the user's own agent: call it 你的 Claude 收尾协调 / your Claude 收尾协调, never by the user's name)");
-    expect(t.card().question.split("\n")[0]).toBe("发给一个没留名字的 agent？");
+    expect(t.card().question.split("\n")[0]).toBe("发给你自己的一个 agent？");
     expect(t.card().question).toContain("（就是发来「Task: fix the Linux failure in the runne…」的那个）");
     t.tap(t.card().decisionId);
     await t.partner.idle();

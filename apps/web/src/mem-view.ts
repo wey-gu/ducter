@@ -172,7 +172,7 @@ export function peersPhase(b: BridgeView | undefined, switchOn: boolean): PeersP
 }
 
 /** D332: one exchange with another agent, as 最近 / Recently lists it: who (its name, else the tool it runs in), which way, its words, when, where it leads. */
-export type Handoff = { seq: number; at: string; agent: string; host?: string; way: "in" | "sent" | "replied"; words: string; taskId?: string };
+export type Handoff = { seq: number; at: string; agent: string; host?: string; way: "in" | "sent" | "replied"; words: string; taskId?: string; mine?: boolean; role?: string; selfNamed?: boolean };
 
 /**
  * What another agent is called, in this order: its own name in Mem (the sender's agent, else the readable
@@ -191,7 +191,7 @@ export function peerCalled(b: { agent?: string; from?: string; to?: string; host
  * person's tap, one that didn't go, or one set aside or muted.
  */
 export function recentHandoffs(
-  channel: { ev: { seq: number; ts: string }; peer?: { direction: "in" | "out"; agent?: string; host?: string; from?: string; to?: string; text: string; taskId?: string; decisionId?: string; state?: string } }[],
+  channel: { ev: { seq: number; ts: string }; peer?: { direction: "in" | "out"; agent?: string; host?: string; from?: string; to?: string; text: string; taskId?: string; decisionId?: string; state?: string; mine?: boolean; role?: string; selfNamed?: boolean } }[],
   limit = 5,
 ): Handoff[] {
   const out: Handoff[] = [];
@@ -199,11 +199,12 @@ export function recentHandoffs(
     const e = channel[i]!;
     const p = e.peer;
     if (!p) continue;
-    if (p.direction === "in" ? p.state === "early" || p.state === "set_aside" || p.state === "muted" : p.state !== undefined && p.state !== "sent" && p.state !== "followed") continue;
+    // D418: a contact test answered by code (and its answer) is a check, not an exchange worth listing.
+    if (p.direction === "in" ? p.state === "early" || p.state === "set_aside" || p.state === "muted" || p.state === "ping" : (p.state !== undefined && p.state !== "sent" && p.state !== "followed") || (p as { ack?: boolean }).ack) continue;
     const words = p.text.replace(/\s+/g, " ").trim();
     if (!words) continue;
     const who = peerCalled(p, p.direction);
-    out.push({ seq: e.ev.seq, at: e.ev.ts, agent: who.name ?? "", ...(who.host ? { host: who.host } : {}), way: p.direction === "in" ? "in" : p.decisionId ? "sent" : "replied", words, ...(p.taskId ? { taskId: p.taskId } : {}) });
+    out.push({ seq: e.ev.seq, at: e.ev.ts, agent: who.name ?? "", ...(who.host ? { host: who.host } : {}), way: p.direction === "in" ? "in" : p.decisionId ? "sent" : "replied", words, ...(p.taskId ? { taskId: p.taskId } : {}), ...(p.mine ? { mine: true } : {}), ...(p.selfNamed ? { selfNamed: true } : {}), ...(p.role ? { role: p.role } : {}) });
   }
   return out;
 }

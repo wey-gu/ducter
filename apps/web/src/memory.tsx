@@ -685,10 +685,12 @@ function Exchange({ to, words, then }: { to: string; words: string; then: string
 }
 
 /** "an unnamed agent asked …" starts a line capitalised; names stay as they are. */
-const capWho = (s: string) => (s.startsWith("an unnamed agent") || s.startsWith("an agent in ") ? "A" + s.slice(1) : s);
+const capWho = (s: string) => (/^(an unnamed agent|an agent in |your |one of your own )/.test(s) ? s[0]!.toUpperCase() + s.slice(1) : s);
 const peerTool = (agent: string) => (/claude/i.test(agent) ? "Claude Code" : /codex/i.test(agent) ? "Codex" : /\bpi\b/i.test(agent) ? "pi" : agent);
 /** 最近's who (D332): its name, else the tool it runs in, else unnamed (mem-view.ts peerCalled). */
-const whoOf = (h: Pick<Handoff, "agent" | "host">) => h.agent || (h.host ? t("peer.in.host", h.host) : t("peer.someone"));
+// D418: one of the person's own agents named by its own words reads as theirs; one with no name at all, still theirs.
+const whoOf = (h: Pick<Handoff, "agent" | "host" | "mine" | "role" | "selfNamed">) =>
+  h.mine && h.selfNamed && h.agent ? (h.role ? t("peer.yours.role", h.agent, h.role) : t("peer.yours", h.agent)) : h.agent || (h.host ? t("peer.in.host", h.host) : h.mine ? t("peer.own.someone") : t("peer.someone"));
 
 /** D332: where an exchange leads: its task, else the message in the conversation. */
 function openHandoff(h: Handoff) {

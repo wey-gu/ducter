@@ -171,6 +171,20 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
   Mac's rename of another partner; the stone's comprehension test with naive raters, then a clay
   character per partner. Trigger: the author reviews the preview.
 
+## Your own agents, as yours (D418, `bridge.md` "Your own agents, as yours")
+
+- [ ] The live run on hel once it updates: the next contact test from the author's Codex answered by code within the
+      check, named 你的 Codex（Mem 协作）; the three stuck replies of 2026-11-20 settled (resent once, or said).
+      Trigger: hel on a release with D418.
+- [ ] A spoken instruction that covers more than a contact test ("以后 Codex 问的直接回", "my Codex's questions: just
+      answer") kept as a standing permission (D413's `standing.json`, a `bridge_reply` kind bounded by the agent), so an
+      own agent's harmless question needs no card either. Trigger: the author says one, or a second card for an own
+      agent's acknowledgement-only message.
+- [ ] Mem's refusal of a reply by bare id in another Space, in its own words (research note), so `failure()` names it.
+      Trigger: Mem answers the list in `bridge.md` (item 1).
+- [ ] The Mac's 390-wide phone shots and the iOS Simulator check of the folded line. Trigger: the next phone-UI pass.
+- [ ] A naive-rater check that 你的 Codex（Mem 协作）reads as the person's own agent and 你自己的一个 agent as "mine, unnamed".
+
 ## 和你的其他 agent 通信 / Talk with your other agents (D332, `bridge.md` "Simple, by who")
 
 - [ ] **D350 (5): an unnamed sender's Mem display name from its contact card**, fetched once per agent id and

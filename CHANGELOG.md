@@ -1,5 +1,35 @@
 # Changelog
 
+## 0.1.3 - 2026-11-21
+
+<!-- whats-new
+zh: 设置更顺手；看得到谁能找到你、消息送到没有；小应用开门就好用
+en: Smoother settings; who can reach you, what got through; apps that start useful
+-->
+
+**Nowledge Mem and other agents**
+- Agent messaging shows, for each AI tool you use, whether it can reach your partner, and when it
+  last did.
+- A message that hasn't gone yet says so (sending, not confirmed, not sent) instead of vanishing.
+- When an answer leans on an earlier conversation you had with another tool, it says which one.
+
+**Things that keep going**
+- Ask how a loop is doing and get one line: how often, the next round, whether it's on time.
+- If its computer is asleep and another is awake, run it there with one tap.
+
+**One message, several things**
+- Reply to just one of the lines under your message; what finished first is never lost or said
+  twice after a restart.
+
+**Small apps**
+- A new app opens to a useful first screen with the first entry ready, and what you already told
+  Ducter goes into the app's data.
+
+**Everywhere else**
+- Settings: one shape for every choice, a single command to copy when a tool is missing, and a
+  calm outline while a page loads.
+- Chinese wording reads more naturally: counts use the thing's own word.
+
 ## 0.1.2 - 2026-11-20
 
 <!-- whats-new

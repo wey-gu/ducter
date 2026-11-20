@@ -42,6 +42,7 @@ export * from "./mem-health.ts";
 export * from "./task-sources.ts";
 export * from "./handover.ts";
 export * from "./standing.ts";
+export * from "./asks.ts";
 import type { DeviceVia, HomeKey, ReachWay } from "./reach.ts";
 import type { PastClientFrame, PastMark, PastServerFrame } from "./past.ts";
 import type { DidClientFrame, DidServerFrame } from "./did.ts";
@@ -320,6 +321,9 @@ export interface Bodies {
   // act, ref (D216): the line a user's Merge or Open draft PR logs, with the merge's commit or the PR's address.
   job_status: { jobId: string; text: string; state: "running" | "done" | "failed"; taskId?: string; act?: "merge" | "open_pr"; ref?: string };
   living_msg: { items: LivingItem[] }; // supersedes the previous living_msg while unread
+  // D426: what one message asked for, line by line, under it (asks.ts). Logged by core whenever a
+  // line is added or its state changes; clients keep the latest per msgSeq, under that message.
+  asks: import("./asks.ts").AsksBody;
   decision: {
     decisionId: string;
     taskId?: string; // absent = a partner-level decision (the partner's own ask, before any task)
@@ -469,6 +473,8 @@ export interface Bodies {
     /** D206: what the task chose to show the user (screenshots, generated images, files it
      *  made), copied into the home's media store by Ducter. */
     media?: MediaRef[];
+    /** D426: its word on each of its lines (what the person asked for), in the order it was given them. */
+    asks?: import("./asks.ts").AskReport[];
   };
   checkpoint: { taskId: string; text: string; gitRef?: string };
   // D341: a task bound to one outside to-do (item null: unbound). by: who bound it (the person in
@@ -2831,8 +2837,8 @@ export const DEFAULT_AFTER_CHOICES = [10, 30, 60, 120] as const;
 // role "task:<id>": report_to_main, log_search, log_read, checkpoint
 
 export interface ToolArgs {
-  task_open: { title: string; brief: string; place?: Place; project?: string; harness?: string; model?: string };
-  task_send: { taskId: string; text: string; mode?: "steer" | "queue" };
+  task_open: { title: string; brief: string; place?: Place; project?: string; harness?: string; model?: string; /** D426 */ asks?: string[] };
+  task_send: { taskId: string; text: string; mode?: "steer" | "queue"; /** D426 */ asks?: string[] };
   task_read: { taskId: string; level?: "card" | "report" | "transcript"; limit?: number };
   log_search: { query: string; stream?: string; limit?: number };
   log_read: { stream: string; fromSeq?: number; limit?: number };

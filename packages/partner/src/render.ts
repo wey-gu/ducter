@@ -3,7 +3,7 @@
 //   cold seed:   renderProjection() background blocks for a fresh session (L2, simplified)
 // Rule (principle 4, research/13): a fresh session reads as an ongoing conversation.
 // Nothing rendered here may say the session was reset, restarted, or lost.
-import type { Attention, Bodies, LogEvent, ReplyRef, TaskCard } from "../../protocol/src/index.ts";
+import type { AskLine, Attention, Bodies, LogEvent, ReplyRef, TaskCard } from "../../protocol/src/index.ts";
 import { REPLY_QUOTE } from "../../protocol/src/index.ts";
 import { harnessName } from "../../protocol/src/harnesses.ts";
 import { richShownWords } from "../../protocol/src/rich.ts";
@@ -166,6 +166,19 @@ export interface RenderCtx {
   kept?(seq: number): { text: string; harness: string; never?: boolean; kinds?: string[] }[];
   /** D413: what Ducter did with this user message's words about asking first (不用问我的 / Without asking). */
   standing?(seq: number): StandingHeard[];
+  /** D426: the lines a task's many-things message asked for (all of them, any task), and that message's seq. */
+  asksOf?(taskId: string): { msgSeq: number; lines: AskLine[] } | undefined;
+  /** D426: the newest many-things message before this one (seq) with its lines, within a day. */
+  asksBefore?(seq: number): { msgSeq: number; lines: AskLine[] } | undefined;
+}
+
+const ASK_STATE_WORDS: Record<AskLine["state"], string> = { working: "still at work", done: "done", needs_you: "waiting for the user", failed: "didn't work" };
+
+/** D426: the lines under a message, for the partner: each one's words, task and state, numbered as shown. */
+export function asksLines(a: { lines: AskLine[] }, ctx: Pick<RenderCtx, "taskTitle">): string {
+  return a.lines
+    .map((l, i) => `${i + 1}. "${clip(l.words, 60)}" ${l.taskId ? `task ${l.taskId}` : "held in line"}: ${ASK_STATE_WORDS[l.state]}${l.note ? ` (${clip(l.note, 80)})` : ""}`)
+    .join("; ");
 }
 
 /** D413: what one sentence about asking first came to (core/src/standing.ts Heard). */
@@ -355,7 +368,10 @@ export function renderTrigger(e: LogEvent, ctx: RenderCtx): string {
       const f = e.seq > 0 ? ctx.follows?.(e.seq) : undefined;
       // D401: what Ducter kept from these words as the user's rule, by itself.
       const kept = e.seq > 0 ? (ctx.kept?.(e.seq) ?? []) : [];
-      return `[user] ${b.text}${pics}${kept.length ? `\n${keptLine(kept)}` : ""}${sl}${f ? `\n${followsLine(f)}` : ""}`;
+      // D426: the lines a recent many-things message asked for, so "第二个改一下" lands on its task.
+      const ab = e.seq > 0 ? ctx.asksBefore?.(e.seq) : undefined;
+      const al = ab && ab.lines.length >= 2 ? `\n  (the lines under their earlier message, as they see them: ${asksLines(ab, ctx)}. A follow-up about one of them ("the second one", its words) goes to its task with task_send; a new thing for the same message: task_send or task_open with asks)` : "";
+      return `[user] ${b.text}${pics}${kept.length ? `\n${keptLine(kept)}` : ""}${sl}${al}${f ? `\n${followsLine(f)}` : ""}`;
     }
     case "report": {
       const r = e.body as Bodies["report"];
@@ -524,7 +540,10 @@ export function renderHistoryLine(e: LogEvent, ctx: RenderCtx): string | null {
       const r = e.body as Bodies["report"];
       const ev = (r.evidence ?? []).map((x) => `${x.kind}:${x.label}`).join(", ");
       const told = toldLines(ctx.told?.(r.taskId, e.seq), 160).map((l) => ` (${l})`).join("");
-      return `[${t} task ${r.taskId} report: ${r.state}] ${clip(r.summary, 300)}${ev ? ` (evidence: ${ev})` : ""}${r.media?.length ? ` (showed the user ${mediaWords(r.media)})` : ""}${told}`;
+      // D426: the message's lines, each with its state: the result says which came out how.
+      const a = ctx.asksOf?.(r.taskId);
+      const al = a && a.lines.length >= 2 ? ` (the lines under the user's message, as they see them now: ${asksLines(a, ctx)})` : "";
+      return `[${t} task ${r.taskId} report: ${r.state}] ${clip(r.summary, 300)}${ev ? ` (evidence: ${ev})` : ""}${r.media?.length ? ` (showed the user ${mediaWords(r.media)})` : ""}${told}${al}`;
     }
     case "finds": {
       // D165: what Ducter noticed and said by itself, so the partner can answer about it.

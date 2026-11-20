@@ -343,6 +343,8 @@ func (a *App) taskHead(c *ui.Context, task *store.Task, m *taskMemo) {
 				}
 			})
 		})
+		// D426: the things of a many-things message this task does, each with its mark.
+		a.taskAsks(c, task.ID)
 		a.watchCard(c, task, m)
 		a.tryStrip(c, task)
 		if len(m.blocks) == 0 && len(task.Sends) == 0 {

@@ -859,6 +859,8 @@ func (e LogEvent) Typed() (any, error) {
 		v = &ConnectionCall{}
 	case KindTodoSet:
 		v = &TodoSet{}
+	case KindAsks:
+		v = &Asks{}
 	default:
 		return nil, nil
 	}

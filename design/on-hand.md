@@ -149,6 +149,12 @@ a later one is held by the home (no task, no agent) and opens when the part befo
 result back) from that part's unmerged branch, its brief led by which part it is and what the one
 before reported. Parts elsewhere run side by side. Research and words: research/133.
 
+D426: when one message asks for several things, the same work has three views and one state: the
+lines under the person's message in the conversation (their words, a mark, a note;
+`conversation.md` §Several things in one message), the group's card here when it took more than one
+task, and the opened task, which shows its own lines under its head. Who does each line is named here
+and in the opened task, never in the conversation (a hover on the Mac only).
+
 D285: under the sections, On hand's last line leads on: **一直在跑的 n 件 ›** (when something keeps
 going on its own) and **做过的事 ›**, where every finished task stays, findable and marked
 (`past.md`). D315: the line wraps, so nothing is clipped from 900 to 1280. A Find that matches

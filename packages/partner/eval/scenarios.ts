@@ -40,7 +40,9 @@ export type Seed =
   // D407: the review board Ducter made for the seeded task with this key, its rows as given (the person's app).
   | { board: { task: string; data: Record<string, unknown> } }
   // D407: Ducter's one offer to keep that task's rounds on a board (its own card, open).
-  | { boardOffer: { task: string; kind: "reviews" | "reports" } };
+  | { boardOffer: { task: string; kind: "reviews" | "reports" } }
+  // D426: the lines under the last seeded user message, each done by the seeded task with that key.
+  | { asks: { lines: { words: string; task: string }[] } };
 
 /** D236: a reply names an earlier message by words it has (the latest one that has them). */
 export interface UserSay {
@@ -220,6 +222,8 @@ export interface Expect {
   appKept?: true;
   /** D407: some app is now kept current by the seeded task with this key. */
   appTask?: string;
+  /** D426: how many lines stand under the user's message at the end (core's asks): a range. */
+  asks?: [number, number];
   /** D360: this many task_open calls carry one and the same group (a split opened as its parts). */
   groupParts?: number;
   /** Partner tools that must not be called. */
@@ -545,6 +549,57 @@ export const scenarios: Scenario[] = [
     steps: [{ user: "这两件是一回事，放一起吧，叫「登录页重做」" }],
     expect: { opens: 0, msgs: [1, 1], maxChars: 80, called: [{ tool: "task_group", args: { do: "group", name: /登录页重做/ } }], notCalled: ["task_open"], noSend: true, noAsk: true },
     rubric: "The user asks to put two running tasks together under a name. It groups them (task_group do=group, both tasks, the name 登录页重做) and says so in one short Chinese line. It opens nothing, sends the tasks nothing, asks nothing.",
+  },
+  // ---------- several things in one message (D426) ----------
+  {
+    id: "many-asks-calendar-zh",
+    category: "many-asks",
+    lang: "zh",
+    // The author's own message on 11-12 (hel): one look-up and three calendar entries, in his
+    // signed-in browser (no calendar account connected; here the browser is said outright).
+    steps: [{ user: "用浏览器打开我的 gmail 日历：我下周有什么预约么，再帮我记上 20 号要去北京 agibar 参加一个分享，这个周日要去杭州 coscon 参加 bof，下周四要参加 Tabs 上海和组织者见面" }],
+    expect: { opens: 1, asks: [3, 4], msgs: [0, 1], maxChars: 120, needs: { browse: true }, noAsk: true },
+    rubric: "One message asks for a look-up (next week's appointments) and three calendar entries, all in the user's Google account in the browser. It opens ONE browser task for all of them (they share the signed-in browser) and names each thing in task_open's asks in the user's own short words (the look-up, agibar on the 20th in Beijing, COSCon BoF in Hangzhou on Sunday, meeting the Tabs Shanghai organisers next Thursday). One short Chinese ack naming the action; no outcome claimed, no question, no list of the four in prose.",
+  },
+  {
+    id: "many-asks-places-en",
+    category: "many-asks",
+    lang: "en",
+    steps: [{ user: "Before Friday's launch: check the pricing page on ducter.ai for anything wrong, write the 0.1.2 release notes in ~/dev/ducter, and find out why main's CI is red in ~/dev/hawdb." }],
+    expect: { opens: 3, asks: [3, 3], msgs: [0, 1], maxChars: 200, noAsk: true },
+    rubric: "Three separate things in three different places (a web page, one repo, another repo). It opens three tasks, one per thing, each naming its own thing in asks in the user's words, ideally under one short group name. One short English ack naming the action; no outcome claimed, no question.",
+  },
+  {
+    id: "one-goal-trip-zh",
+    category: "many-asks",
+    lang: "zh",
+    // 11-18 on hel: one trip cut into four tasks lost the signed-in browser.
+    steps: [{ user: "下周一到周三去北京出差，帮我在携程看看国贸附近的酒店，再看看那几天上海飞北京的机票，最后算一下一共多少钱" }],
+    expect: { opens: 1, msgs: [0, 1], maxChars: 120, needs: { browse: true }, noAsk: true },
+    rubric: "One errand (a business trip) told in three clauses: hotel, flights, the total. It opens ONE browser task for the whole trip (the hotel, the flights and the total build on each other and share one browser and sign-in), never three or four tasks. One short Chinese ack; no outcome claimed, nothing booked.",
+  },
+  {
+    id: "one-fix-clauses-en",
+    category: "many-asks",
+    lang: "en",
+    steps: [{ user: "In ~/dev/hawdb, make the WAL flush interval configurable, add a test for it, and update the README section about the WAL." }],
+    expect: { opens: 1, msgs: [0, 1], maxChars: 160, noAsk: true },
+    rubric: "One change in one repo told in three clauses (the setting, its test, its docs): ONE task with one branch, never three. One short English ack naming the action; no outcome claimed.",
+  },
+  {
+    id: "many-asks-followup-zh",
+    category: "many-asks",
+    lang: "zh",
+    seed: [
+      { user: "把 nowledge-co/mem 的 #10559 #10560 #10571 这三个 issue 修了" },
+      { task: { key: "i59", title: "修 #10559 搜索结果重复", repo: "~/dev/mem", ack: "好，这三个我分头去修，修好了告诉你。", state: "working" } },
+      { task: { key: "i60", title: "修 #10560 导出丢了附件", repo: "~/dev/mem", ack: "好，这三个我分头去修，修好了告诉你。", state: "working" } },
+      { task: { key: "i71", title: "修 #10571 同步冲突时报错", repo: "~/dev/mem", ack: "好，这三个我分头去修，修好了告诉你。", state: "working" } },
+      { asks: { lines: [{ words: "修 #10559", task: "i59" }, { words: "修 #10560", task: "i60" }, { words: "修 #10571", task: "i71" }] } },
+    ],
+    steps: [{ user: "第二个先别动代码，出个方案给我看看" }],
+    expect: { opens: 0, sendTo: "i60", noSendTo: "i59", msgs: [0, 1], maxChars: 80, noAsk: true },
+    rubric: "Three issues were split into three tasks, shown as three lines under the user's message. \"第二个\" is the second line, #10560: it sends that task the change (plan first, no code yet) and nothing to the other two, opens nothing, and says at most one short Chinese line naming the action.",
   },
   // ---------- work over time (D112-D115) ----------
   {

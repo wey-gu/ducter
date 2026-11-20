@@ -128,6 +128,17 @@ To work on it by hand, open the task on the Mac and choose **Open** at its top r
 Finder**, **Open in** Cursor, Visual Studio Code or Zed, or **Open in** Terminal, iTerm2, Ghostty
 or Warp, whichever you have. **Open** shows when the copy is on this Mac.
 
+**Several things at once.** Ask for a few things in one message ("what's on next week, and put
+these three in my calendar"; "fix these three issues and look at why the build is red") and your
+own words come back under your message as a few lines, one for each thing, each with a mark that
+changes as it gets done: a tick when done, a flag when it needs you, a cross when it didn't work,
+with a short note of what came of it. From four lines, a count under them says how many are done
+and how many are left. Things that belong together (the same calendar, the same phone, one change)
+are done together, so you sign in once. Click a line to open the task doing it; on the Mac, hover a
+line to see which AI agent is on it. You hear back once for the whole message, and at once only if
+something needs you or didn't work. To change one of them later, just say which ("the second one,
+make it Saturday").
+
 ## 3. Get your first result
 
 While a task works, there's nothing to watch. **Silence means it's going fine.** When it's done,

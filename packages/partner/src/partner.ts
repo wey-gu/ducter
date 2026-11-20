@@ -52,7 +52,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { AliveSource } from "../../protocol/src/alive.ts";
-import { callWakes, fileView, harnessName, HARNESSES, HARNESS_IDS, isHarnessId, isImage, isWorkKind, WORK_KINDS, type WorkKind, MEDIA_LIMITS, viewText, type MediaRef, type ActivityStep, type Bodies, type BodyWhy, type Brain, type CalEvent, type CalGlance, type EventKind, type HarnessId, type LogEvent, type Place, type TaskCard, type TaskGroupFrame, type TaskGroupView, type TaskNeeds } from "../../protocol/src/index.ts";
+import { ASKS_MAX, type AskLine, callWakes, fileView, harnessName, HARNESSES, HARNESS_IDS, isHarnessId, isImage, isWorkKind, WORK_KINDS, type WorkKind, MEDIA_LIMITS, viewText, type MediaRef, type ActivityStep, type Bodies, type BodyWhy, type Brain, type CalEvent, type CalGlance, type EventKind, type HarnessId, type LogEvent, type Place, type TaskCard, type TaskGroupFrame, type TaskGroupView, type TaskNeeds } from "../../protocol/src/index.ts";
 import type { CoreApi, HarnessEvent, HarnessSession, Partner, Runner, SendImage, WebLookPort, WorkingMemoryView } from "../../protocol/src/internal.ts";
 import { resolveWindows, WINDOW_MAX, WINDOW_MIN } from "../../protocol/src/harness-facts.ts";
 
@@ -218,6 +218,7 @@ interface TurnState {
   carried?: Carried; // this turn redoes one a restart cut off
   early: EarlyOpen[]; // tasks opened from the streamed head of a task_open call (D120)
   groupsSeen?: Set<string>; // D360: groups a task_open of this turn named (one ack for a whole split)
+  lined?: Set<string>; // D426: tasks of this turn that have lines under the message
   openedIds?: string[]; // D360: tasks this turn opened (a split whose first part forgot its group takes them in)
 }
 
@@ -574,6 +575,17 @@ type TaskGroupsPort = {
   of(taskId: string): TaskGroupView | undefined;
   frame(f: TaskGroupFrame): Promise<{ ok: true; group?: TaskGroupView } | { ok: false; error: string }>;
 };
+/** D426: what the partner reaches of core's lines under a message (core/src/asks.ts). */
+type AsksPort = { add(msgSeq: number, taskId: string, words: string[], held?: string): unknown };
+type AsksReadPort = { forTask(taskId: string): { msgSeq: number; lines: AskLine[] } | undefined; recent(limit?: number): { msgSeq: number; lines: AskLine[] }[] };
+/** D426: the things of a many-things message a task takes on, as the partner named them. */
+const askList = (v: unknown): string[] =>
+  Array.isArray(v) ? v.map((x) => (typeof x === "string" ? x.replace(/\s+/g, " ").trim() : "")).filter(Boolean).slice(0, ASKS_MAX) : [];
+/** D426: the same things in the brief (or a follow-up): what the task reports one by one. */
+const asksBrief = (words: string[]): string =>
+  words.length < 1
+    ? ""
+    : `\n\nThe things asked (the user sees each under their message, each ticking off on its own):\n${words.map((w, i) => `${i + 1}. ${w}`).join("\n")}\nIn report_to_main, give each one's state in \`asks\`, in this order, with a short note of what came of it (the answer, "added", "PR opened"). A progress report with \`asks\` ticks off the ones already done while you go on.`;
 /** D67 (2): when a reversible ask's default applies if the model names no time. */
 const ASK_DEFAULT_MINUTES = 10;
 const generatedAck = (lang: LangTag | undefined, title: string) => said(lang, "ack", { title });
@@ -830,6 +842,16 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     kept: (seq) => core.said?.keptFrom?.(seq) ?? [],
     // D413: what Ducter did with what they said about asking first (kept, taken back, the floor).
     standing: (seq) => core.standing?.heardFrom(seq) ?? [],
+    // D426: the lines a many-things message asked for (core/src/asks.ts).
+    asksOf: (taskId) => (core as { asks?: AsksReadPort }).asks?.forTask(taskId),
+    asksBefore: (seq) => {
+      const at = core.log.read({ fromSeq: seq, limit: 1 })[0];
+      const when = Date.parse(at?.ts ?? new Date(now()).toISOString());
+      const a = (core as { asks?: AsksReadPort }).asks?.recent(3).find((x) => x.msgSeq < seq);
+      if (!a) return undefined;
+      const m = core.log.read({ fromSeq: a.msgSeq, limit: 1 })[0];
+      return m && when - Date.parse(m.ts) <= 24 * 3600_000 ? a : undefined;
+    },
     // D373: the task the conversation was on right before this message (the last task opened, or
     // finished, or continued, in the conversation), within FOLLOWS_HOURS. A follow-up carries it on.
     follows: (seq) => {
@@ -1894,6 +1916,16 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     return `${brief.trimEnd()}\n\nUser's words (verbatim):\n${missing.map((t) => `> ${t.replace(/\n/g, "\n> ")}`).join("\n")}`;
   };
 
+  // D426: the lines a many-things message asked for, under the person's newest message of the turn.
+  const linesUnder = (t: TurnState | null | undefined, taskId: string, words: string[], heldKey?: string) => {
+    const asks = (core as { asks?: AsksPort }).asks;
+    const msg = t ? [...t.triggers].reverse().find((e) => e.kind === "user_msg") : undefined;
+    const said = words.filter((w) => w.trim());
+    if (!asks || !msg || !said.length) return;
+    asks.add(msg.seq, taskId, said, heldKey);
+    if (taskId) (t!.lined ??= new Set()).add(taskId);
+  };
+
   core.mcp.register(
     "partner",
     "task_open",
@@ -1904,6 +1936,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     () => ({
       type: "object",
       properties: {
+        asks: { type: "array", items: { type: "string" }, description: "Set it whenever the message asks for two or more separate things (even when each gets its own task): the ones THIS task does, each in the user's own short words; the app lists them under the message and ticks each off. One goal told in several clauses is not several things." },
         group: { type: "string", description: "When the user lists separate parts to do in turn (\"先…然后…最后…\", \"一件做完再做下一件\"): one task per part, one short name on every part, written first. Parts in the same repo or folder run one after another, each from the one before's branch (Ducter holds the later ones): open every part now, in order." },
         title: { type: "string", description: "Short title in the user's language" },
         kind: {
@@ -1957,7 +1990,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       },
       required: ["title", "brief"],
     }),
-    async (raw0: { title?: unknown; brief?: unknown; place?: Place; project?: string; harness?: string; model?: string; forMessage?: unknown; needs?: unknown; media?: unknown; group?: unknown; kind?: unknown }) => {
+    async (raw0: { title?: unknown; brief?: unknown; place?: Place; project?: string; harness?: string; model?: string; forMessage?: unknown; needs?: unknown; media?: unknown; group?: unknown; kind?: unknown; asks?: unknown }) => {
       // D360: the parts of a split open one at a time, in the order they were called, so a later
       // part sees the one before it in its group (parallel calls would all open at once).
       const grouped = typeof raw0?.group === "string" && raw0.group.trim() !== "";
@@ -2048,7 +2081,19 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       }
       // D395: "仔细" / "carefully" in the person's words: the task thinks harder (and checks its work).
       const effort = effortFromWords(userTexts);
-      const brief = redactSecrets(withVerbatim(args.brief, userTexts), userTexts) + (effort === "high" ? CAREFUL_BRIEF : "");
+      // D426: the things this task does of what the message asked, listed in its brief and under the message.
+      const askWords = askList(raw.asks);
+      const brief = redactSecrets(withVerbatim(args.brief, userTexts), userTexts) + (effort === "high" ? CAREFUL_BRIEF : "") + asksBrief(askWords);
+      const lineUp = (taskId: string, heldKey?: string) => {
+        if (askWords.length) return linesUnder(t, taskId, askWords, heldKey);
+        // D426's floor: a second task for one message, with no asks named: each task of the turn
+        // stands as one line under the message, by its title, so the message still shows them.
+        if (!t) return;
+        const opened = (t.openedIds ?? []).filter((id) => id !== taskId);
+        if (!opened.length && !(t.lined?.size)) return;
+        for (const id of opened) if (!t.lined?.has(id)) linesUnder(t, id, [core.tasks.get(id)?.title ?? ""]);
+        linesUnder(t, taskId || "", [args.title], heldKey);
+      };
       // D206: the pictures it hands on (the ones the user sent this turn when it names none but the
       // brief is about them: an agent would otherwise get "this screenshot" without the screenshot).
       const named = mediaNamed(raw.media);
@@ -2103,6 +2148,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           early.brief.resolve(brief);
           (core as { taskSources?: { bindStaged(id: string, texts?: string[]): unknown } }).taskSources?.bindStaged(card.taskId, [brief, args.title]);
           joinGroup(card.taskId);
+          lineUp(card.taskId);
           await claimFor(card);
           return { ok: true, taskId: card.taskId, title: card.title, place: card.place, attention: card.attention, note: kindNote(card.taskId, note) };
         }
@@ -2147,11 +2193,13 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           if ("held" in r) {
             // No job line: nothing runs yet (a "running" line would say it does); it shows on On hand as 排着.
             void jobId;
+            lineUp("", r.key);
             return { ok: true, held: true, group: r.group.name, after: r.after, note: HELD_NOTE };
           }
         }
         const card = await runner.openTask(input);
         joinGroup(card.taskId);
+        lineUp(card.taskId);
         jobs.set(card.taskId, { jobId, title: card.title || args.title, replyTo: t ? replyToFor(t) : undefined, state: "running" });
         core.log.append({
           stream: "channel",
@@ -2190,10 +2238,11 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         text: { type: "string" },
         mode: { type: "string", enum: ["steer", "queue"] },
         media: { type: "array", items: { type: "string" }, description: "Pictures to pass on with the text, by id (see task_open)." },
+        asks: { type: "array", items: { type: "string" }, description: "As task_open's: the things of a many-things message this task takes on." },
       },
       required: ["taskId", "text"],
     },
-    async (args: { taskId: string; text: string; mode?: "steer" | "queue"; media?: unknown }) => {
+    async (args: { taskId: string; text: string; mode?: "steer" | "queue"; media?: unknown; asks?: unknown }) => {
       await Bun.sleep(5); // let the streamed text land first
       // D376: the user asks for their own account, and this browser task runs where their sign-ins
       // aren't (the author's trip: Ducter's browser on hel; Ctrip signed in only in the MacBook's
@@ -2233,7 +2282,9 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         if (named.unknown.length && !named.media.length) return { ok: false, error: `No picture or file with id ${named.unknown.join(", ")}.` };
         const t = turn;
         const was = core.tasks.get(args.taskId)?.attention;
-        const r = await runner.send(args.taskId, redactSecrets(args.text, t?.userTexts ?? []), args.mode, undefined, undefined, named.media.length ? named.media : undefined);
+        const sendWords = askList(args.asks);
+        const r = await runner.send(args.taskId, redactSecrets(args.text, t?.userTexts ?? []) + asksBrief(sendWords), args.mode, undefined, undefined, named.media.length ? named.media : undefined);
+        linesUnder(t, args.taskId, sendWords);
         // D373: taken up again with no line before the call: its line still moves to this turn. After
         // a task_open asked back, the line it put up is this task's now.
         if (t?.redirectJob && !t.continued?.has(args.taskId)) {

@@ -149,6 +149,45 @@ to where the person last spoke.
   pattern). A fast decision model (e.g. Jev/Kev class) may run the gates: attention tagging,
   the recall precision gate, and the voice escalation gate.
 
+## Several things in one message (D426)
+
+*Who and how it starts (research/175):* anyone who writes the way people write to a colleague,
+several things in one message ("看看我下周有什么预约，再把这三个记进日历"; "修了 #10559 #10560 #10571，再查下
+main 的 CI"). Nothing to address or tick: the first time, they see their own words come back under their
+message as a few lines, each with a mark that changes as it gets done. Before D426 one task took the
+whole message and came back as one blob (「三项安排也都没写入」), or one errand was cut into four tasks.
+
+- **No new object, no new word.** What the person asked, in their own short words, is a row of the
+  task that does it (`task_open` / `task_send` `asks`). How many tasks run them is the partner's
+  choice, by place, never by thing: things that share a browser, a sign-in, a phone or one repo change
+  run in one task with all their lines; things elsewhere run in a task each, under one group (D360).
+  One goal told in several clauses (a trip; one fix) is one task with no lines.
+- **Under the message.** One small card hangs from the person's bubble, on its side: a row per thing,
+  its drawn mark (the tick, working bars, flag and cross of On hand's groups), the person's words, one
+  muted note under them (what came of it, from the task's report; else **等你定一下 / Needs you** or
+  **没做成 / Didn't work**). From four lines, once something is done and something is left:
+  **好了 {k} 个，还有 {m} 个 / {k} done, {m} to go** (a line that didn't work counts in neither). Shown
+  from two lines; one thing asked looks as it always did. It changes in place, never posts; no heading,
+  no numbers, no system lines. A row opens the task that does it.
+- **How a line moves.** The brief lists the things, numbered; the task gives each one's state in its
+  report's `asks` (a progress report ticks one while it goes on). A report without them, or the task's
+  own state, moves all its open lines at once. Core logs `asks` `{msgSeq, lines}` whenever one changes
+  (`core/src/asks.ts`); clients keep the latest per message. A second task opened for one message with
+  none named puts each task's title under it (the floor).
+- **When the partner speaks** (from the motivation and principle 7, research/175 §4). A line done
+  while other lines of the same message still work is not told: its tick is the evidence, and a ping
+  for one of several is the stream of pings Ducter exists to end. Core holds that report (no partner
+  turn). A question or a failure is said at once, with its card. When the last line settles, the held
+  reports wake the partner together and it says how each came out in one message (rule 5); one task
+  for all the lines needs no hold. No timed release: a thing whose answer is information shows that
+  answer as its line's note at once.
+- **Follow-ups.** The partner sees the lines of a recent many-things message with their tasks,
+  numbered as the person sees them, so "第二个改一下" or "the Hangzhou one" goes to that task
+  (`task_send`), never to a new one (D373).
+- **Who does it** is never in the conversation (D129). On the Mac a hover on a line shows the agent at
+  the row's end, in the muted ink; the web does the same on a fine pointer only. On hand and the opened
+  task name it already; the opened task also shows its own lines under its head.
+
 ## Voice (D305)
 
 Hold to talk in the composer and 朗读 / Read aloud on a partner's message: `voice.md`.

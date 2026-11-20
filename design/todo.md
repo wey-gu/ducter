@@ -2350,4 +2350,4 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] **A generated clay mark.** Made once in the background after an app is kept, where Codex or Antigravity is signed in (the trial: 85 s, 19–44K tokens, a cut-out step), the drawn mark until it lands and when it fails; never blocks the make. Trigger: the author asks for it, or an image harness Ducter already runs.
 - [ ] **Walk 4 and 5 end to end with a real partner** (change by talking with the strip; a routine given by words). Trigger: before the next release that touches apps.
 - [ ] **People as raters** for first-open value and the marks (LLM proxies only). Trigger: the next naming round with people.
-
+- [ ] **Known items into `data`, not the file.** `app-prs-known-en` drew the four PRs into the HTML both runs (they can't be ticked across devices or read by the partner); `app-renew-zh` left out `from`. Trigger: the next app-tool change (a lint: literal list items in the file with an empty `data`).

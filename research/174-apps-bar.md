@@ -74,6 +74,17 @@ sonnet rater, as that person, answered from the first-open screenshot only.
 - **No measurable gain** on the 12 new apps from the instruction changes (3.67 → 3.75 is noise at
   n = 12). The gains of D422 are elsewhere: the old app's way up, the marks, the state, the words.
 
+**The author's own app, given the new look** (VERIFIED, `app-renew-zh`, haiku, in the second full
+eval): from the old grey form and the booking in the conversation, one call rewrote the same app with
+the kit: 「这趟合计 ¥1,698」 on top, the train and both hotel nights in it, 记一笔 folded last
+(`after-renewed-oldapp-haiku-390.png`). The judge failed it only because its items carry no `from`.
+
+**Two full evals** (D175, haiku): `2026-11-20-haiku-d422-run1.md` 176/222 and `-run2.md` 173/223,
+against D414–D417's 173/220 and 170/220. Apps: run 1 8/11, run 2 8/12. Failing in both: `app-generic-en`
+(its line lists features) and `app-prs-known-en` (the four PRs drawn into the file, never put into
+`data`, both runs); `app-trip-known-zh` named 出差花销 once; `app-baby-zh` once two lines; `app-renew-zh`
+no `from` (run 2 only, its first run).
+
 ## 3. Marks: the rubric (AGENTS.md) and the test
 
 Candidates, each mapped to what an app tile must carry (which app at a glance, among up to 40):

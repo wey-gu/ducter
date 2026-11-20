@@ -72,6 +72,8 @@ export interface TaskNeeds {
    * a clean emulator on a Mac); true = either (the person's when added, else Ducter's: D238, D247).
    */
   phone?: boolean | "mine" | "ducter";
+  /** D436: it buys or books something: Ducter's own browser, and it stops at the checkout for the person's own tap. */
+  buy?: boolean;
 }
 
 /** D251: which phone a task's work needs: undefined when it needs none; "any" for the legacy true. */

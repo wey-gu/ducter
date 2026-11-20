@@ -798,7 +798,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     const h = t.base.harness;
     if (t.card.place?.kind === "browser" && (!t.sidecar || t.sidecarInput?.harness !== h)) {
       const prev = t.sidecarInput?.harness === h ? t.sidecarInput : undefined;
-      const input: SidecarInput = { place: t.card.place, persona: t.persona, taskId: t.id, dataDir: core.dataDir, partnerName: partnerNameOf(t.persona), harness: h, ...(prev?.forceCua ? { forceCua: true } : {}) };
+      const input: SidecarInput = { place: t.card.place, persona: t.persona, taskId: t.id, dataDir: core.dataDir, partnerName: partnerNameOf(t.persona), harness: h, ...(prev?.forceCua ? { forceCua: true } : {}), ...(t.sidecarInput?.buy ? { buy: true } : {}) };
       const sc = await sidecarFor(t.ops, input);
       if (!sc) throw new Error("this browser place could not be prepared");
       await sc.ready();
@@ -1779,7 +1779,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       // (a browser place's browser is the worker's own, D157).
       if (ops.device && resolved?.place?.kind !== (input.place?.kind ?? "none")) throw new Error(`${ops.device.name} answered with a different kind of place`);
       // Throws before the task exists when a browser place is unavailable (the partner says why).
-      sidecarInput = { place: resolved.place, persona, taskId: id, dataDir: core.dataDir, partnerName, harness: h, ...(typeof briefIn === "string" && briefIn ? { brief: briefIn } : {}) };
+      sidecarInput = { place: resolved.place, persona, taskId: id, dataDir: core.dataDir, partnerName, harness: h, ...(typeof briefIn === "string" && briefIn ? { brief: briefIn } : {}), ...(input.needs?.buy ? { buy: true } : {}) };
       sidecar = await sidecarFor(ops, sidecarInput);
     }
 

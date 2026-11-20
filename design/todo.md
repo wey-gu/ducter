@@ -15,6 +15,25 @@ Deferred work, grouped by area, each with its trigger where it has one.
   author opens On hand from its count more than once a day.
 - [ ] **Fn held to talk** while only the mini window has the keyboard (`voice.WatchFn` watches while a
   window of the app is in front; right Option works). Trigger: someone on Fn uses the mini window.
+## An errand to the checkout (D436, `errand.md`, research/185)
+
+- [ ] **The live proof on one real site**, read-only up to the pay page and nothing pressed after:
+  the author's MacBook (or hel) with Ducter's own browser signed in to a real shop or a train site
+  once, "把购物车里那三样买了" from the phone, the card with the right total and host, 去付款 opening
+  the page live on the phone, the author paying himself (or 先不买). Trigger: the next release on hel.
+- [ ] **A worker Mac's Ducter browser over a real socket** (remote.ts): the card's picture, the
+  live view and the person's click through the worker. Covered by fakes only.
+- [ ] **A real phone paying in the live view**: a wallet or a QR page, 3-D Secure, a bank's own app
+  opening from the page (it may leave the view: say what then).
+- [ ] **The pay words on real checkouts**: the gate's list (zh, en, ja) read against five real
+  checkout pages; a pay button named only by an icon or an image gets through today. Trigger: the
+  live proof, or any real checkout the gate missed.
+- [ ] **The person's own Chrome, when they ask for it** ("用我自己的 Chrome"): not offered; the stop
+  and the gate would be the brief's word only there. Trigger: the author asks.
+- [ ] **Detail labels in the person's language in Done for you** ("Phone", "Full name" in a zh
+  list): the fill records the store's English label (seen in `.shots/errand-checkout/`, before D436).
+- [ ] **The ack and the relay, tuned on haiku**: the train ask is opened at once in one run and asked back ("which Friday") in the other; the ack doesn't always say it stops at payment; the checkout relay once ended on "要付款吗？". Trigger: a persona pass on errands, or the live proof.
+- [ ] **Human raters** for 到 {site} 的付款这一步了, 去付款, 先不买, 付好了, 还没付, 这一步要你来, 去处理.
 
 ## Settings polish (D432, research/182)
 

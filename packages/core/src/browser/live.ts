@@ -41,7 +41,7 @@ type TaskInfo = { persona?: string; place?: { kind: string; profile?: string }; 
 export interface LiveDeps {
   host: BrowserHost;
   decisions: {
-    get(id: string): { taskId?: string; signIn?: { site: string; url?: string } } | undefined;
+    get(id: string): { taskId?: string; signIn?: { site: string; url?: string; step?: string }; checkout?: { site: string; url: string } } | undefined;
     isPending(id: string): boolean;
     decide(id: string, option: "go"): unknown;
   };
@@ -525,13 +525,15 @@ export function createLive(d: LiveDeps): Live {
   return {
     async open(sink, decisionId, size) {
       const dec = d.decisions.get(decisionId);
-      if (!dec?.signIn || !dec.taskId) return fail(sink, decisionId, "this card doesn't open a browser");
+      // D436: a checkout card opens the same way: the task's own tab, the person's turn from the start.
+      const at = dec?.signIn ?? (dec?.checkout ? { site: dec.checkout.site, url: dec.checkout.url } : undefined);
+      if (!at || !dec?.taskId) return fail(sink, decisionId, "this card doesn't open a browser");
       if (!d.decisions.isPending(decisionId)) return fail(sink, decisionId, "this card is already answered");
       const card = d.tasks.get(dec.taskId);
       if (card?.place?.kind !== "browser") return fail(sink, decisionId, "this task has no browser");
       // The profile the task's browser runs on: a worker's when it runs there (D157).
       const profile = d.host.task(dec.taskId)?.profile ?? profileName(card.persona ?? d.persona, card.place.profile);
-      return show(sink, { kind: "signin", decisionId, taskId: dec.taskId, profile, site: dec.signIn.site, url: dec.signIn.url ?? `https://${dec.signIn.site}` }, size);
+      return show(sink, { kind: "signin", decisionId, taskId: dec.taskId, profile, site: at.site, url: at.url ?? `https://${at.site}` }, size);
     },
 
     tryIt(sink, size, device) {
@@ -663,7 +665,10 @@ export function createLive(d: LiveDeps): Live {
       if (!v || v.sink !== sink) return;
       await finish(v, done ? "done" : "closed");
       if (!done || v.kind !== "signin") return; // Try it (D154) and a watch answer no card
+      const dec = d.decisions.get(v.decisionId);
       if (d.decisions.isPending(v.decisionId)) d.decisions.decide(v.decisionId, "go");
+      // D436: a checkout's 付好了 and a step's 好了 say nothing about a sign-in kept on this site.
+      if (dec?.checkout || dec?.signIn?.step) return;
       try {
         rememberSite(d.host.dataDir, v.profile, v.site);
       } catch (e) {

@@ -62,6 +62,13 @@ export function forwardText(d: Bodies["decision"], r: Bodies["decision_resolved"
   if (d.handset) return "";
   // D233: a key given (it is in the task's key file now) or refused; both resume the task.
   if (d.key) return r.option === "go" ? keyReadyText(d.key, true) : r.option === "hold" ? keyRefusedText(d.key) : "";
+  // D436: the errand's stop. 付好了 is the person's word that they paid, not something the task saw.
+  if (r.option === "go" && d.checkout)
+    return `The user says they paid on ${d.checkout.site} themselves, in a live view of your tab (you saw nothing of it; you never press pay). browser_read the page now: if it shows the order went through, report done with what the site confirmed (the order number, what, when, the total) and attach the page as evidence. If it shows it wasn't paid (still the checkout, an error), say so in one line and report needs_input; never press pay yourself.`;
+  if (r.option === "hold" && d.checkout)
+    return `The user isn't buying now (先不买 / Not now). Leave the cart and the page as they are, press nothing, and report done in one line: it stopped at the checkout on ${d.checkout.site} and the cart is kept.`;
+  if (r.option === "go" && d.signIn?.step)
+    return `The user says they did the step on ${d.signIn.site} themselves (${d.signIn.step.slice(0, 120)}); you saw nothing of it. browser_read the page to check, then carry on.`;
   if (r.option === "go" && d.signIn)
     return `The user says they're signed in to ${d.signIn.site} in Ducter's browser (they did it themselves; you saw nothing of it). browser_read the page to check, then carry on.`;
   // D191: a payment Go, or the OK for a saved thing's first use on a site.
@@ -194,6 +201,8 @@ export function createDecisions(opts: {
           reversible: q.reversible,
           ...(q.signIn ? { signIn: q.signIn } : {}),
           ...(q.pay ? { pay: q.pay, goLabel: "Pay", defaultOption: "hold" as const } : {}),
+          // D436: the checkout stop: Go is the person's 付好了 / I've paid; no default, ever.
+          ...(q.checkout ? { checkout: q.checkout, goLabel: "I've paid", defaultOption: "hold" as const, reversible: false } : {}),
           ...(q.fill ? { fill: q.fill } : {}),
           // D233: a key: no default ever; Go carries the value, Hold is 不给 / Don't give.
           ...(q.key ? { key: q.key, goLabel: "Save and continue", defaultOption: "hold" as const } : {}),
@@ -257,7 +266,7 @@ export function createDecisions(opts: {
     if (left.length && left.every((id) => laterAt.has(id))) setAttention(taskId, "blocked"); // D382: only put-off ones left
     else if (!left.length) {
       // D233: 不给 / Don't give on a key is an answer the task carries on with, not a wait.
-      if (r.option === "hold" && !d.key) setAttention(taskId, "blocked"); // no reason text: the card shows Waiting
+      if (r.option === "hold" && !d.key && !d.checkout) setAttention(taskId, "blocked"); // no reason text: the card shows Waiting (D436: 先不买 is an answer it finishes on)
       else setAttention(taskId, "working");
     }
     const text = silent.delete(r.decisionId) ? "" : forwardText(d, r);

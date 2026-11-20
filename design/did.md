@@ -38,7 +38,7 @@ tool call) is not the record.
 | Kind | What | Read from |
 |---|---|---|
 | 发出的 / Sent | D341: a comment on a GitHub issue for a bound task (`source_write` comment, with its Go or "allowed before" under the standing go); mail and messages sent through an account (connection writes that send), a message or post tapped in an app on a phone or a computer after its Go, a message to another agent (Nowledge Bridge) | `connection_call` (write, done), `decision.phone` / `decision.computer` (effect send, post) + its Go, `bridge_msg` out |
-| 付款 / Paid | a saved card after Pay; a tap that pays or buys in an app after its Go | `decision.pay` + Go, the Autofill use `approved`; `decision.phone` / `decision.computer` (effect pay, buy) |
+| 付款 / Paid | a saved card after Pay; a tap that pays or buys in an app after its Go; an order the person paid themselves at the checkout an errand stopped at (D436, **你自己付的 {time} / You paid yourself at {time}**) | `decision.pay` + Go, the Autofill use `approved`; `decision.phone` / `decision.computer` (effect pay, buy); `decision.checkout` + 付好了 |
 | 电话 / Calls | every call Ducter placed, from a line (Tuwa) or the person's own number, with how it ended | `phone_call` (the latest snapshot of each call that was placed) |
 | 登录和填写 / Sign-ins and fills | a saved sign-in or private detail filled on a site, a key given to a task, a sign-in tap in an app | the Autofill uses (`filled`, `ok`, `given`); `decision.phone` / `decision.computer` (effect account) |
 | 改动 / Changed | D341: a GitHub issue closed or an Obsidian line ticked for a bound task (`source_write` close, tick); a calendar change (add, move, answer), a merge, a draft PR, a folder task's files, a setting or an install in an app, any other write to an account | `connection_call` (write, done) with `decision.cal`; `job_status` (act merge / open_pr, done); `report.folder`; effects setting, install, confirm |
@@ -89,6 +89,7 @@ its own element (D291: never joined with " · "):
 | sent · post | 发了一条帖子 | Posted |
 | paid · card | 付给 {to} | Paid {to} |
 | paid · buy | 在{via}里付了款 | Paid in {via} |
+| paid · checkout (D436) | 在 {to} 下了单 | Ordered on {to} |
 | called · call | 打给 {to} | Called {to} |
 | filled · signin | 登录了 {to} | Signed in to {to} |
 | filled · detail | 在 {to} 填了保存的信息 | Filled a saved detail on {to} |

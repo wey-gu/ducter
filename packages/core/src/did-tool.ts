@@ -9,7 +9,7 @@ const hm = (iso: string) => {
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 };
 
-const ALLOWED = { you: "the user agreed", default: "nobody answered; it went ahead as the card said it would", before: "agreed there earlier", said: "the user said it goes without asking" } as const;
+const ALLOWED = { you: "the user agreed", default: "nobody answered; it went ahead as the card said it would", before: "agreed there earlier", said: "the user said it goes without asking", paid: "the user paid it themselves at the checkout Ducter stopped at" } as const;
 
 /** One action as the partner reads it: short, no ids it can't use. */
 function compact(it: DidItem, withDay: boolean): Record<string, unknown> {

@@ -10,7 +10,7 @@ import { homedir, tmpdir } from "node:os";
 import { thisComputer } from "./this-computer.ts";
 import { join, resolve, sep } from "node:path";
 import { randomBytes } from "node:crypto";
-import { APP_SANDBOX, appCsp, HARNESSES, MEM_CONNECT_TOOLS, fill, harnessName, normalizeTag, sameComputer, pickTag, words, type Bodies, type HarnessId, type LangTag, type LogEvent, type OnHand, type PartnerAsk, type Place, type TaskCard } from "@ducter/protocol";
+import { APP_SANDBOX, appCsp, HARNESSES, MEM_CONNECT_TOOLS, fill, harnessName, normalizeTag, sameComputer, pickTag, words, type Bodies, type HarnessId, type LangTag, type LogEvent, type OnHand, type PartnerAsk, type Place, type TaskCard, type TaskNeeds } from "@ducter/protocol";
 import { intlLocale, talkLang } from "./lang.ts";
 import type { CoreApi, ListedModel, MemIdentity, Partner, Runner, TaskMemoryPort } from "@ducter/protocol/src/internal.ts";
 import { migrateKeys, readKeys, scrubKeysFromEnv } from "@ducter/protocol/src/keys.ts";
@@ -889,11 +889,13 @@ export function startCore(opts: CoreOptions = {}): Core {
     const append = log.append.bind(log);
     log.append = ((input: Parameters<typeof log.append>[0]) => append({ ...input, body: keys.scrub(input.body) })) as typeof log.append;
   }
+  // D436: the media store is made further down; the browser keeps the checkout picture through this.
+  const mediaRef: { store?: ReturnType<typeof createMediaStore> } = {};
   // D151: Ducter's own browser (a server's 上网): its tools are listed only for tasks attached to it.
   const browser =
     opts.browser === false
       ? undefined
-      : createDucterBrowser({ dataDir, mcp, log, tasks, decisions, persona: persona.id, device: () => thisComputer(opts.update?.homeName), ...(opts.platform ? { platform: opts.platform } : {}), lang: () => { const l = settings.get().language; return intlLocale(l === "auto" ? undefined : l); }, workers: () => workersRef, workerBrowserVersion: (id) => workersRef?.online().find((w) => w.deviceId === id)?.hello?.abilities?.find((a) => a.id === "web")?.detail, scrub: (t) => autofill.scrub(t), wants: (taskId, brief) => autofill.wants(brief !== undefined ? { brief } : log.read({ stream: `task:${taskId}`, fromSeq: 0, limit: 1, kinds: ["task_open"] })[0]?.body as { brief?: string } | undefined), tell: (taskId, text) => runner?.send(taskId, text, undefined, "ducter").catch((e) => console.warn(`[core] couldn't tell ${taskId} the browser is back:`, (e as Error).message)), ...(opts.browser ?? {}) });
+      : createDucterBrowser({ dataDir, mcp, log, tasks, decisions, persona: persona.id, device: () => thisComputer(opts.update?.homeName), ...(opts.platform ? { platform: opts.platform } : {}), lang: () => { const l = settings.get().language; return intlLocale(l === "auto" ? undefined : l); }, workers: () => workersRef, workerBrowserVersion: (id) => workersRef?.online().find((w) => w.deviceId === id)?.hello?.abilities?.find((a) => a.id === "web")?.detail, scrub: (t) => autofill.scrub(t), wants: (taskId, brief, needs) => { const open = log.read({ stream: `task:${taskId}`, fromSeq: 0, limit: 1, kinds: ["task_open"] })[0]?.body as { brief?: string; needs?: TaskNeeds } | undefined; return !!(needs ?? open?.needs)?.buy || autofill.wants(brief !== undefined ? { brief } : open); }, mayPay: (taskId, site) => autofill.fill?.mayPay(taskId, site) ?? false, media: () => mediaRef.store, tell: (taskId, text) => runner?.send(taskId, text, undefined, "ducter").catch((e) => console.warn(`[core] couldn't tell ${taskId} the browser is back:`, (e as Error).message)), ...(opts.browser ?? {}) });
   if (browser) autofill.attachBrowser(browser.host);
   if (browser) decorateBrowsing = (o) => browser.decorate(o);
   // D238: 用这台手机 / Use this phone: the person's own Android phones, through the Ducter app on each.
@@ -1024,6 +1026,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   });
   // D206: pictures and files, content-addressed on the home (media.ts).
   const media = createMediaStore(dataDir);
+  mediaRef.store = media;
   // D293: its ways to be reached (the address book, reach-book.ts); the home's own key is made above.
   let reachRef: ReachWatch | undefined;
   const waysFrame = () => ({ t: "ways" as const, ways: reachRef?.ways() ?? [], key: identity.key, fp: identity.fp });

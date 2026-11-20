@@ -6438,6 +6438,56 @@ button.bcard:active {
   max-width: 9em;
   letter-spacing: 4px;
 }
+/* D436: 去付款 / Go to checkout: the receipt, the items under what, the page itself as a picture. */
+.co-items {
+  margin: var(--s1) 0 0;
+  padding: 0;
+  list-style: none;
+  font-weight: 400;
+  color: var(--ink-soft);
+}
+.co-items li {
+  padding: 1px 0;
+}
+.co-items li.more {
+  color: var(--ink-muted);
+}
+.co-pic {
+  display: block;
+  width: 100%;
+  margin: 0 0 var(--s2);
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface-sunken);
+  overflow: hidden;
+  cursor: pointer;
+}
+.co-pic:disabled {
+  cursor: default;
+  opacity: 0.72;
+}
+.co-pic img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 220px;
+  object-fit: cover;
+  object-position: top;
+}
+.co-why {
+  margin-bottom: var(--s2);
+}
+.co-step {
+  margin: var(--s1) 0 var(--s2);
+  padding: var(--s2) var(--s3);
+  border-radius: var(--r-sm);
+  background: var(--surface-sunken);
+  font-size: var(--sm);
+  font-weight: 600;
+  color: var(--ink);
+}
+
 /* D233: 密钥 / Keys: the variable in mono, the pasted key masked; the card stays receipt-like. */
 .af-env {
   font-family: var(--mono);

@@ -133,7 +133,7 @@ type Policy = "buttons" | "open" | "never";
 
 /** research/79 §6: which cards a chat app may answer with a button. */
 export function cardPolicy(d: Bodies["decision"]): Policy {
-  if (d.pay || d.key || d.fill || d.signIn) return "never";
+  if (d.pay || d.key || d.fill || d.signIn || d.checkout) return "never"; // D436: paying is in the live view
   if (!d.reversible || d.phone || d.computer || d.handset || d.call || d.cal || d.anywhere || d.memPlugin || d.asker || d.trust || d.findId) return "open";
   return "buttons";
 }

@@ -74,6 +74,7 @@ Design notes:
 - `workbench.md`: the opened task's workbench: changes, files, preview, screens (D214).
 - `media.md`: pictures and files both ways, the viewer, drawing (D206).
 - `autofill.md`: saved sign-ins, cards and details, filled by reference; the Pay card (D191).
+- `errand.md`: 跑腿到付款 / an errand to the checkout: one task in Ducter's own window, a step handed over live, 去付款 / Go to checkout, the person's own tap pays (D436).
 - `calendar.md`: every calendar account as one day; the day card, change cards behind Go (D222).
 - `android.md`: the Android app, its self-update and foldable layout (D178–D182).
 - `phone-use.md`: 用手机 / Use a phone, Ducter's own Android phone on a Mac (D217; a worker Mac's, D234).

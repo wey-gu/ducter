@@ -55,6 +55,8 @@ import { appPush, disablePush, enablePush } from "./push-client.ts";
 import { inApp, unsupportedKey } from "./native.ts";
 import { useWide } from "./wide.ts";
 import { AutofillSettings, FillBody, fillTitle, KeyBody, keyTask, PayBody } from "./autofill.tsx";
+import { CheckoutBody, StepBody } from "./errand.tsx";
+
 import { ChatAppsSettings } from "./channels.tsx";
 import { SourceCardBody, TodoSourcesSettings, TS } from "./todos.tsx";
 import { HandoffSettings, PaperRow, RecordsSettings } from "./settings-more.tsx";
@@ -295,6 +297,7 @@ function defaultInfo(d: DecisionState, now: number): { line: string; frac?: numb
 /** The Go button's words: the action itself when it is a short verb ("Rebase"; zh "好，rebase"),
  *  else Go / 好: never a sentence (D127). */
 export function goLabel(d: DecisionState): string {
+  if (d.checkout) return t("co.go"); // D436
   if (d.where) return whereAsk(d.where).go;
   if (d.asker) return d.goLabel; // X1: the asking agent's own option, as it named it
   if (d.sender) return d.goLabel; // D334: 答应 / Let it, as the card's code said it
@@ -392,6 +395,9 @@ export function DecisionBody({ d, taskId }: { d: DecisionState; taskId?: string 
   })();
   const goText = goLabel(d);
   const draft = A.replyDraft.get(d.decisionId) ?? "";
+  // D436: the errand's stop, and a step on a page that's the person's: both open the task's tab live.
+  if (d.checkout) return <CheckoutBody d={d} />;
+  if (d.signIn?.step) return <StepBody d={d} />;
   if (d.signIn) return <SignInBody d={d} />;
   // D385: a plan card opened as a sheet or on On hand: the plan, not a generic Go.
   if (d.src?.kind === "plan") return <PlanCard d={d} bare />;
@@ -1017,6 +1023,21 @@ function Ask({ d, taskId, buttons = true, rk, seq }: { d: DecisionState; taskId?
       <div ref={ref} class={`partner askq ${d.phone.kind === "user" ? "signin" : "pay"}${flash ? " flash" : ""}`} id={`d-${d.decisionId}`} data-reply={rk} data-seq={seq}>
         <div class="bubble" dir="auto">{d.said || d.question}</div>
         {(buttons || !open) && <PhoneAskBody d={d} compact />}
+      </div>
+    );
+  // D436: 去付款 / Go to checkout, receipt-like, its picture on the card; a step that's theirs.
+  if (d.checkout)
+    return (
+      <div ref={ref} class={`partner askq pay checkout${flash ? " flash" : ""}`} id={`d-${d.decisionId}`} data-reply={rk} data-seq={seq}>
+        <div class="bubble" dir="auto">{d.said || t("co.title", d.checkout.site)}</div>
+        {(buttons || !open) && <CheckoutBody d={d} compact />}
+      </div>
+    );
+  if (d.signIn?.step)
+    return (
+      <div ref={ref} class={`partner askq signin${flash ? " flash" : ""}`} id={`d-${d.decisionId}`} data-reply={rk} data-seq={seq}>
+        <div class="bubble" dir="auto">{d.said || t("step.title", d.signIn.site)}</div>
+        {(buttons || !open) && <StepBody d={d} compact />}
       </div>
     );
   if (d.signIn)

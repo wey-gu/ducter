@@ -208,6 +208,9 @@ type Decision struct {
 	SignIn *SignInAsk `json:"signIn,omitempty"`
 	// Pay (D191): 付款 / Pay: merchant, amount, card; Go carries the code.
 	Pay *PayAsk `json:"pay,omitempty"`
+	// Checkout (D436): 去付款 / Go to checkout: the errand stopped at the
+	// checkout; Go is 付好了 / I've paid (the person paid in the live view).
+	Checkout *CheckoutAsk `json:"checkout,omitempty"`
 	// Fill (D191): a saved sign-in or detail used on a site for the first time.
 	Fill *FillAsk `json:"fill,omitempty"`
 	// Key (D233): a task asks the person for a key; Go carries it (Hold is
@@ -360,6 +363,9 @@ type WhereAsk struct {
 type SignInAsk struct {
 	Site string `json:"site"`
 	URL  string `json:"url,omitempty"`
+	// Step (D436): not a sign-in but another step that is the person's on
+	// the page (a CAPTCHA, a code by text), in the task's words.
+	Step string `json:"step,omitempty"`
 }
 
 // DecisionLater (D382): 晚点再问我 / Ask me later: the question is put off

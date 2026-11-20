@@ -415,8 +415,18 @@ func (a *App) ask(c *ui.Context, d *store.DecisionState, taskID string) {
 				return
 			}
 		}
+		if d.Checkout != nil {
+			// D436: the receipt, the page, Not now · Go to checkout; answered in place.
+			a.underBubble(c, func() { a.checkoutButtons(c, d, decisionStyle{height: t.ControlSM, quietBg: t.Bg}) })
+			return
+		}
+		if d.SignIn != nil && d.SignIn.Step != "" {
+			a.underBubble(c, func() { a.stepButtons(c, d, decisionStyle{height: t.ControlSM, quietBg: t.Bg}) })
+			return
+		}
 		if d.SignIn != nil {
 			// D151: Sign in opens the live view; answered, it says signed in or not now.
+
 			a.underBubble(c, func() { a.signInButtons(c, d, decisionStyle{height: t.ControlSM, quietBg: t.Bg}) })
 			return
 		}

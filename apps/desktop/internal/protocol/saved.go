@@ -60,6 +60,20 @@ type PayAsk struct {
 	FirstHere bool   `json:"firstHere"`
 }
 
+// CheckoutAsk (D436): 去付款 / Go to checkout. The errand stopped at the
+// checkout; the site is the page's host, read by code. Go is 付好了 / I've
+// paid (the person paid in the live view themselves); Hold is 先不买 / Not
+// now. No default, ever.
+type CheckoutAsk struct {
+	Site     string     `json:"site"`
+	URL      string     `json:"url"`
+	What     string     `json:"what"`
+	Total    string     `json:"total,omitempty"`
+	Currency string     `json:"currency,omitempty"`
+	Items    []string   `json:"items,omitempty"`
+	Media    []MediaRef `json:"media,omitempty"`
+}
+
 // FillAsk is the first use of a saved sign-in or private detail on a site.
 type FillAsk struct {
 	Site   string `json:"site"`

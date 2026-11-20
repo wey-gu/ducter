@@ -10,6 +10,8 @@ import type { LiveDoing, LiveKey } from "@ducter/protocol";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { A } from "./app.ts";
 import { Btn, Facts } from "./controls.tsx";
+import { liveCard } from "./errand.tsx";
+
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
@@ -164,7 +166,9 @@ export function LiveView({ embedded }: { embedded?: boolean } = {}) {
   const coarse = typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches;
   const host = hostOf(lv.url, lv.site || lv.task?.title || "");
   const doing = lv.watch && !yours && lv.doing && lv.doingAt && Date.now() - lv.doingAt < DOING_MS ? lv.doing : undefined;
-  const label = lv.watch ? t("live.watch.title") : lv.try ? t("web.try") : t("signin.title", lv.site);
+  // D436: a checkout's or a step's own words for the same view (a sign-in's otherwise).
+  const card = lv.watch || lv.try ? undefined : liveCard(lv.decisionId);
+  const label = lv.watch ? t("live.watch.title") : lv.try ? t("web.try") : card ? card.title : t("signin.title", lv.site);
 
   const at = (e: { clientX: number; clientY: number }) => {
     const r = img.current!.getBoundingClientRect();
@@ -270,6 +274,13 @@ export function LiveView({ embedded }: { embedded?: boolean } = {}) {
           </button>
         )}
       </div>
+      {/* D436: paying is theirs: said once above the page. */}
+      {card?.band && (
+        <div class="live-band" role="status">
+          <EyeShut />
+          <span>{card.band}</span>
+        </div>
+      )}
       {/* D190: in the user's turn of a watch, said plainly, once, above the page. */}
       {lv.watch && mine && (
         <div class="live-band" role="status">
@@ -404,8 +415,8 @@ export function LiveView({ embedded }: { embedded?: boolean } = {}) {
             )
           ) : (
             <>
-              {!lv.try && <Btn kind="secondary" label={t("live.notnow")} onClick={() => A.closeLive(false)} />}
-              <Btn kind="primary" label={t("live.done")} onClick={() => A.closeLive(true)} />
+              {!lv.try && <Btn kind="secondary" label={card ? card.hold : t("live.notnow")} onClick={() => A.closeLive(false)} />}
+              <Btn kind="primary" label={card ? card.done : t("live.done")} onClick={() => A.closeLive(true)} />
             </>
           )}
         </div>

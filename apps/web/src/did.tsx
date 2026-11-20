@@ -91,6 +91,7 @@ export function lineOf(it: DidItem): string {
     case "sent.message":
       return it.to ? t("did.l.sent.message", it.to) : t("did.l.sent.message.none");
     case "paid.card":
+    case "paid.checkout":
     case "called.call":
     case "filled.signin":
     case "filled.detail":
@@ -120,6 +121,7 @@ function goOf(it: DidItem): string {
   if (!it.go) return "";
   if (it.go.by === "you") return t("did.go.you", it.go.at ? clock(it.go.at) : "");
   if (it.go.by === "said") return t("did.go.said", it.go.words ?? "");
+  if (it.go.by === "paid") return t("did.go.paid", it.go.at ? clock(it.go.at) : ""); // D436
   return t(`did.go.${it.go.by}`);
 }
 

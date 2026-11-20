@@ -15,7 +15,8 @@ export type DidKind = (typeof DID_KINDS)[number];
  * The finer shape, which picks the clients' words for the line:
  *   sent: mail (a mail account's send), message (an app on a phone or computer, a chat
  *     connection), agent (Nowledge Bridge to another agent), post (a public post);
- *   paid: card (a saved card after Pay), buy (a tap that buys or pays in an app);
+ *   paid: card (a saved card after Pay), buy (a tap that buys or pays in an app), checkout (an
+ *     errand stopped at the checkout and the person paid there themselves, D436);
  *   called: call (a call Ducter placed, from a line or the person's own number);
  *   filled: signin (a saved sign-in), detail (a saved private detail), key (a key given to a task),
  *     account (a sign-in tap in an app);
@@ -27,7 +28,7 @@ export type DidKind = (typeof DID_KINDS)[number];
  */
 export type DidSub =
   | "mail" | "message" | "agent" | "post"
-  | "card" | "buy"
+  | "card" | "buy" | "checkout"
   | "call"
   | "signin" | "detail" | "key" | "account"
   | "calendar" | "merge" | "pr" | "files" | "setting" | "install" | "write"
@@ -51,7 +52,7 @@ export interface DidWho {
  */
 export interface DidGo {
   /** D413: said = under a standing permission the person said (不用问我的), with their words. */
-  by: "you" | "default" | "before" | "said";
+  by: "you" | "default" | "before" | "said" | "paid"; // paid (D436): the person paid it themselves and said so at `at`
   at?: string;
   /** said: the person's own words that allowed it. */
   words?: string;

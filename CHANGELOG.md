@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.1.4 - 2026-11-21
+
+<!-- whats-new
+zh: 帮你买到付款前一步；额度用完也不冷场；Mac 小窗陪在手边
+en: Errands up to checkout; never quiet when credit runs out; a Mac mini window
+-->
+
+**Errands, up to the checkout**
+- "Buy the three things in my cart" or "book the train next Friday" runs in Ducter's own browser
+  on the computer that's signed in to the site, and stops at a card with what, how much and
+  where. Paying is always your own tap, in the live page; Ducter can't press pay for you.
+- When a site wants you for a step (a code, a check), the same page opens for you live, and the
+  errand carries on after.
+
+**Always an answer**
+- When the AI your partner thinks with runs out of credit or is busy, another one you're signed in
+  to answers right away, said once, and it switches back at the reset. If none can, it tells you
+  when it will answer and replies in order then.
+
+**Another AI looks it over**
+- Before a bigger code change or anything going out is shown to you, a second AI checks it against
+  what you asked; what it still finds is written on the card. Say "这类不用复查" to skip a kind.
+
+**On the Mac**
+- Mini window: your partner beside your work, its one line, what waits for you, and a field to
+  talk. ⌃⌥⌘Space or the menu bar.
+
 ## 0.1.3 - 2026-11-21
 
 <!-- whats-new

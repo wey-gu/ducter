@@ -86,7 +86,8 @@ const issues = (): FakeIssue[] => [...pileIssues(now).map((i) => ({ ...i, repo: 
 function ask(): (prompt: string) => Promise<{ text: string; tokens: number }> {
   const sort = demoAsk(zh, 120);
   return async (prompt) => {
-    if (prompt.includes("<query>")) return { text: JSON.stringify({ ids: [] }), tokens: 2000 };
+    if (prompt.includes("<logins>")) return { text: "{}", tokens: 500 };
+    if (prompt.includes("<about>")) return { text: JSON.stringify({ found: [] }), tokens: 2000 };
     if (prompt.includes("<diff>")) return sort(prompt);
     const got = await sort(prompt);
     const rows = JSON.parse(/<todos>\n([\s\S]*)\n<\/todos>/.exec(prompt)![1]!) as { id: number; title: string }[];

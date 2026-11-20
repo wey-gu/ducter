@@ -47,14 +47,17 @@ today.
 
 **What (D396: words first, §10).** The sheet asks **想交给{name}哪些？ / What should {name} take on?**
 over one field for a sentence; the list below is for confirming and trimming, and the do row's list
-is **一件件挑 / Pick one by one**, a link away. The find under it (code's match on words, numbers and
-the source's labels at once, then the cheapest model over every open title and label for meaning, across zh and en: one
-call, cached per query). Its line says what it found as separate facts: **找到 9 件讲{subject}的 /
-9 about {subject}**, **标题里写着的 6 件 / 6 say it in the title**, **说的是同一件事的 3 件 / 3 are
-about the same thing**. Items show by the sort's group (**可以交给{name}做的**, **要你拿主意的**,
-**可以先放着的**), each with its why, size and number; one found by meaning carries **意思相近 / Same
-subject**. Ticked by default: the do ones. A decide one shows its question with the suggestion; ticking
-it carries the suggestion as the answer (its note can change it). A later one is unticked.
+is **一件件挑 / Pick one by one**, a link away. The find under it (D426, §12): the sentence's facts
+(who opened it, who assigned it, the person, a repository, a number, a time, PRs) read as removable
+chips under **找的是 / Looking for** and used as filters; only what is left goes to the cheapest model
+for meaning, over the filtered set, across zh and en. Its line says what it found as separate facts:
+**找到 5 件讲「UI 走查」的 / 5 about “UI review”** (their words), **先勾了最像的 10 件 / Ticked the 10
+likeliest**, **2 件不太确定，没勾 / 2 unsure, not ticked**. Items show by the sort's group
+(**可以交给{name}做的**, **要你拿主意的**, **可以先放着的**), each with its why, size, number and why it was
+found; an unsure one carries **不太确定 / Not sure**. Ticked by default (at most 10): the sure ones in
+the do group when only a kind of thing was said; every sure one but those that look ready to close when
+the words named whose or which (§12). A decide one shows its question with the suggestion; ticking it
+carries the suggestion as the answer (its note can change it).
 
 **The note.** **给{name}的话 / A note for {name}** (placeholder **比如：先别动数据库；验证去 haswell
 上跑 / For example: don't touch the database; check it on haswell**), quoted whole at the top of every
@@ -319,3 +322,65 @@ the real runner with a scripted agent, a git that meets hel's lock: `DEMO_LOCK=o
 `DEMO_STAGE=hand|go|mine`; Mac shots from its view tests). **Still owed:** the words by humans
 (分类, 移出, 只开始，不留言); a model reading the comment out of a note no rule catches; the live run on the
 author's MacBook.
+
+## 12. Which ones the person meant (D426)
+
+The author on 0.1.1 with the real pile (555 open across nowledge-co repos), into **想交给{name}哪些？**:
+「100gle 分配给我的 UI/UX 的问题走查的修改 task」 found 71 (**标签对得上的 69 件**), 30 ticked; 「100gle
+分配给我的那些他 UI 走查发现的问题」 found 69 under a subject the model made up, **讲 Windows 新界面的**, the
+list opening on unrelated issues. *"我这个选取任务的根本就不准，这里做的太傻了…根本用不起来的"*. He meant
+five: the issues 100gle opened from his UI review of the web settings and assigned to him (GitHub's own
+data, research/176).
+
+**Who.** The heavy developer names a set the way he thinks of it: by person, by whose, by repository, by
+time, then by what it is about. The consumer says "我上周记下的那些". The fresh user types a sentence and
+needs to see that it was understood. *Before:* keyword soup: "100gle" read as "gle", "ui" found inside
+any label, the people in the sentence ignored, a wrong set ticked by default. *After:* he sees his
+sentence read back as facts he can drop, the five, why each one is there, and only the sure ones ticked.
+
+**The reading.** One sentence, two kinds of thing:
+- *Facts*, hard filters (`packages/core/src/task-sources/find.ts`). Code reads them against what the pile
+  holds: a login only if someone in the pile has it (a part of one, like "bugdrop", when only one login
+  has that part); its role from the words beside it (**{login} 分配给我的 / assigned by** = who assigned
+  it, **{login} 提的 / opened by / from** = who opened it, a bare name = either); **他…发现的 / he
+  found** is the named person again as the one who opened them; "A 和 B 提的" shares the role; **我 /
+  me** is the GitHub login the source reads as (**分配给我** is every GitHub one, the pile being what is
+  assigned to the person; **我提的** is the person's own); a repository by its name; `#405`; a time (最近
+  一周, 上个月以来, in the last week; with 提/opened it is when they were opened, else when they changed);
+  PRs; a label only when the sentence says 标签 / label. What code can't place (a name that isn't a
+  login, a repository by a word, a time it doesn't know) goes to the cheapest model once (`readPrompt`),
+  whose values are kept only when they are the pile's own; code's facts win.
+- *What it is about*, the rest of the sentence with the filler and the fact words taken out ("UI/UX 问题
+  走查"). Only this goes to meaning, over the set the facts left (5 rows, not 555), each row's title,
+  labels and the first 300 characters of its body; the cheapest model answers sure or maybe with a few
+  words of why, in the person's language. A label counts only as a whole word ("ui" is never inside
+  "build") and only as the model's to confirm. No facts and no model: a title holding every about word.
+- *Facts alone* ("hawkingrei 提的"): every one they leave, no model call.
+
+**Shown.** Under the field: **找的是 / Looking for** and one chip per fact in plain words, never joined:
+**100gle 分给你的**, **100gle 提的**, **关于 UI 走查**. A tap drops it (`pile_find drop=[key]`) and finds
+again; **还原 / Put back**. A name no one has: **这些待办里没有叫 100gel 的人**, **是不是** with the
+closest logins to tap, **名字对上之前，一件都不勾**. The line: **找到 5 件讲「UI 走查」的** (the subject is
+their words, never the model's), then **先勾了最像的 10 件** when more were sure, **2 件不太确定，没勾**.
+Each row says why it is here (the model's words, or the fact: **hawkingrei 提的**); an unsure one says
+**不太确定**. The set card in the conversation shows the same chips; the partner's `todos do=find`
+gets them as `readAs` and a missing name as `noSuchPerson`.
+
+**Ticked.** At most `TICK_MAX` (10) of the sure ones; unsure ones never; nothing while a name is
+unknown. A set the facts named (whose, which repository, which numbers, since when) is the person's own
+pick: every sort group but close is ticked (plan first still reads before anything changes). A kind of
+thing alone ("memory distill") is a net: the sort's do ones, as before (D385).
+
+**GitHub.** The sync keeps author, assignees, `created_at` and milestone per item, and once per sort asks
+GitHub's timeline who assigned each one (`assignedBy`, GraphQL search, ≤ 7 pages); until then "assigned
+by" reads who opened it.
+
+**Evidence** (research/176): a pile in the real one's shape and 28 sentences (the author's two, zh and
+en, people, roles, the person, repositories, numbers, times, labels, a typo, with notes). Ticked
+precision 18% → 97–98% with haiku (code alone 12% → 99%); the author's two sentences tick only the five (3 to 5 of them, the rest shown 不太确定) where
+they ticked 37 with one right. Shots `.shots/handover-find/` (`before-*` from main on
+`apps/web/demo-handover-find.ts`, `after-*`, `mac-after-*` from `TestHandoverFindShots`).
+
+**Still owed:** the live check on the author's pile (the timeline pass on 555); who assigned it read
+from GitHub's events for a pile synced before D426 (until its next sort, who opened it stands in);
+humans on the chip words.

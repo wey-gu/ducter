@@ -72,6 +72,15 @@ function subjectOf(title: string): [string, string] {
 function ask(): (prompt: string) => Promise<{ text: string; tokens: number }> {
   const sort = demoAsk(zh, Number(process.env.DEMO_SORT_MS ?? 200));
   return async (prompt) => {
+    // D426: the reading (nothing to place here) and meaning over the set the facts left.
+    if (prompt.includes("<logins>")) return { text: "{}", tokens: 800 };
+    if (prompt.includes("<about>")) {
+      await Bun.sleep(Number(process.env.DEMO_FIND_MS ?? 900));
+      const q = /<about>([\s\S]*?)<\/about>/.exec(prompt)![1]!;
+      const rows = JSON.parse(/<todos>\n([\s\S]*)\n<\/todos>/.exec(prompt)![1]!) as { id: number; title: string }[];
+      const about = /distill|memory|提炼|记忆/i.test(q) ? /istill|提炼|facts|Packets/ : /sign|login|登录/i.test(q) ? /sign-in|login|SSO|Okta/i : /offline|离线/i.test(q) ? /[Oo]ffline/ : null;
+      return { text: JSON.stringify({ found: about ? rows.filter((r) => about.test(r.title)).map((r) => ({ id: r.id, sure: "high", why: zh ? "讲记忆提炼" : "About distillation" })) : [] }), tokens: 20000 };
+    }
     if (prompt.includes("<query>")) {
       await Bun.sleep(Number(process.env.DEMO_FIND_MS ?? 900));
       const q = /<query>([\s\S]*?)<\/query>/.exec(prompt)![1]!;

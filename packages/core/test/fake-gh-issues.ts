@@ -18,6 +18,10 @@ export interface FakeIssue {
   mentions?: boolean;
   /** D357: who opened it. */
   author?: string;
+  /** D426: who it is assigned to (the person is added when assigned), who assigned it, when it was opened. */
+  assignees?: string[];
+  assignedBy?: string;
+  created?: string;
   updated?: string;
   /** D359: how many comments it has. */
   comments?: number;
@@ -121,10 +125,20 @@ export function fakeGh(seed: FakeIssue[] = [], o: { login?: string } = {}): Fake
         labels: (i.labels ?? []).map((name) => ({ name })),
         repository: { full_name: i.repo },
         ...(i.author ? { user: { login: i.author } } : {}),
+        ...(i.assigned || i.assignees ? { assignees: [...new Set([...(i.assignees ?? []), ...(i.assigned ? [login] : [])])].map((l) => ({ login: l })) } : {}),
+        ...(i.created ? { created_at: i.created } : {}),
         ...(i.pr ? { pull_request: {} } : {}),
         ...(i.comments ? { comments: i.comments } : {}),
       });
       if (args[0] !== "api") return { code: 1, out: "", err: `fake gh: ${args.join(" ")}` };
+      // D426: who assigned each one (GitHub's timeline, through GraphQL search), 100 a page.
+      if (args[1] === "graphql") {
+        const after = Number((args.find((a) => a.startsWith("c=")) ?? "c=0").slice(2)) || 0;
+        const open = f.issues.filter((i) => i.assigned && i.state === "open").sort((a, b) => (b.updated ?? "").localeCompare(a.updated ?? ""));
+        const nodes = open.slice(after, after + 100).map((i) => ({ number: i.number, repository: { nameWithOwner: i.repo }, timelineItems: { nodes: [{ actor: { login: i.assignedBy ?? i.author ?? login }, assignee: { login } }] } }));
+        const more = after + 100 < open.length;
+        return { code: 0, out: JSON.stringify({ data: { viewer: { login }, search: { pageInfo: { endCursor: String(after + 100), hasNextPage: more }, nodes } } }), err: "" };
+      }
       if (args[1] === "user") return { code: 0, out: `${login}\n`, err: "" };
       // The search total (per_page=1, --jq ... @tsv): assignee / review-requested, repo:, label:.
       if (args.includes("search/issues")) {

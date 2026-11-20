@@ -122,7 +122,39 @@ export interface FindSummary {
   byMeaning: number;
   /** Meaning wasn't read: no model, or it failed (code's match only). */
   noMeaning?: "no_model" | "error";
+  /** D426: the ones the reading's hard facts left (「100gle 提的」…), before what it is about narrowed them. */
+  within?: number;
+  /** D426: found and sure, but past TICK_MAX: not ticked (找到 23 件，先勾了最像的 10 件). */
+  cut?: number;
+  /** D426: found but not sure (shown, never ticked). */
+  maybe?: number;
 }
+
+/**
+ * D426: one fact the finder read out of the person's sentence, shown under the field as its own chip
+ * in plain words (「100gle 提的」「分给你的」「关于 UI 走查」). Every one but `about` is a hard filter;
+ * tapping one drops it (pile_find drop=[key]) and the set is found again without it.
+ */
+export interface FindFacet {
+  /** Stable for the sentence: "person:100gle:opened", "mine:assigned", "repo:nowledge-co/mem", "since:7:created", "ref:#405", "pr", "label:bug", "about". */
+  key: string;
+  kind: "person" | "mine" | "repo" | "label" | "ref" | "since" | "pr" | "about";
+  /** The chip's words, in the person's language. */
+  text: string;
+  /** The words of the sentence it was read from. */
+  said: string;
+  /** Read by code's rules, or by the cheapest model (then only values the pile holds). */
+  by: "code" | "model";
+}
+
+/** D426: a part of the sentence that names someone the pile doesn't have, said plainly with the closest logins. */
+export interface FindUnknown {
+  said: string;
+  closest: string[];
+}
+
+/** D426: at most this many found ones are ticked without asking (the rest are found, shown, unticked). */
+export const TICK_MAX = 10;
 
 /**
  * D396: the person's words split in two: what to find (about) and how to do it (note), by code's
@@ -132,13 +164,25 @@ export interface FindSaid {
   about: string;
   note?: string;
   by: "code" | "model";
+  /** D426: the reading, one chip per fact, the about last. */
+  facets?: FindFacet[];
+  /** D426: names it couldn't find among the pile's people (never silently ignored). */
+  unknown?: FindUnknown[];
+  /** D426: facets the person dropped by tapping (kept so the next find leaves them out too). */
+  dropped?: string[];
 }
 
 /** D396: how many suggestions the words field shows (the person's recent subjects first, then the pile's biggest). */
 export const SUGGEST_MAX = 5;
 
 /** One to-do in a find: the pile's item, how it was found. */
-export type FoundItem = PileItem & { by: "title" | "label" | "meaning" | "subject" | "ref" };
+export type FoundItem = PileItem & {
+  by: "title" | "label" | "meaning" | "subject" | "ref" | "facet";
+  /** D426: why it is here, in a few words in the person's language (「100gle 提的」, the model's reason). */
+  because?: string;
+  /** D426: high: ticked (up to TICK_MAX); maybe: shown, never ticked. */
+  sure?: "high" | "maybe";
+};
 
 /** D385: a set of to-dos found in the conversation (todos do=find), shown as a tickable card. */
 export interface TodoSet {
@@ -155,6 +199,10 @@ export interface TodoSet {
   groupId?: string;
   /** D396: the how-to part of the words it was found by ("先别动数据库"): the hand-over's note unless another is said. */
   note?: string;
+  /** D426: the reading's chips (「100gle 提的」…), shown on the card as said under the field. */
+  facets?: FindFacet[];
+  /** D426: a name in the words no one in the pile has (the partner asks which they meant). */
+  unknown?: FindUnknown[];
 }
 
 // ---------- plan first ----------

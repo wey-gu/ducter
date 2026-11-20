@@ -68,10 +68,11 @@ const PILE_ISSUES = [
 const pileAsk = async (prompt: string): Promise<{ text: string; tokens: number }> => {
   const rows = JSON.parse(/<todos>\n([\s\S]*)\n<\/todos>/.exec(prompt)?.[1] ?? "[]") as { id: number; title: string }[];
   const mem = (t: string) => /istill|提炼|facts/i.test(t);
-  if (prompt.includes("<query>")) {
-    const q = /<query>([\s\S]*?)<\/query>/.exec(prompt)?.[1] ?? "";
+  if (prompt.includes("<logins>")) return { text: "{}", tokens: 500 };
+  if (prompt.includes("<about>")) {
+    const q = /<about>([\s\S]*?)<\/about>/.exec(prompt)?.[1] ?? "";
     const about = /distill|memory|提炼|记忆/i.test(q);
-    return { text: JSON.stringify({ subject: about ? "记忆提炼" : q, ids: about ? rows.filter((r) => mem(r.title)).map((r) => r.id) : [] }), tokens: 2000 };
+    return { text: JSON.stringify({ found: about ? rows.filter((r) => mem(r.title)).map((r) => ({ id: r.id, sure: "high" })) : [] }), tokens: 2000 };
   }
   return {
     text: JSON.stringify(

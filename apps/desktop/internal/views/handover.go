@@ -43,6 +43,11 @@ type handState struct {
 	heard    *protocol.FindSaid
 	suggest  []string
 	noteAuto string
+	// D426: the reading's chips removed for these words (dropFor), and how
+	// many the last find ticked (先勾了最像的 n 件).
+	drop        []string
+	dropFor     string
+	foundTicked int
 	// browse: picking one by one (the do group's list); doCount: its size.
 	browse   bool
 	doCount  int
@@ -178,6 +183,7 @@ func (a *App) takeHand() {
 				break
 			}
 			h.items, h.found, h.heard = r.FoundItems, r.Found, r.Said
+			h.foundTicked = len(r.Ticked)
 			if r.Subject != "" {
 				h.subject = r.Subject
 			}
@@ -253,7 +259,11 @@ func (a *App) handPump(c *ui.Context) {
 				h.handFillNote("")
 			} else {
 				h.finding, h.subject = true, ""
-				a.send(protocol.PileFindReq{T: "pile_find", Words: q, ClientID: h.cid})
+				// New words, a new reading: the chips removed for the old words come back.
+				if q != h.dropFor {
+					h.drop, h.dropFor = nil, ""
+				}
+				a.send(protocol.PileFindReq{T: "pile_find", Words: q, Drop: h.drop, ClientID: h.cid})
 			}
 		}
 	}
@@ -483,12 +493,20 @@ func (a *App) handWhat(c *ui.Context, wide bool) {
 	})
 	a.enter(c, field)
 	said := strings.TrimSpace(h.query) != ""
-	// How the words were heard: what it looked for; the note itself lives on the
-	// right (one quiet line says it went there, never the note twice).
-	if hd := h.heard; hd != nil && hd.Note != "" && !h.finding {
-		ui.Column(c.Key("heard")).Gap(t.S1).Padding(t.S1, 0, 0, 0).Children(func() {
-			a.heardPart(c, "about", a.L.T("hand.said.about"), hd.About)
-			if h.note == h.noteAuto && strings.TrimSpace(h.note) != "" {
+	// How the words were read (D426): one chip per fact, each removable; a name
+	// the pile doesn't have, said plainly with the closest logins; the note
+	// itself lives on the right (one quiet line says it went there).
+	if hd := h.heard; hd != nil && !h.finding && (hd.Note != "" || len(readingChips(hd)) > 0 || len(hd.Unknown) > 0 || len(h.drop) > 0) {
+		ui.Column(c.Key("heard")).Gap(t.S2).Padding(t.S1, 0, 0, 0).Children(func() {
+			if chips := readingChips(hd); len(chips) > 0 || len(h.drop) > 0 {
+				a.handReading(c, chips)
+			} else if hd.Note != "" {
+				a.heardPart(c, "about", a.L.T("hand.said.about"), hd.About)
+			}
+			for _, u := range hd.Unknown {
+				a.handUnknown(c, u)
+			}
+			if hd.Note != "" && h.note == h.noteAuto && strings.TrimSpace(h.note) != "" {
 				moved := a.L.T("hand.said.moved", name)
 				if !wide {
 					moved = a.L.T("hand.said.moved.narrow", name)
@@ -516,14 +534,11 @@ func (a *App) handWhat(c *ui.Context, wide bool) {
 				head = a.L.T("hand.found", f.N, subj)
 			}
 			uiText(c.Key("head"), head).Font(t.Display).FontSize(t.LG).FontWeight(800).TextColor(t.Ink)
-			if f.InTitle > 0 && f.InTitle < f.N {
-				uiText(c.Key("title"), a.nCount("hand.found.title", f.InTitle)).FontSize(t.SM).TextColor(t.InkMuted)
+			if f.Cut > 0 {
+				uiText(c.Key("ticked"), a.nCount("hand.found.ticked", h.foundTicked)).FontSize(t.SM).TextColor(t.InkMuted)
 			}
-			if f.ByLabel > 0 {
-				uiText(c.Key("label"), a.nCount("hand.found.label", f.ByLabel)).FontSize(t.SM).TextColor(t.InkMuted)
-			}
-			if f.ByMeaning > 0 && f.ByMeaning < f.N {
-				uiText(c.Key("meaning"), a.nCount("hand.found.meaning", f.ByMeaning)).FontSize(t.SM).TextColor(t.InkMuted)
+			if f.Maybe > 0 {
+				uiText(c.Key("maybe"), a.nCount("hand.found.maybe", f.Maybe)).FontSize(t.SM).TextColor(t.InkMuted)
 			}
 			if f.NoMeaning != "" {
 				uiText(c.Key("nomodel"), a.L.T("hand.found.nomodel")).FontSize(t.SM).TextColor(t.Waiting.Ink)
@@ -543,7 +558,10 @@ func (a *App) handWhat(c *ui.Context, wide bool) {
 			about = h.heard.About
 		}
 		ui.Column(c.Key("none")).Gap(t.S2).AlignItems(ui.Center).Padding(t.S7, t.S4, 0, t.S4).Children(func() {
-			uiText(c.Key("h"), a.L.T("hand.found.none", "「"+about+"」")).Font(t.Display).FontSize(t.MD).FontWeight(800).TextColor(t.Ink).TextAlign(ui.Center)
+			// A name no one has is said above; the line would only say nothing.
+			if h.heard == nil || len(h.heard.Unknown) == 0 {
+				uiText(c.Key("h"), a.L.T("hand.found.none", "「"+about+"」")).Font(t.Display).FontSize(t.MD).FontWeight(800).TextColor(t.Ink).TextAlign(ui.Center)
+			}
 			uiText(c.Key("or"), a.L.T("hand.none.or")).FontSize(t.SM).TextColor(t.InkMuted).TextAlign(ui.Center)
 			ui.Box(c).Height(t.S2)
 			a.handSuggest(c, true)
@@ -577,6 +595,95 @@ func (a *App) handList(c *ui.Context) {
 			a.handItem(c, it)
 		}
 	}
+}
+
+// readingChips is the reading as drawn (D426): every fact, the about last;
+// none when the about alone was read (the field already shows the words).
+func readingChips(s *protocol.FindSaid) []protocol.FindFacet {
+	if s == nil || (len(s.Facets) == 1 && s.Facets[0].Kind == "about" && len(s.Dropped) == 0) {
+		return nil
+	}
+	return s.Facets
+}
+
+// handReading is 找的是 / Looking for and one chip per fact; a click on one
+// removes it and finds again (还原 / Put back brings them all back).
+func (a *App) handReading(c *ui.Context, chips []protocol.FindFacet) {
+	t := a.T
+	h := &a.ho
+	ui.Row(c.Key("reading")).Wrap().Gap(t.S2).AlignItems(ui.Center).Children(func() {
+		uiText(c.Key("l"), a.L.T("hand.said.about")).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
+		for _, f := range chips {
+			f := f
+			chip := ui.Row(c.Key("fc:"+f.Key)).Gap(6).Height(30).Padding(0, 6, 0, t.S3).Radius(15).AlignItems(ui.Center).
+				Cursor(ui.CursorPointer).Role(ui.RoleButton).Focusable().Label(a.L.T("hand.chip.drop", f.Text))
+			if f.Kind == "about" {
+				chip.Border(1.5, t.Line2)
+			} else {
+				chip.Background(t.SurfaceSunken)
+			}
+			if chip.Hovered() {
+				chip.Background(t.Surface).Shadow(0, 2, 0, 0, t.Line2)
+			}
+			chip.Children(func() {
+				uiText(c, f.Text).FontSize(t.SM).FontWeight(650).TextColor(t.Ink).AccessHidden(true).Shrink(1).MinWidth(0)
+				uiText(c, "×").FontSize(t.SM).TextColor(t.InkMuted).AccessHidden(true)
+			})
+			if chip.Clicked() {
+				h.drop = append(h.drop, f.Key)
+				h.dropFor = strings.TrimSpace(strings.ReplaceAll(h.query, "\n", " "))
+				h.sentQuery = "\x00" // found again, without it
+				h.queryAt = a.Now().Add(-handDebounce)
+			}
+		}
+		if len(h.drop) > 0 && a.quietButton(c, "undo", a.L.T("hand.chip.undo"), "", false, 0) {
+			h.drop = nil
+			h.sentQuery = "\x00"
+			h.queryAt = a.Now().Add(-handDebounce)
+		}
+	})
+}
+
+// handUnknown says plainly that no one in the pile has that name, offers the
+// closest logins (a click puts it in the words), and that nothing is ticked.
+func (a *App) handUnknown(c *ui.Context, u protocol.FindUnknown) {
+	t := a.T
+	h := &a.ho
+	ui.Column(c.Key("unk:"+u.Said)).Gap(t.S2).Padding(t.S2, t.S3).Radius(12).Background(t.Waiting.Surface).Role(ui.RoleAlert).Children(func() {
+		ui.Row(c.Key("l")).Wrap().Gap(t.S2).AlignItems(ui.Center).Children(func() {
+			uiText(c.Key("t"), a.L.T("hand.unknown", u.Said)).FontSize(t.SM).FontWeight(700).TextColor(t.Waiting.Ink)
+			if len(u.Closest) > 0 {
+				uiText(c.Key("c"), a.L.T("hand.unknown.closest")).FontSize(t.SM).TextColor(t.Waiting.Ink)
+			}
+			for _, l := range u.Closest {
+				l := l
+				chip := ui.Row(c.Key("lg:"+l)).Height(28).Padding(0, t.S3).Radius(14).AlignItems(ui.Center).Background(t.Surface).
+					Cursor(ui.CursorPointer).Role(ui.RoleButton).Focusable().Label(l)
+				chip.Children(func() {
+					uiText(c, l).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).AccessHidden(true)
+				})
+				if chip.Clicked() {
+					h.query = replaceLogin(h.query, u.Said, l)
+					h.queryAt = a.Now().Add(-handDebounce)
+				}
+			}
+		})
+		uiText(c.Key("held"), a.L.T("hand.unknown.held")).FontSize(t.XS).TextColor(t.Waiting.Ink)
+	})
+}
+
+// replaceLogin puts the login tapped where the unknown name was said (any case, an @ before it too).
+func replaceLogin(words, said, login string) string {
+	lw := strings.ToLower(words)
+	i := strings.Index(lw, strings.ToLower(said))
+	if i < 0 {
+		return words
+	}
+	j := i + len(said)
+	if i > 0 && words[i-1] == '@' {
+		i--
+	}
+	return words[:i] + login + words[j:]
 }
 
 // heardPart is how the words were heard: its small label and the words.
@@ -729,9 +836,13 @@ func (a *App) handItem(c *ui.Context, it protocol.FoundItem) {
 							uiText(c, a.L.T("pile.size."+it.Size)).FontSize(t.XS).TextColor(t.InkMuted)
 						})
 					}
-					if it.By == "meaning" {
-						ui.Row(c.Key("meaning")).Height(20).Padding(0, t.S2).Radius(10).AlignItems(ui.Center).Background(t.Asleep.Surface).Children(func() {
-							uiText(c, a.L.T("hand.meaning")).FontSize(t.XS).FontWeight(600).TextColor(t.Asleep.Ink)
+					// D426: why it is here, in a few words; an unsure one says so.
+					if it.Because != "" {
+						uiText(c.Key("because"), it.Because).FontSize(t.SM).TextColor(t.InkMuted).Shrink(1).MinWidth(0)
+					}
+					if it.Sure == "maybe" {
+						ui.Row(c.Key("maybe")).Height(20).Padding(0, t.S2).Radius(10).AlignItems(ui.Center).Background(t.Waiting.Surface).Children(func() {
+							uiText(c, a.L.T("hand.maybe")).FontSize(t.XS).FontWeight(600).TextColor(t.Waiting.Ink)
 						})
 					}
 					// D415: 移出 / Take out of the chip's subject.

@@ -13,7 +13,7 @@ import { BrandMark } from "./brand.tsx";
 import { Btn, Chev } from "./controls.tsx";
 import { harnessName } from "./format.ts";
 import { TS } from "./todos.tsx";
-import { foundLine, handState, oneRepoOf, planSections, planTasks, refLabel, refsLabel, reviewKeep, sections, setTicks, shapeChoices, shapeLine, suggestedShape, type ShapeChoice } from "./handover-view.ts";
+import { foundLine, readingChips, handState, oneRepoOf, planSections, planTasks, refLabel, refsLabel, reviewKeep, sections, setTicks, shapeChoices, shapeLine, suggestedShape, type ShapeChoice } from "./handover-view.ts";
 import type { DecisionState } from "./store.ts";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
@@ -39,6 +39,10 @@ export const HS: {
   findWords?: string;
   /** How core split the words: what it looked for, and the note it heard. */
   heard?: FindSaid;
+  /** D426: the reading's chips the person removed for these words (pile_find drop). */
+  drop?: string[];
+  /** D426: how many the last find ticked (先勾了最像的 n 件). */
+  foundTicked?: number;
   /** The field's suggestions (recent subjects first). */
   suggest?: string[];
   /** The note as filled from the words (replaced while the person hasn't written their own). */
@@ -190,7 +194,9 @@ function fillNote(note: string | undefined) {
 }
 
 /** D396: the words said (what to find, maybe the note too): found by meaning, the do ones ticked. */
-function find(q: string, now = false) {
+function find(q: string, now = false, keepDrop = false) {
+  // New words, a new reading: the chips removed for the old words come back.
+  if (!keepDrop && q.trim() !== HS.words.trim()) HS.drop = undefined;
   HS.words = q;
   clearTimeout(findTimer);
   if (HS.browse) HS.browse = false;
@@ -211,7 +217,7 @@ function find(q: string, now = false) {
     () => {
       HS.findCid = `find-${Date.now()}`;
       HS.findWords = q.trim();
-      A.send({ t: "pile_find", words: q.trim(), clientId: HS.findCid });
+      A.send({ t: "pile_find", words: q.trim(), ...(HS.drop?.length ? { drop: HS.drop } : {}), clientId: HS.findCid });
     },
     now ? 0 : 420,
   );
@@ -263,8 +269,9 @@ export function onHandFrame(f: SourcesServerFrame): boolean {
     HS.heard = f.said;
     HS.finding = false;
     HS.setId = undefined;
-    // New words, a new set: the do ones ticked, as found.
+    // New words, a new set: the sure ones ticked, as found (D426: at most TICK_MAX).
     HS.ticked = new Set(f.ticked);
+    HS.foundTicked = f.ticked.length;
     HS.subject = f.subject ?? f.said?.about;
     HS.bySubject = f.items.some((p) => p.by === "meaning" || p.by === "subject") || !!f.subject;
     fillNote(f.said?.note);
@@ -448,7 +455,13 @@ function ItemRow({ p, i }: { p: FoundItem; i: number }) {
           <span class="pile-item-facts">
             <span class="ho-num">{p.item.kind === "github" && p.item.where ? `${p.item.where.split("/")[1]}${p.item.label}` : p.item.where ?? p.item.label}</span>
             {p.size && <span class="todo-label">{t(`pile.size.${p.size}`)}</span>}
-            {p.by === "meaning" && <span class="ho-meaning">{t("ho.meaning")}</span>}
+            {/* D426: why it is here, in a few words; an unsure one says so (never ticked by itself). */}
+            {p.because && (
+              <span class="ho-because" dir="auto">
+                {p.because}
+              </span>
+            )}
+            {p.sure === "maybe" && <span class="ho-maybe">{t("ho.maybe")}</span>}
           </span>
         </span>
       </label>
@@ -490,7 +503,7 @@ function FoundHead() {
     );
   // Nothing found says itself below (the empty state); the line would only repeat it.
   if (!f || !f.n) return null;
-  const { head, facts } = foundLine(f, t);
+  const { head, facts } = foundLine(f, t, HS.foundTicked);
   return (
     <div class="ho-found" role="status">
       <b>{head}</b>
@@ -501,17 +514,61 @@ function FoundHead() {
   );
 }
 
-/** How the words were heard: what was looked for, and the note taken out of them (each its own fact). */
+/** D426: a chip of the reading removed: found again without it. */
+function dropChip(key: string) {
+  HS.drop = [...new Set([...(HS.drop ?? []), key])];
+  find(HS.words, true, true);
+}
+/** D426: a name the pile doesn't have, replaced by the login tapped. */
+function useLogin(said: string, login: string) {
+  const w = HS.words.replace(new RegExp(`@?${said.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`, "i"), login);
+  find(w, true);
+}
+
+/**
+ * How the words were read (D396, D426): one chip per fact (「100gle 提的」「分给你的」「关于 UI 走查」), each
+ * removable; a name the pile doesn't have said plainly with the closest logins; the note taken out of
+ * them said once (the note itself lives on the right).
+ */
 function Heard() {
   const h = HS.heard;
-  if (!h || HS.finding || !h.note) return null;
+  if (!h || HS.finding) return null;
+  const chips = readingChips(h);
+  const unknown = h.unknown ?? [];
+  if (!h.note && !chips.length && !unknown.length && !HS.drop?.length) return null;
   const moved = HS.note === HS.noteAuto && HS.note.trim();
   return (
     <div class="ho-heard" role="note">
-      <span class="ho-heard-part">
-        <small>{t("ho.said.about")}</small>
-        <b dir="auto">{h.about}</b>
-      </span>
+      {(chips.length > 0 || !!HS.drop?.length) && (
+        <div class="ho-reading" role="group" aria-label={t("ho.said.about")}>
+          <small>{t("ho.said.about")}</small>
+          {chips.map((c, i) => (
+            <button key={c.key} class={`ho-fact k-${c.kind}`} style={{ "--i": i } as never} aria-label={t("ho.chip.drop", c.text)} title={t("ho.chip.drop", c.text)} onClick={() => dropChip(c.key)}>
+              <span dir="auto">{c.text}</span>
+              <span class="x" aria-hidden="true">
+                ×
+              </span>
+            </button>
+          ))}
+          {!!HS.drop?.length && (
+            <button class="ho-fact-undo" onClick={() => ((HS.drop = undefined), find(HS.words, true, true))}>
+              {t("ho.chip.undo")}
+            </button>
+          )}
+        </div>
+      )}
+      {unknown.map((u) => (
+        <div key={u.said} class="ho-unknown" role="alert">
+          <span dir="auto">{t("ho.unknown", u.said)}</span>
+          {u.closest.length > 0 && <small>{t("ho.unknown.closest")}</small>}
+          {u.closest.map((l) => (
+            <button key={l} class="ho-chip" onClick={() => useLogin(u.said, l)}>
+              <b>{l}</b>
+            </button>
+          ))}
+          <small class="ho-unknown-held">{t("ho.unknown.held")}</small>
+        </div>
+      ))}
       {/* The note itself lives on the right: one quiet line says it went there (never the note twice). */}
       {moved && <span class="ho-heard-moved">{narrow() ? t("ho.said.moved.thin", name()) : t("ho.said.moved", name())}</span>}
     </div>
@@ -644,7 +701,7 @@ function What() {
             </div>
           ) : !items.length ? (
             <div class="ho-none">
-              <p dir="auto">{t("ho.none.about", HS.heard?.about ?? said)}</p>
+              {!HS.heard?.unknown?.length && <p dir="auto">{t("ho.none.about", HS.heard?.about || said)}</p>}
               <small>{t("ho.none.or")}</small>
               <Suggest />
               <BrowseLink />
@@ -1022,6 +1079,16 @@ export function SetCard({ s, seq }: { s: TodoSet; seq: number }) {
           <b dir="auto">{head}</b>
           <span class="n">{A.L.num(s.found.n)}</span>
         </div>
+        {/* D426: how the words were read, one chip per fact (changed on the sheet). */}
+        {!handed && readingChips({ about: "", by: "code", ...(s.facets ? { facets: s.facets } : {}) }).length > 0 && (
+          <div class="ho-set-reading">
+            {readingChips({ about: "", by: "code", ...(s.facets ? { facets: s.facets } : {}) }).map((c) => (
+              <span key={c.key} class={`ho-fact static k-${c.kind}`} dir="auto">
+                {c.text}
+              </span>
+            ))}
+          </div>
+        )}
         {/* D396: the how-to part of the words it was found by: the hand-over's note, shown as heard. */}
         {s.note && !handed && (
           <p class="ho-set-note">

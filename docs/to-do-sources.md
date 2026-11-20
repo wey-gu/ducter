@@ -113,13 +113,20 @@ something over again.
 
 With hundreds open, nobody wants to tick them one by one. The hand-over sheet opens on one question,
 **What should {name} take on?**, and one field. Say what you mean in your own words: "the memory
-distill ones, but leave the database alone". It matches words, issue numbers and labels at once, then
-reads every title for meaning, in Chinese and English, so "memory distill" also finds the issue
-written as 长对话的自动提炼总是失败. Under the field it shows how it heard you: **Looking for** memory
-distill, and **A note for {name}** with "leave the database alone", already written into the note
-(change either one). Then the line says how many it found and how, and the list shows them grouped as
-your partner sorted it: the ones it could take are ticked; one that needs your call shows its question
-(tick it to go with the suggestion). The list is there to check and trim.
+distill ones, but leave the database alone", or "the UI review issues 100gle assigned me". Who opened
+an issue, who assigned it to you, you yourself, a repository, an issue number, a time ("in the last
+week") and pull requests are read as facts: only the ones that match all of them are looked at. What
+is left of the sentence is what they are about, read for meaning in Chinese and English, so "memory
+distill" also finds the issue written as 长对话的自动提炼总是失败. Under the field it shows how it read
+you, one chip per fact: **Looking for** opened by 100gle, assigned by 100gle, about UI review. Tap a
+chip to drop it and find again (**Put back** brings it back). A name no one in your to-dos has is said
+plainly, with the closest names to tap, and nothing is ticked until it's right. A note in the sentence
+("leave the database alone") goes into **A note for {name}** (change either one). Then the line says
+how many it found, in your words, and the list shows them grouped as your partner sorted it, each with
+why it is here. Only the ones it is sure about are ticked, at most ten (**Ticked the 10 likeliest**): when you named
+whose or which, every one it is sure of; when you named a kind of thing, the ones it could take;
+unsure ones are shown, marked **Not sure**, and left for you to tick. One that needs your call shows
+its question (tick it to go with the suggestion). The list is there to check and trim.
 
 Before you type, **You could say** offers what you handed over lately and your biggest subjects; tap
 one to find it. **Pick one by one** is always a tap away. When there are more than twenty open, the

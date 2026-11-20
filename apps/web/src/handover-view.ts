@@ -2,7 +2,7 @@
 // a DOM; handover.tsx draws it. The sheet's sections by sort group, the find's line as separate facts
 // (D291: never joined with a dot), the shapes in the order offered, the plan's sections in the shapes'
 // own words, a hand-over group's state, and review together's counts.
-import type { FindSummary, FoundItem, GroupHandView, HandHow, HandPlan, HandShape, PileGroup, PlanPart, ReviewRow, TaskGroupView } from "@ducter/protocol";
+import type { FindFacet, FindSaid, FindSummary, FoundItem, GroupHandView, HandHow, HandPlan, HandShape, PileGroup, PlanPart, ReviewRow, TaskGroupView } from "@ducter/protocol";
 
 export const SECTION_ORDER: PileGroup[] = ["do", "decide", "later", "close"];
 
@@ -11,14 +11,23 @@ export function sections(items: FoundItem[]): { group: PileGroup; items: FoundIt
   return SECTION_ORDER.map((group) => ({ group, items: items.filter((p) => p.group === group) })).filter((s) => s.items.length);
 }
 
-/** The find's line: the head (找到 9 件讲{subject}的) and each way it was found as its own fact (zero ones left out). */
-export function foundLine(f: FindSummary, t: (k: string, ...a: unknown[]) => string): { head: string; facts: string[] } {
+/**
+ * The find's line (D426): the head (找到 5 件讲「UI 走查」的, the person's own words), then what was
+ * ticked when not all (先勾了最像的 10 件) and the unsure ones (2 件不太确定，没勾), each its own fact.
+ */
+export function foundLine(f: FindSummary, t: (k: string, ...a: unknown[]) => string, ticked?: number): { head: string; facts: string[] } {
   const head = f.subject ? t("ho.found", f.n, f.subject) : t("ho.found.plain", f.n);
   const facts: string[] = [];
-  if (f.n && f.inTitle && f.inTitle < f.n) facts.push(t("ho.found.title", f.inTitle));
-  if (f.n && f.byLabel) facts.push(t("ho.found.label", f.byLabel));
-  if (f.n && f.byMeaning && f.byMeaning < f.n) facts.push(t("ho.found.meaning", f.byMeaning));
+  if (f.n && f.cut && ticked !== undefined) facts.push(t("ho.found.ticked", ticked));
+  if (f.n && f.maybe) facts.push(t("ho.found.maybe", f.maybe));
   return { head, facts };
+}
+
+/** D426: the reading's chips as drawn: every fact, the about last; none when nothing was read beyond the words themselves. */
+export function readingChips(said: FindSaid | undefined): FindFacet[] {
+  const fs = said?.facets ?? [];
+  // The about alone is the words as typed: the field already shows them.
+  return fs.length === 1 && fs[0]!.kind === "about" && !said?.dropped?.length ? [] : fs;
 }
 
 /** What the sheet's shape list holds: 加进「{group}」 first when a live group shares the subject, then the offered shapes. */

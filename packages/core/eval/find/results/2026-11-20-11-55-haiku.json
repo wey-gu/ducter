@@ -1,0 +1,2551 @@
+{
+ "model": "haiku",
+ "pile": 557,
+ "sentences": 28,
+ "calls": 48,
+ "tokens": 1659930,
+ "totals": {
+  "before-code": {
+   "gold": 465,
+   "shown": 1808,
+   "shownHit": 205,
+   "ticked": 804,
+   "tickedHit": 95,
+   "tickedP": 11.8,
+   "tickedR": 20.4,
+   "shownP": 11.3,
+   "shownR": 44.1,
+   "exact": 2
+  },
+  "after-code": {
+   "gold": 465,
+   "shown": 302,
+   "shownHit": 291,
+   "ticked": 90,
+   "tickedHit": 89,
+   "tickedP": 98.9,
+   "tickedR": 19.1,
+   "shownP": 96.4,
+   "shownR": 62.6,
+   "exact": 12
+  },
+  "before-haiku": {
+   "gold": 465,
+   "shown": 2083,
+   "shownHit": 410,
+   "ticked": 897,
+   "tickedHit": 164,
+   "tickedP": 18.3,
+   "tickedR": 35.3,
+   "shownP": 19.7,
+   "shownR": 88.2,
+   "exact": 2
+  },
+  "after-haiku": {
+   "gold": 465,
+   "shown": 455,
+   "shownHit": 437,
+   "ticked": 183,
+   "tickedHit": 179,
+   "tickedP": 97.8,
+   "tickedR": 38.5,
+   "shownP": 96,
+   "shownR": 94,
+   "exact": 23
+  }
+ },
+ "runs": {
+  "before-code": [
+   {
+    "id": "author-1",
+    "gold": 5,
+    "shown": 70,
+    "shownHit": 5,
+    "ticked": 37,
+    "tickedHit": 1,
+    "wrong": [
+     "mem#10687",
+     "mem#10669",
+     "mem#10648",
+     "mem#10624",
+     "mem#10606",
+     "mem#10585",
+     "mem#10567",
+     "mem#10546",
+     "mem#10525",
+     "mem#10501",
+     "mem#10483",
+     "mem#10465"
+    ],
+    "unticked": [
+     "mem#10691",
+     "mem#10688",
+     "mem#10559",
+     "mem#10482"
+    ]
+   },
+   {
+    "id": "author-2",
+    "gold": 5,
+    "shown": 70,
+    "shownHit": 5,
+    "ticked": 37,
+    "tickedHit": 1,
+    "wrong": [
+     "mem#10687",
+     "mem#10669",
+     "mem#10648",
+     "mem#10624",
+     "mem#10606",
+     "mem#10585",
+     "mem#10567",
+     "mem#10546",
+     "mem#10525",
+     "mem#10501",
+     "mem#10483",
+     "mem#10465"
+    ],
+    "unticked": [
+     "mem#10691",
+     "mem#10688",
+     "mem#10559",
+     "mem#10482"
+    ]
+   },
+   {
+    "id": "person-opened",
+    "gold": 5,
+    "shown": 0,
+    "shownHit": 0,
+    "ticked": 0,
+    "tickedHit": 0,
+    "wrong": [],
+    "unticked": [
+     "mem#10694",
+     "mem#10691",
+     "mem#10688",
+     "mem#10559",
+     "mem#10482"
+    ]
+   },
+   {
+    "id": "person-assigned-bug",
+    "gold": 52,
+    "shown": 298,
+    "shownHit": 52,
+    "ticked": 120,
+    "tickedHit": 23,
+    "wrong": [
+     "mem#10666",
+     "mem#10663",
+     "mem#10654",
+     "mem#10648",
+     "mem#10645",
+     "mem#10642",
+     "mem#10630",
+     "mem#10624",
+     "mem#10621",
+     "mem#10609",
+     "mem#10600",
+     "mem#10561"
+    ],
+    "unticked": [
+     "mem#9970",
+     "mem#9958",
+     "mem#9874",
+     "mem#9826",
+     "mem#9823",
+     "mem#9811",
+     "mem#9808",
+     "mem#9775",
+     "mem#9760",
+     "mem#9721",
+     "mem#9676",
+     "mem#9646"
+    ]
+   },
+   {
+    "id": "person-issue",
+    "gold": 14,
+    "shown": 0,
+    "shownHit": 0,
+    "ticked": 0,
+    "tickedHit": 0,
+    "wrong": [],
+    "unticked": [
+     "mem#10570",
+     "mem#10498",
+     "mem#10327",
+     "mem#10123",
+     "mem#10120",
+     "mem#10072",
+     "mem#10054",
+     "mem#9889",
+     "mem#9817",
+     "mem#9583",
+     "mem#9535",
+     "mem#9457"
+    ]
+   },
+   {
+    "id": "mine-topic",
+    "gold": 20,
+    "shown": 0,
+    "shownHit": 0,
+    "ticked": 0,
+    "tickedHit": 0,
+    "wrong": [],
+    "unticked": [
+     "mem#10684",
+     "mem#10615",
+     "mem#10609",
+     "mem#10480",
+     "mem#10321",
+     "mem#10060",
+     "mem#10000",
+     "mem#9991",
+     "mem#9919",
+     "mem#9850",
+     "mem#9802",
+     "mem#9751"
+    ]
+   },
+   {
+    "id": "time-topic",
+    "gold": 2,
+    "shown": 0,
+    "shownHit": 0,
+    "ticked": 0,
+    "tickedHit": 0,
+    "wrong": [],
+    "unticked": [
+     "mem#10393",
+     "mem-feedback#-78"
+    ]
+   },
+   {
+    "id": "repo",
+    "gold": 41,
+    "shown": 0,
+    "shownHit": 0,
+    "ticked": 0,
+    "tickedHit": 0,
+    "wrong": [],
+    "unticked": [
+     "mem-feedback#-38",
+     "mem-feedback#-39",
+     "mem-feedback#-40",
+     "mem-feedback#-41",
+     "mem-feedback#-42",
+     "mem-feedback#-43",
+     "mem-feedback#-44",
+     "mem-feedback#-45",
+     "mem-feedback#-46",
+     "mem-feedback#-47",
+     "mem-feedback#-48",
+     "mem-feedback#-49"
+    ]
+   },
+   {
+    "id": "repo-topic",
+    "gold": 9,
+    "shown": 0,
+    "shownHit": 0,
+    "ticked": 0,
+    "tickedHit": 0,
+    "wrong": [],
+    "unticked": [
+     "community#-83",
+     "community#-87",
+     "community#-88",
+     "community#-101",
+     "community#-103",
+     "community#-104",
+     "community#-105",
+     "community#-106",
+     "community#-108"
+    ]
+   },
+   {
+    "id": "refs",
+    "gold": 2,
+    "shown": 2,
+    "shownHit": 2,
+    "ticked": 0,
+    "tickedHit": 0,
+    "wrong": [],
+    "unticked": [
+     "mem#10559",
+     "mem#10482"
+    ]
+   },
+   {
+    "id": "topic-note",
+    "gold": 26,
+    "shown": 2,
+    "shownHit": 2,
+    "ticked": 1,
+    "tickedHit": 1,
+    "wrong": [],
+    "unticked": [
+     "mem#10684",
+     "mem#10615",
+     "mem#10609",
+     "mem#10480",
+     "mem#10405",
+     "mem#10321",
+     "mem#10237",
+     "mem#10060",
+     "mem#10000",
+     "mem#9991",
+     "mem#9919",
+     "mem#9850"
+    ]
+   },
+   {
+    "id": "topic-where",
+    "gold": 34,
+    "shown": 3,
+    "shownHit": 3,
+    "ticked": 2,
+    "tickedHit": 2,
+    "wrong": [],
+    "unticked": [
+     "mem#10663",
+     "mem#10639",
+     "mem#10627",
+     "mem#10450",
+     "mem#10429",
+     "mem#10393",
+     "mem#10246",
+     "mem#10198",
+     "mem#10030",
+     "mem#9988",
+     "mem#9907",
+     "mem#9808"
+    ]
+   },
+   {
+    "id": "en-person-topic",
+    "gold": 2,
+    "shown": 56,
+    "shownHit": 2,
+    "ticked": 20,
+    "tickedHit": 1,
+    "wrong": [
+     "mem#10645",
+     "mem#10630",
+     "mem#10588",
+     "mem#10534",
+     "mem#10513",
+     "mem#10456",
+     "mem#10441",
+     "mem#10420",
+     "mem#10402",
+     "mem#10366",
+     "mem#10330",
+     "mem#10306"
+    ],
+    "unticked": [
+     "mem#9823"
+    ]
+   },
+   {
+    "id": "en-assigned-by",
+    "gold": 1,
+    "shown": 324,
+    "shownHit": 1,
+    "ticked": 136,
+    "tickedHit": 1,
+    "wrong": [
+     "mem#10690",
+     "mem#10684",
+     "mem#10681",
+     "mem#10678",
+     "mem#10675",
+     "mem#10672",
+     "mem#10669",
+     "mem#10663",
+     "mem#10660",
+     "mem#10657",
+     "mem#10651",
+     "mem#10645"
+    ],
+    "unticked": []
+   },
+   {
+    "id": "en-label-topic",
+    "gold": 5,
+    "shown": 87,
+    "shownHit": 5,
+    "ticked": 35,
+    "tickedHit": 2,
+    "wrong": [
+     "mem#10681",
+     "mem#10663",
+     "mem#10651",
+     "mem#10645",
+     "mem#10639",
+     "mem#10630",
+     "mem#10627",
+     "mem#10534",
+     "mem#10513",
+     "mem#10486",
+     "mem#10462",
+     "mem#10450"
+    ],
+    "unticked": [
+     "mem#9742",
+     "mem#9508",
+     "mem-feedback#-61"
+    ]
+   },
+   {
+    "id": "en-pr-repo",
+    "gold": 1,
+    "shown": 110,
+    "shownHit": 1,
+    "ticked": 51,
+    "tickedHit": 1,
+    "wrong": [
+     "mem#10678",
+     "mem#10675",
+     "mem#10669",
+     "mem#10663",
+     "mem#10654",
+     "mem#10645",
+     "mem#10621",
+     "mem#10618",
+     "mem#10612",
+     "mem#10603",
+     "mem#10591",
+     "mem#10561"
+    ],
+    "unticked": []
+   },
+   {
+    "id": "en-topic-time",
+    "gold": 16,
+    "shown": 123,
+    "shownHit": 16,
+    "ticked": 56,
+    "tickedHit": 6,
+    "wrong": [
+     "mem#10678",
+     "mem#10675",
+     "mem#10672",
+     "mem#10669",
+     "mem#10663",
+     "mem#10654",
+     "mem#10645",
+     "mem#10621",
+     "mem#10618",
+     "mem#10615",
+     "mem#10612",
+     "mem#10609"
+    ],
+    "unticked": [
+     "mem#9850",
+     "mem#9751",
+     "mem#9661",
+     "mem#9643",
+     "mem#9568",
+     "mem#9406",
+     "mem-feedback#-45",
+     "mem-feedback#-49",
+     "mem-feedback#-50",
+     "mem-feedback#-55"
+    ]
+   },
+   {
+    "id": "time-person",
+    "gold": 0,
+    "shown": 0,
+    "shownHit": 0,
+    "ticked": 0,
+    "tickedHit": 0,
+    "wrong": [],
+    "unticked": []
+   },
+   {
+    "id": "typo",
+    "gold": 0,
+    "shown": 0,
+    "shownHit": 0,
+    "ticked": 0,
+    "tickedHit": 0,
+    "wrong": [],
+    "unticked": [],
+    "ok": false
+   },
+   {
+    "id": "assigned-topic",
+    "gold": 21,
+    "shown": 0,
+    "shownHit": 0,
+    "ticked": 0,
+    "tickedHit": 0,
+    "wrong": [],
+    "unticked": [
+     "mem#10621",
+     "mem#10618",
+     "mem#10561",
+     "mem#10492",
+     "mem#10468",
+     "mem#10453",
+     "mem#10273",
+     "mem#10117",
+     "mem#10096",
+     "mem#10075",
+     "mem#10069",
+     "mem#10048"
+    ]
+   },
+   {
+    "id": "en-topic-note",
+    "gold": 24,
+    "shown": 29,
+    "shownHit": 24,
+    "ticked": 13,
+    "tickedHit": 12,
+    "wrong": [
+     "mem#10339"
+    ],
+    "unticked": [
+     "mem#9928",
+     "mem#9922",
+     "mem#9880",
+     "mem#9874",
+     "mem#9826",
+     "mem#9784",
+     "mem#9769",
+     "mem#9730",
+     "mem#9718",
+     "mem#9703",
+     "mem#9547",
+     "mem#9433"
+    ]
+   },
+   {
+    "id": "repo-by-word",
+    "gold": 9,
+    "shown": 0,
+    "shownHit": 0,
+    "ticked": 0,
+    "tickedHit": 0,
+    "wrong": [],
+    "unticked": [
+     "nowledge-labs-website#-109",
+     "nowledge-labs-website#-111",
+     "nowledge-labs-website#-112",
+     "nowledge-labs-website#-113",
+     "nowledge-labs-website#-115",
+     "nowledge-labs-website#-116",
+     "nowledge-labs-website#-117",
+     "nowledge-labs-website#-118",
+     "nowledge-labs-website#-120"
+    ]
+   },
+   {
+    "id": "two-people",
+    "gold": 10,
+    "shown": 0,
+    "shownHit": 0,
+    "ticked": 0,
+    "tickedHit": 0,
+    "wrong": [],
+    "unticked": [
+     "mem#10651",
+     "mem#10489",
+     "mem#10381",
+     "mem#9898",
+     "mem#9745",
+     "mem#9589",
+     "mem#9493",
+     "mem#9430",
+     "nowledge-labs-website#-118",
+     "OpenKL#-140"
+    ]
+   },
+   {
+    "id": "en-review",
+    "gold": 5,
+    "shown": 70,
+    "shownHit": 5,
+    "ticked": 37,
+    "tickedHit": 1,
+    "wrong": [
+     "mem#10687",
+     "mem#10669",
+     "mem#10648",
+     "mem#10624",
+     "mem#10606",
+     "mem#10585",
+     "mem#10567",
+     "mem#10546",
+     "mem#10525",
+     "mem#10501",
+     "mem#10483",
+     "mem#10465"
+    ],
+    "unticked": [
+     "mem#10691",
+     "mem#10688",
+     "mem#10559",
+     "mem#10482"
+    ]
+   },
+   {
+    "id": "label-said",
+    "gold": 12,
+    "shown": 494,
+    "shownHit": 12,
+    "ticked": 222,
+    "tickedHit": 6,
+    "wrong": [
+     "mem#10690",
+     "mem#10684",
+     "mem#10681",
+     "mem#10678",
+     "mem#10675",
+     "mem#10672",
+     "mem#10666",
+     "mem#10663",
+     "mem#10660",
+     "mem#10657",
+     "mem#10654",
+     "mem#10651"
+    ],
+    "unticked": [
+     "mem#9817",
+     "mem#9805",
+     "mem#9748",
+     "mem#9655",
+     "mem#9511",
+     "mem#9442"
+    ]
+   },
+   {
+    "id": "time-model",
+    "gold": 44,
+    "shown": 0,
+    "shownHit": 0,
+    "ticked": 0,
+    "tickedHit": 0,
+    "wrong": [],
+    "unticked": [
+     "mem#10678",
+     "mem#10666",
+     "mem#10612",
+     "mem#10594",
+     "mem#10555",
+     "mem#10540",
+     "mem#10519",
+     "mem#10504",
+     "mem#10495",
+     "mem#10438",
+     "mem#10381",
+     "mem#10378"
+    ]
+   },
+   {
+    "id": "topic-ui",
+    "gold": 70,
+    "shown": 70,
+    "shownHit": 70,
+    "ticked": 37,
+    "tickedHit": 37,
+    "wrong": [],
+    "unticked": [
+     "mem#9967",
+     "mem#9949",
+     "mem#9931",
+     "mem#9910",
+     "mem#9889",
+     "mem#9871",
+     "mem#9853",
+     "mem#9832",
+     "mem#9811",
+     "mem#9793",
+     "mem#9772",
+     "mem#9754"
+    ]
+   },
+   {
+    "id": "en-topic",
+    "gold": 30,
+    "shown": 0,
+    "shownHit": 0,
+    "ticked": 0,
+    "tickedHit": 0,
+    "wrong": [],
+    "unticked": [
+     "mem#10633",
+     "mem#10552",
+     "mem#10498",
+     "mem#10477",
+     "mem#10432",
+     "mem#10414",
+     "mem#10372",
+     "mem#10360",
+     "mem#10351",
+     "mem#10282",
+     "mem#10228",
+     "mem#10222"
+    ]
+   }
+  ],
+  "after-code": [
+   {
+    "id": "author-1",
+    "gold": 5,
+    "shown": 5,
+    "shownHit": 5,
+    "ticked": 0,
+    "tickedHit": 0,
+    "wrong": [],
+    "unticked": [
+     "mem#10694",
+     "mem#10691",
+     "mem#10688",
+     "mem#10559",
+     "mem#10482"
+    ],
+    "chips": [
+     "100gle 分给你的",
+     "关于 UI/UX 问题走查"
+    ],
+    "subject": "UI/UX 问题走查"
+   },
+   {
+    "id": "author-2",
+    "gold": 5,
+    "shown": 5,
+    "shownHit": 5,
+    "ticked": 0,
+    "tickedHit": 0,
+    "wrong": [],
+    "unticked": [
+     "mem#10694",
+     "mem#10691",
+     "mem#10688",
+     "mem#10559",
+     "mem#10482"
+    ],
+    "chips": [
+     "100gle 分给你的",
+     "100gle 提的",
+     "关于 UI 走查"
+    ],
+    "subject": "UI 走查"
+   },
+   {
+    "id": "person-opened",
+    "gold": 5,
+    "shown": 5,
+    "shownHit": 5,
+    "ticked": 5,
+    "tickedHit": 5,
+    "wrong": [],
+    "unticked": [],
+    "chips": [
+     "100gle 提的"
+    ]
+   },
+   {
+    "id": "person-assigned-bug",
+    "gold": 52,
+    "shown": 52,
+    "shownHit": 52,
+    "ticked": 0,
+    "tickedHit": 0,
+    "wrong": [],
+    "unticked": [
+     "mem#10690",
+     "mem#10687",
+     "mem#10636",
+     "mem#10618",
+     "mem#10591",
+     "mem#10576",
+     "mem#10540",
+     "mem#10534",
+     "mem#10528",
+     "mem#10471",
+     "mem#10465",
+     "mem#10462"
+    ],
+    "chips": [
+     "QingZ11 分给你的",
+     "关于 bug"
+    ],
+    "subject": "bug"
+   },
+   {
+    "id": "person-issue",
+    "gold": 14,
+    "shown": 14,
+    "shownHit": 14,
+    "ticked": 10,
+    "tickedHit": 10,
+    "wrong": [],
+    "unticked": [
+     "mem#9889",
+     "mem#9817",
+     "mem#9583",
+     "mem#9535"
+    ],
+    "chips": [
+     "hawkingrei 提的"
+    ]
+   },
+   {
+    "id": "mine-topic",
+    "gold": 20,
+    "shown": 5,
+    "shownHit": 5,
+    "ticked": 5,
+    "tickedHit": 5,
+    "wrong": [],
+    "unticked": [
+     "mem#10684",
+     "mem#10615",
+     "mem#10609",
+     "mem#10480",
+     "mem#10060",
+     "mem#9991",
+     "mem#9919",
+     "mem#9850",
+     "mem#9751",
+     "mem#9661",
+     "mem#9622",
+     "mem#9406"
+    ],
+    "chips": [
+     "你提的",
+     "关于 蒸馏"
+    ],
+    "subject": "蒸馏"
+   },
+   {
+    "id": "time-topic",
+    "gold": 2,
+    "shown": 2,
+    "shownHit": 2,
+    "ticked": 2,
+    "tickedHit": 2,
+    "wrong": [],
+    "unticked": [],
+    "chips": [
+     "最近一周提的",
+     "关于 Windows"
+    ],
+    "subject": "Windows"
+   },
+   {
+    "id": "repo",
+    "gold": 41,
+    "shown": 41,
+    "shownHit": 41,
+    "ticked": 10,
+    "tickedHit": 10,
+    "wrong": [],
+    "unticked": [
+     "mem-feedback#-38",
+     "mem-feedback#-39",
+     "mem-feedback#-40",
+     "mem-feedback#-41",
+     "mem-feedback#-43",
+     "mem-feedback#-44",
+     "mem-feedback#-45",
+     "mem-feedback#-46",
+     "mem-feedback#-48",
+     "mem-feedback#-51",
+     "mem-feedback#-52",
+     "mem-feedback#-53"
+    ],
+    "chips": [
+     "在 mem-feedback 里的"
+    ]
+   },
+   {
+    "id": "repo-topic",
+    "gold": 9,
+    "shown": 4,
+    "shownHit": 4,
+    "ticked": 4,
+    "tickedHit": 4,
+    "wrong": [],
+    "unticked": [
+     "community#-83",
+     "community#-101",
+     "community#-103",
+     "community#-106",
+     "community#-108"
+    ],
+    "chips": [
+     "在 community 里的",
+     "关于 搜索"
+    ],
+    "subject": "搜索"
+   },
+   {
+    "id": "refs",
+    "gold": 2,
+    "shown": 2,
+    "shownHit": 2,
+    "ticked": 2,
+    "tickedHit": 2,
+    "wrong": [],
+    "unticked": [],
+    "chips": [
+     "#10559",
+     "#10482"
+    ]
+   },
+   {
+    "id": "topic-note",
+    "gold": 26,
+    "shown": 2,
+    "shownHit": 2,
+    "ticked": 1,
+    "tickedHit": 1,
+    "wrong": [],
+    "unticked": [
+     "mem#10684",
+     "mem#10615",
+     "mem#10609",
+     "mem#10480",
+     "mem#10405",
+     "mem#10321",
+     "mem#10237",
+     "mem#10060",
+     "mem#10000",
+     "mem#9991",
+     "mem#9919",
+     "mem#9850"
+    ],
+    "chips": [
+     "关于 记忆蒸馏"
+    ],
+    "subject": "记忆蒸馏",
+    "note": "先别动数据库"
+   },
+   {
+    "id": "topic-where",
+    "gold": 34,
+    "shown": 3,
+    "shownHit": 3,
+    "ticked": 2,
+    "tickedHit": 2,
+    "wrong": [],
+    "unticked": [
+     "mem#10663",
+     "mem#10639",
+     "mem#10627",
+     "mem#10450",
+     "mem#10429",
+     "mem#10393",
+     "mem#10246",
+     "mem#10198",
+     "mem#10030",
+     "mem#9988",
+     "mem#9907",
+     "mem#9808"
+    ],
+    "chips": [
+     "关于 Windows 新界面"
+    ],
+    "subject": "Windows 新界面",
+    "note": "验证都去 haswell 上跑"
+   },
+   {
+    "id": "en-person-topic",
+    "gold": 2,
+    "shown": 2,
+    "shownHit": 2,
+    "ticked": 2,
+    "tickedHit": 2,
+    "wrong": [],
+    "unticked": [],
+    "chips": [
+     "opened by QingZ11",
+     "about search"
+    ],
+    "subject": "search"
+   },
+   {
+    "id": "en-assigned-by",
+    "gold": 1,
+    "shown": 1,
+    "shownHit": 1,
+    "ticked": 1,
+    "tickedHit": 1,
+    "wrong": [],
+    "unticked": [],
+    "chips": [
+     "assigned by hawkingrei"
+    ]
+   },
+   {
+    "id": "en-label-topic",
+    "gold": 5,
+    "shown": 11,
+    "shownHit": 5,
+    "ticked": 1,
+    "tickedHit": 1,
+    "wrong": [],
+    "unticked": [
+     "mem#10690",
+     "mem#9742",
+     "mem#9508",
+     "mem-feedback#-61"
+    ],
+    "chips": [
+     "involving neonwatty-bugdrop[bot]",
+     "about desktop app"
+    ],
+    "subject": "desktop app"
+   },
+   {
+    "id": "en-pr-repo",
+    "gold": 1,
+    "shown": 1,
+    "shownHit": 1,
+    "ticked": 1,
+    "tickedHit": 1,
+    "wrong": [],
+    "unticked": [],
+    "chips": [
+     "in mem",
+     "pull requests only"
+    ]
+   },
+   {
+    "id": "en-topic-time",
+    "gold": 16,
+    "shown": 16,
+    "shownHit": 16,
+    "ticked": 10,
+    "tickedHit": 10,
+    "wrong": [],
+    "unticked": [
+     "mem#10321",
+     "mem#9643",
+     "mem#9568",
+     "mem-feedback#-49",
+     "mem-feedback#-50",
+     "mem-feedback#-55"
+    ],
+    "chips": [
+     "updated in the last week",
+     "about distillation"
+    ],
+    "subject": "distillation"
+   },
+   {
+    "id": "time-person",
+    "gold": 0,
+    "shown": 0,
+    "shownHit": 0,
+    "ticked": 0,
+    "tickedHit": 0,
+    "wrong": [],
+    "unticked": [],
+    "chips": [
+     "最近一个月提的",
+     "ThaddeusJiang 提的"
+    ]
+   },
+   {
+    "id": "typo",
+    "gold": 0,
+    "shown": 0,
+    "shownHit": 0,
+    "ticked": 0,
+    "tickedHit": 0,
+    "wrong": [],
+    "unticked": [],
+    "chips": [],
+    "unknown": [
+     "100gle"
+    ],
+    "ok": true
+   },
+   {
+    "id": "assigned-topic",
+    "gold": 21,
+    "shown": 2,
+    "shownHit": 2,
+    "ticked": 2,
+    "tickedHit": 2,
+    "wrong": [],
+    "unticked": [
+     "mem#10621",
+     "mem#10618",
+     "mem#10561",
+     "mem#10468",
+     "mem#10453",
+     "mem#10273",
+     "mem#10117",
+     "mem#10096",
+     "mem#10075",
+     "mem#10069",
+     "mem#10048",
+     "mem#10003"
+    ],
+    "chips": [
+     "分给你的",
+     "关于 计费"
+    ],
+    "subject": "计费"
+   },
+   {
+    "id": "en-topic-note",
+    "gold": 24,
+    "shown": 29,
+    "shownHit": 24,
+    "ticked": 10,
+    "tickedHit": 9,
+    "wrong": [
+     "mem#10339"
+    ],
+    "unticked": [
+     "mem#10570",
+     "mem#10510",
+     "mem#10210",
+     "mem#9928",
+     "mem#9922",
+     "mem#9880",
+     "mem#9874",
+     "mem#9826",
+     "mem#9784",
+     "mem#9769",
+     "mem#9730",
+     "mem#9718"
+    ],
+    "chips": [
+     "about MCP"
+    ],
+    "subject": "MCP",
+    "note": "don't touch the auth code"
+   },
+   {
+    "id": "repo-by-word",
+    "gold": 9,
+    "shown": 0,
+    "shownHit": 0,
+    "ticked": 0,
+    "tickedHit": 0,
+    "wrong": [],
+    "unticked": [
+     "nowledge-labs-website#-109",
+     "nowledge-labs-website#-111",
+     "nowledge-labs-website#-112",
+     "nowledge-labs-website#-113",
+     "nowledge-labs-website#-115",
+     "nowledge-labs-website#-116",
+     "nowledge-labs-website#-117",
+     "nowledge-labs-website#-118",
+     "nowledge-labs-website#-120"
+    ],
+    "chips": [
+     "关于 网站 文档"
+    ],
+    "subject": "网站 文档"
+   },
+   {
+    "id": "two-people",
+    "gold": 10,
+    "shown": 10,
+    "shownHit": 10,
+    "ticked": 10,
+    "tickedHit": 10,
+    "wrong": [],
+    "unticked": [],
+    "chips": [
+     "negret1986 提的",
+     "Icemap 提的"
+    ]
+   },
+   {
+    "id": "en-review",
+    "gold": 5,
+    "shown": 5,
+    "shownHit": 5,
+    "ticked": 0,
+    "tickedHit": 0,
+    "wrong": [],
+    "unticked": [
+     "mem#10694",
+     "mem#10691",
+     "mem#10688",
+     "mem#10559",
+     "mem#10482"
+    ],
+    "chips": [
+     "opened by 100gle",
+     "about UI review"
+    ],
+    "subject": "UI review"
+   },
+   {
+    "id": "label-said",
+    "gold": 12,
+    "shown": 1,
+    "shownHit": 1,
+    "ticked": 1,
+    "tickedHit": 1,
+    "wrong": [],
+    "unticked": [
+     "mem#10603",
+     "mem#10474",
+     "mem#10183",
+     "mem#10051",
+     "mem#10018",
+     "mem#9817",
+     "mem#9805",
+     "mem#9748",
+     "mem#9655",
+     "mem#9511",
+     "mem#9442"
+    ],
+    "chips": [
+     "标签是 component/skills-sharing",
+     "关于 技能分享"
+    ],
+    "subject": "技能分享"
+   },
+   {
+    "id": "time-model",
+    "gold": 44,
+    "shown": 4,
+    "shownHit": 4,
+    "ticked": 4,
+    "tickedHit": 4,
+    "wrong": [],
+    "unticked": [
+     "mem#10666",
+     "mem#10612",
+     "mem#10594",
+     "mem#10555",
+     "mem#10540",
+     "mem#10519",
+     "mem#10504",
+     "mem#10495",
+     "mem#10438",
+     "mem#10381",
+     "mem#10378",
+     "mem#10285"
+    ],
+    "chips": [
+     "上个月以来有动静的",
+     "关于 会话同步"
+    ],
+    "subject": "会话同步"
+   },
+   {
+    "id": "topic-ui",
+    "gold": 70,
+    "shown": 70,
+    "shownHit": 70,
+    "ticked": 0,
+    "tickedHit": 0,
+    "wrong": [],
+    "unticked": [
+     "mem#10687",
+     "mem#10669",
+     "mem#10648",
+     "mem#10624",
+     "mem#10606",
+     "mem#10585",
+     "mem#10567",
+     "mem#10546",
+     "mem#10525",
+     "mem#10501",
+     "mem#10483",
+     "mem#10465"
+    ],
+    "chips": [
+     "关于 UI 走查"
+    ],
+    "subject": "UI 走查"
+   },
+   {
+    "id": "en-topic",
+    "gold": 30,
+    "shown": 10,
+    "shownHit": 10,
+    "ticked": 7,
+    "tickedHit": 7,
+    "wrong": [],
+    "unticked": [
+     "mem#10633",
+     "mem#10552",
+     "mem#10498",
+     "mem#10477",
+     "mem#10372",
+     "mem#10351",
+     "mem#10228",
+     "mem#10090",
+     "mem#10036",
+     "mem#9973",
+     "mem#9955",
+     "mem#9937"
+    ],
+    "chips": [
+     "about sign-in and SSO"
+    ],
+    "subject": "sign-in and SSO"
+   }
+  ],
+  "before-haiku": [
+   {
+    "id": "author-1",
+    "gold": 5,
+    "shown": 70,
+    "shownHit": 5,
+    "ticked": 37,
+    "tickedHit": 1,
+    "wrong": [
+     "mem#10687",
+     "mem#10669",
+     "mem#10648",
+     "mem#10624",
+     "mem#10606",
+     "mem#10585",
+     "mem#10567",
+     "mem#10546",
+     "mem#10525",
+     "mem#10501",
+     "mem#10483",
+     "mem#10465"
+    ],
+    "unticked": [
+     "mem#10691",
+     "mem#10688",
+     "mem#10559",
+     "mem#10482"
+    ],
+    "subject": "UI/UX走查问题"
+   },
+   {
+    "id": "author-2",
+    "gold": 5,
+    "shown": 70,
+    "shownHit": 5,
+    "ticked": 37,
+    "tickedHit": 1,
+    "wrong": [
+     "mem#10687",
+     "mem#10669",
+     "mem#10648",
+     "mem#10624",
+     "mem#10606",
+     "mem#10585",
+     "mem#10567",
+     "mem#10546",
+     "mem#10525",
+     "mem#10501",
+     "mem#10483",
+     "mem#10465"
+    ],
+    "unticked": [
+     "mem#10691",
+     "mem#10688",
+     "mem#10559",
+     "mem#10482"
+    ],
+    "subject": "UI走查问题"
+   },
+   {
+    "id": "person-opened",
+    "gold": 5,
+    "shown": 0,
+    "shownHit": 0,
+    "ticked": 0,
+    "tickedHit": 0,
+    "wrong": [],
+    "unticked": [
+     "mem#10694",
+     "mem#10691",
+     "mem#10688",
+     "mem#10559",
+     "mem#10482"
+    ],
+    "subject": "谷歌"
+   },
+   {
+    "id": "person-assigned-bug",
+    "gold": 52,
+    "shown": 298,
+    "shownHit": 52,
+    "ticked": 120,
+    "tickedHit": 23,
+    "wrong": [
+     "mem#10666",
+     "mem#10663",
+     "mem#10654",
+     "mem#10648",
+     "mem#10645",
+     "mem#10642",
+     "mem#10630",
+     "mem#10624",
+     "mem#10621",
+     "mem#10609",
+     "mem#10600",
+     "mem#10561"
+    ],
+    "unticked": [
+     "mem#9970",
+     "mem#9958",
+     "mem#9874",
+     "mem#9826",
+     "mem#9823",
+     "mem#9811",
+     "mem#9808",
+     "mem#9775",
+     "mem#9760",
+     "mem#9721",
+     "mem#9676",
+     "mem#9646"
+    ],
+    "subject": "缺陷"
+   },
+   {
+    "id": "person-issue",
+    "gold": 14,
+    "shown": 0,
+    "shownHit": 0,
+    "ticked": 0,
+    "tickedHit": 0,
+    "wrong": [],
+    "unticked": [
+     "mem#10570",
+     "mem#10498",
+     "mem#10327",
+     "mem#10123",
+     "mem#10120",
+     "mem#10072",
+     "mem#10054",
+     "mem#9889",
+     "mem#9817",
+     "mem#9583",
+     "mem#9535",
+     "mem#9457"
+    ],
+    "subject": "hawkingrei 提的问题"
+   },
+   {
+    "id": "mine-topic",
+    "gold": 20,
+    "shown": 26,
+    "shownHit": 20,
+    "ticked": 11,
+    "tickedHit": 8,
+    "wrong": [
+     "mem#10672",
+     "mem#10405",
+     "mem#10237"
+    ],
+    "unticked": [
+     "mem#9919",
+     "mem#9850",
+     "mem#9802",
+     "mem#9751",
+     "mem#9661",
+     "mem#9643",
+     "mem#9622",
+     "mem#9568",
+     "mem#9406",
+     "mem-feedback#-45",
+     "mem-feedback#-49",
+     "mem-feedback#-55"
+    ],
+    "subject": "蒸馏"
+   },
+   {
+    "id": "time-topic",
+    "gold": 2,
+    "shown": 39,
+    "shownHit": 2,
+    "ticked": 15,
+    "tickedHit": 1,
+    "wrong": [
+     "mem#10663",
+     "mem#10639",
+     "mem#10627",
+     "mem#10450",
+     "mem#10429",
+     "mem#10336",
+     "mem#10315",
+     "mem#10261",
+     "mem#10198",
+     "mem#10192",
+     "mem#10141",
+     "mem#10030"
+    ],
+    "unticked": [
+     "mem-feedback#-78"
+    ],
+    "subject": "Windows 问题"
+   },
+   {
+    "id": "repo",
+    "gold": 41,
+    "shown": 41,
+    "shownHit": 41,
+    "ticked": 0,
+    "tickedHit": 0,
+    "wrong": [],
+    "unticked": [
+     "mem-feedback#-38",
+     "mem-feedback#-39",
+     "mem-feedback#-40",
+     "mem-feedback#-41",
+     "mem-feedback#-42",
+     "mem-feedback#-43",
+     "mem-feedback#-44",
+     "mem-feedback#-45",
+     "mem-feedback#-46",
+     "mem-feedback#-47",
+     "mem-feedback#-48",
+     "mem-feedback#-49"
+    ],
+    "subject": "mem-feedback 反馈"
+   },
+   {
+    "id": "repo-topic",
+    "gold": 9,
+    "shown": 9,
+    "shownHit": 9,
+    "ticked": 0,
+    "tickedHit": 0,
+    "wrong": [],
+    "unticked": [
+     "community#-83",
+     "community#-87",
+     "community#-88",
+     "community#-101",
+     "community#-103",
+     "community#-104",
+     "community#-105",
+     "community#-106",
+     "community#-108"
+    ],
+    "subject": "搜索"
+   },
+   {
+    "id": "refs",
+    "gold": 2,
+    "shown": 2,
+    "shownHit": 2,
+    "ticked": 0,
+    "tickedHit": 0,
+    "wrong": [],
+    "unticked": [
+     "mem#10559",
+     "mem#10482"
+    ],
+    "subject": "问题 10559 与 10482"
+   },
+   {
+    "id": "topic-note",
+    "gold": 26,
+    "shown": 26,
+    "shownHit": 26,
+    "ticked": 11,
+    "tickedHit": 11,
+    "wrong": [],
+    "unticked": [
+     "mem#9919",
+     "mem#9850",
+     "mem#9802",
+     "mem#9751",
+     "mem#9661",
+     "mem#9643",
+     "mem#9622",
+     "mem#9568",
+     "mem#9514",
+     "mem#9406",
+     "mem-feedback#-45",
+     "mem-feedback#-49"
+    ],
+    "subject": "记忆蒸馏"
+   },
+   {
+    "id": "topic-where",
+    "gold": 34,
+    "shown": 8,
+    "shownHit": 8,
+    "ticked": 4,
+    "tickedHit": 4,
+    "wrong": [],
+    "unticked": [
+     "mem#10663",
+     "mem#10639",
+     "mem#10627",
+     "mem#10450",
+     "mem#10429",
+     "mem#10198",
+     "mem#10030",
+     "mem#9988",
+     "mem#9907",
+     "mem#9808",
+     "mem#9721",
+     "mem#9709"
+    ],
+    "subject": "Windows 新界面"
+   },
+   {
+    "id": "en-person-topic",
+    "gold": 2,
+    "shown": 57,
+    "shownHit": 2,
+    "ticked": 21,
+    "tickedHit": 1,
+    "wrong": [
+     "mem#10645",
+     "mem#10630",
+     "mem#10588",
+     "mem#10534",
+     "mem#10513",
+     "mem#10456",
+     "mem#10441",
+     "mem#10420",
+     "mem#10402",
+     "mem#10366",
+     "mem#10330",
+     "mem#10306"
+    ],
+    "unticked": [
+     "mem#9823"
+    ],
+    "subject": "search"
+   },
+   {
+    "id": "en-assigned-by",
+    "gold": 1,
+    "shown": 324,
+    "shownHit": 1,
+    "ticked": 136,
+    "tickedHit": 1,
+    "wrong": [
+     "mem#10690",
+     "mem#10684",
+     "mem#10681",
+     "mem#10678",
+     "mem#10675",
+     "mem#10672",
+     "mem#10669",
+     "mem#10663",
+     "mem#10660",
+     "mem#10657",
+     "mem#10651",
+     "mem#10645"
+    ],
+    "unticked": [],
+    "subject": "assignments from hawkingrei"
+   },
+   {
+    "id": "en-label-topic",
+    "gold": 5,
+    "shown": 87,
+    "shownHit": 5,
+    "ticked": 35,
+    "tickedHit": 2,
+    "wrong": [
+     "mem#10681",
+     "mem#10663",
+     "mem#10651",
+     "mem#10645",
+     "mem#10639",
+     "mem#10630",
+     "mem#10627",
+     "mem#10534",
+     "mem#10513",
+     "mem#10486",
+     "mem#10462",
+     "mem#10450"
+    ],
+    "unticked": [
+     "mem#9742",
+     "mem#9508",
+     "mem-feedback#-61"
+    ],
+    "subject": "Desktop app bugdrop reports"
+   },
+   {
+    "id": "en-pr-repo",
+    "gold": 1,
+    "shown": 110,
+    "shownHit": 1,
+    "ticked": 51,
+    "tickedHit": 1,
+    "wrong": [
+     "mem#10678",
+     "mem#10675",
+     "mem#10669",
+     "mem#10663",
+     "mem#10654",
+     "mem#10645",
+     "mem#10621",
+     "mem#10618",
+     "mem#10612",
+     "mem#10603",
+     "mem#10591",
+     "mem#10561"
+    ],
+    "unticked": [],
+    "subject": "pull requests"
+   },
+   {
+    "id": "en-topic-time",
+    "gold": 16,
+    "shown": 123,
+    "shownHit": 16,
+    "ticked": 56,
+    "tickedHit": 6,
+    "wrong": [
+     "mem#10678",
+     "mem#10675",
+     "mem#10672",
+     "mem#10669",
+     "mem#10663",
+     "mem#10654",
+     "mem#10645",
+     "mem#10621",
+     "mem#10618",
+     "mem#10615",
+     "mem#10612",
+     "mem#10609"
+    ],
+    "unticked": [
+     "mem#9850",
+     "mem#9751",
+     "mem#9661",
+     "mem#9643",
+     "mem#9568",
+     "mem#9406",
+     "mem-feedback#-45",
+     "mem-feedback#-49",
+     "mem-feedback#-50",
+     "mem-feedback#-55"
+    ],
+    "subject": "distillation issues"
+   },
+   {
+    "id": "time-person",
+    "gold": 0,
+    "shown": 0,
+    "shownHit": 0,
+    "ticked": 0,
+    "tickedHit": 0,
+    "wrong": [],
+    "unticked": [],
+    "subject": "ThaddeusJiang 提的"
+   },
+   {
+    "id": "typo",
+    "gold": 0,
+    "shown": 0,
+    "shownHit": 0,
+    "ticked": 0,
+    "tickedHit": 0,
+    "wrong": [],
+    "unticked": [],
+    "subject": "100gel提的",
+    "ok": false
+   },
+   {
+    "id": "assigned-topic",
+    "gold": 21,
+    "shown": 21,
+    "shownHit": 21,
+    "ticked": 13,
+    "tickedHit": 13,
+    "wrong": [],
+    "unticked": [
+     "mem#9925",
+     "mem#9841",
+     "mem#9757",
+     "mem#9670",
+     "mem#9586",
+     "mem#9472",
+     "mem#9451",
+     "mem#9388"
+    ],
+    "subject": "计费"
+   },
+   {
+    "id": "en-topic-note",
+    "gold": 24,
+    "shown": 29,
+    "shownHit": 24,
+    "ticked": 13,
+    "tickedHit": 12,
+    "wrong": [
+     "mem#10339"
+    ],
+    "unticked": [
+     "mem#9928",
+     "mem#9922",
+     "mem#9880",
+     "mem#9874",
+     "mem#9826",
+     "mem#9784",
+     "mem#9769",
+     "mem#9730",
+     "mem#9718",
+     "mem#9703",
+     "mem#9547",
+     "mem#9433"
+    ],
+    "subject": "MCP"
+   },
+   {
+    "id": "repo-by-word",
+    "gold": 9,
+    "shown": 9,
+    "shownHit": 9,
+    "ticked": 0,
+    "tickedHit": 0,
+    "wrong": [],
+    "unticked": [
+     "nowledge-labs-website#-109",
+     "nowledge-labs-website#-111",
+     "nowledge-labs-website#-112",
+     "nowledge-labs-website#-113",
+     "nowledge-labs-website#-115",
+     "nowledge-labs-website#-116",
+     "nowledge-labs-website#-117",
+     "nowledge-labs-website#-118",
+     "nowledge-labs-website#-120"
+    ],
+    "subject": "网站文档"
+   },
+   {
+    "id": "two-people",
+    "gold": 10,
+    "shown": 0,
+    "shownHit": 0,
+    "ticked": 0,
+    "tickedHit": 0,
+    "wrong": [],
+    "unticked": [
+     "mem#10651",
+     "mem#10489",
+     "mem#10381",
+     "mem#9898",
+     "mem#9745",
+     "mem#9589",
+     "mem#9493",
+     "mem#9430",
+     "nowledge-labs-website#-118",
+     "OpenKL#-140"
+    ],
+    "subject": "negret1986 与 Icemap 的反馈"
+   },
+   {
+    "id": "en-review",
+    "gold": 5,
+    "shown": 72,
+    "shownHit": 5,
+    "ticked": 37,
+    "tickedHit": 1,
+    "wrong": [
+     "mem#10687",
+     "mem#10669",
+     "mem#10648",
+     "mem#10624",
+     "mem#10606",
+     "mem#10585",
+     "mem#10567",
+     "mem#10546",
+     "mem#10525",
+     "mem#10501",
+     "mem#10483",
+     "mem#10465"
+    ],
+    "unticked": [
+     "mem#10691",
+     "mem#10688",
+     "mem#10559",
+     "mem#10482"
+    ],
+    "subject": "UI review issues"
+   },
+   {
+    "id": "label-said",
+    "gold": 12,
+    "shown": 494,
+    "shownHit": 12,
+    "ticked": 222,
+    "tickedHit": 6,
+    "wrong": [
+     "mem#10690",
+     "mem#10684",
+     "mem#10681",
+     "mem#10678",
+     "mem#10675",
+     "mem#10672",
+     "mem#10666",
+     "mem#10663",
+     "mem#10660",
+     "mem#10657",
+     "mem#10654",
+     "mem#10651"
+    ],
+    "unticked": [
+     "mem#9817",
+     "mem#9805",
+     "mem#9748",
+     "mem#9655",
+     "mem#9511",
+     "mem#9442"
+    ],
+    "subject": "技能分享"
+   },
+   {
+    "id": "time-model",
+    "gold": 44,
+    "shown": 45,
+    "shownHit": 44,
+    "ticked": 19,
+    "tickedHit": 19,
+    "wrong": [],
+    "unticked": [
+     "mem#9913",
+     "mem#9883",
+     "mem#9829",
+     "mem#9559",
+     "mem#9538",
+     "mem#9532",
+     "mem#9526",
+     "mem#9499",
+     "mem#9421",
+     "mem#9403",
+     "mem-feedback#-48",
+     "mem-feedback#-51"
+    ],
+    "subject": "会话同步"
+   },
+   {
+    "id": "topic-ui",
+    "gold": 70,
+    "shown": 93,
+    "shownHit": 70,
+    "ticked": 43,
+    "tickedHit": 37,
+    "wrong": [
+     "mem#10663",
+     "mem#10462",
+     "mem#10450",
+     "mem#10393",
+     "mem#10246",
+     "mem#10084"
+    ],
+    "unticked": [
+     "mem#9967",
+     "mem#9949",
+     "mem#9931",
+     "mem#9910",
+     "mem#9889",
+     "mem#9871",
+     "mem#9853",
+     "mem#9832",
+     "mem#9811",
+     "mem#9793",
+     "mem#9772",
+     "mem#9754"
+    ],
+    "subject": "UI走查问题"
+   },
+   {
+    "id": "en-topic",
+    "gold": 30,
+    "shown": 30,
+    "shownHit": 30,
+    "ticked": 16,
+    "tickedHit": 16,
+    "wrong": [],
+    "unticked": [
+     "mem#9973",
+     "mem#9955",
+     "mem#9937",
+     "mem#9868",
+     "mem#9820",
+     "mem#9715",
+     "mem#9700",
+     "mem#9697",
+     "mem#9688",
+     "mem#9649",
+     "mem#9601",
+     "mem#9550"
+    ],
+    "subject": "sign-in and SSO"
+   }
+  ],
+  "after-haiku": [
+   {
+    "id": "author-1",
+    "gold": 5,
+    "shown": 5,
+    "shownHit": 5,
+    "ticked": 5,
+    "tickedHit": 5,
+    "wrong": [],
+    "unticked": [],
+    "chips": [
+     "100gle 分给你的",
+     "关于 UI/UX 问题走查"
+    ],
+    "subject": "UI/UX 问题走查"
+   },
+   {
+    "id": "author-2",
+    "gold": 5,
+    "shown": 5,
+    "shownHit": 5,
+    "ticked": 3,
+    "tickedHit": 3,
+    "wrong": [],
+    "unticked": [
+     "mem#10691",
+     "mem#10482"
+    ],
+    "chips": [
+     "100gle 分给你的",
+     "100gle 提的",
+     "关于 UI 走查"
+    ],
+    "subject": "UI 走查"
+   },
+   {
+    "id": "person-opened",
+    "gold": 5,
+    "shown": 5,
+    "shownHit": 5,
+    "ticked": 5,
+    "tickedHit": 5,
+    "wrong": [],
+    "unticked": [],
+    "chips": [
+     "100gle 提的"
+    ]
+   },
+   {
+    "id": "person-assigned-bug",
+    "gold": 52,
+    "shown": 59,
+    "shownHit": 52,
+    "ticked": 10,
+    "tickedHit": 10,
+    "wrong": [],
+    "unticked": [
+     "mem#10690",
+     "mem#10687",
+     "mem#10636",
+     "mem#10591",
+     "mem#10576",
+     "mem#10534",
+     "mem#10471",
+     "mem#10315",
+     "mem#10222",
+     "mem#10186",
+     "mem#10144",
+     "mem#10075"
+    ],
+    "chips": [
+     "QingZ11 分给你的",
+     "关于 bug"
+    ],
+    "subject": "bug"
+   },
+   {
+    "id": "person-issue",
+    "gold": 14,
+    "shown": 14,
+    "shownHit": 14,
+    "ticked": 10,
+    "tickedHit": 10,
+    "wrong": [],
+    "unticked": [
+     "mem#9889",
+     "mem#9817",
+     "mem#9583",
+     "mem#9535"
+    ],
+    "chips": [
+     "hawkingrei 提的"
+    ]
+   },
+   {
+    "id": "mine-topic",
+    "gold": 20,
+    "shown": 20,
+    "shownHit": 20,
+    "ticked": 10,
+    "tickedHit": 10,
+    "wrong": [],
+    "unticked": [
+     "mem#9919",
+     "mem#9850",
+     "mem#9802",
+     "mem#9751",
+     "mem#9661",
+     "mem#9643",
+     "mem#9622",
+     "mem#9568",
+     "mem#9406",
+     "mem-feedback#-55"
+    ],
+    "chips": [
+     "你提的",
+     "关于 蒸馏"
+    ],
+    "subject": "蒸馏"
+   },
+   {
+    "id": "time-topic",
+    "gold": 2,
+    "shown": 2,
+    "shownHit": 2,
+    "ticked": 2,
+    "tickedHit": 2,
+    "wrong": [],
+    "unticked": [],
+    "chips": [
+     "最近一周提的",
+     "关于 Windows"
+    ],
+    "subject": "Windows"
+   },
+   {
+    "id": "repo",
+    "gold": 41,
+    "shown": 41,
+    "shownHit": 41,
+    "ticked": 10,
+    "tickedHit": 10,
+    "wrong": [],
+    "unticked": [
+     "mem-feedback#-38",
+     "mem-feedback#-39",
+     "mem-feedback#-40",
+     "mem-feedback#-41",
+     "mem-feedback#-43",
+     "mem-feedback#-44",
+     "mem-feedback#-45",
+     "mem-feedback#-46",
+     "mem-feedback#-48",
+     "mem-feedback#-51",
+     "mem-feedback#-52",
+     "mem-feedback#-53"
+    ],
+    "chips": [
+     "在 mem-feedback 里的"
+    ]
+   },
+   {
+    "id": "repo-topic",
+    "gold": 9,
+    "shown": 9,
+    "shownHit": 9,
+    "ticked": 9,
+    "tickedHit": 9,
+    "wrong": [],
+    "unticked": [],
+    "chips": [
+     "在 community 里的",
+     "关于 搜索"
+    ],
+    "subject": "搜索"
+   },
+   {
+    "id": "refs",
+    "gold": 2,
+    "shown": 2,
+    "shownHit": 2,
+    "ticked": 2,
+    "tickedHit": 2,
+    "wrong": [],
+    "unticked": [],
+    "chips": [
+     "#10559",
+     "#10482"
+    ]
+   },
+   {
+    "id": "topic-note",
+    "gold": 26,
+    "shown": 26,
+    "shownHit": 26,
+    "ticked": 10,
+    "tickedHit": 10,
+    "wrong": [],
+    "unticked": [
+     "mem#10480",
+     "mem#9919",
+     "mem#9850",
+     "mem#9802",
+     "mem#9751",
+     "mem#9661",
+     "mem#9643",
+     "mem#9622",
+     "mem#9568",
+     "mem#9514",
+     "mem#9406",
+     "mem-feedback#-45"
+    ],
+    "chips": [
+     "关于 记忆蒸馏"
+    ],
+    "subject": "记忆蒸馏",
+    "note": "先别动数据库"
+   },
+   {
+    "id": "topic-where",
+    "gold": 34,
+    "shown": 8,
+    "shownHit": 8,
+    "ticked": 2,
+    "tickedHit": 2,
+    "wrong": [],
+    "unticked": [
+     "mem#10663",
+     "mem#10639",
+     "mem#10627",
+     "mem#10450",
+     "mem#10429",
+     "mem#10393",
+     "mem#10246",
+     "mem#10198",
+     "mem#10030",
+     "mem#9988",
+     "mem#9907",
+     "mem#9808"
+    ],
+    "chips": [
+     "关于 Windows 新界面"
+    ],
+    "subject": "Windows 新界面",
+    "note": "验证都去 haswell 上跑"
+   },
+   {
+    "id": "en-person-topic",
+    "gold": 2,
+    "shown": 2,
+    "shownHit": 2,
+    "ticked": 2,
+    "tickedHit": 2,
+    "wrong": [],
+    "unticked": [],
+    "chips": [
+     "opened by QingZ11",
+     "about search"
+    ],
+    "subject": "search"
+   },
+   {
+    "id": "en-assigned-by",
+    "gold": 1,
+    "shown": 1,
+    "shownHit": 1,
+    "ticked": 1,
+    "tickedHit": 1,
+    "wrong": [],
+    "unticked": [],
+    "chips": [
+     "assigned by hawkingrei"
+    ]
+   },
+   {
+    "id": "en-label-topic",
+    "gold": 5,
+    "shown": 11,
+    "shownHit": 5,
+    "ticked": 9,
+    "tickedHit": 5,
+    "wrong": [
+     "mem#10021",
+     "mem#9721",
+     "mem#9673",
+     "mem#9907"
+    ],
+    "unticked": [],
+    "chips": [
+     "involving neonwatty-bugdrop[bot]",
+     "about desktop app"
+    ],
+    "subject": "desktop app"
+   },
+   {
+    "id": "en-pr-repo",
+    "gold": 1,
+    "shown": 1,
+    "shownHit": 1,
+    "ticked": 1,
+    "tickedHit": 1,
+    "wrong": [],
+    "unticked": [],
+    "chips": [
+     "in mem",
+     "pull requests only"
+    ]
+   },
+   {
+    "id": "en-topic-time",
+    "gold": 16,
+    "shown": 16,
+    "shownHit": 16,
+    "ticked": 10,
+    "tickedHit": 10,
+    "wrong": [],
+    "unticked": [
+     "mem#9850",
+     "mem#9751",
+     "mem#9661",
+     "mem#9643",
+     "mem#9568",
+     "mem#9406"
+    ],
+    "chips": [
+     "updated in the last week",
+     "about distillation"
+    ],
+    "subject": "distillation"
+   },
+   {
+    "id": "time-person",
+    "gold": 0,
+    "shown": 0,
+    "shownHit": 0,
+    "ticked": 0,
+    "tickedHit": 0,
+    "wrong": [],
+    "unticked": [],
+    "chips": [
+     "最近一个月提的",
+     "ThaddeusJiang 提的"
+    ]
+   },
+   {
+    "id": "typo",
+    "gold": 0,
+    "shown": 0,
+    "shownHit": 0,
+    "ticked": 0,
+    "tickedHit": 0,
+    "wrong": [],
+    "unticked": [],
+    "chips": [],
+    "unknown": [
+     "100gle"
+    ],
+    "ok": true
+   },
+   {
+    "id": "assigned-topic",
+    "gold": 21,
+    "shown": 21,
+    "shownHit": 21,
+    "ticked": 10,
+    "tickedHit": 10,
+    "wrong": [],
+    "unticked": [
+     "mem#10621",
+     "mem#10561",
+     "mem#10117",
+     "mem#9925",
+     "mem#9841",
+     "mem#9757",
+     "mem#9670",
+     "mem#9586",
+     "mem#9472",
+     "mem#9451",
+     "mem#9388"
+    ],
+    "chips": [
+     "分给你的",
+     "关于 计费"
+    ],
+    "subject": "计费"
+   },
+   {
+    "id": "en-topic-note",
+    "gold": 24,
+    "shown": 29,
+    "shownHit": 24,
+    "ticked": 10,
+    "tickedHit": 10,
+    "wrong": [],
+    "unticked": [
+     "mem#10510",
+     "mem#10210",
+     "mem#9928",
+     "mem#9922",
+     "mem#9880",
+     "mem#9874",
+     "mem#9826",
+     "mem#9784",
+     "mem#9769",
+     "mem#9730",
+     "mem#9718",
+     "mem#9703"
+    ],
+    "chips": [
+     "about MCP"
+    ],
+    "subject": "MCP",
+    "note": "don't touch the auth code"
+   },
+   {
+    "id": "repo-by-word",
+    "gold": 9,
+    "shown": 9,
+    "shownHit": 9,
+    "ticked": 9,
+    "tickedHit": 9,
+    "wrong": [],
+    "unticked": [],
+    "chips": [
+     "在 nowledge-labs-website 里的",
+     "关于 网站 文档"
+    ],
+    "subject": "网站 文档"
+   },
+   {
+    "id": "two-people",
+    "gold": 10,
+    "shown": 10,
+    "shownHit": 10,
+    "ticked": 10,
+    "tickedHit": 10,
+    "wrong": [],
+    "unticked": [],
+    "chips": [
+     "negret1986 提的",
+     "Icemap 提的"
+    ]
+   },
+   {
+    "id": "en-review",
+    "gold": 5,
+    "shown": 5,
+    "shownHit": 5,
+    "ticked": 4,
+    "tickedHit": 4,
+    "wrong": [],
+    "unticked": [
+     "mem#10482"
+    ],
+    "chips": [
+     "opened by 100gle",
+     "about UI review"
+    ],
+    "subject": "UI review"
+   },
+   {
+    "id": "label-said",
+    "gold": 12,
+    "shown": 12,
+    "shownHit": 12,
+    "ticked": 9,
+    "tickedHit": 9,
+    "wrong": [],
+    "unticked": [
+     "mem#10018",
+     "mem#9817",
+     "mem#9442"
+    ],
+    "chips": [
+     "标签是 component/skills-sharing",
+     "关于 技能分享"
+    ],
+    "subject": "技能分享"
+   },
+   {
+    "id": "time-model",
+    "gold": 44,
+    "shown": 43,
+    "shownHit": 43,
+    "ticked": 10,
+    "tickedHit": 10,
+    "wrong": [],
+    "unticked": [
+     "mem#10666",
+     "mem#10594",
+     "mem#10555",
+     "mem#10540",
+     "mem#10519",
+     "mem#10438",
+     "mem#10381",
+     "mem#10378",
+     "mem#10285",
+     "mem#10276",
+     "mem#10252",
+     "mem#10219"
+    ],
+    "chips": [
+     "上个月以来有动静的",
+     "关于 会话同步"
+    ],
+    "subject": "会话同步"
+   },
+   {
+    "id": "topic-ui",
+    "gold": 70,
+    "shown": 70,
+    "shownHit": 70,
+    "ticked": 10,
+    "tickedHit": 10,
+    "wrong": [],
+    "unticked": [
+     "mem#10687",
+     "mem#10624",
+     "mem#10585",
+     "mem#10567",
+     "mem#10546",
+     "mem#10525",
+     "mem#10447",
+     "mem#10426",
+     "mem#10387",
+     "mem#10327",
+     "mem#10309",
+     "mem#10288"
+    ],
+    "chips": [
+     "关于 UI 走查"
+    ],
+    "subject": "UI 走查"
+   },
+   {
+    "id": "en-topic",
+    "gold": 30,
+    "shown": 29,
+    "shownHit": 29,
+    "ticked": 10,
+    "tickedHit": 10,
+    "wrong": [],
+    "unticked": [
+     "mem#10633",
+     "mem#10372",
+     "mem#10351",
+     "mem#10222",
+     "mem#10090",
+     "mem#10036",
+     "mem#9973",
+     "mem#9955",
+     "mem#9937",
+     "mem#9868",
+     "mem#9820",
+     "mem#9715"
+    ],
+    "chips": [
+     "about sign-in and SSO"
+    ],
+    "subject": "sign-in and SSO"
+   }
+  ]
+ }
+}

@@ -30,8 +30,9 @@ async function boot() {
   const d = mkdtempSync(join(tmpdir(), "ducter-todos-ho-"));
   const gh = fakeGh(TITLES.map(([number, title]) => ({ repo: "acme/mem", number, title })));
   const ask = async (prompt: string) => {
+    if (prompt.includes("<logins>")) return { text: "{}", tokens: 1 };
     const rows = JSON.parse(/<todos>\n([\s\S]*)\n<\/todos>/.exec(prompt)![1]!) as { id: number; title: string }[];
-    if (prompt.includes("<query>")) return { text: JSON.stringify({ subject: "记忆提炼", ids: rows.filter((r) => /istill|提炼/.test(r.title)).map((r) => r.id) }), tokens: 1 };
+    if (prompt.includes("<about>")) return { text: JSON.stringify({ found: rows.filter((r) => /istill|提炼/.test(r.title)).map((r) => ({ id: r.id, sure: "high" })) }), tokens: 1 };
     return { text: JSON.stringify(rows.map((r) => (/\?$/.test(r.title) ? { id: r.id, group: "decide", why: "要你定", ask: "重试吗？", pick: "hand", subject: "记忆提炼" } : /长对话/.test(r.title) ? { id: r.id, group: "later", why: "改动大", subject: "记忆提炼" } : { id: r.id, group: "do", why: "说得清楚", size: "small", subject: /istill/.test(r.title) ? "记忆提炼" : "登录" }))), tokens: 1 };
   };
   const core = startCore({ dataDir: d, port: 0, push: false, platform: "darwin", taskSources: { ghRun: gh.run, ghEnv: {}, home: join(d, "no-home"), pollMs: 3_600_000, ask } });
@@ -49,7 +50,8 @@ async function boot() {
 test("do=find: a set card in the conversation, its counts back (do ticked, the decide one named), nothing started", async () => {
   const { core, call } = await boot();
   const r = await call({ do: "find", query: "memory distill" });
-  expect(r).toMatchObject({ ok: true, found: 4, subject: "记忆提炼", ticked: 2, groups: { do: 2, decide: 1, later: 1, close: 0 }, decide: ["#405"] });
+  // D426: the subject is their words; how they were read comes back too.
+  expect(r).toMatchObject({ ok: true, found: 4, subject: "memory distill", readAs: ["about memory distill"], ticked: 2, groups: { do: 2, decide: 1, later: 1, close: 0 }, decide: ["#405"] });
   expect(String(r.set)).toMatch(/^set_/);
   const sets = core.log.read({ stream: "channel", kinds: ["todo_set"], limit: 5 });
   expect(sets.length).toBe(1);
@@ -60,16 +62,16 @@ test("do=hand set= with #405 and the note: one group, plan first, the note kept;
   const { core, call } = await boot();
   const f = await call({ do: "find", query: "memory distill" });
   const r = await call({ do: "hand", set: f.set, note: "#405 也加上。先别动数据库迁移，验证都去 haswell 上跑。" });
-  expect(r).toMatchObject({ ok: true, handed: 3, shape: "plan", group: "记忆提炼" });
+  expect(r).toMatchObject({ ok: true, handed: 3, shape: "plan", group: "memory distill" });
   // Nothing was said before the call: code says the plan-first line, before any card the hand-over raises.
   const after = core.log.read({ stream: "channel", kinds: ["ai_msg"], limit: 20 }).map((e) => (e.body as Bodies["ai_msg"]).text);
   expect(after.filter((t) => t === "好，我先看一遍，出个方案给你，你点头再做。").length).toBe(1);
-  const g = core.taskGroups.list().find((x) => x.name === "记忆提炼")!;
+  const g = core.taskGroups.list().find((x) => x.name === "memory distill")!;
   expect(g.hand!.items.map((i) => i.ref).sort()).toEqual(["acme/mem#398", "acme/mem#405", "acme/mem#412"]);
   expect(g.hand!.note).toBe("#405 也加上。先别动数据库迁移，验证都去 haswell 上跑。");
   // A later word about the same set: its group, not a new task.
   const add = await call({ do: "hand", set: f.set, refs: ["acme/mem#366"] });
-  expect(add).toMatchObject({ ok: true, handed: 1, group: "记忆提炼" });
+  expect(add).toMatchObject({ ok: true, handed: 1, group: "memory distill" });
   expect(core.taskGroups.get(g.id)!.hand!.items.length).toBe(4);
   // By the group's name too.
   const set = core.log.read({ stream: "channel", kinds: ["todo_set"], limit: 5 }).at(-1)!.body as Bodies["todo_set"];

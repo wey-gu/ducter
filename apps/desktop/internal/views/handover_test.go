@@ -153,7 +153,7 @@ func memNote(lang i18n.Lang) string {
 func TestHandSheetHandsOverWithNoteAndShape(t *testing.T) {
 	app, sent, tt := handApp(t, i18n.ZH, 1400, 1000, memNote(i18n.ZH))
 	all := strings.Join(tt.Texts(), " | ")
-	for _, want := range []string{"交给小鸭", "找到 9 件讲记忆提炼的", "可以交给小鸭做的", "要你拿主意的", "意思相近", "给小鸭的话", "怎么做", "先出个方案", "你点头再做", "建议", "合成一件做", "一个任务，一个 PR 修好这几件", "在 acme/mem 里排着，每件从上一件的分支接着做", "一次 3 件，各自一个 PR", "在哪儿做", "haswell", "你写了 haswell", "谁来做", "Codex", "勾了 7 件", "交给小鸭这 7 件"} {
+	for _, want := range []string{"交给小鸭", "找到 9 件讲「记忆提炼」的", "可以交给小鸭做的", "要你拿主意的", "给小鸭的话", "怎么做", "先出个方案", "你点头再做", "建议", "合成一件做", "一个任务，一个 PR 修好这几件", "在 acme/mem 里排着，每件从上一件的分支接着做", "一次 3 件，各自一个 PR", "在哪儿做", "haswell", "你写了 haswell", "谁来做", "Codex", "勾了 7 件", "交给小鸭这 7 件"} {
 		if !strings.Contains(all, want) {
 			t.Fatalf("missing %q in %s", want, all)
 		}

@@ -8,7 +8,7 @@ import type { ComponentChildren } from "preact";
 import { memo } from "preact/compat";
 import { useDwell, useResting } from "./alive.tsx";
 import { useEffect, useRef, useState } from "preact/hooks";
-import { callEnded, type Bodies, type LogEvent, type Place } from "@ducter/protocol";
+import { callEnded, looseIn, type Bodies, type LogEvent, type Place } from "@ducter/protocol";
 import { blocksOf, type Block } from "@ducter/protocol/src/transcript.ts";
 import { sayable, proofLabel } from "@ducter/protocol/src/say.ts";
 import { A } from "./app.ts";
@@ -533,14 +533,24 @@ export function haystack(task: Task): string {
   return [title(task), projectOf(task), p.kind === "repo" ? `${p.repoPath} ${p.branch ?? ""}` : p.kind === "folder" ? p.path : "", harnessName(harnessOf(task)), p.kind !== "none" ? computerName(p.device) : "", storyOf(task).words].join(" ").toLowerCase();
 }
 
-/** Every word typed is somewhere in it (any order); "" matches all. */
-export function matches(task: Task, q: string): boolean {
+/** Every word typed is in it as typed (any order); "" matches all. */
+export function matchesExactly(task: Task, q: string): boolean {
   const hay = haystack(task);
   return q
     .toLowerCase()
     .split(/\s+/)
     .filter(Boolean)
     .every((w) => hay.includes(w));
+}
+
+/** Every word typed is somewhere in it (any order), or one slip away, or the title's initials (D456); "" matches all. */
+export function matches(task: Task, q: string): boolean {
+  const hay = haystack(task);
+  return q
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean)
+    .every((w) => looseIn(w, hay, title(task)));
 }
 
 // ---------- the keys, the focus and the selection ----------
@@ -1624,7 +1634,8 @@ export function switchList(q: string, limit = 40): Task[] {
   const rank = (x: Task) => ({ needs_you: 0, working: 1, queued: 1, blocked: 2 }[attention(x) as string] ?? 3);
   const at = (x: Task) => x.card?.updatedAt ?? x.openedAt ?? "";
   const low = q.toLowerCase();
-  const named = (x: Task) => (low && title(x).toLowerCase().includes(low) ? 0 : 1);
+  // D456: the title with the words, then the words as typed anywhere, then a slip or the initials.
+  const named = (x: Task) => (low && title(x).toLowerCase().includes(low) ? 0 : !low || matchesExactly(x, q) ? 1 : 2);
   return [...A.S.tasks.values()]
     .filter((x) => title(x) && attention(x) !== "superseded" && matches(x, q))
     .sort((a, b) => named(a) - named(b) || rank(a) - rank(b) || at(b).localeCompare(at(a)))

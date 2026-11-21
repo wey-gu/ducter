@@ -29,7 +29,7 @@ import {
   PAST_STEP_LEN,
   type TaskCard,
 } from "@ducter/protocol";
-import { fill, words, type LangTag } from "@ducter/protocol";
+import { fill, initialsIn, nearIn, words, type LangTag } from "@ducter/protocol";
 import type { LogStore, TaskRegistry } from "@ducter/protocol/src/internal.ts";
 import { neverStarted } from "./registry.ts";
 
@@ -569,6 +569,19 @@ export function createPast(d: PastDeps): Past {
             if (w > top) top = w;
             per[i]!.w += w;
             if (per[i]!.at < 0) per[i]!.at = m.at;
+          }
+          // D456: no field has the word itself: a slip of one letter in a name, a title, a branch or
+          // a file ("compactoin"), or the title's initials ("wgc"), weaker than the word itself.
+          if (!top) {
+            for (const [i, [f, text]] of fields.entries()) {
+              if (f !== "name" && f !== "title" && f !== "tag" && f !== "branch" && f !== "file") continue;
+              const m = (f === "name" || f === "title") && initialsIn(term, shownText(c, it, f)) ? { s: 0.8, at: 0 } : nearIn(term, text);
+              if (!m.s) continue;
+              const w = (WEIGHT[f] ?? 1) * m.s;
+              if (w > top) top = w;
+              per[i]!.w += w;
+              if (per[i]!.at < 0) per[i]!.at = m.at;
+            }
           }
           if (top > 0) matched++;
           score += top;

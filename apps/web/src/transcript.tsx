@@ -618,7 +618,7 @@ function BlockView({ task, b, live, took }: { task: Task; b: Block; live?: boole
           <small>{t(k, A.S.personaName)}</small>
           {b.text}
           {b.media?.length ? <MediaBlock media={b.media} side="task" ctx={{ kind: "task", taskId: task.id }} /> : null}
-          <DocLine left={b.docLeft} />
+          <DocLine left={b.docLeft} at={`report:${task.id}`} />
         </div>
       );
     }

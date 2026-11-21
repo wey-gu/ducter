@@ -2390,8 +2390,14 @@ Codex first, once OAR is near 1.0. See `research/17`.
   morning note over an exported mailbox on the author's machine, nothing kept. Trigger: the author's go.
 - **#3 晚点再说 / Later for what needs you:** tonight, tomorrow morning, Monday; back inside the next
   morning note, never a ping of its own. Trigger: next in line after D381.
-- **#8 A feature's first meeting:** one page of three small moving cards, the first time a person
-  walks into a place themselves, once per device. Trigger: a design pass with the metaphor rubric.
+- **#8 A feature's first meeting:** done as D451's one line under the thing (research/196), not a
+  page of cards. Left from it: the Mac's first-result celebration is a tinted notice above the
+  composer, Mac only (it belongs under the first result, on every client); D449's once-said line
+  comes after the partner's words, not under the unlooked result; hold to talk's Not now marks it
+  asked on the web but not the Mac; no control to see the lines again (an empty `met` starts them
+  over); On hand's folds, Past tasks' marks and Done for you checked against "can it say what it is
+  for"; real people reading the four lines (the raters were LLM proxies). Trigger: the next
+  capability that can't explain itself, or the author's review of the four lines.
 - **Choices in chat apps as buttons** (Telegram inline keyboard, Slack buttons) instead of typed
   lines. Trigger: the first real use of choices in a chat app.
 - **The iPhone and Android apps' own views** draw the web's blocks inside the web client; a native

@@ -2,12 +2,14 @@
 // person will send, after the task fixed what it could: its lead in the needs-you ink, then each
 // thing on its own line (D291), under the result. Nothing when the pages were clean.
 import { A } from "./app.ts";
+import { FirstMeetLine } from "./first-meet.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
-export function DocLine({ left }: { left?: string[] }) {
+export function DocLine({ left, at }: { left?: string[]; at: string }) {
   if (!left?.length) return null;
   return (
+    <>
     <div class="doc-line" role="note">
       <span class="lead">
         <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
@@ -22,5 +24,8 @@ export function DocLine({ left }: { left?: string[] }) {
         </span>
       ))}
     </div>
+    {/* D451: the first time, what it is and why only these are left. */}
+    <FirstMeetLine name="pages" at={at} />
+    </>
   );
 }

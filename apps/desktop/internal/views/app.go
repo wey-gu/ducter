@@ -64,6 +64,8 @@ type App struct {
 	L *i18n.Strings
 	// Send sends a client frame; nil drops it (tests may set it).
 	Send func(frame any) error
+	// meets is which thing carries each first-time line here (D451).
+	meets firstMeets
 	// Win schedules work from other goroutines.
 	Win Updater
 	// OpenAppWindow (D405) opens one of the person's apps in its own window

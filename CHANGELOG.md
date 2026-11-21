@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.1.11 - 2026-11-22
+
+<!-- whats-new
+zh: 记忆页能直接回答 Mem 的疑问；插件有新版会说
+en: Answer Mem's questions from Settings; plugin updates shown
+-->
+
+**Memory**
+- When Nowledge Mem finds two memories that disagree, or learns a rule from how you work, Settings
+  › Memory asks you, with Mem's suggestion as one tap. Unanswered, Mem keeps things as they are.
+- The rules every AI connected to Mem follows are listed there, and each can be turned off.
+
+**Your agents**
+- When Mem's plugin for one of your agents has a newer version, or is installed twice, Settings ›
+  Memory says so on that computer's row, and one tap sets it right after you see what will change.
+
 ## 0.1.10 - 2026-11-22
 
 <!-- whats-new

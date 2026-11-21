@@ -996,8 +996,10 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
       recall for the gist). Trigger: the author or a user scrolling for something said last week.
 - [x] **Dynamic Type on the phone:** the web client sets its sizes in px; follow iOS's text size
       in the iPhone app. Done as D447: the app sets the page's text-size-adjust from the system's
-      size (100–135%). Still owed: the scale tokens in rem, so the accessibility sizes past 135% grow
-      too (fixed-height pills first); the Android app's font scale.
+      size (100–135%). D452 finished it: the type scale is in rem and the app sets the root from
+      iOS's size across the whole range (to x3.12). Still owed: the Android app's font scale
+      (whether its WebView's textZoom already follows it, and the root from it if not; checked on an
+      emulator). Trigger: the next Android build.
 - [ ] **The time on hover on the Mac** (the web's menu has it; the Mac's right-click menu cannot
       show a disabled line yet). Trigger: MyGo's menu gains a header item, or a reader asks.
 - [ ] **The draft across devices:** kept per device today; a draft started on the phone and
@@ -2659,6 +2661,6 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] **Drive the Simulator for the rest**: talk hands-free with a real recognizer, the live view of a
   checkout, the document card with its printed pages, the long-press menu (todo D254) and a sheet's field
   with the keyboard up, in the app. D447 saw them in Playwright's WebKit only. Trigger: the next iPhone build.
-- [ ] **Fixed heights elsewhere** at a larger text size: D447 fixed the ones on its surfaces (On hand's
-  strip, Your devices' rows); a sweep of `height: Npx` on rows that hold words is owed. Trigger: the next
-  phone-UI pass.
+- [x] **Fixed heights elsewhere** at a larger text size: D447 fixed the ones on its surfaces (On hand's
+  strip, Your devices' rows); D452 swept `height: Npx` on the buttons, pills, chips, fields and rows that
+  hold words (`height: max(Npx, rem)`) and the two lists whose row height is in code.

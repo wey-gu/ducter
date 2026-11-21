@@ -32,14 +32,17 @@ describe("Done today (D310)", () => {
       t: "on_hand",
       onHand: {
         tasks: [card("a", "done", iso(today)), card("b", "done", iso(today)), card("c", "failed", iso(today)), card("d", "done", new Date(startOfDay - 3_600_000).toISOString()), card("e", "done_claimed", iso(today))],
-        counts: { needs_you: 0, working: 0, waiting: 0, done_today: 2 },
+        counts: { needs_you: 0, working: 0, waiting: 0, done_today: 3 },
         waiters: [],
         missed: [{ waiterId: "w1", reason: "CI green", state: "missed", endedAt: iso(today) }],
       },
     } as any);
-    expect(A.doneToday()).toBe(2);
-    expect(A.S.board().counts.done_today).toBe(2);
-    expect(A.summaryParts().words).toContain(A.L.t("header.done", 2));
-    expect(o.headSay("")).toContain(A.L.t("onhand.say.done", 2));
+    // D467: a done whose check is still to come is listed as done, so every surface counts it;
+    // the failed one stands in 等你, yesterday's folds away.
+    expect(A.doneToday()).toBe(3);
+    expect(A.S.board().counts.done_today).toBe(3);
+    expect(A.summaryParts().words).toContain(A.L.t("header.done", 3));
+    expect(o.headSay("")).toContain(A.L.t("onhand.say.done", 3));
+    expect(o.stateCounts("")[0]).toBe(1);
   });
 });

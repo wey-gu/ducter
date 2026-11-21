@@ -14,7 +14,6 @@ package views
 import (
 	"fmt"
 	"math"
-	"sort"
 	"strings"
 	"time"
 
@@ -30,13 +29,8 @@ const (
 	// foldFrom is from how many a fold folds: one or two quiet waits or
 	// seen results stay in sight (a fold of one hides more than it saves).
 	foldFrom = 3
-	// cardGap is the room between cards; cardMin the narrowest a card
-	// stands two to a row.
+	// cardGap is the room between cards.
 	cardGap = 12
-	cardMin = 300
-	// dayColW is the day beside the board, from dayFrom points wide.
-	dayColW = 248
-	dayFrom = 1280
 )
 
 // ---------- the head ----------
@@ -77,6 +71,9 @@ func (a *App) waitsAhead(b store.Board, lens string) (first time.Time, quiet int
 		}
 	}
 	for _, task := range b.Lanes[store.LaneWaiting] {
+		if a.stoppedWait(task) {
+			continue // D467: it stands in 等你
+		}
 		if a.quietWait(task) {
 			quiet++
 			continue
@@ -154,8 +151,17 @@ var sayMarks = map[string]struct{ colon, comma, semi, stop, gap string }{
 // strip's; the full sentence (headSay) stays the menu bar's. While
 // anything works the partner says it is on it; when all waits, when the
 // first comes back.
+//
+// D467: the line is true to the board: when all that needs you is what
+// stopped or didn't work out, it says so, never 没有要你定的.
 func (a *App) headLine(b store.Board, lens string, n [4]int) string {
+	sp := a.splitOf(b)
+	halted := len(sp.stopped) + len(sp.failed)
 	switch {
+	case n[0] > 0 && n[0] <= halted && halted == 1:
+		return a.L.T("onhand.line.stopped.one")
+	case n[0] > 0 && n[0] <= halted:
+		return a.L.T("onhand.line.stopped", halted)
 	case n[0] == 1:
 		return a.L.T("onhand.say.needs.one")
 	case n[0] > 1:
@@ -193,8 +199,8 @@ func (a *App) boardHead(c *ui.Context, b store.Board, lens string, n [4]int, str
 
 // ---------- the cards ----------
 
-// taskCards is a run of tasks as cards, two to a row where the list has
-// the room.
+// taskCards is a run of tasks as cards, one under another at the list's
+// full width (D467: one width, nothing half-empty).
 func (a *App) taskCards(c *ui.Context, tasks []*store.Task) {
 	if len(tasks) == 0 {
 		return
@@ -203,18 +209,18 @@ func (a *App) taskCards(c *ui.Context, tasks []*store.Task) {
 	if w <= 0 {
 		w = onHandMeasure
 	}
-	cw := w
-	if w >= 2*cardMin+cardGap {
-		cw = (w - cardGap) / 2
-	}
-	ui.Row(c.Key("cards:"+tasks[0].ID)).Wrap().Gap(cardGap).AlignItems(ui.Stretch).Padding(2, 0, 6, 0).Children(func() { // D315: a row's cards stand as tall as each other
+	ui.Column(c.Key("cards:"+tasks[0].ID)).Gap(cardGap-4).Padding(2, 0, 6, 0).Children(func() {
 		for _, task := range tasks {
-			a.taskCard(c.Key(task.ID), task, cw)
+			a.taskCard(c.Key(task.ID), task, w)
 		}
 	})
 }
 
-// taskCard is one task as a small clay card.
+// taskCard is one task in On hand's one card shape (D467): its state mark
+// (the same glyphs as a group's parts), the subject (what it is and where),
+// the living line (what it is on now, what it waits for, why it stopped,
+// what came of it), and at the right its heartbeat or its one action.
+// The agent that does it is a detail: on hover and in the task.
 func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 	t := a.T
 	att := task.Attention()
@@ -223,33 +229,35 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 	a.noteStatus(task.ID, st)
 	fresh := st == stNew
 	working := att == protocol.Working || att == protocol.Queued
+	stopped := a.stoppedWait(task)
+	failed := att == protocol.Failed
+	quiet := att == protocol.Blocked && !stopped && a.quietWait(task)
+	seen := (att == protocol.Done || att == protocol.DoneClaimed) && !fresh
 	focus := a.oh.focus == task.ID
-	card := ui.Column(c).Width(w).Gap(t.S2).Padding(14, 16, 12, 16).Radius(20).Cursor(ui.CursorPointer).Role(ui.RoleLink).Label(task.Title()).Focusable()
-	hover := card.Hovered()
-	bg, ledge := t.Surface, t.Line
-	switch {
-	case fresh && att == protocol.Failed:
-		bg = t.Surface.Mix(t.Failed.Surface, 0.35)
-	case fresh:
-		bg, ledge = t.Surface.Mix(t.Done.Surface, 0.45), t.Line.Mix(t.Done.Dot, 0.35)
-	case working:
-		bg = t.Surface.Mix(t.Working.Surface, 0.3)
+	padY, minH := float32(12), float32(64)
+	if a.compact() {
+		padY, minH = 8, 52 // D457
 	}
-	card.Background(bg)
+	card := ui.Row(c).Width(w).Gap(14).Padding(padY, 16, padY, 14).MinHeight(minH).Radius(16).AlignItems(ui.Center).
+		Background(t.Surface).Cursor(ui.CursorPointer).Role(ui.RoleLink).Label(task.Title()).Focusable()
+	hover := card.Hovered()
+	// What needs you stands on the needs-you ledge; everything else on the clay one.
+	ledge := t.Line
+	if stopped || failed {
+		ledge = t.NeedsYou.Ledge
+	}
 	still := c.Preferences().ReduceMotion
 	lift := card.AnimateTo("lift", map[bool]float32{true: 1, false: 0}[hover], ui.Animation{Duration: 120 * time.Millisecond, NonMotion: still})
-	card.Shadow(0, 2+2*lift, 0, 0, ledge).Shadow(0, 8+6*lift, 18+8*lift, -12, t.Ink.Alpha(0.22+0.08*lift))
+	card.Shadow(0, 2+lift, 0, 0, ledge).Shadow(0, 6+4*lift, 14+6*lift, -10, t.Ink.Alpha(0.16+0.06*lift))
 	if !still && lift > 0 {
-		card.Translate(0, -2*lift)
+		card.Translate(0, -lift)
 	}
 	if focus {
 		card.Border(2, t.Accent.Alpha(0.75))
 		card.AccessSelected(true)
 	}
-	// A new result's little moment, once: it pops, swelling a little and
-	// settling, once the page it is on has landed (navLanding), from its
-	// size at rest and back to it, so the card holds still and unscaled
-	// while the page comes in.
+	// A new result's little moment, once (D287): it swells a little and
+	// settles once its page has landed.
 	if fresh && !still {
 		if a.oh.cheered == nil {
 			a.oh.cheered = map[string]bool{}
@@ -259,95 +267,159 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 			card.Jump("cheer", 0)
 		}
 		if k := card.AnimateTo("cheer", 1, ui.Animation{Duration: a.T.Pop, Ease: ui.Linear, Delay: a.navLanding(c)}); k > 0 && k < 1 {
-			// Drawn once and scaled as a picture while it swells: its
-			// shadows, scaled, are what a frame paints slowest on the CPU,
-			// and at most 2% larger the picture shows the same.
 			sc := cheerScale(k)
 			card.Scale(sc, sc).Cache()
 		}
 	}
+	tip := longTitleTip(task.Title())
+	for _, why := range a.whereWhy(task) {
+		tip += "\n" + why // who does it and where: a detail, on hover
+	}
+	acted := false
 	card.Children(func() {
-		ui.Row(c.Key("c1")).Gap(10).AlignItems(ui.Center).Children(func() {
-			cm := coinMotionOf(att)
-			if a.aliveResting(c) {
-				cm = coinMotionOf(protocol.Done) // D425: away a while: the coin rests
+		a.stateMark(c, task, stopped)
+		ui.Column(c.Key("tx")).Gap(3).Grow(1).Shrink(1).MinWidth(0).Children(func() {
+			ui.Row(c.Key("l1")).Gap(t.S2).AlignItems(ui.Center).Children(func() {
+				if task.Card != nil {
+					a.partnerMark(c, "c-"+task.ID, task.Card.Persona) // D312
+				}
+				ink := t.Ink
+				if seen {
+					ink = t.InkSoft // what you have seen recedes, never greyed
+				}
+				uiText(c.Key("title"), keepWords(autospace(shortTitle(task.Title())))).FontSize(t.MD).FontWeight(600).TextColor(ink).
+					SingleLine().Shrink(1).MinWidth(0).Tooltip(tip)
+				if s := taskTodo(task); s != nil {
+					a.todoChip(c, "card:"+task.ID, s.SourceItemRef) // D341
+				}
+				// Where, each its own element (D291): its project when the
+				// board shows them all, its computer when it isn't the usual.
+				for _, m := range a.whereMeta(task) {
+					uiText(c.Key("meta:"+m), m).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(0).MaxWidth(180)
+				}
+				ui.Spacer(c)
+				if ch := taskChanges(task); ch != nil {
+					ui.Row(c.Key("stat")).Gap(t.S1 + 2).Shrink(0).Children(func() {
+						if ch.Adds > 0 {
+							uiText(c, fmt.Sprintf("+%d", ch.Adds)).Font(t.Mono).FontSize(t.XS).TextColor(t.Done.Ink).FontFeatures("tnum")
+						}
+						if ch.Dels > 0 {
+							uiText(c, fmt.Sprintf("−%d", ch.Dels)).Font(t.Mono).FontSize(t.XS).TextColor(t.Failed.Ink).FontFeatures("tnum")
+						}
+					})
+				}
+				if act := integrated(task); act != "" {
+					key := "onhand.pr.draft"
+					if act == "merge" {
+						key = "onhand.pr.merged"
+					}
+					uiText(c.Key("pr"), a.L.T(key)).FontSize(t.XS).FontWeight(700).TextColor(t.InkSoft).Shrink(0)
+				}
+				if finishedAtt(att) {
+					a.outcomeChip(c, "chip", task) // D467: what it made, to open
+				}
+			})
+			// The living line: what it is on now, in its own words.
+			ink := t.InkSoft
+			switch {
+			case s.tone == "needs" || stopped:
+				ink = t.NeedsYou.Ink
+			case s.tone == "failed":
+				ink = t.Failed.Ink
+			case seen:
+				ink = t.InkMuted
 			}
-			a.coinBox(c, task.ID, task.Harness(), 28, false, cm)
-			// D315: a long title takes a second line rather than losing its end.
-			uiText(c, keepWords(autospace(shortTitle(task.Title())))).FontSize(t.MD).FontWeight(600).LineHeight(1.35).TextColor(t.Ink).MaxLines(2).Grow(1).Shrink(1).MinWidth(0).Tooltip(longTitleTip(task.Title()))
-			if fresh {
-				a.statusFace(c, task, st)
+			sw := s.words
+			if att == protocol.Blocked && !stopped {
+				sw = a.waitCardWords(task, sw) // D467: never the title again
 			}
-			if task.Card != nil {
-				a.partnerMark(c, "c-"+task.ID, task.Card.Persona) // D312
+			words := keepWords(autospace(sw))
+			if s.code != "" {
+				words += "  " + s.code
+			}
+			if working {
+				// D425: held for the dwell, a short entrance (a fade only under reduced motion).
+				held, k := a.aliveHeld(c, "card:"+task.ID, words)
+				box := ui.Box(c.Key("say:" + held)).Opacity(k)
+				if !still {
+					box.Translate(0, 3*(1-k))
+				}
+				box.Children(func() {
+					uiText(c.Key("l2"), held).FontSize(t.SM).LineHeight(1.45).TextColor(ink).MaxLines(2).Tooltip(s.words)
+				})
+			} else {
+				l2 := uiText(c.Key("l2"), words).FontSize(t.SM).LineHeight(1.45).TextColor(ink).Tooltip(s.words)
+				if stopped || failed {
+					l2.MaxLines(2) // why it stopped is what you need to read
+				} else {
+					l2.SingleLine()
+				}
+			}
+			if u := task.Card; u != nil && u.Until != nil && u.Until.State == "on" {
+				a.goal(c, u.Until, false)
+			}
+			if working {
+				a.trail(c, "trail", task) // D467: its steps on its time, the head at now
 			}
 		})
-		ink := t.InkSoft
-		switch {
-		case s.tone == "needs":
-			ink = t.NeedsYou.Ink
-		case s.tone == "failed":
-			ink = t.Failed.Ink
-		case fresh:
-			ink = t.Ink
-		}
-		words := keepWords(autospace(s.words))
-		if s.code != "" {
-			words += "  " + s.code
-		}
-		// D425: what a working task is on changes like the waiting line:
-		// held for the dwell, a short entrance (a fade only under reduced
-		// motion).
-		if working {
-			held, k := a.aliveHeld(c, "card:"+task.ID, words)
-			box := ui.Box(c.Key("c2-say:" + held)).Opacity(k)
-			if !still {
-				box.Translate(0, 3*(1-k))
-			}
-			box.Children(func() {
-				uiText(c.Key("c2"), held).FontSize(t.SM).LineHeight(1.5).TextColor(ink).MaxLines(2).MinHeight(t.SM * 1.5 * 2).Tooltip(s.words)
-			})
-		} else {
-			uiText(c.Key("c2"), words).FontSize(t.SM).LineHeight(1.5).TextColor(ink).MaxLines(2).MinHeight(t.SM * 1.5 * 2).Tooltip(s.words)
-		}
-		ui.Box(c.Key("c-room")).Grow(1)
-		ui.Row(c.Key("c3")).Gap(10).AlignItems(ui.Center).MinHeight(20).Children(func() {
-			a.heartbeat(c, task, att)
-			if s := taskTodo(task); s != nil {
-				a.todoChip(c, "card:"+task.ID, s.SourceItemRef) // D341
-			}
-			ui.Spacer(c)
-			if hover && a.rowActs(c, task, true) {
-				return
-			}
-			if ch := taskChanges(task); ch != nil {
-				if ch.Adds > 0 {
-					uiText(c, fmt.Sprintf("+%d", ch.Adds)).Font(t.Mono).FontSize(t.XS).TextColor(t.Done.Ink).FontFeatures("tnum")
+		ui.Column(c.Key("end")).Gap(6).AlignItems(ui.End).Shrink(0).Children(func() {
+			switch {
+			case stopped:
+				if task.Card != nil {
+					uiText(c.Key("since"), a.tp("onhand.wait.since", a.agoLong(task.Card.UpdatedAt))).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
 				}
-				if ch.Dels > 0 {
-					uiText(c, fmt.Sprintf("−%d", ch.Dels)).Font(t.Mono).FontSize(t.XS).TextColor(t.Failed.Ink).FontFeatures("tnum")
-				}
-			}
-			if act := integrated(task); act != "" {
-				key := "onhand.pr.draft"
-				if act == "merge" {
-					key = "onhand.pr.merged"
-				}
-				uiText(c.Key("pr"), a.L.T(key)).FontSize(t.XS).FontWeight(700).TextColor(t.InkSoft).Shrink(0)
-			}
-			if meta := a.whereMeta(task); len(meta) > 0 {
-				ui.Row(c.Key("meta")).Gap(t.S3).AlignItems(ui.Center).Shrink(1).MinWidth(0).MaxWidth(w / 2).Children(func() { // D291: each its own element
-					for _, m := range meta {
-						uiText(c, m).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(1).MinWidth(0)
+				ui.Row(c.Key("acts")).Gap(t.S1).Children(func() {
+					if a.button(c, a.L.T("onhand.quiet.go"), btnSecondary, t.ControlSM, t.Surface) {
+						acted = true
+						a.send(protocol.PastContinue{T: "past_continue", TaskID: task.ID, Words: a.L.T("onhand.quiet.go")})
+					}
+					if a.button(c, a.L.T("onhand.quiet.drop"), btnText, t.ControlSM, t.Surface) {
+						acted = true
+						a.TaskAction(task.ID, "drop")
 					}
 				})
+			case failed:
+				f := finishedOf(task)
+				ui.Row(c.Key("acts")).Gap(t.S1).AlignItems(ui.Center).Children(func() {
+					if a.button(c, a.L.T("away.retry"), btnSecondary, t.ControlSM, t.Surface) {
+						acted = true
+						a.Retry(f.failedIDs)
+					}
+					if hover {
+						a.finishedActs(c, *f)
+					}
+				})
+			case quiet:
+				if task.Card != nil {
+					uiText(c.Key("since"), a.tp("onhand.wait.since", a.agoLong(task.Card.UpdatedAt))).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
+				}
+				if w := a.S.WaiterFor(task.ID); w != nil && (w.Check != nil || w.Event != nil) {
+					if a.button(c, a.L.T("onhand.quiet.look"), btnSecondary, t.ControlSM, t.Surface) {
+						acted = true
+						a.send(protocol.WaiterAction{T: "waiter_action", WaiterID: w.WaiterID, Action: "look"})
+					}
+				}
+			case hover && (finishedOf(task) != nil || att == protocol.Working):
+				ui.Row(c.Key("acts")).Gap(t.S1).AlignItems(ui.Center).Children(func() {
+					a.rowActs(c, task, true)
+					if f := finishedOf(task); f != nil {
+						a.finishedActs(c, *f)
+					}
+				})
+			default:
+				a.beat(c, task, att, false)
 			}
 		})
-		if u := task.Card; u != nil && u.Until != nil && u.Until.State == "on" {
-			a.goal(c, u.Until, false)
-		}
 	})
-	if card.Clicked() {
+	// D454: a right click on a finished card says the same as its ⋯.
+	if f := finishedOf(task); f != nil {
+		a.contextMenu(c, card, func(m *ui.Menu) { a.finishedItems(c, m, *f, true) })
+	}
+	clicked := card.Clicked() && !acted
+	a.heroRow(card, task.ID, clicked || focus)
+	a.stagger(c, card, a.nav.rows)
+	a.nav.rows++
+	if clicked {
 		a.oh.focus = task.ID
 		a.OpenTask(task.ID)
 	}
@@ -386,110 +458,29 @@ func usualComputer(b store.Board) string {
 	return best
 }
 
-// compactCards are the quiet waits and the results you have seen (D315):
-// the cards' own language, one line lower, never greyed (a grey card read
-// as failed, research/95). A quiet wait offers its calm next step at once.
+// compactCards are the quiet waits and the results you have seen: the one
+// card shape (D467), one under another.
 func (a *App) compactCards(c *ui.Context, tasks []*store.Task, quiet bool) {
-	if len(tasks) == 0 {
-		return
-	}
-	ui.Column(c.Key("compact:"+tasks[0].ID)).Gap(8).Padding(2, 0, 6, 0).Children(func() {
-		for _, task := range tasks {
-			a.compactCard(c.Key(task.ID), task, quiet)
-		}
-	})
-}
-
-// compactCard is one task as a low card: who does it, the title, what it
-// waits for or what came of it, and on the right its next step or time.
-func (a *App) compactCard(c *ui.Context, task *store.Task, quiet bool) {
-	t := a.T
-	att := task.Attention()
-	s := a.storyOf(task)
-	focus := a.oh.focus == task.ID
-	card := ui.Row(c).Gap(12).Padding(10, 14, 10, 14).MinHeight(rowH).Radius(16).AlignItems(ui.Center).Background(t.Surface).
-		Cursor(ui.CursorPointer).Role(ui.RoleLink).Label(task.Title()).Focusable()
-	hover := card.Hovered()
-	still := c.Preferences().ReduceMotion
-	lift := card.AnimateTo("lift", map[bool]float32{true: 1, false: 0}[hover], ui.Animation{Duration: 120 * time.Millisecond, NonMotion: still})
-	card.Shadow(0, 2+lift, 0, 0, t.Line).Shadow(0, 6+4*lift, 14+6*lift, -10, t.Ink.Alpha(0.16+0.06*lift))
-	if !still && lift > 0 {
-		card.Translate(0, -lift)
-	}
-	if focus {
-		card.Border(2, t.Accent.Alpha(0.75))
-		card.AccessSelected(true)
-	}
-	acted := false
-	card.Children(func() {
-		a.coinBox(c, task.ID, task.Harness(), 22, false, coinMotionOf(att))
-		ui.Column(c.Key("tx")).Gap(3).Grow(1).Shrink(1).MinWidth(0).Children(func() {
-			ui.Row(c.Key("l1")).Gap(t.S2).AlignItems(ui.Center).Children(func() {
-				if task.Card != nil {
-					a.partnerMark(c, task.ID, task.Card.Persona) // D312
-				}
-				uiText(c, keepWords(autospace(shortTitle(task.Title())))).FontSize(14).FontWeight(600).TextColor(t.Ink).SingleLine().Shrink(1).MinWidth(0).Tooltip(longTitleTip(task.Title()))
-				if s := taskTodo(task); s != nil {
-					a.todoChip(c, "compact:"+task.ID, s.SourceItemRef) // D341
-				}
-			})
-			ui.Row(c.Key("l2")).Gap(t.S3).AlignItems(ui.Center).Children(func() {
-				ink := t.InkSoft
-				if s.tone == "failed" {
-					ink = t.Failed.Ink
-				}
-				uiText(c.Key("w"), keepWords(autospace(s.words))).FontSize(t.XS).TextColor(ink).SingleLine().Shrink(1).MinWidth(0).Tooltip(s.words)
-				if quiet && task.Card != nil {
-					uiText(c.Key("since"), a.tp("onhand.wait.since", a.agoLong(task.Card.UpdatedAt))).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(0)
-				}
-				for _, m := range a.whereMeta(task) {
-					uiText(c.Key("meta:"+m), m).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(0).MaxWidth(160)
-				}
-			})
-		})
-		if quiet {
-			ui.Row(c.Key("acts")).Gap(t.S1).Shrink(0).Children(func() {
-				w := a.S.WaiterFor(task.ID)
-				if w != nil && (w.Check != nil || w.Event != nil) {
-					if a.button(c, a.L.T("onhand.quiet.look"), btnSecondary, t.ControlSM, t.Surface) {
-						acted = true
-						a.send(protocol.WaiterAction{T: "waiter_action", WaiterID: w.WaiterID, Action: "look"})
-					}
-				} else if a.button(c, a.L.T("onhand.quiet.go"), btnSecondary, t.ControlSM, t.Surface) {
-					acted = true
-					a.send(protocol.PastContinue{T: "past_continue", TaskID: task.ID, Words: a.L.T("onhand.quiet.go")})
-				}
-				if a.button(c, a.L.T("onhand.quiet.drop"), btnText, t.ControlSM, t.Surface) {
-					acted = true
-					a.TaskAction(task.ID, "drop")
-				}
-			})
-			return
-		}
-		if hover && a.rowActs(c, task, true) {
-			return
-		}
-		uiText(c.Key("time"), a.rowTime(task)).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum").Shrink(0).SingleLine()
-	})
-	clicked := card.Clicked() && !acted
-	a.heroRow(card, task.ID, clicked || focus)
-	a.stagger(c, card, a.nav.rows)
-	a.nav.rows++
-	if clicked {
-		a.oh.focus = task.ID
-		a.OpenTask(task.ID)
-	}
+	a.taskCards(c, tasks)
 }
 
 // heartbeat is a card's live sign, always true: working says for how
 // long with three soft bars rising and falling; a wait fills its ring
 // toward when it comes back; a finished task says when it came back.
 func (a *App) heartbeat(c *ui.Context, task *store.Task, att protocol.Attention) {
+	a.beat(c, task, att, true)
+}
+
+// beat is the heartbeat; without its sign (D467: a card's state mark already
+// draws the bars or the ring) it is the words alone.
+func (a *App) beat(c *ui.Context, task *store.Task, att protocol.Attention, sign bool) {
 	t := a.T
 	switch att {
 	case protocol.Working, protocol.Queued:
 		ui.Row(c.Key("beat")).Gap(6).AlignItems(ui.Center).Shrink(0).Children(func() {
-			ui.Box(c.Key("pulse")).Size(13, 12).Shrink(0).AccessHidden(true).Draw(drawPulse(t.Working.Dot, phaseOf(task.ID), a.aliveResting(c)))
+			if sign {
+				ui.Box(c.Key("pulse")).Size(13, 12).Shrink(0).AccessHidden(true).Draw(drawPulse(t.Working.Dot, phaseOf(task.ID), a.aliveResting(c)))
+			}
 			if d := a.rowTime(task); d != "" {
 				words := a.tp("onhand.card.working", d)
 				if d == a.L.T("time.now") {
@@ -503,7 +494,9 @@ func (a *App) heartbeat(c *ui.Context, task *store.Task, att protocol.Attention)
 		if next, frac := a.waitNext(w); next != "" {
 			c.After(time.Minute)
 			ui.Row(c.Key("beat")).Gap(6).AlignItems(ui.Center).Shrink(0).Children(func() {
-				ui.Box(c).Size(16, 16).Shrink(0).Draw(drawRing(t.Waiting.Ink.Alpha(0.5), t.Waiting.Ink, frac)).AccessHidden(true)
+				if sign {
+					ui.Box(c).Size(16, 16).Shrink(0).Draw(drawRing(t.Waiting.Ink.Alpha(0.5), t.Waiting.Ink, frac)).AccessHidden(true)
+				}
 				uiText(c, next).FontSize(t.XS).FontWeight(600).TextColor(t.Waiting.Ink).FontFeatures("tnum").SingleLine()
 			})
 			return
@@ -550,148 +543,6 @@ func drawPulse(col ui.Color, phase float64, rest bool) func(p *ui.Painter, r ui.
 func (a *App) subHead(c *ui.Context, key, words string) {
 	t := a.T
 	uiText(c.Key("sub:"+key), words).FontSize(t.XS).FontWeight(500).TextColor(t.InkMuted).Padding(t.S2+2, t.S3+2, 0, t.S3+2)
-}
-
-// ---------- the day beside the board ----------
-
-type dayItem struct {
-	at        time.Time
-	text, sub string
-	id        string
-}
-
-// dayOf is what comes back next on its own and what came back today,
-// within the lens, from the Log's times and words.
-func (a *App) dayOf(b store.Board, lens string) (next, back []dayItem) {
-	now := a.Now()
-	add := func(at time.Time, text, id string) {
-		if at.After(now) {
-			next = append(next, dayItem{at: at, text: text, id: id})
-		}
-	}
-	for _, task := range b.Lanes[store.LaneNeedsYou] {
-		if d := a.S.PendingDecision(task.ID); d != nil && d.Reversible && d.DefaultOption == "go" {
-			add(store.ParseTime(d.DefaultAt), shortTitle(task.Title()), task.ID)
-		}
-	}
-	for _, task := range b.Lanes[store.LaneWaiting] {
-		if !a.quietWait(task) {
-			add(nextAt(a.S.WaiterFor(task.ID)), shortTitle(task.Title()), task.ID)
-		}
-	}
-	if loose(lens) {
-		for _, w := range a.looseWaiters() {
-			add(nextAt(w), w.Reason, "")
-		}
-	}
-	for _, task := range b.Lanes[store.LaneDone] {
-		it := dayItem{text: shortTitle(task.Title()), id: task.ID}
-		if task.Card != nil {
-			it.at = store.ParseTime(task.Card.UpdatedAt)
-		}
-		if r := task.Report(); r != nil {
-			it.sub = strings.SplitN(strings.TrimSpace(r.Summary), "\n", 2)[0]
-		}
-		back = append(back, it)
-	}
-	sort.SliceStable(next, func(i, j int) bool { return next[i].at.Before(next[j].at) })
-	sort.SliceStable(back, func(i, j int) bool { return back[i].at.After(back[j].at) })
-	if len(next) > 5 {
-		next = next[:5]
-	}
-	if len(back) > 6 {
-		back = back[:6]
-	}
-	return
-}
-
-// dayColumn is the day beside the board: a thin line of time, what comes
-// back next above now and what came back today below it.
-func (a *App) dayColumn(c *ui.Context, b store.Board, lens string) {
-	t := a.T
-	next, back := a.dayOf(b, lens)
-	if len(next) == 0 && len(back) == 0 {
-		return
-	}
-	head := func(key, words string) {
-		uiText(c.Key("h:"+key), words).FontSize(t.XS).FontWeight(600).TextColor(t.InkMuted).Padding(t.S2, 0, 2, 22)
-	}
-	list := func(key string, items []dayItem, isNext bool) {
-		line := t.Line
-		ui.Column(c.Key("l:" + key)).Gap(2).Draw(func(p *ui.Painter, r ui.Rect) {
-			var d ui.Path
-			d.MoveTo(r.X+6, r.Y).LineTo(r.X+6, r.Y+r.H)
-			p.StrokePath(&d, 2, line)
-		}).Children(func() {
-			for i, it := range items {
-				a.dayRow(c.Key(fmt.Sprint(key, i)), it, isNext)
-			}
-		})
-	}
-	ui.Column(c.Key("day-col")).Width(dayColW).Shrink(0).Gap(6).Label(a.L.T("onhand.day.label")).Children(func() {
-		if len(next) > 0 {
-			head("next", a.L.T("onhand.next"))
-			list("next", next, true)
-		}
-		ui.Row(c.Key("now")).Gap(t.S2).AlignItems(ui.Center).Padding(t.S1, 0, t.S1, 0).Children(func() {
-			acc := t.Accent
-			ui.Box(c.Key("bead")).Size(12, 12).Shrink(0).AccessHidden(true).Draw(func(p *ui.Painter, r ui.Rect) {
-				var d ui.Path
-				d.Circle(r.X+r.W/2, r.Y+r.H/2, 6)
-				p.FillPath(&d, acc)
-			})
-			uiText(c, i18n.Clock(a.Now())).FontSize(t.XS).FontWeight(600).TextColor(acc).FontFeatures("tnum")
-			uiText(c, a.L.T("onhand.day.now")).FontSize(t.XS).FontWeight(600).TextColor(acc)
-		})
-		head("back", a.L.T("onhand.day.back"))
-		if len(back) == 0 {
-			uiText(c.Key("none"), a.L.T("onhand.day.none")).FontSize(t.XS).TextColor(t.InkMuted).Padding(0, 0, 0, 22)
-			return
-		}
-		list("back", back, false)
-	})
-}
-
-// dayRow is one moment of the day: its bead, its time, its title, and a
-// result's first line.
-func (a *App) dayRow(c *ui.Context, it dayItem, isNext bool) {
-	t := a.T
-	r := ui.Row(c).Gap(t.S2).AlignItems(ui.Start).Padding(t.S1+2, t.S2, t.S1+2, 1).Radius(t.RadiusSM)
-	if it.id != "" {
-		r.Cursor(ui.CursorPointer).Role(ui.RoleLink).Label(it.text)
-		if r.Hovered() {
-			r.Background(t.Ink.Alpha(0.04))
-		}
-	}
-	bg, waitInk, doneDot := t.Bg, t.Waiting.Ink, t.Done.Dot
-	r.Children(func() {
-		ui.Box(c.Key("bead")).Size(10, 10).Shrink(0).Margin(4, 0, 0, 0).AccessHidden(true).Draw(func(p *ui.Painter, rc ui.Rect) {
-			var d ui.Path
-			d.Circle(rc.X+rc.W/2, rc.Y+rc.H/2, 5)
-			if isNext {
-				p.FillPath(&d, bg)
-				var o ui.Path
-				o.Circle(rc.X+rc.W/2, rc.Y+rc.H/2, 4)
-				p.StrokePath(&o, 2, waitInk)
-				return
-			}
-			p.FillPath(&d, doneDot)
-		})
-		ui.Column(c.Key("tx")).Gap(1).Grow(1).Shrink(1).MinWidth(0).Children(func() {
-			ink := t.InkMuted
-			if isNext {
-				ink = t.Waiting.Ink
-			}
-			uiText(c, i18n.Clock(it.at)).FontSize(t.XS).FontWeight(600).TextColor(ink).FontFeatures("tnum")
-			uiText(c.Key("t"), keepWords(autospace(it.text))).FontSize(t.SM).FontWeight(500).TextColor(t.Ink).SingleLine().MinWidth(0)
-			if it.sub != "" {
-				uiText(c.Key("s"), keepWords(autospace(it.sub))).FontSize(t.XS).LineHeight(1.45).TextColor(t.InkMuted).MaxLines(2)
-			}
-		})
-	})
-	if it.id != "" && r.Clicked() {
-		a.OpenTask(it.id)
-	}
 }
 
 // cheerScale is a done card's size k of the way through its cheer: it

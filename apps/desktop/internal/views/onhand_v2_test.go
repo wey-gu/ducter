@@ -151,7 +151,10 @@ func v2App(t *testing.T, lang i18n.Lang, few bool) *App {
 	app, _ := iaApp(t, lang)
 	app.Status = client.Connected
 	app.LocaleFixed = true
-	now := time.Now()
+	// D467: 今天做完 is today's date, so the week is pictured from a fixed afternoon.
+	y, m, d := time.Now().Date()
+	now := time.Date(y, m, d, 15, 0, 0, 0, time.Local)
+	app.Now = func() time.Time { return now }
 	app.Local.SeenSince(now.Add(-6 * time.Hour))
 	if few {
 		app.Receive(protocol.ServerFrame{T: "on_hand", OnHand: &protocol.OnHand{Tasks: railBoard(lang, now)[:4]}})
@@ -175,7 +178,7 @@ func TestOnHandLensAndStrip(t *testing.T) {
 	tt.Frame()
 	tt.Frame()
 	all := strings.Join(tt.Texts(), " ")
-	for _, want := range []string{"All", "ducter", "hawdb", "mem", "Other", "Retest", "3 more, quiet for over a day", "9 more you've seen", "back at"} {
+	for _, want := range []string{"All", "ducter", "hawdb", "mem", "Other", "Retest", "Continue", "Put down", "more you've seen", "back at"} {
 		if want == "Retest" {
 			continue
 		}
@@ -183,11 +186,21 @@ func TestOnHandLensAndStrip(t *testing.T) {
 			t.Errorf("no %q on the board: %q", want, all)
 		}
 	}
-	// Quiet waits and seen results are folded: not in the keys' walk.
+	// Seen results are folded: not in the keys' walk. D467: the waits nothing
+	// brings back stand in 等你, in the walk after the questions.
+	walked := map[string]bool{}
 	for _, id := range app.oh.order {
-		if id == "t_rec" || id == "t_seen0" {
+		walked[id] = true
+		if id == "t_seen0" {
 			t.Errorf("%s is folded but walked", id)
 		}
+	}
+	// D467 round 2: the first two stand in the partner's brief with their fix, not as cards.
+	if !app.oh.briefed["t_rec"] || !app.oh.briefed["t_fold2"] || walked["t_rec"] {
+		t.Errorf("the stopped waits are not in the brief: %v, walk %v", app.oh.briefed, app.oh.order)
+	}
+	if n := app.stateCounts(app.S.Board(), ""); n[0] < 4 {
+		t.Errorf("the stopped waits don't count as needing you: %v", n)
 	}
 	// The stopped task without a waiter says what it last reported.
 	if s := app.storyOf(app.S.Task("t_rec")); !strings.Contains(s.words, "Pixel Fold") {
@@ -210,20 +223,9 @@ func TestOnHandLensAndStrip(t *testing.T) {
 			t.Errorf("%s shows under hawdb", id)
 		}
 	}
-	// The strip filters, and pressing it again lets go.
-	if err := tt.Click(app.L.T("lane.working") + " 2"); err != nil {
-		t.Fatal(err)
-	}
-	tt.Frame()
-	if app.oh.filter != 2 || len(app.oh.order) != 2 {
-		t.Fatalf("filter %d, rows %v", app.oh.filter, app.oh.order)
-	}
-	if err := tt.Click(app.L.T("lane.working") + " 2"); err != nil {
-		t.Fatal(err)
-	}
-	tt.Frame()
-	if app.oh.filter != 0 {
-		t.Fatalf("pressed again, the filter stays %d", app.oh.filter)
+	// D467 round 2: no count strip (the brief and the cards say it).
+	if strings.Contains(strings.Join(tt.Texts(), " "), app.L.T("onhand.strip")) {
+		t.Fatal("the count strip is back")
 	}
 	// Opening a task: the rail follows the lens.
 	app.OpenTask("t_compact")

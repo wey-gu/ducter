@@ -34,6 +34,7 @@ func TestOwnSubjectChipFirstAndNewSubject(t *testing.T) {
 	app.S.PersonaName = "小鸭"
 	app.Receive(ownPile(i18n.ZH))
 	app.Route = RouteOnHand
+	app.oh.srcAll = true // D467: the whole sort stands behind 看看全部
 	todoFrames(tt, 3)
 	all := strings.Join(tt.Texts(), " | ")
 	own, other := strings.Index(all, "通用设置"), strings.Index(all, "记忆提炼")

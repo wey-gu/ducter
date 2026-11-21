@@ -256,7 +256,10 @@ func (a *App) todoGroup(c *ui.Context, lens string) {
 	}
 	name := a.todoGroupName(sources)
 	n := ""
-	if open > 0 && pile == nil {
+	switch {
+	case pile != nil:
+		// D467: with a pile the count is said once, in 看看全部 n 个.
+	case open > 0:
 		n = fmt.Sprint(open)
 		if atLeast {
 			n += "+"
@@ -283,12 +286,26 @@ func (a *App) todoGroup(c *ui.Context, lens string) {
 					}
 				}
 			}
-			uiText(c, name).Font(t.Display).FontSize(t.LG).FontWeight(700).TextColor(t.Ink)
+			// D467: a quiet label like the board's sections.
+			uiText(c, name).FontSize(t.SM).FontWeight(700).TextColor(t.InkMuted).LetterSpacing(0.5).Role(ui.RoleHeading)
 			if n != "" {
-				uiText(c, n).Font(t.Display).FontSize(t.LG).FontWeight(600).TextColor(t.InkMuted).FontFeatures("tnum")
+				uiText(c, n).FontSize(t.SM).FontWeight(600).TextColor(t.Faint).FontFeatures("tnum")
 			}
 		})
+		// D467: with a pile, one calm summary card and its one action; the
+		// whole sort, the few cards and the rest stand behind 看看全部.
 		if pile != nil {
+			a.srcSummary(c, pile, review)
+			label := a.L.T("onhand.src.all", pile.Open)
+			if a.oh.srcAll {
+				label = a.L.T("onhand.src.hide")
+			}
+			if pile.Open > 0 && a.foldLine(c, "src-all", label, a.oh.srcAll) {
+				a.oh.srcAll = !a.oh.srcAll
+			}
+			if !a.oh.srcAll {
+				return
+			}
 			a.pileBlock(c, pile)
 		}
 		if len(glance) > 0 {
@@ -296,13 +313,10 @@ func (a *App) todoGroup(c *ui.Context, lens string) {
 			if w <= 0 {
 				w = onHandMeasure
 			}
-			cw := w
-			if w >= 2*cardMin+cardGap {
-				cw = (w - cardGap) / 2
-			}
-			ui.Row(c.Key("todo-cards")).Wrap().Gap(cardGap).AlignItems(ui.Stretch).Padding(2, 0, 6, 0).Children(func() {
+			// D467: one under another at the list's width, never two to a row.
+			ui.Column(c.Key("todo-cards")).Gap(cardGap-4).Padding(2, 0, 6, 0).Children(func() {
 				for i := range glance {
-					a.todoCard(c.Key("g:"+glance[i].Ref), glance[i], cw)
+					a.todoCard(c.Key("g:"+glance[i].Ref), glance[i], w)
 				}
 			})
 		}
@@ -383,44 +397,46 @@ func (a *App) todoAct(c *ui.Context, it protocol.SourceItem, kind btnKind) {
 	}
 }
 
-// todoCard is one of the few as a card of the board: the app's mark where a
-// task has its agent's coin, the title in up to two lines, why, the chip,
-// and at the foot when it changed and its action. The card opens it in its app.
+// todoCard is one of the few in the board's one card shape (D467): the
+// app's mark where a task has its state, the title, why it stands here and
+// when it changed, and at the right its one action. It opens in its app.
 func (a *App) todoCard(c *ui.Context, g protocol.SourceGlance, w float32) {
 	t := a.T
 	it := g.SourceItem
 	app := protocol.SourceKindName(it.Kind)
-	card := ui.Column(c).Width(w).Gap(t.S2).Padding(14, 16, 10, 16).Radius(20).Background(t.Surface).Role(ui.RoleGroup).Label(it.Title)
+	padY, minH := float32(12), float32(64)
+	if a.compact() {
+		padY, minH = 8, 52
+	}
+	card := ui.Row(c).Width(w).Gap(14).Padding(padY, 16, padY, 14).MinHeight(minH).Radius(16).AlignItems(ui.Center).
+		Background(t.Surface).Role(ui.RoleGroup).Label(it.Title)
 	hover := card.Hovered()
 	still := c.Preferences().ReduceMotion
 	lift := card.AnimateTo("lift", map[bool]float32{true: 1, false: 0}[hover], ui.Animation{Duration: 120 * time.Millisecond, NonMotion: still})
-	card.Shadow(0, 2+2*lift, 0, 0, t.Line).Shadow(0, 8+6*lift, 18+8*lift, -12, t.Ink.Alpha(0.22+0.08*lift))
+	card.Shadow(0, 2+lift, 0, 0, t.Line).Shadow(0, 6+4*lift, 14+6*lift, -10, t.Ink.Alpha(0.16+0.06*lift))
 	if !still && lift > 0 {
-		card.Translate(0, -2*lift)
+		card.Translate(0, -lift)
 	}
 	card.Children(func() {
-		top := ui.Column(c.Key("open")).Gap(t.S2).Cursor(ui.CursorPointer).Role(ui.RoleLink).Label(spoken(a.L, it.Title, a.L.T("todos.chip.open", app))).Focusable().Tooltip(it.Title)
+		a.todoMark(c, it.Kind, 32)
+		top := ui.Column(c.Key("open")).Gap(3).Grow(1).Shrink(1).MinWidth(0).Cursor(ui.CursorPointer).Role(ui.RoleLink).
+			Label(spoken(a.L, it.Title, a.L.T("todos.chip.open", app))).Focusable().Tooltip(it.Title)
 		top.Children(func() {
-			ui.Row(c.Key("c1")).Gap(10).AlignItems(ui.Center).Children(func() {
-				a.todoMark(c, it.Kind, 28)
-				uiText(c, keepWords(autospace(it.Title))).FontSize(t.MD).FontWeight(600).LineHeight(1.35).TextColor(t.Ink).MaxLines(2).Grow(1).Shrink(1).MinWidth(0)
+			uiText(c.Key("title"), keepWords(autospace(it.Title))).FontSize(t.MD).FontWeight(600).TextColor(t.Ink).SingleLine().MinWidth(0)
+			ui.Row(c.Key("c2")).Gap(t.S2 + 2).AlignItems(ui.Center).MinWidth(0).Children(func() {
+				a.todoFacts(c, "glance:"+it.Ref, it, g.Why)
+				if why := a.todos.fold.handFailed[it.Ref]; why != "" {
+					uiText(c.Key("failed"), why).FontSize(t.XS).TextColor(t.Failed.Ink).Shrink(1).MinWidth(0).Role(ui.RoleStatus)
+				} else if it.UpdatedAt != "" {
+					uiText(c.Key("updated"), a.L.T("onhand.todos.updated", a.agoLong(it.UpdatedAt))).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(0)
+				}
 			})
-			ui.Row(c.Key("c2")).Wrap().Gap(t.S2 + 2).AlignItems(ui.Center).Children(func() { a.todoFacts(c, "glance:"+it.Ref, it, g.Why) })
+			a.pileReadLine(c, g) // D359: 我看过了
 		})
 		if top.Clicked() && it.URL != "" {
 			c.OpenURL(it.URL)
 		}
-		a.pileReadLine(c, g) // D359: 我看过了
-		ui.Box(c.Key("room")).Grow(1)
-		ui.Row(c.Key("c3")).Gap(10).AlignItems(ui.Center).MinHeight(t.ControlMD).Children(func() {
-			if why := a.todos.fold.handFailed[it.Ref]; why != "" {
-				uiText(c.Key("failed"), why).FontSize(t.XS).TextColor(t.Failed.Ink).Grow(1).Shrink(1).MinWidth(0).Role(ui.RoleStatus)
-			} else if it.UpdatedAt != "" {
-				uiText(c.Key("updated"), a.L.T("onhand.todos.updated", a.agoLong(it.UpdatedAt))).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
-			}
-			ui.Spacer(c)
-			a.todoAct(c, it, btnSecondary)
-		})
+		ui.Row(c.Key("act")).Shrink(0).Children(func() { a.todoAct(c, it, btnSecondary) })
 	})
 }
 
@@ -628,5 +644,95 @@ func (a *App) todoRow(c *ui.Context, it protocol.SourceItem) {
 			c.OpenURL(it.URL)
 		}
 		ui.Row(c.Key("acts")).Shrink(0).Children(func() { a.todoAct(c, it, btnText) })
+	})
+}
+
+// pileTaken is what of the open count no group holds: handed over, in a
+// task, or queued (D467: said, so the facts add up to the count).
+func pileTaken(pv *protocol.PileView) int {
+	n := pv.Open - pv.Unread
+	for _, k := range []string{"do", "decide", "close", "later"} {
+		n -= pv.Groups[k]
+	}
+	return max(0, n)
+}
+
+// srcSummary is a to-do source on On hand (D467): one card of the board's
+// shape, the app's mark where a task has its state, the sort's lead fact,
+// the others each its own element under it, and its one action. The art,
+// the rows and the cards are behind 看看全部.
+func (a *App) srcSummary(c *ui.Context, pv *protocol.PileView, review int) {
+	t := a.T
+	a.takePile()
+	w := a.oh.listW
+	if w <= 0 {
+		w = onHandMeasure
+	}
+	name := a.personaName()
+	kind := "github"
+	if v := a.S.Sources; v != nil && len(v.Sources) == 1 {
+		kind = v.Sources[0].Kind
+	}
+	padY, minH := float32(12), float32(64)
+	if a.compact() {
+		padY, minH = 8, 52
+	}
+	card := ui.Row(c.Key("src-sum")).Width(w).Gap(14).Padding(padY, 16, padY, 14).MinHeight(minH).Radius(16).AlignItems(ui.Center).
+		Background(t.Surface).Role(ui.RoleGroup)
+	card.Shadow(0, 2, 0, 0, t.Line).Shadow(0, 6, 14, -10, t.Ink.Alpha(0.16))
+	g := pv.Groups
+	type fact struct {
+		key string
+		n   int
+	}
+	facts := []fact{{"onhand.src.decide", g["decide"]}, {"onhand.src.close", g["close"]}, {"onhand.src.later", g["later"]}, {"onhand.src.unread", pv.Unread}, {"onhand.src.taken", pileTaken(pv)}}
+	sorted := pv.SortedAt != "" && pv.Read > 0
+	card.Children(func() {
+		a.todoMark(c, kind, 32)
+		ui.Column(c.Key("tx")).Gap(3).Grow(1).Shrink(1).MinWidth(0).Children(func() {
+			switch {
+			case pv.Sorting != nil:
+				uiText(c.Key("lead"), a.L.T("pile.sorting")).FontSize(t.MD).FontWeight(600).TextColor(t.Ink).SingleLine()
+				ui.Row(c.Key("facts")).Gap(t.S3).Children(func() {
+					uiText(c.Key("r"), a.L.T("pile.sorting.read", pv.Sorting.Read)).FontSize(t.SM).TextColor(t.InkSoft).FontFeatures("tnum")
+					uiText(c.Key("o"), a.L.T("pile.sorting.of", pv.Sorting.Of)).FontSize(t.SM).TextColor(t.InkMuted).FontFeatures("tnum")
+				})
+			case sorted:
+				// D467: one offer in the partner's voice; the breakdown is behind 看看全部.
+				lead := ""
+				if g["do"] > 0 {
+					lead = a.L.T("onhand.src.offer", g["do"])
+				} else {
+					for _, f := range facts {
+						if f.n > 0 {
+							lead = a.L.T(f.key, f.n)
+							break
+						}
+					}
+				}
+				if lead == "" {
+					lead = a.L.T("pile.clear")
+				}
+				uiText(c.Key("lead"), autospace(lead)).FontSize(t.MD).LineHeight(1.45).TextColor(t.Ink).MaxLines(2).Shrink(1).MinWidth(0)
+				if review > 0 {
+					uiText(c.Key("review"), a.L.T("onhand.src.review", review)).FontSize(t.SM).FontWeight(600).TextColor(t.NeedsYou.Ink).SingleLine()
+				}
+			default:
+				uiText(c.Key("lead"), a.L.T("pile.first.lede", name)).FontSize(t.SM).LineHeight(1.45).TextColor(t.InkSoft).MaxLines(2)
+			}
+		})
+		ui.Row(c.Key("act")).Shrink(0).Children(func() {
+			switch {
+			case pv.Sorting != nil:
+			case sorted && g["do"] > 0:
+				if a.buttonFor(c, a.L.T("pile.act.do", name), a.L.T("pile.g.do", name), btnSecondary, t.ControlSM, t.Surface) {
+					a.openHandDo() // D385: the hand-over sheet
+				}
+			case !sorted && pv.Open > 0:
+				if a.button(c, a.L.T("pile.first"), btnSecondary, t.ControlSM, t.Surface) {
+					a.send(protocol.PileReq{T: "pile_sort"})
+				}
+			}
+		})
 	})
 }

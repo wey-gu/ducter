@@ -28,7 +28,7 @@ const (
 	// lensOther is the lens key of the tasks of no folder (其他 / Other).
 	lensOther = "~"
 	// lensColW is the project column's width beside the board.
-	lensColW = 236
+	lensColW = 208
 	// quietAfter is how long a wait goes without any change before it
 	// folds away under 在等 (D261): it is still there, one tap away.
 	quietAfter = 24 * time.Hour
@@ -202,7 +202,8 @@ func groupStat(tasks []*store.Task) (adds, dels int) {
 // Other; then Add a folder.
 func (a *App) projectColumn(c *ui.Context, b store.Board, groups []lensGroup, lens string) {
 	t := a.T
-	ui.Column(c.Key("lens-col")).Width(lensColW).Shrink(0).MinHeight(0).Background(t.BgDeep).Label(a.L.T("onhand.lens")).Children(func() {
+	// D467: the column steps back: no deep ground, a hairline beside the board.
+	ui.Column(c.Key("lens-col")).Width(lensColW).Shrink(0).MinHeight(0).BorderWidth(0, 1, 0, 0).BorderColor(t.LineSoft).Label(a.L.T("onhand.lens")).Children(func() {
 		ui.Scroll(c.Key("lens-scroll")).Grow(1).MinHeight(0).Children(func() {
 			ui.Column(c).Gap(2).Padding(t.S5, t.S3, t.S6, t.S3).Children(func() {
 				var all []*store.Task
@@ -248,7 +249,7 @@ func (a *App) projectColumn(c *ui.Context, b store.Board, groups []lensGroup, le
 // A to-do source's row (D341) has its app's mark before its name.
 func (a *App) lensRow(c *ui.Context, key, name string, tasks []*store.Task, on, other bool, brand string, where []string) {
 	t := a.T
-	st, of, words := a.foldMark(tasks)
+	_, _, words := a.foldMark(tasks)
 	label := name
 	if len(where) > 0 {
 		label = spoken(a.L, label, a.L.T("onhand.where", strings.Join(where, a.L.T("onhand.where.and"))))
@@ -299,8 +300,9 @@ func (a *App) lensRow(c *ui.Context, key, name string, tasks []*store.Task, on, 
 				})
 			}
 		})
-		if of != nil {
-			ui.Box(c.Key("mark")).Shrink(0).Tooltip(words).Children(func() { a.statusFace(c, of, st) })
+		// D467 round 3: the partner's face only where something there needs you.
+		if x := a.lensNeeds(tasks); x != nil {
+			ui.Box(c.Key("mark")).Shrink(0).Tooltip(words).Children(func() { a.statusFace(c, x, stNeeds) })
 		}
 		n := ""
 		if len(tasks) > 0 {
@@ -321,7 +323,7 @@ func (a *App) lensTabs(c *ui.Context, groups []lensGroup, lens string) {
 	ui.Row(c.Key("lens-tabs")).Gap(t.S1).Wrap().AlignItems(ui.Center).Label(a.L.T("onhand.lens")).Children(func() {
 		tab := func(key, name string, tasks []*store.Task) {
 			on := key == lens
-			st, of, words := a.foldMark(tasks)
+			_, _, words := a.foldMark(tasks)
 			r := ui.Row(c.Key("tab:"+key)).Gap(t.S1+2).Height(34).Padding(0, t.S3).Radius(t.RadiusMD).AlignItems(ui.Center).
 				Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(spoken(a.L, name, words)).Focusable()
 			a.arriving(c, r, name)
@@ -337,9 +339,9 @@ func (a *App) lensTabs(c *ui.Context, groups []lensGroup, lens string) {
 					ink = t.Ink
 				}
 				uiText(c, name).FontSize(t.SM).FontWeight(700).TextColor(ink).SingleLine().AccessHidden(true)
-				if of != nil && st != stWorking {
+				if x := a.lensNeeds(tasks); x != nil {
 					ui.Box(c.Key("mark")).Size(20, 20).Shrink(0).Children(func() {
-						stillFace(c, "f", statusPresence(of, st), 20)
+						stillFace(c, "f", statusPresence(x, stNeeds), 20)
 					})
 				}
 			})
@@ -368,8 +370,27 @@ func (a *App) lensTabs(c *ui.Context, groups []lensGroup, lens string) {
 // waiting (task-less waits too), done today (D310: tasks finished well
 // today, the one count every surface says; a failed task and a missed wait
 // are in the list with their own words, not counted here).
+//
+// D467: what stopped and what didn't work out need you too; done today is
+// what 今天做完 lists (today's, never yesterday's).
 func (a *App) stateCounts(b store.Board, lens string) [4]int {
-	n := [4]int{len(b.Lanes[store.LaneNeedsYou]), len(b.Lanes[store.LaneWorking]), len(b.Lanes[store.LaneWaiting]), store.DoneToday(b.Lanes[store.LaneDone], a.Now().Local())}
+	sp := a.splitOf(b)
+	// A part that didn't work out in a stopped line is the line's: counted once, as the line.
+	inLine := map[string]bool{}
+	for _, g := range a.boardGroups(b) {
+		if g.stopped != nil {
+			for id := range g.ids {
+				inLine[id] = true
+			}
+		}
+	}
+	failed := 0
+	for _, x := range sp.failed {
+		if !inLine[x.ID] {
+			failed++
+		}
+	}
+	n := [4]int{len(sp.needs) + len(sp.stopped) + failed, len(sp.working), len(sp.waiting), len(sp.today)}
 	n[0] += a.stoppedGroups(b) // D360: a stopped line waits for the person's word
 	if loose(lens) {
 		n[0] += len(a.partnerDecisions()) + len(a.otherAsks()) // D312: another partner's own questions too
@@ -389,32 +410,8 @@ func (a *App) boardTop(c *ui.Context, b store.Board, groups []lensGroup, lens st
 	}
 	var find ui.Element
 	ui.Column(c.Key("top")).Gap(t.S4).Children(func() {
-		// D287: the partner at the head, its pose and its line; D315: under
-		// the line, only the states there are, each a filter.
-		live := 0
-		for _, k := range n {
-			if k > 0 {
-				live++
-			}
-		}
-		a.boardHead(c, b, lens, n, func() {
-			if live < 2 && a.oh.filter == 0 {
-				return
-			}
-			// D270: the counts in a small sunk track, the filter chosen a
-			// raised knob in it, as the places are in the bar.
-			ui.Row(c.Key("strip-row")).AlignItems(ui.Center).Children(func() {
-				ui.Row(c.Key("strip")).Gap(2).Padding(3).Radius(t.RadiusSM).AlignItems(ui.Center).Background(t.SurfaceSunken).
-					InsetShadow(0, 1.5, 2, 0, t.Line).Label(a.L.T("onhand.strip")).Children(func() {
-					names := [4]string{"lane.needs_you", "lane.working", "lane.waiting", "lane.done"}
-					for i := range 4 {
-						if n[i] > 0 {
-							a.stripCell(c, i+1, a.L.T(names[i]), n[i])
-						}
-					}
-				})
-			})
-		})
+		// D467: the partner's brief in its own voice; no count strip.
+		a.brief(c, b, lens, n)
 		g := groupOf(groups, lens)
 		here := g != nil && g.key != lensOther && g.kind == ""
 		total := n[0] + n[1] + n[2] + n[3]
@@ -569,4 +566,15 @@ func (a *App) arriving(c *ui.Context, r ui.Element, name string) {
 	}
 	r.Border(2.5, a.T.Accent.Alpha(k)).Background(a.T.Accent.Alpha(0.10 * k))
 	c.Invalidate()
+}
+
+// lensNeeds is a project's task that needs the person (a question, a wait
+// that stopped, one that didn't work out), or nil (D467 round 3).
+func (a *App) lensNeeds(tasks []*store.Task) *store.Task {
+	for _, x := range tasks {
+		if x.Attention() == protocol.NeedsYou || x.Attention() == protocol.Failed || a.stoppedWait(x) {
+			return x
+		}
+	}
+	return nil
 }

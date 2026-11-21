@@ -45,7 +45,8 @@ func TestGroupCardOnTheBoard(t *testing.T) {
 	app.Status = client.Connected
 	app.Receive(protocol.ServerFrame{T: "on_hand", OnHand: groupFixture(false)})
 	app.Route = RouteOnHand
-	tt := ui.NewTesterWith(app.View, 1280, 900, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
+	// Under 1280, where no peek sits in on the part at work (D467).
+	tt := ui.NewTesterWith(app.View, 1200, 900, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
 	all := strings.Join(tt.Texts(), " | ")
 	for _, want := range []string{"登录页重做", "好了 1 个，还有 2 个", "补登录页的端到端测试", "排着", "一个做完接下一个", "把 tokio 升到 1.42"} {

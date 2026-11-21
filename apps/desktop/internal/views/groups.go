@@ -284,8 +284,9 @@ func (a *App) groupCard(c *ui.Context, bg boardGroup) {
 		f.T, f.GroupID = "task_group", g.ID
 		a.send(f)
 	}
-	card := ui.Column(c.Key("group:"+g.ID)).Gap(t.S2).Padding(14, 16, 12, 16).Radius(20).Background(t.Surface).
-		Shadow(0, 2, 0, 0, ledge).Shadow(0, 8, 18, -12, t.Ink.Alpha(0.22)).Role(ui.RoleGroup).Label(g.Name)
+	// D467: the board's one card shape: radius 16, the clay ledge, its state mark at the head.
+	card := ui.Column(c.Key("group:"+g.ID)).Gap(t.S2).Padding(12, 16, 12, 14).Radius(16).Background(t.Surface).
+		Shadow(0, 2, 0, 0, ledge).Shadow(0, 6, 14, -10, t.Ink.Alpha(0.16)).Role(ui.RoleGroup).Label(g.Name)
 	// D454: a group none of whose parts is at work can leave On hand.
 	fin := finishedGroup(bg)
 	a.contextMenu(c, card, func(m *ui.Menu) {
@@ -312,7 +313,7 @@ func (a *App) groupCard(c *ui.Context, bg boardGroup) {
 	})
 	hover := card.Hovered()
 	card.Children(func() {
-		ui.Row(c.Key("head")).Gap(10).AlignItems(ui.Center).MinHeight(28).Children(func() {
+		ui.Row(c.Key("head")).Gap(14).AlignItems(ui.Center).MinHeight(32).Children(func() {
 			if a.oh.groupRename == g.ID {
 				save := func() {
 					if a.oh.groupDraft != "" && a.oh.groupDraft != g.Name {
@@ -326,30 +327,10 @@ func (a *App) groupCard(c *ui.Context, bg boardGroup) {
 					a.oh.groupRename = ""
 				}
 			} else {
-				uiText(c, g.Name).Font(t.Display).FontSize(t.MD).FontWeight(800).TextColor(t.Ink).SingleLine().Shrink(1).MinWidth(0)
+				uiText(c, g.Name).FontSize(t.MD).FontWeight(700).TextColor(t.Ink).SingleLine().Shrink(1).MinWidth(0)
 			}
 			ui.Spacer(c)
-			ui.Row(c.Key("beads")).Gap(4).AlignItems(ui.Center).AccessHidden(true).Children(func() {
-				for _, r := range bg.rows {
-					col := t.Line
-					switch groupMark(r) {
-					case "done":
-						col = t.Done.Dot
-					case "working":
-						col = t.Working.Dot
-					case "needs":
-						col = t.NeedsYou.Dot
-					case "failed", "dropped":
-						col = t.Failed.Dot
-					}
-					b := ui.Box(c).Size(8, 8).Radius(4).Shrink(0)
-					if k := groupMark(r); k == "held" || k == "waiting" {
-						b.Border(1.5, t.InkSoft)
-					} else {
-						b.Background(col)
-					}
-				}
-			})
+			// D467 round 3: the parts' track under the head is the group's one sign of progress.
 			if done, left, ok := groupCount(bg.rows); ok {
 				uiText(c, a.L.T("asks.count", done, left)).FontSize(t.XS).FontWeight(600).TextColor(t.InkMuted).FontFeatures("tnum").SingleLine()
 			}
@@ -367,6 +348,7 @@ func (a *App) groupCard(c *ui.Context, bg boardGroup) {
 				held = append(held, r)
 			}
 		}
+		a.groupTrack(c, bg) // D467: the parts as one track
 		if g.Hand != nil {
 			a.handGroupFacts(c, &g, len(held)) // D385: where it stands, the plan, review together
 		}
@@ -377,13 +359,13 @@ func (a *App) groupCard(c *ui.Context, bg boardGroup) {
 				key = r.key
 			}
 			k := groupMark(r)
-			ui.Column(c.Key("part:" + key)).Gap(t.S1).Children(func() {
+			ui.Column(c.Key("part:"+key)).Gap(t.S1).Padding(0, 0, 0, 40).Children(func() {
 				row := ui.Row(c.Key("row")).Gap(10).AlignItems(ui.Center).MinHeight(32)
 				row.Children(func() {
 					uiText(c, fmt.Sprint(r.part)).FontSize(t.XS).FontWeight(600).TextColor(t.InkSoft).FontFeatures("tnum").Width(16).AccessHidden(true)
 					fill := map[string]ui.Color{"done": t.Done.Dot, "working": t.Working.Dot, "needs": t.NeedsYou.Dot, "failed": t.Failed.Dot, "dropped": t.Failed.Dot, "held": t.InkSoft, "waiting": t.Waiting.Ink}[k]
 					if k == "working" {
-						ui.Box(c.Key("pulse")).Size(20, 20).Radius(10).Background(t.Working.Surface).Shrink(0).AccessHidden(true).Draw(drawPulse(t.Working.Dot, phaseOf(key), a.aliveResting(c)))
+						ui.Box(c.Key("mark")).Size(20, 20).Shrink(0).AccessHidden(true) // its trail moves, not a glyph
 					} else {
 						ui.Box(c.Key("mark")).Size(20, 20).Shrink(0).AccessHidden(true).Draw(drawGroupMark(k, fill, t.Surface))
 					}
@@ -417,9 +399,21 @@ func (a *App) groupCard(c *ui.Context, bg boardGroup) {
 					case k == "failed" || k == "dropped":
 						uiText(c, a.L.T(map[bool]string{true: "state.failed", false: "state.dropped"}[k == "failed"])).FontSize(t.XS).FontWeight(600).TextColor(t.Failed.Ink).SingleLine()
 					case task != nil:
-						a.heartbeat(c, task, task.Attention())
+						a.beat(c, task, task.Attention(), false) // D467: its mark draws the sign
 					}
 				})
+				// D467: a part at work says what it is on now, as a task's card does.
+				if task := a.S.Task(r.taskID); k == "working" && task != nil {
+					s := a.storyOf(task)
+					words := keepWords(autospace(s.words))
+					if s.code != "" {
+						words += "  " + s.code
+					}
+					held, op := a.aliveHeld(c, "part:"+key, words)
+					uiText(c.Key("now:"+held), held).FontSize(t.SM).LineHeight(1.45).TextColor(t.InkSoft).MaxLines(2).
+						Opacity(op).Padding(0, 0, 0, 52).Tooltip(s.words)
+					ui.Column(c.Key("trail")).Padding(0, 0, 0, 52).Children(func() { a.trail(c, "trail", task) })
+				}
 				// What needs you never folds: its question inside the card.
 				if k == "needs" {
 					if d := a.S.PendingDecision(r.taskID); d != nil {
@@ -451,7 +445,7 @@ func (a *App) groupCard(c *ui.Context, bg boardGroup) {
 				})
 			})
 		} else if len(held) > 0 && g.Hand == nil {
-			ui.Row(c.Key("foot")).Gap(8).AlignItems(ui.Center).Padding(4, 0, 0, 26).Children(func() {
+			ui.Row(c.Key("foot")).Gap(8).AlignItems(ui.Center).Padding(4, 0, 0, 46).Children(func() {
 				words := a.L.T("group.line")
 				if g.Order == "side_by_side" {
 					words = a.L.T("group.side")
@@ -469,4 +463,27 @@ func heldIndex(held []groupRow, key string) int {
 		}
 	}
 	return -1
+}
+
+// groupStateMark is a group's mark at its head (D467), the one a task's card
+// has: by the section it stands in.
+func (a *App) groupStateMark(c *ui.Context, bg boardGroup) {
+	t := a.T
+	size := float32(32)
+	if a.compact() {
+		size = 28
+	}
+	box := ui.Box(c.Key("gmark")).Size(size, size).Radius(size / 2).Shrink(0).AlignItems(ui.Center).Justify(ui.Center).AccessHidden(true)
+	switch bg.lane {
+	case 0:
+		box.Background(t.NeedsYou.Surface).Draw(drawGroupMark("needs", t.NeedsYou.Dot, t.Surface))
+	case 1:
+		box.Background(t.Working.Surface).Children(func() {
+			ui.Box(c.Key("pulse")).Size(13, 12).Draw(drawPulse(t.Working.Dot, phaseOf(bg.g.ID), a.aliveResting(c)))
+		})
+	case 2:
+		box.Background(t.SurfaceSunken).Draw(drawGroupMark("waiting", t.Waiting.Ink, t.Surface))
+	default:
+		box.Background(t.SurfaceSunken).Draw(drawGroupMark("done", t.InkMuted.Alpha(0.45), t.Surface))
+	}
 }

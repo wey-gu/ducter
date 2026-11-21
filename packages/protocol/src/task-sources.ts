@@ -427,7 +427,7 @@ export type SourcesServerFrame =
   // D359: what a pile action did: handed (into the queue), closed (done, failed), a review sent, a pre-read made.
   | { t: "pile_result"; clientId?: string; op: "hand" | "close" | "review" | "pre_read" | "plan" | "group_review" | "subject"; ok: boolean; done?: number; failed?: number; read?: PreRead; error?: string; groupId?: string; name?: string; asked?: string }
   // D385: a find's answer (the sheet's find field, a chip, a set card), and the sheet's how.
-  | { t: "pile_find_result"; clientId?: string; query?: string; subject?: string; found: import("./handover.ts").FindSummary; items: import("./handover.ts").FoundItem[]; ticked: string[]; setId?: string; said?: import("./handover.ts").FindSaid; suggest?: string[] }
+  | { t: "pile_find_result"; clientId?: string; query?: string; subject?: string; found: import("./handover.ts").FindSummary; items: import("./handover.ts").FoundItem[]; ticked: string[]; setId?: string; said?: import("./handover.ts").FindSaid; suggest?: string[]; handedOver?: import("./handover.ts").HandedItem[] }
   | { t: "pile_how_result"; clientId?: string; how: import("./handover.ts").HandHow }
   | { t: "group_review_result"; clientId?: string; review?: import("./handover.ts").GroupReview; error?: string };
 

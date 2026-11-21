@@ -389,3 +389,44 @@ they ticked 37 with one right. Shots `.shots/handover-find/` (`before-*` from ma
 **Still owed:** the live check on the author's pile (the timeline pass on 555); who assigned it read
 from GitHub's events for a pile synced before D428 (until its next sort, who opened it stands in);
 humans on the chip words.
+
+## 13. Every match shown, read honestly (D454)
+
+The author on 0.1.8, the same pile, 100gle's two still open (#10559 **Improve general setting page**,
+#10482 **Improve memory space setting page**). **Who:** the heavy developer, back the next day to
+finish what he handed over yesterday. *Felt before:* 「那些 100gle 分配给我的任务」 found one, #10559 gone
+without a word (it was in yesterday's task, which didn't work out); the typo 「100gler」 said no one has
+that name and then listed 43 unrelated ones; the note 「你仔细一起做掉」 went to the right and stayed in
+the about chip too (**关于 UI walkthrough，你仔细一起做掉**). *After:* every match is on the sheet, each
+where it belongs; the name he almost typed is read at once and said; his words are read once each.
+
+- **Already handed over** (`pile.handedOver()`, `pile_find_result.handedOver`, `found.handed`): the
+  sentence is read over the open ones and the ones already in a task alike; a match in a task shows in
+  its own group under the rest, **已经交出去的 / Already handed over**, never ticked, each with its
+  state in the glossary's words (**在做 / Working**, **在等 / Waiting**, **没成 / Didn't work**, **做完了 /
+  Done**) and the way to its task (**看看为什么 / See why** for one that didn't work, else **打开 /
+  Open**). The line adds **{n} 个已经交出去了 / {n} already handed over**; all of them in tasks: **没有新的
+  可交 / Nothing new to hand over** and **你说的这些，都已经交出去了。** The conversation's set never
+  carries one (Go would fail on it).
+- **分配给我 is honest:** "{login} 分配给我" is on the person AND assigned by that login; only where
+  GitHub's timeline wasn't read (no `assignedBy`) does who opened it stand in, and then the chip says
+  so: **{login} 提给你的 / from {login} to you**, and that row's reason **{login} 提的**.
+- **A name one edit away:** when exactly one login is a single edit from what was said ("100gler"), it
+  is read as that login at once and said under the chips: **按 100gle 找的 / Found by 100gle** with
+  **不是 100gle / Not 100gle** (drops `guess:100gler`: the name stays unknown). A name that is no login
+  and not one edit from exactly one (a swap like "100gel" is two) lists nothing until a name is picked:
+  0.1.8 listed every other fact's matches.
+- **The note leaves the about words:** a clause said to the one doing it (**你…**, **仔细 / 认真 /
+  一起做 / 一并 / 做掉 / 搞定…**; "carefully", "together", "you do…") is a how clause; and when the
+  model reads the note out of one clause, its words are taken out of the about chip
+  (`aboutLessNote`).
+- **Said once (polish, D441's subtraction):** read by one fact alone, the line says it back in that
+  fact's words (**100gle 分给你的，有 4 个 / 4 assigned by 100gle**) instead of a bare count; a row's
+  reason that only repeats a chip above (every row saying **100gle 分给你的**) is left off; a row's
+  number is **#10694** when every found one is in one repository; the foot's **勾了 n 个** is read aloud
+  only when Go already names the count (**交给小鸭这 4 个**).
+
+Eval (`packages/core/eval/find`): five sentences added word for word, with checks for the handed one,
+the guess and the note (`author-3`, `author-3-handed`, `author-4`, `author-typo`, `author-note`). Shots
+`.shots/tasks-454/{before,after}/` (web 1400 and 390, zh and en, `apps/web/demo-handover-find.ts` with
+`DEMO_HANDED=1`).

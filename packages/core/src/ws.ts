@@ -178,6 +178,8 @@ export interface WsDeps {
   taskSources?: () => import("./task-sources/index.ts").TaskSources | undefined;
   /** D360: groups of tasks that are one piece of work (task-groups.ts). */
   taskGroups?: () => import("./task-groups.ts").TaskGroups | undefined;
+  /** D454: 移走 / Remove, finished cards taken off On hand. */
+  onHandAway?: import("./onhand-away.ts").OnHandAway;
   /** D285: 做过的事 / Past tasks (past.ts); absent in tests that don't need it. */
   /** D309: 伙伴们 / Partners (partners.ts); absent in tests that don't need them. */
   partners?: Partners;
@@ -1907,6 +1909,29 @@ export function createWsHandler(deps: WsDeps) {
         if (!g) throw new Error("groups aren't available here");
         const r = await g.frame(f);
         if (!r.ok) return send(ws, { t: "error", message: r.error });
+        return;
+      }
+      // D454: 移走 / Remove a finished card or group from On hand (back: 撤销 / Undo).
+      case "onhand_away": {
+        const away = deps.onHandAway;
+        if (!away) throw new Error("removing isn't available here");
+        const atWork = (id: string) => ["queued", "working", "needs_you", "blocked"].includes(tasks.get(id)?.attention ?? "");
+        const ids = (Array.isArray(f.taskIds) ? f.taskIds : []).filter((id): id is string => typeof id === "string" && !!tasks.get(id));
+        if (!f.back && ids.some(atWork)) return send(ws, { t: "error", message: "It's still at work; it leaves On hand once it's finished." });
+        let groupIds: string[] = [];
+        if (typeof f.groupId === "string" && f.groupId) {
+          const groups = deps.taskGroups?.();
+          const g = groups?.get(f.groupId);
+          if (g) {
+            const members = g.members.flatMap((m) => ("taskId" in m ? [m.taskId] : []));
+            if (!f.back && members.some(atWork)) return send(ws, { t: "error", message: "Part of it is still at work; it leaves On hand once it's finished." });
+            // What waits in line after a stopped part is dropped with it (nothing of it ever started).
+            if (!f.back && g.members.some((m) => "key" in m)) await groups!.frame({ t: "task_group", op: "drop_rest", groupId: g.id });
+            ids.push(...members.filter((id) => !ids.includes(id)));
+          }
+          groupIds = [f.groupId];
+        }
+        away.put({ taskIds: ids, groupIds, back: !!f.back });
         return;
       }
       // D359: the pile (task-sources/pile.ts).

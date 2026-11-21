@@ -35,6 +35,8 @@ type handState struct {
 	setID            string
 	fromDo           bool
 	items            []protocol.FoundItem
+	// D454: the found ones already handed over (their own group, never ticked).
+	handed           []protocol.HandedItem
 	found            *protocol.FindSummary
 	got, finding     bool
 	// heard: how core split the words; suggest: the field's suggestions;
@@ -162,7 +164,7 @@ func (a *App) takeHand() {
 		h.got, h.finding = true, false
 		switch {
 		case r.Group != "": // one by one: the do group
-			h.items = nil
+			h.items, h.handed = nil, nil
 			for _, p := range r.PileItems {
 				h.items = append(h.items, protocol.FoundItem{PileItem: p})
 			}
@@ -182,7 +184,7 @@ func (a *App) takeHand() {
 			if strings.TrimSpace(h.query) == "" && h.subject == "" && h.setID == "" {
 				break
 			}
-			h.items, h.found, h.heard = r.FoundItems, r.Found, r.Said
+			h.items, h.found, h.heard, h.handed = r.FoundItems, r.Found, r.Said, r.HandedOver
 			h.foundTicked = len(r.Ticked)
 			if r.Subject != "" {
 				h.subject = r.Subject
@@ -496,7 +498,7 @@ func (a *App) handWhat(c *ui.Context, wide bool) {
 	// How the words were read (D428): one chip per fact, each removable; a name
 	// the pile doesn't have, said plainly with the closest logins; the note
 	// itself lives on the right (one quiet line says it went there).
-	if hd := h.heard; hd != nil && !h.finding && (hd.Note != "" || len(readingChips(hd)) > 0 || len(hd.Unknown) > 0 || len(h.drop) > 0) {
+	if hd := h.heard; hd != nil && !h.finding && (hd.Note != "" || len(readingChips(hd)) > 0 || len(hd.Unknown) > 0 || len(hd.Guessed) > 0 || len(h.drop) > 0) {
 		ui.Column(c.Key("heard")).Gap(t.S2).Padding(t.S1, 0, 0, 0).Children(func() {
 			if chips := readingChips(hd); len(chips) > 0 || len(h.drop) > 0 {
 				a.handReading(c, chips)
@@ -506,6 +508,10 @@ func (a *App) handWhat(c *ui.Context, wide bool) {
 				}
 			} else if hd.Note != "" {
 				a.heardPart(c, "about", a.L.T("hand.said.about"), hd.About)
+			}
+			// D454: a name one edit from one login, read as it at once, with its undo.
+			for _, g := range hd.Guessed {
+				a.handGuessed(c, g)
 			}
 			for _, u := range hd.Unknown {
 				a.handUnknown(c, u)
@@ -530,19 +536,19 @@ func (a *App) handWhat(c *ui.Context, wide bool) {
 	// The found line: its facts apart (D291).
 	if h.finding {
 		uiText(c.Key("finding"), a.L.T("hand.finding")).FontSize(t.SM).TextColor(t.InkMuted).Role(ui.RoleStatus).Padding(t.S2, t.S1)
-	} else if f := h.found; f != nil && f.N > 0 {
+	} else if f := h.found; f != nil && (f.N > 0 || f.Handed > 0) {
 		ui.Row(c.Key("found")).Wrap().Gap(t.S3).AlignItems(ui.Baseline).Padding(t.S2, t.S1, 0, t.S1).Role(ui.RoleStatus).Children(func() {
 			subj := firstNonEmpty(f.Subject, h.subject)
-			head := a.L.T("hand.found.n", f.N)
-			if subj != "" {
-				head = a.L.T("hand.found", f.N, subj)
-			}
+			head := a.handFoundHead(f, subj)
 			uiText(c.Key("head"), head).Font(t.Display).FontSize(t.LG).FontWeight(800).TextColor(t.Ink)
 			if f.Cut > 0 {
 				uiText(c.Key("ticked"), a.nCount("hand.found.ticked", h.foundTicked)).FontSize(t.SM).TextColor(t.InkMuted)
 			}
 			if f.Maybe > 0 {
 				uiText(c.Key("maybe"), a.nCount("hand.found.maybe", f.Maybe)).FontSize(t.SM).TextColor(t.InkMuted)
+			}
+			if f.Handed > 0 {
+				uiText(c.Key("handed"), a.nCount("hand.found.handed", f.Handed)).FontSize(t.SM).TextColor(t.InkMuted)
 			}
 			if f.NoMeaning != "" {
 				uiText(c.Key("nomodel"), a.L.T("hand.found.nomodel")).FontSize(t.SM).TextColor(t.Waiting.Ink)
@@ -556,6 +562,9 @@ func (a *App) handWhat(c *ui.Context, wide bool) {
 	switch {
 	case !h.got || (h.finding && len(h.items) == 0):
 		a.handSkeleton(c, 3, 84)
+	case len(h.items) == 0 && len(h.handed) > 0:
+		uiText(c.Key("left"), a.L.T("hand.none.left")).FontSize(t.SM).TextColor(t.InkSoft).Padding(t.S3, t.S1, 0, t.S1)
+		a.handHandedList(c)
 	case len(h.items) == 0:
 		about := strings.TrimSpace(h.query)
 		if h.heard != nil && h.heard.About != "" {
@@ -573,6 +582,125 @@ func (a *App) handWhat(c *ui.Context, wide bool) {
 		})
 	default:
 		a.handList(c)
+		a.handHandedList(c)
+	}
+}
+
+// handFoundHead is the found line's head (D454): their subject when there is
+// one; read by one fact alone, that fact said back (100gle 分给你的，有 4 个);
+// nothing new when every match is already handed over.
+func (a *App) handFoundHead(f *protocol.FindSummary, subj string) string {
+	if subj != "" {
+		return a.L.T("hand.found", f.N, subj)
+	}
+	if f.N == 0 {
+		return a.L.T("hand.found.empty")
+	}
+	if chips := readingChips(a.ho.heard); len(chips) == 1 && chips[0].Kind != "about" {
+		return a.L.T("hand.found.fact", f.N, chips[0].Text)
+	}
+	return a.L.T("hand.found.n", f.N)
+}
+
+// quietBecause: a row's reason that only repeats a chip the line already
+// shows (every row saying 100gle 分给你的) is left off (D454).
+func quietBecause(because string, said *protocol.FindSaid) bool {
+	if said == nil {
+		return false
+	}
+	for _, c := range said.Facets {
+		if c.Kind != "about" && c.Text == because {
+			return true
+		}
+	}
+	return false
+}
+
+// handWhere is a to-do's number on its row: #10694 when every found one is in
+// one repository (said once is enough), else nowledge-co/mem#10694 (D454).
+func (a *App) handWhere(it protocol.FoundItem) string {
+	if it.Item.Kind != "github" || it.Item.Where == "" {
+		return it.Item.Label
+	}
+	h := &a.ho
+	one := true
+	for _, x := range h.items {
+		if x.Item.Where != it.Item.Where {
+			one = false
+		}
+	}
+	for _, x := range h.handed {
+		if x.Item.Where != it.Item.Where {
+			one = false
+		}
+	}
+	if one {
+		return it.Item.Label
+	}
+	return it.Item.Where + it.Item.Label
+}
+
+// handGuessed says the name was read as the one login a single edit away,
+// with 不是 {login} to read it as said (then nothing is listed until a name is picked).
+func (a *App) handGuessed(c *ui.Context, g protocol.FindGuess) {
+	t := a.T
+	h := &a.ho
+	ui.Row(c.Key("guess:"+g.Said)).Wrap().Gap(t.S2).AlignItems(ui.Center).Padding(2, 2).Role(ui.RoleStatus).Children(func() {
+		uiText(c.Key("t"), a.L.T("hand.guessed", g.Login)).FontSize(t.SM).FontWeight(600).TextColor(t.Ink)
+		if a.quietButton(c, "not", a.L.T("hand.guessed.not", g.Login), "", false, 0) {
+			h.drop = append(h.drop, "guess:"+strings.ToLower(g.Said))
+			h.dropFor = strings.TrimSpace(strings.ReplaceAll(h.query, "\n", " "))
+			h.sentQuery = "\x00"
+			h.queryAt = a.Now().Add(-handDebounce)
+		}
+	})
+}
+
+// handHandedList is the found ones already handed over (D454): their own
+// group under the rest, each with what became of it and the way to its task;
+// never a tick, never dropped silently.
+func (a *App) handHandedList(c *ui.Context) {
+	t := a.T
+	h := &a.ho
+	if len(h.handed) == 0 || h.finding {
+		return
+	}
+	uiText(c.Key("gh:handed"), a.L.T("hand.g.handed")).FontSize(t.SM).FontWeight(700).TextColor(t.InkMuted).Padding(t.S4, t.S1, 0, t.S1).Role(ui.RoleText)
+	for _, it := range h.handed {
+		it := it
+		st := it.Handed.State
+		ui.Row(c.Key("handed:"+it.Item.Ref)).Gap(12).AlignItems(ui.Start).Padding(12, 14).Radius(16).Border(1.5, t.LineSoft).Children(func() {
+			dot := t.Line2
+			ink := t.InkMuted
+			switch st {
+			case "doing":
+				dot, ink = t.Working.Dot, t.Working.Ink
+			case "waiting":
+				dot = t.Waiting.Dot
+			case "failed":
+				dot, ink = t.Failed.Dot, t.Failed.Ink
+			case "done":
+				dot = t.Done.Dot
+			}
+			ui.Box(c.Key("dot")).Width(10).Height(10).Radius(5).Background(dot).Margin(6, 0, 0, 4)
+			ui.Column(c.Key("body")).Gap(6).Grow(1).Shrink(1).MinWidth(0).Children(func() {
+				uiText(c.Key("title"), it.Item.Title).FontWeight(650).TextColor(t.InkSoft)
+				ui.Row(c.Key("facts")).Wrap().Gap(10).AlignItems(ui.Center).Children(func() {
+					uiText(c.Key("where"), a.handWhere(it.FoundItem)).FontSize(t.SM).FontWeight(600).TextColor(t.InkSoft).FontFeatures("tnum")
+					uiText(c.Key("state"), a.L.T("hand.handed."+st)).FontSize(t.XS).FontWeight(650).TextColor(ink)
+				})
+			})
+			if it.Handed.TaskID != "" {
+				label := a.L.T("hand.handed.open")
+				if st == "failed" {
+					label = a.L.T("hand.handed.why")
+				}
+				if a.quietButton(c, "open", label, label+": "+it.Item.Title, false, 0) {
+					h.open = false
+					a.OpenTask(it.Handed.TaskID)
+				}
+			}
+		})
 	}
 }
 
@@ -826,10 +954,7 @@ func (a *App) handItem(c *ui.Context, it protocol.FoundItem) {
 				}
 				ui.Row(c.Key("facts")).Wrap().Gap(10).AlignItems(ui.Center).Children(func() {
 					// Where it is, as plain words (its app's mark is on the title already).
-					where := it.Item.Label
-					if it.Item.Kind == "github" && it.Item.Where != "" {
-						where = it.Item.Where + it.Item.Label
-					}
+					where := a.handWhere(it)
 					wl := uiText(c.Key("where"), where).FontSize(t.SM).FontWeight(600).TextColor(t.InkSoft).FontFeatures("tnum")
 					if it.Item.URL != "" {
 						wl.Cursor(ui.CursorPointer).Role(ui.RoleLink).Label(spoken(a.L, where, a.L.T("todos.chip.open", protocol.SourceKindName(it.Item.Kind))))
@@ -848,7 +973,7 @@ func (a *App) handItem(c *ui.Context, it protocol.FoundItem) {
 						})
 					}
 					// D428: why it is here, in a few words; an unsure one says so.
-					if it.Because != "" {
+					if it.Because != "" && !quietBecause(it.Because, h.heard) {
 						uiText(c.Key("because"), it.Because).FontSize(t.SM).TextColor(t.InkMuted).Shrink(1).MinWidth(0)
 					}
 					if it.Sure == "maybe" {
@@ -1144,7 +1269,10 @@ func (a *App) handFoot(c *ui.Context, wide bool) {
 	}
 	ui.Row(c.Key("hand-foot")).Gap(t.S3).AlignItems(ui.Center).Padding(t.S3, t.S6, t.S4, t.S6).BorderWidth(1, 0, 0, 0).BorderColor(t.LineSoft).Children(func() {
 		ui.Column(c.Key("l")).Gap(2).Grow(1).Shrink(1).MinWidth(0).Children(func() {
-			uiText(c.Key("n"), a.L.T("hand.picked", len(refs))).FontSize(t.SM).TextColor(t.InkMuted).FontFeatures("tnum").Role(ui.RoleStatus)
+			// D454: the count is said once: the Go button names it (交给小鸭这 4 个).
+			if len(refs) <= 1 || h.making || (!wide && h.step == 0) {
+				uiText(c.Key("n"), a.L.T("hand.picked", len(refs))).FontSize(t.SM).TextColor(t.InkMuted).FontFeatures("tnum").Role(ui.RoleStatus)
+			}
 			if h.said != "" {
 				uiText(c.Key("said"), h.said).FontSize(t.SM).TextColor(t.Failed.Ink).Role(ui.RoleStatus)
 			}

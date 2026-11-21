@@ -13,7 +13,7 @@ import { redact } from "@ducter/protocol/src/redact.ts";
 type Lang = "zh" | "en";
 
 export type Facet =
-  | { kind: "person"; login: string; role: "opened" | "assigned" | "any"; said: string; by: "code" | "model" }
+  | { kind: "person"; login: string; role: "opened" | "assigned" | "any"; said: string; by: "code" | "model"; /** D454: read from a name one edit away (the words said) */ guess?: string }
   | { kind: "mine"; role: "assigned" | "opened"; said: string; by: "code" | "model" }
   | { kind: "repo"; repo: string; said: string; by: "code" | "model" }
   | { kind: "label"; label: string; said: string; by: "code" | "model" }
@@ -81,6 +81,20 @@ export function closestLogins(said: string, f: PileFacts): string[] {
     .sort((a, b) => a.d - b.d || b.p.opened + b.p.assigned - (a.p.opened + a.p.assigned))
     .slice(0, 3)
     .map((x) => x.p.login);
+}
+
+/**
+ * D454: the one login a name is a single edit from ("100gler" → "100gle"): read as that login at once
+ * (the line says 按 100gle 找的, with an undo). Two or more that close, or none: undefined (the person picks).
+ */
+export function guessLogin(said: string, f: PileFacts): string | undefined {
+  const s = low(said.replace(/^@/, ""));
+  if (s.length < 4) return undefined;
+  const near = [...f.people.values()].filter((p) => {
+    const l = low(p.login);
+    return l !== s && distance(s, l) <= 1;
+  });
+  return near.length === 1 ? near[0]!.login : undefined;
 }
 
 // ---------- the sentence's facts, by code ----------
@@ -168,7 +182,7 @@ export interface Reading {
 const LATIN_TOKEN = /@?[A-Za-z0-9][A-Za-z0-9._-]*(?:\/[A-Za-z0-9._-]+)*/g;
 
 /** D428: the facts a sentence says, read by code against what the pile holds. */
-export function readFacets(text: string, f: PileFacts): Reading {
+export function readFacets(text: string, f: PileFacts, o: { noGuess?: Set<string> } = {}): Reading {
   const facets: Facet[] = [];
   const unknown: FindUnknown[] = [];
   const s = text.slice(0, 400);
@@ -273,9 +287,18 @@ export function readFacets(text: string, f: PileFacts): Reading {
     }
     // A name the pile doesn't have: said with a role ("100gel 提的", "by foo") or as @foo.
     if ((roleAfter || roleBefore || raw.startsWith("@")) && /^[a-z0-9][a-z0-9-]{1,38}$/i.test(tok) && !COMMON.has(key) && !(f.words?.has(key) && !raw.startsWith("@"))) {
-      unknown.push({ said: tok, closest: closestLogins(tok, f) });
+      // D454: one login a single edit away is read as that login at once (said, with an undo).
+      const guess = o.noGuess?.has(`guess:${key}`) ? undefined : guessLogin(tok, f);
+      if (guess) {
+        push({ kind: "person", login: guess, role: roleAfter?.role ?? roleBefore?.role ?? "any", said: raw, by: "code", guess: tok });
+        lastPerson = guess;
+      } else unknown.push({ said: tok, closest: closestLogins(tok, f) });
       take(at, raw.length);
       if (roleAfter) take(at + raw.length, roleAfter.re.exec(after)![0].length);
+      if (roleBefore) {
+        const b = roleBefore.re.exec(before)!;
+        take(at - (before.length - b.index!), before.length - b.index!);
+      }
     }
   }
   // "A 和 B 提的", "A and B's": a name said alone before another shares that one's role.
@@ -366,8 +389,9 @@ export function meets(i: SourceItem, x: Facet, f: PileFacts): boolean {
   switch (x.kind) {
     case "person":
       if (x.role === "opened") return eq(i.author, x.login);
-      // Who assigned it, when GitHub's timeline was read; else the one who opened it stands in.
-      if (x.role === "assigned") return i.assignedBy ? eq(i.assignedBy, x.login) : eq(i.author, x.login);
+      // D454: on the person (when GitHub says whom it is on), and assigned by them; when GitHub's timeline
+      // wasn't read (no assignedBy), the one who opened it stands in (the chip then says so).
+      if (x.role === "assigned") return onMe(i, f) && (i.assignedBy ? eq(i.assignedBy, x.login) : eq(i.author, x.login));
       return eq(i.author, x.login) || eq(i.assignedBy, x.login) || (i.assignees ?? []).some((a) => eq(a, x.login) && !(f.me && eq(a, f.me)));
     case "mine":
       if (x.role === "opened") return !!f.me && eq(i.author, f.me);
@@ -388,6 +412,12 @@ export function meets(i: SourceItem, x: Facet, f: PileFacts): boolean {
   }
 }
 
+/** D454: the to-do is on the person (or the source doesn't say whom it is on). */
+const onMe = (i: SourceItem, f: PileFacts) => !f.me || !i.assignees?.length || i.assignees.some((a) => eq(a, f.me!));
+
+/** D454: a "who assigned it" fact met only by who opened it (GitHub's timeline unread for that one). */
+export const assignedByStandIn = (i: SourceItem, x: Facet) => x.kind === "person" && x.role === "assigned" && !i.assignedBy && eq(i.author, x.login);
+
 /** The facts together: a number, a repository or a label any of those said; a person by role, any of those said; every kind at once. */
 export function filterBy<T extends Pick<PileItem, "item">>(pool: T[], facets: Facet[], f: PileFacts): T[] {
   if (!facets.length) return pool;
@@ -404,13 +434,15 @@ export function filterBy<T extends Pick<PileItem, "item">>(pool: T[], facets: Fa
 /** The chips' words, per language (D292: a table, never an inline branch). */
 const CHIP: Record<Lang, {
   opened: (l: string) => string; assigned: (l: string) => string; any: (l: string) => string;
+  /** D454: "assigned by" read from who opened it (GitHub didn't say who assigned it). */
+  openedToYou: (l: string) => string;
   mineAssigned: string; mineOpened: string; repo: (r: string) => string; label: (l: string) => string;
   times: Record<number, string>; days: (n: number) => string; from: (said: string) => string;
   sinceOpened: (w: string) => string; sinceUpdated: (w: string) => string; pr: string; about: (a: string) => string;
   inTitle: (a: string) => string;
 }> = {
   zh: {
-    opened: (l) => `${l} 提的`, assigned: (l) => `${l} 分给你的`, any: (l) => `和 ${l} 有关的`,
+    opened: (l) => `${l} 提的`, assigned: (l) => `${l} 分给你的`, any: (l) => `和 ${l} 有关的`, openedToYou: (l) => `${l} 提给你的`,
     mineAssigned: "分给你的", mineOpened: "你提的", repo: (r) => `在 ${r} 里的`, label: (l) => `标签是 ${l}`,
     times: { 1: "今天", 2: "昨天以来", 7: "最近一周", 14: "最近两周", 30: "最近一个月", 90: "最近三个月" },
     days: (n) => `最近 ${n} 天`, from: (said) => said.replace(/(以来|开始|起|到现在)?$/u, "以来"),
@@ -418,7 +450,7 @@ const CHIP: Record<Lang, {
     inTitle: (a) => `标题里有「${a}」`,
   },
   en: {
-    opened: (l) => `opened by ${l}`, assigned: (l) => `assigned by ${l}`, any: (l) => `involving ${l}`,
+    opened: (l) => `opened by ${l}`, assigned: (l) => `assigned by ${l}`, any: (l) => `involving ${l}`, openedToYou: (l) => `from ${l} to you`,
     mineAssigned: "assigned to you", mineOpened: "opened by you", repo: (r) => `in ${r}`, label: (l) => `labelled ${l}`,
     times: { 1: "today", 2: "since yesterday", 7: "in the last week", 14: "in the last two weeks", 30: "in the last month", 90: "in the last three months" },
     days: (n) => `in the last ${n} days`, from: (said) => said,
@@ -431,11 +463,11 @@ const CHIP: Record<Lang, {
 export const codeBecause = (lang: Lang, o: { title?: string; label?: string }) => (o.label ? CHIP[lang].label(o.label) : CHIP[lang].inTitle(o.title ?? ""));
 
 /** A fact as its chip says it, plainly, in the person's language. */
-export function chipText(x: Facet | { kind: "about"; about: string }, lang: Lang, f: Pick<PileFacts, "repos">): string {
+export function chipText(x: Facet | { kind: "about"; about: string }, lang: Lang, f: Pick<PileFacts, "repos">, standIn = false): string {
   const w = CHIP[lang];
   switch (x.kind) {
     case "person":
-      return w[x.role](x.login);
+      return standIn && x.role === "assigned" ? w.openedToYou(x.login) : w[x.role](x.login);
     case "mine":
       return x.role === "assigned" ? w.mineAssigned : w.mineOpened;
     case "repo": {
@@ -457,8 +489,9 @@ export function chipText(x: Facet | { kind: "about"; about: string }, lang: Lang
   }
 }
 
-export function chips(facets: Facet[], about: string, lang: Lang, f: Pick<PileFacts, "repos">): FindFacet[] {
-  const out: FindFacet[] = facets.map((x) => ({ key: keyOf(x), kind: x.kind, text: chipText(x, lang, f), said: x.said, by: x.by }));
+/** standIn: the keys of "assigned by" facts that some found one met only by who opened it (the chip says so, D454). */
+export function chips(facets: Facet[], about: string, lang: Lang, f: Pick<PileFacts, "repos">, standIn: Set<string> = new Set()): FindFacet[] {
+  const out: FindFacet[] = facets.map((x) => ({ key: keyOf(x), kind: x.kind, text: chipText(x, lang, f, standIn.has(keyOf(x))), said: x.said, by: x.by }));
   if (about) out.push({ key: "about", kind: "about", text: chipText({ kind: "about", about }, lang, f), said: about, by: "code" });
   return out;
 }

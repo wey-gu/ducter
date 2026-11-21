@@ -195,6 +195,8 @@ type SourcesFrame struct {
 	GroupID    string
 	Found      *FindSummary
 	FoundItems []FoundItem
+	// D454: the found ones already handed over (their own group, never ticked).
+	HandedOver []HandedItem
 	Ticked     []string
 	Query      string
 	Subject    string
@@ -315,6 +317,7 @@ func decodeSources(data []byte, f ServerFrame) (ServerFrame, error) {
 			SetID   string      `json:"setId"`
 			Said    *FindSaid   `json:"said"`
 			Suggest []string    `json:"suggest"`
+			Handed  []HandedItem `json:"handedOver"`
 		}
 		if err := json.Unmarshal(data, &p); err != nil {
 			return f, err
@@ -322,7 +325,7 @@ func decodeSources(data []byte, f ServerFrame) (ServerFrame, error) {
 		s.Items = nil
 		s.PileOp = "find"
 		s.Found, s.FoundItems, s.Ticked, s.Query, s.Subject, s.SetID = &p.Found, p.Items, p.Ticked, p.Query, p.Subject, p.SetID
-		s.Said, s.Suggest = p.Said, p.Suggest
+		s.Said, s.Suggest, s.HandedOver = p.Said, p.Suggest, p.Handed
 	case "pile_how_result":
 		var p struct {
 			How HandHow `json:"how"`

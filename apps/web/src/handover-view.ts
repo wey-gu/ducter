@@ -15,12 +15,20 @@ export function sections(items: FoundItem[]): { group: PileGroup; items: FoundIt
  * The find's line (D428): the head (找到 5 个讲「UI 走查」的, the person's own words), then what was
  * ticked when not all (先勾了最像的 10 个) and the unsure ones (2 个不太确定，没勾), each its own fact.
  */
-export function foundLine(f: FindSummary, t: (k: string, ...a: unknown[]) => string, ticked?: number): { head: string; facts: string[] } {
-  const head = f.subject ? t("ho.found", f.n, f.subject) : t("ho.found.plain", f.n);
+export function foundLine(f: FindSummary, t: (k: string, ...a: unknown[]) => string, ticked?: number, chips: FindFacet[] = []): { head: string; facts: string[] } {
+  // D454: read by one fact alone, the line says it back in that fact's words (100gle 分给你的，有 4 个).
+  const one = chips.length === 1 && chips[0]!.kind !== "about" ? chips[0]! : undefined;
+  const head = f.subject ? t("ho.found", f.n, f.subject) : !f.n ? t("ho.found.none") : one ? t("ho.found.fact", f.n, one.text) : t("ho.found.plain", f.n);
   const facts: string[] = [];
   if (f.n && f.cut && ticked !== undefined) facts.push(t("ho.found.ticked", ticked));
   if (f.n && f.maybe) facts.push(t("ho.found.maybe", f.maybe));
+  if (f.handed) facts.push(t("ho.found.handed", f.handed));
   return { head, facts };
+}
+
+/** D454: a row's reason that only repeats a chip the line already shows (每行都写 100gle 分给你的): left off. */
+export function quietBecause(because: string, said: FindSaid | undefined): boolean {
+  return (said?.facets ?? []).some((c) => c.kind !== "about" && c.text === because);
 }
 
 /** D428: the reading's chips as drawn: every fact, the about last; none when nothing was read beyond the words themselves. */

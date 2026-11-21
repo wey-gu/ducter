@@ -43,12 +43,15 @@ async function claude(prompt: string): Promise<string> {
 const pile = evalPile();
 const ask = MODEL ? async (p: string) => ({ text: await claude(p), tokens: 0 }) : undefined;
 
-function handoverFor(lang: "zh" | "en", withModel: boolean) {
+function handoverFor(lang: "zh" | "en", withModel: boolean, handed: string[] = []) {
   const dir = join(scratch, `ho-${lang}-${withModel ? "m" : "c"}-${Math.random().toString(36).slice(2, 8)}`);
   mkdirSync(dir, { recursive: true });
+  // D454: a to-do already handed over (its task failed) is off the pile's open list, and on its handed-over one.
+  const open = handed.length ? pile.filter((p) => !handed.includes(p.item.ref)) : pile;
+  const over = pile.filter((p) => handed.includes(p.item.ref)).map((p) => ({ ...p, handed: { taskId: "t_failed", state: "failed" as const } }));
   return createHandover({
     dataDir: dir,
-    pile: { all: () => pile, model: () => (withModel ? ask : undefined), sortedAt: () => "2026-11-20T08:10:03.969Z", subjects: () => [] } as never,
+    pile: { all: () => open, handedOver: () => over, model: () => (withModel ? ask : undefined), sortedAt: () => "2026-11-20T08:10:03.969Z", subjects: () => [] } as never,
     now: () => NOW,
     lang: () => lang,
     name: () => "Ducter",
@@ -100,14 +103,20 @@ const before = (withModel: boolean) =>
   });
 const after = (withModel: boolean) =>
   runAll(async (s) => {
-    const ho = handoverFor(s.lang, withModel);
+    const ho = handoverFor(s.lang, withModel, s.handed);
     const r = await ho.find({ words: s.words });
     const unknown = (r.said?.unknown ?? []).flatMap((u) => u.closest);
+    // D454's checks: the handed-over ones shown apart (and never ticked), the one-edit name read at once, the note's words out of the about chip.
+    const checks: boolean[] = [];
+    if (s.handed) checks.push(s.handed.every((ref) => (r.handedOver ?? []).some((h) => h.item.ref === ref) && !r.ticked.includes(ref)));
+    if (s.guess) checks.push((r.said?.guessed ?? []).some((g) => g.login === s.guess));
+    if (s.notInAbout) checks.push(!(r.said?.facets ?? []).some((f) => f.kind === "about" && f.text.includes(s.notInAbout!)));
+    if (s.note) checks.push(r.said?.note === s.note);
     return score(
       s,
       r.items.map((p) => p.item.ref),
       r.ticked,
-      { chips: (r.said?.facets ?? []).map((f) => f.text), ...(r.found.subject ? { subject: r.found.subject } : {}), ...(r.said?.unknown?.length ? { unknown } : {}), ...(r.said?.note ? { note: r.said.note } : {}), ...(s.unknown ? { ok: r.ticked.length === 0 && unknown.includes(s.unknown) } : {}) },
+      { chips: (r.said?.facets ?? []).map((f) => f.text), ...(r.found.subject ? { subject: r.found.subject } : {}), ...(r.said?.unknown?.length ? { unknown } : {}), ...(r.said?.note ? { note: r.said.note } : {}), ...(s.unknown ? { ok: r.ticked.length === 0 && r.items.length === 0 && unknown.includes(s.unknown) } : checks.length ? { ok: checks.every(Boolean) } : {}) },
     );
   });
 

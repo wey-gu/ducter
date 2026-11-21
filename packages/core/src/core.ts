@@ -98,6 +98,7 @@ import { createGhInstaller, useOwnTools, type GhInstaller } from "./gh-install.t
 import { ducterFolder } from "@ducter/protocol/src/ducter-folder.ts";
 import { createProjects } from "./projects.ts";
 import { createTaskGroups, type TaskGroups } from "./task-groups.ts";
+import { createOnHandAway } from "./onhand-away.ts";
 import { createAsks, type Asks } from "./asks.ts";
 import { PLAN_SCHEMA } from "./task-sources/handover.ts";
 import { createReleaseWatch, type Fetch as ReleaseFetch, type ReleaseWatch } from "./release.ts";
@@ -761,13 +762,18 @@ export function startCore(opts: CoreOptions = {}): Core {
   let asksRef: Asks | undefined;
   const taskGroups = createTaskGroups({ dataDir, tasks, runner: () => runner, now: () => clock.now(), changed: () => onHandChanged(), opened: (taskId, bind, group) => taskSourcesRef?.handover?.opened(taskId, bind, group), heldOpened: (key, taskId) => asksRef?.heldOpened(key, taskId) });
   log.subscribe((e) => taskGroups.onEvent(e));
-  tasks.setDecorator((o) => {
+  // D454: 移走 / Remove: finished cards and groups the person took off On hand.
+  const onHandAway = createOnHandAway({ dataDir, now: () => clock.now(), groupOf: (id) => taskGroups.of(id)?.id, changed: () => onHandChanged() });
+  log.subscribe((e) => onHandAway.onEvent(e));
+  tasks.setDecorator((o0) => {
+    const awayIds = onHandAway.tasks();
+    const o = awayIds.length ? { ...o0, tasks: o0.tasks.filter((c) => !onHandAway.isTask(c.taskId)), away: awayIds } : o0;
     const on = decorateBrowsing(changes.decorate(limitsDecorate(work.decorate(o))));
     const added = projects.list();
     const calls = phone.calls();
     // D312: every partner's own open questions, so On hand lists another partner's (a client leaves out the one it shows).
     const asks: PartnerAsk[] = partners.questions();
-    const groups = taskGroups.list();
+    const groups = taskGroups.list().filter((g) => !onHandAway.isGroup(g.id));
     return { ...on, ...(added.length ? { projects: added } : {}), ...(calls.length ? { calls } : {}), ...(asks.length ? { asks } : {}), ...(groups.length ? { groups } : {}) };
   });
   if (opts.work?.judge) work.setJudge(opts.work.judge);
@@ -1365,7 +1371,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       socketsChanged: () => reachRef?.refresh(),
     },
     partners,
-    core: api, workbench, bridgeLink, decisions, runner: () => runner, devices: () => devicesView, lend: () => lendRef, settings, connections, phone, rules, standing, pins, apps, loadout, models: modelCatalog, accountUsage, closing, work: workFrames, newTask, updates: () => updatesRef, agents: () => agentsRef, agentSetup: (device, f) => agentSetupOp(device, f), memSetup: (device, action, link) => memSetupOp(device, action, link), recordsAllow: (device, on) => recordsAllowOp(device, on), updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, memHealth, anywhere: () => anywhereRef, channels, proactive: () => proactiveRef, replay: (o) => replayRef?.(o) ?? Promise.reject(new Error("not ready yet")), calendar: () => calendarRef, taskSources: () => taskSourcesRef, taskGroups: () => taskGroups, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets, past: { ...past, marks, persona: () => persona.id, ongoing, outside, made, redo }, keys: { dataDir, ...(opts.keyFetch ? { fetch: opts.keyFetch } : {}), ...(opts.keyCanRun ? { canRun: opts.keyCanRun } : {}), prepare: (h) => keyPrepare(h), ...(opts.keyTz ? { tz: opts.keyTz } : {}) }, ...(firstWordsDeps ? { firstWords: firstWordsDeps } : {}), did, ownAgents });
+    core: api, workbench, bridgeLink, decisions, runner: () => runner, devices: () => devicesView, lend: () => lendRef, settings, connections, phone, rules, standing, pins, apps, loadout, models: modelCatalog, accountUsage, closing, work: workFrames, newTask, updates: () => updatesRef, agents: () => agentsRef, agentSetup: (device, f) => agentSetupOp(device, f), memSetup: (device, action, link) => memSetupOp(device, action, link), recordsAllow: (device, on) => recordsAllowOp(device, on), updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, memHealth, anywhere: () => anywhereRef, channels, proactive: () => proactiveRef, replay: (o) => replayRef?.(o) ?? Promise.reject(new Error("not ready yet")), calendar: () => calendarRef, taskSources: () => taskSourcesRef, taskGroups: () => taskGroups, onHandAway, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets, past: { ...past, marks, persona: () => persona.id, ongoing, outside, made, redo }, keys: { dataDir, ...(opts.keyFetch ? { fetch: opts.keyFetch } : {}), ...(opts.keyCanRun ? { canRun: opts.keyCanRun } : {}), prepare: (h) => keyPrepare(h), ...(opts.keyTz ? { tz: opts.keyTz } : {}) }, ...(firstWordsDeps ? { firstWords: firstWordsDeps } : {}), did, ownAgents });
   handsets.onChange(() => (devicesView?.changed(), ws.onHandChanged()));
   onHandChanged = ws.onHandChanged;
   // D156: a partner turn in flight keeps an update of the agent it thinks with waiting.

@@ -165,6 +165,22 @@ going on its own) and **做过的事 ›**, where every finished task stays, fin
 (`past.md`). D315: the line wraps, so nothing is clipped from 900 to 1280. A Find that matches
 nothing here offers **在做过的事里找「{q}」**.
 
+## Taking a finished card off (D454)
+
+A card whose task is done or didn't work out, and a group none of whose parts is still at work, can
+always leave On hand: **×** in its corner on hover (a pointer), a swipe to the left (touch, the card
+follows the finger and slides out past 96), and **⋯** with what fits it: **再试一次 / Try again** and
+**看看为什么 / See why** (the task at its failure) for one that didn't work out, **打开 / Open** for one
+that is done, **移走 / Remove** for both. A group's ⋯ adds them to its own menu (rename, shape,
+dissolve); 再试一次 there sends each part that didn't work back to work. Removed, it leaves On hand on
+every device (core `onhand-away.ts`, `<dataDir>/onhand-away.json`, the frame `onhand_away`) and stays in
+做过的事 / Past tasks (nothing is deleted; Past keeps its own **接着做 / Continue**); the toast says
+**移走了「{name}」，做过的事里还找得到** with **撤销 / Undo**. A removed task that goes back to work comes
+back by itself, with its group; what waited in line after a stopped part is dropped with the group.
+The × is quiet ink, never the failed red: removing isn't a loss. *Why:* the author on 0.1.8 had a
+group card (通用设置, Macbook Pro M3, **1 ✕ 通用设置 没成**) in 今天做完 that stayed, with no way to clear it; a card the
+person can't clear is noise that never ends (D36 好用, 放心).
+
 ## A row (the rail beside an opened task)
 
 Two lines (one line cut the news to half a width). D315: beside an opened task a row says only its

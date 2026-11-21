@@ -3097,6 +3097,39 @@ class AppState {
     this.taskAction(id, action);
   }
 
+  /**
+   * D454: 移走 / Remove a finished card (its tasks) or a group from On hand: it leaves at once, the
+   * home keeps it off every device, and the toast's 撤销 puts it back.
+   */
+  putAway(o: { taskIds?: string[]; groupId?: string; name: string }) {
+    const keys = [...(o.taskIds ?? []), ...(o.groupId ? [o.groupId] : [])];
+    if (!keys.length) return;
+    for (const k of keys) this.S.awayNow.add(k);
+    const frame = { ...(o.taskIds?.length ? { taskIds: o.taskIds } : {}), ...(o.groupId ? { groupId: o.groupId } : {}) };
+    this.send({ t: "onhand_away", ...frame });
+    this.toast(
+      this.L.t("away.done", o.name),
+      {
+        label: this.L.t("undo.action"),
+        run: () => {
+          for (const k of keys) this.S.awayNow.delete(k);
+          this.send({ t: "onhand_away", ...frame, back: true });
+          this.changed();
+        },
+      },
+      UNDO_MS,
+    );
+  }
+
+  /** D454: 再试一次 / Try again: each task that didn't work out goes back to work (its card comes back to On hand). */
+  retry(taskIds: string[]) {
+    for (const id of taskIds) {
+      this.S.awayNow.delete(id);
+      this.send({ t: "past_continue", taskId: id, words: this.L.t("group.retry") });
+    }
+    this.changed();
+  }
+
   drop(id: string) {
     const t = this.S.tasks.get(id);
     this.dropped = { id, until: Date.now() + UNDO_MS };

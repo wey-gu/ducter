@@ -18196,3 +18196,122 @@ a.pr:hover { box-shadow: inset 0 0 0 1px var(--line-2); }
   .tgroup .gtitle { padding-block: 12px; margin-block: -12px; }
   .asked .ask-row { min-height: 44px; }
 }
+
+/* D454: a finished card (done, or didn't work out) and a finished group leave On hand: × and ⋯ in
+   the card's corner with a pointer that hovers (they come in on hover or focus, over a patch of the
+   card's own surface), ⋯ always in the card's right edge on a touch screen, where a swipe to the
+   left removes it too (away.tsx). The × is quiet ink, never the failed red: removing isn't a loss. */
+.fin-acts {
+  position: absolute;
+  z-index: 2;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 10px;
+  background: var(--surface);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--t-fast) var(--ease);
+}
+.fin:hover .fin-acts,
+.fin:focus-within .fin-acts,
+.fin-acts.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+.fin-x {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--ink-muted);
+  cursor: pointer;
+}
+.fin-x:hover,
+.fin-x:focus-visible {
+  background: var(--sunken);
+  color: var(--ink);
+}
+/* A group's × sits in its head, before its ⋯, and comes in the same way. */
+.tgroup .ghead .fin-x {
+  opacity: 0;
+  transition: opacity var(--t-fast) var(--ease);
+}
+.tgroup.fin:hover .ghead .fin-x,
+.tgroup.fin:focus-within .ghead .fin-x {
+  opacity: 1;
+}
+.pmenu.fin-menu {
+  min-width: 180px;
+}
+@media (hover: none) {
+  .fin-acts {
+    position: static;
+    align-self: flex-start;
+    margin: 8px 6px 0 0;
+    background: none;
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .tcompact.fin .fin-acts {
+    align-self: center;
+    margin: 0;
+  }
+  .fin-x,
+  .tgroup .ghead .fin-x {
+    display: none;
+  }
+}
+@media (pointer: coarse) {
+  .fin-x {
+    position: relative;
+  }
+  .fin-x::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 44px;
+    height: 44px;
+    transform: translate(-50%, -50%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fin-acts,
+  .tgroup .ghead .fin-x {
+    transition: none;
+  }
+}
+
+/* D454: the finder's reading said back and every match shown. A name one edit from one login: read
+   as it, said in a quiet line with its undo (never a box). The ones already handed over: their own
+   group under the rest, no tick, a small state word in its state's ink and the way to the task. */
+.ho-guessed { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; padding: 2px 2px; font-size: var(--sm); color: var(--ink-soft); }
+.ho-guessed > span { font-weight: 600; color: var(--ink); }
+.ho-none-left { margin: 18px 30px 0; font-size: var(--sm); color: var(--ink-soft); }
+.ho-handed-sec { margin-top: 6px; }
+.ho-item.ho-handed { background: transparent; box-shadow: inset 0 0 0 1.5px var(--line-soft); animation-name: ho-settle; }
+.ho-item.ho-handed .ho-item-main { cursor: default; }
+.ho-item.ho-handed .pile-item-title { color: var(--ink-soft); }
+.ho-handed-dot { flex: none; width: 10px; height: 10px; margin: 7px 7px 0 8px; border-radius: 50%; background: var(--line-2); }
+.ho-handed-dot.s-doing { background: var(--working-dot); }
+.ho-handed-dot.s-waiting { background: var(--waiting-dot); }
+.ho-handed-dot.s-failed { background: var(--failed-dot); }
+.ho-handed-dot.s-done { background: var(--done-dot); }
+.ho-handed-state { font-size: var(--xs); font-weight: 650; color: var(--ink-muted); }
+.ho-handed-state.s-failed { color: var(--failed-ink); }
+.ho-handed-state.s-doing { color: var(--working-ink); }
+.ho-item.ho-handed > .ho-handed-open { opacity: 1; color: var(--accent); font-weight: 600; }
+.ho-item.ho-handed.s-failed > .ho-handed-open { color: var(--ink); text-decoration: underline; text-decoration-color: var(--failed-dot); text-underline-offset: 3px; }
+.ho-count.quiet { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+@media (pointer: coarse) {
+  .ho-item.ho-handed > .ho-handed-open { position: static; align-self: flex-end; min-height: 44px; }
+}
+.ho-foot-row > .ho-go { margin-left: auto; }

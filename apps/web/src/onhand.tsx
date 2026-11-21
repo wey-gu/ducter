@@ -30,9 +30,10 @@ import { HandBlock } from "./handover.tsx";
 import { Goal, Groove, limitAt, limitState, untilLine, WaitBubble, waitCaption, waitLine } from "./work.tsx";
 import { handover, isNewResult, statusOf, urgentOf, type Status } from "./seen.ts";
 import { OtherAsk, PartnerMark } from "./partners.tsx";
-import { boardGroups, foldedRows, groupCount, markOf, type BoardGroup, type MemberRow } from "./groups-view.ts";
+import { boardGroups, finishedGroup, foldedRows, groupCount, markOf, type BoardGroup, type MemberRow } from "./groups-view.ts";
 import { linesOfPart } from "./asks.tsx";
 import { Menu, MenuItem } from "./menu.tsx";
+import { AwayX, FinishedActs, finishedMenu, runFinished, useSwipeAway, type Finished } from "./away.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
@@ -669,6 +670,13 @@ function useKeys(room: Room) {
 
 // ---------- one row ----------
 
+/** D454: a finished task as a card that can leave On hand (done, or didn't work out); none for one at work. */
+export function finishedOf(task: Task): Finished | undefined {
+  if (!finished(task)) return undefined;
+  const failed = attention(task) === "failed";
+  return { name: shortTitle(title(task)) || t("task.unknown"), taskIds: [task.id], failedIds: failed ? [task.id] : [], openId: task.id };
+}
+
 type RowProps = { task: Task; room: Room; state?: boolean; v: string; focus: boolean; sel: boolean; opened: boolean };
 
 /** One task in two lines: the title, and what it is on; on the right what changed, a draft PR or
@@ -758,8 +766,12 @@ const CompactCard = memo(function CompactCard({ task, room, focus, sel, quiet }:
     L.focus = task.id;
     A.go({ name: "task", id: task.id, full: room === "full" });
   };
+  // D454: a seen result leaves On hand by ×, ⋯ or a swipe (a quiet wait has its own two ways).
+  const fin = quiet ? undefined : finishedOf(task);
+  const ref = useRef<HTMLDivElement>(null);
+  useSwipeAway(ref, fin);
   return (
-    <div class={`tcompact a-${a}${focus ? " kfocus" : ""}${sel ? " sel" : ""}`} data-row={task.id}>
+    <div ref={ref} class={`tcompact a-${a}${focus ? " kfocus" : ""}${sel ? " sel" : ""}${fin ? " fin" : ""}`} data-row={task.id}>
       <button class="kmain" onClick={onClick} title={title(task)}>
         <Coin harness={harnessOf(task)} size={22} motion="still" />
         <span class="ktx">
@@ -788,6 +800,7 @@ const CompactCard = memo(function CompactCard({ task, room, focus, sel, quiet }:
       ) : (
         room !== "phone" && <RowActs task={task} />
       )}
+      {fin && <FinishedActs f={fin} full={room === "full"} />}
     </div>
   );
 });
@@ -827,8 +840,11 @@ const TaskCard = memo(function TaskCard({ task, room, focus, sel }: RowProps) {
   // the coin rests with it when the person has been away a while.
   const words = useDwell(s.words);
   const rest = useResting();
+  const fin = finishedOf(task);
+  const ref = useRef<HTMLDivElement>(null);
+  useSwipeAway(ref, fin);
   return (
-    <div class={`tcard a-${a}${focus ? " kfocus" : ""}${sel ? " sel" : ""}${fresh ? " unseen" : ""}${cheer ? " cheer" : ""}${arrived ? " arrived" : ""}${rest ? " resting" : ""}`} data-row={task.id}>
+    <div ref={ref} class={`tcard a-${a}${fin ? " fin" : ""}${focus ? " kfocus" : ""}${sel ? " sel" : ""}${fresh ? " unseen" : ""}${cheer ? " cheer" : ""}${arrived ? " arrived" : ""}${rest ? " resting" : ""}`} data-row={task.id}>
       <button class="cmain" onClick={onClick} title={title(task)}>
         <span class="c1">
           <Coin harness={harnessOf(task)} size={28} motion={rest ? "still" : working ? "working" : a === "needs_you" ? "needs_you" : "still"} />
@@ -875,6 +891,7 @@ const TaskCard = memo(function TaskCard({ task, room, focus, sel }: RowProps) {
         {u && !finished(task) && <Goal u={u} />}
       </button>
       {room !== "phone" && <RowActs task={task} />}
+      {fin && <FinishedActs f={fin} full={room === "full"} />}
     </div>
   );
 });
@@ -1068,7 +1085,7 @@ export function OnHandList({ room }: { room: Room }) {
   // D360: a group stands as one card in its most urgent member's section (not while finding, nor
   // in the rail: there every task is its own row; with a filter, only in its own section). Counts stay per task.
   const laneOf = (id: string) => lanes.findIndex((l) => l.some((x) => x.id === id));
-  const bgs = (rail || q ? [] : boardGroups(A.S.onHand?.groups, laneOf, (id) => (A.S.tasks.has(id) ? attention(A.S.tasks.get(id)!) : undefined))).filter((b) => show(b.lane + 1));
+  const bgs = (rail || q ? [] : boardGroups(A.S.onHand?.groups?.filter((g) => !A.S.awayNow.has(g.id)), laneOf, (id) => (A.S.tasks.has(id) ? attention(A.S.tasks.get(id)!) : undefined))).filter((b) => show(b.lane + 1));
   const inGroup = new Set(bgs.flatMap((b) => [...b.ids]));
   const ungrouped = (ts: Task[]) => (inGroup.size ? ts.filter((x) => !inGroup.has(x.id)) : ts);
   const groupsIn = (lane: number) => bgs.filter((b) => b.lane === lane);
@@ -1294,8 +1311,13 @@ function GroupCard({ b, room }: { b: BoardGroup; room: Room }) {
     setDraft(null);
   };
   const toggle = () => (open ? groupOpen.delete(b.g.id) : groupOpen.add(b.g.id), A.changed());
+  // D454: a group none of whose parts is at work can leave On hand (what waits after a stopped part goes with it).
+  const fin = finishedGroup(b);
+  const finItems = fin ? finishedMenu(fin) : [];
+  const ref = useRef<HTMLDivElement>(null);
+  useSwipeAway(ref, fin);
   return (
-    <div class={`tgroup${live ? " live" : ""}${b.stopped ? " stopped" : ""}`} data-group={b.g.id} role="group" aria-label={countWords ? spoken(A.L, b.g.name, countWords) : b.g.name}>
+    <div ref={ref} class={`tgroup${live ? " live" : ""}${b.stopped ? " stopped" : ""}${fin ? " fin" : ""}`} data-group={b.g.id} role="group" aria-label={countWords ? spoken(A.L, b.g.name, countWords) : b.g.name}>
       <div class="ghead">
         {draft === null ? (
           <span class="gname">{b.g.name}</span>
@@ -1320,12 +1342,20 @@ function GroupCard({ b, room }: { b: BoardGroup; room: Room }) {
           ))}
         </span>
         {countWords && <span class="gcount">{countWords}</span>}
+        {fin && <AwayX f={fin} />}
         <MoreButton label={t("group.menu")} open={menu} onClick={() => setMenu(!menu)} />
       </div>
       {/* D385: a hand-over's plan, its making, review together. */}
       {b.g.hand && <HandBlock g={b.g} />}
       {menu && (
         <Menu class="gmenu" label={b.g.name} onClose={() => setMenu(false)}>
+          {finItems
+            .filter((k) => k !== "remove")
+            .map((k) => (
+              <MenuItem key={k} class="btn text sm" onClick={() => (setMenu(false), runFinished(k, fin!, room === "full"))}>
+                <span class="lbl">{t(`away.${k}`)}</span>
+              </MenuItem>
+            ))}
           <MenuItem class="btn text sm" onClick={() => (setMenu(false), setDraft(b.g.name))}>
             <span class="lbl">{t("group.rename")}</span>
           </MenuItem>
@@ -1335,6 +1365,11 @@ function GroupCard({ b, room }: { b: BoardGroup; room: Room }) {
           <MenuItem class="btn text sm" onClick={() => (setMenu(false), send("dissolve"))}>
             <span class="lbl">{t("group.ungroup")}</span>
           </MenuItem>
+          {fin && (
+            <MenuItem class="btn text sm" onClick={() => (setMenu(false), runFinished("remove", fin, room === "full"))}>
+              <span class="lbl">{t("away.remove")}</span>
+            </MenuItem>
+          )}
         </Menu>
       )}
       <ol class="gparts">

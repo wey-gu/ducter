@@ -48,11 +48,15 @@ function fakeAsk(o: { tokens?: number; calls?: string[][] } = {}): Ask {
   };
 }
 
+// Never the real agents' CLIs: probing them takes seconds on a real machine (more than until's 3 s),
+// and Go's hand-over waits for the device frame (D454).
+const FAKE_PROBES = { cua: async () => ({ missing: "test" }), harnesses: async () => [], kind: async () => "laptop" as const };
+
 function boot(o: { issues?: FakeIssue[]; ask?: Ask; zh?: boolean } = {}) {
   const t = tempDir();
   const gh = fakeGh(o.issues ?? pileOf(), { login: "lin-dev" });
   let clock = NOW;
-  const core = startCore({ dataDir: join(t.dir, "data"), port: 0, push: false, batchMs: 5, clock: { now: () => clock, setTimeout: (f: () => void, ms: number) => setTimeout(f, ms), clearTimeout: (h: unknown) => clearTimeout(h as ReturnType<typeof setTimeout>) } as never, taskSources: { ghRun: gh.run, ghEnv: {}, home: join(t.dir, "home"), pollMs: 3_600_000, boundMs: 0, quietMs: 0, today: () => "2026-11-18", now: () => clock, ...(o.ask ? { ask: o.ask } : {}) } });
+  const core = startCore({ dataDir: join(t.dir, "data"), port: 0, push: false, batchMs: 5, deviceProbes: FAKE_PROBES, clock: { now: () => clock, setTimeout: (f: () => void, ms: number) => setTimeout(f, ms), clearTimeout: (h: unknown) => clearTimeout(h as ReturnType<typeof setTimeout>) } as never, taskSources: { ghRun: gh.run, ghEnv: {}, home: join(t.dir, "home"), pollMs: 3_600_000, boundMs: 0, quietMs: 0, today: () => "2026-11-18", now: () => clock, ...(o.ask ? { ask: o.ask } : {}) } });
   stops.push(t.cleanup, () => core.stop());
   core.settings.set({ language: o.zh === false ? "en" : "zh" });
   core.setPartner({ onTrigger: () => {} });

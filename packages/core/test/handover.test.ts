@@ -77,6 +77,9 @@ function boot(where?: Where) {
     port: 0,
     push: false,
     batchMs: 5,
+    // Never the real agents' CLIs: probing them takes seconds on a real machine (more than until's 3 s),
+    // and the hand-over waits for the device frame (D454).
+    deviceProbes: { cua: async () => ({ missing: "test" }), harnesses: async () => [], kind: async () => "laptop" },
     clock: { now: () => clock, setTimeout: (f: () => void, ms: number) => setTimeout(f, ms), clearTimeout: (h: unknown) => clearTimeout(h as ReturnType<typeof setTimeout>) } as never,
     // Two computers: the home and haswell (a worker), each with acme/mem checked out.
     newTaskComputers: where

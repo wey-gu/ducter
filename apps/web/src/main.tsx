@@ -19,7 +19,8 @@ import { openKey, ROOMY, ROOMY_BENCH, useRoomy } from "./wide.ts";
 import { escUp, useFill, useSplit, useWide } from "./wide.ts";
 import { benchKey, benchOpen, benchShown, Workbench } from "./workbench.tsx";
 import { liveInBench } from "./live.tsx";
-import { walkKey } from "./onhand.tsx";
+import { nthKey, walkKey } from "./onhand.tsx";
+import { keysKey } from "./keymap.tsx";
 import { markSeen } from "./seen.ts";
 import { edgeSwipe, navBusy, popMove } from "./nav.ts";
 import { wideNow } from "./fold.ts";
@@ -276,6 +277,8 @@ function run(me: Me, had: string | undefined, device: string, glance?: Glance) {
   addEventListener("keydown", escUp);
   addEventListener("keydown", openKey);
   addEventListener("keydown", walkKey);
+  addEventListener("keydown", nthKey);
+  addEventListener("keydown", keysKey);
   // D290: back and forward move as a level does (nav.ts), unless the browser drew its own; a
   // hashchange that follows a pop lands after the move has its old picture.
   addEventListener("popstate", (e) => popMove(e, A.route, () => A.fromHash()));

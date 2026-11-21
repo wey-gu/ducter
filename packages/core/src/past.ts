@@ -603,9 +603,12 @@ export function createPast(d: PastDeps): Past {
               const lines = shown.split("\n");
               const lower = lines.map((l) => l.toLowerCase());
               const term = terms.find((x) => lower.some((l) => l.includes(x)));
-              const i = term ? lower.findIndex((l) => l.includes(term)) : 0;
+              // D456: a word one slip off: the line holding the word it was near.
+              const near = term ? -1 : lower.findIndex((l) => terms.some((x) => nearIn(x, l).s > 0));
+              const i = term ? lower.findIndex((l) => l.includes(term)) : Math.max(0, near);
               const line = lines[Math.max(0, i)] ?? "";
-              text = snippet(line, term ? line.toLowerCase().indexOf(term) : 0, 72);
+              const at = term ? line.toLowerCase().indexOf(term) : Math.max(0, ...terms.map((x) => nearIn(x, line.toLowerCase()).at));
+              text = snippet(line, at, 72);
             } else text = snippet(shown, Math.max(0, best.at), 72);
             if (text.trim()) it.hit = { field: best.f, text };
           }

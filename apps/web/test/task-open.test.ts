@@ -115,3 +115,17 @@ describe("opening a long task (D284)", () => {
     expect(olderPage(task)).toBeUndefined();
   });
 });
+
+// D456 (research/198 F1): an old task opened from ⌘K showed 在做 with a 144-hour clock and a Stop
+// button: its newest window said done, then an older page (D320) brought its first "working" in.
+test("an older page landing after the newest never turns a done task back to working", () => {
+  const S = new Store();
+  welcome(S);
+  const ev = (seq: number, attention: string) => ({ seq, ts: new Date(1e12 + seq).toISOString(), persona: "default", stream: "task:old1", origin: "system", kind: "task_state", body: { taskId: "old1", attention, residency: "parked" } }) as unknown as LogEvent;
+  S.apply({ t: "task_history", taskId: "old1", events: [ev(900, "done")], more: true } as ServerFrame);
+  S.apply({ t: "task_history", taskId: "old1", events: [ev(10, "working")], beforeSeq: 900 } as ServerFrame);
+  expect(S.tasks.get("old1")!.state?.attention).toBe("done");
+  // A newer one still wins.
+  S.apply({ t: "events", events: [ev(950, "working")] } as ServerFrame);
+  expect(S.tasks.get("old1")!.state?.attention).toBe("working");
+});

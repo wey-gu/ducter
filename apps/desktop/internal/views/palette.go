@@ -75,6 +75,8 @@ type palState struct {
 	reqN    int
 	wantID  string
 	at      int
+	peekID  string // D456: the row the peek shows, and since when (its steps are asked once it rests)
+	peekAt  time.Time
 }
 
 // palPlaces are the places 去 / Go to offers.
@@ -348,7 +350,12 @@ func (a *App) palette(c *ui.Context) {
 		if len(rows) > 0 {
 			acts = a.palActs(rows[at], q)
 		}
-		panel.Width(min(w-2*t.S6, 680)).MaxHeight(sheetBack(c, back, h)).Radius(t.RadiusXL).Background(t.Surface).Shadow(0, t.Floating.Y, t.Floating.Blur, 0, t.Floating.Color).
+		peek := w >= palPeekMin
+		pw := float32(680)
+		if peek {
+			pw = 1000
+		}
+		panel.Width(min(w-2*t.S6, pw)).MaxHeight(sheetBack(c, back, h)).Radius(t.RadiusXL).Background(t.Surface).Shadow(0, t.Floating.Y, t.Floating.Blur, 0, t.Floating.Color).
 			Label(a.L.T("pal.label"))
 		ui.Row(c.Key("pal-field")).Gap(t.S3).Padding(0, t.S5).Height(60).AlignItems(ui.Center).Children(func() {
 			ui.Box(c).Size(20, 20).Shrink(0).AccessHidden(true).Draw(drawPastGlyph("look", t.InkMuted))
@@ -377,7 +384,29 @@ func (a *App) palette(c *ui.Context) {
 			}
 		})
 		ui.Box(c.Key("rule")).Height(1).Background(t.LineSoft)
-		ui.Scroll(c.Key("pal-list")).MaxHeight(max(120, min(520, h-sheetTop(c)-sheetBottom-160))).Children(func() {
+		listH := max(120, min(520, h-sheetTop(c)-sheetBottom-160))
+		if peek {
+			// D456: one height while the words change; the peek stands beside the list.
+			ui.Row(c.Key("pal-body")).Height(listH).AlignItems(ui.Stretch).Children(func() {
+				a.palList(c, ui.Scroll(c.Key("pal-list")).MaxHeight(listH).Grow(1).Shrink(1).MinWidth(0), rows, q, at)
+				a.palPeek(c, rows, at, listH)
+			})
+		} else {
+			a.palList(c, ui.Scroll(c.Key("pal-list")).MaxHeight(listH), rows, q, at)
+		}
+		if len(acts) > 1 || (len(acts) == 1 && rows[at].kind != palTell && rows[at].kind != palNew) {
+			ui.Box(c.Key("rule2")).Height(1).Background(t.LineSoft)
+			a.palFoot(c, acts)
+		}
+	})
+}
+
+// palList is the rows in their groups.
+func (a *App) palList(c *ui.Context, list ui.Element, rows []palRow, q string, at int) {
+	t := a.T
+	p := &a.pal
+	{
+		list.Children(func() {
 			ui.Column(c).Padding(t.S2).Gap(1).Children(func() {
 				group := "-"
 				for n, r := range rows {
@@ -398,11 +427,57 @@ func (a *App) palette(c *ui.Context) {
 				}
 			})
 		})
-		if len(acts) > 1 || (len(acts) == 1 && rows[at].kind != palTell && rows[at].kind != palNew) {
-			ui.Box(c.Key("rule2")).Height(1).Background(t.LineSoft)
-			a.palFoot(c, acts)
+	}
+}
+
+// palPeekMin is the window width from which the peek stands beside the list.
+const palPeekMin = 1100
+
+// palPeek is 停在哪儿 / Where it stopped for the row the keys are on (D456):
+// Past tasks' preview body, without its buttons (the foot holds the ways on,
+// each with its key). Its steps are asked once the row rests a moment.
+func (a *App) palPeek(c *ui.Context, rows []palRow, at int, h float32) {
+	t := a.T
+	id := ""
+	if at < len(rows) {
+		switch r := rows[at]; r.kind {
+		case palTask:
+			id = r.task.ID
+		case palPast:
+			id = r.item.TaskID
 		}
+	}
+	ui.Row(c.Key("pal-peek")).Width(361).Shrink(0).Height(h).MaxHeight(h).Clip().Background(t.Bg).Label(a.L.T("past.where")).Children(func() {
+		ui.Box(c.Key("edge")).Width(1).Background(t.LineSoft).Shrink(0)
+		ui.Column(c.Key("peek-col")).Grow(1).MinWidth(0).Height(h).MaxHeight(h).Children(func() { a.palPeekBody(c, id, h) })
 	})
+}
+
+func (a *App) palPeekBody(c *ui.Context, id string, h float32) {
+	t := a.T
+	{
+		it := a.pastItemFor(id)
+		if it == nil {
+			ui.Column(c.Key("none")).Grow(1).Justify(ui.Center).AlignItems(ui.Center).Children(func() {
+				uiText(c, a.L.T("past.where.none")).FontSize(t.SM).TextColor(t.InkMuted).TextAlign(ui.Center).MaxWidth(260)
+			})
+			return
+		}
+		if a.pal.peekID != id {
+			a.pal.peekID, a.pal.peekAt = id, c.Now()
+		}
+		if rest := 140*time.Millisecond - c.Now().Sub(a.pal.peekAt); rest > 0 {
+			c.After(rest) // arrowing past a row asks nothing
+		} else {
+			a.askSteps(id)
+		}
+		ui.Scroll(c.Key("peek:" + id)).Grow(1).MinHeight(0).MaxHeight(h).Children(func() {
+			ui.Column(c).Padding(t.S4, t.S5).Gap(t.S3).Children(func() {
+				uiText(c, a.L.T("past.where")).FontSize(t.XS).FontWeight(600).TextColor(t.InkMuted)
+				a.pastWhereBody(c, it)
+			})
+		})
+	}
 }
 
 // palHead is a group's name.

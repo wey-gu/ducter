@@ -22,6 +22,7 @@ import { groupWords } from "./i18n-groups.ts";
 import { asksWords } from "./i18n-asks.ts";
 import { firstMeetWords } from "./i18n-first-meet.ts";
 import { handoverWords } from "./i18n-handover.ts";
+import { taskviewWords } from "./i18n-taskview.ts";
 import { handset } from "./i18n-handset.ts";
 import { fileWords } from "./i18n-fileview.ts";
 import { calendarWords } from "./i18n-calendar.ts";
@@ -3313,6 +3314,9 @@ Object.assign(TABLES.en, firstMeetWords.en);
 // D385: handing several over (i18n-handover.ts).
 Object.assign(TABLES.zh, handoverWords.zh);
 Object.assign(TABLES.en, handoverWords.en);
+// D456: the task header and 键盘 / Keyboard (i18n-taskview.ts).
+Object.assign(TABLES.zh, taskviewWords.zh);
+Object.assign(TABLES.en, taskviewWords.en);
 
 /** Drops a space between two Chinese characters (zh copy spaces around a name for Latin names). */
 /** D78: a space where a Chinese character touches a Latin letter or a digit ("住在%s 上" with "hel"). */

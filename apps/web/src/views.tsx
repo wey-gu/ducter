@@ -15,6 +15,7 @@ import { autonym, LANGUAGES, words as byLang } from "@ducter/protocol/src/lang.t
 import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import { useSheetMotion } from "./sheetmotion.ts";
 import { SheetFrame } from "./sheet-frame.tsx";
+import { KeysSheet, TaskNav } from "./keymap.tsx";
 import { last as lastMove } from "./nav.ts";
 import type { JSX } from "preact";
 import { AmbientLine } from "./ambient.tsx";
@@ -2523,6 +2524,7 @@ export function TaskView({ id, full }: { id: string; full?: boolean }) {
         // D184: the whole screen, as the Mac shows an opened task: the crumbs (Pause and Cancel
         // task are in the foot, D210, D213); D214: the workbench's toggle at the header's end.
         <FullTop task={task}>
+          <TaskNav id={id} />
           <TaskInfoButton task={task} />
           <BenchToggle task={task} />
           <TaskMore task={task} />
@@ -2532,6 +2534,7 @@ export function TaskView({ id, full }: { id: string; full?: boolean }) {
           back={t("nav.back")}
           extra={
             <>
+              <TaskNav id={id} />
               <TaskInfoButton task={task} />
               <BenchToggle task={task} />
               <TaskMore task={task} />
@@ -3422,6 +3425,7 @@ function SheetsMain() {
   if (!A.sheet) return null;
   if (A.sheet.kind === "newtask") return <NewTaskSheet />;
   if (A.sheet.kind === "switch") return <Palette />;
+  if (A.sheet.kind === "keys") return <KeysSheet />;
   if (A.sheet.kind === "past") return <PastSheet />;
   if (A.sheet.kind === "did") return <DidSheet />;
   if (A.sheet.kind === "pins") return <PinsSheet />;

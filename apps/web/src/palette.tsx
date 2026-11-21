@@ -11,10 +11,10 @@ import { Coin } from "./coin.tsx";
 import { Facts } from "./controls.tsx";
 import { harnessName } from "./format.ts";
 import { openIt as openMade, kindWord, Tile } from "./made.tsx";
-import { switchList } from "./onhand.tsx";
+import { storyOf, switchList } from "./onhand.tsx";
 import { dateOf, Glyph, Marked, openPast } from "./past.tsx";
-import { startRedo } from "./past-preview.tsx";
-import { attention, placeOf, projectOf, title, type Task } from "./store.ts";
+import { askSteps, forgetSteps, PV, startRedo } from "./past-preview.tsx";
+import { attention, placeOf, projectOf, reportOf, title, type Task } from "./store.ts";
 import { shortTitle } from "./transcript.tsx";
 import { stateLabel } from "./views.tsx";
 import { computerName, manyComputers } from "./where.ts";
@@ -46,6 +46,7 @@ function askHome(q: string) {
 export function resetPalette() {
   if (K.timer) clearTimeout(K.timer);
   K.timer = 0;
+  forgetSteps(); // D456: a task at work moved on since: its steps are asked again
   K.q = "";
   K.past = K.made = undefined;
   K.askedPast = K.askedMade = "";
@@ -67,7 +68,34 @@ export function onPaletteFrame(f: PastRes | MadeRes) {
 }
 
 /** One task, as a row: from what the client holds or from the home's Past index. */
-type TaskRow = { k: "task"; id: string; title: string; harness: string; line?: string; hit?: { label: string; text: string }; facts: (string | JSX.Element | undefined)[]; state?: { word: string; tone?: string }; done: boolean; place?: import("@ducter/protocol").Place };
+type TaskRow = { k: "task"; id: string; title: string; harness: string; line?: string; hit?: { label: string; text: string }; facts: (string | JSX.Element | undefined)[]; state?: { word: string; tone?: string }; done: boolean; place?: import("@ducter/protocol").Place; item: () => PastItem };
+
+/** D456: a task the client holds, as the Past index would say it (for the peek beside the list). */
+function itemOfTask(x: Task): PastItem {
+  const p = placeOf(x);
+  const r = reportOf(x);
+  const dev = "device" in p ? p.device : undefined;
+  const outcome = (r?.summary ?? "").split("\n").find((l) => l.trim())?.trim();
+  const ch = r?.branch?.adds !== undefined ? { files: r.branch.files ?? 0, adds: r.branch.adds ?? 0, dels: r.branch.dels ?? 0, at: x.card?.updatedAt ?? "" } : undefined;
+  return {
+    taskId: x.id,
+    title: title(x),
+    project: projectOf(x),
+    harness: x.card?.harness ?? x.open?.harness ?? "",
+    ...((x.card?.model ?? x.open?.model) ? { model: x.card?.model ?? x.open?.model } : {}),
+    ...(manyComputers() && dev ? { computer: computerName(dev) } : {}),
+    openedAt: x.openedAt ?? x.card?.openedAt ?? "",
+    updatedAt: x.card?.updatedAt ?? x.openedAt ?? "",
+    attention: attention(x),
+    ...(outcome ? { outcome } : {}),
+    // A task at work: what it is doing now, in its own words (as its row on On hand says).
+    ...(ACTIVE.has(attention(x)) && storyOf(x).words ? { lastWords: storyOf(x).words } : {}),
+    ...(ch ? { changes: ch } : {}),
+    ...(p.kind === "repo" && p.branch ? { branch: p.branch } : {}),
+    ...(A.S.pendingDecision(x.id)?.question ? { asking: A.S.pendingDecision(x.id)!.question } : {}),
+    kind: "build",
+  } as PastItem;
+}
 type Row =
   | TaskRow
   | { k: "made"; id: string; it: MadeItem }
@@ -89,6 +117,7 @@ function liveRow(x: Task): TaskRow {
     state: { word: stateLabel(a), ...(a === "needs_you" ? { tone: "needs" } : a === "failed" ? { tone: "failed" } : {}) },
     done: !ACTIVE.has(a),
     place: p,
+    item: () => itemOfTask(x),
   };
 }
 
@@ -104,6 +133,7 @@ function pastRow(it: PastItem): TaskRow {
     facts: [it.project || t("past.other"), it.branch ? <span class="k-mono">{it.branch}</span> : undefined, it.computer, dateOf(it.updatedAt)],
     ...(end ? { state: end } : {}),
     done: !ACTIVE.has(it.attention),
+    item: () => it,
   };
 }
 
@@ -116,6 +146,8 @@ const PLACES: { id: string; key: string; keys?: string; run: () => void }[] = [
   { id: "apps", key: "apps.title", run: () => A.command("apps") },
   { id: "devices", key: "palette.go.devices", keys: "⌘3", run: () => A.command("devices") },
   { id: "settings", key: "palette.go.settings", keys: "⌘,", run: () => A.command("settings") },
+  // D456: 键盘 / Keyboard, every key in one list.
+  { id: "keys", key: "keys.title", keys: "⌘/", run: () => void (A.sheet = { kind: "keys" }) },
 ];
 
 /** The groups as drawn, in order: what it found, then the places, then the two ways on with the words. */
@@ -134,6 +166,18 @@ export function paletteGroups(q: string): { key: string; label?: string; rows: R
   const named = places.filter((p) => p.k === "go" && p.label.toLowerCase() === low);
   if (named.length) out.push({ key: "go1", label: t("palette.g.go"), rows: named });
   const here = switchList(words, 6).map(liveRow);
+  // D456: the home's index finds a task still on hand by a file, a branch or its words: it stands
+  // with what is on hand (one place per task), saying where the words matched.
+  const hits = new Map((K.past?.items ?? []).map((i) => [i.taskId, i]));
+  for (const r of here) {
+    const it = hits.get(r.id);
+    if (it?.hit && !r.hit) Object.assign(r, { hit: pastRow(it).hit, line: undefined });
+  }
+  for (const it of K.past?.items ?? []) {
+    const live = A.S.tasks.get(it.taskId);
+    if (here.length >= 6 || !live || !title(live) || !ACTIVE.has(it.attention) || here.some((r) => r.id === it.taskId)) continue;
+    here.push({ ...liveRow(live), ...(pastRow(it).hit ? { hit: pastRow(it).hit, line: undefined } : {}) });
+  }
   if (here.length) out.push({ key: "onhand", label: t("palette.g.onhand"), rows: here });
   const shown = new Set(here.map((r) => r.id));
   const earlier = (K.past?.items ?? []).filter((i) => !shown.has(i.taskId)).slice(0, 8).map(pastRow);
@@ -208,6 +252,8 @@ function first(r: Row, q: string) {
 const coarse = () => typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches;
 /** A phone-wide field: the short placeholder, so the line never cuts off mid-list. */
 const narrow = () => typeof matchMedia === "function" && matchMedia("(max-width: 520px)").matches;
+/** D456: room for the peek beside the list. */
+const roomy = () => typeof matchMedia === "function" && matchMedia("(min-width: 1000px)").matches;
 
 // ---------- the field ----------
 
@@ -226,6 +272,8 @@ export function Palette() {
   const at = Math.min(i, Math.max(0, rows.length - 1));
   const cur = rows[at];
   const touch = coarse();
+  // D456: on a wide screen, where the chosen task stopped stands beside the list.
+  const peek = !touch && roomy();
   useEffect(() => {
     list.current?.querySelector(".k-row.on")?.scrollIntoView({ block: "nearest" });
   }, [at, words]);
@@ -266,17 +314,20 @@ export function Palette() {
           />
           {!touch && <kbd class="k-esc">esc</kbd>}
         </label>
-        <div class="sw-list k-list" id="k-list" role="listbox" ref={list}>
-          {groups.map((g) => (
-            <div class="k-group" key={g.key} role="group" aria-label={g.label}>
-              {g.label && <p class="k-glabel">{g.label}</p>}
-              {g.rows.map((r) => {
-                const idx = ++n;
-                return <RowView key={r.id} r={r} on={idx === at} q={words} hover={() => idx !== at && setI(idx)} touch={touch} />;
-              })}
-            </div>
-          ))}
-          {words && K.past === undefined && <p class="k-looking">{t("palette.looking")}</p>}
+        <div class={peek ? "k-body" : "k-body flat"}>
+          <div class="sw-list k-list" id="k-list" role="listbox" ref={list}>
+            {groups.map((g) => (
+              <div class="k-group" key={g.key} role="group" aria-label={g.label}>
+                {g.label && <p class="k-glabel">{g.label}</p>}
+                {g.rows.map((r) => {
+                  const idx = ++n;
+                  return <RowView key={r.id} r={r} on={idx === at} q={words} hover={() => idx !== at && setI(idx)} touch={touch} peek={peek} />;
+                })}
+              </div>
+            ))}
+            {words && K.past === undefined && <p class="k-looking">{t("palette.looking")}</p>}
+          </div>
+          {peek && <Peek r={cur} />}
         </div>
         {!touch && cur && <Foot r={cur} />}
       </div>
@@ -284,7 +335,87 @@ export function Palette() {
   );
 }
 
-function RowView({ r, on, q, hover, touch }: { r: Row; on: boolean; q: string; hover: () => void; touch: boolean }) {
+/** D456: 停在哪儿 / Where it stopped, beside the list: the chosen task's state, what it asks, how it
+ *  ended or its newest words, its changes and its steps. Nothing to act on here: the foot holds the
+ *  ways on, each with its key, so the hands stay on the keys. */
+function Peek({ r }: { r: Row | undefined }) {
+  const id = r?.k === "task" ? r.id : "";
+  useEffect(() => {
+    if (!id) return;
+    const timer = setTimeout(() => askSteps(id), 140); // arrowing past a row asks nothing
+    return () => clearTimeout(timer);
+  }, [id]);
+  if (!r || r.k !== "task") {
+    return (
+      <aside class="k-peek empty" aria-hidden="true">
+        <p>{t("pv.pick")}</p>
+      </aside>
+    );
+  }
+  const it = r.item();
+  const st = PV.steps.get(r.id);
+  const report = st?.report || it.outcome || "";
+  const last = it.lastWords && !report.includes(it.lastWords.trim()) ? it.lastWords : "";
+  const ch = it.changes;
+  const steps = st?.steps ?? [];
+  return (
+    <aside class="k-peek" aria-label={t("pv.title")}>
+      <p class="pv-kicker">{t("pv.title")}</p>
+      <h3 class="k-pname">{it.title}</h3>
+      <Facts class="pv-facts" items={[it.project || undefined, it.branch ? <span class="pv-mono">{it.branch}</span> : undefined, it.computer, it.model ? `${harnessName(it.harness)} ${it.model}` : harnessName(it.harness), it.updatedAt ? dateOf(it.updatedAt) : undefined]} />
+      {r.state && <p class={`k-pstate ${r.state.tone ?? ""}`}>{r.state.word}</p>}
+      {it.asking && (
+        <section class="pv-sec pv-ask">
+          <h4>{t("pv.asking")}</h4>
+          <p>{it.asking}</p>
+        </section>
+      )}
+      {report && (
+        <section class="pv-sec">
+          <h4>{t("pv.result")}</h4>
+          <p class={`pv-report k-clamp${it.attention === "failed" ? " failed" : ""}`}>{report || t("pv.noreport")}</p>
+        </section>
+      )}
+      {last && (
+        <section class="pv-sec">
+          <h4>{t("pv.last")}</h4>
+          <p class="pv-last k-clamp">{last}</p>
+        </section>
+      )}
+      {((ch && (ch.adds || ch.dels)) || it.integrated) && (
+        <section class="pv-sec pv-row">
+          <h4>{t("pv.changes")}</h4>
+          <span class="pv-ch">
+            {ch && (ch.adds || ch.dels) ? (
+              <span class="pdiff">
+                <span class="add">+{ch.adds}</span> <span class="del">−{ch.dels}</span>
+              </span>
+            ) : null}
+            {it.integrated && <span class="pint">{t(it.integrated.act === "merge" ? "onhand.pr.merged" : "onhand.pr.draft")}</span>}
+          </span>
+        </section>
+      )}
+      {steps.length > 0 && (
+        <section class="pv-sec">
+          <h4>{t("pv.steps")}</h4>
+          <ol class="k-steps">
+            {steps.slice(-4).map((s) => (
+              <li key={s.n}>
+                <span class="pv-n" aria-hidden="true">
+                  {s.n}
+                </span>
+                <span class="k-said">{s.text}</span>
+                {s.commit && <span class="pv-commit">{s.commit}</span>}
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
+    </aside>
+  );
+}
+
+function RowView({ r, on, q, hover, touch, peek }: { r: Row; on: boolean; q: string; hover: () => void; touch: boolean; peek?: boolean }) {
   const cls = `sw-row k-row k-${r.k}${on ? " on" : ""}`;
   const click = () => (r.k === "task" && touch ? openTask(r.id) : first(r, q));
   if (r.k === "task") {
@@ -306,7 +437,7 @@ function RowView({ r, on, q, hover, touch }: { r: Row; on: boolean; q: string; h
               </span>
             </span>
           ) : (
-            r.line && <span class="k-l2">{r.line}</span>
+            !peek && r.line && <span class="k-l2">{r.line}</span>
           )}
           <Facts class="k-facts" items={[...r.facts, r.harness ? harnessName(r.harness) : undefined]} />
         </span>

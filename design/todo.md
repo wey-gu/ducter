@@ -495,6 +495,18 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
 - OAR upstream: carry Codex's reset on the `quota` failure, and `rate_limit_event` as an event.
 - A comprehension pass with people on 先停下 / Stop here and the hand-off switch.
 
+## The opened task and ⌘K (D456, `sessions.md`, research/198)
+
+- **A compact density for the opened task** (research/198 L1): the face at 40 beside the title on one
+  line with the meta, chosen in Settings › Appearance (or ⌘⇧D); default unchanged. Trigger: the author
+  says yes.
+- **Ctrl in the key hints off a Mac** (L5): ⌘K's foot, 键盘 and the tooltips say ⌘ in a Windows or Linux
+  browser, where the keys are Ctrl. Trigger: the first person on Windows or Linux with a keyboard.
+- **Mark the word a slip found** (L6): ⌘K and On hand's Find mark the words typed, not the word one
+  letter off that matched. Trigger: someone asks why a row came up.
+- **⌘K's peek on a phone** (L4): a long press shows it as a sheet. Trigger: a phone user who opens
+  then backs out of several in a row.
+
 ## Every task open (D391, `sessions.md`, research/155)
 
 - [ ] **The code exactly as it was at a step**, uncommitted work included: Ducter's own snapshot at each turn's end (a hidden ref per turn, `git stash create` style), used by New task from this step before the newest commit. Trigger: a redo that lost work the agent hadn't committed.

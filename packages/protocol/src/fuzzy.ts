@@ -58,6 +58,6 @@ export function initialsIn(term: string, title: string): boolean {
 }
 
 /** The client's own loose match of one typed word against what it holds for a task. */
-export function looseIn(word: string, hay: string, title: string): boolean {
+export function looseMatch(word: string, hay: string, title: string): boolean {
   return hay.includes(word) || nearIn(word, hay).s > 0 || initialsIn(word, title);
 }

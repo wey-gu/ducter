@@ -102,7 +102,7 @@ export function morph(apply: () => void) {
 }
 /** Settings (D150) is a list of sections; page is the one pushed ("" is the list). */
 export type SettingsPage = "" | "partner" | "memory" | "peers" | "notify" | "accounts" | "todos" | "chats" | "autofill" | "devices" | "phone";
-export type Sheet = { kind: "decision"; id: string } | { kind: "settings"; page?: SettingsPage } | { kind: "newtask" } | { kind: "switch" } | { kind: "past" } | { kind: "did" } | { kind: "pins" } | { kind: "app"; id: string } | { kind: "apps" } | { kind: "recall"; seq: number } | { kind: "learned" } | { kind: "pile" } | { kind: "hand" } | { kind: "review"; groupId: string } | null;
+export type Sheet = { kind: "decision"; id: string } | { kind: "settings"; page?: SettingsPage } | { kind: "newtask" } | { kind: "switch" } | { kind: "past" } | { kind: "did" } | { kind: "pins" } | { kind: "app"; id: string } | { kind: "apps" } | { kind: "recall"; seq: number } | { kind: "learned" } | { kind: "pile" } | { kind: "hand" } | { kind: "review"; groupId: string } | { kind: "keys" } | null;
 
 /** 开一个任务 / New task's sheet (D128): what the user chose and typed, and how starting went. */
 export interface NewTaskDraft {

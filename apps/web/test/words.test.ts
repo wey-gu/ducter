@@ -93,6 +93,7 @@ describe("the web client's words", () => {
       ["i18n-updateall.ts", "updateAllWords", "updateall.go"],
       ["i18n-onhand.ts", "onhandWords", "onhand.go"],
       ["i18n-memory.ts", "memoryWords", "memory.go"],
+      ["i18n-taskview.ts", "taskviewWords", "taskview.go"],
     ];
     for (const [file, name, go] of mirrors) {
       const table = (await import(join(src, file)))[name] as Table;

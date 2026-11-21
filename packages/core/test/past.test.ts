@@ -108,6 +108,24 @@ test("words find by title, a file, a branch, what the person said and what it re
   s.cleanup();
 });
 
+test("D456: a slip of one letter and the title's initials still find, after the words as typed", () => {
+  const s = seed();
+  // A swap in a title word finds what the word itself finds, in the same order.
+  expect(ids(s.past.query("ann", { q: "compactoin" })).slice(0, 2)).toEqual(["refactor", "compaction-doc"]);
+  // A slip in a file name.
+  expect(ids(s.past.query("ann", { q: "snpashot" }))[0]).toBe("flaky");
+  // The initials of the title's words: "Refactor the compaction scheduler".
+  expect(ids(s.past.query("ann", { q: "rtcs" }))[0]).toBe("refactor");
+  // The word as typed outranks a slip that finds another task ("review" is a title word; "reveiw" only a slip).
+  const exact = s.past.query("ann", { q: "review" });
+  const slip = s.past.query("ann", { q: "reveiw" });
+  expect(ids(exact)[0]).toBe("review");
+  expect(ids(slip)[0]).toBe("review");
+  // Four letters are never forgiven: too many words sit one slip from them.
+  expect(ids(s.past.query("ann", { q: "pikc" }))).toEqual([]);
+  s.cleanup();
+});
+
 test("time words become a range: last Tuesday, 上周二, yesterday", () => {
   const s = seed();
   // NOW is Monday the 16th; last Tuesday is the 10th: the refactor (6 days ago).

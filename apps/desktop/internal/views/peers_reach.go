@@ -23,7 +23,8 @@ var (
 
 // reachRow is one tool: Can is yes (its plugin carries Bridge and is in),
 // install (it carries Bridge but isn't in on Device), unknown (Mem's check
-// hasn't said) or none (its plugin can't pass messages yet). Last is the
+// hasn't said), none (its plugin can't pass messages yet) or relay (D448: it
+// can't, but the tasks Ducter runs on it pass messages through Ducter). Last is the
 // newest exchange with it.
 // Box (D444) is what Mem's grouped contact list says of its mailbox: "open",
 // "closed", or "" when Mem didn't list it.
@@ -36,13 +37,13 @@ func reachRows(devices []protocol.DeviceView, own []string, recent []handoff, bo
 	sort.SliceStable(ds, func(i, j int) bool { return ds[i].Home && !ds[j].Home })
 	var out []reachRow
 	for _, h := range append(append([]string(nil), bridgeTools...), noBridgeTools...) {
-		found, on, off, offName := false, false, "", ""
+		found, runs, on, off, offName := false, false, false, "", ""
 		for _, d := range ds {
 			for _, x := range d.Harnesses {
 				if x.Harness != h || !x.Installed || !x.LoggedIn {
 					continue
 				}
-				found = true
+				found, runs = true, true
 				if x.Mem != nil && (x.Mem.State == "installed" || x.Mem.State == "update") {
 					on = true
 				}
@@ -77,6 +78,10 @@ func reachRows(devices []protocol.DeviceView, own []string, recent []handoff, bo
 		}
 		row := reachRow{Harness: h, Tool: tool, Last: last, Box: box}
 		switch {
+		case (h == "pi" || h == "antigravity") && runs:
+			// D448: signed in on a computer of Ducter's: the tasks Ducter runs on it pass
+			// messages through Ducter; the person's own sessions of it still can't.
+			row.Can, row.Box = "relay", ""
 		case h == "pi" || h == "antigravity":
 			row.Can, row.Box = "none", ""
 		case on || last != "" || box == "open":

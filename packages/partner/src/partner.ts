@@ -52,7 +52,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { AliveSource } from "../../protocol/src/alive.ts";
-import { ASKS_MAX, type AskLine, callWakes, fileView, harnessName, HARNESSES, HARNESS_IDS, isHarnessId, isImage, isWorkKind, WORK_KINDS, type WorkKind, MEDIA_LIMITS, viewText, type MediaRef, type ActivityStep, type Bodies, type BodyWhy, type Brain, type CalEvent, type CalGlance, type EventKind, type HarnessId, type LogEvent, type Place, type TaskCard, type TaskGroupFrame, type TaskGroupView, type TaskNeeds } from "../../protocol/src/index.ts";
+import { ASKS_MAX, type AskLine, callWakes, fileView, harnessName, HARNESSES, HARNESS_IDS, isHarnessId, relaysBridge, isImage, isWorkKind, WORK_KINDS, type WorkKind, MEDIA_LIMITS, viewText, type MediaRef, type ActivityStep, type Bodies, type BodyWhy, type Brain, type CalEvent, type CalGlance, type EventKind, type HarnessId, type LogEvent, type Place, type TaskCard, type TaskGroupFrame, type TaskGroupView, type TaskNeeds } from "../../protocol/src/index.ts";
 import type { CoreApi, HarnessEvent, HarnessSession, Partner, Runner, SendImage, WebLookPort, WorkingMemoryView } from "../../protocol/src/internal.ts";
 import { resolveWindows, WINDOW_MAX, WINDOW_MIN } from "../../protocol/src/harness-facts.ts";
 
@@ -68,7 +68,8 @@ import { buildSystemPrompt } from "./persona.ts";
 import { realFs, resolvePlace, type PlaceFs } from "./place.ts";
 import { effortFromWords } from "../../protocol/src/effort-words.ts";
 import { ducterDataRefusal, isDucterData } from "../../protocol/src/ducter-folder.ts";
-import { FILE_INLINE_CHARS, renderHistoryLine, renderProjection, renderTime, renderTrigger, type RenderCtx } from "./render.ts";
+import { FILE_INLINE_CHARS, refsLine, renderHistoryLine, renderProjection, renderTime, renderTrigger, type RenderCtx } from "./render.ts";
+import { namesAgent, relayAnswer, relayHead, relayNotSent, relayQuestion, relayWaiting, whoForTask } from "./bridge-relay.ts";
 import { inTongue } from "../../protocol/src/say.ts";
 import { destructiveChoice } from "../../protocol/src/destructive.ts";
 import { parseRich, RICH_LIMITS, type RichUi } from "../../protocol/src/rich.ts";
@@ -4023,8 +4024,12 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     return t?.lang ?? userLang();
   }
   function linkedTask(messageId: string): string | undefined {
-    return loggedBridge().find((e) => e.body.direction === "out" && e.body.inReplyTo === messageId && e.body.taskId)?.body.taskId;
+    return loggedBridge().find((e) => e.body.direction === "out" && e.body.inReplyTo === messageId && e.body.taskId && e.body.by !== "task")?.body.taskId;
   }
+  /** D448: what went out, as Mem got it: a task's words after the line that names the task. */
+  const sentBody = (b: Pick<Bodies["bridge_msg"], "text" | "head">) => (b.head ? `${b.head}\n${b.text}` : b.text);
+  /** D448: the message a task sent that Mem's id names (an answer to it goes into that task). */
+  const taskSentAs = (messageId: string) => loggedBridge().find((e) => e.body.direction === "out" && e.body.by === "task" && !!e.body.messageId && e.body.messageId === messageId)?.body;
   function bridgeIn(messageId: string): Bodies["bridge_msg"] | undefined {
     // D334: a teammate's held message let through is logged again without a state: that one.
     const all = loggedBridge().filter((e) => e.body.direction === "in" && e.body.messageId === messageId);
@@ -4035,7 +4040,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   /** The request a task was opened for, while its outcome hasn't been sent back (J-Q7). */
   function bridgeOwed(taskId: string): Bodies["bridge_msg"] | undefined {
     const ops = [...foldOut(loggedBridge()).values()];
-    const claim = ops.find((o) => o.last.taskId === taskId && o.last.inReplyTo);
+    const claim = ops.find((o) => o.last.taskId === taskId && o.last.inReplyTo && o.last.by !== "task");
     if (!claim) return undefined;
     // Answered = something went back after the task's first final report (a reply while it ran,
     // e.g. a second "claimed", is not the outcome: live eval). An unknown outcome counts: it is
@@ -4066,9 +4071,10 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
    */
   /** What an op is, for the one line the user hears if it can't go out. */
   function outKind(o: OutOp): OutKind {
+    if (o.last.by === "task") return "task";
     if (o.last.decisionId) return "message";
     if (!o.last.taskId) return "reply";
-    const first = [...foldOut(loggedBridge()).values()].find((x) => x.last.taskId === o.last.taskId);
+    const first = [...foldOut(loggedBridge()).values()].find((x) => x.last.taskId === o.last.taskId && x.last.by !== "task");
     return first?.opId === o.opId ? "claim" : "result";
   }
   async function deliver(base: OutBase, kind: "send" | "reply", quiet = false): Promise<OutState> {
@@ -4082,7 +4088,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       const via = kind === "send" ? replyHandle(op.contact) : undefined;
       // D334: in the Space it goes out in: the message's own for a reply, the card's for a send.
       // D418: Mem's own reply route for that message, kept in the Log (a restart empties the client's map).
-      const r = via ? await bridge.reply(via, op.text, bridgeIn(via)?.space ?? op.space, bridgeIn(via)?.route) : kind === "send" ? await bridge.send!(op.contact!, op.text, op.space) : await bridge.reply(op.inReplyTo!, op.text, op.space ?? bridgeIn(op.inReplyTo!)?.space, bridgeIn(op.inReplyTo!)?.route);
+      const words = sentBody(op); // D448: a task's words go with the line that names the task
+      const r = via ? await bridge.reply(via, words, bridgeIn(via)?.space ?? op.space, bridgeIn(via)?.route) : kind === "send" ? await bridge.send!(op.contact!, words, op.space) : await bridge.reply(op.inReplyTo!, words, op.space ?? bridgeIn(op.inReplyTo!)?.space, bridgeIn(op.inReplyTo!)?.route);
       if (r.ok) {
         logOut(op, "sent", { messageId: r.messageId ?? "", ...(r.operation ? { operation: r.operation } : {}) });
         watchFor(r.messageId ?? ""); // D335: its answer is looked for soon, not at the next period
@@ -4129,7 +4136,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       const resend: OutOp[] = [];
       for (const o of ops) {
         const base = { ...o.last, opId: o.opId };
-        const text = o.last.text.trim();
+        const text = sentBody(o.last).trim();
         let sel = o.last.operation;
         let found: BridgeOp | undefined;
         if (!sel && bridge.outbox) {
@@ -4194,6 +4201,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         if (state) {
           recoverTries.delete(o.opId);
           if (state === "sent") stats.bridgeRecovered = (stats.bridgeRecovered ?? 0) + 1;
+          if (o.last.by === "task") taskOpSettled(o.last, state); // D448
           continue;
         }
         const n = (recoverTries.get(o.opId) ?? 0) + 1;
@@ -4203,12 +4211,13 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           if (!told.has(recipientKey(o))) tellUser(lostLine(o, userLang() ?? NO_WORDS_YET, "unconfirmed", outKind(o)));
           told.add(recipientKey(o));
           recoverTries.delete(o.opId);
+          if (o.last.by === "task") taskOpSettled(o.last, "unconfirmed"); // D448
         }
       }
       // D418: the ones Mem never took, once more (a reply with Mem's route read again from the inbox).
       for (const o of resend) {
         const { opId: _old, state: _s, messageId: _m, direction: _d, operation: _op, ...rest } = o.last;
-        const st = await deliver({ ...rest, opId: newId("bo"), retryOf: o.opId }, o.last.decisionId ? "send" : "reply", told.has(recipientKey(o)));
+        const st = await deliver({ ...rest, opId: newId("bo"), retryOf: o.opId }, o.last.decisionId || o.last.contact ? "send" : "reply", told.has(recipientKey(o)));
         if (st === "failed") told.add(recipientKey(o));
       }
       // D418: until every op is settled, recovery comes back by itself (30 s, 2 min, 10 min): with
@@ -4304,15 +4313,101 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     return out;
   }
   const sendOp = (decisionId: string): OutOp | undefined => [...foldOut(loggedBridge()).values()].find((o) => o.last.decisionId === decisionId);
-  async function performSend(decisionId: string, option: "go" | "hold" | "reply") {
+  async function performSend(decisionId: string, option: "go" | "hold" | "reply", words?: string) {
     const op = sendOp(decisionId);
     if (!op || op.state !== "pending" || !bridge?.send) return; // carried out already
     const base = { ...op.last, opId: op.opId };
     if (option !== "go") {
       logOut(base, "held"); // nothing goes out; the card shows it
+      // D448: the task hears it wasn't sent (and what the person wrote instead), once, by code.
+      if (op.last.by === "task" && op.last.taskId) await toTask(op.last.taskId, relayNotSent(whoForTask({ ...op.last, label: op.last.to }), option === "reply" && words ? "reply" : "held", words));
       return;
     }
-    await deliver(base, "send");
+    const st = await deliver(base, "send");
+    if (op.last.by === "task") taskOpSettled(op.last, st);
+  }
+
+  // ---------- D448: tasks Ducter carries messages for (design/bridge.md) ----------
+  // A task on an agent whose Mem plugin has no Bridge (pi, Antigravity, DeepSeek Harness) can't
+  // reach the person's other agents by itself. Ducter is in the middle, as it is for Mem's steps
+  // (D417): agent_message puts the task's words in front of the person (a card naming the task,
+  // the recipient and the words; Go sends it under the partner's identity with the task named),
+  // and an answer to it comes back into the task like a follow-up, never waking the partner.
+  /** Bridge is on and this task is one Ducter carries messages for. */
+  const relayOn = (taskId?: string) => {
+    if (!bridge?.send || !taskId) return false;
+    const c = core.tasks.get(taskId);
+    return !!c && c.attention !== "dropped" && relaysBridge(c.harness, c.place);
+  };
+  core.taskBridge = { on: (id) => relayOn(id) };
+  /** Words to a task from Ducter (what came of its message, an answer): never throws. */
+  async function toTask(taskId: string, text: string): Promise<boolean> {
+    const c = core.tasks.get(taskId);
+    if (!c || c.attention === "dropped") return false;
+    try {
+      await runner.send(taskId, text, undefined, "ducter");
+      return true;
+    } catch (err) {
+      onError(err);
+      return false;
+    }
+  }
+  /** One agent across its handles (a reply handle changes with each message it writes). */
+  const agentKey = (c: { agent?: string; label?: string; to?: string; from?: string; contact?: string }) => c.agent || (c.label && c.label !== "another agent" ? c.label : "") || c.to || (c.from && c.from !== "another agent" ? c.from : "") || c.contact || "";
+  /** A task's message to this agent the person already said go to (so it reached Mem's hands). */
+  function taskOkayed(taskId: string, c: BridgeContact): boolean {
+    const key = agentKey(c);
+    return [...foldOut(loggedBridge()).values()].some((o) => o.last.by === "task" && o.last.taskId === taskId && agentKey(o.last) === key && mayHaveGone(o.state));
+  }
+  /**
+   * What came of a task's message once it settled. Sent: its card waits for the answer (在等你的
+   * Codex 回话) unless it is at work. Didn't go: the task hears so, once (the person heard it in
+   * the conversation already, D106's line).
+   */
+  function taskOpSettled(b: Bodies["bridge_msg"], st: OutState) {
+    const taskId = b.taskId;
+    if (!taskId) return;
+    const who = whoForTask({ ...b, label: b.to });
+    if (st === "sent") {
+      core.log.append({ persona: core.tasks.get(taskId)?.persona, stream: `task:${taskId}`, origin: "task", kind: "task_event", body: { taskId, role: "system", from: "runner", text: `sent to ${who} through Nowledge Mem`, raw: { bridge: "sent", opId: b.opId ?? null } } });
+      const c = core.tasks.get(taskId);
+      if (c && c.residency !== "hot" && c.attention !== "done" && c.attention !== "dropped") core.tasks.setState(taskId, "blocked", c.residency, relayWaiting(userLang() ?? NO_WORDS_YET, whoForUser({ ...b, label: b.to }, userLang() ?? NO_WORDS_YET)));
+      return;
+    }
+    if (st === "failed" || st === "unconfirmed") void toTask(taskId, relayNotSent(who, st));
+  }
+  /**
+   * The agent a task means by `to`: a handle offered it before; one that answered this task; one
+   * that wrote to the partner lately; else Mem's own list by those words. One, several, or none.
+   */
+  const taskHandles = new Map<string, BridgeContact>(); // `${taskId} ${handle}` → what it stands for
+  async function relayPick(taskId: string, to: string): Promise<{ one?: BridgeContact; many?: BridgeContact[] }> {
+    const known = taskHandles.get(`${taskId} ${to}`);
+    if (known) return { one: known };
+    const evs = loggedBridge();
+    const answered: BridgeContact[] = [];
+    for (let i = evs.length - 1; i >= 0; i--) {
+      const b = evs[i]!.body;
+      if (b.direction !== "in" || b.state !== "task" || b.taskId !== taskId || !namesAgent(to, b)) continue;
+      const c: BridgeContact = { contact: `${REPLY}${b.messageId}`, label: !b.from || b.from === "another agent" ? "" : b.from, ...(b.agent ? { agent: b.agent } : {}), ...(b.mine ? { mine: true } : {}) };
+      if (!answered.some((x) => agentKey(x) === agentKey(c))) answered.push(c);
+    }
+    if (answered.length === 1) return { one: answered[0]! };
+    const fit: BridgeContact[] = answered.length ? answered : recentWriters(now()).filter((c) => namesAgent(to, { ...c, from: c.label })).map(({ wrote: _w, ago: _a, ...c }) => c);
+    if (!answered.length && bridge?.contacts) {
+      const r = await bridge.contacts(to).catch(() => undefined);
+      if (r?.ok) for (const c of oneSpaceEach(r.contacts)) if (!fit.some((x) => agentKey(x) === agentKey(c))) fit.push(c);
+    }
+    for (const c of fit) taskHandles.set(`${taskId} ${c.contact}`, c);
+    return fit.length === 1 ? { one: fit[0]! } : fit.length ? { many: fit.slice(0, 5) } : {};
+  }
+  /** An answer to what a task sent, into that task; one it can't take (gone, its computer away) wakes the partner instead. */
+  async function intoTask(b: Bodies["bridge_msg"], asked: Bodies["bridge_msg"]) {
+    const took = await toTask(b.taskId!, relayAnswer(b, asked.text, b.refs?.length ? refsLine(b.refs) : ""));
+    if (took) return; // the runner sets it working
+    const { state: _s, ...rest } = b;
+    const e = core.log.append({ stream: "channel", origin: "peer", kind: "bridge_msg", body: rest });
+    api.onTrigger(e);
   }
 
   // ---------- X1 (D164, D170): the user's own agents ask the user through the partner ----------
@@ -4585,7 +4680,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   function awaitingAnswer(t: number): boolean {
     const evs = loggedBridge();
     const answered = new Set(evs.filter((e) => e.body.direction === "in" && e.body.inReplyTo).map((e) => e.body.inReplyTo!));
-    return evs.some((e) => e.body.direction === "out" && !!e.body.decisionId && !e.body.inReplyTo && !!e.body.messageId && !answered.has(e.body.messageId) && t - Date.parse(e.ts) < 7 * DAY_MS);
+    return evs.some((e) => e.body.direction === "out" && (!!e.body.decisionId || e.body.by === "task") && !e.body.inReplyTo && !!e.body.messageId && !answered.has(e.body.messageId) && t - Date.parse(e.ts) < 7 * DAY_MS);
   }
   /**
    * D418: the answers to an own agent's contact tests, by code, one agent at a time, each once more if
@@ -4684,6 +4779,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       // window of the Log can't tell which is first: on hel it said 「第一次」 a week after the first).
       let first = r.messages.length > 0 && !loggedBridge().some((e) => e.body.direction === "in" && (!e.body.state || e.body.state === "held" || e.body.state === "ping"));
       const pings: { m: (typeof r.messages)[number]; body: Bodies["bridge_msg"]; reply: string }[] = [];
+      const forTasks: { b: Bodies["bridge_msg"]; asked: Bodies["bridge_msg"] }[] = []; // D448
       for (const m of r.messages) {
         if (known.has(m.messageId)) continue;
         known.add(m.messageId);
@@ -4731,6 +4827,15 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           ...(m.refs?.length ? { refs: await readRefs(m.refs) } : {}),
         };
         first = false;
+        // D448: an answer to what a task sent goes into that task like a follow-up, never a partner
+        // turn. (A new message, not an answer, still comes to the partner: Mem addresses the partner.)
+        const asked = m.inReplyTo ? taskSentAs(m.inReplyTo) : undefined;
+        if (asked?.taskId) {
+          const tb: Bodies["bridge_msg"] = { ...body, taskId: asked.taskId, state: "task" };
+          core.log.append({ stream: "channel", origin: "peer", kind: "bridge_msg", body: tb });
+          forTasks.push({ b: tb, asked });
+          continue;
+        }
         // D418: a contact or liveness test from one of the person's own agents that asks only to be
         // acknowledged is answered by code, with no card and no partner turn (hel, 2026-11-20: the
         // partner asked Go to answer the author's own Codex's three pings, which he had asked for on
@@ -4747,6 +4852,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         api.onTrigger(e); // core forwards it too; onTrigger dedupes by seq
       }
       if (pings.length) await answerPings(pings).catch(onError);
+      for (const x of forTasks) await intoTask(x.b, x.asked).catch(onError);
       if (!n) followThrough();
       await notYetPeers().catch(onError);
       return n;
@@ -4764,6 +4870,64 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   function startBridge(b0: BridgeClient) {
     if (bridgeStarted) return;
     bridgeStarted = true;
+    // D448: a task's own way to other agents, listed only for a task Ducter carries messages for.
+    const relayTool = (name: string, description: string, schema: object, handler: (args: any, ctx: { taskId?: string }) => Promise<unknown>) =>
+      core.mcp.registerWhen ? core.mcp.registerWhen("task", name, description, schema, handler, (ctx) => relayOn(ctx.taskId)) : core.mcp.register("task", name, description, schema, handler);
+    relayTool(
+      "agent_message",
+      "Ask or tell one of the user's other agents something (their Codex or Claude Code in a terminal, a teammate's agent), when the work needs its answer or it must know. Ducter carries it through the user's Nowledge Mem, with this task named; the user okays a first message on a card. Its answer arrives here as a new message. Plain sentences with the background it needs; never secrets.",
+      {
+        type: "object",
+        properties: {
+          to: { type: "string", description: "Who, as the user or the brief called it (\"your Codex\", \"Alex's reviewer\"), or a handle this tool returned" },
+          text: { type: "string", description: "The message, in the recipient's likely language" },
+        },
+        required: ["to", "text"],
+      },
+      async (args: { to?: unknown; text?: unknown }, ctx) => {
+        const card = ctx.taskId ? core.tasks.get(ctx.taskId) : undefined;
+        if (!card) throw new Error("agent_message needs a task");
+        if (!relayOn(card.taskId)) return { ok: false, note: "Messaging other agents isn't available to this task now. Carry on with the brief; if only another agent or the user knows, ask in report_to_main." };
+        const to = typeof args?.to === "string" ? args.to.trim().slice(0, 200) : "";
+        const text = typeof args?.text === "string" ? args.text.trim().slice(0, 4000) : "";
+        if (!to || !text) return { ok: false, error: "agent_message needs `to` and `text`." };
+        if (redactSecrets(text) !== text) return { ok: false, error: "That contains a secret. Nothing was sent; write it without the secret." };
+        const ops = [...foldOut(loggedBridge()).values()];
+        if (ops.some((o) => o.last.by === "task" && o.last.taskId === card.taskId && o.state === "pending"))
+          return { ok: false, note: "Your earlier message is still waiting for the user's OK; nothing new was sent. Carry on, or end your turn to wait (no report needed)." };
+        const pick = await relayPick(card.taskId, to);
+        if (pick.many) return { ok: false, choices: pick.many.map((c) => ({ to: c.contact, who: whoForTask(c), ...(c.description ? { about: c.description.slice(0, 160) } : {}) })), note: "Several agents fit. Call agent_message again with `to` set to the handle of the one you mean; if you can't tell, ask the user in report_to_main." };
+        const c = pick.one;
+        if (!c) return { ok: false, note: `No agent called "${to}" can be reached through the user's Nowledge Mem. Carry on without it; if the work needs it, ask the user in report_to_main.` };
+        if (ops.some((o) => agentKey(o.last) === agentKey(c) && (o.state === "unknown" || o.state === "sending")))
+          return { ok: false, note: "Ducter is still finding out whether your earlier message to it went out, and never sends a second copy. Carry on, or end your turn." };
+        const lang = userLang() ?? NO_WORDS_YET;
+        const whoUser = whoForUser(c, lang);
+        const via = replyHandle(c.contact) ? bridgeIn(replyHandle(c.contact)!) : undefined;
+        const space = via?.space ?? c.space;
+        const spaceLabel = via?.spaceLabel ?? c.spaceLabel;
+        const base = {
+          opId: newId("bo"), by: "task" as const, taskId: card.taskId, contact: c.contact, to: c.label,
+          ...(c.agent ? { agent: c.agent } : {}), ...(c.mine ? { mine: true } : {}), ...(via?.selfNamed ? { selfNamed: true } : {}), ...(via?.role ? { role: via.role } : {}),
+          ...(space ? { space } : {}), ...(spaceLabel ? { spaceLabel } : {}),
+          text, head: relayHead(core.persona.name || "Ducter", card.title, text),
+        };
+        // Mine and already okayed in this task: the person's Go opened that exchange (D418's own-agent trust).
+        if (c.mine && taskOkayed(card.taskId, c)) {
+          const st = await deliver(base, "send");
+          if (st === "sent") return { ok: true, sent: true, note: "Sent. Its answer arrives here as a new message: carry on, or end your turn to wait for it (no report needed)." };
+          if (st === "unknown") return { ok: true, sent: "unknown", note: "No word yet whether it went; Ducter checks and never sends it twice. Don't send it again." };
+          return { ok: false, sent: false, note: "Not sent (the user was told why). Carry on without its answer where you can." };
+        }
+        const body: Bodies["decision"] = { decisionId: newId("d"), taskId: card.taskId, question: relayQuestion(lang, card.title, whoUser, text), goLabel: said(lang, "sendGo"), defaultOption: "hold", reversible: false, relay: { who: whoUser } };
+        // Pending first, then the card: a tap always finds what it confirms, even after a restart.
+        logOut({ ...base, decisionId: body.decisionId }, "pending");
+        core.log.append({ persona: card.persona, stream: "channel", origin: "system", kind: "decision", body });
+        core.tasks.setState(card.taskId, "needs_you", card.residency);
+        const unheard = !via && c.unheard ? " Its answer may not reach you: the user's partner doesn't read where that agent is." : "";
+        return { ok: true, waiting: "the user's OK", note: `The user sees a card naming ${whoForTask(c)} and your words; it goes only if they say go, and you'll hear if it doesn't. Don't send it again.${unheard} Its answer arrives here as a new message. Carry on with what doesn't need it, or end your turn to wait (no report needed).` };
+      },
+    );
     bridgeTool(
       "bridge_reply",
       "Reply to a message another agent sent you through Nowledge Bridge ([message from … message <id>] lines). The reply goes back to that sender only: answer its question, say whether the user agreed, or report the result of the task you opened for it. Short and self-contained; no secrets, no private details the user hasn't shared with that sender. Don't tell the user you replied: the app shows it.",
@@ -5142,7 +5306,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       // it was carried out already, before a restart).
       if (bridge && e.kind === "decision_resolved" && sendOp((e.body as Bodies["decision_resolved"]).decisionId)) {
         const b = e.body as Bodies["decision_resolved"];
-        void performSend(b.decisionId, b.option).catch(onError);
+        void performSend(b.decisionId, b.option, b.text).catch(onError);
         return;
       }
       // X1: the user's answer to another agent's question goes back by code; no partner turn

@@ -287,6 +287,24 @@ type handoff struct {
 	State  string // D433, out: sending | unknown | unconfirmed | failed; "" = went
 }
 
+// peerFeed is the conversation's exchanges and a task's own (which never
+// show there), in order (D448; web: peerFeed).
+func peerFeed(ch, task []*store.Entry) []*store.Entry {
+	if len(task) == 0 {
+		return ch
+	}
+	seen := map[int64]bool{}
+	var all []*store.Entry
+	for _, e := range append(append([]*store.Entry(nil), ch...), task...) {
+		if !seen[e.Event.Seq] {
+			seen[e.Event.Seq] = true
+			all = append(all, e)
+		}
+	}
+	sort.SliceStable(all, func(i, j int) bool { return all[i].Event.Seq < all[j].Event.Seq })
+	return all
+}
+
 // recentHandoffs is the latest exchanges both ways, newest first; only
 // what really went (web: recentHandoffs).
 func recentHandoffs(ch []*store.Entry, limit int, outOps ...map[string]*store.Entry) []handoff {
@@ -333,10 +351,16 @@ func recentHandoffs(ch []*store.Entry, limit int, outOps ...map[string]*store.En
 		}
 		agent, host := peerCalled(p)
 		way := "in"
+		if p.Direction == "in" && p.State == "task" {
+			way = "taskin" // D448: an answer that went into the task that asked
+		}
 		if p.Direction != "in" {
 			way = "replied"
 			if p.DecisionID != "" {
 				way = "sent"
+			}
+			if p.By == "task" {
+				way = "tasksent" // D448: a task's own message Ducter carried
 			}
 		}
 		out = append(out, handoff{Seq: ch[i].Event.Seq, At: ch[i].Event.TS, Agent: agent, Host: host, Way: way, Words: words, TaskID: p.TaskID, State: state})

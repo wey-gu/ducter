@@ -206,8 +206,12 @@ it brings back. The small copy button on each sentence copies it.
 
 **Who can reach** lists each AI tool you use: Claude Code and Codex say **Can reach** your partner,
 with when one last came, or, where the Nowledge Mem plugin isn't in yet, offer **Install**. pi and
-Antigravity say **Its Nowledge Mem plugin can't pass messages yet**: they share your memory, but
-messaging between them and your partner is coming soon. When Nowledge Mem's own list of your agents
+Antigravity, when they're signed in on a computer of Ducter's, say **pi tasks your partner runs pass
+messages; yours can't yet**: a task your partner runs on them can ask your other agents something.
+The first time it does, a card in your conversation shows which task, who it's for and the words,
+with **Send**; nothing goes before you tap it, and the answer goes back into the task. Recently lists
+these by the task's name. Your own pi or Antigravity sessions outside Ducter can't pass messages yet,
+and one Ducter doesn't run says **Its Nowledge Mem plugin can't pass messages yet**. When Nowledge Mem's own list of your agents
 has been read (when you look at this page, at most every half hour), a row also says whether your
 partner can reach that agent: **Can reach your partner, and your partner can reach it**, or **…but
 Nowledge Mem says your partner can't reach it right now**.

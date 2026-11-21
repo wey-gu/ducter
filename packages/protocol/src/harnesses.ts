@@ -11,6 +11,22 @@ export function isHarnessId(s: unknown): s is HarnessId {
 }
 
 /**
+ * D448: the agents whose Nowledge Mem plugin carries Bridge (its `bridge` skill), so a session of
+ * theirs reaches other agents by itself: Claude Code and Codex (research/66 §10, research/183 §3,
+ * VERIFIED 2026-11-18). Every other agent's (pi, Antigravity, DeepSeek Harness) has none.
+ */
+export const MEM_BRIDGE_HARNESSES: readonly HarnessId[] = ["claude-code", "codex"];
+
+/**
+ * D448: a task Ducter runs on an agent with no Bridge of its own talks to other agents through
+ * Ducter: its message goes out under the partner's identity with the task named, and an answer to
+ * it comes back into the task. Never a browser task (D62: a page could ask for it).
+ */
+export function relaysBridge(harness: string, place?: { kind: string }): boolean {
+  return isHarnessId(harness) && !MEM_BRIDGE_HARNESSES.includes(harness) && place?.kind !== "browser";
+}
+
+/**
  * How the partner leaves the user's own setup of this harness out (their instructions files,
  * skills, plugins, hooks, MCP servers), keeping the login and the session history:
  *  - native:    OAR userConfiguration "exclude" (claude: --setting-sources project,local, --strict-mcp-config)

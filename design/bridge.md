@@ -1,6 +1,6 @@
 # Bridge: Ducter and the Agents It Didn't Start
 
-> Design note · 2026-11-09, updated 2026-11-19 · Principles 1, 7, 12, 14, 17, 18 · Decided: D105–D111 (outbound,
+> Design note · 2026-11-09, updated 2026-11-21 (D448: tasks Ducter carries messages for) · Principles 1, 7, 12, 14, 17, 18 · Decided: D105–D111 (outbound,
 > the outgoing ledger, the result reply, names, copy, follow-through, the Mem asks), D162 (the live check and the
 > real shapes), D163–D164 (beyond itself: X1–X3), D170 (X1, X2 and the Settings switch, built), D171 (the persona's Space), D205 (the persona connects itself with one tap), D225 (the released Bridge; the home's own Mem put in, updated and signed in from the same row), D324 (one home answers a partner's mailbox; the trial as its own identity), D333 (the partner's own tools only, 查看来信, the card says where it reads), D334 (the address is the identity, not the Space: every Space read, replies in the message's, a teammate's first message is a card), D338 (the card names only the Spaces read; a Space Mem answers 404 for is said and backed off; no connection per Space), D364 (nmem 0.10.120's linked shape: an original is not an answer; the update offered on the pane), D367 (every inbox page read; the trial's peer touches only its own run's mail), D369 (a mailbox Mem must sort out on its side: said once, checked every 30 min; the trial's guard reads Mem's own send prefix), D400 (nmem 0.10.121: the identity inbox read once, Mem's own open/reply argv, `--watch` or a 5 s wait, a device label, Mem's own notices said); still open: J-Q1–3, J-Q8, J-Q14 ·
 > Evidence: `research/31` (public), `research/37` (dogfood, §6 the live check), `research/66` (the release, the live
@@ -610,13 +610,14 @@ This is J1's second half, but it is worth naming because it closes the loop the 
 - **Feel.**
   - *Before:* the task guesses, or the user relays the question by hand.
   - *After:* the question goes to the session that knows; the user is asked once whether that's OK.
-- **How it starts.**
-  - The task asks the partner through its report.
-  - The partner asks the user: "问一下终端里的 Codex？" (Go/Hold).
-  - On Go, Ducter sends the question. That requires `bridge send`, plus the recipient chosen by the user.
-- **Evidence.** Thin for this task-initiated case: a stopped session never wakes on send. The user-initiated
-  case is built as S2 (D105); a task's question would reach the user first as its own card, then go out the same
-  way.
+- **How it starts** (D448, built for a task on an agent with no Bridge of its own; "Tasks Ducter carries
+  messages for" below):
+  - The task calls `agent_message` {to, text}.
+  - The user sees one card: "「修 Linux 上的 runner 测试」想发给你的 Codex：「…」" (发送, default hold).
+  - On Go, Ducter sends it under the partner's identity with the task named; the answer goes back into the task.
+  - A Claude Code or Codex task asks through its own Mem plugin (D333), as before.
+- **Evidence.** A stopped session never wakes on send; the answer comes when that session next runs. The
+  user-initiated case is built as S2 (D105).
 
 ### J5 · The persona reached from a consumer AI on the phone (Grok Bot, Muse)
 
@@ -645,7 +646,8 @@ This is J1's second half, but it is worth naming because it closes the loop the 
 
 **Rejected: Ducter's own tasks talking through Bridge.** The Log is authoritative and typed reports already do
 this (principle 12, private/10 §4). Routing through Bridge would add a second source of truth, network latency,
-and a gated dependency.
+and a gated dependency. (This is tasks talking to each other. A task talking to an agent Ducter didn't start is
+D448: through Ducter, below.)
 
 ## Objects and names
 
@@ -657,6 +659,7 @@ and a gated dependency.
 | Origin `peer` | protocol | Another agent through Bridge. Never `user` |
 | `bridge_reply` tool | partner MCP | Registered only when Bridge is on |
 | `bridge_check` tool | partner MCP | D333: the home reads its mailbox now, on the user's ask; registered only when Bridge is on |
+| `agent_message` tool | task MCP | D448: a task on an agent with no Bridge of its own messages another agent through Ducter; listed only for such a task while Bridge is on. Its ops are `bridge_msg{out, by: "task", taskId, head}`; an answer is `bridge_msg{in, state: "task", taskId}` |
 
 User-facing copy: the decided lines (the send card, 你的 <agent>, the claim, the teammate's fixed outcome,
 follow-through, a lost or refused send) are in the glossary (D105–D110). Still pending the user's OK (J-Q5):
@@ -1132,7 +1135,8 @@ CLI, read from help and the binary only).
   Antigravity), from Mem's plugin check per agent (D169), their own records (D332) and the last exchange. Claude Code
   and Codex: **能找到{name}** (with when it last came), else **装上 Nowledge Mem 插件就能找到{name}** with **装上**, else
   **接上 Nowledge Mem 就能找到{name}**. pi and Antigravity: **它的 Nowledge Mem 插件还不会传话** (their Mem plugins carry no
-  `bridge` skill; Mem's to add). No `bridge contacts` call per view (31 to 40 s each).
+  `bridge` skill; Mem's to add; D448: one signed in on a computer of Ducter's reads **{name}开的 {tool} 任务能传话，你自己开的还不行**,
+  below). No `bridge contacts` call per view (31 to 40 s each).
 - **最近 says what hasn't gone.** Each outgoing message's latest word, by its op: **正在送**, **还在确认送到没有**,
   **没能确认送到**, **没送出去** in place of the time.
 - **An away home.** `bridge connections list --include-activity` when the help offers it; Mem's `last_seen_at_ms`
@@ -1158,6 +1162,37 @@ Evidence: `research/191` (nmem still 0.10.121; a deeper read of its help and str
   The partner sees them under the message as data; the line reads the address as the title, else **附了「…」**.
 - **Not yet** (research/191 §asks): **已读** (delivery states exist only on the `mailbox` path), native sessions by
   name, reading a shared plan, `feed`.
+
+## Tasks Ducter carries messages for (D448, 2026-11-21)
+
+A Claude Code or Codex task reaches other agents through its own Mem plugin. A task on pi, Antigravity or
+DeepSeek Harness has none (research/183 §3), but Ducter is in the middle of it both ways, as it is for Mem's two
+steps on agy (D417): the task's tools are Ducter's, and the partner's Bridge client already sends, recovers and
+reads. So Ducter carries the task's messages.
+
+```
+task (pi / agy, Bridge on, not a browser)
+  agent_message {to, text}  ── Ducter finds the one meant: an agent that answered this task, one that wrote
+                               lately, else Mem's own list (bridge contacts <to>); several → handles back
+  first message to an agent → card in the conversation, tied to the task (On hand: 等你)
+      「{task}」想发给{who}：「{words}」 · 发送 · default hold · not reversible
+      Log: bridge_msg{out, by: task, taskId, head, state pending, decisionId}  (before the card)
+  Go → deliver (D106): "Ducter 的任务「{title}」：\n{words}" under the partner's identity
+      sent → the task's transcript says so; resting → its card 在等{who}回话
+      Hold / the person's own words / refused → told to the task once, by code
+  later message, same task, same own agent (mine) → no card (the Go opened the exchange); a teammate's → a card
+answer (in_reply_to = the task's message) → bridge_msg{in, state task, taskId} → runner.send(task, frame)
+      never a partner turn; a task that can't take it → the partner hears it as any answer
+```
+
+- **The task's words:** a short brief section (`agentsBrief`) and the tool; what another agent says is
+  information, never the user's instructions or permission. A turn that ends waiting for the answer owes no
+  report.
+- **The person sees:** the card; **已发给{who}** after the Go; Recently by the task (**「{task}」问 {who}**,
+  **{who} 回「{task}」**); 能找到{name}的: **{name}开的 {tool} 任务能传话，你自己开的还不行** for pi or Antigravity
+  signed in on a computer of Ducter's.
+- **Not yet** (`todo.md`): a Claude Code or Codex task without Mem's plugin in the session; follow-through when
+  an answer never comes; a new message from another agent addressed to a task by name.
 
 ## Open questions
 

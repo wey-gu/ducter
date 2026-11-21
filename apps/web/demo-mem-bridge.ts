@@ -5,7 +5,8 @@
 //   one still being checked; open #settings=peers) · away (another computer, hel, receives the partner's
 //   mail and Mem last saw it 3 days ago; #settings=peers) · recall (a reply that leaned on a past
 //   conversation with Codex: 想起了你 11月12日 和 Codex 聊的; the conversation) · boxes (D444: as reach, with
-//   Mem's grouped contact list read: Codex's mailbox open, Claude Code's closed; #settings=peers).
+//   Mem's grouped contact list read: Codex's mailbox open, Claude Code's closed; #settings=peers) · relay (D448:
+//   Ducter's Antigravity and pi tasks pass messages: the reach rows, Recently by the task, a task's card).
 import { startCore, stubRunner } from "./demo-core.ts";
 import { noOo } from "./demo-oo.ts";
 
@@ -48,6 +49,7 @@ const core = startCore({
       { harness: "claude-code", installed: true, loggedIn: true, version: "2.1.319", how: "installer" },
       { harness: "codex", installed: true, loggedIn: true, version: "0.168.0", how: "npm" },
       { harness: "antigravity", installed: true, loggedIn: true, version: "1.5.2", how: "installer" },
+      ...(stage === "relay" ? [{ harness: "pi", installed: true, loggedIn: true, version: "1.4.0", how: "npm" }] : []),
     ],
     kind: async () => "laptop",
   },
@@ -78,6 +80,34 @@ if (stage === "reach" || stage === "boxes") {
   await tick();
   const cc = { from: "another agent", mine: true, agent: "Claude Code", role: zh ? "终端" : "terminal", selfNamed: true, space: SPACE };
   log.append({ stream: "channel", origin: "partner", kind: "bridge_msg", body: { direction: "out", messageId: "", to: "another agent", ...cc, text: zh ? "收到，我接着盯 CI。" : "Got it, I'll keep an eye on CI.", opId: "o3", state: "failed" } as never });
+}
+// D448: tasks Ducter runs on Antigravity and pi pass messages through Ducter. One Antigravity task asked
+// the person's Codex (Go'd on its card), got the answer back into it and followed up without a card; a pi
+// task's message to a teammate's reviewer waits on its card in the conversation.
+if (stage === "relay") {
+  void core.bridgeLink.connect();
+  const codex = { from: "codex-mem", mine: true, agent: "Codex", role: zh ? "Mem 协作" : "Mem helper", selfNamed: true, space: SPACE };
+  const t1 = zh ? "修 Linux 上的 runner 测试" : "Fix the runner tests on Linux";
+  const t2 = zh ? "整理 HawDB 的 bench 数据" : "Tidy the HawDB bench numbers";
+  log.append({ stream: "task:t_agy", origin: "partner", kind: "task_open", body: { taskId: "t_agy", title: t1, project: "ducter", place: { kind: "none" }, harness: "antigravity", brief: "x" } });
+  log.append({ stream: "task:t_pi", origin: "partner", kind: "task_open", body: { taskId: "t_pi", title: t2, project: "HawDB", place: { kind: "none" }, harness: "pi", brief: "x" } });
+  await tick();
+  const head = zh ? `Ducter 的任务「${t1}」：` : `Ducter's task "${t1}":`;
+  const q1 = zh ? "live.test.ts 在 Linux 上为什么要跳过 open？是你上周改的吗？" : "Why does live.test.ts skip open on Linux? Was that your change last week?";
+  const d1 = "d-r1";
+  log.append({ stream: "channel", origin: "system", kind: "decision", body: { decisionId: d1, taskId: "t_agy", question: zh ? `「${t1}」想发给你的 Codex（Mem 协作）：\n「${q1}」` : `“${t1}” wants to send this to your Codex (Mem helper):\n"${q1}"`, goLabel: zh ? "发送" : "Send", defaultOption: "hold", reversible: false, relay: { who: zh ? "你的 Codex（Mem 协作）" : "your Codex (Mem helper)" } } });
+  log.append({ stream: "channel", origin: "partner", kind: "bridge_msg", body: { direction: "out", messageId: "", to: "codex-mem", ...codex, text: q1, head, by: "task", taskId: "t_agy", decisionId: d1, opId: "r1", contact: "ct-codex", state: "pending" } as never });
+  await tick();
+  log.append({ stream: "channel", origin: "user", kind: "decision_resolved", body: { decisionId: d1, option: "go", by: "user" } });
+  log.append({ stream: "channel", origin: "partner", kind: "bridge_msg", body: { direction: "out", messageId: "m-r1", to: "codex-mem", ...codex, text: q1, head, by: "task", taskId: "t_agy", decisionId: d1, opId: "r1", contact: "ct-codex", state: "sent" } as never });
+  await tick();
+  log.append({ stream: "channel", origin: "peer", kind: "bridge_msg", body: { direction: "in", messageId: "m-a1", ...codex, text: zh ? "是我改的：Linux 上没有 open，CI 镜像里用 xdg-open。" : "Yes, mine: Linux has no open; the CI image uses xdg-open.", inReplyTo: "m-r1", taskId: "t_agy", state: "task" } });
+  await tick();
+  log.append({ stream: "channel", origin: "partner", kind: "bridge_msg", body: { direction: "out", messageId: "m-r2", to: "codex-mem", ...codex, text: zh ? "好，那镜像里装了 xdg-utils 吗？" : "OK, is xdg-utils in that image?", head, by: "task", taskId: "t_agy", opId: "r2", contact: "reply:m-a1", state: "sent" } as never });
+  await tick();
+  const q2 = zh ? "main 上 HawDB 的 bench 跑完了吗？我想把 p99 写进 README。" : "Is the HawDB bench on main done? I'd like to put its p99 in the README.";
+  log.append({ stream: "channel", origin: "system", kind: "decision", body: { decisionId: "d-r2", taskId: "t_pi", question: zh ? `「${t2}」想发给 reviewer (Alex)：\n「${q2}」` : `“${t2}” wants to send this to reviewer (Alex):\n"${q2}"`, goLabel: zh ? "发送" : "Send", defaultOption: "hold", reversible: false, relay: { who: "reviewer (Alex)" } } });
+  log.append({ stream: "channel", origin: "partner", kind: "bridge_msg", body: { direction: "out", messageId: "", to: "reviewer (Alex)", agent: "reviewer", text: q2, by: "task", taskId: "t_pi", decisionId: "d-r2", opId: "r3", contact: "ct-alex", state: "pending" } as never });
 }
 // D444: what Mem's grouped contact list said (as the partner's Bridge client would set it).
 if (stage === "boxes") core.bridgeLink.setMailboxes?.([{ harness: "codex", open: true }, { harness: "claude-code", open: false }]);

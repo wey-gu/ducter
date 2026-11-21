@@ -424,6 +424,14 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
   }
 
   const unsubscribe = core.log.subscribe((e: LogEvent) => {
+    if (e.kind === "bridge_msg") {
+      // D448: a turn that ends waiting for another agent's answer to its agent_message (the card
+      // up, or the message gone) has said what comes next: no nudge for a report. The answer is its next turn.
+      const b = e.body as Bodies["bridge_msg"];
+      const t = b.direction === "out" && b.by === "task" && b.taskId ? tasks.get(b.taskId) : undefined;
+      if (t?.running && b.opId && (b.state === "pending" || b.state === "sending" || b.state === "sent")) (t.restsThisTurn ??= new Set()).add(`bm:${b.opId}`);
+      return;
+    }
     if (e.kind === "waiter") {
       // D394: a turn that ends resting on its own wait (wait_for) has said what comes next: a
       // round that found nothing new owes no report, so it is never nudged into "nothing new".
@@ -1498,6 +1506,8 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
         ...((m) => (m === "plugin" || m === "ducter" ? { memory: m } : {}))(memoryMode(open.place, open.harness)),
         // D417: where Ducter runs Mem's two steps itself, the brief says what they bring.
         ...(memSteps(open.place, open.harness) ? { memSteps: true } : {}),
+        // D448: an agent with no Bridge of its own reaches the user's other agents through Ducter.
+        ...(core.taskBridge?.on(id) ? { agents: true } : {}),
         // D217: work on Ducter's phone gets the phone's section (its tools are on the same server).
         // D251: and says which phone ("mine": the user's own; "ducter": Ducter's; true: either).
         ...(open.needs?.phone ? { phone: open.needs.phone } : {}),

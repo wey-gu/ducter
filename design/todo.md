@@ -310,7 +310,19 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
 - [x] Reach backed by Mem (`bridge contacts`, `mailbox_available` per agent) in the background. Done as D444: read when
       the pane was looked at and the last read is over 30 minutes old; a live read of the card fields is owed (below).
 - [ ] pi and Antigravity (and Cursor) can talk to the partner once Mem's plugins carry `bridge`. Trigger: Mem ships it
-      (research/183 §4 item 3); then they move to Claude Code's rows.
+      (research/183 §4 item 3); then they move to Claude Code's rows. (D448: the tasks Ducter runs on them already
+      pass messages through Ducter; this item is the person's own sessions outside Ducter.)
+
+## Tasks Ducter carries messages for (D448, `bridge.md` "Tasks Ducter carries messages for")
+
+- [ ] A live run: an Antigravity task on the author's Mac asks his Codex through the real Mem (a throwaway exchange
+      he approves), and the answer lands in the task. Trigger: the next live Bridge pass, with the author's Go.
+- [ ] A Claude Code or Codex task where Mem's plugin isn't in the session (`memoryMode` "ducter") gets
+      `agent_message` too. Trigger: a task there needs another agent once.
+- [ ] Follow-through when a task's message gets no answer (today the task waits, its card says 在等…回话): one line
+      to the task, or to the person, after a while. Trigger: a task waits more than a day once.
+- [ ] A new message (not an answer) from another agent that names a task ("tell the agy task on the CI fix…")
+      offered to that task by the partner without a turn of its own. Trigger: it happens in the author's use.
 - [ ] **在 Nowledge Mem 里打开** opens that conversation (a `nowledgemem://` thread link). Trigger: Mem names one.
 - [x] `resources get` for a link in an agent's message, and a shared plan's card named. Done as D444 (read only, once,
       by title). Still open: `feed` for the Memory page's this week (every tool's), reading a shared plan (needs a

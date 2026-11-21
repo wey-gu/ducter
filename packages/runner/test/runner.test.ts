@@ -279,6 +279,28 @@ describe("nudge (stall rule)", () => {
     await runner.dispose();
   });
 
+  test("D448: a turn that ends waiting for another agent's answer (its agent_message card is up) owes no report", async () => {
+    const inputs: string[] = [];
+    const port = createOarHarnessPort({
+      loadRuntime: async () =>
+        trippedRuntime(async (t) => {
+          inputs.push(t.input);
+          await t.tool("mcp__ducter__agent_message", "{}", async () => {
+            core.log.append({ stream: "channel", origin: "partner", kind: "bridge_msg", body: { direction: "out", messageId: "", by: "task", taskId: "tsk00001", opId: "bo1", contact: "ct-codex", text: "why?", state: "pending", decisionId: "d1" } });
+            return "The user sees a card.";
+          });
+        }, {}),
+    });
+    const runner = createRunner(core, { harness: port, newId: nextId });
+    const card = await runner.openTask({ persona: "p1", title: "t", brief: "b" });
+    await runner.whenStarted(card.taskId);
+    await waitFor(() => taskEvents(card.taskId).some((e) => (e.raw as any)?.turnEnd), "turn end");
+    await Bun.sleep(80);
+    expect(inputs).toEqual([expect.stringContaining("Start the task")]);
+    expect(taskEvents(card.taskId).some((e) => (e.raw as any)?.stall)).toBe(false);
+    await runner.dispose();
+  });
+
   test("a nudge that yields a report clears the stall", async () => {
     const inputs: string[] = [];
     const port = createOarHarnessPort({

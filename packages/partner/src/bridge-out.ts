@@ -39,7 +39,7 @@ const W = {
     quoted: "「{gist}」",
     and: "和",
     more: "等 {all} 条",
-    what: { message: "你让我发的消息", claim: "「接了」的回复", result: "任务的结果", reply: "回复" },
+    what: { message: "你让我发的消息", claim: "「接了」的回复", result: "任务的结果", reply: "回复", task: "任务要发的消息" },
     failed: "{what}没能发给{who}：被拒绝了。",
     unconfirmed: "没能确认{what}是否到了{who}那里。我没有重发；需要的话再跟我说一次。",
     busy: "{what}没发给{who}：Nowledge Mem 那边这会儿收不了，不是你这边的问题。这次什么都没发出去，过一会儿再跟我说一声，我重新发。",
@@ -74,7 +74,7 @@ const W = {
     quoted: '"{gist}"',
     and: " and ",
     more: " and {rest} more",
-    what: { message: "the message you asked me to send", claim: "the reply saying I took it", result: "the task's result", reply: "the reply" },
+    what: { message: "the message you asked me to send", claim: "the reply saying I took it", result: "the task's result", reply: "the reply", task: "the task's message" },
     failed: "I couldn't send {what} to {who}: it was refused.",
     unconfirmed: "I couldn't confirm {what} reached {who}. I didn't resend it; ask me again if you need it.",
     busy: "I couldn't send {what} to {who}: Nowledge Mem can't take messages right now, nothing wrong on your side. Nothing went out; tell me again in a little while and I'll send it.",
@@ -306,7 +306,7 @@ export function followCandidates(events: LogEvent[], now: number): OutOp[] {
   // D364: once Mem links replies (nmem 0.10.120+), only an unlinked-shape message counts here.
   const maybeAnswered = (o: OutOp) => o.last.mine && !o.last.agent && !!unlinked && unlinked > o.sentTs!;
   return [...foldOut(events).values()]
-    .filter((o) => o.state === "sent" && o.last.decisionId && o.last.messageId && o.sentTs)
+    .filter((o) => o.state === "sent" && o.last.decisionId && o.last.by !== "task" && o.last.messageId && o.sentTs) // D448: a task waits for its own answer
     .filter((o) => !answered.has(o.last.messageId) && !followed.has(o.last.messageId) && !maybeAnswered(o))
     .filter((o) => {
       const age = now - Date.parse(o.sentTs!);
@@ -412,7 +412,7 @@ export function pingLine(p: { who: Msg; n: number; earliest?: number; now: numbe
 
 // ---------- what the user is told when an outgoing message can't be confirmed (D106) ----------
 
-export type OutKind = "message" | "claim" | "result" | "reply";
+export type OutKind = "message" | "claim" | "result" | "reply" | "task"; // D448: task, a message a task asked to send
 // D294: "busy" is Mem's side saying it couldn't take it right now; nothing went out, so asking again is safe.
 export function lostLine(op: OutOp, lang: LangTag, state: "failed" | "busy" | "unconfirmed", kind: OutKind): string {
   const who = whoForUser({ ...op.last, label: op.last.to }, lang);

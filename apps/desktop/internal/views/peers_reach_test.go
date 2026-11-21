@@ -31,7 +31,7 @@ func TestReachRows(t *testing.T) {
 		{ID: "local", Name: "Mac", Home: true, Harnesses: []protocol.DeviceHarness{h("codex", "installed"), h("claude-code", "absent"), h("antigravity", "")}},
 	}
 	got := reachRows(devs, nil, nil)
-	want := [][3]string{{"claude-code", "install", "local"}, {"codex", "yes", ""}, {"pi", "none", ""}, {"antigravity", "none", ""}}
+	want := [][3]string{{"claude-code", "install", "local"}, {"codex", "yes", ""}, {"pi", "relay", ""}, {"antigravity", "relay", ""}} // D448: signed in where Ducter runs tasks
 	if len(got) != len(want) {
 		t.Fatalf("rows %+v", got)
 	}
@@ -46,6 +46,10 @@ func TestReachRows(t *testing.T) {
 	}
 	if r := reachRows(nil, []string{"codex"}, nil); len(r) != 1 || r[0].Can != "unknown" {
 		t.Fatalf("unknown %+v", r)
+	}
+	// D448: an Antigravity known only from the person's own records (not signed in where Ducter runs tasks) still can't.
+	if r := reachRows(nil, []string{"antigravity"}, nil); len(r) != 1 || r[0].Can != "none" {
+		t.Fatalf("own records only %+v", r)
 	}
 	if len(reachRows(nil, nil, nil)) != 0 {
 		t.Fatal("nothing run, no rows")
@@ -109,7 +113,7 @@ func TestMemBridgeShots(t *testing.T) {
 			}
 			return b
 		}
-		for _, st := range []string{"reach", "away", "recall"} {
+		for _, st := range []string{"reach", "away", "recall", "relay"} {
 			app, _ := memApp(t, lang, "on")
 			seq := int64(100)
 			ev := func(kind string, origin protocol.Origin, body any) int64 {
@@ -137,6 +141,27 @@ func TestMemBridgeShots(t *testing.T) {
 				ev("bridge_msg", "partner", with(map[string]any{"direction": "out", "messageId": "m-o1", "to": "another agent", "opId": "o1", "state": "sent", "inReplyTo": "m1", "text": pick("看过了：p99 从 41 ms 到 43 ms，在噪声里，没有回退。", "Checked: p99 went from 41 ms to 43 ms, within noise; no regression.")}))
 				ev("bridge_msg", "partner", with(map[string]any{"direction": "out", "messageId": "", "to": "another agent", "opId": "o2", "state": "unknown", "decisionId": "d1", "text": pick("那个 flaky 的 recall 测试你今晚还改吗？", "Are you still fixing the flaky recall test tonight?")}))
 				ev("bridge_msg", "partner", map[string]any{"direction": "out", "messageId": "", "to": "another agent", "mine": true, "agent": "Claude Code", "role": pick("终端", "terminal"), "selfNamed": true, "opId": "o3", "state": "failed", "text": pick("收到，我接着盯 CI。", "Got it, I'll keep an eye on CI.")})
+			case "relay":
+				// D448: Ducter's Antigravity and pi tasks pass messages through Ducter.
+				app.S.Devices = []protocol.DeviceView{{ID: "local", Name: "Ada's MacBook Air", Home: true, Harnesses: []protocol.DeviceHarness{
+					{Harness: "codex", Installed: true, LoggedIn: true, Mem: &protocol.MemPluginView{State: "installed"}},
+					{Harness: "pi", Installed: true, LoggedIn: true},
+					{Harness: "antigravity", Installed: true, LoggedIn: true},
+				}}}
+				if app.S.Tasks == nil {
+					app.S.Tasks = map[string]*store.Task{}
+				}
+				app.S.Tasks["t_agy"] = &store.Task{Card: &protocol.TaskCard{TaskID: "t_agy", Title: pick("修 Linux 上的 runner 测试", "Fix the runner tests on Linux"), Harness: "antigravity"}}
+				codex := map[string]any{"from": "codex-mem", "mine": true, "agent": "Codex", "role": pick("Mem 协作", "Mem helper"), "selfNamed": true, "taskId": "t_agy"}
+				with := func(m map[string]any) map[string]any {
+					for k, v := range codex {
+						m[k] = v
+					}
+					return m
+				}
+				ev("bridge_msg", "partner", with(map[string]any{"direction": "out", "messageId": "m-r1", "to": "codex-mem", "by": "task", "decisionId": "d1", "opId": "r1", "state": "sent", "text": pick("live.test.ts 在 Linux 上为什么要跳过 open？是你上周改的吗？", "Why does live.test.ts skip open on Linux? Was that your change last week?")}))
+				ev("bridge_msg", "peer", with(map[string]any{"direction": "in", "messageId": "m-a1", "inReplyTo": "m-r1", "state": "task", "text": pick("是我改的：Linux 上没有 open，CI 镜像里用 xdg-open。", "Yes, mine: Linux has no open; the CI image uses xdg-open.")}))
+				ev("bridge_msg", "partner", with(map[string]any{"direction": "out", "messageId": "m-r2", "to": "codex-mem", "by": "task", "opId": "r2", "state": "sent", "text": pick("好，那镜像里装了 xdg-utils 吗？", "OK, is xdg-utils in that image?")}))
 			case "away":
 				app.S.Bridge = &protocol.BridgeView{State: "elsewhere", Identity: "ducter", Version: "0.10.121", Others: []protocol.BridgeOther{{Label: "ducter-on-hel-3fa91c", Home: "hel", SeenAt: time.Now().Add(-74 * time.Hour).UnixMilli()}}}
 			case "recall":
@@ -161,6 +186,30 @@ func TestMemBridgeShots(t *testing.T) {
 				t.Fatal(err)
 			}
 			f.Close()
+		}
+	}
+}
+
+// D448: a task's own exchanges join Recently by the task's name (the web's
+// bridge-relay-d448.test.ts).
+func TestTaskExchangesInRecently(t *testing.T) {
+	e := func(seq int64, p protocol.BridgeMsg) *store.Entry {
+		return &store.Entry{Event: protocol.LogEvent{Seq: seq, TS: "2026-11-21T08:00:00Z"}, Peer: &p}
+	}
+	ch := []*store.Entry{e(1, protocol.BridgeMsg{Direction: "out", Agent: "Codex", Text: "为什么跳过 open？", By: "task", TaskID: "t1", DecisionID: "d1", State: "sent"})}
+	task := []*store.Entry{
+		e(2, protocol.BridgeMsg{Direction: "in", Agent: "Codex", Text: "用 xdg-open。", InReplyTo: "bm-o1", TaskID: "t1", State: "task"}),
+		e(3, protocol.BridgeMsg{Direction: "out", Agent: "Codex", Text: "镜像里有 xdg-utils 吗？", By: "task", TaskID: "t1", State: "sent"}),
+		e(1, protocol.BridgeMsg{Direction: "out", Agent: "Codex", Text: "为什么跳过 open？", By: "task", TaskID: "t1", DecisionID: "d1", State: "sent"}),
+	}
+	got := recentHandoffs(peerFeed(ch, task), 5)
+	want := []string{"3 tasksent t1", "2 taskin t1", "1 tasksent t1"}
+	if len(got) != len(want) {
+		t.Fatalf("got %+v", got)
+	}
+	for i, h := range got {
+		if s := itoa(h.Seq) + " " + h.Way + " " + h.TaskID; s != want[i] {
+			t.Fatalf("%d: %q want %q", i, s, want[i])
 		}
 	}
 }

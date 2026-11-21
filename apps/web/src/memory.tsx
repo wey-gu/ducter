@@ -22,6 +22,7 @@ import { aboutGroups, bySource, groupNoted, MEM_MIN, memHealthLook, memPhase, me
 import { CopyLine } from "./lend.tsx";
 import { GBlock, GConfirm, GFoot, GHead, GRow, Group, Said, say, Tile } from "./set-grid.tsx";
 import { Avatar, Check } from "./views.tsx";
+import { title } from "./store.ts";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 export const MEM_SITE = "https://mem.nowledge.co";
@@ -708,12 +709,26 @@ function openHandoff(h: Handoff) {
   setTimeout(() => A.jumpTo(h.seq), 350);
 }
 
+/** D448: the conversation's exchanges and a task's own (which never show there), in order. */
+function peerFeed() {
+  if (!A.S.taskPeers.length) return A.S.channel;
+  const seen = new Set<number>();
+  return [...A.S.channel, ...A.S.taskPeers].filter((e) => !seen.has(e.ev.seq) && (seen.add(e.ev.seq), true)).sort((a, b) => a.ev.seq - b.ev.seq);
+}
+
+/** D448: a task as Recently names it: its title in quotes. */
+function taskName(taskId: string | undefined): string {
+  const task = taskId ? A.S.tasks.get(taskId) : undefined;
+  const s = task ? title(task).trim() : "";
+  return s ? t("peers.recent.task", s.length > 30 ? s.slice(0, 29) + "…" : s) : "";
+}
+
 /**
  * D332: 最近 / Recently: the latest exchanges both ways, newest first, each opening its task or its
  * message; before the first one, a calm row that waits for it.
  */
 function PeersRecent({ name }: { name: string }) {
-  const list = recentHandoffs(A.S.channel, 5, A.S.outOps);
+  const list = recentHandoffs(peerFeed(), 5, A.S.outOps);
   return (
     <section class="set mem-sec">
       <h3>{t("peers.recent.title")}</h3>
@@ -724,7 +739,7 @@ function PeersRecent({ name }: { name: string }) {
             <PeerTile agent={h.agent} host={h.host} />
             <span class="grow">
               <b dir="auto">{h.words}</b>
-              <small>{capWho(t(`peers.recent.${h.way}`, whoOf(h), name))}</small>
+              <small>{capWho(t(`peers.recent.${h.way}`, whoOf(h), h.way === "tasksent" || h.way === "taskin" ? taskName(h.taskId) || name : name))}</small>
             </span>
             {h.state ? <span class={`g-state${h.state === "failed" || h.state === "unconfirmed" ? " tone-bad" : ""}`}>{t(`peers.out.${h.state}`)}</span> : <span class="g-state">{ago(A.L, h.at)}</span>}
           </button>
@@ -741,12 +756,14 @@ function PeersRecent({ name }: { name: string }) {
 /** D444: a row's line, with what Mem's own contact list says of its mailbox when it says. */
 export function reachLine(r: ReachRow, name: string): string {
   if (r.can === "none") return t("peers.reach.none");
+  // D448: the tasks Ducter runs on it pass messages through Ducter; the person's own sessions of it still can't.
+  if (r.can === "relay") return t("peers.reach.relay", name, r.tool);
   if (r.can === "yes" && r.box) return t(`peers.reach.yes.${r.box}`, name);
   return t(`peers.reach.${r.can}`, name);
 }
 
 function PeersReach({ name }: { name: string }) {
-  const rows = reachRows(A.devices ?? [], A.ownAgents, recentHandoffs(A.S.channel, 50), A.bridge?.mailboxes);
+  const rows = reachRows(A.devices ?? [], A.ownAgents, recentHandoffs(peerFeed(), 50), A.bridge?.mailboxes);
   if (!rows.length) return null;
   return (
     <section class="set mem-sec">

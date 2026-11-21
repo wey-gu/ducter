@@ -1000,6 +1000,8 @@ export interface ProjectView {
   name: string;
   place: Place; // kind "repo" or "folder"
   addedAt: string;
+  /** D455: a repo's origin, normalized: the same repo added on a second computer joins this project's name. */
+  remote?: string;
 }
 
 /** D185: when a task the user opens by hand starts. Absent = now. at: once, at a time (a routine
@@ -1607,6 +1609,15 @@ export interface BrowseFolder {
   name: string;
   path: string;
   repo?: true;
+  /** D455: a repo's origin, normalized (host/owner/repo). */
+  remote?: string;
+}
+
+/** D455: the repo a listed folder is in (itself or a folder above it): adding there adds that repo. */
+export interface BrowseRepo {
+  root: string;
+  name: string;
+  remote?: string;
 }
 
 export interface PlaceChoice {
@@ -1801,7 +1812,9 @@ export type ServerFrame =
   | ({ t: "git_login_state"; clientId?: string; device?: string; host: "github.com" } & GitLoginState)
   // D203: path is the folder listed (real, absolute), home that computer's home folder, parent the
   // folder above (absent at home); folders repos first (at most 200; more: there were more).
-  | { t: "folder_browse_result"; ok: boolean; clientId?: string; device?: string; path?: string; home?: string; parent?: string; folders?: BrowseFolder[]; more?: true; reason?: "outside" | "not_found" | "offline" | "old" | "failed"; message?: string }
+  // D455: inRepo, the repo the listed folder is in (adding adds it); roots, the folders that
+  // computer allows when it sets more than its home folder (DUCTER_FOLDER_ROOTS, set there).
+  | { t: "folder_browse_result"; ok: boolean; clientId?: string; device?: string; path?: string; home?: string; parent?: string; folders?: BrowseFolder[]; more?: true; inRepo?: BrowseRepo; roots?: string[]; reason?: "outside" | "not_found" | "offline" | "old" | "failed"; message?: string }
   // Show this task (the app opens it, Esc returns). open_result answers the sender: apps = how many apps were told.
   | { t: "open_task"; taskId: string }
   | { t: "open_result"; taskId: string; ok: boolean; apps: number; message?: string }

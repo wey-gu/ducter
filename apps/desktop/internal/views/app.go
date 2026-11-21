@@ -358,7 +358,9 @@ type App struct {
 	lo loadoutState
 	// nt is 开一个任务 / New task's card (D128); back is where Esc goes from
 	// a task opened by it or by `ducter open`.
-	nt   newTaskState
+	nt newTaskState
+	// addf is On hand's 添加文件夹 / Add a folder sheet (D455).
+	addf addFolderState
 	back *returnTo
 	// oh is On hand's list state (D216): the row the keys are on, Find, the switcher.
 	oh onHandState
@@ -606,7 +608,8 @@ func (a *App) View(c *ui.Context) {
 	}))
 	if a.S.Welcomed {
 		a.newTaskCard(c)
-		a.switcher(c) // D216: ⌘O, 打开任务
+		a.addFolderSheet(c) // D455
+		a.switcher(c)       // D216: ⌘O, 打开任务
 		a.liveView(c)
 		a.phoneInstallSheet(c) // D217
 		a.lendSheet(c)         // D347

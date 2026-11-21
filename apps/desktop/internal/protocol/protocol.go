@@ -2694,6 +2694,10 @@ type ServerFrame struct {
 	HomeDir string         `json:"home,omitempty"`
 	Parent  string         `json:"parent,omitempty"`
 	Folders []BrowseFolder `json:"folders,omitempty"`
+	// InRepo (D455): the repo the listed folder is in; Roots: the folders
+	// that computer allows, when it sets more than its home folder.
+	InRepo *BrowseRepo `json:"inRepo,omitempty"`
+	Roots  []string    `json:"roots,omitempty"`
 	// More: browse, more folders; task_history (D284), older events remain.
 	More bool `json:"more,omitempty"`
 	// update_result (D148): Device, OK, Reason, Detail, and with a check the
@@ -3092,6 +3096,16 @@ type BrowseFolder struct {
 	Name string `json:"name"`
 	Path string `json:"path"`
 	Repo bool   `json:"repo,omitempty"`
+	// Remote (D455): a repo's origin, normalized (host/owner/repo).
+	Remote string `json:"remote,omitempty"`
+}
+
+// BrowseRepo (D455) is the repo a listed folder is in (itself or a
+// folder above it): adding there adds that repo.
+type BrowseRepo struct {
+	Root   string `json:"root"`
+	Name   string `json:"name"`
+	Remote string `json:"remote,omitempty"`
 }
 
 // FolderBrowse asks for a folder's subfolders on that computer (D203,
@@ -3214,6 +3228,8 @@ type ProjectView struct {
 	Name    string `json:"name"`
 	Place   Place  `json:"place"`
 	AddedAt string `json:"addedAt"`
+	// Remote (D455): a repo's origin; one repo on two computers is one project.
+	Remote string `json:"remote,omitempty"`
 }
 
 // TaskNewOptions asks what the New task card offers at Place (nil: this

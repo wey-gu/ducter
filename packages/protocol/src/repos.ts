@@ -151,55 +151,119 @@ export function projectRepos(dir: string, fs: FsLike = realFs, limit = REPOS_REP
 /** D203: at most this many folders in one listing (the rest: `more`). */
 export const BROWSE_MAX = 200;
 
-/** D203: one folder in a listing: its name, its path, and whether it is a git repo. */
+/** D203: one folder in a listing: its name, its path, and whether it is a git repo (D455: and its origin). */
 export interface BrowseFolder {
   name: string;
   path: string;
   repo?: true;
+  /** D455: a repo's origin, normalized (host/owner/repo), read from its .git/config. */
+  remote?: string;
 }
 
-/** D203: a folder's subfolders on this computer (never its files), repos first. */
+/** D455: the repo the listed folder is in (itself, or a folder above it inside the roots). */
+export interface BrowseRepo {
+  root: string;
+  name: string;
+  remote?: string;
+}
+
+/** D203: a folder's subfolders on this computer (never its files), repos first. D455: roots, when
+ *  the computer allows more than its home folder; inRepo, when the folder listed is in a repo. */
 export type BrowseResult =
-  | { ok: true; path: string; home: string; parent?: string; folders: BrowseFolder[]; more?: true }
+  | { ok: true; path: string; home: string; parent?: string; folders: BrowseFolder[]; more?: true; inRepo?: BrowseRepo; roots?: string[] }
   | { ok: false; reason: "outside" | "not_found"; message: string };
 
 /** `inner` is `outer` or inside it (both real paths). */
 const within = (outer: string, inner: string) => inner === outer || inner.startsWith(outer.endsWith("/") ? outer : outer + "/");
 
 /**
- * D203: the subfolders of `path` (absent or "~": the home folder), for 找一个文件夹… / Find a folder….
- * Confined to the home folder: the path and every listed link are resolved first, and anything
- * that lands outside is refused (the path) or left out (a link). Hidden folders are skipped;
- * file names are never returned; at most BROWSE_MAX folders, repos first, then by name.
+ * D455: the folders this computer lets Ducter look through and add, set on the computer itself
+ * (never by the home or a client): DUCTER_FOLDER_ROOTS, absolute paths or ~/…, separated by ":".
+ * Unset or empty: the home folder alone (D203). `explicit` says whether it was set, so adding a
+ * folder is confined too only where the person asked for it.
  */
-export function listFolders(path: string | undefined, home = homedir(), fs: FsLike = realFs, max = BROWSE_MAX): BrowseResult {
+export function folderRoots(env: Record<string, string | undefined> = process.env, home = homedir()): { roots: string[]; explicit: boolean } {
+  const roots = String(env.DUCTER_FOLDER_ROOTS ?? "")
+    .split(":")
+    .map((r) => r.trim())
+    .filter(Boolean)
+    .map((r) => (r === "~" ? home : r.startsWith("~/") ? join(home, r.slice(2)) : r))
+    .filter((r) => r.startsWith("/"))
+    .map((r) => resolve(r));
+  return roots.length ? { roots: [...new Set(roots)], explicit: true } : { roots: [home], explicit: false };
+}
+
+/** D455: the path, links resolved, is inside one of the roots (links resolved too). */
+export function insideRoots(path: string, roots: string[], fs: FsLike = realFs): boolean {
+  const real = fs.real(resolve(path));
+  return roots.some((r) => within(fs.real(r), real));
+}
+
+/**
+ * D203: the subfolders of `path` (absent or "~": the home folder), for 找一个文件夹… / Find a folder….
+ * Confined to the roots (D455: the home folder unless the computer sets DUCTER_FOLDER_ROOTS): the
+ * path and every listed link are resolved first, and anything that lands outside is refused (the
+ * path) or left out (a link). Hidden folders are skipped; file names are never returned; at most
+ * BROWSE_MAX folders, repos first, then by name. D455: a repo's origin is read from its
+ * .git/config (the repo's own metadata, never a file of the person's), and the repo the listed
+ * folder is in, so adding can say it adds the whole repo.
+ */
+export function listFolders(path: string | undefined, home = homedir(), fs: FsLike = realFs, max = BROWSE_MAX, roots: string[] = [home]): BrowseResult {
   const realHome = fs.real(home);
+  const realRoots = (roots.length ? roots : [home]).map((r) => fs.real(r));
+  const inside = (p: string) => realRoots.some((r) => within(r, p));
+  const outside = { ok: false as const, reason: "outside" as const, message: "Only folders inside the allowed folders can be listed." };
   const raw = String(path ?? "").trim();
-  const given = !raw || raw === "~" ? home : raw.startsWith("~/") ? join(home, raw.slice(2)) : raw;
-  if (!given.startsWith("/")) return { ok: false, reason: "outside", message: "Only folders inside the home folder can be listed." };
+  // The start: the home folder when it is allowed, else the first root.
+  const start = inside(realHome) ? home : realRoots[0]!;
+  const given = !raw || raw === "~" ? start : raw.startsWith("~/") ? join(home, raw.slice(2)) : raw;
+  if (!given.startsWith("/")) return outside;
   const asked = resolve(given);
   if (!fs.isDir(asked)) return { ok: false, reason: "not_found", message: `There's no folder at ${raw}.` };
   const dir = fs.real(asked);
-  if (!within(realHome, dir)) return { ok: false, reason: "outside", message: "Only folders inside the home folder can be listed." };
+  if (!inside(dir)) return outside;
   const folders: BrowseFolder[] = [];
   let more = false;
   const names = fs.readdir(dir).filter((n) => !n.startsWith(".")).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
+  const isRepo = (p: string) => (fs.exists ? fs.exists(join(p, ".git")) : fs.isDir(join(p, ".git")));
+  const remoteOf = (p: string) => (fs.isDir(join(p, ".git")) ? originOf(fs.readText?.(join(p, ".git", "config"))) : undefined);
   for (const name of names) {
     let p = join(dir, name);
     if (!fs.isDir(p)) continue; // files (and links to files) are never listed
     if (fs.isLink?.(p)) {
       const to = fs.real(p);
-      if (!within(realHome, to)) continue; // a link that leads out of the home folder
+      if (!inside(to)) continue; // a link that leads out of the roots
       p = to;
     }
     if (folders.length >= max) {
       more = true;
       break;
     }
-    const repo = fs.exists ? fs.exists(join(p, ".git")) : fs.isDir(join(p, ".git"));
-    folders.push({ name, path: p, ...(repo ? { repo: true as const } : {}) });
+    const repo = isRepo(p);
+    const remote = repo ? remoteOf(p) : undefined;
+    folders.push({ name, path: p, ...(repo ? { repo: true as const } : {}), ...(remote ? { remote } : {}) });
   }
   folders.sort((a, b) => Number(!!b.repo) - Number(!!a.repo));
+  // D455: the repo this folder is in: itself, or the nearest folder above it inside the roots.
+  let inRepo: BrowseRepo | undefined;
+  for (let p = dir; inside(p); p = dirname(p)) {
+    if (isRepo(p)) {
+      const remote = remoteOf(p);
+      inRepo = { root: p, name: p.split("/").filter(Boolean).pop() ?? p, ...(remote ? { remote } : {}) };
+      break;
+    }
+    if (dirname(p) === p) break;
+  }
   const up = dirname(dir);
-  return { ok: true, path: dir, home: realHome, ...(dir !== realHome && within(realHome, up) ? { parent: up } : {}), folders, ...(more ? { more: true as const } : {}) };
+  const homeOnly = realRoots.length === 1 && realRoots[0] === realHome;
+  return {
+    ok: true,
+    path: dir,
+    home: realHome,
+    ...(dir !== up && inside(up) ? { parent: up } : {}),
+    folders,
+    ...(more ? { more: true as const } : {}),
+    ...(inRepo ? { inRepo } : {}),
+    ...(homeOnly ? {} : { roots: realRoots }),
+  };
 }

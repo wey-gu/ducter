@@ -31,6 +31,8 @@ export function createProjects(opts: {
   onChange?: () => void;
   /** D197: a folder on a worker, read there; "offline" when it is away. Absent: only the home's own. */
   remote?: (device: string, path: string) => Promise<FolderInfo | "offline">;
+  /** D455: the home's own folder may be added (its DUCTER_FOLDER_ROOTS, when set). Absent: any. */
+  allowed?: (path: string) => boolean;
 }): Projects {
   const file = join(opts.dataDir, "projects.json");
   const git = opts.git ?? realGit;
@@ -57,8 +59,11 @@ export function createProjects(opts: {
       const dev = device && device !== "local" ? device : "local";
       let info: FolderInfo;
       if (!path) return { ok: false, reason: "not_found", message: `There's no folder at ${raw}.` };
-      if (dev === "local") info = await folderInfo(path, git);
-      else {
+      if (dev === "local") {
+        // D455: a home that set DUCTER_FOLDER_ROOTS adds folders only inside them.
+        if (opts.allowed && !opts.allowed(path)) return { ok: false, reason: "not_found", message: `${raw} is outside the folders this computer allows.` };
+        info = await folderInfo(path, git);
+      } else {
         if (!opts.remote) return { ok: false, reason: "failed", message: "Folders on other computers can't be added here." };
         try {
           const r = await opts.remote(dev, path);
@@ -74,8 +79,11 @@ export function createProjects(opts: {
       const place: Place = info.kind === "repo" ? { kind: "repo", device: dev, repoPath: info.root } : { kind: "folder", device: dev, path: info.root };
       const key = pathOf(place);
       const prev = items.find((p) => pathOf(p.place) === key && devOf(p.place) === dev);
-      const name = prev?.name ?? (info.name || key.split("/").filter(Boolean).pop() || key);
-      const project: ProjectView = { name, place, addedAt: new Date(now()).toISOString() };
+      // D455: the same repo (one origin) already a project on another computer: this copy joins
+      // it under that name, so On hand shows one project that lives on two computers.
+      const twin = info.remote ? items.find((p) => p !== prev && p.remote === info.remote && devOf(p.place) !== dev) : undefined;
+      const name = prev?.name ?? twin?.name ?? (info.name || key.split("/").filter(Boolean).pop() || key);
+      const project: ProjectView = { name, place, addedAt: new Date(now()).toISOString(), ...(info.remote ? { remote: info.remote } : {}) };
       items = [project, ...items.filter((p) => p !== prev)];
       try {
         save();

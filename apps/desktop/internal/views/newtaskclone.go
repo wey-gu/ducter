@@ -149,6 +149,7 @@ func (a *App) cloneDone(r protocol.ServerFrame) {
 	a.pickPlace(*r.Place)
 	pl := r.Place.Place
 	nt.prefill = &pl
+	a.afPlaced(*r.Place) // D455
 }
 
 // cloneField is the place list while it takes a Git address.
@@ -187,9 +188,8 @@ func (a *App) cloneField(c *ui.Context) {
 		}
 	}
 	a.panelFoot(c, "nt-clone-foot", func() {
-		if !busy && a.button(c, a.L.T("newtask.find.back"), btnText, t.ControlSM, t.Surface) {
-			a.nt.clone = nil
-			a.nt.add = &ntAdd{device: k.device}
+		if !busy {
+			a.panelBack(c, k.device, func() { a.nt.clone = nil })
 		}
 	}, func() {
 		label := a.L.T("newtask.clone.go")

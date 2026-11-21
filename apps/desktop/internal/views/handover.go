@@ -500,6 +500,10 @@ func (a *App) handWhat(c *ui.Context, wide bool) {
 		ui.Column(c.Key("heard")).Gap(t.S2).Padding(t.S1, 0, 0, 0).Children(func() {
 			if chips := readingChips(hd); len(chips) > 0 || len(h.drop) > 0 {
 				a.handReading(c, chips)
+				// D451: the first time a sentence is read into chips, what they are.
+				if len(chips) > 0 && len(h.drop) == 0 {
+					a.firstMeetLine(c, "find", "handover")
+				}
 			} else if hd.Note != "" {
 				a.heardPart(c, "about", a.L.T("hand.said.about"), hd.About)
 			}
@@ -630,6 +634,7 @@ func (a *App) handReading(c *ui.Context, chips []protocol.FindFacet) {
 				uiText(c, "×").FontSize(t.SM).TextColor(t.InkMuted).AccessHidden(true)
 			})
 			if chip.Clicked() {
+				a.meet("find") // D451: a chip dropped is the line understood
 				h.drop = append(h.drop, f.Key)
 				h.dropFor = strings.TrimSpace(strings.ReplaceAll(h.query, "\n", " "))
 				h.sentQuery = "\x00" // found again, without it

@@ -14,6 +14,7 @@ import { forgetSteps, Preview, PV, startRedo, type PreviewActs } from "./past-pr
 import { ROOMY, useRoomy } from "./wide.ts";
 import { openApp } from "./apps.tsx";
 import { Menu, MenuHead, MenuItem, MenuSep } from "./menu.tsx";
+import { FirstMeetLine } from "./first-meet.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
@@ -1125,6 +1126,8 @@ function OgCard({ it }: { it: OngoingItem }) {
           ⋯
         </button>
       </span>
+      {/* D451: the first loop the person sees says, once, that Ducter keeps it going. */}
+      {it.loop && !paused && (!it.health || it.health.state === "back") && <FirstMeetLine name="loop" at={it.id} />}
       {pausing && (
         <Menu class="pmenu" onClose={() => ((P.ogPause = ""), A.changed())}>
           {(["hour", "morning", "week"] as const).map((k) => (

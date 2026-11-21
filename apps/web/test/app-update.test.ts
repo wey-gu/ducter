@@ -50,5 +50,5 @@ test("both places carry it, and it stays 44 px on a touch screen", () => {
   expect(src("views.tsx")).toContain("<AppUpdateRow />");
   expect(src("devcard.tsx")).toMatch(/mine && androidAppVersion\(\)/);
   const css = readFileSync(new URL("../static/app.css", import.meta.url), "utf8");
-  expect(css).toMatch(/@media \(pointer: coarse\) \{\s*\.set-item\.app-row \.btn \{\s*height: 44px;/);
+  expect(css).toMatch(/@media \(pointer: coarse\) \{\s*\.set-item\.app-row \.btn \{\s*height: max\(44px, calc\(\(1\.2em \+ 26px\) \* var\(--grow, 1\)\)\);/);
 });

@@ -5,6 +5,7 @@ import { openPhone, PhoneAskBody } from "./phone-use.tsx";
 import { seeDraft } from "./finds.tsx";
 import { AppUpdateRow } from "./app-update.tsx";
 import { ComputerLine } from "./computer-use.tsx";
+import { scaledRow } from "./text-scale.ts";
 import { HandsetAskBody, HandsetLine, handsetAskTitle } from "./handset.tsx";
 import type { AgentUpdate, Attention, Bodies, Candidate, CantStart, DeviceHarness, DeviceUpdate, DeviceView, EvidenceRef, FolderChange, FolderSummary, LivingItem, OoDetect, Reach } from "@ducter/protocol";
 import { Fragment } from "preact";
@@ -20,6 +21,7 @@ import { AmbientLine } from "./ambient.tsx";
 import { AliveLine } from "./alive.tsx";
 import { aliveFace, aliveMotion, aliveSub, aliveWords } from "@ducter/protocol/src/alive.ts";
 import { A, candKey, effortWord, HANDHELD, placeKey, type SettingsPage } from "./app.ts";
+import { FirstMeetLine } from "./first-meet.tsx";
 import { HARNESSES, isHarnessId, ownAgentSelf, TRY_LIVE, type HeldMsg } from "@ducter/protocol";
 import type { PingGroup } from "./store.ts";
 import { closingWords, computerApart, computerOf, computers, computerState, manyComputers, whereAsk, watchesBrowser, whereCandReason } from "./where.ts";
@@ -251,7 +253,7 @@ function AutoText(p: { value: string; onInput: (v: string) => void; placeholder:
     const el = ref.current;
     if (!el) return;
     el.style.height = "auto";
-    el.style.height = `${Math.min(el.scrollHeight, 140)}px`;
+    el.style.height = `${Math.min(el.scrollHeight, scaledRow(140))}px`;
   }, [p.value]);
   useEffect(() => {
     if (p.autoFocus) ref.current?.focus();
@@ -429,7 +431,7 @@ export function DecisionBody({ d, taskId }: { d: DecisionState; taskId?: string 
     <>
       {open && <LaterBack d={d} />}
       <div class="q">{wa?.question ?? (d.closing ? closingWords(d.closing).question : d.memPlugin ? t("memp.card.question", harnessName(d.memPlugin.harness), d.memPlugin.deviceName) : d.question)}</div>
-      {open && <LookLine left={d.look?.left} />}
+      {open && <LookLine left={d.look?.left} at={`go:${d.decisionId}`} />}
       {d.routineId && <RoutineFacts routineId={d.routineId} />}
       {d.cal && <CalFacts c={d.cal} />}
       {d.src && <SourceCardBody src={d.src} />}
@@ -699,17 +701,21 @@ function prFailure(task: Task): string {
  * plainly where the person decides: its lead, then each thing on its own line (D291). Nothing when
  * the look was clean or the task fixed what it found.
  */
-export function LookLine({ left }: { left?: string[] }) {
+export function LookLine({ left, at }: { left?: string[]; at: string }) {
   if (!left?.length) return null;
   return (
-    <div class="look-line" role="note">
-      <span class="lead">{t("look.lead")}</span>
-      {left.map((l, i) => (
-        <span key={i} class="it" dir="auto">
-          {l}
-        </span>
-      ))}
-    </div>
+    <>
+      <div class="look-line" role="note">
+        <span class="lead">{t("look.lead")}</span>
+        {left.map((l, i) => (
+          <span key={i} class="it" dir="auto">
+            {l}
+          </span>
+        ))}
+      </div>
+      {/* D451: the first time, what it is and why only these are left. */}
+      <FirstMeetLine name="look" at={at} />
+    </>
   );
 }
 
@@ -725,7 +731,7 @@ function ResultActions({ task, inTask }: { task: Task; inTask?: boolean }) {
   const base = p.baseBranch || "main";
   return (
     <>
-    {inTask && <LookLine left={reportOf(task)?.look?.left} />}
+    {inTask && <LookLine left={reportOf(task)?.look?.left} at={`task:${task.id}`} />}
     <div class="btns">
       {task.acting ? (
         <span class="small">{t(`result.acting.${task.acting}`, base)}</span>
@@ -881,11 +887,11 @@ function Quiet({ k, tasks, detail, noted = [] }: { k: string; tasks: Task[]; det
       ))}
       {/* D437: what another AI still found is never folded away either: it is what to look at. */}
       {tasks.filter(finished).map((task) => (
-        <LookLine key={`look-${task.id}`} left={reportOf(task)?.look?.left} />
+        <LookLine key={`look-${task.id}`} left={reportOf(task)?.look?.left} at={`result:${task.id}`} />
       ))}
       {/* D439: what the page check still found in a document to send, likewise. */}
       {tasks.filter(finished).map((task) => (
-        <DocLine key={`doc-${task.id}`} left={reportOf(task)?.doc?.left} />
+        <DocLine key={`doc-${task.id}`} left={reportOf(task)?.doc?.left} at={`result:${task.id}`} />
       ))}
       <div class="qrow">
         {tasks.map((task) => (
@@ -1095,7 +1101,7 @@ function Ask({ d, taskId, buttons = true, rk, seq }: { d: DecisionState; taskId?
       {d.src && <SourceCardBody src={d.src} />}
       {d.board && <BoardOfferFacts b={d.board} />}
       {/* D437: what another AI still found in what this Go sends. */}
-      {open && <LookLine left={d.look?.left} />}
+      {open && <LookLine left={d.look?.left} at={`go:${d.decisionId}`} />}
       {/* A routine's proposal card (D29, D114): what it would do, before one Go. */}
       {d.routineId && open && <RoutineFacts routineId={d.routineId} />}
       {open && d.later ? (

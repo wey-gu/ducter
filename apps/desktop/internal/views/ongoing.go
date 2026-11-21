@@ -281,6 +281,10 @@ func (a *App) ongoingCard(c *ui.Context, it *protocol.OngoingItem) {
 				})
 			}
 			a.ongoingRuns(c, it)
+			// D451: the first loop the person sees says, once, that Ducter keeps it going.
+			if it.Loop && !paused && (it.Health == nil || it.Health.State == "back") {
+				a.firstMeetLine(c, "loop", it.ID)
+			}
 		})
 		// D427: a card with a fix keeps its buttons in sight; the rest show them on hover.
 		if hover || (it.Health != nil && it.Health.Fix != "" && it.State != "paused") {

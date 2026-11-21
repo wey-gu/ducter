@@ -25,6 +25,7 @@ import { edgeSwipe, navBusy, popMove } from "./nav.ts";
 import { wideNow } from "./fold.ts";
 import { applyPaper } from "./settings-more.tsx";
 import { keepAboveKeyboard } from "./keyboard.ts";
+import { watchTextSize } from "./text-scale.ts";
 
 applyPaper(); // D307: this device's own light or dark, before the first paint
 keepAboveKeyboard(); // D404: iOS lays the keyboard over a sheet; the sheet stands on it
@@ -205,6 +206,7 @@ function Pairing({ initial, onPaired }: { initial: PairView; onPaired: () => voi
 }
 
 const root = document.getElementById("app")!;
+watchTextSize(); // D452: rows that stack at the largest text sizes
 startAutospace(document.body); // the CJK-Latin gap where the browser lacks text-autospace (D78)
 // D254: every code block's own Copy, wherever a message draws one.
 listenForCodeCopy(() => ({ copy: t("reply.copy"), copied: t("conv.copied"), failed: t("conv.copy.failed") }), (s) => A.toast(s));

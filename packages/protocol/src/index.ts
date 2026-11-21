@@ -3,6 +3,7 @@
 // apps/desktop/internal/protocol (keep field names identical; JSON is the wire format).
 
 export * from "./harnesses.ts";
+import type { FirstMeet } from "./first-meet.ts";
 export * from "./api-keys.ts";
 export * from "./key-routes.ts";
 export * from "./lang.ts";
@@ -42,6 +43,7 @@ export * from "./reach.ts";
 export * from "./fresh-look.ts";
 export * from "./doc-bar.ts";
 export * from "./free-budget.ts";
+export * from "./first-meet.ts";
 export * from "./mem-source.ts";
 export * from "./mem-health.ts";
 export * from "./task-sources.ts";
@@ -2709,6 +2711,11 @@ export interface Settings {
   peers?: PeersSettings;
   /** D297: when an agent's usage limit runs out, hand the task to another signed-in agent at once instead of waiting for the reset. Off by default; chosen on the task's own limit card. */
   limitHandoff?: boolean;
+  /**
+   * D451: the first-time lines already met, on any device (first-meet.ts names them). A patch's names
+   * are added, never removed; an empty list in a patch starts them over (Settings › Look and sound).
+   */
+  met?: FirstMeet[];
 }
 
 /**

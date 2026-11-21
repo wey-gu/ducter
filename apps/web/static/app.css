@@ -76,7 +76,8 @@
   --base: 0 4px 0 var(--line);
   /* D270: the bar's one type size, and the one "chosen" look (the place shown, the strip's
      filter, the selected row): the card's white raised on a 2px clay ledge and a soft drop. */
-  --bar-text: 14px;
+  /* D452: the bar grows with the text to 1.5x and stops there, as iOS's own bars do: past it the name would run under the buttons. */
+  --bar-text: min(0.875rem, 21px);
   --knob: 0 2px 0 var(--line), 0 3px 8px rgb(0 0 0 / 0.06);
   --ledge: 3px;
   --press-primary: #140d07;
@@ -102,16 +103,16 @@
   --font: "Bricolage Grotesque", "PingFang SC", "Noto Sans SC", "Hiragino Sans GB", system-ui, -apple-system, "Segoe UI", sans-serif;
   --head: "Bricolage Grotesque", "Ducter Rounded SC", "PingFang SC", "Noto Sans SC", "Hiragino Sans GB", system-ui, -apple-system, sans-serif;
   --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
-  /* Type scale: 12 13 15 16 18 20 28 34 56 (D76). */
-  --xs: 12px;
-  --sm: 13px;
-  --md: 15px;
-  --body: 16px; /* the conversation's one body size: both bubbles, the composer (D129) */
-  --lg: 18px;
-  --partner: 16px;
-  --t20: 20px;
-  --t28: 28px;
-  --t34: 34px;
+  /* Type scale: 12 13 15 16 18 20 28 34 56 (D76), in rem over a 16px root (D452). */
+  --xs: 0.75rem;
+  --sm: 0.8125rem;
+  --md: 0.9375rem;
+  --body: 1rem; /* the conversation's one body size: both bubbles, the composer (D129) */
+  --lg: 1.125rem;
+  --partner: 1rem;
+  --t20: 1.25rem;
+  --t28: 1.75rem;
+  --t34: 2.125rem;
   --lh-read: 1.55;
   --lh-voice: 1.65;
 
@@ -137,7 +138,7 @@
   --bubble-measure: 38em;
   /* D206: pictures. One picture at most 70% of the column and a little over a third of the
      screen tall; a grid's tiles 2px apart inside one rounded box; the viewer on the theme's paper. */
-  --pics-w: min(70%, 22rem);
+  --pics-w: min(70%, 20.625rem);
   --pics-h: min(52vh, 380px);
   --pic-gap: 2px;
   --r-pics: var(--r-btn-lg);
@@ -356,12 +357,20 @@ body {
   background: var(--bg);
   color: var(--ink);
   font-family: var(--font);
-  font-size: var(--md);
   line-height: var(--lh-read);
   -webkit-font-smoothing: antialiased;
-  -webkit-text-size-adjust: var(--text-adjust, 100%);
+  -webkit-text-size-adjust: 100%;
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior-y: none;
+}
+/* D452: the root is the person's text size. Every type size is in rem, so the browser's own font
+   size, and in the phone apps the system's (`--text-scale`, set by the app), drive the whole scale;
+   spacing, radii and art stay in px. Rows that hold words take min-height, never height. */
+html {
+  font-size: calc(100% * var(--text-scale, 1));
+}
+body {
+  font-size: var(--md);
 }
 button,
 input,
@@ -632,7 +641,7 @@ a {
   line-height: 1.25;
 }
 .top .sum {
-  font-size: var(--xs);
+  font-size: min(var(--xs), 18px);
   color: var(--ink-muted);
   line-height: 1.4;
   display: -webkit-box;
@@ -964,7 +973,7 @@ a {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  height: 44px;
+  height: max(44px, calc((1.2em + 26px) * var(--grow, 1)));
   min-width: 0;
   padding: 0 20px;
   border-radius: var(--r-btn);
@@ -1004,25 +1013,30 @@ a {
   --seam: var(--seam-accent);
 }
 .btn.sm {
-  height: 36px;
+  height: max(36px, calc((1.2em + 20px) * var(--grow, 1)));
   padding: 0 14px;
   border-radius: var(--r-sm);
   font-size: var(--sm);
 }
 .btn.lg {
-  height: 52px;
+  height: max(52px, calc((1.2em + 32px) * var(--grow, 1)));
   padding: 0 24px;
   border-radius: var(--r-btn-lg);
   font-size: var(--body);
   --lh: 4px;
 }
 .btn.icon {
+  /* D452: a glyph alone keeps its size; only a button that holds words grows with the text. */
+  --grow: 0;
   width: 44px;
   padding: 0;
 }
 /* D262: the shell's bar buttons (NavBtn): the secondary clay at 36, a glyph close to the edge;
    the place shown is pressed into the bar (sunken, no ledge, no drop) and does nothing. */
 .btn.nav {
+  /* D452: the bar's buttons keep the bar's height; their words follow --bar-text, which stops at 1.5x. */
+  --grow: 0;
+  font-size: min(var(--sm), 20px);
   flex: none;
   gap: 6px;
 }
@@ -1150,7 +1164,7 @@ a {
   }
 }
 .btn.text {
-  height: 44px;
+  height: max(44px, calc((1.2em + 26px) * var(--grow, 1)));
   padding: 0 12px;
   border-radius: var(--r-sm);
   color: var(--ink-soft);
@@ -1158,7 +1172,7 @@ a {
   box-shadow: none;
 }
 .btn.text.sm {
-  height: 36px;
+  height: max(36px, calc((1.2em + 20px) * var(--grow, 1)));
   padding: 0 10px;
 }
 .btn:active:not(:disabled):not(.text) {
@@ -1386,6 +1400,55 @@ a {
 .look-line .it {
   overflow-wrap: anywhere;
 }
+/* D451: 第一次 / The first time. One line under the thing, in the partner's words, led by its small
+   clay face held still (a line, not a chat): ink-soft at 500 on the text edge of what it sits under;
+   no box, no bar, no pill, no button (D441). It settles in once; the face gives one small nod. */
+.first-meet {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 6px 0;
+  font-size: var(--sm);
+  font-weight: 500;
+  line-height: 1.45;
+  color: var(--ink-soft);
+  min-width: 0;
+  animation: first-meet-in 320ms var(--ease) both;
+}
+.first-meet > .avatar {
+  flex: none;
+  margin-top: 1px;
+  animation: first-meet-nod 520ms var(--ease) 260ms both;
+}
+.first-meet > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+/* Under a card laid out in a row (an Ongoing card): its own row, on the title's edge. */
+.pcard:has(> .first-meet) {
+  flex-wrap: wrap;
+}
+.pcard > .first-meet {
+  flex-basis: 100%;
+  margin: -10px 14px 14px 41px;
+}
+@keyframes first-meet-in {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+}
+@keyframes first-meet-nod {
+  40% {
+    transform: translateY(2px) rotate(-4deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .first-meet,
+  .first-meet > .avatar {
+    animation: none;
+  }
+}
 /* D439: what the page check still found: a drawn page and its lead, then each thing on its own
    line, set in under the lead's words (no rule beside it). */
 .doc-line {
@@ -1585,7 +1648,9 @@ a {
   line-height: 1.45;
   padding: 10px 0;
   outline: none;
-  max-height: 140px;
+  /* D452: one line at any text size, even before the next keystroke measures it again. */
+  min-height: calc(1.45em + 19px);
+  max-height: 8.75rem;
   min-width: 0;
 }
 .composer textarea::placeholder,
@@ -1991,7 +2056,7 @@ a {
 .tx.you small {
   display: block;
   opacity: 0.7;
-  font-size: 11px;
+  font-size: 0.6875rem;
   margin-top: 3px;
 }
 .fold-line {
@@ -2324,7 +2389,7 @@ a {
   align-items: center;
   gap: 8px;
   min-height: 16px;
-  font-size: 11px;
+  font-size: 0.6875rem;
   color: var(--ink-muted);
   opacity: 0.85;
   font-variant-numeric: tabular-nums;
@@ -2345,7 +2410,7 @@ a {
   visibility: visible;
 }
 .voice .vmeta .qlink {
-  font-size: 11px;
+  font-size: 0.6875rem;
   font-weight: 600;
   color: var(--ink-soft);
 }
@@ -2378,7 +2443,7 @@ a {
 /* D271: a task resting on its wait, at the transcript's end; how it checks opens under it. */
 .wait-end .wait-how {
   padding: 6px 0 4px 22px;
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 /* D271: the locator, wide only: one bar per turn at the transcript's right edge. */
 .locator {
@@ -2454,7 +2519,7 @@ a {
 }
 .locator .loc-row.quiet {
   min-height: 22px;
-  font-size: 12px;
+  font-size: 0.75rem;
   color: var(--ink-muted);
 }
 .locator .loc-row.quiet i {
@@ -2497,10 +2562,10 @@ a {
   border-radius: 999px;
   background: var(--sunken);
   color: var(--ink-soft);
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 .tx.go-chip time {
-  font-size: 11px;
+  font-size: 0.6875rem;
   color: var(--ink-muted);
   font-variant-numeric: tabular-nums;
 }
@@ -2544,7 +2609,7 @@ a {
   gap: 8px;
   padding: 0 8px;
   border-radius: 6px;
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--ink-soft);
   text-align: left;
   cursor: pointer;
@@ -2610,7 +2675,7 @@ a {
   flex: none;
   margin-inline-start: auto;
   padding-inline-start: 8px;
-  font-size: 11px;
+  font-size: 0.6875rem;
   font-weight: 400;
   color: var(--ink-muted);
   font-variant-numeric: tabular-nums;
@@ -3067,7 +3132,7 @@ a {
 .name-input {
   flex: 1;
   min-width: 0;
-  height: 44px;
+  height: max(44px, 2.75rem);
   padding: 0 var(--s3);
   border: 1px solid var(--line-2);
   border-radius: var(--r-sm);
@@ -3385,7 +3450,7 @@ a {
 .quiet-range input {
   flex: 1;
   min-width: 0;
-  height: 44px;
+  height: max(44px, 2.75rem);
   padding: 0 var(--s3);
   border: 1px solid var(--line-2);
   border-radius: var(--r-sm);
@@ -3825,7 +3890,7 @@ a {
   gap: 6px;
 }
 .acct-field input {
-  height: 44px;
+  height: max(44px, 2.75rem);
   min-width: 0;
   padding: 0 var(--s3);
   border: 1px solid var(--line-2);
@@ -3980,12 +4045,12 @@ a.btn {
   color: var(--ink-muted);
 }
 .field input {
-  height: 52px;
+  height: max(52px, 3.25rem);
   border-radius: var(--r-sm);
   border: 2px solid var(--line-2);
   background: var(--surface);
   padding: 0 14px;
-  font-size: 20px;
+  font-size: 1.25rem;
   font-family: var(--mono);
   letter-spacing: 2px;
   text-transform: uppercase;
@@ -4489,7 +4554,7 @@ a.btn {
   border-radius: 50% 50% 46% 46%;
   display: inline-grid;
   place-items: center;
-  font-size: 11px;
+  font-size: 0.6875rem;
   font-weight: 700;
   line-height: 1;
   font-style: normal;
@@ -4524,7 +4589,7 @@ a.btn {
 .trystrip .bd {
   width: 34px;
   height: 28px;
-  font-size: 14px;
+  font-size: 0.875rem;
 }
 .trystrip b {
   font-size: var(--sm);
@@ -4711,7 +4776,7 @@ a.btn {
 }
 .runstrip .rb em {
   font-style: normal;
-  font-size: 11px;
+  font-size: 0.6875rem;
   color: var(--ink-muted);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
@@ -4991,7 +5056,7 @@ ol.tries b {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  height: 36px;
+  height: max(36px, 2.25rem);
   max-width: 100%;
   padding: 0 12px;
   border-radius: var(--r-sm);
@@ -5165,8 +5230,8 @@ ol.tries b {
   flex: none;
   display: grid;
   place-items: center;
-  width: 22px;
-  height: 22px;
+  width: max(22px, 1.375rem);
+  height: max(22px, 1.375rem);
   border-radius: 50%;
   background: var(--bg);
   color: var(--ink-soft);
@@ -5403,7 +5468,7 @@ ol.tries b {
   max-width: 100%;
 }
 .nt-field {
-  height: 44px;
+  height: max(44px, 2.75rem);
   border-radius: var(--r-md);
   border: 1px solid var(--line-soft);
   background: var(--bg);
@@ -5457,7 +5522,7 @@ ol.tries b {
 .folder-changes .btns { margin-top: 10px; }
 .folder-changes .confirm { margin-top: 10px; padding: 12px 14px; background: var(--surface); border-radius: 14px; box-shadow: 0 3px 0 var(--line-soft); }
 .folder-list { list-style: none; margin: 10px 0 0; padding: 0; background: var(--surface); border-radius: 14px; box-shadow: 0 3px 0 var(--line-soft); overflow: hidden; }
-.folder-list li { display: flex; align-items: center; gap: 10px; padding: 9px 14px; font-size: 14px; border-top: 1px solid var(--line-soft); }
+.folder-list li { display: flex; align-items: center; gap: 10px; padding: 9px 14px; font-size: 0.875rem; border-top: 1px solid var(--line-soft); }
 .folder-list li:first-child { border-top: 0; }
 .folder-list .mono-ish { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .folder-list li .qlink { flex: none; }
@@ -5520,7 +5585,7 @@ button.dev-name {
   flex: 1;
 }
 .dev-input {
-  height: 40px;
+  height: max(40px, 2.5rem);
   padding: 0 var(--s2);
   border: 1px solid var(--line-2);
   border-radius: var(--r-sm);
@@ -5598,7 +5663,7 @@ button.dev-name {
 /* ---------- D190: 看它上网 / Watch it browse, and taking turns ---------- */
 .live-nav { flex: none; display: flex; min-width: 44px; }
 .live-host.as-btn { display: block; max-width: 100%; margin: 0 auto; padding: 2px 10px; border: 0; border-radius: var(--r-sm); background: var(--surface-sunken); color: var(--ink); font: inherit; font-weight: 800; font-size: var(--md); cursor: text; }
-.live-addr input { width: 100%; box-sizing: border-box; padding: 6px 10px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--surface); color: var(--ink); font: inherit; font-size: 16px; text-align: center; }
+.live-addr input { width: 100%; box-sizing: border-box; padding: 6px 10px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--surface); color: var(--ink); font: inherit; font-size: 1rem; text-align: center; }
 .live-sub .live-task { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; color: var(--ink-soft); font-weight: 700; }
 .live-sub .live-dev { flex: none; }
 /* The user's turn: one calm band says so, in the waiting tone (it waits for you). */
@@ -5633,7 +5698,7 @@ button.dev-name {
 .dev-web > .btn { align-self: flex-start; }
 .dev-sub { font-size: var(--xs); font-weight: 800; color: var(--ink-muted); }
 .dev-note { font-size: var(--sm); line-height: 1.5; color: var(--ink-soft); padding: var(--s2) var(--s3); border-radius: var(--r-sm); background: var(--bg); }
-.dev-cmd { display: block; font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 12px; padding: var(--s2) var(--s3); border-radius: var(--r-sm); background: var(--sunken); overflow-wrap: anywhere; user-select: all; }
+.dev-cmd { display: block; font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 0.75rem; padding: var(--s2) var(--s3); border-radius: var(--r-sm); background: var(--sunken); overflow-wrap: anywhere; user-select: all; }
 .dev-site { display: flex; align-items: center; gap: var(--s3); padding: var(--s2) var(--s3); border-radius: var(--r-sm); background: var(--bg); }
 .dev-site-what { flex: 1; min-width: 0; }
 .dev-site-name { font-size: var(--sm); font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -5673,7 +5738,7 @@ button.dev-name {
 @keyframes dc-drift { 50% { transform: translateX(4px); } }
 @keyframes dc-blanket { 50% { transform: scaleY(1.045); } }
 .dc-name { display: flex; justify-content: center; margin-top: 2px; }
-.dc-name .dev-name { position: relative; padding: 2px 10px; border: 0; border-radius: 10px; background: none; font-size: 26px; text-align: center; overflow: visible; white-space: normal; overflow-wrap: anywhere; text-wrap: balance; max-width: 100%; }
+.dc-name .dev-name { position: relative; padding: 2px 10px; border: 0; border-radius: 10px; background: none; font-size: 1.625rem; text-align: center; overflow: visible; white-space: normal; overflow-wrap: anywhere; text-wrap: balance; max-width: 100%; }
 .dc-name button.dev-name:active { background: var(--sunken); }
 /* The pencil beside a name that renames in place: always there, quiet, so the name reads as editable
    on a phone too (no hover there); full ink on hover. Drawn by mask so it takes the ink token. */
@@ -5717,7 +5782,7 @@ button.dev-name {
 @keyframes dc-spin { to { transform: rotate(360deg); } }
 .coin-tile .cn { max-width: 100%; font-size: var(--xs); font-weight: 700; line-height: 1.2; color: var(--ink-soft); text-align: center; text-wrap: balance; } /* D371: a long name (DeepSeek Harness) takes two lines, never runs into its neighbour */
 .coin-tile.off .cn { color: var(--ink-muted); font-weight: 600; }
-.coin-tile.socket .c { border: 2px dashed var(--line-2); border-radius: 50%; color: var(--ink-muted); font-size: 22px; font-weight: 700; background: rgb(255 255 255 / 0.35); }
+.coin-tile.socket .c { border: 2px dashed var(--line-2); border-radius: 50%; color: var(--ink-muted); font-size: 1.375rem; font-weight: 700; background: rgb(255 255 255 / 0.35); }
 .coin-tile.socket .cn { color: var(--ink-muted); font-weight: 600; }
 
 .dc-detail { position: relative; display: flex; flex-direction: column; gap: 2px; margin-top: 10px; padding: 14px 16px; border-radius: var(--r-md); background: var(--surface); box-shadow: inset 0 0 0 1px var(--line), 0 2px 0 var(--line); animation: dc-enter 220ms cubic-bezier(0.2, 0.8, 0.2, 1); }
@@ -5729,18 +5794,18 @@ button.dev-name {
 .dc-detail .ln { font-size: var(--sm); line-height: 1.5; color: var(--ink-muted); }
 .dc-detail .ln.soft { color: var(--ink-soft); }
 .dc-detail .ln.small { font-size: var(--xs); }
-.dc-detail .switch { margin: 6px 0 0; padding: 0; min-height: 40px; background: none; box-shadow: none; font-size: 14px; font-weight: 700; }
+.dc-detail .switch { margin: 6px 0 0; padding: 0; min-height: 40px; background: none; box-shadow: none; font-size: 0.875rem; font-weight: 700; }
 .dc-missing { display: flex; align-items: center; gap: var(--s3); min-height: 36px; }
 .dc-upd { display: flex; align-items: center; gap: 12px; margin: 8px 0 4px; padding: 10px 12px; border-radius: 12px; background: var(--bg); }
 .dc-upd .tx { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; font-size: var(--sm); }
-.dc-upd .tx b { font-size: 14px; }
+.dc-upd .tx b { font-size: 0.875rem; }
 .dc-upd .tx b.done { color: var(--done-ink); }
 .dc-upd .tx b.failed { color: var(--failed-ink); }
 .dc-upd .tx small { font-size: var(--xs); color: var(--ink-muted); }
 
 .dc-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 14px; }
 .chip-wrap { position: relative; display: inline-flex; }
-.ach { display: inline-flex; align-items: center; gap: 6px; height: 40px; padding: 0 14px 0 6px; border: 0; border-radius: var(--r-btn); color: var(--ink); font: inherit; font-size: 14px; font-weight: 700; white-space: nowrap; cursor: pointer; transition: transform var(--press, 70ms) ease-out, box-shadow var(--press, 70ms) ease-out; }
+.ach { display: inline-flex; align-items: center; gap: 6px; height: max(40px, 2.5rem); padding: 0 14px 0 6px; border: 0; border-radius: var(--r-btn); color: var(--ink); font: inherit; font-size: 0.875rem; font-weight: 700; white-space: nowrap; cursor: pointer; transition: transform var(--press, 70ms) ease-out, box-shadow var(--press, 70ms) ease-out; }
 .ach img { width: 30px; height: 30px; object-fit: contain; transition: filter 160ms, opacity 160ms; }
 .ach.on { background: var(--surface); box-shadow: inset 0 0 0 1px var(--line-2), 0 3px 0 var(--line-2); }
 .ach.off { background: var(--sunken); color: var(--ink-muted); box-shadow: 0 2px 0 var(--line); }
@@ -5774,7 +5839,7 @@ button.dev-name {
 .dc-note .acts { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
 
 .dc-via { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 16px; font-size: var(--sm); color: var(--ink-muted); }
-.more-btn { height: 24px; padding: 0 6px; border: 0; border-radius: 8px; background: none; color: var(--ink-muted); font: inherit; font-weight: 800; letter-spacing: 1px; cursor: pointer; }
+.more-btn { height: max(24px, 1.5rem); padding: 0 6px; border: 0; border-radius: 8px; background: none; color: var(--ink-muted); font: inherit; font-weight: 800; letter-spacing: 1px; cursor: pointer; }
 .more-btn:hover, .more-btn.open { background: var(--sunken); color: var(--ink); }
 .dc-conns { margin-top: 8px; border-radius: 12px; background: var(--bg); overflow: hidden; animation: dc-enter 200ms cubic-bezier(0.2, 0.8, 0.2, 1); }
 .dc-conn { display: flex; align-items: center; gap: 8px; padding: 6px 12px; font-size: var(--sm); }
@@ -5783,7 +5848,7 @@ button.dev-name {
 /* D293: how a device is connected, and the home's addresses: a header, then one inset group of
    rows (title, one muted line, the state at the right edge). */
 .dc-reach { margin-top: 16px; }
-.dc-reach-h { margin: 0 0 6px 12px; font-size: 13px; font-weight: 700; color: var(--ink-soft); }
+.dc-reach-h { margin: 0 0 6px 12px; font-size: 0.8125rem; font-weight: 700; color: var(--ink-soft); }
 .dc-reach-list { border-radius: 12px; background: var(--bg); overflow: hidden; }
 .dc-reach .rw { display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 8px 12px; }
 .dc-reach .rw + .rw { border-top: 1px solid var(--line-soft); }
@@ -5796,7 +5861,7 @@ button.dev-name {
 .dc-reach .rw .st.down { color: var(--failed-ink); }
 .dc-reach-note { margin: 6px 12px 0; line-height: 1.5; }
 :lang(zh) .dc-reach-note { line-height: 1.7; }
-.danger-text { height: 32px; padding: 0 8px; border: 0; border-radius: var(--r-sm); background: none; color: var(--failed-ink); font: inherit; font-size: var(--sm); font-weight: 700; white-space: nowrap; cursor: pointer; }
+.danger-text { height: max(32px, 2rem); padding: 0 8px; border: 0; border-radius: var(--r-sm); background: none; color: var(--failed-ink); font: inherit; font-size: var(--sm); font-weight: 700; white-space: nowrap; cursor: pointer; }
 .danger-text:hover, .danger-text:active { background: var(--failed-surface); }
 
 .dc-ver { display: flex; flex-direction: column; gap: 4px; margin-top: 14px; padding: 10px 12px; border-radius: 12px; background: var(--bg); font-size: var(--sm); }
@@ -5876,7 +5941,7 @@ button.dev-name {
 .app-tile:active .sq { transform: translateY(2px); }
 .app-tile.off .sq, .app-tile.grey .sq { opacity: 0.5; }
 .app-tile.grey .an { color: var(--ink-muted); }
-.app-tile.add .sq { background: rgb(255 255 255 / 0.35); box-shadow: none; border: 1.5px dashed var(--line-2); color: var(--ink-muted); font-size: 22px; font-weight: 700; }
+.app-tile.add .sq { background: rgb(255 255 255 / 0.35); box-shadow: none; border: 1.5px dashed var(--line-2); color: var(--ink-muted); font-size: 1.375rem; font-weight: 700; }
 .app-tile .an { max-width: 86px; overflow: hidden; text-overflow: ellipsis; font-size: var(--xs); font-weight: 700; color: var(--ink); white-space: nowrap; }
 /* The account under the app: up to two lines, then cut; the whole name is the tile's title (D192). */
 .app-tile .as { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; max-width: 86px; overflow: hidden; font-size: var(--xs); line-height: 1.3; color: var(--ink-muted); text-align: center; overflow-wrap: break-word; }
@@ -5912,7 +5977,7 @@ button.dev-name {
 @media (prefers-reduced-motion: reduce) { .tile-detail { animation: none; } }
 
 /* D165: a note the partner said by itself, in the conversation. */
-.partner > .bubble.note { display: flex; flex-direction: column; gap: 8px; font-size: 15px; line-height: 1.5; background: var(--surface); box-shadow: 0 3px 0 var(--line); }
+.partner > .bubble.note { display: flex; flex-direction: column; gap: 8px; font-size: 0.9375rem; line-height: 1.5; background: var(--surface); box-shadow: 0 3px 0 var(--line); }
 .bubble.note .find { display: flex; flex-direction: column; gap: 4px; padding-top: 8px; border-top: 1px solid var(--line); }
 .bubble.note .find:first-child { padding-top: 0; border-top: 0; }
 .bubble.note .kind { font-size: var(--xs); font-weight: 800; color: var(--ink-muted); letter-spacing: 0.02em; }
@@ -5929,7 +5994,7 @@ button.dev-name {
 /* D403: a reply already written, in the find: who it goes to, the words in a sunken well (a field
    while its Go is open), what to check first, then Send and Hold, or the undo line after Go. */
 .bubble.note .fdraft { display: flex; flex-direction: column; gap: 6px; margin-top: 2px; }
-.bubble.note .fdraft-text { display: block; width: 100%; box-sizing: border-box; padding: 10px 12px; border-radius: var(--r-sm); background: var(--sunken); color: var(--ink); font-size: 15px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+.bubble.note .fdraft-text { display: block; width: 100%; box-sizing: border-box; padding: 10px 12px; border-radius: var(--r-sm); background: var(--sunken); color: var(--ink); font-size: 0.9375rem; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
 .bubble.note textarea.fdraft-text { border: 1px solid var(--line); resize: none; field-sizing: content; min-height: 3em; max-height: 40vh; overflow-y: auto; outline: none; }
 .bubble.note textarea.fdraft-text:focus-visible { border-color: var(--ink-soft); }
 .bubble.note .fdraft:not(.open) .fdraft-text { color: var(--ink-soft); }
@@ -6675,7 +6740,7 @@ dl.call-summary dd { margin: 0; }
 .call-dialed { padding: 0 2px; line-height: 1.5; }
 @media (max-width: 480px) { .own-body { padding-left: 14px; } }
 .signin-card { align-items: stretch; text-align: center; }
-.signin-code { align-self: center; padding: 10px 18px; border-radius: var(--r-md); background: var(--surface-sunken); font-family: var(--mono); font-size: 30px; font-weight: 700; letter-spacing: 0.12em; color: var(--ink); user-select: all; }
+.signin-code { align-self: center; padding: 10px 18px; border-radius: var(--r-md); background: var(--surface-sunken); font-family: var(--mono); font-size: 1.875rem; font-weight: 700; letter-spacing: 0.12em; color: var(--ink); user-select: all; }
 .call-qr { align-self: center; border-radius: 12px; box-shadow: 0 3px 0 var(--line); }
 .signin-wait { text-align: center; line-height: 1.5; }
 .signin-wait .facts { justify-content: center; }
@@ -6727,15 +6792,15 @@ dl.call-summary dd { margin: 0; }
 }
 /* Five and more take a little more of the column: every picture of a trip shows. */
 .pics:is(.n5, .n6, .n7, .n8, .n9) {
-  --pics-w: min(78%, 25rem);
+  --pics-w: min(78%, 23.4375rem);
 }
 .media.on-task .pics {
-  --pics-w: min(100%, 22rem);
+  --pics-w: min(100%, 20.625rem);
 }
 /* D210: in a turn, a picture stays small: the transcript is for reading; a tap opens it big. */
 .turns .media.on-task .pics {
-  --pics-w: min(100%, 15rem);
-  --pics-h: 14rem;
+  --pics-w: min(100%, 14.0625rem);
+  --pics-h: 13.125rem;
 }
 .tx.you .media {
   margin-bottom: var(--s2);
@@ -6963,7 +7028,7 @@ dl.call-summary dd { margin: 0; }
   position: relative;
   display: flex;
   flex-direction: column;
-  width: min(100%, 22rem);
+  width: min(100%, 20.625rem);
   border-radius: var(--r-md);
   background: var(--surface);
   box-shadow: var(--base);
@@ -7063,13 +7128,13 @@ dl.call-summary dd { margin: 0; }
 }
 /* A PDF's first page: white paper, its top, in the sunken ground. */
 .fc-pv.pdf {
-  height: 9rem;
+  height: 8.4375rem;
   padding: 12px 18px 0;
 }
 .fc-pv.pdf .fc-page {
   display: block;
   width: 100%;
-  min-height: 12rem;
+  min-height: 11.25rem;
   border-radius: 4px 4px 0 0;
   background: var(--pdf-page);
   box-shadow: 0 0 0 1px var(--line-soft), 0 6px 14px -6px rgba(43, 33, 24, 0.25);
@@ -7094,7 +7159,7 @@ dl.call-summary dd { margin: 0; }
 }
 /* Code and text: the first lines in their colours, fading out at the foot. */
 .fc-pv.code {
-  height: 7.4rem;
+  height: 6.9375rem;
   background: var(--code-bg, var(--sunken));
 }
 .fc-pv.code pre {
@@ -7103,7 +7168,7 @@ dl.call-summary dd { margin: 0; }
   display: flex;
   flex-direction: column;
   gap: 1px;
-  font: 500 11.5px / 1.5 var(--mono);
+  font: 500 0.71875rem / 1.5 var(--mono);
   color: var(--ink-soft);
   white-space: pre;
   overflow: hidden;
@@ -7133,12 +7198,12 @@ dl.call-summary dd { margin: 0; }
   content: "";
   position: absolute;
   inset: auto 0 0;
-  height: 2.2rem;
+  height: 2.0625rem;
   background: linear-gradient(to bottom, transparent, var(--code-bg, var(--sunken)));
   pointer-events: none;
 }
 .fc-pv.table {
-  height: 6.6rem;
+  height: 6.1875rem;
   padding: 8px 10px;
 }
 .fc-pv.table table {
@@ -7216,7 +7281,7 @@ dl.call-summary dd { margin: 0; }
   display: flex;
   align-items: center;
   gap: var(--s3);
-  height: 4.25rem;
+  height: 3.984375rem;
   padding: 0 14px 0 12px;
 }
 .fc-pv.audio .pp {
@@ -7281,7 +7346,7 @@ dl.call-summary dd { margin: 0; }
   gap: var(--s5);
 }
 .fv-audio audio {
-  width: min(100%, 26rem);
+  width: min(100%, 24.375rem);
 }
 
 /* The composer: 添加文件或图片 / Add files or pictures (the attach mark, D273) first, the tray of what is picked above it. */
@@ -7626,7 +7691,7 @@ dl.call-summary dd { margin: 0; }
 .viewer .from {
   min-width: 0;
   max-width: 55%;
-  height: 44px;
+  height: max(44px, 2.75rem);
   padding: 0 4px;
   border: 0;
   background: none;
@@ -7699,7 +7764,7 @@ dl.call-summary dd { margin: 0; }
 .onhand-list .find {
   flex: 1 1 220px;
   min-width: 0;
-  height: 40px;
+  height: max(40px, 2.5rem);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -8487,14 +8552,14 @@ dl.call-summary dd { margin: 0; }
 /* Code: on the theme's paper, in a sunken well; numbers in the faint ink. */
 .code {
   font-family: var(--mono);
-  font-size: 12.5px;
-  line-height: 20px;
+  font-size: 0.78125rem;
+  line-height: 1.25rem;
   border-radius: var(--r-md);
   background: var(--code-bg);
   box-shadow: inset 0 0 0 1px var(--line), inset 0 2px 0 var(--line-soft);
   overflow: auto;
   tab-size: 2;
-  -webkit-text-size-adjust: var(--text-adjust, 100%);
+  -webkit-text-size-adjust: 100%;
   flex: none;
 }
 .code.view, .code.wdiff { padding: 8px 0; }
@@ -8557,7 +8622,7 @@ dl.call-summary dd { margin: 0; }
 .code.editor .ed-ta::selection { background: var(--highlight); }
 @media (pointer: coarse) {
   /* iOS zooms into a field under 16px: the editor reads at 16 there. */
-  .code.editor { font-size: 16px; line-height: 24px; }
+  .code.editor { font-size: 1rem; line-height: 1.5rem; }
 }
 .wb-image { padding: 16px; border-radius: var(--r-md); background: var(--code-bg); box-shadow: inset 0 0 0 1px var(--line); display: grid; place-items: center; }
 .wb-image img { max-width: 100%; max-height: 60vh; }
@@ -8761,7 +8826,7 @@ dl.call-summary dd { margin: 0; }
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 40px;
+  height: max(40px, 2.5rem);
   max-width: 280px;
   padding: 0 10px 0 12px;
   border-radius: var(--r-btn);
@@ -8863,7 +8928,7 @@ a.cal-row:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
 .cal-meta { font-size: var(--xs); color: var(--ink-muted); line-height: 1.45; overflow-wrap: anywhere; }
 .cal-meta { display: flex; }
 .cal-meta > span { display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: pre; vertical-align: bottom; }
-.cal-chip { flex: none; padding: 0 7px; border-radius: var(--pill); font-size: 11px; font-weight: 700; line-height: 18px; white-space: nowrap; }
+.cal-chip { flex: none; padding: 0 7px; border-radius: var(--pill); font-size: 0.6875rem; font-weight: 700; line-height: 1.125rem; white-space: nowrap; }
 .cal-chip.ask { background: var(--waiting-surface); color: var(--waiting-ink); }
 .cal-chip.maybe { background: var(--sunken); color: var(--ink-soft); }
 .cal-chip.clash { background: var(--failed-surface); color: var(--failed-ink); }
@@ -9088,7 +9153,7 @@ button.imprint:focus-visible {
   flex-direction: column;
   gap: 6px;
   padding-top: 6px;
-  min-width: min(14rem, 80%);
+  min-width: min(13.125rem, 80%);
 }
 .user.has-reply > .imprint {
   margin: 0 -8px;
@@ -9273,7 +9338,7 @@ button.imprint:focus-visible {
   position: absolute;
   bottom: 3px;
   z-index: 2;
-  height: 30px;
+  height: max(30px, 1.875rem);
   min-width: 30px;
   display: none;
   align-items: center;
@@ -9443,7 +9508,7 @@ button.imprint:focus-visible {
   display: flex;
   align-items: center;
   gap: 6px;
-  height: 36px;
+  height: max(36px, 2.25rem);
   padding: 0 12px;
   border: 0;
   border-radius: var(--r-sm);
@@ -9615,8 +9680,8 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   position: relative;
   display: flex;
   flex-direction: column;
-  width: min(48rem, calc(100vw - 48px));
-  height: min(56rem, calc(100dvh - 56px));
+  width: min(45rem, calc(100vw - 48px));
+  height: min(52.5rem, calc(100dvh - 56px));
   border-radius: var(--r-xl);
   background: var(--bg);
   box-shadow: 0 5px 0 var(--line-2), var(--floating), inset 0 0 0 1px var(--rim);
@@ -9665,8 +9730,8 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 .fv-title .meta { font-size: var(--xs); font-weight: 600; color: var(--ink-muted); font-variant-numeric: tabular-nums; letter-spacing: 0.01em; }
 /* D356: a linked file while it comes, or why it didn't: its path, quiet and in mono. */
 .fv-title .fv-path { font-family: var(--mono); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.fv-k-link .fv-body { min-height: 9rem; display: grid; place-items: center; }
-.fv-k-link .fv-note p { max-width: 32rem; text-wrap: pretty; }
+.fv-k-link .fv-body { min-height: 8.4375rem; display: grid; place-items: center; }
+.fv-k-link .fv-note p { max-width: 30rem; text-wrap: pretty; }
 .fv-toggle { flex: none; color: var(--ink-soft); }
 .fv-toggle[aria-pressed="true"] { color: var(--ink); }
 .fv-x { flex: none; color: var(--ink-soft); }
@@ -9691,7 +9756,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 .fv-bar .from {
   min-width: 0;
   max-width: 55%;
-  height: 40px;
+  height: max(40px, 2.5rem);
   padding: 0 6px;
   border: 0;
   background: none;
@@ -9764,7 +9829,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 .fv-doc code { font-family: var(--mono); font-size: 0.86em; background: var(--sunken); padding: 1px 0.35em; border-radius: 6px; }
 .fv-doc pre {
   font-family: var(--mono);
-  font-size: 13px;
+  font-size: 0.8125rem;
   line-height: 1.6;
   padding: 12px 14px;
   border-radius: var(--r-sm);
@@ -9775,7 +9840,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   overflow-wrap: normal;
 }
 .fv-doc pre code { background: none; padding: 0; font-size: inherit; }
-.fv-doc pre.md-front { background: var(--sunken); box-shadow: none; color: var(--ink-muted); font-size: 12px; }
+.fv-doc pre.md-front { background: var(--sunken); box-shadow: none; color: var(--ink-muted); font-size: 0.75rem; }
 .md-pic { color: var(--ink-muted); font-style: italic; }
 .md-pic::before { content: "["; }
 .md-pic::after { content: "]"; }
@@ -9834,7 +9899,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 .fv-find input {
   flex: 1;
   min-width: 0;
-  height: 38px;
+  height: max(38px, 2.375rem);
   margin-right: 6px;
   padding: 0 14px;
   border: 0;
@@ -9859,7 +9924,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 .fv-pdf { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 18px 18px 28px; }
 .fv-page {
   width: 100%;
-  max-width: 44rem;
+  max-width: 41.25rem;
   border-radius: 6px;
   background: var(--pdf-page);
   box-shadow: 0 3px 0 var(--line-2), inset 0 0 0 1px var(--line-soft);
@@ -9884,7 +9949,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   .fv-grab { display: block; position: absolute; top: calc(var(--safe-top) + 5px); left: 50%; width: 36px; height: 4px; margin-left: -18px; border-radius: 2px; background: var(--line-2); }
   .fv-bar { padding: 8px max(12px, var(--safe-right)) calc(var(--safe-bottom) + 10px) max(12px, var(--safe-left)); }
   .fv-doc { padding: 20px 20px 32px; }
-  .fv-doc h1 { font-size: 24px; }
+  .fv-doc h1 { font-size: 1.5rem; }
 }
 @media (prefers-reduced-motion: reduce) {
   .fileview, .fileview.closing { animation-duration: 1ms; }
@@ -10167,7 +10232,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   justify-content: center;
   gap: 6px;
   min-width: 40px;
-  height: 40px;
+  height: max(40px, 2.5rem);
   padding: 0 12px;
   border: 0;
   border-radius: 21px 20px 22px 19px / 20px 22px 19px 21px;
@@ -10263,7 +10328,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  height: 28px;
+  height: max(28px, 1.75rem);
   padding: 0 8px;
   border: 0;
   border-radius: var(--r-xs);
@@ -10561,7 +10626,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   cursor: pointer;
 }
 .strip .cell b {
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
@@ -10692,7 +10757,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 /* One reading column, centered: prose at 14, 1.6 for Latin and 1.75 when it holds Chinese. */
 .task-page .turns {
   width: 100%;
-  max-width: 40rem;
+  max-width: 37.5rem;
   margin: 0 auto;
   gap: 28px;
 }
@@ -10700,7 +10765,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   gap: 12px;
 }
 .turns .tx.assistant.md {
-  font-size: 14px;
+  font-size: 0.875rem;
   line-height: 1.6;
   color: var(--ink);
 }
@@ -10729,19 +10794,19 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 .turns .tx.assistant.md h3,
 .turns .tx.assistant.md h4 {
   margin: 14px 0 6px;
-  font-size: 15px;
+  font-size: 0.9375rem;
   font-weight: 600;
   line-height: 1.4;
 }
 .turns .tx.assistant.md h1 {
-  font-size: 17px;
+  font-size: 1.0625rem;
 }
 .turns .tx.assistant.md > :first-child {
   margin-top: 0;
 }
 .turns .tx.assistant.md code {
   font-family: var(--mono);
-  font-size: 13px;
+  font-size: 0.8125rem;
   padding: 1px 0.3em;
   border-radius: 5px;
   background: color-mix(in srgb, var(--ink) 6%, transparent);
@@ -10753,7 +10818,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   border-radius: 8px;
   background: var(--sunken);
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: 0.75rem;
   line-height: 1.6;
   overflow-x: auto;
 }
@@ -10784,7 +10849,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 .turns .step {
   min-height: 24px;
   gap: 6px;
-  font-size: 13px;
+  font-size: 0.8125rem;
   line-height: 1.35;
   color: var(--ink-soft);
 }
@@ -10805,7 +10870,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 }
 .turns .step .subj.mono {
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 .turns .step .chev .g {
   width: 12px;
@@ -10824,13 +10889,13 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 }
 .turns .step .bad-tag {
   flex: none;
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 600;
   color: var(--failed-ink);
 }
 .turns .failline {
   margin: 0 0 4px 22px;
-  font-size: 13px;
+  font-size: 0.8125rem;
   line-height: 1.6;
   color: var(--ink-soft);
 }
@@ -10839,7 +10904,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 12px;
+  font-size: 0.75rem;
   color: var(--ink-muted);
   font-variant-numeric: tabular-nums;
 }
@@ -10868,7 +10933,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 }
 .turns .thought-text {
   padding: 2px 0 6px 22px;
-  font-size: 13px;
+  font-size: 0.8125rem;
   line-height: 1.5;
   color: var(--ink-muted);
 }
@@ -10893,7 +10958,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   display: flex;
   align-items: baseline;
   gap: 8px;
-  font-size: 12px;
+  font-size: 0.75rem;
   color: var(--ink-muted);
 }
 .turns .plan header b {
@@ -10915,7 +10980,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   display: flex;
   align-items: flex-start;
   gap: 8px;
-  font-size: 13px;
+  font-size: 0.8125rem;
   line-height: 1.5;
   color: var(--ink);
 }
@@ -10940,7 +11005,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   align-items: center;
   gap: 10px;
   margin: 4px 0;
-  font-size: 11px;
+  font-size: 0.6875rem;
   color: var(--ink-muted);
 }
 .tx-divider::before,
@@ -10958,7 +11023,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   min-height: 28px;
   padding-bottom: 6px;
   border-bottom: 1px solid var(--line);
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--ink-muted);
   text-align: left;
   font-variant-numeric: tabular-nums;
@@ -10982,7 +11047,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   display: flex;
   align-items: baseline;
   gap: 12px;
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--ink-muted);
 }
 .working-line .shimmer {
@@ -11015,7 +11080,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 }
 .working-line .clock {
   flex: none;
-  font-size: 12px;
+  font-size: 0.75rem;
   font-variant-numeric: tabular-nums;
 }
 /* Your words waiting their turn: a dashed outline, no fill, muted, and 排队中. */
@@ -11029,13 +11094,13 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 .tx.you .qtag {
   display: block;
   margin: 0 0 2px;
-  font-size: 11px;
+  font-size: 0.6875rem;
   font-weight: 700;
   opacity: 1;
   color: var(--ink-muted);
 }
 .turns .tx.you {
-  font-size: 14px;
+  font-size: 0.875rem;
   line-height: 1.55;
 }
 /* The composer while it works: Stop beside Send, After this, and how a message lands. */
@@ -11053,7 +11118,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   gap: 12px;
   justify-content: space-between;
   padding: 0 18px 4px;
-  font-size: 12px;
+  font-size: 0.75rem;
   color: var(--ink-muted);
 }
 .composer-hint .k {
@@ -11072,7 +11137,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   gap: 6px;
   align-items: baseline;
   padding: 0 10px;
-  font-size: 12px;
+  font-size: 0.75rem;
   color: var(--ink-muted);
 }
 .held-head .n {
@@ -11102,7 +11167,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   background: none;
   color: var(--ink-soft);
   font: inherit;
-  font-size: 14px;
+  font-size: 0.875rem;
   text-align: start;
   white-space: nowrap;
   overflow: hidden;
@@ -11119,13 +11184,13 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 .hq-pics {
   flex: none;
   min-width: 18px;
-  height: 18px;
+  height: max(18px, 1.125rem);
   padding: 0 5px;
   border-radius: 9px;
   background: var(--surface-sunken);
   color: var(--ink-muted);
-  font-size: 11px;
-  line-height: 18px;
+  font-size: 0.6875rem;
+  line-height: 1.125rem;
   text-align: center;
   font-variant-numeric: tabular-nums;
 }
@@ -11167,7 +11232,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   background: none;
   color: var(--ink);
   font: inherit;
-  font-size: 14px;
+  font-size: 0.875rem;
   resize: none;
   outline: none;
   padding: 6px 0;
@@ -11179,7 +11244,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   align-items: center;
   gap: 5px;
   margin: -2px 6px 2px;
-  font-size: 11px;
+  font-size: 0.6875rem;
   color: var(--ink-muted);
   animation: fade var(--t-across) var(--ease) both;
 }
@@ -11220,7 +11285,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   text-align: left;
   padding: 8px 10px;
   border-radius: 10px;
-  font-size: 14px;
+  font-size: 0.875rem;
   color: var(--ink);
 }
 .more-menu .menu button:hover {
@@ -11231,7 +11296,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 }
 /* Task rows: the title at 14/500 (400, softer, once settled), the time in a fixed column, one meta line at 12. */
 .trow .l1 .t {
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 500;
 }
 .trow.a-done .l1 .t,
@@ -11244,10 +11309,10 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 .trow .time {
   white-space: nowrap;
   min-width: 4em;
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 .trow .l2 {
-  font-size: 12px;
+  font-size: 0.75rem;
   color: var(--ink-muted);
 }
 /* The latest turn is always laid out (the working line follows it, so it isn't the last child). */
@@ -11658,8 +11723,8 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   flex: none;
   display: grid;
   place-items: center;
-  width: 26px;
-  height: 26px;
+  width: max(26px, 1.625rem);
+  height: max(26px, 1.625rem);
   margin: 0 7px;
   border-radius: 50%;
   background: var(--sunken);
@@ -11698,7 +11763,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   user-select: all;
 }
 .chat-field {
-  max-width: 28rem;
+  max-width: 26.25rem;
 }
 .chat-field span {
   font-size: var(--sm);
@@ -11749,7 +11814,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   flex-direction: column;
   gap: var(--s4);
   width: 100%;
-  max-width: calc(40rem + var(--head-in));
+  max-width: calc(37.5rem + var(--head-in));
   padding-left: var(--head-in);
   margin: 0;
 }
@@ -11810,7 +11875,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   box-shadow: none;
   padding: 0 4px;
   min-height: 0;
-  max-width: 32rem;
+  max-width: 30rem;
   font-size: var(--sm);
   color: var(--ink-muted);
 }
@@ -12010,7 +12075,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   min-width: 0;
 }
 .oh-head .oh-say {
-  font-size: 22px;
+  font-size: 1.375rem;
   font-weight: 700;
   line-height: 1.3;
   letter-spacing: -0.01em;
@@ -12094,7 +12159,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 }
 .tcompact .k1 .t {
   min-width: 0;
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 600;
   color: var(--ink);
   overflow: hidden;
@@ -12693,7 +12758,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 .past-head h2 {
   margin: 0;
   font-family: var(--head);
-  font-size: 22px;
+  font-size: 1.375rem;
   font-weight: 700;
 }
 .past-x {
@@ -12704,7 +12769,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   background: var(--sunken);
   color: var(--ink-muted);
   font: inherit;
-  font-size: 20px;
+  font-size: 20px; /* D452: a glyph in a fixed circle, art not words */
   line-height: 1;
   cursor: pointer;
 }
@@ -12718,7 +12783,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   gap: 10px;
   margin: 10px 28px 0;
   padding: 0 18px;
-  height: 52px;
+  height: max(52px, 3.25rem);
   border-radius: var(--r-lg);
   background: var(--surface);
   box-shadow: inset 0 0 0 1px var(--line), 0 2px 0 var(--line);
@@ -12761,7 +12826,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  height: 30px;
+  height: max(30px, 1.875rem);
   padding: 0 13px;
   border: 0;
   border-radius: var(--pill);
@@ -12862,18 +12927,18 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  height: 20px;
+  height: max(20px, 1.25rem);
   padding: 0 8px;
   border: 0;
   border-radius: var(--pill);
   background: var(--sunken);
   color: var(--ink-soft);
   font: inherit;
-  font-size: 11px;
+  font-size: 0.6875rem;
   font-weight: 600;
   white-space: nowrap;
 }
-.ptag.big { height: 28px; padding: 0 6px 0 11px; font-size: var(--sm); }
+.ptag.big { height: max(28px, 1.75rem); padding: 0 6px 0 11px; font-size: var(--sm); }
 .ptag.big button {
   width: 20px;
   height: 20px;
@@ -12890,7 +12955,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   from { transform: translateY(-6px) scale(0.92); opacity: 0; }
   to { transform: none; opacity: 1; }
 }
-.ptag.add { height: 26px; padding: 0 10px; cursor: pointer; background: transparent; box-shadow: inset 0 0 0 1px var(--line); }
+.ptag.add { height: max(26px, 1.625rem); padding: 0 10px; cursor: pointer; background: transparent; box-shadow: inset 0 0 0 1px var(--line); }
 .ptag.add:hover { background: var(--surface); color: var(--ink); }
 .pl2 {
   font-size: var(--sm);
@@ -12973,7 +13038,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 .pm-row input {
   flex: 1;
   min-width: 0;
-  height: 36px;
+  height: max(36px, 2.25rem);
   padding: 0 12px;
   border: 0;
   border-radius: var(--r-sm);
@@ -12985,7 +13050,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 }
 .pm-row input:focus { box-shadow: inset 0 0 0 2px var(--accent); }
 .pm-tags { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-.pm-tags .pm-tag-in { flex: 1; min-width: 100px; height: 28px; font-size: var(--sm); }
+.pm-tags .pm-tag-in { flex: 1; min-width: 100px; height: max(28px, 1.75rem); font-size: var(--sm); }
 .pm-sugg { display: flex; flex-wrap: wrap; gap: 6px; margin: -4px 0 0 64px; }
 .pm-pics { flex: 1; display: flex; flex-direction: column; gap: 10px; }
 .pm-glyphs { display: grid; grid-template-columns: repeat(5, 38px); gap: 8px; }
@@ -13026,7 +13091,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 @media (max-width: 640px) {
   .past-sheet { top: 0; bottom: 0; left: 0; transform: none; width: 100vw; border-radius: 0; padding-top: var(--safe-top); animation: none; }
   .past-head { padding: 16px 16px 4px; }
-  .past-find { margin: 8px 16px 0; height: 48px; }
+  .past-find { margin: 8px 16px 0; height: max(48px, 3rem); }
   .past-range { margin: 8px 18px 0; }
   .pchips { margin: 10px 16px 4px; max-width: calc(100% - 32px); }
   .past-list { padding: 4px 16px 24px; }
@@ -13035,6 +13100,9 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   .pacts { opacity: 1; padding: 0 10px 10px 60px; width: 100%; flex-wrap: wrap; row-gap: 4px; } /* D429: a long fix (换到醒着的电脑上跑) wraps, never widens the page */
   .pcard.on, .pcard.open { transform: none; }
   .pmark, .pmenu { left: 8px; right: 8px; width: auto; }
+  /* D451: on the phone the card's buttons wrap under it: the first-time line comes before them. */
+  .pcard > .first-meet { order: 1; margin: 2px 14px 10px 34px; }
+  .pcard > .pacts { order: 2; }
 }
 @media (prefers-reduced-motion: reduce) {
   .past-sheet, .pcard, .pstar.pop, .pstar-btn.on svg, .ptag.drop, .pmenu, .pmark { animation: none; transition: none; }
@@ -13045,7 +13113,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 @media (max-width: 640px) { .pmark { left: 50%; right: auto; width: calc(100vw - 24px); } }
 /* D285: 一直在跑的 / Ongoing beside 做过的事 / Past: the two tabs, a card's runs as pebbles. */
 .past-tabs { display: flex; gap: 4px; margin: 4px 28px 0; padding: 4px; border-radius: var(--pill); background: var(--sunken); align-self: flex-start; }
-.ptab-n { margin-left: 6px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: var(--pill); background: var(--accent); color: var(--on-accent); font-size: 11px; font-weight: 700; display: inline-grid; place-items: center; }
+.ptab-n { margin-left: 6px; min-width: 18px; height: max(18px, 1.125rem); padding: 0 5px; border-radius: var(--pill); background: var(--accent); color: var(--on-accent); font-size: 0.6875rem; font-weight: 700; display: inline-grid; place-items: center; }
 .pcard.og .pacts { opacity: 1; }
 .pcard.og.paused .pt, .pcard.og.paused .og-peb { color: var(--ink-muted); }
 .pcard.og.paused { background: var(--surface-raised); box-shadow: 0 1px 0 var(--line); }
@@ -13082,7 +13150,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 @keyframes og-pulse { 50% { opacity: 0.45; } }
 .og-edit { position: absolute; z-index: 5; top: calc(100% - 6px); right: 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 12px; border-radius: var(--r-md); background: var(--surface); box-shadow: var(--floating), 0 0 0 1px var(--line-soft); }
 .og-seg { display: flex; gap: 4px; padding: 3px; border-radius: var(--pill); background: var(--sunken); }
-.og-edit input[type="time"] { height: 32px; padding: 0 10px; border: 0; border-radius: var(--r-sm); background: var(--sunken); color: var(--ink); font: inherit; }
+.og-edit input[type="time"] { height: max(32px, 2rem); padding: 0 10px; border: 0; border-radius: var(--r-sm); background: var(--sunken); color: var(--ink); font: inherit; }
 .pmenu button.danger { color: var(--failed-ink); }
 @media (max-width: 640px) { .past-tabs { margin: 4px 16px 0; } .og-edit { left: 8px; right: 8px; } }
 @media (prefers-reduced-motion: reduce) { .og-run.running { animation: none; } }
@@ -13448,7 +13516,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 .past-out-hidden { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; margin: 10px 4px 0; font-size: var(--sm); color: var(--ink-muted); }
 .linkish { border: 0; padding: 0; background: none; font: inherit; font-weight: 600; color: var(--ink); cursor: pointer; text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
 .linkish:hover { text-decoration-color: currentColor; }
-.pcard.out .pbr { font-family: var(--mono); font-size: calc(var(--xs) - 1px); color: var(--ink-soft); }
+.pcard.out .pbr { font-family: var(--mono); font-size: calc(var(--xs) - 0.0625rem); color: var(--ink-soft); }
 .pcard.gone .pt { color: var(--ink-soft); }
 .pmenu-k { padding: 6px 10px 2px; font-size: var(--xs); font-weight: 700; color: var(--ink-muted); }
 .tx-divider.earlier { align-self: stretch; width: 100%; margin: 6px 0 10px; }
@@ -13576,7 +13644,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 .key-row input {
   flex: 1 1 auto;
   min-width: 0;
-  height: 40px;
+  height: max(40px, 2.5rem);
   padding: 0 12px;
   border-radius: var(--r-sm);
   border: 1px solid var(--line-soft);
@@ -13646,8 +13714,8 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   line-height: 1.45;
 }
 .key-route-n {
-  flex: 0 0 20px;
-  height: 20px;
+  flex: 0 0 max(20px, 1.25rem);
+  height: max(20px, 1.25rem);
   border-radius: 50%;
   background: var(--surface);
   color: var(--ink-soft);
@@ -13690,7 +13758,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 .did-empty p { margin: 4px 0 0; max-width: 26em; font-family: var(--head); font-size: var(--md); font-weight: 600; color: var(--ink); line-height: var(--lh-read); }
 .did-facts.center { justify-content: center; }
 @keyframes did-breathe { 50% { transform: translateY(-2px); } }
-.pchip .did-n { min-width: 18px; padding: 0 5px; border-radius: var(--pill); background: var(--sunken); color: var(--ink-muted); font-size: 11px; font-weight: 700; text-align: center; }
+.pchip .did-n { min-width: 18px; padding: 0 5px; border-radius: var(--pill); background: var(--sunken); color: var(--ink-muted); font-size: 0.6875rem; font-weight: 700; text-align: center; }
 .pchip.on .did-n { background: var(--bg); color: var(--ink); }
 .did-foot { display: flex; flex-direction: column; align-items: center; gap: 2px; margin-top: 8px; }
 .did-coverage { margin: 0 auto; max-width: 34em; text-align: center; font-size: var(--xs); color: var(--ink-muted); line-height: var(--lh-read); }
@@ -13878,7 +13946,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   flex: 1;
 }
 .other-ask .who {
-  font-size: 0.8125rem;
+  font-size: 0.76171875rem; /* 0.8125rem over the old 15px root (D452) */
   color: var(--ink-soft);
 }
 .other-ask .q {
@@ -14009,7 +14077,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 
 /* Choices: the answers to tap, under the question; once the conversation moves on they stay as a record. */
 .rich-choices { display: flex; flex-wrap: wrap; gap: var(--s2); padding: 4px 0 6px; }
-.rich-choices .rich-chip { border-radius: var(--pill); height: 38px; padding: 0 16px; font-size: var(--md); }
+.rich-choices .rich-chip { border-radius: var(--pill); height: max(38px, 2.375rem); padding: 0 16px; font-size: var(--md); }
 .rich-choices.past .rich-chip:not(.picked) { opacity: 0.5; }
 .rich-choices.past .rich-chip { cursor: default; }
 .rich-choices.past .rich-chip.picked { opacity: 1; }
@@ -14086,7 +14154,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 .learned-ask { margin: 0; line-height: var(--lh-read); }
 .learned-ok { display: inline-flex; align-items: center; gap: 4px; color: var(--done-ink); }
 .learned-fix { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
-.learned-fix input { width: 100%; box-sizing: border-box; height: 40px; padding: 0 12px; border: 0; border-radius: var(--r-md); background: var(--bg); color: var(--ink); font: inherit; box-shadow: inset 0 0 0 1px var(--line); }
+.learned-fix input { width: 100%; box-sizing: border-box; height: max(40px, 2.5rem); padding: 0 12px; border: 0; border-radius: var(--r-md); background: var(--bg); color: var(--ink); font: inherit; box-shadow: inset 0 0 0 1px var(--line); }
 .learned-fix input:focus { outline: none; box-shadow: inset 0 0 0 2px var(--accent); }
 @media (max-width: 640px) {
   .recall-sheet, .learned-sheet { top: auto; bottom: 0; left: 0; transform: none; width: 100vw; max-height: 88vh; border-radius: var(--r-xl) var(--r-xl) 0 0; padding-bottom: var(--safe-bottom, 0px); animation-name: recall-up; }
@@ -14483,7 +14551,7 @@ svg .wave.w2.on {
 .bench-toggle::before { inset: -2px; }
 /* The chips of Past tasks and Done for you sit in a track that scrolls sideways, which clips any
    box outside it: they grow to 36 (the lens chips' height), the track to 44. A visible change. */
-.pchip { height: 36px; }
+.pchip { height: max(36px, 2.25rem); }
 /* Done for you: a card whose last row holds only buttons (no "until" note) needs no band of its
    own; the buttons sit right under the card's facts. */
 @media (max-width: 640px) {
@@ -14512,13 +14580,13 @@ svg .wave.w2.on {
 .mem-item.open { background: var(--surface-sunken); }
 .mem-item b { overflow-wrap: anywhere; }
 .mem-item-acts { min-height: 52px; background: var(--surface-sunken); }
-.g-block .mem-fix { width: 100%; box-sizing: border-box; height: 40px; padding: 0 12px; border: 0; border-radius: var(--r-md); background: var(--bg); color: var(--ink); font: inherit; box-shadow: inset 0 0 0 1px var(--line); }
+.g-block .mem-fix { width: 100%; box-sizing: border-box; height: max(40px, 2.5rem); padding: 0 12px; border: 0; border-radius: var(--r-md); background: var(--bg); color: var(--ink); font: inherit; box-shadow: inset 0 0 0 1px var(--line); }
 .g-block .mem-fix:focus { outline: none; box-shadow: inset 0 0 0 2px var(--accent); }
 .g-block .g-acts { display: flex; justify-content: flex-end; gap: var(--s2); }
 .g-cap { padding: var(--s3) var(--set-in, var(--s4)) 0; font-size: var(--xs); font-weight: 700; letter-spacing: 0.04em; color: var(--ink-muted); }
 .mem-find { display: flex; align-items: center; gap: var(--s2); margin: 0; min-height: 44px; padding: 0 var(--s2) 0 var(--s3); border-radius: var(--r-md); background: var(--surface); box-shadow: inset 0 0 0 1px var(--line), 0 2px 0 var(--line); }
 .mem-find:focus-within { box-shadow: inset 0 0 0 2px var(--accent), 0 2px 0 var(--line); }
-.mem-find input { flex: 1; min-width: 0; height: 44px; border: 0; background: none; color: var(--ink); font: inherit; font-size: var(--md); }
+.mem-find input { flex: 1; min-width: 0; height: max(44px, 2.75rem); border: 0; background: none; color: var(--ink); font: inherit; font-size: var(--md); }
 .mem-find input:focus { outline: none; }
 .mem-find input::-webkit-search-cancel-button { display: none; }
 .mem-find-mark { flex: none; width: 16px; height: 16px; color: var(--ink-muted); }
@@ -14573,7 +14641,7 @@ svg .wave.w2.on {
 }
 @media (pointer: coarse) {
   .set-item.app-row .btn {
-    height: 44px;
+    height: max(44px, calc((1.2em + 26px) * var(--grow, 1)));
   }
 }
 .set-item .pick {
@@ -14748,7 +14816,7 @@ svg .wave.w2.on {
   min-height: 0;
 }
 .todo-filters .todo-filter {
-  flex: 1 1 14rem;
+  flex: 1 1 13.125rem;
   min-width: 0;
 }
 .todo-pick-btn {
@@ -15382,7 +15450,7 @@ svg .wave.w2.on {
 }
 .onhand-list .todo-fold .todo-find {
   flex: none;
-  height: 44px;
+  height: max(44px, 2.75rem);
 }
 .todo-chips {
   display: flex;
@@ -15395,7 +15463,7 @@ svg .wave.w2.on {
   max-width: 100%;
 }
 .todo-chips .todo-chip {
-  height: 36px;
+  height: max(36px, 2.25rem);
   position: relative;
 }
 .todo-chips .todo-chip::before {
@@ -15553,7 +15621,7 @@ svg .wave.w2.on {
   color: var(--ink);
 }
 .pile-count.clear {
-  font-size: 22px;
+  font-size: 1.375rem;
   font-weight: 700;
 }
 .pile-unit {
@@ -15565,10 +15633,10 @@ svg .wave.w2.on {
   position: relative;
   display: inline-grid;
   overflow: hidden;
-  height: 40px;
-  font-size: 34px;
+  height: 2.5rem;
+  font-size: 2.125rem;
   font-weight: 800;
-  line-height: 40px;
+  line-height: 2.5rem;
   font-variant-numeric: tabular-nums;
 }
 .pile-n > span {
@@ -15956,9 +16024,9 @@ svg .wave.w2.on {
     top: 38px;
   }
   .pile-n {
-    height: 34px;
-    font-size: 28px;
-    line-height: 34px;
+    height: 2.125rem;
+    font-size: 1.75rem;
+    line-height: 2.125rem;
   }
   .pile-row .btn,
   .pile-row-gap {
@@ -16001,7 +16069,7 @@ svg .wave.w2.on {
 .ag-coin { position: relative; display: inline-flex; flex: none; }
 .ag-coin .cring { position: absolute; inset: -3px; border-radius: 50%; border: 2.5px solid transparent; border-top-color: var(--accent); animation: dc-spin 1.1s linear infinite; }
 .ag-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
-.ag-t b { font-size: 15px; }
+.ag-t b { font-size: 0.9375rem; }
 .ag-t small { font-size: var(--xs); color: var(--ink-muted); }
 .ag-t small.ok, .ag-login .ok { color: var(--done-ink); }
 .ag-t small.warn, .ag-login .warn, .ag-answer.warn { color: var(--failed-ink); }
@@ -16012,7 +16080,7 @@ svg .wave.w2.on {
 .ag-login .soft { color: var(--ink-muted); }
 .ag-link { font-size: var(--xs); color: var(--accent-ink, var(--accent)); overflow-wrap: anywhere; word-break: break-all; }
 .ag-code { display: flex; align-items: center; gap: var(--s3); }
-.ag-code code { font-family: var(--mono); font-size: 22px; font-weight: 700; letter-spacing: 0.08em; color: var(--ink); }
+.ag-code code { font-family: var(--mono); font-size: 1.375rem; font-weight: 700; letter-spacing: 0.08em; color: var(--ink); }
 .ag-paste { display: flex; gap: var(--s2); }
 .ag-paste .dev-input { flex: 1; min-width: 0; min-height: 40px; }
 .ag-acts { display: flex; flex-wrap: wrap; gap: var(--s2); }
@@ -16067,7 +16135,7 @@ svg .wave.w2.on {
 .bulk .gname-input {
   min-width: 0;
   flex: 1;
-  height: 28px;
+  height: max(28px, 1.75rem);
   padding: 0 8px;
   border: 1px solid var(--line);
   border-radius: var(--r-sm);
@@ -16235,7 +16303,7 @@ svg .wave.w2.on {
   font: inherit;
   font-size: var(--sm);
   font-weight: 600;
-  line-height: 20px;
+  line-height: 1.25rem;
   color: var(--ink);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -16410,7 +16478,7 @@ textarea.wmem-paste { display: block; box-sizing: border-box; height: auto; widt
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  height: 28px;
+  height: max(28px, 1.75rem);
   padding: 0 9px 0 7px;
   border: 0;
   border-radius: var(--pill);
@@ -16549,14 +16617,14 @@ textarea.wmem-paste { display: block; box-sizing: border-box; height: auto; widt
   display: inline-grid;
   place-items: center;
   min-width: 22px;
-  height: 20px;
+  height: max(20px, 1.25rem);
   padding: 0 6px;
   border-radius: var(--r-sm);
   background: var(--sunken);
   box-shadow: inset 0 -1px 0 var(--line);
   color: var(--ink-muted);
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: 0.6875rem;
   font-weight: 600;
   white-space: nowrap;
 }
@@ -16592,7 +16660,7 @@ textarea.wmem-paste { display: block; box-sizing: border-box; height: auto; widt
 .palette .k-l2.hit b { margin-right: 6px; font-weight: 700; color: var(--ink-muted); }
 .palette .k-l2 mark, .palette .k-l1 mark { background: var(--highlight); color: var(--highlight-ink); border-radius: 4px; padding: 0 2px; }
 .palette .k-facts { font-size: var(--xs); color: var(--ink-muted); }
-.palette .k-mono, .pv-mono { font-family: var(--mono); font-size: calc(var(--xs) - 0.5px); }
+.palette .k-mono, .pv-mono { font-family: var(--mono); font-size: calc(var(--xs) - 0.03125rem); }
 .palette .k-row.k-tell .t, .palette .k-row.k-new .t { font-weight: 600; color: var(--ink-soft); }
 .palette .k-row.on.k-tell .t, .palette .k-row.on.k-new .t { color: var(--ink); }
 .palette .k-looking { margin: 10px 16px; font-size: var(--sm); color: var(--ink-muted); }
@@ -16608,7 +16676,7 @@ textarea.wmem-paste { display: block; box-sizing: border-box; height: auto; widt
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  height: 30px;
+  height: max(30px, 1.875rem);
   padding: 0 6px 0 12px;
   border: 0;
   border-radius: var(--pill);
@@ -16657,12 +16725,12 @@ textarea.wmem-paste { display: block; box-sizing: border-box; height: auto; widt
 .pv.empty { display: grid; place-items: center; color: var(--ink-muted); font-size: var(--sm); padding: 24px; text-align: center; }
 .pv-scroll { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 20px 22px 12px; }
 .pv-kicker { margin: 0 0 6px; font-size: var(--xs); font-weight: 700; letter-spacing: 0.02em; color: var(--ink-muted); }
-.pv-name { margin: 0; font-family: var(--head); font-size: 19px; font-weight: 700; line-height: 1.3; color: var(--ink); overflow-wrap: anywhere; }
+.pv-name { margin: 0; font-family: var(--head); font-size: 1.1875rem; font-weight: 700; line-height: 1.3; color: var(--ink); overflow-wrap: anywhere; }
 .pv-facts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
 .pv-facts > span {
   display: inline-flex;
   align-items: center;
-  height: 24px;
+  height: max(24px, 1.5rem);
   padding: 0 10px;
   border-radius: var(--pill);
   background: var(--sunken);
@@ -16690,15 +16758,15 @@ textarea.wmem-paste { display: block; box-sizing: border-box; height: auto; widt
 .pv-step:not(:last-child)::before { content: ""; position: absolute; left: 11px; top: 32px; bottom: 2px; width: 2px; border-radius: 1px; background: var(--line-soft); }
 .pv-n {
   flex: none;
-  width: 24px;
-  height: 24px;
+  width: max(24px, 1.5rem);
+  height: max(24px, 1.5rem);
   display: inline-grid;
   place-items: center;
   border-radius: 50%;
   background: var(--sunken);
   box-shadow: inset 0 -1px 0 var(--line);
   color: var(--ink-soft);
-  font-size: 11px;
+  font-size: 0.6875rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
@@ -16706,7 +16774,7 @@ textarea.wmem-paste { display: block; box-sizing: border-box; height: auto; widt
 .pv-shead { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px; font-size: var(--xs); }
 .pv-shead b { font-weight: 700; color: var(--ink); }
 .pv-who { color: var(--ink-muted); font-weight: 600; }
-.pv-commit { font-family: var(--mono); font-size: 11px; padding: 0 6px; border-radius: var(--r-sm); background: var(--sunken); color: var(--ink-soft); }
+.pv-commit { font-family: var(--mono); font-size: 0.6875rem; padding: 0 6px; border-radius: var(--r-sm); background: var(--sunken); color: var(--ink-soft); }
 .pv-said {
   margin: 0;
   font-size: var(--sm);
@@ -16728,7 +16796,7 @@ textarea.wmem-paste { display: block; box-sizing: border-box; height: auto; widt
   align-items: center;
   gap: 5px;
   margin-top: 4px;
-  height: 26px;
+  height: max(26px, 1.625rem);
   padding: 0 10px;
   border: 0;
   border-radius: var(--pill);
@@ -16765,7 +16833,7 @@ textarea.wmem-paste { display: block; box-sizing: border-box; height: auto; widt
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  height: 44px;
+  height: max(44px, 2.75rem);
   padding: 0 12px 0 6px;
   border: 0;
   background: transparent;
@@ -16796,7 +16864,7 @@ textarea.wmem-paste { display: block; box-sizing: border-box; height: auto; widt
 }
 .redo-head { display: flex; align-items: flex-start; gap: 12px; padding: 20px 20px 8px 22px; }
 .redo-head .grow { flex: 1; min-width: 0; }
-.redo-head h2 { margin: 0; font-family: var(--head); font-size: 20px; font-weight: 700; }
+.redo-head h2 { margin: 0; font-family: var(--head); font-size: 1.25rem; font-weight: 700; }
 .redo-of { margin: 4px 0 0; font-size: var(--sm); color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .redo-mark { flex: none; width: 36px; height: 36px; display: inline-grid; place-items: center; border-radius: 38%; background: var(--surface); box-shadow: 0 2px 0 var(--line); color: var(--ink-soft); }
 .redo-mark svg { width: 18px; height: 18px; }
@@ -17126,7 +17194,7 @@ a.pr:hover { box-shadow: inset 0 0 0 1px var(--line-2); }
 .ho-reading > small { padding: 0 4px 0 2px; font-size: var(--sm); color: var(--ink-muted); }
 .ho-fact { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; max-width: 100%; padding: 0 6px 0 12px; border: 0; border-radius: var(--pill); background: var(--sunken); color: var(--ink); font: inherit; font-size: var(--sm); font-weight: 650; cursor: pointer; transition: background 140ms var(--ease), box-shadow 140ms var(--ease); animation: ho-settle 240ms var(--ease) both; animation-delay: calc(var(--i, 0) * 30ms); }
 .ho-fact > span:first-child { min-width: 0; overflow-wrap: anywhere; }
-.ho-fact .x { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; color: var(--ink-muted); font-weight: 500; line-height: 1; }
+.ho-fact .x { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; color: var(--ink-muted); font-weight: 500; line-height: 1; font-size: min(1em, 16px); }
 .ho-fact:hover { background: var(--surface); box-shadow: inset 0 0 0 1px var(--line-2); }
 .ho-fact:hover .x { background: var(--sunken); color: var(--ink); }
 .ho-fact.k-about { background: none; box-shadow: inset 0 0 0 1.5px var(--line-2); }
@@ -17239,7 +17307,7 @@ a.pr:hover { box-shadow: inset 0 0 0 1px var(--line-2); }
 .app-ask {
   flex: 1;
   min-width: 0;
-  height: 44px;
+  height: max(44px, 2.75rem);
   box-sizing: border-box;
   padding: 0 14px;
   border: 0;
@@ -17333,7 +17401,7 @@ a.pr:hover { box-shadow: inset 0 0 0 1px var(--line-2); }
 .app-face.ghost { width: 44px; height: 44px; border-radius: 14px; opacity: 0.85; }
 
 .apps-shelf { width: min(860px, calc(100vw - 32px)); }
-.shelf-head h2 { font-size: 24px; }
+.shelf-head h2 { font-size: 1.5rem; }
 .shelf-sub { margin: 2px 28px 0; font-size: var(--sm); color: var(--ink-muted); }
 .shelf-body { flex: 1; min-height: 0; overflow-y: auto; padding: 18px 28px 28px; }
 .shelf-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
@@ -17368,12 +17436,12 @@ a.pr:hover { box-shadow: inset 0 0 0 1px var(--line-2); }
 .shelf-line.says { color: var(--ink-soft); font-weight: 700; font-variant-numeric: tabular-nums; }
 .shelf-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin-top: 2px; font-size: var(--xs); color: var(--ink-muted); }
 .shelf-pin { padding: 1px 8px; border-radius: 999px; background: var(--sunken); color: var(--ink-soft); font-weight: 700; }
-.shelf-more { position: absolute; top: 14px; right: 12px; height: 30px; min-width: 30px; }
+.shelf-more { position: absolute; top: 14px; right: 12px; height: max(30px, 1.875rem); min-width: 30px; }
 .shelf-tile .pmenu { top: 46px; right: 8px; }
 .app-rename {
   width: 100%;
   min-width: 0;
-  height: 40px;
+  height: max(40px, 2.5rem);
   padding: 0 12px;
   border: 0;
   border-radius: var(--r-sm);
@@ -17386,7 +17454,7 @@ a.pr:hover { box-shadow: inset 0 0 0 1px var(--line-2); }
   box-shadow: inset 0 0 0 2px var(--accent);
   outline: 0;
 }
-.app-head .app-rename { font-size: 20px; max-width: 420px; }
+.app-head .app-rename { font-size: 1.25rem; max-width: 420px; }
 .app-more { position: relative; flex: none; }
 .app-more .pmenu { top: 34px; right: -4px; }
 .app-menu .danger-text { height: auto; text-align: left; color: var(--failed-ink); font-weight: 700; }
@@ -17458,7 +17526,7 @@ a.pr:hover { box-shadow: inset 0 0 0 1px var(--line-2); }
   align-items: center;
   gap: 8px;
   max-width: 320px;
-  height: 34px;
+  height: max(34px, 2.125rem);
   padding: 0 12px 0 6px;
   border: 0;
   border-radius: 999px;
@@ -17703,7 +17771,7 @@ a.pr:hover { box-shadow: inset 0 0 0 1px var(--line-2); }
 }
 .asked .ask-words {
   font-size: var(--sm);
-  line-height: 20px;
+  line-height: 1.25rem;
   font-weight: 600;
   overflow-wrap: anywhere;
 }
@@ -17712,7 +17780,7 @@ a.pr:hover { box-shadow: inset 0 0 0 1px var(--line-2); }
 }
 .asked .ask-note {
   font-size: var(--xs);
-  line-height: 17px;
+  line-height: 1.0625rem;
   color: var(--ink-muted);
   overflow-wrap: anywhere;
 }
@@ -17724,7 +17792,7 @@ a.pr:hover { box-shadow: inset 0 0 0 1px var(--line-2); }
   flex: none;
   align-self: center;
   font-size: var(--xs);
-  line-height: 17px;
+  line-height: 1.0625rem;
   color: var(--ink-muted);
   opacity: 0;
   max-width: 0;
@@ -17806,7 +17874,7 @@ a.pr:hover { box-shadow: inset 0 0 0 1px var(--line-2); }
 .asked .asks-count {
   padding: 2px 10px 4px 34px;
   font-size: var(--xs);
-  line-height: 17px;
+  line-height: 1.0625rem;
   color: var(--ink-muted);
   font-variant-numeric: tabular-nums;
 }
@@ -18019,7 +18087,7 @@ a.pr:hover { box-shadow: inset 0 0 0 1px var(--line-2); }
     align-items: center;
   }
   .talk-words p {
-    font-size: 20px;
+    font-size: 1.25rem;
   }
   .talk-card .btns .btn {
     flex: 1;
@@ -18143,4 +18211,26 @@ a.pr:hover { box-shadow: inset 0 0 0 1px var(--line-2); }
   /* Clipped by its own ellipsis, so it grows by padding instead (nothing moves). */
   .tgroup .gtitle { padding-block: 12px; margin-block: -12px; }
   .asked .ask-row { min-height: 44px; }
+}
+
+/* D452: at the largest text sizes (1.6x and up, `html[data-text-size="large"]`, set by text-scale.ts),
+   a row that puts words beside a button lets the button go under the words instead of squeezing them
+   into a narrow column; the mark stays beside them. Never applies at the default size. */
+html[data-text-size="large"] :is(.partner-head, .chat-head, .app-card) {
+  flex-wrap: wrap;
+}
+html[data-text-size="large"] :is(.partner-head > .grow, .chat-head > .grow, .app-card > .app-body) {
+  flex: 1 1 calc(100% - 96px);
+  white-space: normal;
+}
+/* A brand's mark keeps to the middle of its chip's line rather than sinking to the bottom of a tall one. */
+html[data-text-size="large"] .brand-mark {
+  display: inline-flex;
+  align-items: center;
+  line-height: 0;
+}
+html[data-text-size="large"] .brand-mark > svg {
+  display: block;
+  width: 100%;
+  height: 100%;
 }

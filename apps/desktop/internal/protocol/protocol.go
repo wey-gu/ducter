@@ -1620,6 +1620,9 @@ type Settings struct {
 	// LimitHandoff (D297): hand a task to another agent right away when a
 	// usage limit runs out (chosen on the task's limit card).
 	LimitHandoff bool `json:"limitHandoff,omitempty"`
+	// Met are the first-time lines already met on any device (D451); nil
+	// from a home too old to keep them (then none is ever shown).
+	Met []string `json:"met"`
 }
 
 // SettingsPatch is a change to some settings. Quiet is sent as given, so
@@ -1638,6 +1641,8 @@ type SettingsPatch struct {
 	Proactive       string                 `json:"proactive,omitempty"`
 	Peers           *Peers                 `json:"peers,omitempty"`
 	LimitHandoff    *bool                  `json:"limitHandoff,omitempty"`
+	// Met adds first-time lines met here (D451); never removes.
+	Met []string `json:"met,omitempty"`
 }
 
 // Peers is the partner's link with the person's own agents (D332, one

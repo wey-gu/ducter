@@ -5,7 +5,7 @@
 import { chmodSync, existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Bodies, MemItem, MemView, PeersSettings, QuietHours, Settings, SettingsPatch, TalkLanguage } from "@ducter/protocol";
-import { DEFAULT_AFTER_CHOICES, DEFAULT_PROACTIVE, HARNESSES, PROACTIVE_MODES, isHarnessId, normalizeTag, type Brain, type HarnessId, type ProactiveMode } from "@ducter/protocol";
+import { FIRST_MEETS, isFirstMeet, DEFAULT_AFTER_CHOICES, DEFAULT_PROACTIVE, HARNESSES, PROACTIVE_MODES, isHarnessId, normalizeTag, type Brain, type HarnessId, type ProactiveMode } from "@ducter/protocol";
 import type { LogStore, MemIdentity, SettingsApi } from "@ducter/protocol/src/internal.ts";
 import { resolveWindows, type WindowsInput } from "@ducter/protocol/src/harness-facts.ts";
 import type { PushStore } from "./push.ts";
@@ -51,6 +51,8 @@ interface SettingsFile {
   limitHandoff?: boolean;
   /** D298: false after 别再看了 / Stop looking: the first words never read the person's own agents' records. */
   localAgents?: boolean;
+  /** D451: the first-time lines already met, on any device. */
+  met?: string[];
 }
 
 /** A list of agent names as kept: trimmed, one line, at most 80 characters, 50 names, no repeats. */
@@ -165,6 +167,8 @@ export function openSettings(opts: {
       windows: windowsNow().windows,
       autoUpdate: data.autoUpdate === true,
       ...(data.limitHandoff ? { limitHandoff: true } : {}),
+      // D451: always sent (a client reads its absence as a home too old to keep it).
+      met: FIRST_MEETS.filter((m) => data.met?.includes(m)),
       // D250: never chosen is the default (proactive with a morning note), said as such.
       ...(data.proactive ? { proactive: data.proactive, ...(data.proactiveBy ? { proactiveBy: data.proactiveBy } : {}) } : { proactive: DEFAULT_PROACTIVE, proactiveBy: "default" as const }),
       // D332: one switch; a stored "team" (D170) reads as on. D334: 答应 per sender.
@@ -344,6 +348,12 @@ export function openSettings(opts: {
         (data.proactive = patch.proactive), (data.proactiveBy = "chosen"), did.push("proactive");
       if (typeof patch.autoUpdate === "boolean" && (data.autoUpdate === true) !== patch.autoUpdate) (data.autoUpdate = patch.autoUpdate), did.push("autoUpdate");
       if (typeof patch.limitHandoff === "boolean" && (data.limitHandoff === true) !== patch.limitHandoff) (data.limitHandoff = patch.limitHandoff), did.push("limitHandoff");
+      // D451: names are added, never removed by a patch; an empty list starts them all over.
+      if (Array.isArray(patch.met)) {
+        const had = data.met ?? [];
+        const next = patch.met.length ? [...new Set([...had, ...patch.met.filter(isFirstMeet)])] : [];
+        if (next.length !== had.length) (data.met = next), did.push("met");
+      }
       if (setPeers(patch.peers as Partial<PeersSettings> | undefined)) did.push("peers");
       if (typeof patch.defaultAfterMin === "number" && (DEFAULT_AFTER_CHOICES as readonly number[]).includes(patch.defaultAfterMin)) {
         if ((data.defaultAfterMin ?? 30) !== patch.defaultAfterMin) (data.defaultAfterMin = patch.defaultAfterMin), did.push("defaultAfterMin");

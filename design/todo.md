@@ -996,8 +996,10 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
       recall for the gist). Trigger: the author or a user scrolling for something said last week.
 - [x] **Dynamic Type on the phone:** the web client sets its sizes in px; follow iOS's text size
       in the iPhone app. Done as D447: the app sets the page's text-size-adjust from the system's
-      size (100–135%). Still owed: the scale tokens in rem, so the accessibility sizes past 135% grow
-      too (fixed-height pills first); the Android app's font scale.
+      size (100–135%). D452 finished it: the type scale is in rem and the app sets the root from
+      iOS's size across the whole range (to x3.12). Still owed: the Android app's font scale
+      (whether its WebView's textZoom already follows it, and the root from it if not; checked on an
+      emulator). Trigger: the next Android build.
 - [ ] **The time on hover on the Mac** (the web's menu has it; the Mac's right-click menu cannot
       show a disabled line yet). Trigger: MyGo's menu gains a header item, or a reader asks.
 - [ ] **The draft across devices:** kept per device today; a draft started on the phone and
@@ -2390,8 +2392,14 @@ Codex first, once OAR is near 1.0. See `research/17`.
   morning note over an exported mailbox on the author's machine, nothing kept. Trigger: the author's go.
 - **#3 晚点再说 / Later for what needs you:** tonight, tomorrow morning, Monday; back inside the next
   morning note, never a ping of its own. Trigger: next in line after D381.
-- **#8 A feature's first meeting:** one page of three small moving cards, the first time a person
-  walks into a place themselves, once per device. Trigger: a design pass with the metaphor rubric.
+- **#8 A feature's first meeting:** done as D451's one line under the thing (research/196), not a
+  page of cards. Left from it: the Mac's first-result celebration is a tinted notice above the
+  composer, Mac only (it belongs under the first result, on every client); D449's once-said line
+  comes after the partner's words, not under the unlooked result; hold to talk's Not now marks it
+  asked on the web but not the Mac; no control to see the lines again (an empty `met` starts them
+  over); On hand's folds, Past tasks' marks and Done for you checked against "can it say what it is
+  for"; real people reading the four lines (the raters were LLM proxies). Trigger: the next
+  capability that can't explain itself, or the author's review of the four lines.
 - **Choices in chat apps as buttons** (Telegram inline keyboard, Slack buttons) instead of typed
   lines. Trigger: the first real use of choices in a chat app.
 - **The iPhone and Android apps' own views** draw the web's blocks inside the web client; a native
@@ -2653,6 +2661,6 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] **Drive the Simulator for the rest**: talk hands-free with a real recognizer, the live view of a
   checkout, the document card with its printed pages, the long-press menu (todo D254) and a sheet's field
   with the keyboard up, in the app. D447 saw them in Playwright's WebKit only. Trigger: the next iPhone build.
-- [ ] **Fixed heights elsewhere** at a larger text size: D447 fixed the ones on its surfaces (On hand's
-  strip, Your devices' rows); a sweep of `height: Npx` on rows that hold words is owed. Trigger: the next
-  phone-UI pass.
+- [x] **Fixed heights elsewhere** at a larger text size: D447 fixed the ones on its surfaces (On hand's
+  strip, Your devices' rows); D452 swept `height: Npx` on the buttons, pills, chips, fields and rows that
+  hold words (`height: max(Npx, rem)`) and the two lists whose row height is in code.

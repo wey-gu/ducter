@@ -15,6 +15,7 @@ import { harnessName } from "./format.ts";
 import { TS } from "./todos.tsx";
 import { foundLine, readingChips, handState, oneRepoOf, planSections, planTasks, refLabel, refsLabel, reviewKeep, sections, setTicks, shapeChoices, shapeLine, suggestedShape, type ShapeChoice } from "./handover-view.ts";
 import type { DecisionState } from "./store.ts";
+import { FirstMeetLine, meet } from "./first-meet.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 const name = () => A.S.personaName;
@@ -517,6 +518,7 @@ function FoundHead() {
 
 /** D428: a chip of the reading removed: found again without it. */
 function dropChip(key: string) {
+  meet("find"); // D451: a chip dropped is the line understood
   HS.drop = [...new Set([...(HS.drop ?? []), key])];
   find(HS.words, true, true);
 }
@@ -558,6 +560,8 @@ function Heard() {
           )}
         </div>
       )}
+      {/* D451: the first time a sentence is read into chips, what they are and that a tap drops one. */}
+      {chips.length > 0 && !HS.drop?.length && <FirstMeetLine name="find" at="handover" />}
       {unknown.map((u) => (
         <div key={u.said} class="ho-unknown" role="alert">
           <span dir="auto">{t("ho.unknown", u.said)}</span>

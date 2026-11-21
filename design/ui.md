@@ -80,6 +80,7 @@ components and tokens; a value not in the scales below needs a token first.
 | radius | 8 · 12 · 14 · 16 · 18 · 24 · 28 | inline code, diff boxes · small buttons, fields · buttons · sheets, notices · large buttons · cards · hero cards, the composer |
 | controls | 36 · 44 · 52 | chrome and inline lines · cards and the conversation · setup screens and the equip |
 | touch | 44 tall, always (D311) | anything smaller than 44 that a finger taps keeps its look and gets an invisible box (`::before`) 44 tall, where the space around it allows; a track that scrolls sideways clips it, so its chips grow instead (Past tasks' and Done for you's chips 36 in a 44 track) |
+| text size (D452) | the web client's type is in rem over a 16px root: the numbers above at the default size, all of them times the person's text size (the browser's font size; in the iPhone app `--text-scale`, iOS's body size over 17, from 1 up to 3.12 at the largest accessibility size) | spacing, radii, art and icons stay in px; a control that holds words is `height: max(Npx, N/16 rem)` (the same at the default size and under every rule that overrides it, taller as the text grows), never a bare px height; a list whose rows are one height in code (the locator, the files tree) multiplies its row by the root's size (`text-scale.ts`); words drawn inside a picture (the clay phone miniature, the calendar badge, a glyph in a fixed circle) stay px |
 | chips | 24 · 28 · 32 (`ChipSM/Chip/ChipLG`) | a state tag · evidence and metadata · a task in the conversation |
 | motion | press 70 ms · hover/lift `Snappy` · enter 220 ms (6-pt rise + fade: a Settings panel, a notice) · moving between views by D290's vocabulary (below) · `Bouncy` for the living message and the equip | reduced motion: no movement, colors still change |
 
@@ -592,6 +593,19 @@ another pill. Good news (a loop back on time) is said once in `ink-soft`, not in
 A row's hover is `surface-sunken` on both clients, whatever the row's state. A receipt's label sits
 on its value's baseline (`pay-facts`, the Mac's checkout facts), and a list inside it keeps the
 value column's edge. Before/after: `.shots/deslop/`.
+
+### The first time (D451)
+
+A thing that can't say what it is for (a loop Ducter keeps, chips read from a sentence, another AI's
+look, the page check) meets the person once with **one line under it**: the partner's clay face at
+18, held still, then one sentence in its first person in `ink-soft` at 500, on the thing's text edge
+(`.first-meet` on the web, `firstMeetLine` on the Mac). It rises in 3 px over 320 ms and the face
+nods once; reduced motion: neither. Only the first such thing on a screen carries it; read (1.5 s
+on screen, or the person acts on the thing) it is met on the home (`settings.met`) and never shows
+again on any device, though it stays where it is for that page's life. Never a tour, sheet, pill,
+badge, sparkle, arrow, ring or button. Consent cards (hold to talk, talk hands-free), states (no key
+yet) and promises said every time (the checkout's) are not this pattern. Names and words:
+`packages/protocol/src/first-meet.ts`, `research/196`. Shots: `.shots/first-meet/`.
 
 ## Places (D71)
 

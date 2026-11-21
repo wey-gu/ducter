@@ -391,6 +391,11 @@ export interface Bodies {
     // D165: a find's one next step. Clients render it inside its note (not as a card of its own);
     // On hand lists it like any ask. Never pushed on its own: the note is the one notification.
     findId?: string;
+    // D453: an offer, not an ask: a find said quietly (the morning note, a fold-in) or the to-dos
+    // Ducter can clear today. It never needs the person: no client counts it as needs-you or lists
+    // it on On hand, in the mini window, the menu bar or the talk's cards; it has no Hold (letting
+    // it be is the hold) and fades on its own at the next morning (resolved hold by default).
+    offer?: boolean;
     // D403: the find's reply is already written: anywhere but its card (On hand, a chat app) the
     // card shows its first line and 看草稿 / See the draft (goLabel), which opens the card in the
     // conversation; never a Send there. A Go without the words never sends.

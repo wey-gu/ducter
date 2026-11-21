@@ -1,5 +1,6 @@
-// D165 step 6: learning. 有用 / 这类不用告诉我 (a Rule, removable), Go/Hold/silence per kind, the
-// 3-unread pause and 早上那条还要吗？, and the month's budget.
+// D165 step 6, D453: learning with no effort of the person's. 有用 / 这类不用告诉我 (a Rule, removable),
+// Go / 有用 / a reply raise a kind's weight, Hold and silence lower it a little (never to silence),
+// nothing pauses for unread notes, and the month's budget.
 import { afterEach, expect, test } from "bun:test";
 import type { Bodies } from "@ducter/protocol";
 import { rig, type Rig } from "./proactive-rig.ts";
@@ -38,62 +39,86 @@ test("这类不用告诉我 becomes a Rule worded in the kind and the sender; th
   expect(r.notes().flatMap((e) => e.body.finds).filter((f) => f.kind === "deadline")).toHaveLength(2);
 });
 
-test("有用 lowers that kind's bar; three ignored in 14 days raise it", async () => {
+type Learned = { bars: Record<string, number>; weights?: { kind: Record<string, number>; sender: Record<string, number> }; paused?: boolean };
+
+test("D453: Go, 有用 and a reply raise a kind's weight; Hold on an offer lowers it a little; nothing gates an offer by what was learned", async () => {
   const r = make({ mode: "useful" });
   const n = await firstMorning(r);
+  const st = () => JSON.parse(require("node:fs").readFileSync(require("node:path").join(r.dir, "proactive.json"), "utf8")) as Learned;
   const lina = n.finds.find((f) => f.kind === "waiting_on_you")!;
   r.p.react(lina.findId, "useful");
   expect(r.states().at(-1)).toMatchObject({ state: "useful" });
-  const st = () => JSON.parse(require("node:fs").readFileSync(require("node:path").join(r.dir, "proactive.json"), "utf8")) as { bars: Record<string, number> };
-  expect(st().bars.waiting_on_you).toBe(45);
-  // Hold three money finds in a row: that kind's bar goes up.
+  expect(st().weights!.kind.waiting_on_you).toBe(1.5);
+  // Hold the money offers (a chat app's Hold, an old client): its weight drops a little, never its floor.
   const holdMoney = async () => {
     for (const f of r.notes().flatMap((e) => e.body.finds).filter((x) => x.kind === "deadline" && x.decisionId && r.decisions.isPending(x.decisionId))) r.decisions.decide(f.decisionId!, "hold");
     await r.settle();
   };
   await holdMoney();
+  expect(st().weights!.kind.deadline).toBeCloseTo(0.85, 5);
   for (let i = 0; i < 2; i++) {
     const id = `m_more${i}`;
     r.p.ledger.add([{ ref: { connectionId: "conn_oo", service: "gmail", id }, label: `Shop ${i} · renews`, at: "2026-11-10T09:00:00+08:00", type: "renewal", name: `thing ${i}`, due: "2026-11-15", amount: "$5" }]);
   }
   await r.advance(DAY, 5 * 60_000);
+  // Still offered: held is not "never".
   expect(r.lastNote()!.finds.filter((f) => f.kind === "deadline")).toHaveLength(2);
   await holdMoney();
-  expect(st().bars.deadline).toBe(60);
+  expect(st().weights!.kind.deadline).toBeGreaterThanOrEqual(0.5);
+  // An offer's Hold never touches the interrupt bar (only a "now" find's does).
+  expect(st().bars.deadline).toBeUndefined();
   expect(r.states().filter((s) => s.state === "held")).toHaveLength(3);
 });
 
-test("three unread morning notes pause them; the next time the person writes: 早上那条还要吗？; 不用了 = 只说急的", async () => {
+test("D453: unread mornings never pause the note and nothing asks about them; an offer let be fades at the next morning", async () => {
   const r = make({ mode: "useful" });
+  const st = () => JSON.parse(require("node:fs").readFileSync(require("node:path").join(r.dir, "proactive.json"), "utf8")) as Learned;
   await r.p.lookNow(40);
-  for (let d = 0; d < 3; d++) {
-    // Something new each day, never read.
+  for (let d = 0; d < 4; d++) {
+    // Something new each day, never read, never answered.
     r.p.ledger.add([{ ref: { connectionId: "conn_oo", service: "gmail", id: `r${d}` }, label: `Vendor ${d} · renews`, at: new Date(r.clock.now()).toISOString(), type: "renewal", name: `plan ${d}`, due: new Date(r.clock.now() + 5 * DAY).toISOString().slice(0, 10), amount: "$9" }]);
-    await r.advance(d === 0 ? HOUR + 2 * 60_000 : DAY, 5 * 60_000); // 5-minute steps: the tick's own period (minute steps took ~2 s alone, >5 s under a full run)
+    await r.advance(d === 0 ? HOUR + 2 * 60_000 : DAY, 5 * 60_000);
   }
-  const mornings = r.notes().filter((e) => e.body.rung === "morning" && !e.body.quiet);
-  expect(mornings).toHaveLength(3);
-  r.p.ledger.add([{ ref: { connectionId: "conn_oo", service: "gmail", id: "r9" }, label: "Vendor 9 · renews", at: new Date(r.clock.now()).toISOString(), type: "renewal", name: "plan 9", due: new Date(r.clock.now() + 5 * DAY).toISOString().slice(0, 10), amount: "$9" }]);
-  await r.advance(DAY, 5 * 60_000);
-  expect(r.notes().filter((e) => e.body.rung === "morning" && !e.body.quiet)).toHaveLength(3); // paused
+  const mornings = r.notes().filter((e) => e.body.rung === "morning" && !e.body.quiet && !e.body.revises);
+  expect(mornings).toHaveLength(4);
+  expect(st().paused).toBeFalsy();
+  // The first morning's offers faded on their own: resolved by default, passed, no "missed" word.
+  const first = mornings[0]!.body.finds.filter((f) => f.decisionId);
+  expect(first.length).toBeGreaterThan(0);
+  for (const f of first) expect(r.decisions.isPending(f.decisionId!)).toBe(false);
+  const faded = r.states().filter((s) => s.state === "passed").map((s) => s.findId);
+  for (const f of first) expect(faded).toContain(f.findId);
+  // Silence lowers a kind's weight a little, never below the floor, never to silence.
+  const w = st().weights!.kind.deadline!;
+  expect(w).toBeLessThan(1);
+  expect(w).toBeGreaterThanOrEqual(0.5);
+  // The person writes: the partner's answer is all; no 早上那条还要吗？, no "you didn't reply".
   r.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: "帮我看看日程" } });
   await r.settle();
-  r.log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: "在看。" } }); // D274: after its reply
+  r.log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: "在看。" } });
   await r.settle();
-  const ask = r.lastNote()!;
-  expect(ask).toMatchObject({ rung: "morning", ask: "keep_note", opening: "早上那条还要吗？", finds: [] });
-  await r.p.answer(ask.noteId, "keep_note", false);
-  // D250: only urgent (never off), kept as their reason; no offer back on the same notes.
-  expect(r.settings.get()).toMatchObject({ proactive: "urgent", proactiveBy: "keep_note" });
-  expect(r.lastNote()).toMatchObject({ revises: ask.noteId, answered: "no" });
-  r.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: "好的" } });
-  await r.settle();
-  r.log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: "在看。" } }); // D274: after its reply
-  await r.settle();
-  expect(r.lastNote()).toMatchObject({ revises: ask.noteId, answered: "no" });
-  // Four simulated days of real looks (every 10 and 15 minutes, each read logged and its
-  // checkpoint written): ~1.5 s alone, past bun's 5 s default under a full parallel run.
-}, 120_000); // ~22 s on a loaded machine (2026-11-13, before D243 too)
+  expect(r.notes().some((e) => e.body.ask === "keep_note")).toBe(false);
+  expect(r.settings.get().proactive).toBe("useful");
+  const said = r.log.read({ stream: "channel", kinds: ["ai_msg"] }).map((e) => (e.body as Bodies["ai_msg"]).text);
+  expect(said.filter((t) => /还没(回|看)|没回(复)?我|didn't (reply|answer)|haven't (replied|answered)/.test(t))).toEqual([]);
+}, 120_000);
+
+test("D453: a home the old rule paused resumes on load, and its morning note comes", async () => {
+  const fs = require("node:fs") as typeof import("node:fs");
+  const path = require("node:path") as typeof import("node:path");
+  const t = (await import("./helpers.ts")).tempDir();
+  fs.writeFileSync(path.join(t.dir, "proactive.json"), JSON.stringify({ paused: true, keepAsk: "pending" }));
+  const r = make({ dir: t.dir, mode: "useful" });
+  await r.p.lookNow(40);
+  await r.advance(HOUR + 2 * 60_000);
+  expect(r.notes().filter((e) => e.body.rung === "morning" && !e.body.quiet)).toHaveLength(1);
+  const now = JSON.parse(fs.readFileSync(path.join(t.dir, "proactive.json"), "utf8"));
+  expect(now.paused).toBe(false);
+  expect(now.keepAsk).toBeUndefined();
+  r.stop();
+  rigs.splice(rigs.indexOf(r), 1);
+  t.cleanup();
+});
 
 test("at the month's budget it drops to 只说急的 and says so once", async () => {
   const r = make({ mode: "three", monthTokens: 3000 });

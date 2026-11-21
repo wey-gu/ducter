@@ -40,6 +40,8 @@ type FindView struct {
 	Untouched string `json:"untouched,omitempty"`
 	// D403: a reply already written for a 在等你回 find (editable; Go sends it after the undo window).
 	Draft *FindDraft `json:"draft,omitempty"`
+	// D453: said as an offer (quiet; no Hold; fades at the next morning).
+	Offer bool `json:"offer,omitempty"`
 }
 
 // FindDraft is the reply a cheap model wrote from the thread, in its
@@ -52,6 +54,9 @@ type FindDraft struct {
 	Lang    string `json:"lang"`
 	Check   string `json:"check,omitempty"`
 }
+
+// OfferShown is how many offers a note shows before 还有几条 / A few more (D453).
+const OfferShown = 3
 
 // SendUndoMs is how long a reply waits after Go, with 撤回 / Undo (D403, D61 GQ3).
 const SendUndoMs = 30_000

@@ -2664,3 +2664,10 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [x] **Fixed heights elsewhere** at a larger text size: D447 fixed the ones on its surfaces (On hand's
   strip, Your devices' rows); D452 swept `height: Npx` on the buttons, pills, chips, fields and rows that
   hold words (`height: max(Npx, rem)`) and the two lists whose row height is in code.
+
+## Offers, not interruptions (D453)
+
+- [ ] **The live check on hel:** a week of offers on 有用就说 (how many a morning, what was taken up, the weights it learned); the replay estimate (research/197 §4) is a python approximation of the detectors. Trigger: the next release on hel.
+- [ ] **Widen the funnel:** offers from more than the accounts (a task's follow-up worth offering, the conversation's loose ends, what Mem knows matters to the person) and service notices read closely past `NOTICE_DAY_MAX` (89 left unread a day on hel). Trigger: a week where the author takes up at least one offer and the mornings stay at one or two.
+- [ ] **The model judge's offer prompt measured:** the proactive eval (`packages/partner/eval/proactive/`) still scores the old bar's precision; add an offer-recall measure (what a good partner would offer) beside false alarms for interruptions. Trigger: before tuning OFFER_FLOOR or the weights.
+- [ ] **The verdict memo ignores the mode's floor:** a candidate judged on 有用就说 keeps its verdict after a switch to 每天最多 3 条 until its words change. Trigger: someone switches modes and sees a low one.

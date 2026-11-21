@@ -1534,7 +1534,8 @@ func (s *Store) addDecision(ev protocol.LogEvent, d *protocol.Decision) {
 func (s *Store) OpenDecisions() []*DecisionState {
 	var out []*DecisionState
 	for _, d := range s.Decisions {
-		if d.Resolved == nil && d.Pending == "" && d.Later == "" && d.Question != "" {
+		// D453: an offer never needs the person: it lives in its note only.
+		if d.Resolved == nil && d.Pending == "" && d.Later == "" && d.Question != "" && !d.Offer {
 			if t := s.Tasks[d.TaskID]; t != nil && LaneOf(t.Attention()) == LaneHidden {
 				continue // its task was dropped or handed off
 			}

@@ -88,8 +88,10 @@ const cand = (over: Partial<Candidate>): Candidate => ({
 test("the bar in code: grounded, costs enough for its kind, something to do", () => {
   expect(preBar(cand({}), {}).pass).toBe(true);
   expect(preBar(cand({ how: [] }), {}).why).toBe("can't show how it knows");
-  expect(preBar(cand({ cost: 40 }), {}).why).toBe("costs too little");
-  expect(preBar(cand({ cost: 60 }), { deadline: 65 }).pass).toBe(false); // the kind's bar was raised
+  expect(preBar(cand({ cost: 30 }), {}).why).toBe("costs too little");
+  // D453: an offer's floor is fixed; a kind's learned bar gates only its interruptions.
+  expect(preBar(cand({ cost: 40 }), {}).pass).toBe(true);
+  expect(preBar(cand({ cost: 60 }), { deadline: 65 }).pass).toBe(true);
   expect(preBar(cand({ kind: "waiting_on_them", step: undefined }), {}).why).toBe("nothing to do");
   expect(preBar(cand({ kind: "mismatch", step: undefined }), {}).pass).toBe(true); // a join is its own reason
 });

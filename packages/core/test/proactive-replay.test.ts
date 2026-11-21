@@ -64,7 +64,7 @@ test("the replay says the contradiction and fills the time, from fresh scratch, 
   const r = await replayProactive({ connections: acc.store, settings, rules, log, persona, zone: () => ZONE, harness: () => undefined, pick: () => ({ harness: "claude-code" }), webLook: () => look, triage: recordedTriage(fx.triage), judge: barJudge }, { days: 3 });
 
   expect(r.days).toBe(3);
-  expect(r.mode).toBe("three");
+  expect(r.mode).toBe("useful"); // D453: the default
   const contra = r.said.find((s) => s.kind === "mismatch")!;
   expect(contra.text).toContain("AGI Bar");
   expect(contra.how.map((h) => h.src)).toEqual(["calendar", "mail"]);

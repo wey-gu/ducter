@@ -272,7 +272,7 @@ test("a PR waiting for review is pre-read (read only); its kept comments go as o
   expect(w).toMatchObject([{ op: "review", by: "go", state: "done" }]);
 });
 
-test("the morning: three picks inside the note with one Go; Go hands them over; two unanswered mornings and they stop", async () => {
+test("the morning: three picks inside the note with one Go; Go hands them over; D453: mornings left unanswered never stop them", async () => {
   const { core, ts, advance } = boot({ ask: fakeAsk() });
   await ts.add("github");
   await ts.look();
@@ -282,17 +282,17 @@ test("the morning: three picks inside the note with one Go; Go hands them over; 
   expect(m.how.length).toBe(3);
   expect(m.goLabel).toBe("交给Ducter");
   const card = core.log.read({ stream: "channel", kinds: ["decision"], limit: 5 }).map((e) => e.body as Bodies["decision"]).find((b) => b.decisionId === m.decisionId)!;
-  expect(card).toMatchObject({ findId: "find_1", defaultOption: "hold", src: { kind: "picks" } });
+  expect(card).toMatchObject({ findId: "find_1", defaultOption: "hold", offer: true, src: { kind: "picks" } });
   // Once a day.
   expect(ts.pile.morning("note_2", "find_2")).toBeUndefined();
   core.log.append({ stream: "channel", origin: "user", kind: "decision_resolved", body: { decisionId: m.decisionId, option: "go", by: "user" } });
   await until(() => (ts.view().glance ?? []).some((x) => x.read) || ts.view().pile!.queue.running > 0);
   expect(ts.view().pile!.queue.running).toBe(3);
-  // Two later mornings left unanswered: the third says nothing.
+  // Later mornings left unanswered: silence is natural; the offer keeps coming (D453).
   advance(86_400_000);
   expect(ts.pile.morning("n3", "f3")).toBeDefined();
   advance(86_400_000);
   expect(ts.pile.morning("n4", "f4")).toBeDefined();
   advance(86_400_000);
-  expect(ts.pile.morning("n5", "f5")).toBeUndefined();
+  expect(ts.pile.morning("n5", "f5")).toBeDefined();
 });

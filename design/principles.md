@@ -1,6 +1,6 @@
 # Ducter Design Principles
 
-> Draft 8 · 2026-11-08 · Conclusions only. Mechanics live in `design/`; evidence lives in
+> Draft 9 · 2026-11-21 (principle 7: offers vs interruptions, D453) · Conclusions only. Mechanics live in `design/`; evidence lives in
 > `research/` (index: `research/README.md`), cited as [n].
 
 ## Physics
@@ -49,8 +49,9 @@ AI never blocks. [16]
 **7. Attention is the scarce resource; unread is mutable.**
 People harvest in batches. While unread, the main AI's latest report is one living message
 revised in place; a read receipt freezes it. It is rendered from typed reports, with decisions
-first, each carrying a default. Only decisions earn a push. "Done" is a claim backed by
-evidence. [1][16] *Built: the core renders it; the partner's own words never change.*
+first, each carrying a default. Only decisions earn a push. An interruption spends attention;
+an offer it makes on its own costs a glance, needs nothing and fades, so offers may be generous
+(D453). "Done" is a claim backed by evidence. [1][16] *Built: the core renders it.*
 
 ## Focus Windows · `design/focus-window.md`, `design/focus-window-states.md`
 

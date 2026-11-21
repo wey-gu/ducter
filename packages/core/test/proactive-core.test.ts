@@ -97,7 +97,7 @@ test("the one tap, the first-account moment, the card's frames and its controls,
   // D232: the first look reads two weeks more (each a real oo subprocess here): seconds, not one.
   for (let i = 0; i < 1500 && !notes(core).some((n) => n.ask === "cadence"); i++) await Bun.sleep(10);
   const answer = notes(core).find((n) => n.ask === "cadence")!;
-  expect(answer.finds.map((f) => f.kind)).toEqual(["mismatch", "deadline", "waiting_on_you"]); // D232
+  expect(answer.finds.map((f) => f.kind)).toEqual(["mismatch", "deadline", "waiting_on_you", "waiting_on_them"]); // D232; D453: offers, not three
 
   // The card: tiles per account, the status line's numbers, 看了哪些.
   c.send({ t: "connections" });

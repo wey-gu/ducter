@@ -1,8 +1,10 @@
 // A note the partner said by itself (D165, design/connectors.md §6), on the phone: one partner
-// message, its opening line, up to three finds (its kind in small letters, two sentences, its one
-// next step 好，<action> · 先等等 that never runs without Go, 怎么知道的 › with the evidence in
-// place, 有用 · 这类不用告诉我), then 没说的; and the one ask a note may carry. Only shared controls.
-import type { Bodies, FindView } from "@ducter/protocol";
+// message, its opening line, its finds (its kind in small letters, two sentences, its one next step
+// 好，<action> that never runs without Go, 怎么知道的 › with the evidence in place, 有用 · 这类不用告诉我);
+// and the one ask a note may carry. Only shared controls. D453: a find said as an offer has no
+// 先等等 (letting it be is the hold); past the first OFFER_SHOWN they wait under 还有几条 / A few more;
+// one that faded keeps its words, dimmed, with no button and no word about having been missed.
+import { OFFER_SHOWN, type Bodies, type FindView } from "@ducter/protocol";
 import { useEffect, useState } from "preact/hooks";
 import { A } from "./app.ts";
 import { HoverReply, replyKey, replyOfFind } from "./reply.tsx";
@@ -44,7 +46,7 @@ function Draft({ f, open, decide }: { f: FindView; open: boolean; decide: (text:
       {open ? (
         <div class="fstep">
           <Btn kind="secondary" size="sm" label={t("decision.go.label", f.goLabel ?? t("draft.send"))} about={dr.to} disabled={!text.trim()} onClick={() => decide(text)} />
-          <Btn kind="text" size="sm" label={t("decision.hold")} onClick={() => decide("")} />
+          {!f.offer && <Btn kind="text" size="sm" label={t("decision.hold")} onClick={() => decide("")} />}
         </div>
       ) : sending ? (
         <div class="fstep">
@@ -83,8 +85,10 @@ function Find({ f, seq }: { f: FindView; seq?: number }) {
   const open = !!d && !d.resolved && !d.pending;
   const send = A.S.findSends.get(f.findId);
   const rk = seq !== undefined ? replyKey(replyOfFind(seq, f.findId, f.text)) : undefined;
+  // D453: an offer nothing came of fades: its words stay, dimmed; no button, no "missed".
+  const faded = !!f.offer && st?.state === "passed";
   return (
-    <div class="find" id={`find-${f.findId}`} data-reply={rk} data-seq={undefined}>
+    <div class={`find${faded ? " faded" : ""}`} id={`find-${f.findId}`} data-reply={rk} data-seq={undefined}>
       <div class="kind">{t(`kind.${f.kind}`)}</div>
       {/* D256: the pebble rests outside the card, beside the find's words. */}
       <div class="ftext">
@@ -97,16 +101,18 @@ function Find({ f, seq }: { f: FindView; seq?: number }) {
       {d &&
         !(f.draft && (open || send || (d.pending ?? d.resolved?.option) === "go")) &&
         (st?.state === "passed" ? (
-          <div class="small sub">{t("find.passed")}</div>
+          faded ? null : <div class="small sub">{t("find.passed")}</div>
         ) : open ? (
           <div class="fstep">
             <Btn kind="secondary" size="sm" label={t("decision.go.label", f.goLabel ?? "")} onClick={() => A.decide(d.decisionId, "go")} />
-            <Btn kind="text" size="sm" label={t("decision.hold")} onClick={() => A.decide(d.decisionId, "hold")} />
+            {!f.offer && <Btn kind="text" size="sm" label={t("decision.hold")} onClick={() => A.decide(d.decisionId, "hold")} />}
           </div>
-        ) : (
-          <div class="small sub">{t((d.pending ?? d.resolved?.option) === "go" ? "find.going" : "find.held")}</div>
+        ) : st?.state === "go" || (d.pending ?? d.resolved?.option) === "go" ? (
+          <div class="small sub">{t("find.going")}</div>
+        ) : f.offer ? null : (
+          <div class="small sub">{t("find.held")}</div>
         ))}
-      <div class="freact">
+      {!faded && <div class="freact">
         <Btn kind="text" size="sm" label={t("find.how")} chev expanded={how} onClick={() => setHow(!how)} />
         <span class="grow" />
         {st?.state === "muted" ? (
@@ -119,7 +125,7 @@ function Find({ f, seq }: { f: FindView; seq?: number }) {
             <Btn kind="text" size="sm" label={t("find.mute")} about={f.text} onClick={() => A.reactFind(f.findId, "mute")} />
           </>
         )}
-      </div>
+      </div>}
       {how && (
         <div class="fhow">
           {/* D388: each line is one source, in the order the find rests on them: where it was read, what it is, what it says, its page. */}
@@ -165,13 +171,22 @@ function Ask({ n }: { n: Bodies["finds"] }) {
 }
 
 export function FindsNote({ n, join, seq, seqs }: { n: Bodies["finds"]; join?: boolean; seq?: number; seqs?: string }) {
+  // D453: the first OFFER_SHOWN offers in full; the rest wait under 还有几条 / A few more (no count).
+  const [more, setMore] = useState(false);
+  const offers = n.finds.filter((f) => f.offer).length;
+  const fold = offers > OFFER_SHOWN && !more;
+  let shownOffers = 0;
+  const shown = n.finds.filter((f) => !f.offer || !fold || shownOffers++ < OFFER_SHOWN);
   return (
     <div class={`partner${join ? " join" : ""}`} data-seqs={seqs}>
       <div class="bubble note">
         {n.opening && <div class="ftext">{n.opening}</div>}
-        {n.finds.map((f) => (
+        {shown.map((f) => (
           <Find key={f.findId} f={f} seq={seq} />
         ))}
+        {offers > OFFER_SHOWN && (
+          <Btn kind="text" size="sm" chev expanded={more} class="fmore" label={t(more ? "find.fewer" : "find.more")} onClick={() => setMore(!more)} />
+        )}
         {/* D304: the week's first note offers, in one line, what it noted about them. */}
         {n.learned && n.learned.count > 0 && <LearnedLine count={n.learned.count} />}
         <Ask n={n} />

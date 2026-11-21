@@ -297,13 +297,15 @@ the other tools too) · 惊喜 (what another tool learned about you, by its name
 
 Order: the head group (unchanged, plus **看看这周的** at its foot when anything is new); **它知道的关于你** with its
 note and the search; the groups by Mem's own kind, each with its caption in small ink (**你喜欢的做法** preference,
-**你定下的** decision, **它知道的事** fact, **别的** other), a row each: the source's mark (another tool's coin or
-its letter; else the accent pebble), the title, the source as the line (**你跟它说的 / {tool} 记的 / 你自己记的 /
-Nowledge Mem 从你的对话里整理的**), the age at the right. Tapped, the row opens in place: **不对？改一下，或者让
+**你定下的** decision, **它知道的事** fact, **别的** other; a lone 别的 is not captioned, D459), a row each: another
+tool's coin when it came from one, the title, the source as the line only when it isn't the person's own words
+(**{tool} 记的 / 你自己记的 / Nowledge Mem 从你的对话里整理的**; D459: 你跟它说的 is the usual source, said once in the
+section's note, never a dot and the same line on every row), the age at the right. Tapped, the row opens in place: **不对？改一下，或者让
 它忘掉。** with **改** and **忘掉**. **你别的 AI 也在用这份记忆**: a row per tool, its mark, **这周记了 N 条工作笔记**
 (**N 条以上** when the whole read was this week), and the foot that says why they aren't listed. Then the
-Nowledge Mem group (where it's kept, its name, **Nowledge Mem 里一共有 N 条记忆。** with **去 Nowledge Mem 看**,
-an update, 详情). Searching replaces the groups with **找到的** until cleared.
+Nowledge Mem group (where it's kept, its name, **Nowledge Mem 里一共有 N 条记忆** with **去 Nowledge Mem 看**,
+D459's **你的其他 agent 也通过它找到{name}** with **看看谁能找到 ›** when Agent messaging is shown, an update, 详情).
+A forget or a fix is answered in the partner's word under the section (**好，忘掉「…」。 / 好，改成「…」。**, D459). Searching replaces the groups with **找到的** until cleared.
 
 **Which memories are "about you"** (`core/src/mem-glance.ts`, the source rules in `protocol/src/mem-source.ts`
 `aboutSource`): every `preference` whose source Mem names (Ducter, an AI tool, Mem's own distillers, the person's

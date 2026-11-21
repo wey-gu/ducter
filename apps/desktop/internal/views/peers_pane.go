@@ -123,18 +123,63 @@ func (a *App) peersCard(c *ui.Context, st *protocol.Settings) {
 		*p = next
 		a.SetSettings(protocol.SettingsPatch{Peers: &next})
 	}
+	// D459: the pane's one switch is its first group's head row, as Memory's is: who it is about,
+	// what came and went this week, the switch at the right edge, and where it all shows up as
+	// the group's last line. Then the one problem, who can reach the partner, what came and went,
+	// and what to say.
+	head := func() {
+		if phase == "getting" || phase == "none" {
+			return
+		}
+		a.group(c, "peers-head", "", "", func() {
+			title, line, tone := a.L.T("peers.head.on", name), a.L.T("peers.week.none"), sideMuted
+			if !on {
+				title, line = a.L.T("peers.head.off", name), a.L.T("peers.switch.off", name)
+			} else if n := peersWeek(recentHandoffs(peerFeed(a.S.Channel, a.S.TaskPeers), 50), a.Now()); n > 0 {
+				line, tone = a.L.T("peers.week.count", itoa(int64(n))), sideDone
+			}
+			a.headRow(c, "peers", a.coinsTile(c, !on), title, line, tone, func() {
+				v := on
+				if !a.switchControl(c, "peers", a.L.T("peers.switch", name), &v) {
+					return
+				}
+				if v && p.Reach != "off" {
+					b.State = "connecting"
+					a.send(protocol.BridgeAction{T: "bridge_connect"})
+					a.say("peers", a.L.T("said.peers.on"))
+					return
+				}
+				next := *p
+				next.Reach = "own"
+				said := a.L.T("said.peers.on")
+				if !v {
+					next.Reach, said = "off", a.L.T("said.peers.off")
+				}
+				set(next)
+				a.say("peers", said)
+			})
+			note := a.L.T("peers.switch.on")
+			if !on {
+				note = a.L.T("peers.off.kept")
+			}
+			a.footRow(c, "peers-head", note, nil)
+		})
+		a.saidLine(c, "peers")
+	}
 	if phase == "on" {
+		head()
 		if !b.Pinned && len(b.Others) > 0 {
 			a.group(c, "peers-problem", "", "", func() { a.peersProblem(c, b, name) })
 		}
 		a.peersNames(c, b, name)
 		a.peersStuck(c, b, name)
 		a.peersNotices(c, b, name)
-		a.peersRecent(c, name)
 		a.peersReach(c, name)
+		a.peersRecent(c, name)
 		a.peersTry(c, name)
 	} else {
 		a.peersPicture(c, name)
+		head()
 	}
 	switch phase {
 	case "getting":
@@ -162,31 +207,6 @@ func (a *App) peersCard(c *ui.Context, st *protocol.Settings) {
 			})
 		})
 	}
-	if phase != "getting" && phase != "none" {
-		a.group(c, "peers-switch", "", "", func() {
-			note := a.L.T("peers.switch.on")
-			if !on {
-				note = a.L.T("peers.switch.off", name)
-			}
-			a.textBlock(c, "peers-switch", func() {
-				if v, changed := a.switchRow(c, "peers", a.L.T("peers.switch", name), note, on); changed && v && p.Reach != "off" {
-					b.State = "connecting"
-					a.send(protocol.BridgeAction{T: "bridge_connect"})
-					a.say("peers", a.L.T("said.peers.on"))
-				} else if changed {
-					next := *p
-					next.Reach = "own"
-					said := a.L.T("said.peers.on")
-					if !v {
-						next.Reach, said = "off", a.L.T("said.peers.off")
-					}
-					set(next)
-					a.say("peers", said)
-				}
-			})
-		})
-		a.saidLine(c, "peers")
-	}
 	if len(p.Muted) == 0 {
 		return
 	}
@@ -202,6 +222,18 @@ func (a *App) peersCard(c *ui.Context, st *protocol.Settings) {
 			})
 		}
 	})
+}
+
+// peersWeek counts the exchanges of the last 7 days, both ways (D459: the
+// head's line, as Memory's counts what it noted).
+func peersWeek(list []handoff, now time.Time) int {
+	n := 0
+	for _, h := range list {
+		if at, err := time.Parse(time.RFC3339, h.At); err == nil && now.Sub(at) < 7*24*time.Hour {
+			n++
+		}
+	}
+	return n
 }
 
 // peersNames is D364's one quiet row: an nmem too old to say who wrote

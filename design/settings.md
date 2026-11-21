@@ -3,7 +3,7 @@
 How each pane of Settings feels to the person in it, and the small pieces every pane shares. The
 grid and its rows are D273's and D289's (`ui.md`, `settings_rows.go`, `set-grid.tsx`); the
 words are the glossary's (`product-model.md`). 记忆 / Memory is D295's and 和你的其他 agent 通信 / Talk with
-your other agents (short in the list: Agent 通信 / Agent messaging) is D332's (`bridge.md` "Simple, by who"); neither is covered here.
+your other agents (short in the list: Agent 通信 / Agent messaging) is D332's (`bridge.md` "Simple, by who"); neither is covered here, except where D459 made them one hand with the rest (below).
 
 ## Who is here, and what they feel
 
@@ -50,7 +50,8 @@ with the author's accounts laid over it (`.shots/d296/before`, `.shots/d296/afte
 | A thing never set up, resting until chosen (D337, D365) | `chatHeadWith` + `chatSetUp` (`chats.go`); the own number's group | `Resting` (`channels.tsx`); `own-phone.tsx` | Chat apps (Telegram, Slack, WeChat); calls from your own number |
 | A choice of a few as a row, the choice at the right edge (D432) | `tileRow` with `choices` | `chat-row` with `Seg` | 等多久再按默认做, 每天最多, To-do sources' 新的来了 and 做完以后 |
 | A pane still being read (D432) | `paneWait` | `Waiting` | Partner and Notifications (Mac), To-do sources, Chat apps (web), Passwords & cards |
-| A line to copy (D432) | `lendCopy` | `CopyLine` | Memory's and Agent messaging's missing tool |
+| A line to copy (D432; one look D459) | `lendCopy` (kind `line`, `check`, `ask`) | `CopyLine` | Memory's and Agent messaging's missing tool |
+| A pane's one switch (D459) | `headRow` with the switch, `footRow` for where it shows up | `GHead` with `Switch`, `GFoot` | Memory, Agent messaging |
 | A live preview stage on the paper (D150, D445) | `lookPreview`, `notifyPreview` | `LookPreview`, `NotifyPreview` (`settings-delight.tsx`) | Look and sound / This phone, Notifications |
 | A choice of many as one pill (D445) | `pill` + `listPanel` (`modelPill`, `timePill`) | `Select` | Replies in, Codex's models, quiet hours (Mac) |
 | A group's note: under its heading, never under the card (D289, D365) | `group(…, note, …)` | `<p class="g-note">` after the heading | To-do sources' empty line; what your AI agents keep; the trust lists |
@@ -423,8 +424,35 @@ The rules it leaves:
 - **Waiting looks alive.** The Mac's waiting square breathes as the web's (1.6 s, still under reduced motion);
   the web's Notifications waits in its shape too.
 
+## One hand, every pane (D459)
+
+After D424, D432, D441 and D445 (Settings) and D433, D444, D448 (Memory, Agent messaging) landed from
+different branches, every pane was walked again side by side: the Mac at 1400 and 760 and the web at 1400 and
+390, zh and en, light and dark, against demo cores in first-run, connected, problem and busy states
+(`demo-settings-real.ts`, `demo-mem-bridge.ts` relay/away/boxes, `demo-memory.ts` on/fresh/unreachable;
+`.shots/coherence-459/{before,after}`). What one round had done one way and another round another, and the
+one shape kept:
+
+| Seen | Kept |
+|---|---|
+| Memory's switch is its first group's head row; Agent messaging's sat in a last card of its own, its words pushed in by an empty tile column, its title the lede again | **A pane's one switch is its first group's head row** (Memory, Agent messaging): its mark, who it is about, this week in a few words (**这周新记了 5 条**, **这周来往了 3 次**, done ink when there is any), the switch at the right edge, and where it shows up as the group's last line; the said line under that group |
+| Who can reach the partner came after Recently | **Who, then what happened:** 能找到{name}的 before 最近, then 试试看 |
+| Every memory row a 10-point dot and **你跟它说的**, six times | **A row speaks only when it differs (D399):** what the person told it is said once in the section's note; a row from another tool says so with that tool's coin; a lone 别的 / Other is not titled |
+| A row's title ending in 。 (全部的都在 Nowledge Mem 里。) | A title is a phrase, never a sentence with a full stop |
+| A line to run: a sunken tint on the Mac, the ink's slab with **$** on the web | One look (`lendCopy` kind `line`, web `CopyLine kind="line"`): the ink's slab, the accent's $, bold mono; a check and a sentence to say stay on the sunken tint |
+| The web's Memory, Notifications and Accounts had no lede; Agent messaging drew its own | Every pane's lede sits under its title on both clients (web `PANE_LEDE`); To-do sources, Chat apps and Passwords & cards keep theirs with their lede note |
+| Forgetting or fixing a memory in Settings said nothing (every other change has the partner's word) | **好，忘掉「…」。 / 好，改成「…」。** under the section, D296's said line |
+| Memory's notes two sentences each (D424 says one clause) | One: **哪条不想让它记，说一声「别记这个」就好。**; off: **记下的都还在 Nowledge Mem 里，一条没删；再打开就接着用。** |
+| Memory and Agent messaging read as two products of one Mem | Memory's Nowledge Mem group says **你的其他 agent 也通过它找到{name}** with **看看谁能找到 ›** whenever Agent messaging is shown |
+| The Mac's `explainedRow` kept its control beside squeezed words at 760 | It drops the control under the words as `row` and `tileRow` do (D445) |
+
 ## Not done
 
+- D459's leftovers: Accounts' connection added and the phone's sign-in still answer with a boxed notice at the
+  top (`partnerToast`), not the said line; the web's quiet hours are the browser's time fields where the Mac
+  has pills; 发现了就说's four choices stack into a tall block on a phone; the web titles a memory kind
+  inside its card (`g-cap`), the Mac above it; Agent messaging's problems are bold sentences, not a title and
+  a line.
 - A comprehension pass with people on the said lines and on a row with no state word.
 - The web has no AI accounts row on Accounts (the phone has no Devices page of its own there);
   its Partner page keeps the tray-less lists (D89).

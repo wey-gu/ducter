@@ -156,11 +156,13 @@ function MemRow({ m, open, onOpen }: { m: MemItem; open: boolean; onOpen: (id: s
   const [mode, setMode] = useState<"" | "fix" | "ask">("");
   const [words, setWords] = useState(m.title);
   const src = bySource(m);
-  const tile = m.by === "tool" && m.from ? <ToolTile from={m.from} /> : <PebbleTile />;
+  // D459: a row speaks only when it differs (D399): what the person told it is said once in the
+  // section's note; only another tool's row carries a mark (its coin), never a dot on every row.
+  const tile = m.by === "tool" && m.from ? <ToolTile from={m.from} /> : <span class="g-tile" aria-hidden="true" />;
   if (open && mode === "ask")
-    return <GConfirm ask={t("mem.item.forget.ask", m.title)} keep={t("mem.forget.keep")} go={t("partner.memory.forget")} about={m.title} onKeep={() => setMode("")} onGo={() => (setMode(""), onOpen(""), A.memForget(m.id))} />;
+    return <GConfirm ask={t("mem.item.forget.ask", m.title)} keep={t("mem.forget.keep")} go={t("partner.memory.forget")} about={m.title} onKeep={() => setMode("")} onGo={() => (setMode(""), onOpen(""), A.memForget(m.id), say("mem-about", t("said.mem.forget", m.title)))} />;
   if (open && mode === "fix") {
-    const save = () => words.trim() && (A.memFix(m.id, words), setMode(""), onOpen(""));
+    const save = () => words.trim() && (A.memFix(m.id, words), say("mem-about", t("said.mem.fix", words.trim().replace(/\s+/g, " "))), setMode(""), onOpen(""));
     return (
       <GBlock>
         <input class="mem-fix" dir="auto" value={words} aria-label={t("learned.fix")} onInput={(e) => setWords((e.target as HTMLInputElement).value)} onKeyDown={(e) => (e.key === "Enter" ? save() : e.key === "Escape" && (setWords(m.title), setMode("")))} ref={(el) => el?.focus()} />
@@ -177,7 +179,7 @@ function MemRow({ m, open, onOpen }: { m: MemItem; open: boolean; onOpen: (id: s
         {tile}
         <span class="grow">
           <b dir="auto">{m.title}</b>
-          <small>{t(src.key, ...src.args)}</small>
+          {m.by !== "said" && <small>{t(src.key, ...src.args)}</small>}
         </span>
         {m.at && <span class="g-state">{ago(A.L, m.at)}</span>}
       </button>
@@ -265,11 +267,13 @@ function MemAbout() {
       ) : (
         groups.map((gr) => (
           <Group key={gr.kind} class="mem-g" label={t(`mem.kind.${gr.kind}`)}>
-            <div class="g-cap">{t(`mem.kind.${gr.kind}`)}</div>
+            {!(groups.length === 1 && gr.kind === "other") && <div class="g-cap">{t(`mem.kind.${gr.kind}`)}</div>}
             {gr.items.map((m) => <MemRow key={m.id} m={m} open={open === m.id} onOpen={setOpen} />)}
           </Group>
         ))
       )}
+      {/* D459: a forget or a fix is answered once, in the partner's word, under what it changed. */}
+      <Said k="mem-about" />
     </section>
   );
 }
@@ -449,6 +453,12 @@ function MemLink({ b }: { b: BridgeView | undefined }) {
       <GRow title={mem?.glance?.total ? t("mem.all.count", thousands(mem.glance.total)) : t("mem.all.note")}>
         <LinkBtn kind="text" size="sm" href={MEM_SITE} label={t("mem.all.open")} />
       </GRow>
+      {/* D459: one story with Agent messaging: the same Mem is how the person's other agents reach it. */}
+      {peersPageShown() && (
+        <GRow title={t("mem.peers.row", A.settings!.name)}>
+          <Btn kind="text" size="sm" chev label={t("mem.peers.go")} onClick={() => A.openSettings("peers")} />
+        </GRow>
+      )}
       {u && b && <MemUpdateRow u={u} b={b} />}
       {more && b && (
         <GBlock>
@@ -882,21 +892,38 @@ export function PeersPage() {
   };
   const mem = b ? memPhase(true, A.mem, b) : "missing";
   const upd = memUpdate(b);
+  // D459: the pane's one switch is its first group's head row, as Memory's is: who it is about, what came
+  // and went this week, the switch, and where it all shows up as the group's last line.
+  const week = recentHandoffs(peerFeed(), 50).filter((h) => h.at && Date.now() - Date.parse(h.at) < 7 * 864e5).length;
+  const head = phase !== "getting" && phase !== "none" && (
+    <section class="set mem-sec">
+      <Group class="mem-g" label={t("settings.tab.peers")}>
+        <GHead tile={<CoinsTile faded={!on} />} name={on ? t("peers.head.on", name) : t("peers.head.off", name)} line={!on ? t("peers.switch.off", name) : week ? t("peers.week.count", String(week)) : t("peers.week.none")} tone={on && week ? "done" : undefined}>
+          <Switch label={t("peers.switch", name)} on={on} onChange={flip} />
+        </GHead>
+        <GFoot note={on ? t("peers.switch.on") : t("peers.off.kept")} />
+      </Group>
+      <Said k="peers" />
+    </section>
+  );
   return (
     <>
-      <p class="set-lede">{t("settings.lede.peers", name)}</p>
       {phase === "on" ? (
         <>
+          {head}
           {b && <PeersProblemGroup b={b} name={name} />}
           {b && <PeersNames b={b} name={name} />}
           {b?.stuck && <PeersStuck code={b.stuck.code} name={name} />}
           {b?.state === "connected" && b.notices && <PeersNotices name={name} />}
-          <PeersRecent name={name} />
           <PeersReach name={name} />
+          <PeersRecent name={name} />
           <PeersTry name={name} />
         </>
       ) : (
-        <PeersPicture name={name} />
+        <>
+          <PeersPicture name={name} />
+          {head}
+        </>
       )}
       {phase === "getting" && b && (
         <Group class="mem-g" label="Nowledge Mem">
@@ -921,20 +948,6 @@ export function PeersPage() {
             <Btn kind="secondary" size="sm" label={t("peers.mem.go")} onClick={() => A.openSettings("memory")} />
           </GRow>
         </Group>
-      )}
-      {phase !== "getting" && phase !== "none" && (
-        <section class="set mem-sec">
-          <Group class="mem-g" label={t("peers.switch", name)}>
-            <div class="chat-row">
-              <span class="grow">
-                <b>{t("peers.switch", name)}</b>
-                <small>{on ? t("peers.switch.on") : t("peers.switch.off", name)}</small>
-              </span>
-              <Switch label={t("peers.switch", name)} on={on} onChange={flip} />
-            </div>
-          </Group>
-          <Said k="peers" />
-        </section>
       )}
       {p.muted.length > 0 && (
         <section class="set mem-sec">

@@ -1,6 +1,6 @@
 # Bridge: Ducter and the Agents It Didn't Start
 
-> Design note · 2026-11-09, updated 2026-11-21 (D448: tasks Ducter carries messages for) · Principles 1, 7, 12, 14, 17, 18 · Decided: D105–D111 (outbound,
+> Design note · 2026-11-09, updated 2026-11-21 (D448: tasks Ducter carries messages for; D459: one story with Memory) · Principles 1, 7, 12, 14, 17, 18 · Decided: D105–D111 (outbound,
 > the outgoing ledger, the result reply, names, copy, follow-through, the Mem asks), D162 (the live check and the
 > real shapes), D163–D164 (beyond itself: X1–X3), D170 (X1, X2 and the Settings switch, built), D171 (the persona's Space), D205 (the persona connects itself with one tap), D225 (the released Bridge; the home's own Mem put in, updated and signed in from the same row), D324 (one home answers a partner's mailbox; the trial as its own identity), D333 (the partner's own tools only, 查看来信, the card says where it reads), D334 (the address is the identity, not the Space: every Space read, replies in the message's, a teammate's first message is a card), D338 (the card names only the Spaces read; a Space Mem answers 404 for is said and backed off; no connection per Space), D364 (nmem 0.10.120's linked shape: an original is not an answer; the update offered on the pane), D367 (every inbox page read; the trial's peer touches only its own run's mail), D369 (a mailbox Mem must sort out on its side: said once, checked every 30 min; the trial's guard reads Mem's own send prefix), D400 (nmem 0.10.121: the identity inbox read once, Mem's own open/reply argv, `--watch` or a 5 s wait, a device label, Mem's own notices said); still open: J-Q1–3, J-Q8, J-Q14 ·
 > Evidence: `research/31` (public), `research/37` (dogfood, §6 the live check), `research/66` (the release, the live
@@ -246,9 +246,10 @@ Bridge assumption and setting; make it smooth and reasonable; no needless option
   (`todo.md`).
 - **Never shown:** identity, place, the connection's label, raw ids, 断开 as its own action. **Only problems show**,
   each one row with its one fix (two readers → 只留这台; another home → 改由这台收; Mem's refusal → its step).
-- **The pane.** On: 最近 / Recently (both ways, five, each opening its task or message; before the first, a calm
-  waiting row), 试试看 (two example exchanges as a tiny conversation, one each way, a copy button on each sentence;
-  an agent missing Mem's plugin as one row with 装上), the switch. Before Mem: the literal picture (the person's agents' coins, the partner, two
+- **The pane.** On (order D459): the switch as the first group's head row (**你的 agent 能找到{name}**, **这周来往了 3 次**,
+  where it shows up as the group's last line), 能找到{name}的 (D433), 最近 / Recently (both ways, five, each opening its
+  task or message; before the first, a calm waiting row), 试试看 (two example exchanges as a tiny conversation, one
+  each way, a copy button on each sentence). Before Mem: the literal picture (the person's agents' coins, the partner, two
   arrows said in words; no metaphor, D321 (6)), one sentence of what Nowledge Mem is, its two steps in place. Off:
   the picture and the switch. X2's 直接接 and the daily quota are not settings; only **已不再听 X · 恢复** rows.
 - **Not changed:** the partner's tools (D333's own branch), the conversation's lines and cards, D324's one-home rule. The
@@ -1131,7 +1132,7 @@ The connected pane answers three questions without a click: **who can reach the 
 and **is the computer that receives its mail alive**. Evidence: `research/183` (nmem 0.10.121, the Mem app's Rust
 CLI, read from help and the binary only).
 
-- **能找到{name}的 / Who can reach {name}**, after 最近: one row per AI tool the person runs (Claude Code, Codex, pi,
+- **能找到{name}的 / Who can reach {name}**, before 最近 since D459 (after it, D433): one row per AI tool the person runs (Claude Code, Codex, pi,
   Antigravity), from Mem's plugin check per agent (D169), their own records (D332) and the last exchange. Claude Code
   and Codex: **能找到{name}** (with when it last came), else **装上 Nowledge Mem 插件就能找到{name}** with **装上**, else
   **接上 Nowledge Mem 就能找到{name}**. pi and Antigravity: **它的 Nowledge Mem 插件还不会传话** (their Mem plugins carry no
@@ -1193,6 +1194,18 @@ answer (in_reply_to = the task's message) → bridge_msg{in, state task, taskId}
   signed in on a computer of Ducter's.
 - **Not yet** (`todo.md`): a Claude Code or Codex task without Mem's plugin in the session; follow-through when
   an answer never comes; a new message from another agent addressed to a task by name.
+
+## One story with Memory (D459, 2026-11-21)
+
+The coherence pass over Settings read Memory and Agent messaging as the three users (`settings.md` "One hand,
+every pane"): H wants who can talk to whom at a glance, C wants to feel known and never watched, F needs one
+sentence per screen. The two panes now read as one story told twice: **Memory** opens with **{name} 记得你** /
+**这周新记了 5 条** / its switch / **哪条不想让它记，说一声「别记这个」就好。**; **Agent messaging** opens the same way
+with **你的 agent 能找到{name}** / **这周来往了 3 次** / its switch / **它们交来的事、要你定的事，都会出现在你们的对话里。**
+(off: **你的 agent 现在找不到{name}** / **关着时，{name}也不会去问它们。** / **之前的来往都还在你们的对话里。**). Then who
+can reach it, said plainly per tool, then what came and went. Memory's Nowledge Mem group says **你的其他 agent 也通过它
+找到{name}** with **看看谁能找到 ›**; a forget or a fix there gets the partner's word (**好，忘掉「…」。**). Nothing new is
+read or stored: the week's count is the same Recently list, counted.
 
 ## Open questions
 

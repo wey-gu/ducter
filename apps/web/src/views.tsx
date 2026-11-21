@@ -3371,6 +3371,9 @@ function SettingsSheet() {
                 {page !== "partner" && <SectionArt art={sec.art} size={32} />}
                 {t(sec.title)}
               </h2>
+              {/* D459: every pane's lede under its title, in one place, as on the Mac (memory, notifications and
+                  accounts had none on the web; Agent messaging drew its own). */}
+              {PANE_LEDE[page] && <p class="set-lede">{t(PANE_LEDE[page]!, A.S.personaName)}</p>}
             </>
           )}
           {page === "partner" && (
@@ -3404,6 +3407,9 @@ function SettingsSheet() {
     </Sheet>
   );
 }
+
+/** D459: the panes whose lede the shared header says (the others say theirs with a note under it). */
+const PANE_LEDE: Record<string, string> = { memory: "settings.lede.memory", peers: "settings.lede.peers", notify: "settings.lede.notify", accounts: "settings.lede.accounts" };
 
 // ---------- 开一个任务 / New task (D128, D185): the sheet is in newtask.tsx ----------
 

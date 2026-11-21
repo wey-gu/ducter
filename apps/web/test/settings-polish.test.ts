@@ -19,7 +19,7 @@ test("the missing tool's line says the same on both clients, and names one comma
   expect(pipxCmd("linux")).toBe("sudo apt install pipx");
   // Shown to copy, never two systems in one sentence.
   expect(src("../src/memory.tsx")).toContain("<CopyLine text={b.cmd}");
-  expect(src("../../desktop/internal/views/memory_pane.go")).toContain(`a.lendCopy(c, "mem-cmd", b.Cmd, true)`);
+  expect(src("../../desktop/internal/views/memory_pane.go")).toContain(`a.lendCopy(c, "mem-cmd", b.Cmd, "line")`);
 });
 
 test("发现了就说 is on Notifications only", () => {

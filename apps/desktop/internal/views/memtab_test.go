@@ -141,7 +141,8 @@ func TestMemoryTab(t *testing.T) {
 		n = len(*sent)
 		// D321: a row opens in place; 忘掉 is quiet and asks; only the answer forgets, by Mem's id.
 		first := memAbout(lang)[0]
-		if err := tt.Click(first.Title + ", " + L.T("mem.by.said")); err != nil {
+		// D459: a row the person told it says no source line (said once in the note).
+		if err := tt.Click(first.Title); err != nil {
 			t.Fatal(err)
 		}
 		tt.Frame()
@@ -162,8 +163,14 @@ func TestMemoryTab(t *testing.T) {
 			t.Fatalf("忘掉 sent %v", (*sent)[n:])
 		}
 		tt.Frame()
-		if tt.HasText(first.Title) {
-			t.Fatalf("a forgotten memory is still shown")
+		for _, x := range tt.Texts() {
+			if x == first.Title || x == autospace(first.Title) {
+				t.Fatalf("a forgotten memory is still shown")
+			}
+		}
+		// D459: the forget is answered in the partner's one word.
+		if !tt.HasText(L.T("said.mem.forget", first.Title)) {
+			t.Fatalf("no word after the forget: %q", tt.Texts())
 		}
 		// 改 writes the words back by id.
 		second := memAbout(lang)[1]

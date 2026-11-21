@@ -102,7 +102,8 @@ describe("What it knows about you (D321)", () => {
     expect(en["peers.switch.on"]).toContain("conversation");
     // The other states say the same thing: Mem, and any agent connected to it.
     // peers.mem.what sits right under the "Nowledge Mem" heading, so it doesn't repeat the name (D424).
-    for (const k of ["peers.joining", "peers.none", "peers.switch.off"]) {
+    // D459: peers.switch.off is now the off head's line, under its title; it no longer names Mem.
+    for (const k of ["peers.joining", "peers.none"]) {
       expect(zh[k]).toContain("Nowledge Mem");
       expect(en[k]).toContain("Nowledge Mem");
     }

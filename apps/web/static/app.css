@@ -18442,3 +18442,89 @@ html[data-text-size="large"] .brand-mark > svg {
   .ho-item.ho-handed > .ho-handed-open { position: static; align-self: flex-end; min-height: 44px; }
 }
 .ho-foot-row > .ho-go { margin-left: auto; }
+
+/* ---------- D456: ⌘K's peek beside the list, the task's place among what is on hand, 键盘 / Keyboard ---------- */
+@media (min-width: 1000px) and (pointer: fine) {
+  .switcher.palette { width: min(1040px, calc(100vw - 48px)); }
+  /* One height while the words change: the card never jumps as the answers come in. */
+  .palette .k-body:not(.flat) { display: grid; grid-template-columns: minmax(0, 1fr) 376px; height: min(62vh, 560px); }
+  .palette .k-body:not(.flat) .k-list { max-height: none; min-height: 0; overflow: auto; }
+  .palette .k-body:not(.flat) .k-row { padding-block: 7px; }
+}
+.k-peek {
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 18px 22px 16px;
+  border-left: 1px solid var(--line-soft);
+  background: var(--bg);
+}
+.k-peek.empty { display: grid; place-items: center; color: var(--ink-muted); font-size: var(--sm); }
+.k-peek .pv-kicker { margin-bottom: 4px; }
+.k-pname { margin: 0; font-family: var(--head); font-size: var(--lg, 1.0625rem); font-weight: 700; line-height: 1.3; color: var(--ink); overflow-wrap: anywhere; }
+.k-pstate { margin: 10px 0 0; font-size: var(--xs); font-weight: 700; color: var(--working-ink); }
+.k-pstate.needs { color: var(--needs-ink); }
+.k-pstate.failed { color: var(--failed-ink); }
+.k-peek .pv-sec { margin-top: 14px; }
+.k-peek .k-clamp { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 6; overflow: hidden; }
+.k-steps { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.k-steps li { display: flex; align-items: baseline; gap: 8px; min-width: 0; font-size: var(--sm); color: var(--ink-soft); }
+.k-steps .pv-n { flex: none; }
+.k-steps .k-said { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.k-steps .pv-commit { flex: none; }
+
+/* The opened task's place among what is on hand: ‹ 3 / 9 › in the header. */
+.tv-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: var(--control-sm, 32px);
+  padding: 0 2px;
+  border-radius: var(--pill);
+  background: var(--sunken);
+  color: var(--ink-soft);
+}
+.tv-step {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: var(--pill);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.tv-step:hover:not(:disabled) { background: var(--surface); color: var(--ink); }
+.tv-step:disabled { opacity: 0.35; cursor: default; }
+.tv-pos { display: inline-flex; gap: 3px; padding: 0 2px; font-size: var(--xs); font-variant-numeric: tabular-nums; color: var(--ink-muted); }
+.tv-pos b { font-weight: 700; color: var(--ink-soft); }
+/* A phone's bar has no room: the back crumb and a swipe on On hand do it there. */
+@media (max-width: 640px) {
+  .tv-nav { display: none; }
+}
+
+/* 键盘 / Keyboard: every key, by where it works. */
+.keys-sheet h2 { margin: 0 0 4px; font-family: var(--head); font-size: var(--xl, 1.25rem); }
+.keys-group h3 { margin: 18px 0 6px; font-size: var(--xs); font-weight: 700; letter-spacing: 0.02em; color: var(--ink-muted); }
+.keys-group ul { margin: 0; padding: 0; list-style: none; }
+.keys-group li { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 36px; border-bottom: 1px solid var(--line-soft); font-size: var(--sm); color: var(--ink); }
+.keys-group li:last-child { border-bottom: 0; }
+.keys-caps { display: inline-flex; gap: 4px; flex: none; }
+.keys-caps kbd {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 22px;
+  height: max(22px, 1.375rem);
+  padding: 0 7px;
+  border-radius: var(--r-sm);
+  background: var(--sunken);
+  box-shadow: inset 0 -1px 0 var(--line);
+  color: var(--ink-soft);
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.keys-note { margin: 16px 0 4px; font-size: var(--sm); color: var(--ink-muted); line-height: var(--lh-read); }

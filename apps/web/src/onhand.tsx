@@ -8,7 +8,7 @@ import type { ComponentChildren } from "preact";
 import { memo } from "preact/compat";
 import { useDwell, useResting } from "./alive.tsx";
 import { useEffect, useRef, useState } from "preact/hooks";
-import { callEnded, type Bodies, type LogEvent, type Place } from "@ducter/protocol";
+import { callEnded, looseMatch, type Bodies, type LogEvent, type Place } from "@ducter/protocol";
 import { blocksOf, type Block } from "@ducter/protocol/src/transcript.ts";
 import { sayable, proofLabel } from "@ducter/protocol/src/say.ts";
 import { A } from "./app.ts";
@@ -569,14 +569,24 @@ export function haystack(task: Task): string {
   return [title(task), projectOf(task), p.kind === "repo" ? `${p.repoPath} ${p.branch ?? ""}` : p.kind === "folder" ? p.path : "", harnessName(harnessOf(task)), p.kind !== "none" ? computerName(p.device) : "", storyOf(task).words].join(" ").toLowerCase();
 }
 
-/** Every word typed is somewhere in it (any order); "" matches all. */
-export function matches(task: Task, q: string): boolean {
+/** Every word typed is in it as typed (any order); "" matches all. */
+export function matchesExactly(task: Task, q: string): boolean {
   const hay = haystack(task);
   return q
     .toLowerCase()
     .split(/\s+/)
     .filter(Boolean)
     .every((w) => hay.includes(w));
+}
+
+/** Every word typed is somewhere in it (any order), or one slip away, or the title's initials (D456); "" matches all. */
+export function matches(task: Task, q: string): boolean {
+  const hay = haystack(task);
+  return q
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean)
+    .every((w) => looseMatch(w, hay, title(task)));
 }
 
 // ---------- the keys, the focus and the selection ----------
@@ -624,21 +634,41 @@ function move(by: number, open: boolean) {
 
 /** D244: the next (1) or the previous (-1) task, opened in place: the rail's order when it is
  *  drawn (or On hand's), else the board's own by state. */
+/** D456: the order the keys walk tasks in: On hand's own list as shown, else its lanes (needs you,
+ *  working, waiting, done today). The header's 3 / 9 and ⌃1–⌃9 count in it too. */
+export function walkOrder(cur = A.route.name === "task" ? A.route.id : L.focus): string[] {
+  if (L.order.includes(cur) || (!cur && L.order.length)) return L.order;
+  const b = A.S.board();
+  return [b.lanes[LANE.needs]!, b.lanes[LANE.working]!, b.lanes[LANE.waiting]!, b.lanes[LANE.done]!].flat().map((x) => x.id);
+}
+
+function goWalk(next: string) {
+  const r = A.route;
+  L.focus = next;
+  A.go({ name: "task", id: next, full: r.name !== "conv" && !!r.full });
+  requestAnimationFrame(() => document.querySelector(`[data-row="${CSS.escape(next)}"]`)?.scrollIntoView({ block: "nearest" }));
+}
+
 export function walk(by: number) {
   const r = A.route;
   const cur = r.name === "task" ? r.id : L.focus;
-  let o = L.order;
-  if (!o.includes(cur)) {
-    const b = A.S.board();
-    o = [b.lanes[LANE.needs]!, b.lanes[LANE.working]!, b.lanes[LANE.waiting]!, b.lanes[LANE.done]!].flat().map((x) => x.id);
-  }
+  const o = walkOrder(cur);
   if (!o.length) return;
   const i = o.indexOf(cur);
   const next = o[i < 0 ? (by > 0 ? 0 : o.length - 1) : Math.max(0, Math.min(o.length - 1, i + by))]!;
   if (next === cur) return;
-  L.focus = next;
-  A.go({ name: "task", id: next, full: r.name !== "conv" && !!r.full });
-  requestAnimationFrame(() => document.querySelector(`[data-row="${CSS.escape(next)}"]`)?.scrollIntoView({ block: "nearest" }));
+  goWalk(next);
+}
+
+/** D456: ⌃1–⌃9 open the first to ninth task of On hand, from anywhere (the composer included). */
+export function nthKey(e: KeyboardEvent) {
+  if (!e.ctrlKey || e.metaKey || e.altKey || e.shiftKey || A.sheet || A.live) return;
+  const n = /^Digit([1-9])$/.exec(e.code)?.[1];
+  if (!n) return;
+  const id = walkOrder("")[Number(n) - 1];
+  if (!id) return;
+  e.preventDefault();
+  if (A.route.name !== "task" || A.route.id !== id) goWalk(id);
 }
 A.walk = walk;
 
@@ -1694,7 +1724,8 @@ export function switchList(q: string, limit = 40): Task[] {
   const rank = (x: Task) => ({ needs_you: 0, working: 1, queued: 1, blocked: 2 }[attention(x) as string] ?? 3);
   const at = (x: Task) => x.card?.updatedAt ?? x.openedAt ?? "";
   const low = q.toLowerCase();
-  const named = (x: Task) => (low && title(x).toLowerCase().includes(low) ? 0 : 1);
+  // D456: the title with the words, then the words as typed anywhere, then a slip or the initials.
+  const named = (x: Task) => (low && title(x).toLowerCase().includes(low) ? 0 : !low || matchesExactly(x, q) ? 1 : 2);
   return [...A.S.tasks.values()]
     .filter((x) => title(x) && attention(x) !== "superseded" && matches(x, q))
     .sort((a, b) => named(a) - named(b) || rank(a) - rank(b) || at(b).localeCompare(at(a)))

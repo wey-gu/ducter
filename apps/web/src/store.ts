@@ -103,6 +103,8 @@ export interface Task {
   lastReportSeq?: number;
   openedAt?: string;
   openSeq?: number; // seq of the task_open in `open` (a retitle is a later one)
+  /** D456: seq of the task_state in `state`: an older page landing later never turns a done task back to working. */
+  stateSeq?: number;
   sends: Send[];
   /** D325: the seqs of the person's steers the agent's next step took in (the runner's `read`). */
   reads?: Set<number>;
@@ -460,6 +462,7 @@ export class Store {
         }
       }
       t.state = { taskId: card.taskId, attention: card.attention, residency: card.residency, reason: card.reason };
+      t.stateSeq = Math.max(t.stateSeq ?? 0, this.cursor);
       if (card.lastReport) t.lastReport = card.lastReport;
     }
   }
@@ -820,7 +823,7 @@ export class Store {
         if (!t.openedAt || ev.ts < t.openedAt) t.openedAt = ev.ts;
         break;
       case "task_state":
-        t.state = ev.body as Bodies["task_state"];
+        if (ev.seq >= (t.stateSeq ?? 0)) (t.state = ev.body as Bodies["task_state"]), (t.stateSeq = ev.seq);
         break;
       case "task_event": {
         const b = ev.body as Bodies["task_event"];

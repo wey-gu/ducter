@@ -68,6 +68,8 @@ type Seed = {
   from?: { id: string; step: number; commit?: string };
   starred?: true;
   tags?: string[];
+  /** D456: how many reads, searches and commands it ran before its first words (a long transcript). */
+  noise?: number;
 };
 
 const S: Seed[] = [
@@ -288,6 +290,117 @@ const S: Seed[] = [
   { id: "e_papers", zh: "整理想读的论文", en: "Collect the papers I want to read", days: 28, h: "pi", model: "sonnet", out: ["列了 12 篇，LSM 和学习型索引各一半，PDF 在 Papers 文件夹。", "12 papers, half LSM and half learned indexes; PDFs are in Papers."] },
 ];
 
+// D456: DEMO_MORE=1 walks a heavy month at volume: about 75 more tasks (120 in all) across the four
+// repos and the three computers, and long transcripts (reads, searches, commands with their
+// output) on a dozen, so ⌘K and the opened task are judged where they are used.
+const MORE: [Repo | "", string, string, string?][] = [
+  ["hawdb", "SST 文件的 checksum 校验", "Checksum SST files on read"],
+  ["hawdb", "block cache 换成 LRU-K", "Swap the block cache for LRU-K", "ducter/lru-k"],
+  ["hawdb", "写停顿的告警阈值", "Alert thresholds for write stalls"],
+  ["hawdb", "manifest 太大，加快照", "The manifest is huge: snapshot it", "ducter/manifest-snap"],
+  ["hawdb", "iterator 泄漏内存", "The iterator leaks memory", "ducter/iter-leak"],
+  ["hawdb", "列族的独立配置", "Per-column-family options", "ducter/cf-options"],
+  ["hawdb", "fuzz 一下 WAL 解析", "Fuzz the WAL reader", "ducter/wal-fuzz"],
+  ["hawdb", "读放大的指标上 Grafana", "Read amplification on Grafana"],
+  ["hawdb", "删大量 key 后空间不回收", "Space isn't reclaimed after mass deletes", "ducter/range-tombstone"],
+  ["hawdb", "rocksdb-sys 升到 0.24", "Bump rocksdb-sys to 0.24", "ducter/rocksdb-024"],
+  ["hawdb", "整理 hawdb 的 benchmark 报告", "Write up hawdb's benchmark report"],
+  ["hawdb", "二级索引的设计草稿", "Draft the secondary-index design"],
+  ["hawdb", "压缩算法换 zstd 字典", "zstd dictionaries for compression", "ducter/zstd-dict"],
+  ["hawdb", "backup 增量备份", "Incremental backups", "ducter/incr-backup"],
+  ["hawdb", "hawdb 的 Docker 镜像瘦身", "Slim down hawdb's Docker image", "ducter/slim-image"],
+  ["hawdb", "看一下 issue #3912 能不能复现", "See if issue #3912 reproduces"],
+  ["hawdb", "flush 和 compaction 抢 IO", "Flush and compaction fight over IO", "ducter/io-priority"],
+  ["hawdb", "统计信息里加 key 大小分布", "Key-size histograms in the stats", "ducter/key-hist"],
+  ["nowledge-mem", "mem 的 MCP server 超时", "mem's MCP server times out", "ducter/mcp-timeout"],
+  ["nowledge-mem", "记忆去重", "Deduplicate memories", "ducter/dedupe"],
+  ["nowledge-mem", "线程搜索按时间排序", "Sort thread search by time", "ducter/thread-sort"],
+  ["nowledge-mem", "mem 的 CLI 加 --json", "--json for mem's CLI", "ducter/cli-json"],
+  ["nowledge-mem", "embedding 模型换小的", "A smaller embedding model", "ducter/small-embed"],
+  ["nowledge-mem", "图谱视图卡顿", "The graph view stutters", "ducter/graph-perf"],
+  ["nowledge-mem", "导出成 Markdown", "Export to Markdown", "ducter/md-export"],
+  ["nowledge-mem", "review mem 的 PR #497", "Review mem PR #497"],
+  ["nowledge-mem", "mem 的 Windows 安装包", "mem's Windows installer", "ducter/win-installer"],
+  ["nowledge-mem", "社区摘要的提示词", "The prompt for community summaries"],
+  ["nowledge-mem", "SQLite 换 WAL 模式", "Put SQLite in WAL mode", "ducter/sqlite-wal"],
+  ["nowledge-mem", "空间（space）的权限", "Permissions for spaces", "ducter/space-perms"],
+  ["nowledge-mem", "记忆的时间线视图", "A timeline view of memories", "ducter/timeline"],
+  ["nowledge-mem", "查 hel 上 mem 占内存", "Why mem on hel uses so much memory"],
+  ["ducter", "任务页的标题栏", "The task page's header", "ducter/task-header"],
+  ["ducter", "工作台的文件树加载慢", "The workbench file tree loads slowly", "ducter/tree-perf"],
+  ["ducter", "对话里的图片预览", "Picture previews in the conversation", "ducter/pic-preview"],
+  ["ducter", "Mac 菜单栏的计数", "The menu bar count on the Mac", "ducter/menubar-count"],
+  ["ducter", "worker 断线重连", "Workers reconnect after a drop", "ducter/worker-reconnect"],
+  ["ducter", "partner 评测加两个场景", "Two more scenarios for the partner eval"],
+  ["ducter", "设置页的深色模式", "Dark mode for Settings", "ducter/settings-dark"],
+  ["ducter", "Telegram 渠道的图片", "Pictures on the Telegram channel", "ducter/tg-pictures"],
+  ["ducter", "iPhone 键盘挡住输入框", "The iPhone keyboard covers the field", "ducter/kb-inset"],
+  ["ducter", "Log 压缩", "Compact the Log", "ducter/log-compact"],
+  ["ducter", "Codex 的 resume 失败", "Codex resume fails", "ducter/codex-resume"],
+  ["ducter", "pi 的模型列表", "pi's model list", "ducter/pi-models"],
+  ["ducter", "检查链接的脚本太慢", "The link checker is slow"],
+  ["ducter", "网页端首屏加载", "The web's first load", "ducter/first-load"],
+  ["ducter", "Android 自更新", "Android self-update", "ducter/android-update"],
+  ["ducter", "发布 0.1.6", "Release 0.1.6"],
+  ["ducter", "发布 0.1.7", "Release 0.1.7"],
+  ["ducter", "做过的事按电脑筛选", "Filter past tasks by computer", "ducter/past-computer"],
+  ["ducter", "语音输入的标点", "Punctuation in voice input", "ducter/voice-punct"],
+  ["ducter", "日历的冲突提醒", "Calendar clash reminders", "ducter/cal-clash"],
+  ["test-infra", "Prow 的 job 配置去重", "Deduplicate Prow job configs", "ducter/prow-dedupe"],
+  ["test-infra", "e2e 集群的节点池", "Node pools for the e2e cluster", "ducter/e2e-pools"],
+  ["test-infra", "测试结果上 BigQuery", "Test results into BigQuery", "ducter/bq-results"],
+  ["test-infra", "flaky 测试周报", "A weekly flaky-test report"],
+  ["test-infra", "Bazel 升 8.1", "Bump Bazel to 8.1", "ducter/bazel-81"],
+  ["test-infra", "CI 机器的磁盘清理", "Disk cleanup on CI machines", "ducter/ci-gc"],
+  ["test-infra", "GitHub Actions 的缓存", "GitHub Actions caching", "ducter/gha-cache"],
+  ["test-infra", "Prow 的 tide 合并太慢", "Prow's tide merges slowly", "ducter/tide-batch"],
+  ["", "订下个月的会议室", "Book next month's meeting room"],
+  ["", "整理 11 月的账单", "Sort November's bills"],
+  ["", "比较三款降噪耳机", "Compare three noise-cancelling headphones"],
+  ["", "给妈妈订生日蛋糕", "Order Mom's birthday cake"],
+  ["", "查周末去杭州的高铁", "Weekend trains to Hangzhou"],
+  ["", "续签护照要什么材料", "What a passport renewal needs"],
+  ["", "退掉没用的订阅", "Cancel the subscriptions I don't use"],
+  ["", "写 KubeCon 的演讲摘要", "Write the KubeCon talk abstract"],
+  ["", "整理读书笔记", "Tidy my reading notes"],
+  ["", "找一家能修 MacBook 键盘的店", "Find a shop that fixes MacBook keyboards"],
+  ["", "年假怎么排", "Plan the annual leave"],
+  ["", "回复 HN 上的评论", "Answer the comments on HN"],
+  ["", "备份照片到 NAS", "Back up the photos to the NAS"],
+  ["", "比较两家云服务器的价格", "Compare two cloud servers' prices"],
+];
+const READS = ["src/lib.rs", "src/db.rs", "crates/compaction/src/picker.rs", "crates/wal/src/reader.rs", "packages/search/src/index.ts", "apps/web/src/palette.tsx", "apps/desktop/internal/views/task.go", "prow/config.yaml", "README.md", "Cargo.toml", "package.json"];
+if (process.env.DEMO_MORE) {
+  const H = ["claude-code", "codex", "pi"] as const;
+  const M = { "claude-code": ["opus", "sonnet"], codex: ["gpt-5.5", "gpt-5.5-codex"], pi: ["sonnet", "gemini-3-pro"] } as const;
+  const ON = ["home", "home", "haswell", "home", "hel"] as const;
+  for (const [i, [repo, z, e, branch]] of MORE.entries()) {
+    const h = H[(i * 7) % 3]!;
+    const ends = ["done", "done", "done", "failed", "done", "dropped", "done", "done"] as const;
+    const end = i < 6 ? (["working", "working", "needs_you", "working", "blocked", "working"] as const)[i] : ends[i % ends.length];
+    const n = (i * 37) % 101;
+    S.push({
+      id: `m_${i}`,
+      zh: z,
+      en: e,
+      ...(repo ? { repo, on: ON[i % ON.length] } : {}),
+      h,
+      model: M[h][i % 2],
+      days: i < 6 ? 0.05 + i * 0.04 : 0.4 + ((i * 53) % 590) / 10,
+      ...(branch ? { branch, diff: [1 + (n % 9), 12 + n * 7, n % 40] as [number, number, number], ...(i % 4 === 0 ? { pr: "merge" as const } : i % 5 === 0 ? { pr: "draft" as const } : {}), commit: (0x1a2b3c + i * 0x9e37).toString(16).slice(0, 7) } : {}),
+      ...(end !== "done" ? { end } : {}),
+      ...(end === "needs_you" ? { ask: ["两种做法：改调度器（改动大）还是加一层队列（快但多一跳）？", "Two ways: change the scheduler (bigger) or add a queue (quicker, one more hop)?"] as [string, string] } : {}),
+      came: ["读完了相关的代码，先做一个最小的复现。", "Read the code around it; starting with the smallest repro."],
+      ...(end === "working" || end === "needs_you" || end === "blocked" ? {} : { out: end === "failed" ? ["没做成：测试环境起不来（端口被占用）。", "Didn't work: the test environment won't start (the port is taken)."] : end === "dropped" ? ["你说先不做了。", "You said to leave it for now."] : [`做完了：${z}。测试全过。`, `Done: ${e}. Tests pass.`] }),
+      ...(i % 3 === 0 && repo ? { steps: [{ you: true, zh: "先写测试再改", en: "Write the test before the fix", came: ["测试先红了，修完变绿。", "The test went red first, then green after the fix."] }, { zh: "跑一下全量测试", en: "Run the whole suite", came: ["全量 1,284 个测试通过。", "All 1,284 tests pass."] }] } : {}),
+      ...(repo ? { files: [READS[i % READS.length]!, READS[(i + 3) % READS.length]!] } : {}),
+      noise: repo && i % 6 === 0 ? 60 + (i % 5) * 40 : repo ? 6 : 0,
+    } as Seed);
+  }
+  // The long ones among the first: the compaction PR is the one the person keeps going back to.
+  for (const s of S) if (s.id === "s_compact_pr" || s.id === "s_import" || s.id === "s_crash") s.noise = 180;
+}
+
 const log = core.log;
 const DAY = 24 * 3600_000;
 const HOUR = 3600_000;
@@ -338,6 +451,12 @@ for (const s of [...S].sort((a, b) => b.days - a.days)) {
     if (commit) log.append({ stream: st, origin: "task", kind: "task_event", body: { taskId: s.id, role: "tool", tool: { name: "Bash", input: { command: `git commit -am "${s.branch ?? "work"}"` }, output: `[${s.branch ?? "main"} ${commit}] ${text.slice(0, 40)}`, ok: true } } });
     log.append({ stream: st, origin: "task", kind: "task_event", body: { taskId: s.id, role: "assistant", text } });
   };
+  for (let k = 0; k < (s.noise ?? 0); k++) {
+    const f = READS[k % READS.length]!;
+    const tool = k % 5 === 4 ? { name: "Bash", input: { command: k % 10 === 9 ? "cargo test -p compaction" : `rg -n "level" ${f}` }, output: k % 10 === 9 ? `running 48 tests\n${"test throttle::bucket_refills ... ok\n".repeat(6)}test result: ok. 48 passed; 0 failed` : `${f}:${40 + k}:    let level = picker.next_level();`, ok: true } : k % 5 === 3 ? { name: "Grep", input: { pattern: "fn pick", path: f }, ok: true } : { name: "Read", input: { file_path: f }, ok: true };
+    log.append({ stream: st, origin: "task", kind: "task_event", body: { taskId: s.id, role: "tool", tool } });
+    if (k % 25 === 24) log.append({ stream: st, origin: "task", kind: "task_event", body: { taskId: s.id, role: "assistant", text: w(`第 ${k + 1} 步：${f} 看完了，接着看调用它的地方。`, `Step ${k + 1}: read ${f}; now the callers.`) } });
+  }
   for (const f of s.files ?? []) log.append({ stream: st, origin: "task", kind: "task_event", body: { taskId: s.id, role: "tool", tool: { name: "Edit", input: { file_path: f }, ok: true } } });
   skew = -stepAt(0) + 30 * 60_000;
   if (s.came) said(w(...s.came), s.commit);

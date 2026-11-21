@@ -153,6 +153,7 @@ type Task struct {
 	PlacedAt  string
 	MovedFrom string
 	openSeq   int64 // seq of the task_open in Open (a retitle is a later one)
+	stateSeq  int64 // D456: seq of the task_state in State (or the cursor when a card set it)
 	// Version bumps when Events change, for views that recompute (diff).
 	Version int
 	// Sends are the user's direct messages to the task, oldest first.
@@ -1148,6 +1149,7 @@ func (s *Store) applyOnHand(o *protocol.OnHand) {
 		// A snapshot is newer than every task_state that arrived before it;
 		// later task_state events override it again.
 		t.State = &protocol.TaskState{TaskID: card.TaskID, Attention: card.Attention, Residency: card.Residency, Reason: card.Reason}
+		t.stateSeq = max(t.stateSeq, s.Cursor)
 		if card.LastReport != nil {
 			t.LastReport = card.LastReport
 		}
@@ -1684,7 +1686,10 @@ func (s *Store) applyTask(t *Task, ev protocol.LogEvent, body any) {
 			t.OpenedAt = ev.TS
 		}
 	case *protocol.TaskState:
-		t.State = b
+		// D456: an older page landing after the newest never turns a done task back to working.
+		if ev.Seq >= t.stateSeq {
+			t.State, t.stateSeq = b, ev.Seq
+		}
 	case *protocol.TaskEvent:
 		if b.Role == "system" && len(b.Raw) > 0 {
 			var raw struct {

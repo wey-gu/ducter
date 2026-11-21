@@ -3,6 +3,7 @@
 // apps/desktop/internal/protocol (keep field names identical; JSON is the wire format).
 
 export * from "./harnesses.ts";
+export * from "./fuzzy.ts";
 import type { FirstMeet } from "./first-meet.ts";
 export * from "./api-keys.ts";
 export * from "./key-routes.ts";

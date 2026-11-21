@@ -89,7 +89,9 @@ With one errand on hand, all of this stays out of the way: one row, and four sma
   marked; if you picked a project, the list stays on that project. **⌘⇧]** and **⌘⇧[** open
   the next task and the one before, even while you're typing (on the Mac they're also in the
   View menu as **Next Task** and **Previous Task**). **j** and **k** do the same when you
-  aren't typing. If you open the **Workbench** and the window is too narrow for all three, the
+  aren't typing. The open task's bar says where it is in the list (**3 / 9**), with a step to the
+  one before and after. **⌃1** to **⌃9** open the first to ninth task on hand. **⌘/** lists every
+  key. If you open the **Workbench** and the window is too narrow for all three, the
   Workbench takes the list's place until you close it.
 - In the list beside a task, a row says only its title and a small picture of your partner while
   something is going on: raising a flag when it needs you, reading while it works, smiling with

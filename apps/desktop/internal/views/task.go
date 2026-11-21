@@ -110,6 +110,7 @@ func (a *App) taskTitle(c *ui.Context, task *store.Task) {
 func (a *App) taskActions(c *ui.Context, task *store.Task) {
 	t := a.T
 	// D220: 工作副本 / Working copy: its branch, and what a developer checks before acting.
+	a.taskNav(c, task.ID) // D456: ‹ 3 / 9 ›, where it sits among what is on hand
 	a.taskInfo(c, task)
 	// D198: its working copy in Finder, a Terminal or an editor, whatever its state.
 	a.openIn(c, task)

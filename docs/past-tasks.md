@@ -21,7 +21,11 @@ and tasks that keep looking for something.
 - Anywhere, on the Mac or in a browser: press ⌘K (Ctrl+K), **找什么都行 / Find anything**, and type a
   few words. It finds what is on hand, every earlier task, what Ducter made for you and your own
   sessions, and goes to any page. Enter opens the one under the keys, ⌘Enter carries it on. Its
-  last two lines say the words to Ducter, or start a new task with them. ⌘O opens it too.
+  last two lines say the words to Ducter, or start a new task with them. ⌘O opens it too. On a
+  wide screen, where the task under the keys stopped shows beside the list (how it ended or what
+  it is doing, what it asks you, its changes and its last steps) before you press Enter.
+- You don't have to type it exactly: a word with one letter off still finds it, and so do the
+  first letters of a title's words (**wgc** for "WAL group commit").
 
 ## Finding a task
 

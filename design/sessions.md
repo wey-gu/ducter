@@ -101,9 +101,34 @@ card over the screen; phone: from On hand's Find, full width at the top, no key 
   key (D291).
 
 Ranking is Past tasks' (deterministic, every word somewhere, time words as a range, newer first
-on a tie); never a model, so it is instant and the same on every device. "By meaning" beyond
+on a tie); never a model, so it is instant and the same on every device. **It forgives (D456):**
+only when the word itself is nowhere, a Latin word of five letters or more one slip off (a letter
+changed, missing, extra, or two swapped) matches a word in a name, title, tag, branch or file at
+0.55 of the word, and three to six letters that are a run of a title's initials match the title at
+0.8 (`protocol/src/fuzzy.ts`, the Mac's `views/loosefind.go`, the same in the home's index and both
+clients' own match). Never subsequence matching over everything: over what anyone said it buries
+the right task.
+
+- **The peek (D456):** wide (web ≥ 1000 px with a fine pointer, the Mac from 1100 pt), **停在哪儿 /
+  Where it stopped** stands beside the list for the row under the keys: facts, state, what it asks,
+  how it ended (at work: its newest words), +a −d and the PR, its last steps with their commits. No
+  buttons: the foot holds the ways on. Its steps are asked once a row rests 140 ms. The card keeps
+  one height while the words change; a wide row drops its outcome line. A task still on hand that
+  the index finds by a file, a branch or its words stands under 手头的 / On hand, with where it
+  matched. "By meaning" beyond
 words (synonyms, "the slow one") is the partner's job, in the conversation, through task_find
 plus its own judgement.
+
+## Where the open task sits, and every key (D456)
+
+- **‹ 3 / 9 ›** in the opened task's bar (web wide, Mac): its place in the order ⌘⇧[ ⌘⇧] walk (On
+  hand's list as shown, else needs you, working, waiting, done today), with the steps to the one
+  before and after. **⌃1–⌃9** open the first to ninth from anywhere (⌘1–⌘5 stay the places).
+- **键盘 / Keyboard** (⌘/, and a row in ⌘K's 去 / Go to): every key by where it works, from one list
+  of rows on each client (`apps/web/src/keymap.tsx`, `views/keymap.go`), and one line saying that a
+  slip and the initials find too.
+- **A task's state is the newest by seq** on both clients: an older page of its Log (D320) landing
+  after the newest never turns a done task back to working.
 
 ## 做过的事 / Past tasks as the list of every task
 

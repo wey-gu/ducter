@@ -26,6 +26,9 @@ describe("D306 the page keeps the glance true", () => {
     const { strings } = await import("../src/i18n.ts");
     const { resetAmbient, setShown, syncAmbient } = await import("../src/ambient.tsx");
     A.L = strings("zh");
+    // Its own store: another file's tasks (a t1 with a later state) must not leak in.
+    const { Store } = await import("../src/store.ts");
+    A.S = new Store();
     resetAmbient(true);
     A.S.apply({ t: "events", events: [ev(1, "task:t1", "task_open", { taskId: "t1", title: "修 CI", project: "p", place: { kind: "none" }, harness: "claude-code", brief: "b" }), ev(2, "task:t1", "task_state", { taskId: "t1", attention: "working", residency: "hot" })] } as never);
     await setShown("task", "t1", "修 CI", "working", true);

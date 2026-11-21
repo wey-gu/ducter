@@ -409,6 +409,7 @@ type App struct {
 	infoCopied time.Time
 	past       pastState // D285: 做过的事 / Past tasks (past.go)
 	pal        palState  // D391: 找任何东西 / Find anything, ⌘K (palette.go)
+	keysOpen   bool      // D456: 键盘 / Keyboard, ⌘/ (keymap.go)
 	did        didState  // D300: 替你做过的 / Done for you (did.go)
 }
 
@@ -612,6 +613,7 @@ func (a *App) View(c *ui.Context) {
 		a.newTaskCard(c)
 		a.addFolderSheet(c) // D455
 		a.switcher(c)       // D216: ⌘O, 打开任务
+		a.keysSheet(c)      // D456: 键盘 / Keyboard
 		a.liveView(c)
 		a.phoneInstallSheet(c) // D217
 		a.lendSheet(c)         // D347
@@ -639,6 +641,7 @@ func (a *App) shortcuts(c *ui.Context) {
 		return // the palette has the keys (D216, D391)
 	}
 	a.railKeys(c) // D244: ⌘⇧] and ⌘⇧[ walk the tasks, from anywhere
+	a.taskKeys(c) // D456: ⌃1–⌃9 the nth task on hand; ⌘/ every key
 	switch {
 	case c.Shortcut(ui.Cmd, ui.KeyO):
 		a.OpenSwitcher()

@@ -29,7 +29,7 @@ import {
   PAST_STEP_LEN,
   type TaskCard,
 } from "@ducter/protocol";
-import { fill, words, type LangTag } from "@ducter/protocol";
+import { fill, initialsIn, nearIn, words, type LangTag } from "@ducter/protocol";
 import type { LogStore, TaskRegistry } from "@ducter/protocol/src/internal.ts";
 import { neverStarted } from "./registry.ts";
 
@@ -570,6 +570,19 @@ export function createPast(d: PastDeps): Past {
             per[i]!.w += w;
             if (per[i]!.at < 0) per[i]!.at = m.at;
           }
+          // D456: no field has the word itself: a slip of one letter in a name, a title, a branch or
+          // a file ("compactoin"), or the title's initials ("wgc"), weaker than the word itself.
+          if (!top) {
+            for (const [i, [f, text]] of fields.entries()) {
+              if (f !== "name" && f !== "title" && f !== "tag" && f !== "branch" && f !== "file") continue;
+              const m = (f === "name" || f === "title") && initialsIn(term, shownText(c, it, f)) ? { s: 0.8, at: 0 } : nearIn(term, text);
+              if (!m.s) continue;
+              const w = (WEIGHT[f] ?? 1) * m.s;
+              if (w > top) top = w;
+              per[i]!.w += w;
+              if (per[i]!.at < 0) per[i]!.at = m.at;
+            }
+          }
           if (top > 0) matched++;
           score += top;
         }
@@ -590,9 +603,12 @@ export function createPast(d: PastDeps): Past {
               const lines = shown.split("\n");
               const lower = lines.map((l) => l.toLowerCase());
               const term = terms.find((x) => lower.some((l) => l.includes(x)));
-              const i = term ? lower.findIndex((l) => l.includes(term)) : 0;
+              // D456: a word one slip off: the line holding the word it was near.
+              const near = term ? -1 : lower.findIndex((l) => terms.some((x) => nearIn(x, l).s > 0));
+              const i = term ? lower.findIndex((l) => l.includes(term)) : Math.max(0, near);
               const line = lines[Math.max(0, i)] ?? "";
-              text = snippet(line, term ? line.toLowerCase().indexOf(term) : 0, 72);
+              const at = term ? line.toLowerCase().indexOf(term) : Math.max(0, ...terms.map((x) => nearIn(x, line.toLowerCase()).at));
+              text = snippet(line, at, 72);
             } else text = snippet(shown, Math.max(0, best.at), 72);
             if (text.trim()) it.hit = { field: best.f, text };
           }

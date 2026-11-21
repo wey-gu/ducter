@@ -248,8 +248,20 @@ func (a *App) haystack(task *store.Task) string {
 	return strings.ToLower(strings.Join(parts, " "))
 }
 
-// findMatches: every word typed is somewhere in it.
+// findMatches: every word typed is somewhere in it, or one slip away, or the
+// title's initials (D456).
 func (a *App) findMatches(task *store.Task, q string) bool {
+	hay := a.haystack(task)
+	for _, w := range strings.Fields(strings.ToLower(q)) {
+		if !looseMatch(w, hay, task.Title()) {
+			return false
+		}
+	}
+	return true
+}
+
+// findExactly: every word typed is in it as typed (it ranks before a loose match).
+func (a *App) findExactly(task *store.Task, q string) bool {
 	hay := a.haystack(task)
 	for _, w := range strings.Fields(strings.ToLower(q)) {
 		if !strings.Contains(hay, w) {
@@ -867,7 +879,10 @@ func (a *App) switchList(q string) []*store.Task {
 		if low != "" && strings.Contains(strings.ToLower(x.Title()), low) {
 			return 0
 		}
-		return 1
+		if low == "" || a.findExactly(x, q) {
+			return 1
+		}
+		return 2 // D456: a slip or the initials, after the words as typed
 	}
 	at := func(x *store.Task) string {
 		if x.Card != nil {

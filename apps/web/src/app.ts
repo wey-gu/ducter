@@ -102,7 +102,7 @@ export function morph(apply: () => void) {
 }
 /** Settings (D150) is a list of sections; page is the one pushed ("" is the list). */
 export type SettingsPage = "" | "partner" | "memory" | "peers" | "notify" | "accounts" | "todos" | "chats" | "autofill" | "devices" | "phone";
-export type Sheet = { kind: "decision"; id: string } | { kind: "settings"; page?: SettingsPage } | { kind: "newtask" } | { kind: "switch" } | { kind: "past" } | { kind: "did" } | { kind: "pins" } | { kind: "app"; id: string } | { kind: "apps" } | { kind: "recall"; seq: number } | { kind: "learned" } | { kind: "pile" } | { kind: "hand" } | { kind: "review"; groupId: string } | { kind: "addfolder" } | null;
+export type Sheet = { kind: "decision"; id: string } | { kind: "settings"; page?: SettingsPage } | { kind: "newtask" } | { kind: "switch" } | { kind: "past" } | { kind: "did" } | { kind: "pins" } | { kind: "app"; id: string } | { kind: "apps" } | { kind: "recall"; seq: number } | { kind: "learned" } | { kind: "pile" } | { kind: "hand" } | { kind: "review"; groupId: string } | { kind: "addfolder" } | { kind: "keys" } | null;
 
 /**
  * D455: what is typed over the folder browser: a path (it starts with / or ~) names the folder to

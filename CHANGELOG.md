@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.1.10 - 2026-11-22
+
+<!-- whats-new
+zh: 用 Codex 当伙伴更靠谱；新命令看主动提议的效果
+en: A steadier partner on Codex; see how its offers land
+-->
+
+**Your partner on Codex**
+- A partner running on Codex no longer stops after saying what it is about to do: the task opens,
+  the reply reads as one message, and cards and lists show as cards and lists.
+- One request opens one task, even when the model asks twice.
+
+**Memory and Agent messaging**
+- Things you told Nowledge Mem come back as offers more often, asked the way Mem searches.
+- When Agent messaging has been turned off in Nowledge Mem, Ducter says so instead of showing an
+  empty inbox.
+
+**For people who run Ducter**
+- `ducter check` runs the live checks against your own accounts and devices, read only where it
+  can be, and asks you for the step only you can do.
+- `ducter proactive week` shows how your partner's offers landed each week: shown, opened, taken
+  up, replied to, and what it now offers more of.
+
 ## 0.1.9 - 2026-11-21
 
 <!-- whats-new

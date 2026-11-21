@@ -135,9 +135,19 @@ line.
 - [x] **The Mac's quiet hours in 24 hours** in every language and region: two pills of half hours (D445).
 - [x] **The Mac's waiting square breathes** as the web's does, timer-driven, still under reduced motion (D445).
 - [ ] **D445's follow-ups** (research/192): the author's review of `.shots/settings-delight/{before,after}`;
-  a segmented choice of three long English words still wraps inside its tray at the Mac's narrowest (760)
-  under its row; a live preview for Accounts and Chat apps (what a read or a message there would look
+  (done in D468: a segmented choice that can't fit stacks whole at 760); a live preview for Accounts and Chat apps (what a read or a message there would look
   like) was weighed and left; a comprehension pass with people on the notification preview's words.
+
+## Settings, one more hand (D468)
+
+- [ ] **The author's review** of `.shots/d468/{before,after}`, pane by pane.
+- [ ] **移除 / Remove on its own row** under each to-do source: weighed beside the source's title (D289 keeps a
+  destructive action as the group's last line). Trigger: the author's review.
+- [ ] **The web's This phone lede and the devices list's hairlines** (D311's list is shared with Devices).
+  Trigger: the next Devices pass.
+- [ ] **The phone's sign-in done as the said line** (D459's last boxed notice). Trigger: the next Accounts pass.
+- [ ] **Seen on an iPhone in the Simulator**: the rows' controls beside their words at 390, the hours' pills'
+  list on a touch screen.
 
 ## Several things in one message (D426, research/175)
 

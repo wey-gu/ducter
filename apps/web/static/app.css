@@ -3420,6 +3420,14 @@ a {
 .seg.stack {
   flex-direction: column;
 }
+/* D468: four that don't fit in one line, two by two (Seg measures), each as wide as its share. */
+.seg.two {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+.seg.two button {
+  min-width: 0;
+}
 .seg.stack button {
   flex: none;
   min-width: 0;
@@ -3436,9 +3444,11 @@ a {
 }
 .quiet-range {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--s2);
   /* A row of its own like the switches above it, never loose on the paper (D192). */
+  min-height: 64px;
   padding: 12px 16px;
   margin-bottom: 4px;
   border-radius: var(--r-md);
@@ -3447,18 +3457,12 @@ a {
   color: var(--ink-muted);
   font-size: var(--sm);
 }
-.quiet-range input {
-  flex: 1;
-  min-width: 0;
-  height: max(44px, 2.75rem);
-  padding: 0 var(--s3);
-  border: 1px solid var(--line-2);
-  border-radius: var(--r-sm);
-  background: var(--bg);
-  color: var(--ink);
-  font: inherit;
-  font-size: var(--md);
-}
+/* D468: titled like every row, the two pills at its right edge (the Mac's timePill). */
+.quiet-range > b { flex: 1 1 auto; font-size: var(--md); font-weight: 700; line-height: 1.5; color: var(--ink); }
+.quiet-range > .to { flex: none; }
+.quiet-range .pick { position: relative; flex: none; display: inline-flex; }
+.quiet-range .pick .dselect-btn { min-height: 36px; padding: 0 12px 0 14px; border: 0; border-radius: var(--r-md); background: var(--surface-sunken); color: var(--ink); font: inherit; font-size: var(--sm); font-weight: 600; font-variant-numeric: tabular-nums; cursor: pointer; }
+@media (pointer: coarse) { .quiet-range .pick .dselect-btn { min-height: 44px; } }
 .noted {
   display: flex;
   flex-direction: column;
@@ -11799,7 +11803,9 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   letter-spacing: 0.08em;
   user-select: all;
 }
-/* A phone is narrow: the button drops under its note, at the right edge. */
+/* A phone is narrow: the button drops under its note, at the right edge, but only once the words
+   beside it would have less than about 160 (D468, the Mac's D445 rule): a short 贴密钥 or 换一个
+   stays beside its row's words instead of opening a line of its own. */
 @media (max-width: 520px) {
   .chat-foot,
   .chat-row {
@@ -11808,7 +11814,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   }
   .chat-foot .grow,
   .chat-row .grow {
-    flex-basis: 100%;
+    flex: 1 1 11rem;
   }
 }
 
@@ -13458,9 +13464,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
 .danger-text.quiet { color: var(--ink-soft); }
 .danger-text.quiet:hover,
 .danger-text.quiet:active { color: var(--failed-ink); }
-@media (max-width: 520px) {
-  .chat-row.tiled .grow { flex-basis: calc(100% - 40px - var(--s3)); }
-}
+
 .g-state { flex: none; font-size: var(--sm); font-weight: 600; color: var(--ink-muted); white-space: nowrap; }
 .g-state.tone-done { color: var(--done-ink); }
 .g-state.tone-bad { color: var(--failed-ink); }
@@ -14679,16 +14683,11 @@ svg .wave.w2.on {
   pointer-events: none;
   color: var(--ink-muted);
 }
+/* D468: on a phone the pill keeps its place at the row's right edge, as on the Mac; it goes under the
+   words only when they would have less than about 160 beside it. */
 @media (max-width: 520px) {
-  .set-item.talk-row {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .set-item .pick, .set-item .pick .dselect, .set-item .pick .dselect-btn {
-    width: 100%;
-    max-width: none;
-  }
-  .set-item .pick .dselect-btn { justify-content: space-between; }
+  .set-item.talk-row { flex-wrap: wrap; justify-content: flex-end; }
+  .set-item.talk-row > .grow { flex: 1 1 11rem; min-width: 0; }
 }
 /* D329: a Noted line's facts, each its own element (D291): what it replaced, that it waits for Mem, a refused undo. */
 .noted-line .nq { color: var(--ink-muted); }

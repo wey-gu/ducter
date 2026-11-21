@@ -446,13 +446,34 @@ one shape kept:
 | Memory and Agent messaging read as two products of one Mem | Memory's Nowledge Mem group says **你的其他 agent 也通过它找到{name}** with **看看谁能找到 ›** whenever Agent messaging is shown |
 | The Mac's `explainedRow` kept its control beside squeezed words at 760 | It drops the control under the words as `row` and `tileRow` do (D445) |
 
+## One more hand (D468)
+
+Every pane but Memory, Agent messaging and On hand rendered against `demo-settings-real.ts` on the Mac at
+1280 and 760 (`TestD468Shots`) and the web at 1280 and 500, zh and en, light and dark
+(`.shots/d468/{before,after}`). Findings per pane, ranked, are in D468. The rules it leaves:
+
+- **A control stays beside its row's words on every width** while the words keep about 160; then it drops
+  under them. The Mac's rule (D445, `rowWordsMin`) is now the web's on a phone too (`.chat-row`, `.chat-foot`,
+  the language's row): 贴密钥, 换一个, 试试 and the model's pill no longer open a line of their own. A group's
+  last line on the Mac (`footRow`) follows it, so its note never squeezes to a word a line beside two actions.
+- **A choice of a few is one track or one clean stack.** When its options can't stand in one line even
+  under the words, they stack across the text column, one per line (Mac `choices` measures, web `Seg`); four
+  that fit two by two sit two by two (web), as 发现了就说 on a phone.
+- **The hours are pills on both clients.** The web's quiet hours are a row titled **时间段 / Hours** with two
+  pills of the half hours (`Select`), as the Mac's; a pill's list opens with the chosen one in sight.
+- **An added source is the partner's said line** under the sources (**加上了 OOMOL，现在能看：Gmail、日历**),
+  where a stopped one is answered; a refusal keeps the failed look.
+- **Two actions never say the same thing.** A linked chat app's account row says **换个账号 / Use another
+  account**, not 解除连接 / Unlink above 断开 Telegram.
+
 ## Not done
 
-- D459's leftovers: Accounts' connection added and the phone's sign-in still answer with a boxed notice at the
-  top (`partnerToast`), not the said line; the web's quiet hours are the browser's time fields where the Mac
-  has pills; 发现了就说's four choices stack into a tall block on a phone; the web titles a memory kind
-  inside its card (`g-cap`), the Mac above it; Agent messaging's problems are bold sentences, not a title and
-  a line.
+- D459's leftovers: the phone's sign-in still answers with a boxed notice at the top (`partnerToast`), not
+  the said line; the web titles a memory kind inside its card (`g-cap`), the Mac above it; Agent messaging's
+  problems are bold sentences, not a title and a line.
+- D468's leftovers: 移除 / Remove stands alone on its own row under each to-do source; the web's This phone
+  has no lede; the web's devices list has no hairlines between devices (D311's list); the Partner page's
+  peers line has no chevron on the web (`memory.tsx`); the notification preview's 现在 sits mid-card at 500.
 - A comprehension pass with people on the said lines and on a row with no state word.
 - The web has no AI accounts row on Accounts (the phone has no Devices page of its own there);
   its Partner page keeps the tray-less lists (D89).

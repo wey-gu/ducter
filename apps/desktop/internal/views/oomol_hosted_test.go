@@ -128,8 +128,9 @@ func TestOomolHostedOutcomes(t *testing.T) {
 	app.Receive(protocol.ServerFrame{T: "connection_result", OK: true, ID: "conn_1", Readable: conn.Apps})
 	tt.Frame()
 	tt.Frame()
-	if !tt.HasText("加上了 OOMOL，现在能看：Gmail、Discord") || app.partner.toastTone != noticeDone {
-		t.Errorf("added: the done line lists what it reads (tone %d)", app.partner.toastTone)
+	// D468: the partner's said line under the sources, not a boxed toast.
+	if !tt.HasText("加上了 OOMOL，现在能看：Gmail、Discord") || app.partner.toast != "" {
+		t.Errorf("added: the said line lists what it reads (toast %q)", app.partner.toast)
 	}
 	if app.partner.acctAdding {
 		t.Errorf("the form stays open after adding")
@@ -144,8 +145,8 @@ func TestOomolHostedOutcomes(t *testing.T) {
 	tt.Frame()
 	tt.Frame()
 	// D166: the card's status line says so, with the way to fix it under it.
-	if app.partner.toastTone != noticeInfo || !tt.HasText("No accounts connected there yet; connect one") {
-		t.Errorf("connected but empty: tone %d", app.partner.toastTone)
+	if app.partner.toast != "" || !tt.HasText("No accounts connected there yet; connect one") || !tt.HasText("there is nothing there to read yet") {
+		t.Errorf("connected but empty: toast %q", app.partner.toast)
 	}
 	tt.Click("Connect accounts in OOMOL")
 	if len(*opened) != 1 || (*opened)[0] != oomolAccounts {

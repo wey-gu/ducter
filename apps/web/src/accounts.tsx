@@ -487,6 +487,7 @@ export function SourceCards({ list, add }: { list: ConnectionView[]; add?: preac
       )}
       {!sources.length && add}
       <Said k="acct-stop" />
+      <Said k="acct-added" />
       <CallsSection list={list} />
     </>
   );

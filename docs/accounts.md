@@ -56,7 +56,7 @@ There is no address to type. The card shows three steps:
 What you might see:
 
 - **Added OOMOL. It can now read Gmail, Discord.** It worked, and that's what your partner can
-  read.
+  read. Your partner says it in one short line under your accounts, which goes away by itself.
 - **Connected, but no accounts are connected in OOMOL yet.** The key works, but there's nothing
   in OOMOL to read. Connect your accounts there (the link is right under it); they show up here
   within a few minutes.

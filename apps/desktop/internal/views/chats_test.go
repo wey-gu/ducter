@@ -40,7 +40,7 @@ func TestChatsPanel(t *testing.T) {
 		t.Fatal(err)
 	}
 	tt.Frame()
-	for _, want := range []string{"Chat apps", "Waiting for you at @my_ducter_bot", "Linked to Wey", "Telegram keeps a copy of your chats.", "This workspace's admins may be able to see what's said here.", "Copy the app manifest", "View", "Unlink", "Disconnect Telegram"} {
+	for _, want := range []string{"Chat apps", "Waiting for you at @my_ducter_bot", "Linked to Wey", "Telegram keeps a copy of your chats.", "This workspace's admins may be able to see what's said here.", "Copy the app manifest", "View", "Use another account", "Disconnect Telegram"} {
 		if !tt.HasText(want) {
 			t.Errorf("missing %q in %q", want, tt.Texts())
 		}
@@ -48,7 +48,7 @@ func TestChatsPanel(t *testing.T) {
 	if _, ok := lastSent[protocol.ChannelsReq](*sent); !ok {
 		t.Errorf("the panel didn't ask for the chat apps: %#v", *sent)
 	}
-	if err := tt.Click("Unlink"); err != nil {
+	if err := tt.Click("Use another account"); err != nil {
 		t.Fatal(err)
 	}
 	tt.Frame()

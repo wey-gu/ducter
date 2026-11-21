@@ -221,6 +221,12 @@ export function Select<V extends string>(p: { label: string; value: V; options: 
   const btn = useRef<HTMLButtonElement>(null);
   const cur = p.options.find((o) => o.v === p.value);
   const shut = () => (setOpen(false), btn.current?.focus({ preventScroll: true }));
+  // D468: a long list (the half hours, fourteen languages) opens with the chosen one in sight.
+  useEffect(() => {
+    if (!open) return;
+    const f = requestAnimationFrame(() => document.querySelector<HTMLElement>('.dselect-list [aria-selected="true"]')?.scrollIntoView({ block: "center" }));
+    return () => cancelAnimationFrame(f);
+  }, [open]);
   return (
     <span class={`dselect${open ? " open" : ""}${p.class ? ` ${p.class}` : ""}`}>
       <button

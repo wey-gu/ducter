@@ -108,7 +108,7 @@ message. Telegram shows typing every 4 s while a turn started there waits for it
   step: link your account**, **在 {@bot or workspace} 等你 / Waiting for you at {…} (D296)**, why it can't
   connect in words), the steps and fields, **连上 / Connect**, **连上你的账号 / Link your account**
   with **让我的账号连上 / Link my account**, then **在 Telegram 里打开 / Open in Telegram** and the
-  code, **和 {name} 连着 / Linked to {name}** with **解除连接 / Unlink**, **断开 {app} / Disconnect
+  code, **和 {name} 连着 / Linked to {name}** with **换个账号 / Use another account** (D468), **断开 {app} / Disconnect
   {app}**, the one line of who else can see it (**Telegram 会存一份你们的聊天记录。** · **这个工作区的
   管理员可能看得到你在这儿说的话。**), and one line under the groups of what goes there. An app never
   connected rests as its first row with **设置 / Set up** and that one line until pressed; then its steps
@@ -125,7 +125,7 @@ message. Telegram shows typing every 4 s while a turn started there waits for it
   **拷贝 App 配置 / Copy the app manifest** (secondary) with **看看内容 / View** (a quiet disclosure),
   never a raw JSON block. A group's last line is its privacy note on the text column and its one
   button at the right edge: **连上** (primary) while setting up, **断开 {app}** (destructive text)
-  once connected; **解除连接** is quiet text at the right of the **和 {name} 连着** row.
+  once connected; **换个账号** is quiet text at the right of the **和 {name} 连着** row.
 
 ## 7. Architecture (D276 (7))
 

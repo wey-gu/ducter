@@ -106,10 +106,18 @@ func (a *App) wordsThenControl(c *ui.Context, words func(), control func()) {
 		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(2).Children(words)
 		return
 	}
-	ui.Row(c).Grow(1).Basis(0).MinWidth(0).Wrap().Gap(t.S3).AlignItems(ui.Center).Children(func() {
+	outer := ui.Row(c).Grow(1).Basis(0).MinWidth(0).Wrap().Gap(t.S3).AlignItems(ui.Center)
+	// D468: the width a dropped control may take (last frame's), so a choice
+	// of a few can stack its options when even that is too narrow.
+	prev, prevRow := a.ctlAvail, a.ctlRow
+	a.ctlAvail = outer.LayoutBounds().W
+	outer.Children(func() {
 		ui.Column(c).Grow(1).Basis(rowWordsMin).MinWidth(0).Gap(2).Children(words)
-		ui.Row(c).Shrink(0).MaxWidthPercent(100).Gap(t.S2).AlignItems(ui.Center).Children(control)
+		ctl := ui.Row(c).Shrink(0).MaxWidthPercent(100).Gap(t.S2).AlignItems(ui.Center)
+		a.ctlRow = &ctl
+		ctl.Children(control)
 	})
+	a.ctlAvail, a.ctlRow = prev, prevRow
 }
 
 // paneWait is a pane still being read (D432): the shape of its first group,
@@ -155,16 +163,22 @@ func (a *App) textBlock(c *ui.Context, key string, body func()) {
 }
 
 // footRow is a group's last line (D283): its one quiet note on the text
-// column, its quiet actions at the right edge.
+// column, its quiet actions at the right edge. D468: as every row (D445),
+// the actions go under the note once it would keep less than rowWordsMin
+// beside them; at 760 OOMOL's and Tuwa's two actions had squeezed their
+// note to a word a line.
 func (a *App) footRow(c *ui.Context, key, note string, actions func()) {
 	t := a.T
 	a.sep(c)
 	ui.Row(c.Key("foot:"+key)).Gap(t.S3).Padding(t.S3, t.S5, t.S4, t.S5).MinHeight(56).AlignItems(ui.Center).Children(func() {
 		ui.Box(c).Width(40).Shrink(0)
-		uiText(c, note).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted).Grow(1).Basis(0).MinWidth(0)
-		if actions != nil {
-			ui.Row(c).Shrink(0).Gap(t.S1).AlignItems(ui.Center).Children(actions)
+		if actions == nil {
+			uiText(c, note).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted).Grow(1).Basis(0).MinWidth(0)
+			return
 		}
+		a.wordsThenControl(c, func() {
+			uiText(c, note).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
+		}, actions)
 	})
 }
 

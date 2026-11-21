@@ -421,11 +421,19 @@ export function Seg<V extends string | number>(p: { label: string; value: V | un
     const el = ref.current;
     if (!el) return;
     const fit = () => {
-      el.classList.remove("stack");
+      el.classList.remove("stack", "two");
       // D445: a choice whose own words overflow it counts too (the buttons shrink before the row does:
       // To-do sources' "Take it directly" ran into "Don't tell me" at 390).
-      const over = el.scrollWidth > el.clientWidth + 1 || [...el.children].some((b) => b.scrollWidth > b.clientWidth + 1);
-      el.classList.toggle("stack", over);
+      const spill = () => el.scrollWidth > el.clientWidth + 1 || [...el.children].some((b) => b.scrollWidth > b.clientWidth + 1);
+      if (!spill()) return;
+      // D468: four that don't fit in a line sit two by two while their words fit (发现了就说 stood four
+      // lines tall on a phone); else one per line.
+      if (el.children.length === 4) {
+        el.classList.add("two");
+        if (!spill()) return;
+        el.classList.remove("two");
+      }
+      el.classList.add("stack");
     };
     fit();
     if (typeof ResizeObserver === "undefined") return;

@@ -11,6 +11,8 @@ en: More offers, fewer interruptions; sharper finding; folders on any computer
 - Morning messages carry more of what it noticed, three in full and a few more folded, and none
   of them waits for you: no card to clear, no count, they fade by the next morning. Interruptions
   stay rare. What you take up is what it offers more of.
+- It also thinks of what comes next after finished work, something you told Nowledge Mem that
+  matters today, and things you said you'd look at, each saying where it came from.
 
 **Tasks and finding**
 - A finished or failed card can be taken off On hand, with undo.

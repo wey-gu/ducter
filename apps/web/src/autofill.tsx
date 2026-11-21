@@ -231,7 +231,6 @@ export function AutofillSettings() {
   const edit = (e: Editing) => ((A.savedFailed = false), setEditing(e));
   return (
     <>
-      <p class="af-lede">{t("af.lede")}</p>
       <p class="small lede-note">{t("af.kept.short", A.homeName || "")}</p>
       <How about={t("af.kept.short", A.homeName || "")} detail={t(f.keptIn === "keychain" ? "af.kept.keychain" : "af.kept.file")} />
       <section class="set">

@@ -747,18 +747,7 @@ func (a *App) memFirst(c *ui.Context, phase string, b *protocol.BridgeView) {
 	t := a.T
 	name := a.personaName()
 	home := a.memHome()
-	face := theme.Idle
-	switch phase {
-	case "installing", "signing_in":
-		face = theme.Working
-	case "sign_in":
-		face = theme.Waiting
-	}
-	ui.Column(c.Key("mem-first")).AlignItems(ui.Center).Gap(t.S2).Padding(t.S4, t.S6, t.S2, t.S6).Children(func() {
-		a.avatar(c, face, 96)
-		a.heading(c, a.L.T("mem.first.title", name), t.XL)
-		uiText(c, a.L.T("mem.first.body")).FontSize(t.MD).LineHeight(a.leading(1.6)).TextColor(t.InkSoft).TextAlign(ui.Center).MaxWidth(520)
-	})
+	// D469: the pane's head says it in the partner's voice (say.memory.first); no second hero.
 	line := map[string]string{
 		"missing":    a.L.T("mem.setup.missing"),
 		"install":    a.L.T("mem.setup.install", home),

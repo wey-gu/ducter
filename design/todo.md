@@ -2780,3 +2780,10 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] **What Codex still gets wrong that is the model's, not the harness's:** a needs_input relay that adds its own question ("要现在付 73 元吗？"), rich answers on GPT-6-Luna (a chart or a choices question that becomes a task_send or a guess), Bridge lines that explain Spaces, the noticed answer's times. The persona is not forked per model; measure again on the next Codex model before forking. Trigger: a Codex eval below 185, or someone on Codex meeting one of these live.
 - [ ] **The correction round's cost:** a line that promised work with no tool costs one more model turn. Count it live (the partner's stats) before tuning the promise shapes. Trigger: a week of the partner on Codex on hel.
 - [ ] **Codex's read-only shell for the partner:** the partner on Codex keeps a read-only shell (its only way to read a file); the persona now says never to look in the place first. If an eval sees `commandExecution` again, turn `features.shell_tool` off for the partner and give it a read tool. Trigger: one eval run that uses it.
+
+## Settings as the partner's report (D469)
+
+- [ ] **The author's review** of Overview and the speaking heads (`.shots/d469/after`), and a comprehension pass on Overview's labels (运行在, 能看的, 也能找我) with naive raters. Trigger: the next release.
+- [ ] **Phones and tablets on Your computers.** The Mac reads only `devices` (computers); the iPhone, iPad and Pixel Fold are clients (`reach`). Trigger: when a client can say what it is to the partner beyond a window (lent to tasks, D238).
+- [ ] **An account's place.** The read accounts' marks sit on the home's card; through OOMOL they pass its servers. Show the source's own place (a small cloud beside the home) once D469 is reviewed. Trigger: the author's review.
+- [ ] **The needs' buttons go to the pane, not the fix itself** (去更新 opens Memory where D466's ask stands). Doing the fix from Overview needs each fix's in-place ask there too. Trigger: when a need is seen on Overview often enough that the extra step is felt.

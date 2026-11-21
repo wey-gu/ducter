@@ -50,7 +50,7 @@ func TestBridgeRow(t *testing.T) {
 		// D225: the home's own Mem command line, put in, updated and signed in, in Memory.
 		{"install", TabMemory, protocol.BridgeView{State: "install_mem", Identity: "ducter", Home: "hel", CanRun: true},
 			func(L *i18n.Strings) []string {
-				return []string{L.T("bridge.mem.install", "hel"), L.T("bridge.mem.install.go"), L.T("mem.first.title", "小鸭")}
+				return []string{L.T("bridge.mem.install", "hel"), L.T("bridge.mem.install.go"), L.T("say.memory.first")}
 			},
 			func(L *i18n.Strings) []string { return []string{L.T("bridge.connect")} }},
 		{"install-need-pipx", TabMemory, protocol.BridgeView{State: "install_mem", Identity: "ducter", Home: "hel", Need: "pipx"},

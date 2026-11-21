@@ -17,10 +17,12 @@ When there is something to update (Ducter on one of your computers, or an AI age
 **Update** button appears at the top right of every screen, with how many there are. It opens the
 page where you update everything with one tap.
 
-On the left is a row of tabs; the one you pick shows on the right:
+On the left is a row of tabs; the one you pick shows on the right. Settings opens on the first,
+**Overview**:
 
 | Tab | What's in it |
 |---|---|
+| **Overview** | Your partner telling you how everything stands, and your computers |
 | **Partner** | Its name, what it thinks with, who does the tasks, a pasted API key, what happens when a limit runs out, how it talks, what your AI agents keep, and what it does on its own or asks you first |
 | **Memory** | What it remembers about you, and Nowledge Mem: its version and updates |
 | **Agent messaging** | Your Claude Code or Codex handing it work, and it asking them (shown if you use them yourself) |
@@ -32,11 +34,30 @@ On the left is a row of tabs; the one you pick shows on the right:
 | **Updates and about** | The version, updates, help links and credits |
 
 On a phone, tap the gear at the top right (or your partner's face or name at the top of the conversation):
-Settings opens as a list of the same sections (**Partner**, **Memory**, **Notifications**, **Accounts**, **Your devices**, **This phone**), and tapping one opens
+Settings opens with the same overview at the top (your partner's few lines and your computers), then a list of the same sections (**Partner**, **Memory**, **Notifications**, **Accounts**, **Your devices**, **This phone**), and tapping one opens
 it. **This phone** (**This computer** in a browser on a computer) holds what is this device's own: **Light and dark** (**Follow the system**, **Light** or **Dark**), **An opened task** (**Comfortable** or **Compact**),
 the language of its screens, Details in the conversation, and reading replies aloud when you talk by voice.
 A small preview at the top shows your partner, a message of yours and its reply as they look here, and
 changes the moment you pick something.
+
+## Overview
+
+Settings opens with your partner telling you, in a few lines, how things stand: where it runs, what it
+thinks with, which accounts it reads (and that anything sent or paid asks you first), what it
+remembers, and where else you can reach it. Click a line to open its tab. When something needs you
+(a source of accounts that can't be reached, something Nowledge Mem would like you to confirm, a
+newer Nowledge Mem for one of your AI agents, updates ready), your partner raises its little flag,
+says so first, and gives you a button that takes you to where you fix it. When all is well it simply
+says **All's well. I'm right here.**
+
+Under it, **Your computers** shows each computer as a little clay picture with what it is to your
+partner (**Ducter runs here**, **Does tasks for Ducter**). The computer Ducter runs on also shows
+what lives there: your partner, its memory, and the marks of the accounts it reads. Click one to
+open **Devices**.
+
+Every other tab starts the same way: your partner says, in one sentence, what is true there right
+now ("I'm keeping an eye on 7 accounts…"), and anything on that tab that needs you comes right under
+it.
 
 ## Partner
 

@@ -369,7 +369,6 @@ export function TodoSourcesSettings() {
   const panel = !!A.ghTodo && canGh;
   return (
     <>
-      <p class="af-lede">{t("todos.lede", A.S.personaName)}</p>
       {/* D365: who owns what, close under the lede, as on the Mac. */}
       <p class="small todo-own">{t("todos.own", A.S.personaName)}</p>
       {f.sources.map((v) => (

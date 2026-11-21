@@ -20076,3 +20076,230 @@ html[data-text-size="large"] .brand-mark > svg {
 .done-earlier {
   margin-top: 4px;
 }
+
+/* D469: Settings in On hand's language. The list opens with the partner's brief on its own world (the
+   figure in its pose, the lead in the display face, labelled lines that each open their page, what
+   needs you with the way to its fix), then where things live: each computer in its clay, the home
+   carrying the partner, its memory and the accounts it reads. A pushed page's head is the partner
+   saying what is true there. */
+.set-brief {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  padding: 8px 4px 4px;
+}
+.set-brief .sb-face {
+  flex: none;
+  margin-top: 2px;
+}
+.set-brief .sb-says {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.set-brief .sb-lead {
+  margin: 0;
+  font-family: var(--head);
+  font-size: 1.375rem;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--ink);
+}
+.set-brief .sb-lines {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  column-gap: 18px;
+  row-gap: 8px;
+  align-items: baseline;
+}
+.set-brief .sb-line {
+  display: contents;
+}
+.set-brief .sb-label {
+  white-space: nowrap;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--ink-muted);
+}
+.set-brief .sb-line.need .sb-label {
+  color: var(--needs-ink);
+}
+.set-brief .sb-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.set-brief .sb-need {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: var(--ink);
+}
+.set-brief .sb-text {
+  appearance: none;
+  border: 0;
+  background: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: var(--ink);
+  text-align: start;
+  cursor: pointer;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.set-brief .sb-text:hover {
+  text-decoration: underline;
+  text-decoration-color: var(--line);
+  text-underline-offset: 3px;
+}
+.set-brief .sb-text:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
+}
+.set-map {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 8px 0 4px;
+}
+.set-map .map-label {
+  margin: 0;
+  padding: 0 8px;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--ink-muted);
+}
+.set-map .map-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(176px, 1fr));
+  gap: 12px;
+}
+.set-map .map-card {
+  appearance: none;
+  border: 0;
+  font: inherit;
+  color: var(--ink);
+  text-align: start;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 16px;
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--base);
+  min-width: 0;
+  transition: transform 0.15s ease;
+}
+.set-map .map-card:hover {
+  transform: translateY(-1px);
+}
+.set-map .map-card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.set-map .map-card > img {
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+}
+.set-map .map-card b {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.set-map .map-card small {
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: var(--ink-muted);
+}
+.set-map .map-here {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+}
+.set-map .map-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.set-map .map-more {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--ink-muted);
+}
+.pane-says {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin: 2px 0 8px;
+}
+.pane-says .avatar {
+  flex: none;
+}
+.pane-says .ps-words {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 6px;
+}
+.pane-says .ps-say {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  color: var(--ink-soft);
+}
+.pane-says .ps-need {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1.55;
+  color: var(--needs-ink);
+}
+@media (max-width: 599px) {
+  .set-brief {
+    gap: 14px;
+  }
+  .set-brief .sb-lead {
+    font-size: 1.1875rem;
+  }
+  .set-brief .sb-lines {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 2px;
+  }
+  .set-brief .sb-label {
+    margin-top: 8px;
+  }
+  .set-map .map-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .set-map .map-card {
+    padding: 12px;
+  }
+}

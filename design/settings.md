@@ -446,8 +446,35 @@ one shape kept:
 | Memory and Agent messaging read as two products of one Mem | Memory's Nowledge Mem group says **你的其他 agent 也通过它找到{name}** with **看看谁能找到 ›** whenever Agent messaging is shown |
 | The Mac's `explainedRow` kept its control beside squeezed words at 760 | It drops the control under the words as `row` and `tileRow` do (D445) |
 
+## The partner reports on its own world (D469)
+
+The author after D459, D465, D466 and D468: Settings 「还是原来的样子」. The rows were one grammar; what was
+missing was On hand's language (D467): a partner who reports, state carried by its art, what needs you first
+with its fix. Candidates, rubric and diagnosis are D469's; what it leaves, on both clients:
+
+- **Settings opens on 概览 / Overview** (Mac: the rail's first tab, the home computer's clay; web: the head of the
+  Settings list). **The brief**, On hand's form: the partner at 88 in its pose (flag, smiling, napping), one lead
+  (**都好好的，我在这儿。**, **有一处要你看一眼。**, **有 n 处要你看一眼。**, first run **还差一步，我就能想事情了。**), then
+  labelled lines in its voice, each opening its pane: **等你** (each need with the button to where its fix is),
+  **运行在**, **想事情用**, **能看的**, **记得**, **也能找我**.
+- **What needs you, everywhere it is** (`setNeeds`, the web's twin): no agent to think with (Partner), a source
+  that can't be reached (Accounts), Mem's questions (D465) and a Mem plugin behind (D466) (Memory), updates
+  (About on the Mac, Devices on the web). The brief names each with its button; the pane's head names its own.
+- **你的电脑 / Your computers:** each computer one clay card of one width, its clay in its state, its name and what
+  it is to the partner (**{name} 在这台上运行**, **帮 {name} 做事**, **这会儿连不上**); the home's card carries what
+  lives there: the partner's face, Mem's notebook while memory is on, the read accounts' marks (four, then +n).
+  On Overview and on Where it runs; a card opens Devices.
+- **Every pane's head is the partner speaking** (Mac `paneSpeaks`, the web the same): the pane's name, then the
+  partner at 40 and one sentence of what is true there (Accounts counts what it keeps an eye on; Where it runs
+  says where and that closing the window doesn't stop it; Memory by its state), then that pane's needs in the
+  needs-you ink with the partner's flag. A pane with nothing computed says its old lede in the first person.
+- **Said once:** a row under a head that says the same is dropped or speaks only when it differs (Where it runs'
+  computer row; Memory's first-run hero).
+
 ## Not done
 
+- D469's owed: the phones and the iPad (clients) on Your computers; the accounts' marks on the source's own
+  place (OOMOL's servers) rather than on the home; a comprehension pass on Overview's labels; the author's review.
 - D459's leftovers: Accounts' connection added and the phone's sign-in still answer with a boxed notice at the
   top (`partnerToast`), not the said line; the web's quiet hours are the browser's time fields where the Mac
   has pills; 发现了就说's four choices stack into a tall block on a phone; the web titles a memory kind

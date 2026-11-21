@@ -3,7 +3,7 @@ import { DUCTER_VERSION } from "@ducter/protocol/src/version.ts";
 import { brainNow } from "./brain.ts";
 import { CLIENT_SHAPES, HARNESSES, harnessName, isHarnessId, isProactiveYesNo, PILE_GROUPS, shapeOfModel, TRY_LIVE, WATCH_LIVE } from "@ducter/protocol";
 import type { ServerWebSocket } from "bun";
-import type { Bodies, ClientFrame, ClientKind, Delivery, FileOpenError, LogEvent, MediaRef, OoApp, PartnerActivity, Place, ServerFrame, UndoConfirm } from "@ducter/protocol";
+import type { Bodies, ClientFrame, ClientKind, Delivery, FileOpenError, LogEvent, MediaRef, MemCheckAnswer, OoApp, PartnerActivity, Place, ServerFrame, UndoConfirm } from "@ducter/protocol";
 import type { NewTaskInput, NewTaskResult } from "./newtask.ts";
 import type { CoreApi, Runner } from "@ducter/protocol/src/internal.ts";
 import type { Decisions } from "./decisions.ts";
@@ -1385,6 +1385,17 @@ export function createWsHandler(deps: WsDeps) {
         if (!deps.settings) throw new Error("settings are not available");
         ws.data.settings = true;
         const ok = f.t === "mem_forget" ? await deps.settings.forgetMem(String(f.id ?? "")) : await deps.settings.fixMem(String(f.id ?? ""), String(f.title ?? ""));
+        if (!ok) send(ws, await settingsFrame());
+        return;
+      }
+      case "mem_answer": {
+        // D465: one of Mem's asks settled from the page. Mem took it: a fresh frame reaches every
+        // subscriber (the ask leaves); it didn't: this socket hears so, and the ask stays.
+        if (!deps.settings) throw new Error("settings are not available");
+        ws.data.settings = true;
+        const answer = String(f.answer ?? "") as MemCheckAnswer;
+        const ok = await deps.settings.answerMem(String(f.id ?? ""), answer);
+        send(ws, { t: "mem_answered", id: String(f.id ?? ""), answer, ok });
         if (!ok) send(ws, await settingsFrame());
         return;
       }

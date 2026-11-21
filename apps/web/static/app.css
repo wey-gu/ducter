@@ -19023,3 +19023,14 @@ html[data-text-size="large"] .brand-mark > svg {
 /* Keycaps draw their arrows (D211: no text arrows iOS turns into emoji). */
 .adf-keys kbd .chev-g { vertical-align: -1px; }
 .adf-keys kbd .chev-g.k-up { transform: rotate(-90deg); }
+
+/* D465: Nowledge Mem would like to check: two memories that may disagree, a rule it learned; Mem's suggestion the primary. */
+.mem-check-sec .g-block { padding: var(--s4) var(--set-in, var(--s4)); gap: var(--s2); }
+.mem-check-sec .g-block + .g-block { border-top: 1px solid var(--line); }
+.mem-check-q { font-weight: 600; color: var(--ink); line-height: 1.4; }
+.mem-check-cap { color: var(--ink-muted); }
+.mem-check-body { color: var(--ink-soft); line-height: 1.5; }
+.mem-pair { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--s2); }
+.mem-pair li { display: flex; flex-direction: column; gap: 2px; padding: var(--s2) var(--s3); border-radius: var(--r-md); background: var(--bg); box-shadow: inset 0 0 0 1px var(--line); line-height: 1.45; overflow-wrap: anywhere; }
+.mem-pair-when { color: var(--ink-muted); }
+.mem-check-sec .mem-check-acts { flex-wrap: wrap; margin-top: var(--s1); }

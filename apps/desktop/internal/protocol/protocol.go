@@ -1721,6 +1721,70 @@ type MemView struct {
 	Glance *MemGlance `json:"glance,omitempty"`
 	// D375: Health is what Mem's own doctor on the home says, once read.
 	Health *MemHealth `json:"health,omitempty"`
+	// D465: Check is what Nowledge Mem would like settled, and the rules on.
+	Check *MemCheck `json:"check,omitempty"`
+}
+
+// MemCheck is what Nowledge Mem would like the person to settle (D465): Asks
+// (contradictions newest first, then learned rules), More (other suggestions
+// best seen in Mem, never counted) and Rules (the ones on, read by every AI
+// tool connected to Mem at a new conversation).
+type MemCheck struct {
+	Asks  []MemCheckItem `json:"asks"`
+	More  bool           `json:"more,omitempty"`
+	Rules []MemRule      `json:"rules"`
+}
+
+// MemCheckItem is one of Mem's asks (D465): Kind contradiction (Pair, earlier
+// first, titles and days only) or rule (Title and Body, a learned draft);
+// Suggest is Mem's own answer, the default; Answers the ones offered
+// (newer, older, both; use, not).
+type MemCheckItem struct {
+	ID      string        `json:"id"`
+	Kind    string        `json:"kind"`
+	Pair    []MemPairItem `json:"pair,omitempty"`
+	Title   string        `json:"title,omitempty"`
+	Body    string        `json:"body,omitempty"`
+	Suggest string        `json:"suggest,omitempty"`
+	Answers []string      `json:"answers"`
+	At      string        `json:"at,omitempty"`
+}
+
+// MemPairItem is one of two memories that may disagree (D465).
+type MemPairItem struct {
+	Title string `json:"title"`
+	At    string `json:"at,omitempty"`
+}
+
+// MemRule is a rule on in Nowledge Mem (D465).
+type MemRule struct {
+	ID    string `json:"id"`
+	Title string `json:"title"`
+	Body  string `json:"body,omitempty"`
+}
+
+// MemAnswer settles one of Mem's asks, or turns an on rule off with "not"
+// (D465); answered by mem_answered.
+type MemAnswer struct {
+	T      string `json:"t"` // "mem_answer"
+	ID     string `json:"id"`
+	Answer string `json:"answer"`
+}
+
+// MemAnswered is whether Mem took the answer (OK false: the ask is back).
+type MemAnswered struct {
+	ID     string `json:"id"`
+	Answer string `json:"answer"`
+	OK     bool   `json:"ok"`
+}
+
+func decodeMemAnswered(data []byte, f ServerFrame) (ServerFrame, error) {
+	var m MemAnswered
+	if err := json.Unmarshal(data, &m); err != nil {
+		return f, err
+	}
+	f.MemAnswered = &m
+	return f, nil
 }
 
 // MemHealth is what Nowledge Mem's own `nmem doctor` says is wrong on a
@@ -2815,6 +2879,8 @@ type ServerFrame struct {
 	DidFor *DidFrame `json:"-"`
 	// MemFound is mem_found (D321), decoded on its own (its items aren't SavedItems).
 	MemFound *MemFound `json:"-"`
+	// MemAnswered is mem_answered (D465), decoded on its own (its answer is a word, not a WbAnswer).
+	MemAnswered *MemAnswered `json:"-"`
 	// Sources (D341): sources, source_items_result and source_result, decoded on their own.
 	Sources *SourcesFrame `json:"-"`
 }
@@ -3030,6 +3096,9 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 	switch head.T {
 	case "apps", "app_open", "app_data", "app_ask_refused":
 		return decodeApps(data, ServerFrame{T: head.T})
+	case "mem_answered":
+		// D465: its "answer" is a word where the shared struct's is the workbench's.
+		return decodeMemAnswered(data, ServerFrame{T: head.T})
 	}
 	var f ServerFrame
 	if err := json.Unmarshal(data, &f); err != nil {
@@ -3067,6 +3136,8 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 		return decodeDid(data, f)
 	case "mem_found":
 		return decodeMemFound(data, f)
+	case "mem_answered":
+		return decodeMemAnswered(data, f)
 	case "sources", "source_items_result", "source_result", "pile_items_result", "pile_result", "pile_find_result", "pile_how_result", "group_review_result":
 		return decodeSources(data, f)
 	default:

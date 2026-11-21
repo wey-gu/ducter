@@ -36,6 +36,8 @@ func (a *App) memoryPanel(c *ui.Context) {
 	case "on":
 		a.memHead(c, st)
 		a.memAbout(c)
+		a.memCheck(c)
+		a.memRules(c)
 		a.memTools(c)
 		a.memLink(c, b)
 	case "off":
@@ -124,6 +126,7 @@ type memPageState struct {
 	typedAt             time.Time
 	copied              string
 	copiedAt            time.Time
+	ruleOff             string // D465: the rule asked to turn off, in place
 }
 
 // memFind sends the search's words to Mem now ("" clears it).

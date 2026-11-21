@@ -1415,6 +1415,8 @@ export type ClientFrame =
   | { t: "mem_forget"; id: string }
   | { t: "mem_fix"; id: string; title: string }
   | { t: "mem_find"; q: string }
+  // D465: settle one of Mem's asks (or turn an on rule off: answer "not"); answered with mem_answered.
+  | { t: "mem_answer"; id: string; answer: MemCheckAnswer }
   // Who does the tasks (D89): "rules" answers with a rules frame and keeps the socket subscribed;
   // rule_remove (不要这条 / Remove) drops one, then every subscriber gets a fresh rules frame.
   // Rules are added only by saying them in the conversation (the partner's rule_save tool).
@@ -1788,6 +1790,8 @@ export type ServerFrame =
   | { t: "settings"; settings: Settings; mem: MemView; brainNow?: BrainNow; forgot?: { seq: number; how: "mem" | "hidden" }; corrected?: { seq: number; how: "mem" | "here" }; undid?: { seq: number; ok: false }; bridge?: BridgeView; ownAgents?: ("claude-code" | "codex" | "pi")[] }
   // D321: what Mem found for Settings › 记忆's search (ok false: Mem didn't answer).
   | { t: "mem_found"; q: string; ok: boolean; items: MemItem[] }
+  // D465: whether Nowledge Mem took the answer (ok false: it's back on the page, to settle in Mem).
+  | { t: "mem_answered"; id: string; answer: MemCheckAnswer; ok: boolean }
   // D372: defaults: the built-in default per kind of work, when it differs between kinds.
   // D413: standing: what the person said Ducter may do without asking (不用问我的 / Without asking).
   | { t: "rules"; rules: RuleView[]; defaults?: KindDefault[]; standing?: StandingView[] }
@@ -2836,6 +2840,37 @@ export interface MemView {
   glance?: MemGlance;
   /** D375: Mem's own health on the home (its doctor), once read; {} = all well. */
   health?: MemHealth;
+  /** D465: what Nowledge Mem would like the person to settle, and the rules every connected tool follows. */
+  check?: MemCheck;
+}
+
+/**
+ * D465: one thing Nowledge Mem would like the person to settle, from Mem's own review queue.
+ * contradiction: two memories Mem found may disagree (pair: older first, titles and days only, never
+ * their contents); rule: a rule Mem learned from how the person works, still a draft (title and its
+ * words, clipped). suggest: Mem's own recommendation, the default; answers: the ones offered here.
+ */
+export type MemCheckAnswer = "newer" | "older" | "both" | "use" | "not";
+export interface MemCheckItem {
+  id: string;
+  kind: "contradiction" | "rule";
+  pair?: { title: string; at?: string }[];
+  title?: string;
+  body?: string;
+  suggest?: MemCheckAnswer;
+  answers: MemCheckAnswer[];
+  at?: string;
+}
+
+/**
+ * D465: asks: what Mem would like settled (contradictions newest first, then learned rules; at most a
+ * few); more: Mem holds other suggestions (skills, upkeep) best seen in Mem itself, never counted;
+ * rules: the rules already on, the ones every AI tool connected to Mem reads at a new conversation.
+ */
+export interface MemCheck {
+  asks: MemCheckItem[];
+  more?: true;
+  rules: { id: string; title: string; body?: string }[];
 }
 
 /**

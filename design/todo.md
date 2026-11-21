@@ -9,6 +9,20 @@ line `ducter check report` prints for it, naming the result file: "Seen live:
 computer that ran them (`~/.ducter/checks/`), never in git (D75); a passed item is ticked with its
 line.
 
+## What Mem would like checked (D465, research/202)
+
+- [ ] **One live answer per kind.** On the author's Mem from the Memory page: one contradiction (Mem's
+  suggestion) and one learned rule (用上). Read `feed resolve`'s preview JSON (where `plan_id` sits, how
+  "applied" is said; `resolvedOf` reads it tolerantly today, INFERRED) and whether the cloud refuses a
+  non-terminal answer without `--as-person`. Then check the rule appears in `context read`'s `rule_stack`
+  and in the partner's next turn. Trigger: the author's go to write to his Mem.
+- [ ] **Skill suggestions** (92 % of the queue): show one with its SKILL.md preview and which tools it would
+  reach; 存成技能 / Keep as a skill behind a Go. Trigger: Mem documents the activate path for a suggestion.
+- [ ] **`skills match` in a task's brief** (the person's proven way of doing it). Trigger: `skills match`
+  answers on the cloud backend (404 on 0.10.122).
+- [ ] **A contradiction the partner itself meets** (a recalled memory with a pending review): say so in the
+  answer instead of picking one. Trigger: the page's answers show people settle them (≥ 1 a week).
+
 ## A free key's day (D449, research/195)
 
 - [ ] **The real 429 through pi**: one day of a throwaway free OpenRouter account and a free Gemini

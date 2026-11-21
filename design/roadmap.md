@@ -60,6 +60,8 @@ heard of a subagent.
   a LaunchAgent; browser and computer use on that worker are still the home's only.
 - **Real-world checks.** A long-conversation replay on real models, live runs of folder undo
   and native browser use, and the Nowledge Bridge live trial (still behind a flag; see below).
+  The owed checks of D425–D459 are one command each since D463 (`ducter check list`, then
+  `run <name>`; `design/build-and-run.md` "Live checks"); none has run for real yet.
 - **Nowledge Bridge live trial** (your terminal agents reaching your partner, against Mem Cloud):
   - Last full run (2026-11-16): handing work over (S1) 5 of 6 checks, asking an agent (S2) 4 of 5,
     following up on silence (S3) 3 of 3, an agent asking for your call (X1) 3 of 3. The misses: a card

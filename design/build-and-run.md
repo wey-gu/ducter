@@ -262,6 +262,46 @@ DUCTER_URL=ws://127.0.0.1:7983/ws DUCTER_DATA_DIR=/tmp/demo-mac DUCTER_NO_TITLE=
 | `DUCTER_APP_SHOT_DIR=<dir>` | D405: write the app window's page as `mac-app-window-<id>.png` four seconds after it opens |
 | `DUCTER_APP_PROBE=1` | D405, with the shot dir: run `ducter.set("probe", 1)` and a `ducter.ask` in the page and write the page's title once answered (`mac-app-probe-<id>.txt`): the bridge both ways |
 
+## Live checks (D463)
+
+What fakes can't prove (a real shop's pay page, a real free key's 429, Mem's real shapes, a week of
+loops and offers on hel, a real microphone, an iPhone in the hand) is owed as a live check in
+`design/todo.md`. Each is one entry of `ducter check`, a maintainer's command left out of `ducter
+help` (English only). It ships in the binary, so it runs on hel, a worker or a bare Mac without the
+repo; from a checkout, `bun packages/cli/src/main.ts check …`.
+
+| Command | What it does |
+|---|---|
+| `ducter check list [--json]` | Every owed check: its Dn, what it needs from you (a device, an account, a login), where to run it, how long, whether it needs you, its last result |
+| `ducter check run <name> [--<option> <value>…]` | Runs one. Automatic steps read only: the Log opened read-only, nmem's read verbs, the running home's read-only frames (`devices`, `folder_browse`, `browser_sites`; any other is refused), files you saved. A step that is yours asks for it ("now pay yourself in the live view", "talk over it while it speaks") and takes y / n / s(kip). Writes `~/.ducter/checks/YYYY-MM-DD-<name>.json` (a second run that day `-2`; `DUCTER_CHECKS_DIR` overrides): outcome and, per step, counts, field names and yes/no, never a value you typed or a message's words, passed through the report's secret filter. Exit 1 on a fail |
+| `ducter check report [--json]` | The newest result per check and the line to put under its item in `design/todo.md` ("Seen live: `<file>` (pass, …)") |
+
+Outcomes: `pass`; `fail`; `not-yet` (what it measures hasn't happened here: no limit hit in 14 days,
+no worker awake, under a week of offers); `incomplete` (a step was skipped). The checks, riskiest
+first:
+
+| Check | Dn | Needs | Runs |
+|---|---|---|---|
+| `errand-checkout` | D436 D446 | your phone; Ducter's browser signed in to one shop with a cart | home and browser read, you ask from the phone, the 去付款 card read off the Log (host, total, items, picture), you confirm and pay yourself, the card's settling read (by you; Ducter's refused pay presses counted) |
+| `pay-words` | D436 D446 | five checkout pages saved at the pay step (`--page`, repeat) | each page's controls named as the live reader names them and judged by the gate's `paysAt`; you say whether the real pay button is among the refused |
+| `worker-browser` | D436 | an awake worker with Web on; your phone | finds the worker, you ask for an errand there, the card's picture read, you confirm the live view and your click |
+| `first-answer` | D440 | a bare macOS account, a free key made by a person, Ducter installed | PATH has no Node or agent, you paste the key, pi found in Ducter's tools folder, you send a message, the seconds to the answer read off the Log |
+| `free-key-429` | D449 | a throwaway free OpenRouter or Gemini key (`--provider`) | asks first, spends the key until the provider's 429 (OpenRouter paced under its minute cap), reads the body with `readFreeLimit` as pi passes it on; shapes only, the key never kept |
+| `limit-hit` | D435 D297 D449 | a real limit hit in the last 14 days | automatic: each partner hold back at its reset (not early, within 30 min), tasks resting on a limit woke |
+| `loops` | D427 D429 | a task in rounds for a day (hel) | automatic: every on-loop has its next wait armed; none ended by no one; backs and late cards counted |
+| `mem-shapes` | D433 D444 D458 | nmem signed in; optional `--uri`, `--message <saved bridge open>`, `--query` | automatic: `bridge contacts`, `connections list --include-activity`, `m search`, `resources get`, a message's references, each through Ducter's own reader |
+| `talk-mic` | D442 | one platform a run (`--platform`), speakers and earphones | you answer each: the gaps in zh and en, the echo guard, talking over it, a long silence, the screen, a card by voice |
+| `offers-week` | D453 D458 | a week of offers (hel) | automatic: offers a morning (≤ 3), taken up (≥ 1 in 20), the wider kinds |
+| `add-folder` | D455 | hel and an awake worker | automatic: the home's folders, `/` refused outside the roots, each awake worker's folders |
+| `poppler` | D439 | nothing | automatic: Poppler and LibreOffice on this home |
+| `ios-device` | D447 D452 D425 D431 | an iPhone with the latest build | you answer each: the keyboard, Accessibility sizes, the waiting line's motion, apps, the long-press menu |
+| `mini-window` | D438 | the signed Mac app | you answer each: over a full-screen app, the keyboard kept, another Space, Stage Manager |
+| `pkg-line` | D445 | a Fedora or Arch home | automatic: the pipx line against `/etc/os-release` |
+
+Tests: `packages/cli/test/live-check.test.ts` runs every check against fakes (a clock, a Log, a
+home's frames, nmem's answers, a provider's 429s, saved pages) and holds that none passes on a
+computer with nothing on it.
+
 ## What a test must earn
 
 A test stays only if deleting it lets through a real failure no other test catches, or it pins a

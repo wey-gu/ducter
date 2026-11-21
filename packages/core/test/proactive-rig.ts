@@ -38,6 +38,9 @@ export interface RigOptions {
   webLook?: ProactiveOptions["webLook"];
   /** D403: a recorded drafter (never a model). */
   drafter?: ProactiveOptions["drafter"];
+  /** D458: the leads past the accounts, and the spotter that picks among them (fakes). */
+  wider?: ProactiveOptions["wider"];
+  spotter?: ProactiveOptions["spotter"];
 }
 
 export function rig(o: RigOptions = {}) {
@@ -91,6 +94,8 @@ export function rig(o: RigOptions = {}) {
     ...(o.workingMemory ? { workingMemory: o.workingMemory } : {}),
     ...(o.webLook ? { webLook: o.webLook } : {}),
     ...(o.drafter ? { drafter: o.drafter } : {}),
+    ...(o.wider ? { wider: o.wider } : {}),
+    ...(o.spotter ? { spotter: o.spotter } : {}),
     present: () => present,
     zone: () => ZONE,
   };

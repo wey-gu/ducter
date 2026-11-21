@@ -42,6 +42,8 @@ type FindView struct {
 	Draft *FindDraft `json:"draft,omitempty"`
 	// D453: said as an offer (quiet; no Hold; fades at the next morning).
 	Offer bool `json:"offer,omitempty"`
+	// D458: where an offer from past the accounts came from, in the person's language.
+	Origin string `json:"origin,omitempty"`
 }
 
 // FindDraft is the reply a cheap model wrote from the thread, in its

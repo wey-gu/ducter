@@ -662,6 +662,21 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     ...(memoryOn.threads ? { threads: (q: string, n: number) => (core.settings && !core.settings.get().memory ? Promise.resolve({ ok: false as const, reason: "not_configured" as const, message: "Memory is off for this partner." }) : memoryOn.threads!(q, n)) } : {}),
     ...(memoryOn.about ? { about: () => (core.settings && !core.settings.get().memory ? Promise.resolve({ ok: false as const, reason: "not_configured" as const, message: "Memory is off for this partner." }) : memoryOn.about!()) } : {}),
   };
+  // D458: the morning's offers read Mem through this same client (its switch, its identity), read-only.
+  core.setMemLook?.({
+    search: async (q, n) => {
+      const r = await memory.search(q, n).catch(() => undefined);
+      return r?.ok ? r.hits : undefined;
+    },
+    ...(memory.threads
+      ? {
+          threads: async (q: string, n: number) => {
+            const r = await memory.threads!(q, n).catch(() => undefined);
+            return r?.ok ? r.threads : undefined;
+          },
+        }
+      : {}),
+  });
   if (memoryOn.forget) core.settings?.setForgetter((id) => memoryOn.forget!(id));
   if (memoryOn.correct) core.settings?.setCorrector?.((id, title) => memoryOn.correct!(id, title));
   // D329: 撤销 / Undo on a Noted line: a save still waiting is dropped; one in Mem is archived (never

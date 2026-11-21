@@ -14,7 +14,7 @@ import { join, resolve, sep } from "node:path";
 import { randomBytes } from "node:crypto";
 import { APP_SANDBOX, appCsp, HARNESSES, MEM_CONNECT_TOOLS, fill, harnessName, normalizeTag, sameComputer, pickTag, words, type Bodies, type HarnessId, type LangTag, type LogEvent, type OnHand, type PartnerAsk, type Place, type TaskCard, type TaskNeeds } from "@ducter/protocol";
 import { intlLocale, talkLang } from "./lang.ts";
-import type { CoreApi, ListedModel, MemIdentity, Partner, Runner, TaskMemoryPort } from "@ducter/protocol/src/internal.ts";
+import type { CoreApi, ListedModel, MemIdentity, MemLookPort, Partner, Runner, TaskMemoryPort } from "@ducter/protocol/src/internal.ts";
 import { migrateKeys, readKeys, scrubKeysFromEnv } from "@ducter/protocol/src/keys.ts";
 import { realClock, type Clock } from "./clock.ts";
 import { createDecisions, forwardFrom, type Decisions } from "./decisions.ts";
@@ -43,6 +43,7 @@ import { replayProactive } from "./proactive/replay.ts";
 import { modelTriage, type Triage } from "./proactive/triage.ts";
 import { modelDrafter } from "./proactive/reply.ts";
 import { modelJudge, type FindJudge } from "./proactive/judge.ts";
+import { gatherLeads, modelSpotter } from "./proactive/wider.ts";
 import { registerProactiveTools } from "./proactive/tools.ts";
 import { createWsHandler, type WsData } from "./ws.ts";
 import { openPartners, type Partners } from "./partners.ts";
@@ -295,7 +296,9 @@ export interface CoreOptions {
   /** Work over time test seams (D112-D114): fake commands, a lower look floor, the judge. */
   work?: { exec?: import("@ducter/protocol/src/checks-run.ts").Exec; /** D429 test seam: the move of a late loop to an awake computer (the real one is task_switch's). */ loopsMove?: import("./loops.ts").LoopWhere["move"]; minEveryMs?: number; judgeMinMs?: number; restartLookMs?: number; defaultZone?: string; judge?: import("./waiters.ts").Judge; connectionFetch?: (url: string, init: RequestInit) => Promise<Response> };
   /** D165 test seams: the cheap triage and the bar (faked in tests; real ones need the runner's harness), the month's budget. */
-  proactive?: { triage?: Triage; judge?: FindJudge; drafter?: import("./proactive/reply.ts").Drafter; monthTokens?: number; zone?: string };
+  proactive?: { triage?: Triage; judge?: FindJudge; drafter?: import("./proactive/reply.ts").Drafter; spotter?: import("./proactive/wider.ts").Spotter; monthTokens?: number; zone?: string };
+  /** D458 test seam: a fake Mem the offers read (the partner sets the real one with setMemLook). */
+  memLook?: MemLookPort;
   /** D276 test seams for 聊天软件 / Chat apps: the adapters against fake servers, the outbox's sleep. */
   channels?: Pick<ChannelDeps, "make" | "sleep" | "gapMs" | "openUrl" | "wechat">;
 }
@@ -1125,6 +1128,9 @@ export function startCore(opts: CoreOptions = {}): Core {
     get: () => (defaultTaskMemory || taskMemOf.size ? taskMemory : undefined),
     set: (p: TaskMemoryPort | undefined) => void (defaultTaskMemory = p),
   });
+  // D458: the default partner's own read of Mem (memory_search's path), for the morning's offers; read-only.
+  let memLookRef: MemLookPort | undefined = opts.memLook;
+  api.setMemLook = (m) => void (memLookRef = m ?? opts.memLook);
   /** The L1 identity of another partner: its own name, and that the person has others. */
   const identityOf = (id: string) => {
     const name = partners.nameOf(id);
@@ -2066,6 +2072,17 @@ export function startCore(opts: CoreOptions = {}): Core {
     workingMemory,
     // D388: a question a said find left open (a public plan's day or time) may be looked up on the web.
     webLook: () => api.webLook,
+    // D458: offers from past the accounts: the default partner's finished tasks, what it was told, Mem.
+    wider: (c) => {
+      const mine = tasks.list().filter((t) => !isOther(t.persona));
+      const talk = log
+        .read({ stream: "channel", kinds: ["user_msg"], limit: 500 })
+        .filter((e) => e.origin === "user" && !isOther(e.persona) && !(e.body as { forwarded?: unknown }).forwarded)
+        .map((e) => ({ text: (e.body as { text?: string }).text ?? "", at: Date.parse(e.ts) }));
+      const refs = [...taskSources.pile.all(), ...taskSources.pile.handedOver()].map((p) => ({ ref: p.item.ref, label: p.item.label, title: p.item.title, state: p.item.state, ...(p.item.url ? { url: p.item.url } : {}), ...(p.item.updatedAt ? { updatedAt: p.item.updatedAt } : {}) }));
+      return gatherLeads({ ...c, tasks: mine, talk, refs, ...(memLookRef && settings.get().memory ? { mem: memLookRef } : {}) });
+    },
+    ...(opts.proactive?.spotter ? { spotter: opts.proactive.spotter } : {}),
   });
   proactiveRef = proactive;
   // D388: the dry replay: a second engine on a scratch folder, the same sources and agent, nothing sent.
@@ -2237,6 +2254,8 @@ export function startCore(opts: CoreOptions = {}): Core {
         ...(opts.proactive?.judge ? {} : { judge: modelJudge(createHarnessAsk({ harness: port, pick, dataDir, cheap: false, dir: "judge" })) }),
         // D403: a waiting-on-you find's reply, on the cheapest capable model (tool-less, its own folder).
         ...(opts.proactive?.drafter ? {} : { drafter: modelDrafter(createHarnessAsk({ harness: port, pick, dataDir, cheap: true, dir: "drafts", timeoutMs: 60_000, system: "You answer with one JSON object and nothing else. You never use tools." })) }),
+        // D458: the leads past the accounts, picked once a morning on the cheapest model (tool-less, its own folder).
+        ...(opts.proactive?.spotter ? {} : { spotter: modelSpotter(createHarnessAsk({ harness: port, pick, dataDir, cheap: true, dir: "spot", timeoutMs: 90_000, system: "You answer with one JSON array and nothing else. You never use tools." })) }),
       });
       // D359: the pile is sorted and PRs pre-read on the cheapest model of the harness the partner thinks with.
       if (!opts.taskSources?.ask) taskSources.setAsk(createHarnessAsk({ harness: port, pick, dataDir, cheap: true, dir: "pile", timeoutMs: 120_000 }));

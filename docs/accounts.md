@@ -139,6 +139,20 @@ You can change the same choice any time in **Settings › Notifications**:
   nothing: no news is good news.
 - **Only when I ask**: it doesn't look by itself.
 
+The morning message can also offer things that don't come from your accounts, each with a line
+under it saying where the idea came from:
+
+- **A next step**: what a finished task leaves to do, such as a follow-up issue still open after a
+  merge, something a task noticed and left alone, or a routine whose result changed.
+- **Remembered**: something in your Nowledge Mem that matters now, such as a seat preference when
+  a flight is coming up, or a conversation with another AI tool you left halfway. Ducter only
+  reads your memory for this and never writes to it.
+- **You mentioned**: something you said you'd get to some time ("I'll look at that PR later") with
+  no day and no reminder. Anything with a day or a reminder is still a reminder, said at its time.
+
+Each offer has one button. If you leave it alone, it fades the next morning and nothing more is
+said about it.
+
 If you choose here instead of answering the first question, or don't answer it, it still takes one quiet look back
 over earlier mail and your calendars, so it knows the bookings and bills already there. It says
 nothing about that look.

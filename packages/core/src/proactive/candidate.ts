@@ -1,5 +1,5 @@
 // One thing a detector proposes and the bar judges (D165 §3–§4).
-import type { FindHow, FindKind, TaskNeeds } from "@ducter/protocol";
+import type { FindHow, FindKind, Place, TaskNeeds } from "@ducter/protocol";
 
 export type StepKind = "lookup" | "read" | "draft";
 
@@ -22,7 +22,11 @@ export interface Candidate {
    * data: the fields it is about (names, subjects, asks), which came from other people's mail and
    * reach the task fenced as data, never as instructions (D62, research/48 P3).
    */
-  step?: { kind: StepKind; goLabel: { zh: string; en: string }; brief: string; data?: Record<string, string>; needs?: TaskNeeds };
+  step?: { kind: StepKind; goLabel: { zh: string; en: string }; brief: string; data?: Record<string, string>; needs?: TaskNeeds; place?: Place; project?: string };
+  /** D458: where it came from, said under its words ("从你和 Codex 11 月 12 日的对话想到的"): code's words. */
+  origin?: { zh: string; en: string };
+  /** D458: the spotter (wider.ts) already chose it and wrote its words: the bar keeps it on code's tests alone. */
+  spotted?: boolean;
   facts: string[];
   /** D243: what it is about, in a few words ("NH 108", "Conductor"): a later notice on the same thing is an update to it. */
   topic?: string;

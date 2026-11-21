@@ -2301,7 +2301,7 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [x] **A task's own timer** (`wait_for` with a time; built 2026-11-16, D267): a task can only wait on a check or an event, which is why one used `date` as a clock; D261 refuses that, and a time-only wait for a task needs the waiter to wake the task, not the partner (a task's timer is the partner's today). Trigger: a task asks for "look again in 45 minutes" twice in a week.
 - [ ] **The shorthand guard on a task's reports and checkpoints**, not only a wait's reason (D261 (10)). Trigger: a row's line shows notes again; the rule then belongs in the task's brief.
 - [ ] **The web's routine shelf under a project's lens** (the Mac shows only that project's routines; the web still shows all). Trigger: the next pass on routines.
-- [ ] **The window header's counts vs the strip**: the header's 今天做完 counts successes today, the strip counts the section (failures and yesterday's late finishes too). One rule for both is the shell's call (the header is shared chrome).
+- [x] **The window header's counts vs the strip** (built 2026-11-22, D467): 今天做完 is today's date on every surface, a done still being checked counts, a failure stands in 等你, yesterday's fold away.
 - [ ] **Quiet after 24 hours** and **seen results folded by default** are defaults to revisit with real use.
 
 ## On hand with character (D287)
@@ -2309,7 +2309,16 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] **People, not only LLM raters**: the author first on their real board, then a consumer who has never heard "agent" (research/95 is Haiku proxies only). Trigger: the next build the author installs.
 - [ ] **The iOS Simulator and Android** for the head and the cards (the phone's 56 figure, one card to a row). Trigger: the next phone release.
 - [ ] **A done card's moment on the Mac when it arrives live** (the web's pop plays the first time the card is drawn this session; the Mac's too, but neither ties it to the handover face). Trigger: the author's review.
-- [ ] **The fold threshold (3), two cards to a row from 612, the day column from 1280** are defaults to revisit with real use.
+- [ ] **The fold threshold (3)** is a default to revisit with real use (two to a row and the day column are gone, D467).
+
+## On hand by attention, one card shape (D467)
+
+- [ ] **The author's review** of `.shots/d467/` and then of their own board on the next build: is the one column at 1400 calm or empty; is the flag pose right for a stopped task. Trigger: the next build the author installs.
+- [ ] **The phone at 390 and the iOS Simulator** for the one card (the mark at 28, the action under the words when narrow). Trigger: the next phone release.
+- [ ] **Stopped after 30 minutes** is a default: measure how often a task reports blocked and arms its waiter later than that. Trigger: a stopped card that started again by itself on hel.
+- [ ] **Candidate C** (the live column with a time rail beside it) if the author wants the day's time back at 1400: only waits and results on the rail, never both. Trigger: the author asks where 接下来 went.
+- [ ] **The summary card without a sort** (a vault, several sources) still shows the few cards; one summary for those too once their counts mean something (an Obsidian vault has no sort). Trigger: a vault with more than 30 open lines.
+- [ ] **Live on hel** with the author's real 555 and a real stopped task: so far the demo core's fakes.
 
 ## From the author's phone-use run (2026-11-16)
 - [x] **Recording consent is the person's turn, said everywhere** (built 2026-11-16, D280 (1)): the

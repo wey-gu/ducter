@@ -18,14 +18,15 @@ import { openPast } from "./past.tsx";
 import { openDid } from "./did.tsx";
 import { ago, clock, day, harnessName, spoken, when } from "./format.ts";
 import { CallRow } from "./phone.tsx";
-import { attention, canIntegrate, doneTodayOf, finished, harnessOf, headlineEvidence, LANE, placeOf, projectOf, reasonOf, reportOf, title, type Task } from "./store.ts";
+import { attention, canIntegrate, finished, harnessOf, headlineEvidence, LANE, placeOf, projectOf, reasonOf, reportOf, title, type Task } from "./store.ts";
 import { liveRow, liveWords, rowWords, shortTitle, StepMark, taskBlocks } from "./transcript.tsx";
 import { computerName, deviceWait, manyComputers } from "./where.ts";
 import { Avatar, DecisionCard, stateLabel } from "./views.tsx";
-import { Coin } from "./coin.tsx";
 import { BrandMark } from "./brand.tsx";
 import { askFold, SourceChip, TF, TodoCard, todoCounts, TodoFold, todoGroupName, TS } from "./todos.tsx";
-import { PileBlock } from "./pile.tsx";
+import { openPile, PileBlock, pileTaken } from "./pile.tsx";
+import { openHand } from "./handover.tsx";
+import type { PileView } from "@ducter/protocol";
 import { HandBlock } from "./handover.tsx";
 import { Goal, Groove, limitAt, limitState, untilLine, WaitBubble, waitCaption, waitLine } from "./work.tsx";
 import { handover, isNewResult, statusOf, urgentOf, type Status } from "./seen.ts";
@@ -145,6 +146,42 @@ export function quietWait(task: Task, now = Date.now()): boolean {
   const w = A.S.waiterFor(task.id);
   if (w?.changes && w.lastLookAt) at = Math.max(at, Date.parse(w.lastLookAt));
   return Number.isFinite(at) && now - at >= QUIET_MS;
+}
+
+/** D467: how long a wait with nothing to bring it back may sit before it is the person's to look at. */
+export const STOPPED_AFTER = 30 * 60_000;
+/** When a task last changed: its card's time or its newest event's, whichever is later. */
+function lastChange(task: Task): number {
+  const at = Math.max(Date.parse(task.card?.updatedAt ?? "") || 0, Date.parse(task.events.at(-1)?.ts ?? "") || 0);
+  return at || NaN;
+}
+/** D467: a wait nothing will bring back on its own (no waiter of any kind, no question asked for
+ *  later, not a computer that will wake): it stopped, and it is the person's to look at. It stands
+ *  in 等你 with 接着做 and 放下, never under 在等. */
+export function stoppedWait(task: Task, now = Date.now()): boolean {
+  if (attention(task) !== "blocked") return false;
+  if (A.S.pendingDecision(task.id)?.later || A.S.waiterFor(task.id)) return false;
+  if (reasonOf(task).startsWith("device:")) return false;
+  const at = lastChange(task);
+  return Number.isFinite(at) && now - at >= STOPPED_AFTER;
+}
+/** D467: finished on today's local date, done (or done and being checked): 今天做完 lists these. */
+export function doneToday(task: Task, now = Date.now()): boolean {
+  const a = attention(task);
+  if (a !== "done" && a !== "done_claimed") return false;
+  const at = lastChange(task);
+  return Number.isFinite(at) && new Date(at).toDateString() === new Date(now).toDateString();
+}
+/** D467: a lens's tasks by where On hand stands them: the stopped waits and the failed ones go to
+ *  等你; 在等 keeps the rest; 今天做完 is today only, what finished before folds under it. */
+export function boardParts(lanes: Task[][], now = Date.now()) {
+  const waiting = lanes[LANE.waiting]!;
+  const done = lanes[LANE.done]!;
+  const stopped = waiting.filter((x) => stoppedWait(x, now));
+  const failed = done.filter((x) => attention(x) === "failed");
+  const today = done.filter((x) => doneToday(x, now));
+  const earlier = done.filter((x) => attention(x) !== "failed" && !doneToday(x, now));
+  return { stopped, failed, waiting: waiting.filter((x) => !stopped.includes(x)), today, earlier };
 }
 
 /** A time of day, with its day only when it isn't today. */
@@ -426,20 +463,22 @@ export function LensTabs({ inBoard }: { inBoard?: boolean }) {
 }
 
 /** The strip's four counts in a lens: needs you, working, waiting, done today (D310). */
-function stateCounts(lens: string): number[] {
+export function stateCounts(lens: string, now = Date.now()): number[] {
   const l = lensLanes(lens);
+  const parts = boardParts(l, now);
   const loose = looseIn(lens);
   const calls = loose ? (A.S.onHand?.calls ?? []) : [];
   // D360: a group whose line stopped waits for the person's word: it counts as one that needs them.
   const lanes = l;
   const stopped = boardGroups(A.S.onHand?.groups, (id) => lanes.findIndex((x) => x.some((t) => t.id === id)), (id) => (A.S.tasks.has(id) ? attention(A.S.tasks.get(id)!) : undefined)).filter((b) => b.stopped).length;
   return [
-    l[0]!.length + stopped + (loose ? A.S.partnerDecisions().length + A.otherAsks().length : 0),
+    // D467: what stopped (a wait nothing brings back, a task that didn't work out) needs the person too.
+    l[0]!.length + stopped + (loose ? A.S.partnerDecisions().length + A.otherAsks().length : 0) + parts.stopped.length + parts.failed.length,
     l[1]!.length + calls.filter((c) => ["waiting", "calling", "talking", "question"].includes(c.state)).length,
-    l[2]!.length + (loose ? A.S.armedWaiters().filter((w) => !w.taskId).length : 0),
-    // D310: done today is tasks finished well today, the one count every surface says; a failed
-    // task, a missed wait and an ended call are in the list with their own words, not counted here.
-    doneTodayOf(l[3]!),
+    parts.waiting.length + (loose ? A.S.armedWaiters().filter((w) => !w.taskId).length : 0),
+    // D467: 今天做完 counts what it lists: finished today (a done being checked included); a failed
+    // task stands in 等你, yesterday's folds away, a missed wait and an ended call say their own words.
+    parts.today.length,
   ];
 }
 
@@ -454,6 +493,7 @@ function waitsAhead(lens: string, now = Date.now()): { first: number; quiet: num
     if (Number.isFinite(x) && x > now && x < first) first = x;
   };
   for (const task of lensLanes(lens)[LANE.waiting]!) {
+    if (stoppedWait(task, now)) continue; // D467: it stands in 等你, never "back at"
     if (quietWait(task, now)) {
       quiet++;
       continue;
@@ -488,7 +528,11 @@ export function headSay(lens: string, n = stateCounts(lens), now = Date.now()): 
  *  strip can't, whether anything needs you and, when nothing does, what comes next. The counts are
  *  the strip's; the full sentence (headSay) stays the bar's. The Mac's headLine says the same. */
 export function headLine(lens: string, n = stateCounts(lens), now = Date.now()): string {
-  if (n[0]) return n[0] === 1 ? t("onhand.say.needs.one") : t("onhand.say.needs", n[0]);
+  // D467: the line is true to the body: what only stopped is said as stopped, never "nothing needs you".
+  const parts = boardParts(lensLanes(lens), now);
+  const halted = Math.min(n[0]!, parts.stopped.length + parts.failed.length);
+  if (n[0] && n[0] > halted) return n[0] === 1 ? t("onhand.say.needs.one") : t("onhand.say.needs", n[0]);
+  if (n[0]) return n[0] === 1 ? t("onhand.line.stopped.one") : t("onhand.line.stopped", n[0]);
   if (n[1]) return t("onhand.line.working");
   if (n[2]) {
     const w = waitsAhead(lens, now);
@@ -819,69 +863,54 @@ const TaskRow = memo(function TaskRow({ task, room, state, focus, sel, opened }:
   );
 });
 
-/** D315: the quiet waits and the results you have seen: the cards' own language, one line lower,
- *  never greyed (a grey card read as failed, research/95). A quiet wait offers its calm next step at
- *  once: look again now (or carry on, when it said nothing of what it waits for), or put it down. */
-const CompactCard = memo(function CompactCard({ task, room, focus, sel, quiet }: RowProps & { quiet: boolean }) {
-  const a = attention(task);
-  const s = storyOf(task);
-  const w = a === "blocked" ? A.S.waiterFor(task.id) : undefined;
-  const meta = whereMeta(task);
-  const onClick = (e: MouseEvent) => {
-    if (room === "full" && (e.metaKey || e.ctrlKey)) return void (e.preventDefault(), toggle(task.id));
-    if (room === "full" && e.shiftKey) return void (e.preventDefault(), extend(task.id));
-    L.focus = task.id;
-    A.go({ name: "task", id: task.id, full: room === "full" });
-  };
-  // D454: a seen result leaves On hand by ×, ⋯ or a swipe (a quiet wait has its own two ways).
-  const fin = quiet ? undefined : finishedOf(task);
-  const ref = useRef<HTMLDivElement>(null);
-  useSwipeAway(ref, fin);
-  return (
-    <div ref={ref} class={`tcompact a-${a}${focus ? " kfocus" : ""}${sel ? " sel" : ""}${fin ? " fin" : ""}`} data-row={task.id}>
-      <button class="kmain" onClick={onClick} title={title(task)}>
-        <Coin harness={harnessOf(task)} size={22} motion="still" />
-        <span class="ktx">
-          <span class="k1">
-            <PartnerMark persona={task.card?.persona} />
-            <span class="t">{shortTitle(title(task)) || t("task.unknown")}</span>
-          </span>
-          <span class={`k2${s.tone ? ` ${s.tone}` : ""}`}>
-            <span class="w">{s.words}</span>
-            {quiet && <span class="since">{t("onhand.wait.since", ago(A.L, task.card?.updatedAt))}</span>}
-            {task.card?.source && <SourceChip src={task.card.source} small plain />}
-            <Facts class="meta" items={meta} />
-          </span>
-        </span>
-        {!quiet && <span class="time">{timeOf(task)}</span>}
-      </button>
-      {quiet ? (
-        <span class="tacts on">
-          {w && (w.check || w.event) ? (
-            <Btn kind="secondary" size="sm" label={t("onhand.quiet.look")} about={title(task)} onClick={() => A.waiterAction(w.waiterId, "look")} />
-          ) : (
-            <Btn kind="secondary" size="sm" label={t("onhand.quiet.go")} about={title(task)} onClick={() => A.send({ t: "past_continue", taskId: task.id, words: t("onhand.quiet.go") })} />
-          )}
-          <Btn kind="text" size="sm" label={t("onhand.quiet.drop")} about={title(task)} onClick={() => A.taskAction(task.id, "drop")} />
-        </span>
-      ) : (
-        room !== "phone" && <RowActs task={task} />
-      )}
-      {fin && <FinishedActs f={fin} full={room === "full"} />}
-    </div>
-  );
-});
-
 /** D287: results already celebrated this session, so a done card's little moment plays once. */
 const cheered = new Map<string, number>();
 
-/** D287: one task as a small clay card on the board: who does it (the agent's coin, rocking while
- *  it works), the title, what it is on in up to two lines, and its heartbeat at the foot, always
- *  true: working says for how long, a wait fills its ring toward when it comes back, a new result
- *  smiles and says when it came back (and, the first time it is seen, gives a small pop). */
+/** D467: a card's state, drawn in its mark: the same vocabulary as a group's parts. */
+type MarkKind = "needs" | "failed" | "working" | "waiting" | "done" | "seen";
+
+/** D467: the state mark at the head of every card: a 32 sunk round holding the part marks' glyph
+ *  (a flag for what stopped, a cross for what didn't work out, three bars at work, the ring filling
+ *  toward a wait's next look, a tick when done: filled for a new result, quiet once seen). Never the
+ *  agent's brand coin, never the partner's face. */
+export function StateMark({ k, frac = 0 }: { k: MarkKind; frac?: number }) {
+  if (k === "working")
+    return (
+      <span class="omark k-working" aria-hidden="true">
+        <span class="pulse">
+          <i />
+          <i />
+          <i />
+        </span>
+      </span>
+    );
+  if (k === "waiting")
+    return (
+      <span class="omark k-waiting" aria-hidden="true">
+        <Ring frac={frac} />
+      </span>
+    );
+  const path = k === "done" || k === "seen" ? "M5 10.5l3.2 3.2L15 7" : k === "failed" ? "M6.5 6.5l7 7M13.5 6.5l-7 7" : "M10 5.5v5.5M10 14.2v.3";
+  return (
+    <span class={`omark k-${k}`} aria-hidden="true">
+      <svg viewBox="0 0 20 20" width="20" height="20">
+        <circle cx="10" cy="10" r="8.4" />
+        <path d={path} fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+    </span>
+  );
+}
+
+/**
+ * D467: one task as one card, the same shape in every section: its state mark; the subject (the
+ * short title, then where, quietly); under it the living line (what it is on now, waits for, why it
+ * stopped, what it came to); at the right the heartbeat in words (在做 23 分钟, 5:17 回来, 3:09 做完,
+ * 上次有动静是 8 天前) and its one action. What stopped and what didn't work out stand in 等你 with
+ * their action always in sight; a quiet wait offers its calm next step; a finished one leaves by ×,
+ * ⋯ or a swipe (D454). Who does it (the agent) is in the tooltip and the opened task.
+ */
 const TaskCard = memo(function TaskCard({ task, room, focus, sel }: RowProps) {
   const a = attention(task);
-  const p = placeOf(task);
   const s = storyOf(task);
   const ch = task.card?.changes;
   const pr = prWord(task);
@@ -892,9 +921,12 @@ const TaskCard = memo(function TaskCard({ task, room, focus, sel }: RowProps) {
   const arrived = a !== "blocked" && A.S.justArrived(task.id);
   if (fresh && !cheered.has(task.id)) cheered.set(task.id, Date.now());
   const cheer = fresh && Date.now() - (cheered.get(task.id) ?? 0) < 1400;
+  const stopped = stoppedWait(task);
+  const quiet = !stopped && quietWait(task);
   const next = w ? waitNext(w) : undefined;
   const working = a === "working" || a === "queued";
-  const finishedNow = a === "done" || a === "done_claimed" || a === "failed";
+  const failed = a === "failed";
+  const at = task.card?.updatedAt;
   const meta = whereMeta(task);
   const onClick = (e: MouseEvent) => {
     if (room === "full" && (e.metaKey || e.ctrlKey)) return void (e.preventDefault(), toggle(task.id));
@@ -902,62 +934,75 @@ const TaskCard = memo(function TaskCard({ task, room, focus, sel }: RowProps) {
     L.focus = task.id;
     A.go({ name: "task", id: task.id, full: room === "full" });
   };
-  const at = task.card?.updatedAt;
   // D425: what it is on changes like the waiting line (held for the dwell, a short entrance), and
-  // the coin rests with it when the person has been away a while.
+  // the heartbeat rests when the person has been away a while.
   const words = useDwell(s.words);
   const rest = useResting();
   const fin = finishedOf(task);
   const ref = useRef<HTMLDivElement>(null);
   useSwipeAway(ref, fin);
+  const k: MarkKind = stopped ? "needs" : failed ? "failed" : working ? "working" : a === "blocked" ? "waiting" : a === "needs_you" ? "needs" : fresh ? "done" : "seen";
+  const beat = working
+    ? timeOf(task) && (timeOf(task) === t("time.now") ? t("onhand.card.started") : t("onhand.card.working", timeOf(task)))
+    : stopped || quiet
+      ? t("onhand.wait.since", ago(A.L, at))
+      : a === "blocked"
+        ? next?.text || timeOf(task)
+        : failed
+          ? timeOf(task)
+          : at && finished(task)
+            ? t("onhand.card.done", soon(at))
+            : timeOf(task);
+  const about = spoken(A.L, title(task), harnessName(harnessOf(task)));
   return (
-    <div ref={ref} class={`tcard a-${a}${fin ? " fin" : ""}${focus ? " kfocus" : ""}${sel ? " sel" : ""}${fresh ? " unseen" : ""}${cheer ? " cheer" : ""}${arrived ? " arrived" : ""}${rest ? " resting" : ""}`} data-row={task.id}>
-      <button class="cmain" onClick={onClick} title={title(task)}>
-        <span class="c1">
-          <Coin harness={harnessOf(task)} size={28} motion={rest ? "still" : working ? "working" : a === "needs_you" ? "needs_you" : "still"} />
-          <span class="t">{shortTitle(title(task)) || t("task.unknown")}</span>
-          <PartnerMark persona={task.card?.persona} />
-          {fresh && <StatusFace s="new" failed={a === "failed"} handing={handover(task.id, st)} />}
-        </span>
-        <span class={`c2${s.tone ? ` ${s.tone}` : ""}${fresh && !s.tone ? " result" : ""}`}>
-          {s.mark && <StepMark k={s.mark} />}
-          <span key={working ? words : ""} class={working ? "w say" : "w"}>
-            {working ? words : s.words}
-          </span>
-          {s.code && <code class="c">{s.code}</code>}
-        </span>
-        <span class="c3">
-          {working && (
-            <span class="beat">
-              <span class="pulse" aria-hidden="true">
-                <i />
-                <i />
-                <i />
+    <div
+      ref={ref}
+      class={`ocard a-${a}${stopped ? " stopped" : ""}${quiet ? " quiet" : ""}${fin ? " fin" : ""}${focus ? " kfocus" : ""}${sel ? " sel" : ""}${fresh ? " unseen" : ""}${cheer ? " cheer" : ""}${arrived ? " arrived" : ""}${rest ? " resting" : ""}`}
+      data-row={task.id}
+    >
+      <button class="omain" onClick={onClick} title={about}>
+        <StateMark k={k} frac={next?.frac ?? 0} />
+        <span class="otx">
+          <span class="o1">
+            <PartnerMark persona={task.card?.persona} />
+            <span class="t">{shortTitle(title(task)) || t("task.unknown")}</span>
+            <Facts class="meta" items={meta} />
+            {ch && (ch.adds > 0 || ch.dels > 0) && (
+              <span class="stat">
+                {ch.adds > 0 && <i class="add">+{ch.adds}</i>}
+                {ch.dels > 0 && <i class="del">−{ch.dels}</i>}
               </span>
-              {timeOf(task) && (timeOf(task) === t("time.now") ? t("onhand.card.started") : t("onhand.card.working", timeOf(task)))}
+            )}
+            {pr && <span class="pr">{pr}</span>}
+            {task.card?.source && <SourceChip src={task.card.source} small plain />}
+          </span>
+          <span class={`o2${s.tone ? ` ${s.tone}` : ""}`}>
+            {s.mark && <StepMark k={s.mark} />}
+            <span key={working ? words : ""} class={working ? "w say" : "w"}>
+              {working ? words : s.words}
             </span>
-          )}
-          {next?.text && (
-            <span class="beat wait">
-              <Ring frac={next.frac} />
-              {next.text}
-            </span>
-          )}
-          {w && !next?.text && <span class="beat">{timeOf(task)}</span>}
-          {finishedNow && at && <span class="beat done">{t("onhand.card.done", soon(at))}</span>}
-          {ch && (ch.adds > 0 || ch.dels > 0) && (
-            <span class="stat">
-              {ch.adds > 0 && <i class="add">+{ch.adds}</i>}
-              {ch.dels > 0 && <i class="del">−{ch.dels}</i>}
-            </span>
-          )}
-          {pr && <span class="pr">{pr}</span>}
-          {task.card?.source && <SourceChip src={task.card.source} small plain />}
-          <Facts class="meta" items={meta} />
+            {s.code && <code class="c">{s.code}</code>}
+          </span>
+          {u && !finished(task) && <Goal u={u} />}
         </span>
-        {u && !finished(task) && <Goal u={u} />}
+        {beat && <span class={`obeat${stopped || quiet || failed ? " still" : ""}`}>{beat}</span>}
       </button>
-      {room !== "phone" && <RowActs task={task} />}
+      {stopped || quiet ? (
+        <span class="oacts on">
+          {w && (w.check || w.event) ? (
+            <Btn kind="secondary" size="sm" label={t("onhand.quiet.look")} about={title(task)} onClick={() => A.waiterAction(w.waiterId, "look")} />
+          ) : (
+            <Btn kind="secondary" size="sm" label={t("onhand.quiet.go")} about={title(task)} onClick={() => A.send({ t: "past_continue", taskId: task.id, words: t("onhand.quiet.go") })} />
+          )}
+          <Btn kind="text" size="sm" label={t("onhand.quiet.drop")} about={title(task)} onClick={() => A.taskAction(task.id, "drop")} />
+        </span>
+      ) : failed && fin ? (
+        <span class="oacts on">
+          <Btn kind="secondary" size="sm" label={t("away.retry")} about={title(task)} onClick={() => runFinished("retry", fin, room === "full")} />
+        </span>
+      ) : (
+        room !== "phone" && <RowActs task={task} />
+      )}
       {fin && <FinishedActs f={fin} full={room === "full"} />}
     </div>
   );
@@ -1014,19 +1059,11 @@ function Rows({ tasks, room, state, cards, compact }: { tasks: Task[]; room: Roo
   if (!tasks.length) return null;
   const r = A.route;
   const openId = r.name === "task" ? r.id : "";
-  if (compact && room !== "rail")
+  // D467: on the board every task is the one card, one to a row; the rail beside an opened task
+  // stays rows.
+  if ((compact || cards) && room !== "rail")
     return (
-      <div class="tcompacts">
-        {tasks.map((task) => (
-          <CompactCard key={task.id} task={task} room={room} v={ver(task)} focus={L.focus === task.id && room !== "phone"} sel={L.sel.has(task.id)} opened={false} quiet={compact === "quiet"} />
-        ))}
-      </div>
-    );
-  // D287: on the board what is alive (at work, freshly waiting, new results) stands as cards; the
-  // rail beside an opened task, and what is folded, stay rows.
-  if (cards && room !== "rail")
-    return (
-      <div class="tcards">
+      <div class="ocards">
         {tasks.map((task) => (
           <TaskCard key={task.id} task={task} room={room} v={ver(task)} focus={L.focus === task.id && room !== "phone"} sel={L.sel.has(task.id)} opened={false} />
         ))}
@@ -1127,6 +1164,9 @@ const FoldLine = ({ words, open, onToggle }: { words: string; open: boolean; onT
   </button>
 );
 
+/** D467: yesterday's finished tasks unfolded under 今天做完, this session. */
+let earlierShown = false;
+
 /** On hand's list, in any room (D216, D261): under the project lens, by state, with the strip's
  *  filter; what needs you first and taking no room when there is none; a wait quiet for a day and
  *  a result you have seen folded away. Beside an opened task (the rail) every task is a row. */
@@ -1159,8 +1199,15 @@ export function OnHandList({ room }: { room: Room }) {
   const nIn = (lane: number) => lanes[lane]!.length;
   const needs = ungrouped(keep(lanes[LANE.needs]!));
   const working = ungrouped(keep(lanes[LANE.working]!));
-  const waiting = ungrouped(keep(lanes[LANE.waiting]!));
-  const done = ungrouped(keep(lanes[LANE.done]!));
+  // D467: a wait nothing brings back and a task that didn't work out stand in 等你; 今天做完 is
+  // today's; what finished before folds under it. Beside an opened task the rail keeps the lanes.
+  const parts = boardParts([[], [], ungrouped(keep(lanes[LANE.waiting]!)), ungrouped(keep(lanes[LANE.done]!))]);
+  const stoppedTs = rail ? [] : parts.stopped;
+  const failedTs = rail ? [] : parts.failed;
+  const waiting = rail ? ungrouped(keep(lanes[LANE.waiting]!)) : parts.waiting;
+  const done = rail ? ungrouped(keep(lanes[LANE.done]!)) : parts.today;
+  const earlier = rail ? [] : parts.earlier;
+  const earlierOpen = earlierShown || f === 4 || !!q;
   const loose = !q && looseIn(lens);
   const partnerDs = loose ? A.S.partnerDecisions().filter((d) => d.src?.kind !== "plan") : [];
   // D312: another partner's own questions are listed here too (answered in its conversation).
@@ -1184,13 +1231,13 @@ export function OnHandList({ room }: { room: Room }) {
   const doneOpen = !seenFolds || doneOpenKept() || f === 4 || !!q;
   // The order the keys walk, as drawn.
   const gIds = (lane: number) => groupsIn(lane).flatMap((b) => b.rows.flatMap((r) => (r.kind === "task" && b.ids.has(r.taskId) ? [r.taskId] : [])));
-  L.order = [...gIds(0), ...needs.map((x) => x.id), ...gIds(1), ...working.map((x) => x.id), ...gIds(2), ...fresh.map((x) => x.id), ...(quietOpen ? quiet : []).map((x) => x.id), ...gIds(3), ...newer.map((x) => x.id), ...(doneOpen ? seen : []).map((x) => x.id)].filter((id) => {
-    const lane = laneOf(id);
+  L.order = [...gIds(0), ...needs.map((x) => x.id), ...stoppedTs.map((x) => x.id), ...failedTs.map((x) => x.id), ...gIds(1), ...working.map((x) => x.id), ...gIds(2), ...fresh.map((x) => x.id), ...(quietOpen ? quiet : []).map((x) => x.id), ...gIds(3), ...newer.map((x) => x.id), ...(doneOpen ? seen : []).map((x) => x.id), ...(earlierOpen ? earlier : []).map((x) => x.id)].filter((id) => {
+    const lane = stoppedTs.some((x) => x.id === id) || failedTs.some((x) => x.id === id) ? 0 : laneOf(id);
     return show(lane + 1) || inGroup.has(id);
   });
   for (const id of [...L.sel]) if (!all.some((x) => x.id === id)) L.sel.delete(id);
   const openN = A.defaultable().length;
-  const shown = needs.length + working.length + waiting.length + done.length + inGroup.size;
+  const shown = needs.length + stoppedTs.length + failedTs.length + working.length + waiting.length + done.length + earlier.length + inGroup.size;
   return (
     <div class={`onhand-list room-${room}${entering && room !== "rail" ? " entering" : ""}`}>
       {!rail && (
@@ -1203,8 +1250,8 @@ export function OnHandList({ room }: { room: Room }) {
       {q && !shown && <p class="none">{t("onhand.find.none")}</p>}
       {/* D285: a Find that matches nothing here leads to every earlier task. */}
       {q && !rail && <PastLink words={t("past.find.in", q)} q={q} />}
-      {needs.length + partnerDs.length + otherAs.length + groupsIn(0).length > 0 && show(1) && (
-        <Section name={t("lane.needs_you")} n={(bgs.length ? nIn(LANE.needs) : needs.length) + partnerDs.length + otherAs.length} end={openN >= 2 && !rail ? <Btn kind="text" size="sm" label={t("decision.goall", openN)} onClick={() => A.goOnAllDefaults()} /> : undefined}>
+      {needs.length + partnerDs.length + otherAs.length + groupsIn(0).length + stoppedTs.length + failedTs.length > 0 && show(1) && (
+        <Section name={t("lane.needs_you")} n={(bgs.length ? nIn(LANE.needs) : needs.length) + partnerDs.length + otherAs.length + stoppedTs.length + failedTs.length} end={openN >= 2 && !rail ? <Btn kind="text" size="sm" label={t("decision.goall", openN)} onClick={() => A.goOnAllDefaults()} /> : undefined}>
           {/* What needs you is answered in place: its card, not a row (beside a task, a row). */}
           {rail ? (
             <Rows tasks={needs} room={room} />
@@ -1221,8 +1268,10 @@ export function OnHandList({ room }: { room: Room }) {
               ))}
               {needs.map((task) => {
                 const d = A.S.pendingDecision(task.id);
-                return d ? <DecisionCard key={task.id} d={d} taskId={task.id} /> : <Rows key={task.id} tasks={[task]} room={room} />;
+                return d ? <DecisionCard key={task.id} d={d} taskId={task.id} /> : <Rows key={task.id} tasks={[task]} room={room} cards />;
               })}
+              {/* D467: what stopped and what didn't work out, said plainly with the one action. */}
+              <Rows tasks={[...stoppedTs, ...failedTs]} room={room} cards />
             </>
           )}
         </Section>
@@ -1237,7 +1286,7 @@ export function OnHandList({ room }: { room: Room }) {
         </Section>
       )}
       {waiting.length + looseWs.length + groupsIn(2).length > 0 && show(3) && (
-        <Section name={t("lane.waiting")} n={(bgs.length ? nIn(LANE.waiting) : waiting.length) + looseWs.length}>
+        <Section name={t("lane.waiting")} n={(bgs.length ? Math.max(0, nIn(LANE.waiting) - stoppedTs.length) : waiting.length) + looseWs.length}>
           {groupsIn(2).map((b) => (
             <GroupCard key={b.g.id} b={b} room={room} />
           ))}
@@ -1251,8 +1300,8 @@ export function OnHandList({ room }: { room: Room }) {
           {quiet.length > 0 && quietOpen && <Rows tasks={quiet} room={room} compact="quiet" />}
         </Section>
       )}
-      {done.length + missed.length + endedCalls.length + groupsIn(3).length > 0 && show(4) && (
-        <Section name={t("lane.done")} n={(bgs.length ? nIn(LANE.done) : done.length) + missed.length + endedCalls.length}>
+      {done.length + earlier.length + missed.length + endedCalls.length + groupsIn(3).length > 0 && show(4) && (
+        <Section name={t("lane.done")} n={done.length}>
           {groupsIn(3).map((b) => (
             <GroupCard key={b.g.id} b={b} room={room} />
           ))}
@@ -1284,6 +1333,9 @@ export function OnHandList({ room }: { room: Room }) {
               <Rows tasks={seen} room={room} compact="seen" />
             </>
           )}
+          {/* D467: 今天做完 is today's; yesterday's folds away under it, one tap from sight. */}
+          {earlier.length > 0 && f !== 4 && !q && <FoldLine words={t("onhand.done.yesterday", earlier.length)} open={earlierOpen} onToggle={() => ((earlierShown = !earlierShown), A.changed())} />}
+          {earlier.length > 0 && earlierOpen && <Rows tasks={earlier} room={room} compact="seen" />}
         </Section>
       )}
       {/* D357: the person's to-dos in their own apps: a few, the rest folded. */}
@@ -1386,6 +1438,8 @@ function GroupCard({ b, room }: { b: BoardGroup; room: Room }) {
   return (
     <div ref={ref} class={`tgroup${live ? " live" : ""}${b.stopped ? " stopped" : ""}${fin ? " fin" : ""}`} data-group={b.g.id} role="group" aria-label={countWords ? spoken(A.L, b.g.name, countWords) : b.g.name}>
       <div class="ghead">
+        {/* D467: the board's one card shape: the group's state mark at its head, as a task's card has. */}
+        <StateMark k={b.lane === 0 ? "needs" : b.lane === 1 ? "working" : b.lane === 2 ? "waiting" : "seen"} frac={0} />
         {draft === null ? (
           <span class="gname">{b.g.name}</span>
         ) : (
@@ -1459,6 +1513,8 @@ function GroupCard({ b, room }: { b: BoardGroup; room: Room }) {
                 <span class="gtitle is-held">{r.kind === "held" ? partWords(r) : ""}</span>
               )}
               <span class="gwhen">{memberWhen(r, task)}</span>
+              {/* D467: a part at work says what it is on now, as every card does. */}
+              {task && k === "working" && <span class="gnow">{storyOf(task).words}</span>}
               {hi > 0 && room !== "phone" && <Btn kind="text" size="sm" label={t("group.up")} about={r.kind === "held" ? r.title : ""} onClick={() => send("move", { member: (r as { key: string }).key, to: hi - 1 })} />}
               {d && (
                 <div class="gask">
@@ -1554,19 +1610,116 @@ function TodoGroup({ lens }: { lens: string }) {
           </span>
         )}
         <span>{todoGroupName(sources)}</span>
-        {c.open > 0 && !pile && <span class="n">{c.atLeast ? `${c.open}+` : c.open}</span>}
+        {pile ? pile.open > 0 && <span class="n">{pile.atLeast ? `${pile.open}+` : pile.open}</span> : c.open > 0 && <span class="n">{c.atLeast ? `${c.open}+` : c.open}</span>}
       </h3>
-      {pile && <PileBlock pile={pile} />}
-      {glance.length > 0 && (
-        <div class="tcards">
-          {glance.map((g) => (
-            <TodoCard key={g.ref} i={g} />
-          ))}
-        </div>
+      {pile ? (
+        <>
+          {/* D467: one calm card on the board: what the sort found, its one action; the whole
+              triage (the pile, the cards, every to-do) behind 看看全部. */}
+          <SourceSummary pile={pile} kind={sources[0]!.kind} review={c.review} />
+          {(pile.open > 0 || glance.length > 0) && <FoldLine words={srcOpen ? t("onhand.src.hide") : t("onhand.src.all", pile.open)} open={srcOpen} onToggle={() => ((srcOpen = !srcOpen), A.changed())} />}
+          {srcOpen && (
+            <div class="src-all">
+              <PileBlock pile={pile} />
+              {glance.length > 0 && (
+                <div class="ocards">
+                  {glance.map((g) => (
+                    <TodoCard key={g.ref} i={g} />
+                  ))}
+                </div>
+              )}
+              {(c.rest > 0 || c.review > 0 || TF.open) && <FoldLine words={t("onhand.todos.more", c.rest)} open={TF.open} onToggle={toggle} />}
+              {TF.open && <TodoFold sources={sources} shown={glance.map((g) => g.ref)} />}
+            </div>
+          )}
+        </>
+      ) : (
+        <>
+          {glance.length > 0 && (
+            <div class="ocards">
+              {glance.map((g) => (
+                <TodoCard key={g.ref} i={g} />
+              ))}
+            </div>
+          )}
+          {(c.rest > 0 || c.review > 0 || TF.open) && <FoldLine words={t("onhand.todos.more", c.rest)} open={TF.open} onToggle={toggle} />}
+          {TF.open && <TodoFold sources={sources} shown={glance.map((g) => g.ref)} />}
+        </>
       )}
-      {(c.rest > 0 || c.review > 0 || TF.open) && <FoldLine words={t("onhand.todos.more", c.rest)} open={TF.open} onToggle={toggle} />}
-      {TF.open && <TodoFold sources={sources} shown={glance.map((g) => g.ref)} />}
     </section>
+  );
+}
+
+/** D467: the whole triage behind the summary card, unfolded this session. */
+let srcOpen = false;
+
+/** D467: what the sort found, as facts that add up to the open count: each group's count, and what
+ *  is already under way (handed over, or bound to a task) as the rest. The lead is the first group
+ *  with something in it; a PR waiting for review is said apart (it is no assigned issue). */
+export function sourceFacts(pile: PileView, name: string): { lead: string; leadGroup: string; facts: string[] } {
+  if (pile.sorting) return { lead: t("pile.sorting"), leadGroup: "", facts: [t("pile.sorting.read", pile.sorting.read), t("pile.sorting.of", pile.sorting.of)] };
+  if (!pile.sortedAt || !pile.read) return { lead: pile.open > 0 ? t("pile.first.lede", name) : t("pile.clear"), leadGroup: pile.open > 0 ? "first" : "", facts: [] };
+  const g = pile.groups;
+  const all: [string, number][] = [
+    ["do", g.do],
+    ["decide", g.decide],
+    ["close", g.close],
+    ["later", g.later],
+    ["unread", pile.unread],
+    ["taken", pileTaken(pile)],
+  ];
+  const words = (k: string, n: number) => (k === "do" ? t("onhand.src.do", n, name) : t(`onhand.src.${k}`, n));
+  const there = all.filter(([, n]) => n > 0);
+  if (!there.length) return { lead: t("pile.clear"), leadGroup: "", facts: [] };
+  const [lk, ln] = there[0]!;
+  return { lead: words(lk, ln), leadGroup: lk, facts: there.slice(1).map(([k, n]) => words(k, n)) };
+}
+
+/** D467: the to-dos as one card of the board's own shape: the app's mark in the state mark's place,
+ *  what the sort found (its lead, then the rest as quiet facts, each its own element), and the one
+ *  action at the right. No art and no giant numeral: those are the triage's, behind 看看全部. */
+function SourceSummary({ pile, kind, review }: { pile: PileView; kind: string; review: number }) {
+  const name = A.S.personaName;
+  const f = sourceFacts(pile, name);
+  const facts = review > 0 ? [...f.facts, t("onhand.src.review", review)] : f.facts;
+  const act =
+    f.leadGroup === "do" ? (
+      <Btn kind="secondary" size="sm" label={t("pile.act.do", name)} about={f.lead} onClick={() => openHand({ door: "do", doCount: pile.groups.do })} />
+    ) : f.leadGroup === "decide" ? (
+      <Btn kind="secondary" size="sm" label={t("pile.act.decide")} about={f.lead} onClick={() => openPile("decide")} />
+    ) : f.leadGroup === "close" ? (
+      <Btn kind="secondary" size="sm" label={t("pile.act.close")} about={f.lead} onClick={() => openPile("close")} />
+    ) : f.leadGroup === "first" ? (
+      <Btn kind="secondary" size="sm" label={t("pile.first")} about={f.lead} onClick={() => A.send({ t: "pile_sort" })} />
+    ) : null;
+  return (
+    <div class="ocard src-sum">
+      <span class="omain static">
+        <span class="omark k-src" aria-hidden="true">
+          <BrandMark name={kind} size={18} />
+        </span>
+        <span class="otx">
+          <span class="o1">
+            <span class="t">{f.lead}</span>
+          </span>
+          {facts.length > 0 && (
+            <span class="o2 facts">
+              {facts.map((x) => (
+                <span key={x} class="fact">
+                  {x}
+                </span>
+              ))}
+            </span>
+          )}
+          {pile.sorting && (
+            <span class="pile-bar" aria-hidden="true">
+              <span style={{ width: `${Math.round((100 * pile.sorting.read) / Math.max(1, pile.sorting.of))}%` }} />
+            </span>
+          )}
+        </span>
+      </span>
+      {act && <span class="oacts on">{act}</span>}
+    </div>
   );
 }
 

@@ -56,15 +56,11 @@ func (a *App) onHand(c *ui.Context) {
 					return
 				}
 				lb := lensBoard(b, lens)
-				// D287: the day beside the board on a wide window; the list's
-				// width is the cards' room.
-				day := w >= dayFrom
+				// D467: no day beside the board: it said again what the
+				// column says. The list's width is the cards' room.
 				avail := w - 2*t.S6
 				if column {
 					avail -= lensColW
-				}
-				if day {
-					avail -= dayColW + t.S6
 				}
 				a.oh.listW = min(float32(onHandMeasure), avail)
 				ui.Row(c.Key("board-row")).Gap(t.S6).Justify(ui.Center).AlignItems(ui.Start).Children(func() {
@@ -76,7 +72,7 @@ func (a *App) onHand(c *ui.Context) {
 						// D315: only while something needs you: otherwise the line
 						// under the partner already says when the first is back, and
 						// each card says its own.
-						if a.oh.filter == 0 && !day && a.stateCounts(lb, lens)[0] > 0 {
+						if a.oh.filter == 0 && a.stateCounts(lb, lens)[0] > 0 {
 							a.forecastBand(c, lb)
 						}
 						if loose(lens) && (a.oh.filter == 0 || a.oh.filter == 2) {
@@ -100,9 +96,6 @@ func (a *App) onHand(c *ui.Context) {
 						// day and ran out of the window on a 1280 Mac.
 						a.pastEndLine(c)
 					})
-					if day {
-						a.dayColumn(c, lb, lens)
-					}
 				})
 			})
 		})

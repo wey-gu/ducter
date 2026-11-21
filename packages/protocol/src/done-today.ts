@@ -10,12 +10,13 @@ export function dayOf(ms: number, zone?: string): string {
 }
 
 /**
- * Whether a task counts as done today: it finished well ("done"; not failed, not a "done" the agent
- * only claims) at a moment on today's local day. A wait that ended unmet is not a task done: it is
- * 没等到 / Didn't happen, said on its own.
+ * Whether a task counts as done today: it finished ("done", or D467 "done_claimed": a done whose
+ * check or merge is still to come, which every list shows as done; never failed) at a moment on
+ * today's local day. A wait that ended unmet is not a task done: it is 没等到 / Didn't happen, said
+ * on its own.
  */
 export function isDoneToday(attention: string, finishedAt: string | undefined, now: number, zone?: string): boolean {
-  if (attention !== "done" || !finishedAt) return false;
+  if ((attention !== "done" && attention !== "done_claimed") || !finishedAt) return false;
   const at = Date.parse(finishedAt);
   return Number.isFinite(at) && dayOf(at, zone) === dayOf(now, zone);
 }

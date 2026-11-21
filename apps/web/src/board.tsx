@@ -7,14 +7,13 @@
 import type { ComponentChildren } from "preact";
 import { A } from "./app.ts";
 import { Facts, NavBtn, PlusMark } from "./controls.tsx";
-import { sayable } from "@ducter/protocol/src/say.ts";
-import { clock, spoken, when } from "./format.ts";
-import { LANE, reportOf, title } from "./store.ts";
+import { spoken, when } from "./format.ts";
+import { LANE, title } from "./store.ts";
 import { shortTitle } from "./transcript.tsx";
 import { Avatar, Places } from "./views.tsx";
 import { useCanFill, useFill } from "./wide.ts";
 import { RoutineShelf } from "./work.tsx";
-import { currentLens, lensGroups, lensLanes, lensName, lensOn, LensColumn, looseIn, OnHandList, quietWait } from "./onhand.tsx";
+import { currentLens, lensGroups, lensName, lensOn, LensColumn, OnHandList, stateCounts } from "./onhand.tsx";
 import type { Task } from "./store.ts";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
@@ -138,7 +137,9 @@ export function Board() {
   const routines = A.S.routines().filter((r) => r.state === "active" || r.state === "paused");
   const calls = A.S.onHand?.calls ?? [];
   const nothing = b.lanes.slice(0, 4).every((l) => !l.length) && !A.S.partnerDecisions().length && !loose.length && !A.S.missedToday().length && !routines.length && !calls.length;
-  const next = forecast();
+  // D467: the day column beside the board is gone (it repeated the column); the Next line keeps
+  // D315's rule at every width: two or more coming, and something needs you.
+  const next = stateCounts(currentLens(lensGroups()))[0] ? forecast() : [];
   return (
     <>
       <FullTop>
@@ -159,7 +160,6 @@ export function Board() {
             <OnHandList room="full" />
             <RoutineShelf />
           </div>
-          <DayColumn />
           </div>
         )}
       </main>
@@ -186,73 +186,6 @@ export function Rail() {
       <div class="scroll rail-list">
         <OnHandList room="rail" />
       </div>
-    </aside>
-  );
-}
-
-// ---------- D287: the day beside the board ----------
-
-type DayItem = { at: number; text: string; sub?: string; id?: string };
-
-/** What comes back next on its own (the waits' next looks, a default taking effect) and what came
- *  back today with its outcome, within the lens. Times and words are the Log's, never a model's. */
-export function dayOf(lens: string, now = Date.now()): { next: DayItem[]; back: DayItem[] } {
-  const lanes = lensLanes(lens);
-  const next: DayItem[] = [];
-  const add = (iso: string | undefined, text: string, id?: string) => {
-    const at = Date.parse(iso ?? "");
-    if (Number.isFinite(at) && at > now) next.push({ at, text, id });
-  };
-  for (const task of lanes[LANE.needs]!) {
-    const d = A.S.pendingDecision(task.id);
-    if (d && d.reversible && d.defaultOption === "go") add(d.defaultAt, shortTitle(title(task)), task.id);
-  }
-  for (const task of lanes[LANE.waiting]!) {
-    if (quietWait(task, now)) continue;
-    const w = A.S.waiterFor(task.id);
-    if (w) add(w.check || w.event ? w.nextLookAt : w.at, shortTitle(title(task)), task.id);
-  }
-  if (looseIn(lens)) for (const w of A.S.armedWaiters().filter((w) => !w.taskId)) add(w.check || w.event ? w.nextLookAt : w.at, w.reason);
-  const back: DayItem[] = lanes[LANE.done]!.map((task) => {
-    const r = reportOf(task);
-    return { at: Date.parse(task.card?.updatedAt ?? "") || 0, text: shortTitle(title(task)), sub: r?.summary ? sayable(r.summary.split("\n")[0]!, A.L.lang) : "", id: task.id };
-  });
-  return { next: next.sort((a, b) => a.at - b.at).slice(0, 5), back: back.sort((a, b) => b.at - a.at).slice(0, 6) };
-}
-
-/** D287: the day beside the board, on a wide screen: a thin line of time with what comes back next
- *  above now and what came back today below it, each a time and its title (a result with its first
- *  line). Hollow beads are still to come, filled ones came back. */
-function DayColumn() {
-  const lens = currentLens(lensGroups());
-  const d = dayOf(lens);
-  if (!d.next.length && !d.back.length) return null;
-  const open = (id?: string) => id && A.go({ name: "task", id, full: true });
-  const item = (x: DayItem, k: "next" | "back") => (
-    <li key={`${k}${x.id ?? x.text}${x.at}`} class={`day-i ${k}`}>
-      <span class="bead" aria-hidden="true" />
-      <button class="day-b" disabled={!x.id} onClick={() => open(x.id)}>
-        <span class="tm">{clock(new Date(x.at).toISOString())}</span>
-        <span class="tx">{x.text}</span>
-        {x.sub && <span class="sb">{x.sub}</span>}
-      </button>
-    </li>
-  );
-  return (
-    <aside class="day-col" aria-label={t("onhand.day.label")}>
-      {d.next.length > 0 && (
-        <>
-          <h3>{t("onhand.next")}</h3>
-          <ol class="day-l">{d.next.map((x) => item(x, "next"))}</ol>
-        </>
-      )}
-      <div class="day-now">
-        <span class="bead" aria-hidden="true" />
-        <span class="tm">{clock(new Date().toISOString())}</span>
-        <span>{t("onhand.day.now")}</span>
-      </div>
-      <h3>{t("onhand.day.back")}</h3>
-      {d.back.length ? <ol class="day-l">{d.back.map((x) => item(x, "back"))}</ol> : <p class="day-none">{t("onhand.day.none")}</p>}
     </aside>
   );
 }

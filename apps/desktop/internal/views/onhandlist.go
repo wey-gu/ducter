@@ -53,6 +53,9 @@ type onHandState struct {
 	lens     string
 	showProj bool
 	quietOn  bool
+	// D467: whether yesterday's results are unfolded (this session), and
+	// whether a to-do source's whole sort is open behind its summary.
+	earlierOn, srcAll bool
 	// D287: the list's width this frame (the cards' room), and the new
 	// results whose card has had its little moment.
 	listW   float32
@@ -273,8 +276,10 @@ func (a *App) findExactly(task *store.Task, q string) bool {
 
 // ---------- the list ----------
 
-// onHandList is the list by state: what needs you answered in place, then
-// Working, Waiting and Done today, each one card of rows.
+// onHandList is the list by attention (D467): what needs you (its asks
+// answered in place, what stopped and what didn't work out, each with its
+// one action), then what works, what waits, and what got done today, all in
+// one card shape at one width.
 func (a *App) onHandList(c *ui.Context, b store.Board) {
 	t := a.T
 	q := strings.TrimSpace(a.oh.find)
@@ -322,28 +327,58 @@ func (a *App) onHandList(c *ui.Context, b store.Board) {
 		}
 		return n
 	}
-	nLane := func(l store.Lane, ts []*store.Task) int {
+	// A section's count is per task: grouped tasks count where they are.
+	count := func(all, shown []*store.Task) int {
 		if len(bgs) == 0 {
-			return len(ts)
+			return len(shown)
 		}
-		return len(b.Lanes[l])
+		return len(all)
 	}
-	needs := withoutGroups(keep(b.Lanes[store.LaneNeedsYou]), inGroup)
-	working := withoutGroups(keep(b.Lanes[store.LaneWorking]), inGroup)
-	waiting := withoutGroups(keep(b.Lanes[store.LaneWaiting]), inGroup)
-	done := withoutGroups(keep(b.Lanes[store.LaneDone]), inGroup)
+	sp := a.splitOf(b)
+	needs := withoutGroups(keep(sp.needs), inGroup)
+	stopped := withoutGroups(keep(sp.stopped), inGroup)
+	failed := withoutGroups(keep(sp.failed), inGroup)
+	working := withoutGroups(keep(sp.working), inGroup)
+	waiting := withoutGroups(keep(sp.waiting), inGroup)
+	today := withoutGroups(keep(sp.today), inGroup)
+	earlier := withoutGroups(keep(sp.earlier), inGroup)
 	a.nav.rows = 0
 	f := a.oh.filter
 	if rail {
 		f = 0
 	}
 	show := func(i int) bool { return f == 0 || f == i }
+	if q != "" && len(needs)+len(stopped)+len(failed)+len(working)+len(waiting)+len(today)+len(earlier)+len(inGroup) == 0 {
+		a.oh.order = a.oh.order[:0]
+		uiText(c.Key("none"), a.L.T("onhand.find.none")).FontSize(t.MD).TextColor(t.InkMuted)
+		a.pastFindLink(c, q) // D285
+		return
+	}
+	if rail {
+		// Beside an opened task (D244): every task is a row, and only tasks,
+		// by the same sections.
+		a.oh.order = a.oh.order[:0]
+		for _, s := range []struct {
+			key, name string
+			ts        []*store.Task
+		}{{"needs", "lane.needs_you", concat(needs, stopped, failed)}, {"working", "lane.working", working}, {"waiting", "lane.waiting", waiting}, {"done", "lane.done", concat(today, earlier)}} {
+			for _, x := range s.ts {
+				a.oh.order = append(a.oh.order, x.ID)
+			}
+			if len(s.ts) > 0 {
+				a.listSection(c, s.key, a.L.T(s.name), len(s.ts), func() { a.taskRows(c, s.ts, false) })
+			}
+		}
+		return
+	}
 	// D261: a wait nothing has changed on for a day folds away under the
-	// fresh ones; a result you have seen folds under 今天做完, a new one
-	// never. Find and the strip's filter unfold them.
+	// fresh ones (it still looks on its own; one that doesn't has stopped
+	// and stands in 等你); a result you have seen folds under 今天做完, a new
+	// one never; yesterday's fold under them (D467). Find and the strip's
+	// filter unfold them.
 	var fresh, quiet, newer, seen []*store.Task
 	for _, x := range waiting {
-		if !rail && a.quietWait(x) {
+		if a.quietWait(x) {
 			quiet = append(quiet, x)
 		} else {
 			fresh = append(fresh, x)
@@ -351,39 +386,38 @@ func (a *App) onHandList(c *ui.Context, b store.Board) {
 	}
 	// D297: tasks waiting on one account's limit share one reset: drawn
 	// together under one line, after the other fresh waits.
-	var groups []limitGroup
-	if !rail {
-		groups = a.groupLimits(fresh)
-		grouped := map[string]bool{}
-		for _, g := range groups {
-			for _, x := range g.tasks {
-				grouped[x.ID] = true
-			}
+	groups := a.groupLimits(fresh)
+	grouped := map[string]bool{}
+	for _, g := range groups {
+		for _, x := range g.tasks {
+			grouped[x.ID] = true
 		}
-		rest := fresh[:0:0]
-		for _, x := range fresh {
-			if !grouped[x.ID] {
-				rest = append(rest, x)
-			}
-		}
-		fresh = rest
 	}
+	rest := fresh[:0:0]
+	for _, x := range fresh {
+		if !grouped[x.ID] {
+			rest = append(rest, x)
+		}
+	}
+	fresh = rest
 	var inGroups []*store.Task
 	for _, g := range groups {
 		inGroups = append(inGroups, g.tasks...)
 	}
-	for _, x := range done {
-		if !rail && a.rowMarkOf(x) != stNew {
+	for _, x := range today {
+		if a.rowMarkOf(x) != stNew {
 			seen = append(seen, x)
 		} else {
 			newer = append(newer, x)
 		}
 	}
 	// D287: a fold earns its line from three; fewer stay in sight.
-	quietFolds := !rail && len(quiet) >= foldFrom
+	quietFolds := len(quiet) >= foldFrom
 	quietOpen := !quietFolds || a.oh.quietOn || f == 3 || q != ""
-	seenFolds := rail || len(seen) >= foldFrom
+	seenFolds := len(seen) >= foldFrom
 	doneOpen := !seenFolds || a.Local.Folded(doneOpenKey) || f == 4 || q != ""
+	// D467: yesterday's results always fold: 今天做完 says today.
+	earlierOpen := a.oh.earlierOn || q != ""
 	a.oh.order = a.oh.order[:0]
 	add := func(ok bool, ts ...[]*store.Task) {
 		if !ok {
@@ -395,29 +429,13 @@ func (a *App) onHandList(c *ui.Context, b store.Board) {
 			}
 		}
 	}
-	add(show(1), needs)
+	add(show(1), needs, stopped, failed)
 	add(show(2), working)
 	add(show(3), fresh, inGroups)
 	add(show(3) && quietOpen, quiet)
 	add(show(4), newer)
 	add(show(4) && doneOpen, seen)
-	if q != "" && len(needs)+len(working)+len(waiting)+len(done)+len(inGroup) == 0 {
-		uiText(c.Key("none"), a.L.T("onhand.find.none")).FontSize(t.MD).TextColor(t.InkMuted)
-		a.pastFindLink(c, q) // D285
-		return
-	}
-	if rail {
-		// Beside an opened task (D244): every task is a row, and only tasks.
-		for _, s := range []struct {
-			key, name string
-			ts        []*store.Task
-		}{{"needs", "lane.needs_you", needs}, {"working", "lane.working", working}, {"waiting", "lane.waiting", waiting}, {"done", "lane.done", done}} {
-			if len(s.ts) > 0 {
-				a.listSection(c, s.key, a.L.T(s.name), len(s.ts), func() { a.taskRows(c, s.ts, false) })
-			}
-		}
-		return
-	}
+	add(show(4) && earlierOpen, earlier)
 	// Only in all, and Other: what belongs to no task.
 	var pds []*store.DecisionState
 	var loose, missed []*protocol.Waiter
@@ -428,8 +446,9 @@ func (a *App) onHandList(c *ui.Context, b store.Board) {
 	}
 	// What needs you comes first and takes no room when there is none (the
 	// board's head says so in one calm sentence).
-	if len(needs)+len(pds)+len(others)+nGroups(0) > 0 && show(1) {
-		a.listSection(c, "needs", a.L.T("lane.needs_you"), nLane(store.LaneNeedsYou, needs)+len(pds)+len(others), func() {
+	if len(needs)+len(stopped)+len(failed)+len(pds)+len(others)+nGroups(0) > 0 && show(1) {
+		n := count(sp.needs, needs) + count(sp.stopped, stopped) + count(sp.failed, failed) + len(pds) + len(others)
+		a.listSection(c, "needs", a.L.T("lane.needs_you"), n, func() {
 			groupsIn(0)
 			for _, d := range pds {
 				a.partnerDecisionCard(c.Key("pd:"+d.DecisionID), d)
@@ -437,23 +456,25 @@ func (a *App) onHandList(c *ui.Context, b store.Board) {
 			for _, x := range others {
 				a.otherAskRow(c, x)
 			}
+			var plain []*store.Task
 			for _, task := range needs {
 				if a.S.PendingDecision(task.ID) != nil {
 					a.needsCard(c.Key(task.ID), task)
 				} else {
-					a.taskRows(c.Key("r:"+task.ID), []*store.Task{task}, false)
+					plain = append(plain, task)
 				}
 			}
+			a.taskCards(c.Key("needs"), concat(plain, stopped, failed))
 		})
 	}
 	if len(working)+nGroups(1) > 0 && show(2) {
-		a.listSection(c, "working", a.L.T("lane.working"), nLane(store.LaneWorking, working), func() {
+		a.listSection(c, "working", a.L.T("lane.working"), count(sp.working, working), func() {
 			groupsIn(1)
 			a.taskCards(c, working)
 		})
 	}
 	if len(waiting)+len(loose)+nGroups(2) > 0 && show(3) {
-		a.listSection(c, "waiting", a.L.T("lane.waiting"), nLane(store.LaneWaiting, waiting)+len(loose), func() {
+		a.listSection(c, "waiting", a.L.T("lane.waiting"), count(sp.waiting, waiting)+len(loose), func() {
 			groupsIn(2)
 			a.taskCards(c.Key("fresh"), fresh)
 			for _, g := range groups {
@@ -471,40 +492,56 @@ func (a *App) onHandList(c *ui.Context, b store.Board) {
 					a.oh.quietOn = !a.oh.quietOn
 				}
 				if quietOpen {
-					a.compactCards(c.Key("quiet"), quiet, true)
+					a.taskCards(c.Key("quiet"), quiet)
 				}
 			}
 		})
 	}
-	if len(done)+len(missed)+nGroups(3) > 0 && show(4) {
-		a.listSection(c, "done", a.L.T("lane.done"), nLane(store.LaneDone, done)+len(missed), func() {
+	if len(today)+len(earlier)+len(missed)+nGroups(3) > 0 && show(4) {
+		a.listSection(c, "done", a.L.T("lane.done"), count(sp.today, today), func() {
 			groupsIn(3)
 			a.taskCards(c.Key("new"), newer)
-			if len(seen)+len(missed) == 0 {
-				return
-			}
-			seenFolds := seenFolds || len(seen)+len(missed) >= foldFrom
-			if !seenFolds {
-				doneOpen = true
-				if len(newer) > 0 {
-					a.subHead(c, "seen", a.L.T("onhand.done.seen.head"))
+			if len(seen)+len(missed) > 0 {
+				seenFolds := seenFolds || len(seen)+len(missed) >= foldFrom
+				if !seenFolds {
+					doneOpen = true
+					if len(newer) > 0 {
+						a.subHead(c, "seen", a.L.T("onhand.done.seen.head"))
+					}
+				}
+				if seenFolds && f != 4 && q == "" && a.foldLine(c, "seen", a.L.T("onhand.done.seen", len(seen)+len(missed)), doneOpen) {
+					a.Local.SetFolded(doneOpenKey, !doneOpen)
+				}
+				if doneOpen {
+					for _, w := range missed {
+						a.missedRow(c.Key("m:"+w.WaiterID), w)
+					}
+					a.taskCards(c.Key("seen"), seen)
 				}
 			}
-			if seenFolds && f != 4 && q == "" && a.foldLine(c, "seen", a.L.T("onhand.done.seen", len(seen)+len(missed)), doneOpen) {
-				a.Local.SetFolded(doneOpenKey, !doneOpen)
-			}
-			if doneOpen {
-				for _, w := range missed {
-					a.missedRow(c.Key("m:"+w.WaiterID), w)
+			if len(earlier) > 0 {
+				if q == "" && a.foldLine(c, "earlier", a.L.T("onhand.done.yesterday", len(earlier)), earlierOpen) {
+					a.oh.earlierOn = !a.oh.earlierOn
 				}
-				a.compactCards(c.Key("seen"), seen, false)
+				if earlierOpen {
+					a.taskCards(c.Key("earlier"), earlier)
+				}
 			}
 		})
 	}
-	// D357: the person's to-dos in their own apps: a few, the rest folded.
+	// D357: the person's to-dos in their own apps: one calm summary (D467).
 	if q == "" && f == 0 {
 		a.todoGroup(c, a.oh.lens)
 	}
+}
+
+// concat joins runs of tasks in order.
+func concat(runs ...[]*store.Task) []*store.Task {
+	var out []*store.Task
+	for _, r := range runs {
+		out = append(out, r...)
+	}
+	return out
 }
 
 // doneOpenKey is how this Mac remembers that 今天做完's seen results are

@@ -13,7 +13,8 @@ in the conversation's header, or press ⌘2.
 
 At the top is your partner, with one short line: whether anything needs you, and if not, what
 comes next: "Nothing needs you. I'm on it." while work is under way, or "Nothing needs you. The
-first is back at 22:40." when everything waits. Its pose tells you the same at a glance: a little
+first is back at 22:40." when everything waits. If a task has stopped and nothing will start it
+again on its own, the line says so: "One has stopped and needs a look." Its pose tells you the same at a glance: a little
 flag when something needs you, reading while work is under way, resting on its bench while
 everything waits, smiling when the day's work came back done.
 
@@ -21,34 +22,34 @@ Under the line are the numbers of what's there, such as **4 Waiting** and **1 Do
 state with nothing in it isn't shown, and with only one kind there the section says it). Tap one to see only those tasks; tap it again (or press
 **Esc**) to see everything.
 
-What needs you comes first, and each one is the question itself, answered right there. Below
-that, the rest:
+What needs you comes first. A question is answered right there. A task that has stopped (it
+waits, but nothing will bring it back by itself) shows why, how long ago it last changed, and
+**Continue** or **Put down**. A task that didn't work out shows **Try again**. Below that, the rest:
 
 - **Working**: tasks under way.
 - **Waiting**: tasks waiting for something, such as a check to pass, an email, or a computer to
   wake up. A question you put off with **Ask me later** waits here too, saying when it
   will ask you again; **Decide now** brings it back at once.
-- **Done today**: tasks that finished well today. A task that failed, or a wait that didn't happen, is
-  listed there too with its own words, but isn't counted.
+- **Done today**: tasks that finished today. A wait that didn't happen is listed there too with its
+  own words, but isn't counted. Tasks that finished yesterday fold under one line, **1 more done
+  yesterday**.
 
-Tasks that are working, have just started waiting, or have a new result are small cards. Each
-shows which AI agent is doing it (its small clay coin, which rocks while it works), the title,
-what it is doing right now in words ("Running the tests", "Opened booking.com in Chrome"), and
-at the bottom a live sign:
+Every task is the same card, one under another. On the left, a small mark says where it stands:
+a flag when it needs you, three moving bars while it works, a ring that fills up toward when a wait
+comes back, a tick when it's done, a cross when it didn't work out. Then the title and its project,
+and under them, in words, what it is doing right now ("Running the tests", "Opened booking.com in
+Chrome"), what it waits for, or what came of it. On the right:
 
 - working: how long it has been at it;
-- waiting: a ring that fills up toward when it comes back ("back at 11:39"); there's nothing for
-  you to do until then;
-- done: when it finished, with its result right on the card.
+- waiting: when it comes back ("back at 11:39"); there's nothing for you to do until then;
+- done: when it finished.
 
-Waits that haven't changed for over a day, and results you've already seen, are lower cards with
-the same words. A quiet wait offers what to do right there: **Check now** (it looks again now) or
-**Continue** (it carries on), and **Put down** (it stops; you'll still find it in Past tasks).
+Which AI agent does the task shows when you point at the title, and in the task itself.
+
+A wait that still checks by itself but hasn't changed for over a day says when it last changed and
+offers **Check now** (it looks again now).
 
 A card says which computer it runs on only when that isn't the one most of your tasks use.
-
-On a wide window, a column on the right shows your day: what comes back next, now, and what came
-back today with its result. Click any of them to open the task.
 
 A task in a code folder also shows the lines it added and removed (**+42 −7**), and **Draft PR**
 or **Merged** once you've done either from Ducter.

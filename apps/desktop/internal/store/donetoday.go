@@ -7,12 +7,13 @@ import (
 )
 
 // IsDoneToday is the one meaning of 今天做完 / Done today (D310), the Go
-// twin of packages/protocol/src/done-today.ts: a task that finished well
-// ("done"; not failed, not a done the agent only claims) at a moment on
-// now's day, in now's location. A wait that ended unmet is not a task
-// done: it is 没等到 / Didn't happen, said on its own.
+// twin of packages/protocol/src/done-today.ts: a task that finished
+// ("done", or D467 a done whose check or merge is still to come, which
+// every list shows as done; never failed) at a moment on now's day, in
+// now's location. A wait that ended unmet is not a task done: it is
+// 没等到 / Didn't happen, said on its own.
 func IsDoneToday(a protocol.Attention, finished, now time.Time) bool {
-	if a != protocol.Done || finished.IsZero() {
+	if (a != protocol.Done && a != protocol.DoneClaimed) || finished.IsZero() {
 		return false
 	}
 	at := finished.In(now.Location())

@@ -19023,3 +19023,459 @@ html[data-text-size="large"] .brand-mark > svg {
 /* Keycaps draw their arrows (D211: no text arrows iOS turns into emoji). */
 .adf-keys kbd .chev-g { vertical-align: -1px; }
 .adf-keys kbd .chev-g.k-up { transform: rotate(-90deg); }
+
+/* D467: On hand's one card. Every task on the board is the same shape at the list's full width, one
+   to a row, in attention order (等你, 在做, 在等, 今天做完): the state mark (a 32 sunk round with the
+   group parts' glyph), the subject and where, the living line, and at the right the heartbeat in words
+   and the one action. No state fills a card with colour: the mark and the words say it; what stopped
+   carries the needs-you ledge. The to-dos stand as one card of the same shape, the triage behind it. */
+.ocards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 2px 0 6px;
+}
+.ocard {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: 0 2px 0 var(--line), var(--drop);
+  transition: transform var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
+}
+.ocard.stopped,
+.ocard.a-failed {
+  box-shadow: 0 2px 0 var(--needs-ledge), var(--drop);
+}
+.ocard .omain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 64px;
+  padding: 12px 14px;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.ocard .omain.static {
+  cursor: default;
+}
+.ocard .omark {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--surface-sunken);
+}
+.ocard .omark svg {
+  display: block;
+}
+.ocard .omark svg circle {
+  fill: currentColor;
+}
+.ocard .omark svg path {
+  stroke: var(--surface-sunken);
+}
+.ocard .omark.k-needs {
+  color: var(--needs-dot);
+}
+.ocard .omark.k-failed {
+  color: var(--failed-dot);
+}
+.ocard .omark.k-done {
+  color: var(--done-dot);
+}
+.ocard .omark.k-seen svg circle {
+  fill: none;
+}
+.ocard .omark.k-seen svg path {
+  stroke: var(--ink-muted);
+}
+.ocard .omark.k-waiting {
+  color: var(--waiting-ink);
+}
+.ocard .omark.k-waiting .wring {
+  width: 18px;
+  height: 18px;
+}
+.ocard .omark.k-waiting .wring .fill {
+  fill: var(--waiting-ink);
+}
+.ocard .omark.k-working {
+  background: var(--working-surface);
+}
+.ocard .omark .pulse {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 12px;
+}
+.ocard .omark .pulse i {
+  width: 3px;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--working-dot);
+  transform-origin: bottom;
+  animation: oh-pulse 1.6s var(--ease) infinite;
+}
+.ocard .omark .pulse i:nth-child(2) {
+  animation-delay: -0.55s;
+}
+.ocard .omark .pulse i:nth-child(3) {
+  animation-delay: -1.1s;
+}
+.ocard.resting .omark .pulse i {
+  animation-play-state: paused;
+}
+.ocard .otx {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.ocard .o1 {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+  white-space: nowrap;
+}
+.ocard .o1 .t {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: var(--md);
+  font-weight: 600;
+  color: var(--ink);
+}
+.ocard .o1 .meta,
+.ocard .o1 .stat,
+.ocard .o1 .pr,
+.ocard .o1 .src-chip {
+  flex: none;
+  font-size: var(--xs);
+  color: var(--ink-muted);
+}
+.ocard .o1 .stat {
+  display: flex;
+  gap: 6px;
+  font-family: var(--mono);
+}
+.ocard .o1 .stat i {
+  font-style: normal;
+}
+.ocard .o1 .stat .add {
+  color: var(--done-ink);
+}
+.ocard .o1 .stat .del {
+  color: var(--failed-ink);
+}
+.ocard .o1 .pr {
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+.ocard .o2 {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--sm);
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+/* At work, what it is on may take a second line. */
+.ocard.a-working .o2,
+.ocard.a-queued .o2 {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.ocard .o2 > .g {
+  width: 14px;
+  height: 14px;
+  vertical-align: -2px;
+  margin-right: 6px;
+  color: var(--ink-muted);
+}
+.ocard .o2 .c {
+  margin-left: 6px;
+  font-family: var(--mono);
+  font-size: var(--xs);
+  color: var(--ink-muted);
+}
+.ocard .o2.needs {
+  color: var(--needs-ink);
+}
+.ocard .o2.failed {
+  color: var(--failed-ink);
+}
+.ocard .o2 .say {
+  animation: alive-say var(--t-say) var(--ease) both;
+}
+.ocard .obeat {
+  flex: none;
+  align-self: center;
+  max-width: 40%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--xs);
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+.ocard.a-working .obeat,
+.ocard.a-queued .obeat {
+  color: var(--working-ink);
+  font-weight: 600;
+}
+.ocard.a-blocked:not(.stopped):not(.quiet) .obeat {
+  color: var(--waiting-ink);
+  font-weight: 600;
+}
+.ocard.unseen .obeat {
+  color: var(--done-ink);
+  font-weight: 600;
+}
+.ocard .oacts,
+.ocard .tacts {
+  flex: none;
+  display: none;
+  align-items: center;
+  gap: 4px;
+  padding-right: 12px;
+}
+.ocard .oacts.on,
+.ocard .tacts.on {
+  display: flex;
+}
+.ocard .tacts .busy {
+  font-size: var(--xs);
+  color: var(--ink-muted);
+  padding: 0 4px;
+}
+@media (hover: hover) {
+  .ocard:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 3px 0 var(--line), var(--drop);
+  }
+  .ocard.stopped:hover,
+  .ocard.a-failed:hover {
+    box-shadow: 0 3px 0 var(--needs-ledge), var(--drop);
+  }
+  .ocard.src-sum:hover {
+    transform: none;
+    box-shadow: 0 2px 0 var(--line), var(--drop);
+  }
+  .ocard:hover .tacts,
+  .ocard:focus-within .tacts {
+    display: flex;
+  }
+  .ocard:has(.tacts):hover .obeat {
+    display: none;
+  }
+}
+/* The × and ⋯ come in over the right end, where the heartbeat is, with the card's own surface. */
+.ocard .fin-acts {
+  top: 50%;
+  right: 10px;
+  transform: translateY(-50%);
+}
+.ocard.kfocus {
+  outline: 2px solid color-mix(in srgb, var(--accent) 75%, transparent);
+  outline-offset: 2px;
+}
+.ocard.sel {
+  outline: 2px solid var(--working-dot);
+  outline-offset: 2px;
+}
+.ocard.cheer,
+.ocard.arrived {
+  animation: oh-cheer var(--t-pop) var(--spring) both;
+}
+/* The to-dos' card: the app's mark in the state mark's place, the facts each its own element. */
+.ocard.src-sum .omark.k-src {
+  background: var(--surface-sunken);
+}
+.ocard.src-sum .o2.facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 14px;
+  white-space: normal;
+  font-size: var(--xs);
+  color: var(--ink-muted);
+}
+.ocard.src-sum .o2.facts .fact {
+  white-space: nowrap;
+}
+.ocard.src-sum .pile-bar {
+  height: 6px;
+  margin-top: 4px;
+}
+.todo-group .src-all {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 4px;
+}
+/* Behind the summary the triage keeps its clay, small: the art is a picture, not a headline. */
+.onhand-list .pile-art,
+.onhand-list .pile-art img {
+  width: 88px;
+  height: 70px;
+}
+.onhand-list .pile-leaf {
+  left: 40px;
+  top: 28px;
+  width: 16px;
+  height: 20px;
+}
+.onhand-list .pile-n {
+  height: 1.75rem;
+  font-size: var(--lg);
+  line-height: 1.75rem;
+}
+/* A group's part at work says what it is on, under its name. */
+.tgroup .gpart .gnow {
+  flex-basis: 100%;
+  min-width: 0;
+  padding-left: 58px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--xs);
+  color: var(--ink-soft);
+}
+.room-phone .ocard {
+  flex-wrap: wrap;
+}
+.room-phone .ocard .omain {
+  flex-basis: 100%;
+}
+.room-phone .ocard .oacts.on {
+  padding: 0 12px 10px 58px;
+}
+.room-phone .ocard .obeat {
+  max-width: 30%;
+}
+:root[data-density="compact"] .ocards {
+  gap: 6px;
+}
+:root[data-density="compact"] .ocard .omain {
+  min-height: 52px;
+  padding: 8px 12px;
+}
+:root[data-density="compact"] .ocard .omark {
+  width: 28px;
+  height: 28px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ocard,
+  .ocard:hover {
+    transition: none;
+    transform: none;
+  }
+  .ocard .o2 .say {
+    animation-name: alive-fade;
+  }
+  .ocard.cheer,
+  .ocard.arrived {
+    animation: none;
+  }
+}
+/* D467: a group is the board's one card too: the same radius, no wash of its state's colour. */
+.onhand-list .tgroup {
+  margin: 2px 0 8px;
+  border-radius: 16px;
+}
+.onhand-list .tgroup.live::before {
+  content: none;
+}
+.onhand-list .src-all .todo-card {
+  border-radius: 16px;
+}
+/* D467: a group's head carries the same state mark as a task's card. */
+.tgroup .ghead .omark {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--surface-sunken);
+}
+.tgroup .ghead .omark svg {
+  display: block;
+}
+.tgroup .ghead .omark svg circle {
+  fill: currentColor;
+}
+.tgroup .ghead .omark svg path {
+  stroke: var(--surface-sunken);
+}
+.tgroup .ghead .omark.k-needs {
+  color: var(--needs-dot);
+}
+.tgroup .ghead .omark.k-failed {
+  color: var(--failed-dot);
+}
+.tgroup .ghead .omark.k-done {
+  color: var(--done-dot);
+}
+.tgroup .ghead .omark.k-seen svg circle {
+  fill: none;
+}
+.tgroup .ghead .omark.k-seen svg path {
+  stroke: var(--ink-muted);
+}
+.tgroup .ghead .omark.k-waiting {
+  color: var(--waiting-ink);
+}
+.tgroup .ghead .omark.k-waiting .wring {
+  width: 18px;
+  height: 18px;
+}
+.tgroup .ghead .omark.k-waiting .wring .fill {
+  fill: var(--waiting-ink);
+}
+.tgroup .ghead .omark.k-working {
+  background: var(--working-surface);
+}
+.tgroup .ghead .omark .pulse {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 12px;
+}
+.tgroup .ghead .omark .pulse i {
+  width: 3px;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--working-dot);
+  transform-origin: bottom;
+  animation: oh-pulse 1.6s var(--ease) infinite;
+}
+.tgroup .ghead .omark .pulse i:nth-child(2) {
+  animation-delay: -0.55s;
+}
+.tgroup .ghead .omark .pulse i:nth-child(3) {
+  animation-delay: -1.1s;
+}
+.tgroup .ghead {
+  gap: 14px;
+  min-height: 32px;
+}

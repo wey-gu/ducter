@@ -5,6 +5,8 @@ import (
 	"image/png"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -36,6 +38,11 @@ func TestOnHandShots(t *testing.T) {
 	h.tt.SetTitleBar(ui.TitleBar{Height: ChromeH, Left: 78})
 	h.until("the board", func() bool { return len(h.app.S.Tasks) > 0 })
 	h.app.Route = RouteOnHand
+	if os.Getenv("DUCTER_ONHAND_SOURCES") != "" { // D467: the to-dos group needs its sources
+		h.app.askTodos()
+		h.until("the sources", func() bool { return h.app.S.Sources != nil && len(h.app.S.Sources.Sources) > 0 })
+	}
+	h.app.oh.srcAll = os.Getenv("DUCTER_ONHAND_SRCALL") != "" // D467: the whole sort, opened
 	// D315: DUCTER_ONHAND_ROUTE=conv pictures the conversation, task:<id> an opened task.
 	switch r := os.Getenv("DUCTER_ONHAND_ROUTE"); {
 	case r == "conv":
@@ -48,13 +55,27 @@ func TestOnHandShots(t *testing.T) {
 		h.tt.SetDark(true)
 		paper = "-dark"
 	}
-	for _, w := range []int{900, 1280, 1600} {
-		h.tt.SetSize(w, 980)
+	// D467: DUCTER_ONHAND_WIDTHS=1000,1400 pictures other widths.
+	widths := []int{900, 1280, 1600}
+	if ws := os.Getenv("DUCTER_ONHAND_WIDTHS"); ws != "" {
+		widths = widths[:0]
+		for _, f := range strings.Split(ws, ",") {
+			if n, err := strconv.Atoi(strings.TrimSpace(f)); err == nil {
+				widths = append(widths, n)
+			}
+		}
+	}
+	height := 1100
+	if hs := os.Getenv("DUCTER_ONHAND_HEIGHT"); hs != "" {
+		height, _ = strconv.Atoi(hs)
+	}
+	for _, w := range widths {
+		h.tt.SetSize(w, height)
 		for i := 0; i < 10; i++ {
 			h.until("frames", func() bool { return true })
 			h.tt.Advance(200 * time.Millisecond)
 		}
-		f, err := os.Create(filepath.Join(dir, fmt.Sprintf("mac-%s-%d-%s%s.png", name, w, lang, paper)))
+		f, err := os.Create(filepath.Join(dir, fmt.Sprintf("mac-%s-%d-%s%s%s.png", name, w, lang, paper, os.Getenv("DUCTER_ONHAND_SUFFIX"))))
 		if err != nil {
 			t.Fatal(err)
 		}

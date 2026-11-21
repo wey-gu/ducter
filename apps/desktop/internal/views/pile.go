@@ -127,7 +127,7 @@ func (a *App) pileBlock(c *ui.Context, pv *protocol.PileView) {
 		ui.Row(c.Key("pile-head")).Gap(14).AlignItems(ui.End).Children(func() {
 			b := pileArt(pv.Open)
 			if src := theme.Clay("pile_" + b); src != nil {
-				ui.Image(c.Key("pile-art-"+b), src).Size(160, 128).Shrink(0).Label(a.L.T("pile.art."+b, name))
+				ui.Image(c.Key("pile-art-"+b), src).Size(88, 70).Shrink(0).Label(a.L.T("pile.art."+b, name)) // D467: small, behind 看看全部
 			}
 			ui.Column(c.Key("pile-facts")).Gap(4).Padding(0, 0, 6, 0).Shrink(1).MinWidth(0).Children(func() {
 				if pv.Open == 0 {
@@ -141,7 +141,7 @@ func (a *App) pileBlock(c *ui.Context, pv *protocol.PileView) {
 						if pv.AtLeast {
 							n += "+"
 						}
-						num := uiText(c.Key("n"), n).Font(t.Display).FontSize(34).FontWeight(800).TextColor(t.Ink).FontFeatures("tnum")
+						num := uiText(c.Key("n"), n).Font(t.Display).FontSize(t.XL).FontWeight(800).TextColor(t.Ink).FontFeatures("tnum")
 						// The roll: the new number drops in from above (none under reduced motion).
 						if !still && time.Since(a.pile.tickAt) < 300*time.Millisecond {
 							k := float32(time.Since(a.pile.tickAt)) / float32(300*time.Millisecond)
@@ -198,6 +198,10 @@ func (a *App) pileBlock(c *ui.Context, pv *protocol.PileView) {
 				}
 				if pv.Unread > 0 {
 					a.pileRow(c, "unread", pv.Unread, a.L.T("pile.g.unread"), "", "", btnText)
+				}
+				// D467: what a task already holds, so the rows add up to the count.
+				if n := pileTaken(pv); n > 0 {
+					a.pileRow(c, "taken", n, a.L.T("onhand.src.taken.row"), "", "", btnText)
 				}
 			})
 		case pv.Open > 0:

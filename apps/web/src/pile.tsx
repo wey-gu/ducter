@@ -159,8 +159,16 @@ function Art({ open }: { open: number }) {
   );
 }
 
-function Row({ g, n, act, note, onAct }: { g: PileGroup | "unread"; n: number; act?: string; note?: string; onAct?: () => void }) {
-  const label = g === "do" ? t("pile.g.do", A.S.personaName) : t(`pile.g.${g}`);
+/** D467: the open ones the sort's groups don't hold: already handed over or bound to a task (their
+ *  own row, so the rows add up to the count). */
+export function pileTaken(pile: PileView): number {
+  if (!pile.sortedAt || !pile.read || pile.sorting) return 0;
+  const g = pile.groups;
+  return Math.max(0, pile.open - (g.do + g.decide + g.close + g.later + pile.unread));
+}
+
+function Row({ g, n, act, note, onAct }: { g: PileGroup | "unread" | "taken"; n: number; act?: string; note?: string; onAct?: () => void }) {
+  const label = g === "do" ? t("pile.g.do", A.S.personaName) : g === "taken" ? t("onhand.src.taken.row") : t(`pile.g.${g}`);
   return (
     <div class={`pile-row g-${g}`}>
       <span class="pile-row-text">
@@ -223,6 +231,7 @@ export function PileBlock({ pile }: { pile: PileView }) {
           {g.close > 0 && <Row g="close" n={g.close} note={t("pile.g.close.note")} act={t("pile.act.close")} onAct={() => openPile("close")} />}
           {g.later > 0 && <Row g="later" n={g.later} />}
           {pile.unread > 0 && <Row g="unread" n={pile.unread} />}
+          {pileTaken(pile) > 0 && <Row g="taken" n={pileTaken(pile)} />}
         </div>
       ) : (
         pile.open > 0 && (

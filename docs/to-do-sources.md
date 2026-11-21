@@ -62,7 +62,13 @@ Once a source is added, **On hand** (**手头的事**) shows your to-dos after *
 **Assigned to you on GitHub** (or **To-dos in** your vault, or **Your to-dos** with more than one),
 with how many are open.
 
-Only a few stand there, so the list never takes over: a pull request waiting for your review, an
+Once your partner has gone through the pile (below), one card stands there, so the list never takes
+over: how many it could take on, then how many need your call, could be closed, can wait, it hasn't
+looked at closely yet, and are already under way (together, they add up to the count), how many pull
+requests wait for your review, and one button, **Hand to** your partner. **See all {n}** under it
+opens everything else in place: the stack, a row for each group, a few to-dos and the rest.
+
+Before a sort, and behind **See all** after one, a few to-dos stand first: a pull request waiting for your review, an
 issue where someone mentioned you, an Obsidian to-do due in the next couple of days, and the most
 recently updated. Each says why it's there. Tap one to open it in GitHub or Obsidian, or tap **Hand to**
 your partner's name and it becomes a task right there on On hand. The task works in the copy of
@@ -87,8 +93,9 @@ first), and how many can wait. If there are more than it reads in one go, it say
 looked at closely yet. It sorts again once a day, reading only what changed, or when you tap **Sort
 again** or ask it ("go through my GitHub issues").
 
-At the top of your to-dos on On hand, your partner stands beside the stack: **{n} still open**, how
-many it cleared for you today, and one row for each group with one button:
+Under **See all {n}** on On hand, your partner stands beside the stack: **{n} still open**, how
+many it cleared for you today, and one row for each group with one button (the ones already under
+way have a row of their own, so the rows add up to the count):
 
 - **Hand to** your partner: the hand-over sheet opens and asks **What should {name} take on?** Say it
   in a sentence, or tap **Pick one by one** for the list with the ones it could take ticked (see

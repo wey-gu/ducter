@@ -368,8 +368,27 @@ func (a *App) lensTabs(c *ui.Context, groups []lensGroup, lens string) {
 // waiting (task-less waits too), done today (D310: tasks finished well
 // today, the one count every surface says; a failed task and a missed wait
 // are in the list with their own words, not counted here).
+//
+// D467: what stopped and what didn't work out need you too; done today is
+// what 今天做完 lists (today's, never yesterday's).
 func (a *App) stateCounts(b store.Board, lens string) [4]int {
-	n := [4]int{len(b.Lanes[store.LaneNeedsYou]), len(b.Lanes[store.LaneWorking]), len(b.Lanes[store.LaneWaiting]), store.DoneToday(b.Lanes[store.LaneDone], a.Now().Local())}
+	sp := a.splitOf(b)
+	// A part that didn't work out in a stopped line is the line's: counted once, as the line.
+	inLine := map[string]bool{}
+	for _, g := range a.boardGroups(b) {
+		if g.stopped != nil {
+			for id := range g.ids {
+				inLine[id] = true
+			}
+		}
+	}
+	failed := 0
+	for _, x := range sp.failed {
+		if !inLine[x.ID] {
+			failed++
+		}
+	}
+	n := [4]int{len(sp.needs) + len(sp.stopped) + failed, len(sp.working), len(sp.waiting), len(sp.today)}
 	n[0] += a.stoppedGroups(b) // D360: a stopped line waits for the person's word
 	if loose(lens) {
 		n[0] += len(a.partnerDecisions()) + len(a.otherAsks()) // D312: another partner's own questions too

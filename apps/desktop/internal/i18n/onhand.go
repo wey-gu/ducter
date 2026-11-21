@@ -67,6 +67,21 @@ var zhOnhand = Table{
 	"onhand.wait.quiet":       "还有 %d 个，一天多没有动静",
 	"onhand.wait.since":       "上次有动静是%s",
 	"onhand.done.seen":        "还有 %d 个，你都看过了",
+	// D467: a wait nothing brings back stands in 等你; yesterday's results fold;
+	// a to-do source is one summary card whose facts add up.
+	"onhand.line.stopped.one": "有一个停下了，要你看一眼。",
+	"onhand.line.stopped":     "有 %d 个停下了，要你看一眼。",
+	"onhand.done.yesterday":   "还有 %d 个是昨天做完的",
+	"onhand.src.do":           "%d 个可以交给%s做",
+	"onhand.src.decide":       "%d 个要你拿主意",
+	"onhand.src.close":        "%d 个也许可以关掉",
+	"onhand.src.later":        "%d 个可以先放着",
+	"onhand.src.unread":       "%d 个还没细看",
+	"onhand.src.taken":        "%d 个已经在做",
+	"onhand.src.taken.row":    "已经在做的",
+	"onhand.src.review":       "%d 个 PR 等你 review",
+	"onhand.src.all":          "看看全部 %d 个",
+	"onhand.src.hide":         "收起",
 }
 
 var enOnhand = Table{
@@ -132,6 +147,19 @@ var enOnhand = Table{
 	"onhand.wait.quiet":       "%d more, quiet for over a day",
 	"onhand.wait.since":       "last change %s",
 	"onhand.done.seen":        "%d more you've seen",
+	"onhand.line.stopped.one": "One has stopped and needs a look.",
+	"onhand.line.stopped":     "%d have stopped and need a look.",
+	"onhand.done.yesterday":   "%d more done yesterday",
+	"onhand.src.do":           "%d for %s to do",
+	"onhand.src.decide":       "%d need your call",
+	"onhand.src.close":        "%d could be closed",
+	"onhand.src.later":        "%d can wait",
+	"onhand.src.unread":       "%d not looked at closely yet",
+	"onhand.src.taken":        "%d already under way",
+	"onhand.src.taken.row":    "Already under way",
+	"onhand.src.review":       "%d PRs wait for your review",
+	"onhand.src.all":          "See all %d",
+	"onhand.src.hide":         "Hide",
 }
 
 func init() {

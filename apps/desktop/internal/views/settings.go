@@ -533,17 +533,16 @@ func (a *App) explainedRow(c *ui.Context, key, label, help, detail string, contr
 	t := a.T
 	a.sep(c)
 	// D445: the same least height as tileRow (64), so a pane's rows read as one rhythm.
-	ui.Row(c.Key("row:"+key)).Gap(t.S5).Padding(t.S4, t.S5).MinHeight(64).AlignItems(ui.Center).Children(func() {
-		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(2).Children(func() {
+	// D459: the same words-then-control as row and tileRow, so a narrow window drops its
+	// control under the words here too (D445).
+	ui.Row(c.Key("row:"+key)).Padding(t.S4, t.S5).MinHeight(64).AlignItems(ui.Center).Children(func() {
+		a.wordsThenControl(c, func() {
 			uiText(c, label).FontSize(t.MD).FontWeight(700).LineHeight(1.4)
 			if help != "" {
 				uiText(c, help).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
 			}
 			a.how(c, key, label, detail)
-		})
-		if control != nil {
-			ui.Row(c).Shrink(0).Gap(t.S2).AlignItems(ui.Center).Children(control)
-		}
+		}, control)
 	})
 }
 

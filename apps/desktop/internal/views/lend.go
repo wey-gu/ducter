@@ -177,12 +177,25 @@ func (a *App) lendCard(c *ui.Context, at richAt) {
 }
 
 // lendCopy is a line to copy: the text, selectable, and its own Copy button.
-func (a *App) lendCopy(c *ui.Context, key, text string, mono bool) {
+// kind is the web's CopyLine kind (D459): "line" a line to run, on the ink's
+// slab with the accent's $ before it (`.lend-copy.line`); "check" a short mono
+// check and "ask" a sentence to say, both on the sunken tint.
+func (a *App) lendCopy(c *ui.Context, key, text, kind string) {
 	t := a.T
-	box := ui.Row(c.Key("lend-copy:"+key)).Gap(t.S3).Padding(t.S2, t.S2, t.S2, t.S3).Radius(t.RadiusSM).Background(t.Sunken).AlignItems(ui.Center)
+	ground, ink, pad := t.Sunken, t.Ink, t.S3
+	if kind == "line" {
+		ground, ink, pad = t.Ink, t.Bg, t.S4
+	}
+	box := ui.Row(c.Key("lend-copy:"+key)).Gap(t.S2).Padding(t.S2, t.S2, t.S2, pad).Radius(t.RadiusSM).Background(ground).AlignItems(ui.Center)
 	box.Children(func() {
-		tx := uiText(c, text).FontSize(t.SM).LineHeight(1.45).TextColor(t.Ink).Grow(1).Basis(0).MinWidth(0).Selectable()
-		if mono {
+		if kind == "line" {
+			uiText(c, "$").Font(t.Mono).FontSize(t.SM).FontWeight(800).TextColor(t.Accent).AccessHidden(true)
+		}
+		tx := uiText(c, text).FontSize(t.SM).LineHeight(1.45).TextColor(ink).Grow(1).Basis(0).MinWidth(0).Selectable()
+		switch kind {
+		case "line":
+			tx.Font(t.Mono).FontWeight(700)
+		case "check":
 			tx.Font(t.Mono).FontSize(t.XS)
 		}
 		label := a.L.T("lend.copy")
@@ -192,7 +205,7 @@ func (a *App) lendCopy(c *ui.Context, key, text string, mono bool) {
 				c.After(2*time.Second - since)
 			}
 		}
-		if a.buttonFor(c, label, a.L.T("lend.copy"), btnSecondary, t.ControlMD, t.Sunken) {
+		if a.buttonFor(c, label, a.L.T("lend.copy"), btnSecondary, t.ControlMD, ground) {
 			c.WriteClipboard(text)
 			a.lend.copiedKey, a.lend.copiedAt = key, a.Now()
 		}
@@ -567,7 +580,7 @@ func (a *App) lendWaiting(c *ui.Context, l *protocol.ServerFrame, home string) {
 	a.lendFold(c, "agent", a.L.T("lend.agent"), &a.lend.agentOpen)
 	if a.lend.agentOpen {
 		uiText(c, a.L.T("lend.agent.how")).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft)
-		a.lendCopy(c, "agent", a.L.T("lend.agent.ask", l.LendLine), false)
+		a.lendCopy(c, "agent", a.L.T("lend.agent.ask", l.LendLine), "ask")
 	}
 	a.lendFold(c, "help", a.L.T("lend.help"), &a.lend.helpOpen)
 	if a.lend.helpOpen {
@@ -589,7 +602,7 @@ func (a *App) lendWaiting(c *ui.Context, l *protocol.ServerFrame, home string) {
 		})
 		item("reach", a.L.T("lend.help.reach", home), a.L.T("lend.help.reach.do", l.Address), func() {
 			if l.Check != "" {
-				a.lendCopy(c, "check", l.Check, true)
+				a.lendCopy(c, "check", l.Check, "check")
 			}
 		})
 		item("curl", a.L.T("lend.help.curl"), a.L.T("lend.help.curl.do"), nil)

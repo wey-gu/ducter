@@ -139,8 +139,9 @@ func (a *App) memFind(q string) {
 	a.send(protocol.MemFind{T: "mem_find", Q: q})
 }
 
-// memForget forgets one memory by Mem's id: it leaves the page at once.
-func (a *App) memForget(id string) {
+// memForget forgets one memory by Mem's id: it leaves the page at once, and
+// the partner says so in its one word under the section (D459, D296).
+func (a *App) memForget(id, title string) {
 	drop := func(xs []protocol.MemItem) []protocol.MemItem {
 		var out []protocol.MemItem
 		for _, x := range xs {
@@ -157,6 +158,7 @@ func (a *App) memForget(id string) {
 		f.Items = drop(f.Items)
 	}
 	a.send(protocol.MemForget{T: "mem_forget", ID: id})
+	a.say("mem-about", a.L.T("said.mem.forget", title))
 }
 
 // memFix fixes one memory's words by Mem's id: the page shows them at once.
@@ -179,6 +181,7 @@ func (a *App) memFix(id, title string) {
 		fix(f.Items)
 	}
 	a.send(protocol.MemFix{T: "mem_fix", ID: id, Title: words})
+	a.say("mem-about", a.L.T("said.mem.fix", words))
 }
 
 // memRow is one memory, tapped open in place: where it came from as its
@@ -195,7 +198,7 @@ func (a *App) memRow(c *ui.Context, m protocol.MemItem) {
 		}
 		if goOn {
 			ps.open, ps.mode = "", ""
-			a.memForget(m.ID)
+			a.memForget(m.ID, m.Title)
 		}
 		return
 	}
@@ -219,16 +222,24 @@ func (a *App) memRow(c *ui.Context, m protocol.MemItem) {
 		})
 		return
 	}
-	tile := a.pebbleTile(c)
+	// D459: a row speaks only when it differs (D399). What the person told it is the
+	// usual source, said once in the section's note; a row says where it came from
+	// only when it came from somewhere else (another AI tool, Mem itself), and only
+	// another tool's row carries a mark (its coin), never a dot on every row.
+	var tile func()
 	if m.By == "tool" && m.From != "" {
 		tile = a.toolTile(c, m.From)
 	}
-	key, args := bySource(m)
+	line := ""
+	if m.By != "said" {
+		key, args := bySource(m)
+		line = a.L.T(key, args...)
+	}
 	var age func()
 	if s := a.agoLong(m.At); s != "" {
 		age = func() { uiText(c, s).FontSize(t.SM).FontWeight(600).TextColor(t.InkMuted).SingleLine() }
 	}
-	if a.openRow(c, "memi:"+m.ID, tile, autospace(m.Title), a.L.T(key, args...), t.InkMuted, open, age) {
+	if a.openRow(c, "memi:"+m.ID, tile, autospace(m.Title), line, t.InkMuted, open, age) {
 		if open {
 			ps.open = ""
 		} else {
@@ -301,6 +312,8 @@ func (a *App) memAbout(c *ui.Context) {
 			}
 		}
 	}
+	// D459: a forget or a fix is answered once, in the partner's word, under what it changed.
+	defer a.saidLine(c, "mem-about")
 	ui.Column(c.Key("mem-about")).Gap(t.S2).Children(func() {
 		a.sectionHead(c, a.L.T("mem.about.title"), a.L.T("mem.about.note", a.personaName()))
 		// D444: what it knows, said back in its own words: the question goes
@@ -341,7 +354,12 @@ func (a *App) memAbout(c *ui.Context) {
 	}
 	for _, g := range groups {
 		g := g
-		a.group(c, "mem-kind:"+g.Kind, a.L.T("mem.kind."+g.Kind), "", func() {
+		// D459: a lone 别的 / Other is not a kind worth naming.
+		title := a.L.T("mem.kind." + g.Kind)
+		if len(groups) == 1 && g.Kind == "other" {
+			title = ""
+		}
+		a.group(c, "mem-kind:"+g.Kind, title, "", func() {
 			for _, x := range g.Items {
 				a.memRow(c, x)
 			}
@@ -458,6 +476,17 @@ func (a *App) memLink(c *ui.Context, b *protocol.BridgeView) {
 				a.openLink(memSite)
 			}
 		})
+		// D459: one story with 和你的其他 agent 通信: the same Mem is how the person's other
+		// agents reach the partner, said here once with the way over.
+		for _, tab := range a.visibleTabs() {
+			if tab == TabPeers {
+				a.tileRow(c, "mem-peers", nil, a.L.T("mem.peers.row", a.personaName()), "", func() {
+					if a.quietLink(c, "mem-peers", a.L.T("mem.peers.go"), a.L.T("mem.peers.go")) {
+						a.openTab(TabPeers)
+					}
+				})
+			}
+		}
 		if u := memUpdate(b); u != nil {
 			a.memUpdateRow(c, u, b)
 		}
@@ -782,7 +811,7 @@ func (a *App) memSteps(c *ui.Context, phase string, b *protocol.BridgeView) {
 					return
 				}
 				if b != nil && !b.CanRun && b.Cmd != "" {
-					a.lendCopy(c, "mem-cmd", b.Cmd, true)
+					a.lendCopy(c, "mem-cmd", b.Cmd, "line")
 				}
 				label, kind := a.L.T("bridge.mem.install.go"), btnPrimary
 				if b == nil || !b.CanRun {

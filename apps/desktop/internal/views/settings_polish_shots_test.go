@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -19,7 +20,7 @@ import (
 //
 //	DUCTER_PORT=7982 DUCTER_DATA_DIR=<scratch> DEMO_LANG=zh bun apps/web/demo-settings-real.ts
 //	DUCTER_SHELL_URL=ws://127.0.0.1:7982/ws DUCTER_SHELL_LANG=zh DUCTER_SHOTS_DIR=<.shots/settings-polish/after> \
-//	  go test ./internal/views -run SettingsPolishShots
+//	  go test ./internal/views -run SettingsPolishShots   (DUCTER_SHOTS_TABS=memory,peers for some)
 func TestSettingsPolishShots(t *testing.T) {
 	url := os.Getenv("DUCTER_SHELL_URL")
 	if url == "" {
@@ -51,7 +52,11 @@ func TestSettingsPolishShots(t *testing.T) {
 		}
 	}
 	h.until("settings", func() bool { return true })
+	only := os.Getenv("DUCTER_SHOTS_TABS") // D459: e.g. "memory,peers"
 	for _, tab := range settingsTabs {
+		if only != "" && !strings.Contains(","+only+",", ","+tab+",") {
+			continue
+		}
 		h.app.openTab(tab)
 		h.until("settings", func() bool { return h.app.S.Settings != nil })
 		hgt := 1500

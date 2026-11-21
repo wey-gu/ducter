@@ -481,7 +481,9 @@ A new control is added to the set (and to this table) before it is used.
 | Segmented choice | `choices` (`partner.go`) | `Seg` |
 | A choice of a few as a row: its title on the text column, the choice at the right edge, on a phone under the words at the text column's width (D432) | `tileRow` with `choices` | `chat-row` with `Seg` |
 | A pane still being read: its first group's shape, a soft sunken square and the word; the square breathes (1.6 s, still under reduced motion) on both (D432, D445) | `paneWait` (`settings_rows.go`) | `Waiting` (`set-grid.tsx`) |
-| A line to copy (a command to run on a computer) with 复制 → 已复制 (D432) | `lendCopy` (`lend.go`) | `CopyLine` (`lend.tsx`) |
+| A line to copy (a command to run on a computer) with 复制 → 已复制 (D432); a line to run is the ink's slab with the accent's $ in bold mono on both, a check or a sentence to say the sunken tint (D459) | `lendCopy` kind `line` / `check` / `ask` (`lend.go`) | `CopyLine` (`lend.tsx`) |
+| A pane's one switch: its first group's head row (mark, who it is about, this week in a few words, the switch), where it shows up as the group's last line, the said line under the group (D459) | `headRow` + `footRow` (`memory_pane.go`, `peers_pane.go`) | `GHead` + `Switch` + `GFoot` (`memory.tsx`) |
+| A pane's lede under its title, every pane (D459) | `panelHead` | `PANE_LEDE` (`views.tsx`), or the pane's own lede with its note |
 | A row's words beside its control while they keep 160, else the control under them on the text edge (D445) | `wordsThenControl` (`settings_rows.go`; `row`, `tileRow`, `headRow`) | `chat-row` / `set-item` (D273); `Seg` stacks when its own words overflow |
 | A live preview stage on the paper: the page's choices drawn as the thing they change, the partner smiling a moment after a change (D150, D445) | `lookPreview`, `notifyPreview` (`settings_delight.go`), `cheer` | `LookPreview`, `NotifyPreview`, `cheer` (`settings-delight.tsx`) |
 | The partner's voice under a language choice: a small partner bubble in that language (D445) | `talkSample` | `TalkSample` |

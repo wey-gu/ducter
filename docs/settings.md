@@ -133,10 +133,11 @@ What your partner remembers about you has its own section, **Memory**.
   switch. Its tasks use memory too, through your Nowledge Mem plugin. Off, it neither recalls nor
   notes anything, in the conversation or in its tasks; what it noted stays.
 - **What it knows about you** groups what Nowledge Mem holds about you: **How you like things**,
-  **What you decided** and **What it knows**. Each line says where it came from (**You told it**,
-  **Saved by Codex**, **You saved it**, or **Nowledge Mem drew it from your conversations**). Tap a
-  line to **Fix** its words or **Forget** it; forgetting asks first and reaches Nowledge Mem, so your
-  other AI tools won't recall it either. **Search what it remembers** finds one thing. **Ask {name}
+  **What you decided** and **What it knows**. What you told it is the usual source, so those lines
+  say nothing more; a line from somewhere else says so (**Saved by Codex**, with Codex's mark, **You
+  saved it**, or **Nowledge Mem drew it from your conversations**). Tap a line to **Fix** its words or
+  **Forget** it; forgetting asks first and reaches Nowledge Mem, so your other AI tools won't recall
+  it either, and your partner answers in one line (**OK, forgetting "…"**). **Search what it remembers** finds one thing. **Ask {name}
   what it remembers about you** goes back to your conversation with that question ready to send; your
   partner answers in a few lines of its own, and you can tell it what's wrong there.
 - **Check this week's**, under the switch, opens what it noted about you in the last seven days.
@@ -147,7 +148,8 @@ What your partner remembers about you has its own section, **Memory**.
   app on one computer, or your own Mem server) and **Its name** there, with how many memories Nowledge Mem holds in all and **Open Nowledge Mem**. When a newer Nowledge Mem is
   out, a row says so with **Update** (your sign-in and your memories stay as they are), and the
   Settings entry for Memory says it too. **Details** shows the exact computer, version, identity
-  and space, for when you need help.
+  and space, for when you need help. When you use agents of your own, **Your other agents reach
+  {name} through it too** leads to **Agent messaging**.
 - Without [Nowledge Mem](https://mem.nowledge.co), your partner still remembers your
   conversation on its own. This section then says what Nowledge Mem adds and walks you through it
   in two steps: **Install Nowledge Mem** (one tap puts it on the computer Ducter runs on) and
@@ -199,8 +201,10 @@ plugin is in it. If Nowledge Mem isn't on your computer yet, the page puts it in
 right there. After that there is nothing to tap: your partner connects by itself and tells you so
 once in the conversation.
 
-When it's on, the page shows **Recently**: what your agents handed over and what your partner asked
-or answered, newest first; tap one to open it. **Try it** shows two short examples, one each way:
+The page starts the way **Memory** does: **Your agents can reach {name}**, how many messages went back
+and forth this week, and the one switch; under it, that what they hand over and what needs your call
+shows up in your conversation. When it's on, **Who can reach** comes next (below), then **Recently**:
+what your agents handed over and what your partner asked or answered, newest first; tap one to open it. **Try it** shows two short examples, one each way:
 what you'd say to Codex and what your partner then does, and what you'd say to your partner and what
 it brings back. The small copy button on each sentence copies it.
 

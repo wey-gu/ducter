@@ -8,7 +8,7 @@ import type { Candidate } from "@ducter/protocol";
 import { useEffect, useRef } from "preact/hooks";
 import { useSheetMotion } from "./sheetmotion.ts";
 import { SheetFrame } from "./sheet-frame.tsx";
-import { A, agentKey, effortWord, EVERY_HOURS, ntGitHubish, parseClock, placeKey, placeLine, tilde } from "./app.ts";
+import { A, agentKey, browseNeedle, effortWord, EVERY_HOURS, ntGitHubish, parseClock, placeKey, placeLine, tilde } from "./app.ts";
 import { Coin } from "./coin.tsx";
 import { Btn, Choice, Facts, MenuRow, Pill, Seg } from "./controls.tsx";
 import { candFacts, candName, candReason, Check, coarse } from "./views.tsx";
@@ -449,24 +449,75 @@ export function NewTaskSheet() {
  * folder (~). Repos first, with the branch glyph; tap one to go in; 上一层 / Up one level goes
  * back; 用这个文件夹 / Use this folder adds it there as a project and makes it the card's place.
  */
-function FolderBrowser() {
+export function FolderBrowser() {
   const nt = A.nt;
   const b = nt.browse!;
   const r = b.res;
   const name = A.ntBrowseName();
   const home = r?.home ?? "";
+  const inSheet = A.sheet?.kind === "addfolder";
   const shownPath = (p: string) => (home && (p === home || p.startsWith(home + "/")) ? "~" + p.slice(home.length) : tilde(p));
   const err = r && !r.ok ? (r.reason === "offline" ? t("newtask.find.offline", name) : r.reason === "old" ? t("newtask.old", name) : r.reason === "outside" ? t("newtask.find.outside") : r.reason === "not_found" ? t("newtask.find.missing") : r.message || t("newtask.err.unknown")) : "";
   const atHome = !!r?.ok && r.path === home;
+  // D455: what is typed narrows the list (or names a path), and the recent folders there come first.
+  const { needle } = browseNeedle(b.filter ?? "", r?.ok ? (r.path ?? "") : "", home);
+  const has = (n: string) => !needle || n.toLowerCase().includes(needle.toLowerCase());
+  const folders = r?.ok ? (r.folders ?? []).filter((f) => has(f.name)) : [];
+  const atStart = !!r?.ok && (atHome || (!!r.roots?.length && !r.parent));
+  const recent = atStart ? A.newTaskPlaces().filter((p) => (p.place.kind === "repo" || p.place.kind === "folder") && A.placeComputer(p.place) === A.placeComputer({ kind: "repo", device: b.device, repoPath: "" }) && has(p.name)).slice(0, 5) : [];
+  const repo = r?.ok ? r.inRepo : undefined;
+  const useLabel = inSheet && r?.ok && r.path && !atHome ? t("addfolder.add", repo?.name ?? r.path.split("/").pop() ?? "") : t("newtask.find.use");
+  const enter = () => folders.length === 1 && A.ntBrowse(b.device, folders[0]!.path);
   return (
     <div class="nt-list nt-browse" role="group" aria-label={t("newtask.find.title", name)}>
+      <input
+        class="nt-field nt-find-field"
+        type="text"
+        autocapitalize="off"
+        autocorrect="off"
+        spellcheck={false}
+        aria-label={t("addfolder.filter")}
+        placeholder={t("addfolder.filter")}
+        value={b.filter ?? ""}
+        ref={(el) => void (el && !coarse() && document.activeElement?.tagName !== "INPUT" && el.focus())}
+        onInput={(e) => A.ntBrowseFilter((e.target as HTMLInputElement).value)}
+        onKeyDown={(e) => e.key === "Enter" && !e.metaKey && !e.ctrlKey && (e.preventDefault(), enter())}
+      />
       <div class="nt-browse-head">
-        <small>{t("newtask.find.title", name)}</small>
+        {!inSheet && <small>{t("newtask.find.title", name)}</small>}
         {r?.ok && r.path && <code>{shownPath(r.path)}</code>}
+        {repo && repo.root === r?.path && repo.remote && <code class="nt-remote">{repo.remote}</code>}
       </div>
+      {r?.ok && (r.roots?.length ?? 0) > 1 && (
+        <div class="nt-chip-row nt-roots" role="radiogroup" aria-label={t("addfolder.roots")}>
+          {r.roots!.map((root) => (
+            <Choice key={root} label={shownPath(root)} on={r.path === root || (r.path ?? "").startsWith(root.replace(/\/+$/, "") + "/")} onClick={() => A.ntBrowse(b.device, root)}>
+              {shownPath(root)}
+            </Choice>
+          ))}
+        </div>
+      )}
       {!r && <div class="nt-empty small sub">{t("newtask.find.loading")}</div>}
       {err && <div class="nt-empty nt-err-line small">{err}</div>}
-      {r?.ok && r.parent && (
+      {recent.length > 0 && (
+        <>
+          <small class="nt-sub-h">{t("addfolder.recent")}</small>
+          {recent.map((p) => {
+            const path = p.place.kind === "repo" ? p.place.repoPath : p.place.kind === "folder" ? p.place.path : "";
+            return (
+              <MenuRow key={`recent:${path}`} label={p.name} on={false} onClick={() => A.ntBrowse(b.device, path)}>
+                {p.place.kind === "repo" ? <Branch /> : <Folder />}
+                <span class="mr-t">
+                  <b>{p.name}</b>
+                  <small class="mono">{p.remote || shownPath(path)}</small>
+                </span>
+              </MenuRow>
+            );
+          })}
+          <hr class="nt-rule" />
+        </>
+      )}
+      {r?.ok && r.parent && !needle && (
         <MenuRow key="up" label={t("newtask.find.up")} on={false} onClick={() => A.ntBrowse(b.device, r.parent)}>
           <Up />
           <span class="mr-t">
@@ -474,20 +525,22 @@ function FolderBrowser() {
           </span>
         </MenuRow>
       )}
-      {r?.ok &&
-        (r.folders ?? []).map((f) => (
-          <MenuRow key={f.path} label={f.name} on={false} onClick={() => A.ntBrowse(b.device, f.path)}>
-            {f.repo ? <Branch /> : <Folder />}
-            <span class="mr-t">
-              <b>{f.name}</b>
-            </span>
-          </MenuRow>
-        ))}
+      {folders.map((f) => (
+        <MenuRow key={f.path} label={f.name} on={false} onClick={() => A.ntBrowse(b.device, f.path)}>
+          {f.repo ? <Branch /> : <Folder />}
+          <span class="mr-t">
+            <b>{f.name}</b>
+            {f.remote && <small class="mono">{f.remote}</small>}
+          </span>
+        </MenuRow>
+      ))}
       {r?.ok && !(r.folders ?? []).length && <div class="nt-empty small sub">{t("newtask.find.none")}</div>}
+      {r?.ok && (r.folders ?? []).length > 0 && !folders.length && <div class="nt-empty small sub">{t("addfolder.nomatch", needle)}</div>}
       {r?.ok && r.more && <div class="nt-empty small sub">{t("newtask.find.more", (r.folders ?? []).length)}</div>}
+      {repo && repo.root !== r?.path && <div class="nt-empty small sub">{t("addfolder.inrepo", repo.name)}</div>}
       <div class="nt-browse-foot">
-        <Btn kind="text" size="sm" label={t("newtask.find.back")} onClick={() => A.ntBrowseBack()} />
-        <Btn kind="primary" size="sm" label={nt.adding ? t("newtask.find.adding") : t("newtask.find.use")} disabled={!r?.ok || atHome || !!nt.adding} onClick={() => A.ntBrowseUse()} />
+        <Btn kind="text" size="sm" label={inSheet ? t("addfolder.cancel") : t("newtask.find.back")} onClick={() => A.ntBrowseBack()} />
+        <Btn kind="primary" size="sm" label={nt.adding ? t("newtask.find.adding") : useLabel} disabled={!r?.ok || atHome || !!nt.adding} onClick={() => A.ntBrowseUse()} />
       </div>
     </div>
   );
@@ -498,7 +551,7 @@ function FolderBrowser() {
  * Ducter folder's real path) and with whose git; 克隆 / Clone; while it clones, 在克隆…; a failure
  * in one line. Done, it is the card's place.
  */
-function CloneField() {
+export function CloneField() {
   const k = A.nt.clone!;
   const name = A.ntComputerName(k.device);
   const into = A.ntProjectsPath(k.device);
@@ -574,7 +627,7 @@ function CloneField() {
       )}
       {k.err && k.failedAccess && gh?.state !== "signed_in" && !busy && (gh?.state === "no_gh" ? <div class="nt-empty small sub">{t("newtask.gh.nogh", name)}</div> : signIn)}
       <div class="nt-browse-foot">
-        <Btn kind="text" size="sm" label={t("newtask.find.back")} disabled={busy} onClick={() => A.ntBrowseBack()} />
+        <Btn kind="text" size="sm" label={A.sheet?.kind === "addfolder" ? t("addfolder.cancel") : t("newtask.find.back")} disabled={busy} onClick={() => A.ntBrowseBack()} />
         <Btn kind="primary" size="sm" label={busy ? t("newtask.clone.going") : t("newtask.clone.go")} disabled={busy || !k.address.trim()} onClick={() => A.ntCloneGo()} />
       </div>
     </div>
@@ -631,7 +684,7 @@ function AddPanel() {
 }
 
 /** D272: 在 {computer} 上新建一个文件夹: a name; it goes in that computer's <Ducter folder>/projects. */
-function NewFolderField() {
+export function NewFolderField() {
   const n = A.nt.newFolder!;
   const name = A.ntComputerName(n.device);
   const into = A.ntProjectsPath(n.device);
@@ -662,7 +715,7 @@ function NewFolderField() {
         </div>
       )}
       <div class="nt-browse-foot">
-        <Btn kind="text" size="sm" label={t("newtask.find.back")} disabled={busy} onClick={() => A.ntAddBack()} />
+        <Btn kind="text" size="sm" label={A.sheet?.kind === "addfolder" ? t("addfolder.cancel") : t("newtask.find.back")} disabled={busy} onClick={() => A.ntAddBack()} />
         <Btn kind="primary" size="sm" label={busy ? t("newtask.new.going") : t("newtask.new.go")} disabled={busy || !n.name.trim()} onClick={() => A.ntNewGo()} />
       </div>
     </div>

@@ -135,6 +135,21 @@ line says what to install, with **再看看 / Check again**. `ducter git login` 
 computer itself (research/87). Every panel's foot keeps room under its raised button (the clipped
 克隆 the author found).
 
+**The browser, and On hand's sheet (D455).** Choose a folder looks through that computer's folders
+as that computer sees them, through Ducter (the worker's `browse` op, the home's own): a field over
+the list, **输入名字筛选，或输入路径 / Type to filter, or type a path** (a name narrows the folder
+shown; text starting with / or ~ lists the folder it names, narrowed to what follows; Return with one
+folder left goes in); at the start **最近 / Recent**, the folders tasks used and projects added or
+found there (up to 5); each repo with its origin (from its .git/config, never a file of the
+person's); inside a repo **这在仓库 {name} 里，添加的是整个仓库。** and, in the sheet, **添加 {name} /
+Add {name}**. Folders only, links resolved, a link out left out; the home folder unless that
+computer sets **DUCTER_FOLDER_ROOTS** (its own environment, `:`-separated), which names the folders
+it allows (offered as chips, **可以找的地方 / Where it can look**) and confines adding there too.
+On hand's **＋ 添加文件夹** opens the same three ways in a sheet of their own, the computer chosen
+first (`on-hand.md`); added, the sheet closes on that project, and the place is the next card's.
+A project added on a second computer with the same origin joins the first one's name
+(`ProjectView.remote`): one project, two places.
+
 **Cloning from a Git address (D204, D272).** **从 Git 地址克隆 / Clone from a Git address**, in the
 add panel, opens a field in
 place of the list: **从 Git 地址克隆到 {computer} / Clone from a Git address on {computer}**, the address
@@ -202,8 +217,8 @@ only; remembered per client (local storage), not a setting. By project:
 - Groups by the card's `project` (an added project's name, D186, else a folder's name), else
   the folder's name, else 其他 / Other; then the projects added by hand with nothing yet
   (**还没有事。/ Nothing here yet.**). The header has the group's path as ~/… and "+"
-  (在这儿新建 / New task here). At the foot, on the Mac whose Ducter runs here or that does tasks for it (D197), **＋ 添加文件夹 /
-  Add a folder** (D186).
+  (在这儿新建 / New task here). At the foot, **＋ 添加文件夹 / Add a folder** (D186): D455's sheet on any computer of the home
+  (`on-hand.md`, the project column), never only this Mac's picker.
 - A row is `title · kind · branch · +adds −dels · state`: kind is what it waits for (**等 …**) or
   which try of a loop it is (**第 n 次**), else nothing; `place.branch`, `changes.adds` /
   `changes.dels` (absent until counted: show nothing, never 0), the state word.
@@ -221,7 +236,7 @@ from the same `changes`.
 | `{t:"task_new_options", place?}` | `{t:"task_new_options", places: PlaceChoice[], candidates: Candidate[], models?: AgentModels[], ducterFolders?: {device, path?, old?}[]}` | Candidates at `place` (default this machine), every agent on every computer (D202). `PlaceChoice` = place (repo, folder or none), name, usedAt, defaultBranch, branches (a worker's repo: asked of it, at most 3 s, D197), added (D186), computer (D197: only when the places span two computers), remote (D202: the origin as host/owner/repo), found (D203, D204: a project in that computer's Ducter folder; its branches only when it is the `place` asked about). `ducterFolders` (D204): each reachable computer's Ducter folder (`device` "local" for the home), or `old` for a worker too old to list, look or clone. `AgentModels` = harness, device (with two computers), from (`live` or `tiers`), models: `ModelChoice` = id, label, suggested, default, efforts, defaultEffort (read alongside, at most 3 s) |
 | `{t:"task_new", words, place?, harness?, model?, effort?, clientId?, when?}` | `{t:"task_new_result", ok, clientId, taskId, card}`; for a time or a schedule `{ok, clientId, routineId, routine}`; or `{ok:false, reason, message}` | `reason`: empty, no_agent, not_repo, offline, past, no_condition, failed. `when` (D185): `{kind:"now"}`, `{kind:"at", date, time, tz}`, `{kind:"every", every: day\|weekday\|week\|hours, days?, hours?, time, tz}`, `{kind:"when"\|"until", condition}`. A resend with the same clientId opens nothing twice. Send `harness` only when the user picked someone other than the top candidate; `model` and `effort` (D202) only when they differ from the suggestion and the model's own default, and then `harness` too. An effort the chosen model on its computer doesn't offer, or that can't be checked, is dropped with a line in the task, never sent |
 | `{t:"project_add", path, device?, clientId?}` (D186, D197) | `{t:"project_add_result", ok, clientId, place: PlaceChoice}` or `{ok:false, reason: not_found\|offline\|old\|failed, message}` | A folder on the home's computer, or with `device` on that worker, read there by its `folderInfo` op (`{exists, kind, root, name, defaultBranch?, branches?}`); a folder inside a repo adds the repo. `OnHand.projects` lists the added ones |
-| `{t:"folder_browse", device?, path?, clientId?}` (D203) | `{t:"folder_browse_result", ok, clientId, device, path, home, parent?, folders: {name, path, repo?}[], more?}` or `{ok:false, reason: outside\|not_found\|offline\|old\|failed, message}` | A folder's subfolders on the home's computer, or with `device` on that worker (its `browse` op); `path` absent is that computer's home folder. Only under the home folder, links resolved first, folders only, repos first, at most 200. Using one is `project_add` with the same `device` |
+| `{t:"folder_browse", device?, path?, clientId?}` (D203) | `{t:"folder_browse_result", ok, clientId, device, path, home, parent?, folders: {name, path, repo?}[], more?}` or `{ok:false, reason: outside\|not_found\|offline\|old\|failed, message}` | A folder's subfolders on the home's computer, or with `device` on that worker (its `browse` op); `path` absent is that computer's home folder. Only under the home folder (D455: or the roots that computer sets, DUCTER_FOLDER_ROOTS; then `roots`), links resolved first, folders only, repos first, at most 200; D455: `folders[].remote` (a repo's origin) and `inRepo {root, name, remote?}`. Using one is `project_add` with the same `device` |
 | `{t:"project_clone", address, device?, clientId}` (D204) | `{t:"project_clone_result", ok, clientId, device?, place?: PlaceChoice, existed?}` or `{ok:false, reason: invalid\|not_found\|no_access\|network\|timeout\|offline\|old\|failed, message}` | Clones on the home's computer, or with `device` on that worker (its `clone` op), into that computer's `<Ducter folder>/projects`, then adds it (`project_add`). Up to 10 minutes there (the home waits 11). A resend with the same clientId waits for the same clone |
 | `{t:"open_task", taskId}` | the sender: `{t:"open_result", taskId, ok, apps}`; every other live app socket: `{t:"open_task", taskId}` | Apps should say `hello.client` ("desktop", "web"); a `cli` socket is never told. An app that gets `open_task` opens that task as if tapped, and focuses its window |
 

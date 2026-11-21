@@ -205,6 +205,18 @@ computer's Ducter folder. Only folders inside a computer's home folder are shown
 in them. When your folders are on more than one computer, the list says which computer each one
 is on.
 
+You can also add a folder from **On hand**: **＋ Add a folder** under the projects (on a phone, the
+**＋** at the end of the project names). It asks which computer first, already on the one your
+latest work was on, then shows that computer's own folders: the ones you used recently first,
+each repository with where it comes from (like `github.com/you/app`). Type a name to narrow the
+list, or type a path like `~/code/app` to go straight there. Inside a repository, Ducter adds the
+whole repository. The same repository on two of your computers is one project, and On hand shows
+both computers under its name.
+
+To let Ducter look outside a computer's home folder (say your code is in `/srv/code`), set
+`DUCTER_FOLDER_ROOTS` on that computer before Ducter starts there, for example
+`DUCTER_FOLDER_ROOTS=~:/srv/code`. Only those folders can then be looked through or added on it.
+
 ### Can I start from a repository I don't have yet?
 
 Yes. In the folder list choose **Add a folder…** for the computer you want it on, then **Clone

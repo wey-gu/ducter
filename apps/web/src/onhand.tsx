@@ -253,7 +253,7 @@ export function setLens(key: string) {
   A.changed();
 }
 
-export type LensGroup = { key: string; name: string; place?: Place; tasks: Task[] };
+export type LensGroup = { key: string; name: string; place?: Place; tasks: Task[]; where?: string[] };
 /** The board's projects, what needs you first, then the projects added by hand, Other last. */
 export function lensGroups(): LensGroup[] {
   const b = A.S.board();
@@ -275,6 +275,21 @@ export function lensGroups(): LensGroup[] {
       g.tasks.push(task);
     }
   for (const p of A.S.onHand?.projects ?? []) if (!at.has(p.name)) at.set(p.name, out.push({ key: p.name, name: p.name, place: p.place, tasks: [] }) - 1);
+  // D455: where each project lives (one repo on two computers is one project), with two computers or more.
+  if (manyComputers())
+    for (const g of out) {
+      const ids: string[] = [];
+      const add = (pl: Place) => {
+        if (pl.kind !== "repo" && pl.kind !== "folder") return;
+        const id = A.placeComputer(pl);
+        if (!ids.includes(id)) ids.push(id);
+      };
+      for (const x of g.tasks) add(placeOf(x));
+      for (const p of A.S.onHand?.projects ?? []) if (p.name === g.name) add(p.place);
+      const home = (A.devices ?? []).find((d) => d.home)?.id;
+      ids.sort((a, b) => Number(b === home || b === "local") - Number(a === home || a === "local"));
+      g.where = ids.map((id) => computerName(id));
+    }
   if (other) out.push(other);
   return out;
 }
@@ -319,19 +334,27 @@ function groupStat(tasks: Task[]): { adds: number; dels: number } {
   return { adds, dels };
 }
 
-function LensEntry({ k, name, tasks, on, tab, brand }: { k: string; name: string; tasks: Task[]; on: boolean; tab?: boolean; brand?: string }) {
+function LensEntry({ k, name, tasks, on, tab, brand, where }: { k: string; name: string; tasks: Task[]; on: boolean; tab?: boolean; brand?: string; where?: string[] }) {
   const statuses = tasks.map((x) => statusOf(x.id, attention(x), x.card?.updatedAt));
   const mark = urgentOf(statuses);
   const counts = foldCounts(statuses);
   const st = tab ? { adds: 0, dels: 0 } : groupStat(tasks);
   return (
-    <button class={`lens-row${on ? " on" : ""}${k === OTHER ? " other" : ""}`} aria-pressed={on} aria-label={spoken(A.L, name, counts)} title={counts || undefined} onClick={() => setLens(k)}>
+    <button class={`lens-row${on ? " on" : ""}${k === OTHER ? " other" : ""}`} aria-pressed={on} aria-label={spoken(A.L, name, ...(where?.length ? [t("onhand.where", where.join(t("onhand.where.and")))] : []), counts)} title={counts || undefined} onClick={() => setLens(k)}>
       <span class="nm">
         {/* The mark sits on the name's line, never above it (.nm stacks the name over its stat). */}
         <span class="nm-line">
           {brand && <BrandMark name={brand} size={14} />}
           <b>{name}</b>
         </span>
+        {/* D455: where it lives, each computer its own word (D291). */}
+        {!tab && where && where.length > 0 && (
+          <span class="where" aria-hidden="true">
+            {where.map((w) => (
+              <i key={w}>{w}</i>
+            ))}
+          </span>
+        )}
         {st.adds + st.dels > 0 && (
           <span class="stat">
             {st.adds > 0 && <i class="add">+{st.adds}</i>}
@@ -355,7 +378,7 @@ export function LensColumn() {
       <LensEntry k="" name={t("onhand.lens.all")} tasks={groups.flatMap((g) => g.tasks)} on={!lens} />
       <span class="gap" />
       {groups.map((g) => (
-        <LensEntry key={g.key} k={g.key} name={g.name} tasks={g.tasks} on={lens === g.key} />
+        <LensEntry key={g.key} k={g.key} name={g.name} tasks={g.tasks} on={lens === g.key} where={g.where} />
       ))}
       {/* D341: where the to-dos came from, after the projects. */}
       {sourceGroups().length > 0 && (
@@ -366,6 +389,12 @@ export function LensColumn() {
             <LensEntry key={g.key} k={g.key} name={g.name} tasks={g.tasks} on={lens === g.key} brand={g.kind} />
           ))}
         </>
+      )}
+      {/* D455: a folder on any computer of the home, looked through by that computer. */}
+      {A.ntBrowsable().length > 0 && (
+        <button class="lens-add" type="button" title={t("addfolder.about")} onClick={() => A.openAddFolder()}>
+          ＋ {t("onhand.addfolder")}
+        </button>
       )}
     </nav>
   );
@@ -385,6 +414,12 @@ export function LensTabs({ inBoard }: { inBoard?: boolean }) {
       {sourceGroups().map((g) => (
         <LensEntry key={g.key} k={g.key} name={g.name} tasks={g.tasks} on={lens === g.key} tab brand={g.kind} />
       ))}
+      {/* D455: a folder on any computer of the home, at the end of the row. */}
+      {A.ntBrowsable().length > 0 && (
+        <button class="lens-add tab" type="button" aria-label={t("onhand.addfolder")} title={t("addfolder.about")} onClick={() => A.openAddFolder()}>
+          ＋
+        </button>
+      )}
     </nav>
   );
 }

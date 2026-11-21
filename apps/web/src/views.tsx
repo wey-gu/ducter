@@ -51,6 +51,7 @@ import { AddPictures, DropHint, MediaBlock, Tray, useDropPaste, Viewer } from ".
 import { DocLine } from "./doc-line.tsx";
 import { FileLinkSheet, FileViewer } from "./fileview.tsx";
 import { NewTaskSheet } from "./newtask.tsx";
+import { AddFolderSheet } from "./addfolder.tsx";
 import { MemoryPage, Notebook, PeersInvite, PeersPage, peersPageShown } from "./memory.tsx";
 import { memBadge, memUpdate, peerCalled } from "./mem-view.ts";
 import { benchable, BenchToggle, openBenchAt } from "./workbench.tsx";
@@ -3421,6 +3422,7 @@ function SheetsMain() {
   if (A.fileLink) return <FileLinkSheet />;
   if (!A.sheet) return null;
   if (A.sheet.kind === "newtask") return <NewTaskSheet />;
+  if (A.sheet.kind === "addfolder") return <AddFolderSheet />;
   if (A.sheet.kind === "switch") return <Palette />;
   if (A.sheet.kind === "past") return <PastSheet />;
   if (A.sheet.kind === "did") return <DidSheet />;

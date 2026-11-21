@@ -22,6 +22,9 @@ What belongs to no task (the partner's own asks, task-less waits, calls) shows u
 `全部 / All`, each project in the order its most urgent task comes, then Other. A row:
 
 - the name (Other in muted ink);
+- D455: with two or more computers, under it every computer the project lives on (where its tasks
+  ran, its routines start and it was added; one origin on two computers is one project), home
+  first, each its own small word, read aloud **在 {computers} 上 / on {computers}**;
 - under it the unmerged **+a −d** of its tasks' branches, only where there are branches;
 - one status place: the partner's face for its most urgent task (needs you > working > new
   result), D244's art, never a dot (D69);
@@ -29,6 +32,16 @@ What belongs to no task (the partner's own asks, task-less waits, calls) shows u
 
 The chosen row is the knob (D270: the card's white on its clay ledge). Opening a task turns the board into the rail (D244), narrowed by the
 same lens, whose head names it and goes back. The column never stands beside the rail.
+
+At its foot, **＋ 添加文件夹 / Add a folder** (on the phone and the narrow web, a **＋** at the end
+of the lens row) opens D455's sheet: **在哪台电脑上 / On which computer** first (chips; the
+computer of the newest task with a folder already chosen), then **选已有的文件夹 / Choose a
+folder** (that computer's folders, looked through by that computer: **最近 / Recent** first, a
+field **输入名字筛选，或输入路径 / Type to filter, or type a path**, each repo with its origin,
+**添加 {name} / Add {name}**), **从 Git 地址克隆 / Clone from a Git address** or **新建文件夹 /
+New folder** (D272's panels), **取消 / Cancel**. Added, the sheet closes on that project's lens.
+Never this Mac's picker for another computer; on the Mac, **用访达选… / Pick in Finder…** for this
+Mac's own folders. Details: `new-task.md` (Adding a folder anywhere, D272, D455).
 
 ## The board
 

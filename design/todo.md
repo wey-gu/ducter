@@ -1368,9 +1368,14 @@ note and a `Dn`) before it is built.
       a second person meets the no-gh line.
 - [ ] **GitHub Enterprise and other hosts.** Only github.com is offered; GitLab and the rest keep
       "sign in to git on {computer}". Trigger: the first person whose repositories live elsewhere.
-- [ ] **A typed path outside the home folder** in Choose a folder on {computer}. D203's browser
-      stays inside ~ (links resolved first); a field for an absolute path (e.g. `/srv/data`) with
-      the same checks is the default. Trigger: the first folder someone needs outside ~.
+- [x] **A typed path outside the home folder** in Choose a folder on {computer}. Done by D455: a
+      path typed in the browser's field lists that folder; outside ~ only where the computer sets
+      DUCTER_FOLDER_ROOTS (set there, never by the home).
+- [ ] **D455 follow-ups.** (a) The project column shows from two projects (lensOn): a first
+      project is added from New task. Default: show the column's ＋ 添加文件夹 alone with one
+      project. Trigger: a fresh user who looks for it on On hand. (b) Setting the roots from
+      Settings › Where it runs instead of an environment variable. Trigger: the first person who
+      asks for it without a shell. (c) A live run against hel and a worker Mac.
 - [ ] **Sign in from Devices too.** Today the sign-in lives in New task's clone field and the
       CLI; a push or draft PR that finds no sign-in names them. Default: the computer's card in
       Devices shows its GitHub line with the same button. Trigger: a push failing for sign-in

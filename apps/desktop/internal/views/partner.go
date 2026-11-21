@@ -229,13 +229,45 @@ func (a *App) note(c *ui.Context, text string) {
 func (a *App) choices(c *ui.Context, key, name string, labels []string, sel int) int {
 	t := a.T
 	hit := -1
-	ui.Row(c).Children(func() {
-		ui.Row(c.Key("choices:" + key)).Gap(t.S1).Padding(t.S1).Radius(t.RadiusMD).Background(t.SurfaceSunken).
-			Role(ui.RoleRadioGroup).Label(name).Shrink(1).MinWidth(0).Wrap().Children(func() {
+	// D468: when the options can't stand side by side even on a line of their
+	// own (To-do sources' three at 760 wrapped into a ragged second line inside
+	// the track), they stack, one per line, as the web's Seg does (D445).
+	stack := false
+	if avail := a.ctlAvail; avail > 0 {
+		need := 2*t.S1 + float32(len(labels)-1)*t.S1
+		for _, l := range labels {
+			w, _ := c.MeasureText(0, ui.Span{Text: l, Size: t.MD, Weight: 700})
+			need += w + 2*t.S4
+		}
+		stack = need > avail
+		if stack && a.ctlRow != nil {
+			a.ctlRow.WidthPercent(100)
+		}
+	}
+	wrap := ui.Row(c).MaxWidthPercent(100)
+	if stack {
+		wrap.WidthPercent(100)
+	}
+	wrap.Children(func() {
+		var track ui.Element
+		if stack {
+			track = ui.Column(c.Key("choices:" + key)).Grow(1).AlignItems(ui.Stretch)
+		} else {
+			track = ui.Row(c.Key("choices:" + key))
+		}
+		track.Gap(t.S1).Padding(t.S1).Radius(t.RadiusMD).Background(t.SurfaceSunken).
+			Role(ui.RoleRadioGroup).Label(name).Shrink(1).MinWidth(0)
+		if !stack {
+			track.Wrap()
+		}
+		track.Children(func() {
 			for i, l := range labels {
 				on := i == sel
 				b := ui.Row(c.Key("choice:"+l)).Height(t.ControlSM).Padding(0, t.S4).Radius(t.RadiusSM).AlignItems(ui.Center).
 					Justify(ui.Center).Cursor(ui.CursorPointer).Role(ui.RoleRadio).Label(l).AccessSelected(on).Focusable().Shrink(0)
+				if stack {
+					b.Justify(ui.Start)
+				}
 				fg, weight := t.InkMuted, 500
 				switch {
 				case on:
@@ -568,7 +600,8 @@ func (a *App) accountsPanel(c *ui.Context) {
 	if sources {
 		a.sourceCards(c, list)
 	}
-	a.saidLine(c, "acct-stop") // D404: a source stopped is answered once, where it was
+	a.saidLine(c, "acct-stop")  // D404: a source stopped is answered once, where it was
+	a.saidLine(c, "acct-added") // D468: and a source added, in the same place
 	title, lede := a.L.T("acct.title"), a.L.T("acct.lede", a.personaName())
 	if sources {
 		title, lede = "", ""
@@ -921,13 +954,16 @@ func (a *App) drainConnResult() {
 	for _, cv := range a.S.Connections {
 		if cv.ID == r.ID {
 			ps.acctAdding, ps.acctErr, ps.acctNoKey = false, "", false
+			// D468 (D459's leftover): a source added is the partner's one word under
+			// the sources, D296's said line, as a source stopped is; never a boxed
+			// notice at the top of the page. A refusal keeps the failed look above.
 			switch {
 			case r.Readable != nil && len(r.Readable) == 0:
-				ps.say(a.L.T("acct.added.empty", connName(a, cv)), noticeInfo, a.Now())
+				a.say("acct-added", a.L.T("acct.added.empty", connName(a, cv)))
 			case len(r.Readable) > 0:
-				ps.say(a.L.T("acct.added.apps", connName(a, cv), a.appsList(r.Readable)), noticeDone, a.Now())
+				a.say("acct-added", a.L.T("acct.added.apps", connName(a, cv), a.appsList(r.Readable)))
 			default:
-				ps.say(a.L.T("acct.added", connName(a, cv)), noticeDone, a.Now())
+				a.say("acct-added", a.L.T("acct.added", connName(a, cv)))
 			}
 		}
 	}

@@ -2875,6 +2875,14 @@ function TrustSettings() {
   );
 }
 
+/** D468: the day's half hours, 24-hour, as the Mac's quiet-hours pills; an odd time someone set elsewhere stays listed. */
+export function halfHours(cur: string): { v: string; label: string }[] {
+  const out: string[] = [];
+  for (let m = 0; m < 24 * 60; m += 30) out.push(`${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`);
+  if (cur && !out.includes(cur)) out.push(cur), out.sort();
+  return out.map((v) => ({ v, label: v }));
+}
+
 function NotifySettings() {
   const s = A.settings;
   // D445: the page's shape while it reads, as To-do sources and Chat apps (D432), never a bare line.
@@ -2891,10 +2899,17 @@ function NotifySettings() {
         <Toggle label={t("partner.notify.on")} help={t(s.notify ? "partner.notify.on.note" : "partner.notify.off.note")} checked={s.notify} onChange={(notify) => (A.setSettings({ notify }), cheer())} />
         {s.notify && <Toggle label={t("partner.quiet")} help={t("partner.quiet.note")} checked={!!quiet} onChange={(on) => (A.setSettings({ quiet: on ? { start: "23:00", end: "08:00", tz: tz() } : null }), say("notify", on ? t("said.quiet", "23:00", "08:00") : t("said.quiet.off")), cheer())} />}
         {s.notify && quiet && (
+          // D468: the hours as the Mac's (D445): a row titled 时间段, two pills of the half hours at its right edge,
+          // 24-hour in every language; never the browser's own time field.
           <div class="quiet-range">
-            <input type="time" aria-label={t("partner.quiet")} value={quiet.start} onChange={(e) => setQuiet((e.target as HTMLInputElement).value || quiet.start, quiet.end)} />
-            <span>{t("partner.quiet.to")}</span>
-            <input type="time" aria-label={`${t("partner.quiet")} ${t("partner.quiet.to")}`} value={quiet.end} onChange={(e) => setQuiet(quiet.start, (e.target as HTMLInputElement).value || quiet.end)} />
+            <b>{t("partner.quiet.hours")}</b>
+            <span class="pick">
+              <Select label={t("partner.quiet")} value={quiet.start} options={halfHours(quiet.start)} onPick={(v) => setQuiet(v, quiet.end)} />
+            </span>
+            <span class="to">{t("partner.quiet.to")}</span>
+            <span class="pick">
+              <Select label={`${t("partner.quiet")} ${t("partner.quiet.to")}`} value={quiet.end} options={halfHours(quiet.end)} onPick={(v) => setQuiet(quiet.start, v)} />
+            </span>
           </div>
         )}
         </div>
@@ -3164,6 +3179,7 @@ function Accounts() {
       {!adding && refusal && <AcctRefusal reason={refusal} hosted={false} />}
       <div class="small sub">{t("acct.honest")}</div>
       <Said k="acct-stop" />
+      <Said k="acct-added" />
       {/* D193, D289: calls are their own section, in the same flow. */}
       {list && <CallsSection list={list} />}
     </section>

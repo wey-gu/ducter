@@ -59,9 +59,15 @@ type pendingMsg struct {
 
 // App is the window's state.
 type App struct {
-	S *store.Store
-	T *theme.Tokens
-	L *i18n.Strings
+	// ctlAvail is the width a row's control may take while it is built
+	// (wordsThenControl, last frame's); 0 outside a row (D468).
+	ctlAvail float32
+	// ctlRow is that control's own row while it is built: a choice that
+	// stacks takes the row's whole width under the words (D468).
+	ctlRow *ui.Element
+	S      *store.Store
+	T      *theme.Tokens
+	L      *i18n.Strings
 	// Send sends a client frame; nil drops it (tests may set it).
 	Send func(frame any) error
 	// meets is which thing carries each first-time line here (D451).

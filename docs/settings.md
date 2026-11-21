@@ -278,8 +278,8 @@ anything on the page, and with notifications off it shows where the question wai
 
 - **Notifications** turns the nudges on this Mac and your connected phones on or off. With them
   off, anything that needs you waits in the conversation and in On hand.
-- **Quiet hours** holds notifications between two times, 23:00 to 08:00 at first. On the Mac, click
-  either time to pick another, on the hour or the half hour. When the
+- **Quiet hours** holds notifications between two times, 23:00 to 08:00 at first. Click either time
+  under **Hours** to pick another, on the hour or the half hour. When the
   quiet hours end, you hear about everything that came up during them.
 - **If you don't answer** sets how long a decision waits before your partner goes with its
   suggested default: 10 minutes, 30 minutes, 1 hour or 2 hours. This applies only to things

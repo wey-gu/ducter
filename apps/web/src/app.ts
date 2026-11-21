@@ -6,6 +6,7 @@ import { onStepsFrame } from "./past-preview.tsx";
 import { onMadeFrame } from "./made.tsx";
 import { onAppsFrame, openApp } from "./apps.tsx";
 import { onDidFrame, openDid } from "./did.tsx";
+import { say } from "./set-grid.tsx";
 import type { AgentModels, AgentReason, MemPluginReason, BrainNow, BridgeView, Candidate, ModelChoice, ClientFrame, Place, PlaceChoice, ConnectionReason, ConnectionView, DeviceHarness, DeviceView, DucterFolderView, GhInstallPlan, GitLoginState, MemCheckAnswer, MemItem, MemView, OoDetect, Reach, KindDefault, RuleView, ServerFrame, StandingView, Settings, SettingsPatch, UpdateAllView, UpdateReason } from "@ducter/protocol";
 import { MEDIA_LIMITS, TUWA_MCP, WATCH_LIVE, type MediaRef, type FileOpenError } from "@ducter/protocol";
 import { PINS_MAX, type PinView } from "@ducter/protocol/src/pins.ts";
@@ -896,7 +897,9 @@ class AppState {
       if (added) {
         const r = f.readable;
         const name = added.source === "oo" ? this.L.t("acct.oo.name") : added.name; // never the record name "oo"
-        this.toast(
+        // D468 (D459's leftover): the partner's one word under the sources, as a source stopped is; never a toast.
+        say(
+          "acct-added",
           r && !r.length
             ? this.L.t("acct.added.empty", name)
             : r?.length

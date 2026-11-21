@@ -19,6 +19,16 @@ human opens them.
    (D120). OpenAI documents that models invent results for calls still pending. The task starts
    with the ack, from the streamed head of its `task_open` call, not after the brief
    (`quiet-conversation.md`).
+   **A line that only promises (D462).** A line that only says what the partner is about to do
+   ("我去查…", "I'll set up…") is settled by what comes next, on every agent: before `task_open`
+   or `task_send` it is the ack; before any other call it waits, and a line written after the
+   call says it instead (Codex writes such a preamble before nearly every call); a second
+   promise before the call replaces the first, so the ack is still one sentence. Said with no
+   call at all, nothing started: it is held for one correction round that asks for the call
+   (its line then goes out as that call's ack) or an "OK" (it goes out as it was). Each of the
+   agent's own messages stays its own line (the runner splits text by the agent's message id),
+   and a ducter-ui block written as a message of its own, or bare, or after words on the same
+   line, joins the line it belongs to.
 2. **Job.** Kept as a status line by the control plane, shown inside the message's Details and
    on On hand (D104); while the user waits, the partner's step shows as the waiting line, acted
    out by the clay partner in the person's words (D425, `quiet-conversation.md`). A

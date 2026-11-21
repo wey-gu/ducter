@@ -2785,7 +2785,7 @@ export const scenarios: Scenario[] = [
     lang: "zh",
     apps: [{ name: "北京出差花销", html: TRIP_APP, data: { expenses: [{ what: "高铁", yuan: 662, day: "2026-11-18" }, { what: "酒店两晚", yuan: 1036, day: "2026-11-18" }, { what: "午饭", yuan: 268, day: "2026-11-19" }] } }],
     steps: [{ user: "加个合计，放在最上面，大一点", app: "about" }],
-    expect: { opens: 0, msgs: [1, 1], maxChars: 120, called: [{ tool: "app" }], appCard: "changed", appHtml: /合计/, notCalled: ["task_open"], forbid: [/```|<script/i] },
+    expect: { opens: 0, msgs: [1, 1], maxChars: 120, called: [{ tool: "app" }], appCard: "changed", appHtml: /合计|总计|总花销|总额|共计/, notCalled: ["task_open"], forbid: [/```|<script/i] },
     rubric: "The user, in their Beijing trip expenses app's sheet, asks to add a big total at the top. The partner changes that app (the app tool with its id: edits or a new file) so a total of all costs shows at the top, keeping what it had, and says so in one short Chinese line. No new app, no task, no code in the reply, no question.",
   },
   {
@@ -2817,7 +2817,7 @@ export const scenarios: Scenario[] = [
       { ai: "订好了：11/20 G1 07:00 上海虹桥到北京南，¥662；亚朵酒店（望京）11/20 和 11/21 两晚，¥1,036。" },
     ],
     steps: [{ user: "给我做个小应用，记一下出差花销" }],
-    expect: { opens: 0, msgs: [1, 2], maxChars: 160, called: [{ tool: "app" }], appCard: "made", appName: /北京/, appData: /662[\s\S]*1,?036|1,?036[\s\S]*662/, appHtml: /k-app/, appHtmlForbid: [/<select\b/i, /type\s*=\s*["']?number/i, /\b662\b|1,?036/], require: [/预订|填/], notCalled: ["task_open"], forbid: [/```|<script|<div/i] },
+    expect: { opens: 0, msgs: [1, 2], maxChars: 160, called: [{ tool: "app" }], appCard: "made", appName: /北京/, appData: /662[\s\S]*1,?036|1,?036[\s\S]*662/, appHtml: /k-app/, appHtmlForbid: [/<select\b/i, /type\s*=\s*["']?number/i, /\b662\b|1,?036/], require: [/预订|填|记[入上好了进]|放进|加进/], notCalled: ["task_open"], forbid: [/```|<script|<div/i] },
     rubric: "The user is on a Beijing trip the partner booked (the conversation above: the G1 train for ¥662 and two hotel nights for ¥1,036, and today's agibar talk in Beijing). They ask for a little app to keep their trip costs. The partner makes it now with the app tool, named for this trip (e.g. 北京出差 11/20–21), with the train and the hotel already in its data marked as from their bookings, drawn with Ducter's kit (no native select or number inputs), the total at the top. Its one short Chinese line says it's ready and what it already filled in (the train and the two hotel nights from their bookings); it never pastes code, lists features, asks questions first or opens a task. One short line before it, saying it is making it, is fine.",
   },
   {

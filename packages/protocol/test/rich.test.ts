@@ -66,6 +66,22 @@ describe("rich answers (D303)", () => {
     expect(splitRich("A\n\n- x", [{ type: "map", plain: "- x" } as never])).toEqual([{ words: "A\n\n- x" }]);
   });
 
+  test("D462: a fence after words on the same line, and a valid block written bare on its own line, are blocks", () => {
+    const glued = parseRich('Here is your list.```ducter-ui\n{"type":"checklist","items":["Tag it","Notes"]}\n```', "en");
+    expect(glued.ui.map((b) => b.type)).toEqual(["checklist"]);
+    expect(glued.text).not.toMatch(/```|[{}]/);
+    expect(glued.text.startsWith("Here is your list.")).toBe(true);
+    const bare = parseRich('可以，点下面这张卡片一步步来。\n{"type":"lend"}', "zh");
+    expect(bare.ui.map((b) => b.type)).toEqual(["lend"]);
+    expect(bare.text).not.toMatch(/[{}]/);
+    const only = parseRich('{"type":"checklist","items":["护照","充电宝"],"pin":true}', "zh");
+    expect(only.ui.map((b) => b.type)).toEqual(["checklist"]);
+    expect(only.pins.length).toBe(1);
+    // Not a valid block, or JSON inside a sentence: the words stay as they are.
+    for (const s of ['{"type":"map","x":1}', 'Send {"type":"lend"} to the API.', '{"type":"table"}'])
+      expect(parseRich(s, "en")).toMatchObject({ text: s, ui: [], dropped: [] });
+  });
+
   test("the chart's scale is round and starts at zero", () => {
     expect(chartScale([5, 8, 3, 6, 9, 2, 1])).toEqual({ lo: 0, hi: 10, step: 2 });
     expect(chartScale([18.5, 26.4])).toEqual({ lo: 0, hi: 30, step: 10 });

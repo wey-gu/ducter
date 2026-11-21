@@ -2697,3 +2697,9 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] **zh line length:** one spotter line was over the 72-character budget and dropped (research/199 §4); ask for a shorter rewrite instead of dropping. Trigger: a second drop seen live.
 - [ ] **The model judge's offer prompt measured:** the proactive eval (`packages/partner/eval/proactive/`) still scores the old bar's precision; add an offer-recall measure (what a good partner would offer) beside false alarms for interruptions. Trigger: before tuning OFFER_FLOOR or the weights.
 - [ ] **The verdict memo ignores the mode's floor:** a candidate judged on 有用就说 keeps its verdict after a switch to 每天最多 3 条 until its words change. Trigger: someone switches modes and sees a low one.
+
+## The partner on Codex (D462)
+
+- [ ] **What Codex still gets wrong that is the model's, not the harness's:** a needs_input relay that adds its own question ("要现在付 73 元吗？"), rich answers on GPT-6-Luna (a chart or a choices question that becomes a task_send or a guess), Bridge lines that explain Spaces, the noticed answer's times. The persona is not forked per model; measure again on the next Codex model before forking. Trigger: a Codex eval below 185, or someone on Codex meeting one of these live.
+- [ ] **The correction round's cost:** a line that promised work with no tool costs one more model turn. Count it live (the partner's stats) before tuning the promise shapes. Trigger: a week of the partner on Codex on hel.
+- [ ] **Codex's read-only shell for the partner:** the partner on Codex keeps a read-only shell (its only way to read a file); the persona now says never to look in the place first. If an eval sees `commandExecution` again, turn `features.shell_tool` off for the partner and give it a read tool. Trigger: one eval run that uses it.

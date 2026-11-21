@@ -36,9 +36,9 @@ type handState struct {
 	fromDo           bool
 	items            []protocol.FoundItem
 	// D454: the found ones already handed over (their own group, never ticked).
-	handed           []protocol.HandedItem
-	found            *protocol.FindSummary
-	got, finding     bool
+	handed       []protocol.HandedItem
+	found        *protocol.FindSummary
+	got, finding bool
 	// heard: how core split the words; suggest: the field's suggestions;
 	// noteAuto: the note as filled from the words (replaced while the person
 	// hasn't written their own).

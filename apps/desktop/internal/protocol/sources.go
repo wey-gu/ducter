@@ -309,14 +309,14 @@ func decodeSources(data []byte, f ServerFrame) (ServerFrame, error) {
 	switch f.T {
 	case "pile_find_result":
 		var p struct {
-			Found   FindSummary `json:"found"`
-			Items   []FoundItem `json:"items"`
-			Ticked  []string    `json:"ticked"`
-			Query   string      `json:"query"`
-			Subject string      `json:"subject"`
-			SetID   string      `json:"setId"`
-			Said    *FindSaid   `json:"said"`
-			Suggest []string    `json:"suggest"`
+			Found   FindSummary  `json:"found"`
+			Items   []FoundItem  `json:"items"`
+			Ticked  []string     `json:"ticked"`
+			Query   string       `json:"query"`
+			Subject string       `json:"subject"`
+			SetID   string       `json:"setId"`
+			Said    *FindSaid    `json:"said"`
+			Suggest []string     `json:"suggest"`
 			Handed  []HandedItem `json:"handedOver"`
 		}
 		if err := json.Unmarshal(data, &p); err != nil {

@@ -176,6 +176,18 @@ line.
   Mem's `plugins inspect` has no `google-antigravity` host, so the device card can't say it's
   there. Trigger: Mem's check lists `google-antigravity` (then a `memPlugin` fact for Antigravity,
   never an install offer) or agy gains a per-session plugin switch.
+- [ ] **A Mem plugin update seen live (D466, research/203).** No Ducter agent on the author's Mac is
+  behind today (Claude Code 0.7.37 is the newest; only alma, not a Ducter agent, is). Once one is:
+  the row and the coin say from → to, 更新's task follows the guide, inspect reads the new version
+  and the row goes. And 理成一份 on the author's Codex (0.1.10 and 0.1.53): does the task find a
+  Codex command that removes the older copy, or stop and report? Trigger: Mem publishes a newer
+  Claude Code plugin, or the author taps 理成一份.
+- [ ] **Updates for Codex, pi and DeepSeek Harness's Mem plugin (D466).** `nmem plugins check`
+  lists only Claude Code of Ducter's agents. Trigger: Mem adds them (matched by inspect's host id
+  or Ducter's own, no change needed; add a fixture).
+- [ ] **A host's own plugin update command instead of a task (D466).** Faster, no tokens, like
+  D375's `nmem connect` for an install. Trigger: Mem's guide names an update command per host for
+  Ducter's agents (it does for OpenCode 2.x and Step Code today, not Claude Code, Codex or pi).
 - [ ] **Mem's skills in an agy task (D417 cut them).** Distill and handoff stay with the partner
   (`remember`). Trigger: agy loads a plugin or skills folder for one session (a flag, or OAR's
   `userConfiguration` verified for it).

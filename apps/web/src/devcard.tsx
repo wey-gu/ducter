@@ -11,7 +11,7 @@ import { updatingWords } from "./agent-progress.ts";
 import type { DeviceHarness, DeviceUpdate, DeviceVia, DeviceView, ReachWay } from "@ducter/protocol";
 import { inApp } from "./native.ts";
 import { AppUpdateRow, androidAppVersion } from "./app-update.tsx";
-import { MEM_CONNECT_TOOLS, clientShape, computerKey, computerName, TRY_LIVE } from "@ducter/protocol";
+import { clientShape, computerKey, computerName, TRY_LIVE } from "@ducter/protocol";
 import { changelogUrl } from "@ducter/protocol/src/version.ts";
 import { Fragment, type ComponentChildren } from "preact";
 import { useEffect, useState } from "preact/hooks";
@@ -29,6 +29,7 @@ import { Qr } from "./phone.tsx";
 import { AddDeviceRow, LendSheet } from "./lend.tsx";
 import { AgentRow, SetupAnswer, canSignOut } from "./agent-setup.tsx";
 import { MemOnDevice } from "./worker-mem.tsx";
+import { MemAction } from "./mem-plugin.tsx";
 import { RecordsOnDevice } from "./worker-records.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
@@ -772,41 +773,8 @@ function Sites({ dv }: { dv: DeviceView }) {
 
 // ---------- Nowledge Mem in this agent (D169) ----------
 
-/**
- * D169: what 装上 / 更新 / 理一下 on an agent's Nowledge Mem line does: it asks in place first (what
- * changes and where), then one task on that computer follows Mem's own setup guide. A computer
- * that is away shows the line alone.
- */
-function MemAction({ dv, h }: { dv: DeviceView; h: DeviceHarness }) {
-  const [asking, setAsking] = useState(false);
-  if (!h.mem || !h.installed || !h.loggedIn) return null;
-  const w = memWords(A.L, h.mem);
-  if (!w.action || dv.state !== "awake") return null;
-  const agent = harnessName(h.harness);
-  const about = spoken(A.L, agent, "Nowledge Mem");
-  const answer = A.memAnswer?.device === dv.id && A.memAnswer.harness === h.harness ? A.memAnswer.reason : undefined;
-  return (
-    <>
-      {asking ? (
-        <div class="dev-cut">
-          <div class="dev-cut-q">{t("memp.ask", agent, dv.name)}</div>
-          {/* D375: Mem's own command first where it has one for this agent and the plugin isn't there. */}
-          <div class="small sub">{t(MEM_CONNECT_TOOLS[h.harness] && h.mem.state === "absent" ? "memp.means.direct" : "memp.means", agent, dv.name)}</div>
-          <div class="btns">
-            <Btn kind="secondary" size="sm" label={t("memp.ok")} about={about} onClick={() => (A.installMem(dv.id, h.harness), setAsking(false))} />
-            <Btn kind="text" size="sm" label={t("memp.cancel")} about={about} onClick={() => setAsking(false)} />
-          </div>
-        </div>
-      ) : (
-        <div class="btns">
-          <Btn kind="secondary" size="sm" label={w.action} about={about} onClick={() => setAsking(true)} />
-        </div>
-      )}
-      {answer && <div class="ln warn">{t(`memp.why.${answer}`)}</div>}
-    </>
-  );
-}
-
+// D169, D466: the action under the line (install, update, keep one, sort out) lives in mem-plugin.tsx,
+// shared with Settings › 记忆's rows.
 coinLines.push((_dv, h) => (h.mem && h.installed ? memWords(A.L, h.mem, harnessName(h.harness)).line : ""));
 coinActions.push((dv, h) => <MemAction dv={dv} h={h} />);
 

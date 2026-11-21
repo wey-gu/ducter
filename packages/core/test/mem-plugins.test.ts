@@ -37,7 +37,7 @@ let dir: string;
 beforeEach(() => (dir = mkdtempSync(join(tmpdir(), "ducter-memplug-"))));
 afterEach(() => rmSync(dir, { recursive: true, force: true }));
 
-function setup(o: { on?: boolean; worker?: Record<string, MemPluginView> | "old"; devs?: Dev[]; t0?: number } = {}) {
+function setup(o: { on?: boolean; worker?: Record<string, MemPluginView> | "old"; devs?: Dev[]; t0?: number; catalog?: () => Promise<Record<string, string> | undefined> } = {}) {
   const log = fakeLog();
   let t = o.t0 ?? 1_000_000;
   let on = o.on ?? true;
@@ -59,6 +59,7 @@ function setup(o: { on?: boolean; worker?: Record<string, MemPluginView> | "old"
       return o.worker ?? fx("worker-fresh.json");
     },
     devices: async () => devs,
+    ...(o.catalog ? { checkUpdates: async () => (calls.push("catalog"), o.catalog!()) } : {}),
     now: () => t,
     everyMs: 0,
   });
@@ -167,6 +168,75 @@ test("装上 opens one task there with that agent and Mem's own guide; the check
   await new Promise((r) => setTimeout(r, 5));
   expect(s.calls).toEqual(["w1"]);
   expect(s.mp.view("w1", agents("codex"))[0]!.mem?.taskId).toBeUndefined();
+});
+
+// D466: a newer plugin, from Mem's own `plugins check` on the home, laid over every computer's inspect.
+test("D466: a newer version out turns installed into an update from to, on every computer; asked once a day; kept across a restart", async () => {
+  const devs: Dev[] = [
+    { id: "local", name: "hel", home: true, awake: true, harnesses: signed("claude-code", "codex") },
+    { id: "w1", name: "mini", home: false, awake: true, harnesses: signed("claude-code") },
+  ];
+  let answer: Record<string, string> | undefined = { "claude-code": "0.7.37" };
+  const s = setup({ devs, worker: { "claude-code": { state: "installed", version: "0.7.36" } }, catalog: async () => answer });
+  await s.mp.check();
+  expect(s.mp.view("local", agents("claude-code"))[0]!.mem).toMatchObject({ state: "update", version: "0.7.34", available: "0.7.37" });
+  expect(s.mp.view("w1", agents("claude-code"))[0]!.mem).toMatchObject({ state: "update", version: "0.7.36", available: "0.7.37" });
+  // Codex's several copies stay a review with their versions; the check doesn't list Codex.
+  expect(s.mp.view("local", agents("codex"))[0]!.mem).toMatchObject({ state: "review", why: "multiple", versions: ["0.1.10", "0.1.49"] });
+  // An update still counts as the plugin there (a task there gets its own context, D168).
+  expect(s.mp.present(undefined, "claude-code")).toBe(true);
+  expect(s.calls.filter((c) => c === "catalog")).toHaveLength(1);
+  // Asked again only once it is a day old.
+  await s.mp.check();
+  expect(s.calls.filter((c) => c === "catalog")).toHaveLength(1);
+  s.later(21 * 60 * 60 * 1000);
+  answer = { "claude-code": "0.7.40" };
+  await s.mp.check();
+  expect(s.calls.filter((c) => c === "catalog")).toHaveLength(2);
+  expect(s.mp.view("local", agents("claude-code"))[0]!.mem?.available).toBe("0.7.40");
+  // A restarted home knows it before its first ask.
+  const saved = JSON.parse(readFileSync(join(dir, "mem-plugins.json"), "utf8"));
+  expect(saved.catalog.versions).toEqual({ "claude-code": "0.7.40" });
+});
+
+test("D466: offline or unreadable says nothing: no update without an answer, the last good answer stands", async () => {
+  let answer: Record<string, string> | undefined;
+  const s = setup({ catalog: async () => answer });
+  await s.mp.check();
+  expect(s.mp.view("local", agents("claude-code"))[0]!.mem).toMatchObject({ state: "installed", version: "0.7.34" });
+  // Failing again and again is asked each check (nothing kept), never shown.
+  await s.mp.check();
+  expect(s.calls.filter((c) => c === "catalog")).toHaveLength(2);
+  answer = { "claude-code": "0.7.37" };
+  await s.mp.check();
+  expect(s.mp.view("local", agents("claude-code"))[0]!.mem?.state).toBe("update");
+  // Offline after a good answer: it stands.
+  s.later(21 * 60 * 60 * 1000);
+  answer = undefined;
+  await s.mp.check();
+  expect(s.mp.view("local", agents("claude-code"))[0]!.mem).toMatchObject({ state: "update", available: "0.7.37" });
+  // A throw is offline too (a home that never had an answer).
+  rmSync(join(dir, "mem-plugins.json"));
+  const t = setup({ catalog: async () => Promise.reject(new Error("timeout")) });
+  await t.mp.check();
+  expect(t.mp.view("local", agents("claude-code"))[0]!.mem?.state).toBe("installed");
+});
+
+test("D466: 更新 opens a task that updates by Mem's own guide, from to; 理成一份 one that leaves one copy; both by the tap only", async () => {
+  const s = setup({ catalog: async () => ({ "claude-code": "0.7.37" }) });
+  await s.mp.check();
+  // Nothing runs by itself: no card for an update, no task.
+  expect(s.decisions()).toHaveLength(0);
+  expect(s.opened).toHaveLength(0);
+  expect(await s.mp.install("local", "claude-code")).toEqual({ ok: true, taskId: "tsk1" });
+  expect(s.opened[0]).toMatchObject({ harness: "claude-code", origin: "you", title: "为 hel 上的 Claude Code 更新 Nowledge Mem" });
+  expect(s.opened[0].brief).toContain("from 0.7.34 to 0.7.37");
+  expect(s.opened[0].brief).toContain("The user tapped Update");
+  expect(s.opened[0].brief).toContain("https://mem.nowledge.co/SKILL.md");
+  expect(await s.mp.install("local", "codex")).toEqual({ ok: true, taskId: "tsk2" });
+  expect(s.opened[1]).toMatchObject({ harness: "codex", title: "把 hel 上 Codex 里的 Nowledge Mem 理成一份" });
+  expect(s.opened[1].brief).toContain("versions 0.1.10, 0.1.49");
+  expect(s.opened[1].brief).toContain("never delete its files by hand");
 });
 
 test("装上 refuses honestly: off, unknown, away, nobody signed in there", async () => {

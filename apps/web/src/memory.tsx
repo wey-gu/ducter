@@ -21,6 +21,7 @@ import { ago, harnessName, spoken } from "./format.ts";
 import { aboutGroups, bySource, groupNoted, MEM_MIN, memHealthLook, memPhase, memUpdate, ownsAgents, peersNamesUpdate, peersPhase, peersShown, peersSwitchOn, awayFor, reachRows, recentHandoffs, type Handoff, type ReachRow, type MemPhase, type MemUpdate } from "./mem-view.ts";
 import { CopyLine } from "./lend.tsx";
 import { GBlock, GConfirm, GFoot, GHead, GRow, Group, Said, say, Tile } from "./set-grid.tsx";
+import { MemPluginRows } from "./mem-plugin.tsx";
 import { Avatar, Check } from "./views.tsx";
 import { title } from "./store.ts";
 
@@ -460,6 +461,8 @@ function MemLink({ b }: { b: BridgeView | undefined }) {
         </GRow>
       )}
       {u && b && <MemUpdateRow u={u} b={b} />}
+      {/* D466: an agent's Nowledge Mem with a newer version out, or in more than once: one row each, asked in place. */}
+      <MemPluginRows />
       {more && b && (
         <GBlock>
           <MemFacts b={b} />

@@ -490,6 +490,9 @@ func (a *App) memLink(c *ui.Context, b *protocol.BridgeView) {
 		if u := memUpdate(b); u != nil {
 			a.memUpdateRow(c, u, b)
 		}
+		// D466: an agent's Nowledge Mem with a newer version out, or in more
+		// than once: one row each, asked in place (memplugin.go).
+		a.memPluginRows(c)
 		if a.memDetails {
 			a.textBlock(c, "mem-details", func() { a.memFacts(c, b) })
 		}

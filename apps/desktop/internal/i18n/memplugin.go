@@ -31,6 +31,23 @@ var zhMemPlugin = Table{
 	"memp.card.go":         "安装",
 	"memp.card.hold":       "暂不安装",
 	"memp.card.done":       "已装好",
+	// D466: a newer plugin out, several copies, and what each tap does.
+	"memp.update.to":       "Nowledge Mem %[1]s，有新的 %[2]s 了",
+	"memp.review.two":      "Nowledge Mem 装了两份：%[1]s 和 %[2]s",
+	"memp.btn.tidy":        "理成一份",
+	"memp.ask.update":      "要把 %[2]s 上 %[1]s 的 Nowledge Mem 更新到 %[3]s 吗？",
+	"memp.ask.update.bare": "要更新 %[2]s 上 %[1]s 的 Nowledge Mem 吗？",
+	"memp.means.update":    "会在 %[2]s 上新建一个任务，照 Nowledge Mem 的官方说明来更新：只改 %[1]s 自己的设置，不动 Ducter。更新以后，重开 %[1]s 才用得上。",
+	"memp.ok.update":       "更新",
+	"memp.ask.tidy":        "要把 %[2]s 上 %[1]s 里的 Nowledge Mem 理成一份吗？",
+	"memp.means.tidy":      "现在说不清 %[1]s 用的是哪一份。会在 %[2]s 上新建一个任务，照 Nowledge Mem 的官方说明只留下一份：旧的用 %[1]s 自己的命令去掉，不手动删文件，不动 Ducter。理好以后，重开 %[1]s 才用得上。",
+	"memp.ok.tidy":         "理成一份",
+	"memp.ask.review":      "要检查 %[2]s 上 %[1]s 的 Nowledge Mem 吗？",
+	"memp.means.review":    "会在 %[2]s 上新建一个任务，照 Nowledge Mem 的官方说明检查并装好：只改 %[1]s 自己的设置，不动 Ducter。装好以后，重开 %[1]s 才用得上。",
+	"memp.ok.review":       "检查",
+	"memp.setting.update":  "正在更新 Nowledge Mem…",
+	"memp.setting.tidy":    "正在把 Nowledge Mem 理成一份…",
+	"memp.row":             "%[2]s 上的 %[1]s",
 }
 
 var enMemPlugin = Table{
@@ -61,6 +78,23 @@ var enMemPlugin = Table{
 	"memp.card.go":         "Install",
 	"memp.card.hold":       "Not now",
 	"memp.card.done":       "Installed",
+	// D466: a newer plugin out, several copies, and what each tap does.
+	"memp.update.to":       "Nowledge Mem %[1]s; %[2]s is out",
+	"memp.review.two":      "Nowledge Mem is in twice: %[1]s and %[2]s",
+	"memp.btn.tidy":        "Keep one",
+	"memp.ask.update":      "Update Nowledge Mem for %[1]s on %[2]s to %[3]s?",
+	"memp.ask.update.bare": "Update Nowledge Mem for %[1]s on %[2]s?",
+	"memp.means.update":    "A task on %[2]s updates it by Nowledge Mem's own guide. It changes only %[1]s's own settings, nothing of Ducter's. Start %[1]s again afterwards to use it.",
+	"memp.ok.update":       "Update",
+	"memp.ask.tidy":        "Keep one Nowledge Mem in %[1]s on %[2]s?",
+	"memp.means.tidy":      "Right now it's unclear which one %[1]s uses. A task on %[2]s follows Nowledge Mem's own guide and leaves one: older ones go by %[1]s's own commands, no files deleted by hand, nothing of Ducter's touched. Start %[1]s again afterwards to use it.",
+	"memp.ok.tidy":         "Keep one",
+	"memp.ask.review":      "Sort out Nowledge Mem in %[1]s on %[2]s?",
+	"memp.means.review":    "A task on %[2]s checks it and sets it up by Nowledge Mem's own guide. It changes only %[1]s's own settings, nothing of Ducter's. Start %[1]s again afterwards to use it.",
+	"memp.ok.review":       "Sort it out",
+	"memp.setting.update":  "Updating Nowledge Mem…",
+	"memp.setting.tidy":    "Keeping one Nowledge Mem…",
+	"memp.row":             "%[1]s on %[2]s",
 }
 
 func init() {

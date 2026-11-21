@@ -2127,6 +2127,11 @@ type MemPluginView struct {
 	// Fresh: just put in by it (the agent uses it once restarted).
 	Busy  bool `json:"busy,omitempty"`
 	Fresh bool `json:"fresh,omitempty"`
+	// D466: Available: update, the newer version Mem's own `plugins check`
+	// offers (from Version to it); Versions: review "multiple", each copy's
+	// version, oldest first.
+	Available string   `json:"available,omitempty"`
+	Versions  []string `json:"versions,omitempty"`
 }
 
 // MemPluginAsk is Ducter's one card offering Nowledge Mem for an agent on a

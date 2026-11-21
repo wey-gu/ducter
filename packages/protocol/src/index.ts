@@ -2182,8 +2182,12 @@ export type MemPluginWhy = "multiple" | "unclear";
 
 export interface MemPluginView {
   state: MemPluginState;
-  version?: string; // installed: the version the check read
+  version?: string; // installed, update: the version the check read
+  /** D466: update: the newer version Mem's own `plugins check` offers (from version to this). */
+  available?: string;
   why?: MemPluginWhy; // review
+  /** D466: review "multiple": each copy's version the check read, oldest first (two copies: two versions). */
+  versions?: string[];
   /** A setup task for it is open right now (its id). */
   taskId?: string;
   /** D375: Mem's own `nmem connect --tool` is putting it in right now (no task). */

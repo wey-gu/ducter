@@ -262,6 +262,67 @@ export interface ReplayReport {
   problem?: ProactiveDay["problem"];
 }
 
+/**
+ * D464: where an offer came from, for counting (`ducter proactive week`): the person's accounts
+ * (mail, calendar, chat, GitHub: the D165 kinds), finished tasks (next_step), Nowledge Mem
+ * (remembered), the conversation (said, loose_end) and the to-dos (todos, D359).
+ */
+export type FindFrom = "accounts" | "tasks" | "mem" | "conversation" | "todos";
+export const FIND_FROMS: readonly FindFrom[] = ["accounts", "tasks", "mem", "conversation", "todos"];
+export const findFrom = (k: FindKind): FindFrom => (k === "next_step" ? "tasks" : k === "remembered" ? "mem" : k === "said" || k === "loose_end" ? "conversation" : k === "todos" ? "todos" : "accounts");
+/** D453, D464: the author's line: one offer in twenty taken up is the aha. */
+export const AHA_LINE = 1 / 20;
+/** D464: what the person opened under a find: 怎么知道的 / How I know, or 还有几条 / A few more (brought it into view). */
+export type FindOpenWhat = "how" | "more";
+
+/**
+ * D464: what became of a set of finds. Each find counts once per column, whatever happened after:
+ * one find can be opened, then taken up. taken: Go, 有用 or a reply (the aha); answered: any
+ * response at all (opened, taken up, held, 这类不用告诉我); faded: left alone until it faded or
+ * passed its date; waiting: still live, nothing yet.
+ */
+export interface OfferCounts {
+  shown: number;
+  opened: number;
+  go: number;
+  useful: number;
+  replied: number;
+  held: number;
+  muted: number;
+  faded: number;
+  waiting: number;
+  taken: number;
+  answered: number;
+}
+
+/** D464: one week (Monday to Sunday in the person's zone) of what Ducter offered and what came of it. */
+export interface WeekRow {
+  /** YYYY-MM-DD: the Monday, and the Sunday (or today, for the week in progress). */
+  from: string;
+  to: string;
+  current: boolean;
+  /** Offers: the morning note, fold-ins, the to-do picks, the first look. */
+  offers: OfferCounts;
+  byKind: Partial<Record<FindKind, OfferCounts>>;
+  bySource: Partial<Record<FindFrom, OfferCounts>>;
+  /** Interruptions ("now", 开会前: each one a time-sensitive notification), counted apart. */
+  interruptions: OfferCounts;
+  /** What the person took up, by its words (at most TAKEN_LIST, oldest first). */
+  takenUp: { kind: FindKind; text: string; by: "go" | "useful" | "replied"; at: string; offer: boolean }[];
+}
+
+/** D464: `ducter proactive week`: from the Log, per week; and the weights learned now (D453). */
+export interface WeekReport {
+  /** When it was counted (ISO), and the zone the weeks are cut in. */
+  at: string;
+  zone: string;
+  mode: ProactiveMode;
+  /** Oldest first. */
+  weeks: WeekRow[];
+  /** What ranks offers now: per kind and per sender, 1 = knows nothing (never gating). */
+  weights: { kind: Partial<Record<FindKind, number>>; senders: { sender: string; w: number }[] };
+}
+
 export interface ProactiveDay {
   /** The person's day, YYYY-MM-DD. */
   day: string;

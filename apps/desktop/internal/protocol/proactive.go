@@ -174,6 +174,15 @@ type FindReact struct {
 	Reaction string `json:"reaction"` // useful | mute
 }
 
+// FindOpen says the person opened 怎么知道的 under a find ("how"), or 还有几条
+// brought these finds into view ("more"): the home logs each once, for
+// ducter proactive week (D464). Never a learning signal.
+type FindOpen struct {
+	T       string   `json:"t"` // "find_open"
+	FindIDs []string `json:"findIds"`
+	What    string   `json:"what"` // how | more
+}
+
 // ProactiveAnswer answers a note's ask (first_look, keep_note, note_again).
 type ProactiveAnswer struct {
 	T      string `json:"t"` // "proactive_answer"

@@ -29,7 +29,7 @@
 import { createHash } from "node:crypto";
 import { chmodSync, existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { Bodies, FindKind, FindView, LogEvent, ProactiveDay, ProactiveMode, ProactiveYesNo, QuietReason, ReadLine, ReadProblem, RuleView, SourceLook } from "@ducter/protocol";
+import type { Bodies, FindKind, FindOpenWhat, FindView, LogEvent, ProactiveDay, ProactiveMode, ProactiveYesNo, QuietReason, ReadLine, ReadProblem, RuleView, SourceLook } from "@ducter/protocol";
 import { DAILY_CAP, OFFER_NOTE_MAX, OFFERS_A_DAY, OFFER_SHOWN, SEND_UNDO_MS, isFindKind, langName, normalizeTag, QUIET_REASONS, words, type LangTag } from "@ducter/protocol";
 import { talkLang } from "../lang.ts";
 import type { WebLookPort, WorkingMemoryPort } from "@ducter/protocol/src/internal.ts";
@@ -107,6 +107,8 @@ export const W_HOLD = 0.85;
 export const W_FADE = 0.95;
 export const W_MIN = 0.5;
 export const W_MAX = 3;
+/** D464: how many find_opened keys the state remembers (a find opened again is not logged twice). */
+export const OPENED_KEEP = 500;
 /** D453: one slot a morning goes to a kind not offered for this long (silence never ends a kind). */
 export const EXPLORE_DAYS = 3;
 /** D453: in the offers shown in full, at most this many of one kind (hel 11-18: five 在等你回 in one note). */
@@ -223,6 +225,8 @@ interface State {
   weights?: { kind: Partial<Record<FindKind, number>>; sender: Record<string, number> };
   /** D453: when each kind was last offered (for the exploration slot). */
   offeredKinds?: Partial<Record<FindKind, number>>;
+  /** D464: `${what}:${findId}` already logged as find_opened (the last OPENED_KEEP). */
+  opened?: string[];
   /** D458: the spotter's word on each lead it saw (offered or not), so a lead is asked about once; kept SPOT_KEEP_DAYS. */
   spots?: Record<string, { offer: boolean; at: number }>;
   ignored: { kind: FindKind; at: number }[];
@@ -435,6 +439,14 @@ export interface Proactive {
   reads(connectionId: string): ReadLine[];
   setApp(connectionId: string, service: string, account: string | undefined, patch: { watch?: boolean; excluded?: boolean }): boolean;
   react(findId: string, reaction: "useful" | "mute"): boolean;
+  /**
+   * D464: the person opened 怎么知道的 under a find, or 还有几条 brought these finds into view:
+   * logged once per find and what (find_opened), for `ducter proactive week`. Never a learning
+   * signal. Returns how many were logged (finds it never said are ignored).
+   */
+  opened(findIds: string[], what: FindOpenWhat): number;
+  /** D464: the weights learned now (D453), a copy. */
+  weights(): { kind: Partial<Record<FindKind, number>>; sender: Record<string, number> };
   answer(noteId: string, ask: ProactiveYesNo, yes: boolean): Promise<void>;
   /** A source was just added: the first-account moment (§11), once. */
   added(connectionId: string): void;
@@ -2047,6 +2059,32 @@ export function createProactive(o: ProactiveOptions): Proactive {
       save();
       return true;
     },
+    opened(findIds, what) {
+      if (what !== "how" && what !== "more") return 0;
+      const seen = new Set(st.opened ?? []);
+      let notes: FindView[] | undefined; // the finds it said lately (the to-do picks are not in st.finds)
+      const kindOf = (id: string): FindKind | undefined => {
+        if (st.finds[id]) return st.finds[id]!.kind;
+        notes ??= o.log.read({ stream: "channel", kinds: ["finds"], limit: 300 }).flatMap((e) => (e.body as Bodies["finds"]).finds ?? []);
+        return notes.find((f) => f.findId === id)?.kind;
+      };
+      let n = 0;
+      for (const findId of [...new Set(findIds)].slice(0, OFFER_NOTE_MAX * 2)) {
+        const key = `${what}:${findId}`;
+        if (typeof findId !== "string" || seen.has(key)) continue;
+        const kind = kindOf(findId);
+        if (!kind) continue;
+        seen.add(key);
+        o.log.append({ stream: "channel", origin: "user", kind: "find_opened", body: { findId, kind, what } });
+        n++;
+      }
+      if (n) {
+        st.opened = [...seen].slice(-OPENED_KEEP);
+        save();
+      }
+      return n;
+    },
+    weights: () => structuredClone(weights()),
     async answer(noteId, ask, yes) {
       const prev = o.log.read({ stream: "channel", kinds: ["finds"], limit: 300 }).reverse().find((e) => (e.body as Bodies["finds"]).noteId === noteId);
       const b = prev?.body as Bodies["finds"] | undefined;

@@ -501,6 +501,40 @@ Asks raised by background work **expire into Passed** with the find's date (the 
 - People: who the person answers fast, who reviews whose PRs, what money they watch, goes to Mem
   as distilled facts only when the partner is sure (§9).
 
+### 8.1 Counting the aha (D464, research/201 ★4)
+
+D453's bar is "one offer in twenty taken up is the aha". Ducter counts it itself, from the Log,
+read-only: **`ducter proactive week [--weeks N] [--json]`** (N 1–12, default 2) on the home the
+CLI follows. Per week (Monday to Sunday in the person's zone; the current one to today), a find
+counted once, in the week it was first said, with everything that came of it later:
+
+| Column (zh / en) | From the Log |
+|---|---|
+| 提了 / offered | the first `finds` note that held it (a fold-in's repeat is not a second) |
+| 打开 / opened | `find_opened`: 怎么知道的 opened, or 还有几条 brought it into view |
+| 好 / Go | `decision_resolved` go by the person, or `find_state` go / sending / sent |
+| 有用 / useful | `find_state` useful |
+| 回了 / replied | a `user_msg` replying to that find (D236), or its card answered by a message |
+| 先等等 / hold | Hold (a chat app, an old client) |
+| 不用说 / muted | 这类不用告诉我 |
+| 淡了 / faded | passed or faded (`find_state` passed, a default Hold) with none of the above |
+| 还在 / live | none of the above yet |
+
+**Taken up** = Go, 有用 or a reply; the line compares taken up ÷ offered with 1/20. **Any
+response** (opened, taken up, held, muted) is shown under it, never against the line: opening is
+curiosity or doubt, not an aha. Offers are cut by where they came from (**账号 / Accounts** for
+the D165 kinds, **任务 / Tasks** next_step, **记忆 / Memory** remembered, **对话 / Conversation**
+said and loose_end, **待办 / To-dos** todos) and by kind; **interruptions** ("now", 开会前: each a
+time-sensitive notification) are counted apart; the finds taken up are quoted by their words; the
+weights now (§8) close it. `find_opened` is logged by core once per find and what, only for a find
+it said, from the web and Mac clients' `find_open` frame; it never moves a weight and never wakes
+the partner. A reply typed without 回复 on the find is not counted (an undercount, said so).
+
+It stays the author's instrument: no line in Settings, no partner answer yet. A count of what the
+person answered, shown to the person, reads as a scorecard of them, and D453 promised Ducter never
+minds being left alone (放心). The partner answering "你这周提醒得怎么样" from the same report is in
+`todo.md`.
+
 ## 9. Privacy
 
 - **Mail itself is never kept.** The broker logs action, read/write and a ≤ 200-character

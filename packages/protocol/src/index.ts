@@ -785,6 +785,10 @@ export interface Bodies {
   // (有用; 这类不用告诉我 adds a Rule, ruleId). taskId: the task Go opened.
   // D403: until (sending): when the reply goes; decisionId (unsent, send_failed): the find's Go asked again; error (send_failed): why, in a few words.
   find_state: { findId: string; kind: FindKind; state: FindState; taskId?: string; ruleId?: string; until?: string; decisionId?: string; error?: string };
+  // D464: the person opened something under a find: 怎么知道的 / How I know ("how"), or 还有几条 /
+  // A few more brought it into view ("more"). Once per find and what; read only by `ducter
+  // proactive week` (never a learning signal, never wakes the partner).
+  find_opened: { findId: string; kind: FindKind; what: import("./proactive.ts").FindOpenWhat };
   connection_call: {
     callId: string;
     connectionId: string;
@@ -1460,6 +1464,8 @@ export type ClientFrame =
   // engine on the home (no sends, no tasks, nothing in the conversation); web: allow a web look for
   // an open question. Answered with proactive_replay_result, minutes later.
   | { t: "proactive_replay"; days?: number; web?: boolean }
+  // D464: `ducter proactive week`: the last `weeks` (1–12) of offers counted from the Log; answered with proactive_week_result.
+  | { t: "proactive_week"; weeks?: number }
   // D242: fresh keys for media this client holds refs to (its keys ran out); answered with media_keys.
   | { t: "media_keys"; ids: string[] }
   // D193: the device sign-in (RFC 8628) a connection_add started: stop waiting for it; or sign in
@@ -1482,6 +1488,8 @@ export type ClientFrame =
   | { t: "find_react"; findId: string; reaction: "useful" | "mute" }
   // D403: 撤回 / Undo on a drafted reply inside its window: nothing is sent, the card asks again.
   | { t: "find_undo"; findId: string }
+  // D464: the person opened 怎么知道的 under a find, or 还有几条 (the finds it brought into view).
+  | { t: "find_open"; findIds: string[]; what: import("./proactive.ts").FindOpenWhat }
   | { t: "proactive_answer"; noteId: string; ask: ProactiveYesNo; yes: boolean }
   // Work over time (D112-D114), each answered with action_result (taskId = the waiter or routine
   // id). waiter_action look: look now; cancel: 不等了 / Stop waiting. routine_action pause, resume
@@ -1799,6 +1807,7 @@ export type ServerFrame =
   | { t: "connection_reads"; id: string; reads: ReadLine[] }
   | { t: "proactive_day"; day: ProactiveDay }
   | { t: "proactive_replay_result"; report?: import("./proactive.ts").ReplayReport; error?: string }
+  | { t: "proactive_week_result"; report?: import("./proactive.ts").WeekReport; error?: string }
   // D242: a fresh key per id the home holds (ids it doesn't hold are left out). Not "keys": the saved frame's.
   | { t: "media_keys"; mediaKeys: Record<string, string> }
   // readable (D158): what the added connection can read now; [] = connected, but no account there yet.

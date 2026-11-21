@@ -4,6 +4,7 @@ import (
 	"image/png"
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 	"time"
 
@@ -65,12 +66,25 @@ func TestOffersInTheNote(t *testing.T) {
 	if len(app.partnerDecisions()) != 0 || len(app.S.OpenDecisions()) != 0 {
 		t.Errorf("offers counted as needs-you: %d", len(app.S.OpenDecisions()))
 	}
+	*sent = nil
 	if err := tt.Click("还有几条"); err != nil {
 		t.Fatal(err)
 	}
 	tt.Frame()
 	if !tt.HasText(offerRows[4].zh) || !tt.HasText("收起") {
 		t.Errorf("the fold didn't open: %q", tt.Texts())
+	}
+	// D464: the offers it brought into view are counted as opened (the home logs each once).
+	if want := (protocol.FindOpen{T: "find_open", FindIDs: []string{"fo3", "fo4"}, What: "more"}); len(*sent) != 1 || !reflect.DeepEqual((*sent)[0], want) {
+		t.Errorf("还有几条 sent %#v", *sent)
+	}
+	*sent = nil
+	if err := tt.Click("怎么知道的"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if want := (protocol.FindOpen{T: "find_open", FindIDs: []string{"fo0"}, What: "how"}); len(*sent) != 1 || !reflect.DeepEqual((*sent)[0], want) {
+		t.Errorf("怎么知道的 sent %#v", *sent)
 	}
 	// Go acts at once.
 	*sent = nil

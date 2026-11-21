@@ -2349,6 +2349,10 @@ class AppState {
     this.send({ t: "find_react", findId, reaction });
     this.changed();
   }
+  /** D464: 怎么知道的 opened under a find, or 还有几条 brought these into view (the home logs each once). */
+  openFinds(findIds: string[], what: import("@ducter/protocol").FindOpenWhat) {
+    if (findIds.length) this.send({ t: "find_open", findIds, what });
+  }
   /** D403: 撤回 / Undo on a drafted reply inside its window. */
   undoFind(findId: string) {
     haptic("light");

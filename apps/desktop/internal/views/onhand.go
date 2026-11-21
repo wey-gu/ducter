@@ -62,7 +62,15 @@ func (a *App) onHand(c *ui.Context) {
 				if column {
 					avail -= lensColW
 				}
+				// D467: from peekFrom the peek sits in on the focused task.
+				peekOn := w >= peekFrom
+				if peekOn {
+					avail -= peekW + t.S6
+				}
 				a.oh.listW = min(float32(onHandMeasure), avail)
+				if peekOn {
+					a.oh.listW = max(min(float32(onHandMeasure+80), avail), 420)
+				}
 				ui.Row(c.Key("board-row")).Gap(t.S6).Justify(ui.Center).AlignItems(ui.Start).Children(func() {
 					ui.Column(c.Key("list")).Gap(t.S5).Width(a.oh.listW).Shrink(1).MinWidth(0).Children(func() {
 						if !column && lensOn(groups) {
@@ -96,6 +104,9 @@ func (a *App) onHand(c *ui.Context) {
 						// day and ran out of the window on a 1280 Mac.
 						a.pastEndLine(c)
 					})
+					if peekOn {
+						a.peek(c)
+					}
 				})
 			})
 		})

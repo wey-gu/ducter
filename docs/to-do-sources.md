@@ -63,9 +63,8 @@ Once a source is added, **On hand** (**手头的事**) shows your to-dos after *
 with how many are open.
 
 Once your partner has gone through the pile (below), one card stands there, so the list never takes
-over: how many it could take on, then how many need your call, could be closed, can wait, it hasn't
-looked at closely yet, and are already under way (together, they add up to the count), how many pull
-requests wait for your review, and one button, **Hand to** your partner. **See all {n}** under it
+over: one offer in its words ("236 of them I can take on now; hand them over and I'll start."), how
+many pull requests wait for your review, and one button, **Hand to** your partner. **See all {n}** under it
 opens everything else in place: the stack, a row for each group, a few to-dos and the rest.
 
 Before a sort, and behind **See all** after one, a few to-dos stand first: a pull request waiting for your review, an

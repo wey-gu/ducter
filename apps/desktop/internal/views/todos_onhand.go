@@ -257,12 +257,8 @@ func (a *App) todoGroup(c *ui.Context, lens string) {
 	name := a.todoGroupName(sources)
 	n := ""
 	switch {
-	case pile != nil && pile.Open > 0:
-		// D467: the heading counts what is open; the summary's facts add up to it.
-		n = fmt.Sprint(pile.Open)
-		if pile.AtLeast {
-			n += "+"
-		}
+	case pile != nil:
+		// D467: with a pile the count is said once, in 看看全部 n 个.
 	case open > 0:
 		n = fmt.Sprint(open)
 		if atLeast {
@@ -290,9 +286,10 @@ func (a *App) todoGroup(c *ui.Context, lens string) {
 					}
 				}
 			}
-			uiText(c, name).Font(t.Display).FontSize(t.LG).FontWeight(700).TextColor(t.Ink)
+			// D467: a quiet label like the board's sections.
+			uiText(c, name).FontSize(t.SM).FontWeight(700).TextColor(t.InkMuted).LetterSpacing(0.5).Role(ui.RoleHeading)
 			if n != "" {
-				uiText(c, n).Font(t.Display).FontSize(t.LG).FontWeight(600).TextColor(t.InkMuted).FontFeatures("tnum")
+				uiText(c, n).FontSize(t.SM).FontWeight(600).TextColor(t.Faint).FontFeatures("tnum")
 			}
 		})
 		// D467: with a pile, one calm summary card and its one action; the
@@ -701,13 +698,14 @@ func (a *App) srcSummary(c *ui.Context, pv *protocol.PileView, review int) {
 					uiText(c.Key("o"), a.L.T("pile.sorting.of", pv.Sorting.Of)).FontSize(t.SM).TextColor(t.InkMuted).FontFeatures("tnum")
 				})
 			case sorted:
+				// D467: one offer in the partner's voice; the breakdown is behind 看看全部.
 				lead := ""
 				if g["do"] > 0 {
-					lead = autospace(a.L.T("onhand.src.do", g["do"], name))
+					lead = a.L.T("onhand.src.offer", g["do"])
 				} else {
-					for i, f := range facts {
+					for _, f := range facts {
 						if f.n > 0 {
-							lead, facts[i].n = a.L.T(f.key, f.n), 0
+							lead = a.L.T(f.key, f.n)
 							break
 						}
 					}
@@ -715,18 +713,10 @@ func (a *App) srcSummary(c *ui.Context, pv *protocol.PileView, review int) {
 				if lead == "" {
 					lead = a.L.T("pile.clear")
 				}
-				uiText(c.Key("lead"), lead).FontSize(t.MD).FontWeight(600).TextColor(t.Ink).SingleLine().Shrink(1).MinWidth(0)
-				// Each fact its own element (D291); the review requests apart.
-				ui.Row(c.Key("facts")).Gap(t.S3).Wrap().MinWidth(0).Children(func() {
-					if review > 0 {
-						uiText(c.Key("review"), a.L.T("onhand.src.review", review)).FontSize(t.SM).FontWeight(600).TextColor(t.NeedsYou.Ink).SingleLine()
-					}
-					for _, f := range facts {
-						if f.n > 0 {
-							uiText(c.Key(f.key), a.L.T(f.key, f.n)).FontSize(t.SM).TextColor(t.InkSoft).FontFeatures("tnum").SingleLine()
-						}
-					}
-				})
+				uiText(c.Key("lead"), autospace(lead)).FontSize(t.MD).LineHeight(1.45).TextColor(t.Ink).MaxLines(2).Shrink(1).MinWidth(0)
+				if review > 0 {
+					uiText(c.Key("review"), a.L.T("onhand.src.review", review)).FontSize(t.SM).FontWeight(600).TextColor(t.NeedsYou.Ink).SingleLine()
+				}
 			default:
 				uiText(c.Key("lead"), a.L.T("pile.first.lede", name)).FontSize(t.SM).LineHeight(1.45).TextColor(t.InkSoft).MaxLines(2)
 			}

@@ -33,7 +33,11 @@ func TestOnHandShots(t *testing.T) {
 	}
 	name := os.Getenv("DUCTER_ONHAND_NAME")
 	dir := shotsDir(t)
-	h := newLive(t, url, lang)
+	h := dial(t, url, lang)
+	if os.Getenv("DUCTER_ONHAND_SEEN") != "" {
+		h.app.Local.SeenSince(time.Now().Add(-3 * time.Hour)) // D467: this Mac has kept track for a while
+	}
+	h.until("welcome", func() bool { return h.app.S.Welcomed && h.app.S.OnHand != nil })
 	h.app.LocaleFixed = true
 	h.tt.SetTitleBar(ui.TitleBar{Height: ChromeH, Left: 78})
 	h.until("the board", func() bool { return len(h.app.S.Tasks) > 0 })
@@ -68,6 +72,25 @@ func TestOnHandShots(t *testing.T) {
 	height := 1100
 	if hs := os.Getenv("DUCTER_ONHAND_HEIGHT"); hs != "" {
 		height, _ = strconv.Atoi(hs)
+	}
+	// D467: DUCTER_ONHAND_MOTION=n pictures n frames 1.2 s apart at the first width (the trail, the peek).
+	if m, _ := strconv.Atoi(os.Getenv("DUCTER_ONHAND_MOTION")); m > 0 {
+		h.tt.SetSize(widths[0], height)
+		for i := 1; i <= m; i++ {
+			time.Sleep(1200 * time.Millisecond)
+			h.until("frames", func() bool { return true })
+			h.tt.Advance(1200 * time.Millisecond)
+			h.until("frames", func() bool { return true })
+			f, err := os.Create(filepath.Join(dir, fmt.Sprintf("mac-%s-motion-%02d%s.png", name, i, paper)))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := png.Encode(f, h.tt.Image()); err != nil {
+				t.Fatal(err)
+			}
+			f.Close()
+		}
+		return
 	}
 	for _, w := range widths {
 		h.tt.SetSize(w, height)

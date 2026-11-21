@@ -56,6 +56,8 @@ type onHandState struct {
 	// D467: whether yesterday's results are unfolded (this session), and
 	// whether a to-do source's whole sort is open behind its summary.
 	earlierOn, srcAll bool
+	// D467 round 2: what stands in the brief with its fix (never also a card).
+	briefed map[string]bool
 	// D287: the list's width this frame (the cards' room), and the new
 	// results whose card has had its little moment.
 	listW   float32
@@ -105,6 +107,12 @@ func (a *App) nowLine(task *store.Task) (rowStory, bool) {
 	if ev == nil {
 		return rowStory{}, false
 	}
+	return a.eventStory(task, ev)
+}
+
+// eventStory is one step or one thing said, in the row's words (D467: the
+// peek's latest steps read the same way).
+func (a *App) eventStory(task *store.Task, ev *protocol.LogEvent) (rowStory, bool) {
 	if a.oh.steps == nil || len(a.oh.steps) > 2000 {
 		a.oh.steps = map[int64][]Block{}
 	}
@@ -338,6 +346,9 @@ func (a *App) onHandList(c *ui.Context, b store.Board) {
 	needs := withoutGroups(keep(sp.needs), inGroup)
 	stopped := withoutGroups(keep(sp.stopped), inGroup)
 	failed := withoutGroups(keep(sp.failed), inGroup)
+	if !rail && q == "" {
+		stopped, failed = notBriefed(stopped, a.oh.briefed), notBriefed(failed, a.oh.briefed)
+	}
 	working := withoutGroups(keep(sp.working), inGroup)
 	waiting := withoutGroups(keep(sp.waiting), inGroup)
 	today := withoutGroups(keep(sp.today), inGroup)
@@ -475,6 +486,9 @@ func (a *App) onHandList(c *ui.Context, b store.Board) {
 	}
 	if len(waiting)+len(loose)+nGroups(2) > 0 && show(3) {
 		a.listSection(c, "waiting", a.L.T("lane.waiting"), count(sp.waiting, waiting)+len(loose), func() {
+			if f == 0 {
+				a.waitAxis(c, b, a.oh.lens) // D467: the waits placed in time
+			}
 			groupsIn(2)
 			a.taskCards(c.Key("fresh"), fresh)
 			for _, g := range groups {
@@ -535,6 +549,20 @@ func (a *App) onHandList(c *ui.Context, b store.Board) {
 	}
 }
 
+// notBriefed leaves out what the brief already carries.
+func notBriefed(ts []*store.Task, in map[string]bool) []*store.Task {
+	if len(in) == 0 {
+		return ts
+	}
+	var out []*store.Task
+	for _, x := range ts {
+		if !in[x.ID] {
+			out = append(out, x)
+		}
+	}
+	return out
+}
+
 // concat joins runs of tasks in order.
 func concat(runs ...[]*store.Task) []*store.Task {
 	var out []*store.Task
@@ -579,13 +607,9 @@ func (a *App) listSection(c *ui.Context, key, name string, n int, body func()) {
 					uiText(c, fmt.Sprint(n)).FontSize(t.XS).FontWeight(500).TextColor(t.Faint).FontFeatures("tnum")
 				}
 			} else {
-				// D315: on the board a section's name is a heading in the
-				// display face, its count beside it in muted figures, as
-				// the board's first drawings had it.
-				uiText(c, name).Font(t.Display).FontSize(t.LG).FontWeight(700).TextColor(t.Ink)
-				if n > 0 {
-					uiText(c, fmt.Sprint(n)).Font(t.Display).FontSize(t.LG).FontWeight(600).TextColor(t.InkMuted).FontFeatures("tnum")
-				}
+				// D467: on the board a section's name is a quiet label under
+				// the brief, never a count (the brief and the cards say it).
+				uiText(c, name).FontSize(t.SM).FontWeight(700).TextColor(t.InkMuted).LetterSpacing(0.5).Role(ui.RoleHeading)
 			}
 			if key == "needs" && a.oh.room != "rail" {
 				ui.Spacer(c)

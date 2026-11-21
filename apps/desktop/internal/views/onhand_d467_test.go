@@ -66,18 +66,22 @@ func TestOnHandByAttention(t *testing.T) {
 	tt.Frame()
 	tt.Frame()
 	all := strings.Join(tt.Texts(), " | ")
-	for _, want := range []string{"有 2 个停下了，要你看一眼。", "接着做", "放下", "再试一次", "还有 1 个是昨天做完的", "回来"} {
+	for _, want := range []string{"有 2 个停下了，要你看一眼。", "「用手机把 Ducter 官网录一段屏发到 X」停下了", "「Android 构建在 CI 上挂了」没做成", "接着做", "放下", "再试一次", "还有 1 个是昨天做完的", "「等 acme-web 的发布流水线跑完再合并」 15:37 回来。"} {
 		if !strings.Contains(all, want) {
 			t.Fatalf("missing %q in %s", want, all)
 		}
 	}
-	for _, not := range []string{"没有要你定的", "一天多没有动静", "今天回来的", " · "} {
+	for _, not := range []string{"没有要你定的", "一天多没有动静", "今天回来的", " · ", "一览"} {
 		if strings.Contains(all, not) {
 			t.Fatalf("%q on the board: %s", not, all)
 		}
 	}
-	// Keys walk the drawn order: 等你 first, yesterday's folded away.
-	if len(app.oh.order) < 2 || app.oh.order[0] != "t_phone" || app.oh.order[1] != "t_android" {
+	// D467 round 2: what stopped and what didn't work out stand in the brief
+	// with their fix, never also as cards; the walk is the cards.
+	if !app.oh.briefed["t_phone"] || !app.oh.briefed["t_android"] {
+		t.Fatalf("the brief carries %v", app.oh.briefed)
+	}
+	if len(app.oh.order) < 1 || app.oh.order[0] != "t_ci" {
 		t.Fatalf("walk: %v", app.oh.order)
 	}
 	for _, id := range app.oh.order {
@@ -107,7 +111,7 @@ func TestTodoSummaryAddsUp(t *testing.T) {
 		t.Fatalf("taken %d", n)
 	}
 	all := strings.Join(tt.Texts(), " | ")
-	for _, want := range []string{"559", "51 个可以交给小鸭做", "25 个要你拿主意", "28 个也许可以关掉", "454 个可以先放着", "1 个已经在做", "看看全部 559 个"} {
+	for _, want := range []string{"里面有 51 个我现在就能做，交给我就开始。", "看看全部 559 个"} {
 		if !strings.Contains(all, want) {
 			t.Fatalf("missing %q in %s", want, all)
 		}
@@ -118,7 +122,35 @@ func TestTodoSummaryAddsUp(t *testing.T) {
 	app.oh.srcAll = true
 	todoFrames(tt, 2)
 	all = strings.Join(tt.Texts(), " | ")
-	if !strings.Contains(all, "已经在做的") || !strings.Contains(all, "收起") {
+	if !strings.Contains(all, "已经在做的") || !strings.Contains(all, "收起") || !strings.Contains(all, "454") {
 		t.Fatalf("behind 看看全部: %s", all)
+	}
+}
+
+// D467 round 2: a result carries its PR; a wait doesn't say its title
+// again; a working task's trail is the steps it took.
+func TestOnHandOutcomesAndTrail(t *testing.T) {
+	app, now := d467Board(t, i18n.ZH)
+	iso := func(d time.Duration) string { return now.Add(d).UTC().Format(time.RFC3339) }
+	ok := true
+	app.Receive(protocol.ServerFrame{T: "events", Events: []protocol.LogEvent{
+		protocol.NewEvent(50, iso(-80*time.Minute), "default", protocol.TaskStream("t_typo"), protocol.OriginTask, protocol.KindReport,
+			protocol.Report{TaskID: "t_typo", State: "done", Summary: "改好了；草稿 PR #1190。", Evidence: []protocol.EvidenceRef{{Kind: "url", Ref: "https://github.com/acme/web/pull/1190"}}}),
+	}})
+	if l, u := outcomeOf(app.S.Task("t_typo")); l != "#1190" || u != "https://github.com/acme/web/pull/1190" {
+		t.Fatalf("outcome %q %q", l, u)
+	}
+	ci := app.S.Task("t_ci")
+	if got := app.waitCardWords(ci, "等 acme-web 的发布流水线跑完"); got != "" && strings.Contains(ci.Title(), got) {
+		t.Fatalf("the wait says its title again: %q", got)
+	}
+	var evs []protocol.LogEvent
+	for i, m := range []time.Duration{-15, -9, -2} {
+		evs = append(evs, protocol.NewEvent(int64(100+i), iso(m*time.Minute), "default", protocol.TaskStream("t_ci"), protocol.OriginTask, protocol.KindTaskEvent,
+			protocol.TaskEvent{TaskID: "t_ci", Role: "tool", Tool: &protocol.ToolCall{Name: "Bash", OK: &ok}}))
+	}
+	app.Receive(protocol.ServerFrame{T: "events", Events: evs})
+	if n := len(trailOf(app.S.Task("t_ci"))); n != 3 {
+		t.Fatalf("trail %d steps", n)
 	}
 }

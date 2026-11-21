@@ -195,8 +195,9 @@ func TestOnHandLensAndStrip(t *testing.T) {
 			t.Errorf("%s is folded but walked", id)
 		}
 	}
-	if !walked["t_rec"] || !walked["t_fold2"] {
-		t.Errorf("the stopped waits are not in the walk: %v", app.oh.order)
+	// D467 round 2: the first two stand in the partner's brief with their fix, not as cards.
+	if !app.oh.briefed["t_rec"] || !app.oh.briefed["t_fold2"] || walked["t_rec"] {
+		t.Errorf("the stopped waits are not in the brief: %v, walk %v", app.oh.briefed, app.oh.order)
 	}
 	if n := app.stateCounts(app.S.Board(), ""); n[0] < 4 {
 		t.Errorf("the stopped waits don't count as needing you: %v", n)
@@ -222,20 +223,9 @@ func TestOnHandLensAndStrip(t *testing.T) {
 			t.Errorf("%s shows under hawdb", id)
 		}
 	}
-	// The strip filters, and pressing it again lets go.
-	if err := tt.Click(app.L.T("lane.working") + " 2"); err != nil {
-		t.Fatal(err)
-	}
-	tt.Frame()
-	if app.oh.filter != 2 || len(app.oh.order) != 2 {
-		t.Fatalf("filter %d, rows %v", app.oh.filter, app.oh.order)
-	}
-	if err := tt.Click(app.L.T("lane.working") + " 2"); err != nil {
-		t.Fatal(err)
-	}
-	tt.Frame()
-	if app.oh.filter != 0 {
-		t.Fatalf("pressed again, the filter stays %d", app.oh.filter)
+	// D467 round 2: no count strip (the brief and the cards say it).
+	if strings.Contains(strings.Join(tt.Texts(), " "), app.L.T("onhand.strip")) {
+		t.Fatal("the count strip is back")
 	}
 	// Opening a task: the rail follows the lens.
 	app.OpenTask("t_compact")

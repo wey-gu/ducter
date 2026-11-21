@@ -14,13 +14,14 @@ in the conversation's header, or press ⌘2.
 At the top is your partner, with one short line: whether anything needs you, and if not, what
 comes next: "Nothing needs you. I'm on it." while work is under way, or "Nothing needs you. The
 first is back at 22:40." when everything waits. If a task has stopped and nothing will start it
-again on its own, the line says so: "One has stopped and needs a look." Its pose tells you the same at a glance: a little
+again on its own, the line says so: "One has stopped and needs a look."
+
+Under that line your partner tells you, in a few short lines, what came back since you last
+looked (with the pull request it opened, one tap away), what it needs from you with the way to fix
+it right there (for a task that stopped at a phone: allow access on that phone again, then tap
+**Allowed, carry on**), and what comes back next and when. Its pose tells you the same at a glance: a little
 flag when something needs you, reading while work is under way, resting on its bench while
 everything waits, smiling when the day's work came back done.
-
-Under the line are the numbers of what's there, such as **4 Waiting** and **1 Done today** (a
-state with nothing in it isn't shown, and with only one kind there the section says it). Tap one to see only those tasks; tap it again (or press
-**Esc**) to see everything.
 
 What needs you comes first. A question is answered right there. A task that has stopped (it
 waits, but nothing will bring it back by itself) shows why, how long ago it last changed, and
@@ -40,7 +41,9 @@ comes back, a tick when it's done, a cross when it didn't work out. Then the tit
 and under them, in words, what it is doing right now ("Running the tests", "Opened booking.com in
 Chrome"), what it waits for, or what came of it. On the right:
 
-- working: how long it has been at it;
+- working: how long it has been at it. Under its words, a thin line shows its steps as they
+  happened since it started, with a softly breathing dot at now, how many steps, and when the last
+  one was. A group of tasks shows its parts as one track: done, at work, waiting their turn;
 - waiting: when it comes back ("back at 11:39"); there's nothing for you to do until then;
 - done: when it finished.
 
@@ -50,6 +53,13 @@ A wait that still checks by itself but hasn't changed for over a day says when i
 offers **Check now** (it looks again now).
 
 A card says which computer it runs on only when that isn't the one most of your tasks use.
+
+Waiting tasks sit on a line of time from now to when each comes back. A finished task shows what it
+made, such as its pull request (**#1190**), which you can open.
+
+On a wide window, the task you've selected shows on the right as it works: what it's doing now,
+its last few steps in its own words, and **Open the task**. Move with the arrow keys and watch it
+follow; press Enter to go in.
 
 A task in a code folder also shows the lines it added and removed (**+42 −7**), and **Draft PR**
 or **Merged** once you've done either from Ducter.

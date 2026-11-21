@@ -41,7 +41,7 @@ const at = async (ms: number) => {
   shift = ms;
 };
 const ev = (id: string, b: Omit<Bodies["task_event"], "taskId">) => log.append({ stream: `task:${id}`, origin: "task", kind: "task_event", body: { taskId: id, ...b } });
-const tool = (id: string, name: string, input: unknown, output = "ok") => ev(id, { role: "tool", tool: { name, input, output, ok: true } });
+const tool = (id: string, name: string, input: unknown, output = "ok", ok = true) => ev(id, { role: "tool", tool: { name, input, output, ok } });
 const say = (id: string, text: string) => ev(id, { role: "assistant", text });
 const report = (id: string, r: Omit<Bodies["report"], "taskId" | "questions"> & { questions?: Bodies["report"]["questions"] }) =>
   log.append({ stream: `task:${id}`, origin: "task", kind: "report", body: { taskId: id, questions: [], ...r } });
@@ -63,13 +63,14 @@ const items = (await ts.items()).items;
 await at(-(18 * HOUR + 7 * MIN));
 await open("t_flaky", w("修 session 过期差一秒的偶发测试", "Fix the flaky session-expiry test"), "acme-api", repo("acme-api", "session-flaky"), "deepseek-harness", "deepseek-v4");
 tool("t_flaky", "Bash", { command: "bun test test/session.test.ts --rerun-each 200" }, "200 pass\n0 fail");
-report("t_flaky", { state: "done", summary: w("过期时间改成按服务器时钟比，跑 200 遍都过了；草稿 PR #1184。", "Expiry now compares on the server clock; 200 runs pass. Draft PR #1184."), evidence: [] });
+report("t_flaky", { state: "done", summary: w("过期时间改成按服务器时钟比，跑 200 遍都过了；草稿 PR #1184。", "Expiry now compares on the server clock; 200 runs pass. Draft PR #1184."), evidence: [{ kind: "url", ref: "https://github.com/acme/api/pull/1184" }] });
 seed.tasks.setState("t_flaky", "done", "parked");
 
 // ---- the phone task, stopped 8 days ago with nothing to bring it back ----
 await at(-8 * DAY - 3 * HOUR);
 await open("t_phone", w("用手机把 Ducter 官网录一段屏发到 X", "Record the Ducter site on the phone and post it to X"), "", { kind: "none" }, "deepseek-harness", "deepseek-v4");
 say("t_phone", w("手机已经借到了，开始录屏。", "Got the phone; starting the recording."));
+tool("t_phone", "phone_record_start", { app: "Chrome", url: "https://ducter.ai" }, "phone access for this task was stopped", false);
 await at(-8 * DAY - 2 * HOUR);
 report("t_phone", { state: "blocked", summary: w("手机工具仍提示本任务的手机访问已被停止，无法恢复操作。", "The phone tool still says this task's access to the phone was stopped, so it can't carry on."), evidence: [] });
 seed.tasks.setState("t_phone", "blocked", "parked");
@@ -79,7 +80,7 @@ await at(-(1 * HOUR + 52 * MIN));
 await open("t_typo", w("改掉定价页上的拼写错误", "Fix the typo on the pricing page"), "acme-web", repo("acme-web", "pricing-typo"), "codex", "gpt-6-luna");
 tool("t_typo", "commandExecution", "/bin/zsh -lc 'rg -n recieve src'", "src/pricing.tsx:88");
 await at(-(1 * HOUR + 31 * MIN));
-report("t_typo", { state: "done", summary: w("「recieve」改成了「receive」，顺手查了全站没有别处；草稿 PR #1190。", "\"recieve\" is now \"receive\"; nowhere else on the site. Draft PR #1190."), evidence: [] });
+report("t_typo", { state: "done", summary: w("「recieve」改成了「receive」，顺手查了全站没有别处；草稿 PR #1190。", "\"recieve\" is now \"receive\"; nowhere else on the site. Draft PR #1190."), evidence: [{ kind: "url", ref: "https://github.com/acme/web/pull/1190" }] });
 seed.tasks.setState("t_typo", "done", "parked");
 
 // ---- a wait on Codex that comes back in 37 minutes ----
@@ -94,6 +95,11 @@ seed.tasks.setState("t_ci", "blocked", "parked");
 await at(-(23 * MIN));
 await open("t_prefs", w("把 Macbook Pro M3 的通用设置导出来", "Export the general settings from the Macbook Pro M3"), "dotfiles", repo("dotfiles", "general-settings"), "codex", "gpt-6-luna");
 tool("t_prefs", "commandExecution", "/bin/zsh -lc 'defaults read -g > general.plist'", "");
+// Its steps so far, spread over its 23 minutes (the trail on its card).
+for (const [m, cmd] of [[-20, "defaults read com.apple.finder"], [-17, "defaults read com.apple.menuextra.clock"], [-14, "defaults read com.apple.screencapture"], [-11, "defaults read -g AppleKeyboardUIMode"], [-8, "defaults read -g KeyRepeat"], [-6, "defaults read -g InitialKeyRepeat"], [-4, "defaults read com.apple.AppleMultitouchTrackpad Clicking"]] as const) {
+  await at(m * MIN);
+  tool("t_prefs", "commandExecution", `/bin/zsh -lc '${cmd}'`, "");
+}
 await at(-(2 * MIN));
 say("t_prefs", w("读完了 41 项全局设置，在挑出键盘和触控板的那几项写进 defaults.sh。", "Read 41 global settings; picking out the keyboard and trackpad ones for defaults.sh."));
 await at(0);
@@ -114,6 +120,27 @@ await seed.stop();
 const core = startCore({ dataDir, persona, push: false, ooSource: noOo, hostname: process.env.DUCTER_HOST || "127.0.0.1", taskSources });
 core.setRunner(stubRunner(core));
 core.setPartner({ onTrigger() {} });
+// D467 round 2: the part at work keeps working: a step every 4 s (DEMO_TICK_MS), so the trail and the peek move.
+const script: [string, unknown, string][] = [
+  ["commandExecution", "/bin/zsh -lc 'defaults read com.apple.AppleMultitouchTrackpad'", ""],
+  ["fileChange", { changes: [{ path: "/Users/weyl/dev/dotfiles/defaults.sh", kind: "update", diff: "+defaults write -g KeyRepeat -int 2" }] }, ""],
+  ["commandExecution", "/bin/zsh -lc 'defaults read com.apple.dock'", ""],
+  ["fileChange", { changes: [{ path: "/Users/weyl/dev/dotfiles/defaults.sh", kind: "update", diff: "+defaults write com.apple.dock autohide -bool true" }] }, ""],
+];
+const sayings = [
+  w("触控板的轻点和三指拖移读出来了，写进 defaults.sh。", "Read tap-to-click and three-finger drag; writing them into defaults.sh."),
+  w("在挑程序坞的设置：自动隐藏、大小、放大。", "Picking the Dock settings: autohide, size, magnification."),
+];
+let k = 0;
+const tickMs = Number(process.env.DEMO_TICK_MS ?? 4000);
+if (tickMs > 0)
+  setInterval(() => {
+    if (k >= 60) return; // about four minutes of work after it starts serving
+    const [name, input, output] = script[k % script.length]!;
+    core.log.append({ stream: "task:t_prefs", origin: "task", kind: "task_event", body: { taskId: "t_prefs", role: "tool", tool: { name, input, output, ok: true } } });
+    if (k % 2 === 1) core.log.append({ stream: "task:t_prefs", origin: "task", kind: "task_event", body: { taskId: "t_prefs", role: "assistant", text: sayings[(k >> 1) % sayings.length]! } });
+    k++;
+  }, tickMs);
 console.log(`[demo] D467 On hand (${zh ? "zh" : "en"}) at http://127.0.0.1:${core.port}/app (data: ${dataDir})`);
 process.on("SIGINT", async () => {
   await core.stop();

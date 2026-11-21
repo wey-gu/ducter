@@ -369,6 +369,7 @@ func (a *App) groupCard(c *ui.Context, bg boardGroup) {
 				held = append(held, r)
 			}
 		}
+		a.groupTrack(c, bg) // D467: the parts as one track
 		if g.Hand != nil {
 			a.handGroupFacts(c, &g, len(held)) // D385: where it stands, the plan, review together
 		}
@@ -426,9 +427,13 @@ func (a *App) groupCard(c *ui.Context, bg boardGroup) {
 				if task := a.S.Task(r.taskID); k == "working" && task != nil {
 					s := a.storyOf(task)
 					words := keepWords(autospace(s.words))
+					if s.code != "" {
+						words += "  " + s.code
+					}
 					held, op := a.aliveHeld(c, "part:"+key, words)
 					uiText(c.Key("now:"+held), held).FontSize(t.SM).LineHeight(1.45).TextColor(t.InkSoft).MaxLines(2).
 						Opacity(op).Padding(0, 0, 0, 52).Tooltip(s.words)
+					ui.Column(c.Key("trail")).Padding(0, 0, 0, 52).Children(func() { a.trail(c, "trail", task) })
 				}
 				// What needs you never folds: its question inside the card.
 				if k == "needs" {

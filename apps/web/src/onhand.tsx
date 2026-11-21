@@ -35,6 +35,7 @@ import { boardGroups, finishedGroup, foldedRows, groupCount, markOf, type BoardG
 import { linesOfPart } from "./asks.tsx";
 import { Menu, MenuItem } from "./menu.tsx";
 import { AwayX, FinishedActs, finishedMenu, runFinished, useSwipeAway, type Finished } from "./away.tsx";
+import { briefOf, BriefLines, echoes, ensureSteps, firstSentence, Outcome, peekSteps, peekTask, Trail, useTick, WaitAxis } from "./onhand-brief.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
@@ -560,36 +561,23 @@ export function moodOf(n: number[]): "needsyou" | "working" | "waiting" | "done"
  *  ten tasks, New task here under a project. */
 function BoardTop({ lens, groups, findable, room }: { lens: string; groups: LensGroup[]; findable: boolean; room: Room }) {
   const n = stateCounts(lens);
-  if (L.filter && !n[L.filter - 1]) L.filter = 0;
-  const names = ["lane.needs_you", "lane.working", "lane.waiting", "lane.done"];
+  L.filter = 0; // D467: no strip, so no filter; Find and the lens narrow
   const g = groups.find((x) => x.key === lens && x.key !== OTHER);
   const mood = moodOf(n);
-  const live = n.filter((c) => c > 0).length;
+  // D467: the partner's brief, true to the body: the lead, then since you looked, what needs you
+  // with its real fix inline, and what comes back next. No count strip: the counts were said three times.
+  const brief = briefOf(boardParts(lensLanes(lens)), n[0]!);
   return (
     <div class="board-top">
-      <div class={`oh-head m-${mood}`}>
+      <div class={`oh-head oh-brief m-${mood}`}>
         <span class="oh-face">
-          <Avatar size={room === "full" ? 76 : 56} state={mood} />
+          <Avatar size={room === "full" ? 88 : 56} state={mood} />
         </span>
         <div class="oh-says">
           <p class="oh-say" aria-live="polite">
             {headLine(lens, n)}
           </p>
-          {(live >= 2 || L.filter > 0) && (
-            <div class="strip" role="group" aria-label={t("onhand.strip")}>
-              {names.map((k, i) => {
-                const c = n[i]!;
-                if (!c) return null; // D315: only the states there are
-                const on = L.filter === i + 1;
-                return (
-                  <button key={k} class={`cell${on ? " on" : ""}${i === 0 ? " needs" : ""}`} aria-pressed={on} aria-label={`${t(k)} ${c}`} onClick={() => ((L.filter = on ? 0 : i + 1), (L.focus = ""), A.changed())}>
-                    <b>{c}</b>
-                    <span>{t(k)}</span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
+          <BriefLines b={brief} />
         </div>
       </div>
       {(g || findable) && (
@@ -942,6 +930,9 @@ const TaskCard = memo(function TaskCard({ task, room, focus, sel }: RowProps) {
   const ref = useRef<HTMLDivElement>(null);
   useSwipeAway(ref, fin);
   const k: MarkKind = stopped ? "needs" : failed ? "failed" : working ? "working" : a === "blocked" ? "waiting" : a === "needs_you" ? "needs" : fresh ? "done" : "seen";
+  // D467: a waiting line that only says the title again gives way to what the task last said, else
+  // when it looks again, else nothing (the heartbeat says when it is back).
+  const line = a === "blocked" && !stopped && echoes(title(task), s.words) ? firstSentence(sayable(reportOf(task)?.summary ?? "", A.readerLang(task))) || (w ? waitCaption(w) : "") : s.words;
   const beat = working
     ? timeOf(task) && (timeOf(task) === t("time.now") ? t("onhand.card.started") : t("onhand.card.working", timeOf(task)))
     : stopped || quiet
@@ -974,15 +965,19 @@ const TaskCard = memo(function TaskCard({ task, room, focus, sel }: RowProps) {
               </span>
             )}
             {pr && <span class="pr">{pr}</span>}
+            {finished(task) && <Outcome task={task} />}
             {task.card?.source && <SourceChip src={task.card.source} small plain />}
           </span>
-          <span class={`o2${s.tone ? ` ${s.tone}` : ""}`}>
-            {s.mark && <StepMark k={s.mark} />}
-            <span key={working ? words : ""} class={working ? "w say" : "w"}>
-              {working ? words : s.words}
+          {(working || line) && (
+            <span class={`o2${s.tone ? ` ${s.tone}` : ""}`}>
+              {s.mark && <StepMark k={s.mark} />}
+              <span key={working ? words : ""} class={working ? "w say" : "w"}>
+                {working ? words : line}
+              </span>
+              {s.code && <code class="c">{s.code}</code>}
             </span>
-            {s.code && <code class="c">{s.code}</code>}
-          </span>
+          )}
+          {working && room !== "rail" && <Trail task={task} />}
           {u && !finished(task) && <Goal u={u} />}
         </span>
         {beat && <span class={`obeat${stopped || quiet || failed ? " still" : ""}`}>{beat}</span>}
@@ -1106,9 +1101,10 @@ function Section({ name, n, children, end, fold }: { name: string; n?: number; c
     );
   }
   return (
-    <section class="tsec" aria-label={name}>
+    <section class="tsec" aria-label={n ? `${name} ${n}` : name}>
       <h3>
-        {name} {n ? <span class="n">{n}</span> : null}
+        {/* D467: a quiet label, never a count: the brief and the cards say what is there. */}
+        <span class="nm">{name}</span>
         {end && <span class="end">{end}</span>}
       </h3>
       {children}
@@ -1204,6 +1200,9 @@ export function OnHandList({ room }: { room: Room }) {
   const parts = boardParts([[], [], ungrouped(keep(lanes[LANE.waiting]!)), ungrouped(keep(lanes[LANE.done]!))]);
   const stoppedTs = rail ? [] : parts.stopped;
   const failedTs = rail ? [] : parts.failed;
+  // D467: the brief carries the first two of what stopped or didn't work out, with their fix;
+  // they get no card too (said once). The rest stand as cards under it.
+  const inBrief = new Set(rail || q ? [] : [...stoppedTs, ...failedTs].slice(0, 2).map((x) => x.id));
   const waiting = rail ? ungrouped(keep(lanes[LANE.waiting]!)) : parts.waiting;
   const done = rail ? ungrouped(keep(lanes[LANE.done]!)) : parts.today;
   const earlier = rail ? [] : parts.earlier;
@@ -1250,7 +1249,7 @@ export function OnHandList({ room }: { room: Room }) {
       {q && !shown && <p class="none">{t("onhand.find.none")}</p>}
       {/* D285: a Find that matches nothing here leads to every earlier task. */}
       {q && !rail && <PastLink words={t("past.find.in", q)} q={q} />}
-      {needs.length + partnerDs.length + otherAs.length + groupsIn(0).length + stoppedTs.length + failedTs.length > 0 && show(1) && (
+      {needs.length + partnerDs.length + otherAs.length + groupsIn(0).length + stoppedTs.length + failedTs.length - inBrief.size > 0 && show(1) && (
         <Section name={t("lane.needs_you")} n={(bgs.length ? nIn(LANE.needs) : needs.length) + partnerDs.length + otherAs.length + stoppedTs.length + failedTs.length} end={openN >= 2 && !rail ? <Btn kind="text" size="sm" label={t("decision.goall", openN)} onClick={() => A.goOnAllDefaults()} /> : undefined}>
           {/* What needs you is answered in place: its card, not a row (beside a task, a row). */}
           {rail ? (
@@ -1271,7 +1270,7 @@ export function OnHandList({ room }: { room: Room }) {
                 return d ? <DecisionCard key={task.id} d={d} taskId={task.id} /> : <Rows key={task.id} tasks={[task]} room={room} cards />;
               })}
               {/* D467: what stopped and what didn't work out, said plainly with the one action. */}
-              <Rows tasks={[...stoppedTs, ...failedTs]} room={room} cards />
+              <Rows tasks={[...stoppedTs, ...failedTs].filter((x) => !inBrief.has(x.id))} room={room} cards />
             </>
           )}
         </Section>
@@ -1287,6 +1286,7 @@ export function OnHandList({ room }: { room: Room }) {
       )}
       {waiting.length + looseWs.length + groupsIn(2).length > 0 && show(3) && (
         <Section name={t("lane.waiting")} n={(bgs.length ? Math.max(0, nIn(LANE.waiting) - stoppedTs.length) : waiting.length) + looseWs.length}>
+          {!rail && <WaitAxis tasks={waiting} />}
           {groupsIn(2).map((b) => (
             <GroupCard key={b.g.id} b={b} room={room} />
           ))}
@@ -1435,6 +1435,14 @@ function GroupCard({ b, room }: { b: BoardGroup; room: Room }) {
   const finItems = fin ? finishedMenu(fin) : [];
   const ref = useRef<HTMLDivElement>(null);
   useSwipeAway(ref, fin);
+  // D467: a part at work says what it is on now: its history, asked once, gives the line its words.
+  const atWork = b.rows.flatMap((r) => (r.kind === "task" && markOf(r) === "working" ? [r.taskId] : []));
+  useEffect(() => {
+    for (const id of atWork) {
+      const x = A.S.tasks.get(id);
+      if (x) ensureSteps(x);
+    }
+  }, [atWork.join(","), A.S.welcomed]);
   return (
     <div ref={ref} class={`tgroup${live ? " live" : ""}${b.stopped ? " stopped" : ""}${fin ? " fin" : ""}`} data-group={b.g.id} role="group" aria-label={countWords ? spoken(A.L, b.g.name, countWords) : b.g.name}>
       <div class="ghead">
@@ -1457,15 +1465,16 @@ function GroupCard({ b, room }: { b: BoardGroup; room: Room }) {
             onBlur={save}
           />
         )}
-        <span class="gbeads" aria-hidden="true">
-          {b.rows.map((r) => (
-            <i key={r.kind === "task" ? r.taskId : r.key} class={`gbead b-${markOf(r)}`} />
-          ))}
-        </span>
         {countWords && <span class="gcount">{countWords}</span>}
         {fin && <AwayX f={fin} />}
         <MoreButton label={t("group.menu")} open={menu} onClick={() => setMenu(!menu)} />
       </div>
+      {/* D467: the parts as one track: done, at work (breathing), needs you, didn't work, in line. */}
+      <span class="gtrack" aria-hidden="true">
+        {b.rows.map((r) => (
+          <i key={r.kind === "task" ? r.taskId : r.key} class={`gseg b-${markOf(r)}`} />
+        ))}
+      </span>
       {/* D385: a hand-over's plan, its making, review together. */}
       {b.g.hand && <HandBlock g={b.g} />}
       {menu && (
@@ -1609,8 +1618,7 @@ function TodoGroup({ lens }: { lens: string }) {
             ))}
           </span>
         )}
-        <span>{todoGroupName(sources)}</span>
-        {pile ? pile.open > 0 && <span class="n">{pile.atLeast ? `${pile.open}+` : pile.open}</span> : c.open > 0 && <span class="n">{c.atLeast ? `${c.open}+` : c.open}</span>}
+        <span class="nm">{todoGroupName(sources)}</span>
       </h3>
       {pile ? (
         <>
@@ -1681,7 +1689,9 @@ export function sourceFacts(pile: PileView, name: string): { lead: string; leadG
 function SourceSummary({ pile, kind, review }: { pile: PileView; kind: string; review: number }) {
   const name = A.S.personaName;
   const f = sourceFacts(pile, name);
-  const facts = review > 0 ? [...f.facts, t("onhand.src.review", review)] : f.facts;
+  // D467: one offer in the partner's voice and its button; the breakdown lives behind 看看全部.
+  const lead = f.leadGroup === "do" ? t("onhand.src.offer", pile.groups.do) : f.lead;
+  const facts = pile.sorting ? f.facts : review > 0 ? [t("onhand.src.review", review)] : [];
   const act =
     f.leadGroup === "do" ? (
       <Btn kind="secondary" size="sm" label={t("pile.act.do", name)} about={f.lead} onClick={() => openHand({ door: "do", doCount: pile.groups.do })} />
@@ -1700,7 +1710,7 @@ function SourceSummary({ pile, kind, review }: { pile: PileView; kind: string; r
         </span>
         <span class="otx">
           <span class="o1">
-            <span class="t">{f.lead}</span>
+            <span class="t offer">{lead}</span>
           </span>
           {facts.length > 0 && (
             <span class="o2 facts">
@@ -1887,3 +1897,99 @@ export function switchList(q: string, limit = 40): Task[] {
     .slice(0, limit);
 }
 
+// ---------- D467: the peek ----------
+
+/** One held step in words, as the transcript says it (D210): its mark, its words, its code. */
+function stepLine(task: Task, ev: LogEvent): { mark: string; words: string; code: string; bad: boolean } | undefined {
+  let blocks = stepCache.get(ev);
+  if (!blocks) stepCache.set(ev, (blocks = blocksOf(harnessOf(task), [ev], true)));
+  const b = blocks.at(-1);
+  if (b?.k === "voice") return { mark: "thought", words: b.text.split("\n")[0]!, code: "", bad: false };
+  if (b?.k !== "steps") return undefined;
+  const l = b.lines.at(-1);
+  if (!l) return undefined;
+  if (l.k === "group") return { mark: l.rows.at(-1)!.step?.kind ?? "other", words: liveWords(blocks), code: "", bad: false };
+  const [words, code] = rowWords(l.row);
+  const bad = l.row.outcome === "error";
+  return { mark: bad ? "error" : (l.row.step?.kind ?? "thought"), words, code, bad };
+}
+
+/**
+ * D467: the peek, the conductor's "sit in" at a wide window: the focused task (the keys' focus, else
+ * the first in the walk) as it is right now: its mark, title and where, its state in words, what it
+ * is on in full, its latest steps with the newest breathing, what a wait waits for and when it looks
+ * again, what a result made; and the way into the task. It follows the keys, never the pointer.
+ */
+export function Peek() {
+  useTick(1000);
+  const task = peekTask(L.focus, L.order);
+  useEffect(() => void (task && ensureSteps(task)), [task?.id, A.S.welcomed]);
+  if (!task) return null;
+  const a = attention(task);
+  const s = storyOf(task);
+  const working = a === "working" || a === "queued";
+  const stopped = stoppedWait(task);
+  const w = a === "blocked" ? A.S.waiterFor(task.id) : undefined;
+  const next = w ? waitNext(w) : undefined;
+  const k: MarkKind = stopped || a === "needs_you" ? "needs" : a === "failed" ? "failed" : working ? "working" : a === "blocked" ? "waiting" : statusOf(task.id, a, task.card?.updatedAt) === "new" ? "done" : "seen";
+  const at = task.card?.updatedAt;
+  const beat = working
+    ? timeOf(task) && (timeOf(task) === t("time.now") ? t("onhand.card.started") : t("onhand.card.working", timeOf(task)))
+    : stopped
+      ? t("onhand.wait.since", ago(A.L, at))
+      : a === "blocked"
+        ? next?.text || timeOf(task)
+        : at && finished(task)
+          ? t("onhand.card.done", soon(at))
+          : stateLabel(a);
+  const steps = peekSteps(task);
+  const r = reportOf(task);
+  const result = finished(task) && r?.summary ? (sayable(r.summary, A.readerLang(task)) ?? "").split("\n").filter(Boolean).slice(0, 3) : [];
+  const where = whereMeta(task);
+  return (
+    <aside class={`peek a-${a}`} aria-label={title(task)}>
+      <div class="phead">
+        <StateMark k={k} frac={next?.frac ?? 0} />
+        <span class="ptx">
+          <span class="pt">{shortTitle(title(task)) || t("task.unknown")}</span>
+          <Facts class="meta" items={where.length ? where : [harnessName(harnessOf(task))]} />
+        </span>
+      </div>
+      {beat && <p class={`pbeat k-${k}`}>{beat}</p>}
+      {!finished(task) && <p class={`pnow${s.tone ? ` ${s.tone}` : ""}`}>{s.words}</p>}
+      {working && <Trail task={task} />}
+      {w && (w.check || w.event) && waitCaption(w) && <p class="pwait">{waitCaption(w)}</p>}
+      {result.length > 0 && (
+        <div class="presult">
+          {result.map((x, i) => (
+            <p key={i}>{x}</p>
+          ))}
+          <Outcome task={task} />
+        </div>
+      )}
+      {steps.length > 0 && (
+        <div class="psteps">
+          <p class="plabel">{t("onhand.peek.steps")}</p>
+          <ol>
+            {steps.map((ev, i) => {
+              const l = stepLine(task, ev);
+              if (!l) return null;
+              const newest = i === steps.length - 1;
+              return (
+                <li key={ev.seq} class={`${l.bad ? "bad" : ""}${newest && working ? " pnew" : ""}`}>
+                  <StepMark k={l.mark} />
+                  <span class="sw">{l.words}</span>
+                  {l.code && <code class="c">{l.code}</code>}
+                  {newest && working && <b class="head" aria-hidden="true" />}
+                </li>
+              );
+            })}
+          </ol>
+        </div>
+      )}
+      <span class="pacts">
+        <Btn kind="secondary" size="sm" label={t("onhand.peek.open")} about={title(task)} onClick={() => A.go({ name: "task", id: task.id, full: A.route.name !== "conv" })} />
+      </span>
+    </aside>
+  );
+}

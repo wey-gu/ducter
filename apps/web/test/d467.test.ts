@@ -121,3 +121,92 @@ describe("On hand by attention (D467)", () => {
     }
   });
 });
+
+// D467 round 2: a partner that reports. The brief at the head (true to the body, the fix inline), no
+// count strip and no counts on the section labels, the trail from the task's own steps, a waiting
+// line that never says the title again, the PR as an outcome, the source as one offer, the peek.
+describe("On hand reports (D467 round 2)", () => {
+  const ev = (seq: number, taskId: string, ms: number, body: Record<string, unknown>) => ({ seq, ts: iso(ms), stream: `task:${taskId}`, origin: "task", kind: "task_event", body: { taskId, ...body } });
+
+  test("the brief: what stopped at the phone with its fix, what comes back next; never a count strip", async () => {
+    const { A, o } = await board(
+      [card("phone", "blocked", iso(-8 * DAY)), card("ci", "blocked", iso(-48 * 60_000)), { ...card("ask", "needs_you", iso(-5 * 60_000)) }],
+      [{ waiterId: "w1", taskId: "ci", reason: "the pipeline finishes", state: "armed", at: iso(37 * 60_000), armedAt: iso(-48 * 60_000) }],
+    );
+    A.S.applyEvent(ev(9001, "phone", -8 * DAY, { role: "tool", tool: { name: "phone_record_start", input: {}, output: "access stopped", ok: false } }) as any);
+    const { briefOf, onPhone } = await import("../src/onhand-brief.tsx");
+    const phone = A.S.tasks.get("phone")!;
+    expect(onPhone(phone)).toBe(true);
+    const n = o.stateCounts("");
+    const b = briefOf(o.boardParts(o.lensLanes("")), n[0]!);
+    expect(b.needs).toHaveLength(1);
+    expect(b.needs[0]!.kind).toBe("phone");
+    expect(b.needs[0]!.text).toBe(A.L.t("onhand.brief.stopped.phone", "Task phone"));
+    // The question waits below as its card; the brief says so in a line, never a count strip.
+    expect(b.asks).toBe(1);
+    expect(b.back).toContain("Task ci");
+    const onhand = src("onhand.tsx");
+    expect(onhand).not.toContain('class="strip"');
+    // The section labels say no count (a folded section on the phone keeps its own).
+    expect(onhand).toContain('{/* D467: a quiet label, never a count');
+    A.S.tasks.clear();
+  });
+
+  test("a stopped task with no phone says what it last said; a failed one what went wrong", async () => {
+    const { A, o } = await board([card("x", "blocked", iso(-3 * DAY)), card("y", "failed", iso(-60 * 60_000))]);
+    A.S.applyEvent({ seq: 9100, ts: iso(-3 * DAY), stream: "task:x", origin: "task", kind: "report", body: { taskId: "x", state: "blocked", summary: "等你把 Pixel Fold 连上。外部录屏还没做。", questions: [], evidence: [] } } as any);
+    const { briefOf, firstSentence } = await import("../src/onhand-brief.tsx");
+    expect(firstSentence("等你把 Pixel Fold 连上。外部录屏还没做。")).toBe("等你把 Pixel Fold 连上。");
+    const b = briefOf(o.boardParts(o.lensLanes("")), o.stateCounts("")[0]!);
+    expect(b.needs.map((x) => x.kind).sort()).toEqual(["failed", "stopped"]);
+    expect(b.asks).toBe(0);
+    A.S.tasks.clear();
+  });
+
+  test("a waiting line that only says the title again gives way", async () => {
+    const { echoes } = await import("../src/onhand-brief.tsx");
+    expect(echoes("等 acme-web 的发布流水线跑完再合并", "等 acme-web 的发布流水线跑完")).toBe(true);
+    expect(echoes("Merge acme-web once its release pipeline is through", "Waiting until acme-web's release pipeline finishes")).toBe(false);
+    expect(echoes("PR #1592：修 compaction 测试", "等 PR #1592 的 CI 跑完")).toBe(false);
+  });
+
+  test("a result is its outcome: the PR from its evidence, quiet", async () => {
+    const { A } = await board([{ ...card("typo", "done", iso(-60_000)), place: { kind: "repo", device: "local", repoPath: "/r/web", branch: "ducter/typo" } }]);
+    A.S.applyEvent({ seq: 9200, ts: iso(-60_000), stream: "task:typo", origin: "task", kind: "report", body: { taskId: "typo", state: "done", summary: "Fixed; draft PR #1190.", questions: [], evidence: [{ kind: "url", label: "PR", ref: "https://github.com/acme/web/pull/1190" }] } } as any);
+    const { outcomeOf } = await import("../src/onhand-brief.tsx");
+    expect(outcomeOf(A.S.tasks.get("typo")!)).toEqual({ label: "#1190", url: "https://github.com/acme/web/pull/1190" });
+    A.S.tasks.clear();
+  });
+
+  test("the trail counts the task's own steps on its time; the peek follows the keys, else the first at work", async () => {
+    const { A, o } = await board([card("idle", "blocked", iso(-5 * 60_000)), card("work", "working", iso(-23 * 60_000))]);
+    A.S.applyEvent(ev(9301, "work", -20 * 60_000, { role: "tool", tool: { name: "Bash", input: { command: "defaults read -g" }, output: "ok", ok: true } }) as any);
+    A.S.applyEvent(ev(9302, "work", -60_000, { role: "assistant", text: "Picking the Dock settings." }) as any);
+    A.S.applyEvent(ev(9303, "work", -30_000, { role: "tool", tool: { name: "Bash", input: { command: "false" }, output: "no", ok: false } }) as any);
+    const { stepsOf, peekTask } = await import("../src/onhand-brief.tsx");
+    const steps = stepsOf(A.S.tasks.get("work")!);
+    expect(steps).toHaveLength(3);
+    expect(steps.map((s) => s.bad)).toEqual([false, false, true]);
+    expect(peekTask("", ["idle", "work"])!.id).toBe("work");
+    expect(peekTask("idle", ["idle", "work"])!.id).toBe("idle");
+    expect(peekTask("gone", ["idle", "work"])!.id).toBe("work");
+    void o;
+    A.S.tasks.clear();
+  });
+
+  test("the source is one offer; the peek stands only at a wide window", async () => {
+    const { A } = await import("../src/app.ts");
+    A.L = strings("zh");
+    expect(A.L.t("onhand.src.offer", 49)).toBe("里面有 49 个我现在就能做，交给我就开始。");
+    A.L = strings("en");
+    expect(A.L.t("onhand.src.offer", 49)).toBe("49 of them I can take on now; hand them over and I'll start.");
+    const css = readFileSync(join(import.meta.dir, "../static/app.css"), "utf8");
+    const block = css.slice(css.indexOf("/* D467 round 2"));
+    expect(block).toMatch(/\.peek-col \{\s*display: none;/);
+    expect(block).toMatch(/@media \(min-width: 1280px\) \{\s*\.peek-col \{\s*display: block;/);
+    expect(block).toMatch(/prefers-reduced-motion: reduce/);
+    expect(block).not.toMatch(/#[0-9a-f]{3,6}\b|rgb\(/i);
+    expect(src("../src/board.tsx".replace("../src/", ""))).toContain("<Peek />");
+    for (const k of ["onhand.brief.since", "onhand.brief.stopped.phone", "onhand.brief.back", "onhand.progress.steps", "onhand.peek.open", "onhand.src.offer"]) expect(strings("zh").t(k, "x", "y", 1)).not.toContain("件");
+  });
+});

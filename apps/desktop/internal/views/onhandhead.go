@@ -315,6 +315,9 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 					}
 					uiText(c.Key("pr"), a.L.T(key)).FontSize(t.XS).FontWeight(700).TextColor(t.InkSoft).Shrink(0)
 				}
+				if finishedAtt(att) {
+					a.outcomeChip(c, "chip", task) // D467: what it made, to open
+				}
 			})
 			// The living line: what it is on now, in its own words.
 			ink := t.InkSoft
@@ -326,7 +329,11 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 			case seen:
 				ink = t.InkMuted
 			}
-			words := keepWords(autospace(s.words))
+			sw := s.words
+			if att == protocol.Blocked && !stopped {
+				sw = a.waitCardWords(task, sw) // D467: never the title again
+			}
+			words := keepWords(autospace(sw))
 			if s.code != "" {
 				words += "  " + s.code
 			}
@@ -350,6 +357,9 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 			}
 			if u := task.Card; u != nil && u.Until != nil && u.Until.State == "on" {
 				a.goal(c, u.Until, false)
+			}
+			if working {
+				a.trail(c, "trail", task) // D467: its steps on its time, the head at now
 			}
 		})
 		ui.Column(c.Key("end")).Gap(6).AlignItems(ui.End).Shrink(0).Children(func() {

@@ -28,7 +28,7 @@ const (
 	// lensOther is the lens key of the tasks of no folder (其他 / Other).
 	lensOther = "~"
 	// lensColW is the project column's width beside the board.
-	lensColW = 236
+	lensColW = 208
 	// quietAfter is how long a wait goes without any change before it
 	// folds away under 在等 (D261): it is still there, one tap away.
 	quietAfter = 24 * time.Hour
@@ -202,7 +202,8 @@ func groupStat(tasks []*store.Task) (adds, dels int) {
 // Other; then Add a folder.
 func (a *App) projectColumn(c *ui.Context, b store.Board, groups []lensGroup, lens string) {
 	t := a.T
-	ui.Column(c.Key("lens-col")).Width(lensColW).Shrink(0).MinHeight(0).Background(t.BgDeep).Label(a.L.T("onhand.lens")).Children(func() {
+	// D467: the column steps back: no deep ground, a hairline beside the board.
+	ui.Column(c.Key("lens-col")).Width(lensColW).Shrink(0).MinHeight(0).BorderWidth(0, 1, 0, 0).BorderColor(t.LineSoft).Label(a.L.T("onhand.lens")).Children(func() {
 		ui.Scroll(c.Key("lens-scroll")).Grow(1).MinHeight(0).Children(func() {
 			ui.Column(c).Gap(2).Padding(t.S5, t.S3, t.S6, t.S3).Children(func() {
 				var all []*store.Task
@@ -408,32 +409,8 @@ func (a *App) boardTop(c *ui.Context, b store.Board, groups []lensGroup, lens st
 	}
 	var find ui.Element
 	ui.Column(c.Key("top")).Gap(t.S4).Children(func() {
-		// D287: the partner at the head, its pose and its line; D315: under
-		// the line, only the states there are, each a filter.
-		live := 0
-		for _, k := range n {
-			if k > 0 {
-				live++
-			}
-		}
-		a.boardHead(c, b, lens, n, func() {
-			if live < 2 && a.oh.filter == 0 {
-				return
-			}
-			// D270: the counts in a small sunk track, the filter chosen a
-			// raised knob in it, as the places are in the bar.
-			ui.Row(c.Key("strip-row")).AlignItems(ui.Center).Children(func() {
-				ui.Row(c.Key("strip")).Gap(2).Padding(3).Radius(t.RadiusSM).AlignItems(ui.Center).Background(t.SurfaceSunken).
-					InsetShadow(0, 1.5, 2, 0, t.Line).Label(a.L.T("onhand.strip")).Children(func() {
-					names := [4]string{"lane.needs_you", "lane.working", "lane.waiting", "lane.done"}
-					for i := range 4 {
-						if n[i] > 0 {
-							a.stripCell(c, i+1, a.L.T(names[i]), n[i])
-						}
-					}
-				})
-			})
-		})
+		// D467: the partner's brief in its own voice; no count strip.
+		a.brief(c, b, lens, n)
 		g := groupOf(groups, lens)
 		here := g != nil && g.key != lensOther && g.kind == ""
 		total := n[0] + n[1] + n[2] + n[3]

@@ -13,7 +13,7 @@ import { shortTitle } from "./transcript.tsx";
 import { Avatar, Places } from "./views.tsx";
 import { useCanFill, useFill } from "./wide.ts";
 import { RoutineShelf } from "./work.tsx";
-import { currentLens, lensGroups, lensName, lensOn, LensColumn, OnHandList, stateCounts } from "./onhand.tsx";
+import { currentLens, lensGroups, lensName, lensOn, LensColumn, OnHandList, Peek, stateCounts } from "./onhand.tsx";
 import type { Task } from "./store.ts";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
@@ -159,6 +159,10 @@ export function Board() {
             <NextLine items={next} />
             <OnHandList room="full" />
             <RoutineShelf />
+          </div>
+          {/* D467: the peek, the conductor's "sit in": the focused task live, from 1280. */}
+          <div class="peek-col">
+            <Peek />
           </div>
           </div>
         )}

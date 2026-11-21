@@ -13,11 +13,19 @@
 // Either way the check is read again after. Where a signed-in agent lacks it, Ducter recommends it once per computer and agent: one
 // card, Go 装上 suggested, nothing happens until the user taps.
 // Memory off (Settings › 记得什么): no checks shown, no cards, no installs.
+//
+// D466: a newer plugin. Mem's own `nmem --json plugins check` (read-only, Mem's published list) runs
+// on the home at most once a day, beside the daily check; its answer (the newest version per agent)
+// is kept in mem-plugins.json and laid over every computer's inspect, so an installed plugin below
+// it reads "update" from that version to the newer one. Offline, or an answer it can't read: the
+// last good answer stands, and nothing is said about the failure. 更新 / Update (and 理成一份 / Keep
+// one for several copies) open the same kind of task as 装上, its brief saying which: Mem's guide is
+// how to update too. Never a card, never Update all, never by itself.
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { MEM_CONNECT_TOOLS, fill, harnessName, langName, words, type Bodies, type LangTag, type DeviceHarness, type LogEvent, type MemPluginReason, type MemPluginView } from "@ducter/protocol";
 import type { LogStore, Runner, TaskRegistry } from "@ducter/protocol/src/internal.ts";
-import { MEM_HOSTS } from "@ducter/protocol/src/mem-plugins.ts";
+import { MEM_HOSTS, withAvailable } from "@ducter/protocol/src/mem-plugins.ts";
 
 type Plugins = Record<string, MemPluginView>;
 
@@ -42,10 +50,18 @@ export interface MemPluginsDeps {
    * undefined when it can't run there (no nmem, a Ducter there from before D375). Without it, a task.
    */
   connectTools?: (deviceId: string, home: boolean, harnesses: string[]) => Promise<{ ok: boolean; detail?: string } | undefined>;
+  /**
+   * D466: Mem's own `plugins check` on the home: the newest version out per agent; undefined when
+   * offline or unreadable (the last good answer then stands). Absent: no update is ever said.
+   */
+  checkUpdates?: () => Promise<Record<string, string> | undefined>;
   now?: () => number;
   /** How often every awake device is checked again (default a day; 0 = only on events). */
   everyMs?: number;
 }
+
+/** D466: the newest versions out are asked for again only after this long (a day, a little early so the daily check finds it stale). */
+export const CATALOG_STALE_MS = 20 * 60 * 60 * 1000;
 
 export interface MemPlugins {
   /** A device's agents with their Mem line (none when memory is off or the check can't tell). */
@@ -73,9 +89,17 @@ interface Saved {
   offered: string[];
   /** Open setup tasks: taskId -> device, harness. */
   setups: Record<string, { device: string; harness: string }>;
+  /** D466: Mem's newest version per agent (`plugins check`), and when it was asked; absent until the first answer. */
+  catalog?: { at: number; versions: Record<string, string> };
 }
 
 const DAY = 24 * 60 * 60 * 1000;
+
+/**
+ * D466: what the task is for. install: absent; update: a newer version is out (from, to);
+ * tidy: several copies (their versions); review: an install Mem's check can't call set up.
+ */
+export type MemSetupKind = { kind: "install" } | { kind: "update"; from?: string; to?: string } | { kind: "tidy"; versions?: string[] } | { kind: "review" };
 
 // The card's and the task's own words (D292: zh and en; any other language falls back, ko → en).
 const W = {
@@ -83,29 +107,47 @@ const W = {
     offer: "{device} 上的 {agent} 还没装 Nowledge Mem。装上以后，我在那儿做事和你自己用 {agent} 时都记得你；会改 {agent} 自己的设置。",
     install: "安装",
     title: "为 {device} 上的 {agent} 安装 Nowledge Mem",
+    "title.update": "为 {device} 上的 {agent} 更新 Nowledge Mem",
+    "title.tidy": "把 {device} 上 {agent} 里的 Nowledge Mem 理成一份",
+    "title.review": "检查 {device} 上 {agent} 的 Nowledge Mem",
   },
   en: {
     offer: "{agent} on {device} doesn't have Nowledge Mem. With it, my work there and your own {agent} sessions both remember you; it changes {agent}'s own settings.",
     install: "Install",
     title: "Install Nowledge Mem for {agent} on {device}",
+    "title.update": "Update Nowledge Mem for {agent} on {device}",
+    "title.tidy": "Keep one Nowledge Mem in {agent} on {device}",
+    "title.review": "Look at Nowledge Mem in {agent} on {device}",
   },
 };
 const FINISHED = new Set(["done_claimed", "done", "failed", "dropped", "blocked"]);
 
-/** D169: the brief of the task that puts Nowledge Mem into one of the user's own agents on a computer. */
-export function memSetupBrief(o: { agent: string; host: string; device: string; lang: LangTag; tried?: { tool: string; said?: string } }): string {
+/** D169: the brief of the task that puts Nowledge Mem into one of the user's own agents on a computer (D466: or updates it, or leaves one copy). */
+export function memSetupBrief(o: { agent: string; host: string; device: string; lang: LangTag; tried?: { tool: string; said?: string }; what?: MemSetupKind }): string {
   const lang = `Write your report in ${langName(o.lang)}.`;
+  const what = o.what ?? { kind: "install" };
   // D375: Mem's own command went first and didn't put it in: say so, so the guide's other route is taken.
   const tried = o.tried ? `\nNowledge Mem's own \`nmem connect --tool ${o.tried.tool} --on-conflict abort\` ran first and didn't put it in${o.tried.said ? ` (its last line: ${o.tried.said})` : ""}. If ${o.agent} already has another memory integration, say which and ask the user before changing anything.\n` : "";
-  return `Set up Nowledge Mem for ${o.agent} on this computer (${o.device}), for the user's own use of ${o.agent} outside Ducter. The user tapped Install for this.
+  const head =
+    what.kind === "update"
+      ? `Update the Nowledge Mem plugin for ${o.agent} on this computer (${o.device})${what.from && what.to ? `, from ${what.from} to ${what.to}` : ""}, for the user's own use of ${o.agent} outside Ducter. The user tapped Update for this. Nowledge Mem's own \`nmem --json plugins check\` says a newer one is out.`
+      : what.kind === "tidy"
+        ? `Nowledge Mem's own check finds the Nowledge Mem plugin in ${o.agent} on this computer (${o.device}) more than once${what.versions?.length ? ` (versions ${what.versions.join(", ")})` : ""}, so which one ${o.agent} loads is unclear. Leave exactly one: the current one, set up the way the guide installs it. The user tapped Keep one for this.`
+        : what.kind === "review"
+          ? `Nowledge Mem's own check can't tell whether the Nowledge Mem plugin in ${o.agent} on this computer (${o.device}) is set up and enabled. Make it set up the way the guide says, for the user's own use of ${o.agent} outside Ducter. The user tapped Sort it out for this.`
+          : `Set up Nowledge Mem for ${o.agent} on this computer (${o.device}), for the user's own use of ${o.agent} outside Ducter. The user tapped Install for this.`;
+  // Several copies: only the host's own plugin commands remove one, and nothing is deleted by hand.
+  const tidy = what.kind === "tidy" ? `\n   To remove an older copy, use only ${o.agent}'s own plugin or marketplace commands, as the guide names them; never delete its files by hand. If the guide or ${o.agent} has no command for it, stop and report each copy (version, where it is registered) instead.` : "";
+  const done = what.kind === "update" ? "updated and the check says the newer version" : what.kind === "tidy" ? "one copy left and the check says so" : what.kind === "review" ? "set up and the check says so" : "installed and the check says so";
+  return `${head}
 ${tried}
-1. Read Nowledge Mem's official setup guide at https://mem.nowledge.co/SKILL.md and follow it for the host "${o.host}". It is the only source of the steps; don't improvise others.
+1. Read Nowledge Mem's official setup guide at https://mem.nowledge.co/SKILL.md (it is for installing and updating) and follow it for the host "${o.host}". It is the only source of the steps; don't improvise others.${tidy}
 2. It changes only ${o.agent}'s own plugin or MCP setup and Nowledge Mem's own config on this computer. Nothing of Ducter's. Back up a file before editing it by hand, as the guide says.
 3. Never guess a server address, an API key or a workspace, and never print a key. If Nowledge Mem isn't connected on this computer (\`nmem doctor\` fails), stop and ask the user for a connect link (report_to_main, state "needs_input", with no default).
-4. When it is in, run \`nmem --json plugins inspect --host ${o.host}\` and report what it says. Say plainly that ${o.agent} has to be restarted (a new session) before it uses it.
+4. When it is done, run \`nmem --json plugins inspect --host ${o.host}\` and report what it says. Say plainly that ${o.agent} has to be restarted (a new session) before it uses it.
 5. If a step fails, try its fix once, then stop and report the exact error.
 
-${lang} Done means: installed and the check says so, or a clear reason why not.`;
+${lang} Done means: ${done}, or a clear reason why not.`;
 }
 
 export function createMemPlugins(d: MemPluginsDeps): MemPlugins {
@@ -115,7 +157,8 @@ export function createMemPlugins(d: MemPluginsDeps): MemPlugins {
     try {
       if (existsSync(file)) {
         const j = JSON.parse(readFileSync(file, "utf8"));
-        return { since: Number(j.since) || now(), known: j.known ?? {}, offered: Array.isArray(j.offered) ? j.offered : [], setups: j.setups ?? {} };
+        const cat = j.catalog && typeof j.catalog === "object" && Number(j.catalog.at) && j.catalog.versions && typeof j.catalog.versions === "object" ? { at: Number(j.catalog.at), versions: j.catalog.versions as Record<string, string> } : undefined;
+        return { since: Number(j.since) || now(), known: j.known ?? {}, offered: Array.isArray(j.offered) ? j.offered : [], setups: j.setups ?? {}, ...(cat ? { catalog: cat } : {}) };
       }
     } catch {
       /* a broken file starts over */
@@ -161,20 +204,50 @@ export function createMemPlugins(d: MemPluginsDeps): MemPlugins {
     changed();
   }
 
+  /**
+   * D466: one agent's line on one device: inspect's answer, with the newest version out laid over
+   * it (installed below it reads update). The view, present() and install() all read it this way.
+   */
+  const lineOf = (id: string, harness: string): MemPluginView | undefined => {
+    const m = seen.get(id)?.[harness];
+    return m ? withAvailable(m, saved.catalog?.versions[harness]) : undefined;
+  };
+
+  // D466: Mem's newest versions, asked at most once in CATALOG_STALE_MS, one ask at a time. Offline or
+  // unreadable: the last good answer stands and nothing is said (never a scary line for a quiet network).
+  let asking: Promise<void> | undefined;
+  function refreshCatalog(): Promise<void> {
+    if (!d.checkUpdates || !d.on()) return Promise.resolve();
+    if (saved.catalog && now() - saved.catalog.at < CATALOG_STALE_MS) return Promise.resolve();
+    if (asking) return asking;
+    asking = (async () => {
+      const got = await d.checkUpdates!().catch(() => undefined);
+      if (!got) return;
+      const before = JSON.stringify(saved.catalog?.versions ?? {});
+      saved.catalog = { at: now(), versions: got };
+      save();
+      if (JSON.stringify(got) !== before) changed();
+    })().finally(() => (asking = undefined));
+    return asking;
+  }
+
   async function check(deviceId?: string): Promise<void> {
     if (!d.on()) return;
+    // Beside every device's inspect, never in front of it: an offline ask waits out its own timeout alone.
+    const cat = refreshCatalog();
     const list = await d.devices().catch(() => []);
     for (const x of list) names.set(x.name, x.id);
     const todo = list.filter((x) => (deviceId ? x.id === deviceId || x.name === deviceId : x.awake));
-    await Promise.all(
-      todo.map((x) => {
+    await Promise.all([
+      cat,
+      ...todo.map((x) => {
         const busy = running.get(x.id);
         if (busy) return busy;
         const p = checkOne(x.id, x.home).finally(() => running.delete(x.id));
         running.set(x.id, p);
         return p;
       }),
-    );
+    ]);
   }
 
   /** One card per device and agent, ever: a signed-in agent there, and the check says the plugin isn't there. */
@@ -263,10 +336,17 @@ export function createMemPlugins(d: MemPluginsDeps): MemPlugins {
       })();
       return { ok: true };
     }
-    return openSetup(dev, harness, host);
+    return openSetup(dev, harness, host, undefined, setupKind(lineOf(dev.id, harness)));
   }
 
-  async function openSetup(dev: { id: string; name: string; home: boolean; harnesses: { harness: string; installed: boolean; loggedIn: boolean }[] }, harness: string, host: string, tried?: { tool: string; said?: string }): Promise<{ ok: true; taskId: string } | { ok: false; reason: MemPluginReason }> {
+  /** D466: what the tap asks for, from the line the person saw. */
+  function setupKind(m: MemPluginView | undefined): MemSetupKind {
+    if (m?.state === "update") return { kind: "update", ...(m.version ? { from: m.version } : {}), ...(m.available ? { to: m.available } : {}) };
+    if (m?.state === "review") return m.why === "multiple" ? { kind: "tidy", ...(m.versions ? { versions: m.versions } : {}) } : { kind: "review" };
+    return { kind: "install" };
+  }
+
+  async function openSetup(dev: { id: string; name: string; home: boolean; harnesses: { harness: string; installed: boolean; loggedIn: boolean }[] }, harness: string, host: string, tried?: { tool: string; said?: string }, what: MemSetupKind = { kind: "install" }): Promise<{ ok: true; taskId: string } | { ok: false; reason: MemPluginReason }> {
     // The agent itself does it when it is signed in there; else any agent signed in there can.
     const signed = dev.harnesses.filter((h) => h.installed && h.loggedIn);
     const body = signed.find((h) => h.harness === harness) ?? signed[0];
@@ -274,11 +354,13 @@ export function createMemPlugins(d: MemPluginsDeps): MemPlugins {
     if (!body || !runner) return { ok: false, reason: "no_agent" };
     const lang = d.lang();
     const agent = harnessName(harness);
+    const w = words(W, lang);
+    const title = what.kind === "install" ? w.title : w[`title.${what.kind}`];
     try {
       const card = await runner.openTask({
         persona: d.persona.id,
-        title: fill(words(W, lang).title, { device: dev.name, agent }),
-        brief: memSetupBrief({ agent, host, device: dev.name, lang, ...(tried ? { tried } : {}) }),
+        title: fill(title, { device: dev.name, agent }),
+        brief: memSetupBrief({ agent, host, device: dev.name, lang, what, ...(tried ? { tried } : {}) }),
         place: dev.home ? { kind: "none" } : { kind: "none", device: dev.id },
         harness: body.harness,
         language: lang,
@@ -333,7 +415,7 @@ export function createMemPlugins(d: MemPluginsDeps): MemPlugins {
       const got = seen.get(deviceId);
       if (!got) return list;
       return list.map((h) => {
-        const m = got[h.harness];
+        const m = lineOf(deviceId, h.harness);
         if (!m || !h.installed) return h;
         const task = setupOf(deviceId, h.harness);
         const key = `${deviceId}:${h.harness}`;

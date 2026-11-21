@@ -535,10 +535,22 @@ on every computer, without owning it (D17):
   directly, on a worker through its `mem_plugins` op; at start, daily, when a computer comes
   online, after a sign-in or an agent update, and when a setup task ends
   (`packages/core/src/mem-plugins.ts`, parsing in `packages/protocol/src/mem-plugins.ts`).
+- **A newer plugin (D466, research/203).** `inspect` never knows one is out. Mem's own
+  `nmem --json plugins check` does (read-only; Mem's published list, no Mem server needed): on the
+  home only, beside the daily inspect, at most once in 20 hours, 15 s cap; its newest version per
+  agent kept in `mem-plugins.json`; offline or unreadable, the last good answer stands and nothing
+  is said. Only its `available_version` is read (its `installed` disagrees with inspect's for
+  OpenClaw and Cursor), and **update = inspect's version below it**, on every computer (workers
+  included, no new op). It lists only Claude Code of Ducter's agents today.
 - **The line** per installed agent in its coin detail (copy in the glossary). Installed is
   only what the check knows: every answer carries "runtime loading is not verified", which
   alone never makes a review; the check's own `review`, several copies, or an install it
-  can't call enabled does. `update` shows only when the check says so.
+  can't call enabled does. An update says from which version to which
+  (**Nowledge Mem 0.7.34，有新的 0.7.37 了**, **更新**); two copies say both versions
+  (**Nowledge Mem 装了两份：0.1.10 和 0.1.53**, **理成一份**).
+- **In Settings › 记忆 (D466):** the Nowledge Mem group carries one row per agent per computer
+  worth a tap (an update, several copies), the home first: the agent's coin, **{device} 上的
+  {agent}**, the line, the same button and ask in place. None when nothing is; never a card.
 - **安装 / Install** asks in place what it changes. For Claude Code and Codex with the plugin
   absent, Mem's own `nmem --json connect --tool <id> --on-conflict abort` runs first (D375: on the
   home with its nmem, on a worker through its `mem_connect` op, one at a time per computer; no
@@ -549,7 +561,11 @@ on every computer, without owning it (D17):
   with the user's own setup, origin "you": it follows https://mem.nowledge.co/SKILL.md for that host
   only, never guesses a URL or key, asks for a connect link when Mem isn't connected there, verifies
   with the check, and says the agent must be restarted; after a failed command its brief says what
-  the command said.
+  the command said. **更新 / Update** and **理成一份 / Keep one** (D466) ask in place what they do
+  (更新到 {to}; only one copy left) and open the same task, its title and brief saying which: the
+  guide is for installing *and* updating; an older copy goes only by the agent's own plugin
+  commands, never by deleting files, else the task stops and reports each copy. Never by itself,
+  never in 全部更新 / Update all (that runs at night by itself; this edits the agent's own setup).
 - **Ducter recommends it once** per computer and agent, ever, wherever the check finds a
   signed-in agent without it: one card, Go 装上 suggested, no timer (it changes the agent's
   own settings, so it waits for the tap). Once the check sees it in, however it got there, an

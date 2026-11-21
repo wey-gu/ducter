@@ -110,7 +110,7 @@ import { createAgentLatest, createAgentUpdates, type AgentUpdates, type AgentUpd
 import { createUpdateAll, type UpdateAll } from "./update-all.ts";
 import { bundledPiVersion, detectAgent, probeHarnesses } from "./harness-probe.ts";
 import { createMemPlugins, type MemPlugins } from "./mem-plugins.ts";
-import { inspectMemPlugins, nmemInspectExec } from "@ducter/protocol/src/mem-plugins.ts";
+import { checkMemPluginUpdates, inspectMemPlugins, nmemInspectExec } from "@ducter/protocol/src/mem-plugins.ts";
 import { realSys, updateHow, writeAlive, type UpdateSys } from "./update.ts";
 import { DUCTER_VERSION } from "@ducter/protocol/src/version.ts";
 import { createAutofill, type Autofill } from "./saved/index.ts";
@@ -284,7 +284,7 @@ export interface CoreOptions {
   /** D169 test seams: the Mem plugin check on the home (default: the real `nmem`, never in tests). */
   /** D393: test seams for the Mem relay (mem-relay.ts): the home's credential, the upstream fetch, the plugin's folder. */
   memRelay?: { credential?: () => import("./mem-relay.ts").MemCredential | undefined; fetch?: typeof fetch; kitDir?: (harness: string) => string | undefined };
-  memPlugins?: { inspectLocal?: () => Promise<Record<string, import("@ducter/protocol").MemPluginView> | undefined>; everyMs?: number; now?: () => number; connected?: () => boolean; connectLocal?: (args: string[]) => Promise<{ code: number; out: string; err: string } | undefined> };
+  memPlugins?: { inspectLocal?: () => Promise<Record<string, import("@ducter/protocol").MemPluginView> | undefined>; checkUpdates?: () => Promise<Record<string, string> | undefined>; everyMs?: number; now?: () => number; connected?: () => boolean; connectLocal?: (args: string[]) => Promise<{ code: number; out: string; err: string } | undefined> };
   /** D151 test seams for Ducter's own browser (false: none). */
   browser?: false | Partial<Omit<DucterBrowserOptions, "mcp" | "log" | "tasks" | "decisions" | "persona" | "dataDir">>;
   /** D217: Ducter's phone (用手机); false leaves it out (tests). */
@@ -1781,6 +1781,8 @@ export function startCore(opts: CoreOptions = {}): Core {
     inspectLocal:
       mp.inspectLocal ??
       (agentTesting ? async () => undefined : () => inspectMemPlugins(nmemInspectExec(process.env))),
+    // D466: the newest plugin versions out, from Mem's own `plugins check` on the home (never in a test without a fake).
+    ...(mp.checkUpdates || !agentTesting ? { checkUpdates: mp.checkUpdates ?? (() => checkMemPluginUpdates(nmemInspectExec(process.env))) } : {}),
     inspectWorker: async (id) => {
       const link = workers.link(id);
       if (!link?.online()) return undefined;

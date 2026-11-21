@@ -8,6 +8,7 @@
 //   sign_in (nmem there, not signed in) · old (0.10.116 by pipx: too old for Bridge)
 // D375: DEMO_HEALTH: what Mem's own doctor answers (made-up details): ok · unreachable · signed_out ·
 //   plugin (Claude Code here isn't connected; 接上 runs a pretend `nmem connect` for 3 s) · old (no doctor)
+// D466: DEMO_HEALTH=update: Claude Code's Mem plugin 0.7.34 with 0.7.37 out, Codex's in twice (0.1.10, 0.1.53)
 // then open http://127.0.0.1:7864/app#settings=memory (or #settings=peers)
 import { startCore, stubRunner } from "./demo-core.ts";
 import { noOo } from "./demo-oo.ts";
@@ -101,7 +102,12 @@ const healthOpts = health
   ? {
       deviceProbes: { cua: async () => ({ missing: "no" }), native: async () => undefined, kind: async () => "server", harnesses: async () => [{ harness: "claude-code", installed: true, loggedIn: true, version: "2.1.322", how: "installer" }, { harness: "codex", installed: true, loggedIn: true, version: "0.169.1", how: "npm" }] },
       memPlugins: {
-        inspectLocal: async () => ({ "claude-code": health === "plugin" && !ccIn ? { state: "absent" } : { state: "installed", version: "0.7.36" }, codex: { state: "installed", version: "0.7.36" } }),
+        inspectLocal: async () =>
+          health === "update"
+            ? { "claude-code": { state: "installed", version: "0.7.34" }, codex: { state: "review", why: "multiple", versions: ["0.1.10", "0.1.53"] } }
+            : { "claude-code": health === "plugin" && !ccIn ? { state: "absent" } : { state: "installed", version: "0.7.36" }, codex: { state: "installed", version: "0.7.36" } },
+        // D466: Mem's own `plugins check` says 0.7.37 is out (DEMO_HEALTH=update).
+        ...(health === "update" ? { checkUpdates: async () => ({ "claude-code": "0.7.37" }) } : {}),
         everyMs: 0,
         connected: () => true,
         connectLocal: async () => (await new Promise((r) => setTimeout(r, 3000)), (ccIn = true), { code: 0, out: "{}", err: "" }),

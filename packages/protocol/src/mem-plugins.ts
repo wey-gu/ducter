@@ -6,6 +6,7 @@
 import { HARNESS_FACTS } from "./harness-facts.ts";
 import type { MemPluginView, MemPluginWhy } from "./index.ts";
 import { nmemEnv } from "./tool-env.ts";
+import { compareVersions, isVersion } from "./version.ts";
 import { whichNow } from "./which.ts";
 
 // The plugin's facts per agent live in the registry with their evidence (harness-facts memPlugin,
@@ -50,9 +51,18 @@ export function memPluginOf(e: InspectHost | undefined, checkedAt?: string): Mem
   // review is the check's own word, or an install it can't call enabled.
   if (action === "review" || inst === "installed" || inst === "unknown") {
     const why: MemPluginWhy = warnings.some((w) => MULTIPLE.test(w)) ? "multiple" : "unclear";
-    return { state: "review", why, ...at };
+    // D466: several copies are said by their versions (the author's Codex: 0.1.10 and 0.1.53).
+    const versions = why === "multiple" ? copiesOf(e.installations) : [];
+    return { state: "review", why, ...(versions.length > 1 ? { versions } : {}), ...at };
   }
   return undefined;
+}
+
+/** Each copy's version from an inspect entry's `installations`, distinct, oldest first. */
+function copiesOf(list: unknown): string[] {
+  if (!Array.isArray(list)) return [];
+  const vs = list.map((i) => (i && typeof i === "object" ? (i as { version?: unknown }).version : undefined)).filter((v): v is string => typeof v === "string" && isVersion(v));
+  return [...new Set(vs)].sort(compareVersions);
 }
 
 /** The inspect answer as one line per Ducter agent; {} when it can't be read. */
@@ -76,6 +86,61 @@ export async function inspectMemPlugins(exec: InspectExec, now: () => Date = () 
     // Some nmem builds print a notice line before the JSON: read from the first brace.
     const at = r.out.indexOf("{");
     return memPluginsFromInspect(JSON.parse(at > 0 ? r.out.slice(at) : r.out), now().toISOString());
+  } catch {
+    return undefined;
+  }
+}
+
+// ---------- D466: a newer plugin, from Mem's own `plugins check` ----------
+//
+// `nmem --json plugins check` (read-only) reads Mem's published plugin list, not the person's Mem:
+// it answers the same with no Mem server reachable (research/203). Per plugin it says the newest
+// version out (`available_version`). Its own `installed` and `update_available` sometimes disagree
+// with inspect (OpenClaw: inspect 0.8.31, check "not detected"; Cursor: installed, version null), so
+// only its available version is read: inspect stays the one word on what is installed, and "update"
+// is inspect's own version below the one out. It lists only some hosts (Codex and pi are not in it
+// today): an agent it doesn't list never shows an update.
+
+/** The newest published version per Ducter agent, from the check's answer; {} when it can't be read. */
+export function memPluginCatalog(json: unknown): Record<string, string> {
+  const out: Record<string, string> = {};
+  const list = json && typeof json === "object" && Array.isArray((json as { plugins?: unknown }).plugins) ? (json as { plugins: unknown[] }).plugins : [];
+  const idOf = (p: unknown) => (p && typeof p === "object" ? (p as { id?: unknown }).id : undefined);
+  for (const [harness, host] of Object.entries(MEM_HOSTS)) {
+    // Its ids are the hosts' ids (claude-code, openclaw); a Ducter id is taken too (codex beside codex-cli).
+    const e = list.find((p) => idOf(p) === host || idOf(p) === harness) as { available_version?: unknown } | undefined;
+    const v = e?.available_version;
+    if (typeof v === "string" && isVersion(v)) out[harness] = v;
+  }
+  return out;
+}
+
+/**
+ * One agent's line with the newest version out laid over it: installed (or inspect's own update)
+ * with a version below it is an update from that version to it. Anything else (absent, a review, no
+ * version read, a version at or past the one out) stays as inspect said.
+ */
+export function withAvailable(v: MemPluginView, available: string | undefined): MemPluginView {
+  if (!available || !v.version || (v.state !== "installed" && v.state !== "update")) return v;
+  if (compareVersions(v.version, available) >= 0) return v;
+  return { ...v, state: "update", available };
+}
+
+/** Every agent's line with the catalog laid over it. */
+export function withCatalog(m: Record<string, MemPluginView>, catalog: Record<string, string> | undefined): Record<string, MemPluginView> {
+  if (!catalog) return m;
+  return Object.fromEntries(Object.entries(m).map(([h, v]) => [h, withAvailable(v, catalog[h])]));
+}
+
+/** Runs the check (network, read-only, under a second here): undefined when nmem isn't here, it's offline, or its answer can't be read. */
+export async function checkMemPluginUpdates(exec: InspectExec): Promise<Record<string, string> | undefined> {
+  const r = await exec([process.env.NMEM_CLI_PATH ?? "nmem", "--json", "plugins", "check"], 15_000).catch(() => ({ code: -1, out: "" }));
+  if (r.code !== 0 || !r.out.trim()) return undefined;
+  try {
+    const at = r.out.indexOf("{");
+    const json = JSON.parse(at > 0 ? r.out.slice(at) : r.out);
+    if (!json || typeof json !== "object" || !Array.isArray((json as { plugins?: unknown }).plugins)) return undefined;
+    return memPluginCatalog(json);
   } catch {
     return undefined;
   }

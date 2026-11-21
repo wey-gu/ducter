@@ -1,0 +1,61 @@
+{
+  "plugins": [
+    {
+      "id": "claude-code",
+      "name": "Claude Code",
+      "installed": true,
+      "installed_version": "0.7.37",
+      "available_version": "0.7.37",
+      "update_available": false
+    },
+    {
+      "id": "gemini-cli",
+      "name": "Gemini CLI",
+      "installed": false,
+      "installed_version": null,
+      "available_version": "0.1.9",
+      "update_available": false
+    },
+    {
+      "id": "cursor",
+      "name": "Cursor",
+      "installed": true,
+      "installed_version": null,
+      "available_version": "0.2.2",
+      "update_available": null
+    },
+    {
+      "id": "droid",
+      "name": "Droid",
+      "installed": false,
+      "installed_version": null,
+      "available_version": "0.1.2",
+      "update_available": false
+    },
+    {
+      "id": "openclaw",
+      "name": "OpenClaw",
+      "installed": false,
+      "installed_version": null,
+      "available_version": "0.8.43",
+      "update_available": false
+    },
+    {
+      "id": "alma",
+      "name": "Alma",
+      "installed": true,
+      "installed_version": "0.7.9",
+      "available_version": "0.7.12",
+      "update_available": true
+    },
+    {
+      "id": "bub",
+      "name": "Bub",
+      "installed": false,
+      "installed_version": null,
+      "available_version": "0.7.6",
+      "update_available": false
+    }
+  ],
+  "updates_available": 1
+}

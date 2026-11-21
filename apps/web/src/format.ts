@@ -260,7 +260,8 @@ export function phaseLine(L: Strings, u: DeviceUpdate): string {
 
 /** D169: an agent's Nowledge Mem line and its action's words, from Mem's own check (never "working"). */
 export function memWords(L: Strings, m: MemPluginView, agent = ""): { line: string; action?: string } {
-  if (m.taskId) return { line: L.t("memp.setting") };
+  // D466: an open task says what it is doing: updating, keeping one, else installing.
+  if (m.taskId) return { line: L.t(m.state === "update" ? "memp.setting.update" : m.state === "review" && m.why === "multiple" ? "memp.setting.tidy" : "memp.setting") };
   // D375: Mem's own command putting it in now; just put in (the agent uses it once restarted).
   if (m.busy) return { line: L.t("memp.busy") };
   if (m.fresh && m.state !== "absent") return { line: L.t("memp.fresh", agent) };
@@ -270,10 +271,24 @@ export function memWords(L: Strings, m: MemPluginView, agent = ""): { line: stri
     case "absent":
       return { line: L.t("memp.absent"), action: L.t("memp.btn.install") };
     case "update":
-      return { line: L.t("memp.update"), action: L.t("memp.btn.update") };
+      // D466: from the version there to the one out, when both are known.
+      return { line: m.version && m.available ? L.t("memp.update.to", m.version, m.available) : L.t("memp.update"), action: L.t("memp.btn.update") };
     case "review":
-      return { line: L.t(m.why === "multiple" ? "memp.review.multiple" : "memp.review.unclear"), action: L.t("memp.btn.review") };
+      if (m.why === "multiple") return { line: m.versions?.length === 2 ? L.t("memp.review.two", m.versions[0], m.versions[1]) : L.t("memp.review.multiple"), action: L.t("memp.btn.tidy") };
+      return { line: L.t("memp.review.unclear"), action: L.t("memp.btn.review") };
   }
+}
+
+/**
+ * D466: the in-place ask before the tap does anything: its question, what changes and where, and
+ * its button, by what the line says (install, update from to, keep one, sort out). direct: Mem's own
+ * command puts it in (D375: Claude Code and Codex, absent).
+ */
+export function memAsk(L: Strings, m: MemPluginView, agent: string, device: string, direct: boolean): { ask: string; means: string; ok: string } {
+  if (m.state === "update") return { ask: m.available ? L.t("memp.ask.update", agent, device, m.available) : L.t("memp.ask.update.bare", agent, device), means: L.t("memp.means.update", agent, device), ok: L.t("memp.ok.update") };
+  if (m.state === "review" && m.why === "multiple") return { ask: L.t("memp.ask.tidy", agent, device), means: L.t("memp.means.tidy", agent, device), ok: L.t("memp.ok.tidy") };
+  if (m.state === "review") return { ask: L.t("memp.ask.review", agent, device), means: L.t("memp.means.review", agent, device), ok: L.t("memp.ok.review") };
+  return { ask: L.t("memp.ask", agent, device), means: L.t(direct ? "memp.means.direct" : "memp.means", agent, device), ok: L.t("memp.ok") };
 }
 
 /** An accessible name made of several facts, said the way a person reads a list aloud (D291):

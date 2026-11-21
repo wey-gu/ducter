@@ -158,6 +158,13 @@ What your partner remembers about you has its own section, **Memory**.
   Settings entry for Memory says it too. **Details** shows the exact computer, version, identity
   and space, for when you need help. When you use agents of your own, **Your other agents reach
   {name} through it too** leads to **Agent messaging**.
+- The same group also names any of your AI agents, on any of your computers, whose Nowledge Mem
+  is worth a tap: **Claude Code on Mac mini**, "Nowledge Mem 0.7.34; 0.7.37 is out", with **Update**;
+  or "Nowledge Mem is in twice: 0.1.10 and 0.1.53", with **Keep one**. Each asks first what it will
+  do and where, then a task on that computer follows Nowledge Mem's own guide, changing only that
+  agent's own settings. Start the agent again afterwards. Nothing happens until you tap, and when
+  every agent is up to date there is no row at all. The agent's own detail in **Your devices**
+  says the same.
 - Without [Nowledge Mem](https://mem.nowledge.co), your partner still remembers your
   conversation on its own. This section then says what Nowledge Mem adds and walks you through it
   in two steps: **Install Nowledge Mem** (one tap puts it on the computer Ducter runs on) and

@@ -1,0 +1,135 @@
+{
+  "schema_version": 1,
+  "local_only": true,
+  "plugins": [
+    {
+      "host": "codex-cli",
+      "installation": "installed",
+      "enabled": null,
+      "installed_version": null,
+      "runtime": "not_checked",
+      "recommended_action": "review",
+      "installations": [
+        {
+          "scope": "user",
+          "source_kind": "marketplace",
+          "package_present": true,
+          "version": "0.1.10",
+          "enabled": true
+        },
+        {
+          "scope": "user",
+          "source_kind": "marketplace",
+          "package_present": true,
+          "version": "0.1.53",
+          "enabled": true
+        }
+      ],
+      "warnings": [
+        "Managed policy, session flags and runtime loading are not verified.",
+        "Multiple registrations or cached versions exist; no effective version or enablement is inferred."
+      ]
+    },
+    {
+      "host": "claude-code",
+      "installation": "installed",
+      "enabled": true,
+      "installed_version": "0.7.37",
+      "runtime": "not_checked",
+      "recommended_action": "none",
+      "installations": [
+        {
+          "scope": "user",
+          "source_kind": "marketplace",
+          "package_present": true,
+          "version": "0.7.37",
+          "enabled": true
+        }
+      ],
+      "warnings": [
+        "Managed policy, invocation-local plugins and runtime loading are not verified."
+      ]
+    },
+    {
+      "host": "pi",
+      "installation": "installed",
+      "enabled": true,
+      "installed_version": "0.8.14",
+      "runtime": "not_checked",
+      "recommended_action": "none",
+      "installations": [
+        {
+          "scope": "user",
+          "source_kind": "npm",
+          "package_present": true,
+          "version": "0.8.14",
+          "enabled": true
+        }
+      ],
+      "warnings": [
+        "Invocation-only extensions and runtime loading are not verified."
+      ]
+    },
+    {
+      "host": "openclaw",
+      "installation": "installed",
+      "enabled": true,
+      "installed_version": "0.8.31",
+      "runtime": "not_checked",
+      "recommended_action": "none",
+      "installations": [
+        {
+          "scope": "user",
+          "source_kind": "openclaw_extension",
+          "package_present": true,
+          "version": "0.8.31",
+          "enabled": true
+        }
+      ],
+      "warnings": [
+        "OpenClaw imported configuration, install-ledger state and managed activation are not resolved."
+      ]
+    },
+    {
+      "host": "alma",
+      "installation": "installed",
+      "enabled": null,
+      "installed_version": "0.7.9",
+      "runtime": "not_checked",
+      "recommended_action": "review",
+      "installations": [
+        {
+          "scope": "user",
+          "source_kind": "alma_directory_plugin",
+          "package_present": true,
+          "version": "0.7.9",
+          "enabled": null
+        }
+      ],
+      "warnings": [
+        "Alma activation settings and supplementary Skills are not inferred from a directory plugin."
+      ]
+    },
+    {
+      "host": "deepseek-harness",
+      "installation": "unknown",
+      "enabled": null,
+      "installed_version": null,
+      "runtime": "not_checked",
+      "recommended_action": "review",
+      "installations": [
+        {
+          "scope": "user",
+          "source_kind": "dsh_profile_bundle",
+          "package_present": true,
+          "version": "0.2.2",
+          "enabled": true
+        }
+      ],
+      "warnings": [
+        "A DSH profile has no readable package manifest.",
+        "DSH profile selection is declarative; active profile, overlays, host compatibility and runtime loading are not checked."
+      ]
+    }
+  ]
+}

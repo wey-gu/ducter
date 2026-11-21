@@ -2,12 +2,20 @@
 
 Deferred work, grouped by area, each with its trigger where it has one.
 
+**Live checks (D463).** An owed real-world check the kit runs says so: "Check: `ducter check run
+<name>`" (`ducter check list` says what each needs and how long). Once run, the item carries the
+line `ducter check report` prints for it, naming the result file: "Seen live:
+`2026-11-23-mem-shapes.json` (pass, …)" or "Tried live: … (not-yet: …)". The files stay on the
+computer that ran them (`~/.ducter/checks/`), never in git (D75); a passed item is ticked with its
+line.
+
 ## A free key's day (D449, research/195)
 
 - [ ] **The real 429 through pi**: one day of a throwaway free OpenRouter account and a free Gemini
   key spent on purpose, to see what pi's failed turn says (whether OpenRouter's
   `metadata.headers` and Gemini's quota id survive into OAR's reason) and that the hold waits
-  for the true reset. Fakes only so far. Trigger: a throwaway account the author makes.
+  for the true reset. Fakes only so far. Trigger: a throwaway account the author makes. Check:
+  `ducter check run free-key-429`.
 - [ ] **The partner's own turns ahead of tasks when the day runs low**: when about a fifth is
   left, a task's next turn on the free key waits for the reset (D297's wait, said once) so the
   person can still talk. Today only Ducter's own extra calls stop; tasks spend as they go.
@@ -22,7 +30,8 @@ Deferred work, grouped by area, each with its trigger where it has one.
 
 - [ ] **A real walk**: a bare Mac (no Node, no agent), a real free Gemini key and a Kimi voucher key
   made by a person, the key pasted, pi put in place by D363's install, the first message answered.
-  Fakes only so far. Trigger: a throwaway account the author makes (Ducter never makes one).
+  Fakes only so far. Trigger: a throwaway account the author makes (Ducter never makes one). Check:
+  `ducter check run first-answer`.
 - [ ] **The author's review** of `.shots/first-answer/`.
 - [ ] **A local model as a private mode** (Ollama with a tool-capable 4–8B model, through pi's own
   `models.json`): only when the person asks for it, labelled lighter. Trigger: someone asks to keep
@@ -46,7 +55,7 @@ Deferred work, grouped by area, each with its trigger where it has one.
   Mac, Safari and the app on an iPhone, the Android app): the 1.2 s / 2.4 s gaps in zh and en, the echo
   guard on a laptop's speakers, the phone's speaker and earphones, a recognizer session ending by
   itself mid-talk, the screen kept on, a card answered "好" while cooking. Trigger: before calling the
-  talk more than a preview.
+  talk more than a preview. Check: `ducter check run talk-mic` (one platform a run).
 - [ ] **Safari and the iPhone shell recognizing while speaking**: whether `webkitSpeechRecognition`
   keeps running while `speechSynthesis` speaks, and whether the shell's `AVAudioSession` ducks or
   stops the recognizer; if not, the talk listens only after the voice ends (no talking over). Trigger:
@@ -66,7 +75,7 @@ Deferred work, grouped by area, each with its trigger where it has one.
 
 - [ ] **The author's review** of `.shots/float/` (over the editor, zh/en, light/dark, five lines).
 - [ ] **Natively over a full-screen app, on another Space and with Stage Manager**: the panel should
-  stay above and never take the keyboard (one native run so far: shown, not focused). Trigger: a signed build.
+  stay above and never take the keyboard (one native run so far: shown, not focused). Trigger: a signed build. Check: `ducter check run mini-window`.
 - [ ] **A changeable key** (Settings › Look and sound). Trigger: the first person whose key collides.
   Saying so when ⌃⌥⌘Space is held by another app is done as D446 (both menu items say it, the first line
   points at the menu).
@@ -85,16 +94,17 @@ Deferred work, grouped by area, each with its trigger where it has one.
 - [ ] **The live proof on one real site**, read-only up to the pay page and nothing pressed after:
   the author's MacBook (or hel) with Ducter's own browser signed in to a real shop or a train site
   once, "把购物车里那三样买了" from the phone, the card with the right total and host, 去付款 opening
-  the page live on the phone, the author paying himself (or 先不买). Trigger: the next release on hel.
+  the page live on the phone, the author paying himself (or 先不买). Trigger: the next release on hel. Check:
+  `ducter check run errand-checkout`.
 - [ ] **A worker Mac's Ducter browser over a real socket** (remote.ts): the card's picture, the
-  live view and the person's click through the worker. Covered by fakes only.
+  live view and the person's click through the worker. Covered by fakes only. Check: `ducter check run worker-browser`.
 - [ ] **A real phone paying in the live view**: a wallet or a QR page, 3-D Secure, a bank's own app
   opening from the page (it may leave the view: say what then).
 - [ ] **The pay words on real checkouts**: the gate's list (zh, en, ja) read against five real
   checkout pages. A pay button named only by an icon or an image is caught since D446 (its other names,
   a pay address, a card in its form); one with no name, posting nowhere telling and no card in its
   form (a card in another site's frame) still gets through. Trigger: the live proof, or any real
-  checkout the gate missed.
+  checkout the gate missed. Check: `ducter check run pay-words --page <saved.html>` (five pages).
 - [ ] **The person's own Chrome, when they ask for it** ("用我自己的 Chrome"): not offered; the stop
   and the gate would be the brief's word only there. Trigger: the author asks.
 - [x] **Detail labels in the person's language in Done for you** ("Phone", "Full name" in a zh
@@ -107,7 +117,7 @@ Deferred work, grouped by area, each with its trigger where it has one.
 
 - [ ] **The author's review** of `.shots/settings-polish/after` against `before`, pane by pane.
 - [x] **The missing-tool line on a real home** names the home's package manager (`dnf`, `pacman`, `zypper`,
-  else `apt`) (D445). Still owed: seen on a real Fedora or Arch home.
+  else `apt`) (D445). Still owed: seen on a real Fedora or Arch home. Check: `ducter check run pkg-line`.
 - [x] **The Mac's quiet hours in 24 hours** in every language and region: two pills of half hours (D445).
 - [x] **The Mac's waiting square breathes** as the web's does, timer-driven, still under reduced motion (D445).
 - [ ] **D445's follow-ups** (research/192): the author's review of `.shots/settings-delight/{before,after}`;
@@ -178,7 +188,7 @@ Deferred work, grouped by area, each with its trigger where it has one.
 
 - [ ] **A phone's frame rate**: the loops and the line's change timed with the performance panel on
   a real iPhone and the Android app's web view. The line was seen in the iOS Simulator as D447 (it
-  drew over the card under it when two lines long; fixed). Trigger: the next iOS build.
+  drew over the card under it when two lines long; fixed). Trigger: the next iOS build. Check: `ducter check run ios-device`.
 - [ ] **A live partner turn timed with the dwell**: how often a step waits its turn, and whether
   1.4 s reads right on real steps. Trigger: a live run with a signed-in harness.
 - [ ] **A partner-written step line** (the reference's 整理申请路线: the partner names its own
@@ -354,7 +364,8 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
 
 - [ ] A read-only live check against the real Mem of what D444 reads by INFERRED shapes: `bridge contacts` (grouped)
       cards' `mailbox_available` / `unavailable` and member, `resources get --json`'s title and body fields, and where a
-      received message's `KnowledgeReference`s sit on `bridge open`. Trigger: the next live Bridge pass.
+      received message's `KnowledgeReference`s sit on `bridge open`. Trigger: the next live Bridge pass. Check: `ducter check run mem-shapes
+      [--uri <link>] [--message <saved bridge open>]`.
 - [ ] A spoken 别记这个 whose take-back Mem refuses says so (today only the tap's failure has a line; the spoken one
       leaves the Noted line as kept). Trigger: it happens once.
 - [ ] 别记这个 for a second partner's conversation (D309): today the take-back reads the default partner's channel only.
@@ -445,7 +456,8 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
   clean check. The eval's documents are made to carry one known defect each, so 22/23 is an upper
   bound. Trigger: the first release with D439 on the author's Mac.
 - [ ] **Poppler with the home** (or a pure reader for a PDF's text boxes): without it 8 of 13 PDF
-  defects go unseen. Trigger: a home without Poppler in the real measure, or the next installer change.
+  defects go unseen. Trigger: a home without Poppler in the real measure, or the next installer change. Check: `ducter check run poppler`
+  on each home.
 - [ ] **A title Chrome shrank the page to fit** (the eval's one miss): the task's own look covers it
   today; an AI reading the page pictures, or a size floor near 7.5 pt, if real runs show it.
 - [ ] **LibreOffice where the task works,** so every `.pptx`/`.docx` has its pages; offered on the
@@ -482,7 +494,8 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
 ## Usage limits (D297, research/101)
 
 - Prove it on a real limit hit: Claude Code's 5-hour window and Codex's, the reset read, the
-  wait, the resume in the same session, and the hand-off (all checked only with fakes).
+  wait, the resume in the same session, and the hand-off (all checked only with fakes). Check: `ducter check
+  run limit-hit` after a real hit (it reads the last 14 days).
 - **D435 follow-ups (the partner's own agent held):** prove it on a real limit hit of the partner's
   own Claude Code (rides on the first item); ~~read the account before the turn when a task on the
   same account already waits on its reset~~ (done as D446, `BrainHold.ahead`); a
@@ -1388,7 +1401,7 @@ note and a `Dn`) before it is built.
       project is added from New task. Default: show the column's ＋ 添加文件夹 alone with one
       project. Trigger: a fresh user who looks for it on On hand. (b) Setting the roots from
       Settings › Where it runs instead of an environment variable. Trigger: the first person who
-      asks for it without a shell. (c) A live run against hel and a worker Mac.
+      asks for it without a shell. (c) A live run against hel and a worker Mac. Check: `ducter check run add-folder` on hel with a worker awake.
 - [ ] **Sign in from Devices too.** Today the sign-in lives in New task's clone field and the
       CLI; a push or draft PR that finds no sign-in names them. Default: the computer's card in
       Devices shows its GitHub line with the same button. Trigger: a push failing for sign-in
@@ -2613,7 +2626,7 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] **Arrange the shelf by hand** (order, folders). Trigger: someone with more than a dozen apps.
 - [ ] **The kit on the Mac's own fonts** (an app can't load Bricolage; it falls back to the system font). Trigger: a designer review of an app window.
 - [ ] **Rename and delete inside the Mac's app window** (its 「⋯」 brings the main window's shelf forward to do them). Trigger: the author uses them from the app window.
-- [ ] **A real phone** walk of the shelf and the app sheet (shots are headless Chrome at 390). The shelf (empty) and the app's card were seen in the iOS Simulator as D447; the open app sheet and a real phone are still owed. Trigger: the next iPhone build.
+- [ ] **A real phone** walk of the shelf and the app sheet (shots are headless Chrome at 390). The shelf (empty) and the app's card were seen in the iOS Simulator as D447; the open app sheet and a real phone are still owed. Trigger: the next iPhone build. Check: `ducter check run ios-device`.
 
 ## D413: 不用问我的 / Without asking (`core/src/standing.ts`)
 
@@ -2653,11 +2666,11 @@ Codex first, once OAR is near 1.0. See `research/17`.
 
 ## D427: a task in rounds is kept (`core/src/loops.ts`, research/177)
 
-- [ ] **See it on hel after the upgrade.** The review loop is recorded as a loop with nothing said (it already runs since 10:37); watch one round report done and stay on 等下一次. Trigger: the next release on hel.
+- [ ] **See it on hel after the upgrade.** The review loop is recorded as a loop with nothing said (it already runs since 10:37); watch one round report done and stay on 等下一次. Trigger: the next release on hel. Check: `ducter check run loops`.
 - [x] **Say a round, not "done", in the report tool.** A task in rounds could be told in its wake text that a round's end is `progress` (D427 makes "done" harmless, but the words would match). Default: add one line to the wake for a task in rounds. Trigger: a task tool change with its eval. Done as D429 (the wake's round paragraph).
 - [x] **A computer's name on the late card for a worker.** The keeper names it only when the place names a paired worker; a home's own task says "its computer". Trigger: the first late loop on a worker Mac. Done as D429 (named wherever known, the home too).
 - [x] **Move a late loop to a computer that is awake** (the late card's second choice, D157). Default: offer it when the loop's place can move. Trigger: a loop late twice in a week for the same sleep. Done as D429 (换到醒着的电脑上跑; not for repo or folder tasks).
-- [ ] **Condition loops live.** `look` re-arms a check, event or judge loop; none seen live yet ("CI 挂了告诉我" as a task in rounds). Trigger: the first one on hel.
+- [ ] **Condition loops live.** `look` re-arms a check, event or judge loop; none seen live yet ("CI 挂了告诉我" as a task in rounds). Trigger: the first one on hel. Check: `ducter check run loops` (both kinds).
 - [x] **Mac ⋯ on the clay menu (D421).** The card's ⋯ is still the popover that holds 改时间 and 多久跑一轮 inline; move it to `menuButton` with a 多久跑一轮 submenu once 改时间 has a sheet of its own. Trigger: the next Ongoing pass. Done as D429.
 - [x] **The iOS Simulator** for the phone card (web shots at 390 only). Done as D447 (Ongoing, light and dark at Accessibility Large: nothing to fix).
 - [x] **"How is my loop doing?" in one line.** `loop-status-en` failed both haiku runs and `loop-status-zh` once (too long, the rhythm left out, other tasks' news added). Default: routine_list returns a ready line per item (rhythm, next, health in words) and rule 15 says to answer only about the one asked. Trigger: the next persona or tool change with its eval. Done as D429 (routine_list's say; eval numbers in D429).
@@ -2685,15 +2698,26 @@ Codex first, once OAR is near 1.0. See `research/17`.
 
 ## Offers, not interruptions (D453)
 
-- [ ] **The live check on hel:** a week of offers on 有用就说 (how many a morning, what was taken up, the weights it learned); the replay estimate (research/197 §4) is a python approximation of the detectors. Trigger: the next release on hel.
+- [ ] **The live check on hel:** a week of offers on 有用就说 (how many a morning, what was taken up, the weights it learned); the replay estimate (research/197 §4) is a python approximation of the detectors. Trigger: the next release on hel. Check: `ducter check run offers-week` after a week.
 - [x] **Widen the funnel:** offers from a task's follow-up, Mem and the conversation's loose ends (D458, research/199). Still open: service notices read closely past `NOTICE_DAY_MAX` (89 left unread a day on hel). Trigger: a week where the author takes up at least one offer and the mornings stay at one or two.
 
 ## Offers from past the accounts (D458)
 
-- [ ] **The live check on hel:** a week with the spotter on: leads a morning, what was offered and taken up, the spotter's tokens. Trigger: the next release on hel.
-- [ ] **The real Mem's search for preferences and decisions:** the fake returns what a semantic search plausibly would; measure what `nmem m search` returns for the gatherer's queries on the author's Mem. Trigger: before tuning the queries.
+- [ ] **The live check on hel:** a week with the spotter on: leads a morning, what was offered and taken up, the spotter's tokens. Trigger: the next release on hel. Check: `ducter check run offers-week` (the spotter's tokens are not in the Log; read them from Settings).
+- [ ] **The real Mem's search for preferences and decisions:** the fake returns what a semantic search plausibly would; measure what `nmem m search` returns for the gatherer's queries on the author's Mem. Trigger: before tuning the queries. Check: `ducter check run mem-shapes --query <words>` (shapes and counts).
 - [ ] **A real-week eval set:** the offers eval's weeks are synthetic (19 planted goods); build one from the author's own tasks and conversations (gold marked by him). Trigger: the first week of live offers.
 - [ ] **Failures whose cause is fixed, beyond issues:** a failed task's cause today must be an issue it named; a usage limit reset or a service back up are not leads yet. Trigger: a failed task the author retried by hand after such a cause.
 - [ ] **zh line length:** one spotter line was over the 72-character budget and dropped (research/199 §4); ask for a shorter rewrite instead of dropping. Trigger: a second drop seen live.
 - [ ] **The model judge's offer prompt measured:** the proactive eval (`packages/partner/eval/proactive/`) still scores the old bar's precision; add an offer-recall measure (what a good partner would offer) beside false alarms for interruptions. Trigger: before tuning OFFER_FLOOR or the weights.
 - [ ] **The verdict memo ignores the mode's floor:** a candidate judged on 有用就说 keeps its verdict after a switch to 每天最多 3 条 until its words change. Trigger: someone switches modes and sees a low one.
+
+## The live-check kit (D463, research/201 ★3)
+
+- [ ] **The week-long measures that need the author's judgment** (D437's looks, D439's documents,
+  D426/D430's several things in one message): a check that tallies the Log's fires for a week and
+  asks the author to mark each miss and each bit of noise. Trigger: the first such week on hel.
+- [ ] **A check run against hel from the Mac** (`--home`, as the home commands take): today a check
+  reads the computer it runs on, so the author runs it over ssh on hel. Trigger: the author asks.
+- [ ] **The offers spotter's tokens in the Log**: `offers-week` can't read them today. Trigger:
+  tuning the spotter (D458).
+- [ ] **Raters and a phone's frame rate** stay outside the kit (people; the performance panel).

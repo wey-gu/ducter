@@ -544,6 +544,9 @@ function printHeadless(ctx: Ctx, name: string, port: number) {
 export async function run(argv: string[]): Promise<number | "running"> {
   // Internal: a harness that takes stdio MCP only reaches Ducter through this (D85). Not in help.
   if (argv[0] === "mcp-bridge") return (await import("@ducter/runner/src/mcp-bridge.ts")).bridgeMain(argv[1]);
+  // D463: the live-check kit, a maintainer's command (English only, not in help). Only reads, and
+  // only this machine's Ducter: --port and --data-dir pick which.
+  if (argv[0] === "check") return checkCmd(argv.slice(1));
   const t0 = translator(detectLocale());
   const parsed = parseArgs(argv);
   if (!parsed.ok) {
@@ -722,6 +725,15 @@ export async function run(argv: string[]): Promise<number | "running"> {
     case "update":
       return cmdUpdate({ t, style, args, port, dataDir, target: ctx.target });
   }
+}
+
+async function checkCmd(argv: string[]): Promise<number> {
+  const { checkMain, parseOpts } = await import("./live-check/main.ts");
+  const { realCheckEnv } = await import("./live-check/env.ts");
+  const { opts } = parseOpts(argv);
+  const dataDir = resolve(opts["data-dir"]?.at(-1) ?? process.env.DUCTER_DATA_DIR ?? join(homedir(), ".ducter"));
+  const port = Number(opts.port?.at(-1) ?? process.env.DUCTER_PORT ?? 7777);
+  return checkMain(argv, { env: realCheckEnv({ dataDir, port, version: pkg.version }), out: (s) => console.log(s) });
 }
 
 if (import.meta.main) {

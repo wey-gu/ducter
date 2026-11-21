@@ -20,8 +20,13 @@ en: More offers, fewer interruptions; sharper finding; folders on any computer
   shows ‹ 3 / 9 › and ⌃1–⌃9 jumps; ⌘/ lists every key. An old task no longer shows as working.
 
 **Your computers**
-- Add a folder on any of your computers, the home server included: browse its folders through
-  Ducter, or clone a repository there.
+- Add a folder on any of your computers, the home server included: pick the computer, browse its
+  folders through Ducter with keys and a breadcrumb, or clone a repository there.
+- An opened task can be compact: ⌘⇧D, or Settings › Look & sound.
+
+**Settings**
+- Memory and Agent messaging read as one story: the switch at the top, who can reach your partner
+  before what happened, and a word from your partner when you forget or change something.
 
 **Everywhere else**
 - Text follows your system text size on the iPhone, all the way up.

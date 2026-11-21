@@ -22,6 +22,7 @@
 import type { FindHow, FindKind, FindSrc, LangTag, Place, TaskCard } from "@ducter/protocol";
 import type { MemLookHit, MemLookPort, MemLookThread } from "@ducter/protocol/src/internal.ts";
 import { langName, scriptOfLang, words } from "@ducter/protocol";
+import { AI_TOOLS } from "@ducter/protocol/src/mem-source.ts";
 
 /** Languages written a character a word or a syllable: their budgets count characters (as judge.ts does). */
 const DENSE = new Set(["Hani", "Hang", "Kana"]);
@@ -79,6 +80,11 @@ export const KIND_OF: Record<LeadSrc, FindKind> = { task: "next_step", mem: "rem
 /** Bounds: leads handed to the spotter a morning, Mem reads a morning, the look-back windows. */
 export const LEADS_MAX = 24;
 export const MEM_READS_MAX = 6;
+/** D461: thread reads a morning, beside the memory reads; each scans this deep (Mem ranks by match, not date). */
+export const THREAD_READS_MAX = 2;
+export const THREAD_SCAN = 20;
+/** D461: conversations left open offered from one morning's reads, the most recent first. */
+export const THREAD_LEADS_MAX = 3;
 export const TASK_DAYS = 3;
 export const FAILED_DAYS = 14;
 export const TALK_DAYS = 14;
@@ -132,13 +138,17 @@ export function dateWords(ms: number, zone: string): { zh: string; en: string } 
   return { zh: `${g(num, "month")} 月 ${g(num, "day")} 日`, en: `${g(p, "month")} ${g(p, "day")}` };
 }
 
-/** Mem's source as a tool's name ("codex" → "Codex", "claude-code" → "Claude Code"); undefined for the person's own or Ducter's. */
+/**
+ * Mem's source as a tool's name ("codex" → "Codex", "claude-code" → "Claude Code"), only for an AI
+ * tool the person knows by name (protocol/src/mem-source.ts); undefined for the person's own, Ducter's,
+ * and anything else. D461: the real Mem's sources include its own distillers (`thread_distillation`,
+ * `knowledge_agent`, `ai-now`), its chat connector (`im_connector`) and test runs (`codex-smoke`),
+ * VERIFIED live (research/200): title-casing them made "从 Thread Distillation … 记下的".
+ */
 export function toolName(source?: string): string | undefined {
   if (!source) return undefined;
-  const s = source.toLowerCase();
-  if (["ducter", "cli", "user", "manual", "web", "app", "desktop", "import", "mem", "nowledge"].includes(s)) return undefined;
-  const known: Record<string, string> = { codex: "Codex", "claude-code": "Claude Code", claude: "Claude", cursor: "Cursor", "gemini-cli": "Gemini CLI", gemini: "Gemini", pi: "pi", antigravity: "Antigravity", opencode: "OpenCode", chatgpt: "ChatGPT" };
-  return known[s] ?? s.split(/[-_ ]+/).map((w) => (w ? w[0]!.toUpperCase() + w.slice(1) : w)).join(" ");
+  const s = source.trim().toLowerCase();
+  return AI_TOOLS[s] ?? (s === "antigravity" || s === "google-antigravity" ? "Antigravity" : undefined);
 }
 
 const isoDay = (d?: string) => (d && /^\d{4}-\d{2}-\d{2}/.test(d) ? Date.parse(d.length === 10 ? `${d}T12:00:00Z` : d) : NaN);
@@ -267,6 +277,19 @@ const PREF = /喜欢|偏好|习惯|总是|一定要|尽量|不要|别给我|讨�
 const CONDITION = /(?:等|待)\s*([^，。,.;；]{2,40}?)\s*(?:之后|以后|后|了|完)(?:再|就)|([^，。,.;；]{2,40}?)(?:之后|以后)再|\bonce\s+([^,.;]{3,80}?)(?:,|\s+(?:is|are|has|have|lands|ships|merges|is merged|is done|is out|goes out)\b)|\bafter\s+([^,.;]{3,60}?),?\s+(?:we|I|let'?s)\b|\bwhen\s+([^,.;]{3,60}?)\s+(?:lands|ships|is merged|is done|is out)\b/i;
 /** A conversation that stopped with something left: the person's or the tool's last words. */
 const LEFT_OPEN = /下次|回头|明天继续|接着(?:做|弄|来)|待会|还没(?:做|完|弄|改|修)|没做完|TODO|to be continued|next time|pick (?:this|it) up|continue (?:later|tomorrow)|let'?s (?:continue|finish)|left off|come back to/i;
+/**
+ * D461: what names an event's own kind of thing in a memory. A memory that only says "preference" or
+ * "always" isn't about a flight (live, research/200: three of four pref_event leads against a
+ * flight, a hotel and a meeting were a decision or a preference about something else).
+ */
+const KIND_TERMS: Record<Upcoming["what"], RegExp> = {
+  flight: /航班|飞机|机票|登机|座位|靠窗|靠走道|过道|中间座|里程|航空|flight|plane|airline|seat|aisle|boarding|layover/i,
+  train: /火车|高铁|动车|车票|座位|靠窗|过道|卧铺|train|rail|seat|aisle/i,
+  hotel: /酒店|住宿|房间|入住|楼层|大床|双床|hotel|room|check-?in|floor|king bed|twin/i,
+  meeting: /开会|会议|会前|议程|纪要|meeting|agenda|minutes|1:1|one-on-one/i,
+  plan: /活动|聚会|演出|门票|event|party|tickets?|show/i,
+  other: /(?!)/,
+};
 /** What kind of trip or meeting asks which preference (the words Mem's search is asked with). */
 const ASK_FOR: Record<Upcoming["what"], string> = {
   flight: "出差 航班 座位 偏好 flight seat preference",
@@ -312,10 +335,10 @@ export async function memLeads(i: WiderInput): Promise<Lead[]> {
   const out: Lead[] = [];
   let reads = 0;
   const seen = new Set<string>();
-  const ask = async (q: string, n: number): Promise<MemLookHit[]> => {
+  const ask = async (q: string, n: number, unitType?: "decision"): Promise<MemLookHit[]> => {
     if (reads >= MEM_READS_MAX) return [];
     reads++;
-    return (await mem.search(q, n).catch(() => undefined)) ?? [];
+    return (await mem.search(q, n, unitType ? { unitType } : undefined).catch(() => undefined)) ?? [];
   };
   const hitKey = (h: MemLookHit) => h.id ?? `${h.title}|${h.date ?? ""}`;
   // (1) A preference meeting something on the calendar in the next few days.
@@ -327,17 +350,21 @@ export async function memLeads(i: WiderInput): Promise<Lead[]> {
     for (const h of await ask(`${u.name} ${ASK_FOR[u.what]}`, 4)) {
       const text = `${h.title} ${h.content}`;
       if (seen.has(hitKey(h)) || !(h.kind === "preference" || PREF.test(text))) continue;
-      // About this kind of thing: a word of the event, or the trip's own words.
-      if (!(shared(text, `${u.name} ${u.place ?? ""}`) >= 1 || termsOf(text).size && overlap(text, ASK_FOR[u.what]) > 0)) continue;
+      // About this kind of thing: its kind's own words, or (a memory Mem calls a preference) a word of
+      // the event's own. D461: never the bare "preference" the search was asked with, and a decision
+      // that shares one word with an event's name ("team") is not a preference about it.
+      if (!(KIND_TERMS[u.what].test(text) || (h.kind === "preference" && shared(text, `${u.name} ${u.place ?? ""}`) >= 1))) continue;
       seen.add(hitKey(h));
       const d = dateWords(Date.parse(u.start), i.zone);
       out.push({ id: "", key: `mem:${hitKey(h)}:${u.name}:${u.start.slice(0, 10)}`, src: "mem", hint: "pref_event", what: clip(h.title, 80), detail: clip(h.content, 240), join: `${u.what}: ${clip(u.name, 80)} at ${u.start}${u.place ? ` (${clip(u.place, 40)})` : ""}`, at: h.date ? new Date(isoDay(h.date)).toISOString() : new Date(i.now).toISOString(), origin: memOrigin(h, i.zone, i.now), how: [{ src: "mem", what: clip(h.title, 80), at: h.date ? new Date(isoDay(h.date)).toISOString() : new Date(i.now).toISOString(), ...(toolName(h.source) ? { from: toolName(h.source)! } : {}), says: clip(h.content, 60) }, { src: "calendar", what: clip(u.name, 80), at: u.start, says: `${d.zh}` }], cost: HINT_COST.pref_event, topic: clip(u.name, 40), dueAt: u.start });
     }
   }
-  // (2) A decision that waited on something now true.
-  const asks = ["等 之后再 决定 decision once after", ...i.focus.slice(0, 1).map((f) => `${f} 决定 decision`)];
-  for (const q of asks) {
-    for (const h of await ask(q, 5)) {
+  // (2) A decision that waited on something now true. D461: asked for decisions only (`--unit-type`)
+  // with the condition's own short words; the old mixed query found decisions, none with a condition
+  // (live, research/200), while "once" and "以后再" over decisions found four in twenty.
+  const asks: [string, number][] = [["once", 8], ["以后再", 8], ...i.focus.slice(0, 1).map((f): [string, number] => [f, 5])];
+  for (const [q, n] of asks) {
+    for (const h of await ask(q, n, "decision")) {
       if (seen.has(hitKey(h))) continue;
       const text = `${h.title}。${h.content}`;
       const m = CONDITION.exec(text);
@@ -352,14 +379,18 @@ export async function memLeads(i: WiderInput): Promise<Lead[]> {
       out.push({ id: "", key: `mem:${hitKey(h)}:met`, src: "mem", hint: "condition_met", what: clip(h.title, 80), detail: clip(h.content, 240), join: `${clip(cond, 60)} → now: ${met.what} (${met.at.slice(0, 10)})`, at, origin: memOrigin(h, i.zone, i.now), how: [{ src: "mem", what: clip(h.title, 80), at, ...(toolName(h.source) ? { from: toolName(h.source)! } : {}), says: clip(cond, 60) }, { src: met.src, what: clip(met.what, 80), at: met.at }], cost: HINT_COST.condition_met, topic: clip(cond, 40) });
     }
   }
-  // (3) A conversation with another AI tool that stopped with something left.
+  // (3) A conversation with another AI tool that stopped with something left. D461: Mem's thread
+  // search wants every word of the query and ranks by match, not date (live, research/200: the old
+  // five-word query found nothing; one word found old threads first), so each read is one cue word,
+  // one per language, scanned deep, and the recent ones are kept; its own budget beside the memory reads.
   if (mem.threads) {
-    const qs = [...i.focus.slice(0, 1), "下次继续 TODO next time continue"];
-    for (const q of qs) {
-      if (reads >= MEM_READS_MAX) break;
-      reads++;
-      const ts = (await mem.threads(q, 3).catch(() => undefined)) ?? [];
+    let threadReads = 0;
+    for (const q of ["下次", "next time"]) {
+      if (threadReads >= THREAD_READS_MAX) break;
+      threadReads++;
+      const ts = ((await mem.threads(q, 3, { scan: THREAD_SCAN }).catch(() => undefined)) ?? []).slice().sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
       for (const t of ts) {
+        if (out.filter((l) => l.hint === "thread_open").length >= THREAD_LEADS_MAX) break;
         const at = isoDay(t.date);
         const k = t.id ?? `${t.title}|${t.date ?? ""}`;
         if (seen.has(k) || Number.isNaN(at) || i.now - at < 2 * DAY || i.now - at > THREAD_DAYS * DAY || !toolName(t.source)) continue;

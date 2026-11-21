@@ -330,8 +330,10 @@ export interface MemLookThread {
 }
 /** D458: Mem, read-only, for the offers; undefined when memory is off, not connected or slow. */
 export interface MemLookPort {
-  search(query: string, n: number): Promise<MemLookHit[] | undefined>;
-  threads?(query: string, n: number): Promise<MemLookThread[] | undefined>;
+  /** D461: `unitType` asks Mem for one kind of memory (`--unit-type`). */
+  search(query: string, n: number, opts?: { unitType?: "decision" | "plan" | "preference" | "fact" }): Promise<MemLookHit[] | undefined>;
+  /** D461: `scan`: read that many conversations (Mem ranks by match, not date) and return them all. */
+  threads?(query: string, n: number, opts?: { scan?: number }): Promise<MemLookThread[] | undefined>;
 }
 
 export interface WorkingMemoryPort {

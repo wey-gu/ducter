@@ -1141,7 +1141,8 @@ CLI, read from help and the binary only).
 - **最近 says what hasn't gone.** Each outgoing message's latest word, by its op: **正在送**, **还在确认送到没有**,
   **没能确认送到**, **没送出去** in place of the time.
 - **An away home.** `bridge connections list --include-activity` when the help offers it; Mem's `last_seen_at_ms`
-  (field INFERRED) as `others[].seenAt`; over a day quiet: **Ducter 的消息还在 hel 上收** / **hel 上次在线是 3 天前，消息会在
+  as `others[].seenAt`, read only when the list says `activity_available` (D461, VERIFIED read-only: the flag is on
+  the list, `schema_version: 2`; the time is per connection and null until Mem has seen it, research/200); over a day quiet: **Ducter 的消息还在 hel 上收** / **hel 上次在线是 3 天前，消息会在
   那边等着**, with **改由这台收**.
 - **Not yet:** **已读** (the binary has `read_recipients`; no verb is known to return them), native sessions. Asked
   of Mem in research/183 §4 and research/191 §asks. (Contacts-backed reach and handed-over documents: D444, below.)
@@ -1153,16 +1154,21 @@ Evidence: `research/191` (nmem still 0.10.121; a deeper read of its help and str
 - **能找到{name}的, backed by Mem.** When the pane was looked at and the last read is over 30 minutes old, core sets
   a want (`bridgeLink.takeMailboxWant`); the partner's Bridge client, at its next check, reads `bridge contacts` with
   no query and no Space selector (grouped per identity; 31 to 40 s, in the background) and sets
-  `BridgeView.mailboxes`: the person's own cards by tool, open unless Mem says `mailbox_available: false` or
-  `unavailable`. A tool Mem lists as open is **能找到{name}，{name}也找得到它**; one listed closed is **能找到{name}，
+  `BridgeView.mailboxes`: the person's own cards by tool, open unless Mem says `mailbox_available: false` (D461,
+  VERIFIED read-only: the grouped `contacts[]` sits beside the per-Space `cards[]`, each with `spaces[]` and, when
+  open, `send_args_prefix`; more pages are told by `space_batch` / `spaces_truncated` / `spaces_next_args`). A tool Mem lists as open is **能找到{name}，{name}也找得到它**; one listed closed is **能找到{name}，
   但 Nowledge Mem 说{name}现在联系不上它**; one Mem doesn't list reads as D433 said. pi and Antigravity unchanged.
 - **A handoff that carries something.** An incoming message's `nowledgemem://` addresses (in its words, or Mem's
   typed `references` / `knowledge_references`) are resolved once when it arrives, read only (`resources get`, at most
   two, 10 s each), and logged as `bridge_msg.refs` (Mem's title, the kind, its first 600 characters, secrets
-  redacted); a `shared_document` card is named only (reading it would mean `collab join`, which writes a replica).
+  redacted; D461: the title is `frontmatter.title` and the body's leading YAML block is cut, VERIFIED read-only; where
+  a received message's typed references sit on `bridge open` is still INFERRED: `open` records a read); a `shared_document` card is named only (reading it would mean `collab join`, which writes a replica).
   The partner sees them under the message as data; the line reads the address as the title, else **附了「…」**.
 - **Not yet** (research/191 §asks): **已读** (delivery states exist only on the `mailbox` path), native sessions by
   name, reading a shared plan, `feed`.
+- **A refused read is not a quiet inbox (D461).** An identity inbox that exits 0 with no message and every Space
+  `unavailable` (a revoked connection's `cloud_agent_context_authority_denied`, VERIFIED read-only, research/200) is
+  a failed check, never "nothing new".
 
 ## Tasks Ducter carries messages for (D448, 2026-11-21)
 

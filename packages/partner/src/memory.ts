@@ -111,10 +111,24 @@ export interface Replaced {
 
 export type MemoryResult<T> = ({ ok: true } & T) | { ok: false; reason: "not_configured" | "unavailable" | "rejected"; message: string };
 
+/** D461: a narrower read for the morning's offers: one kind of memory (`--unit-type`). */
+export interface SearchOpts {
+  unitType?: "fact" | "preference" | "decision" | "plan" | "procedure" | "learning" | "context" | "event";
+}
+/**
+ * D461: Mem's thread search is full text, every word must match, ranked by match, not by date
+ * (VERIFIED live, research/200): a read for recent conversations scans deeper (`scan`, at most
+ * THREADS_SCAN_MAX) and the caller keeps the recent ones.
+ */
+export interface ThreadOpts {
+  scan?: number;
+}
+export const THREADS_SCAN_MAX = 30;
+
 export interface MemoryClient {
-  search(query: string, limit: number): Promise<MemoryResult<{ hits: MemoryHit[] }>>;
+  search(query: string, limit: number, opts?: SearchOpts): Promise<MemoryResult<{ hits: MemoryHit[] }>>;
   /** D368 (G3): the person's past conversations with their other AI tools that Mem keeps (`nmem t search`). */
-  threads?(query: string, limit: number): Promise<MemoryResult<{ threads: ThreadHit[] }>>;
+  threads?(query: string, limit: number, opts?: ThreadOpts): Promise<MemoryResult<{ threads: ThreadHit[] }>>;
   /**
    * D329: replaced: the partner's own earlier memory this one supersedes (searched before writing);
    * waiting: Mem was down and the save waits in the outbox under this key (the outbox wrapper's).
@@ -248,11 +262,12 @@ export function createNmemClient(opts: NmemOptions = {}): MemoryClient {
     return { ok: false as const, reason: "unavailable" as const, message: `Nowledge Mem didn't answer (${clip(r.err || r.out || `exit ${r.code}`, 120)}).` };
   };
   const client: MemoryClient = {
-    async search(query, limit) {
+    async search(query, limit, so) {
       const who = opts.identity?.();
       // The user's Space alone; else where saves land and, when it has one, the identity's lane (D229).
       const scopes: string[][] = who?.space ? [["--space", who.space]] : who?.lane ? [[], ["--space-id", who.lane]] : [[]];
-      const rs = await Promise.all(scopes.map((sc) => run(["m", "search", "-n", String(limit), ...sc, "--", query])));
+      const kind = so?.unitType ? ["--unit-type", so.unitType] : [];
+      const rs = await Promise.all(scopes.map((sc) => run(["m", "search", "-n", String(limit), ...kind, ...sc, "--", query])));
       const lists: any[][] = [];
       let unreadable = false;
       for (const r of rs) {
@@ -276,12 +291,14 @@ export function createNmemClient(opts: NmemOptions = {}): MemoryClient {
       }).sort((a, b) => (Number(b?.score) || 0) - (Number(a?.score) || 0));
       return { ok: true, hits: merged.slice(0, limit).map((m: unknown) => compactHit(m)) };
     },
-    async threads(query, limit) {
+    async threads(query, limit, to) {
       const who = opts.identity?.();
       // The chosen Space, else where Mem's plugins save threads (its default): one read, bounded.
-      const n = Math.min(THREADS_MAX, Math.max(1, limit));
+      // D461: a scan returns every conversation it read (the caller keeps the recent ones).
+      const scan = to?.scan ? Math.min(THREADS_SCAN_MAX, Math.max(1, to.scan)) : undefined;
+      const n = scan ?? Math.min(THREADS_MAX, Math.max(1, limit));
       // A few more than shown: Ducter's own windows and tool-only matches are skipped.
-      const r = await run(["t", "search", "-n", String(n + 2), ...(who?.space ? ["--space", who.space] : []), "--", query]);
+      const r = await run(["t", "search", "-n", String(scan ?? n + 2), ...(who?.space ? ["--space", who.space] : []), "--", query]);
       if ("missing" in r || r.code !== 0) return failure(r);
       try {
         return { ok: true, threads: compactThreads(JSON.parse(r.out), n) };

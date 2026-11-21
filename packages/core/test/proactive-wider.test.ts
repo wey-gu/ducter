@@ -58,15 +58,22 @@ function fakeMem(): MemLookPort & { asked: string[] } {
   const asked: string[] = [];
   return {
     asked,
-    async search(q) {
-      asked.push(q);
-      if (/flight|航班/.test(q)) return [{ id: "m1", title: "出差订座偏好", content: "出差坐飞机一定要靠窗，别给我选中间座。", date: "2026-10-02", kind: "preference", source: "ducter" }, { id: "m2", title: "喜欢的咖啡", content: "喜欢燕麦拿铁。", date: "2026-09-01", kind: "preference" }];
-      if (/decision|决定/.test(q)) return [{ id: "m3", title: "HawDB 发布节奏", content: "等 WAL group commit 合进去之后再发 0.9 的 RC。", date: "2026-10-28", kind: "decision", source: "codex" }];
+    async search(q, _n, opts) {
+      asked.push(opts?.unitType ? `${opts.unitType}:${q}` : q);
+      // A decision that shares a word with the flight's name and says "always": not a seat preference (D461).
+      if (/flight|航班/.test(q)) return [{ id: "m1", title: "出差订座偏好", content: "出差坐飞机一定要靠窗，别给我选中间座。", date: "2026-10-02", kind: "preference", source: "ducter" }, { id: "m2", title: "喜欢的咖啡", content: "喜欢燕麦拿铁。", date: "2026-09-01", kind: "preference" }, { id: "m4", title: "NH 920 crew notes", content: "Always run the bench before a release preference review.", date: "2026-09-03", kind: "decision", source: "codex" }];
+      // D461: decisions are asked for by kind (`--unit-type decision`), with the condition's short words.
+      if (opts?.unitType === "decision" && /^once$|以后再/.test(q)) return [{ id: "m3", title: "HawDB 发布节奏", content: "等 WAL group commit 合进去之后再发 0.9 的 RC。", date: "2026-10-28", kind: "decision", source: "codex" }];
       return [];
     },
-    async threads(q) {
-      asked.push(`t:${q}`);
-      return [{ id: "th1", title: "HawDB planner join order", source: "codex", date: "2026-11-05", lines: [{ who: "user", text: "先这样，join order 的代价模型下次继续。" }, { who: "assistant", text: "好，还没改的是 cardinality 估计那块。" }] }];
+    async threads(q, _n, opts) {
+      asked.push(`t:${q}:${opts?.scan ?? "-"}`);
+      // D461: a scan returns old matches first (Mem ranks by match); the recent one is kept.
+      return [
+        { id: "th0", title: "An old planner thread", source: "claude-code", date: "2026-07-01", lines: [{ who: "user", text: "下次继续。" }] },
+        { id: "th2", title: "A distilled note", source: "thread_distillation", date: "2026-11-06", lines: [{ who: "user", text: "下次再说。" }] },
+        { id: "th1", title: "HawDB planner join order", source: "codex", date: "2026-11-05", lines: [{ who: "user", text: "先这样，join order 的代价模型下次继续。" }, { who: "assistant", text: "好，还没改的是 cardinality 估计那块。" }] },
+      ];
     },
   };
 }
@@ -81,8 +88,19 @@ test("Mem: a preference meeting a flight, a decision whose condition is met, a c
   expect(pref.how.map((h) => h.src)).toEqual(["mem", "calendar"]);
   expect(leads.find((l) => l.hint === "thread_open")!.origin.zh).toBe("从你和 Codex 11 月 5 日的对话想到的");
   expect(leads.find((l) => l.hint === "condition_met")!.origin.zh).toBe("从 Codex 10 月 28 日记下的想到的");
-  // Read only, and bounded.
-  expect(mem.asked.length).toBeLessThanOrEqual(6);
+  // Read only, and bounded: six memory reads, two thread scans.
+  expect(mem.asked.filter((a) => !a.startsWith("t:")).length).toBeLessThanOrEqual(6);
+  expect(mem.asked.filter((a) => a.startsWith("t:"))).toEqual(["t:下次:20", "t:next time:20"]);
+  expect(mem.asked).toContain("decision:once");
+  // D461: one lead per conversation, only a named AI tool's, only a recent one.
+  expect(leads.filter((l) => l.hint === "thread_open").map((l) => l.what)).toEqual(["HawDB planner join order"]);
+  expect(leads.filter((l) => l.hint === "pref_event").map((l) => l.what)).toEqual(["出差订座偏好"]);
+});
+
+test("D461: Mem's own distillers, connectors and test runs are not AI tools by name", () => {
+  for (const s of ["thread_distillation", "knowledge_agent", "ai-now", "agent", "im_connector", "codex-smoke", "cli", "mcp", "openai"]) expect(toolName(s)).toBeUndefined();
+  expect(toolName("codex")).toBe("Codex");
+  expect(toolName("Claude-Code")).toBe("Claude Code");
 });
 
 test("Mem: no event coming, no condition met: nothing from it", async () => {

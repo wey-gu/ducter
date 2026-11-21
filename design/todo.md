@@ -324,8 +324,10 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
 
 ## Trusted at a glance (D433, `bridge.md` "Trusted at a glance", research/183)
 
-- [ ] A read-only live check of `bridge connections list --include-activity` on the author's Mac or hel: the real
-      field names (`last_seen_at_ms`, `activity_available`) and where they sit. Trigger: the next live Bridge pass.
+- [x] A read-only live check of `bridge connections list --include-activity`. Done as D461 (research/200): the flag is
+      on the list; `last_seen_at_ms` per connection.
+- [ ] A real `last_seen_at_ms` number (null on both of the partner's connections on 2026-11-22). Trigger: Mem fills it,
+      or Mem says when it does.
 - [ ] **已读 / Read** on Recently once Mem says which verb returns a sent message's `read_recipients`. Trigger: Mem
       answers research/183 §4 item 2.
 - [x] Reach backed by Mem (`bridge contacts`, `mailbox_available` per agent) in the background. Done as D444: read when
@@ -352,9 +354,11 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
 
 ## Mem in the person's day (D444, `memory.md` "Mem in the person's day", research/191)
 
-- [ ] A read-only live check against the real Mem of what D444 reads by INFERRED shapes: `bridge contacts` (grouped)
-      cards' `mailbox_available` / `unavailable` and member, `resources get --json`'s title and body fields, and where a
-      received message's `KnowledgeReference`s sit on `bridge open`. Trigger: the next live Bridge pass.
+- [x] A read-only live check against the real Mem of what D444 reads by INFERRED shapes. Done as D461 (research/200):
+      the grouped contacts and `resources get` VERIFIED and fixed.
+- [ ] Where a received message's `KnowledgeReference`s sit on `bridge open` (D461 couldn't: `open` records a read, and
+      only the home that answers the partner can read its mailbox). Trigger: the next message with a reference reaches
+      the partner; read its Log entry's refs, or ask Mem for the shape (research/191 §asks).
 - [ ] A spoken 别记这个 whose take-back Mem refuses says so (today only the tap's failure has a line; the spoken one
       leaves the Noted line as kept). Trigger: it happens once.
 - [ ] 别记这个 for a second partner's conversation (D309): today the take-back reads the default partner's channel only.

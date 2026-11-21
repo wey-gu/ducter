@@ -349,7 +349,7 @@ morning note reads them too (offers only, never 只说急的, never needs-you, f
 | Kind (zh / en) | Place | A lead when | Where it came from (under the words) |
 |---|---|---|---|
 | 接着可以做的 / A next step | finished tasks (3 days; failures 14) | a merge whose follow-up issue is still open; a report that noticed and left something; a failure whose named issue closed after it; a routine whose last two runs differ | 从 {date}做完的「{task}」想到的 · 从 {date}没成的「{task}」想到的 · 从例行「{name}」最近两次的结果想到的 |
-| 记得的 / Remembered | Nowledge Mem (read-only, ≤ 6 reads a morning) | a preference meeting a trip, meeting or plan in the next 4 days; a decision whose condition a done task, a closed issue or its date now meets; a conversation with another AI tool (2–21 days old) that stopped with something left | 从你 {date}记下的想到的 · 从 {tool} {date}记下的想到的 · 从你和 {tool} {date}的对话想到的 |
+| 记得的 / Remembered | Nowledge Mem (read-only: ≤ 6 memory reads and 2 conversation scans a morning) | a preference meeting a trip, meeting or plan in the next 4 days; a decision whose condition a done task, a closed issue or its date now meets; a conversation with another AI tool (2–21 days old) that stopped with something left | 从你 {date}记下的想到的 · 从 {tool} {date}记下的想到的 · 从你和 {tool} {date}的对话想到的 |
 | 你提过的 / You mentioned | the conversation (20 h to 14 days old) | the person said they'd get to something, with no day and no ask to be reminded (those stay D281's reminders) | 从你 {date}说的话想到的 |
 
 Code gathers the leads (`proactive/wider.ts`) and drops what a later task took up or a later line
@@ -358,6 +358,14 @@ each line and its Go; code checks the words and writes the origin line itself. A
 again for 14 days. With no model, only the two joins code can word (a follow-up still open, a
 cause closed now). Go opens a task with Ducter's own instruction; the lead rides along as data; a
 task's lead runs where that task ran. Measured with `packages/core/eval/offers/` (research/199 §4).
+
+Asked the way Mem searches (D461, checked live and read-only, research/200): a preference meets an
+event only when the memory names that kind of thing (seat, 航班, hotel, 会议 …), or is Mem's own
+`preference` sharing a word with the event; decisions by kind (`--unit-type decision`) with the
+condition's short words (`once`, `以后再`) and the focus; conversations one cue word at a time
+(`下次`, `next time`: Mem's thread search wants every word and ranks by match, not date), 20 deep,
+the most recent first, at most three. A source names a tool only when it is an AI tool the person
+knows; Mem's own distillers and connectors are the person's own line.
 
 ## 5. When it speaks: one ladder, one switch
 

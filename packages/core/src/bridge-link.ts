@@ -365,14 +365,16 @@ export interface MemConnection {
 }
 
 /**
- * D433: Mem's advisory last-seen time on one connection of `connections list --include-activity`
- * (nmem 0.10.121's "version two" presentation; the field names are read off the binary, INFERRED in
- * research/183): `last_seen_at_ms` on the connection or under its `activity`, only when Mem says the
- * activity is there. Undefined otherwise: never a guess.
+ * D433: Mem's advisory last-seen time on one connection of `connections list --include-activity`.
+ * D461, VERIFIED live on nmem 0.10.121 (research/200): the answer is `schema_version: 2` with
+ * `activity_available` once for the whole list (not per connection) and, per connection,
+ * `created_at_ms`, `last_seen_at_ms` (null until Mem has seen it), `home_id` and `device_label`
+ * (null). `last_seen_at_ms` is read only when the list says activity is there; undefined otherwise:
+ * never a guess. (`list`: the whole answer; a per-connection flag is still honoured.)
  */
-export function seenAtOf(c: any): number | undefined {
+export function seenAtOf(c: any, list?: any): number | undefined {
   const a = c?.activity && typeof c.activity === "object" ? c.activity : c;
-  if (a?.activity_available === false || c?.activity_available === false) return undefined;
+  if (list?.activity_available === false || a?.activity_available === false || c?.activity_available === false) return undefined;
   const v = a?.last_seen_at_ms ?? c?.last_seen_at_ms;
   return typeof v === "number" && Number.isFinite(v) && v > 0 ? v : undefined;
 }
@@ -619,7 +621,7 @@ export function createBridgeLink(opts: {
     return j.connections
       .filter((c: any) => typeof c?.connection_id === "string" && (c.agent_id === undefined || c.agent_id === agentId))
       .map((c: any) => {
-        const seenAt = seenAtOf(c);
+        const seenAt = seenAtOf(c, j);
         return { connectionId: c.connection_id, label: typeof c.client_label === "string" ? c.client_label : "", active: c.state === "active", ...(seenAt ? { seenAt } : {}) };
       });
   }

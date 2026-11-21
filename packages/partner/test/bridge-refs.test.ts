@@ -1,7 +1,8 @@
 // D444: what a Bridge message hands over from Nowledge Mem (a `nowledgemem://` reference in its words,
 // Mem's typed references, a shared plan's card) is read once when it arrives, read only, and named;
 // and Mem's grouped contact list says which of the person's own agents' mailboxes take messages.
-// Shapes are INFERRED from nmem 0.10.121's help and binary (research/191): read tolerantly.
+// Shapes were INFERRED from nmem 0.10.121's help and binary (research/191) and read tolerantly; D461
+// checked the contact list and `resources get` live (research/200, test/mem-live-d461.test.ts).
 import { expect, test } from "bun:test";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -28,7 +29,8 @@ test("references in the words, Mem's typed references and a shared plan's card, 
 test("a resolved resource: Mem's title and first words, any of the shapes", () => {
   expect(resourceOf(JSON.stringify({ title: "HawDB 0.9 benchmark notes", body: "Rerun on the bench box." }))).toEqual({ title: "HawDB 0.9 benchmark notes", text: "Rerun on the bench box." });
   expect(resourceOf(JSON.stringify({ resource: { frontmatter: { title: "Plan" }, content: "Step 1" } }))).toEqual({ title: "Plan", text: "Step 1" });
-  expect(resourceOf("---\ntitle: x\n---\nplain body")).toEqual({ text: "---\ntitle: x\n---\nplain body" });
+  // D461 (VERIFIED live, research/200): Mem's body starts with a YAML frontmatter block, never read as words.
+  expect(resourceOf("---\ntitle: x\n---\nplain body")).toEqual({ text: "plain body" });
   expect(resourceOf("{}")).toBeUndefined();
 });
 

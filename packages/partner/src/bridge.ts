@@ -451,6 +451,20 @@ export function stuckSpaceIn(j: any): { code: string; space: string } | undefine
   return undefined;
 }
 
+/**
+ * D461: an identity inbox that answered with no message and every Space it covers unavailable is
+ * no read at all (VERIFIED live, research/200: a context whose connection was revoked gets exit 0,
+ * `messages: []` and each Space `{status: "unavailable", error_code:
+ * "cloud_agent_context_authority_denied"}`). The first Space's code, or undefined when the read counts.
+ */
+export function inboxRefused(j: any): string | undefined {
+  const spaces = Array.isArray(j?.spaces) ? j.spaces : [];
+  const list = Array.isArray(j?.messages) ? j.messages : Array.isArray(j?.incoming) ? j.incoming : [];
+  if (!spaces.length || list.length) return undefined;
+  if (!spaces.every((s: any) => str(s?.status) === "unavailable" || (!!str(s?.error_code) && str(s?.status) !== "observed"))) return undefined;
+  return str(spaces[0]?.error_code) ?? "unavailable";
+}
+
 /** D400: Mem's word that an identity inbox cursor is stale (a Context or Space changed): read again from page one. */
 export const cursorStale = (text: string) => /cursor no longer matches|restart the inbox/i.test(text);
 
@@ -561,7 +575,9 @@ export function refKind(uri: string): MessageRef["kind"] {
   if (/^memor(y|ies)$/.test(head)) return "memory";
   if (/^(artifacts?|sources?|library|lib|files?|documents?|docs?)$/.test(head)) return "artifact";
   if (/^threads?$|^conversations?$/.test(head)) return "thread";
-  if (/^(collab|plans?|notes)$/.test(head)) return "plan";
+  // D461: Mem's own kinds (live: memory, thread, source; its resolver also names collaboration,
+  // working-memory and context); a plural or another word is refused by Mem ("unsupported kind").
+  if (/^(collab|collaboration|plans?|notes)$/.test(head)) return "plan";
   return "other";
 }
 
@@ -591,21 +607,44 @@ export function refsIn(b: any, body: string): MessageRef[] {
   return out;
 }
 
-/** D444: Mem's title and first words for a resolved resource (`resources get --json`), read tolerantly. */
+/** D461: a Markdown body without the YAML frontmatter block Mem puts first (ids, Space, scores: not words to read). */
+export function withoutFrontmatter(body: string): string {
+  const m = /^\uFEFF?---[ \t]*\r?\n[\s\S]*?\r?\n---[ \t]*(?:\r?\n|$)/.exec(body);
+  return m ? body.slice(m[0].length) : body;
+}
+
+/**
+ * D444: Mem's title and first words for a resolved resource (`resources get --json`), read tolerantly.
+ * D461, VERIFIED live on nmem 0.10.121 for a memory, a thread and a source (research/200):
+ * `{requested_uri, canonical_uri, kind, path, mime_type: "text/markdown", body, frontmatter: {title, …}}`,
+ * and `body` starts with the same frontmatter as a YAML block, which is cut before the words are read.
+ */
 export function resourceOf(out: string): { title?: string; text?: string } | undefined {
   let j: any;
   try {
     j = JSON.parse(out);
   } catch {
-    const t = out.trim();
+    const t = withoutFrontmatter(out).trim();
     return t ? { text: clip(t, 600) } : undefined;
   }
   const r = j?.resource && typeof j.resource === "object" ? j.resource : j;
   const fm = r?.frontmatter && typeof r.frontmatter === "object" ? r.frontmatter : r?.metadata && typeof r.metadata === "object" ? r.metadata : {};
   const title = str(r?.title) ?? str(fm?.title) ?? str(r?.name) ?? str(r?.memory?.title) ?? str(r?.artifact?.title);
-  const text = str(r?.body) ?? str(r?.content) ?? str(r?.text) ?? str(r?.memory?.content);
+  const raw = str(r?.body) ?? str(r?.content) ?? str(r?.text) ?? str(r?.memory?.content);
+  const text = raw ? str(withoutFrontmatter(raw)) : undefined;
   if (!title && !text) return undefined;
   return { ...(title ? { title: clip(title, 80) } : {}), ...(text ? { text: clip(text, 600) } : {}) };
+}
+
+/**
+ * Whether `bridge contacts` has more to show than this page. D461, VERIFIED live (research/200): the
+ * grouped answer pages Spaces with `spaces_cursor`, `spaces_next_args`, `spaces_truncated` and
+ * `space_batch {offset, count, total}`; its top-level `next` is a sentence, not a cursor.
+ */
+export function contactsMore(j: any): boolean {
+  const b = j?.space_batch;
+  const batchShort = !!b && typeof b.offset === "number" && typeof b.count === "number" && typeof b.total === "number" && b.offset + b.count < b.total;
+  return (Array.isArray(j?.next_args) && j.next_args.length > 0) || (Array.isArray(j?.spaces_next_args) && j.spaces_next_args.length > 0) || j?.spaces_truncated === true || batchShort || !!str(j?.spaces_cursor) || !!str(j?.next_spaces_cursor);
 }
 
 export function contactsOf(j: any, me?: string): BridgeContact[] {
@@ -946,6 +985,12 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
           continue; // one Space not answering doesn't hide the others'
         }
         const j = got.j;
+        // D461: every Space refused: not an empty inbox, and not a read.
+        const refused = inboxRefused(j);
+        if (refused) {
+          lastFail = { ok: false, reason: /_denied$|_forbidden$/.test(refused) ? "refused" : "unavailable", code: refused, message: /_denied$|_forbidden$/.test(refused) ? "Bridge refused this connection." : "Nowledge Mem couldn't read any of the partner's Spaces just now." };
+          continue;
+        }
         answered = true;
         stuckIn ??= stuckSpaceIn(j);
         const list = Array.isArray(j?.messages) ? j.messages : Array.isArray(j?.incoming) ? j.incoming : [];
@@ -1144,7 +1189,7 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
       if ("missing" in r || r.code !== 0) return failure(r);
       const j = parse(r.out);
       if (j === undefined) return { ok: false, reason: "unavailable", message: "Bridge gave no answer (it may be switched off for this account)." };
-      const more = (Array.isArray(j?.next_args) && j.next_args.length > 0) || !!str(j?.spaces_cursor) || !!str(j?.next_spaces_cursor);
+      const more = contactsMore(j);
       // A card without a Space came from the home's own.
       const cards = contactsOf(j, await self()).map((c) => (c.space ? c : { ...c, ...(home.spaceId ? { space: home.spaceId } : {}), ...(home.spaceLabel ? { spaceLabel: home.spaceLabel } : {}) }));
       // D338: a card in a Space the home doesn't read (known only when every place names its Space).

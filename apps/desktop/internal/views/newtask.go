@@ -1366,3 +1366,16 @@ func drawBranch(col ui.Color) func(p *ui.Painter, r ui.Rect) {
 		p.FillPath(&dots, col)
 	}
 }
+
+// drawCaretUp is drawCaret turned over: the up arrow key on a keycap (D211: never a text arrow).
+func drawCaretUp(col ui.Color) func(p *ui.Painter, r ui.Rect) {
+	return func(p *ui.Painter, r ui.Rect) {
+		w := r.W
+		cx, cy := r.X+w/2, r.Y+r.H/2
+		var m ui.Path
+		m.MoveTo(cx-w*0.38, cy+w*0.16)
+		m.LineTo(cx, cy-w*0.22)
+		m.LineTo(cx+w*0.38, cy+w*0.16)
+		p.StrokePath(&m, 1.6, col)
+	}
+}

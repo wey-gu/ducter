@@ -10,7 +10,7 @@ import { useSheetMotion } from "./sheetmotion.ts";
 import { SheetFrame } from "./sheet-frame.tsx";
 import { A, agentKey, browseNeedle, effortWord, EVERY_HOURS, ntGitHubish, parseClock, placeKey, placeLine, tilde } from "./app.ts";
 import { Coin } from "./coin.tsx";
-import { Btn, Choice, CrumbStep, Facts, MenuRow, OptionRow, Pill, Seg } from "./controls.tsx";
+import { Btn, Chev, Choice, CrumbStep, Facts, MenuRow, OptionRow, Pill, Seg } from "./controls.tsx";
 import { candFacts, candName, candReason, Check, coarse } from "./views.tsx";
 import { AddPictures, DropHint, Tray, useDropPaste } from "./media.tsx";
 import { ago, harnessName, spoken } from "./format.ts";
@@ -450,7 +450,7 @@ export function NewTaskSheet() {
  * folder (~). Repos first, with the branch glyph; tap one to go in; 上一层 / Up one level goes
  * back; 用这个文件夹 / Use this folder adds it there as a project and makes it the card's place.
  * D457: an instrument: where you are as a breadcrumb (each part a step back), the rows walked with
- * ↑↓ and ⏎, ⌘↑ (or ⌫ in an empty field) up a level, ⌘⏎ adds; each row says what it is (a repo's
+ * up/down and Return, Cmd-up (or Backspace in an empty field) up a level, ⌘⏎ adds; each row says what it is (a repo's
  * origin, when a recent one was last used, that it is already a project); a missing folder, a
  * computer away or an empty folder each says what to do next.
  */
@@ -601,8 +601,12 @@ export function FolderBrowser() {
         {fine && (
           <span class="adf-keys" aria-hidden="true">
             <span>
-              <kbd>↑</kbd>
-              <kbd>↓</kbd>
+              <kbd>
+                <Chev cls="k-up" />
+              </kbd>
+              <kbd>
+                <Chev open />
+              </kbd>
               {t("addfolder.keys.move")}
             </span>
             <span>
@@ -612,7 +616,9 @@ export function FolderBrowser() {
               {t("addfolder.keys.open")}
             </span>
             <span>
-              <kbd>⌘↑</kbd>
+              <kbd>
+                ⌘<Chev cls="k-up" />
+              </kbd>
               {t("addfolder.keys.up")}
             </span>
           </span>

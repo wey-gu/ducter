@@ -19019,3 +19019,7 @@ html[data-text-size="large"] .brand-mark > svg {
   min-height: 30px;
   padding: 0 10px;
 }
+
+/* Keycaps draw their arrows (D211: no text arrows iOS turns into emoji). */
+.adf-keys kbd .chev-g { vertical-align: -1px; }
+.adf-keys kbd .chev-g.k-up { transform: rotate(-90deg); }

@@ -511,9 +511,9 @@ func (a *App) browseKeys(c *ui.Context) {
 			caps []string
 			word string
 		}{
-			{[]string{"↑", "↓"}, "addfolder.keys.move"},
+			{[]string{"\x1e", "\x1f"}, "addfolder.keys.move"},
 			{[]string{"\r"}, "addfolder.keys.open"},
-			{[]string{"⌘↑"}, "addfolder.keys.up"},
+			{[]string{"⌘\x1e"}, "addfolder.keys.up"},
 		} {
 			ui.Row(c.Key("k:" + k.word)).Gap(3).AlignItems(ui.Center).Shrink(0).Children(func() {
 				for _, cap := range k.caps {

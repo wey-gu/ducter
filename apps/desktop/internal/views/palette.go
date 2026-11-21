@@ -650,6 +650,9 @@ func (a *App) keycap(c *ui.Context, key, keys string) {
 	t := a.T
 	// "\r" stands for the Return key: drawn, never a text arrow (no emoji-capable symbols, check-glyphs).
 	mods, ret := strings.CutSuffix(keys, "\r")
+	// "\x1e" and "\x1f" stand for the up and down arrow keys: drawn too.
+	mods, up := strings.CutSuffix(mods, "\x1e")
+	mods, down := strings.CutSuffix(mods, "\x1f")
 	ui.Row(c.Key("kc:"+key)).Gap(1).Padding(1, t.S1+2).Radius(5).AlignItems(ui.Center).
 		Background(t.SurfaceSunken).InsetShadow(0, -1, 0, 0, t.Line).Shrink(0).AccessHidden(true).Children(func() {
 		if mods != "" {
@@ -657,6 +660,12 @@ func (a *App) keycap(c *ui.Context, key, keys string) {
 		}
 		if ret {
 			a.glyph(c.Key("r"), 12, drawReturn(t.InkMuted))
+		}
+		if up {
+			a.glyph(c.Key("u"), 10, drawCaretUp(t.InkMuted))
+		}
+		if down {
+			a.glyph(c.Key("d"), 10, drawCaret(t.InkMuted))
 		}
 	})
 }

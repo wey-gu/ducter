@@ -75,7 +75,7 @@ a new result, and how many lines its branches have changed. Pick one to see only
 project from a folder on any of your computers. Pick the computer first (each is shown as a small
 picture, with whether it's awake), then find the folder: the path at the top steps back a level
 when you tap a part of it, and typing narrows the list or, starting with **/** or **~**, goes
-straight to a path. With a keyboard, **↑** and **↓** move, **Return** goes in, **⌘↑** goes up a
+straight to a path. With a keyboard, the **up and down arrows** move, **Return** goes in, **Command-up** goes up a
 level and **⌘Return** adds. The button says what it will do, like **Add hawdb on Hetzner
 Server**. The new project appears in the column, ready for its first task.
 

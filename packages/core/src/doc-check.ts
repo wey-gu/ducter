@@ -689,6 +689,11 @@ export interface DocCheckDeps {
   picturesDir?(taskId: string, open: Bodies["task_open"] | undefined): string | undefined;
   off?(): boolean;
   read?: ReadOptions;
+  /**
+   * D449: the task thinks on a free key: the pages are still checked (code, no model), but nothing
+   * goes back for another round (each round spends the key); what was found rides on the result.
+   */
+  codeOnly?(taskId: string): boolean;
 }
 
 /** The opening of the doc check's words back to the task (D439). */
@@ -753,7 +758,8 @@ export function createDocCheck(d: DocCheckDeps) {
         left: all.slice(0, DOC_LEFT_MAX).map((f) => docFindingWords(f, open?.language ?? (reads === "latin" ? "en" : reads === "han" ? "zh-CN" : undefined), slides)),
       };
       const key = `${taskId}`;
-      if (!asked.has(key)) {
+      // D449: on a free key the page check is code only: what it found rides on the report.
+      if (!asked.has(key) && !d.codeOnly?.(taskId)) {
         asked.add(key);
         const parts = found.map(({ m, r }) => {
           const slides = r.format === "pptx";

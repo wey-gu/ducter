@@ -8,7 +8,7 @@
 //
 // The holds are in the Log (partner_session brain_held / brain_back on the "partner" stream), so a
 // restart keeps them; who answers is worked out each time it is asked, never stored.
-import { HARNESSES, HARNESS_IDS, PARTNER_FALLBACK, type Bodies, type BrainHeld, type HarnessId, type RuleView } from "@ducter/protocol";
+import { HARNESSES, HARNESS_IDS, PARTNER_FALLBACK, type Bodies, type BrainHeld, type FreeProvider, type HarnessId, type RuleView } from "@ducter/protocol";
 import type { LogStore } from "@ducter/protocol/src/internal.ts";
 import type { AccountUsageBook } from "./account-usage.ts";
 import { realClock, type Clock } from "./clock.ts";
@@ -28,6 +28,8 @@ export interface BrainHit {
   resetsAt?: string;
   source?: string;
   said?: string;
+  /** D449: the cap is this free tier's (the line names the provider and its own reset). */
+  free?: FreeProvider;
 }
 
 /** The hold on what it thinks with now: who answers meanwhile (`to`), or nobody (`waits`). */
@@ -83,6 +85,8 @@ interface Hold {
   said?: string;
   /** What the person was told last for it: who answers ("codex"), or "none". */
   told?: string;
+  /** D449: a free tier's cap. */
+  free?: FreeProvider;
 }
 
 /** When a hold is tried again: a known reset gets a little slack, so the first turn isn't refused at the edge. */
@@ -141,7 +145,7 @@ export function createBrainHold(o: BrainHoldDeps): BrainHold {
     else if (b.event === "brain_held" && b.held) {
       const until = Date.parse(b.held.until);
       if (!Number.isFinite(until)) continue;
-      holds.set(b.harness, { harness: b.harness, why: b.held.why, until, resetKnown: b.held.resetKnown, since: Date.parse(b.held.since) || until, ...(b.held.source ? { source: b.held.source } : {}), ...(b.held.said ? { said: b.held.said } : {}), ...(b.held.told ? { told: b.held.told } : {}) });
+      holds.set(b.harness, { harness: b.harness, why: b.held.why, until, resetKnown: b.held.resetKnown, since: Date.parse(b.held.since) || until, ...(b.held.source ? { source: b.held.source } : {}), ...(b.held.said ? { said: b.held.said } : {}), ...(b.held.told ? { told: b.held.told } : {}), ...(b.held.free ? { free: b.held.free } : {}) });
     }
   }
   for (const h of holds.values()) arm(h);
@@ -154,7 +158,7 @@ export function createBrainHold(o: BrainHoldDeps): BrainHold {
       body: {
         event: "brain_held",
         harness: h.harness,
-        held: { why: h.why, until: new Date(h.until).toISOString(), resetKnown: h.resetKnown, since: new Date(h.since).toISOString(), ...(h.source ? { source: h.source } : {}), ...(h.said ? { said: h.said } : {}), ...(h.told ? { told: h.told } : {}) },
+        held: { why: h.why, until: new Date(h.until).toISOString(), resetKnown: h.resetKnown, since: new Date(h.since).toISOString(), ...(h.source ? { source: h.source } : {}), ...(h.said ? { said: h.said } : {}), ...(h.told ? { told: h.told } : {}), ...(h.free ? { free: h.free } : {}) },
       },
     });
   };
@@ -182,7 +186,7 @@ export function createBrainHold(o: BrainHoldDeps): BrainHold {
     const h = holds.get(base);
     if (!active(h)) return undefined;
     const to = next();
-    return { from: base, why: h.why, until: new Date(h.until).toISOString(), resetKnown: h.resetKnown, ...(to ? { to } : { waits: true as const }) };
+    return { from: base, why: h.why, until: new Date(h.until).toISOString(), resetKnown: h.resetKnown, ...(to ? { to } : { waits: true as const }), ...(h.free ? { free: h.free } : {}) };
   }
 
   /** Read the usage book for the agents that could take over, so next() can skip one already spent. */
@@ -259,6 +263,7 @@ export function createBrainHold(o: BrainHoldDeps): BrainHold {
         ...(hit.source ? { source: hit.source } : {}),
         ...(hit.said ? { said: hit.said.slice(0, 300) } : {}),
         ...(same && prev!.told ? { told: prev!.told } : {}),
+        ...(hit.free ? { free: hit.free } : {}),
       };
       holds.set(harness, h);
       await readSpent();

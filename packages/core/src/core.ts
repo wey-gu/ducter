@@ -3,6 +3,7 @@ import { createPreviews, loopbackOf } from "./preview.ts";
 import { createWbFrames } from "./workbench.ts";
 import { effectiveBrain } from "./brain.ts";
 import { createBrainHold } from "./brain-hold.ts";
+import { createFreeBudget } from "./free-budget.ts";
 import { createFreshLook, diffFromWorkbench, keepNoLookAtOnce } from "./fresh-look.ts";
 import { createDocCheck } from "./doc-check.ts";
 import { createMediaStore } from "./media.ts";
@@ -1054,6 +1055,8 @@ export function startCore(opts: CoreOptions = {}): Core {
   const workFrames: typeof work.frames = { ...work.frames, waiter: (id, action) => limitWaits.act(id, action) ?? (action === "handoff" ? Promise.resolve(false) : work.frames.waiter(id, action)) };
   // D388: the pages the last noticed call rested on (a holder: the Core is a copy of api).
   const noticedSources: { links?: { label: string; url: string }[]; whys?: { text: string; why: string }[] } = {};
+  // D449: a free key's day: known, spent on what the person sees first, its reset said truly.
+  const freeBudget = createFreeBudget({ dataDir, clock, log, brain: () => settings.get().brain, taskHarness: (id) => tasks.get(id)?.harness, lang: langNow });
   // D437: another AI's one look before a result goes out: its agent is the home's, its turn tool-less.
   const freshLook = createFreshLook({
     log,
@@ -1067,6 +1070,9 @@ export function startCore(opts: CoreOptions = {}): Core {
     },
     send: (id, text) => (runner ? runner.send(id, text, "queue", "ducter") : Promise.reject(new Error("no runner yet"))),
     off: () => (process.env.DUCTER_FRESH_LOOK ?? process.env.DUCTER_SECOND_LOOK) === "off",
+    // D449: on a free key a result's look is skipped; an outward Go's still gets one until the day runs low.
+    frugal: (by, what) => freeBudget.frugal(by.harness) && (what === "code" || freeBudget.low()),
+    onFrugal: () => void freeBudget.lookSkipped(),
   });
   // D437: 这类不用复查, kept as the person's rule the moment it lands.
   const noLook = keepNoLookAtOnce({ log, rules });
@@ -1080,8 +1086,10 @@ export function startCore(opts: CoreOptions = {}): Core {
       return !dev || dev === "local" ? join(dataDir, "evidence", id, "pages") : undefined;
     },
     off: () => process.env.DUCTER_DOC_CHECK === "off",
+    // D449: a task on the free key: the pages are checked, never sent back for another round.
+    codeOnly: (id) => freeBudget.frugal(tasks.get(id)?.harness ?? ""),
   });
-  const api = { log, tasks, mcp, persona, dataDir, settings, connections, phone, bodies: loadout, said, standing, spine: log.spine, bridgeLink, media, limits: accountUsage, workingMemory, pins, apps, boards: { makeReviewBoard: (id: string) => boards.makeReviewBoard(id), isReview: (id: string) => isReview(id), offer: (id: string, k: "reviews" | "reports") => boards.offer(id, k) }, noticedSources, brainHold, freshLook, noLookFrom: (seq: number) => noLook.heardFrom(seq), takenBackFrom: (seq: number) => takeBack.heardFrom(seq), docCheck: (id: string, body: Bodies["report"]) => docCheck.check(id, body), ...(browser ? { browser: browser.port } : {}) } as CoreApi;
+  const api = { log, tasks, mcp, persona, dataDir, settings, connections, phone, bodies: loadout, said, standing, spine: log.spine, bridgeLink, media, limits: accountUsage, workingMemory, pins, apps, boards: { makeReviewBoard: (id: string) => boards.makeReviewBoard(id), isReview: (id: string) => isReview(id), offer: (id: string, k: "reviews" | "reports") => boards.offer(id, k) }, noticedSources, brainHold, freeBudget, freshLook, noLookFrom: (seq: number) => noLook.heardFrom(seq), takenBackFrom: (seq: number) => takeBack.heardFrom(seq), docCheck: (id: string, body: Bodies["report"]) => docCheck.check(id, body), ...(browser ? { browser: browser.port } : {}) } as CoreApi;
   // D312: with more than one partner, the default partner keeps to its own too, and a task's
   // brief and Mem identity are those of the partner it is for.
   const memOf = new Map<string, MemIdentity | undefined>();
@@ -2266,6 +2274,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       work.stop();
       limitWaits.stop();
       brainHold.stop();
+      freeBudget.stop();
       freshLook.stop();
       noLook.stop();
       takeBack.stop();

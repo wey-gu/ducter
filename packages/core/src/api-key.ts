@@ -127,7 +127,10 @@ export async function addKey(raw: string, o: KeyCheckOptions): Promise<KeyResult
     if (!harness) return { ...base, ok: false, reason: "unsupported" };
     if (!o.dryRun) writeKey(o.dataDir, info.env, key);
     const model = harness === "pi" ? (one.free && p === "openrouter" ? OPENROUTER_FREE_MODEL : info.pi?.model) : undefined;
-    const ready: KeyResult = { ...base, harness, ...(model ? { model } : {}) };
+    // D449: a free key's day is paced (free-budget.ts): OpenRouter says so; a Gemini key is on the
+    // free tier until its project turns on billing, which no free read can tell (research/195).
+    const free = (p === "openrouter" && one.free) || p === "google";
+    const ready: KeyResult = { ...base, harness, ...(model ? { model } : {}), ...(free ? { free: true as const } : {}) };
     if (can(harness) || harness !== "pi") return ready;
     // D440: pi can't run here yet: the home puts it in its own tools folder, when it can.
     if (o.prepare) {

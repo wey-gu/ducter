@@ -11,8 +11,12 @@
 //      error's own snapshot before the turn fails);
 //   3. words: the agent's message (Codex: "…try again at 3:12 PM." / "…at Nov 18th, 2026 3:12 PM.";
 //      Claude Code: "…resets 3pm (Asia/Shanghai)", and its older "usage limit reached|<unix s>");
-//   4. none: the reset is unknown (pi, DeepSeek Harness, a throttle).
+//   4. provider (D449): the provider's own limit answer passed through by the agent (pi on a free
+//      key: OpenRouter's free-models-per-day with its X-RateLimit-Reset, Gemini's free-tier quota),
+//      read even when OAR didn't class the failure as a limit;
+//   5. none: the reset is unknown (DeepSeek Harness, a throttle).
 import type { HarnessEvent } from "./internal.ts";
+import { readFreeLimit, type FreeProvider } from "./free-budget.ts";
 
 export type LimitFailure = "quota" | "rate_limited";
 
@@ -21,7 +25,9 @@ export interface LimitHit {
   failure: LimitFailure;
   /** When the limit resets, ISO; absent when unknown or already past. */
   resetsAt?: string;
-  source: "event" | "limits" | "words" | "none";
+  source: "event" | "limits" | "words" | "provider" | "none";
+  /** D449: the free tier whose cap this is (pi on an OpenRouter or Gemini free key). */
+  free?: FreeProvider;
   /** The agent's own words, clipped (shown on hover only, never as the line). */
   said?: string;
 }
@@ -43,15 +49,20 @@ export function isLimitFailure(o: FailedOutcome | undefined): o is FailedOutcome
 
 /** The limit a failed turn hit, or undefined when it wasn't one. `seen`: the limits the session said last. */
 export function limitHit(harness: string, o: FailedOutcome | undefined, seen: HarnessEvent["limits"] | undefined, now: number): LimitHit | undefined {
-  if (!isLimitFailure(o)) return undefined;
-  const said = o.reason?.trim() ? o.reason.trim().slice(0, 300) : undefined;
-  const base = { harness, failure: o.failure, ...(said ? { said } : {}) };
+  // D449: the provider's own words on a free tier's cap count as a limit whatever OAR called it.
+  const free = o?.outcome === "failed" ? readFreeLimit(o.reason, now) : undefined;
+  if (!isLimitFailure(o) && !free) return undefined;
+  const said = o!.reason?.trim() ? o!.reason.trim().slice(0, 300) : undefined;
+  const failure: LimitFailure = free ? (free.scope === "day" ? "quota" : "rate_limited") : (o as { failure: LimitFailure }).failure;
+  const base = { harness, failure, ...(said ? { said } : {}), ...(free ? { free: free.provider } : {}) };
   const future = (iso: string | undefined) => {
     const t = Date.parse(iso ?? "");
     return Number.isFinite(t) && t > now ? new Date(t).toISOString() : undefined;
   };
-  const ev = future(o.resetsAt);
+  const ev = future(o!.resetsAt);
   if (ev) return { ...base, resetsAt: ev, source: "event" };
+  const fromProvider = future(free?.resetsAt);
+  if (fromProvider) return { ...base, resetsAt: fromProvider, source: "provider" };
   const fromSeen = seenReset(seen, now);
   if (fromSeen) return { ...base, resetsAt: fromSeen, source: "limits" };
   const words = said ? resetFromWords(said, now) : undefined;
@@ -125,7 +136,7 @@ function zonedTime(y: number, mo: number, d: number, h: number, mi: number, zone
 }
 
 /** The next time the zone's clock reads h:mi (today, or tomorrow when that is past). */
-function nextClock(h: number, mi: number, now: number, zone?: string): string {
+export function nextClock(h: number, mi: number, now: number, zone?: string): string {
   const local = new Date(now + offsetAt(now, zone));
   let t = zonedTime(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate(), h, mi, zone);
   if (t <= now) t = zonedTime(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate() + 1, h, mi, zone);

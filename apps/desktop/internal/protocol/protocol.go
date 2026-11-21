@@ -1907,6 +1907,32 @@ type BrainNow struct {
 	// Held is D435: its own agent ran out (or its turns fail) and is held
 	// until Until; Why "held" when another agent answers meanwhile.
 	Held *BrainHeld `json:"held,omitempty"`
+	// Budget is D449: it thinks on a free key; about how many requests
+	// are left today, and when the provider's day comes back.
+	Budget *FreeBudget `json:"budget,omitempty"`
+}
+
+// FreeBudget is a free key's day (D449): Provider ("openrouter",
+// "google"), its daily cap when known (Limit), about how many are left
+// (Left, nil when unknown), when it comes back (ResetsAt), and Out when
+// the day's cap is spent.
+type FreeBudget struct {
+	Provider string `json:"provider"`
+	Limit    *int   `json:"limit,omitempty"`
+	Left     *int   `json:"left,omitempty"`
+	ResetsAt string `json:"resetsAt"`
+	Out      bool   `json:"out,omitempty"`
+}
+
+// FreeTierName is the provider's own name for a free tier (D449).
+func FreeTierName(p string) string {
+	switch p {
+	case "openrouter":
+		return "OpenRouter"
+	case "google":
+		return "Gemini"
+	}
+	return p
 }
 
 // BrainHeld is the partner's own agent held after a turn failed on it
@@ -1919,6 +1945,9 @@ type BrainHeld struct {
 	Until      string `json:"until"`
 	ResetKnown bool   `json:"resetKnown"`
 	Waits      bool   `json:"waits,omitempty"`
+	// Free is D449: the cap is a free tier's ("openrouter", "google"),
+	// said with the provider's name and its own reset.
+	Free string `json:"free,omitempty"`
 }
 
 // BrainModel is one model the partner may think with: Kind smart or fast

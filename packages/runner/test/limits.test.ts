@@ -87,6 +87,17 @@ describe("each agent's limit shape", () => {
     expect(limitHit("deepseek-harness", turnRaw(DSH_TURN), undefined, NOW)).toMatchObject({ failure: "quota", source: "none" });
   });
 
+  test("D449: pi on a free key, whatever OAR called it: the provider's own words carry its reset through the Normalizer", () => {
+    const resetMs = Date.parse("2026-11-18T00:00:00Z");
+    const body = `429 {"error":{"message":"Rate limit exceeded: free-models-per-day. Add 10 credits to unlock 1000 free model requests per day","code":429,"metadata":{"headers":{"X-RateLimit-Limit":"50","X-RateLimit-Remaining":"0","X-RateLimit-Reset":"${resetMs}"},"provider_name":null}}}`;
+    const raw = turnRaw({ kind: "turn_ended", outcome: { kind: "failed", failure: "provider", reason: body } });
+    expect(String(raw.reason)).toContain("X-RateLimit-Reset");
+    expect(limitHit("pi", raw, undefined, NOW)).toMatchObject({ harness: "pi", failure: "quota", resetsAt: new Date(resetMs).toISOString(), source: "provider", free: "openrouter" });
+    // Gemini's minute: a throttle until its own retry delay.
+    const g = turnRaw({ kind: "turn_ended", outcome: { kind: "failed", failure: "unknown", reason: "429 You exceeded your current quota. Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 10 (GenerateRequestsPerMinutePerProjectPerModel-FreeTier). Please retry in 20s." } });
+    expect(limitHit("pi", g, undefined, NOW)).toMatchObject({ failure: "rate_limited", resetsAt: new Date(NOW + 20_000).toISOString(), free: "google" });
+  });
+
   test("a throttle past the agent's own retries is a limit with no reset; other failures are not limits", () => {
     expect(limitHit("claude-code", turnRaw(CLAUDE_THROTTLE), undefined, NOW)).toMatchObject({ failure: "rate_limited", source: "none" });
     for (const failure of ["auth", "billing", "overloaded", "provider", "unknown"])

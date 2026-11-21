@@ -62,7 +62,7 @@ test("every way is the provider's own page, three steps in both languages, a pro
 test("a free Gemini key thinks on a model of the free tier", async () => {
   const f = (async () => json(200, { models: [{ name: "models/gemini-3.8-flash" }] })) as unknown as typeof fetch;
   const r = await addKey(GEMINI, { dataDir: t.dir, lang: "en", fetch: f, canRun: (h) => h === "pi" });
-  expect(r).toMatchObject({ ok: true, provider: "google", harness: "pi", model: "google/gemini-3.8-flash" });
+  expect(r).toMatchObject({ ok: true, provider: "google", harness: "pi", model: "google/gemini-3.8-flash", free: true });
   expect(readFileSync(join(t.dir, "keys.env"), "utf8")).toContain("GEMINI_API_KEY=");
 });
 
@@ -74,6 +74,41 @@ test("an OpenRouter key with no credit bought thinks on a free model that calls 
   const p = await addKey(OPENROUTER, { dataDir: t.dir, lang: "zh", fetch: paid, canRun: (h) => h === "pi" });
   expect(p.ok).toBe(true);
   expect(p.model).toBeUndefined();
+  // D449: the free one is kept as free (its day is paced), the paid one isn't.
+  expect(r.free).toBe(true);
+  expect(p.free).toBeUndefined();
+});
+
+test("D449: a free OpenRouter key pasted at the home: Settings › Partner reads its day, about 50 left, back at UTC midnight", async () => {
+  const keyFetch = (async () => json(200, { data: { is_free_tier: true, limit_remaining: null } })) as unknown as typeof fetch;
+  const core = startCore({
+    dataDir: t.dir,
+    port: 0,
+    batchMs: 5,
+    keyFetch,
+    keyCanRun: (h) => h === "pi",
+    deviceProbes: { cua: async () => null, harnesses: async () => [{ harness: "claude-code", installed: false, loggedIn: false }], kind: async () => "laptop" },
+  });
+  core.setPartner({ onTrigger: () => {} });
+  try {
+    const frames: ServerFrame[] = [];
+    const ws = new WebSocket(core.url);
+    ws.onmessage = (m) => frames.push(JSON.parse(String(m.data)));
+    await new Promise<void>((res) => (ws.onopen = () => res()));
+    ws.send(JSON.stringify({ t: "hello", locale: "zh", client: "web" }));
+    ws.send(JSON.stringify({ t: "key_add", key: OPENROUTER, clientId: "k1" }));
+    for (let i = 0; i < 300 && !frames.some((f) => f.t === "key_add_result"); i++) await Bun.sleep(10);
+    ws.send(JSON.stringify({ t: "settings" }));
+    const settingsWith = () => frames.find((f) => f.t === "settings" && f.brainNow?.budget) as Extract<ServerFrame, { t: "settings" }> | undefined;
+    for (let i = 0; i < 300 && !settingsWith(); i++) await Bun.sleep(10);
+    ws.close();
+    const s = settingsWith()!;
+    expect(s.brainNow!.budget).toMatchObject({ provider: "openrouter", limit: 50, left: 50 });
+    expect(s.brainNow!.budget!.resetsAt).toMatch(/T00:00:00\.000Z$/);
+    expect(JSON.parse(readFileSync(join(t.dir, "free-budget.json"), "utf8")).keys).toEqual({ openrouter: true });
+  } finally {
+    core.stop();
+  }
 });
 
 test("a good key whose pi isn't here yet: said to work at once, pi put in place, then ready", async () => {

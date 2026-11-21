@@ -25,6 +25,8 @@ export interface BriefInput {
   apps?: boolean;
   /** D439: the ask is a document to send (docAsk read it from the title and brief): the bar it is held to. */
   doc?: DocAsk;
+  /** D449: the task thinks on a free key with a small daily allowance shared with the partner: be frugal. */
+  frugal?: boolean;
 }
 
 /** D168: what the user's memory gives this task. Absent: nothing at all about memory. */
@@ -148,8 +150,17 @@ ${languageLine(b.language)}
 - Call \`checkpoint\` (same server) after each meaningful step with where the work stands and what comes next. Your context is small and is compacted when it fills up; your last checkpoint is what you carry on from afterwards. It is your own note, not a report: the user doesn't read it, so never copy it into \`summary\`. Still write it in plain sentences you could pick up cold.
 - Never ask the user questions in plain text, and never wait for a reply in text. Put every question in \`report_to_main\` with a default.
 - If you lack context, use \`log_search\` / \`log_read\` on the same server before asking.
-${memorySection(b)}${b.agents ? agentsBrief(b.partnerName, s) : ""}${b.doc ? docBrief(b.doc) : ""}${b.phone ? phoneBrief(b.partnerName, b.phone === true ? undefined : b.phone) : ""}${b.apps ? appsBrief(b.partnerName) : ""}${b.phone || b.apps ? showNotHandBrief() : ""}`;
+${memorySection(b)}${b.agents ? agentsBrief(b.partnerName, s) : ""}${b.doc ? docBrief(b.doc) : ""}${b.phone ? phoneBrief(b.partnerName, b.phone === true ? undefined : b.phone) : ""}${b.apps ? appsBrief(b.partnerName) : ""}${b.phone || b.apps ? showNotHandBrief() : ""}${b.frugal ? FRUGAL_BRIEF : ""}`;
 }
+
+/**
+ * D449: Model-visible: this task runs on a free key whose day is a few dozen model calls, shared
+ * with the user's own conversation (snapshot-tested).
+ */
+export const FRUGAL_BRIEF = `
+## A small daily allowance
+This task runs on a free API key with a small allowance of model calls a day, shared with the user's own conversation. Every tool call and every turn spends one. Plan the work first, then do it in as few calls as it takes: read several files in one command, write a file whole rather than in many edits, and don't re-check what you already know. Call \`checkpoint\` only at real milestones. If the allowance runs out, the task waits for it to come back and carries on by itself; you don't need to do anything about it.
+`;
 
 /**
  * D439: Model-visible: the user will send what this task makes to someone (a PDF, a deck, a Word

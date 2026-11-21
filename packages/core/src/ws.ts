@@ -343,7 +343,10 @@ export function createWsHandler(deps: WsDeps) {
     const home = devicesView() ? (await devicesView()!.frame()).devices.find((d) => d.home)?.harnesses : undefined;
     // D390: the partner's models from its agent's live list on the home, as last read (no wait);
     // a read under way, or one the list is due for, pushes a fresh frame when it lands with news.
-    const now = brainNow(v.settings.brain, deps.settings!.brainChosen(), home, (h) => deps.models?.peek?.("local", h), deps.core.brainHold?.now());
+    const held = brainNow(v.settings.brain, deps.settings!.brainChosen(), home, (h) => deps.models?.peek?.("local", h), deps.core.brainHold?.now());
+    // D449: on a free key, the day's readout (only then).
+    const budget = deps.core.freeBudget?.view?.();
+    const now = budget ? { ...held, budget } : held;
     refreshBrainModels(now.harness);
     const bridge = await deps.bridgeLink?.view().catch(() => undefined);
     const own = deps.ownAgents?.() ?? [];
@@ -364,6 +367,17 @@ export function createWsHandler(deps: WsDeps) {
   const offBrainHold = deps.core.brainHold?.onChange(() => {
     const subs = [...sockets].filter((ws) => ws.data.settings);
     if (subs.length) pushSettings(subs);
+  });
+  // D449: a free key's count moved (or its day came back): the readout follows, at most every few seconds.
+  let budgetPush: ReturnType<typeof setTimeout> | undefined;
+  const offBudget = deps.core.freeBudget?.onChange?.(() => {
+    if (budgetPush) return;
+    budgetPush = setTimeout(() => {
+      budgetPush = undefined;
+      const subs = [...sockets].filter((ws) => ws.data.settings);
+      if (subs.length) pushSettings(subs);
+    }, 3000);
+    (budgetPush as { unref?: () => void }).unref?.();
   });
   // D372: with the built-in default per kind of work (a probe that fails leaves them out).
   const rulesFrame = async (): Promise<ServerFrame> => {
@@ -912,6 +926,8 @@ export function createWsHandler(deps: WsDeps) {
           ...(k.canRun ? { canRun: k.canRun } : {}),
           ...(k.prepare ? { prepare: k.prepare, onPreparing: (r: import("@ducter/protocol").KeyResult) => send(ws, { t: "key_add_result", clientId, result: { ...r, say: keyWords(r) } }) } : {}),
         });
+        // D449: a free key's day is paced from now on; a paid one for the same provider ends it.
+        if (result.ok && result.provider) deps.core.freeBudget?.mark?.(result.provider, !!result.free);
         if (result.ok && result.harness && !result.needs) {
           // The person's own choice stays; with nothing chosen and nothing signed in, think with this.
           if (wasBlind) deps.settings?.brainFromKey(result.harness, result.model);
@@ -2525,6 +2541,8 @@ export function createWsHandler(deps: WsDeps) {
       offDevices?.();
       offSettings?.();
       offBrainHold?.();
+      offBudget?.();
+      if (budgetPush) clearTimeout(budgetPush);
       offRules?.();
       offStanding?.();
       offConnections?.();

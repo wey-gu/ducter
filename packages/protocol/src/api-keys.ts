@@ -248,6 +248,8 @@ export interface KeyResult {
   detail?: string;
   /** For "blocked": the provider sits outside China (the line suggests a proxy). */
   abroad?: boolean;
+  /** D449: the key is on a free tier (OpenRouter's is_free_tier; a Gemini key, free until billing is on). */
+  free?: true;
   /** The partner's words for it (keyWords), as the home and `ducter key add --json` send it. */
   say?: { zh: string; en: string };
 }

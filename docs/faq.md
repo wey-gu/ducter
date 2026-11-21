@@ -47,6 +47,13 @@ number, or DeepSeek with a small top-up. You make the key on the provider's own 
 does. Anything you write to your partner before the key works is kept, and answered first as soon
 as it does.
 
+On a free key, the daily allowance is shared by your partner and its tasks, so Ducter spends it on
+what you ask: results aren't looked over by a second AI, and tasks keep their steps few.
+**Settings › Partner** shows about how many are left today. When the day's allowance runs out,
+your partner says when the provider brings it back (OpenRouter's and Gemini's own time, often the
+next morning) and answers what you sent meanwhile then, in order. Adding $10 of OpenRouter credit,
+or turning on billing for your Gemini key, lifts the limit a lot.
+
 If the computer doesn't have pi yet, Ducter puts it in its own folder by itself (no Terminal, no
 administrator password) and says **Setting up…** meanwhile; only if that fails does it open pi's own
 installer in Terminal.

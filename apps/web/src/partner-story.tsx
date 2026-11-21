@@ -3,7 +3,7 @@
 // only where there is a choice, the reassurance only then), who does the tasks (one row per signed-in
 // AI agent, how Ducter picks, the override in a task), and one place to add another AI (an agent to
 // sign in, or a pasted key) with what it would give. Coins at the tile size; the tray is on Devices.
-import type { DeviceHarness } from "@ducter/protocol";
+import { FREE_TIERS, type DeviceHarness, type FreeBudget } from "@ducter/protocol";
 import { PARTNER_RESERVE } from "@ducter/protocol/src/loadout.ts";
 import { useState } from "preact/hooks";
 import { A } from "./app.ts";
@@ -40,9 +40,22 @@ export function heldAt(h: NonNullable<ReturnType<typeof brainHeld>>): string {
 /** D435: the one line under what it thinks with while its own agent is held. */
 export function heldLine(h: NonNullable<ReturnType<typeof brainHeld>>): string {
   const at = heldAt(h);
+  // D449: a free key's cap: the provider by name, its own reset and the paid way.
+  if (h.free && at && h.why !== "error") {
+    const name = FREE_TIERS[h.free].name;
+    if (h.why === "rate_limited") return t("loadout.brain.wait.free.minute", name, at);
+    return h.waits ? t("loadout.brain.wait.free", name, at, t(`loadout.free.more.${h.free}`)) : t("loadout.brain.held.free", name, at);
+  }
   if (h.waits) return h.why === "quota" ? (at ? t("loadout.brain.wait.quota", at) : t("loadout.brain.wait.quota.soon")) : t(h.why === "rate_limited" ? "loadout.brain.wait.throttle" : "loadout.brain.wait.error");
   const from = harnessName(h.from);
   return h.why === "quota" ? (at ? t("loadout.brain.held.quota", from, at) : t("loadout.brain.held.quota.soon", from)) : t(h.why === "rate_limited" ? "loadout.brain.held.throttle" : "loadout.brain.held.error", from);
+}
+
+/** D449: Settings › Partner's line on a free key: about how many are left today, or when the day is back. */
+export function budgetLine(b: FreeBudget): string {
+  const name = FREE_TIERS[b.provider].name;
+  if (b.out) return t("loadout.budget.out", name, stamp(A.L, b.resetsAt));
+  return b.left !== undefined ? t("loadout.budget.left", name, b.left) : t("loadout.budget.page", name);
 }
 
 function brainNow() {
@@ -101,7 +114,12 @@ export function ThinksSection() {
   if (!models.length) lines.push(t("loadout.model.default.line"));
   // Auto: the person never chose; the setting is only Ducter's default.
   if (!held && A.brainNow && !A.brainNow.auto && s.brain?.harness && s.brain.harness !== b.harness) lines.push(t("loadout.brain.fallback", harnessName(s.brain.harness)));
-  if (h?.billing === "usage") lines.push(t("loadout.brain.key"));
+  // D449: on a free key, the day's readout and that results aren't looked over again, instead of "paid per use".
+  const budget = A.brainNow?.budget;
+  if (budget) {
+    if (!held?.free) lines.push(budgetLine(budget));
+    lines.push(t("loadout.budget.look"));
+  } else if (h?.billing === "usage") lines.push(t("loadout.brain.key"));
   else if (h?.allowance && !held?.waits) lines.push(h.allowance.left > PARTNER_RESERVE ? t("loadout.left.kept", pct(h.allowance.left), A.S.personaName) : limitWords(h, true));
   const setBrain = (harness: string, model?: string, label?: string) => {
     const m = model ?? (A.agents ?? []).find((x) => x.harness === harness)?.models?.[0]?.id;
@@ -127,7 +145,7 @@ export function ThinksSection() {
         </GHead>
         {choosing &&
           others.map((o) => (
-            <GRow key={o.harness} tile={<AgentTile harness={o.harness} />} title={harnessName(o.harness)} line={o.billing === "usage" ? t("loadout.acct.paid.short") : limitWords(o, false) || undefined}>
+            <GRow key={o.harness} tile={<AgentTile harness={o.harness} />} title={harnessName(o.harness)} line={o.harness === "pi" && A.brainNow?.budget ? t("loadout.acct.free.short") : o.billing === "usage" ? t("loadout.acct.paid.short") : limitWords(o, false) || undefined}>
               <Btn kind="secondary" size="sm" label={t("loadout.use")} about={harnessName(o.harness)} onClick={() => (setChoosing(false), setBrain(o.harness))} />
             </GRow>
           ))}
@@ -183,7 +201,9 @@ export function TasksSection() {
         {ready.map((h) => {
           const agent = harnessName(h.harness);
           const lines: string[] = [];
-          if (h.billing === "usage") lines.push(t("loadout.acct.paid.short"));
+          // D449: pi on the free key: its day is shared with the partner.
+          if (h.harness === "pi" && A.brainNow?.budget) lines.push(t("loadout.acct.free.short"));
+          else if (h.billing === "usage") lines.push(t("loadout.acct.paid.short"));
           else {
             const l = limitWords(h, h.harness === b.harness);
             if (l) lines.push(l);

@@ -142,6 +142,19 @@ describe("the round on a done report", () => {
     log.close?.();
   });
 
+  test("D449: a task on a free key: the pages are still checked, nothing goes back; what was found rides on the result", async () => {
+    const log = openLog({ path: join(td.dir, "log.db"), persona: "p1" });
+    log.append({ stream: "task:t1", origin: "partner", kind: "task_open", body: { taskId: "t1", title: "融资 deck", project: "", place: { kind: "none" }, harness: "pi", brief: "做个 5 页的融资 deck", language: "zh-CN" } });
+    const file = join(td.dir, "deck.pptx");
+    writeFileSync(file, pptx([1, 2, 3, 4, 5, 6].map((i) => [{ x: 0.9, y: 0.6, w: 11.5, h: 1.2, paras: [{ text: `第 ${i} 页`, size: 40 }] }])));
+    const m: MediaRef = { id: "f".repeat(64), type: "application/vnd.openxmlformats-officedocument.presentationml.presentation", bytes: 1, name: "融资.pptx", k: "k" };
+    const dc = createDocCheck({ log, path: (id) => (id === m.id ? file : undefined), read: { tools: {} }, codeOnly: (id) => id === "t1" });
+    const first = await dc.check("t1", { taskId: "t1", state: "done", summary: "做好了", questions: [], evidence: [], media: [m] });
+    expect(first?.again).toBeUndefined();
+    expect(first?.doc?.left).toEqual(["要的是 5 张，做出来 6 张"]);
+    log.close?.();
+  });
+
   test("clean pages say nothing; not a document ask, or switched off: not read at all", async () => {
     const log = openLog({ path: join(td.dir, "log.db"), persona: "p1" });
     log.append({ stream: "task:t2", origin: "partner", kind: "task_open", body: { taskId: "t2", title: "修 flaky 测试", project: "", place: { kind: "none" }, harness: "claude-code", brief: "把 CI 里那个测试修好" } });

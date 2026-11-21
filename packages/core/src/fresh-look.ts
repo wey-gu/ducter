@@ -222,6 +222,13 @@ export interface LookDeps {
   perDay?: number;
   /** DUCTER_FRESH_LOOK=off (DUCTER_SECOND_LOOK=off before D443) turns it off for the home. */
   off?: () => boolean;
+  /**
+   * D449: this look would spend a free key (core/src/free-budget.ts): a result's look is skipped
+   * (the person's own asks come first); an outward Go's still gets one while the day has room.
+   */
+  frugal?: (by: { harness: HarnessId; model?: string }, what: LookWhat) => boolean;
+  /** D449: told when a look was skipped on the free key (the once-said line). */
+  onFrugal?: (taskId: string) => void;
 }
 
 interface Round {
@@ -474,6 +481,11 @@ export function createFreshLook(d: LookDeps): FreshLookApi {
         if (lookRuledOff(d.rules(), { title: card.title, brief: open?.brief, ...(open?.workKind ? { kind: open.workKind } : {}) })) return false;
         const by = pickLooker(card.harness, d.home(), d.rules());
         if (!by) return false;
+        if (d.frugal?.(by, what)) {
+          note(taskId, { phase: "done", by: by.harness, skipped: "free_key" });
+          d.onFrugal?.(taskId);
+          return false;
+        }
         if (!budget()) return false;
         const round: Round = { phase: "looking", by, found: [], held: body, at: now(), what };
         rounds.set(taskId, round);

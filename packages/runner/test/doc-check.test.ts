@@ -9,7 +9,7 @@ import { join } from "node:path";
 import type { Bodies, MediaRef } from "@ducter/protocol";
 import { docAsk } from "@ducter/protocol";
 import { registerTaskTools } from "../src/index.ts";
-import { docBrief, taskBrief } from "../src/brief.ts";
+import { docBrief, FRUGAL_BRIEF, taskBrief } from "../src/brief.ts";
 import { createFakeCore, type FakeCore } from "./fake-core.ts";
 
 let dir: string;
@@ -128,4 +128,13 @@ test("a document found wrong for the first time while a look waits for the fix: 
   const said = String(await c.call("report_to_main", { state: "done", summary: "好了。", evidence: [], show: ["p.pdf"] }, "tsk7"));
   expect(said).toBe("Reported. Checked once more.");
   expect(took).toEqual([{ also: undefined, doc: ["少了一页"] }]);
+});
+
+test("D449: a task on a free key is asked to be frugal; any other task hears nothing of it", () => {
+  const base = { partnerName: "Ducter", taskId: "t1", brief: "…", place: { kind: "none" as const }, cwd: "/tmp/x", mcpServerName: "ducter", title: "查周五的高铁" };
+  const frugal = taskBrief({ ...base, frugal: true });
+  expect(frugal.endsWith(FRUGAL_BRIEF)).toBe(true);
+  expect(FRUGAL_BRIEF).toContain("## A small daily allowance");
+  expect(FRUGAL_BRIEF).toContain("shared with the user's own conversation");
+  expect(taskBrief(base)).not.toContain("A small daily allowance");
 });

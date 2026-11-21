@@ -41,6 +41,7 @@ export * from "./app-glyphs.ts";
 export * from "./reach.ts";
 export * from "./fresh-look.ts";
 export * from "./doc-bar.ts";
+export * from "./free-budget.ts";
 export * from "./mem-source.ts";
 export * from "./mem-health.ts";
 export * from "./task-sources.ts";
@@ -750,7 +751,7 @@ export interface Bodies {
     // a turn on it went through again (or the person chose another agent), and the hold is over.
     event: "recut" | "harness_compacted" | "brain_held" | "brain_back";
     harness: string;
-    held?: { why: "quota" | "rate_limited" | "error"; until: string; resetKnown: boolean; since: string; source?: string; said?: string; told?: string };
+    held?: { why: "quota" | "rate_limited" | "error"; until: string; resetKnown: boolean; since: string; source?: string; said?: string; told?: string; /** D449 */ free?: import("./free-budget.ts").FreeProvider };
     sessionId?: string;
     contextTokens?: number; // what the context held, by the harness's count when it gave one
     digested?: boolean; // recut: onto digests (true) or onto the window and pointers only (false)
@@ -2742,6 +2743,8 @@ export interface BrainNow extends Brain {
   why?: "only_codex" | "only_signed_in" | "held";
   /** D435: the agent it thinks with ran out (or its turns fail) and is held until it comes back. */
   held?: BrainHeld;
+  /** D449: it thinks on a free key: about how many requests are left today, and when the day comes back. */
+  budget?: import("./free-budget.ts").FreeBudget;
   /**
    * The models it may think with on the home: the agent's own live list where core has read it
    * (D202's catalog, the one the task composer shows), else the home's listed ones, else Ducter's
@@ -2767,6 +2770,8 @@ export interface BrainHeld {
   resetKnown: boolean;
   /** No other agent can answer now: messages sent meanwhile are answered at `until`. */
   waits?: true;
+  /** D449: the cap is a free tier's (OpenRouter's free models, Gemini's free tier): said with the provider's name and its own reset. */
+  free?: import("./free-budget.ts").FreeProvider;
 }
 
 export type SettingsPatch = Partial<Settings>;

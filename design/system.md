@@ -121,6 +121,20 @@ One table (`packages/protocol/src/harnesses.ts`), one adapter (`packages/runner/
   them) and runs them in order when the hold's time comes; a turn on the held agent that goes
   through ends it. The person hears one line by code (`words.ts` held*/wait*) when a time out
   starts and when nobody can answer any more; the eval's own harness (`opts.harness`) is never held.
+- **A free key's day (D449, research/195).** The key check keeps whether a key is on a free tier
+  (OpenRouter's `is_free_tier`; a Gemini key always) in `<dataDir>/free-budget.json`
+  (`core/src/free-budget.ts`; no key, no words) with the day's count: one request per turn plus
+  one per finished tool call (the partner's turns via `CoreApi.freeBudget.spend`, a task's on pi
+  from the Log), the cap the provider documents (`FREE_TIERS`) or said, set right by its
+  `X-RateLimit-Remaining`. `readFreeLimit` reads the provider's own 429 from a failed turn's words
+  whatever OAR called it (OpenRouter's `free-models-per-day` and `X-RateLimit-Reset`, else UTC
+  midnight; Gemini's `PerDay` quota at midnight Pacific, its minute at `retryDelay`), so
+  `limitHit` gives `source: "provider"` with the true reset and the hold above (and D297's waits)
+  never guess an hour; the hold carries `free` so the line names the provider and the paid way.
+  On the free key the fresh look skips code results (an outward Go's look stays until the day is
+  low), the doc check never bounces (code only), a task's brief asks it to be frugal; the first
+  skipped look is said once after the partner's next words. `brainNow.budget` is Settings ›
+  Partner's readout, sent only on a free key.
 - **Tasks** take the partner's choice, else the top of `fw_candidates` (D89: rules, then the tier
   table) among the accounts `Settings.taskAccounts` leaves on. Its limit-left step needs a
   limit a harness reports; none does yet (D133).

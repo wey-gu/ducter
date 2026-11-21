@@ -3,6 +3,7 @@ package views
 import (
 	"math"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -86,6 +87,18 @@ func (a *App) heldAt(h *protocol.BrainHeld) string {
 // wait and are answered then.
 func (a *App) brainHeldLine(h *protocol.BrainHeld) string {
 	at := a.heldAt(h)
+	// D449: a free key's cap: the provider by name, its own reset and
+	// the paid way, never a guessed hour.
+	if h.Free != "" && at != "" && h.Why != "error" {
+		name := protocol.FreeTierName(h.Free)
+		switch {
+		case h.Why == "rate_limited":
+			return a.L.T("loadout.brain.wait.free.minute", name, at)
+		case h.Waits:
+			return a.L.T("loadout.brain.wait.free", name, at, a.L.T("loadout.free.more."+h.Free))
+		}
+		return a.L.T("loadout.brain.held.free", name, at)
+	}
 	if h.Waits {
 		switch {
 		case h.Why == "quota" && at != "":
@@ -107,6 +120,19 @@ func (a *App) brainHeldLine(h *protocol.BrainHeld) string {
 		return a.L.T("loadout.brain.held.throttle", from)
 	}
 	return a.L.T("loadout.brain.held.error", from)
+}
+
+// budgetLine is Settings › Partner's line on a free key (D449): about
+// how many are left today, or when the provider's day is back.
+func (a *App) budgetLine(b *protocol.FreeBudget) string {
+	name := protocol.FreeTierName(b.Provider)
+	if b.Out {
+		return a.L.T("loadout.budget.out", name, a.heldAt(&protocol.BrainHeld{Until: b.ResetsAt, ResetKnown: true}))
+	}
+	if b.Left != nil {
+		return a.L.T("loadout.budget.left", name, strconv.Itoa(*b.Left))
+	}
+	return a.L.T("loadout.budget.page", name)
 }
 
 // BrainMark is the one mark on Devices (D89): on the Mac Ducter runs on,
@@ -446,7 +472,14 @@ func (a *App) thinksGroup(c *ui.Context) {
 		// (Auto: they never chose; the setting is only Ducter's default).
 		lines = append(lines, a.L.T("loadout.brain.fallback", harnessName(st.Brain.Harness)))
 	}
-	if h != nil && h.Billing == "usage" {
+	if bn := a.S.BrainNow; bn != nil && bn.Budget != nil {
+		// D449: on a free key, the day's readout and that results aren't
+		// looked over again, instead of "paid per use".
+		if held == nil || held.Free == "" {
+			lines = append(lines, a.budgetLine(bn.Budget))
+		}
+		lines = append(lines, a.L.T("loadout.budget.look"))
+	} else if h != nil && h.Billing == "usage" {
 		lines = append(lines, a.L.T("loadout.brain.key"))
 	} else if l := a.limitWords(h, true); l != "" && (held == nil || !held.Waits) {
 		if h.Allowance.Left > protocol.PartnerReserve {
@@ -586,7 +619,10 @@ func (a *App) tasksGroup(c *ui.Context) {
 			h := h
 			agent := harnessName(h.Harness)
 			var lines []string
-			if h.Billing == "usage" {
+			if bn := a.S.BrainNow; h.Harness == "pi" && bn != nil && bn.Budget != nil {
+				// D449: pi on the free key: its day is shared with the partner.
+				lines = append(lines, a.L.T("loadout.acct.free.short"))
+			} else if h.Billing == "usage" {
 				lines = append(lines, a.L.T("loadout.acct.paid.short"))
 			} else if l := a.limitWords(&h, h.Harness == b.Harness); l != "" {
 				lines = append(lines, l)

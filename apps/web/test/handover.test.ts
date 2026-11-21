@@ -2,7 +2,7 @@
 // the shapes offered (加进「…」 first), their lines, the plan's sections, a group's state, review's keep.
 import { expect, test } from "bun:test";
 import type { FoundItem, GroupHandView, HandHow, HandPlan } from "@ducter/protocol";
-import { foundLine, readingChips, handState, oneRepoOf, planSections, planTasks, refLabel, refsLabel, reviewKeep, sections, setTicks, shapeChoices, shapeLine, suggestedShape } from "../src/handover-view.ts";
+import { foundLine, quietBecause, readingChips, handState, oneRepoOf, planSections, planTasks, refLabel, refsLabel, reviewKeep, sections, setTicks, shapeChoices, shapeLine, suggestedShape } from "../src/handover-view.ts";
 import { handoverWords } from "../src/i18n-handover.ts";
 
 const fmt = (s: string, args: unknown[]) => {
@@ -23,8 +23,17 @@ test("sections follow do, decide, later, close and leave empty groups out", () =
 test("the find's line (D428): the head in their words, then what was ticked when not all, and the unsure ones; never joined", () => {
   expect(foundLine({ n: 5, subject: "UI/UX 问题走查", inTitle: 0, byLabel: 0, byMeaning: 5, within: 5, maybe: 1 }, tz, 4)).toEqual({ head: "找到 5 个讲「UI/UX 问题走查」的", facts: ["1 个不太确定，没勾"] });
   expect(foundLine({ n: 23, subject: "UI review", inTitle: 0, byLabel: 0, byMeaning: 23, cut: 13 }, te, 10)).toEqual({ head: "23 about “UI review”", facts: ["Ticked the 10 likeliest"] });
-  expect(foundLine({ n: 0, inTitle: 0, byLabel: 0, byMeaning: 0 }, tz).head).toBe("找到 0 个");
+  expect(foundLine({ n: 0, inTitle: 0, byLabel: 0, byMeaning: 0 }, tz).head).toBe("没有新的可交");
   for (const f of foundLine({ n: 23, subject: "x", inTitle: 3, byLabel: 2, byMeaning: 4, cut: 13, maybe: 2 }, tz, 10).facts) expect(f).not.toContain("·");
+});
+
+test("the find's line (D454): one fact said back in its words; the ones already handed over said apart; a row's reason that repeats a chip left off", () => {
+  const chip = { key: "person:100gle:assigned", kind: "person" as const, text: "100gle 分给你的", said: "100gle", by: "code" as const };
+  expect(foundLine({ n: 4, inTitle: 0, byLabel: 0, byMeaning: 0, within: 4, handed: 1 }, tz, 4, [chip])).toEqual({ head: "100gle 分给你的，有 4 个", facts: ["1 个已经交出去了"] });
+  expect(foundLine({ n: 4, inTitle: 0, byLabel: 0, byMeaning: 0, handed: 1 }, te, 4, [{ ...chip, text: "assigned by 100gle" }]).head).toBe("4 assigned by 100gle");
+  expect(foundLine({ n: 0, inTitle: 0, byLabel: 0, byMeaning: 0, handed: 2 }, tz, 0, [chip])).toEqual({ head: "没有新的可交", facts: ["2 个已经交出去了"] });
+  expect(quietBecause("100gle 分给你的", { about: "", by: "code", facets: [chip] })).toBe(true);
+  expect(quietBecause("100gle 提的", { about: "", by: "code", facets: [chip] })).toBe(false);
 });
 
 test("the reading's chips (D428): every fact, the about last; the about alone is the words typed, so none", () => {

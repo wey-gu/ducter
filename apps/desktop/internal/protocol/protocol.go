@@ -1121,6 +1121,9 @@ type OnHand struct {
 	// Groups (D360): tasks that are one piece of work, with the parts
 	// still held in line.
 	Groups []TaskGroup `json:"groups,omitempty"`
+	// Away (D454) are the tasks the person removed from On hand (移走):
+	// a window that also builds its board from the stream leaves them out.
+	Away []string `json:"away,omitempty"`
 }
 
 // TaskGroup (D360) is several tasks that are one piece of work: one card on
@@ -1157,6 +1160,15 @@ type GroupStopped struct {
 
 // TaskGroupFrame makes, renames, reorders or takes apart a group, or moves
 // a stopped line on (D360).
+// OnHandAway (D454) is 移走 / Remove: a finished card's tasks, or a finished
+// group, taken off On hand on every device; Back puts them back (撤销).
+type OnHandAway struct {
+	T       string   `json:"t"` // "onhand_away"
+	TaskIDs []string `json:"taskIds,omitempty"`
+	GroupID string   `json:"groupId,omitempty"`
+	Back    bool     `json:"back,omitempty"`
+}
+
 type TaskGroupFrame struct {
 	T       string   `json:"t"` // "task_group"
 	Op      string   `json:"op"`

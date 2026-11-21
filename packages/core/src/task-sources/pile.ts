@@ -11,7 +11,7 @@
 import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { randomBytes } from "node:crypto";
-import type { Bodies, FindHow, LogEvent, ReviewBoard, ReviewBoardPr, PileGroup, PileItem, PilePick, PileView, PreRead, PreReadNote, ReviewStanding, SourceItem, SourceItemRef, SourceOp, StandingView, TaskCard } from "@ducter/protocol";
+import type { Bodies, FindHow, HandedState, LogEvent, ReviewBoard, ReviewBoardPr, PileGroup, PileItem, PilePick, PileView, PreRead, PreReadNote, ReviewStanding, SourceItem, SourceItemRef, SourceOp, StandingView, TaskCard } from "@ducter/protocol";
 import { PILE_CAP, PILE_GROUPS, SUBJECT_MIN, SUBJECT_NAME_MAX, SUBJECTS_PAST, SUBJECTS_SHOWN, type SubjectOp } from "@ducter/protocol";
 /** D415: at most this many subjects the person made are kept. */
 const SUBJECTS_KEPT = 60;
@@ -438,6 +438,8 @@ export interface Pile {
   model(): Ask | undefined;
   /** Handed over, queued, or a live task. */
   taken(ref: string): boolean;
+  /** D454: the open to-dos already handed over, each with what became of it (the finder shows them, never drops them). */
+  handedOver(): (PileItem & { handed: { taskId?: string; state: HandedState } })[];
   /** D385: a to-do handed over in a group became this task (or waits held in its group: "held"). */
   handed(ref: string, taskId: string): void;
   hold(refs: string[]): void;
@@ -886,6 +888,20 @@ export function createPile(d: PileDeps): Pile {
     sortedAt: () => st.sortedAt,
     model: () => ask,
     taken: (ref) => taken(ref),
+    handedOver() {
+      const out: (PileItem & { handed: { taskId?: string; state: HandedState } })[] = [];
+      for (const i of st.items) {
+        if (!taken(i.ref)) continue;
+        const v = st.verdicts[i.ref];
+        const base: PileItem = pileItem(i) ?? { item: i, group: v?.group ?? "do", why: v?.why ?? "", ...(v?.size ? { size: v.size } : {}), ...(subjectOf(i.ref) ? { subject: subjectOf(i.ref)! } : {}) };
+        const id = st.handed[i.ref];
+        const live = d.taskOf(i.ref);
+        const c = id && id !== "held" ? (d.tasks.get(id) ?? live) : live;
+        const state: HandedState = !c ? "waiting" : isActive(c.attention) ? (c.attention === "queued" ? "waiting" : "doing") : c.attention === "done" ? "done" : "failed";
+        out.push({ ...base, handed: { ...(c ? { taskId: c.taskId } : {}), state } });
+      }
+      return out;
+    },
     handed(ref, taskId) {
       st.handed[ref] = taskId;
       st.chosen[ref] = "hand";

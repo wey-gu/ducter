@@ -240,6 +240,8 @@ export class Store {
   decisions = new Map<string, DecisionState>();
   tasks = new Map<string, Task>();
   onHand?: OnHand;
+  /** D454: tasks and groups removed from On hand on this screen, before the home's next On hand says so. */
+  awayNow = new Set<string>();
   waiters = new Map<string, WaiterView>();
   /** D145: task-less waits that ended unmet today: the finished area keeps them, with Keep waiting. */
   missed = new Map<string, Bodies["waiter"] & { endedAt: string }>();
@@ -964,8 +966,15 @@ export class Store {
       const t = this.tasks.get(c.taskId);
       if (t && !seen.has(t.id)) seen.add(t.id), fromSnap.push(t);
     }
-    const extra = [...this.tasks.values()].filter((t) => !seen.has(t.id) && (t.open || t.card)).sort((a, b) => (b.events[0]?.seq ?? 0) - (a.events[0]?.seq ?? 0));
+    // D454: what the person removed from On hand (移走) stays off it, here at once and on every device.
+    const away = new Set([...(this.onHand?.away ?? []), ...this.awayNow]);
+    // A task the snapshot doesn't hold (just opened) still shows; one that finished over a day ago
+    // is the home's to drop (it left On hand), never kept here from the Log for ever.
+    const now = Date.now();
+    const stale = (t: Task) => !!this.onHand && finished(t) && now - Date.parse(t.card?.updatedAt ?? t.events.at(-1)?.ts ?? "") > 24 * 3600_000;
+    const extra = [...this.tasks.values()].filter((t) => !seen.has(t.id) && (t.open || t.card) && !stale(t)).sort((a, b) => (b.events[0]?.seq ?? 0) - (a.events[0]?.seq ?? 0));
     for (const t of [...extra, ...fromSnap]) {
+      if (away.has(t.id)) continue;
       const l = laneOf(attention(t));
       if (l !== LANE.hidden) lanes[l]!.push(t);
     }

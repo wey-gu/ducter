@@ -229,7 +229,9 @@ test("a Codex-only home: triage and the bar run on Codex, never on the Claude Co
   core.setPartner({ onTrigger: () => {} });
   const a = answering();
   core.setRunner({ harness: a.port, openTask: async () => ({ taskId: "t", title: "x" }), send: async () => ({ delivered: "prompted" }) } as unknown as Runner);
-  for (let i = 0; i < 100 && !core.devicesView.harnessesNow(); i++) await Bun.sleep(10);
+  // Polls end as soon as the thing is there; the budgets are for a full suite on a busy machine (D454:
+  // the fake oo CLI and the first look are subprocesses and timers, slower under load than alone).
+  for (let i = 0; i < 1000 && !core.devicesView.harnessesNow(); i++) await Bun.sleep(10);
   expect(core.brainInUse()).toEqual({ harness: "codex" });
 
   const ws = new WebSocket(core.url);
@@ -239,15 +241,16 @@ test("a Codex-only home: triage and the bar run on Codex, never on the Claude Co
   stops.push(() => ws.close());
   ws.send(JSON.stringify({ t: "hello", client: "web" }));
   ws.send(JSON.stringify({ t: "connection_oo" }));
-  for (let i = 0; i < 300 && !core.connections.view().length; i++) await Bun.sleep(10);
+  for (let i = 0; i < 2000 && !core.connections.view().length; i++) await Bun.sleep(10);
+  expect(core.connections.view().length).toBeGreaterThan(0);
   // 只说急的 from Settings: no first look; the catch-up reads, on Codex's cheap model.
   core.settings.set({ proactive: "urgent" });
-  for (let i = 0; i < 500 && !a.specs.length; i++) await Bun.sleep(10);
+  for (let i = 0; i < 2000 && !a.specs.length; i++) await Bun.sleep(10);
   expect(a.specs.length).toBeGreaterThan(0);
   expect(a.specs.every((s) => s.harness === "codex")).toBe(true);
   expect(a.specs[0]!.model).toBe(HARNESSES.codex.cheapModel!);
   // 今天看了什么 over the socket.
-  for (let i = 0; i < 300 && core.proactive.day().read === 0; i++) await Bun.sleep(10);
+  for (let i = 0; i < 2000 && core.proactive.day().read === 0; i++) await Bun.sleep(10);
   ws.send(JSON.stringify({ t: "proactive_day" }));
   let day: Extract<ServerFrame, { t: "proactive_day" }> | undefined;
   for (let i = 0; i < 300 && !day; i++) {

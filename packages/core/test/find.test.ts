@@ -7,7 +7,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { TICK_MAX } from "@ducter/protocol";
-import { createHandover } from "../src/task-sources/handover.ts";
+import { aboutLessNote, createHandover } from "../src/task-sources/handover.ts";
 import { aboutTokens, chips, closestLogins, filterBy, labelHit, labelTokens, parseRead, pileFacts, readFacets, titleHas } from "../src/task-sources/find.ts";
 import { evalPile, ME, NOW } from "../eval/find/pile.ts";
 import { SENTENCES } from "../eval/find/sentences.ts";
@@ -158,4 +158,64 @@ test("a word before a CJK word that starts like a role is still a word (\"distil
   expect(r.unknown).toEqual([]);
   expect(r.about).toBe("memory distill 记忆提炼");
   expect(readFacets("search 提的", facts).unknown).toEqual([]);
+});
+
+// ---------- D454: the author on 0.1.8 ----------
+
+function hoHanded(handed: string[], state: "failed" | "doing" | "done" = "failed", o: { assignedBy?: boolean } = {}) {
+  const strip = (p: (typeof pile)[number]) => (o.assignedBy === false && p.item.author === "100gle" ? { ...p, item: { ...p.item, assignedBy: undefined } } : p);
+  const open = pile.filter((p) => !handed.includes(p.item.ref)).map(strip);
+  const over = pile.filter((p) => handed.includes(p.item.ref)).map((p) => ({ ...strip(p), handed: { taskId: "t_general", state } }));
+  return createHandover({ dataDir: mkdtempSync(join(tmpdir(), "ducter-find-")), pile: { all: () => open, handedOver: () => over, model: () => undefined, sortedAt: () => "s1" }, now: () => NOW, lang: () => "zh", name: () => "Ducter", me: () => ME, changed: () => {}, log: { append: () => ({}) } } as never);
+}
+
+test("D454 (a): one already handed over (its task didn't work) is shown in its own group with its state, never dropped, never ticked", async () => {
+  const r = await hoHanded(["nowledge-co/mem#10559"]).find({ words: "那些 100gle 分配给我的任务" });
+  expect(r.items.map((p) => p.item.ref).sort()).toEqual(GLE.filter((x) => x !== "nowledge-co/mem#10559").sort());
+  expect(r.handedOver?.map((p) => [p.item.ref, p.handed.state, p.handed.taskId])).toEqual([["nowledge-co/mem#10559", "failed", "t_general"]]);
+  expect(r.ticked).not.toContain("nowledge-co/mem#10559");
+  expect(r.found).toMatchObject({ n: 4, within: 4, handed: 1 });
+  // All of them handed over: nothing new to tick, every one still shown.
+  const all = await hoHanded(GLE, "doing").find({ words: "100gle 提的" });
+  expect(all.items).toEqual([]);
+  expect(all.handedOver?.length).toBe(5);
+  // The conversation's set never carries one handed over (Go would fail on it).
+  const s = await hoHanded(["nowledge-co/mem#10559"]).set({ query: "100gle 提的" });
+  expect(s.refs).not.toContain("nowledge-co/mem#10559");
+});
+
+test("D454 (b): 分配给我 is on me AND assigned by them; read from who opened it only when GitHub didn't say, and the chip says so", async () => {
+  const known = await hoHanded([]).find({ words: "100gle 分配给我" });
+  expect(known.items.length).toBe(5);
+  expect(known.said?.facets?.map((c) => c.text)).toEqual(["100gle 分给你的"]);
+  const unread = await hoHanded([], "failed", { assignedBy: false }).find({ words: "100gle 分配给我" });
+  expect(unread.items.length).toBe(5);
+  expect(unread.said?.facets?.map((c) => c.text)).toEqual(["100gle 提给你的"]);
+  expect(unread.items.every((p) => p.because === "100gle 提的")).toBe(true);
+  // Not on the person: never matched by "assigned to me".
+  const off = { ...pile.find((p) => p.item.author === "100gle")!.item, assignees: ["someone-else"] };
+  expect(filterBy([{ item: off }], readFacets("100gle 分配给我", facts).facets, facts)).toEqual([]);
+});
+
+test("D454 (c): a name one edit from exactly one login is read as it at once, said, with an undo; otherwise nothing is listed until a name is picked", async () => {
+  const h = hoHanded([]);
+  const typo = await h.find({ words: "那些 100gler 分配给我的任务" });
+  expect(typo.said?.guessed).toEqual([{ said: "100gler", login: "100gle" }]);
+  expect(typo.items.length).toBe(5);
+  expect(typo.said?.unknown).toBeUndefined();
+  const undone = await h.find({ words: "那些 100gler 分配给我的任务", drop: ["guess:100gler"] });
+  expect(undone.items).toEqual([]);
+  expect(undone.ticked).toEqual([]);
+  expect(undone.said?.unknown).toEqual([{ said: "100gler", closest: ["100gle"] }]);
+  // Two edits (a swap) is not a guess: said, and nothing listed (0.1.8 listed every other one).
+  const swap = await h.find({ words: "那些 100gel 分配给我的任务" });
+  expect(swap.items).toEqual([]);
+  expect(swap.said?.unknown?.[0]?.closest).toEqual(["100gle"]);
+});
+
+test("D454 (d): the note's words never stay in the about chip", async () => {
+  const r = await hoHanded([]).find({ words: "100gle 分配给我的 UI walkthrough，你仔细一起做掉" });
+  expect(r.said?.note).toBe("你仔细一起做掉");
+  expect(r.said?.facets?.map((c) => c.text)).toEqual(["100gle 分给你的", "关于 UI walkthrough"]);
+  expect(aboutLessNote("UI walkthrough，你仔细一起做掉", "你仔细一起做掉")).toBe("UI walkthrough");
 });

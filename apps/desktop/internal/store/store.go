@@ -479,6 +479,9 @@ type Store struct {
 	// loaded (a history page), until it is.
 	asksWaiting map[int64]*protocol.Asks
 	OnHand      *protocol.OnHand
+	// AwayNow (D454) are the tasks and groups removed from On hand in this
+	// window, before the home's next On hand says so.
+	AwayNow map[string]bool
 	// Waiters are the waiters known, by id (from waiter events and the
 	// snapshot's armed list).
 	Waiters map[string]*protocol.Waiter
@@ -1884,15 +1887,38 @@ func (s *Store) Board() Board {
 			}
 		}
 	}
+	// D454: what the person removed (移走) stays off On hand; a task the
+	// snapshot doesn't hold still shows (just opened), but one that finished
+	// over a day ago left On hand at the home and isn't kept here from the stream.
+	away := map[string]bool{}
+	for k := range s.AwayNow {
+		away[k] = true
+	}
+	now := time.Now()
+	if s.OnHand != nil {
+		for _, id := range s.OnHand.Away {
+			away[id] = true
+		}
+	}
+	stale := func(t *Task) bool {
+		if s.OnHand == nil || !Finished(t.Attention()) {
+			return false
+		}
+		at := t.FinishedAt()
+		return !at.IsZero() && now.Sub(at) > 24*time.Hour
+	}
 	var extra []*Task
 	for id, t := range s.Tasks {
-		if !seen[id] && (t.Open != nil || t.Card != nil) {
+		if !seen[id] && (t.Open != nil || t.Card != nil) && !stale(t) {
 			extra = append(extra, t)
 		}
 	}
 	sort.Slice(extra, func(i, j int) bool { return extra[i].firstSeq() > extra[j].firstSeq() })
 	tasks = append(extra, tasks...)
 	for _, t := range tasks {
+		if away[t.ID] {
+			continue
+		}
 		if l := LaneOf(t.Attention()); l != LaneHidden {
 			b.Lanes[l] = append(b.Lanes[l], t)
 		}
@@ -1901,6 +1927,11 @@ func (s *Store) Board() Board {
 	// is the same rule at the home, but older than what the stream says).
 	b.Counts = protocol.Counts{NeedsYou: len(b.Lanes[LaneNeedsYou]), Working: len(b.Lanes[LaneWorking]), Waiting: len(b.Lanes[LaneWaiting]), DoneToday: DoneToday(b.Lanes[LaneDone], time.Now())}
 	return b
+}
+
+// Finished is a task that came back: done, done but not merged, or didn't work out (On hand's 今天做完).
+func Finished(a protocol.Attention) bool {
+	return a == protocol.Done || a == protocol.DoneClaimed || a == protocol.Failed
 }
 
 func (t *Task) firstSeq() int64 {

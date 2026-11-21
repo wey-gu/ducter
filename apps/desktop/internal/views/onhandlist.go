@@ -616,8 +616,16 @@ func (a *App) taskRow(c *ui.Context, task *store.Task, state bool) {
 					a.statusFace(c, task, st)
 					return
 				}
-				if !rail && hover && a.rowActs(c, task, true) {
-					return
+				if !rail && hover {
+					// D454: a finished row offers × and ⋯ beside its one next step.
+					drew := a.rowActs(c, task, true)
+					if f := finishedOf(task); f != nil {
+						a.finishedActs(c, *f)
+						drew = true
+					}
+					if drew {
+						return
+					}
 				}
 				if ch := taskChanges(task); ch != nil {
 					ui.Row(c.Key("stat")).Gap(t.S1 + 2).Shrink(0).Children(func() {
@@ -712,6 +720,10 @@ func (a *App) taskRow(c *ui.Context, task *store.Task, state bool) {
 			}
 		})
 	})
+	// D454: a right click on a finished row says the same as its ⋯.
+	if f := finishedOf(task); f != nil && !rail {
+		a.contextMenu(c, row, func(m *ui.Menu) { a.finishedItems(c, m, *f, true) })
+	}
 	// D290: the card you open grows into the task's head, and the task
 	// you come back from goes back into its card; the list's rows come in
 	// one after another on its first paint.

@@ -29,6 +29,14 @@ export const groupWords: { zh: Record<string, string>; en: Record<string, string
     "group.go": "不管它，往下做",
     "group.drop": "后面的不做了",
     "group.retry": "再试一次",
+    // D454: 移走 / Remove a finished card or group from On hand.
+    "away.remove": "移走",
+    "away.remove.about": "从手头的事移走「%s」",
+    "away.more": "「%s」还能做的",
+    "away.retry": "再试一次",
+    "away.why": "看看为什么",
+    "away.open": "打开",
+    "away.done": "移走了「%s」，做过的事里还找得到",
   },
   en: {
     "group.line": "One after another",
@@ -54,5 +62,12 @@ export const groupWords: { zh: Record<string, string>; en: Record<string, string
     "group.go": "Skip it, go on",
     "group.drop": "Drop the rest",
     "group.retry": "Try it again",
+    "away.remove": "Remove",
+    "away.remove.about": "Remove “%s” from On hand",
+    "away.more": "More for “%s”",
+    "away.retry": "Try again",
+    "away.why": "See why",
+    "away.open": "Open",
+    "away.done": "Removed “%s”. It's still in Past tasks.",
   },
 };

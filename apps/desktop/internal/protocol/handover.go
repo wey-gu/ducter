@@ -55,6 +55,25 @@ type FindSummary struct {
 	Within *int `json:"within,omitempty"`
 	Cut    int  `json:"cut,omitempty"`
 	Maybe  int  `json:"maybe,omitempty"`
+	// D454: found, but already handed over (their own group, never ticked).
+	Handed int `json:"handed,omitempty"`
+}
+
+// FindGuess is a name one edit from exactly one login, read as that login
+// at once (D454): 按 100gle 找的, with 不是 100gle (drop "guess:<said>").
+type FindGuess struct {
+	Said  string `json:"said"`
+	Login string `json:"login"`
+}
+
+// HandedItem is a found to-do already handed over (D454): its task and what
+// became of it (doing | waiting | failed | done).
+type HandedItem struct {
+	FoundItem
+	Handed struct {
+		TaskID string `json:"taskId,omitempty"`
+		State  string `json:"state"`
+	} `json:"handed"`
 }
 
 // FindFacet is one fact read out of the sentence (D428), shown as its own
@@ -85,6 +104,7 @@ type FindSaid struct {
 	Facets  []FindFacet   `json:"facets,omitempty"`
 	Unknown []FindUnknown `json:"unknown,omitempty"`
 	Dropped []string      `json:"dropped,omitempty"`
+	Guessed []FindGuess   `json:"guessed,omitempty"`
 }
 
 // TickMax is how many found ones are ticked without asking (D428).

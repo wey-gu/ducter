@@ -13,7 +13,7 @@
 import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { randomBytes } from "node:crypto";
-import type { Bodies, FindFacet, FindSaid, FindSummary, FindUnknown, FoundItem, GroupHandView, GroupReview, HandHow, HandPlan, HandShape, HandWhere, HandWho, LogEvent, PileItem, PlaceChoice, PlanPart, ReviewRow, RuleView, SourceItem, SourceItemRef, SourceOp, TaskCard, TaskGroupView, TodoSet } from "@ducter/protocol";
+import type { Bodies, FindFacet, FindSaid, FindSummary, FindUnknown, FoundItem, GroupHandView, HandedItem, GroupReview, HandHow, HandPlan, HandShape, HandWhere, HandWho, LogEvent, PileItem, PlaceChoice, PlanPart, ReviewRow, RuleView, SourceItem, SourceItemRef, SourceOp, TaskCard, TaskGroupView, TodoSet } from "@ducter/protocol";
 import { canBeOne, defaultShape, TICK_MAX, GROUP_NAME_MAX, SUGGEST_MAX, HAND_CAP, HAND_ITEM_NOTE_MAX, HAND_MAX, HAND_NOTE_MAX, isHeld } from "@ducter/protocol";
 import { redact } from "@ducter/protocol/src/redact.ts";
 import type { LogStore, TaskRegistry } from "@ducter/protocol/src/internal.ts";
@@ -25,7 +25,7 @@ import { ruleFor } from "../rules.ts";
 import { briefOf, placeForRepo } from "./index.ts";
 import { langOfItem, subjectKey, type Ask, type Pile } from "./pile.ts";
 import type { WriteResult } from "./adapter.ts";
-import { aboutTokens, chips, codeBecause, filterBy, keyOf, labelHit, meaningPrompt, meaningRows, mergeFacets, parseMeaning, parseRead, pileFacts, readFacets, readPrompt, titleHas, type Facet } from "./find.ts";
+import { aboutTokens, assignedByStandIn, chips, chipText, codeBecause, filterBy, keyOf, labelHit, meaningPrompt, meaningRows, mergeFacets, parseMeaning, parseRead, pileFacts, readFacets, readPrompt, titleHas, type Facet } from "./find.ts";
 
 export const HANDOVER_FILE = "task-sources-handover.json";
 /** The set card shows this many rows; the rest are 还有 n 个 / n more. */
@@ -157,7 +157,20 @@ const CJK = /[぀-ヿ㐀-鿿가-힯]/;
 /** A clause that says how to do the work, not which to-dos: a limit, a place, a tool, an order. */
 const HOW_ZH = /^(但是?|不过|而且|并且|另外|还有|然后|顺便|对了)?\s*(先别|先不要|先不|别|不要|不用|不许|不能|勿|只|仅|记得|注意|务必|一定|千万|验证|测试|测一下|跑|用|放|在\s*\S+\s*(上|里)|去\s*\S+\s*(上|里)|让|最好|尽量|每(个|件)|都(去|在|用|放|走|别|不)|改完|做完|做之前|提交|开\s*PR|开个|分支|按|照|截止|.{0,8}前(做|搞|弄|办)?(完|定|好)|预算|一个\s*PR|合成|一件(一件|做完)|同时)/i;
 const HOW_EN = /^(but|and|also|then|plus|oh and)?\s*(please\s+)?(don'?t|do not|never|only|make sure|keep|leave|use|run|test|check|verify|build|avoid|no\s|skip|open|one pr|each|every|as one|before|after|by\s|in one|on\s+[\w-]+\s*$|on\s+(the\s+)?[\w-]+\s+(machine|box|server|computer)|first|start with|put)\b/i;
-const isHow = (c: string) => (CJK.test(c) ? HOW_ZH.test(c.trim()) : HOW_EN.test(c.trim())) || HOW_ZH.test(c.trim());
+/** D454: a clause said to the one doing it ("你仔细一起做掉", "do them carefully together"): how, anywhere in it. */
+const HOW_ZH_ANY = /^(你|您)(?!(们)?的|提|分|上次|说的)|仔细|认真|小心|一起做|一并|顺手|统一(改|做|处理)|做掉|搞定|弄掉|修掉|处理掉|搞掉|一口气/u;
+const HOW_EN_ANY = /^(you|please)\s+(do|fix|handle|take|go|get|make|work)\b|\b(carefully|thoroughly|together|in one go|all at once)\b/i;
+const isHow = (c: string) => (CJK.test(c) ? HOW_ZH.test(c.trim()) || HOW_ZH_ANY.test(c.trim()) : HOW_EN.test(c.trim()) || HOW_EN_ANY.test(c.trim())) || HOW_ZH.test(c.trim());
+
+/** D454: the about words less the note's (a model's note read out of one clause): never 关于 …你仔细一起做掉. */
+export function aboutLessNote(about: string, note: string | undefined): string {
+  if (!note || !about) return about;
+  const n = note.trim();
+  const at = n ? about.indexOf(n) : -1;
+  if (at < 0) return about;
+  const left = (about.slice(0, at) + " " + about.slice(at + n.length)).replace(/[\s，,；;。.！!？?：:]+$/u, "").replace(/^[\s，,；;。.！!？?：:]+/u, "").replace(/\s+/g, " ").trim();
+  return left || about;
+}
 
 /** What to find, without the hand-over's own words around it ("把那些关于 distill 的都交给你" → "distill"). */
 export function aboutOf(s: string): string {
@@ -524,6 +537,7 @@ export function createHandover(d: HandoverDeps): Handover {
     let saidAs: FindSaid | undefined;
     let within: number | undefined;
     let unknown: FindUnknown[] = [];
+    const handedOf = new Map<string, HandedItem["handed"]>();
     const words = o.words?.trim().slice(0, 400);
     // The words: what to find by code's split; the note beside it (the model may read both better below).
     const split = words ? splitWords(words) : undefined;
@@ -544,8 +558,13 @@ export function createHandover(d: HandoverDeps): Handover {
     } else if (query?.trim()) {
       // D428: the sentence's facts first (who, whose, where, which number, since when), then what it is about.
       const lang = d.lang();
-      const facts = pileFacts(pool, { ...(d.me?.() ? { me: d.me!() } : {}), now: d.now() });
-      const read = readFacets(query, facts);
+      // D454: the ones already handed over are read with the rest, and shown apart with what became of them (never silently left out).
+      const handedPool = d.pile.handedOver?.() ?? [];
+      for (const h of handedPool) handedOf.set(h.item.ref, h.handed);
+      const every: PileItem[] = handedPool.length ? [...pool, ...handedPool.map(({ handed: _, ...p }) => p)] : pool;
+      const facts = pileFacts(every, { ...(d.me?.() ? { me: d.me!() } : {}), now: d.now() });
+      const dropped = new Set((o.drop ?? []).filter((k) => typeof k === "string").slice(0, 20));
+      const read = readFacets(query, facts, { noGuess: dropped });
       let facets = read.facets;
       unknown = read.unknown;
       if (read.unsure) {
@@ -555,17 +574,24 @@ export function createHandover(d: HandoverDeps): Handover {
           for (const u of m.unknown) if (!unknown.some((x) => x.said.toLowerCase() === u.said.toLowerCase()) && !facets.some((x) => x.kind === "person" && x.login.toLowerCase() === u.said.toLowerCase())) unknown.push(u);
         }
       }
-      const dropped = new Set((o.drop ?? []).filter((k) => typeof k === "string").slice(0, 20));
       facets = facets.filter((x) => !dropped.has(keyOf(x)));
+      const guessed = facets.flatMap((x) => (x.kind === "person" && x.guess ? [{ said: x.guess, login: x.login }] : []));
       let about = dropped.has("about") ? "" : read.about;
-      const filtered = filterBy(pool, facets, facts);
-      if (facets.length) within = filtered.length;
-      const chipsOf = (a: string) => chips(facets, a, lang, facts);
-      const factText = facets.map((x) => chips([x], "", lang, facts)[0]!.text);
+      // D454: a name no one has lists nothing until a name is picked (the facts left would be wider than they meant).
+      const filtered = unknown.length ? [] : filterBy(every, facets, facts);
+      if (facets.length && !unknown.length) within = filtered.filter((p) => !handedOf.has(p.item.ref)).length;
+      // D454: an "assigned by" fact some found one met only by who opened it: the chip and that row say so.
+      const standIn = new Set(facets.filter((x) => filtered.some((p) => assignedByStandIn(p.item, x))).map(keyOf));
+      const chipsOf = (a: string) => chips(facets, a, lang, facts, standIn);
+      const factText = facets.map((x) => chips([x], "", lang, facts, standIn)[0]!.text);
+      const rowWhy = (p: PileItem) => {
+        const x = facets[0]!;
+        return assignedByStandIn(p.item, x) ? chipText({ ...x, role: "opened" } as Facet, lang, facts) : factText[0]!;
+      };
       const toks = aboutTokens(about);
       if (!about || !toks.length) {
         // The facts alone say which: every one they leave, each with its first fact as why.
-        if (facets.length) for (const p of filtered) found.set(p.item.ref, { ...p, by: facets.some((x) => x.kind === "ref") ? "ref" : "facet", because: factText[0]!, sure: "high" });
+        if (facets.length) for (const p of filtered) found.set(p.item.ref, { ...p, by: facets.some((x) => x.kind === "ref") ? "ref" : "facet", because: rowWhy(p), sure: "high" });
         else if (!unknown.length) about = about || query.trim();
       }
       if (about && toks.length) {
@@ -585,13 +611,27 @@ export function createHandover(d: HandoverDeps): Handover {
             const p = filtered.find((x) => x.item.ref === ref);
             if (p) found.set(ref, { ...p, by: titleHas(p.item.title, toks) ? "title" : "meaning", ...(m.why[ref] ? { because: m.why[ref] } : {}), sure: m.sure[ref] ?? "high" });
           }
-          if (words && saidAs && m.note && said(words, m.note) && !saidAs.note) saidAs = { ...saidAs, note: noteOf(m.note), by: "model" };
+          if (words && saidAs && m.note && said(words, m.note) && !saidAs.note) {
+            saidAs = { ...saidAs, note: noteOf(m.note), by: "model" };
+            // D454: the note's words never stay in what it is about (关于 UI walkthrough，你仔细一起做掉).
+            about = aboutLessNote(about, m.note);
+          }
         }
       }
       // The subject is the person's own words, never a name the model made up.
       subject = about || undefined;
-      saidAs = { ...(saidAs ?? { by: "code" as const }), about, facets: chipsOf(about), ...(unknown.length ? { unknown } : {}), ...(dropped.size ? { dropped: [...dropped] } : {}) };
+      saidAs = { ...(saidAs ?? { by: "code" as const }), about, facets: chipsOf(about), ...(unknown.length ? { unknown } : {}), ...(guessed.length ? { guessed } : {}), ...(dropped.size ? { dropped: [...dropped] } : {}) };
     }
+    // D454: the ones already handed over go in their own group with what became of them; never ticked.
+    const handedOver: HandedItem[] = [];
+    for (const [ref, p] of found) {
+      const h = handedOf.get(ref);
+      if (!h) continue;
+      found.delete(ref);
+      handedOver.push({ ...p, item: { ...p.item, body: undefined } as SourceItem, handed: h });
+    }
+    const HANDED_RANK = { failed: 0, doing: 1, waiting: 2, done: 3 } as const;
+    handedOver.sort((a, b) => HANDED_RANK[a.handed.state] - HANDED_RANK[b.handed.state] || foundOrder(a, b));
     const sureRank = (p: FoundItem) => (p.sure === "maybe" ? 1 : 0);
     const items = [...found.values()].sort((a, b) => sureRank(a) - sureRank(b) || foundOrder(a, b));
     // D428: only the sure ones are ticked, at most TICK_MAX; a name it couldn't find ticks nothing (the
@@ -614,8 +654,9 @@ export function createHandover(d: HandoverDeps): Handover {
       ...(within !== undefined ? { within } : {}),
       ...(!o.setId && !o.subject && tickable.length > ticked.length ? { cut: tickable.length - ticked.length } : {}),
       ...(maybe ? { maybe } : {}),
+      ...(handedOver.length ? { handed: handedOver.length } : {}),
     };
-    return { found: summary, items, ticked, ...(query ? { query } : {}), ...(subject ? { subject } : {}), ...(o.setId ? { setId: o.setId } : {}), ...(saidAs ? { said: saidAs } : {}), suggest: suggest() };
+    return { found: summary, items, ticked, ...(handedOver.length ? { handedOver } : {}), ...(query ? { query } : {}), ...(subject ? { subject } : {}), ...(o.setId ? { setId: o.setId } : {}), ...(saidAs ? { said: saidAs } : {}), suggest: suggest() };
   }
 
   // ---------- how ----------

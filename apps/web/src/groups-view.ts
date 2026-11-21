@@ -99,3 +99,21 @@ export function markOf(r: MemberRow): "done" | "working" | "needs" | "waiting" |
       return "working";
   }
 }
+
+/**
+ * D454: a group none of whose parts is at work, as a card that can leave On hand: its tasks, the
+ * ones that didn't work out (再试一次 / 看看为什么 opens the first), else its last part (打开).
+ * Something waiting in line only counts as finished behind a stopped part (it is dropped with it).
+ * Undefined while any part works, needs the person or waits.
+ */
+export function finishedGroup(b: BoardGroup): { name: string; groupId: string; taskIds: string[]; failedIds: string[]; openId?: string } | undefined {
+  const marks = b.rows.map(markOf);
+  if (marks.some((m) => m === "working" || m === "needs" || m === "waiting")) return undefined;
+  if (marks.includes("held") && !b.stopped) return undefined;
+  const tasks = b.rows.flatMap((r) => (r.kind === "task" ? [r] : []));
+  const failedIds = tasks.filter((r) => markOf(r) === "failed").map((r) => r.taskId);
+  const plan = b.g.hand?.plan?.taskId;
+  const taskIds = [...tasks.map((r) => r.taskId), ...(plan ? [plan] : [])];
+  if (!taskIds.length) return undefined;
+  return { name: b.g.name, groupId: b.g.id, taskIds, failedIds, openId: failedIds[0] ?? tasks.at(-1)?.taskId };
+}

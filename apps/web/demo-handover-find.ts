@@ -87,4 +87,13 @@ const ts = core.taskSources;
 await ts.add("github");
 await ts.look();
 while (!ts.view().pile?.sortedAt || ts.view().pile?.sorting) await Bun.sleep(100);
+// D454: DEMO_HANDED=1: #10559 was handed over the day before and its task didn't make it (the author's 0.1.8).
+if (process.env.DEMO_HANDED) {
+  const id = "t_general";
+  const title = zh ? "通用设置" : "General settings";
+  core.log.append({ stream: `task:${id}`, origin: "partner", kind: "task_open", body: { taskId: id, title, project: "mem", place: { kind: "none" }, harness: "claude-code", model: "opus", brief: title } } as never);
+  core.log.append({ stream: `task:${id}`, origin: "task", kind: "report", body: { taskId: id, questions: [], state: "failed", summary: zh ? "设置页的组件库升级到一半，构建过不去。" : "The settings page's component library is half upgraded; the build fails.", evidence: [] } } as never);
+  core.tasks.setState(id, "failed", "parked");
+  ts.pile.handed("nowledge-co/mem#10559", id);
+}
 console.log(`[demo] handover find up at http://127.0.0.1:${core.port}/app (data: ${core.dataDir}; scratch: ${scratch})`);

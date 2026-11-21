@@ -5,7 +5,7 @@
 // two columns; a phone: two screens (what, then the note and how). Go makes a group for two or more.
 // Plan first's card (in the conversation and inside its group on On hand) and 一起过目 / Review
 // together live here too. Core decides every default (pile_how); this file only draws and asks.
-import type { FindSaid, FindSummary, FoundItem, GroupHandView, GroupReview, HandHow, HandShape, PileItem, SourcesServerFrame, SubjectOp, TaskGroupView, TodoSet } from "@ducter/protocol";
+import type { FindSaid, FindSummary, FoundItem, GroupHandView, HandedItem, GroupReview, HandHow, HandShape, PileItem, SourcesServerFrame, SubjectOp, TaskGroupView, TodoSet } from "@ducter/protocol";
 import { PILE_HAND_DEFAULT, sizeSaid } from "@ducter/protocol";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { A } from "./app.ts";
@@ -13,7 +13,7 @@ import { BrandMark } from "./brand.tsx";
 import { Btn, Chev } from "./controls.tsx";
 import { harnessName } from "./format.ts";
 import { TS } from "./todos.tsx";
-import { foundLine, readingChips, handState, oneRepoOf, planSections, planTasks, refLabel, refsLabel, reviewKeep, sections, setTicks, shapeChoices, shapeLine, suggestedShape, type ShapeChoice } from "./handover-view.ts";
+import { foundLine, quietBecause, readingChips, handState, oneRepoOf, planSections, planTasks, refLabel, refsLabel, reviewKeep, sections, setTicks, shapeChoices, shapeLine, suggestedShape, type ShapeChoice } from "./handover-view.ts";
 import type { DecisionState } from "./store.ts";
 import { FirstMeetLine, meet } from "./first-meet.tsx";
 
@@ -82,6 +82,8 @@ export const HS: {
   renaming?: boolean;
   renameTo: string;
   subjCid: string;
+  /** D454: the found ones already handed over (their own group: what became of each, never ticked). */
+  handed?: HandedItem[];
 } = { cid: "", findCid: "", howCid: "", known: new Map(), words: "", browse: false, finding: false, bySubject: false, note: "", notes: {}, noteOpen: new Set(), step: 1, sending: false, putName: "", renameTo: "", subjCid: "" };
 
 let findTimer: ReturnType<typeof setTimeout> | undefined;
@@ -268,6 +270,7 @@ export function onHandFrame(f: SourcesServerFrame): boolean {
     HS.items = f.items;
     HS.found = f.found;
     HS.heard = f.said;
+    HS.handed = f.handedOver;
     HS.finding = false;
     HS.setId = undefined;
     // New words, a new set: the sure ones ticked, as found (D428: at most TICK_MAX).
@@ -418,6 +421,70 @@ const Radio = ({ on }: { on: boolean }) => <span class={`ho-dot${on ? " on" : ""
 
 // ---------- the sheet ----------
 
+/** A to-do's number: #10694 when every found one is in one repository (said once is enough), else mem#10694. */
+function numOf(p: FoundItem): string {
+  if (p.item.kind !== "github" || !p.item.where) return p.item.where ?? p.item.label;
+  const all = [...(HS.items ?? []), ...(HS.handed ?? [])];
+  const one = all.every((x) => x.item.where === p.item.where);
+  return one ? p.item.label : `${p.item.where.split("/")[1]}${p.item.label}`;
+}
+
+/** D454: one found that is already handed over: what became of it, and the way to it (never a tick). */
+function HandedRow({ p, i }: { p: HandedItem; i: number }) {
+  const st = p.handed.state;
+  const label = t(st === "failed" ? "ho.handed.why" : "ho.handed.open");
+  const open = () => {
+    if (!p.handed.taskId) return;
+    closeHand();
+    A.openTaskPage(p.handed.taskId);
+  };
+  return (
+    <div class={`ho-item ho-handed s-${st}`} style={{ "--i": Math.min(i, 12) } as never} data-ref={p.item.ref}>
+      <div class="ho-item-main">
+        <span class={`ho-handed-dot s-${st}`} aria-hidden="true" />
+        <span class="pile-item-body">
+          <span class="pile-item-head">
+            <span class="todo-mark small">
+              <BrandMark name={p.item.kind} size={16} />
+            </span>
+            <span class="pile-item-title ho-title" dir="auto">
+              {p.item.title}
+            </span>
+          </span>
+          <span class="pile-item-facts">
+            <span class="ho-num">{numOf(p)}</span>
+            <span class={`ho-handed-state s-${st}`}>{t(`ho.handed.${st}`)}</span>
+          </span>
+        </span>
+      </div>
+      {p.handed.taskId && (
+        <button class="ho-note-link corner ho-handed-open" aria-label={`${label}: ${p.item.title}`} onClick={open}>
+          {label}
+        </button>
+      )}
+    </div>
+  );
+}
+
+/** D454: the found ones already handed over, under the rest: every match shown, none dropped silently. */
+function HandedList() {
+  const hs = HS.handed ?? [];
+  if (!hs.length || HS.finding) return null;
+  return (
+    <div class="ho-list">
+      <section class="ho-sec ho-handed-sec" aria-label={t("ho.g.handed")}>
+        <h3 class="ho-gh">
+          <span>{t("ho.g.handed")}</span>
+          <span class="n">{A.L.num(hs.length)}</span>
+        </h3>
+        {hs.map((p, i) => (
+          <HandedRow key={p.item.ref} p={p} i={i} />
+        ))}
+      </section>
+    </div>
+  );
+}
+
 function ItemRow({ p, i }: { p: FoundItem; i: number }) {
   const on = ticked().has(p.item.ref);
   const noteOpen = HS.noteOpen.has(p.item.ref) || !!HS.notes[p.item.ref];
@@ -454,11 +521,11 @@ function ItemRow({ p, i }: { p: FoundItem; i: number }) {
             </span>
           )}
           <span class="pile-item-facts">
-            <span class="ho-num">{p.item.kind === "github" && p.item.where ? `${p.item.where.split("/")[1]}${p.item.label}` : p.item.where ?? p.item.label}</span>
+            <span class="ho-num">{numOf(p)}</span>
             {/* D443: the size once: no pill when the line above already says it (说得清楚，改动小). */}
             {p.size && !sizeSaid(p.group === "decide" && p.ask ? p.ask : p.why, p.size) && <span class="todo-label">{t(`pile.size.${p.size}`)}</span>}
             {/* D428: why it is here, in a few words; an unsure one says so (never ticked by itself). */}
-            {p.because && (
+            {p.because && !quietBecause(p.because, HS.heard) && (
               <span class="ho-because" dir="auto">
                 {p.because}
               </span>
@@ -504,8 +571,8 @@ function FoundHead() {
       </div>
     );
   // Nothing found says itself below (the empty state); the line would only repeat it.
-  if (!f || !f.n) return null;
-  const { head, facts } = foundLine(f, t, HS.foundTicked);
+  if (!f || (!f.n && !f.handed)) return null;
+  const { head, facts } = foundLine(f, t, HS.foundTicked, readingChips(HS.heard));
   return (
     <div class="ho-found" role="status">
       <b>{head}</b>
@@ -538,7 +605,7 @@ function Heard() {
   if (!h || HS.finding) return null;
   const chips = readingChips(h);
   const unknown = h.unknown ?? [];
-  if (!h.note && !chips.length && !unknown.length && !HS.drop?.length) return null;
+  if (!h.note && !chips.length && !unknown.length && !h.guessed?.length && !HS.drop?.length) return null;
   const moved = HS.note === HS.noteAuto && HS.note.trim();
   return (
     <div class="ho-heard" role="note">
@@ -562,6 +629,15 @@ function Heard() {
       )}
       {/* D451: the first time a sentence is read into chips, what they are and that a tap drops one. */}
       {chips.length > 0 && !HS.drop?.length && <FirstMeetLine name="find" at="handover" />}
+      {/* D454: a name one edit from one login is read as it at once, said, with its undo. */}
+      {(h.guessed ?? []).map((g) => (
+        <div key={g.said} class="ho-guessed" role="status">
+          <span dir="auto">{t("ho.guessed", g.login)}</span>
+          <button class="ho-fact-undo" onClick={() => dropChip(`guess:${g.said.toLowerCase()}`)}>
+            {t("ho.guessed.not", g.login)}
+          </button>
+        </div>
+      ))}
       {unknown.map((u) => (
         <div key={u.said} class="ho-unknown" role="alert">
           <span dir="auto">{t("ho.unknown", u.said)}</span>
@@ -705,14 +781,24 @@ function What() {
               </div>
             </div>
           ) : !items.length ? (
-            <div class="ho-none">
-              {!HS.heard?.unknown?.length && <p dir="auto">{t("ho.none.about", HS.heard?.about || said)}</p>}
-              <small>{t("ho.none.or")}</small>
-              <Suggest />
-              <BrowseLink />
-            </div>
+            <>
+              {HS.handed?.length ? (
+                <p class="ho-none-left" dir="auto">{t("ho.none.left")}</p>
+              ) : (
+                <div class="ho-none">
+                  {!HS.heard?.unknown?.length && <p dir="auto">{t("ho.none.about", HS.heard?.about || said)}</p>}
+                  <small>{t("ho.none.or")}</small>
+                  <Suggest />
+                  <BrowseLink />
+                </div>
+              )}
+              <HandedList />
+            </>
           ) : (
-            <List items={items} />
+            <>
+              <List items={items} />
+              <HandedList />
+            </>
           )}
         </>
       )}
@@ -919,7 +1005,8 @@ export function HandSheet() {
           {HS.said && <p class="small tone-bad">{HS.said}</p>}
           {HS.putOpen && <PutIn />}
           <div class="ho-foot-row">
-            <span class="ho-count" aria-live="polite">
+            {/* D454: the count is said once: the Go button names it (交给小鸭这 4 个), so here it is only read aloud. */}
+            <span class={`ho-count${n > 1 && !(thin && HS.step === 1) && HS.make === undefined ? " quiet" : ""}`} aria-live="polite">
               {n ? t("ho.picked", n) : t("ho.picked.none")}
             </span>
             {n > 0 && HS.make === undefined && !HS.putOpen && (

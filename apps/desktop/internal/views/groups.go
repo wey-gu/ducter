@@ -81,6 +81,9 @@ func (a *App) boardGroups(b store.Board) []boardGroup {
 	}
 	var out []boardGroup
 	for _, g := range a.S.OnHand.Groups {
+		if a.S.AwayNow[g.ID] { // D454: removed here, before the home's next On hand says so
+			continue
+		}
 		// D385: a hand-over's group stands with one part (its plan, or as one task).
 		if len(g.Members) < 2 && (g.Hand == nil || len(g.Members) == 0) {
 			continue
@@ -283,7 +286,12 @@ func (a *App) groupCard(c *ui.Context, bg boardGroup) {
 	}
 	card := ui.Column(c.Key("group:"+g.ID)).Gap(t.S2).Padding(14, 16, 12, 16).Radius(20).Background(t.Surface).
 		Shadow(0, 2, 0, 0, ledge).Shadow(0, 8, 18, -12, t.Ink.Alpha(0.22)).Role(ui.RoleGroup).Label(g.Name)
+	// D454: a group none of whose parts is at work can leave On hand.
+	fin := finishedGroup(bg)
 	a.contextMenu(c, card, func(m *ui.Menu) {
+		if fin != nil {
+			a.finishedItems(c, m, *fin, false)
+		}
 		if m.Item(a.L.T("group.rename")).Chosen() {
 			a.oh.groupRename, a.oh.groupDraft = g.ID, g.Name
 		}
@@ -298,7 +306,11 @@ func (a *App) groupCard(c *ui.Context, bg boardGroup) {
 		if m.Item(a.L.T("group.ungroup")).Chosen() {
 			send(protocol.TaskGroupFrame{Op: "dissolve"})
 		}
+		if fin != nil && m.Item(a.L.T("away.remove")).Chosen() {
+			a.PutAway(c, *fin)
+		}
 	})
+	hover := card.Hovered()
 	card.Children(func() {
 		ui.Row(c.Key("head")).Gap(10).AlignItems(ui.Center).MinHeight(28).Children(func() {
 			if a.oh.groupRename == g.ID {
@@ -340,6 +352,13 @@ func (a *App) groupCard(c *ui.Context, bg boardGroup) {
 			})
 			if done, left, ok := groupCount(bg.rows); ok {
 				uiText(c, a.L.T("asks.count", done, left)).FontSize(t.XS).FontWeight(600).TextColor(t.InkMuted).FontFeatures("tnum").SingleLine()
+			}
+			if fin != nil {
+				if hover {
+					a.awayX(c, "away", *fin)
+				} else {
+					ui.Box(c.Key("away")).Size(24, 24).Shrink(0).AccessHidden(true) // the ×'s place, so the head never moves
+				}
 			}
 		})
 		var held []groupRow

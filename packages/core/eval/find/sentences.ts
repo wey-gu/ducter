@@ -16,6 +16,12 @@ export interface Sentence {
   unknown?: string;
   /** The how-note the words carry, as said. */
   note?: string;
+  /** D454: to-dos already handed over (their task failed): shown in their own group, never ticked, never dropped. */
+  handed?: string[];
+  /** D454: the one login a name one edit away is read as. */
+  guess?: string;
+  /** D454: words that must not be in the about chip (the note's). */
+  notInAbout?: string;
 }
 
 export const SENTENCES: Sentence[] = [
@@ -47,4 +53,10 @@ export const SENTENCES: Sentence[] = [
   { id: "time-model", lang: "zh", words: "上个月以来更新过的会话同步问题", gold: (p) => p.topic === "sync" && within(p.item.updatedAt, 50) },
   { id: "topic-ui", lang: "zh", words: "UI 走查的问题", gold: (p) => p.topic === "ui" },
   { id: "en-topic", lang: "en", words: "everything about sign-in and SSO", gold: (p) => p.topic === "auth" },
+  // D454: the author on 0.1.8, word for word (100gle's open ones; #10559 already in a task that failed).
+  { id: "author-3", lang: "zh", words: "那些 100gle 分配给我的任务", gold: (p) => p.item.author === "100gle" },
+  { id: "author-3-handed", lang: "zh", words: "那些 100gle 分配给我的任务", gold: (p) => p.item.author === "100gle" && p.item.label !== "#10559", handed: ["nowledge-co/mem#10559"] },
+  { id: "author-4", lang: "zh", words: "100gle 分配给我", gold: (p) => p.item.author === "100gle" },
+  { id: "author-typo", lang: "zh", words: "那些 100gler 分配给我的任务", gold: (p) => p.item.author === "100gle", guess: "100gle" },
+  { id: "author-note", lang: "zh", words: "100gle 分配给我的 UI walkthrough，你仔细一起做掉", gold: (p) => p.item.author === "100gle", note: "你仔细一起做掉", notInAbout: "仔细" },
 ];

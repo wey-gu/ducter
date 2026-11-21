@@ -128,6 +128,8 @@ export interface FindSummary {
   cut?: number;
   /** D428: found but not sure (shown, never ticked). */
   maybe?: number;
+  /** D454: found, but already handed over (their own group under the rest, never ticked). */
+  handed?: number;
 }
 
 /**
@@ -170,6 +172,11 @@ export interface FindSaid {
   unknown?: FindUnknown[];
   /** D428: facets the person dropped by tapping (kept so the next find leaves them out too). */
   dropped?: string[];
+  /**
+   * D454: a name one edit from exactly one login ("100gler"), read as that login at once and said
+   * (按 100gle 找的 / Found by 100gle); 不是 / Not them drops `guess:<said>` and lists nothing.
+   */
+  guessed?: { said: string; login: string }[];
 }
 
 /** D396: how many suggestions the words field shows (the person's recent subjects first, then the pile's biggest). */
@@ -183,6 +190,12 @@ export type FoundItem = PileItem & {
   /** D428: high: ticked (up to TICK_MAX); maybe: shown, never ticked. */
   sure?: "high" | "maybe";
 };
+
+/** D454: what became of a to-do already handed over: its task at work (or waiting its turn), failed, or done. */
+export type HandedState = "doing" | "waiting" | "failed" | "done";
+
+/** D454: a to-do the sentence means that is already handed over: shown in its own group with its state, never ticked. */
+export type HandedItem = FoundItem & { handed: { taskId?: string; state: HandedState } };
 
 /** D385: a set of to-dos found in the conversation (todos do=find), shown as a tickable card. */
 export interface TodoSet {

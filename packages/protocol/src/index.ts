@@ -63,7 +63,7 @@ import type { SourceAsk, SourceItemRef, SourceOp, SourcesClientFrame, SourcesSer
 import type { HandsetAsk, HandsetClientFrame, HandsetServerFrame, HandsetView } from "./handset.ts";
 import type { PhoneAsk, PhoneClientFrame, PhoneInstallStep, PhoneServerFrame } from "./phone-use.ts";
 import type { MediaRef } from "./media.ts";
-import type { TaskGroupFrame, TaskGroupView } from "./task-groups.ts";
+import type { OnHandAwayFrame, TaskGroupFrame, TaskGroupView } from "./task-groups.ts";
 import type { RecallBy } from "./mem-source.ts";
 import type { CalChange, CalGlance, CalToday } from "./calendar.ts";
 import type { CallBody, CallPlan, CallView, OwnPhoneAction, OwnPhoneView, PhoneView, SignInView } from "./phone.ts";
@@ -987,6 +987,8 @@ export interface OnHand {
   asks?: PartnerAsk[];
   /** D360: groups of tasks that are one piece of work, with the members held in line (task-groups.ts). */
   groups?: TaskGroupView[];
+  /** D454: tasks the person removed from On hand (移走): a client that also builds its board from the Log leaves them out. */
+  away?: string[];
 }
 
 /** D312: one partner's own open question, as On hand lists it (a tap shows that partner). */
@@ -1566,6 +1568,8 @@ export type ClientFrame =
   | SourcesClientFrame
   // D360: a group of tasks that are one piece of work (task-groups.ts).
   | TaskGroupFrame
+  // D454: 移走 / Remove a finished card or group from On hand.
+  | OnHandAwayFrame
   | HandsetClientFrame
   | { t: "browser_site_signout"; site: string }
   | { t: "browser_sites_clear" }

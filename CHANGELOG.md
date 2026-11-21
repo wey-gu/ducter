@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.1.9 - 2026-11-21
+
+<!-- whats-new
+zh: 主动提议更大方却不打扰；找任务更准；远程电脑也能加文件夹
+en: More offers, fewer interruptions; sharper finding; folders on any computer
+-->
+
+**What your partner offers**
+- Morning messages carry more of what it noticed, three in full and a few more folded, and none
+  of them waits for you: no card to clear, no count, they fade by the next morning. Interruptions
+  stay rare. What you take up is what it offers more of.
+
+**Tasks and finding**
+- A finished or failed card can be taken off On hand, with undo.
+- Handing over finds what you meant: things already handed over are shown with their state, a
+  one-letter-off name is read as the right one, and words for Ducter stay out of the search.
+- ⌘K forgives a typo and finds by initials, shows where a task stopped beside the list; a task
+  shows ‹ 3 / 9 › and ⌃1–⌃9 jumps; ⌘/ lists every key. An old task no longer shows as working.
+
+**Your computers**
+- Add a folder on any of your computers, the home server included: browse its folders through
+  Ducter, or clone a repository there.
+
+**Everywhere else**
+- Text follows your system text size on the iPhone, all the way up.
+- The first time you meet something new, one quiet line under it says what it does.
+
 ## 0.1.8 - 2026-11-21
 
 <!-- whats-new

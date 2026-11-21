@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.1.8 - 2026-11-21
+
+<!-- whats-new
+zh: 免费额度会精打细算；iPhone 上字号和键盘更顺手
+en: Free keys spent wisely; iPhone text size and keyboard done right
+-->
+
+**On a free key**
+- Ducter knows how much of a free key's day is left, keeps it for your own conversation first,
+  and when it runs out says when the provider resets it, not a guess. Settings › Partner shows
+  roughly how many are left today.
+
+**On the iPhone**
+- Your text size setting is followed, the keyboard no longer pushes the page up, Chinese replies
+  wrap the whole bubble, and small buttons are easier to tap.
+
+**Agents and tasks**
+- Tasks Ducter runs on pi or Antigravity can now message your other agents through Nowledge
+  Bridge, after one Send.
+- A result is held for one check at most; the mini window shows what another AI noticed and when
+  your partner is waiting for its credit; Talk hands-free says so when nothing can answer yet.
+
 ## 0.1.7 - 2026-11-21
 
 <!-- whats-new

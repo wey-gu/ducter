@@ -1386,6 +1386,55 @@ a {
 .look-line .it {
   overflow-wrap: anywhere;
 }
+/* D451: 第一次 / The first time. One line under the thing, in the partner's words, led by its small
+   clay face held still (a line, not a chat): ink-soft at 500 on the text edge of what it sits under;
+   no box, no bar, no pill, no button (D441). It settles in once; the face gives one small nod. */
+.first-meet {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 6px 0;
+  font-size: var(--sm);
+  font-weight: 500;
+  line-height: 1.45;
+  color: var(--ink-soft);
+  min-width: 0;
+  animation: first-meet-in 320ms var(--ease) both;
+}
+.first-meet > .avatar {
+  flex: none;
+  margin-top: 1px;
+  animation: first-meet-nod 520ms var(--ease) 260ms both;
+}
+.first-meet > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+/* Under a card laid out in a row (an Ongoing card): its own row, on the title's edge. */
+.pcard:has(> .first-meet) {
+  flex-wrap: wrap;
+}
+.pcard > .first-meet {
+  flex-basis: 100%;
+  margin: -10px 14px 14px 41px;
+}
+@keyframes first-meet-in {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+}
+@keyframes first-meet-nod {
+  40% {
+    transform: translateY(2px) rotate(-4deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .first-meet,
+  .first-meet > .avatar {
+    animation: none;
+  }
+}
 /* D439: what the page check still found: a drawn page and its lead, then each thing on its own
    line, set in under the lead's words (no rule beside it). */
 .doc-line {
@@ -13035,6 +13084,9 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   .pacts { opacity: 1; padding: 0 10px 10px 60px; width: 100%; flex-wrap: wrap; row-gap: 4px; } /* D429: a long fix (换到醒着的电脑上跑) wraps, never widens the page */
   .pcard.on, .pcard.open { transform: none; }
   .pmark, .pmenu { left: 8px; right: 8px; width: auto; }
+  /* D451: on the phone the card's buttons wrap under it: the first-time line comes before them. */
+  .pcard > .first-meet { order: 1; margin: 2px 14px 10px 34px; }
+  .pcard > .pacts { order: 2; }
 }
 @media (prefers-reduced-motion: reduce) {
   .past-sheet, .pcard, .pstar.pop, .pstar-btn.on svg, .ptag.drop, .pmenu, .pmark { animation: none; transition: none; }

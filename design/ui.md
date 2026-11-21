@@ -593,6 +593,19 @@ A row's hover is `surface-sunken` on both clients, whatever the row's state. A r
 on its value's baseline (`pay-facts`, the Mac's checkout facts), and a list inside it keeps the
 value column's edge. Before/after: `.shots/deslop/`.
 
+### The first time (D451)
+
+A thing that can't say what it is for (a loop Ducter keeps, chips read from a sentence, another AI's
+look, the page check) meets the person once with **one line under it**: the partner's clay face at
+18, held still, then one sentence in its first person in `ink-soft` at 500, on the thing's text edge
+(`.first-meet` on the web, `firstMeetLine` on the Mac). It rises in 3 px over 320 ms and the face
+nods once; reduced motion: neither. Only the first such thing on a screen carries it; read (1.5 s
+on screen, or the person acts on the thing) it is met on the home (`settings.met`) and never shows
+again on any device, though it stays where it is for that page's life. Never a tour, sheet, pill,
+badge, sparkle, arrow, ring or button. Consent cards (hold to talk, talk hands-free), states (no key
+yet) and promises said every time (the checkout's) are not this pattern. Names and words:
+`packages/protocol/src/first-meet.ts`, `research/196`. Shots: `.shots/first-meet/`.
+
 ## Places (D71)
 
 v1 has five places, and every one is reachable from the menu bar, a shortcut and the window:

@@ -52,7 +52,7 @@ test("defaults: follow the user, remember, notifications on, quiet 23:00–08:00
   const c = await client(core.url);
   c.send({ t: "settings" });
   const f = await c.until<SettingsFrame>((x) => x.t === "settings");
-  expect(f.settings).toEqual({ name: "Ducter", language: "auto", memory: true, notify: true, quiet: { start: "23:00", end: "08:00", tz: zone() }, defaultAfterMin: 30, brain: { harness: "claude-code", model: "opus" }, windows: WINDOW_DEFAULTS, autoUpdate: false, proactive: "three", proactiveBy: "default", peers: { reach: "own", trusted: [], muted: [] } });
+  expect(f.settings).toEqual({ name: "Ducter", language: "auto", memory: true, notify: true, quiet: { start: "23:00", end: "08:00", tz: zone() }, defaultAfterMin: 30, brain: { harness: "claude-code", model: "opus" }, windows: WINDOW_DEFAULTS, autoUpdate: false, met: [], proactive: "three", proactiveBy: "default", peers: { reach: "own", trusted: [], muted: [] } });
   expect(f.mem.state).toBe("missing"); // nothing has answered from Mem yet
   expect(f.mem.noted).toEqual([]);
 });
@@ -75,6 +75,28 @@ test("a change goes to every subscriber and persists where each setting lives", 
   expect(core.push.settings()).toMatchObject({ off: true, quiet: { start: "22:30" } });
   // A decision asked now waits the chosen hour.
   expect(core.settings.defaultAfterMs()).toBe(60 * 60_000);
+});
+
+test("D451: first-time lines met on one device are met on every device, kept across restarts", async () => {
+  const { core, dir } = boot();
+  const a = await client(core.url);
+  const b = await client(core.url);
+  a.send({ t: "settings" });
+  b.send({ t: "settings" });
+  await a.until((x) => x.t === "settings");
+  const n = b.frames.length;
+  await b.until((x) => x.t === "settings");
+  a.send({ t: "settings_set", patch: { met: ["loop", "nonsense"] } });
+  const f = await b.until<SettingsFrame>((x) => x.t === "settings" && !!(x as SettingsFrame).settings.met?.length, n);
+  expect(f.settings.met).toEqual(["loop"]);
+  // Added, never removed by a patch; the order is the list's.
+  expect(core.settings.set({ met: ["look"] })).toEqual(["met"]);
+  expect(core.settings.set({ met: ["loop"] })).toEqual([]);
+  expect(core.settings.get().met).toEqual(["loop", "look"]);
+  expect(JSON.parse(readFileSync(join(dir, "settings.json"), "utf8")).met).toEqual(["loop", "look"]);
+  // An empty list starts them over.
+  expect(core.settings.set({ met: [] })).toEqual(["met"]);
+  expect(core.settings.get().met).toEqual([]);
 });
 
 test("invalid values are ignored", async () => {

@@ -147,6 +147,8 @@ func (a *App) lookLine(c *ui.Context, key string, left []string) {
 		for i, l := range left {
 			uiText(c.Key(fmt.Sprintf("it%d", i)), l).FontSize(t.SM).TextColor(t.Ink).LineHeight(1.45).MinWidth(0)
 		}
+		// D451: the first time, what it is and why only these are left.
+		a.firstMeetLine(c, "look", key)
 	})
 }
 
@@ -169,6 +171,8 @@ func (a *App) docLine(c *ui.Context, key string, left []string) {
 				uiText(c, l).FontSize(t.SM).TextColor(t.Ink).LineHeight(1.45).MinWidth(0)
 			})
 		}
+		// D451: the first time, what it is and why only these are left.
+		a.firstMeetLine(c, "pages", key)
 	})
 }
 

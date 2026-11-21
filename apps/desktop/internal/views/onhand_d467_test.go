@@ -160,3 +160,49 @@ func TestOnHandOutcomesAndTrail(t *testing.T) {
 		t.Fatalf("trail %d steps", n)
 	}
 }
+
+// D467 round 4: each way of being stuck gets its own fix, from what Ducter knows.
+func TestStuckFixKinds(t *testing.T) {
+	app, _ := iaApp(t, i18n.ZH)
+	app.Status = client.Connected
+	app.LocaleFixed = true
+	y, m, d := time.Now().Date()
+	now := time.Date(y, m, d, 15, 0, 0, 0, time.Local)
+	app.Now = func() time.Time { return now }
+	iso := func(dd time.Duration) string { return now.Add(dd).UTC().Format(time.RFC3339) }
+	app.Receive(protocol.ServerFrame{T: "devices", Devices: []protocol.DeviceView{
+		{ID: "local", Name: "Weyl's MacBook Pro", Kind: "laptop", Home: true, State: protocol.DeviceAwake, Harnesses: []protocol.DeviceHarness{{Harness: "claude-code", Installed: true, LoggedIn: false}, {Harness: "codex", Installed: true, LoggedIn: true}},
+			Abilities: []protocol.DeviceAbility{{ID: "computer", State: "on", Perms: &protocol.ComputerPerms{Accessibility: true, Screen: false}}}},
+		{ID: "mini", Name: "Mac mini", Kind: "mini", State: "offline", LastSeen: iso(-2 * time.Hour)},
+	}})
+	card := func(id, title, harness string, a protocol.Attention, at time.Duration) protocol.TaskCard {
+		return protocol.TaskCard{TaskID: id, Title: title, Place: protocol.Place{Kind: "none", Device: "local"}, Harness: harness, Attention: a, OpenedAt: iso(at - time.Hour), UpdatedAt: iso(at)}
+	}
+	signin := card("t_sign", "给 acme-api 的限流写文档", "claude-code", protocol.Failed, -time.Hour)
+	cant := card("t_cant", "在 Mac mini 上跑基准", "codex", protocol.Failed, -time.Hour)
+	cant.Cant = &protocol.CantStart{Why: "no_repo", Computer: "Mac mini", What: "hawdb", Elsewhere: &protocol.CantElsewhere{Device: "local", Name: "Weyl's MacBook Pro"}}
+	off := card("t_off", "在 Mac mini 上把基准跑一遍", "codex", protocol.Blocked, -2*time.Hour)
+	off.Reason = "device:unreachable:Mac mini"
+	perm := card("t_perm", "在 Keynote 里改第三页", "codex", protocol.Blocked, -2*time.Hour)
+	perm.Computing = &protocol.Computing{Device: "local", App: "Keynote"}
+	plain := card("t_fail", "Android 构建在 CI 上挂了", "codex", protocol.Failed, -time.Hour)
+	app.Receive(protocol.ServerFrame{T: "on_hand", OnHand: &protocol.OnHand{Tasks: []protocol.TaskCard{signin, cant, off, perm, plain}}})
+	if st := app.S.Task("t_cant").State; st != nil {
+		st.Cant = cant.Cant // as the home's task_state carries it
+	}
+	for id, want := range map[string]string{"t_sign": "signin", "t_cant": "cant", "t_off": "offline", "t_perm": "perm", "t_fail": "failed"} {
+		f := app.stuckFix(app.S.Task(id))
+		if f.kind != want || len(f.buttons) == 0 {
+			t.Errorf("%s: %s (%q), want %s", id, f.kind, f.sentence, want)
+		}
+	}
+	if f := app.stuckFix(app.S.Task("t_off")); !strings.Contains(f.sentence, "上次在线是 2 小时前") {
+		t.Errorf("offline says when it was last seen: %q", f.sentence)
+	}
+	if f := app.stuckFix(app.S.Task("t_sign")); f.buttons[0].label != "重新登录" || !strings.Contains(f.sentence, "Claude Code 在 Weyl's MacBook Pro 上的登录过期了") {
+		t.Errorf("signin: %q %q", f.sentence, f.buttons[0].label)
+	}
+	if !app.stoppedWait(app.S.Task("t_off")) {
+		t.Error("a computer gone away for two hours needs the person")
+	}
+}

@@ -71,7 +71,7 @@ import { AddSection, brainHeld, heldAt, noBrain, TasksSection, ThinksSection } f
 import { ComposerReply, HoverReply, Imprint, PartReply, ReplyMenu, replyKey, replyOf, SelectText, SentImprint, useReplyGestures, replyLabel } from "./reply.tsx";
 import { dividerSeq, NewDivider, useFollow, WayBack } from "./conv-follow.tsx";
 import { isImage, plainWords, type MediaRef } from "@ducter/protocol";
-import { FillButton, forecast, FullTop, NextLine } from "./board.tsx";
+import { FillButton, FullTop } from "./board.tsx";
 import { L as OnHandState, OnHandList, storyOf, taskNext } from "./onhand.tsx";
 import { dateOf, PastSheet } from "./past.tsx";
 import { Palette } from "./palette.tsx";
@@ -2097,8 +2097,6 @@ export function OnHand() {
   }, [A.S.welcomed]);
   const nothing = b.lanes.slice(0, 4).every((l) => !l.length) && !A.S.partnerDecisions().length && !loose.length && !A.S.missedToday().length && !routines.length && !calls.length && !(pile && (pile.open > 0 || pile.clearedToday > 0));
   const wide = useWide();
-  // Beside the conversation, 接下来 as the Mac shows it: one quiet grey line, only when more than one thing is coming (D184).
-  const next = wide && !nothing ? forecast() : [];
   // D216: the one list, as the phone or beside the conversation.
   return (
     <>
@@ -2109,7 +2107,7 @@ export function OnHand() {
           <div class="calm">{t("onhand.empty", A.S.personaName)}</div>
         ) : (
           <>
-            <NextLine items={next} />
+            {/* D467 round 4: the brief's 接下来 says what comes back next; no line of its own. */}
             <OnHandList room={wide ? "side" : "phone"} />
             <RoutineShelf />
           </>

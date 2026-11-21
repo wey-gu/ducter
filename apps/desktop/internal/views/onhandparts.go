@@ -34,9 +34,10 @@ func (a *App) stoppedWait(task *store.Task) bool {
 	if a.S.WaiterFor(task.ID) != nil {
 		return false // a time, a check, an event or a limit's reset brings it back
 	}
-	if strings.HasPrefix(task.Reason(), "device:") {
-		return false // its computer coming back brings it back (D157)
+	if strings.HasPrefix(task.Reason(), "device:asleep:") {
+		return false // a computer that said it would sleep wakes by itself (D157)
 	}
+	// D467 round 4: one that went away (device:unreachable) for half an hour needs the person.
 	at := task.FinishedAt()
 	return !at.IsZero() && a.Now().Sub(at) >= stopAfter
 }

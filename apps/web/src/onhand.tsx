@@ -35,7 +35,7 @@ import { boardGroups, finishedGroup, foldedRows, groupCount, markOf, type BoardG
 import { linesOfPart } from "./asks.tsx";
 import { Menu, MenuItem } from "./menu.tsx";
 import { AwayX, FinishedActs, finishedMenu, runFinished, useSwipeAway, type Finished } from "./away.tsx";
-import { briefOf, BriefLines, type Brief, echoes, ensureSteps, firstSentence, Outcome, peekSteps, peekTask, Trail, useTick, WaitAxis } from "./onhand-brief.tsx";
+import { briefOf, BriefLines, type Brief, echoes, ensureSteps, firstSentence, Outcome, PeekPicture, peekSteps, peekTask, StuckActs, stuckClause, stuckOf, Trail, useTick, WaitAxis } from "./onhand-brief.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
@@ -162,7 +162,9 @@ function lastChange(task: Task): number {
 export function stoppedWait(task: Task, now = Date.now()): boolean {
   if (attention(task) !== "blocked") return false;
   if (A.S.pendingDecision(task.id)?.later || A.S.waiterFor(task.id)) return false;
-  if (reasonOf(task).startsWith("device:")) return false;
+  // D467 round 4: a computer that said it was going to sleep comes back by itself; one that went
+  // away without a word needs someone to turn it on, once it has been away a while.
+  if (reasonOf(task).startsWith("device:asleep:")) return false;
   const at = lastChange(task);
   return Number.isFinite(at) && now - at >= STOPPED_AFTER;
 }
@@ -934,7 +936,9 @@ const TaskCard = memo(function TaskCard({ task, room, focus, sel }: RowProps) {
   const k: MarkKind = stopped ? "needs" : failed ? "failed" : working ? "working" : a === "blocked" ? "waiting" : a === "needs_you" ? "needs" : fresh ? "done" : "seen";
   // D467: a waiting line that only says the title again gives way to what the task last said, else
   // when it looks again, else nothing (the heartbeat says when it is back).
-  const line = a === "blocked" && !stopped && echoes(title(task), s.words) ? firstSentence(sayable(reportOf(task)?.summary ?? "", A.readerLang(task))) || (w ? waitCaption(w) : "") : s.words;
+  // D467 round 4: what stopped or didn't work out says what fixes it, and offers it.
+  const stuck = room !== "rail" && (stopped || failed) ? stuckOf(task) : undefined;
+  const line = stuck ? stuckClause(stuck) : a === "blocked" && !stopped && echoes(title(task), s.words) ? firstSentence(sayable(reportOf(task)?.summary ?? "", A.readerLang(task))) || (w ? waitCaption(w) : "") : s.words;
   const beat = working
     ? timeOf(task) && (timeOf(task) === t("time.now") ? t("onhand.card.started") : t("onhand.card.working", timeOf(task)))
     : stopped || quiet
@@ -971,12 +975,12 @@ const TaskCard = memo(function TaskCard({ task, room, focus, sel }: RowProps) {
             {task.card?.source && <SourceChip src={task.card.source} small plain />}
           </span>
           {(working || line) && (
-            <span class={`o2${s.tone ? ` ${s.tone}` : ""}`}>
-              {s.mark && <StepMark k={s.mark} />}
+            <span class={`o2${stuck ? " needs" : s.tone ? ` ${s.tone}` : ""}`}>
+              {s.mark && !stuck && <StepMark k={s.mark} />}
               <span key={working ? words : ""} class={working ? "w say" : "w"}>
                 {working ? words : line}
               </span>
-              {s.code && <code class="c">{s.code}</code>}
+              {s.code && !stuck && <code class="c">{s.code}</code>}
             </span>
           )}
           {working && room !== "rail" && <Trail task={task} />}
@@ -984,7 +988,11 @@ const TaskCard = memo(function TaskCard({ task, room, focus, sel }: RowProps) {
         </span>
         {beat && <span class={`obeat${stopped || quiet || failed ? " still" : ""}`}>{beat}</span>}
       </button>
-      {stopped || quiet ? (
+      {stuck ? (
+        <span class="oacts on">
+          <StuckActs n={stuck} onRetry={fin ? () => runFinished("retry", fin, room === "full") : undefined} />
+        </span>
+      ) : stopped || quiet ? (
         <span class="oacts on">
           {w && (w.check || w.event) ? (
             <Btn kind="secondary" size="sm" label={t("onhand.quiet.look")} about={title(task)} onClick={() => A.waiterAction(w.waiterId, "look")} />
@@ -1978,6 +1986,7 @@ export function Peek() {
       {beat && <p class={`pbeat k-${k}`}>{beat}</p>}
       {!finished(task) && <p class={`pnow${s.tone ? ` ${s.tone}` : ""}`}>{s.words}</p>}
       {working && <Trail task={task} />}
+      <PeekPicture task={task} />
       {w && (w.check || w.event) && waitCaption(w) && <p class="pwait">{waitCaption(w)}</p>}
       {result.length > 0 && (
         <div class="presult">

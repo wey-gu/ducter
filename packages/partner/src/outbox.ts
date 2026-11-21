@@ -11,7 +11,7 @@
 import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { dirname } from "node:path";
-import type { MemoryAdd, MemoryClient } from "./memory.ts";
+import type { MemoryAdd, MemoryClient, ThreadOpts } from "./memory.ts";
 
 export const OUTBOX_EVERY_MS = 5 * 60_000;
 /** A save that waited this long is let go (the Noted line and the Log keep it). */
@@ -125,8 +125,8 @@ export function withOutbox(inner: MemoryClient, o: { file: string; now?: () => n
   (timer as any)?.unref?.();
 
   const box: Outbox = {
-    async search(q, n) {
-      const r = await inner.search(q, n);
+    async search(q, n, so) {
+      const r = await inner.search(q, n, so);
       if (r.ok) kick();
       return r;
     },
@@ -146,7 +146,7 @@ export function withOutbox(inner: MemoryClient, o: { file: string; now?: () => n
       return { ok: true, waiting: key };
     },
     ...(inner.about ? { about: () => inner.about!() } : {}),
-    ...(inner.threads ? { threads: (q: string, n: number) => inner.threads!(q, n) } : {}),
+    ...(inner.threads ? { threads: (q: string, n: number, to?: ThreadOpts) => inner.threads!(q, n, to) } : {}),
     ...(inner.forget ? { forget: (id: string) => inner.forget!(id) } : {}),
     ...(inner.correct ? { correct: (id: string, t: string) => inner.correct!(id, t) } : {}),
     ...(inner.archive ? { archive: (id: string) => inner.archive!(id) } : {}),

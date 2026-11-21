@@ -217,6 +217,19 @@ describe("nmem client (stub binary)", () => {
     }
   });
 
+  test("D461: the offers ask for one kind of memory, and scan threads deep (Mem ranks them by match, not date)", async () => {
+    const s = stub(`echo '{"memories":[],"threads":[]}'`);
+    const c = createNmemClient({ bin: s.bin });
+    await c.search("once", 8, { unitType: "decision" });
+    expect(s.args()).toEqual(["--json", "m", "search", "-n", "8", "--unit-type", "decision", "--", "once"]);
+    await c.threads!("下次", 3, { scan: 20 });
+    expect(s.args()).toEqual(["--json", "t", "search", "-n", "20", "--", "下次"]);
+    await c.threads!("下次", 3, { scan: 999 });
+    expect(s.args()).toEqual(["--json", "t", "search", "-n", "30", "--", "下次"]);
+    await c.threads!("下次", 3);
+    expect(s.args()).toEqual(["--json", "t", "search", "-n", "5", "--", "下次"]);
+  });
+
   test("add: content via stdin, provenance flags, no identity or space invented when none is bound", async () => {
     const s = stub(`echo '{"id":"m9"}'`);
     const r = await createNmemClient({ bin: s.bin, env: { PATH: process.env.PATH } }).add({

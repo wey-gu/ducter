@@ -61,7 +61,7 @@ const PLAN_FIRST_LINE = { zh: "好，我先看一遍，出个方案给你，你�
 import { pingOf } from "../../protocol/src/peer-self.ts";
 import { bridgeFor, bridgeKeyFor, type BridgeClient, type BridgeContact, type BridgeOp, type BridgeResult } from "./bridge.ts";
 import { claimText, fixedOutcome, followCandidates, followGroup, followLine, foldOut, inQuiet, langOfRequest, lostLine, mayHaveGone, namesForUser, overAsks, peerAnswer, pingLine, recipientKey, whoForModel, whoForUser, PING_LATE_MS, PING_SAID_MS, AFTER_SEND_MS, CHECK_EVERY_MS, DAY_MS, FOLLOW_ACTIVE_MS, LIVE_CHECK_MS, LIVE_MS, WAIT_RETRY_MS, WATCH_BACKOFF_MAX_MS, WATCH_BACKOFF_MS, WATCH_TRIES, WAIT_S, WAITING_EVERY_MS, STUCK_EVERY_MS, PEER_ASKS_OPEN, PEER_NOT_YET_MS, SENDER_DAILY, TRUST_AFTER, TRUST_WINDOW_MS, TRUSTED_DAILY, type OutKind, type OutOp, type OutState } from "./bridge-out.ts";
-import { createNmemClient, noMemory, THREADS_MAX, type MemoryClient, type MemoryHit, type Replaced, type ThreadHit } from "./memory.ts";
+import { createNmemClient, noMemory, THREADS_MAX, type MemoryClient, type MemoryHit, type Replaced, type ThreadHit, type ThreadOpts } from "./memory.ts";
 import { withOutbox } from "./outbox.ts";
 import { AI_TOOLS, memSource } from "../../protocol/src/mem-source.ts";
 import { buildSystemPrompt } from "./persona.ts";
@@ -657,21 +657,21 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   const memoryOn: MemoryClient = outbox ?? memoryBase;
   // The Partner page can switch memory off (D71): then nothing is recalled or saved.
   const memory: MemoryClient = {
-    search: (q, n) => (core.settings && !core.settings.get().memory ? noMemory.search(q, n) : memoryOn.search(q, n)),
+    search: (q, n, so) => (core.settings && !core.settings.get().memory ? noMemory.search(q, n) : memoryOn.search(q, n, so)),
     add: (m) => (core.settings && !core.settings.get().memory ? noMemory.add(m) : memoryOn.add(m)),
-    ...(memoryOn.threads ? { threads: (q: string, n: number) => (core.settings && !core.settings.get().memory ? Promise.resolve({ ok: false as const, reason: "not_configured" as const, message: "Memory is off for this partner." }) : memoryOn.threads!(q, n)) } : {}),
+    ...(memoryOn.threads ? { threads: (q: string, n: number, to?: ThreadOpts) => (core.settings && !core.settings.get().memory ? Promise.resolve({ ok: false as const, reason: "not_configured" as const, message: "Memory is off for this partner." }) : memoryOn.threads!(q, n, to)) } : {}),
     ...(memoryOn.about ? { about: () => (core.settings && !core.settings.get().memory ? Promise.resolve({ ok: false as const, reason: "not_configured" as const, message: "Memory is off for this partner." }) : memoryOn.about!()) } : {}),
   };
   // D458: the morning's offers read Mem through this same client (its switch, its identity), read-only.
   core.setMemLook?.({
-    search: async (q, n) => {
-      const r = await memory.search(q, n).catch(() => undefined);
+    search: async (q, n, so) => {
+      const r = await memory.search(q, n, so).catch(() => undefined);
       return r?.ok ? r.hits : undefined;
     },
     ...(memory.threads
       ? {
-          threads: async (q: string, n: number) => {
-            const r = await memory.threads!(q, n).catch(() => undefined);
+          threads: async (q: string, n: number, to?: { scan?: number }) => {
+            const r = await memory.threads!(q, n, to).catch(() => undefined);
             return r?.ok ? r.threads : undefined;
           },
         }

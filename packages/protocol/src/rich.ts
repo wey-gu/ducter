@@ -180,7 +180,10 @@ const LEND_PLAIN: { en: string } & Record<string, string> = {
   zh: "加一台做事的电脑：你的设备 › 加一台设备。",
 };
 
-const FENCE = /^[ \t]*```[ \t]*ducter-ui[ \t]*\r?\n([\s\S]*?)(?:\r?\n[ \t]*```[ \t]*(?=\r?\n|$)|$)/gm;
+// D462: the fence may follow words on the same line (Codex: "…I'll mark it off.```ducter-ui").
+const FENCE = /[ \t]*```[ \t]*ducter-ui[ \t]*\r?\n([\s\S]*?)(?:\r?\n[ \t]*```[ \t]*(?=\r?\n|$)|$)/gm;
+/** D462: a block written bare on a line of its own, with no fence (Codex: `{"type":"lend"}`); it stays words unless it is a valid block. */
+const BARE = /^[ \t]*(\{[ \t]*"type"[ \t]*:[ \t]*"[a-z]+"[^\n]*\})[ \t]*$/gm;
 
 /** What a block that couldn't be shown leaves: why, for the partner's own history. */
 export interface RichDropped {
@@ -198,7 +201,7 @@ export function parseRich(src: string, lang: LangTag | undefined): { text: strin
   const pins: RichPinAsk[] = []; // D381
   let choices = 0;
   src = src.replace(/[\u0000\u0001]/g, "");
-  let text = src.replace(FENCE, (_m, body: string) => {
+  const block = (body: string): string => {
     const json = body.trim();
     try {
       if (len(json) > RICH_LIMITS.json) throw new Error(`a block is at most ${RICH_LIMITS.json} characters`);
@@ -220,6 +223,15 @@ export function parseRich(src: string, lang: LangTag | undefined): { text: strin
       dropped.push({ error: (e as Error).message });
       return "\u0001";
     }
+  };
+  let text = src.replace(FENCE, (_m, body: string) => block(body));
+  text = text.replace(BARE, (m, json: string) => {
+    try {
+      validateRich(JSON.parse(json));
+    } catch {
+      return m;
+    }
+    return block(json);
   });
   // Each block stands as its own paragraph.
   text = text

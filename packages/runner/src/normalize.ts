@@ -105,6 +105,8 @@ export function headBefore(partial: string, key: string): Record<string, unknown
  */
 export class Normalizer {
   private text = "";
+  /** D462: the native message the buffered text belongs to (Codex agentMessage item, Claude API message). */
+  private textMsg: string | undefined;
   private thought = "";
   private tools = new Map<string, PendingTool>();
   private lastContext: number | undefined;
@@ -141,6 +143,11 @@ export class Normalizer {
     // Root agent only: subagent chatter stays in the native transcript.
     if (ev.agentPath && ev.agentPath.length > 0) return out;
     if (ev.kind === "text_delta") {
+      // D462: two messages of one turn stay two lines (Codex writes a line, then another, with no
+      // tool between: joined, "…告诉你。我去帮你找…" read as one two-sentence ack).
+      const id = typeof ev.messageId === "string" ? ev.messageId : undefined;
+      if (id !== undefined && this.textMsg !== undefined && id !== this.textMsg && this.text.trim()) this.flushText(out);
+      if (id !== undefined) this.textMsg = id;
       this.text += ev.text ?? "";
       return out;
     }

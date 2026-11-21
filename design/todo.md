@@ -2736,3 +2736,9 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] **The offers spotter's tokens in the Log**: `offers-week` can't read them today. Trigger:
   tuning the spotter (D458).
 - [ ] **Raters and a phone's frame rate** stay outside the kit (people; the performance panel).
+
+## The partner on Codex (D462)
+
+- [ ] **What Codex still gets wrong that is the model's, not the harness's:** a needs_input relay that adds its own question ("要现在付 73 元吗？"), rich answers on GPT-6-Luna (a chart or a choices question that becomes a task_send or a guess), Bridge lines that explain Spaces, the noticed answer's times. The persona is not forked per model; measure again on the next Codex model before forking. Trigger: a Codex eval below 185, or someone on Codex meeting one of these live.
+- [ ] **The correction round's cost:** a line that promised work with no tool costs one more model turn. Count it live (the partner's stats) before tuning the promise shapes. Trigger: a week of the partner on Codex on hel.
+- [ ] **Codex's read-only shell for the partner:** the partner on Codex keeps a read-only shell (its only way to read a file); the persona now says never to look in the place first. If an eval sees `commandExecution` again, turn `features.shell_tool` off for the partner and give it a read tool. Trigger: one eval run that uses it.

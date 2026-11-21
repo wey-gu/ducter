@@ -125,7 +125,7 @@ describe("live-run regressions", () => {
         await fc.callTool("ask", { question: "Merge into main?", goLabel: "Merge", default: "hold", reversible: false });
         s.say("Tap Go to merge it.");
       }
-      if (n === 1) s.say("好，我去做。Go ahead is not a claim.");
+      if (n === 1) s.say("好的，知道了。Go ahead is not a claim.");
       s.end();
     });
     user("done?");

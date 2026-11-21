@@ -59,6 +59,18 @@ test("tool_call_started flushes held text and emits an early tool event", () => 
   expect(end[0]!.tool).toMatchObject({ name: "mcp__ducter__task_open", ok: true, output: "{}" });
 });
 
+test("D462: two messages of one turn stay two lines (Codex agentMessage items), one message's deltas stay one", () => {
+  const n = new Normalizer(() => undefined);
+  expect(n.push({ kind: "text_delta", text: "我去查查京都的住处，", messageId: "m1" })).toEqual([]);
+  expect(n.push({ kind: "text_delta", text: "找到了告诉你。", messageId: "m1" })).toEqual([]);
+  expect(n.push({ kind: "text_delta", text: "我去帮你找京都的住处。", messageId: "m2" })).toEqual([{ role: "assistant", text: "我去查查京都的住处，找到了告诉你。" }]);
+  expect(n.push({ kind: "tool_call_started", callId: "c1", tool: "mcp__ducter__task_open" })[0]).toEqual({ role: "assistant", text: "我去帮你找京都的住处。" });
+  // No message id (pi, older records): the deltas join as before.
+  const p = new Normalizer(() => undefined);
+  p.push({ kind: "text_delta", text: "a" });
+  expect(p.push({ kind: "text_delta", text: "b" })).toEqual([]);
+});
+
 test("thinking is kept as its headings only, before the words that follow it (D127)", () => {
   const n = new Normalizer(() => undefined);
   expect(n.push({ kind: "reasoning", content: { kind: "text", text: "**Opening App Store Connect**\n\nI need the login page first, then" } })).toEqual([]);

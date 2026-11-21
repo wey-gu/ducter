@@ -87,7 +87,7 @@ import { dayKey } from "./proactive/detect.ts";
 import { createChanges, type Changes } from "./changes.ts";
 import { createModelCatalog, type ModelCatalog } from "./models.ts";
 import { browseFolders, cloneProject, createFoundRepos, ghInstallHome, gitLoginOn, isOldOp, newFolderProject, languageOf, newTaskOptions, openYourTask, type FolderProjects, type GitLoginAction, type GitRun, type NewTaskComputers, type NewTaskInput } from "./newtask.ts";
-import { projectRepos, realFs, type BrowseResult } from "@ducter/protocol/src/repos.ts";
+import { BROWSE_MAX, folderRoots, insideRoots, listFolders, projectRepos, realFs, type BrowseResult } from "@ducter/protocol/src/repos.ts";
 import { cloneRepo, type CloneResult } from "@ducter/protocol/src/clone.ts";
 import { answerClones, type ClonesAnswer } from "@ducter/protocol/src/clones.ts";
 import { folderInfo, realGit as realGitInfo, type FolderInfo } from "@ducter/protocol/src/folder-info.ts";
@@ -710,7 +710,15 @@ export function startCore(opts: CoreOptions = {}): Core {
       }
     },
   };
-  const projects = createProjects({ dataDir, ...(opts.git ? { git: opts.git } : {}), onChange: () => onHandChanged(), remote: (dev, path) => computers.folderInfo(dev, path, 15_000) });
+  // D455: the folders this computer lets Ducter look through and add (DUCTER_FOLDER_ROOTS, set here).
+  const homeRoots = folderRoots();
+  const projects = createProjects({
+    dataDir,
+    ...(opts.git ? { git: opts.git } : {}),
+    onChange: () => onHandChanged(),
+    remote: (dev, path) => computers.folderInfo(dev, path, 15_000),
+    ...(homeRoots.explicit ? { allowed: (p: string) => insideRoots(p, homeRoots.roots) } : {}),
+  });
   // D193: phone calls (the partner drafts; the owner's Go places; Ducter polls and keeps the rails).
   let autofillRef: Autofill | undefined;
   const savedPhone = () => {
@@ -1159,7 +1167,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   // D345: gh Ducter put in its own folder is first on its PATH (its gh calls and every task's).
   useOwnTools(dataDir);
   const ghInstaller = opts.ghInstaller ?? (process.env.NODE_ENV === "test" ? { plan: () => undefined, install: async () => ({ ok: false as const, how: "release" as const, where: "", reason: "unsupported" as const, message: "not in tests" }) } : createGhInstaller({ dataDir }));
-  const newTaskDeps = { log, tasks, runner: () => runner, persona, dataDir, loadout, settings, routines: work.routines, untils: work.untils, projects, computers, models: modelCatalog, found, cloneHome, newFolderHome, gitLoginHome, ghInstaller, ...(opts.browseHome ? { browseHome: opts.browseHome } : {}), ...(opts.git ? { git: opts.git } : {}) };
+  const newTaskDeps = { log, tasks, runner: () => runner, persona, dataDir, loadout, settings, routines: work.routines, untils: work.untils, projects, computers, models: modelCatalog, found, cloneHome, newFolderHome, gitLoginHome, ghInstaller, browseHome: opts.browseHome ?? ((p: string | undefined) => listFolders(p, homedir(), realFs, BROWSE_MAX, homeRoots.roots)), ...(opts.git ? { git: opts.git } : {}) };
   // D395: where a repository task works, from the repository itself: every computer is asked
   // which clones of it it has (the home here, a worker by its clones op), the best one wins, and
   // with none anywhere it is cloned where git can read it. task_open checks its place with it first.

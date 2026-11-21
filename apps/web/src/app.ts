@@ -102,7 +102,24 @@ export function morph(apply: () => void) {
 }
 /** Settings (D150) is a list of sections; page is the one pushed ("" is the list). */
 export type SettingsPage = "" | "partner" | "memory" | "peers" | "notify" | "accounts" | "todos" | "chats" | "autofill" | "devices" | "phone";
-export type Sheet = { kind: "decision"; id: string } | { kind: "settings"; page?: SettingsPage } | { kind: "newtask" } | { kind: "switch" } | { kind: "past" } | { kind: "did" } | { kind: "pins" } | { kind: "app"; id: string } | { kind: "apps" } | { kind: "recall"; seq: number } | { kind: "learned" } | { kind: "pile" } | { kind: "hand" } | { kind: "review"; groupId: string } | null;
+export type Sheet = { kind: "decision"; id: string } | { kind: "settings"; page?: SettingsPage } | { kind: "newtask" } | { kind: "switch" } | { kind: "past" } | { kind: "did" } | { kind: "pins" } | { kind: "app"; id: string } | { kind: "apps" } | { kind: "recall"; seq: number } | { kind: "learned" } | { kind: "pile" } | { kind: "hand" } | { kind: "review"; groupId: string } | { kind: "addfolder" } | null;
+
+/**
+ * D455: what is typed over the folder browser: a path (it starts with / or ~) names the folder to
+ * list, ending in what to narrow it to; anything else narrows the folder shown. dir is "" when
+ * the folder shown is the one to narrow. The Mac's browseNeedle.
+ */
+export function browseNeedle(typed: string, shown: string, home: string): { dir: string; needle: string } {
+  let s = typed.trim();
+  if (!s.startsWith("/") && !s.startsWith("~")) return { dir: "", needle: s };
+  if (s === "~") s = "~/";
+  if (s.startsWith("~/") && home) s = home.replace(/\/+$/, "") + s.slice(1);
+  const i = s.lastIndexOf("/");
+  let dir = s.slice(0, i) || "/";
+  const needle = s.slice(i + 1);
+  if (dir.replace(/\/+$/, "") === shown.replace(/\/+$/, "")) dir = "";
+  return { dir, needle };
+}
 
 /** 开一个任务 / New task's sheet (D128): what the user chose and typed, and how starting went. */
 export interface NewTaskDraft {
@@ -146,7 +163,8 @@ export interface NewTaskDraft {
   // D203: 找一个文件夹… / Find a folder… (list "browse"): the computer looked through (a device
   // id), the folder asked for, the answer once it lands; adding: the clientId of its project_add;
   // wantBranch: the branch to keep once the copy picked on another computer says its branches.
-  browse?: { device: string; cid: string; path?: string; res?: Extract<ServerFrame, { t: "folder_browse_result" }> };
+  // D455: filter, what is typed over the list (a name to narrow it, or a path).
+  browse?: { device: string; cid: string; path?: string; res?: Extract<ServerFrame, { t: "folder_browse_result" }>; filter?: string };
   adding?: string;
   // D204: 从 Git 地址加… / Add from a Git address… (list "clone"): the computer it clones on (a
   // device id), the address typed, the clientId of the clone in flight (busy), and why it failed.
@@ -420,6 +438,8 @@ class AppState {
   proactiveDay: import("@ducter/protocol").ProactiveDay | undefined;
   route: Route = { name: "conv" };
   sheet: Sheet = null;
+  /** D455: On hand's 添加文件夹 / Add a folder sheet: the computer chosen (a device id) and the way. */
+  addf: { device: string; way: "choose" | "clone" | "new" } = { device: "local", way: "choose" };
   /** D309: every partner on the home (absent: a home without them, or one only). */
   partners?: PartnerInfo[];
   /** D309: the partner this page shows; the hello asks for it. */
@@ -1245,6 +1265,7 @@ class AppState {
     nt.clone = undefined;
     this.pickPlace(p);
     if (p.place.kind === "repo" || p.place.kind === "folder") nt.prefill = p.place;
+    this.afPlaced(p);
   }
 
   /** D204: a computer's name by its device id ("local" or the home's id: the home's). */
@@ -1254,12 +1275,12 @@ class AppState {
   }
 
   /** D203: 找一个文件夹… / Find a folder… on that computer (a device id): its folders, from `path` (absent: ~). */
-  ntBrowse(device: string, path?: string) {
+  ntBrowse(device: string, path?: string, filter?: string) {
     const nt = this.nt;
     this.nextClient++;
     const cid = `b${Date.now()}-${this.nextClient}`;
     const keep = nt.browse?.device === device ? nt.browse.path : undefined;
-    nt.browse = { device, cid, ...(path ?? keep ? { path: path ?? keep } : {}) };
+    nt.browse = { device, cid, ...(path ?? keep ? { path: path ?? keep } : {}), ...(filter ? { filter } : {}) };
     nt.list = "browse";
     nt.branchOpen = nt.computerOpen = false;
     nt.err = "";
@@ -1283,6 +1304,7 @@ class AppState {
 
   /** D203: the folder list again, from the browser (an agent waiting for a folder keeps waiting). */
   ntBrowseBack() {
+    if (this.sheet?.kind === "addfolder") return this.closeAddFolder();
     // D272: the browser and the clone field are reached through 加一个文件夹…: back goes there.
     this.nt.list = this.nt.add ? "add" : "place";
     this.changed();
@@ -1308,6 +1330,7 @@ class AppState {
     this.pickPlace(p);
     // Shown at once, before the next options list it.
     if (p.place.kind === "repo" || p.place.kind === "folder") nt.prefill = p.place;
+    this.afPlaced(p);
   }
 
   /** D203: the name of the computer being looked through. */
@@ -1327,6 +1350,7 @@ class AppState {
 
   /** D272: back to that computer's three ways (from the new folder, the browser or the clone field). */
   ntAddBack() {
+    if (this.sheet?.kind === "addfolder") return this.closeAddFolder();
     this.nt.list = this.nt.add ? "add" : "place";
     this.changed();
   }
@@ -1388,6 +1412,83 @@ class AppState {
     nt.newFolder = nt.add = undefined;
     this.pickPlace(p);
     if (p.place.kind === "repo" || p.place.kind === "folder") nt.prefill = p.place;
+    this.afPlaced(p);
+  }
+
+  /**
+   * D455: 添加文件夹 / Add a folder from On hand: one sheet, the computer first (the one the latest
+   * work was on), then the folder there: chosen in that computer's own folders through Ducter (the
+   * browser), cloned there, or new. The ways are the New task card's own panels.
+   */
+  openAddFolder() {
+    const nt = this.nt;
+    nt.browse = nt.clone = nt.newFolder = nt.add = undefined;
+    nt.adding = nt.err = "";
+    this.addf = { device: this.afDefault(), way: "choose" };
+    this.sheet = { kind: "addfolder" };
+    this.send({ t: "task_new_options" });
+    this.afWay("choose");
+  }
+
+  closeAddFolder() {
+    const nt = this.nt;
+    nt.browse = nt.clone = nt.newFolder = nt.add = undefined;
+    nt.list = nt.err = "";
+    if (this.sheet?.kind === "addfolder") this.sheet = null;
+    this.changed();
+  }
+
+  /** D455: one way on the chosen computer. */
+  afWay(way: "choose" | "clone" | "new") {
+    const nt = this.nt;
+    this.addf.way = way;
+    nt.browse = nt.clone = nt.newFolder = nt.add = undefined;
+    nt.err = "";
+    if (way === "clone") this.ntCloneOpen(this.addf.device);
+    else if (way === "new") this.ntNewOpen(this.addf.device);
+    else this.ntBrowse(this.addf.device);
+  }
+
+  afPick(device: string) {
+    this.addf.device = device;
+    this.afWay(this.addf.way);
+  }
+
+  /** D455: the computer the latest task with a folder was on, if it can take a folder now; else the home. */
+  afDefault(): string {
+    const can = this.ntBrowsable();
+    const tasks = [...this.S.tasks.values()].filter((x) => {
+      const p = placeOf(x);
+      return p.kind === "repo" || p.kind === "folder";
+    });
+    tasks.sort((a, b) => (b.card?.updatedAt ?? "").localeCompare(a.card?.updatedAt ?? ""));
+    for (const x of tasks) {
+      const id = this.placeComputer(placeOf(x));
+      const d = can.find((c) => c.id === id || (c.home && (id === "local" || !id)));
+      if (d) return d.id;
+    }
+    return (can.find((c) => c.home) ?? can[0])?.id ?? "local";
+  }
+
+  /** D455: added while the sheet was open: it closes and On hand shows that project. */
+  afPlaced(p: PlaceChoice) {
+    if (this.sheet?.kind !== "addfolder") return;
+    this.closeAddFolder();
+    try {
+      if (p.name) localStorage.setItem("ducter.onhand.lens", p.name);
+    } catch {}
+    this.changed();
+  }
+
+  /** D455: what is typed over the browser: a path lists that folder (keeping what is typed); a name narrows it. */
+  ntBrowseFilter(v: string) {
+    const b = this.nt.browse;
+    if (!b) return;
+    b.filter = v;
+    const r = b.res;
+    const { dir } = browseNeedle(v, r?.ok ? (r.path ?? "") : "", r?.ok ? (r.home ?? "") : "");
+    if (dir && r) return this.ntBrowse(b.device, dir, v);
+    this.changed();
   }
 
   /** D272: what that computer last said of its GitHub sign-in (undefined: not heard yet). */

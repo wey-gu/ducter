@@ -172,7 +172,7 @@ test("D203: browse lists a folder's subfolders under home, repos first, never fi
     home,
     parent: home,
     folders: [
-      { name: "ducter", path: join(home, "dev", "ducter"), repo: true },
+      { name: "ducter", path: join(home, "dev", "ducter"), repo: true, remote: "github.com/wey-gu/ducter" },
       { name: "Archive", path: join(home, "dev", "Archive") },
       { name: "zeta", path: join(home, "dev", "zeta") },
     ],
@@ -192,6 +192,44 @@ test("D203: browse lists a folder's subfolders under home, repos first, never fi
   expect(all).not.toContain("secret");
   expect(all).not.toContain("notes.md");
   expect(all).not.toContain(".ssh");
+});
+
+test("D455: browse says each repo's origin and the repo a folder is in, from .git/config alone", async () => {
+  repo(join(home, "dev", "hawdb"), { origin: "https://github.com/Acme/HawDB.git", head: "main", heads: ["main"], at: 1 });
+  mkdirSync(join(home, "dev", "hawdb", "pkg", "store"), { recursive: true });
+  writeFileSync(join(home, "dev", "hawdb", ".git", "secret-hook"), "never read");
+  const ask = host();
+  const inside = (await ask(1, "browse", { path: "~/dev/hawdb/pkg" })).result;
+  expect(inside).toMatchObject({ ok: true, path: join(home, "dev", "hawdb", "pkg"), inRepo: { root: join(home, "dev", "hawdb"), name: "hawdb", remote: "github.com/acme/hawdb" } });
+  expect(inside.folders).toEqual([{ name: "store", path: join(home, "dev", "hawdb", "pkg", "store") }]);
+  const dev = (await ask(2, "browse", { path: "~/dev" })).result;
+  expect(dev.inRepo).toBeUndefined();
+  expect(dev.folders[0]).toEqual({ name: "hawdb", path: join(home, "dev", "hawdb"), repo: true, remote: "github.com/acme/hawdb" });
+  expect(JSON.stringify([inside, dev])).not.toContain("never read");
+});
+
+test("D455: DUCTER_FOLDER_ROOTS, set on the computer, is where it can be looked through and added: other roots too, nothing outside, no link out", async () => {
+  const srv = join(dir, "srv", "code");
+  repo(join(srv, "api"), { origin: "git@github.com:acme/api.git", head: "main", heads: ["main"], at: 1 });
+  mkdirSync(join(home, "dev"), { recursive: true });
+  mkdirSync(join(home, "private"), { recursive: true });
+  mkdirSync(join(dir, "elsewhere"), { recursive: true });
+  symlinkSync(join(dir, "elsewhere"), join(srv, "out")); // a link out of the roots
+  const sent: any[] = [];
+  const h = createWorkerHost({ dataDir: join(home, ".ducter"), harness: {} as never, mainBase: "http://main", deviceToken: "dvc", send: (f) => sent.push(f), home, env: { DUCTER_FOLDER_ROOTS: `~/dev:${srv}` }, git: async () => ({ ok: false, out: "" }) });
+  const ask = async (id: number, op: string, args: object = {}) => (await h.handle({ t: "req", id, op, args }), sent.find((f) => f.id === id));
+  // The home folder isn't a root: the start is the first root; the roots are said.
+  const top = (await ask(1, "browse")).result;
+  expect(top).toMatchObject({ ok: true, path: join(home, "dev"), roots: [join(home, "dev"), srv] });
+  expect(top.parent).toBeUndefined();
+  const code = (await ask(2, "browse", { path: srv })).result;
+  expect(code.folders).toEqual([{ name: "api", path: join(srv, "api"), repo: true, remote: "github.com/acme/api" }]);
+  expect((await ask(3, "browse", { path: join(home, "private") })).result).toMatchObject({ ok: false, reason: "outside" });
+  expect((await ask(4, "browse", { path: join(srv, "out") })).result).toMatchObject({ ok: false, reason: "outside" });
+  // Adding is confined too: a folder outside the roots is not there, for the home.
+  expect((await ask(5, "folderInfo", { path: join(home, "private") })).result).toEqual({ exists: false });
+  expect((await ask(6, "folderInfo", { path: join(srv, "out") })).result).toEqual({ exists: false });
+  expect((await ask(7, "folderInfo", { path: join(srv, "api") })).result).toMatchObject({ exists: true, root: join(srv, "api") });
 });
 
 test("D203: browse caps a listing and says there were more", () => {

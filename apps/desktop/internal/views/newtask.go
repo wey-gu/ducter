@@ -460,6 +460,7 @@ func (a *App) drainNewTask() {
 				nt.placeKey, nt.branch, nt.prefill, nt.wantBranch = placeKey(r.Place.Place), "", nil, ""
 				pl := r.Place.Place
 				a.send(protocol.TaskNewOptions{T: "task_new_options", Place: &pl})
+				a.afPlaced(*r.Place) // D455
 				continue
 			}
 			if r.Reason == "old" {

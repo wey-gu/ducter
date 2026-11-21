@@ -12,6 +12,8 @@ package views
 
 import (
 	"fmt"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/egoist/mygo/ui"
@@ -41,6 +43,9 @@ type lensGroup struct {
 	routines  []protocol.Routine
 	added     bool   // a project added by hand (D186)
 	kind      string // D341: a to-do source's app (key src:<id>); "" for a project
+	// where (D455): the computers it lives on, by name, when the home has
+	// two or more (one repo on two computers is one project).
+	where []string
 }
 
 // lensGroups are the board's projects in projectGroups' order (what needs
@@ -60,10 +65,49 @@ func (a *App) lensGroups(b store.Board) []lensGroup {
 		if g.name == "" {
 			key, name = lensOther, a.L.T("onhand.other")
 		}
-		out = append(out, lensGroup{key: key, name: name, place: g.place, tasks: g.tasks, routines: g.routines, added: addedNames[g.name]})
+		lg := lensGroup{key: key, name: name, place: g.place, tasks: g.tasks, routines: g.routines, added: addedNames[g.name]}
+		if g.name != "" && a.manyComputers() {
+			lg.where = a.groupWhere(g.name, g.tasks, g.routines, added)
+		}
+		out = append(out, lg)
 	}
 	// D341: then the to-do sources that have tasks, each a lens of its own.
 	return append(out, a.sourceLensGroups(b)...)
+}
+
+// groupWhere are the computers a project lives on (D455): where its
+// tasks ran, its routines start and it was added, by name, home first.
+func (a *App) groupWhere(name string, tasks []*store.Task, routines []protocol.Routine, added []protocol.ProjectView) []string {
+	seen := map[string]bool{}
+	var ids []string
+	add := func(pl protocol.Place) {
+		if id := a.placeComputer(pl); id != "" && !seen[id] {
+			seen[id] = true
+			ids = append(ids, id)
+		}
+	}
+	for _, x := range tasks {
+		add(x.Place())
+	}
+	for _, r := range routines {
+		if r.Place != nil {
+			add(*r.Place)
+		}
+	}
+	for _, p := range added {
+		if p.Name == name {
+			add(p.Place)
+		}
+	}
+	sort.SliceStable(ids, func(i, j int) bool {
+		hi, hj := a.computerOf(ids[i]), a.computerOf(ids[j])
+		return hi != nil && hi.Home && (hj == nil || !hj.Home)
+	})
+	out := make([]string, 0, len(ids))
+	for _, id := range ids {
+		out = append(out, a.computerName(id))
+	}
+	return out
 }
 
 // lensOn says whether the lens is offered: two groups or more (one
@@ -165,7 +209,7 @@ func (a *App) projectColumn(c *ui.Context, b store.Board, groups []lensGroup, le
 				for _, l := range b.Lanes {
 					all = append(all, l...)
 				}
-				a.lensRow(c, "", a.L.T("onhand.lens.all"), all, lens == "", false, "")
+				a.lensRow(c, "", a.L.T("onhand.lens.all"), all, lens == "", false, "", nil)
 				ui.Box(c.Key("gap")).Height(t.S3)
 				srcs := 0
 				for _, g := range groups {
@@ -173,7 +217,7 @@ func (a *App) projectColumn(c *ui.Context, b store.Board, groups []lensGroup, le
 						srcs++
 						continue
 					}
-					a.lensRow(c, g.key, g.name, g.tasks, lens == g.key, g.key == lensOther, "")
+					a.lensRow(c, g.key, g.name, g.tasks, lens == g.key, g.key == lensOther, "", g.where)
 				}
 				// D341: 来自 / From: the to-do sources with tasks, after the projects.
 				if srcs > 0 {
@@ -181,14 +225,16 @@ func (a *App) projectColumn(c *ui.Context, b store.Board, groups []lensGroup, le
 						Padding(t.S4, t.S3, t.S1, t.S3).Role(ui.RoleHeading)
 					for _, g := range groups {
 						if g.kind != "" {
-							a.lensRow(c, g.key, g.name, g.tasks, lens == g.key, false, g.kind)
+							a.lensRow(c, g.key, g.name, g.tasks, lens == g.key, false, g.kind, nil)
 						}
 					}
 				}
-				if a.canAddFolder() {
+				// D455: on any computer of the home (its own, a worker's, this
+				// Mac's), never only this Mac's picker.
+				if ok, _ := a.afComputers(); len(ok) > 0 {
 					ui.Row(c.Key("add")).Padding(t.S4, t.S3, 0, t.S3).Children(func() {
-						if a.quietButton(c, "onhand-add-folder", "＋ "+a.L.T("onhand.addfolder"), a.L.T("newtask.addfolder.title"), false, 0) {
-							a.addFolder()
+						if a.quietButton(c, "onhand-add-folder", "＋ "+a.L.T("onhand.addfolder"), a.L.T("addfolder.about"), false, 0) {
+							a.OpenAddFolder()
 						}
 					})
 				}
@@ -200,12 +246,15 @@ func (a *App) projectColumn(c *ui.Context, b store.Board, groups []lensGroup, le
 // lensRow is one project in the column: its name and what its branches
 // changed; at its end the face of its most urgent task and how many it has.
 // A to-do source's row (D341) has its app's mark before its name.
-func (a *App) lensRow(c *ui.Context, key, name string, tasks []*store.Task, on, other bool, brand string) {
+func (a *App) lensRow(c *ui.Context, key, name string, tasks []*store.Task, on, other bool, brand string, where []string) {
 	t := a.T
 	st, of, words := a.foldMark(tasks)
 	label := name
+	if len(where) > 0 {
+		label = spoken(a.L, label, a.L.T("onhand.where", strings.Join(where, a.L.T("onhand.where.and"))))
+	}
 	if words != "" {
-		label = spoken(a.L, name, words)
+		label = spoken(a.L, label, words)
 	}
 	r := ui.Row(c.Key("lens:"+key)).Gap(t.S2).Padding(t.S2+1, t.S3).MinHeight(44).Radius(t.RadiusMD).AlignItems(ui.Center).
 		Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(label).Focusable()
@@ -230,6 +279,14 @@ func (a *App) lensRow(c *ui.Context, key, name string, tasks []*store.Task, on, 
 				ink = t.InkMuted
 			}
 			uiText(c, name).FontSize(14).FontWeight(600).TextColor(ink).SingleLine().MinWidth(0).AccessHidden(true)
+			// D455: where it lives, each computer its own word (D291).
+			if len(where) > 0 {
+				ui.Row(c.Key("where")).Gap(t.S2).Wrap().MinWidth(0).AccessHidden(true).Children(func() {
+					for i, w := range where {
+						uiText(c.Key(fmt.Sprint("w", i)), w).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
+					}
+				})
+			}
 			if adds, dels := groupStat(tasks); adds+dels > 0 {
 				ui.Row(c.Key("stat")).Gap(t.S1 + 2).Children(func() {
 					if adds > 0 {

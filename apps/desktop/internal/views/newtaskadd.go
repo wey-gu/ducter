@@ -230,6 +230,7 @@ func (a *App) newFolderDone(r protocol.ServerFrame) {
 	a.pickPlace(*r.Place)
 	pl := r.Place.Place
 	nt.prefill = &pl
+	a.afPlaced(*r.Place) // D455
 }
 
 // newFolderField is the place list while it takes a new folder's name.
@@ -256,9 +257,8 @@ func (a *App) newFolderField(c *ui.Context) {
 		uiText(c.Key("nt-new-err"), k.err).FontSize(t.XS).TextColor(t.Failed.Ink).Padding(t.S1, t.S3)
 	}
 	a.panelFoot(c, "nt-new-foot", func() {
-		if !busy && a.button(c, a.L.T("newtask.find.back"), btnText, t.ControlSM, t.Surface) {
-			a.nt.newf = nil
-			a.nt.add = &ntAdd{device: k.device}
+		if !busy {
+			a.panelBack(c, k.device, func() { a.nt.newf = nil })
 		}
 	}, func() {
 		label := a.L.T("newtask.new.go")

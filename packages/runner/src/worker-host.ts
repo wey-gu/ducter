@@ -16,7 +16,7 @@ import { basename, join } from "node:path";
 import { homedir } from "node:os";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { readShown } from "./shown.ts";
-import { listFolders, projectRepos, realFs, type FsLike } from "@ducter/protocol/src/repos.ts";
+import { BROWSE_MAX, folderRoots, insideRoots, listFolders, projectRepos, realFs, type FsLike } from "@ducter/protocol/src/repos.ts";
 import { ducterFolder } from "@ducter/protocol/src/ducter-folder.ts";
 import { cloneRepo, type GitSpawn } from "@ducter/protocol/src/clone.ts";
 import { answerClones } from "@ducter/protocol/src/clones.ts";
@@ -35,6 +35,8 @@ export interface WorkerHostOptions {
   git?: GitRun;
   /** D203 test seam: this computer's home folder and disk, for the repos and browse ops. */
   home?: string;
+  /** D455 test seam: this computer's environment, for DUCTER_FOLDER_ROOTS (default process.env). */
+  env?: Record<string, string | undefined>;
   fs?: FsLike;
   /** D204 test seam: how the clone op runs git here (no network in tests). */
   gitSpawn?: GitSpawn;
@@ -112,6 +114,8 @@ function wireEvent(ev: HarnessEvent): HarnessEvent {
 }
 
 export function createWorkerHost(o: WorkerHostOptions): WorkerHost {
+  // D455: the folders this computer lets the home look through and add (set here, never by the home).
+  const roots = folderRoots(o.env ?? process.env, o.home ?? homedir());
   const sessions = new Map<string, HarnessSession>();
   // D157: each browser place's browser here, by task (the main reads its tool events).
   const browsers = new Map<string, BrowserSidecar>();
@@ -238,7 +242,12 @@ export function createWorkerHost(o: WorkerHostOptions): WorkerHost {
     check: (a) => runCheck(a.spec),
     // D197: what a folder here is (missing, a folder, or a repo with its branches), so a home
     // elsewhere can add it as a project and offer its branches. Read-only.
-    folderInfo: (a: { path?: unknown }) => folderInfo(String(a.path ?? ""), o.git ?? realGit),
+    // D455: a computer that set DUCTER_FOLDER_ROOTS lets nothing outside them be added.
+    folderInfo: async (a: { path?: unknown }) => {
+      const path = String(a.path ?? "");
+      if (roots.explicit && path && !insideRoots(path.startsWith("~/") ? join(o.home ?? homedir(), path.slice(2)) : path, roots.roots, o.fs ?? realFs)) return { exists: false };
+      return folderInfo(path, o.git ?? realGit);
+    },
     // D204: this computer's Ducter folder and the projects in it (`<folder>/projects/*`), most
     // recently touched first, with each one's origin and default branch (read from its files, no
     // git), so the home's New task card lists them and finds this computer's copy of a repo.
@@ -276,7 +285,7 @@ export function createWorkerHost(o: WorkerHostOptions): WorkerHost {
     },
     // D203: a folder's subfolders here (never its files), for 找一个文件夹… / Find a folder…;
     // confined to this computer's home folder, links resolved first. Read-only.
-    browse: async (a: { path?: unknown }) => listFolders(typeof a.path === "string" ? a.path : undefined, o.home ?? homedir(), o.fs ?? realFs),
+    browse: async (a: { path?: unknown }) => listFolders(typeof a.path === "string" ? a.path : undefined, o.home ?? homedir(), o.fs ?? realFs, BROWSE_MAX, roots.roots),
     // D202: the models an AI agent's account offers here, with their effort levels, for the home's
     // New task card (token-free; null when it can't say). Read-only.
     models: async (a: { harness?: unknown }) => (await o.harness.models?.(String(a.harness ?? "")).catch(() => undefined)) ?? null,

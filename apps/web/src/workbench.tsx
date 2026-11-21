@@ -28,6 +28,7 @@ import { SimScreen } from "./sim.tsx";
 import { driverFor, screenFor } from "./workbench-screens.ts";
 import { ask, wbSender } from "./workbench-ask.ts";
 import { Select } from "./menu.tsx";
+import { scaledRow } from "./text-scale.ts";
 
 wbSender((f) => A.send(f));
 
@@ -743,7 +744,7 @@ interface Row {
   depth: number;
   e: WbEntry;
 }
-const ROW_H = 30;
+const ROW_30 = 30;
 
 function FilesPage({ task }: { task: Task }) {
   const d = dataOf(task.id);
@@ -781,6 +782,7 @@ function Tree({ task }: { task: Task }) {
   if ("err" in root) return <p class="bench-note">{root.err}</p>;
   if (!rows.length) return <p class="bench-note">{t("wb.files.empty")}</p>;
   // Windowed: a tree of thousands of rows draws only what is in view.
+  const ROW_H = scaledRow(ROW_30);
   const first = Math.max(0, Math.floor(top / ROW_H) - 10);
   const last = Math.min(rows.length, Math.ceil((top + h) / ROW_H) + 10);
   const dirChanged = (p: string) => [...changed.keys()].some((c) => c.startsWith(p + "/"));
@@ -797,7 +799,7 @@ function Tree({ task }: { task: Task }) {
               role="treeitem"
               aria-expanded={r.e.kind === "d" ? open : undefined}
               class={`wb-node${st ? ` st-${st}` : ""}${r.e.kind === "d" && dirChanged(r.path) ? " has" : ""}${heavy ? " heavy" : ""}`}
-              style={{ top: `${(first + i) * ROW_H}px`, paddingLeft: `${10 + r.depth * 16}px` }}
+              style={{ top: `${(first + i) * ROW_H}px`, height: `${ROW_H}px`, paddingLeft: `${10 + r.depth * 16}px` }}
               title={heavy ? t("wb.files.heavy") : r.path}
               onClick={() => {
                 if (r.e.kind === "d") {

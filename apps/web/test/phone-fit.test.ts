@@ -100,7 +100,7 @@ describe("D311: the phone's small targets reach 44 tall", () => {
     expect(inset(blocks(".top .who .name::before")[0]!)[0]).toBeLessThanOrEqual(-12);
   });
   test("the chips' track is 44: the chips are 36 inside its 4", () => {
-    expect(blocks(".pchip").join("")).toMatch(/height:\s*36px/);
+    expect(blocks(".pchip").join("")).toMatch(/height:\s*max\(36px, 2\.25rem\)/);
     expect(blocks(".pchips").join("")).toMatch(/padding:\s*4px/);
   });
 });

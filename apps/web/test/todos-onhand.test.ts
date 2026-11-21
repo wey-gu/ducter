@@ -143,7 +143,7 @@ describe("words and look", () => {
 
   test("44-tall actions and Find; the board's own card and low card; tokens only", () => {
     expect(css).toMatch(/\.todo-card \.todo-foot \.btn,\s*\.todo-row-card \.tacts \.btn \{\s*min-height: 44px;/);
-    expect(css).toMatch(/\.onhand-list \.todo-fold \.todo-find \{\s*flex: none;\s*height: 44px;/);
+    expect(css).toMatch(/\.onhand-list \.todo-fold \.todo-find \{\s*flex: none;\s*height: max\(44px, 2\.75rem\);/);
     const block = css.slice(css.indexOf("/* D357"));
     expect(block).not.toMatch(/#[0-9a-f]{3,6}\b|rgb\(/i);
   });

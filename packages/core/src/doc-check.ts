@@ -689,6 +689,11 @@ export interface DocCheckDeps {
   picturesDir?(taskId: string, open: Bodies["task_open"] | undefined): string | undefined;
   off?(): boolean;
   read?: ReadOptions;
+  /**
+   * D449: the task thinks on a free key: the pages are still checked (code, no model), but nothing
+   * goes back for another round (each round spends the key); what was found rides on the result.
+   */
+  codeOnly?(taskId: string): boolean;
 }
 
 export interface DocCheckOutcome {
@@ -738,7 +743,7 @@ export function createDocCheck(d: DocCheckDeps) {
       });
       const found = results.filter((x) => x.r.findings.length);
       const key = `${taskId}`;
-      if (found.length && !asked.has(key)) {
+      if (found.length && !asked.has(key) && !d.codeOnly?.(taskId)) {
         asked.add(key);
         const parts = found.map(({ m, r }) => {
           const slides = r.format === "pptx";

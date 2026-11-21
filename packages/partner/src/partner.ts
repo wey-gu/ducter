@@ -52,7 +52,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { AliveSource } from "../../protocol/src/alive.ts";
-import { ASKS_MAX, type AskLine, callWakes, fileView, harnessName, HARNESSES, HARNESS_IDS, isHarnessId, isImage, isWorkKind, WORK_KINDS, type WorkKind, MEDIA_LIMITS, viewText, type MediaRef, type ActivityStep, type Bodies, type BodyWhy, type Brain, type CalEvent, type CalGlance, type EventKind, type HarnessId, type LogEvent, type Place, type TaskCard, type TaskGroupFrame, type TaskGroupView, type TaskNeeds } from "../../protocol/src/index.ts";
+import { ASKS_MAX, type AskLine, callWakes, FREE_TIERS, fileView, harnessName, HARNESSES, HARNESS_IDS, isHarnessId, isImage, isWorkKind, WORK_KINDS, type WorkKind, MEDIA_LIMITS, viewText, type MediaRef, type ActivityStep, type Bodies, type BodyWhy, type Brain, type CalEvent, type CalGlance, type EventKind, type HarnessId, type LogEvent, type Place, type TaskCard, type TaskGroupFrame, type TaskGroupView, type TaskNeeds } from "../../protocol/src/index.ts";
 import type { CoreApi, HarnessEvent, HarnessSession, Partner, Runner, SendImage, WebLookPort, WorkingMemoryView } from "../../protocol/src/internal.ts";
 import { resolveWindows, WINDOW_MAX, WINDOW_MIN } from "../../protocol/src/harness-facts.ts";
 
@@ -208,6 +208,8 @@ interface TurnState {
   limitsSeen?: HarnessEvent["limits"];
   /** D435: the agent said or did something this turn (a failure after it is not a silent turn). */
   spoke?: boolean;
+  /** D449: tool calls that finished this turn (each one more model request). */
+  calls?: number;
   recalls: number; // memory_search calls this turn
   /** D304: what memory_search returned this turn, by the ref the partner saw ("m1"); a reply names one it leaned on. */
   recalled?: Map<string, MemoryHit>;
@@ -1290,6 +1292,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     const end = ev.raw as { kind?: string; outcome?: string; failure?: string; resetsAt?: string; reason?: string } | undefined;
     if (ev.turnEnd && end?.kind === "turn_ended" && end.outcome === "failed") turn.failed = { ...(end.failure ? { failure: end.failure } : {}), ...(end.resetsAt ? { resetsAt: end.resetsAt } : {}), ...(end.reason ? { reason: end.reason } : {}) };
     if ((ev.role === "assistant" && ev.text?.trim()) || ev.tool) turn.spoke = true;
+    // D449: a finished tool call is one more model request this turn (a free key counts them).
+    if (ev.tool && (ev.tool.output !== undefined || ev.tool.ok !== undefined)) turn.calls = (turn.calls ?? 0) + 1;
     // A task_open after its line: the ack goes out now and ends the waiting line (D120), so no
     // "Setting up a task…" flashes before it.
     if (ev.tool && !(TASK_OPEN_RE.test(ev.tool.name) && turn.pending?.trim())) {
@@ -1735,7 +1739,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   function hitOf(harness: string, t: Pick<TurnState, "failed" | "limitsSeen">): HoldHit {
     const f = t.failed ?? {};
     const limit = limitHit(harness, { outcome: "failed", ...f }, t.limitsSeen, now());
-    if (limit) return { harness, failure: limit.failure, ...(limit.resetsAt ? { resetsAt: limit.resetsAt } : {}), source: limit.source, ...(limit.said ? { said: limit.said } : {}) };
+    if (limit) return { harness, failure: limit.failure, ...(limit.resetsAt ? { resetsAt: limit.resetsAt } : {}), source: limit.source, ...(limit.said ? { said: limit.said } : {}), ...(limit.free ? { free: limit.free } : {}) };
     return { harness, failure: "error", ...(f.reason ? { said: f.reason.slice(0, 300) } : f.failure ? { said: f.failure } : {}) };
   }
 
@@ -1811,6 +1815,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       // D435: the turn failed on the agent itself before anything reached the person: core holds
       // that agent and drain runs the same triggers again on the next one (or keeps them for later).
       const ranOn = liveHarness ?? partnerRun().harness;
+      // D449: the requests this turn spent on the agent's key (one, plus one per finished tool call).
+      if (!turn.failed || turn.spoke) core.freeBudget?.spend(ranOn, 1 + (turn.calls ?? 0));
       if (turn.failed && holdable()) {
         const said = core.log.read({ stream: "channel", fromSeq: turnFrom + 1, limit: 50, kinds: ["ai_msg", "ack", "decision", "job_status"] }).some((e) => e.origin === "partner");
         if (!turn.spoke && !said && !turn.pending?.trim()) {
@@ -1877,6 +1883,13 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   const heldWords = (h: NonNullable<ReturnType<NonNullable<CoreApi["brainHold"]>["now"]>>): string => {
     const lang = userLang() ?? NO_WORDS_YET;
     const vars = { from: harnessName(h.from), to: h.to ? harnessName(h.to) : "", at: clockWords(lang, h.until, now()) };
+    // D449: a free key's cap: the provider by name, its own reset, and the paid way (never "pi", never a guessed hour).
+    if (h.free && h.resetKnown && h.why !== "error") {
+      const tier = FREE_TIERS[h.free];
+      const fv = { ...vars, provider: tier.name, more: words(tier.more, lang) };
+      if (h.why === "rate_limited") return said(lang, "waitFreeMinute", fv);
+      return said(lang, h.to ? "heldFreeDay" : "waitFreeDay", fv);
+    }
     if (h.to) return said(lang, h.why === "quota" ? (h.resetKnown ? "heldQuota" : "heldQuotaSoon") : h.why === "rate_limited" ? "heldThrottle" : "heldError", vars);
     return said(lang, h.why === "quota" ? (h.resetKnown ? "waitQuota" : "waitQuotaSoon") : h.why === "rate_limited" ? "waitThrottle" : "waitError", vars);
   };

@@ -9,7 +9,7 @@ import { join } from "node:path";
 import type { Bodies, MediaRef } from "@ducter/protocol";
 import { docAsk } from "@ducter/protocol";
 import { registerTaskTools } from "../src/index.ts";
-import { docBrief, taskBrief } from "../src/brief.ts";
+import { docBrief, FRUGAL_BRIEF, taskBrief } from "../src/brief.ts";
 import { createFakeCore, type FakeCore } from "./fake-core.ts";
 
 let dir: string;
@@ -67,4 +67,13 @@ test("the brief carries the document bar only for a document to send", () => {
   expect(taskBrief({ ...base, title: "修 flaky 测试" })).not.toContain("A document the user will send");
   expect(docBrief({ formats: ["pptx"], pages: 5 })).toContain("It is 5 slides, as asked.");
   expect(docBrief({ formats: ["pdf"], maxPages: 3 })).toContain("At most 3 pages");
+});
+
+test("D449: a task on a free key is asked to be frugal; any other task hears nothing of it", () => {
+  const base = { partnerName: "Ducter", taskId: "t1", brief: "…", place: { kind: "none" as const }, cwd: "/tmp/x", mcpServerName: "ducter", title: "查周五的高铁" };
+  const frugal = taskBrief({ ...base, frugal: true });
+  expect(frugal.endsWith(FRUGAL_BRIEF)).toBe(true);
+  expect(FRUGAL_BRIEF).toContain("## A small daily allowance");
+  expect(FRUGAL_BRIEF).toContain("shared with the user's own conversation");
+  expect(taskBrief(base)).not.toContain("A small daily allowance");
 });

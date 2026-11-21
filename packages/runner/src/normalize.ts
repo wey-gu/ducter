@@ -2,6 +2,7 @@
 // (type imports are free; values stay in oar.ts), so no OAR type leaks out of this package.
 import type { HarnessEvent } from "@ducter/protocol/src/internal.ts";
 import type { NativeCompact, NativeUsage } from "./native-usage.ts";
+import { readFreeLimit } from "@ducter/protocol/src/free-budget.ts";
 
 export const PREVIEW_MAX = 2048;
 
@@ -256,8 +257,9 @@ export class Normalizer {
         const o = ev.outcome ?? {};
         const text = o.kind === "completed" ? "turn completed" : o.kind === "aborted" ? "turn aborted" : `turn failed (${o.failure ?? "unknown"}): ${o.reason ?? ""}`;
         // D297: a usage limit's reset, when the agent named it (OAR's quota resetsAt), and its own words.
-        const limit = o.kind === "failed" && (o.failure === "quota" || o.failure === "rate_limited");
-        out.push({ role: "system", text, turnEnd: true, usage: this.turnOf(this.usage()), raw: { kind: "turn_ended", outcome: o.kind, failure: o.failure, ...(limit && o.resetsAt ? { resetsAt: o.resetsAt } : {}), ...(limit && o.reason ? { reason: String(o.reason).slice(0, 300) } : {}) } });
+        // D449: or the provider's own words on a free tier's cap (pi on a free key), whatever OAR called it; kept long enough to hold its X-RateLimit-* headers.
+        const limit = o.kind === "failed" && (o.failure === "quota" || o.failure === "rate_limited" || !!readFreeLimit(String(o.reason ?? ""), Date.now()));
+        out.push({ role: "system", text, turnEnd: true, usage: this.turnOf(this.usage()), raw: { kind: "turn_ended", outcome: o.kind, failure: o.failure, ...(limit && o.resetsAt ? { resetsAt: o.resetsAt } : {}), ...(limit && o.reason ? { reason: String(o.reason).slice(0, 800) } : {}) } });
         break;
       }
       case "exited":

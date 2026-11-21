@@ -2,6 +2,22 @@
 
 Deferred work, grouped by area, each with its trigger where it has one.
 
+## A free key's day (D449, research/195)
+
+- [ ] **The real 429 through pi**: one day of a throwaway free OpenRouter account and a free Gemini
+  key spent on purpose, to see what pi's failed turn says (whether OpenRouter's
+  `metadata.headers` and Gemini's quota id survive into OAR's reason) and that the hold waits
+  for the true reset. Fakes only so far. Trigger: a throwaway account the author makes.
+- [ ] **The partner's own turns ahead of tasks when the day runs low**: when about a fifth is
+  left, a task's next turn on the free key waits for the reset (D297's wait, said once) so the
+  person can still talk. Today only Ducter's own extra calls stop; tasks spend as they go.
+  Trigger: a real free day where tasks spent the partner's last requests.
+- [ ] **One line as the day nears its end** (**今天免费额度快用完了…**, with the paid way one tap
+  away), said once a day. Trigger: the readout alone proves easy to miss on a real day.
+- [ ] **At most one task at a time on a free key**, the next held in line. Trigger: as above.
+- [ ] **A paid Gemini key** is paced as free (no read tells them apart without spending). A
+  Settings switch, or reading a paid-tier 429 once. Trigger: a person with billing on says so.
+
 ## A first answer with no plan (D440, research/189)
 
 - [ ] **A real walk**: a bare Mac (no Node, no agent), a real free Gemini key and a Kimi voucher key

@@ -15,9 +15,9 @@ import type { RuleView } from "./loadout.ts";
 /** D435: what the partner reaches of core's hold on its own agent (core/src/brain-hold.ts). */
 export interface BrainHoldPort {
   /** The hold on the agent it thinks with: who answers meanwhile (to), or nobody (waits). */
-  now(): { from: HarnessId; why: "quota" | "rate_limited" | "error"; until: string; resetKnown: boolean; waits?: true; to?: HarnessId } | undefined;
+  now(): { from: HarnessId; why: "quota" | "rate_limited" | "error"; until: string; resetKnown: boolean; waits?: true; to?: HarnessId; free?: import("./free-budget.ts").FreeProvider } | undefined;
   /** A turn failed on its agent (a limit as D297 reads it, or an error): hold it. tell: say it once. */
-  hit(h: { harness: string; failure: "quota" | "rate_limited" | "error"; resetsAt?: string; source?: string; said?: string }): Promise<{ now?: ReturnType<BrainHoldPort["now"]>; tell: boolean }>;
+  hit(h: { harness: string; failure: "quota" | "rate_limited" | "error"; resetsAt?: string; source?: string; said?: string; free?: import("./free-budget.ts").FreeProvider }): Promise<{ now?: ReturnType<BrainHoldPort["now"]>; tell: boolean }>;
   /**
    * D446: before a turn: a task on the home already waits for the reset of the same agent's
    * account, so the account is read and the agent held now, not after one failed turn. held: a hold
@@ -155,6 +155,8 @@ export interface CoreApi {
   partnerFallback?(): { harness: HarnessId; model?: string } | undefined;
   /** D435: the partner's own agent held after a turn failed on it (core/src/brain-hold.ts); absent in tests and stubs (then: as before). */
   brainHold?: BrainHoldPort;
+  /** D449: a free key's day (core/src/free-budget.ts): a partner turn's requests on its agent are counted. Absent in tests and stubs. */
+  freeBudget?: { spend(harness: string, requests: number): void; frugal?(harness: string): boolean; low?(): boolean; view?(): import("./free-budget.ts").FreeBudget | undefined; mark?(provider: string, free: boolean): void; onChange?(fn: () => void): () => void };
   /** D437: another AI's one look before a result goes out (core/src/fresh-look.ts); absent in tests and stubs. */
   freshLook?: { take(taskId: string, body: import("./index.ts").Bodies["report"]): boolean; readonly heldWords: string };
   /** D439: a document a done report shows, checked page by page (core/src/doc-check.ts); absent in tests and stubs. */

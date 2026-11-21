@@ -33,7 +33,7 @@ const done = (o: Partial<Bodies["report"]> = {}): Bodies["report"] => ({
   ...o,
 });
 
-function setup(o: { answers?: string[]; home?: string[]; rules?: RuleView[]; worker?: string; diff?: string | null; send?: LookDeps["send"]; perDay?: number; dir?: string; fixWaitMs?: number } = {}) {
+function setup(o: { answers?: string[]; home?: string[]; rules?: RuleView[]; worker?: string; diff?: string | null; send?: LookDeps["send"]; perDay?: number; dir?: string; fixWaitMs?: number; frugal?: LookDeps["frugal"]; onFrugal?: LookDeps["onFrugal"] } = {}) {
   const t = o.dir ? { dir: o.dir } : tempDir();
   const log = openLog({ path: join(t.dir, "ducter.db"), persona: "default" });
   const cards = new Map<string, TaskCard>();
@@ -60,6 +60,8 @@ function setup(o: { answers?: string[]; home?: string[]; rules?: RuleView[]; wor
     send: o.send ?? (async (_id, text) => void sent.push(text)),
     ...(o.perDay !== undefined ? { perDay: o.perDay } : {}),
     ...(o.fixWaitMs !== undefined ? { fixWaitMs: o.fixWaitMs } : {}),
+    ...(o.frugal ? { frugal: o.frugal } : {}),
+    ...(o.onFrugal ? { onFrugal: o.onFrugal } : {}),
   });
   stops.push(() => look.stop());
   stops.push(() => log.close?.());
@@ -171,6 +173,29 @@ test("an outward Go: the drafts are read; what is left goes on the report the ca
   expect(s.look.take("t1", ask)).toBe(true);
   await s.look.idle();
   expect(s.reports()[0]!.look?.left).toEqual(["回复里把 issue 作者的名字写错了"]);
+});
+
+test("D449: on a free key a result's look is skipped (noted, said once by the caller); an outward Go's still gets one until the day runs low", async () => {
+  let low = false;
+  const skipped: string[] = [];
+  // Only pi on the free key: the look would spend it.
+  const s = setup({ answers: ['{"ok": true}'], home: ["pi"], worker: "pi", frugal: (by, what) => by.harness === "pi" && (what === "code" || low), onFrugal: (id) => void skipped.push(id) });
+  expect(s.look.take("t1", done())).toBe(false); // logged as it is by the caller, now
+  expect(s.asked).toEqual([]);
+  expect(skipped).toEqual(["t1"]);
+  expect(s.looks().at(-1)).toMatchObject({ phase: "done", by: "pi", skipped: "free_key" });
+  const ask: Bodies["report"] = { taskId: "t1", state: "needs_input", summary: "回复写好了。", evidence: [], questions: [{ id: "q", text: "把这条回复发到 #212？", default: "发出去", blocking: true, reversible: false }] };
+  expect(s.look.take("t1", ask)).toBe(true);
+  await s.look.idle();
+  expect(s.asked.length).toBe(1);
+  low = true;
+  expect(s.look.take("t1", { ...ask, summary: "另一条回复写好了。" })).toBe(false);
+  expect(s.asked.length).toBe(1);
+  // Another agent signed in looks instead: no free key spent, so the look happens.
+  const t = setup({ answers: ['{"ok": true}'], home: ["claude-code", "pi"], worker: "pi", frugal: (by) => by.harness === "pi" });
+  expect(t.look.take("t1", done())).toBe(true);
+  await t.look.idle();
+  expect(t.asked[0]!.who.harness).toBe("claude-code");
 });
 
 test("fails open: no answer, no diff, a task that can't hear it, past the ceiling: the report goes on as the task wrote it", async () => {

@@ -1505,6 +1505,8 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
         ...(open.needs?.app ? { apps: true } : {}),
         // D439: a document the user will send (read from the ask's own words) gets its bar.
         ...((d) => (d ? { doc: d } : {}))(docAsk(`${open.title}\n${briefed ? open.brief : ""}`)),
+        // D449: on a free key whose day is shared with the partner, the task is asked to be frugal.
+        ...(core.freeBudget?.frugal?.(open.harness ?? "") ? { frugal: true } : {}),
       }),
       mcp: [mcp],
       permissionMode: "bypass",

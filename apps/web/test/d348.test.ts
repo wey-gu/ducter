@@ -100,7 +100,7 @@ describe("to-do sources' filters", () => {
   });
 
   test("the fields are 44 tall and wrap one under the other on a phone", () => {
-    expect(css).toMatch(/\.acct-field input \{\s*height: 44px;/);
+    expect(css).toMatch(/\.acct-field input \{\s*height: max\(44px, 2\.75rem\);/);
     expect(css).toMatch(/\.todo-filters \{\s*flex-wrap: wrap;/);
   });
 });

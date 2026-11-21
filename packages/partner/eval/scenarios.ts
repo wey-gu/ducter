@@ -3552,6 +3552,50 @@ export const scenarios: Scenario[] = [
     rubric: "The user replied to the domain-renewal find (\"帮我把这个弄好\"), not to the quote one. It opens one browser task about ducter.dev's renewal on Cloudflare (update the expired card / renew; it never pays or submits on its own beyond what rule 9 allows) with one short Chinese ack naming that action; nothing about 王磊 or the quote, and no claim that it is renewed. It never mentions replies.",
   },
   {
+    // D453: offers are let be most of the time, and that is fine; the partner never brings one up.
+    id: "offers-let-be-zh",
+    category: "reply",
+    lang: "zh",
+    seed: [
+      {
+        finds: {
+          opening: "早。",
+          finds: [
+            { kind: "waiting_on_you", text: "王磊周二问的 HawDB 报价，你还没回。", goLabel: "拟个回复" },
+            { kind: "deadline", text: "Cloudflare AI Search 11/15 起开始收费。还要用的话，去控制台确认一下。", goLabel: "打开控制台" },
+            { kind: "service", text: "nightly-stats on main 从昨天 22:10 起失败了 3 次。", goLabel: "看看为什么失败" },
+          ],
+        },
+      },
+      { user: "帮我看下 HawDB 那个 PR 的 CI 跑完没" },
+      { ai: "跑完了，全绿。" },
+    ],
+    steps: [{ user: "今天天气真好，我出去跑个步，回来再说" }],
+    expect: { opens: 0, msgs: [1, 1], maxChars: 60, forbid: [/王磊|报价|Cloudflare|收费|nightly|早上(那条|说的)|还没(回|看|处理)|别忘了|记得/] },
+    rubric: "The user says they're going out for a run. The morning's offers were left alone, which is natural. It answers with one short, warm Chinese line about the run and nothing else: it never brings up the morning note or any find in it, never reminds or asks about them (no '别忘了', no '早上那几条你还没看'), and opens nothing.",
+  },
+  {
+    id: "offers-let-be-en",
+    category: "reply",
+    lang: "en",
+    seed: [
+      {
+        finds: {
+          opening: "Morning.",
+          finds: [
+            { kind: "waiting_on_you", text: "CamLi asked you \"is large-file import fixed\" 4 days ago, and asked again.", goLabel: "Draft a reply" },
+            { kind: "coming_up", text: "NH 920 leaves Pudong T2 tomorrow at 19:40; be at the airport by 17:40." },
+          ],
+        },
+      },
+      { user: "did the HawDB PR's CI finish?" },
+      { ai: "Yes, all green." },
+    ],
+    steps: [{ user: "heading out for lunch, back in an hour" }],
+    expect: { opens: 0, msgs: [1, 1], maxChars: 120, forbid: [/CamLi|NH ?920|flight|import|this morning|didn't (reply|answer|get to)|don't forget|reminder/i] },
+    rubric: "The user is going to lunch. The morning's offers were left alone, which is fine. It answers with one short, friendly English line and nothing more: no mention of the morning note, CamLi, the flight or any find, no reminder, no question about them, and no task.",
+  },
+  {
     id: "reply-out-of-window-en",
     category: "reply",
     lang: "en",

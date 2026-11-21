@@ -237,6 +237,9 @@ type Decision struct {
 	// FindID (D165): a find's one next step; shown inside its note, never
 	// as a card of its own in the conversation.
 	FindID string `json:"findId,omitempty"`
+	// Offer (D453): an offer, not an ask: never needs-you, never on On hand,
+	// the mini window or the menu bar; no Hold; it fades on its own.
+	Offer bool `json:"offer,omitempty"`
 	// Draft (D403): the find's reply is already written; away from its card
 	// (On hand) show its first line and 看草稿, which opens the card; never Send.
 	Draft *DecisionDraft `json:"draft,omitempty"`

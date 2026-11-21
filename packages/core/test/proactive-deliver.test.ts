@@ -13,7 +13,7 @@ const make = (...a: Parameters<typeof rig>) => {
 };
 const HOUR = 3_600_000;
 
-test("the morning note: at the end of quiet hours, at most 3, most costly first, one silent notification", async () => {
+test("每天最多 3 条 (chosen): the morning note at the end of quiet hours, at most 3, most costly first, offers, one silent notification", async () => {
   const r = make({ mode: "three" });
   await r.p.lookNow(40); // 07:00, in quiet hours: nothing is said yet
   expect(r.notes()).toHaveLength(0);
@@ -32,11 +32,12 @@ test("the morning note: at the end of quiet hours, at most 3, most costly first,
     expect(fitsBudget(f.text, "zh")).toBe(true);
     expect(f.how.length).toBeGreaterThan(0);
     expect(f.decisionId).toBeString(); // its one next step
+    expect(f.offer).toBe(true); // D453: an offer, never an ask
   }
-  // Each step is a decision that waits (Hold), never auto-runs, and never pushes on its own.
-  const ds = r.log.read({ stream: "channel", kinds: ["decision"] }).map((e) => e.body as { findId?: string; defaultOption: string; reversible: boolean });
+  // Each step is an offer's decision: never auto-runs, never needs-you, never pushes on its own.
+  const ds = r.log.read({ stream: "channel", kinds: ["decision"] }).map((e) => e.body as { findId?: string; defaultOption: string; reversible: boolean; offer?: boolean });
   expect(ds).toHaveLength(3);
-  expect(ds.every((d) => d.findId && d.defaultOption === "hold" && !d.reversible)).toBe(true);
+  expect(ds.every((d) => d.findId && d.offer && d.defaultOption === "hold" && !d.reversible)).toBe(true);
   expect(r.sent).toHaveLength(1);
   expect(r.sent[0]).toMatchObject({ title: "Ducter", level: "passive" });
   // The finds themselves, never an "N things" summary (D173).
@@ -63,9 +64,9 @@ test("only when I ask: nothing watches, nothing is said", async () => {
   expect(r.notes()).toHaveLength(0);
 });
 
-test("D250: never chosen is 每天最多 3 条; its first morning note carries the chips once, the next ones don't", async () => {
+test("D250, D453: never chosen is 有用就说; its first morning note carries the chips once, the next ones don't", async () => {
   const r = make({}); // proactive never chosen
-  expect(r.settings.get()).toMatchObject({ proactive: "three", proactiveBy: "default" });
+  expect(r.settings.get()).toMatchObject({ proactive: "useful", proactiveBy: "default" });
   await r.p.lookNow(40);
   await r.advance(HOUR + 2 * 60_000); // past 08:00
   const first = r.notes().map((e) => e.body).filter((n) => n.rung === "morning" && !n.quiet);

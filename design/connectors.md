@@ -1,6 +1,6 @@
 # Connectors and Restrained Proactive Help
 
-> Draft 4 · 2026-11-10 · Status: **D96, D122, D158 decided and built** (the broker, the oo one
+> Draft 5 · 2026-11-21 (D453: offers, not interruptions; §2, §3, §5, §6, §8 rewritten) · Status: **D96, D122, D158 decided and built** (the broker, the oo one
 > tap, OOMOL Hosted with a key; Part B). **Proactive work is redone from first principles as
 > D165**, and the accounts card as **D166**: designed, prototyped, and **decided 2026-11-10**
 > (the author: "按建议", all eight defaults of §15); **built 2026-11-10** in §14's order, steps
@@ -188,20 +188,24 @@ alarms (`packages/partner/eval/proactive/aha.ts`).
 |---|---|---|---|
 | **Who** | Two Gmail accounts, a work calendar, Discord, GitHub with PRs waiting; twenty sessions open; an inbox he avoids | One Gmail, one calendar; used dots or Muse and liked the "aha" | Has never connected an account to an AI |
 | **Before** | Teammates wait on PRs; a renewal or a flight mismatch slips through because the two halves sit weeks apart | Loved the magic, disliked the lock-in and the opaque notes | Doesn't know an AI can watch for a bill, and is wary of letting it read mail |
-| **After** | One short note in the morning, at most three things, each with a next step he can tap; otherwise silence he can trust | The same, on his own Mac and models, every note readable and forgettable | Within a minute of adding an account, one useful thing (or "nothing needs you") and the feeling that it is careful |
+| **After** | One quiet note in the morning with whatever might help, three in full and the rest folded, each with a next step he can tap, none needing an answer; only what can't wait calls him (D453) | The same, on his own Mac and models, every note readable and forgettable | Within a minute of adding an account, one useful thing (or "nothing needs you") and the feeling that it is careful |
 | **Feels** | 放心: someone minds the edges. 惊喜: it joined two things he couldn't | 好用 without lock-in; 放心: he can see what it read | 惊喜 first, then 放心: it asked before it watched, and said what it won't do |
 | **How it starts** | He adds oo (one tap); the partner offers a first look right there | Same | Same, or he says "帮我盯着邮箱" and is led to the one tap |
 
 ## 3. First principles
 
 **The job.** Motivation.md: a partner that *reports to you and needs your attention only when it
-truly matters*. Reading is cheap and private; **saying something costs the person's
-attention**, and every false alarm spends trust that silence depends on. So the design is about
-when to *speak*, not when to *look*. Ducter may look often; it speaks rarely, in one place, with
-evidence and a next step.
+truly matters*. Reading is cheap and private. **D453 (research/197) splits what saying costs:** an
+*interruption* (a sound, a lock-screen line, a needs-you count, a card that waits to be cleared)
+spends attention and trust; an *offer* (a quiet line in the morning note that needs nothing and fades)
+costs a glance. Ducter can't see the person's whole life, so most offers won't land and silence is the
+natural answer; one in twenty landing is the aha (the author, 2026-11-21). So: **interruptions stay
+rare, offers are generous.** Ducter may look often; it interrupts rarely; it offers what might help,
+in one place, with evidence and a next step, and never minds being left alone.
 
-**When a find is worth the person's attention** (all four, each judged by the partner; the
-first three are Draft 3's bar, the fourth is new):
+**When a find may interrupt** (all four, each judged by the partner; the first three are Draft 3's
+bar, the fourth is new). **An offer** needs only (4), (3), and to be plausibly news and worth a glance
+(cost ≥ 35, D453 §5):
 
 1. **They likely don't know it yet.** A receipt whose subject says it all fails. So does a CI
    failure GitHub already pushed to them.
@@ -226,11 +230,12 @@ first three are Draft 3's bar, the fourth is new):
   instruction inside a mail is data.
 - **Never keep the mail.** Only typed facts with pointers (§9); Mem gets only distilled,
   durable things, with 记下了.
-- **Never invent urgency or nag.** No counts of unread mail, no streaks, no "you still haven't…"
-  twice. A find said once and ignored is not said again unless something changed.
+- **Never invent urgency or nag.** No counts of unread mail or of offers left unanswered, no streaks,
+  no "you still haven't…", no "why didn't you reply", no pause that asks whether to go on (D453). A
+  find said once and let be is not said again unless something changed.
 - **Never wake the person** except for a kind they asked to be woken for.
 - **Never keep quiet about watching.** Connecting an account is consent to read it (D250): a
-  home that never chose is on **每天最多 3 条**, the first add still asks once with that default
+  home that never chose is on **有用就说** (D453; 每天最多 3 条 until then), the first add still asks once with that default
   shown, and the first morning message on the default carries the chips. Restraint is in what is
   said (D243), never in whether it looks.
 
@@ -343,8 +348,8 @@ The existing escalation (principle 7: badge → message → push → call) with 
 | Rung | What reaches the person | Which finds |
 |---|---|---|
 | **Left out** | Nothing on screen (D173). The partner knows it and says it only when asked ("还有别的吗？" → "没说的：12 封通知和收据，看标题就知道；1 封像推销。") | everything below the bar |
-| **The morning note** | One message in the conversation at the end of quiet hours; one **silent** notification (Apple's passive level; research/46) | up to the daily cap |
-| **Fold-in** | While the person is in Ducter, a find that is timely today joins the open living message (principle 7, revised in place, never re-notifies) | today's finds after the morning |
+| **The morning note** (offers, D453) | One message in the conversation at the end of quiet hours; one **silent** notification (Apple's passive level; research/46); the first 3 in full, the rest under **还有几条 / A few more** | up to 6 (有用就说), 3 (每天最多 3 条) |
+| **Fold-in** (offers) | While the person is in Ducter, a find that is timely today joins the open living message (principle 7, revised in place, never re-notifies) | today's finds after the morning, up to 10 offers a day in all |
 | **Now** | A notification that may come through (time-sensitive, which the phone lets them turn off per app); what one look found is one message and one notification (D388) | only "costs something if it waits a day": a flight changed today, a domain that lapses tomorrow unpaid, a flight or production maintenance within 30 h, a correction (D243). Its own room of 3 a day, not inside the note's 3 (D243); the detectors run every half hour, so a trip ripens without new mail; with no quiet hours set, what can wait six hours waits for 08:00 in the person's zone |
 | **Before a meeting** | A line in the conversation; silent notification when away | 开会前 only |
 
@@ -358,17 +363,26 @@ mirrored in Settings › 通知 (什么时候找你):
 | Chip (zh / en) | Means |
 |---|---|
 | **只说急的 / Only urgent** | Only the "Now" rung and 开会前 (D226); no morning note |
-| **每天最多 3 条 / Up to 3 a day** (default, also before the person chose: D250) | Morning note with ≤ 3, plus "Now" in its own room of 3 (D243) |
-| **有用就说 / Whenever useful** | No daily cap; still batched into the note and fold-ins, at most 5 a note (D174), the rest counted for when they ask |
+| **每天最多 3 条 / Up to 3 a day** (a restraint the person chose) | Morning note with ≤ 3 offers at the old floor (50), plus "Now" in its own room of 3 (D243) |
+| **有用就说 / Whenever useful** (default, also before the person chose: D250, D453) | Offers batched into the note and fold-ins: up to 6 a note (3 in full), 10 a day, ranked by what was taken up; "Now" in its own room of 3 |
 | **不用主动找我 / Only when I ask** | Nothing proactive; it reads only when asked. Watching stops (no cost) |
 
 **Where the mode came from (D250)** is kept with it: `default` (never chosen; the chips say
 **你还没选过，先这样：…**), `chosen` (any chip, in a note or in Settings, even the one already on),
 `keep_note` (不再需要 to the morning note, §8). Only `keep_note` is ever offered back.
 
-Why a cap of 3 and not a confidence bar alone: the research says false alarms are the main
-failure (ProactiveBench, KnowU-Bench, research/35), and no product publishes a cap; 3 fits one
-phone screen with a next step each. INFERRED, to be tuned by the triage eval (§12).
+Why the default is not a cap of 3 any more (D453, research/197): false alarms are the main failure
+*for interruptions* (ProactiveBench, KnowU-Bench, research/35); for a quiet line that needs nothing the
+cost is a glance. On hel the cap never bit (the most on a morning was 5, on 有用就说); what bit was every
+find being a needs-you card (13 of 17 cleared by hand) and the Holds raising the bar. 3 in full still fits
+one phone screen; the rest fold.
+
+**Offers vs interruptions (D453).** Every find said in the morning note or a fold-in is an *offer*: its
+decision carries `offer`, so no client counts it as needs-you or lists it on On hand, the mini window,
+the menu bar or the talk's cards; it has its one Go and no 先等等 (letting it be is the hold); at the next
+morning (or its date) it fades: resolved hold by default, its words in the muted ink, no button, no
+已跳过, nothing said. A "now" find stays an ask. An urgent find of a kind whose interrupt bar the
+person's Holds raised past its cost comes as an offer instead (folded in, never pushed).
 
 ### 5.1 Why it stayed quiet: 今天看了什么 / What it looked at today (D226)
 
@@ -425,9 +439,10 @@ is broken. *First time:* under the chips in Settings › 通知 / Notifications,
   summary (D173). It goes
   through D159's encrypted path; previews follow the phone's own "显示预览" setting (no new
   Ducter setting). Tapping opens the note.
-- **Held over:** a find not acted on stays as a decision on 手头的事 until its date passes, then
-  quietly becomes **已跳过 / Passed** (never "done" on its own); it is not said again unless
-  something changed.
+- **Let be (D453):** an offer nothing came of fades at the next morning (or its date, if sooner): its
+  words stay, muted, with no button and no word about it; it never sat on 手头的事. It is not said
+  again unless something changed (a later notice on it is still news). A "now" find not acted on
+  quietly becomes **已跳过 / Passed** at its date, as before.
 
 ## 7. Following through: a find becomes a task only on Go
 
@@ -450,14 +465,16 @@ Asks raised by background work **expire into Passed** with the find's date (the 
   me this kind**. The second becomes a Rule in **你的规则** worded in the kind and the sender
   ("Cloudflare 的续费提醒不用告诉我"), removable with **删除**. One tap, said back once:
   **好，这类以后不说了。** No settings page for kinds.
-- Implicit signals, per kind and per sender: Go and 有用 raise; Hold, ignored and "这类不用告诉我"
-  lower. Three ignored finds of a kind in 14 days raise that kind's bar (it needs a higher
-  cost-if-missed to be said).
-- **3 unread morning notes in a row** → the notes pause and the next time the person writes,
-  one line asks **早上那条还要吗？/ Keep the morning note?** with **保留 / Keep** (default) and
-  **不再需要 / No more** (= the chip **只说急的**, never off; kept as `keep_note`, D250). The
-  routine rule (D114), reused. Not a weekly note: 只说急的 still carries what can't wait (§5), and
-  "anything for me?" is answered from the same finds in every mode.
+- **Implicit signals rank, never gate (D453).** Per kind and per sender, a weight: Go, 有用 and a
+  reply about it ×1.5; Hold ×0.85; an offer that faded ×0.95; within [0.5, 3]. The morning orders
+  offers by urgency, the person's focus (D368), then cost × weight. One slot goes to the costliest find
+  of a kind not offered for three days when every kind picked was offered lately (silence never ends a
+  kind); at most two of one kind among the three shown in full. Only 这类不用告诉我 stops a kind.
+- **The interrupt bar per kind:** three "now" finds of a kind held or left in 14 days raise it +10 (to
+  90); Go and 有用 lower it 5. An urgent find under it comes as an offer.
+- **Nothing pauses for silence (D453).** The three-unread pause and 早上那条还要吗？ are retired; a
+  home the old rule paused resumes. `keep_note` homes (only urgent by 不再需要) hear the morning note
+  offered back once (NOTES_REV 3). The partner never brings up an offer left alone (persona).
 - **Offered back once (D250)** when what the notes can notice changed materially (`NOTES_REV`; 1 =
   D243): a home on 只说急的 by `keep_note` hears, the next time the person writes, **现在我能提前告诉你
   航班、维护、扣费这些了。要每天早上说几条吗？** with **好 / Yes** · **不用 / No thanks**. No answer keeps
@@ -518,11 +535,11 @@ says so once. "Only when I ask" costs nothing.
    (with its next step), or **最近两周没有要你管的。** Never how much it read (D173). Meanwhile, silently, the
    60-day backfill fills the ledger with bookings, renewals and commitments (no message).
 3. Right under the answer, the one question, with a default:
-   **以后我自己留意着：每天早上把值得说的放在一条里，最多 3 条；急的随时说。这样行吗？**
-   · the chip row, with **每天最多 3 条** already selected (D250).
+   **以后我自己留意着：可能有用的，每天早上放在一条里，看不看都行；等不到明天的才叫你。这样行吗？**
+   · the chip row, with **有用就说** already selected (D250, D453).
    The answer is the chip row's value; the partner says nothing more about it.
 4. **Silence is yes (D250):** watching starts when the account is added (new mail only), on
-   **每天最多 3 条**. The quiet look back waits half an hour for the offer's answer, so a yes runs
+   **有用就说** (D453). The quiet look back waits half an hour for the offer's answer, so a yes runs
    the look the person is waiting for first; then it goes on its own. What can't wait may be
    said "now" meanwhile. A home that never saw the question gets it once, under its first
    morning message.
@@ -631,7 +648,8 @@ the desktop's own renderer, phone from a scratch core with a fake oo).
 | ★ `first.offer` | 已经能看你的 {apps} 了。要不要我现在看一眼最近两周，挑出要你管的？ | I can read your {apps} now. Want me to look through the last two weeks for anything that needs you? |
 | ★ `first.go` · `first.no` | 好，看一眼 · 以后再说 | Take a look · Not now |
 | ★ `first.ask` | 以后我自己留意着：每天早上把值得说的放在一条里，最多 3 条；急的随时说。这样行吗？ | From now on I'll keep an eye out: one note each morning with up to 3 things, and anything urgent right away. OK? |
-| ★ `note.pause` | 早上那条还要吗？ | Keep the morning note? |
+| ★ `note.pause` | 早上那条还要吗？ (retired by D453; never asked now) | Keep the morning note? |
+| ★ `find.more` · `find.fewer` (D453) | 还有几条 · 收起 | A few more · Show fewer |
 | `note.keep` · `note.no_more` | 保留 · 不再需要 | Keep · No more |
 | ★ `proactive.note.default` (D250) | 你还没选过，先这样：早上把值得说的放在一条里，最多 3 条；急的随时说。 | You haven't chosen yet, so for now: one note each morning with up to 3 things; anything urgent right away. |
 | ★ the re-offer (D250; core words) · `note.again_yes` · `note.again_no` | 现在我能提前告诉你航班、维护、扣费这些了。要每天早上说几条吗？ · 好 · 不用 | I can now tell you about flights, maintenance and billing changes ahead of time. Want a few each morning? · Yes · No thanks |

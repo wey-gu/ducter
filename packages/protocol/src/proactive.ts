@@ -21,28 +21,39 @@ export const FIND_KINDS: readonly FindKind[] = ["mismatch", "waiting_on_you", "w
 export const isFindKind = (k: unknown): k is FindKind => typeof k === "string" && (FIND_KINDS as readonly string[]).includes(k);
 
 /**
- * 发现了就说 / When it notices something (§5): one chip row, single choice.
- *   urgent  只说急的 / Only urgent: only "now" finds, no morning note (D243: a trip, a
- *           production maintenance window or a correction within ~30 hours is urgent)
- *   three   每天最多 3 条 / Up to 3 a day: the default (D250), also before the person chose
- *   useful  有用就说 / Whenever useful: no cap, still batched
+ * 发现了就说 / When it notices something (§5): one chip row, single choice. D453: two lanes.
+ * Interruptions (a "now" note, a time-sensitive notification) stay rare in every mode: only what
+ * costs something if it waits a day, at most NOW_MAX a day, held in quiet hours. Offers (quiet
+ * finds in the morning note and fold-ins: never a push of their own, never needs-you) are generous.
+ *   urgent  只说急的 / Only urgent: only interruptions, no offers, no morning note
+ *   three   每天最多 3 条 / Up to 3 a day: offers capped at 3 a day (a restraint the person chose)
+ *   useful  有用就说 / Whenever useful: the default (D453), also before the person chose: up to
+ *           OFFER_NOTE_MAX in a note, OFFERS_A_DAY a day, ranked by what the person took up
  *   off     不用主动找我 / Only when I ask: nothing watches
  */
 export type ProactiveMode = "urgent" | "three" | "useful" | "off";
 export const PROACTIVE_MODES: readonly ProactiveMode[] = ["urgent", "three", "useful", "off"];
-/** D250: the mode of a home that never chose one. */
-export const DEFAULT_PROACTIVE: ProactiveMode = "three";
+/** D250, D453: the mode of a home that never chose one: 有用就说 (was 每天最多 3 条 until D453). */
+export const DEFAULT_PROACTIVE: ProactiveMode = "useful";
+/** D453: offers in one note (the first OFFER_SHOWN in full, the rest under 还有几条 / A few more). */
+export const OFFER_NOTE_MAX = 6;
+/** D453: offers shown in full before the fold (one phone screen, D165 §6). */
+export const OFFER_SHOWN = 3;
+/** D453: offers a day in all (the morning note and the day's fold-ins), 有用就说. */
+export const OFFERS_A_DAY = 10;
 
 /**
  * D250: where the mode came from.
  *   default    never chosen: 每天最多 3 条 (connecting an account is consent to read; the first
  *              morning note says how it works, with the chips)
  *   chosen     the person picked it (the chips, in a note or in Settings; or answered a re-offer)
- *   keep_note  they said 不再需要 / No more to 早上那条还要吗？ after three unread mornings: only
- *              urgent, and the morning note offered back once when the notes got better (NOTES_REV)
+ *   keep_note  they said 不再需要 / No more to 早上那条还要吗？ after three unread mornings (D250;
+ *              D453 retired the pause, so no new home gets here): only urgent, and the morning note
+ *              offered back once when the notes got better (NOTES_REV)
  * Absent with a mode set: chosen before D250 (the source wasn't kept then).
  */
 export type ProactiveSource = "default" | "chosen" | "keep_note";
+/** 每天最多 3 条: offers a day when the person chose that restraint (D453: no longer the default). */
 export const DAILY_CAP = 3;
 
 /** 怎么知道的 / How I know: one mail, event or thread it rests on, with its date. Never a quote. */
@@ -89,6 +100,12 @@ export interface FindView {
    * waits SEND_UNDO_MS with 撤回 / Undo, then is sent once by the home; never sent on its own.
    */
   draft?: FindDraft;
+  /**
+   * D453: said as an offer (the morning note, a fold-in), not an interruption: its step has no
+   * Hold, it never counts as needs-you, and untouched by the next morning it fades (its words stay,
+   * dimmed; no "missed" mark).
+   */
+  offer?: boolean;
 }
 
 /** D403: the reply a cheap model wrote from the thread, in its language, in the person's own voice. */
@@ -159,7 +176,7 @@ export interface AppWatch {
 export interface SourceLook {
   /** watching (mode not off and at least one tile watched) or reading only when asked. */
   watching: boolean;
-  /** The morning note paused itself (three unread mornings); 早上那条还要吗？ is pending. */
+  /** The morning note paused itself (three unread mornings, D165 §8). D453 retired the pause: never set now. */
   paused?: boolean;
   /** Items read today by the watchers (emails, events, threads). Details only (⋯), never the status line (D173). */
   readToday: number;

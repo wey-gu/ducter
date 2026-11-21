@@ -23,7 +23,7 @@ test("the first add: one offer; D250: watching on the default, the quiet look ba
   const offer = r.lastNote()!;
   expect(r.notes()).toHaveLength(1);
   expect(offer).toMatchObject({ rung: "first", ask: "first_look", finds: [], opening: "已经能看你的 Gmail、日历、GitHub、Discord 了。要不要我现在看一眼最近两周，挑出要你管的？" });
-  expect(r.settings.get()).toMatchObject({ proactive: "three", proactiveBy: "default" });
+  expect(r.settings.get()).toMatchObject({ proactive: "useful", proactiveBy: "default" });
   expect(r.p.look("conn_oo")!.watching).toBe(true);
   await r.advance(25 * 60_000);
   // Watching reads only what is new; nothing looked back while the offer waits.
@@ -72,14 +72,14 @@ test("好，看一眼: 3 days in full and two weeks that may hold a fact, what n
   expect(r.settings.get().proactiveBy).toBe("chosen");
 });
 
-test("先不用: still the one question; D250: no answer leaves it at 每天最多 3 条", async () => {
+test("先不用: still the one question; D250, D453: no answer leaves it at 有用就说", async () => {
   const r = make({ start: Date.parse("2026-11-10T09:00:00+08:00"), language: "en" });
   r.p.added("conn_oo");
   expect(r.lastNote()!.opening).toBe("I can read your Gmail, calendar, GitHub and Discord now. Want me to look through the last two weeks for anything that needs you?");
   await r.p.answer(r.lastNote()!.noteId, "first_look", false);
   expect(r.lastNote()).toMatchObject({ rung: "first", ask: "cadence", opening: "OK, not now.", finds: [] });
   expect(reach(r)).toEqual([]); // no look back yet
-  expect(r.settings.get()).toMatchObject({ proactive: "three", proactiveBy: "default" });
+  expect(r.settings.get()).toMatchObject({ proactive: "useful", proactiveBy: "default" });
   expect(r.lastNote()!.answered).toBeUndefined();
 });
 

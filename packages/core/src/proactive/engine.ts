@@ -1,18 +1,25 @@
-// D165 (design/connectors.md Part A): Ducter may look often and speaks rarely.
+// D165 (design/connectors.md Part A): Ducter may look often. D453: it interrupts rarely and offers
+// generously. It can't see the person's whole life, so most of what it offers won't land, and
+// silence is the natural answer; one in twenty taken up is the aha. An offer costs a glance, an
+// interruption costs attention: only the second is rationed.
 //
 //   look (watch.ts, code) → rules (stage1.ts, code) → triage (triage.ts, the cheapest model, in
-//   batches) → the facts ledger (ledger.ts, pointers only) → the seven kinds (detect.ts, code) →
-//   the bar (judge.ts, the partner's model) → said once, on one rung of the ladder:
-//     the morning note at the end of quiet hours (≤ 3 with 每天最多 3 条, one passive notification;
-//       a quiet day sends nothing and only changes the header line)
-//     a fold-in to today's note while the person is in the app (never re-notified)
-//     "now" for what costs them if it waits until tomorrow (time-sensitive, inside the cap; at
-//       night only kinds they said may wake them)
-//     开会前, 10 minutes before a meeting with something open
-//   Each find has one next step as a decision (default Hold): Go opens a read-only task (上网 for a
-//   look-up, D157 picks where); a draft stays in Ducter until a second Go. Untouched past its date
-//   it quietly becomes 过了. 有用 / 这类不用告诉我 (a Rule), Go/Hold and silence tune a bar per kind;
-//   three unread mornings pause the note and ask 早上那条还要吗？ when the person next writes.
+//   batches) → the facts ledger (ledger.ts, pointers only) → the kinds (detect.ts, code) →
+//   the bar (judge.ts: grounded, something to do or a join; the partner's model drops junk) →
+//   said once, in one of two lanes:
+//     interruptions: "now" for what costs them if it waits until tomorrow (time-sensitive, NOW_MAX
+//       a day, a kind's interrupt bar raised by Hold on its "now" finds; at night only kinds they
+//       said may wake them), and 开会前, 10 minutes before a meeting with something open
+//     offers: the morning note at the end of quiet hours (有用就说: up to OFFER_NOTE_MAX, the first
+//       OFFER_SHOWN in full; one passive notification; a quiet day sends nothing) and fold-ins to
+//       today's note while the person is in the app (never re-notified), OFFERS_A_DAY in all
+//   Each find has one next step as a decision: Go opens a read-only task (上网 for a look-up, D157
+//   picks where); a draft stays in Ducter until a second Go. An offer's decision is `offer`: never
+//   needs-you, no Hold, and untouched by the next morning it fades (resolved hold by default).
+//   Learning needs nothing from the person: Go, 有用 and a reply raise a kind's (and a sender's)
+//   weight, which ranks offers; an offer let go lowers it a little, never to silence; one slot a
+//   morning goes to a kind not offered lately. Only 这类不用告诉我 (a Rule) stops a kind. Nothing
+//   pauses for unread or unanswered notes, and nothing ever asks why.
 //
 // Never: send, reply, pay, delete, archive, label, mark read (the broker refuses every write for
 // the watch caller; tasks only read), act on what mail says (fenced as data), keep mail (the
@@ -23,7 +30,7 @@ import { createHash } from "node:crypto";
 import { chmodSync, existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Bodies, FindKind, FindView, LogEvent, ProactiveDay, ProactiveMode, ProactiveYesNo, QuietReason, ReadLine, ReadProblem, RuleView, SourceLook } from "@ducter/protocol";
-import { DAILY_CAP, SEND_UNDO_MS, isFindKind, langName, normalizeTag, QUIET_REASONS, words, type LangTag } from "@ducter/protocol";
+import { DAILY_CAP, OFFER_NOTE_MAX, OFFERS_A_DAY, OFFER_SHOWN, SEND_UNDO_MS, isFindKind, langName, normalizeTag, QUIET_REASONS, words, type LangTag } from "@ducter/protocol";
 import { talkLang } from "../lang.ts";
 import type { WebLookPort, WorkingMemoryPort } from "@ducter/protocol/src/internal.ts";
 import { daySettled, dayEn as planDayEn, dayZh as planDayZh, howOfClaim, provenance, saysOf, sheetFor, timeFill, type Claim, type OwnClaim } from "./plans.ts";
@@ -59,7 +66,7 @@ import type { RulesStore } from "../rules.ts";
 import type { SettingsStore } from "../settings.ts";
 import { dayKey, daysUntil, detect, hm, meetingPrep, zhSpace, type Candidate, type SaidFind } from "./detect.ts";
 import type { Item } from "./items.ts";
-import { barJudge, DEFAULT_BAR, JUDGE_MAX, type FindJudge, type Verdict } from "./judge.ts";
+import { barJudge, DEFAULT_BAR, JUDGE_MAX, OFFER_FLOOR, type FindJudge, type Verdict } from "./judge.ts";
 import { openLedger, type Ledger } from "./ledger.ts";
 import { backfillWorthy, NOTICE_DAY_MAX, stage1, type Left } from "./stage1.ts";
 import { BATCH, eventFact, factsOf, type Triage } from "./triage.ts";
@@ -73,7 +80,6 @@ export const PROACTIVE_FILE = "proactive.json";
 const MIN = 60_000;
 const DAY = 86_400_000;
 const TICK_MS = 5 * MIN;
-const UNREAD_TO_PAUSE = 3;
 /**
  * D250: how good the notes are, bumped when what they can notice changed materially (1: D243's
  * trips, maintenance, billing and corrections). A home that said 不再需要 to the morning note on
@@ -81,17 +87,29 @@ const UNREAD_TO_PAUSE = 3;
  * 2 (D258): a find answered by a reply no longer quiets its kind, and a home put on 只说急的
  * before D250 (no `proactiveBy`: chosen when the notes could notice far less) hears it too.
  */
-export const NOTES_REV = 2;
+export const NOTES_REV = 3; // D453: offers come back generous, and nothing pauses for unread notes.
 /** D258: the rules `bars` were learned under (1: a reply is never a "not now"). */
 export const BARS_REV = 1;
 /** D250: a source's first-look offer gets this long to be answered before the quiet look back goes on its own. */
 export const OFFER_WAIT_MS = 30 * 60_000;
 export const DEFAULT_MONTH_TOKENS = 2_000_000;
+// D453: the per-kind bars gate interruptions only (a "now" find held three times in 14 days moves
+// that kind to the offers); offers are ranked by weights learned from what the person took up.
 const BAR_UP = 10;
 const BAR_DOWN = 5;
 const BAR_MIN = 35;
 const BAR_MAX = 90;
 const IGNORED_TO_RAISE = 3;
+/** D453: a kind's or a sender's weight: taken up (Go, 有用, a reply) ×W_HIT; held ×W_HOLD; let fade ×W_FADE; within [W_MIN, W_MAX]. */
+export const W_HIT = 1.5;
+export const W_HOLD = 0.85;
+export const W_FADE = 0.95;
+export const W_MIN = 0.5;
+export const W_MAX = 3;
+/** D453: one slot a morning goes to a kind not offered for this long (silence never ends a kind). */
+export const EXPLORE_DAYS = 3;
+/** D453: in the offers shown in full, at most this many of one kind (hel 11-18: five 在等你回 in one note). */
+export const SAME_KIND_SHOWN = 2;
 const FIRST_LOOK_DAYS = 3;
 /** D232: the first look also reads two weeks of mail that may hold a fact, and two weeks of calendar ahead. */
 const FIRST_WIDE_DAYS = 14;
@@ -104,8 +122,8 @@ const LEDGER_DAYS = 60;
  * the candidate's key and a hash of what it says, so the same thing is never judged twice.
  */
 export const JUDGE_RUNS_PER_DAY = 4;
-/** 有用就说 has no daily cap, but one note holds at most this many finds; the rest are counted in Left out (P2). */
-export const NOTE_MAX = 5;
+/** 有用就说: one note holds at most this many offers (D453: OFFER_NOTE_MAX); the rest are counted in Left out (P2). */
+export const NOTE_MAX = OFFER_NOTE_MAX;
 /**
  * D243: what can't wait has its own room: a maintenance window or a correction that lands after
  * the morning note took the day's 3 is still said, at most this many a day.
@@ -151,6 +169,9 @@ interface FindRec {
   how: FindView["how"];
   state?: "go" | "held" | "passed";
   reaction?: "useful" | "muted";
+  /** D453: said as an offer, and when it fades if nothing came of it (the next morning). */
+  offer?: boolean;
+  until?: number;
   /** D243: what it was about and the facts it rested on (a later notice on it is an update). */
   topic?: string;
   facts?: string[];
@@ -188,9 +209,15 @@ interface State {
   /** said: all today; now: those said on the "now" rung (D243: they have their own NOW_MAX). */
   day: { key: string; said: number; now?: number };
   mornings: { noteId: string; seq: number; day: string; finds: number }[];
+  /** D165 §8's pause after three unread mornings: D453 retired it; cleared on load. */
   paused?: boolean;
   keepAsk?: "pending" | "asked";
+  /** D453: the interrupt bar per kind ("now" only). */
   bars: Partial<Record<FindKind, number>>;
+  /** D453: what the person took up, as weights that rank offers (kind, and sender lowercased). */
+  weights?: { kind: Partial<Record<FindKind, number>>; sender: Record<string, number> };
+  /** D453: when each kind was last offered (for the exploration slot). */
+  offeredKinds?: Partial<Record<FindKind, number>>;
   ignored: { kind: FindKind; at: number }[];
   month: { key: string; tokens: Record<string, number>; told: string[] };
   offered: Record<string, string>; // connectionId -> the first-look note
@@ -436,6 +463,8 @@ export function createProactive(o: ProactiveOptions): Proactive {
   if (existsSync(path)) {
     try {
       st = { ...fresh(), ...(JSON.parse(readFileSync(path, "utf8")) as Partial<State>) };
+      // D453: nothing pauses for unread notes any more; a home the old rule paused resumes.
+      if (st.paused || st.keepAsk) (st.paused = false), (st.keepAsk = undefined);
     } catch {
       /* start fresh */
     }
@@ -470,7 +499,9 @@ export function createProactive(o: ProactiveOptions): Proactive {
   const newId = (p: string) => `${p}_${crypto.randomUUID().replaceAll("-", "").slice(0, 10)}`;
   /** D243: what the detectors need: the time, the zone, and the finds already said (for updates). */
   const saidFinds = (): SaidFind[] =>
-    Object.entries(st.finds).map(([findId, f]) => ({ findId, kind: f.kind, ...(f.topic ? { topic: f.topic } : {}), text: f.text, at: f.at, facts: f.facts ?? [], ...(f.state === "passed" ? { passed: true } : {}) }));
+    Object.entries(st.finds).map(([findId, f]) => ({ findId, kind: f.kind, ...(f.topic ? { topic: f.topic } : {}), text: f.text, at: f.at, facts: f.facts ?? [], ...(over(f) ? { passed: true } : {}) }));
+  /** Its moment is over (its date went by). D453: an offer that only faded is not over: a later notice on it is still news. */
+  const over = (f: FindRec) => f.state === "passed" && (!f.offer || (!!f.dueAt && Date.parse(f.dueAt) < now()));
   /** D388: what the person said they'd do on a day, as their word on a plan's sheet. */
   const ownClaims = (): OwnClaim[] =>
     (st.own ?? []).filter((r) => r.by === "user" && !r.asked && r.dueAt && r.state !== "gone").map((r) => ({ id: r.id, what: r.what, quote: r.quote, at: r.at, dueAt: r.dueAt! }));
@@ -667,10 +698,14 @@ export function createProactive(o: ProactiveOptions): Proactive {
   const rollDay = () => {
     if (st.day.key !== today()) st.day = { key: today(), said: 0 };
   };
-  /** Room left today: the daily cap, or (有用就说) one note's cap. */
+  /**
+   * Offers' room left today (D453): 每天最多 3 条, the 3 the person chose; 有用就说, one note's
+   * OFFER_NOTE_MAX within OFFERS_A_DAY. Interruptions ("now") have their own room (NOW_MAX).
+   */
+  const offersToday = () => st.day.said - (st.day.now ?? 0);
   const capLeft = (m: ProactiveMode) => {
     rollDay();
-    return m === "three" || m === "urgent" ? Math.max(0, DAILY_CAP - (st.day.said - (st.day.now ?? 0))) : NOTE_MAX;
+    return m === "three" || m === "urgent" ? Math.max(0, DAILY_CAP - offersToday()) : Math.max(0, Math.min(OFFER_NOTE_MAX, OFFERS_A_DAY - offersToday()));
   };
 
   /** What a candidate says, for its verdict's memo: a changed candidate is judged again. */
@@ -702,7 +737,9 @@ export function createProactive(o: ProactiveOptions): Proactive {
     });
     if (!open.length) return [];
     const z = lang();
-    const ctx = { lang: z, today: today(), bars: st.bars, ...(focusNow.length ? { focus: focusNow } : {}) };
+    // D453: 每天最多 3 条 (and 只说急的) is restraint the person chose: there the old floor holds.
+    const m0 = mode();
+    const ctx = { lang: z, today: today(), bars: st.bars, floor: m0 === "three" || m0 === "urgent" ? DEFAULT_BAR : OFFER_FLOOR, ...(focusNow.length ? { focus: focusNow } : {}) };
     const hashes = new Map(open.map((c) => [c.key, hashOf(c)]));
     const known = (c: Candidate) => {
       const v = st.verdicts[c.key];
@@ -755,8 +792,59 @@ export function createProactive(o: ProactiveOptions): Proactive {
     return [...kept].sort((a, b) => Number(b.c.urgent) - Number(a.c.urgent) || Number(on(b)) - Number(on(a)) || kept.indexOf(a) - kept.indexOf(b));
   }
 
+  // ---------- D453: what the person took up, with no effort of theirs ----------
+
+  const weights = () => (st.weights ??= { kind: {}, sender: {} });
+  const clampW = (w: number) => Math.min(W_MAX, Math.max(W_MIN, w));
+  /** How much this kind, from this sender, has been taken up: 1 knows nothing. */
+  const weightOf = (kind: FindKind, sender?: string) => (weights().kind[kind] ?? 1) * (sender ? (weights().sender[sender.toLowerCase()] ?? 1) : 1);
+  /** One signal: hit (Go, 有用, a reply about it), hold (Hold on an offer), fade (an offer let be). Never to zero. */
+  function learn(kind: FindKind, sender: string | undefined, signal: "hit" | "hold" | "fade"): void {
+    const by = signal === "hit" ? W_HIT : signal === "hold" ? W_HOLD : W_FADE;
+    const w = weights();
+    w.kind[kind] = clampW((w.kind[kind] ?? 1) * by);
+    if (sender) {
+      const k = sender.toLowerCase();
+      w.sender[k] = clampW((w.sender[k] ?? 1) * by);
+      // Bounded: the 200 senders it heard about last.
+      const keys = Object.keys(w.sender);
+      if (keys.length > 200) for (const old of keys.slice(0, keys.length - 200)) delete w.sender[old];
+    }
+  }
+
+  /**
+   * D453: the offers a note says, in order: urgent first, then focus, then cost × what was taken up;
+   * one slot for a kind not offered for EXPLORE_DAYS (silence never ends a kind), and in the first
+   * OFFER_SHOWN at most SAME_KIND_SHOWN of one kind (the rest still go, under the fold).
+   */
+  function rankOffers(kept: { c: Candidate; text: string }[], terms: string[], room: number): { c: Candidate; text: string }[] {
+    if (room <= 0 || !kept.length) return [];
+    const on = (x: { c: Candidate; text: string }) => terms.length > 0 && touchesFocus([x.text, x.c.words.en, x.c.words.zh, x.c.topic ?? "", ...x.c.how.map((h) => h.what)].join(" "), terms);
+    const score = (x: { c: Candidate }) => x.c.cost * weightOf(x.c.kind, x.c.sender);
+    const order = [...kept].sort((a, b) => Number(b.c.urgent) - Number(a.c.urgent) || Number(on(b)) - Number(on(a)) || score(b) - score(a) || kept.indexOf(a) - kept.indexOf(b));
+    let pick = order.slice(0, room);
+    const at = now();
+    const lately = (k: FindKind) => at - (st.offeredKinds?.[k] ?? 0) < EXPLORE_DAYS * DAY;
+    // Only when every kind picked is one offered lately (what was taken up crowds the rest out):
+    // the last slot goes to the costliest of a kind left quiet, so silence never ends a kind.
+    const fresh = pick.every((p) => lately(p.c.kind)) ? order.find((x) => !pick.includes(x) && !lately(x.c.kind)) : undefined;
+    if (fresh && pick.length === room && room > 1) pick = [...pick.slice(0, room - 1), fresh];
+    // D368: focus decides what goes in; the note keeps the bar's order (urgent, then cost × weight).
+    const base = [...kept].sort((a, b) => Number(b.c.urgent) - Number(a.c.urgent) || score(b) - score(a) || kept.indexOf(a) - kept.indexOf(b));
+    pick.sort((a, b) => base.indexOf(a) - base.indexOf(b));
+    // Diversity in what is shown in full: the third of a kind trades places with the next other kind.
+    const shown: typeof pick = [];
+    const rest: typeof pick = [];
+    for (const x of pick) {
+      if (shown.length < OFFER_SHOWN && shown.filter((y) => y.c.kind === x.c.kind).length < SAME_KIND_SHOWN) shown.push(x);
+      else rest.push(x);
+    }
+    while (shown.length < OFFER_SHOWN && rest.length) shown.push(rest.shift()!);
+    return [...shown, ...rest];
+  }
+
   /** One find, written down: its record, its next step as a decision (default Hold), never pushed alone. */
-  function makeFind(c: Candidate, text: string, noteId: string): FindView {
+  function makeFind(c: Candidate, text: string, noteId: string, offer = false): FindView {
     const findId = newId("find");
     const z = lang();
     let decisionId: string | undefined;
@@ -766,7 +854,7 @@ export function createProactive(o: ProactiveOptions): Proactive {
       // D403: with its reply already written, Go is the send itself.
       goLabel = c.draft ? words(SEND_LABEL, z) : words(c.step.goLabel, z);
       // D403: away from its card (On hand), a drafted reply's Go is 看草稿 / See the draft, never Send.
-      o.log.append({ stream: "channel", origin: "partner", kind: "decision", body: { decisionId, question: text, goLabel: c.draft ? words(SEE_LABEL, z) : goLabel, defaultOption: "hold", reversible: false, findId, ...(c.draft ? { draft: { first: firstLine(c.draft.text) } } : {}) } });
+      o.log.append({ stream: "channel", origin: "partner", kind: "decision", body: { decisionId, question: text, goLabel: c.draft ? words(SEE_LABEL, z) : goLabel, defaultOption: "hold", reversible: false, findId, ...(offer ? { offer: true } : {}), ...(c.draft ? { draft: { first: firstLine(c.draft.text) } } : {}) } });
     }
     // D388: each source line says what that source says, in the person's language.
     const how = c.how.map((h, i) => (c.says?.[i] ? { ...h, says: words(c.says[i]!, z) } : h));
@@ -790,8 +878,11 @@ export function createProactive(o: ProactiveOptions): Proactive {
       ...(untouched ? { untouched } : {}),
       ...(c.reply ? { reply: c.reply } : {}),
       ...(c.draft ? { draft: c.draft } : {}),
+      // D453: an offer fades at the next morning if nothing came of it.
+      ...(offer ? { offer: true, until: nextMorning(now() + MIN) } : {}),
     };
     st.finds[findId] = rec;
+    if (offer) st.offeredKinds = { ...st.offeredKinds, [c.kind]: now() };
     st.said[c.key] = findId;
     // D388: what it leaves open is kept, and answered once when a later source gives it.
     if (c.open) {
@@ -801,7 +892,7 @@ export function createProactive(o: ProactiveOptions): Proactive {
       st.opens = list.slice(-30);
     }
     const draft = c.draft && c.reply ? { text: c.draft.text, to: c.reply.name ?? c.reply.to, ...(c.reply.account ? { from: c.reply.account } : {}), subject: c.reply.subject, lang: c.draft.lang, ...(c.draft.check ? { check: c.draft.check } : {}) } : undefined;
-    return { findId, kind: c.kind, text, how, ...(decisionId ? { decisionId, goLabel } : {}), ...(c.dueAt ? { dueAt: c.dueAt } : {}), ...(c.sender ? { sender: c.sender } : {}), ...(unknown ? { unknown } : {}), ...(untouched ? { untouched } : {}), ...(draft ? { draft } : {}) };
+    return { findId, kind: c.kind, text, how, ...(decisionId ? { decisionId, goLabel } : {}), ...(c.dueAt ? { dueAt: c.dueAt } : {}), ...(c.sender ? { sender: c.sender } : {}), ...(unknown ? { unknown } : {}), ...(untouched ? { untouched } : {}), ...(draft ? { draft } : {}), ...(offer ? { offer: true } : {}) };
   }
 
   /**
@@ -835,7 +926,7 @@ export function createProactive(o: ProactiveOptions): Proactive {
   function askAgain(findId: string, f: FindRec): string {
     const decisionId = newId("d");
     f.decisionId = decisionId;
-    o.log.append({ stream: "channel", origin: "partner", kind: "decision", body: { decisionId, question: f.text, goLabel: words(SEE_LABEL, lang()), defaultOption: "hold", reversible: false, findId, ...(f.draft ? { draft: { first: firstLine(f.send?.text ?? f.draft.text) } } : {}) } });
+    o.log.append({ stream: "channel", origin: "partner", kind: "decision", body: { decisionId, question: f.text, goLabel: words(SEE_LABEL, lang()), defaultOption: "hold", reversible: false, findId, ...(f.offer ? { offer: true } : {}), ...(f.draft ? { draft: { first: firstLine(f.send?.text ?? f.draft.text) } } : {}) } });
     return decisionId;
   }
 
@@ -883,7 +974,7 @@ export function createProactive(o: ProactiveOptions): Proactive {
    * What can't wait. D232: urgent by what waiting costs; in 只说急的, with no morning note to join,
    * a promise due today is said now too.
    */
-  const urgentIn = (m: ProactiveMode, c: Candidate) => c.urgent || (m === "urgent" && (c.kind === "promised" || !!c.pressing));
+  const urgentIn = (m: ProactiveMode, c: Candidate) => (c.urgent || (m === "urgent" && (c.kind === "promised" || !!c.pressing))) && c.cost >= bar(c.kind);
   const todaysNote = () => st.mornings.find((m) => m.day === today() && m.finds > 0);
 
   /**
@@ -931,8 +1022,8 @@ export function createProactive(o: ProactiveOptions): Proactive {
         return sayNow(kept.filter((x) => urgentIn(m, x.c)), false);
       }
       const ownFinds = mine.filter((r) => r.asked || !muted(ownCandidate(r)));
-      // D368: over the cap, what touches their focus goes in first; the note keeps the usual order.
-      const pick = byFocus(kept, terms).slice(0, capLeft(m)).sort((a, b) => kept.indexOf(a) - kept.indexOf(b));
+      // D453: the offers, ranked by focus, cost and what the person took up, one slot exploring.
+      const pick = rankOffers(kept, terms, capLeft(m));
       await withDrafts(pick);
       const line = todayLine(z);
       const learned = learnedOffer();
@@ -964,7 +1055,7 @@ export function createProactive(o: ProactiveOptions): Proactive {
         st.mornings.push({ noteId, seq: e.seq, day: today(), finds: 0 });
         notify("passive", line, noteId);
       } else {
-        const finds = [...ownFinds.map((r) => ownCandidate(r)).map((c) => makeFind(c, words(c.words, z), noteId)), ...pick.map((x) => makeFind(x.c, x.text, noteId)), ...extra];
+        const finds = [...ownFinds.map((r) => ownCandidate(r)).map((c) => makeFind(c, words(c.words, z), noteId, true)), ...pick.map((x) => makeFind(x.c, x.text, noteId, true)), ...extra.map((f) => ({ ...f, offer: true }))];
         // D250: the first note on the default (never chosen, never asked) says how it works, with the chips.
         const askHow = modeBy() === "default" && !st.cadenceAsked && !st.cadenceNote;
         if (askHow) (st.cadenceAsked = true), (st.cadenceNote = noteId);
@@ -989,17 +1080,18 @@ export function createProactive(o: ProactiveOptions): Proactive {
     await sayNow(urgent, night);
     const morningNote = todaysNote();
     if (!night && m !== "urgent" && morningNote && o.present()) {
-      const timely = kept.filter((x) => !x.c.urgent && x.c.dueAt && daysUntil(x.c.dueAt, at, zone()) <= 0);
-      // One note holds at most NOTE_MAX (有用就说) or what is left of the day's 3.
-      const room = m === "useful" ? Math.max(0, NOTE_MAX - morningNote.finds) : capLeft(m);
-      const rest = timely.slice(0, room);
+      // D453: an urgent one under its kind's interrupt bar is an offer, folded in quietly.
+      const timely = kept.filter((x) => !urgentIn(m, x.c) && !st.said[x.c.key] && x.c.dueAt && daysUntil(x.c.dueAt, at, zone()) <= 0);
+      // What is left of the day's offers (OFFERS_A_DAY, or the 3 the person chose).
+      const room = m === "useful" ? Math.max(0, OFFERS_A_DAY - offersToday()) : capLeft(m);
+      const rest = rankOffers(timely, [], room);
       if (m === "useful") st.more += timely.length - rest.length;
       if (rest.length) {
         await withDrafts(rest);
         const prev = o.log.read({ stream: "channel", kinds: ["finds"], limit: 200 }).reverse().find((e) => (e.body as Bodies["finds"]).noteId === morningNote.noteId || (e.body as Bodies["finds"]).revises === morningNote.noteId);
         const pb = prev?.body as Bodies["finds"] | undefined;
         if (pb) {
-          const finds = [...pb.finds, ...rest.map((x) => makeFind(x.c, x.text, morningNote.noteId))];
+          const finds = [...pb.finds, ...rest.map((x) => makeFind(x.c, x.text, morningNote.noteId, true))];
           note({ ...pb, noteId: newId("note"), rung: "fold", revises: morningNote.noteId, finds, added: rest.length });
           st.day.said += rest.length;
           morningNote.finds = finds.length;
@@ -1366,11 +1458,17 @@ export function createProactive(o: ProactiveOptions): Proactive {
   /** A find untouched past its date quietly becomes 过了 / Passed: never "done" on its own. */
   function passDue(): void {
     for (const [findId, f] of Object.entries(st.finds)) {
-      if (f.state || !f.dueAt || Date.parse(f.dueAt) + (f.kind === "meeting" ? 60 * MIN : DAY) > now()) continue;
+      if (f.state || f.send?.state === "sending") continue;
+      const due = f.dueAt ? Date.parse(f.dueAt) + (f.kind === "meeting" ? 60 * MIN : DAY) : Infinity;
+      // D453: an offer nothing came of fades at the next morning (or its date, if sooner).
+      const fades = f.offer && f.until !== undefined ? Math.min(f.until, due) : due;
+      if (fades > now()) continue;
       f.state = "passed";
       if (f.decisionId && o.decisions.isPending(f.decisionId)) o.log.append({ stream: "channel", origin: "system", kind: "decision_resolved", body: { decisionId: f.decisionId, option: "hold", by: "default" } });
       o.log.append({ stream: "channel", origin: "system", kind: "find_state", body: { findId, kind: f.kind, state: "passed" } });
-      if (!f.reaction) ignored(f.kind);
+      // Silence is natural (D453): an offer let be lowers its weight a little; only an interruption
+      // left untouched counts against its kind's interrupt bar.
+      if (!f.reaction) f.offer ? learn(f.kind, f.sender, "fade") : ignored(f.kind);
     }
     // Finds older than 45 days leave the record (their keys stay said until the facts expire).
     for (const [id, f] of Object.entries(st.finds)) if (now() - f.at > 45 * DAY) delete st.finds[id];
@@ -1402,19 +1500,6 @@ export function createProactive(o: ProactiveOptions): Proactive {
     }
   }
   const welcomed = (kind: FindKind) => (st.bars[kind] = Math.max(BAR_MIN, bar(kind) - BAR_DOWN));
-
-  /** Mornings with finds, in a row, that nobody read: the note pauses (D114's rule). */
-  function checkUnread(): void {
-    const lastRead = o.log.read({ stream: "channel", kinds: ["read_receipt"], limit: 1 }).at(-1);
-    const upTo = lastRead ? (lastRead.body as Bodies["read_receipt"]).upToSeq : 0;
-    const said = st.mornings.filter((m) => m.finds > 0);
-    const tail = said.slice(-UNREAD_TO_PAUSE);
-    if (!st.paused && tail.length === UNREAD_TO_PAUSE && tail.every((m) => m.seq > upTo)) {
-      st.paused = true;
-      st.keepAsk = "pending";
-      save();
-    }
-  }
 
   // ---------- following through ----------
 
@@ -1451,6 +1536,7 @@ export function createProactive(o: ProactiveOptions): Proactive {
       if (r.option === "go") {
         f.state = "go";
         welcomed(f.kind);
+        learn(f.kind, f.sender, "hit");
         save();
         // D403: a reply already written is sent (after its undo window), not handed to a task; only
         // a Go that carries the words the person saw (the card always sends them). A bare Go (On
@@ -1465,26 +1551,24 @@ export function createProactive(o: ProactiveOptions): Proactive {
         else void Promise.resolve().then(() => follow(findId, f));
       } else if (r.option === "reply") {
         // D258: a reply (or a message that answered the card) is the person engaging, never a
-        // "not now": the find is done with and the bar learns nothing from it.
+        // "not now": the find is done with. D453: it is a hit, the best kind (they engaged).
         f.state = "passed";
+        learn(f.kind, f.sender, "hit");
         save();
         o.log.append({ stream: "channel", origin: "system", kind: "find_state", body: { findId, kind: f.kind, state: "passed" } });
       } else {
         f.state = "held";
-        ignored(f.kind);
+        // D453: Hold on an offer (a chat app, an old client) lowers its weight; on an
+        // interruption, it raises that kind's interrupt bar (it comes as an offer next time).
+        if (f.offer) learn(f.kind, f.sender, "hold");
+        else ignored(f.kind);
         save();
         o.log.append({ stream: "channel", origin: "system", kind: "find_state", body: { findId, kind: f.kind, state: "held" } });
       }
-    } else if (e.kind === "user_msg" && e.stream === "channel" && (st.keepAsk === "pending" || st.again === "pending")) {
+    } else if (e.kind === "user_msg" && e.stream === "channel" && st.again === "pending") {
       // D274: asked once, the next time the person writes, but only after the partner has answered
       // what they wrote: the offer never comes before (or instead of) the reply to their words.
       afterReply = true;
-    } else if (e.kind === "ai_msg" && e.origin === "partner" && afterReply && st.keepAsk === "pending") {
-      afterReply = false;
-      // 早上那条还要吗？
-      st.keepAsk = "asked";
-      save();
-      void Promise.resolve().then(() => note({ noteId: newId("note"), rung: "morning", opening: W.keepNote(lang()), finds: [], ask: "keep_note" }));
     } else if (e.kind === "ai_msg" && e.origin === "partner" && afterReply && st.again === "pending") {
       afterReply = false;
       // D250: the morning note offered back, once, the next time the person writes; only while they
@@ -1561,9 +1645,10 @@ export function createProactive(o: ProactiveOptions): Proactive {
     const have = new Set(items.map((i) => i.key));
     items.push(...wide.items.filter((i) => !have.has(i.key)));
     await toLedger(items, "first");
-    const kept = (await judged(detect(ledger, dctx()), "first")).slice(0, DAILY_CAP);
+    // D453: what they asked to see, as offers (the first OFFER_SHOWN in full, the rest folded).
+    const kept = rankOffers(await judged(detect(ledger, dctx()), "first"), [], OFFER_NOTE_MAX);
     const answer = newId("note");
-    const finds = kept.map((x) => makeFind(x.c, x.text, answer));
+    const finds = kept.map((x) => makeFind(x.c, x.text, answer, true));
     note({ noteId: answer, rung: "first", opening: W.firstAnswer(z, finds.length), finds, ask: "cadence" });
     st.cadenceNote = answer;
     st.cadenceAsked = true;
@@ -1697,8 +1782,6 @@ export function createProactive(o: ProactiveOptions): Proactive {
     st.morningDay = today();
     ledger.sweep(now());
     passDue();
-    checkUnread();
-    if (st.paused) return save();
     await speak("morning");
   }
 
@@ -1710,7 +1793,7 @@ export function createProactive(o: ProactiveOptions): Proactive {
   async function mine(): Promise<void> {
     if (missedMorning()) await morningRun();
     const m = mode();
-    const noteDay = (m === "three" || m === "useful") && !st.paused && now() - morningOf(today()) <= MORNING_LATE_MS;
+    const noteDay = (m === "three" || m === "useful") && now() - morningOf(today()) <= MORNING_LATE_MS;
     sayOwn(ownDue().filter((r) => r.timed || !noteDay || st.morningDay === today()));
   }
 
@@ -1850,7 +1933,6 @@ export function createProactive(o: ProactiveOptions): Proactive {
       rollMonth();
       return {
         watching,
-        ...(watching && st.paused ? { paused: true } : {}),
         readToday: watchers.readToday(connectionId),
         worthToday,
         budgetPct: Math.min(100, Math.round(((st.month.tokens[connectionId] ?? 0) / budget) * 100)),
@@ -1881,6 +1963,7 @@ export function createProactive(o: ProactiveOptions): Proactive {
       if (reaction === "useful") {
         f.reaction = "useful";
         welcomed(f.kind);
+        learn(f.kind, f.sender, "hit");
         o.log.append({ stream: "channel", origin: "user", kind: "find_state", body: { findId, kind: f.kind, state: "useful" } });
       } else {
         f.reaction = "muted";
@@ -2021,8 +2104,7 @@ export function createProactive(o: ProactiveOptions): Proactive {
           if (st.mornings.some((m) => m.day === dayKey(quietEndsAt(at, q), zone()))) return;
           ledger.sweep(now());
           passDue();
-          checkUnread();
-          if (!st.paused) await speak("morning");
+          await speak("morning");
         });
       }
     },

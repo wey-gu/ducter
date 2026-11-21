@@ -77,7 +77,7 @@ interface State {
   readsDay?: { day: string; n: number };
   /** The sentence said in the conversation (once on connect, and when asked). */
   said?: string;
-  /** The morning picks: the day last offered, and how many offers in a row went unanswered. */
+  /** The morning picks: the day last offered (picksIgnored: the retired two-unanswered stop, D453; cleared). */
   picksDay?: string;
   picksIgnored?: number;
   picksId?: string;
@@ -1220,13 +1220,11 @@ export function createPile(d: PileDeps): Pile {
       void noteId;
       const day = d.dayOf(d.now());
       if (st.picksDay === day || !st.sortedAt) return undefined;
-      // Restraint: two offers in a row left unanswered, and the picks stop until the person hands one over again.
-      if ((st.picksIgnored ?? 0) >= 2) return undefined;
+      // D453: an offer, every morning there is something to clear: one left unanswered is natural,
+      // never a reason to stop (the old rule stopped after two). It fades on its own (defaultAt).
       const picks = this.items("do").slice(0, 3);
       if (!picks.length) return undefined;
-      // The last offer, unanswered, counts as ignored.
-      if (st.picksId && !d.log.read({ kinds: ["decision_resolved"], beforeSeq: d.log.head() + 1, limit: 2000 }).some((e) => (e.body as Bodies["decision_resolved"]).decisionId === st.picksId && (e.body as Bodies["decision_resolved"]).by === "user")) st.picksIgnored = (st.picksIgnored ?? 0) + 1;
-      if ((st.picksIgnored ?? 0) >= 2) return save(), undefined;
+      st.picksIgnored = undefined;
       const lang = d.lang();
       const w = W[lang];
       const y = cleared(d.dayOf(d.now() - DAY_MS));
@@ -1234,7 +1232,7 @@ export function createPile(d: PileDeps): Pile {
       const how: FindHow[] = picks.map((p) => ({ what: p.item.title.slice(0, 80), from: p.item.kind === "github" ? `${p.item.where ?? ""}${p.item.label}` : (p.item.where ?? "Obsidian"), at: p.item.updatedAt ?? new Date(d.now()).toISOString() }));
       const decisionId = newId();
       const goLabel = fill(w.picksGo, { name: d.name() });
-      d.log.append({ stream: "channel", origin: "partner", kind: "decision", body: { decisionId, question: text, goLabel, holdLabel: w.picksHold, defaultOption: "hold", defaultAt: new Date(d.now() + 10 * 3_600_000).toISOString(), reversible: false, findId, src: { kind: "picks", item: refOfItem(picks[0]!.item), items: picks.map((p) => ({ item: refOfItem(p.item) })) } } });
+      d.log.append({ stream: "channel", origin: "partner", kind: "decision", body: { decisionId, question: text, goLabel, holdLabel: w.picksHold, defaultOption: "hold", defaultAt: new Date(d.now() + 10 * 3_600_000).toISOString(), reversible: false, findId, offer: true, src: { kind: "picks", item: refOfItem(picks[0]!.item), items: picks.map((p) => ({ item: refOfItem(p.item) })) } } });
       st.picksDay = day;
       st.picksId = decisionId;
       st.picksRefs = picks.map((p) => p.item.ref);

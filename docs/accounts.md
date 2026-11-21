@@ -115,10 +115,12 @@ another place.
 
 ## When it notices something
 
-Once you add an account, your partner keeps an eye on it and tells you only what matters. The
-first time, it asks whether to look through the last two weeks for anything that needs you
-(someone waiting, a bill due, a booking that doesn't add up), and then how you want to hear about
-things, with **Up to 3 a day** already chosen. If you don't answer, that's what it does; the
+Once you add an account, your partner keeps an eye on it. It can't see your whole life, so it
+can't know which of the things it notices will matter to you; it offers what might help, quietly,
+and doesn't mind when you let most of it be. Only what can't wait calls you. The first time, it
+asks whether to look through the last two weeks for anything that needs you (someone waiting, a
+bill due, a booking that doesn't add up), and then how you want to hear about things, with
+**Whenever useful** already chosen. If you don't answer, that's what it does; the
 first morning message shows the same choice under it, so you can change it there.
 
 You can change the same choice any time in **Settings › Notifications**:
@@ -128,10 +130,13 @@ You can change the same choice any time in **Settings › Notifications**:
   tomorrow, a correction to something it told you, someone who asked you again or has waited
   three working days, a promise due today; and, 10 minutes before a meeting, what you have open
   with those people.
-- **Up to 3 a day** (until you choose otherwise): one message in the morning, when your quiet hours end, with at
-  most three things; anything urgent right away (at most three of those a day, on top). On a day with nothing worth saying it sends
-  nothing and shows nothing: no news is good news.
-- **Whenever useful**: everything worth saying, still in the morning message (at most five in one).
+- **Up to 3 a day**: one message in the morning, when your quiet hours end, with at most three
+  things; anything urgent right away (at most three of those a day, on top).
+- **Whenever useful** (until you choose otherwise): one quiet message in the morning, when your
+  quiet hours end, with anything that might help: the first three in full, the rest under **A few
+  more** (at most six; ten a day with what joins it while you're in the app). Anything urgent comes
+  right away (at most three a day). On a day with nothing worth saying it sends nothing and shows
+  nothing: no news is good news.
 - **Only when I ask**: it doesn't look by itself.
 
 If you choose here instead of answering the first question, or don't answer it, it still takes one quiet look back
@@ -155,10 +160,11 @@ that it changed nothing (**I didn't change your calendar.**). Ask "how did you k
 answers from those same lines, adding nothing. If it told you something was still open (a talk
 with no time yet), it may come back once when it finds out: from a later mail, your calendar, or
 a quick look at the event's public page (only the event's name, place and the days in question
-are searched), with **Filling in the time: …** and the page it read. It also gives at most one next step, like **See if it can start earlier**: nothing happens until
-you tap it, and even then it only looks things up or drafts; it never pays, books, deletes or
-marks anything read, and sends only the reply you tapped **Send** on. A step you don't take
-quietly becomes **Passed** after its date.
+are searched), with **Filling in the time: …** and the page it read. It also gives at most one next step, like **See if it can start earlier**: tap it and the work starts at
+once, but it only looks things up or drafts; it never pays, books, deletes or marks anything read,
+and sends only the reply you tapped **Send** on. Nothing in the morning message needs an answer:
+there is no "not now" to press, it never shows up as waiting on you, and what you leave alone simply
+fades by the next morning, with no word about it. Your partner never brings it up.
 
 Someone waiting on your answer is mentioned only when it's worth your time: a real person (not a
 service's notification or a sales address you never wrote to), with a question it can name, not
@@ -172,10 +178,9 @@ and nothing is saved into your mailbox. On **On hand** the same item shows the r
 and **See the draft**, which takes you to it in the conversation.
 
 Under each one, **Useful** or **Don't tell me this kind**. The second becomes a rule in **Your
-rules**, where you can remove it. If three morning messages in a row go unread, they stop, and
-the next time you write it asks whether to keep them. **No more** switches to **Only urgent**,
-never off. If what it can tell you gets clearly better later, it asks once more whether you want
-a few things each morning; whatever you answer, it doesn't ask again. At night it never wakes you, unless you
+rules**, where you can remove it. You don't have to do anything else: what you tap, reply to or
+mark useful comes up first next time, and what you leave alone a little later, but no kind goes
+quiet just because you didn't answer. Unread messages never make it stop. At night it never wakes you, unless you
 said so for a kind ("wake me if a flight changes").
 
 It doesn't tell you how much it read or list what it skipped. Ask "anything else?" and it tells

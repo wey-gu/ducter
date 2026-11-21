@@ -269,7 +269,7 @@ anything on the page, and with notifications off it shows where the question wai
   it (like *Got it: if you don't answer, I'll go with the default after 1 hour.*), which goes away
   by itself.
 - **When it notices something** (once you have accounts): how your partner tells you what it
-  noticed by itself: **Only urgent**, **Up to 3 a day** (until you choose), **Whenever useful** or **Only when I
+  noticed by itself: **Only urgent**, **Up to 3 a day**, **Whenever useful** (until you choose) or **Only when I
   ask**; see [When it notices something](accounts.md#when-it-notices-something).
   Under it, **What it looked at today** shows, in numbers only, what it looked at, what it read
   closely and why it said nothing about the rest (not urgent, waiting for the morning message,

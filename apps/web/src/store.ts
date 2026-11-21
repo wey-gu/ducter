@@ -889,7 +889,8 @@ export class Store {
 
   openDecisions(): DecisionState[] {
     return [...this.decisions.values()]
-      .filter((d) => !d.resolved && !d.pending && !d.later && d.question)
+      // D453: an offer never needs the person: it lives in its note only (no On hand, no count, no talk card).
+      .filter((d) => !d.resolved && !d.pending && !d.later && d.question && !d.offer)
       .filter((d) => {
         const t = d.taskId ? this.tasks.get(d.taskId) : undefined;
         return !t || laneOf(attention(t)) !== LANE.hidden;

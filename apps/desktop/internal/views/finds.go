@@ -11,12 +11,14 @@ import (
 )
 
 // A note the partner said by itself (D165, design/connectors.md §6): one
-// partner message. Its opening line says what it looked at; then up to
-// three finds, each its kind in small letters, at most two sentences, its
-// one next step (好，<action> · 先等等, never run without Go), and one row
-// with 怎么知道的 › (the evidence, in place) and 有用 · 这类不用告诉我;
-// then the 没说的 line. A note may carry one ask: 好，看一眼 · 先不用, the
+// partner message. Its opening line; then its finds, each its kind in small
+// letters, at most two sentences, its one next step (好，<action>, never run
+// without Go), and one row with 怎么知道的 › (the evidence, in place) and
+// 有用 · 这类不用告诉我. A note may carry one ask: 好，看一眼 · 先不用, the
 // proactive chips themselves, or 要 · 不用了. Only shared controls.
+// D453: a find said as an offer has no 先等等 (letting it be is the hold);
+// past the first three the rest wait under 还有几条 / A few more; one that
+// faded keeps its words in the muted ink, with no button and no word.
 
 func (a *App) findsEntry(c *ui.Context, e *store.Entry) {
 	t := a.T
@@ -27,11 +29,35 @@ func (a *App) findsEntry(c *ui.Context, e *store.Entry) {
 			if n.Opening != "" {
 				uiText(c, autospace(n.Opening)).Selectable().FontSize(t.PartnerSize).LineHeight(leadingFor(n.Opening, 1.5)).TextColor(t.OnPartnerBubble)
 			}
-			for i, f := range n.Finds {
+			offers := 0
+			for _, f := range n.Finds {
+				if f.Offer {
+					offers++
+				}
+			}
+			more := a.open["more:"+key]
+			shown, i := 0, 0
+			for _, f := range n.Finds {
+				if f.Offer && offers > protocol.OfferShown && !more {
+					if shown >= protocol.OfferShown {
+						continue
+					}
+					shown++
+				}
 				if i > 0 || n.Opening != "" {
 					ui.Box(c).Height(1).Background(t.LineSoft).Margin(t.S1, 0)
 				}
 				a.findBlock(c, f, e.Event.Seq)
+				i++
+			}
+			if offers > protocol.OfferShown {
+				label := a.L.T("find.more")
+				if more {
+					label = a.L.T("find.fewer")
+				}
+				if a.quietButton(c, "more:"+key, label, "", false, map[bool]int{false: 1, true: 2}[more]) {
+					a.open["more:"+key] = !more
+				}
 			}
 			a.noteAsk(c, n)
 		})
@@ -53,6 +79,12 @@ func (a *App) findBlock(c *ui.Context, f protocol.FindView, seq int64) {
 	if k := a.foundAt(c, seq, f.FindID); k > 0 {
 		col.Background(t.PartnerBubble.Mix(t.Reply.FoundPartner, k))
 	}
+	// D453: an offer nothing came of fades: its words stay, muted; no button, no word.
+	faded := f.Offer && st != nil && st.State == "passed"
+	words := t.OnPartnerBubble
+	if faded {
+		words = t.InkMuted
+	}
 	col.Children(func() {
 		uiText(c, a.L.T("kind."+f.Kind)).FontSize(t.XS).FontWeight(800).TextColor(t.InkMuted)
 		// D256: the find's words, and its pebble outside the note card in the
@@ -60,7 +92,7 @@ func (a *App) findBlock(c *ui.Context, f protocol.FindView, seq int64) {
 		// (transparent, from the card's edge to the pebble) keeps the hover
 		// while the pointer crosses the card's inset.
 		ui.Column(c.Key("words:" + f.FindID)).Children(func() {
-			ft := uiText(c, autospace(f.Text)).Selectable().FontSize(t.PartnerSize).LineHeight(leadingFor(f.Text, 1.5)).TextColor(t.OnPartnerBubble)
+			ft := uiText(c, autospace(f.Text)).Selectable().FontSize(t.PartnerSize).LineHeight(leadingFor(f.Text, 1.5)).TextColor(words)
 			a.replyMenu(c, ft, rt, f.Text)
 			out := t.S4 - 2 + a.pebbleGap()
 			// Wide enough for the pebble with its word; it grows away from the card.
@@ -85,6 +117,8 @@ func (a *App) findBlock(c *ui.Context, f protocol.FindView, seq int64) {
 		}
 		if d != nil && !drafted {
 			switch {
+			case faded, f.Offer && d.Resolved != nil && d.Resolved.By == "default":
+				// D453: nothing about an offer let be.
 			case st != nil && st.State == "passed":
 				uiText(c, a.L.T("find.passed")).FontSize(t.SM).TextColor(t.InkMuted)
 			case openAsk(d):
@@ -92,17 +126,22 @@ func (a *App) findBlock(c *ui.Context, f protocol.FindView, seq int64) {
 					if a.buttonFor(c, a.L.T("decision.go.label", f.GoLabel), "", btnSecondary, t.ControlSM, t.PartnerBubble) {
 						a.Decide(d.DecisionID, "go", "")
 					}
-					if a.buttonFor(c, a.holdLabel(d), "", btnText, t.ControlSM, t.PartnerBubble) {
+					if !f.Offer && a.buttonFor(c, a.holdLabel(d), "", btnText, t.ControlSM, t.PartnerBubble) {
 						a.Decide(d.DecisionID, "hold", "")
 					}
 				})
 			case st != nil && st.State == "go":
 				uiText(c, a.L.T("find.going")).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
+			case f.Offer:
+				// D453: an offer held elsewhere (a chat app) says nothing here.
 			default:
 				uiText(c, a.L.T("find.held")).FontSize(t.SM).TextColor(t.InkMuted)
 			}
 		}
 		open := a.open["how:"+f.FindID]
+		if faded {
+			return
+		}
 		ui.Row(c.Key("react:" + f.FindID)).Gap(t.S3).AlignItems(ui.Center).Children(func() {
 			if a.quietButton(c, "how:"+f.FindID, a.L.T("find.how"), "", false, map[bool]int{false: 1, true: 2}[open]) {
 				a.open["how:"+f.FindID] = !open
@@ -239,7 +278,7 @@ func (a *App) findDraft(c *ui.Context, f protocol.FindView, d *store.DecisionSta
 				if a.buttonFor(c, a.L.T("decision.go.label", label), dr.To, btnSecondary, t.ControlSM, t.PartnerBubble) && text != "" {
 					a.Decide(d.DecisionID, "go", text)
 				}
-				if a.buttonFor(c, a.holdLabel(d), "", btnText, t.ControlSM, t.PartnerBubble) {
+				if !f.Offer && a.buttonFor(c, a.holdLabel(d), "", btnText, t.ControlSM, t.PartnerBubble) {
 					a.Decide(d.DecisionID, "hold", "")
 				}
 			})

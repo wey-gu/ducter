@@ -1,12 +1,17 @@
-// Stage 3 (D165 §3, §10): the bar. A find is said only when all four hold: (1) they likely don't
-// know it yet; (2) missing it costs something, soon; (3) there is something to do or decide, or it
-// joins two things; (4) it can show how it knows. Code checks what code can (grounded, cost over
-// the kind's bar, a step or a join); the partner's own model judges the rest a few times a day,
-// and may only shorten or drop, never invent: its words are checked against the length budget.
+// Stage 3 (D165 §3, §10; D453): the bar for an offer. Ducter can't see the person's whole life, so
+// it can't know what will land; a quiet offer they let be costs a glance, a missed aha costs the
+// thing itself. An offer needs: (1) it can show how it knows; (2) something to do or decide, or it
+// joins two things; (3) it is plausibly news to them and worth a glance (cost over OFFER_FLOOR).
+// Whether it may also interrupt is the engine's (urgent, over the kind's interrupt bar). Code checks
+// what code can; the partner's own model drops only what is plainly not for them and rewrites the
+// rest, never inventing: its words are checked against the length budget.
 import { langName, scriptOfLang, words, type FindKind, type LangTag } from "@ducter/protocol";
 import type { Candidate } from "./candidate.ts";
 
+/** D453: a kind's interrupt bar before anything was learned (the engine's; offers don't use it). */
 export const DEFAULT_BAR = 50;
+/** D453: the least a find must be worth to be offered at all (the cheapest kinds' costs: a promise 40, a routine service notice 42). */
+export const OFFER_FLOOR = 35;
 /** At most this many candidates go to the model in one run: urgent first, then the costliest (research/48 P2). */
 export const JUDGE_MAX = 10;
 /** Evidence lines per candidate in the prompt (a merged find can carry many). */
@@ -24,10 +29,12 @@ export interface JudgeCtx {
   /** The conversation's language (D292): the drafts come in zh or en (ko → en); the rewrite is in this one. */
   lang: LangTag;
   today: string;
-  /** Per-kind bars, raised by ignored finds (learn.ts). */
+  /** Per-kind interrupt bars (D453: the engine's, for "now"; an offer's floor is OFFER_FLOOR). */
   bars: Partial<Record<FindKind, number>>;
   /** D368: what the person is focused on these days (their Working Memory's focus names); absent: unknown. */
   focus?: string[];
+  /** D453: the least an offer must be worth: OFFER_FLOOR, or DEFAULT_BAR when the person chose 每天最多 3 条. */
+  floor?: number;
 }
 
 export type FindJudge = (cands: Candidate[], ctx: JudgeCtx) => Promise<{ verdicts: Verdict[]; tokens: number }>;
@@ -35,10 +42,10 @@ export type FindJudge = (cands: Candidate[], ctx: JudgeCtx) => Promise<{ verdict
 /** Kinds whose words are the help: they need no next step (a join, a time, a correction). */
 const INFORMS = new Set<FindKind>(["mismatch", "meeting", "plan_changed", "coming_up", "service", "update"]);
 
-/** The four tests, as far as code can tell. */
-export function preBar(c: Candidate, bars: JudgeCtx["bars"]): { pass: boolean; why: string } {
+/** The offer's tests, as far as code can tell (D453: the floor is set by the mode, never learned: learning ranks, it never gates). */
+export function preBar(c: Candidate, _bars?: JudgeCtx["bars"], floor = OFFER_FLOOR): { pass: boolean; why: string } {
   if (!c.how.length || c.how.some((h) => !h.what || Number.isNaN(Date.parse(h.at)))) return { pass: false, why: "can't show how it knows" };
-  if (c.cost < (bars[c.kind] ?? DEFAULT_BAR)) return { pass: false, why: "costs too little" };
+  if (c.cost < floor) return { pass: false, why: "costs too little" };
   // A heads-up is the thing to do (D243): a trip, a service's window, a correction need no step.
   if (!c.step && !INFORMS.has(c.kind)) return { pass: false, why: "nothing to do" };
   return { pass: true, why: "" };
@@ -58,7 +65,7 @@ export function fitsBudget(text: string, lang: LangTag): boolean {
 /** Code alone: the four tests as code sees them, the detector's own words. */
 export const barJudge: FindJudge = async (cands, ctx) => ({
   verdicts: cands.map((c) => {
-    const b = preBar(c, ctx.bars);
+    const b = preBar(c, ctx.bars, ctx.floor);
     return { key: c.key, keep: b.pass, text: words(c.words, ctx.lang), ...(b.why ? { why: b.why } : {}) };
   }),
   tokens: 0,
@@ -68,8 +75,8 @@ export const barJudge: FindJudge = async (cands, ctx) => ({
 export function judgePrompt(cands: Candidate[], ctx: JudgeCtx): string {
   const rows = cands.slice(0, JUDGE_MAX).map((c) => ({ key: c.key, kind: c.kind, cost: c.cost, dueAt: c.dueAt, draft: words(c.words, ctx.lang), evidence: c.how.slice(-HOW_MAX), ...(c.notes?.length ? { details: c.notes } : {}), nextStep: c.step ? words(c.step.goLabel, ctx.lang) : null }));
   return [
-    "You are the person's partner deciding which of these things you noticed in their accounts are worth their attention. Saying something costs their attention; a false alarm costs their trust; staying quiet about what a good assistant would have mentioned costs it too.",
-    "Keep one only when all four hold: (1) they likely don't know it yet; (2) missing it costs something, soon; (3) there is something to do or decide, or it joins two things they couldn't easily join; (4) the evidence shows how you know.",
+    "You are the person's partner deciding which of these things you noticed in their accounts to offer them, as quiet lines in their morning note: never a notification of their own, nothing they must answer. You can't see their whole life, so you can't know which one will matter; most offers will be let be, and that is fine. One that lands is worth many that don't, and a quiet line they skip costs them a glance.",
+    "Keep one when the evidence shows how you know, there is something to do or decide or it joins two things they couldn't easily join, and it could plausibly be news to them. When in doubt, keep it. Drop only what is plainly not for them: a list, a newsletter, a survey or an invitation everyone got, a shop's promotion, a receipt whose subject says it all, or anything the evidence doesn't support.",
     "What the cost is, by kind: waiting_on_you: a real person waiting on them is the cost; drop it only when the evidence shows a list, a survey, an invitation everyone got or a shop. coming_up: a trip in the next day and a half is worth a heads-up (when, where, when to leave) with nothing to decide. service: maintenance on their production, an outage, a job that keeps failing or a product they use shutting down is worth it; a building's or a shop's routine notice is not. deadline: money about to change hands or change. update: it corrects something you already told them; keep it unless the evidence doesn't show the change.",
     `Rewrite each kept one in ${langName(ctx.lang)}, at most two short sentences${dense(ctx.lang) ? " and about 60 characters" : ""}: plain, specific, dates, times and amounts exact, what to do when there is something, no exclamation marks, nothing the evidence doesn't say. Never write about yourself: not what you read, checked or hadn't said.`,
     'Answer with one JSON array only: [{"key": "<key>", "keep": true|false, "text": "<the rewrite, when kept>", "why": "<= 8 words"}]',
@@ -90,7 +97,7 @@ export function modelJudge(ask: (prompt: string) => Promise<{ text: string; toke
   return async (cands, ctx) => {
     const verdicts: Verdict[] = [];
     const passed = cands.filter((c) => {
-      const b = preBar(c, ctx.bars);
+      const b = preBar(c, ctx.bars, ctx.floor);
       if (!b.pass) verdicts.push({ key: c.key, keep: false, text: "", why: b.why });
       return b.pass;
     });

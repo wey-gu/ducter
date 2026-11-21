@@ -6001,6 +6001,10 @@ button.dev-name {
 /* D403: 看草稿 from On hand lands here; the find glows once. On hand shows the reply's first line, quiet, one line. */
 .bubble.note .find.flash { animation: ho-glow 1.6s var(--ease); border-radius: var(--r-sm); }
 @media (prefers-reduced-motion: reduce) { .bubble.note .find.flash { animation: none; box-shadow: 0 0 0 3px var(--accent); } }
+/* D453: an offer nothing came of fades: its words stay readable in the muted ink, nothing else
+   (no button, no "missed"). The offers past the first three wait under 还有几条 / A few more. */
+.bubble.note .find.faded .ftext, .bubble.note .find.faded .kind { color: var(--ink-muted); transition: color 0.6s var(--ease); }
+.bubble.note .fmore { align-self: flex-start; margin: -2px -8px -6px; font-size: var(--xs); color: var(--ink-muted); }
 .decision .draft-first { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: var(--ink-muted); }
 .bubble.note .note-ask { display: flex; flex-direction: column; gap: 8px; padding-top: 10px; border-top: 1px solid var(--line); }
 

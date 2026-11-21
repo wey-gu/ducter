@@ -393,6 +393,9 @@ export interface Bodies {
     // conversation; never a Send there. A Go without the words never sends.
     draft?: { first: string };
     asker?: PeerAsk; // D170: asked for one of the user's own agents; the answer goes back to it
+    // D448: a task's message to another agent (who: as the person reads it). Go sends it; Ducter
+    // tells the task what came of it, so nothing of the card is forwarded to the task.
+    relay?: { who: string };
     trust?: { agent: string }; // D170 (X2): 以后你的 <agent> 发来的活，直接接？ Go keeps the rule
     // D379: who does which work, said by the person and never saved; it just decided a task. Go
     // (记成规则 / Keep as a rule) saves their words as a rule; Hold (只这次 / Just this once, the
@@ -695,7 +698,16 @@ export interface Bodies {
     // Settings doesn't let reach the partner; none wakes the partner. Absent = a message to read.
     // D334, in: "held" = a teammate's agent's message kept while the person answers its sender card
     // (答应 logs it again without a state, so it wakes the partner; 不理 leaves it held).
-    state?: "pending" | "held" | "sending" | "sent" | "failed" | "unknown" | "unconfirmed" | "followed" | "early" | "set_aside" | "muted" | "ping";
+    // D448, in: "task" = an answer to a message a task sent (by: "task"): delivered into that task
+    // (`taskId`) as a follow-up; it never wakes the partner.
+    state?: "pending" | "held" | "sending" | "sent" | "failed" | "unknown" | "unconfirmed" | "followed" | "early" | "set_aside" | "muted" | "ping" | "task";
+    // D448, out: the task `taskId` wrote it (agent_message: a task on an agent with no Bridge of its
+    // own) and Ducter carried it, under the partner's identity with the task named. Never a claim or
+    // a result: never owed, never followed through with the person.
+    by?: "task";
+    // D448, out: the line Ducter put before the task's words (`text`) as it went: who writes
+    // ("Ducter 的任务「修 Linux CI」："). What went out is head, a newline, then text.
+    head?: string;
     opId?: string;
     contact?: string;
     operation?: string;

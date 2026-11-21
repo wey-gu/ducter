@@ -947,6 +947,11 @@ type BridgeMsg struct {
 	Ack bool `json:"ack,omitempty"`
 	// D444, in: what it hands over from Nowledge Mem, read once when it came.
 	Refs []BridgeRef `json:"refs,omitempty"`
+	// D448, out: By "task" = the task TaskID wrote it and Ducter carried it (Head:
+	// the line naming the task that went before Text); in: State "task" = an
+	// answer to it, delivered into that task.
+	By   string `json:"by,omitempty"`
+	Head string `json:"head,omitempty"`
 }
 
 // BridgeRef is one thing a message handed over from Nowledge Mem (D444):

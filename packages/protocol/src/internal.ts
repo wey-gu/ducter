@@ -187,6 +187,9 @@ export interface CoreApi {
   browser?: DucterBrowserPort;
   /** D168: memory for tasks, from the partner's own Mem client; absent in tests, stubs and with no partner. */
   taskMemory?: TaskMemoryPort;
+  /** D448: Bridge for a task on an agent with no Bridge of its own (agent_message), carried by the
+   *  partner's own client: on while Bridge is on and the task is one it relays for. Absent: no partner, tests. */
+  taskBridge?: { on(taskId: string): boolean };
   /** D193: phone calls through the calling connection (core/src/phone.ts); absent in tests and stubs. */
   phone?: PhonePort;
   /** D168: the user's Nowledge Mem plugin for this agent is on that device in any form but absent (by id or name; undefined = the home), as Mem's own check last said (research/48 M1). */

@@ -172,7 +172,8 @@ export function peersPhase(b: BridgeView | undefined, switchOn: boolean): PeersP
 }
 
 /** D332: one exchange with another agent, as 最近 / Recently lists it: who (its name, else the tool it runs in), which way, its words, when, where it leads. */
-export type Handoff = { seq: number; at: string; agent: string; host?: string; way: "in" | "sent" | "replied"; words: string; taskId?: string; mine?: boolean; role?: string; selfNamed?: boolean; state?: OutState };
+// D448: tasksent, a task's own message Ducter carried; taskin, an answer that went into that task.
+export type Handoff = { seq: number; at: string; agent: string; host?: string; way: "in" | "sent" | "replied" | "tasksent" | "taskin"; words: string; taskId?: string; mine?: boolean; role?: string; selfNamed?: boolean; state?: OutState };
 /** D433: an outgoing message that hasn't plainly gone: still going, being checked, given up on, or refused. */
 export type OutState = "sending" | "unknown" | "unconfirmed" | "failed";
 
@@ -212,7 +213,7 @@ export function recentHandoffs(
     const words = p.text.replace(/\s+/g, " ").trim();
     if (!words) continue;
     const who = peerCalled(p, p.direction);
-    out.push({ seq: e.ev.seq, at: e.ev.ts, agent: who.name ?? "", ...(who.host ? { host: who.host } : {}), way: p.direction === "in" ? "in" : p.decisionId ? "sent" : "replied", words, ...(p.taskId ? { taskId: p.taskId } : {}), ...(p.mine ? { mine: true } : {}), ...(p.selfNamed ? { selfNamed: true } : {}), ...(p.role ? { role: p.role } : {}), ...(pending ? { state: pending } : {}) });
+    out.push({ seq: e.ev.seq, at: e.ev.ts, agent: who.name ?? "", ...(who.host ? { host: who.host } : {}), way: (p as { by?: string }).by === "task" ? "tasksent" : p.direction === "in" ? (p.state === "task" ? "taskin" : "in") : p.decisionId ? "sent" : "replied", words, ...(p.taskId ? { taskId: p.taskId } : {}), ...(p.mine ? { mine: true } : {}), ...(p.selfNamed ? { selfNamed: true } : {}), ...(p.role ? { role: p.role } : {}), ...(pending ? { state: pending } : {}) });
   }
   return out;
 }
@@ -228,9 +229,11 @@ export const TOOL_NAME: Record<string, string> = { "claude-code": "Claude Code",
  * theirs, or their own records here), in a fixed order. can: its Mem plugin carries Bridge and is in;
  * install: it carries Bridge but isn't in on that device (one tap); unknown: Mem's check hasn't said;
  * none: its Mem plugin can't pass messages yet (Mem's to add). last: the newest exchange with it.
+ * D448: relay: its Mem plugin can't, but it is signed in on a computer of Ducter's, so the tasks Ducter
+ * runs on it pass messages through Ducter; the person's own sessions of it outside Ducter still can't.
  */
 // D444: box, from Mem's grouped contact list: its mailbox takes messages (open) or not (closed); absent when Mem didn't list it.
-export type ReachRow = { harness: string; tool: string; can: "yes" | "install" | "unknown" | "none"; device?: string; deviceName?: string; last?: string; box?: "open" | "closed" };
+export type ReachRow = { harness: string; tool: string; can: "yes" | "install" | "unknown" | "none" | "relay"; device?: string; deviceName?: string; last?: string; box?: "open" | "closed" };
 export function reachRows(
   devices: { id: string; name: string; home?: boolean; harnesses: { harness: string; installed: boolean; loggedIn: boolean; mem?: { state: string } }[] }[],
   ownAgents: readonly string[],
@@ -248,7 +251,7 @@ export function reachRows(
     const last = recent.find((r) => r.host === tool || new RegExp(`\\b${tool.replace(/ /g, "\\s*")}\\b`, "i").test(r.agent))?.at;
     const at = last ? { last } : {};
     if (!(BRIDGE_TOOLS as readonly string[]).includes(h)) {
-      out.push({ harness: h, tool, can: "none", ...at });
+      out.push({ harness: h, tool, can: here.length ? "relay" : "none", ...at });
       continue;
     }
     // D444: Mem listing its mailbox as open is the plainest proof it can reach the partner.

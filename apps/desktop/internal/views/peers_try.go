@@ -2,6 +2,7 @@ package views
 
 import (
 	"math"
+	"strings"
 	"time"
 
 	"github.com/egoist/mygo/ui"
@@ -112,7 +113,7 @@ func (a *App) handoffDot(c *ui.Context) func() {
 // first one, a calm row that waits for it.
 func (a *App) peersRecent(c *ui.Context, name string) {
 	t := a.T
-	list := recentHandoffs(a.S.Channel, 5, a.S.OutOps)
+	list := recentHandoffs(peerFeed(a.S.Channel, a.S.TaskPeers), 5, a.S.OutOps)
 	a.group(c, "peers-recent", a.L.T("peers.recent.title"), "", func() {
 		if len(list) == 0 {
 			a.tileRow(c, "peers-wait", a.handoffDot(c), a.L.T("peers.wait.title"), a.L.T("peers.wait.line"), nil)
@@ -133,7 +134,11 @@ func (a *App) peersRecent(c *ui.Context, name string) {
 				age = func() { uiText(c, s).FontSize(t.SM).FontWeight(600).TextColor(t.InkMuted).SingleLine() }
 			}
 			who := a.peerCalledText(h.Agent, h.Host)
-			if a.openRow(c, "handoff:"+itoa(h.Seq), a.peerTile(c, h.Agent, h.Host), autospace(h.Words), capPeer(a.L.T("peers.recent."+h.Way, who, name)), t.InkMuted, false, age) {
+			by := name
+			if h.Way == "tasksent" || h.Way == "taskin" {
+				by = a.taskNameOf(h.TaskID, name) // D448
+			}
+			if a.openRow(c, "handoff:"+itoa(h.Seq), a.peerTile(c, h.Agent, h.Host), autospace(h.Words), capPeer(a.L.T("peers.recent."+h.Way, who, by)), t.InkMuted, false, age) {
 				if h.TaskID != "" {
 					a.OpenTask(h.TaskID)
 				} else {
@@ -169,7 +174,7 @@ func (a *App) peersReach(c *ui.Context, name string) {
 	if a.S.Bridge != nil {
 		boxes = a.S.Bridge.Mailboxes
 	}
-	rows := reachRows(a.S.Devices, a.S.OwnAgents, recentHandoffs(a.S.Channel, 50), boxes...)
+	rows := reachRows(a.S.Devices, a.S.OwnAgents, recentHandoffs(peerFeed(a.S.Channel, a.S.TaskPeers), 50), boxes...)
 	if len(rows) == 0 {
 		return
 	}
@@ -193,6 +198,8 @@ func (a *App) peersReach(c *ui.Context, name string) {
 			switch {
 			case r.Can == "yes" && r.Box != "":
 				line = a.L.T("peers.reach.yes."+r.Box, name) // D444
+			case r.Can == "relay":
+				line = a.L.T("peers.reach.relay", name, r.Tool) // D448
 			case r.Can != "none":
 				line = a.L.T("peers.reach."+r.Can, name)
 			}
@@ -217,4 +224,21 @@ func (a *App) firstPeerNote(c *ui.Context, b *protocol.BridgeMsg) {
 			uiText(c, autospace(capPeer(a.L.T(key, who, a.personaName())))).FontSize(t.SM).LineHeight(a.leading(1.6)).TextColor(t.InkSoft).Grow(1).Basis(0).MinWidth(0)
 		})
 	})
+}
+
+// taskNameOf is a task as 最近 / Recently names it (D448): its title in
+// quotes, else the partner's name.
+func (a *App) taskNameOf(taskID, name string) string {
+	t := a.S.Tasks[taskID]
+	if t == nil {
+		return name
+	}
+	s := strings.TrimSpace(t.Title())
+	if s == "" {
+		return name
+	}
+	if r := []rune(s); len(r) > 30 {
+		s = string(r[:29]) + "…"
+	}
+	return a.L.T("peers.recent.task", s)
 }

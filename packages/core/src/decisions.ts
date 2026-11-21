@@ -58,6 +58,8 @@ export function forwardText(d: Bodies["decision"], r: Bodies["decision_resolved"
   // D151: the user signed in themselves in the live view; the task checks the page again.
   // D157: where it runs is the runner's to change (it re-places the task); the task hears nothing.
   if (d.where) return "";
+  // D448: a task's message to another agent: the partner tells the task what came of it.
+  if (d.relay) return "";
   // D233: the task got the answer in the call it was waiting in; nothing to send again.
   if (r.delivered) return "";
   // D238: the phone answers that one itself (handset/index.ts tells the task once it is on, or why not).
@@ -264,6 +266,9 @@ export function createDecisions(opts: {
     if (!d.taskId) return;
     const taskId = d.taskId;
     if (dropped(taskId)) return; // resolved (e.g. by a direct message) while dropped: no turn, no flip
+    // D448: a task's message to another agent: the partner carries it out, tells the task, and says
+    // where the task stands (waiting for the answer, or at work again); nothing to flip or forward here.
+    if (d.relay) return;
     const left = tasks.pendingDecisions(taskId).filter((id) => id !== r.decisionId && !resolved.has(id));
     if (left.length && left.every((id) => laterAt.has(id))) setAttention(taskId, "blocked"); // D382: only put-off ones left
     else if (!left.length) {

@@ -253,6 +253,9 @@ export class Store {
    * unconfirmed, so 最近 / Recently can say one that hasn't gone, not only the ones that did.
    */
   outOps = new Map<string, { seq: number; ts: string; b: Bodies["bridge_msg"] }>();
+  // D448: a task's own exchanges with another agent that never show in the conversation (its follow-ups
+  // with no card, the answers that went into it), for 最近 / Recently.
+  taskPeers: { ev: { seq: number; ts: string }; peer: Bodies["bridge_msg"] }[] = [];
   /** D304: the 想起了 / Remembered line under a message, by the seq of the message it stands under. */
   recalled = new Map<number, Bodies["memory_recalled"] & { seq: number }>();
   /** D165: each find's latest change, and the user's latest message. */
@@ -717,7 +720,9 @@ export class Store {
           }
           return void this.bySeq.set(ev.seq, null);
         }
-        const show = b.direction === "in" ? !b.state && !b.inReplyTo : b.state === "sent" && !!b.text;
+        // D448: a task's own follow-up to an agent (no card) is the task's, never a conversation line.
+        if ((b.direction === "in" && b.state === "task") || (b.by === "task" && b.state === "sent" && !b.decisionId)) this.taskPeers.push({ ev: { seq: ev.seq, ts: ev.ts }, peer: b });
+        const show = b.direction === "in" ? !b.state && !b.inReplyTo : b.state === "sent" && !!b.text && !(b.by === "task" && !b.decisionId);
         return show ? entry({ peer: b }) : void this.bySeq.set(ev.seq, null);
       }
       case "todo_set": {

@@ -581,6 +581,10 @@ type Store struct {
 	// sending, sent, failed, unknown or unconfirmed, so 最近 / Recently can
 	// say one that hasn't gone, not only the ones that did.
 	OutOps map[string]*Entry
+	// TaskPeers (D448) is a task's own exchanges with another agent that
+	// never show in the conversation (its follow-ups with no card, the
+	// answers that went into it), for 最近 / Recently.
+	TaskPeers []*Entry
 	// Rules are 你的规则 / Your rules, as last sent (nil until a rules
 	// frame; RulesAt says one came). Candidates are who could do a task,
 	// by task id, as last asked; SwitchResults the switch answers not yet
@@ -1442,7 +1446,11 @@ func (s *Store) ApplyEvent(ev protocol.LogEvent) {
 			s.bySeq[ev.Seq] = nil
 			return
 		}
-		show := (b.Direction == "in" && b.State == "" && b.InReplyTo == "") || (b.Direction == "out" && b.State == "sent" && b.Text != "")
+		// D448: a task's own follow-up to an agent (no card) is the task's, never a conversation line.
+		if (b.Direction == "in" && b.State == "task") || (b.By == "task" && b.State == "sent" && b.DecisionID == "") {
+			s.TaskPeers = append(s.TaskPeers, &Entry{Event: ev, Peer: b})
+		}
+		show := (b.Direction == "in" && b.State == "" && b.InReplyTo == "") || (b.Direction == "out" && b.State == "sent" && b.Text != "" && !(b.By == "task" && b.DecisionID == ""))
 		if !show {
 			s.bySeq[ev.Seq] = nil
 			return

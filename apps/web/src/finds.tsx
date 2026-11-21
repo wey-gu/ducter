@@ -115,7 +115,10 @@ function Find({ f, seq }: { f: FindView; seq?: number }) {
           <div class="small sub">{t("find.held")}</div>
         ))}
       {!faded && <div class="freact">
-        <Btn kind="text" size="sm" label={t("find.how")} chev expanded={how} onClick={() => setHow(!how)} />
+        <Btn kind="text" size="sm" label={t("find.how")} chev expanded={how} onClick={() => {
+          if (!how) A.openFinds([f.findId], "how"); // D464: counted once, never learned from
+          setHow(!how);
+        }} />
         <span class="grow" />
         {st?.state === "muted" ? (
           <span class="small sub">{t("find.muted")}</span>
@@ -187,7 +190,11 @@ export function FindsNote({ n, join, seq, seqs }: { n: Bodies["finds"]; join?: b
           <Find key={f.findId} f={f} seq={seq} />
         ))}
         {offers > OFFER_SHOWN && (
-          <Btn kind="text" size="sm" chev expanded={more} class="fmore" label={t(more ? "find.fewer" : "find.more")} onClick={() => setMore(!more)} />
+          <Btn kind="text" size="sm" chev expanded={more} class="fmore" label={t(more ? "find.fewer" : "find.more")} onClick={() => {
+              // D464: the offers it brings into view count as opened (once each, for `ducter proactive week`).
+              if (!more) A.openFinds(n.finds.filter((f) => f.offer).slice(OFFER_SHOWN).map((f) => f.findId), "more");
+              setMore(!more);
+            }} />
         )}
         {/* D304: the week's first note offers, in one line, what it noted about them. */}
         {n.learned && n.learned.count > 0 && <LearnedLine count={n.learned.count} />}

@@ -48,3 +48,11 @@ test("D458: the kinds from past the accounts and their sources have words in bot
   const src = readFileSync(join(import.meta.dir, "../src/finds.tsx"), "utf8");
   expect(src).toContain('{f.origin && <div class="small sub forigin">{f.origin}</div>}');
 });
+
+test("D464: opening 怎么知道的, or 还有几条, tells the home which finds were opened (counted once there, never learned from)", () => {
+  const src = readFileSync(join(import.meta.dir, "../src/finds.tsx"), "utf8");
+  expect(src).toContain('if (!how) A.openFinds([f.findId], "how");');
+  expect(src).toContain('if (!more) A.openFinds(n.finds.filter((f) => f.offer).slice(OFFER_SHOWN).map((f) => f.findId), "more");');
+  const app = readFileSync(join(import.meta.dir, "../src/app.ts"), "utf8");
+  expect(app).toContain('if (findIds.length) this.send({ t: "find_open", findIds, what });');
+});

@@ -2706,6 +2706,14 @@ Codex first, once OAR is near 1.0. See `research/17`.
 ## Offers, not interruptions (D453)
 
 - [ ] **The live check on hel:** a week of offers on 有用就说 (how many a morning, what was taken up, the weights it learned); the replay estimate (research/197 §4) is a python approximation of the detectors. Trigger: the next release on hel. Check: `ducter check run offers-week` after a week.
+- [ ] **The live check on hel:** a week of offers on 有用就说 (how many a morning, what was taken up, the weights it learned); the replay estimate (research/197 §4) is a python approximation of the detectors. Trigger: the next release on hel. D464 built the readout: `ducter proactive week` on hel answers it.
+
+## Counting the aha (D464)
+
+- [ ] **Run it on hel for a week** (research/201 #6) and cite the result in research: offered, taken up, the 1/20 line, by source. Trigger: a release with D464 on hel and a week of mornings.
+- [ ] **The partner answers "你这周提醒得怎么样 / How have your offers been this week?"** from the same report, in one plain line, only when asked (a partner tool: D175's eval twice). Trigger: the author asks it twice, or a person does.
+- [ ] **A reply typed without 回复** on the find ("那个续费帮我看下") is not counted as replied: an undercount. Match a message to the morning's finds by the partner's own reading, if the count starts to matter. Trigger: the author's week shows replies he remembers that the count missed.
+- [ ] **The phone apps' opened:** the web and Mac send `find_open`; the iOS and Android shells use the web client; a native view of finds added later must send it too. Trigger: a native finds view.
 - [x] **Widen the funnel:** offers from a task's follow-up, Mem and the conversation's loose ends (D458, research/199). Still open: service notices read closely past `NOTICE_DAY_MAX` (89 left unread a day on hel). Trigger: a week where the author takes up at least one offer and the mornings stay at one or two.
 
 ## Offers from past the accounts (D458)

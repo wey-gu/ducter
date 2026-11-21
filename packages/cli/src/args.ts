@@ -41,9 +41,10 @@ export interface Args {
   hostname?: string; // anywhere on --hostname <name>: the hostname that tunnel serves; anywhere step create --hostname
   days?: number; // proactive replay --days <n> (D388): how many days back, 1–7
   noWeb?: boolean; // proactive replay --no-web (D388): no web look for an open question
+  weeks?: number; // proactive week --weeks <n> (D464): how many weeks back, 1–12
 }
 
-export type ParseResult = { ok: true; args: Args } | { ok: false; error: { key: "err.unknownCommand" | "err.unknownFlag" | "err.missingValue" | "err.badPort" | "err.badTimeout"; vars: Record<string, string> } };
+export type ParseResult = { ok: true; args: Args } | { ok: false; error: { key: "err.unknownCommand" | "err.unknownFlag" | "err.missingValue" | "err.badPort" | "err.badTimeout" | "err.badCount"; vars: Record<string, string> } };
 
 const COMMANDS = new Set<Command>(["up", "open", "doctor", "status", "version", "help", "pair", "devices", "service", "domain", "tailscale", "worker", "uninstall", "report", "merge", "undo", "task", "say", "tail", "answer", "connect", "disconnect", "update", "ability", "browser", "anywhere", "git", "reach", "key", "proactive"]);
 /** Commands that take words after them (`ducter devices revoke a1b2`, `ducter service install`). */
@@ -173,8 +174,15 @@ export function parseArgs(argv: string[]): ParseResult {
       case "--days": {
         const v = value();
         if (v === undefined) return { ok: false, error: { key: "err.missingValue", vars: { flag: a } } };
-        if (!/^\d+$/.test(v) || Number(v) < 1) return { ok: false, error: { key: "err.badTimeout", vars: { value: v } } };
+        if (!/^\d+$/.test(v) || Number(v) < 1) return { ok: false, error: { key: "err.badCount", vars: { value: v } } };
         args.days = Number(v);
+        continue;
+      }
+      case "--weeks": {
+        const v = value();
+        if (v === undefined) return { ok: false, error: { key: "err.missingValue", vars: { flag: a } } };
+        if (!/^\d+$/.test(v) || Number(v) < 1) return { ok: false, error: { key: "err.badCount", vars: { value: v } } };
+        args.weeks = Number(v);
         continue;
       }
       case "--no-web":

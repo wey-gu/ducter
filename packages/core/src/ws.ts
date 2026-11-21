@@ -172,6 +172,8 @@ export interface WsDeps {
   proactive?: () => import("./proactive/engine.ts").Proactive | undefined;
   /** D388: `ducter proactive replay`: a dry engine over the last days of the real accounts. */
   replay?: (o: { days?: number; web?: boolean }) => Promise<import("@ducter/protocol").ReplayReport>;
+  /** D464: `ducter proactive week`: the offers of the last weeks, counted from the Log. */
+  week?: (weeks?: number) => import("@ducter/protocol").WeekReport;
   /** D222: the person's calendars (Accounts' calendar rows, today's line, cal_pick). */
   calendar?: () => import("./calendar.ts").Calendar | undefined;
   /** D341: 待办来源 / To-do sources (task-sources/). */
@@ -1683,6 +1685,17 @@ export function createWsHandler(deps: WsDeps) {
           .catch((err: Error) => send(ws, { t: "proactive_replay_result", error: err.message.slice(0, 200) }));
         return;
       }
+      case "proactive_week": {
+        // D464: read-only, from the Log; answered on this socket only.
+        if (!deps.week) throw new Error("not available");
+        const weeks = typeof f.weeks === "number" && Number.isFinite(f.weeks) ? f.weeks : undefined;
+        try {
+          send(ws, { t: "proactive_week_result", report: deps.week(weeks) });
+        } catch (err) {
+          send(ws, { t: "proactive_week_result", error: (err as Error).message.slice(0, 200) });
+        }
+        return;
+      }
       case "connection_reads": {
         const p = deps.proactive?.();
         send(ws, { t: "connection_reads", id: String(f.id ?? ""), reads: p ? p.reads(String(f.id ?? "")) : [] });
@@ -1692,6 +1705,14 @@ export function createWsHandler(deps: WsDeps) {
         const p = deps.proactive?.();
         if (!p) throw new Error("not available");
         p.react(String(f.findId ?? ""), f.reaction === "mute" ? "mute" : "useful");
+        return;
+      }
+      case "find_open": {
+        // D464: 怎么知道的 opened, or 还有几条 brought these finds into view: counted, never learned from.
+        const p = deps.proactive?.();
+        if (!p) return;
+        const ids = Array.isArray(f.findIds) ? f.findIds.filter((x: unknown): x is string => typeof x === "string") : [];
+        p.opened(ids, f.what === "more" ? "more" : "how");
         return;
       }
       case "find_undo": {

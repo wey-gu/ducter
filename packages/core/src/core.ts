@@ -40,6 +40,7 @@ import { createHarnessAsk, createHarnessJudge } from "./judge.ts";
 import { createWebLook } from "./web-look.ts";
 import { createProactive, type Proactive } from "./proactive/engine.ts";
 import { replayProactive } from "./proactive/replay.ts";
+import { readWeekEvents, weekReport, weeksSince, WEEKS_DEFAULT, WEEKS_MAX } from "./proactive/week.ts";
 import { modelTriage, type Triage } from "./proactive/triage.ts";
 import { modelDrafter } from "./proactive/reply.ts";
 import { modelJudge, type FindJudge } from "./proactive/judge.ts";
@@ -791,6 +792,9 @@ export function startCore(opts: CoreOptions = {}): Core {
 
   let proactiveRef: Proactive | undefined;
   // D388: `ducter proactive replay`, one at a time (set once the engine and its sources exist).
+  let weekRef: (n?: number) => import("@ducter/protocol").WeekReport = () => {
+    throw new Error("not ready yet");
+  };
   let replayRef: ((o: { days?: number; web?: boolean }) => Promise<import("@ducter/protocol").ReplayReport>) | undefined;
   let calendarRef: Calendar | undefined;
   let taskSourcesRef: TaskSources | undefined;
@@ -1385,7 +1389,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       socketsChanged: () => reachRef?.refresh(),
     },
     partners,
-    core: api, workbench, bridgeLink, decisions, runner: () => runner, devices: () => devicesView, lend: () => lendRef, settings, connections, phone, rules, standing, pins, apps, loadout, models: modelCatalog, accountUsage, closing, work: workFrames, newTask, updates: () => updatesRef, agents: () => agentsRef, agentSetup: (device, f) => agentSetupOp(device, f), memSetup: (device, action, link) => memSetupOp(device, action, link), recordsAllow: (device, on) => recordsAllowOp(device, on), updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, memHealth, anywhere: () => anywhereRef, channels, proactive: () => proactiveRef, replay: (o) => replayRef?.(o) ?? Promise.reject(new Error("not ready yet")), calendar: () => calendarRef, taskSources: () => taskSourcesRef, taskGroups: () => taskGroups, onHandAway, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets, past: { ...past, marks, persona: () => persona.id, ongoing, outside, made, redo }, keys: { dataDir, ...(opts.keyFetch ? { fetch: opts.keyFetch } : {}), ...(opts.keyCanRun ? { canRun: opts.keyCanRun } : {}), prepare: (h) => keyPrepare(h), ...(opts.keyTz ? { tz: opts.keyTz } : {}) }, ...(firstWordsDeps ? { firstWords: firstWordsDeps } : {}), did, ownAgents });
+    core: api, workbench, bridgeLink, decisions, runner: () => runner, devices: () => devicesView, lend: () => lendRef, settings, connections, phone, rules, standing, pins, apps, loadout, models: modelCatalog, accountUsage, closing, work: workFrames, newTask, updates: () => updatesRef, agents: () => agentsRef, agentSetup: (device, f) => agentSetupOp(device, f), memSetup: (device, action, link) => memSetupOp(device, action, link), recordsAllow: (device, on) => recordsAllowOp(device, on), updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, memHealth, anywhere: () => anywhereRef, channels, proactive: () => proactiveRef, replay: (o) => replayRef?.(o) ?? Promise.reject(new Error("not ready yet")), week: (n) => weekRef(n), calendar: () => calendarRef, taskSources: () => taskSourcesRef, taskGroups: () => taskGroups, onHandAway, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets, past: { ...past, marks, persona: () => persona.id, ongoing, outside, made, redo }, keys: { dataDir, ...(opts.keyFetch ? { fetch: opts.keyFetch } : {}), ...(opts.keyCanRun ? { canRun: opts.keyCanRun } : {}), prepare: (h) => keyPrepare(h), ...(opts.keyTz ? { tz: opts.keyTz } : {}) }, ...(firstWordsDeps ? { firstWords: firstWordsDeps } : {}), did, ownAgents });
   handsets.onChange(() => (devicesView?.changed(), ws.onHandChanged()));
   onHandChanged = ws.onHandChanged;
   // D156: a partner turn in flight keeps an update of the agent it thinks with waiting.
@@ -2095,6 +2099,13 @@ export function startCore(opts: CoreOptions = {}): Core {
     } finally {
       replaying = false;
     }
+  };
+  // D464: `ducter proactive week`: the offers of the last weeks, counted from the Log (read-only).
+  weekRef = (n) => {
+    const weeks = Math.min(WEEKS_MAX, Math.max(1, Math.floor(n ?? WEEKS_DEFAULT)));
+    const now = clock.now();
+    const z = zone();
+    return weekReport(readWeekEvents(log, weeksSince(now, z, weeks)), { now, zone: z, weeks, mode: settings.get().proactive ?? "off", weights: proactive.weights() });
   };
   // D368: read once at the start, so the partner's first turn already has the day's focus (never awaited).
   void workingMemory.refresh().catch(() => undefined);

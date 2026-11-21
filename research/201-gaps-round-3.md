@@ -159,6 +159,8 @@ checkouts, a phone paying in the live view. The consumer agents now ship their o
   from the Log, offers shown, opened, Go, 有用, faded, by kind and by source (accounts, tasks, Mem,
   the conversation), with the one taken up quoted by its title. Read-only, no new surface for the
   person; the research report cites it. **Size** S. **Fakes:** Log fixtures.
+- **Built 2026-11-22 (D464):** `ducter proactive week [--weeks N] [--json]`, with `find_opened`
+  added to the Log; checked on fake Logs only. The live week is #6.
 
 ### 5–9 (need the author)
 - **5 bare-Mac walk of D440**: a throwaway account and a free key per route, timed. Two of three

@@ -700,8 +700,8 @@ export async function run(argv: string[]): Promise<number | "running"> {
     case "browser":
       return cmdBrowser({ t, target: ctx.target, json: args.json, rest: args.rest ?? [] });
     case "proactive":
-      // D388: the dry replay of the last days of the accounts, on the home.
-      return cmdProactive({ t, target: ctx.target, json: args.json, rest: args.rest ?? [], ...(args.days ? { days: args.days } : {}), ...(args.noWeb ? { noWeb: true } : {}) });
+      // D388: the dry replay of the last days of the accounts, on the home. D464: the week's offers counted.
+      return cmdProactive({ t, target: ctx.target, json: args.json, rest: args.rest ?? [], lang: detectLocale(), ...(args.days ? { days: args.days } : {}), ...(args.weeks ? { weeks: args.weeks } : {}), ...(args.noWeb ? { noWeb: true } : {}) });
     case "service":
       return cmdService({
         t,

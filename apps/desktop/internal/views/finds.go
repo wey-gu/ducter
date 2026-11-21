@@ -56,6 +56,10 @@ func (a *App) findsEntry(c *ui.Context, e *store.Entry) {
 					label = a.L.T("find.fewer")
 				}
 				if a.quietButton(c, "more:"+key, label, "", false, map[bool]int{false: 1, true: 2}[more]) {
+					if !more {
+						// D464: the offers it brings into view count as opened.
+						a.send(protocol.FindOpen{T: "find_open", FindIDs: foldedOffers(n.Finds), What: "more"})
+					}
 					a.open["more:"+key] = !more
 				}
 			}
@@ -148,6 +152,9 @@ func (a *App) findBlock(c *ui.Context, f protocol.FindView, seq int64) {
 		}
 		ui.Row(c.Key("react:" + f.FindID)).Gap(t.S3).AlignItems(ui.Center).Children(func() {
 			if a.quietButton(c, "how:"+f.FindID, a.L.T("find.how"), "", false, map[bool]int{false: 1, true: 2}[open]) {
+				if !open {
+					a.send(protocol.FindOpen{T: "find_open", FindIDs: []string{f.FindID}, What: "how"}) // D464
+				}
 				a.open["how:"+f.FindID] = !open
 			}
 			ui.Box(c).Grow(1)
@@ -306,4 +313,21 @@ func (a *App) findDraft(c *ui.Context, f protocol.FindView, d *store.DecisionSta
 		}
 	})
 	a.replyDraft[key] = text
+}
+
+// foldedOffers are the offers past the first OfferShown: what 还有几条 / A few
+// more brings into view (D453, D464).
+func foldedOffers(finds []protocol.FindView) []string {
+	var ids []string
+	seen := 0
+	for _, f := range finds {
+		if !f.Offer {
+			continue
+		}
+		seen++
+		if seen > protocol.OfferShown {
+			ids = append(ids, f.FindID)
+		}
+	}
+	return ids
 }

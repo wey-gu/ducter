@@ -204,6 +204,8 @@ test("the phone's 更新 on the Mac's card: the app downloads, checks, restarts 
   phone.send({ t: "device_update", device: id });
   expect(await phone.until((x) => x.t === "update_result", n)).toMatchObject({ ok: true, device: id });
   await phone.until<Devices>((x) => x.t === "devices" && (x as Devices).devices.some((d) => d.id === id && d.update?.phase === "restarting"), n);
+  // The card's restarting step can arrive before the fake app records the ask (raced on CI).
+  for (let i = 0; i < 100 && !app.restarts.length; i++) await Bun.sleep(20);
   expect(app.restarts.map((a) => a.to)).toEqual(["0.0.13"]);
   const seen = core.log.read({ stream: "devices", kinds: ["device_update"] }).map((e) => (e.body as any).phase);
   expect(seen).toEqual(["downloading", "verifying", "waiting", "restarting"]);

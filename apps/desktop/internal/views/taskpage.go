@@ -261,6 +261,13 @@ func (a *App) taskBody(c *ui.Context, task *store.Task) {
 			if i == n-1 {
 				bottom = t.S6
 			}
+			// D457: compact, the turns close up.
+			if a.compact() {
+				top, bottom = min(top, t.S3), min(bottom, t.S4)
+				if i == 0 {
+					top = t.S4
+				}
+			}
 			ui.Row(c).Justify(ui.Center).Padding(top, t.S5, bottom, t.S5).Children(func() {
 				// D268: one centered reading measure for the whole task.
 				ui.Column(c).Grow(1).MaxWidth(readMeasure).MinWidth(0).Children(func() {
@@ -306,6 +313,10 @@ func (a *App) taskBody(c *ui.Context, task *store.Task) {
 // keep-going loop.
 func (a *App) taskHead(c *ui.Context, task *store.Task, m *taskMemo) {
 	t := a.T
+	if a.compact() {
+		a.taskHeadCompact(c, task, m)
+		return
+	}
 	ui.Column(c.Key("headcol")).Gap(t.S6).MinWidth(0).Children(func() {
 		// D290: the head is where the card you opened grows to (Hero).
 		head := ui.Row(c.Key("head")).Gap(t.S5).AlignItems(ui.Start).Transition(a.heroTransition(task.ID))
@@ -1149,4 +1160,46 @@ func (a *App) landmarkWords(lm *Landmark, now time.Time) landmarkWords {
 		w.line = a.L.T("locator." + lm.K)
 	}
 	return w
+}
+
+// taskHeadCompact is the head in the compact density (D457): the face at
+// 40 on one line with the title (what it is doing, or its outcome),
+// the state and who does it under the title; the rest as in taskHead.
+func (a *App) taskHeadCompact(c *ui.Context, task *store.Task, m *taskMemo) {
+	t := a.T
+	const face = 40
+	ui.Column(c.Key("headcol")).Gap(t.S4).MinWidth(0).Children(func() {
+		head := ui.Row(c.Key("head")).Gap(t.S3).AlignItems(ui.Start).Transition(a.heroTransition(task.ID))
+		a.tpage.headAt = head.Bounds()
+		head.Children(func() {
+			ui.Box(c.Key("facebox")).Shrink(0).Children(func() {
+				a.partnerFace(c, "task:"+task.ID, taskPresence(task), face)
+			})
+			ui.Column(c).Grow(1).MinWidth(0).Gap(t.S2).Children(func() {
+				ui.Row(c.Key("titleline")).MinHeight(face).AlignItems(ui.Center).MinWidth(0).Children(func() {
+					ui.Column(c).Grow(1).MinWidth(0).Children(func() {
+						if finished(task) {
+							a.outcome(c, task)
+						} else {
+							a.taskHeadline(c, task)
+						}
+					})
+				})
+				a.taskStanding(c, task)
+				if d := a.S.PendingDecision(task.ID); d != nil && (d.Resolved != nil || d.Pending != "") {
+					a.decisionAnswered(c, d)
+				}
+				a.switchSheet(c, task)
+				if !finished(task) {
+					a.handsetTaskLine(c, task)
+				}
+			})
+		})
+		a.taskAsks(c, task.ID)
+		a.watchCard(c, task, m)
+		a.tryStrip(c, task)
+		if len(m.blocks) == 0 && len(task.Sends) == 0 {
+			uiText(c, a.L.T("task.loading")).FontSize(t.SM).TextColor(t.InkMuted)
+		}
+	})
 }

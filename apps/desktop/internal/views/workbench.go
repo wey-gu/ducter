@@ -329,7 +329,11 @@ func (a *App) workbench(c *ui.Context, task *store.Task, width float32) {
 			return
 		}
 		// The strip of pages, on a sunken track; the one shown raised.
-		ui.Row(c.Key("bench-head")).Padding(t.S3, t.S4).Gap(t.S2).AlignItems(ui.Center).
+		headY, tabY := t.S3, t.S2
+		if a.compact() {
+			headY, tabY = t.S1+2, t.S1+2 // D457: compact, the header closes up
+		}
+		ui.Row(c.Key("bench-head")).Padding(headY, t.S4).Gap(t.S2).AlignItems(ui.Center).
 			BorderWidth(0, 0, 1, 0).BorderColor(t.Line).Children(func() {
 			ui.Row(c.Key("bench-tabs")).Gap(t.S1).Padding(t.S1).Radius(t.RadiusMD).Background(t.SurfaceSunken).Children(func() {
 				for _, k := range tabs {
@@ -338,7 +342,7 @@ func (a *App) workbench(c *ui.Context, task *store.Task, width float32) {
 					if k == "changes" && b.changes != nil && len(b.changes.Files) > 0 {
 						label += fmt.Sprintf("  %d", len(b.changes.Files)+b.changes.More)
 					}
-					tb := ui.Box(c.Key("tab:"+k)).Padding(t.S2, t.S3).Radius(t.RadiusSM).Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(label).Focusable()
+					tb := ui.Box(c.Key("tab:"+k)).Padding(tabY, t.S3).Radius(t.RadiusSM).Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(label).Focusable()
 					if on {
 						tb.Background(t.Surface).Shadow(0, 2, 0, 0, t.Line2)
 					}

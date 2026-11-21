@@ -24,11 +24,12 @@ import { keysKey } from "./keymap.tsx";
 import { markSeen } from "./seen.ts";
 import { edgeSwipe, navBusy, popMove } from "./nav.ts";
 import { wideNow } from "./fold.ts";
-import { applyPaper } from "./settings-more.tsx";
+import { applyDensity, applyPaper, densityKey } from "./settings-more.tsx";
 import { keepAboveKeyboard } from "./keyboard.ts";
 import { watchTextSize } from "./text-scale.ts";
 
 applyPaper(); // D307: this device's own light or dark, before the first paint
+applyDensity(); // D457: and its own density
 keepAboveKeyboard(); // D404: iOS lays the keyboard over a sheet; the sheet stands on it
 
 const base = baseUrl();
@@ -279,6 +280,7 @@ function run(me: Me, had: string | undefined, device: string, glance?: Glance) {
   addEventListener("keydown", walkKey);
   addEventListener("keydown", nthKey);
   addEventListener("keydown", keysKey);
+  addEventListener("keydown", densityKey); // D457
   // D290: back and forward move as a level does (nav.ts), unless the browser drew its own; a
   // hashchange that follows a pop lands after the move has its old picture.
   addEventListener("popstate", (e) => popMove(e, A.route, () => A.fromHash()));

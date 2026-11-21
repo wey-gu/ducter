@@ -75,6 +75,21 @@ func (a *App) followAppearance(c *ui.Context) bool {
 // SetAppearance is Settings' choice: "system", "light" or "dark". It also
 // tells macOS (ApplyAppearance), so the menus, the title bar and the
 // window's own background agree with the page.
+// compact is whether an opened task is laid out compact on this Mac
+// (D457): the face at 40 beside the title, closer rows.
+func (a *App) compact() bool { return a.Local.Density() == "compact" }
+
+// ToggleDensity switches an opened task between comfortable and compact
+// (⌘⇧D, D457), and says which it is now.
+func (a *App) ToggleDensity(c *ui.Context) {
+	next := "compact"
+	if a.compact() {
+		next = "comfortable"
+	}
+	a.Local.SetDensity(next)
+	c.AddToast(ui.Toast{ID: "density", Title: a.L.T("density.said." + next), Timeout: 2400 * time.Millisecond})
+}
+
 func (a *App) SetAppearance(v string) {
 	a.Local.SetAppearance(v)
 	if a.ApplyAppearance != nil {

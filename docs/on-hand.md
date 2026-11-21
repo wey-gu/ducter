@@ -71,6 +71,14 @@ in a small picture of your partner, whether anything there needs you, is being w
 a new result, and how many lines its branches have changed. Pick one to see only its tasks;
 **All** shows everything again. Under a project, **+** starts a new task in its folder.
 
+**+ Add a folder**, at the foot of the column (or **+** at the end of the row of names), makes a
+project from a folder on any of your computers. Pick the computer first (each is shown as a small
+picture, with whether it's awake), then find the folder: the path at the top steps back a level
+when you tap a part of it, and typing narrows the list or, starting with **/** or **~**, goes
+straight to a path. With a keyboard, **↑** and **↓** move, **Return** goes in, **⌘↑** goes up a
+level and **⌘Return** adds. The button says what it will do, like **Add hawdb on Hetzner
+Server**. The new project appears in the column, ready for its first task.
+
 With one errand on hand, all of this stays out of the way: one row, and four small numbers.
 **Find a task…** appears once you have ten things on hand.
 
@@ -91,7 +99,8 @@ With one errand on hand, all of this stays out of the way: one row, and four sma
   View menu as **Next Task** and **Previous Task**). **j** and **k** do the same when you
   aren't typing. The open task's bar says where it is in the list (**3 / 9**), with a step to the
   one before and after. **⌃1** to **⌃9** open the first to ninth task on hand. **⌘/** lists every
-  key. If you open the **Workbench** and the window is too narrow for all three, the
+  key. **⌘⇧D** makes an open task **Compact** (your partner's picture small beside the title,
+  more of the work on screen) and back. If you open the **Workbench** and the window is too narrow for all three, the
   Workbench takes the list's place until you close it.
 - In the list beside a task, a row says only its title and a small picture of your partner while
   something is going on: raising a flag when it needs you, reading while it works, smiling with

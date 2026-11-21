@@ -43,6 +43,19 @@ New folder** (D272's panels), **取消 / Cancel**. Added, the sheet closes on th
 Never this Mac's picker for another computer; on the Mac, **用访达选… / Pick in Finder…** for this
 Mac's own folders. Details: `new-task.md` (Adding a folder anywhere, D272, D455).
 
+D457 brings the sheet to the clay bar: each computer a small clay tile (its drawn device, its name,
+one state word: **{name} 在这台上 / {name} runs here** for the home, else **醒着 / Awake** or
+**睡着了 / Asleep**), home first, the chosen one on an ink ledge; the ways one segmented track; the
+browser an instrument: the breadcrumb (`~ / code / hawdb`, each part a step back), ↑↓ ⏎ ⌘↑ ⌘⏎
+said once at the foot in drawn caps, rows with a repo's mark in the accent's tint, its origin, a
+recent one's last use and **已添加 / Added**; an empty, missing or away folder each says the way
+on (**回到 {where} / Back to {where}**, **换到 {home} / Use {home} instead**); the button reads
+**添加 {name}（{computer} 上）/ Add {name} on {computer}**, and at the home folder, where nothing
+can be added, **进到一个文件夹里，再添加它 / Go into a folder to add it** in place of a greyed
+button. Added, the project's row rises into the column with an accent ring that fades (1.8 s;
+none under Reduce Motion), and a project with nothing yet says **在 {name} 里开个任务 / Start a
+task in {name}** where the bare ＋ stood.
+
 ## The board
 
 1. D287: the partner at the head, always: its clay figure (76; 56 in the side pane and on the

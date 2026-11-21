@@ -120,7 +120,7 @@ func TestAddFolderSheet(t *testing.T) {
 				Folders: []protocol.BrowseFolder{{Name: "cmd", Path: "/root/code/hawdb/cmd"}, {Name: "pkg", Path: "/root/code/hawdb/pkg"}}})
 			app.drainNewTask()
 			tt.Frame()
-			if !tt.HasText(L.T("addfolder.add", "hawdb")) {
+			if !tt.HasText(L.T("addfolder.add.on", "hawdb", "Hetzner Server")) {
 				t.Errorf("%s: the add button names it: %q", lang, tt.Texts())
 			}
 			newTaskShot(t, tt, "d455-repo"+sz)
@@ -137,7 +137,7 @@ func TestAddFolderSheet(t *testing.T) {
 				InRepo: &protocol.BrowseRepo{Root: "/Users/ana/dev/hawdb", Name: "hawdb", Remote: "github.com/acme/hawdb"}})
 			app.drainNewTask()
 			tt.Frame()
-			click(t, tt, L.T("addfolder.add", "hawdb"))
+			click(t, tt, L.T("addfolder.add.on", "hawdb", "Mac mini"))
 			add, ok := lastFrame[protocol.ProjectAdd](sent)
 			if !ok || add.Device != "mini" || add.Path != "/Users/ana/dev/hawdb" {
 				t.Fatalf("%s: added on the Mac mini: %+v", lang, add)
@@ -148,6 +148,11 @@ func TestAddFolderSheet(t *testing.T) {
 			if app.addf.open || app.Local.Lens() != "hawdb" {
 				t.Errorf("%s: added, the sheet closes on that project (open %v, lens %q)", lang, app.addf.open, app.Local.Lens())
 			}
+			// D457: the project arrives in the column with a ring that fades.
+			if _, live := app.arrivalFor("hawdb"); !live {
+				t.Errorf("%s: the added project arrives", lang)
+			}
+			newTaskShot(t, tt, "d457-arrived"+sz)
 
 			// Clone and New are the same sheet, on the chosen computer; Cancel closes it.
 			app.OpenAddFolder()

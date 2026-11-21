@@ -58,6 +58,18 @@ func (a *App) lookPanel(c *ui.Context) {
 				a.cheer()
 			}
 		})
+		// D457: an opened task, comfortable (the default) or compact; ⌘⇧D too.
+		dsel := 0
+		if a.compact() {
+			dsel = 1
+		}
+		a.row(c, "density", a.L.T("density.title"), a.L.T("density.help"), func() {
+			labels := []string{a.L.T("density.comfortable"), a.L.T("density.compact")}
+			if i := a.choices(c, "density", a.L.T("density.title"), labels, dsel); i >= 0 {
+				a.Local.SetDensity([]string{"comfortable", "compact"}[i])
+				a.cheer()
+			}
+		})
 		// D306: the menu bar extra, on by default; the way back after Don't
 		// show in the menu bar.
 		a.row(c, "menubar", a.L.T("settings.menubar"), a.L.T("settings.menubar.help"), func() {

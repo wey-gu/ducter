@@ -113,6 +113,17 @@ func TestTaskviewShots(t *testing.T) {
 		app.OpenTask(o[min(2, len(o)-1)])
 		shot("task", false)
 		shot("task", true)
+		// D457: the compact density, toggled by ⌘⇧D.
+		tt.Key(ui.Cmd|ui.Shift, ui.KeyD)
+		if !app.compact() {
+			t.Fatalf("%s: ⌘⇧D makes the opened task compact", lang)
+		}
+		shot("task-compact", false)
+		shot("task-compact", true)
+		tt.Key(ui.Cmd|ui.Shift, ui.KeyD)
+		if app.compact() {
+			t.Fatalf("%s: ⌘⇧D again makes it comfortable", lang)
+		}
 		// 键盘 / Keyboard.
 		app.keysOpen = true
 		shot("keys", false)

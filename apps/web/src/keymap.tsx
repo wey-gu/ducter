@@ -26,6 +26,7 @@ export const KEYMAP: [string, [string, string][]][] = [
       ["keys.nth", "⌃1–⌃9"],
       ["keys.up", "esc"],
       ["keys.this", "⌘/"],
+      ["keys.density", "⌘⇧D"],
     ],
   ],
   [

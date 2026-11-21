@@ -66,7 +66,7 @@ import { CheckoutBody, StepBody } from "./errand.tsx";
 
 import { ChatAppsSettings } from "./channels.tsx";
 import { SourceCardBody, TodoSourcesSettings, TS } from "./todos.tsx";
-import { HandoffSettings, PaperRow, RecordsSettings } from "./settings-more.tsx";
+import { DensityRow, HandoffSettings, PaperRow, RecordsSettings, savedDensity } from "./settings-more.tsx";
 import { AddSection, brainHeld, heldAt, noBrain, TasksSection, ThinksSection } from "./partner-story.tsx";
 import { ComposerReply, HoverReply, Imprint, PartReply, ReplyMenu, replyKey, replyOf, SelectText, SentImprint, useReplyGestures, replyLabel } from "./reply.tsx";
 import { dividerSeq, NewDivider, useFollow, WayBack } from "./conv-follow.tsx";
@@ -2546,7 +2546,8 @@ export function TaskView({ id, full }: { id: string; full?: boolean }) {
       <main class="scroll task-page" ref={scroller} onScroll={(e) => { const el = e.currentTarget; const gap = el.scrollHeight - el.scrollTop - el.clientHeight; atEnd.current = gap < 48; if (gap > 240 !== away) setAway(gap > 240); if (el.scrollTop < 400) A.moreAtHead(id); }}>
         <div class="task-head" data-hero={id}>
           <span class="face">
-            <Avatar size={96} state={faceOf(a)} still={stillFace(a)} />
+            {/* D457: compact, the face at 40 beside the title. */}
+            <Avatar size={savedDensity() === "compact" ? 40 : 96} state={faceOf(a)} still={stillFace(a)} />
             {a === "blocked" && A.S.waiterFor(id) && <WaitBubble w={A.S.waiterFor(id)} size="lg" />}
           </span>
           <div class="head-words">
@@ -3249,6 +3250,7 @@ function PhoneSettings() {
     <section class="set">
       <div class="set-card">
         <PaperRow />
+        <DensityRow />
         <div class="set-item">
           <b>{t("settings.lang.title")}</b>
           <small>{t("settings.lang.help")}</small>

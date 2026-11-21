@@ -74,8 +74,8 @@ func TestNewTaskFindAFolder(t *testing.T) {
 		f, _ = lastFrame[protocol.FolderBrowse](sent)
 		app.Receive(protocol.ServerFrame{T: "folder_browse_result", OK: true, ClientID: f.ClientID, Device: "dev_mac", Path: "/Users/weyl/Sites/blog", HomeDir: "/Users/weyl", Parent: "/Users/weyl/Sites"})
 		tt.Frame()
-		if !tt.HasText(L.T("newtask.find.none")) {
-			t.Errorf("%s: an empty folder says so: %q", lang, tt.Texts())
+		if !tt.HasText(L.T("addfolder.empty")) {
+			t.Errorf("%s: an empty folder says so, and that it can be added as it is: %q", lang, tt.Texts())
 		}
 		click(t, tt, spoken(L, L.T("newtask.find.use"), "~/Sites/blog"))
 		add, ok := lastFrame[protocol.ProjectAdd](sent)

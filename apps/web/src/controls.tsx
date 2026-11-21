@@ -563,3 +563,21 @@ export function TextBox(p: { value: string; label: string; lang?: string; class?
     <textarea class={`textbox${p.class ? ` ${p.class}` : ""}`} value={p.value} rows={2} lang={p.lang} aria-label={p.label} ref={fit} onInput={(e) => (fit(e.target as HTMLTextAreaElement), p.onInput((e.target as HTMLTextAreaElement).value))} />
   );
 }
+
+/** D457: one part of a path's breadcrumb that steps back there (the folder browser's). */
+export function CrumbStep(p: { label: string; onClick: () => void }) {
+  return (
+    <button type="button" onClick={p.onClick}>
+      {p.label}
+    </button>
+  );
+}
+
+/** D457: a row of a list walked with the keys (↑↓): `at` is the row the keys are on; hovering moves it there. */
+export function OptionRow(p: { at: boolean; class?: string; onClick: () => void; onHover?: () => void; children: ComponentChildren }) {
+  return (
+    <button type="button" role="option" aria-selected={p.at} class={`${p.class ?? ""}${p.at ? " at" : ""}`} onClick={p.onClick} onMouseMove={p.onHover}>
+      {p.children}
+    </button>
+  );
+}

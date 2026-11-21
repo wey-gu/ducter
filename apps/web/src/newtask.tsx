@@ -10,10 +10,11 @@ import { useSheetMotion } from "./sheetmotion.ts";
 import { SheetFrame } from "./sheet-frame.tsx";
 import { A, agentKey, browseNeedle, effortWord, EVERY_HOURS, ntGitHubish, parseClock, placeKey, placeLine, tilde } from "./app.ts";
 import { Coin } from "./coin.tsx";
-import { Btn, Choice, Facts, MenuRow, Pill, Seg } from "./controls.tsx";
+import { Btn, Choice, CrumbStep, Facts, MenuRow, OptionRow, Pill, Seg } from "./controls.tsx";
 import { candFacts, candName, candReason, Check, coarse } from "./views.tsx";
 import { AddPictures, DropHint, Tray, useDropPaste } from "./media.tsx";
-import { harnessName, spoken } from "./format.ts";
+import { ago, harnessName, spoken } from "./format.ts";
+import { Fragment } from "preact";
 import { SeedChip } from "./past.tsx";
 import { computerApart, computerOf, computers, manyComputers } from "./where.ts";
 import { TodoPick, TS } from "./todos.tsx";
@@ -448,7 +449,32 @@ export function NewTaskSheet() {
  * D203: 找一个文件夹… / Find a folder…: one computer's folders, one level at a time, from its home
  * folder (~). Repos first, with the branch glyph; tap one to go in; 上一层 / Up one level goes
  * back; 用这个文件夹 / Use this folder adds it there as a project and makes it the card's place.
+ * D457: an instrument: where you are as a breadcrumb (each part a step back), the rows walked with
+ * ↑↓ and ⏎, ⌘↑ (or ⌫ in an empty field) up a level, ⌘⏎ adds; each row says what it is (a repo's
+ * origin, when a recent one was last used, that it is already a project); a missing folder, a
+ * computer away or an empty folder each says what to do next.
  */
+type BrowseRow = { key: string; path: string; name: string; repo?: boolean; line?: string; when?: string; added?: boolean; up?: boolean };
+
+/** The breadcrumb's parts of a path: ~ and what follows inside the home folder, else from /. */
+export function crumbsOf(path: string, home: string): { label: string; path: string }[] {
+  const h = home.replace(/\/+$/, "");
+  const inHome = !!h && (path === h || path.startsWith(h + "/"));
+  const out = [{ label: inHome ? "~" : "/", path: inHome ? h : "/" }];
+  let at = inHome ? h : "";
+  for (const part of (inHome ? path.slice(h.length) : path).split("/").filter(Boolean)) {
+    at += "/" + part;
+    out.push({ label: part, path: at });
+  }
+  return out;
+}
+
+const Chevron = () => (
+  <svg class="adf-chev" viewBox="0 0 12 12" aria-hidden="true">
+    <path d="M4.5 2.5 8 6l-3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+  </svg>
+);
+
 export function FolderBrowser() {
   const nt = A.nt;
   const b = nt.browse!;
@@ -457,19 +483,69 @@ export function FolderBrowser() {
   const home = r?.home ?? "";
   const inSheet = A.sheet?.kind === "addfolder";
   const shownPath = (p: string) => (home && (p === home || p.startsWith(home + "/")) ? "~" + p.slice(home.length) : tilde(p));
-  const err = r && !r.ok ? (r.reason === "offline" ? t("newtask.find.offline", name) : r.reason === "old" ? t("newtask.old", name) : r.reason === "outside" ? t("newtask.find.outside") : r.reason === "not_found" ? t("newtask.find.missing") : r.message || t("newtask.err.unknown")) : "";
   const atHome = !!r?.ok && r.path === home;
   // D455: what is typed narrows the list (or names a path), and the recent folders there come first.
   const { needle } = browseNeedle(b.filter ?? "", r?.ok ? (r.path ?? "") : "", home);
   const has = (n: string) => !needle || n.toLowerCase().includes(needle.toLowerCase());
   const folders = r?.ok ? (r.folders ?? []).filter((f) => has(f.name)) : [];
   const atStart = !!r?.ok && (atHome || (!!r.roots?.length && !r.parent));
-  const recent = atStart ? A.newTaskPlaces().filter((p) => (p.place.kind === "repo" || p.place.kind === "folder") && A.placeComputer(p.place) === A.placeComputer({ kind: "repo", device: b.device, repoPath: "" }) && has(p.name)).slice(0, 5) : [];
+  const here = A.placeComputer({ kind: "repo", device: b.device, repoPath: "" });
+  const placesHere = A.newTaskPlaces().filter((p) => (p.place.kind === "repo" || p.place.kind === "folder") && A.placeComputer(p.place) === here);
+  const pathOf = (p: (typeof placesHere)[number]) => (p.place.kind === "repo" ? p.place.repoPath : p.place.kind === "folder" ? p.place.path : "");
+  // D457: a folder already a project here says so (adding it again only chooses it).
+  const known = new Set(placesHere.filter((p) => !p.found).map(pathOf));
+  const recent = atStart ? placesHere.filter((p) => has(p.name)).slice(0, 5) : [];
   const repo = r?.ok ? r.inRepo : undefined;
-  const useLabel = inSheet && r?.ok && r.path && !atHome ? t("addfolder.add", repo?.name ?? r.path.split("/").pop() ?? "") : t("newtask.find.use");
-  const enter = () => folders.length === 1 && A.ntBrowse(b.device, folders[0]!.path);
+  const addName = repo?.name ?? (r?.ok && r.path ? r.path.split("/").pop() : "") ?? "";
+  // D457: the button says what will happen, and where when there is more than one computer.
+  const many = A.ntBrowsable().length + A.ntBrowsable(true).length > 1;
+  const useLabel = inSheet && r?.ok && r.path && !atHome ? (many ? t("addfolder.add.on", addName, name) : t("addfolder.add", addName)) : t("newtask.find.use");
+  const rows: BrowseRow[] = [
+    ...recent.map((p): BrowseRow => ({ key: `recent:${pathOf(p)}`, path: pathOf(p), name: p.name, repo: p.place.kind === "repo", line: p.remote || shownPath(pathOf(p)), when: p.usedAt ? ago(A.L, p.usedAt) : "" })),
+    ...(r?.ok && r.parent && !needle ? [{ key: "up", path: r.parent, name: t("newtask.find.up"), up: true }] : []),
+    ...folders.map((f): BrowseRow => ({ key: f.path, path: f.path, name: f.name, repo: !!f.repo, line: f.remote, added: known.has(f.path) })),
+  ];
+  const at = b.at !== undefined && b.at < rows.length ? b.at : -1;
+  const go = (path: string) => A.ntBrowse(b.device, path);
+  const up = () => r?.ok && r.parent && go(r.parent);
+  const onKey = (e: KeyboardEvent) => {
+    const mod = e.metaKey || e.ctrlKey;
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      if (mod && e.key === "ArrowUp") return e.preventDefault(), up();
+      if (!rows.length) return;
+      e.preventDefault();
+      const n = e.key === "ArrowDown" ? (at + 1) % rows.length : at <= 0 ? rows.length - 1 : at - 1;
+      return A.ntBrowseAt(n);
+    }
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (mod) return !atHome && r?.ok && A.ntBrowseUse();
+      if (at >= 0) return go(rows[at]!.path);
+      return folders.length === 1 && go(folders[0]!.path);
+    }
+    if (e.key === "Backspace" && !(b.filter ?? "")) return e.preventDefault(), up();
+  };
+  const crumbs = r?.ok && r.path ? crumbsOf(r.path, home) : [];
+  const fine = !coarse();
   return (
-    <div class="nt-list nt-browse" role="group" aria-label={t("newtask.find.title", name)}>
+    <div class="nt-list nt-browse adf-browse" role="group" aria-label={t("newtask.find.title", name)}>
+      <div class="adf-at">
+        {!inSheet && <small class="adf-at-who">{t("newtask.find.title", name)}</small>}
+        <nav class="adf-crumbs" aria-label={t("addfolder.crumbs")} ref={(el) => void (el && (el.scrollLeft = el.scrollWidth))}>
+          {crumbs.map((c, i) => (
+            <span key={c.path} class="adf-crumb">
+              {i > 0 && <i aria-hidden="true">/</i>}
+              {i === crumbs.length - 1 ? (
+                <b aria-current="location">{c.label}</b>
+              ) : (
+                <CrumbStep label={c.label} onClick={() => go(c.path)} />
+              )}
+            </span>
+          ))}
+          {!crumbs.length && <span class="adf-crumb">{b.lastOk ? shownPath(b.lastOk) : "~"}</span>}
+        </nav>
+        {repo && repo.root === r?.path && repo.remote && <code class="nt-remote adf-origin">{repo.remote}</code>}
+      </div>
       <input
         class="nt-field nt-find-field"
         type="text"
@@ -481,67 +557,101 @@ export function FolderBrowser() {
         value={b.filter ?? ""}
         ref={(el) => void (el && !coarse() && document.activeElement?.tagName !== "INPUT" && el.focus())}
         onInput={(e) => A.ntBrowseFilter((e.target as HTMLInputElement).value)}
-        onKeyDown={(e) => e.key === "Enter" && !e.metaKey && !e.ctrlKey && (e.preventDefault(), enter())}
+        onKeyDown={onKey}
       />
-      <div class="nt-browse-head">
-        {!inSheet && <small>{t("newtask.find.title", name)}</small>}
-        {r?.ok && r.path && <code>{shownPath(r.path)}</code>}
-        {repo && repo.root === r?.path && repo.remote && <code class="nt-remote">{repo.remote}</code>}
-      </div>
       {r?.ok && (r.roots?.length ?? 0) > 1 && (
         <div class="nt-chip-row nt-roots" role="radiogroup" aria-label={t("addfolder.roots")}>
           {r.roots!.map((root) => (
-            <Choice key={root} label={shownPath(root)} on={r.path === root || (r.path ?? "").startsWith(root.replace(/\/+$/, "") + "/")} onClick={() => A.ntBrowse(b.device, root)}>
+            <Choice key={root} label={shownPath(root)} on={r.path === root || (r.path ?? "").startsWith(root.replace(/\/+$/, "") + "/")} onClick={() => go(root)}>
               {shownPath(root)}
             </Choice>
           ))}
         </div>
       )}
-      {!r && <div class="nt-empty small sub">{t("newtask.find.loading")}</div>}
-      {err && <div class="nt-empty nt-err-line small">{err}</div>}
-      {recent.length > 0 && (
-        <>
-          <small class="nt-sub-h">{t("addfolder.recent")}</small>
-          {recent.map((p) => {
-            const path = p.place.kind === "repo" ? p.place.repoPath : p.place.kind === "folder" ? p.place.path : "";
-            return (
-              <MenuRow key={`recent:${path}`} label={p.name} on={false} onClick={() => A.ntBrowse(b.device, path)}>
-                {p.place.kind === "repo" ? <Branch /> : <Folder />}
-                <span class="mr-t">
-                  <b>{p.name}</b>
-                  <small class="mono">{p.remote || shownPath(path)}</small>
-                </span>
-              </MenuRow>
-            );
-          })}
-          <hr class="nt-rule" />
-        </>
-      )}
-      {r?.ok && r.parent && !needle && (
-        <MenuRow key="up" label={t("newtask.find.up")} on={false} onClick={() => A.ntBrowse(b.device, r.parent)}>
-          <Up />
-          <span class="mr-t">
-            <b>{t("newtask.find.up")}</b>
-          </span>
-        </MenuRow>
-      )}
-      {folders.map((f) => (
-        <MenuRow key={f.path} label={f.name} on={false} onClick={() => A.ntBrowse(b.device, f.path)}>
-          {f.repo ? <Branch /> : <Folder />}
-          <span class="mr-t">
-            <b>{f.name}</b>
-            {f.remote && <small class="mono">{f.remote}</small>}
-          </span>
-        </MenuRow>
-      ))}
-      {r?.ok && !(r.folders ?? []).length && <div class="nt-empty small sub">{t("newtask.find.none")}</div>}
-      {r?.ok && (r.folders ?? []).length > 0 && !folders.length && <div class="nt-empty small sub">{t("addfolder.nomatch", needle)}</div>}
-      {r?.ok && r.more && <div class="nt-empty small sub">{t("newtask.find.more", (r.folders ?? []).length)}</div>}
-      {repo && repo.root !== r?.path && <div class="nt-empty small sub">{t("addfolder.inrepo", repo.name)}</div>}
-      <div class="nt-browse-foot">
-        <Btn kind="text" size="sm" label={inSheet ? t("addfolder.cancel") : t("newtask.find.back")} onClick={() => A.ntBrowseBack()} />
-        <Btn kind="primary" size="sm" label={nt.adding ? t("newtask.find.adding") : useLabel} disabled={!r?.ok || atHome || !!nt.adding} onClick={() => A.ntBrowseUse()} />
+      <div class="adf-rows" role="listbox" aria-label={t("newtask.find.title", name)}>
+        {!r && <div class="adf-wait" aria-busy="true"><span /><span /><span /></div>}
+        {r && !r.ok && <BrowseTrouble reason={r.reason} message={r.message} device={b.device} lastOk={b.lastOk} typed={b.path ?? ""} shownPath={shownPath} />}
+        {rows.map((row, i) => (
+          <Fragment key={row.key}>
+            {i === recent.length && recent.length > 0 && <hr class="nt-rule" />}
+            {i === 0 && recent.length > 0 && <small class="nt-sub-h">{t("addfolder.recent")}</small>}
+            <OptionRow at={i === at} class={`adf-row${row.up ? " up" : ""}`} onClick={() => go(row.path)} onHover={() => fine && i !== at && A.ntBrowseAt(i)}>
+              <span class={`adf-mark${row.repo ? " repo" : ""}`}>{row.up ? <Up /> : row.repo ? <Branch /> : <Folder />}</span>
+              <span class="adf-t">
+                <b>{row.name}</b>
+                {row.line && <small class="mono">{row.line}</small>}
+              </span>
+              {row.when && <small class="adf-when">{row.when}</small>}
+              {row.added && <small class="adf-tag">{t("addfolder.added")}</small>}
+              {!row.up && <Chevron />}
+            </OptionRow>
+          </Fragment>
+        ))}
+        {r?.ok && !(r.folders ?? []).length && <div class="adf-note">{t(atHome ? "newtask.find.none" : "addfolder.empty")}</div>}
+        {r?.ok && (r.folders ?? []).length > 0 && !folders.length && (
+          <div class="adf-note">
+            <span>{t("addfolder.nomatch", needle)}</span>
+            {!(b.filter ?? "").trim().startsWith("/") && !(b.filter ?? "").trim().startsWith("~") && <small>{t("addfolder.path.hint")}</small>}
+          </div>
+        )}
+        {r?.ok && r.more && <div class="nt-empty small sub">{t("newtask.find.more", (r.folders ?? []).length)}</div>}
       </div>
+      {repo && repo.root !== r?.path && <div class="adf-inrepo">{t("addfolder.inrepo", repo.name)}</div>}
+      <div class="nt-browse-foot adf-foot">
+        {fine && (
+          <span class="adf-keys" aria-hidden="true">
+            <span>
+              <kbd>↑</kbd>
+              <kbd>↓</kbd>
+              {t("addfolder.keys.move")}
+            </span>
+            <span>
+              <kbd>
+                <Ret />
+              </kbd>
+              {t("addfolder.keys.open")}
+            </span>
+            <span>
+              <kbd>⌘↑</kbd>
+              {t("addfolder.keys.up")}
+            </span>
+          </span>
+        )}
+        <span class="nt-grow" />
+        <Btn kind="text" size="sm" label={inSheet ? t("addfolder.cancel") : t("newtask.find.back")} onClick={() => A.ntBrowseBack()} />
+        {r?.ok && !atHome ? (
+          <Btn kind="primary" size="sm" class="adf-go" label={nt.adding ? t("newtask.find.adding") : useLabel} disabled={!!nt.adding} onClick={() => A.ntBrowseUse()} />
+        ) : (
+          r?.ok && <small class="adf-pick">{t("addfolder.pick")}</small>
+        )}
+      </div>
+    </div>
+  );
+}
+
+const Ret = () => (
+  <svg class="k-ret" width="11" height="11" viewBox="0 0 12 12" aria-hidden="true">
+    <path d="M10 2.5v4H3M5 4.5 3 6.5l2 2" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
+  </svg>
+);
+
+/** D457: why a folder can't be shown, and the one way on: back to where it last looked, or to the home. */
+function BrowseTrouble(p: { reason?: string; message?: string; device: string; lastOk?: string; typed: string; shownPath: (s: string) => string }) {
+  const name = A.ntBrowseName();
+  const homeDev = A.ntBrowsable().find((d) => d.home);
+  if (p.reason === "offline" || p.reason === "old") {
+    return (
+      <div class="adf-trouble">
+        <b>{p.reason === "offline" ? t("newtask.find.offline", name) : t("newtask.old", name)}</b>
+        {homeDev && homeDev.id !== p.device && <Btn kind="secondary" size="sm" label={t("addfolder.switch", homeDev.name)} onClick={() => A.afPick(homeDev.id)} />}
+      </div>
+    );
+  }
+  const words = p.reason === "outside" ? t("newtask.find.outside") : p.reason === "not_found" ? (p.typed ? t("addfolder.missing", name, p.shownPath(p.typed)) : t("newtask.find.missing")) : p.message || t("newtask.err.unknown");
+  return (
+    <div class="adf-trouble">
+      <b>{words}</b>
+      {p.lastOk && <Btn kind="secondary" size="sm" label={t("addfolder.back.to", p.shownPath(p.lastOk))} onClick={() => A.ntBrowse(p.device, p.lastOk, "")} />}
     </div>
   );
 }

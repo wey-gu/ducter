@@ -164,7 +164,7 @@ export interface NewTaskDraft {
   // id), the folder asked for, the answer once it lands; adding: the clientId of its project_add;
   // wantBranch: the branch to keep once the copy picked on another computer says its branches.
   // D455: filter, what is typed over the list (a name to narrow it, or a path).
-  browse?: { device: string; cid: string; path?: string; res?: Extract<ServerFrame, { t: "folder_browse_result" }>; filter?: string };
+  browse?: { device: string; cid: string; path?: string; res?: Extract<ServerFrame, { t: "folder_browse_result" }>; filter?: string; at?: number; lastOk?: string };
   adding?: string;
   // D204: 从 Git 地址加… / Add from a Git address… (list "clone"): the computer it clones on (a
   // device id), the address typed, the clientId of the clone in flight (busy), and why it failed.
@@ -440,6 +440,8 @@ class AppState {
   sheet: Sheet = null;
   /** D455: On hand's 添加文件夹 / Add a folder sheet: the computer chosen (a device id) and the way. */
   addf: { device: string; way: "choose" | "clone" | "new" } = { device: "local", way: "choose" };
+  /** D457: the project just added from the sheet, for its arrival in On hand's column. */
+  arrived?: { name: string; at: number };
   /** D309: every partner on the home (absent: a home without them, or one only). */
   partners?: PartnerInfo[];
   /** D309: the partner this page shows; the hello asks for it. */
@@ -840,7 +842,7 @@ class AppState {
     }
     if (f.t === "folder_browse_result") {
       const b = this.nt.browse;
-      if (b && f.clientId === b.cid) (b.res = f), f.ok && f.path && (b.path = f.path), this.changed();
+      if (b && f.clientId === b.cid) (b.res = f), f.ok && f.path && ((b.path = f.path), (b.lastOk = f.path)), this.changed();
       return;
     }
     if (f.t === "project_add_result") return this.folderAdded(f);
@@ -1279,8 +1281,10 @@ class AppState {
     const nt = this.nt;
     this.nextClient++;
     const cid = `b${Date.now()}-${this.nextClient}`;
-    const keep = nt.browse?.device === device ? nt.browse.path : undefined;
-    nt.browse = { device, cid, ...(path ?? keep ? { path: path ?? keep } : {}), ...(filter ? { filter } : {}) };
+    const same = nt.browse?.device === device ? nt.browse : undefined;
+    const keep = same?.path;
+    // D457: where it last looked (a missing folder offers the way back there); the keys' row starts over.
+    nt.browse = { device, cid, ...(path ?? keep ? { path: path ?? keep } : {}), ...(filter ? { filter } : {}), ...(same?.lastOk ? { lastOk: same.lastOk } : {}) };
     nt.list = "browse";
     nt.branchOpen = nt.computerOpen = false;
     nt.err = "";
@@ -1477,6 +1481,19 @@ class AppState {
     try {
       if (p.name) localStorage.setItem("ducter.onhand.lens", p.name);
     } catch {}
+    // D457: the project arrives in the column (or the lens row) with a moment of its own.
+    if (p.name) {
+      this.arrived = { name: p.name, at: Date.now() };
+      setTimeout(() => (this.arrived?.name === p.name && (this.arrived = undefined), this.changed()), 2200);
+    }
+    this.changed();
+  }
+
+  /** D457: the browser's row the keys are on (↑↓). */
+  ntBrowseAt(i: number) {
+    const b = this.nt.browse;
+    if (!b || b.at === i) return;
+    b.at = i;
     this.changed();
   }
 
@@ -1485,6 +1502,7 @@ class AppState {
     const b = this.nt.browse;
     if (!b) return;
     b.filter = v;
+    b.at = undefined;
     const r = b.res;
     const { dir } = browseNeedle(v, r?.ok ? (r.path ?? "") : "", r?.ok ? (r.home ?? "") : "");
     if (dir && r) return this.ntBrowse(b.device, dir, v);

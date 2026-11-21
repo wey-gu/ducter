@@ -599,7 +599,11 @@ func (a *App) taskRow(c *ui.Context, task *store.Task, state bool) {
 	// D270: selection is the knob (the card's white on its clay ledge), the
 	// same as the place shown in the bar; hover a faint tint. No bar at an
 	// edge for selection or for state.
-	row := ui.Row(c).Gap(t.S3).Padding(t.S2, padX).MinHeight(rowH).Radius(t.RadiusMD).AlignItems(ui.Center).Cursor(ui.CursorPointer).Role(ui.RoleLink).Label(task.Title()).Focusable()
+	h, padY := float32(rowH), t.S2
+	if rail && a.compact() {
+		h, padY = 44, t.S1+1 // D457: compact, the rail's rows close up
+	}
+	row := ui.Row(c).Gap(t.S3).Padding(padY, padX).MinHeight(h).Radius(t.RadiusMD).AlignItems(ui.Center).Cursor(ui.CursorPointer).Role(ui.RoleLink).Label(task.Title()).Focusable()
 	hover := row.Hovered()
 	switch {
 	case opened, focus:
@@ -807,7 +811,7 @@ func (a *App) findField(c *ui.Context) ui.Element {
 // onHandKeys: j/k (or the arrows) walk the list, Enter opens, / finds,
 // Esc lets go of Find first.
 func (a *App) onHandKeys(c *ui.Context, find ui.Element) {
-	if a.oh.sw || a.nt.open {
+	if a.oh.sw || a.nt.open || a.addf.open {
 		return
 	}
 	typing := find.Valid() && find.Focused()

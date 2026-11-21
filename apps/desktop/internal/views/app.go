@@ -665,6 +665,8 @@ func (a *App) shortcuts(c *ui.Context) {
 		a.OpenSettings()
 	case c.Shortcut(ui.Cmd|ui.Alt, ui.KeyB):
 		a.ToggleBench() // D214: the workbench, as VS Code's, Zed's and Codex's right panel
+	case c.Shortcut(ui.Cmd|ui.Shift, ui.KeyD):
+		a.ToggleDensity(c) // D457: an opened task, comfortable or compact
 	case c.Shortcut(ui.Cmd, ui.KeyK):
 		a.OpenSwitcher() // D391: 找任何东西 / Find anything (it was the composer, D216)
 	case a.Route == RouteConversation && c.Shortcut(ui.Cmd, ui.KeyDown):

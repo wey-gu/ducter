@@ -15,10 +15,13 @@ package views
 
 import (
 	"sort"
+	"strings"
+	"time"
 
 	"github.com/egoist/mygo/ui"
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 	"github.com/wey-gu/ducter/apps/desktop/internal/store"
+	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
 )
 
 // addFolderState is the sheet: open, the computer chosen (a device id,
@@ -27,7 +30,28 @@ type addFolderState struct {
 	open   bool
 	device string
 	way    string
+	// arrived (D457) is the project just added from the sheet and when:
+	// its row in On hand's column arrives with a ring that fades.
+	arrived   string
+	arrivedAt time.Time
 }
+
+// arrivalFor is how far the project's arrival has gone (0..1), and
+// whether it is still under way.
+func (a *App) arrivalFor(name string) (float32, bool) {
+	af := &a.addf
+	if af.arrived == "" || !strings.EqualFold(af.arrived, name) {
+		return 1, false
+	}
+	p := float32(a.Now().Sub(af.arrivedAt)) / float32(arriveFor)
+	if p >= 1 || p < 0 {
+		return 1, false
+	}
+	return p, true
+}
+
+// arriveFor is how long a just-added project's ring takes to fade.
+const arriveFor = 1800 * time.Millisecond
 
 // OpenAddFolder opens the sheet on the computer the latest work was on.
 func (a *App) OpenAddFolder() {
@@ -57,13 +81,73 @@ func (a *App) afPlaced(p protocol.PlaceChoice) {
 	a.closeAddFolder()
 	if p.Name != "" {
 		a.Local.SetLens(p.Name)
+		a.addf.arrived, a.addf.arrivedAt = p.Name, a.Now()
 	}
 }
 
 // afComputers are the computers a folder can be added on: the reachable
 // ones first, then those too old to look through (greyed, they say so).
 func (a *App) afComputers() (ok, old []protocol.DeviceView) {
-	return a.reachable("", false), a.reachable("", true)
+	ok = a.reachable("", false)
+	// D457: home first, then as the home lists them.
+	sort.SliceStable(ok, func(i, j int) bool { return ok[i].Home && !ok[j].Home })
+	return ok, a.reachable("", true)
+}
+
+// afStateWord is a computer's one word in the sheet: the home says Ducter
+// runs there; the others are awake or asleep.
+func (a *App) afStateWord(d protocol.DeviceView) string {
+	if d.Home {
+		return a.L.T("addfolder.dev.home", a.personaName())
+	}
+	if d.State == protocol.DeviceAsleep {
+		return a.L.T("device.state.asleep")
+	}
+	return a.L.T("device.state.awake")
+}
+
+// afTile is one computer in the sheet (D457): its drawn device, its name
+// and its state word; the chosen one raised on an ink ledge, the others
+// pressed into the sheet. It reports a click.
+func (a *App) afTile(c *ui.Context, d protocol.DeviceView, on bool) bool {
+	t := a.T
+	word := a.afStateWord(d)
+	b := ui.Row(c.Key("af-c:"+d.ID)).Grow(1).Basis(0).MinWidth(0).MinHeight(60).Padding(6, t.S3, 6, 6).Gap(t.S2).
+		Radius(t.RadiusMD).AlignItems(ui.Center).Cursor(ui.CursorPointer).Role(ui.RoleRadio).
+		Label(spoken(a.L, d.Name, word)).AccessSelected(on).Focusable()
+	switch {
+	case on:
+		b.Background(t.Surface).Border(1.5, t.Ink).Shadow(0, 3, 0, 0, t.Ink)
+	case b.Hovered():
+		b.Background(t.Sunken.Mix(t.Ink, 0.04))
+	default:
+		b.Background(t.Sunken)
+	}
+	b.Children(func() {
+		if bmp := theme.Clay(deviceArt(&d)); bmp != nil {
+			iw, ih := ui.ImageSize(bmp)
+			w, h := float32(44), float32(44)
+			if iw > 0 && ih > 0 {
+				if iw > ih {
+					h = 44 * ih / iw
+				} else {
+					w = 44 * iw / ih
+				}
+			}
+			ui.Box(c.Key("art")).Size(44, 44).Shrink(0).AlignItems(ui.Center).Justify(ui.Center).Children(func() {
+				ui.Image(c, bmp).Size(w, h).AccessHidden(true)
+			})
+		}
+		ui.Column(c).Grow(1).MinWidth(0).Gap(1).AccessHidden(true).Children(func() {
+			ink := t.InkSoft
+			if on {
+				ink = t.Ink
+			}
+			uiText(c, d.Name).FontSize(t.SM).FontWeight(700).TextColor(ink).SingleLine()
+			uiText(c, word).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
+		})
+	})
+	return b.Clicked() && !on
 }
 
 // afDefault is the computer the latest task with a folder was on, if it
@@ -135,14 +219,14 @@ func (a *App) addFolderSheet(c *ui.Context) {
 		a.enter(c, panel)
 		a.heading(c, title, t.XL)
 		ok, old := a.afComputers()
-		// 1. The computer: named only when there is a choice.
+		// 1. The computer: named only when there is a choice; each its own
+		// small clay (D457), home first.
 		if len(ok)+len(old) > 1 {
 			ui.Column(c.Key("af-computer")).Gap(t.S2).Children(func() {
 				uiText(c, a.L.T("addfolder.computer")).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).Role(ui.RoleHeading)
-				ui.Row(c.Key("af-computers")).Gap(t.S2).Wrap().Role(ui.RoleRadioGroup).Label(a.L.T("addfolder.computer")).Children(func() {
+				ui.Row(c.Key("af-computers")).Gap(t.S2).Role(ui.RoleRadioGroup).Label(a.L.T("addfolder.computer")).Children(func() {
 					for _, d := range ok {
-						d := d
-						if a.choice(c, "af-c:"+d.ID, d.Name, d.ID == af.device, "") {
+						if a.afTile(c, d, d.ID == af.device) {
 							af.device = d.ID
 							a.afWay(af.way)
 						}
@@ -153,14 +237,19 @@ func (a *App) addFolderSheet(c *ui.Context) {
 				}
 			})
 		}
-		// 2. The way: choose (the default), clone, new.
-		ui.Row(c.Key("af-ways")).Gap(t.S2).Wrap().Role(ui.RoleRadioGroup).Label(title).Children(func() {
-			for _, way := range []string{"choose", "clone", "new"} {
-				if a.choice(c, "af-w:"+way, a.L.T("addfolder.way."+way), af.way == way, "") {
-					a.afWay(way)
-				}
+		// 2. The way: choose (the default), clone, new: one segmented track (D457).
+		ways := []string{"choose", "clone", "new"}
+		sel := 0
+		labels := make([]string, len(ways))
+		for i, way := range ways {
+			labels[i] = a.L.T("addfolder.way." + way)
+			if af.way == way {
+				sel = i
 			}
-		})
+		}
+		if i := a.choices(c, "af-ways", title, labels, sel); i >= 0 {
+			a.afWay(ways[i])
+		}
 		// 3. The folder, in that way, on that computer.
 		ui.Column(c.Key("af-body")).Gap(2).MinHeight(0).Shrink(1).Children(func() {
 			switch {

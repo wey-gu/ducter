@@ -23,7 +23,7 @@ var keymap = []struct {
 }{
 	{"keys.g.any", []keymapRow{
 		{"keys.find", "⌘K"}, {"keys.new", "⌘N"}, {"keys.conv", "⌘1"}, {"keys.onhand", "⌘2"}, {"keys.devices", "⌘3"},
-		{"keys.past", "⌘Y"}, {"keys.settings", "⌘,"}, {"keys.nth", "⌃1–⌃9"}, {"keys.up", "esc"}, {"keys.this", "⌘/"},
+		{"keys.past", "⌘Y"}, {"keys.settings", "⌘,"}, {"keys.nth", "⌃1–⌃9"}, {"keys.up", "esc"}, {"keys.this", "⌘/"}, {"keys.density", "⌘⇧D"},
 	}},
 	{"keys.g.task", []keymapRow{{"keys.walk", "⌘⇧[ ⌘⇧]"}, {"keys.bench", "⌥⌘B"}}},
 	{"keys.g.find", []keymapRow{

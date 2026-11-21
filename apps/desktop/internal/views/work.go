@@ -570,6 +570,9 @@ func (a *App) watchCard(c *ui.Context, task *store.Task, m *taskMemo) {
 	still := c.Preferences().ReduceMotion
 	const size = 56
 	indent := float32(taskFaceW) + t.S5 // the title's left edge (taskHead)
+	if a.compact() {
+		indent = 40 + t.S3 // D457: the compact head's
+	}
 	w := a.S.WaiterFor(task.ID)
 	if w == nil {
 		at, ok := a.S.Arrived[task.ID]

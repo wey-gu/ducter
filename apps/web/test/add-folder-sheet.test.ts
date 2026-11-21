@@ -105,4 +105,44 @@ describe("Add a folder on any computer (D455)", () => {
     expect(browseNeedle("~/code/ha", "/root/code", "/root")).toEqual({ dir: "", needle: "ha" });
     expect(browseNeedle("/srv/", "/root", "/root")).toEqual({ dir: "/srv", needle: "" });
   });
+
+  // D457: the breadcrumb, the keys' row, the way back from a missing folder, and the arrival.
+  test("the breadcrumb steps back from ~ (or /), and each part goes there", async () => {
+    const { crumbsOf } = await import("../src/newtask.tsx");
+    expect(crumbsOf("/root/code/hawdb", "/root")).toEqual([
+      { label: "~", path: "/root" },
+      { label: "code", path: "/root/code" },
+      { label: "hawdb", path: "/root/code/hawdb" },
+    ]);
+    expect(crumbsOf("/srv/git", "/root")).toEqual([
+      { label: "/", path: "/" },
+      { label: "srv", path: "/srv" },
+      { label: "git", path: "/srv/git" },
+    ]);
+  });
+
+  test("a missing folder keeps where it last looked; the keys' row starts over; added, the project arrives", async () => {
+    const { A } = await boot();
+    A.openAddFolder();
+    const b = A.nt.browse!;
+    A.receive({ t: "folder_browse_result", clientId: b.cid, ok: true, path: "/root/code", home: "/root", parent: "/root", folders: [{ name: "hawdb", path: "/root/code/hawdb", repo: true }] } as any);
+    expect(A.nt.browse!.lastOk).toBe("/root/code");
+    A.ntBrowseAt(1);
+    expect(A.nt.browse!.at).toBe(1);
+    A.ntBrowse(A.nt.browse!.device, "/root/nothere");
+    expect(A.nt.browse!.at).toBeUndefined();
+    A.receive({ t: "folder_browse_result", clientId: A.nt.browse!.cid, ok: false, reason: "not_found" } as any);
+    expect(A.nt.browse!.lastOk).toBe("/root/code");
+    A.afPlaced({ place: { kind: "repo", device: "local", repoPath: "/root/code/hawdb" }, name: "hawdb" } as any);
+    expect(A.sheet).toBeNull();
+    expect(A.arrived?.name).toBe("hawdb");
+  });
+
+  test("the sheet's words in both languages", () => {
+    for (const lang of ["zh", "en"] as const) {
+      const L = strings(lang);
+      expect(L.t("addfolder.add.on", "hawdb", "Hetzner Server")).toContain("Hetzner Server");
+      expect(L.t("addfolder.missing", "Mac mini", "~/x")).toContain("~/x");
+    }
+  });
 });

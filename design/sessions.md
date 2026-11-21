@@ -129,6 +129,11 @@ plus its own judgement.
   slip and the initials find too.
 - **A task's state is the newest by seq** on both clients: an older page of its Log (D320) landing
   after the newest never turns a done task back to working.
+- **紧凑 / Compact** (D457): **打开的任务 / An opened task** is **宽松 / Comfortable** (default) or
+  **紧凑 / Compact**, in Settings › Look and sound (the web's 这台手机 / This phone), this device
+  only, and **⌘⇧D** from anywhere (in 键盘; a toast says which). Compact: the face at 40 on one line
+  with the title, the state and who does it under it; the turns, the rail's rows (44) and the
+  workbench's header close up; the type scale and the reading measure stay.
 
 ## 做过的事 / Past tasks as the list of every task
 

@@ -497,9 +497,10 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
 
 ## The opened task and ⌘K (D456, `sessions.md`, research/198)
 
-- **A compact density for the opened task** (research/198 L1): the face at 40 beside the title on one
-  line with the meta, chosen in Settings › Appearance (or ⌘⇧D); default unchanged. Trigger: the author
-  says yes.
+- **The compact density beyond the opened task** (D457 built it for the opened task, its rail and the
+  workbench's header): On hand's board and the conversation stay comfortable. Trigger: someone asks
+  for compact there too. **⌘⇧D walked in Safari** (the page's keydown taking it from Add to Reading
+  List is INFERRED). Trigger: the next Safari pass.
 - **Ctrl in the key hints off a Mac** (L5): ⌘K's foot, 键盘 and the tooltips say ⌘ in a Windows or Linux
   browser, where the keys are Ctrl. Trigger: the first person on Windows or Linux with a keyboard.
 - **Mark the word a slip found** (L6): ⌘K and On hand's Find mark the words typed, not the word one

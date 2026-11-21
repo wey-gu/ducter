@@ -341,7 +341,7 @@ function LensEntry({ k, name, tasks, on, tab, brand, where }: { k: string; name:
   const counts = foldCounts(statuses);
   const st = tab ? { adds: 0, dels: 0 } : groupStat(tasks);
   return (
-    <button class={`lens-row${on ? " on" : ""}${k === OTHER ? " other" : ""}`} aria-pressed={on} aria-label={spoken(A.L, name, ...(where?.length ? [t("onhand.where", where.join(t("onhand.where.and")))] : []), counts)} title={counts || undefined} onClick={() => setLens(k)}>
+    <button class={`lens-row${on ? " on" : ""}${k === OTHER ? " other" : ""}${k && A.arrived && [name, k].some((x) => x.toLowerCase() === A.arrived!.name.toLowerCase()) ? " arrived" : ""}`} aria-pressed={on} aria-label={spoken(A.L, name, ...(where?.length ? [t("onhand.where", where.join(t("onhand.where.and")))] : []), counts)} title={counts || undefined} onClick={() => setLens(k)}>
       <span class="nm">
         {/* The mark sits on the name's line, never above it (.nm stacks the name over its stat). */}
         <span class="nm-line">
@@ -550,7 +550,9 @@ function BoardTop({ lens, groups, findable, room }: { lens: string; groups: Lens
       </div>
       {(g || findable) && (
         <div class="strip-row">
-          {g && (
+          {/* D457: a project with nothing yet (one just added) says its first step in words. */}
+          {g && !g.tasks.length && <Btn kind="secondary" size="sm" class="proj-first" label={t("onhand.project.start", g.name)} onClick={() => A.openNewTask(g.place && g.place.kind !== "none" ? g.place : { kind: "none" })} />}
+          {g && g.tasks.length > 0 && (
             <button class="plus" aria-label={`${t("onhand.newhere")} ${g.name}`} title={t("onhand.newhere")} onClick={() => A.openNewTask(g.place && g.place.kind !== "none" ? g.place : { kind: "none" })}>
               <PlusSm />
             </button>

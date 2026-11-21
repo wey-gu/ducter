@@ -264,6 +264,7 @@ func (a *App) lensRow(c *ui.Context, key, name string, tasks []*store.Task, on, 
 	case r.Hovered():
 		r.Background(t.Ink.Alpha(0.04))
 	}
+	a.arriving(c, r, name)
 	r.Children(func() {
 		if brand != "" {
 			if src := theme.Brand(brand); src != nil {
@@ -323,6 +324,7 @@ func (a *App) lensTabs(c *ui.Context, groups []lensGroup, lens string) {
 			st, of, words := a.foldMark(tasks)
 			r := ui.Row(c.Key("tab:"+key)).Gap(t.S1+2).Height(34).Padding(0, t.S3).Radius(t.RadiusMD).AlignItems(ui.Center).
 				Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(spoken(a.L, name, words)).Focusable()
+			a.arriving(c, r, name)
 			switch {
 			case on:
 				a.knob(r) // D270: the chosen one is the knob
@@ -425,7 +427,12 @@ func (a *App) boardTop(c *ui.Context, b store.Board, groups []lensGroup, lens st
 				if g.place != nil {
 					p = *g.place
 				}
-				if a.iconButton(c, a.L.T("onhand.newhere")+" "+g.name, t.ControlSM, btnText, drawPlus) {
+				// D457: a project with nothing yet (one just added) says its first step in words.
+				if len(g.tasks) == 0 {
+					if a.button(c, a.L.T("onhand.project.start", g.name), btnSecondary, t.ControlSM, t.Bg) {
+						a.OpenNewTask(&p)
+					}
+				} else if a.iconButton(c, a.L.T("onhand.newhere")+" "+g.name, t.ControlSM, btnText, drawPlus) {
 					a.OpenNewTask(&p)
 				}
 			}
@@ -543,4 +550,23 @@ func (a *App) soon(at time.Time) string {
 		return i18n.Clock(at)
 	}
 	return a.when(at)
+}
+
+// arriving rings a project just added from the sheet (D457): an accent
+// ring that fades over arriveFor, at once gone under Reduce Motion.
+func (a *App) arriving(c *ui.Context, r ui.Element, name string) {
+	p, live := a.arrivalFor(name)
+	if !live {
+		return
+	}
+	if c.Preferences().ReduceMotion {
+		return // no ring under Reduce Motion; the chosen lens says it
+	}
+	// Full for the first eighth, then down to nothing.
+	k := float32(1)
+	if p > 0.12 {
+		k = 1 - (p-0.12)/0.88
+	}
+	r.Border(2.5, a.T.Accent.Alpha(k)).Background(a.T.Accent.Alpha(0.10 * k))
+	c.Invalidate()
 }

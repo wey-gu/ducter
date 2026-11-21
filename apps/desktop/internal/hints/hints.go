@@ -49,6 +49,9 @@ type state struct {
 	// MenuBarOff takes the menu bar extra away on this Mac (D306); shown
 	// by default.
 	MenuBarOff bool `json:"menuBarOff,omitempty"`
+	// Density is an opened task's: "compact", or "" for comfortable (the
+	// default, D457).
+	Density string `json:"density,omitempty"`
 	// OnHandLens is the project On hand is narrowed to (D261): a name,
 	// "~" for Other (no folder), "" for all. D128's by-state/by-project
 	// toggle (onHandBy) is retired: the lens replaced it.
@@ -267,6 +270,27 @@ func (l *Local) SetAppearance(v string) {
 		v = ""
 	}
 	l.st.Appearance = v
+	l.save()
+}
+
+// Density is how an opened task is laid out on this Mac (D457):
+// "compact" or "comfortable" (the default).
+func (l *Local) Density() string {
+	if l == nil || l.st.Density != "compact" {
+		return "comfortable"
+	}
+	return "compact"
+}
+
+// SetDensity remembers it ("comfortable" forgets it).
+func (l *Local) SetDensity(v string) {
+	if l == nil {
+		return
+	}
+	if v != "compact" {
+		v = ""
+	}
+	l.st.Density = v
 	l.save()
 }
 

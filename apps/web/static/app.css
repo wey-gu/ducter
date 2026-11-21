@@ -18270,15 +18270,442 @@ html[data-text-size="large"] .brand-mark > svg {
 .nt-roots {
   padding: 2px 6px 4px;
 }
-.addfolder .af-computers,
-.addfolder .af-ways {
-  margin-top: var(--s2);
-}
-.addfolder .af-body {
-  margin-top: var(--s3);
-}
 .addfolder .af-body > .nt-browse {
-  max-height: min(52vh, 460px);
+  max-height: min(56vh, 500px);
+}
+
+/* D457: the add-folder sheet at the clay bar. Each computer is a small clay of its own: its drawn
+   device, its name, its state; the chosen one raised on its ledge, the rest pressed into the sheet.
+   The ways are one segmented track. The browser is an instrument: the breadcrumb (each part a step
+   back), the field, rows that say what each folder is, keys at the foot, and a button that says
+   what will happen. */
+.adf-computers {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+.adf-h {
+  font-size: var(--xs);
+  font-weight: 700;
+  color: var(--ink-muted);
+}
+.adf-devs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(156px, 1fr));
+  gap: var(--s2);
+}
+.adf-dev {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  min-width: 0;
+  min-height: 60px;
+  padding: 6px var(--s3) 6px 6px;
+  border: 0;
+  border-radius: var(--r-md);
+  background: var(--sunken);
+  color: var(--ink-soft);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+  transition: background var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease), transform var(--t-med) var(--spring);
+}
+@media (hover: hover) {
+  .adf-dev:not(.on):hover {
+    background: color-mix(in srgb, var(--ink) 4%, var(--sunken));
+  }
+  .adf-dev:not(.on):hover .adf-dev-art {
+    transform: translateY(-2px) rotate(-2deg);
+  }
+}
+.adf-dev:active {
+  transform: translateY(1px);
+}
+.adf-dev.on {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 0 0 1.5px var(--ink), 0 var(--ledge) 0 1.5px var(--ink);
+}
+.adf-dev-art {
+  flex: none;
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  transition: transform var(--t-med) var(--spring), filter var(--t-fast) var(--ease);
+}
+.adf-dev:not(.on) .adf-dev-art {
+  filter: saturate(0.7);
+}
+.adf-dev.on .adf-dev-art {
+  animation: adf-pick 420ms var(--spring);
+}
+@keyframes adf-pick {
+  0% {
+    transform: scale(0.86) translateY(3px);
+  }
+  100% {
+    transform: none;
+  }
+}
+.adf-dev-t {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.adf-dev-t b {
+  font-size: var(--sm);
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.adf-dev-t small {
+  font-size: var(--xs);
+  color: var(--ink-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.adf-ways .seg button {
+  min-height: 34px;
+}
+.adf-browse {
+  overflow: hidden;
+  padding: var(--s2) var(--s2) 0;
+}
+.adf-at {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s3);
+  min-width: 0;
+  padding: 2px 6px 6px;
+}
+.adf-at-who {
+  flex: none;
+  font-size: var(--xs);
+  font-weight: 700;
+  color: var(--ink-muted);
+}
+.adf-crumbs {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: baseline;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  font-family: var(--mono);
+  font-size: var(--sm);
+  white-space: nowrap;
+}
+.adf-crumbs::-webkit-scrollbar {
+  display: none;
+}
+.adf-crumb {
+  display: inline-flex;
+  align-items: baseline;
+}
+.adf-crumb i {
+  padding: 0 3px;
+  font-style: normal;
+  color: var(--faint);
+}
+.adf-crumb button {
+  padding: 2px 4px;
+  margin: 0 -1px;
+  border: 0;
+  border-radius: var(--r-xs);
+  background: none;
+  color: var(--ink-muted);
+  font: inherit;
+  cursor: pointer;
+}
+.adf-crumb button:hover {
+  background: var(--sunken);
+  color: var(--ink);
+}
+.adf-crumb b {
+  padding: 2px 3px;
+  color: var(--ink);
+  font-weight: 700;
+}
+.adf-at .adf-origin {
+  flex: 0 1 auto;
+  max-width: 50%;
+  font-family: var(--mono);
+  font-size: var(--xs);
+  color: var(--ink-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.adf-browse > .nt-find-field {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: var(--sm);
+}
+.adf-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 1 1 auto !important;
+  min-height: 0;
+  overflow-y: auto;
+  margin: 6px calc(-1 * var(--s2)) 0;
+  padding: 0 var(--s2) var(--s2);
+}
+.adf-rows > * {
+  flex-shrink: 0;
+}
+.adf-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  min-height: 44px;
+  padding: 5px 8px 5px 6px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+.adf-row.at {
+  background: var(--sunken);
+}
+.adf-row.at .adf-chev {
+  color: var(--ink);
+  transform: translateX(2px);
+}
+.adf-mark {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--r-xs);
+  background: var(--sunken);
+}
+.adf-row.at .adf-mark {
+  background: var(--surface);
+}
+.adf-mark.repo {
+  background: color-mix(in srgb, var(--accent) 16%, var(--surface));
+}
+.adf-mark.repo .nt-glyph {
+  color: var(--press-accent);
+}
+.adf-row.up .adf-mark {
+  background: none;
+}
+.adf-t {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.adf-t b {
+  font-size: var(--sm);
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.adf-t small {
+  font-family: var(--mono);
+  font-size: var(--xs);
+  color: var(--ink-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.adf-when,
+.adf-tag {
+  flex: none;
+  font-size: var(--xs);
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.adf-tag {
+  padding: 2px 8px;
+  border-radius: var(--pill);
+  background: var(--done-surface);
+  color: var(--done-ink);
+  font-weight: 600;
+}
+.adf-chev {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  color: var(--faint);
+  transition: transform var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
+}
+.adf-note {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--s3) 10px;
+  font-size: var(--sm);
+  color: var(--ink-soft);
+}
+.adf-note small {
+  font-size: var(--xs);
+  color: var(--ink-muted);
+}
+.adf-trouble {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--s2);
+  margin: var(--s1) 0;
+  padding: var(--s3);
+  border-radius: var(--r-sm);
+  background: var(--failed-surface);
+}
+.adf-trouble b {
+  font-size: var(--sm);
+  font-weight: 600;
+  color: var(--failed-ink);
+}
+.adf-wait {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px;
+}
+.adf-wait span {
+  height: 32px;
+  border-radius: var(--r-sm);
+  background: var(--sunken);
+}
+.adf-wait span:nth-child(2) {
+  width: 80%;
+}
+.adf-wait span:nth-child(3) {
+  width: 60%;
+}
+.adf-inrepo {
+  margin: 0 calc(-1 * var(--s2));
+  padding: var(--s2) var(--s3);
+  background: var(--waiting-surface);
+  color: var(--waiting-ink);
+  font-size: var(--xs);
+}
+.adf-foot {
+  position: static;
+  align-items: center;
+  margin: 0 calc(-1 * var(--s2));
+}
+.adf-keys {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--xs);
+  color: var(--ink-muted);
+  white-space: nowrap;
+}
+.adf-keys > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.adf-keys kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 6px;
+  background: var(--sunken);
+  box-shadow: inset 0 -1px 0 var(--line);
+  color: var(--ink-soft);
+  font-family: var(--mono);
+  font-size: 0.6875rem;
+}
+.adf-pick {
+  font-size: var(--xs);
+  color: var(--ink-muted);
+  padding: 0 var(--s2);
+}
+.addfolder .adf-go {
+  max-width: 60%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+@media (max-width: 600px) {
+  .adf-devs {
+    grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  }
+  .adf-dev {
+    flex-direction: column;
+    gap: 2px;
+    padding: var(--s2) 6px;
+    text-align: center;
+  }
+  .adf-dev-art {
+    width: 40px;
+    height: 40px;
+  }
+  .adf-dev-t {
+    align-items: center;
+    max-width: 100%;
+  }
+  .addfolder .adf-go {
+    max-width: none;
+    flex: 1;
+    white-space: normal;
+    line-height: 1.25;
+  }
+  .adf-ways .seg.stack {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .adf-ways .seg.stack button {
+    flex: 1 1 auto;
+    min-height: 34px;
+    padding: 0 var(--s3);
+  }
+}
+/* D457: a project just added arrives in On hand's column: it rises into place with a ring that fades. */
+.lens-row.arrived {
+  animation: adf-arrive 1800ms var(--ease) both;
+}
+.lens-row.arrived .nm b {
+  animation: adf-arrive-name 520ms var(--spring) both;
+}
+@keyframes adf-arrive {
+  0% {
+    box-shadow: 0 0 0 0 var(--accent), var(--knob);
+  }
+  12% {
+    box-shadow: 0 0 0 3px var(--accent), var(--knob);
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent, var(--knob);
+  }
+}
+@keyframes adf-arrive-name {
+  0% {
+    transform: translateY(6px);
+    opacity: 0;
+  }
+  100% {
+    transform: none;
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lens-row.arrived,
+  .lens-row.arrived .nm b,
+  .adf-dev.on .adf-dev-art {
+    animation: none;
+  }
 }
 .lens-row .where {
   display: flex;
@@ -18317,15 +18744,6 @@ html[data-text-size="large"] .brand-mark > svg {
 }
 .lens-add.tab:hover {
   background: var(--sunken);
-}
-.addfolder .af-computers {
-  flex-direction: column;
-  gap: 6px;
-}
-.addfolder .af-computers > small {
-  flex: none;
-  padding-top: 0;
-  font-weight: 700;
 }
 
 /* D454: a finished card (done, or didn't work out) and a finished group leave On hand: × and ⋯ in
@@ -18532,3 +18950,70 @@ html[data-text-size="large"] .brand-mark > svg {
   white-space: nowrap;
 }
 .keys-note { margin: 16px 0 4px; font-size: var(--sm); color: var(--ink-muted); line-height: var(--lh-read); }
+
+/* D457: an opened task, compact (Settings › Look and sound, ⌘⇧D; this device only; off by default).
+   The face at 40 shares a line with the state and the title; the turns, the rail's rows and the
+   workbench's header close up. The clay, the type scale and the reading measure stay. */
+:root[data-density="compact"] .task-page {
+  --head-gap: var(--s3);
+  --head-in: calc(40px + var(--head-gap));
+  gap: 12px;
+}
+:root[data-density="compact"] .task-head {
+  grid-template-columns: 40px minmax(0, 1fr);
+  gap: 2px var(--head-gap);
+}
+/* The face and the title on one line; the state and who does it under the title. */
+:root[data-density="compact"] .task-head .head-words {
+  display: contents;
+}
+:root[data-density="compact"] .task-head .face {
+  grid-row: 1;
+  grid-column: 1;
+  align-self: center;
+}
+:root[data-density="compact"] .task-head h1 {
+  grid-row: 1;
+  grid-column: 2;
+  align-self: center;
+  font-size: var(--lg);
+  line-height: 1.25;
+}
+:root[data-density="compact"] .task-head .head-words > :not(h1) {
+  grid-column: 2;
+}
+:root[data-density="compact"] .task-head .headline {
+  margin-top: 4px;
+  font-size: var(--t20);
+}
+:root[data-density="compact"] .task-page .turns {
+  gap: 16px;
+}
+:root[data-density="compact"] .task-page .turn {
+  gap: 8px;
+}
+:root[data-density="compact"] .turns .worked {
+  min-height: 24px;
+  padding-bottom: 4px;
+}
+:root[data-density="compact"] .room-rail .trow {
+  min-height: 44px;
+}
+:root[data-density="compact"] .room-rail .trow .tmain {
+  padding: 5px 12px;
+  gap: 1px;
+}
+:root[data-density="compact"] .rail-list {
+  padding-top: 6px;
+}
+:root[data-density="compact"] .bench-head {
+  min-height: 48px;
+  padding: 4px 8px 4px 10px;
+}
+:root[data-density="compact"] .bench-tabs {
+  padding: 3px;
+}
+:root[data-density="compact"] .bench-tab {
+  min-height: 30px;
+  padding: 0 10px;
+}

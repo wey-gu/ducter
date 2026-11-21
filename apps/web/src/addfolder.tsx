@@ -3,17 +3,45 @@
 // chosen), then the folder there: chosen in that computer's own folders, listed by that computer
 // through Ducter (the browser can't reach a disk, so every computer is looked through the same
 // way), cloned there from a Git address, or new. The ways are the New task card's own panels.
+// D457: each computer is its own small clay (its drawn device, its name, its state), home first;
+// the ways are one segmented track; the browser is an instrument (breadcrumb, keys); the button
+// says what will happen, on which computer.
 import { useEffect } from "preact/hooks";
+import type { DeviceView } from "@ducter/protocol";
 import { A } from "./app.ts";
-import { Choice } from "./controls.tsx";
+import { Seg } from "./controls.tsx";
 import { CloneField, FolderBrowser, NewFolderField } from "./newtask.tsx";
 import { SheetFrame } from "./sheet-frame.tsx";
 import { useSheetMotion } from "./sheetmotion.ts";
 import { GhSignIn } from "./gh-signin.tsx";
+import { deviceArt } from "./devcard.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
 const WAYS = ["choose", "clone", "new"] as const;
+
+/** A computer's one state word in the sheet: the home says Ducter runs there; the others awake or asleep. */
+export function afStateWord(d: DeviceView): string {
+  if (d.home) return t("addfolder.dev.home", A.S.personaName || "Ducter");
+  return t(d.state === "asleep" ? "device.state.asleep" : "device.state.awake");
+}
+
+/** D457: the computers a folder can go on, home first, then as the home lists them. */
+export function afOrder(cs: DeviceView[]): DeviceView[] {
+  return [...cs.filter((c) => c.home), ...cs.filter((c) => !c.home)];
+}
+
+function DeviceTile({ d, on }: { d: DeviceView; on: boolean }) {
+  return (
+    <button class={`adf-dev${on ? " on" : ""}`} role="radio" aria-checked={on} aria-label={`${d.name}, ${afStateWord(d)}`} onClick={() => !on && A.afPick(d.id)}>
+      <img class="adf-dev-art" src={deviceArt(d)} alt="" aria-hidden="true" draggable={false} />
+      <span class="adf-dev-t">
+        <b>{d.name}</b>
+        <small>{afStateWord(d)}</small>
+      </span>
+    </button>
+  );
+}
 
 export function AddFolderSheet() {
   const { sheet, body, scrim, close } = useSheetMotion(() => A.closeAddFolder());
@@ -23,20 +51,18 @@ export function AddFolderSheet() {
     return () => removeEventListener("keydown", k);
   }, []);
   const nt = A.nt;
-  const ok = A.ntBrowsable();
+  const ok = afOrder(A.ntBrowsable());
   const old = A.ntBrowsable(true);
   const d = A.addf.device;
   return (
     <SheetFrame label={t("addfolder.title")} class="newtask addfolder" frame={sheet} body={body} scrim={scrim} onScrim={close}>
       <h2>{t("addfolder.title")}</h2>
       {ok.length + old.length > 1 && (
-        <div class="nt-chips af-computers">
-          <small>{t("addfolder.computer")}</small>
-          <div class="nt-chip-row" role="radiogroup" aria-label={t("addfolder.computer")}>
+        <div class="adf-computers">
+          <small class="adf-h">{t("addfolder.computer")}</small>
+          <div class="adf-devs" role="radiogroup" aria-label={t("addfolder.computer")}>
             {ok.map((c) => (
-              <Choice key={c.id} label={c.name} on={c.id === d} onClick={() => A.afPick(c.id)}>
-                {c.name}
-              </Choice>
+              <DeviceTile key={c.id} d={c} on={c.id === d} />
             ))}
           </div>
           {old.map((c) => (
@@ -46,12 +72,8 @@ export function AddFolderSheet() {
           ))}
         </div>
       )}
-      <div class="nt-chip-row af-ways" role="radiogroup" aria-label={t("addfolder.title")}>
-        {WAYS.map((w) => (
-          <Choice key={w} label={t(`addfolder.way.${w}`)} on={A.addf.way === w} onClick={() => A.afWay(w)}>
-            {t(`addfolder.way.${w}`)}
-          </Choice>
-        ))}
+      <div class="adf-ways">
+        <Seg label={t("addfolder.title")} value={A.addf.way} options={WAYS.map((w) => ({ v: w, label: t(`addfolder.way.${w}`) }))} onPick={(w) => A.afWay(w)} />
       </div>
       <div class="af-body">
         {nt.list === "gh" && nt.ghPanel ? <GhSignIn which="nt" /> : nt.list === "newfolder" && nt.newFolder ? <NewFolderField /> : nt.list === "clone" && nt.clone ? <CloneField /> : nt.browse ? <FolderBrowser /> : null}

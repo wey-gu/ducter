@@ -33,7 +33,7 @@ On the left is a row of tabs; the one you pick shows on the right:
 
 On a phone, tap the gear at the top right (or your partner's face or name at the top of the conversation):
 Settings opens as a list of the same sections (**Partner**, **Memory**, **Notifications**, **Accounts**, **Your devices**, **This phone**), and tapping one opens
-it. **This phone** (**This computer** in a browser on a computer) holds what is this device's own: **Light and dark** (**Follow the system**, **Light** or **Dark**),
+it. **This phone** (**This computer** in a browser on a computer) holds what is this device's own: **Light and dark** (**Follow the system**, **Light** or **Dark**), **An opened task** (**Comfortable** or **Compact**),
 the language of its screens, Details in the conversation, and reading replies aloud when you talk by voice.
 A small preview at the top shows your partner, a message of yours and its reply as they look here, and
 changes the moment you pick something.
@@ -306,6 +306,9 @@ something.
 - **Look:** Pebble, the warm paper and clay look. More looks will appear here once they work.
 - **Light and dark:** **Follow the system** (the default) turns the window dark when your Mac
   does, and back again, with a short fade. **Light** or **Dark** keeps it that way on this Mac.
+- **An opened task:** **Comfortable** (the default) or **Compact**, where your partner's picture
+  sits small beside the title and more of the work fits on screen. **⌘⇧D** switches it anywhere.
+  On this Mac only.
 - **Show in the menu bar:** your partner in the macOS menu bar, so you see at a glance whether it's
   at work or something needs you (a small dot when something does). On at first.
 - **Language:** the language of this window's own words. **Follow the system** uses your Mac's

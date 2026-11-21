@@ -29,6 +29,12 @@ export const settingsMore: { zh: Record<string, string>; en: Record<string, stri
     "settings.look.mode.system": "跟随系统",
     "settings.look.mode.light": "浅色",
     "settings.look.mode.dark": "深色",
+    "density.title": "打开的任务",
+    "density.help": "紧凑：头像缩到标题旁边，一屏多看几行。⌘⇧D 随时切换，只在这台设备上生效。",
+    "density.comfortable": "宽松",
+    "density.compact": "紧凑",
+    "density.said.compact": "打开的任务排紧凑了，⌘⇧D 换回。",
+    "density.said.comfortable": "打开的任务恢复宽松了。",
     // D365: 这台电脑 / This phone says what each choice does, as the Mac's Look and sound.
   },
   en: {
@@ -57,5 +63,11 @@ export const settingsMore: { zh: Record<string, string>; en: Record<string, stri
     "settings.look.mode.system": "Follow the system",
     "settings.look.mode.light": "Light",
     "settings.look.mode.dark": "Dark",
+    "density.title": "An opened task",
+    "density.help": "Compact puts the face small beside the title, so more fits on screen. ⌘⇧D switches any time, on this device only.",
+    "density.comfortable": "Comfortable",
+    "density.compact": "Compact",
+    "density.said.compact": "Opened tasks are compact now. ⌘⇧D switches back.",
+    "density.said.comfortable": "Opened tasks are comfortable again.",
   },
 };

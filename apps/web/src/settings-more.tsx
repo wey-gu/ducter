@@ -178,3 +178,56 @@ export function PaperRow() {
     </div>
   );
 }
+
+/**
+ * D457: 打开的任务 / An opened task, comfortable (the default) or compact: the face at 40 beside the
+ * title, the turns, the rail's rows and the workbench's header closer together. This device only
+ * (the Mac keeps its own), ⌘⇧D from anywhere.
+ */
+export type Density = "comfortable" | "compact";
+const DENSITY = "ducter.density";
+
+export function savedDensity(): Density {
+  try {
+    return localStorage.getItem(DENSITY) === "compact" ? "compact" : "comfortable";
+  } catch {
+    return "comfortable";
+  }
+}
+
+/** Puts the density on the page: the CSS reads `data-density`. */
+export function applyDensity(d: Density = savedDensity()) {
+  if (typeof document === "undefined") return;
+  if (d === "compact") document.documentElement.dataset.density = "compact";
+  else delete document.documentElement.dataset.density;
+}
+
+export function setDensity(d: Density) {
+  try {
+    if (d === "compact") localStorage.setItem(DENSITY, d);
+    else localStorage.removeItem(DENSITY);
+  } catch {}
+  applyDensity(d);
+  A.changed();
+}
+
+/** ⌘⇧D (Ctrl+Shift+D elsewhere) switches it from anywhere, and says which it is now. */
+export function densityKey(e: KeyboardEvent) {
+  if (!(e.metaKey || e.ctrlKey) || !e.shiftKey || e.altKey || e.code !== "KeyD" || A.live) return;
+  e.preventDefault();
+  const next: Density = savedDensity() === "compact" ? "comfortable" : "compact";
+  setDensity(next);
+  A.toast(t(`density.said.${next}`), undefined, 2400);
+}
+
+/** 打开的任务 / An opened task: comfortable or compact, in Look and sound. */
+export function DensityRow() {
+  const cur = savedDensity();
+  return (
+    <div class="set-item">
+      <b>{t("density.title")}</b>
+      <small>{t("density.help")}</small>
+      <Seg label={t("density.title")} value={cur} options={(["comfortable", "compact"] as const).map((v) => ({ v, label: t(`density.${v}`) }))} onPick={(v) => (setDensity(v), cheer())} />
+    </div>
+  );
+}

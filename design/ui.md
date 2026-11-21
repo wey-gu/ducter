@@ -509,6 +509,8 @@ A new control is added to the set (and to this table) before it is used.
 | A row that goes elsewhere with its tile in the tile column (AI accounts → Devices with the agents' coins; D296) | `tileLinkRow` (`settings_rows.go`) | the phone's Settings list rows |
 | The one switch alone at a row's right edge, its words the row's own (Memory's head row, D295; 用我的声音打, D296) | `switchControl` inside the row's control | `Switch` |
 | Words someone may edit in place before they go out (a reply already written in a find, D403) | `ui.TextArea` in a sunken well (`findDraft`) | `TextBox` |
+| One part of a path's breadcrumb that steps back there (the folder browser, D457) | the crumbs in `folderBrowser` (`newtaskfind.go`) | `CrumbStep` |
+| A row of a list walked with ↑↓, the keys' row tinted, hover moving it (the folder browser, D457) | `browseRow` (`newtaskfind.go`) | `OptionRow` |
 | The drawn chevron of anything that opens more (D213) | `drawChevron` through `glyph` (`quiet.go`) | `Chev` |
 | A group of separate facts, spaced, wrapping (D291) | `facts` (`facts.go`) | `Facts` |
 | Any menu: a ⋯, a right-click or long-press menu, a short pop-up choice (D421) | `menuButton`, `contextMenu` (`menu.go`) | `Menu`, `MenuItem`, `MenuSep`, `MenuHead`, `Select` (`menu.tsx`) |

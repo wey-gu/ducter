@@ -9,7 +9,7 @@
 // what you decided, what it knows), each row fixable or forgettable in place with its source as a
 // quiet line, a search, the week's check one tap away; other tools' working notes only as a count.
 // D332: 和你的其他 agent 通信 shows what came and went lately (both ways), 试试看 with the exact words, and one switch.
-import type { BridgeView, MemItem } from "@ducter/protocol";
+import type { BridgeView, MemCheckAnswer, MemCheckItem, MemItem } from "@ducter/protocol";
 import type { ComponentChildren } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { A } from "./app.ts";
@@ -274,6 +274,105 @@ function MemAbout() {
       )}
       {/* D459: a forget or a fix is answered once, in the partner's word, under what it changed. */}
       <Said k="mem-about" />
+    </section>
+  );
+}
+
+/** D465: an answer's words: the one Mem suggests is the primary, the others quiet. */
+const ANSWER_KEY: Record<MemCheckAnswer, string> = { newer: "mem.check.newer", older: "mem.check.older", both: "mem.check.both", use: "mem.check.use", not: "mem.check.not" };
+
+function CheckAnswers({ it }: { it: MemCheckItem }) {
+  const about = it.title ?? it.pair?.map((p) => p.title).join(" / ") ?? "";
+  return (
+    <span class="g-acts mem-check-acts">
+      {it.answers.map((a) => (
+        <Btn key={a} kind={a === it.suggest ? "primary" : "text"} size="sm" label={t(ANSWER_KEY[a])} about={about} onClick={() => (A.memSettle(it.id, a), say("mem-check", t(`said.mem.check.${a}`)))} />
+      ))}
+    </span>
+  );
+}
+
+/** D465: two memories Mem found may disagree: both titles, earlier first, Mem's suggestion the default. */
+function CheckContra({ it }: { it: MemCheckItem }) {
+  const pair = it.pair ?? [];
+  return (
+    <GBlock>
+      <b class="mem-check-q">{t("mem.check.contra")}</b>
+      <ol class="mem-pair">
+        {pair.map((p, i) => (
+          <li key={i}>
+            <small class="mem-pair-when">{t(i ? "mem.check.later" : "mem.check.earlier")}</small>
+            <span dir="auto">{p.title}</span>
+          </li>
+        ))}
+      </ol>
+      {A.memSettleFailed === it.id && <small class="mem-why">{t("mem.check.failed")}</small>}
+      <CheckAnswers it={it} />
+    </GBlock>
+  );
+}
+
+/** D465: a rule Mem learned from how the person works, still a draft: its words, use it or not. */
+function CheckRule({ it }: { it: MemCheckItem }) {
+  return (
+    <GBlock>
+      <small class="mem-check-cap">{t("mem.check.rule")}</small>
+      <b class="mem-check-q" dir="auto">{it.title}</b>
+      {it.body && <small class="mem-check-body" dir="auto">{it.body}</small>}
+      {A.memSettleFailed === it.id && <small class="mem-why">{t("mem.check.failed")}</small>}
+      <CheckAnswers it={it} />
+    </GBlock>
+  );
+}
+
+/**
+ * D465: what Nowledge Mem would like the person to settle (two memories that disagree, a rule it
+ * learned), each with Mem's own suggestion as the default; the rest stays in Mem, said once, never
+ * counted. Nothing waiting: no section at all.
+ */
+function MemCheckSec() {
+  const c = A.mem?.check;
+  if (!c || (!c.asks.length && !c.more)) return null;
+  return (
+    <section class="set mem-sec mem-check-sec">
+      <h3>{t("mem.check.title")}</h3>
+      <p class="g-note">{t("mem.check.note")}</p>
+      <Group class="mem-g" label={t("mem.check.title")}>
+        {c.asks.map((it) => (it.kind === "rule" ? <CheckRule key={it.id} it={it} /> : <CheckContra key={it.id} it={it} />))}
+        {!c.asks.length && <GRow tile={<PebbleTile />} title={t("mem.check.clear")} />}
+        {c.more && (
+          <GFoot note={t("mem.check.more")}>
+            <LinkBtn kind="text" size="sm" href={MEM_SITE} label={t("mem.all.open")} />
+          </GFoot>
+        )}
+      </Group>
+      <Said k="mem-check" />
+    </section>
+  );
+}
+
+/** D465: the rules on in Nowledge Mem, read by every connected AI tool at a new conversation; each one tap to turn off. */
+function MemRules() {
+  const [asking, setAsking] = useState("");
+  const rules = A.mem?.check?.rules ?? [];
+  if (!rules.length) return null;
+  const name = A.settings!.name;
+  return (
+    <section class="set mem-sec">
+      <h3>{t("mem.rules.title")}</h3>
+      <Group class="mem-g" label={t("mem.rules.title")}>
+        {rules.map((r) =>
+          asking === r.id ? (
+            <GConfirm key={r.id} ask={t("mem.rules.off.ask", r.title)} keep={t("mem.forget.keep")} go={t("mem.rules.off")} about={r.title} onKeep={() => setAsking("")} onGo={() => (setAsking(""), A.memSettle(r.id, "not"), say("mem-rules", t("said.mem.rules.off", r.title)))} />
+          ) : (
+            <GRow key={r.id} title={r.title} line={r.body}>
+              <Btn kind="text" size="sm" label={t("mem.rules.off")} about={r.title} onClick={() => setAsking(r.id)} />
+            </GRow>
+          ),
+        )}
+        <GFoot note={t("mem.rules.note", name)} />
+      </Group>
+      <Said k="mem-rules" />
     </section>
   );
 }
@@ -605,6 +704,8 @@ export function MemoryPage() {
     <>
       <MemHead />
       <MemAbout />
+      <MemCheckSec />
+      <MemRules />
       <MemTools />
       <MemLink b={b} />
     </>

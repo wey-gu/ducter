@@ -64,6 +64,7 @@ import { openSettings, type SettingsStore } from "./settings.ts";
 import { createBridgeLink, nmemCall, type NmemCall } from "./bridge-link.ts";
 import { connectLinkFrom } from "./mem-cli.ts";
 import { createMemGlance } from "./mem-glance.ts";
+import { createMemCheck } from "./mem-check.ts";
 import { createMemHealth } from "./mem-health.ts";
 import { scrub as scrubMem } from "./worker-mem.ts";
 import { createMemRelay, homeClaudeMemPlugin, readMemCredential } from "./mem-relay.ts";
@@ -1035,6 +1036,13 @@ export function startCore(opts: CoreOptions = {}): Core {
     changed: () => settings.bridgeChanged(),
   });
   settings.setGlance(() => memGlance.get(), memGlance);
+  // D465: what Mem would like the person to settle, and the rules on, for the same page, gated like the glance.
+  const memCheck = createMemCheck({
+    run: opts.bridgeLink?.run ?? nmemCall({ env: opts.bridgeLink?.env }),
+    on: () => settings.get().memory && process.env.DUCTER_MEMORY !== "off" && process.env.DUCTER_BRIDGE !== "0" && !settings.memMissing() && (process.env.NODE_ENV !== "test" || !!opts.bridgeLink?.run),
+    changed: () => settings.bridgeChanged(),
+  });
+  settings.setCheck(() => memCheck.get(), (id, answer) => memCheck.answer(id, answer));
   // D375: Mem's own health on the home (its doctor) for the same page's Nowledge Mem head, gated like the glance.
   const memHealth = createMemHealth({
     run: opts.bridgeLink?.run ?? nmemCall({ env: opts.bridgeLink?.env }),

@@ -4,7 +4,7 @@
 // and quiet hours in push.json (push.ts), the rest in settings.json.
 import { chmodSync, existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { Bodies, MemItem, MemView, PeersSettings, QuietHours, Settings, SettingsPatch, TalkLanguage } from "@ducter/protocol";
+import type { Bodies, MemCheckAnswer, MemItem, MemView, PeersSettings, QuietHours, Settings, SettingsPatch, TalkLanguage } from "@ducter/protocol";
 import { FIRST_MEETS, isFirstMeet, DEFAULT_AFTER_CHOICES, DEFAULT_PROACTIVE, HARNESSES, PROACTIVE_MODES, isHarnessId, normalizeTag, type Brain, type HarnessId, type ProactiveMode } from "@ducter/protocol";
 import type { LogStore, MemIdentity, SettingsApi } from "@ducter/protocol/src/internal.ts";
 import { resolveWindows, type WindowsInput } from "@ducter/protocol/src/harness-facts.ts";
@@ -82,6 +82,10 @@ export interface SettingsStore extends SettingsApi {
   setGlance(fn: () => MemView["glance"], ops?: GlanceOps): void;
   /** D375: Mem's own health on the home (memory on and Mem connected), cached by its reader. */
   setHealth(fn: () => MemView["health"]): void;
+  /** D465: what Nowledge Mem would like settled, and the rules on (mem-check.ts), read on each view. */
+  setCheck(fn: () => MemView["check"], answer: (id: string, answer: MemCheckAnswer) => Promise<boolean>): void;
+  /** D465: settle one of Mem's asks; true when Mem took it. */
+  answerMem(id: string, answer: MemCheckAnswer): Promise<boolean>;
   /** D321: Settings › 记忆's own rows, by Mem's id: forget one in Mem; fix its words in Mem. True when Mem did. */
   forgetMem(id: string): Promise<boolean>;
   fixMem(id: string, title: string): Promise<boolean>;
@@ -146,6 +150,8 @@ export function openSettings(opts: {
   let glance: (() => MemView["glance"]) | undefined;
   let glanceOps: GlanceOps | undefined;
   let health: (() => MemView["health"]) | undefined;
+  let check: (() => MemView["check"]) | undefined;
+  let checkAnswer: ((id: string, answer: MemCheckAnswer) => Promise<boolean>) | undefined;
   let memSeen: "connected" | "missing" | undefined;
   let bridgeTrouble: { code: string } | undefined; // D369: the partner's word, never saved
   // D135: checked once at start (env + file); a value out of range is said once, then its default runs.
@@ -262,6 +268,14 @@ export function openSettings(opts: {
     setHealth(fn) {
       health = fn;
     },
+    setCheck(fn, answer) {
+      check = fn;
+      checkAnswer = answer;
+    },
+    async answerMem(id, answer) {
+      if (!checkAnswer || !/^(rule:)?[A-Za-z0-9_.:-]{1,130}$/.test(id) || !["newer", "older", "both", "use", "not"].includes(answer)) return false;
+      return checkAnswer(id, answer).catch((err) => (console.warn("[settings] answering Mem failed:", (err as Error).message), false));
+    },
     setGlance(fn, ops) {
       glance = fn;
       glanceOps = ops;
@@ -323,11 +337,12 @@ export function openSettings(opts: {
       const keptUnder = state === "connected" && m ? (m.owned ? opts.persona.name : m.label || m.agentId) : undefined;
       const g = state !== "off" ? glance?.() : undefined;
       const h = state === "connected" ? health?.() : undefined;
+      const c = state === "connected" ? check?.() : undefined;
       const forgotten = forgottenRecalls();
       const undone = data.undone ?? [];
       const keys = memHooks?.waiting() ?? new Set<string>();
       const waiting = keys.size ? opts.log.read({ stream: "channel", kinds: ["memory_noted"], limit: 500 }).filter((x) => keys.has(String((x.body as Bodies["memory_noted"]).waiting ?? "")) && !undone.includes(x.seq)).map((x) => x.seq) : [];
-      return { settings: s, mem: { state, noted: noted(), ...(forgotten.length ? { forgotten } : {}), ...(undone.length ? { undone } : {}), ...(waiting.length ? { waiting } : {}), ...(keptUnder ? { keptUnder } : {}), ...(g ? { glance: g } : {}), ...(h ? { health: h } : {}) } };
+      return { settings: s, mem: { state, noted: noted(), ...(forgotten.length ? { forgotten } : {}), ...(undone.length ? { undone } : {}), ...(waiting.length ? { waiting } : {}), ...(keptUnder ? { keptUnder } : {}), ...(g ? { glance: g } : {}), ...(h ? { health: h } : {}), ...(c ? { check: c } : {}) } };
     },
     set(patch) {
       const did: string[] = [];

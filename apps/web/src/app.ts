@@ -6,7 +6,7 @@ import { onStepsFrame } from "./past-preview.tsx";
 import { onMadeFrame } from "./made.tsx";
 import { onAppsFrame, openApp } from "./apps.tsx";
 import { onDidFrame, openDid } from "./did.tsx";
-import type { AgentModels, AgentReason, MemPluginReason, BrainNow, BridgeView, Candidate, ModelChoice, ClientFrame, Place, PlaceChoice, ConnectionReason, ConnectionView, DeviceHarness, DeviceView, DucterFolderView, GhInstallPlan, GitLoginState, MemItem, MemView, OoDetect, Reach, KindDefault, RuleView, ServerFrame, StandingView, Settings, SettingsPatch, UpdateAllView, UpdateReason } from "@ducter/protocol";
+import type { AgentModels, AgentReason, MemPluginReason, BrainNow, BridgeView, Candidate, ModelChoice, ClientFrame, Place, PlaceChoice, ConnectionReason, ConnectionView, DeviceHarness, DeviceView, DucterFolderView, GhInstallPlan, GitLoginState, MemCheckAnswer, MemItem, MemView, OoDetect, Reach, KindDefault, RuleView, ServerFrame, StandingView, Settings, SettingsPatch, UpdateAllView, UpdateReason } from "@ducter/protocol";
 import { MEDIA_LIMITS, TUWA_MCP, WATCH_LIVE, type MediaRef, type FileOpenError } from "@ducter/protocol";
 import { PINS_MAX, type PinView } from "@ducter/protocol/src/pins.ts";
 import { keepLocal, noteFlights, prepare, tooBigWords, upload, type Pic, type ViewerState } from "./media-up.ts";
@@ -358,6 +358,8 @@ class AppState {
   /** D321: Settings › 记忆's search: what was asked, and what Mem found for it. */
   memQuery = "";
   memFound?: { q: string; ok: boolean; items: MemItem[] };
+  /** D465: the ask Nowledge Mem didn't take (it's back on the page, with a line to settle it in Mem). */
+  memSettleFailed?: string;
   /** D205: the persona's own Bridge connection, when the home's nmem can make one (or needs updating). */
   bridge?: BridgeView;
   /** D205: 断开 asks once more before it runs (a disconnected connection may need Mem to make again). */
@@ -788,6 +790,7 @@ class AppState {
     }
     if (f.t === "settings") return this.applySettings(f);
     // D321: only the answer to what is asked now (a later word replaced an earlier one).
+    if (f.t === "mem_answered") return void ((this.memSettleFailed = f.ok ? undefined : f.id), this.changed());
     if (f.t === "mem_found") return void (f.q === this.memQuery && ((this.memFound = { q: f.q, ok: f.ok, items: f.items }), this.changed()));
     if (f.t === "partners") return this.applyPartners(f);
     if (f.t === "rules") return void ((this.rules = f.rules), (this.ruleDefaults = f.defaults ?? []), (this.standing = f.standing ?? []), this.changed());
@@ -2425,6 +2428,21 @@ class AppState {
     if (this.mem && g) this.mem = { ...this.mem, glance: { ...g, about: fix(g.about) } };
     if (this.memFound) this.memFound = { ...this.memFound, items: fix(this.memFound.items) };
     this.send({ t: "mem_fix", id, title: words });
+    this.changed();
+  }
+  /**
+   * D465: settle one of Nowledge Mem's asks (or turn an on rule off): it leaves the page at once (a
+   * rule turned on joins the rules on); the home's frame settles it, mem_answered says if Mem refused.
+   */
+  memSettle(id: string, answer: MemCheckAnswer) {
+    const c = this.mem?.check;
+    if (this.mem && c) {
+      const ask = c.asks.find((x) => x.id === id);
+      const rules = answer === "not" ? c.rules.filter((r) => r.id !== id) : answer === "use" && ask?.title ? [{ id, title: ask.title, ...(ask.body ? { body: ask.body } : {}) }, ...c.rules] : c.rules;
+      this.mem = { ...this.mem, check: { ...c, asks: c.asks.filter((x) => x.id !== id), rules } };
+    }
+    if (this.memSettleFailed === id) this.memSettleFailed = undefined;
+    this.send({ t: "mem_answer", id, answer });
     this.changed();
   }
   /** D321: search Mem from Settings › 记忆; "" clears it. The answer comes as mem_found. */

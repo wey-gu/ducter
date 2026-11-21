@@ -443,6 +443,36 @@ left halfway. The default partner hands core its own memory client's search and 
 morning; read-only, nothing written; memory off, none. Each such offer says where it came from
 ("从你和 Codex 11 月 12 日的对话想到的"), in code's words.
 
+## What Mem would like checked (D465, built 2026-11-22)
+
+Nowledge Mem keeps its own review queue (`nmem feed reviews`): two memories that may disagree, a rule it
+learned from how the person works, skills it noticed, upkeep. It lives in Mem's Feed, where nobody looks: on
+the author's Mem 1033 were pending and 47 of the last 50 contradictions had expired unanswered (research/202).
+Settings › 记忆 now carries the few that change what the partner and every other AI tool believe.
+
+- **What is read** (`core/src/mem-check.ts`): `feed --type flag_contradiction --days 30 -n 50` (pending,
+  not expired, not `person_only`, at least two of newer / older / both allowed), `feed reviews -n 1` (its
+  total only, to know whether more waits), `rules list`. At most every 10 minutes while the page is viewed,
+  in the background, gated like the glance (memory on, Mem connected, never on a test without a fake nmem).
+  Only titles, days and a rule's words travel; a memory's contents never leave Mem.
+- **What is shown**, after 它知道的关于你 / What it knows about you: **Nowledge Mem 想跟你确认 / Nowledge Mem
+  would like to check**, at most 3 contradictions (newest first: the two titles, earlier first) and 2 learned
+  draft rules (title and words). Mem's own suggestion is the primary button (a contradiction's
+  `recommended_action`; a learned rule's 用上 / Use it), the others quiet. Nothing waiting and nothing more:
+  no section. More waiting (skills, upkeep): one line pointing to Mem, never a count.
+- **Answering** (`mem_answer` → `mem_answered`): the ask leaves at once and the partner says one word under
+  the section. A contradiction runs `feed resolve <id> --action <a>`; a graph action comes back as a
+  preview and is confirmed by its exact `--plan-id` (never a fresh preview); a preview without a plan is a
+  refusal. A rule is written back by `rules upsert <id>` with every field it had and a new status (active
+  or archived). Refused: the ask comes back with **Nowledge Mem 没接受这个回答，可以去 Nowledge Mem 里处理。**
+  Ducter never passes `--as-person`; a review Mem keeps for the person alone is not shown.
+- **The rules on**: **你的 AI 都照着做的 / What all your AI tools follow**, at most 8, each with **停用 / Turn
+  off** (asked first). Mem's context bundle carries them to every connected tool at a new conversation; the
+  partner reads the same `rule_stack` (`core/src/persona.ts`), so a rule turned on reaches it too.
+- **Not taken:** skill suggestions (92 % of the queue; activating one writes into the person's tools),
+  `skills match` for briefs (404 on the cloud backend), the queue in the morning's offers (the page is pull;
+  an offer would be a second place for the same question). In `todo.md`.
+
 ## Mem and tasks (D168, D169; built 2026-11-10)
 
 Who: the developer whose Claude Code task on the Mac mini should keep their conventions like

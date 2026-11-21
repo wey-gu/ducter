@@ -578,6 +578,8 @@ type Store struct {
 	// answer to it (D321), nil until one comes.
 	MemQuery string
 	MemFound *protocol.MemFound
+	// MemSettleFailed is the ask Nowledge Mem didn't take (D465): it's back, with a line.
+	MemSettleFailed string
 	// Recalled is the one 想起了 / Remembered line under a message, by the
 	// seq of the message it stands under (D304).
 	Recalled map[int64]*Recalled
@@ -975,6 +977,15 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 		s.applyPastSteps(f) // D391 (past.go)
 	case "did_result":
 		s.applyDid(f) // D300 (did.go)
+	case "mem_answered":
+		// D465: Mem refused: the ask comes back with the settings frame, and a line says so.
+		if f.MemAnswered != nil {
+			if f.MemAnswered.OK {
+				s.MemSettleFailed = ""
+			} else {
+				s.MemSettleFailed = f.MemAnswered.ID
+			}
+		}
 	case "mem_found":
 		// D321: only the answer to what is asked now (a later word replaced an earlier one).
 		if f.MemFound != nil && f.MemFound.Q == s.MemQuery {

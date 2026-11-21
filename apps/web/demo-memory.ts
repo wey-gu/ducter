@@ -20,6 +20,30 @@ const conn = { connection_id: "00000000-0000-4000-8000-000000000001", agent_id: 
 const version = want === "old" ? "0.10.116" : "0.10.118";
 const health = process.env.DEMO_HEALTH;
 let ccIn = false;
+// D465: DEMO_CHECK=1 adds what Nowledge Mem would like checked (a contradiction, a learned rule) and a rule on.
+const check = process.env.DEMO_CHECK === "1";
+const checkContra = {
+  id: "56e40028-8aff-4659-8564-5f7ffff46c4b",
+  event_type: "flag_contradiction",
+  resolved: false,
+  created_at: new Date(Date.now() - 2 * 86_400_000).toISOString(),
+  metadata: {
+    memory_ids: ["m-old", "m-new"],
+    new_memory_id: "m-new",
+    memory_pairs: zh
+      ? [{ date: "2026-11-09", title: "周报每周五下午发，发给整个组" }, { date: "2026-11-18", title: "周报改到每周一上午发，只发给 Weizhen" }]
+      : [{ date: "2026-11-09", title: "The weekly report goes out Friday afternoon, to the whole team" }, { date: "2026-11-18", title: "The weekly report moves to Monday morning, to Weizhen only" }],
+  },
+  review: { state: "pending", allowed_actions: ["keep_newer_as_latest", "keep_older_as_latest", "keep_both_linked", "no_change_needed", "dismiss"], recommended_action: "keep_newer_as_latest", expires_at: new Date(Date.now() + 20 * 86_400_000).toISOString() },
+};
+const checkRules = [
+  zh
+    ? { id: "release-ci", title: "发版前先等 CI 全绿", body: "发新版本前，等主干的 CI 全部通过、读过失败数再推送；不要在测试后直接接着推送。", status: "draft", scope: "global", priority: 50, tags: ["release"] }
+    : { id: "release-ci", title: "Release only after CI is green", body: "Before a new version goes out, wait for main's CI to pass and read the fail count before pushing; never chain a push after the tests.", status: "draft", scope: "global", priority: 50, tags: ["release"] },
+  zh
+    ? { id: "reply-zh", title: "聊天用中文，仓库里的文档和代码用英文", body: "", status: "active", scope: "global", priority: 60, tags: [] }
+    : { id: "reply-zh", title: "Chat in Chinese; docs and code in the repo in English", body: "", status: "active", scope: "global", priority: 60, tags: [] },
+];
 const chk = (name: string, status: string, detail = "", tool: string | null = null) => ({ name, status, detail, tool });
 const doctorOut = () => {
   const cred = chk("credential home", "pass", "/home/wei/.nowledge-mem/config.json — url https://mem.example.invalid (config), key nmem_xx…0000");
@@ -46,6 +70,14 @@ const run = async (args: string[]) => {
   if (a.includes("connections connect")) return ok({ state: "connected", agent_context: "ducter", connection: conn, selection: { scope: { space_id: SPACE }, address: { agent_id: "ducter" } } });
   if (a.includes("--agent-context ducter bridge setup")) return ok({ state: "enable_needed", endpoint: { address: { agent_id: "ducter" } } });
   if (a.includes("connections list")) return ok({ schema_version: 1, connections: [conn], next_connection_id: null });
+  if (check) {
+    // D465 (DEMO_CHECK=1): Mem's own asks, shaped as research/202 read them; answers are taken.
+    if (a.startsWith("feed --type flag_contradiction")) return ok({ events: [checkContra] });
+    if (a.startsWith("feed reviews")) return ok({ events: [], total: 40 });
+    if (a === "rules list") return ok({ rules: checkRules });
+    if (args[0] === "feed" && args[1] === "resolve") return ok(args.includes("--plan-id") ? { applied: true } : { preview: true, plan_id: "plan_demo" });
+    if (args[0] === "rules" && args[1] === "upsert") return ok({});
+  }
   return { code: 2, out: "", err: "demo: not scripted" };
 };
 // The home's nmem: a pipx copy, so Ducter can update it in one tap.

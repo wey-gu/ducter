@@ -141,6 +141,14 @@ What your partner remembers about you has its own section, **Memory**.
   what it remembers about you** goes back to your conversation with that question ready to send; your
   partner answers in a few lines of its own, and you can tell it what's wrong there.
 - **Check this week's**, under the switch, opens what it noted about you in the last seven days.
+- **Nowledge Mem would like to check** shows the few things Nowledge Mem wasn't sure of while tidying
+  your memories: two that **seem to disagree** (pick **The later one holds**, **The earlier one holds**
+  or **Both hold**), or a rule it **learned from how you work** (**Use it** or **Not this**). The answer
+  Nowledge Mem suggests is the highlighted one. No answer is fine too: after a while Nowledge Mem leaves
+  them as they are. Other suggestions, like ways of working worth keeping as a skill, stay in Nowledge Mem.
+  When nothing is waiting, the section isn't there.
+- **What all your AI tools follow** lists the rules in Nowledge Mem that every AI tool connected to it
+  reads at each new conversation, your partner included. **Turn off** asks first.
 - **Your other AI tools share this memory** says which tools, like Claude Code, Codex or Cursor,
   wrote to the same Nowledge Mem this week and how many working notes. Those notes are about their
   work, not about you, so they aren't listed; your partner can still recall them.

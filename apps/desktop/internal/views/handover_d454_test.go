@@ -1,6 +1,10 @@
 package views
 
 import (
+	"fmt"
+	"image/png"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -34,6 +38,25 @@ func TestHandSheetD454(t *testing.T) {
 		h.handed = []protocol.HandedItem{hi}
 		h.ticked = map[string]bool{items[0].Item.Ref: true, items[1].Item.Ref: true}
 		todoFrames(tt, 3)
+		// DUCTER_D454_SHOTS=<dir>: the sheet as drawn, light and dark.
+		if dir := os.Getenv("DUCTER_D454_SHOTS"); dir != "" {
+			_ = os.MkdirAll(dir, 0o755)
+			for _, dark := range []bool{false, true} {
+				tt.SetDark(dark)
+				tt.SetScale(2)
+				todoFrames(tt, 6)
+				f, err := os.Create(filepath.Join(dir, fmt.Sprintf("mac-sheet-%s-%s.png", lang, map[bool]string{false: "light", true: "dark"}[dark])))
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := png.Encode(f, withLights(tt.Image())); err != nil {
+					t.Fatal(err)
+				}
+				f.Close()
+			}
+			tt.SetDark(false)
+			todoFrames(tt, 3)
+		}
 		all := strings.Join(tt.Texts(), " | ")
 		for _, want := range []string{w("100gle 分给你的，有 2 个", "2 assigned by 100gle"), w("1 个已经交出去了", "1 already handed over"), w("已经交出去的", "Already handed over"), w("没成", "Didn't work"), w("看看为什么", "See why"), w("按 100gle 找的", "Found by 100gle"), w("不是 100gle", "Not 100gle"), items[2].Item.Title, "#412"} {
 			if !strings.Contains(all, want) {

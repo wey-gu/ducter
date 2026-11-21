@@ -5,6 +5,7 @@ import { openPhone, PhoneAskBody } from "./phone-use.tsx";
 import { seeDraft } from "./finds.tsx";
 import { AppUpdateRow } from "./app-update.tsx";
 import { ComputerLine } from "./computer-use.tsx";
+import { scaledRow } from "./text-scale.ts";
 import { HandsetAskBody, HandsetLine, handsetAskTitle } from "./handset.tsx";
 import type { AgentUpdate, Attention, Bodies, Candidate, CantStart, DeviceHarness, DeviceUpdate, DeviceView, EvidenceRef, FolderChange, FolderSummary, LivingItem, OoDetect, Reach } from "@ducter/protocol";
 import { Fragment } from "preact";
@@ -251,7 +252,7 @@ function AutoText(p: { value: string; onInput: (v: string) => void; placeholder:
     const el = ref.current;
     if (!el) return;
     el.style.height = "auto";
-    el.style.height = `${Math.min(el.scrollHeight, 140)}px`;
+    el.style.height = `${Math.min(el.scrollHeight, scaledRow(140))}px`;
   }, [p.value]);
   useEffect(() => {
     if (p.autoFocus) ref.current?.focus();

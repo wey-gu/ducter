@@ -61,12 +61,13 @@ final class Shell: NSObject, ObservableObject, WKNavigationDelegate, WKUIDelegat
         #if DEBUG
         web.isInspectable = true
         #endif
+        fitText(force: true)
         NotificationCenter.default.addObserver(forName: UIContentSizeCategory.didChangeNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.fitText() }
         }
     }
 
-    // MARK: D447, the system's text size
+    // MARK: D447, D452: the system's text size
 
     /// iOS's body size at each text size (Apple's Dynamic Type table, Body style).
     private static let bodySize: [UIContentSizeCategory: CGFloat] = [
@@ -74,26 +75,48 @@ final class Shell: NSObject, ObservableObject, WKNavigationDelegate, WKUIDelegat
         .accessibilityMedium: 28, .accessibilityLarge: 33, .accessibilityExtraLarge: 40, .accessibilityExtraExtraLarge: 47, .accessibilityExtraExtraExtraLarge: 53,
     ]
 
-    /// The page sets its sizes in px, so the app follows the person's text size by scaling the
-    /// page's text (`-webkit-text-size-adjust`, the page's `--text-adjust`; what Safari's own text
-    /// size does): the words grow with iOS's body text and wrap in the same boxes, the layout's width
-    /// stays the screen's. Smaller sizes stay at 100% (the page's sizes are already the smallest it
-    /// reads well at) and the accessibility sizes stop at 135%, where the fixed-height pills still
-    /// hold one line. `pageZoom` was tried first: on iOS it magnifies the page past the screen
-    /// instead of laying it out again.
-    static func textScale(_ c: UIContentSizeCategory) -> Int {
-        let want = (bodySize[c] ?? 17) / 17
-        return Int((min(max(want, 1), 1.35) * 100).rounded())
+    /// D452: the page's type is in rem, so the app follows the person's text size by setting the
+    /// page's root size (`--text-scale`, a factor over the browser's 16px): every word grows with
+    /// iOS's body text across the whole range, up to the largest accessibility size (53 / 17, x3.12),
+    /// and the rows that hold words grow with them; the layout keeps the screen's width. Smaller
+    /// sizes stay at 1 (the page's sizes are already the smallest it reads well at). D447 scaled
+    /// the text with `-webkit-text-size-adjust` and stopped at 135%, where fixed-height pills held;
+    /// `pageZoom` magnifies the page past the screen instead of laying it out again.
+    static func textScale(_ c: UIContentSizeCategory) -> Double {
+        let want = Double(bodySize[c] ?? 17) / 17
+        return (max(want, 1) * 100).rounded() / 100
     }
 
-    private var textScaleSent = 100
+    /// The script that sets it: at document start (the first frame is already at the size) and on a change.
+    static func textScript(_ s: Double) -> String {
+        #if DEBUG
+        // `-textAdjust YES` (Debug only): D447's way at the same factor, to compare the two in the Simulator.
+        if UserDefaults.standard.bool(forKey: "textAdjust") {
+            let p = Int((s * 100).rounded())
+            return "(()=>{let e=document.getElementById('ducter-text-adjust');if(!e){e=document.createElement('style');e.id='ducter-text-adjust';document.documentElement.appendChild(e)}e.textContent='html,body,.code{-webkit-text-size-adjust:\(p)% !important}'})()"
+        }
+        #endif
+        // The page marks the largest sizes itself (`window.ducterTextSize`, once it has loaded).
+        return "document.documentElement.style.setProperty('--text-scale','\(s)');window.ducterTextSize&&window.ducterTextSize()"
+    }
 
-    /// Called when the page loads, the text size changes, or the web view is laid out.
+    private var textScaleSent = 0.0
+    private var textUserScript: WKUserScript?
+
+    /// Called at start and when the text size changes; the page's next load starts at it too.
     func fitText(force: Bool = false) {
         let s = Shell.textScale(UIApplication.shared.preferredContentSizeCategory)
         guard force || s != textScaleSent else { return }
         textScaleSent = s
-        web.evaluateJavaScript("document.documentElement.style.setProperty('--text-adjust','\(s)%')")
+        let js = Shell.textScript(s)
+        let ucc = web.configuration.userContentController
+        let kept = ucc.userScripts.filter { $0 !== textUserScript }
+        ucc.removeAllUserScripts()
+        kept.forEach(ucc.addUserScript)
+        let us = WKUserScript(source: js, injectionTime: .atDocumentStart, forMainFrameOnly: true)
+        ucc.addUserScript(us)
+        textUserScript = us
+        web.evaluateJavaScript(js)
     }
 
     /// D209: the page opens from the web view's cache when it has one (no round trip to the home

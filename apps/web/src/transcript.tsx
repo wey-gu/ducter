@@ -16,6 +16,7 @@ import { tokensShort } from "@ducter/protocol";
 import type { MediaRef, WaiterView } from "@ducter/protocol";
 import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import type { RefObject } from "preact";
+import { scaledRow } from "./text-scale.ts";
 import { limitAt, WaitHow, waitLine } from "./work.tsx";
 import { clock, day, shownDeviceName, span, stamp, when } from "./format.ts";
 import { Component, type JSX } from "preact";
@@ -1276,7 +1277,7 @@ export function Locator({ task, scroller }: { task: Task; scroller: RefObject<HT
     if (!w || !el || !open) return;
     want.current = undefined;
     const n = taskLandmarks(task).length;
-    const y = locScrollFor(w.i, el.scrollTop, (el.clientHeight || LOC_MAX) - 12, n, w.center);
+    const y = locScrollFor(w.i, el.scrollTop, (el.clientHeight || LOC_MAX) - 12, n, w.center, scaledRow(LOC_ROW));
     if (y !== el.scrollTop) (el.scrollTop = y), setTop(y);
   });
   if (turns.length < 3) return null;
@@ -1332,7 +1333,8 @@ export function Locator({ task, scroller }: { task: Task; scroller: RefObject<HT
     setPinned(true);
     choose(k, false);
   };
-  const [from, to] = locWindow(top, LOC_MAX, lms.length);
+  const row = scaledRow(LOC_ROW);
+  const [from, to] = locWindow(top, LOC_MAX, lms.length, row);
   const now = Date.now();
   const id = (i: number) => `loc-${task.id}-${i}`;
   return (
@@ -1380,10 +1382,10 @@ export function Locator({ task, scroller }: { task: Task; scroller: RefObject<HT
         aria-hidden={!open}
         aria-activedescendant={open && sel >= 0 ? id(sel) : undefined}
         inert={!open}
-        style={{ height: `${Math.min(LOC_MAX, Math.max(1, lms.length) * LOC_ROW + 14)}px` }}
+        style={{ height: `${Math.min(LOC_MAX, Math.max(1, lms.length) * row + 14)}px` }}
         onScroll={(e) => setTop((e.currentTarget as HTMLElement).scrollTop)}
       >
-        <div class="loc-rows" style={{ height: `${lms.length * LOC_ROW}px` }}>
+        <div class="loc-rows" style={{ height: `${lms.length * row}px` }}>
           {lms.slice(from, to).map((lm, k) => {
             const i = from + k;
             const r = locatorRow(lm, now);
@@ -1395,7 +1397,7 @@ export function Locator({ task, scroller }: { task: Task; scroller: RefObject<HT
                 role="option"
                 aria-selected={i === sel}
                 class={`loc-row k-${r.k}${here ? " here" : ""}${r.quiet ? " quiet" : ""}${i === sel ? " sel" : ""}`}
-                style={{ top: `${i * LOC_ROW}px` }}
+                style={{ top: `${i * row}px`, height: `${row}px` }}
                 onMouseMove={() => i !== sel && setSel(i)}
                 onClick={() => go(lm.seq)}
               >

@@ -147,9 +147,11 @@ To change the hours or turn them off, open **Partner** and use **Quiet hours** (
 ## Text size and the keyboard
 
 The iPhone app follows the text size you set in the iPhone's **Settings › Display & Brightness ›
-Text Size** (or **Accessibility › Larger Text**): the words grow and wrap, and the screen keeps its
-layout. The largest accessibility sizes stop a little short of the system's own, so buttons still
-hold their words on one line.
+Text Size** (or **Accessibility › Larger Text**), all the way up to the largest accessibility size:
+the words grow and wrap, buttons and rows grow with them, and the screen keeps its width. A change
+in Settings shows the next time you look at Ducter, without reopening it.
+
+In a browser, Ducter follows the browser's own font size setting the same way.
 
 When you write, the conversation ends where the keyboard begins: the box you type in sits on the
 keyboard and the top of the screen stays where it was.

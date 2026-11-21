@@ -35,7 +35,7 @@ import { boardGroups, finishedGroup, foldedRows, groupCount, markOf, type BoardG
 import { linesOfPart } from "./asks.tsx";
 import { Menu, MenuItem } from "./menu.tsx";
 import { AwayX, FinishedActs, finishedMenu, runFinished, useSwipeAway, type Finished } from "./away.tsx";
-import { briefOf, BriefLines, echoes, ensureSteps, firstSentence, Outcome, peekSteps, peekTask, Trail, useTick, WaitAxis } from "./onhand-brief.tsx";
+import { briefOf, BriefLines, type Brief, echoes, ensureSteps, firstSentence, Outcome, peekSteps, peekTask, Trail, useTick, WaitAxis } from "./onhand-brief.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
@@ -375,7 +375,10 @@ function groupStat(tasks: Task[]): { adds: number; dels: number } {
 
 function LensEntry({ k, name, tasks, on, tab, brand, where }: { k: string; name: string; tasks: Task[]; on: boolean; tab?: boolean; brand?: string; where?: string[] }) {
   const statuses = tasks.map((x) => statusOf(x.id, attention(x), x.card?.updatedAt));
-  const mark = urgentOf(statuses);
+  // D467 round 3: the face only where something there needs you (a question, a stopped wait, a
+  // task that didn't work out); otherwise the name and the count (D69: art must mean something).
+  const needsHere = tasks.some((x) => attention(x) === "needs_you" || attention(x) === "failed" || stoppedWait(x));
+  const mark = needsHere ? ("needs" as Status) : "";
   const counts = foldCounts(statuses);
   const st = tab ? { adds: 0, dels: 0 } : groupStat(tasks);
   return (
@@ -401,7 +404,7 @@ function LensEntry({ k, name, tasks, on, tab, brand, where }: { k: string; name:
           </span>
         )}
       </span>
-      {mark && !(tab && mark === "working") && <StatusFace s={mark} title={counts} />}
+      {mark && <StatusFace s={mark} title={counts} />}
       {!tab && <span class="n">{tasks.length || ""}</span>}
     </button>
   );
@@ -559,14 +562,13 @@ export function moodOf(n: number[]): "needsyou" | "working" | "waiting" | "done"
 /** The board's head (D287): the partner, its face saying how the whole stands, and its one sentence;
  *  under it the strip of four counts (each one a filter; pressed again, or Esc, lets go), Find from
  *  ten tasks, New task here under a project. */
-function BoardTop({ lens, groups, findable, room }: { lens: string; groups: LensGroup[]; findable: boolean; room: Room }) {
+function BoardTop({ lens, groups, findable, room, brief }: { lens: string; groups: LensGroup[]; findable: boolean; room: Room; brief: Brief }) {
   const n = stateCounts(lens);
   L.filter = 0; // D467: no strip, so no filter; Find and the lens narrow
   const g = groups.find((x) => x.key === lens && x.key !== OTHER);
   const mood = moodOf(n);
   // D467: the partner's brief, true to the body: the lead, then since you looked, what needs you
   // with its real fix inline, and what comes back next. No count strip: the counts were said three times.
-  const brief = briefOf(boardParts(lensLanes(lens)), n[0]!);
   return (
     <div class="board-top">
       <div class={`oh-head oh-brief m-${mood}`}>
@@ -1203,8 +1205,15 @@ export function OnHandList({ room }: { room: Room }) {
   // D467: the brief carries the first two of what stopped or didn't work out, with their fix;
   // they get no card too (said once). The rest stand as cards under it.
   const inBrief = new Set(rail || q ? [] : [...stoppedTs, ...failedTs].slice(0, 2).map((x) => x.id));
-  const waiting = rail ? ungrouped(keep(lanes[LANE.waiting]!)) : parts.waiting;
-  const done = rail ? ungrouped(keep(lanes[LANE.done]!)) : parts.today;
+  // D467 round 3: what the brief tells (the results it names, the wait it says comes back next) gets
+  // no card and isn't walked: said once.
+  const nHead = stateCounts(lens);
+  const brief = briefOf(boardParts(lanes), nHead[0]!, Date.now(), nHead[1]!);
+  const told = rail || q ? new Set<string>() : brief.told;
+  const untold = (ts: Task[]) => (told.size ? ts.filter((x) => !told.has(x.id)) : ts);
+  const waitingAll = rail ? ungrouped(keep(lanes[LANE.waiting]!)) : parts.waiting;
+  const waiting = untold(waitingAll);
+  const done = rail ? ungrouped(keep(lanes[LANE.done]!)) : untold(parts.today);
   const earlier = rail ? [] : parts.earlier;
   const earlierOpen = earlierShown || f === 4 || !!q;
   const loose = !q && looseIn(lens);
@@ -1243,7 +1252,7 @@ export function OnHandList({ room }: { room: Room }) {
         <>
           {room !== "full" && <LensTabs />}
           {room === "full" && <LensTabs inBoard />}
-          <BoardTop lens={lens} groups={groups} findable={all.length >= FIND_FROM} room={room} />
+          <BoardTop lens={lens} groups={groups} findable={all.length >= FIND_FROM} room={room} brief={brief} />
         </>
       )}
       {q && !shown && <p class="none">{t("onhand.find.none")}</p>}
@@ -1286,7 +1295,7 @@ export function OnHandList({ room }: { room: Room }) {
       )}
       {waiting.length + looseWs.length + groupsIn(2).length > 0 && show(3) && (
         <Section name={t("lane.waiting")} n={(bgs.length ? Math.max(0, nIn(LANE.waiting) - stoppedTs.length) : waiting.length) + looseWs.length}>
-          {!rail && <WaitAxis tasks={waiting} />}
+          {!rail && <WaitAxis tasks={waitingAll} />}
           {groupsIn(2).map((b) => (
             <GroupCard key={b.g.id} b={b} room={room} />
           ))}
@@ -1300,7 +1309,14 @@ export function OnHandList({ room }: { room: Room }) {
           {quiet.length > 0 && quietOpen && <Rows tasks={quiet} room={room} compact="quiet" />}
         </Section>
       )}
-      {done.length + earlier.length + missed.length + endedCalls.length + groupsIn(3).length > 0 && show(4) && (
+      {/* D467 round 3: with nothing of today's left to draw, only yesterday's fold, no heading. */}
+      {done.length + missed.length + endedCalls.length + groupsIn(3).length === 0 && earlier.length > 0 && show(4) && !rail && (
+        <div class="done-earlier">
+          {f !== 4 && !q && <FoldLine words={t("onhand.done.yesterday", earlier.length)} open={earlierOpen} onToggle={() => ((earlierShown = !earlierShown), A.changed())} />}
+          {earlierOpen && <Rows tasks={earlier} room={room} compact="seen" />}
+        </div>
+      )}
+      {done.length + missed.length + endedCalls.length + groupsIn(3).length > 0 && show(4) && (
         <Section name={t("lane.done")} n={done.length}>
           {groupsIn(3).map((b) => (
             <GroupCard key={b.g.id} b={b} room={room} />
@@ -1446,8 +1462,6 @@ function GroupCard({ b, room }: { b: BoardGroup; room: Room }) {
   return (
     <div ref={ref} class={`tgroup${live ? " live" : ""}${b.stopped ? " stopped" : ""}${fin ? " fin" : ""}`} data-group={b.g.id} role="group" aria-label={countWords ? spoken(A.L, b.g.name, countWords) : b.g.name}>
       <div class="ghead">
-        {/* D467: the board's one card shape: the group's state mark at its head, as a task's card has. */}
-        <StateMark k={b.lane === 0 ? "needs" : b.lane === 1 ? "working" : b.lane === 2 ? "waiting" : "seen"} frac={0} />
         {draft === null ? (
           <span class="gname">{b.g.name}</span>
         ) : (
@@ -1513,7 +1527,8 @@ function GroupCard({ b, room }: { b: BoardGroup; room: Room }) {
               <span class="gidx" aria-hidden="true">
                 {r.part}
               </span>
-              <MemberMark k={k} />
+              {/* D467 round 3: one encoding a level: a part at work has no glyph; its trail moves. */}
+              {k === "working" ? <span class="gmark k-blank" aria-hidden="true" /> : <MemberMark k={k} />}
               {task ? (
                 <button class="gtitle" title={title(task)} onClick={() => ((L.focus = task.id), A.go({ name: "task", id: task.id, full: room === "full" }))}>
                   {partWords(r)}
@@ -1524,6 +1539,11 @@ function GroupCard({ b, room }: { b: BoardGroup; room: Room }) {
               <span class="gwhen">{memberWhen(r, task)}</span>
               {/* D467: a part at work says what it is on now, as every card does. */}
               {task && k === "working" && <span class="gnow">{storyOf(task).words}</span>}
+              {task && k === "working" && room !== "rail" && (
+                <span class="gtrail">
+                  <Trail task={task} />
+                </span>
+              )}
               {hi > 0 && room !== "phone" && <Btn kind="text" size="sm" label={t("group.up")} about={r.kind === "held" ? r.title : ""} onClick={() => send("move", { member: (r as { key: string }).key, to: hi - 1 })} />}
               {d && (
                 <div class="gask">
@@ -1951,7 +1971,7 @@ export function Peek() {
       <div class="phead">
         <StateMark k={k} frac={next?.frac ?? 0} />
         <span class="ptx">
-          <span class="pt">{shortTitle(title(task)) || t("task.unknown")}</span>
+          <span class="pt" title={title(task)}>{shortTitle(title(task)) || t("task.unknown")}</span>
           <Facts class="meta" items={where.length ? where : [harnessName(harnessOf(task))]} />
         </span>
       </div>

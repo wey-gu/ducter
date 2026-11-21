@@ -40,7 +40,9 @@ func TestOnHandShots(t *testing.T) {
 	h.until("welcome", func() bool { return h.app.S.Welcomed && h.app.S.OnHand != nil })
 	h.app.LocaleFixed = true
 	h.tt.SetTitleBar(ui.TitleBar{Height: ChromeH, Left: 78})
-	h.until("the board", func() bool { return len(h.app.S.Tasks) > 0 })
+	if os.Getenv("DUCTER_ONHAND_EMPTY") == "" { // D467: an empty board pictured too
+		h.until("the board", func() bool { return len(h.app.S.Tasks) > 0 })
+	}
 	h.app.Route = RouteOnHand
 	if os.Getenv("DUCTER_ONHAND_SOURCES") != "" { // D467: the to-dos group needs its sources
 		h.app.askTodos()

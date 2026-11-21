@@ -84,6 +84,20 @@ func phoneTask(task *store.Task) bool {
 	return false
 }
 
+// briefTitle is a task named in the brief: its short title, cut to 12
+// characters of Chinese or 28 of Latin text (the whole on hover).
+func (a *App) briefTitle(title string) string {
+	s := shortTitle(title)
+	n := 28
+	if a.L.Han() {
+		n = 12
+	}
+	if r := []rune(s); len(r) > n {
+		s = strings.TrimSpace(string(r[:n-1])) + "…"
+	}
+	return s
+}
+
 // firstSentence is a report's first sentence, at most n runes.
 func firstSentence(s string, n int) string {
 	s = strings.TrimSpace(strings.SplitN(strings.TrimSpace(s), "\n", 2)[0])
@@ -131,11 +145,11 @@ func (a *App) brief(c *ui.Context, b store.Board, lens string, n [4]int) {
 			var s string
 			switch {
 			case len(fresh) == 1:
-				s = a.L.T("onhand.brief.done.one", shortTitle(fresh[0].Title()))
+				s = a.L.T("onhand.brief.done.one", a.briefTitle(fresh[0].Title()))
 			case len(fresh) == 2:
-				s = a.L.T("onhand.brief.done.two", shortTitle(fresh[0].Title()), shortTitle(fresh[1].Title()))
+				s = a.L.T("onhand.brief.done.two", a.briefTitle(fresh[0].Title()), a.briefTitle(fresh[1].Title()))
 			default:
-				s = a.L.T("onhand.brief.done.many", shortTitle(fresh[0].Title()), len(fresh)-1)
+				s = a.L.T("onhand.brief.done.many", a.briefTitle(fresh[0].Title()), len(fresh)-1)
 			}
 			text("t", s)
 			a.outcomeChip(c, "chip", fresh[0])
@@ -153,7 +167,7 @@ func (a *App) brief(c *ui.Context, b store.Board, lens string, n [4]int) {
 			if why == "" {
 				why = a.L.T("onhand.wait.unsaid")
 			}
-			title := shortTitle(x.Title())
+			title := a.briefTitle(x.Title())
 			s := a.L.T("onhand.brief.stopped", title, why)
 			switch {
 			case failed:
@@ -161,7 +175,7 @@ func (a *App) brief(c *ui.Context, b store.Board, lens string, n [4]int) {
 			case phone:
 				s = a.L.T("onhand.brief.stopped.phone", title)
 			}
-			ui.Column(c.Key("w")).Gap(t.S2).Shrink(1).MinWidth(0).Children(func() {
+			ui.Row(c.Key("w")).Gap(t.S2).Wrap().AlignItems(ui.Center).Shrink(1).MinWidth(0).Children(func() {
 				tx := uiText(c.Key("t"), keepWords(autospace(s))).FontSize(t.MD).LineHeight(1.5).TextColor(t.Ink).Cursor(ui.CursorPointer).Role(ui.RoleLink).Tooltip(x.Title())
 				if tx.Clicked() {
 					a.OpenTask(x.ID)
@@ -200,11 +214,28 @@ func (a *App) brief(c *ui.Context, b store.Board, lens string, n [4]int) {
 			}
 		}})
 	}
-	if next, more := a.nextBack(b, lens); next.text != "" {
+	next, more := a.nextBack(b, lens)
+	if next.id != "" {
+		a.oh.briefed[next.id] = true // D467 round 3: told here, never also a card
+	}
+	if len(fresh) > 0 {
+		a.oh.briefed[fresh[0].ID] = true
+		if len(fresh) == 2 {
+			a.oh.briefed[fresh[1].ID] = true
+		}
+	}
+	if next.text == "" && asks == 0 && len(halted) == 0 && len(sp.working) == 0 {
+		lines = append(lines, line{"rest", a.L.T("onhand.next"), func() { text("t", a.L.T("onhand.brief.rest")) }})
+	}
+	if next.text != "" {
 		lines = append(lines, line{"next", a.L.T("onhand.next"), func() {
-			s := a.L.T("onhand.brief.back", next.text, a.pad(a.soon(next.at)))
+			name := next.text
+			if x := a.S.Task(next.id); x != nil {
+				name = shortTitle(x.Title())
+			}
+			s := a.L.T("onhand.brief.back", name, a.pad(a.soon(next.at)))
 			if more > 0 {
-				s = a.L.T("onhand.brief.back.more", next.text, a.pad(a.soon(next.at)), more)
+				s = a.L.T("onhand.brief.back.more", name, a.pad(a.soon(next.at)), more)
 			}
 			text("t", strings.ReplaceAll(s, "  ", " "))
 		}})
@@ -235,7 +266,14 @@ func (a *App) brief(c *ui.Context, b store.Board, lens string, n [4]int) {
 // nextBack is the soonest wait that comes back on its own, and how many
 // more come after it.
 func (a *App) nextBack(b store.Board, lens string) (dayItem, int) {
-	items := a.waitsOnAxis(b, lens, 0)
+	// A wait on a limit's reset is said by its own group (D297), never named here.
+	var items []dayItem
+	for _, it := range a.waitsOnAxis(b, lens, 0) {
+		if w := a.S.WaiterFor(it.id); it.id != "" && w != nil && w.Limit != nil {
+			continue
+		}
+		items = append(items, it)
+	}
 	if len(items) == 0 {
 		return dayItem{}, 0
 	}
@@ -402,19 +440,40 @@ func (a *App) trail(c *ui.Context, key string, task *store.Task) {
 			var base ui.Path
 			base.MoveTo(r.X, cy).LineTo(r.X+r.W-5, cy).Cap(ui.RoundCap)
 			p.StrokePath(&base, 2, line)
+			// D467 round 3: steps closer than 6 pt read as one span, a rhythm
+			// rather than a barcode; a lone step stays a tick.
+			var xs []float32
+			var bads []float32
 			for _, s := range steps {
 				if s.at.Before(start) {
 					continue
 				}
 				f := float32(s.at.Sub(start)) / span
 				x := r.X + min(1, max(0, f))*(r.W-10)
-				col := dot.Alpha(0.55)
 				if s.bad {
-					col = bad
+					bads = append(bads, x)
+				}
+				xs = append(xs, x)
+			}
+			for i := 0; i < len(xs); {
+				j := i
+				for j+1 < len(xs) && xs[j+1]-xs[j] < 6 {
+					j++
 				}
 				var m ui.Path
+				if j == i {
+					m.MoveTo(xs[i], cy-4).LineTo(xs[i], cy+4).Cap(ui.RoundCap)
+					p.StrokePath(&m, 2, dot.Alpha(0.55))
+				} else {
+					m.MoveTo(xs[i], cy).LineTo(xs[j], cy).Cap(ui.RoundCap)
+					p.StrokePath(&m, 5, dot.Alpha(0.45))
+				}
+				i = j + 1
+			}
+			for _, x := range bads {
+				var m ui.Path
 				m.MoveTo(x, cy-4).LineTo(x, cy+4).Cap(ui.RoundCap)
-				p.StrokePath(&m, 2, col)
+				p.StrokePath(&m, 2, bad)
 			}
 			k := float32(1)
 			if !p.Preferences().ReduceMotion && !rest {
@@ -445,7 +504,7 @@ func (a *App) groupTrack(c *ui.Context, bg boardGroup) {
 		return
 	}
 	rest := a.aliveResting(c)
-	ui.Row(c.Key("track")).Gap(3).Height(6).Padding(0, 0, 0, 46).AccessHidden(true).Children(func() {
+	ui.Row(c.Key("track")).Gap(3).Height(6).AccessHidden(true).Children(func() {
 		for i, r := range bg.rows {
 			k := groupMark(r)
 			col := t.Line
@@ -601,7 +660,7 @@ func (a *App) peek(c *ui.Context) {
 		ui.Row(c.Key("head")).Gap(t.S3).AlignItems(ui.Center).Children(func() {
 			a.stateMark(c, task, a.stoppedWait(task))
 			ui.Column(c.Key("tx")).Gap(2).Grow(1).Shrink(1).MinWidth(0).Children(func() {
-				uiText(c.Key("title"), keepWords(autospace(shortTitle(task.Title())))).FontSize(t.MD + 1).FontWeight(700).TextColor(t.Ink).MaxLines(2).Tooltip(task.Title())
+				uiText(c.Key("title"), keepWords(autospace(shortTitle(task.Title())))).FontSize(t.MD + 1).FontWeight(700).TextColor(t.Ink).SingleLine().Tooltip(task.Title())
 				ui.Row(c.Key("meta")).Gap(t.S2).Wrap().Children(func() {
 					a.beat(c, task, att, false)
 					for _, m := range a.whereMeta(task) {

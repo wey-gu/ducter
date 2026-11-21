@@ -20030,3 +20030,38 @@ html[data-text-size="large"] .brand-mark > svg {
 .peek .phead .omark .pulse i:nth-child(3) {
   animation-delay: -1.1s;
 }
+/* D467 round 3: one progress encoding a level, the brief's needs on one line, the peek's title one line. */
+.ocard .omark .pulse i {
+  animation: none;
+  transform: none;
+}
+.trail i.span {
+  height: 4px;
+  top: 2px;
+  margin-left: 0;
+  min-width: 4px;
+  border-radius: 2px;
+  opacity: 0.7;
+}
+.tgroup .gmark.k-blank {
+  background: none;
+}
+.tgroup .gpart .gtrail {
+  flex-basis: 100%;
+  min-width: 0;
+  padding-left: 58px;
+}
+.bneed .bwords {
+  flex: 0 1 auto;
+}
+.peek .pt {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.peek .ptx {
+  overflow: hidden;
+}
+.done-earlier {
+  margin-top: 4px;
+}

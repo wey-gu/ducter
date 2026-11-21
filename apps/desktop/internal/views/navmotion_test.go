@@ -164,7 +164,8 @@ func navMotionRun(t *testing.T, lang i18n.Lang, still bool) []time.Duration {
 		}
 		play("1-deeper-onhand", func() { app.Route = RouteOnHand })
 		play("2-hero-open", func() {
-			if err := tt.Click(app.S.Task("t_bench").Title()); err != nil {
+			// D467 round 3: a new result is told in the brief, so the hero opens a card at work.
+			if err := tt.Click(app.S.Task("t_compact").Title()); err != nil {
 				t.Fatal(err)
 			}
 		})

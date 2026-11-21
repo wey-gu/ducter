@@ -66,7 +66,7 @@ func TestOnHandByAttention(t *testing.T) {
 	tt.Frame()
 	tt.Frame()
 	all := strings.Join(tt.Texts(), " | ")
-	for _, want := range []string{"有 2 个停下了，要你看一眼。", "「用手机把 Ducter 官网录一段屏发到 X」停下了", "「Android 构建在 CI 上挂了」没做成", "接着做", "放下", "再试一次", "还有 1 个是昨天做完的", "「等 acme-web 的发布流水线跑完再合并」 15:37 回来。"} {
+	for _, want := range []string{"有 2 个停下了，要你看一眼。", "「用手机把 Ducter…」停下了", "「Android 构建在…」没做成", "接着做", "放下", "再试一次", "还有 1 个是昨天做完的", "「等 acme-web 的发布流水线跑完再合并」 15:37 回来。"} {
 		if !strings.Contains(all, want) {
 			t.Fatalf("missing %q in %s", want, all)
 		}
@@ -81,8 +81,14 @@ func TestOnHandByAttention(t *testing.T) {
 	if !app.oh.briefed["t_phone"] || !app.oh.briefed["t_android"] {
 		t.Fatalf("the brief carries %v", app.oh.briefed)
 	}
-	if len(app.oh.order) < 1 || app.oh.order[0] != "t_ci" {
-		t.Fatalf("walk: %v", app.oh.order)
+	// D467 round 3: the next wait and the new result are told in the brief too: no cards, not walked.
+	if !app.oh.briefed["t_ci"] {
+		t.Fatalf("the next wait isn't in the brief: %v", app.oh.briefed)
+	}
+	for _, id := range app.oh.order {
+		if app.oh.briefed[id] {
+			t.Fatalf("%s is told in the brief and walked as a card", id)
+		}
 	}
 	for _, id := range app.oh.order {
 		if id == "t_flaky" {

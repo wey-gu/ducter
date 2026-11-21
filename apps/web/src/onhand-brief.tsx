@@ -127,28 +127,44 @@ export function backAt(task: Task): number {
 // ---------- the brief ----------
 
 export type BriefNeed = { task: Task; kind: "phone" | "stopped" | "failed"; text: string };
-export type Brief = { since?: { text: string; task: Task }; needs: BriefNeed[]; asks: number; back?: string };
+export type Brief = { since?: { text: string; task: Task }; needs: BriefNeed[]; asks: number; back?: string; rest?: boolean; told: Set<string> };
+
+/** D467 round 3: a task named in the brief's needs line, short: its short title cut to 12
+ *  characters of Han text or 28 of Latin, ending in "…" when cut (the whole on hover). */
+export function briefName(full: string): string {
+  const s = shortTitle(full) || full;
+  const han = /[\u3400-\u9fff]/.test(s);
+  const max = han ? 12 : 28;
+  const cs = [...s];
+  return cs.length > max ? `${cs.slice(0, max - 1).join("").trimEnd()}…` : s;
+}
 
 /**
  * The partner's brief over a lens (D467), from what is there, never a model: the new results since
  * you looked; at most two of what stopped or didn't work out, each with what fixes it; how many
  * questions wait below; when the first wait comes back.
  */
-export function briefOf(parts: { stopped: Task[]; failed: Task[]; waiting: Task[]; today: Task[] }, needsYou: number, now = Date.now()): Brief {
+export function briefOf(parts: { stopped: Task[]; failed: Task[]; waiting: Task[]; today: Task[] }, needsYou: number, now = Date.now(), working = 0): Brief {
+  const told = new Set<string>();
   const fresh = parts.today.filter((x) => isNewResult(x.id, attention(x), x.card?.updatedAt));
   const name = (x: Task) => shortTitle(title(x)) || t("task.unknown");
   let since: Brief["since"];
   if (fresh.length === 1) since = { text: t("onhand.brief.done.one", name(fresh[0]!)), task: fresh[0]! };
   else if (fresh.length === 2) since = { text: t("onhand.brief.done.two", name(fresh[0]!), name(fresh[1]!)), task: fresh[0]! };
   else if (fresh.length > 2) since = { text: t("onhand.brief.done.many", name(fresh[0]!), fresh.length - 1), task: fresh[0]! };
+  // D467 round 3: what the brief names gets no card (with "等 n 个", only the first).
+  for (const x of fresh.slice(0, fresh.length === 2 ? 2 : 1)) told.add(x.id);
   const halted = [...parts.stopped, ...parts.failed];
   const needs: BriefNeed[] = halted.slice(0, 2).map((x) => {
-    if (attention(x) === "failed") return { task: x, kind: "failed", text: t("onhand.brief.failed", name(x), firstSentence(sayable(reportOf(x)?.summary ?? "", A.readerLang(x))) || t("state.failed")) };
-    if (onPhone(x)) return { task: x, kind: "phone", text: t("onhand.brief.stopped.phone", name(x)) };
-    return { task: x, kind: "stopped", text: t("onhand.brief.stopped", name(x), firstSentence(sayable(reportOf(x)?.summary ?? "", A.readerLang(x))) || t("onhand.wait.unsaid")) };
+    const short = briefName(title(x)) || t("task.unknown");
+    if (attention(x) === "failed") return { task: x, kind: "failed", text: t("onhand.brief.failed", short, firstSentence(sayable(reportOf(x)?.summary ?? "", A.readerLang(x))) || t("state.failed")) };
+    if (onPhone(x)) return { task: x, kind: "phone", text: t("onhand.brief.stopped.phone", short) };
+    return { task: x, kind: "stopped", text: t("onhand.brief.stopped", short, firstSentence(sayable(reportOf(x)?.summary ?? "", A.readerLang(x))) || t("onhand.wait.unsaid")) };
   });
   const asks = Math.max(0, needsYou - halted.length);
   const coming = parts.waiting
+    // A wait on a limit's reset is said by its own group (D297), never named here.
+    .filter((x) => !A.S.waiterFor(x.id)?.limit)
     .map((x) => ({ x, at: backAt(x) }))
     .filter((c) => Number.isFinite(c.at) && c.at > now)
     .sort((a, b) => a.at - b.at);
@@ -157,8 +173,11 @@ export function briefOf(parts: { stopped: Task[]; failed: Task[]; waiting: Task[
     const c = coming[0]!;
     const at = clock(new Date(c.at).toISOString());
     back = coming.length > 1 ? t("onhand.brief.back.more", name(c.x), at, coming.length - 1) : t("onhand.brief.back", name(c.x), at);
+    told.add(c.x.id);
   }
-  return { since, needs, asks, back };
+  // D467 round 3: nothing needs you, nothing works, nothing comes back on its own: the partner still talks.
+  const rest = !needsYou && !working && !back;
+  return { since, needs, asks, back, rest, told };
 }
 
 /** One labelled line of the brief: its label in a quiet column, then the words and what to do. */
@@ -187,7 +206,9 @@ export function BriefLines({ b }: { b: Brief }) {
         <Line label={t("lane.needs_you")}>
           {b.needs.map((n) => (
             <span key={n.task.id} class={`bneed k-${n.kind}`}>
-              <span class="bwords">{n.text}</span>
+              <span class="bwords" title={title(n.task)}>
+                {n.text}
+              </span>
               <span class="bacts">
                 {n.kind === "phone" ? (
                   <Btn kind="secondary" size="sm" label={t("onhand.brief.phone.go")} about={title(n.task)} onClick={() => A.send({ t: "past_continue", taskId: n.task.id, words: t("onhand.brief.phone.words") })} />
@@ -210,6 +231,11 @@ export function BriefLines({ b }: { b: Brief }) {
       {b.back && (
         <Line label={t("onhand.next")}>
           <span>{b.back}</span>
+        </Line>
+      )}
+      {b.rest && (
+        <Line label={t("onhand.next")}>
+          <span>{t("onhand.brief.rest")}</span>
         </Line>
       )}
     </div>
@@ -236,19 +262,38 @@ export function Trail({ task, now = Date.now() }: { task: Task; now?: number }) 
   const span = Number.isFinite(start) ? Math.max(60_000, now - start) : 0;
   const x = (at: number) => (span ? Math.min(100, Math.max(0, ((at - start) / span) * 100)) : 100);
   const last = steps.at(-1);
+  const runs = trailRuns(steps.map((s) => ({ x: x(s.at), bad: s.bad, key: s.ev.seq })));
   return (
     <span class="trail-row">
       <span class="trail" aria-hidden="true">
         <span class="rule" />
-        {steps.map((s) => (
-          <i key={s.ev.seq} class={s.bad ? "bad" : ""} style={{ left: `${x(s.at)}%` }} />
-        ))}
+        {runs.map((r) =>
+          r.to > r.from ? (
+            <i key={r.key} class={`span${r.bad ? " bad" : ""}`} style={{ left: `${r.from}%`, width: `${r.to - r.from}%` }} />
+          ) : (
+            <i key={r.key} class={r.bad ? "bad" : ""} style={{ left: `${r.from}%` }} />
+          ),
+        )}
         <b class="head" />
       </span>
       {steps.length > 0 && <span class="tfact">{t("onhand.progress.steps", steps.length)}</span>}
       {last && <span class="tfact">{t("onhand.progress.last", now - last.at < 60_000 ? t("time.now") : ago(A.L, new Date(last.at).toISOString(), now))}</span>}
     </span>
   );
+}
+
+/** The trail's marks (D467 round 3): steps closer than about 6 px (1.2 % of a trail about 500 px
+ *  wide) join one span from the first to the last; a lone step stays a tick. x in percent, in order. */
+export function trailRuns(steps: { x: number; bad: boolean; key: number }[], gap = 1.2): { from: number; to: number; bad: boolean; key: number }[] {
+  const out: { from: number; to: number; bad: boolean; key: number }[] = [];
+  for (const s of steps) {
+    const r = out.at(-1);
+    if (r && s.x - r.to < gap) {
+      r.to = s.x;
+      r.bad ||= s.bad;
+    } else out.push({ from: s.x, to: s.x, bad: s.bad, key: s.key });
+  }
+  return out;
 }
 
 /** D467: 在等 placed in time: one light axis from now to the latest return within 12 hours, each
@@ -259,7 +304,8 @@ export function WaitAxis({ tasks, now = Date.now() }: { tasks: Task[]; now?: num
     .map((x) => ({ x, at: backAt(x) }))
     .filter((c) => Number.isFinite(c.at) && c.at > now && c.at - now <= HORIZON)
     .sort((a, b) => a.at - b.at);
-  if (!items.length) return null;
+  // D467 round 3: only with two or more on it: one wait's time is already the brief's and its card's.
+  if (items.length < 2) return null;
   const end = Math.max(items.at(-1)!.at, now + 30 * 60_000);
   const x = (at: number) => 8 + ((at - now) / (end - now)) * 84;
   return (

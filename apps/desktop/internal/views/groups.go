@@ -314,7 +314,6 @@ func (a *App) groupCard(c *ui.Context, bg boardGroup) {
 	hover := card.Hovered()
 	card.Children(func() {
 		ui.Row(c.Key("head")).Gap(14).AlignItems(ui.Center).MinHeight(32).Children(func() {
-			a.groupStateMark(c, bg)
 			if a.oh.groupRename == g.ID {
 				save := func() {
 					if a.oh.groupDraft != "" && a.oh.groupDraft != g.Name {
@@ -331,27 +330,7 @@ func (a *App) groupCard(c *ui.Context, bg boardGroup) {
 				uiText(c, g.Name).FontSize(t.MD).FontWeight(700).TextColor(t.Ink).SingleLine().Shrink(1).MinWidth(0)
 			}
 			ui.Spacer(c)
-			ui.Row(c.Key("beads")).Gap(4).AlignItems(ui.Center).AccessHidden(true).Children(func() {
-				for _, r := range bg.rows {
-					col := t.Line
-					switch groupMark(r) {
-					case "done":
-						col = t.Done.Dot
-					case "working":
-						col = t.Working.Dot
-					case "needs":
-						col = t.NeedsYou.Dot
-					case "failed", "dropped":
-						col = t.Failed.Dot
-					}
-					b := ui.Box(c).Size(8, 8).Radius(4).Shrink(0)
-					if k := groupMark(r); k == "held" || k == "waiting" {
-						b.Border(1.5, t.InkSoft)
-					} else {
-						b.Background(col)
-					}
-				}
-			})
+			// D467 round 3: the parts' track under the head is the group's one sign of progress.
 			if done, left, ok := groupCount(bg.rows); ok {
 				uiText(c, a.L.T("asks.count", done, left)).FontSize(t.XS).FontWeight(600).TextColor(t.InkMuted).FontFeatures("tnum").SingleLine()
 			}
@@ -386,7 +365,7 @@ func (a *App) groupCard(c *ui.Context, bg boardGroup) {
 					uiText(c, fmt.Sprint(r.part)).FontSize(t.XS).FontWeight(600).TextColor(t.InkSoft).FontFeatures("tnum").Width(16).AccessHidden(true)
 					fill := map[string]ui.Color{"done": t.Done.Dot, "working": t.Working.Dot, "needs": t.NeedsYou.Dot, "failed": t.Failed.Dot, "dropped": t.Failed.Dot, "held": t.InkSoft, "waiting": t.Waiting.Ink}[k]
 					if k == "working" {
-						ui.Box(c.Key("pulse")).Size(20, 20).Radius(10).Background(t.Working.Surface).Shrink(0).AccessHidden(true).Draw(drawPulse(t.Working.Dot, phaseOf(key), a.aliveResting(c)))
+						ui.Box(c.Key("mark")).Size(20, 20).Shrink(0).AccessHidden(true) // its trail moves, not a glyph
 					} else {
 						ui.Box(c.Key("mark")).Size(20, 20).Shrink(0).AccessHidden(true).Draw(drawGroupMark(k, fill, t.Surface))
 					}

@@ -54,7 +54,7 @@ offers **Check now** (it looks again now).
 
 A card says which computer it runs on only when that isn't the one most of your tasks use.
 
-Waiting tasks sit on a line of time from now to when each comes back. A finished task shows what it
+With two or more waiting, they sit on a line of time from now to when each comes back. A finished task shows what it
 made, such as its pull request (**#1190**), which you can open.
 
 On a wide window, the task you've selected shows on the right as it works: what it's doing now,
@@ -77,9 +77,9 @@ or **Merged** once you've done either from Ducter.
 
 Every task that works in a folder belongs to that folder's project; everything else is under
 **Other**. There's nothing to set up. Once there are two or more, the projects appear: on a wide
-window as a column on the left, otherwise as a row of names above the numbers. Each one shows,
-in a small picture of your partner, whether anything there needs you, is being worked on, or has
-a new result, and how many lines its branches have changed. Pick one to see only its tasks;
+window as a column on the left, otherwise as a row of names above the numbers. Each one shows
+how many tasks it has and how many lines its branches have changed, and a small picture of your
+partner when something there needs you. Pick one to see only its tasks;
 **All** shows everything again. Under a project, **+** starts a new task in its folder.
 
 **+ Add a folder**, at the foot of the column (or **+** at the end of the row of names), makes a

@@ -210,3 +210,72 @@ describe("On hand reports (D467 round 2)", () => {
     for (const k of ["onhand.brief.since", "onhand.brief.stopped.phone", "onhand.brief.back", "onhand.progress.steps", "onhand.peek.open", "onhand.src.offer"]) expect(strings("zh").t(k, "x", "y", 1)).not.toContain("件");
   });
 });
+
+describe("On hand said once (D467 round 3)", () => {
+  test("what the brief names is told: the new result and the next wait leave their sections and the walk", async () => {
+    const { A, o } = await board(
+      [card("typo", "done", iso(-30 * 60_000)), card("ci", "blocked", iso(-48 * 60_000)), card("ci2", "blocked", iso(-40 * 60_000))],
+      [
+        { waiterId: "w1", taskId: "ci", reason: "the pipeline finishes", state: "armed", at: iso(37 * 60_000), armedAt: iso(-48 * 60_000) },
+        { waiterId: "w2", taskId: "ci2", reason: "the nightly finishes", state: "armed", at: iso(3 * 3600_000), armedAt: iso(-40 * 60_000) },
+      ],
+    );
+    const seen = await import("../src/seen.ts");
+    const { briefOf } = await import("../src/onhand-brief.tsx");
+    const fresh = seen.isNewResult("typo", "done", iso(-30 * 60_000));
+    const b = briefOf(o.boardParts(o.lensLanes("")), 0, Date.now(), 0);
+    expect(b.told.has("ci")).toBe(true);
+    expect(b.told.has("ci2")).toBe(false);
+    if (fresh) expect(b.told.has("typo")).toBe(true);
+    expect(b.rest).toBe(false);
+    A.S.tasks.clear();
+  });
+
+  test("all quiet: nothing needs you, works or comes back: the partner says it's here; done says today's all", async () => {
+    const { A, o } = await board([card("a", "done", iso(-60_000))]);
+    const { briefOf } = await import("../src/onhand-brief.tsx");
+    const n = o.stateCounts("");
+    const b = briefOf(o.boardParts(o.lensLanes("")), n[0]!, Date.now(), n[1]!);
+    expect(b.rest).toBe(true);
+    expect(o.headLine("")).toBe("今天就这些，都做完了。");
+    expect(A.L.t("onhand.brief.rest")).toBe("我在这儿，有新的事会告诉你。");
+    expect(strings("en").t("onhand.line.done")).toBe("That's all for today. Everything's done.");
+    expect(strings("en").t("onhand.brief.rest")).toBe("I'm here; I'll tell you when something new comes up.");
+    A.S.tasks.clear();
+  });
+
+  test("the needs line names a task short; the trail merges dense steps into spans", async () => {
+    const { briefName, trailRuns } = await import("../src/onhand-brief.tsx");
+    expect(briefName("用手机把 Ducter 官网录一段屏发到 X")).toBe("用手机把 Ducter…");
+    expect([...briefName("把 Macbook Pro M3 的通用设置导出来")].length).toBeLessThanOrEqual(12);
+    expect(briefName("Fix the typo")).toBe("Fix the typo");
+    expect(briefName("Record the Ducter site on the phone and post it to X").length).toBe(28);
+    const runs = trailRuns([
+      { x: 10, bad: false, key: 1 },
+      { x: 40, bad: false, key: 2 },
+      { x: 90, bad: false, key: 3 },
+      { x: 90.5, bad: true, key: 4 },
+      { x: 91, bad: false, key: 5 },
+      { x: 91.6, bad: false, key: 6 },
+    ]);
+    expect(runs).toEqual([
+      { from: 10, to: 10, bad: false, key: 1 },
+      { from: 40, to: 40, bad: false, key: 2 },
+      { from: 90, to: 91.6, bad: true, key: 3 },
+    ]);
+  });
+
+  test("one encoding a level; a face only where something needs you; the axis from two waits", () => {
+    const onhand = src("onhand.tsx");
+    const g = onhand.slice(onhand.indexOf("function GroupCard"), onhand.indexOf("/** How the parts run"));
+    expect(g).not.toContain("<StateMark");
+    expect(g).toContain('k === "working" ? <span class="gmark k-blank"');
+    expect(onhand).toContain("const needsHere = ");
+    expect(src("onhand-brief.tsx")).toContain("if (items.length < 2) return null;");
+    const css = readFileSync(join(import.meta.dir, "../static/app.css"), "utf8");
+    const block = css.slice(css.indexOf("/* D467 round 3"));
+    expect(block).toMatch(/\.ocard \.omark \.pulse i \{\s*animation: none;/);
+    expect(block).toMatch(/\.peek \.pt \{[^}]*white-space: nowrap;/);
+    expect(block).not.toMatch(/#[0-9a-f]{3,6}\b|rgb\(/i);
+  });
+});

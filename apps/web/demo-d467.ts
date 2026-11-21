@@ -52,13 +52,23 @@ async function open(id: string, title: string, project: string, place: Place, ha
   await tick();
 }
 
+// D467 round 3: DEMO_STATE=quiet (today's results, yesterday's one and GitHub; nothing working,
+// waiting or stopped) and DEMO_STATE=empty (nothing at all); else the author's screen.
+const mode = process.env.DEMO_STATE ?? "";
+const empty = mode === "empty";
+const busy = mode !== "quiet" && !empty;
+
 // GitHub first: added, looked at and sorted (the sort reads the 555 by their words).
 const ts = seed.taskSources;
-await ts.add("github");
-await ts.look();
-for (let i = 0; i < 300 && (!ts.view().pile?.sortedAt || ts.view().pile?.sorting); i++) await Bun.sleep(100);
-const items = (await ts.items()).items;
+let items: Awaited<ReturnType<typeof ts.items>>["items"] = [];
+if (!empty) {
+  await ts.add("github");
+  await ts.look();
+  for (let i = 0; i < 300 && (!ts.view().pile?.sortedAt || ts.view().pile?.sorting); i++) await Bun.sleep(100);
+  items = (await ts.items()).items;
+}
 
+if (!empty) {
 // ---- done yesterday morning, on DeepSeek Harness ----
 await at(-(18 * HOUR + 7 * MIN));
 await open("t_flaky", w("修 session 过期差一秒的偶发测试", "Fix the flaky session-expiry test"), "acme-api", repo("acme-api", "session-flaky"), "deepseek-harness", "deepseek-v4");
@@ -66,6 +76,8 @@ tool("t_flaky", "Bash", { command: "bun test test/session.test.ts --rerun-each 2
 report("t_flaky", { state: "done", summary: w("过期时间改成按服务器时钟比，跑 200 遍都过了；草稿 PR #1184。", "Expiry now compares on the server clock; 200 runs pass. Draft PR #1184."), evidence: [{ kind: "url", ref: "https://github.com/acme/api/pull/1184" }] });
 seed.tasks.setState("t_flaky", "done", "parked");
 
+}
+if (busy) {
 // ---- the phone task, stopped 8 days ago with nothing to bring it back ----
 await at(-8 * DAY - 3 * HOUR);
 await open("t_phone", w("用手机把 Ducter 官网录一段屏发到 X", "Record the Ducter site on the phone and post it to X"), "", { kind: "none" }, "deepseek-harness", "deepseek-v4");
@@ -75,6 +87,8 @@ await at(-8 * DAY - 2 * HOUR);
 report("t_phone", { state: "blocked", summary: w("手机工具仍提示本任务的手机访问已被停止，无法恢复操作。", "The phone tool still says this task's access to the phone was stopped, so it can't carry on."), evidence: [] });
 seed.tasks.setState("t_phone", "blocked", "parked");
 
+}
+if (!empty) {
 // ---- done this afternoon, on Codex ----
 await at(-(1 * HOUR + 52 * MIN));
 await open("t_typo", w("改掉定价页上的拼写错误", "Fix the typo on the pricing page"), "acme-web", repo("acme-web", "pricing-typo"), "codex", "gpt-6-luna");
@@ -83,6 +97,15 @@ await at(-(1 * HOUR + 31 * MIN));
 report("t_typo", { state: "done", summary: w("「recieve」改成了「receive」，顺手查了全站没有别处；草稿 PR #1190。", "\"recieve\" is now \"receive\"; nowhere else on the site. Draft PR #1190."), evidence: [{ kind: "url", ref: "https://github.com/acme/web/pull/1190" }] });
 seed.tasks.setState("t_typo", "done", "parked");
 
+}
+if (mode === "quiet") {
+  await at(-(55 * MIN));
+  await open("t_receipts", w("把 11 月的报销单整理成表", "Put November's receipts in a spreadsheet"), w("报销", "Receipts"), { kind: "folder", device: "local", path: "/Users/weyl/Documents/Receipts" } as Place, "claude-code", "sonnet");
+  await at(-(40 * MIN));
+  report("t_receipts", { state: "done", summary: w("19 张发票整理进了 2026-11.xlsx，合计 ¥31,860。", "19 receipts are in 2026-11.xlsx, ¥31,860 in all."), evidence: [] });
+  seed.tasks.setState("t_receipts", "done", "parked");
+}
+if (busy) {
 // ---- a wait on Codex that comes back in 37 minutes ----
 await at(-(48 * MIN));
 await open("t_ci", w("等 acme-web 的发布流水线跑完再合并", "Merge acme-web once its release pipeline is through"), "acme-web", repo("acme-web", "release-1-14"), "codex", "gpt-6-luna");
@@ -112,6 +135,7 @@ const a = pick(/^Typo on the pricing page/);
 const b = pick(/^Flaky test/);
 if (a) ts.bind("t_ci", a, "partner");
 if (b) ts.bind("t_prefs", b, "partner");
+}
 
 await Bun.sleep(300);
 await seed.stop();
@@ -133,7 +157,7 @@ const sayings = [
 ];
 let k = 0;
 const tickMs = Number(process.env.DEMO_TICK_MS ?? 4000);
-if (tickMs > 0)
+if (tickMs > 0 && busy)
   setInterval(() => {
     if (k >= 60) return; // about four minutes of work after it starts serving
     const [name, input, output] = script[k % script.length]!;

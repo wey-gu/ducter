@@ -36,7 +36,7 @@ var zhOnhand = Table{
 	"onhand.day.now":          "现在",
 	"onhand.wait.quiet.head":  "一天多没有动静",
 	"onhand.line.idle":        "手上没有事。",
-	"onhand.line.done":        "都做完了。",
+	"onhand.line.done":        "今天就这些，都做完了。",
 	"onhand.line.working":     "没有要你定的，我在做。",
 	"onhand.line.first":       "没有要你定的。最早 %s 回来。",
 	"onhand.line.one":         "没有要你定的。在等的那个 %s 回来。",
@@ -101,6 +101,7 @@ var zhOnhand = Table{
 	"onhand.src.offer":           "里面有 %d 个我现在就能做，交给我就开始。",
 	"onhand.peek.steps":          "最近几步",
 	"onhand.peek.open":           "打开任务",
+	"onhand.brief.rest":          "我在这儿，有新的事会告诉你。",
 }
 
 var enOnhand = Table{
@@ -135,7 +136,7 @@ var enOnhand = Table{
 	"onhand.day.now":             "Now",
 	"onhand.wait.quiet.head":     "Quiet for over a day",
 	"onhand.line.idle":           "Nothing on hand.",
-	"onhand.line.done":           "All done.",
+	"onhand.line.done":           "That's all for today. Everything's done.",
 	"onhand.line.working":        "Nothing needs you. I'm on it.",
 	"onhand.line.first":          "Nothing needs you. The first is back at %s.",
 	"onhand.line.one":            "Nothing needs you. The one waiting is back at %s.",
@@ -197,6 +198,7 @@ var enOnhand = Table{
 	"onhand.src.offer":           "%d of them I can take on now; hand them over and I'll start.",
 	"onhand.peek.steps":          "Latest steps",
 	"onhand.peek.open":           "Open the task",
+	"onhand.brief.rest":          "I'm here; I'll tell you when something new comes up.",
 }
 
 func init() {

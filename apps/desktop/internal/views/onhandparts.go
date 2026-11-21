@@ -103,7 +103,7 @@ func (a *App) stateMark(c *ui.Context, task *store.Task, stopped bool) {
 		box.Background(t.Failed.Surface).Draw(drawGroupMark("failed", t.Failed.Dot, t.Surface))
 	case att == protocol.Working || att == protocol.Queued:
 		box.Background(t.Working.Surface).Children(func() {
-			ui.Box(c.Key("pulse")).Size(13, 12).Draw(drawPulse(t.Working.Dot, phaseOf(task.ID), a.aliveResting(c)))
+			ui.Box(c.Key("pulse")).Size(13, 12).Draw(drawPulse(t.Working.Dot, phaseOf(task.ID), true)) // still: its trail moves
 		})
 	case att == protocol.Blocked:
 		_, frac := a.waitNext(a.S.WaiterFor(task.ID))

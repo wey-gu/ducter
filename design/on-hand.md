@@ -27,8 +27,9 @@ What belongs to no task (the partner's own asks, task-less waits, calls) shows u
   ran, its routines start and it was added; one origin on two computers is one project), home
   first, each its own small word, read aloud **在 {computers} 上 / on {computers}**;
 - under it the unmerged **+a −d** of its tasks' branches, only where there are branches;
-- one status place: the partner's face for its most urgent task (needs you > working > new
-  result), D244's art, never a dot (D69);
+- one status place: D467 round 3: the partner's face only where something there needs you (a
+  question, a wait that stopped, a task that didn't work out), D244's art, never a dot (D69);
+  otherwise nothing;
 - its count.
 
 The chosen row is the knob (D270: the card's white on its clay ledge). Opening a task turns the board into the rail (D244), narrowed by the
@@ -68,7 +69,7 @@ task in {name}** where the bare ＋ stood.
    else **没有要你定的，我在做。**
    while anything works; else, when all waits, **没有要你定的。最早 9:06 回来。** (one wait:
    **在等的那个 9:06 回来。**; none coming back on its own: **在等的都没有新动静。**); else
-   **都做完了。** or **手上没有事。** It never repeats a count. The long sentence (`headSay`, D287) stays
+   **今天就这些，都做完了。** or **手上没有事。** It never repeats a count. The long sentence (`headSay`, D287) stays
    the menu bar's. Under the lead, up to three labelled lines in its voice (label 13/700 muted, text
    15): **刚才 / Since you looked** (new results since this device last looked: **「…」做完了。**, two,
    or **「…」等 n 个做完了。**, the first one's PR chip beside it); **等你 / Needs you**, one line for
@@ -76,7 +77,12 @@ task in {name}** where the bare ＋ stood.
    **「…」停在手机上：要你在那台手机上重新允许访问。** with **允许好了，接着做 / Allowed, carry on**;
    another: **「…」停下了：{its report's first sentence}** with 接着做 / 放下; a failure: **「…」没做成：…**
    with 再试一次 / 看看为什么), and with questions **下面有 n 个问题等你一句话。**; **接下来 / Next**:
-   **「…」6:58 回来。** (**之后还有 n 个**). What the brief carries is never also a card.
+   **「…」6:58 回来。** (**之后还有 n 个**; a wait on a limit's reset is said by its own group, D297);
+   with nothing needing you, nothing at work and nothing coming back, **我在这儿，有新的事会告诉你。**
+   Round 3: what the brief tells (the results it names, the stopped and failed it carries, the next
+   wait) is never also a card and is not walked; a section left with nothing has no heading
+   (今天做完 can be only its yesterday fold); the brief names a stopped or failed task in a short form
+   (12 Han or 28 Latin characters, the whole on hover), its buttons on the same line when they fit.
 2. D467 (rev.): no strip of counts and no counts on the sections (the brief and the cards say how
    much); the filter it gave is gone, Find and the lens narrow. Under the brief, on its own row, under
    a project **在这儿新建 / New task here**; Find from ten.
@@ -99,7 +105,7 @@ task in {name}** where the bare ＋ stood.
    a little tracking), no count: the scale is brief > card title > section label > meta. 在等
    opens with **the time axis**: now (the accent bead and the clock) to the last wait back within
    12 h, each wait a hollow bead at its return with its time under it (the old day, D287, inside the
-   section it belongs to). State is said by the small glyph or
+   section it belongs to), only from two waits (one is already the brief's 接下来). State is said by the small glyph or
    face, never a bar at the edge.
 5. D467: **one card shape** for every task, one under another at the list's width (below); only the
    rail beside an opened task stays rows.
@@ -123,9 +129,11 @@ detail, on hover and in the task.
 | Outcome (done) | D467 (rev.): what it made, to open: a PR chip (GitHub's mark, **#1190**) from the report's evidence, the merge or draft PR, or `PR #n` in a repo task's result |
 | Right end | The heartbeat in words (**在做 12 分钟**, **22:40 回来**, **14:10 做完**) or its one action: **接着做** and **放下** for what stopped, **再试一次** for what didn't work out, **现在看一次** for a quiet wait that looks; on hover Merge / draft PR, Pause, D454's × and ⋯ |
 
-A new result pops once the first time it is drawn (D313). A group (D360) is the same card with the
-mark at its head and a **track** of its parts under it (done, at work breathing, needing you, didn't
-work, in line); each part at work says its living line and draws its trail.
+A new result pops once the first time it is drawn (D313). Round 3, one sign of progress per level:
+a working card's mark stands still (its trail moves); a group (D360) is the same card with its name
+at the head (no mark, no beads) and a **track** of its parts under it (done, at work breathing,
+needing you, didn't work, in line); a part at work has no glyph of its own, only its living line and
+its trail. A trail joins steps closer than 6 pt into one span, so a busy stretch reads as rhythm.
 
 ### The peek (D467 rev.)
 

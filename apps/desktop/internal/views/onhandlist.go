@@ -353,6 +353,10 @@ func (a *App) onHandList(c *ui.Context, b store.Board) {
 	waiting := withoutGroups(keep(sp.waiting), inGroup)
 	today := withoutGroups(keep(sp.today), inGroup)
 	earlier := withoutGroups(keep(sp.earlier), inGroup)
+	if !rail && q == "" {
+		// D467 round 3: what the brief tells (a result, the next wait) is no card either.
+		waiting, today = notBriefed(waiting, a.oh.briefed), notBriefed(today, a.oh.briefed)
+	}
 	a.nav.rows = 0
 	f := a.oh.filter
 	if rail {
@@ -486,8 +490,8 @@ func (a *App) onHandList(c *ui.Context, b store.Board) {
 	}
 	if len(waiting)+len(loose)+nGroups(2) > 0 && show(3) {
 		a.listSection(c, "waiting", a.L.T("lane.waiting"), count(sp.waiting, waiting)+len(loose), func() {
-			if f == 0 {
-				a.waitAxis(c, b, a.oh.lens) // D467: the waits placed in time
+			if f == 0 && len(a.waitsOnAxis(b, a.oh.lens, axisSpan)) >= 2 {
+				a.waitAxis(c, b, a.oh.lens) // D467: the waits placed in time, from two
 			}
 			groupsIn(2)
 			a.taskCards(c.Key("fresh"), fresh)
@@ -511,7 +515,15 @@ func (a *App) onHandList(c *ui.Context, b store.Board) {
 			}
 		})
 	}
-	if len(today)+len(earlier)+len(missed)+nGroups(3) > 0 && show(4) {
+	if len(today)+len(missed)+nGroups(3) == 0 && len(earlier) > 0 && show(4) {
+		// D467 round 3: nothing of today's left to draw: yesterday's fold alone.
+		if q == "" && a.foldLine(c, "earlier", a.L.T("onhand.done.yesterday", len(earlier)), earlierOpen) {
+			a.oh.earlierOn = !a.oh.earlierOn
+		}
+		if earlierOpen {
+			a.taskCards(c.Key("earlier"), earlier)
+		}
+	} else if len(today)+len(earlier)+len(missed)+nGroups(3) > 0 && show(4) {
 		a.listSection(c, "done", a.L.T("lane.done"), count(sp.today, today), func() {
 			groupsIn(3)
 			a.taskCards(c.Key("new"), newer)

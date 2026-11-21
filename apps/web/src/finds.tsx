@@ -95,6 +95,8 @@ function Find({ f, seq }: { f: FindView; seq?: number }) {
         {f.text}
         <HoverReply k={rk} />
       </div>
+      {/* D458: an offer from past the accounts says where it came from, one quiet line under its words. */}
+      {f.origin && <div class="small sub forigin">{f.origin}</div>}
       {f.draft && d && st?.state !== "passed" && (send || open || (d.pending ?? d.resolved?.option) === "go") ? (
         <Draft f={f} open={open} decide={(text) => (text ? A.decide(d.decisionId, "go", text) : A.decide(d.decisionId, "hold"))} />
       ) : null}

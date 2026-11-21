@@ -6005,6 +6005,8 @@ button.dev-name {
    (no button, no "missed"). The offers past the first three wait under 还有几条 / A few more. */
 .bubble.note .find.faded .ftext, .bubble.note .find.faded .kind { color: var(--ink-muted); transition: color 0.6s var(--ease); }
 .bubble.note .fmore { align-self: flex-start; margin: -2px -8px -6px; font-size: var(--xs); color: var(--ink-muted); }
+/* D458: an offer from past the accounts names where it came from, one quiet line under its words. */
+.bubble.note .forigin { margin-top: -2px; color: var(--ink-muted); }
 .decision .draft-first { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: var(--ink-muted); }
 .bubble.note .note-ask { display: flex; flex-direction: column; gap: 8px; padding-top: 10px; border-top: 1px solid var(--line); }
 

@@ -15,9 +15,16 @@
  *   service          你用的服务 / A service you use (maintenance, an outage, a job that keeps failing, a shutdown)
  *   update           之前说的有变 / An update to what I told you (a later notice changes a find already said)
  *   said             你说过的 / Something you said (D281: a reminder they asked for, a thing they said they would do on a day, the partner's own promise to remind; from the conversation, said once at its moment)
+ *   todos            你的待办 / Your to-dos (D359: the to-dos Ducter can clear today)
+ * D458: offers from past the accounts (proactive/wider.ts), each naming where it came from (FindView.origin):
+ *   next_step        接着可以做的 / A next step (what finished work implies: a follow-up issue still open, something a task noticed, a failure whose cause is fixed now, a routine whose result changed)
+ *   remembered       记得的 / Remembered (what Mem knows that is timely now: a preference meeting an event, a decision whose condition is met, a conversation with another tool left unfinished)
+ *   loose_end        你提过的 / You mentioned (a thing the person said they'd get to, with no day and no reminder)
  */
-export type FindKind = "mismatch" | "waiting_on_you" | "waiting_on_them" | "promised" | "deadline" | "plan_changed" | "meeting" | "coming_up" | "service" | "update" | "said" | "todos";
-export const FIND_KINDS: readonly FindKind[] = ["mismatch", "waiting_on_you", "waiting_on_them", "promised", "deadline", "plan_changed", "meeting", "coming_up", "service", "update", "said", "todos"];
+export type FindKind = "mismatch" | "waiting_on_you" | "waiting_on_them" | "promised" | "deadline" | "plan_changed" | "meeting" | "coming_up" | "service" | "update" | "said" | "todos" | "next_step" | "remembered" | "loose_end";
+export const FIND_KINDS: readonly FindKind[] = ["mismatch", "waiting_on_you", "waiting_on_them", "promised", "deadline", "plan_changed", "meeting", "coming_up", "service", "update", "said", "todos", "next_step", "remembered", "loose_end"];
+/** D458: the kinds that come from past the accounts (tasks, Mem, the conversation). */
+export const WIDER_KINDS: readonly FindKind[] = ["next_step", "remembered", "loose_end"];
 export const isFindKind = (k: unknown): k is FindKind => typeof k === "string" && (FIND_KINDS as readonly string[]).includes(k);
 
 /**
@@ -72,9 +79,9 @@ export interface FindHow {
   url?: string;
 }
 
-/** D388: the kinds of source a find's line names. */
-export type FindSrc = "calendar" | "mail" | "chat" | "github" | "you" | "web";
-export const FIND_SRCS: readonly FindSrc[] = ["calendar", "mail", "chat", "github", "you", "web"];
+/** D388: the kinds of source a find's line names. D458: task (a task's report), mem (Nowledge Mem). */
+export type FindSrc = "calendar" | "mail" | "chat" | "github" | "you" | "web" | "task" | "mem";
+export const FIND_SRCS: readonly FindSrc[] = ["calendar", "mail", "chat", "github", "you", "web", "task", "mem"];
 
 /** One find, as the note shows it. */
 export interface FindView {
@@ -106,6 +113,11 @@ export interface FindView {
    * dimmed; no "missed" mark).
    */
   offer?: boolean;
+  /**
+   * D458: where it came from, in the person's language, one line under its words ("从你和 Codex
+   * 11 月 12 日的对话想到的 / From your conversation with Codex on Nov 12"): code's words, never a quote.
+   */
+  origin?: string;
 }
 
 /** D403: the reply a cheap model wrote from the thread, in its language, in the person's own voice. */

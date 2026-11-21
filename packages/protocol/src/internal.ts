@@ -218,6 +218,11 @@ export interface CoreApi {
   personaFor?(id: string | undefined): { name: string; mem?: MemIdentity };
   /** D368: Nowledge Mem's Working Memory, read-only (core/src/working-memory.ts); absent in tests and stubs, or with memory off. */
   workingMemory?: WorkingMemoryPort;
+  /**
+   * D458: the partner hands core its own read of Mem (memory_search's path: the same switch and
+   * identity) for the morning's offers; read-only. Never set: offers never read Mem.
+   */
+  setMemLook?(m: MemLookPort | undefined): void;
   /** D380: a quick web look for one live fact (core/src/web-look.ts); absent in tests and stubs (then a browsing task does it). */
   webLook?: WebLookPort;
   /**
@@ -301,6 +306,32 @@ export interface MemCarry {
   kitFor(taskId: string, harness: string, base: string): string[];
   /** Whether that computer has an nmem the plugin's hooks can run (a worker's Mem look; the home: true). */
   nmemIn(device: string | undefined): boolean;
+}
+
+/** D458: one memory as the offers read it (the partner's MemoryHit). Someone else's words: data. */
+export interface MemLookHit {
+  id?: string;
+  title: string;
+  content: string;
+  /** YYYY-MM-DD it was recorded. */
+  date?: string;
+  /** preference, decision, fact, … */
+  kind?: string;
+  /** Who saved it: "ducter", an AI tool ("codex"), the person's own. */
+  source?: string;
+}
+/** D458: one past conversation with another AI tool that Mem keeps (the partner's ThreadHit). */
+export interface MemLookThread {
+  id?: string;
+  title: string;
+  source?: string;
+  date?: string;
+  lines: { who: "user" | "assistant"; text: string }[];
+}
+/** D458: Mem, read-only, for the offers; undefined when memory is off, not connected or slow. */
+export interface MemLookPort {
+  search(query: string, n: number): Promise<MemLookHit[] | undefined>;
+  threads?(query: string, n: number): Promise<MemLookThread[] | undefined>;
 }
 
 export interface WorkingMemoryPort {

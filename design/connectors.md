@@ -341,6 +341,24 @@ reply is already there, in their language). *First time:* a morning note; under 
 - **Measured** on the aha week with hel's eleven rebuilt (`aha.ts three --waiting`): waiting finds
   said 8 → 5, false positives 3 → 0, on "now" 4 → 0, every worth one with its draft; the aha six 6/6.
 
+### 4.3 Offers from past the accounts (D458, research/199)
+
+The kinds above read the accounts. Three more places hold what a good partner would offer, and the
+morning note reads them too (offers only, never 只说急的, never needs-you, fading like any offer):
+
+| Kind (zh / en) | Place | A lead when | Where it came from (under the words) |
+|---|---|---|---|
+| 接着可以做的 / A next step | finished tasks (3 days; failures 14) | a merge whose follow-up issue is still open; a report that noticed and left something; a failure whose named issue closed after it; a routine whose last two runs differ | 从 {date}做完的「{task}」想到的 · 从 {date}没成的「{task}」想到的 · 从例行「{name}」最近两次的结果想到的 |
+| 记得的 / Remembered | Nowledge Mem (read-only, ≤ 6 reads a morning) | a preference meeting a trip, meeting or plan in the next 4 days; a decision whose condition a done task, a closed issue or its date now meets; a conversation with another AI tool (2–21 days old) that stopped with something left | 从你 {date}记下的想到的 · 从 {tool} {date}记下的想到的 · 从你和 {tool} {date}的对话想到的 |
+| 你提过的 / You mentioned | the conversation (20 h to 14 days old) | the person said they'd get to something, with no day and no ask to be reminded (those stay D281's reminders) | 从你 {date}说的话想到的 |
+
+Code gathers the leads (`proactive/wider.ts`) and drops what a later task took up or a later line
+says is done; the cheapest model (the spotter) picks among at most 24 once a morning and writes
+each line and its Go; code checks the words and writes the origin line itself. A "no" is not asked
+again for 14 days. With no model, only the two joins code can word (a follow-up still open, a
+cause closed now). Go opens a task with Ducter's own instruction; the lead rides along as data; a
+task's lead runs where that task ran. Measured with `packages/core/eval/offers/` (research/199 §4).
+
 ## 5. When it speaks: one ladder, one switch
 
 The existing escalation (principle 7: badge → message → push → call) with proactive rungs:

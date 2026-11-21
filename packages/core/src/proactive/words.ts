@@ -18,6 +18,10 @@ export const KIND_WORDS: Record<FindKind, { zh: string; en: string }> = {
   update: { zh: "之前说的有变", en: "An update to what I told you" },
   said: { zh: "你说过的", en: "Something you said" },
   todos: { zh: "你的待办", en: "Your to-dos" },
+  // D458: offers from past the accounts.
+  next_step: { zh: "接着可以做的", en: "A next step" },
+  remembered: { zh: "记得的", en: "Remembered" },
+  loose_end: { zh: "你提过的", en: "You mentioned" },
 };
 
 const T = {

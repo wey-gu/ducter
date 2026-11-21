@@ -2685,6 +2685,14 @@ Codex first, once OAR is near 1.0. See `research/17`.
 ## Offers, not interruptions (D453)
 
 - [ ] **The live check on hel:** a week of offers on 有用就说 (how many a morning, what was taken up, the weights it learned); the replay estimate (research/197 §4) is a python approximation of the detectors. Trigger: the next release on hel.
-- [ ] **Widen the funnel:** offers from more than the accounts (a task's follow-up worth offering, the conversation's loose ends, what Mem knows matters to the person) and service notices read closely past `NOTICE_DAY_MAX` (89 left unread a day on hel). Trigger: a week where the author takes up at least one offer and the mornings stay at one or two.
+- [x] **Widen the funnel:** offers from a task's follow-up, Mem and the conversation's loose ends (D458, research/199). Still open: service notices read closely past `NOTICE_DAY_MAX` (89 left unread a day on hel). Trigger: a week where the author takes up at least one offer and the mornings stay at one or two.
+
+## Offers from past the accounts (D458)
+
+- [ ] **The live check on hel:** a week with the spotter on: leads a morning, what was offered and taken up, the spotter's tokens. Trigger: the next release on hel.
+- [ ] **The real Mem's search for preferences and decisions:** the fake returns what a semantic search plausibly would; measure what `nmem m search` returns for the gatherer's queries on the author's Mem. Trigger: before tuning the queries.
+- [ ] **A real-week eval set:** the offers eval's weeks are synthetic (19 planted goods); build one from the author's own tasks and conversations (gold marked by him). Trigger: the first week of live offers.
+- [ ] **Failures whose cause is fixed, beyond issues:** a failed task's cause today must be an issue it named; a usage limit reset or a service back up are not leads yet. Trigger: a failed task the author retried by hand after such a cause.
+- [ ] **zh line length:** one spotter line was over the 72-character budget and dropped (research/199 §4); ask for a shorter rewrite instead of dropping. Trigger: a second drop seen live.
 - [ ] **The model judge's offer prompt measured:** the proactive eval (`packages/partner/eval/proactive/`) still scores the old bar's precision; add an offer-recall measure (what a good partner would offer) beside false alarms for interruptions. Trigger: before tuning OFFER_FLOOR or the weights.
 - [ ] **The verdict memo ignores the mode's floor:** a candidate judged on 有用就说 keeps its verdict after a switch to 每天最多 3 条 until its words change. Trigger: someone switches modes and sees a low one.

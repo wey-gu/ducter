@@ -1,0 +1,274 @@
+{
+ "model": "haiku",
+ "set": "heldout",
+ "leads": 11,
+ "planted": 6,
+ "calls": 2,
+ "tokens": 17089,
+ "runs": {
+  "leads": {
+   "ids": [
+    "g-h1",
+    "n-h1",
+    "g-h2",
+    "g-h3",
+    "g-h4",
+    "n-h4",
+    "g-h5",
+    "g-h6",
+    "n-h5",
+    "n-h6",
+    "n-h7"
+   ],
+   "all": {
+    "offered": 11,
+    "hit": 6,
+    "planted": 6,
+    "precision": 0.5454545454545454,
+    "recall": 1
+   },
+   "task": {
+    "offered": 3,
+    "hit": 2,
+    "planted": 2,
+    "precision": 0.6666666666666666,
+    "recall": 1
+   },
+   "mem": {
+    "offered": 3,
+    "hit": 2,
+    "planted": 2,
+    "precision": 0.6666666666666666,
+    "recall": 1
+   },
+   "talk": {
+    "offered": 5,
+    "hit": 2,
+    "planted": 2,
+    "precision": 0.4,
+    "recall": 1
+   },
+   "missed": []
+  },
+  "code-zh": {
+   "offered": [],
+   "all": {
+    "offered": 0,
+    "hit": 0,
+    "planted": 6,
+    "precision": 1,
+    "recall": 0
+   },
+   "task": {
+    "offered": 0,
+    "hit": 0,
+    "planted": 2,
+    "precision": 1,
+    "recall": 0
+   },
+   "mem": {
+    "offered": 0,
+    "hit": 0,
+    "planted": 2,
+    "precision": 1,
+    "recall": 0
+   },
+   "talk": {
+    "offered": 0,
+    "hit": 0,
+    "planted": 2,
+    "precision": 1,
+    "recall": 0
+   }
+  },
+  "code-en": {
+   "offered": [],
+   "all": {
+    "offered": 0,
+    "hit": 0,
+    "planted": 6,
+    "precision": 1,
+    "recall": 0
+   },
+   "task": {
+    "offered": 0,
+    "hit": 0,
+    "planted": 2,
+    "precision": 1,
+    "recall": 0
+   },
+   "mem": {
+    "offered": 0,
+    "hit": 0,
+    "planted": 2,
+    "precision": 1,
+    "recall": 0
+   },
+   "talk": {
+    "offered": 0,
+    "hit": 0,
+    "planted": 2,
+    "precision": 1,
+    "recall": 0
+   }
+  },
+  "haiku-zh": {
+   "offered": [
+    "g-h3",
+    "g-h4",
+    "g-h1",
+    "g-h2",
+    "g-h5",
+    "g-h6"
+   ],
+   "wrong": [],
+   "lost": [],
+   "dropped": [],
+   "all": {
+    "offered": 6,
+    "hit": 6,
+    "planted": 6,
+    "precision": 1,
+    "recall": 1
+   },
+   "task": {
+    "offered": 2,
+    "hit": 2,
+    "planted": 2,
+    "precision": 1,
+    "recall": 1
+   },
+   "mem": {
+    "offered": 2,
+    "hit": 2,
+    "planted": 2,
+    "precision": 1,
+    "recall": 1
+   },
+   "talk": {
+    "offered": 2,
+    "hit": 2,
+    "planted": 2,
+    "precision": 1,
+    "recall": 1
+   },
+   "lines": [
+    {
+     "id": "g-h3",
+     "text": "明天 10:00 的 G7 上海虹桥到杭州东，靠窗的 F 座还有余票吗？",
+     "go": "查一下余票",
+     "origin": "从你 9 月 30 日记下的想到的"
+    },
+    {
+     "id": "g-h4",
+     "text": "Android 版已通过 Play 审核，官网和 README 还没有公告。要我起草吗？",
+     "go": "起草公告",
+     "origin": "从 Claude Code 11 月 2 日记下的想到的"
+    },
+    {
+     "id": "g-h1",
+     "text": "Slack 适配器遇到 429 直接吞掉，没有重试。要我加上重试逻辑吗？",
+     "go": "接着做",
+     "origin": "从 11 月 20 日做完的「Add retries to the oo c…」想到的"
+    },
+    {
+     "id": "g-h2",
+     "text": "apps/web 里 undici 6.19 和 tar 7.2 各有一个高危漏洞。要我查升级方案吗？",
+     "go": "查升级方案",
+     "origin": "从例行「Weekly dependency a…」最近两次的结果想到的"
+    },
+    {
+     "id": "g-h5",
+     "text": "之前说要轮换 hel 上的 Cloudflare API token。要我列出完整步骤吗？",
+     "go": "列出步骤",
+     "origin": "从你 11 月 18 日说的话想到的"
+    },
+    {
+     "id": "g-h6",
+     "text": "Ducter README 里的截图还是旧版。要我找出引用位置，准备换成新版吗？",
+     "go": "找截图位置",
+     "origin": "从你 11 月 19 日说的话想到的"
+    }
+   ]
+  },
+  "haiku-en": {
+   "offered": [
+    "g-h3",
+    "g-h4",
+    "g-h2",
+    "g-h5",
+    "g-h6",
+    "g-h1"
+   ],
+   "wrong": [],
+   "lost": [],
+   "dropped": [],
+   "all": {
+    "offered": 6,
+    "hit": 6,
+    "planted": 6,
+    "precision": 1,
+    "recall": 1
+   },
+   "task": {
+    "offered": 2,
+    "hit": 2,
+    "planted": 2,
+    "precision": 1,
+    "recall": 1
+   },
+   "mem": {
+    "offered": 2,
+    "hit": 2,
+    "planted": 2,
+    "precision": 1,
+    "recall": 1
+   },
+   "talk": {
+    "offered": 2,
+    "hit": 2,
+    "planted": 2,
+    "precision": 1,
+    "recall": 1
+   },
+   "lines": [
+    {
+     "id": "g-h3",
+     "text": "Your G7 from Shanghai Hongqiao to Hangzhou East leaves tomorrow at 10:00 Beijing time. Check whether window seat F is still open on it.",
+     "go": "Check seat F",
+     "origin": "From what you noted on Sep 30"
+    },
+    {
+     "id": "g-h4",
+     "text": "The Android app passed Play review on 2026-11-20. Draft the announcement for the site and the README now.",
+     "go": "Draft the announcement",
+     "origin": "From what Claude Code noted on Nov 2"
+    },
+    {
+     "id": "g-h2",
+     "text": "The weekly audit now reports two high advisories in apps/web: undici 6.19 (request smuggling) and tar 7.2 (path traversal). Check whether upgrading both clears them.",
+     "go": "Check the upgrades",
+     "origin": "From the last two runs of the routine “Weekly dependency audit”"
+    },
+    {
+     "id": "g-h5",
+     "text": "You said you'd rotate the Cloudflare API token on hel, and it hasn't been marked done. List everywhere that token is used so the rotation can go through without breaking anything.",
+     "go": "Map token uses",
+     "origin": "From what you said on Nov 18"
+    },
+    {
+     "id": "g-h6",
+     "text": "You meant to swap the Ducter README screenshot for the new version. Replace it and confirm the image renders in the README.",
+     "go": "Swap the screenshot",
+     "origin": "From what you said on Nov 19"
+    },
+    {
+     "id": "g-h1",
+     "text": "While adding retries to the oo connector, the Slack adapter was found swallowing 429 responses without retrying. Fix it to retry with backoff on 429.",
+     "go": "Pick it up",
+     "origin": "From “Add retries to the oo c…”, done Nov 20"
+    }
+   ]
+  }
+ }
+}

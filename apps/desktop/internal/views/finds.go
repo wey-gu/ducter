@@ -104,6 +104,10 @@ func (a *App) findBlock(c *ui.Context, f protocol.FindView, seq int64) {
 				}
 			})
 		})
+		// D458: an offer from past the accounts says where it came from, one quiet line under its words.
+		if f.Origin != "" {
+			uiText(c, autospace(f.Origin)).FontSize(t.SM).TextColor(t.InkMuted)
+		}
 		// D403: after 撤回 or a failed send, the find's Go is asked again under a new decision.
 		did := f.DecisionID
 		if x := a.S.FindAsks[f.FindID]; x != "" {

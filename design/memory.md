@@ -432,6 +432,15 @@ like a friend who knows them. *How it starts:* nothing to set up; the first "以
   `mem-d444.test.ts`, Mac `memory_test.go`, `mem_d444_test.go`); eval `mem-about-me-zh`, `mem-about-me-en`,
   `mem-take-back-zh` (D444 in `decisions.md` for the runs). No live Mem.
 
+## Mem in the morning's offers (D458, built 2026-11-21)
+
+The morning note reads Mem for what is timely now (`connectors.md` §4.3): a preference meeting a
+coming trip or meeting, a decision whose condition is now met, a conversation with another AI tool
+left halfway. The default partner hands core its own memory client's search and thread search
+(`CoreApi.setMemLook`), so the same switch and identity apply as for memory_search; at most 6 reads a
+morning; read-only, nothing written; memory off, none. Each such offer says where it came from
+("从你和 Codex 11 月 12 日的对话想到的"), in code's words.
+
 ## Mem and tasks (D168, D169; built 2026-11-10)
 
 Who: the developer whose Claude Code task on the Mac mini should keep their conventions like

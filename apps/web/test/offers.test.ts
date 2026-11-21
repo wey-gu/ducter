@@ -38,3 +38,13 @@ test("the note: no Hold on an offer, the fold after three, a faded offer keeps i
   expect(src).toContain("OFFER_SHOWN");
   expect(src).toContain('faded ? null : <div class="small sub">{t("find.passed")}</div>');
 });
+
+test("D458: the kinds from past the accounts and their sources have words in both languages; the origin line is shown under the words", () => {
+  const zh = strings("zh");
+  const en = strings("en");
+  expect(["next_step", "remembered", "loose_end"].map((k) => zh.t(`kind.${k}`))).toEqual(["接着可以做的", "记得的", "你提过的"]);
+  expect(["next_step", "remembered", "loose_end"].map((k) => en.t(`kind.${k}`))).toEqual(["A next step", "Remembered", "You mentioned"]);
+  expect([zh.t("find.src.task"), zh.t("find.src.mem"), en.t("find.src.task"), en.t("find.src.mem")]).toEqual(["任务", "记忆", "Task", "Memory"]);
+  const src = readFileSync(join(import.meta.dir, "../src/finds.tsx"), "utf8");
+  expect(src).toContain('{f.origin && <div class="small sub forigin">{f.origin}</div>}');
+});

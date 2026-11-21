@@ -260,8 +260,8 @@ export function howOfClaim(cl: Claim): FindHow {
   return { what: cl.label || cl.name, ...(cl.sender ? { from: cl.sender } : {}), at: cl.at, src: SRC_OF[cl.role], ...(cl.url ? { url: cl.url } : {}) };
 }
 
-const SRC_ZH: Record<FindSrc, string> = { calendar: "日历", mail: "邮件", chat: "聊天", github: "GitHub", you: "你说的", web: "网上" };
-const SRC_EN: Record<FindSrc, string> = { calendar: "your calendar", mail: "a mail", chat: "a chat", github: "GitHub", you: "you said", web: "the web" };
+const SRC_ZH: Record<FindSrc, string> = { calendar: "日历", mail: "邮件", chat: "聊天", github: "GitHub", you: "你说的", web: "网上", task: "任务", mem: "记忆" };
+const SRC_EN: Record<FindSrc, string> = { calendar: "your calendar", mail: "a mail", chat: "a chat", github: "GitHub", you: "you said", web: "the web", task: "a task", mem: "your memory" };
 
 /**
  * D388: the answer to "how did you know?", composed by code from a find's own lines, in the order

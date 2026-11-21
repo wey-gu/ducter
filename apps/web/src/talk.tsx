@@ -13,8 +13,11 @@
 import { useEffect } from "preact/hooks";
 import { readLang, speechLocale, type VoiceWhere, type VoiceWhy } from "@ducter/protocol/src/voice.ts";
 import { talkFloor, talkShown, talkStart, talkStep, type TalkEffect, type TalkEvent, type TalkState, type TalkWords } from "@ducter/protocol/src/talk.ts";
+import { words } from "@ducter/protocol";
 import { A } from "./app.ts";
+import { LinkBtn, Btn } from "./controls.tsx";
 import { haptic } from "./native.ts";
+import { noBrain } from "./partner-story.tsx";
 import type { DecisionState } from "./store.ts";
 import type { Recognizer, Speaker } from "./voice-engine.ts";
 
@@ -35,8 +38,9 @@ const store = {
   },
 };
 
-/** What the talk shows: nothing, its first-use card, the talk itself, or why it can't. */
-export type TalkUi = "idle" | "ask" | "on" | "off" | "denied";
+/** What the talk shows: nothing, its first-use card, the talk itself, or why it can't (the
+ *  microphone, the recognizer; D450 "cant": nothing on the home can think yet). */
+export type TalkUi = "idle" | "ask" | "on" | "off" | "denied" | "cant";
 
 export interface TalkHost {
   changed(): void;
@@ -51,6 +55,8 @@ export interface TalkHost {
   lastSeq(): number;
   /** The cards open now: only cards asked after the talk starts are said. */
   openIds(): string[];
+  /** D450: nothing on the home can think yet (D440): no talk, nothing said into the void. */
+  cant?(): boolean;
 }
 
 /** The words a talk says of its own, in the conversation's language. */
@@ -96,6 +102,12 @@ export class TalkCtl {
   async start() {
     if (this.ui === "on") return;
     this.note = undefined;
+    // D450: nothing to answer with: the microphone isn't opened; the panel says why, once per tap,
+    // with the way to a key (hold to talk still keeps a message, D440).
+    if (this.host.cant?.()) {
+      this.ui = "cant";
+      return this.host.changed();
+    }
     if (this.firstTime()) {
       try {
         this.where = (await this.rec.can(this.locale())).where;
@@ -131,6 +143,10 @@ export class TalkCtl {
   }
 
   private async begin() {
+    if (this.host.cant?.()) {
+      this.ui = "cant";
+      return this.host.changed();
+    }
     const a = await this.rec.can(this.locale());
     if (!a.ok) return this.cant(a.why ?? "error");
     if (a.mic === "denied") return this.cant("mic");
@@ -174,7 +190,10 @@ export class TalkCtl {
   }
 
   tick() {
-    if (this.on) this.dispatch({ k: "tick", at: this.host.now() });
+    if (!this.on) return;
+    // D450: the home lost what it thinks with mid-talk: it ends, saying nothing more.
+    if (this.host.cant?.()) return this.dispatch({ k: "cant", at: this.host.now() });
+    this.dispatch({ k: "tick", at: this.host.now() });
   }
 
   dispatch(e: TalkEvent) {
@@ -217,7 +236,7 @@ export class TalkCtl {
       case "end":
         this.stop();
         this.note = f.by === "quiet" ? "talk.ended.quiet" : undefined;
-        this.ui = "idle";
+        this.ui = f.by === "cant" ? "cant" : "idle";
         if (this.note) setTimeout(() => ((this.note = undefined), this.host.changed()), 2400);
         return;
     }
@@ -317,6 +336,7 @@ export function talk(engines?: () => { rec: Recognizer; spk: Speaker }): TalkCtl
     t: (k) => A.L.t(k),
     lastSeq: () => A.S.channel.at(-1)?.firstSeq ?? 0,
     openIds: () => A.S.openDecisions().map((d) => d.decisionId),
+    cant: () => (A.S.first ? !!A.S.first.noBrain : noBrain()),
   });
   return ctl;
 }
@@ -378,6 +398,23 @@ export function TalkPanel() {
         </div>
       </div>
     );
+  if (c.ui === "cant") {
+    // D450: why it can't, and the first way to a key (D440), never a voice in the room.
+    const rt = A.S.first?.noBrain ? A.S.first.keyRoutes?.[0] : undefined;
+    return (
+      <div class="voice-card talk-cant" role="alert">
+        <div class="voice-card-head">
+          <Face phase="listen" size={36} />
+          <b>{t("talk.cant.title")}</b>
+        </div>
+        <p>{t("talk.cant.why")}</p>
+        <div class="btns">
+          <Btn kind="secondary" label={t("talk.cant.ok")} onClick={() => c.dismiss()} />
+          {rt && <LinkBtn kind="primary" href={rt.url} label={t("key.route.go", words(rt.name, A.L.lang))} />}
+        </div>
+      </div>
+    );
+  }
   if (c.ui === "denied" || c.ui === "off")
     return (
       <div class="voice-card" role="alert">

@@ -182,13 +182,26 @@ export function parseCheck(text: string, found: string[]): string[] {
 }
 
 /** Ducter's words to the task (D271's told): what was found, fix once, say why a point is wrong. */
-export function fixAsk(by: string, found: string[]): string {
+export function fixAsk(by: string, found: string[], doc?: Also): string {
+  // D450: the document check's findings ride in the same words (one round, not two); with
+  // nothing the look found, the document check's own words go as they are.
+  if (doc && !found.length) return doc.words;
   return [
     `${LOOK_ASK_OPENING} (${harnessName(by)}) read it once against what they asked, with a clean context. It found:`,
     ...found.map((f, i) => `${i + 1}. ${f}`),
+    ...(doc ? ["", "Ducter also checked the document page by page and found:", doc.found] : []),
     "",
-    "Fix what is right. If a point is wrong, change nothing for it and say why in one short line in your report. Then call report_to_main again, the same way as before. You are asked this once.",
+    doc
+      ? "Fix what is right, all in this one go: the document in the same file (render it again and look at every page), and the rest. If a point is wrong, change nothing for it and say why in one short line in your report. Then call report_to_main again, the same way as before (the same state and show). You are asked this once."
+      : "Fix what is right. If a point is wrong, change nothing for it and say why in one short line in your report. Then call report_to_main again, the same way as before. You are asked this once.",
   ].join("\n");
+}
+
+/** D450: another check's findings that go back to the task with the look's, in one round (the
+ *  document check, D439): its whole words when the look finds nothing, else only what it found. */
+export interface Also {
+  words: string;
+  found: string;
 }
 
 /** What the look needs from the rest of Ducter (fakes in tests). */
@@ -220,22 +233,34 @@ interface Round {
   what: LookWhat;
 }
 
-type LookRaw = { phase: "looking" | "asked" | "checking" | "done"; by?: string; model?: string; found?: string[]; left?: string[]; held?: Bodies["report"]; what?: LookWhat; hash?: string; skipped?: string };
+type LookRaw = { phase: "looking" | "asked" | "checking" | "done"; by?: string; model?: string; found?: string[]; left?: string[]; held?: Bodies["report"]; what?: LookWhat; hash?: string; skipped?: string; doc?: boolean };
 
 export interface FreshLookApi {
   /**
    * A report about to be logged. True: the look took it (it logs it itself, now or after the fix);
    * false: log it as it is. Never throws.
+   *
+   * D450 `also`: the document check found something on this same report. Taken, the look sends
+   * both back in one message (the document's words alone when the look finds nothing, or when it
+   * can't look) and the fix's report goes on with what is left from both; while a round already
+   * waits for a fix, true and the document's findings only ride on the report (never a second
+   * round). False: the look won't read it; the caller sends the document's words itself.
    */
-  take(taskId: string, body: Bodies["report"]): boolean;
+  take(taskId: string, body: Bodies["report"], also?: Also): boolean;
   /** What the report tool tells the task when the look took its report. */
   readonly heldWords: string;
+  /** D450: the same, when the document check's findings are coming back with the look's. */
+  readonly heldWithDocWords: string;
+  /** D450: a round waits for this task's fix (its next report is checked, never sent back again). */
+  waiting(taskId: string): boolean;
   /** Every look and check in flight (tests). */
   idle(): Promise<void>;
   stop(): void;
 }
 
 export const HELD_WORDS = "Reported. Before the user sees it, another AI reads it once against what they asked. If it finds something to change, it comes to you as a new message; otherwise it goes to them as it is. End your turn now.";
+/** D450: the document check found something and the look reads the same result: one message with both. */
+export const HELD_WITH_DOC_WORDS = "Not sent yet: Ducter checked the document page by page and found something to fix, and another AI is reading the result once against what they asked. What both found comes to you together in one new message in a moment; fix it all then. End your turn now.";
 
 export function createFreshLook(d: LookDeps): FreshLookApi {
   const now = () => (d.now ?? (() => new Date()))().getTime();
@@ -276,7 +301,8 @@ export function createFreshLook(d: LookDeps): FreshLookApi {
       rounds.delete(taskId);
       const look: FreshLook = { by: r.by.harness, ...(r.by.model ? { model: r.by.model } : {}), found: r.found, left: r.found };
       note(taskId, { phase: "done", by: r.by.harness, found: r.found, left: r.found });
-      release(taskId, r.held, look);
+      // D450: a round that only carried the document's findings: what is left of it is on the report.
+      release(taskId, r.held, r.found.length ? look : undefined);
     }, Math.max(0, ms));
     (t as { unref?: () => void }).unref?.();
     timers.set(taskId, t);
@@ -352,32 +378,38 @@ export function createFreshLook(d: LookDeps): FreshLookApi {
     return true;
   };
 
-  async function look(taskId: string, body: Bodies["report"], what: LookWhat, by: { harness: HarnessId; model?: string }, input: LookInput & { hash: string }) {
+  async function look(taskId: string, body: Bodies["report"], what: LookWhat, by: { harness: HarnessId; model?: string }, input: LookInput & { hash: string }, also?: Also) {
     let found: string[] = [];
     const hash = input.hash;
+    let skipped: string | undefined;
     try {
-      if (what === "code" && !input.diff) {
-        // Nothing to read the change from (an old worker, a repo it can't reach): no look.
-        note(taskId, { phase: "done", by: by.harness, skipped: "no_diff", hash });
-        return release(taskId, body);
-      }
-      found = parseLook((await d.ask!(by, lookPrompt(input))).text);
+      // Nothing to read the change from (an old worker, a repo it can't reach): no look.
+      if (what === "code" && !input.diff) skipped = "no_diff";
+      else found = parseLook((await d.ask!(by, lookPrompt(input))).text);
     } catch (err) {
       console.warn(`[fresh-look] ${taskId}: the look didn't finish; the result goes on as it is:`, (err as Error).message);
-      note(taskId, { phase: "done", by: by.harness, skipped: "failed", hash });
+      skipped = "failed";
+    }
+    if (skipped && !also) {
+      note(taskId, { phase: "done", by: by.harness, skipped, hash });
       return release(taskId, body);
     }
-    const lookOf = (left: string[]): FreshLook => ({ by: by.harness, ...(by.model ? { model: by.model } : {}), found, left });
-    if (!found.length || !d.send) {
-      note(taskId, { phase: "done", by: by.harness, ...(by.model ? { model: by.model } : {}), found, left: found, hash });
+    return askOrRelease(taskId, body, what, by, found, hash, also, !skipped);
+  }
+
+  /** What was found goes back to the task once (with the document check's, D450); else the report goes on. */
+  async function askOrRelease(taskId: string, body: Bodies["report"], what: LookWhat, by: { harness: HarnessId; model?: string }, found: string[], hash: string | undefined, also: Also | undefined, looked = true) {
+    const lookOf = (left: string[]): FreshLook | undefined => (looked ? { by: by.harness, ...(by.model ? { model: by.model } : {}), found, left } : undefined);
+    if ((!found.length && !also) || !d.send) {
+      note(taskId, { phase: "done", by: by.harness, ...(by.model ? { model: by.model } : {}), found, left: found, ...(hash ? { hash } : {}) });
       return release(taskId, body, lookOf(found));
     }
     const r: Round = { phase: "asked", by, found, held: body, at: now(), what };
     rounds.set(taskId, r);
-    note(taskId, { phase: "asked", by: by.harness, ...(by.model ? { model: by.model } : {}), found, held: body, what, hash });
+    note(taskId, { phase: "asked", by: by.harness, ...(by.model ? { model: by.model } : {}), found, held: body, what, ...(hash ? { hash } : {}), ...(also ? { doc: true } : {}) });
     armFix(taskId, fixWait);
     try {
-      await d.send(taskId, fixAsk(by.harness, found));
+      await d.send(taskId, fixAsk(by.harness, found, also));
     } catch (err) {
       // The task can't hear it (gone, offline): the result goes on with what was found.
       console.warn(`[fresh-look] ${taskId}: couldn't tell the task; the result goes on with what was found:`, (err as Error).message);
@@ -402,7 +434,9 @@ export function createFreshLook(d: LookDeps): FreshLookApi {
 
   return {
     heldWords: HELD_WORDS,
-    take(taskId, body) {
+    heldWithDocWords: HELD_WITH_DOC_WORDS,
+    waiting: (taskId) => rounds.get(taskId)?.phase === "asked",
+    take(taskId, body, also) {
       try {
         const r = rounds.get(taskId);
         if (r?.phase === "looking" || r?.phase === "checking") return false; // a second report while it reads: let it go
@@ -410,6 +444,14 @@ export function createFreshLook(d: LookDeps): FreshLookApi {
           if (body.state === "progress") return false;
           clearTimer(taskId);
           const what = lookWhat(body) ?? (body.state === "done" ? r.what : undefined);
+          if (!r.found.length) {
+            // D450: the round carried only the document's findings: the fix goes on, with what the
+            // document check says is left of them (on the report already), never a second round.
+            rounds.delete(taskId);
+            note(taskId, { phase: "done", by: r.by.harness, found: [], left: [] });
+            release(taskId, body);
+            return true;
+          }
           if (!what || !d.ask) {
             // It came back with something else (a question for the person, a failure): it goes on,
             // and what was found goes with it.
@@ -435,17 +477,18 @@ export function createFreshLook(d: LookDeps): FreshLookApi {
         if (!budget()) return false;
         const round: Round = { phase: "looking", by, found: [], held: body, at: now(), what };
         rounds.set(taskId, round);
-        note(taskId, { phase: "looking", by: by.harness, held: body, what });
+        note(taskId, { phase: "looking", by: by.harness, held: body, what, ...(also ? { doc: true } : {}) });
         void track(
           (async () => {
             // The same result as the last look read (a report said again): it goes on unread.
             const prev = lastHash(taskId);
             const input = await inputFor(taskId, body, what);
             if (prev && input.hash === prev) {
+              if (also) return askOrRelease(taskId, body, what, by, [], undefined, also, false);
               note(taskId, { phase: "done", by: by.harness, skipped: "same", hash: prev });
               return release(taskId, body);
             }
-            return look(taskId, body, what, by, input);
+            return look(taskId, body, what, by, input, also);
           })()
             .catch((err) => {
               console.warn(`[fresh-look] ${taskId}:`, (err as Error).message);

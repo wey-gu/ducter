@@ -123,16 +123,41 @@ func (a *App) offerFloat() {
 // floatLine is the one live line: what it says, and whether it is the
 // waiting line (the figure acts out the step) or the partner's newest words.
 type floatLine struct {
-	kind      string // "wait", "first", "reply", "say"
+	kind      string // "wait", "held", "first", "reply", "ask", "say"
 	words     string
 	sub, step string
 	el        time.Duration
+	// look (D450) is what another AI, or the page check, still found in
+	// the result or the Go the line is about: one line in the needs-you
+	// ink, as the conversation says it under the same words.
+	look string
+	// note (D450) is who thinks for the partner while its own agent is
+	// held (D435): the conversation's header line, here under the line.
+	note string
 }
 
 // floatSay is the line now, in order: waiting on a reply (D425's words and
-// cadence), the first time's key, the partner's newest words while they are
-// fresh, else On hand's one sentence over the whole.
+// cadence), when it answers again while nobody can (D435), the first time's
+// key, the partner's newest words while they are fresh, else On hand's one
+// sentence over the whole. While another agent thinks for it, the line
+// carries that as its note.
 func (a *App) floatSay(c *ui.Context) floatLine {
+	line := a.floatLineNow(c)
+	if h := a.brainHeld(); h != nil && !h.Waits && line.kind != "held" {
+		line.note = a.L.T("float.held", harnessName(a.brain().Harness))
+	}
+	return line
+}
+
+func (a *App) floatLineNow(c *ui.Context) floatLine {
+	// D435: nobody can answer until its own agent is back: when, where the
+	// line sits, so a message sent from here is never met by silence.
+	if h := a.brainHeld(); h != nil && h.Waits {
+		if at := a.heldAt(h); at != "" {
+			return floatLine{kind: "held", words: a.L.T("header.held", at)}
+		}
+		return floatLine{kind: "held", words: a.L.T("header.held.soon")}
+	}
 	if a.thinking() {
 		step, el, line, sub := a.presenceNow(c)
 		return floatLine{kind: "wait", words: line, sub: sub, step: step, el: el}
@@ -143,10 +168,10 @@ func (a *App) floatSay(c *ui.Context) floatLine {
 		}
 		return floatLine{kind: "first", words: a.L.T("float.first", a.L.T("float.key"))}
 	}
-	if words, at := a.newestWords(); words != "" {
+	if words, at, e := a.newestWords(); words != "" {
 		if left := at.Add(floatFresh).Sub(a.Now()); left > 0 {
 			c.After(left)
-			return floatLine{kind: "reply", words: clipQuote(words, floatReplyChars)}
+			return floatLine{kind: "reply", words: clipQuote(words, floatReplyChars), look: a.floatReplyLook(e)}
 		}
 	}
 	if a.Status == client.Disconnected {
@@ -158,27 +183,54 @@ func (a *App) floatSay(c *ui.Context) floatLine {
 	// Something needs the person: the count says how many, the line which
 	// (the oldest question, in its own words).
 	if ds := a.TrayDecisions(1); len(ds) > 0 {
-		return floatLine{kind: "ask", words: ds[0].Question}
+		line := floatLine{kind: "ask", words: ds[0].Question}
+		if d := a.S.Decisions[ds[0].ID]; d != nil && d.Look != nil && len(d.Look.Left) > 0 {
+			line.look = a.L.T("float.look", d.Look.Left[0])
+		}
+		return line
 	}
 	b := a.S.Board()
 	return floatLine{kind: "say", words: autospace(a.headSay(b, "", a.stateCounts(b, "")))}
 }
 
 // newestWords are the partner's words when they are the conversation's
-// newest (after the person's last message), and when they were said.
-func (a *App) newestWords() (string, time.Time) {
+// newest (after the person's last message), when they were said, and their
+// entry.
+func (a *App) newestWords() (string, time.Time, *store.Entry) {
 	for i := len(a.S.Channel) - 1; i >= 0; i-- {
 		e := a.S.Channel[i]
 		switch {
 		case e.User != nil:
-			return "", time.Time{}
+			return "", time.Time{}, nil
 		case e.AI != nil && e.AI.DecisionID == "":
 			if w := plainWords(e.AI.Text); w != "" {
-				return w, store.ParseTime(e.Event.TS)
+				return w, store.ParseTime(e.Event.TS), e
 			}
 		}
 	}
-	return "", time.Time{}
+	return "", time.Time{}, nil
+}
+
+// floatReplyLook (D450) is what is still so in a result the partner's
+// newest words tell about: another AI's first point, else the page check's,
+// as the conversation shows them under those words; "" when clean.
+func (a *App) floatReplyLook(e *store.Entry) string {
+	if e == nil || e.AI == nil || e.AI.ReplyTo == 0 {
+		return ""
+	}
+	for _, id := range a.tasksOfReply(e.AI.ReplyTo) {
+		task := a.S.Task(id)
+		if task == nil || !finished(task) {
+			continue
+		}
+		if l := reportLookLeft(task); len(l) > 0 {
+			return a.L.T("float.look", l[0])
+		}
+		if l := reportDocLeft(task); len(l) > 0 {
+			return a.L.T("float.doc", l[0])
+		}
+	}
+	return ""
 }
 
 // FloatView is the mini window's view.
@@ -296,6 +348,14 @@ func (a *App) floatWords(c *ui.Context, line floatLine) {
 	w.Children(func() {
 		uiText(c, keepWords(words)).FontSize(t.MD).LineHeight(1.45).TextColor(ink).MaxLines(2)
 	})
+	// D450: what is still so, one line in the needs-you ink (a tap on the
+	// line opens the conversation, where it is said in full).
+	if line.look != "" {
+		uiText(c.Key("float-look"), line.look).FontSize(t.SM).FontWeight(600).TextColor(t.NeedsYou.Ink).SingleLine().MinWidth(0).Tooltip(line.look)
+	}
+	if line.note != "" {
+		uiText(c.Key("float-note"), line.note).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().MinWidth(0)
+	}
 	if line.sub != "" {
 		uiText(c.Key("float-sub"), a.L.T(line.sub)).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
 	}
@@ -343,7 +403,7 @@ func (a *App) floatVoice(c *ui.Context) {
 		a.talkPanel(c)
 		return
 	}
-	if (a.hf.ask || a.hf.off != "") && vs.phase != "listen" && vs.phase != "finishing" && a.talkAbove(c) {
+	if (a.hf.ask || a.hf.off != "" || a.hf.cant) && vs.phase != "listen" && vs.phase != "finishing" && a.talkAbove(c) {
 		return
 	}
 	switch vs.phase {

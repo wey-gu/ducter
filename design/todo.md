@@ -20,6 +20,9 @@ Deferred work, grouped by area, each with its trigger where it has one.
 
 ## Talk hands-free (D442, `voice.md`, research/190)
 
+- [x] **A talk tapped with nothing to think with** (research/194 §1.3): no microphone, nothing said, the
+  card with the way to a key; `cant` ends a talk whose home lost its agent. Done as D450 (fixture on both
+  runners).
 - [x] **A floor card's question shown twice** (the big line and the card). Done as D446 (`talkShown`:
   what the card shows is never the big line too; the floor line said again after a "好" either).
 
@@ -55,6 +58,8 @@ Deferred work, grouped by area, each with its trigger where it has one.
   (5 pt of room round it).
 - [ ] **Pictures** dropped or pasted into its field, and the reply being written shown quoted in it
   (today: the placeholder says what it replies to). Trigger: the author asks from the mini window.
+- [x] **What another AI left, and the partner held** (research/194 §1.1): one needs-you line under the
+  line, the held time or who thinks for it; the menu bar's Go submenu says what is left too. Done as D450.
 - [ ] **Answering a question from it** (Go / Hold on the line, as the menu bar extra can). Trigger: the
   author opens On hand from its count more than once a day.
 - [ ] **Fn held to talk** while only the mini window has the keyboard (`voice.WatchFn` watches while a
@@ -422,6 +427,11 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
   are listed). Trigger: the author asks for the earlier one.
 
 ## Another AI's look before a result goes out (D437, research/186)
+
+- [x] **Two held rounds for a made file** (the page check, then the look; research/194 §1.1): one
+  combined send-back, the fix out with what is left of both. Done as D450.
+- [ ] **How often both fire on one result**, and whether waiting 5–15 s for the look before the task
+  hears the document's lines is felt. Trigger: the real measure below.
 
 - [ ] **The real measure.** On the author's own tasks for a week: how often a look fires, finds, is
   fixed, is left; what the person still pointed out after a clean look (a miss), and what they

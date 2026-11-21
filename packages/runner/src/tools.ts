@@ -176,10 +176,10 @@ export interface TaskToolOptions {
   /** D439: a document the report shows is checked page by page (core's doc-check.ts): words back
    *  to the task once instead of reporting, else what is still so (and the media paired: an Office
    *  file with its PDF). Absent: every report as it is. */
-  docCheck?(taskId: string, body: Bodies["report"]): Promise<{ again?: string; doc?: Bodies["report"]["doc"]; media?: MediaRef[] } | undefined>;
+  docCheck?(taskId: string, body: Bodies["report"]): Promise<{ again?: string; againFound?: string; doc?: Bodies["report"]["doc"]; media?: MediaRef[] } | undefined>;
   /** D437: another AI's one look before a result goes out (core's fresh-look.ts): true when it
    *  took the report (it logs it itself, now or after the task's fix). Absent: every report as it is. */
-  freshLook?: { take(taskId: string, body: Bodies["report"]): boolean; readonly heldWords: string };
+  freshLook?: { take(taskId: string, body: Bodies["report"], also?: { words: string; found: string }): boolean; readonly heldWords: string; readonly heldWithDocWords?: string; waiting?(taskId: string): boolean };
   /** D206: copies the files a report shows into the home's media store (the runner's shown):
    *  what could be shown, and a line for each that couldn't. */
   shown?(taskId: string, paths: string[]): Promise<{ media: MediaRef[]; refused: string[] } | undefined>;
@@ -317,11 +317,18 @@ export function registerTaskTools(core: CoreApi, opts: TaskToolOptions = {}): vo
       }
       // D439: a document to send is checked page by page before the user sees it; what it finds goes
       // back to the task once (it fixes it in this turn), what is still so after that rides on the report.
+      // D450: when another AI also reads this result, what both find goes back in one message (one
+      // round, not two), and the fix's report goes on with what is left of both.
+      let docAgain: { words: string; found: string } | undefined;
       if (body.media?.length && opts.docCheck) {
         const dc = await opts.docCheck(ctx.taskId, body).catch(() => undefined);
         if (dc?.media) body.media = dc.media;
-        if (dc?.again) return dc.again + (refused.length ? ` Not shown: ${refused.join("; ")}.` : "");
         if (dc?.doc) body.doc = dc.doc;
+        // A round of the look already waits for this fix: the document's findings only ride on it.
+        if (dc?.again && !opts.freshLook?.waiting?.(ctx.taskId)) {
+          if (!opts.freshLook) return dc.again + (refused.length ? ` Not shown: ${refused.join("; ")}.` : "");
+          docAgain = { words: dc.again, found: dc.againFound ?? dc.again };
+        }
       }
       // The mechanical check of done? -> done; a check that can't finish in time leaves refs unchecked.
       if (body.state === "done" && body.evidence.length && opts.checkEvidence) {
@@ -331,15 +338,17 @@ export function registerTaskTools(core: CoreApi, opts: TaskToolOptions = {}): vo
       const card = core.tasks.get(ctx.taskId);
       // D339: the same wait said again, with no word from the person since, is not a new report: on
       // hel a phone task said 在等 three times in a row after a Stop (once per note it was told).
-      if (sameWaitAgain(core, ctx.taskId, body)) {
+      if (!docAgain && sameWaitAgain(core, ctx.taskId, body)) {
         core.tasks.setState(ctx.taskId, ATTENTION[body.state], card?.residency ?? "hot");
         return "Already reported: this says the same as your last report, and the user hasn't written since, so nothing new was sent to them. End your turn now; any answer will arrive as a new message.";
       }
       // D437: a result that changed code, or something a Go would send, is read once by another AI first.
-      if (opts.freshLook?.take(ctx.taskId, body)) {
+      if (opts.freshLook?.take(ctx.taskId, body, docAgain)) {
         const notShown = refused.length ? ` Not shown: ${refused.join("; ")}.` : "";
-        return `${opts.freshLook.heldWords}${notShown}`;
+        return `${docAgain && opts.freshLook.heldWithDocWords ? opts.freshLook.heldWithDocWords : opts.freshLook.heldWords}${notShown}`;
       }
+      // The look won't read it: the document's findings go back as the tool's answer (D439).
+      if (docAgain) return docAgain.words + (refused.length ? ` Not shown: ${refused.join("; ")}.` : "");
       core.log.append({ persona, stream: `task:${ctx.taskId}`, origin: "task", kind: "report", body });
       // No reason text: task_state.reason is user-facing copy (decisions.ts sets blocked/failed ones).
       core.tasks.setState(ctx.taskId, ATTENTION[body.state], card?.residency ?? "hot");

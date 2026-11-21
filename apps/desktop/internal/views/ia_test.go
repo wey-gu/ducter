@@ -293,6 +293,22 @@ func TestTrayDecisions(t *testing.T) {
 	}
 }
 
+// D450: a Go from the menu bar is never blind to what another AI still found.
+func TestTrayDecisionSaysWhatAnotherAILeft(t *testing.T) {
+	app, _ := iaApp(t, i18n.ZH)
+	ev := protocol.NewEvent(1, "2026-11-09T20:00:00Z", "default", "channel", protocol.OriginPartner, protocol.KindDecision,
+		protocol.Decision{DecisionID: "d1", Question: "开一个 draft PR 吗？", GoLabel: "开 PR", DefaultOption: "hold",
+			Look: &protocol.DecisionLook{By: "claude-code", Left: []string{"Windows 的 install.ps1 还是写死的路径", "第二条"}}})
+	app.Receive(protocol.ServerFrame{T: "events", Events: []protocol.LogEvent{ev}})
+	ds := app.TrayDecisions(6)
+	if len(ds) != 1 || ds[0].Look != "另一个 AI 看过：Windows 的 install.ps1 还是写死的路径" {
+		t.Fatalf("tray decisions: %+v", ds)
+	}
+	if !strings.Contains(app.TraySignature(), ds[0].Look) {
+		t.Errorf("the menu wouldn't redraw when what is left changes")
+	}
+}
+
 type fakeUpdates struct {
 	st    update.Status
 	hints []string

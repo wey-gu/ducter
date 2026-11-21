@@ -305,3 +305,66 @@ test("the diff comes from the workbench: each file's patch, lockfiles and binari
   expect(d).toContain("added logo.png");
   expect(await diffFromWorkbench((async () => ({ op: "changes", kind: "none", files: [], more: 0 })) as never)).toBeUndefined();
 });
+
+// D450: a made file that earns both the document check and the look: one round, not two.
+const DOC_WORDS = "Not sent yet: before the user sees it, Ducter checked the document page by page and found:\n本周进展.pdf:\n- page 1: text runs past the right edge\n\nFix these in the same file, render it again, look at every page, and call report_to_main again with the same state and show.";
+const docAlso = { words: DOC_WORDS, found: "本周进展.pdf:\n- page 1: text runs past the right edge" };
+const docLeft = (left: string[]) => ({ pages: 1, found: left.map(() => ({ code: "edge", page: 1 })), left }) as unknown as NonNullable<Bodies["report"]["doc"]>;
+
+test("D450: the document check and the look both find something: one message with both, then the fix goes on with what is left of both", async () => {
+  const s = setup({ answers: ['{"ok": false, "must": ["表格里少了周三那一行"]}', '{"left": [1]}'] });
+  expect(s.look.take("t1", done({ doc: docLeft(["第 1 页的字超出了右边"]) }), docAlso)).toBe(true);
+  expect(s.look.waiting("t1")).toBe(false); // still reading
+  await s.look.idle();
+  expect(s.look.waiting("t1")).toBe(true);
+  expect(s.reports()).toEqual([]);
+  // One message, the look's opening (the opened task's hairline) and the document's lines in it.
+  expect(s.sent.length).toBe(1);
+  expect(s.sent[0]).toStartWith("Before your result goes to the user, another AI (Claude Code)");
+  expect(s.sent[0]).toContain("1. 表格里少了周三那一行");
+  expect(s.sent[0]).toContain("Ducter also checked the document page by page and found:\n本周进展.pdf:\n- page 1: text runs past the right edge");
+  expect(s.sent[0]).toContain("all in this one go");
+  // The fix: the document check has nothing new to send back (it went back once); its left rides.
+  expect(s.look.take("t1", done({ summary: "改好了，周三补上了。", doc: docLeft(["第 1 页的字超出了右边"]) }))).toBe(true);
+  await s.look.idle();
+  const r = s.reports();
+  expect(r.length).toBe(1);
+  expect(r[0]!.look?.left).toEqual(["表格里少了周三那一行"]);
+  expect(r[0]!.doc?.left).toEqual(["第 1 页的字超出了右边"]);
+  expect(s.sent.length).toBe(1); // never a second round
+});
+
+test("D450: the look is clean but the document isn't: the document's own words go back, once, and the fix goes on unread", async () => {
+  const s = setup({ answers: ['{"ok": true}'] });
+  expect(s.look.take("t1", done({ doc: docLeft(["第 1 页的字超出了右边"]) }), docAlso)).toBe(true);
+  await s.look.idle();
+  expect(s.sent).toEqual([DOC_WORDS]);
+  expect(s.reports()).toEqual([]);
+  expect(s.look.take("t1", done({ summary: "改好了。" }))).toBe(true);
+  await s.look.idle();
+  const r = s.reports();
+  expect(r.length).toBe(1);
+  expect(r[0]!.look).toBeUndefined();
+  expect(r[0]!.doc).toBeUndefined(); // fixed: the document check left nothing on it
+  expect(s.asked.length).toBe(1); // no check of a look that found nothing
+});
+
+test("D450: the look can't read it (no diff, no answer): the document's words still go back once", async () => {
+  const s = setup({ diff: null });
+  expect(s.look.take("t1", done({ doc: docLeft(["第 1 页的字超出了右边"]) }), docAlso)).toBe(true);
+  await s.look.idle();
+  expect(s.sent).toEqual([DOC_WORDS]);
+  expect(s.look.take("t1", done({ summary: "改好了。" }))).toBe(true);
+  expect(s.reports().length).toBe(1);
+});
+
+test("D450: no fix in time after a combined send-back: the held result goes on with what is left of both", async () => {
+  const s = setup({ answers: ['{"ok": false, "must": ["表格里少了周三那一行"]}'], fixWaitMs: 20 });
+  s.look.take("t1", done({ doc: docLeft(["第 1 页的字超出了右边"]) }), docAlso);
+  await s.look.idle();
+  await Bun.sleep(60);
+  const r = s.reports();
+  expect(r.length).toBe(1);
+  expect(r[0]!.look?.left).toEqual(["表格里少了周三那一行"]);
+  expect(r[0]!.doc?.left).toEqual(["第 1 页的字超出了右边"]);
+});

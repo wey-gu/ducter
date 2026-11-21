@@ -357,3 +357,107 @@ func TestFloatPartnerHasRoomToMove(t *testing.T) {
 		t.Errorf("the check sees nothing without room")
 	}
 }
+
+// D450: the mini window never hides what the big one shows: another AI's
+// point still left in a Go or a result is its one line in the needs-you
+// ink, and a tap on it opens the conversation.
+func floatLookApp(t *testing.T, lang i18n.Lang, scene string) *App {
+	t.Helper()
+	app, _, _ := floatApp(t, lang, "quiet")
+	zh := lang == i18n.ZH
+	l := func(z, e string) string {
+		if zh {
+			return z
+		}
+		return e
+	}
+	var n int64 = 100
+	at := func(ago time.Duration, stream string, o protocol.Origin, kind string, body any) protocol.LogEvent {
+		n++
+		return protocol.NewEvent(n, time.Now().Add(-ago).UTC().Format(time.RFC3339Nano), "default", stream, o, kind, body)
+	}
+	id, ts := "t_bin", protocol.TaskStream("t_bin")
+	files, adds, dels := 2, 14, 3
+	left := l("Windows 的 install.ps1 还是写死的路径", "Windows install.ps1 still has the fixed path")
+	var evs []protocol.LogEvent
+	switch scene {
+	case "ask":
+		evs = append(evs,
+			at(3*time.Minute, ts, protocol.OriginPartner, protocol.KindTaskOpen, protocol.TaskOpen{TaskID: id, Title: l("安装目录可配置", "Install folder configurable"), Harness: "codex", Place: protocol.Place{Kind: "repo", Device: "local", RepoPath: "~/dev/ducter"}}),
+			at(3*time.Minute, ts, protocol.OriginSystem, protocol.KindTaskState, protocol.TaskState{TaskID: id, Attention: protocol.NeedsYou, Residency: protocol.Hot}),
+			at(time.Minute, "channel", protocol.OriginSystem, protocol.KindDecision, protocol.Decision{DecisionID: "d_pr", TaskID: id, Question: l("开一个 draft PR 吗？", "Open a draft PR?"), GoLabel: l("开 PR", "Open PR"), DefaultOption: "hold",
+				Look: &protocol.DecisionLook{By: "claude-code", Left: []string{left}}}))
+	case "reply":
+		evs = append(evs,
+			at(9*time.Minute, "channel", protocol.OriginUser, protocol.KindUserMsg, protocol.UserMsg{Text: l("安装目录让它能用环境变量改，三个平台都要。", "Make the install folder configurable by an env var, on all three platforms.")}),
+			at(9*time.Minute, "channel", protocol.OriginPartner, protocol.KindAck, protocol.Ack{JobID: "j1", Text: l("好，我让一个任务去改。", "OK, a task is on it."), ReplyTo: n}),
+			at(9*time.Minute, ts, protocol.OriginPartner, protocol.KindTaskOpen, protocol.TaskOpen{TaskID: id, Title: l("安装目录可配置", "Install folder configurable"), Harness: "codex", Place: protocol.Place{Kind: "repo", Device: "local", RepoPath: "~/dev/ducter"}}),
+			at(9*time.Minute, "channel", protocol.OriginPartner, protocol.KindJobStatus, protocol.JobStatus{JobID: "j1", Text: "x", State: "running", TaskID: id}),
+			at(3*time.Minute, ts, protocol.OriginTask, protocol.KindReport, protocol.Report{TaskID: id, State: "done", Summary: "done",
+				Branch: &protocol.BranchChanges{Commits: 2, Files: &files, Adds: &adds, Dels: &dels},
+				Look:   &protocol.FreshLook{By: "claude-code", Found: []string{left}, Left: []string{left}}}),
+			at(3*time.Minute, ts, protocol.OriginSystem, protocol.KindTaskState, protocol.TaskState{TaskID: id, Attention: protocol.Done, Residency: protocol.Hot}),
+		)
+		evs = append(evs, at(2*time.Minute, "channel", protocol.OriginPartner, protocol.KindAIMsg, protocol.AIMsg{Text: l("改好了：macOS 和 Linux 都能用 DUCTER_BIN 改。", "Done: macOS and Linux both read DUCTER_BIN now."), ReplyTo: evs[0].Seq}))
+	}
+	app.Receive(protocol.ServerFrame{T: "events", Events: evs})
+	return app
+}
+
+func TestFloatSaysWhatAnotherAILeft(t *testing.T) {
+	for _, scene := range []string{"ask", "reply"} {
+		for _, lang := range []i18n.Lang{i18n.ZH, i18n.EN} {
+			app := floatLookApp(t, lang, scene)
+			tt := floatTester(app, false)
+			want := map[i18n.Lang]string{i18n.ZH: "另一个 AI 看过：Windows 的 install.ps1 还是写死的路径", i18n.EN: "Another AI looked it over: Windows install.ps1 still has the fixed path"}[lang]
+			if _, ok := tt.Find(want); !ok {
+				t.Errorf("%s %s: no %q in %q", scene, lang, want, tt.Texts())
+			}
+		}
+	}
+	// The line, the point with it, opens the conversation.
+	app := floatLookApp(t, i18n.EN, "reply")
+	app.Route = RouteOnHand
+	tt := floatTester(app, false)
+	if err := tt.Click("Another AI looked it over: Windows install.ps1 still has the fixed path"); err != nil {
+		t.Fatalf("%v; %q", err, tt.Texts())
+	}
+	tt.Frame()
+	if app.Route != RouteConversation {
+		t.Errorf("the point opened route %v", app.Route)
+	}
+	// A clean result says nothing more.
+	clean, _, _ := floatApp(t, i18n.ZH, "reply")
+	if texts := strings.Join(floatTester(clean, false).Texts(), "\n"); strings.Contains(texts, "另一个 AI 看过") {
+		t.Errorf("a clean reply said a look: %q", texts)
+	}
+}
+
+// D450: the partner held on its own agent (D435) is said where the line
+// sits: when it answers again while nobody can, who thinks for it while
+// another does.
+func TestFloatSaysThePartnerHeld(t *testing.T) {
+	for _, waits := range []bool{false, true} {
+		for _, lang := range []i18n.Lang{i18n.ZH, i18n.EN} {
+			k := heldCase(waits)
+			app, _, _ := floatApp(t, lang, "working")
+			app.Receive(protocol.ServerFrame{T: "settings", Settings: &protocol.Settings{Name: "Ducter", Language: "auto", Brain: k.setting}, BrainNow: k.brain})
+			tt := floatTester(app, false)
+			at := heldClock(k)
+			want := map[bool]map[i18n.Lang]string{
+				false: {i18n.ZH: "这会儿先用 Codex 想事情", i18n.EN: "Thinks with Codex for now"},
+				true:  {i18n.ZH: at + " 接着回你", i18n.EN: "Answers at " + at},
+			}[waits][lang]
+			if _, ok := tt.Find(want); !ok {
+				t.Errorf("waits=%v %s: no %q in %q", waits, lang, want, tt.Texts())
+			}
+			// Another answering: the line is still the oldest question.
+			if !waits {
+				q := map[i18n.Lang]string{i18n.ZH: "lockfile 一起提交吗？", i18n.EN: "Commit the lockfile with it?"}[lang]
+				if _, ok := tt.Find(q); !ok {
+					t.Errorf("%s: the question gave way to the note: %q", lang, tt.Texts())
+				}
+			}
+		}
+	}
+}

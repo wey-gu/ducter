@@ -217,7 +217,8 @@ export interface TalkWords {
 }
 
 export type TalkPhase = "listen" | "think" | "speak" | "ended";
-export type TalkEnd = "said" | "quiet" | "tap";
+/** D450: "cant": nothing on the home can think (D440); the talk ends at once, saying nothing. */
+export type TalkEnd = "said" | "quiet" | "tap" | "cant";
 
 export interface TalkState {
   phase: TalkPhase;
@@ -253,7 +254,8 @@ export type TalkEvent =
   | { k: "reply"; text: string; at: number } // a partner message, its full written text
   | { k: "ask"; id: string; question: string; floor?: TalkFloor; at: number } // a card that waits for a Go
   | { k: "answered"; id: string; at: number } // the card was answered some other way (a tap)
-  | { k: "end"; at: number }; // 结束 / End tapped
+  | { k: "end"; at: number } // 结束 / End tapped
+  | { k: "cant"; at: number }; // D450: nothing on the home can think (no key, no agent signed in)
 
 export type TalkEffect =
   | { do: "send"; text: string }
@@ -435,6 +437,11 @@ export function talkStep(st: TalkState, e: TalkEvent, w: TalkWords): [TalkState,
     }
     case "end":
       end("tap");
+      return [s, fx];
+    case "cant":
+      // D450: nothing to answer with: it ends at once, nothing said into the void; the client
+      // shows why and the way to a key (D440).
+      end("cant");
       return [s, fx];
   }
 }

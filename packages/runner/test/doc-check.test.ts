@@ -68,3 +68,64 @@ test("the brief carries the document bar only for a document to send", () => {
   expect(docBrief({ formats: ["pptx"], pages: 5 })).toContain("It is 5 slides, as asked.");
   expect(docBrief({ formats: ["pdf"], maxPages: 3 })).toContain("At most 3 pages");
 });
+
+// D450: the document check and another AI's look on one report: one round, not two.
+test("a document the look also reads: nothing goes back at once, the look takes it with the document's findings; its fix rides on the round", async () => {
+  const c = createFakeCore(join(dir, "data2"));
+  let n = 0;
+  let waiting = false;
+  const took: { body: Bodies["report"]; also?: { words: string; found: string } }[] = [];
+  registerTaskTools(c, {
+    shown: async () => ({ media: [pdf], refused: [] }),
+    docCheck: async () => {
+      n++;
+      const left = { pages: 2, found: [{ code: "edge", page: 1 }], left: ["第 1 页的字超出了右边"] } as never;
+      return n === 1 ? { again: "Not sent yet: … found:\n本周进展.pdf:\n- page 1: past the edge\n\nFix these…", againFound: "本周进展.pdf:\n- page 1: past the edge", doc: left, media: [pdf] } : { doc: left, media: [pdf] };
+    },
+    freshLook: {
+      heldWords: "Reported. Another AI reads it once. End your turn now.",
+      heldWithDocWords: "Not sent yet: both come to you in one message. End your turn now.",
+      waiting: () => waiting,
+      take(_id, body, also) {
+        took.push({ body, ...(also ? { also } : {}) });
+        waiting = true;
+        return true;
+      },
+    },
+  });
+  const first = String(await c.call("report_to_main", { state: "done", summary: "进展 PDF 做好了。", evidence: [], show: ["p.pdf"] }, "tsk9"));
+  expect(first).toStartWith("Not sent yet: both come to you in one message.");
+  expect(took[0]!.also?.found).toBe("本周进展.pdf:\n- page 1: past the edge");
+  expect(took[0]!.body.doc?.left).toEqual(["第 1 页的字超出了右边"]); // what is left if it is never fixed
+  expect(c.log.read({ stream: "task:tsk9", kinds: ["report"] }).length).toBe(0);
+  // The fix: checked by the round, the document's left riding on it, no second send-back.
+  const second = String(await c.call("report_to_main", { state: "done", summary: "改好了。", evidence: [], show: ["p.pdf"] }, "tsk9"));
+  expect(second).toStartWith("Reported.");
+  expect(took[1]!.also).toBeUndefined();
+  expect(took[1]!.body.doc?.left).toEqual(["第 1 页的字超出了右边"]);
+});
+
+test("the look won't read it: the document's words go back as the tool's answer, as before", async () => {
+  const c = createFakeCore(join(dir, "data3"));
+  registerTaskTools(c, {
+    shown: async () => ({ media: [pdf], refused: [] }),
+    docCheck: async () => ({ again: "Not sent yet: the document. Fix these…", againFound: "x", media: [pdf] }),
+    freshLook: { heldWords: "held", waiting: () => false, take: () => false },
+  });
+  const said = String(await c.call("report_to_main", { state: "done", summary: "好了。", evidence: [], show: ["p.pdf"] }, "tsk8"));
+  expect(said).toBe("Not sent yet: the document. Fix these…");
+  expect(c.log.read({ stream: "task:tsk8", kinds: ["report"] }).length).toBe(0);
+});
+
+test("a document found wrong for the first time while a look waits for the fix: it rides on the round, never a second one", async () => {
+  const c = createFakeCore(join(dir, "data4"));
+  const took: { also?: unknown; doc?: unknown }[] = [];
+  registerTaskTools(c, {
+    shown: async () => ({ media: [pdf], refused: [] }),
+    docCheck: async () => ({ again: "Not sent yet: the document. Fix these…", againFound: "x", doc: { found: [], left: ["少了一页"] } as never, media: [pdf] }),
+    freshLook: { heldWords: "Reported. Checked once more.", heldWithDocWords: "both", waiting: () => true, take: (_id, body, also) => (took.push({ also, doc: body.doc?.left }), true) },
+  });
+  const said = String(await c.call("report_to_main", { state: "done", summary: "好了。", evidence: [], show: ["p.pdf"] }, "tsk7"));
+  expect(said).toBe("Reported. Checked once more.");
+  expect(took).toEqual([{ also: undefined, doc: ["少了一页"] }]);
+});

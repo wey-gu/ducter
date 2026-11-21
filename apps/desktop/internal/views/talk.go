@@ -28,7 +28,10 @@ type talkCard struct {
 
 // talkState is one talk on this window.
 type talkState struct {
-	on, ask   bool // talking; its first card shown
+	on, ask bool // talking; its first card shown
+	// cant (D450): a tap while nothing on the home can think (D440): why,
+	// and the way to a key, instead of a talk.
+	cant      bool
 	off, why  string
 	st        voice.TalkState
 	gen, sgen int
@@ -60,7 +63,14 @@ func (a *App) talkTap() {
 		a.talkDispatch(voice.TalkEvent{K: "end", At: a.nowMS()})
 		return
 	}
-	tk.note, tk.off = "", ""
+	tk.note, tk.off, tk.cant = "", "", false
+	// D450: nothing to answer with: the microphone isn't opened and
+	// nothing is said; the panel says why, with the way to a key (hold to
+	// talk still keeps a message, D440).
+	if a.talkCant() {
+		tk.cant = true
+		return
+	}
 	if !a.Local.TalkAsked() {
 		tk.ask = true
 		return
@@ -86,8 +96,21 @@ func (a *App) talkAllow() {
 	a.talkBegin()
 }
 
+// talkCant (D450): nothing on the home can think yet (D440's word, else
+// what the home says of its agents).
+func (a *App) talkCant() bool {
+	if a.S.First != nil {
+		return a.S.First.NoBrain
+	}
+	return a.noBrain()
+}
+
 func (a *App) talkBegin() {
 	tk := &a.hf
+	if a.talkCant() {
+		tk.cant = true
+		return
+	}
 	if a.Voice == nil {
 		tk.off, tk.why = "off", voice.WhyMac
 		return
@@ -218,6 +241,7 @@ func (a *App) talkRun(f voice.TalkEffect) {
 		}
 	case "end":
 		a.talkStop()
+		tk.cant = f.By == "cant"
 		if f.By == "quiet" {
 			tk.note, tk.noteTill = "talk.ended.quiet", a.Now().Add(voiceNoteFor)
 		}
@@ -243,6 +267,12 @@ func (a *App) talkStop() {
 func (a *App) talkFeed(c *ui.Context) {
 	tk := &a.hf
 	if !tk.on {
+		return
+	}
+	// D450: the home lost what it thinks with mid-talk: it ends, saying
+	// nothing more (the kept line that follows is read, not said).
+	if a.talkCant() {
+		a.talkDispatch(voice.TalkEvent{K: "cant", At: a.nowMS()})
 		return
 	}
 	for _, e := range a.S.Channel {
@@ -329,6 +359,25 @@ func (a *App) talkAbove(c *ui.Context) bool {
 				}
 				if a.button(c, a.L.T("talk.ask.go"), btnPrimary, t.ControlSM, t.Surface) {
 					a.talkAllow()
+				}
+			})
+		})
+		return true
+	case tk.cant && !tk.on:
+		a.aboveComposer(c, func() {
+			a.notice(c, "talk-cant", noticeInfo, func() { a.partnerFace(c, "talk-cant", theme.Idle, 32) }, func() {
+				ui.Column(c).Gap(2).Grow(1).MinWidth(200).Children(func() {
+					uiText(c, a.L.T("talk.cant.title")).FontSize(t.SM).FontWeight(700).LineHeight(1.45).TextColor(t.Ink)
+					uiText(c, a.L.T("talk.cant.why")).FontSize(t.SM).LineHeight(1.45).TextColor(t.InkSoft)
+				})
+			}, func() {
+				if a.button(c, a.L.T("talk.cant.ok"), btnSecondary, t.ControlSM, t.Surface) {
+					tk.cant = false
+				}
+				if rs := a.keyRoutes(); len(rs) > 0 {
+					if a.button(c, a.L.T("key.route.go", a.words(rs[0].Name)), btnPrimary, t.ControlSM, t.Surface) {
+						a.openLink(rs[0].URL)
+					}
 				}
 			})
 		})

@@ -144,6 +144,16 @@ If you turn quiet hours off, they stay off, even when you connect another phone.
 To change the hours or turn them off, open **Partner** and use **Quiet hours** (see
 [Your partner and settings](settings.md#partner)).
 
+## Text size and the keyboard
+
+The iPhone app follows the text size you set in the iPhone's **Settings › Display & Brightness ›
+Text Size** (or **Accessibility › Larger Text**): the words grow and wrap, and the screen keeps its
+layout. The largest accessibility sizes stop a little short of the system's own, so buttons still
+hold their words on one line.
+
+When you write, the conversation ends where the keyboard begins: the box you type in sits on the
+keyboard and the top of the screen stays where it was.
+
 ## Links
 
 A link in Ducter that goes somewhere else, like a pull request a task opened, opens on your phone

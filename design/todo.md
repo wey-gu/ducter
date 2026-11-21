@@ -155,9 +155,9 @@ Deferred work, grouped by area, each with its trigger where it has one.
   `HARNESSES["deepseek-harness"].images`.
 ## The waiting line, alive (D425, research/176)
 
-- [ ] **The iOS Simulator and a phone's frame rate**: the loops and the line's change on Mobile
-  Safari in the iPhone Simulator (and the Android app's web view), timed with the performance
-  panel. Trigger: the next iOS build.
+- [ ] **A phone's frame rate**: the loops and the line's change timed with the performance panel on
+  a real iPhone and the Android app's web view. The line was seen in the iOS Simulator as D447 (it
+  drew over the card under it when two lines long; fixed). Trigger: the next iOS build.
 - [ ] **A live partner turn timed with the dwell**: how often a step waits its turn, and whether
   1.4 s reads right on real steps. Trigger: a live run with a signed-in harness.
 - [ ] **A partner-written step line** (the reference's 整理申请路线: the partner names its own
@@ -331,7 +331,8 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
 - [ ] Send research/191 §asks to Mem. Trigger: the author approves the draft.
 - [x] The 390-wide web shots through a phone-sized viewport (headless Chrome clips at its minimum window width).
       Done as D443 with Chrome's device emulation over CDP (`.shots/followups-443/`): no overflow; X
-      **改由这台收** squeezed its words into a sliver and now drops under them. The iOS Simulator is still owed.
+      **改由这台收** squeezed its words into a sliver and now drops under them. The iOS Simulator: seen as D447
+      (Talk with your other agents, light and dark at Accessibility Large; a Recently row's state now wraps in its corner).
 - [x] **The phone's head with an update pill** (seen in the same 390 shots, not this pane's): **1 个等你** wraps to
       a narrow column beside **3 项更新** and the four icons. Default: on a phone the update pill shrinks to its mark
       with the count. Trigger: the next phone-UI pass. Done as D446 (up to 600 wide; a count never breaks inside).
@@ -955,9 +956,10 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
 - [ ] **Find in the conversation** (⌘F on the Mac and the wide web, a magnifier in the phone's
       header): matches in the loaded conversation, older ones through the home (the Log, and Mem's
       recall for the gist). Trigger: the author or a user scrolling for something said last week.
-- [ ] **Dynamic Type on the phone:** the web client sets its sizes in px; follow iOS's text size
-      in the iPhone app (`-apple-system-body` as the root size, the scale tokens in rem). Trigger:
-      a reader with a larger text size, or the accessibility pass.
+- [x] **Dynamic Type on the phone:** the web client sets its sizes in px; follow iOS's text size
+      in the iPhone app. Done as D447: the app sets the page's text-size-adjust from the system's
+      size (100–135%). Still owed: the scale tokens in rem, so the accessibility sizes past 135% grow
+      too (fixed-height pills first); the Android app's font scale.
 - [ ] **The time on hover on the Mac** (the web's menu has it; the Mac's right-click menu cannot
       show a disabled line yet). Trigger: MyGo's menu gains a header item, or a reader asks.
 - [ ] **The draft across devices:** kept per device today; a draft started on the phone and
@@ -2547,7 +2549,7 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] **Arrange the shelf by hand** (order, folders). Trigger: someone with more than a dozen apps.
 - [ ] **The kit on the Mac's own fonts** (an app can't load Bricolage; it falls back to the system font). Trigger: a designer review of an app window.
 - [ ] **Rename and delete inside the Mac's app window** (its 「⋯」 brings the main window's shelf forward to do them). Trigger: the author uses them from the app window.
-- [ ] **A real phone** walk of the shelf and the app sheet (shots are headless Chrome at 390). Trigger: the next iOS Simulator pass.
+- [ ] **A real phone** walk of the shelf and the app sheet (shots are headless Chrome at 390). The shelf (empty) and the app's card were seen in the iOS Simulator as D447; the open app sheet and a real phone are still owed. Trigger: the next iPhone build.
 
 ## D413: 不用问我的 / Without asking (`core/src/standing.ts`)
 
@@ -2593,7 +2595,7 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [x] **Move a late loop to a computer that is awake** (the late card's second choice, D157). Default: offer it when the loop's place can move. Trigger: a loop late twice in a week for the same sleep. Done as D429 (换到醒着的电脑上跑; not for repo or folder tasks).
 - [ ] **Condition loops live.** `look` re-arms a check, event or judge loop; none seen live yet ("CI 挂了告诉我" as a task in rounds). Trigger: the first one on hel.
 - [x] **Mac ⋯ on the clay menu (D421).** The card's ⋯ is still the popover that holds 改时间 and 多久跑一轮 inline; move it to `menuButton` with a 多久跑一轮 submenu once 改时间 has a sheet of its own. Trigger: the next Ongoing pass. Done as D429.
-- [ ] **The iOS Simulator** for the phone card (web shots at 390 only). Trigger: before the next iPhone build.
+- [x] **The iOS Simulator** for the phone card (web shots at 390 only). Done as D447 (Ongoing, light and dark at Accessibility Large: nothing to fix).
 - [x] **"How is my loop doing?" in one line.** `loop-status-en` failed both haiku runs and `loop-status-zh` once (too long, the rhythm left out, other tasks' news added). Default: routine_list returns a ready line per item (rhythm, next, health in words) and rule 15 says to answer only about the one asked. Trigger: the next persona or tool change with its eval. Done as D429 (routine_list's say; eval numbers in D429).
 
 ## D429: a loop in one line, and run where it can (`core/src/{ongoing,loops,work}.ts`)
@@ -2602,3 +2604,17 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] **Check the home's agent before offering it.** The home is offered for a worker's task without knowing the task's agent is signed in there (the move says so if not). Default: read the devices frame's harnesses once per sweep and offer only where it is. Trigger: a move that fails for a sign-in.
 - [ ] **Move back when it wakes.** After a move the task stays on the awake computer. Default: say nothing; the card's where shows it, and task_switch moves it back. Trigger: the author asks for it back twice.
 - [ ] **See the move live on hel** with a worker Mac asleep. Trigger: the next release on hel.
+
+## The iOS Simulator pass (D447)
+
+- [ ] **Hide WebKit's form bar** (↑ ↓ ✓ above the keyboard) in the iPhone app, as messaging apps have none:
+  only through a swizzle of WebKit's private content view. Trigger: the author finds it in the way.
+- [ ] **Mobile Safari's keyboard pan** (Ducter in Safari, not the app): the page still moves up under the
+  status bar for the composer. A page-side `scrollTo(0, 0)` didn't hold in WKWebView; try it in Safari
+  itself. Trigger: a person using Ducter from Safari's Home Screen icon.
+- [ ] **Drive the Simulator for the rest**: talk hands-free with a real recognizer, the live view of a
+  checkout, the document card with its printed pages, the long-press menu (todo D254) and a sheet's field
+  with the keyboard up, in the app. D447 saw them in Playwright's WebKit only. Trigger: the next iPhone build.
+- [ ] **Fixed heights elsewhere** at a larger text size: D447 fixed the ones on its surfaces (On hand's
+  strip, Your devices' rows); a sweep of `height: Npx` on rows that hold words is owed. Trigger: the next
+  phone-UI pass.

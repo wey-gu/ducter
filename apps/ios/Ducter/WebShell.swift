@@ -61,6 +61,39 @@ final class Shell: NSObject, ObservableObject, WKNavigationDelegate, WKUIDelegat
         #if DEBUG
         web.isInspectable = true
         #endif
+        NotificationCenter.default.addObserver(forName: UIContentSizeCategory.didChangeNotification, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.fitText() }
+        }
+    }
+
+    // MARK: D447, the system's text size
+
+    /// iOS's body size at each text size (Apple's Dynamic Type table, Body style).
+    private static let bodySize: [UIContentSizeCategory: CGFloat] = [
+        .extraSmall: 14, .small: 15, .medium: 16, .large: 17, .extraLarge: 19, .extraExtraLarge: 21, .extraExtraExtraLarge: 23,
+        .accessibilityMedium: 28, .accessibilityLarge: 33, .accessibilityExtraLarge: 40, .accessibilityExtraExtraLarge: 47, .accessibilityExtraExtraExtraLarge: 53,
+    ]
+
+    /// The page sets its sizes in px, so the app follows the person's text size by scaling the
+    /// page's text (`-webkit-text-size-adjust`, the page's `--text-adjust`; what Safari's own text
+    /// size does): the words grow with iOS's body text and wrap in the same boxes, the layout's width
+    /// stays the screen's. Smaller sizes stay at 100% (the page's sizes are already the smallest it
+    /// reads well at) and the accessibility sizes stop at 135%, where the fixed-height pills still
+    /// hold one line. `pageZoom` was tried first: on iOS it magnifies the page past the screen
+    /// instead of laying it out again.
+    static func textScale(_ c: UIContentSizeCategory) -> Int {
+        let want = (bodySize[c] ?? 17) / 17
+        return Int((min(max(want, 1), 1.35) * 100).rounded())
+    }
+
+    private var textScaleSent = 100
+
+    /// Called when the page loads, the text size changes, or the web view is laid out.
+    func fitText(force: Bool = false) {
+        let s = Shell.textScale(UIApplication.shared.preferredContentSizeCategory)
+        guard force || s != textScaleSent else { return }
+        textScaleSent = s
+        web.evaluateJavaScript("document.documentElement.style.setProperty('--text-adjust','\(s)%')")
     }
 
     /// D209: the page opens from the web view's cache when it has one (no round trip to the home
@@ -142,6 +175,7 @@ final class Shell: NSObject, ObservableObject, WKNavigationDelegate, WKUIDelegat
         // only such a home's page opens from the cache next time. A cached page that doesn't (from
         // before, or an older home) is loaded again from the network now.
         let fromCache = cacheFirst
+        fitText(force: true)
         webView.evaluateJavaScript("!!document.querySelector('script[src*=\"app.js?v=\"]')") { [weak self] r, _ in
             guard let self, let url = self.loaded else { return }
             let named = (r as? Bool) ?? false
@@ -297,7 +331,7 @@ extension UIApplication {
 struct WebShellView: UIViewRepresentable {
     @ObservedObject var shell: Shell
     func makeUIView(context: Context) -> UIView {
-        let v = UIView()
+        let v = Host()
         v.backgroundColor = Pebble.uiBg
         adopt(into: v)
         return v
@@ -309,5 +343,49 @@ struct WebShellView: UIViewRepresentable {
         shell.web.frame = v.bounds
         shell.web.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         v.addSubview(shell.web)
+        (v as? Host)?.fit()
+    }
+
+    /// D447: the web view ends where the keyboard begins, as a messaging app's own view does.
+    /// WebKit otherwise lays the keyboard over the page and pans the whole page up to show the
+    /// composer, which took the header off the top and drew the conversation under the status bar
+    /// (seen in the Simulator). Resized, the page lays itself out on what is left (its 100% is the
+    /// space above the keyboard, its bottom inset 0), the way Android's resizes-content does, and a
+    /// sheet's field stays above the keyboard with no help from the page.
+    final class Host: UIView {
+        private var keyboardTop: CGFloat?
+
+        override init(frame: CGRect) {
+            super.init(frame: frame)
+            NotificationCenter.default.addObserver(self, selector: #selector(keyboard(_:)), name: UIResponder.keyboardWillChangeFrameNotification, object: nil)
+            NotificationCenter.default.addObserver(self, selector: #selector(keyboard(_:)), name: UIResponder.keyboardWillHideNotification, object: nil)
+        }
+
+        required init?(coder: NSCoder) { fatalError("not from a storyboard") }
+
+        @objc private func keyboard(_ n: Notification) {
+            guard let end = (n.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? NSValue)?.cgRectValue, let window else { return }
+            let screen = window.screen.bounds
+            // Hidden, or a hardware keyboard's bar only (an iPad's floating keyboard is not docked).
+            let docked = n.name != UIResponder.keyboardWillHideNotification && end.minY < screen.maxY - 1 && end.maxY >= screen.maxY - 1 && end.width >= screen.width - 1
+            keyboardTop = docked ? convert(end, from: nil).minY : nil
+            let duration = (n.userInfo?[UIResponder.keyboardAnimationDurationUserInfoKey] as? Double) ?? 0.25
+            let curve = (n.userInfo?[UIResponder.keyboardAnimationCurveUserInfoKey] as? UInt) ?? 7
+            UIView.animate(withDuration: duration, delay: 0, options: UIView.AnimationOptions(rawValue: curve << 16)) { self.fit() }
+        }
+
+        override func layoutSubviews() {
+            super.layoutSubviews()
+            fit()
+        }
+
+        func fit() {
+            guard let web = subviews.first(where: { $0 is WKWebView }) as? WKWebView else { return }
+            let h = keyboardTop.map { min(bounds.height, max(0, $0)) } ?? bounds.height
+            let f = CGRect(x: 0, y: 0, width: bounds.width, height: h)
+            if web.frame != f { web.frame = f }
+            // Nothing for WebKit to pan: the page fits above the keyboard.
+            if web.scrollView.contentOffset != .zero, keyboardTop != nil { web.scrollView.contentOffset = .zero }
+        }
     }
 }

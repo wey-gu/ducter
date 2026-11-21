@@ -359,7 +359,7 @@ body {
   font-size: var(--md);
   line-height: var(--lh-read);
   -webkit-font-smoothing: antialiased;
-  -webkit-text-size-adjust: 100%;
+  -webkit-text-size-adjust: var(--text-adjust, 100%);
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior-y: none;
 }
@@ -727,6 +727,12 @@ a {
 .scroll > .join {
   margin-top: -8px;
 }
+/* D447: nothing in the conversation is squeezed when it overflows: a row with a min-height of its
+   own (the alive line's 40) shrank to it, and its second line drew over the card below (seen in the
+   iOS Simulator at a larger text size, and with any two-line alive line). */
+.scroll > * {
+  flex-shrink: 0;
+}
 .scroll > .spacer {
   flex: 1;
 }
@@ -776,7 +782,7 @@ a {
   border-top-left-radius: var(--bubble-join);
 }
 /* What sits under a bubble (the quiet row, a status line, the default) is set in to its text. */
-.partner > :not(.bubble):not(.tray):not(.reply):not(.routine-facts):not(.said):not(.cal-card):not(.cal-change):not(.cal-settle):not(.imprint):not(.rich-card):not(.rich-choices) {
+.partner > :not(.bubble):not(.tray):not(.reply):not(.routine-facts):not(.said):not(.cal-card):not(.cal-change):not(.cal-settle):not(.imprint):not(.rich-card):not(.rich-choices):not(.first-face):not(.first-after) {
   margin-left: 14px;
 }
 .partner p {
@@ -5634,7 +5640,7 @@ button.dev-name {
 
 /* ---------- D161: the device card as a character sheet (design/prototypes/device-card.html) ---------- */
 .plist { display: flex; flex-direction: column; padding: 6px; border-radius: var(--r-lg); background: var(--surface); box-shadow: var(--base); }
-.li-row { display: flex; align-items: center; gap: 10px; height: 56px; padding: 0 10px; border: 0; border-radius: 14px; background: none; color: inherit; font: inherit; text-align: start; cursor: pointer; }
+.li-row { display: flex; align-items: center; gap: 10px; min-height: 56px; padding: 0 10px; border: 0; border-radius: 14px; background: none; color: inherit; font: inherit; text-align: start; cursor: pointer; }
 .li-row:active { background: var(--sunken); }
 .li-row img { flex: none; width: 36px; height: 32px; object-fit: contain; }
 /* D291: the name alone on its line; under it one short line, its facts as separate elements. */
@@ -8488,7 +8494,7 @@ dl.call-summary dd { margin: 0; }
   box-shadow: inset 0 0 0 1px var(--line), inset 0 2px 0 var(--line-soft);
   overflow: auto;
   tab-size: 2;
-  -webkit-text-size-adjust: 100%;
+  -webkit-text-size-adjust: var(--text-adjust, 100%);
   flex: none;
 }
 .code.view, .code.wdiff { padding: 8px 0; }
@@ -10544,7 +10550,7 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   display: flex;
   align-items: baseline;
   gap: 6px;
-  height: 28px;
+  min-height: 28px; /* D447: grows with a larger text size instead of cutting its words */
   align-content: center;
   padding: 5px 12px 0;
   border: 0;
@@ -18085,3 +18091,56 @@ a.pr:hover { box-shadow: inset 0 0 0 1px var(--line-2); }
 /* D444: 让它说说它记得你什么, under What it knows about you's note, on the text column. */
 .mem-ask { padding: 0 var(--set-in, var(--s4)); margin: calc(-1 * var(--s1)) 0 var(--s1); }
 .mem-ask .btn.text.sm { margin-inline-start: -10px; }
+/* D447: WebKit's text-wrap: pretty evens every line of a paragraph (Chromium only mends the last
+   few), so on the iPhone a Chinese reply wrapped at two-thirds of its bubble and a card's question
+   at half its card. The sentences fill the measure as D78 meant: WebKit (the one engine that knows
+   -apple-system-body) wraps them plainly. */
+@supports (font: -apple-system-body) {
+  .bubble,
+  .partner > .bubble,
+  .decision .q,
+  .ask .q,
+  .task-head .headline { text-wrap: wrap; }
+}
+/* D447: at a larger text size the bar's line wraps between phrases, never inside one (随 / 时说),
+   and the composer's hint ends in an ellipsis instead of losing its last words below the line. */
+.top .sum { word-break: keep-all; overflow-wrap: break-word; }
+.composer textarea::placeholder { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* D447: a Recently row's state (Checking it went) wraps in its own corner instead of squeezing the
+   message into a narrow column at a larger text size. */
+.mem-g .g-state { white-space: normal; max-width: 32%; text-align: end; word-break: keep-all; overflow-wrap: break-word; }
+/* D447: the checkout's picture and an app's card are set in to the text like everything under a
+   bubble, so at full width they ran 14 past the conversation's right edge (seen in the Simulator);
+   the first answer's face and its starts are left out of that set-in (".partner > :not(.bubble)…"). */
+.partner > .co-pic { width: calc(100% - 14px); }
+.partner > .app-card { width: min(100% - 14px, 420px); }
+/* D447: touch targets found under 44 in the iOS Simulator pass. The drawn size stays; a centred
+   box at least 44 × 44 takes the tap (a positioned ancestor holds it), and the Settings dropdown's
+   44 now comes after its own 36 (the earlier coarse rule lost to the later base rule). */
+@media (pointer: coarse) {
+  .dselect-btn,
+  .set-item .pick .dselect-btn { min-height: 44px; }
+  .tb,
+  .more-btn:not(.shelf-more),
+  .ho-fact,
+  .ho-words-x,
+  .hint .more,
+  .switch.bare { position: relative; }
+  .tb::before,
+  .more-btn::before,
+  .ho-fact::before,
+  .ho-words-x::before,
+  .hint .more::before,
+  .switch.bare::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: max(44px, 100%);
+    height: max(44px, 100%);
+    transform: translate(-50%, -50%);
+  }
+  /* Clipped by its own ellipsis, so it grows by padding instead (nothing moves). */
+  .tgroup .gtitle { padding-block: 12px; margin-block: -12px; }
+  .asked .ask-row { min-height: 44px; }
+}

@@ -133,6 +133,10 @@ xcrun simctl push booted co.nowledge.ducter.ios payload.apns   # category DUCTER
 ```
 
 `-pairLink`, `-open 'app#onhand'` and `-orientation landscape` are Debug-only launch arguments.
+Any demo core (`apps/web/demo-*.ts`) started with `DEMO_PAIR=1` prints a `-pairLink` for itself, so the
+app in the Simulator walks a demo with fake data instead of a real home (D447); give each demo its own
+port, since the page keeps what it last showed per address. `xcrun simctl ui <udid> content_size
+accessibility-large` and `appearance dark` check the text size and dark mode.
 So is `-appVersion 0.0.99` (D200): a Debug build says project.yml's placeholder version, so it
 never says its home is older unless given one; `apps/ios/scripts/check-home-version.sh` checks the
 rule itself against the Android app's cases.

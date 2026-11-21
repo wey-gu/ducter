@@ -56,5 +56,10 @@ export function demoOptions(opts: CoreOptions = {}): CoreOptions {
 export function startCore(opts: CoreOptions = {}): Core {
   // D299: the agents' own sessions on this computer stay unread unless the demo brings its own.
   if (!opts.localAgents) process.env.DUCTER_OUTSIDE ??= "0";
-  return startRealCore(demoOptions(opts));
+  const core = startRealCore(demoOptions(opts));
+  // D447: DEMO_PAIR=1 prints a pairing link, so the iPhone app in the Simulator pairs with this demo
+  // (never the person's own home): xcrun simctl launch <sim> co.nowledge.ducter.ios -pairLink '<link>'.
+  if (process.env.DEMO_PAIR === "1")
+    void core.devicesView.pairCode().then((p) => console.log(`[demo] phone: -pairLink 'http://127.0.0.1:${core.port}/pair#c=${p.code}'`));
+  return core;
 }

@@ -11,7 +11,7 @@ import { noteOf } from "@ducter/protocol/src/transcript.ts";
 import { FakeClock } from "../src/clock.ts";
 import { triggersPartner } from "../src/core.ts";
 import { openLog } from "../src/log.ts";
-import { createMender, MEND_PER_HOUR, nextStartRung, similar, startLadder } from "../src/mend.ts";
+import { createMender, MEND_PER_HOUR, nextStartRung, startLadder } from "../src/mend.ts";
 import { createRegistry } from "../src/registry.ts";
 import { tempDir } from "./helpers.ts";
 
@@ -193,21 +193,6 @@ test("a stall goes to the partner (never retried here: the task ran); one D372 a
   expect(s.mends("code")).toMatchObject([{ cls: "stall", rung: "rethink" }]);
   expect(s.lines("code")).toEqual(["stalled", "mend_stall"]);
   expect(s.mends("errand")).toEqual([]);
-});
-
-test("after a rethink, the partner opening the same work again sets the one that couldn't start aside", async () => {
-  const s = setup();
-  s.open("smx2jjb3", "在 hel 用 Gemini 审阅 Mem 长文案");
-  s.fail("smx2jjb3", noFolder);
-  await s.settle();
-  s.open("other1", "整理下周的日历", "partner");
-  await s.settle();
-  expect(s.tasks.get("smx2jjb3")?.attention).toBe("failed");
-  s.open("new1", "在 hel 上用 Gemini 审阅 Mem 的长文案", "partner");
-  await s.settle();
-  expect(s.tasks.get("smx2jjb3")?.attention).toBe("superseded");
-  expect(similar("Review Mem's long copy", "Review the long copy in Mem")).toBeGreaterThan(0.5);
-  expect(similar("Review Mem's long copy", "Book a hotel in Kyoto")).toBeLessThan(0.5);
 });
 
 test("a task opened more than a day ago that fails again (a restart) is left to its card", async () => {

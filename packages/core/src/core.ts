@@ -125,6 +125,8 @@ import { createComputerUse, type ComputerUse, type ComputerUseOptions } from "./
 import { readSites } from "./browser/sites.ts";
 import { createClosing, registerClosingTool } from "./closing.ts";
 import { createAccountUsage } from "./account-usage.ts";
+import { createAgentLimits } from "./agent-limits.ts";
+import { replaceTask } from "./replaces.ts";
 import { createLimitWaits } from "./limits.ts";
 import { workerProfile } from "./browser/remote.ts";
 import { profileName } from "@ducter/protocol/src/browser-profile.ts";
@@ -1096,6 +1098,8 @@ export function startCore(opts: CoreOptions = {}): Core {
   // D297: a task whose agent hits its usage limit waits for the reset (or is handed on) and carries on.
   const limitWaits = createLimitWaits({ log, tasks, waiters: work.waiters, loadout, settings, usage: accountUsage, runner: () => runner, clock });
   limitsDecorate = (o) => ({ ...o, waiters: o.waiters.map((w) => limitWaits.decorate(w)) });
+  // D478: each agent's limit per computer, a fact in the partner's world line (agent-limits.ts).
+  const agentLimits = createAgentLimits({ log, tasks, waiters: () => work.waiters.views(), usage: accountUsage, home: () => devicesView?.harnessesNow(), clock });
   // D435: the partner's own agent, held after a turn failed on it; another signed-in agent answers meanwhile.
   const brainHold = createBrainHold({ log, clock, base: () => effectiveBrain(settings.get().brain, settings.brainChosen(), devicesView?.harnessesNow()).harness as HarnessId, home: () => devicesView?.harnessesNow(), rules: () => rules.list(), usage: accountUsage,
     // D446: tasks on the home waiting for their agent's reset share the partner's account there.
@@ -1290,6 +1294,9 @@ export function startCore(opts: CoreOptions = {}): Core {
   // D477: the code Ducter knows is on each computer, for the partner's [devices] line: the person's
   // projects (with their origin when kept) and the repositories tasks worked in (a clone's address),
   // never a place that turned out not to be there. A fact to place work by; nothing here decides.
+  api.agentLimits = () => agentLimits.now();
+  // D478: the partner's `replaces` retires the task it opens again (replaces.ts): by its id, never by title.
+  api.replaced = (newId, oldId) => replaceTask({ tasks, away: onHandAway }, newId, oldId);
   api.codeOn = () => {
     const out = new Map<string, { device: string; name: string; remote?: string }>();
     const add = (device: string, name: string, remote?: string) => {
@@ -2367,6 +2374,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     partnerSessions: () => sessions,
     async stop() {
       ws.stop();
+      agentLimits.stop();
       loadout.stop();
       previews.close();
       await browser?.stop().catch(() => {});

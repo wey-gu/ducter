@@ -279,6 +279,64 @@ Per puzzle (puzzles alone, before a, b → after a, b):
 Codex as the partner was not run: the eval would use the person's own Codex sign-in on this
 machine, which this work does not touch.
 
+## 9. Phase 2b (D478)
+
+VERIFIED, haiku partner and judge, 2026-11-22, two runs at each step. The full eval grew from 256 to
+262 scenarios when the six new puzzles landed (step 3 on); "without puzzles" is the same 244 throughout.
+
+| Step | Full eval | Without puzzles | Puzzles (in the full run) | Puzzles alone |
+|---|---|---|---|---|
+| base (D477 after = 0.1.16) | 205/256, 207/256 | 197, 201 | 8/12, 6/12 | 10/12, 10/12 |
+| 1+2: limits, `[live]`, replaces by id | 197/256, 202/256 | 186, 192 | 11/12, 10/12 | |
+| 1–3: + five classifiers retired | 207/262, 205/262 | 193, 190 | 14/18, 15/18 | 13/18, 15/18 |
+| 4: persona 31.5 → 12.6 KB | 190/262, 192/262 | 176, 178 | 14/18, 14/18 | 13/18, 14/18 |
+| final (cut stopped; facts for two step-3 losses) | 193/262, 199/262 | 180, 185 | 13/18, 14/18 | 14/18, 15/18 |
+
+**What each step showed.**
+- Steps 1+2: the quota puzzle passed for the first time (the partner switched the task to Codex by
+  task_switch after seeing `claude-code (used up until 23:00), codex (room left)`). The first `[live]`
+  wording called a task waiting for its merge "being checked", and a judge saw the partner repeat it
+  as 还在核对中; done-and-waiting tasks left the line. Non-puzzle scores were lower than base (186,
+  192 vs 197, 201), inside the run-to-run spread seen across D477 (188–201) but low on both runs.
+- Step 3: two scenarios dropped on both runs, each tied to a retired classifier, and each answered
+  by a fact rather than by restoring it: `continue-trip-mac-zh` (OWN_ACCOUNT: the home's browser now
+  in `[devices]`, a browser task's computer in `<tasks>`) and `two-done-zh` (stripResultPlumbing: the
+  `[results]` line names what the app shows under each result). The reset time was said as 23:01
+  (the wait's wake, not the reset): fixed in the world line and in D297's `[limit]` line.
+- Step 4: the cut lowered the non-puzzle score by 14–17 against step 3 on both runs. Lost on both
+  runs: `call-never-the-owner-zh`, `call-sheet-zh`, `stop-zh`, `errand-at-checkout-zh`,
+  `noticed-how-zh`, `own-session-mac-ask-en`, `rich-list-en`, `where-web-link-en`,
+  `continue-errand-en`, `ack-en-estimate`, `direct-ja`, `wp-quota-switch-zh`. Haiku leans on the
+  persona's narrow patches more than the tool descriptions say; the cut was stopped (INFERRED: the
+  patches are load-bearing for a small model; the partner's own model may differ).
+
+**The six new puzzles** (alone and in the full runs, step 3 → final): `wp-bound-computer-away-zh`,
+`wp-no-copy-no-computer-en` and `wp-named-computer-ends-at-once-zh` pass on nearly every run;
+`wp-own-agent-quota-en` passes once the reset is said right; `wp-phone-update-fix-zh` fails (the
+partner asks the person before telling Ducter's own phone to update an app) and
+`wp-mem-contradiction-zh` fails (the partner doesn't recall a moved appointment before acting): each
+needs its fact before a fix.
+
+**Decision points.** 220 → 216 rows, judgments 97 → 91 (INFERRED by counting: five classifiers and
+the title-similarity supersede removed; one fact source and one invariant added).
+
+**The final runs.** The final non-puzzle scores (180, 185) are below steps 1–3 (193, 190) though the
+code differs only by three small facts and the reset fix; the scenarios lost between them are mostly
+length overruns unrelated to the change, so drift across the day is large (VERIFIED: the same base
+code scored 188–201 across D477's runs). The branch is not proven free of regression on the full
+eval; a same-hour run of main and the branch, two each, is owed before merge. The quota puzzle passed
+in 5 of 8 runs from step 1 on and in neither final puzzle run (a card asking the person instead).
+
+### Implications for Ducter (phase 2b)
+
+- Usage limits and live work are cheap, true facts; the partner uses them (the quota switch by its
+  own task_switch), but not yet reliably on haiku.
+- Retiring a classifier shows what it was quietly doing; each loss is answered by a fact, not by
+  restoring the rule.
+- The persona's narrow patches are load-bearing for a small model: cutting them wholesale cost 14
+  points. The way down is section by section, each patch replaced by a fact or a tool description
+  first, two runs each.
+
 ## Implications for Ducter
 
 - The partner can only be as smart as the world it sees: put the true state (computers, agents,

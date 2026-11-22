@@ -33,8 +33,6 @@ export const MEND_PER_HOUR = 6;
 export const RETHINK_PER_TASK = 2;
 /** The person touched this task this recently: Ducter stays out of their way. */
 const PERSON_MS = 10 * 60_000;
-/** A task the partner opens this soon after a rethink, on the same work, supersedes the one that couldn't start. */
-const REOPEN_MS = 30 * 60_000;
 
 /** The causes a retry or a place repair can mend. */
 const PLACE_WHYS = new Set<string>(["no_repo", "no_folder", "away", "other"]);
@@ -184,26 +182,10 @@ export function createMender(o: {
     if (again?.attention === "failed" && again.cant) startFailed(taskId, again.cant);
   };
 
-  /** After a rethink, the partner opened the same work again: the one that couldn't start goes. */
-  const supersede = (e: LogEvent) => {
-    const b = e.body as Bodies["task_open"];
-    const recent = o.log.read({ kinds: ["mend"], beforeSeq: e.seq, limit: 200 }).filter((m) => m.ts >= since(REOPEN_MS) && (m.body as MendBody).rung === "rethink" && (m.body as MendBody).cls === "start");
-    for (const m of recent.reverse()) {
-      const old = (m.body as MendBody).taskId;
-      if (old === b.taskId) continue;
-      const c = o.tasks.get(old);
-      if (!c || c.attention !== "failed" || !c.cant) continue;
-      if (similar(c.title, b.title) < 0.5) continue;
-      o.tasks.setState(old, "superseded", "archived", `opened again as ${b.taskId}`);
-      return;
-    }
-  };
-
   const decide = (e: LogEvent) => {
     if (stopped || decided.has(e.seq)) return;
     decided.add(e.seq);
     if (decided.size > 5000) decided.delete(decided.values().next().value!);
-    if (e.kind === "task_open" && e.origin === "partner") return supersede(e);
     if (o.taken?.(e)) return;
     if (e.kind === "task_state") {
       const s = e.body as Bodies["task_state"];
@@ -229,18 +211,3 @@ export function createMender(o: {
   };
 }
 
-/** Character-bigram overlap of two titles (any script), 0..1. */
-export function similar(a: string, b: string): number {
-  const grams = (s: string) => {
-    const x = s.toLowerCase().replace(/[\s\p{P}]+/gu, "");
-    const out = new Set<string>();
-    for (let i = 0; i < x.length - 1; i++) out.add(x.slice(i, i + 2));
-    if (x.length === 1) out.add(x);
-    return out;
-  };
-  const A = grams(a), B = grams(b);
-  if (!A.size || !B.size) return 0;
-  let n = 0;
-  for (const g of A) if (B.has(g)) n++;
-  return n / Math.min(A.size, B.size);
-}

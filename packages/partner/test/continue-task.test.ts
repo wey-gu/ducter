@@ -197,64 +197,17 @@ test("a follow-up that never reached the task puts its line back", async () => {
   expect(states).toEqual(["running", "done"]);
 });
 
-// D376: the trip again, with the MacBook's Chrome signed in to Ctrip and the task on the home's own
-// browser: a follow-up asking for the user's account is asked back once, so the task moves first.
-const COMPS = [
-  { id: "local", name: "fake-server", home: true, state: "awake", web: { on: true, where: "ducter" } },
-  { id: "w1", name: "Fake MacBook", home: false, state: "awake", web: { on: true, where: "chrome" } },
-];
-
-test("their own account, asked for a task away from their sign-ins: asked back once, then sent", async () => {
-  const results: { ok: boolean; error?: string }[] = [];
+// D376, D478: the trip again: a follow-up asking for the user's own account is no longer read by
+// code (the OWN_ACCOUNT words): the send goes as the partner made it; where the task browses and
+// which computers browse in the user's own Chrome are facts in [live] and [devices] it judges from.
+test("a follow-up for the user's own account is sent as the partner made it: no code reads the words", async () => {
   const { fc, fr, partner, user, clock } = setup(async (_i, s) => {
-    s.say("我去携程上比一下价格。"); // written before it knew where: dropped
-    s.emit({ role: "tool", tool: { name: "mcp__ducter__task_send", input: { taskId: "t_trip", text: "用携程账号比价" } } });
-    results.push((await fc.callTool("task_send", { taskId: "t_trip", text: "用携程账号比价" })) as { ok: boolean; error?: string });
-    // (task_switch to the MacBook happens here, in core); the line after it names where
-    s.say("我到你 MacBook 的 Chrome 上用携程比一下价格。");
-    s.emit({ role: "tool", tool: { name: "mcp__ducter__task_send", input: { taskId: "t_trip", text: "用携程账号比价" } } });
-    results.push((await fc.callTool("task_send", { taskId: "t_trip", text: "用携程账号比价" })) as { ok: boolean; error?: string });
-    s.end();
-  });
-  (fc.core as unknown as { bodies: unknown }).bodies = { computers: async () => COMPS };
-  seedErrand(fc, clock);
-  user("这个酒店和汉庭差多少钱？用我的携程账号登录看");
-  await partner.idle();
-  expect(results[0]!.ok).toBe(false);
-  expect(results[0]!.error).toContain("Fake MacBook");
-  expect(results[0]!.error).toContain("task_switch it there (device) first");
-  expect(results[1]!.ok).toBe(true);
-  expect(fr.sent.map((x) => x.taskId)).toEqual(["t_trip"]);
-  const acks = fc.events.filter((e) => e.kind === "ack").map((e) => (e.body as Bodies["ack"]).text);
-  expect(acks.at(-1)).toBe("我到你 MacBook 的 Chrome 上用携程比一下价格。");
-  expect(JSON.stringify(fc.events)).not.toContain("我去携程上比一下价格");
-  const last = fc.events.filter((e) => e.kind === "job_status").at(-1)!.body as Bodies["job_status"];
-  expect(last).toMatchObject({ taskId: "t_trip", state: "running" });
-});
-
-test("asked back and never sent: the task's line goes back to done; no account asked, or already where its Chrome is: sent at once", async () => {
-  const one = setup(async (_i, s) => {
-    s.say("我接着比价。");
-    s.emit({ role: "tool", tool: { name: "mcp__ducter__task_send", input: { taskId: "t_trip", text: "x" } } });
-    await one.fc.callTool("task_send", { taskId: "t_trip", text: "x" });
-    s.end();
-  });
-  (one.fc.core as unknown as { bodies: unknown }).bodies = { computers: async () => COMPS };
-  seedErrand(one.fc, one.clock);
-  one.user("用我的携程账号登录看看价格");
-  await one.partner.idle();
-  expect(one.fr.sent).toEqual([]);
-  expect((one.fc.events.filter((e) => e.kind === "job_status").at(-1)!.body as Bodies["job_status"]).state).toBe("done");
-
-  const two = setup(async (_i, s) => {
-    const r = (await two.fc.callTool("task_send", { taskId: "t_trip", text: "x" })) as { ok: boolean };
+    const r = (await fc.callTool("task_send", { taskId: "t_trip", text: "用携程账号比价" })) as { ok: boolean };
     expect(r.ok).toBe(true);
     s.end();
   });
-  (two.fc.core as unknown as { bodies: unknown }).bodies = { computers: async () => COMPS };
-  seedErrand(two.fc, two.clock);
-  two.fc.cards.get("t_trip")!.place = { kind: "browser", device: "Fake MacBook", profile: "default" };
-  two.user("用我的携程账号登录看看价格");
-  await two.partner.idle();
-  expect(two.fr.sent).toHaveLength(1);
+  seedErrand(fc, clock);
+  user("这个酒店和汉庭差多少钱？用我的携程账号登录看");
+  await partner.idle();
+  expect(fr.sent.map((x) => x.taskId)).toEqual(["t_trip"]);
 });

@@ -637,4 +637,32 @@ person's words after it as the latest message.
 **Effort in words.** 「仔细」「认真」「好好做」/ "carefully", "thoroughly" open the task at high
 effort (D387's highest level that isn't extreme; a model without it takes medium), and its brief
 asks it to check its work before reporting; 「快速」「随便看看」/ "quick look" open it at low.
-Only the person's words count.
+Only the person's words count, as the partner reads them: it sets task_open's `effort` (D478); no
+code reads the words for it.
+
+## 20. The world line grows: usage limits and live work; replaces retires by id (D478, D477 phase 2b)
+
+**Who.** The developer whose Claude Code ran out at 21:40 with Codex signed in on the same Mac
+(`wp-quota-switch-zh`): before, the partner saw a failed report and nothing else, and waited for
+23:00 or asked. **After:** it sees the limit and who has room, and carries the work on itself.
+
+- **Usage limits per computer** (`core/src/agent-limits.ts`, `api.agentLimits`): each agent on each
+  computer is **used up until {time}** (or with the reset unknown) or has **room left**, from three
+  true sources only: the runner's own limit hits on the computer the task ran on, the armed limit
+  waits (a task resting until the reset; they outlive a restart), and the home's account reads as
+  last read or heard (D288; never a read per turn). A hit on the home asks its other signed-in agents
+  for their accounts once (the book caches each read). In `[devices]` after the agent's name:
+  `claude-code (used up until 23:00), codex (room left)`. A home alone shows the line only while one
+  of its agents is used up. The reset said is the reset itself, never the wait's wake a minute later.
+- **Live work** (`[live]`, every turn while any task is at work, at most 8): each live task's id,
+  title, agent, computer (named only when there are other computers) and what it waits on (**resting
+  until {agent}'s limit resets ({time})**, **waiting on the user**, queued, working). A warm session
+  sees the same truth a fresh one does.
+- **Nothing switches by itself.** D297's limit wait and the person's own **limitHandoff** setting
+  are unchanged; a carry-on with another agent the person didn't choose is the partner's judgment
+  from these facts (task_switch), never a rung in code.
+- **replaces retires by id** (`core/src/replaces.ts`, `api.replaced`): a task opened with
+  `replaces: <id>` sets that one aside when it didn't work out (superseded) and takes a finished
+  one off On hand (D454's Remove, with its undo; Past tasks keeps it). One still at work is left as
+  it is, and the tool result tells the partner so (task_stop it if this one takes its place). The
+  mender's title-overlap supersede is gone.

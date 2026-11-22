@@ -10,7 +10,7 @@
 // With no reset known, it tries again on its own (in 10 minutes for a throttle, else every hour,
 // at most a day), and the partner says it once when nobody else can take it (it matters then).
 // Hand it to {agent} now (`handoff`) and Stop waiting (`cancel`) are the card's two actions.
-import { fill, harnessName, words, type Bodies, type Candidate, type LimitWait, type LogEvent, type WaiterView } from "@ducter/protocol";
+import { fill, harnessName, LIMIT_RESET_GRACE_MS, words, type Bodies, type Candidate, type LimitWait, type LogEvent, type WaiterView } from "@ducter/protocol";
 import type { LogStore, Runner } from "@ducter/protocol/src/internal.ts";
 import type { AccountUsageBook } from "./account-usage.ts";
 import { realClock, type Clock } from "./clock.ts";
@@ -36,7 +36,7 @@ export const UNKNOWN_RETRY_MS = 60 * 60_000;
 /** Tries with no reset known before it stops and waits for the person. */
 export const MAX_UNKNOWN_TRIES = 24;
 /** After a named reset, a little slack so the first turn isn't refused at the edge. */
-export const RESET_GRACE_MS = 60_000;
+export const RESET_GRACE_MS = LIMIT_RESET_GRACE_MS;
 /** A hit this soon after the last wait on the task ended counts as the same limit (tries go up). */
 const AGAIN_MS = 30 * 60_000;
 

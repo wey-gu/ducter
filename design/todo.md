@@ -9,29 +9,47 @@ line `ducter check report` prints for it, naming the result file: "Seen live:
 computer that ran them (`~/.ducter/checks/`), never in git (D75); a passed item is ticked with its
 line.
 
-## The partner's world, phase 2b and 2c (D477 proposed, research/206 §2.1, §7)
+## The partner's world, phase 2c (D477 proposed, D478 built phase 2b; research/206 §2.1, §7, §9)
 
 - **The author's verdict on D477's architecture** (principle 21 proposed; `where` / `replaces` on
   task_open; no move by the mender). Trigger: the author reads research/206. Everything below waits for it.
 - **A live run of the hel case on a real home**, after 2a ships: "只在 hel 上" with the code only on the
   Mac; the task on hel, cloned there, Antigravity, nothing said about failures. Trigger: the next release.
-- **Live tasks and quotas in the world** (each live task's agent, computer, state and why it stopped; each
-  agent's allowance as `limits.ts` knows it). Trigger: phase 2b; `wp-quota-switch-zh` still fails without it.
-- **Supersede by `replaces`**, not by title overlap (`mend.ts` supersede). Trigger: phase 2b.
-- **Retire the meaning classifiers** in research/206 §2.1's table, each with a world puzzle first:
-  `PROMISE_RE`, `ASKS_NEW`, `OWN_ACCOUNT`, `stripResultPlumbing`, `effortFromWords`, said.ts, then
-  standing.ts behind the D61 floor with its own eval. Trigger: phase 2b, one per change, full eval each.
-- **The persona to ≈13 KB** (research/206 §5: routing into tool descriptions, world facts into state).
-  Trigger: phase 2b, after the puzzles hold on two haiku runs.
+- **Live tasks and quotas in the world**: built (D478: `[devices]` limits per agent and computer,
+  `[live]`). Owed: limits for a worker's own accounts read on that worker (today only the hits of
+  tasks that ran there). Trigger: a worker whose agent signs in to a different account than the home's.
+- **Supersede by `replaces`**: built (D478, `core/src/replaces.ts`).
+- **Meaning classifiers still in code** (research/206 §2.1, D478's table of what was retired). Each
+  goes with a world puzzle or eval scenario first, one per change, full eval each:
+  `PROMISE_RE` (the stream's preamble and the no-tool correction; trigger: OAR exposes a model's
+  commentary channel apart from its final words, or the reply becomes a structured say),
+  said.ts (D401's spoken rule kept at once, the author's standing preference; trigger: the partner's
+  own `rule_save` before task_open holds on the rules eval on two runs, then the regexes go),
+  standing.ts behind the D61 floor (trigger: said.ts gone, with its own outward eval scenarios),
+  peer-self `pingOf` and `ownAgentSelf` (trigger: a bridge eval round where the partner answers its
+  own agents' contact tests itself), fresh-look `OUTWARD` / `NO_LOOK_*`, `ASKS_RECALL`, `HOW_KNOW`,
+  `CLAIMS_CHOICE`, `ONE_TIME`, `ASKS_ABOUT_ME`, `REVIEW_WORDS`, Mem take-back, `doc-bar MAKE`,
+  `startProblem`'s buckets, ranking weights (phase 2c).
+- **The persona toward ≈13 KB, again** (research/206 §5, §9). D478 cut it to 12.6 KB and the full eval
+  fell by 14 (193/190 → 176/178 without the puzzles: calls, stop, the errand that stops at the checkout,
+  noticed, the person's own sessions, rich answers, a web link's place, the quota puzzle), so the cut
+  was stopped and the persona stays at 31.5 KB. Next time, one section per change with two full runs
+  each, and each removed patch answered first by a fact or by its tool's own description. Trigger:
+  the next eval round with budget for four runs per section.
+- **A same-hour comparison of main and the D478 branch** (two full haiku runs each, interleaved): the
+  final runs scored 180, 185 without the puzzles against the base's 197, 201, with mostly unrelated
+  length overruns lost. Trigger: before D478 merges.
+- **Puzzles D478 added that still fail** (`wp-mem-contradiction-zh`: the partner doesn't recall a
+  moved appointment before acting; `wp-phone-update-fix-zh`: it asks the person before telling
+  Ducter's own phone to update an app). Trigger: each gets its fact (recall surfaced as a fact for a
+  time-bound ask; what Ducter's own phone may do without asking, in the hand-over) before a fix lands.
 - **A place the agent fills itself** (a scratch folder plus the remote in the brief) when Ducter's own
   git can't read the repository but the agent's route can. Trigger: a real `no_access` on a home.
 - **Code facts from a full scan** (`clones` op listing every repository per computer, not only projects
   and task places), bounded; agent versions (verified or newer) in the world. Trigger: phase 2c.
-- **The home's line with no workers.** `[devices]` is still empty on a single-computer home (the eval's
-  homes would read this machine's agents otherwise); show the home's agents there once probes are faked
-  in the eval. Trigger: phase 2b.
-- **The eval transcript names a place's computer** (not `device: "local"`): the judge read local as the
-  Mac in `wp-explicit-clone-en`, whose home is hel. Trigger: the next puzzle change.
+- **The home's line with no workers.** `[devices]` shows on a single-computer home only while one of
+  its agents is used up (D478); its agents and code otherwise wait for faked probes in the eval.
+  Trigger: phase 2c.
 - **The partner on Codex** (hel's partner runs gpt-6.2-astra): run `--puzzles --harness codex` where
   Codex is signed in for the eval. Trigger: an eval home with Codex that isn't the person's own.
 

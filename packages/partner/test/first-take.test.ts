@@ -26,7 +26,7 @@ function setup(places: PlacesPort, args: Record<string, unknown>) {
   return { fc, fr, partner, heard: () => heard };
 }
 
-test("a guessed path is replaced by the copy core found; 仔细 is high effort and a brief that checks its work", async () => {
+test("a guessed path is replaced by the copy core found; the partner's high effort gives a brief that checks its work", async () => {
   const seen: unknown[] = [];
   const places: PlacesPort = {
     async preflight(a) {
@@ -37,7 +37,7 @@ test("a guessed path is replaced by the copy core found; 仔细 is high effort a
     cantStart: async () => ({ why: "no_repo", computer: "", what: "", line: "" }),
     replan: async () => ({ ok: false, message: "" }),
   };
-  const s = setup(places, { title: "改进通用设置页", harness: "codex", model: "gpt-6.2-astra", place: GUESS, brief: "nowledge-co/mem#10559 Improve general setting page。预计 ~/dev/mem。" });
+  const s = setup(places, { title: "改进通用设置页", harness: "codex", model: "gpt-6.2-astra", place: GUESS, brief: "nowledge-co/mem#10559 Improve general setting page。预计 ~/dev/mem。", effort: "high" });
   s.partner.onTrigger(s.fc.core.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: "10559 帮我用 codex astra 仔细做一下" } }));
   await s.partner.idle();
   expect(s.heard()?.ok).toBe(true);

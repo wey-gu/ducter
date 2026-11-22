@@ -12,6 +12,8 @@ export interface AccountUsageBook {
   get(harness: string, fresh?: boolean): Promise<UsageAnswer>;
   /** What a running session said: merged into the last read by window id (a new one is added). */
   seen(harness: string, limits: NonNullable<HarnessEvent["limits"]>): void;
+  /** D478: what was last read or heard, with no read (the partner's world line). */
+  peek(harness: string): UsageAnswer | undefined;
 }
 
 /** How long a read stands before the card reads again. */
@@ -22,6 +24,7 @@ export function createAccountUsage(o: { read: (harness: string) => Promise<Usage
   const book = new Map<string, { answer: UsageAnswer; at: number }>();
   const reading = new Map<string, Promise<UsageAnswer>>();
   return {
+    peek: (harness) => book.get(harness)?.answer,
     async get(harness, fresh) {
       const had = book.get(harness);
       if (had && !fresh && now() - had.at < USAGE_FRESH_MS) return had.answer;

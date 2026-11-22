@@ -223,7 +223,7 @@ test("a reply to one line under a message carries the line's words and only its 
   expect(last).toContain(`(#${u0.seq}, line 2): "写发布说明"`);
   expect(last).toContain('task t_notes "发布说明"');
   expect(last).toContain("about that one line only");
-  expect(last.split("[user, replying")[1]).not.toContain("t_price");
+  expect(last.split("[user, replying")[1]!.split("[live]")[0]).not.toContain("t_price"); // D478: [live] lists every live task, a fact apart
   // An index with no line: a plain reply to the message.
   const plain = resolveReply(core.log, core.decisions, { seq: u0.seq, ask: 7 });
   expect(plain.ask).toBeUndefined();

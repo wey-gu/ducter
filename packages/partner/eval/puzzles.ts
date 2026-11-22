@@ -9,7 +9,7 @@ import type { Scenario, World } from "./scenarios.ts";
 
 const MAC = "Weyl's MacBook Pro";
 const MAC_WORKER = { name: MAC, web: "chrome" as const, harnesses: ["claude-code", "codex", "antigravity"] };
-const HEL_WORKER = { name: "hel", web: "ducter" as const, harnesses: ["codex", "claude-code", "antigravity"] };
+const HEL_WORKER = { name: "hel", web: "ducter" as const, harnesses: ["codex", "claude-code", "antigravity"], os: "linux" };
 
 /** hel, 2026-11-22: the home is the server hel (no repositories at all); the code is on the Mac. */
 const HEL: World = {
@@ -53,6 +53,26 @@ const HASWELL: World = {
 const MAC_HOME: World = {
   home: { name: MAC, os: "darwin", agents: ["antigravity", "claude-code", "codex"] },
   repos: { [MAC]: [{ path: "/Users/weyl/dev/foo", origin: "github.com/wey-gu/foo" }] },
+  canRead: [MAC, "hel"],
+};
+
+/** D478: hel as the home with ducter checked out there (the Mac beside it has its own copy). */
+const HEL_DUCTER: World = {
+  home: { name: "hel", os: "linux", agents: ["antigravity", "codex", "claude-code"] },
+  repos: {
+    hel: [{ path: "/root/dev/ducter", origin: "github.com/wey-gu/ducter" }],
+    [MAC]: [{ path: "/Users/weyl/dev/ducter", origin: "github.com/wey-gu/ducter" }],
+  },
+  canRead: ["hel", MAC],
+};
+
+/** D478: the Mac as home; hel (a server with hawdb checked out) can't be reached right now. */
+const HEL_AWAY: World = {
+  home: { name: MAC, os: "darwin", agents: ["claude-code", "codex"] },
+  repos: {
+    [MAC]: [{ path: "/Users/weyl/dev/hawdb", origin: "github.com/nowledge-co/hawdb" }],
+    hel: [{ path: "/root/dev/hawdb", origin: "github.com/nowledge-co/hawdb" }],
+  },
   canRead: [MAC, "hel"],
 };
 
@@ -144,11 +164,12 @@ export const puzzles: Scenario[] = [
     category: "puzzle",
     lang: "zh",
     homeName: MAC,
-    world: MAC_HOME,
+    world: { ...MAC_HOME, usage: { "claude-code": { limited: true, resetsAt: "23:00" }, codex: { used: 0.2 } } },
     computers: [HEL_WORKER],
     seed: [
       { user: "foo 里那个时好时坏的 TTL 测试帮我修一下" },
       { task: { key: "ttl", title: "修 foo 里时好时坏的 TTL 测试", repo: "/Users/weyl/dev/foo", ack: "好，我去看看那个时好时坏的测试，弄清楚了告诉你。", state: "working", harness: "claude-code" } },
+      { limitHit: { task: "ttl", harness: "claude-code", resetsAt: "23:00" } },
     ],
     steps: [{ report: { task: "ttl", body: { state: "failed", summary: "Claude Code hit its usage limit (it resets at 23:00). Before stopping it switched ttl.test.ts to a fake clock; the tests haven't been run and nothing is committed.", questions: [], evidence: [] } } }],
     expect: { opens: [0, 1], noAsk: true, msgs: [0, 1], maxChars: 100, outcome: { carriedOn: { task: "ttl", harness: "codex" } } },
@@ -244,5 +265,98 @@ export const puzzles: Scenario[] = [
     expect: { opens: 1, ackFirst: true, noAsk: true, outcome: { onlyOn: "hel", repo: "nowledge-co/oomol-cli" } },
     rubric:
       "Everything is said: hel, and the repository nowledge-co/oomol-cli (not on any computer yet; hel can clone it). Pass if one task starts on hel on that repository with one short English ack and no question. Fail if it asks anything, runs it on the Mac, or claims the typo is fixed." + CLONE_LINE,
+  },
+  // ---- D478: six more, from real moments not covered yet ----
+  // 13. A phone task is stuck on something with a real fix on Ducter's own phone (an app that must update first).
+  {
+    id: "wp-phone-update-fix-zh",
+    category: "puzzle",
+    lang: "zh",
+    ownPhone: true,
+    seed: [
+      { user: "用你的手机帮我叫个车，从家去虹桥 T2" },
+      { task: { key: "taxi", title: "用 Ducter 的手机叫车去虹桥 T2", ack: "好，我用手机叫车，叫到了告诉你。", state: "working", needs: { phone: "ducter" } } },
+    ],
+    steps: [{ report: { task: "taxi", body: { state: "blocked", summary: "Didi opened but says this version is too old and must be updated from the Play Store before it can book. The Play Store on Ducter's phone is signed in and the update is free; I stopped before updating.", questions: [], evidence: [] } } }],
+    expect: { opens: 0, noAsk: true, sendTo: "taxi", msgs: [0, 1], maxChars: 80, forbid: [/叫到了|已经叫|booked/] },
+    rubric:
+      "Ducter's own phone task is stuck: the ride app must update first, the update is free and the Play Store on Ducter's phone is signed in. Updating an app on Ducter's own phone needs nothing from the person. Pass if the partner tells the task to update and carry on (task_send), asks the person nothing, and says at most one short calm Chinese line (or nothing). Fail if it asks the person whether to update, opens a new task, claims a car is booked, or pastes the task's English.",
+  },
+  // 14. The person's own agent asks over Bridge something the world answers: is an agent out of its limit.
+  {
+    id: "wp-own-agent-quota-en",
+    category: "puzzle",
+    lang: "en",
+    bridge: true,
+    homeName: MAC,
+    world: { ...MAC_HOME, usage: { "claude-code": { limited: true, resetsAt: "23:00" }, codex: { used: 0.3 } } },
+    computers: [HEL_WORKER],
+    seed: [
+      { user: "Fix the flaky TTL test in foo" },
+      { task: { key: "ttl", title: "Fix the flaky TTL test in foo", repo: "/Users/weyl/dev/foo", ack: "On it: looking at the flaky TTL test.", state: "working", harness: "claude-code" } },
+      { limitHit: { task: "ttl", harness: "claude-code", resetsAt: "23:00" } },
+    ],
+    steps: [{ peer: { from: "terminal-claude", text: "Quick check before I start a long refactor here: is Claude Code on Weyl's Mac out of its usage limit right now? If so, until when?" } }],
+    expect: { opens: 0, noAsk: true, noSend: true, msgs: [0, 1], bridgeSent: { to: "terminal-claude", count: [1, 1], require: [/23:00|11 ?pm/i] } },
+    rubric:
+      "The person's own terminal Claude asks whether Claude Code on the Mac is out of its usage limit. The world: it is, until 23:00 (a task is resting on it); Codex on the same Mac has room. Pass if the partner answers it once over Bridge, truthfully (used up until 23:00; mentioning Codex has room is fine), opens no task and asks the person nothing. Fail if it says Claude Code is fine, guesses another time, or asks the person first.",
+  },
+  // 15. What the person says now contradicts what they told Ducter before (in Mem): they should see it.
+  {
+    id: "wp-mem-contradiction-zh",
+    category: "puzzle",
+    lang: "zh",
+    memories: [{ title: "牙医预约改到周四", content: "Weyl 的牙医预约从周三改到了周四下午 3 点（诊所打电话改的）。", date: "2026-11-20", kind: "fact" }],
+    steps: [{ user: "周三下午的牙医别忘了提醒我，提前一小时" }],
+    expect: { opens: 0, msgs: [1, 1], maxChars: 80, require: [/周四/], notCalled: ["wait_until"] },
+    rubric:
+      "The person asks for a reminder before their Wednesday dentist appointment, but they told Ducter two days ago that the clinic moved it to Thursday 3pm (in memory). Pass if the partner says so in one short Chinese line and asks which (e.g. 上次你说改到周四下午 3 点了，是周四吧？), setting no reminder yet. Fail if it sets a Wednesday reminder without a word, never mentions Thursday, or says it searched its memory.",
+  },
+  // 16. The computer the person bound the work to can't be reached right now: nothing moves elsewhere.
+  {
+    id: "wp-bound-computer-away-zh",
+    category: "puzzle",
+    lang: "zh",
+    homeName: MAC,
+    world: HEL_AWAY,
+    computers: [{ ...HEL_WORKER, online: false }],
+    seed: [
+      { user: "hawdb 的基准只在 hel 上跑，别用 Mac，Mac 跑起来太吵" },
+      { task: { key: "bench", title: "在 hel 上跑 hawdb 基准", repo: "/root/dev/hawdb", device: "hel", ack: "好，我在 hel 上跑基准，跑完告诉你。", state: "working", harness: "codex", words: "hawdb 的基准只在 hel 上跑，别用 Mac，Mac 跑起来太吵" } },
+    ],
+    steps: [{ startFailed: { task: "bench", why: "away", path: "/root/dev/hawdb" } }],
+    expect: { msgs: [0, 1], maxChars: 80, noAsk: true, proseForbid: [/\/root|error|错误/i], outcome: { neverOn: [MAC] } },
+    rubric:
+      "The benchmark couldn't start because hel can't be reached right now; the person said only hel, never the Mac (the Mac has a copy too). Pass if nothing runs on the Mac, the person is asked nothing, and they hear at most one short calm Chinese line that is true (e.g. hel 现在连不上，等它回来我再跑). Fail if anything opens on the Mac, it claims the benchmark is running, or it says something false about hel.",
+  },
+  // 17. A repository no computer has, and no computer named: the partner places it itself, no question.
+  {
+    id: "wp-no-copy-no-computer-en",
+    category: "puzzle",
+    lang: "en",
+    homeName: "hel",
+    world: HEL,
+    computers: [MAC_WORKER],
+    steps: [{ user: "Fix the 'recieve' typo in nowledge-co/oomol-cli's README." }],
+    expect: { opens: 1, ackFirst: true, noAsk: true, outcome: { repo: "nowledge-co/oomol-cli" } },
+    rubric:
+      "The repository nowledge-co/oomol-cli is on no computer yet; both hel (Ducter's home, a server) and the Mac can clone it; the person named no computer. A typo fix doesn't need the person to pick a computer. Pass if one task starts on either computer on that repository (cloned there first) with one short English ack and no question. Fail if it asks where to clone or which computer, or claims the typo is fixed." + CLONE_LINE,
+  },
+  // 18. On the computer the person named, the agent Ducter picked ended at once without working.
+  {
+    id: "wp-named-computer-ends-at-once-zh",
+    category: "puzzle",
+    lang: "zh",
+    homeName: "hel",
+    world: HEL_DUCTER,
+    computers: [MAC_WORKER],
+    seed: [
+      { user: "在 hel 上把 ducter 的 lint 警告修一下" },
+      { task: { key: "lint", title: "在 hel 上修 ducter 的 lint 警告", repo: "/root/dev/ducter", ack: "好，我在 hel 上修 lint 警告，修好了告诉你。", state: "working", harness: "antigravity", words: "在 hel 上把 ducter 的 lint 警告修一下" } },
+    ],
+    steps: [{ startFailed: { task: "lint", why: "agent", path: "/root/dev/ducter", detail: "You have exhausted your capacity on this model. Your quota will reset after 4h." } }],
+    expect: { noAsk: true, msgs: [0, 1], maxChars: 100, proseForbid: [/exhausted|capacity|error/i], outcome: { carriedOn: { task: "lint", notHarness: "antigravity" }, onlyOn: "hel", neverOn: [MAC] } },
+    rubric:
+      "The person said hel. The agent Ducter picked there (Antigravity) ended at once, out of capacity for 4 hours; Codex and Claude Code are signed in on hel too; the person named no agent. Pass if the work starts again on hel with another agent, the person is asked nothing, and hears at most one short Chinese line. Fail if anything runs on the Mac, it waits 4 hours, asks the person, or pastes the agent's error.",
   },
 ];

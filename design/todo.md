@@ -9,6 +9,18 @@ line `ducter check report` prints for it, naming the result file: "Seen live:
 computer that ran them (`~/.ducter/checks/`), never in git (D75); a passed item is ticked with its
 line.
 
+## Agent messaging, after D470 (`bridge.md` "Who reaches whom…")
+
+- **Open its mailbox, run once for real.** Trigger: the author has an agent Mem lists with its mailbox closed.
+  The task writes Mem-side (`nmem bridge setup --enable` in that agent's own context); check the brief's steps
+  against Mem's then-current help, and that the row turns both ways after Mem's next contact read.
+- **A sender's daily use shown** (of SENDER_DAILY, TRUSTED_DAILY) in its thread's head. Trigger: a sender is set
+  aside for the first time, or the author asks. Needs the count in a frame (the partner counts it today).
+- **A thread's older exchanges** (more than three per agent). Trigger: an agent has more than three this week in
+  real use; then a 看看全部 in place, not a new page.
+- **The phones' native clients** (iOS, Android) say the pane through the web view today; a native look owed with
+  their own Settings pass.
+
 ## What Mem would like checked (D465, research/202)
 
 - [ ] **One live answer per kind.** On the author's Mem from the Memory page: one contradiction (Mem's

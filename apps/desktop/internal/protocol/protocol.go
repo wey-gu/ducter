@@ -1440,6 +1440,8 @@ type MemPluginInstall struct {
 	T       string `json:"t"` // "mem_plugin_install"
 	Device  string `json:"device"`
 	Harness string `json:"harness"`
+	// D470: "mailbox" = 打开它的信箱 / Open its mailbox (one task there through the agent's own Mem plugin).
+	What string `json:"what,omitempty"`
 }
 
 // ---------- Connections (D96: the user's OpenConnector or other MCP servers) ----------
@@ -1668,6 +1670,8 @@ type Peers struct {
 	Reach   string   `json:"reach"`
 	Trusted []string `json:"trusted"`
 	Muted   []string `json:"muted"`
+	// D334: teammates' agents let through (D470: 不再听它的 moves one to Muted; nil = unchanged).
+	Allowed []string `json:"allowed"`
 }
 
 // MarshalJSON writes Quiet only when it is set or cleared.

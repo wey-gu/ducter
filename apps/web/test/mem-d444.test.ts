@@ -9,7 +9,7 @@ import { reachRows } from "../src/mem-view.ts";
 import { memoryWords } from "../src/i18n-memory.ts";
 
 const src = (f: string) => readFileSync(join(import.meta.dir, "../src", f), "utf8");
-const KEYS = ["peers.reach.yes.open", "peers.reach.yes.closed", "peers.ref", "peers.ref.inline", "peers.ref.plan", "peers.ref.none.memory", "peers.ref.none.artifact", "peers.ref.none.thread", "peers.ref.none.plan", "peers.ref.none.other", "mem.about.ask", "mem.about.ask.words"];
+const KEYS = ["peers.way.back.yes", "peers.way.back.no", "peers.ref", "peers.ref.inline", "peers.ref.plan", "peers.ref.none.memory", "peers.ref.none.artifact", "peers.ref.none.thread", "peers.ref.none.plan", "peers.ref.none.other", "mem.about.ask", "mem.about.ask.words"];
 
 describe("能找到{name}的 with Mem's contact list (D444)", () => {
   const dev = { id: "local", name: "Mac", home: true, harnesses: [{ harness: "claude-code", installed: true, loggedIn: true, mem: { state: "installed" } }] };
@@ -24,8 +24,9 @@ describe("能找到{name}的 with Mem's contact list (D444)", () => {
   });
   test("the line says what Mem said, and pi's stays its own", () => {
     const m = src("memory.tsx");
-    expect(m).toMatch(/if \(r\.can === "none"\) return t\("peers\.reach\.none"\);/);
-    expect(m).toMatch(/r\.can === "yes" && r\.box\) return t\(`peers\.reach\.yes\.\$\{r\.box\}`/);
+    // D470: what Mem said is the way back, drawn and said (peers.way.back.*); pi's stays its own line.
+    expect(m).toMatch(/r\.can === "none" \? t\("peers\.reach\.none"\)/);
+    expect(m).toMatch(/t\(`peers\.way\.back\.\$\{w\.back\}`, name\)/);
     expect(m).toMatch(/A\.bridge\?\.mailboxes\)/);
   });
 });
@@ -40,7 +41,7 @@ describe("the words, both languages, the same on the Mac", () => {
         expect(go, `${lang} ${k}`).toContain(`${JSON.stringify(k)}:`);
         expect(go, `${lang} ${k}`).toContain(JSON.stringify(w));
       }
-      expect(memoryWords.zh["peers.reach.yes.open"]!.replace(/%\[1\]s/g, "Ducter")).toBe("能找到Ducter，Ducter也找得到它");
+      expect(memoryWords.zh["peers.way.back.yes"]!.replace("%s", "Ducter")).toBe("Ducter能找到它");
     });
   test("别记这个 is the fresh line's button, and the Memory pane says it can be said", () => {
     const i18n = src("i18n.ts");

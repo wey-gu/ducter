@@ -257,6 +257,8 @@ export class Store {
    * unconfirmed, so 最近 / Recently can say one that hasn't gone, not only the ones that did.
    */
   outOps = new Map<string, { seq: number; ts: string; b: Bodies["bridge_msg"] }>();
+  /** D470 round 2: replies shown as sent, by the message answered and the words. */
+  sentReplies = new Set<string>();
   // D448: a task's own exchanges with another agent that never show in the conversation (its follow-ups
   // with no card, the answers that went into it), for 最近 / Recently.
   taskPeers: { ev: { seq: number; ts: string }; peer: Bodies["bridge_msg"] }[] = [];
@@ -712,6 +714,13 @@ export class Store {
           this.pingAt.set(b.messageId, ev.seq);
           this.lastPing = { key, seq: ev.seq, at };
           return entry({ peer: b });
+        }
+        // D470 round 2: one delivered message is one line. A second "sent" for the same op, or the same words
+        // sent again in answer to the same message, is the Log saying it twice, never a second message.
+        if (b.direction === "out" && b.state === "sent") {
+          const key = `${b.inReplyTo ?? ""}|${b.text}`;
+          if ((b.opId && this.outOps.get(b.opId)?.b.state === "sent") || (b.inReplyTo && this.sentReplies.has(key))) return void this.bySeq.set(ev.seq, null);
+          if (b.inReplyTo) this.sentReplies.add(key);
         }
         if (b.direction === "out" && !b.ack && b.opId && b.text && b.state && ["sending", "sent", "failed", "unknown", "unconfirmed"].includes(b.state)) this.outOps.set(b.opId, { seq: ev.seq, ts: ev.ts, b });
         if (b.direction === "out" && b.ack) {

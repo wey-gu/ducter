@@ -1388,8 +1388,16 @@ function EntryBody({ e, chipOwner, livingItems, join, prevUser }: { e: Entry; ch
   }
   if (e.ai) {
     const ans = answerOf(e, prevUser);
+    const from = A.peerOrigin.get(e.ev.seq);
     return (
       <div class={`partner${join ? " join" : ""}${e.ai.cal ? " has-cal" : ""}${e.ai.ui?.length ? " has-rich" : ""}${e.ai.first ? " first" : ""}`} data-reply={rk} data-seq={e.firstSeq}>
+        {/* D470: where the partner's words came from, one quiet line (its coin, the agent), opening the thread. */}
+        {from && (
+          <button type="button" class="peer-origin" onClick={() => A.openSettings("peers")}>
+            <Coin harness={peerHarness(peerName(from))} size={18} />
+            <span>{capFirst(t("peer.origin", peerName(from)))}</span>
+          </button>
+        )}
         {/* D298: the clay partner over its first words, while nothing else was said. */}
         {e.ai.first && !e.ai.first.look && firstOpening() && (
           <span class="first-face">
@@ -1446,7 +1454,8 @@ function EntryBody({ e, chipOwner, livingItems, join, prevUser }: { e: Entry; ch
     const first = e.peer.direction === "in" && !!e.peer.first;
     return (
       <>
-        {!asked && !(e.peer.state === "ping" && A.S.pings.get(e.ev.seq)?.told) && <PeerLine b={e.peer} ts={e.ev.ts} seq={e.ev.seq} />}
+        {/* D470: a request the partner's own next words say keeps no line of its own (its origin stands over them). */}
+        {!asked && !A.peerSpoken.has(e.ev.seq) && !(e.peer.state === "ping" && A.S.pings.get(e.ev.seq)?.told) && <PeerLine b={e.peer} ts={e.ev.ts} seq={e.ev.seq} />}
         {first && <FirstPeerNote b={e.peer} />}
       </>
     );

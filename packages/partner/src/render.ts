@@ -799,6 +799,13 @@ export function renderBridge(b: Bodies["bridge_msg"], answers?: Bodies["bridge_m
         // Live trial (D249): haiku turned a work request that left the approach to Ducter into a call for the user.
         `A request for work (a goal, a fix, something to build or check) is work even when it mentions ways to do it: ask whether to take it on (Go = open a task), without forMessage.\n`
       : "") +
+    // D470 (the author, 2026-11-22): the user's own agent, in their own place, asking only for status the
+    // user can already see answers without a card (live on hel: a Go card before "what time is it, how many
+    // tasks" was friction). Work, the user's call, memories or files, or a teammate's agent still go as above.
+    // Offered only on a short question (a work request is long and asks nothing), so it never pulls work toward a reply.
+    (b.mine && !b.shared && b.text.length <= 200 && /[?？]/.test(b.text)
+      ? "Only when it asks for nothing but status the user can already see (the time, what you have running, what is done): answer it now with bridge_reply, a line or two, and no card: only the time and your tasks' count or titles, nothing the user told you, planned or keeps in memory. That is never work or the user's call (those go as above).\n"
+      : "") +
     // The sender can't close the frame early.
     safe
   );

@@ -30,6 +30,7 @@ import { gotKeys } from "./media-fresh.ts";
 import { keepDraft, readDraft } from "./follow.ts";
 import type { AccountUsage, LogEvent, PartnerAsk, ReplyWant } from "@ducter/protocol";
 import { DEFAULT_PARTNER, needsAcross, type PartnerInfo, type PartnerLook } from "@ducter/protocol/src/partners.ts";
+import { spokenPeers } from "./mem-view.ts";
 
 /** D309: the partner whose conversation this device shows, kept on this device (another may show another). */
 const PARTNER_KEY = "ducter.partner";
@@ -2289,6 +2290,18 @@ class AppState {
     this.send({ t: "mem_plugin_install", device, harness });
     this.changed();
   }
+  /** D470: 打开它的信箱 / Open its mailbox: one task on that device opens the agent's Nowledge Mem mailbox (the tap is its Go). */
+  openMailbox(device: string, harness: string) {
+    this.memAnswer = undefined;
+    this.mailboxOpening.add(`${device}:${harness}`);
+    this.send({ t: "mem_plugin_install", device, harness, what: "mailbox" });
+    this.changed();
+  }
+  /** D470: the mailboxes this window asked to open (until the next look at Mem's list says otherwise). */
+  mailboxOpening = new Set<string>();
+  /** D470: the request lines the partner's next words already say (hidden), and the message each one stands over (origin). */
+  peerSpoken = new Set<number>();
+  peerOrigin = new Map<number, NonNullable<Entry["peer"]>>();
   /** D363: put agents on a device, sign one in there, a pasted code, cancel, or look again. */
   agentSetup(device: string, action: "install" | "login" | "code" | "cancel" | "look" | "logout", o: { harnesses?: string[]; harness?: string; code?: string } = {}) {
     if (action !== "look") this.setupAnswer = undefined;
@@ -3390,6 +3403,10 @@ class AppState {
       else if (e.living) for (const it of livingItems(e)) if (it.kind === "done" || it.kind === "failed") chipOwner.set(it.taskId, e.firstSeq);
     }
     this.pending = this.pending.filter((p) => !echoed.has(p.clientId));
+    // D470: a request the partner's own next words already say gives way to one quiet origin line over them.
+    const spoken = spokenPeers(rows, (id) => [...S.decisions.values()].some((d) => d.asker?.messageId === id));
+    this.peerSpoken = spoken.hidden;
+    this.peerOrigin = spoken.origin;
     return { rows, livingItems, chipOwner };
   }
 }

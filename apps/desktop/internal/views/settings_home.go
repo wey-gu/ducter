@@ -28,6 +28,8 @@ type setNeed struct {
 	// plugin's update (its in-place ask first), or Update all.
 	dv *protocol.DeviceView
 	h  protocol.DeviceHarness
+	// D470: an agent whose answers can't get back: its mailbox's one task on that computer.
+	boxDevice, boxHarness string
 }
 
 // setNeeds is everything on Settings that needs the person, most blocking first.
@@ -52,6 +54,9 @@ func (a *App) setNeeds() []setNeed {
 		if r.h.Mem != nil && r.h.Mem.State == "update" {
 			out = append(out, setNeed{key: "memp:" + r.dv.ID + ":" + r.h.Harness, text: a.L.T("need.memplug", harnessName(r.h.Harness)), goLabel: a.L.T("need.go.update"), tab: TabMemory, dv: r.dv, h: r.h})
 		}
+	}
+	for _, r := range a.peersOneWay() {
+		out = append(out, setNeed{key: "peers:" + r.Harness, text: a.L.T("need.peers.oneway", r.Tool), goLabel: a.L.T("peers.fix.mailbox"), tab: TabPeers, boxDevice: r.Device, boxHarness: r.Harness})
 	}
 	if n, running := a.updatesWaiting(); n > 0 && !running {
 		s := a.L.T("need.update.one")
@@ -142,7 +147,7 @@ func (a *App) paneSay(tab, lede string) string {
 	case TabAutofill:
 		return a.L.T("say.autofill")
 	case TabPeers:
-		return a.L.T("say.peers")
+		return a.peersSay()
 	}
 	return lede
 }
@@ -182,6 +187,11 @@ func (a *App) paneSpeaks(c *ui.Context, tab, say string) {
 func (a *App) needFix(c *ui.Context, n setNeed) {
 	t := a.T
 	switch {
+	case n.boxDevice != "":
+		if a.buttonFor(c, n.goLabel, n.text, btnSecondary, t.ControlSM, t.Bg) {
+			a.openMailbox(n.boxDevice, n.boxHarness)
+		}
+		return
 	case n.dv != nil:
 		_, action := a.memPluginWords(n.h.Mem, n.h.Harness)
 		key := n.dv.ID + ":" + n.h.Harness
@@ -231,17 +241,31 @@ func (a *App) homePanel(c *ui.Context) {
 	}
 	type line struct {
 		key, label, text, tab string
+		// D470: a second part of the line opening its own pane (the agents after the chat apps).
+		more, moreTab string
 	}
-	lines := []line{{"lives", a.L.T("home.l.lives"), a.homeLives(), TabRun}}
+	lines := []line{{key: "lives", label: a.L.T("home.l.lives"), text: a.homeLives(), tab: TabRun}}
 	if a.S.Settings != nil && !a.noBrain() {
-		lines = append(lines, line{"thinks", a.L.T("home.l.thinks"), a.homeThinks(), TabPartner})
+		lines = append(lines, line{key: "thinks", label: a.L.T("home.l.thinks"), text: a.homeThinks(), tab: TabPartner})
 	}
-	lines = append(lines, line{"reads", a.L.T("home.l.reads"), a.homeReads(), TabAccounts})
+	lines = append(lines, line{key: "reads", label: a.L.T("home.l.reads"), text: a.homeReads(), tab: TabAccounts})
 	if s := a.homeMem(); s != "" {
-		lines = append(lines, line{"mem", a.L.T("home.l.mem"), s, TabMemory})
+		lines = append(lines, line{key: "mem", label: a.L.T("home.l.mem"), text: s, tab: TabMemory})
 	}
-	if s := a.homeReach(); s != "" {
-		lines = append(lines, line{"reach", a.L.T("home.l.reach"), s, TabChats})
+	reach := a.homeReach()
+	agents := ""
+	if names := a.peersReaching(); len(names) > 0 {
+		key := "home.reach.agents"
+		if reach != "" {
+			key = "home.reach.and"
+		}
+		agents = a.L.T(key, a.listWords(names))
+	}
+	switch {
+	case reach != "":
+		lines = append(lines, line{key: "reach", label: a.L.T("home.l.reach"), text: reach, tab: TabChats, more: agents, moreTab: TabPeers})
+	case agents != "":
+		lines = append(lines, line{key: "reach", label: a.L.T("home.l.reach"), text: agents, tab: TabPeers})
 	}
 	labelW := float32(76)
 	if !a.L.Han() {
@@ -273,11 +297,21 @@ func (a *App) homePanel(c *ui.Context) {
 					l := l
 					ui.Row(c.Key("l:" + l.key)).Gap(t.S3).AlignItems(ui.Start).Children(func() {
 						uiText(c.Key("label"), l.label).FontSize(t.SM).FontWeight(700).TextColor(t.InkMuted).Width(labelW).Shrink(0).SingleLine().Padding(3, 0, 0, 0)
-						tx := uiText(c.Key("t"), keepWords(autospace(l.text))).FontSize(t.MD).LineHeight(1.5).TextColor(t.Ink).Shrink(1).MinWidth(0).
-							Cursor(ui.CursorPointer).Role(ui.RoleLink).Tooltip(a.tabName(l.tab))
-						if tx.Clicked() {
-							a.openTab(l.tab)
+						part := func(key, text, tab string) {
+							tx := uiText(c.Key(key), keepWords(autospace(text))).FontSize(t.MD).LineHeight(1.5).TextColor(t.Ink).Shrink(1).MinWidth(0).
+								Cursor(ui.CursorPointer).Role(ui.RoleLink).Tooltip(a.tabName(tab))
+							if tx.Clicked() {
+								a.openTab(tab)
+							}
 						}
+						if l.more == "" {
+							part("t", l.text, l.tab)
+							return
+						}
+						ui.Row(c.Key("parts")).Wrap().Shrink(1).MinWidth(0).Children(func() {
+							part("t", l.text, l.tab)
+							part("more", l.more, l.moreTab)
+						})
 					})
 				}
 			})

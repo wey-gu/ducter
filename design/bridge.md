@@ -2,7 +2,7 @@
 
 > Design note · 2026-11-09, updated 2026-11-21 (D448: tasks Ducter carries messages for; D459: one story with Memory) · Principles 1, 7, 12, 14, 17, 18 · Decided: D105–D111 (outbound,
 > the outgoing ledger, the result reply, names, copy, follow-through, the Mem asks), D162 (the live check and the
-> real shapes), D163–D164 (beyond itself: X1–X3), D170 (X1, X2 and the Settings switch, built), D171 (the persona's Space), D205 (the persona connects itself with one tap), D225 (the released Bridge; the home's own Mem put in, updated and signed in from the same row), D324 (one home answers a partner's mailbox; the trial as its own identity), D333 (the partner's own tools only, 查看来信, the card says where it reads), D334 (the address is the identity, not the Space: every Space read, replies in the message's, a teammate's first message is a card), D338 (the card names only the Spaces read; a Space Mem answers 404 for is said and backed off; no connection per Space), D364 (nmem 0.10.120's linked shape: an original is not an answer; the update offered on the pane), D367 (every inbox page read; the trial's peer touches only its own run's mail), D369 (a mailbox Mem must sort out on its side: said once, checked every 30 min; the trial's guard reads Mem's own send prefix), D400 (nmem 0.10.121: the identity inbox read once, Mem's own open/reply argv, `--watch` or a 5 s wait, a device label, Mem's own notices said); still open: J-Q1–3, J-Q8, J-Q14 ·
+> real shapes), D163–D164 (beyond itself: X1–X3), D170 (X1, X2 and the Settings switch, built), D171 (the persona's Space), D205 (the persona connects itself with one tap), D225 (the released Bridge; the home's own Mem put in, updated and signed in from the same row), D324 (one home answers a partner's mailbox; the trial as its own identity), D333 (the partner's own tools only, 查看来信, the card says where it reads), D334 (the address is the identity, not the Space: every Space read, replies in the message's, a teammate's first message is a card), D338 (the card names only the Spaces read; a Space Mem answers 404 for is said and backed off; no connection per Space), D364 (nmem 0.10.120's linked shape: an original is not an answer; the update offered on the pane), D367 (every inbox page read; the trial's peer touches only its own run's mail), D369 (a mailbox Mem must sort out on its side: said once, checked every 30 min; the trial's guard reads Mem's own send prefix), D400 (nmem 0.10.121: the identity inbox read once, Mem's own open/reply argv, `--watch` or a 5 s wait, a device label, Mem's own notices said), D470 (Agent messaging in Settings' voice: who reaches whom drawn per agent with its fix, the exchanges as threads, who may ask what, the conversation says it once); still open: J-Q1–3, J-Q8, J-Q14 ·
 > Evidence: `research/31` (public), `research/37` (dogfood, §6 the live check), `research/66` (the release, the live
 > run, Mem on a home without it), `research/134` (nmem 0.10.120), `research/137` (the 0.10.120 live run: the inbox's pages), `research/139` (the second 0.10.120 run: the guard, a mailbox Mem must sort out), `research/161` (nmem 0.10.121 and the read-only live read), private `31` and `10`.
 >
@@ -1128,6 +1128,9 @@ after the Go (and a restart for 0.1.0) each reply went **sending → unknown** i
 
 ## Trusted at a glance (D433, 2026-11-20)
 
+> D470: the pane's sentences per tool and 最近 below are replaced by 谁能找到谁 (a picture per agent) and 来往
+> (threads with outcomes); the reads behind them (Mem's plugin check, its contact list, the out-ops) stand.
+
 The connected pane answers three questions without a click: **who can reach the partner**, **did what it sent go**,
 and **is the computer that receives its mail alive**. Evidence: `research/183` (nmem 0.10.121, the Mem app's Rust
 CLI, read from help and the binary only).
@@ -1148,6 +1151,9 @@ CLI, read from help and the binary only).
   of Mem in research/183 §4 and research/191 §asks. (Contacts-backed reach and handed-over documents: D444, below.)
 
 ## Round 2: Mem's own list, and what a handoff carries (D444, 2026-11-21)
+
+> D470: the pane's sentences per tool and 最近 below are replaced by 谁能找到谁 (a picture per agent) and 来往
+> (threads with outcomes); the reads behind them (Mem's plugin check, its contact list, the out-ops) stand.
 
 Evidence: `research/191` (nmem still 0.10.121; a deeper read of its help and strings).
 
@@ -1206,12 +1212,48 @@ answer (in_reply_to = the task's message) → bridge_msg{in, state task, taskId}
 The coherence pass over Settings read Memory and Agent messaging as the three users (`settings.md` "One hand,
 every pane"): H wants who can talk to whom at a glance, C wants to feel known and never watched, F needs one
 sentence per screen. The two panes now read as one story told twice: **Memory** opens with **{name} 记得你** /
-**这周新记了 5 条** / its switch / **哪条不想让它记，说一声「别记这个」就好。**; **Agent messaging** opens the same way
+**这周新记了 5 条** / its switch / **哪条不想让它记，说一声「别记这个」就好。**; **Agent messaging** opened the same way (until D470: now the partner's sentence, then the switch, below)
 with **你的 agent 能找到{name}** / **这周来往了 3 次** / its switch / **它们交来的事、要你定的事，都会出现在你们的对话里。**
 (off: **你的 agent 现在找不到{name}** / **关着时，{name}也不会去问它们。** / **之前的来往都还在你们的对话里。**). Then who
 can reach it, said plainly per tool, then what came and went. Memory's Nowledge Mem group says **你的其他 agent 也通过它
 找到{name}** with **看看谁能找到 ›**; a forget or a fix there gets the partner's word (**好，忘掉「…」。**). Nothing new is
 read or stored: the week's count is the same Recently list, counted.
+
+## Who reaches whom, the exchanges as threads, who may ask what (D470, 2026-11-22)
+
+The author asked how Bridge's design and experience are. The conversation already spoke well (the
+partner says a request in its own words); Settings › Agent messaging still spoke the old language.
+D470 rebuilt it in D469's: the partner reports, Pebble's art carries state, the real fix is the button.
+
+- **The head is the partner**: **{agents} 和我能互相找到。** / **还差一步，我们就能互相找到。** / **你的 agent
+  还找不到我：它们得先装上 Nowledge Mem 插件。** / **开关关着，你的 agent 现在找不到我。**; a one-way link (Mem lists
+  the agent's mailbox closed) is what needs you, in the needs-you ink, and a 等你 on Overview with its button.
+- **The switch first**, named by what it does; no count.
+- **谁能找到谁 / Who reaches whom**: one row per agent (chosen over a hub, a clay metaphor, sentences and a
+  matrix; rubric in D470): its coin, the two ways drawn (solid with a head; dashed while not; fainter while
+  unknown) and said literally (**能找到{name}** / **{name}能找到它** and their not-yet forms), the partner in its
+  pose (flag on a half-broken link, done when both ways work). Under a link that isn't whole: why, and the fix
+  Ducter can start: **打开它的信箱** (one setup task on that computer, `mem_plugin_install` with `what: "mailbox"`:
+  the agent's own plugin runs Mem's passive `nmem bridge setup` in its own agent context, `--enable` only when Mem
+  asks for it; never Ducter's connection) or **装上** (D169). A missing plugin is an offer, never a 等你.
+- **来往 / Back and forth**: a thread per agent from what the clients hold (no new protocol): each request's
+  outcome (a task, the partner's answer, a card waiting, told the person, the person's go or hold, nothing
+  yet), each question the partner (or its task) sent with its answer or the wait. Before the first one, an
+  invitation with the two examples.
+- **谁能让我做什么 / Who may ask me what**: X1–X3's rules said as built: own agents hand work, the partner asks
+  first unless trusted (X2: up to 5 tasks a day, **改成先问你**), 20 messages a day each; teammates' agents
+  ignored by default, asked once per sender, questions only (D334), **不再听它的**; the muted with **恢复**.
+- **The conversation says it once**: a request the partner's next message says (no card, no word from the
+  person between) keeps no line; one quiet origin line (**从你的 Codex（Mem 协作）来的**) stands over the message.
+- **Round 2, after the live round trip on hel (D470 rev.).** A known sender is logged by its name, never
+  "another agent". One delivered reply is one line: D106's write-ahead **sending** then **sent** stays (it is what
+  keeps a crash from sending twice), a second **sent** is never logged, and both clients fold any repeat.
+  **Status without a card** (the author, 2026-11-22): a reply to the person's own agent in their own place that
+  states only what the person can already see (the time, what is running, what is done) goes at once, with no
+  card and no word to the person; work, the person's call, their memories, files or plans, and any teammate's
+  agent still ask (X1–X3 stand; this narrows J3's v1 rule only for the person's own agents' status questions).
+- **Not yet**: the mailbox task run once for real (it writes Mem-side; the author's step); a sender's quota use
+  shown; the phones' native clients.
 
 ## Open questions
 

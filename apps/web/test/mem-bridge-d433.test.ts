@@ -21,7 +21,7 @@ describe("能找到{name}的 / Who can reach (D433)", () => {
     );
     expect(rows.map((r) => [r.harness, r.can, r.device ?? ""])).toEqual([
       ["claude-code", "install", "local"],
-      ["codex", "yes", ""],
+      ["codex", "yes", "local"], // D470: where its mailbox opens
       ["pi", "relay", ""], // D448: signed in where Ducter runs tasks: its tasks pass messages through Ducter
       ["antigravity", "relay", ""],
     ]);
@@ -36,8 +36,8 @@ describe("能找到{name}的 / Who can reach (D433)", () => {
 
   test("every line short, in both languages (D424)", () => {
     for (const lang of ["zh", "en"] as const)
-      for (const k of ["yes", "install", "unknown", "none", "relay"]) {
-        const s = memoryWords[lang][`peers.reach.${k}`]!.replace("%s", "Ducter");
+      for (const k of ["peers.way.to.yes", "peers.way.to.no", "peers.way.to.unknown", "peers.way.back.yes", "peers.way.back.no", "peers.way.back.unknown", "peers.reach.none", "peers.reach.relay"]) {
+        const s = memoryWords[lang][k]!.replace("%s", "Ducter");
         expect(s.length).toBeLessThanOrEqual(lang === "zh" ? 40 : 60);
         expect(s).not.toContain(" · ");
       }

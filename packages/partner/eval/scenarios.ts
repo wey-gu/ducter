@@ -2075,6 +2075,26 @@ export const scenarios: Scenario[] = [
     rubric:
       "The user asks the partner to check for messages from their other AI agents and to answer the liaison test their Codex sent. Pass if: the partner checks (the message then comes in), answers the Codex once with a short reply in its language (收到 / it got through), and tells the user at most one or two short Chinese lines that the test came in and was answered. Fail if it says anything blocks it, that a permission or setting must be opened first, or asks the user to do anything; or if it answers twice.",
   },
+  // D470 (the author, 2026-11-22; live on hel): the user's own Claude Code asked only for status the user
+  // can already see; the partner put up a Go card before answering. Now it answers at once, no card.
+  {
+    id: "bridge-own-status-zh",
+    category: "bridge",
+    lang: "zh",
+    bridge: true,
+    seed: [{ user: "今晚我主要写 bridge 那块，别的你先帮我盯着" }, { ai: "好，有事我叫你。" }],
+    steps: [{ peer: { from: "terminal-claude", text: "我是 Mac 上的 Claude Code。联络测试：你那边现在几点？手上有几个任务在跑？简单回一句就行。" } }],
+    expect: {
+      noAsk: true,
+      opens: 0,
+      msgs: [0, 1],
+      maxChars: 160,
+      forbid: [/msg-\d{3}/],
+      bridgeSent: { to: "terminal-claude", count: [1, 1] },
+    },
+    rubric:
+      "The user's own Claude Code asked only for status: the time and how many tasks are running. Pass if: the partner answers it once over Bridge with a short line (a time and a count, zero is fine), asks the user nothing (no card, no question), opens no task, and says at most one short line to the user (saying nothing is best). Fail if it asks the user for permission to reply, or shares anything beyond the status asked.",
+  },
   {
     id: "bridge-check-nothing-en",
     category: "bridge",

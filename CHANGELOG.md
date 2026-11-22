@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.1.14 - 2026-11-22
+
+<!-- whats-new
+zh: 任务开不起来时自己想办法；真要你出手就说清楚为什么
+en: Tasks that can't start fix themselves first, and say why when they can't
+-->
+
+**When a task can't start**
+- Ducter first tries the fix itself: another computer that has the code, a fresh copy of the code
+  where the task was to work, or one more try a moment later. Your partner then looks for another
+  way, and asks you only when nothing works, once, with the one thing you can do.
+- When it does reach you, the task says why in plain words, with the fix as its button: fetch the
+  code onto that computer, choose a folder there, install or sign in to the agent, update Ducter
+  there, or move it to the computer you named.
+- Before opening a task in a folder, your partner checks that the folder is there.
+- Tapping Try again twice no longer starts the task twice.
+
+**For people who run Ducter**
+- `ducter repairs` shows, week by week, what failed, what Ducter fixed by itself, and what
+  reached you.
+
 ## 0.1.13 - 2026-11-22
 
 <!-- whats-new

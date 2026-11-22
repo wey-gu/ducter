@@ -240,8 +240,10 @@ describe("nudge (stall rule)", () => {
     const inputs: string[] = [];
     const port = createOarHarnessPort({
       loadRuntime: async () =>
-        trippedRuntime((t) => {
+        trippedRuntime(async (t) => {
           inputs.push(t.input);
+          // D476: it did something (a tool call) before going quiet; one that did nothing at all didn't start.
+          if (inputs.length === 1) await t.tool("Read", "{}", async () => "hi");
           t.say("working quietly");
         }, {}),
     });

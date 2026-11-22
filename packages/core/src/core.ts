@@ -12,7 +12,7 @@ import { homedir, tmpdir } from "node:os";
 import { thisComputer } from "./this-computer.ts";
 import { basename, join, resolve, sep } from "node:path";
 import { randomBytes } from "node:crypto";
-import { APP_SANDBOX, appCsp, HARNESSES, MEM_CONNECT_TOOLS, fill, harnessName, normalizeTag, sameComputer, pickTag, words, type Bodies, type HarnessId, type LangTag, type LogEvent, type OnHand, type PartnerAsk, type Place, type TaskCard, type TaskNeeds } from "@ducter/protocol";
+import { APP_SANDBOX, appCsp, HARNESSES, MEM_CONNECT_TOOLS, fill, harnessName, normalizeTag, sameComputer, pickTag, words, type Bodies, type HarnessId, type LangTag, type LogEvent, type OnHand, type PartnerAsk, type Place, type TaskBound, type TaskCard, type TaskNeeds } from "@ducter/protocol";
 import { intlLocale, talkLang } from "./lang.ts";
 import type { CoreApi, ListedModel, MemIdentity, MemLookPort, Partner, Runner, TaskMemoryPort } from "@ducter/protocol/src/internal.ts";
 import { migrateKeys, readKeys, scrubKeysFromEnv } from "@ducter/protocol/src/keys.ts";
@@ -79,7 +79,9 @@ import { openApps, type AppsStore } from "./apps.ts";
 import { APP_DATA_SCHEMA, createBoards } from "./boards.ts";
 import { createLoadout, isRuleHint, registerRuleTools, registerSwitchTool, registerBrainSwitchTool, type Loadout } from "./loadout.ts";
 import { createKindRetry, type KindRetry } from "./kind-retry.ts";
-import { createMender } from "./mend.ts";
+import { createMender, similar } from "./mend.ts";
+import { hostAlias, mergeBound } from "./bound.ts";
+import { sourcesOf, whichRepo } from "./repo-known.ts";
 import { readRepairEvents, repairReport, repairSince, REPAIR_WEEKS_DEFAULT, REPAIR_WEEKS_MAX } from "./mend-week.ts";
 import { openConnections, type ConnectionsStore, type Linker, type OoSource } from "./connections.ts";
 import { callWakes, neverCall, openPhone, type Phone } from "./phone.ts";
@@ -251,6 +253,8 @@ export interface CoreOptions {
   homeClones?: (remote: string, probe: boolean) => Promise<ClonesAnswer>;
   /** D395 test seam: what a folder on the home is (default: git here). */
   homeFolderInfo?: (path: string) => Promise<FolderInfo>;
+  /** D476 test seam: the other names the home is called by (default: its host name; none in tests). */
+  hostAliases?: string[];
   /** D204 test seam: clone into the home's own Ducter folder (default: git, with this computer's sign-in). */
   cloneHome?: (address: string) => Promise<CloneResult>;
   /** D203 test seam: the home's own subfolders for 找一个文件夹… (default: this computer's home folder). */
@@ -1224,14 +1228,16 @@ export function startCore(opts: CoreOptions = {}): Core {
   const whereComputers = (): WhereComputer[] => {
     const online = new Map((workersRef?.online() ?? []).map((w) => [w.deviceId, w] as const));
     const away = workersRef?.away();
-    const homeServer = (opts.platform ?? process.platform) === "linux";
+    const platform = opts.platform ?? process.platform;
+    const homeServer = platform === "linux";
     return [
-      { id: "local", name: computers.homeName(), home: true, online: true, build: homeServer ? 0 : 2 },
+      // D476: the home's host name is a name the person calls it by ("hel").
+      { id: "local", name: computers.homeName(), home: true, online: true, build: homeServer ? 0 : 2, aliases: opts.hostAliases ?? (whereTesting ? [] : hostAlias()), os: platform },
       // The same computers New task and the hand-over sheet list (their workers, away ones too).
       ...(computers.workers?.() ?? []).map((w) => {
         const hello = online.get(w.id)?.hello ?? away?.get(w.id)?.hello;
         const os = (hello?.os ?? "").toLowerCase();
-        return { id: w.id, name: w.name, home: false, online: w.online, build: os.startsWith("darwin") || os.startsWith("mac") ? 2 : 1 };
+        return { id: w.id, name: w.name, home: false, online: w.online, build: os.startsWith("darwin") || os.startsWith("mac") ? 2 : 1, ...(os ? { os } : {}) };
       }),
     ];
   };
@@ -1254,6 +1260,12 @@ export function startCore(opts: CoreOptions = {}): Core {
     },
     rules: () => rules.list(),
   });
+  // D476: the home in the partner's [devices] line: its name, the names the person calls it, its agents.
+  api.homeDevice = () => {
+    const home = whereComputers()[0]!;
+    const hs = devicesView?.harnessesNow();
+    return { name: home.name, ...(home.aliases?.length ? { aliases: home.aliases } : {}), ...(hs ? { harnesses: hs.map((h) => ({ id: h.harness, ...(h.installed !== undefined ? { installed: h.installed } : {}), loggedIn: h.loggedIn, ...(h.version ? { version: h.version } : {}) })) } : {}) };
+  };
   api.places = createPlaces({
     where: repoWhere,
     computers: whereComputers,
@@ -1270,6 +1282,35 @@ export function startCore(opts: CoreOptions = {}): Core {
     knownRemote: (name) => {
       const n = name.toLowerCase();
       return projects.list().find((p) => p.remote && (p.name.toLowerCase() === n || basename(p.remote).toLowerCase() === n))?.remote;
+    },
+    // D476: which repository a name is, from every project and every repository a task worked in
+    // (an origin not kept is read where the folder is, briefly); two that fit are never picked between.
+    knownRepo: (name, words) =>
+      whichRepo({ name, words }, sourcesOf(projects.list(), tasks.list().map((c) => c.place)), async (dev, path) => {
+        const info = await (dev === "local" ? (opts.homeFolderInfo ?? ((p: string) => folderInfo(p, opts.git ?? realGitInfo)))(path) : computers.folderInfo(dev, path, 4_000)).catch(() => "offline" as const);
+        return info !== "offline" && info.exists && info.remote ? info.remote : undefined;
+      }),
+    boundKept: (id) => {
+      for (const e of log.read({ stream: `task:${id}`, kinds: ["task_open"], limit: 50 }).reverse()) {
+        const b = (e.body as Bodies["task_open"]).bound;
+        if (b) return b;
+      }
+      return undefined;
+    },
+    // D476: a task opened again after a rethink (the same work, its title alike) keeps the person's word.
+    boundCarried: (texts) => {
+      const title = texts[0] ?? "";
+      if (!title) return undefined;
+      const since = new Date(clock.now() - 30 * 60_000).toISOString();
+      let out: TaskBound | undefined;
+      for (const m of log.read({ kinds: ["mend"], beforeSeq: log.head() + 1, limit: 200 })) {
+        const b = m.body as Bodies["mend"];
+        if (m.ts < since || b.rung !== "rethink") continue;
+        const old = tasks.get(b.taskId);
+        if (!old || similar(old.title, title) < 0.5) continue;
+        out = mergeBound(out, api.places?.boundOf?.(b.taskId));
+      }
+      return out;
     },
   });
   // D285: 做过的事 / Past tasks: the person's marks, and every task findable again.

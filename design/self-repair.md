@@ -59,6 +59,25 @@ Cheapest first; each rung is one `mend` event on the task's stream, logged befor
    way can work: one short line in their language, the one real fix as the choice. No error
    text, no list of what failed.
 
+**The person's word on where binds every rung (D476).** What they said about which computer
+(`core/src/bound.ts`: 只在 hel, 而不是 mac, not on my Mac) is kept on the task and holds for
+Ducter's own steps: never off a computer they named (a clone there instead of starting on another
+computer's copy), never onto one they ruled out, and a task the partner opens again after a
+rethink carries it; task_open refuses a place on a ruled-out computer with an error that says
+where to open it instead. Their own tap on a card is a new word and always goes.
+
+**Which repository a name is (D476).** "No repository known" is rare by construction: a missing
+folder's name is matched against every project and every repository a task worked in, the
+origin read where the folder is when it wasn't saved (`core/src/repo-known.ts`), the task's words
+narrowing two. Two that still fit are never picked between: the card carries both and the
+partner asks once.
+
+**An agent that ends at once didn't start (D476).** A task's very first session whose agent did
+nothing at all (no tool call, no report, under a few lines of words) and ended its turns within
+two minutes, or whose process exited before doing anything, is a start failure (signed out,
+not installed, or its agent, with its own first line), never a stall: the hand-over asks for
+another agent or a sign-in, not for reading where it stopped.
+
 **Budgets and loop guards** (code, `mend.ts`): two automatic tries per task a day, never the same
 one twice; six on the whole home an hour, past which a failure goes straight to the partner
 (`budget`); two hand-overs per task a day, then the card and the partner's one question stand;

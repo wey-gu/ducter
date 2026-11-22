@@ -8,7 +8,7 @@ import { expect, test } from "bun:test";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { PlacesPort } from "@ducter/protocol/src/internal.ts";
+import type { PlacesPort } from "../../protocol/src/internal.ts";
 import type { Place, TaskCard } from "@ducter/protocol";
 import { createPartner } from "../src/index.ts";
 import { FakeClock, fakeCore, fakeRunner } from "./fakes.ts";

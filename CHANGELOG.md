@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.1.16 - 2026-11-22
+
+<!-- whats-new
+zh: 伙伴按你说的地方做事，缺代码先在那台拉好
+en: Your partner works where you said, fetching the code there first
+-->
+
+**Where work happens**
+- Your partner sees which agents each computer has and which code is on it, and decides where a
+  task goes from that.
+- What you said about where ("only on hel", "not on my Mac") is remembered for that work and held
+  through every retry and every fix.
+- When the code isn't on the computer yet, Ducter fetches it there first and starts, instead of
+  failing or quietly moving the work elsewhere.
+- When a task stops without reporting back, your partner gets the facts and decides what to do.
+
 ## 0.1.15 - 2026-11-22
 
 <!-- whats-new

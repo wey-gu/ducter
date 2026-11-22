@@ -171,6 +171,12 @@ export interface CoreApi {
   places?: PlacesPort;
   /** D476: the home itself as the partner's [devices] line names it: its name, its other names, its agents as last probed. */
   homeDevice?(): { name: string; aliases?: string[]; harnesses?: { id: string; installed?: boolean; loggedIn: boolean; version?: string }[] } | undefined;
+  /**
+   * D480: facts about the person's own agents' mail, for the partner: Mem lists an agent's mailbox
+   * closed (box), or a computer's own Mem is another server than the partner's (apart: its host and
+   * the partner's), so nothing that agent sends there reaches the partner. Only what isn't whole.
+   */
+  agentMail?(): { harness: string; device?: string; box?: "closed"; apart?: { theirs: string; ours: string } }[];
   /** D477: the code Ducter knows is on each computer (device "local" for the home): the person's projects and the places tasks worked in, with origins when known. */
   codeOn?(): { device: string; name: string; remote?: string }[];
   /** D379: memories the partner's recall returned, read by code for who-does-which-work the person said. */
@@ -387,6 +393,10 @@ export interface BridgeLinkApi {
   takeMailboxWant?(): boolean;
   /** D444: the person's own agents Mem lists, by tool, and whether their mailboxes take messages. */
   setMailboxes?(list: { harness: string; open: boolean }[]): void;
+  /** D480: the last list setMailboxes was given (undefined: never read). */
+  mailboxesNow?(): { harness: string; open: boolean }[] | undefined;
+  /** D480: the Mem server the partner's own connection talks to (host), as the last look said. */
+  serverNow?(): string | undefined;
 }
 
 /** D334: one Space the home reads the partner's mailbox in, through its own local Agent Context. */
@@ -543,6 +553,8 @@ export interface WorkerInfo {
   web?: "chrome" | "ducter";
   /** D157: it doesn't sleep. */
   alwaysOn?: boolean;
+  /** D480: the Mem server its own Mem connection talks to (host), as its last look said. */
+  memServer?: string;
 }
 
 /** The main's handle on one worker. Stable across reconnects. */

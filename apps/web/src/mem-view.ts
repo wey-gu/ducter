@@ -1,7 +1,7 @@
 // D257: what Settings › 记忆 / Memory and › 和你的其他 agent 通信 / Talk with your other agents (D332) show, from the
 // settings frame (settings.memory, mem, bridge). Pure, so the phone, the wide page and the tests
 // read it the same way; the Mac has the same rules (apps/desktop/internal/views/memory.go).
-import type { BridgeView, MemHealth, MemView, PeersSettings } from "@ducter/protocol";
+import { memApart, type BridgeView, type MemHealth, type MemView, type PeersSettings } from "@ducter/protocol";
 import { compareVersions, isVersion } from "@ducter/protocol/src/version.ts";
 
 /** D225: the first nmem with `bridge connections` (bridge-link.ts BRIDGE_CONNECT_SINCE). */
@@ -233,12 +233,14 @@ export const TOOL_NAME: Record<string, string> = { "claude-code": "Claude Code",
  * runs on it pass messages through Ducter; the person's own sessions of it outside Ducter still can't.
  */
 // D444: box, from Mem's grouped contact list: its mailbox takes messages (open) or not (closed); absent when Mem didn't list it.
-export type ReachRow = { harness: string; tool: string; can: "yes" | "install" | "unknown" | "none" | "relay"; device?: string; deviceName?: string; last?: string; box?: "open" | "closed" };
+export type ReachRow = { harness: string; tool: string; can: "yes" | "install" | "unknown" | "none" | "relay"; device?: string; deviceName?: string; last?: string; box?: "open" | "closed"; apart?: { theirs: string; ours: string } };
+// D480: apart, the computer it runs on talks to another Mem server than the partner's (theirs / ours, hosts), a fact both sides said.
 export function reachRows(
-  devices: { id: string; name: string; home?: boolean; harnesses: { harness: string; installed: boolean; loggedIn: boolean; mem?: { state: string } }[] }[],
+  devices: { id: string; name: string; home?: boolean; mem?: { server?: string }; harnesses: { harness: string; installed: boolean; loggedIn: boolean; mem?: { state: string } }[] }[],
   ownAgents: readonly string[],
   recent: readonly Pick<Handoff, "agent" | "host" | "at">[],
   boxes: readonly { harness: string; open: boolean }[] = [],
+  ours?: string,
 ): ReachRow[] {
   const ds = [...devices].sort((a, b) => Number(!!b.home) - Number(!!a.home));
   const out: ReachRow[] = [];
@@ -258,7 +260,9 @@ export function reachRows(
     if (here.some((v) => v.x.mem?.state === "installed" || v.x.mem?.state === "update") || last || mb?.open) {
       // D470: the computer where it is signed in with the plugin, home first: where its mailbox is opened.
       const on = here.find((v) => v.x.mem?.state === "installed" || v.x.mem?.state === "update") ?? here[0];
-      out.push({ harness: h, tool, can: "yes", ...at, ...box, ...(on ? { device: on.d.id, deviceName: on.d.name } : {}) });
+      const theirs = on?.d.mem?.server;
+      const apart = on && memApart(theirs, ours) ? { apart: { theirs: theirs!, ours: ours! } } : {};
+      out.push({ harness: h, tool, can: "yes", ...at, ...box, ...(on ? { device: on.d.id, deviceName: on.d.name } : {}), ...apart });
       continue;
     }
     const off = here.find((v) => v.x.mem?.state === "absent");
@@ -351,10 +355,12 @@ export function tryAgents(devices: { id: string; name: string; home?: boolean; h
  * can't reach it).
  */
 export type Way = "yes" | "no" | "unknown";
-export type Ways = { to: Way; back: Way; fix?: "install" | "mailbox" };
-export function reachWays(r: Pick<ReachRow, "can" | "box" | "device">): Ways {
+export type Ways = { to: Way; back: Way; fix?: "install" | "mailbox" | "server" };
+export function reachWays(r: Pick<ReachRow, "can" | "box" | "device" | "apart">): Ways {
   switch (r.can) {
     case "yes":
+      // D480: its own Mem is another server: neither way meets, whatever Space a mailbox opens in.
+      if (r.apart) return { to: "no", back: "no", ...(r.device ? { fix: "server" as const } : {}) };
       if (r.box === "closed") return { to: "yes", back: "no", ...(r.device ? { fix: "mailbox" as const } : {}) };
       return { to: "yes", back: r.box === "open" ? "yes" : "unknown" };
     case "install":

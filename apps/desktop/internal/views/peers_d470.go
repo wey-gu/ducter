@@ -32,6 +32,14 @@ type ways struct{ To, Back, Fix string }
 func reachWays(r reachRow) ways {
 	switch r.Can {
 	case "yes":
+		// D480: its own Mem is another server: neither way meets, whatever Space a mailbox opens in.
+		if r.Theirs != "" && r.Ours != "" {
+			w := ways{To: "no", Back: "no"}
+			if r.Device != "" {
+				w.Fix = "server"
+			}
+			return w
+		}
 		if r.Box == "closed" {
 			w := ways{To: "yes", Back: "no"}
 			if r.Device != "" {
@@ -312,7 +320,31 @@ func (a *App) peersReachRows() []reachRow {
 	if a.S.Bridge != nil {
 		boxes = a.S.Bridge.Mailboxes
 	}
-	return reachRows(a.S.Devices, a.S.OwnAgents, recentHandoffs(peerFeed(a.S.Channel, a.S.TaskPeers), 50), boxes...)
+	rows := reachRows(a.S.Devices, a.S.OwnAgents, recentHandoffs(peerFeed(a.S.Channel, a.S.TaskPeers), 50), boxes...)
+	ours := ""
+	if a.S.Bridge != nil {
+		ours = a.S.Bridge.Server
+	}
+	return withApart(rows, a.S.Devices, ours)
+}
+
+// withApart marks the rows whose computer talks to another Mem server than the partner's (D480): a
+// fact both sides said (that computer's own Mem, the home's), never a guess when either is unknown.
+func withApart(rows []reachRow, devices []protocol.DeviceView, ours string) []reachRow {
+	if ours == "" {
+		return rows
+	}
+	for i, r := range rows {
+		if r.Can != "yes" || r.Device == "" {
+			continue
+		}
+		for _, d := range devices {
+			if d.ID == r.Device && d.Mem != nil && d.Mem.Server != "" && d.Mem.Server != ours {
+				rows[i].Theirs, rows[i].Ours = d.Mem.Server, ours
+			}
+		}
+	}
+	return rows
 }
 
 // peersOn: the link is up (Agent messaging's connected phase).
@@ -359,6 +391,9 @@ func (a *App) peersSay() string {
 		return a.L.T("say.peers.both", a.listWords(toolsOf(both)))
 	case len(one) > 0:
 		return a.L.T("say.peers.oneway")
+	case len(apartOf(notYet)) > 0:
+		// D480: another Mem server is its own reason, never "needs the plugin".
+		return a.L.T("say.peers.apart", a.listWords(toolsOf(apartOf(notYet))))
 	case len(notYet) > 0:
 		return a.L.T("say.peers.notyet")
 	}
@@ -383,13 +418,14 @@ func toolsOf(rows []reachRow) []string {
 }
 
 // openMailbox is 打开它的信箱 / Open its mailbox: one task on that computer opens the agent's
-// Nowledge Mem mailbox (the tap is its Go).
-func (a *App) openMailbox(device, harness string) {
+// Nowledge Mem mailbox (the tap is its Go), in the Space the person chose in place (D480).
+func (a *App) openMailbox(device, harness string, space *protocol.MailboxSpaceRef) {
 	if a.mailboxOpening == nil {
 		a.mailboxOpening = map[string]bool{}
 	}
 	a.mailboxOpening[device+":"+harness] = true
-	a.send(protocol.MemPluginInstall{T: "mem_plugin_install", Device: device, Harness: harness, What: "mailbox"})
+	a.mailboxChoosing = nil
+	a.send(protocol.MemPluginInstall{T: "mem_plugin_install", Device: device, Harness: harness, What: "mailbox", Space: space})
 }
 
 // drawLinkWay is one way between an agent and the partner (never a font's arrow): solid with its
@@ -435,15 +471,18 @@ func (a *App) peerLinkRow(c *ui.Context, r reachRow, name string) {
 	w := reachWays(r)
 	opening := r.Device != "" && a.mailboxOpening[r.Device+":"+r.Harness]
 	broken := w.Fix == "mailbox" && !opening
+	where := r.DeviceName
+	if where == "" {
+		where = r.Device
+	}
+	choosing := a.mailboxChoosing != nil && a.mailboxChoosing.Device == r.Device && a.mailboxChoosing.Harness == r.Harness
 	why := ""
 	switch {
+	case w.Fix == "server":
+		why = a.L.T("peers.why.apart", where, r.Theirs, r.Ours)
 	case w.Fix == "mailbox" && opening:
 		why = a.L.T("peers.why.opening")
 	case w.Fix == "mailbox":
-		where := r.DeviceName
-		if where == "" {
-			where = r.Device
-		}
 		why = a.L.T("peers.why.mailbox", where)
 	case w.Fix == "install":
 		why = a.L.T("peers.why.install")
@@ -533,9 +572,13 @@ func (a *App) peerLinkRow(c *ui.Context, r reachRow, name string) {
 		ui.Row(c.Key("why")).Gap(t.S3).Wrap().AlignItems(ui.Center).Padding(0, 0, 0, 96+t.S3).Children(func() {
 			uiText(c, keepWords(autospace(why))).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(ink).Grow(1).Basis(rowWordsMin).MinWidth(0)
 			switch {
-			case broken:
+			case broken && !choosing:
 				if a.buttonFor(c, a.L.T("peers.fix.mailbox"), r.Tool, btnSecondary, t.ControlSM, t.Surface) {
-					a.openMailbox(r.Device, r.Harness)
+					a.chooseMailbox(r.Device, r.Harness)
+				}
+			case w.Fix == "server" && !choosing:
+				if a.buttonFor(c, a.L.T("peers.fix.server"), r.Tool, btnSecondary, t.ControlSM, t.Surface) {
+					a.chooseMailbox(r.Device, r.Harness)
 				}
 			case w.Fix == "install":
 				if a.buttonFor(c, a.L.T("peers.try.plugin.go"), r.DeviceName, btnSecondary, t.ControlSM, t.Surface) {
@@ -543,6 +586,9 @@ func (a *App) peerLinkRow(c *ui.Context, r reachRow, name string) {
 				}
 			}
 		})
+		if choosing {
+			a.mailboxChoice(c, r, where)
+		}
 	})
 }
 

@@ -43,7 +43,7 @@ export function demoOptions(opts: CoreOptions = {}): CoreOptions {
       sys: b.sys ?? (emptySys as never),
       ...("memApp" in b ? {} : { memApp: () => undefined }),
     } as CoreOptions["bridgeLink"],
-    memPlugins: { ...(opts.memPlugins ?? {}), inspectLocal: opts.memPlugins?.inspectLocal ?? (async () => undefined) },
+    memPlugins: { ...(opts.memPlugins ?? {}), inspectLocal: opts.memPlugins?.inspectLocal ?? (async () => undefined), bridgeLookLocal: opts.memPlugins?.bridgeLookLocal ?? (async () => undefined) },
     ownNumber: { ...own, listAudio: own.listAudio ?? demoAudio, exec: own.exec ?? noPhone },
     // The home's name is the pretend computer's, never this Mac's own name.
     update: { ...(opts.update ?? {}), homeName: opts.update?.homeName ?? DEMO_HOME },

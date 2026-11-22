@@ -31,7 +31,7 @@ import { realSys, updateHow, writeAlive } from "@ducter/core/src/update.ts";
 import { createWorkerBrowse } from "@ducter/core/src/worker-browse.ts";
 import { createPhoneHost } from "@ducter/core/src/android/host.ts";
 import { packagesFor } from "@ducter/core/src/android/sdk.ts";
-import { inspectMemPlugins, nmemInspectExec } from "@ducter/protocol/src/mem-plugins.ts";
+import { inspectMemBridge, inspectMemPlugins, nmemInspectExec } from "@ducter/protocol/src/mem-plugins.ts";
 import { createKeeper, fpFromLink, normalizeBase, race, type ReachWay } from "@ducter/protocol/src/reach.ts";
 import { proveHome } from "@ducter/protocol/src/reach-verify.ts";
 import { createHold, createPinger, realClock } from "./uplink.ts";
@@ -291,7 +291,7 @@ export async function cmdWorker(o: {
     sendUp = send;
     // D293: one host for the life of this process; its sessions outlive a dropped socket for the
     // grace. mainBase follows the way in use, for the sessions started after a switch.
-    const host = runnerMod.createWorkerHost({ dataDir, harness, get mainBase() { return s.url; }, deviceToken: s.token, send, browser: { ducter: browse.ducter }, extraOps: { ...browse.ops, ...records.ops, mem_plugins: async () => (await inspectMemPlugins(nmemInspectExec(process.env))) ?? null, mem_connect: (a: { harnesses?: unknown }) => mem.connectTools(Array.isArray(a?.harnesses) ? a.harnesses.filter((x): x is string => typeof x === "string") : []) }, abilities: browse });
+    const host = runnerMod.createWorkerHost({ dataDir, harness, get mainBase() { return s.url; }, deviceToken: s.token, send, browser: { ducter: browse.ducter }, extraOps: { ...browse.ops, ...records.ops, mem_plugins: async () => (await inspectMemPlugins(nmemInspectExec(process.env))) ?? null, mem_bridge_look: async () => (await inspectMemBridge(nmemInspectExec(process.env))) ?? null, mem_connect: (a: { harnesses?: unknown }) => mem.connectTools(Array.isArray(a?.harnesses) ? a.harnesses.filter((x): x is string => typeof x === "string") : []) }, abilities: browse });
     // Nobody to drive Ducter's browser here once the socket is gone: quit it (sign-ins saved).
     const closeAll = host.closeAll;
     host.closeAll = async () => {

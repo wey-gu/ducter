@@ -23,9 +23,9 @@
 // how to update too. Never a card, never Update all, never by itself.
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { MEM_CONNECT_TOOLS, fill, harnessName, langName, words, type Bodies, type LangTag, type DeviceHarness, type LogEvent, type MemPluginReason, type MemPluginView } from "@ducter/protocol";
+import { MEM_CONNECT_TOOLS, fill, harnessName, langName, mailboxChoice, words, type Bodies, type LangTag, type DeviceHarness, type LogEvent, type MailboxLook, type MemPluginReason, type MemPluginView } from "@ducter/protocol";
 import type { LogStore, Runner, TaskRegistry } from "@ducter/protocol/src/internal.ts";
-import { MEM_HOSTS, withAvailable } from "@ducter/protocol/src/mem-plugins.ts";
+import { MEM_HOSTS, withAvailable, type MemBridgeLook } from "@ducter/protocol/src/mem-plugins.ts";
 
 type Plugins = Record<string, MemPluginView>;
 
@@ -55,6 +55,12 @@ export interface MemPluginsDeps {
    * offline or unreadable (the last good answer then stands). Absent: no update is ever said.
    */
   checkUpdates?: () => Promise<Record<string, string> | undefined>;
+  /**
+   * D480: that computer's own Mem, read only (`nmem --json status` and the passive `bridge setup`):
+   * on the home here, on a worker its `mem_bridge_look` op. "old": a worker from before D480;
+   * undefined: away, or no nmem there.
+   */
+  bridgeLook?: (deviceId: string, home: boolean) => Promise<MemBridgeLook | "old" | undefined>;
   now?: () => number;
   /** How often every awake device is checked again (default a day; 0 = only on events). */
   everyMs?: number;
@@ -75,7 +81,12 @@ export interface MemPlugins {
   /** Runs the check on one device (or every awake one) now. */
   check(deviceId?: string): Promise<void>;
   /** 装上 / Install: Mem's own command there (D375), else the setup task on that device with that agent. */
-  install(device: string, harness: string, what?: "mailbox"): Promise<{ ok: true; taskId?: string } | { ok: false; reason: MemPluginReason }>;
+  install(device: string, harness: string, what?: "mailbox", space?: { id: string; label: string }): Promise<{ ok: true; taskId?: string } | { ok: false; reason: MemPluginReason }>;
+  /**
+   * D480: the in-place choice for opening this agent's mailbox: the Spaces Mem lists on that
+   * computer with Ducter's recommendation. Read only: nothing is chosen or written.
+   */
+  mailboxLook(device: string, harness: string, partner: { space?: string }): Promise<MailboxLook>;
   onChange(fn: () => void): () => void;
   stop(): void;
 }
@@ -100,7 +111,7 @@ const DAY = 24 * 60 * 60 * 1000;
  * tidy: several copies (their versions); review: an install Mem's check can't call set up.
  * D470: mailbox: Nowledge Mem lists the agent's mailbox as closed, so the partner's answers can't reach it.
  */
-export type MemSetupKind = { kind: "install" } | { kind: "update"; from?: string; to?: string } | { kind: "tidy"; versions?: string[] } | { kind: "review" } | { kind: "mailbox" };
+export type MemSetupKind = { kind: "install" } | { kind: "update"; from?: string; to?: string } | { kind: "tidy"; versions?: string[] } | { kind: "review" } | { kind: "mailbox"; space?: { id: string; label: string } };
 
 // The card's and the task's own words (D292: zh and en; any other language falls back, ko → en).
 const W = {
@@ -144,7 +155,9 @@ export function memSetupBrief(o: { agent: string; host: string; device: string; 
   // Several copies: only the host's own plugin commands remove one, and nothing is deleted by hand.
   const tidy = what.kind === "tidy" ? `\n   To remove an older copy, use only ${o.agent}'s own plugin or marketplace commands, as the guide names them; never delete its files by hand. If the guide or ${o.agent} has no command for it, stop and report each copy (version, where it is registered) instead.` : "";
   // D470: the mailbox is Mem's one explicit step for that agent's own context, never Ducter's own connection.
-  const box = what.kind === "mailbox" ? `\n   For the mailbox: in ${o.agent}'s own Nowledge Mem agent context (never Ducter's), run Mem's passive \`nmem bridge setup\` first; only when it answers that the mailbox must be enabled, run the same with \`--enable\` (the one change on Mem's side). If the plugin is behind, update it first as the guide says. Never touch Ducter's own Nowledge Mem connection, identity or keys.` : "";
+  // D480: the Space is the person's, chosen in Ducter by its exact id before this task opened: never asked again.
+  const where = what.kind === "mailbox" && what.space ? ` with \`--space-id ${what.space.id}\` (the Space "${what.space.label}", which the user chose for this mailbox in Ducter; use exactly this one and never ask which Space)` : "";
+  const box = what.kind === "mailbox" ? `\n   For the mailbox: in ${o.agent}'s own Nowledge Mem agent context (never Ducter's), run Mem's passive \`nmem bridge setup\`${where} first; only when it answers that the mailbox must be enabled, run the same with \`--enable\` (the one change on Mem's side). If the plugin is behind, update it first as the guide says. Never touch Ducter's own Nowledge Mem connection, identity or keys.${what.space ? ` If Mem refuses that Space, stop and report Mem's exact answer; don't try another.` : ""}` : "";
   const done = what.kind === "mailbox" ? "Nowledge Mem's setup for that context no longer asks for the mailbox to be enabled" : what.kind === "update" ? "updated and the check says the newer version" : what.kind === "tidy" ? "one copy left and the check says so" : what.kind === "review" ? "set up and the check says so" : "installed and the check says so";
   return `${head}
 ${tried}
@@ -308,7 +321,7 @@ export function createMemPlugins(d: MemPluginsDeps): MemPlugins {
 
   const setupOf = (device: string, harness: string) => Object.entries(saved.setups).find(([, s]) => s.device === device && s.harness === harness)?.[0];
 
-  async function install(device: string, harness: string, what?: "mailbox"): Promise<{ ok: true; taskId?: string } | { ok: false; reason: MemPluginReason }> {
+  async function install(device: string, harness: string, what?: "mailbox", space?: { id: string; label: string }): Promise<{ ok: true; taskId?: string } | { ok: false; reason: MemPluginReason }> {
     if (!d.on()) return { ok: false, reason: "off" };
     const host = MEM_HOSTS[harness];
     const dev = (await d.devices().catch(() => [])).find((x) => x.id === device || x.name === device);
@@ -317,7 +330,7 @@ export function createMemPlugins(d: MemPluginsDeps): MemPlugins {
     const key = `${dev.id}:${harness}`;
     if (setupOf(dev.id, harness) || direct.has(key)) return { ok: false, reason: "running" };
     // D470: its mailbox, through the agent's own plugin: always the task (Mem has no one command for it here).
-    if (what === "mailbox") return openSetup(dev, harness, host, undefined, { kind: "mailbox" });
+    if (what === "mailbox") return openSetup(dev, harness, host, undefined, { kind: "mailbox", ...(space ? { space } : {}) });
     // D375: Mem's own command first, where Mem has one for this agent and its plugin isn't there at all
     // (an update or a review is the guide's, by a task). It needs no agent signed in and no tokens.
     const tool = MEM_CONNECT_TOOLS[harness];
@@ -384,6 +397,22 @@ export function createMemPlugins(d: MemPluginsDeps): MemPlugins {
     }
   }
 
+  /** D480: what the in-place choice shows (read only; see MemPlugins.mailboxLook). */
+  async function mailboxLook(device: string, harness: string, partner: { space?: string }): Promise<MailboxLook> {
+    if (!d.on() || !MEM_HOSTS[harness]) return { state: "failed" };
+    const dev = (await d.devices().catch(() => [])).find((x) => x.id === device || x.name === device);
+    if (!dev) return { state: "failed" };
+    if (!dev.awake) return { state: "away" };
+    if (!d.bridgeLook) return { state: "old" };
+    const got = await d.bridgeLook(dev.id, dev.home).catch(() => undefined);
+    if (got === "old") return { state: "old" };
+    if (!got) return { state: "away" };
+    if (!got.signedIn) return { state: "no_mem" };
+    const { spaces, recommend } = mailboxChoice(got.setup, partner.space);
+    if (!spaces.length) return { state: "failed" };
+    return { state: "choose", spaces, ...(recommend ? { recommend } : {}) };
+  }
+
   // A setup task that finished (or stopped to ask): read the check again on its computer.
   const off = d.log.subscribe((e: LogEvent) => {
     if (e.kind === "decision_resolved") {
@@ -433,6 +462,7 @@ export function createMemPlugins(d: MemPluginsDeps): MemPlugins {
     },
     check,
     install,
+    mailboxLook,
     onChange(fn) {
       fns.add(fn);
       return () => fns.delete(fn);

@@ -171,12 +171,15 @@ export interface CoreApi {
   places?: PlacesPort;
   /** D476: the home itself as the partner's [devices] line names it: its name, its other names, its agents as last probed. */
   homeDevice?(): { name: string; aliases?: string[]; harnesses?: { id: string; installed?: boolean; loggedIn: boolean; version?: string }[] } | undefined;
+  /**
+   * D480: facts about the person's own agents' mail, for the partner: Mem lists an agent's mailbox
+   * closed (box): it reaches the partner, the answers can't go back. Only what isn't whole.
+   */
+  agentMail?(): { harness: string; box: "closed" }[];
   /** D477: the code Ducter knows is on each computer (device "local" for the home): the person's projects and the places tasks worked in, with origins when known. */
   codeOn?(): { device: string; name: string; remote?: string }[];
   /** D478: each agent's usage limit per computer (device "local" for the home): used up (until when, the tasks resting on it) or room left, from the runner's hits, the limit waits and the home's account reads. */
   agentLimits?(): { device: string; harness: string; state: "used_up" | "room"; until?: string; waiting?: string[] }[];
-  /** D478: the partner opened task newId with replaces=oldId: the old one is retired (set aside, off On hand), or left when still at work. */
-  replaced?(newId: string, oldId: string): { retired: true } | { retired: false; why: "unknown" | "same" | "at_work" };
   /** D379: memories the partner's recall returned, read by code for who-does-which-work the person said. */
   said?: {
     fromMemory(hits: { id?: string; title: string; content: string; date?: string }[]): void;
@@ -391,6 +394,8 @@ export interface BridgeLinkApi {
   takeMailboxWant?(): boolean;
   /** D444: the person's own agents Mem lists, by tool, and whether their mailboxes take messages. */
   setMailboxes?(list: { harness: string; open: boolean }[]): void;
+  /** D480: the last list setMailboxes was given (undefined: never read). */
+  mailboxesNow?(): { harness: string; open: boolean }[] | undefined;
 }
 
 /** D334: one Space the home reads the partner's mailbox in, through its own local Agent Context. */
@@ -546,8 +551,7 @@ export interface WorkerInfo {
   /** D157: how it browses for tasks (its 上网), when it is on. */
   web?: "chrome" | "ducter";
   /** D157: it doesn't sleep. */
-  alwaysOn?: boolean;
-}
+  alwaysOn?: boolean;}
 
 /** The main's handle on one worker. Stable across reconnects. */
 export interface WorkerLink {
@@ -758,7 +762,7 @@ export interface Runner {
   // adopt (D299): a session the person ran in their own agent outside Ducter, carried on as this
   // task in its own folder: its conversation (the person's words and the agent's) goes into the
   // task's history; the same agent resumes it by id, another agent starts from what it said.
-  openTask(input: { persona: string; title: string; brief: string; place?: Place; project?: string; harness?: string; model?: string; effort?: string; language?: LangTag; origin?: "you"; needs?: TaskNeeds; workKind?: WorkKind; media?: MediaRef[]; from?: string; fromStep?: number; fromCommit?: string; adopt?: AdoptSession; /** D476 */ bound?: import("./index.ts").TaskBound }): Promise<TaskCard>;
+  openTask(input: { persona: string; title: string; brief: string; place?: Place; project?: string; harness?: string; model?: string; effort?: string; language?: LangTag; origin?: "you"; needs?: TaskNeeds; workKind?: WorkKind; media?: MediaRef[]; from?: string; fromStep?: number; fromCommit?: string; adopt?: AdoptSession; /** D476 */ bound?: import("./index.ts").TaskBound; /** D479 */ replaces?: string }): Promise<TaskCard>;
   // Optional (D120, ack and go): open a task while its brief is still being written. The card,
   // the place and the session start now; the brief becomes the session's first turn when it
   // settles. If it rejects, the task is dropped before it did anything.

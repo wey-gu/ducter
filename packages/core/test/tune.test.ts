@@ -188,3 +188,16 @@ test("task_new_options carries each agent's models; task_new's effort round-trip
   expect(r2.card?.effort).toBeUndefined();
   expect((opened[1] as any).dropped).toContain("Haiku 4.5 doesn't offer effort low");
 });
+
+// D479: a model named as the agent's list shows it ("GPT-6.1 Terra"; on hel, Antigravity's "Gemini 4
+// Neon") opens on the agent's own id (OAR's Antigravity refuses anything but an id of its catalog);
+// one the list doesn't have comes back as words, never passed on to fail at the start.
+test("task_open's model by its label is the agent's id; one it doesn't have is said", async () => {
+  const { core } = boot(createModelCatalog({ read: async (_d, harness) => (harness === "codex" ? CODEX : undefined) }));
+  const byLabel = await core.bodies!.choose({ title: "x", harness: "codex", model: "GPT-6.1 Terra" });
+  expect(byLabel && !("none" in byLabel) ? byLabel.model : byLabel).toBe("gpt-6.1-terra");
+  const byId = await core.bodies!.choose({ title: "x", harness: "codex", model: "gpt-6-luna" });
+  expect(byId && !("none" in byId) ? byId.model : byId).toBe("gpt-6-luna");
+  const unknown = await core.bodies!.choose({ title: "x", harness: "codex", model: "Gemini 4 Neon" });
+  expect(unknown && "none" in unknown ? unknown.none : unknown).toContain('no model "Gemini 4 Neon"');
+});

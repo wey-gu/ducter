@@ -7,7 +7,7 @@ import { onMadeFrame } from "./made.tsx";
 import { onAppsFrame, openApp } from "./apps.tsx";
 import { onDidFrame, openDid } from "./did.tsx";
 import { say } from "./set-grid.tsx";
-import type { AgentModels, AgentReason, MemPluginReason, BrainNow, BridgeView, Candidate, ModelChoice, ClientFrame, Place, PlaceChoice, ConnectionReason, ConnectionView, DeviceHarness, DeviceView, DucterFolderView, GhInstallPlan, GitLoginState, MemCheckAnswer, MemItem, MemView, OoDetect, Reach, KindDefault, RuleView, ServerFrame, StandingView, Settings, SettingsPatch, UpdateAllView, UpdateReason } from "@ducter/protocol";
+import type { AgentModels, AgentReason, MailboxLook, MemPluginReason, BrainNow, BridgeView, Candidate, ModelChoice, ClientFrame, Place, PlaceChoice, ConnectionReason, ConnectionView, DeviceHarness, DeviceView, DucterFolderView, GhInstallPlan, GitLoginState, MemCheckAnswer, MemItem, MemView, OoDetect, Reach, KindDefault, RuleView, ServerFrame, StandingView, Settings, SettingsPatch, UpdateAllView, UpdateReason } from "@ducter/protocol";
 import { MEDIA_LIMITS, TUWA_MCP, WATCH_LIVE, type MediaRef, type FileOpenError } from "@ducter/protocol";
 import { PINS_MAX, type PinView } from "@ducter/protocol/src/pins.ts";
 import { keepLocal, noteFlights, prepare, tooBigWords, upload, type Pic, type ViewerState } from "./media-up.ts";
@@ -831,6 +831,13 @@ class AppState {
     // D228: on with no tunnel made yet starts the guided setup; a setup that couldn't start says why.
     if (f.t === "ability_result" && f.ability === "remote" && f.on && !f.ok && f.reason === "no_address") return void this.beginAnywhere();
     if (f.t === "anywhere_setup_result" && !f.step) return void ((this.anywhereAnswer = f.ok || f.reason === "running" ? undefined : (f.reason ?? "failed")), this.changed());
+    if (f.t === "mailbox_look") {
+      // D480: the answer for the row still open (a later tap elsewhere wins).
+      const c = this.mailboxChoosing;
+      if (!c || c.device !== f.device || c.harness !== f.harness) return;
+      this.mailboxChoosing = { ...c, look: f.look, pick: c.pick ?? f.look.recommend ?? f.look.spaces?.[0]?.id };
+      return void this.changed();
+    }
     if (f.t === "mem_plugin_result") return void ((this.memAnswer = f.ok ? undefined : { device: f.device, harness: f.harness, reason: f.reason ?? "failed" }), this.changed());
     // "Nothing newer" answers a stale view, never a failure: the devices frame that follows has the version there now.
     if (f.t === "mem_setup_result") return void ((this.memSetupAnswer = f.ok ? undefined : { device: f.device, reason: f.reason ?? "failed" }), this.changed());
@@ -2305,11 +2312,32 @@ class AppState {
     this.send({ t: "mem_plugin_install", device, harness });
     this.changed();
   }
-  /** D470: 打开它的信箱 / Open its mailbox: one task on that device opens the agent's Nowledge Mem mailbox (the tap is its Go). */
-  openMailbox(device: string, harness: string) {
+  /**
+   * D470, D480: 打开它的信箱 / Open its mailbox: one task on that device opens the agent's Nowledge Mem
+   * mailbox (the tap is its Go), in the Space the person chose in place (never asked again by the task).
+   */
+  openMailbox(device: string, harness: string, space?: { id: string; label: string }) {
     this.memAnswer = undefined;
     this.mailboxOpening.add(`${device}:${harness}`);
-    this.send({ t: "mem_plugin_install", device, harness, what: "mailbox" });
+    this.mailboxChoosing = undefined;
+    this.send({ t: "mem_plugin_install", device, harness, what: "mailbox", ...(space ? { space } : {}) });
+    this.changed();
+  }
+  /**
+   * D480: the in-place choice under one agent's link row: which agent, what that computer's Mem said
+   * (undefined while it looks), and the Space the person has picked so far (the recommendation first).
+   */
+  mailboxChoosing: { device: string; harness: string; look?: MailboxLook; pick?: string; more?: boolean } | undefined;
+  /** D480: opens the choice under that agent's row and asks that computer's Mem (read only). */
+  chooseMailbox(device: string, harness: string) {
+    this.memAnswer = undefined;
+    this.mailboxChoosing = { device, harness };
+    this.send({ t: "mailbox_look", device, harness });
+    this.changed();
+  }
+  /** D480: the choice put away; nothing was changed anywhere. */
+  closeMailboxChoice() {
+    this.mailboxChoosing = undefined;
     this.changed();
   }
   /** D470: the mailboxes this window asked to open (until the next look at Mem's list says otherwise). */

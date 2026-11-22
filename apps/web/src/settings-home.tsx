@@ -303,7 +303,8 @@ function NeedLine({ n, go }: { n: SetNeed; go: (p: SettingsPage) => void }) {
   const press = () => {
     if (!f) return go(n.page);
     if (f.kind === "update") return A.startUpdateAll();
-    if (f.kind === "mailbox") return A.openMailbox(f.device, f.harness);
+    // D480: the Space is chosen in place, on Agent messaging, under that agent's row.
+    if (f.kind === "mailbox") return A.chooseMailbox(f.device, f.harness), go(n.page);
     setAsking(true);
   };
   return (

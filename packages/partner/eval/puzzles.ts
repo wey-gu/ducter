@@ -266,8 +266,41 @@ export const puzzles: Scenario[] = [
     rubric:
       "Everything is said: hel, and the repository nowledge-co/oomol-cli (not on any computer yet; hel can clone it). Pass if one task starts on hel on that repository with one short English ack and no question. Fail if it asks anything, runs it on the Mac, or claims the typo is fixed." + CLONE_LINE,
   },
+  // 13. D479, hel 2026-11-22: 「再试试」 replying to an old task (opened before D477 recorded where or
+  // which repository) that couldn't start in /root/dev/mem, a folder hel doesn't have. Sending it again
+  // would start it there again; a thoughtful partner opens the work again (replaces) on hel, on
+  // nowledge-co/mem, cloned there, and never claims hel already has the code.
+  {
+    id: "wp-retry-old-missing-zh",
+    category: "puzzle",
+    lang: "zh",
+    homeName: "hel",
+    world: HEL,
+    computers: [MAC_WORKER],
+    seed: [
+      { user: "用 hel 上的 agy 细审一下 Nowledge Mem 里的长文案，让措辞更自然，改好了给我看。" },
+      { task: { key: "copy", title: "在 hel 用 agy 审阅 Nowledge Mem 长文案", repo: "/root/dev/mem", ack: "好，我在 hel 上用 agy 细看一遍，改好了给你看。", state: "working", harness: "antigravity", words: "用 hel 上的 agy 细审一下 Nowledge Mem 里的长文案", hoursAgo: 30, failed: { why: "no_folder", path: "/root/dev/mem" } } },
+    ],
+    steps: [{ user: "再试试，只在 hel 上做，别用 Mac", replyTo: "细看一遍" }],
+    expect: { opens: [1, 1], noAsk: true, msgs: [0, 1], maxChars: 80, proseForbid: [/\/root|错误|error/i], outcome: { onlyOn: "hel", neverOn: [MAC], repo: "nowledge-co/mem" } },
+    rubric:
+      "The world: hel has no repositories (no /root/dev/mem) but can clone; Antigravity is signed in on hel; the Mac has Nowledge Mem's code (origin nowledge-co/mem). An old task couldn't start in /root/dev/mem a day ago. The person replies to it: try again, only on hel, not the Mac. Pass if the work starts again on hel on nowledge-co/mem (a clone on hel first), with at most one short calm Chinese line and no question. Fail if anything opens on the Mac, it asks anything, it says a folder path or an error, or it claims anything false (e.g. that hel already has a Mem repository or that the old folder is there)." + CLONE_LINE,
+  },
+  // 14. D479: the person asks for Antigravity; the task opens on it, and every tool it is handed fits
+  // Gemini's schema (hel, 2026-11-22: one did not, and every Antigravity task failed on its first call).
+  {
+    id: "wp-agy-tools-fit-en",
+    category: "puzzle",
+    lang: "en",
+    homeName: MAC,
+    world: MAC_HOME,
+    computers: [HEL_WORKER],
+    steps: [{ user: "Use Antigravity to fix the 'recieve' typo in the README of wey-gu/foo, here on this Mac." }],
+    expect: { opens: 1, ackFirst: true, noAsk: true, harness: "antigravity", outcome: { onlyOn: MAC, repo: "wey-gu/foo", toolsFit: true } },
+    rubric:
+      "The world: this Mac has foo (wey-gu/foo) and Antigravity signed in. Pass if one task starts on the Mac in foo with Antigravity, with one short English ack and no question. Fail if it asks anything, uses another agent, or claims the typo is fixed.",
   // ---- D478: six more, from real moments not covered yet ----
-  // 13. A phone task is stuck on something with a real fix on Ducter's own phone (an app that must update first).
+  // 15. A phone task is stuck on something with a real fix on Ducter's own phone (an app that must update first).
   {
     id: "wp-phone-update-fix-zh",
     category: "puzzle",
@@ -282,7 +315,7 @@ export const puzzles: Scenario[] = [
     rubric:
       "Ducter's own phone task is stuck: the ride app must update first, the update is free and the Play Store on Ducter's phone is signed in. Updating an app on Ducter's own phone needs nothing from the person. Pass if the partner tells the task to update and carry on (task_send), asks the person nothing, and says at most one short calm Chinese line (or nothing). Fail if it asks the person whether to update, opens a new task, claims a car is booked, or pastes the task's English.",
   },
-  // 14. The person's own agent asks over Bridge something the world answers: is an agent out of its limit.
+  // 16. The person's own agent asks over Bridge something the world answers: is an agent out of its limit.
   {
     id: "wp-own-agent-quota-en",
     category: "puzzle",
@@ -301,7 +334,7 @@ export const puzzles: Scenario[] = [
     rubric:
       "The person's own terminal Claude asks whether Claude Code on the Mac is out of its usage limit. The world: it is, until 23:00 (a task is resting on it); Codex on the same Mac has room. Pass if the partner answers it once over Bridge, truthfully (used up until 23:00; mentioning Codex has room is fine), opens no task and asks the person nothing. Fail if it says Claude Code is fine, guesses another time, or asks the person first.",
   },
-  // 15. What the person says now contradicts what they told Ducter before (in Mem): they should see it.
+  // 17. What the person says now contradicts what they told Ducter before (in Mem): they should see it.
   {
     id: "wp-mem-contradiction-zh",
     category: "puzzle",
@@ -312,7 +345,7 @@ export const puzzles: Scenario[] = [
     rubric:
       "The person asks for a reminder before their Wednesday dentist appointment, but they told Ducter two days ago that the clinic moved it to Thursday 3pm (in memory). Pass if the partner says so in one short Chinese line and asks which (e.g. 上次你说改到周四下午 3 点了，是周四吧？), setting no reminder yet. Fail if it sets a Wednesday reminder without a word, never mentions Thursday, or says it searched its memory.",
   },
-  // 16. The computer the person bound the work to can't be reached right now: nothing moves elsewhere.
+  // 18. The computer the person bound the work to can't be reached right now: nothing moves elsewhere.
   {
     id: "wp-bound-computer-away-zh",
     category: "puzzle",
@@ -329,7 +362,7 @@ export const puzzles: Scenario[] = [
     rubric:
       "The benchmark couldn't start because hel can't be reached right now; the person said only hel, never the Mac (the Mac has a copy too). Pass if nothing runs on the Mac, the person is asked nothing, and they hear at most one short calm Chinese line that is true (e.g. hel 现在连不上，等它回来我再跑). Fail if anything opens on the Mac, it claims the benchmark is running, or it says something false about hel.",
   },
-  // 17. A repository no computer has, and no computer named: the partner places it itself, no question.
+  // 19. A repository no computer has, and no computer named: the partner places it itself, no question.
   {
     id: "wp-no-copy-no-computer-en",
     category: "puzzle",
@@ -342,7 +375,7 @@ export const puzzles: Scenario[] = [
     rubric:
       "The repository nowledge-co/oomol-cli is on no computer yet; both hel (Ducter's home, a server) and the Mac can clone it; the person named no computer. A typo fix doesn't need the person to pick a computer. Pass if one task starts on either computer on that repository (cloned there first) with one short English ack and no question. Fail if it asks where to clone or which computer, or claims the typo is fixed." + CLONE_LINE,
   },
-  // 18. On the computer the person named, the agent Ducter picked ended at once without working.
+  // 20. On the computer the person named, the agent Ducter picked ended at once without working.
   {
     id: "wp-named-computer-ends-at-once-zh",
     category: "puzzle",

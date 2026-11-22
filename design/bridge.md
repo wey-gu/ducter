@@ -1233,7 +1233,7 @@ D470 rebuilt it in D469's: the partner reports, Pebble's art carries state, the 
   matrix; rubric in D470): its coin, the two ways drawn (solid with a head; dashed while not; fainter while
   unknown) and said literally (**能找到{name}** / **{name}能找到它** and their not-yet forms), the partner in its
   pose (flag on a half-broken link, done when both ways work). Under a link that isn't whole: why, and the fix
-  Ducter can start: **打开它的信箱** (one setup task on that computer, `mem_plugin_install` with `what: "mailbox"`:
+  Ducter can start: **打开它的信箱** (D480: its Nowledge Mem Space picked in place first, below; then one setup task on that computer, `mem_plugin_install` with `what: "mailbox"` and that `space`:
   the agent's own plugin runs Mem's passive `nmem bridge setup` in its own agent context, `--enable` only when Mem
   asks for it; never Ducter's connection) or **装上** (D169). A missing plugin is an offer, never a 等你.
 - **来往 / Back and forth**: a thread per agent from what the clients hold (no new protocol): each request's
@@ -1254,6 +1254,43 @@ D470 rebuilt it in D469's: the partner reports, Pebble's art carries state, the 
   agent still ask (X1–X3 stand; this narrows J3's v1 rule only for the person's own agents' status questions).
 - **Not yet**: the mailbox task run once for real (it writes Mem-side; the author's step); a sender's quota use
   shown; the phones' native clients.
+
+## The mailbox's Space, chosen in place (D480, 2026-11-22)
+
+The author met D470's mailbox task stopped on 「Claude Code 的信箱放在哪个 Space？请回复 Space 名称（例如
+dev-team）。」 with four buttons, and had to ask which Spaces there are. The fact that shapes the answer
+(VERIFIED, nmem 0.10.122): Mem's Bridge always needs an explicit Space and says "suggested entries are hints,
+not a choice" (passive `nmem --json bridge setup` lists `candidates[{id,label,kind,readers,write_default}]`
+and picks none). The person's computers share one Nowledge Mem (Nowledge Cloud, or their own Mem app as a
+server); Bridge lives in it. Claude Code on the author's Mac can't get answers only because its mailbox isn't
+open.
+
+- **In place, not a task's question.** **打开它的信箱 / Open its mailbox** opens a choice under the agent's
+  link row (and Overview's 等你 goes there): **在哪个 Nowledge Mem 空间打开它的信箱？ / Which Nowledge Mem
+  Space should its mailbox open in?** Core asks that computer's own Mem, read only (`mailbox_look`: the home
+  runs `nmem --json status` and the passive `bridge setup` itself; a worker its new `mem_bridge_look` op), and
+  answers the Spaces as Mem lists them. The person's tap on **在「只有你」打开 / Open in Only you** is the Go; the
+  task that opens it gets the exact `--space-id` and is told never to ask (if Mem refuses it, it reports Mem's
+  answer). Enabling stays the agent's own step in its own Mem context (only the agent knows that context:
+  INFERRED; Ducter never enables a mailbox under its own connection).
+- **Ducter suggests, never chooses.** The suggestion is the Space the partner's own connection is in (marked
+  **我在这里收信 / I listen here**); without it in the list, Mem's `personal` kind. Read from Mem's fields
+  (`id`, `kind`), never from a label's words. It is shown first and already chosen, with one line why
+  (**推荐「只有你」：我就在这里收信，也只有你能看到。**); the others are one tap away (**看看其他空间**), each with
+  who can read it (Mem's `readers`). Mem's personal and everyone Spaces are said in Ducter's words (**只有你 /
+  Only you**, **所有人 / Everyone**), a team's by its own name.
+- **No "another Mem" from addresses (round 2).** The first build compared Mem API URLs and called the
+  author's Mac (`cloud.nowledge.co`) and the home (`hel.siwei.info`) two Mems. Wrong: `hel.siwei.info/mem` is
+  Ducter's own relay (D393, `core/src/mem-relay.ts`), which forwards with the home's credential to the home's
+  Mem, the same Cloud; hel's own `nmem status` says `cloud.nowledge.co`. A URL names a relay as readily as a Mem,
+  so comparing them is a heuristic (principle 21). Removed: nothing says "another Mem". If that fact is ever
+  needed, it comes from identity Mem reports (account or member, backend), the relay resolved to its upstream,
+  and is said only when those verifiably differ.
+- **The partner knows.** `[your agents' mail]` on every turn while a mailbox is closed: the agent, that its
+  answers can't go back, and the truth about Mem (one Nowledge Mem; tasks elsewhere reach it through Ducter's
+  relay on the home, the same Mem); never promise what can't arrive, point the person at the row, never a task,
+  never ask for a typed Space name (principle 21: a fact in what it sees, not a rule over words).
+- **Not yet**: the enable run once for real (it writes Mem-side; the author's step).
 
 ## Open questions
 

@@ -10,14 +10,14 @@
 // quiet line, a search, the week's check one tap away; other tools' working notes only as a count.
 // D470: 和你的其他 agent 通信 says who reaches whom as a picture per agent with each broken way's fix, the
 // exchanges as a thread per agent with what came of each, who may ask what, and the one switch first.
-import type { BridgeView, MemCheckAnswer, MemCheckItem, MemItem, PeersSettings } from "@ducter/protocol";
+import type { BridgeView, MailboxSpace, MemCheckAnswer, MemCheckItem, MemItem, PeersSettings } from "@ducter/protocol";
 import type { ComponentChildren } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { A } from "./app.ts";
 import { BrandTile, toolBrand } from "./brand.tsx";
 import { Coin } from "./coin.tsx";
 import { copy } from "./conv-copy.ts";
-import { Btn, DangerButton, LinkBtn, Switch } from "./controls.tsx";
+import { Btn, DangerButton, LinkBtn, MenuRow, Switch } from "./controls.tsx";
 import { ago, harnessName, spoken } from "./format.ts";
 import { aboutGroups, bySource, exchangeThreads, groupNoted, MEM_MIN, memHealthLook, memPhase, memUpdate, ownsAgents, peersNamesUpdate, peersPhase, peersShown, peersSwitchOn, awayFor, reachRows, reachSplit, reachWays, recentHandoffs, SENDER_DAILY, trustOf, TRUSTED_DAILY, type Exchange as PeerExchange, type ReachRow, type MemPhase, type MemUpdate, type Thread, type Way } from "./mem-view.ts";
 import { CopyLine } from "./lend.tsx";
@@ -889,8 +889,12 @@ function LinkRow({ r, name }: { r: ReachRow; name: string }) {
   const opening = !!r.device && A.mailboxOpening.has(`${r.device}:${r.harness}`);
   // Only a half-working link is a break (requests come in, answers can't go back); a missing plugin is an offer.
   const broken = w.fix === "mailbox" && !opening;
+  const where = r.deviceName ?? r.device ?? "";
+  // D480: the choice open under this row (its Space, or the same Mem).
+  const c = A.mailboxChoosing;
+  const choosing = !!c && c.device === r.device && c.harness === r.harness;
   const why =
-    w.fix === "mailbox" ? (opening ? t("peers.why.opening") : t("peers.why.mailbox", r.deviceName ?? r.device ?? "")) : w.fix === "install" ? t("peers.why.install") : r.can === "unknown" ? t("peers.why.unknown") : r.can === "none" ? t("peers.reach.none") : r.can === "relay" ? t("peers.reach.relay", name, r.tool) : "";
+    w.fix === "mailbox" ? (opening ? t("peers.why.opening") : t("peers.why.mailbox", where)) : w.fix === "install" ? t("peers.why.install") : r.can === "unknown" ? t("peers.why.unknown") : r.can === "none" ? t("peers.reach.none") : r.can === "relay" ? t("peers.reach.relay", name, r.tool) : "";
   const last = r.last && w.to === "yes" ? t("peers.last", ago(A.L, r.last)) : "";
   const label = `${r.tool}: ${t(`peers.way.to.${w.to}`, name)}; ${t(`peers.way.back.${w.back}`, name)}`;
   return (
@@ -919,10 +923,87 @@ function LinkRow({ r, name }: { r: ReachRow; name: string }) {
       {why && (
         <div class="lr-why">
           <small class="grow">{why}</small>
-          {w.fix === "mailbox" && !opening && <Btn kind="secondary" size="sm" label={t("peers.fix.mailbox")} about={r.tool} onClick={() => A.openMailbox(r.device!, r.harness)} />}
+          {w.fix === "mailbox" && !opening && !choosing && <Btn kind="secondary" size="sm" label={t("peers.fix.mailbox")} about={r.tool} onClick={() => A.chooseMailbox(r.device!, r.harness)} />}
           {w.fix === "install" && <Btn kind="secondary" size="sm" label={t("peers.try.plugin.go")} about={r.deviceName ?? r.device} onClick={() => A.installMem(r.device!, r.harness)} />}
         </div>
       )}
+      {choosing && <MailboxChoice r={r} where={where} />}
+    </div>
+  );
+}
+
+/** D480: a Space as the person reads it: Mem's personal and everyone Spaces in Ducter's words, a team's by its own name. */
+export function spaceName(s: MailboxSpace): string {
+  if (s.kind === "personal") return t("mailbox.space.personal");
+  if (s.kind === "commons") return t("mailbox.space.everyone");
+  return s.label;
+}
+
+/** D480: who can read a Space's mail, said under its name (the partner's own Space says that it listens there). */
+export function spaceReaders(s: MailboxSpace): string {
+  if (s.partner) return t("mailbox.listens");
+  if (s.kind === "personal") return t("mailbox.readers.you");
+  return s.readers ? t("mailbox.readers", String(s.readers)) : "";
+}
+
+/**
+ * D480: 打开它的信箱 / Open its mailbox, in place under the agent's row: that computer's real Nowledge
+ * Mem Spaces as choices, the recommended one (the partner's own) chosen and said why in one line, the
+ * others one tap away; one tap opens it there. Never a typed name, never chosen without the tap (Mem's
+ * rule).
+ */
+function MailboxChoice({ r, where }: { r: ReachRow; where: string }) {
+  const c = A.mailboxChoosing!;
+  const look = c.look;
+  const not = <Btn kind="text" size="sm" label={t("mailbox.not")} about={r.tool} onClick={() => A.closeMailboxChoice()} />;
+  if (!look)
+    return (
+      <div class="mb-choice" role="group" aria-label={t("mailbox.title")} aria-busy="true">
+        <small class="mb-wait">{t("mailbox.looking", where)}</small>
+      </div>
+    );
+  if (look.state !== "choose" || !look.spaces?.length)
+    return (
+      <div class="mb-choice" role="group" aria-label={t("mailbox.title")}>
+        <small class="mb-lede">{t(`mailbox.${look.state === "choose" ? "failed" : look.state}`, where)}</small>
+        <div class="mb-acts">
+          {look.state !== "old" && <Btn kind="secondary" size="sm" label={t("mailbox.again")} about={r.tool} onClick={() => A.chooseMailbox(r.device!, r.harness)} />}
+          {not}
+        </div>
+      </div>
+    );
+  const spaces = look.spaces;
+  const rec = spaces.find((s) => s.id === look.recommend);
+  const pick = spaces.find((s) => s.id === c.pick) ?? rec ?? spaces[0]!;
+  const shown = c.more || !rec ? spaces : spaces.filter((s) => s.id === rec.id || s.id === pick.id);
+  const set = (o: Partial<NonNullable<typeof A.mailboxChoosing>>) => ((A.mailboxChoosing = { ...c, ...o }), A.changed());
+  return (
+    <div class="mb-choice" role="group" aria-label={t("mailbox.title")}>
+      <b class="mb-title">{t("mailbox.title")}</b>
+      {rec && <small class="mb-lede">{t(rec.partner ? "mailbox.why.partner" : "mailbox.why.personal", spaceName(rec))}</small>}
+      <div class="mb-list" role="radiogroup" aria-label={t("mailbox.title")}>
+        {shown.map((s) => {
+          const who = spaceReaders(s);
+          return (
+            <MenuRow key={s.id} label={`${spaceName(s)}${who ? `, ${who}` : ""}`} on={s.id === pick.id} onClick={() => set({ pick: s.id })}>
+              <span class="mb-name">
+                <b>{spaceName(s)}</b>
+                {s.id === rec?.id && <span class="mb-tag">{t("newtask.suggested")}</span>}
+              </span>
+              {who && <small>{who}</small>}
+            </MenuRow>
+          );
+        })}
+      </div>
+      {rec && !c.more && spaces.length > shown.length && (
+        <button class="mb-more" onClick={() => set({ more: true })}>
+          {t("mailbox.more")}
+        </button>
+      )}
+      <div class="mb-acts">
+        <Btn kind="primary" size="sm" label={t("mailbox.go", spaceName(pick))} about={r.tool} onClick={() => A.openMailbox(r.device!, r.harness, { id: pick.id, label: pick.label })} />
+        {not}
+      </div>
     </div>
   );
 }

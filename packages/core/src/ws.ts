@@ -1276,8 +1276,20 @@ export function createWsHandler(deps: WsDeps) {
         const mp = deps.memPlugins?.();
         if (!mp) return send(ws, { t: "mem_plugin_result", device, harness, ok: false, reason: "failed" });
         watchDevices();
-        const r = await mp.install(device, harness, f.what === "mailbox" ? "mailbox" : undefined); // D470
+        // D470; D480: the Space the person chose in place, by Mem's exact id.
+        const space = f.what === "mailbox" && f.space && typeof f.space.id === "string" && f.space.id ? { id: f.space.id, label: String(f.space.label ?? f.space.id) } : undefined;
+        const r = await mp.install(device, harness, f.what === "mailbox" ? "mailbox" : undefined, space);
         return send(ws, r.ok ? { t: "mem_plugin_result", device, harness, ok: true, ...(r.taskId ? { taskId: r.taskId } : {}) } : { t: "mem_plugin_result", device, harness, ok: false, reason: r.reason });
+      }
+      case "mailbox_look": {
+        // D480: 打开它的信箱 / Open its mailbox, in place: that computer's Mem, read only.
+        const device = String(f.device ?? "local");
+        const harness = String(f.harness ?? "");
+        const mp = deps.memPlugins?.();
+        if (!mp) return send(ws, { t: "mailbox_look", device, harness, look: { state: "failed" } });
+        const b = await deps.bridgeLink?.view().catch(() => undefined);
+        const look = await mp.mailboxLook(device, harness, b?.space ? { space: b.space.id } : {});
+        return send(ws, { t: "mailbox_look", device, harness, look });
       }
       case "anywhere_setup": {
         // D228: 让 Ducter 帮我设好 (the person's tap is the Go for this one task), and the steps its

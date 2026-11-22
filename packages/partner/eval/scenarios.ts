@@ -24,6 +24,8 @@ export type Seed =
         words?: string; // D477: the person's words its brief quotes (default "(seeded)")
         device?: string; // D477 (scenario.world): the computer its place is on, by name (default the home)
         needs?: Record<string, unknown>; // D477: what it needs (a phone task: { phone: "ducter" })
+        hoursAgo?: number; // D479: opened this long ago (before D477 recorded where)
+        failed?: { why: import("../../protocol/src/index.ts").CantStart["why"]; path?: string }; // D479: its start failed then (its card as core makes it)
       };
     }
   | { waiterArmed: { reason: string; minutesAgo: number } }
@@ -276,6 +278,8 @@ export interface Expect {
     repo?: string;
     /** The seeded task's work went on (task_switch, task_fork or task_send on it, or a new task_open) with this agent / not with that one. */
     carriedOn?: { task: string; harness?: string; notHarness?: string };
+    /** D479: every tool a task opened in the run is handed fits the model families its agent sends tools to (harness-facts toolSchema). */
+    toolsFit?: boolean;
   };
 }
 

@@ -86,10 +86,13 @@ test("加个合计: changed by edits (a new version, the old one kept), the card
 test("an app's ask: answered (marked for the app); it may be filled, never rewritten", async () => {
   let rewrite: R | undefined;
   let fill: R | undefined;
+  let fillText: R | undefined;
   const { fc, apps, partner, user, said } = setup(async (_i, s) => {
     const id = apps.list("p1")[0]!.id;
     rewrite = await call(fc, { id, html: "<p>pwned</p>" });
     fill = await call(fc, { id, data: { rate: 7.2 } });
+    // D479: data as JSON text (the schema every model family can hold) lands the same.
+    fillText = await call(fc, { id, data: JSON.stringify({ pair: "USD/CNY" }) });
     s.say("今天美元兑人民币大约 7.2。");
     s.end();
   });
@@ -102,7 +105,8 @@ test("an app's ask: answered (marked for the app); it may be filled, never rewri
   expect(rewrite!.ok).toBe(false);
   expect(rewrite!.error).toContain("only the user's own words");
   expect(fill!.put).toEqual(["rate"]);
-  expect(apps.data(made.app.id)).toEqual({ rate: 7.2 });
+  expect(fillText!.put).toEqual(["pair"]);
+  expect(apps.data(made.app.id)).toEqual({ rate: 7.2, pair: "USD/CNY" });
   expect(apps.html(made.app.id)).toBe(TRIP);
   const out = said().at(-1)!;
   expect(out.appAnswer).toEqual({ id: made.app.id, ask: "a1" });

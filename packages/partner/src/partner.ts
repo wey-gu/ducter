@@ -56,6 +56,7 @@ import { ASKS_MAX, type AskLine, callWakes, FREE_TIERS, fileView, harnessName, H
 import { boundWords } from "../../protocol/src/where.ts";
 import type { CoreApi, HarnessEvent, HarnessSession, Partner, Runner, SendImage, ToolHandler, WebLookPort, WorkingMemoryView } from "../../protocol/src/internal.ts";
 import { resolveWindows, WINDOW_MAX, WINDOW_MIN } from "../../protocol/src/harness-facts.ts";
+import { jsonArg, jsonText } from "../../protocol/src/tool-schema.ts";
 
 /** D385: the partner's line before a plan-first hand-over, when the model said none. */
 const PLAN_FIRST_LINE = { zh: "好，我先看一遍，出个方案给你，你点头再做。", en: "OK. I'll read them first and show you a plan; nothing starts until you say so." };
@@ -333,6 +334,8 @@ const TASK_SEND_RE = /(^|__)task_send$/;
 const FOLLOWS_HOURS = 12;
 /** D373: a task that has finished: a follow-up sent to it goes back to work, under a new line in the conversation. */
 const FINISHED = new Set(["done", "done_claimed", "failed"]);
+/** D479: a start that failed on its place (CantStart.why): sending to it again would start it there again. */
+const PLACE_CANT = new Set(["no_folder", "no_repo", "clone_failed"]);
 /** A partner tool call as the step the user sees (D104); undefined keeps the current step. */
 export function activityStep(tool: string): ActivityStep | undefined {
   const name = tool.split("__").pop() ?? tool;
@@ -1369,6 +1372,9 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         if (typeof to !== "string" && !final) return;
         // D391: a send to one of two alike is refused: its line is not an ack.
         if (typeof to === "string" && ambiguousFor(to)) return;
+        // D479: a send to a task that couldn't start on its place may be refused (its place still
+        // doesn't hold): its line waits, the ack of the task opened again in its stead, or of the send.
+        if (typeof to === "string" && placeStuck(to)) return;
         takeSendLine(turn, to);
       }
       if (TASK_OPEN_RE.test(ev.tool.name) && turn.carried && carriedTask(turn.carried, (ev.tool.input as { title?: unknown } | undefined)?.title, false)) {
@@ -1699,6 +1705,9 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     const others = (core.workers?.list() ?? []).length > 0;
     const live = renderLive(myTasks(), limits, others ? (d) => (d === "local" ? (core.homeDevice?.()?.name ?? "local") : (core.workers?.link(d)?.name ?? d)) : undefined, new Date(now()));
     if (live) deltas.push(live);
+    // D480: what isn't whole about the person's own agents' mail (closed mailboxes, another Mem server), every turn while so.
+    const mail = renderAgentMail(core.agentMail?.() ?? []);
+    if (mail) deltas.push(mail);
     if (!fresh) return deltas.join("\n");
     const isRecut = recutting;
     recutting = false;
@@ -2173,6 +2182,22 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     if (taskId) (t!.lined ??= new Set()).add(taskId);
   };
 
+  /** D479: a task that couldn't start on its place (sending to it would start it there again). */
+  const placeStuck = (taskId: string) => {
+    const c = core.tasks.get(taskId);
+    return !!c?.cant && PLACE_CANT.has(c.cant.why);
+  };
+
+  /** D479: where a task opened, as one plain fact for a tool result (the computer by name, the folder, what is cloned there first). */
+  const openedLine = (p: Place, cloning?: string) => {
+    if (p.kind === "none") return "nowhere in particular (no folder)";
+    if (p.kind === "browser") return "in a browser";
+    const dev = p.device || "local";
+    const name = core.places?.nameOf?.(dev) ?? dev;
+    const path = p.kind === "repo" ? p.repoPath : p.path;
+    return `on ${name}, in ${path}${cloning ? `, cloning ${cloning} there first` : ""}`;
+  };
+
   tools.register(
     "partner",
     "task_open",
@@ -2226,7 +2251,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           description: "What the user said about computers for it (\"只在 hel 上，不要用 Mac\": on hel, only, not the Mac), names as in [devices]; held on this and any task replacing it.",
           properties: { on: { type: "string" }, only: { type: "boolean" }, not: { type: "array", items: { type: "string" } } },
         },
-        replaces: { type: "string", description: "The id of a task whose work this opens again: it keeps that task's where, and the old one leaves On hand quietly." },
+        replaces: { type: "string", description: "The id of a task whose work this opens again, e.g. one that couldn't start, now at another place (keeps its where; the old one is set aside, or leaves On hand when finished)." },
         effort: { type: "string", enum: ["high", "low"], description: "How hard its agent thinks, when the user said so: high for carefully / thoroughly (仔细, 认真), low for a quick look; else omit." },
         project: { type: "string" },
         ...(bridge ? { forMessage: { type: "string", description: "Only when this task does what another agent asked through Bridge (and the user said go): that message id. Ducter tells the sender it was taken, and reminds you to send the outcome." } } : {}),
@@ -2341,8 +2366,19 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       let cloneLine: string | undefined;
       let bound: TaskBound | undefined;
       let placedOn: string | undefined;
+      let cloning: string | undefined;
+      // D479: the task whose work this opens again, as the partner recorded it: it must be one.
+      const replaces = typeof raw.replaces === "string" && raw.replaces.trim() ? raw.replaces.trim() : undefined;
+      if (replaces && !core.tasks.get(replaces)) return { ok: false, error: `Not opened: there is no task ${replaces}. replaces takes a task id from [tasks] or task_find.` };
+      // D479, D478: what became of the task it replaces (core retires it from the recorded replaces, by id): a fact.
+      const replacedFact = () => {
+        if (!replaces) return {};
+        const a = core.tasks.get(replaces)?.attention;
+        const what = a === "superseded" ? "set aside: this one carries its work" : a && ["queued", "working", "needs_you", "blocked"].includes(a) ? "still at work and left as it was; task_stop it if this one takes its place" : "off On hand: this one carries its work";
+        return { replaced: `${replaces} (${what})` };
+      };
       if (core.places) {
-        const pf = await core.places.preflight({ place, ...(remoteOf(raw.place) ? { remote: remoteOf(raw.place)! } : {}), texts: [args.title, args.brief], userTexts, ...whereOf(raw.where), ...(typeof raw.replaces === "string" && raw.replaces.trim() ? { replaces: raw.replaces.trim() } : {}) });
+        const pf = await core.places.preflight({ place, ...(remoteOf(raw.place) ? { remote: remoteOf(raw.place)! } : {}), texts: [args.title, args.brief], userTexts, ...whereOf(raw.where), ...(replaces ? { replaces } : {}) });
         if (!pf.ok) {
           const early = t?.early.find((e) => !e.used);
           if (early) {
@@ -2353,6 +2389,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         }
         place = pf.place;
         cloneLine = pf.said;
+        if (pf.how === "clone") cloning = pf.repo ?? remoteOf(raw.place);
         bound = pf.bound;
         // D477: where Ducter put it when it chose (a copy it found, a clone, a where-rule) is a fact the partner hears.
         if (pf.computer && (pf.how === "found" || pf.how === "clone" || pf.how === "rule")) placedOn = `${pf.computer}${pf.how === "clone" ? `, cloning ${pf.repo ?? "the code"} there first` : pf.how === "found" ? `, in its copy of ${pf.repo ?? "the code"}` : ""}`;
@@ -2404,12 +2441,6 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         if (forOriginal && bridge) await deliver({ ...peerOf(forOriginal), text: claimText(forOriginal.text, card.title || args.title), inReplyTo: forOriginal.messageId, taskId: card.taskId }, "reply");
         if (forOriginal && bridge && !trustedFor) offerTrust(forOriginal); // X2: after the second Go
       };
-      // D478: the task this one opens again is retired by its id (the partner's record), never by its title.
-      const replacesId = typeof raw.replaces === "string" && raw.replaces.trim() ? raw.replaces.trim() : undefined;
-      const retire = (newId: string) => {
-        const r = replacesId ? core.replaced?.(newId, replacesId) : undefined;
-        return r && !r.retired && r.why === "at_work" ? { replaces: `task ${replacesId} is still at work and was left as it is; task_stop it if this one takes its place` } : {};
-      };
       const early0 = t?.early.find((e) => !e.used);
       // D360: opened from the title before the group was known, but its turn hasn't come: dropped, held below.
       if (early0 && groupName && groups?.wouldHold(core.persona.id, groupName, place)) {
@@ -2434,7 +2465,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           joinGroup(card.taskId);
           lineUp(card.taskId);
           await claimFor(card);
-          return { ok: true, taskId: card.taskId, title: card.title, place: card.place, attention: card.attention, ...(placedOn ? { where: placedOn } : {}), ...retire(card.taskId), note: kindNote(card.taskId, note) };
+          return { ok: true, taskId: card.taskId, title: card.title, place: card.place, attention: card.attention, ...(placedOn ? { where: placedOn } : {}), ...replacedFact(), note: kindNote(card.taskId, note) };
         }
         early.brief.reject(new Error("the call names another place, agent or needs")); // dropped; opened below instead
       } else if (t) {
@@ -2470,6 +2501,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           ...(isWorkKind(raw.kind) ? { workKind: raw.kind } : {}),
           language: taskLanguage(t),
           ...(bound ? { bound } : {}),
+          ...(replaces ? { replaces } : {}),
           ...(handed.length ? { media: handed } : {}),
         };
         // D360: a later part in the same folder waits for the one before it: held, no task yet.
@@ -2494,11 +2526,14 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         });
         (core as { taskSources?: { bindStaged(id: string, texts?: string[]): unknown } }).taskSources?.bindStaged(card.taskId, [brief, args.title]);
         await claimFor(card);
+        // D479: what happened, as facts the partner says nothing beyond: where it opened (and what is
+        // cloned there first), and the task it replaces set aside.
+        const facts = { opened: openedLine(card.place, cloning), ...replacedFact() };
         if (cloneLine) {
           tellUser(cloneLine);
-          return { ok: true, taskId: card.taskId, title: card.title, place: card.place, attention: card.attention, ...(placedOn ? { where: placedOn } : {}), ...retire(card.taskId), note: CLONE_NOTE };
+          return { ok: true, taskId: card.taskId, title: card.title, place: card.place, attention: card.attention, ...facts, ...(placedOn ? { where: placedOn } : {}), note: CLONE_NOTE };
         }
-        return { ok: true, taskId: card.taskId, title: card.title, place: card.place, attention: card.attention, ...(placedOn ? { where: placedOn } : {}), ...retire(card.taskId), note: kindNote(card.taskId, note) };
+        return { ok: true, taskId: card.taskId, title: card.title, place: card.place, attention: card.attention, ...facts, ...(placedOn ? { where: placedOn } : {}), note: kindNote(card.taskId, note) };
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         // The status line is the person's; the "Tell the user …" instruction is the partner's only (as newtask.ts).
@@ -2540,6 +2575,24 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         if (turn) turn.pending = null; // the line written for the send would claim an action that didn't happen
         return { ok: false, error: alike };
       }
+      // D479: a task that couldn't start because of its place goes back to that same place when sent
+      // to (hel, 2026-11-22: 「再试试」 reopened smx2jjb3 in /root/dev/mem, which isn't there, and it
+      // failed again). Its place is checked first, as task_open's is; one that still doesn't hold is
+      // never sent: the facts come back, with the verb that opens the work again somewhere it can.
+      const stuck = core.tasks.get(args.taskId);
+      if (stuck?.cant && core.places && placeStuck(args.taskId)) {
+        const pf = await core.places.preflight({ place: stuck.place, texts: [stuck.title], userTexts: turn?.userTexts ?? [], replaces: args.taskId });
+        if (!pf.ok || !samePlace(pf.place, stuck.place)) {
+          // The line written before it stays waiting: it is the ack of the task opened in its stead.
+          const was = stuck.place.kind === "folder" ? stuck.place.path : stuck.place.kind === "repo" ? stuck.place.repoPath : "";
+          return {
+            ok: false,
+            error:
+              `Not sent: task ${args.taskId} never started, and sending it again would start it in the same place (${stuck.cant.computer}${was ? `: ${was}` : ""}), which still doesn't hold: ${pf.ok ? `the code is not there (Ducter would put it at ${openedLine(pf.place)})` : pf.error.replace(/^Not opened: /, "")}. ` +
+              `To do this work, open it again: task_open with replaces "${args.taskId}" (it keeps what the user said about where; the old one is set aside), the same brief (task_read), and the place the user's words and [devices] settle: the repository as place.remote, with place.device, and Ducter clones it there first. If they don't settle which repository or computer, ask in one short line. Say nothing that [devices] or this result doesn't show.`,
+          };
+        }
+      }
       if (turn) takeSendLine(turn, args.taskId); // the line before it, if the stream didn't take it yet
       flushPending(); // a line written before this call is a message, not an ack
       // A turn woken only by a task's question: the user answers it on its card (eval: the
@@ -2571,7 +2624,9 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           if (!t.acked && !t.lateContinue) t.lateContinue = args.taskId;
           else continueJob(t, args.taskId, newId("job"));
         }
-        return { ok: true, ...r };
+        // D479: a finished task goes back to work where it was: said as a fact, so nothing else is claimed.
+        const back = was && FINISHED.has(was) ? core.tasks.get(args.taskId)?.place : undefined;
+        return { ok: true, ...r, ...(back ? { backTo: openedLine(back) } : {}) };
       } catch (err) {
         // A follow-up that never reached the task: its line goes back to how the task stands.
         const j = turn?.continued?.has(args.taskId) ? jobs.get(args.taskId) : undefined;
@@ -2667,7 +2722,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           name: { type: "string", description: "A short name in their words (new, or a rename)" },
           html: { type: "string", description: "The whole file (body content: markup, <style>, <script>)" },
           edits: { type: "array", items: { type: "object", properties: { find: { type: "string" }, replace: { type: "string" } }, required: ["find", "replace"] } },
-          data: { type: "object", description: "Keys to put into its storage (null deletes one)" },
+          data: jsonText("Keys to put into its storage (null deletes one)"),
           read: { type: "boolean", description: "Get its file and data back" },
           icon: { type: "string", enum: [...APP_ICONS], description: "Its mark, by what it's about" },
           summary: { type: "string", description: "Its shelf line, when you fill it" },
@@ -2697,7 +2752,13 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         if ((writes || a.remove === true) && !own(t)) return { ok: false, error: "An app's own ask can't change an app: only the user's own words can. Answer it, or put data in with data." };
         const icon = typeof a.icon === "string" && (APP_ICONS as readonly string[]).includes(a.icon) ? (a.icon as AppIcon) : undefined;
         const summary = typeof a.summary === "string" ? a.summary.trim() : "";
-        const seed = a.data && typeof a.data === "object" && !Array.isArray(a.data) ? (a.data as Record<string, unknown>) : undefined;
+        // D479: data comes as JSON text (a schema every model family can hold).
+        let seed: Record<string, unknown> | undefined;
+        try {
+          seed = jsonArg(a.data, "data");
+        } catch (err) {
+          return { ok: false, error: (err as Error).message };
+        }
         // D410: deleted on the person's own word; its card says so with 撤销 / Undo (kept a while).
         if (a.remove === true) {
           if (!m) return { ok: false, error: "remove needs an id from [apps]." };
@@ -2749,8 +2810,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           card(t, r.app, "changed");
         }
         const put: string[] = [];
-        if (a.data && typeof a.data === "object" && !Array.isArray(a.data)) {
-          for (const [k, v] of Object.entries(a.data as Record<string, unknown>).slice(0, 40)) {
+        if (seed) {
+          for (const [k, v] of Object.entries(seed).slice(0, 40)) {
             const r = apps.put(m.id, k, v, "partner");
             if (!r.ok) return { ok: false, error: `${k}: ${r.error}`, ...(put.length ? { put } : {}) };
             put.push(k);
@@ -3650,7 +3711,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         properties: {
           connection: { type: "string" },
           action: { type: "string", description: "Action id from connection_search (or the MCP tool name)" },
-          input: { type: "object", description: "The action's input, as its guide says" },
+          input: jsonText("The action's input, as its guide says"),
           account: { type: "string", description: "Optional named account inside the connection (for oo: one of the service's account names from connections_list; omit for the default)" },
           question: { type: "string", description: "Writes only: the one question on the card, in the user's language (what will go out, to whom)" },
           goLabel: { type: "string", description: "Writes only: what Go does, short (e.g. 发给 Lina / Send to Lina)" },
@@ -3663,6 +3724,12 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         const connection = s_(a.connection);
         const action = s_(a.action);
         if (!connection || !action) return { ok: false, error: "connection_call needs `connection` and `action` (or a `decisionId` after the user's Go)." };
+        // D479: the input comes as JSON text (a schema every model family can hold).
+        try {
+          a = { ...a, input: jsonArg(a.input, "input") ?? {} };
+        } catch (err) {
+          return { ok: false, error: (err as Error).message };
+        }
         const op = await conns.classify(connection, action);
         if (op === "read") return conns.read(P, connection, action, a.input ?? {}, s_(a.account) || undefined);
         // D222: a Google Calendar change is the calendar tool's own card, never a generic one,
@@ -5821,6 +5888,18 @@ export function renderLive(cards: TaskCard[], limits: AgentLimitFact[] | undefin
   };
   const more = live.length - LIVE_MAX;
   return `[live] ${live.slice(0, LIVE_MAX).map(one).join(" · ")}${more > 0 ? ` · and ${more} more` : ""}. True now.`;
+}
+
+/**
+ * D480: the facts about the person's own agents' mail that would make a promise false: Mem lists an
+ * agent's mailbox closed (it reaches the partner, the answers can't go back). Round 2: it also says
+ * the truth about where Mem is (one Nowledge Mem; tasks elsewhere reach it through Ducter's relay on
+ * the home), so the partner never invents a second Mem. Facts only; the fix is the person's, in Settings.
+ */
+export function renderAgentMail(facts: { harness: string; box: "closed" }[]): string {
+  if (!facts.length) return "";
+  const lines = facts.slice(0, 6).map((f) => `${harnessName(f.harness)}: Nowledge Mem lists its mailbox closed, so it can write to you but your replies can't reach it`);
+  return `[your agents' mail] True now: ${lines.join("; ")}. The person's agents, you and the tasks share one Nowledge Mem (tasks on other computers reach it through Ducter's relay on the home: the same Mem, not another one); a closed mailbox is the only gap here. Never promise a reply these facts say can't arrive. The person opens it in one tap under that agent in Settings › Talk with your other agents (it shows their real Nowledge Mem Spaces to pick from): point them there; never open a task for it and never ask them to type a Space name.`;
 }
 
 /** D372: a model in a word for the partner's line ("sonnet" → "Sonnet", "deepseek-official/deepseek-flash" → "Deepseek Flash"). */

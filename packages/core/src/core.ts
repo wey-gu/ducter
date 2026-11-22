@@ -15,6 +15,7 @@ import { randomBytes } from "node:crypto";
 import { APP_SANDBOX, appCsp, HARNESSES, MEM_CONNECT_TOOLS, fill, harnessName, normalizeTag, sameComputer, pickTag, words, type Bodies, type HarnessId, type LangTag, type LogEvent, type OnHand, type PartnerAsk, type Place, type TaskCard, type TaskNeeds } from "@ducter/protocol";
 import { intlLocale, talkLang } from "./lang.ts";
 import type { CoreApi, ListedModel, MemIdentity, MemLookPort, Partner, Runner, TaskMemoryPort } from "@ducter/protocol/src/internal.ts";
+import { jsonArg } from "@ducter/protocol/src/tool-schema.ts";
 import { migrateKeys, readKeys, scrubKeysFromEnv } from "@ducter/protocol/src/keys.ts";
 import { realClock, type Clock } from "./clock.ts";
 import { createDecisions, forwardFrom, type Decisions } from "./decisions.ts";
@@ -113,7 +114,7 @@ import { createAgentLatest, createAgentUpdates, type AgentUpdates, type AgentUpd
 import { createUpdateAll, type UpdateAll } from "./update-all.ts";
 import { bundledPiVersion, detectAgent, probeHarnesses } from "./harness-probe.ts";
 import { createMemPlugins, type MemPlugins } from "./mem-plugins.ts";
-import { checkMemPluginUpdates, inspectMemPlugins, nmemInspectExec } from "@ducter/protocol/src/mem-plugins.ts";
+import { checkMemPluginUpdates, inspectMemBridge, inspectMemPlugins, nmemInspectExec } from "@ducter/protocol/src/mem-plugins.ts";
 import { realSys, updateHow, writeAlive, type UpdateSys } from "./update.ts";
 import { DUCTER_VERSION } from "@ducter/protocol/src/version.ts";
 import { createAutofill, type Autofill } from "./saved/index.ts";
@@ -291,7 +292,7 @@ export interface CoreOptions {
   /** D169 test seams: the Mem plugin check on the home (default: the real `nmem`, never in tests). */
   /** D393: test seams for the Mem relay (mem-relay.ts): the home's credential, the upstream fetch, the plugin's folder. */
   memRelay?: { credential?: () => import("./mem-relay.ts").MemCredential | undefined; fetch?: typeof fetch; kitDir?: (harness: string) => string | undefined };
-  memPlugins?: { inspectLocal?: () => Promise<Record<string, import("@ducter/protocol").MemPluginView> | undefined>; checkUpdates?: () => Promise<Record<string, string> | undefined>; everyMs?: number; now?: () => number; connected?: () => boolean; connectLocal?: (args: string[]) => Promise<{ code: number; out: string; err: string } | undefined> };
+  memPlugins?: { inspectLocal?: () => Promise<Record<string, import("@ducter/protocol").MemPluginView> | undefined>; checkUpdates?: () => Promise<Record<string, string> | undefined>; everyMs?: number; now?: () => number; connected?: () => boolean; connectLocal?: (args: string[]) => Promise<{ code: number; out: string; err: string } | undefined>; /** D480: the mailbox look on the home itself (demos, tests; never the real nmem then). */ bridgeLookLocal?: () => Promise<import("@ducter/protocol/src/mem-plugins.ts").MemBridgeLook | undefined> };
   /** D151 test seams for Ducter's own browser (false: none). */
   browser?: false | Partial<Omit<DucterBrowserOptions, "mcp" | "log" | "tasks" | "decisions" | "persona" | "dataDir">>;
   /** D217: Ducter's phone (用手机); false leaves it out (tests). */
@@ -843,7 +844,14 @@ export function startCore(opts: CoreOptions = {}): Core {
     async (args, ctx) => {
       if (!ctx.taskId) throw new Error("app_data requires a task token");
       const a = args as { app?: unknown; set?: unknown };
-      const r = apps.fill(String(a.app ?? ""), ctx.taskId, (a.set ?? {}) as Record<string, unknown>);
+      // D479: the keys come as JSON text (a schema every model family can hold).
+      let set: Record<string, unknown>;
+      try {
+        set = jsonArg(a.set, "set") ?? {};
+      } catch (err) {
+        return { ok: false, error: (err as Error).message };
+      }
+      const r = apps.fill(String(a.app ?? ""), ctx.taskId, set);
       return r.ok ? `Kept: ${r.keys.join(", ")}. Every device with the app open shows it now. Now wait_for the next round and end your turn.` : r.error;
     },
     (ctx) => !!ctx.taskId && apps.byTask(ctx.taskId).some((m) => !m.kind),
@@ -1269,6 +1277,11 @@ export function startCore(opts: CoreOptions = {}): Core {
     const hs = devicesView?.harnessesNow();
     return { name: home.name, ...(home.aliases?.length ? { aliases: home.aliases } : {}), ...(hs ? { harnesses: hs.map((h) => ({ id: h.harness, ...(h.installed !== undefined ? { installed: h.installed } : {}), loggedIn: h.loggedIn, ...(h.version ? { version: h.version } : {}) })) } : {}) };
   };
+  // D480: what isn't whole about the person's own agents' mail, for the partner: the mailboxes Mem lists closed.
+  api.agentMail = () => {
+    if (!settings.get().memory) return [];
+    return (bridgeLink?.mailboxesNow?.() ?? []).filter((m) => !m.open).map((m) => ({ harness: m.harness, box: "closed" as const }));
+  };
   api.places = createPlaces({
     where: repoWhere,
     computers: whereComputers,
@@ -1295,8 +1308,12 @@ export function startCore(opts: CoreOptions = {}): Core {
   // projects (with their origin when kept) and the repositories tasks worked in (a clone's address),
   // never a place that turned out not to be there. A fact to place work by; nothing here decides.
   api.agentLimits = () => agentLimits.now();
-  // D478: the partner's `replaces` retires the task it opens again (replaces.ts): by its id, never by title.
-  api.replaced = (newId, oldId) => replaceTask({ tasks, away: onHandAway }, newId, oldId);
+  // D478, D479: a task_open that records `replaces` retires that task (replaces.ts): by its id, never by title.
+  log.subscribe((e) => {
+    if (e.kind !== "task_open" || e.origin !== "partner") return;
+    const b = e.body as Bodies["task_open"];
+    if (b.replaces) replaceTask({ tasks, away: onHandAway }, b.taskId, b.replaces);
+  });
   api.codeOn = () => {
     const out = new Map<string, { device: string; name: string; remote?: string }>();
     const add = (device: string, name: string, remote?: string) => {
@@ -1851,6 +1868,20 @@ export function startCore(opts: CoreOptions = {}): Core {
       (agentTesting ? async () => undefined : () => inspectMemPlugins(nmemInspectExec(process.env))),
     // D466: the newest plugin versions out, from Mem's own `plugins check` on the home (never in a test without a fake).
     ...(mp.checkUpdates || !agentTesting ? { checkUpdates: mp.checkUpdates ?? (() => checkMemPluginUpdates(nmemInspectExec(process.env))) } : {}),
+    // D480: an agent's mailbox, looked at where it runs (the person's own nmem there; read only).
+    ...(mp.bridgeLookLocal || !agentTesting
+      ? {
+          bridgeLook: async (id: string, home: boolean) => {
+              if (home) return (mp.bridgeLookLocal ?? (() => inspectMemBridge(nmemInspectExec(process.env))))();
+              const link = workers.link(id);
+              if (!link?.online()) return undefined;
+              return link
+                .call<import("@ducter/protocol/src/mem-plugins.ts").MemBridgeLook | null>("mem_bridge_look", {}, 60_000)
+                .then((r) => r ?? undefined)
+                .catch((err: unknown) => (/unknown op/.test(String((err as Error)?.message ?? err)) ? ("old" as const) : undefined));
+            },
+        }
+      : {}),
     inspectWorker: async (id) => {
       const link = workers.link(id);
       if (!link?.online()) return undefined;

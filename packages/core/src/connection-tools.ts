@@ -3,6 +3,7 @@
 // plain coding task carries no extra tools. The partner's own tools, which can ask for Go, live
 // in @ducter/partner (partner.ts): they make decision cards inside the partner's turn.
 import type { ConnectionCaller } from "@ducter/protocol/src/internal.ts";
+import { jsonArg, jsonText } from "@ducter/protocol/src/tool-schema.ts";
 import type { ConnectionsStore } from "./connections.ts";
 import type { Ctx, CoreMcpHub } from "./mcp.ts";
 
@@ -43,12 +44,20 @@ export function registerConnectionTools(mcp: CoreMcpHub, c: ConnectionsStore) {
       properties: {
         connection: { type: "string" },
         action: { type: "string" },
-        input: { type: "object", description: "The action's input, as its guide says" },
+        input: jsonText("The action's input, as its guide says"),
         account: { type: "string", description: "Optional named account inside the connection" },
       },
       required: ["connection", "action"],
     },
-    async (a, ctx) => c.read(who(ctx as Ctx), str(a.connection), str(a.action), a.input ?? {}, str(a.account) || undefined),
+    async (a, ctx) => {
+      let input: Record<string, unknown>;
+      try {
+        input = jsonArg(a.input, "input") ?? {};
+      } catch (err) {
+        return { ok: false, error: (err as Error).message };
+      }
+      return c.read(who(ctx as Ctx), str(a.connection), str(a.action), input, str(a.account) || undefined);
+    },
     any,
   );
 }

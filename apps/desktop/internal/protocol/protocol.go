@@ -1462,6 +1462,39 @@ type MemPluginInstall struct {
 	Harness string `json:"harness"`
 	// D470: "mailbox" = 打开它的信箱 / Open its mailbox (one task there through the agent's own Mem plugin).
 	What string `json:"what,omitempty"`
+	// D480: Space, with What "mailbox": the Nowledge Mem Space the person chose in place (its exact id and label).
+	Space *MailboxSpaceRef `json:"space,omitempty"`
+}
+
+// MailboxSpaceRef is the Space a mailbox opens in, as the person chose it (D480).
+type MailboxSpaceRef struct {
+	ID    string `json:"id"`
+	Label string `json:"label"`
+}
+
+// MailboxLookReq is mailbox_look (D480): look at that computer's Mem for this agent's mailbox (read only).
+type MailboxLookReq struct {
+	T       string `json:"t"` // "mailbox_look"
+	Device  string `json:"device"`
+	Harness string `json:"harness"`
+}
+
+// MailboxLook is what the in-place choice shows for one agent's mailbox (D480, packages/protocol/src/mailbox.ts):
+// choose (Spaces, Recommend), no_mem, away, old, failed.
+type MailboxLook struct {
+	State     string         `json:"state"`
+	Spaces    []MailboxSpace `json:"spaces,omitempty"`
+	Recommend string         `json:"recommend,omitempty"`
+	Detail    string         `json:"detail,omitempty"`
+}
+
+// MailboxSpace is one Nowledge Mem Space a mailbox can open in (D480).
+type MailboxSpace struct {
+	ID      string `json:"id"`
+	Label   string `json:"label"`
+	Kind    string `json:"kind"`
+	Readers int    `json:"readers,omitempty"`
+	Partner bool   `json:"partner,omitempty"`
 }
 
 // ---------- Connections (D96: the user's OpenConnector or other MCP servers) ----------
@@ -2912,6 +2945,8 @@ type ServerFrame struct {
 	MemAnswered *MemAnswered `json:"-"`
 	// Sources (D341): sources, source_items_result and source_result, decoded on their own.
 	Sources *SourcesFrame `json:"-"`
+	// D480: mailbox_look's answer (with Device and Harness).
+	Look *MailboxLook `json:"look,omitempty"`
 }
 
 // Words are the same words in both languages: the client shows its own.
@@ -3147,7 +3182,7 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 	// dropped here unseen (the live view's live / live_frame were, from D151 to
 	// D172: 试一下 sat at 正在打开 example.com…… forever).
 	case "welcome", "events", "on_hand", "task_history", "sent", "action_result", "error",
-		"devices", "ability_result", "pair_code", "lend", "rename_result", "disconnect_result", "update_result", "agent_update_result", "agent_setup_result", "mem_setup_result", "records_allow_result", "update_all_result", "mem_plugin_result", "anywhere_setup_result", "settings", "connections", "connection_result", "rules", "candidates", "account_usage", "activity",
+		"devices", "ability_result", "pair_code", "lend", "rename_result", "disconnect_result", "update_result", "agent_update_result", "agent_setup_result", "mem_setup_result", "records_allow_result", "update_all_result", "mem_plugin_result", "mailbox_look", "anywhere_setup_result", "settings", "connections", "connection_result", "rules", "candidates", "account_usage", "activity",
 		"task_new_options", "task_new_result", "open_task", "open_result", "project_add_result", "project_clone_result", "folder_browse_result",
 		"project_new_result", "git_login_state",
 		"first_screen", "folder_changes", "close_result", "live", "live_frame", "live_turn", "live_doing", "phone_terms", "phone_install_result", "phone_erase_result", "phone_view", "phone_frame", "phone_doing", "browser_sites", "browser_check", "connection_reads", "proactive_day", "media_keys", "saved", "phone_did",

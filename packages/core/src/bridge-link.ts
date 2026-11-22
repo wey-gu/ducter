@@ -936,6 +936,7 @@ export function createBridgeLink(opts: {
   };
 
   const api: BridgeLink = {
+    mailboxesNow: () => boxes?.list, // D480: for the partner's line
     takeMailboxWant() {
       const w = boxesWanted && !!read()?.confirmed;
       boxesWanted = false;

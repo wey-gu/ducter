@@ -53,8 +53,8 @@ says so first, and gives you a button that takes you to where you fix it. When a
 says **All's well. I'm right here.**
 
 Where it can be done safely right there, the button does it: a newer Nowledge Mem for one of your
-AI agents asks you first, in place, then updates it; **Open its mailbox** starts the one small task
-that lets your partner's answers reach that agent; updates ready start with one tap, as in
+AI agents asks you first, in place, then updates it; **Open its mailbox** takes you to that agent
+on **Talk with your other agents**, where you pick where its mailbox opens; updates ready start with one tap, as in
 **Devices**.
 
 Under it, **Your computers and phones** shows each computer, phone and tablet as a little clay
@@ -262,9 +262,13 @@ dashed. Under the mark, when it last came. When something is missing, the reason
 sit under the picture:
 
 - **Its mailbox in Nowledge Mem is closed, so my answers can't reach it.** **Open its mailbox**
-  starts one small task on that computer, through the agent's own Nowledge Mem plugin; your tap is
-  the go-ahead. It never touches your partner's own connection.
-- **It doesn't have Nowledge Mem's plugin yet.** **Install** puts it in.
+  opens a short choice right under the picture: **Which Nowledge Mem Space should its mailbox open
+  in?** It lists the Spaces you have in Nowledge Mem, read from that computer, with who can read
+  each. The one your partner already listens in (**Only you**) is suggested and already chosen, with
+  one line saying why; **See other Spaces** shows the rest. **Open in Only you** is your go-ahead: one
+  small task on that computer opens it there, through the agent's own Nowledge Mem plugin, and never
+  asks you for a name. Nowledge Mem never picks a Space for you, so neither does Ducter; **Not now**
+  leaves everything as it is. It never touches your partner's own connection.- **It doesn't have Nowledge Mem's plugin yet.** **Install** puts it in.
 - pi and Antigravity, when they're signed in on a computer of Ducter's, say **pi tasks your partner
   runs pass messages; yours can't yet**: a task your partner runs on them can ask your other agents
   something. The first time it does, a card in your conversation shows which task, who it's for and

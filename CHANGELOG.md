@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.1.17 - 2026-11-22
+
+<!-- whats-new
+zh: Antigravity 能用了；开 agent 信箱点一下选空间
+en: Antigravity works now; open an agent's mailbox with one tap
+-->
+
+**Antigravity**
+- Tasks on Antigravity (Gemini) start and work: the tools Ducter gives every agent now follow
+  each model family's rules, checked for every tool.
+- Trying again on a task that couldn't start where it was put lets your partner place it again,
+  fetching the code there first, instead of reopening the same missing folder.
+- What your partner says about where it opened a task is what actually happened.
+
+**Agent messaging**
+- Opening one of your agents' mailboxes happens in place: your Nowledge Mem spaces as choices,
+  with the one your partner listens in already picked, so it's one tap. No typing a space name.
+- Your partner knows which of your agents' mailboxes are closed, and that everything goes
+  through the same Nowledge Mem.
+
 ## 0.1.16 - 2026-11-22
 
 <!-- whats-new

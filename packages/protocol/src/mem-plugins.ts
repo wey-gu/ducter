@@ -163,3 +163,42 @@ export function nmemInspectExec(env: Record<string, string | undefined>): Inspec
     }
   };
 }
+
+// ---------- D480: an agent's mailbox, looked at on its own computer ----------
+
+/** What one computer's own Mem says for opening a mailbox there: signed in, and Mem's passive setup (state and Spaces only). */
+export interface MemBridgeLook {
+  /** Signed in to a Mem there (`nmem status` answered healthy or ok). */
+  signedIn: boolean;
+  /** The passive `bridge setup` answer, cut to state and candidates (nothing else leaves the computer). */
+  setup?: { state?: string; candidates: unknown[] };
+}
+
+const firstJson = (out: string): Record<string, unknown> | undefined => {
+  const at = out.indexOf("{");
+  if (at < 0) return undefined;
+  try {
+    const j = JSON.parse(out.slice(at));
+    return j && typeof j === "object" ? (j as Record<string, unknown>) : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+/**
+ * D480: read-only, on the computer the agent runs on: `nmem --json status` (signed in or not)
+ * and Mem's passive `nmem --json bridge setup` (no Space, no context,
+ * never --enable: it lists the Spaces and picks none). Undefined when nmem isn't there.
+ */
+export async function inspectMemBridge(exec: InspectExec): Promise<MemBridgeLook | undefined> {
+  const nmem = process.env.NMEM_CLI_PATH ?? "nmem";
+  const st = await exec([nmem, "--json", "status"], 20_000).catch(() => ({ code: -1, out: "" }));
+  if (st.code === 127 || st.code === -1) return undefined;
+  const sj = st.code === 0 ? firstJson(st.out) : undefined;
+  const signedIn = !!sj && (sj.status === "healthy" || sj.status === "ok");
+  if (!signedIn) return { signedIn };
+  const s = await exec([nmem, "--json", "bridge", "setup"], 30_000).catch(() => ({ code: -1, out: "" }));
+  const j = firstJson(s.out);
+  const setup = j ? { ...(typeof j.state === "string" ? { state: j.state } : {}), candidates: Array.isArray(j.candidates) ? j.candidates : [] } : undefined;
+  return { signedIn, ...(setup ? { setup } : {}) };
+}

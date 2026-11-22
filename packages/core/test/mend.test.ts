@@ -55,8 +55,8 @@ function setup(o: { outcomes?: Outcome[]; replan?: (taskId: string, how: { actio
     log.close?.();
     t.cleanup();
   });
-  const open = (taskId: string, title: string, origin: "partner" | "system" = "system") =>
-    log.append({ stream: `task:${taskId}`, origin, kind: "task_open", body: { taskId, title, project: "", place: { kind: "repo", device: "w1", repoPath: "/root/dev/mem" }, harness: "antigravity", brief: "Review the long copy." } });
+  const open = (taskId: string, title: string, origin: "partner" | "system" = "system", replaces?: string) =>
+    log.append({ stream: `task:${taskId}`, origin, kind: "task_open", body: { taskId, title, project: "", place: { kind: "repo", device: "w1", repoPath: "/root/dev/mem" }, harness: "antigravity", brief: "Review the long copy.", ...(replaces ? { replaces } : {}) } });
   const fail = (taskId: string, cant: CantStart) => tasks.setState(taskId, "failed", "archived", "没能开始", cant);
   const mends = (taskId?: string) => log.read({ kinds: ["mend"], limit: 500, ...(taskId ? { stream: `task:${taskId}` } : {}) }).map((e) => e.body as MendBody);
   const lines = (taskId: string) =>

@@ -77,7 +77,7 @@ const (
 	TabAbout    = "about"
 )
 
-var settingsTabs = []string{TabPartner, TabMemory, TabPeers, TabNotify, TabAccounts, TabTodos, TabChats, TabAutofill, TabLook, TabRun, TabAbout}
+var settingsTabs = []string{TabHome, TabPartner, TabMemory, TabPeers, TabNotify, TabAccounts, TabTodos, TabChats, TabAutofill, TabLook, TabRun, TabAbout}
 
 type settingsState struct {
 	// tab is the section shown ("" is the first).
@@ -152,7 +152,7 @@ func (a *App) OpenUpdate() {
 // lives).
 func (a *App) openTab(tab string) {
 	if tab == "" {
-		tab = TabPartner
+		tab = TabHome // D469: Settings opens on the partner's brief
 	}
 	if a.Route == RouteSettings || a.Route == RoutePartner {
 		a.settings.railFrom = a.settingsTab()
@@ -184,8 +184,9 @@ func (a *App) openTab(tab string) {
 	if tab == TabNotify {
 		a.send(protocol.ProactiveDayReq{T: "proactive_day"})
 	}
-	// D276: 聊天软件 / Chat apps (the socket stays subscribed after).
-	if tab == TabChats {
+	// D276: 聊天软件 / Chat apps (the socket stays subscribed after); D469: Overview says where
+	// else the partner can be found.
+	if tab == TabChats || tab == TabHome {
 		a.send(protocol.ChannelsReq{T: "channels"})
 	}
 	// D341: 待办来源 / To-do sources (subscribed after; the home looks again).
@@ -205,7 +206,7 @@ func (a *App) settingsTab() string {
 			return t
 		}
 	}
-	return TabPartner
+	return TabHome
 }
 
 // SetInterfaceLanguage switches the window's language: "auto" follows
@@ -257,6 +258,8 @@ func (a *App) settingsView(c *ui.Context) {
 				a.paneEnter(c, panel, tab)
 				panel.Children(func() {
 					switch tab {
+					case TabHome:
+						a.homePanel(c)
 					case TabPartner:
 						a.partnerPanel(c, w-railW)
 					case TabMemory:
@@ -379,6 +382,13 @@ func (a *App) tabIcon(c *ui.Context, tab string, size float32) {
 	box := ui.Box(c.Key("icon")).Size(size, size).Shrink(0).AccessHidden(true)
 	var bmp *ui.Bitmap
 	switch tab {
+	case TabHome:
+		// D469: the home computer, in its clay: where the partner lives.
+		art := "mini_awake"
+		if h := a.homeDevice(); h != nil {
+			art = deviceArt(h)
+		}
+		bmp = theme.Clay(art)
 	case TabPartner:
 		bmp = theme.Face(theme.Idle, size*2)
 	case TabMemory:
@@ -488,13 +498,8 @@ func (a *App) drawUpdatePebble() func(p *ui.Painter, r ui.Rect) {
 // panelHead is a section's name at the top of the panel, and one line
 // about what is in it.
 func (a *App) panelHead(c *ui.Context, tab, lede string) {
-	t := a.T
-	ui.Column(c.Key("panel-head")).Gap(t.S1).Children(func() {
-		a.heading(c, a.tabName(tab), t.XXL)
-		if lede != "" {
-			uiText(c, lede).FontSize(t.MD).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
-		}
-	})
+	// D469: the partner says what is true here, in its voice; what needs you here follows.
+	a.paneSpeaks(c, tab, a.paneSay(tab, lede))
 }
 
 // ledeNote is a second, smaller line close under a pane's lede (D399): what is true of the

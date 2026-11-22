@@ -74,9 +74,9 @@ test("the words: no counter, no joiner, Past tasks named as the glossary does", 
 
 test("every finished card and group on On hand offers ×, ⋯ and a swipe", () => {
   const src = readFileSync(join(import.meta.dir, "../src/onhand.tsx"), "utf8");
-  // The new result card and the seen one.
-  expect(src.match(/useSwipeAway\(ref, fin\)/g)?.length).toBe(3);
-  expect(src.match(/<FinishedActs f=\{fin\}/g)?.length).toBe(2);
+  // D467: the one card (a new result and a seen one alike) and the group.
+  expect(src.match(/useSwipeAway\(ref, fin\)/g)?.length).toBe(2);
+  expect(src.match(/<FinishedActs f=\{fin\}/g)?.length).toBe(1);
   // The group: × in its head, its ⋯ menu leads with try again / see why and ends with remove.
   expect(src).toContain("{fin && <AwayX f={fin} />}");
   expect(src).toContain('runFinished("remove", fin');

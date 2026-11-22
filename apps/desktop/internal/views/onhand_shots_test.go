@@ -5,6 +5,8 @@ import (
 	"image/png"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -31,11 +33,22 @@ func TestOnHandShots(t *testing.T) {
 	}
 	name := os.Getenv("DUCTER_ONHAND_NAME")
 	dir := shotsDir(t)
-	h := newLive(t, url, lang)
+	h := dial(t, url, lang)
+	if os.Getenv("DUCTER_ONHAND_SEEN") != "" {
+		h.app.Local.SeenSince(time.Now().Add(-3 * time.Hour)) // D467: this Mac has kept track for a while
+	}
+	h.until("welcome", func() bool { return h.app.S.Welcomed && h.app.S.OnHand != nil })
 	h.app.LocaleFixed = true
 	h.tt.SetTitleBar(ui.TitleBar{Height: ChromeH, Left: 78})
-	h.until("the board", func() bool { return len(h.app.S.Tasks) > 0 })
+	if os.Getenv("DUCTER_ONHAND_EMPTY") == "" { // D467: an empty board pictured too
+		h.until("the board", func() bool { return len(h.app.S.Tasks) > 0 })
+	}
 	h.app.Route = RouteOnHand
+	if os.Getenv("DUCTER_ONHAND_SOURCES") != "" { // D467: the to-dos group needs its sources
+		h.app.askTodos()
+		h.until("the sources", func() bool { return h.app.S.Sources != nil && len(h.app.S.Sources.Sources) > 0 })
+	}
+	h.app.oh.srcAll = os.Getenv("DUCTER_ONHAND_SRCALL") != "" // D467: the whole sort, opened
 	// D315: DUCTER_ONHAND_ROUTE=conv pictures the conversation, task:<id> an opened task.
 	switch r := os.Getenv("DUCTER_ONHAND_ROUTE"); {
 	case r == "conv":
@@ -48,13 +61,46 @@ func TestOnHandShots(t *testing.T) {
 		h.tt.SetDark(true)
 		paper = "-dark"
 	}
-	for _, w := range []int{900, 1280, 1600} {
-		h.tt.SetSize(w, 980)
+	// D467: DUCTER_ONHAND_WIDTHS=1000,1400 pictures other widths.
+	widths := []int{900, 1280, 1600}
+	if ws := os.Getenv("DUCTER_ONHAND_WIDTHS"); ws != "" {
+		widths = widths[:0]
+		for _, f := range strings.Split(ws, ",") {
+			if n, err := strconv.Atoi(strings.TrimSpace(f)); err == nil {
+				widths = append(widths, n)
+			}
+		}
+	}
+	height := 1100
+	if hs := os.Getenv("DUCTER_ONHAND_HEIGHT"); hs != "" {
+		height, _ = strconv.Atoi(hs)
+	}
+	// D467: DUCTER_ONHAND_MOTION=n pictures n frames 1.2 s apart at the first width (the trail, the peek).
+	if m, _ := strconv.Atoi(os.Getenv("DUCTER_ONHAND_MOTION")); m > 0 {
+		h.tt.SetSize(widths[0], height)
+		for i := 1; i <= m; i++ {
+			time.Sleep(1200 * time.Millisecond)
+			h.until("frames", func() bool { return true })
+			h.tt.Advance(1200 * time.Millisecond)
+			h.until("frames", func() bool { return true })
+			f, err := os.Create(filepath.Join(dir, fmt.Sprintf("mac-%s-motion-%02d%s.png", name, i, paper)))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := png.Encode(f, h.tt.Image()); err != nil {
+				t.Fatal(err)
+			}
+			f.Close()
+		}
+		return
+	}
+	for _, w := range widths {
+		h.tt.SetSize(w, height)
 		for i := 0; i < 10; i++ {
 			h.until("frames", func() bool { return true })
 			h.tt.Advance(200 * time.Millisecond)
 		}
-		f, err := os.Create(filepath.Join(dir, fmt.Sprintf("mac-%s-%d-%s%s.png", name, w, lang, paper)))
+		f, err := os.Create(filepath.Join(dir, fmt.Sprintf("mac-%s-%d-%s%s%s.png", name, w, lang, paper, os.Getenv("DUCTER_ONHAND_SUFFIX"))))
 		if err != nil {
 			t.Fatal(err)
 		}

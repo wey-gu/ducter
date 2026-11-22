@@ -224,9 +224,16 @@ func (a *App) runPanel(c *ui.Context) {
 			// closing the window doesn't stop it (never a bare or empty address).
 			host := hostOf(a.URL)
 			remoteHome := host != "" && !isLoopback(host)
-			place, line, art := a.L.T("settings.where.here"), a.L.T("settings.run.apart", name), "mini_awake"
+			// D469: the head says where it lives and that closing the window doesn't stop it.
+			place, line, art := a.L.T("settings.where.here"), "", "mini_awake"
 			if remoteHome {
-				place, line, art = host, a.L.T("settings.run.remote", name, host), "server_awake"
+				place, art = host, "server_awake"
+			}
+			// D469 round 2: the home's own word wins over the address. A home that is a server, or
+			// another computer, is named and drawn as itself, never "this Mac" (a home reached over
+			// a tunnel answers on 127.0.0.1 too).
+			if home := a.homeDevice(); home != nil && (home.Kind == "server" || !a.onThisMachine()) {
+				remoteHome, place, art = true, a.deviceNameIn(home), deviceArt(home)
 			}
 			a.placeRow(c, art, place, line)
 			if remoteHome && a.canWork() {
@@ -250,7 +257,7 @@ func (a *App) runPanel(c *ui.Context) {
 		case a.Backend.BackgroundBlocked():
 			line = a.L.T("settings.run.blocked", name)
 		case a.Backend.Background():
-			line = a.L.T("settings.run.bg", name)
+			line = "" // D469: the head says it; the row speaks only when it differs
 		default:
 			line = a.L.T("settings.run.child", name)
 		}
@@ -283,6 +290,7 @@ func (a *App) runPanel(c *ui.Context) {
 			a.connectElsewhere()
 		}
 	})
+	a.placesMap(c) // D469: where things live, each computer in its clay
 	a.dataGroup(c)
 	a.group(c, "devices", "", "", func() {
 		if a.tileLinkRow(c, "devices", a.clayTile(c, "laptop_awake", false), a.L.T("settings.devices.link"), a.L.T("settings.devices.link.help"), false) {

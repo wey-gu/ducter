@@ -14,6 +14,9 @@
 //   links itself 2.5 s after its code shows), Slack never set up;
 // - Passwords & cards: three sign-ins, two cards, the details, two keys;
 // - quiet hours 23:00 to 08:00, three a day, autoupdate on.
+// D469 round 2, DEMO_NEEDS=1: what Settings' Overview must show first: Nowledge Mem connected with
+// two things it would like confirmed (a contradiction, a learned rule), Claude Code's Mem plugin a
+// version behind, OOMOL unreachable once its accounts are listed, and Ducter 0.0.94 out.
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -67,7 +70,9 @@ const oomol = fakeOpenConnector(reads, KEY, {
     app("a7", "discordbot", "nowledge-community-bot", "Nowledge Community"),
   ],
 });
-const to = (u: string) => u.replace("https://connector.oomol.com", oomol.url);
+const needs = process.env.DEMO_NEEDS === "1";
+let oomolDown = false; // DEMO_NEEDS: OOMOL stops answering once its accounts are listed
+const to = (u: string) => u.replace("https://connector.oomol.com", oomolDown ? "http://127.0.0.1:9" : oomol.url);
 const tuwa = fakeTuwa();
 
 // GitHub with the author's load; an Obsidian vault with a long name.
@@ -110,7 +115,61 @@ const harnessesHome = [
   { harness: "claude-code", installed: true, loggedIn: true, version: "2.1.400", how: "installer", canBePartner: true, billing: "plan", allowance: { left: 0.31, resetsAt: new Date(Date.now() + 9 * 3600_000).toISOString() } },
 ];
 const none = async () => new Response("", { status: 404 });
+// DEMO_NEEDS: a scripted nmem (never the real one): connected, healthy, and Mem's own asks.
+const ok = (j: unknown) => ({ code: 0, out: JSON.stringify(j), err: "" });
+const memConn = { connection_id: "00000000-0000-4000-8000-000000000001", agent_id: "ducter", identity_birth: "00000000-0000-4000-8000-000000000900", client_label: "ducter", state: "active" };
+const SPACE = "6f1c0d2e-8b4a-4d1e-9c3f-2a7b5e0d9c11";
+const contra = {
+  id: "56e40028-8aff-4659-8564-5f7ffff46c4b",
+  event_type: "flag_contradiction",
+  resolved: false,
+  created_at: new Date(Date.now() - 2 * 86_400_000).toISOString(),
+  metadata: {
+    memory_ids: ["m-old", "m-new"],
+    new_memory_id: "m-new",
+    memory_pairs: zh
+      ? [{ date: "2026-11-09", title: "周报每周五下午发，发给整个组" }, { date: "2026-11-18", title: "周报改到每周一上午发，只发给 Weizhen" }]
+      : [{ date: "2026-11-09", title: "The weekly report goes out Friday afternoon, to the whole team" }, { date: "2026-11-18", title: "The weekly report moves to Monday morning, to Weizhen only" }],
+  },
+  review: { state: "pending", allowed_actions: ["keep_newer_as_latest", "keep_older_as_latest", "keep_both_linked", "no_change_needed", "dismiss"], recommended_action: "keep_newer_as_latest", expires_at: new Date(Date.now() + 20 * 86_400_000).toISOString() },
+};
+const memRules = [
+  zh
+    ? { id: "release-ci", title: "发版前先等 CI 全绿", body: "发新版本前，等主干的 CI 全部通过、读过失败数再推送；不要在测试后直接接着推送。", status: "draft", scope: "global", priority: 50, tags: ["release"] }
+    : { id: "release-ci", title: "Release only after CI is green", body: "Before a new version goes out, wait for main's CI to pass and read the fail count before pushing; never chain a push after the tests.", status: "draft", scope: "global", priority: 50, tags: ["release"] },
+];
+const nmemRun = async (args: string[]) => {
+  const a = args.join(" ");
+  if (args[0] === "--version") return ok("nmem 0.10.122");
+  if (a.includes("bridge connections --help")) return { code: 0, out: "", err: "" };
+  if (a === "status") return ok({ status: "healthy", backend: "cloud", update: { current: "0.10.122", latest: "0.10.122", update_available: false } });
+  if (a === "bridge setup") return ok({ state: "selection_needed", candidates: [{ id: SPACE, label: "Only me", kind: "personal", readers: 1, write_default: true }] });
+  if (a.includes("connections connect")) return ok({ state: "connected", agent_context: "ducter", connection: memConn, selection: { scope: { space_id: SPACE }, address: { agent_id: "ducter" } } });
+  if (a.includes("--agent-context ducter bridge setup")) return ok({ state: "enable_needed", endpoint: { address: { agent_id: "ducter" } } });
+  if (a.includes("connections list")) return ok({ schema_version: 1, connections: [memConn], next_connection_id: null });
+  if (a.startsWith("feed --type flag_contradiction")) return ok({ events: [contra] });
+  if (a.startsWith("feed reviews")) return ok({ events: [], total: 40 });
+  if (a === "rules list") return ok({ rules: memRules });
+  if (args[0] === "feed" && args[1] === "resolve") return ok(args.includes("--plan-id") ? { applied: true } : { preview: true, plan_id: "plan_demo" });
+  if (args[0] === "rules" && args[1] === "upsert") return ok({});
+  return { code: 2, out: "", err: "demo: not scripted" };
+};
+const NMEM = "/home/wey/.local/pipx/venvs/nmem-cli/bin/nmem";
+const memTools: Record<string, string> = { nmem: NMEM, pipx: "/usr/bin/pipx" };
+const memSys = { which: (c: string) => memTools[c], exists: (p: string) => p === NMEM, read: () => undefined, list: () => [], real: (p: string) => p, home: "/home/wey", platform: "linux" as const, uid: 1000 };
+const needsOpts = needs
+  ? {
+      bridgeLink: { run: nmemRun, env: {}, sys: memSys, exec: async () => new Promise<never>(() => {}) },
+      memPlugins: {
+        inspectLocal: async () => ({ "claude-code": { state: "installed", version: "0.7.34" }, codex: { state: "installed", version: "0.1.53" } }),
+        checkUpdates: async () => ({ "claude-code": "0.7.37" }),
+        everyMs: 0,
+        connected: () => true,
+      },
+    }
+  : {};
 const core = startCore({
+  ...(needsOpts as object),
   dataDir,
   ooSource: noOo,
   persona: { id: "default", name: "Ducter", identity: "" },
@@ -122,7 +181,7 @@ const core = startCore({
   work: { connectionFetch: (u, i) => fetch(to(u), i) },
   taskSources: { ghRun: gh.run, ghEnv: {}, home, quietMs: 0, pollMs: 3_600_000, ask: demoAsk(zh, 50) },
   channels: { gapMs: 0, sleep: async () => {}, make: (kind, rec) => stubChannel(kind, rec.bot ?? { id: "b", name: "Ducter" }) },
-  update: { fetch: async () => new Response(JSON.stringify({ tag_name: "v0.0.93", body: "" })), how: "self", version: "0.0.93", homeName: "Hetzner Server", autoEveryMs: 0, run: () => new Promise(() => {}) },
+  update: { fetch: async () => new Response(JSON.stringify({ tag_name: needs ? "v0.0.94" : "v0.0.93", body: "" })), how: "self", version: "0.0.93", homeName: "Hetzner Server", autoEveryMs: 0, run: () => new Promise(() => {}) },
   agents: { fetch: none as never, sys: { fetch: none as never, run: () => new Promise(() => {}), freeBytes: () => undefined, sleep: (ms: number) => Bun.sleep(ms), now: () => Date.now() }, autoEveryMs: 0 },
 } as never);
 core.setRunner(stubRunner(core));
@@ -177,6 +236,14 @@ if (!core.connections.view().length) {
   if (id) core.connections.setApp(id, "discordbot", "Nowledge Community", { excluded: true });
   const t = await core.connections.add({ url: tuwa.url, token: JSON.stringify({ accessToken: tuwa.access(), refreshToken: tuwa.refresh(), expires_in: 3600 }) });
   if (!t.ok) console.warn("[demo-settings-real] Tuwa:", JSON.stringify(t));
+}
+
+if (needs) {
+  core.persona.mem = { agentId: "ducter", owned: true };
+  core.settings.setMemState("connected");
+  void core.bridgeLink.connect();
+  oomolDown = true;
+  await core.connections.recheck();
 }
 
 // To-do sources: GitHub's 557, then the vault.

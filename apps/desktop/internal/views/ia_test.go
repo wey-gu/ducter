@@ -88,7 +88,7 @@ func TestPartnerTabShowsTheBrainInUse(t *testing.T) {
 	tt := ui.NewTesterWith(app.View, 1280, 1400, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
 	tt.Frame()
-	for _, want := range []string{"在 hel 上运行，用 Codex 想事情", "现在每个任务都由 Codex 来做。"} {
+	for _, want := range []string{"我在 hel 上运行，用 Codex 想事情。", "现在每个任务都由 Codex 来做。"} {
 		if !tt.HasText(want) {
 			t.Errorf("no %q in %q", want, tt.Texts())
 		}
@@ -106,7 +106,7 @@ func TestPartnerTabShowsTheBrainInUse(t *testing.T) {
 	app.openTab(TabMemory)
 	tt.Frame()
 	tt.Frame()
-	for _, want := range []string{"让小鸭记住你", "还没接上", "了解 Nowledge Mem"} {
+	for _, want := range []string{"我还记不住你：接上 Nowledge Mem，你说过的偏好、定下的事，我都记得。", "还没接上", "了解 Nowledge Mem"} {
 		if !tt.HasText(want) {
 			t.Errorf("Memory: no %q in %q", want, tt.Texts())
 		}
@@ -131,7 +131,7 @@ func TestPartnerTabDeepSeekFallback(t *testing.T) {
 	tt.Frame()
 	tt.Frame()
 	// D322: with pi signed in too, the switch is there; the 自动选的 lines are retired.
-	for _, want := range []string{"在 hel 上运行，用 DeepSeek Harness 想事情", "换一个"} {
+	for _, want := range []string{"我在 hel 上运行，用 DeepSeek Harness 想事情。", "换一个"} {
 		if !tt.HasText(want) {
 			t.Errorf("no %q in %q", want, tt.Texts())
 		}

@@ -641,11 +641,7 @@ function MemFirst({ phase, b }: { phase: Exclude<MemPhase, "on" | "off" | "close
   const line = { missing: t("mem.setup.missing"), install: t("mem.setup.install", home), installing: t("mem.setup.installing"), sign_in: t("mem.setup.signin"), signing_in: t("mem.setup.signing") }[phase];
   return (
     <>
-      <div class="mem-first">
-        <Avatar size={84} state={FACE[phase]} />
-        <h3>{t("mem.first.title", name)}</h3>
-        <p>{t("mem.first.body")}</p>
-      </div>
+      {/* D469: the page's head says it in the partner's voice (say.memory.first); no second hero. */}
       <Group class="mem-g" label="Nowledge Mem">
         <GHead tile={<MemTile faded />} name="Nowledge Mem" line={line} />
         {phase === "missing" ? (

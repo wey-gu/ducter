@@ -249,6 +249,7 @@ func TestPileSubjectsAndDoRowOpenTheSheet(t *testing.T) {
 	app, sent, tt := todoApp(t, i18n.ZH, 1280, 1300)
 	app.Receive(pileFrameSubjects(i18n.ZH))
 	app.Route = RouteOnHand
+	app.oh.srcAll = true // D467: the whole sort stands behind 看看全部
 	todoFrames(tt, 3)
 	all := strings.Join(tt.Texts(), " | ")
 	for _, want := range []string{"分类", "记忆提炼", "13", "还有 5 类"} {

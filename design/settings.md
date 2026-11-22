@@ -474,6 +474,62 @@ Every pane but Memory, Agent messaging and On hand rendered against `demo-settin
 - D468's leftovers: 移除 / Remove stands alone on its own row under each to-do source; the web's This phone
   has no lede; the web's devices list has no hairlines between devices (D311's list); the Partner page's
   peers line has no chevron on the web (`memory.tsx`); the notification preview's 现在 sits mid-card at 500.
+
+## The partner reports on its own world (D469)
+
+The author after D459, D465, D466 and D468: Settings 「还是原来的样子」. The rows were one grammar; what was
+missing was On hand's language (D467): a partner who reports, state carried by its art, what needs you first
+with its fix. Candidates, rubric and diagnosis are D469's; what it leaves, on both clients:
+
+- **Settings opens on 概览 / Overview** (Mac: the rail's first tab, the home computer's clay; web: the head of the
+  Settings list). **The brief**, On hand's form: the partner at 88 in its pose (flag, smiling, napping), one lead
+  (**都好好的，我在这儿。**, **有一处要你看一眼。**, **有 n 处要你看一眼。**, first run **还差一步，我就能想事情了。**), then
+  labelled lines in its voice, each opening its pane: **等你** (each need with the button to where its fix is),
+  **运行在**, **想事情用**, **能看的**, **记得**, **也能找我**.
+- **What needs you, everywhere it is** (`setNeeds`, the web's twin): no agent to think with (Partner), a source
+  that can't be reached (Accounts), Mem's questions (D465) and a Mem plugin behind (D466) (Memory), updates
+  (About on the Mac, Devices on the web). The brief names each with its button; the pane's head names its own.
+- **你的电脑 / Your computers:** each computer one clay card of one width, its clay in its state, its name and what
+  it is to the partner (**{name} 在这台上运行**, **帮 {name} 做事**, **这会儿连不上**); the home's card carries what
+  lives there: the partner's face, Mem's notebook while memory is on, the read accounts' marks (four, then +n).
+  On Overview and on Where it runs; a card opens Devices.
+- **Every pane's head is the partner speaking** (Mac `paneSpeaks`, the web the same): the pane's name, then the
+  partner at 40 and one sentence of what is true there (Accounts counts what it keeps an eye on; Where it runs
+  says where and that closing the window doesn't stop it; Memory by its state), then that pane's needs in the
+  needs-you ink with the partner's flag. A pane with nothing computed says its old lede in the first person.
+- **Said once:** a row under a head that says the same is dropped or speaks only when it differs (Where it runs'
+  computer row; Memory's first-run hero).
+
+### Round 2 (D469 rev.)
+
+- **A fix here when it is safe:** a Mem plugin behind says **更新** and opens Memory's own in-place ask under
+  its line (sent only on OK); updates waiting are Devices' one tap **全部更新**. Mem's questions, a source down
+  and no agent go to their pane.
+- **你的电脑和手机:** computers, then phones and tablets (a window on a known computer is that computer's),
+  one card width, the clay at 64, what each is to the partner and what it does now, only when true (tasks under
+  way, asleep, connected now, last here); the home says **对话和记忆在这儿**.
+- **你的账号在哪儿:** each source its own card (its mark, **邮件、日历和消息经过它** or 连不上, its accounts' marks,
+  **读和起草；发出去、花钱的先问你**); a calling source **替你打电话，每通先问你**. The accounts no longer stand on
+  the home's card: they live with their source, and the home reads them through it.
+- **The last word:** **想改什么，直接跟我说也行。**
+- **Partner** says its head in the first person (**我在 {home} 上运行，用 {model} 想事情。**). **Notifications**'
+  发现了就说 is a row (title and the choice's meaning on the text column, the four choices at the right edge,
+  D432), cheering the preview on a pick; every other row already had the right control. **Look and sound**
+  needed nothing (its rows are segmented choices, a switch and the live stage; the intro's sound has 试听).
+  The web's quiet hours are the 24-hour pills, as the Mac's.
+- **Where it runs names the home this window talks to** (its device, a server or another machine) in its head
+  and its row, never 这台 Mac beside a home with another name.
+- Shots: `DEMO_NEEDS=1` on `demo-settings-real.ts` shows every need at once.
+
+## Not done
+
+- D469's owed: a comprehension pass on Overview's labels; the author's review; Mem's questions answered on
+  Overview (they need their two memories read: Memory's job for now).
+- D459's leftovers: Accounts' connection added and the phone's sign-in still answer with a boxed notice at the
+  top (`partnerToast`), not the said line; the web's quiet hours are the browser's time fields where the Mac
+  has pills; 发现了就说's four choices stack into a tall block on a phone; the web titles a memory kind
+  inside its card (`g-cap`), the Mac above it; Agent messaging's problems are bold sentences, not a title and
+  a line.
 - A comprehension pass with people on the said lines and on a row with no state word.
 - The web has no AI accounts row on Accounts (the phone has no Devices page of its own there);
   its Partner page keeps the tray-less lists (D89).

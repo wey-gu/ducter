@@ -11,9 +11,9 @@ import (
 )
 
 // D310: the conversation's header, On hand's sentence and strip, and the
-// menu bar say one Done today: tasks finished well today. A failed task, a
-// task done yesterday and a missed wait are not in it (research/109 saw 26
-// beside 32).
+// menu bar say one Done today: tasks finished today (D467: a done still to
+// be checked too, as every list shows it). A failed task, a task done
+// yesterday and a missed wait are not in it (research/109 saw 26 beside 32).
 func TestOneDoneTodayEverywhere(t *testing.T) {
 	app, _ := iaApp(t, i18n.ZH)
 	now := time.Date(2026, 11, 17, 15, 0, 0, 0, time.Local)
@@ -34,13 +34,14 @@ func TestOneDoneTodayEverywhere(t *testing.T) {
 	}})
 	b := app.S.Board()
 	n := app.stateCounts(b, "")
-	if n[3] != 2 || app.doneToday(b) != 2 {
-		t.Fatalf("strip %d, header %d: want 2 everywhere", n[3], app.doneToday(b))
+	// D467: a done whose check is still to come (e) is listed as done, so it counts.
+	if n[3] != 3 || app.doneToday(b) != 3 {
+		t.Fatalf("strip %d, header %d: want 3 everywhere", n[3], app.doneToday(b))
 	}
-	if say := app.headSay(b, "", n); !strings.Contains(say, app.L.T("onhand.say.done", 2)) {
+	if say := app.headSay(b, "", n); !strings.Contains(say, app.L.T("onhand.say.done", 3)) {
 		t.Errorf("the sentence says another number: %q", say)
 	}
-	if !strings.Contains(app.Tray(6).Say, app.L.T("onhand.say.done", 2)) {
+	if !strings.Contains(app.Tray(6).Say, app.L.T("onhand.say.done", 3)) {
 		t.Errorf("the menu bar says another number: %q", app.Tray(6).Say)
 	}
 }

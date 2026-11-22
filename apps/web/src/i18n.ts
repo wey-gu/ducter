@@ -33,7 +33,7 @@ import { memoryWords } from "./i18n-memory.ts";
 import { contextWords } from "./i18n-context.ts";
 import { limitWords } from "./i18n-limits.ts";
 import { firstWords } from "./i18n-first.ts";
-import { settingsMore } from "./i18n-settings.ts";
+import { settingsHome, settingsMore } from "./i18n-settings.ts";
 import { delightWords } from "./i18n-delight.ts";
 import { partnersWords } from "./i18n-partners.ts";
 import { lendWords } from "./i18n-lend.ts";
@@ -753,6 +753,7 @@ const zh: Record<string, string> = {
   "partner.quiet.note": "这段时间里不发通知，结束时一起告诉你。",
   "partner.quiet.to": "到",
   "partner.quiet.hours": "时间段",
+  "settings.quiet.hours": "时间段",
   "partner.default.title": "你没回的时候",
   "partner.default.line": "等多久再按默认做",
   "partner.default.note": "只对能撤销的事。收不回的事，一直等你定。",
@@ -1696,6 +1697,7 @@ const en: Record<string, string> = {
   "partner.quiet.note": "No notifications in these hours; you hear about it all when they end.",
   "partner.quiet.to": "to",
   "partner.quiet.hours": "Hours",
+  "settings.quiet.hours": "Hours",
   "partner.default.title": "If you don't answer",
   "partner.default.line": "How long before it goes with the default",
   "partner.default.note": "Only for things that can be undone. Anything that can't always waits for you.",
@@ -3350,7 +3352,7 @@ const accounts: Record<Lang, Record<string, string>> = {
 
 import { autofill } from "./i18n-autofill.ts";
 import { errandWords } from "./i18n-errand.ts";
-export const TABLES: Record<TableLang, Record<string, string>> = { zh: { ...zh, ...folder.zh, ...devup.zh, ...signin.zh, ...where.zh, ...devcard.zh, ...accounts.zh, ...starts.zh, ...autofill.zh, ...errandWords.zh, ...phone.zh, ...workbench.zh, ...onhandWords.zh, ...phoneuse.zh, ...computeruse.zh, ...handset.zh, ...fileWords.zh, ...calendarWords.zh, ...updateAllWords.zh, ...convWords.zh, ...memoryWords.zh, ...transcriptWords.zh, ...pastWords.zh, ...sessionWords.zh, ...didWords.zh, ...richWords.zh, ...appWords.zh, ...voiceWords.zh, ...contextWords.zh, ...firstWords.zh, ...limitWords.zh, ...settingsMore.zh, ...partnersWords.zh, ...lendWords.zh, ...agentSetupWords.zh, ...workerMemWords.zh, ...workerRecordsWords.zh, ...delightWords.zh }, en: { ...en, ...folder.en, ...devup.en, ...signin.en, ...where.en, ...devcard.en, ...accounts.en, ...starts.en, ...autofill.en, ...errandWords.en, ...phone.en, ...workbench.en, ...onhandWords.en, ...phoneuse.en, ...computeruse.en, ...handset.en, ...fileWords.en, ...calendarWords.en, ...updateAllWords.en, ...convWords.en, ...memoryWords.en, ...transcriptWords.en, ...pastWords.en, ...sessionWords.en, ...didWords.en, ...richWords.en, ...appWords.en, ...voiceWords.en, ...contextWords.en, ...firstWords.en, ...limitWords.en, ...settingsMore.en, ...partnersWords.en, ...lendWords.en, ...agentSetupWords.en, ...workerMemWords.en, ...workerRecordsWords.en, ...delightWords.en } };
+export const TABLES: Record<TableLang, Record<string, string>> = { zh: { ...zh, ...folder.zh, ...devup.zh, ...signin.zh, ...where.zh, ...devcard.zh, ...accounts.zh, ...starts.zh, ...autofill.zh, ...errandWords.zh, ...phone.zh, ...workbench.zh, ...onhandWords.zh, ...phoneuse.zh, ...computeruse.zh, ...handset.zh, ...fileWords.zh, ...calendarWords.zh, ...updateAllWords.zh, ...convWords.zh, ...memoryWords.zh, ...transcriptWords.zh, ...pastWords.zh, ...sessionWords.zh, ...didWords.zh, ...richWords.zh, ...appWords.zh, ...voiceWords.zh, ...contextWords.zh, ...firstWords.zh, ...limitWords.zh, ...settingsMore.zh, ...settingsHome.zh, ...partnersWords.zh, ...lendWords.zh, ...agentSetupWords.zh, ...workerMemWords.zh, ...workerRecordsWords.zh, ...delightWords.zh }, en: { ...en, ...folder.en, ...devup.en, ...signin.en, ...where.en, ...devcard.en, ...accounts.en, ...starts.en, ...autofill.en, ...errandWords.en, ...phone.en, ...workbench.en, ...onhandWords.en, ...phoneuse.en, ...computeruse.en, ...handset.en, ...fileWords.en, ...calendarWords.en, ...updateAllWords.en, ...convWords.en, ...memoryWords.en, ...transcriptWords.en, ...pastWords.en, ...sessionWords.en, ...didWords.en, ...richWords.en, ...appWords.en, ...voiceWords.en, ...contextWords.en, ...firstWords.en, ...limitWords.en, ...settingsMore.en, ...settingsHome.en, ...partnersWords.en, ...lendWords.en, ...agentSetupWords.en, ...workerMemWords.en, ...workerRecordsWords.en, ...delightWords.en } };
 // D276: 聊天软件 / Chat apps (i18n-channels.ts).
 Object.assign(TABLES.zh, channelWords.zh);
 Object.assign(TABLES.en, channelWords.en);

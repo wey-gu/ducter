@@ -87,7 +87,6 @@ export function ChatAppsSettings() {
   if (!f) return <Waiting text={t("conn.connecting")} />;
   return (
     <>
-      <p class="af-lede">{t("chats.lede", A.S.personaName)}</p>
       <p class="small lede-note">{t("chats.goes")}</p>
       <How about={t("chats.goes")} detail={t("chats.goes.how")} />
       {f.channels.map((v) => (
@@ -412,4 +411,14 @@ function WechatScan({ v }: { v: ChannelView }) {
       </Foot>
     </>
   );
+}
+
+/** D469: the chat apps the partner can be found in now (Settings' brief), asked for once. */
+let chatsAsked = false;
+export function linkedChats(): string[] {
+  if (!S.frame) {
+    if (!chatsAsked && A.S.welcomed) (chatsAsked = true), A.send({ t: "channels" });
+    return [];
+  }
+  return S.frame.channels.filter((v) => v.state === "linked").map((v) => nameOf(v.kind));
 }

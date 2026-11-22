@@ -2337,7 +2337,7 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [x] **A task's own timer** (`wait_for` with a time; built 2026-11-16, D267): a task can only wait on a check or an event, which is why one used `date` as a clock; D261 refuses that, and a time-only wait for a task needs the waiter to wake the task, not the partner (a task's timer is the partner's today). Trigger: a task asks for "look again in 45 minutes" twice in a week.
 - [ ] **The shorthand guard on a task's reports and checkpoints**, not only a wait's reason (D261 (10)). Trigger: a row's line shows notes again; the rule then belongs in the task's brief.
 - [ ] **The web's routine shelf under a project's lens** (the Mac shows only that project's routines; the web still shows all). Trigger: the next pass on routines.
-- [ ] **The window header's counts vs the strip**: the header's 今天做完 counts successes today, the strip counts the section (failures and yesterday's late finishes too). One rule for both is the shell's call (the header is shared chrome).
+- [x] **The window header's counts vs the strip** (built 2026-11-22, D467): 今天做完 is today's date on every surface, a done still being checked counts, a failure stands in 等你, yesterday's fold away.
 - [ ] **Quiet after 24 hours** and **seen results folded by default** are defaults to revisit with real use.
 
 ## On hand with character (D287)
@@ -2345,7 +2345,19 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] **People, not only LLM raters**: the author first on their real board, then a consumer who has never heard "agent" (research/95 is Haiku proxies only). Trigger: the next build the author installs.
 - [ ] **The iOS Simulator and Android** for the head and the cards (the phone's 56 figure, one card to a row). Trigger: the next phone release.
 - [ ] **A done card's moment on the Mac when it arrives live** (the web's pop plays the first time the card is drawn this session; the Mac's too, but neither ties it to the handover face). Trigger: the author's review.
-- [ ] **The fold threshold (3), two cards to a row from 612, the day column from 1280** are defaults to revisit with real use.
+- [ ] **The fold threshold (3)** is a default to revisit with real use (two to a row and the day column are gone, D467).
+
+## On hand by attention, one card shape (D467)
+
+- [ ] **The author's review** of `.shots/d467/` and then of their own board on the next build: is the one column at 1400 calm or empty; is the flag pose right for a stopped task. Trigger: the next build the author installs.
+- [ ] **The phone at 390 and the iOS Simulator** for the one card (the mark at 28, the action under the words when narrow). Trigger: the next phone release.
+- [ ] **Stopped after 30 minutes** is a default: measure how often a task reports blocked and arms its waiter later than that. Trigger: a stopped card that started again by itself on hel.
+- [ ] **Candidate C** (the live column with a time rail beside it) if the author wants the day's time back at 1400: only waits and results on the rail, never both. Trigger: the author asks where 接下来 went.
+- [ ] **The summary card without a sort** (a vault, several sources) still shows the few cards; one summary for those too once their counts mean something (an Obsidian vault has no sort). Trigger: a vault with more than 30 open lines.
+- [ ] **Live on hel** with the author's real 555 and a real stopped task: so far the demo core's fakes.
+- [ ] **The peek shows the screen** (D467 rev.): a task in Ducter's browser or on a phone shows its live view or last screenshot in the peek. Trigger: the author sits in on a browser task from On hand.
+- [ ] **The brief's fixes beyond the phone** (D467 rev.): a sign-in a stopped browser task needs (open the sign-in), a computer that went away (wake it), a limit (its reset). Trigger: a stopped task whose report names one of these.
+- [ ] **The strip's filter is gone** (D467 rev.): if the author misses narrowing to one state, a key (1 to 4) rather than counts. Trigger: the author asks for it.
 
 ## From the author's phone-use run (2026-11-16)
 - [x] **Recording consent is the person's turn, said everywhere** (built 2026-11-16, D280 (1)): the
@@ -2778,3 +2790,10 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] **What Codex still gets wrong that is the model's, not the harness's:** a needs_input relay that adds its own question ("要现在付 73 元吗？"), rich answers on GPT-6-Luna (a chart or a choices question that becomes a task_send or a guess), Bridge lines that explain Spaces, the noticed answer's times. The persona is not forked per model; measure again on the next Codex model before forking. Trigger: a Codex eval below 185, or someone on Codex meeting one of these live.
 - [ ] **The correction round's cost:** a line that promised work with no tool costs one more model turn. Count it live (the partner's stats) before tuning the promise shapes. Trigger: a week of the partner on Codex on hel.
 - [ ] **Codex's read-only shell for the partner:** the partner on Codex keeps a read-only shell (its only way to read a file); the persona now says never to look in the place first. If an eval sees `commandExecution` again, turn `features.shell_tool` off for the partner and give it a read tool. Trigger: one eval run that uses it.
+
+## Settings as the partner's report (D469)
+
+- [ ] **The author's review** of Overview and the speaking heads (`.shots/d469/after`), and a comprehension pass on Overview's labels (运行在, 能看的, 也能找我) with naive raters. Trigger: the next release.
+- [x] **Phones and tablets on Your computers** (built, D469 rev.). The Mac reads only `devices` (computers); the iPhone, iPad and Pixel Fold are clients (`reach`). Trigger: when a client can say what it is to the partner beyond a window (lent to tasks, D238).
+- [x] **An account's place** (built, D469 rev.: 你的账号在哪儿, each source its own card). The read accounts' marks sit on the home's card; through OOMOL they pass its servers. Show the source's own place (a small cloud beside the home) once D469 is reviewed. Trigger: the author's review.
+- [ ] **The needs' buttons go to the pane, not the fix itself** (D469 rev.: a Mem plugin's update and Update all now happen on Overview; still the pane for Mem's questions, a source down, no agent) (去更新 opens Memory where D466's ask stands). Doing the fix from Overview needs each fix's in-place ask there too. Trigger: when a need is seen on Overview often enough that the extra step is felt.

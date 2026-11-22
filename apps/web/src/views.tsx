@@ -54,6 +54,7 @@ import { FileLinkSheet, FileViewer } from "./fileview.tsx";
 import { NewTaskSheet } from "./newtask.tsx";
 import { AddFolderSheet } from "./addfolder.tsx";
 import { MemoryPage, Notebook, PeersInvite, PeersPage, peersPageShown } from "./memory.tsx";
+import { homeThinks, PaneSays, PlacesMap, SetBrief } from "./settings-home.tsx";
 import { memBadge, memUpdate, peerCalled } from "./mem-view.ts";
 import { benchable, BenchToggle, openBenchAt } from "./workbench.tsx";
 import { TaskInfoButton } from "./task-info.tsx";
@@ -2712,6 +2713,13 @@ function partnerLede(): string {
   return !A.homeName ? "" : noBrain() ? t("partner.header.none", A.homeName) : brain ? t("partner.header", A.homeName, harnessName(brain.harness)) : "";
 }
 
+/** D469 round 2: the Partner page's head in its own voice (partner.say): where it runs and what it thinks with; held or with nothing to think with, D435's and D322's lines. */
+function partnerHead(): string {
+  const brain = A.brainNow ?? A.settings?.brain;
+  if (!A.homeName || !brain || brainHeld() || noBrain()) return partnerLede();
+  return t("partner.say", A.homeName, homeThinks() || harnessName(brain.harness));
+}
+
 function NameRow() {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
@@ -2721,7 +2729,7 @@ function NameRow() {
     if (n && n !== A.defaultName()) A.setSettings({ name: n }), say("rename", t("said.rename", n));
     setEditing(false);
   };
-  const lede = partnerLede();
+  const lede = partnerHead();
   return (
     <>
       <div class="partner-head">
@@ -3352,22 +3360,17 @@ function SettingsSheet() {
       {!sec ? (
         <div class={`set-page${popped ? " popped" : ""}`} key="list">
           <h2>{t("settings.title")}</h2>
-          <button class="set-hero" onClick={() => go("partner")}>
-            <Avatar size={64} />
-            <span class="grow">
-              <b>{A.S.personaName}</b>
-              <small>{partnerLede() || t("settings.list.partner")}</small>
-            </span>
-            <Chev />
-          </button>
+          {/* D469: the partner's brief on its own world, then where things live; the pages after. */}
+          <SetBrief go={go} />
+          <PlacesMap go={go} />
           <div class="set-card set-list">
-            {/* D399: the hero above is the partner's row; the list never shows it twice (same face, same page). */}
-            {SECTIONS.filter((x) => x.page !== "partner" && (x.page !== "peers" || peersPageShown())).map((x) => (
+            {/* D469: the brief replaced the partner's hero, so the partner is a row of the list again. */}
+            {SECTIONS.filter((x) => x.page !== "peers" || peersPageShown()).map((x) => (
               <button class="set-row" key={x.page} onClick={() => go(x.page)}>
                 <SectionArt art={x.art} size={40} />
                 <span class="grow">
                   <b>{t(x.page === "peers" ? "settings.short.peers" : x.title)}</b>
-                  {x.page === "devices" && updatesWaiting() ? <small class="update">{updatesWaiting()}</small> : x.page === "memory" && memWaiting() ? <small class="update">{memWaiting()}</small> : <small>{t(`settings.list.${x.page}`)}</small>}
+                  {x.page === "partner" ? <small>{partnerLede() || t("settings.list.partner")}</small> : x.page === "devices" && updatesWaiting() ? <small class="update">{updatesWaiting()}</small> : x.page === "memory" && memWaiting() ? <small class="update">{memWaiting()}</small> : <small>{t(`settings.list.${x.page}`)}</small>}
                 </span>
                 <Chev />
               </button>
@@ -3391,7 +3394,8 @@ function SettingsSheet() {
               </h2>
               {/* D459: every pane's lede under its title, in one place, as on the Mac (memory, notifications and
                   accounts had none on the web; Agent messaging drew its own). */}
-              {PANE_LEDE[page] && <p class="set-lede">{t(PANE_LEDE[page]!, A.S.personaName)}</p>}
+              {/* D469: the partner says what is true here, in its voice; what needs you here follows. */}
+              {page !== "partner" && <PaneSays page={page} />}
             </>
           )}
           {page === "partner" && (
@@ -3425,9 +3429,6 @@ function SettingsSheet() {
     </Sheet>
   );
 }
-
-/** D459: the panes whose lede the shared header says (the others say theirs with a note under it). */
-const PANE_LEDE: Record<string, string> = { memory: "settings.lede.memory", peers: "settings.lede.peers", notify: "settings.lede.notify", accounts: "settings.lede.accounts" };
 
 // ---------- 开一个任务 / New task (D128, D185): the sheet is in newtask.tsx ----------
 

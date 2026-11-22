@@ -79,20 +79,20 @@ func (a *App) proactiveChips(c *ui.Context, key string) {
 // on the text edge, one group holding the choice and the note that says
 // what it means; on Notifications also 今天看了什么 (D226) as its next row.
 func (a *App) proactiveSection(c *ui.Context, key string, day bool) {
-	t := a.T
 	st := a.S.Settings
 	if st == nil {
 		return
 	}
 	sel, labels, note := a.proactiveSel(st)
-	a.group(c, "proactive:"+key, a.L.T("proactive.title"), "", func() {
-		a.sep(c)
-		ui.Column(c.Key("proactive:"+key)).Gap(t.S3).Padding(t.S4, t.S5).Children(func() {
+	// D469: a choice of a few is a row (D432): its title and what the choice means on the text
+	// column, the choice at the right edge; never an untitled slab of chips.
+	a.group(c, "proactive:"+key, "", "", func() {
+		a.row(c, "proactive:"+key, a.L.T("proactive.title"), a.L.T(note), func() {
 			if i := a.choices(c, "proactive-"+key, a.L.T("proactive.title"), labels, sel); i >= 0 {
 				st.Proactive = protocol.ProactiveModes[i]
 				a.SetSettings(protocol.SettingsPatch{Proactive: st.Proactive})
+				a.cheer()
 			}
-			a.note(c, a.L.T(note))
 		})
 		if day {
 			a.quietDay(c)

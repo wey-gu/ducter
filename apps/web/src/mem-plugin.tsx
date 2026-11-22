@@ -14,7 +14,7 @@ import { GBlock, GRow, Tile } from "./set-grid.tsx";
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
 /** The ask in place: one bold question, what changes and where, then its button and Cancel. */
-function Ask({ dv, h, onDone }: { dv: DeviceView; h: DeviceHarness; onDone: () => void }) {
+export function MemAsk({ dv, h, onDone }: { dv: DeviceView; h: DeviceHarness; onDone: () => void }) {
   const agent = harnessName(h.harness);
   const about = spoken(A.L, agent, "Nowledge Mem");
   // D375: Mem's own command first where it has one for this agent and the plugin isn't there.
@@ -47,7 +47,7 @@ export function MemAction({ dv, h }: { dv: DeviceView; h: DeviceHarness }) {
   return (
     <>
       {asking ? (
-        <Ask dv={dv} h={h} onDone={() => setAsking(false)} />
+        <MemAsk dv={dv} h={h} onDone={() => setAsking(false)} />
       ) : (
         <div class="btns">
           <Btn kind="secondary" size="sm" label={w.action} about={about} onClick={() => setAsking(true)} />
@@ -85,7 +85,7 @@ function MemPluginRow({ dv, h }: { dv: DeviceView; h: DeviceHarness }) {
       </GRow>
       {can && asking && (
         <GBlock>
-          <Ask dv={dv} h={h} onDone={() => setAsking(false)} />
+          <MemAsk dv={dv} h={h} onDone={() => setAsking(false)} />
         </GBlock>
       )}
       {answer && (

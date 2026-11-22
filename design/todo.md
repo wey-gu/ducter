@@ -2838,3 +2838,9 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - **Phone and capability blocks handed on.** Research/205's 7 phone tasks and 3 capability blocks were real asks, but some had another way (another phone, the partner doing the step with its own connection, D446's hand-over). Give them a typed hand-over like a stall. *Trigger:* after D446's live check.
 - **Superseding by more than the title.** The task set aside after a hand-over is matched by a title overlap within 30 minutes; a `replaces` argument on `task_open` would be exact (a partner tool change: two haiku runs, D175). *Trigger:* one wrong or missed supersede.
 - **A live run.** The ladder has run on fakes only. *Trigger:* the next release on the author's home: read `ducter repairs --weeks 1` a week later and compare with research/205's 0 of 3.
+
+## Opening the page never blank (D474)
+
+- [ ] **On the author's iPhone against hel.** D474 was reproduced and fixed on the iOS Simulator and WebKit against demo homes; the author's own iPhone was never looked at. Open the web client there (a reload, a second tab, Add to Home Screen) and say what still feels poor. *Trigger:* the next time the author has the phone in hand.
+- [ ] **The page's code is 1.6 MB of script and 0.6 MB of styles, sent uncompressed.** Content-named and `immutable` (D209), so it travels once per version, but that once is slow over a phone's link to a home abroad, and `index.html`'s own ground is all the person sees meanwhile. Compress (`br`/`gzip` by `Accept-Encoding`, precomputed at build) and split so the conversation parses first. *Trigger:* a first open over a phone network measured above 3 s.
+- [ ] **The greeting opens scrolled under the bar** on a phone (the clay cut off under the header, seen in the D474 shots on both languages). Pre-existing; not D474's cause. *Trigger:* the next phone layout pass (D471's On hand redo is in flight).

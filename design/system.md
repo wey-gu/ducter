@@ -965,6 +965,13 @@ rule: **the first frame never waits on the home.**
   never answers; Try again loads from the network.
 - **Layout changes** (D184's morph) never wait on a frame inside a view transition: WebKit holds
   frames there until a 4 s timeout.
+- **Never blank (D474).** A first open with nothing kept is the one case that asks `/api/me` before
+  drawing the app: the partner waits on the page meanwhile (its words after 0.7 s, "slower than
+  usual" at 4 s), and after 10 s it says it can't reach the address, with Try again. D262's calm
+  ground comes at most once per page (it latches) and its 1.5 s end always draws the page again. A
+  throw while opening or drawing shows "couldn't be drawn" with Try again; `index.html` carries its
+  own waiting ground (both languages, a Try again link, shown 3 s in) for code that never runs.
+  `apps/web/src/boot-wait.tsx`, `apps/web/test/d474.test.ts`.
 
 ## Updating the AI agents (D156, draft, built 2026-11-10)
 

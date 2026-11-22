@@ -582,6 +582,63 @@ a {
   background: var(--bg);
 }
 
+/* D474: the page never stays blank. Waiting, the partner and its words come up only after a calm
+   beat (a quick open never sees them); the page's own copy in index.html waits longer, for code that
+   is still on the way; a failure shows at once, with Try again. */
+.boot-wait {
+  min-height: 100dvh;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: calc(var(--safe-top) + 24px) 20px calc(var(--safe-bottom) + 24px);
+  background: var(--bg);
+  text-align: center;
+}
+.boot-wait h1 {
+  margin: 0;
+  font-family: var(--head);
+  font-weight: 800;
+  font-size: var(--t28);
+  line-height: 1.2;
+  text-wrap: balance;
+}
+.boot-wait p {
+  margin: 0;
+  max-width: 30em;
+  color: var(--ink-soft);
+  line-height: var(--lh-read);
+  text-wrap: pretty;
+}
+.boot-wait [lang] {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+.boot-wait [lang] + [lang] {
+  margin-top: 12px;
+}
+.boot-wait [lang="en"] h1 {
+  font-size: var(--t20);
+}
+.boot-wait a.btn {
+  text-decoration: none;
+}
+.boot-wait:not(.failed) > * {
+  animation: fade var(--t-med) var(--ease) 700ms both;
+}
+.boot-wait.static > * {
+  animation-delay: 3s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .boot-wait:not(.failed) > * {
+    animation-duration: 1ms;
+  }
+}
+
 /* ---------- header ---------- */
 .top {
   display: flex;

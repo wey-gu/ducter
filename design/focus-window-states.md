@@ -59,11 +59,7 @@ partner's result turn confirms it: it read the report and neither sent the task 
 partner sees it marked and sends the task back. A worker's refs are not checked yet.
 
 **Missing report:** if a turn ends without `report_to_main`, C sends one cheap nudge ("report
-status"). If there is still no report, the stall rule applies. **Except at the very start
-(D476):** a task's first session whose agent did nothing at all (no tool call, a short line at
-most) and ended both turns within two minutes, or whose process exited first, never started:
-it is `failed` with a start cause (signed out, not installed, or its agent, with its own first
-line), not a stall, and D473's mend treats it as a start.
+status"). If there is still no report, the stall rule applies.
 C never guesses `done`. **Resting on its own wait (D394):** a turn that armed a wait of the
 task's own (`wait_for`) and ends with it still armed owes no report: it is neither nudged nor a
 miss, so a repeating round that found nothing new stays silent instead of being pushed into a

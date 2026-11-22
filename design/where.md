@@ -133,13 +133,6 @@ When only one computer exists the reason is the agent's, exactly as today.
 
 The partner may override the ranking with a reason, as today (principle 14).
 
-**The person's word binds (D476).** When the person says where in words (只在 hel 上, 用 hel 上的
-agy 而不是 mac 上的, not on my Mac), Ducter reads it by code (`core/src/bound.ts`; a computer by its
-name, the home's host name, or its kind when only one fits) and keeps it on the task. The
-ranking never picks a computer they ruled out, the repository resolver never asks one or falls
-back to its copy when they said only, task_open refuses a place on one, and Ducter's own mends
-never move the work off the one they named. Only their own tap or words change it.
-
 ### 4.4 When it asks (and when it never does)
 
 | Situation | Ask? | What happens |

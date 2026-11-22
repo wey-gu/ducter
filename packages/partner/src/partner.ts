@@ -52,7 +52,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { AliveSource } from "../../protocol/src/alive.ts";
-import { ASKS_MAX, type AskLine, callWakes, FREE_TIERS, fileView, harnessName, HARNESSES, HARNESS_IDS, isHarnessId, relaysBridge, isImage, isWorkKind, WORK_KINDS, type WorkKind, MEDIA_LIMITS, viewText, type MediaRef, type ActivityStep, type Bodies, type BodyWhy, type Brain, type CalEvent, type CalGlance, type EventKind, type HarnessId, type LogEvent, type Place, type TaskBound, type TaskCard, type TaskGroupFrame, type TaskGroupView, type TaskNeeds } from "../../protocol/src/index.ts";
+import { ASKS_MAX, type AskLine, callWakes, FREE_TIERS, fileView, harnessName, HARNESSES, HARNESS_IDS, isHarnessId, relaysBridge, isImage, isWorkKind, WORK_KINDS, type WorkKind, MEDIA_LIMITS, viewText, type MediaRef, type ActivityStep, type Bodies, type BodyWhy, type Brain, type CalEvent, type CalGlance, type EventKind, type HarnessId, type LogEvent, type Place, type TaskCard, type TaskGroupFrame, type TaskGroupView, type TaskNeeds } from "../../protocol/src/index.ts";
 import type { CoreApi, HarnessEvent, HarnessSession, Partner, Runner, SendImage, ToolHandler, WebLookPort, WorkingMemoryView } from "../../protocol/src/internal.ts";
 import { resolveWindows, WINDOW_MAX, WINDOW_MIN } from "../../protocol/src/harness-facts.ts";
 
@@ -860,22 +860,6 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     taskTitle: (id) => core.tasks.get(id)?.title ?? jobs.get(id)?.title,
     // D473: why a task couldn't start and the fixes core found, for a rethink.
     taskCant: (id) => core.tasks.get(id)?.cant,
-    // D476: the person's word on where it runs, and the agents on its computer as Ducter saw them.
-    taskWhere: (id) => {
-      const card = core.tasks.get(id);
-      if (!card) return undefined;
-      const nameOf = (d: string) => core.places?.nameOf?.(d) ?? d;
-      const b = core.places?.boundOf?.(id);
-      const bound = b ? [b.only ? `only on ${nameOf(b.only)}` : "", b.not?.length ? `not on ${b.not.map(nameOf).join(" or ")}` : "", !b.only && b.named ? `on ${nameOf(b.named)}, as they named it` : ""].filter(Boolean).join("; ") : "";
-      const dev = card.cant?.device ?? (("device" in card.place && card.place.device) || "local");
-      const hs = dev === "local" ? core.homeDevice?.()?.harnesses : core.workers?.list().find((w) => w.id === dev)?.harnesses;
-      const on = card.cant?.computer || nameOf(dev);
-      const mine = hs?.find((h) => h.id === card.harness);
-      const agents = hs
-        ? `On ${on}, ${harnessName(card.harness)} is ${mine?.loggedIn ? "installed and signed in" : mine?.installed ? "installed but not signed in" : "not installed"}${hs.filter((h) => h.loggedIn && h.id !== card.harness).length ? `; also signed in there: ${hs.filter((h) => h.loggedIn && h.id !== card.harness).map((h) => harnessName(h.id)).join(", ")}` : ""}.`
-        : "";
-      return bound || agents ? { ...(bound ? { bound } : {}), ...(agents ? { agents } : {}) } : undefined;
-    },
     // D340: what the user typed into the task itself since its previous report (research/124 F1: without
     // it, the person's own asks read as the task's ideas, and the partner offered to delete them).
     told: (id, reportSeq) => {
@@ -1734,7 +1718,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     // D405: the person's apps, on every turn while they have any (bounded: the newest APPS_SHOWN).
     const appsLine = core.apps ? renderApps(core.apps.list(core.persona.id), (id) => core.apps!.data(id), now()) : "";
     if (appsLine) deltas.push(appsLine);
-    const devices = renderDevices(core.workers?.list() ?? [], core.homeDevice?.());
+    const devices = renderDevices(core.workers?.list() ?? []);
     if (devices) deltas.push(devices);
     if (!fresh) return deltas.join("\n");
     const isRecut = recutting;
@@ -2367,7 +2351,6 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       // is on (the place's remote, the to-do taken, an address in the words): a path the model
       // guessed never wins over a copy Ducter found, and no clone anywhere means one is made first.
       let cloneLine: string | undefined;
-      let bound: TaskBound | undefined;
       if (core.places) {
         const pf = await core.places.preflight({ place, ...(remoteOf(raw.place) ? { remote: remoteOf(raw.place)! } : {}), texts: [args.title, args.brief], userTexts });
         if (!pf.ok) {
@@ -2380,7 +2363,6 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         }
         place = pf.place;
         cloneLine = pf.said;
-        bound = pf.bound;
       }
       // D395: "仔细" / "carefully" in the person's words: the task thinks harder (and checks its work).
       const effort = effortFromWords(userTexts);
@@ -2488,7 +2470,6 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           ...((n) => (n ? { needs: n } : {}))(parseNeeds(raw.needs)),
           ...(isWorkKind(raw.kind) ? { workKind: raw.kind } : {}),
           language: taskLanguage(t),
-          ...(bound ? { bound } : {}),
           ...(handed.length ? { media: handed } : {}),
         };
         // D360: a later part in the same folder waits for the one before it: held, no task yet.
@@ -5767,31 +5748,20 @@ export function renderApps(apps: readonly AppMeta[], data: (id: string) => Recor
   ].join("\n");
 }
 
-type DeviceAgents = { id: string; installed?: boolean; loggedIn: boolean }[];
-/** D476: signed in, and installed but not signed in, so "isn't set up there" is never said of an agent that is. */
-const agentsWords = (hs: DeviceAgents | undefined, none: string) => {
-  const ai = (hs ?? []).filter((h) => h.loggedIn).map((h) => h.id).slice(0, 6);
-  const idle = (hs ?? []).filter((h) => !h.loggedIn && h.installed).map((h) => h.id).slice(0, 6);
-  return `${ai.length ? `, signed in: ${ai.join(", ")}` : none}${idle.length ? `, installed but not signed in: ${idle.join(", ")}` : ""}`;
-};
-
-export function renderDevices(workers: { name: string; online: boolean; asleep?: boolean; os?: string; harnesses?: DeviceAgents; web?: "chrome" | "ducter"; alwaysOn?: boolean }[], home?: { name: string; aliases?: string[]; harnesses?: DeviceAgents }): string {
+export function renderDevices(workers: { name: string; online: boolean; asleep?: boolean; os?: string; harnesses?: { id: string; loggedIn: boolean }[]; web?: "chrome" | "ducter"; alwaysOn?: boolean }[]): string {
   if (!workers.length) return "";
   // An L4 line on every turn: bounded however many computers join (research/48 F2).
   const shown = workers.length > DEVICES_MAX ? [...workers].sort((a, b) => Number(b.online) - Number(a.online)).slice(0, DEVICES_MAX) : workers;
   const more = workers.length - shown.length;
-  const clipName = (n: string) => (n.length > 40 ? n.slice(0, 39) + "…" : n);
   const one = (w: (typeof workers)[number]) => {
+    const ai = (w.harnesses ?? []).filter((h) => h.loggedIn).map((h) => h.id).slice(0, 6);
     const state = w.online ? "awake" : w.asleep ? "asleep" : "can't reach";
     const sleeps = w.alwaysOn === false ? ", sleeps when its lid closes" : w.alwaysOn ? ", never sleeps" : "";
     const web = w.web === "chrome" ? ", browses in the user's own Chrome (their sign-ins)" : w.web === "ducter" ? ", browses in Ducter's own browser" : "";
-    return `${clipName(w.name)} (${state}${w.os ? `, ${w.os.slice(0, 30)}` : ""}${sleeps}${web}${agentsWords(w.harnesses, ", no AI signed in")})`;
+    const name = w.name.length > 40 ? w.name.slice(0, 39) + "…" : w.name;
+    return `${name} (${state}${w.os ? `, ${w.os.slice(0, 30)}` : ""}${sleeps}${web}${ai.length ? `, signed in: ${ai.join(", ")}` : ", no AI signed in"})`;
   };
-  // D476: the home by its name, the names the person calls it, and its own agents (hel, 2026-11-22:
-  // the line named no agent of the home's, and the partner told the person Antigravity wasn't set up there).
-  const also = (home?.aliases ?? []).filter((a) => a.toLowerCase() !== home?.name.toLowerCase()).slice(0, 2);
-  const homeWords = home ? `local (Ducter's home: ${clipName(home.name)}${also.length ? `, also called ${also.join(", ")}` : ""}${home.harnesses ? agentsWords(home.harnesses, ", no AI signed in") : ""})` : "local (Ducter's home)";
-  return `[devices] ${homeWords} · ${shown.map(one).join(" · ")}${more ? ` · and ${more} more computers` : ""}. Say what a task needs (task_open needs) and Ducter picks the computer and says where; name one in place.device only when the user named it. Whether an agent is set up on a computer is only what this line says.`;
+  return `[devices] local (Ducter's home) · ${shown.map(one).join(" · ")}${more ? ` · and ${more} more computers` : ""}. Say what a task needs (task_open needs) and Ducter picks the computer and says where; name one in place.device only when the user named it.`;
 }
 
 /** D372: a model in a word for the partner's line ("sonnet" → "Sonnet", "deepseek-official/deepseek-flash" → "Deepseek Flash"). */

@@ -27,19 +27,3 @@ test("a stall: carry it on, never redo anything outward", () => {
   expect(s).toContain("stopped without a report");
   expect(s).toContain("Never ask it to redo anything it already sent");
 });
-
-// D476 (hel, 2026-11-22): the hand-over carries the person's word on where, the agent's own words,
-// what is set up on that computer, and two repositories a name could be.
-test("D476: the bound, the agents there, the agent's own words, and a name that is two repositories", () => {
-  const m: Bodies["mend"] = { taskId: "smx2jjb3", cls: "start", rung: "rethink", attempt: 1, tried: [], why: "no_folder", state: "ok" };
-  const s = renderMend(m, "在 hel 用 Gemini 审改 Mem 长文案并开 PR", { ...cant, repos: ["nowledge-co/mem", "someone/mem"] }, { bound: "only on Hetzner Server; not on Wey's MacBook Pro", agents: "On Hetzner Server, Antigravity is installed and signed in." });
-  expect(s).toContain("The user said this work runs only on Hetzner Server; not on Wey's MacBook Pro: Ducter refuses any other computer for it");
-  expect(s).toContain("On Hetzner Server, Antigravity is installed and signed in.");
-  expect(s).toContain('"mem" could be nowledge-co/mem or someone/mem: ask the user which, once');
-  expect(s).toContain("on another computer the user allows");
-  expect(s).toContain("Never tell the user an agent isn't set up on a computer unless [devices] says so");
-  const a = renderMend({ taskId: "jj6efivf", cls: "start", rung: "rethink", attempt: 1, tried: [], why: "agent", state: "ok" }, "x", { why: "agent", computer: "Wey's MacBook Pro", what: "Antigravity", detail: "Please sign in to continue." });
-  expect(a).toContain('Its agent said: "Please sign in to continue."');
-  const st = renderMend({ taskId: "jj6efivf", cls: "stall", rung: "rethink", attempt: 1, tried: [], why: "stall", state: "ok" }, "x", undefined, { bound: "only on Hetzner Server" });
-  expect(st).toContain("only on Hetzner Server");
-});

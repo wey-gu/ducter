@@ -169,8 +169,6 @@ export interface CoreApi {
   bodies?: BodyChooser;
   /** D395: where a repository task works, resolved by code (core/src/repo-where.ts); absent in tests and stubs. */
   places?: PlacesPort;
-  /** D476: the home itself as the partner's [devices] line names it: its name, its other names, its agents as last probed. */
-  homeDevice?(): { name: string; aliases?: string[]; harnesses?: { id: string; installed?: boolean; loggedIn: boolean; version?: string }[] } | undefined;
   /** D379: memories the partner's recall returned, read by code for who-does-which-work the person said. */
   said?: {
     fromMemory(hits: { id?: string; title: string; content: string; date?: string }[]): void;
@@ -431,7 +429,7 @@ export interface BodyChooser {
   // D157: needs say what the task needs of its computer; the pick says which computer (device:
   // its name, "local" for the home), whether it waits there, and what it uses.
   // D202: effort, the user's pick, is checked against the chosen model's levels on its computer.
-  choose(work: { title: string; brief?: string; place?: Place; harness?: string; model?: string; effort?: string; by?: "you"; needs?: TaskNeeds; workKind?: WorkKind; /** D476 */ bound?: import("./index.ts").TaskBound }): Promise<BodyChoice | { none: string } | undefined>;
+  choose(work: { title: string; brief?: string; place?: Place; harness?: string; model?: string; effort?: string; by?: "you"; needs?: TaskNeeds; workKind?: WorkKind }): Promise<BodyChoice | { none: string } | undefined>;
 }
 
 /** D157: who does a new task, on which computer, and why. */
@@ -752,7 +750,7 @@ export interface Runner {
   // adopt (D299): a session the person ran in their own agent outside Ducter, carried on as this
   // task in its own folder: its conversation (the person's words and the agent's) goes into the
   // task's history; the same agent resumes it by id, another agent starts from what it said.
-  openTask(input: { persona: string; title: string; brief: string; place?: Place; project?: string; harness?: string; model?: string; effort?: string; language?: LangTag; origin?: "you"; needs?: TaskNeeds; workKind?: WorkKind; media?: MediaRef[]; from?: string; fromStep?: number; fromCommit?: string; adopt?: AdoptSession; /** D476 */ bound?: import("./index.ts").TaskBound }): Promise<TaskCard>;
+  openTask(input: { persona: string; title: string; brief: string; place?: Place; project?: string; harness?: string; model?: string; effort?: string; language?: LangTag; origin?: "you"; needs?: TaskNeeds; workKind?: WorkKind; media?: MediaRef[]; from?: string; fromStep?: number; fromCommit?: string; adopt?: AdoptSession }): Promise<TaskCard>;
   // Optional (D120, ack and go): open a task while its brief is still being written. The card,
   // the place and the session start now; the brief becomes the session's first turn when it
   // settles. If it rejects, the task is dropped before it did anything.
@@ -847,7 +845,7 @@ export interface PhonePort {
 
 /** D395: task_open's pre-flight answer: the place to open in (checked, replaced, or a clone first), or what to tell the model. */
 export type PreflightResult =
-  | { ok: true; place: Place; how?: "given" | "named" | "rule" | "found" | "clone"; computer?: string; repo?: string; /** A line Ducter says itself (the clone). */ said?: string; /** D476: the person's word on where this work runs, kept on the task. */ bound?: import("./index.ts").TaskBound }
+  | { ok: true; place: Place; how?: "given" | "named" | "rule" | "found" | "clone"; computer?: string; repo?: string; /** A line Ducter says itself (the clone). */ said?: string }
   | { ok: false; error: string };
 
 /** D395: where a repository task works, resolved by code from the repository (core/src/repo-where.ts). */
@@ -864,9 +862,5 @@ export interface PlacesPort {
   /** Why a task couldn't start and the fixes, in the task's language (the runner asks before it marks it failed). */
   cantStart(taskId: string, p: { why: import("./index.ts").CantStart["why"]; path: string; device: string }): Promise<import("./index.ts").CantStart & { line: string }>;
   /** 再试一次 / 在 X 上做 / 拉一份到这里 on a task that couldn't start: the place it starts in now. */
-  replan(taskId: string, how: { action: "reopen" | "start_at" | "clone_here" | "clear_lock"; device?: string }, by?: "ducter" | "person"): Promise<{ ok: true; place: Place } | { ok: false; message: string }>;
-  /** D476: the person's word on where this task's work runs (its own words, and the task it carries on). */
-  boundOf?(taskId: string): import("./index.ts").TaskBound | undefined;
-  /** D476: a computer's name, for words (its device id; "local" for the home). */
-  nameOf?(device: string): string;
+  replan(taskId: string, how: { action: "reopen" | "start_at" | "clone_here" | "clear_lock"; device?: string }): Promise<{ ok: true; place: Place } | { ok: false; message: string }>;
 }

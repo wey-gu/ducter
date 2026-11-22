@@ -1698,7 +1698,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     if (appsLine) deltas.push(appsLine);
     const limits = core.agentLimits?.();
     const home = core.homeDevice?.();
-    const devices = renderDevices(core.workers?.list() ?? [], home ? { ...home, ...(homeWeb ? { web: homeWeb } : {}) } : homeWeb ? { name: "", web: homeWeb } : undefined, core.codeOn?.(), limits, new Date(now()));
+    const devices = renderDevices(core.workers?.list() ?? [], home ? { ...home, ...(homeWeb ? { web: homeWeb } : {}) } : homeWeb ? { name: "", web: homeWeb } : undefined, core.codeOn?.(), limits, new Date(now()), core.settings?.get().limitHandoff === true);
     if (devices) deltas.push(devices);
     // D478: what is running where, and what each live task waits on, beside the computers.
     // A home alone: no computer to name (one place for everything).
@@ -5846,6 +5846,7 @@ export function renderDevices(
   code?: { device: string; name: string; remote?: string }[],
   limits?: AgentLimitFact[],
   now = new Date(),
+  handoff?: boolean,
 ): string {
   // A home alone shows no line (nothing to place), unless an agent's limit there is known (D478).
   if (!workers.length && !(home && limits?.some((l) => l.device === "local" && l.state === "used_up"))) return "";
@@ -5863,7 +5864,7 @@ export function renderDevices(
   // D476's finding, kept: the home by its name, the names the person calls it, and its own agents.
   const also = (home?.aliases ?? []).filter((a) => a.toLowerCase() !== home?.name.toLowerCase()).slice(0, 2);
   const homeWords = home ? `local (Ducter's home${home.name ? `: ${clipName(home.name)}` : ""}${also.length ? `, also called ${also.join(", ")}` : ""}${browses(home.web)}${home.harnesses ? agentsWords(home.harnesses, ", no AI signed in", limits, "local", now) : ""}${codeWords(code, "local")})` : "local (Ducter's home)";
-  return `[devices] ${[homeWords, ...shown.map(one)].join(" · ")}${more ? ` · and ${more} more computers` : ""}. True now: which agents are set up where, their usage limits, and which code is where, is only what this line says. Put work where the user's words and these facts point (place.device; their words about computers in where); with neither, say what it needs and Ducter picks. Code not on that computer yet is cloned there first (place.remote).`;
+  return `[devices] ${[homeWords, ...shown.map(one)].join(" · ")}${more ? ` · and ${more} more computers` : ""}. True now: which agents are set up where, their usage limits, and which code is where, is only what this line says.${limits?.some((l) => l.state === "used_up") ? (handoff ? " By the user's setting, a task whose agent runs out is handed to another signed-in agent at once." : " By the user's setting (D297's default), a task whose agent runs out waits for the reset; handing it to another agent is the user's choice.") : ""} Put work where the user's words and these facts point (place.device; their words about computers in where); with neither, say what it needs and Ducter picks. Code not on that computer yet is cloned there first (place.remote).`;
 }
 
 /** D478: live tasks shown in the [live] line (the rest are named by count). */

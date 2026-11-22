@@ -172,9 +172,9 @@ export const puzzles: Scenario[] = [
       { limitHit: { task: "ttl", harness: "claude-code", resetsAt: "23:00" } },
     ],
     steps: [{ report: { task: "ttl", body: { state: "failed", summary: "Claude Code hit its usage limit (it resets at 23:00). Before stopping it switched ttl.test.ts to a fake clock; the tests haven't been run and nothing is committed.", questions: [], evidence: [] } } }],
-    expect: { opens: [0, 1], noAsk: true, msgs: [0, 1], maxChars: 100, outcome: { carriedOn: { task: "ttl", harness: "codex" } } },
+    expect: { opens: [0, 1], msgs: [0, 1], maxChars: 100 },
     rubric:
-      "The world: Codex is signed in on the same Mac; Claude Code's limit resets at 23:00. A thoughtful partner carries the fix on with Codex now (from where it stopped) and tells the person at most one short Chinese line. Fail if it asks the person whether to switch, waits until 23:00 without saying why, restarts the work from scratch, or claims the test is fixed.",
+      "The world: Codex is signed in on the same Mac with room; Claude Code's limit resets at 23:00; the user never chose to hand tasks on when an agent runs out, so by Ducter's design (D297) the task waits for the reset unless they choose to hand it on. Pass if the partner either carries the fix on with Codex now (from where it stopped), or offers that once in one short Chinese line or one card whose default is to carry on; and says nothing false. Fail if it waits for 23:00 without offering Codex, asks which agent in prose, restarts the work from scratch, or claims the test is fixed.",
   },
   // 7. The person's own agent asks for the status of one task: answer it from the state, once.
   {
@@ -299,6 +299,7 @@ export const puzzles: Scenario[] = [
     expect: { opens: 1, ackFirst: true, noAsk: true, harness: "antigravity", outcome: { onlyOn: MAC, repo: "wey-gu/foo", toolsFit: true } },
     rubric:
       "The world: this Mac has foo (wey-gu/foo) and Antigravity signed in. Pass if one task starts on the Mac in foo with Antigravity, with one short English ack and no question. Fail if it asks anything, uses another agent, or claims the typo is fixed.",
+  },
   // ---- D478: six more, from real moments not covered yet ----
   // 15. A phone task is stuck on something with a real fix on Ducter's own phone (an app that must update first).
   {

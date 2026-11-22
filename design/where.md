@@ -669,6 +669,9 @@ code reads the words for it.
   title, agent, computer (named only when there are other computers) and what it waits on (**resting
   until {agent}'s limit resets ({time})**, **waiting on the user**, queued, working). A warm session
   sees the same truth a fresh one does.
+- **The user's setting, said with it.** While an agent is used up, `[devices]` says what the user
+  chose (D297): its task is handed to another signed-in agent at once, or it waits for the reset and
+  handing it on is theirs to choose, so the partner offers once rather than deciding for them.
 - **Nothing switches by itself.** D297's limit wait and the person's own **limitHandoff** setting
   are unchanged; a carry-on with another agent the person didn't choose is the partner's judgment
   from these facts (task_switch), never a rung in code.

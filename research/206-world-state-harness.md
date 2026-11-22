@@ -323,9 +323,23 @@ the title-similarity supersede removed; one fact source and one invariant added)
 **The final runs.** The final non-puzzle scores (180, 185) are below steps 1–3 (193, 190) though the
 code differs only by three small facts and the reset fix; the scenarios lost between them are mostly
 length overruns unrelated to the change, so drift across the day is large (VERIFIED: the same base
-code scored 188–201 across D477's runs). The branch is not proven free of regression on the full
-eval; a same-hour run of main and the branch, two each, is owed before merge. The quota puzzle passed
+code scored 188–201 across D477's runs). The same-window A/B below settles it: drift, not the change. The quota puzzle passed
 in 5 of 8 runs from step 1 on and in neither final puzzle run (a card asking the person instead).
+
+**Same-window A/B against main (2026-11-23).** VERIFIED. Main (with D479, D480) from a clean
+export and the merged branch, run side by side in two rounds, haiku partner and judge.
+
+| Round | main non-puzzle | branch non-puzzle | main puzzles /14 | branch puzzles /20 |
+|---|---|---|---|---|
+| 2 | 189, 193 | 193, 194 | 11, 11 | 15, 16 |
+| 3 (after the hand-off fact) | 193, 192 | 196, 188 | 10, 12 | 16, 18 |
+
+Mean over four runs: main 191.8, branch 192.8 of 244. No case was 4/4 on main and 0/4 on the
+branch; each side flipped about 40 cases between its own two runs, so the earlier gap (final
+180, 185 vs D477's 197, 201) was drift across the day, not the change. The quota puzzle's earlier
+failures were a missing fact: whether the user lets a task be handed on when its agent runs out
+(D297's setting). With it in `[devices]`, and the puzzle graded by D297's design, the partner
+offers or carries on.
 
 ### Implications for Ducter (phase 2b)
 

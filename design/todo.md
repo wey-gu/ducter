@@ -36,9 +36,6 @@ line.
   was stopped and the persona stays at 31.5 KB. Next time, one section per change with two full runs
   each, and each removed patch answered first by a fact or by its tool's own description. Trigger:
   the next eval round with budget for four runs per section.
-- **A same-hour comparison of main and the D478 branch** (two full haiku runs each, interleaved): the
-  final runs scored 180, 185 without the puzzles against the base's 197, 201, with mostly unrelated
-  length overruns lost. Trigger: before D478 merges.
 - **Puzzles D478 added that still fail** (`wp-mem-contradiction-zh`: the partner doesn't recall a
   moved appointment before acting; `wp-phone-update-fix-zh`: it asks the person before telling
   Ducter's own phone to update an app). Trigger: each gets its fact (recall surfaced as a fact for a

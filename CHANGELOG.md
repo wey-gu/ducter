@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.1.16 - 2026-11-22
+
+<!-- whats-new
+zh: 你说在哪台电脑做，它就一直在那台做；没代码先拉
+en: Where you say to work holds; missing code is fetched first
+-->
+
+**Where a task runs**
+- When you say where to do something ("only on hel", "not on my Mac"), every later step keeps
+  to it: retries, Ducter's own fixes, and your partner's next try.
+- When the code isn't on that computer yet, Ducter recognises which repository you mean and
+  fetches it there first, then starts.
+- Your partner knows which agents each computer has, so it won't say one is missing when it isn't.
+- An agent that stops at once without doing anything now says why it couldn't start.
+
 ## 0.1.15 - 2026-11-22
 
 <!-- whats-new

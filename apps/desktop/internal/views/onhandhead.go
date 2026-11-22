@@ -330,6 +330,9 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 				ink = t.InkMuted
 			}
 			sw := s.words
+			if stopped || failed {
+				sw = a.stuckFix(task).clause() // D467 round 4: what to do, not the log
+			}
 			if att == protocol.Blocked && !stopped {
 				sw = a.waitCardWords(task, sw) // D467: never the title again
 			}
@@ -368,23 +371,11 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 				if task.Card != nil {
 					uiText(c.Key("since"), a.tp("onhand.wait.since", a.agoLong(task.Card.UpdatedAt))).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
 				}
-				ui.Row(c.Key("acts")).Gap(t.S1).Children(func() {
-					if a.button(c, a.L.T("onhand.quiet.go"), btnSecondary, t.ControlSM, t.Surface) {
-						acted = true
-						a.send(protocol.PastContinue{T: "past_continue", TaskID: task.ID, Words: a.L.T("onhand.quiet.go")})
-					}
-					if a.button(c, a.L.T("onhand.quiet.drop"), btnText, t.ControlSM, t.Surface) {
-						acted = true
-						a.TaskAction(task.ID, "drop")
-					}
-				})
+				a.fixButtons(c, "acts", a.stuckFix(task), t.Surface, &acted)
 			case failed:
 				f := finishedOf(task)
 				ui.Row(c.Key("acts")).Gap(t.S1).AlignItems(ui.Center).Children(func() {
-					if a.button(c, a.L.T("away.retry"), btnSecondary, t.ControlSM, t.Surface) {
-						acted = true
-						a.Retry(f.failedIDs)
-					}
+					a.fixButtons(c, "fix", a.stuckFix(task), t.Surface, &acted)
 					if hover {
 						a.finishedActs(c, *f)
 					}

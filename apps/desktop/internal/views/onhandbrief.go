@@ -158,50 +158,14 @@ func (a *App) brief(c *ui.Context, b store.Board, lens string, n [4]int) {
 	for _, x := range halted {
 		x := x
 		lines = append(lines, line{"h:" + x.ID, a.L.T("lane.needs_you"), func() {
-			failed := x.Attention() == protocol.Failed
-			phone := !failed && phoneTask(x)
-			why := ""
-			if r := x.Report(); r != nil {
-				why = firstSentence(r.Summary, 60)
-			}
-			if why == "" {
-				why = a.L.T("onhand.wait.unsaid")
-			}
-			title := a.briefTitle(x.Title())
-			s := a.L.T("onhand.brief.stopped", title, why)
-			switch {
-			case failed:
-				s = a.L.T("onhand.brief.failed", title, why)
-			case phone:
-				s = a.L.T("onhand.brief.stopped.phone", title)
-			}
+			// D467 round 4: the real fix for the way it is stuck.
+			f := a.stuckFix(x)
 			ui.Row(c.Key("w")).Gap(t.S2).Wrap().AlignItems(ui.Center).Shrink(1).MinWidth(0).Children(func() {
-				tx := uiText(c.Key("t"), keepWords(autospace(s))).FontSize(t.MD).LineHeight(1.5).TextColor(t.Ink).Cursor(ui.CursorPointer).Role(ui.RoleLink).Tooltip(x.Title())
+				tx := uiText(c.Key("t"), keepWords(autospace(f.sentence))).FontSize(t.MD).LineHeight(1.5).TextColor(t.Ink).Cursor(ui.CursorPointer).Role(ui.RoleLink).Tooltip(x.Title())
 				if tx.Clicked() {
 					a.OpenTask(x.ID)
 				}
-				ui.Row(c.Key("acts")).Gap(t.S1).AlignItems(ui.Center).Children(func() {
-					switch {
-					case failed:
-						if a.button(c, a.L.T("away.retry"), btnSecondary, t.ControlSM, t.Bg) {
-							a.Retry([]string{x.ID})
-						}
-						if a.button(c, a.L.T("away.why"), btnText, t.ControlSM, t.Bg) {
-							a.OpenTask(x.ID)
-						}
-					default:
-						go_, words := a.L.T("onhand.quiet.go"), a.L.T("onhand.quiet.go")
-						if phone {
-							go_, words = a.L.T("onhand.brief.phone.go"), a.L.T("onhand.brief.phone.words")
-						}
-						if a.button(c, go_, btnSecondary, t.ControlSM, t.Bg) {
-							a.send(protocol.PastContinue{T: "past_continue", TaskID: x.ID, Words: words})
-						}
-						if a.button(c, a.L.T("onhand.quiet.drop"), btnText, t.ControlSM, t.Bg) {
-							a.TaskAction(x.ID, "drop")
-						}
-					}
-				})
+				a.fixButtons(c, "acts", f, t.Bg, nil)
 			})
 		}})
 	}
@@ -224,7 +188,22 @@ func (a *App) brief(c *ui.Context, b store.Board, lens string, n [4]int) {
 			a.oh.briefed[fresh[1].ID] = true
 		}
 	}
-	if next.text == "" && asks == 0 && len(halted) == 0 && len(sp.working) == 0 {
+	// D467 round 4: a limit used up (D297), under 接下来: it carries on by itself; another agent now if one can.
+	for _, l := range a.limitLines(b) {
+		l := l
+		for _, id := range l.tasks {
+			a.oh.briefed[id] = true
+		}
+		lines = append(lines, line{"limit:" + l.harness, a.L.T("onhand.next"), func() {
+			text("t", l.sentence)
+			if l.handTo != "" && a.button(c, a.L.T("limit.handoff", harnessName(l.handTo)), btnSecondary, t.ControlSM, t.Bg) {
+				for _, w := range l.waiters {
+					a.send(protocol.WaiterAction{T: "waiter_action", WaiterID: w, Action: "handoff"})
+				}
+			}
+		}})
+	}
+	if next.text == "" && asks == 0 && len(halted) == 0 && len(sp.working) == 0 && len(a.limitLines(b)) == 0 {
 		lines = append(lines, line{"rest", a.L.T("onhand.next"), func() { text("t", a.L.T("onhand.brief.rest")) }})
 	}
 	if next.text != "" {
@@ -683,6 +662,33 @@ func (a *App) peek(c *ui.Context) {
 		}
 		if finishedAtt(att) {
 			a.outcomeChip(c, "chip", task)
+		}
+		// D467 round 4: its picture, from the views Ducter already has: the
+		// phone's last frame this Mac held (D248), and the way into the live
+		// browser (D190) or the phone (D217, D238); no stream of its own.
+		if u := task.Card; u != nil && (u.Phoning != nil || u.Handset != nil) {
+			dev := a.phoneFor(task.ID)
+			if a.pu.bmp != nil && a.pu.heldDev == dev {
+				w, h := a.pu.bmp.Size()
+				pw := float32(peekW - 36)
+				ph := pw * float32(h) / float32(max(1, w))
+				if ph > 360 {
+					pw, ph = pw*360/ph, 360
+				}
+				uiText(c.Key("last-h"), a.L.T("onhand.peek.last")).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
+				ui.Image(c.Key("last"), a.pu.bmp).Size(pw, ph).Radius(12).AlignSelf(ui.Center).Label(a.L.T("onhand.peek.last"))
+			}
+			ui.Row(c.Key("watch")).Children(func() {
+				if a.button(c, a.L.T("onhand.peek.phone"), btnSecondary, t.ControlSM, t.Surface) {
+					a.OpenPhone(dev, task.ID, "", "watch")
+				}
+			})
+		} else if u != nil && u.Browsing != nil {
+			ui.Row(c.Key("watch")).Children(func() {
+				if a.button(c, a.L.T("wb.browser.watch"), btnSecondary, t.ControlSM, t.Surface) {
+					a.OpenWatch(task.ID)
+				}
+			})
 		}
 		// The last few steps, newest last, in the task's own words.
 		var evs []*protocol.LogEvent

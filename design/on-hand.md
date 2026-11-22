@@ -79,7 +79,13 @@ task in {name}** where the bare ＋ stood.
    with 再试一次 / 看看为什么), and with questions **下面有 n 个问题等你一句话。**; **接下来 / Next**:
    **「…」6:58 回来。** (**之后还有 n 个**; a wait on a limit's reset is said by its own group, D297);
    with nothing needing you, nothing at work and nothing coming back, **我在这儿，有新的事会告诉你。**
-   Round 3: what the brief tells (the results it names, the stopped and failed it carries, the next
+   Round 4: every stuck kind says its real fix, the same in the brief and on a card the brief has no
+   room for: couldn't start (the cant line and its fixes), its agent signed out on its computer
+   (**重新登录**, D363's sign-in there), a computer gone away for half an hour (**「…」在等 Mac mini
+   连上：上次在线是 2 小时前。打开那台电脑，它就接着做。**; no wake exists), the person's Mac without its
+   two switches (**在那台 Mac 上打开指引**), a phone, a plain failure; a limit used up is a 接下来 line
+   (**到点自动接着做**, with **现在换 Codex 接着做** when another agent can take it). The forecast band is
+   gone. Round 3: what the brief tells (the results it names, the stopped and failed it carries, the next
    wait) is never also a card and is not walked; a section left with nothing has no heading
    (今天做完 can be only its yesterday fold); the brief names a stopped or failed task in a short form
    (12 Han or 28 Latin characters, the whole on hover), its buttons on the same line when they fit.
@@ -141,8 +147,10 @@ From 1280 (Mac pt, web px), a clay card 360 wide beside the list sits in on the 
 keys' focus; else the first at work; else the first in the walk): its mark, title (16/700) and
 where, its heartbeat, the living line in full, its trail, **最近几步 / Latest steps** (the last six
 steps in its own words, newest last and in ink), a PR chip when done, and **打开任务 / Open the
-task**. Arrows and j/k move it; Enter opens; hovering a card doesn't move it. Owed: a browser's or a
-phone's screen in it.
+task**. Arrows and j/k move it; Enter opens; hovering a card doesn't move it. Round 4: its picture
+from what exists: the phone view's last frame this device held (D248) under **上次看到的画面 / Last
+seen**, and **看它用手机 / Watch the phone** or **查看浏览器 / Watch it browse** into the live views.
+Owed: a live picture inside the peek (a second live stream per client).
 
 ### Folds
 

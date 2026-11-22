@@ -77,12 +77,7 @@ func (a *App) onHand(c *ui.Context) {
 							a.lensTabs(c, groups, lens)
 						}
 						find = a.boardTop(c, lb, groups, lens)
-						// D315: only while something needs you: otherwise the line
-						// under the partner already says when the first is back, and
-						// each card says its own.
-						if a.oh.filter == 0 && a.stateCounts(lb, lens)[0] > 0 {
-							a.forecastBand(c, lb)
-						}
+						// D467 round 4: no forecast band: the brief's 接下来 says what comes next.
 						if loose(lens) && (a.oh.filter == 0 || a.oh.filter == 2) {
 							a.callRows(c) // D193: the calls, live and today's
 						}

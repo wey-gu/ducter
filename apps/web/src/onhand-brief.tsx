@@ -10,7 +10,11 @@ import { sayable } from "@ducter/protocol/src/say.ts";
 import { A } from "./app.ts";
 import { Btn } from "./controls.tsx";
 import { ago, clock } from "./format.ts";
-import { attention, placeOf, reportOf, title, type Task } from "./store.ts";
+import { attention, harnessOf, placeOf, reasonOf, reportOf, title, type Task } from "./store.ts";
+import { harnessName } from "./format.ts";
+import { computerName, computerOf } from "./where.ts";
+import { heldFrame, openPhone } from "./phone-use.tsx";
+import { liveSize } from "./live.tsx";
 import { shortTitle } from "./transcript.tsx";
 import { BrandMark } from "./brand.tsx";
 import { isNewResult } from "./seen.ts";
@@ -124,10 +128,123 @@ export function backAt(task: Task): number {
   return Date.parse((w.check || w.event ? w.nextLookAt : w.at) ?? "");
 }
 
+// ---------- what stopped, and what fixes it (D467 round 4) ----------
+
+export type StuckKind = "cant" | "signin" | "signin-pi" | "offline" | "perm" | "phone" | "failed" | "stopped";
+export type BriefNeed = { task: Task; kind: StuckKind; text: string; device?: string; harness?: string };
+
+/** D415's line for a task that couldn't start (the task page's own words). */
+function cantWords(task: Task): string {
+  const c = task.card!.cant!;
+  if (c.why === "away") return t("cant.away", c.computer);
+  if (c.why === "other") return t("cant.other");
+  return t(`cant.${c.why}`, c.computer, c.what);
+}
+
+/**
+ * What a stopped or failed task needs, from what the home already says, never a model: a start it
+ * couldn't make (D395, D415), its agent signed out on its computer (D363), its computer gone (D157),
+ * macOS's two switches off for a task in the person's apps (D235), a phone (D217, D238), else a
+ * plain failure or a stop. `name` is how the task is named (the brief's short form).
+ */
+export function stuckOf(x: Task, name = briefName(title(x)) || t("task.unknown")): BriefNeed {
+  const failed = attention(x) === "failed";
+  const said = firstSentence(sayable(reportOf(x)?.summary ?? "", A.readerLang(x)));
+  if (failed && x.card?.cant) return { task: x, kind: "cant", text: cantWords(x) };
+  const device = placeOf(x).device || "local";
+  const h = computerOf(device)?.harnesses.find((y) => y.harness === harnessOf(x));
+  if (h?.installed && !h.loggedIn) {
+    const where = computerName(device);
+    if (h.harness === "pi") return { task: x, kind: "signin-pi", text: t("onhand.brief.signin.pi", name, where), device };
+    return { task: x, kind: "signin", text: t("onhand.brief.signin", name, harnessName(h.harness), where), device, harness: h.harness };
+  }
+  const r = reasonOf(x);
+  if (r.startsWith("device:unreachable:")) {
+    const who = r.slice("device:unreachable:".length);
+    const seen = computerOf(who)?.lastSeen;
+    return { task: x, kind: "offline", text: seen ? t("onhand.brief.offline", name, who, ago(A.L, seen)) : t("onhand.brief.offline.unknown", name, who) };
+  }
+  const cu = x.card?.computing;
+  const perms = cu ? computerOf(cu.device)?.abilities.find((a) => a.id === "computer")?.perms : undefined;
+  if (cu && perms && (!perms.accessibility || !perms.screen)) return { task: x, kind: "perm", text: t("onhand.brief.perm", name, computerName(cu.device)), device: cu.device };
+  if (failed) return { task: x, kind: "failed", text: t("onhand.brief.failed", name, said || t("state.failed")) };
+  if (onPhone(x)) return { task: x, kind: "phone", text: t("onhand.brief.stopped.phone", name) };
+  return { task: x, kind: "stopped", text: t("onhand.brief.stopped", name, said || t("onhand.wait.unsaid")) };
+}
+
+/** A card's own line for what stopped: the words after its task's name (the card names it). */
+export function stuckClause(n: BriefNeed): string {
+  if (n.kind === "cant") return n.text;
+  const i = n.text.search(/[：:]/);
+  return i > 0 ? n.text.slice(i + 1).trim() : n.text;
+}
+
+/** The fix for what stopped, as its buttons (the same in the brief and on a card). */
+export function StuckActs({ n, onRetry }: { n: BriefNeed; onRetry?: () => void }) {
+  const x = n.task;
+  const go = (words: string) => A.send({ t: "past_continue", taskId: x.id, words });
+  const drop = <Btn kind="text" size="sm" label={t("onhand.quiet.drop")} about={title(x)} onClick={() => A.taskAction(x.id, "drop")} />;
+  switch (n.kind) {
+    case "cant": {
+      const c = x.card!.cant!;
+      const fixes = !!c.elsewhere || !!c.cloneHere || !!c.clearLock;
+      const placeWhy = c.why === "no_repo" || c.why === "no_folder" || c.why === "clone_failed";
+      return (
+        <>
+          {c.elsewhere && <Btn kind="secondary" size="sm" label={t("cant.on", c.elsewhere.name)} about={title(x)} onClick={() => A.cantAction(x.id, "start_at", c.elsewhere!.device)} />}
+          {c.clearLock && <Btn kind="secondary" size="sm" label={t("cant.clear_lock")} about={title(x)} onClick={() => A.cantAction(x.id, "clear_lock")} />}
+          {c.cloneHere && <Btn kind="secondary" size="sm" label={t("cant.clone_here")} about={title(x)} onClick={() => A.cantAction(x.id, "clone_here")} />}
+          {(!fixes || !placeWhy) && <Btn kind={fixes ? "text" : "secondary"} size="sm" label={t("task.action.retry")} about={title(x)} onClick={() => A.cantAction(x.id, "reopen")} />}
+        </>
+      );
+    }
+    case "signin":
+      return (
+        <>
+          <Btn kind="secondary" size="sm" label={t("onhand.brief.signin.go")} about={title(x)} onClick={() => (A.agentSetup(n.device!, "login", { harness: n.harness! }), A.openSettings("devices"))} />
+          {drop}
+        </>
+      );
+    case "perm":
+      return (
+        <>
+          <Btn kind="secondary" size="sm" label={t("onhand.brief.perm.go")} about={title(x)} onClick={() => A.send({ t: "computer_grant", device: n.device! })} />
+          {drop}
+        </>
+      );
+    case "phone":
+      return (
+        <>
+          <Btn kind="secondary" size="sm" label={t("onhand.brief.phone.go")} about={title(x)} onClick={() => go(t("onhand.brief.phone.words"))} />
+          {drop}
+        </>
+      );
+    case "failed":
+      return (
+        <>
+          <Btn kind="secondary" size="sm" label={t("away.retry")} about={title(x)} onClick={onRetry ?? (() => go(t("group.retry")))} />
+          <Btn kind="text" size="sm" label={t("away.why")} about={title(x)} onClick={() => A.go({ name: "task", id: x.id, full: A.route.name !== "conv" })} />
+        </>
+      );
+    case "offline":
+    case "signin-pi":
+      return drop;
+    default:
+      return (
+        <>
+          <Btn kind="secondary" size="sm" label={t("onhand.quiet.go")} about={title(x)} onClick={() => go(t("onhand.quiet.go"))} />
+          {drop}
+        </>
+      );
+  }
+}
+
 // ---------- the brief ----------
 
-export type BriefNeed = { task: Task; kind: "phone" | "stopped" | "failed"; text: string };
-export type Brief = { since?: { text: string; task: Task }; needs: BriefNeed[]; asks: number; back?: string; rest?: boolean; told: Set<string> };
+/** D467 round 4 (D297): tasks waiting on one agent's limit, said once under 接下来 with when it
+ *  comes back and, when another agent can take them, the hand-over. */
+export type BriefLimit = { text: string; tasks: Task[]; handTo?: string; waiterIds: string[] };
+export type Brief = { since?: { text: string; task: Task }; needs: BriefNeed[]; asks: number; back?: string; limits: BriefLimit[]; rest?: boolean; told: Set<string> };
 
 /** D467 round 3: a task named in the brief's needs line, short: its short title cut to 12
  *  characters of Han text or 28 of Latin, ending in "…" when cut (the whole on hover). */
@@ -155,13 +272,28 @@ export function briefOf(parts: { stopped: Task[]; failed: Task[]; waiting: Task[
   // D467 round 3: what the brief names gets no card (with "等 n 个", only the first).
   for (const x of fresh.slice(0, fresh.length === 2 ? 2 : 1)) told.add(x.id);
   const halted = [...parts.stopped, ...parts.failed];
-  const needs: BriefNeed[] = halted.slice(0, 2).map((x) => {
-    const short = briefName(title(x)) || t("task.unknown");
-    if (attention(x) === "failed") return { task: x, kind: "failed", text: t("onhand.brief.failed", short, firstSentence(sayable(reportOf(x)?.summary ?? "", A.readerLang(x))) || t("state.failed")) };
-    if (onPhone(x)) return { task: x, kind: "phone", text: t("onhand.brief.stopped.phone", short) };
-    return { task: x, kind: "stopped", text: t("onhand.brief.stopped", short, firstSentence(sayable(reportOf(x)?.summary ?? "", A.readerLang(x))) || t("onhand.wait.unsaid")) };
-  });
+  const needs: BriefNeed[] = halted.slice(0, 2).map((x) => stuckOf(x));
   const asks = Math.max(0, needsYou - halted.length);
+  // D467 round 4: the waits on an agent's limit, one line per agent (D297), told once.
+  const byHarness = new Map<string, Task[]>();
+  for (const x of parts.waiting) {
+    const l = A.S.waiterFor(x.id)?.limit;
+    if (l) byHarness.set(l.harness, [...(byHarness.get(l.harness) ?? []), x]);
+  }
+  const limits: BriefLimit[] = [];
+  for (const [h, ts] of byHarness) {
+    const ws = ts.map((x) => A.S.waiterFor(x.id)!);
+    const at = ws.map((w) => Date.parse(w.at ?? "")).filter(Number.isFinite).sort((a, b) => a - b)[0];
+    const when = at ? clock(new Date(at).toISOString()) : "";
+    const to = ws.find((w) => w.limit?.handTo)?.limit?.handTo?.harness;
+    limits.push({
+      text: ts.length === 1 ? t("onhand.brief.limit", briefName(title(ts[0]!)), harnessName(h), when) : t("onhand.brief.limit.many", ts.length, harnessName(h), when),
+      tasks: ts,
+      waiterIds: ws.map((w) => w.waiterId),
+      ...(to ? { handTo: to } : {}),
+    });
+    for (const x of ts) told.add(x.id);
+  }
   const coming = parts.waiting
     // A wait on a limit's reset is said by its own group (D297), never named here.
     .filter((x) => !A.S.waiterFor(x.id)?.limit)
@@ -176,8 +308,8 @@ export function briefOf(parts: { stopped: Task[]; failed: Task[]; waiting: Task[
     told.add(c.x.id);
   }
   // D467 round 3: nothing needs you, nothing works, nothing comes back on its own: the partner still talks.
-  const rest = !needsYou && !working && !back;
-  return { since, needs, asks, back, rest, told };
+  const rest = !needsYou && !working && !back && !limits.length;
+  return { since, needs, asks, back, limits, rest, told };
 }
 
 /** One labelled line of the brief: its label in a quiet column, then the words and what to do. */
@@ -210,27 +342,28 @@ export function BriefLines({ b }: { b: Brief }) {
                 {n.text}
               </span>
               <span class="bacts">
-                {n.kind === "phone" ? (
-                  <Btn kind="secondary" size="sm" label={t("onhand.brief.phone.go")} about={title(n.task)} onClick={() => A.send({ t: "past_continue", taskId: n.task.id, words: t("onhand.brief.phone.words") })} />
-                ) : n.kind === "stopped" ? (
-                  <Btn kind="secondary" size="sm" label={t("onhand.quiet.go")} about={title(n.task)} onClick={() => A.send({ t: "past_continue", taskId: n.task.id, words: t("onhand.quiet.go") })} />
-                ) : (
-                  <Btn kind="secondary" size="sm" label={t("away.retry")} about={title(n.task)} onClick={() => A.send({ t: "past_continue", taskId: n.task.id, words: t("group.retry") })} />
-                )}
-                {n.kind === "failed" ? (
-                  <Btn kind="text" size="sm" label={t("away.why")} about={title(n.task)} onClick={() => A.go({ name: "task", id: n.task.id, full: A.route.name !== "conv" })} />
-                ) : (
-                  <Btn kind="text" size="sm" label={t("onhand.quiet.drop")} about={title(n.task)} onClick={() => A.taskAction(n.task.id, "drop")} />
-                )}
+                <StuckActs n={n} />
               </span>
             </span>
           ))}
           {b.asks > 0 && <span class="bwords asks">{b.asks === 1 ? t("onhand.brief.asks.one") : t("onhand.brief.asks", b.asks)}</span>}
         </Line>
       )}
-      {b.back && (
+      {(b.back || b.limits.length > 0) && (
         <Line label={t("onhand.next")}>
-          <span>{b.back}</span>
+          {b.back && <span class="bnext">{b.back}</span>}
+          {b.limits.map((l) => (
+            <span key={l.waiterIds.join()} class="bneed k-limit">
+              <span class="bwords" title={l.tasks.map((x) => title(x)).join("\n")}>
+                {l.text}
+              </span>
+              {l.handTo && (
+                <span class="bacts">
+                  <Btn kind="secondary" size="sm" label={t("limit.handoff", harnessName(l.handTo))} onClick={() => l.waiterIds.forEach((id) => A.waiterAction(id, "handoff"))} />
+                </span>
+              )}
+            </span>
+          ))}
         </Line>
       )}
       {b.rest && (
@@ -343,4 +476,31 @@ export function peekSteps(task: Task): LogEvent[] {
   return stepsOf(task)
     .slice(-6)
     .map((s) => s.ev);
+}
+
+/**
+ * D467 round 4: the peek's picture, from what Ducter already streams (no new stream): the last frame
+ * this session saw of the phone the task works on (D248's held frame), as a still with when it was;
+ * and the way to watch it live: the task's browser (D190's watch view) or its phone (D217's view in
+ * watch mode). Nothing moves here, so a resting board and reduced motion are untouched.
+ */
+export function PeekPicture({ task }: { task: Task }) {
+  const c = task.card;
+  const phone = c?.phoning?.device ?? c?.handset?.device;
+  const held = phone ? heldFrame(phone) : undefined;
+  if (!c?.browsing && !phone) return null;
+  return (
+    <div class="ppic">
+      {held && (
+        <figure class="pshot">
+          <img src={held.src} alt="" draggable={false} style={held.w && held.h ? { aspectRatio: `${held.w} / ${held.h}` } : undefined} />
+          <figcaption>{t("onhand.peek.last")}</figcaption>
+        </figure>
+      )}
+      <span class="pacts">
+        {c?.browsing && <Btn kind="secondary" size="sm" label={t("wb.browser.watch")} about={title(task)} onClick={() => A.watchLive(task.id, liveSize())} />}
+        {phone && <Btn kind="secondary" size="sm" label={t("onhand.peek.phone")} about={title(task)} onClick={() => openPhone({ device: phone, taskId: task.id, mode: "watch" })} />}
+      </span>
+    </div>
+  );
 }

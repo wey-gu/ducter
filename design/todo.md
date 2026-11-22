@@ -2355,8 +2355,9 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] **Candidate C** (the live column with a time rail beside it) if the author wants the day's time back at 1400: only waits and results on the rail, never both. Trigger: the author asks where 接下来 went.
 - [ ] **The summary card without a sort** (a vault, several sources) still shows the few cards; one summary for those too once their counts mean something (an Obsidian vault has no sort). Trigger: a vault with more than 30 open lines.
 - [ ] **Live on hel** with the author's real 555 and a real stopped task: so far the demo core's fakes.
-- [ ] **The peek shows the screen** (D467 rev.): a task in Ducter's browser or on a phone shows its live view or last screenshot in the peek. Trigger: the author sits in on a browser task from On hand.
-- [ ] **The brief's fixes beyond the phone** (D467 rev.): a sign-in a stopped browser task needs (open the sign-in), a computer that went away (wake it), a limit (its reset). Trigger: a stopped task whose report names one of these.
+- [ ] **A live picture inside the peek** (D467 round 4): today the peek shows the phone's last held frame and opens the live views; a small live stream in the peek needs a second live view per client (the store holds one, the overlay's) and a server that serves two. Trigger: the author sits in on a browser task from On hand.
+- [x] **The brief's fixes beyond the phone** (built 2026-11-22, D467 round 4): couldn't start, signed out, computer gone away, Mac switches, limit with hand-off, plain failure.
+- [ ] **Wake a computer from the brief** (D467 round 4): no wake exists (Wake-on-LAN, a worker's own wake); the brief says to turn it on. Trigger: a worker Mac that can be woken over the network.
 - [ ] **The strip's filter is gone** (D467 rev.): if the author misses narrowing to one state, a key (1 to 4) rather than counts. Trigger: the author asks for it.
 
 ## From the author's phone-use run (2026-11-16)

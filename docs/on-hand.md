@@ -19,7 +19,11 @@ again on its own, the line says so: "One has stopped and needs a look."
 Under that line your partner tells you, in a few short lines, what came back since you last
 looked (with the pull request it opened, one tap away), what it needs from you with the way to fix
 it right there (for a task that stopped at a phone: allow access on that phone again, then tap
-**Allowed, carry on**), and what comes back next and when. Its pose tells you the same at a glance: a little
+**Allowed, carry on**; for an AI agent that got signed out: **Sign in again**; for a computer that
+went away: when it was last seen, and that turning it on lets the task carry on; for a Mac that
+needs its two switches for a task working in its apps: **Open the guide on that Mac**), and what
+comes back next and when, including a task waiting for an AI agent's limit to come back (with
+**Hand it to Codex now** when another agent can take it). Its pose tells you the same at a glance: a little
 flag when something needs you, reading while work is under way, resting on its bench while
 everything waits, smiling when the day's work came back done.
 
@@ -58,7 +62,8 @@ With two or more waiting, they sit on a line of time from now to when each comes
 made, such as its pull request (**#1190**), which you can open.
 
 On a wide window, the task you've selected shows on the right as it works: what it's doing now,
-its last few steps in its own words, and **Open the task**. Move with the arrow keys and watch it
+its last few steps in its own words, and **Open the task**. For a task using a phone, it shows the
+last picture you saw of that phone and **Watch the phone**; for one in a browser, **Watch it browse**. Move with the arrow keys and watch it
 follow; press Enter to go in.
 
 A task in a code folder also shows the lines it added and removed (**+42 −7**), and **Draft PR**

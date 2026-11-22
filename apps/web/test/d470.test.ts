@@ -8,6 +8,8 @@ import { join } from "node:path";
 import { exchangeThreads, reachSplit, reachWays, SENDER_DAILY, spokenPeers, trustOf, TRUSTED_DAILY, type ReachRow } from "../src/mem-view.ts";
 import { memoryWords } from "../src/i18n-memory.ts";
 import { memSetupBrief } from "../../../packages/core/src/mem-plugins.ts";
+import { renderBridge } from "../../../packages/partner/src/render.ts";
+import { Store } from "../src/store.ts";
 
 const read = (p: string) => readFileSync(join(import.meta.dir, "..", p), "utf8");
 const row = (harness: string, can: ReachRow["can"], extra: Partial<ReachRow> = {}): ReachRow => ({ harness, tool: harness === "codex" ? "Codex" : "Claude Code", can, ...extra });
@@ -145,5 +147,34 @@ describe("the fix is the button (D470)", () => {
   test("a one-way link is what needs you on Overview, with that button", () => {
     expect(read("src/settings-home.tsx")).toContain('fix: { kind: "mailbox", device: r.device!, harness: r.harness }');
     expect(read("../desktop/internal/views/settings_home.go")).toContain("a.openMailbox(n.boxDevice, n.boxHarness)");
+  });
+});
+
+// D470 round 2: hel's Log (2026-11-22, read only): one reply to the person's own Claude Code logged as two
+// bridge_msg out events six seconds apart (same words, same inReplyTo), while Mem held one delivered reply;
+// and the request logged with from "another agent" beside agent "Claude Code", mine, selfNamed.
+describe("round 2: one delivered reply is one line, the sender by its name", () => {
+  const req = { direction: "in" as const, messageId: "m-cc", from: "another agent", agent: "Claude Code", mine: true, selfNamed: true, text: "联络测试：你那边现在几点？" };
+  const reply = (opId: string, state: string) => ({ direction: "out" as const, messageId: state === "sent" ? `r-${opId}` : "", to: "another agent", agent: "Claude Code", mine: true, selfNamed: true, text: "现在 01:52，手上 0 个任务在跑。", inReplyTo: "m-cc", opId, state });
+  const ev = (body: unknown, seq: number, ts: string) => ({ seq, ts, persona: "p", stream: "channel", origin: "partner", kind: "bridge_msg", body }) as never;
+  test("the conversation shows it once, whether the second is the same op or another", () => {
+    for (const second of [reply("bo1", "sent"), reply("bo2", "sent")]) {
+      const s = new Store();
+      s.apply({ t: "events", events: [ev(req, 1, "2026-11-22T01:51:00Z"), ev(reply("bo1", "sending"), 2, "2026-11-22T01:52:23Z"), ev(reply("bo1", "sent"), 3, "2026-11-22T01:52:29Z"), ev(second, 4, "2026-11-22T01:52:35Z")] } as never);
+      expect(s.channel.filter((e) => e.peer?.direction === "out").length).toBe(1);
+      const th = exchangeThreads(s.channel as never, s.outOps as never);
+      expect(th.map((x) => [x.agent, x.items.length, x.items[0]!.outcome.kind])).toEqual([["Claude Code", 1, "replied"]]);
+    }
+  });
+  test("the partner logs a sent op once, and names a known sender by its name", () => {
+    expect(read("../../packages/partner/src/partner.ts")).toContain('foldOut(loggedBridge()).get(base.opId)?.state === "sent"');
+    expect(read("../../packages/partner/src/bridge.ts")).toContain('const from = said0 === "another agent" ? (agent ?? self?.agent ?? said0) : said0;');
+  });
+  test("the person's own agent asking only for status, in their own place, gets its answer without a card", () => {
+    const own = renderBridge({ ...req, messageId: "m1" } as never);
+    expect(own).toContain("answer it now with bridge_reply");
+    expect(own).toContain("and no card");
+    expect(renderBridge({ ...req, messageId: "m2", shared: true, spaceLabel: "Everyone" } as never)).not.toContain("and no card");
+    expect(renderBridge({ direction: "in", messageId: "m3", from: "reviewer (dev team)", text: "?", spaceLabel: "dev team" } as never)).not.toContain("and no card");
   });
 });

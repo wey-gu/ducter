@@ -1245,6 +1245,13 @@ D470 rebuilt it in D469's: the partner reports, Pebble's art carries state, the 
   ignored by default, asked once per sender, questions only (D334), **不再听它的**; the muted with **恢复**.
 - **The conversation says it once**: a request the partner's next message says (no card, no word from the
   person between) keeps no line; one quiet origin line (**从你的 Codex（Mem 协作）来的**) stands over the message.
+- **Round 2, after the live round trip on hel (D470 rev.).** A known sender is logged by its name, never
+  "another agent". One delivered reply is one line: D106's write-ahead **sending** then **sent** stays (it is what
+  keeps a crash from sending twice), a second **sent** is never logged, and both clients fold any repeat.
+  **Status without a card** (the author, 2026-11-22): a reply to the person's own agent in their own place that
+  states only what the person can already see (the time, what is running, what is done) goes at once, with no
+  card and no word to the person; work, the person's call, their memories, files or plans, and any teammate's
+  agent still ask (X1–X3 stand; this narrows J3's v1 rule only for the person's own agents' status questions).
 - **Not yet**: the mailbox task run once for real (it writes Mem-side; the author's step); a sender's quota use
   shown; the phones' native clients.
 

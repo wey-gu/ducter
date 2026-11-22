@@ -725,6 +725,8 @@ export interface Bodies {
     // D334: the Space it came in (in), or goes out in (out): a reply goes back in its message's Space.
     space?: string;
     spaceLabel?: string;
+    // D470, in: it came in a Space the person shares with others (not their own place).
+    shared?: boolean;
     // D418, in: one of the person's own agents named by its own words ("我是 Wey 的 Mem 协作 Codex"):
     // `agent` is the tool it said ("Codex"), `role` the rest of its words for itself ("Mem 协作"); read
     // as 你的 Codex（Mem 协作）/ your Codex (Mem 协作). Only with `mine` (peer-self.ts ownAgentSelf).

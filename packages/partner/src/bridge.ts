@@ -1045,9 +1045,12 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
           const own = byMember || personal;
           // D334: a teammate's agent is told by its Space ("reviewer (dev team)", "AI agent (Everyone)").
           const shared = !personal && !!sp.id;
-          const from = senderOf(who);
           // D418: an own agent Mem doesn't name, by what it says it is ("我是 Wey 的 Mem 协作 Codex"); never a teammate's.
           const self = own && !agent ? ownAgentSelf(body) : undefined;
+          // D470 round 2 (hel, 2026-11-22): a sender Mem names in no way but that is known (its agent, or one of
+          // the person's own that says what it is) is logged by that name, never "another agent".
+          const said0 = senderOf(who);
+          const from = said0 === "another agent" ? (agent ?? self?.agent ?? said0) : said0;
           const named = !own && sp.label ? `${agent ?? (from === "another agent" ? "AI agent" : from)} (${sp.label})` : from;
           messages.push({
             messageId: id,

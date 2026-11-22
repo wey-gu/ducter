@@ -243,7 +243,41 @@ loosened while their regex is replaced.
 
 ## 8. Results
 
-(Filled from the runs; see `packages/partner/eval/results/2026-11-22-haiku-d477-*.md`.)
+VERIFIED, haiku, judge haiku, all on 2026-11-22. "Before" is main after D476's revert plus only the
+eval harness; "after" is this slice. Full-eval runs include the 12 puzzles (256 scenarios).
+
+| Run | Full eval | Without the puzzles | Puzzles |
+|---|---|---|---|
+| before a / b | 195/256, 194/256 | 190/244, 188/244 | 5/12, 6/12 |
+| after a / b | 205/256, 207/256 | 197/244, 201/244 | 8/12, 6/12 |
+| puzzles alone, before a / b | | | 6/12, 5/12 |
+| puzzles alone, after a / b | | | **10/12, 10/12** |
+
+The full-eval after-runs graded the puzzles with rubrics that counted Ducter's own clone line
+(D395's 「hel 上还没有 mem 的代码，我先在那里拉一份。」, by design) as the partner saying more; three
+puzzles whose outcome checks passed (hel, not-my-Mac, explicit clone) failed only on that. The
+rubrics now say the line is Ducter's (as `mend-no-folder-zh`'s already did), and the puzzle-alone
+runs above use them, before and after alike.
+
+Per puzzle (puzzles alone, before a, b → after a, b):
+
+| Puzzle | Before | After | What changed |
+|---|---|---|---|
+| `wp-hel-only-agy-zh` | fail, fail | pass, pass | before: `place none` (no code facts), or nothing opened; after: `remote` nowledge-co/mem on hel, `where` recorded, cloned on hel |
+| `wp-hel-start-missing-zh` | fail, fail | pass, pass | before: the mender started it on the Mac (the hel bug, reproduced); after: cloned on hel by the recorded repository, never moved |
+| `wp-not-my-mac-en` | fail, fail | pass, pass | before: nothing opened or `place none`; after: on haswell, cloned, MacBook excluded |
+| `wp-two-mems-ask-zh` | fail, fail | pass, pass | before: a vague "where is mem?"; after: one question naming both (the code line shows both origins) |
+| `wp-mem-from-context-zh` | pass, pass | pass, pass | |
+| `wp-quota-switch-zh` | fail, fail | fail, fail | the partner waits for 23:00 or asks; quotas aren't in the world yet (phase 2b) |
+| `wp-own-agent-status-en` | pass, pass | pass, pass | |
+| `wp-teammate-run-zh` | pass, pass | pass, pass | |
+| `wp-phone-stuck-zh` | pass, pass | pass, pass | |
+| `wp-agent-ends-at-once-en` | pass, fail | pass, pass | |
+| `wp-source-down-zh` | pass, pass | pass, pass | |
+| `wp-explicit-clone-en` | fail, fail | fail, fail | after: the outcome checks pass (on hel, cloned); the judge read `device: "local"` as the Mac, though in this world local is hel: a judge misread, owed a clearer transcript (the place's computer by name) |
+
+Codex as the partner was not run: the eval would use the person's own Codex sign-in on this
+machine, which this work does not touch.
 
 ## Implications for Ducter
 

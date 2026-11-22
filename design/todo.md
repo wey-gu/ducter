@@ -30,6 +30,8 @@ line.
 - **The home's line with no workers.** `[devices]` is still empty on a single-computer home (the eval's
   homes would read this machine's agents otherwise); show the home's agents there once probes are faked
   in the eval. Trigger: phase 2b.
+- **The eval transcript names a place's computer** (not `device: "local"`): the judge read local as the
+  Mac in `wp-explicit-clone-en`, whose home is hel. Trigger: the next puzzle change.
 - **The partner on Codex** (hel's partner runs gpt-6.2-astra): run `--puzzles --harness codex` where
   Codex is signed in for the eval. Trigger: an eval home with Codex that isn't the person's own.
 

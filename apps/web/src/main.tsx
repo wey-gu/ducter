@@ -27,6 +27,7 @@ import { wideNow } from "./fold.ts";
 import { applyDensity, applyPaper, densityKey } from "./settings-more.tsx";
 import { keepAboveKeyboard } from "./keyboard.ts";
 import { watchTextSize } from "./text-scale.ts";
+import { BOOT_TIMEOUT_MS, BootWait, Guard, within, type BootState } from "./boot-wait.tsx";
 
 applyPaper(); // D307: this device's own light or dark, before the first paint
 applyDensity(); // D457: and its own density
@@ -213,7 +214,22 @@ startAutospace(document.body); // the CJK-Latin gap where the browser lacks text
 // D254: every code block's own Copy, wherever a message draws one.
 listenForCodeCopy(() => ({ copy: t("reply.copy"), copied: t("conv.copied"), failed: t("conv.copy.failed") }), (s) => A.toast(s));
 
+/** D474: the ground while the page can't show the app yet, or why it couldn't, with Try again. */
+function wait(state: BootState) {
+  render(<BootWait t={t} state={state} onRetry={() => void boot()} />, root);
+}
+
+/** D474: whatever goes wrong while opening, the page says so with Try again; it never stays blank. */
 async function boot(pairing?: PairView) {
+  try {
+    await opening(pairing);
+  } catch (e) {
+    console.error("[ducter] opening the page failed", e);
+    render(<BootWait t={t} state={{ kind: "broken" }} onRetry={() => location.reload()} />, root);
+  }
+}
+
+async function opening(pairing?: PairView) {
   if (pairing) {
     render(<Pairing initial={pairing} onPaired={() => void boot()} />, root);
     return;
@@ -252,9 +268,12 @@ async function boot(pairing?: PairView) {
     });
     return;
   }
-  const r = await api.call<Me>("api/me");
+  // A first open (nothing kept on this device) asks who it is before anything: the partner waits on
+  // the page meanwhile, and a home that doesn't answer in time is said, with Try again (D474).
+  wait({ kind: "waiting" });
+  const r = await within(api.call<Me>("api/me"), BOOT_TIMEOUT_MS, { status: 0 });
   if (r.status === 401) return boot({ busy: false, code: "", error: undefined });
-  if (r.status === 0) return boot({ busy: false, code: "", error: "unreachable" });
+  if (r.status === 0) return wait({ kind: "unreachable", host: base.host });
   const me: Me = r.data ?? { via: "local", personaName: "Ducter", push: { supported: false } };
   run(me, had, "local");
 }
@@ -300,7 +319,12 @@ function run(me: Me, had: string | undefined, device: string, glance?: Glance) {
   navigator.serviceWorker?.addEventListener("message", (e: MessageEvent) => {
     if (e.data?.t === "open") location.href = e.data.url;
   });
-  render(<App />, root);
+  render(
+    <Guard t={t}>
+      <App />
+    </Guard>,
+    root,
+  );
 }
 
 // A pairing link carries its code in the fragment, which never reaches a server log. Take it,

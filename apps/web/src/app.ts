@@ -594,17 +594,25 @@ class AppState {
 
   /** D262: a first open on this device knows neither the conversation nor its language: until the
    *  home's first answer lands (at most SETTLE_MS) it shows only the calm ground, never the system's
-   *  language switching to the person's. Any later open paints its kept screen at once (D209). */
+   *  language switching to the person's. Any later open paints its kept screen at once (D209).
+   *  D474: once it has said no, it says no for good. A page that painted its kept screen and then
+   *  caught up (fromGlance cleared) with an empty conversation used to fall back to the ground after
+   *  the last frame, with nothing left to draw it again: a blank page until the next hash change. */
   settling(now = Date.now()): boolean {
-    if (this.fromGlance || this.uiLang !== "auto" || savedSpoke()) return false;
-    if (now - this.startedAt >= SETTLE_MS) return false;
-    if (!this.S.welcomed) return true;
-    return this.S.headSeq > 0 && this.S.channel.length === 0;
+    if (this.settled) return false;
+    const calm = !this.fromGlance && this.uiLang === "auto" && !savedSpoke() && now - this.startedAt < SETTLE_MS && (!this.S.welcomed || (this.S.headSeq > 0 && this.S.channel.length === 0));
+    if (!calm) this.settled = true;
+    return calm;
   }
+  /** D474: the page has shown something other than the calm ground; it never goes back to it. */
+  private settled = false;
 
   start(base: URL, api: Api, me: Me, token: () => string | undefined) {
     this.base = base;
-    if (this.settling()) setTimeout(() => this.changed(), SETTLE_MS);
+    // D474: the ground's end draws the page whether or not it is settling right now (it may start
+    // settling after this, when a replay closes the kept screen), a beat past the bound.
+    const left = SETTLE_MS - (Date.now() - this.startedAt);
+    if (left > 0) setTimeout(() => this.changed(), left + 50);
     this.api = api;
     this.me = me;
     if (me.personaName) this.S.personaName = me.personaName;

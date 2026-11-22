@@ -18,7 +18,14 @@
     <link rel="stylesheet" href="app/app.css" />
   </head>
   <body>
-    <div id="app"></div>
+    <!-- D474: the page's own ground, shown only if the app hasn't drawn itself a few seconds in (its
+         code still on the way, or refused): the partner waiting, the words in both languages (the
+         page can't know which yet), and Try again. The app replaces it the moment it draws. -->
+    <div id="app"><main class="boot-wait static" role="status">
+      <div class="face"><span class="avatar breathe" style="width: 120px; height: 120px"><img class="on" src="app/art/working.webp" alt="" /></span></div>
+      <div lang="zh"><h1>正在打开你的 Ducter…</h1><p>比平常慢一点，还在等它回话。</p><a class="btn primary lg" href="app"><span class="lbl">再试一次</span></a></div>
+      <div lang="en"><h1>Opening your Ducter…</h1><p>Taking longer than usual. Still waiting for it to answer.</p><a class="btn secondary" href="app"><span class="lbl">Try again</span></a></div>
+    </main></div>
     <script type="module" src="app/app.js"></script>
   </body>
 </html>

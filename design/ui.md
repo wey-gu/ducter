@@ -430,6 +430,10 @@ first second (no 连接中… flash) and keeps its height, and the page does not
 when the home says welcome. The web starts in the language it followed last (`ducter.spoke`,
 `startLang`), its kept screen (D209) names its language before the first paint, and a first open
 with nothing kept shows only the calm ground until the home answers (at most 1.5 s, `settling`).
+The ground comes at most once per page: once anything else has shown, it never comes back (D474;
+before, a tab that painted its kept screen and caught up with an empty conversation fell back to
+it for good). Past it, the page is never blank: the partner waiting with words, or why it
+couldn't open with Try again (D474, `system.md`).
 
 **Decisions in the conversation (D104; was D73).** The living message has no card. When the
 user was away (it came before the window opened and was unread, or while the window was in the

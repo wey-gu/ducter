@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.1.15 - 2026-11-22
+
+<!-- whats-new
+zh: 手头的事一眼看清，手机单手好用；刷新不再白屏
+en: On hand at a glance, easy one-handed; no more blank page on reload
+-->
+
+**On hand**
+- One ledger: a line on top, then each task on one row: what it is, why it stopped in your
+  partner's words, and the fix in the same place on every row.
+- On a phone: the task, the reason, one quiet line, and the fix as one full-width button.
+- No more meaningless line counts beside projects, no duplicate projects, no titles cut twice.
+- A task Ducter is fixing by itself shows as working, not as something for you.
+- The same failure tried several times reads as one line: tried 3 times.
+
+**On your phone**
+- The web app no longer stays blank after a reload or in a new tab. If it can't reach your home,
+  it says so with Try again.
+
+**Settings**
+- Notifications shows what a message will look like for each choice.
+- An account source that's down says so once, with Try again.
+- To-do sources, Chat apps, Passwords & cards and About each start by saying how things stand.
+
 ## 0.1.14 - 2026-11-22
 
 <!-- whats-new

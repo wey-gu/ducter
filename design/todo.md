@@ -2817,3 +2817,12 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] **A computer's other names** ("hel" for Hetzner Server): `computerNamed` matches a computer's name only, so words that say its hostname don't pin it, and D472's 换到 {computer} 上做 can't offer it. Trigger: a second miss where the person named a computer by another name.
 - [ ] **A clone chosen in 选 {computer} 上的文件夹 also adds the project** (D455's sheet adds what it clones). Fine for a repository; check that it isn't surprising for a plain folder. Trigger: the author's review.
 - [ ] **Words sent while it starts again** (`task_send` to a task under D472's restart guard) are logged but not handed to that start. Trigger: a person who types right after 再试一次.
+
+## Self-repair (D473, `self-repair.md`)
+
+- **Mid-run rungs.** A task whose agent crashed mid-turn on a worker that stays away: resume from its last checkpoint on another computer by itself (principle 13; today recovery resumes in place and D293 waits). A stuck loop (the same tool call with the same input over and over, or a turn that runs past an hour with no new step): detect it and hand it to the partner like a stall. *Trigger:* `ducter repairs` or a real home shows one of these more than once a week.
+- **The partner's own failures counted.** `ducter repairs` counts tasks only; add the partner's turns that timed out, sessions rebuilt, D435 holds and D402 stops per week. *Trigger:* the next robustness pass, or a week where the person had to repeat a message.
+- **A partner turn that timed out is re-run by itself** (today the watchdog interrupts and the words wait for the next turn). *Trigger:* one live case of a message left unanswered after a timeout.
+- **Phone and capability blocks handed on.** Research/205's 7 phone tasks and 3 capability blocks were real asks, but some had another way (another phone, the partner doing the step with its own connection, D446's hand-over). Give them a typed hand-over like a stall. *Trigger:* after D446's live check.
+- **Superseding by more than the title.** The task set aside after a hand-over is matched by a title overlap within 30 minutes; a `replaces` argument on `task_open` would be exact (a partner tool change: two haiku runs, D175). *Trigger:* one wrong or missed supersede.
+- **A live run.** The ladder has run on fakes only. *Trigger:* the next release on the author's home: read `ducter repairs --weeks 1` a week later and compare with research/205's 0 of 3.

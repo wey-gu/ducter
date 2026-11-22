@@ -395,6 +395,16 @@ the rules are pure functions in `apps/web/src/follow.ts` and `apps/desktop/inter
 - **Not here:** editing a sent message (the partner already acted on it; say a correction), read
   ticks, reactions. Find in the conversation is in `todo.md`.
 
+## A task that didn't go (D473)
+
+What wakes the partner about its own tasks: a report, and since D473 a `mend` hand-over for a task
+that never started or stopped without a report, after Ducter's own retries and repairs
+([self-repair.md](self-repair.md)). The hand-over carries the cause, the computer, the path, what
+was tried and what is left. The partner finds another way first (the repository the person named,
+another agent, another computer) and says nothing about the failure; a fix that worked needs no
+word. Only when no way can work, or the task comes back a second time, it asks once, in one line,
+with the one real fix. No error text and no list of what failed ever reach the conversation.
+
 ## The living message (principle 7)
 
 | State | Meaning |

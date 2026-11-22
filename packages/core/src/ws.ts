@@ -174,6 +174,8 @@ export interface WsDeps {
   replay?: (o: { days?: number; web?: boolean }) => Promise<import("@ducter/protocol").ReplayReport>;
   /** D464: `ducter proactive week`: the offers of the last weeks, counted from the Log. */
   week?: (weeks?: number) => import("@ducter/protocol").WeekReport;
+  /** D473: `ducter repairs`: failures and self-repairs counted from the Log. */
+  repairs?: (weeks?: number) => import("@ducter/protocol").RepairReport;
   /** D222: the person's calendars (Accounts' calendar rows, today's line, cal_pick). */
   calendar?: () => import("./calendar.ts").Calendar | undefined;
   /** D341: 待办来源 / To-do sources (task-sources/). */
@@ -1712,6 +1714,17 @@ export function createWsHandler(deps: WsDeps) {
           send(ws, { t: "proactive_week_result", report: deps.week(weeks) });
         } catch (err) {
           send(ws, { t: "proactive_week_result", error: (err as Error).message.slice(0, 200) });
+        }
+        return;
+      }
+      case "repairs_week": {
+        // D473: read-only, from the Log; answered on this socket only.
+        if (!deps.repairs) throw new Error("not available");
+        const weeks = typeof f.weeks === "number" && Number.isFinite(f.weeks) ? f.weeks : undefined;
+        try {
+          send(ws, { t: "repairs_week_result", report: deps.repairs(weeks) });
+        } catch (err) {
+          send(ws, { t: "repairs_week_result", error: (err as Error).message.slice(0, 200) });
         }
         return;
       }

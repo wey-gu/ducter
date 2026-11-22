@@ -30,7 +30,12 @@ The Mac app runs the same check-up by itself when it starts, and shows only what
 
 ### A task says "Couldn't start"
 
-The task's page says why, and its first button is the fix. **No folder there**: the computer doesn't
+Most of the time you won't see this: when a task can't start, Ducter first tries the fix itself
+(another computer that has the code, a fresh copy of it where the task was to work, one more try a
+moment later), and then your partner looks for another way. The task's steps say what it did in one
+line. Your partner asks you only when none of that works, with the one thing you can do.
+
+When you do see it, the task's page says why, and its first button is the fix. **No folder there**: the computer doesn't
 have the folder the task was to work in. **Clone it onto {computer}** puts the code in Ducter's
 folder on that computer and starts there; **Choose a folder on {computer}** lets you pick one that is
 already on it, and the task starts in it. **{agent} isn't installed** or **isn't signed in** on that

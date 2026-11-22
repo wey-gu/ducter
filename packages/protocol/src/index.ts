@@ -38,6 +38,7 @@ export * from "./rich.ts";
 export * from "./pins.ts";
 export * from "./made.ts";
 export * from "./apps.ts";
+export * from "./mend.ts";
 export * from "./app-lift.ts";
 export * from "./app-glyphs.ts";
 export * from "./reach.ts";
@@ -808,6 +809,10 @@ export interface Bodies {
   // D189/D193: one snapshot of a phone call per change (core/src/phone.ts); the latest per callId
   // wins. On the channel, origin "system". Ended states wake the partner, which says the outcome once.
   phone_call: CallBody;
+  // D473: a rung of Ducter's own repair ladder for a task (core/src/mend.ts): the write-ahead record
+  // of a retry or repair (state going, then ok or failed), or a hand-over to the partner (rethink,
+  // which wakes it). On the task's stream, origin "system". Read by `ducter repairs`.
+  mend: import("./mend.ts").MendBody;
 }
 
 export interface Usage {
@@ -1484,6 +1489,8 @@ export type ClientFrame =
   | { t: "proactive_replay"; days?: number; web?: boolean }
   // D464: `ducter proactive week`: the last `weeks` (1–12) of offers counted from the Log; answered with proactive_week_result.
   | { t: "proactive_week"; weeks?: number }
+  // D473: `ducter repairs`: the last `weeks` (1–12) of failures and self-repairs counted from the Log; answered with repairs_week_result.
+  | { t: "repairs_week"; weeks?: number }
   // D242: fresh keys for media this client holds refs to (its keys ran out); answered with media_keys.
   | { t: "media_keys"; ids: string[] }
   // D193: the device sign-in (RFC 8628) a connection_add started: stop waiting for it; or sign in
@@ -1828,6 +1835,7 @@ export type ServerFrame =
   | { t: "proactive_day"; day: ProactiveDay }
   | { t: "proactive_replay_result"; report?: import("./proactive.ts").ReplayReport; error?: string }
   | { t: "proactive_week_result"; report?: import("./proactive.ts").WeekReport; error?: string }
+  | { t: "repairs_week_result"; report?: import("./mend.ts").RepairReport; error?: string }
   // D242: a fresh key per id the home holds (ids it doesn't hold are left out). Not "keys": the saved frame's.
   | { t: "media_keys"; mediaKeys: Record<string, string> }
   // readable (D158): what the added connection can read now; [] = connected, but no account there yet.

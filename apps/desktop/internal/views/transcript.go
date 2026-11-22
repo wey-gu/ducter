@@ -309,6 +309,9 @@ func noteOf(text string, raw json.RawMessage) (Block, bool) {
 		return Block{Say: "interrupted"}, true
 	case r["kind"] == "retry":
 		return Block{Say: "retry", Name: from(retryRe)}, true
+	// D473: Ducter's own repair, one quiet line (never an error).
+	case obj("mend") != nil && mendHows[str(obj("mend")["how"])]:
+		return Block{Say: "mend_" + str(obj("mend")["how"]), Name: str(obj("mend")["name"])}, true
 	case truthy(r["stall"]):
 		return Block{Say: "stalled"}, true
 	case truthy(r["fresh"]):
@@ -1103,3 +1106,6 @@ func cantOfRaw(v any) *protocol.CantStart {
 	}
 	return &k
 }
+
+// mendHows are the repairs a D473 mend line names (note.mend_<how>).
+var mendHows = map[string]bool{"reopen": true, "clone_here": true, "start_at": true, "clear_lock": true, "rethink": true, "stall": true}

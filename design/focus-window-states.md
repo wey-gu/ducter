@@ -35,16 +35,19 @@ its own.
 | `done?` | `working` | M | evidence is insufficient but fixable, so M sends a follow-up |
 | `done?` | `needs-you` | M | verifying needs human judgment (taste, product call) |
 | `done` | `working` | U / M | a follow-up arrives, even days later. The window reopens; it is not a new one |
-| active¹ | `failed` | C / W | the circuit breaker trips on the same error N times, the environment is unrecoverable, or W reports failed. A retry is a *new* window |
+| active¹ | `failed` | C / W | the circuit breaker trips on the same error N times, the environment is unrecoverable, or W reports failed. A task that never started starts again in place (D395, D415) |
+| `failed` (never started) | `queued` | C | D473's ladder: Ducter retries or repairs its place by itself, within budgets (`self-repair.md`), before anyone else sees it |
+| `failed` (never started) | `superseded` | C | after D473's hand-over, M opens the same work again (on its repository, another agent or computer) |
 | any non-terminal | `dropped` | U / M | "never mind", or M's plan changed. M records the reason |
 | any non-terminal | `superseded` | C | handed off to a successor window (13). Points to the successor |
 
 ¹ active = `queued · working · needs-you · blocked · done?`.
 Terminal states: `failed · dropped · superseded`. `done` is resting, not terminal.
 
-**Stall rule:** if a window is `working` with no events for `T_stall` and no registered
-waiter, C notifies M. The window's state does not change. M climbs the read ladder (8), then
-steers, waits, or drops it.
+**Stall rule (D473):** a turn that ends with no report gets one nudge; a second miss sets the
+window to `needs-you` and C hands it to M with a typed `mend` (rethink). M climbs the read ladder
+(8), then steers (one clear next step), switches its agent, or tells the user in one line; it never
+asks the window to redo anything outward. Ducter never retries a window that ran.
 
 **`done?` as built** (`done_claimed`, shown as Done). When a done report lands, the runner
 checks each ref where that is cheap and reliable and sets its `check`: a commit sha (`diff` /
@@ -56,7 +59,7 @@ partner's result turn confirms it: it read the report and neither sent the task 
 partner sees it marked and sends the task back. A worker's refs are not checked yet.
 
 **Missing report:** if a turn ends without `report_to_main`, C sends one cheap nudge ("report
-status"). If there is still no report, the window stays `working` and the stall rule applies.
+status"). If there is still no report, the stall rule applies.
 C never guesses `done`. **Resting on its own wait (D394):** a turn that armed a wait of the
 task's own (`wait_for`) and ends with it still armed owes no report: it is neither nudged nor a
 miss, so a repeating round that found nothing new stays silent instead of being pushed into a

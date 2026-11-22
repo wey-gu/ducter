@@ -24,6 +24,9 @@ describe("On hand with its character back (D315)", () => {
   test("the line says what the strip can't", async () => {
     const { A } = await import("../src/app.ts");
     const o = await import("../src/onhand.tsx");
+    // Its own store: the line reads the board, and a full run leaves other files' stopped tasks in A.S.
+    const { Store } = await import("../src/store.ts");
+    A.S = new Store();
     A.L = strings("zh");
     expect(o.headLine("", [2, 3, 1, 1])).toBe(A.L.t("onhand.say.needs", 2));
     expect(o.headLine("", [1, 0, 0, 0])).toBe(A.L.t("onhand.say.needs.one"));

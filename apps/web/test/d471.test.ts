@@ -1,0 +1,178 @@
+// D471: On hand on the author's real board, in the shapes `demo-replay-shapes.ts` keeps with invented
+// words. Names are said whole; a raw tool line is never shown; a project whose tasks never started
+// there is no project yet; every task is one row, said once; the project column has no line counts
+// and no faces; the peek follows only the keys. The Mac's onhand_d471_test.go checks the same.
+import { describe, expect, test } from "bun:test";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { strings } from "../src/i18n.ts";
+import { shapeRows } from "../demo-replay-shapes.ts";
+
+const now = Date.now();
+const iso = (ms: number) => new Date(now + ms).toISOString();
+const src = (f: string) => readFileSync(join(import.meta.dir, "../src", f), "utf8");
+const card = (id: string, title: string, attention: string, at: string, more: Record<string, unknown> = {}) => ({
+  taskId: id,
+  persona: "default",
+  title,
+  place: { kind: "none" },
+  harness: "codex",
+  attention,
+  residency: "parked",
+  openedAt: at,
+  updatedAt: at,
+  ...more,
+});
+
+async function board(tasks: unknown[]) {
+  const { A } = await import("../src/app.ts");
+  const o = await import("../src/onhand.tsx");
+  A.L = strings("zh");
+  A.send = () => {};
+  A.S.welcomed = true;
+  A.S.tasks.clear();
+  A.receive({ t: "on_hand", onHand: { tasks, counts: { needs_you: 0, working: 0, waiting: 0, done_today: 0 }, waiters: [], missed: [] } } as any);
+  return { A, o };
+}
+
+describe("On hand on a real board (D471)", () => {
+  test("names: a source's cut title is said to its last word; a name in a sentence is never cut inside a word", async () => {
+    const { shortTitle, untrail, sayName } = await import("../src/transcript.tsx");
+    expect(shortTitle("Reconcile the orbit plugin's tail offsets with the…")).toBe("Reconcile the orbit plugin's tail offsets");
+    expect(shortTitle("A half-finished tag merge leaves no record of the…")).toBe("A half-finished tag merge leaves no record");
+    expect(untrail("tile_merge_response_tests fail intermittently under…")).toBe("tile_merge_response_tests fail intermittently");
+    expect(untrail("为 Studio Mac 上的 Pi 安装 Lumen 插件并确认能读到记忆")).toBe("为 Studio Mac 上的 Pi 安装 Lumen 插件并确认能读到记忆");
+    const said = sayName("A half-finished tag merge leaves no record of the…", 28);
+    expect(said).not.toBe("A half-finished…");
+    expect(said.endsWith(" …")).toBe(false);
+    expect(sayName("为 Studio Mac 上的 Pi 安装 Lumen 插件并确认能读到记忆", 28)).not.toContain("Studio M…");
+  });
+
+  test("stuck: never a raw tool line; the phone from its report; a lock and an unknown error in the partner's words", async () => {
+    const { A } = await board([
+      card("phone", "用借来的手机录一段官网的屏并发帖", "blocked", iso(-9 * 86_400_000)),
+      card("lock", "整理设置页文案", "failed", iso(-6 * 3600_000), { reason: "git worktree add failed: Preparing worktree\nfatal: Unable to create '/r/.git/worktrees/x/index.lock': File exists." }),
+      card("other", "细审长文案", "failed", iso(-6 * 3600_000), { cant: { why: "other", computer: "Studio Mac", what: "lumen" } }),
+      card("clone", "Reconcile the orbit plugin's tail offsets with the…", "failed", iso(-11 * 3600_000), { cant: { why: "no_repo", computer: "Studio Mac", what: "orbit", cloneHere: true } }),
+    ]);
+    A.S.applyEvent({ seq: 9001, ts: iso(-9 * 86_400_000), stream: "task:phone", origin: "task", kind: "report", body: { taskId: "phone", state: "blocked", summary: "又试了一次，手机那边还是说这个任务的手机访问被停止了，没法接着操作。", questions: [], evidence: [] } } as any);
+    const b = await import("../src/onhand-brief.tsx");
+    const k = (id: string) => b.stuckOf(A.S.tasks.get(id)!);
+    expect(k("phone").kind).toBe("phone");
+    expect(b.stuckClause(k("phone"))).toBe(A.L.t("onhand.stuck.phone"));
+    expect(b.stuckClause(k("phone"))).not.toContain("工具");
+    expect(b.stuckClause(k("lock"))).toBe(A.L.t("onhand.stuck.lock"));
+    expect(b.stuckClause(k("lock"))).not.toContain("fatal");
+    // D472 owns why a start failed (cant.tsx): the same words as the task's page.
+    expect(k("other").kind).toBe("cant");
+    expect(b.stuckClause(k("other"))).toBe((await import("../src/cant.tsx")).cantLine(A.S.tasks.get("other")!.card!.cant!));
+    expect(k("clone").kind).toBe("cant");
+    expect(b.rawFailure("fatal: not a git repository")).toBe("unknown");
+    expect(b.peekWords("cp review-report-round235.json review/")).toBe("");
+    expect(b.peekWords("运行测试")).toBe("运行测试");
+    A.S.tasks.clear();
+  });
+
+  test("a project whose tasks never started there is no project yet; All still counts them", async () => {
+    const { A, o } = await board([
+      card("orbit", "Reconcile the orbit plugin's tail offsets", "failed", iso(-11 * 3600_000), { project: "lumen-notes-orbit-plugin", cant: { why: "no_repo", computer: "Studio Mac", what: "orbit" } }),
+      card("a", "Warm the tile cache", "done", iso(-60_000), { project: "lumen-notes" }),
+      card("b", "Fix the flaky test", "blocked", iso(-60_000), { project: "lumen-notes" }),
+      card("c", "查周六机票", "done", iso(-60_000)),
+    ]);
+    expect(o.lensGroups().map((g) => g.name)).not.toContain("lumen-notes-orbit-plugin");
+    expect(o.lensLanes("").flat()).toHaveLength(4);
+    A.S.tasks.clear();
+  });
+
+  test("one row each, said once; the column has no line counts or faces; four sizes; theme tokens only", () => {
+    const onhand = src("onhand.tsx");
+    expect(onhand).not.toContain("BriefLines");
+    expect(onhand).not.toContain("<WaitAxis");
+    const entry = onhand.slice(onhand.indexOf("function LensEntry"), onhand.indexOf("/** The lens beside the board"));
+    expect(entry).not.toContain("StatusFace");
+    expect(entry).not.toContain('class="stat"');
+    const css = readFileSync(join(import.meta.dir, "../static/app.css"), "utf8");
+    const block = css.slice(css.indexOf("/* ---------- D471: On hand as one ledger ---------- */"));
+    expect(block).not.toMatch(/#[0-9a-f]{3,6}\b|rgb\(/i);
+    expect(block).not.toMatch(/border-left:/);
+    const sizes = new Set([...block.matchAll(/font-size: ([^;]+);/g)].map((m) => m[1]));
+    expect(sizes.size).toBeLessThanOrEqual(4);
+  });
+
+  test("a group with one part left on the board is that task's own row, never a lone number", async () => {
+    const { boardGroups } = await import("../src/groups-view.ts");
+    const g = (members: unknown[]) => ({ id: "g1", name: "通用设置", order: "line", by: "partner", persona: "default", members }) as any;
+    const lane = (id: string) => (id === "t1" ? 1 : -1);
+    expect(boardGroups([g([{ taskId: "t1" }, { taskId: "gone" }])], lane, () => "working")).toEqual([]);
+    const two = boardGroups([g([{ taskId: "t1" }, { key: "k2", title: "在新 Mac 上照着设好" }])], lane, () => "working");
+    expect(two).toHaveLength(1);
+    expect(two[0]!.rows.map((r) => r.part)).toEqual([1, 2]);
+  });
+
+  test("round 2: a stopped task is said as the partner: its PR and CI, its last words, or none, with the next step", async () => {
+    const { A } = await board([]);
+    const b = await import("../src/onhand-brief.tsx");
+    const ci = b.lastWords("The flaky tile merge test fix is up for review as PR #4420. CI is still running.");
+    expect(ci.pr).toBe("4420");
+    expect(ci.line).toBe(A.L.t("onhand.stuck.pr_ci", "4420"));
+    expect(b.lastWords("Opened PR #12 for the copy.").line).toBe(A.L.t("onhand.stuck.pr", "12"));
+    expect(b.lastWords("等你把手机连上。外部录屏还没做。").line).toBe(A.L.t("onhand.stuck.said", "等你把手机连上"));
+    expect(b.lastWords("").line).toBe(A.L.t("onhand.stuck.stopped"));
+    expect(b.lastWords("fatal: not a git repository").line).toBe(A.L.t("onhand.stuck.stopped"));
+    for (const k of ["onhand.stuck.pr_ci", "onhand.stuck.pr", "onhand.stuck.said", "onhand.stuck.stopped"]) expect(A.L.t(k, "1")).not.toContain("没说在等什么。");
+  });
+
+  test("round 2 (D473): a failure Ducter is mending stands in 在做 with what it does, never as a failure", async () => {
+    const { A, o } = await board([card("m", "细审长文案", "failed", iso(-60_000), { cant: { why: "no_repo", computer: "Studio Mac", what: "lumen" } })]);
+    A.S.applyEvent({ seq: 9501, ts: iso(-30_000), stream: "task:m", origin: "system", kind: "mend", body: { taskId: "m", cls: "start", rung: "repair", how: "clone_here", name: "Studio Mac", attempt: 1, tried: [], state: "going" } } as any);
+    const parts = o.boardParts(o.lensLanes(""));
+    expect(parts.failed).toHaveLength(0);
+    expect(parts.mending.map((x) => x.id)).toEqual(["m"]);
+    expect(o.mendWords(o.mendingOf(A.S.tasks.get("m")!)!)).toBe(A.L.t("note.mend_clone_here", "Studio Mac"));
+    expect(o.stateCounts("")[0]).toBe(0);
+    A.S.tasks.clear();
+  });
+
+  test("round 2: the same failed start again is one line with how many tries", async () => {
+    const { collapseStarts } = await import("@ducter/protocol/src/transcript.ts");
+    const cant = { why: "no_folder", computer: "Home Server", what: "lumen" } as any;
+    const out: any[] = [
+      { k: "note", seq: 1, say: "error_start", text: "", bad: true, cant },
+      { k: "note", seq: 2, say: "mend_reopen", text: "" },
+      { k: "note", seq: 3, say: "error_start", text: "", bad: true, cant },
+      { k: "note", seq: 4, say: "error_start", text: "", bad: true, cant: { ...cant, why: "busy" } },
+      { k: "note", seq: 5, say: "error_start", text: "", bad: true, cant },
+    ];
+    collapseStarts(out);
+    expect(out.map((b) => [b.seq, b.tries])).toEqual([
+      [2, undefined],
+      [3, 2],
+      [4, undefined],
+      [5, undefined],
+    ]);
+    const { A } = await import("../src/app.ts");
+    A.L = strings("zh");
+    expect(A.L.t("note.tries", 3, "Home Server 上没有 lumen 这个文件夹")).toBe("试了 3 次都没能开始：Home Server 上没有 lumen 这个文件夹");
+  });
+
+  test("zh and en together, no counter noun", () => {
+    const zh = strings("zh"), en = strings("en");
+    for (const k of ["onhand.stuck.unknown", "onhand.stuck.unknown.start", "onhand.stuck.lock", "onhand.stuck.failed", "onhand.stuck.phone", "onhand.stuck.stopped", "onhand.peek.said"]) {
+      expect(zh.t(k)).not.toBe(k);
+      expect(en.t(k)).not.toBe(k);
+      expect(zh.t(k, "x")).not.toContain("件");
+    }
+  });
+
+  test("the committed shapes are invented words in the real lengths: a cut English title, a raw git error, a phone report", () => {
+    const rows = shapeRows(now);
+    const text = rows.map((r) => r.body).join("\n");
+    expect(text).toContain("with the…");
+    expect(text).toContain("index.lock");
+    expect(text).toContain("手机访问被停止");
+    expect(rows.every((r, i) => r.seq === i + 1)).toBe(true);
+    // Never the author's own words, names or hosts.
+    for (const w of ["weyl", "/root/", "@gmail"]) expect(text).not.toContain(w);
+  });
+});

@@ -181,6 +181,27 @@ test("branchChanges: commits ahead of the base and uncommitted work; nothing on 
   expect(await branchChanges({ kind: "folder", device: "local", path: dir })).toBeUndefined();
 });
 
+test("D471: a branch that pulled the remote's main counts only its own work, never the weeks a stale local main missed", async () => {
+  const p = repoWithTaskBranch();
+  // The remote moves on by a big change; the person's local main stays behind.
+  const remote = join(dir, "remote.git");
+  Bun.spawnSync(["git", "clone", "-q", "--bare", p.repoPath, remote]);
+  sh(p.repoPath, "remote", "add", "origin", remote);
+  const up = join(dir, "up");
+  Bun.spawnSync(["git", "clone", "-q", remote, up]);
+  writeFileSync(join(up, "big.txt"), Array.from({ length: 500 }, (_, i) => `line ${i}`).join("\n") + "\n");
+  sh(up, "add", ".");
+  sh(up, "commit", "-qm", "upstream work");
+  sh(up, "push", "-q", "origin", "HEAD:main");
+  sh(p.repoPath, "fetch", "-q", "origin");
+  // The task pulls the remote's main into its branch, then makes its own one-line change.
+  sh(p.worktree!, "merge", "-q", "--no-edit", "origin/main");
+  writeFileSync(join(p.worktree!, "c.txt"), "c\n");
+  sh(p.worktree!, "add", ".");
+  sh(p.worktree!, "commit", "-qm", "own");
+  expect(await branchChanges(p)).toMatchObject({ files: 2, adds: 2, dels: 0 });
+});
+
 test("a done report carries the branch check: a task that changed nothing says so to clients", async () => {
   const repo = join(dir, "repo");
   Bun.spawnSync(["git", "init", "-q", "-b", "main", repo]);

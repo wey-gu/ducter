@@ -98,6 +98,8 @@ type Block struct {
 	Bad   bool      `json:"bad,omitempty"`   // note: something failed
 	// Cant (D472): an attempt that couldn't start, its why (said as the page says it).
 	Cant *protocol.CantStart `json:"cant,omitempty"`
+	// Tries (D471 round 2): how many starts failed the same way, said as one line.
+	Tries int `json:"tries,omitempty"`
 	// Say is what a note says, worded from note.<say> (D207); Name fills it in.
 	Say  string `json:"say,omitempty"`
 	Name string `json:"name,omitempty"`
@@ -1074,7 +1076,43 @@ func build(harness string, events []protocol.LogEvent, working bool, ctx buildCt
 	if working && tail >= 0 && out[tail].K == "steps" {
 		out[tail].Live = true
 	}
-	return out, app
+	return collapseStarts(out), app
+}
+
+// collapseStarts (D471 round 2): a start that failed the same way again (the
+// same reason on the same computer, only notes between: Ducter's own retries,
+// D473) is one line with how many tries; the web's protocol does the same.
+func collapseStarts(out []Block) []Block {
+	key := func(b *Block) (string, bool) {
+		if b.K != "note" || b.Say != "error_start" {
+			return "", false
+		}
+		if b.Cant == nil {
+			return "?", true
+		}
+		return b.Cant.Why + "|" + b.Cant.Computer + "|" + b.Cant.What, true
+	}
+	for i := len(out) - 1; i > 0; i-- {
+		k, ok := key(&out[i])
+		if !ok {
+			continue
+		}
+		for j := i - 1; j >= 0; j-- {
+			if out[j].K != "note" {
+				break
+			}
+			if out[j].Say != "error_start" {
+				continue
+			}
+			if kj, _ := key(&out[j]); kj != k {
+				break
+			}
+			out[i].Tries = max(out[i].Tries, 1) + max(out[j].Tries, 1)
+			out = append(out[:j], out[j+1:]...)
+			i--
+		}
+	}
+	return out
 }
 
 // latestVoice is the agent's latest words, first line, since its last report.

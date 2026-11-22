@@ -44,11 +44,29 @@ export function space(s: string): string {
     .replace(/([A-Za-z0-9%])([\p{Script=Han}])/gu, "$1 $2");
 }
 
-/** A title short enough for one line: at most 18 characters (a CJK one counts once). */
+/**
+ * A title short enough for one line: at most `max` CJK characters wide (a Latin letter counts half).
+ * D471: a title a source already cut is said to its last word, and a cut never falls inside a word
+ * (Latin text ends at a space): never "A partially faile…".
+ */
 export function short(title: string, max = 18): string {
-  const s = title.replace(/\s+/g, " ").trim().replace(/[。.！!？?]+$/u, "");
+  const s = title.replace(/\s+/g, " ").trim().replace(/\s*(…|\.\.\.)$/u, "").replace(/[。.！!？?]+$/u, "");
+  const wide = (ch: string) => (/[\u3400-\u9fff\uff00-\uffef]/.test(ch) ? 2 : 1);
   const cs = [...s];
-  return cs.length <= max ? s : cs.slice(0, max - 1).join("").trimEnd() + "…";
+  if (cs.reduce((n, ch) => n + wide(ch), 0) <= max * 2) return s;
+  let out = "";
+  let w = 0;
+  for (const ch of cs) {
+    if (w + wide(ch) > max * 2 - 2) break;
+    out += ch;
+    w += wide(ch);
+  }
+  const next = cs[[...out].length] ?? "";
+  if (/[A-Za-z0-9]$/.test(out) && /[A-Za-z0-9]/.test(next)) {
+    const i = out.lastIndexOf(" ");
+    if (i > out.length / 2) out = out.slice(0, i);
+  }
+  return out.replace(/[\s,，:：、\-—]+$/u, "") + "…";
 }
 
 /** The person's day number in their zone: the rotation's seed. */

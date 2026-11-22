@@ -66,7 +66,8 @@ func TestOnHandByAttention(t *testing.T) {
 	tt.Frame()
 	tt.Frame()
 	all := strings.Join(tt.Texts(), " | ")
-	for _, want := range []string{"有 2 个停下了，要你看一眼。", "「用手机把 Ducter…」停下了", "「Android 构建在…」没做成", "接着做", "放下", "再试一次", "还有 1 个是昨天做完的", "「等 acme-web 的发布流水线跑完再合并」 15:37 回来。"} {
+	// D471: the head is one sentence; each task says itself once, on its own row.
+	for _, want := range []string{"有 2 个停下了，要你看一眼。", "用手机把 Ducter 官网录一段屏发到 X", "它停了，没留下话。接着做，它从停下的地方接着来。", "停在了一个我没认出的错误上。", "接着做", "放下", "再试一次", "还有 1 个是昨天做完的", "15:37 回来"} {
 		if !strings.Contains(all, want) {
 			t.Fatalf("missing %q in %s", want, all)
 		}
@@ -76,18 +77,15 @@ func TestOnHandByAttention(t *testing.T) {
 			t.Fatalf("%q on the board: %s", not, all)
 		}
 	}
-	// D467 round 2: what stopped and what didn't work out stand in the brief
-	// with their fix, never also as cards; the walk is the cards.
-	if !app.oh.briefed["t_phone"] || !app.oh.briefed["t_android"] {
-		t.Fatalf("the brief carries %v", app.oh.briefed)
-	}
-	// D467 round 3: the next wait and the new result are told in the brief too: no cards, not walked.
-	if !app.oh.briefed["t_ci"] {
-		t.Fatalf("the next wait isn't in the brief: %v", app.oh.briefed)
-	}
+	// D471: no brief lines: what stopped, what didn't work out and the next
+	// wait are rows of their own, walked like every other.
+	walked := map[string]bool{}
 	for _, id := range app.oh.order {
-		if app.oh.briefed[id] {
-			t.Fatalf("%s is told in the brief and walked as a card", id)
+		walked[id] = true
+	}
+	for _, id := range []string{"t_phone", "t_android", "t_ci"} {
+		if !walked[id] || app.oh.briefed[id] {
+			t.Fatalf("%s is not its own walked row: %v", id, app.oh.order)
 		}
 	}
 	for _, id := range app.oh.order {
@@ -190,7 +188,8 @@ func TestStuckFixKinds(t *testing.T) {
 	if st := app.S.Task("t_cant").State; st != nil {
 		st.Cant = cant.Cant // as the home's task_state carries it
 	}
-	for id, want := range map[string]string{"t_sign": "signin", "t_cant": "cant", "t_off": "offline", "t_perm": "perm", "t_fail": "failed"} {
+	// D471: a failure with no words of its own says the error is unknown, never a raw log.
+	for id, want := range map[string]string{"t_sign": "signin", "t_cant": "cant", "t_off": "offline", "t_perm": "perm", "t_fail": "unknown"} {
 		f := app.stuckFix(app.S.Task(id))
 		if f.kind != want || len(f.buttons) == 0 {
 			t.Errorf("%s: %s (%q), want %s", id, f.kind, f.sentence, want)

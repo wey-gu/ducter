@@ -97,7 +97,7 @@ export type Block =
    * word in their i18n (`note.<say>`, `name` filled in), never the English it was logged in; `text`
    * is that line as logged, keys hidden, shown only on a tap for an error; `bad` = something failed.
    */
-  | { k: "note"; seq: number; say: NoteSay; name?: string; text: string; bad?: boolean; effort?: string; from?: number; to?: number; at?: string; cant?: CantStart }
+  | { k: "note"; seq: number; say: NoteSay; name?: string; text: string; bad?: boolean; effort?: string; from?: number; to?: number; at?: string; cant?: CantStart; tries?: number }
   /** The agent's plan (D268): one per task, where it first wrote it, holding its latest items. */
   | { k: "plan"; seq: number; items: PlanItem[] }
   /**
@@ -506,6 +506,29 @@ export function blocksOf(harness: string, events: LogEvent[], working: boolean, 
   return build(harness, events, working, ctx).blocks;
 }
 
+/**
+ * D471 round 2: a start that failed the same way again (the same reason on the same computer, with
+ * only notes between: Ducter's own retries, D473) is one line with how many tries, never the same
+ * "couldn't start" stacked: the later one stays, with `tries`, the earlier ones go.
+ */
+export function collapseStarts(out: Block[]): void {
+  const key = (b: Block) => (b.k === "note" && b.say === "error_start" ? (b.cant ? `${b.cant.why}|${b.cant.computer ?? ""}|${b.cant.what ?? ""}` : "?") : undefined);
+  for (let i = out.length - 1; i > 0; i--) {
+    const k = key(out[i]!);
+    if (k === undefined) continue;
+    for (let j = i - 1; j >= 0; j--) {
+      const b = out[j]!;
+      if (b.k !== "note") break;
+      if (b.say !== "error_start") continue;
+      if (key(b) !== k) break;
+      const later = out[i] as Extract<Block, { k: "note" }>;
+      later.tries = (later.tries ?? 1) + (b.tries ?? 1);
+      out.splice(j, 1);
+      i--;
+    }
+  }
+}
+
 /** blocksOf, and the app its last browser step was in (for the part after it, D320). */
 export function build(harness: string, events: LogEvent[], working: boolean, ctx: BuildCtx = {}): { blocks: Block[]; app: string } {
   const out: Block[] = [];
@@ -646,6 +669,7 @@ export function build(harness: string, events: LogEvent[], working: boolean, ctx
     }
   }
   for (const b of out) if (b.k === "steps") b.lines = linesOf(rowsOf.get(b)!);
+  collapseStarts(out);
   // D320: a part with more after it: its retry is no longer the latest thing.
   if (ctx.more && isRetry(out.at(-1))) out.pop();
   // A retry says itself only as the latest thing; the stretch before it is still the live one.

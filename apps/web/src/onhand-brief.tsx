@@ -11,12 +11,12 @@ import { sayable } from "@ducter/protocol/src/say.ts";
 import { A } from "./app.ts";
 import { Btn } from "./controls.tsx";
 import { ago, clock } from "./format.ts";
-import { attention, harnessOf, placeOf, reasonOf, reportOf, title, type Task } from "./store.ts";
+import { attention, cantOf, harnessOf, placeOf, reasonOf, reportOf, title, type Task } from "./store.ts";
 import { harnessName } from "./format.ts";
 import { computerName, computerOf } from "./where.ts";
 import { heldFrame, openPhone } from "./phone-use.tsx";
 import { liveSize } from "./live.tsx";
-import { shortTitle } from "./transcript.tsx";
+import { sayName, shortTitle } from "./transcript.tsx";
 import { BrandMark } from "./brand.tsx";
 import { isNewResult } from "./seen.ts";
 
@@ -131,12 +131,41 @@ export function backAt(task: Task): number {
 
 // ---------- what stopped, and what fixes it (D467 round 4) ----------
 
-export type StuckKind = "cant" | "signin" | "signin-pi" | "offline" | "perm" | "phone" | "failed" | "stopped";
-export type BriefNeed = { task: Task; kind: StuckKind; text: string; device?: string; harness?: string };
+export type StuckKind = "cant" | "signin" | "signin-pi" | "offline" | "perm" | "phone" | "failed" | "unknown" | "stopped";
+/** `text` names the task (a sentence said anywhere); `line` is the card's own line, without its name. */
+export type BriefNeed = { task: Task; kind: StuckKind; text: string; line: string; device?: string; harness?: string; pr?: string };
+
+/**
+ * D471 round 2: what a stopped task last said, in the partner's words: a PR it opened that waited on CI
+ * (then nobody looked), a PR it opened, else its last words quoted short (cut at a word's end), else
+ * that it left none; each with the honest next step. Never a tool's raw line.
+ */
+export function lastWords(summary: string, quote = summary): { line: string; pr?: string; ci?: boolean } {
+  const s = summary.trim();
+  const pr = /\bPR\s*#(\d+)/i.exec(s)?.[1];
+  const ci = /\bCI\b|checks?\b|流水线|检查/i.test(s);
+  if (pr && ci) return { line: t("onhand.stuck.pr_ci", pr), pr, ci: true };
+  if (pr) return { line: t("onhand.stuck.pr", pr), pr };
+  const first = firstSentence(quote.trim()).replace(/[。.！!？?]$/, "");
+  if (first && !rawFailure(first)) return { line: t("onhand.stuck.said", sayName(first, 40)) };
+  return { line: t("onhand.stuck.stopped") };
+}
+
+/** D471: a phone task the home stopped lending to, told by its own report when its steps aren't held. */
+const PHONE_STOPPED = /(手机|phone)[^。.\n]{0,24}(访问|借用|access)[^。.\n]{0,16}(停止|停了|stopped|revoked|ended)/i;
+
+/** D471: a failure whose words are a tool's or git's raw output, said instead in the partner's
+ *  voice: a lock git left behind, else an error it doesn't know. */
+export function rawFailure(reason: string): "lock" | "unknown" | undefined {
+  if (!reason.trim()) return undefined;
+  if (/index\.lock|another git process/i.test(reason)) return "lock";
+  if (/^(fatal|error)[: ]|\n|git |exit (code|status)|Traceback|ENOENT|EACCES|[{}[\]]/i.test(reason)) return "unknown";
+  return undefined;
+}
 
 /** D415's line for a task that couldn't start (the task page's own words; D472: one source, cant.tsx). */
 function cantWords(task: Task): string {
-  return cantLine(task.card!.cant!);
+  return cantLine(cantOf(task)!);
 }
 
 /**
@@ -148,33 +177,44 @@ function cantWords(task: Task): string {
 export function stuckOf(x: Task, name = briefName(title(x)) || t("task.unknown")): BriefNeed {
   const failed = attention(x) === "failed";
   const said = firstSentence(sayable(reportOf(x)?.summary ?? "", A.readerLang(x)));
-  if (failed && x.card?.cant) return { task: x, kind: "cant", text: cantWords(x) };
+  // The card's line is the sentence without the task's name (the card names it).
+  const of = (kind: StuckKind, text: string, line: string, more: Partial<BriefNeed> = {}): BriefNeed => ({ task: x, kind, text, line, ...more });
+  const cant = cantOf(x);
+  if (failed && cant) {
+    // D472: why it couldn't start and its real fix, one source with the task's page (cant.tsx).
+    return of("cant", cantWords(x), cantWords(x));
+  }
   const device = placeOf(x).device || "local";
   const h = computerOf(device)?.harnesses.find((y) => y.harness === harnessOf(x));
   if (h?.installed && !h.loggedIn) {
     const where = computerName(device);
-    if (h.harness === "pi") return { task: x, kind: "signin-pi", text: t("onhand.brief.signin.pi", name, where), device };
-    return { task: x, kind: "signin", text: t("onhand.brief.signin", name, harnessName(h.harness), where), device, harness: h.harness };
+    if (h.harness === "pi") return of("signin-pi", t("onhand.brief.signin.pi", name, where), t("onhand.stuck.signin.pi", where), { device });
+    return of("signin", t("onhand.brief.signin", name, harnessName(h.harness), where), t("onhand.stuck.signin", harnessName(h.harness), where), { device, harness: h.harness });
   }
   const r = reasonOf(x);
   if (r.startsWith("device:unreachable:")) {
     const who = r.slice("device:unreachable:".length);
     const seen = computerOf(who)?.lastSeen;
-    return { task: x, kind: "offline", text: seen ? t("onhand.brief.offline", name, who, ago(A.L, seen)) : t("onhand.brief.offline.unknown", name, who) };
+    return of("offline", seen ? t("onhand.brief.offline", name, who, ago(A.L, seen)) : t("onhand.brief.offline.unknown", name, who), seen ? t("onhand.stuck.offline", who, ago(A.L, seen)) : t("onhand.stuck.offline.unknown", who));
   }
   const cu = x.card?.computing;
   const perms = cu ? computerOf(cu.device)?.abilities.find((a) => a.id === "computer")?.perms : undefined;
-  if (cu && perms && (!perms.accessibility || !perms.screen)) return { task: x, kind: "perm", text: t("onhand.brief.perm", name, computerName(cu.device)), device: cu.device };
-  if (failed) return { task: x, kind: "failed", text: t("onhand.brief.failed", name, said || t("state.failed")) };
-  if (onPhone(x)) return { task: x, kind: "phone", text: t("onhand.brief.stopped.phone", name) };
-  return { task: x, kind: "stopped", text: t("onhand.brief.stopped", name, said || t("onhand.wait.unsaid")) };
+  if (cu && perms && (!perms.accessibility || !perms.screen)) return of("perm", t("onhand.brief.perm", name, computerName(cu.device)), t("onhand.stuck.perm", computerName(cu.device)), { device: cu.device });
+  // D471: never a tool's or git's raw words: a lock is named, anything else is said to be unknown.
+  const raw = failed && !said ? rawFailure(r) : undefined;
+  if (raw === "lock") return of("unknown", t("onhand.brief.failed", name, t("onhand.stuck.lock")), t("onhand.stuck.lock"));
+  if (failed && !said) return of("unknown", t("onhand.brief.failed", name, t("onhand.stuck.unknown")), t("onhand.stuck.unknown"));
+  if (failed) return of("failed", t("onhand.brief.failed", name, said), t("onhand.stuck.failed", said));
+  if (onPhone(x) || PHONE_STOPPED.test(reportOf(x)?.summary ?? "")) return of("phone", t("onhand.brief.stopped.phone", name), t("onhand.stuck.phone"));
+  // D471 round 2: said as the partner: what it knows from the task's last words, and the honest next step.
+  // The PR and CI are read from its own words in any language; only a quote is said in the reader's.
+  const said2 = lastWords(reportOf(x)?.summary ?? "", sayable(reportOf(x)?.summary ?? "", A.readerLang(x)) ?? "");
+  return of("stopped", t("onhand.brief.stopped", name, t("onhand.wait.unsaid")), said2.line, said2.pr ? { pr: said2.pr } : {});
 }
 
-/** A card's own line for what stopped: the words after its task's name (the card names it). */
+/** A card's own line for what stopped (the card names the task). */
 export function stuckClause(n: BriefNeed): string {
-  if (n.kind === "cant") return n.text;
-  const i = n.text.search(/[：:]/);
-  return i > 0 ? n.text.slice(i + 1).trim() : n.text;
+  return n.line;
 }
 
 /** The fix for what stopped, as its buttons (the same in the brief and on a card). */
@@ -185,7 +225,7 @@ export function StuckActs({ n, onRetry }: { n: BriefNeed; onRetry?: () => void }
   switch (n.kind) {
     case "cant": {
       // D472: the page's own fixes, the real one first (cant.tsx), 看看为什么 stays on the page.
-      const c = x.card!.cant!;
+      const c = cantOf(x)!;
       return (
         <>
           {cantFixes(c)
@@ -217,6 +257,14 @@ export function StuckActs({ n, onRetry }: { n: BriefNeed; onRetry?: () => void }
           {drop}
         </>
       );
+    case "unknown":
+      // D471: an error nobody recognised: where to look first, then another go.
+      return (
+        <>
+          <Btn kind="secondary" size="sm" label={t("away.why")} about={title(x)} onClick={() => A.go({ name: "task", id: x.id, full: A.route.name !== "conv" })} />
+          <Btn kind="text" size="sm" label={t("away.retry")} about={title(x)} onClick={onRetry ?? (() => (cantOf(x) ? A.cantAction(x.id, "reopen") : go(t("group.retry"))))} />
+        </>
+      );
     case "failed":
       return (
         <>
@@ -230,147 +278,19 @@ export function StuckActs({ n, onRetry }: { n: BriefNeed; onRetry?: () => void }
     default:
       return (
         <>
-          <Btn kind="secondary" size="sm" label={t("onhand.quiet.go")} about={title(x)} onClick={() => go(t("onhand.quiet.go"))} />
+          <Btn kind="secondary" size="sm" label={t("onhand.quiet.go")} about={title(x)} onClick={() => go(n.pr ? t("onhand.stuck.pr_ci.words", n.pr) : t("onhand.quiet.go"))} />
           {drop}
         </>
       );
   }
 }
 
-// ---------- the brief ----------
+// ---------- names said in a sentence ----------
 
-/** D467 round 4 (D297): tasks waiting on one agent's limit, said once under 接下来 with when it
- *  comes back and, when another agent can take them, the hand-over. */
-export type BriefLimit = { text: string; tasks: Task[]; handTo?: string; waiterIds: string[] };
-export type Brief = { since?: { text: string; task: Task }; needs: BriefNeed[]; asks: number; back?: string; limits: BriefLimit[]; rest?: boolean; told: Set<string> };
-
-/** D467 round 3: a task named in the brief's needs line, short: its short title cut to 12
- *  characters of Han text or 28 of Latin, ending in "…" when cut (the whole on hover). */
+/** D471: a task named inside a sentence: its title whole when it fits, else cut at a word's end
+ *  (never inside a word, never a title a source already cut cut again); the whole on hover. */
 export function briefName(full: string): string {
-  const s = shortTitle(full) || full;
-  const han = /[\u3400-\u9fff]/.test(s);
-  const max = han ? 12 : 28;
-  const cs = [...s];
-  return cs.length > max ? `${cs.slice(0, max - 1).join("").trimEnd()}…` : s;
-}
-
-/**
- * The partner's brief over a lens (D467), from what is there, never a model: the new results since
- * you looked; at most two of what stopped or didn't work out, each with what fixes it; how many
- * questions wait below; when the first wait comes back.
- */
-export function briefOf(parts: { stopped: Task[]; failed: Task[]; waiting: Task[]; today: Task[] }, needsYou: number, now = Date.now(), working = 0): Brief {
-  const told = new Set<string>();
-  const fresh = parts.today.filter((x) => isNewResult(x.id, attention(x), x.card?.updatedAt));
-  const name = (x: Task) => shortTitle(title(x)) || t("task.unknown");
-  let since: Brief["since"];
-  if (fresh.length === 1) since = { text: t("onhand.brief.done.one", name(fresh[0]!)), task: fresh[0]! };
-  else if (fresh.length === 2) since = { text: t("onhand.brief.done.two", name(fresh[0]!), name(fresh[1]!)), task: fresh[0]! };
-  else if (fresh.length > 2) since = { text: t("onhand.brief.done.many", name(fresh[0]!), fresh.length - 1), task: fresh[0]! };
-  // D467 round 3: what the brief names gets no card (with "等 n 个", only the first).
-  for (const x of fresh.slice(0, fresh.length === 2 ? 2 : 1)) told.add(x.id);
-  const halted = [...parts.stopped, ...parts.failed];
-  const needs: BriefNeed[] = halted.slice(0, 2).map((x) => stuckOf(x));
-  const asks = Math.max(0, needsYou - halted.length);
-  // D467 round 4: the waits on an agent's limit, one line per agent (D297), told once.
-  const byHarness = new Map<string, Task[]>();
-  for (const x of parts.waiting) {
-    const l = A.S.waiterFor(x.id)?.limit;
-    if (l) byHarness.set(l.harness, [...(byHarness.get(l.harness) ?? []), x]);
-  }
-  const limits: BriefLimit[] = [];
-  for (const [h, ts] of byHarness) {
-    const ws = ts.map((x) => A.S.waiterFor(x.id)!);
-    const at = ws.map((w) => Date.parse(w.at ?? "")).filter(Number.isFinite).sort((a, b) => a - b)[0];
-    const when = at ? clock(new Date(at).toISOString()) : "";
-    const to = ws.find((w) => w.limit?.handTo)?.limit?.handTo?.harness;
-    limits.push({
-      text: ts.length === 1 ? t("onhand.brief.limit", briefName(title(ts[0]!)), harnessName(h), when) : t("onhand.brief.limit.many", ts.length, harnessName(h), when),
-      tasks: ts,
-      waiterIds: ws.map((w) => w.waiterId),
-      ...(to ? { handTo: to } : {}),
-    });
-    for (const x of ts) told.add(x.id);
-  }
-  const coming = parts.waiting
-    // A wait on a limit's reset is said by its own group (D297), never named here.
-    .filter((x) => !A.S.waiterFor(x.id)?.limit)
-    .map((x) => ({ x, at: backAt(x) }))
-    .filter((c) => Number.isFinite(c.at) && c.at > now)
-    .sort((a, b) => a.at - b.at);
-  let back: string | undefined;
-  if (coming.length) {
-    const c = coming[0]!;
-    const at = clock(new Date(c.at).toISOString());
-    back = coming.length > 1 ? t("onhand.brief.back.more", name(c.x), at, coming.length - 1) : t("onhand.brief.back", name(c.x), at);
-    told.add(c.x.id);
-  }
-  // D467 round 3: nothing needs you, nothing works, nothing comes back on its own: the partner still talks.
-  const rest = !needsYou && !working && !back && !limits.length;
-  return { since, needs, asks, back, limits, rest, told };
-}
-
-/** One labelled line of the brief: its label in a quiet column, then the words and what to do. */
-function Line({ label, children }: { label: string; children: ComponentChildren }) {
-  return (
-    <p class="bline">
-      <span class="blabel">{label}</span>
-      <span class="btext">{children}</span>
-    </p>
-  );
-}
-
-/** The brief's lines under the lead (D467): since you looked, what needs you (with its fix), next. */
-export function BriefLines({ b }: { b: Brief }) {
-  return (
-    <div class="blines">
-      {b.since && (
-        <Line label={t("onhand.brief.since")}>
-          <span class="bsince">
-            {b.since.text}
-            <Outcome task={b.since.task} small />
-          </span>
-        </Line>
-      )}
-      {(b.needs.length > 0 || b.asks > 0) && (
-        <Line label={t("lane.needs_you")}>
-          {b.needs.map((n) => (
-            <span key={n.task.id} class={`bneed k-${n.kind}`}>
-              <span class="bwords" title={title(n.task)}>
-                {n.text}
-              </span>
-              <span class="bacts">
-                <StuckActs n={n} />
-              </span>
-            </span>
-          ))}
-          {b.asks > 0 && <span class="bwords asks">{b.asks === 1 ? t("onhand.brief.asks.one") : t("onhand.brief.asks", b.asks)}</span>}
-        </Line>
-      )}
-      {(b.back || b.limits.length > 0) && (
-        <Line label={t("onhand.next")}>
-          {b.back && <span class="bnext">{b.back}</span>}
-          {b.limits.map((l) => (
-            <span key={l.waiterIds.join()} class="bneed k-limit">
-              <span class="bwords" title={l.tasks.map((x) => title(x)).join("\n")}>
-                {l.text}
-              </span>
-              {l.handTo && (
-                <span class="bacts">
-                  <Btn kind="secondary" size="sm" label={t("limit.handoff", harnessName(l.handTo))} onClick={() => l.waiterIds.forEach((id) => A.waiterAction(id, "handoff"))} />
-                </span>
-              )}
-            </span>
-          ))}
-        </Line>
-      )}
-      {b.rest && (
-        <Line label={t("onhand.next")}>
-          <span>{t("onhand.brief.rest")}</span>
-        </Line>
-      )}
-    </div>
-  );
+  return sayName(full, 28);
 }
 
 // ---------- work in motion ----------
@@ -427,41 +347,12 @@ export function trailRuns(steps: { x: number; bad: boolean; key: number }[], gap
   return out;
 }
 
-/** D467: 在等 placed in time: one light axis from now to the latest return within 12 hours, each
- *  wait a hollow bead at its return, its time under it; its title on hover. */
-export function WaitAxis({ tasks, now = Date.now() }: { tasks: Task[]; now?: number }) {
-  const HORIZON = 12 * 3600_000;
-  const items = tasks
-    .map((x) => ({ x, at: backAt(x) }))
-    .filter((c) => Number.isFinite(c.at) && c.at > now && c.at - now <= HORIZON)
-    .sort((a, b) => a.at - b.at);
-  // D467 round 3: only with two or more on it: one wait's time is already the brief's and its card's.
-  if (items.length < 2) return null;
-  const end = Math.max(items.at(-1)!.at, now + 30 * 60_000);
-  const x = (at: number) => 8 + ((at - now) / (end - now)) * 84;
-  return (
-    <div class="waxis" role="group" aria-label={t("onhand.next")}>
-      <span class="rule" />
-      <span class="now" style={{ left: "0%" }}>
-        <b />
-        <span>{t("onhand.day.now")}</span>
-        <span class="tm">{clock(new Date(now).toISOString())}</span>
-      </span>
-      {items.map((c) => (
-        <button key={c.x.id} class="wbead" style={{ left: `${x(c.at)}%` }} title={shortTitle(title(c.x))} aria-label={`${clock(new Date(c.at).toISOString())} ${shortTitle(title(c.x))}`} onClick={() => A.go({ name: "task", id: c.x.id, full: A.route.name !== "conv" })}>
-          <b />
-          <span class="tm">{clock(new Date(c.at).toISOString())}</span>
-        </button>
-      ))}
-    </div>
-  );
-}
-
 // ---------- the peek ----------
 
-/** The task the peek shows: the keys' focus, else the first in the walk. */
-export function peekTask(focus: string, order: string[]): Task | undefined {
-  if (focus && order.includes(focus)) return A.S.tasks.get(focus);
+/** The task the peek shows (D471): the one the keys moved to on this board, else the first at
+ *  work, else the first in the walk. A focus kept from an opened task doesn't hold it. */
+export function peekTask(focus: string, order: string[], walked = true): Task | undefined {
+  if (walked && focus && order.includes(focus)) return A.S.tasks.get(focus);
   const working = order.find((id) => {
     const x = A.S.tasks.get(id);
     return !!x && (attention(x) === "working" || attention(x) === "queued");
@@ -474,6 +365,14 @@ export function peekSteps(task: Task): LogEvent[] {
   return stepsOf(task)
     .slice(-6)
     .map((s) => s.ev);
+}
+
+/** D471: a step said in the peek: its words only, whole (a command or a path is the task's detail,
+ *  never cut mid-word into the sentence); "" when the step has no words of its own. */
+export function peekWords(words: string): string {
+  const w = words.replace(/\s+/g, " ").trim();
+  if (!w || /^[`"'$/~.]/.test(w) || /^[a-z][\w-]*\s+(-|\S*[./])/.test(w)) return "";
+  return w;
 }
 
 /**

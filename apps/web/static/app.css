@@ -20698,3 +20698,278 @@ html[data-text-size="large"] .brand-mark > svg {
 .lr-why > .btn {
   flex: none;
 }
+
+/* ---------- D471: On hand as one ledger ---------- */
+/* Each section is one clay sheet, its tasks rows on hairlines: the time on one edge, what to do on
+   one column, four sizes on the page (the lead 22, a title 15, everything said 13, a label 12). */
+.onhand-list:not(.room-rail) .ocards {
+  gap: 0;
+  padding: 0;
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: 0 2px 0 var(--line), var(--drop);
+  overflow: hidden;
+}
+.onhand-list:not(.room-rail) .ocards:has(> .ocard.stopped, > .ocard.a-failed) {
+  box-shadow: 0 2px 0 var(--needs-ledge), var(--drop);
+}
+.onhand-list:not(.room-rail) .ocards + .ocards {
+  margin-top: 8px;
+}
+.onhand-list:not(.room-rail) .ocard {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.onhand-list:not(.room-rail) .ocard + .ocard {
+  box-shadow: inset 0 1px 0 var(--line-soft);
+}
+.onhand-list:not(.room-rail) .ocard .omain {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) 7.5rem;
+  gap: 14px;
+  min-height: 60px;
+  padding: 12px 8px 12px 16px;
+}
+:root[data-density="compact"] .onhand-list:not(.room-rail) .ocard .omain {
+  min-height: 48px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+.onhand-list:not(.room-rail) .ocard .omark {
+  width: 24px;
+  height: 24px;
+}
+.onhand-list:not(.room-rail) .ocard .omark svg {
+  width: 16px;
+  height: 16px;
+}
+.onhand-list:not(.room-rail) .ocard .omark .pulse {
+  height: 10px;
+}
+.onhand-list:not(.room-rail) .ocard .omark.k-waiting .wring {
+  width: 14px;
+  height: 14px;
+}
+/* A title says itself whole in up to two lines (a source's cut title is untrailed, never cut again). */
+.onhand-list:not(.room-rail) .ocard .o1 {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  white-space: normal;
+  line-height: 1.4;
+}
+.onhand-list:not(.room-rail) .ocard .o1 .t {
+  display: inline;
+  overflow: visible;
+  overflow-wrap: break-word;
+  font-size: 0.9375rem;
+}
+.onhand-list:not(.room-rail) .ocard .o1 > :not(.t) {
+  display: inline-flex;
+  margin-left: 8px;
+  vertical-align: 1px;
+}
+.onhand-list:not(.room-rail) .ocard .o1 .meta {
+  font-size: 0.75rem;
+}
+.onhand-list:not(.room-rail) .ocard .o2 {
+  font-size: 0.8125rem;
+}
+/* Why it stopped is what you came to read: up to two lines. */
+.onhand-list:not(.room-rail) .ocard.stopped .o2,
+.onhand-list:not(.room-rail) .ocard.a-failed .o2 {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  white-space: normal;
+}
+.onhand-list:not(.room-rail) .ocard .obeat {
+  max-width: none;
+  text-align: right;
+  font-size: 0.8125rem;
+  font-weight: 400;
+}
+.onhand-list:not(.room-rail) .ocard .ocol {
+  display: flex;
+  align-items: center;
+  min-height: 1px;
+  padding-right: 12px;
+}
+/* A sheet whose rows carry an action keeps one column for it; elsewhere a hover's actions come in
+   over the time at the right end, and the words keep the width. */
+.onhand-list:not(.room-rail) .ocards:has(.ocol > .on) .ocard .ocol {
+  width: 13.5rem;
+}
+.onhand-list:not(.room-rail) .ocards:not(:has(.ocol > .on)) .ocard .ocol {
+  position: absolute;
+  top: 50%;
+  right: 16px;
+  padding: 0;
+  transform: translateY(-50%);
+}
+.onhand-list:not(.room-rail) .ocard .ocol > .oacts,
+.onhand-list:not(.room-rail) .ocard .ocol > .tacts {
+  padding-right: 0;
+}
+/* Beside the conversation and on the phone a row stacks: the title, its line, its time, then what
+   to do under the words (never a title squeezed to a word a line beside its buttons). */
+.onhand-list.room-side .ocard,
+.onhand-list.room-phone .ocard {
+  grid-template-columns: minmax(0, 1fr);
+}
+.onhand-list.room-side .ocard .omain,
+.onhand-list.room-phone .ocard .omain {
+  grid-template-columns: 24px minmax(0, 1fr);
+  row-gap: 2px;
+}
+.onhand-list.room-side .ocard .obeat,
+.onhand-list.room-phone .ocard .obeat {
+  grid-column: 2;
+  text-align: left;
+}
+.onhand-list.room-side .ocard .obeat:empty,
+.onhand-list.room-phone .ocard .obeat:empty {
+  display: none;
+}
+.onhand-list.room-side .ocard .ocol,
+.onhand-list.room-phone .ocard .ocol {
+  width: auto;
+  padding: 0 12px 12px 54px;
+}
+.onhand-list.room-side .ocard .ocol:not(:has(.on)),
+.onhand-list.room-phone .ocard .ocol:not(:has(.on)) {
+  padding: 0;
+}
+@media (max-width: 1099px) {
+  .onhand-list.room-full .ocards:has(.ocol > .on) .ocard .ocol {
+    width: 11.5rem;
+  }
+  .onhand-list.room-full .ocard .omain {
+    grid-template-columns: 24px minmax(0, 1fr) 6.5rem;
+  }
+}
+@media (hover: hover) {
+  .onhand-list:not(.room-rail) .ocard:hover,
+  .onhand-list:not(.room-rail) .ocard.stopped:hover,
+  .onhand-list:not(.room-rail) .ocard.a-failed:hover {
+    transform: none;
+    background: color-mix(in srgb, var(--ink) 3%, transparent);
+  }
+  .onhand-list:not(.room-rail) .ocard + .ocard:hover {
+    box-shadow: inset 0 1px 0 var(--line-soft);
+  }
+}
+.onhand-list:not(.room-rail) .ocard.kfocus,
+.onhand-list:not(.room-rail) .ocard.sel {
+  outline-offset: -2px;
+  border-radius: 14px;
+}
+/* The project column: the name whole (two lines when long, broken where a name breaks), the count;
+   the count in the needs-you ink where something there needs you. No line counts, no faces. */
+.lens-col .lens-row .nm b {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-height: 1.3;
+}
+.lens-row .n.needs {
+  color: var(--needs-ink);
+}
+/* The peek: what the task itself last said, under its label. */
+.peek .presult.said p:not(.plabel) {
+  color: var(--ink-soft);
+}
+
+/* D471: the peek names its task whole, in up to three lines. */
+.peek .pt {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+/* D471: a row of names says where something needs you by its ink, never a face. */
+.lens-tabs .lens-row.needs:not(.on) .nm b {
+  color: var(--needs-ink);
+}
+
+/* ---------- D471 round 2: the ledger in one hand (phone, and beside the conversation) ---------- */
+/* The task first, why under it, where and when on a quiet line of their own, then the one fix the
+   full width of the words: nothing past the edge, nothing jammed, nothing alone at a corner. */
+.onhand-list.room-phone .ocard .omain,
+.onhand-list.room-side .ocard .omain {
+  column-gap: 12px;
+  padding: 14px 16px 10px;
+}
+.onhand-list.room-phone .ocard.stopped .o2,
+.onhand-list.room-phone .ocard.a-failed .o2 {
+  -webkit-line-clamp: 3;
+}
+.ocard .ometa {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  min-width: 0;
+  margin-top: 4px;
+  font-size: 0.75rem;
+  color: var(--ink-muted);
+}
+.ocard .ometa .m {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.ocard .ometa .ow {
+  font-variant-numeric: tabular-nums;
+}
+.ocard .ometa .ochip {
+  max-width: 100%;
+}
+.onhand-list.room-phone .ocard .ocol,
+.onhand-list.room-side .ocard .ocol {
+  padding: 0 16px 14px 52px;
+}
+.onhand-list.room-phone .ocard .ocol > .oacts.on,
+.onhand-list.room-side .ocard .ocol > .oacts.on {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  width: 100%;
+}
+.onhand-list.room-phone .ocard .ocol > .oacts.on > .btn:first-child {
+  flex: 1 1 100%;
+  justify-content: center;
+  min-height: 44px;
+}
+/* D471 round 2: a phone row's fix column is the row's width (the wide sheet's 216 column never applies). */
+.onhand-list.room-phone .ocards:has(.ocol > .on) .ocard .ocol,
+.onhand-list.room-side .ocards:has(.ocol > .on) .ocard .ocol {
+  width: auto;
+}
+.onhand-list.room-phone .ocard .ocol > .oacts.on,
+.onhand-list.room-side .ocard .ocol > .oacts.on {
+  padding: 0;
+}
+.onhand-list.room-phone .ocard .ocol > .oacts.on > .btn.text {
+  flex: 0 0 auto;
+}
+.ocard .ometa {
+  align-items: baseline;
+}
+.onhand-list.room-phone .ocard .ocol > .oacts.on > .btn.text {
+  min-height: 36px;
+}
+/* D471 round 2: a failed start says its whole reason (with how many tries), never cut. */
+.step.note.bad .sum {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}

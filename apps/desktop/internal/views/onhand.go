@@ -552,6 +552,7 @@ func shortTitle(title string) string {
 	}
 	s = strings.Join(strings.Fields(s), " ")
 	s = strings.TrimRight(s, " ,，:：-—")
+	s = untrail(s) // D471: a title a source cut is said to its last word, never cut again
 	if s == "" {
 		return strings.TrimSpace(title)
 	}

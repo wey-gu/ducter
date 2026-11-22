@@ -2369,8 +2369,20 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] **Live on hel** with the author's real 555 and a real stopped task: so far the demo core's fakes.
 - [ ] **A live picture inside the peek** (D467 round 4): today the peek shows the phone's last held frame and opens the live views; a small live stream in the peek needs a second live view per client (the store holds one, the overlay's) and a server that serves two. Trigger: the author sits in on a browser task from On hand.
 - [x] **The brief's fixes beyond the phone** (built 2026-11-22, D467 round 4): couldn't start, signed out, computer gone away, Mac switches, limit with hand-off, plain failure.
-- [ ] **Wake a computer from the brief** (D467 round 4): no wake exists (Wake-on-LAN, a worker's own wake); the brief says to turn it on. Trigger: a worker Mac that can be woken over the network.
+- [ ] **Wake a computer from its row** (D467 round 4, D471): no wake exists (Wake-on-LAN, a worker's own wake); the row says to turn it on. Trigger: a worker Mac that can be woken over the network.
 - [ ] **The strip's filter is gone** (D467 rev.): if the author misses narrowing to one state, a key (1 to 4) rather than counts. Trigger: the author asks for it.
+
+## On hand as one ledger (D471)
+
+- [ ] **A reload in iOS Safari can come up blank** (D471 rev., seen in the Simulator against a demo core: the first load after pairing and hash navigation render; a reload or a second tab often stays empty until much later). Find whether the core or the client holds the second connection. Trigger: the author sees a blank On hand on the phone after a reload.
+- [ ] **Scrolling the iOS Simulator** for full-length phone shots: no Simulator.app GUI on this Mac, so the phone set below the first screen is CDP device emulation in Chrome. Trigger: the next phone design pass.
+
+- [ ] **The author's review** of `.shots/d471/` and then of their own board on the next build: is one sheet per section calm, is the one sentence enough without D467's lines. Trigger: the next build on hel.
+- [ ] **Candidate C, the partner's note** (a short letter grouping the causes over the list), if the author misses the brief's warmth; it must never say the rows again. Trigger: the author asks for it.
+- [ ] **The replay's agents and waiters**: the export is the Log only, so a replay's computers show their agents as not signed in (a phone task can read as signed out on the Mac) and a loop's waiter can be missing (a wait reads as stopped). Carry the devices' agents and the armed waiters in the export. Trigger: the next real-board design pass.
+- [x] **The phone at 390 and 430** for the stacked rows (built 2026-11-22, D471 rev.: the task first, why, a quiet where-and-when line, the one fix full width).
+- [ ] **The brief's and the axis's CSS** (`.blines`, `.bline`, `.waxis` in `app.css`) is dead since D471; remove it when `app.css` is next merged whole (it is source, appended to). Trigger: the next `app.css` merge.
+- [ ] **Steps in the peek**: a step that is only a command stays in the task; if the author wants the command, show it whole on its own line. Trigger: the author asks.
 
 ## From the author's phone-use run (2026-11-16)
 - [x] **Recording consent is the person's turn, said everywhere** (built 2026-11-16, D280 (1)): the

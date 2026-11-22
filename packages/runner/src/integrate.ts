@@ -54,22 +54,38 @@ export function mergeRefusal(out: string, branch: string, base: string, started:
 export async function branchChanges(place: Place): Promise<BranchChanges | undefined> {
   const p = repoOf(place);
   if (!p || !p.baseBranch) return undefined;
+  const fork = await forkPoint(p.worktree!, p.baseBranch);
   const [ahead, status] = await Promise.all([
-    git(p.worktree!, ["rev-list", "--count", `${p.baseBranch}..${p.branch}`]),
+    git(p.worktree!, ["rev-list", "--count", fork ? `${fork}..${p.branch}` : `${p.baseBranch}..${p.branch}`]),
     git(p.worktree!, ["status", "--porcelain"]),
   ]);
   if (!ahead.ok || !status.ok) return undefined;
   const commits = Number(ahead.out);
   if (!Number.isFinite(commits)) return undefined;
-  return { commits, uncommitted: status.out.length > 0, ...(await diffStat(p.worktree!, p.baseBranch)) };
+  return { commits, uncommitted: status.out.length > 0, ...(await diffStat(p.worktree!, p.baseBranch, fork)) };
+}
+
+/**
+ * D471: where the task's work starts: the merge base with its base branch, or with the base's
+ * remote-tracking branch when that is newer. A task that pulled the remote's main into its branch
+ * (agents do, to work on fresh code) shares the remote's history with it; against a local main
+ * left weeks behind, the old merge base counted every upstream change as the task's own (the
+ * author's board read millions of lines). The newer of the two is a descendant of the other.
+ */
+export async function forkPoint(worktree: string, base: string): Promise<string | undefined> {
+  const [local, remote] = await Promise.all([git(worktree, ["merge-base", base, "HEAD"]), git(worktree, ["merge-base", `origin/${base}`, "HEAD"])]);
+  const l = local.ok && local.out ? local.out : undefined;
+  const r = remote.ok && remote.out ? remote.out : undefined;
+  if (!l || !r || l === r) return l ?? r;
+  return (await git(worktree, ["merge-base", "--is-ancestor", l, r])).ok ? r : l;
 }
 
 /** D128: files, lines added and removed since the branch left its base, committed or not
  *  (tracked files; a new file counts once it is added). Two more git calls; {} on failure. */
-export async function diffStat(worktree: string, base: string): Promise<{ files?: number; adds?: number; dels?: number }> {
-  const mb = await git(worktree, ["merge-base", base, "HEAD"]);
-  if (!mb.ok || !mb.out) return {};
-  const d = await git(worktree, ["diff", "--shortstat", mb.out]);
+export async function diffStat(worktree: string, base: string, fork?: string): Promise<{ files?: number; adds?: number; dels?: number }> {
+  const from = fork ?? (await forkPoint(worktree, base));
+  if (!from) return {};
+  const d = await git(worktree, ["diff", "--shortstat", from]);
   return d.ok ? parseShortstat(d.out) : {};
 }
 

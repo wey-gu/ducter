@@ -195,9 +195,9 @@ func TestOnHandLensAndStrip(t *testing.T) {
 			t.Errorf("%s is folded but walked", id)
 		}
 	}
-	// D467 round 2: the first two stand in the partner's brief with their fix, not as cards.
-	if !app.oh.briefed["t_rec"] || !app.oh.briefed["t_fold2"] || walked["t_rec"] {
-		t.Errorf("the stopped waits are not in the brief: %v, walk %v", app.oh.briefed, app.oh.order)
+	// D471: what stopped is its own row, said once and walked (no brief lines).
+	if len(app.oh.briefed) > 0 || !walked["t_rec"] || !walked["t_fold2"] {
+		t.Errorf("the stopped waits are not rows of their own: %v, walk %v", app.oh.briefed, app.oh.order)
 	}
 	if n := app.stateCounts(app.S.Board(), ""); n[0] < 4 {
 		t.Errorf("the stopped waits don't count as needing you: %v", n)

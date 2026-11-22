@@ -559,11 +559,12 @@ function FilterField(p: { id: string; label: string; about: string; value: strin
 }
 
 /** A bound task's chip: its app's mark and "#12" or the note's name; it opens the to-do in its app. */
-export function SourceChip({ src, small, states = true, plain }: { src: NonNullable<TaskCard["source"]> | SourceItemRef; small?: boolean; states?: boolean; plain?: boolean }) {
+/** D471: `short` says only the item's own label (#22): a row already names its project. */
+export function SourceChip({ src, small, states = true, plain, short }: { src: NonNullable<TaskCard["source"]> | SourceItemRef; small?: boolean; states?: boolean; plain?: boolean; short?: boolean }) {
   const s = src as NonNullable<TaskCard["source"]>;
   const word = !states ? undefined : s.state === "closed" && !s.wrote?.includes("tick") ? "todos.chip.closed" : s.state === "gone" ? "todos.chip.gone" : s.wrote?.includes("tick") ? "todos.chip.ticked" : s.wrote?.includes("comment") ? "todos.chip.commented" : undefined;
   const app = appOf(src.kind);
-  const label = src.kind === "github" && src.where ? `${src.where.split("/")[1]}${src.label}` : src.label;
+  const label = src.kind === "github" && src.where && !short ? `${src.where.split("/")[1]}${src.label}` : src.label;
   const inner = (
     <>
       <BrandMark name={src.kind} size={small ? 14 : 16} />

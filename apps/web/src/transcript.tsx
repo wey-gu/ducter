@@ -26,7 +26,7 @@ import { escArmed } from "./esc.ts";
 import { A, effortWord } from "./app.ts";
 import { duration, harnessName, modelName } from "./format.ts";
 import { markdown } from "./markdown.ts";
-import { cantLine } from "./cant.tsx";
+import { cantClause, cantLine } from "./cant.tsx";
 import { MediaBlock } from "./media.tsx";
 import { DocLine } from "./doc-line.tsx";
 import { attention, effortOf, finished, harnessOf, modelOf, placeOf, title, type Task } from "./store.ts";
@@ -72,7 +72,47 @@ export function shortTitle(title: string): string {
     }
   }
   s = s.split(/\s+/).join(" ").replace(/[ ,，:：\-—]+$/, "");
+  s = untrail(s);
   return s || title.trim();
+}
+
+/** D471: words a title can't end on once a source cut it ("…with the…"): English function words. */
+const DANGLING = new Set(["a", "an", "the", "and", "or", "of", "to", "for", "with", "on", "in", "at", "by", "from", "into", "when", "that", "which", "is", "are", "was", "were", "be", "as", "but", "if", "its", "it", "this", "their", "your", "our", "under", "over", "about", "after", "before", "against", "between", "during", "without", "within", "via", "while", "than", "so", "because", "not", "has", "have"]);
+
+/**
+ * D471: a title that arrived already cut (a GitHub issue's, a source's: "Reconcile the orbit
+ * plugin's tail offsets with the…") is said whole up to its last real word, never cut again: the ellipsis
+ * and the dangling function words before it go. Han text keeps its words as they are.
+ */
+export function untrail(title: string): string {
+  let s = title.trim();
+  if (!/(…|\.\.\.)$/.test(s)) return s;
+  s = s.replace(/\s*(…|\.\.\.)$/, "").replace(/[ ,，:：;；\-—]+$/, "");
+  const words = s.split(" ");
+  while (words.length > 2 && DANGLING.has(words.at(-1)!.toLowerCase())) words.pop();
+  return words.join(" ").replace(/[ ,，:：;；\-—]+$/, "");
+}
+
+/**
+ * D471: a name said inside a sentence, at most `max` characters (Han count 2 for the eye): cut at a
+ * word's end (a space, or Han punctuation), never inside a word; "…" only when it was cut.
+ */
+export function sayName(title: string, max = 28): string {
+  const s = shortTitle(title) || title.trim();
+  const width = (x: string) => [...x].reduce((n, ch) => n + (/[㐀-鿿＀-￯]/.test(ch) ? 2 : 1), 0);
+  if (width(s) <= max) return s;
+  const cs = [...s];
+  let out = "";
+  let lastBreak = 0;
+  for (const ch of cs) {
+    if (width(out + ch) > max - 1) break;
+    out += ch;
+    if (/[\s，、：；。,;:]/.test(ch) || /[㐀-鿿]/.test(ch)) lastBreak = out.length;
+  }
+  // Latin text ends at the last space; Han text may end at any character (each is a word).
+  const lastSpace = out.lastIndexOf(" ");
+  const cut = /[㐀-鿿]/.test(out.slice(-1)) ? out.length : lastSpace > out.length / 2 ? lastSpace : lastBreak > out.length / 2 ? lastBreak : out.length;
+  return `${out.slice(0, cut).replace(/[\s，、：；。,;:\-—]+$/, "")}…`;
 }
 
 /** A step's summary in words: "在 Chrome 里打开 appstoreconnect.apple.com". */
@@ -660,7 +700,8 @@ function BlockView({ task, b, live, took }: { task: Task; b: Block; live?: boole
         );
       // D207: the runner's lines in the user's words; the line as logged only on hover, for an error.
       // D472: an attempt that couldn't start says its real reason (its cant), as the page does.
-      const line = b.cant ? cantLine(b.cant) : t(`note.${b.say}`, noteName(b));
+      // D471 round 2: the same failure again is one line with how many tries.
+      const line = (b.tries ?? 1) > 1 ? (b.cant ? t("note.tries", b.tries, cantClause(b.cant)) : t("note.tries.bare", b.tries)) : b.cant ? cantLine(b.cant) : t(`note.${b.say}`, noteName(b));
       return (
         <div class={`step note${b.bad ? " bad" : ""}`}>
           {b.bad ? GLYPHS.error!() : GLYPHS.other!()}

@@ -92,6 +92,13 @@ func (a *App) switchLine(task *store.Task, b *Block) string {
 // noteLine is a note in words: note.<say>, its name filled in (a
 // computer it didn't name is said plainly; an effort in its own word).
 func (a *App) noteLine(b *Block) string {
+	if b.Tries > 1 {
+		// D471 round 2: the same failure again is one line with how many tries.
+		if b.Cant != nil {
+			return a.L.T("note.tries", b.Tries, a.cantClause(b.Cant))
+		}
+		return a.L.T("note.tries.bare", b.Tries)
+	}
 	if b.Cant != nil {
 		return a.cantLine(b.Cant)
 	}

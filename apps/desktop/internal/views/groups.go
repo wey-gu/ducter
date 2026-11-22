@@ -102,6 +102,10 @@ func (a *App) boardGroups(b store.Board) []boardGroup {
 				continue
 			}
 			part++
+			// D471: a part whose task is off the board (removed, gone) is no row: a lone number said nothing.
+			if m.TaskID != "" && laneOf(m.TaskID) < 0 {
+				continue
+			}
 			r := groupRow{part: part, taskID: m.TaskID, key: m.Key, title: m.Title, device: m.Device}
 			if m.TaskID != "" {
 				if t := a.S.Task(m.TaskID); t != nil {
@@ -116,6 +120,9 @@ func (a *App) boardGroups(b store.Board) []boardGroup {
 				bg.done++
 			}
 			bg.rows = append(bg.rows, r)
+		}
+		if g.Hand == nil && len(bg.rows) < 2 {
+			continue // D471: one part left is that task's own row, never a group of one
 		}
 		if hv := g.Hand; hv != nil {
 			// D385: what waits for the person (the plan, the review) stands in Needs you.

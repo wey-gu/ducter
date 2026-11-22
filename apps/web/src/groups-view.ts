@@ -37,7 +37,12 @@ export function boardGroups(groups: TaskGroupView[] | undefined, laneOf: (taskId
     // D385: plan first's own part is the plan, said by the card's plan block, never a numbered part.
     const plan = g.hand?.plan?.taskId;
     const parts = plan ? g.members.filter((m) => isHeld(m) || m.taskId !== plan) : g.members;
-    const rows: MemberRow[] = parts.map((m, i) => (isHeld(m) ? { kind: "held", key: m.key, part: i + 1, title: m.title, ...(m.device ? { device: m.device } : {}) } : { kind: "task", taskId: m.taskId, part: i + 1, attention: attentionOf(m.taskId) }));
+    const rows: MemberRow[] = parts
+      .map((m, i): MemberRow => (isHeld(m) ? { kind: "held", key: m.key, part: i + 1, title: m.title, ...(m.device ? { device: m.device } : {}) } : { kind: "task", taskId: m.taskId, part: i + 1, attention: attentionOf(m.taskId) }))
+      // D471: a part whose task is off the board (removed, gone) is no row: a lone number said nothing.
+      .filter((r) => r.kind === "held" || laneOf(r.taskId) >= 0);
+    // D471: one part left is that task's own row, never a group of one.
+    if (!g.hand && rows.length < 2) continue;
     const all = [...rows.flatMap((r) => (r.kind === "task" ? [r.taskId] : [])), ...(plan ? [plan] : [])];
     const lanes = all.map(laneOf).filter((l) => l >= 0);
     if (!lanes.length) continue;

@@ -16,20 +16,31 @@ comes next: "Nothing needs you. I'm on it." while work is under way, or "Nothing
 first is back at 22:40." when everything waits. If a task has stopped and nothing will start it
 again on its own, the line says so: "One has stopped and needs a look."
 
-Under that line your partner tells you, in a few short lines, what came back since you last
-looked (with the pull request it opened, one tap away), what it needs from you with the way to fix
-it right there (for a task that stopped at a phone: allow access on that phone again, then tap
-**Allowed, carry on**; for an AI agent that got signed out: **Sign in again**; for a computer that
-went away: when it was last seen, and that turning it on lets the task carry on; for a Mac that
-needs its two switches for a task working in its apps: **Open the guide on that Mac**), and what
-comes back next and when, including a task waiting for an AI agent's limit to come back (with
-**Hand it to Codex now** when another agent can take it). Its pose tells you the same at a glance: a little
-flag when something needs you, reading while work is under way, resting on its bench while
-everything waits, smiling when the day's work came back done.
+Its pose tells you the same at a glance: a little flag when something needs you, reading while
+work is under way, resting on its bench while everything waits, smiling when the day's work came
+back done.
 
 What needs you comes first. A question is answered right there. A task that has stopped (it
-waits, but nothing will bring it back by itself) shows why, how long ago it last changed, and
-**Continue** or **Put down**. A task that didn't work out shows **Try again**. Below that, the rest:
+waits, but nothing will bring it back by itself) or didn't work out says why in plain words, with
+the way to fix it right beside it:
+
+- it stopped at a phone: allow access on that phone again, then tap **Allowed, carry on**;
+- its AI agent got signed out on its computer: **Sign in again**;
+- its computer went away: when it was last seen, and that turning it on lets the task carry on;
+- a Mac needs its two switches for a task working in its apps: **Open the guide on that Mac**;
+- it couldn't start: why, in plain words, and the real fix first, such as **Clone it to Home
+  Server** or choosing a folder that's already there;
+- it stopped without asking for anything: what your partner knows from its last words (for
+  example, that its pull request was waiting on CI and nobody has looked since), and **Continue**.
+
+If Ducter is already fixing it by itself (starting it again, or cloning the code first), the task
+stands under **Working** saying so; you don't need to do anything. On the task's own page, the same
+failed start tried several times is one line: "Tried 3 times and it couldn't start: …".
+
+On a phone, each task reads top to bottom: the task, why, where and when, then its one fix as a
+big button.
+
+Below that, the rest:
 
 - **Working**: tasks under way.
 - **Waiting**: tasks waiting for something, such as a check to pass, an email, or a computer to
@@ -39,16 +50,20 @@ waits, but nothing will bring it back by itself) shows why, how long ago it last
   own words, but isn't counted. Tasks that finished yesterday fold under one line, **1 more done
   yesterday**.
 
-Every task is the same card, one under another. On the left, a small mark says where it stands:
+Each section is one card, and every task in it is one row. On the left, a small mark says where it stands:
 a flag when it needs you, three moving bars while it works, a ring that fills up toward when a wait
-comes back, a tick when it's done, a cross when it didn't work out. Then the title and its project,
+comes back, a tick when it's done, a cross when it didn't work out. Then the title, whole (a long one
+takes two lines), and its project,
 and under them, in words, what it is doing right now ("Running the tests", "Opened booking.com in
-Chrome"), what it waits for, or what came of it. On the right:
+Chrome"), what it waits for, or what came of it. On the right, every row's time stands on the same edge, and what you can do stands in the same
+column, so you can read down them:
 
 - working: how long it has been at it. Under its words, a thin line shows its steps as they
   happened since it started, with a softly breathing dot at now, how many steps, and when the last
   one was. A group of tasks shows its parts as one track: done, at work, waiting their turn;
-- waiting: when it comes back ("back at 11:39"); there's nothing for you to do until then;
+- waiting: when it comes back ("back at 11:39"); there's nothing for you to do until then. A task
+  waiting for an AI agent's limit says whose, and offers **Hand it to Codex now** when another
+  agent can take it;
 - done: when it finished.
 
 Which AI agent does the task shows when you point at the title, and in the task itself.
@@ -58,11 +73,11 @@ offers **Check now** (it looks again now).
 
 A card says which computer it runs on only when that isn't the one most of your tasks use.
 
-With two or more waiting, they sit on a line of time from now to when each comes back. A finished task shows what it
-made, such as its pull request (**#1190**), which you can open.
+A finished task shows what it made, such as its pull request (**#1190**), which you can open.
 
-On a wide window, the task you've selected shows on the right as it works: what it's doing now,
-its last few steps in its own words, and **Open the task**. For a task using a phone, it shows the
+On a wide window, a task shows on the right as it works: the one you moved to with the arrow keys,
+or else the one at work. You see what it's doing now, its last few steps in its own words, and
+**Open the task**; for a task that stopped, why, and under **Its last words** what it last told you. For a task using a phone, it shows the
 last picture you saw of that phone and **Watch the phone**; for one in a browser, **Watch it browse**. Move with the arrow keys and watch it
 follow; press Enter to go in.
 
@@ -82,9 +97,10 @@ or **Merged** once you've done either from Ducter.
 
 Every task that works in a folder belongs to that folder's project; everything else is under
 **Other**. There's nothing to set up. Once there are two or more, the projects appear: on a wide
-window as a column on the left, otherwise as a row of names above the numbers. Each one shows
-how many tasks it has and how many lines its branches have changed, and a small picture of your
-partner when something there needs you. Pick one to see only its tasks;
+window as a column on the left, otherwise as a row of names above the list. Each one shows its
+whole name and how many tasks it has; the number turns to the needs-you colour when something
+there needs you. A task that couldn't start because its folder isn't on that computer doesn't
+make a project of its own; it stays under **All**, where its fix is. Pick one to see only its tasks;
 **All** shows everything again. Under a project, **+** starts a new task in its folder.
 
 **+ Add a folder**, at the foot of the column (or **+** at the end of the row of names), makes a

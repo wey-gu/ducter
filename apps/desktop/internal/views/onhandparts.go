@@ -66,8 +66,12 @@ type boardSplit struct {
 func (a *App) splitOf(b store.Board) boardSplit {
 	var s boardSplit
 	s.needs = b.Lanes[store.LaneNeedsYou]
-	s.working = b.Lanes[store.LaneWorking]
+	s.working = append([]*store.Task(nil), b.Lanes[store.LaneWorking]...)
 	for _, x := range b.Lanes[store.LaneWaiting] {
+		if _, _, ok := mendingOf(x); ok {
+			s.working = append(s.working, x) // D473, D471: Ducter is mending it: at work, not yours yet
+			continue
+		}
 		if a.stoppedWait(x) {
 			s.stopped = append(s.stopped, x)
 		} else {
@@ -75,7 +79,10 @@ func (a *App) splitOf(b store.Board) boardSplit {
 		}
 	}
 	for _, x := range b.Lanes[store.LaneDone] {
+		_, _, mending := mendingOf(x)
 		switch {
+		case mending:
+			s.working = append(s.working, x)
 		case x.Attention() == protocol.Failed:
 			s.failed = append(s.failed, x)
 		case a.finishedToday(x):
@@ -85,6 +92,59 @@ func (a *App) splitOf(b store.Board) boardSplit {
 		}
 	}
 	return s
+}
+
+// mendingOf: a failure or a stop Ducter is mending right now (D473): its
+// newest event is a repair under way, not the partner's rethink (which may
+// still ask the person). how and name say it in the steps' words.
+func mendingOf(task *store.Task) (how, name string, ok bool) {
+	att := task.Attention()
+	if att != protocol.Failed && att != protocol.Blocked {
+		return
+	}
+	// The home's word on the card first (it read the task's newest event);
+	// else what streamed since.
+	if m := task.Card; m != nil && m.Mending != nil {
+		if m.Mending.Cls == "stall" {
+			return "stall", "", true
+		}
+		how := m.Mending.How
+		if how == "" {
+			how = "reopen"
+		}
+		return how, m.Mending.Name, true
+	}
+	for i := len(task.Events) - 1; i >= 0; i-- {
+		e := &task.Events[i]
+		switch e.Kind {
+		case protocol.KindTaskState, protocol.KindReport:
+			return
+		case "mend":
+			var b struct{ Cls, Rung, How, Name, State string }
+			if e.Decode(&b) != nil || b.State != "going" || b.Rung == "rethink" {
+				return
+			}
+			if b.Cls == "stall" {
+				return "stall", "", true
+			}
+			if b.How == "" {
+				b.How = "reopen"
+			}
+			return b.How, b.Name, true
+		}
+	}
+	// A client that just connected: the home's word on the card.
+	if m := task.Card; m != nil && m.Mending != nil {
+		if m.Mending.Cls == "stall" {
+			return "stall", "", true
+		}
+		how := m.Mending.How
+		if how == "" {
+			how = "reopen"
+		}
+		return how, m.Mending.Name, true
+	}
+	return
 }
 
 // stopMark draws a card's state mark (D467): the same glyphs as a group's
@@ -97,7 +157,12 @@ func (a *App) stateMark(c *ui.Context, task *store.Task, stopped bool) {
 		size = 28
 	}
 	box := ui.Box(c.Key("mark")).Size(size, size).Radius(size / 2).Shrink(0).AlignItems(ui.Center).Justify(ui.Center).AccessHidden(true)
+	_, _, mending := mendingOf(task)
 	switch {
+	case mending:
+		box.Background(t.Working.Surface).Children(func() {
+			ui.Box(c.Key("pulse")).Size(13, 12).Draw(drawPulse(t.Working.Dot, phaseOf(task.ID), true))
+		})
 	case stopped || att == protocol.NeedsYou:
 		box.Background(t.NeedsYou.Surface).Draw(drawGroupMark("needs", t.NeedsYou.Dot, t.Surface))
 	case att == protocol.Failed:

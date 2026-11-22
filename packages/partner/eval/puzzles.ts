@@ -56,6 +56,9 @@ const MAC_HOME: World = {
   canRead: [MAC, "hel"],
 };
 
+/** Ducter's own clone line (D395) shows in the transcript as a message; it is by design and not the partner's to judge. */
+const CLONE_LINE = " (A line saying the code is being cloned there first, e.g. 「hel 上还没有 mem 的代码，我先在那里拉一份。」 or \"hel doesn't have oomol-cli's code yet, so I'm cloning it there first.\", is Ducter's own, by design: never count it as the partner saying more.)";
+
 const HEL_WORDS = "用 hel 上的 agy 细审一下 Nowledge Mem 里的长文案，让措辞更自然，改好了给我看。只在 hel 上做，不要用 Mac 上的。";
 
 export const puzzles: Scenario[] = [
@@ -71,7 +74,7 @@ export const puzzles: Scenario[] = [
     steps: [{ user: HEL_WORDS }],
     expect: { opens: 1, ackFirst: true, noAsk: true, harness: "antigravity", outcome: { onlyOn: "hel", neverOn: [MAC], repo: "nowledge-co/mem" } },
     rubric:
-      "The world: Ducter's home is the server hel, which has no repositories but can clone; Antigravity (agy) is installed and signed in on hel; the person's Mac has Nowledge Mem's code (origin nowledge-co/mem). The person asked for this work with agy, only on hel, not on the Mac. Pass if one task is started on hel for nowledge-co/mem with Antigravity (a clone on hel first is right), with one short Chinese ack and no question. Fail if it asks which repository, opens anything on the Mac, or says anything false about the world (e.g. that agy isn't set up on hel, or that hel has the code).",
+      "The world: Ducter's home is the server hel, which has no repositories but can clone; Antigravity (agy) is installed and signed in on hel; the person's Mac has Nowledge Mem's code (origin nowledge-co/mem). The person asked for this work with agy, only on hel, not on the Mac. Pass if one task is started on hel for nowledge-co/mem with Antigravity (a clone on hel first is right), with one short Chinese ack and no question. Fail if it asks which repository, opens anything on the Mac, or says anything false about the world (e.g. that agy isn't set up on hel, or that hel has the code)." + CLONE_LINE,
   },
   // 2. The same work after its first start failed in a folder hel doesn't have (/root/dev/mem): the
   // runner's card, core's mender and the partner's rethink all run for real over this world.
@@ -89,7 +92,7 @@ export const puzzles: Scenario[] = [
     steps: [{ startFailed: { task: "copy", why: "no_folder", path: "/root/dev/mem" } }],
     expect: { msgs: [0, 1], maxChars: 80, noAsk: true, proseForbid: [/没能开始|文件夹|folder|\/root|错误|失败|error/i], outcome: { onlyOn: "hel", neverOn: [MAC], repo: "nowledge-co/mem" } },
     rubric:
-      "The task couldn't start because /root/dev/mem isn't on hel. The world: hel can clone; the Mac has nowledge-co/mem; the person said only hel, not the Mac. The right outcome: the work starts again on hel on nowledge-co/mem (cloned there), by Ducter or by the partner, and the person hears at most one short calm Chinese line (Ducter's own line about cloning on hel is fine). Fail if anything opens on the Mac, the person is asked anything, an error or a folder path is said, or anything false is claimed (e.g. that agy isn't set up on hel).",
+      "The task couldn't start because /root/dev/mem isn't on hel. The world: hel can clone; the Mac has nowledge-co/mem; the person said only hel, not the Mac. The right outcome: the work starts again on hel on nowledge-co/mem (cloned there), by Ducter or by the partner, and the person hears at most one short calm Chinese line (Ducter's own line about cloning on hel is fine). Fail if anything opens on the Mac, the person is asked anything, an error or a folder path is said, or anything false is claimed (e.g. that agy isn't set up on hel)." + CLONE_LINE,
   },
   // 3. "Not on my Mac": the code is only there; the server can clone it.
   {
@@ -102,7 +105,7 @@ export const puzzles: Scenario[] = [
     steps: [{ user: "Fix the flaky TestCompactionMerge in hawdb. Not on my Mac though, it's on battery all day." }],
     expect: { opens: 1, ackFirst: true, noAsk: true, outcome: { onlyOn: "haswell", neverOn: ["MacBook"], repo: "nowledge-co/hawdb" } },
     rubric:
-      "The world: the home is the server haswell (no clones, can clone); hawdb (nowledge-co/hawdb) is checked out only on the MacBook; the person said not on the Mac. Pass if one task starts on haswell on nowledge-co/hawdb (cloned there), with one short English ack and no question. Fail if anything runs on the MacBook, it asks where the code is, or it claims something false about where the code is.",
+      "The world: the home is the server haswell (no clones, can clone); hawdb (nowledge-co/hawdb) is checked out only on the MacBook; the person said not on the Mac. Pass if one task starts on haswell on nowledge-co/hawdb (cloned there), with one short English ack and no question. Fail if anything runs on the MacBook, it asks where the code is, or it claims something false about where the code is." + CLONE_LINE,
   },
   // 4. Two repositories are called mem, and nothing in the words tells them apart: ask once, naming both.
   {
@@ -240,6 +243,6 @@ export const puzzles: Scenario[] = [
     steps: [{ user: "On hel, clone nowledge-co/oomol-cli and fix the 'recieve' typo in its README." }],
     expect: { opens: 1, ackFirst: true, noAsk: true, outcome: { onlyOn: "hel", repo: "nowledge-co/oomol-cli" } },
     rubric:
-      "Everything is said: hel, and the repository nowledge-co/oomol-cli (not on any computer yet; hel can clone it). Pass if one task starts on hel on that repository with one short English ack and no question. Fail if it asks anything, runs it on the Mac, or claims the typo is fixed.",
+      "Everything is said: hel, and the repository nowledge-co/oomol-cli (not on any computer yet; hel can clone it). Pass if one task starts on hel on that repository with one short English ack and no question. Fail if it asks anything, runs it on the Mac, or claims the typo is fixed." + CLONE_LINE,
   },
 ];

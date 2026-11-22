@@ -11,7 +11,8 @@ test("a start Ducter couldn't mend: why, where, what it tried, what is left, and
   expect(s).toContain("couldn't start on Hetzner Server: that folder isn't there (/root/dev/mem)");
   expect(s).toContain("Ducter already started it again, fresh");
   expect(s).toContain("Still possible: MacBook has a copy");
-  expect(s).toContain('place {"kind":"repo","remote":"owner/name"}');
+  expect(s).toContain('task_open with replaces "smx2jjb3"');
+  expect(s).toContain("its repository as place.remote");
   expect(s).toContain("The user hasn't been told");
   expect(s).not.toContain("Ask the user once now");
 });
@@ -26,4 +27,13 @@ test("a stall: carry it on, never redo anything outward", () => {
   const s = renderMend({ taskId: "t", cls: "stall", rung: "rethink", attempt: 1, tried: [], why: "stall", state: "ok" }, "Fix the README");
   expect(s).toContain("stopped without a report");
   expect(s).toContain("Never ask it to redo anything it already sent");
+});
+
+// D477: a hand-over carries facts for the partner to judge, never a verdict code made.
+test("a stall's facts and the person's recorded word go to the partner as facts", () => {
+  const s = renderMend({ taskId: "lint01", cls: "stall", rung: "rethink", attempt: 1, tried: [], why: "stall", state: "ok" }, "Fix the lint warnings in foo", undefined, { agent: "Antigravity", computer: "MacBook", ranMs: 9_000, toolCalls: 0, lastWords: "You have exhausted your capacity on this model.", where: "only on hel" });
+  expect(s).toContain("its agent: Antigravity on MacBook; it ran 9 s; 0 tool calls; its last words:");
+  expect(s).toContain("The user said this work runs only on hel");
+  expect(s).toContain("Judge from the facts");
+  expect(s).toContain('replaces "lint01"');
 });

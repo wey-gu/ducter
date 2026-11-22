@@ -149,6 +149,8 @@ export interface RenderCtx {
   taskTitle(taskId: string): string | undefined;
   /** D473: why a task couldn't start, and the fixes core found (a rethink names them). */
   taskCant?(taskId: string): CantStart | undefined;
+  /** D477: the facts a hand-over carries: the person's recorded word on where, the task's agent and where it ran, what the agent did before it stopped. */
+  taskFacts?(taskId: string): MendFacts | undefined;
   /** D340: the user's own words sent straight to this task between its previous report and this one (seq), oldest first. */
   told?(taskId: string, reportSeq: number): string[];
   /** D348: the folder changes this task's previous report said could be undone, if any. */
@@ -513,7 +515,7 @@ export function renderTrigger(e: LogEvent, ctx: RenderCtx): string {
       return renderCallEnded(c, c.taskId ? ctx.taskTitle(c.taskId) : undefined);
     }
     case "mend":
-      return renderMend(e.body as Bodies["mend"], ctx.taskTitle((e.body as Bodies["mend"]).taskId), ctx.taskCant?.((e.body as Bodies["mend"]).taskId));
+      return renderMend(e.body as Bodies["mend"], ctx.taskTitle((e.body as Bodies["mend"]).taskId), ctx.taskCant?.((e.body as Bodies["mend"]).taskId), ctx.taskFacts?.((e.body as Bodies["mend"]).taskId));
     case "bridge_msg": {
       const b = e.body as Bodies["bridge_msg"];
       return renderBridge(b, b.direction === "in" ? ctx.bridgeOut?.(b.inReplyTo) : undefined, !!(b.mine && b.agent && ctx.trusted?.(b.agent)));
@@ -543,25 +545,56 @@ const MEND_HOW: Record<string, string> = { reopen: "started it again, fresh", cl
  * already tried, the fixes left, and what to do. The person has seen none of it yet; the partner
  * finds another way if it can, and asks once, with the one real fix, only if it can't.
  */
-export function renderMend(m: Bodies["mend"], title: string | undefined, cant?: CantStart): string {
+/** D477: facts for a hand-over, never a verdict: the partner judges what they mean. */
+export interface MendFacts {
+  /** The person's word on where this work runs, as recorded ("only on hel; not on Weyl's MacBook Pro"). */
+  where?: string;
+  /** The task's agent and the computer it was on. */
+  agent?: string;
+  computer?: string;
+  /** What the agent did before it stopped: how long it ran, tool calls that ended, its last words. */
+  ranMs?: number;
+  toolCalls?: number;
+  lastWords?: string;
+}
+
+const factsLine = (f: MendFacts | undefined) => {
+  if (!f) return "";
+  const parts = [
+    f.agent ? `its agent: ${f.agent}${f.computer ? ` on ${f.computer}` : ""}` : "",
+    f.ranMs !== undefined ? `it ran ${f.ranMs < 120_000 ? `${Math.round(f.ranMs / 1000)} s` : `${Math.round(f.ranMs / 60_000)} min`}` : "",
+    f.toolCalls !== undefined ? `${f.toolCalls} tool call${f.toolCalls === 1 ? "" : "s"}` : "",
+    f.lastWords ? `its last words: "${clip(f.lastWords, 200)}"` : "",
+  ].filter(Boolean);
+  return `${parts.length ? ` Facts: ${parts.join("; ")}.` : ""}${f.where ? ` The user said this work runs ${f.where}; Ducter holds every task for it to that.` : ""}`;
+};
+
+/**
+ * D473, D477: a task Ducter couldn't carry on by itself, handed to the partner: what happened, the
+ * facts (what the agent did, where it was, the person's recorded word on where, what is on which
+ * computer in [devices]), what Ducter already tried. The partner judges and acts; the person has
+ * seen none of it yet.
+ */
+export function renderMend(m: Bodies["mend"], title: string | undefined, cant?: CantStart, facts?: MendFacts): string {
   const name = title ? `"${clip(title, 80)}"` : m.taskId;
+  const again = ` To open the same work again: task_open with replaces "${m.taskId}" (it keeps the user's word on where), its repository as place.remote when it has one.`;
   if (m.cls === "stall")
     return (
-      `[task ${m.taskId} ${name} stopped without a report, even after Ducter's nudge] The user hasn't been told. Read where it stopped (its last checkpoint and steps), then carry it on yourself: ` +
-      `task_send it the one clear next step, or task_switch it if its agent is the trouble. Never ask it to redo anything it already sent, posted or paid. Tell the user only if it truly needs them, in one short line with what they'd do; otherwise say nothing.`
+      `[task ${m.taskId} ${name} stopped without a report, even after Ducter's nudge]${factsLine(facts)} The user hasn't been told. Judge from the facts and its steps (task_read) what this was: it did the work and only didn't report; it stopped partway; or its agent never really started. Then carry it on: ` +
+      `task_send it the one clear next step, task_switch it if its agent is the trouble, or open it again on another agent.${again} Never ask it to redo anything it already sent, posted or paid. Tell the user only if it truly needs them, in one short line; otherwise say nothing. Never say anything the facts don't show.`
     );
   const where = cant?.computer ? ` on ${cant.computer}` : "";
   const what = cant?.path ? ` (${cant.path})` : cant?.what ? ` (${cant.what})` : "";
+  const itSaid = cant?.detail ? ` Its agent said: "${clip(cant.detail, 160)}".` : "";
   const tried = m.tried.length ? ` Ducter already ${m.tried.map((t) => `${MEND_HOW[t.how] ?? t.how}${t.on ? ` on ${t.on}` : ""}`).join(", then ")}; that didn't do it.` : "";
   const left = [cant?.elsewhere ? `${cant.elsewhere.name} has a copy` : "", cant?.cloneHere ? "it can be cloned where it was to work" : ""].filter(Boolean).join("; ");
-  const head = `[task ${m.taskId} ${name} couldn't start${where}: ${MEND_WHY[m.why ?? "other"] ?? MEND_WHY.other}${what}.${tried}${left ? ` Still possible: ${left}.` : ""}${m.budget ? " Ducter is holding back further tries this hour." : ""}]`;
+  const head = `[task ${m.taskId} ${name} couldn't start${where}: ${MEND_WHY[m.why ?? "other"] ?? MEND_WHY.other}${what}.${itSaid}${tried}${left ? ` Still possible: ${left}.` : ""}${m.budget ? " Ducter is holding back further tries this hour." : ""}]${factsLine(facts)}`;
   if (m.again)
     return `${head} It came back to you a second time. Ask the user once now, in one short line in their language, with the one real fix as the choice (which repository or folder, which computer, or signing in its agent). No error text, no list of what failed.`;
   return (
-    `${head} The user hasn't been told; find another way first. ` +
-    `If you know which repository the work is on (the user's words, the to-do, the project), task_open it again with place {"kind":"repo","remote":"owner/name"} (never a guessed path): Ducter finds its copy or clones it, and the task that couldn't start is set aside. ` +
-    `If its agent couldn't start, open it on another agent; if the computer is the trouble, on another computer. ` +
-    `Only if none of that can work, ask the user once, in one short line, with the one real fix. Never paste error text or list what failed; a fix that worked needs no word at all.`
+    `${head} The user hasn't been told; find another way first, from the facts and [devices] (which computers, their agents, the code on each).${again} ` +
+    `Code not on the computer the work belongs on is cloned there first; if its agent couldn't start, open it on another agent there. ` +
+    `Only if none of that can work, ask the user once, in one short line, with the one real fix. Never paste error text or list what failed; a fix that worked needs no word at all. Never say anything [devices] or these facts don't show.`
   );
 }
 

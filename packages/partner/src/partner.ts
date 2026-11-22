@@ -52,7 +52,8 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { AliveSource } from "../../protocol/src/alive.ts";
-import { ASKS_MAX, type AskLine, callWakes, FREE_TIERS, fileView, harnessName, HARNESSES, HARNESS_IDS, isHarnessId, relaysBridge, isImage, isWorkKind, WORK_KINDS, type WorkKind, MEDIA_LIMITS, viewText, type MediaRef, type ActivityStep, type Bodies, type BodyWhy, type Brain, type CalEvent, type CalGlance, type EventKind, type HarnessId, type LogEvent, type Place, type TaskCard, type TaskGroupFrame, type TaskGroupView, type TaskNeeds } from "../../protocol/src/index.ts";
+import { ASKS_MAX, type AskLine, callWakes, FREE_TIERS, fileView, harnessName, HARNESSES, HARNESS_IDS, isHarnessId, relaysBridge, isImage, isWorkKind, WORK_KINDS, type WorkKind, MEDIA_LIMITS, viewText, type MediaRef, type ActivityStep, type Bodies, type BodyWhy, type Brain, type CalEvent, type CalGlance, type EventKind, type HarnessId, type LogEvent, type Place, type TaskBound, type TaskCard, type TaskGroupFrame, type TaskGroupView, type TaskNeeds } from "../../protocol/src/index.ts";
+import { boundWords } from "../../protocol/src/where.ts";
 import type { CoreApi, HarnessEvent, HarnessSession, Partner, Runner, SendImage, ToolHandler, WebLookPort, WorkingMemoryView } from "../../protocol/src/internal.ts";
 import { resolveWindows, WINDOW_MAX, WINDOW_MIN } from "../../protocol/src/harness-facts.ts";
 
@@ -606,6 +607,15 @@ const remoteOf = (p: unknown): string | undefined => {
   const r = (p as { remote?: unknown } | undefined)?.remote;
   return typeof r === "string" && r.trim() ? r.trim().slice(0, 300) : undefined;
 };
+/** D477: task_open's `where` as the partner wrote it (computer names; core checks them against the home's computers). */
+const whereOf = (w: unknown): { where?: { on?: string; only?: boolean; not?: string[] } } => {
+  if (!w || typeof w !== "object") return {};
+  const x = w as { on?: unknown; only?: unknown; not?: unknown };
+  const on = typeof x.on === "string" && x.on.trim() ? x.on.trim().slice(0, 80) : undefined;
+  const not = Array.isArray(x.not) ? x.not.filter((n): n is string => typeof n === "string" && !!n.trim()).map((n) => n.trim().slice(0, 80)).slice(0, 8) : [];
+  if (!on && !not.length) return {};
+  return { where: { ...(on ? { on } : {}), ...(on && x.only === true ? { only: true } : {}), ...(not.length ? { not } : {}) } };
+};
 const GROUP_NOTE = "Task opened as a part of its group. Open the group's remaining parts now (task_open, the same group), then your turn is done: one short line at most, no checking on them.";
 const HELD_NOTE = "Held in line: Ducter opens it when the part before it in the same place is done, from that part's branch. Open any remaining parts the same way, then end your turn; say at most one short line that they go one after another.";
 /** D360: what the partner reaches of core's groups (core/src/task-groups.ts). */
@@ -860,6 +870,21 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     taskTitle: (id) => core.tasks.get(id)?.title ?? jobs.get(id)?.title,
     // D473: why a task couldn't start and the fixes core found, for a rethink.
     taskCant: (id) => core.tasks.get(id)?.cant,
+    // D477: the facts a hand-over carries (render.ts MendFacts): recorded, counted, never inferred here.
+    taskFacts: (id) => {
+      const c = core.tasks.get(id);
+      if (!c) return undefined;
+      const dev = "device" in c.place && c.place.device ? c.place.device : "local";
+      const b = core.places?.boundOf?.(id);
+      const nameOf = (d: string) => core.places?.nameOf?.(d) ?? d;
+      const stall = core.log.read({ stream: `task:${id}`, kinds: ["task_event"], limit: 200 }).reverse().map((e) => (e.body as Bodies["task_event"]).raw as { stall?: boolean; facts?: { ranMs?: number; toolCalls?: number; lastWords?: string } } | undefined).find((r) => r?.stall)?.facts;
+      return {
+        ...(c.harness ? { agent: harnessName(c.harness) } : {}),
+        ...(c.place.kind !== "none" ? { computer: nameOf(dev) } : {}),
+        ...(b ? { where: boundWords(b, nameOf) } : {}),
+        ...(stall ?? {}),
+      };
+    },
     // D340: what the user typed into the task itself since its previous report (research/124 F1: without
     // it, the person's own asks read as the task's ideas, and the partner offered to delete them).
     told: (id, reportSeq) => {
@@ -1718,7 +1743,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     // D405: the person's apps, on every turn while they have any (bounded: the newest APPS_SHOWN).
     const appsLine = core.apps ? renderApps(core.apps.list(core.persona.id), (id) => core.apps!.data(id), now()) : "";
     if (appsLine) deltas.push(appsLine);
-    const devices = renderDevices(core.workers?.list() ?? []);
+    const devices = renderDevices(core.workers?.list() ?? [], core.homeDevice?.(), core.codeOn?.());
     if (devices) deltas.push(devices);
     if (!fresh) return deltas.join("\n");
     const isRecut = recutting;
@@ -2196,7 +2221,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   tools.register(
     "partner",
     "task_open",
-    "Open a task: a separate working session in its own place (repo, folder, browser) for anything that needs a place, writes, or takes more than ~10s. A follow-up on a task's work (the same errand or goal, builds on what it found or changed, needs its sign-ins, files or branch) is NOT a new task: task_send it to that task, even when done; it keeps its session, place and agent. Open a new task only for separate work, or when the user asks for a new one; if it must build on an unmerged task branch, set place.baseBranch to that branch. Write the one-sentence ack BEFORE calling this. Fill the fields in this order: title, kind, needs (only when it needs something of a computer), place ({\"kind\":\"none\"} when it has none), then brief last: the task starts as soon as its title and place are written. Ducter picks the computer a task runs on from its needs (and says where on the task); name a computer in place.device only when the user named one. The brief must quote the user's words verbatim and list decisions, done-criteria, out of scope, and the place. " +
+    "Open a task: a separate working session in its own place (repo, folder, browser) for anything that needs a place, writes, or takes more than ~10s. A follow-up on a task's work (the same errand or goal, builds on what it found or changed, needs its sign-ins, files or branch) is NOT a new task: task_send it to that task, even when done; it keeps its session, place and agent. Open a new task only for separate work, or when the user asks for a new one; if it must build on an unmerged task branch, set place.baseBranch to that branch. Write the one-sentence ack BEFORE calling this. Fill the fields in this order: title, kind, needs (only when it needs something of a computer), place ({\"kind\":\"none\"} when it has none), then brief last: the task starts as soon as its title and place are written. The brief must quote the user's words verbatim and list decisions, done-criteria, out of scope, and the place. " +
       'Choose place {"kind":"browser"} when the work happens on the web: looking something up, checking or reading a page or site, comparing products, filling a form. Codex and Claude Code tasks work in the user\'s own Chrome with their own browser tools (signed in as the user, in a window of their own) and never sign in, submit, post or pay without the user\'s Go; otherwise the task uses Ducter\'s own browser, which keeps its sign-ins between tasks. Any Codex task can also operate apps on this Mac with its Computer Use; say so when a task will. ' +
       "A browser task never signs in, submits, posts, buys, or pays by itself: it stops and asks the user with a question, so put that in the brief's out of scope. To buy or book (a ticket, a hotel, a cart): one task with needs.buy; it does everything up to the checkout and stops there with one card, and the user pays with their own tap. " +
       "Returns at once; the task reports back on its own. Never wait on it.",
@@ -2214,12 +2239,12 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         place: {
           type: "object",
           description:
-            'Where it works, written before the brief: {"kind":"repo","device":"local","repoPath":"~/dev/foo"}, {"kind":"folder","device":"local","path":"~/Documents/x"}, {"kind":"browser","device":"local","profile":"default"} for web work, or {"kind":"none"}.',
+            'Where it works, written before the brief: {"kind":"repo","remote":"owner/name"} (or "repoPath" when known), {"kind":"folder","path":"~/Documents/x"}, {"kind":"browser","profile":"default"} for web work, or {"kind":"none"}.',
           properties: {
             kind: { type: "string", enum: ["none", "repo", "folder", "browser"] },
-            device: { type: "string", description: 'Leave it out (or "local") and Ducter picks the computer from needs. A computer\'s name from the [devices] line only when the user named that computer ("在 MacBook 上做"); a repo or folder on another computer: that computer.' },
+            device: { type: "string", description: "Its [devices] name, when the user's words or the facts there settle it; else omit it." },
             repoPath: { type: "string" },
-            remote: { type: "string", description: "owner/name when the path is unknown; Ducter finds it" },
+            remote: { type: "string", description: "The repository (owner/name) you judge it is on; Ducter finds or clones it" },
             path: { type: "string" },
             profile: { type: "string" },
             baseBranch: { type: "string", description: "Repo only: branch to start from. For new work that builds on an earlier task's unmerged branch, pass that branch." },
@@ -2229,7 +2254,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         needs: {
           type: "object",
           description:
-            "What the task needs of the computer it runs on, before place. Ducter ranks the computers and agents by it, never widens access by itself, and says where on the task. Leave out what it doesn't need.",
+            "What the task needs of the computer it runs on, before place. Ducter ranks computers and agents by it and never widens access. Leave out what it doesn't need.",
           properties: {
             browse: { type: "boolean", description: "It works on web pages (public pages need no sign-in: Ducter's own browser does them)" },
             signedIn: { type: "boolean", description: "It needs sites the user is signed in to (their orders, their inbox on the web, an account page)" },
@@ -2241,6 +2266,12 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
             phone: { type: "string", enum: ["mine", "ducter", "any"], description: "It works in an app on a phone; which phone. mine: the user's own, with their apps, accounts and messages (用我的手机, 我的微信, their orders, \"on my Pixel\"). ducter: Ducter's own clean phone with none of their accounts (用你的手机 = yours, Ducter's; 在安卓上试我们的 App, install an APK, a fresh phone). any: either does (an app anyone can open, nothing of theirs). Unsure: mine. Set it even when no phone is set up yet: Ducter offers the user the one tap that sets it up. Never tell the user about adb, USB or wireless debugging, a cable or Developer options" },
           },
         },
+        where: {
+          type: "object",
+          description: "What the user said about computers for it (\"只在 hel 上，不要用 Mac\": on hel, only, not the Mac), names as in [devices]; held on this and any task replacing it.",
+          properties: { on: { type: "string" }, only: { type: "boolean" }, not: { type: "array", items: { type: "string" } } },
+        },
+        replaces: { type: "string", description: "The id of a task whose work this opens again (keeps its where)." },
         project: { type: "string" },
         ...(bridge ? { forMessage: { type: "string", description: "Only when this task does what another agent asked through Bridge (and the user said go): that message id. Ducter tells the sender it was taken, and reminds you to send the outcome." } } : {}),
         harness: {
@@ -2258,7 +2289,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       },
       required: ["title", "brief"],
     }),
-    async (raw0: { title?: unknown; brief?: unknown; place?: Place; project?: string; harness?: string; model?: string; forMessage?: unknown; needs?: unknown; media?: unknown; group?: unknown; kind?: unknown; asks?: unknown }) => {
+    async (raw0: { title?: unknown; brief?: unknown; place?: Place; project?: string; harness?: string; model?: string; forMessage?: unknown; needs?: unknown; media?: unknown; group?: unknown; kind?: unknown; asks?: unknown; where?: unknown; replaces?: unknown }) => {
       // D462: the same call twice in one turn (Codex, live in the eval: two identical task_opens,
       // two tasks on one branch) opens one task; the second gets the first's answer.
       const t0 = turn;
@@ -2351,8 +2382,10 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       // is on (the place's remote, the to-do taken, an address in the words): a path the model
       // guessed never wins over a copy Ducter found, and no clone anywhere means one is made first.
       let cloneLine: string | undefined;
+      let bound: TaskBound | undefined;
+      let placedOn: string | undefined;
       if (core.places) {
-        const pf = await core.places.preflight({ place, ...(remoteOf(raw.place) ? { remote: remoteOf(raw.place)! } : {}), texts: [args.title, args.brief], userTexts });
+        const pf = await core.places.preflight({ place, ...(remoteOf(raw.place) ? { remote: remoteOf(raw.place)! } : {}), texts: [args.title, args.brief], userTexts, ...whereOf(raw.where), ...(typeof raw.replaces === "string" && raw.replaces.trim() ? { replaces: raw.replaces.trim() } : {}) });
         if (!pf.ok) {
           const early = t?.early.find((e) => !e.used);
           if (early) {
@@ -2363,6 +2396,9 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         }
         place = pf.place;
         cloneLine = pf.said;
+        bound = pf.bound;
+        // D477: where Ducter put it when it chose (a copy it found, a clone, a where-rule) is a fact the partner hears.
+        if (pf.computer && (pf.how === "found" || pf.how === "clone" || pf.how === "rule")) placedOn = `${pf.computer}${pf.how === "clone" ? `, cloning ${pf.repo ?? "the code"} there first` : pf.how === "found" ? `, in its copy of ${pf.repo ?? "the code"}` : ""}`;
       }
       // D395: "仔细" / "carefully" in the person's words: the task thinks harder (and checks its work).
       const effort = effortFromWords(userTexts);
@@ -2435,7 +2471,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           joinGroup(card.taskId);
           lineUp(card.taskId);
           await claimFor(card);
-          return { ok: true, taskId: card.taskId, title: card.title, place: card.place, attention: card.attention, note: kindNote(card.taskId, note) };
+          return { ok: true, taskId: card.taskId, title: card.title, place: card.place, attention: card.attention, ...(placedOn ? { where: placedOn } : {}), note: kindNote(card.taskId, note) };
         }
         early.brief.reject(new Error("the call names another place, agent or needs")); // dropped; opened below instead
       } else if (t) {
@@ -2470,6 +2506,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           ...((n) => (n ? { needs: n } : {}))(parseNeeds(raw.needs)),
           ...(isWorkKind(raw.kind) ? { workKind: raw.kind } : {}),
           language: taskLanguage(t),
+          ...(bound ? { bound } : {}),
           ...(handed.length ? { media: handed } : {}),
         };
         // D360: a later part in the same folder waits for the one before it: held, no task yet.
@@ -2496,9 +2533,9 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         await claimFor(card);
         if (cloneLine) {
           tellUser(cloneLine);
-          return { ok: true, taskId: card.taskId, title: card.title, place: card.place, attention: card.attention, note: CLONE_NOTE };
+          return { ok: true, taskId: card.taskId, title: card.title, place: card.place, attention: card.attention, ...(placedOn ? { where: placedOn } : {}), note: CLONE_NOTE };
         }
-        return { ok: true, taskId: card.taskId, title: card.title, place: card.place, attention: card.attention, note: kindNote(card.taskId, note) };
+        return { ok: true, taskId: card.taskId, title: card.title, place: card.place, attention: card.attention, ...(placedOn ? { where: placedOn } : {}), note: kindNote(card.taskId, note) };
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         // The status line is the person's; the "Tell the user …" instruction is the partner's only (as newtask.ts).
@@ -5748,20 +5785,48 @@ export function renderApps(apps: readonly AppMeta[], data: (id: string) => Recor
   ].join("\n");
 }
 
-export function renderDevices(workers: { name: string; online: boolean; asleep?: boolean; os?: string; harnesses?: { id: string; loggedIn: boolean }[]; web?: "chrome" | "ducter"; alwaysOn?: boolean }[]): string {
+type DeviceAgents = { id: string; installed?: boolean; loggedIn: boolean; version?: string }[];
+/** D476, D477: signed in, and installed but not signed in, so "isn't set up there" is never said of an agent that is. */
+const agentsWords = (hs: DeviceAgents | undefined, none: string) => {
+  const ai = (hs ?? []).filter((h) => h.loggedIn).map((h) => h.id).slice(0, 6);
+  const idle = (hs ?? []).filter((h) => !h.loggedIn && h.installed).map((h) => h.id).slice(0, 6);
+  return `${ai.length ? `, signed in: ${ai.join(", ")}` : none}${idle.length ? `, installed but not signed in: ${idle.join(", ")}` : ""}`;
+};
+/** D477: the code on one computer, compact ("code: nowledge-mem (nowledge-co/mem), wey-gu/ducter"); none known: says so. */
+const CODE_MAX = 6;
+const codeWords = (code: { device: string; name: string; remote?: string }[] | undefined, dev: string) => {
+  if (!code) return "";
+  const here = code.filter((c) => c.device === dev);
+  if (!here.length) return ", code: none known";
+  const shown = here.slice(0, CODE_MAX).map((c) => (c.remote ? (c.remote.endsWith(`/${c.name}`) ? c.remote : `${c.name} (${c.remote})`) : c.name));
+  return `, code: ${shown.join(", ")}${here.length > CODE_MAX ? ` and ${here.length - CODE_MAX} more` : ""}`;
+};
+
+/**
+ * The partner's world on every turn (L4), compact: each computer with its state, its agents (signed
+ * in, or installed but not), and the code Ducter knows is on it with origins (D477). Facts only: the
+ * partner places work from them and from the person's words; nothing here decides for it.
+ */
+export function renderDevices(
+  workers: { id?: string; name: string; online: boolean; asleep?: boolean; os?: string; harnesses?: DeviceAgents; web?: "chrome" | "ducter"; alwaysOn?: boolean }[],
+  home?: { name: string; aliases?: string[]; harnesses?: DeviceAgents },
+  code?: { device: string; name: string; remote?: string }[],
+): string {
   if (!workers.length) return "";
   // An L4 line on every turn: bounded however many computers join (research/48 F2).
   const shown = workers.length > DEVICES_MAX ? [...workers].sort((a, b) => Number(b.online) - Number(a.online)).slice(0, DEVICES_MAX) : workers;
   const more = workers.length - shown.length;
+  const clipName = (n: string) => (n.length > 40 ? n.slice(0, 39) + "…" : n);
   const one = (w: (typeof workers)[number]) => {
-    const ai = (w.harnesses ?? []).filter((h) => h.loggedIn).map((h) => h.id).slice(0, 6);
     const state = w.online ? "awake" : w.asleep ? "asleep" : "can't reach";
     const sleeps = w.alwaysOn === false ? ", sleeps when its lid closes" : w.alwaysOn ? ", never sleeps" : "";
     const web = w.web === "chrome" ? ", browses in the user's own Chrome (their sign-ins)" : w.web === "ducter" ? ", browses in Ducter's own browser" : "";
-    const name = w.name.length > 40 ? w.name.slice(0, 39) + "…" : w.name;
-    return `${name} (${state}${w.os ? `, ${w.os.slice(0, 30)}` : ""}${sleeps}${web}${ai.length ? `, signed in: ${ai.join(", ")}` : ", no AI signed in"})`;
+    return `${clipName(w.name)} (${state}${w.os ? `, ${w.os.slice(0, 30)}` : ""}${sleeps}${web}${agentsWords(w.harnesses, ", no AI signed in")}${w.id ? codeWords(code, w.id) : ""})`;
   };
-  return `[devices] local (Ducter's home) · ${shown.map(one).join(" · ")}${more ? ` · and ${more} more computers` : ""}. Say what a task needs (task_open needs) and Ducter picks the computer and says where; name one in place.device only when the user named it.`;
+  // D476's finding, kept: the home by its name, the names the person calls it, and its own agents.
+  const also = (home?.aliases ?? []).filter((a) => a.toLowerCase() !== home?.name.toLowerCase()).slice(0, 2);
+  const homeWords = home ? `local (Ducter's home: ${clipName(home.name)}${also.length ? `, also called ${also.join(", ")}` : ""}${home.harnesses ? agentsWords(home.harnesses, ", no AI signed in") : ""}${codeWords(code, "local")})` : "local (Ducter's home)";
+  return `[devices] ${homeWords} · ${shown.map(one).join(" · ")}${more ? ` · and ${more} more computers` : ""}. True now: which agents are set up where, and which code is where, is only what this line says. Put work where the user's words and these facts point (place.device; their words about computers in where); with neither, say what it needs and Ducter picks. Code not on that computer yet is cloned there first (place.remote).`;
 }
 
 /** D372: a model in a word for the partner's line ("sonnet" → "Sonnet", "deepseek-official/deepseek-flash" → "Deepseek Flash"). */

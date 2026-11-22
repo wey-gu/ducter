@@ -80,6 +80,7 @@ import { APP_DATA_SCHEMA, createBoards } from "./boards.ts";
 import { createLoadout, isRuleHint, registerRuleTools, registerSwitchTool, registerBrainSwitchTool, type Loadout } from "./loadout.ts";
 import { createKindRetry, type KindRetry } from "./kind-retry.ts";
 import { createMender } from "./mend.ts";
+import { hostAlias } from "./bound.ts";
 import { readRepairEvents, repairReport, repairSince, REPAIR_WEEKS_DEFAULT, REPAIR_WEEKS_MAX } from "./mend-week.ts";
 import { openConnections, type ConnectionsStore, type Linker, type OoSource } from "./connections.ts";
 import { callWakes, neverCall, openPhone, type Phone } from "./phone.ts";
@@ -94,7 +95,7 @@ import { createModelCatalog, type ModelCatalog } from "./models.ts";
 import { browseFolders, cloneProject, createFoundRepos, ghInstallHome, gitLoginOn, isOldOp, newFolderProject, languageOf, newTaskOptions, openYourTask, type FolderProjects, type GitLoginAction, type GitRun, type NewTaskComputers, type NewTaskInput } from "./newtask.ts";
 import { BROWSE_MAX, folderRoots, insideRoots, listFolders, projectRepos, realFs, type BrowseResult } from "@ducter/protocol/src/repos.ts";
 import { cloneRepo, type CloneResult } from "@ducter/protocol/src/clone.ts";
-import { answerClones, type ClonesAnswer } from "@ducter/protocol/src/clones.ts";
+import { answerClones, remoteKey, type ClonesAnswer } from "@ducter/protocol/src/clones.ts";
 import { folderInfo, realGit as realGitInfo, type FolderInfo } from "@ducter/protocol/src/folder-info.ts";
 import { createPlaces, createRepoWhere, type WhereComputer } from "./repo-where.ts";
 import { newProjectFolder, type NewFolderResult } from "@ducter/protocol/src/new-folder.ts";
@@ -251,6 +252,8 @@ export interface CoreOptions {
   homeClones?: (remote: string, probe: boolean) => Promise<ClonesAnswer>;
   /** D395 test seam: what a folder on the home is (default: git here). */
   homeFolderInfo?: (path: string) => Promise<FolderInfo>;
+  /** D476 test seam: the other names the home is called by (default: its host name; none in tests). */
+  hostAliases?: string[];
   /** D204 test seam: clone into the home's own Ducter folder (default: git, with this computer's sign-in). */
   cloneHome?: (address: string) => Promise<CloneResult>;
   /** D203 test seam: the home's own subfolders for 找一个文件夹… (default: this computer's home folder). */
@@ -1224,14 +1227,16 @@ export function startCore(opts: CoreOptions = {}): Core {
   const whereComputers = (): WhereComputer[] => {
     const online = new Map((workersRef?.online() ?? []).map((w) => [w.deviceId, w] as const));
     const away = workersRef?.away();
-    const homeServer = (opts.platform ?? process.platform) === "linux";
+    const platform = opts.platform ?? process.platform;
+    const homeServer = platform === "linux";
     return [
-      { id: "local", name: computers.homeName(), home: true, online: true, build: homeServer ? 0 : 2 },
+      // D476: the home's host name is a name the person calls it by ("hel").
+      { id: "local", name: computers.homeName(), home: true, online: true, build: homeServer ? 0 : 2, aliases: opts.hostAliases ?? (whereTesting ? [] : hostAlias()), os: platform },
       // The same computers New task and the hand-over sheet list (their workers, away ones too).
       ...(computers.workers?.() ?? []).map((w) => {
         const hello = online.get(w.id)?.hello ?? away?.get(w.id)?.hello;
         const os = (hello?.os ?? "").toLowerCase();
-        return { id: w.id, name: w.name, home: false, online: w.online, build: os.startsWith("darwin") || os.startsWith("mac") ? 2 : 1 };
+        return { id: w.id, name: w.name, home: false, online: w.online, build: os.startsWith("darwin") || os.startsWith("mac") ? 2 : 1, ...(os ? { os } : {}) };
       }),
     ];
   };
@@ -1254,6 +1259,12 @@ export function startCore(opts: CoreOptions = {}): Core {
     },
     rules: () => rules.list(),
   });
+  // D476: the home in the partner's [devices] line: its name, the names the person calls it, its agents.
+  api.homeDevice = () => {
+    const home = whereComputers()[0]!;
+    const hs = devicesView?.harnessesNow();
+    return { name: home.name, ...(home.aliases?.length ? { aliases: home.aliases } : {}), ...(hs ? { harnesses: hs.map((h) => ({ id: h.harness, ...(h.installed !== undefined ? { installed: h.installed } : {}), loggedIn: h.loggedIn, ...(h.version ? { version: h.version } : {}) })) } : {}) };
+  };
   api.places = createPlaces({
     where: repoWhere,
     computers: whereComputers,
@@ -1265,13 +1276,36 @@ export function startCore(opts: CoreOptions = {}): Core {
     lang: () => langNow(),
     staged: () => taskSourcesRef?.stagedItem(),
     fs: { isDir: (p) => realFs.isDir(p), readText: (p) => realFs.readText?.(p), home: homedir() },
-    // D472: a folder task's folder looked for there first; a missing folder known as a project's repository.
+    // D472: a folder task's folder looked for there first.
     folder: (dev, path, ms) => (dev === "local" ? (opts.homeFolderInfo ?? ((p: string) => folderInfo(p, opts.git ?? realGitInfo)))(path) : computers.folderInfo(dev, path, ms).catch(() => "offline" as const)),
-    knownRemote: (name) => {
-      const n = name.toLowerCase();
-      return projects.list().find((p) => p.remote && (p.name.toLowerCase() === n || basename(p.remote).toLowerCase() === n))?.remote;
+    // D477: the person's word on where, as the partner recorded it on the task (its task_open's bound).
+    boundKept: (id) => {
+      for (const e of log.read({ stream: `task:${id}`, kinds: ["task_open"], limit: 50 }).reverse()) {
+        const b = (e.body as Bodies["task_open"]).bound;
+        if (b) return b;
+      }
+      return undefined;
     },
   });
+  // D477: the code Ducter knows is on each computer, for the partner's [devices] line: the person's
+  // projects (with their origin when kept) and the repositories tasks worked in (a clone's address),
+  // never a place that turned out not to be there. A fact to place work by; nothing here decides.
+  api.codeOn = () => {
+    const out = new Map<string, { device: string; name: string; remote?: string }>();
+    const add = (device: string, name: string, remote?: string) => {
+      const r = remote ? remoteKey(remote).replace(/^github\.com\//, "") : undefined;
+      const k = `${device}\u0000${r ?? name}`;
+      const had = out.get(k);
+      if (!had || (!had.remote && r)) out.set(k, { device, name, ...(r ? { remote: r } : {}) });
+    };
+    for (const p of projects.list()) if (p.place.kind === "repo") add(p.place.device || "local", p.name, p.remote);
+    for (const c of tasks.list()) {
+      if (c.place.kind !== "repo" || !c.place.repoPath) continue;
+      if (c.cant && (c.cant.why === "no_folder" || c.cant.why === "no_repo" || c.cant.why === "clone_failed")) continue;
+      add(c.place.device || "local", basename(c.place.repoPath), c.place.clone);
+    }
+    return [...out.values()];
+  };
   // D285: 做过的事 / Past tasks: the person's marks, and every task findable again.
   const marks = createMarks({ dataDir });
   tasks.setMarks((p, id) => marks.get(p, id));

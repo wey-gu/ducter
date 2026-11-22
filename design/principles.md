@@ -1,6 +1,6 @@
 # Ducter Design Principles
 
-> Draft 9 · 2026-11-21 (principle 7: offers vs interruptions, D453) · Conclusions only. Mechanics live in `design/`; evidence lives in
+> Draft 10 · 2026-11-22 (principle 21 proposed: failures fixed in context and harness, D477) · Conclusions only. Mechanics live in `design/`; evidence lives in
 > `research/` (index: `research/README.md`), cited as [n].
 
 ## Physics
@@ -101,14 +101,12 @@ Predicates run in the control plane. Semantic checks use the cheapest capable mo
 when their input changes. [2]
 
 **17. Identity is user data; the harness and model are a replaceable body.**
-A persona is one Nowledge Mem identity, and its windows share it. Ducter writes only its own
-persona and reads the rest. Every Mem write Ducter itself makes records its provenance: the
-persona's identity, `source_app = ducter`, and the window plus Log pointer; a window's own Mem
-plugin writes as the persona with its agent's `source_app`. Subscriptions run only through the user's own official binaries.
-Skills and harness config stay the user's, and windows inherit them, Nowledge Mem's plugin
-included, as the persona; only with memory off does Ducter turn that plugin off in a window.
-A user may have several personas. Each has its own conversation and identity, and they are
-isolated unless the user links them. Attention aggregates per person, never per persona. [3][8][10]
+A persona is one Nowledge Mem identity; its windows share it. Ducter writes only its own persona,
+with provenance (the identity, `source_app = ducter`, the window and Log pointer); a window's own
+Mem plugin writes as the persona with its agent's `source_app`. Subscriptions run only through
+the user's own binaries. Skills and harness config stay the user's and windows inherit them, Mem's
+plugin included (off only with memory off). Several personas are isolated unless linked;
+attention aggregates per person, never per persona. [3][8][10]
 
 **18. No per-call approvals: scope the credentials, gate the effects.**
 `needs-you` is for decisions, not permissions. Windows hold only scoped credentials, never in
@@ -124,8 +122,13 @@ HawDB later. [4][9]
 One partner reports to you. Any window opens into a full workspace and closes again, without
 new concepts. Each fact on screen is its own element; no line is words joined by a dot (D291).
 
+**21. A failure is fixed in what the model sees, can do and is held to; never by a heuristic.**
+Analyse it as the true state the model saw, the verbs it had, the guards that held. The model judges
+meaning and records it as structured data (the person's constraints, the repository it means); code
+enforces only those and the invariants. No regex, threshold, name match or rule ladder decides
+meaning; outcome-graded evals prove the fix. [206] *Proposed (D477).*
+
 ---
 
-**What is new:** prior art compacts or resets *one raw session*. Ducter rebuilds its main AI
-from cut points in an unbounded channel, treats every harness session as a cache, and spends
-human attention only where it is needed.
+**What is new:** prior art compacts or resets *one raw session*. Ducter rebuilds its main AI from
+cut points in an unbounded channel, treats every session as a cache, and spends attention only where needed.

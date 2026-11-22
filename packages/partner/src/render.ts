@@ -149,6 +149,11 @@ export interface RenderCtx {
   taskTitle(taskId: string): string | undefined;
   /** D473: why a task couldn't start, and the fixes core found (a rethink names them). */
   taskCant?(taskId: string): CantStart | undefined;
+  /**
+   * D476: for a hand-over: the person's word on where the work runs ("only on Hetzner Server; not on
+   * MacBook"), and the agents on the computer it was on, as Ducter last saw them.
+   */
+  taskWhere?(taskId: string): { bound?: string; agents?: string } | undefined;
   /** D340: the user's own words sent straight to this task between its previous report and this one (seq), oldest first. */
   told?(taskId: string, reportSeq: number): string[];
   /** D348: the folder changes this task's previous report said could be undone, if any. */
@@ -513,7 +518,7 @@ export function renderTrigger(e: LogEvent, ctx: RenderCtx): string {
       return renderCallEnded(c, c.taskId ? ctx.taskTitle(c.taskId) : undefined);
     }
     case "mend":
-      return renderMend(e.body as Bodies["mend"], ctx.taskTitle((e.body as Bodies["mend"]).taskId), ctx.taskCant?.((e.body as Bodies["mend"]).taskId));
+      return renderMend(e.body as Bodies["mend"], ctx.taskTitle((e.body as Bodies["mend"]).taskId), ctx.taskCant?.((e.body as Bodies["mend"]).taskId), ctx.taskWhere?.((e.body as Bodies["mend"]).taskId));
     case "bridge_msg": {
       const b = e.body as Bodies["bridge_msg"];
       return renderBridge(b, b.direction === "in" ? ctx.bridgeOut?.(b.inReplyTo) : undefined, !!(b.mine && b.agent && ctx.trusted?.(b.agent)));
@@ -543,25 +548,32 @@ const MEND_HOW: Record<string, string> = { reopen: "started it again, fresh", cl
  * already tried, the fixes left, and what to do. The person has seen none of it yet; the partner
  * finds another way if it can, and asks once, with the one real fix, only if it can't.
  */
-export function renderMend(m: Bodies["mend"], title: string | undefined, cant?: CantStart): string {
+export function renderMend(m: Bodies["mend"], title: string | undefined, cant?: CantStart, at?: { bound?: string; agents?: string }): string {
   const name = title ? `"${clip(title, 80)}"` : m.taskId;
+  // D476: the person's word on where it runs binds the way found, and what is set up where is only what Ducter saw.
+  const bound = at?.bound ? ` The user said this work runs ${at.bound}: Ducter refuses any other computer for it, so find the way there.` : "";
+  const agents = at?.agents ? ` ${at.agents}` : "";
+  const truth = " Never tell the user an agent isn't set up on a computer unless [devices] says so; say the real reason.";
   if (m.cls === "stall")
     return (
-      `[task ${m.taskId} ${name} stopped without a report, even after Ducter's nudge] The user hasn't been told. Read where it stopped (its last checkpoint and steps), then carry it on yourself: ` +
-      `task_send it the one clear next step, or task_switch it if its agent is the trouble. Never ask it to redo anything it already sent, posted or paid. Tell the user only if it truly needs them, in one short line with what they'd do; otherwise say nothing.`
+      `[task ${m.taskId} ${name} stopped without a report, even after Ducter's nudge]${bound}${agents} The user hasn't been told. Read where it stopped (its last checkpoint and steps), then carry it on yourself: ` +
+      `task_send it the one clear next step, or task_switch it if its agent is the trouble. Never ask it to redo anything it already sent, posted or paid. Tell the user only if it truly needs them, in one short line with what they'd do; otherwise say nothing.${truth}`
     );
   const where = cant?.computer ? ` on ${cant.computer}` : "";
   const what = cant?.path ? ` (${cant.path})` : cant?.what ? ` (${cant.what})` : "";
+  // D476: an agent that ended at once, in its own words; two repositories a name could be.
+  const itSaid = cant?.detail && ["agent", "signed_out", "not_installed", "old"].includes(m.why ?? "") ? ` Its agent said: "${clip(cant.detail, 160)}".` : "";
+  const repos = cant?.repos?.length ? ` "${cant.what}" could be ${cant.repos.join(" or ")}: ask the user which, once, naming both; never pick one.` : "";
   const tried = m.tried.length ? ` Ducter already ${m.tried.map((t) => `${MEND_HOW[t.how] ?? t.how}${t.on ? ` on ${t.on}` : ""}`).join(", then ")}; that didn't do it.` : "";
   const left = [cant?.elsewhere ? `${cant.elsewhere.name} has a copy` : "", cant?.cloneHere ? "it can be cloned where it was to work" : ""].filter(Boolean).join("; ");
-  const head = `[task ${m.taskId} ${name} couldn't start${where}: ${MEND_WHY[m.why ?? "other"] ?? MEND_WHY.other}${what}.${tried}${left ? ` Still possible: ${left}.` : ""}${m.budget ? " Ducter is holding back further tries this hour." : ""}]`;
+  const head = `[task ${m.taskId} ${name} couldn't start${where}: ${MEND_WHY[m.why ?? "other"] ?? MEND_WHY.other}${what}.${itSaid}${repos}${tried}${left ? ` Still possible: ${left}.` : ""}${m.budget ? " Ducter is holding back further tries this hour." : ""}]${bound}${agents}`;
   if (m.again)
-    return `${head} It came back to you a second time. Ask the user once now, in one short line in their language, with the one real fix as the choice (which repository or folder, which computer, or signing in its agent). No error text, no list of what failed.`;
+    return `${head} It came back to you a second time. Ask the user once now, in one short line in their language, with the one real fix as the choice (which repository or folder, which computer, or signing in its agent). No error text, no list of what failed.${truth}`;
   return (
     `${head} The user hasn't been told; find another way first. ` +
     `If you know which repository the work is on (the user's words, the to-do, the project), task_open it again with place {"kind":"repo","remote":"owner/name"} (never a guessed path): Ducter finds its copy or clones it, and the task that couldn't start is set aside. ` +
-    `If its agent couldn't start, open it on another agent; if the computer is the trouble, on another computer. ` +
-    `Only if none of that can work, ask the user once, in one short line, with the one real fix. Never paste error text or list what failed; a fix that worked needs no word at all.`
+    `If its agent couldn't start, open it on another agent; if the computer is the trouble, on another computer${at?.bound ? " the user allows" : ""}. ` +
+    `Only if none of that can work, ask the user once, in one short line, with the one real fix. Never paste error text or list what failed; a fix that worked needs no word at all.${truth}`
   );
 }
 

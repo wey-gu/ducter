@@ -2814,7 +2814,7 @@ Codex first, once OAR is near 1.0. See `research/17`.
 ## A task that couldn't start (D472)
 
 - [ ] **An eval scenario for the folder pre-flight** (the partner told "/root/dev/mem isn't on Hetzner Server; it is nowledge-co/mem" offers to clone it there in one line, then opens `{"kind":"repo","remote":…,"device":…}`). No persona or tool description changed, so D175 didn't require it; add it with the next partner eval run. Trigger: the next `eval:partner` run.
-- [ ] **A computer's other names** ("hel" for Hetzner Server): `computerNamed` matches a computer's name only, so words that say its hostname don't pin it, and D472's 换到 {computer} 上做 can't offer it. Trigger: a second miss where the person named a computer by another name.
+- [x] **A computer's other names** ("hel" for Hetzner Server): done by D476 (the home's host name and a computer's kind, "mac", when only one fits; `core/src/bound.ts`). A worker's own host name isn't sent in its hello yet: add it there when a person names a worker by it.
 - [ ] **A clone chosen in 选 {computer} 上的文件夹 also adds the project** (D455's sheet adds what it clones). Fine for a repository; check that it isn't surprising for a plain folder. Trigger: the author's review.
 - [ ] **Words sent while it starts again** (`task_send` to a task under D472's restart guard) are logged but not handed to that start. Trigger: a person who types right after 再试一次.
 
@@ -2826,3 +2826,11 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - **Phone and capability blocks handed on.** Research/205's 7 phone tasks and 3 capability blocks were real asks, but some had another way (another phone, the partner doing the step with its own connection, D446's hand-over). Give them a typed hand-over like a stall. *Trigger:* after D446's live check.
 - **Superseding by more than the title.** The task set aside after a hand-over is matched by a title overlap within 30 minutes; a `replaces` argument on `task_open` would be exact (a partner tool change: two haiku runs, D175). *Trigger:* one wrong or missed supersede.
 - **A live run.** The ladder has run on fakes only. *Trigger:* the next release on the author's home: read `ducter repairs --weeks 1` a week later and compare with research/205's 0 of 3.
+
+## The person's word on where, a repository by its name, an agent that ends at once (D476)
+
+- [ ] **An eval scenario for "only hel" with no folder there** (the person says 「请用我们 hel 上的 agy 而不是 mac 上的」, the task can't start on hel for its folder; expect a clone onto hel then the start, never the Mac, and no line that Antigravity isn't set up on hel). Code refuses the Mac either way; the scenario checks the partner's words. No persona or tool description changed, so D175 didn't require it. *Trigger:* the next `eval:partner` run.
+- [ ] **A clone into the path the person asked for** (`/root/dev/mem`) instead of Ducter's folder (`~/ducter/projects/mem`), when its parent is there and empty of it. *Trigger:* the person asks why the code went into Ducter's folder.
+- [ ] **What Antigravity said on the Mac** (D476 cause 4 is inferred): read that task's steps on the Mac, and if it is a quota notice in a shape OAR's `antigravityQuotaNotice` doesn't match, report it upstream so it reads as a limit (D297), not as an agent that couldn't start. *Trigger:* the author's next look at the Mac's Log, or a second Antigravity start that ends at once.
+- [ ] **Words on where that the patterns miss** ("hel only, thanks", "use the box in Helsinki"). The partner still reads them; code holds only what it reads. *Trigger:* one live miss, then add its shape to `bound.ts` with a test.
+- [ ] **The web and Mac cards don't show `cant.repos`** (two repositories a name could be): the partner asks, the card shows 选 {computer} 上的文件夹 only. *Trigger:* the author's review of the card.

@@ -12,8 +12,22 @@ test("devices line names each worker, its state, how it browses, whether it slee
     { name: "MacBook", online: false, asleep: true, os: "darwin", alwaysOn: false, web: "chrome", harnesses: [{ id: "claude-code", loggedIn: true }] },
   ]);
   expect(line).toBe(
-    "[devices] local (Ducter's home) · cloud-1 (awake, linux, never sleeps, browses in Ducter's own browser, signed in: claude-code) · MacBook (asleep, darwin, sleeps when its lid closes, browses in the user's own Chrome (their sign-ins), signed in: claude-code). Say what a task needs (task_open needs) and Ducter picks the computer and says where; name one in place.device only when the user named it.",
+    "[devices] local (Ducter's home) · cloud-1 (awake, linux, never sleeps, browses in Ducter's own browser, signed in: claude-code) · MacBook (asleep, darwin, sleeps when its lid closes, browses in the user's own Chrome (their sign-ins), signed in: claude-code). Say what a task needs (task_open needs) and Ducter picks the computer and says where; name one in place.device only when the user named it. Whether an agent is set up on a computer is only what this line says.",
   );
+});
+
+// D476 (hel, 2026-11-22): the line named no agent of the home's, and the partner told the person
+// Antigravity wasn't set up on hel when it was installed there.
+test("the home by its name, what the person calls it, and its own agents; installed but not signed in said too", () => {
+  const line = renderDevices([{ name: "Wey's MacBook Pro", online: true, os: "darwin", harnesses: [{ id: "antigravity", installed: true, loggedIn: true }] }], {
+    name: "Hetzner Server",
+    aliases: ["hel"],
+    harnesses: [
+      { id: "claude-code", installed: true, loggedIn: true },
+      { id: "antigravity", installed: true, loggedIn: false },
+    ],
+  });
+  expect(line).toStartWith("[devices] local (Ducter's home: Hetzner Server, also called hel, signed in: claude-code, installed but not signed in: antigravity) · Wey's MacBook Pro (awake, darwin, signed in: antigravity)");
 });
 
 test("needs from the model: only the known fields, a site as its host", () => {

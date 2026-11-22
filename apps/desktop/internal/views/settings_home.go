@@ -1,6 +1,7 @@
 package views
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -112,6 +113,8 @@ func (a *App) paneSay(tab, lede string) string {
 	case TabAccounts:
 		total, watched, _ := a.watchedAccounts()
 		switch {
+		case len(a.needsOf(TabAccounts)) > 0:
+			return "" // D475: a source down is said by its need alone, never a count it can't keep
 		case total == 0:
 			return a.L.T("say.accounts.none")
 		case watched == 0:
@@ -137,19 +140,116 @@ func (a *App) paneSay(tab, lede string) string {
 		}
 		return a.L.T("say.memory.first")
 	case TabNotify:
-		return a.L.T("say.notify")
+		return a.notifySay()
 	case TabLook:
 		return a.L.T("say.look")
 	case TabTodos:
-		return a.L.T("say.todos")
+		return a.todosSay()
 	case TabChats:
-		return a.L.T("say.chats")
+		return a.chatsSay()
 	case TabAutofill:
-		return a.L.T("say.autofill")
+		return a.autofillSay()
 	case TabPeers:
 		return a.peersSay()
 	}
 	return lede
+}
+
+// D475: each pane's head is what is true there now, never what the pane is for.
+
+// notifySay: whether it sends notifications, and when it stays quiet.
+func (a *App) notifySay() string {
+	st := a.S.Settings
+	switch {
+	case st == nil:
+		return a.L.T("say.notify")
+	case !st.Notify:
+		return a.L.T("say.notify.off")
+	case st.Quiet != nil:
+		return a.L.T("say.notify.quiet")
+	}
+	return a.L.T("say.notify.on")
+}
+
+// todosSay: how many are open in each source it has read, and that any can be handed over.
+func (a *App) todosSay() string {
+	v := a.S.Sources
+	if v == nil {
+		return a.L.T("say.todos")
+	}
+	var items []string
+	for _, s := range v.Sources {
+		if s.State != "ok" || s.CheckedAt == "" || s.Open <= 0 {
+			continue
+		}
+		n := fmt.Sprint(s.Open)
+		if s.AtLeast {
+			n += "+"
+		}
+		items = append(items, a.L.T("say.todos.item", protocol.SourceKindName(s.Kind), n))
+	}
+	if len(items) == 0 {
+		return a.L.T("say.todos")
+	}
+	return a.L.T("say.todos.n", strings.Join(items, a.L.T("say.todos.sep")))
+}
+
+// chatsSay: the chat apps it waits in, by name.
+func (a *App) chatsSay() string {
+	f := a.S.Channels
+	if f == nil {
+		return a.L.T("say.chats")
+	}
+	var names []string
+	for _, ch := range f.Channels {
+		if ch.State != "linked" {
+			continue
+		}
+		switch ch.Kind {
+		case "wechat":
+			names = append(names, a.L.T("chats.wechat"))
+		case "telegram":
+			names = append(names, "Telegram")
+		case "slack":
+			names = append(names, "Slack")
+		}
+	}
+	if len(names) == 0 {
+		return a.L.T("say.chats")
+	}
+	return a.L.T("say.chats.n", a.listWords(names))
+}
+
+// autofillSay: what it keeps for the person, counted by kind.
+func (a *App) autofillSay() string {
+	f := a.savedFrame()
+	if f == nil {
+		return a.L.T("say.autofill")
+	}
+	signins, cards := 0, 0
+	for _, x := range f.SavedItems {
+		if x.Kind == "signin" {
+			signins++
+		} else {
+			cards++
+		}
+	}
+	var items []string
+	count := func(n int, key string) {
+		switch {
+		case n == 1:
+			items = append(items, a.L.T(key+".one"))
+		case n > 1:
+			items = append(items, a.L.T(key, n))
+		}
+	}
+	count(signins, "say.af.signins")
+	count(cards, "say.af.cards")
+	count(len(f.SavedKeys), "say.af.keys")
+	if len(items) == 0 {
+		return a.L.T("say.autofill")
+	}
+	return a.L.T("say.autofill.n", a.listWords(items))
 }
 
 // paneSpeaks is a pane's head (D469): the pane's name, then the partner (its face in the pose for

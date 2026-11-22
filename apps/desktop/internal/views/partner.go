@@ -393,7 +393,14 @@ func (a *App) notifyPanel(c *ui.Context) {
 	}
 	st := a.S.Settings
 	// D445: the notification itself, live with every choice below (D43: shown, not explained).
-	a.notifyPreview(c, st, a.defaultWaitLabel(st.DefaultAfterMin))
+	find := ""
+	if (st.Proactive != "" && st.ProactiveBy != "default") || len(a.S.Connections) > 0 {
+		find = st.Proactive
+		if find == "" {
+			find = "off" // never chosen: it doesn't look by itself (proactive.note.never)
+		}
+	}
+	a.notifyPreview(c, st, a.defaultWaitLabel(st.DefaultAfterMin), find)
 	a.group(c, "notify", a.L.T("partner.notify.title"), "", func() {
 		note := a.L.T("partner.notify.on.note")
 		if !st.Notify {

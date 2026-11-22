@@ -49,7 +49,11 @@ export function NotifyPreview() {
   const s = A.settings;
   const face = useCheerFace();
   if (!s) return null;
-  const under = !s.notify ? t("notify.pv.off") : s.quiet ? t("notify.pv.quiet", s.quiet.start, s.quiet.end) : t("notify.pv.anytime");
+  // D475: what it sends when it notices something follows 发现了就说 (shown wherever the page offers it):
+  // the urgent one now, or the morning's one note; with 不用主动找我 a line that it keeps it until asked.
+  const find = (s.proactive && s.proactiveBy !== "default") || !!A.connections?.length ? s.proactive || "off" : "";
+  let under = !s.notify ? t("notify.pv.off") : s.quiet ? t("notify.pv.quiet", s.quiet.start, s.quiet.end) : t("notify.pv.anytime");
+  if (find === "off") under += t("notify.pv.join") + t("notify.pv.find.off");
   return (
     <section class="set pv-stage notify-pv" role="group" aria-label={t("notify.pv")}>
       <div class={`pv-note${s.notify ? "" : " off"}`}>
@@ -63,6 +67,18 @@ export function NotifyPreview() {
           {s.defaultAfterMin > 0 && <small class="pv-wait">{t("notify.pv.default", waitLabel(s.defaultAfterMin))}</small>}
         </span>
       </div>
+      {find && find !== "off" && (
+        <div class={`pv-note pv-find${s.notify ? "" : " off"}`} key={find} role="group" aria-label={t("notify.pv.find")}>
+          <Avatar size={32} state="idle" />
+          <span class="grow">
+            <span class="pv-head">
+              <b>{A.S.personaName}</b>
+              <small>{find === "urgent" ? t("notify.pv.now") : t("notify.pv.morning")}</small>
+            </span>
+            <span class="pv-ask">{t(`notify.pv.find.${find}`)}</span>
+          </span>
+        </div>
+      )}
       <p class="pv-under" key={under}>
         {under}
       </p>

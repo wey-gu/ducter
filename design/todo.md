@@ -2826,3 +2826,13 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - **Phone and capability blocks handed on.** Research/205's 7 phone tasks and 3 capability blocks were real asks, but some had another way (another phone, the partner doing the step with its own connection, D446's hand-over). Give them a typed hand-over like a stall. *Trigger:* after D446's live check.
 - **Superseding by more than the title.** The task set aside after a hand-over is matched by a title overlap within 30 minutes; a `replaces` argument on `task_open` would be exact (a partner tool change: two haiku runs, D175). *Trigger:* one wrong or missed supersede.
 - **A live run.** The ladder has run on fakes only. *Trigger:* the next release on the author's home: read `ducter repairs --weeks 1` a week later and compare with research/205's 0 of 3.
+
+## Settings, pane by pane (D475)
+
+- [ ] **The iOS Simulator walk of D475's panes** (this pass used Chrome's device emulation with touch at
+  390 and 430). Trigger: D474's reload fix lands, so a page can be loaded once after pairing.
+- [ ] **To-do sources' 移除 and Chat apps' quiet actions on a phone**, each alone on a line: fold them into
+  the group's last line with its note. Trigger: the author's review of D475.
+- [ ] **Try again said back.** 再试一次 says its line at once; when the source still doesn't answer the row
+  stays 连不上 with no second word (D404: a retry that met the same lack says so). Trigger: a person taps it
+  twice.

@@ -217,79 +217,92 @@ func (a *App) runPanel(c *ui.Context) {
 	t := a.T
 	name := a.personaName()
 	a.panelHead(c, TabRun, a.L.T("settings.lede.run"))
+	// D475: a window on a home elsewhere has the head and the home's card below; the group shows
+	// only when there is something to do here (let this Mac work, use one here, connect elsewhere).
+	showWhere := true
+	if a.Backend == nil && !a.askStopHere {
+		host := hostOf(a.URL)
+		remote := host != "" && !isLoopback(host)
+		if home := a.homeDevice(); home != nil && (home.Kind == "server" || !a.onThisMachine()) {
+			remote = true
+		}
+		showWhere = !(remote && !a.canWork() && a.UseLocal == nil && a.Pair == nil)
+	}
 	// D365: no group title: the page's title already says it, and the computer is the first row.
-	a.group(c, "where", "", "", func() {
-		if a.Backend == nil {
-			// The window talks to a Ducter it didn't start: say where it lives and that
-			// closing the window doesn't stop it (never a bare or empty address).
-			host := hostOf(a.URL)
-			remoteHome := host != "" && !isLoopback(host)
-			// D469: the head says where it lives and that closing the window doesn't stop it.
-			place, line, art := a.L.T("settings.where.here"), "", "mini_awake"
-			if remoteHome {
-				place, art = host, "server_awake"
+	if showWhere {
+		a.group(c, "where", "", "", func() {
+			if a.Backend == nil {
+				// The window talks to a Ducter it didn't start: say where it lives and that
+				// closing the window doesn't stop it (never a bare or empty address).
+				host := hostOf(a.URL)
+				remoteHome := host != "" && !isLoopback(host)
+				// D469: the head says where it lives and that closing the window doesn't stop it.
+				place, line, art := a.L.T("settings.where.here"), "", "mini_awake"
+				if remoteHome {
+					place, art = host, "server_awake"
+				}
+				// D469 round 2: the home's own word wins over the address. A home that is a server, or
+				// another computer, is named and drawn as itself, never "this Mac" (a home reached over
+				// a tunnel answers on 127.0.0.1 too).
+				if home := a.homeDevice(); home != nil && (home.Kind == "server" || !a.onThisMachine()) {
+					remoteHome, place, art = true, a.deviceNameIn(home), deviceArt(home)
+				}
+				a.placeRow(c, art, place, line)
+				if remoteHome && a.canWork() {
+					a.workBlock(c, "settings") // D155: Let this Mac do tasks for it
+				}
+				if a.askStopHere && a.hereBackend != nil {
+					a.rowBlock(c, "ask-stop", func() { a.askStopHereCard(c, host) })
+				}
+				if remoteHome && a.UseLocal != nil && a.linkRow(c, "use-here", a.L.T("settings.home.useHere"), a.L.T("settings.where.useHere.help"), false) {
+					a.UseLocal()
+				}
+				if a.Pair != nil && a.linkRow(c, "elsewhere", a.L.T("settings.home.elsewhere"), a.L.T("settings.where.elsewhere.help"), false) {
+					a.connectElsewhere()
+				}
+				return
 			}
-			// D469 round 2: the home's own word wins over the address. A home that is a server, or
-			// another computer, is named and drawn as itself, never "this Mac" (a home reached over
-			// a tunnel answers on 127.0.0.1 too).
-			if home := a.homeDevice(); home != nil && (home.Kind == "server" || !a.onThisMachine()) {
-				remoteHome, place, art = true, a.deviceNameIn(home), deviceArt(home)
+			var line string
+			switch {
+			case a.Resting():
+				line = a.L.T("settings.run.resting", name)
+			case a.Backend.BackgroundBlocked():
+				line = a.L.T("settings.run.blocked", name)
+			case a.Backend.Background():
+				line = "" // D469: the head says it; the row speaks only when it differs
+			default:
+				line = a.L.T("settings.run.child", name)
 			}
-			a.placeRow(c, art, place, line)
-			if remoteHome && a.canWork() {
-				a.workBlock(c, "settings") // D155: Let this Mac do tasks for it
+			art := "mini_awake"
+			if a.Resting() {
+				art = "mini_asleep"
 			}
-			if a.askStopHere && a.hereBackend != nil {
-				a.rowBlock(c, "ask-stop", func() { a.askStopHereCard(c, host) })
+			a.placeRow(c, art, a.L.T("settings.where.here"), line)
+			if a.Backend.BackgroundBlocked() {
+				a.row(c, "allow", a.L.T("settings.run.allow"), "", func() {
+					if a.button(c, a.L.T("settings.run.allow"), btnSecondary, t.ControlSM, t.Surface) {
+						_ = a.Backend.OpenSettings(local.SettingsLoginItems)
+					}
+				})
 			}
-			if remoteHome && a.UseLocal != nil && a.linkRow(c, "use-here", a.L.T("settings.home.useHere"), a.L.T("settings.where.useHere.help"), false) {
-				a.UseLocal()
+			if a.Resting() {
+				a.row(c, "wake", a.L.T("rest.wake", name), "", func() {
+					if a.button(c, a.L.T("rest.wake", name), btnPrimary, t.ControlSM, t.Surface) {
+						a.Wake()
+					}
+				})
+			} else {
+				a.row(c, "rest", a.L.T("menu.rest"), a.L.T("menu.rest.sub"), func() {
+					if a.button(c, a.L.T("settings.rest.go"), btnSecondary, t.ControlSM, t.Surface) {
+						a.Rest()
+					}
+				})
 			}
 			if a.Pair != nil && a.linkRow(c, "elsewhere", a.L.T("settings.home.elsewhere"), a.L.T("settings.where.elsewhere.help"), false) {
 				a.connectElsewhere()
 			}
-			return
-		}
-		var line string
-		switch {
-		case a.Resting():
-			line = a.L.T("settings.run.resting", name)
-		case a.Backend.BackgroundBlocked():
-			line = a.L.T("settings.run.blocked", name)
-		case a.Backend.Background():
-			line = "" // D469: the head says it; the row speaks only when it differs
-		default:
-			line = a.L.T("settings.run.child", name)
-		}
-		art := "mini_awake"
-		if a.Resting() {
-			art = "mini_asleep"
-		}
-		a.placeRow(c, art, a.L.T("settings.where.here"), line)
-		if a.Backend.BackgroundBlocked() {
-			a.row(c, "allow", a.L.T("settings.run.allow"), "", func() {
-				if a.button(c, a.L.T("settings.run.allow"), btnSecondary, t.ControlSM, t.Surface) {
-					_ = a.Backend.OpenSettings(local.SettingsLoginItems)
-				}
-			})
-		}
-		if a.Resting() {
-			a.row(c, "wake", a.L.T("rest.wake", name), "", func() {
-				if a.button(c, a.L.T("rest.wake", name), btnPrimary, t.ControlSM, t.Surface) {
-					a.Wake()
-				}
-			})
-		} else {
-			a.row(c, "rest", a.L.T("menu.rest"), a.L.T("menu.rest.sub"), func() {
-				if a.button(c, a.L.T("settings.rest.go"), btnSecondary, t.ControlSM, t.Surface) {
-					a.Rest()
-				}
-			})
-		}
-		if a.Pair != nil && a.linkRow(c, "elsewhere", a.L.T("settings.home.elsewhere"), a.L.T("settings.where.elsewhere.help"), false) {
-			a.connectElsewhere()
-		}
-	})
+		})
+	}
 	a.placesMap(c) // D469: where things live, each computer in its clay
 	a.dataGroup(c)
 	a.group(c, "devices", "", "", func() {
@@ -576,14 +589,27 @@ func (a *App) loadPlan(rm Remover, all bool) {
 func (a *App) aboutPanel(c *ui.Context) {
 	t := a.T
 	ss := &a.settings
-	// The About card: the clay partner, the name, the version.
+	// The About card: the clay partner, the name, the version. D475: in its pose for how the versions
+	// stand (the flag for an update waiting).
+	pose := theme.Idle
+	if len(a.needsOf(TabAbout)) > 0 {
+		pose = theme.NeedsYou
+	}
 	ui.Row(c.Key("about-hero")).Gap(t.S5).AlignItems(ui.Center).Padding(t.S4, t.S6).Radius(t.RadiusXL).Background(t.Clay).
 		Shadow(0, t.Raised.Y, 0, 0, t.Raised.Color).Children(func() {
-		a.avatar(c, theme.Idle, 112)
+		a.avatar(c, pose, 112)
 		ui.Column(c).Gap(t.S1).Grow(1).MinWidth(0).Children(func() {
 			a.heading(c, "Ducter", t.Title)
 			uiText(c, a.L.T("settings.about.version", a.versionText())).FontSize(t.MD).FontWeight(700).TextColor(t.InkSoft).Selectable()
 			uiText(c, a.L.T("settings.about.made")).FontSize(t.MD).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
+			// D475: the partner says how its versions stand, as every pane's head does.
+			if needs := a.needsOf(TabAbout); len(needs) > 0 {
+				for _, n := range needs {
+					uiText(c.Key("about-need:"+n.key), keepWords(autospace(n.text))).FontSize(t.MD).FontWeight(600).LineHeight(a.leading(1.5)).TextColor(t.NeedsYou.Ink)
+				}
+			} else if n, running := a.updatesWaiting(); a.S.UpdateAll != nil && n == 0 && !running {
+				uiText(c.Key("about-ok"), a.L.T("say.about.ok")).FontSize(t.MD).FontWeight(600).LineHeight(a.leading(1.5)).TextColor(t.Done.Ink)
+			}
 		})
 	})
 	a.updateAllSection(c) // D224: 全部更新 / Update all, first: one tap for everything behind

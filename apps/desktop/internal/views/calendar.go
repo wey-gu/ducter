@@ -682,6 +682,9 @@ func (a *App) markCalSeen(connID string, w protocol.AppWatch, calID string, seen
 // while a calendar tile is new to this client, with 试试 / Try it.
 func (a *App) calFirstLine(c *ui.Context, cv protocol.ConnectionView) {
 	t := a.T
+	if sourceDown(cv) {
+		return // D475: nothing to try while the source is down
+	}
 	cs := a.cards()
 	var name string
 	opened := false

@@ -20698,3 +20698,24 @@ html[data-text-size="large"] .brand-mark > svg {
 .lr-why > .btn {
   flex: none;
 }
+/* ---------- D475: Settings, pane by pane ---------- */
+/* Notifications: what it sends when it notices something, a second, smaller card under the ask. */
+.pv-note.pv-find { max-width: 420px; padding: calc(var(--s2) + 2px) var(--s4); animation: said-in var(--t-across) var(--ease-push); }
+.pv-note.pv-find .pv-head b { font-size: var(--xs); }
+.pv-note.pv-find .pv-ask { font-size: var(--sm); }
+@media (prefers-reduced-motion: reduce) { .pv-note.pv-find { animation: none; } }
+/* 发现了就说 as a row: four choices at the right edge on a wide screen, one pill on a phone. */
+.pro-row { padding-left: var(--set-in, var(--s4)); }
+.pro-row .pro-pick { display: none; }
+@media (max-width: 599px) {
+  .pro-row .pro-seg { display: none; }
+  .pro-row .pro-pick { display: flex; justify-content: flex-end; }
+}
+/* A card keeps the 40 tile column, so every saved thing's words start on one text edge. */
+.set-row .af-card { width: 40px; height: 28px; padding: 2px 4px; border-radius: 6px; font-size: var(--xs); }
+/* On a phone a choice that drops under its words takes the card's whole inner width, from the text
+   column's start back to the card's edge, so three choices stand in one track instead of a tall stack. */
+@media (max-width: 520px) {
+  .chat-row:not(.tiled) > .seg,
+  .set-page.pushed .set-card > div.chat-row:not(.tiled) > .seg { flex: 1 1 calc(100% + var(--chat-col)); margin-left: calc(-1 * var(--chat-col)); }
+}

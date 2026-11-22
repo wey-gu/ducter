@@ -104,7 +104,8 @@ describe("Settings' brief (D469)", () => {
     expect(h.paneSay("memory")).toBe("你说过的偏好、定下的事，我都记在 Nowledge Mem 里；随时能看，也能让我忘掉。");
     expect(h.paneSay("partner")).toBe("");
     A.L = strings("en");
-    expect(h.paneSay("notify")).toBe("How I reach you when something needs you, and when I leave you be.");
+    // D475: the state, not the page's purpose (notifications off here).
+    expect(h.paneSay("notify")).toBe("Notifications are off: what needs you waits in On hand.");
   });
 
   test("the computers say what each is to the partner", async () => {

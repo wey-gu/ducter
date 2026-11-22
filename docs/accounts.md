@@ -102,6 +102,9 @@ means, and the line goes away by itself.
   stopped looking and says so here instead of staying quiet. OOMOL's Discord connection is a bot:
   it can't see your @-mentions or direct messages, so Discord isn't watched yet. It's not
   something you set wrong.
+- **Can't reach it** on the place's own first row: Ducter can't reach the place itself right now,
+  so none of its accounts can be read. It says so once there, with **Try again**; the rows under it
+  stay quiet and their marks turn grey until the place answers.
 - **Connect it again**: the place that holds the account says it has to be connected again.
   Tap the row, then **Connect again in OOMOL**; once it's connected, Ducter picks up by itself.
 

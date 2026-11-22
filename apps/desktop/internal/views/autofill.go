@@ -3,12 +3,14 @@ package views
 import (
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/egoist/mygo/ui"
 
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 	"github.com/wey-gu/ducter/apps/desktop/internal/store"
+	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
 )
 
 // 设置 › 密码和银行卡 / Settings › Passwords & cards (Autofill in code) (D191, design/autofill.md §6): the
@@ -128,7 +130,7 @@ func (a *App) autofillPanel(c *ui.Context) {
 				a.afForm(c, "signin", &x)
 				continue
 			}
-			a.afRow(c, "signin:"+x.ID, drawGlobe, x.Label, x.Username, a.afUsed(x.UsedAt), func() { a.afEdit("signin", &x) }) // D291
+			a.afRow(c, "signin:"+x.ID, a.afMonogram(c, "signin:"+x.ID, x.Site), x.Label, x.Username, a.afUsed(x.UsedAt), func() { a.afEdit("signin", &x) }) // D291
 		}
 		if s.editing == "signin:new" {
 			a.afForm(c, "signin", nil)
@@ -144,7 +146,7 @@ func (a *App) autofillPanel(c *ui.Context) {
 				a.afForm(c, "card", &x)
 				continue
 			}
-			a.afRow(c, "card:"+x.ID, drawCardMark, x.Label, a.afCardLine(x), a.afUsed(x.UsedAt), func() { a.afEdit("card", &x) }) // D291
+			a.afRow(c, "card:"+x.ID, a.afCardTile(c, "card:"+x.ID, x), x.Label, a.afCardLine(x), a.afUsed(x.UsedAt), func() { a.afEdit("card", &x) }) // D291
 		}
 		if s.editing == "card:new" {
 			a.afForm(c, "card", nil)
@@ -188,7 +190,7 @@ func (a *App) autofillPanel(c *ui.Context) {
 				title = a.L.T("af.d.kept", n)
 			}
 		}
-		a.afRow(c, "details", drawPersonMark, title, help, "", func() {
+		a.afRow(c, "details", a.afPebble(c, "details", drawPersonMark), title, help, "", func() {
 			s.editing, s.sure = "details", false
 			s.details = map[string]string{}
 			for _, d := range f.SavedDetails {
@@ -215,12 +217,9 @@ func (a *App) autofillPanel(c *ui.Context) {
 	}
 }
 
-// afCardLine: whose card, which one (its last four, as the pay card and the web's tile say it), and until when.
+// afCardLine: whose card and until when; which one is its tile's last four (D475, as the web's).
 func (a *App) afCardLine(x protocol.SavedView) string {
-	if x.Last4 == "" {
-		return a.L.T("af.card.line", x.Name, x.Exp)
-	}
-	return a.L.T("af.card.line4", x.Name, x.Last4, x.Exp)
+	return a.L.T("af.card.line", x.Name, x.Exp)
 }
 
 func (a *App) afUsed(at string) string {
@@ -233,7 +232,7 @@ func (a *App) afUsed(at string) string {
 // afRow is one saved thing (D296): its mark in the tile column, so its
 // words start on the text edge with the add row's under it; when it was
 // last used at the right edge; the whole row opens it.
-func (a *App) afRow(c *ui.Context, key string, glyph func(ui.Color) func(p *ui.Painter, r ui.Rect), title, help, mark string, open func()) {
+func (a *App) afRow(c *ui.Context, key string, tile func(), title, help, mark string, open func()) {
 	t := a.T
 	a.sep(c)
 	r := ui.Row(c.Key("af-row:"+key)).Gap(t.S3).Padding(t.S4, t.S5).MinHeight(64).AlignItems(ui.Center).Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(title).Focusable()
@@ -244,11 +243,7 @@ func (a *App) afRow(c *ui.Context, key string, glyph func(ui.Color) func(p *ui.P
 		r.Background(t.Ink.Alpha(0.03))
 	}
 	r.Children(func() {
-		a.tileCol(c, func() {
-			if glyph != nil {
-				a.glyph(c, 20, glyph(t.InkSoft))
-			}
-		})
+		a.tileCol(c, tile)
 		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(2).Children(func() {
 			uiText(c, title).FontSize(t.MD).FontWeight(700).SingleLine()
 			if help != "" {
@@ -261,6 +256,61 @@ func (a *App) afRow(c *ui.Context, key string, glyph func(ui.Color) func(p *ui.P
 	})
 	if r.Clicked() {
 		open()
+	}
+}
+
+// D475: a saved thing is drawn as itself, as on the web: a sign-in is its site's first letter on a
+// clay pebble, a card a small card in its network's tone with its last four, details and keys their
+// mark on the same pebble. Every tile keeps the 40 column, so the words keep one text edge.
+func (a *App) afPebble(c *ui.Context, key string, glyph func(ui.Color) func(p *ui.Painter, r ui.Rect)) func() {
+	t := a.T
+	return func() {
+		ui.Row(c.Key("af-pebble:"+key)).Size(40, 40).Radius(20).Background(t.SurfaceSunken).Shadow(0, 2, 0, 0, t.Line).
+			Justify(ui.Center).AlignItems(ui.Center).AccessHidden(true).Children(func() {
+			a.glyph(c, 20, glyph(t.InkSoft))
+		})
+	}
+}
+
+func (a *App) afMonogram(c *ui.Context, key, site string) func() {
+	t := a.T
+	letter := "?"
+	for _, r := range strings.TrimPrefix(strings.TrimPrefix(site, "https://"), "www.") {
+		letter = strings.ToUpper(string(r))
+		break
+	}
+	return func() {
+		ui.Row(c.Key("af-pebble:"+key)).Size(40, 40).Radius(20).Background(t.SurfaceSunken).Shadow(0, 2, 0, 0, t.Line).
+			Justify(ui.Center).AlignItems(ui.Center).AccessHidden(true).Children(func() {
+			uiText(c, letter).Font(t.Display).FontSize(t.LG).FontWeight(800).TextColor(t.InkSoft)
+		})
+	}
+}
+
+// afCardTone is a card's tone by its network, the web's .af-card colours.
+func (a *App) afCardTone(brand string) theme.StateColors {
+	t := a.T
+	switch brand {
+	case "mastercard", "jcb":
+		return t.NeedsYou
+	case "amex", "discover":
+		return t.Done
+	case "unionpay":
+		return t.Failed
+	}
+	return t.Working
+}
+
+func (a *App) afCardTile(c *ui.Context, key string, x protocol.SavedView) func() {
+	t := a.T
+	tone := a.afCardTone(x.Brand)
+	return func() {
+		ui.Column(c.Key("af-card:"+key)).Size(40, 28).Radius(6).Background(tone.Surface).Shadow(0, 2, 0, 0, tone.Ledge).
+			Padding(2, 4).Justify(ui.End).AlignItems(ui.End).AccessHidden(true).Children(func() {
+			if x.Last4 != "" {
+				uiText(c, x.Last4).Font(t.Mono).FontSize(t.XS - 1).FontWeight(700).TextColor(tone.Ink).SingleLine()
+			}
+		})
 	}
 }
 

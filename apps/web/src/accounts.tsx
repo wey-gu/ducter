@@ -48,11 +48,23 @@ export function ProactiveChips(p: { inNote?: boolean; children?: preact.Componen
     </>
   );
   if (p.inNote) return <div class="proactive">{body}</div>;
+  // D475: in Settings a row, as on the Mac: its title and what the choice means on the text column, the
+  // choice at the right edge (one pill on a phone), never a heading over an untitled slab.
   return (
     <section class="set proactive-sec">
-      <h3>{t("proactive.title")}</h3>
       <div class="set-card chat-app g-group">
-        <div class="proactive g-block first">{body}</div>
+        <div class="chat-row pro-row">
+          <span class="grow">
+            <b>{t("proactive.title")}</b>
+            <small>{t(!v ? "proactive.note.never" : st.proactiveBy === "default" ? "proactive.note.default" : `proactive.note.${v}`)}</small>
+          </span>
+          <span class="pro-seg">
+            <Seg<ProactiveMode> label={t("proactive.title")} value={v} options={opts} onPick={(m) => A.setSettings({ proactive: m })} />
+          </span>
+          <span class="pro-pick">
+            <Select<ProactiveMode> label={t("proactive.title")} value={v as ProactiveMode} options={opts} placeholder={t("proactive.title")} onPick={(m) => A.setSettings({ proactive: m })} />
+          </span>
+        </div>
         {p.children}
       </div>
     </section>
@@ -432,21 +444,26 @@ export function SourceCard({ c }: { c: ConnectionView }) {
     <Group label={name}>
       <GHead tile={c.source === "oomol" || c.source === "oo" ? <BrandTile name="oomol" faded={down(c)} /> : <Tile mark><Mailbox source={c.source} off={down(c)} /></Tile>} name={name} line={s.line} tone={s.warn ? "bad" : watching ? "done" : undefined}>
         {c.source === "oomol" && c.apps && !c.apps.length && !down(c) && <Btn kind="text" size="sm" chev label={t("acct.connect.oomol")} onClick={() => window.open(OOMOL_ACCOUNTS, "_blank", "noopener")} />}
+        {/* D475: a source it can't reach says so once, here, with the real fix: try it again now. */}
+        {c.state === "unreachable" && <Btn kind="secondary" size="sm" label={t("acct.retry")} about={name} onClick={() => (A.send({ t: "connections" }), say(`src:${c.id}`, t("said.retry", name)))} />}
       </GHead>
+      <Said k={`src:${c.id}`} in />
       {tiles.map((w) => {
         const [title] = tileWords(w, accts.get(w.service));
         const k = kindOf(w.service);
         // D291: whether Ducter reads it is a state word of its own, never joined to the account.
         // D296: and only where the row differs from what the group's first row says (its switch says the rest).
-        const bad = !w.excluded && (!!w.unreachable || down(c) || !!w.trouble);
-        const watching = !w.excluded && !bad && k !== "other" && w.watch;
+        // D475: with the source itself down, its first row says so once (with its fix); the rows stay quiet.
+        const srcDown = down(c);
+        const bad = !srcDown && !w.excluded && (!!w.unreachable || !!w.trouble);
+        const watching = !w.excluded && !bad && !srcDown && k !== "other" && w.watch;
         // D402: a watch that stopped by itself says so on the row, never a silent "watching".
-        const state = w.excluded ? t("svc.excluded") : w.trouble && !w.unreachable && !down(c) ? t(`tile.trouble.${w.trouble}`) : bad ? t("card.unreachable") : watching ? (srcWatching ? "" : t("svc.watching")) : srcWatching ? t("svc.asked") : "";
+        const state = w.excluded ? t("svc.excluded") : srcDown ? "" : w.trouble && !w.unreachable ? t(`tile.trouble.${w.trouble}`) : bad ? t("card.unreachable") : watching ? (srcWatching ? "" : t("svc.watching")) : srcWatching ? t("svc.asked") : "";
         const isOpen = open === key(w);
         return (
           <Fragment key={key(w)}>
             <OpenRow
-              tile={brandOf(w.service) ? <BrandTile name={brandOf(w.service)} /> : <Tile mark><AppMark service={w.service} /></Tile>}
+              tile={brandOf(w.service) ? <BrandTile name={brandOf(w.service)} faded={srcDown} /> : <Tile mark><AppMark service={w.service} /></Tile>}
               title={title}
               line={w.account}
               state={state ? { text: state, tone: bad ? "bad" : watching ? "done" : undefined } : undefined}

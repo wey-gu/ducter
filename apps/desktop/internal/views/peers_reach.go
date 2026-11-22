@@ -30,6 +30,8 @@ var (
 // "closed", or "" when Mem didn't list it.
 type reachRow struct {
 	Harness, Tool, Can, Device, DeviceName, Last, Box string
+	// D480: Theirs and Ours, when the computer it runs on talks to another Mem server than the partner's (hosts).
+	Theirs, Ours string
 }
 
 func reachRows(devices []protocol.DeviceView, own []string, recent []handoff, boxes ...protocol.BridgeMailbox) []reachRow {

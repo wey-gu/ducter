@@ -289,7 +289,8 @@ func (a *App) needFix(c *ui.Context, n setNeed) {
 	switch {
 	case n.boxDevice != "":
 		if a.buttonFor(c, n.goLabel, n.text, btnSecondary, t.ControlSM, t.Bg) {
-			a.openMailbox(n.boxDevice, n.boxHarness)
+			a.chooseMailbox(n.boxDevice, n.boxHarness) // D480: its Space is chosen in place, under its row
+			a.openTab(TabPeers)
 		}
 		return
 	case n.dv != nil:

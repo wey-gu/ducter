@@ -17,6 +17,8 @@ export * from "./saved.ts";
 import type { FillAsk, KeyAsk, PayAsk, SavedFrame, SavedInput } from "./saved.ts";
 export * from "./phone.ts";
 export * from "./media.ts";
+export * from "./mailbox.ts";
+import type { MailboxLook } from "./mailbox.ts";
 export * from "./phone-use.ts";
 export * from "./calendar.ts";
 export * from "./later.ts";
@@ -1410,7 +1412,13 @@ export type ClientFrame =
   // follows Mem's own setup guide. Answered with mem_plugin_result; the card reads the check again after.
   // D470: what "mailbox": 打开它的信箱 / Open its mailbox on Agent messaging, for an agent Nowledge Mem
   // lists with its mailbox closed: one task there that opens it through the agent's own Mem plugin.
-  | { t: "mem_plugin_install"; device: string; harness: string; what?: "mailbox" }
+  // D480: with what "mailbox", space is the Space the person chose in place (Mem's exact id and its
+  // label): the task's brief names it, so it never asks which. Absent: the task finds it, as D470.
+  | { t: "mem_plugin_install"; device: string; harness: string; what?: "mailbox"; space?: { id: string; label: string } }
+  // D480: 打开它的信箱 / Open its mailbox, in place: look at that computer's Mem for this agent
+  // (Mem's passive `bridge setup` there and which Mem server it is on; nothing is written).
+  // Answered with mailbox_look.
+  | { t: "mailbox_look"; device: string; harness: string }
   // D375: Settings › 记忆's 再看一次 / Check again: read Mem's own doctor on the home now (the settings frame follows).
   | { t: "mem_health" }
   // D205: Settings › 伙伴's 接上 / Connect and 断开 / Disconnect for the persona's own Bridge
@@ -1824,6 +1832,8 @@ export type ServerFrame =
   | { t: "records_allow_result"; device: string; on: boolean; ok: boolean; reason?: "away" | "unknown" | "failed" }
   | { t: "update_all_result"; ok: boolean; reason?: "nothing" | "running" | "failed"; detail?: string; id?: string }
   | { t: "mem_plugin_result"; device: string; harness: string; ok: boolean; taskId?: string; reason?: MemPluginReason }
+  // D480: the in-place choice for one agent's mailbox (mailbox.ts).
+  | { t: "mailbox_look"; device: string; harness: string; look: MailboxLook }
   // D332: ownAgents: the AI agents the person runs themselves on the home (their own records changed in
   // the last 14 days, by file times alone; absent while looking at records is off): 和你的其他 agent 通信 / AI in
   // your terminal shows in Settings for them.
@@ -2427,6 +2437,12 @@ export interface DeviceMemView {
    * then concerns only the person's own sessions there, offered quietly, never required.
    */
   carried?: true;
+  /**
+   * D480: the Mem server this computer's own Mem connection talks to (its host, from `nmem --json
+   * status`.api_url): what the person's own agents there remember with and send their mail through.
+   * Absent: not known (Mem not signed in, or a Ducter there from before D480).
+   */
+  server?: string;
 }
 
 // ---------- Updating in place (D148, design/system.md "Updating in place") ----------
@@ -3070,6 +3086,8 @@ export interface BridgeView {
    * at: when it was read (ms).
    */
   mailboxes?: { harness: string; open: boolean; at: number }[];
+  /** D480: the Mem server the partner's own connection talks to (its host, from the home's `nmem --json status`.api_url). */
+  server?: string;
 }
 
 /** The choices offered for defaultAfterMin, in minutes. */

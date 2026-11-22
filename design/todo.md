@@ -46,6 +46,14 @@ line.
   real use; then a 看看全部 in place, not a new page.
 - **The phones' native clients** (iOS, Android) say the pane through the web view today; a native look owed with
   their own Settings pass.
+- **D480: the chosen Space run once for real**, with the author's Claude Code on the Mac once that Mac is on the
+  partner's Mem (today it is on Nowledge Cloud, the partner on hel). Trigger: the author taps **Use the same Mem**
+  or moves the partner. Check that `--space-id` with the agent's own context enables it, and the row turns.
+- **D480: an eval scenario for `[your agents' mail]`** (a closed mailbox and another Mem; the partner never
+  promises a reply, points at the row, opens no task). Trigger: the next persona or partner-tool change (its
+  eval run carries it), or the partner promising a reply that can't arrive.
+- **D480: an agent on the home with its own Mem config** apart from Ducter's (the home's nmem is taken as the
+  person's). Trigger: a home where `nmem status` for the person and for Ducter's env differ.
 
 ## What Mem would like checked (D465, research/202)
 

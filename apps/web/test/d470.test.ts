@@ -142,11 +142,11 @@ describe("the fix is the button (D470)", () => {
     const b = memSetupBrief({ agent: "Claude Code", host: "claude-code", device: "Mac", lang: "en", what: { kind: "mailbox" } });
     expect(b).toContain("--enable");
     expect(b).toContain("Never touch Ducter's own Nowledge Mem connection");
-    expect(read("../../packages/protocol/src/index.ts")).toContain('{ t: "mem_plugin_install"; device: string; harness: string; what?: "mailbox" }');
+    expect(read("../../packages/protocol/src/index.ts")).toContain('{ t: "mem_plugin_install"; device: string; harness: string; what?: "mailbox"; space?: { id: string; label: string } }'); // D480: with the Space chosen in place
   });
   test("a one-way link is what needs you on Overview, with that button", () => {
     expect(read("src/settings-home.tsx")).toContain('fix: { kind: "mailbox", device: r.device!, harness: r.harness }');
-    expect(read("../desktop/internal/views/settings_home.go")).toContain("a.openMailbox(n.boxDevice, n.boxHarness)");
+    expect(read("../desktop/internal/views/settings_home.go")).toContain("a.chooseMailbox(n.boxDevice, n.boxHarness)"); // D480: chosen in place
   });
 });
 

@@ -34,7 +34,7 @@
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, realpathSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { MEM_CONNECT_TOOLS, memHealthOf, nmemTooOld, type DeviceMemReason, type DeviceMemView } from "@ducter/protocol";
+import { MEM_CONNECT_TOOLS, memHealthOf, memHost, nmemTooOld, type DeviceMemReason, type DeviceMemView } from "@ducter/protocol";
 import { toolsOwnBin, toolsPreferBin } from "./agent-path.ts";
 import { realAgentSetupSys } from "./agent-setup.ts";
 import { connectLinkFrom } from "./mem-cli.ts";
@@ -217,6 +217,16 @@ export function createWorkerMem(o: {
     if (on !== had) o.pathChanged?.();
   };
   const doctor = (nmem: string) => sys.run([nmem, "--json", "doctor"], { env: sys.env(), timeoutMs: 30_000 });
+  const serverOf = async (nmem: string): Promise<string | undefined> => {
+    const r = await sys.run([nmem, "--json", "status"], { env: sys.env(), timeoutMs: 20_000 }).catch(() => undefined);
+    if (!r || r.code !== 0) return undefined;
+    const at = r.out.indexOf("{");
+    try {
+      return memHost((JSON.parse(at > 0 ? r.out.slice(at) : r.out) as { api_url?: unknown }).api_url);
+    } catch {
+      return undefined;
+    }
+  };
 
   const say = () => o.changed();
   const set = (s: DeviceMemView["step"]) => ((step = s), say());
@@ -261,8 +271,12 @@ export function createWorkerMem(o: {
     const h = memHealthOf(d, o.agents());
     const health = h?.issue && h.issue !== "plugin" && !(h.issue === "signed_out" && h.fresh) ? { health: { issue: h.issue } } : {};
     if (h?.issue !== "old") usable = nmem;
+    // D480: which Mem server this computer's own connection talks to (read-only), so a mailbox
+    // opened here is known to reach the partner's Mem or not.
+    const server = doc?.ready ? await serverOf(nmem) : undefined;
     view = {
       state: doc?.ready ? "ready" : "sign_in",
+      ...(server ? { server } : {}),
       ...(version ? { version } : {}),
       ...(doc?.agents.length ? { agents: doc.agents } : {}),
       ...health,

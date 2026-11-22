@@ -380,6 +380,7 @@ export function createWorkers(opts: {
           ...(hello.harnesses ? { harnesses: hello.harnesses } : {}),
           ...(web?.state === "on" && web.where ? { web: web.where } : {}),
           ...(hello.alwaysOn != null ? { alwaysOn: hello.alwaysOn } : hello.kind ? { alwaysOn: hello.kind !== "laptop" } : {}),
+          ...(hello.mem?.server ? { memServer: hello.mem.server } : {}),
         };
       };
       const up = [...live.values()].filter((l) => l.hello).map(({ ws, hello }) => info(ws.data.device.id, ws.data.device.name, true, hello!));

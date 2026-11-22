@@ -27,7 +27,7 @@ describe("能找到{name}的 with Mem's contact list (D444)", () => {
     // D470: what Mem said is the way back, drawn and said (peers.way.back.*); pi's stays its own line.
     expect(m).toMatch(/r\.can === "none" \? t\("peers\.reach\.none"\)/);
     expect(m).toMatch(/t\(`peers\.way\.back\.\$\{w\.back\}`, name\)/);
-    expect(m).toMatch(/A\.bridge\?\.mailboxes\)/);
+    expect(m).toMatch(/A\.bridge\?\.mailboxes, A\.bridge\?\.server\)/);
   });
 });
 

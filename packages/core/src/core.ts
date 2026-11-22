@@ -12,7 +12,7 @@ import { homedir, tmpdir } from "node:os";
 import { thisComputer } from "./this-computer.ts";
 import { basename, join, resolve, sep } from "node:path";
 import { randomBytes } from "node:crypto";
-import { APP_SANDBOX, appCsp, HARNESSES, MEM_CONNECT_TOOLS, fill, harnessName, normalizeTag, sameComputer, pickTag, words, type Bodies, type HarnessId, type LangTag, type LogEvent, type OnHand, type PartnerAsk, type Place, type TaskCard, type TaskNeeds } from "@ducter/protocol";
+import { APP_SANDBOX, appCsp, HARNESSES, MEM_CONNECT_TOOLS, memApart, fill, harnessName, normalizeTag, sameComputer, pickTag, words, type Bodies, type HarnessId, type LangTag, type LogEvent, type OnHand, type PartnerAsk, type Place, type TaskCard, type TaskNeeds } from "@ducter/protocol";
 import { intlLocale, talkLang } from "./lang.ts";
 import type { CoreApi, ListedModel, MemIdentity, MemLookPort, Partner, Runner, TaskMemoryPort } from "@ducter/protocol/src/internal.ts";
 import { migrateKeys, readKeys, scrubKeysFromEnv } from "@ducter/protocol/src/keys.ts";
@@ -113,7 +113,7 @@ import { createAgentLatest, createAgentUpdates, type AgentUpdates, type AgentUpd
 import { createUpdateAll, type UpdateAll } from "./update-all.ts";
 import { bundledPiVersion, detectAgent, probeHarnesses } from "./harness-probe.ts";
 import { createMemPlugins, type MemPlugins } from "./mem-plugins.ts";
-import { checkMemPluginUpdates, inspectMemPlugins, nmemInspectExec } from "@ducter/protocol/src/mem-plugins.ts";
+import { checkMemPluginUpdates, inspectMemBridge, inspectMemPlugins, nmemInspectExec } from "@ducter/protocol/src/mem-plugins.ts";
 import { realSys, updateHow, writeAlive, type UpdateSys } from "./update.ts";
 import { DUCTER_VERSION } from "@ducter/protocol/src/version.ts";
 import { createAutofill, type Autofill } from "./saved/index.ts";
@@ -289,7 +289,7 @@ export interface CoreOptions {
   /** D169 test seams: the Mem plugin check on the home (default: the real `nmem`, never in tests). */
   /** D393: test seams for the Mem relay (mem-relay.ts): the home's credential, the upstream fetch, the plugin's folder. */
   memRelay?: { credential?: () => import("./mem-relay.ts").MemCredential | undefined; fetch?: typeof fetch; kitDir?: (harness: string) => string | undefined };
-  memPlugins?: { inspectLocal?: () => Promise<Record<string, import("@ducter/protocol").MemPluginView> | undefined>; checkUpdates?: () => Promise<Record<string, string> | undefined>; everyMs?: number; now?: () => number; connected?: () => boolean; connectLocal?: (args: string[]) => Promise<{ code: number; out: string; err: string } | undefined> };
+  memPlugins?: { inspectLocal?: () => Promise<Record<string, import("@ducter/protocol").MemPluginView> | undefined>; checkUpdates?: () => Promise<Record<string, string> | undefined>; everyMs?: number; now?: () => number; connected?: () => boolean; connectLocal?: (args: string[]) => Promise<{ code: number; out: string; err: string } | undefined>; /** D480: the mailbox look on the home itself (demos, tests; never the real nmem then). */ bridgeLookLocal?: () => Promise<import("@ducter/protocol/src/mem-plugins.ts").MemBridgeLook | undefined> };
   /** D151 test seams for Ducter's own browser (false: none). */
   browser?: false | Partial<Omit<DucterBrowserOptions, "mcp" | "log" | "tasks" | "decisions" | "persona" | "dataDir">>;
   /** D217: Ducter's phone (用手机); false leaves it out (tests). */
@@ -1265,6 +1265,18 @@ export function startCore(opts: CoreOptions = {}): Core {
     const hs = devicesView?.harnessesNow();
     return { name: home.name, ...(home.aliases?.length ? { aliases: home.aliases } : {}), ...(hs ? { harnesses: hs.map((h) => ({ id: h.harness, ...(h.installed !== undefined ? { installed: h.installed } : {}), loggedIn: h.loggedIn, ...(h.version ? { version: h.version } : {}) })) } : {}) };
   };
+  // D480: what isn't whole about the person's own agents' mail, for the partner (facts Mem and the computers said).
+  api.agentMail = () => {
+    if (!settings.get().memory) return [];
+    const out: ReturnType<NonNullable<CoreApi["agentMail"]>> = [];
+    for (const m of bridgeLink?.mailboxesNow?.() ?? []) if (!m.open) out.push({ harness: m.harness, box: "closed" });
+    const ours = bridgeLink?.serverNow?.();
+    for (const w of workers.list()) {
+      if (!memApart(w.memServer, ours)) continue;
+      for (const h of w.harnesses ?? []) if (h.installed && h.loggedIn && MEM_CONNECT_TOOLS[h.id]) out.push({ harness: h.id, device: w.name, apart: { theirs: w.memServer!, ours: ours! } });
+    }
+    return out;
+  };
   api.places = createPlaces({
     where: repoWhere,
     computers: whereComputers,
@@ -1844,6 +1856,20 @@ export function startCore(opts: CoreOptions = {}): Core {
       (agentTesting ? async () => undefined : () => inspectMemPlugins(nmemInspectExec(process.env))),
     // D466: the newest plugin versions out, from Mem's own `plugins check` on the home (never in a test without a fake).
     ...(mp.checkUpdates || !agentTesting ? { checkUpdates: mp.checkUpdates ?? (() => checkMemPluginUpdates(nmemInspectExec(process.env))) } : {}),
+    // D480: an agent's mailbox, looked at where it runs (the person's own nmem there; read only).
+    ...(mp.bridgeLookLocal || !agentTesting
+      ? {
+          bridgeLook: async (id: string, home: boolean) => {
+              if (home) return (mp.bridgeLookLocal ?? (() => inspectMemBridge(nmemInspectExec(process.env))))();
+              const link = workers.link(id);
+              if (!link?.online()) return undefined;
+              return link
+                .call<import("@ducter/protocol/src/mem-plugins.ts").MemBridgeLook | null>("mem_bridge_look", {}, 60_000)
+                .then((r) => r ?? undefined)
+                .catch((err: unknown) => (/unknown op/.test(String((err as Error)?.message ?? err)) ? ("old" as const) : undefined));
+            },
+        }
+      : {}),
     inspectWorker: async (id) => {
       const link = workers.link(id);
       if (!link?.online()) return undefined;

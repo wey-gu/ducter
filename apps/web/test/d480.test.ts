@@ -1,26 +1,27 @@
-// D480: an agent's mailbox, its Space chosen in place under its link row (web and Mac alike), and
-// another Mem server said as a fact on the row. Core's side is packages/core/test/d480.test.ts.
+// D480: an agent's mailbox, its Space chosen in place under its link row (web and Mac alike). Core's
+// side is packages/core/test/d480.test.ts. Round 2: no "another Mem" is ever said from API URLs (the
+// home's relay is the same Mem); the author's case is one way with the Space choice.
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { reachRows, reachSplit, reachWays, type ReachRow } from "../src/mem-view.ts";
+import { reachRows, reachWays } from "../src/mem-view.ts";
 import { memoryWords } from "../src/i18n-memory.ts";
 
 const read = (p: string) => readFileSync(join(import.meta.dir, "..", p), "utf8");
-const row = (extra: Partial<ReachRow> = {}): ReachRow => ({ harness: "claude-code", tool: "Claude Code", can: "yes", ...extra });
 
-describe("another Mem is its own reason (D480)", () => {
-  test("apart: neither way meets, and the fix is the same Mem, never the mailbox", () => {
-    expect(reachWays(row({ box: "closed", device: "mac", apart: { theirs: "cloud.nowledge.co", ours: "hel.siwei.info" } }))).toEqual({ to: "no", back: "no", fix: "server" });
-    expect(reachWays(row({ box: "closed", device: "mac" }))).toEqual({ to: "yes", back: "no", fix: "mailbox" });
+describe("the author's case (D480 round 2)", () => {
+  test("Claude Code on the Mac (its tasks carried through the home's relay), its mailbox closed: one way, the Space choice", () => {
+    const mac = { id: "mac", name: "MacBook Pro M3", mem: { state: "ready", carried: true }, harnesses: [{ harness: "claude-code", installed: true, loggedIn: true, mem: { state: "installed" } }] };
+    const [r] = reachRows([{ id: "local", name: "hel", home: true, harnesses: [] }, mac], [], [], [{ harness: "claude-code", open: false }]);
+    expect(r!.device).toBe("mac");
+    expect(reachWays(r!)).toEqual({ to: "yes", back: "no", fix: "mailbox" });
   });
-  test("read from that computer's own Mem and the partner's; unknown on either side is never apart", () => {
-    const dev = (server?: string) => ({ id: "mac", name: "MacBook Pro M3", ...(server ? { mem: { server } } : {}), harnesses: [{ harness: "claude-code", installed: true, loggedIn: true, mem: { state: "installed" } }] });
-    expect(reachRows([dev("cloud.nowledge.co")], [], [], [], "hel.siwei.info")[0]!.apart).toEqual({ theirs: "cloud.nowledge.co", ours: "hel.siwei.info" });
-    expect(reachRows([dev("hel.siwei.info")], [], [], [], "hel.siwei.info")[0]!.apart).toBeUndefined();
-    expect(reachRows([dev()], [], [], [], "hel.siwei.info")[0]!.apart).toBeUndefined();
-    expect(reachRows([dev("cloud.nowledge.co")], [], [])[0]!.apart).toBeUndefined();
-    expect(reachSplit(reachRows([dev("cloud.nowledge.co")], [], [], [], "hel.siwei.info")).notYet.length).toBe(1);
+  test("nothing on either client compares Mem servers or says another Mem", () => {
+    for (const f of ["src/mem-view.ts", "src/memory.tsx", "../../packages/core/src/mem-plugins.ts", "../../packages/core/src/core.ts", "../../packages/protocol/src/mailbox.ts", "../desktop/internal/views/peers_d470.go", "../desktop/internal/views/mailbox_d480.go"]) {
+      const s = read(f);
+      expect(s, f).not.toMatch(/memApart|memHost|serverNow|withApart|peers\.why\.apart|fix\.server|mailbox\.same/);
+    }
+    for (const lang of ["zh", "en"] as const) expect(Object.values(memoryWords[lang]).join("\n")).not.toMatch(/另一个 Nowledge Mem|another Nowledge Mem/);
   });
 });
 
@@ -36,8 +37,8 @@ describe("the choice in place (D480)", () => {
     expect(go).toContain("ui.RoleRadioGroup");
   });
   test("every word in zh and en on both clients, the same; no typed name asked, no joined facts", () => {
-    const keys = Object.keys(memoryWords.zh).filter((k) => /^(mailbox\.|say\.peers\.apart|peers\.why\.apart|peers\.fix\.server)/.test(k));
-    expect(keys.length).toBe(24);
+    const keys = Object.keys(memoryWords.zh).filter((k) => /^mailbox\./.test(k));
+    expect(keys.length).toBe(17);
     const goWords = read("../desktop/internal/i18n/memory.go");
     for (const lang of ["zh", "en"] as const) {
       for (const k of keys) {

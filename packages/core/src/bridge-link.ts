@@ -48,7 +48,7 @@ import { dirname, join } from "node:path";
 import { createHash } from "node:crypto";
 import type { BridgeRefusal, BridgeView } from "@ducter/protocol";
 import type { BridgeLinkApi } from "@ducter/protocol/src/internal.ts";
-import { memHost, nmemTooOld } from "@ducter/protocol";
+import { nmemTooOld } from "@ducter/protocol";
 import { scrub } from "./worker-mem.ts";
 import { connectLinkFrom, copyOf, copyPython, externallyManaged, extraBins, findNmem, installPlan, joinPath, MEM_INSTALL_MS, PY_PROBE, realSys, toolOf, updatePlan, type MemCopy, type MemFacts, type MemPlan, type MemStep, type MemSys } from "./mem-cli.ts";
 import { nmemEnv, toolEnv } from "@ducter/protocol/src/tool-env.ts";
@@ -549,7 +549,7 @@ export function createBridgeLink(opts: {
   const pinned = () => env.DUCTER_BRIDGE === "1" && !!env.DUCTER_BRIDGE_CONTEXT?.trim();
   const agentNow = () => opts.identity() ?? opts.fallbackIdentity?.() ?? "ducter";
 
-  type Probe = { at: number; version?: string; supported: boolean; signedIn: boolean; closed?: boolean; backend?: string; server?: string; space?: { id: string; label: string }; updateAvailable?: boolean; latest?: string; conns?: MemConnection[] };
+  type Probe = { at: number; version?: string; supported: boolean; signedIn: boolean; closed?: boolean; backend?: string; space?: { id: string; label: string }; updateAvailable?: boolean; latest?: string; conns?: MemConnection[] };
   let probe: Probe | undefined;
   let probeAt = 0; // when "no nmem here" was last seen (probe stays undefined)
   let probing: Promise<Probe | undefined> | undefined;
@@ -579,7 +579,6 @@ export function createBridgeLink(opts: {
       const closed = !sj && !!st && st.code !== 0 && memClosedIn(`${st.err}\n${st.out}`);
       if (closed) return (probe = { at: now(), version: shortVersion, supported, signedIn: false, closed });
       const backend = typeof sj?.backend === "string" ? sj.backend : undefined;
-      const server = memHost(sj?.api_url); // D480: the partner's Mem server, to tell an agent's other Mem apart
       // Mem's own word that a newer nmem is out (`status`.update; its command is only a hint).
       const updateAvailable = sj?.update?.update_available === true;
       // D257: the newer version's number, when Mem names it (said beside 有新版本 / New version).
@@ -596,7 +595,7 @@ export function createBridgeLink(opts: {
       const r = read();
       const where = r ? { space: r.spaceId, agent: r.agentId } : space ? { space: space.id, agent: agentNow() } : undefined;
       const conns = signedIn && where ? await listConns(where.space, where.agent, shortVersion) : undefined;
-      return (probe = { at: now(), version: shortVersion, supported, signedIn, ...(backend ? { backend } : {}), ...(server ? { server } : {}), ...(space ? { space } : {}), ...(updateAvailable ? { updateAvailable } : {}), ...(latest ? { latest } : {}), ...(conns ? { conns } : {}) });
+      return (probe = { at: now(), version: shortVersion, supported, signedIn, ...(backend ? { backend } : {}), ...(space ? { space } : {}), ...(updateAvailable ? { updateAvailable } : {}), ...(latest ? { latest } : {}), ...(conns ? { conns } : {}) });
     })().finally(() => (probing = undefined));
     return probing;
   }
@@ -892,7 +891,7 @@ export function createBridgeLink(opts: {
     // D257: on every working state, the home's Mem version and Mem's own word that a newer one is
     // out (newer: its number, "" when Mem didn't name it), so Settings › 记忆 says so even for a
     // copy Ducter can't update (the Nowledge Mem app's).
-    const said = (q: Probe): Partial<BridgeView> => ({ home, ...(q.version ? { version: q.version } : {}), ...(q.backend ? { where: whereOf(q.backend) } : {}), ...(q.server ? { server: q.server } : {}), ...(q.updateAvailable ? { newer: q.latest ?? "" } : {}) });
+    const said = (q: Probe): Partial<BridgeView> => ({ home, ...(q.version ? { version: q.version } : {}), ...(q.backend ? { where: whereOf(q.backend) } : {}), ...(q.updateAvailable ? { newer: q.latest ?? "" } : {}) });
     const extras = async (): Promise<Partial<BridgeView>> => {
       if (!p) return {};
       if (memDone && now() - memDone.at < DONE_SHOWN_MS) return { ...said(p), done: memDone.kind };
@@ -937,8 +936,7 @@ export function createBridgeLink(opts: {
   };
 
   const api: BridgeLink = {
-    mailboxesNow: () => boxes?.list,
-    serverNow: () => probe?.server,
+    mailboxesNow: () => boxes?.list, // D480: for the partner's line
     takeMailboxWant() {
       const w = boxesWanted && !!read()?.confirmed;
       boxesWanted = false;

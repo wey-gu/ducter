@@ -23,7 +23,7 @@
 // how to update too. Never a card, never Update all, never by itself.
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { MEM_CONNECT_TOOLS, fill, harnessName, langName, mailboxChoice, memApart, words, type Bodies, type LangTag, type DeviceHarness, type LogEvent, type MailboxLook, type MemPluginReason, type MemPluginView } from "@ducter/protocol";
+import { MEM_CONNECT_TOOLS, fill, harnessName, langName, mailboxChoice, words, type Bodies, type LangTag, type DeviceHarness, type LogEvent, type MailboxLook, type MemPluginReason, type MemPluginView } from "@ducter/protocol";
 import type { LogStore, Runner, TaskRegistry } from "@ducter/protocol/src/internal.ts";
 import { MEM_HOSTS, withAvailable, type MemBridgeLook } from "@ducter/protocol/src/mem-plugins.ts";
 
@@ -84,10 +84,9 @@ export interface MemPlugins {
   install(device: string, harness: string, what?: "mailbox", space?: { id: string; label: string }): Promise<{ ok: true; taskId?: string } | { ok: false; reason: MemPluginReason }>;
   /**
    * D480: the in-place choice for opening this agent's mailbox: the Spaces Mem lists on that
-   * computer with Ducter's recommendation, or the fact that its Mem is another server than the
-   * partner's (then no Space would help). Read only: nothing is chosen or written.
+   * computer with Ducter's recommendation. Read only: nothing is chosen or written.
    */
-  mailboxLook(device: string, harness: string, partner: { space?: string; server?: string }): Promise<MailboxLook>;
+  mailboxLook(device: string, harness: string, partner: { space?: string }): Promise<MailboxLook>;
   onChange(fn: () => void): () => void;
   stop(): void;
 }
@@ -399,7 +398,7 @@ export function createMemPlugins(d: MemPluginsDeps): MemPlugins {
   }
 
   /** D480: what the in-place choice shows (read only; see MemPlugins.mailboxLook). */
-  async function mailboxLook(device: string, harness: string, partner: { space?: string; server?: string }): Promise<MailboxLook> {
+  async function mailboxLook(device: string, harness: string, partner: { space?: string }): Promise<MailboxLook> {
     if (!d.on() || !MEM_HOSTS[harness]) return { state: "failed" };
     const dev = (await d.devices().catch(() => [])).find((x) => x.id === device || x.name === device);
     if (!dev) return { state: "failed" };
@@ -409,9 +408,6 @@ export function createMemPlugins(d: MemPluginsDeps): MemPlugins {
     if (got === "old") return { state: "old" };
     if (!got) return { state: "away" };
     if (!got.signedIn) return { state: "no_mem" };
-    // A fact, not a guess: the two connections name different Mem servers, so whatever Space it
-    // opens in, its mail and the partner's never meet. Said instead of a choice.
-    if (memApart(got.server, partner.server)) return { state: "apart", theirs: got.server!, ours: partner.server! };
     const { spaces, recommend } = mailboxChoice(got.setup, partner.space);
     if (!spaces.length) return { state: "failed" };
     return { state: "choose", spaces, ...(recommend ? { recommend } : {}) };

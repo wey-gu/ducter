@@ -21120,18 +21120,6 @@ html[data-text-size="large"] .brand-mark > svg {
 .mb-more:hover {
   color: var(--ink);
 }
-.mb-paste {
-  width: 100%;
-  min-height: 56px;
-  padding: var(--s2) var(--s3);
-  font: inherit;
-  font-size: var(--sm);
-  color: var(--ink);
-  background: var(--surface-sunken);
-  border: 1px solid var(--line-soft);
-  border-radius: var(--r-sm);
-  resize: vertical;
-}
 .mb-acts {
   display: flex;
   flex-wrap: wrap;

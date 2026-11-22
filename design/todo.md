@@ -46,14 +46,15 @@ line.
   real use; then a 看看全部 in place, not a new page.
 - **The phones' native clients** (iOS, Android) say the pane through the web view today; a native look owed with
   their own Settings pass.
-- **D480: the chosen Space run once for real**, with the author's Claude Code on the Mac once that Mac is on the
-  partner's Mem (today it is on Nowledge Cloud, the partner on hel). Trigger: the author taps **Use the same Mem**
-  or moves the partner. Check that `--space-id` with the agent's own context enables it, and the row turns.
-- **D480: an eval scenario for `[your agents' mail]`** (a closed mailbox and another Mem; the partner never
-  promises a reply, points at the row, opens no task). Trigger: the next persona or partner-tool change (its
-  eval run carries it), or the partner promising a reply that can't arrive.
-- **D480: an agent on the home with its own Mem config** apart from Ducter's (the home's nmem is taken as the
-  person's). Trigger: a home where `nmem status` for the person and for Ducter's env differ.
+- **D480: the chosen Space run once for real**, with the author's Claude Code on the Mac (its mailbox closed
+  today). Trigger: the author taps **在「只有你」打开**. Check that `--space-id` with the agent's own context
+  enables it, and the row turns both ways after Mem's next contact read.
+- **D480: an eval scenario for `[your agents' mail]`** (a closed mailbox; the partner never promises a reply,
+  never says another Mem, points at the row, opens no task). Trigger: the next persona or partner-tool change
+  (its eval run carries it), or the partner promising a reply that can't arrive.
+- **D480 round 2: "same Mem" from identity, if ever needed.** Trigger: a person really on two Mems (a Mem app
+  on one computer, Cloud on another). Then from what Mem reports (account or member, backend), the home's relay
+  resolved to its upstream; never from API URLs.
 
 ## What Mem would like checked (D465, research/202)
 

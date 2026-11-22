@@ -5834,19 +5834,14 @@ export function renderDevices(
 
 /**
  * D480: the facts about the person's own agents' mail that would make a promise false: Mem lists an
- * agent's mailbox closed (it reaches the partner, the answers can't go back), or the computer it runs
- * on talks to another Mem server than the partner's (nothing meets, whatever Space a mailbox opens
- * in). Facts only, from Mem and the computers; the fix is the person's, in place in Settings.
+ * agent's mailbox closed (it reaches the partner, the answers can't go back). Round 2: it also says
+ * the truth about where Mem is (one Nowledge Mem; tasks elsewhere reach it through Ducter's relay on
+ * the home), so the partner never invents a second Mem. Facts only; the fix is the person's, in Settings.
  */
-export function renderAgentMail(facts: { harness: string; device?: string; box?: "closed"; apart?: { theirs: string; ours: string } }[]): string {
+export function renderAgentMail(facts: { harness: string; box: "closed" }[]): string {
   if (!facts.length) return "";
-  const name = (h: string) => harnessName(h);
-  const lines = facts.slice(0, 6).map((f) =>
-    f.apart
-      ? `${name(f.harness)}${f.device ? ` on ${f.device.slice(0, 40)}` : ""}: that computer's own Nowledge Mem is ${f.apart.theirs}, yours is ${f.apart.ours}: two different Mems, so nothing it sends reaches you and nothing you send reaches it, whatever Space its mailbox is in`
-      : `${name(f.harness)}: Nowledge Mem lists its mailbox closed, so it can write to you but your replies can't reach it`,
-  );
-  return `[your agents' mail] True now: ${lines.join("; ")}. Never promise a reply, a hand-off or a mailbox these facts say can't arrive. The person fixes it in one tap under that agent in Settings › Talk with your other agents (it shows their real Nowledge Mem Spaces to pick from, or how to put that computer on your Mem): point them there; never open a task for it and never ask them to type a Space name.`;
+  const lines = facts.slice(0, 6).map((f) => `${harnessName(f.harness)}: Nowledge Mem lists its mailbox closed, so it can write to you but your replies can't reach it`);
+  return `[your agents' mail] True now: ${lines.join("; ")}. The person's agents, you and the tasks share one Nowledge Mem (tasks on other computers reach it through Ducter's relay on the home: the same Mem, not another one); a closed mailbox is the only gap here. Never promise a reply these facts say can't arrive. The person opens it in one tap under that agent in Settings › Talk with your other agents (it shows their real Nowledge Mem Spaces to pick from): point them there; never open a task for it and never ask them to type a Space name.`;
 }
 
 /** D372: a model in a word for the partner's line ("sonnet" → "Sonnet", "deepseek-official/deepseek-flash" → "Deepseek Flash"). */

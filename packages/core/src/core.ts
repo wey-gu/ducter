@@ -12,7 +12,7 @@ import { homedir, tmpdir } from "node:os";
 import { thisComputer } from "./this-computer.ts";
 import { basename, join, resolve, sep } from "node:path";
 import { randomBytes } from "node:crypto";
-import { APP_SANDBOX, appCsp, HARNESSES, MEM_CONNECT_TOOLS, memApart, fill, harnessName, normalizeTag, sameComputer, pickTag, words, type Bodies, type HarnessId, type LangTag, type LogEvent, type OnHand, type PartnerAsk, type Place, type TaskCard, type TaskNeeds } from "@ducter/protocol";
+import { APP_SANDBOX, appCsp, HARNESSES, MEM_CONNECT_TOOLS, fill, harnessName, normalizeTag, sameComputer, pickTag, words, type Bodies, type HarnessId, type LangTag, type LogEvent, type OnHand, type PartnerAsk, type Place, type TaskCard, type TaskNeeds } from "@ducter/protocol";
 import { intlLocale, talkLang } from "./lang.ts";
 import type { CoreApi, ListedModel, MemIdentity, MemLookPort, Partner, Runner, TaskMemoryPort } from "@ducter/protocol/src/internal.ts";
 import { migrateKeys, readKeys, scrubKeysFromEnv } from "@ducter/protocol/src/keys.ts";
@@ -1265,17 +1265,10 @@ export function startCore(opts: CoreOptions = {}): Core {
     const hs = devicesView?.harnessesNow();
     return { name: home.name, ...(home.aliases?.length ? { aliases: home.aliases } : {}), ...(hs ? { harnesses: hs.map((h) => ({ id: h.harness, ...(h.installed !== undefined ? { installed: h.installed } : {}), loggedIn: h.loggedIn, ...(h.version ? { version: h.version } : {}) })) } : {}) };
   };
-  // D480: what isn't whole about the person's own agents' mail, for the partner (facts Mem and the computers said).
+  // D480: what isn't whole about the person's own agents' mail, for the partner: the mailboxes Mem lists closed.
   api.agentMail = () => {
     if (!settings.get().memory) return [];
-    const out: ReturnType<NonNullable<CoreApi["agentMail"]>> = [];
-    for (const m of bridgeLink?.mailboxesNow?.() ?? []) if (!m.open) out.push({ harness: m.harness, box: "closed" });
-    const ours = bridgeLink?.serverNow?.();
-    for (const w of workers.list()) {
-      if (!memApart(w.memServer, ours)) continue;
-      for (const h of w.harnesses ?? []) if (h.installed && h.loggedIn && MEM_CONNECT_TOOLS[h.id]) out.push({ harness: h.id, device: w.name, apart: { theirs: w.memServer!, ours: ours! } });
-    }
-    return out;
+    return (bridgeLink?.mailboxesNow?.() ?? []).filter((m) => !m.open).map((m) => ({ harness: m.harness, box: "closed" as const }));
   };
   api.places = createPlaces({
     where: repoWhere,

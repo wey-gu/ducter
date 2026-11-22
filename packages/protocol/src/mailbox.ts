@@ -3,8 +3,7 @@
 // (its passive `nmem --json bridge setup` lists `candidates[{id,label,kind,readers,write_default}]`
 // and says "suggested entries are hints, not a choice"). So Ducter shows the person's real Spaces,
 // recommends one (the Space its partner already listens in) and the person's one tap chooses.
-// Never typed, never chosen for them. And a fact first: an agent whose own Mem is another server than
-// the partner's can't reach it whatever Space it opens, so that is said instead of a choice.
+// Never typed, never chosen for them.
 
 /** One Space a mailbox can be opened in, as Mem's passive setup lists it. */
 export interface MailboxSpace {
@@ -22,34 +21,20 @@ export interface MailboxSpace {
 
 /**
  * What the in-place choice shows for one agent on one computer. choose: the Spaces, the recommended
- * one first; apart: that computer's own Mem is another server than the partner's (theirs / ours,
- * hosts), so no Space would help; no_mem: Mem isn't signed in there; away: the computer isn't
- * connected now; old: its Ducter is too old to look; failed: Mem didn't answer (detail, clipped).
+ * one first; no_mem: Mem isn't signed in there; away: the computer isn't connected now; old: its
+ * Ducter is too old to look; failed: Mem didn't answer (detail, clipped).
+ *
+ * D480 round 2: no "another Mem" state. The person's computers share one Nowledge Mem (Nowledge
+ * Cloud, or their own Mem app as a server), and a computer whose NMEM_API_URL is the home's relay
+ * (D393, core/src/mem-relay.ts) reaches that same Mem by construction. Comparing API URLs called the
+ * relay a second Mem; nothing Mem reports today names an account to compare, so nothing is said.
  */
 export interface MailboxLook {
-  state: "choose" | "apart" | "no_mem" | "away" | "old" | "failed";
+  state: "choose" | "no_mem" | "away" | "old" | "failed";
   spaces?: MailboxSpace[];
   /** The Space Ducter recommends (an id in spaces): preselected, never chosen without the tap. */
   recommend?: string;
-  theirs?: string;
-  ours?: string;
   detail?: string;
-}
-
-/** A Mem server's host from its API URL ("https://cloud.nowledge.co/remote-api" → "cloud.nowledge.co"); undefined when it isn't a URL. */
-export function memHost(url: unknown): string | undefined {
-  if (typeof url !== "string" || !url.trim()) return undefined;
-  try {
-    const u = new URL(url.trim());
-    return u.port ? `${u.hostname.toLowerCase()}:${u.port}` : u.hostname.toLowerCase();
-  } catch {
-    return undefined;
-  }
-}
-
-/** Two Mem servers are the same one only when their hosts are; unknown on either side is never "apart". */
-export function memApart(theirs: string | undefined, ours: string | undefined): boolean {
-  return !!theirs && !!ours && theirs !== ours;
 }
 
 const KIND_ORDER: Record<string, number> = { personal: 0, team: 1, default: 2, commons: 3 };

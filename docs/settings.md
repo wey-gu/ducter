@@ -268,13 +268,7 @@ sit under the picture:
   one line saying why; **See other Spaces** shows the rest. **Open in Only you** is your go-ahead: one
   small task on that computer opens it there, through the agent's own Nowledge Mem plugin, and never
   asks you for a name. Nowledge Mem never picks a Space for you, so neither does Ducter; **Not now**
-  leaves everything as it is. It never touches your partner's own connection.
-- **On {computer} it uses another Nowledge Mem ({server}), and I listen on {server}.** The agent's
-  computer is connected to a different Nowledge Mem than your partner's, so no mailbox there would
-  reach your partner. **Use the same Mem** says what changes: paste the connect prompt from your
-  partner's Nowledge Mem (its Settings › Connectors) and Ducter connects that computer to it. After
-  that, your own agents on that computer remember with that Nowledge Mem too.
-- **It doesn't have Nowledge Mem's plugin yet.** **Install** puts it in.
+  leaves everything as it is. It never touches your partner's own connection.- **It doesn't have Nowledge Mem's plugin yet.** **Install** puts it in.
 - pi and Antigravity, when they're signed in on a computer of Ducter's, say **pi tasks your partner
   runs pass messages; yours can't yet**: a task your partner runs on them can ask your other agents
   something. The first time it does, a card in your conversation shows which task, who it's for and

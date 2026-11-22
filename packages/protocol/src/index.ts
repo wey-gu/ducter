@@ -1416,7 +1416,7 @@ export type ClientFrame =
   // label): the task's brief names it, so it never asks which. Absent: the task finds it, as D470.
   | { t: "mem_plugin_install"; device: string; harness: string; what?: "mailbox"; space?: { id: string; label: string } }
   // D480: 打开它的信箱 / Open its mailbox, in place: look at that computer's Mem for this agent
-  // (Mem's passive `bridge setup` there and which Mem server it is on; nothing is written).
+  // (Mem's status and passive `bridge setup` there; nothing is written).
   // Answered with mailbox_look.
   | { t: "mailbox_look"; device: string; harness: string }
   // D375: Settings › 记忆's 再看一次 / Check again: read Mem's own doctor on the home now (the settings frame follows).
@@ -2437,12 +2437,6 @@ export interface DeviceMemView {
    * then concerns only the person's own sessions there, offered quietly, never required.
    */
   carried?: true;
-  /**
-   * D480: the Mem server this computer's own Mem connection talks to (its host, from `nmem --json
-   * status`.api_url): what the person's own agents there remember with and send their mail through.
-   * Absent: not known (Mem not signed in, or a Ducter there from before D480).
-   */
-  server?: string;
 }
 
 // ---------- Updating in place (D148, design/system.md "Updating in place") ----------
@@ -3085,10 +3079,7 @@ export interface BridgeView {
    * Mem says its mailbox takes messages now (open) or not (closed). A tool Mem doesn't list is absent.
    * at: when it was read (ms).
    */
-  mailboxes?: { harness: string; open: boolean; at: number }[];
-  /** D480: the Mem server the partner's own connection talks to (its host, from the home's `nmem --json status`.api_url). */
-  server?: string;
-}
+  mailboxes?: { harness: string; open: boolean; at: number }[];}
 
 /** The choices offered for defaultAfterMin, in minutes. */
 /** D144: a task-less wait that ended without its condition (it can't come true, or ran out of time). */

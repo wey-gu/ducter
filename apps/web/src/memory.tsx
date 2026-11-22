@@ -838,7 +838,7 @@ function taskTitle(taskId: string | undefined): string {
 const clip = (s: string, n = 60) => (s.length > n ? s.slice(0, n - 1) + "…" : s);
 
 /** D433, D470: each agent the person runs and how it reaches the partner, from what this window holds. */
-export const peersReachRows = (): ReachRow[] => reachRows(A.devices ?? [], A.ownAgents, recentHandoffs(peerFeed(), 50), A.bridge?.mailboxes, A.bridge?.server);
+export const peersReachRows = (): ReachRow[] => reachRows(A.devices ?? [], A.ownAgents, recentHandoffs(peerFeed(), 50), A.bridge?.mailboxes);
 
 /** D470: the agents whose answers can't get back (Mem lists their mailbox closed), each with the computer its fix runs on. */
 export function peersOneWay(): ReachRow[] {
@@ -857,9 +857,6 @@ export function peersSay(): string {
   const { both, oneWay, notYet } = reachSplit(peersReachRows());
   if (both.length) return t("say.peers.both", both.map((r) => r.tool).join(t("acct.sep")));
   if (oneWay.length) return t("say.peers.oneway");
-  // D480: another Mem server is its own reason, never "needs the plugin".
-  const apart = notYet.filter((r) => r.apart);
-  if (apart.length) return t("say.peers.apart", apart.map((r) => r.tool).join(t("acct.sep")));
   if (notYet.length) return t("say.peers.notyet");
   return t("say.peers");
 }
@@ -897,7 +894,7 @@ function LinkRow({ r, name }: { r: ReachRow; name: string }) {
   const c = A.mailboxChoosing;
   const choosing = !!c && c.device === r.device && c.harness === r.harness;
   const why =
-    w.fix === "server" && r.apart ? t("peers.why.apart", where, r.apart.theirs, r.apart.ours) : w.fix === "mailbox" ? (opening ? t("peers.why.opening") : t("peers.why.mailbox", where)) : w.fix === "install" ? t("peers.why.install") : r.can === "unknown" ? t("peers.why.unknown") : r.can === "none" ? t("peers.reach.none") : r.can === "relay" ? t("peers.reach.relay", name, r.tool) : "";
+    w.fix === "mailbox" ? (opening ? t("peers.why.opening") : t("peers.why.mailbox", where)) : w.fix === "install" ? t("peers.why.install") : r.can === "unknown" ? t("peers.why.unknown") : r.can === "none" ? t("peers.reach.none") : r.can === "relay" ? t("peers.reach.relay", name, r.tool) : "";
   const last = r.last && w.to === "yes" ? t("peers.last", ago(A.L, r.last)) : "";
   const label = `${r.tool}: ${t(`peers.way.to.${w.to}`, name)}; ${t(`peers.way.back.${w.back}`, name)}`;
   return (
@@ -927,7 +924,6 @@ function LinkRow({ r, name }: { r: ReachRow; name: string }) {
         <div class="lr-why">
           <small class="grow">{why}</small>
           {w.fix === "mailbox" && !opening && !choosing && <Btn kind="secondary" size="sm" label={t("peers.fix.mailbox")} about={r.tool} onClick={() => A.chooseMailbox(r.device!, r.harness)} />}
-          {w.fix === "server" && !choosing && <Btn kind="secondary" size="sm" label={t("peers.fix.server")} about={r.tool} onClick={() => A.chooseMailbox(r.device!, r.harness)} />}
           {w.fix === "install" && <Btn kind="secondary" size="sm" label={t("peers.try.plugin.go")} about={r.deviceName ?? r.device} onClick={() => A.installMem(r.device!, r.harness)} />}
         </div>
       )}
@@ -954,12 +950,11 @@ export function spaceReaders(s: MailboxSpace): string {
  * D480: 打开它的信箱 / Open its mailbox, in place under the agent's row: that computer's real Nowledge
  * Mem Spaces as choices, the recommended one (the partner's own) chosen and said why in one line, the
  * others one tap away; one tap opens it there. Never a typed name, never chosen without the tap (Mem's
- * rule). When its Mem is another server, the fix for that instead: no Space would help.
+ * rule).
  */
 function MailboxChoice({ r, where }: { r: ReachRow; where: string }) {
   const c = A.mailboxChoosing!;
   const look = c.look;
-  const [link, setLink] = useState("");
   const not = <Btn kind="text" size="sm" label={t("mailbox.not")} about={r.tool} onClick={() => A.closeMailboxChoice()} />;
   if (!look)
     return (
@@ -967,21 +962,6 @@ function MailboxChoice({ r, where }: { r: ReachRow; where: string }) {
         <small class="mb-wait">{t("mailbox.looking", where)}</small>
       </div>
     );
-  if (look.state === "apart" && look.theirs && look.ours) {
-    const go = () => link.trim() && (A.memSetup(r.device!, "connect", link.trim()), A.closeMailboxChoice());
-    return (
-      <div class="mb-choice" role="group" aria-label={t("mailbox.same.title")}>
-        <b class="mb-title">{t("mailbox.same.title")}</b>
-        <small class="mb-lede">{t("mailbox.same.how", where, look.ours)}</small>
-        <small class="mb-lede">{t("mailbox.same.then", where, look.ours, look.theirs)}</small>
-        <textarea class="mb-paste" rows={2} value={link} placeholder={t("wmem.signin.ph")} aria-label={t("wmem.signin.link")} onInput={(e) => setLink((e.target as HTMLTextAreaElement).value)} />
-        <div class="mb-acts">
-          <Btn kind="primary" size="sm" label={t("mailbox.same.go")} about={where} disabled={!link.trim()} onClick={go} />
-          {not}
-        </div>
-      </div>
-    );
-  }
   if (look.state !== "choose" || !look.spaces?.length)
     return (
       <div class="mb-choice" role="group" aria-label={t("mailbox.title")}>

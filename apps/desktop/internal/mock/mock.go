@@ -205,7 +205,18 @@ func (h *hub) sleep(d time.Duration) { time.Sleep(time.Duration(float64(d) / h.s
 // ---------- seed ----------
 
 func (h *hub) seed() {
-	past := func(m int) time.Time { return time.Now().Add(-time.Duration(m) * time.Minute) }
+	// The scene's minutes stay on today's date: just after midnight they are scaled into the
+	// minutes since it, order kept, so "done today" is still today (the e2e failed at 00:10).
+	now := time.Now()
+	y, mo, d := now.Date()
+	sinceMidnight := now.Sub(time.Date(y, mo, d, 0, 0, 0, 0, now.Location()))
+	past := func(m int) time.Time {
+		back := time.Duration(m) * time.Minute
+		if sinceMidnight < 91*time.Minute {
+			back = time.Duration(float64(back) * float64(sinceMidnight) / float64(91*time.Minute))
+		}
+		return now.Add(-back)
+	}
 	ch := "channel"
 	h.emitAt(past(90), ch, protocol.OriginPartner, protocol.KindAIMsg, protocol.AIMsg{Text: "晚上好。手头有三个任务在转：**原则英译**在写，**周报草稿**在等数据，**Mem #8762** 已经确认恢复了。有事直接说就行。"}, 0)
 

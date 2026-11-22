@@ -49,19 +49,15 @@ func (a *App) stuckFix(task *store.Task) stuckFix {
 	drop := fixButton{a.L.T("onhand.quiet.drop"), btnText, func() { a.TaskAction(id, "drop") }}
 	// 1. It couldn't start where it was to work: the task page's own fixes.
 	if k := task.Cant(); failed && k != nil {
+		// D472: the page's own fixes, the real one first (cant.go);
+		// 看看为什么 stays on the page.
 		f := stuckFix{kind: "cant", sentence: a.cantLine(k)}
-		if k.Elsewhere != nil {
-			dev := k.Elsewhere.Device
-			f.buttons = append(f.buttons, fixButton{a.L.T("cant.on", k.Elsewhere.Name), btnSecondary, func() { a.CantAction(id, "start_at", dev) }})
-		}
-		if k.ClearLock {
-			f.buttons = append(f.buttons, fixButton{a.L.T("cant.clear_lock"), btnSecondary, func() { a.CantAction(id, "clear_lock", "") }})
-		}
-		if k.CloneHere {
-			f.buttons = append(f.buttons, fixButton{a.L.T("cant.clone_here"), btnSecondary, func() { a.CantAction(id, "clone_here", "") }})
-		}
-		if len(f.buttons) == 0 {
-			f.buttons = append(f.buttons, fixButton{a.L.T("task.action.retry"), btnSecondary, func() { a.CantAction(id, "reopen", "") }})
+		for _, x := range a.cantFixes(k) {
+			if x.act == "why" {
+				continue
+			}
+			x, k := x, k
+			f.buttons = append(f.buttons, fixButton{x.label, btnSecondary, func() { a.doCantFix(id, k, x) }})
 		}
 		return f
 	}

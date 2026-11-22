@@ -1996,6 +1996,25 @@ a {
   color: var(--ink-muted);
   overflow-wrap: anywhere;
 }
+/* D472: 看看为什么: what the start said, a few lines, in a sunken well (never a stack). */
+.cant-more {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--r-sm);
+  background: var(--sunken);
+  font-family: var(--mono);
+  font-size: var(--sm);
+  line-height: 1.5;
+  color: var(--ink-soft);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+/* D472: the add-folder sheet opened for a task that couldn't start: which task starts there. */
+.adf-for {
+  margin: -6px 0 4px;
+  font-size: var(--sm);
+  color: var(--ink-muted);
+}
 .sec-title {
   margin: 0 2px;
   font-size: var(--t20);

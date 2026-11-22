@@ -88,6 +88,7 @@ import { splitRich } from "@ducter/protocol/src/rich.ts";
 import { ContextButton } from "./context-meter.tsx";
 import { ComposerTune, composerTune, tunable } from "./composer-tune.tsx";
 import { Goal, Groove, RoutineFacts, RoutineShelf, TryStrip, untilLine, backWords, WaitBubble, WatchCard } from "./work.tsx";
+import { CantStartView } from "./cant.tsx";
 import { Locator, safe, saidSince, shortGo, shortTitle, taskBlocks, TaskFoot, TaskMeta, TaskMore, TimerPie, wakesOf, WhatItDid } from "./transcript.tsx";
 import {
   attention,
@@ -2593,7 +2594,7 @@ export function TaskView({ id, full }: { id: string; full?: boolean }) {
             <ProofLine task={task} evs={resultEvidence(task)} />
             <SentLine task={task} />
             {a === "failed" && cantOf(task) ? (
-              <CantStartView task={task} c={cantOf(task)!} />
+              <CantStartView taskId={task.id} about={safe(title(task))} c={cantOf(task)!} />
             ) : a === "failed" ? (
               // Didn't work (D76): try the same again, or tell it how; that opens its composer.
               <div class="btns">
@@ -2675,40 +2676,6 @@ function DecisionSheet({ id }: { id: string }) {
 
 
 const tz = () => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
-
-/**
- * D395: a task that couldn't start where it was to work: the cause in plain words (never a bare
- * path) and the taps that fix it: 在 {computer} 上做 (its copy there), 拉一份到这里 (clone it where
- * it was); 换谁来做 stays in the head's meta line, right above. With no fix found, 再试一次 asks
- * the computers again, so it never repeats the same failure.
- */
-export function CantStartView({ task, c }: { task: Task; c: CantStart }) {
-  const fixes = !!c.elsewhere || !!c.cloneHere || !!c.clearLock;
-  // D415: every why has its words; a place's own fixes keep 再试一次 off (D395), the rest keep it.
-  const placeWhy = c.why === "no_repo" || c.why === "no_folder" || c.why === "clone_failed";
-  const retry = !fixes || !placeWhy;
-  const hint = c.why === "busy" ? t("cant.busy.hint") : c.why === "other" || c.why === "away" ? t("cant.retry.hint") : undefined;
-  return (
-    <div class="cant">
-      <p class="cant-line">{cantLine(c)}</p>
-      {c.detail && <p class="cant-hint">{c.detail}</p>}
-      {hint && <p class="cant-hint">{hint}</p>}
-      <div class="btns">
-        {c.elsewhere && <Btn kind="primary" label={t("cant.on", c.elsewhere.name)} about={safe(title(task))} onClick={() => A.cantAction(task.id, "start_at", c.elsewhere!.device)} />}
-        {c.clearLock && <Btn kind={c.elsewhere ? "secondary" : "primary"} label={t("cant.clear_lock")} about={safe(title(task))} onClick={() => A.cantAction(task.id, "clear_lock")} />}
-        {c.cloneHere && <Btn kind={c.elsewhere || c.clearLock ? "secondary" : "primary"} label={t("cant.clone_here")} about={safe(title(task))} onClick={() => A.cantAction(task.id, "clone_here")} />}
-        {retry && <Btn kind={fixes ? "secondary" : "primary"} label={t("task.action.retry")} about={safe(title(task))} onClick={() => A.cantAction(task.id, "reopen")} />}
-      </div>
-    </div>
-  );
-}
-
-/** D415: the card's line, each why with the words it takes. */
-export function cantLine(c: CantStart): string {
-  if (c.why === "away") return t("cant.away", c.computer);
-  if (c.why === "other") return t("cant.other");
-  return t(`cant.${c.why}`, c.computer, c.what);
-}
 
 /** D322: where it lives and what it thinks with, one line under the name (the Mac's header). The
  *  Settings list's hero says the same, never an agent when none can be used. */

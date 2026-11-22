@@ -107,7 +107,8 @@ says so in the task and happens when the last one ends (or at the next park).
 1. Residency never changes attention, with three explicit exceptions (D52 adds the third):
    a device asleep for more than 2 minutes sets its working tasks to `blocked` with reason
    "设备睡着了 / device asleep", and they return to `working` on wake. The other two: a failure to
-   provision becomes `failed`, and `offline` past its limit while `working` notifies M, which
+   provision becomes `failed` (D472: always with its `cant`, the reason and its fixes, on every path
+   a never-started task fails by, and kept through On hand's snapshots; one start again at a time), and `offline` past its limit while `working` notifies M, which
    may hand off to another machine (→ `superseded`).
 2. Waiting is free. `needs-you` and `blocked` windows park like any idle window. A human who
    answers hours later doesn't cost a running process.

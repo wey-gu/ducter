@@ -2810,3 +2810,10 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [x] **Phones and tablets on Your computers** (built, D469 rev.). The Mac reads only `devices` (computers); the iPhone, iPad and Pixel Fold are clients (`reach`). Trigger: when a client can say what it is to the partner beyond a window (lent to tasks, D238).
 - [x] **An account's place** (built, D469 rev.: 你的账号在哪儿, each source its own card). The read accounts' marks sit on the home's card; through OOMOL they pass its servers. Show the source's own place (a small cloud beside the home) once D469 is reviewed. Trigger: the author's review.
 - [ ] **The needs' buttons go to the pane, not the fix itself** (D469 rev.: a Mem plugin's update and Update all now happen on Overview; still the pane for Mem's questions, a source down, no agent) (去更新 opens Memory where D466's ask stands). Doing the fix from Overview needs each fix's in-place ask there too. Trigger: when a need is seen on Overview often enough that the extra step is felt.
+
+## A task that couldn't start (D472)
+
+- [ ] **An eval scenario for the folder pre-flight** (the partner told "/root/dev/mem isn't on Hetzner Server; it is nowledge-co/mem" offers to clone it there in one line, then opens `{"kind":"repo","remote":…,"device":…}`). No persona or tool description changed, so D175 didn't require it; add it with the next partner eval run. Trigger: the next `eval:partner` run.
+- [ ] **A computer's other names** ("hel" for Hetzner Server): `computerNamed` matches a computer's name only, so words that say its hostname don't pin it, and D472's 换到 {computer} 上做 can't offer it. Trigger: a second miss where the person named a computer by another name.
+- [ ] **A clone chosen in 选 {computer} 上的文件夹 also adds the project** (D455's sheet adds what it clones). Fine for a repository; check that it isn't surprising for a plain folder. Trigger: the author's review.
+- [ ] **Words sent while it starts again** (`task_send` to a task under D472's restart guard) are logged but not handed to that start. Trigger: a person who types right after 再试一次.

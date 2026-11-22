@@ -6,7 +6,7 @@
 // Go port (apps/desktop/internal/views/transcript.go) passes the same cases
 // (fixtures/transcript.json). Every text in a block has its keys hidden (redact.ts): the home
 // already hides them in what it sends, this is the second wall.
-import type { Bodies, LogEvent } from "./index.ts";
+import type { Bodies, CantStart, LogEvent } from "./index.ts";
 import type { MediaRef } from "./media.ts";
 import { redact } from "./redact.ts";
 import { briefShown } from "./brief-shown.ts";
@@ -97,7 +97,7 @@ export type Block =
    * word in their i18n (`note.<say>`, `name` filled in), never the English it was logged in; `text`
    * is that line as logged, keys hidden, shown only on a tap for an error; `bad` = something failed.
    */
-  | { k: "note"; seq: number; say: NoteSay; name?: string; text: string; bad?: boolean; effort?: string; from?: number; to?: number; at?: string }
+  | { k: "note"; seq: number; say: NoteSay; name?: string; text: string; bad?: boolean; effort?: string; from?: number; to?: number; at?: string; cant?: CantStart }
   /** The agent's plan (D268): one per task, where it first wrote it, holding its latest items. */
   | { k: "plan"; seq: number; items: PlanItem[] }
   /**
@@ -122,7 +122,7 @@ export type NoteSay = "earlier" | "limit" | "compacted" | "compact_failed" | "in
 const KICKOFF = /^(<brief>|Start the task ")/;
 
 /** A system line as a note, or undefined when it says nothing to a person (D207). Shared by the Go port. */
-export function noteOf(text: string, raw: unknown): { say: NoteSay; name?: string; bad?: boolean; effort?: string; from?: number; to?: number; at?: string } | undefined {
+export function noteOf(text: string, raw: unknown): { say: NoteSay; name?: string; bad?: boolean; effort?: string; from?: number; to?: number; at?: string; cant?: CantStart } | undefined {
   const r = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
   const o = (k: string) => (r[k] && typeof r[k] === "object" ? (r[k] as Record<string, unknown>) : undefined);
   const str = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : undefined);
@@ -165,7 +165,11 @@ export function noteOf(text: string, raw: unknown): { say: NoteSay; name?: strin
   if (r.device !== undefined && r.offline === false) return { say: "back", ...((n) => (n ? { name: n } : {}))(str(r.name) ?? from(/^(.+?) is back/)) };
   if (r.waits === "asleep" || r.waits === "unreachable") return { say: "waiting_device", ...((n) => (n ? { name: n } : {}))(str(r.name) ?? from(/^waiting for (.+?):/)) };
   if (/^delivery failed/i.test(text)) return { say: "error_delivery", bad: true };
-  if (/^failed to start/i.test(text)) return { say: "error_start", bad: true };
+  // D472: each attempt says why it couldn't start, in the clients' words for its cant (never a bare 没能开始).
+  if (/^failed to start/i.test(text)) {
+    const c = o("cant");
+    return { say: "error_start", bad: true, ...(c && typeof c.why === "string" ? { cant: c as unknown as CantStart } : {}) };
+  }
   if (/^(failed to resume|could not switch|Claude in Chrome isn't connected, and)/i.test(text)) return { say: "error_resume", bad: true };
   if (/^(turn failed|event stream error|nudge failed|failed to)/i.test(text)) return { say: "error", bad: true };
   return undefined;

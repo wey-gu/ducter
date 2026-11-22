@@ -418,11 +418,10 @@ func (a *App) outcome(c *ui.Context, task *store.Task) {
 	})
 }
 
-// cantStart (D395): a task that couldn't start where it was to work says
-// why in plain words (never a bare path) and offers what fixes it: 在 X 上做
-// (its copy there), 拉一份到这里 (clone it where it was); 换谁来做 stays in
-// the head's meta line. With no fix found, 再试一次 asks the computers again
-// instead of repeating.
+// cantStart (D395, D415, D472): a task that couldn't start where it was to
+// work says why in plain words (never a bare path), what is known, and the
+// fix that is really the fix as the primary (cant.go); 看看为什么 shows
+// what the start said, a few lines, for a reason nobody knows yet.
 func (a *App) cantStart(c *ui.Context, task *store.Task, k *protocol.CantStart) {
 	t := a.T
 	uiText(c.Key("cant-line"), a.cantLine(k)).FontSize(t.MD).LineHeight(1.5).TextColor(t.Ink).MaxWidth(readMeasure)
@@ -430,61 +429,26 @@ func (a *App) cantStart(c *ui.Context, task *store.Task, k *protocol.CantStart) 
 	if k.Detail != "" {
 		uiText(c.Key("cant-detail"), k.Detail).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkMuted).MaxWidth(readMeasure)
 	}
-	hint := ""
-	switch k.Why {
-	case "busy":
-		hint = a.L.T("cant.busy.hint")
-	case "other", "away":
-		hint = a.L.T("cant.retry.hint")
-	}
-	if hint != "" {
+	if hint := a.cantHint(k); hint != "" {
 		uiText(c.Key("cant-hint"), hint).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkMuted).MaxWidth(readMeasure)
 	}
-	fixes := k.Elsewhere != nil || k.CloneHere || k.ClearLock
-	placeWhy := k.Why == "no_repo" || k.Why == "no_folder" || k.Why == "clone_failed"
+	open := a.cantOpen[task.ID]
 	ui.Row(c.Key("cant-btns")).Gap(t.S3).Wrap().AlignItems(ui.Center).Padding(t.S2, 0, 0, 0).Children(func() {
-		if k.Elsewhere != nil && a.buttonFor(c, a.L.T("cant.on", k.Elsewhere.Name), task.Title(), btnPrimary, t.ControlMD, t.Bg) {
-			a.CantAction(task.ID, "start_at", k.Elsewhere.Device)
-		}
-		if k.ClearLock {
-			kind := btnPrimary
-			if k.Elsewhere != nil {
-				kind = btnSecondary
+		for _, f := range a.cantFixes(k) {
+			label := f.label
+			if f.act == "why" && open {
+				label = a.L.T("cant.why.close")
 			}
-			if a.buttonFor(c, a.L.T("cant.clear_lock"), task.Title(), kind, t.ControlMD, t.Bg) {
-				a.CantAction(task.ID, "clear_lock", "")
-			}
-		}
-		if k.CloneHere {
-			kind := btnPrimary
-			if k.Elsewhere != nil || k.ClearLock {
-				kind = btnSecondary
-			}
-			if a.buttonFor(c, a.L.T("cant.clone_here"), task.Title(), kind, t.ControlMD, t.Bg) {
-				a.CantAction(task.ID, "clone_here", "")
-			}
-		}
-		if !fixes || !placeWhy {
-			kind := btnPrimary
-			if fixes {
-				kind = btnSecondary
-			}
-			if a.buttonFor(c, a.L.T("task.action.retry"), task.Title(), kind, t.ControlMD, t.Bg) {
-				a.CantAction(task.ID, "reopen", "")
+			if a.buttonFor(c.Key("cant-fix:"+f.act), label, task.Title(), f.kind, t.ControlMD, t.Bg) {
+				a.doCantFix(task.ID, k, f)
 			}
 		}
 	})
-}
-
-// cantLine (D415) is the card's line, each why with the words it takes.
-func (a *App) cantLine(k *protocol.CantStart) string {
-	switch k.Why {
-	case "away":
-		return a.L.T("cant.away", k.Computer)
-	case "other":
-		return a.L.T("cant.other")
+	if open && k.More != "" {
+		ui.Column(c.Key("cant-more")).Padding(t.S2+2, t.S3, t.S2+2, t.S3).Radius(t.RadiusSM).Background(t.Sunken).MaxWidth(readMeasure).Children(func() {
+			uiText(c, k.More).Font(t.Mono).Selectable().FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft)
+		})
 	}
-	return a.L.T("cant."+k.Why, k.Computer, k.What)
 }
 
 // decisionAnswered is an ask already answered: one quiet line.

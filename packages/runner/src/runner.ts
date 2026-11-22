@@ -132,6 +132,8 @@ interface StartCtx {
 interface TaskRt {
   id: string;
   persona: string;
+  /** D472: a start again is under way (its place asked, its launch not settled): a second 再试一次 is the same one. */
+  restarting?: boolean;
   card: TaskCard;
   /** What a session starts with: `base` plus the browser's parts (withBrowser), rebuilt in startSession. */
   spec: SessionSpec;
@@ -1119,6 +1121,8 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       }
     } catch (err) {
       if (isOffline(err)) return deviceLost(t, true);
+      // D472: one that never started says why it couldn't, with its fix, like any start that failed.
+      if (neverStarted(t)) return startFailed(t, err);
       const reason = preview(err instanceof Error ? err.message : String(err), 500);
       logEvent(t, { role: "system", from: "runner", text: `failed to resume on ${d.name}: ${reason}` });
       setState(t, "failed", "parked", reason);
@@ -1735,6 +1739,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
         }
       } catch (err) {
         if (isOffline(err)) return deviceLost(t, true);
+        if (neverStarted(t)) return startFailed(t, err); // D472: why it couldn't start, with its fix
         const reason = preview(err instanceof Error ? err.message : String(err), 500);
         logEvent(t, { role: "system", from: "runner", text: `failed to resume after restart: ${reason}` });
         setState(t, "failed", "parked", reason);
@@ -1906,7 +1911,12 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     const device = t.ops.device?.id ?? "local";
     const fallback = (): CantStart & { line: string } => ({ why: problem.why, computer: t.ops.device?.name ?? "", what: "", ...(problem.path ? { path: problem.path } : {}), line: reason });
     const cant = (await core.places?.cantStart(t.id, { ...problem, device }).catch(() => undefined)) ?? fallback();
-    if (problem.why === "agent" && !cant.detail) cant.detail = reason.split("\n")[0]!.replace(/^(Error: )+/, "").slice(0, 160);
+    // D415/D472: the agent's own words, one line; for what is truly unknown, a few lines behind 看看为什么.
+    const lines = reason.split("\n").map((l) => l.replace(/^(Error: )+/, "").trim()).filter((l) => l && !/^at\s|^\s*at\s/.test(l));
+    if (["agent", "not_installed", "signed_out", "old", "other"].includes(problem.why) && !cant.detail && lines[0]) cant.detail = lines[0].slice(0, 160);
+    if (problem.why === "other" && !cant.more && lines.length > 1) cant.more = lines.slice(0, 6).join("\n").slice(0, 600);
+    if (!cant.harness) cant.harness = t.base.harness;
+    if (!cant.device) cant.device = device;
     const { line, ...card } = cant;
     logEvent(t, { role: "system", from: "runner", text: `failed to start: ${reason}`, raw: { cant: card } });
     if (t.dropped) return;
@@ -1918,6 +1928,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
   /** Provision the place, start the session, and send the first turn (the brief, once written). */
   async function launch(t: TaskRt, c: StartCtx, resolved: ResolvedPlace): Promise<void> {
     const id = t.id;
+    let briefed = !c.later;
     try {
       await t.ops.provision(resolved);
       await t.sidecar?.ready();
@@ -1949,6 +1960,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
         // The briefed task_open is the one the registry, recovery and hand-offs read.
         const full = { ...c.body, place: resolved.place, brief: text, ...(media?.length ? { media } : {}) };
         core.log.append({ persona: c.persona, stream: stream(id), origin: "system", kind: "task_open", body: full });
+        briefed = true;
         t.base = { ...specFor(id, full, resolved.cwd, true), cwd: t.base.cwd };
         t.spec = withBrowser(t.base, t.sidecar, c.partnerName);
         first = briefTurn(text, c.title);
@@ -1962,7 +1974,61 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     } catch (err) {
       if (isOffline(err)) return deviceLost(t, true);
       await startFailed(t, err);
+      // D472: opened early (D120) and failed before its brief came: the brief is still kept, so
+      // 再试一次 or 选一个文件夹 starts it with its brief, never with its title alone.
+      if (!briefed) void keepBrief(t, c);
     }
+  }
+
+  async function keepBrief(t: TaskRt, c: StartCtx): Promise<void> {
+    let text: string;
+    try {
+      text = await c.briefIn;
+    } catch {
+      return; // never briefed: the partner's call changed or failed
+    }
+    if (!text || t.session || t.sessionId) return;
+    const media = c.mediaIn ? await c.mediaIn.catch(() => []) : undefined;
+    const last = core.log.read({ stream: stream(t.id), kinds: ["task_open"], limit: 50 }).at(-1)?.body as Bodies["task_open"] | undefined;
+    if (!last || last.brief) return;
+    core.log.append({ persona: c.persona, stream: stream(t.id), origin: "system", kind: "task_open", body: { ...last, brief: text, ...(media?.length ? { media } : {}) } });
+  }
+
+  /** D395: the start again itself (restartAt's and reopen's), under t.restarting. */
+  async function restartNow(t: TaskRt, place: Place, o?: { clearLock?: boolean; then?: { text: string; from: "user" | "partner"; clientId?: string } }): Promise<{ ok: boolean; message?: string }> {
+    const taskId = t.id;
+    await t.started.catch(() => {});
+    if (t.session || t.sessionId) return { ok: false, message: "It has started already; move it to another computer instead." };
+    const ops = opsFor(place);
+    if (ops.device && !ops.device.online()) return { ok: false, message: `${ops.device.name} can't be reached right now.` };
+    const opened = core.log.read({ stream: stream(taskId), kinds: ["task_open"], limit: 50 }).at(-1)?.body as Bodies["task_open"] | undefined;
+    if (!opened) return { ok: false, message: "This task's brief isn't in the Log." };
+    let resolved: ResolvedPlace;
+    try {
+      resolved = await ops.plan(place, taskId, t.card.title);
+    } catch (err) {
+      return { ok: false, message: (err as Error).message };
+    }
+    if (o?.clearLock) resolved = { ...resolved, clearLock: true };
+    t.ops = ops;
+    t.dropped = false;
+    const body: Bodies["task_open"] = { ...opened, place: resolved.place, harness: t.base.harness, ...(t.base.model ? { model: t.base.model } : {}) };
+    core.log.append({ persona: t.persona, stream: stream(taskId), origin: "system", kind: "task_open", body });
+    t.card = { ...t.card, place: resolved.place };
+    t.base = { ...specFor(taskId, body, resolved.cwd, true), harness: t.base.harness, ...(t.base.model ? { model: t.base.model } : {}), ...(t.base.effort ? { effort: t.base.effort } : {}) };
+    t.spec = withBrowser(t.base, t.sidecar, partnerNameOf(t.persona));
+    logEvent(t, { role: "system", from: "runner", text: `starting again on ${ops.device?.name ?? "this computer"}`, raw: { restarted: { device: ops.device?.id ?? "local", ...(resolved.clone ? { clone: true } : {}) } } });
+    setState(t, "queued", "provisioning");
+    t.started = launch(t, { body, later: false, briefIn: body.brief, title: t.card.title, persona: t.persona, partnerName: partnerNameOf(t.persona), ...(o?.then ? { then: o.then.text } : {}) }, resolved);
+    return { ok: true };
+  }
+
+  /** D472: the guard holds until the launch it began settles, so a second tap meanwhile is the same start. */
+  function settleRestart(t: TaskRt) {
+    const started = t.started;
+    void started.catch(() => {}).finally(() => {
+      if (t.started === started) t.restarting = false;
+    });
   }
 
   /** D157: a task waiting for its computer starts there as soon as it is back. */
@@ -2000,7 +2066,10 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     }
     // Planned there: the place as that computer resolved it (a worktree, a branch).
     const body = { ...c.body, place: resolved.place, harness: t.base.harness, ...(t.base.model ? { model: t.base.model } : {}) };
-    if (!c.later) core.log.append({ persona: c.persona, stream: stream(t.id), origin: "system", kind: "task_open", body });
+    // D472: written once: a place that planned to just what the last task_open says (a folder moved
+    // here by moveWaiting, which wrote it) isn't written again in the same second.
+    const last = core.log.read({ stream: stream(t.id), kinds: ["task_open"], limit: 50 }).at(-1)?.body;
+    if (!c.later && JSON.stringify(last) !== JSON.stringify(body)) core.log.append({ persona: c.persona, stream: stream(t.id), origin: "system", kind: "task_open", body });
     t.card = { ...t.card, place: resolved.place };
     t.base = { ...specFor(t.id, body, resolved.cwd, !c.later), harness: t.base.harness, ...(t.base.model ? { model: t.base.model } : {}) };
     t.spec = withBrowser(t.base, t.sidecar, c.partnerName);
@@ -2344,14 +2413,23 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
 
     async reopen(taskId) {
       const t = get(taskId);
+      // D472: 再试一次 tapped twice (or by two clients) while it starts again is one start.
+      if (t.restarting) return { delivered: "prompted" as const };
       await t.started.catch(() => {});
       t.dropped = false;
       if (t.session || t.sessionId || t.handedFrom) return runner.send(taskId, REOPENED, undefined, "ducter");
       // D415: it never started: its place is asked again, fresh (a path that failed is never retried as is).
       if (neverStarted(t) && core.places) {
-        const p = await core.places.replan(taskId, { action: "reopen" });
-        if (!p.ok) throw new Error(p.message);
-        const s = await runner.restartAt!(taskId, p.place);
+        if (t.restarting) return { delivered: "prompted" as const };
+        t.restarting = true;
+        let s: { ok: boolean; message?: string };
+        try {
+          const p = await core.places.replan(taskId, { action: "reopen" });
+          if (!p.ok) throw new Error(p.message);
+          s = await restartNow(t, p.place);
+        } finally {
+          settleRestart(t);
+        }
         if (!s.ok) throw new Error(s.message ?? "It couldn't start.");
         return { delivered: "prompted" as const };
       }
@@ -2364,7 +2442,8 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       try {
         await t.started;
       } catch (err) {
-        setState(t, "failed", "parked", preview(err instanceof Error ? err.message : String(err), 500));
+        if (neverStarted(t)) await startFailed(t, err); // D472: why, with its fix
+        else setState(t, "failed", "parked", preview(err instanceof Error ? err.message : String(err), 500));
         throw err;
       }
       return { delivered: "prompted" as const };
@@ -2374,30 +2453,14 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     // computer's copy, or a clone, as core re-resolved it. Its brief and agent stay.
     async restartAt(taskId, place, o) {
       const t = get(taskId);
-      await t.started.catch(() => {});
-      if (t.session || t.sessionId) return { ok: false, message: "It has started already; move it to another computer instead." };
-      const ops = opsFor(place);
-      if (ops.device && !ops.device.online()) return { ok: false, message: `${ops.device.name} can't be reached right now.` };
-      const opened = core.log.read({ stream: stream(taskId), kinds: ["task_open"], limit: 50 }).at(-1)?.body as Bodies["task_open"] | undefined;
-      if (!opened) return { ok: false, message: "This task's brief isn't in the Log." };
-      let resolved: ResolvedPlace;
+      // D472: one start again at a time (hel, 2026-11-22: two task_open in one second for one task).
+      if (t.restarting) return { ok: true, message: "It is starting again already." };
+      t.restarting = true;
       try {
-        resolved = await ops.plan(place, taskId, t.card.title);
-      } catch (err) {
-        return { ok: false, message: (err as Error).message };
+        return await restartNow(t, place, o);
+      } finally {
+        settleRestart(t);
       }
-      if (o?.clearLock) resolved = { ...resolved, clearLock: true };
-      t.ops = ops;
-      t.dropped = false;
-      const body: Bodies["task_open"] = { ...opened, place: resolved.place, harness: t.base.harness, ...(t.base.model ? { model: t.base.model } : {}) };
-      core.log.append({ persona: t.persona, stream: stream(taskId), origin: "system", kind: "task_open", body });
-      t.card = { ...t.card, place: resolved.place };
-      t.base = { ...specFor(taskId, body, resolved.cwd, true), harness: t.base.harness, ...(t.base.model ? { model: t.base.model } : {}), ...(t.base.effort ? { effort: t.base.effort } : {}) };
-      t.spec = withBrowser(t.base, t.sidecar, partnerNameOf(t.persona));
-      logEvent(t, { role: "system", from: "runner", text: `starting again on ${ops.device?.name ?? "this computer"}`, raw: { restarted: { device: ops.device?.id ?? "local", ...(resolved.clone ? { clone: true } : {}) } } });
-      setState(t, "queued", "provisioning");
-      t.started = launch(t, { body, later: false, briefIn: body.brief, title: t.card.title, persona: t.persona, partnerName: partnerNameOf(t.persona), ...(o?.then ? { then: o.then.text } : {}) }, resolved);
-      return { ok: true };
     },
 
     async moveTask(taskId, to, harness, model) {

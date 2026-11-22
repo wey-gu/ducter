@@ -92,6 +92,9 @@ func (a *App) switchLine(task *store.Task, b *Block) string {
 // noteLine is a note in words: note.<say>, its name filled in (a
 // computer it didn't name is said plainly; an effort in its own word).
 func (a *App) noteLine(b *Block) string {
+	if b.Cant != nil {
+		return a.cantLine(b.Cant)
+	}
 	name := b.Name
 	switch b.Say {
 	case "compacted":

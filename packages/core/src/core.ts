@@ -10,7 +10,7 @@ import { createMediaStore } from "./media.ts";
 import { chmodSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { thisComputer } from "./this-computer.ts";
-import { join, resolve, sep } from "node:path";
+import { basename, join, resolve, sep } from "node:path";
 import { randomBytes } from "node:crypto";
 import { APP_SANDBOX, appCsp, HARNESSES, MEM_CONNECT_TOOLS, fill, harnessName, normalizeTag, sameComputer, pickTag, words, type Bodies, type HarnessId, type LangTag, type LogEvent, type OnHand, type PartnerAsk, type Place, type TaskCard, type TaskNeeds } from "@ducter/protocol";
 import { intlLocale, talkLang } from "./lang.ts";
@@ -1244,6 +1244,12 @@ export function startCore(opts: CoreOptions = {}): Core {
     lang: () => langNow(),
     staged: () => taskSourcesRef?.stagedItem(),
     fs: { isDir: (p) => realFs.isDir(p), readText: (p) => realFs.readText?.(p), home: homedir() },
+    // D472: a folder task's folder looked for there first; a missing folder known as a project's repository.
+    folder: (dev, path, ms) => (dev === "local" ? (opts.homeFolderInfo ?? ((p: string) => folderInfo(p, opts.git ?? realGitInfo)))(path) : computers.folderInfo(dev, path, ms).catch(() => "offline" as const)),
+    knownRemote: (name) => {
+      const n = name.toLowerCase();
+      return projects.list().find((p) => p.remote && (p.name.toLowerCase() === n || basename(p.remote).toLowerCase() === n))?.remote;
+    },
   });
   // D285: 做过的事 / Past tasks: the person's marks, and every task findable again.
   const marks = createMarks({ dataDir });

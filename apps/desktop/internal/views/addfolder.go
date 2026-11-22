@@ -34,6 +34,9 @@ type addFolderState struct {
 	// its row in On hand's column arrives with a ring that fades.
 	arrived   string
 	arrivedAt time.Time
+	// forTask (D472): opened from a task that couldn't start: the folder
+	// chosen, cloned or made there is where it starts.
+	forTask string
 }
 
 // arrivalFor is how far the project's arrival has gone (0..1), and
@@ -78,7 +81,16 @@ func (a *App) afPlaced(p protocol.PlaceChoice) {
 	if !a.addf.open {
 		return
 	}
+	forTask := a.addf.forTask
 	a.closeAddFolder()
+	// D472: chosen for a task that couldn't start: it starts there; the
+	// lens stays where it was.
+	if forTask != "" && (p.Place.Kind == "repo" || p.Place.Kind == "folder") {
+		a.addf.forTask = ""
+		pl := p.Place
+		a.cantSend(protocol.TaskAction{T: "task_action", TaskID: forTask, Action: "start_in", Place: &pl})
+		return
+	}
 	if p.Name != "" {
 		a.Local.SetLens(p.Name)
 		a.addf.arrived, a.addf.arrivedAt = p.Name, a.Now()
@@ -211,6 +223,11 @@ func (a *App) addFolderSheet(c *ui.Context) {
 		w, h = 1040, 760
 	}
 	title := a.L.T("addfolder.title")
+	var forTask *store.Task
+	if af.forTask != "" {
+		forTask = a.S.Tasks[af.forTask]
+		title = a.L.T("cant.pick.title")
+	}
 	open := true
 	ui.DialogBase(c, &open, func(back, panel ui.Element) {
 		back.Background(t.Scrim)
@@ -218,6 +235,9 @@ func (a *App) addFolderSheet(c *ui.Context) {
 			Background(t.Surface).Shadow(0, t.Floating.Y, t.Floating.Blur, 0, t.Floating.Color).Label(title)
 		a.enter(c, panel)
 		a.heading(c, title, t.XL)
+		if forTask != nil {
+			uiText(c.Key("af-for"), a.L.T("cant.pick.sub", forTask.Title())).FontSize(t.SM).TextColor(t.InkMuted).MaxWidth(readMeasure)
+		}
 		ok, old := a.afComputers()
 		// 1. The computer: named only when there is a choice; each its own
 		// small clay (D457), home first.

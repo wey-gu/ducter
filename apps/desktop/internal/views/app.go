@@ -375,7 +375,11 @@ type App struct {
 	nt newTaskState
 	// addf is On hand's 添加文件夹 / Add a folder sheet (D455).
 	addf addFolderState
-	back *returnTo
+	// D472: a can't-start fix sent a moment ago (one tap is one start), and
+	// whose 看看为什么 is open.
+	cantSent map[string]time.Time
+	cantOpen map[string]bool
+	back     *returnTo
 	// oh is On hand's list state (D216): the row the keys are on, Find, the switcher.
 	oh onHandState
 	// SystemLang is macOS's language, for Settings' "follow the system";
@@ -963,7 +967,7 @@ func (a *App) TaskAction(id, action string) {
 // that computer's copy, clone_here clones it where it was, reopen asks the
 // computers again.
 func (a *App) CantAction(id, action, device string) {
-	a.send(protocol.TaskAction{T: "task_action", TaskID: id, Action: action, Device: device})
+	a.cantSend(protocol.TaskAction{T: "task_action", TaskID: id, Action: action, Device: device})
 }
 
 // GoOnAllDefaults takes the default of every open decision.

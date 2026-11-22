@@ -555,7 +555,7 @@ fails at start. D120's early open happens only for a place on the home that is t
 **When it still can't start** (a folder removed between the check and the start): the runner asks
 core why (`places.cantStart`), and the card says **没能开始：{computer} 上没有 {repo} 的代码 /
 Couldn't start: {computer} has no copy of {repo}** with what fixes it: **在 {computer} 上做 / Do it
-on {computer}** (another copy), **拉一份到这里 / Clone it here**; with neither, **再试一次 / Try
+on {computer}** (another copy), **拉一份到 {computer} 上 / Clone it onto {computer}** (D472); with neither, **再试一次 / Try
 again** re-resolves. 换谁来做 stays in the head's meta line. The living line says the same cause.
 The clone, when it happens at open, is said by Ducter's code under the ack, once: **{repo} 的代码还
 没在哪台电脑上，我先在 {computer} 上拉一份。**
@@ -569,6 +569,23 @@ went away), **other**. Each has its line, a muted line under it (the agent's own
 does), and its taps: **清掉旧的再试 / Clear it and try again** for a lock git left (removed only when
 no git is running on that computer), **在 X 上做** when another computer has the copy, and **再试一次**,
 which asks the computers again, fresh. The raw message stays in the task's own steps.
+
+**The real reason, the real fix (D472).** hel, 2026-11-22: an Antigravity task opened in
+/root/dev/mem on Hetzner Server, which had no such folder; the page said 没成 with 再试一次, each
+attempt only 没能开始, and the author had to ask the partner why. The reason was known and hidden: an
+On hand snapshot rebuilt the task's state without its `cant`. Now the snapshot keeps it, and one
+source per client (`apps/web/src/cant.tsx`, `apps/desktop/internal/views/cant.go`) gives the page,
+each attempt's step and D467's brief the same line and fixes, the real one first: a missing folder
+offers **拉一份到 {computer} 上** (the repository known from the words, the to-do, or a project of
+that name with an origin) and **选 {computer} 上的文件夹** (D455's sheet on that computer; the folder
+chosen there is where it starts, `task_action start_in`); **not_installed**, **signed_out** and
+**old** (that computer's Ducter) have their own words with 装 / 登录 / 更新 there; words that named
+another computer offer **换到 {computer} 上做**; **other** names the agent and the computer, the first
+line under it and **看看为什么** for a few lines more. Before the task exists, task_open's pre-flight
+looks for a folder place's folder on its computer (4 s at most; offline goes ahead and waits) and
+returns an error the partner turns into one line: clone it there, or which folder. One start again
+runs at a time (a second tap while it starts is the same start; each client holds a tap for 2 s),
+and an early open that failed before its brief keeps the brief for the start again.
 
 **A worktree is made so it can't collide (D415).** Its branch names its to-do: `ducter/<issue
 number>-<the issue's own words>` (several: their numbers, then the first one's words), never a

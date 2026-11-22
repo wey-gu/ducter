@@ -93,7 +93,11 @@ describe("On hand on a real board (D471)", () => {
     expect(entry).not.toContain("StatusFace");
     expect(entry).not.toContain('class="stat"');
     const css = readFileSync(join(import.meta.dir, "../static/app.css"), "utf8");
-    const block = css.slice(css.indexOf("/* ---------- D471: On hand as one ledger ---------- */"));
+    const from = css.indexOf("/* ---------- D471: On hand as one ledger ---------- */");
+    // Its own block only: up to the next marked section (later decisions append after it).
+    const marks = [...css.matchAll(/\/\* ---------- (D\d+)/g)].filter((m) => m.index! > from && m[1] !== "D471");
+    const next = marks[0]?.index ?? -1;
+    const block = css.slice(from, next > 0 ? next : undefined);
     expect(block).not.toMatch(/#[0-9a-f]{3,6}\b|rgb\(/i);
     expect(block).not.toMatch(/border-left:/);
     const sizes = new Set([...block.matchAll(/font-size: ([^;]+);/g)].map((m) => m[1]));

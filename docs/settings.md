@@ -326,9 +326,14 @@ and once from your partner. Ducter doesn't change Nowledge Mem's own settings.
 
 ## Notifications
 
-At the top, a preview shows a notification from your partner as you would get it: its question, how
-long it waits before going with its suggestion, and your quiet hours under it. It changes as you change
-anything on the page, and with notifications off it shows where the question waits instead.
+Under the title your partner says how it reaches you now (for example *When something needs you, I send
+a notification, never in your quiet hours.*). At the top, a preview shows a notification from your partner
+as you would get it: its question, how long it waits before going with its suggestion, and your quiet
+hours under it. Once you have accounts, a second, smaller notification under it shows what your partner
+sends when it notices something by itself, and it follows **When it notices something**: the urgent one
+right away, or one note in the morning; with **Only when I ask** there is none, and a line says it keeps
+what it notices until you ask. The preview changes as you change anything on the page, and with
+notifications off it shows where the question waits instead.
 
 - **Notifications** turns the nudges on this Mac and your connected phones on or off. With them
   off, anything that needs you waits in the conversation and in On hand.
@@ -360,15 +365,18 @@ Your partner can read your Gmail, calendar, Slack, GitHub and other accounts whe
 you use OOMOL's `oo` and are signed in, it's one tap on **Use these accounts**; otherwise **Add
 one** takes an address and a key. Each place your accounts come from is one group, with a
 row for each app it can read and its switch; tap a row for what it reads, or to stop it reading.
-Reading just happens; sending or changing anything waits for your Go. All of it is in
-[Accounts your partner can read](accounts.md). The AI accounts
+Reading just happens; sending or changing anything waits for your Go. If a place your accounts come
+from can't be reached, its first row says so once, with **Try again**, and its apps' marks turn grey
+until it answers. All of it is in [Accounts your partner can read](accounts.md). The AI accounts
 (Claude Code, Codex, pi, DeepSeek Harness) live on **Devices**; the last row, **AI accounts**, goes there.
 
 ## Passwords & cards
 
 What Ducter uses to sign in, pay and fill in addresses for you: your sign-ins, your cards, your
 details and the keys tasks ask for, kept locked on the computer Ducter runs on. In Chinese it is
-**密码和银行卡**. Ducter fills them in without the AI seeing them, and every payment waits for your
+**密码和银行卡**. Under the title your partner says what it keeps for you (*I keep 3 sign-ins, 2 cards and 2
+keys locked for you…*); each sign-in shows its site's first letter, each card a small card with its last
+four digits. Ducter fills them in without the AI seeing them, and every payment waits for your
 Go. All of it is in [Passwords & cards](passwords-and-cards.md).
 
 ## Look and sound
@@ -397,6 +405,10 @@ something.
 
 ## Where it runs
 
+Under the title your partner says where it runs and what closing the window does. Below are your
+computers and phones, each drawn as itself with what it is to your partner (where it runs, a computer
+that does tasks for it, a phone you reach it from) and what it is doing now when that matters.
+
 - **Where it runs:** this Mac, or the computer the app is connected to (like a server), and in
   words what happens when you close the window. On this Mac, **Stop** stops everything until
   you wake it.
@@ -410,7 +422,8 @@ something.
 
 ## Updates and about
 
-The version, then **Updates**: whether this version is the newest, **Check now**, and **Update
+The version, and your partner's word on it: *I'm up to date on every computer*, or the update that is
+waiting. Then **Updates**: whether this version is the newest, **Check now**, and **Update
 automatically when quitting**. When Ducter runs on this Mac, that one line and button cover both the
 app and Ducter itself. When a new version is ready, **Restart Now** installs it: the window says it's putting the new
 version in, and Ducter opens again on it. Under

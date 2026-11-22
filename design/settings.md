@@ -78,7 +78,8 @@ A source's first row says how it reads (在留意 / Keeping an eye out, 你问�
 you ask, 已暂停 / Paused, or what went wrong). A service row says its own state only when it
 differs from that: under 在留意, a row with its switch off says **你问起来才看 / Only when you ask**;
 under 你问起来才去看, a row watched on its own says **自己留意着 / Watching**; **不看 / Not read** and
-**连不上 / Can't reach** always speak. The switch says the rest.
+**连不上 / Can't reach** always speak, except when the source itself is down: then its first row says it
+once with **再试一次** and its rows are quiet, their marks faded (D475). The switch says the rest.
 
 ## The rows other choices left behind (D307)
 
@@ -532,8 +533,42 @@ under a link that isn't whole), **来往** (a thread per agent, each exchange wi
 (the rules in code and the muted), then **试试看**. Overview's **也能找我** adds the agents after the chat apps,
 each part opening its pane. Full words in `bridge.md` "Who reaches whom…" and D470.
 
+## Pane by pane, again (D475)
+
+The author's bar: every pane loved, full of feeling, easy, smooth, elegant; and the phone first-class.
+Every pane but Overview, Memory and Agent messaging rendered against `demo-settings-real.ts` (and
+`DEMO_NEEDS=1`) on the Mac at 1280 and 760 (`TestD475Shots`) and the web at 1280, 390 and 430 with touch,
+zh and en, light and dark (`.shots/d475/{before,after}`).
+
+| Pane | Who, and what they felt | What was wrong | Now |
+|---|---|---|---|
+| 伙伴 / Partner | H: which agent, which model, who does tasks | Done in D322 and D469; on a phone the model's pill drops to a line of its own | Unchanged (kept in step) |
+| 通知 / Notifications | C and F: "will it bother me?" | The head described the pane; the preview didn't follow 发现了就说; on the web 发现了就说 was a heading over an untitled pill | The head says how it reaches you now; a second, smaller notification follows 发现了就说 (the urgent one now, the morning's note, or none with its line); 发现了就说 a row on the web too |
+| 账号 / Accounts | C: what it may read; everyone when something broke | A source down: **连不上** seven times, the head still counting six watched, no way to try again | The source's first row says it once with **再试一次**; rows quiet and faded; the need alone in the head |
+| 待办来源 / To-do sources | H with issues, C with a vault | The head described the pane; on a phone each choice stood three rows tall | The head counts what is open where; on a phone a choice takes the card's width, one track |
+| 聊天软件 / Chat apps | C, H | The head described the pane | The head names the apps it waits in |
+| 密码和银行卡 / Passwords & cards | C booking | The head described the pane; the Mac's globe and card outlines where the web drew the site's letter and the card | The head counts what it keeps; both clients draw each as itself in the 40 column |
+| 外观和声音 / Look and sound | Everyone, briefly | Already a live stage and segmented rows | Unchanged |
+| 在哪儿运行 / Where it runs | H with a server home; F once | A lone card naming the home under a head that named it | Gone when there is nothing to do here; the head and the home's card say it |
+| 关于 / About | H checks versions | No word on how the versions stand | The partner in its pose with **每台电脑上的我都是最新的。** or the update waiting |
+
+The rules it leaves, for every pane:
+
+- **A head is the state, never the purpose.** What is true now, counted where there is a count, the
+  pane's old lede only until it is known.
+- **A fault is said once, where it starts, with its fix.** The rows it reaches stay quiet and fade.
+- **Show the consequence of every choice a person can't picture** (D43): Notifications draws what each
+  pick of 发现了就说 sends.
+- **A thing kept for the person is drawn as itself**, in the 40 tile column, the same on both clients.
+- **On a phone, room goes to the control.** A choice under its words takes the card's whole width.
+
 ## Not done
 
+- D475's own: the iOS Simulator walk (Chrome's device emulation with touch stood in); To-do sources'
+  **移除** still alone on its own row; Chat apps' quiet actions each on a line of their own on a phone;
+  Notifications' **今天看了什么** keeps the tile column's indent under a row that has none; Where it runs'
+  cards say what each computer is doing only when the home reports it (the demo reports none); the
+  author's review.
 - D469's owed: a comprehension pass on Overview's labels; the author's review; Mem's questions answered on
   Overview (they need their two memories read: Memory's job for now).
 - D459's leftovers: Accounts' connection added and the phone's sign-in still answer with a boxed notice at the

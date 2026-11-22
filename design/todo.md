@@ -2844,3 +2844,13 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] **On the author's iPhone against hel.** D474 was reproduced and fixed on the iOS Simulator and WebKit against demo homes; the author's own iPhone was never looked at. Open the web client there (a reload, a second tab, Add to Home Screen) and say what still feels poor. *Trigger:* the next time the author has the phone in hand.
 - [ ] **The page's code is 1.6 MB of script and 0.6 MB of styles, sent uncompressed.** Content-named and `immutable` (D209), so it travels once per version, but that once is slow over a phone's link to a home abroad, and `index.html`'s own ground is all the person sees meanwhile. Compress (`br`/`gzip` by `Accept-Encoding`, precomputed at build) and split so the conversation parses first. *Trigger:* a first open over a phone network measured above 3 s.
 - [ ] **The greeting opens scrolled under the bar** on a phone (the clay cut off under the header, seen in the D474 shots on both languages). Pre-existing; not D474's cause. *Trigger:* the next phone layout pass (D471's On hand redo is in flight).
+
+## Settings, pane by pane (D475)
+
+- [ ] **The iOS Simulator walk of D475's panes** (this pass used Chrome's device emulation with touch at
+  390 and 430). Trigger: D474's reload fix lands, so a page can be loaded once after pairing.
+- [ ] **To-do sources' 移除 and Chat apps' quiet actions on a phone**, each alone on a line: fold them into
+  the group's last line with its note. Trigger: the author's review of D475.
+- [ ] **Try again said back.** 再试一次 says its line at once; when the source still doesn't answer the row
+  stays 连不上 with no second word (D404: a retry that met the same lack says so). Trigger: a person taps it
+  twice.

@@ -300,6 +300,15 @@ func (a *App) serviceTile(c *ui.Context, key, service string) func() {
 	return a.markTile(c, key, a.drawAppMark(service))
 }
 
+// serviceTileFaded is serviceTile with the mark faded while its source can't be reached (D475): the
+// state carried by the art, the words said once on the source's first row.
+func (a *App) serviceTileFaded(c *ui.Context, key, service string, faded bool) func() {
+	if b := brandOf(service); b != "" {
+		return a.brandTile(c, b, faded)
+	}
+	return a.markTile(c, key, a.drawAppMark(service))
+}
+
 // mailboxTile is a source's clay mailbox, small, in the tile column.
 func (a *App) mailboxTile(c *ui.Context, cv protocol.ConnectionView) func() {
 	box := a.drawMailbox(cv.Source)
@@ -332,7 +341,17 @@ func (a *App) sourceCard(c *ui.Context, cv protocol.ConnectionView) {
 				}
 			}
 		}
+		// D475: a source it can't reach says so once, here, with the real fix: try it again now.
+		if cv.State == "unreachable" {
+			control = func() {
+				if a.buttonFor(c, a.L.T("acct.retry"), spoken(a.L, name, a.L.T("acct.retry")), btnSecondary, a.T.ControlSM, a.T.Surface) {
+					a.send(protocol.ConnectionsReq{T: "connections"})
+					a.say("src:"+cv.ID, a.L.T("said.retry", name))
+				}
+			}
+		}
 		a.headRow(c, "src:"+cv.ID, a.sourceTile(c, cv), name, line, sourceTone(cv, ink, a.T), control)
+		a.saidLineIn(c, "src:"+cv.ID)
 		a.serviceRows(c, cv)
 		// D222: a calendar new to this client, or Gmail without one.
 		a.calFirstLine(c, cv)
@@ -551,7 +570,7 @@ func (a *App) serviceRows(c *ui.Context, cv protocol.ConnectionView) {
 				}
 			}
 		}
-		if a.openRow(c, "svc:"+cv.ID+"|"+k, a.serviceTile(c, "app:"+cv.ID+"|"+k, w.Service), title, w.Account, t.InkMuted, open == k, control) {
+		if a.openRow(c, "svc:"+cv.ID+"|"+k, a.serviceTileFaded(c, "app:"+cv.ID+"|"+k, w.Service, sourceDown(cv)), title, w.Account, t.InkMuted, open == k, control) {
 			if open == k {
 				cs.tile[cv.ID] = ""
 			} else {
@@ -576,7 +595,10 @@ func (a *App) serviceState(cv protocol.ConnectionView, w protocol.AppWatch) (str
 	switch {
 	case w.Excluded:
 		return a.L.T("svc.excluded"), t.InkMuted
-	case w.Unreachable || sourceDown(cv):
+	case sourceDown(cv):
+		// D475: the source's first row says it once, with its fix; its rows stay quiet.
+		return "", t.InkMuted
+	case w.Unreachable:
 		return a.L.T("card.unreachable"), t.Failed.Ink
 	case w.Trouble != "":
 		// D402: a watch that stopped by itself says so, never a silent "watching".

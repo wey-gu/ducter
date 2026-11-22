@@ -17,6 +17,7 @@ import { MemAsk, memPluginRows } from "./mem-plugin.tsx";
 import { groupNoted, memPhase } from "./mem-view.ts";
 import { Notebook, peersOneWay, peersReaching, peersSay } from "./memory.tsx";
 import { noBrain } from "./partner-story.tsx";
+import { TS } from "./todos.tsx";
 import { Avatar } from "./views.tsx";
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
@@ -87,10 +88,46 @@ export function watchedAccounts(): { total: number; watched: number; titles: str
 
 const homeName = () => A.devices?.find((d) => d.home)?.name || A.homeName || "";
 
+// D475: each page's head is what is true there now, never what the page is for (the Mac's twins in
+// settings_home.go: notifySay, todosSay, chatsSay, autofillSay).
+function notifySay(): string {
+  const s = A.settings;
+  if (!s) return t("say.notify");
+  if (!s.notify) return t("say.notify.off");
+  return s.quiet ? t("say.notify.quiet") : t("say.notify.on");
+}
+
+function todosSay(): string {
+  const items = (TS.frame?.sources ?? [])
+    .filter((s) => s.state === "ok" && s.checkedAt && (s.open ?? 0) > 0)
+    .map((s) => t("say.todos.item", (s.kind === "github" ? "GitHub" : s.kind === "obsidian" ? "Obsidian" : "Jira"), `${s.open}${s.openAtLeast ? "+" : ""}`));
+  return items.length ? t("say.todos.n", items.join(t("say.todos.sep"))) : t("say.todos");
+}
+
+function chatsSay(): string {
+  const names = linkedChats();
+  return names.length ? t("say.chats.n", names.join(t("acct.sep"))) : t("say.chats");
+}
+
+function autofillSay(): string {
+  const f = A.saved;
+  if (!f) return t("say.autofill");
+  const signins = f.items.filter((x) => x.kind === "signin").length;
+  const cards = f.items.length - signins;
+  const items: string[] = [];
+  const count = (n: number, key: string) => n && items.push(n === 1 ? t(`${key}.one`) : t(key, n));
+  count(signins, "say.af.signins");
+  count(cards, "say.af.cards");
+  count(f.keys?.length ?? 0, "say.af.keys");
+  return items.length ? t("say.autofill.n", items.join(t("acct.sep"))) : t("say.autofill");
+}
+
 /** The partner's sentence at the head of a page: what is true there now, in its voice. "" for none. */
 export function paneSay(page: SettingsPage): string {
   switch (page) {
     case "accounts": {
+      // D475: a source down is said by its need alone, never a count it can't keep.
+      if (needsOf("accounts").length) return "";
       const { total, watched } = watchedAccounts();
       if (!total) return t("say.accounts.none");
       return watched ? t("say.accounts", watched) : t("say.accounts.ask", total);
@@ -104,13 +141,13 @@ export function paneSay(page: SettingsPage): string {
       return ph === "on" ? t("say.memory.on") : ph === "off" ? t("say.memory.off") : ph === "closed" ? t("say.memory.closed") : t("say.memory.first");
     }
     case "notify":
-      return t("say.notify");
+      return notifySay();
     case "todos":
-      return t("say.todos");
+      return todosSay();
     case "chats":
-      return t("say.chats");
+      return chatsSay();
     case "autofill":
-      return t("say.autofill");
+      return autofillSay();
     case "peers":
       return peersSay();
     case "phone":

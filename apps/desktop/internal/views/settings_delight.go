@@ -24,7 +24,11 @@ import (
 // it; with notifications off the card sinks into the paper and says where
 // the ask waits instead. The partner on it smiles for a moment after a
 // change here, as Look's preview does.
-func (a *App) notifyPreview(c *ui.Context, st *protocol.Settings, wait string) {
+//
+// D475: find is 发现了就说's choice ("" while the pane doesn't offer it): what the partner sends
+// when it notices something follows the pick, a second, smaller card under the ask (the urgent
+// one now; the morning's one note), or with 不用主动找我 a line that it keeps it until asked.
+func (a *App) notifyPreview(c *ui.Context, st *protocol.Settings, wait, find string) {
 	t := a.T
 	face := theme.Idle
 	if since := a.Now().UnixNano() - a.settings.cheer; a.settings.cheer != 0 && since < int64(cheerFor) {
@@ -62,6 +66,33 @@ func (a *App) notifyPreview(c *ui.Context, st *protocol.Settings, wait string) {
 				}
 			})
 		})
+		if find != "" && find != "off" {
+			when := a.L.T("notify.pv.now")
+			if find != "urgent" {
+				when = a.L.T("notify.pv.morning")
+			}
+			an := t.Nav.Across
+			fc := ui.Row(c.Key("notify-pv-find:"+find)).Gap(t.S3).Padding(t.S2+2, t.S4).Radius(t.RadiusLG).WidthPercent(100).MaxWidth(420).AlignItems(ui.Center).
+				Transition(ui.ElementTransition{Animation: &an, Enter: &ui.Motion{Y: 4}}).Role(ui.RoleGroup).Label(a.L.T("notify.pv.find"))
+			if on {
+				fc.Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color)
+			} else {
+				fc.Background(t.SurfaceSunken)
+			}
+			fc.Children(func() {
+				a.avatar(c, theme.Idle, 36)
+				ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(2).Children(func() {
+					ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
+						uiText(c, a.S.PersonaName).FontSize(t.XS).FontWeight(800).TextColor(ink).SingleLine().Grow(1).MinWidth(0)
+						uiText(c, when).FontSize(t.XS).TextColor(soft).Shrink(0)
+					})
+					uiText(c, a.L.T("notify.pv.find."+find)).FontSize(t.SM).LineHeight(a.leading(1.45)).TextColor(ink)
+				})
+			})
+		}
+		if find == "off" {
+			under = under + a.L.T("notify.pv.join") + a.L.T("notify.pv.find.off")
+		}
 		an := t.Nav.Across
 		ui.Row(c.Key("notify-pv-under:"+under)).Gap(t.S2).AlignItems(ui.Center).Padding(0, t.S1).
 			Transition(ui.ElementTransition{Animation: &an, Enter: &ui.Motion{Y: 4}}).Children(func() {

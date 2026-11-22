@@ -199,18 +199,41 @@ func (a *App) boardHead(c *ui.Context, b store.Board, lens string, n [4]int, str
 
 // ---------- the cards ----------
 
-// taskCards is a run of tasks as cards, one under another at the list's
-// full width (D467: one width, nothing half-empty).
+// taskCards is a run of tasks as one clay sheet (D471): its tasks are rows on
+// hairlines, the time on one edge and what to do on one column, so the eye
+// reads down one line of times and one line of buttons. The sheet stands on
+// the needs-you ledge when what is on it stopped or didn't work out.
 func (a *App) taskCards(c *ui.Context, tasks []*store.Task) {
 	if len(tasks) == 0 {
 		return
 	}
+	t := a.T
 	w := a.oh.listW
 	if w <= 0 {
 		w = onHandMeasure
 	}
-	ui.Column(c.Key("cards:"+tasks[0].ID)).Gap(cardGap-4).Padding(2, 0, 6, 0).Children(func() {
-		for _, task := range tasks {
+	ledge := t.Line
+	acts := false
+	for _, x := range tasks {
+		stopped := a.stoppedWait(x)
+		if stopped || x.Attention() == protocol.Failed {
+			ledge = t.NeedsYou.Ledge
+		}
+		hand := false
+		if w := a.S.WaiterFor(x.ID); w != nil && w.Limit != nil && w.Limit.HandTo != nil {
+			hand = true // D297: another agent can take it now
+		}
+		if stopped || hand || x.Attention() == protocol.Failed || (x.Attention() == protocol.Blocked && a.quietWait(x)) {
+			acts = true // a row here always shows what to do: the sheet keeps a column for it
+		}
+	}
+	prev := a.oh.actsCol
+	a.oh.actsCol = acts
+	defer func() { a.oh.actsCol = prev }()
+	ui.Column(c.Key("cards:"+tasks[0].ID)).Width(w).Radius(16).Background(t.Surface).Clip().
+		Shadow(0, 2, 0, 0, ledge).Shadow(0, 6, 14, -10, t.Ink.Alpha(0.16)).Margin(2, 0, 6, 0).Children(func() {
+		for i, task := range tasks {
+			a.oh.rowFirst = i == 0
 			a.taskCard(c.Key(task.ID), task, w)
 		}
 	})
@@ -238,22 +261,19 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 	if a.compact() {
 		padY, minH = 8, 52 // D457
 	}
-	card := ui.Row(c).Width(w).Gap(14).Padding(padY, 16, padY, 14).MinHeight(minH).Radius(16).AlignItems(ui.Center).
-		Background(t.Surface).Cursor(ui.CursorPointer).Role(ui.RoleLink).Label(task.Title()).Focusable()
-	hover := card.Hovered()
-	// What needs you stands on the needs-you ledge; everything else on the clay one.
-	ledge := t.Line
-	if stopped || failed {
-		ledge = t.NeedsYou.Ledge
+	// D471: a row of the sheet: no card of its own, a hairline above it.
+	card := ui.Row(c).Width(w).Gap(14).Padding(padY, 12, padY, 16).MinHeight(minH - 4).AlignItems(ui.Center).
+		Cursor(ui.CursorPointer).Role(ui.RoleLink).Label(task.Title()).Focusable()
+	if !a.oh.rowFirst {
+		card.BorderWidth(1, 0, 0, 0).BorderColor(t.LineSoft)
 	}
+	hover := card.Hovered()
 	still := c.Preferences().ReduceMotion
-	lift := card.AnimateTo("lift", map[bool]float32{true: 1, false: 0}[hover], ui.Animation{Duration: 120 * time.Millisecond, NonMotion: still})
-	card.Shadow(0, 2+lift, 0, 0, ledge).Shadow(0, 6+4*lift, 14+6*lift, -10, t.Ink.Alpha(0.16+0.06*lift))
-	if !still && lift > 0 {
-		card.Translate(0, -lift)
+	if hover {
+		card.Background(t.Ink.Alpha(0.03))
 	}
 	if focus {
-		card.Border(2, t.Accent.Alpha(0.75))
+		card.Border(2, t.Accent.Alpha(0.75)).Radius(14)
 		card.AccessSelected(true)
 	}
 	// A new result's little moment, once (D287): it swells a little and
@@ -279,7 +299,8 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 	card.Children(func() {
 		a.stateMark(c, task, stopped)
 		ui.Column(c.Key("tx")).Gap(3).Grow(1).Shrink(1).MinWidth(0).Children(func() {
-			ui.Row(c.Key("l1")).Gap(t.S2).AlignItems(ui.Center).Children(func() {
+			// D471: a long title takes its two lines; where and its to-do flow after it.
+			ui.Row(c.Key("l1")).Gap(t.S2).Wrap().AlignItems(ui.Center).Children(func() {
 				if task.Card != nil {
 					a.partnerMark(c, "c-"+task.ID, task.Card.Persona) // D312
 				}
@@ -287,10 +308,11 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 				if seen {
 					ink = t.InkSoft // what you have seen recedes, never greyed
 				}
+				// D471: the title whole, in up to two lines (a source's cut title untrailed, never cut again).
 				uiText(c.Key("title"), keepWords(autospace(shortTitle(task.Title())))).FontSize(t.MD).FontWeight(600).TextColor(ink).
-					SingleLine().Shrink(1).MinWidth(0).Tooltip(tip)
+					MaxLines(2).Shrink(1).MinWidth(0).Tooltip(tip)
 				if s := taskTodo(task); s != nil {
-					a.todoChip(c, "card:"+task.ID, s.SourceItemRef) // D341
+					ui.Box(c.Key("todo")).Shrink(0).Children(func() { a.todoChip(c, "card:"+task.ID, s.SourceItemRef) }) // D341
 				}
 				// Where, each its own element (D291): its project when the
 				// board shows them all, its computer when it isn't the usual.
@@ -365,25 +387,48 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 				a.trail(c, "trail", task) // D467: its steps on its time, the head at now
 			}
 		})
-		ui.Column(c.Key("end")).Gap(6).AlignItems(ui.End).Shrink(0).Children(func() {
+		// D471: the time on one edge of the sheet; what to do on one column.
+		whenW, actsW := float32(112), float32(216)
+		if w < 700 {
+			whenW, actsW = 92, 184
+		}
+		overlay := hover && !a.oh.actsCol && (finishedOf(task) != nil || att == protocol.Working)
+		ui.Column(c.Key("when")).Width(whenW).AlignItems(ui.End).Shrink(0).Children(func() {
 			switch {
-			case stopped:
-				if task.Card != nil {
-					uiText(c.Key("since"), a.tp("onhand.wait.since", a.agoLong(task.Card.UpdatedAt))).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
-				}
-				a.fixButtons(c, "acts", a.stuckFix(task), t.Surface, &acted)
-			case failed:
-				f := finishedOf(task)
+			case overlay:
+				// No column for actions on this sheet: a hover's come in over the time.
 				ui.Row(c.Key("acts")).Gap(t.S1).AlignItems(ui.Center).Children(func() {
-					a.fixButtons(c, "fix", a.stuckFix(task), t.Surface, &acted)
-					if hover {
+					a.rowActs(c, task, true)
+					if f := finishedOf(task); f != nil {
 						a.finishedActs(c, *f)
 					}
 				})
-			case quiet:
-				if task.Card != nil {
-					uiText(c.Key("since"), a.tp("onhand.wait.since", a.agoLong(task.Card.UpdatedAt))).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
+			case (stopped || quiet || failed) && task.Card != nil:
+				uiText(c.Key("since"), a.agoLong(task.Card.UpdatedAt)).FontSize(t.SM).TextColor(t.InkMuted).SingleLine()
+			default:
+				a.beat(c, task, att, false)
+			}
+		})
+		if !a.oh.actsCol {
+			return
+		}
+		ui.Row(c.Key("acts")).Width(actsW).Gap(t.S1).AlignItems(ui.Center).Shrink(0).Children(func() {
+			switch {
+			case stopped:
+				a.fixButtons(c, "fix", a.stuckFix(task), t.Surface, &acted)
+			case failed:
+				a.fixButtons(c, "fix", a.stuckFix(task), t.Surface, &acted)
+				if hover {
+					a.finishedActs(c, *finishedOf(task))
 				}
+			case att == protocol.Blocked && a.S.WaiterFor(task.ID) != nil && a.S.WaiterFor(task.ID).Limit != nil && a.S.WaiterFor(task.ID).Limit.HandTo != nil:
+				// D471 (D297): a limit used up, with another agent that can take it now.
+				w := a.S.WaiterFor(task.ID)
+				if a.button(c, a.L.T("limit.handoff", harnessName(w.Limit.HandTo.Harness)), btnSecondary, t.ControlSM, t.Surface) {
+					acted = true
+					a.send(protocol.WaiterAction{T: "waiter_action", WaiterID: w.WaiterID, Action: "handoff"})
+				}
+			case quiet:
 				if w := a.S.WaiterFor(task.ID); w != nil && (w.Check != nil || w.Event != nil) {
 					if a.button(c, a.L.T("onhand.quiet.look"), btnSecondary, t.ControlSM, t.Surface) {
 						acted = true
@@ -391,14 +436,10 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 					}
 				}
 			case hover && (finishedOf(task) != nil || att == protocol.Working):
-				ui.Row(c.Key("acts")).Gap(t.S1).AlignItems(ui.Center).Children(func() {
-					a.rowActs(c, task, true)
-					if f := finishedOf(task); f != nil {
-						a.finishedActs(c, *f)
-					}
-				})
-			default:
-				a.beat(c, task, att, false)
+				a.rowActs(c, task, true)
+				if f := finishedOf(task); f != nil {
+					a.finishedActs(c, *f)
+				}
 			}
 		})
 	})

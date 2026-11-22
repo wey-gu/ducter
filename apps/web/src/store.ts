@@ -461,7 +461,7 @@ export class Store {
           else delete d.defaultAt; // back, not seen yet: no countdown
         }
       }
-      t.state = { taskId: card.taskId, attention: card.attention, residency: card.residency, reason: card.reason };
+      t.state = { taskId: card.taskId, attention: card.attention, residency: card.residency, reason: card.reason, ...(card.cant ? { cant: card.cant } : {}) }; // D471: and why it couldn't start, or a snapshot loses it
       t.stateSeq = Math.max(t.stateSeq ?? 0, this.cursor);
       if (card.lastReport) t.lastReport = card.lastReport;
     }

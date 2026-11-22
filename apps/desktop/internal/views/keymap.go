@@ -42,6 +42,7 @@ func (a *App) taskKeys(c *ui.Context) {
 		if c.Shortcut(ui.Ctrl, k) {
 			if o := a.railOrder(); i < len(o) && (a.Route != RouteTask || a.TaskID != o[i]) {
 				a.oh.focus = o[i]
+				a.oh.walked = o[i]
 				a.OpenTask(o[i])
 			}
 			return

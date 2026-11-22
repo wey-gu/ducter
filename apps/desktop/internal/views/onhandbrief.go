@@ -14,13 +14,11 @@ import (
 	"fmt"
 	"math"
 	"regexp"
-	"sort"
 	"strings"
 	"time"
 
 	"github.com/egoist/mygo/ui"
 
-	"github.com/wey-gu/ducter/apps/desktop/internal/i18n"
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 	"github.com/wey-gu/ducter/apps/desktop/internal/store"
 	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
@@ -30,35 +28,9 @@ const (
 	// peekW is the peek beside the list, from peekFrom points wide.
 	peekW    = 360
 	peekFrom = 1280
-	// briefMax is how many stopped or failed tasks the brief carries itself.
-	briefMax = 2
-	// axisSpan is how far ahead the waits' time axis reaches.
-	axisSpan = 12 * time.Hour
 )
 
 // ---------- the brief ----------
-
-// briefHalted is what stopped or didn't work out, in the walk's order: the
-// first briefMax stand in the brief with their fix, never also as cards.
-func (a *App) briefHalted(b store.Board) []*store.Task {
-	sp := a.splitOf(b)
-	inLine := map[string]bool{}
-	for _, g := range a.boardGroups(b) {
-		for id := range g.ids {
-			inLine[id] = true
-		}
-	}
-	var out []*store.Task
-	for _, x := range concat(sp.stopped, sp.failed) {
-		if !inLine[x.ID] {
-			out = append(out, x)
-		}
-	}
-	if len(out) > briefMax {
-		out = out[:briefMax]
-	}
-	return out
-}
 
 // phoneTask: a task that worked on a phone (its card says so, or one of its
 // steps was a phone tool).
@@ -84,18 +56,11 @@ func phoneTask(task *store.Task) bool {
 	return false
 }
 
-// briefTitle is a task named in the brief: its short title, cut to 12
-// characters of Chinese or 28 of Latin text (the whole on hover).
+// briefTitle is a task named inside a sentence (D471): its title whole when
+// it fits 28 columns (a Han character counts two), else cut at a word's end,
+// never inside a word; the whole on hover.
 func (a *App) briefTitle(title string) string {
-	s := shortTitle(title)
-	n := 28
-	if a.L.Han() {
-		n = 12
-	}
-	if r := []rune(s); len(r) > n {
-		s = strings.TrimSpace(string(r[:n-1])) + "…"
-	}
-	return s
+	return sayName(title, 28)
 }
 
 // firstSentence is a report's first sentence, at most n runes.
@@ -113,181 +78,18 @@ func firstSentence(s string, n int) string {
 	return s
 }
 
-// brief is the partner at the head of the board and what it reports.
+// brief is the partner at the head of the board: its figure and its one
+// sentence, and nothing more (D471). Every task is said once, by its own row
+// below; D467's lines under the lead named tasks the rows named again, and
+// the two disagreed on the author's real board.
 func (a *App) brief(c *ui.Context, b store.Board, lens string, n [4]int) {
 	t := a.T
-	sp := a.splitOf(b)
-	halted := a.briefHalted(b)
-	a.oh.briefed = map[string]bool{}
-	for _, x := range halted {
-		a.oh.briefed[x.ID] = true
-	}
-	var fresh []*store.Task
-	for _, x := range sp.today {
-		if a.rowMarkOf(x) == stNew {
-			fresh = append(fresh, x)
-		}
-	}
-	asks := len(sp.needs) + a.stoppedGroups(b)
-	if loose(lens) {
-		asks += len(a.partnerDecisions()) + len(a.otherAsks())
-	}
-	type line struct {
-		key, label string
-		body       func()
-	}
-	var lines []line
-	text := func(key, s string) {
-		uiText(c.Key(key), keepWords(autospace(s))).FontSize(t.MD).LineHeight(1.5).TextColor(t.Ink).Shrink(1).MinWidth(0)
-	}
-	if len(fresh) > 0 {
-		lines = append(lines, line{"since", a.L.T("onhand.brief.since"), func() {
-			var s string
-			switch {
-			case len(fresh) == 1:
-				s = a.L.T("onhand.brief.done.one", a.briefTitle(fresh[0].Title()))
-			case len(fresh) == 2:
-				s = a.L.T("onhand.brief.done.two", a.briefTitle(fresh[0].Title()), a.briefTitle(fresh[1].Title()))
-			default:
-				s = a.L.T("onhand.brief.done.many", a.briefTitle(fresh[0].Title()), len(fresh)-1)
-			}
-			text("t", s)
-			a.outcomeChip(c, "chip", fresh[0])
-		}})
-	}
-	for _, x := range halted {
-		x := x
-		lines = append(lines, line{"h:" + x.ID, a.L.T("lane.needs_you"), func() {
-			// D467 round 4: the real fix for the way it is stuck.
-			f := a.stuckFix(x)
-			ui.Row(c.Key("w")).Gap(t.S2).Wrap().AlignItems(ui.Center).Shrink(1).MinWidth(0).Children(func() {
-				tx := uiText(c.Key("t"), keepWords(autospace(f.sentence))).FontSize(t.MD).LineHeight(1.5).TextColor(t.Ink).Cursor(ui.CursorPointer).Role(ui.RoleLink).Tooltip(x.Title())
-				if tx.Clicked() {
-					a.OpenTask(x.ID)
-				}
-				a.fixButtons(c, "acts", f, t.Bg, nil)
-			})
-		}})
-	}
-	if asks > 0 {
-		lines = append(lines, line{"asks", a.L.T("lane.needs_you"), func() {
-			if asks == 1 {
-				text("t", a.L.T("onhand.brief.asks.one"))
-			} else {
-				text("t", a.L.T("onhand.brief.asks", asks))
-			}
-		}})
-	}
-	next, more := a.nextBack(b, lens)
-	if next.id != "" {
-		a.oh.briefed[next.id] = true // D467 round 3: told here, never also a card
-	}
-	if len(fresh) > 0 {
-		a.oh.briefed[fresh[0].ID] = true
-		if len(fresh) == 2 {
-			a.oh.briefed[fresh[1].ID] = true
-		}
-	}
-	// D467 round 4: a limit used up (D297), under 接下来: it carries on by itself; another agent now if one can.
-	for _, l := range a.limitLines(b) {
-		l := l
-		for _, id := range l.tasks {
-			a.oh.briefed[id] = true
-		}
-		lines = append(lines, line{"limit:" + l.harness, a.L.T("onhand.next"), func() {
-			text("t", l.sentence)
-			if l.handTo != "" && a.button(c, a.L.T("limit.handoff", harnessName(l.handTo)), btnSecondary, t.ControlSM, t.Bg) {
-				for _, w := range l.waiters {
-					a.send(protocol.WaiterAction{T: "waiter_action", WaiterID: w, Action: "handoff"})
-				}
-			}
-		}})
-	}
-	if next.text == "" && asks == 0 && len(halted) == 0 && len(sp.working) == 0 && len(a.limitLines(b)) == 0 {
-		lines = append(lines, line{"rest", a.L.T("onhand.next"), func() { text("t", a.L.T("onhand.brief.rest")) }})
-	}
-	if next.text != "" {
-		lines = append(lines, line{"next", a.L.T("onhand.next"), func() {
-			name := next.text
-			if x := a.S.Task(next.id); x != nil {
-				name = shortTitle(x.Title())
-			}
-			s := a.L.T("onhand.brief.back", name, a.pad(a.soon(next.at)))
-			if more > 0 {
-				s = a.L.T("onhand.brief.back.more", name, a.pad(a.soon(next.at)), more)
-			}
-			text("t", strings.ReplaceAll(s, "  ", " "))
-		}})
-	}
-	ui.Row(c.Key("oh-brief")).Gap(t.S5).AlignItems(ui.Start).Padding(t.S2, 0, t.S3, 0).Children(func() {
-		a.avatar(c, moodOf(n), 88)
-		ui.Column(c.Key("brief-col")).Gap(t.S3).Grow(1).Shrink(1).MinWidth(0).Padding(t.S2, 0, 0, 0).Children(func() {
-			uiText(c.Key("say"), keepWords(autospace(a.headLine(b, lens, n)))).Font(t.Display).FontSize(t.XL + 2).FontWeight(700).LineHeight(1.3).TextColor(t.Ink)
-			if len(lines) == 0 {
-				return
-			}
-			labelW := float32(64) // the labels' column: the longest label on one line
-			if !a.L.Han() {
-				labelW = 124
-			}
-			ui.Column(c.Key("lines")).Gap(t.S2 + 2).Children(func() {
-				for _, l := range lines {
-					ui.Row(c.Key(l.key)).Gap(t.S3).AlignItems(ui.Start).Children(func() {
-						uiText(c.Key("label"), l.label).FontSize(t.SM).FontWeight(700).TextColor(t.InkMuted).Width(labelW).Shrink(0).SingleLine().Padding(3, 0, 0, 0)
-						ui.Row(c.Key("body")).Gap(t.S2).AlignItems(ui.Center).Wrap().Grow(1).Shrink(1).MinWidth(0).Children(l.body)
-					})
-				}
-			})
-		})
+	a.oh.briefed = nil
+	ui.Row(c.Key("oh-brief")).Gap(t.S5).AlignItems(ui.Center).Padding(t.S2, 0, t.S3, 0).Children(func() {
+		a.avatar(c, moodOf(n), 72)
+		uiText(c.Key("say"), keepWords(autospace(a.headLine(b, lens, n)))).Font(t.Display).FontSize(t.XL + 2).FontWeight(700).LineHeight(1.3).TextColor(t.Ink).
+			Grow(1).Shrink(1).MinWidth(0)
 	})
-}
-
-// nextBack is the soonest wait that comes back on its own, and how many
-// more come after it.
-func (a *App) nextBack(b store.Board, lens string) (dayItem, int) {
-	// A wait on a limit's reset is said by its own group (D297), never named here.
-	var items []dayItem
-	for _, it := range a.waitsOnAxis(b, lens, 0) {
-		if w := a.S.WaiterFor(it.id); it.id != "" && w != nil && w.Limit != nil {
-			continue
-		}
-		items = append(items, it)
-	}
-	if len(items) == 0 {
-		return dayItem{}, 0
-	}
-	return items[0], len(items) - 1
-}
-
-// dayItem is one wait placed in time.
-type dayItem struct {
-	at   time.Time
-	text string
-	id   string
-}
-
-// waitsOnAxis are the waits that come back on their own, soonest first,
-// within span (0: any time ahead).
-func (a *App) waitsOnAxis(b store.Board, lens string, span time.Duration) []dayItem {
-	now := a.Now()
-	var out []dayItem
-	add := func(at time.Time, text, id string) {
-		if at.After(now) && (span == 0 || at.Sub(now) <= span) {
-			out = append(out, dayItem{at: at, text: text, id: id})
-		}
-	}
-	for _, x := range b.Lanes[store.LaneWaiting] {
-		if !a.stoppedWait(x) {
-			add(nextAt(a.S.WaiterFor(x.ID)), shortTitle(x.Title()), x.ID)
-		}
-	}
-	if loose(lens) {
-		for _, w := range a.looseWaiters() {
-			add(nextAt(w), w.Reason, "")
-		}
-	}
-	sort.SliceStable(out, func(i, j int) bool { return out[i].at.Before(out[j].at) })
-	return out
 }
 
 // ---------- outcomes ----------
@@ -516,65 +318,6 @@ func (a *App) groupTrack(c *ui.Context, bg boardGroup) {
 	})
 }
 
-// waitAxis is the waits on one light line of time, from now to the last of
-// them back within axisSpan (the day beside the board, D287, now inside 在等).
-func (a *App) waitAxis(c *ui.Context, b store.Board, lens string) {
-	t := a.T
-	items := a.waitsOnAxis(b, lens, axisSpan)
-	if len(items) == 0 {
-		return
-	}
-	w := a.oh.listW
-	if w <= 0 {
-		w = onHandMeasure
-	}
-	now := a.Now()
-	end := items[len(items)-1].at
-	span := float32(end.Sub(now))
-	left, right := float32(78), float32(44)
-	room := w - left - right
-	c.After(time.Minute)
-	line, acc, ink, bg := t.Line, t.Accent, t.Waiting.Ink, t.Bg
-	ui.Box(c.Key("axis")).Width(w).Height(44).Label(a.L.T("onhand.next")).Children(func() {
-		ui.Box(c.Key("rule")).Absolute().Left(0).Top(0).Width(w).Height(44).AccessHidden(true).Draw(func(p *ui.Painter, r ui.Rect) {
-			cy := r.Y + 14
-			var d ui.Path
-			d.MoveTo(r.X+left-10, cy).LineTo(r.X+left+room, cy)
-			p.StrokePath(&d, 1.5, line)
-			p.FillPath(oval(r.X+left-10, cy, 5, 5), acc)
-			for _, it := range items {
-				f := float32(1)
-				if span > 0 {
-					f = float32(it.at.Sub(now)) / span
-				}
-				x := r.X + left + f*room
-				p.FillPath(oval(x, cy, 5, 5), bg)
-				var o ui.Path
-				o.Circle(x, cy, 4.5)
-				p.StrokePath(&o, 2, ink)
-			}
-		})
-		uiText(c.Key("now"), i18n.Clock(now)+" "+a.L.T("onhand.day.now")).FontSize(t.XS).FontWeight(600).TextColor(acc).FontFeatures("tnum").
-			Absolute().Left(0).Top(6).SingleLine().Width(left - 18)
-		for i, it := range items {
-			f := float32(1)
-			if span > 0 {
-				f = float32(it.at.Sub(now)) / span
-			}
-			x := left + f*room
-			lab := uiText(c.Key(fmt.Sprint("at", i)), i18n.Clock(it.at)).FontSize(t.XS).FontWeight(600).TextColor(ink).FontFeatures("tnum").
-				Absolute().Left(x - 20).Top(24).Width(40).TextAlign(ui.Center).SingleLine().Tooltip(it.text)
-			if it.id != "" {
-				id := it.id
-				lab.Cursor(ui.CursorPointer).Role(ui.RoleLink).Label(spoken(a.L, i18n.Clock(it.at), it.text))
-				if lab.Clicked() {
-					a.OpenTask(id)
-				}
-			}
-		}
-	})
-}
-
 // waitCardWords is a waiting card's line that doesn't say its title again: when
 // what it waits for is already the title's words, the report's first line,
 // else its waiter's look, else nothing.
@@ -602,7 +345,9 @@ func (a *App) waitCardWords(task *store.Task, words string) string {
 // peekTask is the task the peek sits in on: the keys' focus, else the first
 // in the walk.
 func (a *App) peekTask() *store.Task {
-	if a.oh.focus != "" {
+	// D471: only a focus the keys moved to on this board holds the peek; one
+	// kept from a task opened earlier doesn't.
+	if a.oh.focus != "" && a.oh.focus == a.oh.walked {
 		if x := a.S.Task(a.oh.focus); x != nil {
 			return x
 		}
@@ -639,7 +384,7 @@ func (a *App) peek(c *ui.Context) {
 		ui.Row(c.Key("head")).Gap(t.S3).AlignItems(ui.Center).Children(func() {
 			a.stateMark(c, task, a.stoppedWait(task))
 			ui.Column(c.Key("tx")).Gap(2).Grow(1).Shrink(1).MinWidth(0).Children(func() {
-				uiText(c.Key("title"), keepWords(autospace(shortTitle(task.Title())))).FontSize(t.MD + 1).FontWeight(700).TextColor(t.Ink).SingleLine().Tooltip(task.Title())
+				uiText(c.Key("title"), keepWords(autospace(shortTitle(task.Title())))).FontSize(t.MD + 1).FontWeight(700).TextColor(t.Ink).MaxLines(3).Tooltip(task.Title())
 				ui.Row(c.Key("meta")).Gap(t.S2).Wrap().Children(func() {
 					a.beat(c, task, att, false)
 					for _, m := range a.whereMeta(task) {
@@ -656,7 +401,17 @@ func (a *App) peek(c *ui.Context) {
 		if s.code != "" {
 			now += "  " + s.code
 		}
+		// D471: what stopped says why in the partner's words; what the task
+		// itself last said follows under its own label, whole.
+		stuck := a.stoppedWait(task) || att == protocol.Failed
+		if stuck {
+			now, ink = keepWords(autospace(a.stuckFix(task).clause())), t.NeedsYou.Ink
+		}
 		uiText(c.Key("now"), now).FontSize(t.SM).LineHeight(1.5).TextColor(ink).MaxLines(4).Tooltip(s.words)
+		if r := task.Report(); stuck && r != nil && strings.TrimSpace(r.Summary) != "" {
+			uiText(c.Key("said-h"), a.L.T("onhand.peek.said")).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
+			uiText(c.Key("said"), keepWords(autospace(strings.TrimSpace(r.Summary)))).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft).MaxLines(5)
+		}
 		if att == protocol.Working || att == protocol.Queued {
 			a.trail(c, "trail", task)
 		}
@@ -709,7 +464,9 @@ func (a *App) peek(c *ui.Context) {
 				for i := len(evs) - 1; i >= 0; i-- {
 					e := evs[i]
 					st, ok := a.eventStory(task, e)
-					if !ok {
+					// D471: a step in its own words, whole; one that is only a
+					// command stays in the task, never cut into the peek.
+					if !ok || peekWords(st.words) == "" {
 						continue
 					}
 					ui.Row(c.Key(fmt.Sprint("e", e.Seq))).Gap(t.S2).AlignItems(ui.Center).MinWidth(0).Children(func() {
@@ -729,9 +486,10 @@ func (a *App) peek(c *ui.Context) {
 						if i == 0 {
 							col = t.Ink
 						}
-						uiText(c.Key("w"), keepWords(autospace(st.words))).FontSize(t.XS).TextColor(col).SingleLine().Shrink(1).MinWidth(0).Tooltip(st.words)
-						if st.code != "" {
-							uiText(c.Key("code"), st.code).Font(t.Mono).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(3).MinWidth(0)
+						uiText(c.Key("w"), keepWords(autospace(peekWords(st.words)))).FontSize(t.SM).TextColor(col).MaxLines(2).Shrink(1).MinWidth(0).Tooltip(st.words)
+						// D471: what it touched, only when short enough to say whole (a file's name).
+						if st.code != "" && len([]rune(st.code)) <= 32 && !strings.ContainsAny(st.code, " \t") {
+							uiText(c.Key("code"), st.code).Font(t.Mono).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(0)
 						}
 					})
 				}

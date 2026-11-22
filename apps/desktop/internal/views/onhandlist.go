@@ -60,7 +60,13 @@ type onHandState struct {
 	briefed map[string]bool
 	// D287: the list's width this frame (the cards' room), and the new
 	// results whose card has had its little moment.
-	listW   float32
+	listW float32
+	// actsCol: the sheet being drawn keeps a column for its rows' actions;
+	// rowFirst: the row being drawn is its sheet's first (D471).
+	actsCol, rowFirst bool
+	// walked is the focus the keys last moved to (D471: the peek follows it,
+	// never a focus kept from a task opened before).
+	walked  string
 	cheered map[string]bool
 	// D315: the computer most of the board's tasks run on; a card names
 	// its computer only when it is another.
@@ -346,17 +352,10 @@ func (a *App) onHandList(c *ui.Context, b store.Board) {
 	needs := withoutGroups(keep(sp.needs), inGroup)
 	stopped := withoutGroups(keep(sp.stopped), inGroup)
 	failed := withoutGroups(keep(sp.failed), inGroup)
-	if !rail && q == "" {
-		stopped, failed = notBriefed(stopped, a.oh.briefed), notBriefed(failed, a.oh.briefed)
-	}
 	working := withoutGroups(keep(sp.working), inGroup)
 	waiting := withoutGroups(keep(sp.waiting), inGroup)
 	today := withoutGroups(keep(sp.today), inGroup)
 	earlier := withoutGroups(keep(sp.earlier), inGroup)
-	if !rail && q == "" {
-		// D467 round 3: what the brief tells (a result, the next wait) is no card either.
-		waiting, today = notBriefed(waiting, a.oh.briefed), notBriefed(today, a.oh.briefed)
-	}
 	a.nav.rows = 0
 	f := a.oh.filter
 	if rail {
@@ -490,9 +489,6 @@ func (a *App) onHandList(c *ui.Context, b store.Board) {
 	}
 	if len(waiting)+len(loose)+nGroups(2) > 0 && show(3) {
 		a.listSection(c, "waiting", a.L.T("lane.waiting"), count(sp.waiting, waiting)+len(loose), func() {
-			if f == 0 && len(a.waitsOnAxis(b, a.oh.lens, axisSpan)) >= 2 {
-				a.waitAxis(c, b, a.oh.lens) // D467: the waits placed in time, from two
-			}
 			groupsIn(2)
 			a.taskCards(c.Key("fresh"), fresh)
 			for _, g := range groups {
@@ -559,20 +555,6 @@ func (a *App) onHandList(c *ui.Context, b store.Board) {
 	if q == "" && f == 0 {
 		a.todoGroup(c, a.oh.lens)
 	}
-}
-
-// notBriefed leaves out what the brief already carries.
-func notBriefed(ts []*store.Task, in map[string]bool) []*store.Task {
-	if len(in) == 0 {
-		return ts
-	}
-	var out []*store.Task
-	for _, x := range ts {
-		if !in[x.ID] {
-			out = append(out, x)
-		}
-	}
-	return out
 }
 
 // concat joins runs of tasks in order.
@@ -926,6 +908,7 @@ func (a *App) moveFocus(by int) {
 		i = max(0, min(len(o)-1, i+by))
 	}
 	a.oh.focus = o[i]
+	a.oh.walked = o[i]
 }
 
 // ---------- the switcher (⌘O) ----------

@@ -96,14 +96,14 @@ func TestLimitCard(t *testing.T) {
 		if !found {
 			t.Errorf("%s: Hand it to Codex now sent nothing: %v", lang, *sent)
 		}
-		// On hand (D467 round 4): the brief says it under 接下来, one line per
-		// agent: the three on Claude Code together, pi's one apart.
+		// On hand (D471): no brief line; the three on Claude Code stand under
+		// their one reset's head, pi's one on its own row.
 		app.Route = RouteOnHand
 		tt.Frame()
 		tt.Frame()
 		got = texts(tt)
 		_ = when
-		for _, want := range []string{strings.Split(app.L.T("onhand.brief.limit.many", 3, "Claude Code", "@"), "@")[0], "pi"} {
+		for _, want := range []string{strings.Split(app.L.T("limit.group", "Claude Code", "@"), "@")[0], "pi"} {
 			if !strings.Contains(got, want) {
 				t.Errorf("%s: On hand lacks %q in:\n%s", lang, want, got)
 			}

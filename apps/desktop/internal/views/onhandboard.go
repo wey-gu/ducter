@@ -65,6 +65,9 @@ func (a *App) lensGroups(b store.Board) []lensGroup {
 		if g.name == "" {
 			key, name = lensOther, a.L.T("onhand.other")
 		}
+		if g.name != "" && neverStarted(g.tasks) {
+			continue // D471: no place yet: its tasks never started there; they stand under All
+		}
 		lg := lensGroup{key: key, name: name, place: g.place, tasks: g.tasks, routines: g.routines, added: addedNames[g.name]}
 		if g.name != "" && a.manyComputers() {
 			lg.where = a.groupWhere(g.name, g.tasks, g.routines, added)
@@ -182,18 +185,19 @@ func (a *App) quietWait(task *store.Task) bool {
 	return !at.IsZero() && a.Now().Sub(at) >= quietAfter
 }
 
-// groupStat is a group's unmerged changes, summed over its tasks' branches.
-func groupStat(tasks []*store.Task) (adds, dels int) {
+// neverStarted: every task of a project couldn't start where it was to
+// work (D471: a project is a place work lives; one whose folder was never
+// there is not one yet).
+func neverStarted(tasks []*store.Task) bool {
+	if len(tasks) == 0 {
+		return false
+	}
 	for _, x := range tasks {
-		if integrated(x) == "merge" {
-			continue
-		}
-		if ch := taskChanges(x); ch != nil {
-			adds += ch.Adds
-			dels += ch.Dels
+		if x.Attention() != protocol.Failed || x.Cant() == nil {
+			return false
 		}
 	}
-	return
+	return true
 }
 
 // ---------- the project column ----------
@@ -280,7 +284,8 @@ func (a *App) lensRow(c *ui.Context, key, name string, tasks []*store.Task, on, 
 			if other && !on {
 				ink = t.InkMuted
 			}
-			uiText(c, name).FontSize(14).FontWeight(600).TextColor(ink).SingleLine().MinWidth(0).AccessHidden(true)
+			// D471: the name whole, in two lines when long (never two rows cut to the same few letters).
+			uiText(c, name).FontSize(14).FontWeight(600).TextColor(ink).MaxLines(2).MinWidth(0).AccessHidden(true)
 			// D455: where it lives, each computer its own word (D291).
 			if len(where) > 0 {
 				ui.Row(c.Key("where")).Gap(t.S2).Wrap().MinWidth(0).AccessHidden(true).Children(func() {
@@ -289,26 +294,18 @@ func (a *App) lensRow(c *ui.Context, key, name string, tasks []*store.Task, on, 
 					}
 				})
 			}
-			if adds, dels := groupStat(tasks); adds+dels > 0 {
-				ui.Row(c.Key("stat")).Gap(t.S1 + 2).Children(func() {
-					if adds > 0 {
-						uiText(c, fmt.Sprintf("+%d", adds)).Font(t.Mono).FontSize(t.XS).TextColor(t.Done.Ink).FontFeatures("tnum")
-					}
-					if dels > 0 {
-						uiText(c, fmt.Sprintf("−%d", dels)).Font(t.Mono).FontSize(t.XS).TextColor(t.Failed.Ink).FontFeatures("tnum")
-					}
-				})
-			}
 		})
-		// D467 round 3: the partner's face only where something there needs you.
-		if x := a.lensNeeds(tasks); x != nil {
-			ui.Box(c.Key("mark")).Shrink(0).Tooltip(words).Children(func() { a.statusFace(c, x, stNeeds) })
-		}
+		// D471: no line counts (a sum of branches says nothing about a project)
+		// and no faces: the count, in the needs-you ink where something needs you.
 		n := ""
 		if len(tasks) > 0 {
 			n = fmt.Sprint(len(tasks))
 		}
-		uiText(c.Key("n"), n).FontSize(t.SM).FontWeight(700).TextColor(t.InkMuted).FontFeatures("tnum").MinWidth(20).TextAlign(ui.End).Shrink(0).AccessHidden(true)
+		ink := t.InkMuted
+		if a.lensNeeds(tasks) != nil {
+			ink = t.NeedsYou.Ink
+		}
+		uiText(c.Key("n"), n).FontSize(t.SM).FontWeight(700).TextColor(ink).FontFeatures("tnum").MinWidth(20).TextAlign(ui.End).Shrink(0).AccessHidden(true).Tooltip(words)
 	})
 	if r.Clicked() {
 		a.Local.SetLens(key)
@@ -334,16 +331,15 @@ func (a *App) lensTabs(c *ui.Context, groups []lensGroup, lens string) {
 				r.Background(t.Sunken)
 			}
 			r.Children(func() {
+				// D471: no faces in a row of names; where something needs you, the name in its ink.
 				ink := t.InkMuted
-				if on {
+				switch {
+				case on:
 					ink = t.Ink
+				case a.lensNeeds(tasks) != nil:
+					ink = t.NeedsYou.Ink
 				}
 				uiText(c, name).FontSize(t.SM).FontWeight(700).TextColor(ink).SingleLine().AccessHidden(true)
-				if x := a.lensNeeds(tasks); x != nil {
-					ui.Box(c.Key("mark")).Size(20, 20).Shrink(0).Children(func() {
-						stillFace(c, "f", statusPresence(x, stNeeds), 20)
-					})
-				}
 			})
 			if r.Clicked() {
 				a.Local.SetLens(key)

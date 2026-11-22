@@ -9,6 +9,7 @@ package views
 // same. The web does the same (apps/web/src/onhand-brief.tsx).
 
 import (
+	"regexp"
 	"strings"
 
 	"github.com/egoist/mygo/ui"
@@ -26,10 +27,34 @@ type fixButton struct {
 
 // stuckFix is what the partner says about a stuck task, and its fixes.
 type stuckFix struct {
-	kind     string // cant | signin | offline | perm | phone | failed | stopped
+	kind     string // cant | signin | offline | perm | phone | failed | unknown | stopped
 	sentence string
-	buttons  []fixButton
+	// line is the row's own line (D471), without the task's name; "" says
+	// the sentence's clause.
+	line    string
+	buttons []fixButton
 }
+
+// phoneStopped: a phone task the home stopped lending to, told by its own
+// report when its steps aren't held (D471).
+var phoneStopped = regexp.MustCompile(`(?i)(手机|phone)[^。.\n]{0,24}(访问|借用|access)[^。.\n]{0,16}(停止|停了|stopped|revoked|ended)`)
+
+// rawFailure: a failure whose words are a tool's or git's own output, said in
+// the partner's voice instead (D471): a lock git left behind, or an error
+// nobody recognised.
+func rawFailure(reason string) string {
+	switch {
+	case strings.TrimSpace(reason) == "":
+		return ""
+	case strings.Contains(reason, "index.lock") || strings.Contains(strings.ToLower(reason), "another git process"):
+		return "lock"
+	case rawWords.MatchString(reason):
+		return "unknown"
+	}
+	return ""
+}
+
+var rawWords = regexp.MustCompile(`(?i)^(fatal|error)[: ]|\n|git |exit (code|status)|Traceback|ENOENT|EACCES|[{}\[\]]`)
 
 // stuckFix reads why a stopped or failed task is stuck, in the first kind
 // that matches.
@@ -49,6 +74,12 @@ func (a *App) stuckFix(task *store.Task) stuckFix {
 	drop := fixButton{a.L.T("onhand.quiet.drop"), btnText, func() { a.TaskAction(id, "drop") }}
 	// 1. It couldn't start where it was to work: the task page's own fixes.
 	if k := task.Cant(); failed && k != nil {
+		if k.Why == "other" {
+			// D471: a start that failed on something nobody recognised says so, with where to look.
+			return stuckFix{kind: "unknown", sentence: a.L.T("onhand.brief.failed", name, a.L.T("onhand.stuck.unknown")), line: a.L.T("onhand.stuck.unknown.start"), buttons: []fixButton{
+				{a.L.T("away.why"), btnSecondary, func() { a.OpenTask(id) }},
+				{a.L.T("away.retry"), btnText, func() { a.CantAction(id, "reopen", "") }}}}
+		}
 		f := stuckFix{kind: "cant", sentence: a.cantLine(k)}
 		if k.Elsewhere != nil {
 			dev := k.Elsewhere.Device
@@ -73,10 +104,10 @@ func (a *App) stuckFix(task *store.Task) stuckFix {
 			}
 			comp := a.computerName(place.Device)
 			if h.Harness == "pi" {
-				return stuckFix{kind: "signin", sentence: a.L.T("onhand.brief.signin.pi", name, comp), buttons: []fixButton{drop}}
+				return stuckFix{kind: "signin", sentence: a.L.T("onhand.brief.signin.pi", name, comp), line: a.L.T("onhand.stuck.signin.pi", comp), buttons: []fixButton{drop}}
 			}
 			d, hn := *dv, h.Harness
-			return stuckFix{kind: "signin", sentence: a.L.T("onhand.brief.signin", name, harnessName(hn), comp), buttons: []fixButton{
+			return stuckFix{kind: "signin", sentence: a.L.T("onhand.brief.signin", name, harnessName(hn), comp), line: a.L.T("onhand.stuck.signin", harnessName(hn), comp), buttons: []fixButton{
 				{a.L.T("onhand.brief.signin.go"), btnSecondary, func() {
 					a.agentSetupReq(&d, "login", protocol.AgentSetupReq{Harness: hn})
 					a.OpenDevices()
@@ -85,11 +116,11 @@ func (a *App) stuckFix(task *store.Task) stuckFix {
 	}
 	// 3. Its computer went away (never one that said it would sleep: it wakes by itself).
 	if comp, ok := strings.CutPrefix(task.Reason(), "device:unreachable:"); ok {
-		s := a.L.T("onhand.brief.offline.unknown", name, comp)
+		s, l := a.L.T("onhand.brief.offline.unknown", name, comp), a.L.T("onhand.stuck.offline.unknown", comp)
 		if dv := a.computerOf(comp); dv != nil && dv.LastSeen != "" {
-			s = a.L.T("onhand.brief.offline", name, comp, a.agoLong(dv.LastSeen))
+			s, l = a.L.T("onhand.brief.offline", name, comp, a.agoLong(dv.LastSeen)), a.L.T("onhand.stuck.offline", comp, a.agoLong(dv.LastSeen))
 		}
-		return stuckFix{kind: "offline", sentence: s, buttons: []fixButton{drop}}
+		return stuckFix{kind: "offline", sentence: s, line: l, buttons: []fixButton{drop}}
 	}
 	// 4. The person's Mac without the two switches its apps need.
 	if task.Card != nil && task.Card.Computing != nil {
@@ -97,34 +128,44 @@ func (a *App) stuckFix(task *store.Task) stuckFix {
 		if dv := a.computerOf(dev); dv != nil {
 			for _, ab := range dv.Abilities {
 				if ab.ID == "computer" && ab.Perms != nil && (!ab.Perms.Accessibility || !ab.Perms.Screen) {
-					return stuckFix{kind: "perm", sentence: a.L.T("onhand.brief.perm", name, a.computerName(dev)), buttons: []fixButton{
+					return stuckFix{kind: "perm", sentence: a.L.T("onhand.brief.perm", name, a.computerName(dev)), line: a.L.T("onhand.stuck.perm", a.computerName(dev)), buttons: []fixButton{
 						{a.L.T("onhand.brief.perm.go"), btnSecondary, func() { a.computerGrant(dev) }}, drop}}
 				}
 			}
 		}
 	}
-	// 5. A phone (round 2).
-	if !failed && phoneTask(task) {
-		return stuckFix{kind: "phone", sentence: a.L.T("onhand.brief.stopped.phone", name), buttons: []fixButton{
+	// 5. A phone (round 2; D471: or its own report says the phone was taken back).
+	report := ""
+	if r := task.Report(); r != nil {
+		report = r.Summary
+	}
+	if !failed && (phoneTask(task) || phoneStopped.MatchString(report)) {
+		return stuckFix{kind: "phone", sentence: a.L.T("onhand.brief.stopped.phone", name), line: a.L.T("onhand.stuck.phone"), buttons: []fixButton{
 			goOn(a.L.T("onhand.brief.phone.go"), a.L.T("onhand.brief.phone.words")), drop}}
 	}
-	said := ""
-	if r := task.Report(); r != nil {
-		said = firstSentence(r.Summary, 60)
+	said := firstSentence(report, 60)
+	// 6. A plain failure: its report's words; never a tool's raw output (D471).
+	if failed && said == "" {
+		key := "onhand.stuck.unknown"
+		if rawFailure(task.Reason()) == "lock" {
+			key = "onhand.stuck.lock"
+		}
+		return stuckFix{kind: "unknown", sentence: a.L.T("onhand.brief.failed", name, a.L.T(key)), line: a.L.T(key), buttons: []fixButton{
+			{a.L.T("away.why"), btnSecondary, func() { a.OpenTask(id) }}, {a.L.T("away.retry"), btnText, func() { a.Retry([]string{id}) }}}}
 	}
-	if said == "" {
-		said = a.L.T("onhand.wait.unsaid")
-	}
-	// 6. A plain failure, or a stop with nothing more known.
 	if failed {
-		return stuckFix{kind: "failed", sentence: a.L.T("onhand.brief.failed", name, said), buttons: []fixButton{retry, why}}
+		return stuckFix{kind: "failed", sentence: a.L.T("onhand.brief.failed", name, said), line: a.L.T("onhand.stuck.failed", said), buttons: []fixButton{retry, why}}
 	}
-	return stuckFix{kind: "stopped", sentence: a.L.T("onhand.brief.stopped", name, said), buttons: []fixButton{
+	// 7. A stop with nothing more known: what it last said is its own words (the peek's).
+	return stuckFix{kind: "stopped", sentence: a.L.T("onhand.brief.stopped", name, a.L.T("onhand.wait.unsaid")), line: a.L.T("onhand.stuck.stopped"), buttons: []fixButton{
 		goOn(a.L.T("onhand.quiet.go"), a.L.T("onhand.quiet.go")), drop}}
 }
 
 // clause is a fix's sentence without the task's name, for its own card.
 func (f stuckFix) clause() string {
+	if f.line != "" {
+		return f.line
+	}
 	s := f.sentence
 	for _, close := range []string{"」", "” "} {
 		if i := strings.Index(s, close); i >= 0 && i < len(s)/2+8 {
@@ -151,46 +192,4 @@ func (a *App) fixButtons(c *ui.Context, key string, f stuckFix, bg ui.Color, act
 			}
 		}
 	})
-}
-
-// limitLines are the waits on an agent's limit (D297), one line per agent:
-// who, when it resets, that it carries on by itself, and its hand-off when
-// another agent could take it now.
-type limitLine struct {
-	harness  string
-	sentence string
-	handTo   string
-	waiters  []string
-	tasks    []string
-}
-
-func (a *App) limitLines(b store.Board) []limitLine {
-	var out []limitLine
-	at := map[string]int{}
-	for _, x := range b.Lanes[store.LaneWaiting] {
-		w := a.S.WaiterFor(x.ID)
-		if w == nil || w.Limit == nil {
-			continue
-		}
-		i, ok := at[w.Limit.Harness]
-		if !ok {
-			i = len(out)
-			at[w.Limit.Harness] = i
-			out = append(out, limitLine{harness: w.Limit.Harness})
-		}
-		l := &out[i]
-		l.waiters = append(l.waiters, w.WaiterID)
-		l.tasks = append(l.tasks, x.ID)
-		if w.Limit.HandTo != nil && l.handTo == "" {
-			l.handTo = w.Limit.HandTo.Harness
-		}
-		when := a.soon(a.limitAt(w))
-		if len(l.tasks) == 1 {
-			l.sentence = a.L.T("onhand.brief.limit", a.briefTitle(x.Title()), harnessName(w.Limit.Harness), a.pad(when))
-		} else {
-			l.sentence = a.L.T("onhand.brief.limit.many", len(l.tasks), harnessName(w.Limit.Harness), a.pad(when))
-		}
-		l.sentence = strings.ReplaceAll(l.sentence, "  ", " ")
-	}
-	return out
 }

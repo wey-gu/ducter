@@ -128,23 +128,21 @@ describe("On hand by attention (D467)", () => {
 describe("On hand reports (D467 round 2)", () => {
   const ev = (seq: number, taskId: string, ms: number, body: Record<string, unknown>) => ({ seq, ts: iso(ms), stream: `task:${taskId}`, origin: "task", kind: "task_event", body: { taskId, ...body } });
 
-  test("the brief: what stopped at the phone with its fix, what comes back next; never a count strip", async () => {
+  test("what stopped at the phone says its fix on its own row; never a count strip (D471: no brief lines)", async () => {
     const { A, o } = await board(
       [card("phone", "blocked", iso(-8 * DAY)), card("ci", "blocked", iso(-48 * 60_000)), { ...card("ask", "needs_you", iso(-5 * 60_000)) }],
       [{ waiterId: "w1", taskId: "ci", reason: "the pipeline finishes", state: "armed", at: iso(37 * 60_000), armedAt: iso(-48 * 60_000) }],
     );
     A.S.applyEvent(ev(9001, "phone", -8 * DAY, { role: "tool", tool: { name: "phone_record_start", input: {}, output: "access stopped", ok: false } }) as any);
-    const { briefOf, onPhone } = await import("../src/onhand-brief.tsx");
+    const { stuckOf, stuckClause, onPhone } = await import("../src/onhand-brief.tsx");
     const phone = A.S.tasks.get("phone")!;
     expect(onPhone(phone)).toBe(true);
-    const n = o.stateCounts("");
-    const b = briefOf(o.boardParts(o.lensLanes("")), n[0]!);
-    expect(b.needs).toHaveLength(1);
-    expect(b.needs[0]!.kind).toBe("phone");
-    expect(b.needs[0]!.text).toBe(A.L.t("onhand.brief.stopped.phone", "Task phone"));
-    // The question waits below as its card; the brief says so in a line, never a count strip.
-    expect(b.asks).toBe(1);
-    expect(b.back).toContain("Task ci");
+    const n = stuckOf(phone);
+    expect(n.kind).toBe("phone");
+    expect(n.text).toBe(A.L.t("onhand.brief.stopped.phone", "Task phone"));
+    expect(stuckClause(n)).toBe(A.L.t("onhand.stuck.phone"));
+    // The question and the stop are both 等你: the line counts them, the rows say them.
+    expect(o.stateCounts("")[0]).toBe(2);
     const onhand = src("onhand.tsx");
     expect(onhand).not.toContain('class="strip"');
     // The section labels say no count (a folded section on the phone keeps its own).
@@ -152,14 +150,15 @@ describe("On hand reports (D467 round 2)", () => {
     A.S.tasks.clear();
   });
 
-  test("a stopped task with no phone says what it last said; a failed one what went wrong", async () => {
+  test("a stopped task says what is true, never its log (D471); a failed one with no words says the error is unknown", async () => {
     const { A, o } = await board([card("x", "blocked", iso(-3 * DAY)), card("y", "failed", iso(-60 * 60_000))]);
     A.S.applyEvent({ seq: 9100, ts: iso(-3 * DAY), stream: "task:x", origin: "task", kind: "report", body: { taskId: "x", state: "blocked", summary: "等你把 Pixel Fold 连上。外部录屏还没做。", questions: [], evidence: [] } } as any);
-    const { briefOf, firstSentence } = await import("../src/onhand-brief.tsx");
+    const { stuckOf, stuckClause, firstSentence } = await import("../src/onhand-brief.tsx");
     expect(firstSentence("等你把 Pixel Fold 连上。外部录屏还没做。")).toBe("等你把 Pixel Fold 连上。");
-    const b = briefOf(o.boardParts(o.lensLanes("")), o.stateCounts("")[0]!);
-    expect(b.needs.map((x) => x.kind).sort()).toEqual(["failed", "stopped"]);
-    expect(b.asks).toBe(0);
+    expect(stuckOf(A.S.tasks.get("x")!).kind).toBe("stopped");
+    expect(stuckClause(stuckOf(A.S.tasks.get("x")!))).toBe(A.L.t("onhand.stuck.stopped"));
+    expect(stuckOf(A.S.tasks.get("y")!).kind).toBe("unknown");
+    expect(o.stateCounts("")[0]).toBe(2);
     A.S.tasks.clear();
   });
 
@@ -190,6 +189,8 @@ describe("On hand reports (D467 round 2)", () => {
     expect(peekTask("", ["idle", "work"])!.id).toBe("work");
     expect(peekTask("idle", ["idle", "work"])!.id).toBe("idle");
     expect(peekTask("gone", ["idle", "work"])!.id).toBe("work");
+    // D471: a focus kept from a task opened before doesn't hold the peek; the work under way does.
+    expect(peekTask("idle", ["idle", "work"], false)!.id).toBe("work");
     void o;
     A.S.tasks.clear();
   });
@@ -207,12 +208,12 @@ describe("On hand reports (D467 round 2)", () => {
     expect(block).toMatch(/prefers-reduced-motion: reduce/);
     expect(block).not.toMatch(/#[0-9a-f]{3,6}\b|rgb\(/i);
     expect(src("../src/board.tsx".replace("../src/", ""))).toContain("<Peek />");
-    for (const k of ["onhand.brief.since", "onhand.brief.stopped.phone", "onhand.brief.back", "onhand.progress.steps", "onhand.peek.open", "onhand.src.offer"]) expect(strings("zh").t(k, "x", "y", 1)).not.toContain("件");
+    for (const k of ["onhand.brief.stopped.phone", "onhand.stuck.phone", "onhand.progress.steps", "onhand.peek.open", "onhand.src.offer"]) expect(strings("zh").t(k, "x", "y", 1)).not.toContain("件");
   });
 });
 
 describe("On hand said once (D467 round 3)", () => {
-  test("what the brief names is told: the new result and the next wait leave their sections and the walk", async () => {
+  test("D471: nothing is told twice: every task is its own row; the head is one sentence", async () => {
     const { A, o } = await board(
       [card("typo", "done", iso(-30 * 60_000)), card("ci", "blocked", iso(-48 * 60_000)), card("ci2", "blocked", iso(-40 * 60_000))],
       [
@@ -220,36 +221,28 @@ describe("On hand said once (D467 round 3)", () => {
         { waiterId: "w2", taskId: "ci2", reason: "the nightly finishes", state: "armed", at: iso(3 * 3600_000), armedAt: iso(-40 * 60_000) },
       ],
     );
-    const seen = await import("../src/seen.ts");
-    const { briefOf } = await import("../src/onhand-brief.tsx");
-    const fresh = seen.isNewResult("typo", "done", iso(-30 * 60_000));
-    const b = briefOf(o.boardParts(o.lensLanes("")), 0, Date.now(), 0);
-    expect(b.told.has("ci")).toBe(true);
-    expect(b.told.has("ci2")).toBe(false);
-    if (fresh) expect(b.told.has("typo")).toBe(true);
-    expect(b.rest).toBe(false);
+    const parts = o.boardParts(o.lensLanes(""));
+    expect(parts.waiting.map((x) => x.id).sort()).toEqual(["ci", "ci2"]);
+    const onhand = src("onhand.tsx");
+    expect(onhand).not.toContain("BriefLines");
+    expect(onhand).not.toContain("brief.told");
+    expect(onhand).not.toContain("<WaitAxis");
+    expect(o.headLine("")).toBe(A.L.t("onhand.line.first", "17:00").replace("17:00", o.headLine("").match(/\d{1,2}:\d{2}/)?.[0] ?? ""));
     A.S.tasks.clear();
   });
 
-  test("all quiet: nothing needs you, works or comes back: the partner says it's here; done says today's all", async () => {
+  test("all quiet: done says today's all", async () => {
     const { A, o } = await board([card("a", "done", iso(-60_000))]);
-    const { briefOf } = await import("../src/onhand-brief.tsx");
-    const n = o.stateCounts("");
-    const b = briefOf(o.boardParts(o.lensLanes("")), n[0]!, Date.now(), n[1]!);
-    expect(b.rest).toBe(true);
     expect(o.headLine("")).toBe("今天就这些，都做完了。");
-    expect(A.L.t("onhand.brief.rest")).toBe("我在这儿，有新的事会告诉你。");
     expect(strings("en").t("onhand.line.done")).toBe("That's all for today. Everything's done.");
-    expect(strings("en").t("onhand.brief.rest")).toBe("I'm here; I'll tell you when something new comes up.");
     A.S.tasks.clear();
   });
 
-  test("the needs line names a task short; the trail merges dense steps into spans", async () => {
+  test("a name in a sentence is cut at a word's end, never inside one (D471); the trail merges dense steps into spans", async () => {
     const { briefName, trailRuns } = await import("../src/onhand-brief.tsx");
-    expect(briefName("用手机把 Ducter 官网录一段屏发到 X")).toBe("用手机把 Ducter…");
-    expect([...briefName("把 Macbook Pro M3 的通用设置导出来")].length).toBeLessThanOrEqual(12);
+    expect(briefName("用手机把 Ducter 官网录一段屏发到 X")).toBe("用手机把 Ducter 官网录一段…");
     expect(briefName("Fix the typo")).toBe("Fix the typo");
-    expect(briefName("Record the Ducter site on the phone and post it to X").length).toBe(28);
+    expect(briefName("Record the Ducter site on the phone and post it to X")).toBe("Record the Ducter site on…");
     const runs = trailRuns([
       { x: 10, bad: false, key: 1 },
       { x: 40, bad: false, key: 2 },
@@ -271,7 +264,7 @@ describe("On hand said once (D467 round 3)", () => {
     expect(g).not.toContain("<StateMark");
     expect(g).toContain('k === "working" ? <span class="gmark k-blank"');
     expect(onhand).toContain("const needsHere = ");
-    expect(src("onhand-brief.tsx")).toContain("if (items.length < 2) return null;");
+    expect(src("onhand-brief.tsx")).not.toContain("function WaitAxis"); // D471: the times stand on the rows' own edge
     const css = readFileSync(join(import.meta.dir, "../static/app.css"), "utf8");
     const block = css.slice(css.indexOf("/* D467 round 3"));
     expect(block).toMatch(/\.ocard \.omark \.pulse i \{\s*animation: none;/);
@@ -310,21 +303,17 @@ describe("Every stuck kind has its fix (D467 round 4)", () => {
     expect(k("cant").kind).toBe("cant");
     // A computer that went away without a word has stopped once it has been away a while; asleep hasn't.
     expect(o.stoppedWait(A.S.tasks.get("away")!)).toBe(true);
-    // The card names its task already: its line is the words after the name.
-    expect(b.stuckClause(k("cu"))).toBe("要在那台 Mac 上打开辅助功能和屏幕录制。");
+    // The card names its task already: its own line, without the name.
+    expect(b.stuckClause(k("cu"))).toBe(A.L.t("onhand.stuck.perm", "Mac mini"));
     A.receive({ t: "devices", devices: [] } as any);
     A.S.tasks.clear();
   });
 
-  test("a limit: said once under 接下来 with when it comes back and the hand-over, and told (no card)", async () => {
+  test("a limit: its own row says whose and offers the hand-over (D471: no brief line)", async () => {
     const { A, o } = await board([card("lim", "blocked", iso(-10 * 60_000))], [{ waiterId: "wl", taskId: "lim", reason: "limit", state: "armed", at: iso(130 * 60_000), armedAt: iso(-10 * 60_000), limit: { harness: "claude-code", resetKnown: true, handTo: { harness: "codex" } } }]);
-    const b = await import("../src/onhand-brief.tsx");
-    const br = b.briefOf(o.boardParts(o.lensLanes("")), 0, Date.now(), 0);
-    expect(br.limits.length).toBe(1);
-    expect(br.limits[0]!.text.startsWith("「Task lim」在等 Claude Code 的额度")).toBe(true);
-    expect(br.limits[0]!.handTo).toBe("codex");
-    expect(br.told.has("lim")).toBe(true);
-    expect(br.rest).toBe(false);
+    expect(o.boardParts(o.lensLanes("")).waiting.map((x) => x.id)).toEqual(["lim"]);
+    expect(o.storyOf(A.S.tasks.get("lim")!).words).toBe(A.L.t("limit.line", "Claude Code"));
+    expect(src("onhand.tsx")).toContain('A.waiterAction(w.waiterId, "handoff")');
     A.S.tasks.clear();
   });
 
@@ -339,7 +328,7 @@ describe("Every stuck kind has its fix (D467 round 4)", () => {
     expect(brief).toContain('mode: "watch"');
     expect(brief).toContain('A.agentSetup(n.device!, "login"');
     expect(brief).toContain('t: "computer_grant"');
-    expect(brief).toContain('A.waiterAction(id, "handoff")');
+    expect(src("onhand.tsx")).toContain('A.waiterAction(w.waiterId, "handoff")');
     const css = readFileSync(join(import.meta.dir, "../static/app.css"), "utf8");
     expect(css).toContain(".room-phone .bneed .bacts .btn,\n.room-phone .ocard .oacts.on .btn {\n  min-height: 44px;");
   });

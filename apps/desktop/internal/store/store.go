@@ -1159,7 +1159,7 @@ func (s *Store) applyOnHand(o *protocol.OnHand) {
 		}
 		// A snapshot is newer than every task_state that arrived before it;
 		// later task_state events override it again.
-		t.State = &protocol.TaskState{TaskID: card.TaskID, Attention: card.Attention, Residency: card.Residency, Reason: card.Reason}
+		t.State = &protocol.TaskState{TaskID: card.TaskID, Attention: card.Attention, Residency: card.Residency, Reason: card.Reason, Cant: card.Cant} // D471: the card's cant too, or a snapshot loses why it couldn't start
 		t.stateSeq = max(t.stateSeq, s.Cursor)
 		if card.LastReport != nil {
 			t.LastReport = card.LastReport

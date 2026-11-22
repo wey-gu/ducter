@@ -3,8 +3,10 @@
 How On hand lets one person take in 3 or 50 tasks at a glance and step into any of them. Decided
 in D216 (one list), D244 (the rail beside an opened task), D261 (projects as a lens, the strip,
 the folds), D287 (the partner at its head, the work as cards) and D315 (one short line, the strip of what is
-there, headings with character; the review below), and D467 (the board by attention in one card
-shape: what stopped needs you, today is today, a source is one summary card, no day beside it).
+there, headings with character; the review below), D467 (the board by attention: what stopped needs
+you, today is today, a source is one summary card, no day beside it) and D471 (one ledger, designed on
+the author's real board: the partner's one sentence, then each section one sheet of rows on one grid,
+every task said once, every reason in plain words, names said whole).
 Words are the glossary's (`product-model.md`); the visuals are Pebble's (`ui.md`).
 
 ## The two axes
@@ -26,11 +28,13 @@ What belongs to no task (the partner's own asks, task-less waits, calls) shows u
 - D455: with two or more computers, under it every computer the project lives on (where its tasks
   ran, its routines start and it was added; one origin on two computers is one project), home
   first, each its own small word, read aloud **在 {computers} 上 / on {computers}**;
-- under it the unmerged **+a −d** of its tasks' branches, only where there are branches;
-- one status place: D467 round 3: the partner's face only where something there needs you (a
-  question, a wait that stopped, a task that didn't work out), D244's art, never a dot (D69);
-  otherwise nothing;
-- its count.
+- D471: no line counts (a sum of branches says nothing about a project) and no faces;
+- its count, in the needs-you ink where something there needs you (a question, a wait that
+  stopped, a task that didn't work out); in the narrow row of names, the name itself in that ink.
+
+D471: the name is said whole, in up to two lines, never cut to the same few letters as its
+neighbour. A project whose every task never started there (its folder missing on that computer,
+D395) is no project yet: no row; its tasks stand under All, where their fix is. All counts every task.
 
 The chosen row is the knob (D270: the card's white on its clay ledge). Opening a task turns the board into the rail (D244), narrowed by the
 same lens, whose head names it and goes back. The column never stands beside the rail.
@@ -60,41 +64,35 @@ task in {name}** where the bare ＋ stood.
 
 ## The board
 
-1. D287, D467 (rev.): **the partner's brief** at the head, always: its clay figure (88; 56 in the
-   side pane and on the phone) in the pose for the whole (its flag when anything needs you > reading while anything
+1. D287, D471: **the partner** at the head, always: its clay figure (72; 56 in the side pane and on
+   the phone) in the pose for the whole (its flag when anything needs you > reading while anything
    works > on its bench while all waits > smiling when what is left came back done > idle), and
-   D315: **one short line** in its voice (`onhand.line.*`, the display face 22/700) that says what
-   the strip can't: **有 n 个要你定。** when anything needs you (D467: when all of it stopped or didn't work
-   out, **有一个停下了，要你看一眼。 / One has stopped and needs a look.**, several **有 n 个停下了，要你看一眼。**);
-   else **没有要你定的，我在做。**
-   while anything works; else, when all waits, **没有要你定的。最早 9:06 回来。** (one wait:
-   **在等的那个 9:06 回来。**; none coming back on its own: **在等的都没有新动静。**); else
-   **今天就这些，都做完了。** or **手上没有事。** It never repeats a count. The long sentence (`headSay`, D287) stays
-   the menu bar's. Under the lead, up to three labelled lines in its voice (label 13/700 muted, text
-   15): **刚才 / Since you looked** (new results since this device last looked: **「…」做完了。**, two,
-   or **「…」等 n 个做完了。**, the first one's PR chip beside it); **等你 / Needs you**, one line for
-   each of the first two that stopped or didn't work out, its fix as buttons (a phone task:
-   **「…」停在手机上：要你在那台手机上重新允许访问。** with **允许好了，接着做 / Allowed, carry on**;
-   another: **「…」停下了：{its report's first sentence}** with 接着做 / 放下; a failure: **「…」没做成：…**
-   with 再试一次 / 看看为什么), and with questions **下面有 n 个问题等你一句话。**; **接下来 / Next**:
-   **「…」6:58 回来。** (**之后还有 n 个**; a wait on a limit's reset is said by its own group, D297);
-   with nothing needing you, nothing at work and nothing coming back, **我在这儿，有新的事会告诉你。**
-   Round 4: every stuck kind says its real fix, the same in the brief and on a card the brief has no
-   room for: couldn't start (the cant line and its fixes), its agent signed out on its computer
-   (**重新登录**, D363's sign-in there), a computer gone away for half an hour (**「…」在等 Mac mini
-   连上：上次在线是 2 小时前。打开那台电脑，它就接着做。**; no wake exists), the person's Mac without its
-   two switches (**在那台 Mac 上打开指引**), a phone, a plain failure; a limit used up is a 接下来 line
-   (**到点自动接着做**, with **现在换 Codex 接着做** when another agent can take it). The forecast band is
-   gone. Round 3: what the brief tells (the results it names, the stopped and failed it carries, the next
-   wait) is never also a card and is not walked; a section left with nothing has no heading
-   (今天做完 can be only its yesterday fold); the brief names a stopped or failed task in a short form
-   (12 Han or 28 Latin characters, the whole on hover), its buttons on the same line when they fit.
-2. D467 (rev.): no strip of counts and no counts on the sections (the brief and the cards say how
-   much); the filter it gave is gone, Find and the lens narrow. Under the brief, on its own row, under
+   D315: **one short line** in its voice (`onhand.line.*`, the display face 22/700): **有 n 个要你定。**
+   when anything needs you (when all of it stopped or didn't work out, **有一个停下了，要你看一眼。 / One
+   has stopped and needs a look.**, several **有 n 个停下了，要你看一眼。**); else **没有要你定的，我在做。**
+   while anything works; else, when all waits, **没有要你定的。最早 9:06 回来。** (one wait: **在等的那个
+   9:06 回来。**; none coming back on its own: **在等的都没有新动静。**); else **今天就这些，都做完了。** or
+   **手上没有事。** It never repeats a count. The long sentence (`headSay`, D287) stays the menu bar's.
+   D471: nothing more under it. D467's lines (刚才, 等你 with the first two stuck tasks, 接下来) named
+   tasks the rows named again, and on the author's real board the two disagreed; every task is now its
+   own row, said once.
+   **How a stuck task is said** (D467 round 4, D471; core-free, from what the home already knows, in one
+   classifier, `onhandfix.go` `stuckFix` and the web's `stuckOf`): couldn't start (D395/D415's line with
+   its fixes: start where it is, clear the lock, clone it here, else try again; a start that failed on
+   something nobody recognised: **没能开始，停在了一个我没认出的错误上。** with **看看为什么** first); its
+   agent signed out on its computer (**重新登录**); a computer gone away for half an hour (**在等 Mac mini
+   连上：上次在线是 2 小时前。打开那台电脑，它就接着做。**); the person's Mac without its two switches
+   (**在那台 Mac 上打开指引**); a phone taken back, from its steps or its own report's words (**停在手机上：
+   要你在那台手机上重新允许访问。** with **允许好了，接着做**); a failure with words of its own (**没做成：
+   {its report's first sentence}**); one with only a tool's or git's raw output, never shown: a lock git left
+   behind (**没能开始：仓库被另一个 git 操作锁住了。**), else **停在了一个我没认出的错误上。**; a stop with no
+   waiter **停下了，没说在等什么。** (what it last said is the peek's, under **它最后说**). A limit used up
+   (D297) is its row's line (**等 Claude Code 的额度恢复**) with **现在换 Codex 接着做** when another agent
+   can take it; several on one limit share D297's head.
+2. D467 (rev.): no strip of counts and no counts on the sections (the line and the rows say how
+   much); the filter it gave is gone, Find and the lens narrow. Under the line, on its own row, under
    a project **在这儿新建 / New task here**; Find from ten.
-3. 接下来 / Next, the forecast line (D127), when two or more things are
-   coming, and D315: something needs you (otherwise the line under the partner already says when
-   the first is back, and each card its own). Its times are each wait's next look, as the cards'.
+3. D467 round 4, D471: no forecast line; each wait's row says when it is back.
 4. Sections by attention (D467): 等你, 在做, 在等, 今天做完. 等你 answers in place (decision cards),
    then what **stopped** (a wait nothing brings back on its own: no waiter of any kind, not a
    question put off, not a computer that will come back, quiet for 30 minutes or more) with
@@ -107,29 +105,33 @@ task in {name}** where the bare ＋ stood.
    finished on today's date, a done still being checked too): new results, then the seen ones;
    what finished before today folds under **还有 n 个是昨天做完的 / n more done yesterday**, closed by
    default. Its count is D310's one number. One reading
-   column (760; 840 beside the peek). D467 (rev.): a section's name is a quiet label (13/700, muted,
-   a little tracking), no count: the scale is brief > card title > section label > meta. 在等
-   opens with **the time axis**: now (the accent bead and the clock) to the last wait back within
-   12 h, each wait a hollow bead at its return with its time under it (the old day, D287, inside the
-   section it belongs to), only from two waits (one is already the brief's 接下来). State is said by the small glyph or
-   face, never a bar at the edge.
-5. D467: **one card shape** for every task, one under another at the list's width (below); only the
-   rail beside an opened task stays rows.
+   column (760; 840 beside the peek). D467 (rev.), D471: a section's name is a quiet label (12/700,
+   muted, a little tracking), no count. D471's type scale, four sizes on the page: the lead 22/700, a
+   title 15/600, every line and time 13, a label 12. 在等
+   D471: no time axis; each wait's time stands on its row's right edge, so the times read down one
+   line. State is said by the small glyph, never a bar at the edge.
+5. D467, D471: **one row shape** for every task, and **each section one clay sheet** (white, radius
+   16, its ledge; the needs-you ledge when what is on it stopped or didn't work out) with its tasks as
+   rows on hairlines (below); only the rail beside an opened task stays D244's rows.
 6. D467: nothing beside the board. D287's day column (接下来, 现在, 今天回来的) said the column again
-   and is gone; the forecast line (3) carries what comes next.
+   and is gone; each wait's row says when it is back (D471).
 
-### The card (D467)
+### The row (D467, D471)
 
-Every task on the board is one card: white on a 2-pt clay ledge (the needs-you ledge for what
-stopped or didn't work out), radius 16, the list's full width, at least 64 high (52 in D457's
-compact density), hover lifts 1 pt, the card under the keys has the accent outline. Never two to a
-row, never a tinted fill, never the agent's brand coin or the partner's face: who does it is a
+Every task on the board is one row of its section's sheet, the sheet's full width, at least 60 high
+(48 in D457's compact density), a hairline above it but the first; hover tints it, the row under the
+keys has the accent outline. D471's one grid: **the mark** (24), **the words**, **the time** on one
+right edge (112 pt; 92 under 700), and, on a sheet whose rows carry an action (what stopped, what
+didn't work out, a quiet wait, a limit with a hand-over), **one column for what to do** (216; 184) so
+every first button starts at one x; elsewhere a hover's actions come in over the time. Beside the
+conversation and on the phone a row stacks: the title, its line, its time, then its buttons under the
+words. Never a tinted fill, never the agent's brand coin or the partner's face: who does it is a
 detail, on hover and in the task.
 
 | Part | What it shows |
 |---|---|
 | State mark | A 32-pt sunk round with a group part's glyph: a flag (needs you, stopped), three soft bars (working), the D279 ring filling toward its next look (waiting), a tick (a new result; quiet once seen), a cross (didn't work out) |
-| Subject | The short title (15/600, one line, the whole on hover; a seen result's recedes to soft ink), then where: its project when the board shows them all (never 其他 / Other), its computer when it isn't the one most tasks run on; each its own element. +a −d and 草稿 PR / 已合并 at the end |
+| Subject | The short title (15/600, D471: up to two lines; a title a source already cut is said to its last real word and never cut again; a seen result's recedes to soft ink), then where: its project when the board shows them all (never 其他 / Other), its computer when it isn't the one most tasks run on; each its own element. +a −d and 草稿 PR / 已合并 at the end |
 | Living line | What it is on now (D210's latest step or the agent's words, held by D425's dwell, up to two lines); what it waits for (D467 rev.: never the title's words again: then the report's first line, else its look); why it stopped (two lines, in the needs-you ink); what came of it |
 | Trail (working) | D467 (rev.): under the living line, its steps placed on its elapsed time as ticks (an errored one in the failed ink), the head at now breathing (1.6 s; still under reduced motion and when the board rests, D425), then **n 步 / n steps** and **上一步 {ago} / last step {ago}**, each its own element. The client asks once for a working task's history so the trail is whole after a reconnect |
 | Outcome (done) | D467 (rev.): what it made, to open: a PR chip (GitHub's mark, **#1190**) from the report's evidence, the merge or draft PR, or `PR #n` in a repo task's result |
@@ -143,11 +145,14 @@ its trail. A trail joins steps closer than 6 pt into one span, so a busy stretch
 
 ### The peek (D467 rev.)
 
-From 1280 (Mac pt, web px), a clay card 360 wide beside the list sits in on the focused task (the
-keys' focus; else the first at work; else the first in the walk): its mark, title (16/700) and
-where, its heartbeat, the living line in full, its trail, **最近几步 / Latest steps** (the last six
-steps in its own words, newest last and in ink), a PR chip when done, and **打开任务 / Open the
-task**. Arrows and j/k move it; Enter opens; hovering a card doesn't move it. Round 4: its picture
+From 1280 (Mac pt, web px), a clay card 360 wide beside the list sits in on a task: D471: the one the
+keys moved to on this board (a focus kept from a task opened before doesn't hold it), else the first
+at work, else the first in the walk. Its mark, title (16/700, up to three lines) and where, its
+heartbeat, the living line in full (a stuck task's reason, then **它最后说 / Its last words**: what it
+reported, whole), its trail, **最近几步 / Latest steps** (the last six steps in their own words, newest
+last and in ink; a step that is only a command stays in the task; a short file name may stand beside
+its words), a PR chip when done, and **打开任务 / Open the task**. Arrows and j/k move it; Enter opens;
+hovering a row doesn't move it. Round 4: its picture
 from what exists: the phone view's last frame this device held (D248) under **上次看到的画面 / Last
 seen**, and **看它用手机 / Watch the phone** or **查看浏览器 / Watch it browse** into the live views.
 Owed: a live picture inside the peek (a second live stream per client).
@@ -187,6 +192,9 @@ no source, under a project's lens, with a filter on, or while finding. The sourc
 on hand (the empty state doesn't show over it). Sheets and their Go: `task-sources.md` §9.
 
 ## Groups (D360)
+
+D471: a group draws only the parts whose tasks are on the board (one removed or gone is no row: on
+the author's board it drew a lone order number); with one part left it is that task's own row.
 
 Several tasks that are one piece of work (登录页重做 in three tasks) stand as **one card** in the state
 section of their most urgent part; a stopped line stands in 等你 and counts as one thing that needs
@@ -362,3 +370,12 @@ or its check only reads the clock (`clockCheck`). The reason is shown to the per
 j/k and the arrows walk what is drawn, Enter opens, `/` finds, Esc lets go of a selection, then
 Find, then the strip's filter, then goes up (D184). ⌘⇧] / ⌘⇧[ walk the lens's tasks from anywhere
 (D244); ⌘O opens any task (D216).
+
+## Review 2026-11-22 (D471)
+
+The author on 0.1.12, on their own home at about 1400: 「感觉好乱呀」. Designed this time on the real
+board first: the home's Log replayed into a demo core (`apps/web/demo-replay.ts`; the person's export
+never enters the repository) and the same shapes with invented words
+(`apps/web/demo-replay-shapes.ts`). Three directions (one ledger; tray and desk; the partner's note)
+rendered on the real board, scored, and the ledger built on both clients; the six things the author
+saw, the rethink and the rubric are D471's. Shots: `.shots/d471/{before,directions,after}/`.

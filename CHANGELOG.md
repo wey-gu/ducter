@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.1.12 - 2026-11-22
+
+<!-- whats-new
+zh: 手头的事变成伙伴的简报；设置先看全局概览
+en: On hand reads as your partner's brief; Settings opens on an overview
+-->
+
+**On hand**
+- Your partner's brief comes first: what just finished, the one thing it needs from you with the
+  real fix as the button, and what comes back next. What it says there isn't repeated below.
+- A stuck task says why in plain words: signed out, a computer offline, out of quota (with
+  another agent ready to take over), a permission, or a plain failure.
+- Running tasks show their steps as a track that grows; a group shows how far along it is.
+- On a wide window, the side shows what the focused task is doing right now.
+- Done today means today; the strip of counts is gone; GitHub is one offer with one button.
+
+**Settings**
+- Settings opens on an overview: how things are, anything that needs you with its fix, your
+  computers and phones and what each is doing, and where your accounts live.
+- Each page starts with your partner saying how things stand there.
+- Rows keep their words beside the control on a phone; choices that don't fit stack; quiet
+  hours are picked the same way everywhere; "解除连接" is now "换个账号".
+
 ## 0.1.11 - 2026-11-22
 
 <!-- whats-new

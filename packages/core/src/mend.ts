@@ -19,7 +19,6 @@
 // couldn't start is set aside as superseded, so On hand never keeps a failure that was mended.
 import type { Bodies, CantStart, LogEvent, MendBody, MendHow, MendTry, TaskCard } from "@ducter/protocol";
 import type { LogStore, PlacesPort, Runner } from "@ducter/protocol/src/internal.ts";
-import { allowedBy, movableTo, type Bound } from "./bound.ts";
 import { realClock, type Clock } from "./clock.ts";
 import { taskStream } from "./registry.ts";
 
@@ -53,15 +52,14 @@ export interface MendStep {
  * picks another agent; signing in is the person's), a clone that failed, or a folder that isn't
  * there with no repository known (the partner knows which repository the work is on).
  */
-export function startLadder(c: Pick<CantStart, "why" | "elsewhere" | "cloneHere" | "clearLock" | "device">, bound?: Bound): MendStep[] {
+export function startLadder(c: Pick<CantStart, "why" | "elsewhere" | "cloneHere" | "clearLock">): MendStep[] {
   const out: MendStep[] = [];
   if (c.why === "busy") return [c.clearLock ? { how: "clear_lock", delayMs: 0 } : { how: "reopen", delayMs: 30_000 }];
   // Only a place Ducter can fix: an agent that can't start (missing, signed out, too old: D472's
   // words), a clone that failed, or a why this code doesn't know goes to the partner.
   if (!PLACE_WHYS.has(c.why)) return out;
-  // D476: never off a computer the person named, never onto one they ruled out (by itself).
-  if (c.elsewhere && movableTo(bound, c.elsewhere.device)) out.push({ how: "start_at", device: c.elsewhere.device, name: c.elsewhere.name, delayMs: 0 });
-  if (c.cloneHere && c.why !== "away" && allowedBy(bound, c.device || "local")) out.push({ how: "clone_here", delayMs: 0 });
+  if (c.elsewhere) out.push({ how: "start_at", device: c.elsewhere.device, name: c.elsewhere.name, delayMs: 0 });
+  if (c.cloneHere && c.why !== "away") out.push({ how: "clone_here", delayMs: 0 });
   // A computer that went away may be back in a minute; anything else, once more, fresh.
   if (c.why === "away") out.push({ how: "reopen", delayMs: 60_000 });
   if (c.why === "other") out.push({ how: "reopen", delayMs: 5_000 });
@@ -69,9 +67,9 @@ export function startLadder(c: Pick<CantStart, "why" | "elsewhere" | "cloneHere"
 }
 
 /** What comes next for a start failure, given what this task and this home already tried. */
-export function nextStartRung(c: Pick<CantStart, "why" | "elsewhere" | "cloneHere" | "clearLock" | "device">, tried: MendTry[], homeTriesLastHour: number, bound?: Bound): { step: MendStep } | { rethink: true; budget?: boolean } {
+export function nextStartRung(c: Pick<CantStart, "why" | "elsewhere" | "cloneHere" | "clearLock">, tried: MendTry[], homeTriesLastHour: number): { step: MendStep } | { rethink: true; budget?: boolean } {
   if (tried.length >= MEND_PER_TASK) return { rethink: true };
-  const step = startLadder(c, bound).find((s) => !tried.some((t) => t.how === s.how));
+  const step = startLadder(c).find((s) => !tried.some((t) => t.how === s.how));
   if (!step) return { rethink: true };
   if (homeTriesLastHour >= MEND_PER_HOUR) return { rethink: true, budget: true };
   return { step };
@@ -140,7 +138,7 @@ export function createMender(o: {
 
   const startFailed = (taskId: string, cant: CantStart) => {
     const tried = triedOn(taskId);
-    const next = nextStartRung(cant, tried, homeTriesLastHour(), o.places()?.boundOf?.(taskId));
+    const next = nextStartRung(cant, tried, homeTriesLastHour());
     if ("rethink" in next) return rethink(taskId, "start", cant.why, tried, next.budget ? { budget: true } : {});
     const s = next.step;
     const attempt = mends(taskId, DAY_MS).length + 1;
@@ -166,7 +164,7 @@ export function createMender(o: {
     if (!places || !runner?.restartAt) error = "no places or runner";
     else {
       try {
-        const p = await places.replan(taskId, { action: s.how, ...(s.device ? { device: s.device } : {}) }, "ducter");
+        const p = await places.replan(taskId, { action: s.how, ...(s.device ? { device: s.device } : {}) });
         if (!p.ok) error = p.message;
         else {
           const r = await runner.restartAt(taskId, p.place, s.how === "clear_lock" ? { clearLock: true } : undefined);

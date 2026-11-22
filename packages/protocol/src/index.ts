@@ -483,8 +483,6 @@ export interface Bodies {
     needs?: TaskNeeds;
     // D372: the kind of work it is (the partner's word at open, else inferred from its needs and place).
     workKind?: WorkKind;
-    // D476: the person's word on where this work runs (only there, never there, the one they named).
-    bound?: TaskBound;
   };
   task_state: { taskId: string; attention: Attention; residency: Residency; reason?: string; cant?: CantStart };
   // D325: the person's words held for after this turn (做完再说, or a steer its agent can't take
@@ -999,19 +997,6 @@ export interface CantStart {
   clearLock?: boolean;
   /** D415: agent: the agent's own words for why, one line (its sign-in, its program), shown under the reason. */
   detail?: string;
-  /** D476: no_folder / no_repo: the repositories the name could be (owner/name); the partner asks which, once. */
-  repos?: string[];
-}
-
-/**
- * D476: the person's own word on where a piece of work runs, read by code from their words and
- * kept on the task: only that computer; never those; or the one they named (Ducter never moves the
- * work off it by itself). Device ids, "local" for the home.
- */
-export interface TaskBound {
-  only?: string;
-  not?: string[];
-  named?: string;
 }
 
 export interface OnHand {

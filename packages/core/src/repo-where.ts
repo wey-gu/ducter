@@ -13,16 +13,12 @@
 //   5. no computer can read it: no place: the caller asks the person once, with the choice.
 // A place the caller gave is kept when it is that repository on that computer (it exists, is a
 // git repository, and its origin is the repository); a given path that isn't is replaced.
-// D476: the person's word on where the work runs (only there, never there) holds in every step:
-// a computer they excluded is never asked, picked, offered or cloned on.
 import { basename } from "node:path";
 import { harnessName, type CantStart, type Place, type RuleView, type TaskCard } from "@ducter/protocol";
 import type { FolderInfo } from "@ducter/protocol/src/folder-info.ts";
 import { remoteKey, type ClonesAnswer } from "@ducter/protocol/src/clones.ts";
 import { originOf, type RepoHint } from "@ducter/protocol/src/repos.ts";
 import type { PlacesPort, PreflightResult } from "@ducter/protocol/src/internal.ts";
-import { allowedBy, boundIn, boundWords, isBound, mergeBound, movableTo, type Bound } from "./bound.ts";
-import { shortRemote, type RepoKnown } from "./repo-known.ts";
 import { ruleFor } from "./rules.ts";
 
 export type RepoPlace = Extract<Place, { kind: "repo" }>;
@@ -32,10 +28,6 @@ export interface WhereComputer {
   id: string;
   name: string;
   home: boolean;
-  /** D476: other names the person calls it (its host name: "hel"). */
-  aliases?: string[];
-  /** D476: its platform ("darwin", "linux"), for "mac" or "服务器" when only one fits. */
-  os?: string;
   online: boolean;
   /** How well it builds code: 2 a Mac, 1 a worker that isn't a Mac, 0 a server home. */
   build: number;
@@ -62,8 +54,6 @@ export interface RepoAsk {
   given?: Place;
   /** The work's words (title, brief, the person's words): for a where-rule. */
   texts?: string[];
-  /** D476: the person's word on where it runs: an excluded computer is never asked or picked; "only" is the named one. */
-  bound?: Bound;
 }
 
 export type RepoWhere =
@@ -163,18 +153,14 @@ export function createRepoWhere(d: RepoWhereDeps): RepoWhereApi {
       for (const k of [...kept.keys()]) if (!device || k.startsWith(`${device}\u0000`)) kept.delete(k);
     },
     async resolve(a) {
-      // D476: a computer the person excluded is never asked or picked; "only" is the named one.
-      const all = d.computers();
-      const comps = a.bound ? all.filter((c) => allowedBy(a.bound, c.home ? "local" : c.id)) : all;
-      const only = a.bound?.only ? all.find((c) => (c.home ? "local" : c.id) === a.bound!.only) : undefined;
-      if (a.bound && !comps.length) return { ok: false, why: "no_access", message: `The user ruled out every computer of this home for this work (${boundWords(a.bound, (id) => all.find((c) => (c.home ? "local" : c.id) === id)?.name ?? id)}).`, asked: [] };
+      const comps = d.computers();
       const byId = (x: string | undefined) => {
         if (!x) return undefined;
         const l = x.trim().toLowerCase();
         if (l === "local") return comps.find((c) => c.home);
         return comps.find((c) => c.id.toLowerCase() === l || c.name.toLowerCase() === l);
       };
-      const given = a.given?.kind === "repo" && typeof a.given.repoPath === "string" && a.given.repoPath && allowedBy(a.bound, a.given.device || "local") ? a.given : undefined;
+      const given = a.given?.kind === "repo" && typeof a.given.repoPath === "string" && a.given.repoPath ? a.given : undefined;
       const want = a.remote ? remoteKey(a.remote) : "";
       const asked = comps.map((c) => c.name);
       // No repository named: only the given place can be checked.
@@ -187,7 +173,7 @@ export function createRepoWhere(d: RepoWhereDeps): RepoWhereApi {
       }
       const repo = repoName(want);
       // 1. A computer named in words (or the place's own device, set because the person named it).
-      const named = only ?? byId(a.named) ?? (given && given.device && given.device !== "local" ? byId(given.device) : undefined);
+      const named = byId(a.named) ?? (given && given.device && given.device !== "local" ? byId(given.device) : undefined);
       // 2. A where-rule: a rule with a computer whose words match this work.
       const rule = !named && a.texts?.length && d.rules ? ruleFor(d.rules().filter((r) => !!r.device), { title: a.texts[0] ?? "", brief: a.texts.slice(1).join("\n") }) : undefined;
       const ruled = rule?.device ? byId(rule.device) : undefined;
@@ -214,8 +200,6 @@ export function createRepoWhere(d: RepoWhereDeps): RepoWhereApi {
         if (!pinned.online) return { ok: false, why: "away", message: `${pinned.name} is away right now.`, repo, asked, on: pinned.name };
         const p = await ask(pinned, want, true);
         if (p !== "offline" && p !== "old" && p.canRead !== false) return { ok: true, how: "clone", place: clonePlace(pinned, want, a.given), computer: pinned.name, repo, ...also(pinned) };
-        // D476: the person said only there: no other computer, even one that has it.
-        if (only) return { ok: false, why: "no_access", message: `${pinned.name} can't read ${want.replace(/^github\.com\//, "")} with its own git sign-in, and the user said to do this work only on ${pinned.name}.`, repo, asked: [pinned.name] };
         // The named computer can't read it: one that has it, if any, is still better than none.
       }
       const found = best(have);
@@ -263,7 +247,6 @@ const LINES = {
     other: "没能开始：{what} 在 {computer} 上一开始就出了错",
     other_bare: "没能开始：开始的时候出了问题",
     cloning: "{what} 的代码还没在哪台电脑上，我先在 {computer} 上拉一份。",
-    cloningHere: "{computer} 上还没有 {what} 的代码，我先在那里拉一份。",
   },
   en: {
     no_repo: "Couldn't start: {computer} has no copy of {what}",
@@ -278,7 +261,6 @@ const LINES = {
     other: "Couldn't start: {what} hit an error as it started on {computer}",
     other_bare: "Couldn't start: something went wrong as it started",
     cloning: "{what}'s code isn't on any of your computers yet, so I'm cloning it on {computer} first.",
-    cloningHere: "{computer} doesn't have {what}'s code yet, so I'm cloning it there first.",
   },
 } as const;
 const line = (lang: "zh" | "en", k: keyof (typeof LINES)["zh"], v: Record<string, string>) => LINES[lang][k].replace(/\{(\w+)\}/g, (_, n: string) => v[n] ?? "");
@@ -299,12 +281,6 @@ export interface PlacesDeps {
   folder?(device: string, path: string, ms: number): Promise<FolderInfo | "offline">;
   /** D472: the repository a project by this folder name is (its origin), when one is known. */
   knownRemote?(name: string): string | undefined;
-  /** D476: the repository a name is, from every project and task place Ducter knows (repo-known.ts); two that fit: ambiguous. */
-  knownRepo?(name: string, words: string[]): Promise<RepoKnown>;
-  /** D476: the bound kept on the task (its task_open's), when it has one. */
-  boundKept?(taskId: string): Bound | undefined;
-  /** D476: the bound of the work a rethink handed back, when these words carry it on (a task opened again). */
-  boundCarried?(texts: string[]): Bound | undefined;
 }
 
 const lang2 = (l: string | undefined): "zh" | "en" => (l && l.toLowerCase().startsWith("zh") ? "zh" : "en");
@@ -316,28 +292,6 @@ export function createPlaces(d: PlacesDeps): PlacesPort {
     return c?.name ?? dev ?? "";
   };
   const isHere = (x: WhereComputer, dev: string) => (dev === "local" ? x.home : x.id === dev);
-  /** A computer's bound id: "local" for the home. */
-  const idOf = (x: WhereComputer) => (x.home ? "local" : x.id);
-  const findComputer = (dev: string | undefined) => {
-    const cs = d.computers();
-    if (!dev || dev.toLowerCase() === "local") return cs.find((x) => x.home);
-    const l = dev.toLowerCase();
-    return cs.find((x) => x.id.toLowerCase() === l || x.name.toLowerCase() === l || (x.aliases ?? []).some((a) => a.toLowerCase() === l));
-  };
-  /** D476: the repository a name is (two that fit: ambiguous), from what Ducter knows. */
-  const known = async (name: string, words: string[]): Promise<RepoKnown> => {
-    if (!name && !words.length) return undefined;
-    if (d.knownRepo) return d.knownRepo(name, words).catch(() => undefined);
-    const r = name ? d.knownRemote?.(name) : undefined;
-    return r ? { remote: r } : undefined;
-  };
-  /** D476: the person's word on where a task's work runs: its own words, and what it carried on. */
-  const boundOf = (taskId: string): Bound | undefined => {
-    const o = d.opened(taskId);
-    const b = mergeBound(d.boundKept?.(taskId), o ? boundIn([o.title, o.brief], d.computers()) : undefined);
-    return isBound(b) ? b : undefined;
-  };
-  const said = (b: Bound) => boundWords(b, (id) => nameOf(id));
   /** The repository a task is on: its clone address, the to-do it is bound to, an address in its words. */
   const remoteOfTask = (c: TaskCard | undefined, words: string[]): string | undefined => {
     if (c?.place.kind === "repo" && c.place.clone) return c.place.clone;
@@ -362,55 +316,30 @@ export function createPlaces(d: PlacesDeps): PlacesPort {
       const remote = a.remote ?? (staged?.kind === "github" ? staged.where : undefined) ?? [...a.userTexts, ...a.texts].map(remoteIn).find(Boolean);
       // Only a repository place, or a place-less one whose work is on a named repository (a to-do on it).
       const onRepo = place.kind === "repo" || (place.kind === "none" && !!remote && (!!a.remote || !!staged));
-      // D476: the person's word on where it runs: their words now, the task's own, and the work this
-      // one carries on (a rethink's task opened again keeps what the person said for it).
-      const merged = mergeBound(d.boundCarried?.([...a.texts]), boundIn([...a.texts, ...a.userTexts], d.computers()));
-      const b = isBound(merged) ? merged : undefined;
-      const kept = <T extends PreflightResult>(r: T): T => (r.ok && b ? { ...r, bound: b } : r);
-      const cloneSaid = (r: { how: string; repo: string; computer: string; also?: string[] }) =>
-        r.how === "clone" ? line(lang2(d.lang()), r.also?.length || b ? "cloningHere" : "cloning", { what: r.repo, computer: r.computer }) : undefined;
-      // A place on a computer the person ruled out is refused before anything opens.
-      const pdev = "device" in place && place.device ? place.device : undefined;
-      const pc = pdev ? findComputer(pdev) : undefined;
-      if (b && pc && !allowedBy(b, idOf(pc))) {
-        const to = b.only ? nameOf(b.only) : "";
-        return { ok: false, error: `Not opened: the user said this work runs ${said(b)}, so it can't open on ${pc.name}. Open it again ${to ? `on ${to} (place.device "${to}")` : "on a computer they allow"}, with the repository as place {"kind":"repo","remote":"owner/name"} when its folder isn't there (Ducter clones it there first). Never on ${pc.name}. Only if it truly can't be done there, tell the user why in one short line.` };
-      }
       // D472: a folder is looked for on its computer before the task exists (hel, 2026-11-22: a task
       // opened in /root/dev/mem, which wasn't there, failed at once and the person had to ask why).
       if (place.kind === "folder" && d.folder) {
-        const c = pc ?? findComputer(undefined);
+        const cs = d.computers();
+        const dev = place.device && place.device !== "local" ? place.device.toLowerCase() : "";
+        const c = dev ? cs.find((x) => x.id.toLowerCase() === dev || x.name.toLowerCase() === dev) : cs.find((x) => x.home);
         const info = c ? await d.folder(c.id, place.path, 4_000).catch(() => "offline" as const) : "offline";
         if (info !== "offline" && !info.exists) {
+          const known = remote ?? d.knownRemote?.(basename(place.path));
           const name = c!.name;
-          const k: RepoKnown = remote ? { remote } : await known(basename(place.path), [...a.texts, ...a.userTexts]);
-          // D476: two repositories fit the name: never a guess, one question naming both.
-          if (k && "ambiguous" in k)
-            return { ok: false, error: `Not opened: ${name} has no folder ${place.path}. "${basename(place.path)}" could be ${k.ambiguous.join(" or ")}. Ask the user in one short line which one (never guess); then open it with place {"kind":"repo","remote":"<that one>","device":"${name}"}: Ducter clones it onto ${name} first.` };
-          const knownRemote = k?.remote;
-          // D476: the person's words already put the work on this computer: clone it there and start, no question.
-          if (knownRemote && b && (b.only === idOf(c!) || b.named === idOf(c!))) {
-            const r = await d.where.resolve({ remote: knownRemote, named: c!.id, bound: b, texts: a.texts });
-            if (r.ok) {
-              const s = cloneSaid(r);
-              return kept({ ok: true, place: r.place, how: r.how, computer: r.computer, repo: r.repo, ...(s ? { said: s } : {}) });
-            }
-          }
           return {
             ok: false,
-            error: knownRemote
-              ? `Not opened: ${name} has no folder ${place.path}. It is the repository ${shortRemote(knownRemote)} (one of the user's projects), not on ${name} yet. Open no task in that folder. In one short line, offer to clone it onto ${name} and start there, or to use a folder already on ${name} if they name it. When they agree (or their words already asked for ${name}), open the task with place {"kind":"repo","remote":"${shortRemote(knownRemote)}","device":"${name}"}: Ducter clones it there first.`
+            error: known
+              ? `Not opened: ${name} has no folder ${place.path}. It is the repository ${known.replace(/^github\.com\//, "")} (one of the user's projects), not on ${name} yet. Open no task in that folder. In one short line, offer to clone it onto ${name} and start there, or to use a folder already on ${name} if they name it. When they agree (or their words already asked for ${name}), open the task with place {"kind":"repo","remote":"${known.replace(/^github\.com\//, "")}","device":"${name}"}: Ducter clones it there first.`
               : `Not opened: ${name} has no folder ${place.path}. Never guess another path. In one short line, ask which folder on ${name} it is (or its repository, owner/name, so Ducter can clone it there); open no task yet.`,
           };
         }
       }
-      if (!onRepo) return kept({ ok: true, place });
-      const namedId = b?.only ?? b?.named ?? computerNamed(a.userTexts, d.computers())?.id;
-      const named = namedId ? findComputer(namedId) : undefined;
-      const r = await d.where.resolve({ ...(remote ? { remote } : {}), ...(named ? { named: named.id } : {}), given: place, texts: a.texts, ...(b ? { bound: b } : {}) });
+      if (!onRepo) return { ok: true, place };
+      const named = computerNamed(a.userTexts, d.computers());
+      const r = await d.where.resolve({ ...(remote ? { remote } : {}), ...(named ? { named: named.id } : {}), given: place, texts: a.texts });
       if (r.ok) {
-        const s = cloneSaid(r);
-        return kept({ ok: true, place: r.place, how: r.how, computer: r.computer, repo: r.repo, ...(s ? { said: s } : {}) });
+        const said = r.how === "clone" ? line(lang2(d.lang()), "cloning", { what: r.repo, computer: r.computer }) : undefined;
+        return { ok: true, place: r.place, how: r.how, computer: r.computer, repo: r.repo, ...(said ? { said } : {}) };
       }
       const path = place.kind === "repo" ? place.repoPath : "";
       if (r.why === "no_repo")
@@ -435,78 +364,57 @@ export function createPlaces(d: PlacesDeps): PlacesPort {
       const repoOf = c?.place.kind === "repo" ? basename(c.place.repoPath) : "";
       const agentWhy = p.why === "agent" || p.why === "not_installed" || p.why === "signed_out" || p.why === "old" || p.why === "other";
       // D472: a folder that isn't there may still be a repository Ducter knows by its name (a project's origin).
-      // D476: from every project and task place Ducter knows, and the task's own words ("Nowledge Mem").
       const folderName = basename(p.path) || "";
-      const k = !remote && (p.why === "no_folder" || p.why === "no_repo") && folderName ? await known(folderName, o ? [o.title, o.brief] : []) : undefined;
-      const repo = remote ?? (k && "remote" in k ? k.remote : undefined);
+      const known = !remote && (p.why === "no_folder" || p.why === "no_repo") && folderName ? d.knownRemote?.(folderName) : undefined;
+      const repo = remote ?? known;
       const what = agentWhy ? harnessName(c?.harness ?? "") : repo ? repoName(repo) : p.why === "busy" ? repoOf || "this" : folderName || p.path || repoOf;
       const cant: CantStart = { why: p.why, computer, what, device: p.device, ...(c?.harness ? { harness: c.harness } : {}), ...(p.path && p.why !== "busy" ? { path: p.path } : {}) };
-      if (k && "ambiguous" in k) cant.repos = k.ambiguous;
       if (p.why === "busy" && p.path.endsWith(".lock")) cant.clearLock = true;
       const here = d.computers().find((x) => isHere(x, p.device));
-      // D476: a computer the person ruled out is never offered, and nothing is cloned onto it.
-      const b = boundOf(taskId);
-      const offer = (dev: string) => allowedBy(b, dev);
       if (repo && (p.why === "no_repo" || p.why === "no_folder" || p.why === "other" || p.why === "clone_failed")) {
-        const r = await d.where.resolve({ remote: repo, ...(b ? { bound: b } : {}) }).catch(() => undefined);
-        if (r?.ok && r.how !== "clone" && !isHere(d.computers().find((x) => x.id === r.place.device) ?? ({ id: r.place.device, home: false } as WhereComputer), p.device) && offer(r.place.device)) cant.elsewhere = { device: r.place.device, name: r.computer };
-        if ((p.why === "no_repo" || p.why === "no_folder" || p.why === "other") && here?.online && offer(p.device)) cant.cloneHere = true;
+        const r = await d.where.resolve({ remote: repo }).catch(() => undefined);
+        if (r?.ok && r.how !== "clone" && !isHere(d.computers().find((x) => x.id === r.place.device) ?? ({ id: r.place.device, home: false } as WhereComputer), p.device)) cant.elsewhere = { device: r.place.device, name: r.computer };
+        if ((p.why === "no_repo" || p.why === "no_folder" || p.why === "other") && here?.online) cant.cloneHere = true;
       }
       // D472: the task's own words name another computer than the one it went to (an agent picked
       // for that computer's sign-in moved it): 在 {that computer} 上做 is its fix.
-      const meantId = b?.only ?? b?.named;
-      const meant = meantId ? findComputer(meantId) : o ? computerNamed([o.title, o.brief], d.computers()) : undefined;
-      if (!cant.elsewhere && meant && !isHere(meant, p.device) && p.why !== "busy" && offer(idOf(meant))) cant.elsewhere = { device: meant.id, name: meant.name };
-      // D476: it went to a computer the person ruled out: the one they allow is the fix, never an offer elsewhere.
-      if (cant.elsewhere && !offer(cant.elsewhere.device)) delete cant.elsewhere;
+      const meant = o ? computerNamed([o.title, o.brief], d.computers()) : undefined;
+      if (!cant.elsewhere && meant && !isHere(meant, p.device) && p.why !== "busy") cant.elsewhere = { device: meant.id, name: meant.name };
       // D472: or a folder already on that computer, chosen there (D455's sheet), and it starts in it.
       if ((p.why === "no_folder" || p.why === "no_repo") && here?.online) cant.pickHere = true;
-      const lk = p.why === "other" && (!computer || !what) ? "other_bare" : p.why;
-      return { ...cant, line: line(lang, lk, { computer, what }) };
+      const k = p.why === "other" && (!computer || !what) ? "other_bare" : p.why;
+      return { ...cant, line: line(lang, k, { computer, what }) };
     },
-    async replan(taskId, how, by = "person") {
+    async replan(taskId, how) {
       const c = d.tasks.get(taskId);
       if (!c) return { ok: false, message: "No such task." };
       const o = d.opened(taskId);
-      const fromWords = remoteOfTask(c, o ? [o.title, o.brief] : []);
+      const said = remoteOfTask(c, o ? [o.title, o.brief] : []);
       // D472: a folder that wasn't there, known by its name as a project's repository: cloned or found by that.
       const pathOf = c.place.kind === "folder" ? c.place.path : c.place.kind === "repo" ? c.place.repoPath : "";
-      const k = !fromWords && (how.action === "clone_here" || how.action === "start_at") && pathOf ? await known(basename(pathOf), o ? [o.title, o.brief] : []) : undefined;
-      const remote = fromWords ?? (k && "remote" in k ? k.remote : undefined);
+      const remote = said ?? (how.action === "clone_here" || how.action === "start_at" ? (pathOf ? d.knownRemote?.(basename(pathOf)) : undefined) : undefined);
       const dev = c.place.kind === "repo" || c.place.kind === "folder" ? c.place.device || "local" : "local";
       const keep = c.place.kind === "repo" && c.place.baseBranch ? { baseBranch: c.place.baseBranch } : {};
-      // D476: the person's word on where it runs. Ducter's own mends hold to it (never off a computer
-      // they named, never onto one they ruled out); the person's own tap on a card is a new word.
-      let b = boundOf(taskId);
-      const target = how.action === "start_at" && how.device ? findComputer(how.device) : undefined;
-      if (by === "ducter") {
-        if (target && !movableTo(b, idOf(target))) return { ok: false, message: `The user said this work runs ${said(b!)}; Ducter doesn't move it to ${target.name} by itself.` };
-        if (how.action === "clone_here" && !allowedBy(b, dev)) return { ok: false, message: `The user said this work runs ${said(b!)}; nothing is cloned onto ${nameOf(dev)} for it.` };
-      } else if (target && b) b = { ...b, ...(b.only && b.only !== idOf(target) ? { only: idOf(target) } : {}), not: (b.not ?? []).filter((x) => x !== idOf(target)) };
       // D415: 清掉旧的再试 is 再试一次 in the same place (the runner clears the lock before its first try).
       if (how.action === "clear_lock") how = { action: "reopen" };
       if (how.action === "clone_here") {
-        if (!remote) return { ok: false, message: k && "ambiguous" in k ? `"${basename(pathOf)}" could be ${k.ambiguous.join(" or ")}; Ducter doesn't pick between them.` : "Ducter doesn't know which repository this is, so it can't clone it." };
+        if (!remote) return { ok: false, message: "Ducter doesn't know which repository this is, so it can't clone it." };
         const here = d.computers().find((x) => isHere(x, dev));
         if (!here) return { ok: false, message: "That computer isn't one of this home's any more." };
         return { ok: true, place: { ...clonePlace(here, remoteKey(remote)), ...keep } };
       }
       if (!remote) {
         if (c.place.kind !== "repo") return { ok: true, place: c.place };
-        const r = await d.where.resolve({ given: { kind: "repo", device: dev, repoPath: c.place.repoPath }, ...(b ? { bound: b } : {}) });
+        const r = await d.where.resolve({ given: { kind: "repo", device: dev, repoPath: c.place.repoPath } });
         return r.ok ? { ok: true, place: { ...r.place, ...keep } } : { ok: false, message: r.message };
       }
       // Asked again, fresh: what the computers said before is what failed.
       d.where.forget();
       const given = c.place.kind === "repo" && how.action === "reopen" && !c.place.clone ? { given: { kind: "repo" as const, device: dev, repoPath: c.place.repoPath, ...keep } } : {};
-      // D476: Ducter's own reopen stays on the computer the person named.
-      const stay = by === "ducter" && how.action === "reopen" && b && !b.only && b.named ? { named: b.named } : {};
-      const r = await d.where.resolve({ remote, ...(how.action === "start_at" && how.device ? { named: how.device } : stay), ...given, ...(b ? { bound: b } : {}) });
+      const r = await d.where.resolve({ remote, ...(how.action === "start_at" && how.device ? { named: how.device } : {}), ...given });
       if (!r.ok) return { ok: false, message: r.message };
       return { ok: true, place: { ...r.place, ...keep } };
     },
-    boundOf,
-    nameOf: (dev) => nameOf(dev),
   };
   return api;
 }

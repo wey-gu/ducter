@@ -114,10 +114,6 @@ const FRESH_ROUND_HARNESSES = new Set(["codex", "claude-code"]);
 /** D394: a rest this long outlives any prompt cache (Anthropic's 5 min or 1 h, OpenAI's minutes): resuming saves nothing. */
 const FRESH_AFTER_REST_MS = 30 * 60_000;
 const CARRY_SAID = 5;
-/** D476: a first session whose agent did nothing and ended its turns within this didn't really start. */
-export const ENDED_AT_ONCE_MS = 120_000;
-/** D476: ...and said less than this in all (a short line: a sign-in, a refusal, an error). */
-const ENDED_AT_ONCE_CHARS = 400;
 const clip = (s: string, n: number) => (s.length <= n ? s : s.slice(0, n - 1) + "…");
 
 interface StartCtx {
@@ -162,12 +158,6 @@ interface TaskRt {
   restsThisTurn?: Set<string>;
   nudged: boolean;
   stallNoted: boolean;
-  /**
-   * D476: a session started fresh on a task that never reported: when, whether its agent did
-   * anything (a tool call), its last words, and how its process ended. An agent that ends its first
-   * turns at once without doing anything didn't really start: said as that, not as a stall.
-   */
-  fresh?: { at: number; acted: boolean; words?: string; chars?: number; exit?: string };
   interruptRequested?: boolean; // the user stopped the current turn
   /**
    * D339: a turn being stopped (an interrupt sent while it worked, its end not yet in): words sent
@@ -834,11 +824,8 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     // D156: its agent is being updated on this machine: start once the updater is done (at most 15 min).
     for (const end = Date.now() + 15 * 60_000; harnessHold.has(t.spec.harness) && !t.ops.device && Date.now() < end; ) await Bun.sleep(1000);
     const spec: SessionSpec = resume && t.sessionId ? { ...t.spec, resumeSessionId: t.sessionId } : t.spec;
-    // D476: the task's very first session (nothing ran before it): watched for an agent that ends at once.
-    const first = !spec.resumeSessionId && neverStarted(t);
     const session = await t.ops.harness.start(spec);
     t.session = session;
-    t.fresh = first ? { at: Date.now(), acted: false } : undefined;
     t.bg?.clear(); // D266: a new process runs none of the old one's background work
     if (!spec.resumeSessionId) (t.context = undefined), (t.saveAsked = false); // a fresh context
     noteSessionId(t, session);
@@ -1078,8 +1065,6 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       clearTimeout(t.bgSettle);
       t.bgSettle = undefined;
     }
-    // D476: its process ended before its agent did anything at all: it crashed as it started.
-    if (t.session === session && !offline && t.fresh?.exit && endedAtOnce(t) && currentAttention(t) === "working") return void endedAtStart(t);
     if (t.session === session) {
       const wasRunning = t.running;
       t.steers = []; // D325: what that session never echoed it won't now
@@ -1188,12 +1173,6 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       return steerSeen(t, String(echo.input ?? ""), typeof echo.inputId === "string" ? echo.inputId : undefined);
     }
     if (ev.tool && /(^|__)report_to_main$/.test(ev.tool.name) && ev.tool.ok !== false) t.reportedThisTurn = true;
-    // D476: whether a fresh session did anything at all, and its own last words (an agent that ends at once says why).
-    if (t.fresh) {
-      if (ev.tool) t.fresh.acted = true;
-      if (ev.role === "assistant" && ev.text?.trim()) (t.fresh.words = ev.text.trim().slice(0, 600)), (t.fresh.chars = (t.fresh.chars ?? 0) + ev.text.length);
-      if ((ev.raw as { kind?: string } | undefined)?.kind === "exited" && ev.text) t.fresh.exit = ev.text.slice(0, 300);
-    }
     // D288: the account's limits as the session said them, kept with the agent's last read.
     if (ev.limits) {
       // D297: what the session said last, for the reset of a limit that refuses the next turn.
@@ -1414,11 +1393,6 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
 
   /** A turn ended with no report (the stall rule): one nudge; a second miss leaves it to the user. */
   async function missedReport(t: TaskRt) {
-    // D476: its agent ended its first turns at once without doing anything (hel, 2026-11-22:
-    // Antigravity on the Mac went working, then idle within a second, then "stalled"). It never
-    // really started: said as that, with its own words, so the mend asks for another agent or a
-    // sign-in instead of reading where it stopped. Nothing ran, so nothing went out.
-    if (t.nudged && endedAtOnce(t)) return endedAtStart(t);
     if (!t.nudged) {
       t.nudged = true;
       try {
@@ -1436,27 +1410,6 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       // a message from the user sets it working again.
       if (currentAttention(t) === "working") setState(t, "needs_you", t.session ? "warm" : "parked");
     }
-  }
-
-  /** D476: a first session whose agent did nothing at all (no tool, no report) and ended within the window. */
-  function endedAtOnce(t: TaskRt): boolean {
-    const f = t.fresh;
-    // A long answer in words is work done in words (it only forgot to report): still a stall.
-    return !!f && !f.acted && (f.chars ?? 0) < ENDED_AT_ONCE_CHARS && Date.now() - f.at <= ENDED_AT_ONCE_MS && !t.dropped;
-  }
-
-  /** D476: closed and marked as a start failure (startFailed), with the agent's own first line as the detail. */
-  async function endedAtStart(t: TaskRt): Promise<void> {
-    const f = t.fresh!;
-    t.fresh = undefined;
-    t.stallNoted = true;
-    const s = t.session;
-    t.session = undefined;
-    t.running = false;
-    clearTimeout(t.parkTimer);
-    await s?.close().catch(() => {});
-    const said = (f.words ?? f.exit ?? "").split("\n").map((l) => l.trim()).find(Boolean);
-    await startFailed(t, new Error(`${harnessName(t.base.harness)} ended its first turns at once without doing anything${said ? `: ${said}` : " and said nothing"}`), said ? { detail: said } : { detail: "" });
   }
 
   /**
@@ -1800,7 +1753,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     // Who does it (D89): the person's rules, the limits and Use it for tasks, through core's
     // chooser; a pick this runner can't run (or no device info) keeps the old default.
     const you = input.origin === "you"; // D128: the user opened it; a harness given is their pick
-    const picked = await core.bodies?.choose({ title: input.title, brief: input.brief, place: input.place, harness: input.harness, model: input.model, ...(input.effort ? { effort: input.effort } : {}), ...(you ? { by: "you" as const } : {}), ...(input.needs ? { needs: input.needs } : {}), ...(input.workKind ? { workKind: input.workKind } : {}), ...(input.bound ? { bound: input.bound } : {}) });
+    const picked = await core.bodies?.choose({ title: input.title, brief: input.brief, place: input.place, harness: input.harness, model: input.model, ...(input.effort ? { effort: input.effort } : {}), ...(you ? { by: "you" as const } : {}), ...(input.needs ? { needs: input.needs } : {}), ...(input.workKind ? { workKind: input.workKind } : {}) });
     if (picked && "none" in picked) throw new Error(picked.none);
     // D372: the kind of work, as the partner said it or as Ducter read it from its needs and place.
     const workKind = input.workKind ?? (picked && "workKind" in picked ? picked.workKind : undefined);
@@ -1854,7 +1807,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     const fixed = h === "claude-code" ? (opts.defaultModel ?? opts.taskModel ?? process.env.DUCTER_TASK_MODEL) || undefined : undefined;
     const model = (ranked && fixed) || input.model || fixed;
     const later = typeof briefIn !== "string";
-    const body: Bodies["task_open"] = { taskId: id, title, project, place: resolved.place, harness: h, model, ...(effort ? { effort } : {}), brief: later ? "" : briefIn, ...(!later && input.media?.length ? { media: input.media } : {}), ...(input.language ? { language: input.language } : {}), ...(you ? { origin: "you" as const } : {}), ...(input.from ? { from: input.from } : {}), ...(input.from && input.fromStep ? { fromStep: input.fromStep, ...(input.fromCommit ? { fromCommit: input.fromCommit } : {}) } : {}), ...(input.needs && Object.keys(input.needs).length ? { needs: input.needs } : {}), ...(workKind ? { workKind } : {}), ...(input.bound ? { bound: input.bound } : {}), ...(input.adopt ? { outside: { agent: input.adopt.agent, sessionId: input.adopt.sessionId, startedAt: input.adopt.startedAt } } : {}) };
+    const body: Bodies["task_open"] = { taskId: id, title, project, place: resolved.place, harness: h, model, ...(effort ? { effort } : {}), brief: later ? "" : briefIn, ...(!later && input.media?.length ? { media: input.media } : {}), ...(input.language ? { language: input.language } : {}), ...(you ? { origin: "you" as const } : {}), ...(input.from ? { from: input.from } : {}), ...(input.from && input.fromStep ? { fromStep: input.fromStep, ...(input.fromCommit ? { fromCommit: input.fromCommit } : {}) } : {}), ...(input.needs && Object.keys(input.needs).length ? { needs: input.needs } : {}), ...(workKind ? { workKind } : {}), ...(input.adopt ? { outside: { agent: input.adopt.agent, sessionId: input.adopt.sessionId, startedAt: input.adopt.startedAt } } : {}) };
     const opened = core.log.append({ persona, stream: stream(id), origin: "system", kind: "task_open", body });
     core.log.append({ persona, stream: stream(id), origin: "system", kind: "body_selected", body: { taskId: id, harness: h, ...(model ? { model } : {}), ...(effort ? { effort } : {}), why: pick?.why ?? { kind: input.harness ? (you ? "you" : "partner") : "default" } } });
     const card: TaskCard = {
@@ -1952,18 +1905,15 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
    * computer gone): a word for why and 再试一次 that asks again, fresh. The raw message stays in
    * the task's own record for whoever reads the steps.
    */
-  async function startFailed(t: TaskRt, err: unknown, o?: { detail: string }): Promise<void> {
+  async function startFailed(t: TaskRt, err: unknown): Promise<void> {
     const reason = preview(err instanceof Error ? err.message : String(err), 500) ?? "";
-    // D476: an agent that ended at once: signed out or missing when its words say so, else its agent ("agent").
-    const p0 = startProblem(o ? o.detail : reason);
-    const problem = o && p0.why !== "signed_out" && p0.why !== "not_installed" ? { why: "agent" as const, path: "" } : p0;
+    const problem = startProblem(reason);
     const device = t.ops.device?.id ?? "local";
     const fallback = (): CantStart & { line: string } => ({ why: problem.why, computer: t.ops.device?.name ?? "", what: "", ...(problem.path ? { path: problem.path } : {}), line: reason });
     const cant = (await core.places?.cantStart(t.id, { ...problem, device }).catch(() => undefined)) ?? fallback();
     // D415/D472: the agent's own words, one line; for what is truly unknown, a few lines behind 看看为什么.
     const lines = reason.split("\n").map((l) => l.replace(/^(Error: )+/, "").trim()).filter((l) => l && !/^at\s|^\s*at\s/.test(l));
-    if (o?.detail && !cant.detail) cant.detail = o.detail.slice(0, 160);
-    else if (!o && ["agent", "not_installed", "signed_out", "old", "other"].includes(problem.why) && !cant.detail && lines[0]) cant.detail = lines[0].slice(0, 160);
+    if (["agent", "not_installed", "signed_out", "old", "other"].includes(problem.why) && !cant.detail && lines[0]) cant.detail = lines[0].slice(0, 160);
     if (problem.why === "other" && !cant.more && lines.length > 1) cant.more = lines.slice(0, 6).join("\n").slice(0, 600);
     if (!cant.harness) cant.harness = t.base.harness;
     if (!cant.device) cant.device = device;

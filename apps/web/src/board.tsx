@@ -137,9 +137,6 @@ export function Board() {
   const routines = A.S.routines().filter((r) => r.state === "active" || r.state === "paused");
   const calls = A.S.onHand?.calls ?? [];
   const nothing = b.lanes.slice(0, 4).every((l) => !l.length) && !A.S.partnerDecisions().length && !loose.length && !A.S.missedToday().length && !routines.length && !calls.length;
-  // D467: the day column beside the board is gone (it repeated the column); the Next line keeps
-  // D315's rule at every width: two or more coming, and something needs you.
-  const next = stateCounts(currentLens(lensGroups()))[0] ? forecast() : [];
   return (
     <>
       <FullTop>
@@ -156,7 +153,7 @@ export function Board() {
           <div class="board-wrap">
           <LensColumn />
           <div class="board-col">
-            <NextLine items={next} />
+            {/* D467 round 4: no 接下来 line over the board: the brief's 接下来 says what comes back next. */}
             <OnHandList room="full" />
             <RoutineShelf />
           </div>

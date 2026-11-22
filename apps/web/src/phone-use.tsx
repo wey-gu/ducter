@@ -55,6 +55,8 @@ export interface PhoneViewState {
  *  black, or a jump. Memory only. */
 const held = new Map<string, { src: string; w?: number; h?: number }>();
 let heldKey = "";
+/** D467 round 4: the last frame a phone showed this session, for On hand's peek (a still, never a stream). */
+export const heldFrame = (device: string) => held.get(device);
 
 export const PU: {
   /** The full-screen live view (the standalone mount). */

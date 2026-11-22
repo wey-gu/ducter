@@ -45,7 +45,7 @@ const tool = (id: string, name: string, input: unknown, output = "ok", ok = true
 const say = (id: string, text: string) => ev(id, { role: "assistant", text });
 const report = (id: string, r: Omit<Bodies["report"], "taskId" | "questions"> & { questions?: Bodies["report"]["questions"] }) =>
   log.append({ stream: `task:${id}`, origin: "task", kind: "report", body: { taskId: id, questions: [], ...r } });
-const repo = (name: string, branch: string): Place => ({ kind: "repo", device: "local", repoPath: `/Users/weyl/dev/${name}`, branch: `ducter/${branch}`, baseBranch: "main" });
+const repo = (name: string, branch: string, device = "local"): Place => ({ kind: "repo", device, repoPath: `/Users/weyl/dev/${name}`, branch: `ducter/${branch}`, baseBranch: "main" });
 async function open(id: string, title: string, project: string, place: Place, harness: string, model: string) {
   log.append({ stream: `task:${id}`, origin: "partner", kind: "task_open", body: { taskId: id, title, project, place, harness, model, brief: title } });
   seed.tasks.setState(id, "working", "hot");
@@ -57,6 +57,8 @@ async function open(id: string, title: string, project: string, place: Place, ha
 const mode = process.env.DEMO_STATE ?? "";
 const empty = mode === "empty";
 const busy = mode !== "quiet" && !empty;
+// D467 round 4: DEMO_STATE=stuck adds one of each stuck kind the brief knows a fix for.
+const stuck = mode === "stuck";
 
 // GitHub first: added, looked at and sorted (the sort reads the 555 by their words).
 const ts = seed.taskSources;
@@ -129,6 +131,29 @@ await at(0);
 seed.taskGroups.join("default", w("通用设置", "General settings"), ["t_prefs"], "partner");
 await seed.taskGroups.open("default", w("通用设置", "General settings"), { persona: "default", title: w("在新 Mac 上照着设好", "Set the new Mac up the same way"), brief: w("在新 Mac 上照着设好", "Set the new Mac up the same way"), place: repo("dotfiles", "general-settings-apply") });
 
+if (stuck) {
+  // A computer that went away two hours ago.
+  await at(-(3 * HOUR));
+  await open("t_mini", w("在 Mac mini 上把 hawdb 的基准跑一遍", "Run hawdb's benchmarks on the Mac mini"), "hawdb", repo("hawdb", "bench-mini", "mini"), "claude-code", "sonnet");
+  tool("t_mini", "Bash", { command: "cargo bench -p hawdb-storage" }, "Running benches/scan.rs");
+  await at(-(2 * HOUR));
+  seed.tasks.setState("t_mini", "blocked", "offline", "device:unreachable:Mac mini");
+  // A limit used up, with Codex free to take it.
+  await at(-(50 * MIN));
+  await open("t_docs", w("给 acme-api 的限流写文档", "Write the docs for acme-api's rate limits"), "acme-api", repo("acme-api", "ratelimit-docs"), "claude-code", "opus");
+  tool("t_docs", "Read", { file_path: "/Users/weyl/dev/acme-api/src/ratelimit.ts" }, "");
+  await at(-(20 * MIN));
+  report("t_docs", { state: "blocked", summary: w("Claude Code 的额度用完了。", "Claude Code's limit is used up."), evidence: [] });
+  seed.work.waiters.arm({ reason: w("等 Claude Code 的额度恢复", "Waiting until Claude Code's limit resets"), taskId: "t_docs", at: iso(130 * MIN), wakes: "task", limit: { harness: "claude-code", resetKnown: true, handTo: { harness: "codex", model: "gpt-6-luna" } } } as never);
+  seed.tasks.setState("t_docs", "blocked", "parked");
+  // A plain failure.
+  await at(-(70 * MIN));
+  await open("t_android", w("Android 构建在 CI 上挂了", "The Android build fails on CI"), "acme-web", repo("acme-web", "android-ci"), "codex", "gpt-6-luna");
+  tool("t_android", "commandExecution", "/bin/zsh -lc './gradlew assembleRelease'", "FAILURE: SDK location not found.", false);
+  report("t_android", { state: "failed", summary: w("CI 的机器上没有 Android SDK，构建起不来。", "The CI machine has no Android SDK, so the build can't start."), evidence: [] });
+  seed.tasks.setState("t_android", "failed", "parked");
+  await at(0);
+}
 // Two of the 555 are already in tasks: the wait and the work.
 const pick = (re: RegExp) => items.find((i) => re.test(i.title));
 const a = pick(/^Typo on the pricing page/);

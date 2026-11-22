@@ -279,3 +279,68 @@ describe("On hand said once (D467 round 3)", () => {
     expect(block).not.toMatch(/#[0-9a-f]{3,6}\b|rgb\(/i);
   });
 });
+
+describe("Every stuck kind has its fix (D467 round 4)", () => {
+  const dev = (id: string, name: string, o: Record<string, unknown> = {}) => ({ id, name, kind: "laptop", home: id === "local", state: "awake", harnesses: [], abilities: [], ...o });
+  test("signed out, offline, the switches off, couldn't start: each says what fixes it, in the partner's words", async () => {
+    const { A, o } = await board([
+      { ...card("auth", "failed", iso(-2 * 3600_000)), harness: "claude-code", place: { kind: "repo", device: "local", repoPath: "/r", branch: "b" } },
+      { ...card("away", "blocked", iso(-2 * 3600_000), "device:unreachable:Mac mini") },
+      { ...card("cu", "blocked", iso(-2 * 3600_000)), computing: { device: "mini" } },
+      { ...card("cant", "failed", iso(-2 * 3600_000)), cant: { why: "no_repo", computer: "hel", what: "hawdb", elsewhere: { device: "local", name: "MacBook" } } },
+      { ...card("pi", "failed", iso(-2 * 3600_000)), harness: "pi" },
+    ]);
+    A.receive({
+      t: "devices",
+      devices: [
+        dev("local", "MacBook", { harnesses: [{ harness: "claude-code", installed: true, loggedIn: false }, { harness: "pi", installed: true, loggedIn: false }] }),
+        dev("mini", "Mac mini", { state: "asleep", lastSeen: iso(-2 * 3600_000), abilities: [{ id: "computer", state: "on", perms: { accessibility: false, screen: true } }] }),
+      ],
+    } as any);
+    const b = await import("../src/onhand-brief.tsx");
+    const k = (id: string) => b.stuckOf(A.S.tasks.get(id)!);
+    expect(k("auth").kind).toBe("signin");
+    expect(k("auth").text).toBe(A.L.t("onhand.brief.signin", "Task auth", "Claude Code", "MacBook"));
+    expect(k("pi").kind).toBe("signin-pi");
+    expect(k("away").kind).toBe("offline");
+    expect(k("away").text).toContain("Mac mini");
+    expect(k("away").text).toContain("2 小时前");
+    expect(k("cu").kind).toBe("perm");
+    expect(k("cu").text).toBe(A.L.t("onhand.brief.perm", "Task cu", "Mac mini"));
+    expect(k("cant").kind).toBe("cant");
+    // A computer that went away without a word has stopped once it has been away a while; asleep hasn't.
+    expect(o.stoppedWait(A.S.tasks.get("away")!)).toBe(true);
+    // The card names its task already: its line is the words after the name.
+    expect(b.stuckClause(k("cu"))).toBe("要在那台 Mac 上打开辅助功能和屏幕录制。");
+    A.receive({ t: "devices", devices: [] } as any);
+    A.S.tasks.clear();
+  });
+
+  test("a limit: said once under 接下来 with when it comes back and the hand-over, and told (no card)", async () => {
+    const { A, o } = await board([card("lim", "blocked", iso(-10 * 60_000))], [{ waiterId: "wl", taskId: "lim", reason: "limit", state: "armed", at: iso(130 * 60_000), armedAt: iso(-10 * 60_000), limit: { harness: "claude-code", resetKnown: true, handTo: { harness: "codex" } } }]);
+    const b = await import("../src/onhand-brief.tsx");
+    const br = b.briefOf(o.boardParts(o.lensLanes("")), 0, Date.now(), 0);
+    expect(br.limits.length).toBe(1);
+    expect(br.limits[0]!.text.startsWith("「Task lim」在等 Claude Code 的额度")).toBe(true);
+    expect(br.limits[0]!.handTo).toBe("codex");
+    expect(br.told.has("lim")).toBe(true);
+    expect(br.rest).toBe(false);
+    A.S.tasks.clear();
+  });
+
+  test("the keys are the Mac's, zh and en together; the peek offers to watch; phone width keeps 44-tall fixes", () => {
+    const zh = strings("zh"), en = strings("en");
+    for (const k of ["onhand.brief.signin", "onhand.brief.signin.go", "onhand.brief.signin.pi", "onhand.brief.offline", "onhand.brief.offline.unknown", "onhand.brief.perm", "onhand.brief.perm.go", "onhand.brief.limit", "onhand.brief.limit.many", "onhand.peek.phone", "onhand.peek.last"]) {
+      expect(zh.t(k)).not.toBe(k);
+      expect(en.t(k)).not.toBe(k);
+    }
+    const brief = src("onhand-brief.tsx");
+    expect(brief).toContain("A.watchLive(task.id, liveSize())");
+    expect(brief).toContain('mode: "watch"');
+    expect(brief).toContain('A.agentSetup(n.device!, "login"');
+    expect(brief).toContain('t: "computer_grant"');
+    expect(brief).toContain('A.waiterAction(id, "handoff")');
+    const css = readFileSync(join(import.meta.dir, "../static/app.css"), "utf8");
+    expect(css).toContain(".room-phone .bneed .bacts .btn,\n.room-phone .ocard .oacts.on .btn {\n  min-height: 44px;");
+  });
+});

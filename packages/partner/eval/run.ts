@@ -34,6 +34,9 @@ import { fakeTuwa } from "../../core/test/fake-tuwa.ts";
 import { fakeOoCalendar } from "../../core/test/fake-oo-calendar.ts";
 import { fakeGh } from "../../core/test/fake-gh-issues.ts";
 import { createPlaces, createRepoWhere, type WhereComputer } from "../../core/src/repo-where.ts";
+import type { PlacesPort } from "../../protocol/src/internal.ts";
+import type { ClonesAnswer } from "../../protocol/src/clones.ts";
+import type { FolderInfo } from "../../protocol/src/folder-info.ts";
 import { remoteKey } from "../../protocol/src/clones.ts";
 
 /** D341: the issues assigned to the user in the eval's fake GitHub. */
@@ -119,6 +122,8 @@ const JUDGE = arg("judge", "haiku")!;
 const CONC = Number(arg("concurrency", "4"));
 const LABEL = arg("label", "");
 const ONLY = arg("only")?.split(",").filter(Boolean);
+// D477: only the world puzzles (category "puzzle"); like --only, never rewrites LATEST.json.
+const PUZZLES = flag("puzzles");
 const REPEAT = Number(arg("repeat", "1"));
 // D191: Autofill's key goes to a file in each scratch data folder, never the user's keychain.
 process.env.DUCTER_SAVED_KEY = "file";
@@ -190,13 +195,13 @@ function teePort(real: HarnessPort, onEvent: (e: HarnessEvent, sessionIdx: numbe
 }
 
 // ---------- fake task runner ----------
-interface Opened { taskId: string; title: string; brief: string; place?: Place; step: number; needs?: Record<string, unknown>; harness?: string; group?: string; workKind?: string; effort?: string }
+interface Opened { taskId: string; title: string; brief: string; place?: Place; step: number; /** D477: Ducter's own mend restarted it (not the partner's task_open). */ by?: "ducter"; needs?: Record<string, unknown>; harness?: string; group?: string; workKind?: string; effort?: string }
 const SAID_HOME = [
   { harness: "claude-code", installed: true, loggedIn: true, canBePartner: true, billing: "plan" as const, models: [{ id: "opus", label: "Opus" }, { id: "sonnet", label: "Sonnet" }] },
   { harness: "codex", installed: true, loggedIn: true, canBePartner: true, billing: "plan" as const },
 ];
 
-function fakeRunner(core: Core, harness: HarnessPort, cur: { step: number }, firstErrand = false) {
+function fakeRunner(core: Core, harness: HarnessPort, cur: { step: number }, firstErrand = false, restarts = false) {
   const opened: Opened[] = [];
   // D372: who does it, as core's ranking would pick on a home with Claude Code (Opus, Sonnet) and
   // Codex: an errand on Sonnet by the default. The first one on a home is marked (Ducter then says
@@ -230,8 +235,8 @@ function fakeRunner(core: Core, harness: HarnessPort, cur: { step: number }, fir
   };
   const sent: { taskId: string; text: string; step: number; from?: string }[] = [];
   const stopped: string[] = [];
-  const openCard = (taskId: string, title: string, place: Place, brief: string, harness = "claude-code") => {
-    core.log.append({ stream: `task:${taskId}`, origin: "system", kind: "task_open", body: { taskId, title, project: "", place, harness, brief } });
+  const openCard = (taskId: string, title: string, place: Place, brief: string, harness = "claude-code", needs?: Record<string, unknown>) => {
+    core.log.append({ stream: `task:${taskId}`, origin: "system", kind: "task_open", body: { taskId, title, project: "", place, harness, brief, ...(needs ? { needs: needs as TaskNeeds } : {}) } });
     core.tasks.setState(taskId, "working", "hot");
   };
   const placeFor = (taskId: string, title: string, p?: Place, branch?: string): Place =>
@@ -273,6 +278,20 @@ function fakeRunner(core: Core, harness: HarnessPort, cur: { step: number }, fir
     async interrupt(taskId) {
       stopped.push(taskId);
     },
+    // D477 (scenario.world): Ducter's own mend restarts a task that couldn't start, in the place it planned.
+    ...(restarts
+      ? {
+          async restartAt(taskId: string, place: Place) {
+            const card = core.tasks.get(taskId);
+            if (!card) return { ok: false, message: "no such task" };
+            opened.push({ taskId, title: card.title, brief: "", place, step: cur.step, by: "ducter", ...(card.harness ? { harness: card.harness } : {}) });
+            const open = core.log.read({ stream: `task:${taskId}`, kinds: ["task_open"], limit: 50 }).at(-1)?.body as Bodies["task_open"] | undefined;
+            if (open) core.log.append({ stream: `task:${taskId}`, origin: "system", kind: "task_open", body: { ...open, place } });
+            core.tasks.setState(taskId, "working", "hot");
+            return { ok: true };
+          },
+        }
+      : {}),
     async drop(taskId) {
       stopped.push(taskId);
     },
@@ -325,6 +344,10 @@ interface RunResult {
   dropped?: number;
   /** D426: how many lines stand under the user's message at the end. */
   linesNow?: number;
+  /** D379: who each task went to; asks to keep a saying; the person's rules after the run. */
+  bodies: Bodies["body_selected"][];
+  saidAsks: number;
+  rulesNow: { harness: string; never?: boolean; kinds?: string[]; text: string }[];
 }
 
 // ---------- fake Bridge (scenario.bridge): the fake nmem CLI over one JSON mailbox file ----------
@@ -397,6 +420,49 @@ function visibleText(e: LogEvent): string {
     default:
       return "";
   }
+}
+
+/**
+ * D477: the world a puzzle runs in. The home is world.home (its name, aliases, platform, agents),
+ * the other computers are sc.computers (w1, w2…); each has exactly the repositories world.repos says,
+ * with their origins; world.canRead can clone. Core is STARTED over it (its computers, clones,
+ * folders, host name, platform and agents injected; its projects written to its data folder), so
+ * everything core decides on its own (pre-flight, which repository a name is, the person's word on
+ * where, a failed start's card, the mender and its replan) is the real code over this world.
+ */
+const worldDev = (sc: Scenario, name: string) => (name === "local" || name === sc.world?.home.name ? "local" : `w${(sc.computers ?? []).findIndex((c) => c.name === name) + 1}`);
+function worldCoreOptions(sc: Scenario, dataDir: string) {
+  const w = sc.world!;
+  const others = sc.computers ?? [];
+  const nameOf = (dev: string) => (dev === "local" ? w.home.name : (others[Number(dev.replace(/^w/, "")) - 1]?.name ?? others.find((c) => c.name === dev)?.name ?? dev));
+  const reposOn = (dev: string) => w.repos?.[nameOf(dev)] ?? [];
+  const at = (dev: string, path: string) => reposOn(dev).find((r) => r.path === path || r.path === expand(path));
+  const folder = async (dev: string, path: string): Promise<FolderInfo> => {
+    const r = at(dev, path);
+    return r ? { exists: true, kind: "repo", root: r.path, name: basename(r.path), defaultBranch: "main", branches: ["main"], remote: remoteKey(r.origin) } : { exists: false };
+  };
+  const clones = async (dev: string, remote: string, probe: boolean): Promise<ClonesAnswer> => {
+    const want = remoteKey(remote);
+    const list = reposOn(dev).filter((r) => remoteKey(r.origin) === want).map((r) => ({ name: basename(r.path), path: r.path, touchedAt: "2026-11-18T10:00:00.000Z", remote: want }));
+    return probe && !list.length ? { clones: list, canRead: (w.canRead ?? []).includes(nameOf(dev)) } : { clones: list };
+  };
+  // The person's projects, as Ducter keeps them (projects.json in its data folder).
+  if (w.projects?.length)
+    writeFileSync(join(dataDir, "projects.json"), JSON.stringify({ version: 1, projects: w.projects.map((p) => ({ name: p.name, place: { kind: "repo", device: worldDev(sc, p.computer), repoPath: p.path }, addedAt: "2026-11-01T00:00:00.000Z", ...(p.origin ? { remote: remoteKey(p.origin) } : {}) })) }));
+  return {
+    platform: w.home.os,
+    hostAliases: w.home.aliases ?? [],
+    homeClones: (remote: string, probe: boolean) => clones("local", remote, probe),
+    homeFolderInfo: (path: string) => folder("local", path),
+    newTaskComputers: {
+      nameOf: (dev: string) => (dev === "local" ? undefined : others.some((_, i) => `w${i + 1}` === dev) ? nameOf(dev) : undefined),
+      homeName: () => w.home.name,
+      folderInfo: (dev: string, path: string) => folder(dev, path),
+      workers: () => others.map((c, i) => ({ id: `w${i + 1}`, name: c.name, online: true })),
+      clones: (dev: string, remote: string, probe: boolean) => clones(dev, remote, probe),
+    },
+    deviceProbes: { cua: async () => ({ missing: "eval" }), harnesses: async () => w.home.agents.map((harness) => ({ harness, installed: true, loggedIn: true })), kind: async () => (w.home.os === "linux" ? "server" : "laptop") as never },
+  };
 }
 
 async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
@@ -472,7 +538,7 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
         deviceProbes: { cua: async () => ({ missing: "eval" }), harnesses: async () => [{ harness: "claude-code", installed: true, loggedIn: true }, { harness: "codex", installed: true, loggedIn: true }], kind: async () => "laptop" as const },
       }
     : {};
-  const core = startCore({ ...brainHome, dataDir, port: 0, persona, webLook, clock, ...(sc.history ? { git: fakeGit } : {}), localAgents: createLocalAgents({ home: ownHome, env: {}, uid: null }), workingMemory: { run: async () => ({ code: 0, out: wmOut, err: "" }) }, // D341: never the machine's own gh (the person's real issues) nor its Obsidian vault list.
+  const core = startCore({ ...brainHome, ...(sc.world ? worldCoreOptions(sc, dataDir) : {}), dataDir, port: 0, persona, webLook, clock, ...(sc.history ? { git: fakeGit } : {}), localAgents: createLocalAgents({ home: ownHome, env: {}, uid: null }), workingMemory: { run: async () => ({ code: 0, out: wmOut, err: "" }) }, // D341: never the machine's own gh (the person's real issues) nor its Obsidian vault list.
     taskSources: { ghRun: todoGh?.run ?? (async () => ({ code: 127, out: "", err: "", missing: true as const })), ghEnv: {}, home: join(dataDir, "no-home"), pollMs: 3_600_000, ask: sc.todosPile ? pileAsk : async () => ({ text: "[]", tokens: 1 }) }, ...(sc.second ? { partners: true } : {}), ownPhone: { platform: "darwin", arch: "arm64" }, ...(calOo ? { ooSource: calOo.source } : sc.phone ? { ooSource: { detect: () => ({ installed: false, account: false }), read: () => undefined } } : {}) });
   // D376: the home's name as the records' computer: a fixed fake one, never this machine's own name.
   (core.outside as { computer: () => string | undefined }).computer = () => sc.homeName ?? "Weyl's Mac";
@@ -547,7 +613,7 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
       early.add(callId);
     } else if (!early.has(callId)) tools.push({ name: ev.tool.name, input: ev.tool.input, step: cur.step });
   });
-  const fr = fakeRunner(core, port, cur, !!sc.firstErrand);
+  const fr = fakeRunner(core, port, cur, !!sc.firstErrand, !!sc.world);
   // D376: other computers (the [devices] line), and task_switch's move to one recorded, not made.
   if (sc.computers) {
     const others = sc.computers;
@@ -577,8 +643,13 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
     about: () => mem.memory.about!(),
     archive: (id: string) => mem.memory.archive!(id),
   };
+  // D477: a world puzzle's core was started over its world (worldCoreOptions); the home's agents in [devices] as it probed them.
+  if (sc.world) {
+    const w = sc.world;
+    (core as { homeDevice?: unknown }).homeDevice = () => ({ name: w.home.name, ...(w.home.aliases ? { aliases: w.home.aliases } : {}), harnesses: w.home.agents.map((id) => ({ id, installed: true, loggedIn: true })) });
+  }
   // D395: where a repository is, from the scenario (never this machine's disk or git).
-  {
+  else {
     const names = ["local", ...(sc.computers ?? []).map((c) => c.name)];
     const idOf = (name: string) => (name === "local" ? "local" : `w${names.indexOf(name)}`);
     const comps: WhereComputer[] = names.map((n, i) => ({ id: idOf(n), name: n, home: i === 0, online: true, build: i === 0 ? 0 : 2 }));
@@ -687,8 +758,9 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
       const jobId = `job_${Math.random().toString(36).slice(2, 10)}`;
       jobOf.set(taskId, jobId);
       core.log.append({ stream: "channel", origin: "partner", kind: "ack", body: { jobId, text: t.ack, replyTo: lastUser } });
-      const place = fr.placeFor(taskId, t.title, t.repo ? { kind: "repo", device: "local", repoPath: expand(t.repo) } : t.browser ? { kind: "browser", device: "local", profile: "default" } : undefined, t.branch);
-      fr.openCard(taskId, t.title, place, `User's words: (seeded)\nTitle: ${t.title}`, t.harness);
+      const dev = t.device && sc.world ? worldDev(sc, t.device) : "local";
+      const place = fr.placeFor(taskId, t.title, t.repo ? { kind: "repo", device: dev, repoPath: expand(t.repo) } : t.browser ? { kind: "browser", device: "local", profile: "default" } : undefined, t.branch);
+      fr.openCard(taskId, t.title, place, `User's words: ${t.words ?? "(seeded)"}\nTitle: ${t.title}`, t.harness, t.needs);
       core.log.append({ stream: "channel", origin: "partner", kind: "job_status", body: { jobId, text: t.title, state: "running", taskId } });
       if (t.report) {
         core.log.append({ stream: `task:${taskId}`, origin: "task", kind: "report", body: { taskId, ...t.report } });
@@ -726,7 +798,13 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
         if (!fb) throw new Error("a peer step needs scenario.bridge");
         fb.deliver(st.peer.from, st.peer.text, st.peer.answer, st.peer.space);
         if (!st.peer.unchecked) await partner.checkBridge();
-      } else applyStep(st, core, idOf, waiters, fr.opened, conv);
+      } else await applyStep(st, core, idOf, waiters, fr.opened, conv);
+      // D477: a failed start: wait for Ducter's own mender to act (a restart, or a hand-over to the partner).
+      if ("startFailed" in st) {
+        const from = core.log.head();
+        const n0 = fr.opened.length;
+        for (let k = 0; k < 60 && fr.opened.length === n0 && !core.log.read({ fromSeq: from, kinds: ["mend"], limit: 50 }).some((e) => (e.body as Bodies["mend"]).rung === "rethink"); k++) await Bun.sleep(250);
+      }
       await settle(partner);
     }
   } catch (err) {
@@ -876,7 +954,7 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
       const b = core.log.read({ stream: `task:${id}`, kinds: ["body_selected"], limit: 50 }).at(-1)?.body as Bodies["body_selected"] | undefined;
       return b ? ` | Ducter gave it to: ${b.harness}${b.model ? ` (${b.model})` : ""}${b.why.kind === "said" ? ` because the user said earlier "${b.why.text}"` : ""}` : "";
     };
-    for (const o of r_opened(fr.opened, i)) lines.push(`  [opened a task] title: ${o.title}${groupOf(o.taskId) ? ` | group: ${groupOf(o.taskId)}` : ""} | place: ${JSON.stringify(o.place ?? null)}${wentTo(o.taskId)} | brief: ${o.brief.slice(0, 1200).replace(/\n/g, " ⏎ ")}`);
+    for (const o of r_opened(fr.opened, i)) lines.push(`  [${o.by === "ducter" ? "Ducter itself restarted the task that couldn't start" : "opened a task"}] title: ${o.title}${groupOf(o.taskId) ? ` | group: ${groupOf(o.taskId)}` : ""} | place: ${JSON.stringify(o.place ?? null)}${wentTo(o.taskId)} | brief: ${o.brief.slice(0, 1200).replace(/\n/g, " ⏎ ")}`);
     // D360: a later part of a split is held by Ducter (not a task yet), shown so the judge sees all parts.
     const openedTitles = new Set(r_opened(fr.opened, i).map((o) => o.title));
     for (const x of tools.filter((x) => x.step === i && /(^|__)task_open$/.test(x.name)))
@@ -934,6 +1012,7 @@ function describeStep(st: Step): string {
   if ("todosNew" in st) return `a look at GitHub found newly assigned issues: ${st.todosNew.refs.join(", ")}${st.todosNew.taken ? " (under the user's standing go: they start without asking)" : ""}`;
   if ("callEnded" in st) return `the call to ${st.callEnded.name} (${st.callEnded.to}) ended; the provider reported: ${st.callEnded.state}${st.callEnded.outcome ? `, "${st.callEnded.outcome}"` : ""}${st.callEnded.hint === "screening" ? " (Google Voice call screening answered)" : ""}`;
   if ("cantStart" in st) return `task "${st.cantStart.task}" couldn't start (${st.cantStart.line}); Ducter's own ladder had nothing left to try, so it handed the task to the partner`;
+  if ("startFailed" in st) return `task "${st.startFailed.task}" couldn't start (${st.startFailed.why}${st.startFailed.path ? ` at ${st.startFailed.path}` : ""}${st.startFailed.detail ? `; its agent said: "${st.startFailed.detail}"` : ""}); Ducter's own mender then acted (any restart it made is listed as an opened task by Ducter)`;
   return `a reminder the partner set earlier is due: ${st.timerFired.reason}`;
 }
 
@@ -952,7 +1031,7 @@ function replyWant(core: Core, words: string): ReplyWant {
   throw new Error(`no message has "${words}" to reply to`);
 }
 
-function applyStep(st: Exclude<Step, { peer: unknown }>, core: Core, idOf: Map<string, string>, waiters: Map<string, Bodies["waiter"]>, opened: Opened[], conv = "channel") {
+function applyStep(st: Exclude<Step, { peer: unknown }>, core: Core, idOf: Map<string, string>, waiters: Map<string, Bodies["waiter"]>, opened: Opened[], conv = "channel"): void | Promise<void> {
   const to = conv === "channel" ? {} : { stream: conv }; // D312: words to a second partner
   const tid = (key: string) => (key.startsWith("$opened") ? opened[Number(key.slice(7))]?.taskId : idOf.get(key)) ?? key;
   const report = (r: { task: string; body: Omit<Bodies["report"], "taskId">; told?: string[] }) => {
@@ -987,6 +1066,15 @@ function applyStep(st: Exclude<Step, { peer: unknown }>, core: Core, idOf: Map<s
   } else if ("cantStart" in st) {
     // D473: the runner's failed start as it lands; core's mender reacts (here: hands it to the partner).
     core.tasks.setState(tid(st.cantStart.task), "failed", "archived", st.cantStart.line, st.cantStart.cant);
+  } else if ("startFailed" in st) {
+    // D477: the runner's failed start as it really goes: core's places port makes the card, then the mender acts.
+    const taskId = tid(st.startFailed.task);
+    const c = core.tasks.get(taskId);
+    const device = c && "device" in c.place && c.place.device ? c.place.device : "local";
+    const places = (core as { places?: PlacesPort }).places!;
+    return places.cantStart(taskId, { why: st.startFailed.why, path: st.startFailed.path ?? "", device }).then(({ line, ...cant }) => {
+      core.tasks.setState(taskId, "failed", "archived", line, { ...cant, ...(st.startFailed.detail ? { detail: st.startFailed.detail } : {}) });
+    });
   } else if ("report" in st) report(st.report);
   else if ("reports" in st) st.reports.forEach(report);
   else if ("resolve" in st) {
@@ -1231,7 +1319,53 @@ function check(r: RunResult): string[] {
     for (const re of b.require ?? []) if (!re.test(text)) fails.push(`bridge send lacks ${re}`);
     for (const m of msgs) for (const re of b.forbid ?? []) if (re.test(m.body)) fails.push(`bridge send contains ${re}: "${clip(m.body)}"`);
   }
+  // D477: world puzzles, on outcome: where the work went (opened, restarted by Ducter, moved), on which repository, with whom.
+  if (e.outcome) fails.push(...checkOutcome(r, e.outcome));
   return [...new Set(fails)];
+}
+
+function checkOutcome(r: RunResult, o: NonNullable<Expect["outcome"]>): string[] {
+  const fails: string[] = [];
+  const sc = r.sc;
+  const dev = (name: string) => (sc.world ? worldDev(sc, name) : name === "local" ? "local" : `w${(sc.computers ?? []).findIndex((c) => c.name === name) + 1}`);
+  const nameOfDev = (d: string) => (d === "local" ? (sc.world?.home.name ?? "local") : (sc.computers ?? [])[Number(d.slice(1)) - 1]?.name ?? d);
+  const devOfPlace = (p: Place | undefined) => (p && "device" in p && p.device ? (sc.computers ?? []).some((c) => c.name === p.device) ? dev(p.device) : p.device : "local");
+  // Every place the work went: opened (partner or Ducter), and every task_switch device.
+  const went = r.opened.filter((x) => x.place && x.place.kind !== "none").map((x) => devOfPlace(x.place));
+  for (const t of r.tools.filter((t) => /(^|__)task_switch$/.test(t.name))) {
+    const d = (t.input as { device?: unknown } | undefined)?.device;
+    if (typeof d === "string" && d.trim()) went.push((sc.computers ?? []).some((c) => c.name.toLowerCase() === d.trim().toLowerCase()) ? dev((sc.computers ?? []).find((c) => c.name.toLowerCase() === d.trim().toLowerCase())!.name) : d === sc.world?.home.name ? "local" : d);
+  }
+  if (o.onlyOn) {
+    if (!went.length) fails.push(`no work placed anywhere (want ${o.onlyOn})`);
+    for (const d of went) if (d !== dev(o.onlyOn)) fails.push(`work went to ${nameOfDev(d)} (want only ${o.onlyOn})`);
+  }
+  for (const n of o.neverOn ?? []) if (went.includes(dev(n))) fails.push(`work went to ${n}`);
+  if (o.repo) {
+    const want = remoteKey(o.repo);
+    const onRepo = (x: Opened) => {
+      const p = x.place as (Place & { repoPath?: string; clone?: string }) | undefined;
+      if (!p || p.kind !== "repo") return false;
+      if (p.clone && remoteKey(p.clone) === want) return true;
+      const repos = sc.world?.repos?.[nameOfDev(devOfPlace(p))] ?? [];
+      return repos.some((x) => (x.path === p.repoPath || x.path === expand(p.repoPath ?? "")) && remoteKey(x.origin) === want);
+    };
+    // Carrying on a task already on that repository counts too (a task_send to it).
+    const sentOn = r.sent.some((s) => r.opened.length === 0 && s.key && sc.seed?.some((x) => "task" in x && x.task.key === s.key && x.task.repo && (sc.world?.repos?.[sc.world.home.name] ?? []).some((y) => y.path === x.task.repo && remoteKey(y.origin) === want)));
+    if (!r.opened.some(onRepo) && !sentOn) fails.push(`no work on ${o.repo} (got ${JSON.stringify(r.opened.map((x) => x.place))})`);
+  }
+  if (o.carriedOn) {
+    const c = o.carriedOn;
+    const id = r.idOf.get(c.task);
+    const switches = r.tools.filter((t) => /(^|__)task_(switch|fork)$/.test(t.name) && (t.input as { taskId?: unknown })?.taskId === id).map((t) => String((t.input as { harness?: unknown }).harness ?? ""));
+    const opens = r.opened.filter((x) => x.taskId !== id || x.by === "ducter").map((x) => x.harness ?? r.bodies.find((b) => b.taskId === x.taskId)?.harness ?? "");
+    const withs = [...switches, ...opens];
+    if (!withs.length && !r.sent.some((s) => s.taskId === id)) fails.push(`the work of ${c.task} wasn't carried on`);
+    if (c.harness && !withs.some((h) => h === c.harness)) fails.push(`${c.task} not carried on with ${c.harness} (got ${withs.join(", ") || "none"})`);
+    if (c.notHarness && withs.some((h) => h === c.notHarness)) fails.push(`${c.task} carried on with ${c.notHarness} again`);
+    if (c.notHarness && !withs.some((h) => h && h !== c.notHarness)) fails.push(`${c.task} not carried on with another agent (got ${withs.join(", ") || "none"})`);
+  }
+  return fails;
 }
 const clip = (s: string, n = 60) => (s.length > n ? s.slice(0, n - 1) + "…" : s).replace(/\n/g, " ");
 const realpathSafe = (p: string) => {
@@ -1311,6 +1445,7 @@ function cleanupProjects(before: Set<string>, root: string) {
 async function main() {
   let list = scenarios;
   if (ONLY) list = list.filter((s) => ONLY.includes(s.id));
+  else if (PUZZLES) list = list.filter((s) => s.category === "puzzle");
   else if (flag("floor")) list = list.filter((s) => s.floor);
   list = Array.from({ length: REPEAT }, () => list).flat();
   const projectsDir = join(HOME, ".claude", "projects");
@@ -1380,7 +1515,7 @@ async function main() {
   writeFileSync(file, md.join("\n").split(HOME).join("~").replace(/\/(private\/)?(var\/folders|tmp)\/[^\s"'`)]+/g, "<scratch>"));
   // D175 (4): a full run records what it judged (the persona and the partner's tools, hashed), so
   // tool-budget.test.ts can tell when either changed after it.
-  if (!ONLY) {
+  if (!ONLY && !PUZZLES) {
     const fp = await partnerFingerprint();
     writeFileSync(join(dir, "LATEST.json"), JSON.stringify({ file: file.slice(dir.length + 1), date, harness: HARNESS, model: MODEL, pass: `${passed}/${rows.length}`, ...fp }, null, 2) + "\n");
   }

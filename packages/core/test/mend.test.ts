@@ -76,8 +76,9 @@ function setup(o: { outcomes?: Outcome[]; replan?: (taskId: string, how: { actio
 const noFolder: CantStart = { why: "no_folder", computer: "Hetzner Server", what: "mem", path: "/root/dev/mem" };
 const other: CantStart = { why: "other", computer: "Macbook Pro M3", what: "nowledge-mem" };
 
-test("the ladder: a copy elsewhere first, then a clone here, then the same start again; nothing to try for an agent or a missing folder", () => {
-  expect(startLadder({ why: "no_repo", elsewhere: { device: "local", name: "MacBook" }, cloneHere: true }).map((s) => s.how)).toEqual(["start_at", "clone_here"]);
+test("the ladder: the code fetched where the work was put, then the same start again; never a move by itself (D477); nothing to try for an agent or a missing folder", () => {
+  expect(startLadder({ why: "no_repo", elsewhere: { device: "local", name: "MacBook" }, cloneHere: true }).map((s) => s.how)).toEqual(["clone_here"]);
+  expect(startLadder({ why: "no_repo", elsewhere: { device: "local", name: "MacBook" } })).toEqual([]);
   expect(startLadder({ why: "other", cloneHere: true }).map((s) => s.how)).toEqual(["clone_here", "reopen"]);
   expect(startLadder({ why: "busy", clearLock: true }).map((s) => s.how)).toEqual(["clear_lock"]);
   expect(startLadder({ why: "busy" }).map((s) => [s.how, s.delayMs])).toEqual([["reopen", 30_000]]);
@@ -111,17 +112,24 @@ test("hel's case: a folder that isn't on that computer, nothing Ducter can fix a
   expect(s.woke()).toHaveLength(2);
 });
 
-test("another computer has the code: started there at once, one quiet line, the partner never woken", async () => {
+test("another computer has the code (D477): Ducter fetches it where the work was put, one quiet line, never a move; with no clone possible the partner judges", async () => {
   const s = setup({ outcomes: ["starts"] });
   s.open("hs35hte8", "Guard the tail reconciliation");
   s.fail("hs35hte8", { why: "no_repo", computer: "Macbook Pro M3", what: "nowledge-mem", elsewhere: { device: "w1", name: "Hetzner Server" }, cloneHere: true });
   await s.settle();
-  expect(s.replans).toEqual([{ taskId: "hs35hte8", action: "start_at", device: "w1" }]);
+  expect(s.replans).toEqual([{ taskId: "hs35hte8", action: "clone_here" }]);
   expect(s.restarts).toHaveLength(1);
   expect(s.tasks.get("hs35hte8")?.attention).toBe("working");
-  expect(s.mends("hs35hte8")).toMatchObject([{ rung: "repair", how: "start_at", name: "Hetzner Server", attempt: 1, state: "going" }]);
-  expect(s.lines("hs35hte8")).toEqual(["mend_start_at"]);
+  expect(s.mends("hs35hte8")).toMatchObject([{ rung: "repair", how: "clone_here", attempt: 1, state: "going" }]);
+  expect(s.lines("hs35hte8")).toEqual(["mend_clone_here"]);
   expect(s.woke()).toHaveLength(0);
+  // Only a copy elsewhere: the partner hears it (with the copy as a fact), Ducter moves nothing.
+  const t = setup();
+  t.open("x1", "Guard the tail reconciliation");
+  t.fail("x1", { why: "no_repo", computer: "Macbook Pro M3", what: "nowledge-mem", elsewhere: { device: "w1", name: "Hetzner Server" } });
+  await t.settle();
+  expect(t.restarts).toEqual([]);
+  expect(t.mends("x1")).toMatchObject([{ rung: "rethink" }]);
 });
 
 test("something went wrong as it started: once more after a short wait; the same again goes to the partner with what was tried", async () => {

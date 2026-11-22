@@ -42,19 +42,26 @@ Cheapest first; each rung is one `mend` event on the task's stream, logged befor
    wrong as it started", 30 s for a busy repository, 60 s for a computer that went away. The
    place is asked again (D395's 再试一次), so a computer that came back or another that has the
    code is found.
-2. **Repair the precondition**, the way the card's buttons would: start on the computer that has
-   the code (在 X 上做), clone it where it was to work (拉一份到这里), clear the lock git left
-   (清掉旧的再试, only while no git runs). Order: a copy elsewhere first (nothing to download),
-   then a clone, then the retry. Not by Ducter alone: an agent that can't start (its program or
-   sign-in: the partner picks another agent; signing in is the person's, D363), a clone that
-   failed, a folder that isn't there with no repository known.
+2. **Prepare the place**, the way the card's buttons would: fetch the code where the work was put
+   (拉一份到这里, when the task recorded which repository: its clone, its to-do, its
+   `place.remote`), clear the lock git left (清掉旧的再试, only while no git runs), then the
+   retry. **Never a move by Ducter alone (D477):** a copy on another computer (在 X 上做) is a fact
+   in the hand-over and a button on the card, not a rung; the person's recorded word on where
+   (`task_open.bound`) holds every rung. Not by Ducter alone either: an agent that can't start
+   (its program or sign-in: the partner picks another agent; signing in is the person's, D363), a
+   clone that failed, a folder that isn't there with no repository recorded (which repository a
+   folder name means is the partner's judgment from [devices], never a name match in code).
 3. **Rethink** (the partner): a typed hand-over with the cause, the computer, the path, what was
-   tried and what is still possible. The partner knows what code doesn't: the repository the
-   person named, another agent, another computer. It opens the work again on a repository
-   (`place.remote`, never a guessed path) or another agent or computer, and Ducter sets the task
-   that couldn't start aside (superseded) so On hand keeps no failure that was mended. A stall
-   comes here directly: the partner reads where it stopped and sends one clear next step, or
-   switches its agent; it never asks the task to redo anything outward.
+   tried, what is still possible, and the facts (D477: the agent and where it ran, how long it
+   ran, the tool calls that ended, its last words, the person's recorded word on where). The
+   partner judges what code doesn't: the repository the person meant, another agent, another
+   computer the person allows. It opens the work again with `replaces` (which carries the person's
+   word) on a repository (`place.remote`, never a guessed path) or another agent or computer, and
+   Ducter sets the task that couldn't start aside (superseded) so On hand keeps no failure that was
+   mended. A stall comes here directly with the same facts, never classified by a threshold: the
+   partner judges whether it did the work and only didn't report, stopped partway, or never really
+   started, and sends one clear next step, switches its agent, or opens it again; it never asks the
+   task to redo anything outward.
 4. **Ask the person, once** (the partner): the second time a task comes back, or when no other
    way can work: one short line in their language, the one real fix as the choice. No error
    text, no list of what failed.

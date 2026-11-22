@@ -158,6 +158,9 @@ interface TaskRt {
   restsThisTurn?: Set<string>;
   nudged: boolean;
   stallNoted: boolean;
+  /** D477: what the agent did, as facts for whoever judges a stop (tool calls ended, its last words). */
+  toolCalls?: number;
+  lastWords?: string;
   interruptRequested?: boolean; // the user stopped the current turn
   /**
    * D339: a turn being stopped (an interrupt sent while it worked, its end not yet in): words sent
@@ -1173,6 +1176,9 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       return steerSeen(t, String(echo.input ?? ""), typeof echo.inputId === "string" ? echo.inputId : undefined);
     }
     if (ev.tool && /(^|__)report_to_main$/.test(ev.tool.name) && ev.tool.ok !== false) t.reportedThisTurn = true;
+    // D477: counted, never judged here: the partner reads them when the task stops without a report.
+    if (ev.tool && ev.tool.output !== undefined) t.toolCalls = (t.toolCalls ?? 0) + 1;
+    if (typeof ev.text === "string" && ev.text.trim() && !ev.tool) t.lastWords = ev.text.trim().slice(-300);
     // D288: the account's limits as the session said them, kept with the agent's last read.
     if (ev.limits) {
       // D297: what the session said last, for the reset of a limit that refuses the next turn.
@@ -1404,7 +1410,10 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     }
     if (!t.stallNoted) {
       t.stallNoted = true;
-      logEvent(t, { role: "system", text: "no report after one nudge; leaving the task idle (stall rule)", raw: { stall: true } });
+      // D477: no threshold decides what this was (it ended at once, it gave up, it answered in words):
+      // the facts go with it, and the partner judges them in its hand-over.
+      const ranMs = Math.max(0, Date.now() - Date.parse(t.card.openedAt));
+      logEvent(t, { role: "system", text: "no report after one nudge; leaving the task idle (stall rule)", raw: { stall: true, facts: { ranMs, toolCalls: t.toolCalls ?? 0, ...(t.lastWords ? { lastWords: t.lastWords } : {}) } } });
       // It stopped without reporting: the user's turn, not "working" (2026-11-11: a task on hel
       // read 在做 for four hours after it stalled and its harness exited). The note says why;
       // a message from the user sets it working again.
@@ -1753,7 +1762,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     // Who does it (D89): the person's rules, the limits and Use it for tasks, through core's
     // chooser; a pick this runner can't run (or no device info) keeps the old default.
     const you = input.origin === "you"; // D128: the user opened it; a harness given is their pick
-    const picked = await core.bodies?.choose({ title: input.title, brief: input.brief, place: input.place, harness: input.harness, model: input.model, ...(input.effort ? { effort: input.effort } : {}), ...(you ? { by: "you" as const } : {}), ...(input.needs ? { needs: input.needs } : {}), ...(input.workKind ? { workKind: input.workKind } : {}) });
+    const picked = await core.bodies?.choose({ title: input.title, brief: input.brief, place: input.place, harness: input.harness, model: input.model, ...(input.effort ? { effort: input.effort } : {}), ...(you ? { by: "you" as const } : {}), ...(input.needs ? { needs: input.needs } : {}), ...(input.workKind ? { workKind: input.workKind } : {}), ...(input.bound ? { bound: input.bound } : {}) });
     if (picked && "none" in picked) throw new Error(picked.none);
     // D372: the kind of work, as the partner said it or as Ducter read it from its needs and place.
     const workKind = input.workKind ?? (picked && "workKind" in picked ? picked.workKind : undefined);
@@ -1807,7 +1816,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     const fixed = h === "claude-code" ? (opts.defaultModel ?? opts.taskModel ?? process.env.DUCTER_TASK_MODEL) || undefined : undefined;
     const model = (ranked && fixed) || input.model || fixed;
     const later = typeof briefIn !== "string";
-    const body: Bodies["task_open"] = { taskId: id, title, project, place: resolved.place, harness: h, model, ...(effort ? { effort } : {}), brief: later ? "" : briefIn, ...(!later && input.media?.length ? { media: input.media } : {}), ...(input.language ? { language: input.language } : {}), ...(you ? { origin: "you" as const } : {}), ...(input.from ? { from: input.from } : {}), ...(input.from && input.fromStep ? { fromStep: input.fromStep, ...(input.fromCommit ? { fromCommit: input.fromCommit } : {}) } : {}), ...(input.needs && Object.keys(input.needs).length ? { needs: input.needs } : {}), ...(workKind ? { workKind } : {}), ...(input.adopt ? { outside: { agent: input.adopt.agent, sessionId: input.adopt.sessionId, startedAt: input.adopt.startedAt } } : {}) };
+    const body: Bodies["task_open"] = { taskId: id, title, project, place: resolved.place, harness: h, model, ...(effort ? { effort } : {}), brief: later ? "" : briefIn, ...(!later && input.media?.length ? { media: input.media } : {}), ...(input.language ? { language: input.language } : {}), ...(you ? { origin: "you" as const } : {}), ...(input.from ? { from: input.from } : {}), ...(input.from && input.fromStep ? { fromStep: input.fromStep, ...(input.fromCommit ? { fromCommit: input.fromCommit } : {}) } : {}), ...(input.needs && Object.keys(input.needs).length ? { needs: input.needs } : {}), ...(workKind ? { workKind } : {}), ...(input.bound ? { bound: input.bound } : {}), ...(input.adopt ? { outside: { agent: input.adopt.agent, sessionId: input.adopt.sessionId, startedAt: input.adopt.startedAt } } : {}) };
     const opened = core.log.append({ persona, stream: stream(id), origin: "system", kind: "task_open", body });
     core.log.append({ persona, stream: stream(id), origin: "system", kind: "body_selected", body: { taskId: id, harness: h, ...(model ? { model } : {}), ...(effort ? { effort } : {}), why: pick?.why ?? { kind: input.harness ? (you ? "you" : "partner") : "default" } } });
     const card: TaskCard = {

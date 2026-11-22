@@ -9,6 +9,32 @@ line `ducter check report` prints for it, naming the result file: "Seen live:
 computer that ran them (`~/.ducter/checks/`), never in git (D75); a passed item is ticked with its
 line.
 
+## The partner's world, phase 2b and 2c (D477 proposed, research/206 §2.1, §7)
+
+- **The author's verdict on D477's architecture** (principle 21 proposed; `where` / `replaces` on
+  task_open; no move by the mender). Trigger: the author reads research/206. Everything below waits for it.
+- **A live run of the hel case on a real home**, after 2a ships: "只在 hel 上" with the code only on the
+  Mac; the task on hel, cloned there, Antigravity, nothing said about failures. Trigger: the next release.
+- **Live tasks and quotas in the world** (each live task's agent, computer, state and why it stopped; each
+  agent's allowance as `limits.ts` knows it). Trigger: phase 2b; `wp-quota-switch-zh` still fails without it.
+- **Supersede by `replaces`**, not by title overlap (`mend.ts` supersede). Trigger: phase 2b.
+- **Retire the meaning classifiers** in research/206 §2.1's table, each with a world puzzle first:
+  `PROMISE_RE`, `ASKS_NEW`, `OWN_ACCOUNT`, `stripResultPlumbing`, `effortFromWords`, said.ts, then
+  standing.ts behind the D61 floor with its own eval. Trigger: phase 2b, one per change, full eval each.
+- **The persona to ≈13 KB** (research/206 §5: routing into tool descriptions, world facts into state).
+  Trigger: phase 2b, after the puzzles hold on two haiku runs.
+- **A place the agent fills itself** (a scratch folder plus the remote in the brief) when Ducter's own
+  git can't read the repository but the agent's route can. Trigger: a real `no_access` on a home.
+- **Code facts from a full scan** (`clones` op listing every repository per computer, not only projects
+  and task places), bounded; agent versions (verified or newer) in the world. Trigger: phase 2c.
+- **The home's line with no workers.** `[devices]` is still empty on a single-computer home (the eval's
+  homes would read this machine's agents otherwise); show the home's agents there once probes are faked
+  in the eval. Trigger: phase 2b.
+- **The eval transcript names a place's computer** (not `device: "local"`): the judge read local as the
+  Mac in `wp-explicit-clone-en`, whose home is hel. Trigger: the next puzzle change.
+- **The partner on Codex** (hel's partner runs gpt-6.2-astra): run `--puzzles --harness codex` where
+  Codex is signed in for the eval. Trigger: an eval home with Codex that isn't the person's own.
+
 ## Agent messaging, after D470 (`bridge.md` "Who reaches whom…")
 
 - **Open its mailbox, run once for real.** Trigger: the author has an agent Mem lists with its mailbox closed.

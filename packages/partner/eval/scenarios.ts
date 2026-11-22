@@ -4,6 +4,7 @@
 // resolutions, timers. Grading = global deterministic checks + per-scenario `expect` + a judge
 // rubric. Content comes from the author's real work (Ducter, HawDB, foo), never lorem ipsum.
 import type { Bodies } from "../../protocol/src/index.ts";
+import { puzzles } from "./puzzles.ts";
 
 export type Seed =
   | { user: string }
@@ -20,6 +21,9 @@ export type Seed =
         report?: Omit<Bodies["report"], "taskId">;
         harness?: string; // D352: the AI agent doing it (default claude-code)
         browser?: true; // D373: a web errand (place browser) instead of a repo
+        words?: string; // D477: the person's words its brief quotes (default "(seeded)")
+        device?: string; // D477 (scenario.world): the computer its place is on, by name (default the home)
+        needs?: Record<string, unknown>; // D477: what it needs (a phone task: { phone: "ducter" })
       };
     }
   | { waiterArmed: { reason: string; minutesAgo: number } }
@@ -116,7 +120,10 @@ export type Step =
   | { todosNew: { refs: string[]; taken?: boolean } }
   // D473: the seeded task with this key couldn't start (the runner's card: why, where, the fixes core
   // found). Core's mender climbs its ladder; with nothing left to try it hands the task to the partner.
-  | { cantStart: { task: string; cant: import("../../protocol/src/index.ts").CantStart; line: string } };
+  | { cantStart: { task: string; cant: import("../../protocol/src/index.ts").CantStart; line: string } }
+  // D477 (scenario.world): the seeded task's start failed this way, and its card is what core's own
+  // places port makes of it (as the runner asks it), then core's mender acts on it for real.
+  | { startFailed: { task: string; why: import("../../protocol/src/index.ts").CantStart["why"]; path?: string; detail?: string } };
 
 export interface Expect {
   /** task_open calls: exact count, or a range. */
@@ -254,6 +261,32 @@ export interface Expect {
   uiRequire?: RegExp[];
   /** Bridge: what Ducter sent through the (fake) Bridge, all messages joined. */
   bridgeSent?: { to?: string; count?: [number, number]; require?: RegExp[]; forbid?: RegExp[]; space?: string };
+  /**
+   * D477 world puzzles, graded on outcome: where work ended up, whoever put it there (the partner's
+   * task_open, task_switch or task_fork, or Ducter's own mend). Computers by name (world.home.name for the home).
+   */
+  outcome?: {
+    /** Every task opened, moved or restarted runs on this computer, and at least one did. */
+    onlyOn?: string;
+    /** No task was opened, moved or restarted onto these computers. */
+    neverOn?: string[];
+    /** Some opened or restarted task works on this repository (owner/name): cloned, or a copy whose origin it is. */
+    repo?: string;
+    /** The seeded task's work went on (task_switch, task_fork or task_send on it, or a new task_open) with this agent / not with that one. */
+    carriedOn?: { task: string; harness?: string; notHarness?: string };
+  };
+}
+
+/** D477: the world a puzzle runs in, as the partner's facts would be true of it. */
+export interface World {
+  /** The home (Ducter's always-on computer): its name, the names the person calls it, a server or a Mac, its agents signed in. */
+  home: { name: string; aliases?: string[]; os: "linux" | "darwin"; agents: string[] };
+  /** Repositories on each computer (by name), with their origins. */
+  repos?: Record<string, { path: string; origin: string }[]>;
+  /** Computers whose own git sign-in can read (clone) the person's repositories. */
+  canRead?: string[];
+  /** The person's projects in Ducter (a repository on a computer). */
+  projects?: { name: string; computer: string; path: string; origin?: string }[];
 }
 
 /** One memory in the fake Mem the scenario runs against (never the user's real Mem). */
@@ -384,6 +417,13 @@ export interface Scenario {
    * yes there, else only its agents and their file times answer.
    */
   workerSessions?: { name: string; allowed: boolean; sessions: NonNullable<Scenario["ownSessions"]> };
+  /**
+   * D477: a world puzzle's world (with `computers` for the other computers): the home's name and
+   * agents, which repositories are where with their origins, who can clone, the projects. Core's own
+   * places port (pre-flight, the person's word on where, which repository a name is, a failed start's
+   * card) and its mender run over it for real; only git, the disk and the agents are fake.
+   */
+  world?: World;
 }
 
 // Under a result message the app renders, from the task's typed report: the task chip, the
@@ -3764,4 +3804,6 @@ export const scenarios: Scenario[] = [
     expect: { notCalled: ["task_switch"], opens: 0, msgs: [1, 1], maxChars: 140, forbid: [/(已|换)(经)?(切|换)(到|成)\s*gpt-?9|从你下一句起.*gpt-?9/i] },
     rubric: "Codex on this home has no GPT-9 (it offers GPT-6.2-Sol, GPT-6.2-Astra, GPT-6.1-Terra, GPT-6-Luna). The partner may try brain_switch, which says so; it must NOT claim it switched. A short Chinese reply that there is no GPT-9 here; naming what it does have, or offering them as a choice (a plain question or a choices card with those models) is fine. No task; never a claim that it switched.",
   },
+  // D477: world puzzles (puzzles.ts), graded on outcome.
+  ...puzzles,
 ];

@@ -525,10 +525,13 @@ would have failed the same way. The fresh user has never cloned anything and sho
 over from On hand (`task_new` `handed`), the pile's hand-over, 再试一次 on a task that couldn't
 start, and D385's hand-over of several (the sheet's Where default, and the place each of its tasks opens in; `HandWhere.clone` when it is cloned there first). Its order generalizes D385's:
 
-1. a computer the person named in words (or the place's own device when the partner set one);
+1. a computer the person named, as the partner recorded it (task_open's `where`, D477), or the
+   place's own device when the partner set one; when that computer can't read the repository the
+   facts go back to the partner (which computers have a copy), never a quiet move elsewhere (D477);
 2. a where-rule (a rule with a computer whose words match the work);
-3. a computer that has a clone: the one that builds first (a Mac 2, a worker 1, a server home 0),
-   then the most recently touched copy;
+3. with no computer named, a computer that has a clone: the one that builds first (a Mac 2, a
+   worker 1, a server home 0), then the most recently touched copy; where it went is said back to
+   the partner as a fact (the tool result's `where`, D477), so its words match what happened;
 4. no clone anywhere: clone it on the best computer whose own git can read it (`git ls-remote`, its
    own gh sign-in or credentials, no prompt) into that computer's Ducter folder
    (`place.clone`, provisioned by the runner before the worktree);
@@ -551,6 +554,32 @@ kept 10 minutes; 再试一次 asks again.
 or a GitHub address in the words, and checks the place before the task exists. A place it can't fix
 returns an error the model can act on ("give the repository as remote, or ask"), never a task that
 fails at start. D120's early open happens only for a place on the home that is that repository now.
+
+## 19. The partner places work from a true world, and records what the person said (D477, proposed)
+
+**Who.** hel, 2026-11-22: 「用 hel 上的 agy 细审 Nowledge Mem 的长文案，只在 hel 上做，不要用 Mac」. The
+code was only on the Mac; hel could clone it; Antigravity was signed in on hel. A thoughtful partner
+clones it on hel and starts. The partner instead saw no code facts, and code then decided three
+times for it (a missing folder reopened, a copy found on the Mac won, the rethink moved the work),
+and it told the person something false. D476 patched it with regexes over the person's words and
+name matching; both were reverted. **After:** the partner sees the world and decides; code holds
+what it recorded.
+
+- **What it sees** (`[devices]`, every turn while there are other computers, ≈180 tokens for two):
+  each computer with its state, its agents (signed in, or installed but not), and the code Ducter
+  knows is on it with origins (the person's projects, the repositories tasks worked in; never a
+  place that turned out not to be there), the home included (`codeOn`, `homeDevice`).
+- **What it records** (task_open): `place.remote` (the repository it judged the person means),
+  `place.device` (the computer the words or the facts settle), `where` (what the person said about
+  computers: `on`, `only`, `not`, by name), `replaces` (the task whose work it opens again).
+  Core checks the names exactly against the home's computers (an unknown name goes back), keeps
+  the bound on the task, and enforces it in pre-flight, the chooser, a failed start's card, the
+  mender and every task that replaces it. No code reads the person's words for it.
+- **Preparation, not failure:** code not on the computer the work belongs on is cloned there first
+  (the recorded repository); a folder missing with no repository recorded goes back to the partner
+  with the pointer to `[devices]`, never a guessed path and never a name match.
+- **Never a move by itself:** Ducter's own mends no longer start the work on another computer that
+  has a copy; that is the partner's call, from the facts, within the person's word.
 
 **When it still can't start** (a folder removed between the check and the start): the runner asks
 core why (`places.cantStart`), and the card says **没能开始：{computer} 上没有 {repo} 的代码 /

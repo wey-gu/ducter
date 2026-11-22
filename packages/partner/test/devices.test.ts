@@ -12,8 +12,19 @@ test("devices line names each worker, its state, how it browses, whether it slee
     { name: "MacBook", online: false, asleep: true, os: "darwin", alwaysOn: false, web: "chrome", harnesses: [{ id: "claude-code", loggedIn: true }] },
   ]);
   expect(line).toBe(
-    "[devices] local (Ducter's home) · cloud-1 (awake, linux, never sleeps, browses in Ducter's own browser, signed in: claude-code) · MacBook (asleep, darwin, sleeps when its lid closes, browses in the user's own Chrome (their sign-ins), signed in: claude-code). Say what a task needs (task_open needs) and Ducter picks the computer and says where; name one in place.device only when the user named it.",
+    "[devices] local (Ducter's home) · cloud-1 (awake, linux, never sleeps, browses in Ducter's own browser, signed in: claude-code) · MacBook (asleep, darwin, sleeps when its lid closes, browses in the user's own Chrome (their sign-ins), signed in: claude-code). True now: which agents are set up where, and which code is where, is only what this line says. Put work where the user's words and these facts point (place.device; their words about computers in where); with neither, say what it needs and Ducter picks. Code not on that computer yet is cloned there first (place.remote).",
   );
+});
+
+// D477 (hel, 2026-11-22): the home by name with its own agents, and the code on each computer with its origin.
+test("the world line: the home's agents and the code on each computer, as facts", () => {
+  const line = renderDevices(
+    [{ id: "d1", name: "Weyl's MacBook Pro", online: true, harnesses: [{ id: "codex", loggedIn: true }, { id: "antigravity", installed: true, loggedIn: false }] }],
+    { name: "hel", harnesses: [{ id: "antigravity", installed: true, loggedIn: true }] },
+    [{ device: "d1", name: "nowledge-mem", remote: "nowledge-co/mem" }, { device: "d1", name: "ducter", remote: "wey-gu/ducter" }],
+  );
+  expect(line).toContain("local (Ducter's home: hel, signed in: antigravity, code: none known)");
+  expect(line).toContain("signed in: codex, installed but not signed in: antigravity, code: nowledge-mem (nowledge-co/mem), wey-gu/ducter)");
 });
 
 test("needs from the model: only the known fields, a site as its host", () => {

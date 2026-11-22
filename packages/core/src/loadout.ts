@@ -1,7 +1,8 @@
 // Who does the tasks (D89): picks who does a new task (fw_candidates v0), lists who else could
 // (换谁来做 / Switch who does it), moves a task when the person switches it, keeps 你的规则 / Your
 // rules, and after two switches the same way asks the partner to offer a rule once.
-import type { Bodies, BodyWhy, Candidate, DeviceHarness, RuleView, KindDefault, LogEvent, Place, TaskNeeds, WorkKind } from "@ducter/protocol";
+import type { Bodies, BodyWhy, Candidate, DeviceHarness, RuleView, KindDefault, LogEvent, Place, TaskBound, TaskNeeds, WorkKind } from "@ducter/protocol";
+import { allowedBy } from "./bound.ts";
 import { HARNESSES, HARNESS_IDS, harnessName, isHarnessId, whichPhone, WORK_KINDS } from "@ducter/protocol";
 import { effectiveBrain } from "./brain.ts";
 import { resolveModel } from "@ducter/protocol/src/harness-facts.ts";
@@ -28,7 +29,7 @@ export const RULE_HINT_SUFFIX = "_rule_hint";
 
 export interface Loadout {
   /** Who does a new task: the pick and why, "none" with a reason when nobody can, undefined without device info. */
-  choose(work: { title: string; brief?: string; place?: Place; harness?: string; model?: string; effort?: string; by?: "you"; needs?: TaskNeeds; workKind?: WorkKind }): Promise<BodyChoice | { none: string } | undefined>;
+  choose(work: { title: string; brief?: string; place?: Place; harness?: string; model?: string; effort?: string; by?: "you"; needs?: TaskNeeds; workKind?: WorkKind; /** D476: the person's word on where it runs */ bound?: TaskBound }): Promise<BodyChoice | { none: string } | undefined>;
   candidates(taskId: string): Promise<Candidate[]>;
   /** D128: who could do new work at this place, best first (the New task card's 谁来做 / Who does it).
    *  D157: with two or more computers, on every computer (anyComputer: a No folder card). */
@@ -191,7 +192,10 @@ export function createLoadout(o: {
     },
 
     async choose(work) {
-      const comps = await computers(work.needs);
+      // D476: a computer the person ruled out for this work is never picked (the home is "local").
+      const all = await computers(work.needs);
+      const comps = all && work.bound ? all.filter((c) => allowedBy(work.bound, c.home ? "local" : c.id)) : all;
+      if (all?.length && comps && !comps.length) return { none: "the user ruled out every computer that could take this task. Tell them in one line and ask where it should run." };
       // D217: work on an app on a phone needs Ducter's phone somewhere; without it, nothing opens.
       // D247: never a silent task that would improvise (adb, a cable): one line naming the one thing to do.
       if (work.needs?.phone && comps && !comps.some((c) => c.phone)) return { none: noPhoneLine(clients, whichPhone(work.needs)) };

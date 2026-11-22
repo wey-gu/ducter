@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.1.18 - 2026-11-23
+
+<!-- whats-new
+zh: 伙伴看得到额度和在做的事，自己判断换谁接着做
+en: Your partner sees quotas and live work, and decides who carries on
+-->
+
+**Your partner sees more, guesses less**
+- It sees which agents have used up their quota and until when, which have room left, what is
+  running where, and what you chose for when a quota runs out.
+- Opening work again replaces the old task it names: a failed one is set aside, a finished one
+  leaves On hand, one still running is left alone.
+- It decides how much care a task needs itself, instead of reading it from a few words.
+- The quota reset time it tells you is the real one.
+
 ## 0.1.17 - 2026-11-22
 
 <!-- whats-new

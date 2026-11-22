@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.1.13 - 2026-11-22
+
+<!-- whats-new
+zh: 一眼看清哪些 agent 能找到伙伴，断了就给修法
+en: See which agents can reach your partner, and fix a broken link
+-->
+
+**Agent messaging**
+- Settings › Agent messaging draws who can reach whom: both ways, one way, or not yet. A link
+  that only works one way says why, with the fix as its button.
+- Each of your agents has its own thread of exchanges: what it asked, what your partner did,
+  and how it ended.
+- What each kind of agent may ask your partner is spelled out; a teammate's agent can only ask.
+- A request from one of your agents is named as yours, and isn't said twice in the conversation.
+- When your own agent asks only how things stand, your partner just answers, without asking you.
+
 ## 0.1.12 - 2026-11-22
 
 <!-- whats-new

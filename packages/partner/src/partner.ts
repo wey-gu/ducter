@@ -68,7 +68,6 @@ import { withOutbox } from "./outbox.ts";
 import { AI_TOOLS, memSource } from "../../protocol/src/mem-source.ts";
 import { buildSystemPrompt } from "./persona.ts";
 import { realFs, resolvePlace, type PlaceFs } from "./place.ts";
-import { effortFromWords } from "../../protocol/src/effort-words.ts";
 import { ducterDataRefusal, isDucterData } from "../../protocol/src/ducter-folder.ts";
 import { FILE_INLINE_CHARS, refsLine, renderHistoryLine, renderProjection, renderTime, renderTrigger, type RenderCtx } from "./render.ts";
 import { namesAgent, relayAnswer, relayHead, relayNotSent, relayQuestion, relayWaiting, whoForTask } from "./bridge-relay.ts";
@@ -175,10 +174,6 @@ interface TurnState {
   continued?: Set<string>;
   /** D373: this turn's first task_open was weighed against the task the message follows. */
   openWeighed?: boolean;
-  /** D376: this turn's task_send for the user's own account was weighed against where their sign-ins are. */
-  signWeighed?: boolean;
-  /** D376: the task whose follow-up was asked back for another computer, until it is sent. */
-  signPending?: string;
   /** D391: task_find found two that fit alike and the user's words name neither: no task_send or task_fork to either this turn. */
   ambiguous?: { ids: string[]; line: string };
   /** D373: the line a task_open asked back already put up: the task carried on goes under it. */
@@ -341,8 +336,6 @@ const FOLLOWS_HOURS = 12;
 const FINISHED = new Set(["done", "done_claimed", "failed"]);
 /** D479: a start that failed on its place (CantStart.why): sending to it again would start it there again. */
 const PLACE_CANT = new Set(["no_folder", "no_repo", "clone_failed"]);
-/** D373: the user asks for a new task in so many words: no second look at the one it follows. */
-const ASKS_NEW = /开个新|新开一个|开一个新|新的任务|另开|单独开|重新开一个|a new (one|task)|new task|separate task|start (a )?fresh/i;
 /** A partner tool call as the step the user sees (D104); undefined keeps the current step. */
 export function activityStep(tool: string): ActivityStep | undefined {
   const name = tool.split("__").pop() ?? tool;
@@ -421,8 +414,6 @@ export function activityObject(tool: string, input: unknown, titleOf: (taskId: s
   }
 }
 const QUIET_TOOL_RE = /(^ToolSearch$)|((^|__)(log_search|log_read|task_read|memory_search|memory_add|task_retitle|task_switch|own_session_find|own_session_continue|made_find|task_find|task_fork)$)/;
-/** D376: the user asks for their own account (a sign-in only their own browser has). */
-const OWN_ACCOUNT = /登录|登入|登陆|账号|帐号|账户|帐户|验证码|sign(?:ed)?[ -]?in\b|log(?:ged)?[ -]?in\b|my (?:\w+ )?account/i;
 
 /** The user asks to look harder, which lifts the one-recall-per-turn gate. */
 const ASKS_RECALL = /(再|多|仔细|好好)(查|找|搜|想想|翻)|翻翻|想不起|look (again|harder)|search (again|more)|\bdig\b|check (your )?memory|do you remember|还记得/i;
@@ -522,24 +513,6 @@ export function takeRecallMark(text: string): { text: string; mark?: string } {
 const SECRET_REMOVED = "[secret removed: the user pasted it in the conversation; use a placeholder and let the user fill it in]";
 export function redactSecrets(text: string, userTexts: readonly string[] = []): string {
   return redactWith(text, (k) => (isConnectCode(k) && userTexts.some((u) => u.includes(k.key)) ? undefined : SECRET_REMOVED), { strict: true });
-}
-
-const RESULT_PLUMBING = /分支|branch|合并|合回|合进|merge|冲突|conflict|提交|commit|\b[0-9a-f]{7,}\b|\d+\s*\/\s*\d+|\d+\s*个测试|测试(都|全)?(通过|过了)|^\s*(全部|都)(通过|过了)\s*$|\b\d+\s+tests?\b|tests? pass|\ball pass|\bpassing\b|src\/|\.ts\b|对外|outside|推送|push/i;
-/** Drops the clauses of a combined result that repeat evidence or plumbing; keeps the rest. */
-export function stripResultPlumbing(text: string): string {
-  const out = text
-    .split(/(?<=[。！？!?\n]|\.\s)/)
-    .map((sentence) => {
-      const end = /[。！？!?.\s]+$/.exec(sentence)?.[0] ?? "";
-      const body = sentence.slice(0, sentence.length - end.length);
-      const kept = body.split(/[，,；;]\s*/).filter((c) => c.trim() && !RESULT_PLUMBING.test(c));
-      if (!kept.length) return "";
-      const sep = /[\u4e00-\u9fff]/.test(body) ? "，" : ", ";
-      return kept.join(sep) + (end || "");
-    })
-    .join("")
-    .trim();
-  return out || text;
 }
 
 function stripDefault(q: string): string {
@@ -1221,29 +1194,6 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   // D373: a follow-up sent to a finished task: it goes back to work under this turn's line (its ack,
   // or a line of its own), so the conversation shows it under the follow-up, not under the old
   // answer, and On hand keeps the one card. Its next done or failed report closes the line.
-  /**
-   * D376: a browser task away from the user's sign-ins, and the computers that browse in their own
-   * Chrome. From the computers as last read (refreshed at each turn's start), so the stream can tell
-   * before the call's handler runs whether the line before a task_send is its ack yet.
-   */
-  type Comp = { id: string; name: string; home: boolean; state: string; web?: { where?: string } };
-  let comps: Comp[] | undefined;
-  const refreshComps = () =>
-    void (core as { bodies?: { computers?: () => Promise<Comp[] | undefined> } }).bodies
-      ?.computers?.()
-      .then((c) => (comps = c ?? comps))
-      .catch(() => {});
-  const signInElsewhere = (taskId: unknown, texts: string[]): { here: string; names: string[] } | undefined => {
-    const c = typeof taskId === "string" ? core.tasks.get(taskId) : undefined;
-    if (c?.place.kind !== "browser" || !comps || comps.length < 2 || !OWN_ACCOUNT.test(texts.join("\n"))) return undefined;
-    const dev = c.place.device;
-    const here = comps.find((x) => (dev && dev !== "local" ? x.id === dev || x.name === dev : x.home));
-    if (!here || here.web?.where === "chrome") return undefined;
-    const names = comps.filter((x) => x.id !== here.id && x.state === "awake" && x.web?.where === "chrome").map((x) => x.name);
-    return names.length ? { here: `in Ducter's own browser on ${here.home ? "the home" : here.name}`, names } : undefined;
-  };
-  /** D376: this task_send is asked back (once a turn): its line waits, so the line said after the move is the ack. */
-  const asksBack = (t: TurnState, taskId: unknown) => (!t.quiet && !t.signWeighed ? signInElsewhere(taskId, t.userTexts) : undefined);
   const continueJob = (t: TurnState, taskId: string, jobId: string) => {
     const c = core.tasks.get(taskId);
     if (!c) return;
@@ -1316,10 +1266,9 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       if (turn.relayed || p.trim().length < 300) return;
     }
     if (heldForLanguage(turn, p)) return;
-    // Several results at once: the app renders each one's evidence, Outside and Merge under
-    // the message, so clauses about tests, commits, branches or merging only repeat or guess
-    // (eval two-done-zh, 0/4 under the prompt alone).
-    appendAiMsg((turn.results ?? 0) >= 2 ? stripResultPlumbing(p) : p, undefined, mark);
+    // D478: several results at once are said as the partner wrote them; the [results] line tells it
+    // what the app already shows under each (no code cuts clauses from its words any more).
+    appendAiMsg(p, undefined, mark);
   };
   const claimAck = (t: TurnState): { jobId: string } | null => {
     if (t.unboundAck) return t.unboundAck;
@@ -1421,8 +1370,6 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         const to = (ev.tool.input as { taskId?: unknown } | undefined)?.taskId;
         const final = ev.tool.output !== undefined || ev.tool.ok !== undefined;
         if (typeof to !== "string" && !final) return;
-        // D376: a send that will be asked back keeps its line waiting (the one after the move is the ack).
-        if (asksBack(turn, to)) return;
         // D391: a send to one of two alike is refused: its line is not an ack.
         if (typeof to === "string" && ambiguousFor(to)) return;
         // D479: a send to a task that couldn't start on its place may be refused (its place still
@@ -1500,13 +1447,13 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     if (dataPlace(place)) return; // the call itself is refused (D207)
     // D395: a repository place opens early only when it is that repository on this computer now
     // (read at once); anything else waits for the call, whose pre-flight finds or clones it. A
-    // to-do taken this turn names its repository: a place-less head waits too. Careful words wait
-    // as well (the call carries the effort).
+    // to-do taken this turn names its repository: a place-less head waits too. An effort the
+    // partner sets waits as well (D478: the call carries it).
     if (core.places) {
       const staged = stagedRemote();
       const remote = remoteOf(head.place) ?? staged;
       if (place.kind === "repo" ? !core.places.quick(place, remote) : !!remote && place.kind === "none") return;
-      if (effortFromWords(t.userTexts)) return;
+      if (head.effort === "high" || head.effort === "low") return;
     }
     // D360: a part of a split opens at its call, in order: a later one in the same folder is held.
     // A title before its group, in a turn that already named one, waits for the call too.
@@ -1720,7 +1667,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     for (const t of codeSaid.splice(0)) deltas.push(`[Ducter told the user, for you] ${t} (Already on screen: don't say it again or restate it.)`);
     const done = batch.filter((e) => e.kind === "report" && (e.body as Bodies["report"]).state === "done").length;
     if (done >= 2 && !lastUser)
-      deltas.push(`[results] ${done} tasks finished together: one message, one short line per task saying what now works, in the user's terms. The app shows tests, commits, branches and Merge under it.`);
+      deltas.push(`[results] ${done} tasks finished together: one message, one short line per task saying what now works, in the user's terms. Under it the app already shows each one's tests and their counts, commits, branches and Merge: your words carry none of them.`);
     // The spine as of this cut (fresh sessions only), and gated recall outside what the model
     // already has in front of it. Recall is an L4 delta: the next re-cut leaves it out (folded).
     const view = spine && (fresh || recallOn) ? spine.view() : undefined;
@@ -1749,8 +1696,15 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     // D405: the person's apps, on every turn while they have any (bounded: the newest APPS_SHOWN).
     const appsLine = core.apps ? renderApps(core.apps.list(core.persona.id), (id) => core.apps!.data(id), now()) : "";
     if (appsLine) deltas.push(appsLine);
-    const devices = renderDevices(core.workers?.list() ?? [], core.homeDevice?.(), core.codeOn?.());
+    const limits = core.agentLimits?.();
+    const home = core.homeDevice?.();
+    const devices = renderDevices(core.workers?.list() ?? [], home ? { ...home, ...(homeWeb ? { web: homeWeb } : {}) } : homeWeb ? { name: "", web: homeWeb } : undefined, core.codeOn?.(), limits, new Date(now()), core.settings?.get().limitHandoff === true);
     if (devices) deltas.push(devices);
+    // D478: what is running where, and what each live task waits on, beside the computers.
+    // A home alone: no computer to name (one place for everything).
+    const others = (core.workers?.list() ?? []).length > 0;
+    const live = renderLive(myTasks(), limits, others ? (d) => (d === "local" ? (core.homeDevice?.()?.name ?? "local") : (core.workers?.link(d)?.name ?? d)) : undefined, new Date(now()));
+    if (live) deltas.push(live);
     // D480: what isn't whole about the person's own agents' mail (closed mailboxes, another Mem server), every turn while so.
     const mail = renderAgentMail(core.agentMail?.() ?? []);
     if (mail) deltas.push(mail);
@@ -1861,6 +1815,17 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   }
 
   /** A turn's outcome for drain: undefined when it was answered; a hit when its agent failed it before saying anything. */
+  // D478: how the home browses (Ducter's own browser, or the user's own Chrome with their sign-ins),
+  // a fact for [devices] (the OWN_ACCOUNT words are no longer read): read at a turn's start, briefly.
+  let homeWeb: "chrome" | "ducter" | undefined;
+  const readHomeWeb = async () => {
+    type Comp = { home: boolean; web?: { where?: string } };
+    const read = (core as { bodies?: { computers?: () => Promise<Comp[] | undefined> } }).bodies?.computers?.();
+    if (!read) return;
+    const cs = await Promise.race([read.catch(() => undefined), Bun.sleep(300).then(() => undefined)]);
+    const w = cs?.find((c) => c.home)?.web?.where;
+    if (w === "chrome" || w === "ducter") homeWeb = w;
+  };
   async function runTurn(batch: LogEvent[]): Promise<HoldHit | undefined> {
     const userEvents = batch.filter((e) => e.kind === "user_msg");
     const userTexts = userEvents.map((e) => (e.body as Bodies["user_msg"]).text);
@@ -1909,6 +1874,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     }
     const redo = carried && batch.some((e) => carried!.seqs.has(e.seq)) ? carried : undefined;
     if (redo) carried = undefined;
+    await readHomeWeb();
     const input = buildInput(batch, fresh, redo?.note);
     contextTokens += estTokens(input);
     // A turn woken only by task questions: its words become each question's words (D129), and
@@ -1917,7 +1883,6 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     const results = batch.filter((e) => e.kind === "report" && (e.body as Bodies["report"]).state === "done").length;
     if (core.noticedSources) core.noticedSources.links = core.noticedSources.whys = undefined; // D388: only a noticed call of this turn counts
     turn = { triggers: batch, userTexts, checked: new Set(), replyTo, pending: null, unboundAck: null, opensSeen: 0, opensHandled: 0, lang, quiet, results, recalls: 0, noted: [], early: [] };
-    refreshComps(); // D376: where the user's sign-ins are, for a task_send this turn
     const shows = batch.flatMap((e) => (e.kind === "report" ? ((e.body as Bodies["report"]).media ?? []) : []));
     if (shows.length) turn.shows = shows;
     if (redo) turn.carried = redo;
@@ -1961,16 +1926,6 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       flushPending();
       // D373: taken up again and nothing said after it: the task still moves under this turn.
       if (turn.lateContinue) continueJob(turn, turn.lateContinue, newId("job")), (turn.lateContinue = undefined);
-      // D376: asked back for another computer and never sent: the task's line goes back to how it stands.
-      if (turn.signPending) {
-        const j = jobs.get(turn.signPending);
-        const c = core.tasks.get(turn.signPending);
-        if (j && c && j.state === "running" && FINISHED.has(c.attention)) {
-          j.state = c.attention === "failed" ? "failed" : "done";
-          core.log.append({ stream: "channel", origin: "partner", kind: "job_status", body: { jobId: j.jobId, text: c.title, state: j.state, taskId: c.taskId } });
-        }
-        turn.signPending = undefined;
-      }
       // D383: something made_find showed with no words after it still shows, on its own.
       if (turn.madeMedia?.length || turn.madeUi?.length) {
         const ui = (turn.madeUi ?? []).slice(0, RICH_LIMITS.blocks);
@@ -2296,7 +2251,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           description: "What the user said about computers for it (\"只在 hel 上，不要用 Mac\": on hel, only, not the Mac), names as in [devices]; held on this and any task replacing it.",
           properties: { on: { type: "string" }, only: { type: "boolean" }, not: { type: "array", items: { type: "string" } } },
         },
-        replaces: { type: "string", description: "The id of a task whose work this opens again, e.g. one that couldn't start, now at another place (keeps its where; a failed one is set aside)." },
+        replaces: { type: "string", description: "The id of a task whose work this opens again, e.g. one that couldn't start, now at another place (keeps its where; the old one is set aside, or leaves On hand when finished)." },
+        effort: { type: "string", enum: ["high", "low"], description: "How hard its agent thinks, when the user said so: high for carefully / thoroughly (仔细, 认真), low for a quick look; else omit." },
         project: { type: "string" },
         ...(bridge ? { forMessage: { type: "string", description: "Only when this task does what another agent asked through Bridge (and the user said go): that message id. Ducter tells the sender it was taken, and reminds you to send the outcome." } } : {}),
         harness: {
@@ -2314,7 +2270,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       },
       required: ["title", "brief"],
     }),
-    async (raw0: { title?: unknown; brief?: unknown; place?: Place; project?: string; harness?: string; model?: string; forMessage?: unknown; needs?: unknown; media?: unknown; group?: unknown; kind?: unknown; asks?: unknown; where?: unknown; replaces?: unknown }) => {
+    async (raw0: { title?: unknown; brief?: unknown; place?: Place; project?: string; harness?: string; model?: string; forMessage?: unknown; needs?: unknown; media?: unknown; group?: unknown; kind?: unknown; asks?: unknown; where?: unknown; replaces?: unknown; effort?: unknown }) => {
       // D462: the same call twice in one turn (Codex, live in the eval: two identical task_opens,
       // two tasks on one branch) opens one task; the second gets the first's answer.
       const t0 = turn;
@@ -2376,13 +2332,14 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       }
       // D373: continuity first. The first task_open of a turn whose message follows a finished task is
       // asked back once (the author's trip opened four tasks for one errand, losing its sign-ins
-      // each time): carry that task on with task_send, or call again for separate work. Not for
-      // a split, a cut-off turn redone, or when the user asked for a new one.
+      // each time): carry that task on with task_send, or call again for separate work (the user
+      // asking for a new one included: the partner reads their words, D478). Not for a split or a
+      // cut-off turn redone.
       if (t && !t.openWeighed && !grouped && !t.carried && t.userTexts.length) {
         t.openWeighed = true;
         const u = [...t.triggers].reverse().find((e) => e.kind === "user_msg" && !(e.body as Bodies["user_msg"]).reply && !(e.body as Bodies["user_msg"]).forwarded);
         const f = u ? ctx.follows?.(u.seq) : undefined;
-        if (f && FINISHED.has(f.attention) && !f.merged && !ASKS_NEW.test(t.userTexts.join("\n"))) {
+        if (f && FINISHED.has(f.attention) && !f.merged) {
           t.opensHandled++;
           const early = t.early.find((e) => !e.used);
           if (early) {
@@ -2392,7 +2349,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           t.redirectJob = early?.jobId ?? claimAck(t)?.jobId;
           return {
             ok: false,
-            error: `Not opened: this message follows task ${f.taskId} "${f.title}" (finished; a follow-up takes it up again). If it carries that work on (the same errand or goal, builds on what it found, needs its sign-ins, files or branch), task_send it there instead: it keeps its session, place and agent, and your line already said what you are doing. Only if it is separate work, call task_open again as it was. Say nothing about this.`,
+            error: `Not opened: this message follows task ${f.taskId} "${f.title}" (finished; a follow-up takes it up again). If it carries that work on (the same errand or goal, builds on what it found, needs its sign-ins, files or branch), task_send it there instead: it keeps its session, place and agent, and your line already said what you are doing. Only if it is separate work (or the user asked for a new one), call task_open again as it was. Say nothing about this.`,
           };
         }
       }
@@ -2413,6 +2370,13 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       // D479: the task whose work this opens again, as the partner recorded it: it must be one.
       const replaces = typeof raw.replaces === "string" && raw.replaces.trim() ? raw.replaces.trim() : undefined;
       if (replaces && !core.tasks.get(replaces)) return { ok: false, error: `Not opened: there is no task ${replaces}. replaces takes a task id from [tasks] or task_find.` };
+      // D479, D478: what became of the task it replaces (core retires it from the recorded replaces, by id): a fact.
+      const replacedFact = () => {
+        if (!replaces) return {};
+        const a = core.tasks.get(replaces)?.attention;
+        const what = a === "superseded" ? "set aside: this one carries its work" : a && ["queued", "working", "needs_you", "blocked"].includes(a) ? "still at work and left as it was; task_stop it if this one takes its place" : "off On hand: this one carries its work";
+        return { replaced: `${replaces} (${what})` };
+      };
       if (core.places) {
         const pf = await core.places.preflight({ place, ...(remoteOf(raw.place) ? { remote: remoteOf(raw.place)! } : {}), texts: [args.title, args.brief], userTexts, ...whereOf(raw.where), ...(replaces ? { replaces } : {}) });
         if (!pf.ok) {
@@ -2430,8 +2394,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         // D477: where Ducter put it when it chose (a copy it found, a clone, a where-rule) is a fact the partner hears.
         if (pf.computer && (pf.how === "found" || pf.how === "clone" || pf.how === "rule")) placedOn = `${pf.computer}${pf.how === "clone" ? `, cloning ${pf.repo ?? "the code"} there first` : pf.how === "found" ? `, in its copy of ${pf.repo ?? "the code"}` : ""}`;
       }
-      // D395: "仔细" / "carefully" in the person's words: the task thinks harder (and checks its work).
-      const effort = effortFromWords(userTexts);
+      // D395, D478: how hard the task thinks, as the partner read the person's words ("仔细" / "carefully": high).
+      const effort = raw.effort === "high" || raw.effort === "low" ? raw.effort : undefined;
       // D426: the things this task does of what the message asked, listed in its brief and under the message.
       const askWords = askList(raw.asks);
       const brief = redactSecrets(withVerbatim(args.brief, userTexts), userTexts) + (effort === "high" ? CAREFUL_BRIEF : "") + asksBrief(askWords);
@@ -2501,7 +2465,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           joinGroup(card.taskId);
           lineUp(card.taskId);
           await claimFor(card);
-          return { ok: true, taskId: card.taskId, title: card.title, place: card.place, attention: card.attention, ...(placedOn ? { where: placedOn } : {}), note: kindNote(card.taskId, note) };
+          return { ok: true, taskId: card.taskId, title: card.title, place: card.place, attention: card.attention, ...(placedOn ? { where: placedOn } : {}), ...replacedFact(), note: kindNote(card.taskId, note) };
         }
         early.brief.reject(new Error("the call names another place, agent or needs")); // dropped; opened below instead
       } else if (t) {
@@ -2564,7 +2528,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         await claimFor(card);
         // D479: what happened, as facts the partner says nothing beyond: where it opened (and what is
         // cloned there first), and the task it replaces set aside.
-        const facts = { opened: openedLine(card.place, cloning), ...(replaces ? { replaced: `${replaces} (${core.tasks.get(replaces)?.attention === "superseded" ? "set aside: this one carries its work" : "left as it was"})` } : {}) };
+        const facts = { opened: openedLine(card.place, cloning), ...replacedFact() };
         if (cloneLine) {
           tellUser(cloneLine);
           return { ok: true, taskId: card.taskId, title: card.title, place: card.place, attention: card.attention, ...facts, ...(placedOn ? { where: placedOn } : {}), note: CLONE_NOTE };
@@ -2605,21 +2569,6 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     },
     async (args: { taskId: string; text: string; mode?: "steer" | "queue"; media?: unknown; asks?: unknown }) => {
       await Bun.sleep(5); // let the streamed text land first
-      // D376: the user asks for their own account, and this browser task runs where their sign-ins
-      // aren't (the author's trip: Ducter's browser on hel; Ctrip signed in only in the MacBook's
-      // Chrome): asked back once, so the same task moves there instead of failing to sign in. The
-      // line written before it is dropped: the one written after the move says where.
-      const away = turn ? asksBack(turn, args.taskId) : undefined;
-      if (turn && away) {
-        turn.signWeighed = true;
-        turn.signPending = args.taskId;
-        turn.pending = null;
-        return {
-          ok: false,
-          error: `Not sent yet: the user asks for their own account, and this task browses ${away.here}, without their sign-ins; ${away.names.join(", ")} ${away.names.length > 1 ? "browse" : "browses"} in the user's own Chrome, signed in as them. task_switch it there (device) first, then task_send this again, then one line naming the action and where. If their account isn't needed after all, call task_send again as it was.`,
-        };
-      }
-      if (turn?.signPending === args.taskId) turn.signPending = undefined;
       // D391: one of two alike that task_find found this turn, and the user named neither: ask first.
       const alike = ambiguousFor(args.taskId);
       if (alike) {
@@ -5852,9 +5801,27 @@ export function renderApps(apps: readonly AppMeta[], data: (id: string) => Recor
 }
 
 type DeviceAgents = { id: string; installed?: boolean; loggedIn: boolean; version?: string }[];
+/** D478: an agent's usage limit on one computer, as core knows it (agentLimits). */
+export type AgentLimitFact = { device: string; harness: string; state: "used_up" | "room"; until?: string; waiting?: string[] };
+/** D478: a reset time in the person's own clock, with the day when it isn't today ("23:00", "Tue 09:00"). */
+export function resetWords(iso: string | undefined, now: Date): string {
+  const d = new Date(iso ?? "");
+  if (!iso || Number.isNaN(d.getTime())) return "";
+  const p = (n: number) => String(n).padStart(2, "0");
+  const day = d.toDateString() === now.toDateString() ? "" : `${["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d.getDay()]} `;
+  return `${day}${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+/** D478: "(used up until 23:00)" / "(room left)" after an agent's name, when core knows. */
+const limitWords = (l: AgentLimitFact | undefined, now: Date) => {
+  if (!l) return "";
+  if (l.state === "room") return " (room left)";
+  const at = resetWords(l.until, now);
+  return at ? ` (used up until ${at})` : " (used up, reset not known)";
+};
 /** D476, D477: signed in, and installed but not signed in, so "isn't set up there" is never said of an agent that is. */
-const agentsWords = (hs: DeviceAgents | undefined, none: string) => {
-  const ai = (hs ?? []).filter((h) => h.loggedIn).map((h) => h.id).slice(0, 6);
+const agentsWords = (hs: DeviceAgents | undefined, none: string, limits?: AgentLimitFact[], dev?: string, now = new Date()) => {
+  const lim = (id: string) => limitWords(limits?.find((l) => l.device === dev && l.harness === id), now);
+  const ai = (hs ?? []).filter((h) => h.loggedIn).map((h) => `${h.id}${lim(h.id)}`).slice(0, 6);
   const idle = (hs ?? []).filter((h) => !h.loggedIn && h.installed).map((h) => h.id).slice(0, 6);
   return `${ai.length ? `, signed in: ${ai.join(", ")}` : none}${idle.length ? `, installed but not signed in: ${idle.join(", ")}` : ""}`;
 };
@@ -5875,24 +5842,53 @@ const codeWords = (code: { device: string; name: string; remote?: string }[] | u
  */
 export function renderDevices(
   workers: { id?: string; name: string; online: boolean; asleep?: boolean; os?: string; harnesses?: DeviceAgents; web?: "chrome" | "ducter"; alwaysOn?: boolean }[],
-  home?: { name: string; aliases?: string[]; harnesses?: DeviceAgents },
+  home?: { name: string; aliases?: string[]; harnesses?: DeviceAgents; web?: "chrome" | "ducter" },
   code?: { device: string; name: string; remote?: string }[],
+  limits?: AgentLimitFact[],
+  now = new Date(),
+  handoff?: boolean,
 ): string {
-  if (!workers.length) return "";
+  // A home alone shows no line (nothing to place), unless an agent's limit there is known (D478).
+  if (!workers.length && !(home && limits?.some((l) => l.device === "local" && l.state === "used_up"))) return "";
   // An L4 line on every turn: bounded however many computers join (research/48 F2).
   const shown = workers.length > DEVICES_MAX ? [...workers].sort((a, b) => Number(b.online) - Number(a.online)).slice(0, DEVICES_MAX) : workers;
   const more = workers.length - shown.length;
   const clipName = (n: string) => (n.length > 40 ? n.slice(0, 39) + "…" : n);
+  const browses = (w: "chrome" | "ducter" | undefined) => (w === "chrome" ? ", browses in the user's own Chrome (their sign-ins)" : w === "ducter" ? ", browses in Ducter's own browser" : "");
   const one = (w: (typeof workers)[number]) => {
     const state = w.online ? "awake" : w.asleep ? "asleep" : "can't reach";
     const sleeps = w.alwaysOn === false ? ", sleeps when its lid closes" : w.alwaysOn ? ", never sleeps" : "";
-    const web = w.web === "chrome" ? ", browses in the user's own Chrome (their sign-ins)" : w.web === "ducter" ? ", browses in Ducter's own browser" : "";
-    return `${clipName(w.name)} (${state}${w.os ? `, ${w.os.slice(0, 30)}` : ""}${sleeps}${web}${agentsWords(w.harnesses, ", no AI signed in")}${w.id ? codeWords(code, w.id) : ""})`;
+    const web = browses(w.web);
+    return `${clipName(w.name)} (${state}${w.os ? `, ${w.os.slice(0, 30)}` : ""}${sleeps}${web}${agentsWords(w.harnesses, ", no AI signed in", limits, w.id, now)}${w.id ? codeWords(code, w.id) : ""})`;
   };
   // D476's finding, kept: the home by its name, the names the person calls it, and its own agents.
   const also = (home?.aliases ?? []).filter((a) => a.toLowerCase() !== home?.name.toLowerCase()).slice(0, 2);
-  const homeWords = home ? `local (Ducter's home: ${clipName(home.name)}${also.length ? `, also called ${also.join(", ")}` : ""}${home.harnesses ? agentsWords(home.harnesses, ", no AI signed in") : ""}${codeWords(code, "local")})` : "local (Ducter's home)";
-  return `[devices] ${homeWords} · ${shown.map(one).join(" · ")}${more ? ` · and ${more} more computers` : ""}. True now: which agents are set up where, and which code is where, is only what this line says. Put work where the user's words and these facts point (place.device; their words about computers in where); with neither, say what it needs and Ducter picks. Code not on that computer yet is cloned there first (place.remote).`;
+  const homeWords = home ? `local (Ducter's home${home.name ? `: ${clipName(home.name)}` : ""}${also.length ? `, also called ${also.join(", ")}` : ""}${browses(home.web)}${home.harnesses ? agentsWords(home.harnesses, ", no AI signed in", limits, "local", now) : ""}${codeWords(code, "local")})` : "local (Ducter's home)";
+  return `[devices] ${[homeWords, ...shown.map(one)].join(" · ")}${more ? ` · and ${more} more computers` : ""}. True now: which agents are set up where, their usage limits, and which code is where, is only what this line says.${limits?.some((l) => l.state === "used_up") ? (handoff ? " By the user's setting, a task whose agent runs out is handed to another signed-in agent at once." : " By the user's setting (D297's default), a task whose agent runs out waits for the reset; handing it to another agent is the user's choice.") : ""} Put work where the user's words and these facts point (place.device; their words about computers in where); with neither, say what it needs and Ducter picks. Code not on that computer yet is cloned there first (place.remote).`;
+}
+
+/** D478: live tasks shown in the [live] line (the rest are named by count). */
+export const LIVE_MAX = 8;
+const LIVE_STATES = new Set(["queued", "working", "needs_you", "blocked"]);
+/**
+ * D478: what is running where right now, every turn (L4), compact: each live task's agent and
+ * computer, and what it waits on (its agent's limit and until when, the user). Facts only:
+ * "carry it on with another agent" or "leave it" is the partner's judgment from them.
+ */
+export function renderLive(cards: TaskCard[], limits: AgentLimitFact[] | undefined, nameOf: ((dev: string) => string) | undefined, now = new Date()): string {
+  const live = cards.filter((c) => LIVE_STATES.has(c.attention)).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  if (!live.length) return "";
+  const one = (c: TaskCard) => {
+    const dev = (c.place as { device?: string }).device || "local";
+    const resting = limits?.find((l) => l.waiting?.includes(c.taskId));
+    const state = resting
+      ? `resting until ${resting.harness}'s limit resets${resting.until ? ` (${resetWords(resting.until, now)})` : ""}`
+      : c.attention === "needs_you" || c.attention === "blocked" ? "waiting on the user" : c.attention === "queued" ? "queued" : "working";
+    const title = c.title.length > 50 ? c.title.slice(0, 49) + "…" : c.title;
+    return `${c.taskId} "${title}" ${c.harness}${nameOf ? ` on ${nameOf(dev)}` : ""}, ${state}`;
+  };
+  const more = live.length - LIVE_MAX;
+  return `[live] ${live.slice(0, LIVE_MAX).map(one).join(" · ")}${more > 0 ? ` · and ${more} more` : ""}. True now.`;
 }
 
 /**

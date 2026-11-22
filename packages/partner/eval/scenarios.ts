@@ -29,6 +29,8 @@ export type Seed =
       };
     }
   | { waiterArmed: { reason: string; minutesAgo: number } }
+  // D478: the runner's record that a seeded task's agent hit its usage limit (resets at HH:MM local).
+  | { limitHit: { task: string; harness: string; resetsAt: string } }
   // D193 (scenario.phone): a call on the line whose other side asks the user something (its card is up).
   | { callQuestion: { name: string; to: string; question: string } }
   // Something the user did by button on a task's result (merge, open PR), as core logs it.
@@ -291,6 +293,8 @@ export interface World {
   canRead?: string[];
   /** The person's projects in Ducter (a repository on a computer). */
   projects?: { name: string; computer: string; path: string; origin?: string }[];
+  /** D478: the home's agents' accounts as a read says them (used 0..1, a reset at HH:MM local); others: no read. */
+  usage?: Record<string, { limited?: boolean; used?: number; resetsAt?: string }>;
 }
 
 /** One memory in the fake Mem the scenario runs against (never the user's real Mem). */
@@ -391,7 +395,7 @@ export interface Scenario {
    * D376: the person's other computers beside the home ("local"), as the [devices] line shows them;
    * task_switch's move to one is recorded, never made.
    */
-  computers?: { name: string; web: "chrome" | "ducter"; harnesses: string[] }[];
+  computers?: { name: string; web: "chrome" | "ducter"; harnesses: string[]; /** D478: false = can't reach it now. */ online?: boolean; /** D478: its platform as [devices] says it (default macOS). */ os?: string }[];
   /**
    * D395: which computers have a clone of which repository (by computer name, "local" for the
    * home: its paths), and which can read a repository they don't have (canRead). Absent: every

@@ -4,7 +4,6 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { buildSystemPrompt, createPartner, redactSecrets } from "../src/index.ts";
-import { stripResultPlumbing } from "../src/partner.ts";
 import { FakeClock, fakeCore, fakeRunner, type Script } from "./fakes.ts";
 
 function setup(script: Script, extra: Parameters<typeof createPartner>[2] = {}) {
@@ -461,17 +460,9 @@ describe("review 2 regressions", () => {
   });
 });
 
-// Round 3 (eval two-done-zh): several results at once become one message of outcomes only.
+// Round 3 (eval two-done-zh): several results at once become one message; D478: the partner's own words, with the [results] line as its fact.
 describe("combined results", () => {
-  test("clauses repeating tests, commits, branches or merge advice are dropped; outcomes stay", () => {
-    expect(stripResultPlumbing("values() 和 keys() 都加好了，都只返回未过期的项，各带 2 个测试，全部通过。两个改动在各自独立的分支上，合并时可能要处理一下冲突。")).toBe(
-      "values() 和 keys() 都加好了，都只返回未过期的项。",
-    );
-    expect(stripResultPlumbing("Both are in: values() and keys() now skip expired entries. Each has 2 tests, 14/14 passing.")).toBe("Both are in: values() and keys() now skip expired entries.");
-    expect(stripResultPlumbing("提交在分支上。")).toBe("提交在分支上。"); // never empties a message
-  });
-
-  test("a turn with two done reports gets the [results] line and the filter; a single result does not", async () => {
+  test("a turn with two done reports gets the [results] line; a single result does not; no code cuts its words", async () => {
     const { fc, fr, partner } = setup((_i, s) => {
       s.say("两个都加好了，只返回未过期的项，各带 2 个测试。");
       s.end();
@@ -482,7 +473,7 @@ describe("combined results", () => {
     done("t2");
     await partner.idle();
     expect(fr.sessions[0]!.inputs[0]).toContain("[results] 2 tasks finished together");
-    expect(fc.events.filter((e) => e.kind === "ai_msg").map((e) => (e.body as any).text)).toEqual(["两个都加好了，只返回未过期的项。"]);
+    expect(fc.events.filter((e) => e.kind === "ai_msg").map((e) => (e.body as any).text)).toEqual(["两个都加好了，只返回未过期的项，各带 2 个测试。"]);
     done("t3");
     await partner.idle();
     expect(fr.sessions[0]!.inputs[1]).not.toContain("[results]");

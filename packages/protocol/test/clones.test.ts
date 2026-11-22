@@ -1,12 +1,11 @@
 // D395: which copies of one repository a computer has (only that repository's are sent back),
-// whether its git can read it, the effort its words ask for, and a clone planned into the place.
+// whether its git can read it, and a clone planned into the place (the effort is the partner's, D478).
 import { afterEach, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { answerClones, canReadRemote, clonesOf, remoteKey } from "../src/clones.ts";
 import { cloneTarget } from "../src/clone.ts";
-import { effortFromWords } from "../src/effort-words.ts";
 
 const dirs: string[] = [];
 afterEach(() => {
@@ -75,16 +74,3 @@ test("cloneTarget: the folder cloneRepo would make, or the same origin's copy al
   expect(cloneTarget("nowledge-co/mem", { dataDir: data })).toBe(join(data, "ducter", "projects", "mem-2"));
 });
 
-test("effort in the person's words: careful is high, quick is low, both or neither is none", () => {
-  expect(effortFromWords(["10559 帮我用 codex astra 仔细做一下"])).toBe("high");
-  expect(effortFromWords(["认真看看这个 bug"])).toBe("high");
-  expect(effortFromWords(["好好改一下登录页"])).toBe("high");
-  expect(effortFromWords(["please do this carefully"])).toBe("high");
-  expect(effortFromWords(["review it thoroughly"])).toBe("high");
-  expect(effortFromWords(["快速看一下 CI"])).toBe("low");
-  expect(effortFromWords(["随便看看就行"])).toBe("low");
-  expect(effortFromWords(["just a quick look at the logs"])).toBe("low");
-  expect(effortFromWords(["修一下 10559"])).toBeUndefined();
-  expect(effortFromWords(["它现在好好的", "the build is quick"])).toBeUndefined();
-  expect(effortFromWords(["仔细做，但快速看一下 CI"])).toBeUndefined();
-});

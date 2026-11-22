@@ -4,7 +4,7 @@
 // Rule (principle 4, research/13): a fresh session reads as an ongoing conversation.
 // Nothing rendered here may say the session was reset, restarted, or lost.
 import type { AskLine, Attention, Bodies, CantStart, LogEvent, ReplyRef, TaskCard } from "../../protocol/src/index.ts";
-import { REPLY_QUOTE } from "../../protocol/src/index.ts";
+import { LIMIT_RESET_GRACE_MS, REPLY_QUOTE } from "../../protocol/src/index.ts";
 import { harnessName } from "../../protocol/src/harnesses.ts";
 import { richShownWords } from "../../protocol/src/rich.ts";
 import { renderCallEnded } from "../../protocol/src/phone.ts";
@@ -33,7 +33,8 @@ export function limitLine(b: Bodies["waiter"], on: string, time: (iso: string) =
   const l = b.limit!;
   const who = harnessName(l.harness);
   if (b.state === "armed") {
-    const when = b.at ? time(b.at) : "?";
+    // D478: a known reset is said as the reset itself, not the wait's wake a minute after it.
+    const when = b.at ? time(l.resetKnown ? new Date(Date.parse(b.at) - LIMIT_RESET_GRACE_MS).toISOString() : b.at) : "?";
     if (l.tell) return `[limit] ${who}'s usage limit ran out${on}; it doesn't say when it resets and no other signed-in AI agent can take the task. It tries again by itself at ${when}. Tell the user once, in one short sentence: it will carry on by itself once the limit is back, or they can sign in another AI agent; no internals.`;
     return `[limit] ${who}'s usage limit ran out${on}; ${l.resetKnown ? `it resets ${when}` : `it tries again ${when}`} and the task carries on by itself then (say nothing now)`;
   }
@@ -774,7 +775,7 @@ export function renderTasks(all: TaskCard[], maxDone = 8, ctx?: Pick<RenderCtx, 
     .slice(0, maxDone);
   const line = (c: TaskCard) => {
     const where =
-      c.place.kind === "repo" ? ` · repo ${c.place.repoPath}${c.place.branch ? ` (branch ${c.place.branch})` : ""}` : c.place.kind === "folder" ? ` · folder ${c.place.path}` : c.place.kind === "browser" ? " · browser" : "";
+      c.place.kind === "repo" ? ` · repo ${c.place.repoPath}${c.place.branch ? ` (branch ${c.place.branch})` : ""}` : c.place.kind === "folder" ? ` · folder ${c.place.path}` : c.place.kind === "browser" ? ` · browser on ${c.place.device && c.place.device !== "local" ? c.place.device : "the home"}` : "";
     const last = c.lastReport ? ` · last report (${c.lastReport.state}): ${clip(c.lastReport.summary, 200)}` : "";
     const merged = ctx?.merged?.(c.taskId) ? ` · merged into ${ctx.taskBase?.(c.taskId) ?? "its base branch"} by the user (new work = a new task)` : "";
     // D128: one the user opened themselves (their words are its brief); you report it like any task.

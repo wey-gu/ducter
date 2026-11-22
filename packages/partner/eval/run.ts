@@ -434,6 +434,14 @@ function visibleText(e: LogEvent): string {
  * everything core decides on its own (pre-flight, which repository a name is, the person's word on
  * where, a failed start's card, the mender and its replan) is the real code over this world.
  */
+/** D478: the next time it is HH:MM here (today, or tomorrow when that has passed), as ISO. */
+const nextAt = (hm: string) => {
+  const [h, m] = hm.split(":").map(Number);
+  const d = new Date();
+  d.setHours(h ?? 0, m ?? 0, 0, 0);
+  if (d.getTime() <= Date.now()) d.setDate(d.getDate() + 1);
+  return d.toISOString();
+};
 const worldDev = (sc: Scenario, name: string) => (name === "local" || name === sc.world?.home.name ? "local" : `w${(sc.computers ?? []).findIndex((c) => c.name === name) + 1}`);
 function worldCoreOptions(sc: Scenario, dataDir: string) {
   const w = sc.world!;
@@ -462,7 +470,7 @@ function worldCoreOptions(sc: Scenario, dataDir: string) {
       nameOf: (dev: string) => (dev === "local" ? undefined : others.some((_, i) => `w${i + 1}` === dev) ? nameOf(dev) : undefined),
       homeName: () => w.home.name,
       folderInfo: (dev: string, path: string) => folder(dev, path),
-      workers: () => others.map((c, i) => ({ id: `w${i + 1}`, name: c.name, online: true })),
+      workers: () => others.map((c, i) => ({ id: `w${i + 1}`, name: c.name, online: c.online !== false })),
       clones: (dev: string, remote: string, probe: boolean) => clones(dev, remote, probe),
     },
     deviceProbes: { cua: async () => ({ missing: "eval" }), harnesses: async () => w.home.agents.map((harness) => ({ harness, installed: true, loggedIn: true })), kind: async () => (w.home.os === "linux" ? "server" : "laptop") as never },
@@ -618,13 +626,22 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
     } else if (!early.has(callId)) tools.push({ name: ev.tool.name, input: ev.tool.input, step: cur.step });
   });
   const fr = fakeRunner(core, port, cur, !!sc.firstErrand, !!sc.world);
+  // D478: the home's account reads come from the world (never this machine's own accounts).
+  if (sc.world) {
+    const usage = sc.world.usage ?? {};
+    (port as { accountUsage?: unknown }).accountUsage = async (h: string) => {
+      const u = usage[h];
+      if (!u) return { why: "unsupported" as const };
+      return { usage: { harness: h, ...(u.limited ? { limited: true } : {}), windows: [{ id: "five_hour", label: "5h", used: u.used ?? (u.limited ? 1 : 0.2), ...(u.resetsAt ? { resetsAt: nextAt(u.resetsAt) } : {}) }], at: new Date().toISOString() } };
+    };
+  }
   // D376: other computers (the [devices] line), and task_switch's move to one recorded, not made.
   if (sc.computers) {
     const others = sc.computers;
-    (core.workers as { list: () => unknown[] }).list = () => others.map((c, i) => ({ id: `w${i + 1}`, name: c.name, online: true, os: "macOS", web: c.web, harnesses: c.harnesses.map((id) => ({ id, installed: true, loggedIn: true })) }));
+    (core.workers as { list: () => unknown[] }).list = () => others.map((c, i) => ({ id: `w${i + 1}`, name: c.name, online: c.online !== false, os: c.os ?? "macOS", web: c.web, harnesses: c.harnesses.map((id) => ({ id, installed: true, loggedIn: true })) }));
     const comps: Computer[] = [
       { id: "local", name: "local", home: true, state: "awake", alwaysOn: true, mac: false, harnesses: [], web: { on: true, where: "ducter" } },
-      ...others.map((c, i) => ({ id: `w${i + 1}`, name: c.name, home: false, state: "awake" as const, alwaysOn: false, mac: true, harnesses: [], web: { on: true, where: c.web } })),
+      ...others.map((c, i) => ({ id: `w${i + 1}`, name: c.name, home: false, state: c.online === false ? ("unreachable" as const) : ("awake" as const), alwaysOn: false, mac: (c.os ?? "macOS") === "macOS", harnesses: [], web: { on: true, where: c.web } })),
     ];
     core.loadout.computers = async () => comps;
     core.loadout.switchTask = async (taskId, harness, _m, _r, device) => {
@@ -750,6 +767,10 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
       const it = await core.taskSources.item(s.bound.ref);
       if (!it) throw new Error(`fake GitHub: no ${s.bound.ref}`);
       core.taskSources.bind(idOf.get(s.bound.task)!, it, "partner");
+    } else if ("limitHit" in s) {
+      // D478: the runner's own record of a task's agent hitting its usage limit (D297), as it logs it.
+      const taskId = idOf.get(s.limitHit.task)!;
+      core.log.append({ stream: `task:${taskId}`, origin: "runner", kind: "task_event", body: { taskId, role: "system", from: "runner", text: "usage limit", raw: { limit: { harness: s.limitHit.harness, failure: "quota", resetsAt: nextAt(s.limitHit.resetsAt) } } } } as never);
     } else if ("waiterArmed" in s) {
       const w: Bodies["waiter"] = { waiterId: "w_" + crypto.randomUUID().slice(0, 10), at: new Date(Date.now() + 3600_000).toISOString(), reason: s.waiterArmed.reason, state: "armed" };
       waiters.set(w.reason, w);
@@ -905,6 +926,7 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
     else if ("todoSet" in s) lines.push(`(earlier) the partner found the to-dos about "${s.todoSet.query}" and said: ${s.todoSet.ai} (a set card under it shows them, the takeable ones ticked)`);
     else if ("asks" in s) lines.push(`(earlier) under that message the app shows its lines: ${s.asks.lines.map((l, i) => `${i + 1}. ${l.words} (task "${l.task}")`).join("; ")}`);
     else if ("handSet" in s) lines.push(`(earlier) that set was handed over as one group; a plan is being made first (nothing else started)${s.handSet.note ? `; the user's note: ${s.handSet.note}` : ""}`);
+    else if ("limitHit" in s) lines.push(`(earlier) task "${s.limitHit.task}"'s agent ${s.limitHit.harness} hit its usage limit (resets at ${s.limitHit.resetsAt})`);
     else lines.push(`(earlier) reminder set: ${s.waiterArmed.reason}`);
   }
   if (sc.second)
@@ -968,7 +990,14 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
       const b = core.log.read({ stream: `task:${id}`, kinds: ["body_selected"], limit: 50 }).at(-1)?.body as Bodies["body_selected"] | undefined;
       return b ? ` | Ducter gave it to: ${b.harness}${b.model ? ` (${b.model})` : ""}${b.why.kind === "said" ? ` because the user said earlier "${b.why.text}"` : ""}` : "";
     };
-    for (const o of r_opened(fr.opened, i)) lines.push(`  [${o.by === "ducter" ? "Ducter itself restarted the task that couldn't start" : "opened a task"}] title: ${o.title}${groupOf(o.taskId) ? ` | group: ${groupOf(o.taskId)}` : ""} | place: ${JSON.stringify(o.place ?? null)}${wentTo(o.taskId)} | brief: ${o.brief.slice(0, 1200).replace(/\n/g, " ⏎ ")}`);
+    // D478: the computer by its name in this world ("local" is Ducter's home, which may be a server, not the Mac).
+    const onComputer = (p: Place | undefined) => {
+      if (!p || p.kind === "none" && !("device" in p && p.device)) return "";
+      const d = "device" in p && p.device ? p.device : "local";
+      const nm = d === "local" ? `${sc.world?.home.name ?? sc.homeName ?? "the home"} (Ducter's home, called "local" in a place)` : ((sc.computers ?? []).find((c) => c.name === d)?.name ?? (sc.computers ?? [])[Number(d.replace(/^w/, "")) - 1]?.name ?? d);
+      return ` | runs on computer: ${nm}`;
+    };
+    for (const o of r_opened(fr.opened, i)) lines.push(`  [${o.by === "ducter" ? "Ducter itself restarted the task that couldn't start" : "opened a task"}] title: ${o.title}${groupOf(o.taskId) ? ` | group: ${groupOf(o.taskId)}` : ""} | place: ${JSON.stringify(o.place ?? null)}${onComputer(o.place)}${wentTo(o.taskId)} | brief: ${o.brief.slice(0, 1200).replace(/\n/g, " ⏎ ")}`);
     // D360: a later part of a split is held by Ducter (not a task yet), shown so the judge sees all parts.
     const openedTitles = new Set(r_opened(fr.opened, i).map((o) => o.title));
     for (const x of tools.filter((x) => x.step === i && /(^|__)task_open$/.test(x.name)))

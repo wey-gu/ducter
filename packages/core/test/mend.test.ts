@@ -195,20 +195,6 @@ test("a stall goes to the partner (never retried here: the task ran); one D372 a
   expect(s.mends("errand")).toEqual([]);
 });
 
-test("the partner opening the same work again (replaces) sets the one that couldn't start aside; a like title alone doesn't (D479)", async () => {
-  const s = setup();
-  s.open("smx2jjb3", "在 hel 用 Gemini 审阅 Mem 长文案");
-  s.fail("smx2jjb3", noFolder);
-  await s.settle();
-  s.open("other1", "整理下周的日历", "partner");
-  s.open("alike", "在 hel 上用 Gemini 审阅 Mem 的长文案", "partner");
-  await s.settle();
-  expect(s.tasks.get("smx2jjb3")?.attention).toBe("failed");
-  s.open("new1", "Review Mem's long copy on hel", "partner", "smx2jjb3");
-  await s.settle();
-  expect(s.tasks.get("smx2jjb3")?.attention).toBe("superseded");
-});
-
 test("a task opened more than a day ago that fails again (a restart) is left to its card", async () => {
   const s = setup();
   s.open("old", "An old task");

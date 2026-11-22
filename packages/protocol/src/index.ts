@@ -1079,6 +1079,9 @@ export type WaiterView = Bodies["waiter"] & { armedAt?: string; lastLookAt?: str
  * (Hand it to {agent} now). tell: the partner says it once (it matters: no reset time and nobody
  * else to take it). tries: how many times it has met the limit in a row.
  */
+/** D297: a limit wait wakes this long after the reset it names (so the first turn isn't refused at the edge); D478: the reset itself is what anyone is told. */
+export const LIMIT_RESET_GRACE_MS = 60_000;
+
 export interface LimitWait {
   harness: string;
   resetKnown: boolean;

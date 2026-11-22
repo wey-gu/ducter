@@ -182,25 +182,10 @@ export function createMender(o: {
     if (again?.attention === "failed" && again.cant) startFailed(taskId, again.cant);
   };
 
-  /**
-   * The partner opened the same work again (task_open replaces, D479): the one that failed goes, so
-   * On hand never keeps a failure that was redone. Which task it redoes is the partner's recorded
-   * word; no title is compared (principle 21; this replaced D473's title overlap).
-   */
-  const supersede = (e: LogEvent) => {
-    const b = e.body as Bodies["task_open"];
-    const old = b.replaces;
-    if (!old || old === b.taskId) return;
-    const c = o.tasks.get(old);
-    if (!c || c.attention !== "failed") return;
-    o.tasks.setState(old, "superseded", "archived", `opened again as ${b.taskId}`);
-  };
-
   const decide = (e: LogEvent) => {
     if (stopped || decided.has(e.seq)) return;
     decided.add(e.seq);
     if (decided.size > 5000) decided.delete(decided.values().next().value!);
-    if (e.kind === "task_open" && e.origin === "partner") return supersede(e);
     if (o.taken?.(e)) return;
     if (e.kind === "task_state") {
       const s = e.body as Bodies["task_state"];
@@ -225,3 +210,4 @@ export function createMender(o: {
     },
   };
 }
+

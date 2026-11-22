@@ -57,7 +57,7 @@ Cheapest first; each rung is one `mend` event on the task's stream, logged befor
    partner judges what code doesn't: the repository the person meant, another agent, another
    computer the person allows. It opens the work again with `replaces` (which carries the person's
    word) on a repository (`place.remote`, never a guessed path) or another agent or computer, and
-   Ducter sets the task it names in `replaces` aside (superseded, when it had failed) so On hand
+   Ducter sets the task it names in `replaces` aside (superseded, when it had failed; a finished one leaves On hand, D478) so On hand
    keeps no failure that was mended (D479: by the recorded `replaces`, no longer by titles that
    look alike). A task that couldn't start on its place is never sent back to that same place:
    task_send checks the place first, as task_open does, and when it still doesn't hold the partner

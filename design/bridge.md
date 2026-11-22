@@ -1255,14 +1255,15 @@ D470 rebuilt it in D469's: the partner reports, Pebble's art carries state, the 
 - **Not yet**: the mailbox task run once for real (it writes Mem-side; the author's step); a sender's quota use
   shown; the phones' native clients.
 
-## The mailbox's Space, chosen in place; another Mem said as a fact (D480, 2026-11-22)
+## The mailbox's Space, chosen in place (D480, 2026-11-22)
 
 The author met D470's mailbox task stopped on 「Claude Code 的信箱放在哪个 Space？请回复 Space 名称（例如
-dev-team）。」 with four buttons, and had to ask which Spaces there are. Two facts shape the answer
+dev-team）。」 with four buttons, and had to ask which Spaces there are. The fact that shapes the answer
 (VERIFIED, nmem 0.10.122): Mem's Bridge always needs an explicit Space and says "suggested entries are hints,
 not a choice" (passive `nmem --json bridge setup` lists `candidates[{id,label,kind,readers,write_default}]`
-and picks none); and the author's Mac's own Mem is Nowledge Cloud while the partner listens on hel's Mem, so
-a mailbox opened on the Mac could never reach the partner, whichever Space.
+and picks none). The person's computers share one Nowledge Mem (Nowledge Cloud, or their own Mem app as a
+server); Bridge lives in it. Claude Code on the author's Mac can't get answers only because its mailbox isn't
+open.
 
 - **In place, not a task's question.** **打开它的信箱 / Open its mailbox** opens a choice under the agent's
   link row (and Overview's 等你 goes there): **在哪个 Nowledge Mem 空间打开它的信箱？ / Which Nowledge Mem
@@ -1278,17 +1279,18 @@ a mailbox opened on the Mac could never reach the partner, whichever Space.
   (**推荐「只有你」：我就在这里收信，也只有你能看到。**); the others are one tap away (**看看其他空间**), each with
   who can read it (Mem's `readers`). Mem's personal and everyone Spaces are said in Ducter's words (**只有你 /
   Only you**, **所有人 / Everyone**), a team's by its own name.
-- **Another Mem is a fact, not a choice.** Each computer's Mem server (the host of `nmem status`.api_url) is
-  kept: the home's in `BridgeView.server`, a worker's in `DeviceMemView.server`. When they differ, the row
-  says so (**它在 {computer} 上接的是另一个 Nowledge Mem（{theirs}），我在 {ours} 收信…**), both ways are drawn
-  not working, and the fix is **接到同一个 Mem / Use the same Mem**: paste the connect prompt from the
-  partner's Mem and Ducter runs Mem's own `nmem connect` there (D370's sign-in), the consequence said first
-  (that computer's own agents then remember with the partner's Mem). Unknown on either side is never "apart".
-- **The partner knows.** `[your agents' mail]` on every turn while something isn't whole: a closed mailbox,
-  another Mem with both hosts; never promise what can't arrive, point the person at the row, never a task,
+- **No "another Mem" from addresses (round 2).** The first build compared Mem API URLs and called the
+  author's Mac (`cloud.nowledge.co`) and the home (`hel.siwei.info`) two Mems. Wrong: `hel.siwei.info/mem` is
+  Ducter's own relay (D393, `core/src/mem-relay.ts`), which forwards with the home's credential to the home's
+  Mem, the same Cloud; hel's own `nmem status` says `cloud.nowledge.co`. A URL names a relay as readily as a Mem,
+  so comparing them is a heuristic (principle 21). Removed: nothing says "another Mem". If that fact is ever
+  needed, it comes from identity Mem reports (account or member, backend), the relay resolved to its upstream,
+  and is said only when those verifiably differ.
+- **The partner knows.** `[your agents' mail]` on every turn while a mailbox is closed: the agent, that its
+  answers can't go back, and the truth about Mem (one Nowledge Mem; tasks elsewhere reach it through Ducter's
+  relay on the home, the same Mem); never promise what can't arrive, point the person at the row, never a task,
   never ask for a typed Space name (principle 21: a fact in what it sees, not a rule over words).
-- **Not yet**: the enable run once for real (it writes Mem-side; the author's step); an agent on the home
-  with a Mem config of its own apart from Ducter's (the home's own nmem is assumed to be the person's).
+- **Not yet**: the enable run once for real (it writes Mem-side; the author's step).
 
 ## Open questions
 

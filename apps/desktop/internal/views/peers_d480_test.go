@@ -6,28 +6,19 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 )
 
-// D480: the same rules as apps/web/test/d480.test.ts.
-func TestD480Apart(t *testing.T) {
-	devs := func(server string) []protocol.DeviceView {
-		return []protocol.DeviceView{{ID: "mac", Name: "MacBook Pro M3", Mem: &protocol.DeviceMemView{State: "ready", Server: server}}}
+// D480 round 2: the author's case (Claude Code on the Mac, its mailbox closed; every computer on the
+// one Mem, tasks there through the home's relay) is one way with the Space choice, never "another Mem".
+func TestD480AuthorsCase(t *testing.T) {
+	devs := []protocol.DeviceView{
+		{ID: "local", Name: "hel", Home: true},
+		{ID: "mac", Name: "MacBook Pro M3", Mem: &protocol.DeviceMemView{State: "ready", Carried: true}, Harnesses: []protocol.DeviceHarness{{Harness: "claude-code", Installed: true, LoggedIn: true, Mem: &protocol.MemPluginView{State: "installed"}}}},
 	}
-	row := func() []reachRow {
-		return []reachRow{{Harness: "claude-code", Tool: "Claude Code", Can: "yes", Device: "mac", Box: "closed"}}
+	rows := reachRows(devs, nil, nil, protocol.BridgeMailbox{Harness: "claude-code", Open: false})
+	if len(rows) != 1 || rows[0].Device != "mac" {
+		t.Fatalf("rows %+v", rows)
 	}
-	got := withApart(row(), devs("cloud.nowledge.co"), "hel.siwei.info")
-	if got[0].Theirs != "cloud.nowledge.co" || got[0].Ours != "hel.siwei.info" {
-		t.Fatalf("apart not marked: %+v", got[0])
-	}
-	if w := reachWays(got[0]); w != (ways{"no", "no", "server"}) {
-		t.Fatalf("ways %+v", w)
-	}
-	for _, c := range []struct{ theirs, ours string }{{"hel.siwei.info", "hel.siwei.info"}, {"", "hel.siwei.info"}, {"cloud.nowledge.co", ""}} {
-		if r := withApart(row(), devs(c.theirs), c.ours)[0]; r.Theirs != "" {
-			t.Fatalf("%+v: apart from an unknown or the same Mem", c)
-		}
-	}
-	if w := reachWays(row()[0]); w != (ways{"yes", "no", "mailbox"}) {
-		t.Fatalf("closed mailbox ways %+v", w)
+	if w := reachWays(rows[0]); w != (ways{"yes", "no", "mailbox"}) {
+		t.Fatalf("ways %+v: want one way with the mailbox fix", w)
 	}
 }
 

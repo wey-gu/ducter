@@ -32,14 +32,6 @@ type ways struct{ To, Back, Fix string }
 func reachWays(r reachRow) ways {
 	switch r.Can {
 	case "yes":
-		// D480: its own Mem is another server: neither way meets, whatever Space a mailbox opens in.
-		if r.Theirs != "" && r.Ours != "" {
-			w := ways{To: "no", Back: "no"}
-			if r.Device != "" {
-				w.Fix = "server"
-			}
-			return w
-		}
 		if r.Box == "closed" {
 			w := ways{To: "yes", Back: "no"}
 			if r.Device != "" {
@@ -320,31 +312,7 @@ func (a *App) peersReachRows() []reachRow {
 	if a.S.Bridge != nil {
 		boxes = a.S.Bridge.Mailboxes
 	}
-	rows := reachRows(a.S.Devices, a.S.OwnAgents, recentHandoffs(peerFeed(a.S.Channel, a.S.TaskPeers), 50), boxes...)
-	ours := ""
-	if a.S.Bridge != nil {
-		ours = a.S.Bridge.Server
-	}
-	return withApart(rows, a.S.Devices, ours)
-}
-
-// withApart marks the rows whose computer talks to another Mem server than the partner's (D480): a
-// fact both sides said (that computer's own Mem, the home's), never a guess when either is unknown.
-func withApart(rows []reachRow, devices []protocol.DeviceView, ours string) []reachRow {
-	if ours == "" {
-		return rows
-	}
-	for i, r := range rows {
-		if r.Can != "yes" || r.Device == "" {
-			continue
-		}
-		for _, d := range devices {
-			if d.ID == r.Device && d.Mem != nil && d.Mem.Server != "" && d.Mem.Server != ours {
-				rows[i].Theirs, rows[i].Ours = d.Mem.Server, ours
-			}
-		}
-	}
-	return rows
+	return reachRows(a.S.Devices, a.S.OwnAgents, recentHandoffs(peerFeed(a.S.Channel, a.S.TaskPeers), 50), boxes...)
 }
 
 // peersOn: the link is up (Agent messaging's connected phase).
@@ -391,9 +359,6 @@ func (a *App) peersSay() string {
 		return a.L.T("say.peers.both", a.listWords(toolsOf(both)))
 	case len(one) > 0:
 		return a.L.T("say.peers.oneway")
-	case len(apartOf(notYet)) > 0:
-		// D480: another Mem server is its own reason, never "needs the plugin".
-		return a.L.T("say.peers.apart", a.listWords(toolsOf(apartOf(notYet))))
 	case len(notYet) > 0:
 		return a.L.T("say.peers.notyet")
 	}
@@ -478,8 +443,6 @@ func (a *App) peerLinkRow(c *ui.Context, r reachRow, name string) {
 	choosing := a.mailboxChoosing != nil && a.mailboxChoosing.Device == r.Device && a.mailboxChoosing.Harness == r.Harness
 	why := ""
 	switch {
-	case w.Fix == "server":
-		why = a.L.T("peers.why.apart", where, r.Theirs, r.Ours)
 	case w.Fix == "mailbox" && opening:
 		why = a.L.T("peers.why.opening")
 	case w.Fix == "mailbox":
@@ -574,10 +537,6 @@ func (a *App) peerLinkRow(c *ui.Context, r reachRow, name string) {
 			switch {
 			case broken && !choosing:
 				if a.buttonFor(c, a.L.T("peers.fix.mailbox"), r.Tool, btnSecondary, t.ControlSM, t.Surface) {
-					a.chooseMailbox(r.Device, r.Harness)
-				}
-			case w.Fix == "server" && !choosing:
-				if a.buttonFor(c, a.L.T("peers.fix.server"), r.Tool, btnSecondary, t.ControlSM, t.Surface) {
 					a.chooseMailbox(r.Device, r.Harness)
 				}
 			case w.Fix == "install":

@@ -173,10 +173,9 @@ export interface CoreApi {
   homeDevice?(): { name: string; aliases?: string[]; harnesses?: { id: string; installed?: boolean; loggedIn: boolean; version?: string }[] } | undefined;
   /**
    * D480: facts about the person's own agents' mail, for the partner: Mem lists an agent's mailbox
-   * closed (box), or a computer's own Mem is another server than the partner's (apart: its host and
-   * the partner's), so nothing that agent sends there reaches the partner. Only what isn't whole.
+   * closed (box): it reaches the partner, the answers can't go back. Only what isn't whole.
    */
-  agentMail?(): { harness: string; device?: string; box?: "closed"; apart?: { theirs: string; ours: string } }[];
+  agentMail?(): { harness: string; box: "closed" }[];
   /** D477: the code Ducter knows is on each computer (device "local" for the home): the person's projects and the places tasks worked in, with origins when known. */
   codeOn?(): { device: string; name: string; remote?: string }[];
   /** D379: memories the partner's recall returned, read by code for who-does-which-work the person said. */
@@ -395,8 +394,6 @@ export interface BridgeLinkApi {
   setMailboxes?(list: { harness: string; open: boolean }[]): void;
   /** D480: the last list setMailboxes was given (undefined: never read). */
   mailboxesNow?(): { harness: string; open: boolean }[] | undefined;
-  /** D480: the Mem server the partner's own connection talks to (host), as the last look said. */
-  serverNow?(): string | undefined;
 }
 
 /** D334: one Space the home reads the partner's mailbox in, through its own local Agent Context. */
@@ -552,10 +549,7 @@ export interface WorkerInfo {
   /** D157: how it browses for tasks (its 上网), when it is on. */
   web?: "chrome" | "ducter";
   /** D157: it doesn't sleep. */
-  alwaysOn?: boolean;
-  /** D480: the Mem server its own Mem connection talks to (host), as its last look said. */
-  memServer?: string;
-}
+  alwaysOn?: boolean;}
 
 /** The main's handle on one worker. Stable across reconnects. */
 export interface WorkerLink {

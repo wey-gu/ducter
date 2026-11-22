@@ -4,7 +4,6 @@
 // line a device card shows per agent, and names the Mem plugin Ducter turns off inside its tasks
 // (D168: inside Ducter's tasks, memory comes from Ducter).
 import { HARNESS_FACTS } from "./harness-facts.ts";
-import { memHost as memHostOf } from "./mailbox.ts";
 import type { MemPluginView, MemPluginWhy } from "./index.ts";
 import { nmemEnv } from "./tool-env.ts";
 import { compareVersions, isVersion } from "./version.ts";
@@ -167,14 +166,10 @@ export function nmemInspectExec(env: Record<string, string | undefined>): Inspec
 
 // ---------- D480: an agent's mailbox, looked at on its own computer ----------
 
-/** What one computer's own Mem says for opening a mailbox there: its server, and Mem's passive setup (state and Spaces only). */
+/** What one computer's own Mem says for opening a mailbox there: signed in, and Mem's passive setup (state and Spaces only). */
 export interface MemBridgeLook {
   /** Signed in to a Mem there (`nmem status` answered healthy or ok). */
   signedIn: boolean;
-  /** Its Mem server's host (`status`.api_url). */
-  server?: string;
-  /** Mem's own word on the backend (cloud, local, remote, ...). */
-  backend?: string;
   /** The passive `bridge setup` answer, cut to state and candidates (nothing else leaves the computer). */
   setup?: { state?: string; candidates: unknown[] };
 }
@@ -191,8 +186,8 @@ const firstJson = (out: string): Record<string, unknown> | undefined => {
 };
 
 /**
- * D480: read-only, on the computer the agent runs on: `nmem --json status` (which Mem server this
- * computer's own connection uses) and Mem's passive `nmem --json bridge setup` (no Space, no context,
+ * D480: read-only, on the computer the agent runs on: `nmem --json status` (signed in or not)
+ * and Mem's passive `nmem --json bridge setup` (no Space, no context,
  * never --enable: it lists the Spaces and picks none). Undefined when nmem isn't there.
  */
 export async function inspectMemBridge(exec: InspectExec): Promise<MemBridgeLook | undefined> {
@@ -201,11 +196,9 @@ export async function inspectMemBridge(exec: InspectExec): Promise<MemBridgeLook
   if (st.code === 127 || st.code === -1) return undefined;
   const sj = st.code === 0 ? firstJson(st.out) : undefined;
   const signedIn = !!sj && (sj.status === "healthy" || sj.status === "ok");
-  const server = memHostOf(sj?.api_url);
-  const backend = typeof sj?.backend === "string" ? sj.backend : undefined;
-  if (!signedIn) return { signedIn, ...(server ? { server } : {}), ...(backend ? { backend } : {}) };
+  if (!signedIn) return { signedIn };
   const s = await exec([nmem, "--json", "bridge", "setup"], 30_000).catch(() => ({ code: -1, out: "" }));
   const j = firstJson(s.out);
   const setup = j ? { ...(typeof j.state === "string" ? { state: j.state } : {}), candidates: Array.isArray(j.candidates) ? j.candidates : [] } : undefined;
-  return { signedIn, ...(server ? { server } : {}), ...(backend ? { backend } : {}), ...(setup ? { setup } : {}) };
+  return { signedIn, ...(setup ? { setup } : {}) };
 }

@@ -1,12 +1,12 @@
 // D480: an agent's Nowledge Mem mailbox, its Space chosen in place. Mem's passive setup lists the
 // Spaces and picks none (its rule); Ducter recommends the Space its partner listens in, the person's
 // tap chooses, and the task that opens it is told that exact Space, so it never asks for a name.
-// An agent whose computer talks to another Mem server than the partner's is said as a fact.
+// Round 2: nothing compares Mem servers (the home's relay is the same Mem as the cloud behind it).
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { mailboxChoice, memApart, memHost, type TaskCard } from "@ducter/protocol";
+import { mailboxChoice, type TaskCard } from "@ducter/protocol";
 import { inspectMemBridge, type MemBridgeLook } from "@ducter/protocol/src/mem-plugins.ts";
 import { renderAgentMail } from "../../partner/src/partner.ts";
 import { createMemPlugins, memSetupBrief } from "../src/mem-plugins.ts";
@@ -44,16 +44,7 @@ describe("the choice is Mem's list, with Ducter's suggestion first (D480)", () =
   });
 });
 
-describe("two Mems are a fact both sides said (D480)", () => {
-  test("hosts from Mem's API URLs; apart only when both are known and differ", () => {
-    expect(memHost("https://cloud.nowledge.co/remote-api")).toBe("cloud.nowledge.co");
-    expect(memHost("http://127.0.0.1:14242")).toBe("127.0.0.1:14242");
-    expect(memHost("not a url")).toBeUndefined();
-    expect(memApart("cloud.nowledge.co", "hel.siwei.info")).toBe(true);
-    expect(memApart("hel.siwei.info", "hel.siwei.info")).toBe(false);
-    expect(memApart(undefined, "hel.siwei.info")).toBe(false);
-    expect(memApart("cloud.nowledge.co", undefined)).toBe(false);
-  });
+describe("the look on that computer (D480)", () => {
   test("the look on a computer runs only nmem's status and the passive setup, and passes on state and Spaces only", async () => {
     const ran: string[][] = [];
     const exec = async (argv: string[]) => {
@@ -64,7 +55,8 @@ describe("two Mems are a fact both sides said (D480)", () => {
     const got = await inspectMemBridge(exec);
     expect(ran).toEqual([["--json", "status"], ["--json", "bridge", "setup"]]);
     expect(ran.flat()).not.toContain("--enable");
-    expect(got).toEqual({ signedIn: true, server: "cloud.nowledge.co", backend: "cloud", setup: { state: "selection_needed", candidates: SETUP.candidates } });
+    // Round 2: no server is passed on (an API URL names a relay as readily as a Mem).
+    expect(got).toEqual({ signedIn: true, setup: { state: "selection_needed", candidates: SETUP.candidates } });
     // Not signed in: the setup isn't asked.
     const out = await inspectMemBridge(async () => ({ code: 1, out: "" }));
     expect(out).toEqual({ signedIn: false });
@@ -98,17 +90,12 @@ describe("the look and the open, in core (D480)", () => {
     });
     return { mp, opened };
   };
-  test("same Mem: the Spaces, the partner's suggested", async () => {
-    const { mp } = make({ signedIn: true, server: "hel.siwei.info", setup: SETUP });
-    const look = await mp.mailboxLook("mac", "claude-code", { space: "personal-4e74", server: "hel.siwei.info" });
+  test("the author's case: the Spaces, the partner's suggested, never another Mem", async () => {
+    const { mp } = make({ signedIn: true, setup: SETUP });
+    const look = await mp.mailboxLook("mac", "claude-code", { space: "personal-4e74" });
     expect(look.state).toBe("choose");
     expect(look.recommend).toBe("personal-4e74");
     expect(look.spaces?.length).toBe(6);
-    mp.stop();
-  });
-  test("another Mem: said, with no Spaces to pick (none would reach the partner)", async () => {
-    const { mp } = make({ signedIn: true, server: "cloud.nowledge.co", setup: SETUP });
-    expect(await mp.mailboxLook("mac", "claude-code", { space: "personal-4e74", server: "hel.siwei.info" })).toEqual({ state: "apart", theirs: "cloud.nowledge.co", ours: "hel.siwei.info" });
     mp.stop();
   });
   test("away, too old, not signed in", async () => {
@@ -139,13 +126,12 @@ describe("the look and the open, in core (D480)", () => {
 });
 
 describe("the partner is told what can't arrive (D480)", () => {
-  test("a closed mailbox and another Mem, as facts, with where the person fixes them", () => {
-    const s = renderAgentMail([
-      { harness: "claude-code", box: "closed" },
-      { harness: "codex", device: "MacBook Pro M3", apart: { theirs: "cloud.nowledge.co", ours: "hel.siwei.info" } },
-    ]);
+  test("a closed mailbox as a fact, the one Mem and the relay said truthfully, and where the person fixes it", () => {
+    const s = renderAgentMail([{ harness: "claude-code", box: "closed" }]);
     expect(s).toContain("Claude Code: Nowledge Mem lists its mailbox closed");
-    expect(s).toContain("Codex on MacBook Pro M3: that computer's own Nowledge Mem is cloud.nowledge.co, yours is hel.siwei.info");
+    expect(s).toContain("share one Nowledge Mem");
+    expect(s).toContain("through Ducter's relay on the home: the same Mem, not another one");
+    expect(s).not.toMatch(/two different|another server|hel\.siwei|cloud\.nowledge/);
     expect(s).toContain("Never promise a reply");
     expect(s).toContain("never ask them to type a Space name");
     expect(renderAgentMail([])).toBe("");

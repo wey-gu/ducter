@@ -1,13 +1,12 @@
-// D480: a demo core for opening an agent's Nowledge Mem mailbox in place. The home is the server hel
-// (the partner listens on hel's own Nowledge Mem, in the person's "Only me" Space); the person's
+// D480: a demo core for opening an agent's Nowledge Mem mailbox in place. The home is the server hel,
+// signed in to the person's one Nowledge Mem (Nowledge Cloud; the partner listens in "Only me"); the person's
 // MacBook Pro M3 is a computer for tasks with Claude Code and Codex, Mem's plugin in both. No nmem
 // runs: scripted stand-ins answer the read-only checks as nmem 0.10.122 would (the Spaces are the
 // author's own list, 2026-11-22), and the Mac is a pretend worker over the real socket.
 //   DUCTER_PORT=7481 DUCTER_DATA_DIR=$(mktemp -d) DEMO_LANG=zh DEMO_STAGE=choose bun apps/web/demo-d480.ts
 // DEMO_STAGE:
 //   choose  Codex reaches the partner both ways; Claude Code reaches it but Mem lists its mailbox closed.
-//           The Mac's own Mem is hel's too, so 打开它的信箱 offers the Spaces.
-//   apart   the Mac's own Mem is Nowledge Cloud while the partner listens on hel: two Mems.
+//           Every computer is on the same Nowledge Mem, so 打开它的信箱 offers the Spaces.
 //   card    as choose, with D470's mailbox task stopped on its question to the person (what the author
 //           met: a Space name to type, and four buttons).
 import { startCore, stubRunner } from "./demo-core.ts";
@@ -16,8 +15,7 @@ import { noOo } from "./demo-oo.ts";
 const zh = (process.env.DEMO_LANG ?? "zh") === "zh";
 const stage = process.env.DEMO_STAGE ?? "choose";
 const SPACE = "personal-7d1e0c2a";
-const HEL = "https://hel.siwei.info/remote-api";
-const CLOUD = "https://cloud.nowledge.co/remote-api";
+const CLOUD = "https://cloud.nowledge.co/remote-api"; // the author's one Mem: the home and the Mac alike (D480 round 2)
 const MAC = "MacBook Pro M3";
 const ok = (j: unknown) => ({ code: 0, out: JSON.stringify(j), err: "" });
 // The author's Spaces as Mem's passive setup lists them (ids shortened where they carry a member id).
@@ -38,7 +36,7 @@ const run = async (args: string[]) => {
   if (args[0] === "--version") return ok("nmem 0.10.122");
   if (a.includes("bridge connections --help")) return { code: 0, out: "", err: "" };
   if (a.includes("connections list --help")) return { code: 0, out: "", err: "" };
-  if (a === "status") return ok({ status: "ok", backend: "remote", mode: "remote", api_url: HEL });
+  if (a === "status") return ok({ status: "ok", backend: "cloud", mode: "remote", api_url: CLOUD });
   if (a === "bridge setup") return ok({ state: "selection_needed", candidates });
   if (a.includes("connections connect")) {
     conn.client_label = args[args.indexOf("--context") + 1] ?? "ducter";
@@ -70,10 +68,9 @@ core.persona.mem = { agentId: "ducter", owned: true };
 core.settings.setMemState("connected");
 core.settings.set({ language: zh ? "zh" : "en" });
 void core.bridgeLink.connect();
-if (stage !== "apart") core.bridgeLink.setMailboxes?.([{ harness: "codex", open: true }, { harness: "claude-code", open: false }]);
+core.bridgeLink.setMailboxes?.([{ harness: "codex", open: true }, { harness: "claude-code", open: false }]);
 
-// The Mac, a pretend worker: its own Mem is hel's (choose, card) or Nowledge Cloud (apart).
-const macServer = stage === "apart" ? "cloud.nowledge.co" : "hel.siwei.info";
+// The Mac, a pretend worker on the same Nowledge Cloud; Ducter's tasks there reach it through the home's relay (D393, carried).
 const w = core.devices.redeem(core.devices.createCode({ kind: "worker" }).code, { name: MAC, platform: "darwin-arm64", computer: MAC } as never) as { token: string };
 const ws = new WebSocket(`ws://127.0.0.1:${core.port}/worker`, { headers: { "x-forwarded-for": "203.0.113.9", authorization: `Bearer ${w.token}` } } as never);
 await new Promise<void>((r) => (ws.onopen = () => r()));
@@ -82,7 +79,7 @@ ws.onmessage = (m) => {
   if (f.t !== "req") return;
   const reply = (result: unknown) => ws.send(JSON.stringify({ t: "res", id: f.id, ok: true, result }));
   if (f.op === "mem_plugins") return reply({ "claude-code": { state: "installed", version: "0.7.37" }, codex: { state: "installed", version: "0.7.37" } });
-  if (f.op === "mem_bridge_look") return reply({ signedIn: true, server: macServer, backend: stage === "apart" ? "cloud" : "remote", setup: { state: "selection_needed", candidates } });
+  if (f.op === "mem_bridge_look") return reply({ signedIn: true, setup: { state: "selection_needed", candidates } });
   reply(null);
 };
 ws.send(
@@ -97,7 +94,7 @@ ws.send(
       { id: "claude-code", installed: true, loggedIn: true, version: "2.1.322", how: "installer" },
       { id: "codex", installed: true, loggedIn: true, version: "0.169.1", how: "npm" },
     ],
-    mem: { state: "ready", version: "0.10.122", agents: ["claude-code", "codex"], server: macServer },
+    mem: { state: "ready", version: "0.10.122", agents: ["claude-code", "codex"], carried: true },
   }),
 );
 await Bun.sleep(300);

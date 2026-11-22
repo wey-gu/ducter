@@ -1480,13 +1480,11 @@ type MailboxLookReq struct {
 }
 
 // MailboxLook is what the in-place choice shows for one agent's mailbox (D480, packages/protocol/src/mailbox.ts):
-// choose (Spaces, Recommend), apart (Theirs and Ours, Mem servers' hosts), no_mem, away, old, failed.
+// choose (Spaces, Recommend), no_mem, away, old, failed.
 type MailboxLook struct {
 	State     string         `json:"state"`
 	Spaces    []MailboxSpace `json:"spaces,omitempty"`
 	Recommend string         `json:"recommend,omitempty"`
-	Theirs    string         `json:"theirs,omitempty"`
-	Ours      string         `json:"ours,omitempty"`
 	Detail    string         `json:"detail,omitempty"`
 }
 
@@ -1982,8 +1980,6 @@ type BridgeView struct {
 	// D444: Mailboxes, on "connected": the person's own agents in Mem's
 	// grouped contact list, by tool, and whether each mailbox takes messages.
 	Mailboxes []BridgeMailbox `json:"mailboxes,omitempty"`
-	// D480: Server, the Mem server the partner's own connection talks to (host).
-	Server string `json:"server,omitempty"`
 }
 
 // BridgeMailbox is one tool's mailbox as Mem's contact list says (D444).
@@ -2397,8 +2393,6 @@ type DeviceMemView struct {
 	// connection; this computer's own Mem then concerns only the person's own
 	// sessions there, offered quietly.
 	Carried bool `json:"carried,omitempty"`
-	// D480: Server, the Mem server this computer's own Mem connection talks to (host).
-	Server string `json:"server,omitempty"`
 }
 
 // DeviceMemTheirs is the person's own Mem command line on a computer for

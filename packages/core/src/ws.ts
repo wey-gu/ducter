@@ -1288,7 +1288,7 @@ export function createWsHandler(deps: WsDeps) {
         const mp = deps.memPlugins?.();
         if (!mp) return send(ws, { t: "mailbox_look", device, harness, look: { state: "failed" } });
         const b = await deps.bridgeLink?.view().catch(() => undefined);
-        const look = await mp.mailboxLook(device, harness, { ...(b?.space ? { space: b.space.id } : {}), ...(b?.server ? { server: b.server } : {}) });
+        const look = await mp.mailboxLook(device, harness, b?.space ? { space: b.space.id } : {});
         return send(ws, { t: "mailbox_look", device, harness, look });
       }
       case "anywhere_setup": {

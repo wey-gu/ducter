@@ -2,7 +2,6 @@ package views
 
 import (
 	"strconv"
-	"strings"
 
 	"github.com/egoist/mygo/ui"
 
@@ -13,8 +12,7 @@ import (
 // MailboxChoice in memory.tsx). Nowledge Mem's Bridge needs an explicit Space and never picks one
 // silently, so the person's real Spaces are the choices, the suggested one (the Space the partner
 // already listens in) chosen and said why in one line, the others one tap away; one tap opens it.
-// Never a typed name. When the agent's computer talks to another Mem server than the partner's, the
-// fix for that instead (no Space would help).
+// Never a typed name.
 
 // mailboxChoice is the choice open under one agent's row.
 type mailboxChoice struct {
@@ -24,19 +22,6 @@ type mailboxChoice struct {
 	// Pick is the Space chosen so far (the suggested one first); More: the other Spaces shown.
 	Pick string
 	More bool
-	// Link is the connect prompt pasted for the same-Mem fix (never sent anywhere else).
-	Link string
-}
-
-// apartOf is the rows whose computer talks to another Mem server than the partner's.
-func apartOf(rows []reachRow) []reachRow {
-	var out []reachRow
-	for _, r := range rows {
-		if r.Theirs != "" && r.Ours != "" {
-			out = append(out, r)
-		}
-	}
-	return out
 }
 
 // chooseMailbox opens the choice under that agent's row and asks that computer's Mem (read only).
@@ -103,22 +88,6 @@ func (a *App) mailboxChoice(c *ui.Context, r reachRow, where string) {
 		switch {
 		case look == nil:
 			lede(a.L.T("mailbox.looking", where))
-		case look.State == "apart" && look.Theirs != "" && look.Ours != "":
-			uiText(c, a.L.T("mailbox.same.title")).FontSize(t.SM).FontWeight(700).TextColor(t.Ink)
-			lede(a.L.T("mailbox.same.how", where, look.Ours))
-			lede(a.L.T("mailbox.same.then", where, look.Ours, look.Theirs))
-			v := ch.Link
-			ui.TextArea(c.Key("mb-link"), &v).Lines(2, 4).Placeholder(a.L.T("wmem.signin.ph")).Label(a.L.T("wmem.signin.link")).
-				FontSize(t.SM).Padding(t.S2, t.S3).Radius(t.RadiusSM).Background(t.SurfaceSunken).Border(1, t.LineSoft)
-			ch.Link = v
-			ui.Row(c.Key("mb-acts")).Gap(t.S2).Wrap().AlignItems(ui.Center).Children(func() {
-				if a.buttonFor(c, a.L.T("mailbox.same.go"), where, btnPrimary, t.ControlSM, t.Bg) && strings.TrimSpace(v) != "" {
-					a.wm.answer = nil
-					a.send(protocol.MemSetupReq{T: "mem_setup", Device: r.Device, Action: "connect", Link: strings.TrimSpace(v)})
-					a.mailboxChoosing = nil
-				}
-				not()
-			})
 		case look.State != "choose" || len(look.Spaces) == 0:
 			k := look.State
 			if k == "choose" {

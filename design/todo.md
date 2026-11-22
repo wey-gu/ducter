@@ -17,7 +17,15 @@ line.
   Mac; the task on hel, cloned there, Antigravity, nothing said about failures. Trigger: the next release.
 - **Live tasks and quotas in the world** (each live task's agent, computer, state and why it stopped; each
   agent's allowance as `limits.ts` knows it). Trigger: phase 2b; `wp-quota-switch-zh` still fails without it.
-- **Supersede by `replaces`**, not by title overlap (`mend.ts` supersede). Trigger: phase 2b.
+- **Antigravity live on hel (D479).** One Antigravity task on hel with Ducter's tools after the schema
+  fix: its first call goes through, a tool with no arguments (`saved_list`, `phone_apps`) is called
+  once (INFERRED that agy sends no `parameters` for one), a `wait_for` with a check arms, and the
+  verified range widens to 1.5.14 with the probe. Also 「再试试」 on a task that couldn't start in a
+  missing folder: nothing sent back there, the work opened again on hel with `replaces`. Trigger:
+  the next release on hel.
+- **Gemini's limits for pi's partner (D479).** pi with a Google model as the partner is INFERRED to
+  meet Gemini's limits; run the eval once on it when a Google key is at hand. Trigger: a person
+  choosing a Gemini model for pi.
 - **Retire the meaning classifiers** in research/206 §2.1's table, each with a world puzzle first:
   `PROMISE_RE`, `ASKS_NEW`, `OWN_ACCOUNT`, `stripResultPlumbing`, `effortFromWords`, said.ts, then
   standing.ts behind the D61 floor with its own eval. Trigger: phase 2b, one per change, full eval each.
@@ -2862,7 +2870,6 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - **The partner's own failures counted.** `ducter repairs` counts tasks only; add the partner's turns that timed out, sessions rebuilt, D435 holds and D402 stops per week. *Trigger:* the next robustness pass, or a week where the person had to repeat a message.
 - **A partner turn that timed out is re-run by itself** (today the watchdog interrupts and the words wait for the next turn). *Trigger:* one live case of a message left unanswered after a timeout.
 - **Phone and capability blocks handed on.** Research/205's 7 phone tasks and 3 capability blocks were real asks, but some had another way (another phone, the partner doing the step with its own connection, D446's hand-over). Give them a typed hand-over like a stall. *Trigger:* after D446's live check.
-- **Superseding by more than the title.** The task set aside after a hand-over is matched by a title overlap within 30 minutes; a `replaces` argument on `task_open` would be exact (a partner tool change: two haiku runs, D175). *Trigger:* one wrong or missed supersede.
 - **A live run.** The ladder has run on fakes only. *Trigger:* the next release on the author's home: read `ducter repairs --weeks 1` a week later and compare with research/205's 0 of 3.
 
 ## Opening the page never blank (D474)

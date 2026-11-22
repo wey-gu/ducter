@@ -31,6 +31,11 @@ export interface CoreMcpHub extends McpHub {
   tools(role: Role): string[];
   /** What tools/list answers this caller now (a tool's `visible` decides). */
   listed(ctx: Ctx): string[];
+  /**
+   * D479: every tool's schema as an agent would be handed it, listed or not, other partners' own
+   * included: what the schema-limits test checks against every agent's model (harness-facts).
+   */
+  schemas(): { role: Role; name: string; inputSchema: object }[];
   /** A tool listed only while `visible` holds for the caller (e.g. connection tools for tasks). */
   registerWhen(role: Role, name: string, description: string, inputSchema: object | (() => object), handler: ToolHandler, visible: (ctx: Ctx) => boolean): void;
   /** Calls a tool in-process, exactly as an MCP client would (tests, stubs). */
@@ -57,7 +62,8 @@ export function checkArgs(tool: string, schema: object, args: unknown) {
   const bad = s.required.filter((k) => {
     const v = a[k];
     if (v === undefined || v === null) return true;
-    return s.properties?.[k]?.type === "string" && (typeof v !== "string" || !v.trim());
+    // D479: a JSON-text field (tool-schema.ts jsonText) may come as the object itself.
+    return s.properties?.[k]?.type === "string" && (typeof v === "string" ? !v.trim() : typeof v !== "object");
   });
   if (!bad.length) return;
   const expected = Object.keys(s.properties ?? {}).map((k) => (s.required!.includes(k) ? k : `${k}?`));
@@ -180,6 +186,11 @@ export function createMcpHub(opts: { secret: string; port?: number; version?: st
     listed: (raw) => {
       const ctx = withPersona(raw);
       return [...toolsFor(ctx)].filter(([, t]) => !t.visible || t.visible(ctx)).map(([name]) => name);
+    },
+    schemas: () => {
+      const out: { role: Role; name: string; inputSchema: object }[] = [];
+      for (const reg of [registry, ...own.values()]) for (const role of ["partner", "task"] as const) for (const [name, t] of reg[role]) out.push({ role, name, inputSchema: schemaOf(t) });
+      return out;
     },
     call,
     setTaskPersona: (fn) => void (taskPersona = fn),

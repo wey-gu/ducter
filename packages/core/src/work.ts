@@ -10,6 +10,7 @@ import { langOfText } from "./lang.ts";
 import { urlArgv, WATCH_MAX_ITEMS } from "@ducter/protocol/src/watch.ts";
 import type { LogStore, Runner, WorkerLinks } from "@ducter/protocol/src/internal.ts";
 import { CHECK_MAX_OUTPUT, describeCheck, describePredicate, validateCheck } from "@ducter/protocol/src/checks.ts";
+import { jsonArg, jsonText } from "@ducter/protocol/src/tool-schema.ts";
 import { runCheck, type CheckResult, type Exec } from "@ducter/protocol/src/checks-run.ts";
 import { realClock, type Clock } from "./clock.ts";
 import type { ConnectionsStore } from "./connections.ts";
@@ -239,6 +240,19 @@ export function createWork(o: WorkOptions): Work {
   });
 
   // ---------- tools ----------
+  // D479: inside every model family's schema limits (protocol/src/tool-schema.ts): Gemini refused
+  // `oneOf: {type: "array"}` with no items, and so every Antigravity task. A value to match is
+  // text: the check compares values as text too, so 200, true and null match "200", "true", "null".
+  const S = { type: "string" } as const;
+  /** The fields of a predicate, bare (failWhen and a routine's check say them again without words). */
+  const predicateBare = { exitCode: { type: "number" }, path: S, equals: S, oneOf: { type: "array", items: S }, contains: S, matches: S, any: { type: "boolean" } };
+  const predicateProps = {
+    ...predicateBare,
+    path: { type: "string", description: 'JSON path into stdout; "[]" maps over an array (every item must match unless any)' },
+    equals: { type: "string", description: "As text (200, true, null match as text)" },
+  };
+  /** A check's shape without its examples: where a description elsewhere already says how. */
+  const checkBare = { type: "object", properties: { argv: { type: "array", items: S }, device: S, cwd: S, succeedWhen: { type: "object", properties: predicateBare }, failWhen: { type: "object", properties: predicateBare } }, required: ["argv", "succeedWhen"] };
   const checkSchema = {
     type: "object",
     description:
@@ -250,20 +264,10 @@ export function createWork(o: WorkOptions): Work {
       argv: { type: "array", items: { type: "string" } },
       device: { type: "string", description: 'Where it runs; default the task\'s device, else "local"' },
       cwd: { type: "string" },
-      succeedWhen: {
-        type: "object",
-        properties: {
-          exitCode: { type: "number" },
-          path: { type: "string", description: 'JSON path into stdout; "[]" maps over an array (every item must match unless any)' },
-          equals: {},
-          oneOf: { type: "array" },
-          contains: { type: "string" },
-          matches: { type: "string" },
-          any: { type: "boolean" },
-        },
-      },
+      succeedWhen: { type: "object", properties: predicateProps },
       failWhen: {
         type: "object",
+        properties: predicateBare,
         description: 'Same shape as succeedWhen: what shows it can no longer come true, so the wait ends instead of looking on. PR checks: {"path":"[].state","oneOf":["FAILURE","ERROR","CANCELLED"],"any":true}. Give unmetSays with it.',
       },
     },
@@ -273,7 +277,7 @@ export function createWork(o: WorkOptions): Work {
     type: "object",
     description:
       'New items from one of the user\'s OpenConnector triggers, e.g. new mail {"connection":"OOMOL","service":"gmail","trigger":"gmail.on_message_received","contains":"renew"}. Use with judge when only meaning can tell (is this the renewal email?).',
-    properties: { connection: { type: "string" }, service: { type: "string" }, trigger: { type: "string" }, config: { type: "object" }, contains: { type: "string" } },
+    properties: { connection: { type: "string" }, service: { type: "string" }, trigger: { type: "string" }, config: jsonText("The trigger's config, when its guide asks for one"), contains: { type: "string" } },
     required: ["connection", "service", "trigger"],
   };
 
@@ -318,6 +322,14 @@ export function createWork(o: WorkOptions): Work {
   const waitFor = async (a: { reason?: string; taskId?: string; check?: CheckSpec; event?: EventSpec; judge?: string; everyMinutes?: number; untilISO?: string; unmetSays?: string; afterMinutes?: number; atISO?: string }, ctx: { role: string; taskId?: string }) => {
     const taskId = ctx.role === "task" ? ctx.taskId : a.taskId;
     const reason = String(a.reason ?? "").trim();
+    if (a.event) {
+      try {
+        const config = jsonArg(a.event.config, "event.config");
+        a = { ...a, event: { ...a.event, ...(config ? { config } : { config: undefined }) } };
+      } catch (err) {
+        return { ok: false, error: (err as Error).message };
+      }
+    }
     if (!reason) return { ok: false, error: "wait_for needs reason: the condition in the user's words (在等 PR #1592 通过 / PR #1592 passes)." };
     // D267: a task's own timer ("look again in 45 minutes"): the task rests on Waiting and this
     // wakes it, durable across restarts; it is what a harness's own /loop or wakeup would do.
@@ -411,7 +423,7 @@ export function createWork(o: WorkOptions): Work {
     "partner",
     "keep_going",
     'Make a task keep going until a condition holds: "一直修到 CI 绿" / "keep fixing until CI is green". After each of its turns the condition is judged (by check when given, else a cheap model over its report); if it doesn\'t hold yet, the next try starts by itself. Stops at the condition, maxTries (default 20), 3 tries without progress, or going in circles; then the user is asked. Open the task first (task_open), then call this with its id. Say it once in one line.',
-    { type: "object", properties: { taskId: { type: "string" }, condition: { type: "string", description: "In the user's words" }, check: checkSchema, maxTries: { type: "number" } }, required: ["taskId", "condition"] },
+    { type: "object", properties: { taskId: { type: "string" }, condition: { type: "string", description: "In the user's words" }, check: { ...checkBare, description: "Like wait_for's check" }, maxTries: { type: "number" } }, required: ["taskId", "condition"] },
     async (a: { taskId: string; condition: string; check?: CheckSpec; maxTries?: number }) => {
       try {
         const u = untils.start({ taskId: String(a.taskId), condition: String(a.condition ?? ""), ...(a.check ? { check: a.check } : {}), ...(a.maxTries ? { maxTries: a.maxTries } : {}) });
@@ -427,6 +439,49 @@ export function createWork(o: WorkOptions): Work {
       'Time: {"kind":"time","every":"week","days":[1],"time":"09:00","zone":"personal","tz":"Asia/Shanghai"} (every: day | weekday | week (days 0=Sun..6) | month (dayOfMonth) | hours (hours)); zone "personal" for the user\'s own rhythm (follows them when they travel), "world" for things pinned to a place (market open, a team standup). ' +
       'Condition: {"kind":"condition","condition":"hawdb 的 nightly 挂了","check":{…},"everyMs":3600000} or with event/judge like wait_for. Fires each time it turns true. ' +
       'When something changes (no model, nothing spent until it does; the run is told what is new, updated, gone): {"kind":"condition","condition":"~/inbox 里有新文件","watch":{"files":["~/inbox"]},"everyMs":900000}; watch is one of files, argv (a reading command), url, tool {connection,action,input}; for a JSON list add path and key (fields naming an item).',
+    // D479: every field named, so each model family can hold it (Gemini refuses an object with none).
+    properties: {
+      kind: { type: "string", enum: ["time", "condition"] },
+      every: { type: "string", enum: ["day", "weekday", "week", "month", "hours", "once"] },
+      date: { type: "string" },
+      days: { type: "array", items: { type: "number" } },
+      dayOfMonth: { type: "number" },
+      hours: { type: "number" },
+      time: { type: "string" },
+      zone: { type: "string", enum: ["personal", "world"] },
+      tz: { type: "string" },
+      condition: { type: "string" },
+      check: checkBare,
+      event: { type: "object", properties: { connection: S, service: S, trigger: S, config: S, contains: S }, required: ["connection", "service", "trigger"] },
+      judge: S,
+      watch: {
+        type: "object",
+        properties: {
+          files: { type: "array", items: { type: "string" } },
+          argv: { type: "array", items: { type: "string" } },
+          cwd: { type: "string" },
+          device: { type: "string" },
+          url: { type: "string" },
+          tool: { type: "object", properties: { connection: { type: "string" }, action: { type: "string" }, input: jsonText("The action's input"), account: { type: "string" } }, required: ["connection", "action"] },
+          path: { type: "string" },
+          key: { type: "array", items: { type: "string" } },
+          fields: { type: "array", items: { type: "string" } },
+        },
+      },
+      everyMs: { type: "number" },
+    },
+    required: ["kind"],
+  };
+  /** D479: the trigger's free-form parts (an event's config, a watched action's input) come as JSON text. */
+  const triggerArgs = (t: RoutineTrigger): RoutineTrigger => {
+    if (t?.kind !== "condition") return t;
+    const config = t.event ? jsonArg(t.event.config, "trigger.event.config") : undefined;
+    const input = t.watch?.tool ? jsonArg(t.watch.tool.input, "trigger.watch.tool.input") : undefined;
+    return {
+      ...t,
+      ...(t.event ? { event: { ...t.event, config } } : {}),
+      ...(t.watch?.tool ? { watch: { ...t.watch, tool: { ...t.watch.tool, input } } } : {}),
+    };
   };
   mcp.register(
     "partner",
@@ -439,7 +494,12 @@ export function createWork(o: WorkOptions): Work {
         trigger: triggerSchema,
         triggerWords: { type: "string", description: "The trigger in the user's words and language (每周一 9:00 · 跟着你的时区)" },
         brief: { type: "string", description: "What each run does, self-contained (no reference to this conversation), with done-criteria" },
-        place: { type: "object", description: "Where each run works (like task_open's place); omit for none" },
+        place: {
+          type: "object",
+          description: "Where each run works (like task_open's place); omit for none",
+          properties: { kind: { type: "string", enum: ["none", "repo", "folder", "browser"] }, device: { type: "string" }, repoPath: { type: "string" }, remote: { type: "string" }, path: { type: "string" }, profile: { type: "string" } },
+          required: ["kind"],
+        },
         reports: { type: "string", enum: ["every", "on_change", "needs_you"], description: "every for digests and reports the user asked for; on_change for watchers" },
         effect: { type: "string", enum: ["read_only", "drafts", "local_writes"], description: "What runs may touch; default read_only" },
         monthTokens: { type: "number", description: "Monthly token cap; default 2,000,000" },
@@ -447,6 +507,11 @@ export function createWork(o: WorkOptions): Work {
       required: ["name", "trigger", "brief"],
     },
     async (a: { name: string; trigger: RoutineTrigger; triggerWords?: string; brief: string; place?: Place; reports?: "every" | "on_change" | "needs_you"; effect?: "read_only" | "drafts" | "local_writes"; monthTokens?: number }) => {
+      try {
+        a = { ...a, trigger: triggerArgs(a.trigger) };
+      } catch (err) {
+        return { ok: false, error: (err as Error).message };
+      }
       const unwatchable = a.trigger?.kind === "condition" && a.trigger.event ? eventRefusal(a.trigger.event) : undefined;
       if (unwatchable) return { ok: false, error: unwatchable };
       try {

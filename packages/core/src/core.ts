@@ -15,6 +15,7 @@ import { randomBytes } from "node:crypto";
 import { APP_SANDBOX, appCsp, HARNESSES, MEM_CONNECT_TOOLS, fill, harnessName, normalizeTag, sameComputer, pickTag, words, type Bodies, type HarnessId, type LangTag, type LogEvent, type OnHand, type PartnerAsk, type Place, type TaskCard, type TaskNeeds } from "@ducter/protocol";
 import { intlLocale, talkLang } from "./lang.ts";
 import type { CoreApi, ListedModel, MemIdentity, MemLookPort, Partner, Runner, TaskMemoryPort } from "@ducter/protocol/src/internal.ts";
+import { jsonArg } from "@ducter/protocol/src/tool-schema.ts";
 import { migrateKeys, readKeys, scrubKeysFromEnv } from "@ducter/protocol/src/keys.ts";
 import { realClock, type Clock } from "./clock.ts";
 import { createDecisions, forwardFrom, type Decisions } from "./decisions.ts";
@@ -841,7 +842,14 @@ export function startCore(opts: CoreOptions = {}): Core {
     async (args, ctx) => {
       if (!ctx.taskId) throw new Error("app_data requires a task token");
       const a = args as { app?: unknown; set?: unknown };
-      const r = apps.fill(String(a.app ?? ""), ctx.taskId, (a.set ?? {}) as Record<string, unknown>);
+      // D479: the keys come as JSON text (a schema every model family can hold).
+      let set: Record<string, unknown>;
+      try {
+        set = jsonArg(a.set, "set") ?? {};
+      } catch (err) {
+        return { ok: false, error: (err as Error).message };
+      }
+      const r = apps.fill(String(a.app ?? ""), ctx.taskId, set);
       return r.ok ? `Kept: ${r.keys.join(", ")}. Every device with the app open shows it now. Now wait_for the next round and end your turn.` : r.error;
     },
     (ctx) => !!ctx.taskId && apps.byTask(ctx.taskId).some((m) => !m.kind),

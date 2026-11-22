@@ -580,6 +580,17 @@ what it recorded.
   with the pointer to `[devices]`, never a guessed path and never a name match.
 - **Never a move by itself:** Ducter's own mends no longer start the work on another computer that
   has a copy; that is the partner's call, from the facts, within the person's word.
+- **A retry goes through the same placement (D479).** hel, 2026-11-22: 「再试试」 replying to an old
+  task (opened before `where` was recorded) that couldn't start in /root/dev/mem: task_send sent it
+  back to that missing folder, it failed again, and the partner said hel had a Mem repository (it
+  had none). Now a task that couldn't start on its place (`no_folder`, `no_repo`, `clone_failed`)
+  is checked like a new open before anything is sent; when its place still doesn't hold, nothing
+  is sent and the partner hears the facts and the verb: task_open with `replaces` (the old task's
+  word on where carries over), `place.remote` and `place.device`. The task it replaces is recorded
+  on the new one and, when it had failed, set aside as superseded (no title comparison). Every
+  task_open result says where it opened, as a fact (`opened`: the computer by name, the folder,
+  what is cloned there first), and a send to a finished task says where it goes back to work
+  (`backTo`), so the partner has nothing to claim beyond them.
 
 **When it still can't start** (a folder removed between the check and the start): the runner asks
 core why (`places.cantStart`), and the card says **没能开始：{computer} 上没有 {repo} 的代码 /

@@ -7,6 +7,7 @@
 import { randomBytes } from "node:crypto";
 import { APP_TASK_KEYS_PER_CALL, BOARD_OFFER_AFTER, type AppMeta, type Bodies, type ReviewBoard } from "@ducter/protocol";
 import type { LogStore } from "@ducter/protocol/src/internal.ts";
+import { jsonText } from "@ducter/protocol/src/tool-schema.ts";
 import type { AppsStore } from "./apps.ts";
 import { REVIEW_BOARD_HTML, REVIEW_BOARD_NAME } from "./review-board.ts";
 
@@ -160,7 +161,7 @@ export const APP_DATA_SCHEMA = {
   type: "object",
   properties: {
     app: { type: "string", description: "The app's id (from the message that gave it to you)" },
-    set: { type: "object", description: `Keys to write, each a whole JSON value (null removes the key); at most ${APP_TASK_KEYS_PER_CALL}` },
+    set: jsonText(`Keys to write, each a whole JSON value (null removes the key); at most ${APP_TASK_KEYS_PER_CALL}`),
   },
   required: ["app", "set"],
 } as const;

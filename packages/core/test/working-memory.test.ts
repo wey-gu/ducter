@@ -89,7 +89,7 @@ describe("createWorkingMemory", () => {
   test("the persona's chosen Space is named; off reads nothing", async () => {
     const f = fake([wmJson()]);
     let on = false;
-    const wm = createWorkingMemory({ run: f.run, on: () => on, space: () => "Work" });
+    const wm = createWorkingMemory({ run: f.run, on: () => on, space: () => "Work", today: () => "2026-11-18" });
     expect(wm.get()).toBeUndefined();
     expect(await wm.refresh()).toBeUndefined();
     expect(f.calls).toHaveLength(0);
@@ -109,7 +109,7 @@ describe("createWorkingMemory", () => {
 
   test("ready waits at most its time, then says what it knows", async () => {
     const slow: NmemCall = () => new Promise((res) => setTimeout(() => res({ code: 0, out: wmJson(), err: "" }), 200));
-    const wm = createWorkingMemory({ run: slow, on: () => true });
+    const wm = createWorkingMemory({ run: slow, on: () => true, today: () => "2026-11-18" });
     expect(await wm.ready(10)).toBeUndefined();
     await Bun.sleep(220);
     expect((await wm.ready(10))?.focus[0]?.name).toBe("HawDB 发布");

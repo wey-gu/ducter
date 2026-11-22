@@ -4,15 +4,16 @@
 // that each open their page, and what needs you with the way to the fix), then where things live
 // (each computer in its clay, what it is to the partner, and on the home what lives there). Every
 // pushed page's head is the partner saying that page's state, never a description of the page.
-import type { ConnectionView, DeviceView } from "@ducter/protocol";
+import type { ConnectionView, DeviceHarness, DeviceView } from "@ducter/protocol";
+import { useState } from "preact/hooks";
 import { A, type SettingsPage } from "./app.ts";
-import { tilesOf, tileWords } from "./accounts.tsx";
-import { BrandMark, brandOf } from "./brand.tsx";
+import { Mailbox, status, tilesOf, tileWords } from "./accounts.tsx";
+import { BrandMark, BrandTile, brandOf } from "./brand.tsx";
 import { linkedChats } from "./channels.tsx";
 import { Btn } from "./controls.tsx";
-import { deviceArt } from "./devcard.tsx";
-import { harnessName, modelName } from "./format.ts";
-import { memPluginRows } from "./mem-plugin.tsx";
+import { clientArt, deviceArt, foldClients, runningOn } from "./devcard.tsx";
+import { ago, harnessName, memWords, modelName } from "./format.ts";
+import { MemAsk, memPluginRows } from "./mem-plugin.tsx";
 import { groupNoted, memPhase } from "./mem-view.ts";
 import { Notebook } from "./memory.tsx";
 import { noBrain } from "./partner-story.tsx";
@@ -20,7 +21,15 @@ import { Avatar } from "./views.tsx";
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
 /** One thing on Settings that needs the person: the partner's sentence, and where its fix is. */
-export type SetNeed = { key: string; text: string; go: string; page: Exclude<SettingsPage, "">; about?: string };
+export type SetNeed = {
+  key: string;
+  text: string;
+  go: string;
+  page: Exclude<SettingsPage, "">;
+  about?: string;
+  /** D469 round 2: a fix that can happen right here, the same one the page's button does. */
+  fix?: { kind: "memp"; dv: DeviceView; h: DeviceHarness } | { kind: "update"; label: string };
+};
 
 const down = (c: ConnectionView) => c.state === "unreachable" || c.state === "unauthorized";
 const sources = () => (A.connections ?? []).filter((c) => !c.phone);
@@ -40,10 +49,18 @@ export function setNeeds(): SetNeed[] {
   const asks = A.mem?.check?.asks.length ?? 0;
   if (asks > 0 && A.settings?.memory) out.push({ key: "memask", text: asks > 1 ? t("need.memask", asks) : t("need.memask.one"), go: t("need.go.look"), page: "memory" });
   for (const { dv, h } of memPluginRows(A.devices)) {
-    if (h.mem?.state === "update") out.push({ key: `memp:${dv.id}:${h.harness}`, text: t("need.memplug", harnessName(h.harness)), go: t("need.go.update"), page: "memory" });
+    if (h.mem?.state !== "update") continue;
+    // The pane's own action and its ask in place, where the pane would offer them (signed in, awake).
+    const action = memWords(A.L, h.mem, harnessName(h.harness)).action;
+    const here = !!action && h.loggedIn && dv.state === "awake";
+    out.push({ key: `memp:${dv.id}:${h.harness}`, text: t("need.memplug", harnessName(h.harness)), go: here ? action! : t("need.go.update"), page: "memory", ...(here ? { fix: { kind: "memp" as const, dv, h } } : {}) });
   }
   const u = updatesWaiting();
-  if (u.n > 0 && !u.running) out.push({ key: "update", text: u.n > 1 ? t("need.update", u.n) : t("need.update.one"), go: t("need.go.update"), page: "devices" });
+  if (u.n > 0 && !u.running) {
+    // Devices' own one tap (Update all), which asks nothing more there either.
+    const label = t(u.n === 1 ? "upall.button.one" : "upall.button");
+    out.push({ key: "update", text: u.n > 1 ? t("need.update", u.n) : t("need.update.one"), go: label, page: "devices", fix: { kind: "update", label } });
+  }
   return out;
 }
 
@@ -135,7 +152,7 @@ function homeLives(): string {
   return h && !(h.alwaysOn || h.kind === "server") ? name : t("home.lives.on", name);
 }
 
-function homeThinks(): string {
+export function homeThinks(): string {
   const b = A.brainNow ?? A.settings?.brain;
   if (!b) return "";
   const agent = harnessName(b.harness);
@@ -203,10 +220,7 @@ export function SetBrief({ go }: { go: (p: SettingsPage) => void }) {
               <span class="sb-label">{t("lane.needs_you")}</span>
               <span class="sb-body">
                 {needs.map((n) => (
-                  <span key={n.key} class="sb-need">
-                    <span class="sb-words">{n.text}</span>
-                    <Btn kind="secondary" size="sm" label={n.go} about={n.text} onClick={() => go(n.page)} />
-                  </span>
+                  <NeedLine key={n.key} n={n} go={go} />
                 ))}
               </span>
             </div>
@@ -225,6 +239,28 @@ export function SetBrief({ go }: { go: (p: SettingsPage) => void }) {
   );
 }
 
+/** One thing that needs you, and its fix: in place when the page's own action can run here (the D466 ask, Update all), else the way to the page. */
+function NeedLine({ n, go }: { n: SetNeed; go: (p: SettingsPage) => void }) {
+  const [asking, setAsking] = useState(false);
+  const f = n.fix;
+  const press = () => {
+    if (!f) return go(n.page);
+    if (f.kind === "update") return A.startUpdateAll();
+    setAsking(true);
+  };
+  return (
+    <span class={`sb-need${asking ? " asking" : ""}`}>
+      <span class="sb-words">{n.text}</span>
+      {!asking && <Btn kind="secondary" size="sm" label={n.go} about={n.text} onClick={press} />}
+      {asking && f?.kind === "memp" && (
+        <span class="sb-ask">
+          <MemAsk dv={f.dv} h={f.h} onDone={() => setAsking(false)} />
+        </span>
+      )}
+    </span>
+  );
+}
+
 /** What a computer is to the partner, in a few words. */
 export function placeRole(dv: DeviceView): string {
   const name = A.S.personaName;
@@ -235,37 +271,103 @@ export function placeRole(dv: DeviceView): string {
   return t("home.role.window", name);
 }
 
-/** Where things live (motivation: "you should always see where your accounts live"): each computer in its clay; the home carries the partner, its memory and the accounts it reads. */
-export function PlacesMap({ go }: { go: (p: SettingsPage) => void }) {
+/** One place on the map: a computer or a handheld, what it is to the partner, and what it is doing now (only when true). */
+export type MapPlace = { key: string; art: string; name: string; role: string; now: string; away: boolean; home: boolean };
+
+/** The person's computers (home first, then the ones that do tasks) and the handhelds that reach the home. */
+export function mapPlaces(): MapPlace[] {
+  const name = A.S.personaName;
   const devs = [...(A.devices ?? [])].sort((a, b) => Number(b.home) - Number(a.home));
-  if (!devs.length) return null;
-  const marks: string[] = [];
-  for (const c of sources()) for (const w of tilesOf(c)) if (!w.excluded && brandOf(w.service) && !marks.includes(brandOf(w.service))) marks.push(brandOf(w.service));
+  const out: MapPlace[] = devs.map((dv) => {
+    const n = runningOn(dv);
+    const now = dv.state === "unreachable" ? "" : n > 0 ? (n === 1 ? t("home.now.tasks.one") : t("home.now.tasks", n)) : dv.state === "asleep" ? t("home.now.asleep") : "";
+    return { key: `dev:${dv.id}`, art: deviceArt(dv), name: dv.name, role: placeRole(dv), now, away: dv.state === "unreachable", home: !!dv.home };
+  });
+  const clients = A.reach?.clients ?? [];
+  const hidden = foldClients(A.devices ?? [], clients).hidden;
+  for (const cl of clients) {
+    if (hidden.has(cl.id) || cl.form === "cli") continue;
+    const hand = /ios|iphone|android/i.test(cl.platform) || !/^(darwin|linux|win)/i.test(cl.platform);
+    const role = !hand ? t("home.role.window", name) : cl.handset?.added ? t("home.role.lent") : t("home.role.phone", name);
+    const now = cl.connected ? t("home.now.on") : cl.lastSeen ? t("home.now.seen", ago(A.L, cl.lastSeen)) : "";
+    out.push({ key: `cl:${cl.id}`, art: clientArt(cl), name: cl.name, role, now, away: false, home: false });
+  }
+  return out;
+}
+
+/** Where each account lives (motivation: "always see where your accounts live and what Ducter may do with them"): one place per source, its accounts' marks on it. */
+export type AcctPlace = { key: string; name: string; calls: boolean; down: string; marks: string[]; source: ConnectionView["source"] };
+export function accountPlaces(): AcctPlace[] {
+  return (A.connections ?? []).map((c) => {
+    const marks: string[] = [];
+    for (const w of tilesOf(c)) if (!w.excluded && brandOf(w.service) && !marks.includes(brandOf(w.service))) marks.push(brandOf(w.service));
+    const st = status(c);
+    return { key: c.id, name: c.source === "oo" ? t("acct.oo.name") : c.name, calls: !!c.phone, down: st.warn ? st.line : "", marks, source: c.source };
+  });
+}
+
+/** Where things are (D469 round 2): the computers and phones, the accounts at their real place, and the partner's calm last word. */
+export function PlacesMap({ go }: { go: (p: SettingsPage) => void }) {
+  const places = mapPlaces();
+  const accts = accountPlaces();
   const memOn = !!A.settings && memPhase(!!A.settings.memory, A.mem, A.bridge) === "on";
   return (
-    <section class="set-map" aria-label={t("home.map")}>
-      <h3 class="map-label">{t("home.map")}</h3>
-      <div class="map-row">
-        {devs.map((dv) => (
-          <button key={dv.id} class={`map-card${dv.state === "unreachable" ? " away" : ""}`} onClick={() => go("devices")}>
-            <img src={deviceArt(dv)} alt="" width={56} height={56} />
-            <b>{dv.name}</b>
-            <small>{placeRole(dv)}</small>
-            {dv.home && (
-              <span class="map-here" aria-hidden="true">
-                <Avatar size={30} state="idle" still />
-                {memOn && <Notebook size={24} />}
-                {marks.slice(0, 4).map((m) => (
-                  <span key={m} class="map-mark">
-                    <BrandMark name={m} size={18} />
+    <>
+      {places.length > 0 && (
+        <section class="set-map" aria-label={t("home.map")}>
+          <h3 class="map-label">{t("home.map")}</h3>
+          <div class="map-row">
+            {places.map((p) => (
+              <button key={p.key} class={`map-card${p.away ? " away" : ""}${p.home ? " home" : ""}`} onClick={() => go("devices")}>
+                <img src={p.art} alt="" width={64} height={64} />
+                <b>{p.name}</b>
+                <small class="map-role">{p.role}</small>
+                {p.now && <small class="map-now">{p.now}</small>}
+                {p.home && (
+                  <span class="map-here">
+                    <span class="map-here-marks" aria-hidden="true">
+                      <Avatar size={30} state="idle" still />
+                      {memOn && <Notebook size={24} />}
+                    </span>
+                    <small>{t(memOn ? "home.here" : "home.here.conv")}</small>
                   </span>
-                ))}
-                {marks.length > 4 && <span class="map-more">+{marks.length - 4}</span>}
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
-    </section>
+                )}
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+      {accts.length > 0 && (
+        <section class="set-map acct-map" aria-label={t("home.accts")}>
+          <h3 class="map-label">{t("home.accts")}</h3>
+          <div class="map-row accts">
+            {accts.map((a) => (
+              <button key={a.key} class={`acct-place${a.down ? " down" : ""}`} onClick={() => go("accounts")}>
+                <span class="ap-head">
+                  {a.calls && /tuwa/i.test(a.name) ? <BrandTile name="tuwa" faded={!!a.down} /> : a.calls ? <img src="app/art/ab_call.webp" alt="" width={40} height={40} /> : a.source === "oomol" || a.source === "oo" ? <BrandTile name="oomol" faded={!!a.down} /> : <span class="g-tile mark"><Mailbox source={a.source} off={!!a.down} /></span>}
+                  <b>{a.name}</b>
+                </span>
+                {a.down ? <small class="ap-down">{a.down}</small> : <small>{t(a.calls ? "home.acct.calls" : "home.acct.via")}</small>}
+                {!a.calls && a.marks.length > 0 && (
+                  <span class="ap-marks" aria-hidden="true">
+                    {a.marks.slice(0, 5).map((m) => (
+                      <span key={m} class="map-mark">
+                        <BrandMark name={m} size={18} />
+                      </span>
+                    ))}
+                    {a.marks.length > 5 && <span class="map-more">+{a.marks.length - 5}</span>}
+                  </span>
+                )}
+                {!a.calls && !a.down && <small class="ap-may">{t("home.acct.may")}</small>}
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+      <p class="set-foot">
+        <Avatar size={28} state="idle" still />
+        <span>{t("home.foot")}</span>
+      </p>
+    </>
   );
 }

@@ -229,6 +229,12 @@ func (a *App) runPanel(c *ui.Context) {
 			if remoteHome {
 				place, art = host, "server_awake"
 			}
+			// D469 round 2: the home's own word wins over the address. A home that is a server, or
+			// another computer, is named and drawn as itself, never "this Mac" (a home reached over
+			// a tunnel answers on 127.0.0.1 too).
+			if home := a.homeDevice(); home != nil && (home.Kind == "server" || !a.onThisMachine()) {
+				remoteHome, place, art = true, a.deviceNameIn(home), deviceArt(home)
+			}
 			a.placeRow(c, art, place, line)
 			if remoteHome && a.canWork() {
 				a.workBlock(c, "settings") // D155: Let this Mac do tasks for it

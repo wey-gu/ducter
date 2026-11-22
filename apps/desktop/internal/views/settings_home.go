@@ -2,6 +2,7 @@ package views
 
 import (
 	"strconv"
+	"strings"
 
 	"github.com/egoist/mygo/ui"
 
@@ -23,17 +24,21 @@ const TabHome = "home"
 // that goes to where the fix is (go is its label, tab the pane).
 type setNeed struct {
 	key, text, goLabel, tab string
+	// D469 round 2: a fix that can happen right here, as the pane's own button does it: a Mem
+	// plugin's update (its in-place ask first), or Update all.
+	dv *protocol.DeviceView
+	h  protocol.DeviceHarness
 }
 
 // setNeeds is everything on Settings that needs the person, most blocking first.
 func (a *App) setNeeds() []setNeed {
 	var out []setNeed
 	if a.S.Settings != nil && a.noBrain() {
-		out = append(out, setNeed{"brain", a.L.T("need.brain"), a.L.T("need.go.signin"), TabPartner})
+		out = append(out, setNeed{key: "brain", text: a.L.T("need.brain"), goLabel: a.L.T("need.go.signin"), tab: TabPartner})
 	}
 	for _, cv := range a.S.Connections {
 		if cv.Phone == nil && sourceDown(cv) {
-			out = append(out, setNeed{"src:" + cv.ID, a.L.T("need.source", cv.Name), a.L.T("need.go.look"), TabAccounts})
+			out = append(out, setNeed{key: "src:" + cv.ID, text: a.L.T("need.source", cv.Name), goLabel: a.L.T("need.go.look"), tab: TabAccounts})
 		}
 	}
 	if m := a.S.Mem; m != nil && m.Check != nil && len(m.Check.Asks) > 0 && a.S.Settings != nil && a.S.Settings.Memory {
@@ -41,11 +46,11 @@ func (a *App) setNeeds() []setNeed {
 		if n := len(m.Check.Asks); n > 1 {
 			s = a.L.T("need.memask", n)
 		}
-		out = append(out, setNeed{"memask", s, a.L.T("need.go.look"), TabMemory})
+		out = append(out, setNeed{key: "memask", text: s, goLabel: a.L.T("need.go.look"), tab: TabMemory})
 	}
 	for _, r := range memPluginRowsFor(a.S.Devices) {
 		if r.h.Mem != nil && r.h.Mem.State == "update" {
-			out = append(out, setNeed{"memp:" + r.dv.ID + ":" + r.h.Harness, a.L.T("need.memplug", harnessName(r.h.Harness)), a.L.T("need.go.update"), TabMemory})
+			out = append(out, setNeed{key: "memp:" + r.dv.ID + ":" + r.h.Harness, text: a.L.T("need.memplug", harnessName(r.h.Harness)), goLabel: a.L.T("need.go.update"), tab: TabMemory, dv: r.dv, h: r.h})
 		}
 	}
 	if n, running := a.updatesWaiting(); n > 0 && !running {
@@ -53,7 +58,7 @@ func (a *App) setNeeds() []setNeed {
 		if n > 1 {
 			s = a.L.T("need.update", n)
 		}
-		out = append(out, setNeed{"update", s, a.L.T("need.go.update"), TabAbout})
+		out = append(out, setNeed{key: "update", text: s, goLabel: a.L.T("need.go.update"), tab: TabAbout})
 	}
 	return out
 }
@@ -109,10 +114,8 @@ func (a *App) paneSay(tab, lede string) string {
 		}
 		return a.L.T("say.accounts", watched)
 	case TabRun:
-		if a.Backend == nil {
-			if host := hostOf(a.URL); host != "" && !isLoopback(host) {
-				return a.L.T("say.run.remote", host)
-			}
+		if home := a.homeElsewhere(); home != "" {
+			return a.L.T("say.run.remote", home)
 		}
 		return a.L.T("say.run.mac")
 	case TabMemory:
@@ -173,6 +176,38 @@ func (a *App) paneSpeaks(c *ui.Context, tab, say string) {
 	})
 }
 
+// needFix is a need's button on Overview (D469 round 2): where the fix can happen right here the
+// same way the pane does it, it does (a Mem plugin's update asks in place first, as on Memory;
+// Update all is the one tap Devices has); else it goes to the pane.
+func (a *App) needFix(c *ui.Context, n setNeed) {
+	t := a.T
+	switch {
+	case n.dv != nil:
+		_, action := a.memPluginWords(n.h.Mem, n.h.Harness)
+		key := n.dv.ID + ":" + n.h.Harness
+		if action != "" && n.h.LoggedIn && n.dv.State == protocol.DeviceAwake {
+			if a.devState().card.memAsk != key && a.buttonFor(c, action, n.text, btnSecondary, t.ControlSM, t.Bg) {
+				a.devState().card.memAsk = key
+			}
+			return
+		}
+	case n.key == "update":
+		if _, running := a.updatesWaiting(); !running && a.S.UpdateAll != nil && len(a.S.UpdateAll.Offer) > 0 {
+			label := a.L.T("upall.button")
+			if len(a.S.UpdateAll.Offer) == 1 {
+				label = a.L.T("upall.button.one")
+			}
+			if a.buttonFor(c, label, n.text, btnSecondary, t.ControlSM, t.Bg) {
+				a.startUpdateAll()
+			}
+			return
+		}
+	}
+	if a.buttonFor(c, n.goLabel, n.text, btnSecondary, t.ControlSM, t.Bg) {
+		a.openTab(n.tab)
+	}
+}
+
 // ---------- 概览 / Overview ----------
 
 func (a *App) homePanel(c *ui.Context) {
@@ -225,10 +260,11 @@ func (a *App) homePanel(c *ui.Context) {
 								n := n
 								ui.Row(c.Key("n:" + n.key)).Gap(t.S3).AlignItems(ui.Center).Wrap().Children(func() {
 									uiText(c.Key("t"), keepWords(autospace(n.text))).FontSize(t.MD).LineHeight(1.5).TextColor(t.Ink).Shrink(1).MinWidth(0)
-									if a.buttonFor(c, n.goLabel, n.text, btnSecondary, t.ControlSM, t.Bg) {
-										a.openTab(n.tab)
-									}
+									a.needFix(c, n)
 								})
+								if n.dv != nil && a.devState().card.memAsk == n.dv.ID+":"+n.h.Harness {
+									a.memAskBlock(c, n.dv, n.h) // the pane's own ask, here
+								}
 							}
 						})
 					})
@@ -248,14 +284,18 @@ func (a *App) homePanel(c *ui.Context) {
 		})
 	})
 	a.placesMap(c)
+	a.accountPlaces(c)
+	// A calm last word: everything here can also be said.
+	ui.Row(c.Key("home-foot")).Gap(t.S3).AlignItems(ui.Center).Padding(t.S4, t.S2, 0, t.S2).Children(func() {
+		a.avatar(c, theme.Idle, 28)
+		uiText(c.Key("foot"), a.L.T("home.foot")).FontSize(t.MD).TextColor(t.InkSoft)
+	})
 }
 
 // homeLives is where the partner lives, as it would say it.
 func (a *App) homeLives() string {
-	if a.Backend == nil {
-		if host := hostOf(a.URL); host != "" && !isLoopback(host) {
-			return a.L.T("home.lives.on", host)
-		}
+	if home := a.homeElsewhere(); home != "" {
+		return a.L.T("home.lives.on", home)
 	}
 	if h := a.homeDevice(); h != nil && !(a.onThisMac() && (h.Kind == "laptop" || h.Kind == "mini")) {
 		if h.AlwaysOn || h.Kind == "server" {
@@ -264,6 +304,22 @@ func (a *App) homeLives() string {
 		return h.Name
 	}
 	return a.L.T("home.lives.mac")
+}
+
+// homeElsewhere is the name of the home this window talks to when it isn't this Mac (D469 round
+// 2: by the home's own device when it says so, a server or another machine, else the address), or
+// "" when Ducter runs here.
+func (a *App) homeElsewhere() string {
+	if a.Backend != nil {
+		return ""
+	}
+	if h := a.homeDevice(); h != nil && (h.Kind == "server" || !a.onThisMachine()) {
+		return a.deviceNameIn(h)
+	}
+	if host := hostOf(a.URL); host != "" && !isLoopback(host) {
+		return host
+	}
+	return ""
 }
 
 // homeThinks is the agent and model the partner thinks with.
@@ -336,71 +392,183 @@ func (a *App) homeReach() string {
 	return a.L.T("home.reach", a.listWords(names))
 }
 
-// placesMap is where things live (D469, motivation: "you should always see where your accounts
-// live"): each computer as its clay with its name and what it is to the partner; the home also
-// carries what lives there (the partner, the memory, the accounts it reads). A tap opens Devices.
+// placesMap is where things are (D469; motivation: "you should always see where your accounts
+// live and what Ducter may do with them"): each computer, then each phone and tablet that reaches
+// the partner, as its clay with its name, what it is to the partner and what it does right now.
+// The home also says what lives there: the conversation and, while memory is on, the memory.
+// A tap opens Devices.
 func (a *App) placesMap(c *ui.Context) {
 	t := a.T
-	if len(a.S.Devices) == 0 {
+	if len(a.S.Devices) == 0 && (a.S.Reach == nil || len(a.S.Reach.Clients) == 0) {
 		return
 	}
 	name := a.personaName()
-	var services []string
-	seen := map[string]bool{}
-	for _, cv := range a.S.Connections {
-		if cv.Phone != nil {
-			continue
-		}
-		for _, w := range tilesOf(cv) {
-			if b := brandOf(w.Service); !w.Excluded && !seen[b] {
-				seen[b] = true
-				services = append(services, w.Service)
+	memOn := false
+	if st := a.S.Settings; st != nil {
+		memOn = memPhase(st.Memory, a.S.Mem, a.S.Bridge) == "on"
+	}
+	type place struct {
+		key, art, name, role, now string
+		nowInk                    ui.Color
+		home                      bool
+	}
+	var places []place
+	for pass := 0; pass < 2; pass++ {
+		for i := range a.S.Devices {
+			dv := &a.S.Devices[i]
+			if dv.Home != (pass == 0) {
+				continue
 			}
+			p := place{key: "dev:" + dv.ID, art: deviceArt(dv), name: a.deviceNameIn(dv), role: a.placeRole(dv, name), nowInk: t.InkMuted, home: dv.Home}
+			switch n := a.runningOn(dv); {
+			case dv.State == protocol.DeviceUnreachable:
+				p.nowInk = t.Failed.Ink
+			case n == 1:
+				p.now, p.nowInk = a.L.T("home.now.tasks.one"), t.Working.Ink
+			case n > 1:
+				p.now, p.nowInk = a.L.T("home.now.tasks", n), t.Working.Ink
+			case dv.State == protocol.DeviceAsleep:
+				p.now = a.L.T("home.now.asleep")
+			}
+			places = append(places, p)
 		}
 	}
-	ui.Column(c.Key("places")).Gap(t.S3).Children(func() {
+	if a.S.Reach != nil {
+		hidden := a.fold().hidden // a window on a computer is that computer's
+		for i := range a.S.Reach.Clients {
+			cl := &a.S.Reach.Clients[i]
+			if hidden[cl.ID] || cl.Form == "cli" {
+				continue
+			}
+			art := clientArt(cl)
+			if strings.HasPrefix(art, "laptop") {
+				continue // an app window on a computer the home doesn't know as one: not a place of its own
+			}
+			role := a.L.T("home.role.phone", name)
+			if cl.Handset != nil && cl.Handset.Added {
+				role = a.L.T("home.role.lent")
+			}
+			p := place{key: "cl:" + cl.ID, art: art, name: cl.Name, role: role, nowInk: t.InkMuted}
+			if cl.Connected {
+				p.now, p.nowInk = a.L.T("home.now.on"), t.Done.Ink
+			} else if cl.LastSeen != "" {
+				p.now = a.L.T("home.now.seen", a.ago(cl.LastSeen))
+			}
+			places = append(places, p)
+		}
+	}
+	ui.Column(c.Key("places")).Gap(t.S3).Padding(t.S3, 0, 0, 0).Children(func() {
 		uiText(c.Key("places-label"), a.L.T("home.map")).FontSize(t.SM).FontWeight(700).TextColor(t.InkMuted).Padding(0, t.S2)
 		ui.Row(c.Key("places-row")).Gap(t.S3).Wrap().AlignItems(ui.Stretch).Children(func() {
-			for pass := 0; pass < 2; pass++ {
-				for i := range a.S.Devices {
-					dv := &a.S.Devices[i]
-					if dv.Home != (pass == 0) {
-						continue
+			for _, p := range places {
+				p := p
+				card := ui.Column(c.Key("place:"+p.key)).Width(258).MinHeight(168).Padding(t.S4, t.S5).Gap(t.S1).Radius(t.RadiusLG).Background(t.Surface).
+					Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).Cursor(ui.CursorPointer).Role(ui.RoleButton).
+					Label(spoken(a.L, p.name, p.role, p.now)).Focusable()
+				card.Children(func() {
+					if bmp := theme.Clay(p.art); bmp != nil {
+						iw, ih := ui.ImageSize(bmp)
+						w, h := float32(64), float32(64)
+						if iw > 0 && ih > 0 && iw > ih {
+							h = 64 * ih / iw
+						} else if iw > 0 && ih > 0 {
+							w = 64 * iw / ih
+						}
+						ui.Column(c.Key("art")).Height(68).Justify(ui.End).AlignItems(ui.Start).Children(func() {
+							ui.Image(c, bmp).Size(w, h).AccessHidden(true)
+						})
 					}
-					role := a.placeRole(dv, name)
-					card := ui.Column(c.Key("place:"+dv.ID)).Width(212).Padding(t.S4).Gap(t.S2).Radius(t.RadiusLG).Background(t.Surface).
-						Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).Cursor(ui.CursorPointer).Role(ui.RoleButton).
-						Label(spoken(a.L, a.deviceNameIn(dv), role)).Focusable()
-					card.Children(func() {
-						if bmp := theme.Clay(deviceArt(dv)); bmp != nil {
-							ui.Image(c, bmp).Size(56, 56).AccessHidden(true)
+					uiText(c.Key("n"), p.name).FontSize(t.MD).FontWeight(700).SingleLine().Shrink(1).MinWidth(0).Padding(t.S2, 0, 0, 0)
+					roleInk := t.InkMuted
+					if p.nowInk == t.Failed.Ink {
+						roleInk = t.Failed.Ink
+					}
+					uiText(c.Key("r"), keepWords(p.role)).FontSize(t.SM).LineHeight(1.4).TextColor(roleInk)
+					if p.now != "" {
+						uiText(c.Key("now"), keepWords(p.now)).FontSize(t.SM).FontWeight(600).LineHeight(1.4).TextColor(p.nowInk)
+					}
+					if p.home {
+						// What lives here: the conversation (the partner) and its memory.
+						ui.Row(c.Key("here")).Gap(t.S2).AlignItems(ui.Center).Padding(t.S2, 0, 0, 0).Children(func() {
+							a.avatar(c, theme.Idle, 28)
+							here := a.L.T("home.here.conv")
+							if memOn {
+								a.glyph(c, 24, a.drawNotebook())
+								here = a.L.T("home.here")
+							}
+							uiText(c.Key("here-t"), keepWords(here)).FontSize(t.XS).LineHeight(1.35).TextColor(t.InkSoft).Shrink(1).MinWidth(0)
+						})
+					}
+				})
+				if card.Clicked() {
+					a.OpenDevices()
+				}
+			}
+		})
+	})
+}
+
+// accountPlaces is where the accounts are (D469 round 2): each source as its own place, its mark
+// and name, that the mail, calendars and messages pass through it, the accounts it brings (their
+// marks), and what the partner may do with them; a calling source says it asks before each call.
+// Honest to the flow: the accounts live with their source; the home reads them through it.
+func (a *App) accountPlaces(c *ui.Context) {
+	t := a.T
+	var list []protocol.ConnectionView
+	for _, cv := range a.S.Connections {
+		list = append(list, cv)
+	}
+	if len(list) == 0 {
+		return
+	}
+	ui.Column(c.Key("accts")).Gap(t.S3).Padding(t.S3, 0, 0, 0).Children(func() {
+		uiText(c.Key("accts-label"), a.L.T("home.accts")).FontSize(t.SM).FontWeight(700).TextColor(t.InkMuted).Padding(0, t.S2)
+		ui.Row(c.Key("accts-row")).Gap(t.S3).Wrap().AlignItems(ui.Stretch).Children(func() {
+			for _, cv := range list {
+				cv := cv
+				var services []string
+				seen := map[string]bool{}
+				if cv.Phone == nil {
+					for _, w := range tilesOf(cv) {
+						if b := brandOf(w.Service); !w.Excluded && !seen[b] {
+							seen[b] = true
+							services = append(services, w.Service)
 						}
-						uiText(c.Key("n"), a.deviceNameIn(dv)).FontSize(t.MD).FontWeight(700).SingleLine().Shrink(1).MinWidth(0)
-						ink := t.InkMuted
-						if dv.State == protocol.DeviceUnreachable {
-							ink = t.Failed.Ink
-						}
-						uiText(c.Key("r"), keepWords(role)).FontSize(t.SM).LineHeight(1.4).TextColor(ink)
-						if dv.Home {
-							// What lives here: the partner itself, its memory, the accounts it reads.
-							ui.Row(c.Key("here")).Gap(t.S1+2).AlignItems(ui.Center).Wrap().Padding(t.S1, 0, 0, 0).Children(func() {
-								a.avatar(c, theme.Idle, 30)
-								if st := a.S.Settings; st != nil && memPhase(st.Memory, a.S.Mem, a.S.Bridge) == "on" {
-									a.glyph(c, 24, a.drawNotebook())
-								}
-								for j, s := range services {
-									if j == 4 {
-										uiText(c.Key("more"), "+"+strconv.Itoa(len(services)-4)).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
-										break
-									}
-									ui.Box(c.Key("svc:"+s)).Size(24, 24).Radius(t.RadiusSM).Background(t.Surface).Border(1, t.LineSoft).Draw(a.drawAppMark(s)).AccessHidden(true)
-								}
-							})
-						}
+					}
+				}
+				down := cv.Phone == nil && sourceDown(cv)
+				card := ui.Column(c.Key("acct:"+cv.ID)).Width(392).Padding(t.S4, t.S5).Gap(t.S2).Radius(t.RadiusLG).Background(t.Surface).
+					Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(cv.Name).Focusable()
+				card.Children(func() {
+					ui.Row(c.Key("head")).Gap(t.S3).AlignItems(ui.Center).Children(func() {
+						a.sourceTile(c, cv)()
+						ui.Column(c.Key("words")).Gap(2).Grow(1).Shrink(1).MinWidth(0).Children(func() {
+							uiText(c.Key("n"), cv.Name).FontSize(t.MD).FontWeight(700).SingleLine()
+							line, ink := a.L.T("home.acct.via"), t.InkMuted
+							switch {
+							case cv.Phone != nil:
+								line = a.L.T("home.acct.calls")
+							case down:
+								line, ink = a.L.T("card.unreachable"), t.Failed.Ink
+							}
+							uiText(c.Key("l"), keepWords(line)).FontSize(t.SM).LineHeight(1.4).TextColor(ink)
+						})
 					})
-					if card.Clicked() {
-						a.OpenDevices()
+					if len(services) > 0 {
+						ui.Row(c.Key("marks")).Gap(t.S2).AlignItems(ui.Center).Wrap().Children(func() {
+							for j, s := range services {
+								if j == 5 {
+									uiText(c.Key("more"), "+"+strconv.Itoa(len(services)-5)).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
+									break
+								}
+								ui.Box(c.Key("svc:"+s)).Size(28, 28).Radius(t.RadiusSM).Background(t.Surface).Border(1, t.LineSoft).Draw(a.drawAppMark(s)).AccessHidden(true)
+							}
+						})
+						uiText(c.Key("may"), keepWords(a.L.T("home.acct.may"))).FontSize(t.SM).LineHeight(1.4).TextColor(t.InkSoft)
 					}
+				})
+				if card.Clicked() {
+					a.openTab(TabAccounts)
 				}
 			}
 		})

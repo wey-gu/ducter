@@ -2784,6 +2784,6 @@ Codex first, once OAR is near 1.0. See `research/17`.
 ## Settings as the partner's report (D469)
 
 - [ ] **The author's review** of Overview and the speaking heads (`.shots/d469/after`), and a comprehension pass on Overview's labels (运行在, 能看的, 也能找我) with naive raters. Trigger: the next release.
-- [ ] **Phones and tablets on Your computers.** The Mac reads only `devices` (computers); the iPhone, iPad and Pixel Fold are clients (`reach`). Trigger: when a client can say what it is to the partner beyond a window (lent to tasks, D238).
-- [ ] **An account's place.** The read accounts' marks sit on the home's card; through OOMOL they pass its servers. Show the source's own place (a small cloud beside the home) once D469 is reviewed. Trigger: the author's review.
-- [ ] **The needs' buttons go to the pane, not the fix itself** (去更新 opens Memory where D466's ask stands). Doing the fix from Overview needs each fix's in-place ask there too. Trigger: when a need is seen on Overview often enough that the extra step is felt.
+- [x] **Phones and tablets on Your computers** (built, D469 rev.). The Mac reads only `devices` (computers); the iPhone, iPad and Pixel Fold are clients (`reach`). Trigger: when a client can say what it is to the partner beyond a window (lent to tasks, D238).
+- [x] **An account's place** (built, D469 rev.: 你的账号在哪儿, each source its own card). The read accounts' marks sit on the home's card; through OOMOL they pass its servers. Show the source's own place (a small cloud beside the home) once D469 is reviewed. Trigger: the author's review.
+- [ ] **The needs' buttons go to the pane, not the fix itself** (D469 rev.: a Mem plugin's update and Update all now happen on Overview; still the pane for Mem's questions, a source down, no agent) (去更新 opens Memory where D466's ask stands). Doing the fix from Overview needs each fix's in-place ask there too. Trigger: when a need is seen on Overview often enough that the extra step is felt.

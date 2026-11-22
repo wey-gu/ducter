@@ -127,7 +127,8 @@ func (a *App) partnerHero(c *ui.Context) {
 	if a.Resting() {
 		shown = theme.Napping
 	}
-	line := a.L.T("partner.header", a.homeName(), harnessName(a.brain().Harness))
+	// D469: the partner says where it runs and what it thinks with, in its own voice.
+	line := a.L.T("partner.say", a.homeName(), a.homeThinks())
 	if a.noBrain() {
 		line = a.L.T("partner.header.none", a.homeName())
 	}

@@ -84,7 +84,7 @@ function clientKind(cl: Client): string {
 const homeName = () => A.devices?.find((d) => d.home)?.name ?? "";
 
 /** Tasks working on a device now. */
-function runningOn(dv: DeviceView): number {
+export function runningOn(dv: DeviceView): number {
   let n = 0;
   for (const task of A.S.tasks.values()) {
     const d = placeOf(task).device;

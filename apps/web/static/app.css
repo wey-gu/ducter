@@ -20303,3 +20303,152 @@ html[data-text-size="large"] .brand-mark > svg {
     padding: 12px;
   }
 }
+
+/* D469 round 2: the Overview shows the person's whole world. Computers and handhelds as larger clay
+   cards with what each is doing now; the accounts at their real place (each source its own card with
+   its accounts' marks and what Ducter may do with them); the partner's calm last word. A need whose
+   fix can run here opens the page's own ask in place (the D466 ask) or runs Devices' one tap. */
+.set-map .map-row {
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+}
+.set-map .map-card {
+  padding: 18px;
+  gap: 4px;
+}
+.set-map .map-card > img {
+  width: 64px;
+  height: 64px;
+  margin-bottom: 6px;
+}
+.set-map .map-card .map-now {
+  color: var(--ink-soft);
+  font-weight: 600;
+}
+.set-map .map-card.away .map-role {
+  color: var(--failed-ink);
+}
+.set-map .map-here {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  margin-top: 6px;
+}
+.set-map .map-here-marks {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.set-map .map-row.accts {
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+}
+.set-map .acct-place {
+  appearance: none;
+  border: 0;
+  font: inherit;
+  color: var(--ink);
+  text-align: start;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 16px 18px;
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--base);
+  min-width: 0;
+  transition: transform 0.15s ease;
+}
+.set-map .acct-place:hover {
+  transform: translateY(-1px);
+}
+.set-map .acct-place:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.set-map .acct-place .ap-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 100%;
+}
+.set-map .acct-place .ap-head b {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.set-map .acct-place small {
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: var(--ink-muted);
+}
+.set-map .acct-place .ap-down {
+  color: var(--failed-ink);
+  font-weight: 600;
+}
+.set-map .acct-place .ap-may {
+  color: var(--ink-soft);
+}
+.set-map .acct-place .ap-marks {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.set-foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 18px 8px 4px;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+.set-foot .avatar {
+  flex: none;
+}
+.set-brief .sb-need.asking {
+  flex-direction: column;
+  align-items: stretch;
+}
+.set-brief .sb-ask {
+  display: block;
+  margin-top: 6px;
+  padding: 12px 14px;
+  border-radius: var(--r-md);
+  background: var(--surface);
+  box-shadow: var(--base);
+}
+.set-card > .quiet-hours {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.quiet-hours .qh-picks {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.quiet-hours .qh-to {
+  color: var(--ink-muted);
+  font-size: 0.875rem;
+}
+.proactive .pro-pick {
+  display: none;
+}
+@media (max-width: 599px) {
+  .set-map .map-row.accts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .proactive .pro-seg {
+    display: none;
+  }
+  .proactive .pro-pick {
+    display: flex;
+    justify-content: flex-end;
+  }
+}

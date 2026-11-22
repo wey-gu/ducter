@@ -1,7 +1,7 @@
 // D244: On hand beside the opened task wherever there is room. A rail row has one status place (the
 // partner's face: needs you > working > new result); a finished task stays a new result until this
 // device opens it; a folded group keeps its most urgent face; the thresholds are the Mac's.
-import { beforeEach, describe, expect, test } from "bun:test";
+import { afterAll, beforeEach, describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { strings } from "../src/i18n.ts";
@@ -19,6 +19,7 @@ const at = (min: number) => new Date(Date.parse(T0) + min * 60_000).toISOString(
 
 describe("new result (seen.ts)", () => {
   beforeEach(() => resetSeen(mem(), T0));
+  afterAll(() => resetSeen()); // the module's own store again: other files read "seen since" as now
 
   test("a finish after this device started keeping track is new until opened", () => {
     expect(isNewResult("t1", "done", at(5))).toBe(true);

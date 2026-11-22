@@ -78,20 +78,45 @@ func TestOverviewNeedsCarryTheirFixD469(t *testing.T) {
 				t.Fatalf("%s: no %q in %q", lang, s, tt.Texts())
 			}
 		}
-		// The plugin's fix is in Memory: its button goes there, and the pane's head says it again
-		// in the needs-you ink, beside the partner in its flag pose.
-		if err := tt.Click(spoken(L, L.T("need.go.update"), L.T("need.memplug", "Codex"))); err != nil {
+		// D469 round 2: the plugin's fix happens here as on Memory: its own word, the in-place ask,
+		// and only its OK sends. Mem's question still goes to Memory, whose head says it again.
+		var sent []any
+		app.Send = func(f any) error { sent = append(sent, f); return nil }
+		frames := func() {
+			for i := 0; i < 4; i++ {
+				tt.Advance(150 * time.Millisecond)
+				tt.Frame()
+			}
+		}
+		if err := tt.Click(spoken(L, L.T("memp.btn.update"), L.T("need.memplug", "Codex"))); err != nil {
+			t.Fatalf("%s: %v in %q", lang, err, tt.Texts())
+		}
+		frames()
+		for _, f := range sent {
+			if _, ok := f.(protocol.MemPluginInstall); ok {
+				t.Fatalf("%s: sent before the ask", lang)
+			}
+		}
+		if err := tt.Click(spoken(L, L.T("memp.ok.update"), spoken(L, "Codex", "Nowledge Mem"))); err != nil {
+			t.Fatalf("%s: no ask: %v in %q", lang, err, tt.Texts())
+		}
+		frames()
+		installed := false
+		for _, f := range sent {
+			_, ok := f.(protocol.MemPluginInstall)
+			installed = installed || ok
+		}
+		if !installed {
+			t.Fatalf("%s: OK sent nothing", lang)
+		}
+		if err := tt.Click(spoken(L, L.T("need.go.look"), L.T("need.memask.one"))); err != nil {
 			t.Fatalf("%s: %v", lang, err)
 		}
-		tt.Frame()
+		frames()
 		if app.settingsTab() != TabMemory {
 			t.Fatalf("%s: went to %q", lang, app.settingsTab())
 		}
-		for i := 0; i < 4; i++ {
-			tt.Advance(150 * time.Millisecond)
-			tt.Frame()
-		}
-		for _, s := range []string{L.T("say.memory.on"), L.T("need.memplug", "Codex")} {
+		for _, s := range []string{L.T("say.memory.on"), L.T("need.memask.one")} {
 			if _, ok := tt.Find(s); !ok {
 				t.Fatalf("%s: memory head lacks %q in %q", lang, s, tt.Texts())
 			}

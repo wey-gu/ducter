@@ -471,10 +471,31 @@ with its fix. Candidates, rubric and diagnosis are D469's; what it leaves, on bo
 - **Said once:** a row under a head that says the same is dropped or speaks only when it differs (Where it runs'
   computer row; Memory's first-run hero).
 
+### Round 2 (D469 rev.)
+
+- **A fix here when it is safe:** a Mem plugin behind says **更新** and opens Memory's own in-place ask under
+  its line (sent only on OK); updates waiting are Devices' one tap **全部更新**. Mem's questions, a source down
+  and no agent go to their pane.
+- **你的电脑和手机:** computers, then phones and tablets (a window on a known computer is that computer's),
+  one card width, the clay at 64, what each is to the partner and what it does now, only when true (tasks under
+  way, asleep, connected now, last here); the home says **对话和记忆在这儿**.
+- **你的账号在哪儿:** each source its own card (its mark, **邮件、日历和消息经过它** or 连不上, its accounts' marks,
+  **读和起草；发出去、花钱的先问你**); a calling source **替你打电话，每通先问你**. The accounts no longer stand on
+  the home's card: they live with their source, and the home reads them through it.
+- **The last word:** **想改什么，直接跟我说也行。**
+- **Partner** says its head in the first person (**我在 {home} 上运行，用 {model} 想事情。**). **Notifications**'
+  发现了就说 is a row (title and the choice's meaning on the text column, the four choices at the right edge,
+  D432), cheering the preview on a pick; every other row already had the right control. **Look and sound**
+  needed nothing (its rows are segmented choices, a switch and the live stage; the intro's sound has 试听).
+  The web's quiet hours are the 24-hour pills, as the Mac's.
+- **Where it runs names the home this window talks to** (its device, a server or another machine) in its head
+  and its row, never 这台 Mac beside a home with another name.
+- Shots: `DEMO_NEEDS=1` on `demo-settings-real.ts` shows every need at once.
+
 ## Not done
 
-- D469's owed: the phones and the iPad (clients) on Your computers; the accounts' marks on the source's own
-  place (OOMOL's servers) rather than on the home; a comprehension pass on Overview's labels; the author's review.
+- D469's owed: a comprehension pass on Overview's labels; the author's review; Mem's questions answered on
+  Overview (they need their two memories read: Memory's job for now).
 - D459's leftovers: Accounts' connection added and the phone's sign-in still answer with a boxed notice at the
   top (`partnerToast`), not the said line; the web's quiet hours are the browser's time fields where the Mac
   has pills; 发现了就说's four choices stack into a tall block on a phone; the web titles a memory kind

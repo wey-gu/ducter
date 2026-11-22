@@ -54,7 +54,7 @@ import { FileLinkSheet, FileViewer } from "./fileview.tsx";
 import { NewTaskSheet } from "./newtask.tsx";
 import { AddFolderSheet } from "./addfolder.tsx";
 import { MemoryPage, Notebook, PeersInvite, PeersPage, peersPageShown } from "./memory.tsx";
-import { PaneSays, PlacesMap, SetBrief } from "./settings-home.tsx";
+import { homeThinks, PaneSays, PlacesMap, SetBrief } from "./settings-home.tsx";
 import { memBadge, memUpdate, peerCalled } from "./mem-view.ts";
 import { benchable, BenchToggle, openBenchAt } from "./workbench.tsx";
 import { TaskInfoButton } from "./task-info.tsx";
@@ -2713,6 +2713,13 @@ function partnerLede(): string {
   return !A.homeName ? "" : noBrain() ? t("partner.header.none", A.homeName) : brain ? t("partner.header", A.homeName, harnessName(brain.harness)) : "";
 }
 
+/** D469 round 2: the Partner page's head in its own voice (partner.say): where it runs and what it thinks with; held or with nothing to think with, D435's and D322's lines. */
+function partnerHead(): string {
+  const brain = A.brainNow ?? A.settings?.brain;
+  if (!A.homeName || !brain || brainHeld() || noBrain()) return partnerLede();
+  return t("partner.say", A.homeName, homeThinks() || harnessName(brain.harness));
+}
+
 function NameRow() {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
@@ -2722,7 +2729,7 @@ function NameRow() {
     if (n && n !== A.defaultName()) A.setSettings({ name: n }), say("rename", t("said.rename", n));
     setEditing(false);
   };
-  const lede = partnerLede();
+  const lede = partnerHead();
   return (
     <>
       <div class="partner-head">
@@ -2876,6 +2883,18 @@ function TrustSettings() {
   );
 }
 
+/** D445 on the web (D469 round 2): every half hour, 24-hour in every language, as the Mac's pills. */
+const HALF_HOURS = Array.from({ length: 48 }, (_, i) => {
+  const v = `${String(Math.floor(i / 2)).padStart(2, "0")}:${i % 2 ? "30" : "00"}`;
+  return { v, label: v };
+});
+/** A saved time on the half-hour list (one typed elsewhere, 22:15, shows as its half hour before). */
+export function halfHour(v: string): string {
+  const m = /^(\d{1,2}):(\d{2})/.exec(v);
+  if (!m) return "23:00";
+  return `${String(Math.min(23, +m[1]!)).padStart(2, "0")}:${+m[2]! >= 30 ? "30" : "00"}`;
+}
+
 function NotifySettings() {
   const s = A.settings;
   // D445: the page's shape while it reads, as To-do sources and Chat apps (D432), never a bare line.
@@ -2892,10 +2911,13 @@ function NotifySettings() {
         <Toggle label={t("partner.notify.on")} help={t(s.notify ? "partner.notify.on.note" : "partner.notify.off.note")} checked={s.notify} onChange={(notify) => (A.setSettings({ notify }), cheer())} />
         {s.notify && <Toggle label={t("partner.quiet")} help={t("partner.quiet.note")} checked={!!quiet} onChange={(on) => (A.setSettings({ quiet: on ? { start: "23:00", end: "08:00", tz: tz() } : null }), say("notify", on ? t("said.quiet", "23:00", "08:00") : t("said.quiet.off")), cheer())} />}
         {s.notify && quiet && (
-          <div class="quiet-range">
-            <input type="time" aria-label={t("partner.quiet")} value={quiet.start} onChange={(e) => setQuiet((e.target as HTMLInputElement).value || quiet.start, quiet.end)} />
-            <span>{t("partner.quiet.to")}</span>
-            <input type="time" aria-label={`${t("partner.quiet")} ${t("partner.quiet.to")}`} value={quiet.end} onChange={(e) => setQuiet(quiet.start, (e.target as HTMLInputElement).value || quiet.end)} />
+          <div class="set-item quiet-hours">
+            <b>{t("settings.quiet.hours")}</b>
+            <span class="qh-picks">
+              <Select label={t("partner.quiet")} value={halfHour(quiet.start)} options={HALF_HOURS} onPick={(v) => setQuiet(v, quiet.end)} />
+              <span class="qh-to">{t("partner.quiet.to")}</span>
+              <Select label={`${t("partner.quiet")} ${t("partner.quiet.to")}`} value={halfHour(quiet.end)} options={HALF_HOURS} onPick={(v) => setQuiet(quiet.start, v)} />
+            </span>
           </div>
         )}
         </div>

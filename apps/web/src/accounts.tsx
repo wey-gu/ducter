@@ -12,6 +12,7 @@ import { useEffect, useState } from "preact/hooks";
 import { A } from "./app.ts";
 import { BrandTile, brandOf } from "./brand.tsx";
 import { AddRow, Btn, DangerButton, OpenRow, Seg, Toggle } from "./controls.tsx";
+import { Select } from "./menu.tsx";
 import { GBlock, GConfirm, GFoot, GHead, GRow, Group, Said, say, Tile } from "./set-grid.tsx";
 import { ago } from "./format.ts";
 import { OwnPhoneCard } from "./own-phone.tsx";
@@ -31,9 +32,17 @@ export function ProactiveChips(p: { inNote?: boolean; children?: preact.Componen
   }, []);
   if (!st) return null;
   const v = st.proactive;
+  const opts = PROACTIVE_MODES.map((m) => ({ v: m, label: t(`proactive.${m}`) }));
   const body = (
     <>
-      <Seg<ProactiveMode> label={t("proactive.title")} value={v} options={PROACTIVE_MODES.map((m) => ({ v: m, label: t(`proactive.${m}`) }))} onPick={(m) => A.setSettings({ proactive: m })} />
+      {/* D469 round 2: four choices side by side on a wide screen; on a phone one pill at the row's
+          right edge (as 回你用的语言), never four stacked buttons. */}
+      <span class="pro-seg">
+        <Seg<ProactiveMode> label={t("proactive.title")} value={v} options={opts} onPick={(m) => A.setSettings({ proactive: m })} />
+      </span>
+      <span class="pro-pick">
+        <Select<ProactiveMode> label={t("proactive.title")} value={v as ProactiveMode} options={opts} placeholder={t("proactive.title")} onPick={(m) => A.setSettings({ proactive: m })} />
+      </span>
       {/* D250: never chosen is the default, and says so. */}
       <div class="small sub">{t(!v ? "proactive.note.never" : st.proactiveBy === "default" ? "proactive.note.default" : `proactive.note.${v}`)}</div>
     </>
@@ -105,7 +114,7 @@ export function dayGroups(d: import("@ducter/protocol").ProactiveDay): { text: s
 
 const down = (c: ConnectionView) => c.state === "unreachable" || c.state === "unauthorized";
 
-function status(c: ConnectionView): { line: string; warn: boolean } {
+export function status(c: ConnectionView): { line: string; warn: boolean } {
   if (c.state === "unauthorized") return { line: t(c.source === "oo" ? "card.oo_out" : "card.key_bad"), warn: true };
   if (c.state === "unreachable") return { line: t("card.unreachable"), warn: true };
   if (c.source !== "mcp" && c.apps && !c.apps.length) return { line: t("card.empty"), warn: false };
@@ -222,7 +231,7 @@ export function AppMark({ service }: { service: string }) {
 }
 
 /** The source's clay mailbox, small in the tile column (D289); grey when signed out or refused. */
-function Mailbox({ source, off }: { source: ConnectionView["source"]; off: boolean }) {
+export function Mailbox({ source, off }: { source: ConnectionView["source"]; off: boolean }) {
   const body = off ? "var(--ink-muted)" : source === "oomol" || source === "oo" ? "var(--accent)" : source === "self" ? "var(--working-dot)" : "var(--ink-muted)";
   return (
     <svg width="22" height="34" viewBox="0 0 52 84" aria-hidden="true">

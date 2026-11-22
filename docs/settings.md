@@ -50,10 +50,19 @@ newer Nowledge Mem for one of your AI agents, updates ready), your partner raise
 says so first, and gives you a button that takes you to where you fix it. When all is well it simply
 says **All's well. I'm right here.**
 
-Under it, **Your computers** shows each computer as a little clay picture with what it is to your
-partner (**Ducter runs here**, **Does tasks for Ducter**). The computer Ducter runs on also shows
-what lives there: your partner, its memory, and the marks of the accounts it reads. Click one to
-open **Devices**.
+Where it can be done safely right there, the button does it: a newer Nowledge Mem for one of your
+AI agents asks you first, in place, then updates it; updates ready start with one tap, as in
+**Devices**.
+
+Under it, **Your computers and phones** shows each computer, phone and tablet as a little clay
+picture with what it is to your partner (**Ducter runs here**, **Does tasks for Ducter**, **Reaches
+Ducter anywhere**) and what it is doing now (**2 tasks under way**, **Asleep**, **Connected now**).
+The computer Ducter runs on says your conversation and memory are there. Click one to open
+**Devices**.
+
+**Where your accounts are** shows each place your accounts come through (OOMOL, for example): the
+accounts it brings, that your mail, calendars and messages pass through it, and what your partner
+may do with them: read and draft on its own, and ask before anything goes out or costs money.
 
 Every other tab starts the same way: your partner says, in one sentence, what is true there right
 now ("I'm keeping an eye on 7 accounts…"), and anything on that tab that needs you comes right under

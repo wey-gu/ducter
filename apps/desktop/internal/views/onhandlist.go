@@ -200,6 +200,10 @@ func (a *App) storyOf(task *store.Task) rowStory {
 		}
 		return rowStory{words: a.stateLabel(att)}
 	}
+	// D472: a task that couldn't start says why in its row too (cant.go).
+	if k := task.Cant(); att == protocol.Failed && k != nil {
+		return rowStory{words: a.cantClause(k), tone: "failed"}
+	}
 	s := rowStory{}
 	if rep != nil {
 		s.words = strings.SplitN(rep.Summary, "\n", 2)[0]

@@ -1,5 +1,42 @@
 # Changelog
 
+## 0.1.14 - 2026-11-22
+
+<!-- whats-new
+zh: 任务开不起来时自己想办法；真要你出手就说清楚为什么
+en: Tasks that can't start fix themselves first, and say why when they can't
+-->
+
+**When a task can't start**
+- Ducter first tries the fix itself: another computer that has the code, a fresh copy of the code
+  where the task was to work, or one more try a moment later. Your partner then looks for another
+  way, and asks you only when nothing works, once, with the one thing you can do.
+- When it does reach you, the task says why in plain words, with the fix as its button: fetch the
+  code onto that computer, choose a folder there, install or sign in to the agent, update Ducter
+  there, or move it to the computer you named.
+- Before opening a task in a folder, your partner checks that the folder is there.
+- Tapping Try again twice no longer starts the task twice.
+
+**For people who run Ducter**
+- `ducter repairs` shows, week by week, what failed, what Ducter fixed by itself, and what
+  reached you.
+
+## 0.1.13 - 2026-11-22
+
+<!-- whats-new
+zh: 一眼看清哪些 agent 能找到伙伴，断了就给修法
+en: See which agents can reach your partner, and fix a broken link
+-->
+
+**Agent messaging**
+- Settings › Agent messaging draws who can reach whom: both ways, one way, or not yet. A link
+  that only works one way says why, with the fix as its button.
+- Each of your agents has its own thread of exchanges: what it asked, what your partner did,
+  and how it ended.
+- What each kind of agent may ask your partner is spelled out; a teammate's agent can only ask.
+- A request from one of your agents is named as yours, and isn't said twice in the conversation.
+- When your own agent asks only how things stand, your partner just answers, without asking you.
+
 ## 0.1.12 - 2026-11-22
 
 <!-- whats-new

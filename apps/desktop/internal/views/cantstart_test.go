@@ -40,7 +40,7 @@ func TestCantStartSaysWhyAndOffersTheFix(t *testing.T) {
 		if line != want || !strings.Contains(all, want) {
 			t.Fatalf("%s: the cause isn't said as %q: %q", lang, want, all)
 		}
-		for _, label := range []string{L.T("cant.on", "MacBook"), L.T("cant.clone_here")} {
+		for _, label := range []string{L.T("cant.on", "MacBook"), L.T("cant.clone_to", "Hetzner Server")} {
 			if !tt.HasText(label) {
 				t.Errorf("%s: no %q in %q", lang, label, all)
 			}

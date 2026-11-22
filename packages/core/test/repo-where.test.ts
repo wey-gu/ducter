@@ -107,16 +107,20 @@ test("remoteIn reads a GitHub address or a to-do's ref, nothing else", () => {
   expect(remoteIn("a/b path is ~/dev/x")).toBeUndefined();
 });
 
-function places(disk: Disk, card?: Partial<TaskCard>, staged?: { kind: string; where?: string }) {
+function places(disk: Disk, card?: Partial<TaskCard>, staged?: { kind: string; where?: string }, more: { title?: string; brief?: string; projects?: Record<string, string> } = {}) {
   const { where } = world(disk);
   const task = card ? ({ taskId: "t1", title: "Improve general setting page", place: { kind: "none" }, attention: "failed", ...card } as TaskCard) : undefined;
   return createPlaces({
     where,
     computers: () => [HEL, MAC, HASWELL],
     tasks: { get: (id) => (id === "t1" ? task : undefined) },
-    opened: () => ({ title: "Improve general setting page", brief: "nowledge-co/mem#10559", language: "zh-CN" }),
+    opened: () => ({ title: more.title ?? "Improve general setting page", brief: more.brief ?? "nowledge-co/mem#10559", language: "zh-CN" }),
     lang: () => "zh-CN",
     staged: () => staged,
+    async folder(dev, path) {
+      return disk[dev]?.folders?.[path] ?? { exists: false };
+    },
+    knownRemote: (name) => more.projects?.[name],
   });
 }
 
@@ -156,4 +160,37 @@ test("a task that couldn't start: the cause in plain words and the fixes; 再试
   expect(await p.replan("t1", { action: "reopen" })).toMatchObject({ ok: true, place: { device: "dev_mac", repoPath: "/Users/wey/dev/mem" } });
   expect(await p.replan("t1", { action: "clone_here" })).toMatchObject({ ok: true, place: { device: "local", clone: "nowledge-co/mem" } });
   expect(await p.replan("t1", { action: "start_at", device: "dev_mac" })).toMatchObject({ ok: true, place: { device: "dev_mac" } });
+});
+
+// D472 (hel, 2026-11-22): "在 hel 用 Gemini 审改 Mem 长文案并开 PR" was opened in /root/dev/mem on
+// Hetzner Server, which had no such folder; it failed at once and the person had to ask why.
+test("D472: a folder that isn't there is found before the task opens, with the repository it likely is", async () => {
+  const disk: Disk = { local: { clones: [], canRead: true }, dev_mac: { clones: [{ path: "/Users/wey/dev/mem" }] }, dev_haswell: { clones: [] } };
+  const p = places(disk, undefined, undefined, { projects: { mem: "github.com/nowledge-co/mem" } });
+  const r = await p.preflight({ place: { kind: "folder", device: "local", path: "/root/dev/mem" }, texts: ["在 hel 用 Gemini 审改 Mem 长文案并开 PR"], userTexts: ["在 hel 上用 gemini 改一下 mem 的长文案"] });
+  expect(r.ok).toBe(false);
+  if (!r.ok) {
+    expect(r.error).toContain("Hetzner Server has no folder /root/dev/mem");
+    expect(r.error).toContain('{"kind":"repo","remote":"nowledge-co/mem","device":"Hetzner Server"}');
+  }
+  // Nothing known by that name: ask which folder, never guess another path.
+  const q = await places(disk).preflight({ place: { kind: "folder", device: "local", path: "/root/dev/notes" }, texts: ["x"], userTexts: ["x"] });
+  expect(!q.ok && q.error).toContain("ask which folder on Hetzner Server");
+  // A folder that is there opens as it is.
+  const there = places({ ...disk, local: { clones: [], folders: { "/root/dev/notes": { exists: true, kind: "folder" } } } });
+  expect(await there.preflight({ place: { kind: "folder", device: "local", path: "/root/dev/notes" }, texts: ["x"], userTexts: ["x"] })).toMatchObject({ ok: true });
+});
+
+test("D472: a task that couldn't start in a missing folder offers to clone the repository there or choose a folder on it", async () => {
+  const disk: Disk = { local: { clones: [], canRead: true }, dev_mac: { clones: [{ path: "/Users/wey/dev/mem" }] }, dev_haswell: { clones: [] } };
+  const p = places(disk, { place: { kind: "folder", device: "local", path: "/root/dev/mem" }, harness: "antigravity" }, undefined, { title: "在 hel 用 Gemini 审改 Mem 长文案并开 PR", brief: "Review Mem's long copy", projects: { mem: "github.com/nowledge-co/mem" } });
+  const c = await p.cantStart("t1", { why: "no_folder", path: "/root/dev/mem", device: "local" });
+  expect(c).toMatchObject({ why: "no_folder", computer: "Hetzner Server", what: "mem", device: "local", harness: "antigravity", cloneHere: true, pickHere: true, elsewhere: { device: "dev_mac", name: "MacBook" }, line: "没能开始：Hetzner Server 上没有 mem 这个文件夹" });
+  expect(await p.replan("t1", { action: "clone_here" })).toMatchObject({ ok: true, place: { kind: "repo", device: "local", clone: "nowledge-co/mem" } });
+  // An agent that hit something unknown says itself and the computer.
+  const o = await p.cantStart("t1", { why: "other", path: "", device: "dev_mac" });
+  expect(o).toMatchObject({ why: "other", computer: "MacBook", what: "Antigravity", line: "没能开始：Antigravity 在 MacBook 上一开始就出了错" });
+  // Its words name another computer than the one it went to: 换到 that computer 上做.
+  const named = places(disk, { place: { kind: "none" }, harness: "antigravity" }, undefined, { title: "在 Hetzner Server 上审 Mem 的文案", brief: "x" });
+  expect(await named.cantStart("t1", { why: "not_installed", path: "", device: "dev_mac" })).toMatchObject({ why: "not_installed", elsewhere: { device: "local", name: "Hetzner Server" }, line: "没能开始：MacBook 上还没装 Antigravity" });
 });

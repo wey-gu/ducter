@@ -132,11 +132,10 @@ func (a *App) peersCard(c *ui.Context, st *protocol.Settings) {
 			return
 		}
 		a.group(c, "peers-head", "", "", func() {
-			title, line, tone := a.L.T("peers.head.on", name), a.L.T("peers.week.none"), sideMuted
+			// D470: the switch is the page's first group; the partner's sentence above says how things stand.
+			title, line, tone := a.L.T("peers.switch", name), "", sideMuted
 			if !on {
-				title, line = a.L.T("peers.head.off", name), a.L.T("peers.switch.off", name)
-			} else if n := peersWeek(recentHandoffs(peerFeed(a.S.Channel, a.S.TaskPeers), 50), a.Now()); n > 0 {
-				line, tone = a.L.T("peers.week.count", itoa(int64(n))), sideDone
+				line = a.L.T("peers.switch.off", name)
 			}
 			a.headRow(c, "peers", a.coinsTile(c, !on), title, line, tone, func() {
 				v := on
@@ -174,9 +173,13 @@ func (a *App) peersCard(c *ui.Context, st *protocol.Settings) {
 		a.peersNames(c, b, name)
 		a.peersStuck(c, b, name)
 		a.peersNotices(c, b, name)
-		a.peersReach(c, name)
-		a.peersRecent(c, name)
-		a.peersTry(c, name)
+		a.peersMap(c, name)
+		threads := exchangeThreads(peerFeed(a.S.Channel, a.S.TaskPeers), a.S.OutOps, a.S.Decisions, 3)
+		a.peersThreads(c, name, threads, p)
+		a.peersRules(c, p)
+		if len(threads) > 0 {
+			a.peersTry(c, name)
+		}
 	} else {
 		a.peersPicture(c, name)
 		head()
@@ -194,7 +197,7 @@ func (a *App) peersCard(c *ui.Context, st *protocol.Settings) {
 		})
 	case "joining":
 		a.group(c, "peers-joining", "", "", func() {
-			a.tileRow(c, "peers-joining", a.handoffDot(c), a.L.T("peers.joining", name), "", nil)
+			a.tileRow(c, "peers-joining", func() { a.avatar(c, theme.Working, 40) }, a.L.T("peers.joining", name), "", nil)
 		})
 	case "problem":
 		a.group(c, "peers-problem", "", "", func() { a.peersProblem(c, b, name) })
@@ -207,8 +210,8 @@ func (a *App) peersCard(c *ui.Context, st *protocol.Settings) {
 			})
 		})
 	}
-	if len(p.Muted) == 0 {
-		return
+	if phase == "on" || len(p.Muted) == 0 {
+		return // D470: on, the muted are under 谁能让我做什么
 	}
 	a.group(c, "peer-muted", a.L.T("peers.muted.title"), "", func() {
 		for _, agent := range p.Muted {
@@ -222,18 +225,6 @@ func (a *App) peersCard(c *ui.Context, st *protocol.Settings) {
 			})
 		}
 	})
-}
-
-// peersWeek counts the exchanges of the last 7 days, both ways (D459: the
-// head's line, as Memory's counts what it noted).
-func peersWeek(list []handoff, now time.Time) int {
-	n := 0
-	for _, h := range list {
-		if at, err := time.Parse(time.RFC3339, h.At); err == nil && now.Sub(at) < 7*24*time.Hour {
-			n++
-		}
-	}
-	return n
 }
 
 // peersNames is D364's one quiet row: an nmem too old to say who wrote

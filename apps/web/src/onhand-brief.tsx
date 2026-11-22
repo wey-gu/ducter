@@ -3,6 +3,7 @@
 // trail of steps on its own time, a group's parts as one track, the waits on one light time axis),
 // results as outcomes (the PR it made, as an object), and at a wide window the peek: the focused
 // task's live view, the conductor's "sit in". The Mac draws the same (apps/desktop/internal/views).
+import { cantFixes, cantLine, doCantFix } from "./cant.tsx";
 import type { ComponentChildren } from "preact";
 import { useEffect, useState } from "preact/hooks";
 import type { Bodies, LogEvent } from "@ducter/protocol";
@@ -146,12 +147,9 @@ export function rawFailure(reason: string): "lock" | "unknown" | undefined {
   return undefined;
 }
 
-/** D415's line for a task that couldn't start (the task page's own words). */
+/** D415's line for a task that couldn't start (the task page's own words; D472: one source, cant.tsx). */
 function cantWords(task: Task): string {
-  const c = cantOf(task)!;
-  if (c.why === "away") return t("cant.away", c.computer);
-  if (c.why === "other") return t("cant.other");
-  return t(`cant.${c.why}`, c.computer, c.what);
+  return cantLine(cantOf(task)!);
 }
 
 /**
@@ -167,8 +165,7 @@ export function stuckOf(x: Task, name = briefName(title(x)) || t("task.unknown")
   const of = (kind: StuckKind, text: string, line: string, more: Partial<BriefNeed> = {}): BriefNeed => ({ task: x, kind, text, line, ...more });
   const cant = cantOf(x);
   if (failed && cant) {
-    // D471: a start that failed on something nobody recognised says so, with where to look.
-    if (cant.why === "other") return of("unknown", t("onhand.brief.failed", name, t("onhand.stuck.unknown")), t("onhand.stuck.unknown.start"));
+    // D472: why it couldn't start and its real fix, one source with the task's page (cant.tsx).
     return of("cant", cantWords(x), cantWords(x));
   }
   const device = placeOf(x).device || "local";
@@ -209,15 +206,15 @@ export function StuckActs({ n, onRetry }: { n: BriefNeed; onRetry?: () => void }
   const drop = <Btn kind="text" size="sm" label={t("onhand.quiet.drop")} about={title(x)} onClick={() => A.taskAction(x.id, "drop")} />;
   switch (n.kind) {
     case "cant": {
+      // D472: the page's own fixes, the real one first (cant.tsx), 看看为什么 stays on the page.
       const c = cantOf(x)!;
-      const fixes = !!c.elsewhere || !!c.cloneHere || !!c.clearLock;
-      const placeWhy = c.why === "no_repo" || c.why === "no_folder" || c.why === "clone_failed";
       return (
         <>
-          {c.elsewhere && <Btn kind="secondary" size="sm" label={t("cant.on", c.elsewhere.name)} about={title(x)} onClick={() => A.cantAction(x.id, "start_at", c.elsewhere!.device)} />}
-          {c.clearLock && <Btn kind="secondary" size="sm" label={t("cant.clear_lock")} about={title(x)} onClick={() => A.cantAction(x.id, "clear_lock")} />}
-          {c.cloneHere && <Btn kind="secondary" size="sm" label={t("cant.clone_here")} about={title(x)} onClick={() => A.cantAction(x.id, "clone_here")} />}
-          {(!fixes || !placeWhy) && <Btn kind={fixes ? "text" : "secondary"} size="sm" label={t("task.action.retry")} about={title(x)} onClick={() => A.cantAction(x.id, "reopen")} />}
+          {cantFixes(c)
+            .filter((f) => f.act !== "why")
+            .map((f) => (
+              <Btn key={f.act} kind={f.kind === "primary" ? "secondary" : "text"} size="sm" label={f.label} about={title(x)} onClick={() => doCantFix(x.id, c, f)} />
+            ))}
         </>
       );
     }

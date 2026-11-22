@@ -174,6 +174,8 @@ export interface WsDeps {
   replay?: (o: { days?: number; web?: boolean }) => Promise<import("@ducter/protocol").ReplayReport>;
   /** D464: `ducter proactive week`: the offers of the last weeks, counted from the Log. */
   week?: (weeks?: number) => import("@ducter/protocol").WeekReport;
+  /** D473: `ducter repairs`: failures and self-repairs counted from the Log. */
+  repairs?: (weeks?: number) => import("@ducter/protocol").RepairReport;
   /** D222: the person's calendars (Accounts' calendar rows, today's line, cal_pick). */
   calendar?: () => import("./calendar.ts").Calendar | undefined;
   /** D341: 待办来源 / To-do sources (task-sources/). */
@@ -1072,6 +1074,14 @@ export function createWsHandler(deps: WsDeps) {
               const u = await r.undrop(f.taskId);
               return result(u.ok, u.message);
             }
+            case "start_in": {
+              // D472: 选 {computer} 上的文件夹: the folder the person chose there (D455's sheet) is where it starts.
+              const pl = f.place;
+              if (!card.cant || !r?.restartAt) return result(false, "That only applies to a task that couldn't start.");
+              if (!pl || (pl.kind !== "repo" && pl.kind !== "folder")) return result(false, "Choose a folder for it.");
+              const s = await r.restartAt(f.taskId, pl);
+              return result(s.ok, s.message);
+            }
             case "start_at":
             case "clone_here":
             case "clear_lock":
@@ -1266,7 +1276,7 @@ export function createWsHandler(deps: WsDeps) {
         const mp = deps.memPlugins?.();
         if (!mp) return send(ws, { t: "mem_plugin_result", device, harness, ok: false, reason: "failed" });
         watchDevices();
-        const r = await mp.install(device, harness);
+        const r = await mp.install(device, harness, f.what === "mailbox" ? "mailbox" : undefined); // D470
         return send(ws, r.ok ? { t: "mem_plugin_result", device, harness, ok: true, ...(r.taskId ? { taskId: r.taskId } : {}) } : { t: "mem_plugin_result", device, harness, ok: false, reason: r.reason });
       }
       case "anywhere_setup": {
@@ -1704,6 +1714,17 @@ export function createWsHandler(deps: WsDeps) {
           send(ws, { t: "proactive_week_result", report: deps.week(weeks) });
         } catch (err) {
           send(ws, { t: "proactive_week_result", error: (err as Error).message.slice(0, 200) });
+        }
+        return;
+      }
+      case "repairs_week": {
+        // D473: read-only, from the Log; answered on this socket only.
+        if (!deps.repairs) throw new Error("not available");
+        const weeks = typeof f.weeks === "number" && Number.isFinite(f.weeks) ? f.weeks : undefined;
+        try {
+          send(ws, { t: "repairs_week_result", report: deps.repairs(weeks) });
+        } catch (err) {
+          send(ws, { t: "repairs_week_result", error: (err as Error).message.slice(0, 200) });
         }
         return;
       }

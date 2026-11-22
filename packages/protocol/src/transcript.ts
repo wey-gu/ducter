@@ -6,7 +6,7 @@
 // Go port (apps/desktop/internal/views/transcript.go) passes the same cases
 // (fixtures/transcript.json). Every text in a block has its keys hidden (redact.ts): the home
 // already hides them in what it sends, this is the second wall.
-import type { Bodies, LogEvent } from "./index.ts";
+import type { Bodies, CantStart, LogEvent } from "./index.ts";
 import type { MediaRef } from "./media.ts";
 import { redact } from "./redact.ts";
 import { briefShown } from "./brief-shown.ts";
@@ -97,7 +97,7 @@ export type Block =
    * word in their i18n (`note.<say>`, `name` filled in), never the English it was logged in; `text`
    * is that line as logged, keys hidden, shown only on a tap for an error; `bad` = something failed.
    */
-  | { k: "note"; seq: number; say: NoteSay; name?: string; text: string; bad?: boolean; effort?: string; from?: number; to?: number; at?: string }
+  | { k: "note"; seq: number; say: NoteSay; name?: string; text: string; bad?: boolean; effort?: string; from?: number; to?: number; at?: string; cant?: CantStart }
   /** The agent's plan (D268): one per task, where it first wrote it, holding its latest items. */
   | { k: "plan"; seq: number; items: PlanItem[] }
   /**
@@ -117,12 +117,12 @@ export type Block =
 export type ToldSay = "adopted" | "lent" | "returned" | "stopped" | "declined" | "reopened" | "taken_back" | "given_back" | "loan_lost" | "looked" | "other";
 
 /** What a note says (D207). Every other system line (session started, memory recalled, a retry, an archive) says nothing. */
-export type NoteSay = "earlier" | "limit" | "compacted" | "compact_failed" | "interrupted" | "retry" | "stalled" | "offline" | "reconnecting" | "back" | "waiting_device" | "fresh" | "moved" | "switched" | "retuned" | "effort_dropped" | "guard" | "to_own_browser" | "error" | "error_delivery" | "error_start" | "error_resume";
+export type NoteSay = "earlier" | "limit" | "compacted" | "compact_failed" | "interrupted" | "retry" | "stalled" | "offline" | "reconnecting" | "back" | "waiting_device" | "fresh" | "moved" | "switched" | "retuned" | "effort_dropped" | "guard" | "to_own_browser" | "error" | "error_delivery" | "error_start" | "error_resume" | "mend_reopen" | "mend_clone_here" | "mend_start_at" | "mend_clear_lock" | "mend_rethink" | "mend_stall";
 
 const KICKOFF = /^(<brief>|Start the task ")/;
 
 /** A system line as a note, or undefined when it says nothing to a person (D207). Shared by the Go port. */
-export function noteOf(text: string, raw: unknown): { say: NoteSay; name?: string; bad?: boolean; effort?: string; from?: number; to?: number; at?: string } | undefined {
+export function noteOf(text: string, raw: unknown): { say: NoteSay; name?: string; bad?: boolean; effort?: string; from?: number; to?: number; at?: string; cant?: CantStart } | undefined {
   const r = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
   const o = (k: string) => (r[k] && typeof r[k] === "object" ? (r[k] as Record<string, unknown>) : undefined);
   const str = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : undefined);
@@ -146,6 +146,9 @@ export function noteOf(text: string, raw: unknown): { say: NoteSay; name?: strin
   if (r.slash === "compact" && r.failed) return { say: "compact_failed", bad: true };
   if (r.kind === "turn_ended" && r.outcome === "aborted") return { say: "interrupted" };
   if (r.kind === "retry") return { say: "retry", ...((n) => (n ? { name: n } : {}))(from(/^retry (\d+)/)) };
+  // D473: Ducter's own repair, one quiet line (never an error): what it does, and where.
+  const md = o("mend");
+  if (md && ["reopen", "clone_here", "start_at", "clear_lock", "rethink", "stall"].includes(String(md.how))) return { say: `mend_${String(md.how)}` as NoteSay, ...(str(md.name) ? { name: str(md.name) } : {}) };
   if (r.stall) return { say: "stalled" };
   if (r.fresh) return { say: "fresh" };
   if (r.effortDropped) return { say: "effort_dropped", ...(str(r.effortDropped) ? { name: str(r.effortDropped) } : {}) };
@@ -165,7 +168,11 @@ export function noteOf(text: string, raw: unknown): { say: NoteSay; name?: strin
   if (r.device !== undefined && r.offline === false) return { say: "back", ...((n) => (n ? { name: n } : {}))(str(r.name) ?? from(/^(.+?) is back/)) };
   if (r.waits === "asleep" || r.waits === "unreachable") return { say: "waiting_device", ...((n) => (n ? { name: n } : {}))(str(r.name) ?? from(/^waiting for (.+?):/)) };
   if (/^delivery failed/i.test(text)) return { say: "error_delivery", bad: true };
-  if (/^failed to start/i.test(text)) return { say: "error_start", bad: true };
+  // D472: each attempt says why it couldn't start, in the clients' words for its cant (never a bare 没能开始).
+  if (/^failed to start/i.test(text)) {
+    const c = o("cant");
+    return { say: "error_start", bad: true, ...(c && typeof c.why === "string" ? { cant: c as unknown as CantStart } : {}) };
+  }
   if (/^(failed to resume|could not switch|Claude in Chrome isn't connected, and)/i.test(text)) return { say: "error_resume", bad: true };
   if (/^(turn failed|event stream error|nudge failed|failed to)/i.test(text)) return { say: "error", bad: true };
   return undefined;

@@ -256,7 +256,9 @@ export function reachRows(
     }
     // D444: Mem listing its mailbox as open is the plainest proof it can reach the partner.
     if (here.some((v) => v.x.mem?.state === "installed" || v.x.mem?.state === "update") || last || mb?.open) {
-      out.push({ harness: h, tool, can: "yes", ...at, ...box });
+      // D470: the computer where it is signed in with the plugin, home first: where its mailbox is opened.
+      const on = here.find((v) => v.x.mem?.state === "installed" || v.x.mem?.state === "update") ?? here[0];
+      out.push({ harness: h, tool, can: "yes", ...at, ...box, ...(on ? { device: on.d.id, deviceName: on.d.name } : {}) });
       continue;
     }
     const off = here.find((v) => v.x.mem?.state === "absent");
@@ -340,4 +342,196 @@ export function tryAgents(devices: { id: string; name: string; home?: boolean; h
     }
   }
   return out;
+}
+
+/**
+ * D470: who reaches whom, read off a reach row: the way from the agent to the partner (`to`) and back
+ * (`back`), each yes, no, or not known yet; and the one fix Ducter can start when a way is missing:
+ * install (Mem's plugin isn't in it) or mailbox (Mem lists its mailbox closed, so the partner's answers
+ * can't reach it).
+ */
+export type Way = "yes" | "no" | "unknown";
+export type Ways = { to: Way; back: Way; fix?: "install" | "mailbox" };
+export function reachWays(r: Pick<ReachRow, "can" | "box" | "device">): Ways {
+  switch (r.can) {
+    case "yes":
+      if (r.box === "closed") return { to: "yes", back: "no", ...(r.device ? { fix: "mailbox" as const } : {}) };
+      return { to: "yes", back: r.box === "open" ? "yes" : "unknown" };
+    case "install":
+      return { to: "no", back: "no", ...(r.device ? { fix: "install" as const } : {}) };
+    case "unknown":
+      return { to: "unknown", back: "unknown" };
+  }
+  return { to: "no", back: "no" }; // none, relay: the person's own sessions of it can't pass messages
+}
+
+/** D470: the rows split by how they stand: both ways, one way (it reaches the partner, the answers can't go back), not yet. */
+export function reachSplit(rows: readonly ReachRow[]): { both: ReachRow[]; oneWay: ReachRow[]; notYet: ReachRow[] } {
+  const both: ReachRow[] = [];
+  const oneWay: ReachRow[] = [];
+  const notYet: ReachRow[] = [];
+  for (const r of rows) {
+    if (!(BRIDGE_TOOLS as readonly string[]).includes(r.harness)) continue; // pi, Antigravity: Mem's to add
+    const w = reachWays(r);
+    if (w.to === "yes" && w.back === "no") oneWay.push(r);
+    else if (w.to === "yes") both.push(r);
+    else notYet.push(r);
+  }
+  return { both, oneWay, notYet };
+}
+
+/**
+ * D470: what came of one exchange. For a request that came in: a task (taskId), the partner's answer
+ * (its words, and its send state when it hasn't plainly gone), a card waiting on the person, the person
+ * said not now (held), went ahead (go), the partner told the person and waits on them (told), or nothing
+ * yet. For a question the partner (or a task of its) sent: its answer, still waiting, or it didn't go.
+ */
+export type ExOutcome =
+  | { kind: "task"; taskId: string }
+  | { kind: "replied"; words: string; state?: OutState }
+  | { kind: "card" }
+  | { kind: "held" }
+  | { kind: "go" }
+  | { kind: "told" }
+  | { kind: "none" }
+  | { kind: "answered"; words: string }
+  | { kind: "waiting" }
+  | { kind: "notsent"; state: OutState };
+/** D470: one exchange in a thread: what was asked (its words), which way, and what came of it. */
+export type Exchange = { seq: number; at: string; way: "in" | "asked" | "taskasked"; words: string; taskId?: string; outcome: ExOutcome };
+/** D470: the exchanges with one agent, newest first, and who it is. */
+export type Thread = { key: string; agent: string; host?: string; mine?: boolean; role?: string; selfNamed?: boolean; at: string; items: Exchange[] };
+
+type PeerBody = { direction: "in" | "out"; messageId?: string; inReplyTo?: string; agent?: string; host?: string; from?: string; to?: string; text: string; taskId?: string; decisionId?: string; state?: string; mine?: boolean; role?: string; selfNamed?: boolean; by?: string; ack?: boolean; opId?: string };
+type FeedEntry = { ev: { seq: number; ts: string }; peer?: PeerBody; ai?: unknown; user?: unknown };
+
+const OUT_STATES: readonly string[] = ["sending", "unknown", "unconfirmed", "failed"];
+const oneLine = (s: string) => s.replace(/\s+/g, " ").trim();
+
+/**
+ * D470: the exchanges with the person's other agents as threads, one per agent, newest thread first,
+ * each with its latest `per` exchanges and what came of each. Read only from what the clients already
+ * hold (the conversation's bridge_msg lines, a task's own, the out-ops that haven't plainly gone, and
+ * the decisions asked for a message): no new protocol.
+ */
+export function exchangeThreads(
+  feed: readonly FeedEntry[],
+  outOps?: ReadonlyMap<string, { seq: number; ts: string; b: PeerBody }>,
+  decisions: Iterable<{ asker?: { messageId: string }; resolved?: { option: string } }> = [],
+  per = 3,
+): Thread[] {
+  const all: FeedEntry[] = [...feed];
+  for (const o of outOps?.values() ?? []) if (o.b.state && o.b.state !== "sent") all.push({ ev: { seq: o.seq, ts: o.ts }, peer: o.b });
+  all.sort((a, b) => a.ev.seq - b.ev.seq);
+  // One line per out-op: its latest state wins.
+  const byOp = new Map<string, FeedEntry>();
+  for (const e of all) if (e.peer?.direction === "out" && e.peer.opId) byOp.set(e.peer.opId, e);
+  const live = all.filter((e) => !(e.peer?.direction === "out" && e.peer.opId && byOp.get(e.peer.opId) !== e));
+  const asked = new Map<string, { resolved?: { option: string } }>();
+  for (const d of decisions) if (d.asker?.messageId) asked.set(d.asker.messageId, d);
+  const outIds = new Set<string>();
+  const outsTo = new Map<string, PeerBody[]>();
+  const insTo = new Map<string, PeerBody>();
+  for (const e of live) {
+    const p = e.peer;
+    if (p?.direction === "out" && p.messageId) outIds.add(p.messageId);
+    if (!p?.inReplyTo) continue;
+    if (p.direction === "out") outsTo.set(p.inReplyTo, [...(outsTo.get(p.inReplyTo) ?? []), p]);
+    else insTo.set(p.inReplyTo, p);
+  }
+  const outState = (s?: string): OutState | undefined => (s && OUT_STATES.includes(s) ? (s as OutState) : undefined);
+  const threads = new Map<string, Thread>();
+  for (let i = 0; i < live.length; i++) {
+    const e = live[i]!;
+    const p = e.peer;
+    if (!p || p.ack) continue;
+    const words = oneLine(p.text);
+    if (!words) continue;
+    let item: Exchange;
+    if (p.direction === "in") {
+      if (p.state === "early" || p.state === "set_aside" || p.state === "muted" || p.state === "ping" || p.state === "held" || p.state === "task") continue;
+      if (p.inReplyTo && outIds.has(p.inReplyTo)) continue; // an answer: said on its question
+      const outs = (p.messageId && outsTo.get(p.messageId)) || [];
+      const claim = outs.find((o) => o.taskId);
+      const reply = outs[outs.length - 1];
+      const card = p.messageId ? asked.get(p.messageId) : undefined;
+      let outcome: ExOutcome = { kind: "none" };
+      if (claim?.taskId) outcome = { kind: "task", taskId: claim.taskId };
+      else if (reply) {
+        const st = outState(reply.state);
+        outcome = { kind: "replied", words: oneLine(reply.text), ...(st ? { state: st } : {}) };
+      } else if (card) outcome = card.resolved ? { kind: card.resolved.option === "go" ? "go" : "held" } : { kind: "card" };
+      else {
+        // The partner spoke to the person about it before the person's next word: it waits on them.
+        for (let j = i + 1; j < live.length; j++) {
+          const n = live[j]!;
+          if (n.user) break;
+          if (n.ai) {
+            outcome = { kind: "told" };
+            break;
+          }
+        }
+      }
+      item = { seq: e.ev.seq, at: e.ev.ts, way: "in", words, ...(p.taskId ? { taskId: p.taskId } : {}), outcome };
+    } else {
+      if (p.inReplyTo || p.state === "pending" || p.state === "held" || p.state === "followed") continue;
+      const st = outState(p.state);
+      const ans = p.messageId ? insTo.get(p.messageId) : undefined;
+      const outcome: ExOutcome = st && st !== "sending" ? { kind: "notsent", state: st } : ans ? { kind: "answered", words: oneLine(ans.text) } : { kind: "waiting" };
+      item = { seq: e.ev.seq, at: e.ev.ts, way: p.by === "task" ? "taskasked" : "asked", words, ...(p.taskId ? { taskId: p.taskId } : {}), outcome };
+    }
+    const who = peerCalled(p, p.direction);
+    const key = who.name ?? (who.host ? `host:${who.host}` : "someone");
+    const th: Thread = threads.get(key) ?? { key, agent: who.name ?? "", ...(who.host ? { host: who.host } : {}), at: e.ev.ts, items: [] };
+    if (p.mine) th.mine = true;
+    if (p.selfNamed) th.selfNamed = true;
+    if (p.role) th.role = p.role;
+    th.at = e.ev.ts;
+    th.items.unshift(item);
+    threads.set(key, th);
+  }
+  return [...threads.values()].sort((a, b) => Date.parse(b.at) - Date.parse(a.at)).map((t) => ({ ...t, items: t.items.slice(0, per) }));
+}
+
+/**
+ * D470: what a sender may ask the partner, by the rules in code: trusted (one of the person's own the
+ * person let start work without asking, X2, up to TRUSTED_DAILY a day), own (one of theirs: work waits
+ * for the person's Go), team (a teammate's agent let through, D334: questions only, never work), muted.
+ */
+export type Trust = "trusted" | "own" | "team" | "muted";
+/** The partner's own limits (packages/partner/src/bridge-out.ts; a test keeps them equal): messages a day per sender, tasks a day a trusted agent may start. */
+export const SENDER_DAILY = 20;
+export const TRUSTED_DAILY = 5;
+export function trustOf(th: Pick<Thread, "agent" | "mine">, peers: Pick<PeersSettings, "trusted" | "muted"> | undefined): Trust {
+  if (peers?.muted.includes(th.agent)) return "muted";
+  if (!th.mine) return "team";
+  return peers?.trusted.includes(th.agent) ? "trusted" : "own";
+}
+
+/**
+ * D470: the conversation's request lines the partner's own next words already say: an incoming request
+ * (no card asked for it) followed by the partner's message before the person's next word. Its line gives
+ * way to one quiet origin line over that message (the seq of the message, mapped to the request's body).
+ */
+export function spokenPeers<B extends { direction: "in" | "out"; state?: string; messageId?: string }>(
+  channel: readonly { ev: { seq: number }; peer?: B; ai?: unknown; user?: unknown }[],
+  asked: (messageId: string) => boolean,
+): { hidden: Set<number>; origin: Map<number, B> } {
+  const hidden = new Set<number>();
+  const origin = new Map<number, B>();
+  for (let i = 0; i < channel.length; i++) {
+    const p = channel[i]!.peer;
+    if (!p || p.direction !== "in" || p.state || (p.messageId && asked(p.messageId))) continue;
+    for (let j = i + 1; j < channel.length; j++) {
+      const n = channel[j]!;
+      if (n.user) break;
+      if (n.peer?.direction === "in") break; // another request came first: each keeps its line
+      if (n.ai) {
+        hidden.add(channel[i]!.ev.seq);
+        if (!origin.has(n.ev.seq)) origin.set(n.ev.seq, p);
+        break;
+      }
+    }
+  }
+  return { hidden, origin };
 }

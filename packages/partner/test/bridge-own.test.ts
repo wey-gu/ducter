@@ -138,6 +138,8 @@ describe("D418: nmem 0.10.121's shapes (a stub with the real answers)", () => {
     const r = await createNmemBridge({ context: "ducter", bin: s.bin, env: {}, me: "4e742092" }).check(new Set());
     expect(r.ok).toBe(true);
     const m = (r as { messages: BridgeMessage[] }).messages[0]!;
+    // D470 round 2 (hel, 2026-11-22): logged by the known name, never "another agent".
+    expect(m.from).toBe("Codex");
     expect(m).toMatchObject({ messageId: "64cfcf0d", mine: true, agent: "Codex", role: "Mem 协作", selfNamed: true, space: "all", spaceLabel: "Everyone", sentAt: new Date(sent).toISOString(), linked: true });
     expect(m.route).toEqual([API, "--agent-context=ducter", "bridge", "reply", REF("64cfcf0d")]);
   });

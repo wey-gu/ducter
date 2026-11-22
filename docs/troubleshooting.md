@@ -30,12 +30,22 @@ The Mac app runs the same check-up by itself when it starts, and shows only what
 
 ### A task says "Couldn't start"
 
-The card says why and offers what fixes it. **Another git kept the repository busy**: something (an
-editor, another git program) had the repository locked the whole time. Ducter already waited and tried
-again; **Clear it and try again** removes only the lock file git left, and only while no git is
-running. **{agent} didn't start**: the line under it is the agent's own reason (often a sign-in).
-**Try again** always looks for where to start afresh, and a message you send to a task that never
-started starts it.
+Most of the time you won't see this: when a task can't start, Ducter first tries the fix itself
+(another computer that has the code, a fresh copy of it where the task was to work, one more try a
+moment later), and then your partner looks for another way. The task's steps say what it did in one
+line. Your partner asks you only when none of that works, with the one thing you can do.
+
+When you do see it, the task's page says why, and its first button is the fix. **No folder there**: the computer doesn't
+have the folder the task was to work in. **Clone it onto {computer}** puts the code in Ducter's
+folder on that computer and starts there; **Choose a folder on {computer}** lets you pick one that is
+already on it, and the task starts in it. **{agent} isn't installed** or **isn't signed in** on that
+computer: the button installs it or signs it in there; then tap **Try again**. **Ducter on {computer}
+is too old**: update it there, then **Try again**. **Another git kept the repository busy**: something
+(an editor, another git program) had the repository locked the whole time. Ducter already waited and
+tried again; **Clear it and try again** removes only the lock file git left, and only while no git is
+running. When nobody knows yet, the page names the agent and the computer with the first line of
+what went wrong, and **See why** shows a little more. **Try again** always looks for where to start
+afresh, and a message you send to a task that never started starts it.
 
 ### "Ducter" Not Opened
 

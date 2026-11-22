@@ -88,6 +88,7 @@ import { splitRich } from "@ducter/protocol/src/rich.ts";
 import { ContextButton } from "./context-meter.tsx";
 import { ComposerTune, composerTune, tunable } from "./composer-tune.tsx";
 import { Goal, Groove, RoutineFacts, RoutineShelf, TryStrip, untilLine, backWords, WaitBubble, WatchCard } from "./work.tsx";
+import { CantStartView } from "./cant.tsx";
 import { Locator, safe, saidSince, shortGo, shortTitle, taskBlocks, TaskFoot, TaskMeta, TaskMore, TimerPie, wakesOf, WhatItDid } from "./transcript.tsx";
 import {
   attention,
@@ -1388,8 +1389,16 @@ function EntryBody({ e, chipOwner, livingItems, join, prevUser }: { e: Entry; ch
   }
   if (e.ai) {
     const ans = answerOf(e, prevUser);
+    const from = A.peerOrigin.get(e.ev.seq);
     return (
       <div class={`partner${join ? " join" : ""}${e.ai.cal ? " has-cal" : ""}${e.ai.ui?.length ? " has-rich" : ""}${e.ai.first ? " first" : ""}`} data-reply={rk} data-seq={e.firstSeq}>
+        {/* D470: where the partner's words came from, one quiet line (its coin, the agent), opening the thread. */}
+        {from && (
+          <button type="button" class="peer-origin" onClick={() => A.openSettings("peers")}>
+            <Coin harness={peerHarness(peerName(from))} size={18} />
+            <span>{capFirst(t("peer.origin", peerName(from)))}</span>
+          </button>
+        )}
         {/* D298: the clay partner over its first words, while nothing else was said. */}
         {e.ai.first && !e.ai.first.look && firstOpening() && (
           <span class="first-face">
@@ -1446,7 +1455,8 @@ function EntryBody({ e, chipOwner, livingItems, join, prevUser }: { e: Entry; ch
     const first = e.peer.direction === "in" && !!e.peer.first;
     return (
       <>
-        {!asked && !(e.peer.state === "ping" && A.S.pings.get(e.ev.seq)?.told) && <PeerLine b={e.peer} ts={e.ev.ts} seq={e.ev.seq} />}
+        {/* D470: a request the partner's own next words say keeps no line of its own (its origin stands over them). */}
+        {!asked && !A.peerSpoken.has(e.ev.seq) && !(e.peer.state === "ping" && A.S.pings.get(e.ev.seq)?.told) && <PeerLine b={e.peer} ts={e.ev.ts} seq={e.ev.seq} />}
         {first && <FirstPeerNote b={e.peer} />}
       </>
     );
@@ -2584,7 +2594,7 @@ export function TaskView({ id, full }: { id: string; full?: boolean }) {
             <ProofLine task={task} evs={resultEvidence(task)} />
             <SentLine task={task} />
             {a === "failed" && cantOf(task) ? (
-              <CantStartView task={task} c={cantOf(task)!} />
+              <CantStartView taskId={task.id} about={safe(title(task))} c={cantOf(task)!} />
             ) : a === "failed" ? (
               // Didn't work (D76): try the same again, or tell it how; that opens its composer.
               <div class="btns">
@@ -2666,40 +2676,6 @@ function DecisionSheet({ id }: { id: string }) {
 
 
 const tz = () => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
-
-/**
- * D395: a task that couldn't start where it was to work: the cause in plain words (never a bare
- * path) and the taps that fix it: 在 {computer} 上做 (its copy there), 拉一份到这里 (clone it where
- * it was); 换谁来做 stays in the head's meta line, right above. With no fix found, 再试一次 asks
- * the computers again, so it never repeats the same failure.
- */
-export function CantStartView({ task, c }: { task: Task; c: CantStart }) {
-  const fixes = !!c.elsewhere || !!c.cloneHere || !!c.clearLock;
-  // D415: every why has its words; a place's own fixes keep 再试一次 off (D395), the rest keep it.
-  const placeWhy = c.why === "no_repo" || c.why === "no_folder" || c.why === "clone_failed";
-  const retry = !fixes || !placeWhy;
-  const hint = c.why === "busy" ? t("cant.busy.hint") : c.why === "other" || c.why === "away" ? t("cant.retry.hint") : undefined;
-  return (
-    <div class="cant">
-      <p class="cant-line">{cantLine(c)}</p>
-      {c.detail && <p class="cant-hint">{c.detail}</p>}
-      {hint && <p class="cant-hint">{hint}</p>}
-      <div class="btns">
-        {c.elsewhere && <Btn kind="primary" label={t("cant.on", c.elsewhere.name)} about={safe(title(task))} onClick={() => A.cantAction(task.id, "start_at", c.elsewhere!.device)} />}
-        {c.clearLock && <Btn kind={c.elsewhere ? "secondary" : "primary"} label={t("cant.clear_lock")} about={safe(title(task))} onClick={() => A.cantAction(task.id, "clear_lock")} />}
-        {c.cloneHere && <Btn kind={c.elsewhere || c.clearLock ? "secondary" : "primary"} label={t("cant.clone_here")} about={safe(title(task))} onClick={() => A.cantAction(task.id, "clone_here")} />}
-        {retry && <Btn kind={fixes ? "secondary" : "primary"} label={t("task.action.retry")} about={safe(title(task))} onClick={() => A.cantAction(task.id, "reopen")} />}
-      </div>
-    </div>
-  );
-}
-
-/** D415: the card's line, each why with the words it takes. */
-export function cantLine(c: CantStart): string {
-  if (c.why === "away") return t("cant.away", c.computer);
-  if (c.why === "other") return t("cant.other");
-  return t(`cant.${c.why}`, c.computer, c.what);
-}
 
 /** D322: where it lives and what it thinks with, one line under the name (the Mac's header). The
  *  Settings list's hero says the same, never an agent when none can be used. */

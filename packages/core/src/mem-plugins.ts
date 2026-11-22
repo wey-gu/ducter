@@ -75,7 +75,7 @@ export interface MemPlugins {
   /** Runs the check on one device (or every awake one) now. */
   check(deviceId?: string): Promise<void>;
   /** 装上 / Install: Mem's own command there (D375), else the setup task on that device with that agent. */
-  install(device: string, harness: string): Promise<{ ok: true; taskId?: string } | { ok: false; reason: MemPluginReason }>;
+  install(device: string, harness: string, what?: "mailbox"): Promise<{ ok: true; taskId?: string } | { ok: false; reason: MemPluginReason }>;
   onChange(fn: () => void): () => void;
   stop(): void;
 }
@@ -98,8 +98,9 @@ const DAY = 24 * 60 * 60 * 1000;
 /**
  * D466: what the task is for. install: absent; update: a newer version is out (from, to);
  * tidy: several copies (their versions); review: an install Mem's check can't call set up.
+ * D470: mailbox: Nowledge Mem lists the agent's mailbox as closed, so the partner's answers can't reach it.
  */
-export type MemSetupKind = { kind: "install" } | { kind: "update"; from?: string; to?: string } | { kind: "tidy"; versions?: string[] } | { kind: "review" };
+export type MemSetupKind = { kind: "install" } | { kind: "update"; from?: string; to?: string } | { kind: "tidy"; versions?: string[] } | { kind: "review" } | { kind: "mailbox" };
 
 // The card's and the task's own words (D292: zh and en; any other language falls back, ko → en).
 const W = {
@@ -110,6 +111,7 @@ const W = {
     "title.update": "为 {device} 上的 {agent} 更新 Nowledge Mem",
     "title.tidy": "把 {device} 上 {agent} 里的 Nowledge Mem 理成一份",
     "title.review": "检查 {device} 上 {agent} 的 Nowledge Mem",
+    "title.mailbox": "打开 {device} 上 {agent} 在 Nowledge Mem 的信箱",
   },
   en: {
     offer: "{agent} on {device} doesn't have Nowledge Mem. With it, my work there and your own {agent} sessions both remember you; it changes {agent}'s own settings.",
@@ -118,6 +120,7 @@ const W = {
     "title.update": "Update Nowledge Mem for {agent} on {device}",
     "title.tidy": "Keep one Nowledge Mem in {agent} on {device}",
     "title.review": "Look at Nowledge Mem in {agent} on {device}",
+    "title.mailbox": "Open the Nowledge Mem mailbox of {agent} on {device}",
   },
 };
 const FINISHED = new Set(["done_claimed", "done", "failed", "dropped", "blocked"]);
@@ -133,15 +136,19 @@ export function memSetupBrief(o: { agent: string; host: string; device: string; 
       ? `Update the Nowledge Mem plugin for ${o.agent} on this computer (${o.device})${what.from && what.to ? `, from ${what.from} to ${what.to}` : ""}, for the user's own use of ${o.agent} outside Ducter. The user tapped Update for this. Nowledge Mem's own \`nmem --json plugins check\` says a newer one is out.`
       : what.kind === "tidy"
         ? `Nowledge Mem's own check finds the Nowledge Mem plugin in ${o.agent} on this computer (${o.device}) more than once${what.versions?.length ? ` (versions ${what.versions.join(", ")})` : ""}, so which one ${o.agent} loads is unclear. Leave exactly one: the current one, set up the way the guide installs it. The user tapped Keep one for this.`
-        : what.kind === "review"
+        : what.kind === "mailbox"
+          ? `Nowledge Mem lists ${o.agent} on this computer (${o.device}) with its Agent mailbox closed, so the user's partner (Ducter) and their other agents can't reach ${o.agent}: ${o.agent} can write to Ducter, but Ducter's answers can't come back. Open ${o.agent}'s own mailbox, through ${o.agent}'s own Nowledge Mem plugin (its Bridge skill, "prepare this session to receive"). The user tapped Open its mailbox for this.`
+          : what.kind === "review"
           ? `Nowledge Mem's own check can't tell whether the Nowledge Mem plugin in ${o.agent} on this computer (${o.device}) is set up and enabled. Make it set up the way the guide says, for the user's own use of ${o.agent} outside Ducter. The user tapped Sort it out for this.`
           : `Set up Nowledge Mem for ${o.agent} on this computer (${o.device}), for the user's own use of ${o.agent} outside Ducter. The user tapped Install for this.`;
   // Several copies: only the host's own plugin commands remove one, and nothing is deleted by hand.
   const tidy = what.kind === "tidy" ? `\n   To remove an older copy, use only ${o.agent}'s own plugin or marketplace commands, as the guide names them; never delete its files by hand. If the guide or ${o.agent} has no command for it, stop and report each copy (version, where it is registered) instead.` : "";
-  const done = what.kind === "update" ? "updated and the check says the newer version" : what.kind === "tidy" ? "one copy left and the check says so" : what.kind === "review" ? "set up and the check says so" : "installed and the check says so";
+  // D470: the mailbox is Mem's one explicit step for that agent's own context, never Ducter's own connection.
+  const box = what.kind === "mailbox" ? `\n   For the mailbox: in ${o.agent}'s own Nowledge Mem agent context (never Ducter's), run Mem's passive \`nmem bridge setup\` first; only when it answers that the mailbox must be enabled, run the same with \`--enable\` (the one change on Mem's side). If the plugin is behind, update it first as the guide says. Never touch Ducter's own Nowledge Mem connection, identity or keys.` : "";
+  const done = what.kind === "mailbox" ? "Nowledge Mem's setup for that context no longer asks for the mailbox to be enabled" : what.kind === "update" ? "updated and the check says the newer version" : what.kind === "tidy" ? "one copy left and the check says so" : what.kind === "review" ? "set up and the check says so" : "installed and the check says so";
   return `${head}
 ${tried}
-1. Read Nowledge Mem's official setup guide at https://mem.nowledge.co/SKILL.md (it is for installing and updating) and follow it for the host "${o.host}". It is the only source of the steps; don't improvise others.${tidy}
+1. Read Nowledge Mem's official setup guide at https://mem.nowledge.co/SKILL.md (it is for installing and updating) and follow it for the host "${o.host}". It is the only source of the steps; don't improvise others.${tidy}${box}
 2. It changes only ${o.agent}'s own plugin or MCP setup and Nowledge Mem's own config on this computer. Nothing of Ducter's. Back up a file before editing it by hand, as the guide says.
 3. Never guess a server address, an API key or a workspace, and never print a key. If Nowledge Mem isn't connected on this computer (\`nmem doctor\` fails), stop and ask the user for a connect link (report_to_main, state "needs_input", with no default).
 4. When it is done, run \`nmem --json plugins inspect --host ${o.host}\` and report what it says. Say plainly that ${o.agent} has to be restarted (a new session) before it uses it.
@@ -301,7 +308,7 @@ export function createMemPlugins(d: MemPluginsDeps): MemPlugins {
 
   const setupOf = (device: string, harness: string) => Object.entries(saved.setups).find(([, s]) => s.device === device && s.harness === harness)?.[0];
 
-  async function install(device: string, harness: string): Promise<{ ok: true; taskId?: string } | { ok: false; reason: MemPluginReason }> {
+  async function install(device: string, harness: string, what?: "mailbox"): Promise<{ ok: true; taskId?: string } | { ok: false; reason: MemPluginReason }> {
     if (!d.on()) return { ok: false, reason: "off" };
     const host = MEM_HOSTS[harness];
     const dev = (await d.devices().catch(() => [])).find((x) => x.id === device || x.name === device);
@@ -309,6 +316,8 @@ export function createMemPlugins(d: MemPluginsDeps): MemPlugins {
     if (!dev.awake) return { ok: false, reason: "offline" };
     const key = `${dev.id}:${harness}`;
     if (setupOf(dev.id, harness) || direct.has(key)) return { ok: false, reason: "running" };
+    // D470: its mailbox, through the agent's own plugin: always the task (Mem has no one command for it here).
+    if (what === "mailbox") return openSetup(dev, harness, host, undefined, { kind: "mailbox" });
     // D375: Mem's own command first, where Mem has one for this agent and its plugin isn't there at all
     // (an update or a review is the guide's, by a task). It needs no agent signed in and no tokens.
     const tool = MEM_CONNECT_TOOLS[harness];

@@ -1039,6 +1039,13 @@ type CantStart struct {
 	ClearLock bool `json:"clearLock,omitempty"`
 	// D415: agent: the agent's own words for why, one line.
 	Detail string `json:"detail,omitempty"`
+	// D472: that computer's device id ("local" the home's), the task's agent,
+	// whether a folder already on that computer can be chosen there
+	// (选 X 上的文件夹), and for "other" what the start said (看看为什么).
+	Device   string `json:"device,omitempty"`
+	Harness  string `json:"harness,omitempty"`
+	PickHere bool   `json:"pickHere,omitempty"`
+	More     string `json:"more,omitempty"`
 }
 
 // CantElsewhere is another computer that has the task's repository.
@@ -1288,7 +1295,7 @@ type TaskSend struct {
 type TaskAction struct {
 	T      string `json:"t"` // "task_action"
 	TaskID string `json:"taskId"`
-	Action string `json:"action"` // interrupt | drop | undrop | reopen | merge | open_pr | undo | keep | start_at | clone_here (D395)
+	Action string `json:"action"` // interrupt | drop | undrop | reopen | merge | open_pr | undo | keep | start_at | clone_here (D395) | clear_lock (D415) | start_in (D472)
 	// undo (D142): Path puts back only that entry; Force undoes even though
 	// the folder changed after the task finished.
 	Path  string `json:"path,omitempty"`
@@ -1296,6 +1303,9 @@ type TaskAction struct {
 	// Device (D395, start_at): the computer whose copy a task that couldn't
 	// start starts on.
 	Device string `json:"device,omitempty"`
+	// Place (D472, start_in): the folder the person chose for a task that
+	// couldn't start (D455's sheet).
+	Place *Place `json:"place,omitempty"`
 }
 
 type Read struct {
@@ -1440,6 +1450,8 @@ type MemPluginInstall struct {
 	T       string `json:"t"` // "mem_plugin_install"
 	Device  string `json:"device"`
 	Harness string `json:"harness"`
+	// D470: "mailbox" = 打开它的信箱 / Open its mailbox (one task there through the agent's own Mem plugin).
+	What string `json:"what,omitempty"`
 }
 
 // ---------- Connections (D96: the user's OpenConnector or other MCP servers) ----------
@@ -1668,6 +1680,8 @@ type Peers struct {
 	Reach   string   `json:"reach"`
 	Trusted []string `json:"trusted"`
 	Muted   []string `json:"muted"`
+	// D334: teammates' agents let through (D470: 不再听它的 moves one to Muted; nil = unchanged).
+	Allowed []string `json:"allowed"`
 }
 
 // MarshalJSON writes Quiet only when it is set or cleared.

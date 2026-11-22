@@ -30,6 +30,7 @@ import { gotKeys } from "./media-fresh.ts";
 import { keepDraft, readDraft } from "./follow.ts";
 import type { AccountUsage, LogEvent, PartnerAsk, ReplyWant } from "@ducter/protocol";
 import { DEFAULT_PARTNER, needsAcross, type PartnerInfo, type PartnerLook } from "@ducter/protocol/src/partners.ts";
+import { spokenPeers } from "./mem-view.ts";
 
 /** D309: the partner whose conversation this device shows, kept on this device (another may show another). */
 const PARTNER_KEY = "ducter.partner";
@@ -442,7 +443,7 @@ class AppState {
   route: Route = { name: "conv" };
   sheet: Sheet = null;
   /** D455: On hand's 添加文件夹 / Add a folder sheet: the computer chosen (a device id) and the way. */
-  addf: { device: string; way: "choose" | "clone" | "new" } = { device: "local", way: "choose" };
+  addf: { device: string; way: "choose" | "clone" | "new"; forTask?: string } = { device: "local", way: "choose" };
   /** D457: the project just added from the sheet, for its arrival in On hand's column. */
   arrived?: { name: string; at: number };
   /** D309: every partner on the home (absent: a home without them, or one only). */
@@ -1483,7 +1484,14 @@ class AppState {
   /** D455: added while the sheet was open: it closes and On hand shows that project. */
   afPlaced(p: PlaceChoice) {
     if (this.sheet?.kind !== "addfolder") return;
+    const forTask = this.addf.forTask;
     this.closeAddFolder();
+    // D472: chosen for a task that couldn't start: it starts there; the lens stays where it was.
+    if (forTask && (p.place.kind === "repo" || p.place.kind === "folder")) {
+      this.addf.forTask = undefined;
+      this.cantAction(forTask, "start_in", undefined, p.place);
+      return;
+    }
     try {
       if (p.name) localStorage.setItem("ducter.onhand.lens", p.name);
     } catch {}
@@ -2289,6 +2297,18 @@ class AppState {
     this.send({ t: "mem_plugin_install", device, harness });
     this.changed();
   }
+  /** D470: 打开它的信箱 / Open its mailbox: one task on that device opens the agent's Nowledge Mem mailbox (the tap is its Go). */
+  openMailbox(device: string, harness: string) {
+    this.memAnswer = undefined;
+    this.mailboxOpening.add(`${device}:${harness}`);
+    this.send({ t: "mem_plugin_install", device, harness, what: "mailbox" });
+    this.changed();
+  }
+  /** D470: the mailboxes this window asked to open (until the next look at Mem's list says otherwise). */
+  mailboxOpening = new Set<string>();
+  /** D470: the request lines the partner's next words already say (hidden), and the message each one stands over (origin). */
+  peerSpoken = new Set<number>();
+  peerOrigin = new Map<number, NonNullable<Entry["peer"]>>();
   /** D363: put agents on a device, sign one in there, a pasted code, cancel, or look again. */
   agentSetup(device: string, action: "install" | "login" | "code" | "cancel" | "look" | "logout", o: { harnesses?: string[]; harness?: string; code?: string } = {}) {
     if (action !== "look") this.setupAnswer = undefined;
@@ -3213,9 +3233,38 @@ class AppState {
   }
 
   /** D395: a task that couldn't start: start it on another computer's copy, clone it here, or ask again. */
-  cantAction(id: string, action: "start_at" | "clone_here" | "reopen" | "clear_lock", device?: string) {
-    this.send({ t: "task_action", taskId: id, action, ...(device ? { device } : {}) });
+  cantAction(id: string, action: "start_at" | "clone_here" | "reopen" | "clear_lock" | "start_in", device?: string, place?: Place) {
+    // D472: one tap is one start: a second within a moment (a double click, the brief and the page) is the same.
+    const now = Date.now();
+    if ((this.cantSent.get(id) ?? 0) > now - 2000) return;
+    this.cantSent.set(id, now);
+    this.send({ t: "task_action", taskId: id, action, ...(device ? { device } : {}), ...(place ? { place } : {}) });
     this.changed();
+  }
+  private cantSent = new Map<string, number>();
+
+  /** D472: the device id a can't-start's computer has in this client's list ("local" is the home's). */
+  cantDevice(dev: string | undefined): string {
+    const ds = this.devices ?? [];
+    if (!dev || dev === "local") return ds.find((d) => d.home)?.id ?? "local";
+    return ds.find((d) => d.id === dev || d.name === dev)?.id ?? dev;
+  }
+
+  /**
+   * D472: 选 {computer} 上的文件夹 / Choose a folder on {computer}: D455's sheet on that computer, and
+   * the folder chosen, cloned or made there is where the task that couldn't start starts.
+   */
+  openFolderFor(taskId: string, device: string | undefined, way: "choose" | "clone" = "choose") {
+    this.openAddFolder();
+    this.addf = { device: this.cantDevice(device), way, forTask: taskId };
+    this.afWay(way);
+  }
+
+  /** D472: a fix done on that computer's card in Settings (install or sign in its agent there). */
+  cantSetup(device: string | undefined, action: "install" | "login", harness: string) {
+    const dev = this.cantDevice(device);
+    this.agentSetup(dev, action, action === "install" ? { harnesses: [harness] } : { harness });
+    this.openSettings("devices");
   }
 
   /** D142, a folder task: 改回去 / Undo all changes (path: one entry; force: after confirming),
@@ -3390,6 +3439,10 @@ class AppState {
       else if (e.living) for (const it of livingItems(e)) if (it.kind === "done" || it.kind === "failed") chipOwner.set(it.taskId, e.firstSeq);
     }
     this.pending = this.pending.filter((p) => !echoed.has(p.clientId));
+    // D470: a request the partner's own next words already say gives way to one quiet origin line over them.
+    const spoken = spokenPeers(rows, (id) => [...S.decisions.values()].some((d) => d.asker?.messageId === id));
+    this.peerSpoken = spoken.hidden;
+    this.peerOrigin = spoken.origin;
     return { rows, livingItems, chipOwner };
   }
 }

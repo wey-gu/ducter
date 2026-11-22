@@ -38,6 +38,7 @@ export * from "./rich.ts";
 export * from "./pins.ts";
 export * from "./made.ts";
 export * from "./apps.ts";
+export * from "./mend.ts";
 export * from "./app-lift.ts";
 export * from "./app-glyphs.ts";
 export * from "./reach.ts";
@@ -725,6 +726,8 @@ export interface Bodies {
     // D334: the Space it came in (in), or goes out in (out): a reply goes back in its message's Space.
     space?: string;
     spaceLabel?: string;
+    // D470, in: it came in a Space the person shares with others (not their own place).
+    shared?: boolean;
     // D418, in: one of the person's own agents named by its own words ("我是 Wey 的 Mem 协作 Codex"):
     // `agent` is the tool it said ("Codex"), `role` the rest of its words for itself ("Mem 协作"); read
     // as 你的 Codex（Mem 协作）/ your Codex (Mem 协作). Only with `mine` (peer-self.ts ownAgentSelf).
@@ -806,6 +809,10 @@ export interface Bodies {
   // D189/D193: one snapshot of a phone call per change (core/src/phone.ts); the latest per callId
   // wins. On the channel, origin "system". Ended states wake the partner, which says the outcome once.
   phone_call: CallBody;
+  // D473: a rung of Ducter's own repair ladder for a task (core/src/mend.ts): the write-ahead record
+  // of a retry or repair (state going, then ok or failed), or a hand-over to the partner (rethink,
+  // which wakes it). On the task's stream, origin "system". Read by `ducter repairs`.
+  mend: import("./mend.ts").MendBody;
 }
 
 export interface Usage {
@@ -961,10 +968,21 @@ export interface CantStart {
    * D415, every other start failure has a word too: busy: another git held the repository the whole
    * time (清掉旧的再试 when the lock is one git left); agent: its agent couldn't start (its program,
    * a sign-in); away: its computer went away; other: anything else (再试一次 asks again, fresh).
+   * D472: the common agent failures have their own word and fix: not_installed: its agent isn't on
+   * that computer (装上); signed_out: it isn't signed in there (登录); old: that computer's Ducter
+   * is too old for it (更新). "other" is only what is truly unknown, said with what is known.
    */
-  why: "no_repo" | "no_folder" | "clone_failed" | "busy" | "agent" | "away" | "other";
+  why: "no_repo" | "no_folder" | "clone_failed" | "busy" | "agent" | "not_installed" | "signed_out" | "old" | "away" | "other";
   /** The computer it was to start on, by name. */
   computer: string;
+  /** D472: that computer's device id ("local" for the home), for a fix done there (a folder chosen on it, a sign-in). */
+  device?: string;
+  /** D472: the task's agent (its harness id), named in the line and its fixes. */
+  harness?: string;
+  /** D472: no_folder / no_repo with that computer reachable: 选 {computer} 上的文件夹 / Choose a folder on {computer}, then it starts there. */
+  pickHere?: boolean;
+  /** D472: other: what the start said, a few lines at most (behind 看看为什么 / See why), never a stack. */
+  more?: string;
   /** The repository's or folder's own name ("mem"). */
   what: string;
   path?: string;
@@ -1284,7 +1302,8 @@ export type ClientFrame =
   // with `confirm` (what would be lost); the same undo with force: true goes ahead.
   // D395: start_at (device): a task that couldn't start starts on that computer's copy; clone_here: clones it where it was to start.
   // D415: clear_lock: 清掉旧的再试, the lock git left is cleared (no git running) and it starts again.
-  | { t: "task_action"; taskId: string; action: "interrupt" | "drop" | "undrop" | "reopen" | "merge" | "open_pr" | "undo" | "keep" | "start_at" | "clone_here" | "clear_lock"; path?: string; force?: boolean; device?: string }
+  // D472: start_in (place): a task that couldn't start starts in the folder the person chose on that computer (D455's sheet).
+  | { t: "task_action"; taskId: string; action: "interrupt" | "drop" | "undrop" | "reopen" | "merge" | "open_pr" | "undo" | "keep" | "start_at" | "clone_here" | "clear_lock" | "start_in"; path?: string; force?: boolean; device?: string; place?: Place }
   // D142: the list behind a folder task's Changes; answered with a folder_changes frame.
   | { t: "folder_changes"; taskId: string }
   // D214: one op of the opened task's workbench (its files, changes, pages), answered with a wb
@@ -1372,7 +1391,9 @@ export type ClientFrame =
   // tapped it, so it is their Go). D375: Mem's own `nmem connect --tool` there when Mem has one for
   // that agent and its plugin is absent; else, or when that didn't put it in, one task there that
   // follows Mem's own setup guide. Answered with mem_plugin_result; the card reads the check again after.
-  | { t: "mem_plugin_install"; device: string; harness: string }
+  // D470: what "mailbox": 打开它的信箱 / Open its mailbox on Agent messaging, for an agent Nowledge Mem
+  // lists with its mailbox closed: one task there that opens it through the agent's own Mem plugin.
+  | { t: "mem_plugin_install"; device: string; harness: string; what?: "mailbox" }
   // D375: Settings › 记忆's 再看一次 / Check again: read Mem's own doctor on the home now (the settings frame follows).
   | { t: "mem_health" }
   // D205: Settings › 伙伴's 接上 / Connect and 断开 / Disconnect for the persona's own Bridge
@@ -1468,6 +1489,8 @@ export type ClientFrame =
   | { t: "proactive_replay"; days?: number; web?: boolean }
   // D464: `ducter proactive week`: the last `weeks` (1–12) of offers counted from the Log; answered with proactive_week_result.
   | { t: "proactive_week"; weeks?: number }
+  // D473: `ducter repairs`: the last `weeks` (1–12) of failures and self-repairs counted from the Log; answered with repairs_week_result.
+  | { t: "repairs_week"; weeks?: number }
   // D242: fresh keys for media this client holds refs to (its keys ran out); answered with media_keys.
   | { t: "media_keys"; ids: string[] }
   // D193: the device sign-in (RFC 8628) a connection_add started: stop waiting for it; or sign in
@@ -1812,6 +1835,7 @@ export type ServerFrame =
   | { t: "proactive_day"; day: ProactiveDay }
   | { t: "proactive_replay_result"; report?: import("./proactive.ts").ReplayReport; error?: string }
   | { t: "proactive_week_result"; report?: import("./proactive.ts").WeekReport; error?: string }
+  | { t: "repairs_week_result"; report?: import("./mend.ts").RepairReport; error?: string }
   // D242: a fresh key per id the home holds (ids it doesn't hold are left out). Not "keys": the saved frame's.
   | { t: "media_keys"; mediaKeys: Record<string, string> }
   // readable (D158): what the added connection can read now; [] = connected, but no account there yet.

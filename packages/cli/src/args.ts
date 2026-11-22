@@ -1,6 +1,6 @@
 // Argument parsing for `ducter`. Pure: no env, no I/O, so it is easy to test.
 
-export type Command = "up" | "open" | "doctor" | "status" | "version" | "help" | "pair" | "devices" | "service" | "domain" | "tailscale" | "worker" | "uninstall" | "report" | "merge" | "undo" | "task" | "say" | "tail" | "answer" | "connect" | "disconnect" | "update" | "ability" | "browser" | "anywhere" | "git" | "reach" | "key" | "proactive";
+export type Command = "up" | "open" | "doctor" | "status" | "version" | "help" | "pair" | "devices" | "service" | "domain" | "tailscale" | "worker" | "uninstall" | "report" | "merge" | "undo" | "task" | "say" | "tail" | "answer" | "connect" | "disconnect" | "update" | "ability" | "browser" | "anywhere" | "git" | "reach" | "key" | "proactive" | "repairs";
 
 export interface Args {
   command: Command;

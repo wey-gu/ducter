@@ -3,7 +3,7 @@
 //   cold seed:   renderProjection() background blocks for a fresh session (L2, simplified)
 // Rule (principle 4, research/13): a fresh session reads as an ongoing conversation.
 // Nothing rendered here may say the session was reset, restarted, or lost.
-import type { AskLine, Attention, Bodies, LogEvent, ReplyRef, TaskCard } from "../../protocol/src/index.ts";
+import type { AskLine, Attention, Bodies, CantStart, LogEvent, ReplyRef, TaskCard } from "../../protocol/src/index.ts";
 import { REPLY_QUOTE } from "../../protocol/src/index.ts";
 import { harnessName } from "../../protocol/src/harnesses.ts";
 import { richShownWords } from "../../protocol/src/rich.ts";
@@ -147,6 +147,8 @@ export interface RenderCtx {
   /** D259: the whole text of a short text file the user sent (≤ FILE_INLINE_CHARS), else undefined. */
   fileText?(m: MediaRef): string | undefined;
   taskTitle(taskId: string): string | undefined;
+  /** D473: why a task couldn't start, and the fixes core found (a rethink names them). */
+  taskCant?(taskId: string): CantStart | undefined;
   /** D340: the user's own words sent straight to this task between its previous report and this one (seq), oldest first. */
   told?(taskId: string, reportSeq: number): string[];
   /** D348: the folder changes this task's previous report said could be undone, if any. */
@@ -510,6 +512,8 @@ export function renderTrigger(e: LogEvent, ctx: RenderCtx): string {
       const c = e.body as Bodies["phone_call"];
       return renderCallEnded(c, c.taskId ? ctx.taskTitle(c.taskId) : undefined);
     }
+    case "mend":
+      return renderMend(e.body as Bodies["mend"], ctx.taskTitle((e.body as Bodies["mend"]).taskId), ctx.taskCant?.((e.body as Bodies["mend"]).taskId));
     case "bridge_msg": {
       const b = e.body as Bodies["bridge_msg"];
       return renderBridge(b, b.direction === "in" ? ctx.bridgeOut?.(b.inReplyTo) : undefined, !!(b.mine && b.agent && ctx.trusted?.(b.agent)));
@@ -517,6 +521,48 @@ export function renderTrigger(e: LogEvent, ctx: RenderCtx): string {
     default:
       return `[${e.origin} ${e.kind}] ${clip(JSON.stringify(e.body), 400)}`;
   }
+}
+
+const MEND_WHY: Record<string, string> = {
+  no_repo: "there is no copy of its repository there",
+  no_folder: "that folder isn't there",
+  clone_failed: "cloning its repository there failed",
+  busy: "another git kept its repository busy",
+  agent: "its agent couldn't start there (its program or its sign-in)",
+  // D472's words for an agent that can't start there.
+  not_installed: "its agent isn't installed on that computer",
+  signed_out: "its agent isn't signed in on that computer",
+  old: "Ducter on that computer is too old for its agent",
+  away: "that computer couldn't be reached",
+  other: "something went wrong as it started",
+};
+const MEND_HOW: Record<string, string> = { reopen: "started it again, fresh", clone_here: "cloned its repository there", start_at: "started it on the computer that has the code", clear_lock: "cleared the lock git left and started again" };
+
+/**
+ * D473: a task Ducter couldn't mend by itself, handed to the partner: what failed, what Ducter
+ * already tried, the fixes left, and what to do. The person has seen none of it yet; the partner
+ * finds another way if it can, and asks once, with the one real fix, only if it can't.
+ */
+export function renderMend(m: Bodies["mend"], title: string | undefined, cant?: CantStart): string {
+  const name = title ? `"${clip(title, 80)}"` : m.taskId;
+  if (m.cls === "stall")
+    return (
+      `[task ${m.taskId} ${name} stopped without a report, even after Ducter's nudge] The user hasn't been told. Read where it stopped (its last checkpoint and steps), then carry it on yourself: ` +
+      `task_send it the one clear next step, or task_switch it if its agent is the trouble. Never ask it to redo anything it already sent, posted or paid. Tell the user only if it truly needs them, in one short line with what they'd do; otherwise say nothing.`
+    );
+  const where = cant?.computer ? ` on ${cant.computer}` : "";
+  const what = cant?.path ? ` (${cant.path})` : cant?.what ? ` (${cant.what})` : "";
+  const tried = m.tried.length ? ` Ducter already ${m.tried.map((t) => `${MEND_HOW[t.how] ?? t.how}${t.on ? ` on ${t.on}` : ""}`).join(", then ")}; that didn't do it.` : "";
+  const left = [cant?.elsewhere ? `${cant.elsewhere.name} has a copy` : "", cant?.cloneHere ? "it can be cloned where it was to work" : ""].filter(Boolean).join("; ");
+  const head = `[task ${m.taskId} ${name} couldn't start${where}: ${MEND_WHY[m.why ?? "other"] ?? MEND_WHY.other}${what}.${tried}${left ? ` Still possible: ${left}.` : ""}${m.budget ? " Ducter is holding back further tries this hour." : ""}]`;
+  if (m.again)
+    return `${head} It came back to you a second time. Ask the user once now, in one short line in their language, with the one real fix as the choice (which repository or folder, which computer, or signing in its agent). No error text, no list of what failed.`;
+  return (
+    `${head} The user hasn't been told; find another way first. ` +
+    `If you know which repository the work is on (the user's words, the to-do, the project), task_open it again with place {"kind":"repo","remote":"owner/name"} (never a guessed path): Ducter finds its copy or clones it, and the task that couldn't start is set aside. ` +
+    `If its agent couldn't start, open it on another agent; if the computer is the trouble, on another computer. ` +
+    `Only if none of that can work, ask the user once, in one short line, with the one real fix. Never paste error text or list what failed; a fix that worked needs no word at all.`
+  );
 }
 
 /** Finds rendered per note line (a note holds at most 5; a long fold-in chain is clipped too). */
@@ -798,6 +844,13 @@ export function renderBridge(b: Bodies["bridge_msg"], answers?: Bodies["bridge_m
       ? `If it asks for the user's own call (a choice only the user can make, not work for you), put it in front of the user at once with ask: forMessage "${b.messageId}", the question in the user's language, goLabel = the option it suggests (suggests: true) or its first, other = its second option. Ducter sends the user's answer back to it; don't bridge_reply and don't add anything in prose. ` +
         // Live trial (D249): haiku turned a work request that left the approach to Ducter into a call for the user.
         `A request for work (a goal, a fix, something to build or check) is work even when it mentions ways to do it: ask whether to take it on (Go = open a task), without forMessage.\n`
+      : "") +
+    // D470 (the author, 2026-11-22): the user's own agent, in their own place, asking only for status the
+    // user can already see answers without a card (live on hel: a Go card before "what time is it, how many
+    // tasks" was friction). Work, the user's call, memories or files, or a teammate's agent still go as above.
+    // Offered only on a short question (a work request is long and asks nothing), so it never pulls work toward a reply.
+    (b.mine && !b.shared && b.text.length <= 200 && /[?？]/.test(b.text)
+      ? "Only when it asks for nothing but status the user can already see (the time, what you have running, what is done): answer it now with bridge_reply, a line or two, and no card: only the time and your tasks' count or titles, nothing the user told you, planned or keeps in memory. That is never work or the user's call (those go as above).\n"
       : "") +
     // The sender can't close the frame early.
     safe

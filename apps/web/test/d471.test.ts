@@ -63,8 +63,9 @@ describe("On hand on a real board (D471)", () => {
     expect(b.stuckClause(k("phone"))).not.toContain("工具");
     expect(b.stuckClause(k("lock"))).toBe(A.L.t("onhand.stuck.lock"));
     expect(b.stuckClause(k("lock"))).not.toContain("fatal");
-    expect(k("other").kind).toBe("unknown");
-    expect(b.stuckClause(k("other"))).toBe(A.L.t("onhand.stuck.unknown.start"));
+    // D472 owns why a start failed (cant.tsx): the same words as the task's page.
+    expect(k("other").kind).toBe("cant");
+    expect(b.stuckClause(k("other"))).toBe((await import("../src/cant.tsx")).cantLine(A.S.tasks.get("other")!.card!.cant!));
     expect(k("clone").kind).toBe("cant");
     expect(b.rawFailure("fatal: not a git repository")).toBe("unknown");
     expect(b.peekWords("cp review-report-round235.json review/")).toBe("");

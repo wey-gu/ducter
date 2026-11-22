@@ -26,6 +26,7 @@ import { escArmed } from "./esc.ts";
 import { A, effortWord } from "./app.ts";
 import { duration, harnessName, modelName } from "./format.ts";
 import { markdown } from "./markdown.ts";
+import { cantLine } from "./cant.tsx";
 import { MediaBlock } from "./media.tsx";
 import { DocLine } from "./doc-line.tsx";
 import { attention, effortOf, finished, harnessOf, modelOf, placeOf, title, type Task } from "./store.ts";
@@ -698,7 +699,8 @@ function BlockView({ task, b, live, took }: { task: Task; b: Block; live?: boole
           </div>
         );
       // D207: the runner's lines in the user's words; the line as logged only on hover, for an error.
-      const line = t(`note.${b.say}`, noteName(b));
+      // D472: an attempt that couldn't start says its real reason (its cant), as the page does.
+      const line = b.cant ? cantLine(b.cant) : t(`note.${b.say}`, noteName(b));
       return (
         <div class={`step note${b.bad ? " bad" : ""}`}>
           {b.bad ? GLYPHS.error!() : GLYPHS.other!()}

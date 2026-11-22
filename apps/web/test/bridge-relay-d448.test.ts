@@ -46,7 +46,8 @@ describe("a task's own exchanges", () => {
       ["taskin", "t1", "用 xdg-open。"],
       ["tasksent", "t1", "为什么跳过 open？"],
     ]);
-    expect(memoryWords.zh["peers.recent.tasksent"]).toBe("%[2]s 问 %[1]s");
-    expect(memoryWords.zh["peers.recent.taskin"]).toBe("%[1]s 回 %[2]s");
+    // D470: a thread says it by the task: 「{task}」问的，它回了：…
+    expect(memoryWords.zh["peers.ex.task.answered"]).toBe("「%[1]s」问的，它回了：%[2]s");
+    expect(memoryWords.zh["peers.ex.task.waiting"]).toBe("「%s」问的，在等它回话");
   });
 });

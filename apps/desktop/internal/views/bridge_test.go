@@ -100,7 +100,7 @@ func TestBridgeRow(t *testing.T) {
 			func(L *i18n.Strings) []string { return []string{L.T("bridge.connect")} }},
 		{"connected", TabPeers, protocol.BridgeView{State: "connected", Identity: "ducter", Space: space},
 			func(L *i18n.Strings) []string {
-				return []string{L.T("peers.recent.title"), L.T("peers.wait.title"), L.T("peers.try.title"), L.T("peers.switch", "小鸭"), L.T("peers.switch.on")}
+				return []string{L.T("peers.ex.title"), L.T("peers.ex.empty"), L.T("peers.map.title"), L.T("peers.switch", "小鸭"), L.T("peers.switch.on")}
 			},
 			func(L *i18n.Strings) []string {
 				return []string{L.T("bridge.connect"), L.T("bridge.undo"), "ducter", "Only me", L.T("mem.details")}

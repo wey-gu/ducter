@@ -858,6 +858,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     },
     trusted: (agent) => !!core.settings?.get().peers?.trusted.includes(agent),
     taskTitle: (id) => core.tasks.get(id)?.title ?? jobs.get(id)?.title,
+    // D473: why a task couldn't start and the fixes core found, for a rethink.
+    taskCant: (id) => core.tasks.get(id)?.cant,
     // D340: what the user typed into the task itself since its previous report (research/124 F1: without
     // it, the person's own asks read as the task's ideas, and the partner offered to delete them).
     told: (id, reportSeq) => {
@@ -4202,8 +4204,17 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   const recoverTries = new Map<string, number>();
   let recoverTimer: ReturnType<typeof setTimeout> | null = null;
   type OutBase = Omit<Bodies["bridge_msg"], "direction" | "messageId" | "state" | "opId"> & { opId?: string };
-  const logOut = (base: OutBase & { opId: string }, state: OutState, extra: Partial<Bodies["bridge_msg"]> = {}) =>
-    core.log.append({ stream: "channel", origin: "partner", kind: "bridge_msg", body: { ...base, direction: "out", messageId: "", state, ...extra } });
+  // D470 round 2 (hel, 2026-11-22): an op is logged once per state it passes (D106: "sending" before the CLI
+  // runs, its write-ahead record, then "sent"); a second "sent" for the same op (a recovery that finds it
+  // gone after the send already said so) is never logged: one delivered message, one "sent".
+  const sentOps = new Set<string>();
+  const logOut = (base: OutBase & { opId: string }, state: OutState, extra: Partial<Bodies["bridge_msg"]> = {}) => {
+    if (state === "sent") {
+      if (sentOps.has(base.opId) || foldOut(loggedBridge()).get(base.opId)?.state === "sent") return undefined;
+      sentOps.add(base.opId);
+    }
+    return core.log.append({ stream: "channel", origin: "partner", kind: "bridge_msg", body: { ...base, direction: "out", messageId: "", state, ...extra } });
+  };
 
   /**
    * One outgoing message (D106): logged as "sending" before the CLI runs, then "sent", "failed"
@@ -4956,6 +4967,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           from: m.from,
           ...(m.agent ? { agent: m.agent } : {}), ...(m.host ? { host: m.host } : {}),
           ...(m.mine ? { mine: true } : {}),
+          ...(m.shared ? { shared: true } : {}), // D470: a Space the person shares; status replies there still ask
           ...self,
           text: redactSecrets(m.text),
           ...(m.sentAt ? { sentAt: m.sentAt } : {}),
@@ -5097,6 +5109,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           return { ok: true, sent: false, note: "Not sent: Ducter already told it the task is taken, and you'll be asked to send the outcome when the task reports. End your turn." };
         const state = await deliver({ ...peerOf(original), text, inReplyTo: messageId, ...(taskId ? { taskId } : {}) }, "reply");
         const to = original.agent ?? original.from ?? "the sender";
+        // D470: a status answer to the user's own agent in a turn only that agent started needs no word to the user.
+        if (state === "sent" && original.mine && !original.shared && bridgeOnly(turn)) return { ok: true, note: `Sent to ${to}. Write nothing to the user, not even "done": the conversation already shows the reply. End your turn now.` };
         if (state === "sent") return { ok: true, note: `Sent to ${to}. The user sees a small line saying so; don't mention the reply. If you haven't told the user yet, do it now in one message; if you have, end your turn without repeating it.` };
         if (state === "unknown") return { ok: true, sent: "unknown", note: "Bridge didn't answer. Ducter checks whether it went out and never sends it twice: don't send it again, and don't mention it." };
         return { ok: false, sent: false, note: "Not sent. Ducter has already told the user why; don't repeat it, and end your turn." };

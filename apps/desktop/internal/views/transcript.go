@@ -96,6 +96,8 @@ type Block struct {
 	Label *string   `json:"label,omitempty"` // go (D284): the label of the Go relayed ("" its plain Go)
 	State string    `json:"state,omitempty"` // report
 	Bad   bool      `json:"bad,omitempty"`   // note: something failed
+	// Cant (D472): an attempt that couldn't start, its why (said as the page says it).
+	Cant *protocol.CantStart `json:"cant,omitempty"`
 	// Say is what a note says, worded from note.<say> (D207); Name fills it in.
 	Say  string `json:"say,omitempty"`
 	Name string `json:"name,omitempty"`
@@ -307,6 +309,9 @@ func noteOf(text string, raw json.RawMessage) (Block, bool) {
 		return Block{Say: "interrupted"}, true
 	case r["kind"] == "retry":
 		return Block{Say: "retry", Name: from(retryRe)}, true
+	// D473: Ducter's own repair, one quiet line (never an error).
+	case obj("mend") != nil && mendHows[str(obj("mend")["how"])]:
+		return Block{Say: "mend_" + str(obj("mend")["how"]), Name: str(obj("mend")["name"])}, true
 	case truthy(r["stall"]):
 		return Block{Say: "stalled"}, true
 	case truthy(r["fresh"]):
@@ -342,7 +347,8 @@ func noteOf(text string, raw json.RawMessage) (Block, bool) {
 	case deliveryRe.MatchString(text):
 		return Block{Say: "error_delivery", Bad: true}, true
 	case startFailRe.MatchString(text):
-		return Block{Say: "error_start", Bad: true}, true
+		// D472: each attempt says why it couldn't start, as the page does.
+		return Block{Say: "error_start", Bad: true, Cant: cantOfRaw(r["cant"])}, true
 	case resumeFailRe.MatchString(text):
 		return Block{Say: "error_resume", Bad: true}, true
 	case sessionFailRe.MatchString(text):
@@ -1083,3 +1089,23 @@ func latestVoice(blocks []Block) string {
 	}
 	return ""
 }
+
+// cantOfRaw reads a failed start's cant from its event's raw (D472).
+func cantOfRaw(v any) *protocol.CantStart {
+	m, ok := v.(map[string]any)
+	if !ok {
+		return nil
+	}
+	b, err := json.Marshal(m)
+	if err != nil {
+		return nil
+	}
+	var k protocol.CantStart
+	if json.Unmarshal(b, &k) != nil || k.Why == "" {
+		return nil
+	}
+	return &k
+}
+
+// mendHows are the repairs a D473 mend line names (note.mend_<how>).
+var mendHows = map[string]bool{"reopen": true, "clone_here": true, "start_at": true, "clear_lock": true, "rethink": true, "stall": true}

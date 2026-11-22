@@ -10,7 +10,7 @@ import { createMediaStore } from "./media.ts";
 import { chmodSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { thisComputer } from "./this-computer.ts";
-import { join, resolve, sep } from "node:path";
+import { basename, join, resolve, sep } from "node:path";
 import { randomBytes } from "node:crypto";
 import { APP_SANDBOX, appCsp, HARNESSES, MEM_CONNECT_TOOLS, fill, harnessName, normalizeTag, sameComputer, pickTag, words, type Bodies, type HarnessId, type LangTag, type LogEvent, type OnHand, type PartnerAsk, type Place, type TaskCard, type TaskNeeds } from "@ducter/protocol";
 import { intlLocale, talkLang } from "./lang.ts";
@@ -79,6 +79,8 @@ import { openApps, type AppsStore } from "./apps.ts";
 import { APP_DATA_SCHEMA, createBoards } from "./boards.ts";
 import { createLoadout, isRuleHint, registerRuleTools, registerSwitchTool, registerBrainSwitchTool, type Loadout } from "./loadout.ts";
 import { createKindRetry, type KindRetry } from "./kind-retry.ts";
+import { createMender } from "./mend.ts";
+import { readRepairEvents, repairReport, repairSince, REPAIR_WEEKS_DEFAULT, REPAIR_WEEKS_MAX } from "./mend-week.ts";
 import { openConnections, type ConnectionsStore, type Linker, type OoSource } from "./connections.ts";
 import { callWakes, neverCall, openPhone, type Phone } from "./phone.ts";
 import { openOwnPhone } from "./phone-own/index.ts";
@@ -460,6 +462,8 @@ export function triggersPartner(e: LogEvent): boolean {
     return r.state === "paused" && r.pausedBy === "system" && r.pauseReason !== "review";
   }
   if (e.kind === "report") return (e.body as Bodies["report"]).state !== "progress";
+  // D473: a failure Ducter couldn't mend by itself goes to the partner to rethink, with what was tried.
+  if (e.kind === "mend") return (e.body as Bodies["mend"]).rung === "rethink";
   // An incoming Bridge message wakes the partner, unless it was set aside or predates Bridge (D170).
   if (e.kind === "bridge_msg") return (e.body as Bodies["bridge_msg"]).direction === "in" && !(e.body as Bodies["bridge_msg"]).state;
   // The second switch the same way: the partner offers a rule once (loadout.ts).
@@ -1008,6 +1012,10 @@ export function startCore(opts: CoreOptions = {}): Core {
   // D372: an errand on a fast tier that fails or stalls carries on on the smartest, once.
   kindRetryRef = createKindRetry({ log, loadout, runner: () => runner, retell: wake });
   log.subscribe((e) => kindRetryRef?.onEvent(e));
+  // D473: a task that couldn't start, or stopped without a report, is mended by Ducter first:
+  // retried or its place repaired within budgets, then handed to the partner to rethink.
+  const mender = createMender({ log, tasks, places: () => { try { return api.places; } catch { return undefined; } }, runner: () => runner, clock, taken: (e) => !!kindRetryRef?.took(e) });
+  log.subscribe((e) => mender.onEvent(e));
   // D293: the home's own key pair (made before the Bridge link: D324 names its connection with it).
   const identity = homeIdentity(dataDir);
   // D205: Settings › 伙伴's one-tap Bridge connection for the persona, run by the home's nmem.
@@ -1244,6 +1252,12 @@ export function startCore(opts: CoreOptions = {}): Core {
     lang: () => langNow(),
     staged: () => taskSourcesRef?.stagedItem(),
     fs: { isDir: (p) => realFs.isDir(p), readText: (p) => realFs.readText?.(p), home: homedir() },
+    // D472: a folder task's folder looked for there first; a missing folder known as a project's repository.
+    folder: (dev, path, ms) => (dev === "local" ? (opts.homeFolderInfo ?? ((p: string) => folderInfo(p, opts.git ?? realGitInfo)))(path) : computers.folderInfo(dev, path, ms).catch(() => "offline" as const)),
+    knownRemote: (name) => {
+      const n = name.toLowerCase();
+      return projects.list().find((p) => p.remote && (p.name.toLowerCase() === n || basename(p.remote).toLowerCase() === n))?.remote;
+    },
   });
   // D285: 做过的事 / Past tasks: the person's marks, and every task findable again.
   const marks = createMarks({ dataDir });
@@ -1397,7 +1411,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       socketsChanged: () => reachRef?.refresh(),
     },
     partners,
-    core: api, workbench, bridgeLink, decisions, runner: () => runner, devices: () => devicesView, lend: () => lendRef, settings, connections, phone, rules, standing, pins, apps, loadout, models: modelCatalog, accountUsage, closing, work: workFrames, newTask, updates: () => updatesRef, agents: () => agentsRef, agentSetup: (device, f) => agentSetupOp(device, f), memSetup: (device, action, link) => memSetupOp(device, action, link), recordsAllow: (device, on) => recordsAllowOp(device, on), updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, memHealth, anywhere: () => anywhereRef, channels, proactive: () => proactiveRef, replay: (o) => replayRef?.(o) ?? Promise.reject(new Error("not ready yet")), week: (n) => weekRef(n), calendar: () => calendarRef, taskSources: () => taskSourcesRef, taskGroups: () => taskGroups, onHandAway, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets, past: { ...past, marks, persona: () => persona.id, ongoing, outside, made, redo }, keys: { dataDir, ...(opts.keyFetch ? { fetch: opts.keyFetch } : {}), ...(opts.keyCanRun ? { canRun: opts.keyCanRun } : {}), prepare: (h) => keyPrepare(h), ...(opts.keyTz ? { tz: opts.keyTz } : {}) }, ...(firstWordsDeps ? { firstWords: firstWordsDeps } : {}), did, ownAgents });
+    core: api, workbench, bridgeLink, decisions, runner: () => runner, devices: () => devicesView, lend: () => lendRef, settings, connections, phone, rules, standing, pins, apps, loadout, models: modelCatalog, accountUsage, closing, work: workFrames, newTask, updates: () => updatesRef, agents: () => agentsRef, agentSetup: (device, f) => agentSetupOp(device, f), memSetup: (device, action, link) => memSetupOp(device, action, link), recordsAllow: (device, on) => recordsAllowOp(device, on), updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, memHealth, anywhere: () => anywhereRef, channels, proactive: () => proactiveRef, replay: (o) => replayRef?.(o) ?? Promise.reject(new Error("not ready yet")), week: (n) => weekRef(n), repairs: (n) => { const weeks = Math.min(REPAIR_WEEKS_MAX, Math.max(1, Math.floor(n ?? REPAIR_WEEKS_DEFAULT))); const now = clock.now(); return repairReport(readRepairEvents(log, repairSince(now, weeks)), { now, weeks }); }, calendar: () => calendarRef, taskSources: () => taskSourcesRef, taskGroups: () => taskGroups, onHandAway, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets, past: { ...past, marks, persona: () => persona.id, ongoing, outside, made, redo }, keys: { dataDir, ...(opts.keyFetch ? { fetch: opts.keyFetch } : {}), ...(opts.keyCanRun ? { canRun: opts.keyCanRun } : {}), prepare: (h) => keyPrepare(h), ...(opts.keyTz ? { tz: opts.keyTz } : {}) }, ...(firstWordsDeps ? { firstWords: firstWordsDeps } : {}), did, ownAgents });
   handsets.onChange(() => (devicesView?.changed(), ws.onHandChanged()));
   onHandChanged = ws.onHandChanged;
   // D156: a partner turn in flight keeps an update of the agent it thinks with waiting.
@@ -2320,6 +2334,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       reachRef?.stop();
       sockets.stop();
       unsubscribePartner();
+      mender.stop();
       for (const p of sessions.values()) await (p as { close?(): Promise<void> }).close?.().catch(() => {});
       phone.stop();
       ownNumber.stop();

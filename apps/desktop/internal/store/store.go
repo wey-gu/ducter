@@ -460,7 +460,9 @@ type Store struct {
 	bySeq     map[int64]*Entry
 	Jobs      map[string]*Job
 	Decisions map[string]*DecisionState
-	Tasks     map[string]*Task
+	// sentReplies (D470 round 2): replies shown as sent, by the message answered and the words.
+	sentReplies map[string]bool
+	Tasks       map[string]*Task
 	// FindStates are each find's latest change (D165), by find id.
 	FindStates map[string]*protocol.FindState
 	// FindSends are each drafted reply's sending (D403), apart from the reactions;
@@ -1159,7 +1161,9 @@ func (s *Store) applyOnHand(o *protocol.OnHand) {
 		}
 		// A snapshot is newer than every task_state that arrived before it;
 		// later task_state events override it again.
-		t.State = &protocol.TaskState{TaskID: card.TaskID, Attention: card.Attention, Residency: card.Residency, Reason: card.Reason, Cant: card.Cant} // D471: the card's cant too, or a snapshot loses why it couldn't start
+		// D472: with why it couldn't start, or the snapshot hides it (hel:
+		// the page said 没成 with 再试一次 only, the reason nowhere).
+		t.State = &protocol.TaskState{TaskID: card.TaskID, Attention: card.Attention, Residency: card.Residency, Reason: card.Reason, Cant: card.Cant}
 		t.stateSeq = max(t.stateSeq, s.Cursor)
 		if card.LastReport != nil {
 			t.LastReport = card.LastReport
@@ -1437,6 +1441,21 @@ func (s *Store) ApplyEvent(ev protocol.LogEvent) {
 			s.lastPing.key, s.lastPing.seq, s.lastPing.at = key, ev.Seq, at
 			s.add(&Entry{Event: ev, Peer: b})
 			return
+		}
+		// D470 round 2: one delivered message is one line. A second "sent" for the same op, or the same words
+		// sent again in answer to the same message, is the Log saying it twice, never a second message.
+		if b.Direction == "out" && b.State == "sent" {
+			key := b.InReplyTo + "|" + b.Text
+			if prev := s.OutOps[b.OpID]; (b.OpID != "" && prev != nil && prev.Peer.State == "sent") || (b.InReplyTo != "" && s.sentReplies[key]) {
+				s.bySeq[ev.Seq] = nil
+				return
+			}
+			if b.InReplyTo != "" {
+				if s.sentReplies == nil {
+					s.sentReplies = map[string]bool{}
+				}
+				s.sentReplies[key] = true
+			}
 		}
 		if b.Direction == "out" && !b.Ack && b.OpID != "" && b.Text != "" {
 			switch b.State {

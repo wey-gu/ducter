@@ -1022,6 +1022,16 @@ type TaskCard struct {
 	// Cant (D395): it couldn't start where it was to work: why, and what
 	// fixes it. Absent once it starts.
 	Cant *CantStart `json:"cant,omitempty"`
+	// Mending (D473, D471): Ducter is mending it right now; On hand stands
+	// it at work, never as a failure.
+	Mending *Mending `json:"mending,omitempty"`
+}
+
+// Mending is a repair under way: its class, what it does and where.
+type Mending struct {
+	Cls  string `json:"cls"`
+	How  string `json:"how,omitempty"`
+	Name string `json:"name,omitempty"`
 }
 
 // CantStart (D395) is why a task couldn't start where it was to work (Why:

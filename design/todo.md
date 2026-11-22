@@ -2374,10 +2374,13 @@ Codex first, once OAR is near 1.0. See `research/17`.
 
 ## On hand as one ledger (D471)
 
+- [ ] **A reload in iOS Safari can come up blank** (D471 rev., seen in the Simulator against a demo core: the first load after pairing and hash navigation render; a reload or a second tab often stays empty until much later). Find whether the core or the client holds the second connection. Trigger: the author sees a blank On hand on the phone after a reload.
+- [ ] **Scrolling the iOS Simulator** for full-length phone shots: no Simulator.app GUI on this Mac, so the phone set below the first screen is CDP device emulation in Chrome. Trigger: the next phone design pass.
+
 - [ ] **The author's review** of `.shots/d471/` and then of their own board on the next build: is one sheet per section calm, is the one sentence enough without D467's lines. Trigger: the next build on hel.
 - [ ] **Candidate C, the partner's note** (a short letter grouping the causes over the list), if the author misses the brief's warmth; it must never say the rows again. Trigger: the author asks for it.
 - [ ] **The replay's agents and waiters**: the export is the Log only, so a replay's computers show their agents as not signed in (a phone task can read as signed out on the Mac) and a loop's waiter can be missing (a wait reads as stopped). Carry the devices' agents and the armed waiters in the export. Trigger: the next real-board design pass.
-- [ ] **The phone at 390 and the iOS Simulator** for the stacked rows. Trigger: the next phone release.
+- [x] **The phone at 390 and 430** for the stacked rows (built 2026-11-22, D471 rev.: the task first, why, a quiet where-and-when line, the one fix full width).
 - [ ] **The brief's and the axis's CSS** (`.blines`, `.bline`, `.waxis` in `app.css`) is dead since D471; remove it when `app.css` is next merged whole (it is source, appended to). Trigger: the next `app.css` merge.
 - [ ] **Steps in the peek**: a step that is only a command stays in the task; if the author wants the command, show it whole on its own line. Trigger: the author asks.
 

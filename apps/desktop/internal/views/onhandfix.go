@@ -147,8 +147,35 @@ func (a *App) stuckFix(task *store.Task) stuckFix {
 		return stuckFix{kind: "failed", sentence: a.L.T("onhand.brief.failed", name, said), line: a.L.T("onhand.stuck.failed", said), buttons: []fixButton{retry, why}}
 	}
 	// 7. A stop with nothing more known: what it last said is its own words (the peek's).
-	return stuckFix{kind: "stopped", sentence: a.L.T("onhand.brief.stopped", name, a.L.T("onhand.wait.unsaid")), line: a.L.T("onhand.stuck.stopped"), buttons: []fixButton{
-		goOn(a.L.T("onhand.quiet.go"), a.L.T("onhand.quiet.go")), drop}}
+	// D471 round 2: said as the partner: what it knows from its last words, and the honest next step.
+	line, pr := a.lastWords(report)
+	words := a.L.T("onhand.quiet.go")
+	if pr != "" {
+		words = a.L.T("onhand.stuck.pr_ci.words", pr)
+	}
+	return stuckFix{kind: "stopped", sentence: a.L.T("onhand.brief.stopped", name, a.L.T("onhand.wait.unsaid")), line: line, buttons: []fixButton{
+		goOn(a.L.T("onhand.quiet.go"), words), drop}}
+}
+
+var (
+	prNum   = regexp.MustCompile(`(?i)\bPR\s*#(\d+)`)
+	ciWords = regexp.MustCompile(`(?i)\bCI\b|checks?\b|流水线|检查`)
+)
+
+// lastWords is what a stopped task last said, in the partner's words
+// (D471 round 2): a PR it opened that waited on CI, a PR it opened, else its
+// last words quoted short, else that it left none.
+func (a *App) lastWords(summary string) (line, pr string) {
+	if m := prNum.FindStringSubmatch(summary); m != nil {
+		if ciWords.MatchString(summary) {
+			return a.L.T("onhand.stuck.pr_ci", m[1]), m[1]
+		}
+		return a.L.T("onhand.stuck.pr", m[1]), m[1]
+	}
+	if first := firstSentence(summary, 200); first != "" && rawFailure(first) == "" {
+		return a.L.T("onhand.stuck.said", sayName(first, 40)), ""
+	}
+	return a.L.T("onhand.stuck.stopped"), ""
 }
 
 // clause is a fix's sentence without the task's name, for its own card.
@@ -172,7 +199,7 @@ func (f stuckFix) clause() string {
 // fixButtons draws a fix's buttons, at most one primary look.
 func (a *App) fixButtons(c *ui.Context, key string, f stuckFix, bg ui.Color, acted *bool) {
 	t := a.T
-	ui.Row(c.Key(key)).Gap(t.S1).AlignItems(ui.Center).Shrink(0).Children(func() {
+	ui.Row(c.Key(key)).Gap(t.S1).Wrap().AlignItems(ui.Center).Shrink(1).MinWidth(0).Children(func() { // D471: a second fix wraps under the first
 		for _, b := range f.buttons {
 			if a.button(c, b.label, b.kind, t.ControlSM, bg) {
 				if acted != nil {

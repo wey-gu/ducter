@@ -133,7 +133,23 @@ export function backAt(task: Task): number {
 
 export type StuckKind = "cant" | "signin" | "signin-pi" | "offline" | "perm" | "phone" | "failed" | "unknown" | "stopped";
 /** `text` names the task (a sentence said anywhere); `line` is the card's own line, without its name. */
-export type BriefNeed = { task: Task; kind: StuckKind; text: string; line: string; device?: string; harness?: string };
+export type BriefNeed = { task: Task; kind: StuckKind; text: string; line: string; device?: string; harness?: string; pr?: string };
+
+/**
+ * D471 round 2: what a stopped task last said, in the partner's words: a PR it opened that waited on CI
+ * (then nobody looked), a PR it opened, else its last words quoted short (cut at a word's end), else
+ * that it left none; each with the honest next step. Never a tool's raw line.
+ */
+export function lastWords(summary: string, quote = summary): { line: string; pr?: string; ci?: boolean } {
+  const s = summary.trim();
+  const pr = /\bPR\s*#(\d+)/i.exec(s)?.[1];
+  const ci = /\bCI\b|checks?\b|流水线|检查/i.test(s);
+  if (pr && ci) return { line: t("onhand.stuck.pr_ci", pr), pr, ci: true };
+  if (pr) return { line: t("onhand.stuck.pr", pr), pr };
+  const first = firstSentence(quote.trim()).replace(/[。.！!？?]$/, "");
+  if (first && !rawFailure(first)) return { line: t("onhand.stuck.said", sayName(first, 40)) };
+  return { line: t("onhand.stuck.stopped") };
+}
 
 /** D471: a phone task the home stopped lending to, told by its own report when its steps aren't held. */
 const PHONE_STOPPED = /(手机|phone)[^。.\n]{0,24}(访问|借用|access)[^。.\n]{0,16}(停止|停了|stopped|revoked|ended)/i;
@@ -190,8 +206,10 @@ export function stuckOf(x: Task, name = briefName(title(x)) || t("task.unknown")
   if (failed && !said) return of("unknown", t("onhand.brief.failed", name, t("onhand.stuck.unknown")), t("onhand.stuck.unknown"));
   if (failed) return of("failed", t("onhand.brief.failed", name, said), t("onhand.stuck.failed", said));
   if (onPhone(x) || PHONE_STOPPED.test(reportOf(x)?.summary ?? "")) return of("phone", t("onhand.brief.stopped.phone", name), t("onhand.stuck.phone"));
-  // D471: what a stopped task last said is its own words (the peek shows them); the card says what is true.
-  return of("stopped", t("onhand.brief.stopped", name, t("onhand.wait.unsaid")), t("onhand.stuck.stopped"));
+  // D471 round 2: said as the partner: what it knows from the task's last words, and the honest next step.
+  // The PR and CI are read from its own words in any language; only a quote is said in the reader's.
+  const said2 = lastWords(reportOf(x)?.summary ?? "", sayable(reportOf(x)?.summary ?? "", A.readerLang(x)) ?? "");
+  return of("stopped", t("onhand.brief.stopped", name, t("onhand.wait.unsaid")), said2.line, said2.pr ? { pr: said2.pr } : {});
 }
 
 /** A card's own line for what stopped (the card names the task). */
@@ -260,7 +278,7 @@ export function StuckActs({ n, onRetry }: { n: BriefNeed; onRetry?: () => void }
     default:
       return (
         <>
-          <Btn kind="secondary" size="sm" label={t("onhand.quiet.go")} about={title(x)} onClick={() => go(t("onhand.quiet.go"))} />
+          <Btn kind="secondary" size="sm" label={t("onhand.quiet.go")} about={title(x)} onClick={() => go(n.pr ? t("onhand.stuck.pr_ci.words", n.pr) : t("onhand.quiet.go"))} />
           {drop}
         </>
       );

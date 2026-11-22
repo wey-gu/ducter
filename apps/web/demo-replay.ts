@@ -105,4 +105,6 @@ const core = startCore({ ...(offline as object), port } as never);
 core.setRunner(stubRunner(core));
 core.setPartner({ onTrigger() {} });
 core.settings.set({ language: zh ? "zh" : "en" });
+// More pairing links for more simulators (DEMO_PAIRS=n), each used once.
+for (let i = 1; i < Number(process.env.DEMO_PAIRS ?? 0); i++) void core.devicesView.pairCode().then((p) => console.log(`[demo] phone: -pairLink 'http://127.0.0.1:${core.port}/pair#c=${p.code}'`));
 console.log(`[demo] replay of ${rows.length} rows at ${new Date(nowAt).toISOString()}: http://127.0.0.1:${core.port}/`);

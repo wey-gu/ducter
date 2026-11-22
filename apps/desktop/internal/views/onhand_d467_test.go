@@ -67,7 +67,7 @@ func TestOnHandByAttention(t *testing.T) {
 	tt.Frame()
 	all := strings.Join(tt.Texts(), " | ")
 	// D471: the head is one sentence; each task says itself once, on its own row.
-	for _, want := range []string{"有 2 个停下了，要你看一眼。", "用手机把 Ducter 官网录一段屏发到 X", "停下了，没说在等什么。", "停在了一个我没认出的错误上。", "接着做", "放下", "再试一次", "还有 1 个是昨天做完的", "15:37 回来"} {
+	for _, want := range []string{"有 2 个停下了，要你看一眼。", "用手机把 Ducter 官网录一段屏发到 X", "它停了，没留下话。接着做，它从停下的地方接着来。", "停在了一个我没认出的错误上。", "接着做", "放下", "再试一次", "还有 1 个是昨天做完的", "15:37 回来"} {
 		if !strings.Contains(all, want) {
 			t.Fatalf("missing %q in %s", want, all)
 		}

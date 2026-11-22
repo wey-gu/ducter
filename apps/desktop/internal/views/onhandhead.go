@@ -215,6 +215,9 @@ func (a *App) taskCards(c *ui.Context, tasks []*store.Task) {
 	ledge := t.Line
 	acts := false
 	for _, x := range tasks {
+		if _, _, mending := mendingOf(x); mending {
+			continue // D473: at work, not the person's
+		}
 		stopped := a.stoppedWait(x)
 		if stopped || x.Attention() == protocol.Failed {
 			ledge = t.NeedsYou.Ledge
@@ -251,9 +254,10 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 	st := a.rowMarkOf(task)
 	a.noteStatus(task.ID, st)
 	fresh := st == stNew
-	working := att == protocol.Working || att == protocol.Queued
-	stopped := a.stoppedWait(task)
-	failed := att == protocol.Failed
+	mendHow, mendName, mending := mendingOf(task)
+	working := att == protocol.Working || att == protocol.Queued || mending
+	stopped := !mending && a.stoppedWait(task)
+	failed := att == protocol.Failed && !mending
 	quiet := att == protocol.Blocked && !stopped && a.quietWait(task)
 	seen := (att == protocol.Done || att == protocol.DoneClaimed) && !fresh
 	focus := a.oh.focus == task.ID
@@ -344,6 +348,7 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 			// The living line: what it is on now, in its own words.
 			ink := t.InkSoft
 			switch {
+			case mending: // D473: Ducter is on it: the working ink
 			case s.tone == "needs" || stopped:
 				ink = t.NeedsYou.Ink
 			case s.tone == "failed":
@@ -352,10 +357,13 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 				ink = t.InkMuted
 			}
 			sw := s.words
+			if mending {
+				sw = a.L.T("note.mend_"+mendHow, mendName) // D473: what Ducter is doing about it
+			}
 			if stopped || failed {
 				sw = a.stuckFix(task).clause() // D467 round 4: what to do, not the log
 			}
-			if att == protocol.Blocked && !stopped {
+			if att == protocol.Blocked && !stopped && !mending {
 				sw = a.waitCardWords(task, sw) // D467: never the title again
 			}
 			words := keepWords(autospace(sw))
@@ -403,6 +411,8 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 						a.finishedActs(c, *f)
 					}
 				})
+			case mending:
+				a.beat(c, task, protocol.Working, false) // D473: at work since it began
 			case (stopped || quiet || failed) && task.Card != nil:
 				uiText(c.Key("since"), a.agoLong(task.Card.UpdatedAt)).FontSize(t.SM).TextColor(t.InkMuted).SingleLine()
 			default:
@@ -412,7 +422,7 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 		if !a.oh.actsCol {
 			return
 		}
-		ui.Row(c.Key("acts")).Width(actsW).Gap(t.S1).AlignItems(ui.Center).Shrink(0).Children(func() {
+		ui.Row(c.Key("acts")).Width(actsW).Gap(t.S1).Wrap().AlignItems(ui.Center).Shrink(0).Children(func() {
 			switch {
 			case stopped:
 				a.fixButtons(c, "fix", a.stuckFix(task), t.Surface, &acted)

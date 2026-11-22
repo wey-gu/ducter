@@ -36,7 +36,7 @@ import { boardGroups, finishedGroup, foldedRows, groupCount, markOf, type BoardG
 import { linesOfPart } from "./asks.tsx";
 import { Menu, MenuItem } from "./menu.tsx";
 import { AwayX, FinishedActs, finishedMenu, runFinished, useSwipeAway, type Finished } from "./away.tsx";
-import { echoes, ensureSteps, firstSentence, Outcome, PeekPicture, peekSteps, peekTask, peekWords, StuckActs, stuckClause, stuckOf, Trail, useTick } from "./onhand-brief.tsx";
+import { echoes, ensureSteps, firstSentence, Outcome, outcomeOf, PeekPicture, peekSteps, peekTask, peekWords, StuckActs, stuckClause, stuckOf, Trail, useTick } from "./onhand-brief.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
@@ -184,11 +184,37 @@ export function doneToday(task: Task, now = Date.now()): boolean {
 export function boardParts(lanes: Task[][], now = Date.now()) {
   const waiting = lanes[LANE.waiting]!;
   const done = lanes[LANE.done]!;
-  const stopped = waiting.filter((x) => stoppedWait(x, now));
-  const failed = done.filter((x) => attention(x) === "failed");
+  // D473, D471: what Ducter is mending right now is at work, never the person's yet.
+  const mending = [...done, ...waiting].filter((x) => !!mendingOf(x));
+  const stopped = waiting.filter((x) => stoppedWait(x, now) && !mending.includes(x));
+  const failed = done.filter((x) => attention(x) === "failed" && !mending.includes(x));
   const today = done.filter((x) => doneToday(x, now));
   const earlier = done.filter((x) => attention(x) !== "failed" && !doneToday(x, now));
-  return { stopped, failed, waiting: waiting.filter((x) => !stopped.includes(x)), today, earlier };
+  return { stopped, failed, mending, waiting: waiting.filter((x) => !stopped.includes(x) && !mending.includes(x)), today, earlier };
+}
+
+/** D473, D471: a failure or a stop Ducter is mending right now: its newest event is a repair under
+ *  way (not the partner's rethink, which may still ask the person). Said on its row in the words
+ *  the task's steps use ("第一次没开起来，我又开了一次"). */
+export function mendingOf(task: Task): Pick<Bodies["mend"], "cls" | "how" | "name"> | undefined {
+  const a = attention(task);
+  if (a !== "failed" && a !== "blocked") return undefined;
+  // What streamed since the card first; else the home's word on the card (a client that just connected).
+  for (let i = task.events.length - 1; i >= 0; i--) {
+    const e = task.events[i]!;
+    if (e.kind === "task_state" || e.kind === "report") return undefined;
+    if (e.kind === "mend") {
+      const b = e.body as Bodies["mend"];
+      return b.state === "going" && b.rung !== "rethink" ? b : undefined;
+    }
+  }
+  return task.card?.mending;
+}
+
+/** D473: a repair under way, in the words of the task's steps. */
+export function mendWords(b: Pick<Bodies["mend"], "cls" | "how" | "name">): string {
+  if (b.cls === "stall") return t("note.mend_stall");
+  return t(`note.mend_${b.how ?? "reopen"}`, b.name ?? "");
 }
 
 /** A time of day, with its day only when it isn't today. */
@@ -473,7 +499,7 @@ export function stateCounts(lens: string, now = Date.now()): number[] {
   return [
     // D467: what stopped (a wait nothing brings back, a task that didn't work out) needs the person too.
     l[0]!.length + stopped + (loose ? A.S.partnerDecisions().length + A.otherAsks().length : 0) + parts.stopped.length + parts.failed.length,
-    l[1]!.length + calls.filter((c) => ["waiting", "calling", "talking", "question"].includes(c.state)).length,
+    l[1]!.length + parts.mending.length + calls.filter((c) => ["waiting", "calling", "talking", "question"].includes(c.state)).length,
     parts.waiting.length + (loose ? A.S.armedWaiters().filter((w) => !w.taskId).length : 0),
     // D467: 今天做完 counts what it lists: finished today (a done being checked included); a failed
     // task stands in 等你, yesterday's folds away, a missed wait and an ended call say their own words.
@@ -906,13 +932,16 @@ const TaskCard = memo(function TaskCard({ task, room, focus, sel }: RowProps) {
   const arrived = a !== "blocked" && A.S.justArrived(task.id);
   if (fresh && !cheered.has(task.id)) cheered.set(task.id, Date.now());
   const cheer = fresh && Date.now() - (cheered.get(task.id) ?? 0) < 1400;
-  const stopped = stoppedWait(task);
-  const quiet = !stopped && quietWait(task);
+  const mend = mendingOf(task);
+  const stopped = !mend && stoppedWait(task);
+  const quiet = !stopped && !mend && quietWait(task);
   const next = w ? waitNext(w) : undefined;
-  const working = a === "working" || a === "queued";
-  const failed = a === "failed";
+  const working = a === "working" || a === "queued" || !!mend;
+  const failed = a === "failed" && !mend;
   const at = task.card?.updatedAt;
-  const meta = whereMeta(task);
+  const stacked = room === "phone" || room === "side";
+  // D471 round 2: stacked, the row says its project too (a quiet second line, never ahead of the task).
+  const meta = stacked && lensOf(task) !== OTHER && !whereMeta(task).includes(lensOf(task)) ? [lensOf(task), ...whereMeta(task)] : whereMeta(task);
   const onClick = (e: MouseEvent) => {
     if (room === "full" && (e.metaKey || e.ctrlKey)) return void (e.preventDefault(), toggle(task.id));
     if (room === "full" && e.shiftKey) return void (e.preventDefault(), extend(task.id));
@@ -921,7 +950,7 @@ const TaskCard = memo(function TaskCard({ task, room, focus, sel }: RowProps) {
   };
   // D425: what it is on changes like the waiting line (held for the dwell, a short entrance), and
   // the heartbeat rests when the person has been away a while.
-  const words = useDwell(s.words);
+  const words = useDwell(mend ? mendWords(mend) : s.words);
   const rest = useResting();
   const fin = finishedOf(task);
   const ref = useRef<HTMLDivElement>(null);
@@ -956,19 +985,19 @@ const TaskCard = memo(function TaskCard({ task, room, focus, sel }: RowProps) {
           <span class="o1">
             <PartnerMark persona={task.card?.persona} />
             <span class="t">{shortTitle(title(task)) || t("task.unknown")}</span>
-            <Facts class="meta" items={meta} />
-            {ch && (ch.adds > 0 || ch.dels > 0) && (
+            {!stacked && <Facts class="meta" items={meta} />}
+            {!stacked && ch && (ch.adds > 0 || ch.dels > 0) && (
               <span class="stat">
                 {ch.adds > 0 && <i class="add">+{ch.adds}</i>}
                 {ch.dels > 0 && <i class="del">−{ch.dels}</i>}
               </span>
             )}
-            {pr && <span class="pr">{pr}</span>}
-            {finished(task) && <Outcome task={task} />}
-            {task.card?.source && <SourceChip src={task.card.source} small plain short />}
+            {!stacked && pr && <span class="pr">{pr}</span>}
+            {!stacked && finished(task) && <Outcome task={task} />}
+            {!stacked && task.card?.source && <SourceChip src={task.card.source} small plain short />}
           </span>
           {(working || line) && (
-            <span class={`o2${stuck ? " needs" : s.tone ? ` ${s.tone}` : ""}`}>
+            <span class={`o2${stuck ? " needs" : s.tone && !mend ? ` ${s.tone}` : ""}`}>
               {s.mark && !stuck && <StepMark k={s.mark} />}
               <span key={working ? words : ""} class={working ? "w say" : "w"}>
                 {working ? words : line}
@@ -978,9 +1007,22 @@ const TaskCard = memo(function TaskCard({ task, room, focus, sel }: RowProps) {
           )}
           {working && room !== "rail" && <Trail task={task} />}
           {u && !finished(task) && <Goal u={u} />}
+          {/* D471 round 2: on a phone, where it is and when, quietly, on a line of their own under the
+              words (never a chip past the edge, never a time jammed under one). */}
+          {stacked && (meta.length > 0 || !!beat || (finished(task) && !!outcomeOf(task))) && (
+            <span class="ometa">
+              {meta.map((m) => (
+                <span key={m} class="m">
+                  {m}
+                </span>
+              ))}
+              {finished(task) && <Outcome task={task} small />}
+              {beat && <span class={`ow${stopped || quiet || failed ? " still" : ""}`}>{beat}</span>}
+            </span>
+          )}
         </span>
         {/* D471: the heartbeat has its own column, so every row's time stands on one edge. */}
-        <span class={`obeat${stopped || quiet || failed ? " still" : ""}`}>{beat}</span>
+        {!stacked && <span class={`obeat${stopped || quiet || failed ? " still" : ""}`}>{beat}</span>}
       </button>
       {/* D471: what to do has its own column, so every row's first button starts at one x. */}
       <span class="ocol">
@@ -1010,7 +1052,8 @@ const TaskCard = memo(function TaskCard({ task, room, focus, sel }: RowProps) {
         room !== "phone" && <RowActs task={task} />
       )}
       </span>
-      {fin && <FinishedActs f={fin} full={room === "full"} />}
+      {/* D471 round 2: on a phone a finished row leaves by its swipe; no lone ⋯ under it. */}
+      {fin && !stacked && <FinishedActs f={fin} full={room === "full"} />}
     </div>
   );
 });
@@ -1207,7 +1250,7 @@ export function OnHandList({ room }: { room: Room }) {
   const groupsIn = (lane: number) => bgs.filter((b) => b.lane === lane);
   const nIn = (lane: number) => lanes[lane]!.length;
   const needs = ungrouped(keep(lanes[LANE.needs]!));
-  const working = ungrouped(keep(lanes[LANE.working]!));
+  const working = [...ungrouped(keep(lanes[LANE.working]!)), ...(rail ? [] : boardParts(lanes).mending.filter((x) => keep([x]).length > 0 && !inGroup.has(x.id)))];
   // D467: a wait nothing brings back and a task that didn't work out stand in 等你; 今天做完 is
   // today's; what finished before folds under it. Beside an opened task the rail keeps the lanes.
   const parts = boardParts([[], [], ungrouped(keep(lanes[LANE.waiting]!)), ungrouped(keep(lanes[LANE.done]!))]);

@@ -956,6 +956,9 @@ export interface TaskCard {
   source?: SourceItemRef & { state?: "open" | "closed" | "gone"; wrote?: SourceOp[] };
   /** D395: it couldn't start because of its place: why, and what fixes it (absent once it starts). */
   cant?: CantStart;
+  /** D473, D471: Ducter is mending it right now (its newest event is a repair under way, not the
+   *  partner's rethink): it stands at work on On hand, never as a failure. */
+  mending?: { cls: import("./mend.ts").MendClass; how?: import("./mend.ts").MendHow; name?: string };
 }
 
 /**

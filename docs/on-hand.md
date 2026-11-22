@@ -28,10 +28,17 @@ the way to fix it right beside it:
 - its AI agent got signed out on its computer: **Sign in again**;
 - its computer went away: when it was last seen, and that turning it on lets the task carry on;
 - a Mac needs its two switches for a task working in its apps: **Open the guide on that Mac**;
-- it couldn't start because its folder isn't on that computer: start it where the folder is, or
-  **Clone it here**; if another git operation had the folder locked, it says so;
-- it stopped on an error your partner didn't recognise: it says just that, with **See why** to
-  open the task where it stopped, and **Try again**.
+- it couldn't start: why, in plain words, and the real fix first, such as **Clone it to Home
+  Server** or choosing a folder that's already there;
+- it stopped without asking for anything: what your partner knows from its last words (for
+  example, that its pull request was waiting on CI and nobody has looked since), and **Continue**.
+
+If Ducter is already fixing it by itself (starting it again, or cloning the code first), the task
+stands under **Working** saying so; you don't need to do anything. On the task's own page, the same
+failed start tried several times is one line: "Tried 3 times and it couldn't start: …".
+
+On a phone, each task reads top to bottom: the task, why, where and when, then its one fix as a
+big button.
 
 Below that, the rest:
 

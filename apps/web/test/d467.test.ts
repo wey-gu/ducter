@@ -156,7 +156,7 @@ describe("On hand reports (D467 round 2)", () => {
     const { stuckOf, stuckClause, firstSentence } = await import("../src/onhand-brief.tsx");
     expect(firstSentence("等你把 Pixel Fold 连上。外部录屏还没做。")).toBe("等你把 Pixel Fold 连上。");
     expect(stuckOf(A.S.tasks.get("x")!).kind).toBe("stopped");
-    expect(stuckClause(stuckOf(A.S.tasks.get("x")!))).toBe(A.L.t("onhand.stuck.stopped"));
+    expect(stuckClause(stuckOf(A.S.tasks.get("x")!))).toBe(A.L.t("onhand.stuck.said", "等你把 Pixel Fold 连上")); // D471 round 2: the partner says what it knows
     expect(stuckOf(A.S.tasks.get("y")!).kind).toBe("unknown");
     expect(o.stateCounts("")[0]).toBe(2);
     A.S.tasks.clear();

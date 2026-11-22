@@ -46,7 +46,16 @@ export function shapeRows(now: number): Row[] {
   open(6 * HOUR, "s_lock", "整理 Lumen 设置页的长文案，让每一句都像人说的话", "lumen-notes", repo("lumen-notes", "整理设置页长文案"));
   state(6 * HOUR - MIN, "s_lock", "failed", { reason: "git worktree add failed: Preparing worktree (new branch 'ducter/整理设置页长文案')\nfatal: Unable to create '/Users/ada/dev/lumen-notes/.git/worktrees/x/index.lock': File exists.\n\nAnother git process seems to be running in this repository" });
   open(6 * HOUR - 2 * MIN, "s_folder", "在服务器上用另一个模型复审设置页文案并开 PR", "", { kind: "folder", device: "local", path: "/srv/dev/lumen" });
-  state(6 * HOUR - 3 * MIN, "s_folder", "failed", { reason: "没能开始：Home Server 上没有 lumen 这个文件夹", cant: { why: "no_folder", computer: "Home Server", what: "lumen", path: "/srv/dev/lumen" } });
+  state(6 * HOUR - 3 * MIN, "s_folder", "failed", { reason: "没能开始：Home Server 上没有 lumen 这个文件夹", cant: { why: "no_folder", computer: "Home Server", what: "lumen", device: "local", path: "/srv/dev/lumen", cloneHere: true, pickHere: true } });
+  // D471 round 2: it was tried three times the same way; its page says it once, with the count.
+  for (const [k, ago] of [[1, 6 * HOUR + 10 * MIN], [2, 6 * HOUR + 6 * MIN], [3, 6 * HOUR + 2 * MIN]] as const) {
+    put(ago, "task:s_folder", "system", "task_event", { taskId: "s_folder", role: "system", text: "failed to start: Home Server has no folder /srv/dev/lumen", raw: { cant: { why: "no_folder", computer: "Home Server", what: "lumen" } } });
+    if (k < 3) put(ago - MIN, "task:s_folder", "system", "mend", { taskId: "s_folder", cls: "start", rung: "retry", how: "reopen", attempt: k, tried: [], state: "going" });
+  }
+  // D473: a start Ducter is mending by itself (it stands at work, never as a failure).
+  open(25 * MIN, "s_mend", "给 lumen 的导入脚本补上断点续传", "lumen-notes", repo("lumen-notes", "import-resume"));
+  state(24 * MIN, "s_mend", "failed", { reason: "Couldn't start: Studio Mac has no copy of lumen-notes", cant: { why: "no_repo", computer: "Studio Mac", what: "lumen-notes", cloneHere: true } });
+  put(23 * MIN, "task:s_mend", "system", "mend", { taskId: "s_mend", cls: "start", rung: "repair", how: "clone_here", name: "Studio Mac", attempt: 1, tried: [], state: "going" });
 
   // A wait on CI, bound to an issue whose title a source cut.
   open(10 * HOUR, "s_flaky", "tile_merge_response_tests fail intermittently under…", "lumen-notes", repo("lumen-notes", "tile-merge-response-tests-fail"));

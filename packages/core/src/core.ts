@@ -782,10 +782,23 @@ export function startCore(opts: CoreOptions = {}): Core {
   // D454: 移走 / Remove: finished cards and groups the person took off On hand.
   const onHandAway = createOnHandAway({ dataDir, now: () => clock.now(), groupOf: (id) => taskGroups.of(id)?.id, changed: () => onHandChanged() });
   log.subscribe((e) => onHandAway.onEvent(e));
+  // D473, D471: a failure or a stop Ducter is mending right now is said so on its card (On hand
+  // stands it at work), from the task's own newest event: a repair under way, never the rethink.
+  const mendingDecorate = (o: OnHand): OnHand => ({
+    ...o,
+    tasks: o.tasks.map((c) => {
+      if (c.attention !== "failed" && c.attention !== "blocked") return c;
+      const last = log.read({ stream: `task:${c.taskId}`, kinds: ["mend", "task_state", "report"], limit: 1 })[0];
+      if (last?.kind !== "mend") return c;
+      const b = last.body as Bodies["mend"];
+      if (b.state !== "going" || b.rung === "rethink") return c;
+      return { ...c, mending: { cls: b.cls, ...(b.how ? { how: b.how } : {}), ...(b.name ? { name: b.name } : {}) } };
+    }),
+  });
   tasks.setDecorator((o0) => {
     const awayIds = onHandAway.tasks();
     const o = awayIds.length ? { ...o0, tasks: o0.tasks.filter((c) => !onHandAway.isTask(c.taskId)), away: awayIds } : o0;
-    const on = decorateBrowsing(changes.decorate(limitsDecorate(work.decorate(o))));
+    const on = mendingDecorate(decorateBrowsing(changes.decorate(limitsDecorate(work.decorate(o)))));
     const added = projects.list();
     const calls = phone.calls();
     // D312: every partner's own open questions, so On hand lists another partner's (a client leaves out the one it shows).

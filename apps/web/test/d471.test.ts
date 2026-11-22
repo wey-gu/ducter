@@ -110,6 +110,52 @@ describe("On hand on a real board (D471)", () => {
     expect(two[0]!.rows.map((r) => r.part)).toEqual([1, 2]);
   });
 
+  test("round 2: a stopped task is said as the partner: its PR and CI, its last words, or none, with the next step", async () => {
+    const { A } = await board([]);
+    const b = await import("../src/onhand-brief.tsx");
+    const ci = b.lastWords("The flaky tile merge test fix is up for review as PR #4420. CI is still running.");
+    expect(ci.pr).toBe("4420");
+    expect(ci.line).toBe(A.L.t("onhand.stuck.pr_ci", "4420"));
+    expect(b.lastWords("Opened PR #12 for the copy.").line).toBe(A.L.t("onhand.stuck.pr", "12"));
+    expect(b.lastWords("等你把手机连上。外部录屏还没做。").line).toBe(A.L.t("onhand.stuck.said", "等你把手机连上"));
+    expect(b.lastWords("").line).toBe(A.L.t("onhand.stuck.stopped"));
+    expect(b.lastWords("fatal: not a git repository").line).toBe(A.L.t("onhand.stuck.stopped"));
+    for (const k of ["onhand.stuck.pr_ci", "onhand.stuck.pr", "onhand.stuck.said", "onhand.stuck.stopped"]) expect(A.L.t(k, "1")).not.toContain("没说在等什么。");
+  });
+
+  test("round 2 (D473): a failure Ducter is mending stands in 在做 with what it does, never as a failure", async () => {
+    const { A, o } = await board([card("m", "细审长文案", "failed", iso(-60_000), { cant: { why: "no_repo", computer: "Studio Mac", what: "lumen" } })]);
+    A.S.applyEvent({ seq: 9501, ts: iso(-30_000), stream: "task:m", origin: "system", kind: "mend", body: { taskId: "m", cls: "start", rung: "repair", how: "clone_here", name: "Studio Mac", attempt: 1, tried: [], state: "going" } } as any);
+    const parts = o.boardParts(o.lensLanes(""));
+    expect(parts.failed).toHaveLength(0);
+    expect(parts.mending.map((x) => x.id)).toEqual(["m"]);
+    expect(o.mendWords(o.mendingOf(A.S.tasks.get("m")!)!)).toBe(A.L.t("note.mend_clone_here", "Studio Mac"));
+    expect(o.stateCounts("")[0]).toBe(0);
+    A.S.tasks.clear();
+  });
+
+  test("round 2: the same failed start again is one line with how many tries", async () => {
+    const { collapseStarts } = await import("@ducter/protocol/src/transcript.ts");
+    const cant = { why: "no_folder", computer: "Home Server", what: "lumen" } as any;
+    const out: any[] = [
+      { k: "note", seq: 1, say: "error_start", text: "", bad: true, cant },
+      { k: "note", seq: 2, say: "mend_reopen", text: "" },
+      { k: "note", seq: 3, say: "error_start", text: "", bad: true, cant },
+      { k: "note", seq: 4, say: "error_start", text: "", bad: true, cant: { ...cant, why: "busy" } },
+      { k: "note", seq: 5, say: "error_start", text: "", bad: true, cant },
+    ];
+    collapseStarts(out);
+    expect(out.map((b) => [b.seq, b.tries])).toEqual([
+      [2, undefined],
+      [3, 2],
+      [4, undefined],
+      [5, undefined],
+    ]);
+    const { A } = await import("../src/app.ts");
+    A.L = strings("zh");
+    expect(A.L.t("note.tries", 3, "Home Server 上没有 lumen 这个文件夹")).toBe("试了 3 次都没能开始：Home Server 上没有 lumen 这个文件夹");
+  });
+
   test("zh and en together, no counter noun", () => {
     const zh = strings("zh"), en = strings("en");
     for (const k of ["onhand.stuck.unknown", "onhand.stuck.unknown.start", "onhand.stuck.lock", "onhand.stuck.failed", "onhand.stuck.phone", "onhand.stuck.stopped", "onhand.peek.said"]) {

@@ -77,16 +77,22 @@ task in {name}** where the bare ＋ stood.
    tasks the rows named again, and on the author's real board the two disagreed; every task is now its
    own row, said once.
    **How a stuck task is said** (D467 round 4, D471; core-free, from what the home already knows, in one
-   classifier, `onhandfix.go` `stuckFix` and the web's `stuckOf`): couldn't start (D395/D415's line with
-   its fixes: start where it is, clear the lock, clone it here, else try again; a start that failed on
-   something nobody recognised: **没能开始，停在了一个我没认出的错误上。** with **看看为什么** first); its
+   classifier, `onhandfix.go` `stuckFix` and the web's `stuckOf`): couldn't start (D472's line and its
+   real fix, one implementation with the task's page, `cant.tsx` / `cant.go`: **拉一份到 {computer} 上**,
+   **选 {computer} 上的文件夹**, a sign-in or an install there; 再试一次 only when nothing more is known); its
    agent signed out on its computer (**重新登录**); a computer gone away for half an hour (**在等 Mac mini
    连上：上次在线是 2 小时前。打开那台电脑，它就接着做。**); the person's Mac without its two switches
    (**在那台 Mac 上打开指引**); a phone taken back, from its steps or its own report's words (**停在手机上：
    要你在那台手机上重新允许访问。** with **允许好了，接着做**); a failure with words of its own (**没做成：
    {its report's first sentence}**); one with only a tool's or git's raw output, never shown: a lock git left
    behind (**没能开始：仓库被另一个 git 操作锁住了。**), else **停在了一个我没认出的错误上。**; a stop with no
-   waiter **停下了，没说在等什么。** (what it last said is the peek's, under **它最后说**). A limit used up
+   waiter is said as the partner, from the task's last words, with the honest next step (D471 rev.):
+   **PR #n 已经提了，在等 CI，之后没人再看过。接着做，它先去看 CI 的结果。** (接着做 asks it to check that
+   PR's CI first), **它提了 PR #n 就停下了，之后没再说话。**, **它最后说「…」，之后就停了。**, else **它停了，没留下
+   话。接着做，它从停下的地方接着来。** (its whole last words are the peek's, under **它最后说**). D473: a failure
+   or a stop Ducter is mending right now (its newest event a repair under way, not the partner's
+   rethink; the home puts it on the card) stands under 在做 in the steps' words (**%s 上还没有这份代码，
+   我先拉一份再开始**) and needs no one. A limit used up
    (D297) is its row's line (**等 Claude Code 的额度恢复**) with **现在换 Codex 接着做** when another agent
    can take it; several on one limit share D297's head.
 2. D467 (rev.): no strip of counts and no counts on the sections (the line and the rows say how
@@ -124,8 +130,11 @@ keys has the accent outline. D471's one grid: **the mark** (24), **the words**, 
 right edge (112 pt; 92 under 700), and, on a sheet whose rows carry an action (what stopped, what
 didn't work out, a quiet wait, a limit with a hand-over), **one column for what to do** (216; 184) so
 every first button starts at one x; elsewhere a hover's actions come in over the time. Beside the
-conversation and on the phone a row stacks: the title, its line, its time, then its buttons under the
-words. Never a tinted fill, never the agent's brand coin or the partner's face: who does it is a
+conversation and on the phone (D471 rev., one hand, 390 to 430) a row stacks: the task first (up to
+two lines), why under it (up to three), then a quiet line of where and when (the project, a computer
+that isn't the usual, a PR it made, the time: each its own element, wrapping, never past the edge),
+then the one fix the full width of the words at 44 high, other actions as text beside or under it. No
+source chip in a row there and no ⋯ (a finished row leaves by its swipe). Never a tinted fill, never the agent's brand coin or the partner's face: who does it is a
 detail, on hover and in the task.
 
 | Part | What it shows |

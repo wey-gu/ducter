@@ -20900,3 +20900,76 @@ html[data-text-size="large"] .brand-mark > svg {
 .lens-tabs .lens-row.needs:not(.on) .nm b {
   color: var(--needs-ink);
 }
+
+/* ---------- D471 round 2: the ledger in one hand (phone, and beside the conversation) ---------- */
+/* The task first, why under it, where and when on a quiet line of their own, then the one fix the
+   full width of the words: nothing past the edge, nothing jammed, nothing alone at a corner. */
+.onhand-list.room-phone .ocard .omain,
+.onhand-list.room-side .ocard .omain {
+  column-gap: 12px;
+  padding: 14px 16px 10px;
+}
+.onhand-list.room-phone .ocard.stopped .o2,
+.onhand-list.room-phone .ocard.a-failed .o2 {
+  -webkit-line-clamp: 3;
+}
+.ocard .ometa {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  min-width: 0;
+  margin-top: 4px;
+  font-size: 0.75rem;
+  color: var(--ink-muted);
+}
+.ocard .ometa .m {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.ocard .ometa .ow {
+  font-variant-numeric: tabular-nums;
+}
+.ocard .ometa .ochip {
+  max-width: 100%;
+}
+.onhand-list.room-phone .ocard .ocol,
+.onhand-list.room-side .ocard .ocol {
+  padding: 0 16px 14px 52px;
+}
+.onhand-list.room-phone .ocard .ocol > .oacts.on,
+.onhand-list.room-side .ocard .ocol > .oacts.on {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  width: 100%;
+}
+.onhand-list.room-phone .ocard .ocol > .oacts.on > .btn:first-child {
+  flex: 1 1 100%;
+  justify-content: center;
+  min-height: 44px;
+}
+/* D471 round 2: a phone row's fix column is the row's width (the wide sheet's 216 column never applies). */
+.onhand-list.room-phone .ocards:has(.ocol > .on) .ocard .ocol,
+.onhand-list.room-side .ocards:has(.ocol > .on) .ocard .ocol {
+  width: auto;
+}
+.onhand-list.room-phone .ocard .ocol > .oacts.on,
+.onhand-list.room-side .ocard .ocol > .oacts.on {
+  padding: 0;
+}
+.onhand-list.room-phone .ocard .ocol > .oacts.on > .btn.text {
+  flex: 0 0 auto;
+}
+.ocard .ometa {
+  align-items: baseline;
+}
+.onhand-list.room-phone .ocard .ocol > .oacts.on > .btn.text {
+  min-height: 36px;
+}
+/* D471 round 2: a failed start says its whole reason (with how many tries), never cut. */
+.step.note.bad .sum {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}

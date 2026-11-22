@@ -43,6 +43,14 @@ func (a *App) rows() []row {
 		}
 		rows = append(rows, row{entry: e})
 	}
+	// D470: a request the partner's own next words already say gives way to one quiet origin line over them.
+	{
+		es := make([]*store.Entry, 0, len(rows))
+		for _, r := range rows {
+			es = append(es, r.entry)
+		}
+		a.peerSpoken, a.peerOrigin = spokenPeers(es, a.peerAsked)
+	}
 	// A task's chip shows once: under the newest message about it.
 	a.chipOwner = map[string]int64{}
 	// One voice: once the partner's result message is in, the living
@@ -613,6 +621,10 @@ func (a *App) entry(c *ui.Context, e *store.Entry) {
 			if ans := a.answerOf(e); ans != nil {
 				a.rp.tab = ans // pressed into the top of the bubble below
 			}
+			// D470: where these words came from, one quiet line (its coin, the agent).
+			if b := a.peerOrigin[e.Event.Seq]; b != nil {
+				a.peerOriginLine(c, b, e.Event.Seq)
+			}
 			// D298: the clay partner over its first words, while nothing else was said.
 			if e.AI.First != nil && !e.AI.First.Look && a.firstWordsOpening() {
 				a.firstWordsHead(c)
@@ -667,7 +679,7 @@ func (a *App) entry(c *ui.Context, e *store.Entry) {
 		// D418: the partner marks the first one; a window of the Log can't tell.
 		first := e.Peer.Direction == "in" && e.Peer.First
 		told := e.Peer.State == "ping" && a.S.Pings[e.Event.Seq] != nil && a.S.Pings[e.Event.Seq].Told
-		if !(e.Peer.Direction == "in" && a.peerAsked(e.Peer.MessageID)) && !told {
+		if !(e.Peer.Direction == "in" && a.peerAsked(e.Peer.MessageID)) && !told && !a.peerSpoken[e.Event.Seq] {
 			// A question it asked shows once, as its card (which says who asks).
 			a.peerLine(c, e.Peer, a.S.SetAside[e.Peer.From+"|"+dayOf(e.Event.TS)], a.S.Pings[e.Event.Seq], e.Event.TS)
 		}

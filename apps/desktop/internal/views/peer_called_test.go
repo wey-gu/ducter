@@ -32,12 +32,9 @@ func TestPeerCalled(t *testing.T) {
 			t.Errorf("en %+v = %q, want %q", c.b, got, c.en)
 		}
 	}
-	// The who→who line names it the same way.
-	if got := en.L.T("peers.recent.in", en.peerCalledText("", ""), "Ducter"); got != "From an unnamed agent to Ducter" {
-		t.Errorf("recent.in = %q", got)
-	}
-	if got := en.L.T("peers.recent.sent", en.peerCalledText("", "Codex"), "Ducter"); got != "Ducter asked an agent in Codex" {
-		t.Errorf("recent.sent = %q", got)
+	// D470: a thread's origin line names it the same way.
+	if got := capPeer(en.L.T("peer.origin", en.peerCalledText("", "Codex"))); got != "From an agent in Codex" {
+		t.Errorf("peer.origin = %q", got)
 	}
 	if got := capPeer(en.L.T("peer.asks", en.peerCalledText("", ""))); got != "An unnamed agent asks you" {
 		t.Errorf("peer.asks = %q", got)

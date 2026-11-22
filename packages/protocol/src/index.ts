@@ -1372,7 +1372,9 @@ export type ClientFrame =
   // tapped it, so it is their Go). D375: Mem's own `nmem connect --tool` there when Mem has one for
   // that agent and its plugin is absent; else, or when that didn't put it in, one task there that
   // follows Mem's own setup guide. Answered with mem_plugin_result; the card reads the check again after.
-  | { t: "mem_plugin_install"; device: string; harness: string }
+  // D470: what "mailbox": 打开它的信箱 / Open its mailbox on Agent messaging, for an agent Nowledge Mem
+  // lists with its mailbox closed: one task there that opens it through the agent's own Mem plugin.
+  | { t: "mem_plugin_install"; device: string; harness: string; what?: "mailbox" }
   // D375: Settings › 记忆's 再看一次 / Check again: read Mem's own doctor on the home now (the settings frame follows).
   | { t: "mem_health" }
   // D205: Settings › 伙伴's 接上 / Connect and 断开 / Disconnect for the persona's own Bridge

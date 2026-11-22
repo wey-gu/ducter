@@ -3,7 +3,7 @@
 How each pane of Settings feels to the person in it, and the small pieces every pane shares. The
 grid and its rows are D273's and D289's (`ui.md`, `settings_rows.go`, `set-grid.tsx`); the
 words are the glossary's (`product-model.md`). 记忆 / Memory is D295's and 和你的其他 agent 通信 / Talk with
-your other agents (short in the list: Agent 通信 / Agent messaging) is D332's (`bridge.md` "Simple, by who"); neither is covered here, except where D459 made them one hand with the rest (below).
+your other agents (short in the list: Agent 通信 / Agent messaging) is D332's (`bridge.md` "Simple, by who"); neither is covered here, except where D459 made them one hand with the rest and D470 gave Agent messaging the partner's voice (below).
 
 ## Who is here, and what they feel
 
@@ -491,6 +491,17 @@ with its fix. Candidates, rubric and diagnosis are D469's; what it leaves, on bo
 - **Where it runs names the home this window talks to** (its device, a server or another machine) in its head
   and its row, never 这台 Mac beside a home with another name.
 - Shots: `DEMO_NEEDS=1` on `demo-settings-real.ts` shows every need at once.
+
+## Agent messaging in the same voice (D470)
+
+Who: H wants who reaches whom at a glance and what came of each exchange; C wants to know nothing can
+make the partner act without them; F sees the page only once they run an agent, and before any exchange
+meets an invitation, not an empty list. The pane now reads top-down as the others do: the partner's
+sentence (who reaches it; a one-way link in the needs-you ink, and a 等你 on Overview with **打开它的信箱**),
+the switch, **谁能找到谁** (a picture per agent: coin, both ways drawn and said, the partner's pose, the fix
+under a link that isn't whole), **来往** (a thread per agent, each exchange with what came of it), **谁能让我做什么**
+(the rules in code and the muted), then **试试看**. Overview's **也能找我** adds the agents after the chat apps,
+each part opening its pane. Full words in `bridge.md` "Who reaches whom…" and D470.
 
 ## Not done
 

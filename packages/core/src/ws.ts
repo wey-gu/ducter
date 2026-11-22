@@ -1266,7 +1266,7 @@ export function createWsHandler(deps: WsDeps) {
         const mp = deps.memPlugins?.();
         if (!mp) return send(ws, { t: "mem_plugin_result", device, harness, ok: false, reason: "failed" });
         watchDevices();
-        const r = await mp.install(device, harness);
+        const r = await mp.install(device, harness, f.what === "mailbox" ? "mailbox" : undefined); // D470
         return send(ws, r.ok ? { t: "mem_plugin_result", device, harness, ok: true, ...(r.taskId ? { taskId: r.taskId } : {}) } : { t: "mem_plugin_result", device, harness, ok: false, reason: r.reason });
       }
       case "anywhere_setup": {

@@ -66,6 +66,12 @@ type App struct {
 	Send func(frame any) error
 	// meets is which thing carries each first-time line here (D451).
 	meets firstMeets
+	// mailboxOpening is the agents' mailboxes this window asked to open (D470: "device:harness").
+	mailboxOpening map[string]bool
+	// peerSpoken and peerOrigin (D470): the request lines the partner's next words say, and the
+	// message each stands over.
+	peerSpoken map[int64]bool
+	peerOrigin map[int64]*protocol.BridgeMsg
 	// Win schedules work from other goroutines.
 	Win Updater
 	// OpenAppWindow (D405) opens one of the person's apps in its own window

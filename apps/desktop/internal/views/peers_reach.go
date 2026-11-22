@@ -38,6 +38,7 @@ func reachRows(devices []protocol.DeviceView, own []string, recent []handoff, bo
 	var out []reachRow
 	for _, h := range append(append([]string(nil), bridgeTools...), noBridgeTools...) {
 		found, runs, on, off, offName := false, false, false, "", ""
+		onID, onName := "", "" // D470: where it is signed in with the plugin (home first): where its mailbox opens
 		for _, d := range ds {
 			for _, x := range d.Harnesses {
 				if x.Harness != h || !x.Installed || !x.LoggedIn {
@@ -46,6 +47,9 @@ func reachRows(devices []protocol.DeviceView, own []string, recent []handoff, bo
 				found, runs = true, true
 				if x.Mem != nil && (x.Mem.State == "installed" || x.Mem.State == "update") {
 					on = true
+					if onID == "" {
+						onID, onName = d.ID, d.Name
+					}
 				}
 				if x.Mem != nil && x.Mem.State == "absent" && off == "" {
 					off, offName = d.ID, d.Name
@@ -85,7 +89,7 @@ func reachRows(devices []protocol.DeviceView, own []string, recent []handoff, bo
 		case h == "pi" || h == "antigravity":
 			row.Can, row.Box = "none", ""
 		case on || last != "" || box == "open":
-			row.Can = "yes"
+			row.Can, row.Device, row.DeviceName = "yes", onID, onName
 		case off != "":
 			row.Can, row.Device, row.DeviceName = "install", off, offName
 		default:

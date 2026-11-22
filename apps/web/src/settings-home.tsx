@@ -15,7 +15,7 @@ import { clientArt, deviceArt, foldClients, runningOn } from "./devcard.tsx";
 import { ago, harnessName, memWords, modelName } from "./format.ts";
 import { MemAsk, memPluginRows } from "./mem-plugin.tsx";
 import { groupNoted, memPhase } from "./mem-view.ts";
-import { Notebook } from "./memory.tsx";
+import { Notebook, peersOneWay, peersReaching, peersSay } from "./memory.tsx";
 import { noBrain } from "./partner-story.tsx";
 import { Avatar } from "./views.tsx";
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
@@ -28,7 +28,7 @@ export type SetNeed = {
   page: Exclude<SettingsPage, "">;
   about?: string;
   /** D469 round 2: a fix that can happen right here, the same one the page's button does. */
-  fix?: { kind: "memp"; dv: DeviceView; h: DeviceHarness } | { kind: "update"; label: string };
+  fix?: { kind: "memp"; dv: DeviceView; h: DeviceHarness } | { kind: "update"; label: string } | { kind: "mailbox"; device: string; harness: string };
 };
 
 const down = (c: ConnectionView) => c.state === "unreachable" || c.state === "unauthorized";
@@ -55,6 +55,8 @@ export function setNeeds(): SetNeed[] {
     const here = !!action && h.loggedIn && dv.state === "awake";
     out.push({ key: `memp:${dv.id}:${h.harness}`, text: t("need.memplug", harnessName(h.harness)), go: here ? action! : t("need.go.update"), page: "memory", ...(here ? { fix: { kind: "memp" as const, dv, h } } : {}) });
   }
+  // D470: one of the person's agents reaches the partner, but the answers can't get back: its mailbox's one task, here.
+  for (const r of peersOneWay()) out.push({ key: `peers:${r.harness}`, text: t("need.peers.oneway", r.tool), go: t("peers.fix.mailbox"), page: "peers", about: r.tool, fix: { kind: "mailbox", device: r.device!, harness: r.harness } });
   const u = updatesWaiting();
   if (u.n > 0 && !u.running) {
     // Devices' own one tap (Update all), which asks nothing more there either.
@@ -110,7 +112,7 @@ export function paneSay(page: SettingsPage): string {
     case "autofill":
       return t("say.autofill");
     case "peers":
-      return t("say.peers");
+      return peersSay();
     case "phone":
       return t("say.phone");
   }
@@ -182,9 +184,17 @@ function homeReach(): string {
   return names.length ? t("home.reach", names.join(t("acct.sep"))) : "";
 }
 
+/** D470: the person's own agents that reach the partner, after the chat apps (or alone). */
+function homeReachAgents(chats: boolean): string {
+  const names = peersReaching();
+  if (!names.length) return "";
+  return t(chats ? "home.reach.and" : "home.reach.agents", names.join(t("acct.sep")));
+}
+
 /** The labelled lines of the brief, each opening its page. */
-export function homeLines(): { key: string; label: string; text: string; page: Exclude<SettingsPage, ""> }[] {
-  const out: { key: string; label: string; text: string; page: Exclude<SettingsPage, ""> }[] = [];
+type HomeLine = { key: string; label: string; text: string; page: Exclude<SettingsPage, "">; more?: { text: string; page: Exclude<SettingsPage, ""> } };
+export function homeLines(): HomeLine[] {
+  const out: HomeLine[] = [];
   const lives = homeLives();
   if (lives) out.push({ key: "lives", label: t("home.l.lives"), text: lives, page: "devices" });
   if (A.settings && !noBrain()) {
@@ -195,7 +205,10 @@ export function homeLines(): { key: string; label: string; text: string; page: E
   const mem = homeMem();
   if (mem) out.push({ key: "mem", label: t("home.l.mem"), text: mem, page: "memory" });
   const reach = homeReach();
-  if (reach) out.push({ key: "reach", label: t("home.l.reach"), text: reach, page: "chats" });
+  const agents = homeReachAgents(!!reach);
+  // D470: the agents that reach it are said after the chat apps, each part opening its own page.
+  if (reach) out.push({ key: "reach", label: t("home.l.reach"), text: reach, page: "chats", ...(agents ? { more: { text: agents, page: "peers" as const } } : {}) });
+  else if (agents) out.push({ key: "reach", label: t("home.l.reach"), text: agents, page: "peers" });
   return out;
 }
 
@@ -228,9 +241,16 @@ export function SetBrief({ go }: { go: (p: SettingsPage) => void }) {
           {lines.map((l) => (
             <div key={l.key} class="sb-line">
               <span class="sb-label">{l.label}</span>
-              <button class="sb-text" onClick={() => go(l.page)}>
-                {l.text}
-              </button>
+              <span class="sb-body">
+                <button class="sb-text" onClick={() => go(l.page)}>
+                  {l.text}
+                </button>
+                {l.more && (
+                  <button class="sb-text" onClick={() => go(l.more!.page)}>
+                    {l.more.text}
+                  </button>
+                )}
+              </span>
             </div>
           ))}
         </div>
@@ -246,6 +266,7 @@ function NeedLine({ n, go }: { n: SetNeed; go: (p: SettingsPage) => void }) {
   const press = () => {
     if (!f) return go(n.page);
     if (f.kind === "update") return A.startUpdateAll();
+    if (f.kind === "mailbox") return A.openMailbox(f.device, f.harness);
     setAsking(true);
   };
   return (

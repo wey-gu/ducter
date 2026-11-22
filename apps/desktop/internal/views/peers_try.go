@@ -1,8 +1,6 @@
 package views
 
 import (
-	"math"
-	"strings"
 	"time"
 
 	"github.com/egoist/mygo/ui"
@@ -91,120 +89,22 @@ func (a *App) exchange(c *ui.Context, key, to, words, then string) {
 	})
 }
 
-// handoffDot is the live row's mark while it waits: the working dot,
-// breathing (still under Reduce Motion).
-func (a *App) handoffDot(c *ui.Context) func() {
-	t := a.T
-	return func() {
-		alpha := float32(1)
-		if !c.Preferences().ReduceMotion {
-			ph := float64(a.Now().UnixMilli()%2400) / 2400
-			alpha = float32(0.35 + 0.65*(0.5-0.5*math.Cos(2*math.Pi*ph)))
-			c.After(80 * time.Millisecond)
-		}
-		ui.Box(c.Key("handoff-dot")).Size(10, 10).Shrink(0).AccessHidden(true).Draw(func(p *ui.Painter, r ui.Rect) {
-			p.Fill(r, t.Working.Dot.Alpha(alpha), 5)
-		})
-	}
-}
-
-// peersRecent is 最近 / Recently (D332): the latest exchanges both ways,
-// newest first, each opening its task or the conversation; before the
-// first one, a calm row that waits for it.
-func (a *App) peersRecent(c *ui.Context, name string) {
-	t := a.T
-	list := recentHandoffs(peerFeed(a.S.Channel, a.S.TaskPeers), 5, a.S.OutOps)
-	a.group(c, "peers-recent", a.L.T("peers.recent.title"), "", func() {
-		if len(list) == 0 {
-			a.tileRow(c, "peers-wait", a.handoffDot(c), a.L.T("peers.wait.title"), a.L.T("peers.wait.line"), nil)
-			return
-		}
-		for _, h := range list {
-			h := h
-			var age func()
-			if h.State != "" {
-				// D433: one that hasn't plainly gone says so where the time would be.
-				ink := t.InkMuted
-				if h.State == "failed" || h.State == "unconfirmed" {
-					ink = t.Failed.Ink
-				}
-				s := a.L.T("peers.out." + h.State)
-				age = func() { uiText(c, s).FontSize(t.SM).FontWeight(600).TextColor(ink).SingleLine() }
-			} else if s := a.agoLong(h.At); s != "" {
-				age = func() { uiText(c, s).FontSize(t.SM).FontWeight(600).TextColor(t.InkMuted).SingleLine() }
-			}
-			who := a.peerCalledText(h.Agent, h.Host)
-			by := name
-			if h.Way == "tasksent" || h.Way == "taskin" {
-				by = a.taskNameOf(h.TaskID, name) // D448
-			}
-			if a.openRow(c, "handoff:"+itoa(h.Seq), a.peerTile(c, h.Agent, h.Host), autospace(h.Words), capPeer(a.L.T("peers.recent."+h.Way, who, by)), t.InkMuted, false, age) {
-				if h.TaskID != "" {
-					a.OpenTask(h.TaskID)
-				} else {
-					a.Route = RouteConversation
-				}
-			}
-		}
-	})
-}
-
 // peersTry is 试试看 (D321, D332): two example exchanges, one each way, as
 // a tiny conversation; then each agent missing Mem's plugin, one row with
 // its fix (装上), in a group of its own.
 func (a *App) peersTry(c *ui.Context, name string) {
-	t := a.T
 	a.group(c, "peers-try", a.L.T("peers.try.title"), "", func() {
-		a.textBlock(c, "try-ex", func() {
-			ui.Row(c).Gap(t.S4).Wrap().AlignItems(ui.Start).Children(func() {
-				a.exchange(c, "work", a.L.T("peers.try.work.to"), a.L.T("peers.try.work", name), a.L.T("peers.try.work.then", name))
-				a.exchange(c, "here", a.L.T("peers.try.here.to", name), a.L.T("peers.try.here"), a.L.T("peers.try.here.then", name))
-			})
-		})
+		a.textBlock(c, "try-ex", func() { a.tryPair(c, name) })
 	})
 }
 
-// peersReach is 能找到{name}的 / Who can reach {name} (D433): each AI tool
-// the person runs, whether it can reach the partner through Nowledge Mem,
-// the one fix when there is one (装上), and when it last came. The web's:
-// PeersReach (apps/web/src/memory.tsx).
-func (a *App) peersReach(c *ui.Context, name string) {
+// tryPair is the two example exchanges, one each way (D332): 试试看's, and the invitation's before
+// the first exchange (D470).
+func (a *App) tryPair(c *ui.Context, name string) {
 	t := a.T
-	var boxes []protocol.BridgeMailbox
-	if a.S.Bridge != nil {
-		boxes = a.S.Bridge.Mailboxes
-	}
-	rows := reachRows(a.S.Devices, a.S.OwnAgents, recentHandoffs(peerFeed(a.S.Channel, a.S.TaskPeers), 50), boxes...)
-	if len(rows) == 0 {
-		return
-	}
-	a.group(c, "peers-reach", a.L.T("peers.reach.title", name), "", func() {
-		for _, r := range rows {
-			r := r
-			var control func()
-			switch {
-			case r.Can == "install" && r.Device != "":
-				control = func() {
-					if a.buttonFor(c, a.L.T("peers.try.plugin.go"), r.DeviceName, btnSecondary, t.ControlSM, t.Surface) {
-						a.send(protocol.MemPluginInstall{T: "mem_plugin_install", Device: r.Device, Harness: r.Harness})
-					}
-				}
-			case r.Can == "yes" && r.Last != "":
-				if s := a.agoLong(r.Last); s != "" {
-					control = func() { uiText(c, s).FontSize(t.SM).FontWeight(600).TextColor(t.InkMuted).SingleLine() }
-				}
-			}
-			line := a.L.T("peers.reach.none")
-			switch {
-			case r.Can == "yes" && r.Box != "":
-				line = a.L.T("peers.reach.yes."+r.Box, name) // D444
-			case r.Can == "relay":
-				line = a.L.T("peers.reach.relay", name, r.Tool) // D448
-			case r.Can != "none":
-				line = a.L.T("peers.reach."+r.Can, name)
-			}
-			a.tileRow(c, "reach:"+r.Harness, a.clayTile(c, coinArt(r.Harness, r.Can == "none"), false), r.Tool, line, control)
-		}
+	ui.Row(c).Gap(t.S4).Wrap().AlignItems(ui.Start).Children(func() {
+		a.exchange(c, "work", a.L.T("peers.try.work.to"), a.L.T("peers.try.work", name), a.L.T("peers.try.work.then", name))
+		a.exchange(c, "here", a.L.T("peers.try.here.to", name), a.L.T("peers.try.here"), a.L.T("peers.try.here.then", name))
 	})
 }
 
@@ -224,21 +124,4 @@ func (a *App) firstPeerNote(c *ui.Context, b *protocol.BridgeMsg) {
 			uiText(c, autospace(capPeer(a.L.T(key, who, a.personaName())))).FontSize(t.SM).LineHeight(a.leading(1.6)).TextColor(t.InkSoft).Grow(1).Basis(0).MinWidth(0)
 		})
 	})
-}
-
-// taskNameOf is a task as 最近 / Recently names it (D448): its title in
-// quotes, else the partner's name.
-func (a *App) taskNameOf(taskID, name string) string {
-	t := a.S.Tasks[taskID]
-	if t == nil {
-		return name
-	}
-	s := strings.TrimSpace(t.Title())
-	if s == "" {
-		return name
-	}
-	if r := []rune(s); len(r) > 30 {
-		s = string(r[:29]) + "…"
-	}
-	return a.L.T("peers.recent.task", s)
 }

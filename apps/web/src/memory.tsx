@@ -8,8 +8,9 @@
 // D321: Memory is "what it knows about you": Mem's own kinds as living groups (how you like things,
 // what you decided, what it knows), each row fixable or forgettable in place with its source as a
 // quiet line, a search, the week's check one tap away; other tools' working notes only as a count.
-// D332: 和你的其他 agent 通信 shows what came and went lately (both ways), 试试看 with the exact words, and one switch.
-import type { BridgeView, MemCheckAnswer, MemCheckItem, MemItem } from "@ducter/protocol";
+// D470: 和你的其他 agent 通信 says who reaches whom as a picture per agent with each broken way's fix, the
+// exchanges as a thread per agent with what came of each, who may ask what, and the one switch first.
+import type { BridgeView, MemCheckAnswer, MemCheckItem, MemItem, PeersSettings } from "@ducter/protocol";
 import type { ComponentChildren } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { A } from "./app.ts";
@@ -18,7 +19,7 @@ import { Coin } from "./coin.tsx";
 import { copy } from "./conv-copy.ts";
 import { Btn, DangerButton, LinkBtn, Switch } from "./controls.tsx";
 import { ago, harnessName, spoken } from "./format.ts";
-import { aboutGroups, bySource, groupNoted, MEM_MIN, memHealthLook, memPhase, memUpdate, ownsAgents, peersNamesUpdate, peersPhase, peersShown, peersSwitchOn, awayFor, reachRows, recentHandoffs, type Handoff, type ReachRow, type MemPhase, type MemUpdate } from "./mem-view.ts";
+import { aboutGroups, bySource, exchangeThreads, groupNoted, MEM_MIN, memHealthLook, memPhase, memUpdate, ownsAgents, peersNamesUpdate, peersPhase, peersShown, peersSwitchOn, awayFor, reachRows, reachSplit, reachWays, recentHandoffs, SENDER_DAILY, trustOf, TRUSTED_DAILY, type Exchange as PeerExchange, type ReachRow, type MemPhase, type MemUpdate, type Thread, type Way } from "./mem-view.ts";
 import { CopyLine } from "./lend.tsx";
 import { GBlock, GConfirm, GFoot, GHead, GRow, Group, Said, say, Tile } from "./set-grid.tsx";
 import { MemPluginRows } from "./mem-plugin.tsx";
@@ -806,17 +807,18 @@ function Exchange({ to, words, then }: { to: string; words: string; then: string
 /** "an unnamed agent asked …" starts a line capitalised; names stay as they are. */
 const capWho = (s: string) => (/^(an unnamed agent|an agent in |your |one of your own )/.test(s) ? s[0]!.toUpperCase() + s.slice(1) : s);
 const peerTool = (agent: string) => (/claude/i.test(agent) ? "Claude Code" : /codex/i.test(agent) ? "Codex" : /\bpi\b/i.test(agent) ? "pi" : agent);
-/** 最近's who (D332): its name, else the tool it runs in, else unnamed (mem-view.ts peerCalled). */
+/** Who an agent is (D332): its name, else the tool it runs in, else unnamed (mem-view.ts peerCalled). */
 // D418: one of the person's own agents named by its own words reads as theirs; one with no name at all, still theirs.
-const whoOf = (h: Pick<Handoff, "agent" | "host" | "mine" | "role" | "selfNamed">) =>
+const whoOf = (h: { agent: string; host?: string; mine?: boolean; role?: string; selfNamed?: boolean }) =>
   h.mine && h.selfNamed && h.agent ? (h.role ? t("peer.yours.role", h.agent, h.role) : t("peer.yours", h.agent)) : h.agent || (h.host ? t("peer.in.host", h.host) : h.mine ? t("peer.own.someone") : t("peer.someone"));
 
-/** D332: where an exchange leads: its task, else the message in the conversation. */
-function openHandoff(h: Handoff) {
+/** D470: where an exchange leads: the task it became or came from, else its message in the conversation. */
+function openExchange(x: PeerExchange) {
   A.sheet = null;
-  if (h.taskId) return A.go({ name: "task", id: h.taskId });
+  const task = x.outcome.kind === "task" ? x.outcome.taskId : x.taskId;
+  if (task) return A.go({ name: "task", id: task });
   A.go({ name: "conv" });
-  setTimeout(() => A.jumpTo(h.seq), 350);
+  setTimeout(() => A.jumpTo(x.seq), 350);
 }
 
 /** D448: the conversation's exchanges and a task's own (which never show there), in order. */
@@ -826,84 +828,261 @@ function peerFeed() {
   return [...A.S.channel, ...A.S.taskPeers].filter((e) => !seen.has(e.ev.seq) && (seen.add(e.ev.seq), true)).sort((a, b) => a.ev.seq - b.ev.seq);
 }
 
-/** D448: a task as Recently names it: its title in quotes. */
-function taskName(taskId: string | undefined): string {
+/** A task's title, clipped (D448, D470). */
+function taskTitle(taskId: string | undefined): string {
   const task = taskId ? A.S.tasks.get(taskId) : undefined;
   const s = task ? title(task).trim() : "";
-  return s ? t("peers.recent.task", s.length > 30 ? s.slice(0, 29) + "…" : s) : "";
+  return s.length > 30 ? s.slice(0, 29) + "…" : s;
+}
+
+const clip = (s: string, n = 60) => (s.length > n ? s.slice(0, n - 1) + "…" : s);
+
+/** D433, D470: each agent the person runs and how it reaches the partner, from what this window holds. */
+export const peersReachRows = (): ReachRow[] => reachRows(A.devices ?? [], A.ownAgents, recentHandoffs(peerFeed(), 50), A.bridge?.mailboxes);
+
+/** D470: the agents whose answers can't get back (Mem lists their mailbox closed), each with the computer its fix runs on. */
+export function peersOneWay(): ReachRow[] {
+  const s = A.settings;
+  if (!s?.peers || peersPhase(A.bridge, peersSwitchOn(s.peers.reach, A.bridge)) !== "on") return [];
+  return reachSplit(peersReachRows()).oneWay.filter((r) => r.device && !A.mailboxOpening.has(`${r.device}:${r.harness}`));
+}
+
+/** D470: the partner's sentence at the head of Agent messaging: who and it reach each other now. */
+export function peersSay(): string {
+  const s = A.settings;
+  if (!s?.peers) return t("say.peers");
+  const on = peersSwitchOn(s.peers.reach, A.bridge);
+  if (!on) return t("say.peers.off");
+  if (peersPhase(A.bridge, on) !== "on") return t("say.peers");
+  const { both, oneWay, notYet } = reachSplit(peersReachRows());
+  if (both.length) return t("say.peers.both", both.map((r) => r.tool).join(t("acct.sep")));
+  if (oneWay.length) return t("say.peers.oneway");
+  if (notYet.length) return t("say.peers.notyet");
+  return t("say.peers");
+}
+
+/** D470: the agents that reach the partner, for Overview's 也能找我 / Also in. */
+export function peersReaching(): string[] {
+  const s = A.settings;
+  if (!s?.peers || peersPhase(A.bridge, peersSwitchOn(s.peers.reach, A.bridge)) !== "on") return [];
+  const { both, oneWay } = reachSplit(peersReachRows());
+  return [...both, ...oneWay].map((r) => r.tool);
 }
 
 /**
- * D332: 最近 / Recently: the latest exchanges both ways, newest first, each opening its task or its
- * message; before the first one, a calm row that waits for it.
+ * D470: one way between an agent and the partner, drawn (never a font's arrow): solid with its head when
+ * it goes, dashed with no head while it doesn't yet, fainter still when nobody knows.
  */
-function PeersRecent({ name }: { name: string }) {
-  const list = recentHandoffs(peerFeed(), 5, A.S.outOps);
+const WayLine = ({ w, back }: { w: Way; back?: boolean }) => (
+  <svg class={`lr-line ${w}`} viewBox="0 0 120 12" preserveAspectRatio="none" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    {w === "yes" ? back ? <path d="M118 6H4m6-5-6 5 6 5" /> : <path d="M2 6h114m-6-5 6 5-6 5" /> : <path d="M4 6h112" stroke-dasharray="9 7" />}
+  </svg>
+);
+
+/**
+ * D470: 谁能找到谁 / Who reaches whom, one agent: its coin and name, the two ways between it and the
+ * partner each said in words, the partner itself (in its flag pose when a way is broken and Ducter can
+ * fix it), and under it why and the one fix, where Ducter can start it.
+ */
+function LinkRow({ r, name }: { r: ReachRow; name: string }) {
+  const w = reachWays(r);
+  const opening = !!r.device && A.mailboxOpening.has(`${r.device}:${r.harness}`);
+  // Only a half-working link is a break (requests come in, answers can't go back); a missing plugin is an offer.
+  const broken = w.fix === "mailbox" && !opening;
+  const why =
+    w.fix === "mailbox" ? (opening ? t("peers.why.opening") : t("peers.why.mailbox", r.deviceName ?? r.device ?? "")) : w.fix === "install" ? t("peers.why.install") : r.can === "unknown" ? t("peers.why.unknown") : r.can === "none" ? t("peers.reach.none") : r.can === "relay" ? t("peers.reach.relay", name, r.tool) : "";
+  const last = r.last && w.to === "yes" ? t("peers.last", ago(A.L, r.last)) : "";
+  const label = `${r.tool}: ${t(`peers.way.to.${w.to}`, name)}; ${t(`peers.way.back.${w.back}`, name)}`;
   return (
-    <section class="set mem-sec">
-      <h3>{t("peers.recent.title")}</h3>
-      <Group class="mem-g" label={t("peers.recent.title")}>
-        {list.length === 0 && <GRow tile={<Tile><span class="handoff-wait" /></Tile>} title={t("peers.wait.title")} line={t("peers.wait.line")} />}
-        {list.map((h) => (
-          <button type="button" key={h.seq} class="chat-row tiled mem-item" onClick={() => openHandoff(h)}>
-            <PeerTile agent={h.agent} host={h.host} />
-            <span class="grow">
-              <b dir="auto">{h.words}</b>
-              <small>{capWho(t(`peers.recent.${h.way}`, whoOf(h), h.way === "tasksent" || h.way === "taskin" ? taskName(h.taskId) || name : name))}</small>
-            </span>
-            {h.state ? <span class={`g-state${h.state === "failed" || h.state === "unconfirmed" ? " tone-bad" : ""}`}>{t(`peers.out.${h.state}`)}</span> : <span class="g-state">{ago(A.L, h.at)}</span>}
-          </button>
-        ))}
-      </Group>
-    </section>
+    <div class={`link-row${broken ? " broken" : ""}`}>
+      <figure class="lr-pic" aria-label={label}>
+        <span class="lr-end">
+          <Coin harness={r.harness} size={40} off={r.can === "none"} />
+          <b>{r.tool}</b>
+          {last && <small>{last}</small>}
+        </span>
+        <span class="lr-ways" aria-hidden="true">
+          <span class={`lr-way ${w.to}`}>
+            <small>{t(`peers.way.to.${w.to}`, name)}</small>
+            <WayLine w={w.to} />
+          </span>
+          <span class={`lr-way ${w.back}`}>
+            <WayLine w={w.back} back />
+            <small>{t(`peers.way.back.${w.back}`, name)}</small>
+          </span>
+        </span>
+        <span class="lr-end" aria-hidden="true">
+          <Avatar size={40} state={broken ? "needsyou" : w.to === "yes" && w.back === "yes" ? "done" : "idle"} still />
+          <b>{name}</b>
+        </span>
+      </figure>
+      {why && (
+        <div class="lr-why">
+          <small class="grow">{why}</small>
+          {w.fix === "mailbox" && !opening && <Btn kind="secondary" size="sm" label={t("peers.fix.mailbox")} about={r.tool} onClick={() => A.openMailbox(r.device!, r.harness)} />}
+          {w.fix === "install" && <Btn kind="secondary" size="sm" label={t("peers.try.plugin.go")} about={r.deviceName ?? r.device} onClick={() => A.installMem(r.device!, r.harness)} />}
+        </div>
+      )}
+    </div>
   );
 }
 
-/**
- * D433: 能找到{name}的 / Who can reach {name}: each AI tool the person runs, whether it can reach the
- * partner through Nowledge Mem, the one fix when there is one (装上), and when it last came.
- */
-/** D444: a row's line, with what Mem's own contact list says of its mailbox when it says. */
-export function reachLine(r: ReachRow, name: string): string {
-  if (r.can === "none") return t("peers.reach.none");
-  // D448: the tasks Ducter runs on it pass messages through Ducter; the person's own sessions of it still can't.
-  if (r.can === "relay") return t("peers.reach.relay", name, r.tool);
-  if (r.can === "yes" && r.box) return t(`peers.reach.yes.${r.box}`, name);
-  return t(`peers.reach.${r.can}`, name);
-}
-
-function PeersReach({ name }: { name: string }) {
-  const rows = reachRows(A.devices ?? [], A.ownAgents, recentHandoffs(peerFeed(), 50), A.bridge?.mailboxes);
+/** D470: 谁能找到谁 / Who reaches whom: one link row per agent the person runs. */
+function PeersMap({ name }: { name: string }) {
+  const rows = peersReachRows();
   if (!rows.length) return null;
   return (
     <section class="set mem-sec">
-      <h3>{t("peers.reach.title", name)}</h3>
-      <Group class="mem-g" label={t("peers.reach.title", name)}>
+      <h3>{t("peers.map.title")}</h3>
+      <Group class="mem-g peers-map" label={t("peers.map.title")}>
         {rows.map((r) => (
-          <GRow key={r.harness} tile={<Tile faded={r.can === "none"}><Coin harness={r.harness} size={36} /></Tile>} title={r.tool} line={reachLine(r, name)}>
-            {r.can === "install" && r.device ? <Btn kind="secondary" size="sm" label={t("peers.try.plugin.go")} about={r.deviceName ?? r.device} onClick={() => A.installMem(r.device!, r.harness)} /> : r.last && r.can === "yes" ? <span class="g-state">{ago(A.L, r.last)}</span> : null}
-          </GRow>
+          <LinkRow key={r.harness} r={r} name={name} />
         ))}
       </Group>
     </section>
   );
 }
 
+/** D470: what came of an exchange, in the partner's words, and the ink it is said in. */
+function exLine(x: PeerExchange): { text: string; tone?: "needs" | "bad" } {
+  const o = x.outcome;
+  if (x.way === "in") {
+    switch (o.kind) {
+      case "task":
+        return { text: t("peers.ex.in.task", taskTitle(o.taskId) || "…") };
+      case "replied":
+        return { text: t("peers.ex.in.replied", clip(o.words)), ...(o.state === "failed" || o.state === "unconfirmed" ? { tone: "bad" as const } : {}) };
+      case "card":
+      case "told":
+        return { text: t(`peers.ex.in.${o.kind}`), tone: "needs" };
+      default:
+        return { text: t(`peers.ex.in.${o.kind}`) };
+    }
+  }
+  const head = x.way === "taskasked" ? "peers.ex.task." : "peers.ex.asked.";
+  const tt = taskTitle(x.taskId) || "…";
+  const args = x.way === "taskasked" ? [tt] : [];
+  if (o.kind === "answered") return { text: t(head + "answered", ...args, clip(o.words)) };
+  if (o.kind === "notsent") return { text: t(head + "notsent", ...args), tone: "bad" };
+  return { text: t(head + "waiting", ...args) };
+}
+
+/** D470: an exchange's right edge: a send that hasn't plainly gone says so, else when. */
+function exWhen(x: PeerExchange): { text: string; bad?: boolean } {
+  const o = x.outcome;
+  const st = o.kind === "replied" ? o.state : o.kind === "notsent" ? o.state : undefined;
+  if (st) return { text: t(`peers.out.${st}`), bad: st === "failed" || st === "unconfirmed" };
+  return { text: ago(A.L, x.at) };
+}
+
+/** D470: one agent's exchanges with the partner, its trust in its head (what it may ask), newest first. */
+function PeersThread({ th, p }: { th: Thread; p: PeersSettings }) {
+  const trust = trustOf(th, p);
+  const line = trust === "trusted" ? t("peers.trust.trusted", TRUSTED_DAILY) : trust === "own" ? t("peers.trust.own") : trust === "team" ? t("peers.trust.team") : t("peers.muted", th.agent);
+  const who = capWho(whoOf(th));
+  return (
+    <Group class="mem-g peer-thread" label={who}>
+      <GHead tile={<PeerTile agent={th.agent} host={th.host} />} name={who} line={line}>
+        {trust === "trusted" && <Btn kind="text" size="sm" label={t("peers.trust.ask")} about={th.agent} onClick={() => A.setSettings({ peers: { ...p, trusted: p.trusted.filter((x) => x !== th.agent) } })} />}
+        {trust === "team" && <Btn kind="text" size="sm" label={t("peers.trust.mute")} about={th.agent} onClick={() => A.setSettings({ peers: { ...p, muted: [...p.muted, th.agent], allowed: (p.allowed ?? []).filter((x) => x !== th.agent) } })} />}
+      </GHead>
+      {th.items.map((x) => {
+        const l = exLine(x);
+        const w = exWhen(x);
+        return (
+          <button type="button" key={x.seq} class="chat-row mem-item ex-item" onClick={() => openExchange(x)}>
+            <span class="grow">
+              <b dir="auto">{x.words}</b>
+              <small class={l.tone ? `tone-${l.tone}` : undefined} dir="auto">
+                {l.text}
+              </small>
+            </span>
+            <span class={`g-state${w.bad ? " tone-bad" : ""}`}>{w.text}</span>
+          </button>
+        );
+      })}
+    </Group>
+  );
+}
+
 /**
- * D321, D332: 试试看 / Try it: two example exchanges, one each way, as a tiny conversation in the clay
- * style (D433: the agents missing Mem's plugin are under 能找到{name}的 now).
+ * D470: 来往 / Back and forth: a thread per agent, each exchange with what was asked and what came of it.
+ * Before the first one, an invitation: the partner says no agent has come yet, and the two examples.
  */
+function PeersThreads({ name, threads, p }: { name: string; threads: Thread[]; p: PeersSettings }) {
+  return (
+    <section class="set mem-sec">
+      <h3>{t("peers.ex.title")}</h3>
+      {threads.length === 0 ? (
+        <Group class="mem-g ex-invite" label={t("peers.ex.title")}>
+          <div class="ex-empty">
+            <Avatar size={40} state="idle" />
+            <p>{t("peers.ex.empty")}</p>
+          </div>
+          <GBlock>
+            <TryPair name={name} />
+          </GBlock>
+        </Group>
+      ) : (
+        <div class="peer-threads">
+          {threads.map((th) => (
+            <PeersThread key={th.key} th={th} p={p} />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+/** D321, D332: the two example exchanges, one each way, as a tiny conversation in the clay style. */
+const TryPair = ({ name }: { name: string }) => (
+  <div class="ex-pair">
+    <Exchange to={t("peers.try.work.to")} words={t("peers.try.work", name)} then={t("peers.try.work.then", name)} />
+    <Exchange to={t("peers.try.here.to", name)} words={t("peers.try.here")} then={t("peers.try.here.then", name)} />
+  </div>
+);
+
+/** D321, D332: 试试看 / Try it, once something came and went (before that, the invitation holds the examples). */
 function PeersTry({ name }: { name: string }) {
   return (
     <section class="set mem-sec">
       <h3>{t("peers.try.title")}</h3>
       <Group class="mem-g" label={t("peers.try.title")}>
         <GBlock>
-          <div class="ex-pair">
-            <Exchange to={t("peers.try.work.to")} words={t("peers.try.work", name)} then={t("peers.try.work.then", name)} />
-            <Exchange to={t("peers.try.here.to", name)} words={t("peers.try.here")} then={t("peers.try.here.then", name)} />
-          </div>
+          <TryPair name={name} />
         </GBlock>
+      </Group>
+    </section>
+  );
+}
+
+/**
+ * D470: 谁能让我做什么 / Who may ask me what, by the rules in code (bridge.md X1–X3): the person's own
+ * agents (work after a Go, or straight ahead for one they trusted, SENDER_DAILY a day), teammates' agents
+ * (ignored by default; asked once per sender; questions only), and the ones the person stopped hearing.
+ */
+function PeersRules({ p }: { p: PeersSettings }) {
+  return (
+    <section class="set mem-sec">
+      <h3>{t("peers.rules.title")}</h3>
+      <Group class="mem-g" label={t("peers.rules.title")}>
+        <GRow tile={<CoinsTile />} title={t("peers.rules.own.title")} line={t("peers.rules.own.line", SENDER_DAILY)} />
+        <GRow
+          tile={
+            <Tile>
+              <span class="mem-tool-letter mem-agent">
+                <AgentMark />
+              </span>
+            </Tile>
+          }
+          title={t("peers.rules.team.title")}
+          line={t("peers.rules.team.line")}
+        />
+        {p.muted.map((a) => (
+          <GRow key={`m-${a}`} tile={<ToolTile from={peerTool(a)} />} title={t("peers.muted", a)}>
+            <Btn kind="text" size="sm" label={t("peers.muted.undo")} about={a} onClick={() => A.setSettings({ peers: { ...p, muted: p.muted.filter((x) => x !== a) } })} />
+          </GRow>
+        ))}
       </Group>
     </section>
   );
@@ -966,11 +1145,14 @@ export const failedLine = (d?: string): string => (d && FAILED_DETAILS[d] ? t(FA
 export const peersPageShown = () => A.peersAsked || peersShown(A.settings?.peers, A.bridge, A.S.channel.some((e) => e.peer), ownsAgents(A.ownAgents, A.devices ?? []));
 
 /**
- * D332: 和你的其他 agent 通信 / Talk with your other agents. On: any problem as one row with its fix, what came and went
- * lately (both ways), what to say, the one switch. Before Mem is ready: the picture, one sentence of
- * what Nowledge Mem is, its steps in place; once it is, the home connects by itself (no tap). Off: the
- * picture and the switch. Identity, place, labels and ids are never shown. Agents the person stopped
- * listening to are the only rules shown, each with 恢复.
+ * D332, D470: 和你的其他 agent 通信 / Talk with your other agents, in Settings' voice (D469). The head is the
+ * partner saying who reaches it (PaneSays, with a one-way link as what needs you). On: the one switch
+ * first, any problem with its fix, 谁能找到谁 / Who reaches whom as a picture per agent (each broken way
+ * with its real fix), 来往 / Back and forth as a thread per agent (what was asked, what came of it), who
+ * may ask what, then 试试看. Before the first exchange the threads are an invitation with the examples.
+ * Before Mem is ready: the picture, one sentence of what Nowledge Mem is, its steps in place; once it is,
+ * the home connects by itself (no tap). Off: the picture and the switch. Identity, place, labels and ids
+ * are never shown.
  */
 export function PeersPage() {
   const s = A.settings;
@@ -992,13 +1174,11 @@ export function PeersPage() {
   };
   const mem = b ? memPhase(true, A.mem, b) : "missing";
   const upd = memUpdate(b);
-  // D459: the pane's one switch is its first group's head row, as Memory's is: who it is about, what came
-  // and went this week, the switch, and where it all shows up as the group's last line.
-  const week = recentHandoffs(peerFeed(), 50).filter((h) => h.at && Date.now() - Date.parse(h.at) < 7 * 864e5).length;
+  // D470: the switch is the page's first group (the partner's sentence above says how things stand).
   const head = phase !== "getting" && phase !== "none" && (
     <section class="set mem-sec">
       <Group class="mem-g" label={t("settings.tab.peers")}>
-        <GHead tile={<CoinsTile faded={!on} />} name={on ? t("peers.head.on", name) : t("peers.head.off", name)} line={!on ? t("peers.switch.off", name) : week ? t("peers.week.count", String(week)) : t("peers.week.none")} tone={on && week ? "done" : undefined}>
+        <GHead tile={<CoinsTile faded={!on} />} name={t("peers.switch", name)} line={on ? undefined : t("peers.switch.off", name)}>
           <Switch label={t("peers.switch", name)} on={on} onChange={flip} />
         </GHead>
         <GFoot note={on ? t("peers.switch.on") : t("peers.off.kept")} />
@@ -1006,6 +1186,7 @@ export function PeersPage() {
       <Said k="peers" />
     </section>
   );
+  const threads = phase === "on" ? exchangeThreads(peerFeed(), A.S.outOps, A.S.decisions.values()) : [];
   return (
     <>
       {phase === "on" ? (
@@ -1015,9 +1196,10 @@ export function PeersPage() {
           {b && <PeersNames b={b} name={name} />}
           {b?.stuck && <PeersStuck code={b.stuck.code} name={name} />}
           {b?.state === "connected" && b.notices && <PeersNotices name={name} />}
-          <PeersReach name={name} />
-          <PeersRecent name={name} />
-          <PeersTry name={name} />
+          <PeersMap name={name} />
+          <PeersThreads name={name} threads={threads} p={p} />
+          <PeersRules p={p} />
+          {threads.length > 0 && <PeersTry name={name} />}
         </>
       ) : (
         <>
@@ -1034,7 +1216,7 @@ export function PeersPage() {
       )}
       {phase === "joining" && (
         <Group class="mem-g" label={t("settings.tab.peers")}>
-          <GRow tile={<Tile><span class="handoff-wait" /></Tile>} title={t("peers.joining", name)} />
+          <GRow tile={<Avatar size={40} state="working" />} title={t("peers.joining", name)} />
         </Group>
       )}
       {phase === "problem" && b && (
@@ -1049,7 +1231,7 @@ export function PeersPage() {
           </GRow>
         </Group>
       )}
-      {p.muted.length > 0 && (
+      {phase !== "on" && p.muted.length > 0 && (
         <section class="set mem-sec">
           <Group class="mem-g" label={t("peers.muted.title")}>
             {p.muted.map((a) => (

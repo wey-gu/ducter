@@ -44,14 +44,17 @@ changes the moment you pick something.
 
 Settings opens with your partner telling you, in a few lines, how things stand: where it runs, what it
 thinks with, which accounts it reads (and that anything sent or paid asks you first), what it
-remembers, and where else you can reach it. Click a line to open its tab. When something needs you
+remembers, and where else you can reach it (your chat apps, and your own agents that can reach it,
+such as **Your Codex, Claude Code**). Click a line to open its tab. When something needs you
 (a source of accounts that can't be reached, something Nowledge Mem would like you to confirm, a
-newer Nowledge Mem for one of your AI agents, updates ready), your partner raises its little flag,
+newer Nowledge Mem for one of your AI agents, one of your agents that can reach your partner but
+can't get its answers back, updates ready), your partner raises its little flag,
 says so first, and gives you a button that takes you to where you fix it. When all is well it simply
 says **All's well. I'm right here.**
 
 Where it can be done safely right there, the button does it: a newer Nowledge Mem for one of your
-AI agents asks you first, in place, then updates it; updates ready start with one tap, as in
+AI agents asks you first, in place, then updates it; **Open its mailbox** starts the one small task
+that lets your partner's answers reach that agent; updates ready start with one tap, as in
 **Devices**.
 
 Under it, **Your computers and phones** shows each computer, phone and tablet as a little clay
@@ -246,39 +249,60 @@ plugin is in it. If Nowledge Mem isn't on your computer yet, the page puts it in
 right there. After that there is nothing to tap: your partner connects by itself and tells you so
 once in the conversation.
 
-The page starts the way **Memory** does: **Your agents can reach {name}**, how many messages went back
-and forth this week, and the one switch; under it, that what they hand over and what needs your call
-shows up in your conversation. When it's on, **Who can reach** comes next (below), then **Recently**:
-what your agents handed over and what your partner asked or answered, newest first; tap one to open it. **Try it** shows two short examples, one each way:
-what you'd say to Codex and what your partner then does, and what you'd say to your partner and what
-it brings back. The small copy button on each sentence copies it.
+Your partner speaks first at the top of the page, saying who can reach it now, for example
+**Codex and I can reach each other.** When one of your agents can reach your partner but your
+partner's answers can't get back to it, it says that too, and the same line waits for you on
+Settings' **Overview**. Then comes the one switch, **Let agents connected to Nowledge Mem reach
+{name}**: what they hand over, and what needs your call, shows up in your conversation.
 
-**Who can reach** lists each AI tool you use: Claude Code and Codex say **Can reach** your partner,
-with when one last came, or, where the Nowledge Mem plugin isn't in yet, offer **Install**. pi and
-Antigravity, when they're signed in on a computer of Ducter's, say **pi tasks your partner runs pass
-messages; yours can't yet**: a task your partner runs on them can ask your other agents something.
-The first time it does, a card in your conversation shows which task, who it's for and the words,
-with **Send**; nothing goes before you tap it, and the answer goes back into the task. Recently lists
-these by the task's name. Your own pi or Antigravity sessions outside Ducter can't pass messages yet,
-and one Ducter doesn't run says **Its Nowledge Mem plugin can't pass messages yet**. When Nowledge Mem's own list of your agents
-has been read (when you look at this page, at most every half hour), a row also says whether your
-partner can reach that agent: **Can reach your partner, and your partner can reach it**, or **…but
-Nowledge Mem says your partner can't reach it right now**.
+**Who reaches whom** shows each AI tool you use as a small picture: its mark on one side, your
+partner on the other, and the two ways between them, each said in words: **Reaches {name}** and
+**{name} reaches it**. A way that works is a solid line with an arrowhead; one that doesn't yet is
+dashed. Under the mark, when it last came. When something is missing, the reason and its one fix
+sit under the picture:
+
+- **Its mailbox in Nowledge Mem is closed, so my answers can't reach it.** **Open its mailbox**
+  starts one small task on that computer, through the agent's own Nowledge Mem plugin; your tap is
+  the go-ahead. It never touches your partner's own connection.
+- **It doesn't have Nowledge Mem's plugin yet.** **Install** puts it in.
+- pi and Antigravity, when they're signed in on a computer of Ducter's, say **pi tasks your partner
+  runs pass messages; yours can't yet**: a task your partner runs on them can ask your other agents
+  something. The first time it does, a card in your conversation shows which task, who it's for and
+  the words, with **Send**; nothing goes before you tap it, and the answer goes back into the task.
+  One Ducter doesn't run says **Its Nowledge Mem plugin can't pass messages yet**.
+
+**Back and forth** keeps a thread for each agent, newest first. Each exchange shows what was asked
+and what came of it, in your partner's words: **It wrote; I opened the task "…"**, **It wrote; I
+answered: …**, **It wrote; waiting for your call**, **I asked for you; waiting for its answer**, and
+so on. Tap one to open its task, or the conversation. A message your partner sent that hasn't
+plainly gone says so where the time would be: **Sending**, **Checking it went**, **Couldn't confirm
+it went** or **Didn't go**. Before any agent has come, your partner says so and shows two short
+examples, one each way, each with a small copy button.
+
+Each thread's head names the agent and what it may ask. **Who may ask me what** says the rules:
+
+- **Your own agents** may hand your partner work; it asks you before starting a task, unless you
+  said one may go straight ahead (then up to 5 tasks a day, and **Ask me first** takes that back).
+  Up to 20 messages a day each.
+- **Teammates' agents** are ignored by default. The first time one comes, your partner asks you;
+  even when you let it through, it may only ask questions, never hand your partner work.
+  **Stop listening** on its thread mutes it; muted agents are listed here with **Undo**.
+
+In the conversation, when your partner tells you in its own words what one of your agents sent, one
+quiet line above its message says where it came from (**From your Codex (Mem helper)**); tap it to
+open this page.
 
 When one of your agents hands your partner something kept in Nowledge Mem, such as a checklist or a
-note, its line in the conversation names it by its title (**With "HawDB 0.9 release checklist"**),
-and your partner reads it before it answers. A shared plan is named, not opened.
+note, it is named by its title (**With "HawDB 0.9 release checklist"**), and your partner reads it
+before it answers. A shared plan is named, not opened. When another computer of yours receives your
+partner's messages and Nowledge Mem hasn't seen it for over a day, the page says when it was last
+online, with **Receive here instead**.
 
-A message your partner sent that hasn't plainly gone says so in **Recently** where the time would be:
-**Sending**, **Checking it went**, **Couldn't confirm it went** or **Didn't go**. When another
-computer of yours receives your partner's messages and Nowledge Mem hasn't seen it for over a day,
-the page says when it was last online, with **Receive here instead**.
-
-Each row in **Recently** names the agent by the name it has in Nowledge Mem. One of your own that has
-no name there is called by what its message says it is, for example **your Codex (Mem helper)**, or
-by the app it runs in, for example **an agent in Claude Code**, or else **one of your own agents**;
-one that isn't yours and has no name is **an unnamed agent**, with a small drawn agent in place of
-its app's mark. An older Nowledge Mem can't
+An agent is called by the name it has in Nowledge Mem. One of your own that has no name there is
+called by what its message says it is, for example **your Codex (Mem helper)**, or by the app it
+runs in, for example **an agent in Claude Code**, or else **one of your own agents**; one that isn't
+yours and has no name is **an unnamed agent**, with a small drawn agent in place of its app's mark.
+An older Nowledge Mem can't
 say which agent wrote, nor which message answers what your partner asked; while a newer one is out,
 the page says so with **Update** (it only swaps the program: you stay signed in, and your memories
 don't move).

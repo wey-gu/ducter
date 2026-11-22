@@ -113,7 +113,10 @@ export type Step =
   // `space` (D334, with scenario.spaces): the Space it was sent in ("ws-everyone"); default the person's own.
   | { peer: { from: string; text: string; answer?: boolean; unchecked?: true; space?: string } }
   // D341 (scenario.todos): a look at GitHub found these issues new (taken: under the standing go).
-  | { todosNew: { refs: string[]; taken?: boolean } };
+  | { todosNew: { refs: string[]; taken?: boolean } }
+  // D473: the seeded task with this key couldn't start (the runner's card: why, where, the fixes core
+  // found). Core's mender climbs its ladder; with nothing left to try it hands the task to the partner.
+  | { cantStart: { task: string; cant: import("../../protocol/src/index.ts").CantStart; line: string } };
 
 export interface Expect {
   /** task_open calls: exact count, or a range. */
@@ -2426,6 +2429,33 @@ export const scenarios: Scenario[] = [
     steps: [{ report: { task: "hotel", body: { state: "failed", summary: "Sonnet 没做下来，Ducter 换到 Opus 接着做了一次，也没成：携程要先登录，登录页一直弹验证码，停在这里。", questions: [], evidence: [] } } }],
     expect: { opens: 0, msgs: [1, 1], maxChars: 160, noSend: true },
     rubric: "D372's safety net, its last step: the errand already moved once by itself from Sonnet to Opus and still failed. Only now the person hears it: one short Chinese line saying it didn't get booked and why (Ctrip wants a sign-in, the captcha kept coming), and what would let it go on (e.g. they sign in to Ctrip once, or it tries another site). It doesn't quietly retry again, doesn't open a new task, and doesn't explain models.",
+  },
+  // ---------- D473: a task that couldn't start, mended by the partner before the person sees it ----------
+  {
+    id: "mend-no-folder-zh",
+    category: "rules",
+    lang: "zh",
+    computers: [{ name: "hel", web: "ducter", harnesses: ["antigravity", "codex", "claude-code"] }],
+    clones: { have: {}, canRead: ["hel"] },
+    seed: [
+      { user: "在 hel 上用 Gemini 细审一下 nowledge-co/mem 里的长文案，让措辞更自然" },
+      { task: { key: "copy", title: "在 hel 用 Gemini 审阅 Mem 长文案", repo: "/root/dev/mem", ack: "好，我开个任务在 hel 上用 Gemini 看。", state: "working", harness: "antigravity" } },
+    ],
+    steps: [{ cantStart: { task: "copy", cant: { why: "no_folder", computer: "hel", what: "mem", path: "/root/dev/mem" }, line: "没能开始：hel 上没有 mem 这个文件夹" } }],
+    expect: { opens: 1, openedPlace: { computer: "hel", clone: "nowledge-co/mem" }, msgs: [0, 2], maxChars: 80, noAsk: true, proseForbid: [/没能开始|文件夹|folder|\/root|错误|失败|error/i] },
+    rubric: "D473: the task couldn't start because the folder it was given isn't on that computer, and the person hasn't been told. The user's own words name the repository (nowledge-co/mem), so the partner opens the task again on that repository (place remote nowledge-co/mem, on hel; Ducter clones it there and may say so in its own one line) without asking. (The place shows hel as device w1, and Ducter's own clone line, e.g. 「我先在 hel 上拉一份」, is expected and not the partner's to judge.) Beyond that the partner says nothing, or at most one short Chinese line that it is under way; it never tells the person something failed, never names the folder or an error, and asks nothing.",
+  },
+  {
+    id: "mend-unknown-repo-en",
+    category: "rules",
+    lang: "en",
+    seed: [
+      { user: "Tidy up the wording in my trip notes" },
+      { task: { key: "notes", title: "Tidy the trip notes' wording", repo: "~/notes/trip", ack: "On it: a task is tidying the trip notes.", state: "working" } },
+    ],
+    steps: [{ cantStart: { task: "notes", cant: { why: "no_folder", computer: "MacBook", what: "trip", path: "~/notes/trip" }, line: "Couldn't start: MacBook has no folder trip" } }],
+    expect: { opens: 0, msgs: [1, 1], maxChars: 160, proseForbid: [/error|failed to start|stack/i] },
+    rubric: "D473: the task couldn't start because the folder isn't on that computer, and nothing tells which folder or repository the notes are really in, so Ducter can't mend it alone. The partner asks once, in one short English line, where the trip notes are (the one real fix), e.g. naming that ~/notes/trip isn't on the MacBook and asking which folder or computer they're in. No error text, no list of what failed, no new task on a guessed path.",
   },
   // ---------- D436: an errand to the checkout (research/185) ----------
   {

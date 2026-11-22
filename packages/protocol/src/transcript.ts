@@ -117,7 +117,7 @@ export type Block =
 export type ToldSay = "adopted" | "lent" | "returned" | "stopped" | "declined" | "reopened" | "taken_back" | "given_back" | "loan_lost" | "looked" | "other";
 
 /** What a note says (D207). Every other system line (session started, memory recalled, a retry, an archive) says nothing. */
-export type NoteSay = "earlier" | "limit" | "compacted" | "compact_failed" | "interrupted" | "retry" | "stalled" | "offline" | "reconnecting" | "back" | "waiting_device" | "fresh" | "moved" | "switched" | "retuned" | "effort_dropped" | "guard" | "to_own_browser" | "error" | "error_delivery" | "error_start" | "error_resume";
+export type NoteSay = "earlier" | "limit" | "compacted" | "compact_failed" | "interrupted" | "retry" | "stalled" | "offline" | "reconnecting" | "back" | "waiting_device" | "fresh" | "moved" | "switched" | "retuned" | "effort_dropped" | "guard" | "to_own_browser" | "error" | "error_delivery" | "error_start" | "error_resume" | "mend_reopen" | "mend_clone_here" | "mend_start_at" | "mend_clear_lock" | "mend_rethink" | "mend_stall";
 
 const KICKOFF = /^(<brief>|Start the task ")/;
 
@@ -146,6 +146,9 @@ export function noteOf(text: string, raw: unknown): { say: NoteSay; name?: strin
   if (r.slash === "compact" && r.failed) return { say: "compact_failed", bad: true };
   if (r.kind === "turn_ended" && r.outcome === "aborted") return { say: "interrupted" };
   if (r.kind === "retry") return { say: "retry", ...((n) => (n ? { name: n } : {}))(from(/^retry (\d+)/)) };
+  // D473: Ducter's own repair, one quiet line (never an error): what it does, and where.
+  const md = o("mend");
+  if (md && ["reopen", "clone_here", "start_at", "clear_lock", "rethink", "stall"].includes(String(md.how))) return { say: `mend_${String(md.how)}` as NoteSay, ...(str(md.name) ? { name: str(md.name) } : {}) };
   if (r.stall) return { say: "stalled" };
   if (r.fresh) return { say: "fresh" };
   if (r.effortDropped) return { say: "effort_dropped", ...(str(r.effortDropped) ? { name: str(r.effortDropped) } : {}) };

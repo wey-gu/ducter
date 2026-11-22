@@ -19,6 +19,7 @@ import { realpathSync } from "node:fs";
 import { fetchSnapshot, formatSnapshot, pickTask, taskAction, toMerge } from "./status.ts";
 import { cmdAbility, cmdBrowser } from "./browser-cmd.ts";
 import { cmdProactive } from "./proactive-cmd.ts";
+import { cmdRepairs } from "./repairs-cmd.ts";
 import { cmdDevices, cmdPair, cmdService, ducterCommand, fetchPublicIp, isLoopback, publicUrl } from "./remote.ts";
 import { cmdAnywhere } from "./anywhere-cmd.ts";
 import { stopSavedTunnel } from "@ducter/core/src/anywhere.ts";
@@ -73,6 +74,7 @@ export function helpText(t: T): string {
     cmd("ability", t("help.ability")),
     cmd("browser", t("help.browser")),
     cmd("proactive", t("help.proactive")),
+    cmd("repairs", t("help.repairs")),
     cmd("service", t("help.service")),
     cmd("anywhere", t("help.anywhere")),
     cmd("tailscale", t("help.tailscale")),
@@ -702,6 +704,9 @@ export async function run(argv: string[]): Promise<number | "running"> {
     case "proactive":
       // D388: the dry replay of the last days of the accounts, on the home. D464: the week's offers counted.
       return cmdProactive({ t, target: ctx.target, json: args.json, rest: args.rest ?? [], lang: detectLocale(), ...(args.days ? { days: args.days } : {}), ...(args.weeks ? { weeks: args.weeks } : {}), ...(args.noWeb ? { noWeb: true } : {}) });
+    case "repairs":
+      // D473: how self-repair did, week by week, counted from the home's Log.
+      return cmdRepairs({ t, target: ctx.target, json: args.json, ...(args.weeks ? { weeks: args.weeks } : {}) });
     case "service":
       return cmdService({
         t,

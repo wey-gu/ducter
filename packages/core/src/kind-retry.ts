@@ -13,6 +13,8 @@ export interface KindRetry {
   onEvent(e: LogEvent): void;
   /** False for the failed report that a retry answers (the partner isn't woken for it). */
   wakes(e: LogEvent): boolean;
+  /** D473: this event is one it answers with a retry (core's mender leaves it alone). */
+  took(e: LogEvent): boolean;
 }
 
 /** retell: wake the partner for an event after all (a retry that couldn't happen: nobody smarter here). */
@@ -70,5 +72,6 @@ export function createKindRetry(o: { log: LogStore; loadout: Pick<Loadout, "retr
   return {
     onEvent: (e) => void decide(e),
     wakes: (e) => !(e.kind === "report" && decide(e)),
+    took: (e) => decide(e),
   };
 }

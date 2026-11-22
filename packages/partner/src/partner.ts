@@ -858,6 +858,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     },
     trusted: (agent) => !!core.settings?.get().peers?.trusted.includes(agent),
     taskTitle: (id) => core.tasks.get(id)?.title ?? jobs.get(id)?.title,
+    // D473: why a task couldn't start and the fixes core found, for a rethink.
+    taskCant: (id) => core.tasks.get(id)?.cant,
     // D340: what the user typed into the task itself since its previous report (research/124 F1: without
     // it, the person's own asks read as the task's ideas, and the partner offered to delete them).
     told: (id, reportSeq) => {

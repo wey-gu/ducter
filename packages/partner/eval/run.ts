@@ -933,6 +933,7 @@ function describeStep(st: Step): string {
   if ("resolve" in st) return `user answers the open decision: ${st.resolve.option}${st.resolve.text ? ` "${st.resolve.text}"` : ""}`;
   if ("todosNew" in st) return `a look at GitHub found newly assigned issues: ${st.todosNew.refs.join(", ")}${st.todosNew.taken ? " (under the user's standing go: they start without asking)" : ""}`;
   if ("callEnded" in st) return `the call to ${st.callEnded.name} (${st.callEnded.to}) ended; the provider reported: ${st.callEnded.state}${st.callEnded.outcome ? `, "${st.callEnded.outcome}"` : ""}${st.callEnded.hint === "screening" ? " (Google Voice call screening answered)" : ""}`;
+  if ("cantStart" in st) return `task "${st.cantStart.task}" couldn't start (${st.cantStart.line}); Ducter's own ladder had nothing left to try, so it handed the task to the partner`;
   return `a reminder the partner set earlier is due: ${st.timerFired.reason}`;
 }
 
@@ -983,6 +984,9 @@ function applyStep(st: Exclude<Step, { peer: unknown }>, core: Core, idOf: Map<s
       return { source: core.taskSources.view().sources[0]!.id, kind: "github" as const, ref, label: `#${i.number}`, where: i.repo, title: i.title, url: `https://github.com/${i.repo}/issues/${i.number}` };
     });
     core.log.append({ stream: "channel", origin: "system", kind: "source_seen", body: { source: items[0]!.source, change: "new", items, ...(st.todosNew.taken ? { taken: true } : {}) } });
+  } else if ("cantStart" in st) {
+    // D473: the runner's failed start as it lands; core's mender reacts (here: hands it to the partner).
+    core.tasks.setState(tid(st.cantStart.task), "failed", "archived", st.cantStart.line, st.cantStart.cant);
   } else if ("report" in st) report(st.report);
   else if ("reports" in st) st.reports.forEach(report);
   else if ("resolve" in st) {

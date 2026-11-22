@@ -56,6 +56,7 @@ import { ASKS_MAX, type AskLine, callWakes, FREE_TIERS, fileView, harnessName, H
 import { boundWords } from "../../protocol/src/where.ts";
 import type { CoreApi, HarnessEvent, HarnessSession, Partner, Runner, SendImage, ToolHandler, WebLookPort, WorkingMemoryView } from "../../protocol/src/internal.ts";
 import { resolveWindows, WINDOW_MAX, WINDOW_MIN } from "../../protocol/src/harness-facts.ts";
+import { jsonArg, jsonText } from "../../protocol/src/tool-schema.ts";
 
 /** D385: the partner's line before a plan-first hand-over, when the model said none. */
 const PLAN_FIRST_LINE = { zh: "好，我先看一遍，出个方案给你，你点头再做。", en: "OK. I'll read them first and show you a plan; nothing starts until you say so." };
@@ -338,6 +339,8 @@ const TASK_SEND_RE = /(^|__)task_send$/;
 const FOLLOWS_HOURS = 12;
 /** D373: a task that has finished: a follow-up sent to it goes back to work, under a new line in the conversation. */
 const FINISHED = new Set(["done", "done_claimed", "failed"]);
+/** D479: a start that failed on its place (CantStart.why): sending to it again would start it there again. */
+const PLACE_CANT = new Set(["no_folder", "no_repo", "clone_failed"]);
 /** D373: the user asks for a new task in so many words: no second look at the one it follows. */
 const ASKS_NEW = /开个新|新开一个|开一个新|新的任务|另开|单独开|重新开一个|a new (one|task)|new task|separate task|start (a )?fresh/i;
 /** A partner tool call as the step the user sees (D104); undefined keeps the current step. */
@@ -1422,6 +1425,9 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         if (asksBack(turn, to)) return;
         // D391: a send to one of two alike is refused: its line is not an ack.
         if (typeof to === "string" && ambiguousFor(to)) return;
+        // D479: a send to a task that couldn't start on its place may be refused (its place still
+        // doesn't hold): its line waits, the ack of the task opened again in its stead, or of the send.
+        if (typeof to === "string" && placeStuck(to)) return;
         takeSendLine(turn, to);
       }
       if (TASK_OPEN_RE.test(ev.tool.name) && turn.carried && carriedTask(turn.carried, (ev.tool.input as { title?: unknown } | undefined)?.title, false)) {
@@ -2221,6 +2227,22 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     if (taskId) (t!.lined ??= new Set()).add(taskId);
   };
 
+  /** D479: a task that couldn't start on its place (sending to it would start it there again). */
+  const placeStuck = (taskId: string) => {
+    const c = core.tasks.get(taskId);
+    return !!c?.cant && PLACE_CANT.has(c.cant.why);
+  };
+
+  /** D479: where a task opened, as one plain fact for a tool result (the computer by name, the folder, what is cloned there first). */
+  const openedLine = (p: Place, cloning?: string) => {
+    if (p.kind === "none") return "nowhere in particular (no folder)";
+    if (p.kind === "browser") return "in a browser";
+    const dev = p.device || "local";
+    const name = core.places?.nameOf?.(dev) ?? dev;
+    const path = p.kind === "repo" ? p.repoPath : p.path;
+    return `on ${name}, in ${path}${cloning ? `, cloning ${cloning} there first` : ""}`;
+  };
+
   tools.register(
     "partner",
     "task_open",
@@ -2274,7 +2296,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           description: "What the user said about computers for it (\"只在 hel 上，不要用 Mac\": on hel, only, not the Mac), names as in [devices]; held on this and any task replacing it.",
           properties: { on: { type: "string" }, only: { type: "boolean" }, not: { type: "array", items: { type: "string" } } },
         },
-        replaces: { type: "string", description: "The id of a task whose work this opens again (keeps its where)." },
+        replaces: { type: "string", description: "The id of a task whose work this opens again, e.g. one that couldn't start, now at another place (keeps its where; a failed one is set aside)." },
         project: { type: "string" },
         ...(bridge ? { forMessage: { type: "string", description: "Only when this task does what another agent asked through Bridge (and the user said go): that message id. Ducter tells the sender it was taken, and reminds you to send the outcome." } } : {}),
         harness: {
@@ -2387,8 +2409,12 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       let cloneLine: string | undefined;
       let bound: TaskBound | undefined;
       let placedOn: string | undefined;
+      let cloning: string | undefined;
+      // D479: the task whose work this opens again, as the partner recorded it: it must be one.
+      const replaces = typeof raw.replaces === "string" && raw.replaces.trim() ? raw.replaces.trim() : undefined;
+      if (replaces && !core.tasks.get(replaces)) return { ok: false, error: `Not opened: there is no task ${replaces}. replaces takes a task id from [tasks] or task_find.` };
       if (core.places) {
-        const pf = await core.places.preflight({ place, ...(remoteOf(raw.place) ? { remote: remoteOf(raw.place)! } : {}), texts: [args.title, args.brief], userTexts, ...whereOf(raw.where), ...(typeof raw.replaces === "string" && raw.replaces.trim() ? { replaces: raw.replaces.trim() } : {}) });
+        const pf = await core.places.preflight({ place, ...(remoteOf(raw.place) ? { remote: remoteOf(raw.place)! } : {}), texts: [args.title, args.brief], userTexts, ...whereOf(raw.where), ...(replaces ? { replaces } : {}) });
         if (!pf.ok) {
           const early = t?.early.find((e) => !e.used);
           if (early) {
@@ -2399,6 +2425,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         }
         place = pf.place;
         cloneLine = pf.said;
+        if (pf.how === "clone") cloning = pf.repo ?? remoteOf(raw.place);
         bound = pf.bound;
         // D477: where Ducter put it when it chose (a copy it found, a clone, a where-rule) is a fact the partner hears.
         if (pf.computer && (pf.how === "found" || pf.how === "clone" || pf.how === "rule")) placedOn = `${pf.computer}${pf.how === "clone" ? `, cloning ${pf.repo ?? "the code"} there first` : pf.how === "found" ? `, in its copy of ${pf.repo ?? "the code"}` : ""}`;
@@ -2510,6 +2537,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           ...(isWorkKind(raw.kind) ? { workKind: raw.kind } : {}),
           language: taskLanguage(t),
           ...(bound ? { bound } : {}),
+          ...(replaces ? { replaces } : {}),
           ...(handed.length ? { media: handed } : {}),
         };
         // D360: a later part in the same folder waits for the one before it: held, no task yet.
@@ -2534,11 +2562,14 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         });
         (core as { taskSources?: { bindStaged(id: string, texts?: string[]): unknown } }).taskSources?.bindStaged(card.taskId, [brief, args.title]);
         await claimFor(card);
+        // D479: what happened, as facts the partner says nothing beyond: where it opened (and what is
+        // cloned there first), and the task it replaces set aside.
+        const facts = { opened: openedLine(card.place, cloning), ...(replaces ? { replaced: `${replaces} (${core.tasks.get(replaces)?.attention === "superseded" ? "set aside: this one carries its work" : "left as it was"})` } : {}) };
         if (cloneLine) {
           tellUser(cloneLine);
-          return { ok: true, taskId: card.taskId, title: card.title, place: card.place, attention: card.attention, ...(placedOn ? { where: placedOn } : {}), note: CLONE_NOTE };
+          return { ok: true, taskId: card.taskId, title: card.title, place: card.place, attention: card.attention, ...facts, ...(placedOn ? { where: placedOn } : {}), note: CLONE_NOTE };
         }
-        return { ok: true, taskId: card.taskId, title: card.title, place: card.place, attention: card.attention, ...(placedOn ? { where: placedOn } : {}), note: kindNote(card.taskId, note) };
+        return { ok: true, taskId: card.taskId, title: card.title, place: card.place, attention: card.attention, ...facts, ...(placedOn ? { where: placedOn } : {}), note: kindNote(card.taskId, note) };
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         // The status line is the person's; the "Tell the user …" instruction is the partner's only (as newtask.ts).
@@ -2595,6 +2626,24 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         if (turn) turn.pending = null; // the line written for the send would claim an action that didn't happen
         return { ok: false, error: alike };
       }
+      // D479: a task that couldn't start because of its place goes back to that same place when sent
+      // to (hel, 2026-11-22: 「再试试」 reopened smx2jjb3 in /root/dev/mem, which isn't there, and it
+      // failed again). Its place is checked first, as task_open's is; one that still doesn't hold is
+      // never sent: the facts come back, with the verb that opens the work again somewhere it can.
+      const stuck = core.tasks.get(args.taskId);
+      if (stuck?.cant && core.places && placeStuck(args.taskId)) {
+        const pf = await core.places.preflight({ place: stuck.place, texts: [stuck.title], userTexts: turn?.userTexts ?? [], replaces: args.taskId });
+        if (!pf.ok || !samePlace(pf.place, stuck.place)) {
+          // The line written before it stays waiting: it is the ack of the task opened in its stead.
+          const was = stuck.place.kind === "folder" ? stuck.place.path : stuck.place.kind === "repo" ? stuck.place.repoPath : "";
+          return {
+            ok: false,
+            error:
+              `Not sent: task ${args.taskId} never started, and sending it again would start it in the same place (${stuck.cant.computer}${was ? `: ${was}` : ""}), which still doesn't hold: ${pf.ok ? `the code is not there (Ducter would put it at ${openedLine(pf.place)})` : pf.error.replace(/^Not opened: /, "")}. ` +
+              `To do this work, open it again: task_open with replaces "${args.taskId}" (it keeps what the user said about where; the old one is set aside), the same brief (task_read), and the place the user's words and [devices] settle: the repository as place.remote, with place.device, and Ducter clones it there first. If they don't settle which repository or computer, ask in one short line. Say nothing that [devices] or this result doesn't show.`,
+          };
+        }
+      }
       if (turn) takeSendLine(turn, args.taskId); // the line before it, if the stream didn't take it yet
       flushPending(); // a line written before this call is a message, not an ack
       // A turn woken only by a task's question: the user answers it on its card (eval: the
@@ -2626,7 +2675,9 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           if (!t.acked && !t.lateContinue) t.lateContinue = args.taskId;
           else continueJob(t, args.taskId, newId("job"));
         }
-        return { ok: true, ...r };
+        // D479: a finished task goes back to work where it was: said as a fact, so nothing else is claimed.
+        const back = was && FINISHED.has(was) ? core.tasks.get(args.taskId)?.place : undefined;
+        return { ok: true, ...r, ...(back ? { backTo: openedLine(back) } : {}) };
       } catch (err) {
         // A follow-up that never reached the task: its line goes back to how the task stands.
         const j = turn?.continued?.has(args.taskId) ? jobs.get(args.taskId) : undefined;
@@ -2722,7 +2773,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           name: { type: "string", description: "A short name in their words (new, or a rename)" },
           html: { type: "string", description: "The whole file (body content: markup, <style>, <script>)" },
           edits: { type: "array", items: { type: "object", properties: { find: { type: "string" }, replace: { type: "string" } }, required: ["find", "replace"] } },
-          data: { type: "object", description: "Keys to put into its storage (null deletes one)" },
+          data: jsonText("Keys to put into its storage (null deletes one)"),
           read: { type: "boolean", description: "Get its file and data back" },
           icon: { type: "string", enum: [...APP_ICONS], description: "Its mark, by what it's about" },
           summary: { type: "string", description: "Its shelf line, when you fill it" },
@@ -2752,7 +2803,13 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         if ((writes || a.remove === true) && !own(t)) return { ok: false, error: "An app's own ask can't change an app: only the user's own words can. Answer it, or put data in with data." };
         const icon = typeof a.icon === "string" && (APP_ICONS as readonly string[]).includes(a.icon) ? (a.icon as AppIcon) : undefined;
         const summary = typeof a.summary === "string" ? a.summary.trim() : "";
-        const seed = a.data && typeof a.data === "object" && !Array.isArray(a.data) ? (a.data as Record<string, unknown>) : undefined;
+        // D479: data comes as JSON text (a schema every model family can hold).
+        let seed: Record<string, unknown> | undefined;
+        try {
+          seed = jsonArg(a.data, "data");
+        } catch (err) {
+          return { ok: false, error: (err as Error).message };
+        }
         // D410: deleted on the person's own word; its card says so with 撤销 / Undo (kept a while).
         if (a.remove === true) {
           if (!m) return { ok: false, error: "remove needs an id from [apps]." };
@@ -2804,8 +2861,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           card(t, r.app, "changed");
         }
         const put: string[] = [];
-        if (a.data && typeof a.data === "object" && !Array.isArray(a.data)) {
-          for (const [k, v] of Object.entries(a.data as Record<string, unknown>).slice(0, 40)) {
+        if (seed) {
+          for (const [k, v] of Object.entries(seed).slice(0, 40)) {
             const r = apps.put(m.id, k, v, "partner");
             if (!r.ok) return { ok: false, error: `${k}: ${r.error}`, ...(put.length ? { put } : {}) };
             put.push(k);
@@ -3705,7 +3762,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         properties: {
           connection: { type: "string" },
           action: { type: "string", description: "Action id from connection_search (or the MCP tool name)" },
-          input: { type: "object", description: "The action's input, as its guide says" },
+          input: jsonText("The action's input, as its guide says"),
           account: { type: "string", description: "Optional named account inside the connection (for oo: one of the service's account names from connections_list; omit for the default)" },
           question: { type: "string", description: "Writes only: the one question on the card, in the user's language (what will go out, to whom)" },
           goLabel: { type: "string", description: "Writes only: what Go does, short (e.g. 发给 Lina / Send to Lina)" },
@@ -3718,6 +3775,12 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         const connection = s_(a.connection);
         const action = s_(a.action);
         if (!connection || !action) return { ok: false, error: "connection_call needs `connection` and `action` (or a `decisionId` after the user's Go)." };
+        // D479: the input comes as JSON text (a schema every model family can hold).
+        try {
+          a = { ...a, input: jsonArg(a.input, "input") ?? {} };
+        } catch (err) {
+          return { ok: false, error: (err as Error).message };
+        }
         const op = await conns.classify(connection, action);
         if (op === "read") return conns.read(P, connection, action, a.input ?? {}, s_(a.account) || undefined);
         // D222: a Google Calendar change is the calendar tool's own card, never a generic one,

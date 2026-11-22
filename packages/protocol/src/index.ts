@@ -487,6 +487,9 @@ export interface Bodies {
     workKind?: WorkKind;
     // D476, D477: the person's word on where this work runs, as the partner recorded it (where.ts).
     bound?: TaskBound;
+    // D479: the task whose work this opens again, as the partner recorded it (task_open replaces):
+    // one that failed is set aside as superseded by this one.
+    replaces?: string;
   };
   task_state: { taskId: string; attention: Attention; residency: Residency; reason?: string; cant?: CantStart };
   // D325: the person's words held for after this turn (做完再说, or a steer its agent can't take

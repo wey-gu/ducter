@@ -103,7 +103,7 @@ func TestLimitCard(t *testing.T) {
 		tt.Frame()
 		got = texts(tt)
 		_ = when
-		for _, want := range []string{strings.Split(app.L.T("limit.group", "Claude Code", "@"), "@")[0], "pi"} {
+		for _, want := range []string{strings.TrimSpace(strings.Split(app.L.T("limit.group", "Claude Code", "@"), "@")[0]), "pi"} {
 			if !strings.Contains(got, want) {
 				t.Errorf("%s: On hand lacks %q in:\n%s", lang, want, got)
 			}

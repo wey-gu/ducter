@@ -38,6 +38,8 @@ import type { PlacesPort } from "../../protocol/src/internal.ts";
 import type { ClonesAnswer } from "../../protocol/src/clones.ts";
 import type { FolderInfo } from "../../protocol/src/folder-info.ts";
 import { remoteKey } from "../../protocol/src/clones.ts";
+import { HARNESS_FACTS } from "../../protocol/src/harness-facts.ts";
+import { schemaProblems } from "../../protocol/src/tool-schema.ts";
 
 /** D341: the issues assigned to the user in the eval's fake GitHub. */
 const TODO_ISSUES = [
@@ -314,6 +316,8 @@ interface RunResult {
   usage: Usage;
   error?: string;
   ms: number;
+  /** D479: what in the tools a task opened in the run was handed doesn't fit its agent's model families. */
+  toolsUnfit?: string[];
   transcript: string;
   recalls: { query: string; step: number }[];
   threadSearches: { query: string; step: number }[];
@@ -757,11 +761,21 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
       keyOf.set(taskId, t.key);
       const jobId = `job_${Math.random().toString(36).slice(2, 10)}`;
       jobOf.set(taskId, jobId);
+      // D479: a task opened hours ago (before D477 recorded where): the core clock is set back while it is logged.
+      if (t.hoursAgo) back.ms = t.hoursAgo * 3_600_000;
       core.log.append({ stream: "channel", origin: "partner", kind: "ack", body: { jobId, text: t.ack, replyTo: lastUser } });
       const dev = t.device && sc.world ? worldDev(sc, t.device) : "local";
       const place = fr.placeFor(taskId, t.title, t.repo ? { kind: "repo", device: dev, repoPath: expand(t.repo) } : t.browser ? { kind: "browser", device: "local", profile: "default" } : undefined, t.branch);
       fr.openCard(taskId, t.title, place, `User's words: ${t.words ?? "(seeded)"}\nTitle: ${t.title}`, t.harness, t.needs);
       core.log.append({ stream: "channel", origin: "partner", kind: "job_status", body: { jobId, text: t.title, state: "running", taskId } });
+      // D479: its start failed back then: the card core's places port makes of it (an old task: the mender leaves it to its card).
+      if (t.failed) {
+        const places = (core as { places?: PlacesPort }).places!;
+        const { line, ...cant } = await places.cantStart(taskId, { why: t.failed.why, path: t.failed.path ?? "", device: dev });
+        core.tasks.setState(taskId, "failed", "archived", line, cant);
+        core.log.append({ stream: "channel", origin: "partner", kind: "job_status", body: { jobId, text: t.title, state: "failed", taskId } });
+      }
+      back.ms = 0;
       if (t.report) {
         core.log.append({ stream: `task:${taskId}`, origin: "task", kind: "report", body: { taskId, ...t.report } });
         if (t.state === "done") core.log.append({ stream: "channel", origin: "partner", kind: "job_status", body: { jobId, text: t.title, state: "done", taskId } });
@@ -986,6 +1000,16 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   const asksNow = core.log.read({ kinds: ["asks"], fromSeq: startSeq + 1, limit: 1000 }).at(-1)?.body as Bodies["asks"] | undefined;
   if (asksNow) lines.push(`--- under the user's message: ${asksNow.lines.map((l, i) => `${i + 1}. ${l.words} (${l.state})`).join("; ")}`);
   if (rulesNow.length) lines.push(`--- the person's rules after the run: ${rulesNow.map((x) => `"${x.text}" (${x.never ? "never" : "always"} ${x.harness}${x.kinds?.length ? `, ${x.kinds.join("/")}` : ""})`).join("; ")}`);
+  // D479: every tool each task opened in the run is handed (tools/list for that task), against its agent's model families.
+  const toolsUnfit: string[] = [];
+  for (const o of fr.opened) {
+    const h = o.harness ?? bodies.find((b) => b.taskId === o.taskId)?.harness ?? core.tasks.get(o.taskId)?.harness;
+    if (!h || !isHarnessId(h)) continue;
+    const cfg = core.mcp.configFor({ taskId: o.taskId });
+    const res = await core.mcp.handle(new Request("http://127.0.0.1/mcp", { method: "POST", headers: { ...cfg.headers, "content-type": "application/json", accept: "application/json, text/event-stream" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list", params: {} }) }));
+    const listed = ((await res.json()) as { result?: { tools?: { name: string; inputSchema: unknown }[] } }).result?.tools ?? [];
+    for (const t of listed) for (const d of HARNESS_FACTS[h].toolSchema.value) for (const p of schemaProblems(t.inputSchema, d)) toolsUnfit.push(`${h} ${t.name} (${d}) ${p}`);
+  }
   await partner.close().catch(() => {});
   const shelf = core.log.read({ stream: "channel", kinds: ["ai_msg"], limit: 400 }).some((ev) => (ev.body as Bodies["ai_msg"]).shelf === true);
   await core.stop().catch(() => {});
@@ -994,7 +1018,7 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   const appsNow = core.apps.list(persona.id ?? core.persona.id).map((m) => ({ id: m.id, name: m.name, version: m.version, html: core.apps.html(m.id) ?? "", data: core.apps.data(m.id), ...(m.task ? { task: m.task.id } : {}) }));
   // D405: the apps the model wrote, kept whole for a look (the results file clips them); never committed.
   if (process.env.DUCTER_EVAL_APPS_DIR) for (const a of appsNow) writeFileSync(join(process.env.DUCTER_EVAL_APPS_DIR, `${sc.id}-${a.id}-v${a.version}.html`), a.html), writeFileSync(join(process.env.DUCTER_EVAL_APPS_DIR, `${sc.id}-${a.id}-v${a.version}.json`), JSON.stringify({ name: a.name, data: a.data }));
-  return { sc, visible, dayCards, calKinds, todoCards, boundRefs, blocks, shown, appCards, appAnswers, appsNow, shelf, appsSeeded, dropped, tools, opened: fr.opened, sent, keyOf, idOf, dataDir, usage, error, ms: Date.now() - t0, transcript: lines.join("\n"), recalls, threadSearches, remembered: mem.added, memAttempts, sources, retitles, bridgeSent, work: { ...work, asks }, bodies, saidAsks, rulesNow, linesNow: asksNow?.lines.length ?? 0 };
+  return { sc, visible, dayCards, calKinds, todoCards, boundRefs, blocks, shown, appCards, appAnswers, appsNow, shelf, appsSeeded, dropped, tools, opened: fr.opened, sent, keyOf, idOf, dataDir, usage, error, ms: Date.now() - t0, toolsUnfit, transcript: lines.join("\n"), recalls, threadSearches, remembered: mem.added, memAttempts, sources, retitles, bridgeSent, work: { ...work, asks }, bodies, saidAsks, rulesNow, linesNow: asksNow?.lines.length ?? 0 };
 }
 
 const r_opened = (o: Opened[], step: number) => o.filter((x) => x.step === step);
@@ -1353,6 +1377,10 @@ function checkOutcome(r: RunResult, o: NonNullable<Expect["outcome"]>): string[]
     // Carrying on a task already on that repository counts too (a task_send to it).
     const sentOn = r.sent.some((s) => r.opened.length === 0 && s.key && sc.seed?.some((x) => "task" in x && x.task.key === s.key && x.task.repo && (sc.world?.repos?.[sc.world.home.name] ?? []).some((y) => y.path === x.task.repo && remoteKey(y.origin) === want)));
     if (!r.opened.some(onRepo) && !sentOn) fails.push(`no work on ${o.repo} (got ${JSON.stringify(r.opened.map((x) => x.place))})`);
+  }
+  if (o.toolsFit) {
+    if (!r.opened.length) fails.push("no task opened, so no tools to check");
+    fails.push(...(r.toolsUnfit ?? []).slice(0, 5).map((x) => `a task's tool doesn't fit its agent's model: ${x}`));
   }
   if (o.carriedOn) {
     const c = o.carriedOn;

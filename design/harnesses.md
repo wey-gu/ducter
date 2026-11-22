@@ -111,6 +111,37 @@ host). Under the pinned Bun 1.4.4 the same runs finish. Ducter ships 1.4.4; run 
 - **Install / update / sign-in.** Google's manifest per platform, its sha512, the binary to
   `~/.local/bin/agy`; `agy update`; `agy acp --login` with a pasted code; `agy models` for the
   status; `/usage` for the limits.
+- **Tool schemas (D479, research/207).** agy hands Ducter's MCP tools to Gemini as
+  `FunctionDeclaration.parameters`, an OpenAPI subset; a schema outside it fails the whole request
+  (hel 2026-11-22, 1.5.14: `wait_for`'s array without `items`, every task at its first call). A
+  model named by its label ("Gemini 4 Neon") is read as the agent's id from its own list when a
+  task opens (OAR accepts only catalog ids). The verified range is still OAR's; 1.5.14 shows
+  "Ducter hasn't verified this version", which only holds back the night-time update.
+
+## Tool schemas, per model family (D479, research/207)
+
+Each agent names the model families it sends Ducter's tools to (`toolSchema` in
+`harness-facts.ts`); each family's limits are facts with evidence (`protocol/src/tool-schema.ts`).
+Ducter's tools are written inside all of them at once, never translated per agent, and
+`packages/partner/test/tool-schemas.test.ts` checks every registered tool, listed or not.
+
+| Agent | Families | Evidence |
+|---|---|---|
+| Claude Code | anthropic | DOCUMENTED |
+| Codex | openai (MCP tools sent non-strict) | VERIFIED, Codex source |
+| pi | anthropic, openai, gemini | INFERRED (any provider) |
+| DeepSeek Harness | openai | INFERRED |
+| Antigravity | gemini | VERIFIED, hel 2026-11-22 |
+
+| Family | What a schema must be |
+|---|---|
+| gemini | a type on every node (one name); `items` on every array; named `properties` on every nested object; `enum` only on strings; only the OpenAPI subset's keys (no `oneOf`, `allOf`, `$ref`, `const`, `additionalProperties`); names `^[a-zA-Z_][a-zA-Z0-9_.:-]{0,63}$` |
+| openai | an object at the top; `items` on every array; names `^[a-zA-Z0-9_-]{1,64}$` |
+| openai-strict | as openai, and every object closed with every property required (no agent uses it today) |
+| anthropic | an object at the top, no `anyOf` / `oneOf` / `allOf` there |
+
+A free-form map (a connection action's input, an app's keys, a trigger's config) is JSON text,
+read back by `jsonArg`; a value a check matches is text (the check compares values as text).
 
 ## Where each copy comes from, and how it updates (D156, 2026-11-10)
 

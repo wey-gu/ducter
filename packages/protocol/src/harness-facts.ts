@@ -9,6 +9,7 @@
 import type { HarnessId } from "./harnesses.ts";
 import type { ContextWindows } from "./index.ts";
 import type { ListedModel } from "./internal.ts";
+import type { SchemaDialect } from "./tool-schema.ts";
 
 export type Evidence =
   | { kind: "VERIFIED"; how: string; date: string; version: string }
@@ -114,6 +115,12 @@ export interface HarnessFacts {
    * listing says which levels each model takes and its default. Absent: no effort is passed.
    */
   effort?: Fact<{ levels: string[]; how: string; perModel: boolean; defaultListed: boolean }>;
+  /**
+   * D479: the model families this agent hands Ducter's tool schemas to (tool-schema.ts holds each
+   * family's limits). Every tool Ducter lists must sit inside all of them: a schema one model
+   * refuses fails the session's first call, before any work.
+   */
+  toolSchema: Fact<SchemaDialect[]>;
 }
 
 /**
@@ -281,6 +288,8 @@ const AGY = (source: string): Evidence => ({ kind: "DOCUMENTED", source: `OAR 0.
 export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
   "claude-code": {
     harness: "claude-code",
+    // D479: Claude models only; Claude Code passes an MCP tool's schema through as input_schema.
+    toolSchema: { value: ["anthropic"], evidence: { kind: "DOCUMENTED", source: "Claude Code sends MCP tools to the Messages API as input_schema; Anthropic tool use docs" } },
     version: { command: ["claude", "--version"], pattern: /(\d+\.\d+\.\d+)/ },
     // 2.1.322 re-verified live 2026-11-10 (D175 (2), research/48 addendum): windows 1M / 200K,
     // the compaction point with and without the percent override, every switch Ducter sets.
@@ -390,6 +399,8 @@ export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
   },
   codex: {
     harness: "codex",
+    // D479: OpenAI models; MCP tools go out non-strict (codex-rs/tools/src/responses_api.rs strict: false).
+    toolSchema: { value: ["openai"], evidence: { kind: "VERIFIED", how: "read openai/codex main codex-rs/tools/src/{responses_api,json_schema}.rs: MCP tools strict: false, a missing type filled in", date: "2026-11-22", version: "codex main" } },
     version: { command: ["codex", "--version"], pattern: /(\d+\.\d+\.\d+)/ },
     // 0.169.1 re-checked 2026-11-18 (D352): `codex debug models` and OAR listModels list two new
     // models (gpt-6.2-sol, gpt-6.2-astra); both knobs' keys are still typed i64.
@@ -494,6 +505,8 @@ export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
   },
   pi: {
     harness: "pi",
+    // D479: pi runs any provider's model (Anthropic, OpenAI, Google, DeepSeek): the tools must suit them all.
+    toolSchema: { value: ["anthropic", "openai", "gemini"], evidence: { kind: "INFERRED", why: "pi passes MCP schemas to whichever provider the session's model is on (OAR's MCP extension registers them as pi tools); its Google provider is the Gemini API" } },
     version: { command: ["pi", "--version"], pattern: /(\d+\.\d+\.\d+)/ },
     // 1.5.1 re-checked 2026-11-10 (D175 (2)): every flag Ducter passes is in `pi --help`, still no
     // window flag, compaction.reserveTokens still in its settings schema.
@@ -532,6 +545,8 @@ export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
   },
   "deepseek-harness": {
     harness: "deepseek-harness",
+    // D479: DeepSeek's API is OpenAI-compatible function calling.
+    toolSchema: { value: ["openai"], evidence: { kind: "INFERRED", why: "DeepSeek's chat API takes OpenAI-shaped tools; DSH bridges MCP tools to it" } },
     // It ships prereleases (0.2.2-rc.1): the version keeps its tag, which orders before 0.2.2.
     version: { command: ["dsh", "--version"], pattern: /(\d+\.\d+\.\d+(?:-[0-9A-Za-z.]+)?)/ },
     // 0.2.2-rc.1 installed into a scratch prefix and run live 2026-11-10 (D177, research/50);
@@ -603,6 +618,8 @@ export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
   // D416: never run by Ducter yet; every fact is OAR 0.124's own (its docs and shipped source).
   antigravity: {
     harness: "antigravity",
+    // D479: agy hands MCP tools to Gemini as FunctionDeclaration.parameters (OpenAPI subset), whichever model is chosen.
+    toolSchema: { value: ["gemini"], evidence: { kind: "VERIFIED", how: "hel 2026-11-22: GenerateContentRequest.tools[0].function_declarations[18].parameters... missing field, on Ducter's wait_for", date: "2026-11-22", version: "1.5.14" } },
     // agy prints a bare release ("1.5.13"); OAR accepts only that line (version.js).
     version: { command: ["agy", "--version"], pattern: /^(\d+\.\d+\.\d+)\s*$/m },
     // OAR's own range: its floor to the newest agy its docs report on (1.5.12, real Gemini sessions; its CI pins 1.5.11).

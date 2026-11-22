@@ -3,7 +3,7 @@
 // rules, and after two switches the same way asks the partner to offer a rule once.
 import type { Bodies, BodyWhy, Candidate, DeviceHarness, RuleView, KindDefault, LogEvent, Place, TaskBound, TaskNeeds, WorkKind } from "@ducter/protocol";
 import { allowedBy } from "./bound.ts";
-import { HARNESSES, HARNESS_IDS, harnessName, isHarnessId, whichPhone, WORK_KINDS } from "@ducter/protocol";
+import { HARNESSES, HARNESS_IDS, harnessName, isHarnessId, whichPhone, WORK_KINDS, type HarnessId } from "@ducter/protocol";
 import { effectiveBrain } from "./brain.ts";
 import { resolveModel } from "@ducter/protocol/src/harness-facts.ts";
 import type { BodyChoice, LogStore, Runner } from "@ducter/protocol/src/internal.ts";
@@ -124,6 +124,16 @@ export function createLoadout(o: {
     return near ? { ...pick, effort: near } : { ...pick, effortDropped: `effort ${effort} was left out: ${r.why}` };
   };
 
+  /** D479: the agent's id for a model said by its name; undefined when there is no list to read it against (passed as said). */
+  const idOfModel = async (h: HarnessId, said: string, device: string | undefined): Promise<{ id: string } | { none: string } | undefined> => {
+    const list = await o.models?.get(device ?? "local", h, EFFORT_CHECK_MS);
+    if (!list?.length || list.some((m) => m.id === said)) return undefined;
+    const r = resolveModel(h, said, list);
+    if ("id" in r) return r;
+    if ("ambiguous" in r) return { none: `"${said}" could be ${r.ambiguous.join(", ")} on ${harnessName(h)}. Ask the user which, in one line.` };
+    return { none: `${harnessName(h)} has no model "${said}" there. It offers: ${r.none.join(", ")}.` };
+  };
+
   /** D372: a task of this kind was put on a fast tier by the default before (the line was said). */
   const routedBefore = (work: WorkKind | undefined) =>
     o.log.read({ fromSeq: 0, limit: Number.MAX_SAFE_INTEGER, kinds: ["body_selected"] }).some((e) => {
@@ -235,7 +245,15 @@ export function createLoadout(o: {
       // D372: the first errand the default puts on a fast tier is said once, by the partner.
       const first = pick0?.why.kind === "kind" && !routedBefore(pick0.why.work);
       const pick = pick0 && { ...pick0, why: first ? { ...pick0.why, first: true as const } : pick0.why, ...(kind ? { workKind: kind } : {}) };
-      if (pick) return work.effort ? withEffort(pick, work.effort) : pick;
+      if (pick) {
+        // D479: a model named the way the person or the agent's list shows it ("Gemini 4 Neon") is the
+        // agent's own id on that computer, as task_switch reads it (resolveModel: id, then label);
+        // OAR's Antigravity runtime refuses anything but an id of its catalog.
+        const named = pick.model && pick.harness === work.harness && work.model && isHarnessId(pick.harness) ? await idOfModel(pick.harness, pick.model, pick.deviceId) : undefined;
+        if (named && "none" in named) return { none: named.none };
+        const picked = named ? { ...pick, model: named.id } : pick;
+        return work.effort ? withEffort(picked, work.effort) : picked;
+      }
       const why = (multi ? comps!.flatMap((c) => c.harnesses.map((h) => ({ h, on: c.name }))) : (hs ?? []).map((h) => ({ h, on: "" })))
         .map(({ h, on }) => `${harnessName(h.harness)}${on ? ` on ${on}` : ""}: ${blockOf(h, o.settings.get()) ?? "can't do what this task needs there"}`)
         .join(", ");

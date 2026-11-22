@@ -245,4 +245,38 @@ export const puzzles: Scenario[] = [
     rubric:
       "Everything is said: hel, and the repository nowledge-co/oomol-cli (not on any computer yet; hel can clone it). Pass if one task starts on hel on that repository with one short English ack and no question. Fail if it asks anything, runs it on the Mac, or claims the typo is fixed." + CLONE_LINE,
   },
+  // 13. D479, hel 2026-11-22: 「再试试」 replying to an old task (opened before D477 recorded where or
+  // which repository) that couldn't start in /root/dev/mem, a folder hel doesn't have. Sending it again
+  // would start it there again; a thoughtful partner opens the work again (replaces) on hel, on
+  // nowledge-co/mem, cloned there, and never claims hel already has the code.
+  {
+    id: "wp-retry-old-missing-zh",
+    category: "puzzle",
+    lang: "zh",
+    homeName: "hel",
+    world: HEL,
+    computers: [MAC_WORKER],
+    seed: [
+      { user: "用 hel 上的 agy 细审一下 Nowledge Mem 里的长文案，让措辞更自然，改好了给我看。" },
+      { task: { key: "copy", title: "在 hel 用 agy 审阅 Nowledge Mem 长文案", repo: "/root/dev/mem", ack: "好，我在 hel 上用 agy 细看一遍，改好了给你看。", state: "working", harness: "antigravity", words: "用 hel 上的 agy 细审一下 Nowledge Mem 里的长文案", hoursAgo: 30, failed: { why: "no_folder", path: "/root/dev/mem" } } },
+    ],
+    steps: [{ user: "再试试，只在 hel 上做，别用 Mac", replyTo: "细看一遍" }],
+    expect: { opens: [1, 1], noAsk: true, msgs: [0, 1], maxChars: 80, proseForbid: [/\/root|错误|error/i], outcome: { onlyOn: "hel", neverOn: [MAC], repo: "nowledge-co/mem" } },
+    rubric:
+      "The world: hel has no repositories (no /root/dev/mem) but can clone; Antigravity is signed in on hel; the Mac has Nowledge Mem's code (origin nowledge-co/mem). An old task couldn't start in /root/dev/mem a day ago. The person replies to it: try again, only on hel, not the Mac. Pass if the work starts again on hel on nowledge-co/mem (a clone on hel first), with at most one short calm Chinese line and no question. Fail if anything opens on the Mac, it asks anything, it says a folder path or an error, or it claims anything false (e.g. that hel already has a Mem repository or that the old folder is there)." + CLONE_LINE,
+  },
+  // 14. D479: the person asks for Antigravity; the task opens on it, and every tool it is handed fits
+  // Gemini's schema (hel, 2026-11-22: one did not, and every Antigravity task failed on its first call).
+  {
+    id: "wp-agy-tools-fit-en",
+    category: "puzzle",
+    lang: "en",
+    homeName: MAC,
+    world: MAC_HOME,
+    computers: [HEL_WORKER],
+    steps: [{ user: "Use Antigravity to fix the 'recieve' typo in the README of wey-gu/foo, here on this Mac." }],
+    expect: { opens: 1, ackFirst: true, noAsk: true, harness: "antigravity", outcome: { onlyOn: MAC, repo: "wey-gu/foo", toolsFit: true } },
+    rubric:
+      "The world: this Mac has foo (wey-gu/foo) and Antigravity signed in. Pass if one task starts on the Mac in foo with Antigravity, with one short English ack and no question. Fail if it asks anything, uses another agent, or claims the typo is fixed.",
+  },
 ];

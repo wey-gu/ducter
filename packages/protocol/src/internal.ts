@@ -766,7 +766,7 @@ export interface Runner {
   // adopt (D299): a session the person ran in their own agent outside Ducter, carried on as this
   // task in its own folder: its conversation (the person's words and the agent's) goes into the
   // task's history; the same agent resumes it by id, another agent starts from what it said.
-  openTask(input: { persona: string; title: string; brief: string; place?: Place; project?: string; harness?: string; model?: string; effort?: string; language?: LangTag; origin?: "you"; needs?: TaskNeeds; workKind?: WorkKind; media?: MediaRef[]; from?: string; fromStep?: number; fromCommit?: string; adopt?: AdoptSession; /** D476 */ bound?: import("./index.ts").TaskBound }): Promise<TaskCard>;
+  openTask(input: { persona: string; title: string; brief: string; place?: Place; project?: string; harness?: string; model?: string; effort?: string; language?: LangTag; origin?: "you"; needs?: TaskNeeds; workKind?: WorkKind; media?: MediaRef[]; from?: string; fromStep?: number; fromCommit?: string; adopt?: AdoptSession; /** D476 */ bound?: import("./index.ts").TaskBound; /** D479 */ replaces?: string }): Promise<TaskCard>;
   // Optional (D120, ack and go): open a task while its brief is still being written. The card,
   // the place and the session start now; the brief becomes the session's first turn when it
   // settles. If it rejects, the task is dropped before it did anything.

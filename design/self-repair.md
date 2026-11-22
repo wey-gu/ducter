@@ -57,8 +57,11 @@ Cheapest first; each rung is one `mend` event on the task's stream, logged befor
    partner judges what code doesn't: the repository the person meant, another agent, another
    computer the person allows. It opens the work again with `replaces` (which carries the person's
    word) on a repository (`place.remote`, never a guessed path) or another agent or computer, and
-   Ducter sets the task that couldn't start aside (superseded) so On hand keeps no failure that was
-   mended. A stall comes here directly with the same facts, never classified by a threshold: the
+   Ducter sets the task it names in `replaces` aside (superseded, when it had failed) so On hand
+   keeps no failure that was mended (D479: by the recorded `replaces`, no longer by titles that
+   look alike). A task that couldn't start on its place is never sent back to that same place:
+   task_send checks the place first, as task_open does, and when it still doesn't hold the partner
+   hears the facts and opens the work again with `replaces` (D479). A stall comes here directly with the same facts, never classified by a threshold: the
    partner judges whether it did the work and only didn't report, stopped partway, or never really
    started, and sends one clear next step, switches its agent, or opens it again; it never asks the
    task to redo anything outward.

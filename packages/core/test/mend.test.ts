@@ -11,7 +11,7 @@ import { noteOf } from "@ducter/protocol/src/transcript.ts";
 import { FakeClock } from "../src/clock.ts";
 import { triggersPartner } from "../src/core.ts";
 import { openLog } from "../src/log.ts";
-import { createMender, MEND_PER_HOUR, nextStartRung, similar, startLadder } from "../src/mend.ts";
+import { createMender, MEND_PER_HOUR, nextStartRung, startLadder } from "../src/mend.ts";
 import { createRegistry } from "../src/registry.ts";
 import { tempDir } from "./helpers.ts";
 
@@ -55,8 +55,8 @@ function setup(o: { outcomes?: Outcome[]; replan?: (taskId: string, how: { actio
     log.close?.();
     t.cleanup();
   });
-  const open = (taskId: string, title: string, origin: "partner" | "system" = "system") =>
-    log.append({ stream: `task:${taskId}`, origin, kind: "task_open", body: { taskId, title, project: "", place: { kind: "repo", device: "w1", repoPath: "/root/dev/mem" }, harness: "antigravity", brief: "Review the long copy." } });
+  const open = (taskId: string, title: string, origin: "partner" | "system" = "system", replaces?: string) =>
+    log.append({ stream: `task:${taskId}`, origin, kind: "task_open", body: { taskId, title, project: "", place: { kind: "repo", device: "w1", repoPath: "/root/dev/mem" }, harness: "antigravity", brief: "Review the long copy.", ...(replaces ? { replaces } : {}) } });
   const fail = (taskId: string, cant: CantStart) => tasks.setState(taskId, "failed", "archived", "没能开始", cant);
   const mends = (taskId?: string) => log.read({ kinds: ["mend"], limit: 500, ...(taskId ? { stream: `task:${taskId}` } : {}) }).map((e) => e.body as MendBody);
   const lines = (taskId: string) =>
@@ -195,19 +195,18 @@ test("a stall goes to the partner (never retried here: the task ran); one D372 a
   expect(s.mends("errand")).toEqual([]);
 });
 
-test("after a rethink, the partner opening the same work again sets the one that couldn't start aside", async () => {
+test("the partner opening the same work again (replaces) sets the one that couldn't start aside; a like title alone doesn't (D479)", async () => {
   const s = setup();
   s.open("smx2jjb3", "在 hel 用 Gemini 审阅 Mem 长文案");
   s.fail("smx2jjb3", noFolder);
   await s.settle();
   s.open("other1", "整理下周的日历", "partner");
+  s.open("alike", "在 hel 上用 Gemini 审阅 Mem 的长文案", "partner");
   await s.settle();
   expect(s.tasks.get("smx2jjb3")?.attention).toBe("failed");
-  s.open("new1", "在 hel 上用 Gemini 审阅 Mem 的长文案", "partner");
+  s.open("new1", "Review Mem's long copy on hel", "partner", "smx2jjb3");
   await s.settle();
   expect(s.tasks.get("smx2jjb3")?.attention).toBe("superseded");
-  expect(similar("Review Mem's long copy", "Review the long copy in Mem")).toBeGreaterThan(0.5);
-  expect(similar("Review Mem's long copy", "Book a hotel in Kyoto")).toBeLessThan(0.5);
 });
 
 test("a task opened more than a day ago that fails again (a restart) is left to its card", async () => {

@@ -240,8 +240,12 @@ const LINES = {
     clone_failed: "没能开始：{what} 的代码没能拉到 {computer} 上",
     busy: "没能开始：{computer} 上 {what} 的仓库一直被另一个 git 占着",
     agent: "没能开始：{what} 没能在 {computer} 上启动",
+    not_installed: "没能开始：{computer} 上还没装 {what}",
+    signed_out: "没能开始：{what} 在 {computer} 上还没登录",
+    old: "没能开始：{computer} 上的 Ducter 版本太旧，还用不了 {what}",
     away: "没能开始：{computer} 连不上了",
-    other: "没能开始：开始的时候出了问题",
+    other: "没能开始：{what} 在 {computer} 上一开始就出了错",
+    other_bare: "没能开始：开始的时候出了问题",
     cloning: "{what} 的代码还没在哪台电脑上，我先在 {computer} 上拉一份。",
   },
   en: {
@@ -250,8 +254,12 @@ const LINES = {
     clone_failed: "Couldn't start: {what} couldn't be cloned onto {computer}",
     busy: "Couldn't start: another git kept {what}'s repository busy on {computer}",
     agent: "Couldn't start: {what} didn't start on {computer}",
+    not_installed: "Couldn't start: {what} isn't installed on {computer}",
+    signed_out: "Couldn't start: {what} isn't signed in on {computer}",
+    old: "Couldn't start: Ducter on {computer} is too old for {what}",
     away: "Couldn't start: {computer} can't be reached",
-    other: "Couldn't start: something went wrong as it started",
+    other: "Couldn't start: {what} hit an error as it started on {computer}",
+    other_bare: "Couldn't start: something went wrong as it started",
     cloning: "{what}'s code isn't on any of your computers yet, so I'm cloning it on {computer} first.",
   },
 } as const;
@@ -269,6 +277,10 @@ export interface PlacesDeps {
   staged?(): { kind: string; where?: string } | undefined;
   /** This computer's files, for the early open's quick look (tests: a fake). */
   fs?: { isDir(p: string): boolean; readText(p: string): string | undefined; home: string };
+  /** D472: what a folder on that computer is (whether it is there), for a folder task's pre-flight. */
+  folder?(device: string, path: string, ms: number): Promise<FolderInfo | "offline">;
+  /** D472: the repository a project by this folder name is (its origin), when one is known. */
+  knownRemote?(name: string): string | undefined;
 }
 
 const lang2 = (l: string | undefined): "zh" | "en" => (l && l.toLowerCase().startsWith("zh") ? "zh" : "en");
@@ -304,6 +316,24 @@ export function createPlaces(d: PlacesDeps): PlacesPort {
       const remote = a.remote ?? (staged?.kind === "github" ? staged.where : undefined) ?? [...a.userTexts, ...a.texts].map(remoteIn).find(Boolean);
       // Only a repository place, or a place-less one whose work is on a named repository (a to-do on it).
       const onRepo = place.kind === "repo" || (place.kind === "none" && !!remote && (!!a.remote || !!staged));
+      // D472: a folder is looked for on its computer before the task exists (hel, 2026-11-22: a task
+      // opened in /root/dev/mem, which wasn't there, failed at once and the person had to ask why).
+      if (place.kind === "folder" && d.folder) {
+        const cs = d.computers();
+        const dev = place.device && place.device !== "local" ? place.device.toLowerCase() : "";
+        const c = dev ? cs.find((x) => x.id.toLowerCase() === dev || x.name.toLowerCase() === dev) : cs.find((x) => x.home);
+        const info = c ? await d.folder(c.id, place.path, 4_000).catch(() => "offline" as const) : "offline";
+        if (info !== "offline" && !info.exists) {
+          const known = remote ?? d.knownRemote?.(basename(place.path));
+          const name = c!.name;
+          return {
+            ok: false,
+            error: known
+              ? `Not opened: ${name} has no folder ${place.path}. It is the repository ${known.replace(/^github\.com\//, "")} (one of the user's projects), not on ${name} yet. Open no task in that folder. In one short line, offer to clone it onto ${name} and start there, or to use a folder already on ${name} if they name it. When they agree (or their words already asked for ${name}), open the task with place {"kind":"repo","remote":"${known.replace(/^github\.com\//, "")}","device":"${name}"}: Ducter clones it there first.`
+              : `Not opened: ${name} has no folder ${place.path}. Never guess another path. In one short line, ask which folder on ${name} it is (or its repository, owner/name, so Ducter can clone it there); open no task yet.`,
+          };
+        }
+      }
       if (!onRepo) return { ok: true, place };
       const named = computerNamed(a.userTexts, d.computers());
       const r = await d.where.resolve({ ...(remote ? { remote } : {}), ...(named ? { named: named.id } : {}), given: place, texts: a.texts });
@@ -332,22 +362,37 @@ export function createPlaces(d: PlacesDeps): PlacesPort {
       // D415: the agent's own name when it is the agent that didn't start; a repository's name for a
       // lock (the lock's own path is never the card's word); else the repository or the folder.
       const repoOf = c?.place.kind === "repo" ? basename(c.place.repoPath) : "";
-      const what = p.why === "agent" ? harnessName(c?.harness ?? "") : remote ? repoName(remote) : p.why === "busy" ? repoOf || "this" : basename(p.path) || p.path || repoOf;
-      const cant: CantStart = { why: p.why, computer, what, ...(p.path && p.why !== "busy" ? { path: p.path } : {}) };
+      const agentWhy = p.why === "agent" || p.why === "not_installed" || p.why === "signed_out" || p.why === "old" || p.why === "other";
+      // D472: a folder that isn't there may still be a repository Ducter knows by its name (a project's origin).
+      const folderName = basename(p.path) || "";
+      const known = !remote && (p.why === "no_folder" || p.why === "no_repo") && folderName ? d.knownRemote?.(folderName) : undefined;
+      const repo = remote ?? known;
+      const what = agentWhy ? harnessName(c?.harness ?? "") : repo ? repoName(repo) : p.why === "busy" ? repoOf || "this" : folderName || p.path || repoOf;
+      const cant: CantStart = { why: p.why, computer, what, device: p.device, ...(c?.harness ? { harness: c.harness } : {}), ...(p.path && p.why !== "busy" ? { path: p.path } : {}) };
       if (p.why === "busy" && p.path.endsWith(".lock")) cant.clearLock = true;
-      if (remote && p.why !== "no_folder") {
-        const r = await d.where.resolve({ remote }).catch(() => undefined);
+      const here = d.computers().find((x) => isHere(x, p.device));
+      if (repo && (p.why === "no_repo" || p.why === "no_folder" || p.why === "other" || p.why === "clone_failed")) {
+        const r = await d.where.resolve({ remote: repo }).catch(() => undefined);
         if (r?.ok && r.how !== "clone" && !isHere(d.computers().find((x) => x.id === r.place.device) ?? ({ id: r.place.device, home: false } as WhereComputer), p.device)) cant.elsewhere = { device: r.place.device, name: r.computer };
-        const here = d.computers().find((x) => isHere(x, p.device));
-        if ((p.why === "no_repo" || p.why === "other") && here?.online) cant.cloneHere = true;
+        if ((p.why === "no_repo" || p.why === "no_folder" || p.why === "other") && here?.online) cant.cloneHere = true;
       }
-      return { ...cant, line: line(lang, p.why, { computer, what }) };
+      // D472: the task's own words name another computer than the one it went to (an agent picked
+      // for that computer's sign-in moved it): 在 {that computer} 上做 is its fix.
+      const meant = o ? computerNamed([o.title, o.brief], d.computers()) : undefined;
+      if (!cant.elsewhere && meant && !isHere(meant, p.device) && p.why !== "busy") cant.elsewhere = { device: meant.id, name: meant.name };
+      // D472: or a folder already on that computer, chosen there (D455's sheet), and it starts in it.
+      if ((p.why === "no_folder" || p.why === "no_repo") && here?.online) cant.pickHere = true;
+      const k = p.why === "other" && (!computer || !what) ? "other_bare" : p.why;
+      return { ...cant, line: line(lang, k, { computer, what }) };
     },
     async replan(taskId, how) {
       const c = d.tasks.get(taskId);
       if (!c) return { ok: false, message: "No such task." };
       const o = d.opened(taskId);
-      const remote = remoteOfTask(c, o ? [o.title, o.brief] : []);
+      const said = remoteOfTask(c, o ? [o.title, o.brief] : []);
+      // D472: a folder that wasn't there, known by its name as a project's repository: cloned or found by that.
+      const pathOf = c.place.kind === "folder" ? c.place.path : c.place.kind === "repo" ? c.place.repoPath : "";
+      const remote = said ?? (how.action === "clone_here" || how.action === "start_at" ? (pathOf ? d.knownRemote?.(basename(pathOf)) : undefined) : undefined);
       const dev = c.place.kind === "repo" || c.place.kind === "folder" ? c.place.device || "local" : "local";
       const keep = c.place.kind === "repo" && c.place.baseBranch ? { baseBranch: c.place.baseBranch } : {};
       // D415: 清掉旧的再试 is 再试一次 in the same place (the runner clears the lock before its first try).

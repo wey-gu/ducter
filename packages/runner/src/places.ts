@@ -88,11 +88,17 @@ export function placeProblem(message: string): { why: PlaceWhy; path: string } |
   // D415: git said another git holds the repository (a lock file it found there).
   const l = /Unable to create '([^']+\.lock)': File exists/.exec(message) ?? /^(?:Error: )?the repository is busy: (.+)$/m.exec(message);
   if (l) return { why: "busy", path: l[1]!.trim() };
+  // D472: a working folder that isn't there, as the agent's start or git said it (the folder a
+  // task was to run in, missing on that computer: hel's /root/dev/mem read as "other" before).
+  const g = /cannot change to '([^']+)': No such file or directory/.exec(message);
+  if (g) return { why: "no_folder", path: g[1]!.trim() };
+  const e = /ENOENT: no such file or directory, (?:chdir|uv_cwd|scandir|stat|lstat|realpath|posix_spawn)\b[^'\n]*'([^']+)'/.exec(message) ?? /no such file or directory \(cwd: ([^)]+)\)/i.exec(message);
+  if (e && !/spawn \S+ ENOENT/.test(message)) return { why: "no_folder", path: e[1]!.trim() };
   return undefined;
 }
 
 export type PlaceWhy = "no_repo" | "no_folder" | "clone_failed" | "busy";
-export type StartWhy = PlaceWhy | "agent" | "away" | "other";
+export type StartWhy = PlaceWhy | "agent" | "not_installed" | "signed_out" | "old" | "away" | "other";
 
 /**
  * D415: every start failure, read into a word the card can say: its place (above), the agent that
@@ -103,6 +109,11 @@ export function startProblem(message: string): { why: StartWhy; path: string } {
   const p = placeProblem(message);
   if (p) return p;
   if (/can't be reached|is offline|not connected|went away|disconnected/i.test(message)) return { why: "away", path: "" };
+  // D472: the common agent failures have their own word and their own fix (install it there, sign
+  // in there, update that computer's Ducter), so "other" is what is truly unknown.
+  if (/\bis not installed\b|command not found|spawn \S+ ENOENT|not found on PATH|needs node or the \S+ command on PATH/i.test(message)) return { why: "not_installed", path: "" };
+  if (/not (?:signed|logged) in|please (?:sign|log) ?in|\b(?:sign|log) ?in (?:required|again|first)|unauthori[sz]ed|\b401\b|invalid (?:api key|credentials)|authentication (?:failed|required)|credentials? (?:expired|missing)/i.test(message)) return { why: "signed_out", path: "" };
+  if (/unknown op \w+|needs a newer Ducter|unknown harness|harness \S+ is not supported/i.test(message)) return { why: "old", path: "" };
   if (/session|harness|not installed|command not found|ENOENT|spawn|signed? in|log ?in|auth|api key|quota|rate.?limit/i.test(message)) return { why: "agent", path: "" };
   return { why: "other", path: "" };
 }

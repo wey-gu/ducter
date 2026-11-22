@@ -4,6 +4,7 @@
 // waits for, its question, its result), and on a repo task its branch, +/−, and a draft PR or a
 // merge. Density grows with use: the find field from ten tasks, by project from two projects,
 // keys and selection only where a keyboard and a pointer are.
+import { cantClause } from "./cant.tsx";
 import type { ComponentChildren } from "preact";
 import { memo } from "preact/compat";
 import { useDwell, useResting } from "./alive.tsx";
@@ -18,7 +19,7 @@ import { openPast } from "./past.tsx";
 import { openDid } from "./did.tsx";
 import { ago, clock, day, harnessName, spoken, when } from "./format.ts";
 import { CallRow } from "./phone.tsx";
-import { attention, canIntegrate, finished, harnessOf, headlineEvidence, LANE, placeOf, projectOf, reasonOf, reportOf, title, type Task } from "./store.ts";
+import { attention, canIntegrate, cantOf, finished, harnessOf, headlineEvidence, LANE, placeOf, projectOf, reasonOf, reportOf, title, type Task } from "./store.ts";
 import { liveRow, liveWords, rowWords, shortTitle, StepMark, taskBlocks } from "./transcript.tsx";
 import { computerName, deviceWait, manyComputers } from "./where.ts";
 import { Avatar, DecisionCard, stateLabel } from "./views.tsx";
@@ -112,6 +113,9 @@ export function storyOf(task: Task): { mark?: string; words: string; code?: stri
     return { words: stateLabel(a) };
   }
   const failed = a === "failed";
+  // D472: a task that couldn't start says why in its row too (the page's own words, cant.tsx).
+  const cant = failed ? cantOf(task) : undefined;
+  if (cant) return { words: cantClause(cant), tone: "failed" };
   const ev = r && !failed ? headlineEvidence(task.evidence.length ? task.evidence : r.evidence) : undefined;
   const first = r ? sayable(r.summary.split("\n")[0], A.readerLang(task)) : undefined;
   return { words: first || (ev && proofLabel(ev, A.readerLang(task))) || stateLabel(a), ...(failed ? { tone: "failed" as const } : {}) };

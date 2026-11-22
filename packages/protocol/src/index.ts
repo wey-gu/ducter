@@ -963,10 +963,21 @@ export interface CantStart {
    * D415, every other start failure has a word too: busy: another git held the repository the whole
    * time (清掉旧的再试 when the lock is one git left); agent: its agent couldn't start (its program,
    * a sign-in); away: its computer went away; other: anything else (再试一次 asks again, fresh).
+   * D472: the common agent failures have their own word and fix: not_installed: its agent isn't on
+   * that computer (装上); signed_out: it isn't signed in there (登录); old: that computer's Ducter
+   * is too old for it (更新). "other" is only what is truly unknown, said with what is known.
    */
-  why: "no_repo" | "no_folder" | "clone_failed" | "busy" | "agent" | "away" | "other";
+  why: "no_repo" | "no_folder" | "clone_failed" | "busy" | "agent" | "not_installed" | "signed_out" | "old" | "away" | "other";
   /** The computer it was to start on, by name. */
   computer: string;
+  /** D472: that computer's device id ("local" for the home), for a fix done there (a folder chosen on it, a sign-in). */
+  device?: string;
+  /** D472: the task's agent (its harness id), named in the line and its fixes. */
+  harness?: string;
+  /** D472: no_folder / no_repo with that computer reachable: 选 {computer} 上的文件夹 / Choose a folder on {computer}, then it starts there. */
+  pickHere?: boolean;
+  /** D472: other: what the start said, a few lines at most (behind 看看为什么 / See why), never a stack. */
+  more?: string;
   /** The repository's or folder's own name ("mem"). */
   what: string;
   path?: string;
@@ -1286,7 +1297,8 @@ export type ClientFrame =
   // with `confirm` (what would be lost); the same undo with force: true goes ahead.
   // D395: start_at (device): a task that couldn't start starts on that computer's copy; clone_here: clones it where it was to start.
   // D415: clear_lock: 清掉旧的再试, the lock git left is cleared (no git running) and it starts again.
-  | { t: "task_action"; taskId: string; action: "interrupt" | "drop" | "undrop" | "reopen" | "merge" | "open_pr" | "undo" | "keep" | "start_at" | "clone_here" | "clear_lock"; path?: string; force?: boolean; device?: string }
+  // D472: start_in (place): a task that couldn't start starts in the folder the person chose on that computer (D455's sheet).
+  | { t: "task_action"; taskId: string; action: "interrupt" | "drop" | "undrop" | "reopen" | "merge" | "open_pr" | "undo" | "keep" | "start_at" | "clone_here" | "clear_lock" | "start_in"; path?: string; force?: boolean; device?: string; place?: Place }
   // D142: the list behind a folder task's Changes; answered with a folder_changes frame.
   | { t: "folder_changes"; taskId: string }
   // D214: one op of the opened task's workbench (its files, changes, pages), answered with a wb

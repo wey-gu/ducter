@@ -463,7 +463,8 @@ export class Store {
           else delete d.defaultAt; // back, not seen yet: no countdown
         }
       }
-      t.state = { taskId: card.taskId, attention: card.attention, residency: card.residency, reason: card.reason };
+      // D472: with why it couldn't start, or the snapshot would hide it (hel: the page said 没成 and 再试一次 only).
+      t.state = { taskId: card.taskId, attention: card.attention, residency: card.residency, reason: card.reason, ...(card.cant ? { cant: card.cant } : {}) };
       t.stateSeq = Math.max(t.stateSeq ?? 0, this.cursor);
       if (card.lastReport) t.lastReport = card.lastReport;
     }

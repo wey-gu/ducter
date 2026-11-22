@@ -1072,6 +1072,14 @@ export function createWsHandler(deps: WsDeps) {
               const u = await r.undrop(f.taskId);
               return result(u.ok, u.message);
             }
+            case "start_in": {
+              // D472: 选 {computer} 上的文件夹: the folder the person chose there (D455's sheet) is where it starts.
+              const pl = f.place;
+              if (!card.cant || !r?.restartAt) return result(false, "That only applies to a task that couldn't start.");
+              if (!pl || (pl.kind !== "repo" && pl.kind !== "folder")) return result(false, "Choose a folder for it.");
+              const s = await r.restartAt(f.taskId, pl);
+              return result(s.ok, s.message);
+            }
             case "start_at":
             case "clone_here":
             case "clear_lock":

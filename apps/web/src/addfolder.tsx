@@ -54,9 +54,13 @@ export function AddFolderSheet() {
   const ok = afOrder(A.ntBrowsable());
   const old = A.ntBrowsable(true);
   const d = A.addf.device;
+  // D472: opened from a task that couldn't start: the folder chosen here is where it starts.
+  const forTask = A.addf.forTask ? A.S.tasks.get(A.addf.forTask) : undefined;
+  const head = forTask ? t("cant.pick.title") : t("addfolder.title");
   return (
-    <SheetFrame label={t("addfolder.title")} class="newtask addfolder" frame={sheet} body={body} scrim={scrim} onScrim={close}>
-      <h2>{t("addfolder.title")}</h2>
+    <SheetFrame label={head} class="newtask addfolder" frame={sheet} body={body} scrim={scrim} onScrim={close}>
+      <h2>{head}</h2>
+      {forTask && <p class="adf-for">{t("cant.pick.sub", forTask.card?.title ?? "")}</p>}
       {ok.length + old.length > 1 && (
         <div class="adf-computers">
           <small class="adf-h">{t("addfolder.computer")}</small>

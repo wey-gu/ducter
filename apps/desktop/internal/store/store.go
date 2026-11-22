@@ -1161,7 +1161,9 @@ func (s *Store) applyOnHand(o *protocol.OnHand) {
 		}
 		// A snapshot is newer than every task_state that arrived before it;
 		// later task_state events override it again.
-		t.State = &protocol.TaskState{TaskID: card.TaskID, Attention: card.Attention, Residency: card.Residency, Reason: card.Reason}
+		// D472: with why it couldn't start, or the snapshot hides it (hel:
+		// the page said 没成 with 再试一次 only, the reason nowhere).
+		t.State = &protocol.TaskState{TaskID: card.TaskID, Attention: card.Attention, Residency: card.Residency, Reason: card.Reason, Cant: card.Cant}
 		t.stateSeq = max(t.stateSeq, s.Cursor)
 		if card.LastReport != nil {
 			t.LastReport = card.LastReport

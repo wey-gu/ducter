@@ -186,7 +186,7 @@ export interface Expect {
   briefForbid?: RegExp[];
   /** Text the task briefs (all joined) must contain, every one. */
   briefRequire?: RegExp[];
-  /** memory_search was called (at least once) / never called. */
+  /** The memory reached the partner: memory_search was called (at least once), or D487's known set held it / memory_search never called. */
   recall?: boolean;
   noRecall?: boolean;
   /** D368 (G3): the person's past conversations were searched (memory_search read threads) / were not. */

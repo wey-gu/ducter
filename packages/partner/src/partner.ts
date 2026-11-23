@@ -96,6 +96,7 @@ import { autoRecall, renderRecall } from "./spine/recall.ts";
 import type { CutOptions } from "./spine/segment.ts";
 import { estTokens } from "./spine/digest.ts";
 import { createSpine, type Spine } from "./spine/spine.ts";
+import { createKnown, KNOWN_WAIT_MS, renderKnown, type KnownItem } from "./known.ts";
 import { createHarnessWriter, type DigestWriter } from "./spine/writer.ts";
 
 export interface PartnerOptions {
@@ -497,7 +498,7 @@ const CLAIMS_CHOICE = /(选|点|按|回复?|回)\s*[「“"]?\s*(Go|Hold|好|先
  * D304: a recall mark, [[m2]] (or a list, [[m1, m3]]: the first counts), wherever the partner put it.
  * D433: [[c1]] names one of the person's past conversations with another AI tool the same way.
  */
-const RECALL_MARK = /\s*\[\[\s*([mc]\d{1,2})(?:\s*[,，、]\s*[mc]\d{1,2})*\s*\]\]/gi;
+const RECALL_MARK = /\s*\[\[\s*([mck]\d{1,2})(?:\s*[,，、]\s*[mck]\d{1,2})*\s*\]\]/gi;
 /**
  * D304: the words without any recall mark, and the first well-formed ref it named. The person never
  * sees a mark; the ref is only a claim, checked against what memory_search returned this turn.
@@ -673,6 +674,9 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     ...(memoryOn.threads ? { threads: (q: string, n: number, to?: ThreadOpts) => (core.settings && !core.settings.get().memory ? Promise.resolve({ ok: false as const, reason: "not_configured" as const, message: "Memory is off for this partner." }) : memoryOn.threads!(q, n, to)) } : {}),
     ...(memoryOn.about ? { about: () => (core.settings && !core.settings.get().memory ? Promise.resolve({ ok: false as const, reason: "not_configured" as const, message: "Memory is off for this partner." }) : memoryOn.about!()) } : {}),
   };
+  // D487: what their memory holds about them, read in the background and given to each fresh session.
+  const known = createKnown({ ...(memory.about ? { about: memory.about } : {}), on: () => memoryOn !== noMemory && !(core.settings && !core.settings.get().memory), now });
+  void known.get();
   // D458: the morning's offers read Mem through this same client (its switch, its identity), read-only.
   core.setMemLook?.({
     search: async (q, n, so) => {
@@ -996,6 +1000,9 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   let recutting = false; // the fresh session being seeded is a re-cut
   /** D368: the Working Memory (its key) this session was given; a fresh session is given it again. */
   let wmGiven: string | undefined;
+  /** D487: the known set (its key) this session was given, and its refs (stable for the session). */
+  let knownGiven: string | undefined;
+  let knownRefs = new Map<string, KnownItem>();
   const spineEvery = opts.spine ? (opts.spine.pokeMs ?? 15 * 60_000) : 15 * 60_000;
   const spineTimer = spine && spineEvery > 0 ? setInterval(() => void spine.poke(), spineEvery) : null;
   (spineTimer as { unref?: () => void } | null)?.unref?.();
@@ -1103,7 +1110,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       core.log.append({ stream: "channel", origin: "partner", kind: "memory_recalled", body });
       return;
     }
-    const hit = t.recalled?.get(mark);
+    const hit = t.recalled?.get(mark) ?? knownRefs.get(mark);
     if (!hit?.id) return;
     t.sourced = true;
     const body: Bodies["memory_recalled"] = { memoryId: hit.id, title: hit.title, ...memSource(hit.source), aboutSeq, ...(hit.date ? { date: hit.date } : {}), ...(t.replyTo !== undefined ? { replyTo: t.replyTo } : {}) };
@@ -1691,6 +1698,14 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       deltas.push(renderWorkingMemory(wm, (t) => redactSecrets(t)));
       wmGiven = wm.key;
     }
+    // D487: what their memory holds about them, an L4 delta: once per session and again when it changes.
+    if (fresh) knownGiven = undefined;
+    const kv = known.get();
+    if (kv && kv.key !== knownGiven) {
+      deltas.push(renderKnown(kv, (t) => redactSecrets(t)));
+      knownGiven = kv.key;
+      knownRefs = new Map(kv.items.map((i) => [i.ref, i]));
+    }
     deltas.push(renderTime(new Date(now())));
     // D381: what the person pinned, on every turn while anything is (bounded: PINS_MAX, clipped).
     const pinned = renderPins(core.pins?.list() ?? []);
@@ -1881,6 +1896,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     const redo = carried && batch.some((e) => carried!.seqs.has(e.seq)) ? carried : undefined;
     if (redo) carried = undefined;
     await readHomeWeb();
+    if (fresh) await known.ready(KNOWN_WAIT_MS);
     const input = buildInput(batch, fresh, redo?.note);
     contextTokens += estTokens(input);
     // A turn woken only by task questions: its words become each question's words (D129), and
@@ -3595,6 +3611,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       const noted = { title, ...(r.id ? { memoryId: r.id } : {}), ...(r.replaced ? { replaced: r.replaced } : {}), ...(r.waiting ? { waiting: r.waiting } : {}) };
       if (t) t.noted.push(noted);
       else core.log.append({ stream: "channel", origin: "partner", kind: "memory_noted", body: noted });
+      known.stale(); // D487: the next look reads what it holds now
       // D329: it replaced what it remembered before, or waits for Mem; either way the line says so, not the reply.
       return { ok: true, note: `Remembered${r.replaced ? `, in place of what you remembered before (“${r.replaced.title}”)` : ""}. The user sees a small Noted line; don't mention it in your reply.` };
     },

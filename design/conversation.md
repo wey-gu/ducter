@@ -19,13 +19,18 @@ human opens them.
    (D120). OpenAI documents that models invent results for calls still pending. The task starts
    with the ack, from the streamed head of its `task_open` call, not after the brief
    (`quiet-conversation.md`).
-   **A line that only promises (D462).** A line that only says what the partner is about to do
-   ("我去查…", "I'll set up…") is settled by what comes next, on every agent: before `task_open`
-   or `task_send` it is the ack; before any other call it waits, and a line written after the
-   call says it instead (Codex writes such a preamble before nearly every call); a second
-   promise before the call replaces the first, so the ack is still one sentence. Said with no
-   call at all, nothing started: it is held for one correction round that asks for the call
-   (its line then goes out as that call's ack) or an "OK" (it goes out as it was). Each of the
+   **Lines around calls, and promises (D462, D490).** Where a line stands decides what it is, never
+   its words: before `task_open` or `task_send` it is the ack; before any other call that does
+   something it waits, and a line written after the call says it instead (Codex writes a preamble
+   before nearly every call; the persona says so as a fact); before a lookup, or a call whose own
+   card is what the person sees (ask, routine_propose), it goes out first. A line that promises to come back later carries
+   the partner's own **[[later]]** mark (hidden). With nothing in that turn that brings it back (a
+   task opened or sent to, a wait, a routine, a card), it is held for one correction round that asks
+   for the call (its line then goes out as that call's ack) or an "OK" (it goes out as it was).
+   Kept by tasks, the promise is recorded (state.json, five at most, three days) and shown as a fact
+   (`[what you told them you'd come back to them with; still owed]`) on the turn one of its tasks ends
+   in and whenever the person writes, until a turn after its tasks ended has said something. No code
+   reads the words for a promise (D490 retired `PROMISE_RE`). Each of the
    agent's own messages stays its own line (the runner splits text by the agent's message id),
    and a ducter-ui block written as a message of its own, or bare, or after words on the same
    line, joins the line it belongs to.

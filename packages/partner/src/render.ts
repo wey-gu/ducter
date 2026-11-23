@@ -42,6 +42,16 @@ export function limitLine(b: Bodies["waiter"], on: string, time: (iso: string) =
   return `[limit ${b.state}] the wait for ${who}'s limit ended${on}`;
 }
 
+/**
+ * D490: what the partner told the person it would come back with (its own [[later]] mark), and how the
+ * tasks that keep it stand: a fact on the turn one of them ends and when the person writes, until said.
+ */
+export function renderPromises(ps: readonly { at: string; text: string; tasks: { title: string; state: string }[] }[]): string {
+  if (!ps.length) return "";
+  const lines = ps.map((p) => `  ${hhmm(p.at)} "${clip(p.text, 200)}": ${p.tasks.map((t) => `「${clip(t.title, 60)}」 ${t.state}`).join(", ")}`);
+  return ["[what you told them you'd come back to them with; still owed] When it has come, tell them what came of it; never say you promised.", ...lines].join("\n");
+}
+
 export function renderTime(now: Date): string {
   const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   return `[time] ${hhmm(now.toISOString())} ${days[now.getDay()]}`;

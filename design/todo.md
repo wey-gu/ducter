@@ -21,21 +21,20 @@ line.
 - **Supersede by `replaces`**: built (D479 recorded it on task_open; D478's `core/src/replaces.ts` acts on it).
 - **Meaning classifiers still in code** (research/206 §2.1, D478's table of what was retired). Each
   goes with a world puzzle or eval scenario first, one per change, full eval each:
-  `PROMISE_RE` (the stream's preamble and the no-tool correction; trigger: OAR exposes a model's
-  commentary channel apart from its final words, or the reply becomes a structured say),
   said.ts (D401's spoken rule kept at once, the author's standing preference; trigger: the partner's
   own `rule_save` before task_open holds on the rules eval on two runs, then the regexes go),
   standing.ts behind the D61 floor (trigger: said.ts gone, with its own outward eval scenarios),
   peer-self `pingOf` and `ownAgentSelf` (trigger: a bridge eval round where the partner answers its
-  own agents' contact tests itself), fresh-look `OUTWARD` / `NO_LOOK_*`, `ASKS_RECALL`, `HOW_KNOW`,
-  `CLAIMS_CHOICE`, `ONE_TIME`, `ASKS_ABOUT_ME`, `REVIEW_WORDS`, Mem take-back, `doc-bar MAKE`,
-  `startProblem`'s buckets, ranking weights (phase 2c).
-- **The main-AI mechanisms research/210 ranked after D487's** (§3, items 3–9), each with its eval first and an
-  A/B read with `eval:compare`: memory_add records the person's own words it rests on, checked verbatim, its content
-  declarative, never a claim that a tool or computer can't do something (in place of `ONE_TIME`); `ASKS_RECALL`
-  (a budget of two stated in the result), `POINTS_AT_THREAD` (past conversations read with every search) and
-  `ASKS_ABOUT_ME` (D487's block already holds the about-set) to facts; promised work as state (with `PROMISE_RE`
-  above); a record of what the partner's session has seen, replayed with an honest preamble when unknown; a turn's
+  own agents' contact tests itself), fresh-look `OUTWARD` / `NO_LOOK_*`, `HOW_KNOW`,
+  `CLAIMS_CHOICE`, `REVIEW_WORDS`, Mem take-back, `doc-bar MAKE`,
+  `startProblem`'s buckets, ranking weights (phase 2c). (`PROMISE_RE`, `ONE_TIME`, `ASKS_RECALL`,
+  `POINTS_AT_THREAD` and `ASKS_ABOUT_ME`: retired by D490.)
+- **D490 on Codex.** The [[later]] mark and the preamble by position were measured on haiku only (a Codex run uses
+  the person's own Codex sign-in). Owed: one Codex eval (`--harness codex`) against D462's 179–189, and the two
+  shapes no longer collapsed that D462 saw only on Codex (the same ack twice before task_open; a preamble before a
+  lookup), each said twice now. Trigger: the next eval round with a Codex account set aside for it.
+- **The main-AI mechanisms research/210 ranked after D490's** (§3, items 6–9), each with its eval first and an
+  A/B read with `eval:compare`: a record of what the partner's session has seen, replayed with an honest preamble when unknown; a turn's
   replay decided from the harness's protocol state, never error text; keeping a subscription cache warm in the
   person's active hours; the persona as a behaviour spec, section by section. Trigger: the next eval round.
 - **D487's block on a real Mem**: how often a fresh session's first turn misses the 1.5 s wait on Cloud, and

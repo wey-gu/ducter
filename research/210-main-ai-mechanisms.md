@@ -195,6 +195,25 @@ it" set a reminder without asking; "ask before acting on either" asked; carrying
 - Two runs a side still can't prove a 3 % difference; the comparison script makes that visible instead of
   letting two totals decide.
 
+## 7. Built next (D490): #3, #4 and #5
+
+- **#3, grounded writes:** `memory_add` carries `said` (the person's words, or a task report's), checked word for
+  word against their last 60 messages and this turn's reports; content stated about them, never an order to the
+  partner, never a claim that a tool or computer can't do something. `ONE_TIME` is gone.
+- **#4, the memory classifiers to facts:** two searches a turn said in every result (`ASKS_RECALL` gone), past
+  conversations read with every search (`POINTS_AT_THREAD` gone), the about-set from D487's block, or a first search
+  when the session missed it (`ASKS_ABOUT_ME` and `aboutYou` gone).
+- **#5, promised work as state:** a line before a call that does something is a preamble by position; a line that
+  promises to come back carries the partner's own `[[later]]`; with nothing that brings it back, one correction
+  round; kept by tasks, it is recorded and shown on the turn its task ends in until said (`PROMISE_RE` gone).
+
+Results (VERIFIED, haiku, `eval:compare`, main 0.1.22 three runs against the final branch two): without the
+puzzles 190.0 → 192.5 of 244 (p = 0.37, one steady win, no steady loss); puzzles 22.3 → 24.0 of 28. A first cut
+that also let the calendar and todos tools' line go first lost `todos-sort-zh` and `calendar-unreadable-zh` on
+every run (two lines for one) and was narrowed: position, like wording, is behaviour. The new puzzle
+`wp-thread-unnamed-zh` (a past fix asked in words no list had) fails on main twice and passes on the branch four
+times. Codex and a live Mem were not run.
+
 ## Summary
 
 Four open personal AIs on existing harnesses were read. The one mechanism all four share and

@@ -26,33 +26,23 @@ function setup(script: Script, mem = fakeMemory([{ title: "HawDB 基准测试的
 }
 
 describe("memory_search", () => {
-  test("returns compact hits with a do-not-paste note; one recall per turn", async () => {
+  // D490: two searches a turn, the budget said in each result; no word of the person's lifts it (ASKS_RECALL retired).
+  test("returns compact hits with a do-not-paste note; two searches a turn, each saying what is left", async () => {
     const results: any[] = [];
     const { partner, user, fc, mem } = setup(async (_i, s) => {
       results.push(await fc.callTool("memory_search", { query: "HawDB bench" }));
       results.push(await fc.callTool("memory_search", { query: "bench again" }));
+      results.push(await fc.callTool("memory_search", { query: "bench once more" }));
       s.say("好，照上次的跑法来。");
       s.end();
     });
-    user("像上次那样跑一下 HawDB 的基准");
+    user("你再好好想想，像上次那样跑一下 HawDB 的基准");
     await partner.idle();
     expect(results[0].ok).toBe(true);
     expect(results[0].results[0]).toMatchObject({ title: "HawDB 基准测试的做法", date: "2026-11-02" });
     expect(results[0].note).toMatch(/never paste/i);
-    expect(results[1].ok).toBe(false); // gated
-    expect(mem.searches.length).toBe(1);
-  });
-
-  test("the user asking to look again lifts the gate", async () => {
-    const results: any[] = [];
-    const { partner, user, fc, mem } = setup(async (_i, s) => {
-      results.push(await fc.callTool("memory_search", { query: "a" }));
-      results.push(await fc.callTool("memory_search", { query: "b" }));
-      s.end();
-    });
-    user("你再好好想想，上次 HawDB 的基准是怎么跑的？");
-    await partner.idle();
-    expect(results.map((r) => r.ok)).toEqual([true, true]);
+    expect(results.map((r) => [r.ok, r.searchesLeftThisTurn])).toEqual([[true, 1], [true, 0], [false, undefined]]);
+    expect(results[2].error).toMatch(/already searched memory 2 times/);
     expect(mem.searches.length).toBe(2);
   });
 
@@ -78,7 +68,7 @@ describe("memory_add", () => {
   test("saves with provenance and shows one Noted line after the reply", async () => {
     let r: any;
     const { partner, user, fc, channel, mem } = setup(async (_i, s) => {
-      r = await fc.callTool("memory_add", { title: "测试统一用假时钟", content: "Weyl 要求以后所有涉及时间的测试都用假时钟，不用真实 sleep。", importance: 0.8 });
+      r = await fc.callTool("memory_add", { title: "测试统一用假时钟", content: "Weyl 要求以后所有涉及时间的测试都用假时钟，不用真实 sleep。", said: "以后测试里涉及时间的都用假时钟", importance: 0.8 });
       s.say("好，以后都这样。");
       s.end();
     });
@@ -94,12 +84,12 @@ describe("memory_add", () => {
   test("refuses secrets and task plumbing; nothing saved, no line", async () => {
     const rs: any[] = [];
     const { partner, user, fc, channel, mem } = setup(async (_i, s) => {
-      rs.push(await fc.callTool("memory_add", { title: "OpenAI key", content: "key is sk-proj-abcdefghijklmnopqrstuvwxyz0123" }));
-      rs.push(await fc.callTool("memory_add", { title: "TTL fix", content: "Commit c3d9f01 on ducter/fix-flaky-ttl" }));
-      rs.push(await fc.callTool("memory_add", { title: "worktree", content: "it lives in ~/.ducter/worktrees/abc" }));
+      rs.push(await fc.callTool("memory_add", { title: "OpenAI key", content: "key is sk-proj-abcdefghijklmnopqrstuvwxyz0123", said: "hi there" }));
+      rs.push(await fc.callTool("memory_add", { title: "TTL fix", content: "Commit c3d9f01 on ducter/fix-flaky-ttl", said: "hi there" }));
+      rs.push(await fc.callTool("memory_add", { title: "worktree", content: "it lives in ~/.ducter/worktrees/abc", said: "hi there" }));
       s.end();
     });
-    user("hi");
+    user("hi there");
     await partner.idle();
     expect(rs.map((r) => r.ok)).toEqual([false, false, false]);
     expect(rs[0].error).toMatch(/secret/);
@@ -108,29 +98,39 @@ describe("memory_add", () => {
     expect(channel().some((e) => e.kind === "memory_noted")).toBe(false);
   });
 
-  test("a one-time instruction is not saved; a lasting one is (review 2)", async () => {
+  // D490: grounded writes (ONE_TIME retired: whether it lasts is the partner's judgement, held by the
+  // memory eval). Code checks only that the words it rests on were said: by the person, earlier in the
+  // conversation, or by a task's report this turn; width, case, spacing and the quote marks around them aside.
+  test("kept only on words that were said: the person's, earlier ones, a task's report; never paraphrased", async () => {
     const rs: any[] = [];
     const { partner, user, fc, mem } = setup(async (_i, s, n) => {
-      if (n === 0) rs.push(await fc.callTool("memory_add", { title: "测试缩进", content: "foo 的新测试用 4 个空格缩进。" }));
-      if (n === 1) rs.push(await fc.callTool("memory_add", { title: "Metric units", content: "Use metric units: this report only." }));
-      if (n === 2) rs.push(await fc.callTool("memory_add", { title: "测试缩进", content: "Weyl 的测试一律用 4 个空格缩进。" }));
+      if (n === 1) {
+        rs.push(await fc.callTool("memory_add", { title: "测试缩进", content: "Weyl 的测试一律用 4 个空格缩进。" })); // no said
+        rs.push(await fc.callTool("memory_add", { title: "测试缩进", content: "Weyl 的测试一律用 4 个空格缩进。", said: "测试一律四个空格" })); // paraphrase
+        rs.push(await fc.callTool("memory_add", { title: "测试缩进", content: "Weyl 的测试一律用 4 个空格缩进。", said: "「以后测试都用 4 个空格缩进。」" }));
+      }
+      if (n === 2) rs.push(await fc.callTool("memory_add", { title: "Prefers pnpm", content: "Weyl prefers pnpm over npm.", said: "Use pnpm, not npm" })); // said a turn before
+      if (n === 3) rs.push(await fc.callTool("memory_add", { title: "Release order", content: "Weyl bumps Cargo.toml and the CHANGELOG in one commit.", said: "bumps Cargo.toml and CHANGELOG.md in the same commit" }));
       s.end();
     });
-    user("这次给 foo 写的新测试用 4 个空格缩进");
-    await partner.idle();
-    user("Write up the load-test numbers in metric.");
+    user("Use pnpm, not npm, in ~/dev/web.");
     await partner.idle();
     user("以后测试都用 4 个空格缩进，这次也是");
     await partner.idle();
-    expect(rs.map((r) => r.ok)).toEqual([false, false, true]);
-    expect(rs[0].error).toMatch(/this piece of work only/);
-    expect(mem.added.length).toBe(1);
+    user("ok");
+    await partner.idle();
+    partner.onTrigger(fc.core.log.append({ stream: "task:t1", origin: "task", kind: "report", body: { taskId: "t1", state: "done", summary: "Released.", questions: [], evidence: [], remember: [{ title: "Release order", content: "He bumps Cargo.toml and CHANGELOG.md in the same commit." }] } }));
+    await partner.idle();
+    expect(rs.map((r) => r.ok)).toEqual([false, false, true, true, true]);
+    expect(rs[0].error).toMatch(/needs `said`/);
+    expect(rs[1].error).toMatch(/aren't in what the user said/);
+    expect(mem.added.map((m) => m.title)).toEqual(["测试缩进", "Prefers pnpm", "Release order"]);
   });
 
   test("a word made of hex letters is not plumbing", async () => {
     let r: any;
     const { partner, user, fc } = setup(async (_i, s) => {
-      r = await fc.callTool("memory_add", { title: "Prefers decaf", content: "Weyl drinks decaffeinated coffee after 3pm." });
+      r = await fc.callTool("memory_add", { title: "Prefers decaf", content: "Weyl drinks decaffeinated coffee after 3pm.", said: "decaf after 3pm" });
       s.end();
     });
     user("note: decaf after 3pm");
@@ -142,7 +142,7 @@ describe("memory_add", () => {
     let r: any;
     const { partner, user, fc, channel } = setup(
       async (_i, s) => {
-        r = await fc.callTool("memory_add", { title: "t", content: "c" });
+        r = await fc.callTool("memory_add", { title: "t", content: "c", said: "以后都用中文回我" });
         s.say("好。");
         s.end();
       },

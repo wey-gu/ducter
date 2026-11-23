@@ -1330,8 +1330,8 @@ function check(r: RunResult): string[] {
   if (e.noRecall && r.recalls.length) fails.push(`memory_search ×${r.recalls.length} (want none)`);
   if (e.threadSearch && !r.threadSearches.length) fails.push("no search of past conversations");
   if (e.noThreadSearch && r.threadSearches.length) fails.push("searched past conversations (want none)");
-  // Never more than one recall per turn unless the user asks (the tool gates it; count the calls).
-  for (const st of new Set(r.recalls.map((x) => x.step))) if (r.recalls.filter((x) => x.step === st).length > 1) fails.push("more than one memory_search in a turn");
+  // D490: never more than two recalls a turn (the tool says the budget and refuses a third; count the calls).
+  for (const st of new Set(r.recalls.map((x) => x.step))) if (r.recalls.filter((x) => x.step === st).length > 2) fails.push("more than two memory_search calls in a turn");
   const savedText = r.remembered.map((m) => `${m.title}\n${m.content}`).join("\n");
   if (e.remember && !e.remember.test(savedText)) fails.push(`nothing saved matching ${e.remember}`);
   if (e.noRemember && r.remembered.length) fails.push(`saved to memory ×${r.remembered.length} (want none)`);
@@ -1345,6 +1345,7 @@ function check(r: RunResult): string[] {
     if (e.sourceOf.by && r.sources[0].by !== e.sourceOf.by) fails.push(`source line is by ${r.sources[0].by} (want ${e.sourceOf.by})`);
   }
   if (/\[\[\s*m\d/i.test(all)) fails.push("a recall mark reached the user");
+  if (/\[\[\s*later\s*\]\]/i.test(all)) fails.push("a [[later]] mark reached the user"); // D490
   // D157 / D175 (4): what a new task needs of a computer, a pinned agent, its place.
   if (e.needs) {
     for (const [k, want] of Object.entries(e.needs)) {

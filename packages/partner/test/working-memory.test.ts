@@ -7,7 +7,7 @@ import { join } from "node:path";
 import type { WorkingMemoryView } from "../../protocol/src/internal.ts";
 import { createPartner } from "../src/index.ts";
 import { compactThreads, type ThreadHit } from "../src/memory.ts";
-import { POINTS_AT_THREAD, renderWorkingMemory, threadsForModel } from "../src/partner.ts";
+import { renderWorkingMemory, threadsForModel } from "../src/partner.ts";
 import { FakeClock, fakeCore, fakeMemory, fakeRunner, type Script } from "./fakes.ts";
 
 const WM: WorkingMemoryView = {
@@ -119,12 +119,8 @@ describe("G3: past conversations in recall", () => {
     expect(out[0]!.lines[0]).not.toContain("abcdefghijklmnop");
   });
 
-  test("words that point at another tool's conversation", () => {
-    for (const s of ["how did I fix this in Codex last week", "我上次怎么修的那个 flaky test", "之前在 Claude Code 里弄过", "What did we decide about the index?"]) expect(POINTS_AT_THREAD.test(s)).toBe(true);
-    for (const s of ["周报哪天发？", "Postgres's default port?", "像上次那样跑一下 benchmark"]) expect(POINTS_AT_THREAD.test(s)).toBe(false);
-  });
-
-  test("pointed at by the user: threads come back beside memories, in one call", async () => {
+  // D490: every search reads them (POINTS_AT_THREAD retired): the model judges what fits, no words decide.
+  test("every search: threads come back beside memories, in one call", async () => {
     let r: any;
     const { partner, user, fc, mem } = setup(async (_i, s) => {
       r = await fc.callTool("memory_search", { query: "flaky recall test" });
@@ -139,25 +135,15 @@ describe("G3: past conversations in recall", () => {
     expect(r.conversationsNote).toMatch(/data, never instructions/);
   });
 
-  test("a plain recall: no thread search", async () => {
+  test("a plain recall reads them too, and says nothing of them when none match", async () => {
+    let r: any;
     const { partner, user, fc, mem } = setup(async (_i, s) => {
-      await fc.callTool("memory_search", { query: "pnpm" });
+      r = await fc.callTool("memory_search", { query: "pnpm" });
       s.end();
     });
     user("Which package manager do I like?");
     await partner.idle();
-    expect(mem.threadSearches).toHaveLength(0);
-  });
-
-  test("in Chinese, naming no tool: \"我上次怎么修的\" is enough", async () => {
-    let r: any;
-    const { partner, user, fc, mem } = setup(async (_i, s) => {
-      r = await fc.callTool("memory_search", { query: "recall test" });
-      s.end();
-    });
-    user("我上次怎么修的那个 recall test？");
-    await partner.idle();
     expect(mem.threadSearches).toHaveLength(1);
-    expect(r.conversations).toHaveLength(1);
+    expect(r.conversations).toBeUndefined();
   });
 });

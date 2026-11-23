@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.1.30 - 2026-11-24
+
+<!-- whats-new
+zh: ducter move --plan：搬到新电脑前，先看清要搬什么
+en: ducter move --plan: see what a move takes before you make it
+-->
+
+**Moving your home, the plan first**
+- `ducter move --plan --to <computer>` shows what goes with your home and how big it is, which
+  sign-ins you'd redo on the new computer and why, what follows the new address by itself, and
+  what happens to work under way. It changes nothing and sends nothing.
+- `ducter repairs` works again from the command line.
+
 ## 0.1.29 - 2026-11-24
 
 <!-- whats-new

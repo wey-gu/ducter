@@ -293,6 +293,30 @@ line.
   `ducter check run errand-checkout`.
 - [ ] **A worker Mac's Ducter browser over a real socket** (remote.ts): the card's picture, the
   live view and the person's click through the worker. Covered by fakes only. Check: `ducter check run worker-browser`.
+
+## A server home signs in through your Mac's browser (D505, `where.md` §22)
+
+- [ ] **The live run** on hel (the home) and the MacBook (a worker, 上网 on, Claude in Chrome
+  connected): from the phone, 「看看我淘宝最近的订单」 without naming the Mac; the task ran in the
+  MacBook's Chrome (`body_selected` with `where.kind: signed_in`, `uses: chrome`), no sign-in card
+  came up on hel, the move line and 用你的 Chrome read right on the phone and the Mac, the answer is
+  the real orders; then a task that starts on hel with public pages and meets the sign-in page
+  mid-way (the move itself); then the lid closed (it waits, never signs in on hel by itself).
+  Check: `ducter check run worker-browser` (its `signin_*` steps). Trigger: the next release on hel.
+- [ ] **With the Mac asleep, wait for it by default** (W2b's ask for a running task): the sign-in
+  card gets **等 {device} 醒（默认） / Wait for {device}** beside signing in on hel, and the task
+  moves when it wakes. Today the card stays on hel as before. Trigger: the first time it happens to
+  the author, or a person asks why it wanted a password on the server.
+- [ ] **A sign-in in a worker's Ducter browser relays the person's keys through the home** (D151's
+  live view, driven from the home): sign in at that Mac itself (its own window) instead. Trigger: a
+  buy errand on a server home whose site is signed in nowhere.
+- [ ] **A standing "never my Chrome"** the move honours (a rule naming the computer or the browser);
+  today the person says so and the partner moves it back. Trigger: the first person who says it.
+- [ ] **Which agent there has native Chrome tools**: the move keeps the same agent when it is on the
+  Mac; if that agent's own Chrome tools aren't ready there (Claude in Chrome not connected), it falls
+  back to cua-driver or Ducter's browser on that Mac (D130), which lacks the sign-in. Prefer an agent
+  whose native tools are ready there. Trigger: the live run, or one task that asked to sign in again
+  on the Mac.
 - [ ] **A real phone paying in the live view**: a wallet or a QR page, 3-D Secure, a bank's own app
   opening from the page (it may leave the view: say what then).
 - [ ] **The pay words on real checkouts**: the gate's list (zh, en, ja) read against five real

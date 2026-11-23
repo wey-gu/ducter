@@ -235,7 +235,7 @@ interface TaskRt {
   /** D157: waiting for its computer (asleep or can't be reached) before it ever started. */
   waiting?: StartCtx;
   /** D157: the user moved it to another computer; its next session starts with movedOver. */
-  movedFrom?: { from: string; to: string; repo: boolean };
+  movedFrom?: { from: string; to: string; repo: boolean; /** D505: Ducter moved it for the person's sign-in there. */ signIn?: { site: string; uses: "chrome" | "ducter" } };
   /** D299: carried on from a session the person ran outside Ducter, by another agent: its first session starts with outsideOver. */
   outsideOver?: boolean;
 }
@@ -894,7 +894,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     }
     const progress = progressOf(t);
     const seed = t.movedFrom
-      ? movedOver(t.movedFrom.from, t.movedFrom.to, progress, t.movedFrom.repo, await carryOver(t))
+      ? movedOver(t.movedFrom.from, t.movedFrom.to, progress, t.movedFrom.repo, await carryOver(t), t.movedFrom.signIn)
       : t.handedFrom
         ? t.outsideOver
           ? outsideOver(harnessName(t.handedFrom), await carryOver(t))
@@ -2521,13 +2521,13 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       // D202: the effort moves with the same agent and model; another one runs at its own default.
       if (h !== fromHarness || (model ?? "") !== (t.card.model ?? "")) delete body.effort;
       core.log.append({ persona: t.persona, stream: stream(taskId), origin: "user", kind: "task_open", body });
-      core.log.append({ persona: t.persona, stream: stream(taskId), origin: "user", kind: "body_selected", body: { taskId, harness: h, ...(model ? { model } : {}), ...(body.effort ? { effort: body.effort } : {}), why: { kind: "you", where: { device: to.name, kind: "you" } } } });
+      core.log.append({ persona: t.persona, stream: stream(taskId), origin: "user", kind: "body_selected", body: { taskId, harness: h, ...(model ? { model } : {}), ...(body.effort ? { effort: body.effort } : {}), why: to.signIn ? { kind: "default", where: { device: to.name, kind: "signed_in", site: to.signIn.site, uses: to.signIn.uses } } : { kind: "you", where: { device: to.name, kind: "you" } } } });
       t.card = { ...t.card, place: resolved.place, harness: h, ...(model ? { model } : {}) };
       t.base = { ...specFor(taskId, body, resolved.cwd, true), harness: h };
-      t.movedFrom = { from: here === "local" ? (to.homeName ?? "the home") : here, to: to.name, repo: place.kind === "repo" };
+      t.movedFrom = { from: here === "local" ? (to.homeName ?? "the home") : here, to: to.name, repo: place.kind === "repo", ...(to.signIn ? { signIn: to.signIn } : {}) };
       t.past = t.backFrom = undefined; // D282: the sessions it had stay on the computer it left
       if (fromHarness !== h) t.handedFrom = fromHarness;
-      logEvent(t, { role: "system", from: "runner", text: `moved from ${t.movedFrom.from} to ${to.name}`, raw: { switched: { from: fromHarness, to: h }, moved: { from: t.movedFrom.from, to: to.name } } });
+      logEvent(t, { role: "system", from: "runner", text: `moved from ${t.movedFrom.from} to ${to.name}`, raw: { switched: { from: fromHarness, to: h }, moved: { from: t.movedFrom.from, to: to.name, ...(to.signIn ? { signIn: to.signIn.site } : {}) } } });
       t.started = (async () => {
         await ops.provision(resolved);
         if (resolved.place.kind === "browser") {

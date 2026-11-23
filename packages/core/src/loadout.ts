@@ -7,7 +7,7 @@ import { HARNESSES, HARNESS_IDS, harnessName, isHarnessId, isWorkKind, NO_LOOK_K
 import { effectiveBrain } from "./brain.ts";
 import { resolveModel } from "@ducter/protocol/src/harness-facts.ts";
 import type { BodyChoice, LogStore, Runner } from "@ducter/protocol/src/internal.ts";
-import { blockOf, chooseBody, computersOf, fwCandidates, kindDefaults, kindOf, smartestFor, type Computer, noPhoneLine } from "./candidates.ts";
+import { blockOf, chooseBody, computersOf, fwCandidates, kindDefaults, kindOf, signInRoute, smartestFor, type Computer, noPhoneLine } from "./candidates.ts";
 import { checkEffort, type ModelCatalog } from "./models.ts";
 
 /** D395: the levels tried, in order, when the model doesn't offer the one asked for in words. */
@@ -43,6 +43,13 @@ export interface Loadout {
   // effort (D282): the same agent with another model or effort keeps its native session.
   // by (D376): the partner moved it for the person's follow-up (the note says so); D503 "limit": Ducter moved it, same agent and model, off a used-up account; else the person did.
   switchTask(taskId: string, harness: string, model: string | undefined, runner: Runner | undefined, device?: string, effort?: string, by?: "partner" | "limit"): Promise<{ ok: boolean; message?: string }>;
+  /**
+   * D505: a task's browser asked for the person's sign-in to a site on a computer they don't sit at
+   * (a server home). `to`: an awake computer already has that sign-in (Ducter's browser signed in
+   * there, or their own Chrome); `move` carries the task there (call it after the tool answers).
+   * `asleep`: one could, but it is asleep. Undefined: nowhere else; the sign-in card stays.
+   */
+  signInElsewhere(taskId: string, site: string, runner: Runner | undefined): Promise<{ to: string; uses: "chrome" | "ducter"; move(): Promise<{ ok: boolean; message?: string }> } | { asleep: string } | undefined>;
   /** D372: the built-in default per kind of work on the home (the Partner page's rules list). */
   defaults(): Promise<KindDefault[]>;
   /**
@@ -329,6 +336,45 @@ export function createLoadout(o: {
         rules: rulesWith(kind),
         current,
       });
+    },
+
+    async signInElsewhere(taskId, site, runner) {
+      const card = o.tasks.get(taskId);
+      if (!card || !runner?.moveTask || card.place.kind === "folder" || card.place.kind === "repo") return undefined;
+      const open = o.log.read({ stream: taskStream(taskId), kinds: ["task_open"], limit: 1000 }).at(-1)?.body as Bodies["task_open"] | undefined;
+      const comps = await computers(open?.needs);
+      if (!comps || comps.length < 2) return undefined;
+      const r = signInRoute({ computers: comps, here: card.place.device || "local", site, ...(open?.needs?.buy ? { buy: true } : {}) });
+      if (!r) return undefined;
+      if ("asleep" in r) return { asleep: r.asleep.name };
+      const to = r.to;
+      // The same agent and model there when it can; else the best one there (D157's ranking).
+      const rows = (await api.candidates(taskId)).filter((x) => x.device === to.id && !x.blocked && !x.waits);
+      const c = rows.find((x) => x.harness === card.harness && (x.model ?? "") === (card.model ?? "")) ?? rows.find((x) => x.harness === card.harness) ?? rows[0];
+      if (!c) return undefined;
+      const here = comps.find((x) => (card.place.device && card.place.device !== "local" ? x.id === card.place.device || x.name === card.place.device : x.home));
+      const home = comps.find((x) => x.home)?.name;
+      return {
+        to: to.name,
+        uses: r.uses,
+        async move() {
+          const res = await runner.moveTask!(taskId, { device: to.home ? "local" : to.name, name: to.name, ...(home ? { homeName: home } : {}), signIn: { site, uses: r.uses } }, c.harness, c.model);
+          if (!res.ok) return res;
+          // The partner only knows (to answer "why is it on the MacBook?"); the task's own line says it.
+          o.log.append({
+            stream: "channel",
+            origin: "user",
+            kind: "job_status",
+            body: {
+              jobId: `${BODY_NOTE_PREFIX}${taskId}_${Date.now().toString(36)}`,
+              taskId,
+              state: "done",
+              text: `this task needed the user signed in to ${site}; ${here?.name ?? "the home"} has none of their sign-ins, so Ducter moved it to ${to.name}, where ${r.uses === "chrome" ? "their own Chrome is" : "Ducter's own browser is"} signed in already (${harnessName(c.harness)}). Nothing was typed on ${here?.name ?? "the home"}, and their sign-ins stay on ${to.name}. The task's own line already says so: mention it only if the user asks why it moved.`,
+            } as Bodies["job_status"],
+          });
+          return { ok: true };
+        },
+      };
     },
 
     async switchTask(taskId, harness, model, runner, device, effort, by) {

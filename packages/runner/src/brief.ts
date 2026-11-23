@@ -452,12 +452,16 @@ export function freshRound(progress: string[]): string {
  * D157: the first turn on another computer after the user moved the task there (E3): the same
  * task, from its saved progress; a repo comes as a fresh worktree of the pushed branch.
  */
-export function movedOver(from: string, to: string, progress: string[], repo: boolean, carry?: CarryOver): string {
+export function movedOver(from: string, to: string, progress: string[], repo: boolean, carry?: CarryOver, signIn?: { site: string; uses: "chrome" | "ducter" }): string {
   const where = progress.length ? `\n\nWhere it stood (saved progress, oldest first):\n${progress.map((p) => `- ${p}`).join("\n")}` : "";
   const files = repo ? " The worktree here is a fresh checkout of the task branch as it was pushed: committed work is all here; check git log and git status." : " Files you made there are not here; anything you need again, make again.";
+  // D505: Ducter carried the sign-in step here, where the person is already signed in.
+  const why = signIn
+    ? `Ducter moved this task from ${from} to ${to}: the work needs the user signed in to ${signIn.site}, and here ${signIn.uses === "chrome" ? "you browse in the user's own Chrome, where they are signed in already" : "Ducter's own browser is signed in to it already"}. Don't ask them to sign in again unless the page shows they are signed out. Their sign-ins stay on this computer: never read, copy or report cookies, session tokens or saved passwords; bring back only what the pages say.`
+    : `The user moved this task from ${from} to ${to}, to carry on here.`;
   // D376: what it found there (its last report, the last thing it said) comes along: a finished
   // errand moved for its follow-up must not look again for what it already found.
-  return `The user moved this task from ${from} to ${to}, to carry on here.${files} Check where the work stands, then continue with the brief from there. Don't start over.${where}${carryLines(carry)}\n\nReport via report_to_main when done, blocked, or needing a decision.`;
+  return `${why}${files} Check where the work stands, then continue with the brief from there. Don't start over.${where}${carryLines(carry)}\n\nReport via report_to_main when done, blocked, or needing a decision.`;
 }
 
 /** A new session's seed (handedOver / startedAfresh) followed by the message that woke it. */

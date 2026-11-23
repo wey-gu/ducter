@@ -760,6 +760,7 @@ ${NATIVE_HOW[b.kind].replace("{partner}", b.partnerName)}
 ### This is the user's own browser
 
 Sites they signed into are signed in, as them.
+- Their sign-ins stay in this browser: never read, copy or report cookies, session tokens or saved passwords. Bring back only what the pages say.
 - Work only in the window or tabs you opened. Never type into, read, change or close the user's other tabs or windows.
 - Never change browser settings, extensions or saved passwords. Do not quit the browser.
 - When you are done, close the tabs or window you opened, and only those.

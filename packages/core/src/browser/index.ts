@@ -6,7 +6,7 @@ import { installChrome, type InstallResult, type InstallStep } from "./chrome.ts
 import { createBrowserHost, type BrowserHost, type HostOptions } from "./host.ts";
 import { createLive, type Live, type LiveDeps } from "./live.ts";
 import { createSites, type Sites } from "./sites.ts";
-import { registerBrowserTools } from "./tools.ts";
+import { registerBrowserTools, type SignInElsewhere } from "./tools.ts";
 import { checkBrowser, checkLine } from "./check.ts";
 import type { BrowserAbout, BrowserCheck, MediaRef, TaskNeeds } from "@ducter/protocol";
 import { profileName } from "@ducter/protocol/src/browser-profile.ts";
@@ -62,6 +62,8 @@ export interface DucterBrowserOptions extends HostOptions {
   mayPay?: (taskId: string, site: string) => boolean;
   /** D436: the home's media store, for the checkout's picture. */
   media?: () => { put(bytes: Uint8Array, o?: { name?: string }): MediaRef } | undefined;
+  /** D505: a sign-in the person already has on another awake computer (the loadout's). */
+  signInElsewhere?: SignInElsewhere;
 }
 
 export function createDucterBrowser(o: DucterBrowserOptions): DucterBrowser {
@@ -80,7 +82,7 @@ export function createDucterBrowser(o: DucterBrowserOptions): DucterBrowser {
   const notes = createBrowserNotes();
   const live = createLive({ host, decisions: o.decisions, tasks: o.tasks as LiveDeps["tasks"], persona: o.persona, notes, ...(o.tell ? { tell: o.tell } : {}) });
   const sites = createSites(host);
-  registerBrowserTools({ mcp: o.mcp, host, log: o.log, tasks: o.tasks as any, notes, ...(o.scrub ? { scrub: o.scrub } : {}), ...(o.mayPay ? { mayPay: o.mayPay } : {}), ...(o.media ? { media: o.media } : {}) });
+  registerBrowserTools({ mcp: o.mcp, host, log: o.log, tasks: o.tasks as any, notes, ...(o.scrub ? { scrub: o.scrub } : {}), ...(o.mayPay ? { mayPay: o.mayPay } : {}), ...(o.media ? { media: o.media } : {}), ...(o.signInElsewhere ? { signInElsewhere: o.signInElsewhere } : {}) });
   const fns = new Set<() => void>();
   const changed = () => fns.forEach((f) => f());
   let installing: Promise<InstallResult> | undefined;

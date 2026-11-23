@@ -55,9 +55,12 @@ heard of a subagent.
   doing tasks for its local repos.
 - **Browse and use apps on your Mac from a server-hosted Ducter.** When your Ducter lives on a
   server, tasks that need your own Chrome, sign-ins or Mac apps run on your Mac (as a helper
-  computer), with the same safety rules. Research first. The first half exists (D155): one tap
-  in the Mac app makes the Mac a worker of the server (its AI agents and repos), kept running by
-  a LaunchAgent; browser and computer use on that worker are still the home's only.
+  computer), with the same safety rules. Built with fakes: one tap in the Mac app makes the Mac a
+  worker of the server (D155, kept running by a LaunchAgent); tasks browse there in your Chrome or
+  Ducter's browser and use its apps (D157, D235); a task that needs your sign-in starts there, and
+  one on the server that meets a sign-in page moves there instead of asking you to sign in on the
+  server, your cookies staying on the Mac (D505). Owed: the live run (`ducter check run
+  worker-browser`), and waiting for a sleeping Mac by default mid-task.
 - **Real-world checks.** A long-conversation replay on real models, live runs of folder undo
   and native browser use, and the Nowledge Bridge live trial (still behind a flag; see below).
   The owed checks of D425–D459 are one command each since D463 (`ducter check list`, then

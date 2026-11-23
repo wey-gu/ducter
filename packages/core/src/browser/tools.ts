@@ -187,7 +187,12 @@ export interface BrowserToolsDeps {
   mayPay?: (taskId: string, site: string) => boolean;
   /** D436: keeps the checkout's picture for the card (the home's media store). */
   media?: () => { put(bytes: Uint8Array, o?: { name?: string }): MediaRef } | undefined;
+  /** D505: a sign-in the person already has on another awake computer: the task goes there instead of the card. */
+  signInElsewhere?: SignInElsewhere;
 }
+
+/** D505: where a sign-in the person already has is (loadout.signInElsewhere, the runner bound). */
+export type SignInElsewhere = (taskId: string, site: string) => Promise<{ to: string; uses: "chrome" | "ducter"; move(): Promise<{ ok: boolean; message?: string }> } | { asleep: string } | undefined>;
 
 export function registerBrowserTools(d: BrowserToolsDeps): void {
   const { mcp, host } = d;
@@ -442,6 +447,37 @@ export function registerBrowserTools(d: BrowserToolsDeps): void {
       const url = pageUrl(args.url);
       const site = hostOf(url)!;
       const step = String(args.step ?? "").trim().slice(0, 120);
+      // D505: on a computer the person doesn't sit at (a server home), a sign-in they already have
+      // on another awake computer is used there: the task moves, nothing is typed here, and their
+      // sign-ins never leave that computer. A step that is theirs on this page (step) stays here.
+      const why = String(args.why ?? "").trim().slice(0, 300);
+      const ask = () => {
+        const card = d.tasks.get(taskId);
+        const q: Question = step
+          ? { id: "step", text: `Your step on ${site}: ${step}`, blocking: true, default: "Done", reversible: false, signIn: { site, url, step } }
+          : { id: "sign_in", text: `Sign in to ${site} in Ducter's browser`, blocking: true, default: "Signed in", reversible: false, signIn: { site, url } };
+        const body: Bodies["report"] = { taskId, state: "needs_input", summary: why || (step ? `Needs you on ${site}: ${step}` : `Needs you to sign in to ${site}.`), questions: [q], evidence: [] };
+        d.log.append({ persona: card?.persona, stream: `task:${taskId}`, origin: "task", kind: "report", body });
+        d.tasks.setState(taskId, "needs_you", (card?.residency as any) ?? "hot");
+      };
+      if (!step && d.signInElsewhere) {
+        const there = await d.signInElsewhere(taskId, site).catch(() => undefined);
+        if (there && "to" in there) {
+          // After this answer reaches the task (the move ends its session). A move that fails puts
+          // the sign-in card up here after all, so the task never waits on nothing.
+          setTimeout(() => {
+            void there
+              .move()
+              .catch((e: Error) => ({ ok: false, message: e.message }))
+              .then((r) => {
+                if (r.ok) return;
+                console.warn(`[browser] couldn't move ${taskId} to ${there.to} for its sign-in:`, r.message);
+                ask();
+              });
+          }, 0);
+          return `Don't sign in here. The user is already signed in to ${site} on ${there.to} (${there.uses === "chrome" ? "in their own Chrome" : "in Ducter's browser there"}), so Ducter is moving this task there now; you carry on there from your saved progress. End your turn now.`;
+        }
+      }
       const send = await page(taskId, true);
       const here = await evaluate(send, "location.href").catch(() => "");
       // Already on that page (it asked to sign in right there): keep it; else open the sign-in page.
@@ -449,14 +485,7 @@ export function registerBrowserTools(d: BrowserToolsDeps): void {
         await send("Page.navigate", { url });
         await settle(send);
       }
-      const card = d.tasks.get(taskId);
-      const why = String(args.why ?? "").trim().slice(0, 300);
-      const q: Question = step
-        ? { id: "step", text: `Your step on ${site}: ${step}`, blocking: true, default: "Done", reversible: false, signIn: { site, url, step } }
-        : { id: "sign_in", text: `Sign in to ${site} in Ducter's browser`, blocking: true, default: "Signed in", reversible: false, signIn: { site, url } };
-      const body: Bodies["report"] = { taskId, state: "needs_input", summary: why || (step ? `Needs you on ${site}: ${step}` : `Needs you to sign in to ${site}.`), questions: [q], evidence: [] };
-      d.log.append({ persona: card?.persona, stream: `task:${taskId}`, origin: "task", kind: "report", body });
-      d.tasks.setState(taskId, "needs_you", (card?.residency as any) ?? "hot");
+      ask();
       return step
         ? `Asked the user to do this step on ${site} themselves. End your turn now. When they're done you'll get a message; then browser_read to check, and carry on.`
         : `Asked the user to sign in to ${site}. End your turn now. When they're done you'll get a message; then browser_read to check you're signed in.`;

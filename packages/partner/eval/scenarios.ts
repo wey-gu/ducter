@@ -127,7 +127,10 @@ export type Step =
   | { cantStart: { task: string; cant: import("../../protocol/src/index.ts").CantStart; line: string } }
   // D477 (scenario.world): the seeded task's start failed this way, and its card is what core's own
   // places port makes of it (as the runner asks it), then core's mender acts on it for real.
-  | { startFailed: { task: string; why: import("../../protocol/src/index.ts").CantStart["why"]; path?: string; detail?: string } };
+  | { startFailed: { task: string; why: import("../../protocol/src/index.ts").CantStart["why"]; path?: string; detail?: string } }
+  // D481: the seeded task, in rounds, has been on this round a long time: its steps are logged (oldest
+  // first, minutes ago), then core's loop keeper hands it to the partner with these facts.
+  | { longRound: { task: string; sinceMin: number; everyMin: number; reason: string; earlier: number[]; steps: { minAgo: number; text: string; kind?: "state" | "said" }[]; waits?: string[] } };
 
 export interface Expect {
   /** task_open calls: exact count, or a range. */

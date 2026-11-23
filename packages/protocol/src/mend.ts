@@ -11,6 +11,23 @@ export type MendClass =
   /** It stopped without a report after one nudge (the stall rule). */
   | "stall";
 
+/** D481: what the keeper knows of a long round of a task in rounds, for the partner to judge (never a verdict). */
+export interface RoundFacts {
+  /** When this round began (its wake). */
+  since: string;
+  /** Its rhythm, when it runs on one, and the reason its wait gives. */
+  everyMs?: number;
+  reason?: string;
+  /** How long its earlier rounds took, in minutes, newest last (at most 6). */
+  earlier?: number[];
+  /** Its latest steps, oldest first (at most 8): when, and what (its state's reason, its words, a tool it used). */
+  steps: { at: string; text: string }[];
+  /** What it waits on now, in its own words (its armed waits). */
+  waits?: string[];
+  /** Its latest report this round. */
+  report?: { at: string; state: string; summary: string };
+}
+
 /**
  * The ladder's rungs, cheapest first. retry: the same thing again, fresh, after a short wait.
  * repair: the precondition fixed by Ducter (a clone, the computer that has the code, a stale git
@@ -32,8 +49,14 @@ export interface MendTry {
 
 export interface MendBody {
   taskId: string;
-  cls: MendClass;
+  /**
+   * D481 "round": a round of a task in rounds has gone on past its look budget. Not a failure: the
+   * partner looks at `round` (the facts) and judges; never shown as mending, never counted as a failure.
+   */
+  cls: MendClass | "round";
   rung: MendRung;
+  /** D481: cls "round": the facts of the long round. */
+  round?: RoundFacts;
   /** retry and repair: what Ducter does now. */
   how?: MendHow;
   /** start_at: the computer it moves to (id); its name for the words. */

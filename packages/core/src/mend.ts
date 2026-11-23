@@ -103,7 +103,8 @@ export function createMender(o: {
     o.log
       .read({ stream: taskStream(taskId), kinds: ["mend"], limit: 200 })
       .filter((e) => e.ts >= since(within))
-      .map((e) => e.body as MendBody);
+      .map((e) => e.body as MendBody)
+      .filter((m) => m.cls !== "round"); // D481: a long round looked at is no repair
   /** The tries (retry or repair, as logged when going) on this task in the last day. */
   const triedOn = (taskId: string): MendTry[] =>
     mends(taskId, DAY_MS)

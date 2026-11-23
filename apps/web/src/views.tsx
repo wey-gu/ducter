@@ -446,10 +446,30 @@ function answeredWords(d: DecisionState): string {
   if (d.resolved?.settled && d.memPlugin) return t("memp.card.done");
   // D413: a review round's drafts went under what the person said.
   if (d.resolved?.posted) return t("standing.settled");
+  // D481: closed while this page missed how (the home's word follows), or closed by what happened.
+  if (d.elsewhere) return t("decision.resolved.elsewhere");
+  if (d.resolved?.by === "ended") return t("decision.resolved.ended");
   if (d.resolved?.by === "default") return t("decision.resolved.default");
   if (opt === "reply") return t("decision.resolved.reply", d.resolved?.text ?? "");
   if (opt === "hold") return d.where ? t("where.ask.waited", d.where.device) : t("decision.resolved.hold");
   return t("decision.resolved.go", goLabel(d));
+}
+
+/**
+ * D481: words typed into this card's reply box while it was answered somewhere else: kept, and
+ * offered as a message to the partner (quoting the card), never dropped with the box.
+ */
+function LeftDraft({ d, text }: { d: DecisionState; text: string }) {
+  return (
+    <div class="left-draft" role="status">
+      <div class="dl">{t("decision.left.line")}</div>
+      <div class="left-words">{text}</div>
+      <div class="btns">
+        <Btn kind="text" label={t("decision.left.drop")} about={text} onClick={() => (A.replyDraft.delete(d.decisionId), A.changed())} />
+        <Btn kind="secondary" label={t("decision.left.send")} about={text} onClick={() => A.sendLeftDraft(d, text)} />
+      </div>
+    </div>
+  );
 }
 
 function Resolved({ d }: { d: DecisionState }) {
@@ -540,6 +560,8 @@ export function DecisionBody({ d, taskId }: { d: DecisionState; taskId?: string 
       ) : (
         <Resolved d={d} />
       )}
+      {/* D481: what was typed into an ask answered elsewhere stays, to send as a message or discard. */}
+      {!open && (A.replyDraft.get(d.decisionId) ?? "").trim() && <LeftDraft d={d} text={(A.replyDraft.get(d.decisionId) ?? "").trim()} />}
     </>
   );
 }
@@ -1188,9 +1210,12 @@ function Ask({ d, taskId, buttons = true, rk, seq }: { d: DecisionState; taskId?
         <CalSettle d={d} />
       ) : (
         // Answered: one tiny line on the user's side, in their own words.
-        <div class="said" role="status">
-          {answeredWords(d)}
-        </div>
+        <>
+          <div class="said" role="status">
+            {answeredWords(d)}
+          </div>
+          {draft.trim() && <LeftDraft d={d} text={draft.trim()} />}
+        </>
       )}
     </div>
   );

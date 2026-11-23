@@ -21305,3 +21305,8 @@ html[data-text-size="large"] .brand-mark > svg {
 .perr .step > .g { align-self: center; }
 .perr .step .sum { white-space: normal; overflow-wrap: anywhere; flex: 0 1 auto; }
 .perr .step .subj { flex: none; }
+
+/* D481: words left in a card's reply box after it was answered elsewhere, offered as a message. */
+.left-draft { display: flex; flex-direction: column; gap: var(--s2); margin-top: var(--s2); padding: var(--s3); border-radius: var(--r-md); background: var(--surface); }
+.left-draft .left-words { font-size: var(--md); line-height: 1.5; color: var(--ink); white-space: pre-wrap; overflow-wrap: anywhere; }
+.left-draft .btns { display: flex; justify-content: flex-end; gap: var(--s2); flex-wrap: wrap; }

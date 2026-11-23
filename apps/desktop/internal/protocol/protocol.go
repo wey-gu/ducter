@@ -399,7 +399,7 @@ type DecisionResolved struct {
 	DecisionID string `json:"decisionId"`
 	Option     string `json:"option"` // go | hold | reply
 	Text       string `json:"text,omitempty"`
-	By         string `json:"by"`            // user | default
+	By         string `json:"by"`            // user | default | ended (D481: closed by what happened)
 	Now        bool   `json:"now,omitempty"` // D208: a call's Go given as Call now
 	// MsgSeq (D236): the reply message that answered it (its words show as
 	// that bubble, not on the card).
@@ -1144,6 +1144,22 @@ type OnHand struct {
 	// Away (D454) are the tasks the person removed from On hand (移走):
 	// a window that also builds its board from the stream leaves them out.
 	Away []string `json:"away,omitempty"`
+	// OpenAsks (D481) are every question still open at the home, as of
+	// Log seq AsOf: the one source of truth for "open" on every window.
+	OpenAsks *OpenAsks `json:"openAsks,omitempty"`
+}
+
+// OpenAsks (D481): the questions open at the home, as of AsOf.
+type OpenAsks struct {
+	IDs  []string `json:"ids"`
+	AsOf int64    `json:"asOf"`
+}
+
+// AsksGet (D481) asks the home for the events of questions this window
+// and On hand disagree about.
+type AsksGet struct {
+	T   string   `json:"t"` // "asks_get"
+	IDs []string `json:"ids"`
 }
 
 // TaskGroup (D360) is several tasks that are one piece of work: one card on

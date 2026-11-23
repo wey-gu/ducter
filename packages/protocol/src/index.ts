@@ -442,7 +442,9 @@ export interface Bodies {
   // plugin in): it reads as done (已装好 / Installed), never as a default taken.
   // D413 posted: a review round's card settled because every draft on it went under a standing
   // permission the person said (shown 按你说的，直接发了 / Posted, as you said).
-  decision_resolved: { decisionId: string; option: "go" | "hold" | "reply"; text?: string; by: "user" | "default"; now?: boolean; delivered?: boolean; msgSeq?: number; settled?: true; posted?: true };
+  // D481 by "ended": closed by what happened, not by an answer (its task finished or was replaced,
+  // a loop's card whose moment passed); never forwarded, read as 不用回了 / No longer needed.
+  decision_resolved: { decisionId: string; option: "go" | "hold" | "reply"; text?: string; by: "user" | "default" | "ended"; now?: boolean; delivered?: boolean; msgSeq?: number; settled?: true; posted?: true };
   // D382: 晚点再问我 / Ask me later: the person put a waiting question off to `until`. It stays
   // open (answering it still works) but out of Needs you; its countdown stops.
   decision_later: { decisionId: string; until: string; by: "user" };
@@ -1039,6 +1041,13 @@ export interface OnHand {
   groups?: TaskGroupView[];
   /** D454: tasks the person removed from On hand (移走): a client that also builds its board from the Log leaves them out. */
   away?: string[];
+  /**
+   * D481: every question still open at the home (the one source of truth for "open"), as of Log
+   * seq asOf. A client closes any question it holds open that isn't here and was asked at or before
+   * asOf (it missed the resolution), and asks the home (asks_get) for the ones here it doesn't hold.
+   * Offers and put-off questions count as open.
+   */
+  openAsks?: { ids: string[]; asOf: number };
 }
 
 /** D312: one partner's own open question, as On hand lists it (a tap shows that partner). */
@@ -1312,6 +1321,10 @@ export type ClientFrame =
   // D382: 晚点再问我 / Ask me later: put the question off to `until` (ISO); null brings it back now
   // (现在就定 / Decide now).
   | { t: "later"; decisionId: string; until: string | null }
+  // D481: questions this client and the home's On hand disagree about (open at the home but unknown
+  // here, or open here but closed at the home): the home answers with one events frame holding each
+  // one's decision event and its resolution, so every surface agrees with the home.
+  | { t: "asks_get"; ids: string[] }
   // clientId (optional): a resend with the same id is not delivered twice; it gets the same "sent".
   | { t: "task_send"; taskId: string; text: string; clientId?: string; media?: string[]; /** D268: steer (default while it works) or queue for after this turn. */ mode?: "steer" | "queue" }
   // D325: one held message (TaskCard.held) changed (edit, with text), taken back (drop), or said

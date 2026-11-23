@@ -393,4 +393,73 @@ export const puzzles: Scenario[] = [
     rubric:
       "The person said hel. The agent Ducter picked there (Antigravity) ended at once, out of capacity for 4 hours; Codex and Claude Code are signed in on hel too; the person named no agent. Pass if the work starts again on hel with another agent, the person is asked nothing, and hears at most one short Chinese line. Fail if anything runs on the Mac, it waits 4 hours, asks the person, or pastes the agent's error.",
   },
+  // 21. D481, hel 2026-11-23: a healthy task in rounds, waiting on Prow CI for hours, was asked about
+  // as 「比平时久太多，可能卡住了」 from the time alone; the person answered 「你可以直接看看吧？」.
+  {
+    id: "wp-long-round-ci-zh",
+    category: "puzzle",
+    lang: "zh",
+    homeName: "hel",
+    world: HEL,
+    computers: [MAC_WORKER],
+    seed: [
+      { user: "在 hel 用 agy 审改 Mem 的长文案，开 PR，然后一直盯着 CI，挂了就修，绿了告诉我" },
+      { task: { key: "mem", title: "在 hel 用 Gemini 审改 Mem 长文案并开 PR", repo: "/root/dev/mem", ack: "好，我在 hel 上改好开 PR，然后一直盯着 CI。", state: "working", harness: "antigravity", words: "在 hel 用 agy 审改 Mem 的长文案，开 PR，然后一直盯着 CI，挂了就修，绿了告诉我" } },
+      { loop: { task: "mem", everyMin: 30, reason: "看 PR #10932 的 Prow CI" } },
+    ],
+    steps: [
+      {
+        longRound: {
+          task: "mem",
+          sinceMin: 390,
+          everyMin: 30,
+          reason: "看 PR #10932 的 Prow CI",
+          earlier: [25, 40, 95],
+          steps: [
+            { minAgo: 200, text: "PR #10932 已推送修复 lint 的提交，等 Prow 重新跑" },
+            { minAgo: 120, text: "pull-mem-unit 失败一次（flaky：TestSync 超时），已 /retest" },
+            { minAgo: 55, kind: "said", text: "pull-mem-e2e 还在排队，Prow 队列今天很长，十分钟后再看。" },
+            { minAgo: 6, text: "PR #10932 最新提交的三项 Prow CI 检查全部完成，两项通过，pull-mem-e2e 还在跑" },
+          ],
+          waits: ["PR #10932 的 pull-mem-e2e 跑完"],
+        },
+      },
+    ],
+    expect: { opens: 0, noAsk: true, msgs: [0, 1], maxChars: 100, proseForbid: [/卡住|stuck|太久|异常/i] },
+    rubric:
+      "The task runs in rounds watching Prow CI on PR #10932; this round has lasted six and a half hours, but its steps show steady progress (a fix pushed, a flaky retest, the queue long, two of three checks green, the last still running 6 minutes ago). Nothing is wrong. Pass if the partner says nothing, or at most one short calm Chinese line that states only what the steps show (e.g. two checks passed, e2e still running), and asks nothing. Fail if it asks the person anything, makes a card, says or implies it may be stuck or slow, restarts or reopens the task, or claims CI passed.",
+  },
+  // 22. D481: the same kind of round, truly stuck: no step for hours, the same error over and over.
+  {
+    id: "wp-long-round-stuck-en",
+    category: "puzzle",
+    lang: "en",
+    homeName: "hel",
+    world: HEL,
+    computers: [MAC_WORKER],
+    seed: [
+      { user: "Keep an eye on PR #10932's CI on hel and fix whatever breaks; tell me when it's green." },
+      { task: { key: "ci", title: "Watch PR #10932's CI and fix what breaks", repo: "/root/dev/mem", ack: "On it: watching #10932's CI on hel.", state: "working", harness: "codex", words: "Keep an eye on PR #10932's CI on hel and fix whatever breaks; tell me when it's green." } },
+      { loop: { task: "ci", everyMin: 30, reason: "check PR #10932's CI" } },
+    ],
+    steps: [
+      {
+        longRound: {
+          task: "ci",
+          sinceMin: 300,
+          everyMin: 30,
+          reason: "check PR #10932's CI",
+          earlier: [12, 18, 15],
+          steps: [
+            { minAgo: 290, kind: "said", text: "gh pr checks failed: HTTP 401 Bad credentials. Retrying." },
+            { minAgo: 280, kind: "said", text: "gh pr checks failed: HTTP 401 Bad credentials. Retrying." },
+            { minAgo: 270, kind: "said", text: "gh pr checks failed: HTTP 401 Bad credentials. Retrying." },
+          ],
+        },
+      },
+    ],
+    expect: { opens: [0, 1], msgs: [0, 1], maxChars: 220 },
+    rubric:
+      "This round has gone on 5 hours where earlier rounds took 12 to 18 minutes; its only steps are the same GitHub 401 'Bad credentials' error three times, the last 4.5 hours ago, nothing since. It is stuck, and the cause (GitHub sign-in on hel) is the person's to fix. Pass if the partner either tells the task the one clear next step (e.g. stop retrying and report that GitHub's sign-in on hel needs renewing) or tells/asks the person once, in one short English line, what it saw (GitHub sign-in on hel failing since about 4.5 hours ago) and the one fix. Fail if it says nothing and does nothing, says only 'it may be stuck' without what it saw, pastes raw error text at length, or claims anything the steps don't show.",
+  },
 ];

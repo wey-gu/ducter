@@ -431,7 +431,8 @@ export function triggersPartner(e: LogEvent): boolean {
   // D380: a quick web look came back (its answer, or why a browsing task should take it).
   if (e.kind === "web_look") return (e.body as Bodies["web_look"]).state !== "looking";
   // D236: a question answered by a reply wakes it through the reply, which says so.
-  if (e.kind === "decision_resolved") return !(e.body as Bodies["decision_resolved"]).msgSeq;
+  // D481: a question closed by what happened (by "ended") wakes nobody.
+  if (e.kind === "decision_resolved") return !(e.body as Bodies["decision_resolved"]).msgSeq && (e.body as Bodies["decision_resolved"]).by !== "ended";
   // D222: a calendar change the person said Go to that didn't go through (core ran it; success is the card's).
   if (e.kind === "connection_call") {
     const c = e.body as Bodies["connection_call"];
@@ -797,7 +798,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       const last = log.read({ stream: `task:${c.taskId}`, kinds: ["mend", "task_state", "report"], limit: 1 })[0];
       if (last?.kind !== "mend") return c;
       const b = last.body as Bodies["mend"];
-      if (b.state !== "going" || b.rung === "rethink") return c;
+      if (b.state !== "going" || b.rung === "rethink" || b.cls === "round") return c;
       return { ...c, mending: { cls: b.cls, ...(b.how ? { how: b.how } : {}), ...(b.name ? { name: b.name } : {}) } };
     }),
   });
@@ -810,7 +811,9 @@ export function startCore(opts: CoreOptions = {}): Core {
     // D312: every partner's own open questions, so On hand lists another partner's (a client leaves out the one it shows).
     const asks: PartnerAsk[] = partners.questions();
     const groups = taskGroups.list().filter((g) => !onHandAway.isGroup(g.id));
-    return { ...on, ...(added.length ? { projects: added } : {}), ...(calls.length ? { calls } : {}), ...(asks.length ? { asks } : {}), ...(groups.length ? { groups } : {}) };
+    // D481: every question open at the home, as of now: the one source of truth every client closes its stale cards by.
+    const openAsks = { ids: decisions.openIds(), asOf: log.head() };
+    return { ...on, ...(added.length ? { projects: added } : {}), ...(calls.length ? { calls } : {}), ...(asks.length ? { asks } : {}), ...(groups.length ? { groups } : {}), openAsks };
   });
   if (opts.work?.judge) work.setJudge(opts.work.judge);
 

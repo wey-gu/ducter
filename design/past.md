@@ -163,16 +163,25 @@ rests on its own wait, or from its rounds (it rested again after a wake). Then:
   catch-up, never a burst). A round that can't start (its computer asleep, the runner not up) is
   tried again every 10 min. The person's own rhythm (**多久跑一轮**, or "把 review 改成每小时") wins over
   the task's: its later waits follow it.
-- **The watchdog says it once.** A round overdue by half its rhythm (between 15 min and an hour),
-  a round running three rhythms (at least two hours), or three failed rounds in a row: one card,
-  plainly, with its Go **现在跑一次 / Run it now** (`decision.loop`), at most once in 12 hours,
-  never when the task already asks (the runner's "asleep" card). An agent out of allowance says
-  nothing more: D297's wait carries on at the reset.
+- **The watchdog says it once.** A round overdue by half its rhythm (between 15 min and an hour)
+  or three failed rounds in a row: one card, plainly, with its Go **现在跑一次 / Run it now**
+  (`decision.loop`), at most once in 12 hours, never when the task already asks (the runner's
+  "asleep" card). The card closes by itself (不用回了 / No answer needed now) once that is no longer
+  so: the round started, a round worked, the loop or its task ended (D481). An agent out of
+  allowance says nothing more: D297's wait carries on at the reset.
+- **A round that only runs long is never said from the time alone (D481, principle 21).** Past
+  three rhythms (at least two hours) the keeper hands the partner the round's facts (a `mend` of
+  class `round`: when it began, its rhythm, how long its earlier rounds took, its latest steps,
+  what it waits on, its report this round), once a round. The partner looks (task_read when that
+  isn't enough) and judges: still moving (CI checks, a review): nothing said; truly stuck: the task
+  gets its one next step; the person is asked only when the partner can't tell or the fix is
+  theirs, in one line saying what it saw. hel, 2026-11-23: a loop waiting on Prow CI was asked
+  about as 「比平时久太多，可能卡住了」, and the answer was 「你可以直接看看吧？」.
 
 **The card's health line** (only when it isn't on time; silence means fine), in its state's ink
 with a small drawn mark, each fact its own element: **晚了 {n} / {n} late** with why
 (**{computer} 睡着了，醒了马上补一轮 / {computer} is asleep; it catches up as soon as it wakes**,
-**这一轮跑得太久了 / This round is taking far too long**, **这一轮还没开始 / Its round hasn't started
+**这一轮还没开始 / Its round hasn't started
 yet**), **额度用完了，{time} 恢复后接着跑 / Out of allowance; carries on at {time}**, **它的账号要重新
 登录 / Its account needs signing in again**, **最近 {n} 轮都没做成 / Its last {n} rounds didn't work**,
 and for a day after a stop by mistake **{time} 被误停，已经接着跑了 / Stopped by mistake at {time},

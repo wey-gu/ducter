@@ -982,6 +982,11 @@ class AppState {
     }
     // on_hand closes the replay that follows a welcome.
     if (f.t === "on_hand" && this.inDoubt) this.S.settleInDoubt(this.inDoubt), (this.inDoubt = undefined);
+    // D481: questions this page and the home disagree about: the home's own events for them.
+    if (f.t === "on_hand" && this.S.welcomed && this.conn) {
+      const ids = this.S.takeAsksWanted();
+      if (ids.length) this.send({ t: "asks_get", ids });
+    }
     // D209: the last screen follows what the home sent (on_hand closes a replay: caught up).
     if (f.t === "events") for (const ev of f.events) if (ev.stream === "channel") this.kept.set(ev.seq, ev);
     if (f.t === "on_hand") (this.fromGlance = false), void this.checkBuild();
@@ -3235,6 +3240,19 @@ class AppState {
     haptic(option === "go" ? "success" : "light");
     this.markRead();
     this.send({ t: "decide", decisionId: id, option, ...(text ? { text } : {}) });
+    this.changed();
+  }
+
+  /** D481: the words left in a card's reply box after it was answered elsewhere: sent as a message quoting the card. */
+  sendLeftDraft(d: DecisionState, text: string) {
+    this.replyDraft.delete(d.decisionId);
+    const clientId = `p${Date.now()}-${++this.nextClient}`;
+    const reply: Replying | undefined = d.seq ? { seq: d.seq, from: "partner", quote: (d.said || d.question).slice(0, 120) } : undefined;
+    this.pending.push({ clientId, text, ...(reply ? { reply } : {}) });
+    this.thinkingSince = Date.now();
+    this.markRead();
+    this.send({ t: "send", text, clientId, ...(reply ? { reply: wantOf(reply) } : {}) });
+    haptic("light");
     this.changed();
   }
 

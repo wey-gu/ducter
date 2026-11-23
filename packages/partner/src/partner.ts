@@ -425,7 +425,8 @@ function isTrigger(e: LogEvent): boolean {
   if (e.origin === "partner") return false;
   if (e.kind === "user_msg") return true;
   // D236: a question answered by a reply wakes it through the reply, which says so.
-  if (e.kind === "decision_resolved") return !(e.body as Bodies["decision_resolved"]).msgSeq;
+  // D481: a question closed by what happened (by "ended") wakes nobody.
+  if (e.kind === "decision_resolved") return !(e.body as Bodies["decision_resolved"]).msgSeq && (e.body as Bodies["decision_resolved"]).by !== "ended";
   if (e.kind === "report") return (e.body as Bodies["report"]).state !== "progress";
   if (e.kind === "web_look") return (e.body as Bodies["web_look"]).state !== "looking"; // D380
   if (e.kind === "waiter") {

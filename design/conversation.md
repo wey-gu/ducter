@@ -405,6 +405,37 @@ another agent, another computer) and says nothing about the failure; a fix that 
 word. Only when no way can work, or the task comes back a second time, it asks once, in one line,
 with the one real fix. No error text and no list of what failed ever reach the conversation.
 
+## A question answered anywhere is answered everywhere (D481)
+
+**Who and what they feel.** The heavy developer has the Mac app, the phone and a chat app open on
+the same home. Before: on hel (2026-11-23) a card answered on one window at 01:05 still showed open
+on another, with 你没回之前，我先放着 under it; they read it as Ducter not listening. After: a tap or a
+reply anywhere closes the card on every window at once; a window that was asleep closes it as it
+wakes. Nothing to learn: it is how a messaging app already behaves.
+
+**One source of truth.** The home's Decisions holds which questions are open. Every On hand
+snapshot carries `openAsks` (their ids and the Log seq it is as of). Every surface on a client
+derives from its one store: the card in the conversation (and its sheet), On hand's rows and the
+等你 count (the Dock badge, the menu bar), a partner's own asks, the opened task's page. A client
+closes any question it holds open that isn't in `openAsks` and was asked at or before its `asOf`
+(shown 在别处答过了 / Answered somewhere else), and asks the home (`asks_get`) for the events of those
+and of any open one it doesn't hold; the home's own resolution then replaces the stand-in. A
+question asked after the snapshot is never closed by it.
+
+**Ways a question closes.** Go, Hold or a reply (any window, a chat app, a reply quoting it), its
+default by time, and by what happened (`by: "ended"`, 不用回了 / No answer needed now): its task
+finished or was set aside for another, or a loop card's moment passed (D427's watchdog). Ended
+closes are never forwarded and wake nobody.
+
+**Reconnects.** A hello with a cursor replays every event since it, page after page; before D481
+one page (5,000) was all a long-away client got, and its live events then moved its cursor past
+the gap for good.
+
+**Words are never lost.** A reply typed into a card answered elsewhere: sent, the home logs it as
+a normal message quoting the card (never a second answer); still in the box, the card keeps it
+under its answer with **作为消息发给我 / Send it to me as a message** and **不发了 / Discard**. Go
+or Hold on such a card does nothing but bring this window the home's answer.
+
 ## The living message (principle 7)
 
 | State | Meaning |

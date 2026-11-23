@@ -107,12 +107,8 @@ export function RecallSheet({ seq }: { seq: number }) {
 
 /** In the week's first morning note: one line offering to show what it noted. */
 export function LearnedLine({ count }: { count: number }) {
-  return (
-    <div class="learned-line">
-      <span class="ftext">{count === 1 ? t("learned.line.one") : t("learned.line", String(count))}</span>
-      <Btn kind="text" size="sm" chev class="learned-open" label={t("learned.open")} onClick={() => A.openLearned()} />
-    </div>
-  );
+  // D482: one quiet link at the note's foot, beside Done for you; the sheet asks whether each is right.
+  return <Btn kind="text" size="sm" chev class="learned-open" label={count === 1 ? t("learned.link.one") : t("learned.link", String(count))} onClick={() => A.openLearned()} />;
 }
 
 type Noted = NonNullable<typeof A.mem>["noted"][number];

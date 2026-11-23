@@ -3139,3 +3139,4 @@ export interface LendFrame {
   device?: string;
   name?: string;
 }
+export * from "./names.ts";

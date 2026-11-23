@@ -65,11 +65,7 @@ func (a *App) findsEntry(c *ui.Context, e *store.Entry) {
 			}
 			a.noteAsk(c, n)
 		})
-		a.learnedLine(c, key, n) // D304: the week's offer, 这周记下的
-		// D300: under the morning note, one quiet line to what was done for you.
-		if n.Rung == "morning" && !n.Quiet {
-			ui.Row(c.Key("did-line")).Padding(0, t.S4-2).Children(func() { a.didLink(c, "did-morning:"+key) })
-		}
+		a.noteFoot(c, key, n) // D304, D300, D482: the note's ways on, one quiet row
 	})
 }
 
@@ -90,7 +86,6 @@ func (a *App) findBlock(c *ui.Context, f protocol.FindView, seq int64) {
 		words = t.InkMuted
 	}
 	col.Children(func() {
-		uiText(c, a.L.T("kind."+f.Kind)).FontSize(t.XS).FontWeight(800).TextColor(t.InkMuted)
 		// D256: the find's words, and its pebble outside the note card in the
 		// gutter, resting on their last line; never on the card. The bridge
 		// (transparent, from the card's edge to the pebble) keeps the hover
@@ -108,10 +103,13 @@ func (a *App) findBlock(c *ui.Context, f protocol.FindView, seq int64) {
 				}
 			})
 		})
-		// D458: an offer from past the accounts says where it came from, one quiet line under its words.
-		if f.Origin != "" {
-			uiText(c, autospace(f.Origin)).FontSize(t.SM).TextColor(t.InkMuted)
+		// D482: one quiet line of where it came from under its words (D458's
+		// origin, else its kind), in the same small muted words.
+		meta := f.Origin
+		if meta == "" {
+			meta = a.L.T("kind." + f.Kind)
 		}
+		uiText(c, autospace(meta)).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.4)
 		// D403: after 撤回 or a failed send, the find's Go is asked again under a new decision.
 		did := f.DecisionID
 		if x := a.S.FindAsks[f.FindID]; x != "" {
@@ -123,77 +121,64 @@ func (a *App) findBlock(c *ui.Context, f protocol.FindView, seq int64) {
 		if drafted {
 			a.findDraft(c, f, d, send)
 		}
-		if d != nil && !drafted {
-			switch {
-			case faded, f.Offer && d.Resolved != nil && d.Resolved.By == "default":
-				// D453: nothing about an offer let be.
-			case st != nil && st.State == "passed":
-				uiText(c, a.L.T("find.passed")).FontSize(t.SM).TextColor(t.InkMuted)
-			case openAsk(d):
-				ui.Row(c.Key("step:" + f.FindID)).Gap(t.S2).AlignItems(ui.Center).Children(func() {
+		open := a.open["how:"+f.FindID]
+		if faded {
+			return
+		}
+		// D482: one row: its step (Go) and 怎么知道的 beside it; a state in words in Go's place.
+		ui.Row(c.Key("step:"+f.FindID)).Gap(t.S2).Wrap().AlignItems(ui.Center).Padding(t.S1, 0, 0, 0).Children(func() {
+			if d != nil && !drafted {
+				switch {
+				case f.Offer && d.Resolved != nil && d.Resolved.By == "default":
+					// D453: nothing about an offer let be.
+				case st != nil && st.State == "passed":
+					uiText(c, a.L.T("find.passed")).FontSize(t.SM).TextColor(t.InkMuted)
+				case openAsk(d):
 					if a.buttonFor(c, a.L.T("decision.go.label", f.GoLabel), "", btnSecondary, t.ControlSM, t.PartnerBubble) {
 						a.Decide(d.DecisionID, "go", "")
 					}
 					if !f.Offer && a.buttonFor(c, a.holdLabel(d), "", btnText, t.ControlSM, t.PartnerBubble) {
 						a.Decide(d.DecisionID, "hold", "")
 					}
-				})
-			case st != nil && st.State == "go":
-				uiText(c, a.L.T("find.going")).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
-			case f.Offer:
-				// D453: an offer held elsewhere (a chat app) says nothing here.
-			default:
-				uiText(c, a.L.T("find.held")).FontSize(t.SM).TextColor(t.InkMuted)
+				case st != nil && st.State == "go":
+					uiText(c, a.L.T("find.going")).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
+				case f.Offer:
+					// D453: an offer held elsewhere (a chat app) says nothing here.
+				default:
+					uiText(c, a.L.T("find.held")).FontSize(t.SM).TextColor(t.InkMuted)
+				}
 			}
-		}
-		open := a.open["how:"+f.FindID]
-		if faded {
-			return
-		}
-		ui.Row(c.Key("react:" + f.FindID)).Gap(t.S3).AlignItems(ui.Center).Children(func() {
-			if a.quietButton(c, "how:"+f.FindID, a.L.T("find.how"), "", false, map[bool]int{false: 1, true: 2}[open]) {
+			ui.Box(c).Width(t.S1).Shrink(0)
+			if a.quietButton(c, "how:"+f.FindID, a.L.T("find.how"), "", true, map[bool]int{false: 1, true: 2}[open]) {
 				if !open {
 					a.send(protocol.FindOpen{T: "find_open", FindIDs: []string{f.FindID}, What: "how"}) // D464
 				}
 				a.open["how:"+f.FindID] = !open
 			}
-			ui.Box(c).Grow(1)
-			switch {
-			case st != nil && st.State == "muted":
-				uiText(c, a.L.T("find.muted")).FontSize(t.SM).TextColor(t.InkSoft)
-			case st != nil && st.State == "useful":
-				uiText(c, a.L.T("find.thanked")).FontSize(t.SM).TextColor(t.InkSoft)
-			default:
-				if a.quietButton(c, "useful:"+f.FindID, a.L.T("find.useful"), f.Text, false, 0) {
-					a.send(protocol.FindReact{T: "find_react", FindID: f.FindID, Reaction: "useful"})
-				}
-				if a.quietButton(c, "mute:"+f.FindID, a.L.T("find.mute"), f.Text, false, 0) {
-					a.send(protocol.FindReact{T: "find_react", FindID: f.FindID, Reaction: "mute"})
-				}
-			}
 		})
 		if open {
-			ui.Column(c.Key("howlist:" + f.FindID)).Gap(2).Children(func() {
-				// D388: each line is one source, in the order the find rests on
-				// them: where it was read, what it is, what it says, its page.
+			ui.Column(c.Key("howlist:"+f.FindID)).Gap(t.S2).Padding(t.S2+2, t.S3).Radius(t.RadiusSM).Background(t.Sunken).Children(func() {
+				// D388, D482: each source in the order the find rests on them: where
+				// it was read, when, who; what it is (its page when it has one),
+				// wrapping inside the note, never past its edge; what it says.
 				for i, h := range f.How {
-					ui.Row(c.Key("h" + itoa(int64(i)))).Gap(t.S2).Children(func() {
-						if h.Src != "" {
-							uiText(c, a.L.T("find.src."+h.Src)).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).Shrink(0)
-						}
-						uiText(c, a.whenOf(h.At)).FontSize(t.SM).TextColor(t.InkMuted).Shrink(0)
-						if h.From != "" {
-							uiText(c, h.From).FontSize(t.SM).TextColor(t.InkMuted).Shrink(0).MaxWidth(160).SingleLine()
-						}
-						if h.URL != "" {
-							if a.quietButton(c, "hl:"+f.FindID+itoa(int64(i)), h.What, "", false, 0) {
-								c.OpenURL(h.URL)
+					ui.Column(c.Key("h" + itoa(int64(i)))).Gap(1).MinWidth(0).Children(func() {
+						ui.Row(c).Gap(t.S2).Wrap().AlignItems(ui.Center).Children(func() {
+							if h.Src != "" {
+								uiText(c, a.L.T("find.src."+h.Src)).FontSize(t.XS + 1).FontWeight(700).TextColor(t.Ink)
 							}
+							uiText(c, a.whenOf(h.At)).FontSize(t.XS + 1).TextColor(t.InkMuted)
+							if h.From != "" {
+								uiText(c, h.From).FontSize(t.XS + 1).TextColor(t.InkMuted).MaxLines(1)
+							}
+						})
+						if h.URL != "" {
+							a.wrapLink(c, "hl:"+f.FindID+itoa(int64(i)), h.What, h.URL)
 						} else {
-							uiText(c, h.What).FontSize(t.SM).TextColor(t.InkSoft).Shrink(1).MinWidth(0).MaxLines(2)
+							uiText(c, h.What).FontSize(t.SM).TextColor(t.Ink).LineHeight(1.45).MinWidth(0).MaxLines(3)
 						}
 						if h.Says != "" {
-							uiText(c, h.Says).FontSize(t.SM).TextColor(t.Ink).Grow(1).MinWidth(0).MaxLines(2)
+							uiText(c, h.Says).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(1.45).MinWidth(0).MaxLines(3)
 						}
 					})
 				}
@@ -203,9 +188,42 @@ func (a *App) findBlock(c *ui.Context, f protocol.FindView, seq int64) {
 				if f.Untouched != "" {
 					uiText(c, f.Untouched).FontSize(t.SM).TextColor(t.InkMuted)
 				}
+				ui.Row(c.Key("react:" + f.FindID)).Gap(t.S4).Wrap().AlignItems(ui.Center).Children(func() {
+					switch {
+					case st != nil && st.State == "muted":
+						uiText(c, a.L.T("find.muted")).FontSize(t.SM).TextColor(t.InkSoft)
+					case st != nil && st.State == "useful":
+						uiText(c, a.L.T("find.thanked")).FontSize(t.SM).TextColor(t.InkSoft)
+					default:
+						if a.quietButton(c, "useful:"+f.FindID, a.L.T("find.useful"), f.Text, true, 0) {
+							a.send(protocol.FindReact{T: "find_react", FindID: f.FindID, Reaction: "useful"})
+						}
+						if a.quietButton(c, "mute:"+f.FindID, a.L.T("find.mute"), f.Text, true, 0) {
+							a.send(protocol.FindReact{T: "find_react", FindID: f.FindID, Reaction: "mute"})
+						}
+					}
+				})
 			})
 		}
 	})
+}
+
+// wrapLink is a source's page as words that wrap inside their column (D482):
+// underlined, a link to the reader, opening the page; never a one-line
+// button that runs past the note's edge.
+func (a *App) wrapLink(c *ui.Context, key, label, url string) {
+	t := a.T
+	b := ui.Row(c.Key(key)).MinWidth(0).Cursor(ui.CursorPointer).Role(ui.RoleLink).Label(label).Focusable().Tooltip(url)
+	col := t.Ink
+	if b.Hovered() {
+		col = t.InkSoft
+	}
+	b.Children(func() {
+		uiText(c, label).FontSize(t.SM).TextColor(col).LineHeight(1.45).Underline().MinWidth(0).Shrink(1).MaxLines(3).AccessHidden(true)
+	})
+	if b.Clicked() {
+		c.OpenURL(url)
+	}
 }
 
 // noteAsk is the one question a note may carry, with the shared controls.

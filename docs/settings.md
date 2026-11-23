@@ -53,8 +53,8 @@ says so first, and gives you a button that takes you to where you fix it. When a
 says **All's well. I'm right here.**
 
 Where it can be done safely right there, the button does it: a newer Nowledge Mem for one of your
-AI agents asks you first, in place, then updates it; **Open its mailbox** takes you to that agent
-on **Talk with your other agents**, where you pick where its mailbox opens; updates ready start with one tap, as in
+AI agents asks you first, in place, then updates it; **Let it hear back** takes you to that agent
+on **Talk with your other agents**, where one more tap does it; updates ready start with one tap, as in
 **Devices**.
 
 Under it, **Your computers and phones** shows each computer, phone and tablet as a little clay
@@ -270,31 +270,32 @@ plugin is in it. If Nowledge Mem isn't on your computer yet, the page puts it in
 right there. After that there is nothing to tap: your partner connects by itself and tells you so
 once in the conversation.
 
-Your partner speaks first at the top of the page, saying who can reach it now, for example
-**Codex and I can reach each other.** When one of your agents can reach your partner but your
-partner's answers can't get back to it, it says that too, and the same line waits for you on
+Your partner speaks first at the top of the page, saying how things stand now, for example
+**Codex and I talk both ways; Claude Code is one step away.** When one of your agents can hand your
+partner work but your partner's answers can't get back to it yet, the same step waits for you on
 Settings' **Overview**. Then comes the one switch, **Let agents connected to Nowledge Mem reach
-{name}**: what they hand over, and what needs your call, shows up in your conversation.
+{name}**, and under it what it gives you: they can hand {name} work and ask it things, {name} asks
+them for you, and anything that needs your call shows up in your conversation.
 
-**Who reaches whom** shows each AI tool you use as a small picture: its mark on one side, your
-partner on the other, and the two ways between them, each said in words: **Reaches {name}** and
-**{name} reaches it**. A way that works is a solid line with an arrowhead; one that doesn't yet is
-dashed. Under the mark, when it last came. When something is missing, the reason and its one fix
-sit under the picture:
+**Your agents** lists each AI tool you use, one row each: its mark, its name, and what it can do with
+your partner, in plain words, with when it last came at the right:
 
-- **Its mailbox in Nowledge Mem is closed, so my answers can't reach it.** **Open its mailbox**
-  opens a short choice right under the picture: **Which Nowledge Mem Space should its mailbox open
-  in?** It lists the Spaces you have in Nowledge Mem, read from that computer, with who can read
-  each. The one your partner already listens in (**Only you**) is suggested and already chosen, with
-  one line saying why; **See other Spaces** shows the rest. **Open in Only you** is your go-ahead: one
-  small task on that computer opens it there, through the agent's own Nowledge Mem plugin, and never
-  asks you for a name. Nowledge Mem never picks a Space for you, so neither does Ducter; **Not now**
-  leaves everything as it is. It never touches your partner's own connection.- **It doesn't have Nowledge Mem's plugin yet.** **Install** puts it in.
-- pi and Antigravity, when they're signed in on a computer of Ducter's, say **pi tasks your partner
-  runs pass messages; yours can't yet**: a task your partner runs on them can ask your other agents
-  something. The first time it does, a card in your conversation shows which task, who it's for and
-  the words, with **Send**; nothing goes before you tap it, and the answer goes back into the task.
-  One Ducter doesn't run says **Its Nowledge Mem plugin can't pass messages yet**.
+- **Hands me work and hears my answers**: everything works both ways.
+- **Hands me work; my answers can't reach it yet**: one step is left, and it sits right under the
+  row: **Its answers go to the "Only you" Space in Nowledge Mem; only you can read them.** with **Let
+  it hear back**. Your partner looked up that computer's Spaces in Nowledge Mem when you opened the
+  page (just a look, nothing changes) and suggests the one it already listens in. One tap is your
+  go-ahead: a small task on that computer opens the way back there, through the agent's own Nowledge
+  Mem plugin, and never asks you for a name. **Another Space** shows the rest, each with who can read
+  it; Nowledge Mem never picks a Space for you, so neither does Ducter. It never touches your
+  partner's own connection.
+- **With Nowledge Mem's plugin, it can hand me work**, with **Install** to put it in.
+- pi and Antigravity share one quiet row. When they're signed in on a computer of Ducter's, it says
+  **Tasks {name} runs on them pass messages; yours can't yet**: a task your partner runs on them can
+  ask your other agents something. The first time it does, a card in your conversation shows which
+  task, who it's for and the words, with **Send**; nothing goes before you tap it, and the answer goes
+  back into the task. Otherwise it says **Their Nowledge Mem plugin can't pass messages yet**: that
+  is for Nowledge Mem to add, nothing for you to fix.
 
 **Back and forth** keeps a thread for each agent, newest first. Each exchange shows what was asked
 and what came of it, in your partner's words: **It wrote; I opened the task "…"**, **It wrote; I

@@ -115,7 +115,7 @@ describe("the conversation says it once (D470)", () => {
 
 describe("the words (D470)", () => {
   const go = read("../desktop/internal/i18n/memory.go");
-  const mine = Object.keys(memoryWords.zh).filter((k) => /^(say\.peers\.|need\.peers\.|peers\.(map|way|why|fix|last|ex|trust|rules)\b|peer\.origin)/.test(k));
+  const mine = Object.keys(memoryWords.zh).filter((k) => /^(say\.peers\.|need\.peers\.|peers\.(agents|st|fix|last|ex|trust|rules)\b|peer\.origin)/.test(k));
   test("zh and en together, the same on the Mac, no counter word, no dot-joined facts", () => {
     expect(mine.length).toBeGreaterThan(30);
     for (const lang of ["zh", "en"] as const)

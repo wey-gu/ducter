@@ -1221,6 +1221,9 @@ read or stored: the week's count is the same Recently list, counted.
 
 ## Who reaches whom, the exchanges as threads, who may ask what (D470, 2026-11-22)
 
+> D489: 谁能找到谁's picture per agent is replaced by 你的 agent, a literal row per agent, and 打开它的信箱's
+> choice by one tap with the Space already in it (below); the threads and rules stand.
+
 The author asked how Bridge's design and experience are. The conversation already spoke well (the
 partner says a request in its own words); Settings › Agent messaging still spoke the old language.
 D470 rebuilt it in D469's: the partner reports, Pebble's art carries state, the real fix is the button.
@@ -1257,6 +1260,10 @@ D470 rebuilt it in D469's: the partner reports, Pebble's art carries state, the 
 
 ## The mailbox's Space, chosen in place (D480, 2026-11-22)
 
+> D489: the question and its two buttons are replaced by the offer under the agent's row (**让它收到回话**,
+> the Space in its one line, **换一个空间**); the facts below (Mem's explicit Space, the suggestion, no
+> "another Mem") stand.
+
 The author met D470's mailbox task stopped on 「Claude Code 的信箱放在哪个 Space？请回复 Space 名称（例如
 dev-team）。」 with four buttons, and had to ask which Spaces there are. The fact that shapes the answer
 (VERIFIED, nmem 0.10.122): Mem's Bridge always needs an explicit Space and says "suggested entries are hints,
@@ -1291,6 +1298,34 @@ open.
   relay on the home, the same Mem); never promise what can't arrive, point the person at the row, never a task,
   never ask for a typed Space name (principle 21: a fact in what it sees, not a rule over words).
 - **Not yet**: the enable run once for real (it writes Mem-side; the author's step).
+
+## Your agents, said as what you get, and one tap to hear back (D489, 2026-11-23)
+
+The author, on 0.1.18's pane: 「这个 bridge 是什么情况？我们的 bridge 本身有新的体验上的设计上的问题么」. D470's
+谁能找到谁 drew one two-arrow picture per agent: a one-tap setup in red dashes with a red sentence about
+信箱 and 空间; pi's and Antigravity's permanent gap (Mem's to add) in the same dashes; the partner's
+stone at a different size per row; each way labelled twice; the pane's purpose unsaid; 来往 below the fold.
+
+- **你的 agent / Your agents**, a literal list (chosen over a compact glyph per row, one hub picture,
+  a two-column matrix and the head sentence alone; rubric in D489): per agent whose Mem plugin carries
+  Bridge, its tile, its name, what it can do with the partner as what the person gets, when it last came:
+  **能把事交给我，也收得到我的回话** (both), **能把事交给我，我的回话它还收不到** (one way),
+  **能把事交给我** (Mem hasn't said about the way back), **装上 Nowledge Mem 插件，它就能把事交给我** with
+  **装上**, **Nowledge Mem 还没说它装没装插件**, **正在让它收到回话，好了这里会变** (the task is running). pi and
+  Antigravity share one quiet row: **{name}开的任务能替它们传话，你自己开的还不行** (D448's relay) or
+  **它们的 Nowledge Mem 插件还不会传话**. No arrows, no dashes, no needs-you ink on the pane.
+- **One tap to hear back** (D480's facts stand). Showing the pane looks up that computer's Spaces once,
+  read only (`mailbox_look`), for the agent whose answers can't reach it; under its row: **回话会送到
+  Nowledge Mem 的「只有你」空间，只有你能看到。** with **让它收到回话**: the tap is the Go, with that Space.
+  **换一个空间** opens the real list (who can read each, 推荐 on the suggestion); open, the list comes first
+  and the offer follows it. Without Ducter's suggestion nothing is picked: the list is open and the
+  person picks first (the first Space is never a silent default). Mem picks no Space; neither does Ducter.
+- **The head** says it once, as the partner, in its plain ink: **Codex 和我能来回传话，Claude Code 还差一步。**
+  (**{both} 和我能来回传话。**, **{tool} 能把事交给我，还差一步就能收到我的回话。**, **{tool} 能把事交给我。**).
+  Both ways only where Mem said so. The one-way agent is still Overview's 等你, its button **让它收到回话**.
+- **What the pane is for**, under the switch: **它们能把事交给{name}，也能问{name}事情；{name}也替你去问它们。
+  要你定的，都会出现在你们的对话里。**
+- **Mem's side** (what would make the one tap disappear): `research/private/bridge-feedback-2026-11-23.md`.
 
 ## Open questions
 

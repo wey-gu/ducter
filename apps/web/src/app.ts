@@ -835,7 +835,7 @@ class AppState {
       // D480: the answer for the row still open (a later tap elsewhere wins).
       const c = this.mailboxChoosing;
       if (!c || c.device !== f.device || c.harness !== f.harness) return;
-      this.mailboxChoosing = { ...c, look: f.look, pick: c.pick ?? f.look.recommend ?? f.look.spaces?.[0]?.id };
+      this.mailboxChoosing = { ...c, look: f.look, pick: c.pick ?? f.look.recommend };
       return void this.changed();
     }
     if (f.t === "mem_plugin_result") return void ((this.memAnswer = f.ok ? undefined : { device: f.device, harness: f.harness, reason: f.reason ?? "failed" }), this.changed());
@@ -2337,7 +2337,7 @@ class AppState {
     this.changed();
   }
   /**
-   * D470, D480: 打开它的信箱 / Open its mailbox: one task on that device opens the agent's Nowledge Mem
+   * D470, D480, D489: 让它收到回话 / Let it hear back: one task on that device opens the agent's Nowledge Mem
    * mailbox (the tap is its Go), in the Space the person chose in place (never asked again by the task).
    */
   openMailbox(device: string, harness: string, space?: { id: string; label: string }) {
@@ -2364,6 +2364,8 @@ class AppState {
     this.mailboxChoosing = undefined;
     this.changed();
   }
+  /** D489: the agents whose Spaces this window already looked up by itself when the pane showed (once each). */
+  mailboxAsked = new Set<string>();
   /** D470: the mailboxes this window asked to open (until the next look at Mem's list says otherwise). */
   mailboxOpening = new Set<string>();
   /** D470: the request lines the partner's next words already say (hidden), and the message each one stands over (origin). */

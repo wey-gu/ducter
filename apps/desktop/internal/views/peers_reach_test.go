@@ -85,7 +85,7 @@ func TestAwayAndThreadWords(t *testing.T) {
 	}
 	for _, l := range []i18n.Lang{i18n.ZH, i18n.EN} {
 		L := i18n.New(l)
-		for _, k := range []string{"peers.map.title", "peers.way.to.yes", "peers.why.install", "peers.why.unknown", "peers.reach.none", "peers.out.sending", "peers.out.unknown", "peers.out.unconfirmed", "peers.out.failed", "peers.elsewhere.away", "peers.away", "recall.thread", "recall.thread.any", "recall.from.thread", "recall.thread.why"} {
+		for _, k := range []string{"peers.agents.title", "peers.st.both", "peers.st.install", "peers.st.unknown", "peers.st.none", "peers.out.sending", "peers.out.unknown", "peers.out.unconfirmed", "peers.out.failed", "peers.elsewhere.away", "peers.away", "recall.thread", "recall.thread.any", "recall.from.thread", "recall.thread.why"} {
 			if v := L.T(k); v == "" || v == k {
 				t.Fatalf("%s: %s missing", l, k)
 			}

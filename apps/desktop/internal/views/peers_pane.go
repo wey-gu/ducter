@@ -157,7 +157,7 @@ func (a *App) peersCard(c *ui.Context, st *protocol.Settings) {
 				set(next)
 				a.say("peers", said)
 			})
-			note := a.L.T("peers.switch.on")
+			note := a.L.T("peers.switch.on", name)
 			if !on {
 				note = a.L.T("peers.off.kept")
 			}
@@ -173,7 +173,7 @@ func (a *App) peersCard(c *ui.Context, st *protocol.Settings) {
 		a.peersNames(c, b, name)
 		a.peersStuck(c, b, name)
 		a.peersNotices(c, b, name)
-		a.peersMap(c, name)
+		a.peersAgents(c, name)
 		threads := exchangeThreads(peerFeed(a.S.Channel, a.S.TaskPeers), a.S.OutOps, a.S.Decisions, 3)
 		a.peersThreads(c, name, threads, p)
 		a.peersRules(c, p)

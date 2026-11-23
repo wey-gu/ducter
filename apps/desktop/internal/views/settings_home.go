@@ -57,7 +57,7 @@ func (a *App) setNeeds() []setNeed {
 		}
 	}
 	for _, r := range a.peersOneWay() {
-		out = append(out, setNeed{key: "peers:" + r.Harness, text: a.L.T("need.peers.oneway", r.Tool), goLabel: a.L.T("peers.fix.mailbox"), tab: TabPeers, boxDevice: r.Device, boxHarness: r.Harness})
+		out = append(out, setNeed{key: "peers:" + r.Harness, text: a.L.T("need.peers.oneway", r.Tool), goLabel: a.L.T("peers.fix.hear"), tab: TabPeers, boxDevice: r.Device, boxHarness: r.Harness})
 	}
 	if n, running := a.updatesWaiting(); n > 0 && !running {
 		s := a.L.T("need.update.one")
@@ -258,6 +258,9 @@ func (a *App) autofillSay() string {
 func (a *App) paneSpeaks(c *ui.Context, tab, say string) {
 	t := a.T
 	needs := a.needsOf(tab)
+	if tab == TabPeers {
+		needs = nil // D489: the agent's own row carries its offer; the head says it once, as the partner
+	}
 	pose := theme.Idle
 	if len(needs) > 0 {
 		pose = theme.NeedsYou

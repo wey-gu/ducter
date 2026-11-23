@@ -23,29 +23,25 @@ const spaced = join(root, "review the copy 再开 PR");
 const other = join(root, "另一个-文件夹");
 for (const d of [zh, spaced, other]) mkdirSync(d);
 const encoded = (p: string) => p.split("/").map((s) => encodeURIComponent(s)).join("/");
-
-test("one directory, every spelling a session store uses: raw, percent-encoded, a file URI, NFD", () => {
-  for (const dir of [zh, spaced]) {
-    expect(sameDirectory(encoded(dir), dir, "linux")).toBe(true);
-    expect(sameDirectory(pathToFileURL(dir).href, dir, "linux")).toBe(true);
-    expect(sameDirectory(dir.normalize("NFD"), dir, "linux")).toBe(true);
-    expect(sameDirectory(dir, encoded(dir), "linux")).toBe(true);
-  }
-  // Never two different folders: the encoded spelling of one is not the other.
-  expect(sameDirectory(encoded(zh), other, "linux")).toBe(false);
-  expect(sameDirectory(encoded(spaced), zh, "linux")).toBe(false);
-  // A literal percent that isn't an escape stays as written.
-  expect(sameDirectory(join(root, "100%-done"), join(root, "100%-done"), "linux")).toBe(true);
-  expect(sameDirectory(join(root, "100%-done"), zh, "linux")).toBe(false);
-});
-
 /** A fake ACP connection whose session/list reports cwd the way agy does: from its workspace URI. */
 const listing = (sessionId: string, cwd: string) => ({
   connection: { agent: { request: async (method: string) => (method === "session/list" ? { sessions: [{ sessionId, cwd }] } : {}) } },
   exited: new Promise(() => {}),
 });
 
-test("OAR's resume guard lets a Chinese-named folder's session resume, and still refuses another folder", async () => {
+test("one directory, every spelling a session store uses (raw, percent-encoded, a file URI, NFD), and OAR's resume guard holds it", async () => {
+  for (const dir of [zh, spaced]) {
+    expect(sameDirectory(encoded(dir), dir, "linux")).toBe(true);
+    expect(sameDirectory(pathToFileURL(dir).href, dir, "linux")).toBe(true);
+    expect(sameDirectory(dir.normalize("NFD"), dir, "linux")).toBe(true);
+    expect(sameDirectory(dir, encoded(dir), "linux")).toBe(true);
+  }
+  // Never two different folders; a literal percent that isn't an escape stays as written.
+  expect(sameDirectory(encoded(zh), other, "linux")).toBe(false);
+  expect(sameDirectory(encoded(spaced), zh, "linux")).toBe(false);
+  expect(sameDirectory(join(root, "100%-done"), join(root, "100%-done"), "linux")).toBe(true);
+  expect(sameDirectory(join(root, "100%-done"), zh, "linux")).toBe(false);
+  // The resume guard: a Chinese-named folder's session resumes; another folder is still refused.
   await expect(refuseResumeElsewhere(listing("s1", encoded(zh)), "s1", zh, 1000)).resolves.toBeUndefined();
   await expect(refuseResumeElsewhere(listing("s2", pathToFileURL(spaced).href), "s2", spaced, 1000)).resolves.toBeUndefined();
   await expect(refuseResumeElsewhere(listing("s3", encoded(other)), "s3", zh, 1000)).rejects.toThrow(/lives in/);

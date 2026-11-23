@@ -67,14 +67,6 @@ function setup(exec: Exec, dir?: string, clock = new FakeClock(Date.parse("2026-
 const checkpoint = (log: ReturnType<typeof openLog>, taskId: string, body: Partial<Bodies["checkpoint"]>) =>
   log.append({ stream: `task:${taskId}`, origin: "task", kind: "checkpoint", body: { taskId, text: "opened the PR", ...body } });
 
-test("a PR's identity from what a task or a report names (structure only)", () => {
-  expect(prIdentity("nowledge-co/mem#10932")).toBe("nowledge-co/mem#10932");
-  expect(prIdentity("https://github.com/nowledge-co/mem/pull/10932/files")).toBe("nowledge-co/mem#10932");
-  expect(prIdentity("Nowledge-Co/Mem/pull/10932")).toBe("nowledge-co/mem#10932");
-  expect(prIdentity("PR 10932")).toBeUndefined();
-  expect(prIdentity("https://github.com/nowledge-co/mem/issues/10931")).toBeUndefined();
-});
-
 test("hel's evening: CI's end and a review comment on the task's own PR wake it with the news; nothing twice", async () => {
   const { gh, exec } = fakeGitHub();
   const { clock, log, tasks, work, sent } = setup(exec);
@@ -131,7 +123,11 @@ test("news waits while the task is in a turn; a push not its own is said; a rest
   expect(gh.calls).toBe(calls); // no longer watched
 });
 
-test("another task's report naming the PR in its evidence reaches the task that owns it", async () => {
+test("another task's report naming the PR in its evidence reaches the task that owns it (by the PR's identity, never words)", async () => {
+  expect(prIdentity("https://github.com/nowledge-co/mem/pull/10932/files")).toBe("nowledge-co/mem#10932");
+  expect(prIdentity("Nowledge-Co/Mem/pull/10932")).toBe("nowledge-co/mem#10932");
+  expect(prIdentity("PR 10932")).toBeUndefined();
+  expect(prIdentity("https://github.com/nowledge-co/mem/issues/10931")).toBeUndefined();
   const { gh, exec } = fakeGitHub();
   const { log, tasks, work, sent } = setup(exec);
   openTask(log, "b7", "open the PR");

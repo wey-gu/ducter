@@ -1,0 +1,615 @@
+{
+ "model": "haiku",
+ "fixtures": 22,
+ "planted": 13,
+ "calls": 44,
+ "tokens": 110823,
+ "runs": {
+  "detectors": {
+   "planted": 13,
+   "found": 5,
+   "kept": 0,
+   "right": 0,
+   "wrong": 0,
+   "rows": {
+    "t-story-late-flight": {
+     "found": [
+      "no hotel the night of 12/3"
+     ],
+     "claims": [
+      "mismatch: NH 920 lands at Tokyo Haneda at 21:40 on 12/3, but Hotel Gracery Shinjuku starts 12/4: nowhere to stay that night."
+     ]
+    },
+    "t-wrong-day": {
+     "found": [
+      "arrives a day before the hotel"
+     ],
+     "claims": [
+      "mismatch: MU 523 lands at Osaka Kansai at 14:20 on 12/3, but Cross Hotel Osaka starts 12/4: nowhere to stay that night."
+     ]
+    },
+    "t-wrong-city": {
+     "found": [],
+     "claims": []
+    },
+    "t-two-hotels": {
+     "found": [],
+     "claims": []
+    },
+    "t-meeting-in-air": {
+     "found": [
+      "in the air during the review"
+     ],
+     "claims": [
+      "mismatch: \"Q4 review: Acme × Nowledge\" at 10:00 on 12/5 is while you're on UA 889."
+     ]
+    },
+    "t-plan-while-away": {
+     "found": [],
+     "claims": []
+    },
+    "t-changed-flight": {
+     "found": [],
+     "claims": [
+      "plan_changed: CA 931 changed: now 12/9."
+     ]
+    },
+    "t-story-domain": {
+     "found": [
+      "the renewal will fail"
+     ],
+     "claims": []
+    },
+    "t-card-cant-pay": {
+     "found": [],
+     "claims": []
+    },
+    "t-passport": {
+     "found": [],
+     "claims": []
+    },
+    "t-renew-shutting-down": {
+     "found": [],
+     "claims": []
+    },
+    "t-two-at-once": {
+     "found": [],
+     "claims": []
+    },
+    "t-buried": {
+     "found": [
+      "no hotel the night of 12/11"
+     ],
+     "claims": [
+      "mismatch: 3U 8960 lands at Chengdu Tianfu at 11:15 on 12/11, but The Temple House starts 12/12: nowhere to stay that night."
+     ]
+    },
+    "f-red-eye": {
+     "found": [],
+     "claims": []
+    },
+    "f-late-covered": {
+     "found": [],
+     "claims": []
+    },
+    "f-return-on-checkout": {
+     "found": [],
+     "claims": []
+    },
+    "f-two-cities": {
+     "found": [],
+     "claims": []
+    },
+    "f-licence-later": {
+     "found": [],
+     "claims": []
+    },
+    "f-autopay-fine": {
+     "found": [],
+     "claims": []
+    },
+    "f-same-day-apart": {
+     "found": [],
+     "claims": []
+    },
+    "n-receipts": {
+     "found": [],
+     "claims": []
+    },
+    "n-quiet-week": {
+     "found": [],
+     "claims": []
+    }
+   }
+  },
+  "haiku-en": {
+   "planted": 13,
+   "found": 12,
+   "kept": 12,
+   "right": 12,
+   "wrong": 0,
+   "precision": 1,
+   "recall": 0.9230769230769231,
+   "byGroup": {
+    "t": {
+     "planted": 13,
+     "found": 12,
+     "kept": 12,
+     "right": 12,
+     "wrong": 0
+    },
+    "f": {
+     "planted": 0,
+     "found": 0,
+     "kept": 0,
+     "right": 0,
+     "wrong": 0
+    },
+    "n": {
+     "planted": 0,
+     "found": 0,
+     "kept": 0,
+     "right": 0,
+     "wrong": 0
+    }
+   },
+   "unknownDropped": 0,
+   "rows": {
+    "t-story-late-flight": {
+     "mark": "found",
+     "kept": [
+      {
+       "text": "NH 920 lands at Tokyo Haneda on 2026-12-03 at 21:40 JST, but the Hotel Gracery Shinjuku booking starts 2026-12-04, so the night of 12-03 has no hotel.",
+       "why": "You could arrive late at night in Tokyo with no bed booked and pay for an unplanned night.",
+       "next": "Check whether the Gracery check-in should be moved to 12-03, or book a hotel for that night.",
+       "confidence": 0.75,
+       "planted": true
+      }
+     ],
+     "dropped": []
+    },
+    "t-wrong-day": {
+     "mark": "found",
+     "kept": [
+      {
+       "text": "MU 523 lands at Osaka Kansai on 2026-12-03 at 14:20 JST, but the Cross Hotel Osaka reservation starts 2026-12-04, so no booking covers the night of 2026-12-03.",
+       "why": "They could arrive in Osaka with no bed for the first night.",
+       "next": "Check whether the Cross Hotel can start on 12-03, or book a separate night for 12-03.",
+       "confidence": 0.7,
+       "planted": true
+      }
+     ],
+     "dropped": []
+    },
+    "t-wrong-city": {
+     "mark": "found",
+     "kept": [
+      {
+       "text": "Flight HO 1333 lands at Osaka Kansai on 2026-12-10 at 11:30 (+09:00), but the Shibuya Stream Excel Hotel Tokyu in Tokyo is booked from 2026-12-10 to 2026-12-13.",
+       "why": "They could arrive in Osaka with no room, or pay for a Tokyo room they can't reach on arrival day.",
+       "next": "Check the booking and confirm whether they meant to fly into Haneda or Narita, or need an Osaka hotel.",
+       "confidence": 0.85,
+       "planted": true
+      }
+     ],
+     "dropped": []
+    },
+    "t-two-hotels": {
+     "mark": "found",
+     "kept": [
+      {
+       "text": "Parkroyal Collection Marina Bay is booked 2026-12-15 to 2026-12-18, and Hotel G Singapore is booked 2026-12-16 to 2026-12-19. Both cover the nights of 16, 17 and 18 December in Singapore.",
+       "why": "You could be charged for two hotels for the same nights, or arrive at one with no room.",
+       "next": "Check whether you meant to book both, and cancel one of the two bookings.",
+       "confidence": 0.8,
+       "planted": true
+      }
+     ],
+     "dropped": []
+    },
+    "t-meeting-in-air": {
+     "mark": "found",
+     "kept": [
+      {
+       "text": "The Q4 review with Dana (Acme) is set for 2026-12-05 10:00-11:00 Beijing time, but UA 889 departs Beijing (PEK) at 09:30 that same morning, so you'd be in the air for the whole meeting.",
+       "why": "You could miss a client review, or be expected on a Zoom you can't join from the plane.",
+       "next": "Ask Dana to move the Q4 review to after you land, or check whether you can join from the flight.",
+       "confidence": 0.85,
+       "planted": true
+      }
+     ],
+     "dropped": []
+    },
+    "t-plan-while-away": {
+     "mark": "found",
+     "kept": [
+      {
+       "text": "Lena's birthday dinner is set for Saturday 2026-12-12 at 19:00 in Shanghai, but Hotel Zoo Berlin runs 2026-12-10 to 2026-12-14 and LH 729 takes you to Berlin on 12-10, returning on LH 728 from Berlin on 12-14.",
+       "why": "You would miss Lena's birthday dinner, which is booked in Shanghai while you are in Berlin.",
+       "next": "Ask Lena or move the dinner to after your return on 12-15.",
+       "confidence": 0.9,
+       "planted": true
+      }
+     ],
+     "dropped": []
+    },
+    "t-changed-flight": {
+     "mark": "found",
+     "kept": [
+      {
+       "text": "Air China rescheduled CA 931 on 2026-12-09, but the itinerary still shows departure 2026-12-08 01:50 from PEK, landing Frankfurt 2026-12-08 06:10. The Moxy Frankfurt East stay starts 2026-12-08, so a later landing could leave the first night unused.",
+       "why": "Missed first night at the hotel, possibly a no-show charge, or a late arrival.",
+       "next": "Check the new CA 931 departure and arrival times in the Air China notice and confirm the hotel check-in.",
+       "confidence": 0.6,
+       "planted": true
+      }
+     ],
+     "dropped": []
+    },
+    "t-story-domain": {
+     "mark": "found",
+     "kept": [
+      {
+       "text": "The ducter.dev domain renews on Nov 30 for $12.20 on autopay, but the card on file has expired, so the renewal will likely fail.",
+       "why": "The domain could lapse and stop resolving if the renewal is declined.",
+       "next": "Update the payment card on the Cloudflare account before Nov 30.",
+       "confidence": 0.85,
+       "planted": true
+      }
+     ],
+     "dropped": []
+    },
+    "t-card-cant-pay": {
+     "mark": "MISSED",
+     "kept": [],
+     "dropped": []
+    },
+    "t-passport": {
+     "mark": "found",
+     "kept": [
+      {
+       "text": "Your passport expires on 20 December 2026, but FD 545 lands in Bangkok on 19 December and FD 544 flies you back to Shanghai on 27 December. The passport is valid for only about one day after you arrive.",
+       "why": "Thailand and many airlines refuse boarding or entry without enough passport validity, so you could be stopped at check-in or at the border.",
+       "next": "Renew the passport before 18 December, or confirm the exact validity rule for Thailand and your airline before you fly.",
+       "confidence": 0.9,
+       "planted": true
+      }
+     ],
+     "dropped": []
+    },
+    "t-renew-shutting-down": {
+     "mark": "found",
+     "kept": [
+      {
+       "text": "Omnivore Premium auto-renews on Dec 15 for $49.99, but Omnivore is shutting down on Jan 31, 2027 and all data will be deleted.",
+       "why": "You'd pay $49.99 for a service that closes about six weeks later, and your saved data would be lost.",
+       "next": "Check whether you can cancel before Dec 15 or export your data before Jan 31.",
+       "confidence": 0.75,
+       "planted": true
+      }
+     ],
+     "dropped": []
+    },
+    "t-two-at-once": {
+     "mark": "found",
+     "kept": [
+      {
+       "text": "You are confirmed to speak at the Shanghai AI Builders meetup in Xuhui at 19:00 on 2026-12-02, but you also have dinner with Sequoia at The Bund from 19:30 that same evening. The Bund is across the city from Xuhui, so you can't do both.",
+       "why": "You could miss the talk or the dinner, or arrive late to one and damage a key relationship.",
+       "next": "Check with the meetup organizer and Alex at Sequoia to move either the talk or the dinner.",
+       "confidence": 0.9,
+       "planted": true
+      }
+     ],
+     "dropped": []
+    },
+    "t-buried": {
+     "mark": "found",
+     "kept": [
+      {
+       "text": "The flight 3U 8960 lands in Chengdu on 2026-12-11 at 11:15, but the Temple House hotel booking starts 2026-12-12, so the night of 12-11 has no room booked.",
+       "why": "They could arrive in Chengdu with no place to sleep that night, or pay for a room they don't use.",
+       "next": "Check whether the hotel booking should start Dec 11 and extend or add a night.",
+       "confidence": 0.75,
+       "planted": true
+      }
+     ],
+     "dropped": []
+    },
+    "f-red-eye": {
+     "mark": "quiet",
+     "kept": [],
+     "dropped": []
+    },
+    "f-late-covered": {
+     "mark": "quiet",
+     "kept": [],
+     "dropped": []
+    },
+    "f-return-on-checkout": {
+     "mark": "quiet",
+     "kept": [],
+     "dropped": []
+    },
+    "f-two-cities": {
+     "mark": "quiet",
+     "kept": [],
+     "dropped": []
+    },
+    "f-licence-later": {
+     "mark": "quiet",
+     "kept": [],
+     "dropped": []
+    },
+    "f-autopay-fine": {
+     "mark": "quiet",
+     "kept": [],
+     "dropped": []
+    },
+    "f-same-day-apart": {
+     "mark": "quiet",
+     "kept": [],
+     "dropped": []
+    },
+    "n-receipts": {
+     "mark": "quiet",
+     "kept": [],
+     "dropped": []
+    },
+    "n-quiet-week": {
+     "mark": "quiet",
+     "kept": [],
+     "dropped": []
+    }
+   }
+  },
+  "haiku-zh": {
+   "planted": 13,
+   "found": 12,
+   "kept": 13,
+   "right": 12,
+   "wrong": 1,
+   "precision": 0.9230769230769231,
+   "recall": 0.9230769230769231,
+   "byGroup": {
+    "t": {
+     "planted": 13,
+     "found": 12,
+     "kept": 13,
+     "right": 12,
+     "wrong": 1
+    },
+    "f": {
+     "planted": 0,
+     "found": 0,
+     "kept": 0,
+     "right": 0,
+     "wrong": 0
+    },
+    "n": {
+     "planted": 0,
+     "found": 0,
+     "kept": 0,
+     "right": 0,
+     "wrong": 0
+    }
+   },
+   "unknownDropped": 0,
+   "rows": {
+    "t-story-late-flight": {
+     "mark": "found",
+     "kept": [
+      {
+       "text": "航班 NH 920 于 2026-12-03 21:40（东京时间）降落羽田机场，但 Hotel Gracery Shinjuku 的入住日期是 2026-12-04 起，12月3日当晚在东京没有住宿安排。",
+       "why": "抵达当晚可能无处入住，或被迫临时找房、额外付费。",
+       "next": "核实并补订 12月3日当晚的酒店，或将酒店入住日期改为12月3日。",
+       "confidence": 0.8,
+       "planted": true
+      }
+     ],
+     "dropped": []
+    },
+    "t-wrong-day": {
+     "mark": "found",
+     "kept": [
+      {
+       "text": "MU523 从上海浦东飞往大阪关西，2026-12-03 14:20（当地时间）抵达，但 Cross Hotel Osaka 的预订从 2026-12-04 才开始。12-03 晚上没有住宿记录。",
+       "why": "抵达当晚可能没有房间，可能需要临时找住处或额外付费。",
+       "next": "核对 12-03 当晚是否另有住宿，若没有，尽快改订或延长 Cross Hotel 入住日期。",
+       "confidence": 0.7,
+       "planted": true
+      }
+     ],
+     "dropped": []
+    },
+    "t-wrong-city": {
+     "mark": "found",
+     "kept": [
+      {
+       "text": "HO 1333 于 2026-12-10 11:30（日本时间）降落在大阪关西机场，但酒店 Shibuya Stream Excel Hotel Tokyu 在东京，入住日期同为 2026-12-10。",
+       "why": "可能到达大阪后赶不到东京的酒店，当晚无处住宿，并产生额外费用。",
+       "next": "确认航班目的地是否应为东京（羽田或成田），或更改酒店或航班。",
+       "confidence": 0.85,
+       "planted": true
+      }
+     ],
+     "dropped": []
+    },
+    "t-two-hotels": {
+     "mark": "found",
+     "kept": [
+      {
+       "text": "12月16日至18日三晚同时订了两家新加坡酒店:Parkroyal Collection Marina Bay(12月15日至18日)与Hotel G Singapore(12月16日至19日)。",
+       "why": "可能要为重复的住宿多付费,或到店时房间被取消。",
+       "next": "核对两笔预订,保留一家并取消另一家。",
+       "confidence": 0.85,
+       "planted": true
+      }
+     ],
+     "dropped": []
+    },
+    "t-meeting-in-air": {
+     "mark": "found",
+     "kept": [
+      {
+       "text": "Q4 review（Acme × Nowledge）安排在 2026-12-05 10:00–11:00（北京时间），但 UA 889 同日 09:30 从北京（PEK）起飞，你那时仍在飞机上。",
+       "why": "可能错过与 Dana (Acme) 和 Weizhen 的重要客户评审。",
+       "next": "确认能否在飞行途中接入 Zoom，或改约到你落地之后。",
+       "confidence": 0.7,
+       "planted": true
+      }
+     ],
+     "dropped": []
+    },
+    "t-plan-while-away": {
+     "mark": "found",
+     "kept": [
+      {
+       "text": "Lena的生日晚宴安排在2026年12月12日19:00，地点是上海的Lost Heaven，但你这段时间预订了12月10日至12月14日住在柏林Hotel Zoo Berlin，12月10日从上海飞往柏林（LH 729），12月14日才从柏林飞回上海（LH 728）。",
+       "why": "你可能人在柏林，错过Lena的生日晚宴。",
+       "next": "确认12月12日你是否在柏林；若是，联系Lena改期或请人代为致意。",
+       "confidence": 0.9,
+       "planted": true
+      }
+     ],
+     "dropped": []
+    },
+    "t-changed-flight": {
+     "mark": "found",
+     "kept": [
+      {
+       "text": "航班 CA 931 于 2026-12-09 被改期通知，但酒店 Moxy Frankfurt East 入住日期为 2026-12-08 至 2026-12-11。原定 12-08 06:10 抵达法兰克福，若改期到 12-09，则 12-08 当晚的酒店入住将落空。",
+       "why": "可能产生一晚无人入住的酒店费用，或抵达时没有房间。",
+       "next": "核对 Air China 最新行程的新出发和抵达时间，并与 Marriott 确认入住日期。",
+       "confidence": 0.6,
+       "planted": true
+      }
+     ],
+     "dropped": []
+    },
+    "t-story-domain": {
+     "mark": "found",
+     "kept": [
+      {
+       "text": "ducter.dev 域名将于 2026-11-30 由 Cloudflare 续费（$12.20），但续费绑定的银行卡已过期，自动续费很可能失败。",
+       "why": "域名到期后可能失效，网站和邮件都会中断。",
+       "next": "在 Cloudflare 更新有效的银行卡信息。",
+       "confidence": 0.85,
+       "planted": true
+      }
+     ],
+     "dropped": []
+    },
+    "t-card-cant-pay": {
+     "mark": "MISSED",
+     "kept": [],
+     "dropped": []
+    },
+    "t-passport": {
+     "mark": "found",
+     "kept": [
+      {
+       "text": "FD 545 于 2026-12-18 21:15（上海）起飞，2026-12-19 00:55（曼谷时间）落地，但 Ad Lib Bangkok 酒店入住日期是 2026-12-18，首晚你其实还在飞机上。",
+       "why": "首晚房费可能被浪费，或因未入住被按 no-show 收费、取消预订。",
+       "next": "联系 Agoda 或酒店，把入住日期改为 12-19，或确认是否可以晚到入住。",
+       "confidence": 0.8,
+       "planted": false
+      },
+      {
+       "text": "护照将于 2026-12-20 到期，而行程是 12-18 至 12-27，护照在旅途中途失效，返程 FD 544 于 12-27 离开曼谷时已过期。泰国入境通常要求护照至少有六个月有效期。",
+       "why": "可能无法入境泰国，或在曼谷被拒登机，导致行程中断。",
+       "next": "尽快办理护照换发或加急，并核对泰国入境的护照有效期要求。",
+       "confidence": 0.9,
+       "planted": true
+      }
+     ],
+     "dropped": []
+    },
+    "t-renew-shutting-down": {
+     "mark": "found",
+     "kept": [
+      {
+       "text": "Omnivore Premium 将于 2026-12-15 自动续费 $49.99，但 Omnivore 已通知将于 2027-01-31 关闭，届时所有数据删除。",
+       "why": "付了年费却只能用约一个半月，数据也会被删除。",
+       "next": "在 12-15 扣款前检查并取消自动续费，同时导出需要保留的数据。",
+       "confidence": 0.7,
+       "planted": true
+      }
+     ],
+     "dropped": []
+    },
+    "t-two-at-once": {
+     "mark": "found",
+     "kept": [
+      {
+       "text": "2026年12月2日晚上，你在徐汇的 Shanghai AI Builders 沙龙有19:00的演讲安排，同一晚外滩The Bund还有19:30开始的 Sequoia 晚餐。两处相距较远，你很可能赶不过去。",
+       "why": "演讲或晚餐可能缺席，失约会损害与 Sequoia 的关系或让沙龙失去演讲嘉宾。",
+       "next": "确认演讲的实际时长和结束时间，并与 Alex 协商把晚餐往后推或提前。",
+       "confidence": 0.7,
+       "planted": true
+      }
+     ],
+     "dropped": []
+    },
+    "t-buried": {
+     "mark": "found",
+     "kept": [
+      {
+       "text": "航班 3U 8960 于 2026-12-11 11:15 降落成都天府机场，但成都博舍酒店入住日期是 12-12，11 日当晚没有住宿记录。",
+       "why": "11 日晚可能没有住处，到店时可能无房或要临时找住宿。",
+       "next": "确认 11 日晚是否另有住宿，没有的话尽快改酒店入住日期。",
+       "confidence": 0.65,
+       "planted": true
+      }
+     ],
+     "dropped": []
+    },
+    "f-red-eye": {
+     "mark": "quiet",
+     "kept": [],
+     "dropped": []
+    },
+    "f-late-covered": {
+     "mark": "quiet",
+     "kept": [],
+     "dropped": []
+    },
+    "f-return-on-checkout": {
+     "mark": "quiet",
+     "kept": [],
+     "dropped": []
+    },
+    "f-two-cities": {
+     "mark": "quiet",
+     "kept": [],
+     "dropped": []
+    },
+    "f-licence-later": {
+     "mark": "quiet",
+     "kept": [],
+     "dropped": []
+    },
+    "f-autopay-fine": {
+     "mark": "quiet",
+     "kept": [],
+     "dropped": []
+    },
+    "f-same-day-apart": {
+     "mark": "quiet",
+     "kept": [],
+     "dropped": []
+    },
+    "n-receipts": {
+     "mark": "quiet",
+     "kept": [],
+     "dropped": []
+    },
+    "n-quiet-week": {
+     "mark": "quiet",
+     "kept": [],
+     "dropped": []
+    }
+   }
+  }
+ }
+}

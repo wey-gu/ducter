@@ -1796,6 +1796,16 @@ export function createWsHandler(deps: WsDeps) {
         }
         return;
       }
+      case "proactive_cross": {
+        // D502: one shadow pass now, logged like the daily one; answered on this socket only, never said.
+        const p = deps.proactive?.();
+        if (!p) throw new Error("not available");
+        void p
+          .cross("asked")
+          .then((run) => send(ws, { t: "proactive_cross_result", run }))
+          .catch((err: Error) => send(ws, { t: "proactive_cross_result", error: err.message.slice(0, 200) }));
+        return;
+      }
       case "repairs_week": {
         // D473: read-only, from the Log; answered on this socket only.
         if (!deps.repairs) throw new Error("not available");

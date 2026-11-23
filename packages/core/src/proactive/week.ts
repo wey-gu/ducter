@@ -7,7 +7,7 @@
 //
 // Nothing here changes what Ducter does. It is the author's instrument (`ducter proactive week`),
 // never a scorecard shown to the person.
-import type { Bodies, FindKind, FindRung, LogEvent, OfferCounts, ProactiveMode, WeekReport, WeekRow } from "@ducter/protocol";
+import type { Bodies, FindKind, FindRung, LogEvent, OfferCounts, ProactiveMode, ShadowWeek, WeekReport, WeekRow } from "@ducter/protocol";
 import { findFrom } from "@ducter/protocol";
 import type { LogStore } from "@ducter/protocol/src/internal.ts";
 import { dayKey } from "./detect.ts";
@@ -80,6 +80,8 @@ export interface WeekInput {
   weeks: number;
   mode: ProactiveMode;
   weights?: { kind: Partial<Record<FindKind, number>>; sender: Record<string, number> };
+  /** D502: the shadow passes (`shadow_finds`, partner stream) in the same span; absent or none: no shadow section. */
+  shadow?: LogEvent[];
 }
 
 /** The report from the Log's events (any order is read as the Log's: by seq). */
@@ -158,6 +160,13 @@ export function weekReport(events: LogEvent[], o: WeekInput): WeekReport {
     if (r.took) row.takenUp.push({ kind: r.kind, text: r.text, by: r.took.by, at: r.took.at, offer: r.offer });
   }
   for (const row of rows) row.takenUp = row.takenUp.sort((a, b) => a.at.localeCompare(b.at)).slice(-TAKEN_LIST);
+  for (const row of rows) {
+    const s = shadowWeek((o.shadow ?? []).filter((e) => {
+      const d = dayKey(Date.parse(e.ts), o.zone);
+      return d >= row.from && d <= plusDays(row.from, 6);
+    }));
+    if (s) row.shadow = s;
+  }
 
   const w = o.weights ?? { kind: {}, sender: {} };
   const senders = Object.entries(w.sender)
@@ -170,6 +179,45 @@ export function weekReport(events: LogEvent[], o: WeekInput): WeekReport {
 }
 
 const round = (v: number) => Math.round(v * 100) / 100;
+
+/** D502: shadow-only findings quoted per week. */
+export const SHADOW_LIST = 6;
+
+/**
+ * D502: one week of shadow passes against the detectors: the findings (each fact set once), those a
+ * detector also has, those only the model has (what promotion would add), and the detectors' joins
+ * no finding touched. Passes that never asked the model (budget, no facts, failed) count nothing.
+ */
+export function shadowWeek(events: LogEvent[]): ShadowWeek | undefined {
+  const runs = events.filter((e) => e.kind === "shadow_finds").map((e) => ({ at: e.ts, r: e.body as Bodies["shadow_finds"] })).filter((x) => !x.r.skipped);
+  if (!runs.length) return;
+  const findings = runs.flatMap((x) => x.r.findings.map((f) => ({ ...f, at: x.at })));
+  const touched = new Set(findings.flatMap((f) => f.facts));
+  const detectorsOnly = new Set(runs.flatMap((x) => x.r.detectorsOnly.filter((d) => !d.facts.some((id) => touched.has(id))).map((d) => d.key)));
+  const only = findings.filter((f) => !f.alsoBy.length);
+  return {
+    runs: runs.length,
+    findings: findings.length,
+    both: findings.length - only.length,
+    shadowOnly: only.length,
+    detectorsOnly: detectorsOnly.size,
+    list: only.slice(-SHADOW_LIST).map((f) => ({ text: f.text, confidence: f.confidence, facts: f.facts.length, at: f.at })),
+  };
+}
+
+/** D502: the shadow passes since `since` (ms), from the partner stream. */
+export function readShadowEvents(log: Pick<LogStore, "read">, since: number): LogEvent[] {
+  const out: LogEvent[] = [];
+  let before: number | undefined;
+  for (;;) {
+    const page = log.read({ stream: "partner", kinds: ["shadow_finds"], limit: 500, ...(before !== undefined ? { beforeSeq: before } : {}) });
+    if (!page.length) break;
+    out.push(...page);
+    if (Date.parse(page[0]!.ts) < since || page.length < 500) break;
+    before = page[0]!.seq;
+  }
+  return out.filter((e) => Date.parse(e.ts) >= since);
+}
 
 /** The channel's events the count needs since `since` (ms), paged back from the newest. */
 export function readWeekEvents(log: Pick<LogStore, "read">, since: number): LogEvent[] {

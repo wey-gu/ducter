@@ -5,7 +5,7 @@
 // D464: `ducter proactive week [--weeks N] [--json]`: what Ducter offered by itself each week, read
 // from the home's Log, and what came of it (opened, Go, 有用, replied, faded, 这类不用告诉我), by
 // source and by kind, against the one-in-twenty line (D453); interruptions apart; the weights now.
-import { AHA_LINE, FIND_FROMS, FIND_KINDS, type FindKind, type OfferCounts, type ReplayReport, type ServerFrame, type WeekReport, type WeekRow } from "@ducter/protocol";
+import { AHA_LINE, FIND_FROMS, FIND_KINDS, type FindKind, type OfferCounts, type ReplayReport, type ServerFrame, type ShadowRun, type WeekReport, type WeekRow } from "@ducter/protocol";
 import { words, type LangTag } from "@ducter/protocol";
 import { KIND_WORDS } from "@ducter/core/src/proactive/words.ts";
 import { connect, type Conn } from "./client.ts";
@@ -34,6 +34,7 @@ const REPLAY_MS = 20 * 60_000;
 export async function cmdProactive(o: Opts): Promise<number> {
   const print = o.print ?? ((l: string) => console.log(l));
   if (o.rest[0] === "week") return cmdWeek(o, print);
+  if (o.rest[0] === "cross") return cmdCross(o, print);
   if (o.rest[0] !== "replay" || (o.days !== undefined && (o.days < 1 || o.days > 7))) {
     print(o.t("proactive.usage"));
     return 2;
@@ -111,6 +112,51 @@ async function cmdWeek(o: Opts, print: (l: string) => void): Promise<number> {
   }
 }
 
+/** D502: one pass on the cheapest model: a minute or two at most. */
+const CROSS_MS = 3 * 60_000;
+
+/** D502: `ducter proactive cross`: one shadow pass now (logged like the daily one; nothing is said). */
+async function cmdCross(o: Opts, print: (l: string) => void): Promise<number> {
+  const c = o.conn ?? (await connect(o.target));
+  if (!c) {
+    print(await notReached(o.t, o.target));
+    return 1;
+  }
+  try {
+    c.send({ t: "proactive_cross" });
+    const f = await c.next((x: ServerFrame): x is Extract<ServerFrame, { t: "proactive_cross_result" }> => x.t === "proactive_cross_result", CROSS_MS);
+    if (!f?.run) {
+      print(o.json ? JSON.stringify({ ok: false, error: f?.error ?? "timeout" }) : o.t("proactive.cross.failed", { reason: f?.error ?? "no answer in 3 minutes" }));
+      return 1;
+    }
+    if (o.json) print(JSON.stringify({ ok: true, run: f.run }));
+    else for (const l of crossLines(o.t, f.run)) print(l);
+    return 0;
+  } finally {
+    if (!o.conn) c.close();
+  }
+}
+
+/** D502: a shadow pass as lines: each finding with its facts and the detectors that also have it, then what code dropped. */
+export function crossLines(t: T, r: ShadowRun): string[] {
+  if (r.skipped) return [t(`proactive.cross.skipped.${r.skipped}` as Key, { error: r.error ?? "" })];
+  const out = [t("proactive.cross.head", { facts: r.facts, n: r.findings.length, repeats: r.repeats })];
+  for (const f of r.findings) {
+    out.push("", `  ${f.text}`, `      ${t("proactive.cross.why", { why: f.why, next: f.next, c: Math.round(f.confidence * 100) })}`);
+    out.push(`      ${t(f.alsoBy.length ? "proactive.cross.also" : "proactive.cross.only", { kinds: f.alsoBy.join(", "), facts: f.facts.join(" ") })}`);
+  }
+  if (r.dropped.length) out.push("", t("proactive.cross.dropped", { list: r.dropped.map((d) => `${d.why} ${d.n}`).join(", ") }));
+  if (r.detectorsOnly.length) out.push(t("proactive.cross.detectorsOnly", { list: r.detectorsOnly.map((d) => d.kind).join(", ") }));
+  return out;
+}
+
+/** D502: a week's shadow section under its offers. */
+function shadowBlock(t: T, s: NonNullable<WeekRow["shadow"]>): string[] {
+  const out = ["", `  ${t("proactive.week.shadow", { runs: s.runs, n: s.findings, both: s.both, only: s.shadowOnly, detectors: s.detectorsOnly })}`];
+  for (const x of s.list) out.push(`    ${t("proactive.week.quote", { words: x.text.length > 80 ? `${x.text.slice(0, 79)}…` : x.text })} (${Math.round(x.confidence * 100)}%)`);
+  return out;
+}
+
 /** "11 月 16 日" / "Nov 16": the month's name and the order from the table. */
 function dayWords(t: T, day: string): string {
   const [, m, d] = day.split("-").map(Number) as [number, number, number];
@@ -179,5 +225,6 @@ function weekBlock(t: T, w: WeekRow, kindName: (k: FindKind) => string): string[
       out.push(`    ${padEnd(t(`proactive.week.by.${x.by}` as Key), byW)}${padEnd(kindName(x.kind), kindW)}${said}`);
     }
   }
+  if (w.shadow) out.push(...shadowBlock(t, w.shadow));
   return out;
 }

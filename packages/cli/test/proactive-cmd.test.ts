@@ -8,7 +8,7 @@ import { join } from "node:path";
 import type { OfferCounts, ReplayReport, WeekReport } from "@ducter/protocol";
 import { FakeClock } from "@ducter/core/src/clock.ts";
 import { startCore, type Core } from "@ducter/core/src/core.ts";
-import { cmdProactive, replayLines, weekLines } from "../src/proactive-cmd.ts";
+import { cmdProactive, crossLines, replayLines, weekLines } from "../src/proactive-cmd.ts";
 import { translator } from "../src/i18n.ts";
 
 let core: Core | undefined;
@@ -140,4 +140,23 @@ test("week: the home counts its own Log over the socket (json and plain)", async
   lines.length = 0;
   expect(await cmdProactive({ t: translator("en"), target, json: false, rest: ["week"], lang: "en", print: (l) => lines.push(l) })).toBe(0);
   expect(lines.join("\n")).toContain("Offered 2, you took up 1: 50%.");
+}, 30_000);
+
+test("cross (D502): a shadow pass as lines, and the week's shadow section from the partner stream", async () => {
+  const run = { runId: "s1", by: "asked" as const, facts: 12, findings: [{ key: "f_a+f_b", facts: ["f_a", "f_b"], text: "Lands in Osaka on 12/10, the hotel that night is in Tokyo.", why: "a night with nowhere to sleep", next: "check the hotel", confidence: 0.86, alsoBy: [], said: false }], repeats: 1, dropped: [{ why: "unknown_fact" as const, n: 1 }], detectorsOnly: [], tokens: 900 };
+  const text = crossLines(translator("en"), run).join("\n");
+  expect(text).toContain("In shadow, over 12 facts: found 1 new (1 already logged).");
+  expect(text).toContain("      matters: a night with nowhere to sleep; next: check the hotel; sure: 86%");
+  expect(text).toContain("no detector has it  (facts f_a f_b)");
+  expect(text).toContain("Dropped by code: unknown_fact 1");
+  expect(crossLines(translator("zh"), { ...run, skipped: "budget" })).toEqual(["没问：今天的影子检查已经用完了，明天再试。"]);
+  dir = mkdtempSync(join(tmpdir(), "ducter-cli-cross-"));
+  const clock = new FakeClock(Date.parse("2026-11-17T00:00:00Z"));
+  core = startCore({ dataDir: dir, port: 0, push: false, platform: "linux", clock, proactive: { zone: "Asia/Shanghai" } });
+  core.log.append({ stream: "partner", origin: "system", kind: "shadow_finds", body: run });
+  const lines: string[] = [];
+  expect(await cmdProactive({ t: translator("en"), target: { kind: "local", port: core.port }, json: true, rest: ["week"], weeks: 1, print: (l) => lines.push(l) })).toBe(0);
+  const w = (JSON.parse(lines[0]!) as { report: WeekReport }).report.weeks[0]!;
+  expect(w.shadow).toMatchObject({ runs: 1, findings: 1, both: 0, shadowOnly: 1, detectorsOnly: 0 });
+  expect(weekLines(translator("en"), { ...sample, weeks: [w] }, "en").join("\n")).toContain("In shadow (never said): 1 passes, 1 findings; a detector also has 0, only the model has 1; only the detectors have 0");
 }, 30_000);

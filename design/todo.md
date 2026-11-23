@@ -2912,3 +2912,18 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] **Try again said back.** 再试一次 says its line at once; when the source still doesn't answer the row
   stays 连不上 with no second word (D404: a retry that met the same lack says so). Trigger: a person taps it
   twice.
+
+## The opened task on a phone (D484)
+
+- [ ] **The Mac in step.** The Mac's opened task still shows a provider's raw error as the agent's
+  words (its transcript is Go, `views/transcript*.go`), has no Share, and keeps ⋯ to 取消任务: port
+  `providerError`/`foldErrors` (`apps/web/src/task-words.ts`, `transcript.tsx`), the PR chip under
+  the waitline, Share (NSSharingServicePicker with the same lines), and 查看草稿 PR for a PR already
+  opened; the keys are `i18n-d484.ts`'s. *Trigger:* the author's review of D484 on the web.
+- [ ] **The iOS Simulator walk** of the phone's bar, Share (the system sheet only shows there, on a
+  secure page) and 这个任务. Chrome's emulation stood in. *Trigger:* the next phone pass.
+- [ ] **发出去的 / What went out** still prints `gh pr create …` as a command: say what it did (开了
+  草稿 PR #212, a link) from the command's own output. *Trigger:* the next opened-task pass.
+- [ ] **A waiting task opens at its end** (D271), so on a phone its head (what it waits on, the PR)
+  is a scroll away when the transcript is long; the end line says the wait but not the PR.
+  *Trigger:* the author asks for the head on open, or the PR in the end line.

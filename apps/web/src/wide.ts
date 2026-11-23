@@ -34,6 +34,23 @@ export function useWide(): boolean {
   return wide || !!split;
 }
 
+/** A phone's width (under 700, where sheets rise from the bottom and the header holds only the
+ *  screen's own actions; D484). Follows the width as it changes. */
+export const PHONE = "(max-width: 699px)";
+export const phoneNow = () => typeof matchMedia === "function" && matchMedia(PHONE).matches;
+export function usePhone(): boolean {
+  const [phone, setPhone] = useState(phoneNow);
+  useEffect(() => {
+    if (typeof matchMedia !== "function") return;
+    const q = matchMedia(PHONE);
+    const on = () => setPhone(q.matches);
+    on();
+    q.addEventListener("change", on);
+    return () => q.removeEventListener("change", on);
+  }, []);
+  return phone;
+}
+
 /** How the panes split at a fold right now, kept on the page for CSS (data-split, --fold-*). */
 export function useSplit(): Split | undefined {
   const [split, setSplit] = useState(currentSplit);

@@ -21,6 +21,9 @@ import { taskStream, type CoreRegistry } from "./registry.ts";
 import { neverFor, rulesOut, type RuleWork, type RulesStore } from "./rules.ts";
 import type { SaidStore } from "./said.ts";
 import type { SettingsStore } from "./settings.ts";
+import type { AccountUsage } from "@ducter/protocol";
+import type { AgentLimit } from "./agent-limits.ts";
+import { overReserve, sameModelRoutes } from "./routes.ts";
 
 /** A hidden channel note of a switch (clients skip job_status ids with this prefix). */
 export const BODY_NOTE_PREFIX = "body_";
@@ -38,8 +41,8 @@ export interface Loadout {
   computers(needs?: TaskNeeds): Promise<Computer[] | undefined>;
   /** 换到 X 接着做 / Continue on X; D157: on another computer (device: its id or name), the task moves there. */
   // effort (D282): the same agent with another model or effort keeps its native session.
-  // by (D376): the partner moved it for the person's follow-up (the note says so); else the person did.
-  switchTask(taskId: string, harness: string, model: string | undefined, runner: Runner | undefined, device?: string, effort?: string, by?: "partner"): Promise<{ ok: boolean; message?: string }>;
+  // by (D376): the partner moved it for the person's follow-up (the note says so); D503 "limit": Ducter moved it, same agent and model, off a used-up account; else the person did.
+  switchTask(taskId: string, harness: string, model: string | undefined, runner: Runner | undefined, device?: string, effort?: string, by?: "partner" | "limit"): Promise<{ ok: boolean; message?: string }>;
   /** D372: the built-in default per kind of work on the home (the Partner page's rules list). */
   defaults(): Promise<KindDefault[]>;
   /**
@@ -67,6 +70,10 @@ export function createLoadout(o: {
   handset?: () => boolean;
   /** D247: the person's Android app is connected without 用这台手机: a phone task opens and its card offers to turn it on. */
   handsetOffer?: () => string | undefined;
+  /** D503: the agent the partner thinks with and its account on the home as last read (no read here). */
+  reserve?: () => { harness: string; usage?: AccountUsage } | undefined;
+  /** D503: every agent's limit per computer, as last known. */
+  limitsNow?: () => AgentLimit[];
 }): Loadout {
   /** Set at stop: a devices read still in flight (or begun after) is dropped quietly, not warned. */
   let stopped = false;
@@ -145,6 +152,23 @@ export function createLoadout(o: {
   const rulesWith = (kind: WorkKind | undefined) => {
     const said = o.said?.rulesFor(kind) ?? [];
     return said.length ? [...o.rules.list(), ...said] : o.rules.list();
+  };
+
+  /**
+   * D503: the partner's own account is left to the partner. A new task the ranking put on the home's
+   * account the partner thinks with, while that account is down to its reserve (D89), goes to the same
+   * agent and model signed in to another account elsewhere when there is one; else it stays.
+   */
+  const keepForPartner = async <P extends BodyChoice>(pick: P, work: Parameters<Loadout["choose"]>[0], comps: Computer[] | undefined): Promise<P> => {
+    const r = o.reserve?.();
+    if (!r || !comps || comps.length < 2) return pick;
+    const onHome = pick.home ?? (!pick.deviceId || comps.find((c) => c.id === pick.deviceId)?.home === true);
+    if (!overReserve({ harness: pick.harness, partnerHarness: r.harness, onHome, usage: r.usage })) return pick;
+    const candidates = await api.candidatesFor({ title: work.title, ...(work.brief ? { brief: work.brief } : {}), ...(work.place ? { place: work.place } : {}), ...(work.needs ? { needs: work.needs } : {}) }).catch(() => [] as Candidate[]);
+    const home = comps.find((c) => c.home);
+    const route = sameModelRoutes({ harness: pick.harness, ...(pick.model ? { model: pick.model } : {}), ...(home ? { from: home.id } : {}), computers: comps, candidates, limits: o.limitsNow?.() ?? [], now: Date.now() })[0];
+    if (!route) return pick;
+    return { ...pick, device: route.deviceName, deviceId: route.device, home: false };
   };
 
   const api: Loadout = {
@@ -251,7 +275,8 @@ export function createLoadout(o: {
         // OAR's Antigravity runtime refuses anything but an id of its catalog.
         const named = pick.model && pick.harness === work.harness && work.model && isHarnessId(pick.harness) ? await idOfModel(pick.harness, pick.model, pick.deviceId) : undefined;
         if (named && "none" in named) return { none: named.none };
-        const picked = named ? { ...pick, model: named.id } : pick;
+        const picked0 = named ? { ...pick, model: named.id } : pick;
+        const picked = work.by === "you" || pinDevice || work.place?.kind === "folder" ? picked0 : await keepForPartner(picked0, work, comps);
         return work.effort ? withEffort(picked, work.effort) : picked;
       }
       const why = (multi ? comps!.flatMap((c) => c.harnesses.map((h) => ({ h, on: c.name }))) : (hs ?? []).map((h) => ({ h, on: "" })))
@@ -329,7 +354,16 @@ export function createLoadout(o: {
             stream: "channel",
             origin: "user",
             kind: "job_status",
-            body: { jobId: `${BODY_NOTE_PREFIX}${taskId}_${Date.now().toString(36)}`, taskId, state: "done", text: `${by === "partner" ? "you moved this task, for the user's follow-up," : "the user moved this task"} from ${here.name} to ${to.name} (${harnessName(harness)}); it continues there from its saved progress.` } as Bodies["job_status"],
+            body: {
+              jobId: `${BODY_NOTE_PREFIX}${taskId}_${Date.now().toString(36)}`,
+              taskId,
+              state: "done",
+              text:
+                by === "limit"
+                  ? // D503: said once, in the task's own line (its limit, then 换到 {computer} 接着做); the partner only knows.
+                    `${harnessName(harness)}'s usage limit ran out on ${here.name}, so Ducter moved this task to ${to.name}, where ${harnessName(harness)} is signed in to another account (the same model); it continues there from its saved progress. The task's own line already says so: mention it only if the user asks why it moved.`
+                  : `${by === "partner" ? "you moved this task, for the user's follow-up," : "the user moved this task"} from ${here.name} to ${to.name} (${harnessName(harness)}); it continues there from its saved progress.`,
+            } as Bodies["job_status"],
           });
           return { ok: true };
         }

@@ -146,6 +146,13 @@ resets 3:12** on its card, and a ring that fills toward that time. Several tasks
 account wait together and are shown under one line in On hand. If Ducter restarts meanwhile,
 they still carry on at the reset.
 
+A limit belongs to one account. If the same AI agent is signed in to a different account on another
+of your computers, the task doesn't wait at all: it carries on there right away, with the same
+model, from where it got to. Its lines say so once: **Claude Code 的额度用完了 / Claude Code's limit
+ran out**, then **换到 hel 接着做 / Continued on hel**. There's nothing to set up. Ducter also keeps
+some room on the account your partner thinks with: when that account is nearly used up, new tasks
+go to the other account first, so your partner can always answer you.
+
 If another AI agent is signed in on the same computer, the task's card offers **现在换 Codex 接着做 /
 Hand it to Codex now**: it picks up from where the task got to. **先停下 / Stop here** ends the wait
 and leaves the task for you. Under them, a switch lets you hand tasks over right away every time

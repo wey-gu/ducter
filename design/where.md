@@ -680,3 +680,29 @@ code reads the words for it.
   one off On hand (D454's Remove, with its undo; Past tasks keeps it). One still at work is left as
   it is, and the tool result tells the partner so (task_stop it if this one takes its place). The
   mender's title-overlap supersede is gone.
+
+## 21. The same model another way: a limit is one account's (D503)
+
+**Who.** The developer with Claude Code signed in on the MacBook and on hel to two different
+accounts, whose task runs out at 21:40. **Before:** the task rested until 23:00 while hel's account
+sat empty. **After:** it goes on on hel at once, with the same model, and the task's lines say so
+once. Research: research/219.
+
+- **Who is signed in, per computer.** Each computer's probe keeps a fingerprint of each agent's
+  account (`DeviceHarness.account`, `core/src/harness-probe.ts` `accountPrint`): Claude Code's
+  `auth status` email and org, Codex's `auth.json` account id, hashed; nothing else leaves the
+  computer. A worker sends it in its hello; an older worker sends none and is never a route.
+- **The routes** (`core/src/routes.ts` `sameModelRoutes`): the same agent on another awake
+  computer, signed in to a different known account that no computer said is used up, not paid
+  per use, offering the model when it lists its models, and taking the task by D157's own ranking.
+  Most room left first, then the soonest reset.
+- **At a limit hit** (`core/src/limits.ts`, OAR's `quota`; a throttle is not moved): the first
+  route takes the task by §7's move, before D297's wait or hand-off; with none, D297 is unchanged.
+  The task's lines say it: **{agent} 的额度用完了 / {agent}'s limit ran out**, then
+  **换到 {computer} 接着做 / Continued on {computer}**. The partner gets a hidden note.
+- **The partner's headroom** (`core/src/loadout.ts` `keepForPartner`): a new task the ranking put
+  on the home's account the partner thinks with, while that account (as last read) has only D89's
+  reserve left, goes to a route instead when there is one; the person's own pick, a computer they
+  named and a folder task stay where they are.
+- **Not yet:** a second account on the same computer (a Ducter-owned config folder), a key as a
+  route the person agrees to, the partner's own turns on another account (`design/todo.md`).

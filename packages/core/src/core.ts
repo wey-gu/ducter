@@ -1072,7 +1072,11 @@ export function startCore(opts: CoreOptions = {}): Core {
       // D352: the home's agents' versions as last probed: an updated agent's list is read again at once.
       version: (device, harness) => (device === "local" ? devicesView?.harnessesNow()?.find((h) => h.harness === harness)?.version : undefined),
     });
-  const loadout = createLoadout({ log, tasks, settings, rules, said, devices: () => devicesView, sites: sitesOn, models: modelCatalog, handset: () => handsets.any(), handsetOffer: () => handsets.offer() });
+  const loadout = createLoadout({ log, tasks, settings, rules, said, devices: () => devicesView, sites: sitesOn, models: modelCatalog, handset: () => handsets.any(), handsetOffer: () => handsets.offer(),
+    // D503: the partner's own account, as last read, is kept for the partner when another way to the same model exists.
+    reserve: () => { const h = effectiveBrain(settings.get().brain, settings.brainChosen(), devicesView?.harnessesNow()).harness; const usage = accountUsage.peek(h)?.usage; return { harness: h, ...(usage ? { usage } : {}) }; },
+    limitsNow: () => agentLimits.now(),
+  });
   // D157: 我要合电脑了 / Move before closing: one decision for a computer.
   const closing = createClosing({ log, tasks, loadout, runner: () => runner });
   registerClosingTool(mcp, closing, langNow);
@@ -1172,7 +1176,8 @@ export function startCore(opts: CoreOptions = {}): Core {
   // D288: each agent's account usage limits on the home, read by the agent itself and kept current by its sessions.
   const accountUsage = createAccountUsage({ read: async (h) => (await runner?.harness.accountUsage?.(h)) ?? { why: "unsupported" } });
   // D297: a task whose agent hits its usage limit waits for the reset (or is handed on) and carries on.
-  const limitWaits = createLimitWaits({ log, tasks, waiters: work.waiters, loadout, settings, usage: accountUsage, runner: () => runner, clock });
+  // D503: first the same agent and model another way (another account on another computer), from every agent's limits as last known.
+  const limitWaits = createLimitWaits({ log, tasks, waiters: work.waiters, loadout, settings, usage: accountUsage, runner: () => runner, clock, limitsNow: () => agentLimits.now() });
   limitsDecorate = (o) => ({ ...o, waiters: o.waiters.map((w) => limitWaits.decorate(w)) });
   // D478: each agent's limit per computer, a fact in the partner's world line (agent-limits.ts).
   const agentLimits = createAgentLimits({ log, tasks, waiters: () => work.waiters.views(), usage: accountUsage, home: () => devicesView?.harnessesNow(), clock });

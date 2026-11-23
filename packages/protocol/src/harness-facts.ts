@@ -70,6 +70,11 @@ export interface HarnessFacts {
   /** Deferred tool loading and how Ducter keeps its own tools loaded. */
   toolSearch: Fact<string>;
   resume: Fact<{ supported: boolean; how: string }>;
+  /**
+   * D503 (research/219): where one account lives (a second account is a second folder), how the agent
+   * says who is signed in, and where its sessions are (a session resumes only inside its folder).
+   */
+  account?: Fact<{ homeEnv: string; identity: string; sessions: string }>;
   /** Its own browser / computer use (research/38). */
   browser: Fact<string>;
   /** D156: where it's installed from and how each copy updates (research/42). */
@@ -339,6 +344,10 @@ export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
       evidence: cc("live (core/mcp.ts)"),
     },
     resume: { value: { supported: true, how: "--resume <session id> (OAR SessionOptions.resume)" }, evidence: cc("live, runner park/resume") },
+    account: {
+      value: { homeEnv: "CLAUDE_CONFIG_DIR", identity: "claude auth status --json: email, orgId, authMethod, subscriptionType (no token)", sessions: "<config dir>/projects" },
+      evidence: { kind: "VERIFIED", how: "research/219: an empty CLAUDE_CONFIG_DIR reads loggedIn false while ~/.claude stays signed in; macOS keychain item per folder", date: "2026-11-24", version: "2.1.330" },
+    },
     browser: {
       value: "Claude in Chrome via --chrome (the user's real Chrome, needs the extension); computer use is not available in -p",
       evidence: { kind: "VERIFIED", how: "research/38 §1", date: D, version: "2.1.319" },
@@ -456,6 +465,10 @@ export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
     contextReport: { value: "last.totalTokens (OAR contextUsage); builds without `last` give a cumulative total, unused", evidence: cx("live (design/context.md)") },
     toolSearch: { value: "MCP tools load directly; no deferral", evidence: { kind: "VERIFIED", how: "core/mcp.ts note", date: D, version: "0.167.0" } },
     resume: { value: { supported: true, how: "thread resume by id (OAR SessionOptions.resume)" }, evidence: cx("live, runner park/resume") },
+    account: {
+      value: { homeEnv: "CODEX_HOME", identity: "auth.json tokens.account_id (codex login status names no account; the app-server's account/read gives email and planType)", sessions: "$CODEX_HOME/sessions" },
+      evidence: { kind: "VERIFIED", how: "research/219: an empty CODEX_HOME reads Not logged in while ~/.codex stays signed in; auth.json key names only", date: "2026-11-24", version: "0.171.0" },
+    },
     browser: {
       value: "Computer Use (cua_repl) works headless under OAR and reaches the user's real Chrome as an app; the in-app browser and Chrome extension do not; only features.plugins=false removes it",
       evidence: { kind: "VERIFIED", how: "research/38 §1", date: D, version: "0.167.0" },

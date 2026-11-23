@@ -179,3 +179,16 @@ each host.
 `bun scripts/probe-harnesses.ts` prints each channel's latest beside the verified range
 (`--offline` skips it). On 2026-11-10: Claude Code npm/installer 2.1.321, cask 2.1.311; Codex
 0.167.0 everywhere (verified); pi 1.5.0; DeepSeek Harness 0.2.2-rc.1.
+
+## One account per folder (D503, research/219)
+
+Each agent keeps one signed-in account per config folder, and says who it is with no model call
+(`account` in `harness-facts.ts`):
+
+| Agent | The folder | Who is signed in | Sessions |
+|---|---|---|---|
+| Claude Code | `CLAUDE_CONFIG_DIR` (default `~/.claude`; on macOS a keychain item per folder) | `claude auth status --json`: email, org, `authMethod`, plan; no token | `<folder>/projects`: a session resumes only in its folder |
+| Codex | `CODEX_HOME` (default `~/.codex`) | `auth.json` `tokens.account_id` (`codex login status` names no account; the app-server's `account/read` gives email and plan) | `$CODEX_HOME/sessions` |
+
+Ducter keeps only a fingerprint of the account (`DeviceHarness.account`), so the same account on
+two computers counts as one limit (`design/where.md` §21).

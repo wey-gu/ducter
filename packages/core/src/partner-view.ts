@@ -89,6 +89,8 @@ export function createWhose(o: { log: LogStore; tasks: Pick<TaskRegistry, "get">
     },
     route(input) {
       if (input.stream !== "channel") return input;
+      // D486: words passed on by another partner are for the conversation they were addressed to.
+      if ((input.body as { passed?: unknown } | undefined)?.passed) return input;
       const acting = actingPersona();
       const owner = ofBody(input.body) ?? (o.isOther(acting) ? acting : undefined);
       if (!owner) return input;
@@ -221,6 +223,13 @@ export function partnerView(o: PartnerViewOptions): CoreApi {
     ...(core.workingMemory ? { workingMemory: core.workingMemory } : {}),
     // D380: a quick web look holds nothing of either partner's, so they share the one service.
     ...(core.webLook ? { webLook: core.webLook } : {}),
+    // D486: the person's computers, their agents, the code on each and the agents' limits are the
+    // person's, so every partner's [devices] line says the same.
+    ...(core.homeDevice ? { homeDevice: () => core.homeDevice!() } : {}),
+    ...(core.codeOn ? { codeOn: () => core.codeOn!() } : {}),
+    ...(core.agentLimits ? { agentLimits: () => core.agentLimits!() } : {}),
+    // D486: who the person's partners are, as this one sees them.
+    ...(core.partnersNow ? { partnersNow: () => ({ ...core.partnersNow!(), me: id }) } : {}),
     // Bridge is the default's own connection (D205): a second partner has none yet.
     // Events it is handed carry its own streams as "channel" and "partner".
     mine: { event: (e) => mine(e.stream === "channel" ? { ...e, stream: conv } : e.stream === "partner" ? { ...e, stream: own } : e), task: (c) => whose.ofTask(c.taskId) === id },

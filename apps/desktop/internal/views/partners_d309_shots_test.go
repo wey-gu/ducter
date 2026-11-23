@@ -10,7 +10,8 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/i18n"
 )
 
-// D309: the conversation with two partners (each shown), and Settings ›
+// D309, D486: the conversation with two partners (each shown, passed words
+// marked), and Settings ›
 // 伙伴 with 伙伴们 and the add form, at 1280, light and dark, against the
 // demo core with a second partner:
 //
@@ -51,4 +52,7 @@ func TestD309PartnersShots(t *testing.T) {
 	h.until("settings", func() bool { return h.app.S.Settings != nil })
 	h.app.partners.adding, h.app.partners.look, h.app.partners.name = true, "sky", map[i18n.Lang]string{i18n.ZH: "小米", i18n.EN: "Mia"}[lang]
 	both("settings-partners", 1280, 1400)
+	// D486: what each looks after under its name, and a removal asked in its own row.
+	h.app.partners.adding, h.app.partners.removing = false, "p2"
+	both("settings-remove", 1280, 1400)
 }

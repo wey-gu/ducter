@@ -1,6 +1,7 @@
 package views
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -12,7 +13,8 @@ import (
 
 // D309: the one needs-you count across partners, whose name the window
 // shows, the menu bar's line per other partner, and every look in both
-// themes.
+// themes. D486: what a partner looks after, its removal and passed words on
+// the wire.
 func TestD309Partners(t *testing.T) {
 	s := store.New()
 	a := New(s, theme.Pebble(), i18n.New(i18n.ZH))
@@ -55,10 +57,32 @@ func TestD309Partners(t *testing.T) {
 	}
 	for _, lang := range []i18n.Lang{i18n.ZH, i18n.EN} {
 		L := i18n.New(lang)
-		for _, k := range []string{"partners.title", "partners.add", "partners.preview", "partners.look.plum"} {
+		for _, k := range []string{"partners.title", "partners.add", "partners.say", "partners.look.plum", "partners.remove.what", "partners.passed"} {
 			if v := L.T(k); v == k || strings.Contains(v, " · ") {
 				t.Errorf("%s %s: %q", lang, k, v)
 			}
 		}
+	}
+	// D486: "" clears what it looks after; a removal names the partner; passed words say who passed them.
+	empty := ""
+	for _, c := range []struct {
+		v    any
+		want string
+	}{
+		{protocol.PartnerSet{T: "partner_set", ID: "p2", About: &empty}, `{"t":"partner_set","id":"p2","about":""}`},
+		{protocol.PartnerSet{T: "partner_set", ID: "p2", Look: "sky"}, `{"t":"partner_set","id":"p2","look":"sky"}`},
+		{protocol.PartnerRemove{T: "partner_remove", ID: "p2"}, `{"t":"partner_remove","id":"p2"}`},
+	} {
+		if b, _ := json.Marshal(c.v); string(b) != c.want {
+			t.Errorf("wire: %s, want %s", b, c.want)
+		}
+	}
+	var um protocol.UserMsg
+	if err := json.Unmarshal([]byte(`{"text":"周六提醒我","passed":{"from":"default"}}`), &um); err != nil || um.Passed == nil || um.Passed.From != "default" {
+		t.Errorf("passed: %+v %v", um, err)
+	}
+	var pi protocol.PartnerInfo
+	if err := json.Unmarshal([]byte(`{"id":"p2","name":"小家","look":"sage","asks":0,"about":"家里的事"}`), &pi); err != nil || pi.About != "家里的事" {
+		t.Errorf("about: %+v %v", pi, err)
 	}
 }

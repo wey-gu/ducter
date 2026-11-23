@@ -57,7 +57,7 @@ test("the needs-you count is one across partners: every other partner's own ques
   expect(needsAcross(3, undefined, "default")).toBe(3);
 });
 
-test("a second partner is made with a name and a look, kept in partners.json, and offered only in the preview", () => {
+test("a second partner is made with a name, a look and what it looks after, kept in partners.json, removed without its id given again; off only when switched off", () => {
   const off = rig(false);
   expect(off.partners.add({ name: "小家" })).toEqual({ ok: false, error: "full" });
   expect(off.partners.list().map((p) => p.id)).toEqual(["default"]);
@@ -94,6 +94,24 @@ test("a second partner is made with a name and a look, kept in partners.json, an
   ]);
   expect(again.nameOf("p3")).toBe("Mia");
   expect(again.nameOf(undefined)).toBe("Ada");
+
+  // D486: what it looks after, in the person's words: one line, trimmed, clipped; cleared by "".
+  expect(again.set("p2", { about: "  家里的事、\n看病  " }).ok).toBe(true);
+  expect(again.get("p2")?.about).toBe("家里的事、 看病");
+  expect(again.set("default", { about: "工作和代码" }).ok).toBe(true);
+  expect(again.get("default")).toMatchObject({ name: "Ada", look: "apricot", about: "工作和代码" });
+  expect([...(again.set("p3", { about: "x".repeat(300) }) as { partner: { about: string } }).partner.about].length).toBe(120);
+  expect(again.set("p3", { about: "" }).ok && again.get("p3")?.about).toBeUndefined();
+  expect(again.byName(" home ")?.id).toBe("p2");
+  expect(again.byName("ada")?.id).toBe("default");
+
+  // D486: removing one keeps the default; its id is never given again (its conversation stays in the Log).
+  expect(again.remove("default")).toEqual({ ok: false, error: "unknown" });
+  expect(again.remove("p2").ok).toBe(true);
+  expect(again.has("p2")).toBe(false);
+  const next = again.add({ name: "小家", about: "家里" });
+  expect(next.ok && [next.partner.id, next.partner.about]).toEqual(["p5", "家里"]);
+  expect(openPartners({ dataDir: dir, log, persona, on: true }).list().map((p) => p.id)).toEqual(["default", "p3", "p4", "p5"]);
 });
 
 test("asks: a partner's own open questions, never its tasks' (those are On hand's)", () => {
@@ -195,8 +213,52 @@ test("partner_add and partner_set over the socket: every socket hears the change
   await b.until((f) => f.t === "partners" && f.partners.length === 2, b0);
   a.send({ t: "partner_add", name: "mia", clientId: "k2" });
   expect(await a.until((f) => f.t === "partners" && f.clientId === "k2")).toMatchObject({ error: "taken" });
-  a.send({ t: "partner_set", id: "p2", look: "sky", clientId: "k3" });
-  expect(((await a.until((f) => f.t === "partners" && f.clientId === "k3")) as Extract<ServerFrame, { t: "partners" }>).partners[1]!.look).toBe("sky");
+  a.send({ t: "partner_set", id: "p2", look: "sky", about: "孩子和看病", clientId: "k3" });
+  expect(((await a.until((f) => f.t === "partners" && f.clientId === "k3")) as Extract<ServerFrame, { t: "partners" }>).partners[1]).toMatchObject({ look: "sky", about: "孩子和看病" });
+  // D486: a removal: every socket hears it, and one that showed it shows the default's again.
+  const n = await b.hi({ persona: "p2" });
+  expect((b.frames.slice(n).find((f) => f.t === "partners") as Extract<ServerFrame, { t: "partners" }>).shown).toBe("p2");
+  const b1 = b.frames.length;
+  a.send({ t: "partner_remove", id: "p2", clientId: "k4" });
+  expect(((await a.until((f) => f.t === "partners" && f.clientId === "k4")) as Extract<ServerFrame, { t: "partners" }>).partners.map((p) => p.id)).toEqual(["default"]);
+  expect(await b.until((f) => f.t === "partners" && f.partners.length === 1, b1)).toMatchObject({ shown: "default" });
+  a.send({ t: "partner_remove", id: "default", clientId: "k5" });
+  expect(await a.until((f) => f.t === "partners" && f.clientId === "k5")).toMatchObject({ error: "unknown" });
+});
+
+test("D486: the partner tool makes a partner, passes the person's words into another's conversation (that one wakes, never the default), and renames; it never passes to itself", async () => {
+  const t = tempDir();
+  stops.push(t.cleanup);
+  const core = startCore({ dataDir: t.dir, port: 0, batchMs: 5, partners: true });
+  stops.push(() => core.stop());
+  const woke: LogEvent[] = [];
+  core.setPartner({ onTrigger: (e) => void woke.push(e) });
+  const theirs: LogEvent[] = [];
+  core.setPartnerFactory(() => ({ onTrigger: (e) => void theirs.push(e) }));
+  const call = (args: object, persona?: string) => core.mcp.call({ role: "partner", ...(persona ? { persona } : {}) }, "partner", args) as Promise<Record<string, unknown>>;
+
+  expect(await call({ do: "make", name: "小家", about: "家里的事、看病、孩子" })).toMatchObject({ ok: true, made: { name: "小家", about: "家里的事、看病、孩子" } });
+  expect(core.partners.list().map((p) => p.name)).toEqual(["Ducter", "小家"]);
+  expect(await call({ do: "make", name: "小家" })).toMatchObject({ ok: false });
+  expect(core.partnersNow?.()).toMatchObject({ me: "default", list: [{ id: "default" }, { id: "p2", about: "家里的事、看病、孩子" }] });
+  expect(core.partnerView("p2").partnersNow?.().me).toBe("p2");
+
+  expect(await call({ do: "pass", to: "小家", text: "周六提醒我带孩子去打疫苗" })).toMatchObject({ ok: true, passed: "小家" });
+  const passed = core.log.read({ stream: "channel:p2", kinds: ["user_msg"] }).map((e) => e.body as Bodies["user_msg"]);
+  expect(passed).toEqual([{ text: "周六提醒我带孩子去打疫苗", passed: { from: "default" } }]);
+  expect(core.log.read({ stream: "channel", kinds: ["user_msg"] })).toEqual([]);
+  for (let i = 0; i < 100 && !theirs.length; i++) await Bun.sleep(10);
+  expect(theirs.map((e) => [e.stream, (e.body as Bodies["user_msg"]).text])).toEqual([["channel", "周六提醒我带孩子去打疫苗"]]);
+  expect(woke.filter((e) => e.kind === "user_msg")).toEqual([]);
+
+  // From the second partner back to the default: into the default's own conversation, not its own.
+  expect(await call({ do: "pass", to: "Ducter", text: "release 发了吗" }, "p2")).toMatchObject({ ok: true });
+  expect(core.log.read({ stream: "channel", kinds: ["user_msg"] }).map((e) => e.body)).toEqual([{ text: "release 发了吗", passed: { from: "p2" } }]);
+  expect(await call({ do: "pass", to: "小家", text: "x" }, "p2")).toMatchObject({ ok: false });
+  expect(await call({ do: "pass", to: "nobody", text: "x" })).toMatchObject({ ok: false });
+
+  expect(await call({ do: "set", to: "小家", name: "家", about: "家里" })).toMatchObject({ ok: true, now: { name: "家", about: "家里" } });
+  expect(await call({ do: "set", to: "Ducter", name: "X" })).toMatchObject({ ok: false });
 });
 
 test("a question in a second partner's conversation counts for every client, and a decision there shows only there", async () => {

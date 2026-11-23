@@ -17,11 +17,11 @@ afterEach(async () => {
   stops = [];
 });
 
-test("a second partner's own session answers in its name, on its own role and folder; the default's never sees it", async () => {
+test("a second partner's own session answers in its name, on its own role and folder; the default's never sees it; each knows the other by name and what it looks after (D486)", async () => {
   const dir = mkdtempSync(join(tmpdir(), "ducter-p2-"));
   const core: Core = startCore({ dataDir: dir, port: 0, push: false, platform: "darwin", partners: true });
   stops.push(() => rmSync(dir, { recursive: true, force: true }), () => core.stop());
-  core.partners.add({ name: "小家" });
+  core.partners.add({ name: "小家", about: "家里的事、看病、孩子" });
 
   const mainRunner = fakeRunner(async (_i, s) => (s.say("on it."), s.end()));
   const main: PartnerHandle = createPartner(core as never, mainRunner.runner, { prewarm: false, spine: false, persistState: false, onError: () => {} });
@@ -39,6 +39,8 @@ test("a second partner's own session answers in its name, on its own role and fo
 
   logUserMessage(core.log, core.decisions, { text: "ship the release" });
   logUserMessage(core.log, core.decisions, { text: "周六的牙医约了吗", stream: "channel:p2" });
+  // D486: the person's words, said to the default and passed on by it.
+  core.log.append({ stream: "channel:p2", origin: "user", kind: "user_msg", body: { text: "周六提醒我带孩子打疫苗", passed: { from: "default" } } });
   for (let i = 0; i < 100 && (!made.length || !homeRunner.sessions.length); i++) await Bun.sleep(10);
   await main.idle();
   await made[0]!.idle();
@@ -46,6 +48,7 @@ test("a second partner's own session answers in its name, on its own role and fo
   const home = homeRunner.sessions[0] as FakeSession;
   expect(home.spec.systemPrompt).toContain("# You are 小家");
   expect(home.spec.systemPrompt).toContain("never see theirs");
+  expect(home.spec.systemPrompt).toContain('look after: "家里的事、看病、孩子"');
   // Its own partner role: the token names it.
   const auth = home.spec.mcp![0]!.headers.Authorization!.slice(7);
   expect(core.mcp.verify(auth)).toEqual({ role: "partner", persona: "p2" });
@@ -59,6 +62,10 @@ test("a second partner's own session answers in its name, on its own role and fo
   expect(inputs(homeRunner)).not.toContain("ship the release");
   expect(inputs(mainRunner)).toContain("ship the release");
   expect(inputs(mainRunner)).not.toContain("牙医");
+  // D486: who the others are and what each looks after; the passed words say who passed them.
+  expect(inputs(homeRunner)).toContain('[partners] You are 小家, looking after: "家里的事、看病、孩子". The user\'s other partners: Ducter.');
+  expect(inputs(homeRunner)).toContain("[user, passed on by Ducter, the partner they said it to] 周六提醒我带孩子打疫苗");
+  expect(inputs(mainRunner)).toContain('The user\'s other partners: 小家 (looks after: "家里的事、看病、孩子")');
 
   const words = (s: string) => core.log.read({ stream: s, kinds: ["ai_msg"] }).map((e) => (e.body as Bodies["ai_msg"]).text);
   // Both answers are written by turns that may still be landing on a slow machine (CI): wait for them.

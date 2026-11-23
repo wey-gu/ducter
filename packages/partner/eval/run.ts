@@ -582,7 +582,23 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
     await core.taskSources.look();
     await core.taskSources.pile.sort("daily");
   }
-  if (sc.second && !core.partners.add({ name: sc.second.name }).ok) throw new Error("second partner: not added");
+  if (sc.second && !core.partners.add({ name: sc.second.name, ...(sc.second.about ? { about: sc.second.about } : {}) }).ok) throw new Error("second partner: not added");
+  if (sc.defaultAbout && !core.partners.set("default", { about: sc.defaultAbout }).ok) throw new Error("default partner: about not set");
+  // D486: the person's other partners, with their own words and tasks (never seen by the one under test).
+  for (const o of sc.others ?? []) {
+    const r = core.partners.add({ name: o.name, ...(o.about ? { about: o.about } : {}) });
+    if (!r.ok) throw new Error(`other partner ${o.name}: ${r.error}`);
+    const conv = `channel:${r.partner.id}`;
+    for (const x of o.says ?? []) {
+      const u = core.log.append({ stream: conv, origin: "user", kind: "user_msg", persona: r.partner.id, body: { text: x.user } });
+      core.log.append({ stream: conv, origin: "partner", kind: "ai_msg", persona: r.partner.id, body: { text: x.ai, replyTo: u.seq } });
+    }
+    for (const title of o.tasks ?? []) {
+      const taskId = shortId();
+      core.log.append({ stream: `task:${taskId}`, origin: "partner", kind: "task_open", persona: r.partner.id, body: { taskId, title, project: "", place: { kind: "none" }, harness: "claude-code", brief: title } });
+      core.log.append({ stream: conv, origin: "partner", kind: "job_status", persona: r.partner.id, body: { jobId: `job_${taskId}`, text: title, state: "running", taskId } });
+    }
+  }
   if (tuwa) {
     const added = await core.connections.add({ url: tuwa.url, token: JSON.stringify({ accessToken: tuwa.access(), refreshToken: tuwa.refresh(), expires_in: 3600 }) });
     if (!added.ok) throw new Error(`fake Tuwa: ${JSON.stringify(added)}`);
@@ -1406,6 +1422,21 @@ function checkOutcome(r: RunResult, o: NonNullable<Expect["outcome"]>): string[]
     // Carrying on a task already on that repository counts too (a task_send to it).
     const sentOn = r.sent.some((s) => r.opened.length === 0 && s.key && sc.seed?.some((x) => "task" in x && x.task.key === s.key && x.task.repo && (sc.world?.repos?.[sc.world.home.name] ?? []).some((y) => y.path === x.task.repo && remoteKey(y.origin) === want)));
     if (!r.opened.some(onRepo) && !sentOn) fails.push(`no work on ${o.repo} (got ${JSON.stringify(r.opened.map((x) => x.place))})`);
+  }
+  // D486: what went to another partner, by the partner tool.
+  const partnerCalls = r.tools.filter((t) => /(^|__)partner$/.test(t.name)).map((t) => (t.input ?? {}) as { do?: string; to?: string; name?: string; about?: string; text?: string });
+  const passes = partnerCalls.filter((c) => c.do === "pass");
+  if (o.passedTo) {
+    const want = o.passedTo.name.toLowerCase();
+    const to = passes.filter((c) => String(c.to ?? "").trim().toLowerCase() === want);
+    if (!to.length) fails.push(`nothing passed to ${o.passedTo.name} (passes: ${JSON.stringify(passes)})`);
+    for (const re of o.passedTo.require ?? []) if (!to.some((c) => re.test(String(c.text ?? "")))) fails.push(`what was passed to ${o.passedTo.name} lacks ${re}`);
+  }
+  if (o.noPass && passes.length) fails.push(`passed to another partner: ${JSON.stringify(passes)}`);
+  if (o.made) {
+    const m = partnerCalls.filter((c) => c.do === "make" && String(c.name ?? "").trim() === o.made!.name);
+    if (!m.length) fails.push(`no partner made called ${o.made.name} (calls: ${JSON.stringify(partnerCalls)})`);
+    else if (o.made.about && !m.some((c) => o.made!.about!.test(String(c.about ?? "")))) fails.push(`${o.made.name} was made without what it looks after (${o.made.about})`);
   }
   if (o.toolsFit) {
     if (!r.opened.length) fails.push("no task opened, so no tools to check");

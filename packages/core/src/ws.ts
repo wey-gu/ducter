@@ -187,6 +187,8 @@ export interface WsDeps {
   /** D285: 做过的事 / Past tasks (past.ts); absent in tests that don't need it. */
   /** D309: 伙伴们 / Partners (partners.ts); absent in tests that don't need them. */
   partners?: Partners;
+  /** D486: removes another partner (core's: its session ends too); absent: partners.remove alone. */
+  removePartner?: (id: string) => { ok: true } | { ok: false; error: import("./partners.ts").PartnerError };
   past?: import("./past.ts").Past & { marks: import("./past.ts").Marks; persona: () => string; ongoing?: import("./ongoing.ts").Ongoing; outside?: import("./outside.ts").Outside; made?: import("./made.ts").Made; redo?: import("./redo.ts").Redo };
   /** D300: 替你做过的 / Done for you (did.ts); absent in tests that don't need it. */
   did?: import("./did.ts").Did;
@@ -583,6 +585,8 @@ export function createWsHandler(deps: WsDeps) {
       for (const s of sockets) {
         if (!s.data.live) continue;
         if (s.data.buf.length) send(s, { t: "events", events: s.data.buf.splice(0) });
+        // D486: the partner it showed was removed: it shows the default's (the client says hello again).
+        if (s.data.partner && !deps.partners?.has(s.data.partner)) delete s.data.partner;
         send(s, partnersFrame(s));
       }
     }, batchMs);
@@ -855,7 +859,7 @@ export function createWsHandler(deps: WsDeps) {
         // D277: only the Mac app's iMessage bridge says via (a desktop socket); anything else is dropped.
         const via = f.via === "imessage" && (ws.data.client ?? "desktop") === "desktop" ? f.via : undefined;
         // D309: words to a second partner go into its own conversation; D312: a reply quotes within it.
-        if (ws.data.partner) {
+        if (ws.data.partner && deps.partners?.has(ws.data.partner)) {
           logUserMessage(log, decisions, { text: f.text ?? "", clientId: f.clientId, media, ...(f.reply ? { reply: f.reply } : {}), stream: channelOf(ws.data.partner) });
           return;
         }
@@ -871,13 +875,20 @@ export function createWsHandler(deps: WsDeps) {
       }
       case "partner_add": {
         if (!deps.partners) throw new Error("partners unavailable");
-        const r = deps.partners.add({ name: String(f.name ?? ""), look: f.look });
+        const r = deps.partners.add({ name: String(f.name ?? ""), look: f.look, ...(f.about !== undefined ? { about: f.about } : {}) });
         // A made one: every socket hears it (onChange); this one also gets its clientId back.
         return send(ws, { ...partnersFrame(ws), ...(typeof f.clientId === "string" ? { clientId: f.clientId.slice(0, 64) } : {}), ...(r.ok ? {} : { error: r.error }) });
       }
       case "partner_set": {
         if (!deps.partners) throw new Error("partners unavailable");
-        const r = deps.partners.set(String(f.id ?? ""), { ...(f.name !== undefined ? { name: String(f.name) } : {}), ...(f.look !== undefined ? { look: f.look } : {}) });
+        const r = deps.partners.set(String(f.id ?? ""), { ...(f.name !== undefined ? { name: String(f.name) } : {}), ...(f.look !== undefined ? { look: f.look } : {}), ...(f.about !== undefined ? { about: f.about } : {}) });
+        return send(ws, { ...partnersFrame(ws), ...(typeof f.clientId === "string" ? { clientId: f.clientId.slice(0, 64) } : {}), ...(r.ok ? {} : { error: r.error }) });
+      }
+      case "partner_remove": {
+        if (!deps.partners) throw new Error("partners unavailable");
+        const id = String(f.id ?? "");
+        const r = deps.removePartner ? deps.removePartner(id) : deps.partners.remove(id);
+        if (ws.data.partner === id && r.ok) delete ws.data.partner;
         return send(ws, { ...partnersFrame(ws), ...(typeof f.clientId === "string" ? { clientId: f.clientId.slice(0, 64) } : {}), ...(r.ok ? {} : { error: r.error }) });
       }
       case "channel_status": {

@@ -336,7 +336,8 @@ export interface Bodies {
   // outside data, never the person's own words or instructions.
   // via "imessage" (D277): through the Mac app's iMessage bridge.
   // app (D405): words about one of the person's apps (typed in its sheet), or the app's own ask (app.ask).
-  user_msg: { text: string; clientId?: string; media?: MediaRef[]; reply?: ReplyRef; via?: ChannelKind | "imessage"; forwarded?: { from?: string }; app?: AppRef };
+  // passed (D486): the person's words, said to another partner and passed on by it (that partner's id).
+  user_msg: { text: string; clientId?: string; media?: MediaRef[]; reply?: ReplyRef; via?: ChannelKind | "imessage"; forwarded?: { from?: string }; app?: AppRef; passed?: { from: string } };
   // decisionId: a task's question said in the partner's own words (D129); clients show it as
   // that decision's question, not as a message of its own.
   // media (D206): what a task showed, relayed with the partner's words about it.
@@ -1450,8 +1451,11 @@ export type ClientFrame =
   // (name, look); partner_set renames one or changes its look (the default's name is settings_set's).
   // Switching is a new hello with persona: the socket then shows that partner's conversation.
   | { t: "partners" }
-  | { t: "partner_add"; name: string; look?: import("./partners.ts").PartnerLook; clientId?: string }
-  | { t: "partner_set"; id: string; name?: string; look?: import("./partners.ts").PartnerLook; clientId?: string }
+  | { t: "partner_add"; name: string; look?: import("./partners.ts").PartnerLook; about?: string; clientId?: string }
+  | { t: "partner_set"; id: string; name?: string; look?: import("./partners.ts").PartnerLook; about?: string; clientId?: string }
+  // D486: removes another partner (never the default): its conversation stays in the Log, unread;
+  // its tasks and routines become the default's; a device showing it shows the default's.
+  | { t: "partner_remove"; id: string; clientId?: string }
   | { t: "settings_set"; patch: SettingsPatch }
   | { t: "memory_forget"; seq: number }
   // D329: 撤销 / Undo on a fresh 记下了 / Noted line: the save is taken back at once (archived in Mem,

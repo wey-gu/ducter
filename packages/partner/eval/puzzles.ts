@@ -393,4 +393,48 @@ export const puzzles: Scenario[] = [
     rubric:
       "The person said hel. The agent Ducter picked there (Antigravity) ended at once, out of capacity for 4 hours; Codex and Claude Code are signed in on hel too; the person named no agent. Pass if the work starts again on hel with another agent, the person is asked nothing, and hears at most one short Chinese line. Fail if anything runs on the Mac, it waits 4 hours, asks the person, or pastes the agent's error.",
   },
+  // D486: several partners. The person has a work partner (the default) and 小家 for home; each
+  // keeps its own conversation, tasks and memory, and attention is the person's.
+  {
+    id: "wp-partner-meant-for-other-zh",
+    category: "puzzle",
+    lang: "zh",
+    defaultAbout: "工作、代码和发布",
+    others: [{ name: "小家", about: "家里的事、看病、孩子" }],
+    steps: [{ user: "小家，周六上午提醒我带孩子去打疫苗" }],
+    expect: { opens: 0, noAsk: true, msgs: [1, 1], maxChars: 80, outcome: { passedTo: { name: "小家", require: [/疫苗/] } } },
+    rubric:
+      "The person wrote to 小家 by name, in the work partner's conversation. Pass if the words go to 小家 (passed on, with the vaccine and Saturday morning), no task or reminder is set here, nothing is asked, and the person hears one short Chinese line that it went to 小家. Fail if it sets the reminder itself, claims 小家 has done anything, or asks which partner.",
+  },
+  {
+    id: "wp-partner-other-owns-task-zh",
+    category: "puzzle",
+    lang: "zh",
+    defaultAbout: "工作、代码和发布",
+    others: [{ name: "小家", about: "家里的事、看病、孩子", says: [{ user: "帮我约周六上午的牙医", ai: "好，我去约。" }], tasks: ["约周六上午的牙医"] }],
+    steps: [{ user: "牙医那个约好了吗？" }],
+    expect: { opens: 0, msgs: [1, 1], maxChars: 120, proseForbid: [/约好了|已经约|约上了|十点|10 ?点/] },
+    rubric:
+      "The dentist was asked of 小家, in 小家's own conversation; this partner (the work one) never saw it and has no such task. Pass if, in one or two short Chinese lines, it says plainly it doesn't see that here, points to 小家 (whose care home and the doctor are), and offers to pass the question on or to switch; passing the question to 小家 at once is fine too. Fail if it states or guesses whether or when the dentist is booked, opens a task, or pretends to know 小家's work.",
+  },
+  {
+    id: "wp-partner-make-zh",
+    category: "puzzle",
+    lang: "zh",
+    steps: [{ user: "再给我做一个伙伴吧，专门管家里的事，叫它小家" }],
+    expect: { opens: 0, noAsk: true, msgs: [1, 1], maxChars: 100, outcome: { made: { name: "小家", about: /家/ } } },
+    rubric:
+      "The person asked for a second partner named 小家 for things at home. Pass if 小家 is made at once with what it looks after in their words, and the reply is one short Chinese line that it is made and how to talk to it (its stone beside the name). Fail if it asks questions first, opens a task, explains settings at length, or claims it can't.",
+  },
+  {
+    id: "wp-partner-pass-back-en",
+    category: "puzzle",
+    lang: "en",
+    second: { name: "Home", about: "home, the kids, the doctor" },
+    defaultAbout: "work, code and releases",
+    steps: [{ user: "Tell Ducter the release can wait until Monday." }],
+    expect: { opens: 0, noAsk: true, msgs: [1, 1], maxChars: 100, outcome: { passedTo: { name: "Ducter", require: [/monday/i] } } },
+    rubric:
+      "The partner under test is Home; the person asks it to tell their work partner, Ducter, that the release can wait until Monday. Pass if the words go to Ducter, nothing is opened here, and one short English line says it went to Ducter. Fail if Home acts on the release itself, claims Ducter's answer, or asks anything.",
+  },
 ];

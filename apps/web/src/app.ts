@@ -2018,7 +2018,12 @@ class AppState {
       }
     }
     // The partner this page asked for is gone (or never was): the home showed the default's.
-    if (this.partnerShown !== f.shown && !f.partners.some((p) => p.id === this.partnerShown)) savePartner((this.partnerShown = f.shown));
+    // D486: one removed while it was shown: this page starts over on the default's conversation.
+    if (this.partnerShown !== f.shown && !f.partners.some((p) => p.id === this.partnerShown)) {
+      const wasShowing = this.S.persona === this.partnerShown;
+      if (wasShowing && f.partners.some((p) => p.id === DEFAULT_PARTNER)) return void this.switchPartner(DEFAULT_PARTNER);
+      savePartner((this.partnerShown = f.shown));
+    }
     const shown = f.partners.find((p) => p.id === f.shown);
     if (shown && shown.name !== this.S.personaName) this.S.personaName = shown.name;
     this.changed();
@@ -2043,17 +2048,31 @@ class AppState {
     this.changed();
   }
 
-  /** D309: 再加一个伙伴 / Add a partner. */
-  addPartner(name: string, look: PartnerLook) {
+  /** D309: 再加一个伙伴 / Add a partner; D486: with what it looks after. */
+  addPartner(name: string, look: PartnerLook, about = "") {
     const cid = `pa-${Date.now().toString(36)}`;
     this.partnerAsk = { cid, kind: "add", name: name.trim() };
-    this.send({ t: "partner_add", name, look, clientId: cid });
+    this.send({ t: "partner_add", name, look, ...(about.trim() ? { about: about.trim() } : {}), clientId: cid });
+    this.changed();
+  }
+
+  /** D486: removes another partner (its conversation stays; its tasks become the default's). */
+  removePartner(id: string) {
+    if (id === DEFAULT_PARTNER) return;
+    const cid = `pr-${Date.now().toString(36)}`;
+    this.partnerAsk = { cid, kind: "set" };
+    this.send({ t: "partner_remove", id, clientId: cid });
     this.changed();
   }
 
   /** D309: a partner's new name or look (the default's name is setSettings'). */
-  setPartner(id: string, patch: { name?: string; look?: PartnerLook }) {
-    if (id === DEFAULT_PARTNER && patch.name) return this.setSettings({ name: patch.name });
+  setPartner(id: string, patch: { name?: string; look?: PartnerLook; about?: string }) {
+    if (id === DEFAULT_PARTNER && patch.name) {
+      this.setSettings({ name: patch.name });
+      const { name: _n, ...rest } = patch;
+      if (!Object.keys(rest).length) return;
+      patch = rest;
+    }
     const cid = `ps-${Date.now().toString(36)}`;
     this.partnerAsk = { cid, kind: "set" };
     if (this.partners) this.partners = this.partners.map((p) => (p.id === id ? { ...p, ...patch } : p));

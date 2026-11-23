@@ -58,7 +58,7 @@ import { homeThinks, PaneSays, PlacesMap, SetBrief } from "./settings-home.tsx";
 import { memBadge, memUpdate, peerCalled } from "./mem-view.ts";
 import { benchable, BenchToggle, openBenchAt } from "./workbench.tsx";
 import { TaskInfoButton } from "./task-info.tsx";
-import { PartnersSection, PartnerSwitch } from "./partners.tsx";
+import { PartnersSection, PartnerSwitch, PassedFrom } from "./partners.tsx";
 import { appPush, disablePush, enablePush } from "./push-client.ts";
 import { inApp, unsupportedKey } from "./native.ts";
 import { useWide } from "./wide.ts";
@@ -1378,6 +1378,14 @@ function EntryBody({ e, chipOwner, livingItems, join, prevUser }: { e: Entry; ch
         </div>
       );
     }
+    // D486: the person's words for this partner, said to another and passed on by it: a small line names who.
+    if (e.user.passed)
+      return (
+        <div class={`user-m user-app${join ? " join" : ""}`} data-reply={rk} data-seq={e.firstSeq}>
+          <PassedFrom from={e.user.passed.from} />
+          <UserWords text={e.user.text} reply={e.user.reply} cls="user" peb={rk} />
+        </div>
+      );
     // D206: the pictures stand above the words, on their own, as in a messaging app.
     if (!e.user.media?.length) return <UserWords text={e.user.text} reply={e.user.reply} cls={`user${join ? " join" : ""}`} rk={rk} seq={e.firstSeq} />;
     return (

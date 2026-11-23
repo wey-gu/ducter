@@ -21132,3 +21132,10 @@ html[data-text-size="large"] .brand-mark > svg {
     margin-left: 0;
   }
 }
+
+/* D486: what a partner looks after, under its name; its removal asked in its own row; words another partner passed on. */
+.partners-set .partner-about { color: var(--ink-soft); overflow-wrap: anywhere; }
+.partners-set .about-input { font-size: var(--xs); }
+.partners-set .partner-removing b { font-weight: 700; }
+.passed-from:disabled { cursor: default; }
+.passed-from .stone { flex: none; }

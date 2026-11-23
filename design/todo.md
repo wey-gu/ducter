@@ -429,15 +429,15 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
       and a scratch VPS and watch it reach the partner's first words. Trigger: the author's next
       session with a spare machine.
 
-## A second partner (D309, D312, `personas.md`)
+## Several partners (D309, D312, D486, `personas.md`)
 
-- **D312 follow-ups:** the full partner eval at merge (only `second-partner-name` and
-  `second-partner-apart` ran, with `--only`); a live run with two real partner sessions on one home
-  before the preview flag comes off; its L1 from its own Mem identity's bundle; Bridge, forgetting
-  and correcting per partner. Trigger: before the preview flag comes off.
-- Per-partner talk, memory and accounts; a chat app bound to a partner; removing a partner; the
-  Mac's rename of another partner; the stone's comprehension test with naive raters, then a clay
-  character per partner. Trigger: the author reviews the preview.
+- A live run with two real partner sessions on one home (make by talking, pass, remove). Trigger: the
+  author's next session on a real home.
+- Bridge, forgetting and correcting per partner; per-partner talk, memory and accounts; a chat app
+  bound to a partner; the CLI's partner (`ducter say --partner`). Trigger: a person asks for one of
+  these on a home with several partners.
+- The stone's comprehension test with naive raters, then a clay character per partner. Trigger: the
+  author reviews D486.
 
 ## Trusted at a glance (D433, `bridge.md` "Trusted at a glance", research/183)
 
@@ -483,7 +483,7 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
 - [ ] A spoken 别记这个 whose take-back Mem refuses says so (today only the tap's failure has a line; the spoken one
       leaves the Noted line as kept). Trigger: it happens once.
 - [ ] 别记这个 for a second partner's conversation (D309): today the take-back reads the default partner's channel only.
-      Trigger: the second partner leaves preview.
+      Trigger: D486 took partners out of preview: next time memory take-back is touched.
 - [ ] The partner's reply to "你都记得我些什么？" offering the one row to fix (a tap opening that memory on the Memory
       page). Trigger: the author asks to fix something right after asking.
 - [ ] Send research/191 §asks to Mem. Trigger: the author approves the draft.
@@ -2545,7 +2545,7 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - **A naive-rater test of 置顶 / Pin** (three users, zh and en: what happens when you tap it, what
   取消置顶 does). Trigger: before the author reviews D381, or the first misread.
 - **The Mac's Unpin has no Undo** (the web's toast has 撤销). Trigger: the Mac's toast taking an action.
-- **A second partner's pins** (preview, D309). Trigger: the second partner out of preview.
+- **A second partner's pins** (D309). Trigger: D486 took partners out of preview: a person pins in a second partner's conversation.
 - **A routine keeps a pin current** ("every morning, the PRs waiting on me" as a pinned table that
   refreshes itself): a routine's run reports to the partner, who writes the block with its pin.
   Trigger: the first person who asks for it; this is the next step of "your own small apps".

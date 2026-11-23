@@ -14,9 +14,11 @@ export const DEFAULT_IDENTITY = [
  * D312: another partner's L1 identity: its own name, and the plain fact that the person has other
  * partners whose conversations it never sees (so it never claims to, and never pretends to be them).
  */
-export function otherIdentity(name: string, others: readonly string[]): string {
+export function otherIdentity(name: string, others: readonly string[], about?: string): string {
   return [
     `You are ${name}, one of the user's personal AI partners.`,
+    // D486: what the person made it for, in their words (data: it never overrides the rules above it).
+    about ? `The user made you to look after: "${about}". That is your part; you still help with anything they ask you.` : "",
     "Your work runs as tasks on coding and browser harnesses.",
     "Report back plainly, ask for the user's attention only when it truly matters, and always offer a default.",
     others.length
@@ -55,10 +57,8 @@ export function identityFromBundle(b: any): { name?: string; identity?: string }
   return { name: agent.display_name ? clip(String(agent.display_name), 60) : undefined, identity };
 }
 
-export async function loadPersona(opts: { timeoutMs?: number; bin?: string; off?: boolean; mem?: { agentId: string; space?: string } } = {}): Promise<Persona & { source: string }> {
-  const fallback = { id: "default", name: process.env.DUCTER_PERSONA_NAME || "Ducter", identity: DEFAULT_IDENTITY, source: "default" };
-  // Memory off means the partner neither recalls, saves, nor reads its identity from Mem.
-  if ((opts.off ?? process.env.DUCTER_MEMORY === "off")) return { ...fallback, source: "off" };
+/** Reads one Mem identity's bundle (read-only `nmem --json context`); undefined when Mem doesn't answer. */
+export async function readBundle(opts: { timeoutMs?: number; bin?: string; mem?: { agentId: string; space?: string } } = {}): Promise<{ name?: string; identity?: string } | undefined> {
   // D141: the persona's own identity's bundle once it is bound, never an ambient NMEM_AGENT_ID.
   const who = opts.mem ? ["--agent-id", opts.mem.agentId, ...(opts.mem.space ? ["--space", opts.mem.space] : [])] : [];
   try {
@@ -71,16 +71,25 @@ export async function loadPersona(opts: { timeoutMs?: number; bin?: string; off?
     const timer = setTimeout(() => proc.kill(), opts.timeoutMs ?? 4000);
     const out = await new Response(proc.stdout).text();
     clearTimeout(timer);
-    if ((await proc.exited) !== 0) return fallback;
-    const { name, identity } = identityFromBundle(JSON.parse(out));
-    const finalName = process.env.DUCTER_PERSONA_NAME || name || fallback.name;
-    return {
-      id: "default",
-      name: finalName,
-      identity: identity ? `${DEFAULT_IDENTITY.replace("Ducter", finalName)}\n\n${identity}` : DEFAULT_IDENTITY.replace("Ducter", finalName),
-      source: "nowledge-mem",
-    };
+    if ((await proc.exited) !== 0) return undefined;
+    return identityFromBundle(JSON.parse(out));
   } catch {
-    return fallback;
+    return undefined;
   }
+}
+
+export async function loadPersona(opts: { timeoutMs?: number; bin?: string; off?: boolean; mem?: { agentId: string; space?: string } } = {}): Promise<Persona & { source: string }> {
+  const fallback = { id: "default", name: process.env.DUCTER_PERSONA_NAME || "Ducter", identity: DEFAULT_IDENTITY, source: "default" };
+  // Memory off means the partner neither recalls, saves, nor reads its identity from Mem.
+  if ((opts.off ?? process.env.DUCTER_MEMORY === "off")) return { ...fallback, source: "off" };
+  const b = await readBundle(opts);
+  if (!b) return fallback;
+  const { name, identity } = b;
+  const finalName = process.env.DUCTER_PERSONA_NAME || name || fallback.name;
+  return {
+    id: "default",
+    name: finalName,
+    identity: identity ? `${DEFAULT_IDENTITY.replace("Ducter", finalName)}\n\n${identity}` : DEFAULT_IDENTITY.replace("Ducter", finalName),
+    source: "nowledge-mem",
+  };
 }

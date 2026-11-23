@@ -202,7 +202,7 @@ var zhIA = Table{
 	"tray.task":        "打开任务",
 	"tray.hide":        "不在菜单栏显示",
 	"tray.go":          "好：%s",
-	"tray.hold":        "先等等",
+	"tray.hold":        "先不用",
 	"tray.reply":       "回复…",
 	"tray.state.quiet": "没有要你定的事",
 
@@ -410,7 +410,7 @@ var enIA = Table{
 	"tray.task":        "Open the Task",
 	"tray.hide":        "Don't Show in the Menu Bar",
 	"tray.go":          "Go: %s",
-	"tray.hold":        "Hold",
+	"tray.hold":        "Not now",
 	"tray.reply":       "Reply…",
 	"tray.state.quiet": "Nothing needs you",
 

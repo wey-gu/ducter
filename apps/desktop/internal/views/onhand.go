@@ -484,8 +484,8 @@ func (a *App) needsCard(c *ui.Context, task *store.Task) {
 		}
 		if d != nil {
 			a.todoAskBody(c, d) // D341: the comment as it goes out, or the to-do's chip
-			a.defaultRow(c, d)
-			a.decisionButtons(c, d, decisionStyle{height: 40, quietBg: t.NeedsYou.Surface})
+			a.whereLines(c, d)
+			a.decisionButtons(c, d, decisionStyle{height: 40, quietBg: t.NeedsYou.Surface, under: a.defaultBelow(c, d)})
 		}
 	})
 }
@@ -570,44 +570,25 @@ func nonEmpty(s ...string) []string {
 	return out
 }
 
-// defaultRow is what happens if the user doesn't answer (D127): for a
-// default that goes ahead, a small clock ring of the time left and one
-// caption ("28 分钟后按默认：等你登录后继续"); else the words alone.
-func (a *App) defaultRow(c *ui.Context, d *store.DecisionState) {
-	t := a.T
-	if d.Where != nil {
+// whereLines is what stands above an On hand ask's buttons: a where ask's
+// own lines (D157: what waiting means, what moving does); a card of its own
+// kind (pay, a key, a phone…) keeps its default there, by its clock. Every
+// other ask says its default once, under its buttons (D482, defaultUnder).
+func (a *App) whereLines(c *ui.Context, d *store.DecisionState) {
+	switch {
+	case d.Where != nil:
 		a.whereAskLines(c, d.Where)
-		return
+	case !genericAsk(d):
+		if line := a.defaultLine(c, d); line != "" {
+			a.mark(c.Key("default"), drawClock, line, a.T.NeedsYou.Ink)
+		}
 	}
-	left, ok := a.defaultIn(d)
-	if !ok || d.DefaultOption != "go" {
-		a.mark(c.Key("default"), drawClock, a.defaultLine(c, d), t.NeedsYou.Ink)
-		return
-	}
-	g := strings.TrimRight(strings.TrimSpace(d.GoLabel), ".。")
-	if d.Closing != nil {
-		g = a.L.T("move.closing.go")
-	}
-	if g == "" {
-		g = a.L.T("decision.go")
-	}
-	// "In 6 min: wait for you…": a capital that only starts its own sentence goes.
-	if a.L.Cased() && len(g) > 1 && g[0] >= 'A' && g[0] <= 'Z' && g[1] >= 'a' && g[1] <= 'z' {
-		g = strings.ToLower(g[:1]) + g[1:]
-	}
-	frac := float32(1)
-	if total := store.ParseTime(d.DefaultAt).Sub(a.decisionTime(d)); total > 0 {
-		frac = float32(left) / float32(total)
-	}
-	c.After(min(max(left%time.Minute, time.Second), time.Minute))
-	words := a.L.T("decision.default.due")
-	if left > 0 {
-		words = a.L.T("decision.default.in", a.duration(left), g)
-	}
-	ui.Row(c.Key("default")).Gap(t.S2).AlignItems(ui.Center).MinWidth(0).Children(func() {
-		ui.Box(c).Size(16, 16).Shrink(0).Draw(drawRing(t.NeedsYou.Ink.Alpha(0.45), t.Accent, frac)).AccessHidden(true)
-		uiText(c, words).FontSize(t.SM).TextColor(t.NeedsYou.Ink).SingleLine().MinWidth(0).Shrink(1).Tooltip(words)
-	})
+}
+
+// genericAsk is a go/hold ask drawn by decideRow (D482), not a card of its own kind.
+func genericAsk(d *store.DecisionState) bool {
+	return d.Checkout == nil && d.SignIn == nil && d.Phone == nil && d.Pay == nil && d.Fill == nil && d.Key == nil &&
+		!(d.Handset != nil && d.Handset.Kind == "record") && !(d.Draft != nil && d.FindID != "")
 }
 
 // decisionTime is when a decision was asked: its event's time.
@@ -785,7 +766,7 @@ func (a *App) partnerDecisionCard(c *ui.Context, d *store.DecisionState) {
 		if d.RoutineID != "" {
 			a.routineFacts(c, d.RoutineID, t.NeedsYou.Ink)
 		}
-		a.defaultRow(c, d)
-		a.decisionButtons(c, d, decisionStyle{height: 40, quietBg: t.NeedsYou.Surface})
+		a.whereLines(c, d)
+		a.decisionButtons(c, d, decisionStyle{height: 40, quietBg: t.NeedsYou.Surface, under: a.defaultBelow(c, d)})
 	})
 }

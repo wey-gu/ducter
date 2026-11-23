@@ -120,7 +120,10 @@ func TestMorningNoteInTheConversation(t *testing.T) {
 	tt := ui.NewTesterWith(app.View, 1100, 1200, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
 	tt.Frame()
-	for _, want := range []string{"好，打开续费页", "先等等", "怎么知道的", "有用", "这类不用告诉我", "两处对不上"} {
+	// D482: 有用 and 这类不用告诉我 end the evidence, so open it on the find they're asked of.
+	app.open["how:f3"] = true
+	tt.Frame()
+	for _, want := range []string{"好，打开续费页", "先不用", "怎么知道的", "有用", "这类不用告诉我", "两处对不上"} {
 		if !tt.HasText(want) {
 			t.Errorf("no %q in %q", want, tt.Texts())
 		}

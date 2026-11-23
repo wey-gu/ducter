@@ -36,6 +36,7 @@ import { firstWords } from "./i18n-first.ts";
 import { settingsHome, settingsMore } from "./i18n-settings.ts";
 import { delightWords } from "./i18n-delight.ts";
 import { d475Words } from "./i18n-d475.ts";
+import { d484Words } from "./i18n-d484.ts";
 import { partnersWords } from "./i18n-partners.ts";
 import { lendWords } from "./i18n-lend.ts";
 import { agentSetupWords } from "./i18n-agentsetup.ts";
@@ -197,8 +198,11 @@ const zh: Record<string, string> = {
   "hello.news.open": "查看",
   "decision.go": "好",
   "decision.go.label": "好，%s",
-  "decision.hold": "先等等",
+  "decision.hold": "先不用",
   "decision.reply": "回复…",
+  // D482: the reply field's own two: its send stands where Go stood; Cancel (Esc) goes back to the buttons.
+  "decision.reply.send": "发送",
+  "decision.reply.cancel": "取消",
   // D382: 晚点再问我 / Ask me later.
   "later.ask": "晚点再问我",
   "later.tonight": "今晚 %s",
@@ -215,15 +219,15 @@ const zh: Record<string, string> = {
   "later.back": "你说晚点再问，现在来问你。",
   "later.row": "%s 再问你：%s",
   "decision.reply.placeholder": "说说你的想法…",
-  "decision.default.go": "%s后你没回，我就%s，之后还能改回来。",
-  "decision.default.hold": "你没回之前，我先放着。",
+  "decision.default.go": "不回的话，%s后我就%s，之后还能改回来。",
+  "decision.default.hold": "不回的话，我先放着，等你回。",
   "decision.default.due": "这就照原计划做",
-  "decision.no_default": "你说好，我再做。",
+  "decision.no_default": "不回的话，我不会去做。",
   "decision.saying.default": "不选也照你说的做，只是不记成规则。",
   "peer.asks": "%s 问你",
   "peer.asks.where": "%s（%s）问你",
   "peer.suggests": "它建议「%s」",
-  "peer.default": "没回就让它先等着。",
+  "peer.default": "不回的话，它就先等着。",
   "peer.in.other": "%s 发来请求「%s」",
   "peer.replied": "已回复 %s",
   "peer.sent": "已发给 %s",
@@ -312,9 +316,9 @@ const zh: Record<string, string> = {
   "peers.trust.hold": "仍然先问我",
   "activity.relay": "在看它想问你什么…",
   "decision.its_words": "它的原话：%s",
-  "decision.default.goon": "%s后你没回，我就接着做，之后还能改回来。",
+  "decision.default.goon": "不回的话，%s后我就接着做，之后还能改回来。",
   "decision.resolved.go": "你说：%s",
-  "decision.resolved.hold": "你说：先等等",
+  "decision.resolved.hold": "你说：先不用",
   "decision.resolved.reply": "你说：%s",
   "decision.resolved.default": "你没回，我照原计划做了",
   "decision.goall": "%d 个都按默认",
@@ -1181,8 +1185,10 @@ const en: Record<string, string> = {
   "hello.news.open": "Take a look",
   "decision.go": "Go",
   "decision.go.label": "%s",
-  "decision.hold": "Hold",
+  "decision.hold": "Not now",
   "decision.reply": "Reply…",
+  "decision.reply.send": "Send",
+  "decision.reply.cancel": "Cancel",
   // D382: Ask me later.
   "later.ask": "Ask me later",
   "later.tonight": "Tonight, %s",
@@ -1200,9 +1206,9 @@ const en: Record<string, string> = {
   "later.row": "Asking again %s: %s",
   "decision.reply.placeholder": "Tell me what you think…",
   "decision.default.go": "If you don't answer, I'll %[2]s in %[1]s. It can be undone.",
-  "decision.default.hold": "I'll leave it until you answer.",
+  "decision.default.hold": "If you don't answer, I'll leave it until you do.",
   "decision.default.due": "Going ahead now",
-  "decision.no_default": "I'll do it once you say so.",
+  "decision.no_default": "If you don't answer, I won't do it.",
   "decision.saying.default": "Until you choose, it still goes by what you said; it just isn't kept as a rule.",
   "peer.asks": "%s asks you",
   "peer.asks.where": "%s (%s) asks you",
@@ -1297,7 +1303,7 @@ const en: Record<string, string> = {
   "decision.its_words": "In its words: %s",
   "decision.default.goon": "If you don't answer, I'll go ahead in %s. It can be undone.",
   "decision.resolved.go": "You said: %s",
-  "decision.resolved.hold": "You said: Hold",
+  "decision.resolved.hold": "You said: Not now",
   "decision.resolved.reply": "You said: %s",
   "decision.resolved.default": "No answer, so I went ahead",
   "decision.goall": "Go on all %d defaults",
@@ -3421,7 +3427,7 @@ const accounts: Record<Lang, Record<string, string>> = {
 
 import { autofill } from "./i18n-autofill.ts";
 import { errandWords } from "./i18n-errand.ts";
-export const TABLES: Record<TableLang, Record<string, string>> = { zh: { ...zh, ...folder.zh, ...devup.zh, ...signin.zh, ...where.zh, ...devcard.zh, ...accounts.zh, ...starts.zh, ...autofill.zh, ...errandWords.zh, ...phone.zh, ...workbench.zh, ...onhandWords.zh, ...phoneuse.zh, ...computeruse.zh, ...handset.zh, ...fileWords.zh, ...calendarWords.zh, ...updateAllWords.zh, ...convWords.zh, ...memoryWords.zh, ...transcriptWords.zh, ...pastWords.zh, ...sessionWords.zh, ...didWords.zh, ...richWords.zh, ...appWords.zh, ...voiceWords.zh, ...contextWords.zh, ...firstWords.zh, ...limitWords.zh, ...settingsMore.zh, ...settingsHome.zh, ...partnersWords.zh, ...lendWords.zh, ...agentSetupWords.zh, ...workerMemWords.zh, ...workerRecordsWords.zh, ...delightWords.zh, ...d475Words.zh }, en: { ...en, ...folder.en, ...devup.en, ...signin.en, ...where.en, ...devcard.en, ...accounts.en, ...starts.en, ...autofill.en, ...errandWords.en, ...phone.en, ...workbench.en, ...onhandWords.en, ...phoneuse.en, ...computeruse.en, ...handset.en, ...fileWords.en, ...calendarWords.en, ...updateAllWords.en, ...convWords.en, ...memoryWords.en, ...transcriptWords.en, ...pastWords.en, ...sessionWords.en, ...didWords.en, ...richWords.en, ...appWords.en, ...voiceWords.en, ...contextWords.en, ...firstWords.en, ...limitWords.en, ...settingsMore.en, ...settingsHome.en, ...partnersWords.en, ...lendWords.en, ...agentSetupWords.en, ...workerMemWords.en, ...workerRecordsWords.en, ...delightWords.en, ...d475Words.en } };
+export const TABLES: Record<TableLang, Record<string, string>> = { zh: { ...zh, ...folder.zh, ...devup.zh, ...signin.zh, ...where.zh, ...devcard.zh, ...accounts.zh, ...starts.zh, ...autofill.zh, ...errandWords.zh, ...phone.zh, ...workbench.zh, ...onhandWords.zh, ...phoneuse.zh, ...computeruse.zh, ...handset.zh, ...fileWords.zh, ...calendarWords.zh, ...updateAllWords.zh, ...convWords.zh, ...memoryWords.zh, ...transcriptWords.zh, ...pastWords.zh, ...sessionWords.zh, ...didWords.zh, ...richWords.zh, ...appWords.zh, ...voiceWords.zh, ...contextWords.zh, ...firstWords.zh, ...limitWords.zh, ...settingsMore.zh, ...settingsHome.zh, ...partnersWords.zh, ...lendWords.zh, ...agentSetupWords.zh, ...workerMemWords.zh, ...workerRecordsWords.zh, ...delightWords.zh, ...d475Words.zh, ...d484Words.zh }, en: { ...en, ...folder.en, ...devup.en, ...signin.en, ...where.en, ...devcard.en, ...accounts.en, ...starts.en, ...autofill.en, ...errandWords.en, ...phone.en, ...workbench.en, ...onhandWords.en, ...phoneuse.en, ...computeruse.en, ...handset.en, ...fileWords.en, ...calendarWords.en, ...updateAllWords.en, ...convWords.en, ...memoryWords.en, ...transcriptWords.en, ...pastWords.en, ...sessionWords.en, ...didWords.en, ...richWords.en, ...appWords.en, ...voiceWords.en, ...contextWords.en, ...firstWords.en, ...limitWords.en, ...settingsMore.en, ...settingsHome.en, ...partnersWords.en, ...lendWords.en, ...agentSetupWords.en, ...workerMemWords.en, ...workerRecordsWords.en, ...delightWords.en, ...d475Words.en, ...d484Words.en } };
 // D276: 聊天软件 / Chat apps (i18n-channels.ts).
 Object.assign(TABLES.zh, channelWords.zh);
 Object.assign(TABLES.en, channelWords.en);

@@ -136,10 +136,10 @@ func TestLearnedListConfirmsAndCorrects(t *testing.T) {
 	app, sent := recallApp(t, i18n.EN)
 	tt := ui.NewTesterWith(app.View, 1280, 1000, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
-	if !tt.HasText("This week I noted 3 things about you. Want to check them?") {
+	if !tt.HasText("3 things I noted about you this week") { // D482: one quiet link at the note's foot
 		t.Fatalf("no offer under the note: %q", tt.Texts())
 	}
-	if err := tt.Click("Show me"); err != nil {
+	if err := tt.Click("3 things I noted about you this week"); err != nil {
 		t.Fatal(err)
 	}
 	tt.Frame()

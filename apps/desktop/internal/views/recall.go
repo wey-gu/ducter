@@ -189,31 +189,39 @@ func (a *App) learnedRows() []protocol.Noted {
 	return out
 }
 
-// learnedLine is the morning note's one offer, under the note, and the
-// list when it is open.
-func (a *App) learnedLine(c *ui.Context, key string, n *protocol.Finds) {
-	if n.Learned == nil || n.Learned.Count < 1 {
+// noteFoot is the morning note's ways on, one quiet row under it (D482):
+// D304's week of what it noted (the week's first note) and D300's Done for
+// you (the morning's), each a quiet link with its chevron; the noted list
+// opens under them.
+func (a *App) noteFoot(c *ui.Context, key string, n *protocol.Finds) {
+	learned := n.Learned != nil && n.Learned.Count > 0
+	did := n.Rung == "morning" && !n.Quiet
+	if !learned && !did {
 		return
 	}
 	t := a.T
 	open := a.recall.learned == key
 	a.underBubble(c, func() {
-		ui.Row(c.Key(key + ":learned")).Gap(t.S2).AlignItems(ui.Center).Wrap().Children(func() {
-			line := a.L.T("learned.line.one")
-			if n.Learned.Count > 1 {
-				line = a.L.T("learned.line", strconv.Itoa(n.Learned.Count))
-			}
-			uiText(c, line).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkSoft).MinWidth(0).Shrink(1)
-			chev := 1
-			if open {
-				chev = 2
-			}
-			if a.quietButton(c, key+":learned-open", a.L.T("learned.open"), a.L.T("learned.title"), true, chev) {
-				if open {
-					a.recall.learned = ""
-				} else {
-					a.openLearned(key)
+		ui.Row(c.Key(key + ":foot")).Gap(t.S4).AlignItems(ui.Center).Wrap().Children(func() {
+			if learned {
+				label := a.L.T("learned.link.one")
+				if n.Learned.Count > 1 {
+					label = a.L.T("learned.link", strconv.Itoa(n.Learned.Count))
 				}
+				chev := 1
+				if open {
+					chev = 2
+				}
+				if a.quietButton(c, key+":learned-open", label, "", false, chev) {
+					if open {
+						a.recall.learned = ""
+					} else {
+						a.openLearned(key)
+					}
+				}
+			}
+			if did {
+				a.didLink(c, "did-morning:"+key)
 			}
 		})
 		if open {

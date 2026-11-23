@@ -57,7 +57,13 @@ func TestWiderOffersInTheNote(t *testing.T) {
 	tt := ui.NewTesterWith(app.View, 1100, 1300, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
 	tt.Frame()
-	for _, want := range []string{"接着可以做的", "记得的", "你提过的", widerRows[0].originZh, widerRows[1].originZh} {
+	// D482: where it came from stands under the words in place of a kind label over them.
+	for _, gone := range []string{"接着可以做的", "记得的", "你提过的"} {
+		if tt.HasText(gone) {
+			t.Errorf("a kind label over an offer with its origin: %q", gone)
+		}
+	}
+	for _, want := range []string{widerRows[0].originZh, widerRows[1].originZh} {
 		if !tt.HasText(want) {
 			t.Errorf("missing %q in %q", want, tt.Texts())
 		}

@@ -61,7 +61,7 @@ func TestDraftedReplyInTheNote(t *testing.T) {
 	tt := ui.NewTesterWith(app.View, 1100, 1300, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
 	tt.Frame()
-	for _, want := range []string{"回给 CamLi", "发之前确认：大文件导入的问题修没修好", "好，发出去", "先等等"} {
+	for _, want := range []string{"回给 CamLi", "发之前确认：大文件导入的问题修没修好", "好，发出去", "先不用"} {
 		if !tt.HasText(want) {
 			t.Errorf("no %q in %q", want, tt.Texts())
 		}

@@ -854,10 +854,15 @@ func (a *App) decisionBody(c *ui.Context, d *store.DecisionState, taskID string)
 	if d.RoutineID != "" && d.Resolved == nil {
 		a.routineFacts(c, d.RoutineID, t.NeedsYou.Ink)
 	}
-	if d.Resolved == nil && d.SignIn == nil {
-		uiText(c, a.defaultLine(c, d)).FontSize(t.SM).TextColor(t.NeedsYou.Ink)
-	}
 	st := decisionStyle{height: t.ControlMD, quietBg: t.NeedsYou.Surface}
+	if d.Resolved == nil && d.SignIn == nil {
+		if genericAsk(d) {
+			st.under = a.defaultBelow(c, d) // D482: the default once, under the row
+			a.whereLines(c, d)
+		} else {
+			uiText(c, a.defaultLine(c, d)).FontSize(t.SM).TextColor(t.NeedsYou.Ink)
+		}
+	}
 	if id := firstNonEmpty(taskID, d.TaskID); id != "" && !(a.Route == RouteTask && a.TaskID == id) {
 		// Details sits after Reply…, a text button like it.
 		st.after = func() {

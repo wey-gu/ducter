@@ -143,8 +143,15 @@ function renderReport(r: Bodies["report"], title?: string, told?: string[], undo
     for (const m of r.remember) lines.push(`  worth remembering, the task thinks: ${clip(m.title, 80)}: ${clip(m.content, 400)}`);
     lines.push("  (Keep only what is a durable fact about the user that memory doesn't hold yet: memory_add it in your own words, once, merging near-duplicates; drop the rest. Never mention this to the user.)");
   }
-  if (r.state === "needs_input")
-    lines.push("  (Your words are what the user sees of this question; its buttons show under them. Ask it in your own words, rule 7: only what the user must decide or do, not what the task will do after it, no ids or settings, at most 2 short sentences.)");
+  // D491: at the checkout the pay card under your words is the question; a second one from you
+  // ("要付吗？") asks what the card already asks.
+  if (r.state === "needs_input" && r.questions?.some((q) => q.checkout))
+    lines.push("  (This is the checkout: Ducter shows the pay card under your words, and the user pays there with their own tap. Your words are not a question: in one short line, what it picked and that it waits at payment for them; nothing is booked or paid yet.)");
+  else if (r.state === "needs_input")
+    lines.push("  (Your words are what the user sees of this question; its buttons show under them. Ask it in your own words, rule 7: only what the user must decide or do, not what the task will do after it, no ids or settings, at most 2 short sentences, the question the last, with any detail such as how long it takes inside it.)");
+  // D491: blocked is the task's stop, not the user's question: what can be cleared without them is.
+  if (r.state === "blocked")
+    lines.push("  (It stopped at something in its way and asks the user nothing. If it or you can clear it without them (an update or a retry on Ducter's own phone or computer, a sign-in already saved, another agent with room), task_send it to do that and carry on; the user needs no word, and never a promise of the result. Tell them only what only they can do, in one short line.)");
   return lines.join("\n");
 }
 
@@ -643,7 +650,7 @@ function renderRound(m: Bodies["mend"], name: string): string {
   return (
     `[task ${m.taskId} ${name} runs in rounds; this round has gone on a long time. Nothing is known to be wrong: this is a look, not an alarm.]${facts.length ? ` Facts: ${facts.join("; ")}.` : ""} The user hasn't been told. ` +
     `Look first (task_read its steps if these aren't enough) and judge what the facts show: still moving (new steps, waiting on something that takes time, like CI checks or a review), or truly stuck (no step for a long while, the same error again and again). ` +
-    `Moving: say nothing at all. Stuck: task_send it the one clear next step. Ask the user only if you truly can't tell from its steps, or it needs their decision; then one short line in their language saying what you saw (its last step and when), never "it may be stuck" from the time alone. Never say anything these facts or its steps don't show.`
+    `Moving: say nothing at all. Stuck: task_send it the one clear next step. If that fix is the user's alone (a sign-in only they can renew, their decision), also tell them once, in ONE sentence of about 25 words in their language: what you saw, since when, and that one fix. Not what you told the task, no error text. If you truly can't tell from its steps, ask them in one short line what you saw (its last step and when); never "it may be stuck" from the time alone. Never say anything these facts or its steps don't show.`
   );
 }
 
@@ -694,6 +701,10 @@ export function renderHistoryLine(e: LogEvent, ctx: RenderCtx): string | null {
       const b = e.body as Bodies["waiter"];
       if (b.routineId) return null;
       if (b.limit) return `[${t} ${limitLine(b, b.taskId ? ` (task ${b.taskId})` : "", hhmm).slice(1)}`;
+      // D491: a task's own wait that ran out or couldn't be read was handed back to that task; read
+      // as a bare "(cancelled)", the partner took it for its own and offered to watch again.
+      if (b.taskId && (b.state === "expired" || b.cantTell))
+        return `[${t} task ${b.taskId}'s own wait ended] ${clip(b.reason, 200)}: ${b.cantTell ? "its look couldn't tell" : "it ran out"}${b.observed ? `; the last look it could read saw: ${clip(b.observed, 160)}` : ""}. Ducter told the task, and the task decides how to look again: watching it is the task's job, not yours to offer or the user's to restart. Asked about it: one or two sentences of where the thing stands as far as known; nothing about this wait or who reports next.`;
       if (b.check || b.event) return `[${t} wait] ${clip(b.reason, 200)} (${b.state === "armed" ? `looking every ${Math.round((b.everyMs ?? 0) / 60000)} min${b.until ? ` until ${hhmm(b.until)}` : ""}` : b.state})${b.taskId ? ` task ${b.taskId}` : ""}`;
       const st = b.state === "armed" ? `set for ${b.at ? hhmm(b.at) : "?"}` : b.state;
       return `[${t} timer] ${clip(b.reason, 200)} (${st})`;

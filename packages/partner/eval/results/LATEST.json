@@ -1,9 +1,9 @@
 {
-  "file": "2026-11-23-haiku-d490-branch-4.md",
+  "file": "2026-11-23-haiku-d491-branch-10.md",
   "date": "2026-11-23",
   "harness": "claude-code",
   "model": "haiku",
-  "pass": "217/276",
-  "persona": "9a4231ec094ae188",
-  "tools": "75eb07e282551458"
+  "pass": "218/272",
+  "persona": "25e19b0950a1f411",
+  "tools": "cdefde9471f04cc7"
 }

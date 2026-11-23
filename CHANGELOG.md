@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.1.29 - 2026-11-24
+
+<!-- whats-new
+zh: 设置里一个声音说话；手机上点得更准
+en: One voice across Settings; easier taps on the phone
+-->
+
+**One voice in Settings**
+- "I" is always your partner and "you" is always you, on every pane; choices you tap no longer
+  speak as your partner ("Say so", "Ask you first", "Same as yours").
+- Look and sound's head says how things are now: the theme, light or dark, and the language.
+
+**On the phone**
+- Partner faces in the bar are easier to tap.
+- A new partner's first starters no longer repeat.
+
 ## 0.1.28 - 2026-11-24
 
 <!-- whats-new

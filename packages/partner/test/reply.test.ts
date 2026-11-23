@@ -80,6 +80,9 @@ test("two replies to two tasks are two turns, each with its own message and no c
   const ua = logUserMessage(core.log, core.decisions, { text: "keys() 也加上", reply: { seq: a.seq } });
   const ub = logUserMessage(core.log, core.decisions, { text: "做成能配置的", reply: { seq: b.seq } });
   await partner.idle();
+  // The second reply's turn may start after the first settles on a slow machine (CI): wait for both.
+  for (let i = 0; i < 500 && fr.sessions.flatMap((s) => s.inputs).length < 2; i++) await Bun.sleep(10);
+  await partner.idle();
   const turns = fr.sessions.flatMap((s) => s.inputs);
   expect(turns).toHaveLength(2);
   const delta = (s: string) => s.slice(s.lastIndexOf("[user"));

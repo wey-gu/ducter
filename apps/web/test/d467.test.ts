@@ -29,10 +29,12 @@ const src = (f: string) => readFileSync(join(import.meta.dir, "../src", f), "utf
 async function board(tasks: unknown[], waiters: unknown[] = []) {
   const { A } = await import("../src/app.ts");
   const o = await import("../src/onhand.tsx");
+  // Its own store: a full run leaves other files' devices, settings and tasks in A.S (CI order).
+  const { Store } = await import("../src/store.ts");
+  A.S = new Store();
   A.L = strings("zh");
   A.send = () => {};
   A.S.welcomed = true;
-  A.S.tasks.clear();
   A.receive({ t: "on_hand", onHand: { tasks, counts: { needs_you: 0, working: 0, waiting: 0, done_today: 0 }, waiters, missed: [] } } as any);
   return { A, o };
 }
